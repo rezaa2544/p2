@@ -63,4 +63,10 @@ th,td{padding:9px 8px;font-size:13px}
 .topbar{padding:10px 12px;gap:8px}
 .topbar h1{font-size:16.5px}
 .topbar .sub{display:none}
+}/* فیلتر جمع‌شونده روی موبایل */
+@media(max-width:640px){
+  .filter-zone{padding:0 12px 4px}
+  .filter-toggle{width:100%;justify-content:center}
+  .filter-body .row{flex-direction:column;align-items:stretch}
+  .filter-body .select,.filter-body .input{width:100%!important;min-width:0}
 }

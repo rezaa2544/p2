@@ -30,12 +30,23 @@ function generate(){
     const first = gender==='پسرانه'?MALE:FEMALE;
     const manager=add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'manager'+(si+1),password:'123456',national_id:nid(),phone:'0912'+(1000000+ri(8999999)),active:1,title:'مدیر مدرسه',created_at:daysAgoISO(480)});
     add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'deputy'+(si+1),password:'123456',national_id:nid(),phone:'0912'+(1000000+ri(8999999)),active:1,title:'معاون آموزشی',created_at:daysAgoISO(470)});
-    const subs=SUBJ.map(s=>add('subjects',{school_id:school.id,name:s[0],code:s[1],weekly_hours:s[2]}));
+    /* دروس بر اساس برنامه‌ی درسی واقعی: پایه‌ها و (در متوسطه دوم) رشته‌ها */
+    const _lvGrades = GRADES_OF_LEVEL[level] || [];
+    const _lvFields = needsField(level) ? ['ریاضی فیزیک','علوم تجربی','ادبیات و علوم انسانی'] : [''];
+    const subs=[];
+    _lvGrades.forEach(g=>_lvFields.forEach(fd=>{
+      booksFor(g,fd).forEach(([bn,bh])=>{
+        if(subs.some(x=>x.name===bn&&x.grade===g&&(x.field||'')===fd))return;
+        subs.push(add('subjects',{school_id:school.id,name:bn,code:'',
+          weekly_hours:Number(String(bh).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))||2,
+          grade:g,field:fd}));
+      });
+    }));
     const teachers=[];
     for(let t=0;t<12;t++){const s=subs[t%subs.length];
       teachers.push(add('users',{school_id:school.id,role:'teacher',full_name:pick(first)+' '+pick(LAST),username:'teacher'+(si+1)+'_'+(t+1),password:'123456',national_id:nid(),phone:'0913'+(1000000+ri(8999999)),active:1,subject_id:s.id,subject:s.name,degree:pick(['کارشناسی','کارشناسی ارشد','دکتری']),created_at:daysAgoISO(460-t)}));}
-    const grades = level==='متوسطه دوم'?['دهم','یازدهم','دوازدهم']:['هفتم','هشتم','نهم'];
-    const fields = level==='متوسطه دوم'?['ریاضی فیزیک','علوم تجربی','انسانی']:['عمومی'];
+    const grades = _lvGrades;
+    const fields = needsField(level)?_lvFields:['عمومی'];
     const classes=[];
     grades.forEach(g=>fields.forEach((f,fi)=>{
       const cname = f==='عمومی'? g+' - '+['الف','ب','ج'][fi] : g+' '+f;

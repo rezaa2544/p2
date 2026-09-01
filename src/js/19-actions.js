@@ -31,7 +31,7 @@ document.addEventListener('click',e=>{
    'modal-back'(){if(e.target.classList.contains('modal-back'))closeModal();},
    // schools
    'school-new'(){schoolModal(null);},
-   'school-clearf'(){S.filters={};S.page=1;render();},
+
    'school-edit'(){schoolModal(byId('schools',id));},
    'school-toggle'(){const s=byId('schools',id);
      const on=!!s.active;
@@ -72,7 +72,7 @@ document.addEventListener('click',e=>{
      const data={name:V('m_name'),code:V('m_code'),
        province_id:pid,county_id:cid,district_id:did,
        city:(byId('counties',cid)||{}).name||'',
-       area_kind:dist?(dist.kind||'city'):'city',
+       area_kind:dist?(dist.kind||'district'):'district',
        phone:V('m_phone'),landline:V('m_landline'),
        level:V('m_level'),gender:V('m_gender'),capacity:Number(V('m_cap'))||300,
        active:Number(V('m_active')),address:V('m_addr')};
@@ -135,9 +135,50 @@ document.addEventListener('click',e=>{
    'subject-del-ok'(){remove('subjects',window._delId);closeModal();toast('درس حذف شد','ok');render();},
    'subject-save'(){const s=window._edit;
      if(!V('s_name')){toast('نام درس الزامی است','err');return;}
-     const data={name:V('s_name'),code:V('s_code'),weekly_hours:Number(V('s_h'))||2,school_id:$('#s_school')?Number(V('s_school')):s.school_id};
+     const grade=V('s_grade')||'';
+     const lv=levelOfGrade(grade);
+     const field=needsField(lv)?(V('s_field')||''):'';
+     if(needsField(lv)&&!field){toast('برای پایه‌های متوسطه دوم، انتخاب رشته الزامی است','err');return;}
+     const data={name:V('s_name'),code:V('s_code'),weekly_hours:Number(V('s_h'))||2,grade,field,
+       school_id:$('#s_school')?Number(V('s_school')):s.school_id};
      if(s.id)update('subjects',s.id,data);else insert('subjects',data);
      closeModal();toast('ذخیره شد','ok');render();},
+   /* افزودن دسته‌جمعی کتاب‌های استاندارد بر اساس پایه/رشته */
+   'subject-import'(){
+     const isSuper=S.user.role==='superadmin';
+     openModal(modalTpl('📥 افزودن کتاب‌های استاندارد',
+      `<div class="small muted" style="margin-bottom:10px">کتاب‌های مصوب پایه‌ی انتخابی به فهرست دروس اضافه می‌شوند. کتاب‌های تکراری نادیده گرفته می‌شوند.</div>
+       <div class="grid g2">
+         ${f('مقطع *',sel('im_level',[['','— انتخاب مقطع —'],...LEVELS.map(l=>[l,l])]))}
+         ${f('پایه *',sel('im_grade',[['','— ابتدا مقطع را انتخاب کنید —']]))}
+       </div>
+       <div id="im_fieldwrap" style="display:none"><div class="grid g2">
+         ${f('شاخه *',sel('im_branch',[['','— انتخاب شاخه —'],...Object.keys(BRANCHES).map(b=>[b,b])]))}
+         ${f('رشته *',sel('im_field',[['','— ابتدا شاخه را انتخاب کنید —']]))}
+       </div></div>
+       ${isSuper?`<div class="grid g2">${f('مدرسه',sel('im_school',db.schools.map(x=>[x.id,x.name])))}</div>`:''}
+       <div id="im_preview" class="small muted" style="margin-top:8px"></div>`,
+      'subject-import-save'));
+   },
+   'subject-import-save'(){
+     const grade=V('im_grade'), lv=V('im_level');
+     if(!lv||!grade){toast('مقطع و پایه را انتخاب کنید','err');return;}
+     const field=needsField(lv)?V('im_field'):'';
+     if(needsField(lv)&&!field){toast('شاخه و رشته را انتخاب کنید','err');return;}
+     const sid=$('#im_school')?Number(V('im_school')):S.user.school_id;
+     const books=booksFor(grade,field);
+     if(!books.length){toast('برای این انتخاب کتابی تعریف نشده','err');return;}
+     let added=0,skipped=0;
+     books.forEach(([name,hours])=>{
+       const dup=db.subjects.some(x=>x.school_id===sid&&x.name===name&&(x.grade||'')===grade&&(x.field||'')===(field||''));
+       if(dup){skipped++;return;}
+       insert('subjects',{school_id:sid,name,code:'',weekly_hours:Number(String(hours).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))||2,grade,field});
+       added++;
+     });
+     closeModal();
+     toast(`${fa(added)} کتاب اضافه شد${skipped?` — ${fa(skipped)} مورد تکراری بود`:''}`,'ok');
+     render();
+   },
    // attendance
    'att-set'(){const sid=id,st=el.dataset.s;const date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
@@ -187,6 +228,7 @@ document.addEventListener('click',e=>{
   else if(typeof P9_ACTIONS!=='undefined'&&P9_ACTIONS[a]){e.preventDefault();P9_ACTIONS[a](el,id);}
   else if(typeof P10_ACTIONS!=='undefined'&&P10_ACTIONS[a]){e.preventDefault();P10_ACTIONS[a](el,id);}
   else if(typeof JD_ACTIONS!=='undefined'&&JD_ACTIONS[a]){e.preventDefault();JD_ACTIONS[a](el,id);}
+  else if(typeof FILTER_ACTIONS!=='undefined'&&FILTER_ACTIONS[a]){e.preventDefault();FILTER_ACTIONS[a](el,id);}
 });
 
 // live filters
@@ -198,9 +240,45 @@ document.addEventListener('input',e=>{
     window._deb=setTimeout(()=>{S.filters[k]=v;S.page=1;render();const n=$(`[data-f="${k}"]`);if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);}},280);
   }
 });
-/* آبشاری: استان → شهرستان → منطقه در فرم مدرسه */
+/* آبشاری: مقطع → پایه → شاخه → رشته (فرم درس و فرم افزودن کتاب) */
 document.addEventListener('change',e=>{
   const id=e.target.id;
+  const optsOf=(list,ph)=>[`<option value="">${ph}</option>`,...list.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`)].join('');
+
+  /* فرم درس: تغییر پایه → نمایش یا پنهان‌کردن شاخه/رشته */
+  if(id==='s_grade'){
+    const lv=levelOfGrade(e.target.value);
+    const w=$('#s_fieldwrap'); if(w)w.style.display=needsField(lv)?'':'none';
+    if(!needsField(lv)){ if($('#s_branch'))$('#s_branch').value=''; if($('#s_field'))$('#s_field').value=''; }
+    return;
+  }
+  if(id==='s_branch'){
+    if($('#s_field'))$('#s_field').innerHTML=optsOf(fieldsOfBranch(e.target.value),'— انتخاب رشته —');
+    return;
+  }
+
+  /* فرم افزودن کتاب استاندارد */
+  if(id==='im_level'){
+    const lv=e.target.value;
+    if($('#im_grade'))$('#im_grade').innerHTML=optsOf(GRADES_OF_LEVEL[lv]||[],'— انتخاب پایه —');
+    const w=$('#im_fieldwrap'); if(w)w.style.display=needsField(lv)?'':'none';
+    if($('#im_preview'))$('#im_preview').innerHTML='';
+    return;
+  }
+  if(id==='im_branch'){
+    if($('#im_field'))$('#im_field').innerHTML=optsOf(fieldsOfBranch(e.target.value),'— انتخاب رشته —');
+    return;
+  }
+  if(id==='im_grade'||id==='im_field'){
+    const g=$('#im_grade')?$('#im_grade').value:'', fd=$('#im_field')?$('#im_field').value:'';
+    const books=g?booksFor(g,fd):[];
+    if($('#im_preview'))$('#im_preview').innerHTML=books.length
+      ? `<b>${fa(books.length)} کتاب</b> اضافه خواهد شد: ${books.map(b=>esc(b[0])).join('، ')}`
+      : (g?'برای این انتخاب کتابی تعریف نشده است.':'');
+    return;
+  }
+
+/* آبشاری: استان → شهرستان → منطقه در فرم مدرسه */
   if(id==='m_prov'||id==='m_county'){
     const pid=$('#m_prov')?$('#m_prov').value:'', cid=id==='m_prov'?'':($('#m_county')?$('#m_county').value:'');
     const g=geoOptions(pid,cid);
@@ -228,6 +306,8 @@ document.addEventListener('change',e=>{
     toast('ابلاغ صادر شد','ok');render();return;
   }
   if(el.dataset.f==='sp'){S.filters.sp=el.value;S.filters.sc='';S.filters.sd='';S.page=1;render();return;}
+  if(el.dataset.f==='sublevel'){S.filters.sublevel=el.value;S.filters.subgrade='';S.filters.subbranch='';S.filters.subfield='';S.page=1;render();return;}
+  if(el.dataset.f==='subbranch'){S.filters.subbranch=el.value;S.filters.subfield='';S.page=1;render();return;}
   if(el.dataset.f==='sc'){S.filters.sc=el.value;S.filters.sd='';S.page=1;render();return;}
   if(el.dataset.f==='term'){S.filters.term=Number(el.value);render();return;}
   if(el.tagName==='SELECT'||el.type==='date'){S.filters[el.dataset.f]=el.value;S.page=1;render();}

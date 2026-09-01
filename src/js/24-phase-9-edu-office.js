@@ -2,7 +2,7 @@
 
 const P9 = { colls: ['provinces','counties','districts','offices'] };
 const OFFICE_LEVEL = { province:'اداره کل استان', county:'اداره شهرستان', district:'اداره منطقه' };
-const AREA_KIND = { city:'شهری', village:'روستایی', rural:'عشایری/حاشیه' };
+const AREA_KIND = { district:'منطقه', village:'روستا' };
 
 /* ---------------- داده نمونه ---------------- */
 const GEO_DEFS = [
@@ -29,7 +29,7 @@ function generateP9(){
     counties.forEach(([cName,districts])=>{
       const c=add('counties',{province_id:p.id,name:cName,code:'C'+(db.counties.length+1)});
       districts.forEach(dName=>add('districts',{province_id:p.id,county_id:c.id,name:dName,
-        kind:dName.includes('حومه')||dName.includes('آرمرده')||dName.includes('زیویه')?'village':'city'}));
+        kind:dName.includes('حومه')||dName.includes('آرمرده')||dName.includes('زیویه')?'village':'district'}));
     });
   });
 
@@ -37,7 +37,7 @@ function generateP9(){
   db.schools.forEach((s,i)=>{
     const d=db.districts[(i*5)%db.districts.length];   // پخش مدارس بین استان‌های مختلف
     s.province_id=d.province_id; s.county_id=d.county_id; s.district_id=d.id;
-    s.area_kind=d.kind||'city';
+    s.area_kind=d.kind||'district';
     if(!s.landline)s.landline='0'+(21+ri(66))+'-'+(33000000+ri(9999999));
     s.city=(byId('counties',d.county_id)||{}).name||s.city;
   });
@@ -135,7 +135,7 @@ function viewGeo(){
     </div>
     <div class="card"><div class="card-head"><h3>مناطق / نواحی</h3><button class="btn sm" data-act="geo-new" data-t="district">➕</button></div>
       ${districts.length?districts.map(d=>`<div class="row" style="padding:10px 14px;border-bottom:1px solid var(--border)">
-        <b>${esc(d.name)}</b><span class="badge ${d.kind==='village'?'b-amber':'b-gray'}">${AREA_KIND[d.kind]||'شهری'}</span>
+        <b>${esc(d.name)}</b><span class="badge ${d.kind==='village'?'b-amber':'b-gray'}">${AREA_KIND[d.kind]||'منطقه'}</span>
         <div class="spacer"></div><span class="small muted">${fa(cnt(d,'district_id'))} مدرسه</span>
         <button class="icon-btn" title="ویرایش" data-act="geo-edit" data-t="districts" data-id="${d.id}">✏️</button>
         <button class="icon-btn danger" title="حذف" data-act="geo-del" data-t="districts" data-id="${d.id}">🗑️</button></div>`).join(''):empty('📍','منطقه‌ای نیست','')}
@@ -186,12 +186,13 @@ function viewOfficeDash(){
       <div><b style="font-size:15px">${esc(o?o.name:'نمای کل کشور')}</b>
         <div class="small muted">${o?OFFICE_LEVEL[o.level]:'سوپر ادمین — همه مدارس'} · گزارش‌ها تجمیعی است و اطلاعات فردی دانش‌آموزان نمایش داده نمی‌شود.</div></div>
       <div class="spacer"></div>
-      <div class="row" style="gap:6px">
+      </div>
+      ${filterPanel('officedash',`
         <select class="select" style="width:150px" data-f="province"><option value="">همه استان‌ها</option>
           ${provinces.map(p=>`<option value="${p.id}" ${String(S.filters.province)===String(p.id)?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
         <select class="select" style="width:150px" data-f="county"><option value="">همه شهرستان‌ها</option>
-          ${counties.map(c=>`<option value="${c.id}" ${String(S.filters.county)===String(c.id)?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
-      </div></div></div></div>
+          ${counties.map(c=>`<option value="${c.id}" ${String(S.filters.county)===String(c.id)?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`)}
+      </div></div>
 
    <div class="grid g4" style="margin-bottom:14px">
     ${statCard('🏫',fa(st.schools),'مدرسه تحت پوشش','blue')}
@@ -215,7 +216,7 @@ function viewOfficeDash(){
       <div class="card-body"><table class="table"><tbody>
         <tr><td>مدارس فعال</td><td><b>${fa(st.active)}</b> از ${fa(st.schools)}</td></tr>
         <tr><td>مدارس دخترانه / پسرانه</td><td><b>${fa(st.girls)}</b> / <b>${fa(st.boys)}</b></td></tr>
-        <tr><td>مدارس روستایی</td><td><b>${fa(st.village)}</b></td></tr>
+        <tr><td>مدارس روستا</td><td><b>${fa(st.village)}</b></td></tr>
         <tr><td>ظرفیت کل</td><td><b>${fa(st.capacity)}</b> نفر</td></tr>
         <tr><td>موارد انضباطی مثبت / منفی</td><td style="color:var(--green)"><b>${fa(st.discipline.pos)}</b> <span class="muted">/</span> <span style="color:var(--red)"><b>${fa(st.discipline.neg)}</b></span></td></tr>
       </tbody></table></div></div>
@@ -234,10 +235,23 @@ function viewOfficeDash(){
 /* ---------------- صفحه: مدارس منطقه (اداره) ---------------- */
 function viewOfficeSchools(){
   const o=officeOf(S.user);
-  const schools=officeScopeSchools(o,S.filters);
+  let schools=officeScopeSchools(o,S.filters);
+  const q=(S.filters.q||'').trim();
+  const ol=S.filters.olevel||'', og=S.filters.ogender||'', ok=S.filters.okind||'';
+  if(q)schools=schools.filter(s=>(s.name+(s.code||'')).includes(q));
+  if(ol)schools=schools.filter(s=>s.level===ol);
+  if(og)schools=schools.filter(s=>s.gender===og);
+  if(ok)schools=schools.filter(s=>(s.area_kind||'district')===ok);
   const rows=perSchoolRows(schools);
+  const oopt=(list,val,label)=>[`<option value="">${label}</option>`,
+    ...list.map(x=>`<option value="${esc(x[0])}" ${String(val)===String(x[0])?'selected':''}>${esc(x[1])}</option>`)].join('');
   return `<div class="card"><div class="card-head"><h3>🏫 مدارس تحت پوشش</h3>
-    <span class="badge b-blue">${fa(schools.length)} مدرسه</span></div>
+    <div class="row"><input class="input" style="width:180px" placeholder="جستجوی نام مدرسه…" data-f="q" value="${esc(q)}" />
+    <span class="badge b-blue">${fa(schools.length)} مدرسه</span></div></div>
+   ${filterPanel('officeschools',`
+     <select class="select" style="width:145px" data-f="olevel">${oopt(LEVELS.map(l=>[l,l]),ol,'همه مقاطع')}</select>
+     <select class="select" style="width:130px" data-f="ogender">${oopt([['پسرانه','پسرانه'],['دخترانه','دخترانه']],og,'همه جنسیت‌ها')}</select>
+     <select class="select" style="width:130px" data-f="okind">${oopt(Object.entries(AREA_KIND),ok,'منطقه و روستا')}</select>`)}
    ${rows.length?`<div class="card-body" style="display:grid;gap:10px">
     ${rows.map(r=>`<div class="row" style="background:var(--surface-2);padding:12px 14px;border-radius:12px">
       <div style="min-width:0"><b>${esc(r.s.name)}</b>
@@ -265,7 +279,7 @@ const P9_ACTIONS = {
     if(t==='county')body+=f('استان',sel('g_parent',db.provinces.map(p=>[p.id,p.name]),S.filters.gp));
     if(t==='district'){
       body+=f('شهرستان',sel('g_parent',db.counties.map(c=>[c.id,c.name+' ('+((byId('provinces',c.province_id)||{}).name||'')+')']),S.filters.gc));
-      body+=f('نوع منطقه',sel('g_kind',[['city','شهری'],['village','روستایی'],['rural','عشایری/حاشیه']]));
+      body+=f('نوع منطقه',sel('g_kind',[['district','منطقه'],['village','روستا']]));
     }
     openModal(modalTpl(title,body,'geo-save'));
     window._geoType=t;
@@ -278,7 +292,7 @@ const P9_ACTIONS = {
       insert('counties',{province_id:pid,name,code:'C'+(db.counties.length+1)});}
     if(t==='district'){const cid=Number(V('g_parent'));if(!cid){toast('شهرستان را انتخاب کنید','err');return;}
       const c=byId('counties',cid);
-      insert('districts',{province_id:c.province_id,county_id:cid,name,kind:V('g_kind')||'city'});}
+      insert('districts',{province_id:c.province_id,county_id:cid,name,kind:V('g_kind')||'district'});}
     closeModal(); toast('ثبت شد','ok'); render();
   },
   'geo-edit'(el,id){
@@ -287,7 +301,7 @@ const P9_ACTIONS = {
     if(t==='counties')body+=f('استان',sel('g_parent',db.provinces.map(p=>[p.id,p.name]),row.province_id));
     if(t==='districts'){
       body+=f('شهرستان',sel('g_parent',db.counties.map(c=>[c.id,c.name]),row.county_id));
-      body+=f('نوع منطقه',sel('g_kind',[['city','شهری'],['village','روستایی'],['rural','عشایری/حاشیه']],row.kind||'city'));
+      body+=f('نوع منطقه',sel('g_kind',[['district','منطقه'],['village','روستا']],row.kind||'district'));
     }
     openModal(modalTpl('ویرایش '+({provinces:'استان',counties:'شهرستان',districts:'منطقه'}[t]),body,'geo-edit-save'));
     window._geoEdit={t,id};

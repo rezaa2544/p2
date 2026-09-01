@@ -158,6 +158,20 @@ tbody tr:hover{background:#fafbfe}
 .scrim{position:fixed;inset:0;background:rgba(12,18,32,.45);z-index:55}
 @media(max-width:1100px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+
+/* ---------- فیلتر جمع‌شونده (مشترک همه پنل‌ها) ---------- */
+.filter-zone{padding:0 16px 4px}
+.filter-toggle{display:inline-flex;align-items:center;gap:7px}
+.filter-toggle .chev{font-size:9px;opacity:.7}
+.filter-toggle.on{background:var(--primary-soft);border-color:var(--primary);color:var(--primary-dark)}
+.filter-toggle.has{border-color:var(--primary);color:var(--primary-dark)}
+.badge.sm{padding:1px 7px;font-size:11px;min-width:auto}
+.filter-body{margin-top:10px;padding:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;animation:fslide .16s ease}
+@keyframes fslide{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.filter-body .select,.filter-body .input{min-width:140px}
+/* نشان وضعیت قابل‌کلیک (فعال/غیرفعال) */
+.badge.tgl{cursor:pointer;user-select:none;transition:filter .12s,box-shadow .12s}
+.badge.tgl:hover{filter:brightness(.94);box-shadow:0 0 0 2px var(--primary-soft)}
 /* ==================== موبایل: تطبیق کامل با عرض صفحه ==================== */
 @media(max-width:900px){
 .app{grid-template-columns:1fr}
@@ -223,7 +237,14 @@ th,td{padding:9px 8px;font-size:13px}
 .topbar{padding:10px 12px;gap:8px}
 .topbar h1{font-size:16.5px}
 .topbar .sub{display:none}
+}/* فیلتر جمع‌شونده روی موبایل */
+@media(max-width:640px){
+  .filter-zone{padding:0 12px 4px}
+  .filter-toggle{width:100%;justify-content:center}
+  .filter-body .row{flex-direction:column;align-items:stretch}
+  .filter-body .select,.filter-body .input{width:100%!important;min-width:0}
 }
+
 </style>
 </head>
 <body>
@@ -283,12 +304,23 @@ function generate(){
     const first = gender==='پسرانه'?MALE:FEMALE;
     const manager=add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'manager'+(si+1),password:'123456',national_id:nid(),phone:'0912'+(1000000+ri(8999999)),active:1,title:'مدیر مدرسه',created_at:daysAgoISO(480)});
     add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'deputy'+(si+1),password:'123456',national_id:nid(),phone:'0912'+(1000000+ri(8999999)),active:1,title:'معاون آموزشی',created_at:daysAgoISO(470)});
-    const subs=SUBJ.map(s=>add('subjects',{school_id:school.id,name:s[0],code:s[1],weekly_hours:s[2]}));
+    /* دروس بر اساس برنامه‌ی درسی واقعی: پایه‌ها و (در متوسطه دوم) رشته‌ها */
+    const _lvGrades = GRADES_OF_LEVEL[level] || [];
+    const _lvFields = needsField(level) ? ['ریاضی فیزیک','علوم تجربی','ادبیات و علوم انسانی'] : [''];
+    const subs=[];
+    _lvGrades.forEach(g=>_lvFields.forEach(fd=>{
+      booksFor(g,fd).forEach(([bn,bh])=>{
+        if(subs.some(x=>x.name===bn&&x.grade===g&&(x.field||'')===fd))return;
+        subs.push(add('subjects',{school_id:school.id,name:bn,code:'',
+          weekly_hours:Number(String(bh).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))||2,
+          grade:g,field:fd}));
+      });
+    }));
     const teachers=[];
     for(let t=0;t<12;t++){const s=subs[t%subs.length];
       teachers.push(add('users',{school_id:school.id,role:'teacher',full_name:pick(first)+' '+pick(LAST),username:'teacher'+(si+1)+'_'+(t+1),password:'123456',national_id:nid(),phone:'0913'+(1000000+ri(8999999)),active:1,subject_id:s.id,subject:s.name,degree:pick(['کارشناسی','کارشناسی ارشد','دکتری']),created_at:daysAgoISO(460-t)}));}
-    const grades = level==='متوسطه دوم'?['دهم','یازدهم','دوازدهم']:['هفتم','هشتم','نهم'];
-    const fields = level==='متوسطه دوم'?['ریاضی فیزیک','علوم تجربی','انسانی']:['عمومی'];
+    const grades = _lvGrades;
+    const fields = needsField(level)?_lvFields:['عمومی'];
     const classes=[];
     grades.forEach(g=>fields.forEach((f,fi)=>{
       const cname = f==='عمومی'? g+' - '+['الف','ب','ج'][fi] : g+' '+f;
@@ -355,7 +387,7 @@ function myAnnouncements(){const u=S.user;return db.announcements.filter(a=>(a.s
 /* ============================ state / router ============================ */
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
- superadmin:[['نظارت کلان',[['dashboard','📊','داشبورد مدیریتی'],['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه']]],['محتوا',[['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['اداره آموزش و پرورش',[['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['کسب‌وکار',[['adminsubs','👨‍👩‍👦','اشتراک اولیا']]],['ارتباطات',[['notifications','🔔','اعلان‌ها']]]],
+ superadmin:[['نظارت کلان',[['dashboard','📊','داشبورد مدیریتی'],['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه']]],['محتوا',[['subjects','📚','دروس'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['اداره آموزش و پرورش',[['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['کسب‌وکار',[['adminsubs','👨‍👩‍👦','اشتراک اولیا']]],['ارتباطات',[['notifications','🔔','اعلان‌ها']]]],
  manager:[['مدرسه من',[['dashboard','📊','داشبورد مدرسه'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  teacher:[['کلاس‌های من',[['dashboard','📊','داشبورد'],['classes','🏛️','کلاس‌ها'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['ثبت اطلاعات',[['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['امتحانات',[['exams','👁️','برنامه مراقبت من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['پرونده من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['calendar','🗓️','تقویم آموزشی']]],['امور مالی',[['mytuition','💰','شهریه من']]],['درخواست‌ها',[['leaves','📨','مرخصی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
@@ -390,6 +422,238 @@ function goBack(){
 window.addEventListener('popstate',()=>{
   if(goBack()) pushHist(S.route);        // در برنامه ماندیم؛ ورودی تاریخچه را بازمی‌گردانیم
 });
+
+/* ============================ فیلتر جمع‌شونده (مشترک همه پنل‌ها) ============================ */
+/* تا وقتی کاربر روی «فیلترها» نزند، هیچ فیلتری باز نمی‌شود.
+   با یک کلیک همه‌ی بخش‌های فیلتر ظاهر می‌شوند. */
+
+S.fopen = S.fopen || {};                       /* وضعیت باز/بسته به تفکیک صفحه */
+
+/* کلیدهای فیلتر هر صفحه — برای شمارش فیلترهای فعال و پاک‌سازی */
+const FILTER_KEYS = {
+  schools    : ['sp','sc','sd','slevel','sgender','sactive'],
+  users      : ['role','school','uactive'],
+  subjects   : ['sublevel','subgrade','subbranch','subfield','subschool'],
+  grades     : ['subject','term'],
+  discipline : ['kind'],
+  attendance : ['date'],
+  geo        : ['province','county','kind'],
+  officedash : ['province','county'],
+  offices    : ['province','county'],
+  officeschools:['olevel','ogender','okind'],
+  exams      : ['term'],
+  adminsubs  : ['substatus','subplan'],
+  tuition    : ['tstatus'],
+  leaves     : ['lstatus'],
+};
+
+/* چند فیلتر فعال است؟ (جستجو جدا شمرده نمی‌شود چون همیشه بیرون است) */
+function activeFilterCount(route){
+  const keys = FILTER_KEYS[route] || [];
+  return keys.filter(k => S.filters[k] !== undefined && S.filters[k] !== '' && S.filters[k] !== null).length;
+}
+
+/**
+ * دکمه‌ی «فیلترها» + پنل جمع‌شونده
+ * @param {string} route  کلید صفحه (برای حفظ وضعیت باز/بسته)
+ * @param {string} inner  HTML کنترل‌های فیلتر
+ */
+function filterPanel(route, inner){
+  if(!inner || !inner.trim()) return '';
+  const n    = activeFilterCount(route);
+  const open = !!S.fopen[route];
+  return `
+  <div class="filter-zone">
+    <button class="btn ghost sm filter-toggle${open?' on':''}${n?' has':''}" data-act="filters-toggle" data-key="${route}">
+      <span>⚙️</span><span>فیلترها</span>
+      ${n?`<span class="badge b-blue sm">${fa(n)}</span>`:''}
+      <span class="chev">${open?'▲':'▼'}</span>
+    </button>
+    ${open?`<div class="filter-body">
+      <div class="row" style="gap:8px;flex-wrap:wrap">${inner}</div>
+      ${n?`<div class="row" style="margin-top:10px"><button class="btn ghost sm" data-act="filters-clear" data-key="${route}">✖️ پاک کردن فیلترها</button></div>`:''}
+    </div>`:''}
+  </div>`;
+}
+
+/* اکشن‌های فیلتر */
+const FILTER_ACTIONS = {
+  'filters-toggle'(el){
+    const k = el.dataset.key;
+    S.fopen[k] = !S.fopen[k];
+    render();
+  },
+  'filters-clear'(el){
+    const k = el.dataset.key;
+    (FILTER_KEYS[k]||[]).forEach(x => { delete S.filters[x]; });
+    S.page = 1;
+    render();
+  },
+};
+
+/* ============================ ساختار آموزشی و کتاب‌های درسی ============================ */
+/* مقطع → پایه → (در متوسطه دوم) شاخه → رشته → کتاب‌ها
+   ابتدایی و متوسطه اول: کتاب‌ها بر اساس پایه و مشترک‌اند.
+   متوسطه دوم (۱۰ تا ۱۲): کتاب‌ها بر اساس شاخه و رشته تفکیک می‌شوند. */
+
+const LEVELS = ['ابتدایی', 'متوسطه اول', 'متوسطه دوم'];
+
+const GRADES_OF_LEVEL = {
+  'ابتدایی'    : ['اول', 'دوم', 'سوم', 'چهارم', 'پنجم', 'ششم'],
+  'متوسطه اول' : ['هفتم', 'هشتم', 'نهم'],
+  'متوسطه دوم' : ['دهم', 'یازدهم', 'دوازدهم'],
+};
+
+/* شاخه‌ها و رشته‌های متوسطه دوم */
+const BRANCHES = {
+  'نظری': ['ریاضی فیزیک', 'علوم تجربی', 'ادبیات و علوم انسانی', 'علوم و معارف اسلامی'],
+  'فنی و حرفه‌ای': ['الکتروتکنیک', 'مکانیک خودرو', 'کامپیوتر', 'حسابداری', 'ساختمان', 'گرافیک'],
+  'کاردانش': ['تعمیر لوازم خانگی', 'طراحی دوخت', 'تأسیسات', 'صنایع غذایی'],
+};
+
+const ALL_FIELDS = Object.values(BRANCHES).flat();
+
+/* ---------- کتاب‌های ابتدایی (مشترک در هر پایه) ---------- */
+const BOOKS_PRIMARY = {
+  'اول'  : [['قرآن','۲'],['فارسی — بخوانیم','۷'],['فارسی — بنویسیم','۴'],['ریاضی','۵'],['علوم تجربی','۳']],
+  'دوم'  : [['قرآن','۲'],['فارسی — بخوانیم','۵'],['فارسی — بنویسیم','۴'],['ریاضی','۵'],['علوم تجربی','۳'],['هدیه‌های آسمان','۲']],
+  'سوم'  : [['قرآن','۲'],['فارسی','۵'],['نگارش فارسی','۳'],['ریاضی','۵'],['علوم تجربی','۳'],['هدیه‌های آسمان','۲'],['مطالعات اجتماعی','۲']],
+  'چهارم': [['قرآن','۲'],['فارسی','۵'],['نگارش فارسی','۳'],['ریاضی','۵'],['علوم تجربی','۳'],['هدیه‌های آسمان','۲'],['مطالعات اجتماعی','۳']],
+  'پنجم' : [['قرآن','۲'],['فارسی','۵'],['نگارش فارسی','۳'],['ریاضی','۵'],['علوم تجربی','۳'],['هدیه‌های آسمان','۲'],['مطالعات اجتماعی','۳']],
+  'ششم'  : [['قرآن','۲'],['فارسی','۵'],['نگارش فارسی','۳'],['ریاضی','۵'],['علوم تجربی','۳'],['هدیه‌های آسمان','۲'],['مطالعات اجتماعی','۳'],['تفکر و پژوهش','۱'],['کار و فناوری','۲']],
+};
+
+/* ---------- کتاب‌های متوسطه اول (مشترک در هر پایه) ---------- */
+const BOOKS_MIDDLE = {
+  'هفتم': [['قرآن','۲'],['پیام‌های آسمان','۲'],['فارسی','۵'],['نگارش','۲'],['عربی','۲'],['زبان انگلیسی','۳'],['ریاضی','۵'],['علوم تجربی','۴'],['مطالعات اجتماعی','۳'],['کار و فناوری','۲'],['فرهنگ و هنر','۱'],['تفکر و سبک زندگی','۱'],['تربیت بدنی','۲']],
+  'هشتم': [['قرآن','۲'],['پیام‌های آسمان','۲'],['فارسی','۵'],['نگارش','۲'],['عربی','۲'],['زبان انگلیسی','۳'],['ریاضی','۵'],['علوم تجربی','۴'],['مطالعات اجتماعی','۳'],['کار و فناوری','۲'],['فرهنگ و هنر','۱'],['تفکر و سبک زندگی','۱'],['تربیت بدنی','۲']],
+  'نهم' : [['قرآن','۲'],['پیام‌های آسمان','۲'],['فارسی','۵'],['نگارش','۲'],['عربی','۲'],['زبان انگلیسی','۳'],['ریاضی','۵'],['علوم تجربی','۴'],['مطالعات اجتماعی','۳'],['کار و فناوری','۲'],['فرهنگ و هنر','۱'],['آمادگی دفاعی','۲'],['تربیت بدنی','۲']],
+};
+
+/* ---------- دروس عمومی مشترک متوسطه دوم ---------- */
+const BOOKS_HIGH_COMMON = {
+  'دهم'    : [['دین و زندگی ۱','۲'],['فارسی ۱','۲'],['نگارش ۱','۲'],['عربی، زبان قرآن ۱','۲'],['زبان انگلیسی ۱','۲'],['تربیت بدنی ۱','۲'],['آمادگی دفاعی','۲']],
+  'یازدهم' : [['دین و زندگی ۲','۲'],['فارسی ۲','۲'],['نگارش ۲','۲'],['عربی، زبان قرآن ۲','۲'],['زبان انگلیسی ۲','۲'],['تربیت بدنی ۲','۲'],['انسان و محیط زیست','۲'],['تاریخ معاصر ایران','۲']],
+  'دوازدهم': [['دین و زندگی ۳','۲'],['فارسی ۳','۲'],['نگارش ۳','۲'],['عربی، زبان قرآن ۳','۲'],['زبان انگلیسی ۳','۲'],['تربیت بدنی ۳','۲'],['سلامت و بهداشت','۲'],['مدیریت خانواده','۲']],
+};
+
+/* ---------- دروس تخصصی متوسطه دوم بر اساس رشته ---------- */
+const BOOKS_HIGH_FIELD = {
+  'ریاضی فیزیک': {
+    'دهم'    : [['ریاضی ۱','۴'],['فیزیک ۱','۳'],['شیمی ۱','۳'],['هندسه ۱','۲'],['آزمایشگاه علوم تجربی ۱','۲']],
+    'یازدهم' : [['حسابان ۱','۴'],['فیزیک ۲','۳'],['شیمی ۲','۳'],['هندسه ۲','۲'],['آمار و احتمال','۲'],['آزمایشگاه علوم تجربی ۲','۲']],
+    'دوازدهم': [['حسابان ۲','۴'],['فیزیک ۳','۳'],['شیمی ۳','۳'],['هندسه ۳','۲'],['ریاضیات گسسته','۲']],
+  },
+  'علوم تجربی': {
+    'دهم'    : [['ریاضی ۱','۴'],['فیزیک ۱','۳'],['شیمی ۱','۳'],['زیست‌شناسی ۱','۳'],['آزمایشگاه علوم تجربی ۱','۲']],
+    'یازدهم' : [['ریاضی ۲','۴'],['فیزیک ۲','۳'],['شیمی ۲','۳'],['زیست‌شناسی ۲','۳'],['زمین‌شناسی','۲'],['آزمایشگاه علوم تجربی ۲','۲']],
+    'دوازدهم': [['ریاضی ۳','۴'],['فیزیک ۳','۳'],['شیمی ۳','۳'],['زیست‌شناسی ۳','۴']],
+  },
+  'ادبیات و علوم انسانی': {
+    'دهم'    : [['ریاضی و آمار ۱','۲'],['علوم و فنون ادبی ۱','۲'],['عربی تخصصی ۱','۲'],['تاریخ ۱','۲'],['جغرافیای ایران','۲'],['جامعه‌شناسی ۱','۲'],['اقتصاد','۲'],['منطق','۲']],
+    'یازدهم' : [['ریاضی و آمار ۲','۲'],['علوم و فنون ادبی ۲','۲'],['عربی تخصصی ۲','۲'],['تاریخ ۲','۲'],['جغرافیای ۲','۲'],['جامعه‌شناسی ۲','۲'],['روان‌شناسی','۲'],['فلسفه ۱','۲']],
+    'دوازدهم': [['ریاضی و آمار ۳','۲'],['علوم و فنون ادبی ۳','۲'],['عربی تخصصی ۳','۲'],['تاریخ ۳','۲'],['جغرافیای ۳','۲'],['جامعه‌شناسی ۳','۲'],['فلسفه ۲','۲'],['علوم و معارف قرآنی','۲']],
+  },
+  'علوم و معارف اسلامی': {
+    'دهم'    : [['اصول عقاید ۱','۲'],['احکام ۱','۲'],['علوم و معارف قرآنی ۱','۲'],['عربی تخصصی ۱','۲'],['تاریخ اسلام ۱','۲'],['منطق','۲']],
+    'یازدهم' : [['اصول عقاید ۲','۲'],['احکام ۲','۲'],['علوم و معارف قرآنی ۲','۲'],['عربی تخصصی ۲','۲'],['تاریخ اسلام ۲','۲'],['فلسفه ۱','۲']],
+    'دوازدهم': [['اصول عقاید ۳','۲'],['احکام ۳','۲'],['علوم و معارف قرآنی ۳','۲'],['عربی تخصصی ۳','۲'],['تاریخ اسلام ۳','۲'],['فلسفه ۲','۲']],
+  },
+  'الکتروتکنیک': {
+    'دهم'    : [['نصب و راه‌اندازی سیستم‌های الکتریکی','۸'],['الزامات محیط کار','۲'],['ریاضی ۱','۲'],['فیزیک','۲']],
+    'یازدهم' : [['نصب و سرویس تجهیزات الکترونیکی','۸'],['کاربرد فناوری‌های نوین','۲'],['ریاضی ۲','۲']],
+    'دوازدهم': [['طراحی و اجرای تابلوهای برق','۸'],['کارگاه نوآوری و کارآفرینی','۲'],['ریاضی ۳','۲']],
+  },
+  'مکانیک خودرو': {
+    'دهم'    : [['سرویس و نگهداری خودرو','۸'],['الزامات محیط کار','۲'],['ریاضی ۱','۲'],['فیزیک','۲']],
+    'یازدهم' : [['تعمیر موتور خودرو','۸'],['کاربرد فناوری‌های نوین','۲'],['ریاضی ۲','۲']],
+    'دوازدهم': [['تعمیر سیستم انتقال قدرت','۸'],['کارگاه نوآوری و کارآفرینی','۲'],['ریاضی ۳','۲']],
+  },
+  'کامپیوتر': {
+    'دهم'    : [['نصب و راه‌اندازی سیستم‌های رایانه‌ای','۸'],['الزامات محیط کار','۲'],['ریاضی ۱','۲'],['فیزیک','۲']],
+    'یازدهم' : [['توسعه برنامه‌سازی و پایگاه داده','۸'],['کاربرد فناوری‌های نوین','۲'],['ریاضی ۲','۲']],
+    'دوازدهم': [['تولید محتوای الکترونیک و برنامه‌سازی','۸'],['کارگاه نوآوری و کارآفرینی','۲'],['ریاضی ۳','۲']],
+  },
+  'حسابداری': {
+    'دهم'    : [['حسابداری وجوه نقد و تحریر دفاتر','۸'],['الزامات محیط کار','۲'],['ریاضی ۱','۲']],
+    'یازدهم' : [['حسابداری خرید و فروش','۸'],['کاربرد فناوری‌های نوین','۲'],['ریاضی ۲','۲']],
+    'دوازدهم': [['حسابداری تهیه و تنظیم صورت‌های مالی','۸'],['کارگاه نوآوری و کارآفرینی','۲'],['ریاضی ۳','۲']],
+  },
+  'ساختمان': {
+    'دهم'    : [['نقشه‌کشی ساختمان','۸'],['الزامات محیط کار','۲'],['ریاضی ۱','۲'],['فیزیک','۲']],
+    'یازدهم' : [['اجرای سازه‌های بتنی','۸'],['کاربرد فناوری‌های نوین','۲'],['ریاضی ۲','۲']],
+    'دوازدهم': [['اجرای نازک‌کاری ساختمان','۸'],['کارگاه نوآوری و کارآفرینی','۲'],['ریاضی ۳','۲']],
+  },
+  'گرافیک': {
+    'دهم'    : [['طراحی و زبان بصری','۸'],['الزامات محیط کار','۲'],['ریاضی ۱','۲']],
+    'یازدهم' : [['طراحی گرافیک نشانه و تصویرسازی','۸'],['کاربرد فناوری‌های نوین','۲'],['ریاضی ۲','۲']],
+    'دوازدهم': [['طراحی گرافیک محیطی و چندرسانه‌ای','۸'],['کارگاه نوآوری و کارآفرینی','۲'],['ریاضی ۳','۲']],
+  },
+  'تعمیر لوازم خانگی': {
+    'دهم'    : [['تعمیر لوازم خانگی حرارتی','۸'],['الزامات محیط کار','۲']],
+    'یازدهم' : [['تعمیر لوازم خانگی گردنده','۸'],['کاربرد فناوری‌های نوین','۲']],
+    'دوازدهم': [['تعمیر لوازم خانگی صوتی و تصویری','۸'],['کارگاه نوآوری و کارآفرینی','۲']],
+  },
+  'طراحی دوخت': {
+    'دهم'    : [['الگوسازی و دوخت لباس ساده','۸'],['الزامات محیط کار','۲']],
+    'یازدهم' : [['الگوسازی و دوخت لباس مجلسی','۸'],['کاربرد فناوری‌های نوین','۲']],
+    'دوازدهم': [['طراحی و دوخت لباس کودک','۸'],['کارگاه نوآوری و کارآفرینی','۲']],
+  },
+  'تأسیسات': {
+    'دهم'    : [['لوله‌کشی آب سرد و گرم','۸'],['الزامات محیط کار','۲']],
+    'یازدهم' : [['نصب و راه‌اندازی سیستم‌های حرارتی','۸'],['کاربرد فناوری‌های نوین','۲']],
+    'دوازدهم': [['نصب و راه‌اندازی سیستم‌های برودتی','۸'],['کارگاه نوآوری و کارآفرینی','۲']],
+  },
+  'صنایع غذایی': {
+    'دهم'    : [['فرآوری شیر و لبنیات','۸'],['الزامات محیط کار','۲']],
+    'یازدهم' : [['فرآوری میوه و سبزیجات','۸'],['کاربرد فناوری‌های نوین','۲']],
+    'دوازدهم': [['فرآوری غلات و نان','۸'],['کارگاه نوآوری و کارآفرینی','۲']],
+  },
+};
+
+/* ---------- توابع کمکی ---------- */
+
+/** مقطعِ یک پایه را برمی‌گرداند */
+function levelOfGrade(grade){
+  for(const lv of LEVELS) if((GRADES_OF_LEVEL[lv]||[]).includes(grade)) return lv;
+  return '';
+}
+
+/** آیا این مقطع نیاز به شاخه/رشته دارد؟ */
+function needsField(level){ return level === 'متوسطه دوم'; }
+
+/** شاخه‌ی یک رشته */
+function branchOfField(field){
+  for(const b in BRANCHES) if(BRANCHES[b].includes(field)) return b;
+  return '';
+}
+
+/**
+ * فهرست کتاب‌های استاندارد یک پایه (و در صورت نیاز، رشته)
+ * @returns {Array<[name, hours]>}
+ */
+function booksFor(grade, field){
+  const level = levelOfGrade(grade);
+  if(level === 'ابتدایی')    return BOOKS_PRIMARY[grade] || [];
+  if(level === 'متوسطه اول') return BOOKS_MIDDLE[grade]  || [];
+  if(level === 'متوسطه دوم'){
+    const common = BOOKS_HIGH_COMMON[grade] || [];
+    const spec   = (field && BOOKS_HIGH_FIELD[field] && BOOKS_HIGH_FIELD[field][grade]) || [];
+    return common.concat(spec);
+  }
+  return [];
+}
+
+/** رشته‌های قابل انتخاب بر اساس شاخه */
+function fieldsOfBranch(branch){ return branch ? (BRANCHES[branch] || []) : ALL_FIELDS; }
+
+/** برچسب خوانا برای یک درس/کتاب */
+function subjectScopeLabel(s){
+  if(!s.grade) return 'عمومی';
+  const lv = levelOfGrade(s.grade);
+  if(needsField(lv) && s.field) return `${s.grade} — ${s.field}`;
+  return s.grade;
+}
 
 /* ============================ login ============================ */
 function demoAccounts(){
@@ -623,21 +887,17 @@ function viewSchools(){
   const counties=db.counties.filter(c=>!fp||String(c.province_id)===String(fp));
   const districts=db.districts.filter(d=>fc?String(d.county_id)===String(fc):(!fp||String(d.province_id)===String(fp)));
   const opt=(list,val,label)=>[`<option value="">${label}</option>`,...list.map(o=>`<option value="${o[0]}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`)].join('');
-  const anyFilter=fp||fc||fd||fl||fg||fa_||q;
   return `<div class="card"><div class="card-head">
     <h3>فهرست مدارس <span class="badge b-gray">${fa(rows.length)}</span></h3>
     <div class="row"><input class="input" style="width:180px" placeholder="جستجوی نام یا کد…" data-f="q" value="${esc(q)}" />
     ${isAdmin?`<button class="btn" data-act="school-new">➕ تعریف مدرسه جدید</button>`:''}</div></div>
-   ${isAdmin?`<div class="card-body" style="padding-bottom:8px">
-     <div class="row" style="gap:8px">
+   ${isAdmin?filterPanel('schools',`
        <select class="select" style="width:150px" data-f="sp">${opt(db.provinces.map(p=>[p.id,p.name]),fp,'همه استان‌ها')}</select>
        <select class="select" style="width:150px" data-f="sc">${opt(counties.map(c=>[c.id,c.name]),fc,'همه شهرستان‌ها')}</select>
        <select class="select" style="width:170px" data-f="sd">${opt(districts.map(d=>[d.id,d.name]),fd,'همه مناطق')}</select>
        <select class="select" style="width:140px" data-f="slevel">${opt([['ابتدایی','ابتدایی'],['متوسطه اول','متوسطه اول'],['متوسطه دوم','متوسطه دوم']],fl,'همه مقاطع')}</select>
        <select class="select" style="width:130px" data-f="sgender">${opt([['پسرانه','پسرانه'],['دخترانه','دخترانه']],fg,'همه جنسیت‌ها')}</select>
-       <select class="select" style="width:130px" data-f="sactive">${opt([['1','فعال'],['0','غیرفعال']],fa_,'همه وضعیت‌ها')}</select>
-       ${anyFilter?`<button class="btn ghost sm" data-act="school-clearf">✖️ پاک کردن فیلترها</button>`:''}
-     </div></div>`:''}
+       <select class="select" style="width:130px" data-f="sactive">${opt([['1','فعال'],['0','غیرفعال']],fa_,'همه وضعیت‌ها')}</select>`):''}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>نام مدرسه</th><th>کد</th><th>مکان</th><th>مقطع</th><th>مدیر</th><th>تلفن ثابت</th><th>دانش‌آموز</th><th>دبیر</th><th>کلاس</th><th>وضعیت</th>${isAdmin?'<th></th>':''}</tr></thead><tbody>
     ${rows.map(s=>{const us=db.users.filter(u=>u.school_id===s.id);const mg=us.find(u=>u.role==='manager');
      return `<tr><td><b>${esc(s.name)}</b><div class="small muted">${esc(s.gender||'')}</div></td><td class="muted">${esc(s.code)}</td>
@@ -645,10 +905,9 @@ function viewSchools(){
       <td><span class="badge b-blue">${esc(s.level||'—')}</span></td><td class="muted">${esc(mg?mg.full_name:'—')}</td>
       <td class="small muted">${esc(s.landline||'—')}</td>
       <td>${fa(us.filter(u=>u.role==='student').length)}</td><td>${fa(us.filter(u=>u.role==='teacher').length)}</td><td>${fa(db.classes.filter(c=>c.school_id===s.id).length)}</td>
-      <td><span class="badge ${s.active?'b-green':'b-gray'}" ${isAdmin?`data-act="school-toggle" data-id="${s.id}" style="cursor:pointer"`:''}>${s.active?'فعال':'غیرفعال'}</span></td>
+      <td><span class="badge ${s.active?'b-green':'b-gray'}${isAdmin?' tgl':''}" ${isAdmin?`data-act="school-toggle" data-id="${s.id}" title="برای تغییر وضعیت کلیک کنید"`:''}>${s.active?'فعال':'غیرفعال'}</span></td>
       ${isAdmin?`<td><div class="row" style="gap:5px;flex-wrap:nowrap">
         <button class="btn sm" data-act="school-enter" data-id="${s.id}" title="ورود به پنل این مدرسه به‌عنوان مدیر">🔑 ورود به پنل</button>
-        <button class="btn ghost sm" data-act="school-toggle" data-id="${s.id}" title="فعال یا غیرفعال کردن مدرسه">${s.active?'⏸️ غیرفعال کن':'▶️ فعال کن'}</button>
         <button class="icon-btn" title="ویرایش" data-act="school-edit" data-id="${s.id}">✏️</button>
         <button class="icon-btn danger" title="حذف" data-act="school-del" data-id="${s.id}">🗑️</button></div></td>`:''}</tr>`;}).join('')}
     </tbody></table></div>`:empty('🏫','مدرسه‌ای یافت نشد',q?'نتیجه‌ای برای جستجو نبود.':'اولین مدرسه را تعریف کنید.',isAdmin?'<button class="btn" data-act="school-new">تعریف مدرسه</button>':'')}
@@ -658,21 +917,24 @@ function viewSchools(){
 /* ============================ users ============================ */
 function viewUsers(){
   const u=S.user, canEdit=['superadmin','manager'].includes(u.role);
-  const q=(S.filters.q||'').trim(), role=S.filters.role||'', sch=S.filters.school||'';
+  const q=(S.filters.q||'').trim(), role=S.filters.role||'', sch=S.filters.school||'', act=S.filters.uactive||'';
   let rows=db.users.filter(x=>x.role!=='superadmin');
   if(u.role!=='superadmin')rows=rows.filter(x=>x.school_id===u.school_id);
   if(sch)rows=rows.filter(x=>x.school_id===Number(sch));
   if(role)rows=rows.filter(x=>x.role===role);
   if(q)rows=rows.filter(x=>(x.full_name+x.username+(x.national_id||'')).includes(q));
+  if(act!=='')rows=rows.filter(x=>String(x.active?1:0)===act);
   const per=15,pages=Math.ceil(rows.length/per)||1,page=Math.min(S.page,pages);
   const slice=rows.slice((page-1)*per,page*per);
   return `<div class="card"><div class="card-head">
     <h3>کاربران <span class="badge b-gray">${fa(rows.length)} نفر</span></h3>
     <div class="row">
      <input class="input" style="width:180px" placeholder="نام یا کد ملی…" data-f="q" value="${esc(q)}" />
+     ${canEdit?`<button class="btn" data-act="user-new">➕ کاربر جدید</button>`:''}</div></div>
+   ${filterPanel('users',`
      <select class="select" style="width:135px" data-f="role"><option value="">همه نقش‌ها</option>${['manager','teacher','student','parent'].map(r=>`<option value="${r}" ${role===r?'selected':''}>${ROLE_FA[r]}</option>`).join('')}</select>
      ${u.role==='superadmin'?`<select class="select" style="width:170px" data-f="school"><option value="">همه مدارس</option>${db.schools.map(s=>`<option value="${s.id}" ${sch==String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`:''}
-     ${canEdit?`<button class="btn" data-act="user-new">➕ کاربر جدید</button>`:''}</div></div>
+     <select class="select" style="width:130px" data-f="uactive"><option value="">همه وضعیت‌ها</option><option value="1" ${act==='1'?'selected':''}>فعال</option><option value="0" ${act==='0'?'selected':''}>غیرفعال</option></select>`)}
    ${slice.length?`<div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>نقش</th><th>نام کاربری</th><th>مدرسه</th><th>کلاس</th><th>تلفن</th><th>وضعیت</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
     ${slice.map(x=>`<tr><td><div class="row" style="flex-wrap:nowrap;gap:8px"><div class="avatar" style="width:30px;height:30px;font-size:12px;background:var(--primary-soft);color:var(--primary)">${esc(x.full_name[0])}</div>
       <div><b>${esc(x.full_name)}</b><div class="small muted">${esc(x.national_id||'—')}</div></div></div></td>
@@ -708,15 +970,78 @@ function viewClasses(){
 }
 
 function viewSubjects(){
-  const canEdit=['superadmin','manager'].includes(S.user.role);
-  const rows=visibleSubjects();
-  return `<div class="card"><div class="card-head"><h3>دروس <span class="badge b-gray">${fa(rows.length)}</span></h3>
-   ${canEdit?`<button class="btn" data-act="subject-new">➕ درس جدید</button>`:''}</div>
-   ${rows.length?`<div class="table-wrap"><table><thead><tr><th>نام درس</th><th>کد</th><th>ساعت هفتگی</th>${S.user.role==='superadmin'?'<th>مدرسه</th>':''}${canEdit?'<th></th>':''}</tr></thead><tbody>
-    ${rows.map(s=>`<tr><td><b>${esc(s.name)}</b></td><td class="muted">${esc(s.code||'—')}</td><td><span class="badge b-blue">${fa(s.weekly_hours)} ساعت</span></td>
-     ${S.user.role==='superadmin'?`<td class="muted">${esc(byId('schools',s.school_id).name)}</td>`:''}
-     ${canEdit?`<td><button class="icon-btn" data-act="subject-edit" data-id="${s.id}">✏️</button> <button class="icon-btn danger" data-act="subject-del" data-id="${s.id}">🗑️</button></td>`:''}</tr>`).join('')}
-   </tbody></table></div>`:empty('📚','درسی تعریف نشده','دروس مدرسه را اضافه کنید.')}</div>`;
+  const u=S.user, canEdit=['superadmin','manager'].includes(u.role), isSuper=u.role==='superadmin';
+  const q=(S.filters.subq||'').trim();
+  const flv=S.filters.sublevel||'', fgr=S.filters.subgrade||'',
+        fbr=S.filters.subbranch||'', ffd=S.filters.subfield||'', fsc=S.filters.subschool||'';
+
+  let rows=visibleSubjects();
+  if(q)rows=rows.filter(s=>(s.name+(s.code||'')).includes(q));
+  if(fsc)rows=rows.filter(s=>String(s.school_id)===String(fsc));
+  if(flv)rows=rows.filter(s=>levelOfGrade(s.grade)===flv);
+  if(fgr)rows=rows.filter(s=>s.grade===fgr);
+  if(fbr)rows=rows.filter(s=>branchOfField(s.field)===fbr);
+  if(ffd)rows=rows.filter(s=>s.field===ffd);
+
+  const opt=(list,val,label)=>[`<option value="">${label}</option>`,
+    ...list.map(o=>`<option value="${esc(o[0])}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`)].join('');
+  const gradeList = flv ? (GRADES_OF_LEVEL[flv]||[]) : LEVELS.flatMap(l=>GRADES_OF_LEVEL[l]);
+  const fieldList = fieldsOfBranch(fbr);
+  const showFieldFilters = !flv || needsField(flv);
+
+  /* گروه‌بندی: مقطع › پایه › (رشته) */
+  const groups={};
+  rows.forEach(s=>{
+    const lv=levelOfGrade(s.grade)||'سایر دروس';
+    const gr=s.grade||'—';
+    const key=needsField(lv)&&s.field ? `${lv}|${gr}|${s.field}` : `${lv}|${gr}|`;
+    (groups[key]=groups[key]||[]).push(s);
+  });
+  const orderKey=(k)=>{
+    const [lv,gr]=k.split('|');
+    const li=LEVELS.indexOf(lv); const gi=(GRADES_OF_LEVEL[lv]||[]).indexOf(gr);
+    return (li<0?99:li)*100 + (gi<0?99:gi);
+  };
+  const keys=Object.keys(groups).sort((a,b)=>orderKey(a)-orderKey(b)||a.localeCompare(b,'fa'));
+
+  return `<div class="card"><div class="card-head">
+    <h3>دروس و کتاب‌ها <span class="badge b-gray">${fa(rows.length)}</span></h3>
+    <div class="row">
+      <input class="input" style="width:190px" placeholder="جستجوی نام درس یا کد…" data-f="subq" value="${esc(q)}" />
+      ${canEdit?`<button class="btn ghost" data-act="subject-import">📥 افزودن کتاب‌های استاندارد</button>
+                 <button class="btn" data-act="subject-new">➕ درس جدید</button>`:''}
+    </div></div>
+   ${filterPanel('subjects',`
+     <select class="select" style="width:145px" data-f="sublevel">${opt(LEVELS.map(l=>[l,l]),flv,'همه مقاطع')}</select>
+     <select class="select" style="width:135px" data-f="subgrade">${opt(gradeList.map(g=>[g,g]),fgr,'همه پایه‌ها')}</select>
+     ${showFieldFilters?`
+       <select class="select" style="width:150px" data-f="subbranch">${opt(Object.keys(BRANCHES).map(b=>[b,b]),fbr,'همه شاخه‌ها')}</select>
+       <select class="select" style="width:180px" data-f="subfield">${opt(fieldList.map(f=>[f,f]),ffd,'همه رشته‌ها')}</select>`:''}
+     ${isSuper?`<select class="select" style="width:180px" data-f="subschool">${opt(db.schools.map(s=>[s.id,s.name]),fsc,'همه مدارس')}</select>`:''}`)}
+
+   ${rows.length?keys.map(k=>{
+     const [lv,gr,fd]=k.split('|');
+     const list=groups[k].slice().sort((a,b)=>a.name.localeCompare(b.name,'fa'));
+     const hours=list.reduce((t,s)=>t+(Number(s.weekly_hours)||0),0);
+     return `<div style="padding:0 16px 6px">
+       <div class="sec-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+         <span>${esc(lv)}</span>
+         ${gr&&gr!=='—'?`<span class="badge b-blue">پایه ${esc(gr)}</span>`:''}
+         ${fd?`<span class="badge b-purple">${esc(fd)}</span><span class="badge b-gray">${esc(branchOfField(fd))}</span>`:''}
+         <div class="spacer"></div>
+         <span class="badge b-gray">${fa(list.length)} کتاب</span>
+         <span class="badge b-amber">${fa(hours)} ساعت</span>
+       </div>
+       <div class="table-wrap"><table><thead><tr><th>نام کتاب / درس</th><th>کد</th><th>ساعت هفتگی</th>${isSuper?'<th>مدرسه</th>':''}${canEdit?'<th></th>':''}</tr></thead><tbody>
+       ${list.map(s=>`<tr><td><b>${esc(s.name)}</b></td><td class="muted">${esc(s.code||'—')}</td>
+         <td><span class="badge b-blue">${fa(s.weekly_hours)} ساعت</span></td>
+         ${isSuper?`<td class="muted">${esc((byId('schools',s.school_id)||{}).name||'—')}</td>`:''}
+         ${canEdit?`<td><button class="icon-btn" title="ویرایش" data-act="subject-edit" data-id="${s.id}">✏️</button>
+                      <button class="icon-btn danger" title="حذف" data-act="subject-del" data-id="${s.id}">🗑️</button></td>`:''}</tr>`).join('')}
+       </tbody></table></div></div>`;}).join('')
+   :empty('📚','درسی یافت نشد',(q||flv||fgr||fbr||ffd)?'با این فیلترها نتیجه‌ای نبود.':'کتاب‌های استاندارد را وارد کنید یا درس جدید بسازید.',
+     canEdit?'<button class="btn" data-act="subject-import">📥 افزودن کتاب‌های استاندارد</button>':'')}
+   </div>`;
 }
 
 /* ============================ attendance ============================ */
@@ -759,10 +1084,11 @@ function viewGrades(){
   const avg=rows.length?avgOf(rows).toFixed(2):null;
   return `<div class="card"><div class="card-head"><div class="row">
     ${u.role!=='student'?`<select class="select" style="width:170px" data-f="class">${cls.map(c=>`<option value="${c.id}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`:''}
-    <select class="select" style="width:150px" data-f="subject"><option value="">همه دروس</option>${subs.map(s=>`<option value="${s.id}" ${sub==String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>
-    <select class="select" style="width:125px" data-f="term"><option value="">همه نوبت‌ها</option>${TERMS.map(t=>`<option ${term===t?'selected':''}>${t}</option>`).join('')}</select>
     ${avg?`<span class="badge b-blue">میانگین: ${fa(avg)}</span>`:''}</div>
     ${canEdit?`<button class="btn" data-act="grade-new">➕ ثبت نمره</button>`:''}</div>
+   ${filterPanel('grades',`
+    <select class="select" style="width:150px" data-f="subject"><option value="">همه دروس</option>${subs.map(s=>`<option value="${s.id}" ${sub==String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>
+    <select class="select" style="width:125px" data-f="term"><option value="">همه نوبت‌ها</option>${TERMS.map(t=>`<option ${term===t?'selected':''}>${t}</option>`).join('')}</select>`)}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>درس</th><th>کلاس</th><th>نوبت</th><th>نوع آزمون</th><th>نمره</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
     ${rows.map(g=>`<tr><td><b>${esc(byId('users',g.student_id).full_name)}</b></td><td>${esc(byId('subjects',g.subject_id).name)}</td>
       <td class="muted">${esc(byId('classes',g.class_id).name)}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td class="muted">${esc(g.exam_type)}</td>
@@ -782,9 +1108,10 @@ function viewDiscipline(){
   if(kind)rows=rows.filter(d=>d.kind===kind);
   rows=rows.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,150);
   return `<div class="card"><div class="card-head"><div class="row">
-    <select class="select" style="width:150px" data-f="kind"><option value="">همه موارد</option><option value="positive" ${kind==='positive'?'selected':''}>موارد مثبت 👍</option><option value="negative" ${kind==='negative'?'selected':''}>موارد منفی 👎</option></select>
     <span class="badge b-gray">${fa(rows.length)} مورد</span></div>
     ${canEdit?`<button class="btn" data-act="disc-new">➕ ثبت مورد انضباطی</button>`:''}</div>
+   ${filterPanel('discipline',`
+    <select class="select" style="width:150px" data-f="kind"><option value="">همه موارد</option><option value="positive" ${kind==='positive'?'selected':''}>موارد مثبت 👍</option><option value="negative" ${kind==='negative'?'selected':''}>موارد منفی 👎</option></select>`)}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>کلاس</th><th>نوع</th><th>عنوان</th><th>توضیحات</th><th>امتیاز</th><th>تاریخ</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
     ${rows.map(d=>{const s=byId('users',d.student_id);return `<tr><td><b>${esc(s?s.full_name:'—')}</b></td><td class="muted">${esc((classOf(d.student_id)||{}).name||'—')}</td>
      <td><span class="badge ${d.kind==='positive'?'b-green':'b-red'}">${d.kind==='positive'?'👍 مثبت':'👎 منفی'}</span></td><td>${esc(d.title)}</td>
@@ -955,10 +1282,26 @@ function classModal(c){
 }
 function subjectModal(s){
   const isSuper=S.user.role==='superadmin';
-  s=s||{name:'',code:'',weekly_hours:2,school_id:isSuper?db.schools[0].id:S.user.school_id};
-  openModal(modalTpl(s.id?'ویرایش درس':'درس جدید',
-   `<div class="grid g2">${f('نام درس *',inp('s_name',s.name))}${f('کد',inp('s_code',s.code))}${f('ساعت هفتگی',inp('s_h',s.weekly_hours,'number'))}
-   ${isSuper?f('مدرسه',sel('s_school',db.schools.map(x=>[x.id,x.name]),s.school_id)):''}</div>`,'subject-save'));
+  s=s||{name:'',code:'',weekly_hours:2,grade:'',field:'',school_id:isSuper?db.schools[0].id:S.user.school_id};
+  const lv=levelOfGrade(s.grade)||'';
+  const br=branchOfField(s.field)||'';
+  const allGrades=LEVELS.flatMap(l=>GRADES_OF_LEVEL[l].map(g=>[g,`${g} (${l})`]));
+  openModal(modalTpl(s.id?'ویرایش درس / کتاب':'درس / کتاب جدید',
+   `<div class="grid g2">
+      ${f('نام کتاب / درس *',inp('s_name',s.name))}
+      ${f('کد',inp('s_code',s.code))}
+      ${f('ساعت هفتگی',inp('s_h',s.weekly_hours,'number'))}
+      ${f('پایه',sel('s_grade',[['','— عمومی / بدون پایه —'],...allGrades],s.grade||''))}
+    </div>
+    <div id="s_fieldwrap" style="${needsField(lv)?'':'display:none'}">
+      <div class="grid g2">
+        ${f('شاخه',sel('s_branch',[['','— انتخاب شاخه —'],...Object.keys(BRANCHES).map(b=>[b,b])],br))}
+        ${f('رشته',sel('s_field',[['','— انتخاب رشته —'],...fieldsOfBranch(br).map(x=>[x,x])],s.field||''))}
+      </div>
+      <div class="small muted" style="margin-top:-4px">در متوسطه دوم (پایه‌های دهم تا دوازدهم) کتاب‌ها بر اساس شاخه و رشته تفکیک می‌شوند.</div>
+    </div>
+    ${isSuper?`<div class="grid g2">${f('مدرسه',sel('s_school',db.schools.map(x=>[x.id,x.name]),s.school_id))}</div>`:''}`,
+   'subject-save'));
   window._edit=s;
 }
 function gradeModal(g){
@@ -1048,7 +1391,7 @@ document.addEventListener('click',e=>{
    'modal-back'(){if(e.target.classList.contains('modal-back'))closeModal();},
    // schools
    'school-new'(){schoolModal(null);},
-   'school-clearf'(){S.filters={};S.page=1;render();},
+
    'school-edit'(){schoolModal(byId('schools',id));},
    'school-toggle'(){const s=byId('schools',id);
      const on=!!s.active;
@@ -1089,7 +1432,7 @@ document.addEventListener('click',e=>{
      const data={name:V('m_name'),code:V('m_code'),
        province_id:pid,county_id:cid,district_id:did,
        city:(byId('counties',cid)||{}).name||'',
-       area_kind:dist?(dist.kind||'city'):'city',
+       area_kind:dist?(dist.kind||'district'):'district',
        phone:V('m_phone'),landline:V('m_landline'),
        level:V('m_level'),gender:V('m_gender'),capacity:Number(V('m_cap'))||300,
        active:Number(V('m_active')),address:V('m_addr')};
@@ -1152,9 +1495,50 @@ document.addEventListener('click',e=>{
    'subject-del-ok'(){remove('subjects',window._delId);closeModal();toast('درس حذف شد','ok');render();},
    'subject-save'(){const s=window._edit;
      if(!V('s_name')){toast('نام درس الزامی است','err');return;}
-     const data={name:V('s_name'),code:V('s_code'),weekly_hours:Number(V('s_h'))||2,school_id:$('#s_school')?Number(V('s_school')):s.school_id};
+     const grade=V('s_grade')||'';
+     const lv=levelOfGrade(grade);
+     const field=needsField(lv)?(V('s_field')||''):'';
+     if(needsField(lv)&&!field){toast('برای پایه‌های متوسطه دوم، انتخاب رشته الزامی است','err');return;}
+     const data={name:V('s_name'),code:V('s_code'),weekly_hours:Number(V('s_h'))||2,grade,field,
+       school_id:$('#s_school')?Number(V('s_school')):s.school_id};
      if(s.id)update('subjects',s.id,data);else insert('subjects',data);
      closeModal();toast('ذخیره شد','ok');render();},
+   /* افزودن دسته‌جمعی کتاب‌های استاندارد بر اساس پایه/رشته */
+   'subject-import'(){
+     const isSuper=S.user.role==='superadmin';
+     openModal(modalTpl('📥 افزودن کتاب‌های استاندارد',
+      `<div class="small muted" style="margin-bottom:10px">کتاب‌های مصوب پایه‌ی انتخابی به فهرست دروس اضافه می‌شوند. کتاب‌های تکراری نادیده گرفته می‌شوند.</div>
+       <div class="grid g2">
+         ${f('مقطع *',sel('im_level',[['','— انتخاب مقطع —'],...LEVELS.map(l=>[l,l])]))}
+         ${f('پایه *',sel('im_grade',[['','— ابتدا مقطع را انتخاب کنید —']]))}
+       </div>
+       <div id="im_fieldwrap" style="display:none"><div class="grid g2">
+         ${f('شاخه *',sel('im_branch',[['','— انتخاب شاخه —'],...Object.keys(BRANCHES).map(b=>[b,b])]))}
+         ${f('رشته *',sel('im_field',[['','— ابتدا شاخه را انتخاب کنید —']]))}
+       </div></div>
+       ${isSuper?`<div class="grid g2">${f('مدرسه',sel('im_school',db.schools.map(x=>[x.id,x.name])))}</div>`:''}
+       <div id="im_preview" class="small muted" style="margin-top:8px"></div>`,
+      'subject-import-save'));
+   },
+   'subject-import-save'(){
+     const grade=V('im_grade'), lv=V('im_level');
+     if(!lv||!grade){toast('مقطع و پایه را انتخاب کنید','err');return;}
+     const field=needsField(lv)?V('im_field'):'';
+     if(needsField(lv)&&!field){toast('شاخه و رشته را انتخاب کنید','err');return;}
+     const sid=$('#im_school')?Number(V('im_school')):S.user.school_id;
+     const books=booksFor(grade,field);
+     if(!books.length){toast('برای این انتخاب کتابی تعریف نشده','err');return;}
+     let added=0,skipped=0;
+     books.forEach(([name,hours])=>{
+       const dup=db.subjects.some(x=>x.school_id===sid&&x.name===name&&(x.grade||'')===grade&&(x.field||'')===(field||''));
+       if(dup){skipped++;return;}
+       insert('subjects',{school_id:sid,name,code:'',weekly_hours:Number(String(hours).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))||2,grade,field});
+       added++;
+     });
+     closeModal();
+     toast(`${fa(added)} کتاب اضافه شد${skipped?` — ${fa(skipped)} مورد تکراری بود`:''}`,'ok');
+     render();
+   },
    // attendance
    'att-set'(){const sid=id,st=el.dataset.s;const date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
@@ -1204,6 +1588,7 @@ document.addEventListener('click',e=>{
   else if(typeof P9_ACTIONS!=='undefined'&&P9_ACTIONS[a]){e.preventDefault();P9_ACTIONS[a](el,id);}
   else if(typeof P10_ACTIONS!=='undefined'&&P10_ACTIONS[a]){e.preventDefault();P10_ACTIONS[a](el,id);}
   else if(typeof JD_ACTIONS!=='undefined'&&JD_ACTIONS[a]){e.preventDefault();JD_ACTIONS[a](el,id);}
+  else if(typeof FILTER_ACTIONS!=='undefined'&&FILTER_ACTIONS[a]){e.preventDefault();FILTER_ACTIONS[a](el,id);}
 });
 
 // live filters
@@ -1215,9 +1600,45 @@ document.addEventListener('input',e=>{
     window._deb=setTimeout(()=>{S.filters[k]=v;S.page=1;render();const n=$(`[data-f="${k}"]`);if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);}},280);
   }
 });
-/* آبشاری: استان → شهرستان → منطقه در فرم مدرسه */
+/* آبشاری: مقطع → پایه → شاخه → رشته (فرم درس و فرم افزودن کتاب) */
 document.addEventListener('change',e=>{
   const id=e.target.id;
+  const optsOf=(list,ph)=>[`<option value="">${ph}</option>`,...list.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`)].join('');
+
+  /* فرم درس: تغییر پایه → نمایش یا پنهان‌کردن شاخه/رشته */
+  if(id==='s_grade'){
+    const lv=levelOfGrade(e.target.value);
+    const w=$('#s_fieldwrap'); if(w)w.style.display=needsField(lv)?'':'none';
+    if(!needsField(lv)){ if($('#s_branch'))$('#s_branch').value=''; if($('#s_field'))$('#s_field').value=''; }
+    return;
+  }
+  if(id==='s_branch'){
+    if($('#s_field'))$('#s_field').innerHTML=optsOf(fieldsOfBranch(e.target.value),'— انتخاب رشته —');
+    return;
+  }
+
+  /* فرم افزودن کتاب استاندارد */
+  if(id==='im_level'){
+    const lv=e.target.value;
+    if($('#im_grade'))$('#im_grade').innerHTML=optsOf(GRADES_OF_LEVEL[lv]||[],'— انتخاب پایه —');
+    const w=$('#im_fieldwrap'); if(w)w.style.display=needsField(lv)?'':'none';
+    if($('#im_preview'))$('#im_preview').innerHTML='';
+    return;
+  }
+  if(id==='im_branch'){
+    if($('#im_field'))$('#im_field').innerHTML=optsOf(fieldsOfBranch(e.target.value),'— انتخاب رشته —');
+    return;
+  }
+  if(id==='im_grade'||id==='im_field'){
+    const g=$('#im_grade')?$('#im_grade').value:'', fd=$('#im_field')?$('#im_field').value:'';
+    const books=g?booksFor(g,fd):[];
+    if($('#im_preview'))$('#im_preview').innerHTML=books.length
+      ? `<b>${fa(books.length)} کتاب</b> اضافه خواهد شد: ${books.map(b=>esc(b[0])).join('، ')}`
+      : (g?'برای این انتخاب کتابی تعریف نشده است.':'');
+    return;
+  }
+
+/* آبشاری: استان → شهرستان → منطقه در فرم مدرسه */
   if(id==='m_prov'||id==='m_county'){
     const pid=$('#m_prov')?$('#m_prov').value:'', cid=id==='m_prov'?'':($('#m_county')?$('#m_county').value:'');
     const g=geoOptions(pid,cid);
@@ -1245,6 +1666,8 @@ document.addEventListener('change',e=>{
     toast('ابلاغ صادر شد','ok');render();return;
   }
   if(el.dataset.f==='sp'){S.filters.sp=el.value;S.filters.sc='';S.filters.sd='';S.page=1;render();return;}
+  if(el.dataset.f==='sublevel'){S.filters.sublevel=el.value;S.filters.subgrade='';S.filters.subbranch='';S.filters.subfield='';S.page=1;render();return;}
+  if(el.dataset.f==='subbranch'){S.filters.subbranch=el.value;S.filters.subfield='';S.page=1;render();return;}
   if(el.dataset.f==='sc'){S.filters.sc=el.value;S.filters.sd='';S.page=1;render();return;}
   if(el.dataset.f==='term'){S.filters.term=Number(el.value);render();return;}
   if(el.tagName==='SELECT'||el.type==='date'){S.filters[el.dataset.f]=el.value;S.page=1;render();}
@@ -2496,7 +2919,7 @@ const P10_ACTIONS = {
 
 const P9 = { colls: ['provinces','counties','districts','offices'] };
 const OFFICE_LEVEL = { province:'اداره کل استان', county:'اداره شهرستان', district:'اداره منطقه' };
-const AREA_KIND = { city:'شهری', village:'روستایی', rural:'عشایری/حاشیه' };
+const AREA_KIND = { district:'منطقه', village:'روستا' };
 
 /* ---------------- داده نمونه ---------------- */
 const GEO_DEFS = [
@@ -2523,7 +2946,7 @@ function generateP9(){
     counties.forEach(([cName,districts])=>{
       const c=add('counties',{province_id:p.id,name:cName,code:'C'+(db.counties.length+1)});
       districts.forEach(dName=>add('districts',{province_id:p.id,county_id:c.id,name:dName,
-        kind:dName.includes('حومه')||dName.includes('آرمرده')||dName.includes('زیویه')?'village':'city'}));
+        kind:dName.includes('حومه')||dName.includes('آرمرده')||dName.includes('زیویه')?'village':'district'}));
     });
   });
 
@@ -2531,7 +2954,7 @@ function generateP9(){
   db.schools.forEach((s,i)=>{
     const d=db.districts[(i*5)%db.districts.length];   // پخش مدارس بین استان‌های مختلف
     s.province_id=d.province_id; s.county_id=d.county_id; s.district_id=d.id;
-    s.area_kind=d.kind||'city';
+    s.area_kind=d.kind||'district';
     if(!s.landline)s.landline='0'+(21+ri(66))+'-'+(33000000+ri(9999999));
     s.city=(byId('counties',d.county_id)||{}).name||s.city;
   });
@@ -2629,7 +3052,7 @@ function viewGeo(){
     </div>
     <div class="card"><div class="card-head"><h3>مناطق / نواحی</h3><button class="btn sm" data-act="geo-new" data-t="district">➕</button></div>
       ${districts.length?districts.map(d=>`<div class="row" style="padding:10px 14px;border-bottom:1px solid var(--border)">
-        <b>${esc(d.name)}</b><span class="badge ${d.kind==='village'?'b-amber':'b-gray'}">${AREA_KIND[d.kind]||'شهری'}</span>
+        <b>${esc(d.name)}</b><span class="badge ${d.kind==='village'?'b-amber':'b-gray'}">${AREA_KIND[d.kind]||'منطقه'}</span>
         <div class="spacer"></div><span class="small muted">${fa(cnt(d,'district_id'))} مدرسه</span>
         <button class="icon-btn" title="ویرایش" data-act="geo-edit" data-t="districts" data-id="${d.id}">✏️</button>
         <button class="icon-btn danger" title="حذف" data-act="geo-del" data-t="districts" data-id="${d.id}">🗑️</button></div>`).join(''):empty('📍','منطقه‌ای نیست','')}
@@ -2680,12 +3103,13 @@ function viewOfficeDash(){
       <div><b style="font-size:15px">${esc(o?o.name:'نمای کل کشور')}</b>
         <div class="small muted">${o?OFFICE_LEVEL[o.level]:'سوپر ادمین — همه مدارس'} · گزارش‌ها تجمیعی است و اطلاعات فردی دانش‌آموزان نمایش داده نمی‌شود.</div></div>
       <div class="spacer"></div>
-      <div class="row" style="gap:6px">
+      </div>
+      ${filterPanel('officedash',`
         <select class="select" style="width:150px" data-f="province"><option value="">همه استان‌ها</option>
           ${provinces.map(p=>`<option value="${p.id}" ${String(S.filters.province)===String(p.id)?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
         <select class="select" style="width:150px" data-f="county"><option value="">همه شهرستان‌ها</option>
-          ${counties.map(c=>`<option value="${c.id}" ${String(S.filters.county)===String(c.id)?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
-      </div></div></div></div>
+          ${counties.map(c=>`<option value="${c.id}" ${String(S.filters.county)===String(c.id)?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`)}
+      </div></div>
 
    <div class="grid g4" style="margin-bottom:14px">
     ${statCard('🏫',fa(st.schools),'مدرسه تحت پوشش','blue')}
@@ -2709,7 +3133,7 @@ function viewOfficeDash(){
       <div class="card-body"><table class="table"><tbody>
         <tr><td>مدارس فعال</td><td><b>${fa(st.active)}</b> از ${fa(st.schools)}</td></tr>
         <tr><td>مدارس دخترانه / پسرانه</td><td><b>${fa(st.girls)}</b> / <b>${fa(st.boys)}</b></td></tr>
-        <tr><td>مدارس روستایی</td><td><b>${fa(st.village)}</b></td></tr>
+        <tr><td>مدارس روستا</td><td><b>${fa(st.village)}</b></td></tr>
         <tr><td>ظرفیت کل</td><td><b>${fa(st.capacity)}</b> نفر</td></tr>
         <tr><td>موارد انضباطی مثبت / منفی</td><td style="color:var(--green)"><b>${fa(st.discipline.pos)}</b> <span class="muted">/</span> <span style="color:var(--red)"><b>${fa(st.discipline.neg)}</b></span></td></tr>
       </tbody></table></div></div>
@@ -2728,10 +3152,23 @@ function viewOfficeDash(){
 /* ---------------- صفحه: مدارس منطقه (اداره) ---------------- */
 function viewOfficeSchools(){
   const o=officeOf(S.user);
-  const schools=officeScopeSchools(o,S.filters);
+  let schools=officeScopeSchools(o,S.filters);
+  const q=(S.filters.q||'').trim();
+  const ol=S.filters.olevel||'', og=S.filters.ogender||'', ok=S.filters.okind||'';
+  if(q)schools=schools.filter(s=>(s.name+(s.code||'')).includes(q));
+  if(ol)schools=schools.filter(s=>s.level===ol);
+  if(og)schools=schools.filter(s=>s.gender===og);
+  if(ok)schools=schools.filter(s=>(s.area_kind||'district')===ok);
   const rows=perSchoolRows(schools);
+  const oopt=(list,val,label)=>[`<option value="">${label}</option>`,
+    ...list.map(x=>`<option value="${esc(x[0])}" ${String(val)===String(x[0])?'selected':''}>${esc(x[1])}</option>`)].join('');
   return `<div class="card"><div class="card-head"><h3>🏫 مدارس تحت پوشش</h3>
-    <span class="badge b-blue">${fa(schools.length)} مدرسه</span></div>
+    <div class="row"><input class="input" style="width:180px" placeholder="جستجوی نام مدرسه…" data-f="q" value="${esc(q)}" />
+    <span class="badge b-blue">${fa(schools.length)} مدرسه</span></div></div>
+   ${filterPanel('officeschools',`
+     <select class="select" style="width:145px" data-f="olevel">${oopt(LEVELS.map(l=>[l,l]),ol,'همه مقاطع')}</select>
+     <select class="select" style="width:130px" data-f="ogender">${oopt([['پسرانه','پسرانه'],['دخترانه','دخترانه']],og,'همه جنسیت‌ها')}</select>
+     <select class="select" style="width:130px" data-f="okind">${oopt(Object.entries(AREA_KIND),ok,'منطقه و روستا')}</select>`)}
    ${rows.length?`<div class="card-body" style="display:grid;gap:10px">
     ${rows.map(r=>`<div class="row" style="background:var(--surface-2);padding:12px 14px;border-radius:12px">
       <div style="min-width:0"><b>${esc(r.s.name)}</b>
@@ -2759,7 +3196,7 @@ const P9_ACTIONS = {
     if(t==='county')body+=f('استان',sel('g_parent',db.provinces.map(p=>[p.id,p.name]),S.filters.gp));
     if(t==='district'){
       body+=f('شهرستان',sel('g_parent',db.counties.map(c=>[c.id,c.name+' ('+((byId('provinces',c.province_id)||{}).name||'')+')']),S.filters.gc));
-      body+=f('نوع منطقه',sel('g_kind',[['city','شهری'],['village','روستایی'],['rural','عشایری/حاشیه']]));
+      body+=f('نوع منطقه',sel('g_kind',[['district','منطقه'],['village','روستا']]));
     }
     openModal(modalTpl(title,body,'geo-save'));
     window._geoType=t;
@@ -2772,7 +3209,7 @@ const P9_ACTIONS = {
       insert('counties',{province_id:pid,name,code:'C'+(db.counties.length+1)});}
     if(t==='district'){const cid=Number(V('g_parent'));if(!cid){toast('شهرستان را انتخاب کنید','err');return;}
       const c=byId('counties',cid);
-      insert('districts',{province_id:c.province_id,county_id:cid,name,kind:V('g_kind')||'city'});}
+      insert('districts',{province_id:c.province_id,county_id:cid,name,kind:V('g_kind')||'district'});}
     closeModal(); toast('ثبت شد','ok'); render();
   },
   'geo-edit'(el,id){
@@ -2781,7 +3218,7 @@ const P9_ACTIONS = {
     if(t==='counties')body+=f('استان',sel('g_parent',db.provinces.map(p=>[p.id,p.name]),row.province_id));
     if(t==='districts'){
       body+=f('شهرستان',sel('g_parent',db.counties.map(c=>[c.id,c.name]),row.county_id));
-      body+=f('نوع منطقه',sel('g_kind',[['city','شهری'],['village','روستایی'],['rural','عشایری/حاشیه']],row.kind||'city'));
+      body+=f('نوع منطقه',sel('g_kind',[['district','منطقه'],['village','روستا']],row.kind||'district'));
     }
     openModal(modalTpl('ویرایش '+({provinces:'استان',counties:'شهرستان',districts:'منطقه'}[t]),body,'geo-edit-save'));
     window._geoEdit={t,id};

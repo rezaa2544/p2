@@ -16,13 +16,76 @@ function viewClasses(){
 }
 
 function viewSubjects(){
-  const canEdit=['superadmin','manager'].includes(S.user.role);
-  const rows=visibleSubjects();
-  return `<div class="card"><div class="card-head"><h3>دروس <span class="badge b-gray">${fa(rows.length)}</span></h3>
-   ${canEdit?`<button class="btn" data-act="subject-new">➕ درس جدید</button>`:''}</div>
-   ${rows.length?`<div class="table-wrap"><table><thead><tr><th>نام درس</th><th>کد</th><th>ساعت هفتگی</th>${S.user.role==='superadmin'?'<th>مدرسه</th>':''}${canEdit?'<th></th>':''}</tr></thead><tbody>
-    ${rows.map(s=>`<tr><td><b>${esc(s.name)}</b></td><td class="muted">${esc(s.code||'—')}</td><td><span class="badge b-blue">${fa(s.weekly_hours)} ساعت</span></td>
-     ${S.user.role==='superadmin'?`<td class="muted">${esc(byId('schools',s.school_id).name)}</td>`:''}
-     ${canEdit?`<td><button class="icon-btn" data-act="subject-edit" data-id="${s.id}">✏️</button> <button class="icon-btn danger" data-act="subject-del" data-id="${s.id}">🗑️</button></td>`:''}</tr>`).join('')}
-   </tbody></table></div>`:empty('📚','درسی تعریف نشده','دروس مدرسه را اضافه کنید.')}</div>`;
+  const u=S.user, canEdit=['superadmin','manager'].includes(u.role), isSuper=u.role==='superadmin';
+  const q=(S.filters.subq||'').trim();
+  const flv=S.filters.sublevel||'', fgr=S.filters.subgrade||'',
+        fbr=S.filters.subbranch||'', ffd=S.filters.subfield||'', fsc=S.filters.subschool||'';
+
+  let rows=visibleSubjects();
+  if(q)rows=rows.filter(s=>(s.name+(s.code||'')).includes(q));
+  if(fsc)rows=rows.filter(s=>String(s.school_id)===String(fsc));
+  if(flv)rows=rows.filter(s=>levelOfGrade(s.grade)===flv);
+  if(fgr)rows=rows.filter(s=>s.grade===fgr);
+  if(fbr)rows=rows.filter(s=>branchOfField(s.field)===fbr);
+  if(ffd)rows=rows.filter(s=>s.field===ffd);
+
+  const opt=(list,val,label)=>[`<option value="">${label}</option>`,
+    ...list.map(o=>`<option value="${esc(o[0])}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`)].join('');
+  const gradeList = flv ? (GRADES_OF_LEVEL[flv]||[]) : LEVELS.flatMap(l=>GRADES_OF_LEVEL[l]);
+  const fieldList = fieldsOfBranch(fbr);
+  const showFieldFilters = !flv || needsField(flv);
+
+  /* گروه‌بندی: مقطع › پایه › (رشته) */
+  const groups={};
+  rows.forEach(s=>{
+    const lv=levelOfGrade(s.grade)||'سایر دروس';
+    const gr=s.grade||'—';
+    const key=needsField(lv)&&s.field ? `${lv}|${gr}|${s.field}` : `${lv}|${gr}|`;
+    (groups[key]=groups[key]||[]).push(s);
+  });
+  const orderKey=(k)=>{
+    const [lv,gr]=k.split('|');
+    const li=LEVELS.indexOf(lv); const gi=(GRADES_OF_LEVEL[lv]||[]).indexOf(gr);
+    return (li<0?99:li)*100 + (gi<0?99:gi);
+  };
+  const keys=Object.keys(groups).sort((a,b)=>orderKey(a)-orderKey(b)||a.localeCompare(b,'fa'));
+
+  return `<div class="card"><div class="card-head">
+    <h3>دروس و کتاب‌ها <span class="badge b-gray">${fa(rows.length)}</span></h3>
+    <div class="row">
+      <input class="input" style="width:190px" placeholder="جستجوی نام درس یا کد…" data-f="subq" value="${esc(q)}" />
+      ${canEdit?`<button class="btn ghost" data-act="subject-import">📥 افزودن کتاب‌های استاندارد</button>
+                 <button class="btn" data-act="subject-new">➕ درس جدید</button>`:''}
+    </div></div>
+   ${filterPanel('subjects',`
+     <select class="select" style="width:145px" data-f="sublevel">${opt(LEVELS.map(l=>[l,l]),flv,'همه مقاطع')}</select>
+     <select class="select" style="width:135px" data-f="subgrade">${opt(gradeList.map(g=>[g,g]),fgr,'همه پایه‌ها')}</select>
+     ${showFieldFilters?`
+       <select class="select" style="width:150px" data-f="subbranch">${opt(Object.keys(BRANCHES).map(b=>[b,b]),fbr,'همه شاخه‌ها')}</select>
+       <select class="select" style="width:180px" data-f="subfield">${opt(fieldList.map(f=>[f,f]),ffd,'همه رشته‌ها')}</select>`:''}
+     ${isSuper?`<select class="select" style="width:180px" data-f="subschool">${opt(db.schools.map(s=>[s.id,s.name]),fsc,'همه مدارس')}</select>`:''}`)}
+
+   ${rows.length?keys.map(k=>{
+     const [lv,gr,fd]=k.split('|');
+     const list=groups[k].slice().sort((a,b)=>a.name.localeCompare(b.name,'fa'));
+     const hours=list.reduce((t,s)=>t+(Number(s.weekly_hours)||0),0);
+     return `<div style="padding:0 16px 6px">
+       <div class="sec-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+         <span>${esc(lv)}</span>
+         ${gr&&gr!=='—'?`<span class="badge b-blue">پایه ${esc(gr)}</span>`:''}
+         ${fd?`<span class="badge b-purple">${esc(fd)}</span><span class="badge b-gray">${esc(branchOfField(fd))}</span>`:''}
+         <div class="spacer"></div>
+         <span class="badge b-gray">${fa(list.length)} کتاب</span>
+         <span class="badge b-amber">${fa(hours)} ساعت</span>
+       </div>
+       <div class="table-wrap"><table><thead><tr><th>نام کتاب / درس</th><th>کد</th><th>ساعت هفتگی</th>${isSuper?'<th>مدرسه</th>':''}${canEdit?'<th></th>':''}</tr></thead><tbody>
+       ${list.map(s=>`<tr><td><b>${esc(s.name)}</b></td><td class="muted">${esc(s.code||'—')}</td>
+         <td><span class="badge b-blue">${fa(s.weekly_hours)} ساعت</span></td>
+         ${isSuper?`<td class="muted">${esc((byId('schools',s.school_id)||{}).name||'—')}</td>`:''}
+         ${canEdit?`<td><button class="icon-btn" title="ویرایش" data-act="subject-edit" data-id="${s.id}">✏️</button>
+                      <button class="icon-btn danger" title="حذف" data-act="subject-del" data-id="${s.id}">🗑️</button></td>`:''}</tr>`).join('')}
+       </tbody></table></div></div>`;}).join('')
+   :empty('📚','درسی یافت نشد',(q||flv||fgr||fbr||ffd)?'با این فیلترها نتیجه‌ای نبود.':'کتاب‌های استاندارد را وارد کنید یا درس جدید بسازید.',
+     canEdit?'<button class="btn" data-act="subject-import">📥 افزودن کتاب‌های استاندارد</button>':'')}
+   </div>`;
 }

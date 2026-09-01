@@ -86,10 +86,26 @@ function classModal(c){
 }
 function subjectModal(s){
   const isSuper=S.user.role==='superadmin';
-  s=s||{name:'',code:'',weekly_hours:2,school_id:isSuper?db.schools[0].id:S.user.school_id};
-  openModal(modalTpl(s.id?'ویرایش درس':'درس جدید',
-   `<div class="grid g2">${f('نام درس *',inp('s_name',s.name))}${f('کد',inp('s_code',s.code))}${f('ساعت هفتگی',inp('s_h',s.weekly_hours,'number'))}
-   ${isSuper?f('مدرسه',sel('s_school',db.schools.map(x=>[x.id,x.name]),s.school_id)):''}</div>`,'subject-save'));
+  s=s||{name:'',code:'',weekly_hours:2,grade:'',field:'',school_id:isSuper?db.schools[0].id:S.user.school_id};
+  const lv=levelOfGrade(s.grade)||'';
+  const br=branchOfField(s.field)||'';
+  const allGrades=LEVELS.flatMap(l=>GRADES_OF_LEVEL[l].map(g=>[g,`${g} (${l})`]));
+  openModal(modalTpl(s.id?'ویرایش درس / کتاب':'درس / کتاب جدید',
+   `<div class="grid g2">
+      ${f('نام کتاب / درس *',inp('s_name',s.name))}
+      ${f('کد',inp('s_code',s.code))}
+      ${f('ساعت هفتگی',inp('s_h',s.weekly_hours,'number'))}
+      ${f('پایه',sel('s_grade',[['','— عمومی / بدون پایه —'],...allGrades],s.grade||''))}
+    </div>
+    <div id="s_fieldwrap" style="${needsField(lv)?'':'display:none'}">
+      <div class="grid g2">
+        ${f('شاخه',sel('s_branch',[['','— انتخاب شاخه —'],...Object.keys(BRANCHES).map(b=>[b,b])],br))}
+        ${f('رشته',sel('s_field',[['','— انتخاب رشته —'],...fieldsOfBranch(br).map(x=>[x,x])],s.field||''))}
+      </div>
+      <div class="small muted" style="margin-top:-4px">در متوسطه دوم (پایه‌های دهم تا دوازدهم) کتاب‌ها بر اساس شاخه و رشته تفکیک می‌شوند.</div>
+    </div>
+    ${isSuper?`<div class="grid g2">${f('مدرسه',sel('s_school',db.schools.map(x=>[x.id,x.name]),s.school_id))}</div>`:''}`,
+   'subject-save'));
   window._edit=s;
 }
 function gradeModal(g){

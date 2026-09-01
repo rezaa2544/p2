@@ -4,6 +4,8 @@
   "03-persistence.js",
   "04-queries.js",
   "05-router.js",
+  "25-filters-ui.js",
+  "26-curriculum.js",
   "06-login.js",
   "07-shell.js",
   "08-dashboard.js",

@@ -9,9 +9,10 @@ function viewDiscipline(){
   if(kind)rows=rows.filter(d=>d.kind===kind);
   rows=rows.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,150);
   return `<div class="card"><div class="card-head"><div class="row">
-    <select class="select" style="width:150px" data-f="kind"><option value="">همه موارد</option><option value="positive" ${kind==='positive'?'selected':''}>موارد مثبت 👍</option><option value="negative" ${kind==='negative'?'selected':''}>موارد منفی 👎</option></select>
     <span class="badge b-gray">${fa(rows.length)} مورد</span></div>
     ${canEdit?`<button class="btn" data-act="disc-new">➕ ثبت مورد انضباطی</button>`:''}</div>
+   ${filterPanel('discipline',`
+    <select class="select" style="width:150px" data-f="kind"><option value="">همه موارد</option><option value="positive" ${kind==='positive'?'selected':''}>موارد مثبت 👍</option><option value="negative" ${kind==='negative'?'selected':''}>موارد منفی 👎</option></select>`)}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>کلاس</th><th>نوع</th><th>عنوان</th><th>توضیحات</th><th>امتیاز</th><th>تاریخ</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
     ${rows.map(d=>{const s=byId('users',d.student_id);return `<tr><td><b>${esc(s?s.full_name:'—')}</b></td><td class="muted">${esc((classOf(d.student_id)||{}).name||'—')}</td>
      <td><span class="badge ${d.kind==='positive'?'b-green':'b-red'}">${d.kind==='positive'?'👍 مثبت':'👎 منفی'}</span></td><td>${esc(d.title)}</td>

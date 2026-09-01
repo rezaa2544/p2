@@ -12,10 +12,11 @@ function viewGrades(){
   const avg=rows.length?avgOf(rows).toFixed(2):null;
   return `<div class="card"><div class="card-head"><div class="row">
     ${u.role!=='student'?`<select class="select" style="width:170px" data-f="class">${cls.map(c=>`<option value="${c.id}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`:''}
-    <select class="select" style="width:150px" data-f="subject"><option value="">همه دروس</option>${subs.map(s=>`<option value="${s.id}" ${sub==String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>
-    <select class="select" style="width:125px" data-f="term"><option value="">همه نوبت‌ها</option>${TERMS.map(t=>`<option ${term===t?'selected':''}>${t}</option>`).join('')}</select>
     ${avg?`<span class="badge b-blue">میانگین: ${fa(avg)}</span>`:''}</div>
     ${canEdit?`<button class="btn" data-act="grade-new">➕ ثبت نمره</button>`:''}</div>
+   ${filterPanel('grades',`
+    <select class="select" style="width:150px" data-f="subject"><option value="">همه دروس</option>${subs.map(s=>`<option value="${s.id}" ${sub==String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>
+    <select class="select" style="width:125px" data-f="term"><option value="">همه نوبت‌ها</option>${TERMS.map(t=>`<option ${term===t?'selected':''}>${t}</option>`).join('')}</select>`)}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>درس</th><th>کلاس</th><th>نوبت</th><th>نوع آزمون</th><th>نمره</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
     ${rows.map(g=>`<tr><td><b>${esc(byId('users',g.student_id).full_name)}</b></td><td>${esc(byId('subjects',g.subject_id).name)}</td>
       <td class="muted">${esc(byId('classes',g.class_id).name)}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td class="muted">${esc(g.exam_type)}</td>
