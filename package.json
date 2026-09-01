@@ -1,0 +1,31 @@
+{
+  "name": "payesh",
+  "version": "1.0.0",
+  "description": "پایش — سامانه هوشمند مدیریت مدرسه (تک‌فایلی، آفلاین، فارسی/RTL)",
+  "private": true,
+  "type": "commonjs",
+  "main": "server/index.js",
+  "scripts": {
+    "build": "node build.js",
+    "build:check": "node build.js --check",
+    "dev": "node scripts/dev-server.js",
+    "start": "node server/index.js",
+    "test": "node tests/run.js",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "school-management",
+    "persian",
+    "rtl",
+    "jalali",
+    "offline-first",
+    "single-file"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
