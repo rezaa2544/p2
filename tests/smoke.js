@@ -253,6 +253,96 @@ test('پاک‌سازی کامل، صف را هم خالی می‌کند', () =>
   assert(has, 'resetAll صف همگام‌سازی را پاک نمی‌کند');
 });
 
+console.log('\n▸ لایه ایندکس و مقیاس‌پذیری');
+
+test('توابع ایندکس تعریف شده‌اند', () => {
+  assert(W("typeof idxGroup==='function' && typeof idxUnique==='function' && typeof idxInvalidate==='function'"),
+    'توابع ایندکس موجود نیست');
+});
+
+test('byId از ایندکس استفاده می‌کند و درست پاسخ می‌دهد', () => {
+  assert(W("byId('classes',db.classes[0].id).id===db.classes[0].id"), 'byId نتیجه درست نداد');
+});
+
+test('افزودن رکورد بلافاصله در ایندکس دیده می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='manager')");
+  const cid = W('db.classes[0].id');
+  const before = W('studentsOfClass(' + cid + ').length');
+  W("window.__t=insert('users',{school_id:db.classes[0].school_id,role:'student',full_name:'تست ایندکس',username:'idx_t',password:'x',active:1}).id");
+  W("insert('enrollments',{school_id:db.classes[0].school_id,class_id:" + cid + ",student_id:window.__t,year:'1404'})");
+  assert(W('studentsOfClass(' + cid + ').length') === before + 1, 'رکورد تازه در ایندکس دیده نشد');
+});
+
+test('به‌روزرسانی بلافاصله در ایندکس منعکس می‌شود', () => {
+  W("update('users',window.__t,{full_name:'نام جدید'})");
+  assert(W("byId('users',window.__t).full_name==='نام جدید'"), 'به‌روزرسانی منعکس نشد');
+});
+
+test('حذف بلافاصله در ایندکس منعکس می‌شود', () => {
+  W("remove('users',window.__t)");
+  assert(W("byId('users',window.__t)===undefined"), 'حذف منعکس نشد');
+});
+
+test('ایندکس حضور با پیمایش مستقیم یکسان است', () => {
+  const same = W("(function(){var c=db.classes[0].id,d=(db.attendance[0]||{}).date;if(!d)return true;"
+    + "var m=idxAttByClassDate().get(c+'|'+d)||[];"
+    + "var f=db.attendance.filter(function(a){return a.class_id===c&&a.date===d;});"
+    + "return m.length===f.length;})()");
+  assert(same, 'ایندکس حضور با پیمایش مستقیم نمی‌خواند');
+});
+
+test('مرتب‌سازی فارسی با Collator کار می‌کند', () => {
+  assert(W("typeof sortByNameFa==='function' && sortByNameFa([{full_name:'ب'},{full_name:'آ'}])[0].full_name==='آ'"),
+    'مرتب‌سازی فارسی درست نیست');
+});
+
+test('گزارش ایندکس ساختار درست دارد', () => {
+  assert(W("(function(){var r=idxReport();return !!(r&&r.stats&&typeof r.stats.hits==='number');})()"),
+    'گزارش ایندکس نادرست است');
+});
+
+console.log('\n▸ لایه محدوده داده (scope)');
+
+test('توابع محدوده تعریف شده‌اند', () => {
+  assert(W("typeof scopeDescriptor==='function' && typeof scopeHealth==='function' && typeof SCOPE_LIMITS==='object'"),
+    'توابع محدوده موجود نیست');
+});
+
+test('برش دانش‌آموز فقط دادهٔ خودش را شامل می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='student')");
+  assert(W("(function(){var d=scopeDescriptor(S.user);return d.scope.student_id===S.user.id && d.collections.indexOf('attendance:self')>-1;})()"),
+    'برش دانش‌آموز درست نیست');
+});
+
+test('اداره فقط دادهٔ تجمیعی می‌گیرد (بدون رکورد فردی)', () => {
+  W("S.user=db.users.find(u=>u.role==='edu_office')");
+  assert(W('scopeDescriptor(S.user).scope.aggregate_only===true'), 'اداره دادهٔ فردی می‌گیرد');
+});
+
+test('برش مدیر به مدرسهٔ خودش محدود است', () => {
+  W("S.user=db.users.find(u=>u.role==='manager')");
+  assert(W('scopeDescriptor(S.user).scope.school_id===S.user.school_id'), 'برش مدیر محدود نیست');
+});
+
+test('سنجش سلامت محدوده کار می‌کند', () => {
+  assert(W("(function(){var h=scopeHealth();return typeof h.total==='number'&&typeof h.ok==='boolean';})()"),
+    'scopeHealth نادرست است');
+});
+
+test('سقف‌های محافظ تعریف شده‌اند', () => {
+  assert(W('SCOPE_LIMITS.maxRecords>0 && SCOPE_LIMITS.attendanceDays>0'), 'سقف‌ها تعریف نشده');
+});
+
+console.log('\n▸ محافظت از حافظه محلی');
+
+test('تابع هشدار پرشدن حافظه وجود دارد', () => {
+  assert(W("typeof storageFull==='function'"), 'storageFull موجود نیست');
+});
+
+test('در حالت عادی حافظه پر نیست', () => {
+  assert(W('storageFull()===false'), 'وضعیت حافظه نادرست است');
+});
+
 console.log('\n▸ حذف کلاس‌ها از پنل سوپرادمین');
 
 test('«کلاس‌ها» در منوی سوپرادمین نیست', () => {

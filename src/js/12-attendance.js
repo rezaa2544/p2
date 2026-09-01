@@ -3,10 +3,16 @@ function viewAttendance(){
   const cls=visibleClasses();
   if(!cls.length)return `<div class="card">${empty('🏛️','کلاسی در دسترس نیست','ابتدا باید کلاسی به شما تخصیص یابد.')}</div>`;
   const cid=Number(S.filters.class||cls[0].id), date=S.filters.date||todayISO(), q=(S.filters.q||'').trim();
-  let studs=studentsOfClass(cid);
-  if(q)studs=studs.filter(s=>s.full_name.includes(q));
-  const rec=s=>db.attendance.find(a=>a.student_id===s.id&&a.date===date);
-  const all=studentsOfClass(cid).map(rec);
+  const roster=studentsOfClass(cid);
+  let studs=roster;
+  if(q)studs=roster.filter(s=>s.full_name.includes(q));
+  /* ایندکس یک‌بارهٔ حضورِ همان کلاس و همان روز: O(1) به‌جای پیمایش کل جدول */
+  const _am=(typeof idxAttByClassDate==='function')?idxAttByClassDate():null;
+  let _day;
+  if(_am){ _day=new Map(); const _rows=_am.get(cid+'|'+date)||[];
+    for(let i=0;i<_rows.length;i++)_day.set(_rows[i].student_id,_rows[i]); }
+  const rec=s=>_day?_day.get(s.id):db.attendance.find(a=>a.student_id===s.id&&a.date===date);
+  const all=roster.map(rec);
   const cnt=k=>all.filter(a=>a&&a.status===k).length;
   return `<div class="card"><div class="card-head">
     <div class="row"><select class="select" style="width:180px" data-f="class">${cls.map(c=>`<option value="${c.id}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>

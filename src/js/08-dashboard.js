@@ -23,10 +23,20 @@ function adminDash(){
   const att=F(db.attendance);
   const today=todayISO(), attToday=att.filter(a=>a.date===today);
   const tot=attToday.length;
-  const dates=[...new Set(att.map(a=>a.date))].sort().slice(-14);
-  const trend=dates.map(d=>{const r=att.filter(a=>a.date===d);return{d,rate:r.length?Math.round(r.filter(x=>x.status==='present').length/r.length*1000)/10:0};});
+  /* یک پیمایش به‌جای ۱۴ پیمایش کامل جدول حضور */
+  const _agg=new Map();
+  for(let i=0;i<att.length;i++){const a=att[i];let b=_agg.get(a.date);
+    if(!b){b={n:0,p:0};_agg.set(a.date,b);}
+    b.n++; if(a.status==='present')b.p++;}
+  const dates=[..._agg.keys()].sort().slice(-14);
+  const trend=dates.map(d=>{const b=_agg.get(d);return{d,rate:b&&b.n?Math.round(b.p/b.n*1000)/10:0};});
   const grades=F(db.grades);
-  const avgBySchool=(sid?[byId('schools',sid)]:db.schools).map(s=>({name:s.name,avg:(avgOf(grades.filter(g=>g.school_id===s.id))).toFixed(2)})).filter(x=>x.avg>0).sort((a,b)=>b.avg-a.avg);
+  const _gs=new Map();
+  for(let i=0;i<grades.length;i++){const g=grades[i];let b=_gs.get(g.school_id);
+    if(!b){b={s:0,n:0};_gs.set(g.school_id,b);}
+    b.s+=g.score; b.n++;}
+  const avgBySchool=(sid?[byId('schools',sid)]:db.schools).map(s=>{const b=_gs.get(s.id);
+    return {name:s.name,avg:(b&&b.n?b.s/b.n:0).toFixed(2)};}).filter(x=>x.avg>0).sort((a,b)=>b.avg-a.avg);
   const perStudent={};grades.forEach(g=>{(perStudent[g.student_id]=perStudent[g.student_id]||[]).push(g);});
   const top=Object.entries(perStudent).map(([id,l])=>({u:byId('users',Number(id)),avg:avgOf(l)})).filter(x=>x.u).sort((a,b)=>b.avg-a.avg).slice(0,5);
   const disc=F(db.discipline);

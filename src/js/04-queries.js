@@ -1,8 +1,8 @@
 /* ============================ queries ============================ */
-const byId=(c,id)=>db[c].find(x=>x.id===Number(id));
-const classOf=sid=>{const e=db.enrollments.find(e=>e.student_id===sid);return e?byId('classes',e.class_id):null;};
-const studentsOfClass=cid=>db.enrollments.filter(e=>e.class_id===Number(cid)).map(e=>byId('users',e.student_id)).filter(Boolean).sort((a,b)=>a.full_name.localeCompare(b.full_name,'fa'));
-const teacherClasses=tid=>{const s=new Set(db.schedule.filter(x=>x.teacher_id===tid).map(x=>x.class_id));db.classes.filter(c=>c.homeroom_teacher_id===tid).forEach(c=>s.add(c.id));return [...s].map(id=>byId('classes',id)).filter(Boolean);};
+const byId=(c,id)=>{const m=(typeof idxById==='function')?idxById(c):null;return m?m.get(Number(id)):db[c].find(x=>x.id===Number(id));};
+const classOf=sid=>{const m=(typeof idxEnrollByStudent==='function')?idxEnrollByStudent():null;const e=m?m.get(Number(sid)):db.enrollments.find(e=>e.student_id===sid);return e?byId('classes',e.class_id):null;};
+const studentsOfClass=cid=>{cid=Number(cid);const m=(typeof idxEnrollByClass==='function')?idxEnrollByClass():null;const es=m?(m.get(cid)||[]):db.enrollments.filter(e=>e.class_id===cid);const out=[];for(let i=0;i<es.length;i++){const u=byId('users',es[i].student_id);if(u)out.push(u);}return (typeof sortByNameFa==='function')?sortByNameFa(out):out.sort((a,b)=>a.full_name.localeCompare(b.full_name,'fa'));};
+const teacherClasses=tid=>{const _im=(typeof idxScheduleByTeacher==='function')?idxScheduleByTeacher():null;const _rows=_im?(_im.get(tid)||[]):db.schedule.filter(x=>x.teacher_id===tid);const s=new Set(_rows.map(x=>x.class_id));db.classes.filter(c=>c.homeroom_teacher_id===tid).forEach(c=>s.add(c.id));return [...s].map(id=>byId('classes',id)).filter(Boolean);};
 const avgOf=list=>list.length?list.reduce((a,b)=>a+b.score,0)/list.length:0;
 function visibleClasses(){const u=S.user;if(u.role==='superadmin')return db.classes;if(u.role==='manager')return db.classes.filter(c=>c.school_id===u.school_id);if(u.role==='teacher')return teacherClasses(u.id);const c=classOf(u.id);return c?[c]:[];}
 function visibleSubjects(){const u=S.user;return u.role==='superadmin'?db.subjects:db.subjects.filter(s=>s.school_id===u.school_id);}

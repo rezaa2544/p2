@@ -1,8 +1,10 @@
 [
   "01-helpers.js",
   "02-demo-data.js",
+  "28-indexes.js",
   "03-persistence.js",
   "04-queries.js",
+  "29-scope.js",
   "05-router.js",
   "25-filters-ui.js",
   "26-curriculum.js",
