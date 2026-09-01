@@ -1,0 +1,308 @@
+/* ============================ لایه همگام‌سازی آفلاین ============================ */
+/*
+  هدف: دبیر بدون اینترنت هم بتواند کار کند (حضور و غیاب، نمره، انضباط…).
+  تغییرات محلی در «صف ارسال» می‌مانند و به‌محض وصل شدن اینترنت خودکار به سرور می‌روند.
+
+  وضعیت هر عملیات:
+    pending  → در صف، هنوز ارسال نشده
+    sending  → در حال ارسال
+    synced   → سرور تأیید کرده (از صف حذف می‌شود)
+    failed   → خطا؛ با backoff دوباره تلاش می‌شود
+    conflict → سرور نسخه‌ی جدیدتری دارد؛ نیاز به تصمیم کاربر
+
+  در حالت دمو (بدون سرور) شبیه‌ساز داخلی نقش سرور را بازی می‌کند تا
+  رفتار واقعی قابل مشاهده و تست باشد.
+*/
+
+const SYNC_QUEUE_KEY = 'sms_syncq_v1';
+const SYNC_META_KEY  = 'sms_syncmeta_v1';
+
+const SYNC = {
+  queue      : [],          /* عملیات منتظر ارسال */
+  online     : (typeof navigator !== 'undefined') ? navigator.onLine !== false : true,
+  syncing    : false,
+  lastSync   : null,        /* آخرین همگام‌سازی موفق (ISO) */
+  lastError  : null,
+  attempts   : 0,
+  demoMode   : true,        /* تا وقتی سرور واقعی وصل نشده */
+  serverUrl  : '',          /* مثلاً '/api/sync' */
+  autoTimer  : null,
+  conflicts  : [],
+};
+
+/* ---------- ذخیره‌سازی صف ---------- */
+function loadQueue(){
+  try{ SYNC.queue = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]'); }
+  catch(e){ SYNC.queue = []; }
+  try{
+    const m = JSON.parse(localStorage.getItem(SYNC_META_KEY) || '{}');
+    SYNC.lastSync = m.lastSync || null;
+  }catch(e){}
+}
+function saveQueue(){
+  try{ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(SYNC.queue)); }catch(e){}
+}
+function saveSyncMeta(){
+  try{ localStorage.setItem(SYNC_META_KEY, JSON.stringify({ lastSync: SYNC.lastSync })); }catch(e){}
+}
+
+/* ---------- افزودن عملیات به صف ---------- */
+/* هر تغییر داده‌ای که باید به سرور برود از اینجا رد می‌شود */
+function enqueueOp(op){
+  const item = {
+    uid       : 'op_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8),
+    op        : op,
+    status    : 'pending',
+    tries     : 0,
+    error     : null,
+    created_at: new Date().toISOString(),
+    user_id   : (S.user && S.user.id) || null,
+    school_id : (S.user && S.user.school_id) || null,
+  };
+  SYNC.queue.push(item);
+  saveQueue();
+  refreshSyncBadge();         /* نشانگر بدون رندر کامل به‌روز شود */
+  scheduleSync(400);          /* اگر آنلاین بود، خیلی زود ارسال شود */
+  return item;
+}
+
+/* ---------- شمارنده‌ها ---------- */
+const pendingCount  = () => SYNC.queue.filter(x => x.status === 'pending' || x.status === 'failed').length;
+const conflictCount = () => SYNC.queue.filter(x => x.status === 'conflict').length;
+
+/* ---------- تشخیص آنلاین/آفلاین ---------- */
+function setOnline(v){
+  const was = SYNC.online;
+  SYNC.online = !!v;
+  if(!was && SYNC.online){
+    toast('اینترنت وصل شد — در حال ارسال تغییرات…', 'ok');
+    SYNC.attempts = 0;
+    scheduleSync(300);
+  }else if(was && !SYNC.online){
+    const n = pendingCount();
+    toast(n ? `آفلاین شدید — ${fa(n)} تغییر ذخیره شد و بعداً ارسال می‌شود` : 'آفلاین شدید — تغییرات محلی ذخیره می‌شوند', 'warn');
+  }
+  refreshSyncBadge();
+}
+
+/* ---------- زمان‌بندی و backoff ---------- */
+function scheduleSync(delay){
+  clearTimeout(SYNC.autoTimer);
+  SYNC.autoTimer = setTimeout(syncNow, delay || 1000);
+}
+function backoffDelay(){
+  /* ۲ثانیه، ۴، ۸، ۱۶… تا سقف ۵ دقیقه */
+  return Math.min(2000 * Math.pow(2, Math.min(SYNC.attempts, 8)), 300000);
+}
+
+/* ---------- ارسال به سرور ---------- */
+async function syncNow(manual){
+  if(SYNC.syncing) return;
+  const batch = SYNC.queue.filter(x => x.status === 'pending' || x.status === 'failed');
+  if(!batch.length){
+    if(manual) toast('همه‌چیز همگام است ✓', 'ok');
+    return;
+  }
+  if(!SYNC.online){
+    if(manual) toast('اینترنت در دسترس نیست — تغییرات در صف می‌مانند', 'warn');
+    return;
+  }
+
+  SYNC.syncing = true;
+  SYNC.lastError = null;
+  batch.forEach(x => { x.status = 'sending'; });
+  saveQueue();
+  refreshSyncBadge();
+
+  try{
+    const res = await sendBatch(batch);
+
+    res.forEach(r => {
+      const item = SYNC.queue.find(x => x.uid === r.uid);
+      if(!item) return;
+      if(r.ok){
+        item.status = 'synced';
+      }else if(r.conflict){
+        item.status = 'conflict';
+        item.error  = r.message || 'تعارض با نسخه سرور';
+        item.server = r.server;
+      }else{
+        item.status = 'failed';
+        item.tries += 1;
+        item.error  = r.message || 'خطای نامشخص';
+      }
+    });
+
+    /* موارد موفق از صف حذف می‌شوند */
+    SYNC.queue = SYNC.queue.filter(x => x.status !== 'synced');
+    SYNC.lastSync = new Date().toISOString();
+    saveSyncMeta();
+    saveQueue();
+
+    const okCount = res.filter(r => r.ok).length;
+    const bad     = res.length - okCount;
+    if(okCount && (manual || bad)) toast(`${fa(okCount)} تغییر ارسال شد${bad ? ` — ${fa(bad)} ناموفق` : ''}`, bad ? 'warn' : 'ok');
+    else if(okCount && !manual)     toast(`${fa(okCount)} تغییر همگام شد ✓`, 'ok');
+
+    SYNC.attempts = bad ? SYNC.attempts + 1 : 0;
+    if(bad) scheduleSync(backoffDelay());
+
+  }catch(err){
+    /* شکست کل دسته — همه به pending برمی‌گردند تا دوباره تلاش شود */
+    batch.forEach(x => { if(x.status === 'sending'){ x.status = 'failed'; x.tries += 1; x.error = err.message; } });
+    SYNC.lastError = err.message;
+    SYNC.attempts += 1;
+    saveQueue();
+    if(manual) toast('ارسال ناموفق — دوباره تلاش می‌شود', 'err');
+    scheduleSync(backoffDelay());
+  }finally{
+    SYNC.syncing = false;
+    refreshSyncBadge();
+  }
+}
+
+/* ---------- ارسال واقعی یا شبیه‌سازی ---------- */
+async function sendBatch(batch){
+  if(!SYNC.demoMode && SYNC.serverUrl){
+    const r = await fetch(SYNC.serverUrl, {
+      method  : 'POST',
+      headers : { 'Content-Type': 'application/json' },
+      body    : JSON.stringify({ ops: batch.map(x => ({ uid: x.uid, ...x.op })) }),
+    });
+    if(!r.ok) throw new Error('خطای سرور: ' + r.status);
+    const data = await r.json();
+    return data.results || [];
+  }
+
+  /* حالت دمو: تأخیر شبکه را شبیه‌سازی می‌کند */
+  await new Promise(r => setTimeout(r, 500 + Math.random() * 700));
+  if(!SYNC.online) throw new Error('اتصال قطع شد');
+  return batch.map(x => ({ uid: x.uid, ok: true }));
+}
+
+/* ---------- نشانگر وضعیت در نوار بالا ---------- */
+function syncBadge(){
+  const n  = pendingCount();
+  const cf = conflictCount();
+
+  if(!SYNC.online){
+    return `<button class="sync-chip off" data-act="sync-panel" title="آفلاین — تغییرات ذخیره می‌شوند">
+      <span class="dot"></span><span>آفلاین</span>${n ? `<span class="badge b-amber sm">${fa(n)}</span>` : ''}</button>`;
+  }
+  if(SYNC.syncing){
+    return `<button class="sync-chip busy" data-act="sync-panel" title="در حال همگام‌سازی">
+      <span class="spin"></span><span>همگام‌سازی…</span></button>`;
+  }
+  if(cf){
+    return `<button class="sync-chip warn" data-act="sync-panel" title="نیاز به بررسی">
+      <span class="dot"></span><span>تعارض</span><span class="badge b-red sm">${fa(cf)}</span></button>`;
+  }
+  if(n){
+    return `<button class="sync-chip pend" data-act="sync-panel" title="${fa(n)} تغییر در صف ارسال">
+      <span class="dot"></span><span>در صف</span><span class="badge b-amber sm">${fa(n)}</span></button>`;
+  }
+  return `<button class="sync-chip ok" data-act="sync-panel" title="همه‌چیز همگام است">
+    <span class="dot"></span><span>همگام</span></button>`;
+}
+
+/* فقط نشانگر را به‌روز می‌کند — بدون رندر مجدد کل صفحه */
+function refreshSyncBadge(){
+  const el = document.querySelector('.sync-chip');
+  if(!el) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = syncBadge();
+  const fresh = tmp.firstElementChild;
+  if(fresh) el.replaceWith(fresh);
+}
+
+/* ---------- پنجره جزئیات همگام‌سازی ---------- */
+function syncPanelModal(){
+  const q  = SYNC.queue;
+  const n  = pendingCount();
+  const cf = conflictCount();
+
+  const label = {
+    ins: 'ثبت جدید', upd: 'ویرایش', del: 'حذف',
+  };
+  const collFa = {
+    attendance:'حضور و غیاب', grades:'نمرات', discipline:'انضباط', users:'کاربران',
+    schools:'مدارس', classes:'کلاس‌ها', subjects:'دروس', leaves:'مرخصی',
+    announcements:'اطلاعیه‌ها', messages:'پیام‌ها', installments:'اقساط',
+    transactions:'تراکنش‌ها', exams:'امتحانات', schedule:'برنامه هفتگی',
+  };
+
+  const statusFa = {
+    pending :['در صف','b-amber'], sending:['در حال ارسال','b-blue'],
+    failed  :['ناموفق','b-red'],  conflict:['تعارض','b-red'],
+  };
+
+  const body = `
+    <div class="row" style="gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <span class="badge ${SYNC.online?'b-green':'b-gray'}">${SYNC.online?'🌐 آنلاین':'📴 آفلاین'}</span>
+      ${n ?`<span class="badge b-amber">${fa(n)} تغییر در صف</span>`:'<span class="badge b-green">همه‌چیز همگام است</span>'}
+      ${cf?`<span class="badge b-red">${fa(cf)} تعارض</span>`:''}
+      <div class="spacer"></div>
+      <span class="small muted">آخرین همگام‌سازی: ${SYNC.lastSync?jalaliDateTime(SYNC.lastSync):'—'}</span>
+    </div>
+
+    ${!SYNC.online?`<div class="sync-note" style="margin-bottom:10px">
+      بدون اینترنت هم می‌توانید کار کنید. همه‌ی تغییرات روی همین دستگاه ذخیره می‌شوند و
+      به‌محض وصل شدن اینترنت، خودکار به سرور ارسال می‌گردند.</div>`:''}
+
+    ${q.length?`<div class="table-wrap" style="max-height:320px;overflow:auto"><table>
+      <thead><tr><th>عملیات</th><th>بخش</th><th>زمان</th><th>وضعیت</th></tr></thead><tbody>
+      ${q.slice().reverse().map(x=>{
+        const st=statusFa[x.status]||['—','b-gray'];
+        return `<tr>
+          <td><b>${label[x.op.t]||x.op.t}</b></td>
+          <td>${esc(collFa[x.op.c]||x.op.c)}</td>
+          <td class="small muted">${jalaliDateTime(x.created_at)}</td>
+          <td><span class="badge ${st[1]}">${st[0]}</span>
+            ${x.error?`<div class="small muted">${esc(x.error)}</div>`:''}
+            ${x.tries>1?`<div class="small muted">${fa(x.tries)} تلاش</div>`:''}</td>
+        </tr>`;}).join('')}
+      </tbody></table></div>`
+    :`<div class="empty" style="padding:24px"><span class="emoji">✅</span>
+       <h4>صف ارسال خالی است</h4><div class="small">همه‌ی تغییرات با سرور همگام شده‌اند.</div></div>`}
+
+    <div class="small muted" style="margin-top:12px">
+      ${SYNC.demoMode?'⚙️ حالت دمو: سرور واقعی متصل نیست و ارسال شبیه‌سازی می‌شود.':''}
+    </div>`;
+
+  openModal(`<div class="card-head"><h3>وضعیت همگام‌سازی</h3>
+      <button class="icon-btn" data-act="modal-close">✕</button></div>
+    <div class="card-body">${body}</div>
+    <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border)">
+      ${SYNC.demoMode?`<button class="btn ghost sm" data-act="sync-toggle-net">${SYNC.online?'📴 شبیه‌سازی قطع اینترنت':'🌐 شبیه‌سازی وصل شدن'}</button>`:''}
+      <div class="spacer"></div>
+      ${n?`<button class="btn" data-act="sync-run">🔄 ارسال همه</button>`:''}
+      <button class="btn ghost" data-act="modal-close">بستن</button>
+    </div>`);
+}
+
+/* تاریخ و ساعت شمسی خوانا — توجه: fa() فقط برای عدد است، نه رشته */
+function jalaliDateTime(iso){
+  if(!iso) return '—';
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return '—';
+  const time = faD(String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'));
+  return isoToJalali(d.toISOString()) + ' — ' + time;
+}
+
+/* ---------- اکشن‌ها ---------- */
+const SYNC_ACTIONS = {
+  'sync-panel'(){ syncPanelModal(); },
+  'sync-run'(){ closeModal(); syncNow(true); },
+  'sync-toggle-net'(){ closeModal(); setOnline(!SYNC.online); },
+};
+
+/* ---------- راه‌اندازی ---------- */
+function initSync(){
+  loadQueue();
+  if(typeof window !== 'undefined'){
+    window.addEventListener('online',  () => setOnline(true));
+    window.addEventListener('offline', () => setOnline(false));
+  }
+  /* اگر چیزی از جلسه‌ی قبل در صف مانده، تلاش کن بفرستی */
+  if(pendingCount() && SYNC.online) scheduleSync(1500);
+}

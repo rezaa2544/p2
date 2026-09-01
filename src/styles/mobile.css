@@ -70,3 +70,8 @@ th,td{padding:9px 8px;font-size:13px}
   .filter-body .row{flex-direction:column;align-items:stretch}
   .filter-body .select,.filter-body .input{width:100%!important;min-width:0}
 }
+/* نشانگر همگام‌سازی روی موبایل فشرده می‌شود */
+@media(max-width:640px){
+  .sync-chip{padding:5px 8px;font-size:11.5px;gap:4px}
+  .sync-chip.ok span:not(.dot),.sync-chip.busy span:not(.spin){display:none}
+}

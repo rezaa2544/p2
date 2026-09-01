@@ -28,5 +28,7 @@
     "node": ">=18"
   },
   "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+    "jsdom": "^25.0.0"
+  }
 }

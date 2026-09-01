@@ -23,6 +23,7 @@ function renderShell(){
       ${(S.stack.length||S.route!==(u.role==='edu_office'?'officedash':'dashboard'))?`<button class="icon-btn back-btn" data-act="back" title="بازگشت">→</button>`:''}
       <div><h1>${t[0]}</h1><div class="sub">${t[1]}</div></div><div class="spacer"></div>
       <button class="icon-btn" data-act="go" data-r="notifications" title="اعلان‌ها" style="position:relative;font-size:17px">🔔${(()=>{const n=unreadCount();return n?`<span style="position:absolute;top:-4px;inset-inline-end:-4px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border:2px solid #fff">${n>99?'۹۹+':fa(n)}</span>`:''})()}</button>
+      ${typeof syncBadge==='function'?syncBadge():''}
       <span class="badge b-blue">${ROLE_FA[u.role]}</span></header>
     <div class="content">${renderRoute()}</div>
    </div>

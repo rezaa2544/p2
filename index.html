@@ -172,6 +172,27 @@ tbody tr:hover{background:#fafbfe}
 /* نشان وضعیت قابل‌کلیک (فعال/غیرفعال) */
 .badge.tgl{cursor:pointer;user-select:none;transition:filter .12s,box-shadow .12s}
 .badge.tgl:hover{filter:brightness(.94);box-shadow:0 0 0 2px var(--primary-soft)}
+
+/* ---------- نشانگر وضعیت همگام‌سازی ---------- */
+.sync-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;
+  border:1px solid var(--border);background:#fff;cursor:pointer;font-family:inherit;
+  font-size:12.5px;font-weight:700;color:var(--muted);white-space:nowrap;transition:filter .12s}
+.sync-chip:hover{filter:brightness(.96)}
+.sync-chip .dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+.sync-chip.ok{color:var(--green);border-color:var(--green-soft);background:var(--green-soft)}
+.sync-chip.pend{color:var(--amber);border-color:var(--amber-soft);background:var(--amber-soft)}
+.sync-chip.pend .dot{animation:pulse 1.6s ease-in-out infinite}
+.sync-chip.warn{color:var(--red);border-color:var(--red-soft);background:var(--red-soft)}
+.sync-chip.off{color:#64748b;background:#eef2f7;border-color:#dbe3ee}
+.sync-chip.off .dot{background:#94a3b8}
+.sync-chip.busy{color:var(--primary);border-color:var(--primary-soft);background:var(--primary-soft)}
+.sync-chip .spin{width:11px;height:11px;border-radius:50%;flex:none;
+  border:2px solid var(--primary-soft);border-top-color:var(--primary);animation:spin .7s linear infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sync-note{background:var(--amber-soft);border:1px solid var(--amber);color:#7c4a03;
+  padding:10px 13px;border-radius:11px;font-size:13px;line-height:2}
+.toast.warn{background:var(--amber);color:#fff}
 /* ==================== موبایل: تطبیق کامل با عرض صفحه ==================== */
 @media(max-width:900px){
 .app{grid-template-columns:1fr}
@@ -243,6 +264,11 @@ th,td{padding:9px 8px;font-size:13px}
   .filter-toggle{width:100%;justify-content:center}
   .filter-body .row{flex-direction:column;align-items:stretch}
   .filter-body .select,.filter-body .input{width:100%!important;min-width:0}
+}
+/* نشانگر همگام‌سازی روی موبایل فشرده می‌شود */
+@media(max-width:640px){
+  .sync-chip{padding:5px 8px;font-size:11.5px;gap:4px}
+  .sync-chip.ok span:not(.dot),.sync-chip.busy span:not(.spin){display:none}
 }
 
 </style>
@@ -359,20 +385,31 @@ function generate(){
 /* ============================ persistence (mutation log) ============================ */
 const LOG_KEY='sms_log_v1', SESSION_KEY='sms_session_v1', BOSS_KEY='sms_boss_v1', PERSONA_KEY='sms_persona_v1';
 let log=[];
+/* هنگام بازپخش لاگ یا تولید داده نمونه، صف همگام‌سازی نباید پر شود */
+let SYNC_MUTED=false;
 function loadLog(){try{log=JSON.parse(localStorage.getItem(LOG_KEY)||'[]');}catch(e){log=[];}}
 function saveLog(){try{localStorage.setItem(LOG_KEY,JSON.stringify(log));}catch(e){}}
-function applyLog(){log.forEach(e=>applyOp(e,false));}
+function applyLog(){SYNC_MUTED=true;log.forEach(e=>applyOp(e,false));SYNC_MUTED=false;}
 function applyOp(op,record=true){
   const arr=db[op.c];
   if(op.t==='ins'){ if(!arr.some(x=>x.id===op.data.id)) arr.push(op.data); ids[op.c]=Math.max(ids[op.c]||0,op.data.id); }
   else if(op.t==='upd'){ const it=arr.find(x=>x.id===op.id); if(it)Object.assign(it,op.data); }
   else if(op.t==='del'){ const i=arr.findIndex(x=>x.id===op.id); if(i>-1)arr.splice(i,1); }
-  if(record){log.push(op);saveLog();}
+  if(record){
+    log.push(op);saveLog();
+    /* هر تغییر واقعی کاربر وارد صف همگام‌سازی با سرور می‌شود */
+    if(typeof enqueueOp==='function' && !SYNC_MUTED) enqueueOp(op);
+  }
 }
 const insert=(c,o)=>{o.id=nextId(c);applyOp({t:'ins',c,data:o});return o;};
 const update=(c,id,patch)=>applyOp({t:'upd',c,id,data:patch});
 const remove=(c,id)=>applyOp({t:'del',c,id});
-function resetAll(){localStorage.removeItem(LOG_KEY);location.reload();}
+function resetAll(){
+  localStorage.removeItem(LOG_KEY);
+  localStorage.removeItem(SYNC_QUEUE_KEY);
+  localStorage.removeItem(SYNC_META_KEY);
+  location.reload();
+}
 
 /* ============================ queries ============================ */
 const byId=(c,id)=>db[c].find(x=>x.id===Number(id));
@@ -655,6 +692,315 @@ function subjectScopeLabel(s){
   return s.grade;
 }
 
+/* ============================ لایه همگام‌سازی آفلاین ============================ */
+/*
+  هدف: دبیر بدون اینترنت هم بتواند کار کند (حضور و غیاب، نمره، انضباط…).
+  تغییرات محلی در «صف ارسال» می‌مانند و به‌محض وصل شدن اینترنت خودکار به سرور می‌روند.
+
+  وضعیت هر عملیات:
+    pending  → در صف، هنوز ارسال نشده
+    sending  → در حال ارسال
+    synced   → سرور تأیید کرده (از صف حذف می‌شود)
+    failed   → خطا؛ با backoff دوباره تلاش می‌شود
+    conflict → سرور نسخه‌ی جدیدتری دارد؛ نیاز به تصمیم کاربر
+
+  در حالت دمو (بدون سرور) شبیه‌ساز داخلی نقش سرور را بازی می‌کند تا
+  رفتار واقعی قابل مشاهده و تست باشد.
+*/
+
+const SYNC_QUEUE_KEY = 'sms_syncq_v1';
+const SYNC_META_KEY  = 'sms_syncmeta_v1';
+
+const SYNC = {
+  queue      : [],          /* عملیات منتظر ارسال */
+  online     : (typeof navigator !== 'undefined') ? navigator.onLine !== false : true,
+  syncing    : false,
+  lastSync   : null,        /* آخرین همگام‌سازی موفق (ISO) */
+  lastError  : null,
+  attempts   : 0,
+  demoMode   : true,        /* تا وقتی سرور واقعی وصل نشده */
+  serverUrl  : '',          /* مثلاً '/api/sync' */
+  autoTimer  : null,
+  conflicts  : [],
+};
+
+/* ---------- ذخیره‌سازی صف ---------- */
+function loadQueue(){
+  try{ SYNC.queue = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]'); }
+  catch(e){ SYNC.queue = []; }
+  try{
+    const m = JSON.parse(localStorage.getItem(SYNC_META_KEY) || '{}');
+    SYNC.lastSync = m.lastSync || null;
+  }catch(e){}
+}
+function saveQueue(){
+  try{ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(SYNC.queue)); }catch(e){}
+}
+function saveSyncMeta(){
+  try{ localStorage.setItem(SYNC_META_KEY, JSON.stringify({ lastSync: SYNC.lastSync })); }catch(e){}
+}
+
+/* ---------- افزودن عملیات به صف ---------- */
+/* هر تغییر داده‌ای که باید به سرور برود از اینجا رد می‌شود */
+function enqueueOp(op){
+  const item = {
+    uid       : 'op_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8),
+    op        : op,
+    status    : 'pending',
+    tries     : 0,
+    error     : null,
+    created_at: new Date().toISOString(),
+    user_id   : (S.user && S.user.id) || null,
+    school_id : (S.user && S.user.school_id) || null,
+  };
+  SYNC.queue.push(item);
+  saveQueue();
+  refreshSyncBadge();         /* نشانگر بدون رندر کامل به‌روز شود */
+  scheduleSync(400);          /* اگر آنلاین بود، خیلی زود ارسال شود */
+  return item;
+}
+
+/* ---------- شمارنده‌ها ---------- */
+const pendingCount  = () => SYNC.queue.filter(x => x.status === 'pending' || x.status === 'failed').length;
+const conflictCount = () => SYNC.queue.filter(x => x.status === 'conflict').length;
+
+/* ---------- تشخیص آنلاین/آفلاین ---------- */
+function setOnline(v){
+  const was = SYNC.online;
+  SYNC.online = !!v;
+  if(!was && SYNC.online){
+    toast('اینترنت وصل شد — در حال ارسال تغییرات…', 'ok');
+    SYNC.attempts = 0;
+    scheduleSync(300);
+  }else if(was && !SYNC.online){
+    const n = pendingCount();
+    toast(n ? `آفلاین شدید — ${fa(n)} تغییر ذخیره شد و بعداً ارسال می‌شود` : 'آفلاین شدید — تغییرات محلی ذخیره می‌شوند', 'warn');
+  }
+  refreshSyncBadge();
+}
+
+/* ---------- زمان‌بندی و backoff ---------- */
+function scheduleSync(delay){
+  clearTimeout(SYNC.autoTimer);
+  SYNC.autoTimer = setTimeout(syncNow, delay || 1000);
+}
+function backoffDelay(){
+  /* ۲ثانیه، ۴، ۸، ۱۶… تا سقف ۵ دقیقه */
+  return Math.min(2000 * Math.pow(2, Math.min(SYNC.attempts, 8)), 300000);
+}
+
+/* ---------- ارسال به سرور ---------- */
+async function syncNow(manual){
+  if(SYNC.syncing) return;
+  const batch = SYNC.queue.filter(x => x.status === 'pending' || x.status === 'failed');
+  if(!batch.length){
+    if(manual) toast('همه‌چیز همگام است ✓', 'ok');
+    return;
+  }
+  if(!SYNC.online){
+    if(manual) toast('اینترنت در دسترس نیست — تغییرات در صف می‌مانند', 'warn');
+    return;
+  }
+
+  SYNC.syncing = true;
+  SYNC.lastError = null;
+  batch.forEach(x => { x.status = 'sending'; });
+  saveQueue();
+  refreshSyncBadge();
+
+  try{
+    const res = await sendBatch(batch);
+
+    res.forEach(r => {
+      const item = SYNC.queue.find(x => x.uid === r.uid);
+      if(!item) return;
+      if(r.ok){
+        item.status = 'synced';
+      }else if(r.conflict){
+        item.status = 'conflict';
+        item.error  = r.message || 'تعارض با نسخه سرور';
+        item.server = r.server;
+      }else{
+        item.status = 'failed';
+        item.tries += 1;
+        item.error  = r.message || 'خطای نامشخص';
+      }
+    });
+
+    /* موارد موفق از صف حذف می‌شوند */
+    SYNC.queue = SYNC.queue.filter(x => x.status !== 'synced');
+    SYNC.lastSync = new Date().toISOString();
+    saveSyncMeta();
+    saveQueue();
+
+    const okCount = res.filter(r => r.ok).length;
+    const bad     = res.length - okCount;
+    if(okCount && (manual || bad)) toast(`${fa(okCount)} تغییر ارسال شد${bad ? ` — ${fa(bad)} ناموفق` : ''}`, bad ? 'warn' : 'ok');
+    else if(okCount && !manual)     toast(`${fa(okCount)} تغییر همگام شد ✓`, 'ok');
+
+    SYNC.attempts = bad ? SYNC.attempts + 1 : 0;
+    if(bad) scheduleSync(backoffDelay());
+
+  }catch(err){
+    /* شکست کل دسته — همه به pending برمی‌گردند تا دوباره تلاش شود */
+    batch.forEach(x => { if(x.status === 'sending'){ x.status = 'failed'; x.tries += 1; x.error = err.message; } });
+    SYNC.lastError = err.message;
+    SYNC.attempts += 1;
+    saveQueue();
+    if(manual) toast('ارسال ناموفق — دوباره تلاش می‌شود', 'err');
+    scheduleSync(backoffDelay());
+  }finally{
+    SYNC.syncing = false;
+    refreshSyncBadge();
+  }
+}
+
+/* ---------- ارسال واقعی یا شبیه‌سازی ---------- */
+async function sendBatch(batch){
+  if(!SYNC.demoMode && SYNC.serverUrl){
+    const r = await fetch(SYNC.serverUrl, {
+      method  : 'POST',
+      headers : { 'Content-Type': 'application/json' },
+      body    : JSON.stringify({ ops: batch.map(x => ({ uid: x.uid, ...x.op })) }),
+    });
+    if(!r.ok) throw new Error('خطای سرور: ' + r.status);
+    const data = await r.json();
+    return data.results || [];
+  }
+
+  /* حالت دمو: تأخیر شبکه را شبیه‌سازی می‌کند */
+  await new Promise(r => setTimeout(r, 500 + Math.random() * 700));
+  if(!SYNC.online) throw new Error('اتصال قطع شد');
+  return batch.map(x => ({ uid: x.uid, ok: true }));
+}
+
+/* ---------- نشانگر وضعیت در نوار بالا ---------- */
+function syncBadge(){
+  const n  = pendingCount();
+  const cf = conflictCount();
+
+  if(!SYNC.online){
+    return `<button class="sync-chip off" data-act="sync-panel" title="آفلاین — تغییرات ذخیره می‌شوند">
+      <span class="dot"></span><span>آفلاین</span>${n ? `<span class="badge b-amber sm">${fa(n)}</span>` : ''}</button>`;
+  }
+  if(SYNC.syncing){
+    return `<button class="sync-chip busy" data-act="sync-panel" title="در حال همگام‌سازی">
+      <span class="spin"></span><span>همگام‌سازی…</span></button>`;
+  }
+  if(cf){
+    return `<button class="sync-chip warn" data-act="sync-panel" title="نیاز به بررسی">
+      <span class="dot"></span><span>تعارض</span><span class="badge b-red sm">${fa(cf)}</span></button>`;
+  }
+  if(n){
+    return `<button class="sync-chip pend" data-act="sync-panel" title="${fa(n)} تغییر در صف ارسال">
+      <span class="dot"></span><span>در صف</span><span class="badge b-amber sm">${fa(n)}</span></button>`;
+  }
+  return `<button class="sync-chip ok" data-act="sync-panel" title="همه‌چیز همگام است">
+    <span class="dot"></span><span>همگام</span></button>`;
+}
+
+/* فقط نشانگر را به‌روز می‌کند — بدون رندر مجدد کل صفحه */
+function refreshSyncBadge(){
+  const el = document.querySelector('.sync-chip');
+  if(!el) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = syncBadge();
+  const fresh = tmp.firstElementChild;
+  if(fresh) el.replaceWith(fresh);
+}
+
+/* ---------- پنجره جزئیات همگام‌سازی ---------- */
+function syncPanelModal(){
+  const q  = SYNC.queue;
+  const n  = pendingCount();
+  const cf = conflictCount();
+
+  const label = {
+    ins: 'ثبت جدید', upd: 'ویرایش', del: 'حذف',
+  };
+  const collFa = {
+    attendance:'حضور و غیاب', grades:'نمرات', discipline:'انضباط', users:'کاربران',
+    schools:'مدارس', classes:'کلاس‌ها', subjects:'دروس', leaves:'مرخصی',
+    announcements:'اطلاعیه‌ها', messages:'پیام‌ها', installments:'اقساط',
+    transactions:'تراکنش‌ها', exams:'امتحانات', schedule:'برنامه هفتگی',
+  };
+
+  const statusFa = {
+    pending :['در صف','b-amber'], sending:['در حال ارسال','b-blue'],
+    failed  :['ناموفق','b-red'],  conflict:['تعارض','b-red'],
+  };
+
+  const body = `
+    <div class="row" style="gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <span class="badge ${SYNC.online?'b-green':'b-gray'}">${SYNC.online?'🌐 آنلاین':'📴 آفلاین'}</span>
+      ${n ?`<span class="badge b-amber">${fa(n)} تغییر در صف</span>`:'<span class="badge b-green">همه‌چیز همگام است</span>'}
+      ${cf?`<span class="badge b-red">${fa(cf)} تعارض</span>`:''}
+      <div class="spacer"></div>
+      <span class="small muted">آخرین همگام‌سازی: ${SYNC.lastSync?jalaliDateTime(SYNC.lastSync):'—'}</span>
+    </div>
+
+    ${!SYNC.online?`<div class="sync-note" style="margin-bottom:10px">
+      بدون اینترنت هم می‌توانید کار کنید. همه‌ی تغییرات روی همین دستگاه ذخیره می‌شوند و
+      به‌محض وصل شدن اینترنت، خودکار به سرور ارسال می‌گردند.</div>`:''}
+
+    ${q.length?`<div class="table-wrap" style="max-height:320px;overflow:auto"><table>
+      <thead><tr><th>عملیات</th><th>بخش</th><th>زمان</th><th>وضعیت</th></tr></thead><tbody>
+      ${q.slice().reverse().map(x=>{
+        const st=statusFa[x.status]||['—','b-gray'];
+        return `<tr>
+          <td><b>${label[x.op.t]||x.op.t}</b></td>
+          <td>${esc(collFa[x.op.c]||x.op.c)}</td>
+          <td class="small muted">${jalaliDateTime(x.created_at)}</td>
+          <td><span class="badge ${st[1]}">${st[0]}</span>
+            ${x.error?`<div class="small muted">${esc(x.error)}</div>`:''}
+            ${x.tries>1?`<div class="small muted">${fa(x.tries)} تلاش</div>`:''}</td>
+        </tr>`;}).join('')}
+      </tbody></table></div>`
+    :`<div class="empty" style="padding:24px"><span class="emoji">✅</span>
+       <h4>صف ارسال خالی است</h4><div class="small">همه‌ی تغییرات با سرور همگام شده‌اند.</div></div>`}
+
+    <div class="small muted" style="margin-top:12px">
+      ${SYNC.demoMode?'⚙️ حالت دمو: سرور واقعی متصل نیست و ارسال شبیه‌سازی می‌شود.':''}
+    </div>`;
+
+  openModal(`<div class="card-head"><h3>وضعیت همگام‌سازی</h3>
+      <button class="icon-btn" data-act="modal-close">✕</button></div>
+    <div class="card-body">${body}</div>
+    <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border)">
+      ${SYNC.demoMode?`<button class="btn ghost sm" data-act="sync-toggle-net">${SYNC.online?'📴 شبیه‌سازی قطع اینترنت':'🌐 شبیه‌سازی وصل شدن'}</button>`:''}
+      <div class="spacer"></div>
+      ${n?`<button class="btn" data-act="sync-run">🔄 ارسال همه</button>`:''}
+      <button class="btn ghost" data-act="modal-close">بستن</button>
+    </div>`);
+}
+
+/* تاریخ و ساعت شمسی خوانا — توجه: fa() فقط برای عدد است، نه رشته */
+function jalaliDateTime(iso){
+  if(!iso) return '—';
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return '—';
+  const time = faD(String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'));
+  return isoToJalali(d.toISOString()) + ' — ' + time;
+}
+
+/* ---------- اکشن‌ها ---------- */
+const SYNC_ACTIONS = {
+  'sync-panel'(){ syncPanelModal(); },
+  'sync-run'(){ closeModal(); syncNow(true); },
+  'sync-toggle-net'(){ closeModal(); setOnline(!SYNC.online); },
+};
+
+/* ---------- راه‌اندازی ---------- */
+function initSync(){
+  loadQueue();
+  if(typeof window !== 'undefined'){
+    window.addEventListener('online',  () => setOnline(true));
+    window.addEventListener('offline', () => setOnline(false));
+  }
+  /* اگر چیزی از جلسه‌ی قبل در صف مانده، تلاش کن بفرستی */
+  if(pendingCount() && SYNC.online) scheduleSync(1500);
+}
+
 /* ============================ login ============================ */
 function demoAccounts(){
   const s=db.users.find(u=>u.role==='student'), p=db.users.find(u=>u.role==='parent');
@@ -704,6 +1050,7 @@ function renderShell(){
       ${(S.stack.length||S.route!==(u.role==='edu_office'?'officedash':'dashboard'))?`<button class="icon-btn back-btn" data-act="back" title="بازگشت">→</button>`:''}
       <div><h1>${t[0]}</h1><div class="sub">${t[1]}</div></div><div class="spacer"></div>
       <button class="icon-btn" data-act="go" data-r="notifications" title="اعلان‌ها" style="position:relative;font-size:17px">🔔${(()=>{const n=unreadCount();return n?`<span style="position:absolute;top:-4px;inset-inline-end:-4px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border:2px solid #fff">${n>99?'۹۹+':fa(n)}</span>`:''})()}</button>
+      ${typeof syncBadge==='function'?syncBadge():''}
       <span class="badge b-blue">${ROLE_FA[u.role]}</span></header>
     <div class="content">${renderRoute()}</div>
    </div>
@@ -1589,6 +1936,7 @@ document.addEventListener('click',e=>{
   else if(typeof P10_ACTIONS!=='undefined'&&P10_ACTIONS[a]){e.preventDefault();P10_ACTIONS[a](el,id);}
   else if(typeof JD_ACTIONS!=='undefined'&&JD_ACTIONS[a]){e.preventDefault();JD_ACTIONS[a](el,id);}
   else if(typeof FILTER_ACTIONS!=='undefined'&&FILTER_ACTIONS[a]){e.preventDefault();FILTER_ACTIONS[a](el,id);}
+  else if(typeof SYNC_ACTIONS!=='undefined'&&SYNC_ACTIONS[a]){e.preventDefault();SYNC_ACTIONS[a](el,id);}
 });
 
 // live filters
@@ -3653,7 +4001,7 @@ function render(){
   $('#root').innerHTML = (S.user?renderShell():renderLogin())+picker+gate;
 }
 setTimeout(()=>{
-  generate(); generateExtras(); generateP8(); generateP9(); generateP10(); loadLog(); applyLog();
+  generate(); generateExtras(); generateP8(); generateP9(); generateP10(); loadLog(); applyLog(); initSync();
   const su=localStorage.getItem(SESSION_KEY);
   if(su){const u=db.users.find(x=>x.username===su);if(u){S.user=u;if(u.role==='edu_office'&&S.route==='dashboard')S.route='officedash';}}
   const pk=localStorage.getItem(PERSONA_KEY);

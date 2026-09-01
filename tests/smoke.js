@@ -178,6 +178,81 @@ Object.entries(ROUTES).forEach(([role, routes]) => {
   });
 });
 
+console.log('\n▸ کار در حالت آفلاین و همگام‌سازی');
+
+test('لایه همگام‌سازی راه‌اندازی شده', () => {
+  assert(W('typeof SYNC') === 'object', 'SYNC تعریف نشده');
+  assert(W('typeof enqueueOp') === 'function', 'enqueueOp نیست');
+});
+
+test('صف ارسال در ابتدا خالی است', () => {
+  W('SYNC.queue=[];SYNC.online=true;0');
+  assert(W('pendingCount()') === 0);
+});
+
+test('تولید داده نمونه صف را پر نکرده', () => {
+  assert(W('SYNC.queue.length') === 0, 'داده دمو وارد صف شده — نباید می‌شد');
+});
+
+test('تغییر در حالت آفلاین وارد صف می‌شود', () => {
+  W("SYNC.online=false;SYNC.queue=[];S.user=db.users.find(u=>u.role==='teacher');0");
+  const before = W('pendingCount()');
+  W("insert('attendance',{student_id:db.users.find(u=>u.role==='student').id,class_id:1,date:todayISO(),status:'present',school_id:1});0");
+  const after = W('pendingCount()');
+  assert(after === before + 1, `صف از ${before} به ${after} رفت`);
+});
+
+test('داده آفلاین بلافاصله در برنامه دیده می‌شود', () => {
+  const n = W("db.attendance.filter(a=>a.date===todayISO()).length");
+  assert(n > 0, 'رکورد ثبت‌شده در db نیست');
+});
+
+test('صف در localStorage ذخیره می‌شود (بقا پس از بستن مرورگر)', () => {
+  const raw = W('localStorage.getItem(SYNC_QUEUE_KEY)');
+  assert(raw && JSON.parse(raw).length > 0, 'صف ذخیره نشده');
+});
+
+test('چند تغییر آفلاین پشت سر هم در صف می‌مانند', () => {
+  const before = W('pendingCount()');
+  W("insert('grades',{student_id:1,subject_id:1,class_id:1,term:'نوبت اول',score:18,school_id:1});0");
+  W("insert('discipline',{student_id:1,kind:'positive',title:'تست',points:2,date:todayISO(),school_id:1});0");
+  assert(W('pendingCount()') === before + 2, 'همه‌ی تغییرات ثبت نشدند');
+});
+
+test('در حالت آفلاین چیزی ارسال نمی‌شود', async () => {
+  const before = W('pendingCount()');
+  W('syncNow();0');
+  assert(W('pendingCount()') === before, 'در آفلاین تلاش به ارسال شد');
+});
+
+test('نشانگر وضعیت، حالت آفلاین را نشان می‌دهد', () => {
+  const b = W('syncBadge()');
+  assert(b.includes('آفلاین'), 'نشانگر آفلاین را نشان نمی‌دهد');
+});
+
+test('نشانگر تعداد تغییرات معلق را نشان می‌دهد', () => {
+  const b = W('syncBadge()');
+  assert(/badge/.test(b), 'تعداد معلق نمایش داده نمی‌شود');
+});
+
+test('پنجره وضعیت همگام‌سازی باز می‌شود', () => {
+  W('syncPanelModal();0');
+  const html = W("document.getElementById('modal').innerHTML");
+  assert(html.includes('همگام'), 'پنجره باز نشد');
+  W('closeModal();0');
+});
+
+test('نشانگر پس از اتصال، حالت همگام را نشان می‌دهد', () => {
+  W('SYNC.queue=[];SYNC.online=true;SYNC.syncing=false;0');
+  const b = W('syncBadge()');
+  assert(b.includes('همگام'), 'حالت همگام نمایش داده نشد');
+});
+
+test('پاک‌سازی کامل، صف را هم خالی می‌کند', () => {
+  const has = W("typeof resetAll==='function' && resetAll.toString().includes('SYNC_QUEUE_KEY')");
+  assert(has, 'resetAll صف همگام‌سازی را پاک نمی‌کند');
+});
+
 console.log('\n▸ حذف کلاس‌ها از پنل سوپرادمین');
 
 test('«کلاس‌ها» در منوی سوپرادمین نیست', () => {
