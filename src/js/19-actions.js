@@ -2,6 +2,12 @@
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el)return;
   const a=el.dataset.act, id=Number(el.dataset.id);
+  /* گارد مجوز اکشن: حتی اگر مهاجم دکمه را دستی بسازد، اکشن‌های تغییردهندهٔ
+     داده برای نقش‌های غیرمجاز اجرا نمی‌شوند. */
+  if(S.user && typeof canAction==='function' && !canAction(a)){
+    if(typeof toast==='function') toast('شما اجازهٔ انجام این عملیات را ندارید','err');
+    return;
+  }
   const A={
    pick(){ $('#lu').value=el.dataset.u; $('#lp').value='123456'; },
    login(){
@@ -188,7 +194,10 @@ document.addEventListener('click',e=>{
      render();},
    'att-all'(){const st=el.dataset.s,date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
-     studentsOfClass(cid).forEach(s=>{const ex=db.attendance.find(x=>x.student_id===s.id&&x.date===date);
+     const _am=(typeof idxAttByClassDate==='function')?idxAttByClassDate():null;
+     const _day=new Map();
+     if(_am)(_am.get(cid+'|'+date)||[]).forEach(a=>_day.set(a.student_id,a));
+     studentsOfClass(cid).forEach(s=>{const ex=_am?_day.get(s.id):db.attendance.find(x=>x.student_id===s.id&&x.date===date);
        if(ex)update('attendance',ex.id,{status:st});else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:s.id,date,status:st,note:null});});
      toast('همه دانش‌آموزان «'+ATT_FA[st]+'» ثبت شدند','ok');render();},
    // grades

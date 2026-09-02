@@ -253,6 +253,88 @@ test('پاک‌سازی کامل، صف را هم خالی می‌کند', () =>
   assert(has, 'resetAll صف همگام‌سازی را پاک نمی‌کند');
 });
 
+console.log('\n▸ مجوزدهی روت‌ها و اکشن‌ها (امنیت)');
+
+test('لایه مجوزدهی تعریف شده است', () => {
+  assert(W("typeof canRoute==='function' && typeof canAction==='function' && typeof viewForbidden==='function'"),
+    'توابع مجوزدهی موجود نیست');
+});
+
+test('دانش‌آموز به صفحه حضور و غیاب دسترسی ندارد', () => {
+  W("S.user=db.users.find(u=>u.role==='student');S.persona=null;S.boss=null;S.route='attendance';S.filters={}");
+  assert(/دسترسی مجاز نیست/.test(W('renderRoute()')), 'دانش‌آموز attendance را دید');
+});
+
+test('دانش‌آموز به پنل مدیریت اشتراک دسترسی ندارد', () => {
+  W("S.route='adminsubs'");
+  assert(/دسترسی مجاز نیست/.test(W('renderRoute()')), 'دانش‌آموز adminsubs را دید');
+});
+
+test('دانش‌آموز به مدیریت کاربران و مدارس دسترسی ندارد', () => {
+  W("S.route='users'");
+  const a = /دسترسی مجاز نیست/.test(W('renderRoute()'));
+  W("S.route='schools'");
+  const b = /دسترسی مجاز نیست/.test(W('renderRoute()'));
+  assert(a && b, 'دانش‌آموز به صفحات مدیریتی دسترسی داشت');
+});
+
+test('دبیر به مدیریت مدارس دسترسی ندارد', () => {
+  W("S.user=db.users.find(u=>u.role==='teacher');S.persona=null;S.boss=null;S.route='schools';S.filters={}");
+  assert(/دسترسی مجاز نیست/.test(W('renderRoute()')), 'دبیر schools را دید');
+});
+
+test('اداره به فهرست کاربران دسترسی ندارد', () => {
+  W("S.user=db.users.find(u=>u.role==='edu_office');S.persona=null;S.boss=null;S.route='users';S.filters={}");
+  assert(/دسترسی مجاز نیست/.test(W('renderRoute()')), 'اداره users را دید');
+});
+
+test('دسترسی‌های مجاز دست‌نخورده مانده‌اند', () => {
+  const cases = [['manager','attendance'],['manager','users'],['teacher','grades'],
+                 ['student','record'],['superadmin','schools'],['edu_office','officedash']];
+  for(const [role, route] of cases){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null;S.route='" + route + "';S.filters={};S.page=1");
+    const out = W('renderRoute()');
+    assert(!/دسترسی مجاز نیست/.test(out) && out.length > 200,
+      role + ' نتوانست ' + route + ' را ببیند');
+  }
+});
+
+test('دانش‌آموز نمی‌تواند برای هم‌کلاسی غیبت ثبت کند', () => {
+  W("S.user=db.users.find(u=>u.role==='student');S.persona=null;S.boss=null");
+  const cid = W('visibleClasses()[0].id');
+  const victim = W('studentsOfClass(' + cid + ').find(s=>s.id!==S.user.id).id');
+  const D = '2026-07-11';
+  W("S.route='attendance';S.filters={class:" + cid + ",date:'" + D + "'}");
+  W("(function(){var el=document.createElement('button');el.setAttribute('data-act','att-set');"
+    + "el.setAttribute('data-id','" + victim + "');el.setAttribute('data-s','absent');"
+    + "document.body.appendChild(el);el.click();el.remove();})()");
+  const rec = W("db.attendance.filter(function(a){return a.student_id===" + victim + "&&a.date==='" + D + "';}).length");
+  assert(rec === 0, 'دانش‌آموز توانست داده هم‌کلاسی را تغییر دهد');
+});
+
+test('مجوز اکشن‌ها بر اساس نقش درست است', () => {
+  const cases = [['student','att-set',false],['student','school-del',false],
+                 ['teacher','att-set',true],['teacher','school-del',false],
+                 ['manager','user-del',true],['superadmin','school-del',true]];
+  for(const [role, act, want] of cases){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null");
+    assert(W("canAction('" + act + "')") === want,
+      role + ' → ' + act + ' مجوز نادرست');
+  }
+});
+
+test('جانشینی سوپرادمین مجوز را نمی‌شکند', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.boss=null;S.persona=null");
+  const mgr = W("db.users.find(u=>u.role==='manager').id");
+  W("(function(){S.boss=S.user;S.user=byId('users'," + mgr + ");})()");
+  W("S.route='attendance';S.filters={}");
+  const okAtt = !/دسترسی مجاز نیست/.test(W('renderRoute()'));
+  W("S.route='geo'");
+  const blockedGeo = /دسترسی مجاز نیست/.test(W('renderRoute()'));
+  W("S.user=S.boss;S.boss=null");
+  assert(okAtt && blockedGeo, 'رفتار جانشینی نادرست است');
+});
+
 console.log('\n▸ لایه ایندکس و مقیاس‌پذیری');
 
 test('توابع ایندکس تعریف شده‌اند', () => {

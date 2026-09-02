@@ -1313,6 +1313,140 @@ function renderLogin(){
    </div></div></div>`;
 }
 
+/* ==================== لایه مجوزدهی (Authorization) ====================
+   مسئله‌ای که این ماژول حل می‌کند:
+   پیش از این `renderRoute()` فقط بر اساس `S.route` تصمیم می‌گرفت و هیچ
+   بررسی نقشی نداشت. یعنی هر کاربری با تغییر hash آدرس یا مقدار S.route
+   می‌توانست هر صفحه‌ای را باز کند — و بدتر، اکشن‌های همان صفحه هم کار
+   می‌کردند (مثلاً دانش‌آموز برای هم‌کلاسی‌اش غیبت ثبت می‌کرد و همان
+   تغییر وارد صف ارسال به سرور می‌شد).
+
+   راه‌حل: مجوز روت‌ها از خودِ NAV استخراج می‌شود (تک‌منبع حقیقت)، به‌علاوهٔ
+   چند روت کمکی که در منو نیستند ولی برای همان نقش مجازند.
+
+   ⚠️ این لایه سمت کلاینت است و «سد نهایی» نیست. سرور موظف است همین قواعد
+   را مستقل اعمال کند (نگاه کنید به 29-scope.js). اما نبودش یعنی هر کاربر
+   می‌تواند داده دیگران را ببیند و تغییر دهد.
+   ======================================================================== */
+
+/** روت‌هایی که در NAV نیستند ولی برای نقش مجازند (زیرصفحه یا مقصد پیمایش) */
+var EXTRA_ROUTES = {
+  superadmin: ['dashboard','adminsubs','officedash','officeschools','record','geo','offices'],
+  manager:    ['record','corrections','teachers','exams','tuition'],
+  teacher:    ['record','exams'],
+  student:    ['record','mytuition','notifications','announcements','subscription'],
+  parent:     ['children','record','family','mytuition','notifications','announcements','subscription','calendar'],
+  edu_office: ['officedash','officeschools','notifications','announcements']
+};
+
+/** روت‌هایی که برای همهٔ نقش‌های واردشده باز است */
+var COMMON_ROUTES = ['dashboard','notifications','announcements','chat','calendar'];
+
+var _ALLOWED_CACHE = null;
+
+/** استخراج روت‌های موجود در منوی یک نقش */
+function navRoutesOf(role){
+  var out = [];
+  try{
+    var groups = NAV[role] || [];
+    for(var i=0;i<groups.length;i++){
+      var items = groups[i][1] || [];
+      for(var j=0;j<items.length;j++) out.push(items[j][0]);
+    }
+  }catch(e){}
+  return out;
+}
+
+/** مجموعهٔ روت‌های مجاز یک نقش (با کش) */
+function allowedRoutes(role){
+  if(!_ALLOWED_CACHE) _ALLOWED_CACHE = Object.create(null);
+  if(_ALLOWED_CACHE[role]) return _ALLOWED_CACHE[role];
+  var set = Object.create(null);
+  var add = function(r){ if(r) set[r] = true; };
+  navRoutesOf(role).forEach(add);
+  (EXTRA_ROUTES[role] || []).forEach(add);
+  COMMON_ROUTES.forEach(add);
+  _ALLOWED_CACHE[role] = set;
+  return set;
+}
+
+/** آیا نقش فعلی اجازهٔ دیدن این روت را دارد؟ */
+function canRoute(route, role){
+  role = role || (typeof activePersona === 'function' ? activePersona() : (S.user && S.user.role));
+  if(!role) return false;
+  return !!allowedRoutes(role)[route];
+}
+
+/** روت خانهٔ هر نقش */
+function homeRoute(role){
+  role = role || (typeof activePersona === 'function' ? activePersona() : (S.user && S.user.role));
+  return role === 'edu_office' ? 'officedash' : 'dashboard';
+}
+
+/* ---------- مجوز اکشن‌ها ----------
+   برخی اکشن‌ها داده را تغییر می‌دهند. حتی اگر مهاجم دکمه را دستی بسازد،
+   باید رد شود. کلید = نام اکشن، مقدار = نقش‌های مجاز.               */
+var ACTION_ROLES = {
+  /* حضور و غیاب: فقط دبیر و مدیر */
+  'att-set':       ['teacher','manager','superadmin'],
+  'att-all':       ['teacher','manager','superadmin'],
+  /* نمرات */
+  'grade-save':    ['teacher','manager','superadmin'],
+  'grade-del':     ['teacher','manager','superadmin'],
+  'grade-modal':   ['teacher','manager','superadmin'],
+  /* انضباطی */
+  'disc-save':     ['teacher','manager','superadmin'],
+  'disc-del':      ['manager','superadmin'],
+  'disc-modal':    ['teacher','manager','superadmin'],
+  /* کاربران و مدارس */
+  'user-save':     ['manager','superadmin'],
+  'user-del':      ['manager','superadmin'],
+  'user-modal':    ['manager','superadmin'],
+  'user-toggle':   ['manager','superadmin'],
+  'school-save':   ['superadmin'],
+  'school-del':    ['superadmin'],
+  'school-modal':  ['superadmin'],
+  'school-toggle': ['superadmin'],
+  'school-enter':  ['superadmin'],
+  /* کلاس و درس */
+  'class-save':    ['manager','superadmin'],
+  'class-del':     ['manager','superadmin'],
+  'subject-save':  ['manager','superadmin'],
+  'subject-del':   ['manager','superadmin'],
+  /* اطلاعیه */
+  'ann-save':      ['manager','superadmin','edu_office'],
+  'ann-del':       ['manager','superadmin','edu_office'],
+  /* مالی */
+  'plan-save':     ['manager','superadmin'],
+  'plan-del':      ['manager','superadmin'],
+  'ins-pay':       ['manager','superadmin'],
+  /* اداره */
+  'office-save':   ['superadmin'],
+  'office-del':    ['superadmin'],
+  'office-toggle': ['superadmin'],
+  /* اشتراک (پنل مدیریتی) */
+  'subs-settings': ['superadmin'],
+  'subs-save':     ['superadmin']
+};
+
+/** آیا نقش فعلی اجازهٔ اجرای این اکشن را دارد؟ */
+function canAction(act, role){
+  var allowed = ACTION_ROLES[act];
+  if(!allowed) return true;                 // اکشن‌های عمومی محدود نیستند
+  role = role || (typeof activePersona === 'function' ? activePersona() : (S.user && S.user.role));
+  /* در حالت جانشینی، نقشِ کاربرِ جانشین‌شده ملاک است (همان S.user) */
+  return allowed.indexOf(role) > -1;
+}
+
+/** پیام یکسان برای دسترسی غیرمجاز */
+function viewForbidden(){
+  return '<div class="card"><div class="card-body">' +
+    (typeof empty === 'function'
+      ? empty('🔒','دسترسی مجاز نیست','این بخش برای نقش کاربری شما در دسترس نیست.')
+      : '<p>دسترسی مجاز نیست</p>') +
+    '</div></div>';
+}
+
 /* ============================ shell ============================ */
 function renderShell(){
   const u=Object.assign({},S.user,{role:activePersona()}), school=u.school_id?byId('schools',u.school_id):(u.office_id?{name:(byId('offices',u.office_id)||{}).name}:null);
@@ -1358,6 +1492,10 @@ function renderRoute(){
   /* دیوار پرداخت: در پنل اولیا بدون اشتراک فقط چند صفحه باز است */
   if(parentLocked()&&!['subscription','notifications','announcements'].includes(S.route))
     return viewLocked();
+  /* گارد مجوز: نقش فعلی فقط روت‌های مجاز خودش را می‌بیند.
+     بدون این بررسی، تغییر hash آدرس هر صفحه‌ای را باز می‌کرد. */
+  if(typeof canRoute==='function' && !canRoute(S.route))
+    return viewForbidden();
   switch(S.route){
     case 'subscription':return viewSubscription();
     case 'adminsubs':return viewAdminSubs();
@@ -1489,7 +1627,12 @@ function studentSummary(sid){
   const subs=Object.entries(bySub).map(([id,l])=>({name:byId('subjects',Number(id)).name,avg:avgOf(l)})).sort((a,b)=>b.avg-a.avg);
   let rank=1,size=0;
   if(cls){const peers=studentsOfClass(cls.id);size=peers.length;
-    rank=1+peers.filter(p=>avgOf(db.grades.filter(g=>g.student_id===p.id))>avg).length;}
+    /* ایندکس نمره بر اساس دانش‌آموز: یک پیمایش به‌جای پیمایش کل جدول برای هر هم‌کلاسی */
+    const _gi=(typeof idxGradesByStudent==='function')?idxGradesByStudent():null;
+    rank=1+peers.filter(p=>{
+      const gl=_gi?(_gi.get(p.id)||[]):db.grades.filter(g=>g.student_id===p.id);
+      return avgOf(gl)>avg;
+    }).length;}
   return {st,cls,avg,att,disc,subs,rank,size,points:disc.reduce((a,b)=>a+b.points,0)};
 }
 
@@ -1603,14 +1746,14 @@ function viewClasses(){
   const rows=visibleClasses();
   return `<div class="card"><div class="card-head"><h3>کلاس‌ها <span class="badge b-gray">${fa(rows.length)}</span></h3>
     ${canEdit?`<button class="btn" data-act="class-new">➕ کلاس جدید</button>`:''}</div>
-   ${rows.length?`<div class="grid g3" style="padding:16px">${rows.map(c=>{const n=db.enrollments.filter(e=>e.class_id===c.id).length;const fill=Math.min(100,Math.round(n/(c.capacity||30)*100));const ht=c.homeroom_teacher_id?byId('users',c.homeroom_teacher_id):null;
+   ${rows.length?`<div class="grid g3" style="padding:16px">${(()=>{const _ec=(typeof idxEnrollByClass==='function')?idxEnrollByClass():null;return rows.map(c=>{const n=_ec?(_ec.get(c.id)||[]).length:db.enrollments.filter(e=>e.class_id===c.id).length;const fill=Math.min(100,Math.round(n/(c.capacity||30)*100));const ht=c.homeroom_teacher_id?byId('users',c.homeroom_teacher_id):null;
      return `<div class="card" style="padding:15px;box-shadow:none">
       <div class="row"><b style="font-size:15px">${esc(c.name)}</b><div class="spacer"></div>
        ${canEdit?`<button class="icon-btn" data-act="class-edit" data-id="${c.id}">✏️</button> <button class="icon-btn danger" data-act="class-del" data-id="${c.id}">🗑️</button>`:''}</div>
       <div class="row small muted" style="margin-top:6px"><span class="badge b-blue">${esc(c.grade||'—')}</span>${c.field?`<span class="badge b-purple">${esc(c.field)}</span>`:''}${c.room?`<span>🚪 ${esc(c.room)}</span>`:''}</div>
       <div class="small muted" style="margin-top:8px">سرپرست: ${esc(ht?ht.full_name:'—')}</div>
       ${S.user.role==='superadmin'?`<div class="small muted">${esc(byId('schools',c.school_id).name)}</div>`:''}
-      <div style="margin-top:10px"><div class="row small"><span>${fa(n)} از ${fa(c.capacity)} نفر</span><div class="spacer"></div><span class="muted">${fa(fill)}٪</span></div>${bar(fill,100,fill>90?'var(--red)':'var(--primary)')}</div></div>`;}).join('')}</div>`
+      <div style="margin-top:10px"><div class="row small"><span>${fa(n)} از ${fa(c.capacity)} نفر</span><div class="spacer"></div><span class="muted">${fa(fill)}٪</span></div>${bar(fill,100,fill>90?'var(--red)':'var(--primary)')}</div></div>`;}).join('');})()}</div>`
    :empty('🏛️','کلاسی تعریف نشده',canEdit?'اولین کلاس را بسازید.':'کلاسی به شما تخصیص نیافته است.',canEdit?'<button class="btn" data-act="class-new">ساخت کلاس</button>':'')}</div>`;
 }
 
@@ -2013,6 +2156,12 @@ function askDelete(text,fn){
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el)return;
   const a=el.dataset.act, id=Number(el.dataset.id);
+  /* گارد مجوز اکشن: حتی اگر مهاجم دکمه را دستی بسازد، اکشن‌های تغییردهندهٔ
+     داده برای نقش‌های غیرمجاز اجرا نمی‌شوند. */
+  if(S.user && typeof canAction==='function' && !canAction(a)){
+    if(typeof toast==='function') toast('شما اجازهٔ انجام این عملیات را ندارید','err');
+    return;
+  }
   const A={
    pick(){ $('#lu').value=el.dataset.u; $('#lp').value='123456'; },
    login(){
@@ -2199,7 +2348,10 @@ document.addEventListener('click',e=>{
      render();},
    'att-all'(){const st=el.dataset.s,date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
-     studentsOfClass(cid).forEach(s=>{const ex=db.attendance.find(x=>x.student_id===s.id&&x.date===date);
+     const _am=(typeof idxAttByClassDate==='function')?idxAttByClassDate():null;
+     const _day=new Map();
+     if(_am)(_am.get(cid+'|'+date)||[]).forEach(a=>_day.set(a.student_id,a));
+     studentsOfClass(cid).forEach(s=>{const ex=_am?_day.get(s.id):db.attendance.find(x=>x.student_id===s.id&&x.date===date);
        if(ex)update('attendance',ex.id,{status:st});else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:s.id,date,status:st,note:null});});
      toast('همه دانش‌آموزان «'+ATT_FA[st]+'» ثبت شدند','ok');render();},
    // grades

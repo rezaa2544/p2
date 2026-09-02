@@ -43,6 +43,10 @@ function renderRoute(){
   /* دیوار پرداخت: در پنل اولیا بدون اشتراک فقط چند صفحه باز است */
   if(parentLocked()&&!['subscription','notifications','announcements'].includes(S.route))
     return viewLocked();
+  /* گارد مجوز: نقش فعلی فقط روت‌های مجاز خودش را می‌بیند.
+     بدون این بررسی، تغییر hash آدرس هر صفحه‌ای را باز می‌کرد. */
+  if(typeof canRoute==='function' && !canRoute(S.route))
+    return viewForbidden();
   switch(S.route){
     case 'subscription':return viewSubscription();
     case 'adminsubs':return viewAdminSubs();

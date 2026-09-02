@@ -10,6 +10,7 @@
   "26-curriculum.js",
   "27-sync.js",
   "06-login.js",
+  "30-authz.js",
   "07-shell.js",
   "08-dashboard.js",
   "09-schools.js",

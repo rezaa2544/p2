@@ -95,7 +95,12 @@ function studentSummary(sid){
   const subs=Object.entries(bySub).map(([id,l])=>({name:byId('subjects',Number(id)).name,avg:avgOf(l)})).sort((a,b)=>b.avg-a.avg);
   let rank=1,size=0;
   if(cls){const peers=studentsOfClass(cls.id);size=peers.length;
-    rank=1+peers.filter(p=>avgOf(db.grades.filter(g=>g.student_id===p.id))>avg).length;}
+    /* ایندکس نمره بر اساس دانش‌آموز: یک پیمایش به‌جای پیمایش کل جدول برای هر هم‌کلاسی */
+    const _gi=(typeof idxGradesByStudent==='function')?idxGradesByStudent():null;
+    rank=1+peers.filter(p=>{
+      const gl=_gi?(_gi.get(p.id)||[]):db.grades.filter(g=>g.student_id===p.id);
+      return avgOf(gl)>avg;
+    }).length;}
   return {st,cls,avg,att,disc,subs,rank,size,points:disc.reduce((a,b)=>a+b.points,0)};
 }
 
