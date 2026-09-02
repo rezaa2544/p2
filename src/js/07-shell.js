@@ -51,6 +51,9 @@ function renderRoute(){
     case 'subscription':return viewSubscription();
     case 'adminsubs':return viewAdminSubs();
     case 'lifecycle':return viewLifecycle();
+    case 'atrisk':return viewAtRisk();
+    case 'meetings':return viewMeetings();
+    case 'growth':return viewGrowth();
     case 'dashboard':return S.user.role==='edu_office'?viewOfficeDash():viewDashboard();
     case 'schools':return viewSchools();
     case 'users':return viewUsers();

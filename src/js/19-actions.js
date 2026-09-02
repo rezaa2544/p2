@@ -1,4 +1,6 @@
 /* ============================ actions ============================ */
+/** شناسهٔ نوبت انتخاب‌شده برای رزرو (بین باز شدن مودال و ثبت آن) */
+var SLOT_ID=null;
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el)return;
   const a=el.dataset.act, id=Number(el.dataset.id);
@@ -200,6 +202,95 @@ document.addEventListener('click',e=>{
      studentsOfClass(cid).forEach(s=>{const ex=_am?_day.get(s.id):db.attendance.find(x=>x.student_id===s.id&&x.date===date);
        if(ex)update('attendance',ex.id,{status:st});else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:s.id,date,status:st,note:null});});
      toast('همه دانش‌آموزان «'+ATT_FA[st]+'» ثبت شدند','ok');render();},
+   // ---- افت تحصیلی / جلسات اولیا / رشد مدرسه ----
+   'risk-notify'(){
+     const st=byId('users',id); if(!st)return;
+     const targets=[id].concat(db.parent_links.filter(l=>l.student_id===id).map(l=>l.parent_id));
+     batchWrites(()=>targets.forEach(uid=>insert('notifications',{user_id:uid,school_id:st.school_id,
+       type:'low_grade',title:'⚠️ هشدار وضعیت تحصیلی',
+       body:'وضعیت تحصیلی '+st.full_name+' نیازمند توجه است. لطفاً با مدرسه در تماس باشید.',
+       link:'record',read:0,created_at:todayISO()})));
+     toast('هشدار برای خانواده ارسال شد','ok');
+   },
+   'invite-parents'(){
+     const sid=S.user.school_id;
+     const parents=parentsOfSchool(sid).filter(p=>!subOf(p).active);
+     const school=byId('schools',sid)||{};
+     if(!parents.length){toast('همه اولیا اشتراک فعال دارند','ok');return;}
+     askConfirm('دعوت‌نامه برای '+fa(parents.length)+' ولی بدون اشتراک ارسال شود؟',()=>{
+       batchWrites(()=>parents.slice(0,300).forEach(p=>insert('notifications',{user_id:p,school_id:sid,
+         type:'announcement',title:'📱 دعوت به پنل اولیا',
+         body:'اولیای گرامی، با نصب پایش نمرات و حضور و غیاب فرزندتان را لحظه‌ای ببینید. '
+              +fa(subSettings().trial_days||0)+' روز رایگان — کد مدرسه: '+refCodeOf(school),
+         link:'subscription',read:0,created_at:todayISO()})));
+       toast('دعوت‌نامه برای '+fa(parents.length)+' ولی ارسال شد','ok'); render();
+     },{title:'ارسال دعوت‌نامه',ok:'ارسال'});
+   },
+   'mtg-new'(){
+     openModal(modalTpl('ساخت نوبت‌های جلسه',
+       '<div class="grid g2">'+f('تاریخ',jdate('ms_date',addDaysISO(todayISO(),3)))
+       +f('ساعت شروع',inp('ms_time','15:00','time'))
+       +f('مدت هر نوبت (دقیقه)',inp('ms_dur',15,'number'))
+       +f('تعداد نوبت',inp('ms_count',6,'number'))
+       +f('محل برگزاری',inp('ms_place','دفتر مدرسه'))+'</div>','mtg-save'));
+   },
+   'mtg-save'(){
+     const date=V('ms_date'), dur=Number(V('ms_dur'))||15, count=Math.min(40,Number(V('ms_count'))||6);
+     const parts=String(V('ms_time')||'15:00').split(':').map(Number);
+     let mins=(parts[0]||0)*60+(parts[1]||0), made=0;
+     const tid=S.user.role==='teacher'?S.user.id
+       :(db.users.find(u=>u.role==='teacher'&&u.school_id===S.user.school_id)||{}).id;
+     if(!tid){toast('دبیری در مدرسه نیست','err');return;}
+     if(!date){toast('تاریخ را وارد کنید','err');return;}
+     batchWrites(()=>{
+       for(let i=0;i<count;i++){
+         const t=toHHMMP(mins);
+         if(!db.meeting_slots.some(s=>s.teacher_id===tid&&s.date===date&&s.start_time===t)){
+           insert('meeting_slots',{school_id:S.user.school_id,teacher_id:tid,date,start_time:t,
+             duration:dur,location:V('ms_place'),status:'open',parent_id:null,student_id:null,
+             created_at:todayISO()});made++;
+         }
+         mins+=dur;
+       }
+     });
+     closeModal(); toast(fa(made)+' نوبت ساخته شد','ok'); render();
+   },
+   'mtg-book'(){
+     const kids=myKids();
+     if(!kids.length){toast('فرزندی ثبت نشده است','err');return;}
+     openModal(modalTpl('رزرو نوبت',
+       f('برای کدام فرزند؟',sel('bk_kid',kids.map(k=>[k.id,k.full_name])))
+       +f('موضوع گفتگو (اختیاری)',inp('bk_note','')),'mtg-book-ok'));
+     SLOT_ID=id;
+   },
+   'mtg-book-ok'(){
+     const slot=byId('meeting_slots',SLOT_ID);
+     if(!slot){toast('نوبت یافت نشد','err');return;}
+     if(slot.status!=='open'){toast('این نوبت دیگر آزاد نیست','err');render();return;}
+     if(db.meeting_slots.some(s=>s.parent_id===S.user.id&&s.date===slot.date&&s.status==='booked')){
+       toast('برای این روز قبلاً نوبت گرفته‌اید','err');return;}
+     update('meeting_slots',SLOT_ID,{status:'booked',parent_id:S.user.id,
+       student_id:Number(V('bk_kid'))||null,note:V('bk_note'),booked_at:todayISO()});
+     insert('notifications',{user_id:slot.teacher_id,school_id:slot.school_id,type:'announcement',
+       title:'📅 نوبت جلسه رزرو شد',
+       body:S.user.full_name+' برای '+jalali(slot.date)+' ساعت '+slot.start_time+' نوبت گرفت.',
+       link:'meetings',read:0,created_at:todayISO()});
+     closeModal(); toast('نوبت شما رزرو شد','ok'); render();
+   },
+   'mtg-cancel'(){
+     const s=byId('meeting_slots',id); if(!s)return;
+     askConfirm('نوبت '+jalali(s.date)+' ساعت '+s.start_time+' لغو شود؟',()=>{
+       if(s.parent_id)insert('notifications',{user_id:s.parent_id,school_id:s.school_id,
+         type:'announcement',title:'❌ لغو نوبت جلسه',
+         body:'نوبت '+jalali(s.date)+' ساعت '+s.start_time+' لغو شد.',link:'meetings',read:0,created_at:todayISO()});
+       update('meeting_slots',id,{status:'open',parent_id:null,student_id:null,note:null});
+       toast('نوبت لغو شد',''); render();
+     },{title:'لغو نوبت',ok:'لغو کن',danger:true});
+   },
+   'mtg-del'(){
+     askConfirm('این نوبت حذف شود؟',()=>{remove('meeting_slots',id);toast('حذف شد','');render();},
+       {title:'حذف نوبت',ok:'حذف',danger:true});
+   },
    // ---- چرخه تحصیلی ----
    'tr-box'(){S.filters.box=el.dataset.r;render();},
    'promote-run'(){

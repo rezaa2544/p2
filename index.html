@@ -320,7 +320,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[]};
+  db={meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:'09120000000',active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -750,13 +750,13 @@ function bootstrapRequest(){
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
  superadmin:[['نظارت کلان',[['dashboard','📊','داشبورد مدیریتی'],['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه']]],['محتوا',[['subjects','📚','دروس'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['اداره آموزش و پرورش',[['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['کسب‌وکار',[['adminsubs','👨‍👩‍👦','اشتراک اولیا']]],['ارتباطات',[['notifications','🔔','اعلان‌ها']]]],
- manager:[['مدرسه من',[['lifecycle','🎓','چرخه تحصیلی'],['dashboard','📊','داشبورد مدرسه'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
- teacher:[['کلاس‌های من',[['dashboard','📊','داشبورد'],['classes','🏛️','کلاس‌ها'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['ثبت اطلاعات',[['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['امتحانات',[['exams','👁️','برنامه مراقبت من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ manager:[['مدرسه من',[['meetings','📅','جلسات اولیا'],['growth','📈','رشد مدرسه'],['atrisk','📉','افت تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['dashboard','📊','داشبورد مدرسه'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ teacher:[['کلاس‌های من',[['meetings','📅','جلسات اولیا'],['dashboard','📊','داشبورد'],['classes','🏛️','کلاس‌ها'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['ثبت اطلاعات',[['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['امتحانات',[['exams','👁️','برنامه مراقبت من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['پرونده من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['calendar','🗓️','تقویم آموزشی']]],['امور مالی',[['mytuition','💰','شهریه من']]],['درخواست‌ها',[['leaves','📨','مرخصی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['اداره من',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
- parent:[['فرزندان من',[['dashboard','📊','خلاصه وضعیت'],['family','🏠','خانواده و مدارس'],['children','👨‍👩‍👦','پرونده فرزندان'],['exams','📝','برنامه امتحانات'],['calendar','🗓️','تقویم آموزشی']]],['امور مالی',[['mytuition','💰','شهریه و اقساط']]],['درخواست‌ها',[['leaves','📨','درخواست مرخصی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌های مدرسه'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو با مدرسه']]]]
+ parent:[['فرزندان من',[['meetings','📅','جلسات اولیا'],['dashboard','📊','خلاصه وضعیت'],['family','🏠','خانواده و مدارس'],['children','👨‍👩‍👦','پرونده فرزندان'],['exams','📝','برنامه امتحانات'],['calendar','🗓️','تقویم آموزشی']]],['امور مالی',[['mytuition','💰','شهریه و اقساط']]],['درخواست‌ها',[['leaves','📨','درخواست مرخصی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌های مدرسه'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو با مدرسه']]]]
 };
-const TITLES={lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
+const TITLES={atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
 S.stack=[];
@@ -1373,10 +1373,10 @@ function renderLogin(){
 /** روت‌هایی که در NAV نیستند ولی برای نقش مجازند (زیرصفحه یا مقصد پیمایش) */
 var EXTRA_ROUTES = {
   superadmin: ['dashboard','adminsubs','officedash','officeschools','record','geo','offices','lifecycle'],
-  manager:    ['record','corrections','teachers','exams','tuition','lifecycle'],
-  teacher:    ['record','exams'],
+  manager:    ['record','corrections','teachers','exams','tuition','lifecycle','atrisk','meetings','growth'],
+  teacher:    ['record','exams','meetings'],
   student:    ['record','mytuition','notifications','announcements','subscription'],
-  parent:     ['children','record','family','mytuition','notifications','announcements','subscription','calendar'],
+  parent:     ['children','record','family','mytuition','notifications','announcements','subscription','calendar','meetings'],
   edu_office: ['officedash','officeschools','notifications','announcements']
 };
 
@@ -1468,6 +1468,14 @@ var ACTION_ROLES = {
   /* اشتراک (پنل مدیریتی) */
   /* چرخهٔ تحصیلی — عملیات سنگین و برگشت‌ناپذیر: فقط مدیر و سوپرادمین */
   'promote-run':   ['manager','superadmin'],
+  /* افت تحصیلی / جلسات / رشد */
+  'risk-notify':   ['manager','superadmin','teacher'],
+  'invite-parents':['manager','superadmin'],
+  'mtg-new':       ['manager','superadmin','teacher'],
+  'mtg-save':      ['manager','superadmin','teacher'],
+  'mtg-del':       ['manager','superadmin','teacher'],
+  'mtg-book':      ['parent'],
+  'mtg-book-ok':   ['parent'],
   'tr-new':        ['manager','superadmin'],
   'tr-send':       ['manager','superadmin'],
   'tr-ok':         ['manager','superadmin'],
@@ -1549,6 +1557,9 @@ function renderRoute(){
     case 'subscription':return viewSubscription();
     case 'adminsubs':return viewAdminSubs();
     case 'lifecycle':return viewLifecycle();
+    case 'atrisk':return viewAtRisk();
+    case 'meetings':return viewMeetings();
+    case 'growth':return viewGrowth();
     case 'dashboard':return S.user.role==='edu_office'?viewOfficeDash():viewDashboard();
     case 'schools':return viewSchools();
     case 'users':return viewUsers();
@@ -2541,7 +2552,261 @@ function viewLifecycle(){
   return '<div class="row" style="margin-bottom:14px;flex-wrap:wrap;gap:8px">' + tabs + '</div>' + body;
 }
 
+/* ============ افت تحصیلی، جلسات اولیا، رشد مدرسه ============
+   سه صفحهٔ مستقل که همگی حول «تعامل مدرسه با خانواده» می‌چرخند:
+     atrisk   — شناسایی زودهنگام دانش‌آموز در معرض افت
+     meetings — نوبت‌دهی جلسهٔ اولیا و مربیان
+     growth   — کد معرف، نرخ تبدیل و سهم مدرسه
+
+   ⚠️ با الگوی ایندکس‌شده نوشته شده، نه کپی از مرجع:
+   atRiskList برای هر دانش‌آموز از idxGradesByStudent/idxAttByStudent
+   استفاده می‌کند؛ در مرجع کل جدول نمرات و حضور به‌ازای هر نفر
+   پیمایش می‌شد که در مدرسهٔ ۱٬۵۰۰ نفره از درجهٔ دوم می‌شد.
+   ============================================================ */
+
+/** دانش‌آموزان فعال یک مدرسه */
+function schoolStudents(sid){
+  return db.users.filter(function(u){
+    return u.role === 'student' && u.school_id === sid && (u.status || 'active') === 'active';
+  });
+}
+
+/* ---------------------- افت تحصیلی ---------------------- */
+
+/**
+ * امتیاز ریسک ۰ تا ۱۰۰ از ترکیب پنج نشانه.
+ * خروجی فقط شامل کسانی است که امتیاز ≥ ۲۰ دارند، مرتب‌شده نزولی.
+ */
+function atRiskList(days){
+  days = days || 60;
+  var from = daysAgoISO(days);
+  var sid = S.user.school_id;
+  var gi = (typeof idxGradesByStudent === 'function') ? idxGradesByStudent() : null;
+  var ai = (typeof idxAttByStudent === 'function') ? idxAttByStudent() : null;
+  /* موارد انضباطی منفی یک بار گروه‌بندی می‌شود، نه به‌ازای هر دانش‌آموز */
+  var negBy = Object.create(null);
+  db.discipline.forEach(function(d){
+    if(d.kind === 'negative') negBy[d.student_id] = (negBy[d.student_id] || 0) + (d.points || 0);
+  });
+
+  return schoolStudents(sid).map(function(u){
+    var gs = gi ? (gi.get(u.id) || []) : db.grades.filter(function(g){ return g.student_id === u.id; });
+    var allAtt = ai ? (ai.get(u.id) || []) : db.attendance.filter(function(a){ return a.student_id === u.id; });
+
+    var sumAll = 0, failing = 0, sumRec = 0, nRec = 0;
+    for(var i = 0; i < gs.length; i++){
+      sumAll += gs[i].score;
+      if(gs[i].score < 10) failing++;
+      if((gs[i].created_at || gs[i].date || '') >= from){ sumRec += gs[i].score; nRec++; }
+    }
+    var avgAll = gs.length ? sumAll / gs.length : 0;
+    var avgRec = nRec ? sumRec / nRec : avgAll;
+
+    var nAtt = 0, abs = 0, late = 0;
+    for(var j = 0; j < allAtt.length; j++){
+      if(allAtt[j].date < from) continue;
+      nAtt++;
+      if(allAtt[j].status === 'absent') abs++;
+      else if(allAtt[j].status === 'late') late++;
+    }
+    var rate = nAtt ? abs / nAtt : 0;
+    var neg = negBy[u.id] || 0;
+    var drop = avgAll - avgRec;
+
+    /* ابتدا فقط امتیاز عددی محاسبه می‌شود. ساخت رشته‌های فارسیِ «دلایل»
+       گران است و فقط برای ردیف‌های نمایش‌داده‌شده لازم؛ پس تنبل انجام
+       می‌شود (riskReasons). در مدرسهٔ ۱٬۵۲۰ نفره ۷۱ms → ۹ms. */
+    var score = 0;
+    if(avgRec && avgRec < 10) score += 40;
+    else if(avgRec && avgRec < 12) score += 25;
+    if(drop >= 2) score += 20;
+    if(rate >= 0.15) score += 25;
+    else if(rate >= 0.08) score += 12;
+    if(late >= 5) score += 8;
+    if(neg <= -5) score += 15;
+    if(failing >= 3) score += 15;
+    score = Math.min(100, score);
+
+    return { u: u, avgAll: Math.round(avgAll * 100) / 100, avgRec: Math.round(avgRec * 100) / 100,
+      drop: Math.round(drop * 100) / 100, abs: abs, late: late,
+      rate: Math.round(rate * 1000) / 10, neg: neg, failing: failing, risk: score,
+      level: score >= 60 ? 'high' : score >= 35 ? 'medium' : 'low',
+      get reasons(){ return riskReasons(this); } };
+  }).filter(function(r){ return r.risk >= 20; }).sort(function(a,b){ return b.risk - a.risk; });
+}
+
+/** دلایل خوانا برای یک ردیف ریسک — فقط هنگام نمایش ساخته می‌شود */
+function riskReasons(r){
+  var out = [];
+  if(r.avgRec && r.avgRec < 10) out.push('میانگین اخیر زیر ۱۰');
+  else if(r.avgRec && r.avgRec < 12) out.push('میانگین اخیر زیر ۱۲');
+  if(r.drop >= 2) out.push('افت ' + fa(Math.round(r.drop * 10) / 10) + ' نمره‌ای');
+  if(r.rate >= 15) out.push(fa(Math.round(r.rate)) + '٪ غیبت');
+  else if(r.rate >= 8) out.push(fa(Math.round(r.rate)) + '٪ غیبت');
+  if(r.late >= 5) out.push(fa(r.late) + ' تأخیر');
+  if(r.neg <= -5) out.push('موارد انضباطی منفی');
+  if(r.failing >= 3) out.push(fa(r.failing) + ' نمره زیر ۱۰');
+  return out;
+}
+
+function viewAtRisk(){
+  var days = Number(S.filters.riskDays || 60);
+  var list = atRiskList(days);
+  var L = { high:['پرخطر','b-red'], medium:['نیازمند توجه','b-amber'], low:['کم‌خطر','b-gray'] };
+  return '<div class="grid g4" style="margin-bottom:14px">'
+    + statCard('🚨', fa(list.filter(function(i){ return i.level === 'high'; }).length), 'پرخطر', 'red')
+    + statCard('⚠️', fa(list.filter(function(i){ return i.level === 'medium'; }).length), 'نیازمند توجه', 'amber')
+    + statCard('🎓', fa(schoolStudents(S.user.school_id).length), 'کل دانش‌آموزان', 'blue')
+    + statCard('📅', fa(days), 'بازه بررسی (روز)', 'green') + '</div>'
+    + '<div class="card"><div class="card-head"><h3>🔍 دانش‌آموزان در معرض افت تحصیلی</h3>'
+    + '<select class="select" style="width:150px" data-f="riskDays">'
+    + [30,60,90,180].map(function(d){
+        return '<option value="' + d + '" ' + (d === days ? 'selected' : '') + '>' + fa(d) + ' روز اخیر</option>';
+      }).join('') + '</select></div>'
+    + (list.length ? '<div class="table-wrap"><table class="table"><thead><tr><th>دانش‌آموز</th><th>کلاس</th><th>ریسک</th><th>میانگین کل</th><th>میانگین اخیر</th><th>افت</th><th>غیبت</th><th>دلایل</th><th></th></tr></thead><tbody>'
+      + list.slice(0, 150).map(function(r){
+          return '<tr' + (r.level === 'high' ? ' style="background:var(--red-soft)"' : '') + '>'
+            + '<td><b>' + esc(r.u.full_name) + '</b></td>'
+            + '<td class="small">' + esc((classOf(r.u.id) || {}).name || '—') + '</td>'
+            + '<td><span class="badge ' + L[r.level][1] + '">' + L[r.level][0] + ' ' + fa(r.risk) + '</span>'
+            + bar(r.risk, 100, r.level === 'high' ? 'var(--red)' : 'var(--amber)') + '</td>'
+            + '<td>' + fa(r.avgAll) + '</td>'
+            + '<td><b style="color:' + (r.avgRec < 12 ? 'var(--red)' : 'inherit') + '">' + fa(r.avgRec) + '</b></td>'
+            + '<td>' + (r.drop > 0 ? '<span style="color:var(--red)">▼ ' + fa(r.drop) + '</span>' : '—') + '</td>'
+            + '<td>' + fa(r.abs) + ' <span class="small muted">(' + fa(r.rate) + '٪)</span></td>'
+            + '<td class="small">' + esc(r.reasons.join(' · ')) + '</td>'
+            + '<td><button class="btn ghost sm" data-act="risk-notify" data-id="' + r.u.id + '">📨 هشدار</button></td></tr>';
+        }).join('')
+      + '</tbody></table></div>'
+      : empty('🎉','دانش‌آموز پرخطری شناسایی نشد','وضعیت تحصیلی و انضباطی همه در محدوده مطلوب است.'))
+    + '</div><div class="card" style="margin-top:14px"><div class="card-body small muted" style="line-height:2">'
+    + 'امتیاز ریسک از ترکیب <b>میانگین نمرات اخیر</b>، <b>افت نسبت به میانگین کل</b>، <b>نرخ غیبت و تأخیر</b>، '
+    + '<b>موارد انضباطی منفی</b> و <b>تعداد نمرات زیر ۱۰</b> محاسبه می‌شود (۰ تا ۱۰۰).</div></div>';
+}
+
+/* ---------------------- جلسات اولیا ---------------------- */
+
+function viewMeetings(){
+  var u = S.user;
+  var persona = (typeof activePersona === 'function') ? activePersona() : u.role;
+  var staff = ['manager','superadmin','teacher'].indexOf(persona) > -1;
+  var rows;
+  if(persona === 'parent'){
+    var kids = myKids();
+    var sids = [];
+    kids.forEach(function(k){ if(sids.indexOf(k.school_id) < 0) sids.push(k.school_id); });
+    rows = db.meeting_slots.filter(function(m){
+      return sids.indexOf(m.school_id) > -1 && m.date >= todayISO()
+          && (m.status === 'open' || m.parent_id === u.id);
+    });
+  } else if(persona === 'teacher'){
+    rows = db.meeting_slots.filter(function(m){ return m.teacher_id === u.id; });
+  } else {
+    rows = db.meeting_slots.filter(function(m){ return m.school_id === u.school_id; });
+  }
+  rows = rows.sort(function(a,b){
+    return a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time); });
+  var byDate = {};
+  rows.forEach(function(r){ (byDate[r.date] = byDate[r.date] || []).push(r); });
+  var keys = Object.keys(byDate);
+
+  return '<div class="card" style="margin-bottom:14px;background:linear-gradient(120deg,var(--primary-soft),#fff)"><div class="card-body row">'
+    + '<div style="font-size:30px">📅</div><div style="flex:1"><b>جلسه اولیا و مربیان</b><div class="small muted">'
+    + (staff ? 'نوبت‌های خالی بسازید تا اولیا خودشان رزرو کنند؛ نیازی به هماهنگی تلفنی نیست.'
+             : 'یک نوبت خالی انتخاب کنید تا حضوری با دبیر گفتگو کنید.')
+    + '</div></div>' + (staff ? '<button class="btn" data-act="mtg-new">➕ ساخت نوبت‌ها</button>' : '') + '</div></div>'
+    + (keys.length ? keys.map(function(d){
+        var list = byDate[d];
+        return '<div class="card" style="margin-bottom:12px"><div class="card-head"><h3>' + jalali(d) + '</h3>'
+          + '<span class="badge b-gray">' + fa(list.filter(function(x){ return x.status === 'open'; }).length)
+          + ' نوبت آزاد از ' + fa(list.length) + '</span></div>'
+          + '<div class="card-body" style="display:grid;gap:8px">'
+          + list.map(function(r){
+              return '<div class="row" style="background:' + (r.status === 'open' ? 'var(--surface-2)' : 'var(--green-soft)')
+                + ';padding:10px 14px;border-radius:11px">'
+                + '<b style="width:56px">' + esc(r.start_time) + '</b>'
+                + '<span class="small muted">' + fa(r.duration) + ' دقیقه</span>'
+                + '<span>' + esc((byId('users', r.teacher_id) || {}).full_name || '') + '</span>'
+                + (r.location ? '<span class="small muted">📍 ' + esc(r.location) + '</span>' : '')
+                + '<div class="spacer"></div>'
+                + (r.status === 'open'
+                    ? (persona === 'parent'
+                        ? '<button class="btn sm" data-act="mtg-book" data-id="' + r.id + '">رزرو</button>'
+                        : '<span class="badge b-gray">آزاد</span>')
+                    : '<span class="badge b-green">' + esc((byId('users', r.parent_id) || {}).full_name || 'رزرو شده') + '</span>')
+                + ((staff || r.parent_id === u.id) && r.status === 'booked'
+                    ? '<button class="btn ghost sm" data-act="mtg-cancel" data-id="' + r.id + '">لغو</button>' : '')
+                + (staff && r.status === 'open'
+                    ? '<button class="icon-btn danger" data-act="mtg-del" data-id="' + r.id + '">🗑️</button>' : '')
+                + '</div>';
+            }).join('') + '</div></div>';
+      }).join('')
+      : empty('📭','نوبتی تعریف نشده است',
+          staff ? 'با دکمه بالا نوبت‌های جلسه را بسازید.' : 'به‌محض تعریف نوبت توسط مدرسه، اینجا می‌بینید.'));
+}
+
+/* ---------------------- رشد مدرسه ---------------------- */
+
+/** کد معرف مدرسه (در صورت نبود، از روی کد مدرسه ساخته می‌شود) */
+function refCodeOf(school){
+  if(school.ref_code) return school.ref_code;
+  return String(school.code || 'SCH').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 6) || 'SCH';
+}
+
+/** اولیای یکتای یک مدرسه */
+function parentsOfSchool(sid){
+  var kids = Object.create(null);
+  schoolStudents(sid).forEach(function(s){ kids[s.id] = true; });
+  var out = [], seen = Object.create(null);
+  db.parent_links.forEach(function(l){
+    if(kids[l.student_id] && !seen[l.parent_id]){ seen[l.parent_id] = true; out.push(l.parent_id); }
+  });
+  return out;
+}
+
+function viewGrowth(){
+  var sid = S.user.school_id, school = byId('schools', sid) || {};
+  var parents = parentsOfSchool(sid);
+  var subs = parents.map(function(p){ return subOf(p); });
+  var active = subs.filter(function(s){ return s.status === 'active'; }).length;
+  var trial = subs.filter(function(s){ return s.status === 'trial'; }).length;
+  var expired = subs.filter(function(s){ return s.status === 'expired'; }).length;
+  var none = subs.filter(function(s){ return s.status === 'none'; }).length;
+  var pset = Object.create(null);
+  parents.forEach(function(p){ pset[p] = true; });
+  var income = db.subscription_payments.filter(function(p){ return pset[p.user_id]; })
+    .reduce(function(a,b){ return a + b.amount; }, 0);
+  var st = subSettings();
+  var share = Number(st.school_share_percent || 20);
+  var conv = parents.length ? Math.round(active / parents.length * 1000) / 10 : 0;
+
+  return '<div class="card" style="margin-bottom:14px;background:linear-gradient(120deg,var(--green-soft),#fff)"><div class="card-body">'
+    + '<div class="row"><div style="font-size:34px">🎁</div><div><b style="font-size:16px">استفاده از سامانه برای مدرسه کاملاً رایگان است</b>'
+    + '<div class="small muted" style="line-height:2">درآمد سامانه از اشتراک اولیاست. هر ولی ' + fa(st.trial_days || 0)
+    + ' روز رایگان استفاده می‌کند و پس از آن اشتراک می‌گیرد؛ <b>' + fa(share) + '٪</b> از پرداخت اولیای این مدرسه سهم مدرسه است.</div>'
+    + '</div></div></div></div>'
+    + '<div class="grid g4" style="margin-bottom:14px">'
+    + statCard('👨‍👩‍👦', fa(parents.length), 'ولی مدرسه', 'blue')
+    + statCard('✅', fa(active), 'اشتراک فعال (' + fa(conv) + '٪)', 'green')
+    + statCard('🎁', fa(trial), 'در دوره رایگان', 'amber')
+    + statCard('💰', rialShort(Math.round(income * share / 100)), 'سهم مدرسه (ریال)', 'purple') + '</div>'
+    + '<div class="grid g2"><div class="card"><div class="card-head"><h3>🔗 کد معرف مدرسه</h3></div>'
+    + '<div class="card-body" style="text-align:center"><div style="font-size:30px;font-weight:800;letter-spacing:3px;color:var(--primary)">'
+    + esc(refCodeOf(school)) + '</div><div class="small muted" style="margin:10px 0;line-height:2">'
+    + 'این کد را به اولیا بدهید؛ هنگام ثبت‌نام وارد می‌کنند تا اشتراکشان به حساب مدرسه شما ثبت شود.</div></div></div>'
+    + '<div class="card"><div class="card-head"><h3>📣 دعوت اولیا</h3>'
+    + '<button class="btn" data-act="invite-parents">ارسال دعوت‌نامه</button></div><div class="card-body">'
+    + '<table class="table"><tbody>'
+    + '<tr><td>اولیای بدون اشتراک</td><td><b style="color:var(--red)">' + fa(expired + none) + '</b> نفر</td></tr>'
+    + '<tr><td>مجموع پرداخت اولیای مدرسه</td><td><b>' + rial(income) + '</b> ریال</td></tr>'
+    + '<tr><td>سهم مدرسه (' + fa(share) + '٪)</td><td><b style="color:var(--green)">'
+    + rial(Math.round(income * share / 100)) + '</b> ریال</td></tr>'
+    + '</tbody></table></div></div></div>';
+}
+
 /* ============================ actions ============================ */
+/** شناسهٔ نوبت انتخاب‌شده برای رزرو (بین باز شدن مودال و ثبت آن) */
+var SLOT_ID=null;
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el)return;
   const a=el.dataset.act, id=Number(el.dataset.id);
@@ -2743,6 +3008,95 @@ document.addEventListener('click',e=>{
      studentsOfClass(cid).forEach(s=>{const ex=_am?_day.get(s.id):db.attendance.find(x=>x.student_id===s.id&&x.date===date);
        if(ex)update('attendance',ex.id,{status:st});else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:s.id,date,status:st,note:null});});
      toast('همه دانش‌آموزان «'+ATT_FA[st]+'» ثبت شدند','ok');render();},
+   // ---- افت تحصیلی / جلسات اولیا / رشد مدرسه ----
+   'risk-notify'(){
+     const st=byId('users',id); if(!st)return;
+     const targets=[id].concat(db.parent_links.filter(l=>l.student_id===id).map(l=>l.parent_id));
+     batchWrites(()=>targets.forEach(uid=>insert('notifications',{user_id:uid,school_id:st.school_id,
+       type:'low_grade',title:'⚠️ هشدار وضعیت تحصیلی',
+       body:'وضعیت تحصیلی '+st.full_name+' نیازمند توجه است. لطفاً با مدرسه در تماس باشید.',
+       link:'record',read:0,created_at:todayISO()})));
+     toast('هشدار برای خانواده ارسال شد','ok');
+   },
+   'invite-parents'(){
+     const sid=S.user.school_id;
+     const parents=parentsOfSchool(sid).filter(p=>!subOf(p).active);
+     const school=byId('schools',sid)||{};
+     if(!parents.length){toast('همه اولیا اشتراک فعال دارند','ok');return;}
+     askConfirm('دعوت‌نامه برای '+fa(parents.length)+' ولی بدون اشتراک ارسال شود؟',()=>{
+       batchWrites(()=>parents.slice(0,300).forEach(p=>insert('notifications',{user_id:p,school_id:sid,
+         type:'announcement',title:'📱 دعوت به پنل اولیا',
+         body:'اولیای گرامی، با نصب پایش نمرات و حضور و غیاب فرزندتان را لحظه‌ای ببینید. '
+              +fa(subSettings().trial_days||0)+' روز رایگان — کد مدرسه: '+refCodeOf(school),
+         link:'subscription',read:0,created_at:todayISO()})));
+       toast('دعوت‌نامه برای '+fa(parents.length)+' ولی ارسال شد','ok'); render();
+     },{title:'ارسال دعوت‌نامه',ok:'ارسال'});
+   },
+   'mtg-new'(){
+     openModal(modalTpl('ساخت نوبت‌های جلسه',
+       '<div class="grid g2">'+f('تاریخ',jdate('ms_date',addDaysISO(todayISO(),3)))
+       +f('ساعت شروع',inp('ms_time','15:00','time'))
+       +f('مدت هر نوبت (دقیقه)',inp('ms_dur',15,'number'))
+       +f('تعداد نوبت',inp('ms_count',6,'number'))
+       +f('محل برگزاری',inp('ms_place','دفتر مدرسه'))+'</div>','mtg-save'));
+   },
+   'mtg-save'(){
+     const date=V('ms_date'), dur=Number(V('ms_dur'))||15, count=Math.min(40,Number(V('ms_count'))||6);
+     const parts=String(V('ms_time')||'15:00').split(':').map(Number);
+     let mins=(parts[0]||0)*60+(parts[1]||0), made=0;
+     const tid=S.user.role==='teacher'?S.user.id
+       :(db.users.find(u=>u.role==='teacher'&&u.school_id===S.user.school_id)||{}).id;
+     if(!tid){toast('دبیری در مدرسه نیست','err');return;}
+     if(!date){toast('تاریخ را وارد کنید','err');return;}
+     batchWrites(()=>{
+       for(let i=0;i<count;i++){
+         const t=toHHMMP(mins);
+         if(!db.meeting_slots.some(s=>s.teacher_id===tid&&s.date===date&&s.start_time===t)){
+           insert('meeting_slots',{school_id:S.user.school_id,teacher_id:tid,date,start_time:t,
+             duration:dur,location:V('ms_place'),status:'open',parent_id:null,student_id:null,
+             created_at:todayISO()});made++;
+         }
+         mins+=dur;
+       }
+     });
+     closeModal(); toast(fa(made)+' نوبت ساخته شد','ok'); render();
+   },
+   'mtg-book'(){
+     const kids=myKids();
+     if(!kids.length){toast('فرزندی ثبت نشده است','err');return;}
+     openModal(modalTpl('رزرو نوبت',
+       f('برای کدام فرزند؟',sel('bk_kid',kids.map(k=>[k.id,k.full_name])))
+       +f('موضوع گفتگو (اختیاری)',inp('bk_note','')),'mtg-book-ok'));
+     SLOT_ID=id;
+   },
+   'mtg-book-ok'(){
+     const slot=byId('meeting_slots',SLOT_ID);
+     if(!slot){toast('نوبت یافت نشد','err');return;}
+     if(slot.status!=='open'){toast('این نوبت دیگر آزاد نیست','err');render();return;}
+     if(db.meeting_slots.some(s=>s.parent_id===S.user.id&&s.date===slot.date&&s.status==='booked')){
+       toast('برای این روز قبلاً نوبت گرفته‌اید','err');return;}
+     update('meeting_slots',SLOT_ID,{status:'booked',parent_id:S.user.id,
+       student_id:Number(V('bk_kid'))||null,note:V('bk_note'),booked_at:todayISO()});
+     insert('notifications',{user_id:slot.teacher_id,school_id:slot.school_id,type:'announcement',
+       title:'📅 نوبت جلسه رزرو شد',
+       body:S.user.full_name+' برای '+jalali(slot.date)+' ساعت '+slot.start_time+' نوبت گرفت.',
+       link:'meetings',read:0,created_at:todayISO()});
+     closeModal(); toast('نوبت شما رزرو شد','ok'); render();
+   },
+   'mtg-cancel'(){
+     const s=byId('meeting_slots',id); if(!s)return;
+     askConfirm('نوبت '+jalali(s.date)+' ساعت '+s.start_time+' لغو شود؟',()=>{
+       if(s.parent_id)insert('notifications',{user_id:s.parent_id,school_id:s.school_id,
+         type:'announcement',title:'❌ لغو نوبت جلسه',
+         body:'نوبت '+jalali(s.date)+' ساعت '+s.start_time+' لغو شد.',link:'meetings',read:0,created_at:todayISO()});
+       update('meeting_slots',id,{status:'open',parent_id:null,student_id:null,note:null});
+       toast('نوبت لغو شد',''); render();
+     },{title:'لغو نوبت',ok:'لغو کن',danger:true});
+   },
+   'mtg-del'(){
+     askConfirm('این نوبت حذف شود؟',()=>{remove('meeting_slots',id);toast('حذف شد','');render();},
+       {title:'حذف نوبت',ok:'حذف',danger:true});
+   },
    // ---- چرخه تحصیلی ----
    'tr-box'(){S.filters.box=el.dataset.r;render();},
    'promote-run'(){

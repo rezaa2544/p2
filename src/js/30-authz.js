@@ -17,10 +17,10 @@
 /** روت‌هایی که در NAV نیستند ولی برای نقش مجازند (زیرصفحه یا مقصد پیمایش) */
 var EXTRA_ROUTES = {
   superadmin: ['dashboard','adminsubs','officedash','officeschools','record','geo','offices','lifecycle'],
-  manager:    ['record','corrections','teachers','exams','tuition','lifecycle'],
-  teacher:    ['record','exams'],
+  manager:    ['record','corrections','teachers','exams','tuition','lifecycle','atrisk','meetings','growth'],
+  teacher:    ['record','exams','meetings'],
   student:    ['record','mytuition','notifications','announcements','subscription'],
-  parent:     ['children','record','family','mytuition','notifications','announcements','subscription','calendar'],
+  parent:     ['children','record','family','mytuition','notifications','announcements','subscription','calendar','meetings'],
   edu_office: ['officedash','officeschools','notifications','announcements']
 };
 
@@ -112,6 +112,14 @@ var ACTION_ROLES = {
   /* اشتراک (پنل مدیریتی) */
   /* چرخهٔ تحصیلی — عملیات سنگین و برگشت‌ناپذیر: فقط مدیر و سوپرادمین */
   'promote-run':   ['manager','superadmin'],
+  /* افت تحصیلی / جلسات / رشد */
+  'risk-notify':   ['manager','superadmin','teacher'],
+  'invite-parents':['manager','superadmin'],
+  'mtg-new':       ['manager','superadmin','teacher'],
+  'mtg-save':      ['manager','superadmin','teacher'],
+  'mtg-del':       ['manager','superadmin','teacher'],
+  'mtg-book':      ['parent'],
+  'mtg-book-ok':   ['parent'],
   'tr-new':        ['manager','superadmin'],
   'tr-send':       ['manager','superadmin'],
   'tr-ok':         ['manager','superadmin'],

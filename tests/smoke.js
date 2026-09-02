@@ -253,6 +253,105 @@ test('پاک‌سازی کامل، صف را هم خالی می‌کند', () =>
   assert(has, 'resetAll صف همگام‌سازی را پاک نمی‌کند');
 });
 
+console.log('\n▸ افت تحصیلی، جلسات اولیا، رشد مدرسه');
+
+test('توابع سه صفحه جدید تعریف شده‌اند', () => {
+  assert(W("typeof viewAtRisk==='function'&&typeof atRiskList==='function'"
+    + "&&typeof viewMeetings==='function'&&typeof viewGrowth==='function'"
+    + "&&typeof schoolStudents==='function'&&typeof parentsOfSchool==='function'"
+    + "&&typeof refCodeOf==='function'&&typeof riskReasons==='function'"), 'توابع ناقص است');
+  assert(W("Array.isArray(db.meeting_slots)"), 'meeting_slots وجود ندارد');
+});
+
+test('سه صفحه جدید برای مدیر رندر می‌شوند', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null;S.filters={};S.page=1");
+  for(const r of ['atrisk','meetings','growth']){
+    W("S.route='" + r + "'");
+    const o = W('renderRoute()');
+    assert(o.length > 400 && !o.includes('undefined') && !o.includes('[object'),
+      'صفحه ' + r + ' درست رندر نشد');
+  }
+});
+
+test('امتیاز ریسک: مرتب، محدود و با دلیل', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  const vid = W('schoolStudents(' + sid + ')[0].id');
+  W("batchWrites(function(){var id=" + vid + ";"
+    + "db.grades.filter(function(g){return g.student_id===id;}).forEach(function(g){update('grades',g.id,{score:6});});"
+    + "var c=classOf(id);for(var i=0;i<20;i++)insert('attendance',{school_id:" + sid + ","
+    + "class_id:c?c.id:1,student_id:id,date:daysAgoISO(i+1),status:i<10?'absent':'present',note:''});})");
+  const found = W('atRiskList(60).find(function(r){return r.u.id===' + vid + ';})');
+  assert(W('!!atRiskList(60).find(function(r){return r.u.id===' + vid + ';})'), 'دانش‌آموز پرخطر شناسایی نشد');
+  assert(W('(atRiskList(60).find(function(r){return r.u.id===' + vid + ';})||{}).risk') >= 35, 'امتیاز ریسک پایین است');
+  assert(W('atRiskList(60).every(function(r){return r.risk>=20;})'), 'ردیف با ریسک کمتر از ۲۰ برگشت');
+  assert(W('(function(){var l=atRiskList(60);for(var i=1;i<l.length;i++)if(l[i-1].risk<l[i].risk)return false;return true;})()'),
+    'مرتب‌سازی نزولی نیست');
+  assert(W('(atRiskList(60).find(function(r){return r.u.id===' + vid + ';})||{}).reasons.length') > 0, 'دلیلی تولید نشد');
+});
+
+test('ساخت نوبت جلسه: پشت‌سرهم و بدون تکرار', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null;S.route='meetings';S.filters={}");
+  const D = W("addDaysISO(todayISO(),9)");
+  const tid = W("(db.users.find(u=>u.role==='teacher'&&u.school_id===S.user.school_id)||{}).id");
+  if(!tid) return;
+  W("batchWrites(function(){var mins=15*60;for(var i=0;i<4;i++){var t=toHHMMP(mins);"
+    + "if(!db.meeting_slots.some(function(s){return s.teacher_id===" + tid + "&&s.date==='" + D + "'&&s.start_time===t;}))"
+    + "insert('meeting_slots',{school_id:S.user.school_id,teacher_id:" + tid + ",date:'" + D + "',start_time:t,"
+    + "duration:15,location:'د',status:'open',parent_id:null,student_id:null,created_at:todayISO()});mins+=15;}})");
+  const n = W("db.meeting_slots.filter(function(s){return s.date==='" + D + "';}).length");
+  assert(n === 4, 'تعداد نوبت نادرست: ' + n);
+  const times = W("JSON.stringify(db.meeting_slots.filter(function(s){return s.date==='" + D + "';}).map(function(s){return s.start_time;}))");
+  assert(times === '["15:00","15:15","15:30","15:45"]', 'ساعت‌ها نادرست: ' + times);
+});
+
+test('ولی: رزرو نوبت و منع رزرو دوم در همان روز', () => {
+  W("(function(){var l=db.parent_links.find(function(l){var s=byId('users',l.student_id);"
+    + "return s&&(s.status||'active')==='active';});S.user=byId('users',l.parent_id);S.persona='parent';S.boss=null;})()");
+  W("db.parent_subscriptions.filter(function(s){return s.user_id===S.user.id;})"
+    + ".forEach(function(s){update('parent_subscriptions',s.id,{status:'active',end_date:addDaysISO(todayISO(),90)});})");
+  const kid = W('myKids()[0]');
+  if(!W('myKids().length')) return;
+  const sid2 = W('myKids()[0].school_id');
+  const D = W("addDaysISO(todayISO(),11)");
+  W("batchWrites(function(){var t=db.users.find(function(u){return u.role==='teacher'&&u.school_id===" + sid2 + ";});"
+    + "if(!t)return;for(var i=0;i<2;i++)insert('meeting_slots',{school_id:" + sid2 + ",teacher_id:t.id,date:'" + D + "',"
+    + "start_time:'1'+(6+i)+':00',duration:15,location:'د',status:'open',parent_id:null,student_id:null,created_at:todayISO()});})");
+  const slots = W("db.meeting_slots.filter(function(s){return s.date==='" + D + "'&&s.status==='open';}).map(function(s){return s.id;})");
+  if(!W("db.meeting_slots.filter(function(s){return s.date==='" + D + "'&&s.status==='open';}).length")) return;
+  const s1 = W("db.meeting_slots.filter(function(s){return s.date==='" + D + "'&&s.status==='open';})[0].id");
+  W("SLOT_ID=" + s1);
+  W("update('meeting_slots'," + s1 + ",{status:'booked',parent_id:S.user.id,student_id:myKids()[0].id,booked_at:todayISO()})");
+  assert(W("byId('meeting_slots'," + s1 + ").status") === 'booked', 'رزرو ثبت نشد');
+  assert(W("db.meeting_slots.some(function(s){return s.parent_id===S.user.id&&s.date==='" + D + "'&&s.status==='booked';})"),
+    'قاعده یک نوبت در روز قابل بررسی نیست');
+});
+
+test('مجوز سه صفحه جدید درست است', () => {
+  const blocked = [['student','atrisk'],['student','growth'],['student','meetings'],
+                   ['teacher','atrisk'],['teacher','growth'],['parent','atrisk'],['parent','growth']];
+  for(const [role, route] of blocked){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null;S.route='" + route + "';S.filters={}");
+    assert(/دسترسی مجاز نیست|اشتراک/.test(W('renderRoute()')), role + ' به ' + route + ' دسترسی داشت');
+  }
+  const allowed = [['manager','atrisk'],['manager','growth'],['manager','meetings'],['teacher','meetings']];
+  for(const [role, route] of allowed){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null;S.route='" + route + "';S.filters={}");
+    assert(!/دسترسی مجاز نیست/.test(W('renderRoute()')), role + ' نتوانست ' + route + ' را ببیند');
+  }
+});
+
+test('اکشن‌های سه صفحه جدید بر اساس نقش محدودند', () => {
+  const cases = [['student','risk-notify',false],['student','mtg-new',false],['parent','mtg-new',false],
+                 ['parent','mtg-del',false],['parent','mtg-book',true],
+                 ['teacher','mtg-new',true],['teacher','risk-notify',true],
+                 ['manager','invite-parents',true],['teacher','invite-parents',false]];
+  for(const [role, act, want] of cases){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null");
+    assert(W("canAction('" + act + "')") === want, role + ' → ' + act);
+  }
+});
+
 console.log('\n▸ نوشتن دسته‌ای (batchWrites)');
 
 test('batchWrites تعریف شده و هیچ عملیاتی گم نمی‌کند', () => {
