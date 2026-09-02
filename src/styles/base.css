@@ -263,3 +263,16 @@ body::-webkit-scrollbar-thumb{ background:#c3ccdb;border-radius:8px }
 .modal::-webkit-scrollbar-thumb:hover,
 .table-wrap::-webkit-scrollbar-thumb:hover,
 body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
+
+/* ---------- انتخابگر شاخه و رشتهٔ مدرسهٔ متوسطه دوم ---------- */
+.branch-card{border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:9px;background:var(--surface-2);transition:border-color .15s,background .15s}
+.branch-card.on{border-color:var(--primary);background:var(--primary-soft)}
+.branch-head{display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none}
+.branch-head input{width:17px;height:17px;accent-color:var(--primary);cursor:pointer;flex:none}
+.branch-head b{font-size:14.5px}
+.branch-head .small{margin-inline-start:auto}
+.branch-fields{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border-strong)}
+.field-chip{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid var(--border);border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:600;cursor:pointer;user-select:none;transition:border-color .15s,background .15s}
+.field-chip:hover{border-color:var(--border-strong)}
+.field-chip.on{border-color:var(--primary);background:var(--primary-soft);color:var(--primary-dark)}
+.field-chip input{width:14px;height:14px;accent-color:var(--primary);cursor:pointer}

@@ -12,7 +12,15 @@ const CITIES=['تهران','مشهد','اصفهان','شیراز','تبریز','
 const SUBJ=[['ریاضی','MATH',5],['علوم تجربی','SCI',4],['فیزیک','PHY',4],['شیمی','CHM',3],['ادبیات فارسی','LIT',4],['عربی','ARB',2],['زبان انگلیسی','ENG',3],['مطالعات اجتماعی','SOC',2],['دین و زندگی','REL',2],['هنر','ART',1],['تربیت بدنی','PE',2],['رایانه','CS',2]];
 const POS=[['مشارکت فعال در کلاس',5],['کمک به همکلاسی',4],['نظم و انضباط نمونه',5],['رتبه برتر مسابقات علمی',10],['حضور در فعالیت فرهنگی',6]];
 const NEG=[['تأخیر در ورود به کلاس',-3],['بی‌نظمی در کلاس',-5],['انجام‌ندادن تکالیف',-4],['استفاده از تلفن همراه',-6],['غیبت غیرموجه',-8]];
-const SCHOOL_DEFS=[['دبیرستان شهید بهشتی','SH-101','متوسطه دوم','پسرانه'],['دبیرستان فرزانگان','FZ-102','متوسطه دوم','دخترانه'],['مدرسه نمونه علامه حلی','AH-103','متوسطه اول','پسرانه'],['دبیرستان مریم مقدس','MM-104','متوسطه اول','دخترانه'],['مجتمع آموزشی ایران‌زمین','IZ-105','متوسطه دوم','پسرانه'],['دبستان و متوسطه اندیشه','AN-106','متوسطه اول','دخترانه']];
+/* عنصر پنجم: شاخه‌های متوسطه دوم. مدارس غیرمتوسطه‌دوم آرایهٔ خالی دارند.
+   «مجتمع ایران‌زمین» عمداً دو شاخه دارد تا حالت چندشاخه‌ای آزموده شود. */
+const SCHOOL_DEFS=[
+  ['دبیرستان شهید بهشتی','SH-101','متوسطه دوم','پسرانه',['نظری']],
+  ['دبیرستان فرزانگان','FZ-102','متوسطه دوم','دخترانه',['نظری']],
+  ['مدرسه نمونه علامه حلی','AH-103','متوسطه اول','پسرانه',[]],
+  ['دبیرستان مریم مقدس','MM-104','متوسطه اول','دخترانه',[]],
+  ['مجتمع آموزشی ایران‌زمین','IZ-105','متوسطه دوم','پسرانه',['فنی و حرفه‌ای','کاردانش']],
+  ['دبستان و متوسطه اندیشه','AN-106','متوسطه اول','دخترانه',[]]];
 
 let db, ids={};
 const nid=()=>String(1000000000+Math.floor(rng()*899999999));
@@ -40,8 +48,10 @@ function generate(){
   const dates=schoolDays(20);
   let sCount=0;
   SCHOOL_DEFS.forEach((def,si)=>{
-    const [name,code,level,gender]=def, city=CITIES[si%CITIES.length];
-    const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:'0'+(21+si)+(30000000+ri(9999999)),level,gender,capacity:400+ri(200),active:si===5?0:1,created_at:daysAgoISO(500-si*20)});
+    const [name,code,level,gender,branches]=def, city=CITIES[si%CITIES.length];
+    /* رشته‌های مدرسه = همهٔ رشته‌های شاخه‌هایی که ارائه می‌دهد */
+    const sFields=(branches||[]).reduce((a,b)=>a.concat(fieldsOfBranch(b)),[]);
+    const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:'0'+(21+si)+(30000000+ri(9999999)),level,gender,branches:branches||[],fields:sFields,capacity:400+ri(200),active:si===5?0:1,created_at:daysAgoISO(500-si*20)});
     const first = gender==='پسرانه'?MALE:FEMALE;
     const manager=add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'manager'+(si+1),password:'123456',national_id:nid(),phone:'0912'+(1000000+ri(8999999)),active:1,title:'مدیر مدرسه',created_at:daysAgoISO(480)});
     add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'deputy'+(si+1),password:'123456',national_id:nid(),phone:'0912'+(1000000+ri(8999999)),active:1,title:'معاون آموزشی',created_at:daysAgoISO(470)});

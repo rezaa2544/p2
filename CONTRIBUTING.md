@@ -304,3 +304,17 @@ node build.js --check    # یکسانی بیت‌به‌بیت
 | دبیر | `teacher1_1` |
 | دانش‌آموز | `student1` |
 | ولی | `parent1` · چندفرزندی: `parent_multi` |
+
+
+## شاخه و رشتهٔ متوسطه دوم
+
+| می‌خواهم… | فایل |
+|---|---|
+| شاخه یا رشته‌ای اضافه/کم کنم | `src/js/26-curriculum.js` → `BRANCHES` |
+| ظاهر انتخابگر را عوض کنم | `src/js/18-modals.js` → `branchPicker()` |
+| قاعدهٔ ذخیره را تغییر دهم | `src/js/19-actions.js` → `school-save` |
+| رفتار تیک‌ها را عوض کنم | `src/js/19-actions.js` → شنوندهٔ `change` |
+| ظاهر کارت‌ها و نشان‌ها | `src/styles/base.css` → `.branch-card` |
+
+⚠️ افزودن شاخهٔ تازه به `BRANCHES` خودکار در همهٔ فرم‌ها ظاهر می‌شود؛
+جای دیگری دست نزنید.

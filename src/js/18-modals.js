@@ -28,6 +28,36 @@ function officeForDistrict(pid,cid,did){
       || db.offices.find(o=>o.county_id&&o.county_id===Number(cid)&&!o.district_id)
       || db.offices.find(o=>o.province_id&&o.province_id===Number(pid)&&!o.county_id)||null;
 }
+/* ---------- انتخابگر شاخه و رشتهٔ مدرسهٔ متوسطه دوم ----------
+   یک مدرسه می‌تواند هم‌زمان چند شاخه داشته باشد (مثلاً هنرستانی که
+   هم فنی و حرفه‌ای دارد هم کاردانش). پس چندانتخابی است، نه تک‌انتخابی.
+   رشته‌های هر شاخه فقط وقتی نمایش داده می‌شوند که آن شاخه تیک خورده باشد. */
+function branchPicker(s){
+  const on = Array.isArray(s.branches) ? s.branches : [];
+  const fields = Array.isArray(s.fields) ? s.fields : [];
+  let h = '<div class="sec-title">🎓 شاخه‌ها و رشته‌های متوسطه دوم</div>'
+        + '<div class="small muted" style="margin:-4px 0 10px">'
+        + 'شاخه‌هایی که این مدرسه ارائه می‌دهد را انتخاب کنید. یک مدرسه می‌تواند چند شاخه داشته باشد.</div>';
+  Object.keys(BRANCHES).forEach(function(b){
+    const checked = on.indexOf(b) >= 0;
+    h += '<div class="branch-card' + (checked ? ' on' : '') + '" data-branch="' + esc(b) + '">'
+       +   '<label class="branch-head">'
+       +     '<input type="checkbox" class="m-branch" value="' + esc(b) + '"' + (checked ? ' checked' : '') + '>'
+       +     '<b>' + esc(b) + '</b>'
+       +     '<span class="small muted">' + fieldsOfBranch(b).length + ' رشته</span>'
+       +   '</label>'
+       +   '<div class="branch-fields" style="display:' + (checked ? 'flex' : 'none') + '">';
+    fieldsOfBranch(b).forEach(function(x){
+      const fc = fields.indexOf(x) >= 0;
+      h += '<label class="field-chip' + (fc ? ' on' : '') + '">'
+         +   '<input type="checkbox" class="m-field" data-branch="' + esc(b) + '" value="' + esc(x) + '"' + (fc ? ' checked' : '') + '>'
+         +   esc(x) + '</label>';
+    });
+    h += '</div></div>';
+  });
+  return h;
+}
+
 function schoolModal(s){
   s=s||{name:'',code:'',city:'',phone:'',landline:'',level:'متوسطه اول',gender:'پسرانه',capacity:300,active:1,address:'',
         province_id:'',county_id:'',district_id:''};
@@ -49,6 +79,7 @@ function schoolModal(s){
       ${f('تلفن همراه رابط',inp('m_phone',s.phone||''))}
       ${f('ظرفیت',inp('m_cap',s.capacity,'number'))}
       ${f('وضعیت',sel('m_active',[[1,'فعال'],[0,'غیرفعال']],s.active?1:0))}</div>
+    <div id="m_branch_box" style="display:${s.level==='متوسطه دوم'?'block':'none'}">${branchPicker(s)}</div>
     ${f('آدرس',`<textarea class="input" id="m_addr" rows="2">${esc(s.address||'')}</textarea>`)}
     <div class="sec-title">👤 مشخصات مدیر مدرسه ${mgr?'':'<span class="small muted">(حساب کاربری او ساخته می‌شود)</span>'}</div>
     <div class="grid g2">

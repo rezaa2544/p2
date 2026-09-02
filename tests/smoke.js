@@ -1665,6 +1665,94 @@ test('فیلتر پایه در دروس کار می‌کند', () => {
   W('S.filters={}');
 });
 
+
+// ── شاخه و رشتهٔ مدرسهٔ متوسطه دوم
+test('سه شاخهٔ متوسطه دوم تعریف شده‌اند', () => {
+  const ks = W('Object.keys(BRANCHES)');
+  assert(ks.length === 3, 'تعداد شاخه: ' + ks.length);
+  ['نظری', 'فنی و حرفه‌ای', 'کاردانش'].forEach((b) => {
+    assert(ks.indexOf(b) >= 0, 'شاخهٔ گمشده: ' + b);
+  });
+});
+
+test('هر شاخه دست‌کم سه رشته دارد', () => {
+  W('Object.keys(BRANCHES)').forEach((b) => {
+    const n = W("fieldsOfBranch(" + JSON.stringify(b) + ").length");
+    assert(n >= 3, b + ' فقط ' + n + ' رشته دارد');
+  });
+});
+
+test('مدارس نمونهٔ متوسطه دوم شاخه دارند و بقیه ندارند', () => {
+  const bad = W("db.schools.filter(function(s){var has=(s.branches||[]).length>0; return s.level==='متوسطه دوم' ? !has : has;}).length");
+  assert(bad === 0, bad + ' مدرسه شاخهٔ نادرست دارد');
+});
+
+test('مدرسهٔ چندشاخه‌ای پشتیبانی می‌شود', () => {
+  const n = W("(db.schools.find(function(s){return s.code==='IZ-105';})||{branches:[]}).branches.length");
+  assert(n === 2, 'ایران‌زمین باید دو شاخه داشته باشد، دارد: ' + n);
+});
+
+test('رشته‌های مدرسه زیرمجموعهٔ شاخه‌هایش هستند', () => {
+  const bad = W("db.schools.filter(function(s){var ok=(s.branches||[]).reduce(function(a,b){return a.concat(fieldsOfBranch(b));},[]); return (s.fields||[]).some(function(f){return ok.indexOf(f)<0;});}).length");
+  assert(bad === 0, bad + ' مدرسه رشتهٔ خارج از شاخه دارد');
+});
+
+test('انتخابگر شاخه سه کارت با تیک می‌سازد', () => {
+  const h = W("branchPicker({level:'متوسطه دوم',branches:[],fields:[]})");
+  const d = dom.window.document.createElement('div');
+  d.innerHTML = h;
+  assert(d.querySelectorAll('.branch-card').length === 3, 'تعداد کارت شاخه');
+  assert(d.querySelectorAll('input.m-branch').length === 3, 'تعداد تیک شاخه');
+  assert(d.querySelectorAll('input.m-field').length >= 12, 'تعداد تیک رشته');
+});
+
+test('شاخهٔ تیک‌خورده رشته‌هایش باز است و بقیه بسته', () => {
+  const h = W("branchPicker({level:'متوسطه دوم',branches:['نظری'],fields:['علوم تجربی']})");
+  const d = dom.window.document.createElement('div');
+  d.innerHTML = h;
+  const on = d.querySelectorAll('.branch-card.on');
+  assert(on.length === 1, 'فقط یک کارت باید فعال باشد، هست: ' + on.length);
+  assert(on[0].querySelector('.branch-fields').style.display === 'flex', 'رشته‌های شاخهٔ فعال باید دیده شوند');
+  const off = d.querySelector('.branch-card:not(.on) .branch-fields');
+  assert(off.style.display === 'none', 'رشته‌های شاخهٔ غیرفعال باید پنهان باشند');
+  assert(d.querySelectorAll('.field-chip.on').length === 1, 'رشتهٔ انتخاب‌شده باید نشان‌دار باشد');
+});
+
+test('مودال مدرسه برای متوسطه دوم انتخابگر را باز نشان می‌دهد', () => {
+  const sch = W("db.schools.find(function(s){return s.level==='متوسطه دوم';})");
+  W('window._edit=db.schools.find(function(s){return s.level==="متوسطه دوم";}); schoolModal(window._edit)');
+  const box = dom.window.document.querySelector('#m_branch_box');
+  assert(box, 'جعبهٔ شاخه پیدا نشد');
+  assert(box.style.display === 'block', 'باید باز باشد، هست: ' + box.style.display);
+  const closeBtn = dom.window.document.querySelector('[data-act="modal-close"],.modal-back');
+  W('closeModal&&closeModal()');
+});
+
+test('مودال مدرسه برای ابتدایی انتخابگر را پنهان می‌کند', () => {
+  W('window._edit=db.schools.find(function(s){return s.level==="متوسطه اول";}); schoolModal(window._edit)');
+  const box = dom.window.document.querySelector('#m_branch_box');
+  assert(box && box.style.display === 'none', 'باید پنهان باشد');
+  W('closeModal&&closeModal()');
+});
+
+test('صافی شاخه در فهرست مدارس کار می‌کند', () => {
+  /* فهرست کامل مدارس فقط برای سوپرادمین دیده می‌شود؛ نقش‌های دیگر
+     تنها مدرسهٔ خودشان را می‌بینند و صافی معنا پیدا نمی‌کند. */
+  const prev = W('S.user && S.user.username');
+  W('S.user=db.users.find(function(u){return u.role==="superadmin";})');
+  const out = W("(S.filters={sbranch:'کاردانش'}, viewSchools())");
+  assert(typeof out === 'string' && out.length > 0);
+  assert(out.indexOf('ایران‌زمین') >= 0, 'مدرسهٔ کاردانش باید در نتیجه باشد');
+  assert(out.indexOf('فرزانگان') < 0, 'مدرسهٔ نظری نباید در نتیجهٔ کاردانش باشد');
+  W('S.filters={}');
+  if (prev) W('S.user=db.users.find(function(u){return u.username===' + JSON.stringify(prev) + ';})');
+});
+
+test('کمک‌ابزار دلار-دلار آرایهٔ واقعی برمی‌گرداند', () => {
+  const isArr = W("Array.isArray($$('div'))");
+  assert(isArr === true, 'باید آرایه باشد تا map و filter کار کند');
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

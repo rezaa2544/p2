@@ -3,6 +3,8 @@
    همهٔ ابزارهای عمومی اینجاست: esc, fa, faD, rial, toast, $ و…
    ═══════════════════════════════════════════════════════════════════ */
 const $ = (s,r=document)=>r.querySelector(s);
+/* گزینش چندتایی: همیشه آرایهٔ واقعی برمی‌گرداند تا map/filter کار کند */
+const $$ = (s,r=document)=>Array.prototype.slice.call(r.querySelectorAll(s));
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fa = n => (n===null||n===undefined||n==='')?'—':Number(n).toLocaleString('fa-IR',{maximumFractionDigits:2});
 const jalali = iso => { if(!iso) return '—'; try{ return new Intl.DateTimeFormat('fa-IR-u-ca-persian',{year:'numeric',month:'long',day:'numeric'}).format(new Date(iso)); }catch(e){ return iso; } };

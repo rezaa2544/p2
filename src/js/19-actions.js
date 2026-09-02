@@ -85,6 +85,10 @@ document.addEventListener('click',e=>{
      const pid=Number(V('m_prov'))||null, cid=Number(V('m_county'))||null, did=Number(V('m_district'))||null;
      if(needAll([['m_prov','استان'],['m_county','شهرستان']]))return;
      if(db.schools.some(x=>x.code===V('m_code')&&x.id!==s.id)){toast('کد مدرسه تکراری است','err');return;}
+     if(V('m_level')==='متوسطه دوم'&&!$$('.m-branch:checked').length){
+       toast('برای متوسطه دوم دست‌کم یک شاخه (نظری، فنی و حرفه‌ای یا کاردانش) انتخاب کنید','err');
+       const bx=$('#m_branch_box'); if(bx){bx.scrollIntoView({block:'center',behavior:'smooth'});}
+       return;}
      const dist=did?byId('districts',did):null;
      const data={name:V('m_name'),code:V('m_code'),
        province_id:pid,county_id:cid,district_id:did,
@@ -92,7 +96,10 @@ document.addEventListener('click',e=>{
        area_kind:dist?(dist.kind||'district'):'district',
        phone:V('m_phone'),landline:V('m_landline'),
        level:V('m_level'),gender:V('m_gender'),capacity:Number(V('m_cap'))||300,
-       active:Number(V('m_active')),address:V('m_addr')};
+       active:Number(V('m_active')),address:V('m_addr'),
+       /* شاخه و رشته فقط برای متوسطه دوم معنا دارد؛ در بقیهٔ مقاطع خالی می‌ماند */
+       branches:V('m_level')==='متوسطه دوم'?$$('.m-branch:checked').map(x=>x.value):[],
+       fields:V('m_level')==='متوسطه دوم'?$$('.m-field:checked').filter(x=>$$('.m-branch:checked').some(b=>b.value===x.dataset.branch)).map(x=>x.value):[]};
 
      const mgName=V('mg_name'), mgUser=V('mg_user'), mgNid=V('mg_nid'), mgPhone=V('mg_phone'), mgPass=V('mg_pass');
      const existing=s.id?db.users.find(u=>u.school_id===s.id&&u.role==='manager'):null;
@@ -751,6 +758,28 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
   const id=e.target.id;
 
+  /* فرم مدرسه: تیک شاخه ⇒ باز یا بستهٔ شدن فهرست رشته‌های همان شاخه.
+     این‌ها شناسه ندارند و با کلاس تشخیص داده می‌شوند، پس پیش از
+     بررسی‌های مبتنی بر شناسه می‌آیند. */
+  if(e.target.classList.contains('m-branch')){
+    const card=e.target.closest('.branch-card');
+    if(card){
+      const box=card.querySelector('.branch-fields');
+      card.classList.toggle('on',e.target.checked);
+      if(box)box.style.display=e.target.checked?'flex':'none';
+      /* شاخه که برداشته شد، رشته‌های زیرش هم برداشته شوند */
+      if(!e.target.checked){
+        $$('.m-field',card).forEach(c=>{c.checked=false;c.closest('.field-chip').classList.remove('on');});
+      }
+    }
+    return;
+  }
+  if(e.target.classList.contains('m-field')){
+    const chip=e.target.closest('.field-chip');
+    if(chip)chip.classList.toggle('on',e.target.checked);
+    return;
+  }
+
   /* فرم کلاس: تغییر نوع چیدمان ⇒ نمایش یا پنهان‌کردن رشته */
   if(id==='c_mode'){
     const wrap=document.getElementById('c_fieldwrap_cls');
@@ -852,6 +881,19 @@ document.addEventListener('change',e=>{
   }
   if(id==='s_branch'){
     if($('#s_field'))$('#s_field').innerHTML=optsOf(fieldsOfBranch(e.target.value),'— انتخاب رشته —');
+    return;
+  }
+
+  /* فرم مدرسه: مقطع متوسطه دوم → نمایش انتخابگر شاخه‌ها */
+  if(id==='m_level'){
+    const bx=$('#m_branch_box');
+    if(bx){
+      const on = e.target.value==='متوسطه دوم';
+      bx.style.display = on ? 'block' : 'none';
+      /* اگر مقطع عوض شد و دیگر متوسطه دوم نیست، تیک‌ها پاک شوند
+         تا دادهٔ بی‌معنا (مثلاً دبستانِ دارای رشتهٔ حسابداری) ذخیره نشود */
+      if(!on) $$('.m-branch,.m-field').forEach(c=>{c.checked=false;});
+    }
     return;
   }
 
