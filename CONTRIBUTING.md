@@ -56,6 +56,7 @@ node scripts/dev-server.js   # سرور توسعه روی درگاه ۳۰۰۰
 | سابقه تغییرات · بازدید و بار | `viewAudit` · `viewActivity` | `36-audit-activity.js` |
 | شناسنامه دانش‌آموز (تب) | `studentProfileCard` | `17-student-record.js` |
 | وضعیت مدارس · خروجی · اطلاعیه سراسری | `schoolsOverview` · `exportData` · `broadcastAnnouncement` | `37-admin-tools.js` |
+| پلان فروش · پشتیبان و بازیابی | `viewPlans` · `buildBackup` · `restoreBackup` | `38-plans-backup.js` |
 
 **راه سریع‌تر:** نام صفحه را در برنامه ببینید، بعد `grep` بزنید:
 ```bash
@@ -85,6 +86,8 @@ grep -rn "function viewGrades" src/js/
 | فیلدی را در ثبت نهایی ذخیره کنم | `34-excel-import.js` — `IMP_EXTRA_FIELDS` |
 | فیلدی را در شناسنامه نشان دهم | `17-student-record.js` — `studentProfileCard` |
 | ستونی به خروجی اکسل اضافه کنم | `37-admin-tools.js` — `exportData` |
+| پلان فروش تازه‌ای اضافه کنم | `38-plans-backup.js` — `PLAN_DEFS` |
+| قاعده‌ای به اعتبارسنجی قیمت بیفزایم | `38-plans-backup.js` — `validatePlanSettings` |
 
 ---
 

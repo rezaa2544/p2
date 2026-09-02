@@ -341,6 +341,97 @@ test('سابقه و فعالیت فقط برای سوپرادمین باز اس�
   }
 });
 
+console.log('\n▸ پلان فروش و پشتیبان‌گیری');
+
+test('توابع پلان و پشتیبان تعریف شده‌اند', () => {
+  assert(W("typeof viewPlans==='function'&&typeof planStats==='function'"
+    + "&&typeof validatePlanSettings==='function'&&typeof buildBackup==='function'"
+    + "&&typeof validateBackup==='function'&&typeof restoreBackup==='function'"), 'توابع ناقص');
+});
+
+test('صفحه پلان‌ها رندر می‌شود و آمار درست است', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null;S.route='plans';S.filters={}");
+  const o = W('renderRoute()');
+  assert(o.length > 1200 && !o.includes('undefined') && !o.includes('[object'), 'رندر نشد');
+  assert(W('planStats().length') === 3, 'سه پلان نیست');
+  assert(W('planStats()[0].price') === W('subSettings().price_monthly'), 'قیمت با تنظیمات نمی‌خواند');
+});
+
+test('اعتبارسنجی تنظیمات پلان مقدار بی‌معنا را رد می‌کند', () => {
+  assert(W('validatePlanSettings({price_monthly:-5}).length') > 0, 'قیمت منفی');
+  assert(W('validatePlanSettings({trial_days:400}).length') > 0, 'دوره آزمایشی بیش از حد');
+  assert(W('validatePlanSettings({school_share_percent:150}).length') > 0, 'سهم بیش از ۱۰۰');
+  assert(W('validatePlanSettings({price_monthly:100000,price_yearly:5000000}).length') > 0,
+    'سالانه گران‌تر از ماهانه باید رد شود');
+  assert(W('validatePlanSettings({price_monthly:250000,price_yearly:2200000}).length') === 0,
+    'مقادیر منطقی رد شد');
+});
+
+test('تنظیمات پلان ذخیره و اعمال می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null");
+  W("saveSubSettings({price_monthly:300000,school_share_percent:25,trial_days:14,trial_enabled:1})");
+  assert(W('subSettings().price_monthly') === 300000, 'قیمت ذخیره نشد');
+  assert(W('subSettings().school_share_percent') === 25, 'سهم ذخیره نشد');
+  assert(W('planStats()[0].price') === 300000, 'آمار پلان به‌روز نشد');
+});
+
+test('بستهٔ پشتیبان ساختار درست دارد', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null");
+  assert(W("buildBackup().format") === 'payesh-backup', 'قالب نادرست');
+  assert(W('buildBackup().version') === 2, 'نسخه نادرست');
+  assert(W('buildBackup().ops.length') === W('log.length'), 'شمار عملیات نادرست');
+  assert(W('validateBackup(buildBackup()).ok') === true, 'پشتیبان خودمان نامعتبر شد');
+});
+
+test('اعتبارسنجی پشتیبان فایل خراب را رد می‌کند', () => {
+  assert(W('validateBackup(null).ok') === false, 'فایل خالی');
+  assert(W("validateBackup({format:'other'}).ok") === false, 'قالب غریبه');
+  assert(W("validateBackup({format:'payesh-backup',version:99,ops:[]}).ok") === false, 'نسخه جدیدتر');
+  assert(W("validateBackup({format:'payesh-backup',version:2,ops:[{t:'zzz',c:'grades'}]}).ok") === false,
+    'نوع عمل ناشناخته');
+  assert(W("validateBackup({format:'payesh-backup',version:2,ops:[{t:'ins',c:'nope'}]}).ok") === false,
+    'مجموعه ناموجود');
+});
+
+test('بازیابی داده تخریب‌شده را برمی‌گرداند', () => {
+  W("S.user=db.users.find(u=>u.role==='teacher');S.persona=null;S.boss=null");
+  W("var c=visibleClasses()[0];insert('announcements',{school_id:c.school_id,"
+    + "title:'نشانه بازیابی',body:'آزمون',author_id:S.user.id,date:todayISO(),pinned:0})");
+  W('window.__bk=JSON.parse(JSON.stringify(buildBackup()))');
+  const n0 = W("db.announcements.filter(function(a){return a.title==='نشانه بازیابی';}).length");
+  W("db.announcements.filter(function(a){return a.title==='نشانه بازیابی';})"
+    + ".forEach(function(a){remove('announcements',a.id);})");
+  assert(W("db.announcements.filter(function(a){return a.title==='نشانه بازیابی';}).length") === 0,
+    'تخریب انجام نشد');
+  const res = W('restoreBackup(window.__bk)');
+  assert(W('restoreBackup(window.__bk).ok') === true, 'بازیابی ناموفق');
+  assert(W("db.announcements.filter(function(a){return a.title==='نشانه بازیابی';}).length") === n0,
+    'داده برنگشت');
+  assert(W('JSON.parse(localStorage.getItem(LOG_KEY)).length===log.length'), 'localStorage ناهمگام');
+});
+
+test('بازیابی فایل خراب داده را نابود نمی‌کند', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null");
+  const before = W('db.users.length');
+  assert(W("restoreBackup({format:'payesh-backup',version:2,ops:[{t:'ins',c:'جعلی',data:{}}]}).ok") === false,
+    'فایل خراب پذیرفته شد');
+  assert(W('db.users.length') === before, 'داده آسیب دید');
+});
+
+test('پلان و پشتیبان فقط برای سوپرادمین است', () => {
+  for(const role of ['manager','teacher','student','parent','edu_office']){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null;S.route='plans';S.filters={}");
+    assert(/دسترسی مجاز نیست|اشتراک/.test(W('renderRoute()')), role + ' به پلان‌ها دسترسی داشت');
+  }
+  const cases = [['manager','plan-save',false],['manager','backup-make',false],
+                 ['manager','restore-ok',false],['superadmin','plan-save',true],
+                 ['superadmin','restore-ok',true]];
+  for(const [role, act, want] of cases){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null");
+    assert(W("canAction('" + act + "')") === want, role + ' → ' + act);
+  }
+});
+
 console.log('\n▸ ابزارهای تکمیلی سوپرادمین');
 
 test('توابع ابزارهای تکمیلی تعریف شده‌اند', () => {

@@ -768,14 +768,14 @@ function bootstrapRequest(){
    ═══════════════════════════════════════════════════════════════════ */
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
- superadmin:[['نظارت کلان',[['dashboard','📊','داشبورد مدیریتی'],['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه']]],['محتوا',[['subjects','📚','دروس'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['اداره آموزش و پرورش',[['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['کسب‌وکار',[['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]],['ارتباطات',[['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['notifications','🔔','اعلان‌ها']]]],
+ superadmin:[['نظارت کلان',[['dashboard','📊','داشبورد مدیریتی'],['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه']]],['محتوا',[['subjects','📚','دروس'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['اداره آموزش و پرورش',[['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]],['ارتباطات',[['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['notifications','🔔','اعلان‌ها']]]],
  manager:[['مدرسه من',[['import','📥','ورود اطلاعات'],['formssms','🖨️','فرم‌ها و پیامک'],['meetings','📅','جلسات اولیا'],['growth','📈','رشد مدرسه'],['atrisk','📉','افت تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['dashboard','📊','داشبورد مدرسه'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  teacher:[['کلاس‌های من',[['meetings','📅','جلسات اولیا'],['dashboard','📊','داشبورد'],['classes','🏛️','کلاس‌ها'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['ثبت اطلاعات',[['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['امتحانات',[['exams','👁️','برنامه مراقبت من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['پرونده من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['calendar','🗓️','تقویم آموزشی']]],['امور مالی',[['mytuition','💰','شهریه من']]],['درخواست‌ها',[['leaves','📨','مرخصی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['اداره من',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  parent:[['فرزندان من',[['meetings','📅','جلسات اولیا'],['dashboard','📊','خلاصه وضعیت'],['family','🏠','خانواده و مدارس'],['children','👨‍👩‍👦','پرونده فرزندان'],['exams','📝','برنامه امتحانات'],['calendar','🗓️','تقویم آموزشی']]],['امور مالی',[['mytuition','💰','شهریه و اقساط']]],['درخواست‌ها',[['leaves','📨','درخواست مرخصی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌های مدرسه'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو با مدرسه']]]]
 };
-const TITLES={audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
+const TITLES={plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
 S.stack=[];
@@ -1495,6 +1495,11 @@ var ACTION_ROLES = {
   /* فرم‌های رسمی و پیامک — پیامک هزینه دارد، پس فقط مدیر */
   'form-print':    ['manager','superadmin'],
   /* پنل سوپرادمین */
+  'plan-settings':   ['superadmin'],
+  'plan-save':       ['superadmin'],
+  'backup-make':     ['superadmin'],
+  'restore-pick':    ['superadmin'],
+  'restore-ok':      ['superadmin'],
   'export-csv':      ['manager','superadmin'],
   'ann-broadcast':   ['superadmin'],
   'ann-broadcast-ok':['superadmin'],
@@ -1622,6 +1627,7 @@ function _renderRouteInner(){
     case 'health':return viewHealth();
     case 'audit':return viewAudit();
     case 'activity':return viewActivity();
+    case 'plans':return viewPlans();
     case 'dashboard':return S.user.role==='edu_office'?viewOfficeDash():viewDashboard();
     case 'schools':return viewSchools();
     case 'users':return viewUsers();
@@ -4178,7 +4184,10 @@ function viewHealth(){
     + '<div class="card-body" style="display:grid;gap:10px">'
     + '<div class="row"><div style="flex:1"><b class="small">پشتیبان‌گیری</b>'
     + '<div class="small muted">دریافت نسخهٔ پشتیبان از همهٔ تغییرات ثبت‌شده</div></div>'
-    + '<button class="btn ghost sm" data-act="health-backup">⬇️ دریافت</button></div>'
+    + '<button class="btn ghost sm" data-act="backup-make">⬇️ دریافت</button></div>'
+    + '<div class="row"><div style="flex:1"><b class="small">بازیابی از پشتیبان</b>'
+    + '<div class="small muted">بازگرداندن وضعیت از روی فایل پشتیبان</div></div>'
+    + '<button class="btn ghost sm" data-act="restore-pick">⬆️ بازیابی</button></div>'
     + '<div class="row"><div style="flex:1"><b class="small">بازسازی ایندکس‌ها</b>'
     + '<div class="small muted">اگر نرخ اصابت پایین است، ایندکس‌ها را از نو بساز</div></div>'
     + '<button class="btn ghost sm" data-act="health-reindex">♻️ بازسازی</button></div>'
@@ -4737,6 +4746,199 @@ function broadcastAnnouncement(title, body, scope){
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   مدیریت پلان فروش و پشتیبان‌گیری
+   ═══════════════════════════════════════════════════════════════════
+   بخش ۱ ▸ تنظیمات پلان و قیمت‌گذاری   روت: plans
+   بخش ۲ ▸ پشتیبان‌گیری و بازیابی      اکشن‌های backup-* و restore-*
+
+   ⚠️ چرا بازیابی مهم‌تر از پشتیبان‌گیری است؟
+   پیش از این فقط دکمهٔ «دریافت پشتیبان» وجود داشت و هیچ راهی برای
+   برگرداندن آن نبود — یعنی عملاً بی‌فایده. حالا هر دو سو کامل است.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─────────── بخش ۱: مدیریت پلان فروش ─────────── */
+
+/** سه پلان فروش با کلید تنظیماتشان */
+var PLAN_DEFS = [
+  { key:'monthly',  title:'ماهانه',   field:'price_monthly',  days:30,  icon:'📅' },
+  { key:'seasonal', title:'فصلی',     field:'price_seasonal', days:90,  icon:'🍂' },
+  { key:'yearly',   title:'سالانه',   field:'price_yearly',   days:365, icon:'🎓' }
+];
+
+/**
+ * آمار فروش هر پلان با یک پیمایش.
+ * قیمت مؤثر ماهانه محاسبه می‌شود تا صرفهٔ هر پلان روشن باشد.
+ */
+function planStats(){
+  var st = subSettings();
+  var byPlan = Object.create(null), revenue = Object.create(null);
+  db.parent_subscriptions.forEach(function(s){
+    var k = s.plan || 'none';
+    byPlan[k] = (byPlan[k] || 0) + 1;
+    if(s.paid_at) revenue[k] = (revenue[k] || 0) + Number(s.amount || 0);
+  });
+  var total = db.parent_subscriptions.length || 1;
+  return PLAN_DEFS.map(function(p){
+    var price = Number(st[p.field] || 0);
+    return { def: p, price: price,
+      perMonth: p.days ? Math.round(price / (p.days / 30)) : price,
+      count: byPlan[p.key] || 0,
+      revenue: revenue[p.key] || 0,
+      share: Math.round((byPlan[p.key] || 0) / total * 1000) / 10 };
+  });
+}
+
+/** اعتبارسنجی تنظیمات پیش از ذخیره — جلوی مقدار بی‌معنا را می‌گیرد */
+function validatePlanSettings(patch){
+  var errs = [];
+  PLAN_DEFS.forEach(function(p){
+    if(patch[p.field] === undefined) return;
+    var v = Number(patch[p.field]);
+    if(isNaN(v) || v < 0) errs.push('قیمت پلان ' + p.title + ' نامعتبر است');
+    else if(v > 100000000) errs.push('قیمت پلان ' + p.title + ' غیرمنطقی بزرگ است');
+  });
+  if(patch.trial_days !== undefined){
+    var d = Number(patch.trial_days);
+    if(isNaN(d) || d < 0 || d > 365) errs.push('دورهٔ آزمایشی باید بین ۰ تا ۳۶۵ روز باشد');
+  }
+  if(patch.school_share_percent !== undefined){
+    var s = Number(patch.school_share_percent);
+    if(isNaN(s) || s < 0 || s > 100) errs.push('سهم مدرسه باید بین ۰ تا ۱۰۰ درصد باشد');
+  }
+  /* پلان سالانه نباید از ماهانه گران‌تر باشد (به‌ازای هر ماه) */
+  var m = Number(patch.price_monthly), y = Number(patch.price_yearly);
+  if(!isNaN(m) && !isNaN(y) && m > 0 && y / 12 > m)
+    errs.push('پلان سالانه نباید از ماهانه گران‌تر باشد؛ مشتری انگیزه‌ای برای خریدش ندارد');
+  return errs;
+}
+
+function viewPlans(){
+  var st = subSettings();
+  var stats = planStats();
+  var maxRev = stats.reduce(function(a,b){ return Math.max(a, b.revenue); }, 0) || 1;
+  var share = Number(st.school_share_percent || 20);
+
+  return '<div class="card" style="margin-bottom:14px;background:linear-gradient(120deg,var(--primary-soft),#fff)">'
+    + '<div class="card-body row"><div style="font-size:32px">💳</div>'
+    + '<div style="flex:1"><b>مدل درآمدی سامانه</b><div class="small muted" style="line-height:2">'
+    + 'استفاده برای مدرسه رایگان است. هر ولی <b>' + fa(st.trial_days || 0) + '</b> روز رایگان '
+    + 'استفاده می‌کند و پس از آن اشتراک می‌گیرد؛ <b>' + fa(share) + '٪</b> از پرداخت هر ولی '
+    + 'سهم مدرسهٔ اوست.</div></div>'
+    + '<button class="btn" data-act="plan-settings">⚙️ ویرایش تنظیمات</button></div></div>'
+
+    + '<div class="grid g3" style="margin-bottom:14px">'
+    + stats.map(function(p){
+        return '<div class="card"><div class="card-head"><h3>' + p.def.icon + ' پلان ' + p.def.title + '</h3>'
+          + '<span class="badge b-gray">' + fa(p.share) + '٪ فروش</span></div>'
+          + '<div class="card-body"><div style="font-size:22px;font-weight:800;color:var(--primary)">'
+          + rial(p.price) + '</div><div class="small muted">ریال برای ' + fa(p.def.days) + ' روز</div>'
+          + '<table class="table" style="margin-top:10px"><tbody>'
+          + '<tr><td class="small">معادل ماهانه</td><td style="text-align:left"><b>'
+          + rial(p.perMonth) + '</b></td></tr>'
+          + '<tr><td class="small">تعداد فروش</td><td style="text-align:left"><b>'
+          + fa(p.count) + '</b></td></tr>'
+          + '<tr><td class="small">درآمد</td><td style="text-align:left"><b style="color:var(--green)">'
+          + rialShort(p.revenue) + '</b></td></tr>'
+          + '</tbody></table>'
+          + bar(Math.round(p.revenue / maxRev * 100), 100, 'var(--primary)')
+          + '</div></div>';
+      }).join('') + '</div>'
+
+    + '<div class="grid g2">'
+    + '<div class="card"><div class="card-head"><h3>تنظیمات جاری</h3></div>'
+    + '<div class="card-body"><table class="table"><tbody>'
+    + '<tr><td>دورهٔ آزمایشی</td><td style="text-align:left"><b>'
+      + (st.trial_enabled ? fa(st.trial_days) + ' روز' : 'غیرفعال') + '</b></td></tr>'
+    + '<tr><td>دیوار پرداخت</td><td style="text-align:left"><b>'
+      + (st.paywall_enabled ? 'فعال' : 'غیرفعال') + '</b></td></tr>'
+    + '<tr><td>سهم مدرسه</td><td style="text-align:left"><b>' + fa(share) + '٪</b></td></tr>'
+    + '</tbody></table>'
+    + (st.paywall_enabled ? '' : '<div class="small" style="color:var(--amber);line-height:2">'
+        + '⚠️ دیوار پرداخت غیرفعال است؛ همهٔ اولیا بدون اشتراک دسترسی کامل دارند.</div>')
+    + '</div></div>'
+
+    + '<div class="card"><div class="card-head"><h3>راهنمای قیمت‌گذاری</h3></div>'
+    + '<div class="card-body small muted" style="line-height:2.2">'
+    + '• پلان بلندمدت باید <b>معادل ماهانهٔ ارزان‌تری</b> داشته باشد وگرنه کسی نمی‌خرد.<br>'
+    + '• تغییر قیمت روی اشتراک‌های <b>فعال اثر ندارد</b>؛ فقط خریدهای تازه.<br>'
+    + '• دورهٔ آزمایشی طولانی‌تر نرخ تبدیل را بالا می‌برد ولی درآمد را عقب می‌اندازد.<br>'
+    + '• سهم مدرسه انگیزهٔ معرفی سامانه به اولیاست.'
+    + '</div></div></div>';
+}
+
+/* ─────────── بخش ۲: پشتیبان‌گیری و بازیابی ─────────── */
+
+/**
+ * ساخت بستهٔ پشتیبان.
+ * فقط دفترچهٔ عملیات ذخیره می‌شود، نه کل پایگاه داده — چون دادهٔ پایه
+ * با مولد قطعی بازساخته می‌شود و فقط تغییرات کاربر یکتا هستند.
+ * این انتخاب حجم پشتیبان را ده‌ها برابر کوچک‌تر می‌کند.
+ */
+function buildBackup(){
+  return {
+    format: 'payesh-backup',
+    version: 2,
+    created_at: new Date().toISOString(),
+    created_by: S.user ? S.user.username : null,
+    seed: (typeof SEED !== 'undefined') ? SEED : null,
+    counts: { ops: (typeof log !== 'undefined') ? log.length : 0,
+              users: db.users.length, schools: db.schools.length },
+    settings: subSettings(),
+    ops: (typeof log !== 'undefined') ? log : []
+  };
+}
+
+/** بررسی سلامت بستهٔ پشتیبان پیش از بازیابی */
+function validateBackup(obj){
+  if(!obj || typeof obj !== 'object') return { ok:false, error:'فایل خوانا نیست' };
+  if(obj.format !== 'payesh-backup') return { ok:false, error:'این فایل پشتیبان پایش نیست' };
+  if(!Array.isArray(obj.ops)) return { ok:false, error:'فهرست عملیات در فایل نیست' };
+  if(obj.version > 2) return { ok:false, error:'نسخهٔ فایل جدیدتر از این برنامه است' };
+  /* هر عملیات باید ساختار درست داشته باشد */
+  for(var i = 0; i < obj.ops.length; i++){
+    var o = obj.ops[i];
+    if(!o || !o.t || !o.c) return { ok:false, error:'عملیات شمارهٔ ' + (i+1) + ' ناقص است' };
+    if(['ins','upd','del'].indexOf(o.t) < 0)
+      return { ok:false, error:'نوع عملیات ناشناخته در ردیف ' + (i+1) };
+    if(!Array.isArray(db[o.c]))
+      return { ok:false, error:'مجموعهٔ «' + o.c + '» در این نسخه وجود ندارد' };
+  }
+  return { ok:true, ops: obj.ops.length,
+    created_at: obj.created_at || null, by: obj.created_by || null,
+    settings: obj.settings || null };
+}
+
+/**
+ * بازیابی از بستهٔ پشتیبان.
+ * دادهٔ پایه از نو ساخته می‌شود، سپس عملیات پشتیبان روی آن اجرا می‌گردد.
+ * این روش تضمین می‌کند نتیجه دقیقاً همان وضعیت زمان پشتیبان‌گیری باشد.
+ */
+function restoreBackup(obj){
+  var check = validateBackup(obj);
+  if(!check.ok) return check;
+  try{
+    /* ۱. بازسازی دادهٔ پایه با همان مولد قطعی */
+    if(typeof generate === 'function') generate();
+    if(typeof generateExtras === 'function') generateExtras();
+    if(typeof generateP8 === 'function') generateP8();
+    if(typeof generateP9 === 'function') generateP9();
+    if(typeof generateP10 === 'function') generateP10();
+    /* ۲. جایگزینی دفترچه و اجرای دوبارهٔ عملیات */
+    log.length = 0;
+    obj.ops.forEach(function(o){ log.push(o); });
+    if(typeof idxReset === 'function') idxReset();
+    SYNC_MUTED = true;
+    log.forEach(function(o){ applyOp(o, false); });
+    SYNC_MUTED = false;
+    if(typeof idxReset === 'function') idxReset();
+    saveLog();
+    return { ok:true, ops: obj.ops.length };
+  }catch(e){
+    return { ok:false, error: 'بازیابی ناتمام ماند: ' + (e.message || 'خطای ناشناخته') };
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    کنترلگر مرکزی رویدادها
    همهٔ دکمه‌ها اینجا مدیریت می‌شوند (واگذاری رویداد با data-act). گارد مجوز در ابتدای شنونده اعمال می‌شود.
    ═══════════════════════════════════════════════════════════════════ */
@@ -4744,6 +4946,8 @@ function broadcastAnnouncement(title, body, scope){
 var SLOT_ID=null;
 /** شناسهٔ کاربری که رمزش بازنشانی می‌شود (بین مودال و تأیید) */
 var PASS_TARGET=null;
+/** بستهٔ پشتیبانی که کاربر برای بازیابی انتخاب کرده است */
+var RESTORE_PKG=null;
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el)return;
   const a=el.dataset.act, id=Number(el.dataset.id);
@@ -4945,6 +5149,65 @@ document.addEventListener('click',e=>{
      studentsOfClass(cid).forEach(s=>{const ex=_am?_day.get(s.id):db.attendance.find(x=>x.student_id===s.id&&x.date===date);
        if(ex)update('attendance',ex.id,{status:st});else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:s.id,date,status:st,note:null});});
      toast('همه دانش‌آموزان «'+ATT_FA[st]+'» ثبت شدند','ok');render();},
+   // ---- پلان فروش و پشتیبان‌گیری ----
+   'plan-settings'(){
+     const st=subSettings();
+     openModal(modalTpl('تنظیمات پلان و قیمت‌گذاری',
+       '<div class="grid g2">'
+       +f('قیمت ماهانه (ریال)',inp('pl_m',st.price_monthly||0,'number'))
+       +f('قیمت فصلی (ریال)',inp('pl_s',st.price_seasonal||0,'number'))
+       +f('قیمت سالانه (ریال)',inp('pl_y',st.price_yearly||0,'number'))
+       +f('سهم مدرسه (درصد)',inp('pl_share',st.school_share_percent||20,'number'))
+       +f('دورهٔ آزمایشی (روز)',inp('pl_trial',st.trial_days||0,'number'))
+       +f('دیوار پرداخت',sel('pl_wall',[['1','فعال'],['0','غیرفعال']],String(st.paywall_enabled?1:0)))
+       +'</div>'
+       +'<div class="small muted" style="line-height:2;margin-top:8px">'
+       +'تغییر قیمت روی اشتراک‌های فعال اثر ندارد؛ فقط خریدهای تازه.</div>','plan-save'));
+   },
+   'plan-save'(){
+     const patch={
+       price_monthly:Number(V('pl_m'))||0,
+       price_seasonal:Number(V('pl_s'))||0,
+       price_yearly:Number(V('pl_y'))||0,
+       school_share_percent:Number(V('pl_share'))||0,
+       trial_days:Number(V('pl_trial'))||0,
+       trial_enabled:Number(V('pl_trial'))>0?1:0,
+       paywall_enabled:Number(V('pl_wall'))?1:0
+     };
+     const errs=validatePlanSettings(patch);
+     if(errs.length){toast(errs[0],'err');return;}
+     saveSubSettings(patch);
+     closeModal(); toast('تنظیمات پلان ذخیره شد','ok'); render();
+   },
+   'backup-make'(){
+     try{
+       const pkg=buildBackup();
+       const blob=new Blob([JSON.stringify(pkg)],{type:'application/json'});
+       const a=document.createElement('a');
+       a.href=URL.createObjectURL(blob);
+       a.download='payesh-backup-'+todayISO()+'.json';
+       document.body.appendChild(a); a.click(); a.remove();
+       setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+       toast(fa(pkg.counts.ops)+' عملیات پشتیبان‌گیری شد','ok');
+     }catch(e){ toast('دریافت پشتیبان ممکن نشد','err'); }
+   },
+   'restore-pick'(){
+     openModal(modalTpl('بازیابی از نسخهٔ پشتیبان',
+       '<div class="small" style="line-height:2;color:var(--red)">'
+       +'⚠️ بازیابی همهٔ تغییرات فعلی را با محتوای فایل جایگزین می‌کند.'
+       +' پیش از ادامه یک پشتیبان تازه بگیرید.</div>'
+       +'<div style="margin-top:12px;border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center">'
+       +'<input type="file" id="rs_file" accept=".json" /></div>'
+       +'<div id="rs_info" class="small muted" style="margin-top:10px;line-height:2"></div>',''));
+   },
+   'restore-ok'(){
+     if(!RESTORE_PKG){toast('ابتدا فایل را انتخاب کنید','err');return;}
+     const res=restoreBackup(RESTORE_PKG);
+     if(!res.ok){toast(res.error||'بازیابی ناموفق','err');return;}
+     RESTORE_PKG=null;
+     closeModal(); toast(fa(res.ops)+' عملیات بازیابی شد','ok');
+     S.route='dashboard'; render();
+   },
    // ---- ابزارهای تکمیلی: خروجی و اطلاعیه سراسری ----
    'export-csv'(){
      const d=exportData(el.dataset.r||S.route);
@@ -5321,6 +5584,30 @@ document.addEventListener('input',e=>{
 /* آبشاری: مقطع → پایه → شاخه → رشته (فرم درس و فرم افزودن کتاب) */
 document.addEventListener('change',e=>{
   const id=e.target.id;
+
+  /* بازیابی: انتخاب فایل پشتیبان و نمایش خلاصهٔ آن پیش از تأیید */
+  if(id==='rs_file'){
+    const file=e.target.files&&e.target.files[0];
+    const box=document.getElementById('rs_info');
+    if(!file)return;
+    file.text().then(txt=>{
+      let obj=null;
+      try{ obj=JSON.parse(txt); }catch(err){ obj=null; }
+      const chk=obj?validateBackup(obj):{ok:false,error:'فایل json معتبر نیست'};
+      if(!chk.ok){
+        RESTORE_PKG=null;
+        if(box)box.innerHTML='<span style="color:var(--red)">⛔ '+esc(chk.error)+'</span>';
+        return;
+      }
+      RESTORE_PKG=obj;
+      if(box)box.innerHTML='<b style="color:var(--green)">✅ فایل معتبر است</b><br>'
+        +'عملیات: <b>'+fa(chk.ops)+'</b><br>'
+        +(chk.created_at?'ساخته‌شده: '+esc(shortStamp(chk.created_at))+'<br>':'')
+        +(chk.by?'توسط: '+esc(chk.by)+'<br>':'')
+        +'<button class="btn" style="margin-top:10px" data-act="restore-ok">بازیابی کن</button>';
+    }).catch(()=>{ if(box)box.innerHTML='<span style="color:var(--red)">⛔ خواندن فایل ممکن نشد</span>'; });
+    return;
+  }
 
   /* ویزارد ورود اکسل: انتخاب نوع اطلاعات */
   if(id==='imp_entity'){

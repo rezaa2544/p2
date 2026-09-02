@@ -74,6 +74,7 @@ function _renderRouteInner(){
     case 'health':return viewHealth();
     case 'audit':return viewAudit();
     case 'activity':return viewActivity();
+    case 'plans':return viewPlans();
     case 'dashboard':return S.user.role==='edu_office'?viewOfficeDash():viewDashboard();
     case 'schools':return viewSchools();
     case 'users':return viewUsers();

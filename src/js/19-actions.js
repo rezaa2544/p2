@@ -6,6 +6,8 @@
 var SLOT_ID=null;
 /** شناسهٔ کاربری که رمزش بازنشانی می‌شود (بین مودال و تأیید) */
 var PASS_TARGET=null;
+/** بستهٔ پشتیبانی که کاربر برای بازیابی انتخاب کرده است */
+var RESTORE_PKG=null;
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el)return;
   const a=el.dataset.act, id=Number(el.dataset.id);
@@ -207,6 +209,65 @@ document.addEventListener('click',e=>{
      studentsOfClass(cid).forEach(s=>{const ex=_am?_day.get(s.id):db.attendance.find(x=>x.student_id===s.id&&x.date===date);
        if(ex)update('attendance',ex.id,{status:st});else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:s.id,date,status:st,note:null});});
      toast('همه دانش‌آموزان «'+ATT_FA[st]+'» ثبت شدند','ok');render();},
+   // ---- پلان فروش و پشتیبان‌گیری ----
+   'plan-settings'(){
+     const st=subSettings();
+     openModal(modalTpl('تنظیمات پلان و قیمت‌گذاری',
+       '<div class="grid g2">'
+       +f('قیمت ماهانه (ریال)',inp('pl_m',st.price_monthly||0,'number'))
+       +f('قیمت فصلی (ریال)',inp('pl_s',st.price_seasonal||0,'number'))
+       +f('قیمت سالانه (ریال)',inp('pl_y',st.price_yearly||0,'number'))
+       +f('سهم مدرسه (درصد)',inp('pl_share',st.school_share_percent||20,'number'))
+       +f('دورهٔ آزمایشی (روز)',inp('pl_trial',st.trial_days||0,'number'))
+       +f('دیوار پرداخت',sel('pl_wall',[['1','فعال'],['0','غیرفعال']],String(st.paywall_enabled?1:0)))
+       +'</div>'
+       +'<div class="small muted" style="line-height:2;margin-top:8px">'
+       +'تغییر قیمت روی اشتراک‌های فعال اثر ندارد؛ فقط خریدهای تازه.</div>','plan-save'));
+   },
+   'plan-save'(){
+     const patch={
+       price_monthly:Number(V('pl_m'))||0,
+       price_seasonal:Number(V('pl_s'))||0,
+       price_yearly:Number(V('pl_y'))||0,
+       school_share_percent:Number(V('pl_share'))||0,
+       trial_days:Number(V('pl_trial'))||0,
+       trial_enabled:Number(V('pl_trial'))>0?1:0,
+       paywall_enabled:Number(V('pl_wall'))?1:0
+     };
+     const errs=validatePlanSettings(patch);
+     if(errs.length){toast(errs[0],'err');return;}
+     saveSubSettings(patch);
+     closeModal(); toast('تنظیمات پلان ذخیره شد','ok'); render();
+   },
+   'backup-make'(){
+     try{
+       const pkg=buildBackup();
+       const blob=new Blob([JSON.stringify(pkg)],{type:'application/json'});
+       const a=document.createElement('a');
+       a.href=URL.createObjectURL(blob);
+       a.download='payesh-backup-'+todayISO()+'.json';
+       document.body.appendChild(a); a.click(); a.remove();
+       setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+       toast(fa(pkg.counts.ops)+' عملیات پشتیبان‌گیری شد','ok');
+     }catch(e){ toast('دریافت پشتیبان ممکن نشد','err'); }
+   },
+   'restore-pick'(){
+     openModal(modalTpl('بازیابی از نسخهٔ پشتیبان',
+       '<div class="small" style="line-height:2;color:var(--red)">'
+       +'⚠️ بازیابی همهٔ تغییرات فعلی را با محتوای فایل جایگزین می‌کند.'
+       +' پیش از ادامه یک پشتیبان تازه بگیرید.</div>'
+       +'<div style="margin-top:12px;border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center">'
+       +'<input type="file" id="rs_file" accept=".json" /></div>'
+       +'<div id="rs_info" class="small muted" style="margin-top:10px;line-height:2"></div>',''));
+   },
+   'restore-ok'(){
+     if(!RESTORE_PKG){toast('ابتدا فایل را انتخاب کنید','err');return;}
+     const res=restoreBackup(RESTORE_PKG);
+     if(!res.ok){toast(res.error||'بازیابی ناموفق','err');return;}
+     RESTORE_PKG=null;
+     closeModal(); toast(fa(res.ops)+' عملیات بازیابی شد','ok');
+     S.route='dashboard'; render();
+   },
    // ---- ابزارهای تکمیلی: خروجی و اطلاعیه سراسری ----
    'export-csv'(){
      const d=exportData(el.dataset.r||S.route);
@@ -583,6 +644,30 @@ document.addEventListener('input',e=>{
 /* آبشاری: مقطع → پایه → شاخه → رشته (فرم درس و فرم افزودن کتاب) */
 document.addEventListener('change',e=>{
   const id=e.target.id;
+
+  /* بازیابی: انتخاب فایل پشتیبان و نمایش خلاصهٔ آن پیش از تأیید */
+  if(id==='rs_file'){
+    const file=e.target.files&&e.target.files[0];
+    const box=document.getElementById('rs_info');
+    if(!file)return;
+    file.text().then(txt=>{
+      let obj=null;
+      try{ obj=JSON.parse(txt); }catch(err){ obj=null; }
+      const chk=obj?validateBackup(obj):{ok:false,error:'فایل json معتبر نیست'};
+      if(!chk.ok){
+        RESTORE_PKG=null;
+        if(box)box.innerHTML='<span style="color:var(--red)">⛔ '+esc(chk.error)+'</span>';
+        return;
+      }
+      RESTORE_PKG=obj;
+      if(box)box.innerHTML='<b style="color:var(--green)">✅ فایل معتبر است</b><br>'
+        +'عملیات: <b>'+fa(chk.ops)+'</b><br>'
+        +(chk.created_at?'ساخته‌شده: '+esc(shortStamp(chk.created_at))+'<br>':'')
+        +(chk.by?'توسط: '+esc(chk.by)+'<br>':'')
+        +'<button class="btn" style="margin-top:10px" data-act="restore-ok">بازیابی کن</button>';
+    }).catch(()=>{ if(box)box.innerHTML='<span style="color:var(--red)">⛔ خواندن فایل ممکن نشد</span>'; });
+    return;
+  }
 
   /* ویزارد ورود اکسل: انتخاب نوع اطلاعات */
   if(id==='imp_entity'){
