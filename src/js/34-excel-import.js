@@ -28,26 +28,90 @@ var toLatinDigits = function(x){
     .replace(/[٠-٩]/g, function(d){ return String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)); });
 };
 
+/**
+ * خواندن عدد اعشاری از متن فارسی.
+ * در فایل‌های واقعی مدرسه معدل به شکل «۱۲/۸۸» یا «۱۲٫۸۸» نوشته می‌شود؛
+ * یعنی ممیز با اسلش یا ممیز فارسی، نه نقطهٔ لاتین.
+ */
+var toNumFa = function(x){
+  var t = toLatinDigits(x).replace(/[٫،]/g, '.').replace(/\//g, '.').replace(/[^\d.]/g, '');
+  var parts = t.split('.');
+  if(parts.length > 2) t = parts[0] + '.' + parts.slice(1).join('');
+  return t === '' ? null : Number(t);
+};
+
 /** فیلدهای قابل ورود: کلید، عنوان، الزامی، مترادف‌ها */
 var IMP_FIELDS = {
   students: [
-    ['full_name','نام و نام خانوادگی',1,['نام و نام خانوادگی','نام دانش آموز','نام کامل','نام']],
-    ['national_id','کد ملی',0,['کد ملی','کدملی','شماره ملی']],
-    ['class_name','کلاس',0,['کلاس','نام کلاس','پایه و کلاس']],
+    /* هویت — در فایل‌های واقعی مدرسه «نام» و «نام خانوادگی» جدا هستند */
+    ['first_name','نام',0,['نام','نام دانش آموز','اسم']],
+    ['last_name','نام خانوادگی',0,['نام خانوادگی','فامیل','فامیلی','نام فامیل']],
+    ['full_name','نام و نام خانوادگی',0,['نام و نام خانوادگی','نام کامل','نام و نام‌خانوادگی']],
+    ['national_id','کد ملی',0,['کد ملی','کدملی','شماره ملی','شماره‌ملی']],
+    ['birth_date','تاریخ تولد',0,['تاریخ تولد','تولد','ت تولد']],
     ['gender','جنسیت',0,['جنسیت','جنس']],
-    ['birth_date','تاریخ تولد',0,['تاریخ تولد','تولد']],
-    ['father_name','نام پدر',0,['نام پدر','پدر','نام ولی']],
+    ['shenasname_serial','سریال شناسنامه',0,['سریال شناسنامه','سریال','شماره شناسنامه']],
+    ['shenasname_seri','سری شناسنامه',0,['سری شناسنامه','سری']],
+    /* تحصیلی */
+    ['class_name','کلاس',0,['کلاس','نام کلاس','پایه و کلاس']],
+    ['field','رشته',0,['رشته','رشته تحصیلی','گرایش']],
+    ['last_gpa','معدل سال گذشته',0,['معدل سال گذشته','معدل قبلی','معدل']],
+    ['failed_count','تعداد درس افتاده',0,['تعداد درس افتاده','درس افتاده','مردودی']],
+    /* پدر */
+    ['father_name','نام پدر',0,['نام پدر','پدر']],
     ['father_nid','کد ملی پدر',0,['کد ملی پدر','کدملی پدر','کد ملی ولی']],
-    ['father_phone','موبایل پدر',0,['موبایل پدر','تلفن پدر','شماره تماس','تلفن ولی']],
-    ['mother_nid','کد ملی مادر',0,['کد ملی مادر','کدملی مادر']]
+    ['father_edu','تحصیلات پدر',0,['تحصیلات پدر','مدرک پدر']],
+    ['father_alive','وضعیت حیات پدر',0,['وضعیت حیات پدر','حیات پدر']],
+    ['father_job','شغل پدر',0,['شغل پدر','حرفه پدر']],
+    ['father_phone','موبایل پدر',0,['موبایل پدر','شماره پدر','تلفن پدر','همراه پدر']],
+    /* مادر */
+    ['mother_name','نام مادر',0,['نام مادر','مادر']],
+    ['mother_nid','کد ملی مادر',0,['کد ملی مادر','کدملی مادر']],
+    ['mother_edu','تحصیلات مادر',0,['تحصیلات مادر','مدرک مادر']],
+    ['mother_alive','وضعیت حیات مادر',0,['وضعیت حیات مادر','حیات مادر']],
+    ['mother_job','شغل مادر',0,['شغل مادر','حرفه مادر']],
+    ['mother_phone','موبایل مادر',0,['موبایل مادر','شماره مادر','تلفن مادر','همراه مادر']],
+    /* سرپرست و خانواده */
+    ['guardian','سرپرست دانش آموز',0,['سرپرست دانش آموز','سرپرست','ولی']],
+    ['guardian_alive','وضعیت حیات',0,['وضعیت حیات','حیات']],
+    ['sisters','تعداد خواهر',0,['تعداد خواهر','خواهر']],
+    ['brothers','تعداد برادر',0,['تعداد برادر','برادر']],
+    /* حمایتی */
+    ['covered','تحت پوشش',0,['تحت پوشش','تحت‌پوشش']],
+    ['org_type','نوع ارگان',0,['نوع ارگان','ارگان','نهاد حمایتی']],
+    ['org_percent','درصد',0,['درصد','درصد حمایت']],
+    ['talent','استعداد یابی',0,['استعداد یابی','استعدادیابی','استعداد']],
+    /* تماس و نشانی */
+    ['phone','موبایل دانش آموز',0,['موبایل دانش آموز','موبایل دانش‌آموز','همراه دانش آموز','موبایل','شماره تماس']],
+    ['landline','شماره ثابت',0,['شماره ثابت','تلفن ثابت','ثابت','تلفن منزل']],
+    ['residence','محل سکونت',0,['محل سکونت','سکونت','شهر یا روستا']],
+    ['village','نام روستا',0,['نام روستا','روستا']],
+    ['residence_status','وضعیت اقامت',0,['وضعیت اقامت','اقامت','تابعیت']],
+    ['address','آدرس',0,['آدرس','نشانی','ادرس']]
   ],
   teachers: [
-    ['full_name','نام و نام خانوادگی',1,['نام و نام خانوادگی','نام دبیر','نام معلم','نام']],
-    ['national_id','کد ملی',0,['کد ملی','کدملی']],
-    ['phone','موبایل',0,['موبایل','تلفن همراه','شماره تماس']],
-    ['subject','درس تخصصی',0,['درس','تخصص','رشته']]
+    ['first_name','نام',0,['نام','نام دبیر','نام معلم','اسم']],
+    ['last_name','نام خانوادگی',0,['نام خانوادگی','فامیل','فامیلی']],
+    ['full_name','نام و نام خانوادگی',0,['نام و نام خانوادگی','نام کامل']],
+    ['national_id','کد ملی',0,['کد ملی','کدملی','شماره ملی']],
+    ['phone','موبایل',0,['موبایل','تلفن همراه','شماره تماس','همراه']],
+    ['subject','درس تخصصی',0,['درس','تخصص','رشته','درس تخصصی']],
+    ['degree','مدرک تحصیلی',0,['مدرک','تحصیلات','مدرک تحصیلی']],
+    ['address','آدرس',0,['آدرس','نشانی']]
   ]
 };
+
+/* ستون‌هایی که هرگز نباید نگاشت شوند (شماره ردیف و ستون‌های خالی) */
+var IMP_IGNORE = ['ردیف','شماره','رديف','#','ش'];
+
+/* فیلدهای تکمیلی که مستقیم روی رکورد کاربر ذخیره می‌شوند */
+var IMP_EXTRA_FIELDS = ['first_name','last_name','field','last_gpa','failed_count',
+  'father_name','father_edu','father_alive','father_job','father_phone',
+  'mother_name','mother_edu','mother_alive','mother_job','mother_phone',
+  'guardian','guardian_alive','sisters','brothers',
+  'covered','org_type','org_percent','talent',
+  'landline','residence','village','residence_status','address',
+  'shenasname_serial','shenasname_seri','degree'];
 
 /** خواندن csv با پشتیبانی از کاما، نقطه‌ویرگول و تب */
 function parseCSV(text){
@@ -143,6 +207,8 @@ function suggestMap(headers, entity){
   headers.forEach(function(h, i){
     var nh = normHdr(h);
     if(!nh) return;
+    /* ستون شماره ردیف داده نیست؛ نگاشت نمی‌شود */
+    if(IMP_IGNORE.indexOf(nh) > -1) return;
     var best = null, score = 0;
     IMP_FIELDS[entity].forEach(function(fld){
       var key = fld[0];
@@ -191,7 +257,14 @@ function validateImport(rows, mapping, entity){
     });
     var errors = [], warns = [], data = {};
 
-    data.full_name = (o.full_name || '').replace(/\s+/g, ' ').trim();
+    /* فایل‌های واقعی مدرسه «نام» و «نام خانوادگی» را جدا دارند؛
+       هر دو حالت پشتیبانی می‌شود و در نبود نام کامل، از دو ستون ساخته می‌شود */
+    var fn = (o.first_name || '').replace(/\s+/g, ' ').trim();
+    var ln = (o.last_name || '').replace(/\s+/g, ' ').trim();
+    data.full_name = (o.full_name || '').replace(/\s+/g, ' ').trim()
+      || (fn + ' ' + ln).trim();
+    if(fn) data.first_name = fn;
+    if(ln) data.last_name = ln;
     if(data.full_name.length < 3) errors.push('نام و نام خانوادگی الزامی است');
 
     var nid = toLatinDigits(o.national_id).replace(/\D/g, '');
@@ -216,9 +289,15 @@ function validateImport(rows, mapping, entity){
       }
     } else warns.push('بدون کد ملی');
 
-    var ph = toLatinDigits(o.father_phone || o.phone).replace(/\D/g, '');
+    /* موبایل دانش‌آموز و پدر جدا نگه داشته می‌شوند */
+    var ph = toLatinDigits(o.phone).replace(/\D/g, '');
     if(ph && /^09\d{9}$/.test(ph)) data.phone = ph;
-    else if(ph) warns.push('شماره موبایل نامعتبر است');
+    else if(ph) warns.push('موبایل دانش‌آموز نامعتبر است');
+    var fph = toLatinDigits(o.father_phone).replace(/\D/g, '');
+    if(fph && /^09\d{9}$/.test(fph)) data.father_phone = fph;
+    else if(fph) warns.push('موبایل پدر نامعتبر است');
+    /* اگر دانش‌آموز شماره ندارد، شمارهٔ پدر جای تماس اصلی می‌نشیند */
+    if(!data.phone && data.father_phone) data.phone = data.father_phone;
 
     if(entity === 'students'){
       var cname = (o.class_name || '').trim();
@@ -246,8 +325,53 @@ function validateImport(rows, mapping, entity){
         else if(v) warns.push('کد ملی ' + (k === 'father_nid' ? 'پدر' : 'مادر') + ' نامعتبر است');
       });
       data.father_name = (o.father_name || '').trim() || null;
+      data.mother_name = (o.mother_name || '').trim() || null;
+
+      /* شمارهٔ مادر جدا از پدر نگه داشته می‌شود */
+      var mph = toLatinDigits(o.mother_phone).replace(/\D/g, '');
+      if(mph && /^09\d{9}$/.test(mph)) data.mother_phone = mph;
+      else if(mph) warns.push('موبایل مادر نامعتبر است');
+
+      /* اطلاعات تکمیلی — بدون اعتبارسنجی سخت‌گیرانه، چون اختیاری‌اند */
+      ['father_edu','mother_edu','father_job','mother_job','guardian',
+       'field','residence','village','residence_status','address',
+       'shenasname_serial','shenasname_seri','talent','org_type'].forEach(function(k){
+        var v = (o[k] || '').trim();
+        if(v) data[k] = v;
+      });
+
+      /* وضعیت حیات: هر عبارتی که «فوت» داشته باشد یعنی درگذشته */
+      ['father_alive','mother_alive','guardian_alive'].forEach(function(k){
+        var v = normHdr(o[k]);
+        if(!v) return;
+        data[k] = /فوت|مرحوم|متوفی/.test(v) ? 'فوت' : 'در قید حیات';
+      });
+
+      /* اعداد */
+      ['sisters','brothers','failed_count','org_percent'].forEach(function(k){
+        var n = toNumFa(o[k]);
+        if(n !== null && !isNaN(n)) data[k] = n;
+      });
+      /* معدل در فایل واقعی به شکل «۱۲/۸۸» است — اسلش نقش ممیز دارد */
+      var g = toNumFa(o.last_gpa);
+      if(g !== null && !isNaN(g)){
+        if(g >= 0 && g <= 20) data.last_gpa = g;
+        else warns.push('معدل «' + esc(String(o.last_gpa)) + '» خارج از بازهٔ ۰ تا ۲۰ است');
+      }
+
+      /* تحت پوشش: بلی/خیر */
+      var cov = normHdr(o.covered);
+      if(cov) data.covered = /بل[ىی]|بله|دارد|آر[ىی]/.test(cov) ? 1 : 0;
+
+      /* شمارهٔ ثابت */
+      var land = toLatinDigits(o.landline).replace(/\D/g, '');
+      if(land) data.landline = land;
     } else {
       data.subject = (o.subject || '').trim() || null;
+      ['degree','address'].forEach(function(k){
+        var v = (o[k] || '').trim();
+        if(v) data[k] = v;
+      });
     }
     out.push({ row: i + 1, data: data, errors: errors, warns: warns, ok: errors.length === 0 });
   });
@@ -285,18 +409,28 @@ function commitImport(st){
       var d = r.data, uid = d.existing_id;
       if(uid){
         var cur = byId('users', uid) || {};
-        update('users', uid, { full_name: d.full_name, phone: d.phone || cur.phone,
+        var patch = { full_name: d.full_name, phone: d.phone || cur.phone,
           father_nid: d.father_nid || cur.father_nid, mother_nid: d.mother_nid || cur.mother_nid,
-          birth_date: d.birth_date || cur.birth_date });
+          birth_date: d.birth_date || cur.birth_date };
+        /* فیلدهای تکمیلی فقط وقتی در فایل آمده‌اند به‌روز می‌شوند */
+        IMP_EXTRA_FIELDS.forEach(function(k){
+          if(d[k] !== undefined && d[k] !== null && d[k] !== '') patch[k] = d[k];
+        });
+        update('users', uid, patch);
         report.updated++;
       } else {
-        uid = insert('users', { school_id: sid,
+        var rec = insert('users', { school_id: sid,
           role: st.entity === 'students' ? 'student' : 'teacher',
           full_name: d.full_name, username: freeName(st.entity === 'students' ? 'st' : 'tc'),
           password: '123456', national_id: d.national_id || null, phone: d.phone || '',
           active: 1, father_nid: d.father_nid || null, mother_nid: d.mother_nid || null,
           birth_date: d.birth_date || null, gender: d.gender || null,
-          subject: d.subject || null, status: 'active', created_at: todayISO() }).id;
+          subject: d.subject || null, status: 'active', created_at: todayISO() });
+        /* فیلدهای تکمیلی فایل مدرسه روی همان رکورد نوشته می‌شوند */
+        IMP_EXTRA_FIELDS.forEach(function(k){
+          if(d[k] !== undefined && d[k] !== null && d[k] !== '') rec[k] = d[k];
+        });
+        uid = rec.id;
         report.created++;
       }
       if(st.entity === 'students'){

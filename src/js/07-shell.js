@@ -84,7 +84,9 @@ function _renderRouteInner(){
     case 'discipline':return viewDiscipline();
     case 'schedule':return viewSchedule();
     case 'announcements':return viewAnnouncements();
-    case 'record':return viewRecord(S.user.id);
+    /* پروندهٔ دانش‌آموز: کارکنان و ولی با S.child دانش‌آموز را انتخاب
+       می‌کنند؛ دانش‌آموز خودش همیشه پروندهٔ خودش را می‌بیند. */
+    case 'record':return viewRecord(recordTargetId());
     case 'children':return viewChildren();
     case 'notifications':return viewNotifications();
     case 'leaves':return viewLeaves();

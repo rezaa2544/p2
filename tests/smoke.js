@@ -341,6 +341,102 @@ test('سابقه و فعالیت فقط برای سوپرادمین باز اس�
   }
 });
 
+console.log('\n▸ سازگاری با فایل واقعی مدرسه');
+
+test('ستون‌های فایل واقعی مدرسه شناخته می‌شوند', () => {
+  const real = ['ردیف','نام','نام خانوادگی','رشته','تاریخ تولد','شماره ملی','سری شناسنامه',
+    'سریال شناسنامه','نام پدر','کد ملی پدر','تحصیلات پدر','وضعیت حیات پدر','نام مادر',
+    'کد ملی مادر','تحصیلات مادر','وضعیت حیات مادر','سرپرست دانش آموز','معدل سال گذشته',
+    'تعداد درس افتاده','تحت پوشش','نوع ارگان','درصد','تعداد خواهر','تعداد برادر',
+    'شغل پدر','شغل مادر','موبایل دانش آموز','شماره پدر','شماره مادر','شماره ثابت',
+    'محل سکونت','نام روستا','وضعیت اقامت','آدرس','استعداد یابی'];
+  const map = W('suggestMap(' + JSON.stringify(real) + ",'students')");
+  const n = W('Object.keys(suggestMap(' + JSON.stringify(real) + ",'students')).length");
+  assert(n >= 33, 'فقط ' + n + ' ستون از ۳۵ شناخته شد');
+  const j = W('JSON.stringify(suggestMap(' + JSON.stringify(real) + ",'students'))");
+  assert(j.indexOf('"0"') < 0, 'ستون ردیف نباید نگاشت شود');
+  for(const k of ['first_name','last_name','father_job','mother_job','last_gpa',
+                  'covered','org_type','address','residence','talent'])
+    assert(j.indexOf(k) > -1, 'فیلد ' + k + ' نگاشت نشد');
+});
+
+test('نام و نام خانوادگی جدا ترکیب می‌شوند', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const NL = String.fromCharCode(10);
+  const csv = 'نام,نام خانوادگی,کلاس' + NL + 'پیشوا,رحمانی,کلاس آزمون نام';
+  W('window.__v=validateImport(prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').rows,"
+    + 'prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').mapping,'students')");
+  assert(W('window.__v.rows[0].data.full_name') === 'پیشوا رحمانی', 'ترکیب نشد');
+  assert(W('window.__v.rows[0].data.first_name') === 'پیشوا', 'نام جدا نگه داشته نشد');
+  assert(W('window.__v.rows[0].data.last_name') === 'رحمانی', 'نام خانوادگی جدا نگه داشته نشد');
+});
+
+test('معدل با ممیز فارسی و ارقام فارسی خوانده می‌شود', () => {
+  assert(W("toNumFa('۱۲/۸۸')") === 12.88, 'ممیز اسلش');
+  assert(W("toNumFa('۱۳٫۰۵')") === 13.05, 'ممیز فارسی');
+  assert(W("toNumFa('۱۷')") === 17, 'عدد صحیح فارسی');
+  assert(W("toNumFa('')") === null, 'مقدار خالی');
+});
+
+test('شماره دانش‌آموز و پدر جدا ثبت می‌شوند', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const NL = String.fromCharCode(10);
+  const csv = 'نام,نام خانوادگی,موبایل دانش آموز,شماره پدر,شماره مادر' + NL
+    + 'سینا,سهرابی,۰۹۱۸۱۷۶۳۳۹۴,۰۹۱۲۱۱۱۲۲۳۳,۰۹۳۳۷۷۴۹۶۳۵';
+  W('window.__v2=validateImport(prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').rows,"
+    + 'prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').mapping,'students')");
+  const d = W('window.__v2.rows[0].data');
+  assert(W('window.__v2.rows[0].data.phone') === '09181763394', 'موبایل دانش‌آموز');
+  assert(W('window.__v2.rows[0].data.father_phone') === '09121112233', 'شماره پدر');
+  assert(W('window.__v2.rows[0].data.mother_phone') === '09337749635', 'شماره مادر');
+});
+
+test('تحت پوشش و وضعیت حیات درست تفسیر می‌شوند', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const NL = String.fromCharCode(10);
+  const csv = 'نام,نام خانوادگی,تحت پوشش,نوع ارگان,درصد,وضعیت حیات پدر' + NL
+    + 'کارو,نیک‌بخت,بلی,کمیته امداد,۳۰,فوت شده';
+  W('window.__v3=validateImport(prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').rows,"
+    + 'prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').mapping,'students')");
+  assert(W('window.__v3.rows[0].data.covered') === 1, 'بلی باید ۱ شود');
+  assert(W('window.__v3.rows[0].data.org_type') === 'کمیته امداد', 'نوع ارگان');
+  assert(W('window.__v3.rows[0].data.org_percent') === 30, 'درصد');
+  assert(W('window.__v3.rows[0].data.father_alive') === 'فوت', 'وضعیت حیات');
+});
+
+test('تب شناسنامه اطلاعات تکمیلی را نشان می‌دهد', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  W("(function(){var s=db.users.find(function(u){return u.role==='student'&&u.school_id===" + sid + ";});"
+    + "update('users',s.id,{last_gpa:17.5,father_job:'کارگر',father_edu:'دیپلم',"
+    + "covered:1,org_type:'کمیته امداد',address:'خیابان آزمون',sisters:2});window.__pid=s.id;})()");
+  W("S.route='record';S.child=window.__pid;S.tab='profile';S.filters={}");
+  const o = W('renderRoute()');
+  assert(o.indexOf('کارگر') > -1, 'شغل پدر دیده نشد');
+  assert(o.indexOf('دیپلم') > -1, 'تحصیلات پدر دیده نشد');
+  assert(o.indexOf('کمیته امداد') > -1, 'نوع ارگان دیده نشد');
+  assert(o.indexOf('خیابان آزمون') > -1, 'آدرس دیده نشد');
+  assert(!o.includes('undefined') && !o.includes('[object'), 'خروجی ناسالم');
+  W("S.tab='grades';S.child=null");
+});
+
+test('پرونده دانش‌آموز: مرز دسترسی رعایت می‌شود', () => {
+  W("S.user=db.users.find(function(u){return u.role==='student'&&classOf(u.id);});S.persona=null;S.boss=null");
+  const me = W('S.user.id');
+  const peer = W('(function(){var c=classOf(' + me + ');var o=studentsOfClass(c.id)'
+    + '.find(function(s){return s.id!==' + me + ';});return o?o.id:null;})()');
+  if(peer){
+    W('S.child=' + peer);
+    assert(W('recordTargetId()') === me, 'دانش‌آموز توانست پرونده هم‌کلاسی را باز کند');
+  }
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  const other = W("db.users.find(function(u){return u.role==='student'&&u.school_id!==" + sid + ";}).id");
+  W('S.child=' + other);
+  assert(W('recordTargetId()') !== other, 'مدیر به دانش‌آموز مدرسه دیگر دسترسی داشت');
+  W('S.child=null');
+});
+
 console.log('\n▸ پنل سوپرادمین: مالی، رمز، سلامت');
 
 test('توابع پنل سوپرادمین تعریف شده‌اند', () => {
@@ -478,7 +574,10 @@ test('نگاشت با نویسه عربی و تیتر در ردیف دوم', () 
   const NL = String.fromCharCode(10);
   const csv2 = 'نام دانش آموز;كدملي' + NL + 'محمد اکبری;0016283426';
   const m2 = W('JSON.stringify(prepSheet(parseCSV(' + JSON.stringify(csv2) + "),'students').mapping)");
-  assert(m2.indexOf('full_name') > -1 && m2.indexOf('national_id') > -1, 'نویسه عربی شناخته نشد: ' + m2);
+  /* «نام دانش آموز» به first_name نگاشت می‌شود چون فایل‌های واقعی
+     مدرسه نام و نام خانوادگی را جدا دارند */
+  assert((m2.indexOf('first_name') > -1 || m2.indexOf('full_name') > -1)
+    && m2.indexOf('national_id') > -1, 'نویسه عربی شناخته نشد: ' + m2);
   const csv3 = 'گزارش مدرسه' + NL + 'نام و نام خانوادگی,کد ملی' + NL + 'رضا نوری,0018765432';
   assert(W('prepSheet(parseCSV(' + JSON.stringify(csv3) + "),'students').headers[0]") === 'نام و نام خانوادگی',
     'ردیف تیتر واقعی پیدا نشد');
