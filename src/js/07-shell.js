@@ -50,6 +50,7 @@ function renderRoute(){
   switch(S.route){
     case 'subscription':return viewSubscription();
     case 'adminsubs':return viewAdminSubs();
+    case 'lifecycle':return viewLifecycle();
     case 'dashboard':return S.user.role==='edu_office'?viewOfficeDash():viewDashboard();
     case 'schools':return viewSchools();
     case 'users':return viewUsers();

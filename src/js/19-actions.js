@@ -200,6 +200,72 @@ document.addEventListener('click',e=>{
      studentsOfClass(cid).forEach(s=>{const ex=_am?_day.get(s.id):db.attendance.find(x=>x.student_id===s.id&&x.date===date);
        if(ex)update('attendance',ex.id,{status:st});else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:s.id,date,status:st,note:null});});
      toast('همه دانش‌آموزان «'+ATT_FA[st]+'» ثبت شدند','ok');render();},
+   // ---- چرخه تحصیلی ----
+   'tr-box'(){S.filters.box=el.dataset.r;render();},
+   'promote-run'(){
+     const sid=S.user.school_id;
+     const rows=db.classes.filter(c=>c.school_id===sid);
+     askConfirm('ارتقای پایه پایان سال اجرا شود؟ دانش‌آموزان پایه ۱۲ فارغ‌التحصیل و بایگانی می‌شوند و پایه ۶ و ۹ «در انتظار انتقال» می‌گردند.',()=>{
+       let promoted=0,graduated=0,leavers=0;
+       /* عملیات انبوه: یک بار ذخیره در پایان به‌جای هزاران بار */
+       batchWrites(()=>{
+         rows.forEach(c=>{
+           const g=c.grade_level||gradeFromName(c.name); if(!g)return;
+           activeStudentsOfClass(c.id).forEach(st=>{
+             if(g===12){graduateStudent(st,sid,c);graduated++;}
+             else if(isTerminal(g)){update('users',st.id,{status:'awaiting_transfer',grade_level:g+1});leavers++;}
+             else {update('users',st.id,{grade_level:g+1});promoted++;}
+           });
+         });
+       });
+       toast(fa(promoted)+' ارتقا · '+fa(graduated)+' فارغ‌التحصیل · '+fa(leavers)+' پایان مقطع','ok');
+       render();
+     },{title:'ارتقای پایه پایان سال',ok:'اجرا کن'});
+   },
+   'tr-new'(){
+     const nid=el.dataset.r||'';
+     const cls=db.classes.filter(c=>c.school_id===S.user.school_id);
+     openModal(modalTpl('درخواست انتقال دانش‌آموز',
+       f('کد ملی دانش‌آموز',inp('tq_nid',nid))
+      +f('کلاس مقصد (اختیاری)',sel('tq_class',[['','— بدون کلاس —']].concat(cls.map(c=>[c.id,c.name])),''))
+      +f('توضیح',inp('tq_note','')),'tr-send'));
+   },
+   'tr-send'(){
+     const nid=V('tq_nid');
+     if(!validNid(nid)){toast('کد ملی معتبر نیست','err');return;}
+     const st=db.users.find(u=>u.role==='student'&&u.national_id===nid);
+     if(!st){toast('دانش‌آموزی با این کد ملی یافت نشد','err');return;}
+     if(st.school_id===S.user.school_id){toast('این دانش‌آموز در همین مدرسه است','err');return;}
+     if(db.transfer_requests.some(r=>r.national_id===nid&&r.to_school_id===S.user.school_id&&r.status==='pending')){
+       toast('درخواست قبلاً ارسال شده است','err');return;}
+     insert('transfer_requests',{national_id:nid,student_id:st.id,from_school_id:st.school_id,
+       to_school_id:S.user.school_id,class_id:Number(V('tq_class'))||null,requested_by:S.user.id,
+       note:V('tq_note'),status:'pending',created_at:todayISO()});
+     db.users.filter(u=>u.role==='manager'&&u.school_id===st.school_id).forEach(m=>
+       insert('notifications',{user_id:m.id,school_id:st.school_id,type:'announcement',
+         title:'📨 درخواست انتقال دانش‌آموز',
+         body:'«'+(byId('schools',S.user.school_id)||{}).name+'» درخواست انتقال '+st.full_name+' را دارد.',
+         link:'lifecycle',read:0,created_at:todayISO()}));
+     closeModal(); toast('درخواست انتقال ارسال شد','ok'); render();
+   },
+   'tr-ok'(){
+     const r=byId('transfer_requests',id); if(!r)return;
+     const st=byId('users',r.student_id); if(!st){toast('دانش‌آموز یافت نشد','err');return;}
+     askConfirm('انتقال «'+st.full_name+'» تأیید شود؟ کل پرونده تحصیلی و انضباطی همراه ایشان منتقل می‌شود.',()=>{
+       const c=batchWrites(()=>moveStudent(st,r.to_school_id,r.class_id,r.note));
+       update('transfer_requests',r.id,{status:'approved'});
+       db.nid_conflicts.filter(x=>x.national_id===r.national_id&&x.school_id===r.to_school_id&&x.status==='open')
+         .forEach(x=>update('nid_conflicts',x.id,{status:'resolved'}));
+       toast('منتقل شد — '+fa(c.grades)+' نمره، '+fa(c.attendance)+' حضور، '+fa(c.discipline)+' انضباطی','ok');
+       render();
+     },{title:'تأیید انتقال',ok:'تأیید و انتقال'});
+   },
+   'tr-no'(){
+     const r=byId('transfer_requests',id); if(!r)return;
+     update('transfer_requests',r.id,{status:'rejected'});
+     toast('درخواست رد شد','ok'); render();
+   },
+   'conf-dismiss'(){ update('nid_conflicts',id,{status:'dismissed'}); render(); },
    // grades
    'grade-new'(){gradeModal(null);},
    'grade-edit'(){gradeModal(byId('grades',id));},

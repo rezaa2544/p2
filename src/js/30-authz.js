@@ -16,8 +16,8 @@
 
 /** روت‌هایی که در NAV نیستند ولی برای نقش مجازند (زیرصفحه یا مقصد پیمایش) */
 var EXTRA_ROUTES = {
-  superadmin: ['dashboard','adminsubs','officedash','officeschools','record','geo','offices'],
-  manager:    ['record','corrections','teachers','exams','tuition'],
+  superadmin: ['dashboard','adminsubs','officedash','officeschools','record','geo','offices','lifecycle'],
+  manager:    ['record','corrections','teachers','exams','tuition','lifecycle'],
   teacher:    ['record','exams'],
   student:    ['record','mytuition','notifications','announcements','subscription'],
   parent:     ['children','record','family','mytuition','notifications','announcements','subscription','calendar'],
@@ -110,6 +110,14 @@ var ACTION_ROLES = {
   'office-del':    ['superadmin'],
   'office-toggle': ['superadmin'],
   /* اشتراک (پنل مدیریتی) */
+  /* چرخهٔ تحصیلی — عملیات سنگین و برگشت‌ناپذیر: فقط مدیر و سوپرادمین */
+  'promote-run':   ['manager','superadmin'],
+  'tr-new':        ['manager','superadmin'],
+  'tr-send':       ['manager','superadmin'],
+  'tr-ok':         ['manager','superadmin'],
+  'tr-no':         ['manager','superadmin'],
+  'tr-box':        ['manager','superadmin'],
+  'conf-dismiss':  ['manager','superadmin'],
   'subs-settings': ['superadmin'],
   'subs-save':     ['superadmin']
 };

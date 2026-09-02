@@ -40,6 +40,10 @@ function loadQueue(){
   }catch(e){}
 }
 function saveQueue(){
+  /* در عملیات انبوه (batchWrites) ذخیره‌سازی به پایان دسته موکول می‌شود؛
+     وگرنه هر عملیات کل صف را دوباره JSON.stringify می‌کند و هزینه
+     درجه‌دوم می‌شود. پرچم در 03-persistence.js مدیریت می‌شود. */
+  if(typeof _BATCH_DEPTH !== 'undefined' && _BATCH_DEPTH > 0){ _BATCH_QUEUE_DIRTY = true; return; }
   try{ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(SYNC.queue)); }catch(e){}
 }
 function saveSyncMeta(){

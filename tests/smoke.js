@@ -253,6 +253,123 @@ test('پاک‌سازی کامل، صف را هم خالی می‌کند', () =>
   assert(has, 'resetAll صف همگام‌سازی را پاک نمی‌کند');
 });
 
+console.log('\n▸ نوشتن دسته‌ای (batchWrites)');
+
+test('batchWrites تعریف شده و هیچ عملیاتی گم نمی‌کند', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  assert(W("typeof batchWrites==='function'"), 'batchWrites موجود نیست');
+  const l0 = W('log.length'), q0 = W('SYNC.queue.length');
+  W("batchWrites(function(){for(var i=0;i<40;i++)insert('student_archive',"
+    + "{school_id:1,student_id:i,full_name:'bt'+i,year_code:'1404-1405'});})");
+  assert(W('log.length') - l0 === 40, 'همه عملیات در لاگ ثبت نشد');
+  assert(W('SYNC.queue.length') - q0 === 40, 'همه عملیات وارد صف نشد');
+});
+
+test('پس از batch، localStorage با حافظه همگام است', () => {
+  assert(W("JSON.parse(localStorage.getItem(LOG_KEY)).length===log.length"), 'لاگ همگام نیست');
+  assert(W("JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY)).length===SYNC.queue.length"), 'صف همگام نیست');
+});
+
+test('batch تودرتو و استثنا پرچم را گیر نمی‌اندازند', () => {
+  const l0 = W('log.length');
+  W("batchWrites(function(){insert('student_archive',{school_id:1,student_id:1,full_name:'n1',year_code:'x'});"
+    + "batchWrites(function(){insert('student_archive',{school_id:1,student_id:2,full_name:'n2',year_code:'x'});});})");
+  assert(W('log.length') - l0 === 2, 'batch تودرتو نادرست');
+  try{ W("batchWrites(function(){throw new Error('boom');})"); }catch(e){}
+  assert(W('_BATCH_DEPTH') === 0, 'عمق batch پس از استثنا صفر نشد');
+  assert(W("JSON.parse(localStorage.getItem(LOG_KEY)).length===log.length"), 'پس از استثنا ناهمگام شد');
+});
+
+console.log('\n▸ چرخه تحصیلی (lifecycle)');
+
+test('توابع چرخه تحصیلی تعریف شده‌اند', () => {
+  assert(W("typeof viewLifecycle==='function' && typeof graduateStudent==='function' "
+    + "&& typeof moveStudent==='function' && typeof incompleteUsers==='function' "
+    + "&& typeof recordConflict==='function' && typeof gradeFromName==='function'"),
+    'توابع lifecycle موجود نیست');
+});
+
+test('چهار مجموعه دادهٔ چرخه تحصیلی وجود دارد', () => {
+  assert(W("['student_transfers','transfer_requests','student_archive','nid_conflicts']"
+    + ".every(function(k){return Array.isArray(db[k]);})"), 'مجموعه داده ناقص است');
+});
+
+test('استنتاج پایه از نام کلاس درست است', () => {
+  const cases = [['نهم ۲',9],['دوازدهم تجربی',12],['ششم الف',6],['کلاس بی‌نام',null]];
+  for(const [n, exp] of cases)
+    assert(W('gradeFromName(' + JSON.stringify(n) + ')') === exp, 'gradeFromName: ' + n);
+  assert(W('isTerminal(6)&&isTerminal(9)&&isTerminal(12)&&!isTerminal(7)'), 'isTerminal نادرست');
+});
+
+test('هر پنج تب چرخه تحصیلی بدون خطا رندر می‌شوند', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null;S.route='lifecycle';S.filters={}");
+  for(const t of ['promotion','transfers','conflicts','incomplete','archive']){
+    W("S.tab='" + t + "'");
+    const o = W('renderRoute()');
+    assert(o.length > 300 && !o.includes('undefined') && !o.includes('[object'),
+      'تب ' + t + ' درست رندر نشد');
+  }
+  W("S.tab='grades'");
+});
+
+test('فارغ‌التحصیلی: بایگانی می‌شود و ثبت‌نام حذف می‌گردد', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  const cid = W('db.classes.filter(c=>c.school_id===' + sid + ')[0].id');
+  const stId = W('activeStudentsOfClass(' + cid + ')[0].id');
+  const n0 = W('db.student_archive.length');
+  W('graduateStudent(byId("users",' + stId + '),' + sid + ',byId("classes",' + cid + '))');
+  assert(W('db.student_archive.length') === n0 + 1, 'بایگانی ثبت نشد');
+  assert(W('byId("users",' + stId + ').status') === 'graduated', 'وضعیت فارغ‌التحصیل ثبت نشد');
+  assert(W('db.enrollments.filter(e=>e.student_id===' + stId + ').length') === 0, 'ثبت‌نام حذف نشد');
+});
+
+test('انتقال: کل پرونده به مدرسه مقصد منتقل می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const A = W('S.user.school_id');
+  const B = W('db.schools.find(s=>s.id!==' + A + ').id');
+  const st = W("db.users.find(x=>x.role==='student'&&x.school_id===" + B + "&&(x.status||'active')==='active').id");
+  const g0 = W('db.grades.filter(g=>g.student_id===' + st + ').length');
+  const a0 = W('db.attendance.filter(a=>a.student_id===' + st + ').length');
+  const cid = W('(db.classes.find(c=>c.school_id===' + A + ')||{}).id||null');
+  W('moveStudent(byId("users",' + st + '),' + A + ',' + cid + ',null)');
+  assert(W('byId("users",' + st + ').school_id') === A, 'مدرسه عوض نشد');
+  assert(W('db.grades.filter(g=>g.student_id===' + st + '&&g.school_id===' + A + ').length') === g0,
+    'نمرات منتقل نشد');
+  assert(W('db.attendance.filter(a=>a.student_id===' + st + '&&a.school_id===' + A + ').length') === a0,
+    'حضور و غیاب منتقل نشد');
+  assert(W('db.enrollments.filter(e=>e.student_id===' + st + ').length') <= 1, 'ثبت‌نام تکراری ماند');
+  assert(W('db.student_transfers.filter(t=>t.student_id===' + st + ').length') === 1, 'سابقه ثبت نشد');
+});
+
+test('تعارض کد ملی تکراری ثبت نمی‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const A = W('S.user.school_id');
+  const B = W('db.schools.find(s=>s.id!==' + A + ').id');
+  W('window.__o=db.users.find(u=>u.role==="student"&&u.school_id===' + B + '&&u.national_id)');
+  if(!W('!!window.__o')) return;
+  const n0 = W('db.nid_conflicts.length');
+  W('recordConflict(' + A + ',window.__o.national_id,window.__o.full_name,window.__o,"excel")');
+  W('recordConflict(' + A + ',window.__o.national_id,window.__o.full_name,window.__o,"excel")');
+  assert(W('db.nid_conflicts.length') === n0 + 1, 'تعارض تکراری ثبت شد');
+});
+
+test('دانش‌آموز و دبیر به چرخه تحصیلی دسترسی ندارند', () => {
+  for(const role of ['student','teacher','parent']){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null;S.route='lifecycle';S.filters={}");
+    assert(/دسترسی مجاز نیست|اشتراک/.test(W('renderRoute()')), role + ' به lifecycle دسترسی داشت');
+  }
+});
+
+test('اکشن‌های چرخه تحصیلی فقط برای مدیر مجاز است', () => {
+  const cases = [['student','promote-run',false],['teacher','tr-ok',false],
+                 ['manager','promote-run',true],['manager','tr-ok',true],['superadmin','tr-send',true]];
+  for(const [role, act, want] of cases){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null");
+    assert(W("canAction('" + act + "')") === want, role + ' → ' + act);
+  }
+});
+
 console.log('\n▸ مجوزدهی روت‌ها و اکشن‌ها (امنیت)');
 
 test('لایه مجوزدهی تعریف شده است', () => {
@@ -300,8 +417,12 @@ test('دسترسی‌های مجاز دست‌نخورده مانده‌اند',
 });
 
 test('دانش‌آموز نمی‌تواند برای هم‌کلاسی غیبت ثبت کند', () => {
-  W("S.user=db.users.find(u=>u.role==='student');S.persona=null;S.boss=null");
-  const cid = W('visibleClasses()[0].id');
+  /* دانش‌آموزی انتخاب می‌شود که کلاس دارد و کلاسش حداقل دو نفر است
+     (تست‌های چرخه تحصیلی ممکن است بعضی دانش‌آموزان را فارغ‌التحصیل کرده باشند) */
+  W("S.user=db.users.find(function(u){return u.role==='student'&&(u.status||'active')==='active'"
+    + "&&classOf(u.id)&&studentsOfClass(classOf(u.id).id).length>1;});S.persona=null;S.boss=null");
+  assert(W('!!S.user'), 'دانش‌آموز واجد شرایط یافت نشد');
+  const cid = W('classOf(S.user.id).id');
   const victim = W('studentsOfClass(' + cid + ').find(s=>s.id!==S.user.id).id');
   const D = '2026-07-11';
   W("S.route='attendance';S.filters={class:" + cid + ",date:'" + D + "'}");
