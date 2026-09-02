@@ -58,6 +58,7 @@ node scripts/dev-server.js   # سرور توسعه روی درگاه ۳۰۰۰
 | وضعیت مدارس · خروجی · اطلاعیه سراسری | `schoolsOverview` · `exportData` · `broadcastAnnouncement` | `37-admin-tools.js` |
 | پلان فروش · پشتیبان و بازیابی | `viewPlans` · `buildBackup` · `restoreBackup` | `38-plans-backup.js` |
 | اشتراک مشترک پدر و مادر | `studentSubscription` · `effectiveParentAccess` | `23-subscription.js` |
+| چرخه سال · چیدمان کلاس · ثبت‌نام | `viewSchoolYear` · `autoPlacement` · `applyPlacement` | `39-school-year.js` |
 
 **راه سریع‌تر:** نام صفحه را در برنامه ببینید، بعد `grep` بزنید:
 ```bash
@@ -89,6 +90,8 @@ grep -rn "function viewGrades" src/js/
 | ستونی به خروجی اکسل اضافه کنم | `37-admin-tools.js` — `exportData` |
 | پلان فروش تازه‌ای اضافه کنم | `38-plans-backup.js` — `PLAN_DEFS` |
 | قاعده‌ای به اعتبارسنجی قیمت بیفزایم | `38-plans-backup.js` — `validatePlanSettings` |
+| منطق چیدمان کلاس را عوض کنم | `39-school-year.js` — `autoPlacement` · `placementScore` |
+| تعریف مقطع رشته‌محور را تغییر دهم | `39-school-year.js` — `isFieldBased` |
 
 ---
 

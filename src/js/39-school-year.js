@@ -1,0 +1,355 @@
+/* ═══════════════════════════════════════════════════════════════════
+   چرخهٔ سال تحصیلی و چیدمان کلاس‌ها
+   ═══════════════════════════════════════════════════════════════════
+   بخش ۱ ▸ بستن سال تحصیلی و یادآوری تیرماه
+   بخش ۲ ▸ ثبت‌نام مهر با تأیید شهریه
+   بخش ۳ ▸ چیدمان کلاس: دستی و خودکار
+   روت: schoolyear
+
+   ⚠️ مسئله‌ای که این ماژول حل می‌کند:
+   ارتقای پایه فقط عدد `grade_level` را زیاد می‌کرد و دانش‌آموز در
+   کلاس پارسالش می‌ماند — یعنی دانش‌آموز یازدهم در کلاس «دهم تجربی».
+   حالا پس از ارتقا، مرحلهٔ چیدمان کلاس انجام می‌شود.
+
+   دو منطق متفاوت بر پایهٔ مقطع:
+   • ابتدایی و متوسطه اول: کلاس‌محور — چیدمان هر سال از نو
+   • متوسطه دوم: رشته‌محور — رشته تا پایان دوازدهم ثابت می‌ماند
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─────────── بخش ۱: وضعیت سال تحصیلی ─────────── */
+
+/** خواندن وضعیت سال تحصیلی یک مدرسه */
+function yearState(sid){
+  sid = sid || (S.user && S.user.school_id);
+  var row = (db.school_years || []).filter(function(y){
+    return y.school_id === sid && y.year_code === yearCode(); })[0];
+  return row || { school_id: sid, year_code: yearCode(),
+    closed: 0, closed_at: null, promoted: 0, placement: null };
+}
+
+/** ذخیرهٔ وضعیت سال تحصیلی */
+function saveYearState(sid, patch){
+  db.school_years = db.school_years || [];
+  var row = (db.school_years).filter(function(y){
+    return y.school_id === sid && y.year_code === yearCode(); })[0];
+  if(row) update('school_years', row.id, patch);
+  else insert('school_years', Object.assign(
+    { school_id: sid, year_code: yearCode(), closed: 0, promoted: 0, placement: null }, patch));
+}
+
+/**
+ * آیا اکنون فصل پایان سال است؟
+ * تیر و مرداد (ماه ۴ و ۵ شمسی) فصل بستن سال است.
+ */
+function isYearEndSeason(){
+  var p = todayISO().split('-').map(Number);
+  var j = toJalali(p[0], p[1], p[2]);
+  return j[1] === 4 || j[1] === 5;
+}
+
+/** آیا فصل ثبت‌نام است؟ شهریور (ماه ۶) */
+function isEnrollSeason(){
+  var p = todayISO().split('-').map(Number);
+  var j = toJalali(p[0], p[1], p[2]);
+  return j[1] === 6;
+}
+
+/**
+ * یادآوری دوره‌ای به مدیر در فصل پایان سال.
+ * هر هفت روز یک بار، تا زمانی که سال بسته نشده باشد.
+ */
+function yearEndReminder(){
+  if(!S.user || S.user.role !== 'manager') return null;
+  var sid = S.user.school_id;
+  var st = yearState(sid);
+  if(st.closed) return null;
+  if(!isYearEndSeason()) return null;
+  /* بررسی اینکه هفت روز از آخرین یادآوری گذشته باشد */
+  var last = st.reminded_at || null;
+  if(last && (Date.now() - Date.parse(last)) < 7 * 86400000) return null;
+  saveYearState(sid, { reminded_at: new Date().toISOString() });
+  insert('notifications', { user_id: S.user.id, school_id: sid, type: 'announcement',
+    title: '📅 پایان سال تحصیلی نزدیک است',
+    body: 'سال تحصیلی ' + yearTitle() + ' رو به پایان است. پس از برگزاری امتحانات، '
+        + 'از بخش «چرخهٔ سال تحصیلی» سال را ببندید تا ارتقای پایه انجام شود.',
+    link: 'schoolyear', read: 0, created_at: todayISO() });
+  return true;
+}
+
+/* ─────────── بخش ۲: چیدمان کلاس ─────────── */
+
+/** آیا این مقطع رشته‌محور است؟ (متوسطه دوم) */
+function isFieldBased(grade){ return Number(grade) >= 10; }
+
+/**
+ * کلاس‌های مقصد برای یک پایه (و رشته، در متوسطه دوم).
+ * اگر کلاسی نباشد، خالی برمی‌گرداند تا مدیر بسازد.
+ */
+function targetClasses(sid, grade, field){
+  return db.classes.filter(function(c){
+    if(c.school_id !== sid) return false;
+    var g = c.grade_level || gradeFromName(c.name);
+    if(Number(g) !== Number(grade)) return false;
+    if(isFieldBased(grade) && field) return normHdr(c.field || '') === normHdr(field);
+    return true;
+  });
+}
+
+/** دانش‌آموزانی که پایه‌شان بالا رفته ولی کلاس مناسب ندارند */
+function needPlacement(sid){
+  var out = [];
+  db.users.forEach(function(u){
+    if(u.role !== 'student' || u.school_id !== sid) return;
+    if((u.status || 'active') !== 'active') return;
+    var g = Number(u.grade_level || 0);
+    if(!g) return;
+    var cls = classOf(u.id);
+    var cg = cls ? Number(cls.grade_level || gradeFromName(cls.name) || 0) : null;
+    /* بدون کلاس، یا کلاسش پایهٔ دیگری است */
+    if(!cls || cg !== g) out.push({ user: u, grade: g, current: cls,
+      field: u.field || (cls || {}).field || null });
+  });
+  return out;
+}
+
+/**
+ * امتیاز یک دانش‌آموز برای چیدمان خودکار.
+ * ترکیب معدل و انضباط؛ هرچه بالاتر، قوی‌تر.
+ */
+function placementScore(studentId){
+  var gi = (typeof idxGradesByStudent === 'function') ? idxGradesByStudent() : null;
+  var gs = gi ? (gi.get(studentId) || []) : db.grades.filter(function(g){ return g.student_id === studentId; });
+  var avg = gs.length ? gs.reduce(function(a,b){ return a + b.score; }, 0) / gs.length : 12;
+  var disc = db.discipline.filter(function(d){ return d.student_id === studentId; })
+    .reduce(function(a,b){ return a + (b.points || 0); }, 0);
+  /* انضباط با وزن کمتر تا معدل عامل اصلی بماند */
+  return Math.round((avg + disc * 0.1) * 100) / 100;
+}
+
+/**
+ * چیدمان خودکار: توزیع متوازن بر پایهٔ کارنامه.
+ * روش «مارپیچ»: قوی‌ترین به کلاس اول، دومی به کلاس دوم… سپس برعکس.
+ * نتیجه: میانگین کلاس‌ها به هم نزدیک می‌ماند و کلاس ضعیف شکل نمی‌گیرد.
+ */
+function autoPlacement(students, classes){
+  if(!classes.length) return [];
+  var ranked = students.slice().sort(function(a,b){
+    return placementScore(b.user.id) - placementScore(a.user.id); });
+  var buckets = classes.map(function(c){ return { cls: c, list: [] }; });
+  var i = 0, dir = 1;
+  ranked.forEach(function(s){
+    /* رعایت ظرفیت: اگر کلاس پر بود، به بعدی می‌رود */
+    var tries = 0;
+    while(tries < buckets.length){
+      var b = buckets[i];
+      var cap = Number(b.cls.capacity || 40);
+      if(b.list.length < cap){ b.list.push(s); break; }
+      i += dir;
+      if(i >= buckets.length){ i = buckets.length - 1; dir = -1; }
+      else if(i < 0){ i = 0; dir = 1; }
+      tries++;
+    }
+    if(tries >= buckets.length) buckets[0].list.push(s);  /* همه پر: اولی */
+    i += dir;
+    if(i >= buckets.length){ i = buckets.length - 1; dir = -1; }
+    else if(i < 0){ i = 0; dir = 1; }
+  });
+  return buckets;
+}
+
+/** اعمال چیدمان: ثبت‌نام دانش‌آموزان در کلاس‌های تعیین‌شده */
+function applyPlacement(pairs){
+  var n = 0;
+  batchWrites(function(){
+    pairs.forEach(function(p){
+      if(!p.classId || !p.studentId) return;
+      var cls = byId('classes', p.classId);
+      if(!cls) return;
+      db.enrollments.filter(function(e){ return e.student_id === p.studentId; })
+        .forEach(function(e){ remove('enrollments', e.id); });
+      insert('enrollments', { school_id: cls.school_id, class_id: cls.id,
+        student_id: p.studentId, year: yearCode() });
+      /* رشته و پایهٔ دانش‌آموز با کلاس هماهنگ می‌شود */
+      var patch = { grade_level: cls.grade_level || gradeFromName(cls.name) };
+      if(cls.field) patch.field = cls.field;
+      update('users', p.studentId, patch);
+      n++;
+    });
+  });
+  return n;
+}
+
+/**
+ * ساخت کلاس تازه برای یک پایه و رشته.
+ * وقتی تعداد دانش‌آموزان یک رشته از ظرفیت بیشتر شود، مدیر کلاس
+ * دوم می‌سازد: «دهم تجربی الف» و «دهم تجربی ب».
+ */
+function createParallelClass(sid, grade, field, suffix){
+  var base = (typeof GRADE_WORDS === 'object')
+    ? Object.keys(GRADE_WORDS).filter(function(k){ return GRADE_WORDS[k] === Number(grade); })[0]
+    : String(grade);
+  var name = (base || grade) + (field ? ' ' + field : '') + (suffix ? ' ' + suffix : '');
+  return insert('classes', { school_id: sid, name: name,
+    grade: base || String(grade), grade_level: Number(grade),
+    field: field || null, room: null, capacity: 40, homeroom_teacher_id: null });
+}
+
+/* ─────────── بخش ۳: ثبت‌نام سال تازه ─────────── */
+
+/**
+ * آیا شهریهٔ دانش‌آموز برای ثبت‌نام تأیید شده است؟
+ * ملاک: دست‌کم یک قسط پرداخت‌شده در سال جاری.
+ */
+function tuitionCleared(studentId){
+  var ins = db.installments.filter(function(i){ return i.student_id === studentId; });
+  if(!ins.length) return false;
+  return ins.some(function(i){ return i.status === 'paid' || Number(i.paid_amount || 0) > 0; });
+}
+
+/** فهرست ثبت‌نام: چه کسی شهریه داده و آماده چیدمان است */
+function enrollmentList(sid){
+  return needPlacement(sid).map(function(p){
+    return Object.assign({}, p, { paid: tuitionCleared(p.user.id) });
+  });
+}
+
+/* ─────────── نما ─────────── */
+
+function viewSchoolYear(){
+  var sid = S.user.school_id;
+  var st = yearState(sid);
+  var tab = ['placement','enroll'].indexOf(S.tab) > -1 ? S.tab : 'status';
+  var pending = needPlacement(sid);
+  var tabs = [['status','📅 وضعیت سال'],['placement','🏛️ چیدمان کلاس‌ها'],['enroll','💳 ثبت‌نام']]
+    .map(function(t){
+      return '<button class="btn ' + (tab === t[0] ? '' : 'ghost') + '" data-act="tab" data-t="'
+        + t[0] + '">' + t[1] + '</button>'; }).join('');
+  var body = '';
+
+  if(tab === 'status'){
+    var season = isYearEndSeason() ? 'پایان سال' : isEnrollSeason() ? 'ثبت‌نام' : 'میان سال';
+    body = '<div class="card" style="margin-bottom:14px;background:linear-gradient(120deg,'
+      + (st.closed ? 'var(--green-soft)' : 'var(--primary-soft)') + ',#fff)"><div class="card-body row">'
+      + '<div style="font-size:34px">' + (st.closed ? '✅' : '📅') + '</div>'
+      + '<div style="flex:1"><b style="font-size:16px">سال تحصیلی ' + yearTitle() + '</b>'
+      + '<div class="small muted" style="line-height:2">'
+      + (st.closed
+          ? 'این سال بسته شده است. ارتقای پایه انجام شد و اکنون می‌توانید کلاس‌ها را بچینید.'
+          : 'سال تحصیلی هنوز باز است. پس از پایان امتحانات، آن را ببندید تا ارتقای پایه انجام شود.')
+      + '<br>فصل جاری: <b>' + season + '</b>'
+      + (st.closed_at ? ' · بسته‌شده در ' + jalali(String(st.closed_at).slice(0,10)) : '')
+      + '</div></div>'
+      + (st.closed
+          ? '<button class="btn ghost" data-act="year-reopen">↩️ بازگشایی سال</button>'
+          : '<button class="btn" data-act="year-close">🔒 بستن سال و ارتقای پایه</button>')
+      + '</div></div>'
+
+      + (!st.closed && isYearEndSeason()
+        ? '<div class="card" style="margin-bottom:14px;border-inline-start:4px solid var(--amber)">'
+          + '<div class="card-body small" style="line-height:2">'
+          + '⚠️ <b>اکنون فصل پایان سال است.</b> اگر امتحانات تمام شده، سال را ببندید. '
+          + 'با بستن سال: پایهٔ همه یک واحد بالا می‌رود، پایهٔ دوازدهم فارغ‌التحصیل و بایگانی '
+          + 'می‌شود، و پایهٔ ششم و نهم «در انتظار انتقال» می‌شوند.</div></div>' : '')
+
+      + '<div class="grid g4" style="margin-bottom:14px">'
+      + statCard('👥', fa(schoolStudents(sid).length), 'دانش‌آموز فعال', 'blue')
+      + statCard('🏛️', fa(db.classes.filter(function(c){ return c.school_id === sid; }).length), 'کلاس', 'purple')
+      + statCard('⏳', fa(pending.length), 'نیازمند چیدمان کلاس', pending.length ? 'amber' : 'green')
+      + statCard('🎓', fa(db.student_archive.filter(function(a){ return a.school_id === sid; }).length),
+          'فارغ‌التحصیل بایگانی‌شده', 'green') + '</div>'
+
+      + '<div class="card"><div class="card-head"><h3>مراحل چرخهٔ سال</h3></div>'
+      + '<div class="card-body"><table class="table"><tbody>'
+      + [['۱', 'بستن سال تحصیلی', st.closed, 'تیر یا مرداد، پس از امتحانات'],
+         ['۲', 'ارتقای پایه', st.promoted, 'خودکار هنگام بستن سال'],
+         ['۳', 'چیدمان کلاس‌ها', pending.length === 0 && st.closed, 'دستی یا خودکار بر پایهٔ کارنامه'],
+         ['۴', 'ثبت‌نام و تأیید شهریه', false, 'شهریور']]
+        .map(function(r){
+          return '<tr><td style="width:34px">' + (r[2] ? '✅' : '⬜') + '</td>'
+            + '<td><b>' + r[1] + '</b></td><td class="small muted">' + r[3] + '</td></tr>';
+        }).join('')
+      + '</tbody></table></div></div>';
+  }
+
+  if(tab === 'placement'){
+    /* گروه‌بندی بر پایهٔ پایه و رشته */
+    var groups = Object.create(null);
+    pending.forEach(function(p){
+      var key = p.grade + '|' + (isFieldBased(p.grade) ? (p.field || 'بدون رشته') : '');
+      (groups[key] = groups[key] || { grade: p.grade, field: isFieldBased(p.grade) ? p.field : null,
+        list: [] }).list.push(p);
+    });
+    var keys = Object.keys(groups);
+
+    body = '<div class="card" style="margin-bottom:14px"><div class="card-body small muted" style="line-height:2">'
+      + '<b>ابتدایی و متوسطه اول</b> کلاس‌محورند: هر سال چیدمان از نو انجام می‌شود.<br>'
+      + '<b>متوسطه دوم</b> رشته‌محور است: رشتهٔ دانش‌آموز تا پایان دوازدهم ثابت می‌ماند و '
+      + 'فقط پایه‌اش بالا می‌رود. اگر تعداد یک رشته زیاد باشد، چند کلاس موازی بسازید.'
+      + '</div></div>'
+
+      + (keys.length ? keys.map(function(k){
+          var g = groups[k];
+          var cls = targetClasses(sid, g.grade, g.field);
+          var levelName = g.grade <= 6 ? 'ابتدایی' : g.grade <= 9 ? 'متوسطه اول' : 'متوسطه دوم';
+          return '<div class="card" style="margin-bottom:12px"><div class="card-head">'
+            + '<h3>پایهٔ ' + fa(g.grade) + (g.field ? ' — ' + esc(g.field) : '')
+            + ' <span class="badge b-gray">' + fa(g.list.length) + ' دانش‌آموز</span></h3>'
+            + '<div class="row" style="gap:6px">'
+            + '<span class="small muted">' + levelName + ' · ' + fa(cls.length) + ' کلاس مقصد</span>'
+            + '<button class="btn ghost sm" data-act="cls-parallel" data-g="' + g.grade
+            + '" data-fl="' + esc(g.field || '') + '">➕ کلاس موازی</button>'
+            + (cls.length ? '<button class="btn sm" data-act="place-auto" data-g="' + g.grade
+                + '" data-fl="' + esc(g.field || '') + '">⚡ چیدمان خودکار</button>' : '')
+            + '</div></div>'
+            + (cls.length
+              ? '<div class="table-wrap"><table class="table"><thead><tr><th>دانش‌آموز</th>'
+                + '<th>کلاس پارسال</th><th>امتیاز</th><th>کلاس مقصد</th></tr></thead><tbody>'
+                + g.list.slice(0, 200).map(function(p){
+                    return '<tr><td><b>' + esc(p.user.full_name) + '</b></td>'
+                      + '<td class="small muted">' + esc((p.current || {}).name || '—') + '</td>'
+                      + '<td class="small">' + fa(placementScore(p.user.id)) + '</td>'
+                      + '<td><select class="select" data-f="place" data-s="' + p.user.id + '">'
+                      + '<option value="">— انتخاب کنید —</option>'
+                      + cls.map(function(c){
+                          var n = db.enrollments.filter(function(e){ return e.class_id === c.id; }).length;
+                          return '<option value="' + c.id + '">' + esc(c.name)
+                            + ' (' + fa(n) + '/' + fa(c.capacity || 40) + ')</option>';
+                        }).join('') + '</select></td></tr>';
+                  }).join('')
+                + '</tbody></table></div>'
+              : '<div class="card-body">' + empty('🏛️','کلاسی برای این پایه نیست',
+                  'با دکمهٔ «کلاس موازی» کلاس بسازید تا بتوانید دانش‌آموزان را بچینید.') + '</div>')
+            + '</div>';
+        }).join('')
+        : empty('✅','همهٔ دانش‌آموزان کلاس دارند','چیدمانی در انتظار نیست.'));
+  }
+
+  if(tab === 'enroll'){
+    var list = enrollmentList(sid);
+    var paid = list.filter(function(x){ return x.paid; }).length;
+    body = '<div class="grid g3" style="margin-bottom:14px">'
+      + statCard('📋', fa(list.length), 'در انتظار ثبت‌نام', 'blue')
+      + statCard('✅', fa(paid), 'شهریه تأییدشده', 'green')
+      + statCard('⏳', fa(list.length - paid), 'بدون پرداخت', 'amber') + '</div>'
+      + '<div class="card"><div class="card-head"><h3>ثبت‌نام سال تحصیلی تازه</h3>'
+      + (paid ? '<button class="btn" data-act="enroll-paid">⚡ چیدمان خودکار پرداخت‌کرده‌ها</button>' : '')
+      + '</div>'
+      + '<div class="card-body small muted" style="line-height:2">'
+      + 'دانش‌آموزی که شهریه‌اش تأیید شده، آمادهٔ چیدمان در کلاس سال تازه است. '
+      + 'ملاک تأیید: دست‌کم یک قسط پرداخت‌شده.</div>'
+      + (list.length ? '<div class="table-wrap"><table class="table"><thead><tr><th>دانش‌آموز</th>'
+        + '<th>پایهٔ جدید</th><th>رشته</th><th>شهریه</th><th>وضعیت</th></tr></thead><tbody>'
+        + list.slice(0, 200).map(function(p){
+            return '<tr' + (p.paid ? '' : ' style="background:var(--amber-soft)"') + '>'
+              + '<td><b>' + esc(p.user.full_name) + '</b></td>'
+              + '<td>' + fa(p.grade) + '</td>'
+              + '<td class="small">' + esc(p.field || '—') + '</td>'
+              + '<td><span class="badge ' + (p.paid ? 'b-green' : 'b-amber') + '">'
+              + (p.paid ? 'تأیید شد' : 'در انتظار') + '</span></td>'
+              + '<td class="small muted">نیازمند چیدمان کلاس</td></tr>';
+          }).join('')
+        + '</tbody></table></div>' : empty('✅','کسی در انتظار ثبت‌نام نیست','')) + '</div>';
+  }
+
+  return '<div class="row" style="margin-bottom:14px;flex-wrap:wrap;gap:8px">' + tabs + '</div>' + body;
+}

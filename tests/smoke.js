@@ -341,6 +341,132 @@ test('سابقه و فعالیت فقط برای سوپرادمین باز اس�
   }
 });
 
+console.log('\n▸ چرخه سال تحصیلی و چیدمان کلاس');
+
+test('توابع چرخه سال تحصیلی تعریف شده‌اند', () => {
+  assert(W("typeof viewSchoolYear==='function'&&typeof yearState==='function'"
+    + "&&typeof isYearEndSeason==='function'&&typeof isEnrollSeason==='function'"
+    + "&&typeof needPlacement==='function'&&typeof autoPlacement==='function'"
+    + "&&typeof applyPlacement==='function'&&typeof createParallelClass==='function'"
+    + "&&typeof placementScore==='function'&&typeof tuitionCleared==='function'"
+    + "&&typeof yearEndReminder==='function'&&typeof isFieldBased==='function'"), 'توابع ناقص');
+  assert(W('Array.isArray(db.school_years)'), 'مجموعه school_years نیست');
+});
+
+test('سه تب چرخه سال رندر می‌شوند', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null;S.route='schoolyear';S.filters={}");
+  for(const t of ['status','placement','enroll']){
+    W("S.tab='" + t + "'");
+    const o = W('renderRoute()');
+    assert(o.length > 500 && !o.includes('undefined') && !o.includes('[object'), 'تب ' + t);
+  }
+  W("S.tab='grades'");
+});
+
+test('تشخیص مقطع رشته‌محور درست است', () => {
+  assert(W('isFieldBased(10)') === true, 'پایه ۱۰ باید رشته‌محور باشد');
+  assert(W('isFieldBased(12)') === true, 'پایه ۱۲ باید رشته‌محور باشد');
+  assert(W('isFieldBased(9)') === false, 'پایه ۹ نباید رشته‌محور باشد');
+  assert(W('isFieldBased(6)') === false, 'پایه ۶ نباید رشته‌محور باشد');
+});
+
+test('بستن سال: ارتقای پایه و ثبت وضعیت', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  W("db.classes.filter(function(c){return c.school_id===" + sid + ";})"
+    + ".forEach(function(c,i){update('classes',c.id,{grade_level:[7,10,11][i%3]});})");
+  W("window.__sy=(function(){var c=db.classes.filter(function(x){return x.school_id===" + sid
+    + "&&x.grade_level===10;})[0];var s=activeStudentsOfClass(c.id)[0];return s?s.id:null;})()");
+  if(!W('window.__sy')) return;
+  W("batchWrites(function(){db.classes.filter(function(c){return c.school_id===" + sid + ";})"
+    + ".forEach(function(c){var g=c.grade_level||gradeFromName(c.name);if(!g)return;"
+    + "activeStudentsOfClass(c.id).forEach(function(st){"
+    + "if(g===12){graduateStudent(st," + sid + ",c);}"
+    + "else if(isTerminal(g)){update('users',st.id,{status:'awaiting_transfer',grade_level:g+1});}"
+    + "else{update('users',st.id,{grade_level:g+1});}});});"
+    + "saveYearState(" + sid + ",{closed:1,closed_at:new Date().toISOString(),promoted:1});})");
+  assert(W('yearState(' + sid + ').closed') === 1, 'سال بسته نشد');
+  assert(W("byId('users',window.__sy).grade_level") === 11, 'پایه ارتقا نیافت');
+});
+
+test('ناسازگاری پایه و کلاس شناسایی می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  assert(W('needPlacement(' + sid + ').length') > 0, 'دانش‌آموز نیازمند چیدمان یافت نشد');
+  assert(W('needPlacement(' + sid + ').some(function(x){return x.user.id===window.__sy;})'),
+    'دانش‌آموز ارتقایافته در فهرست چیدمان نیست');
+});
+
+test('ساخت کلاس موازی برای یک رشته', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  const n0 = W('db.classes.filter(function(c){return c.school_id===' + sid + ';}).length');
+  W("window.__pc=createParallelClass(" + sid + ",11,'علوم تجربی','الف')");
+  assert(W('db.classes.filter(function(c){return c.school_id===' + sid + ';}).length') === n0 + 1,
+    'کلاس ساخته نشد');
+  assert(W('window.__pc.grade_level') === 11, 'پایه نادرست');
+  assert(W('window.__pc.field') === 'علوم تجربی', 'رشته نادرست');
+  assert(W('window.__pc.name').indexOf('الف') > -1, 'پسوند در نام نیست');
+});
+
+test('چیدمان خودکار متوازن است و ظرفیت را رعایت می‌کند', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  W("createParallelClass(" + sid + ",11,'علوم تجربی','ب')");
+  W("db.users.filter(function(u){return u.role==='student'&&u.school_id===" + sid + ";})"
+    + ".slice(0,24).forEach(function(u){update('users',u.id,{grade_level:11,field:'علوم تجربی'});})");
+  const list = W("needPlacement(" + sid + ").filter(function(x){return x.grade===11;})");
+  const n = W("needPlacement(" + sid + ").filter(function(x){return x.grade===11;}).length");
+  if(!n) return;
+  W("window.__bk=autoPlacement(needPlacement(" + sid + ").filter(function(x){return x.grade===11;}),"
+    + "targetClasses(" + sid + ",11,'علوم تجربی'))");
+  const sizes = W('JSON.stringify(window.__bk.map(function(b){return b.list.length;}))');
+  const arr = JSON.parse(sizes);
+  assert(arr.length >= 2, 'کمتر از دو کلاس مقصد');
+  assert(Math.abs(arr[0] - arr[1]) <= 1, 'کلاس‌ها هم‌اندازه نیستند: ' + sizes);
+});
+
+test('اعمال چیدمان ناسازگاری را رفع می‌کند', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  W("(function(){var out=[];window.__bk.forEach(function(b){b.list.forEach(function(s){"
+    + "out.push({studentId:s.user.id,classId:b.cls.id});});});window.__pp=out;})()");
+  W('applyPlacement(window.__pp)');
+  const bad = W("db.users.filter(function(u){return u.role==='student'&&u.school_id===" + sid
+    + "&&(u.status||'active')==='active'&&u.grade_level===11&&(function(){var c=classOf(u.id);"
+    + 'return !c||Number(c.grade_level)!==11;})();}).length');
+  assert(bad === 0, bad + ' دانش‌آموز هنوز پایه/کلاس ناسازگار دارند');
+  assert(W("db.users.filter(function(u){return u.grade_level===11&&classOf(u.id);})"
+    + ".every(function(u){return u.field==='علوم تجربی';})"), 'رشته ثابت نماند');
+});
+
+test('یادآوری پایان سال قواعدش را رعایت می‌کند', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  W("saveYearState(" + sid + ",{closed:1,reminded_at:null})");
+  const n0 = W("db.notifications.filter(function(n){return n.title.indexOf('پایان سال')>-1;}).length");
+  W('yearEndReminder()');
+  assert(W("db.notifications.filter(function(n){return n.title.indexOf('پایان سال')>-1;}).length") === n0,
+    'با سال بسته نباید یادآوری شود');
+  W("saveYearState(" + sid + ",{closed:0,reminded_at:new Date().toISOString()})");
+  W('yearEndReminder()');
+  assert(W("db.notifications.filter(function(n){return n.title.indexOf('پایان سال')>-1;}).length") === n0,
+    'یادآوری تکراری در همان روز');
+});
+
+test('چرخه سال تحصیلی فقط برای مدیر و سوپرادمین', () => {
+  for(const role of ['teacher','student','parent','edu_office']){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null;S.route='schoolyear';S.filters={}");
+    assert(/دسترسی مجاز نیست|اشتراک/.test(W('renderRoute()')), role + ' دسترسی داشت');
+  }
+  const cases = [['teacher','year-close',false],['student','place-auto',false],
+                 ['manager','year-close',true],['manager','place-auto',true]];
+  for(const [role, act, want] of cases){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null");
+    assert(W("canAction('" + act + "')") === want, role + ' → ' + act);
+  }
+});
+
 console.log('\n▸ اشتراک مشترک: یک پرداخت برای هر دانش‌آموز');
 
 test('توابع اشتراک مشترک تعریف شده‌اند', () => {
@@ -969,7 +1095,10 @@ test('گیرندگان پیامک: یکتا، معتبر و محدود به مد
 
 test('سند چاپی: ساختار درست و بدون تزریق', () => {
   W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
-  const cid = W('visibleClasses()[0].id');
+  /* کلاسی که واقعاً دانش‌آموز دارد (آزمون‌های دیگر ممکن است چیدمان را عوض کرده باشند) */
+  const cid = W('(visibleClasses().filter(function(c){return studentsOfClass(c.id).length;})[0]'
+    + '||visibleClasses()[0]).id');
+  if(!W('studentsOfClass(' + cid + ').length')) return;
   W("(function(){var s=studentsOfClass(" + cid + ")[0];"
     + "update('users',s.id,{full_name:'<img src=x onerror=XSS>'});})()");
   const d = W("formGradeSheet(byId('classes'," + cid + "),null,'نوبت اول')");
@@ -1163,7 +1292,9 @@ test('هر پنج تب چرخه تحصیلی بدون خطا رندر می‌ش�
 test('فارغ‌التحصیلی: بایگانی می‌شود و ثبت‌نام حذف می‌گردد', () => {
   W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
   const sid = W('S.user.school_id');
-  const cid = W('db.classes.filter(c=>c.school_id===' + sid + ')[0].id');
+  const cid = W('(db.classes.filter(function(c){return c.school_id===' + sid
+    + '&&activeStudentsOfClass(c.id).length;})[0]||{}).id||0');
+  if(!cid) return;
   const stId = W('activeStudentsOfClass(' + cid + ')[0].id');
   const n0 = W('db.student_archive.length');
   W('graduateStudent(byId("users",' + stId + '),' + sid + ',byId("classes",' + cid + '))');

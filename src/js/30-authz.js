@@ -17,7 +17,7 @@
 /** روت‌هایی که در NAV نیستند ولی برای نقش مجازند (زیرصفحه یا مقصد پیمایش) */
 var EXTRA_ROUTES = {
   superadmin: ['dashboard','adminsubs','officedash','officeschools','record','geo','offices','lifecycle'],
-  manager:    ['record','corrections','teachers','exams','tuition','lifecycle','atrisk','meetings','growth','formssms','import'],
+  manager:    ['record','corrections','teachers','exams','tuition','lifecycle','atrisk','meetings','growth','formssms','import','schoolyear'],
   teacher:    ['record','exams','meetings'],
   student:    ['record','mytuition','notifications','announcements','subscription'],
   parent:     ['children','record','family','mytuition','notifications','announcements','subscription','calendar','meetings'],
@@ -112,6 +112,13 @@ var ACTION_ROLES = {
   /* اشتراک (پنل مدیریتی) */
   /* چرخهٔ تحصیلی — عملیات سنگین و برگشت‌ناپذیر: فقط مدیر و سوپرادمین */
   'promote-run':   ['manager','superadmin'],
+  /* چرخهٔ سال تحصیلی */
+  'year-close':    ['manager','superadmin'],
+  'year-reopen':   ['manager','superadmin'],
+  'place-auto':    ['manager','superadmin'],
+  'cls-parallel':  ['manager','superadmin'],
+  'cls-parallel-ok':['manager','superadmin'],
+  'enroll-paid':   ['manager','superadmin'],
   /* افت تحصیلی / جلسات / رشد */
   'risk-notify':   ['manager','superadmin','teacher'],
   /* فرم‌های رسمی و پیامک — پیامک هزینه دارد، پس فقط مدیر */

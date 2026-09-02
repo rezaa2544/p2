@@ -42,6 +42,11 @@ function navFor(u){
   }
   return nav;
 }
+/* یادآوری فصل پایان سال به مدیر — هر هفت روز یک بار در تیر و مرداد */
+function checkYearEnd(){
+  if(typeof yearEndReminder === 'function'){ try{ yearEndReminder(); }catch(e){} }
+}
+
 function renderRoute(){
   /* سنجش زمان رندر برای صفحهٔ بار سامانه — هزینه‌اش ناچیز است */
   var _t0 = (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
@@ -75,6 +80,7 @@ function _renderRouteInner(){
     case 'audit':return viewAudit();
     case 'activity':return viewActivity();
     case 'plans':return viewPlans();
+    case 'schoolyear':return viewSchoolYear();
     case 'dashboard':return S.user.role==='edu_office'?viewOfficeDash():viewDashboard();
     case 'schools':return viewSchools();
     case 'users':return viewUsers();

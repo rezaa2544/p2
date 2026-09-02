@@ -8,6 +8,8 @@ var SLOT_ID=null;
 var PASS_TARGET=null;
 /** بستهٔ پشتیبانی که کاربر برای بازیابی انتخاب کرده است */
 var RESTORE_PKG=null;
+/** پایه و رشتهٔ کلاس موازی در حال ساخت */
+var PARALLEL=null;
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el)return;
   const a=el.dataset.act, id=Number(el.dataset.id);
@@ -525,6 +527,100 @@ document.addEventListener('click',e=>{
      askConfirm('این نوبت حذف شود؟',()=>{remove('meeting_slots',id);toast('حذف شد','');render();},
        {title:'حذف نوبت',ok:'حذف',danger:true});
    },
+   // ---- چرخه سال تحصیلی: بستن، چیدمان، ثبت‌نام ----
+   'year-close'(){
+     const sid=S.user.school_id;
+     const rows=db.classes.filter(c=>c.school_id===sid);
+     askConfirm('سال تحصیلی '+yearTitle()+' بسته شود؟ پایهٔ همهٔ دانش‌آموزان یک واحد '
+       +'بالا می‌رود، پایهٔ دوازدهم فارغ‌التحصیل و بایگانی می‌شود، و پایهٔ ششم و نهم '
+       +'«در انتظار انتقال» می‌شوند. پس از آن باید کلاس‌ها را بچینید.',()=>{
+       let promoted=0,graduated=0,leavers=0;
+       batchWrites(()=>{
+         rows.forEach(c=>{
+           const g=c.grade_level||gradeFromName(c.name); if(!g)return;
+           activeStudentsOfClass(c.id).forEach(st=>{
+             if(g===12){graduateStudent(st,sid,c);graduated++;}
+             else if(isTerminal(g)){update('users',st.id,{status:'awaiting_transfer',grade_level:g+1});leavers++;}
+             else {update('users',st.id,{grade_level:g+1});promoted++;}
+           });
+         });
+         saveYearState(sid,{closed:1,closed_at:new Date().toISOString(),promoted:1});
+       });
+       toast(fa(promoted)+' ارتقا · '+fa(graduated)+' فارغ‌التحصیل · '+fa(leavers)+' پایان مقطع','ok');
+       S.tab='placement'; render();
+     },{title:'بستن سال تحصیلی',ok:'ببند و ارتقا بده'});
+   },
+   'year-reopen'(){
+     askConfirm('سال تحصیلی دوباره باز شود؟ ارتقای انجام‌شده برنمی‌گردد؛ فقط وضعیت سال '
+       +'به «باز» تغییر می‌کند.',()=>{
+       saveYearState(S.user.school_id,{closed:0,closed_at:null});
+       toast('سال تحصیلی بازگشایی شد',''); render();
+     },{title:'بازگشایی سال',ok:'باز کن'});
+   },
+   'place-auto'(){
+     const sid=S.user.school_id;
+     const g=Number(el.dataset.g), fl=el.dataset.fl||null;
+     const cls=targetClasses(sid,g,fl);
+     if(!cls.length){toast('برای این پایه کلاسی وجود ندارد','err');return;}
+     const list=needPlacement(sid).filter(p=>p.grade===g&&
+       (!isFieldBased(g)||normHdr(p.field||'')===normHdr(fl||'')||(!fl&&!p.field)));
+     if(!list.length){toast('دانش‌آموزی برای چیدمان نیست','err');return;}
+     askConfirm(fa(list.length)+' دانش‌آموز بر پایهٔ کارنامه و انضباط میان '+fa(cls.length)
+       +' کلاس توزیع شوند؟ توزیع طوری انجام می‌شود که میانگین کلاس‌ها به هم نزدیک بماند.',()=>{
+       const buckets=autoPlacement(list,cls);
+       const pairs=[];
+       buckets.forEach(b=>b.list.forEach(s=>pairs.push({studentId:s.user.id,classId:b.cls.id})));
+       const n=applyPlacement(pairs);
+       toast(fa(n)+' دانش‌آموز در کلاس‌ها چیده شدند','ok'); render();
+     },{title:'چیدمان خودکار',ok:'انجام بده'});
+   },
+   'cls-parallel'(){
+     const g=el.dataset.g, fl=el.dataset.fl||'';
+     PARALLEL={grade:Number(g),field:fl};
+     openModal(modalTpl('ساخت کلاس موازی',
+       '<div class="small muted" style="line-height:2;margin-bottom:10px">'
+       +'وقتی تعداد دانش‌آموزان یک پایه یا رشته از ظرفیت یک کلاس بیشتر است، '
+       +'کلاس موازی بسازید؛ مثلاً «دهم تجربی الف» و «دهم تجربی ب».</div>'
+       +f('پایه',inp('cp_grade',g,'number'))
+       +f('رشته (در متوسطه دوم)',inp('cp_field',fl))
+       +f('پسوند نام کلاس',sel('cp_suffix',[['الف','الف'],['ب','ب'],['ج','ج'],['د','د'],['۱','۱'],['۲','۲']]))
+       +f('ظرفیت',inp('cp_cap',40,'number')),'cls-parallel-ok'));
+   },
+   'cls-parallel-ok'(){
+     const sid=S.user.school_id;
+     const g=Number(V('cp_grade'))||0;
+     if(!g){toast('پایه را وارد کنید','err');return;}
+     const fl=(V('cp_field')||'').trim()||null;
+     const sfx=V('cp_suffix')||'';
+     const c=createParallelClass(sid,g,fl,sfx);
+     if(Number(V('cp_cap'))) update('classes',c.id,{capacity:Number(V('cp_cap'))});
+     closeModal(); toast('کلاس «'+c.name+'» ساخته شد','ok'); render();
+   },
+   'enroll-paid'(){
+     const sid=S.user.school_id;
+     const list=enrollmentList(sid).filter(x=>x.paid);
+     if(!list.length){toast('دانش‌آموزی با شهریهٔ تأییدشده نیست','err');return;}
+     askConfirm(fa(list.length)+' دانش‌آموز با شهریهٔ تأییدشده به‌صورت خودکار در کلاس‌ها '
+       +'چیده شوند؟',()=>{
+       const byGroup={};
+       list.forEach(p=>{
+         const k=p.grade+'|'+(isFieldBased(p.grade)?(p.field||''):'');
+         (byGroup[k]=byGroup[k]||[]).push(p);
+       });
+       let total=0,skipped=0;
+       Object.keys(byGroup).forEach(k=>{
+         const g=Number(k.split('|')[0]), fl=k.split('|')[1]||null;
+         const cls=targetClasses(sid,g,fl);
+         if(!cls.length){skipped+=byGroup[k].length;return;}
+         const buckets=autoPlacement(byGroup[k],cls);
+         const pairs=[];
+         buckets.forEach(b=>b.list.forEach(s=>pairs.push({studentId:s.user.id,classId:b.cls.id})));
+         total+=applyPlacement(pairs);
+       });
+       toast(fa(total)+' ثبت‌نام شد'+(skipped?' · '+fa(skipped)+' بدون کلاس مقصد':''),'ok');
+       render();
+     },{title:'ثبت‌نام خودکار',ok:'انجام بده'});
+   },
    // ---- چرخه تحصیلی ----
    'tr-box'(){S.filters.box=el.dataset.r;render();},
    'promote-run'(){
@@ -644,6 +740,15 @@ document.addEventListener('input',e=>{
 /* آبشاری: مقطع → پایه → شاخه → رشته (فرم درس و فرم افزودن کتاب) */
 document.addEventListener('change',e=>{
   const id=e.target.id;
+
+  /* چیدمان دستی: انتخاب کلاس مقصد برای یک دانش‌آموز */
+  if(e.target.dataset&&e.target.dataset.f==='place'){
+    const sidStu=Number(e.target.dataset.s), cid=Number(e.target.value);
+    if(!sidStu||!cid)return;
+    const n=applyPlacement([{studentId:sidStu,classId:cid}]);
+    if(n){const c=byId('classes',cid);toast('در کلاس «'+(c?c.name:'')+'» ثبت شد','ok');render();}
+    return;
+  }
 
   /* بازیابی: انتخاب فایل پشتیبان و نمایش خلاصهٔ آن پیش از تأیید */
   if(id==='rs_file'){

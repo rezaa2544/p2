@@ -338,7 +338,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={sms_wallet:[],sms_log:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[]};
+  db={school_years:[],sms_wallet:[],sms_log:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:'09120000000',active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -781,13 +781,13 @@ function bootstrapRequest(){
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
  superadmin:[['نظارت کلان',[['dashboard','📊','داشبورد مدیریتی'],['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه']]],['محتوا',[['subjects','📚','دروس'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['اداره آموزش و پرورش',[['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]],['ارتباطات',[['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['notifications','🔔','اعلان‌ها']]]],
- manager:[['مدرسه من',[['import','📥','ورود اطلاعات'],['formssms','🖨️','فرم‌ها و پیامک'],['meetings','📅','جلسات اولیا'],['growth','📈','رشد مدرسه'],['atrisk','📉','افت تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['dashboard','📊','داشبورد مدرسه'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ manager:[['مدرسه من',[['schoolyear','📅','چرخه سال تحصیلی'],['import','📥','ورود اطلاعات'],['formssms','🖨️','فرم‌ها و پیامک'],['meetings','📅','جلسات اولیا'],['growth','📈','رشد مدرسه'],['atrisk','📉','افت تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['dashboard','📊','داشبورد مدرسه'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  teacher:[['کلاس‌های من',[['meetings','📅','جلسات اولیا'],['dashboard','📊','داشبورد'],['classes','🏛️','کلاس‌ها'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['ثبت اطلاعات',[['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['امتحانات',[['exams','👁️','برنامه مراقبت من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['پرونده من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['calendar','🗓️','تقویم آموزشی']]],['امور مالی',[['mytuition','💰','شهریه من']]],['درخواست‌ها',[['leaves','📨','مرخصی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['اداره من',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  parent:[['فرزندان من',[['meetings','📅','جلسات اولیا'],['dashboard','📊','خلاصه وضعیت'],['family','🏠','خانواده و مدارس'],['children','👨‍👩‍👦','پرونده فرزندان'],['exams','📝','برنامه امتحانات'],['calendar','🗓️','تقویم آموزشی']]],['امور مالی',[['mytuition','💰','شهریه و اقساط']]],['درخواست‌ها',[['leaves','📨','درخواست مرخصی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌های مدرسه'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو با مدرسه']]]]
 };
-const TITLES={plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
+const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
 S.stack=[];
@@ -1407,7 +1407,7 @@ function renderLogin(){
 /** روت‌هایی که در NAV نیستند ولی برای نقش مجازند (زیرصفحه یا مقصد پیمایش) */
 var EXTRA_ROUTES = {
   superadmin: ['dashboard','adminsubs','officedash','officeschools','record','geo','offices','lifecycle'],
-  manager:    ['record','corrections','teachers','exams','tuition','lifecycle','atrisk','meetings','growth','formssms','import'],
+  manager:    ['record','corrections','teachers','exams','tuition','lifecycle','atrisk','meetings','growth','formssms','import','schoolyear'],
   teacher:    ['record','exams','meetings'],
   student:    ['record','mytuition','notifications','announcements','subscription'],
   parent:     ['children','record','family','mytuition','notifications','announcements','subscription','calendar','meetings'],
@@ -1502,6 +1502,13 @@ var ACTION_ROLES = {
   /* اشتراک (پنل مدیریتی) */
   /* چرخهٔ تحصیلی — عملیات سنگین و برگشت‌ناپذیر: فقط مدیر و سوپرادمین */
   'promote-run':   ['manager','superadmin'],
+  /* چرخهٔ سال تحصیلی */
+  'year-close':    ['manager','superadmin'],
+  'year-reopen':   ['manager','superadmin'],
+  'place-auto':    ['manager','superadmin'],
+  'cls-parallel':  ['manager','superadmin'],
+  'cls-parallel-ok':['manager','superadmin'],
+  'enroll-paid':   ['manager','superadmin'],
   /* افت تحصیلی / جلسات / رشد */
   'risk-notify':   ['manager','superadmin','teacher'],
   /* فرم‌های رسمی و پیامک — پیامک هزینه دارد، پس فقط مدیر */
@@ -1607,6 +1614,11 @@ function navFor(u){
   }
   return nav;
 }
+/* یادآوری فصل پایان سال به مدیر — هر هفت روز یک بار در تیر و مرداد */
+function checkYearEnd(){
+  if(typeof yearEndReminder === 'function'){ try{ yearEndReminder(); }catch(e){} }
+}
+
 function renderRoute(){
   /* سنجش زمان رندر برای صفحهٔ بار سامانه — هزینه‌اش ناچیز است */
   var _t0 = (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
@@ -1640,6 +1652,7 @@ function _renderRouteInner(){
     case 'audit':return viewAudit();
     case 'activity':return viewActivity();
     case 'plans':return viewPlans();
+    case 'schoolyear':return viewSchoolYear();
     case 'dashboard':return S.user.role==='edu_office'?viewOfficeDash():viewDashboard();
     case 'schools':return viewSchools();
     case 'users':return viewUsers();
@@ -4951,6 +4964,362 @@ function restoreBackup(obj){
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   چرخهٔ سال تحصیلی و چیدمان کلاس‌ها
+   ═══════════════════════════════════════════════════════════════════
+   بخش ۱ ▸ بستن سال تحصیلی و یادآوری تیرماه
+   بخش ۲ ▸ ثبت‌نام مهر با تأیید شهریه
+   بخش ۳ ▸ چیدمان کلاس: دستی و خودکار
+   روت: schoolyear
+
+   ⚠️ مسئله‌ای که این ماژول حل می‌کند:
+   ارتقای پایه فقط عدد `grade_level` را زیاد می‌کرد و دانش‌آموز در
+   کلاس پارسالش می‌ماند — یعنی دانش‌آموز یازدهم در کلاس «دهم تجربی».
+   حالا پس از ارتقا، مرحلهٔ چیدمان کلاس انجام می‌شود.
+
+   دو منطق متفاوت بر پایهٔ مقطع:
+   • ابتدایی و متوسطه اول: کلاس‌محور — چیدمان هر سال از نو
+   • متوسطه دوم: رشته‌محور — رشته تا پایان دوازدهم ثابت می‌ماند
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─────────── بخش ۱: وضعیت سال تحصیلی ─────────── */
+
+/** خواندن وضعیت سال تحصیلی یک مدرسه */
+function yearState(sid){
+  sid = sid || (S.user && S.user.school_id);
+  var row = (db.school_years || []).filter(function(y){
+    return y.school_id === sid && y.year_code === yearCode(); })[0];
+  return row || { school_id: sid, year_code: yearCode(),
+    closed: 0, closed_at: null, promoted: 0, placement: null };
+}
+
+/** ذخیرهٔ وضعیت سال تحصیلی */
+function saveYearState(sid, patch){
+  db.school_years = db.school_years || [];
+  var row = (db.school_years).filter(function(y){
+    return y.school_id === sid && y.year_code === yearCode(); })[0];
+  if(row) update('school_years', row.id, patch);
+  else insert('school_years', Object.assign(
+    { school_id: sid, year_code: yearCode(), closed: 0, promoted: 0, placement: null }, patch));
+}
+
+/**
+ * آیا اکنون فصل پایان سال است؟
+ * تیر و مرداد (ماه ۴ و ۵ شمسی) فصل بستن سال است.
+ */
+function isYearEndSeason(){
+  var p = todayISO().split('-').map(Number);
+  var j = toJalali(p[0], p[1], p[2]);
+  return j[1] === 4 || j[1] === 5;
+}
+
+/** آیا فصل ثبت‌نام است؟ شهریور (ماه ۶) */
+function isEnrollSeason(){
+  var p = todayISO().split('-').map(Number);
+  var j = toJalali(p[0], p[1], p[2]);
+  return j[1] === 6;
+}
+
+/**
+ * یادآوری دوره‌ای به مدیر در فصل پایان سال.
+ * هر هفت روز یک بار، تا زمانی که سال بسته نشده باشد.
+ */
+function yearEndReminder(){
+  if(!S.user || S.user.role !== 'manager') return null;
+  var sid = S.user.school_id;
+  var st = yearState(sid);
+  if(st.closed) return null;
+  if(!isYearEndSeason()) return null;
+  /* بررسی اینکه هفت روز از آخرین یادآوری گذشته باشد */
+  var last = st.reminded_at || null;
+  if(last && (Date.now() - Date.parse(last)) < 7 * 86400000) return null;
+  saveYearState(sid, { reminded_at: new Date().toISOString() });
+  insert('notifications', { user_id: S.user.id, school_id: sid, type: 'announcement',
+    title: '📅 پایان سال تحصیلی نزدیک است',
+    body: 'سال تحصیلی ' + yearTitle() + ' رو به پایان است. پس از برگزاری امتحانات، '
+        + 'از بخش «چرخهٔ سال تحصیلی» سال را ببندید تا ارتقای پایه انجام شود.',
+    link: 'schoolyear', read: 0, created_at: todayISO() });
+  return true;
+}
+
+/* ─────────── بخش ۲: چیدمان کلاس ─────────── */
+
+/** آیا این مقطع رشته‌محور است؟ (متوسطه دوم) */
+function isFieldBased(grade){ return Number(grade) >= 10; }
+
+/**
+ * کلاس‌های مقصد برای یک پایه (و رشته، در متوسطه دوم).
+ * اگر کلاسی نباشد، خالی برمی‌گرداند تا مدیر بسازد.
+ */
+function targetClasses(sid, grade, field){
+  return db.classes.filter(function(c){
+    if(c.school_id !== sid) return false;
+    var g = c.grade_level || gradeFromName(c.name);
+    if(Number(g) !== Number(grade)) return false;
+    if(isFieldBased(grade) && field) return normHdr(c.field || '') === normHdr(field);
+    return true;
+  });
+}
+
+/** دانش‌آموزانی که پایه‌شان بالا رفته ولی کلاس مناسب ندارند */
+function needPlacement(sid){
+  var out = [];
+  db.users.forEach(function(u){
+    if(u.role !== 'student' || u.school_id !== sid) return;
+    if((u.status || 'active') !== 'active') return;
+    var g = Number(u.grade_level || 0);
+    if(!g) return;
+    var cls = classOf(u.id);
+    var cg = cls ? Number(cls.grade_level || gradeFromName(cls.name) || 0) : null;
+    /* بدون کلاس، یا کلاسش پایهٔ دیگری است */
+    if(!cls || cg !== g) out.push({ user: u, grade: g, current: cls,
+      field: u.field || (cls || {}).field || null });
+  });
+  return out;
+}
+
+/**
+ * امتیاز یک دانش‌آموز برای چیدمان خودکار.
+ * ترکیب معدل و انضباط؛ هرچه بالاتر، قوی‌تر.
+ */
+function placementScore(studentId){
+  var gi = (typeof idxGradesByStudent === 'function') ? idxGradesByStudent() : null;
+  var gs = gi ? (gi.get(studentId) || []) : db.grades.filter(function(g){ return g.student_id === studentId; });
+  var avg = gs.length ? gs.reduce(function(a,b){ return a + b.score; }, 0) / gs.length : 12;
+  var disc = db.discipline.filter(function(d){ return d.student_id === studentId; })
+    .reduce(function(a,b){ return a + (b.points || 0); }, 0);
+  /* انضباط با وزن کمتر تا معدل عامل اصلی بماند */
+  return Math.round((avg + disc * 0.1) * 100) / 100;
+}
+
+/**
+ * چیدمان خودکار: توزیع متوازن بر پایهٔ کارنامه.
+ * روش «مارپیچ»: قوی‌ترین به کلاس اول، دومی به کلاس دوم… سپس برعکس.
+ * نتیجه: میانگین کلاس‌ها به هم نزدیک می‌ماند و کلاس ضعیف شکل نمی‌گیرد.
+ */
+function autoPlacement(students, classes){
+  if(!classes.length) return [];
+  var ranked = students.slice().sort(function(a,b){
+    return placementScore(b.user.id) - placementScore(a.user.id); });
+  var buckets = classes.map(function(c){ return { cls: c, list: [] }; });
+  var i = 0, dir = 1;
+  ranked.forEach(function(s){
+    /* رعایت ظرفیت: اگر کلاس پر بود، به بعدی می‌رود */
+    var tries = 0;
+    while(tries < buckets.length){
+      var b = buckets[i];
+      var cap = Number(b.cls.capacity || 40);
+      if(b.list.length < cap){ b.list.push(s); break; }
+      i += dir;
+      if(i >= buckets.length){ i = buckets.length - 1; dir = -1; }
+      else if(i < 0){ i = 0; dir = 1; }
+      tries++;
+    }
+    if(tries >= buckets.length) buckets[0].list.push(s);  /* همه پر: اولی */
+    i += dir;
+    if(i >= buckets.length){ i = buckets.length - 1; dir = -1; }
+    else if(i < 0){ i = 0; dir = 1; }
+  });
+  return buckets;
+}
+
+/** اعمال چیدمان: ثبت‌نام دانش‌آموزان در کلاس‌های تعیین‌شده */
+function applyPlacement(pairs){
+  var n = 0;
+  batchWrites(function(){
+    pairs.forEach(function(p){
+      if(!p.classId || !p.studentId) return;
+      var cls = byId('classes', p.classId);
+      if(!cls) return;
+      db.enrollments.filter(function(e){ return e.student_id === p.studentId; })
+        .forEach(function(e){ remove('enrollments', e.id); });
+      insert('enrollments', { school_id: cls.school_id, class_id: cls.id,
+        student_id: p.studentId, year: yearCode() });
+      /* رشته و پایهٔ دانش‌آموز با کلاس هماهنگ می‌شود */
+      var patch = { grade_level: cls.grade_level || gradeFromName(cls.name) };
+      if(cls.field) patch.field = cls.field;
+      update('users', p.studentId, patch);
+      n++;
+    });
+  });
+  return n;
+}
+
+/**
+ * ساخت کلاس تازه برای یک پایه و رشته.
+ * وقتی تعداد دانش‌آموزان یک رشته از ظرفیت بیشتر شود، مدیر کلاس
+ * دوم می‌سازد: «دهم تجربی الف» و «دهم تجربی ب».
+ */
+function createParallelClass(sid, grade, field, suffix){
+  var base = (typeof GRADE_WORDS === 'object')
+    ? Object.keys(GRADE_WORDS).filter(function(k){ return GRADE_WORDS[k] === Number(grade); })[0]
+    : String(grade);
+  var name = (base || grade) + (field ? ' ' + field : '') + (suffix ? ' ' + suffix : '');
+  return insert('classes', { school_id: sid, name: name,
+    grade: base || String(grade), grade_level: Number(grade),
+    field: field || null, room: null, capacity: 40, homeroom_teacher_id: null });
+}
+
+/* ─────────── بخش ۳: ثبت‌نام سال تازه ─────────── */
+
+/**
+ * آیا شهریهٔ دانش‌آموز برای ثبت‌نام تأیید شده است؟
+ * ملاک: دست‌کم یک قسط پرداخت‌شده در سال جاری.
+ */
+function tuitionCleared(studentId){
+  var ins = db.installments.filter(function(i){ return i.student_id === studentId; });
+  if(!ins.length) return false;
+  return ins.some(function(i){ return i.status === 'paid' || Number(i.paid_amount || 0) > 0; });
+}
+
+/** فهرست ثبت‌نام: چه کسی شهریه داده و آماده چیدمان است */
+function enrollmentList(sid){
+  return needPlacement(sid).map(function(p){
+    return Object.assign({}, p, { paid: tuitionCleared(p.user.id) });
+  });
+}
+
+/* ─────────── نما ─────────── */
+
+function viewSchoolYear(){
+  var sid = S.user.school_id;
+  var st = yearState(sid);
+  var tab = ['placement','enroll'].indexOf(S.tab) > -1 ? S.tab : 'status';
+  var pending = needPlacement(sid);
+  var tabs = [['status','📅 وضعیت سال'],['placement','🏛️ چیدمان کلاس‌ها'],['enroll','💳 ثبت‌نام']]
+    .map(function(t){
+      return '<button class="btn ' + (tab === t[0] ? '' : 'ghost') + '" data-act="tab" data-t="'
+        + t[0] + '">' + t[1] + '</button>'; }).join('');
+  var body = '';
+
+  if(tab === 'status'){
+    var season = isYearEndSeason() ? 'پایان سال' : isEnrollSeason() ? 'ثبت‌نام' : 'میان سال';
+    body = '<div class="card" style="margin-bottom:14px;background:linear-gradient(120deg,'
+      + (st.closed ? 'var(--green-soft)' : 'var(--primary-soft)') + ',#fff)"><div class="card-body row">'
+      + '<div style="font-size:34px">' + (st.closed ? '✅' : '📅') + '</div>'
+      + '<div style="flex:1"><b style="font-size:16px">سال تحصیلی ' + yearTitle() + '</b>'
+      + '<div class="small muted" style="line-height:2">'
+      + (st.closed
+          ? 'این سال بسته شده است. ارتقای پایه انجام شد و اکنون می‌توانید کلاس‌ها را بچینید.'
+          : 'سال تحصیلی هنوز باز است. پس از پایان امتحانات، آن را ببندید تا ارتقای پایه انجام شود.')
+      + '<br>فصل جاری: <b>' + season + '</b>'
+      + (st.closed_at ? ' · بسته‌شده در ' + jalali(String(st.closed_at).slice(0,10)) : '')
+      + '</div></div>'
+      + (st.closed
+          ? '<button class="btn ghost" data-act="year-reopen">↩️ بازگشایی سال</button>'
+          : '<button class="btn" data-act="year-close">🔒 بستن سال و ارتقای پایه</button>')
+      + '</div></div>'
+
+      + (!st.closed && isYearEndSeason()
+        ? '<div class="card" style="margin-bottom:14px;border-inline-start:4px solid var(--amber)">'
+          + '<div class="card-body small" style="line-height:2">'
+          + '⚠️ <b>اکنون فصل پایان سال است.</b> اگر امتحانات تمام شده، سال را ببندید. '
+          + 'با بستن سال: پایهٔ همه یک واحد بالا می‌رود، پایهٔ دوازدهم فارغ‌التحصیل و بایگانی '
+          + 'می‌شود، و پایهٔ ششم و نهم «در انتظار انتقال» می‌شوند.</div></div>' : '')
+
+      + '<div class="grid g4" style="margin-bottom:14px">'
+      + statCard('👥', fa(schoolStudents(sid).length), 'دانش‌آموز فعال', 'blue')
+      + statCard('🏛️', fa(db.classes.filter(function(c){ return c.school_id === sid; }).length), 'کلاس', 'purple')
+      + statCard('⏳', fa(pending.length), 'نیازمند چیدمان کلاس', pending.length ? 'amber' : 'green')
+      + statCard('🎓', fa(db.student_archive.filter(function(a){ return a.school_id === sid; }).length),
+          'فارغ‌التحصیل بایگانی‌شده', 'green') + '</div>'
+
+      + '<div class="card"><div class="card-head"><h3>مراحل چرخهٔ سال</h3></div>'
+      + '<div class="card-body"><table class="table"><tbody>'
+      + [['۱', 'بستن سال تحصیلی', st.closed, 'تیر یا مرداد، پس از امتحانات'],
+         ['۲', 'ارتقای پایه', st.promoted, 'خودکار هنگام بستن سال'],
+         ['۳', 'چیدمان کلاس‌ها', pending.length === 0 && st.closed, 'دستی یا خودکار بر پایهٔ کارنامه'],
+         ['۴', 'ثبت‌نام و تأیید شهریه', false, 'شهریور']]
+        .map(function(r){
+          return '<tr><td style="width:34px">' + (r[2] ? '✅' : '⬜') + '</td>'
+            + '<td><b>' + r[1] + '</b></td><td class="small muted">' + r[3] + '</td></tr>';
+        }).join('')
+      + '</tbody></table></div></div>';
+  }
+
+  if(tab === 'placement'){
+    /* گروه‌بندی بر پایهٔ پایه و رشته */
+    var groups = Object.create(null);
+    pending.forEach(function(p){
+      var key = p.grade + '|' + (isFieldBased(p.grade) ? (p.field || 'بدون رشته') : '');
+      (groups[key] = groups[key] || { grade: p.grade, field: isFieldBased(p.grade) ? p.field : null,
+        list: [] }).list.push(p);
+    });
+    var keys = Object.keys(groups);
+
+    body = '<div class="card" style="margin-bottom:14px"><div class="card-body small muted" style="line-height:2">'
+      + '<b>ابتدایی و متوسطه اول</b> کلاس‌محورند: هر سال چیدمان از نو انجام می‌شود.<br>'
+      + '<b>متوسطه دوم</b> رشته‌محور است: رشتهٔ دانش‌آموز تا پایان دوازدهم ثابت می‌ماند و '
+      + 'فقط پایه‌اش بالا می‌رود. اگر تعداد یک رشته زیاد باشد، چند کلاس موازی بسازید.'
+      + '</div></div>'
+
+      + (keys.length ? keys.map(function(k){
+          var g = groups[k];
+          var cls = targetClasses(sid, g.grade, g.field);
+          var levelName = g.grade <= 6 ? 'ابتدایی' : g.grade <= 9 ? 'متوسطه اول' : 'متوسطه دوم';
+          return '<div class="card" style="margin-bottom:12px"><div class="card-head">'
+            + '<h3>پایهٔ ' + fa(g.grade) + (g.field ? ' — ' + esc(g.field) : '')
+            + ' <span class="badge b-gray">' + fa(g.list.length) + ' دانش‌آموز</span></h3>'
+            + '<div class="row" style="gap:6px">'
+            + '<span class="small muted">' + levelName + ' · ' + fa(cls.length) + ' کلاس مقصد</span>'
+            + '<button class="btn ghost sm" data-act="cls-parallel" data-g="' + g.grade
+            + '" data-fl="' + esc(g.field || '') + '">➕ کلاس موازی</button>'
+            + (cls.length ? '<button class="btn sm" data-act="place-auto" data-g="' + g.grade
+                + '" data-fl="' + esc(g.field || '') + '">⚡ چیدمان خودکار</button>' : '')
+            + '</div></div>'
+            + (cls.length
+              ? '<div class="table-wrap"><table class="table"><thead><tr><th>دانش‌آموز</th>'
+                + '<th>کلاس پارسال</th><th>امتیاز</th><th>کلاس مقصد</th></tr></thead><tbody>'
+                + g.list.slice(0, 200).map(function(p){
+                    return '<tr><td><b>' + esc(p.user.full_name) + '</b></td>'
+                      + '<td class="small muted">' + esc((p.current || {}).name || '—') + '</td>'
+                      + '<td class="small">' + fa(placementScore(p.user.id)) + '</td>'
+                      + '<td><select class="select" data-f="place" data-s="' + p.user.id + '">'
+                      + '<option value="">— انتخاب کنید —</option>'
+                      + cls.map(function(c){
+                          var n = db.enrollments.filter(function(e){ return e.class_id === c.id; }).length;
+                          return '<option value="' + c.id + '">' + esc(c.name)
+                            + ' (' + fa(n) + '/' + fa(c.capacity || 40) + ')</option>';
+                        }).join('') + '</select></td></tr>';
+                  }).join('')
+                + '</tbody></table></div>'
+              : '<div class="card-body">' + empty('🏛️','کلاسی برای این پایه نیست',
+                  'با دکمهٔ «کلاس موازی» کلاس بسازید تا بتوانید دانش‌آموزان را بچینید.') + '</div>')
+            + '</div>';
+        }).join('')
+        : empty('✅','همهٔ دانش‌آموزان کلاس دارند','چیدمانی در انتظار نیست.'));
+  }
+
+  if(tab === 'enroll'){
+    var list = enrollmentList(sid);
+    var paid = list.filter(function(x){ return x.paid; }).length;
+    body = '<div class="grid g3" style="margin-bottom:14px">'
+      + statCard('📋', fa(list.length), 'در انتظار ثبت‌نام', 'blue')
+      + statCard('✅', fa(paid), 'شهریه تأییدشده', 'green')
+      + statCard('⏳', fa(list.length - paid), 'بدون پرداخت', 'amber') + '</div>'
+      + '<div class="card"><div class="card-head"><h3>ثبت‌نام سال تحصیلی تازه</h3>'
+      + (paid ? '<button class="btn" data-act="enroll-paid">⚡ چیدمان خودکار پرداخت‌کرده‌ها</button>' : '')
+      + '</div>'
+      + '<div class="card-body small muted" style="line-height:2">'
+      + 'دانش‌آموزی که شهریه‌اش تأیید شده، آمادهٔ چیدمان در کلاس سال تازه است. '
+      + 'ملاک تأیید: دست‌کم یک قسط پرداخت‌شده.</div>'
+      + (list.length ? '<div class="table-wrap"><table class="table"><thead><tr><th>دانش‌آموز</th>'
+        + '<th>پایهٔ جدید</th><th>رشته</th><th>شهریه</th><th>وضعیت</th></tr></thead><tbody>'
+        + list.slice(0, 200).map(function(p){
+            return '<tr' + (p.paid ? '' : ' style="background:var(--amber-soft)"') + '>'
+              + '<td><b>' + esc(p.user.full_name) + '</b></td>'
+              + '<td>' + fa(p.grade) + '</td>'
+              + '<td class="small">' + esc(p.field || '—') + '</td>'
+              + '<td><span class="badge ' + (p.paid ? 'b-green' : 'b-amber') + '">'
+              + (p.paid ? 'تأیید شد' : 'در انتظار') + '</span></td>'
+              + '<td class="small muted">نیازمند چیدمان کلاس</td></tr>';
+          }).join('')
+        + '</tbody></table></div>' : empty('✅','کسی در انتظار ثبت‌نام نیست','')) + '</div>';
+  }
+
+  return '<div class="row" style="margin-bottom:14px;flex-wrap:wrap;gap:8px">' + tabs + '</div>' + body;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    کنترلگر مرکزی رویدادها
    همهٔ دکمه‌ها اینجا مدیریت می‌شوند (واگذاری رویداد با data-act). گارد مجوز در ابتدای شنونده اعمال می‌شود.
    ═══════════════════════════════════════════════════════════════════ */
@@ -4960,6 +5329,8 @@ var SLOT_ID=null;
 var PASS_TARGET=null;
 /** بستهٔ پشتیبانی که کاربر برای بازیابی انتخاب کرده است */
 var RESTORE_PKG=null;
+/** پایه و رشتهٔ کلاس موازی در حال ساخت */
+var PARALLEL=null;
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el)return;
   const a=el.dataset.act, id=Number(el.dataset.id);
@@ -5477,6 +5848,100 @@ document.addEventListener('click',e=>{
      askConfirm('این نوبت حذف شود؟',()=>{remove('meeting_slots',id);toast('حذف شد','');render();},
        {title:'حذف نوبت',ok:'حذف',danger:true});
    },
+   // ---- چرخه سال تحصیلی: بستن، چیدمان، ثبت‌نام ----
+   'year-close'(){
+     const sid=S.user.school_id;
+     const rows=db.classes.filter(c=>c.school_id===sid);
+     askConfirm('سال تحصیلی '+yearTitle()+' بسته شود؟ پایهٔ همهٔ دانش‌آموزان یک واحد '
+       +'بالا می‌رود، پایهٔ دوازدهم فارغ‌التحصیل و بایگانی می‌شود، و پایهٔ ششم و نهم '
+       +'«در انتظار انتقال» می‌شوند. پس از آن باید کلاس‌ها را بچینید.',()=>{
+       let promoted=0,graduated=0,leavers=0;
+       batchWrites(()=>{
+         rows.forEach(c=>{
+           const g=c.grade_level||gradeFromName(c.name); if(!g)return;
+           activeStudentsOfClass(c.id).forEach(st=>{
+             if(g===12){graduateStudent(st,sid,c);graduated++;}
+             else if(isTerminal(g)){update('users',st.id,{status:'awaiting_transfer',grade_level:g+1});leavers++;}
+             else {update('users',st.id,{grade_level:g+1});promoted++;}
+           });
+         });
+         saveYearState(sid,{closed:1,closed_at:new Date().toISOString(),promoted:1});
+       });
+       toast(fa(promoted)+' ارتقا · '+fa(graduated)+' فارغ‌التحصیل · '+fa(leavers)+' پایان مقطع','ok');
+       S.tab='placement'; render();
+     },{title:'بستن سال تحصیلی',ok:'ببند و ارتقا بده'});
+   },
+   'year-reopen'(){
+     askConfirm('سال تحصیلی دوباره باز شود؟ ارتقای انجام‌شده برنمی‌گردد؛ فقط وضعیت سال '
+       +'به «باز» تغییر می‌کند.',()=>{
+       saveYearState(S.user.school_id,{closed:0,closed_at:null});
+       toast('سال تحصیلی بازگشایی شد',''); render();
+     },{title:'بازگشایی سال',ok:'باز کن'});
+   },
+   'place-auto'(){
+     const sid=S.user.school_id;
+     const g=Number(el.dataset.g), fl=el.dataset.fl||null;
+     const cls=targetClasses(sid,g,fl);
+     if(!cls.length){toast('برای این پایه کلاسی وجود ندارد','err');return;}
+     const list=needPlacement(sid).filter(p=>p.grade===g&&
+       (!isFieldBased(g)||normHdr(p.field||'')===normHdr(fl||'')||(!fl&&!p.field)));
+     if(!list.length){toast('دانش‌آموزی برای چیدمان نیست','err');return;}
+     askConfirm(fa(list.length)+' دانش‌آموز بر پایهٔ کارنامه و انضباط میان '+fa(cls.length)
+       +' کلاس توزیع شوند؟ توزیع طوری انجام می‌شود که میانگین کلاس‌ها به هم نزدیک بماند.',()=>{
+       const buckets=autoPlacement(list,cls);
+       const pairs=[];
+       buckets.forEach(b=>b.list.forEach(s=>pairs.push({studentId:s.user.id,classId:b.cls.id})));
+       const n=applyPlacement(pairs);
+       toast(fa(n)+' دانش‌آموز در کلاس‌ها چیده شدند','ok'); render();
+     },{title:'چیدمان خودکار',ok:'انجام بده'});
+   },
+   'cls-parallel'(){
+     const g=el.dataset.g, fl=el.dataset.fl||'';
+     PARALLEL={grade:Number(g),field:fl};
+     openModal(modalTpl('ساخت کلاس موازی',
+       '<div class="small muted" style="line-height:2;margin-bottom:10px">'
+       +'وقتی تعداد دانش‌آموزان یک پایه یا رشته از ظرفیت یک کلاس بیشتر است، '
+       +'کلاس موازی بسازید؛ مثلاً «دهم تجربی الف» و «دهم تجربی ب».</div>'
+       +f('پایه',inp('cp_grade',g,'number'))
+       +f('رشته (در متوسطه دوم)',inp('cp_field',fl))
+       +f('پسوند نام کلاس',sel('cp_suffix',[['الف','الف'],['ب','ب'],['ج','ج'],['د','د'],['۱','۱'],['۲','۲']]))
+       +f('ظرفیت',inp('cp_cap',40,'number')),'cls-parallel-ok'));
+   },
+   'cls-parallel-ok'(){
+     const sid=S.user.school_id;
+     const g=Number(V('cp_grade'))||0;
+     if(!g){toast('پایه را وارد کنید','err');return;}
+     const fl=(V('cp_field')||'').trim()||null;
+     const sfx=V('cp_suffix')||'';
+     const c=createParallelClass(sid,g,fl,sfx);
+     if(Number(V('cp_cap'))) update('classes',c.id,{capacity:Number(V('cp_cap'))});
+     closeModal(); toast('کلاس «'+c.name+'» ساخته شد','ok'); render();
+   },
+   'enroll-paid'(){
+     const sid=S.user.school_id;
+     const list=enrollmentList(sid).filter(x=>x.paid);
+     if(!list.length){toast('دانش‌آموزی با شهریهٔ تأییدشده نیست','err');return;}
+     askConfirm(fa(list.length)+' دانش‌آموز با شهریهٔ تأییدشده به‌صورت خودکار در کلاس‌ها '
+       +'چیده شوند؟',()=>{
+       const byGroup={};
+       list.forEach(p=>{
+         const k=p.grade+'|'+(isFieldBased(p.grade)?(p.field||''):'');
+         (byGroup[k]=byGroup[k]||[]).push(p);
+       });
+       let total=0,skipped=0;
+       Object.keys(byGroup).forEach(k=>{
+         const g=Number(k.split('|')[0]), fl=k.split('|')[1]||null;
+         const cls=targetClasses(sid,g,fl);
+         if(!cls.length){skipped+=byGroup[k].length;return;}
+         const buckets=autoPlacement(byGroup[k],cls);
+         const pairs=[];
+         buckets.forEach(b=>b.list.forEach(s=>pairs.push({studentId:s.user.id,classId:b.cls.id})));
+         total+=applyPlacement(pairs);
+       });
+       toast(fa(total)+' ثبت‌نام شد'+(skipped?' · '+fa(skipped)+' بدون کلاس مقصد':''),'ok');
+       render();
+     },{title:'ثبت‌نام خودکار',ok:'انجام بده'});
+   },
    // ---- چرخه تحصیلی ----
    'tr-box'(){S.filters.box=el.dataset.r;render();},
    'promote-run'(){
@@ -5596,6 +6061,15 @@ document.addEventListener('input',e=>{
 /* آبشاری: مقطع → پایه → شاخه → رشته (فرم درس و فرم افزودن کتاب) */
 document.addEventListener('change',e=>{
   const id=e.target.id;
+
+  /* چیدمان دستی: انتخاب کلاس مقصد برای یک دانش‌آموز */
+  if(e.target.dataset&&e.target.dataset.f==='place'){
+    const sidStu=Number(e.target.dataset.s), cid=Number(e.target.value);
+    if(!sidStu||!cid)return;
+    const n=applyPlacement([{studentId:sidStu,classId:cid}]);
+    if(n){const c=byId('classes',cid);toast('در کلاس «'+(c?c.name:'')+'» ثبت شد','ok');render();}
+    return;
+  }
 
   /* بازیابی: انتخاب فایل پشتیبان و نمایش خلاصهٔ آن پیش از تأیید */
   if(id==='rs_file'){
@@ -7797,6 +8271,8 @@ setTimeout(()=>{
   if(pk&&S.user){S.persona=pk;if(S.route==='dashboard'&&pk==='parent'&&!subOf(S.user.id).active)S.route='subscription';}
   const bs=localStorage.getItem(BOSS_KEY);
   if(bs&&S.user){const b=db.users.find(x=>x.username===bs);if(b&&b.id!==S.user.id)S.boss=b;else localStorage.removeItem(BOSS_KEY);}
+  /* یادآوری پایان سال به مدیر (فقط در تیر و مرداد، هر هفت روز یک بار) */
+  if(typeof checkYearEnd === 'function') checkYearEnd();
   render();
   console.log('داده نمونه:',{مدارس:db.schools.length,کاربران:db.users.length,کلاس‌ها:db.classes.length,حضوروغیاب:db.attendance.length,نمرات:db.grades.length,انضباطی:db.discipline.length,اعلان‌ها:db.notifications.length,اقساط:db.installments.length,تراکنش‌ها:db.transactions.length});
 },50);

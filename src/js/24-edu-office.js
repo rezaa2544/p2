@@ -743,6 +743,8 @@ setTimeout(()=>{
   if(pk&&S.user){S.persona=pk;if(S.route==='dashboard'&&pk==='parent'&&!subOf(S.user.id).active)S.route='subscription';}
   const bs=localStorage.getItem(BOSS_KEY);
   if(bs&&S.user){const b=db.users.find(x=>x.username===bs);if(b&&b.id!==S.user.id)S.boss=b;else localStorage.removeItem(BOSS_KEY);}
+  /* یادآوری پایان سال به مدیر (فقط در تیر و مرداد، هر هفت روز یک بار) */
+  if(typeof checkYearEnd === 'function') checkYearEnd();
   render();
   console.log('داده نمونه:',{مدارس:db.schools.length,کاربران:db.users.length,کلاس‌ها:db.classes.length,حضوروغیاب:db.attendance.length,نمرات:db.grades.length,انضباطی:db.discipline.length,اعلان‌ها:db.notifications.length,اقساط:db.installments.length,تراکنش‌ها:db.transactions.length});
 },50);
