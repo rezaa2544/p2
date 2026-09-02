@@ -43,6 +43,17 @@ function navFor(u){
   return nav;
 }
 function renderRoute(){
+  /* سنجش زمان رندر برای صفحهٔ بار سامانه — هزینه‌اش ناچیز است */
+  var _t0 = (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
+  try{ return _renderRouteInner(); }
+  finally{
+    if(typeof perfSample==='function'){
+      var _t1=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
+      try{ perfSample(S.route, _t1-_t0); }catch(e){}
+    }
+  }
+}
+function _renderRouteInner(){
   /* دیوار پرداخت: در پنل اولیا بدون اشتراک فقط چند صفحه باز است */
   if(parentLocked()&&!['subscription','notifications','announcements'].includes(S.route))
     return viewLocked();
@@ -61,6 +72,8 @@ function renderRoute(){
     case 'import':return viewImport();
     case 'finance':return viewFinance();
     case 'health':return viewHealth();
+    case 'audit':return viewAudit();
+    case 'activity':return viewActivity();
     case 'dashboard':return S.user.role==='edu_office'?viewOfficeDash():viewDashboard();
     case 'schools':return viewSchools();
     case 'users':return viewUsers();

@@ -49,6 +49,7 @@ node scripts/dev-server.js   # سرور توسعه روی درگاه ۳۰۰۰
 | فرم‌ها و پیامک | `viewFormsSms` | `33-forms-sms.js` |
 | ورود اکسل | `viewImport` | `34-excel-import.js` |
 | مالی سراسری · سلامت سامانه | `viewFinance` · `viewHealth` | `35-superadmin.js` |
+| سابقه تغییرات · بازدید و بار | `viewAudit` · `viewActivity` | `36-audit-activity.js` |
 
 **راه سریع‌تر:** نام صفحه را در برنامه ببینید، بعد `grep` بزنید:
 ```bash
@@ -72,6 +73,8 @@ grep -rn "function viewGrades" src/js/
 | مودال یا فرم بسازم | `18-modals.js` |
 | فیلتر جمع‌شونده بگذارم | `25-filters.js` |
 | تاریخ شمسی کار کنم | `22-jalali-calendar.js` |
+| نام فارسی یک مجموعه داده بگذارم | `36-audit-activity.js` — `COLL_FA` |
+| عملیاتی را «حساس» علامت بزنم | `36-audit-activity.js` — `SENSITIVE` |
 
 ---
 
@@ -219,6 +222,9 @@ test('توضیح فارسی آنچه بررسی می‌شود', () => {
 
 > ⚠️ کاربر را با **نام** جستجو نکنید؛ دادهٔ نمونه نام تکراری دارد.
 > با شناسه یا کد ملی جستجو کنید.
+
+> ⚠️ داخل تابع نما متغیر محلی به نام `f` نگذارید — تابع سراسری سازندهٔ
+> فیلد فرم را می‌پوشاند و خطای «f is not a function» می‌دهد.
 
 ---
 

@@ -253,6 +253,94 @@ test('پاک‌سازی کامل، صف را هم خالی می‌کند', () =>
   assert(has, 'resetAll صف همگام‌سازی را پاک نمی‌کند');
 });
 
+console.log('\n▸ سابقه تغییرات و آمار فعالیت');
+
+test('توابع سابقه و فعالیت تعریف شده‌اند', () => {
+  assert(W("typeof viewAudit==='function'&&typeof auditList==='function'"
+    + "&&typeof auditSummary==='function'&&typeof viewActivity==='function'"
+    + "&&typeof trackVisit==='function'&&typeof onlineUsers==='function'"
+    + "&&typeof perfSample==='function'&&typeof loadReport==='function'"
+    + "&&typeof serverLoadEstimate==='function'&&typeof shortStamp==='function'"), 'توابع ناقص است');
+});
+
+test('دفترچه عملیات «چه کسی» و «کِی» را ثبت می‌کند', () => {
+  W("S.user=db.users.find(u=>u.role==='teacher');S.persona=null;S.boss=null");
+  const uid = W('S.user.id');
+  W("var c=visibleClasses()[0];insert('grades',{school_id:c.school_id,class_id:c.id,"
+    + "student_id:studentsOfClass(c.id)[0].id,subject_id:1,term:'نوبت اول',type:'کلاسی',"
+    + "score:17,date:todayISO()})");
+  assert(W('log[log.length-1].by') === uid, 'شناسه کاربر ثبت نشد');
+  assert(!!W('log[log.length-1].at'), 'مهر زمان ثبت نشد');
+});
+
+test('سابقه تغییرات: فیلترها و ترتیب درست کار می‌کنند', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null;S.filters={}");
+  assert(W('auditList({}).length') > 0, 'سابقه خالی است');
+  assert(W("auditList({op:'ins'}).every(function(r){return r.op.t==='ins';})"), 'فیلتر نوع عمل');
+  assert(W("auditList({coll:'grades'}).every(function(r){return r.op.c==='grades';})"), 'فیلتر نوع داده');
+  assert(W('auditList({sensitive:true}).every(function(r){return r.sensitive;})'), 'فیلتر حساس');
+  assert(W('auditSummary().total') === W('log.length'), 'شمارش کل نادرست');
+});
+
+test('صفحه سابقه تغییرات رندر می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null;S.route='audit';S.filters={}");
+  const o = W('renderRoute()');
+  assert(o.length > 1500 && !o.includes('undefined') && !o.includes('[object'), 'رندر نشد');
+});
+
+test('ثبت بازدید و تشخیص کاربران برخط', () => {
+  W("localStorage.removeItem(VISITS_KEY)");
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  W('trackVisit(S.user.id)');
+  assert(W('loadVisits().days[todayISO()]') >= 1, 'بازدید امروز ثبت نشد');
+  assert(W('onlineUsers(5).length') >= 1, 'کاربر برخط شناسایی نشد');
+  assert(W('onlineUsers(5).some(function(o){return o.user.id===S.user.id;})'), 'کاربر جاری برخط نیست');
+  W("(function(){var v=loadVisits();v.users[999999]=new Date(Date.now()-3600000).toISOString();saveVisits(v);})()");
+  assert(!W('onlineUsers(5).some(function(o){return o.user&&o.user.id===999999;})'),
+    'کاربر قدیمی برخط شمرده شد');
+});
+
+test('سنجش بار: نمونه‌ها ثبت و محدود می‌شوند', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null;S.filters={}");
+  for(const r of ['dashboard','users','schools']){ W("S.route='" + r + "'"); W('renderRoute()'); }
+  assert(W('loadReport().samples') > 0, 'نمونه‌ای ثبت نشد');
+  assert(W('loadReport().p90') >= W('loadReport().p50'), 'صدک‌ها نامنطقی');
+  assert(W('loadReport().routes.length') > 0, 'تفکیک صفحه ندارد');
+  for(let i = 0; i < 300; i++) W("perfSample('x',1)");
+  assert(W('PERF.samples.length') <= W('PERF.max'), 'سقف نمونه رعایت نشد');
+});
+
+test('برآورد بار سرور با تعداد کاربر رشد می‌کند', () => {
+  assert(W('serverLoadEstimate(5000000).rps') > 0, 'برآورد صفر است');
+  assert(W('serverLoadEstimate(1000000).rps') < W('serverLoadEstimate(5000000).rps'), 'رشد ندارد');
+  assert(W('serverLoadEstimate(5000000).apiNodes') > 0, 'تعداد نمونه سرویس نامعتبر');
+});
+
+test('صفحه بازدید و بار رندر می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null;S.route='activity';S.filters={}");
+  const o = W('renderRoute()');
+  assert(o.length > 1500 && !o.includes('undefined') && !o.includes('[object'), 'رندر نشد');
+  assert(o.includes('کاربر برخط') && o.includes('بار سرور'), 'بخش‌های اصلی نیستند');
+});
+
+test('نگهداری فقط ۹۰ روز اخیر', () => {
+  W("(function(){var v={days:{},users:{},sessions:0};for(var i=0;i<120;i++)"
+    + "v.days['2025-'+String((i%12)+1).padStart(2,'0')+'-'+String((i%28)+1).padStart(2,'0')]=1;"
+    + "saveVisits(v);})()");
+  W('trackVisit(1)');
+  assert(W('Object.keys(loadVisits().days).length') <= 90, 'بیش از ۹۰ روز نگه داشته شد');
+});
+
+test('سابقه و فعالیت فقط برای سوپرادمین باز است', () => {
+  for(const role of ['manager','teacher','student','parent','edu_office']){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null;S.filters={}");
+    for(const r of ['audit','activity']){
+      W("S.route='" + r + "'");
+      assert(/دسترسی مجاز نیست|اشتراک/.test(W('renderRoute()')), role + ' به ' + r + ' دسترسی داشت');
+    }
+  }
+});
+
 console.log('\n▸ پنل سوپرادمین: مالی، رمز، سلامت');
 
 test('توابع پنل سوپرادمین تعریف شده‌اند', () => {

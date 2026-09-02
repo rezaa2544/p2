@@ -79,6 +79,13 @@ function applyOp(op,record=true){
   }
   else if(typeof idxInvalidate==='function') idxInvalidate(op.c);
   if(record){
+    /* رد پای کاربر و زمان — برای سابقهٔ تغییرات (36-audit-activity.js).
+       فقط شناسه و مُهر زمان ذخیره می‌شود، نه کل رکورد کاربر، چون
+       دفترچه در حافظهٔ مرورگر می‌ماند و هر بایت در مقیاس ملی ضرب می‌شود. */
+    if(typeof S!=='undefined' && S.user && op.by===undefined){
+      op.by = S.user.id;
+      op.at = new Date().toISOString();
+    }
     log.push(op);saveLog();
     /* هر تغییر واقعی کاربر وارد صف همگام‌سازی با سرور می‌شود */
     if(typeof enqueueOp==='function' && !SYNC_MUTED) enqueueOp(op);

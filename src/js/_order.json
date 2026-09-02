@@ -28,6 +28,7 @@
   "33-forms-sms.js",
   "34-excel-import.js",
   "35-superadmin.js",
+  "36-audit-activity.js",
   "19-actions.js",
   "20-communication-finance.js",
   "21-exams-teachers-family.js",

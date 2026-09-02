@@ -24,7 +24,7 @@ document.addEventListener('click',e=>{
      S.user=u;S.stack=[];S.persona=null;localStorage.removeItem(PERSONA_KEY);
      linkAsParent(u);
      S.showPicker=panelsOf(u).length>1;
-     S.route=(u.role==='edu_office'?'officedash':'dashboard');localStorage.setItem(SESSION_KEY,u.username);toast('خوش آمدید، '+u.full_name,'ok');render();
+     S.route=(u.role==='edu_office'?'officedash':'dashboard');localStorage.setItem(SESSION_KEY,u.username);if(typeof trackVisit==='function')trackVisit(u.id);toast('خوش آمدید، '+u.full_name,'ok');render();
    },
    logout(){S.user=null;S.boss=null;S.stack=[];S.persona=null;S.showPicker=false;
      localStorage.removeItem(SESSION_KEY);localStorage.removeItem(BOSS_KEY);localStorage.removeItem(PERSONA_KEY);render();},
