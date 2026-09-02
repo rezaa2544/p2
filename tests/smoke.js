@@ -1801,6 +1801,113 @@ test('شاخه‌های مدرسه در فرم درس محدود است', () => 
   assert(b.length === 1 && b[0] === 'نظری', 'باید فقط نظری باشد: ' + b.join('،'));
 });
 
+
+// ── کلاس‌بندی خودکار از اکسل
+test('نام عامیانه رشته به نام رسمی تبدیل می‌شود', () => {
+  const sid = W("db.schools.find(function(s){return s.code==='IZ-105';}).id");
+  const pairs = [['دهم الکترونیک', 'الکتروتکنیک'], ['دهم برق', 'الکتروتکنیک'],
+                 ['۱۰ رایانه', 'کامپیوتر'], ['یازدهم خیاطی', 'طراحی دوخت']];
+  pairs.forEach(function (p) {
+    const o = W('parsePlacement(' + JSON.stringify(p[0]) + ',' + sid + ')');
+    assert(o && o.field === p[1], p[0] + ' → ' + (o ? o.field : 'null') + ' (انتظار: ' + p[1] + ')');
+  });
+});
+
+test('پایه با ارقام فارسی درست خوانده می‌شود', () => {
+  const sid = W("db.schools.find(function(s){return s.code==='SH-101';}).id");
+  [['۱۱ ریاضی', 11], ['۱۲ تجربی', 12], ['دهم تجربی', 10], ['پایه ۱۰ انسانی', 10]].forEach(function (p) {
+    const o = W('parsePlacement(' + JSON.stringify(p[0]) + ',' + sid + ')');
+    assert(o && o.grade === p[1], p[0] + ' → پایهٔ ' + (o ? o.grade : 'null') + ' (انتظار: ' + p[1] + ')');
+  });
+});
+
+test('رشتهٔ خارج از شاخهٔ مدرسه علامت می‌خورد', () => {
+  const sh = W("db.schools.find(function(s){return s.code==='SH-101';}).id");
+  const ok = W("parsePlacement('دهم تجربی'," + sh + ')');
+  const no = W("parsePlacement('دهم گرافیک'," + sh + ')');
+  assert(ok.offered === true, 'رشتهٔ نظری باید مجاز باشد');
+  assert(no.offered === false, 'گرافیک در دبیرستان نظری نباید مجاز باشد');
+});
+
+test('کلاس ابتدایی و متوسطه اول شاخه می‌گیرد نه رشته', () => {
+  const sid = W('db.schools[0].id');
+  const a = W("parsePlacement('هفتم ۲'," + sid + ')');
+  assert(a.grade === 7 && a.mode === 'class', 'هفتم ۲ باید کلاس‌محور باشد');
+  const b = W("parsePlacement('پنجم الف'," + sid + ')');
+  assert(b.grade === 5 && b.section === 'الف', 'شاخهٔ «الف» تشخیص داده نشد');
+});
+
+test('نام استاندارد کلاس ساخته می‌شود', () => {
+  const iz = W("db.schools.find(function(s){return s.code==='IZ-105';}).id");
+  const o = W("parsePlacement('۱۰ الکترونیک'," + iz + ')');
+  assert(o.name === 'دهم الکتروتکنیک', 'نام ساخته‌شده: ' + o.name);
+});
+
+test('دانش‌آموزان هم‌پایه و هم‌رشته در یک کلاس جمع می‌شوند', () => {
+  const iz = W("db.schools.find(function(s){return s.code==='IZ-105';}).id");
+  const rows = [{ index: 0, text: 'دهم الکترونیک' }, { index: 1, text: '۱۰ الکترونیک' },
+                { index: 2, text: 'دهم برق' }, { index: 3, text: 'دهم کامپیوتر' }];
+  const r = W('planPlacement(' + JSON.stringify(rows) + ',' + iz + ')');
+  const names = {};
+  Object.keys(r.plan).forEach(function (k) { if (r.plan[k]) names[r.plan[k].name] = (names[r.plan[k].name] || 0) + 1; });
+  assert(names['دهم الکتروتکنیک'] === 3, 'سه نوشتار متفاوت باید یک کلاس شوند: ' + JSON.stringify(names));
+  assert(names['دهم کامپیوتر'] === 1, 'کامپیوتر باید جدا باشد');
+});
+
+test('ورود اکسل کلاس رشته‌محور با مشخصات درست می‌سازد', () => {
+  W("S.user=db.users.find(function(u){return u.role==='manager'&&u.school_id===db.schools.find(function(s){return s.code==='IZ-105';}).id;})");
+  const sid = W('S.user.school_id');
+  const before = W('db.classes.filter(function(c){return c.school_id===' + sid + ';}).length');
+  W("window.__N=(function(){var out=[];var n=770000;while(out.length<4){n++;var b=String(n).padStart(9,'0');"
+    + "var s=0;for(var i=0;i<9;i++)s+=Number(b[i])*(10-i);var r=s%11;var c=r<2?r:11-r;var nid=b+c;"
+    + "if(validNid(nid)&&!nidOwner(nid))out.push(nid);}return out;})()");
+  const NL = String.fromCharCode(10);
+  const csv = 'نام,نام خانوادگی,کد ملی,کلاس,نام پدر,کد ملی پدر' + NL
+    + 'رضا,احمدی,' + W('window.__N[0]') + ',دهم الکترونیک,مرتضی احمدی,' + W('window.__N[1]') + NL
+    + 'سعید,موسوی,' + W('window.__N[2]') + ',۱۰ برق,حسن موسوی,' + W('window.__N[3]');
+  W('window.__sh=prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students')");
+  W("window.__pv=validateImport(window.__sh.rows,window.__sh.mapping,'students')");
+  const rep = W("commitImport({entity:'students',preview:window.__pv})");
+  assert(rep.created === 2, 'دو دانش‌آموز باید ساخته شود: ' + rep.created);
+  assert(rep.classes === 1, 'هر دو باید در یک کلاس بروند، ساخته شد: ' + rep.classes);
+  const cls = W('db.classes.filter(function(c){return c.school_id===' + sid + ';}).slice(' + before + ')');
+  assert(cls.length === 1 && cls[0].field === 'الکتروتکنیک',
+    'رشتهٔ کلاس: ' + (cls[0] ? cls[0].field : '—'));
+  assert(cls[0].grade_level === 10, 'پایهٔ کلاس: ' + cls[0].grade_level);
+  assert(cls[0].class_mode === 'field', 'حالت کلاس باید رشته‌محور باشد');
+  const n = W('db.enrollments.filter(function(e){return e.class_id===' + cls[0].id + ';}).length');
+  assert(n === 2, 'هر دو دانش‌آموز باید در همان کلاس ثبت شوند: ' + n);
+});
+
+test('نام واقعی مادر از فایل خوانده می‌شود نه ساختگی', () => {
+  W("S.user=db.users.find(function(u){return u.role==='manager';})");
+  W("window.__N2=(function(){var out=[];var n=880000;while(out.length<3){n++;var b=String(n).padStart(9,'0');"
+    + "var s=0;for(var i=0;i<9;i++)s+=Number(b[i])*(10-i);var r=s%11;var c=r<2?r:11-r;var nid=b+c;"
+    + "if(validNid(nid)&&!nidOwner(nid))out.push(nid);}return out;})()");
+  const NL = String.fromCharCode(10);
+  const csv = 'نام و نام خانوادگی,کد ملی,کلاس,نام پدر,کد ملی پدر,نام مادر,کد ملی مادر' + NL
+    + 'کیان پارسا,' + W('window.__N2[0]') + ',پنجم الف,بهروز پارسا,' + W('window.__N2[1]')
+    + ',شیرین دادگر,' + W('window.__N2[2]');
+  W('window.__sh2=prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students')");
+  W("window.__pv2=validateImport(window.__sh2.rows,window.__sh2.mapping,'students')");
+  W("commitImport({entity:'students',preview:window.__pv2})");
+  const st = W("db.users.filter(function(u){return u.full_name==='کیان پارسا';})[0]");
+  assert(st, 'دانش‌آموز ساخته نشد');
+  const links = W('db.parent_links.filter(function(l){return l.student_id===' + st.id + ';})');
+  const names = links.map(function (l) { return (W('byId("users",' + l.parent_id + ')') || {}).full_name; });
+  assert(names.indexOf('شیرین دادگر') >= 0, 'نام واقعی مادر ثبت نشد: ' + names.join('، '));
+});
+
+test('ایندکس پس از درج افزایشی تازه می‌ماند', () => {
+  const n0 = W('db.users.length');
+  W("window.__u=insert('users',{school_id:db.schools[0].id,role:'student',full_name:'آزمون ایندکس',username:'idxtest1',password:'1',active:1,national_id:'1111111112'})");
+  const found = W('byId("users",window.__u.id)');
+  assert(found && found.full_name === 'آزمون ایندکس', 'رکورد تازه از ایندکس پیدا نشد');
+  const byNid = W("idxUserByNid().get('1111111112')");
+  assert(byNid && byNid.id === W('window.__u.id'), 'ایندکس کد ملی تازه نشد');
+  W("remove('users',window.__u.id)");
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

@@ -54,7 +54,9 @@ var IMP_FIELDS = {
     ['shenasname_seri','سری شناسنامه',0,['سری شناسنامه','سری']],
     /* تحصیلی */
     ['class_name','کلاس',0,['کلاس','نام کلاس','پایه و کلاس']],
-    ['field','رشته',0,['رشته','رشته تحصیلی','گرایش']],
+    /* پایه ممکن است ستون جدا باشد؛ با رشته ترکیب و کلاس‌بندی می‌شود */
+    ['grade','پایه',0,['پایه','مقطع تحصیلی','سال تحصیلی','پایه تحصیلی']],
+    ['field','رشته',0,['رشته','رشته تحصیلی','گرایش','رشته و گرایش']],
     ['last_gpa','معدل سال گذشته',0,['معدل سال گذشته','معدل قبلی','معدل']],
     ['failed_count','تعداد درس افتاده',0,['تعداد درس افتاده','درس افتاده','مردودی']],
     /* پدر */
@@ -300,14 +302,46 @@ function validateImport(rows, mapping, entity){
     if(!data.phone && data.father_phone) data.phone = data.father_phone;
 
     if(entity === 'students'){
+      /* متن کلاس‌بندی: ستون کلاس، و اگر نبود ترکیب پایه و رشته.
+         فایل‌های واقعی گاهی «کلاس» ندارند ولی «پایه» و «رشته» دارند. */
       var cname = (o.class_name || '').trim();
-      if(cname){
-        var cls = clsByName[normHdr(cname)];
-        if(cls) data.class_id = cls.id;
-        else {
-          data.new_class = cname;
-          if(newClasses.indexOf(cname) < 0) newClasses.push(cname);
-          warns.push('کلاس «' + cname + '» ساخته می‌شود');
+      var gradeTxt = (o.grade || '').trim();
+      var fieldTxt = (o.field || '').trim();
+      var placeTxt = cname || ((gradeTxt + ' ' + fieldTxt).trim());
+
+      if(placeTxt){
+        /* موتور تشخیص: پایه و رشته را از متن آزاد بیرون می‌کشد و با
+           شاخه‌های اعلام‌شدهٔ مدرسه می‌سنجد. */
+        var pl = (typeof parsePlacement === 'function') ? parsePlacement(placeTxt, sid) : null;
+        /* رشته اگر ستون جدا داشت و در متن کلاس نبود، از آنجا گرفته شود */
+        if(pl && !pl.field && fieldTxt && typeof detectField === 'function'){
+          var fd2 = detectField(fieldTxt, sid);
+          if(fd2 && pl.grade && pl.grade >= 10){
+            pl.field = fd2.field; pl.branch = fd2.branch; pl.offered = fd2.offered;
+            pl.mode = 'field';
+            pl.name = (typeof gradeWordOf === 'function' ? gradeWordOf(pl.grade) : '') + ' ' + fd2.field;
+            pl.name = pl.name.trim();
+          }
+        }
+        var ex = (pl && typeof findClassFor === 'function') ? findClassFor(pl, sid)
+               : clsByName[normHdr(placeTxt)];
+        if(!ex && !pl) ex = clsByName[normHdr(placeTxt)];
+
+        if(ex){
+          data.class_id = ex.id;
+          if(pl && pl.field && !pl.offered)
+            warns.push('رشتهٔ «' + pl.field + '» جزو شاخه‌های این مدرسه نیست');
+        } else {
+          var nm = pl ? pl.name : placeTxt;
+          data.new_class = nm;
+          data.place = pl || null;
+          if(newClasses.indexOf(nm) < 0) newClasses.push(nm);
+          if(pl && pl.field && !pl.offered)
+            warns.push('رشتهٔ «' + pl.field + '» جزو شاخه‌های این مدرسه نیست — کلاس ساخته می‌شود');
+          else if(pl && pl.field)
+            warns.push('کلاس «' + nm + '» ساخته می‌شود (پایهٔ ' + pl.grade + '، رشتهٔ ' + pl.field + ')');
+          else
+            warns.push('کلاس «' + nm + '» ساخته می‌شود');
         }
       } else warns.push('بدون کلاس');
 
@@ -388,11 +422,49 @@ function commitImport(st){
   var sid = S.user.school_id, p = st.preview;
   var report = { created:0, updated:0, parents:0, classes:0, skipped:p.counts.failed };
   batchWrites(function(){
+
+    /* ── نقشه‌های درهم‌سازی ──────────────────────────────────────
+       پیش‌تر هر ردیف کل جدول کاربران را می‌پیمود تا ولی را پیدا کند.
+       با ۱۲٬۰۰۰ کاربر و ۲٬۰۰۰ ردیف یعنی ۲۴ میلیون مقایسه ⇒ رفتار
+       درجه‌دوم. سنجش: ۲۰۰۰ ردیف ۱۴٬۸۴۶ms طول می‌کشید.
+       ⚠️ باید پیش از حلقهٔ ساخت کلاس تعریف شوند؛ var بالابری می‌شود
+       ولی مقداردهی نه، و نقشه undefined می‌ماند. */
+    var parentByNid = Object.create(null);
+    db.users.forEach(function(u){
+      if(u.national_id && ['parent','teacher','manager'].indexOf(u.role) > -1)
+        parentByNid[u.national_id] = u;
+    });
+    var clsByNorm = Object.create(null);
+    visibleClasses().forEach(function(c){ clsByNorm[normHdr(c.name)] = c; });
+    var enrByStudent = Object.create(null);
+    db.enrollments.forEach(function(e){
+      (enrByStudent[e.student_id] = enrByStudent[e.student_id] || []).push(e);
+    });
+    var linkSet = Object.create(null);
+    db.parent_links.forEach(function(l){ linkSet[l.parent_id + '|' + l.student_id] = true; });
+
+    /* مشخصات تشخیص‌داده‌شدهٔ هر کلاس نو، از روی ردیف‌ها */
+    var placeOf = Object.create(null);
+    p.rows.forEach(function(r){
+      if(r.ok && r.data && r.data.new_class && r.data.place)
+        placeOf[r.data.new_class] = r.data.place;
+    });
     p.newClasses.forEach(function(cn){
-      if(visibleClasses().some(function(c){ return normHdr(c.name) === normHdr(cn); })) return;
-      insert('classes', { school_id: sid, name: cn,
-        grade: cn.split(' ')[0] || null, field: cn.split(' ').slice(1).join(' ') || null,
-        capacity: 40, grade_level: (typeof gradeFromName === 'function') ? gradeFromName(cn) : null });
+      if(clsByNorm[normHdr(cn)]) return;
+      var pl = placeOf[cn];
+      /* پایه و رشته از موتور تشخیص می‌آید، نه از بریدن نام با فاصله.
+         بریدن نام روی «دهم ادبیات و علوم انسانی» رشته را خراب می‌کرد.
+         ⚠️ خروجی insert در نقشه ثبت می‌شود، وگرنه ردیف‌های بعدی همین
+         کلاس را پیدا نمی‌کنند و ثبت‌نامشان از دست می‌رود. */
+      var newCls = insert('classes', { school_id: sid, name: cn,
+        grade: pl ? (typeof gradeWordOf === 'function' ? gradeWordOf(pl.grade) : null)
+                  : (cn.split(' ')[0] || null),
+        field: pl ? (pl.field || null) : (cn.split(' ').slice(1).join(' ') || null),
+        class_mode: pl ? pl.mode : null,
+        capacity: 40,
+        grade_level: pl ? pl.grade
+                        : ((typeof gradeFromName === 'function') ? gradeFromName(cn) : null) });
+      clsByNorm[normHdr(cn)] = newCls;
       report.classes++;
     });
     var seq = db.users.length;
@@ -435,29 +507,35 @@ function commitImport(st){
       }
       if(st.entity === 'students'){
         var cls = d.class_id ? byId('classes', d.class_id)
-          : visibleClasses().filter(function(c){ return normHdr(c.name) === normHdr(d.new_class || ''); })[0];
+          : clsByNorm[normHdr(d.new_class || '')];
         if(cls){
-          db.enrollments.filter(function(e){ return e.student_id === uid; })
-            .forEach(function(e){ remove('enrollments', e.id); });
-          insert('enrollments', { school_id: sid, class_id: cls.id, student_id: uid });
+          (enrByStudent[uid] || []).forEach(function(e){ remove('enrollments', e.id); });
+          var newEnr = insert('enrollments', { school_id: sid, class_id: cls.id, student_id: uid });
+          enrByStudent[uid] = [newEnr];
           update('users', uid, {
             grade_level: cls.grade_level || ((typeof gradeFromName === 'function') ? gradeFromName(cls.name) : null) });
         }
-        [[d.father_nid, d.father_name, 'پدر'], [d.mother_nid, null, 'مادر']].forEach(function(pair){
-          var pnid = pair[0], pname = pair[1], rel = pair[2];
+        /* نام مادر هم مثل پدر از فایل خوانده می‌شود؛ پیش‌تر null بود و
+           همیشه «مادر فلانی» ساخته می‌شد حتی وقتی نامش در فایل بود. */
+        [[d.father_nid, d.father_name, 'پدر', d.father_phone],
+         [d.mother_nid, d.mother_name, 'مادر', d.mother_phone]].forEach(function(pair){
+          var pnid = pair[0], pname = pair[1], rel = pair[2], pphone = pair[3];
           if(!pnid && !pname) return;
-          var parent = pnid ? db.users.filter(function(u){
-            return u.national_id === pnid && ['parent','teacher','manager'].indexOf(u.role) > -1; })[0] : null;
+          var parent = pnid ? parentByNid[pnid] : null;
           if(!parent){
             parent = insert('users', { school_id: sid, role: 'parent',
               full_name: pname || (rel + ' ' + d.full_name), username: freeName('pr'),
-              password: '123456', national_id: pnid || null, phone: d.phone || '',
+              password: '123456', national_id: pnid || null,
+              phone: pphone || d.phone || '',
               active: 1, status: 'active', created_at: todayISO() });
+            if(pnid) parentByNid[pnid] = parent;
             report.parents++;
+          } else if(pname && !parent.full_name){
+            update('users', parent.id, { full_name: pname });
           }
-          if(parent && !db.parent_links.some(function(l){
-              return l.parent_id === parent.id && l.student_id === uid; })){
+          if(parent && !linkSet[parent.id + '|' + uid]){
             insert('parent_links', { parent_id: parent.id, student_id: uid, relation: rel });
+            linkSet[parent.id + '|' + uid] = true;
           }
         });
       }

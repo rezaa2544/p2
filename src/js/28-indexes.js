@@ -20,6 +20,38 @@ function idxInvalidate(coll){
   IDX_VER[coll] = (IDX_VER[coll]||0) + 1;
 }
 
+/**
+ * درج افزایشی: رکورد تازه را به ایندکس‌های ساخته‌شده اضافه می‌کند
+ * به‌جای دور انداختن آن‌ها.
+ *
+ * چرا لازم شد؟ هر insert ایندکس را باطل می‌کرد و insert بعدی مجبور
+ * بود کل مجموعه را از نو بسازد. در ورود ۲٬۰۰۰ ردیف اکسل (۶٬۰۰۰ درج
+ * روی جدولی با ۱۲٬۰۰۰ کاربر) این رفتار درجه‌دوم می‌شد:
+ * سنجش پیش از رفع ⇒ ۱۴٬۲۵۷ms برای ۲۰۰۰ ردیف.
+ *
+ * ⚠️ فقط برای «درج» امن است. در ویرایش یا حذف، کلید ایندکس ممکن است
+ * عوض شده باشد و رکورد قدیمی باید از سطل قبلی برداشته شود — آنجا
+ * همچنان idxInvalidate درست است.
+ */
+function idxAppend(coll, rec){
+  if(!rec) return;
+  var ver = IDX_VER[coll]||0;
+  var pre = coll+'::';
+  Object.keys(IDX_CACHE).forEach(function(key){
+    if(key.indexOf(pre) !== 0) return;
+    var e = IDX_CACHE[key];
+    if(!e || e.ver !== ver || !e.keyFn) return;
+    var k;
+    try{ k = e.keyFn(rec); }catch(err){ delete IDX_CACHE[key]; return; }
+    if(k === undefined || k === null) return;
+    if(e.uniq) e.map.set(k, rec);
+    else {
+      var b = e.map.get(k);
+      if(b) b.push(rec); else e.map.set(k, [rec]);
+    }
+  });
+}
+
 /** باطل‌سازی کامل (پس از بازتولید داده یا ورود کاربر) */
 function idxReset(){
   IDX_VER = Object.create(null);
@@ -46,7 +78,7 @@ function idxGroup(coll, name, keyFn){
     var b = m.get(k);
     if(b) b.push(r); else m.set(k,[r]);
   }
-  IDX_CACHE[key] = { ver:ver, map:m };
+  IDX_CACHE[key] = { ver:ver, map:m, keyFn:keyFn, uniq:false };
   return m;
 }
 
@@ -65,11 +97,19 @@ function idxUnique(coll, name, keyFn){
     if(k===undefined || k===null) continue;
     m.set(k,r);
   }
-  IDX_CACHE[key] = { ver:ver, map:m };
+  IDX_CACHE[key] = { ver:ver, map:m, keyFn:keyFn, uniq:true };
   return m;
 }
 
 /* ---------- ایندکس‌های آماده برای مسیرهای داغ ---------- */
+
+/** کد ملی → کاربر. nidOwner پیش‌تر خطی بود و در ورود انبوه اکسل
+    به ازای هر ردیف کل جدول کاربران را می‌پیمود. */
+function idxUserByNid(){
+  return idxUnique('users','national_id',function(u){
+    return u.national_id ? String(u.national_id) : undefined;
+  });
+}
 
 /** id → رکورد (جایگزین find خطی در byId) */
 function idxById(coll){

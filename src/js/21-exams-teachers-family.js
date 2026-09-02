@@ -20,7 +20,20 @@ function makeNid(){
   return b+String(s<2?s:11-s);
 }
 /** کد ملی در کل سامانه یکتاست */
-const nidOwner=(nid,exceptId=0)=>db.users.find(u=>u.national_id===String(nid)&&u.id!==exceptId);
+/* یافتن دارندهٔ یک کد ملی. از ایندکس استفاده می‌کند تا در ورود انبوه
+   اکسل رفتار درجه‌دوم نسازد؛ اگر ایندکس در دسترس نبود به جستجوی خطی
+   برمی‌گردد. ⚠️ ایندکس یکتاست و «آخرین برنده» است، پس وقتی exceptId
+   داده شده و همان رکورد برگشت، جستجوی خطی لازم می‌شود. */
+const nidOwner=(nid,exceptId=0)=>{
+  const key=String(nid);
+  if(typeof idxUserByNid==='function'){
+    const hit=idxUserByNid().get(key);
+    if(!hit) return undefined;
+    if(hit.id!==exceptId) return hit;
+    return db.users.find(u=>u.national_id===key&&u.id!==exceptId);
+  }
+  return db.users.find(u=>u.national_id===key&&u.id!==exceptId);
+};
 
 /* ---------------- داده نمونه فاز ۸ ---------------- */
 function generateP8(){
