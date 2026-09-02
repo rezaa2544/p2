@@ -1753,6 +1753,54 @@ test('کمک‌ابزار دلار-دلار آرایهٔ واقعی برمی‌�
   assert(isArr === true, 'باید آرایه باشد تا map و filter کار کند');
 });
 
+
+// ── محدودشدن رشته‌ها به شاخه‌های همان مدرسه
+test('رشته‌های مدرسهٔ نظری فقط رشته‌های نظری است', () => {
+  const f = W("schoolFields(db.schools.find(function(s){return s.code==='SH-101';}).id)");
+  assert(f.length === 4, 'باید ۴ رشته باشد، هست: ' + f.length);
+  assert(f.indexOf('علوم تجربی') >= 0, 'علوم تجربی باید باشد');
+  assert(f.indexOf('مکانیک خودرو') < 0, 'رشتهٔ فنی نباید در دبیرستان نظری باشد');
+});
+
+test('مدرسهٔ دوشاخه‌ای رشته‌های هر دو شاخه را دارد', () => {
+  const f = W("schoolFields(db.schools.find(function(s){return s.code==='IZ-105';}).id)");
+  assert(f.indexOf('کامپیوتر') >= 0, 'رشتهٔ فنی باید باشد');
+  assert(f.indexOf('طراحی دوخت') >= 0, 'رشتهٔ کاردانش باید باشد');
+  assert(f.indexOf('علوم تجربی') < 0, 'رشتهٔ نظری نباید باشد');
+});
+
+test('مدرسهٔ بدون شاخه به همهٔ رشته‌ها برمی‌گردد', () => {
+  const n = W("schoolFields(db.schools.find(function(s){return s.level==='متوسطه اول';}).id).length");
+  const all = W('ALL_FIELDS.length');
+  assert(n === all, 'دادهٔ قدیمی نباید بن‌بست شود: ' + n + ' از ' + all);
+});
+
+test('فرم کلاس فقط رشته‌های مدرسهٔ خودش را می‌دهد', () => {
+  W("window._edit=null; classModal({name:'',grade:'',field:'',school_id:db.schools.find(function(s){return s.code==='SH-101';}).id})");
+  const sel = dom.window.document.querySelector('#c_field');
+  if (sel && sel.tagName === 'SELECT') {
+    const vals = Array.prototype.slice.call(sel.options).map(function (o) { return o.value; });
+    assert(vals.indexOf('مکانیک خودرو') < 0, 'رشتهٔ فنی نباید در دبیرستان نظری پیشنهاد شود');
+  }
+  W('closeModal&&closeModal()');
+});
+
+test('رشتهٔ فعلی کلاس حتی خارج از شاخه حفظ می‌شود', () => {
+  const sid = W("db.schools.find(function(s){return s.code==='SH-101';}).id");
+  W("window._edit=null; classModal({name:'آزمون',grade:'دهم',field:'گرافیک',class_mode:'field',school_id:" + sid + "})");
+  const sel = dom.window.document.querySelector('#c_field');
+  if (sel && sel.tagName === 'SELECT') {
+    const vals = Array.prototype.slice.call(sel.options).map(function (o) { return o.value; });
+    assert(vals.indexOf('گرافیک') >= 0, 'رشتهٔ ثبت‌شدهٔ کلاس نباید از فهرست بیفتد');
+  }
+  W('closeModal&&closeModal()');
+});
+
+test('شاخه‌های مدرسه در فرم درس محدود است', () => {
+  const b = W("schoolBranches(db.schools.find(function(s){return s.code==='SH-101';}).id)");
+  assert(b.length === 1 && b[0] === 'نظری', 'باید فقط نظری باشد: ' + b.join('،'));
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

@@ -160,6 +160,13 @@ document.addEventListener('click',e=>{
      if(invalid('c_field',_mode==='field'&&!V('c_field'),'در کلاس رشته‌محور، انتخاب رشته الزامی است'))return;
      const data={name:V('c_name'),grade:V('c_grade'),field:_mode==='class'?null:(V('c_field')||null),class_mode:_mode||null,grade_level:_gl||null,room:V('c_room'),capacity:Number(V('c_cap'))||30,homeroom_teacher_id:V('c_ht')?Number(V('c_ht')):null};
      if($('#c_school'))data.school_id=Number(V('c_school'));else data.school_id=c.school_id;
+     /* رشتهٔ کلاس باید جزو شاخه‌های همان مدرسه باشد. رشتهٔ قبلی خودِ
+        کلاس استثناست تا ویرایش کلاس‌های قدیمی مسدود نشود. */
+     if(data.field&&typeof schoolFields==='function'){
+       const mine=schoolFields(data.school_id)||[];
+       if(mine.length&&mine.indexOf(data.field)<0&&data.field!==c.field){
+         toast('رشتهٔ «'+data.field+'» جزو شاخه‌های این مدرسه نیست','err');return;}
+     }
      if(c.id)update('classes',c.id,data);else insert('classes',data);
      closeModal();toast('ذخیره شد','ok');render();},
    // subjects
@@ -172,9 +179,18 @@ document.addEventListener('click',e=>{
      const grade=V('s_grade')||'';
      const lv=levelOfGrade(grade);
      const field=needsField(lv)?(V('s_field')||''):'';
-     if(invalid('c_field',needsField(lv)&&!field,'برای پایه‌های متوسطه دوم، انتخاب رشته الزامی است'))return;
+     /* شناسهٔ درست فیلد رشته در فرم درس، s_field است نه c_field؛
+        پیش‌تر کادر قرمز روی فیلدی می‌رفت که در این فرم وجود ندارد. */
+     if(invalid('s_field',needsField(lv)&&!field,'برای پایه‌های متوسطه دوم، انتخاب رشته الزامی است'))return;
+     const sid_=$('#s_school')?Number(V('s_school')):s.school_id;
+     /* رشته باید جزو شاخه‌های اعلام‌شدهٔ همان مدرسه باشد */
+     if(field&&typeof schoolFields==='function'){
+       const mine=schoolFields(sid_)||[];
+       if(mine.length&&mine.indexOf(field)<0){
+         toast('رشتهٔ «'+field+'» جزو شاخه‌های این مدرسه نیست','err');return;}
+     }
      const data={name:V('s_name'),code:V('s_code'),weekly_hours:Number(V('s_h'))||2,grade,field,
-       school_id:$('#s_school')?Number(V('s_school')):s.school_id};
+       school_id:sid_};
      if(s.id)update('subjects',s.id,data);else insert('subjects',data);
      closeModal();toast('ذخیره شد','ok');render();},
    /* افزودن دسته‌جمعی کتاب‌های استاندارد بر اساس پایه/رشته */
@@ -187,7 +203,7 @@ document.addEventListener('click',e=>{
          ${f('پایه *',sel('im_grade',[['','— ابتدا مقطع را انتخاب کنید —']]))}
        </div>
        <div id="im_fieldwrap" style="display:none"><div class="grid g2">
-         ${f('شاخه *',sel('im_branch',[['','— انتخاب شاخه —'],...Object.keys(BRANCHES).map(b=>[b,b])]))}
+         ${f('شاخه *',sel('im_branch',[['','— انتخاب شاخه —'],...schoolBranches(S.user.school_id).map(b=>[b,b])]))}
          ${f('رشته *',sel('im_field',[['','— ابتدا شاخه را انتخاب کنید —']]))}
        </div></div>
        ${isSuper?`<div class="grid g2">${f('مدرسه',sel('im_school',db.schools.map(x=>[x.id,x.name])))}</div>`:''}
@@ -871,6 +887,16 @@ document.addEventListener('change',e=>{
     return;
   }
   const optsOf=(list,ph)=>[`<option value="">${ph}</option>`,...list.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`)].join('');
+  /* رشته‌های یک شاخه، محدود به آنچه این مدرسه واقعاً ارائه می‌دهد.
+     اگر مدرسه رشته‌ای از آن شاخه ثبت نکرده باشد، همهٔ رشته‌های شاخه
+     برگردانده می‌شود تا فهرست خالی و بن‌بست نشود. */
+  const fieldsHere=(branch,schoolId)=>{
+    const all=fieldsOfBranch(branch)||[];
+    if(typeof schoolFields!=='function')return all;
+    const mine=schoolFields(schoolId||S.user.school_id)||[];
+    const hit=all.filter(x=>mine.indexOf(x)>=0);
+    return hit.length?hit:all;
+  };
 
   /* فرم درس: تغییر پایه → نمایش یا پنهان‌کردن شاخه/رشته */
   if(id==='s_grade'){
@@ -880,7 +906,7 @@ document.addEventListener('change',e=>{
     return;
   }
   if(id==='s_branch'){
-    if($('#s_field'))$('#s_field').innerHTML=optsOf(fieldsOfBranch(e.target.value),'— انتخاب رشته —');
+    if($('#s_field'))$('#s_field').innerHTML=optsOf(fieldsHere(e.target.value,V('s_school')),'— انتخاب رشته —');
     return;
   }
 
@@ -906,7 +932,7 @@ document.addEventListener('change',e=>{
     return;
   }
   if(id==='im_branch'){
-    if($('#im_field'))$('#im_field').innerHTML=optsOf(fieldsOfBranch(e.target.value),'— انتخاب رشته —');
+    if($('#im_field'))$('#im_field').innerHTML=optsOf(fieldsHere(e.target.value,V('im_school')),'— انتخاب رشته —');
     return;
   }
   if(id==='im_grade'||id==='im_field'){

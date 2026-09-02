@@ -154,6 +154,28 @@ function booksFor(grade, field){
 /** رشته‌های قابل انتخاب بر اساس شاخه */
 function fieldsOfBranch(branch){ return branch ? (BRANCHES[branch] || []) : ALL_FIELDS; }
 
+/* ---------- شاخه و رشتهٔ یک مدرسهٔ مشخص ----------
+   مدرسه هنگام ثبت، شاخه‌هایش را اعلام می‌کند. فرم‌های پایین‌دستی
+   (کلاس، درس، ثبت‌نام) باید فقط همان‌ها را نشان دهند، وگرنه در
+   دبیرستان نظری می‌شود کلاس «مکانیک خودرو» ساخت.
+
+   اگر مدرسه شاخه‌ای اعلام نکرده باشد (دادهٔ قدیمی پیش از افزودن این
+   قابلیت)، به همهٔ رشته‌ها برمی‌گردیم تا کار کاربر متوقف نشود. */
+function schoolBranches(schoolId){
+  const s = byId('schools', schoolId);
+  const b = s && Array.isArray(s.branches) ? s.branches : [];
+  return b.length ? b : Object.keys(BRANCHES);
+}
+
+function schoolFields(schoolId){
+  const s = byId('schools', schoolId);
+  if (s && Array.isArray(s.fields) && s.fields.length) return s.fields.slice();
+  /* رشته‌ای ثبت نشده ⇒ همهٔ رشته‌های شاخه‌های اعلام‌شده */
+  return schoolBranches(schoolId).reduce(function(a, b){
+    return a.concat(fieldsOfBranch(b));
+  }, []).filter(function(x, i, arr){ return arr.indexOf(x) === i; });
+}
+
 /** برچسب خوانا برای یک درس/کتاب */
 function subjectScopeLabel(s){
   if(!s.grade) return 'عمومی';

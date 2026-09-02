@@ -124,16 +124,15 @@ function classModal(c){
   /* نوع ذخیره‌شده، وگرنه حدس از روی پایه */
   const gl = c.grade_level || (typeof gradeFromName==='function' ? gradeFromName(c.grade||c.name) : null);
   const mode = c.class_mode || (gl && Number(gl)>=10 ? 'field' : gl ? 'class' : '');
-  /* همهٔ رشته‌های شاخه‌های متوسطه دوم */
+  /* رشته‌ها فقط از شاخه‌هایی که همین مدرسه اعلام کرده است.
+     در دبیرستان نظری نباید بتوان کلاس «مکانیک خودرو» ساخت. */
   var fieldOpts = [];
   try{
-    if(typeof BRANCHES === 'object' && typeof fieldsOfBranch === 'function'){
-      Object.keys(BRANCHES).forEach(function(b){
-        (fieldsOfBranch(b) || []).forEach(function(x){
-          if(fieldOpts.indexOf(x) < 0) fieldOpts.push(x); });
-      });
-    }
+    fieldOpts = (typeof schoolFields === 'function') ? schoolFields(c.school_id) : [];
   }catch(e){ fieldOpts = []; }
+  /* اگر کلاس رشته‌ای دارد که دیگر جزو شاخه‌های مدرسه نیست (مثلاً شاخه
+     بعداً حذف شده)، آن را نگه می‌داریم تا ویرایش کلاس داده را نپراند. */
+  if(c.field && fieldOpts.indexOf(c.field) < 0) fieldOpts.unshift(c.field);
   openModal(modalTpl(c.id?'ویرایش کلاس':'کلاس جدید',
    `<div class="card" style="box-shadow:none;border:1px solid var(--border);margin-bottom:12px">
       <div class="card-body" style="padding:12px">
@@ -172,7 +171,7 @@ function subjectModal(s){
     </div>
     <div id="s_fieldwrap" style="${needsField(lv)?'':'display:none'}">
       <div class="grid g2">
-        ${f('شاخه',sel('s_branch',[['','— انتخاب شاخه —'],...Object.keys(BRANCHES).map(b=>[b,b])],br))}
+        ${f('شاخه',sel('s_branch',[['','— انتخاب شاخه —'],...schoolBranches(s.school_id).map(b=>[b,b])],br))}
         ${f('رشته',sel('s_field',[['','— انتخاب رشته —'],...fieldsOfBranch(br).map(x=>[x,x])],s.field||''))}
       </div>
       <div class="small muted" style="margin-top:-4px">در متوسطه دوم (پایه‌های دهم تا دوازدهم) کتاب‌ها بر اساس شاخه و رشته تفکیک می‌شوند.</div>

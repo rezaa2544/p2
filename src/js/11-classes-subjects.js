@@ -64,7 +64,7 @@ function viewSubjects(){
      <select class="select" style="width:145px" data-f="sublevel">${opt(LEVELS.map(l=>[l,l]),flv,'همه مقاطع')}</select>
      <select class="select" style="width:135px" data-f="subgrade">${opt(gradeList.map(g=>[g,g]),fgr,'همه پایه‌ها')}</select>
      ${showFieldFilters?`
-       <select class="select" style="width:150px" data-f="subbranch">${opt(Object.keys(BRANCHES).map(b=>[b,b]),fbr,'همه شاخه‌ها')}</select>
+       <select class="select" style="width:150px" data-f="subbranch">${opt(schoolBranches(fsc||S.user.school_id).map(b=>[b,b]),fbr,'همه شاخه‌ها')}</select>
        <select class="select" style="width:180px" data-f="subfield">${opt(fieldList.map(f=>[f,f]),ffd,'همه رشته‌ها')}</select>`:''}
      ${isSuper?`<select class="select" style="width:180px" data-f="subschool">${opt(db.schools.map(s=>[s.id,s.name]),fsc,'همه مدارس')}</select>`:''}`)}
 

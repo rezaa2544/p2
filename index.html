@@ -1145,6 +1145,28 @@ function booksFor(grade, field){
 /** رشته‌های قابل انتخاب بر اساس شاخه */
 function fieldsOfBranch(branch){ return branch ? (BRANCHES[branch] || []) : ALL_FIELDS; }
 
+/* ---------- شاخه و رشتهٔ یک مدرسهٔ مشخص ----------
+   مدرسه هنگام ثبت، شاخه‌هایش را اعلام می‌کند. فرم‌های پایین‌دستی
+   (کلاس، درس، ثبت‌نام) باید فقط همان‌ها را نشان دهند، وگرنه در
+   دبیرستان نظری می‌شود کلاس «مکانیک خودرو» ساخت.
+
+   اگر مدرسه شاخه‌ای اعلام نکرده باشد (دادهٔ قدیمی پیش از افزودن این
+   قابلیت)، به همهٔ رشته‌ها برمی‌گردیم تا کار کاربر متوقف نشود. */
+function schoolBranches(schoolId){
+  const s = byId('schools', schoolId);
+  const b = s && Array.isArray(s.branches) ? s.branches : [];
+  return b.length ? b : Object.keys(BRANCHES);
+}
+
+function schoolFields(schoolId){
+  const s = byId('schools', schoolId);
+  if (s && Array.isArray(s.fields) && s.fields.length) return s.fields.slice();
+  /* رشته‌ای ثبت نشده ⇒ همهٔ رشته‌های شاخه‌های اعلام‌شده */
+  return schoolBranches(schoolId).reduce(function(a, b){
+    return a.concat(fieldsOfBranch(b));
+  }, []).filter(function(x, i, arr){ return arr.indexOf(x) === i; });
+}
+
 /** برچسب خوانا برای یک درس/کتاب */
 function subjectScopeLabel(s){
   if(!s.grade) return 'عمومی';
@@ -2080,7 +2102,7 @@ function viewSubjects(){
      <select class="select" style="width:145px" data-f="sublevel">${opt(LEVELS.map(l=>[l,l]),flv,'همه مقاطع')}</select>
      <select class="select" style="width:135px" data-f="subgrade">${opt(gradeList.map(g=>[g,g]),fgr,'همه پایه‌ها')}</select>
      ${showFieldFilters?`
-       <select class="select" style="width:150px" data-f="subbranch">${opt(Object.keys(BRANCHES).map(b=>[b,b]),fbr,'همه شاخه‌ها')}</select>
+       <select class="select" style="width:150px" data-f="subbranch">${opt(schoolBranches(fsc||S.user.school_id).map(b=>[b,b]),fbr,'همه شاخه‌ها')}</select>
        <select class="select" style="width:180px" data-f="subfield">${opt(fieldList.map(f=>[f,f]),ffd,'همه رشته‌ها')}</select>`:''}
      ${isSuper?`<select class="select" style="width:180px" data-f="subschool">${opt(db.schools.map(s=>[s.id,s.name]),fsc,'همه مدارس')}</select>`:''}`)}
 
@@ -2528,16 +2550,15 @@ function classModal(c){
   /* نوع ذخیره‌شده، وگرنه حدس از روی پایه */
   const gl = c.grade_level || (typeof gradeFromName==='function' ? gradeFromName(c.grade||c.name) : null);
   const mode = c.class_mode || (gl && Number(gl)>=10 ? 'field' : gl ? 'class' : '');
-  /* همهٔ رشته‌های شاخه‌های متوسطه دوم */
+  /* رشته‌ها فقط از شاخه‌هایی که همین مدرسه اعلام کرده است.
+     در دبیرستان نظری نباید بتوان کلاس «مکانیک خودرو» ساخت. */
   var fieldOpts = [];
   try{
-    if(typeof BRANCHES === 'object' && typeof fieldsOfBranch === 'function'){
-      Object.keys(BRANCHES).forEach(function(b){
-        (fieldsOfBranch(b) || []).forEach(function(x){
-          if(fieldOpts.indexOf(x) < 0) fieldOpts.push(x); });
-      });
-    }
+    fieldOpts = (typeof schoolFields === 'function') ? schoolFields(c.school_id) : [];
   }catch(e){ fieldOpts = []; }
+  /* اگر کلاس رشته‌ای دارد که دیگر جزو شاخه‌های مدرسه نیست (مثلاً شاخه
+     بعداً حذف شده)، آن را نگه می‌داریم تا ویرایش کلاس داده را نپراند. */
+  if(c.field && fieldOpts.indexOf(c.field) < 0) fieldOpts.unshift(c.field);
   openModal(modalTpl(c.id?'ویرایش کلاس':'کلاس جدید',
    `<div class="card" style="box-shadow:none;border:1px solid var(--border);margin-bottom:12px">
       <div class="card-body" style="padding:12px">
@@ -2576,7 +2597,7 @@ function subjectModal(s){
     </div>
     <div id="s_fieldwrap" style="${needsField(lv)?'':'display:none'}">
       <div class="grid g2">
-        ${f('شاخه',sel('s_branch',[['','— انتخاب شاخه —'],...Object.keys(BRANCHES).map(b=>[b,b])],br))}
+        ${f('شاخه',sel('s_branch',[['','— انتخاب شاخه —'],...schoolBranches(s.school_id).map(b=>[b,b])],br))}
         ${f('رشته',sel('s_field',[['','— انتخاب رشته —'],...fieldsOfBranch(br).map(x=>[x,x])],s.field||''))}
       </div>
       <div class="small muted" style="margin-top:-4px">در متوسطه دوم (پایه‌های دهم تا دوازدهم) کتاب‌ها بر اساس شاخه و رشته تفکیک می‌شوند.</div>
@@ -5789,6 +5810,13 @@ document.addEventListener('click',e=>{
      if(invalid('c_field',_mode==='field'&&!V('c_field'),'در کلاس رشته‌محور، انتخاب رشته الزامی است'))return;
      const data={name:V('c_name'),grade:V('c_grade'),field:_mode==='class'?null:(V('c_field')||null),class_mode:_mode||null,grade_level:_gl||null,room:V('c_room'),capacity:Number(V('c_cap'))||30,homeroom_teacher_id:V('c_ht')?Number(V('c_ht')):null};
      if($('#c_school'))data.school_id=Number(V('c_school'));else data.school_id=c.school_id;
+     /* رشتهٔ کلاس باید جزو شاخه‌های همان مدرسه باشد. رشتهٔ قبلی خودِ
+        کلاس استثناست تا ویرایش کلاس‌های قدیمی مسدود نشود. */
+     if(data.field&&typeof schoolFields==='function'){
+       const mine=schoolFields(data.school_id)||[];
+       if(mine.length&&mine.indexOf(data.field)<0&&data.field!==c.field){
+         toast('رشتهٔ «'+data.field+'» جزو شاخه‌های این مدرسه نیست','err');return;}
+     }
      if(c.id)update('classes',c.id,data);else insert('classes',data);
      closeModal();toast('ذخیره شد','ok');render();},
    // subjects
@@ -5801,9 +5829,18 @@ document.addEventListener('click',e=>{
      const grade=V('s_grade')||'';
      const lv=levelOfGrade(grade);
      const field=needsField(lv)?(V('s_field')||''):'';
-     if(invalid('c_field',needsField(lv)&&!field,'برای پایه‌های متوسطه دوم، انتخاب رشته الزامی است'))return;
+     /* شناسهٔ درست فیلد رشته در فرم درس، s_field است نه c_field؛
+        پیش‌تر کادر قرمز روی فیلدی می‌رفت که در این فرم وجود ندارد. */
+     if(invalid('s_field',needsField(lv)&&!field,'برای پایه‌های متوسطه دوم، انتخاب رشته الزامی است'))return;
+     const sid_=$('#s_school')?Number(V('s_school')):s.school_id;
+     /* رشته باید جزو شاخه‌های اعلام‌شدهٔ همان مدرسه باشد */
+     if(field&&typeof schoolFields==='function'){
+       const mine=schoolFields(sid_)||[];
+       if(mine.length&&mine.indexOf(field)<0){
+         toast('رشتهٔ «'+field+'» جزو شاخه‌های این مدرسه نیست','err');return;}
+     }
      const data={name:V('s_name'),code:V('s_code'),weekly_hours:Number(V('s_h'))||2,grade,field,
-       school_id:$('#s_school')?Number(V('s_school')):s.school_id};
+       school_id:sid_};
      if(s.id)update('subjects',s.id,data);else insert('subjects',data);
      closeModal();toast('ذخیره شد','ok');render();},
    /* افزودن دسته‌جمعی کتاب‌های استاندارد بر اساس پایه/رشته */
@@ -5816,7 +5853,7 @@ document.addEventListener('click',e=>{
          ${f('پایه *',sel('im_grade',[['','— ابتدا مقطع را انتخاب کنید —']]))}
        </div>
        <div id="im_fieldwrap" style="display:none"><div class="grid g2">
-         ${f('شاخه *',sel('im_branch',[['','— انتخاب شاخه —'],...Object.keys(BRANCHES).map(b=>[b,b])]))}
+         ${f('شاخه *',sel('im_branch',[['','— انتخاب شاخه —'],...schoolBranches(S.user.school_id).map(b=>[b,b])]))}
          ${f('رشته *',sel('im_field',[['','— ابتدا شاخه را انتخاب کنید —']]))}
        </div></div>
        ${isSuper?`<div class="grid g2">${f('مدرسه',sel('im_school',db.schools.map(x=>[x.id,x.name])))}</div>`:''}
@@ -6500,6 +6537,16 @@ document.addEventListener('change',e=>{
     return;
   }
   const optsOf=(list,ph)=>[`<option value="">${ph}</option>`,...list.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`)].join('');
+  /* رشته‌های یک شاخه، محدود به آنچه این مدرسه واقعاً ارائه می‌دهد.
+     اگر مدرسه رشته‌ای از آن شاخه ثبت نکرده باشد، همهٔ رشته‌های شاخه
+     برگردانده می‌شود تا فهرست خالی و بن‌بست نشود. */
+  const fieldsHere=(branch,schoolId)=>{
+    const all=fieldsOfBranch(branch)||[];
+    if(typeof schoolFields!=='function')return all;
+    const mine=schoolFields(schoolId||S.user.school_id)||[];
+    const hit=all.filter(x=>mine.indexOf(x)>=0);
+    return hit.length?hit:all;
+  };
 
   /* فرم درس: تغییر پایه → نمایش یا پنهان‌کردن شاخه/رشته */
   if(id==='s_grade'){
@@ -6509,7 +6556,7 @@ document.addEventListener('change',e=>{
     return;
   }
   if(id==='s_branch'){
-    if($('#s_field'))$('#s_field').innerHTML=optsOf(fieldsOfBranch(e.target.value),'— انتخاب رشته —');
+    if($('#s_field'))$('#s_field').innerHTML=optsOf(fieldsHere(e.target.value,V('s_school')),'— انتخاب رشته —');
     return;
   }
 
@@ -6535,7 +6582,7 @@ document.addEventListener('change',e=>{
     return;
   }
   if(id==='im_branch'){
-    if($('#im_field'))$('#im_field').innerHTML=optsOf(fieldsOfBranch(e.target.value),'— انتخاب رشته —');
+    if($('#im_field'))$('#im_field').innerHTML=optsOf(fieldsHere(e.target.value,V('im_school')),'— انتخاب رشته —');
     return;
   }
   if(id==='im_grade'||id==='im_field'){
