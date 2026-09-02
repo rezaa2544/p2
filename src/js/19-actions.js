@@ -95,7 +95,8 @@ document.addEventListener('click',e=>{
        city:(byId('counties',cid)||{}).name||'',
        area_kind:dist?(dist.kind||'district'):'district',
        phone:V('m_phone'),landline:V('m_landline'),
-       level:V('m_level'),gender:V('m_gender'),capacity:Number(V('m_cap'))||300,
+       level:V('m_level'),gender:V('m_gender'),shift:V('m_shift')||'صبح',
+       capacity:Number(V('m_cap'))||300,
        active:Number(V('m_active')),address:V('m_addr'),
        /* شاخه و رشته فقط برای متوسطه دوم معنا دارد؛ در بقیهٔ مقاطع خالی می‌ماند */
        branches:V('m_level')==='متوسطه دوم'?$$('.m-branch:checked').map(x=>x.value):[],
@@ -169,6 +170,78 @@ document.addEventListener('click',e=>{
      }
      if(c.id)update('classes',c.id,data);else insert('classes',data);
      closeModal();toast('ذخیره شد','ok');render();},
+   /* ── زمان‌بندی زنگ‌ها ────────────────────────────────────────
+      مدیر مدرسه ساعت شروع، طول زنگ درس و تفریح را خودش تعیین می‌کند
+      چون در هر منطقه و مدرسه متفاوت است. */
+   'bell-edit'(){
+     if(['manager','superadmin'].indexOf(S.user.role)<0){toast('دسترسی ندارید','err');return;}
+     var sid=S.user.role==='superadmin'?(Number(S.filters.bschool)||db.schools[0].id):S.user.school_id;
+     bellModal(sid);
+   },
+   'bell-add'(){
+     var kind=e.target.dataset.kind==='break'?'break':'lesson';
+     var box=$('#bl_rows'); if(!box)return;
+     var i=box.querySelectorAll('.bell-edit-row').length;
+     box.insertAdjacentHTML('beforeend',bellRow({kind:kind,min:kind==='break'?10:45},i));
+   },
+   'bell-del'(){
+     var row=e.target.closest('.bell-edit-row');
+     if(row)row.remove();
+   },
+   'bell-save'(){
+     var sid=(window._edit||{}).school_id;
+     if(!sid){toast('مدرسه مشخص نیست','err');return;}
+     /* الگوی آماده انتخاب شده؟ همان اعمال شود */
+     var pk=V('bl_preset');
+     if(pk){
+       var pr=bellApplyPreset(sid,pk);
+       toast(pr.msg,pr.ok?'ok':'err');
+       if(pr.ok){closeModal();render();}
+       return;
+     }
+     var start=V('bl_start');
+     var slots=$$('#bl_rows .bl-min').map(function(inp){
+       return {kind:inp.dataset.kind,min:Number(inp.value)||0}; });
+     if(!slots.length){toast('دست‌کم یک زنگ لازم است','err');return;}
+     var r=bellSave(sid,start,slots);
+     toast(r.msg,r.ok?'ok':'err');
+     if(r.ok){closeModal();render();}
+   },
+   /* ── دیاگ سامانه ─────────────────────────────────────────────
+      عیب‌یابی و تعمیر خودکار. همهٔ کنش‌ها ویژهٔ سوپرادمین‌اند و
+      canAction آن را می‌سنجد. */
+   'diag-run'(){
+     if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
+     var t=Date.now();
+     try{ S.diag=runDiagnostics(); }
+     catch(e){ toast('اجرای دیاگ ناموفق: '+e.message,'err'); return; }
+     var sm=S.diag.summary;
+     toast('بررسی کامل شد: نمرهٔ سلامت '+fa(sm.health)+' از ۱۰۰ ('+fa(Date.now()-t)+'ms)',
+       sm.critical?'err':'ok');
+     render();
+   },
+   'diag-fix'(){
+     if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
+     var r=diagFix(id);
+     toast(r.msg, r.ok?'ok':'err');
+     S.diag=runDiagnostics();
+     render();
+   },
+   'diag-fixall'(){
+     if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
+     var r=diagFixAll();
+     if(!r.done.length && !r.failed.length) toast('چیزی برای تعمیر خودکار نبود','ok');
+     else toast(fa(r.done.length)+' عیب برطرف شد'
+       +(r.failed.length?' · '+fa(r.failed.length)+' ناموفق':''), r.failed.length?'err':'ok');
+     S.diag=runDiagnostics();
+     render();
+   },
+   'diag-auto'(){
+     if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
+     if(DIAG_AUTO.on){ diagAutoStop(); toast('پایش خودکار خاموش شد','ok'); }
+     else { diagAutoStart(); toast('پایش خودکار روشن شد — هر ۵ دقیقه بررسی می‌شود','ok'); }
+     render();
+   },
    // subjects
    'subject-new'(){subjectModal(null);},
    'subject-edit'(){subjectModal(byId('subjects',id));},

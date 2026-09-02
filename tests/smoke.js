@@ -1805,7 +1805,9 @@ test('شاخه‌های مدرسه در فرم درس محدود است', () => 
 // ── کلاس‌بندی خودکار از اکسل
 test('نام عامیانه رشته به نام رسمی تبدیل می‌شود', () => {
   const sid = W("db.schools.find(function(s){return s.code==='IZ-105';}).id");
-  const pairs = [['دهم الکترونیک', 'الکتروتکنیک'], ['دهم برق', 'الکتروتکنیک'],
+  /* الکتروتکنیک و الکترونیک دو رشتهٔ مجزا هستند — نباید یکی شوند */
+  const pairs = [['دهم الکتروتکنیک', 'الکتروتکنیک'], ['دهم برق', 'الکتروتکنیک'],
+                 ['دهم الکترونیک', 'الکترونیک'], ['یازدهم مخابرات', 'الکترونیک'],
                  ['۱۰ رایانه', 'کامپیوتر'], ['یازدهم خیاطی', 'طراحی دوخت']];
   pairs.forEach(function (p) {
     const o = W('parsePlacement(' + JSON.stringify(p[0]) + ',' + sid + ')');
@@ -1839,19 +1841,33 @@ test('کلاس ابتدایی و متوسطه اول شاخه می‌گیرد ن
 
 test('نام استاندارد کلاس ساخته می‌شود', () => {
   const iz = W("db.schools.find(function(s){return s.code==='IZ-105';}).id");
-  const o = W("parsePlacement('۱۰ الکترونیک'," + iz + ')');
+  const o = W("parsePlacement('۱۰ برق'," + iz + ')');
   assert(o.name === 'دهم الکتروتکنیک', 'نام ساخته‌شده: ' + o.name);
+  const e = W("parsePlacement('۱۰ الکترونیک'," + iz + ')');
+  assert(e.name === 'دهم الکترونیک', 'الکترونیک نباید به الکتروتکنیک تبدیل شود: ' + e.name);
+});
+
+test('الکتروتکنیک و الکترونیک دو رشتهٔ جدا می‌مانند', () => {
+  const fl = W("BRANCHES['فنی و حرفه‌ای']");
+  assert(fl.indexOf('الکتروتکنیک') >= 0, 'الکتروتکنیک باید باشد');
+  assert(fl.indexOf('الکترونیک') >= 0, 'الکترونیک باید رشتهٔ مستقل باشد');
+  const iz = W("db.schools.find(function(s){return s.code==='IZ-105';}).id");
+  const a = W("parsePlacement('دهم الکتروتکنیک'," + iz + ')');
+  const b = W("parsePlacement('دهم الکترونیک'," + iz + ')');
+  assert(a.field !== b.field, 'این دو نباید یک رشته تشخیص داده شوند');
 });
 
 test('دانش‌آموزان هم‌پایه و هم‌رشته در یک کلاس جمع می‌شوند', () => {
   const iz = W("db.schools.find(function(s){return s.code==='IZ-105';}).id");
-  const rows = [{ index: 0, text: 'دهم الکترونیک' }, { index: 1, text: '۱۰ الکترونیک' },
-                { index: 2, text: 'دهم برق' }, { index: 3, text: 'دهم کامپیوتر' }];
+  const rows = [{ index: 0, text: 'دهم الکتروتکنیک' }, { index: 1, text: '۱۰ برق' },
+                { index: 2, text: 'دهم برق صنعتی' }, { index: 3, text: 'دهم کامپیوتر' },
+                { index: 4, text: 'دهم الکترونیک' }];
   const r = W('planPlacement(' + JSON.stringify(rows) + ',' + iz + ')');
   const names = {};
   Object.keys(r.plan).forEach(function (k) { if (r.plan[k]) names[r.plan[k].name] = (names[r.plan[k].name] || 0) + 1; });
-  assert(names['دهم الکتروتکنیک'] === 3, 'سه نوشتار متفاوت باید یک کلاس شوند: ' + JSON.stringify(names));
+  assert(names['دهم الکتروتکنیک'] === 3, 'سه نوشتار الکتروتکنیک باید یک کلاس شوند: ' + JSON.stringify(names));
   assert(names['دهم کامپیوتر'] === 1, 'کامپیوتر باید جدا باشد');
+  assert(names['دهم الکترونیک'] === 1, 'الکترونیک باید کلاس جدا داشته باشد');
 });
 
 test('ورود اکسل کلاس رشته‌محور با مشخصات درست می‌سازد', () => {
@@ -1863,7 +1879,7 @@ test('ورود اکسل کلاس رشته‌محور با مشخصات درست 
     + "if(validNid(nid)&&!nidOwner(nid))out.push(nid);}return out;})()");
   const NL = String.fromCharCode(10);
   const csv = 'نام,نام خانوادگی,کد ملی,کلاس,نام پدر,کد ملی پدر' + NL
-    + 'رضا,احمدی,' + W('window.__N[0]') + ',دهم الکترونیک,مرتضی احمدی,' + W('window.__N[1]') + NL
+    + 'رضا,احمدی,' + W('window.__N[0]') + ',دهم الکتروتکنیک,مرتضی احمدی,' + W('window.__N[1]') + NL
     + 'سعید,موسوی,' + W('window.__N[2]') + ',۱۰ برق,حسن موسوی,' + W('window.__N[3]');
   W('window.__sh=prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students')");
   W("window.__pv=validateImport(window.__sh.rows,window.__sh.mapping,'students')");
@@ -1906,6 +1922,152 @@ test('ایندکس پس از درج افزایشی تازه می‌ماند', ()
   const byNid = W("idxUserByNid().get('1111111112')");
   assert(byNid && byNid.id === W('window.__u.id'), 'ایندکس کد ملی تازه نشد');
   W("remove('users',window.__u.id)");
+});
+
+
+// ── دیاگ سامانه
+test('دیاگ اجرا می‌شود و خلاصهٔ معتبر می‌دهد', () => {
+  W("S.user=db.users.find(function(u){return u.role==='superadmin';})");
+  const out = W('window.__dg=runDiagnostics()');
+  assert(out.summary.total >= 15, 'تعداد آزمون کم است: ' + out.summary.total);
+  assert(out.summary.passed + out.summary.critical + out.summary.warning
+         + out.summary.info === out.summary.total, 'جمع دسته‌ها با کل نمی‌خواند');
+  assert(out.summary.health >= 0 && out.summary.health <= 100, 'نمره خارج از بازه');
+  assert(out.summary.ms >= 0, 'زمان اجرا منفی است');
+  /* آزمون‌های پیشین عمداً داده ساخته‌اند؛ دیاگ باید بتواند
+     عیب‌های امن را پاک کند و نمره را بالا ببرد. */
+  const h0 = out.summary.health;
+  W('diagFixAll()');
+  const h1 = W('runDiagnostics().summary.health');
+  assert(h1 >= h0, 'تعمیر خودکار نباید نمره را پایین بیاورد: ' + h0 + ' → ' + h1);
+});
+
+test('دیاگ ثبت‌نام بی‌صاحب را پیدا و تعمیر می‌کند', () => {
+  /* ابتدا هرچه بی‌صاحب هست پاک شود تا سنجش از پایهٔ تمیز باشد */
+  W("diagFix('orphan-enrollments')");
+  const clean = W('db.enrollments.length');
+  W("insert('enrollments',{school_id:1,class_id:987654,student_id:987653})");
+  W("insert('enrollments',{school_id:1,class_id:987655,student_id:987652})");
+  const r = W("DIAG_CHECKS.filter(function(c){return c.id==='orphan-enrollments';})[0].check()");
+  assert(r.ok === false, 'ثبت‌نام بی‌صاحب تشخیص داده نشد');
+  assert(r.count === 2, 'باید دو مورد باشد: ' + r.count);
+  const fx = W("diagFix('orphan-enrollments')");
+  assert(fx.ok === true, 'تعمیر ناموفق: ' + fx.msg);
+  assert(W('db.enrollments.length') === clean, 'پس از تعمیر باید به حالت تمیز برگردد');
+});
+
+test('دیاگ ثبت‌نام تکراری را با نگه‌داشتن جدیدترین رفع می‌کند', () => {
+  const st = W("db.users.filter(function(u){return u.role==='student';})[0].id");
+  const before = W('db.enrollments.filter(function(e){return e.student_id===' + st + ';}).length');
+  W("insert('enrollments',{school_id:1,class_id:db.classes[0].id,student_id:" + st + '})');
+  W("insert('enrollments',{school_id:1,class_id:db.classes[1].id,student_id:" + st + '})');
+  const r = W("DIAG_CHECKS.filter(function(c){return c.id==='duplicate-enrollment';})[0].check()");
+  assert(r.ok === false, 'تکرار تشخیص داده نشد');
+  W("diagFix('duplicate-enrollment')");
+  const after = W('db.enrollments.filter(function(e){return e.student_id===' + st + ';}).length');
+  assert(after === 1, 'باید دقیقاً یک ثبت‌نام بماند، ماند: ' + after);
+});
+
+test('نام کاربری تکراری خودکار اصلاح می‌شود', () => {
+  const u = W("db.users.filter(function(x){return x.role==='student';})[1]");
+  const dup = W("insert('users',{school_id:1,role:'student',full_name:'همنام آزمون',username:" + JSON.stringify(u.username) + ",password:'1',active:1})");
+  const r = W("DIAG_CHECKS.filter(function(c){return c.id==='duplicate-username';})[0].check()");
+  assert(r.ok === false, 'نام کاربری تکراری تشخیص داده نشد');
+  W("diagFix('duplicate-username')");
+  const after = W("DIAG_CHECKS.filter(function(c){return c.id==='duplicate-username';})[0].check()");
+  assert(after.ok === true, 'پس از تعمیر نباید تکراری بماند');
+  W("remove('users'," + dup.id + ')');
+});
+
+test('عیب نیازمند قضاوت انسانی خودکار تعمیر نمی‌شود', () => {
+  const unsafe = W("DIAG_CHECKS.filter(function(c){return c.id==='duplicate-nid';})[0]");
+  assert(!unsafe.safe || !unsafe.fix, 'کد ملی تکراری نباید خودکار تعمیر شود');
+  const r = W("diagFix('duplicate-nid')");
+  assert(r.ok === false, 'باید رد شود');
+});
+
+test('دیاگ خودش با آزمون معیوب نمی‌شکند', () => {
+  W("DIAG_CHECKS.push({id:'__boom',title:'آزمون خراب',desc:'',severity:'info',safe:false,check:function(){throw new Error('انفجار');}})");
+  const out = W('runDiagnostics()');
+  assert(out && out.summary, 'دیاگ باید با وجود آزمون معیوب کار کند');
+  const b = out.results.filter(function (r) { return r.id === '__boom'; })[0];
+  assert(b && b.selfError === true, 'خطای آزمون باید علامت بخورد');
+  W("DIAG_CHECKS=DIAG_CHECKS.filter(function(c){return c.id!=='__boom';})");
+});
+
+test('صفحهٔ دیاگ فقط برای سوپرادمین باز است', () => {
+  W("S.user=db.users.find(function(u){return u.role==='manager';})");
+  const out = W('viewDiagnostics()');
+  assert(out.indexOf('دسترسی ندارید') >= 0, 'مدیر نباید دیاگ ببیند');
+  W("S.user=db.users.find(function(u){return u.role==='superadmin';});S.diag=runDiagnostics()");
+  const ok = W('viewDiagnostics()');
+  assert(ok.indexOf('diag-gauge') >= 0, 'سوپرادمین باید گیج سلامت ببیند');
+});
+
+// ── زمان‌بندی زنگ‌ها و شیفت
+test('شیفت مدرسه ذخیره و خوانده می‌شود', () => {
+  const s = W("db.schools.filter(function(x){return x.shift==='بعدازظهر';})");
+  assert(s.length >= 1, 'مدرسهٔ شیفت بعدازظهر در دادهٔ نمونه نیست');
+});
+
+test('تبدیل ساعت به دقیقه و برعکس درست است', () => {
+  assert(W("timeToMin('07:30')") === 450, 'تبدیل ۰۷:۳۰ غلط است');
+  assert(W("minToTime(450)") === '07:30', 'تبدیل معکوس غلط است');
+  assert(W("timeToMin('۱۳:۰۰')") === 780, 'ارقام فارسی خوانده نشد');
+  assert(W("timeToMin('99:99')") === null, 'ساعت نامعتبر باید رد شود');
+});
+
+test('خط زمانی زنگ‌ها ساعت واقعی می‌دهد', () => {
+  const sid = W('db.schools[0].id');
+  const tl = W('bellTimeline(' + sid + ')');
+  assert(tl.length > 0, 'خط زمانی خالی است');
+  assert(tl[0].kind === 'lesson' && tl[0].no === 1, 'اولین بازه باید زنگ یک باشد');
+  /* هر بازه باید از قبلی شروع شود */
+  for (let i = 1; i < tl.length; i++) {
+    assert(tl[i].from === tl[i - 1].to, 'بازه‌ها پیوسته نیستند: ' + tl[i].from + ' ≠ ' + tl[i - 1].to);
+  }
+  const breaks = tl.filter(function (x) { return x.kind === 'break'; });
+  assert(breaks.length > 0, 'زنگ تفریح وجود ندارد');
+});
+
+test('مدرسهٔ بعدازظهر ساعت شروع دیرتری دارد', () => {
+  const am = W("db.schools.filter(function(s){return (s.shift||'صبح')==='صبح';})[0].id");
+  const pm = W("db.schools.filter(function(s){return s.shift==='بعدازظهر';})[0].id");
+  const a = W('timeToMin(bellOf(' + am + ').start)');
+  const p = W('timeToMin(bellOf(' + pm + ').start)');
+  assert(p > a, 'شیفت بعدازظهر باید دیرتر شروع شود: ' + p + ' ≤ ' + a);
+});
+
+test('مدیر می‌تواند زمان‌بندی دلخواه ذخیره کند', () => {
+  const sid = W("db.schools.find(function(s){return s.level!=='ابتدایی';}).id");
+  const r = W("bellSave(" + sid + ",'08:15',[{kind:'lesson',min:50},{kind:'break',min:20},{kind:'lesson',min:50}])");
+  assert(r.ok === true, 'ذخیره ناموفق: ' + r.msg);
+  const tl = W('bellTimeline(' + sid + ')');
+  assert(tl[0].from === '08:15', 'ساعت شروع اعمال نشد: ' + tl[0].from);
+  assert(tl[0].to === '09:05', 'زنگ ۵۰ دقیقه‌ای درست حساب نشد: ' + tl[0].to);
+  assert(tl[1].kind === 'break' && tl[1].to === '09:25', 'تفریح ۲۰ دقیقه‌ای غلط است');
+  assert(W('bellLessonCount(' + sid + ')') === 2, 'تعداد زنگ درسی');
+});
+
+test('زمان‌بندی نامعتبر رد می‌شود', () => {
+  const sid = W('db.schools[0].id');
+  assert(W("bellSave(" + sid + ",'بی‌معنا',[{kind:'lesson',min:45}])").ok === false, 'ساعت غلط باید رد شود');
+  assert(W("bellSave(" + sid + ",'08:00',[])").ok === false, 'بدون بازه باید رد شود');
+  assert(W("bellSave(" + sid + ",'08:00',[{kind:'lesson',min:0}])").ok === false, 'مدت صفر باید رد شود');
+  assert(W("bellSave(" + sid + ",'23:00',[{kind:'lesson',min:200}])").ok === false, 'گذر از نیمه‌شب باید رد شود');
+});
+
+test('صفحهٔ زنگ‌ها برای مدیر رندر می‌شود', () => {
+  W("S.user=db.users.find(function(u){return u.role==='manager';});S.filters={}");
+  const out = W('viewBells()');
+  assert(typeof out === 'string' && out.indexOf('bell-line') >= 0, 'خط زمانی رندر نشد');
+});
+
+// ── حفظ اسکرول منو
+test('نشانهٔ تغییر مسیر هنگام ناوبری ست می‌شود', () => {
+  W("S.user=db.users.find(function(u){return u.role==='superadmin';})");
+  W("S.__routeChanged=false; go('diag')");
+  assert(W('S.route') === 'diag', 'مسیر عوض نشد');
 });
 
 // ── نتیجه

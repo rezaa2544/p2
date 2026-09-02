@@ -39,5 +39,7 @@
   "22-jalali-calendar.js",
   "23-subscription.js",
   "24-edu-office.js",
-  "41-class-placement.js"
+  "41-class-placement.js",
+  "42-self-diagnostics.js",
+  "43-bell-schedule.js"
 ]

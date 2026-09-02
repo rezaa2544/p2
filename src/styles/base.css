@@ -276,3 +276,37 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 .field-chip:hover{border-color:var(--border-strong)}
 .field-chip.on{border-color:var(--primary);background:var(--primary-soft);color:var(--primary-dark)}
 .field-chip input{width:14px;height:14px;accent-color:var(--primary);cursor:pointer}
+
+/* ---------- دیاگ سامانه ---------- */
+.diag-gauge{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.diag-score{text-align:center;flex:none;min-width:110px}
+.diag-score b{font-size:52px;font-weight:800;display:block;line-height:1.1}
+.diag-score span{font-size:12px;color:var(--muted);font-weight:600}
+.diag-bars{flex:1;min-width:240px;display:grid;gap:7px}
+.diag-bar-row{display:flex;align-items:center;gap:10px}
+.diag-bar-lbl{font-size:12.5px;font-weight:600;width:52px;flex:none}
+.diag-bar-n{font-size:13px;width:34px;text-align:left;flex:none}
+.diag-item{border:1.5px solid var(--border);border-inline-start-width:5px;border-radius:12px;padding:13px 15px;margin-bottom:11px;background:var(--surface-2)}
+.diag-item-head{display:flex;align-items:flex-start;gap:10px}
+.diag-ico{font-size:17px;flex:none;line-height:1.6}
+.diag-msg{margin-top:9px;font-size:13.5px;font-weight:600}
+.diag-details{margin-top:9px}
+.diag-details summary{cursor:pointer;font-size:12.5px;color:var(--primary-dark);font-weight:700;user-select:none}
+.diag-items{margin-top:8px;max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:9px;background:#fff}
+.diag-row{padding:7px 11px;border-bottom:1px solid var(--border);font-size:12.5px;display:flex;flex-wrap:wrap;gap:12px}
+.diag-row:last-child{border-bottom:none}
+.diag-row i{color:var(--muted);font-style:normal;font-size:11.5px}
+.diag-ok-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.diag-ok{font-size:13px;padding:7px 11px;background:var(--green-soft);border:1px solid var(--green);border-radius:9px}
+
+/* ---------- زمان‌بندی زنگ‌ها ---------- */
+.bell-line{display:grid;gap:6px}
+.bell-slot{display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:10px;border:1.5px solid var(--border)}
+.bell-slot.lesson{background:var(--primary-soft);border-color:var(--primary)}
+.bell-slot.break{background:var(--amber-soft);border-color:var(--amber);padding-block:7px}
+.bell-when{font-variant-numeric:tabular-nums;font-weight:700;font-size:13.5px;direction:ltr;min-width:110px;text-align:center;flex:none}
+.bell-what{flex:1;min-width:0}
+.bell-edit-row{display:flex;align-items:center;gap:9px;padding:8px 10px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:7px;background:var(--surface-2)}
+.bell-tag{font-size:12.5px;font-weight:700;padding:3px 10px;border-radius:999px;flex:none;min-width:78px;text-align:center}
+.bell-tag.ls{background:var(--primary-soft);color:var(--primary-dark)}
+.bell-tag.br{background:var(--amber-soft);color:var(--amber)}

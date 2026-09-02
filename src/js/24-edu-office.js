@@ -730,10 +730,47 @@ function safeHTML(html){
   /* اگر رشته‌ای شامل placeholder خام باشد (مثلاً به دلیل دستکاری اسکریپت توسط پروکسی)، نمایش داده نمی‌شود */
   return (typeof html==='string' && html.indexOf('${')>-1) ? '' : (html||'');
 }
+/**
+ * بازسازی کامل صفحه.
+ *
+ * ⚠️ innerHTML کل پوستهٔ برنامه را دور می‌ریزد و از نو می‌سازد، از
+ * جمله نوار کناری. نتیجه‌اش این بود که با کلیک روی گزینه‌های پایین
+ * منو (مثل «سلامت سامانه» در پنل سوپرادمین) اسکرول منو صفر می‌شد و
+ * کاربر حس می‌کرد منو «به اول برگشته» و گزینه‌اش را گم می‌کرد.
+ *
+ * راه‌حل: موقعیت اسکرول نوار کناری پیش از بازسازی برداشته و بلافاصله
+ * پس از آن بازگردانده می‌شود. چون هر دو در یک چرخهٔ همگام رخ می‌دهند،
+ * چشم کاربر هیچ پرشی نمی‌بیند.
+ */
 function render(){
+  /* موقعیت اسکرول منو و ناحیهٔ محتوا پیش از بازسازی */
+  var navEl = document.querySelector('.sidebar');
+  var navTop = navEl ? navEl.scrollTop : 0;
+
   const picker=(S.user&&S.showPicker&&isMultiRole())?panelPicker():'';
   const gate=(S.user&&activePersona()==='parent'&&!parentLocked()&&!S.gateSkipped&&!picker)?safeHTML(parentGate()):'';
   $('#root').innerHTML = (S.user?renderShell():renderLogin())+picker+gate;
+
+  /* بازگرداندن اسکرول منو */
+  if(navTop){
+    var el = document.querySelector('.sidebar');
+    if(el) el.scrollTop = navTop;
+  }
+  /* گزینهٔ فعال اگر بیرون از دید افتاد، به دید آورده شود.
+     مثلاً وقتی کاربر با میان‌بر صفحه‌کلید جابه‌جا می‌شود. */
+  var act = document.querySelector('.sidebar .nav-item.active');
+  if(act && act.scrollIntoView){
+    var sb = document.querySelector('.sidebar');
+    if(sb){
+      var aTop = act.offsetTop, aBot = aTop + act.offsetHeight;
+      if(aTop < sb.scrollTop || aBot > sb.scrollTop + sb.clientHeight){
+        try{ act.scrollIntoView({ block:'nearest' }); }catch(e){}
+      }
+    }
+  }
+  /* هر صفحهٔ تازه از بالا شروع شود (نه ادامهٔ اسکرول صفحهٔ قبلی) */
+  var main = document.querySelector('.main');
+  if(main && S.__routeChanged){ main.scrollTop = 0; S.__routeChanged = false; }
 }
 setTimeout(()=>{
   generate(); generateExtras(); generateP8(); generateP9(); generateP10(); loadLog(); applyLog(); initSync();

@@ -286,6 +286,40 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 .field-chip:hover{border-color:var(--border-strong)}
 .field-chip.on{border-color:var(--primary);background:var(--primary-soft);color:var(--primary-dark)}
 .field-chip input{width:14px;height:14px;accent-color:var(--primary);cursor:pointer}
+
+/* ---------- دیاگ سامانه ---------- */
+.diag-gauge{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.diag-score{text-align:center;flex:none;min-width:110px}
+.diag-score b{font-size:52px;font-weight:800;display:block;line-height:1.1}
+.diag-score span{font-size:12px;color:var(--muted);font-weight:600}
+.diag-bars{flex:1;min-width:240px;display:grid;gap:7px}
+.diag-bar-row{display:flex;align-items:center;gap:10px}
+.diag-bar-lbl{font-size:12.5px;font-weight:600;width:52px;flex:none}
+.diag-bar-n{font-size:13px;width:34px;text-align:left;flex:none}
+.diag-item{border:1.5px solid var(--border);border-inline-start-width:5px;border-radius:12px;padding:13px 15px;margin-bottom:11px;background:var(--surface-2)}
+.diag-item-head{display:flex;align-items:flex-start;gap:10px}
+.diag-ico{font-size:17px;flex:none;line-height:1.6}
+.diag-msg{margin-top:9px;font-size:13.5px;font-weight:600}
+.diag-details{margin-top:9px}
+.diag-details summary{cursor:pointer;font-size:12.5px;color:var(--primary-dark);font-weight:700;user-select:none}
+.diag-items{margin-top:8px;max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:9px;background:#fff}
+.diag-row{padding:7px 11px;border-bottom:1px solid var(--border);font-size:12.5px;display:flex;flex-wrap:wrap;gap:12px}
+.diag-row:last-child{border-bottom:none}
+.diag-row i{color:var(--muted);font-style:normal;font-size:11.5px}
+.diag-ok-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.diag-ok{font-size:13px;padding:7px 11px;background:var(--green-soft);border:1px solid var(--green);border-radius:9px}
+
+/* ---------- زمان‌بندی زنگ‌ها ---------- */
+.bell-line{display:grid;gap:6px}
+.bell-slot{display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:10px;border:1.5px solid var(--border)}
+.bell-slot.lesson{background:var(--primary-soft);border-color:var(--primary)}
+.bell-slot.break{background:var(--amber-soft);border-color:var(--amber);padding-block:7px}
+.bell-when{font-variant-numeric:tabular-nums;font-weight:700;font-size:13.5px;direction:ltr;min-width:110px;text-align:center;flex:none}
+.bell-what{flex:1;min-width:0}
+.bell-edit-row{display:flex;align-items:center;gap:9px;padding:8px 10px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:7px;background:var(--surface-2)}
+.bell-tag{font-size:12.5px;font-weight:700;padding:3px 10px;border-radius:999px;flex:none;min-width:78px;text-align:center}
+.bell-tag.ls{background:var(--primary-soft);color:var(--primary-dark)}
+.bell-tag.br{background:var(--amber-soft);color:var(--amber)}
 /* ==================== موبایل: تطبیق کامل با عرض صفحه ==================== */
 @media(max-width:900px){
 .app{grid-template-columns:1fr}
@@ -441,7 +475,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],sms_wallet:[],sms_log:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[]};
+  db={school_years:[],sms_wallet:[],sms_log:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:'09120000000',active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -449,7 +483,8 @@ function generate(){
     const [name,code,level,gender,branches]=def, city=CITIES[si%CITIES.length];
     /* رشته‌های مدرسه = همهٔ رشته‌های شاخه‌هایی که ارائه می‌دهد */
     const sFields=(branches||[]).reduce((a,b)=>a.concat(fieldsOfBranch(b)),[]);
-    const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:'0'+(21+si)+(30000000+ri(9999999)),level,gender,branches:branches||[],fields:sFields,capacity:400+ri(200),active:si===5?0:1,created_at:daysAgoISO(500-si*20)});
+    const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:'0'+(21+si)+(30000000+ri(9999999)),level,gender,branches:branches||[],fields:sFields,
+      shift: si===4 ? 'بعدازظهر' : (si===1 ? 'هر دو' : 'صبح'),capacity:400+ri(200),active:si===5?0:1,created_at:daysAgoISO(500-si*20)});
     const first = gender==='پسرانه'?MALE:FEMALE;
     const manager=add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'manager'+(si+1),password:'123456',national_id:nid(),phone:'0912'+(1000000+ri(8999999)),active:1,title:'مدیر مدرسه',created_at:daysAgoISO(480)});
     add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'deputy'+(si+1),password:'123456',national_id:nid(),phone:'0912'+(1000000+ri(8999999)),active:1,title:'معاون آموزشی',created_at:daysAgoISO(470)});
@@ -931,14 +966,14 @@ function bootstrapRequest(){
    ═══════════════════════════════════════════════════════════════════ */
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
- superadmin:[['نظارت کلان',[['dashboard','📊','داشبورد مدیریتی'],['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه']]],['محتوا',[['subjects','📚','دروس'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['اداره آموزش و پرورش',[['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]],['ارتباطات',[['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['notifications','🔔','اعلان‌ها']]]],
- manager:[['مدرسه من',[['schoolyear','📅','چرخه سال تحصیلی'],['import','📥','ورود اطلاعات'],['formssms','🖨️','فرم‌ها و پیامک'],['meetings','📅','جلسات اولیا'],['growth','📈','رشد مدرسه'],['atrisk','📉','افت تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['dashboard','📊','داشبورد مدرسه'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ superadmin:[['نظارت کلان',[['dashboard','📊','داشبورد مدیریتی'],['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['اداره آموزش و پرورش',[['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]],['ارتباطات',[['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها']]]],
+ manager:[['مدرسه من',[['schoolyear','📅','چرخه سال تحصیلی'],['import','📥','ورود اطلاعات'],['formssms','🖨️','فرم‌ها و پیامک'],['meetings','📅','جلسات اولیا'],['growth','📈','رشد مدرسه'],['atrisk','📉','افت تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['dashboard','📊','داشبورد مدرسه'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  teacher:[['کلاس‌های من',[['meetings','📅','جلسات اولیا'],['dashboard','📊','داشبورد'],['classes','🏛️','کلاس‌ها'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['ثبت اطلاعات',[['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['امتحانات',[['exams','👁️','برنامه مراقبت من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['پرونده من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['calendar','🗓️','تقویم آموزشی']]],['امور مالی',[['mytuition','💰','شهریه من']]],['درخواست‌ها',[['leaves','📨','مرخصی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['اداره من',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  parent:[['فرزندان من',[['meetings','📅','جلسات اولیا'],['dashboard','📊','خلاصه وضعیت'],['family','🏠','خانواده و مدارس'],['children','👨‍👩‍👦','پرونده فرزندان'],['exams','📝','برنامه امتحانات'],['calendar','🗓️','تقویم آموزشی']]],['امور مالی',[['mytuition','💰','شهریه و اقساط']]],['درخواست‌ها',[['leaves','📨','درخواست مرخصی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌های مدرسه'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو با مدرسه']]]]
 };
-const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
+const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
 S.stack=[];
@@ -946,6 +981,9 @@ function snapshot(){return {route:S.route,filters:Object.assign({},S.filters),ta
 function go(route,silent){
   if(S.route!==route){S.stack.push(snapshot()); if(S.stack.length>40)S.stack.shift();}
   S.route=route;S.page=1;S.filters={};S.sidebar=false;S.tab='grades';
+  /* نشانه‌ای برای render تا محتوای صفحهٔ تازه را از بالا نشان دهد،
+     ولی اسکرول منو دست‌نخورده بماند. */
+  S.__routeChanged=true;
   if(!silent)pushHist(route);
   render();
 }
@@ -1051,7 +1089,11 @@ const GRADES_OF_LEVEL = {
 /* شاخه‌ها و رشته‌های متوسطه دوم */
 const BRANCHES = {
   'نظری': ['ریاضی فیزیک', 'علوم تجربی', 'ادبیات و علوم انسانی', 'علوم و معارف اسلامی'],
-  'فنی و حرفه‌ای': ['الکتروتکنیک', 'مکانیک خودرو', 'کامپیوتر', 'حسابداری', 'ساختمان', 'گرافیک'],
+  /* الکتروتکنیک و الکترونیک دو رشتهٔ مجزا هستند:
+     الکتروتکنیک = برق ساختمان و صنعتی، تابلوبرق، موتورهای الکتریکی
+     الکترونیک   = مدارهای الکترونیکی، مخابرات، ابزار دقیق */
+  'فنی و حرفه‌ای': ['الکتروتکنیک', 'الکترونیک', 'مکانیک خودرو', 'کامپیوتر',
+                    'حسابداری', 'ساختمان', 'گرافیک'],
   'کاردانش': ['تعمیر لوازم خانگی', 'طراحی دوخت', 'تأسیسات', 'صنایع غذایی'],
 };
 
@@ -1822,6 +1864,8 @@ function _renderRouteInner(){
     case 'import':return viewImport();
     case 'finance':return viewFinance();
     case 'health':return viewHealth();
+    case 'diag':return viewDiagnostics();
+    case 'bells':return viewBells();
     case 'audit':return viewAudit();
     case 'activity':return viewActivity();
     case 'plans':return viewPlans();
@@ -2026,7 +2070,7 @@ function viewSchools(){
        <select class="select" style="width:150px" data-f="sbranch">${opt(Object.keys(BRANCHES).map(b=>[b,b]),fbr,'همه شاخه‌ها')}</select>`):''}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>نام مدرسه</th><th>کد</th><th>مکان</th><th>مقطع</th><th>مدیر</th><th>تلفن ثابت</th><th>دانش‌آموز</th><th>دبیر</th><th>کلاس</th><th>آخرین فعالیت</th><th>وضعیت</th>${isAdmin?'<th></th>':''}</tr></thead><tbody>
     ${(()=>{const _ov=schoolsOverview();const _by={};_ov.forEach(function(r){_by[r.school.id]=r.st;});return rows.map(s=>{const st_=_by[s.id]||{};const us=db.users.filter(u=>u.school_id===s.id);const mg=us.find(u=>u.role==='manager');
-     return `<tr><td><b>${esc(s.name)}</b><div class="small muted">${esc(s.gender||'')}</div></td><td class="muted">${esc(s.code)}</td>
+     return `<tr><td><b>${esc(s.name)}</b><div class="small muted">${esc(s.gender||'')}${s.shift&&s.shift!=='صبح'?' · '+esc(s.shift):''}</div></td><td class="muted">${esc(s.code)}</td>
       <td>${esc((byId('provinces',s.province_id)||{}).name||s.city||'—')}<div class="small muted">${esc((byId('counties',s.county_id)||{}).name||'')}${s.district_id?' › '+esc((byId('districts',s.district_id)||{}).name||''):''}</div></td>
       <td><span class="badge b-blue">${esc(s.level||'—')}</span>${(s.branches||[]).length?`<div class="small muted" style="margin-top:4px">${(s.branches||[]).map(b=>esc(b)).join('، ')}</div>`:''}</td><td class="muted">${esc(mg?mg.full_name:'—')}</td>
       <td class="small muted">${esc(s.landline||'—')}</td>
@@ -2550,7 +2594,11 @@ function schoolModal(s){
       ${f('تلفن ثابت مدرسه',inp('m_landline',s.landline||''))}
       ${f('تلفن همراه رابط',inp('m_phone',s.phone||''))}
       ${f('ظرفیت',inp('m_cap',s.capacity,'number'))}
-      ${f('وضعیت',sel('m_active',[[1,'فعال'],[0,'غیرفعال']],s.active?1:0))}</div>
+      ${f('وضعیت',sel('m_active',[[1,'فعال'],[0,'غیرفعال']],s.active?1:0))}
+      ${f('شیفت',sel('m_shift',[['صبح','صبح'],['بعدازظهر','بعدازظهر'],['هر دو','هر دو شیفت']],s.shift||'صبح'))}</div>
+    <div class="small muted" style="margin:-4px 0 10px">
+      شیفت بر ساعت شروع زنگ‌ها اثر می‌گذارد. زمان‌بندی دقیق زنگ‌ها را
+      مدیر مدرسه در صفحهٔ «زمان‌بندی زنگ‌ها» تعیین می‌کند.</div>
     <div id="m_branch_box" style="display:${s.level==='متوسطه دوم'?'block':'none'}">${branchPicker(s)}</div>
     ${f('آدرس',`<textarea class="input" id="m_addr" rows="2">${esc(s.address||'')}</textarea>`)}
     <div class="sec-title">👤 مشخصات مدیر مدرسه ${mgr?'':'<span class="small muted">(حساب کاربری او ساخته می‌شود)</span>'}</div>
@@ -5869,7 +5917,8 @@ document.addEventListener('click',e=>{
        city:(byId('counties',cid)||{}).name||'',
        area_kind:dist?(dist.kind||'district'):'district',
        phone:V('m_phone'),landline:V('m_landline'),
-       level:V('m_level'),gender:V('m_gender'),capacity:Number(V('m_cap'))||300,
+       level:V('m_level'),gender:V('m_gender'),shift:V('m_shift')||'صبح',
+       capacity:Number(V('m_cap'))||300,
        active:Number(V('m_active')),address:V('m_addr'),
        /* شاخه و رشته فقط برای متوسطه دوم معنا دارد؛ در بقیهٔ مقاطع خالی می‌ماند */
        branches:V('m_level')==='متوسطه دوم'?$$('.m-branch:checked').map(x=>x.value):[],
@@ -5943,6 +5992,78 @@ document.addEventListener('click',e=>{
      }
      if(c.id)update('classes',c.id,data);else insert('classes',data);
      closeModal();toast('ذخیره شد','ok');render();},
+   /* ── زمان‌بندی زنگ‌ها ────────────────────────────────────────
+      مدیر مدرسه ساعت شروع، طول زنگ درس و تفریح را خودش تعیین می‌کند
+      چون در هر منطقه و مدرسه متفاوت است. */
+   'bell-edit'(){
+     if(['manager','superadmin'].indexOf(S.user.role)<0){toast('دسترسی ندارید','err');return;}
+     var sid=S.user.role==='superadmin'?(Number(S.filters.bschool)||db.schools[0].id):S.user.school_id;
+     bellModal(sid);
+   },
+   'bell-add'(){
+     var kind=e.target.dataset.kind==='break'?'break':'lesson';
+     var box=$('#bl_rows'); if(!box)return;
+     var i=box.querySelectorAll('.bell-edit-row').length;
+     box.insertAdjacentHTML('beforeend',bellRow({kind:kind,min:kind==='break'?10:45},i));
+   },
+   'bell-del'(){
+     var row=e.target.closest('.bell-edit-row');
+     if(row)row.remove();
+   },
+   'bell-save'(){
+     var sid=(window._edit||{}).school_id;
+     if(!sid){toast('مدرسه مشخص نیست','err');return;}
+     /* الگوی آماده انتخاب شده؟ همان اعمال شود */
+     var pk=V('bl_preset');
+     if(pk){
+       var pr=bellApplyPreset(sid,pk);
+       toast(pr.msg,pr.ok?'ok':'err');
+       if(pr.ok){closeModal();render();}
+       return;
+     }
+     var start=V('bl_start');
+     var slots=$$('#bl_rows .bl-min').map(function(inp){
+       return {kind:inp.dataset.kind,min:Number(inp.value)||0}; });
+     if(!slots.length){toast('دست‌کم یک زنگ لازم است','err');return;}
+     var r=bellSave(sid,start,slots);
+     toast(r.msg,r.ok?'ok':'err');
+     if(r.ok){closeModal();render();}
+   },
+   /* ── دیاگ سامانه ─────────────────────────────────────────────
+      عیب‌یابی و تعمیر خودکار. همهٔ کنش‌ها ویژهٔ سوپرادمین‌اند و
+      canAction آن را می‌سنجد. */
+   'diag-run'(){
+     if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
+     var t=Date.now();
+     try{ S.diag=runDiagnostics(); }
+     catch(e){ toast('اجرای دیاگ ناموفق: '+e.message,'err'); return; }
+     var sm=S.diag.summary;
+     toast('بررسی کامل شد: نمرهٔ سلامت '+fa(sm.health)+' از ۱۰۰ ('+fa(Date.now()-t)+'ms)',
+       sm.critical?'err':'ok');
+     render();
+   },
+   'diag-fix'(){
+     if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
+     var r=diagFix(id);
+     toast(r.msg, r.ok?'ok':'err');
+     S.diag=runDiagnostics();
+     render();
+   },
+   'diag-fixall'(){
+     if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
+     var r=diagFixAll();
+     if(!r.done.length && !r.failed.length) toast('چیزی برای تعمیر خودکار نبود','ok');
+     else toast(fa(r.done.length)+' عیب برطرف شد'
+       +(r.failed.length?' · '+fa(r.failed.length)+' ناموفق':''), r.failed.length?'err':'ok');
+     S.diag=runDiagnostics();
+     render();
+   },
+   'diag-auto'(){
+     if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
+     if(DIAG_AUTO.on){ diagAutoStop(); toast('پایش خودکار خاموش شد','ok'); }
+     else { diagAutoStart(); toast('پایش خودکار روشن شد — هر ۵ دقیقه بررسی می‌شود','ok'); }
+     render();
+   },
    // subjects
    'subject-new'(){subjectModal(null);},
    'subject-edit'(){subjectModal(byId('subjects',id));},
@@ -8818,10 +8939,47 @@ function safeHTML(html){
   /* اگر رشته‌ای شامل placeholder خام باشد (مثلاً به دلیل دستکاری اسکریپت توسط پروکسی)، نمایش داده نمی‌شود */
   return (typeof html==='string' && html.indexOf('${')>-1) ? '' : (html||'');
 }
+/**
+ * بازسازی کامل صفحه.
+ *
+ * ⚠️ innerHTML کل پوستهٔ برنامه را دور می‌ریزد و از نو می‌سازد، از
+ * جمله نوار کناری. نتیجه‌اش این بود که با کلیک روی گزینه‌های پایین
+ * منو (مثل «سلامت سامانه» در پنل سوپرادمین) اسکرول منو صفر می‌شد و
+ * کاربر حس می‌کرد منو «به اول برگشته» و گزینه‌اش را گم می‌کرد.
+ *
+ * راه‌حل: موقعیت اسکرول نوار کناری پیش از بازسازی برداشته و بلافاصله
+ * پس از آن بازگردانده می‌شود. چون هر دو در یک چرخهٔ همگام رخ می‌دهند،
+ * چشم کاربر هیچ پرشی نمی‌بیند.
+ */
 function render(){
+  /* موقعیت اسکرول منو و ناحیهٔ محتوا پیش از بازسازی */
+  var navEl = document.querySelector('.sidebar');
+  var navTop = navEl ? navEl.scrollTop : 0;
+
   const picker=(S.user&&S.showPicker&&isMultiRole())?panelPicker():'';
   const gate=(S.user&&activePersona()==='parent'&&!parentLocked()&&!S.gateSkipped&&!picker)?safeHTML(parentGate()):'';
   $('#root').innerHTML = (S.user?renderShell():renderLogin())+picker+gate;
+
+  /* بازگرداندن اسکرول منو */
+  if(navTop){
+    var el = document.querySelector('.sidebar');
+    if(el) el.scrollTop = navTop;
+  }
+  /* گزینهٔ فعال اگر بیرون از دید افتاد، به دید آورده شود.
+     مثلاً وقتی کاربر با میان‌بر صفحه‌کلید جابه‌جا می‌شود. */
+  var act = document.querySelector('.sidebar .nav-item.active');
+  if(act && act.scrollIntoView){
+    var sb = document.querySelector('.sidebar');
+    if(sb){
+      var aTop = act.offsetTop, aBot = aTop + act.offsetHeight;
+      if(aTop < sb.scrollTop || aBot > sb.scrollTop + sb.clientHeight){
+        try{ act.scrollIntoView({ block:'nearest' }); }catch(e){}
+      }
+    }
+  }
+  /* هر صفحهٔ تازه از بالا شروع شود (نه ادامهٔ اسکرول صفحهٔ قبلی) */
+  var main = document.querySelector('.main');
+  if(main && S.__routeChanged){ main.scrollTop = 0; S.__routeChanged = false; }
 }
 setTimeout(()=>{
   generate(); generateExtras(); generateP8(); generateP9(); generateP10(); loadLog(); applyLog(); initSync();
@@ -8868,9 +9026,16 @@ var FIELD_ALIASES = {
   'علوم و معارف اسلامی': 'علوم و معارف اسلامی',
   'معارف اسلامی': 'علوم و معارف اسلامی',
   /* فنی و حرفه‌ای */
-  'الکترونیک': 'الکتروتکنیک',
+  /* ⚠️ الکتروتکنیک و الکترونیک دو رشتهٔ جدا هستند — یکی نکنید.
+     «برق» در گفتار مدرسه‌ها به الکتروتکنیک اشاره دارد. */
   'الکتروتکنیک': 'الکتروتکنیک',
+  'الکترو تکنیک': 'الکتروتکنیک',
   'برق': 'الکتروتکنیک',
+  'برق صنعتی': 'الکتروتکنیک',
+  'برق ساختمان': 'الکتروتکنیک',
+  'الکترونیک': 'الکترونیک',
+  'الکترونيک': 'الکترونیک',
+  'مخابرات': 'الکترونیک',
   'مکانیک': 'مکانیک خودرو',
   'مکانیک خودرو': 'مکانیک خودرو',
   'خودرو': 'مکانیک خودرو',
@@ -9119,6 +9284,1085 @@ function planPlacement(rows, schoolId){
   });
 
   return { plan: plan, create: create, warnings: warnings };
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   دیاگ سامانه — عیب‌یاب و تعمیرکار خودکار
+
+   مثل دستگاه دیاگ خودرو: خودش می‌گردد، عیب را پیدا می‌کند، شدتش را
+   می‌گوید و هرجا امن باشد خودش تعمیر می‌کند.
+
+   فلسفهٔ طراحی (مهم برای هر توسعه‌دهندهٔ بعدی):
+   ۱. هر آزمون باید «چه چیزی خراب است» و «چطور درست می‌شود» را
+      جداگانه بداند. تشخیص و درمان دو تابع جدا هستند.
+   ۲. تعمیر خودکار فقط وقتی مجاز است که **بازگشت‌ناپذیر نباشد** یا
+      داده‌ای از بین نبرد. حذف رکورد هرگز خودکار نیست.
+   ۳. هر تعمیر پیش از اجرا پشتیبان می‌گیرد.
+   ۴. عیب‌یاب هرگز نباید خودش برنامه را بشکند: همه چیز در try.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* شدت عیب */
+var DIAG_SEVERITY = {
+  critical: { fa: 'بحرانی', color: 'var(--red)',    icon: '🔴', rank: 3 },
+  warning:  { fa: 'هشدار',  color: 'var(--amber)',  icon: '🟡', rank: 2 },
+  info:     { fa: 'اطلاع',  color: 'var(--primary)',icon: '🔵', rank: 1 }
+};
+
+/* تاریخچهٔ اجراها — در حافظه، برای مقایسهٔ روند */
+var DIAG_HISTORY = [];
+var DIAG_MAX_HISTORY = 20;
+
+/* ------------------------------------------------------------------ */
+/*  فهرست آزمون‌ها                                                     */
+/*  هر آزمون: { id, title, severity, check(), fix()|null, safe }       */
+/*  check() → { ok:true } یا { ok:false, msg, items, count }           */
+/*  safe:true یعنی تعمیر خودکار مجاز است                               */
+/* ------------------------------------------------------------------ */
+var DIAG_CHECKS = [
+
+  /* ── ۱. یکپارچگی ارجاع‌ها ─────────────────────────────────────── */
+  {
+    id: 'orphan-enrollments',
+    title: 'ثبت‌نام بی‌صاحب',
+    desc: 'ثبت‌نامی که دانش‌آموز یا کلاسش پاک شده است',
+    severity: 'critical',
+    safe: true,
+    check: function(){
+      var bad = db.enrollments.filter(function(e){
+        return !byId('users', e.student_id) || !byId('classes', e.class_id);
+      });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad.slice(0,20),
+            msg: bad.length + ' ثبت‌نام به رکورد پاک‌شده اشاره می‌کند' }
+        : { ok:true };
+    },
+    fix: function(res){
+      var n = 0;
+      batchWrites(function(){
+        db.enrollments.filter(function(e){
+          return !byId('users', e.student_id) || !byId('classes', e.class_id);
+        }).forEach(function(e){ remove('enrollments', e.id); n++; });
+      });
+      return n + ' ثبت‌نام بی‌صاحب پاک شد';
+    }
+  },
+
+  {
+    id: 'duplicate-enrollment',
+    title: 'ثبت‌نام تکراری',
+    desc: 'یک دانش‌آموز در چند کلاس هم‌زمان',
+    severity: 'critical',
+    safe: true,
+    check: function(){
+      var by = Object.create(null), dups = [];
+      db.enrollments.forEach(function(e){
+        (by[e.student_id] = by[e.student_id] || []).push(e);
+      });
+      Object.keys(by).forEach(function(sid){
+        if(by[sid].length > 1){
+          var u = byId('users', Number(sid));
+          dups.push({ id:Number(sid), name: u ? u.full_name : '؟',
+                      count: by[sid].length });
+        }
+      });
+      return dups.length
+        ? { ok:false, count:dups.length, items:dups.slice(0,20),
+            msg: dups.length + ' دانش‌آموز در بیش از یک کلاس ثبت شده‌اند' }
+        : { ok:true };
+    },
+    fix: function(){
+      /* جدیدترین ثبت‌نام می‌ماند، بقیه حذف — چون آخرین اقدام مدیر
+         احتمالاً درست‌ترین است. */
+      var by = Object.create(null), n = 0;
+      db.enrollments.forEach(function(e){
+        (by[e.student_id] = by[e.student_id] || []).push(e);
+      });
+      batchWrites(function(){
+        Object.keys(by).forEach(function(sid){
+          var list = by[sid];
+          if(list.length < 2) return;
+          list.sort(function(a,b){ return (b.id||0) - (a.id||0); });
+          list.slice(1).forEach(function(e){ remove('enrollments', e.id); n++; });
+        });
+      });
+      return n + ' ثبت‌نام اضافی حذف شد (جدیدترین نگه داشته شد)';
+    }
+  },
+
+  {
+    id: 'orphan-parent-links',
+    title: 'پیوند ولی بی‌صاحب',
+    desc: 'پیوندی که ولی یا دانش‌آموزش وجود ندارد',
+    severity: 'warning',
+    safe: true,
+    check: function(){
+      var bad = db.parent_links.filter(function(l){
+        return !byId('users', l.parent_id) || !byId('users', l.student_id);
+      });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad.slice(0,20),
+            msg: bad.length + ' پیوند ولی به رکورد پاک‌شده اشاره می‌کند' }
+        : { ok:true };
+    },
+    fix: function(){
+      var n = 0;
+      batchWrites(function(){
+        db.parent_links.filter(function(l){
+          return !byId('users', l.parent_id) || !byId('users', l.student_id);
+        }).forEach(function(l){ remove('parent_links', l.id); n++; });
+      });
+      return n + ' پیوند بی‌صاحب پاک شد';
+    }
+  },
+
+  {
+    id: 'orphan-users-school',
+    title: 'کاربر بدون مدرسه',
+    desc: 'کاربری که مدرسه‌اش پاک شده است',
+    severity: 'critical',
+    safe: false,   /* حذف کاربر خودکار نیست — داده از بین می‌رود */
+    check: function(){
+      var bad = db.users.filter(function(u){
+        return u.role !== 'superadmin' && u.school_id && !byId('schools', u.school_id);
+      });
+      return bad.length
+        ? { ok:false, count:bad.length,
+            items: bad.slice(0,20).map(function(u){
+              return { id:u.id, name:u.full_name, role:u.role }; }),
+            msg: bad.length + ' کاربر به مدرسهٔ پاک‌شده وابسته‌اند' }
+        : { ok:true };
+    },
+    fix: null
+  },
+
+  /* ── ۲. درستی داده ───────────────────────────────────────────── */
+  {
+    id: 'duplicate-nid',
+    title: 'کد ملی تکراری',
+    desc: 'یک کد ملی برای دو نفر',
+    severity: 'critical',
+    safe: false,   /* نمی‌دانیم کدام درست است — تصمیم با انسان */
+    check: function(){
+      var by = Object.create(null), dups = [];
+      db.users.forEach(function(u){
+        if(!u.national_id) return;
+        (by[u.national_id] = by[u.national_id] || []).push(u);
+      });
+      Object.keys(by).forEach(function(k){
+        if(by[k].length > 1)
+          dups.push({ nid:k, names: by[k].map(function(u){ return u.full_name; }).join('، '),
+                      count: by[k].length });
+      });
+      return dups.length
+        ? { ok:false, count:dups.length, items:dups.slice(0,20),
+            msg: dups.length + ' کد ملی بین چند کاربر مشترک است' }
+        : { ok:true };
+    },
+    fix: null
+  },
+
+  {
+    id: 'duplicate-username',
+    title: 'نام کاربری تکراری',
+    desc: 'دو کاربر با یک نام کاربری — ورود مختل می‌شود',
+    severity: 'critical',
+    safe: true,
+    check: function(){
+      var by = Object.create(null), dups = [];
+      db.users.forEach(function(u){
+        if(!u.username) return;
+        (by[u.username] = by[u.username] || []).push(u);
+      });
+      Object.keys(by).forEach(function(k){
+        if(by[k].length > 1) dups.push({ username:k, count:by[k].length,
+          names: by[k].map(function(u){ return u.full_name; }).join('، ') });
+      });
+      return dups.length
+        ? { ok:false, count:dups.length, items:dups.slice(0,20),
+            msg: dups.length + ' نام کاربری تکراری — این افراد نمی‌توانند وارد شوند' }
+        : { ok:true };
+    },
+    fix: function(){
+      /* نام کاربری تازه به دومی و بعدی‌ها داده می‌شود. قدیمی‌ترین
+         (کوچک‌ترین شناسه) نامش را نگه می‌دارد چون احتمالاً فعال است. */
+      var by = Object.create(null), n = 0;
+      db.users.forEach(function(u){
+        if(u.username) (by[u.username] = by[u.username] || []).push(u);
+      });
+      var taken = Object.create(null);
+      db.users.forEach(function(u){ if(u.username) taken[u.username] = true; });
+      batchWrites(function(){
+        Object.keys(by).forEach(function(k){
+          var list = by[k];
+          if(list.length < 2) return;
+          list.sort(function(a,b){ return (a.id||0) - (b.id||0); });
+          list.slice(1).forEach(function(u){
+            var i = 2, cand;
+            do { cand = k + '_' + (i++); } while(taken[cand]);
+            taken[cand] = true;
+            update('users', u.id, { username: cand });
+            n++;
+          });
+        });
+      });
+      return n + ' نام کاربری تکراری تغییر یافت';
+    }
+  },
+
+  {
+    id: 'invalid-nid',
+    title: 'کد ملی نامعتبر',
+    desc: 'کد ملی که رقم کنترلش درست نیست',
+    severity: 'warning',
+    safe: false,
+    check: function(){
+      if(typeof validNid !== 'function') return { ok:true };
+      var bad = db.users.filter(function(u){
+        return u.national_id && !validNid(u.national_id);
+      });
+      return bad.length
+        ? { ok:false, count:bad.length,
+            items: bad.slice(0,20).map(function(u){
+              return { id:u.id, name:u.full_name, nid:u.national_id }; }),
+            msg: bad.length + ' کاربر کد ملی نامعتبر دارند' }
+        : { ok:true };
+    },
+    fix: null
+  },
+
+  {
+    id: 'class-over-capacity',
+    title: 'کلاس پر از ظرفیت',
+    desc: 'تعداد دانش‌آموز بیش از ظرفیت اعلام‌شده',
+    severity: 'warning',
+    safe: false,
+    check: function(){
+      var cnt = Object.create(null);
+      db.enrollments.forEach(function(e){ cnt[e.class_id] = (cnt[e.class_id]||0) + 1; });
+      var over = db.classes.filter(function(c){
+        return c.capacity && (cnt[c.id]||0) > c.capacity;
+      }).map(function(c){
+        return { id:c.id, name:c.name, now:cnt[c.id]||0, cap:c.capacity };
+      });
+      return over.length
+        ? { ok:false, count:over.length, items:over.slice(0,20),
+            msg: over.length + ' کلاس از ظرفیتشان بیشتر دانش‌آموز دارند' }
+        : { ok:true };
+    },
+    fix: null
+  },
+
+  {
+    id: 'field-outside-branch',
+    title: 'رشتهٔ خارج از شاخهٔ مدرسه',
+    desc: 'کلاسی با رشته‌ای که مدرسه ارائه نمی‌دهد',
+    severity: 'warning',
+    safe: false,
+    check: function(){
+      if(typeof schoolFields !== 'function') return { ok:true };
+      var bad = [];
+      db.classes.forEach(function(c){
+        if(!c.field) return;
+        var mine = schoolFields(c.school_id) || [];
+        if(mine.length && mine.indexOf(c.field) < 0){
+          var s = byId('schools', c.school_id);
+          bad.push({ id:c.id, name:c.name, field:c.field,
+                     school: s ? s.name : '؟' });
+        }
+      });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad.slice(0,20),
+            msg: bad.length + ' کلاس رشته‌ای دارند که مدرسه اعلام نکرده است' }
+        : { ok:true };
+    },
+    fix: null
+  },
+
+  /* ── ۳. سلامت ذخیره‌سازی ─────────────────────────────────────── */
+  {
+    id: 'storage-pressure',
+    title: 'فشار حافظهٔ مرورگر',
+    desc: 'نزدیک‌شدن دفترچهٔ عملیات به سقف ۵ مگابایت',
+    severity: 'warning',
+    safe: true,
+    check: function(){
+      var bytes = 0;
+      try{ bytes = JSON.stringify(log).length; }catch(e){ return { ok:true }; }
+      var mb = bytes / 1048576, pct = (mb / 5) * 100;
+      if(pct < 70) return { ok:true, extra: mb.toFixed(2) + ' مگابایت (' + pct.toFixed(0) + '٪)' };
+      return { ok:false, count:log.length,
+        items: [{ mb: mb.toFixed(2), pct: pct.toFixed(0), ops: log.length }],
+        msg: 'دفترچه ' + mb.toFixed(2) + ' مگابایت است (' + pct.toFixed(0) + '٪ سقف)' };
+    },
+    fix: function(){
+      /* فشرده‌سازی: عملیات قدیمی که نتیجه‌شان در وضعیت فعلی هست حذف
+         می‌شود. داده از بین نمی‌رود چون db زنده دست‌نخورده می‌ماند. */
+      var before = log.length;
+      if(typeof compactLog === 'function'){ compactLog(); }
+      else {
+        var keep = Math.floor(log.length * 0.4);
+        log.splice(0, log.length - keep);
+        if(typeof saveLog === 'function') saveLog();
+      }
+      return (before - log.length) + ' عملیات قدیمی فشرده شد';
+    }
+  },
+
+  {
+    id: 'sync-queue-stuck',
+    title: 'صف همگام‌سازی گیرکرده',
+    desc: 'عملیاتی که مدت‌هاست به سرور نرفته‌اند',
+    severity: 'warning',
+    safe: false,
+    check: function(){
+      if(typeof syncQueue === 'undefined' || !syncQueue) return { ok:true };
+      var n = syncQueue.length || 0;
+      if(n < 50) return { ok:true, extra: n + ' عملیات در صف' };
+      return { ok:false, count:n, items:[{ n:n }],
+        msg: n + ' عملیات در صف همگام‌سازی مانده است' };
+    },
+    fix: null
+  },
+
+  /* ── ۴. سلامت ایندکس و کارایی ────────────────────────────────── */
+  {
+    id: 'index-health',
+    title: 'سلامت ایندکس‌ها',
+    desc: 'نرخ اصابت ایندکس — پایین‌بودن یعنی کندی',
+    severity: 'info',
+    safe: true,
+    check: function(){
+      if(typeof IDX_STATS === 'undefined') return { ok:true };
+      var t = IDX_STATS.hits + IDX_STATS.misses;
+      if(t < 100) return { ok:true, extra: 'داده کافی نیست' };
+      var rate = (IDX_STATS.hits / t) * 100;
+      if(rate >= 90) return { ok:true, extra: rate.toFixed(1) + '٪ اصابت' };
+      return { ok:false, count:1,
+        items:[{ rate: rate.toFixed(1), builds: IDX_STATS.builds }],
+        msg: 'نرخ اصابت ایندکس ' + rate.toFixed(1) + '٪ است (کمتر از ۹۰٪)' };
+    },
+    fix: function(){
+      if(typeof idxReset === 'function') idxReset();
+      return 'ایندکس‌ها بازنشانی شدند';
+    }
+  },
+
+  {
+    id: 'index-staleness',
+    title: 'کهنگی ایندکس',
+    desc: 'ناسازگاری بین ایندکس و دادهٔ واقعی',
+    severity: 'critical',
+    safe: true,
+    check: function(){
+      if(typeof idxById !== 'function') return { ok:true };
+      var bad = [];
+      ['users','classes','enrollments'].forEach(function(coll){
+        if(!db[coll]) return;
+        try{
+          var m = idxById(coll);
+          if(m.size !== db[coll].length)
+            bad.push({ coll:coll, idx:m.size, real:db[coll].length });
+        }catch(e){ bad.push({ coll:coll, err:String(e.message) }); }
+      });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad,
+            msg: bad.length + ' ایندکس با دادهٔ واقعی هم‌خوان نیست' }
+        : { ok:true };
+    },
+    fix: function(){
+      if(typeof idxReset === 'function') idxReset();
+      return 'ایندکس‌ها از نو ساخته شدند';
+    }
+  },
+
+  /* ── ۵. سلامت کاربران و دسترسی ───────────────────────────────── */
+  {
+    id: 'school-without-manager',
+    title: 'مدرسهٔ بدون مدیر',
+    desc: 'مدرسه‌ای که هیچ مدیری ندارد',
+    severity: 'warning',
+    safe: false,
+    check: function(){
+      var has = Object.create(null);
+      db.users.forEach(function(u){
+        if(u.role === 'manager' && u.active) has[u.school_id] = true;
+      });
+      var bad = db.schools.filter(function(s){ return s.active && !has[s.id]; })
+        .map(function(s){ return { id:s.id, name:s.name, code:s.code }; });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad.slice(0,20),
+            msg: bad.length + ' مدرسهٔ فعال مدیر ندارند' }
+        : { ok:true };
+    },
+    fix: null
+  },
+
+  {
+    id: 'student-without-class',
+    title: 'دانش‌آموز بدون کلاس',
+    desc: 'دانش‌آموز فعالی که در هیچ کلاسی ثبت نشده',
+    severity: 'warning',
+    safe: false,
+    check: function(){
+      var enr = Object.create(null);
+      db.enrollments.forEach(function(e){ enr[e.student_id] = true; });
+      var bad = db.users.filter(function(u){
+        return u.role === 'student' && u.active && !enr[u.id];
+      }).map(function(u){
+        var s = byId('schools', u.school_id);
+        return { id:u.id, name:u.full_name, school: s ? s.name : '؟' };
+      });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad.slice(0,20),
+            msg: bad.length + ' دانش‌آموز فعال در هیچ کلاسی نیستند' }
+        : { ok:true };
+    },
+    fix: null
+  },
+
+  {
+    id: 'weak-password',
+    title: 'رمز پیش‌فرض تغییرنیافته',
+    desc: 'کاربرانی که هنوز رمز ۱۲۳۴۵۶ دارند',
+    severity: 'warning',
+    safe: false,
+    check: function(){
+      var bad = db.users.filter(function(u){
+        return u.active && u.password === '123456' &&
+               ['superadmin','manager','edu_office'].indexOf(u.role) > -1;
+      }).map(function(u){ return { id:u.id, name:u.full_name, role:u.role }; });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad.slice(0,20),
+            msg: bad.length + ' کاربر مدیریتی رمز پیش‌فرض دارند' }
+        : { ok:true };
+    },
+    fix: null
+  },
+
+  /* ── ۶. سلامت مالی ───────────────────────────────────────────── */
+  {
+    id: 'negative-amounts',
+    title: 'مبلغ منفی',
+    desc: 'قسط یا تراکنش با مبلغ منفی',
+    severity: 'critical',
+    safe: false,
+    check: function(){
+      var bad = [];
+      (db.installments||[]).forEach(function(x){
+        if(Number(x.amount) < 0) bad.push({ kind:'قسط', id:x.id, amount:x.amount });
+      });
+      (db.transactions||[]).forEach(function(x){
+        if(Number(x.amount) < 0) bad.push({ kind:'تراکنش', id:x.id, amount:x.amount });
+      });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad.slice(0,20),
+            msg: bad.length + ' رکورد مالی مبلغ منفی دارند' }
+        : { ok:true };
+    },
+    fix: null
+  },
+
+  {
+    id: 'orphan-financial',
+    title: 'رکورد مالی بی‌صاحب',
+    desc: 'قسط یا تراکنشی که دانش‌آموزش پاک شده',
+    severity: 'warning',
+    safe: true,
+    check: function(){
+      var bad = (db.installments||[]).filter(function(x){
+        return x.student_id && !byId('users', x.student_id);
+      });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad.slice(0,20),
+            msg: bad.length + ' قسط به دانش‌آموز پاک‌شده وصل است' }
+        : { ok:true };
+    },
+    fix: function(){
+      var n = 0;
+      batchWrites(function(){
+        (db.installments||[]).filter(function(x){
+          return x.student_id && !byId('users', x.student_id);
+        }).forEach(function(x){ remove('installments', x.id); n++; });
+      });
+      return n + ' قسط بی‌صاحب پاک شد';
+    }
+  }
+];
+
+/* ------------------------------------------------------------------ */
+/*  موتور اجرا                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * اجرای همهٔ آزمون‌ها.
+ * ⚠️ هر آزمون در try است تا یک آزمون معیوب کل دیاگ را نخواباند —
+ * دستگاه دیاگ نباید خودش خراب شود.
+ */
+function runDiagnostics(){
+  var t0 = Date.now();
+  var results = [];
+  DIAG_CHECKS.forEach(function(chk){
+    var r;
+    try{
+      r = chk.check();
+    }catch(e){
+      r = { ok:false, count:1, items:[{ err:String(e && e.message) }],
+            msg: 'خودِ این آزمون خطا داد: ' + String(e && e.message),
+            selfError:true };
+    }
+    results.push({
+      id: chk.id, title: chk.title, desc: chk.desc,
+      severity: chk.severity, safe: chk.safe && !!chk.fix,
+      fixable: !!chk.fix,
+      ok: !!r.ok, msg: r.msg || '', count: r.count || 0,
+      items: r.items || [], extra: r.extra || '',
+      selfError: !!r.selfError
+    });
+  });
+
+  var summary = {
+    at: new Date().toISOString(),
+    ms: Date.now() - t0,
+    total: results.length,
+    passed: results.filter(function(r){ return r.ok; }).length,
+    critical: results.filter(function(r){ return !r.ok && r.severity === 'critical'; }).length,
+    warning: results.filter(function(r){ return !r.ok && r.severity === 'warning'; }).length,
+    info: results.filter(function(r){ return !r.ok && r.severity === 'info'; }).length,
+    autoFixable: results.filter(function(r){ return !r.ok && r.safe; }).length
+  };
+  summary.health = diagHealthScore(summary, results);
+
+  DIAG_HISTORY.push({ at: summary.at, health: summary.health,
+                      critical: summary.critical, warning: summary.warning });
+  if(DIAG_HISTORY.length > DIAG_MAX_HISTORY) DIAG_HISTORY.shift();
+
+  return { summary: summary, results: results };
+}
+
+/**
+ * نمرهٔ سلامت ۰ تا ۱۰۰.
+ * بحرانی وزن ۱۵، هشدار ۵، اطلاع ۱ — چون یک عیب بحرانی به‌مراتب
+ * مهم‌تر از چند هشدار است.
+ */
+function diagHealthScore(sum){
+  var penalty = sum.critical * 15 + sum.warning * 5 + sum.info * 1;
+  return Math.max(0, Math.min(100, 100 - penalty));
+}
+
+/**
+ * تعمیر یک عیب مشخص.
+ * پیش از هر تعمیر پشتیبان گرفته می‌شود تا برگشت‌پذیر باشد.
+ */
+function diagFix(id){
+  var chk = DIAG_CHECKS.filter(function(c){ return c.id === id; })[0];
+  if(!chk) return { ok:false, msg:'آزمون یافت نشد' };
+  if(!chk.fix) return { ok:false, msg:'این عیب تعمیر خودکار ندارد' };
+
+  /* پشتیبان پیش از تعمیر */
+  var snap = null;
+  try{ snap = diagSnapshot(); }catch(e){}
+
+  var before, after, msg;
+  try{
+    before = chk.check();
+    msg = chk.fix(before);
+    after = chk.check();
+  }catch(e){
+    /* تعمیر شکست خورد ⇒ بازگردانی */
+    if(snap) try{ diagRestore(snap); }catch(e2){}
+    return { ok:false, msg:'تعمیر ناموفق بود و تغییرات برگشت داده شد: '
+                            + String(e && e.message) };
+  }
+
+  if(typeof recordAudit === 'function'){
+    try{ recordAudit('diag-fix', chk.title + ' — ' + msg); }catch(e){}
+  }
+  return { ok: !!after.ok, msg: msg,
+           before: before.count || 0, after: after.count || 0 };
+}
+
+/** تعمیر همهٔ عیب‌های امن، یکجا */
+function diagFixAll(){
+  var done = [], failed = [];
+  DIAG_CHECKS.forEach(function(chk){
+    if(!chk.fix || !chk.safe) return;
+    var r;
+    try{ r = chk.check(); }catch(e){ return; }
+    if(r.ok) return;
+    var f = diagFix(chk.id);
+    if(f.ok) done.push(chk.title + ': ' + f.msg);
+    else failed.push(chk.title + ': ' + f.msg);
+  });
+  return { done: done, failed: failed };
+}
+
+/** عکس فوری از مجموعه‌های حساس، برای بازگردانی پس از تعمیر ناموفق */
+function diagSnapshot(){
+  var keys = ['users','classes','enrollments','parent_links','installments','transactions'];
+  var snap = {};
+  keys.forEach(function(k){
+    if(db[k]) snap[k] = db[k].map(function(r){ return Object.assign({}, r); });
+  });
+  return snap;
+}
+
+function diagRestore(snap){
+  Object.keys(snap).forEach(function(k){
+    db[k] = snap[k];
+  });
+  if(typeof idxReset === 'function') idxReset();
+}
+
+/**
+ * پایش خودکار پس‌زمینه.
+ * هر بازه یک‌بار آزمون‌ها را می‌دواند و اگر عیب بحرانیِ قابل تعمیر
+ * دید، خودش درستش می‌کند و به سوپرادمین اطلاع می‌دهد.
+ *
+ * ⚠️ عمداً فقط عیب‌های «امن» خودکار تعمیر می‌شوند. چیزی که نیاز به
+ * قضاوت انسانی دارد (مثل کد ملی تکراری) فقط گزارش می‌شود.
+ */
+var DIAG_AUTO = { on:false, timer:null, interval: 5*60*1000, lastRun:null, fixes:0 };
+
+function diagAutoStart(intervalMs){
+  if(DIAG_AUTO.timer) clearInterval(DIAG_AUTO.timer);
+  if(intervalMs) DIAG_AUTO.interval = intervalMs;
+  DIAG_AUTO.on = true;
+  DIAG_AUTO.timer = setInterval(diagAutoTick, DIAG_AUTO.interval);
+  try{ localStorage.setItem('sms_diag_auto_v1', '1'); }catch(e){}
+  return true;
+}
+
+function diagAutoStop(){
+  if(DIAG_AUTO.timer) clearInterval(DIAG_AUTO.timer);
+  DIAG_AUTO.timer = null;
+  DIAG_AUTO.on = false;
+  try{ localStorage.removeItem('sms_diag_auto_v1'); }catch(e){}
+  return true;
+}
+
+function diagAutoTick(){
+  var out;
+  try{ out = runDiagnostics(); }catch(e){ return; }
+  DIAG_AUTO.lastRun = out.summary;
+  if(out.summary.autoFixable > 0){
+    var f = diagFixAll();
+    DIAG_AUTO.fixes += f.done.length;
+    if(f.done.length && typeof insert === 'function'){
+      try{
+        db.notifications && insert('notifications', {
+          user_id: (db.users.filter(function(u){ return u.role==='superadmin'; })[0]||{}).id,
+          title: 'تعمیر خودکار سامانه',
+          body: f.done.length + ' عیب خودکار برطرف شد: ' + f.done.join(' · '),
+          date: todayISO(), read: 0
+        });
+      }catch(e){}
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  نما — صفحهٔ دیاگ                                                   */
+/* ------------------------------------------------------------------ */
+
+/** رنگ نمرهٔ سلامت */
+function diagScoreColor(n){
+  return n >= 90 ? 'var(--green)' : n >= 70 ? 'var(--amber)' : 'var(--red)';
+}
+
+function viewDiagnostics(){
+  if(S.user.role !== 'superadmin')
+    return empty('🔒','دسترسی ندارید','این بخش ویژهٔ سوپرادمین است.');
+
+  var out = S.diag || null;
+  var sum = out ? out.summary : null;
+
+  var head = '<div class="card"><div class="card-head">'
+    + '<h3>🔧 دیاگ سامانه</h3>'
+    + '<div class="row">'
+    +   '<button class="btn" data-act="diag-run">🔍 اجرای بررسی کامل</button>'
+    +   (sum && sum.autoFixable
+        ? '<button class="btn" style="background:var(--green)" data-act="diag-fixall">🛠️ تعمیر خودکار ('
+          + fa(sum.autoFixable) + ')</button>' : '')
+    +   '<button class="btn ghost" data-act="diag-auto">'
+    +     (DIAG_AUTO.on ? '⏸️ توقف پایش خودکار' : '▶️ پایش خودکار') + '</button>'
+    + '</div></div>';
+
+  if(!out){
+    head += '<div class="card-body">'
+      + empty('🩺','هنوز بررسی نشده',
+          'دکمهٔ «اجرای بررسی کامل» را بزنید تا سامانه خودش را وارسی کند. '
+          + fa(DIAG_CHECKS.length) + ' آزمون روی یکپارچگی داده، حافظه، ایندکس، '
+          + 'دسترسی‌ها و رکوردهای مالی اجرا می‌شود.')
+      + '</div></div>';
+    return head;
+  }
+
+  /* گیج سلامت */
+  var col = diagScoreColor(sum.health);
+  head += '<div class="card-body">'
+    + '<div class="diag-gauge">'
+    +   '<div class="diag-score" style="color:' + col + '">'
+    +     '<b>' + fa(sum.health) + '</b><span>از ۱۰۰</span></div>'
+    +   '<div class="diag-bars">'
+    +     diagBar('موفق', sum.passed, sum.total, 'var(--green)')
+    +     diagBar('بحرانی', sum.critical, sum.total, 'var(--red)')
+    +     diagBar('هشدار', sum.warning, sum.total, 'var(--amber)')
+    +     diagBar('اطلاع', sum.info, sum.total, 'var(--primary)')
+    +   '</div>'
+    + '</div>'
+    + '<div class="small muted" style="margin-top:10px">'
+    +   'زمان بررسی: ' + fa(sum.ms) + ' میلی‌ثانیه · '
+    +   fa(sum.total) + ' آزمون · '
+    +   (DIAG_AUTO.on ? 'پایش خودکار <b style="color:var(--green)">روشن</b>'
+                      : 'پایش خودکار خاموش')
+    +   (DIAG_AUTO.fixes ? ' · ' + fa(DIAG_AUTO.fixes) + ' تعمیر خودکار تاکنون' : '')
+    + '</div></div></div>';
+
+  /* فهرست نتایج: عیب‌ها اول، به ترتیب شدت */
+  var bad = out.results.filter(function(r){ return !r.ok; })
+    .sort(function(a,b){
+      return DIAG_SEVERITY[b.severity].rank - DIAG_SEVERITY[a.severity].rank; });
+  var good = out.results.filter(function(r){ return r.ok; });
+
+  var body = '';
+  if(bad.length){
+    body += '<div class="card" style="margin-top:14px"><div class="card-head">'
+      + '<h3>عیب‌های یافت‌شده <span class="badge b-red">' + fa(bad.length) + '</span></h3></div>'
+      + '<div class="card-body">'
+      + bad.map(diagCard).join('') + '</div></div>';
+  }
+  if(good.length){
+    body += '<div class="card" style="margin-top:14px"><div class="card-head">'
+      + '<h3>آزمون‌های سالم <span class="badge b-green">' + fa(good.length) + '</span></h3></div>'
+      + '<div class="card-body"><div class="diag-ok-grid">'
+      + good.map(function(r){
+          return '<div class="diag-ok">✅ <b>' + esc(r.title) + '</b>'
+            + (r.extra ? '<span class="small muted"> — ' + esc(r.extra) + '</span>' : '')
+            + '</div>'; }).join('')
+      + '</div></div></div>';
+  }
+  return head + body;
+}
+
+function diagBar(label, n, total, color){
+  var pct = total ? (n / total) * 100 : 0;
+  return '<div class="diag-bar-row">'
+    + '<span class="diag-bar-lbl">' + label + '</span>'
+    + '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + color + '"></div></div>'
+    + '<b class="diag-bar-n">' + fa(n) + '</b></div>';
+}
+
+function diagCard(r){
+  var sv = DIAG_SEVERITY[r.severity];
+  var h = '<div class="diag-item" style="border-inline-start-color:' + sv.color + '">'
+    + '<div class="diag-item-head">'
+    +   '<span class="diag-ico">' + sv.icon + '</span>'
+    +   '<div style="flex:1;min-width:0">'
+    +     '<b>' + esc(r.title) + '</b>'
+    +     '<div class="small muted">' + esc(r.desc) + '</div>'
+    +   '</div>'
+    +   '<span class="badge" style="background:' + sv.color + '22;color:' + sv.color
+    +     ';border-color:' + sv.color + '">' + sv.fa + '</span>'
+    + '</div>'
+    + '<div class="diag-msg">' + esc(r.msg) + '</div>';
+
+  if(r.items && r.items.length){
+    h += '<details class="diag-details"><summary>نمایش نمونه‌ها ('
+      + fa(Math.min(r.items.length, 20)) + ' از ' + fa(r.count) + ')</summary>'
+      + '<div class="diag-items">'
+      + r.items.map(function(it){
+          return '<div class="diag-row">'
+            + Object.keys(it).map(function(k){
+                return '<span><i>' + esc(k) + ':</i> ' + esc(String(it[k])) + '</span>'; }).join('')
+            + '</div>'; }).join('')
+      + '</div></details>';
+  }
+
+  if(r.safe){
+    h += '<div style="margin-top:10px"><button class="btn sm" style="background:var(--green)" '
+      + 'data-act="diag-fix" data-id="' + esc(r.id) + '">🛠️ تعمیر خودکار</button>'
+      + '<span class="small muted" style="margin-inline-start:8px">'
+      + 'برگشت‌پذیر است؛ پیش از تعمیر پشتیبان گرفته می‌شود.</span></div>';
+  } else if(r.fixable){
+    h += '<div class="small muted" style="margin-top:8px">'
+      + '⚠️ تعمیر خودکار ندارد چون نیاز به تصمیم شماست.</div>';
+  } else {
+    h += '<div class="small muted" style="margin-top:8px">'
+      + 'ℹ️ این مورد باید دستی بررسی شود.</div>';
+  }
+  return h + '</div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   زمان‌بندی زنگ‌ها و زنگ تفریح
+
+   هر مدرسه و هر منطقه ساعت‌های متفاوتی دارد؛ مدرسهٔ روستایی زودتر
+   شروع می‌کند، مدرسهٔ شیفت بعدازظهر بعد از ظهر، و طول زنگ تفریح در
+   ابتدایی با متوسطه فرق دارد. پس این زمان‌ها **سخت‌کدشده نیستند** و
+   مدیر مدرسه خودش تعریفشان می‌کند.
+
+   ساختار داده: هر مدرسه یک رکورد در `db.bell_schedules` دارد که
+   شامل آرایه‌ای از بازه‌هاست. هر بازه یا «درس» است یا «تفریح».
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* الگوهای آماده — نقطهٔ شروع، نه اجبار. مدیر می‌تواند تغییرشان دهد. */
+var BELL_PRESETS = {
+  'صبح': {
+    title: 'شیفت صبح (پیش‌فرض رایج)',
+    start: '07:30',
+    slots: [
+      { kind:'lesson', min:45 }, { kind:'break', min:10 },
+      { kind:'lesson', min:45 }, { kind:'break', min:15 },
+      { kind:'lesson', min:45 }, { kind:'break', min:10 },
+      { kind:'lesson', min:45 }, { kind:'break', min:10 },
+      { kind:'lesson', min:45 }
+    ]
+  },
+  'بعدازظهر': {
+    title: 'شیفت بعدازظهر',
+    start: '13:00',
+    slots: [
+      { kind:'lesson', min:45 }, { kind:'break', min:10 },
+      { kind:'lesson', min:45 }, { kind:'break', min:15 },
+      { kind:'lesson', min:45 }, { kind:'break', min:10 },
+      { kind:'lesson', min:45 }
+    ]
+  },
+  'ابتدایی': {
+    title: 'ابتدایی (زنگ کوتاه‌تر، تفریح بلندتر)',
+    start: '07:45',
+    slots: [
+      { kind:'lesson', min:40 }, { kind:'break', min:15 },
+      { kind:'lesson', min:40 }, { kind:'break', min:20 },
+      { kind:'lesson', min:40 }, { kind:'break', min:15 },
+      { kind:'lesson', min:40 }
+    ]
+  }
+};
+
+/* ---------- ابزار زمان ---------- */
+
+/** «۰۷:۳۰» → ۴۵۰ دقیقه از نیمه‌شب */
+function timeToMin(t){
+  var s = String(t || '').trim();
+  if(typeof faDigits === 'function') s = faDigits(s);
+  var m = s.match(/^(\d{1,2}):(\d{2})$/);
+  if(!m) return null;
+  var h = Number(m[1]), mi = Number(m[2]);
+  if(h > 23 || mi > 59) return null;
+  return h * 60 + mi;
+}
+
+/** ۴۵۰ → «۰۷:۳۰» */
+function minToTime(n){
+  n = ((Math.round(Number(n) || 0)) % 1440 + 1440) % 1440;
+  var h = Math.floor(n / 60), m = n % 60;
+  return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+}
+
+/** نمایش فارسی ساعت */
+function timeFa(t){ return typeof faD === 'function' ? faD(t) : t; }
+
+/* ---------- خواندن و نوشتن ---------- */
+
+/**
+ * زمان‌بندی یک مدرسه. اگر تعریف نشده باشد، الگوی متناسب با شیفت و
+ * مقطعش برگردانده می‌شود — تا برنامه هرگز بدون ساعت نماند.
+ */
+function bellOf(schoolId){
+  var rec = (db.bell_schedules || []).filter(function(b){
+    return b.school_id === schoolId; })[0];
+  if(rec && rec.slots && rec.slots.length) return rec;
+
+  var s = byId('schools', schoolId) || {};
+  var key = (s.level === 'ابتدایی') ? 'ابتدایی'
+          : (s.shift === 'بعدازظهر') ? 'بعدازظهر' : 'صبح';
+  var p = BELL_PRESETS[key];
+  return { school_id: schoolId, start: p.start,
+           slots: p.slots.map(function(x){ return { kind:x.kind, min:x.min }; }),
+           preset: key, _default: true };
+}
+
+/**
+ * بازه‌ها را به ساعت واقعی تبدیل می‌کند.
+ * خروجی: [{ no, kind, from, to, min, label }]
+ * «no» فقط برای زنگ‌های درسی شماره می‌خورد، تفریح شماره ندارد.
+ */
+function bellTimeline(schoolId){
+  var b = bellOf(schoolId);
+  var cur = timeToMin(b.start);
+  if(cur == null) cur = 450;
+  var out = [], lesson = 0;
+  (b.slots || []).forEach(function(sl){
+    var min = Number(sl.min) || 0;
+    var from = cur, to = cur + min;
+    cur = to;
+    if(sl.kind === 'lesson'){
+      lesson++;
+      out.push({ no: lesson, kind:'lesson', min: min,
+        from: minToTime(from), to: minToTime(to),
+        label: 'زنگ ' + (typeof fa === 'function' ? fa(lesson) : lesson) });
+    } else {
+      out.push({ no: null, kind:'break', min: min,
+        from: minToTime(from), to: minToTime(to),
+        label: 'تفریح' });
+    }
+  });
+  return out;
+}
+
+/** ساعت زنگ شمارهٔ n — برای نمایش کنار برنامهٔ هفتگی */
+function bellTimeOf(schoolId, period){
+  var tl = bellTimeline(schoolId);
+  var hit = tl.filter(function(x){ return x.kind === 'lesson' && x.no === Number(period); })[0];
+  return hit ? (hit.from + ' تا ' + hit.to) : '';
+}
+
+/** تعداد زنگ درسی */
+function bellLessonCount(schoolId){
+  return bellTimeline(schoolId).filter(function(x){ return x.kind === 'lesson'; }).length;
+}
+
+/** ساعت پایان مدرسه */
+function bellEndTime(schoolId){
+  var tl = bellTimeline(schoolId);
+  return tl.length ? tl[tl.length - 1].to : '';
+}
+
+/**
+ * ذخیرهٔ زمان‌بندی.
+ * ⚠️ اعتبارسنجی اینجا انجام می‌شود نه در نما، چون داده می‌تواند از
+ * همگام‌سازی هم بیاید.
+ */
+function bellSave(schoolId, start, slots){
+  if(timeToMin(start) == null) return { ok:false, msg:'ساعت شروع معتبر نیست' };
+  if(!slots || !slots.length) return { ok:false, msg:'دست‌کم یک زنگ لازم است' };
+  var bad = slots.filter(function(s){ return !(Number(s.min) > 0); });
+  if(bad.length) return { ok:false, msg:'مدت هر بازه باید بیشتر از صفر باشد' };
+
+  var total = slots.reduce(function(a,s){ return a + Number(s.min); }, 0);
+  if(timeToMin(start) + total > 1440)
+    return { ok:false, msg:'مجموع زمان‌ها از پایان شبانه‌روز می‌گذرد' };
+
+  var rec = (db.bell_schedules || []).filter(function(b){
+    return b.school_id === schoolId; })[0];
+  var data = { school_id: schoolId, start: start,
+               slots: slots.map(function(s){
+                 return { kind: s.kind === 'break' ? 'break' : 'lesson',
+                          min: Number(s.min) }; }) };
+  if(rec) update('bell_schedules', rec.id, data);
+  else insert('bell_schedules', data);
+  return { ok:true, msg:'زمان‌بندی ذخیره شد' };
+}
+
+/** بازگرداندن به الگوی آماده */
+function bellApplyPreset(schoolId, key){
+  var p = BELL_PRESETS[key];
+  if(!p) return { ok:false, msg:'الگو یافت نشد' };
+  return bellSave(schoolId, p.start,
+    p.slots.map(function(x){ return { kind:x.kind, min:x.min }; }));
+}
+
+/* ------------------------------------------------------------------ */
+/*  نما                                                                */
+/* ------------------------------------------------------------------ */
+
+function viewBells(){
+  var u = S.user;
+  var isSuper = u.role === 'superadmin';
+  var sid = isSuper ? (Number(S.filters.bschool) || db.schools[0].id) : u.school_id;
+  var school = byId('schools', sid) || {};
+  var b = bellOf(sid);
+  var tl = bellTimeline(sid);
+  var canEdit = ['manager','superadmin'].indexOf(u.role) > -1;
+
+  var h = '<div class="card"><div class="card-head">'
+    + '<h3>🔔 زمان‌بندی زنگ‌ها</h3><div class="row">'
+    + (isSuper
+      ? '<select class="select" style="width:200px" data-f="bschool">'
+        + db.schools.map(function(s){
+            return '<option value="' + s.id + '"' + (s.id === sid ? ' selected' : '') + '>'
+              + esc(s.name) + '</option>'; }).join('')
+        + '</select>' : '')
+    + (canEdit ? '<button class="btn" data-act="bell-edit">✏️ ویرایش زمان‌ها</button>' : '')
+    + '</div></div><div class="card-body">';
+
+  /* خلاصه */
+  h += '<div class="grid g3" style="margin-bottom:14px">'
+    + bellStat('شیفت', school.shift || 'صبح', '🕐')
+    + bellStat('شروع', timeFa(b.start), '▶️')
+    + bellStat('پایان', timeFa(bellEndTime(sid)), '⏹️')
+    + '</div>';
+
+  if(b._default){
+    h += '<div class="diag-item" style="border-inline-start-color:var(--amber);margin-bottom:14px">'
+      + '<b>⚠️ هنوز زمان‌بندی اختصاصی تعریف نشده</b>'
+      + '<div class="small muted" style="margin-top:5px">'
+      + 'آنچه می‌بینید الگوی پیشنهادی «' + esc(b.preset) + '» است. '
+      + 'با دکمهٔ «ویرایش زمان‌ها» آن را متناسب با مدرسهٔ خود تنظیم کنید.</div></div>';
+  }
+
+  /* خط زمانی */
+  h += '<div class="bell-line">';
+  tl.forEach(function(x){
+    h += '<div class="bell-slot ' + x.kind + '">'
+      + '<div class="bell-when">' + timeFa(x.from) + ' — ' + timeFa(x.to) + '</div>'
+      + '<div class="bell-what"><b>' + esc(x.label) + '</b>'
+      + '<span class="small muted"> ' + fa(x.min) + ' دقیقه</span></div>'
+      + '</div>';
+  });
+  h += '</div>';
+
+  h += '<div class="small muted" style="margin-top:12px">'
+    + 'مجموع ' + fa(bellLessonCount(sid)) + ' زنگ درسی · '
+    + fa(tl.filter(function(x){ return x.kind === 'break'; }).length) + ' زنگ تفریح'
+    + '</div>';
+
+  return h + '</div></div>';
+}
+
+function bellStat(label, val, icon){
+  return '<div class="card stat"><div class="stat-icon b-blue">' + icon + '</div>'
+    + '<div><b style="font-size:20px">' + esc(String(val)) + '</b>'
+    + '<span>' + esc(label) + '</span></div></div>';
+}
+
+/** فرم ویرایش */
+function bellModal(sid){
+  var b = bellOf(sid);
+  var rows = (b.slots || []).map(function(s, i){ return bellRow(s, i); }).join('');
+  openModal(modalTpl('ویرایش زمان‌بندی زنگ‌ها',
+    '<div class="grid g2">'
+    + f('ساعت شروع مدرسه *', '<input class="input" id="bl_start" value="'
+        + esc(b.start) + '" placeholder="07:30" style="direction:ltr;text-align:center">')
+    + f('الگوی آماده', '<select class="select" id="bl_preset">'
+        + '<option value="">— بدون تغییر —</option>'
+        + Object.keys(BELL_PRESETS).map(function(k){
+            return '<option value="' + esc(k) + '">' + esc(BELL_PRESETS[k].title) + '</option>';
+          }).join('') + '</select>')
+    + '</div>'
+    + '<div class="small muted" style="margin:-4px 0 12px">'
+    + 'انتخاب الگو، همهٔ بازه‌های زیر را جایگزین می‌کند.</div>'
+    + '<div class="sec-title">بازه‌ها</div>'
+    + '<div id="bl_rows">' + rows + '</div>'
+    + '<div class="row" style="margin-top:10px">'
+    +   '<button class="btn ghost sm" data-act="bell-add" data-kind="lesson">➕ زنگ درس</button>'
+    +   '<button class="btn ghost sm" data-act="bell-add" data-kind="break">☕ زنگ تفریح</button>'
+    + '</div>',
+    'bell-save'));
+  window._edit = { school_id: sid };
+}
+
+function bellRow(s, i){
+  var isBreak = s.kind === 'break';
+  return '<div class="bell-edit-row" data-i="' + i + '">'
+    + '<span class="bell-tag ' + (isBreak ? 'br' : 'ls') + '">'
+    +   (isBreak ? '☕ تفریح' : '📘 درس') + '</span>'
+    + '<input class="input bl-min" type="number" min="1" max="240" value="' + (Number(s.min) || 0)
+    +   '" style="width:90px" data-kind="' + (isBreak ? 'break' : 'lesson') + '">'
+    + '<span class="small muted">دقیقه</span>'
+    + '<button class="icon-btn danger" data-act="bell-del" data-i="' + i + '" title="حذف">🗑️</button>'
+    + '</div>';
 }
 
 </script>

@@ -78,7 +78,11 @@ function schoolModal(s){
       ${f('تلفن ثابت مدرسه',inp('m_landline',s.landline||''))}
       ${f('تلفن همراه رابط',inp('m_phone',s.phone||''))}
       ${f('ظرفیت',inp('m_cap',s.capacity,'number'))}
-      ${f('وضعیت',sel('m_active',[[1,'فعال'],[0,'غیرفعال']],s.active?1:0))}</div>
+      ${f('وضعیت',sel('m_active',[[1,'فعال'],[0,'غیرفعال']],s.active?1:0))}
+      ${f('شیفت',sel('m_shift',[['صبح','صبح'],['بعدازظهر','بعدازظهر'],['هر دو','هر دو شیفت']],s.shift||'صبح'))}</div>
+    <div class="small muted" style="margin:-4px 0 10px">
+      شیفت بر ساعت شروع زنگ‌ها اثر می‌گذارد. زمان‌بندی دقیق زنگ‌ها را
+      مدیر مدرسه در صفحهٔ «زمان‌بندی زنگ‌ها» تعیین می‌کند.</div>
     <div id="m_branch_box" style="display:${s.level==='متوسطه دوم'?'block':'none'}">${branchPicker(s)}</div>
     ${f('آدرس',`<textarea class="input" id="m_addr" rows="2">${esc(s.address||'')}</textarea>`)}
     <div class="sec-title">👤 مشخصات مدیر مدرسه ${mgr?'':'<span class="small muted">(حساب کاربری او ساخته می‌شود)</span>'}</div>

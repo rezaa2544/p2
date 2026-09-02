@@ -77,6 +77,8 @@ function _renderRouteInner(){
     case 'import':return viewImport();
     case 'finance':return viewFinance();
     case 'health':return viewHealth();
+    case 'diag':return viewDiagnostics();
+    case 'bells':return viewBells();
     case 'audit':return viewAudit();
     case 'activity':return viewActivity();
     case 'plans':return viewPlans();

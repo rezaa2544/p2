@@ -346,3 +346,27 @@ node build.js --check    # یکسانی بیت‌به‌بیت
 ⚠️ برای درج انبوه، `insert` از `idxAppend` استفاده می‌کند و ایندکس را
 باطل نمی‌کند. اگر جایی ویرایش یا حذف انبوه اضافه کردید،
 `idxInvalidate` لازم است.
+
+
+## دیاگ سامانه و زمان‌بندی زنگ
+
+| می‌خواهم… | فایل |
+|---|---|
+| آزمون عیب‌یابی تازه بیفزایم | `42-self-diagnostics.js` → `DIAG_CHECKS` |
+| وزن نمرهٔ سلامت را عوض کنم | `42-self-diagnostics.js` → `diagHealthScore` |
+| بازهٔ پایش خودکار | `42-self-diagnostics.js` → `DIAG_AUTO.interval` |
+| الگوی زنگ تازه بسازم | `43-bell-schedule.js` → `BELL_PRESETS` |
+| قاعدهٔ اعتبارسنجی زنگ | `43-bell-schedule.js` → `bellSave()` |
+
+### افزودن آزمون به دیاگ
+```js
+{ id:'شناسه-یکتا', title:'عنوان', desc:'توضیح یک‌خطی',
+  severity:'critical'|'warning'|'info',
+  safe:true,                       // آیا تعمیر خودکار مجاز است؟
+  check(){ return {ok:false, count:n, items:[...], msg:'...'}; },
+  fix(){ /* تعمیر */ return 'چه شد'; } }
+```
+
+🔴 **`safe:true` فقط وقتی** که تعمیر داده‌ای از بین نبرد یا
+برگشت‌پذیر باشد. حذف رکوردی که ممکن است درست باشد → `safe:false`
+و `fix:null`.
