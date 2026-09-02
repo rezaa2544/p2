@@ -1,4 +1,7 @@
-/* ============================ queries ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   کوئری‌های نقش‌محور
+   مرز دسترسی داده از اینجا می‌گذرد؛ پیش از تغییر، بخش امنیت سند مرجع را بخوانید.
+   ═══════════════════════════════════════════════════════════════════ */
 const byId=(c,id)=>{const m=(typeof idxById==='function')?idxById(c):null;return m?m.get(Number(id)):db[c].find(x=>x.id===Number(id));};
 const classOf=sid=>{const m=(typeof idxEnrollByStudent==='function')?idxEnrollByStudent():null;const e=m?m.get(Number(sid)):db.enrollments.find(e=>e.student_id===sid);return e?byId('classes',e.class_id):null;};
 const studentsOfClass=cid=>{cid=Number(cid);const m=(typeof idxEnrollByClass==='function')?idxEnrollByClass():null;const es=m?(m.get(cid)||[]):db.enrollments.filter(e=>e.class_id===cid);const out=[];for(let i=0;i<es.length;i++){const u=byId('users',es[i].student_id);if(u)out.push(u);}return (typeof sortByNameFa==='function')?sortByNameFa(out):out.sort((a,b)=>a.full_name.localeCompare(b.full_name,'fa'));};

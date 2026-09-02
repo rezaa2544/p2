@@ -1,6 +1,11 @@
-/* ============================ actions ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   کنترلگر مرکزی رویدادها
+   همهٔ دکمه‌ها اینجا مدیریت می‌شوند (واگذاری رویداد با data-act). گارد مجوز در ابتدای شنونده اعمال می‌شود.
+   ═══════════════════════════════════════════════════════════════════ */
 /** شناسهٔ نوبت انتخاب‌شده برای رزرو (بین باز شدن مودال و ثبت آن) */
 var SLOT_ID=null;
+/** شناسهٔ کاربری که رمزش بازنشانی می‌شود (بین مودال و تأیید) */
+var PASS_TARGET=null;
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el)return;
   const a=el.dataset.act, id=Number(el.dataset.id);
@@ -202,6 +207,57 @@ document.addEventListener('click',e=>{
      studentsOfClass(cid).forEach(s=>{const ex=_am?_day.get(s.id):db.attendance.find(x=>x.student_id===s.id&&x.date===date);
        if(ex)update('attendance',ex.id,{status:st});else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:s.id,date,status:st,note:null});});
      toast('همه دانش‌آموزان «'+ATT_FA[st]+'» ثبت شدند','ok');render();},
+   // ---- پنل سوپرادمین: بازنشانی رمز و نگهداری ----
+   'pass-reset'(){
+     const u=byId('users',id);
+     if(!u){toast('کاربر یافت نشد','err');return;}
+     if(!canResetPassword(u)){toast('اجازهٔ بازنشانی رمز این کاربر را ندارید','err');return;}
+     PASS_TARGET=id;
+     openModal(modalTpl('بازنشانی رمز عبور',
+       '<div class="small" style="line-height:2">رمز تازه‌ای برای <b>'+esc(u.full_name)+'</b>'
+       +' ('+esc(ROLE_FA[u.role]||u.role)+') ساخته می‌شود و از راه اعلان به او خبر داده می‌شود.'
+       +'<div class="muted" style="margin-top:8px">کاربر پس از ورود باید رمز را تغییر دهد.</div></div>',
+       'pass-reset-ok'));
+   },
+   'pass-reset-ok'(){
+     const u=byId('users',PASS_TARGET);
+     const pass=resetPassword(PASS_TARGET);
+     closeModal();
+     if(!pass){toast('بازنشانی انجام نشد','err');return;}
+     openModal(modalTpl('رمز تازه ساخته شد',
+       '<div style="text-align:center;padding:8px 0">'
+       +'<div class="small muted">رمز تازهٔ '+esc((u||{}).full_name||'')+'</div>'
+       +'<div style="font-size:26px;font-weight:800;letter-spacing:3px;color:var(--primary);margin:10px 0">'
+       +esc(pass)+'</div>'
+       +'<div class="small muted" style="line-height:2">این رمز را به کاربر بدهید.'
+       +' اعلان هم برای او فرستاده شد.</div></div>',''));
+     render();
+   },
+   'health-reindex'(){
+     if(typeof idxReset==='function')idxReset();
+     toast('ایندکس‌ها بازسازی شدند','ok'); render();
+   },
+   'health-retry'(){
+     if(typeof SYNC==='undefined'){toast('لایهٔ همگام‌سازی در دسترس نیست','err');return;}
+     let n=0;
+     SYNC.queue.forEach(q=>{ if(q.status==='failed'||q.status==='conflict'){q.status='pending';q.tries=0;q.error=null;n++;} });
+     if(typeof saveQueue==='function')saveQueue();
+     toast(n?fa(n)+' عملیات برای ارسال دوباره آماده شد':'عملیات ناموفقی وجود ندارد', n?'ok':'');
+     render();
+   },
+   'health-backup'(){
+     try{
+       const payload=JSON.stringify({version:1,created_at:new Date().toISOString(),
+         ops:(typeof log!=='undefined')?log:[]});
+       const blob=new Blob([payload],{type:'application/json'});
+       const a=document.createElement('a');
+       a.href=URL.createObjectURL(blob);
+       a.download='payesh-backup-'+todayISO()+'.json';
+       document.body.appendChild(a); a.click(); a.remove();
+       setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+       toast('نسخهٔ پشتیبان دریافت شد','ok');
+     }catch(e){ toast('دریافت پشتیبان ممکن نشد','err'); }
+   },
    // ---- ویزارد ورود اکسل ----
    'imp-back'(){
      const st=S.imp||{step:0,entity:'students'};

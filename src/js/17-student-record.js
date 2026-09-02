@@ -1,4 +1,7 @@
-/* ============================ student record ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   کارنامه و پروندهٔ دانش‌آموز
+   نمای دانش‌آموز از خودش و نمای ولی از فرزندان.
+   ═══════════════════════════════════════════════════════════════════ */
 function viewRecord(sid){
   const gr=db.grades.filter(g=>g.student_id===sid);
   const att=db.attendance.filter(a=>a.student_id===sid).slice().sort((a,b)=>b.date.localeCompare(a.date));

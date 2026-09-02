@@ -253,6 +253,101 @@ test('پاک‌سازی کامل، صف را هم خالی می‌کند', () =>
   assert(has, 'resetAll صف همگام‌سازی را پاک نمی‌کند');
 });
 
+console.log('\n▸ پنل سوپرادمین: مالی، رمز، سلامت');
+
+test('توابع پنل سوپرادمین تعریف شده‌اند', () => {
+  assert(W("typeof viewFinance==='function'&&typeof financeSummary==='function'"
+    + "&&typeof viewHealth==='function'&&typeof healthReport==='function'"
+    + "&&typeof resetPassword==='function'&&typeof canResetPassword==='function'"
+    + "&&typeof tempPassword==='function'"), 'توابع ناقص است');
+});
+
+test('صفحه مالی و سلامت برای سوپرادمین رندر می‌شوند', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null;S.filters={};S.page=1");
+  for(const r of ['finance','health']){
+    W("S.route='" + r + "'");
+    const o = W('renderRoute()');
+    assert(o.length > 800 && !o.includes('undefined') && !o.includes('[object'),
+      'صفحه ' + r + ' درست رندر نشد');
+  }
+});
+
+test('اعداد مالی با پایگاه داده می‌خوانند', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null");
+  const realRev = W('db.parent_subscriptions.filter(function(s){return s.paid_at;})'
+    + '.reduce(function(a,b){return a+Number(b.amount||0);},0)');
+  const realPaid = W('db.installments.reduce(function(a,b){return a+Number(b.paid_amount||0);},0)');
+  assert(W('financeSummary().sub.revenue') === realRev, 'درآمد اشتراک نادرست');
+  assert(W('financeSummary().tuition.paid') === realPaid, 'شهریه دریافتی نادرست');
+  assert(W('financeSummary().schools.length') === W('db.schools.length'), 'همه مدارس نیستند');
+  assert(W('(function(){var a=financeSummary().schools;for(var i=1;i<a.length;i++)'
+    + 'if(a[i-1].paid<a[i].paid)return false;return true;})()'), 'رتبه‌بندی نزولی نیست');
+});
+
+test('بازنشانی رمز: مرز نقش‌ها رعایت می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null");
+  assert(W("canResetPassword(db.users.find(function(u){return u.role==='student';}))") === true,
+    'سوپرادمین نتوانست رمز دانش‌آموز را بازنشانی کند');
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  assert(W("canResetPassword(db.users.find(function(u){return u.role==='student'&&u.school_id===" + sid + ";}))") === true,
+    'مدیر نتوانست رمز دانش‌آموز مدرسه خودش را عوض کند');
+  assert(W("canResetPassword(db.users.find(function(u){return u.role==='student'&&u.school_id!==" + sid + ";}))") === false,
+    'مدیر به دانش‌آموز مدرسه دیگر دسترسی داشت');
+  assert(W("canResetPassword(db.users.find(function(u){return u.role==='superadmin';}))") === false,
+    'مدیر توانست رمز سوپرادمین را عوض کند');
+  W("S.user=db.users.find(u=>u.role==='student');S.persona=null;S.boss=null");
+  assert(W("canResetPassword(db.users.find(function(u){return u.role==='teacher';}))") === false,
+    'دانش‌آموز اجازه بازنشانی داشت');
+});
+
+test('بازنشانی رمز واقعاً رمز را عوض و اعلان می‌فرستد', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null");
+  const tid = W("db.users.find(function(u){return u.role==='teacher';}).id");
+  const old = W("byId('users'," + tid + ").password");
+  const n0 = W('db.notifications.length');
+  const pass = W('resetPassword(' + tid + ')');
+  assert(pass && pass !== old, 'رمز عوض نشد');
+  assert(/^[a-z]{4}[2-9]{4}$/.test(pass), 'قالب رمز نادرست: ' + pass);
+  assert(W("byId('users'," + tid + ").must_change_password") === 1, 'پرچم تغییر رمز ست نشد');
+  assert(W('db.notifications.length') > n0, 'اعلان فرستاده نشد');
+  assert(W('db.notifications[db.notifications.length-1].user_id') === tid, 'اعلان به کاربر اشتباه رفت');
+});
+
+test('رمزهای موقت یکتا هستند', () => {
+  const seen = {};
+  let uniq = 0;
+  for(let i = 0; i < 30; i++){
+    const p = W('tempPassword()');
+    if(!seen[p]){ seen[p] = 1; uniq++; }
+  }
+  assert(uniq >= 28, 'رمزها به‌اندازه کافی یکتا نیستند: ' + uniq);
+});
+
+test('گزارش سلامت مقادیر معتبر می‌دهد', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null");
+  const h = W('healthReport()');
+  assert(W('healthReport().storage.percent') >= 0, 'درصد حافظه منفی');
+  assert(W('healthReport().index.rate') >= 0 && W('healthReport().index.rate') <= 100, 'نرخ ایندکس نامعتبر');
+  const real = W('(function(){var n=0;Object.keys(db).forEach(function(k){'
+    + 'if(Array.isArray(db[k]))n+=db[k].length;});return n;})()');
+  assert(W('healthReport().data.total') === real, 'شمارش رکوردها نادرست');
+  assert(W('healthReport().data.top.length') > 0, 'فهرست بزرگ‌ترین جدول‌ها خالی است');
+});
+
+test('مالی و سلامت فقط برای سوپرادمین باز است', () => {
+  for(const role of ['manager','teacher','student','parent','edu_office']){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null;S.filters={}");
+    for(const r of ['finance','health']){
+      W("S.route='" + r + "'");
+      assert(/دسترسی مجاز نیست|اشتراک/.test(W('renderRoute()')), role + ' به ' + r + ' دسترسی داشت');
+    }
+  }
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  assert(W("canAction('pass-reset')") === true, 'مدیر باید بتواند رمز بازنشانی کند');
+  assert(W("canAction('health-backup')") === false, 'مدیر نباید پشتیبان بگیرد');
+});
+
 console.log('\n▸ ویزارد ورود اکسل');
 
 test('توابع ویزارد ورود تعریف شده‌اند', () => {

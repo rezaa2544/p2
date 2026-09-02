@@ -116,6 +116,12 @@ var ACTION_ROLES = {
   'risk-notify':   ['manager','superadmin','teacher'],
   /* فرم‌های رسمی و پیامک — پیامک هزینه دارد، پس فقط مدیر */
   'form-print':    ['manager','superadmin'],
+  /* پنل سوپرادمین */
+  'pass-reset':    ['manager','superadmin'],
+  'pass-reset-ok': ['manager','superadmin'],
+  'health-backup': ['superadmin'],
+  'health-reindex':['superadmin'],
+  'health-retry':  ['superadmin'],
   /* ورود اکسل — رکورد انبوه می‌سازد، پس فقط مدیر */
   'imp-preview':   ['manager','superadmin'],
   'imp-commit':    ['manager','superadmin'],

@@ -1,4 +1,7 @@
-/* ============================ modals ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   مودال و فرم
+   openModal, modalTpl, askConfirm و سازنده‌های فیلد: f, inp, sel, opt, V.
+   ═══════════════════════════════════════════════════════════════════ */
 function openModal(html){$('#modal').innerHTML=`<div class="modal-back" data-act="modal-back"><div class="modal">${html}</div></div>`;}
 function closeModal(){$('#modal').innerHTML='';}
 function modalTpl(title,body,saveAct,danger,okLabel){

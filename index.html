@@ -279,7 +279,10 @@ th,td{padding:9px 8px;font-size:13px}
 <div id="modal"></div>
 
 <script>
-/* ============================ helpers ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   توابع کمکی پایه
+   همهٔ ابزارهای عمومی اینجاست: esc, fa, faD, rial, toast, $ و…
+   ═══════════════════════════════════════════════════════════════════ */
 const $ = (s,r=document)=>r.querySelector(s);
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fa = n => (n===null||n===undefined||n==='')?'—':Number(n).toLocaleString('fa-IR',{maximumFractionDigits:2});
@@ -298,7 +301,10 @@ function toast(msg,type=''){const w=$('#toasts');const d=document.createElement(
 function empty(emoji,title,desc,btn){return `<div class="empty"><span class="emoji">${emoji}</span><h4>${esc(title)}</h4><div class="small">${esc(desc||'')}</div>${btn?`<div style="margin-top:14px">${btn}</div>`:''}</div>`;}
 function bar(v,max,color){return `<div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,(v/(max||1))*100)}%;background:${color}"></div></div>`;}
 
-/* ============================ demo data ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   دادهٔ نمونه
+   ساخت دادهٔ قطعی با مولد شبه‌تصادفی ثابت. شیء db اینجا تعریف می‌شود.
+   ═══════════════════════════════════════════════════════════════════ */
 let SEED=20260901;
 function rng(){SEED=(SEED*1664525+1013904223)%4294967296;return SEED/4294967296;}
 const ri=n=>Math.floor(rng()*n), pick=a=>a[ri(a.length)], chance=p=>rng()<p;
@@ -614,7 +620,10 @@ function resetAll(){
   location.reload();
 }
 
-/* ============================ queries ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   کوئری‌های نقش‌محور
+   مرز دسترسی داده از اینجا می‌گذرد؛ پیش از تغییر، بخش امنیت سند مرجع را بخوانید.
+   ═══════════════════════════════════════════════════════════════════ */
 const byId=(c,id)=>{const m=(typeof idxById==='function')?idxById(c):null;return m?m.get(Number(id)):db[c].find(x=>x.id===Number(id));};
 const classOf=sid=>{const m=(typeof idxEnrollByStudent==='function')?idxEnrollByStudent():null;const e=m?m.get(Number(sid)):db.enrollments.find(e=>e.student_id===sid);return e?byId('classes',e.class_id):null;};
 const studentsOfClass=cid=>{cid=Number(cid);const m=(typeof idxEnrollByClass==='function')?idxEnrollByClass():null;const es=m?(m.get(cid)||[]):db.enrollments.filter(e=>e.class_id===cid);const out=[];for(let i=0;i<es.length;i++){const u=byId('users',es[i].student_id);if(u)out.push(u);}return (typeof sortByNameFa==='function')?sortByNameFa(out):out.sort((a,b)=>a.full_name.localeCompare(b.full_name,'fa'));};
@@ -746,17 +755,20 @@ function bootstrapRequest(){
   return { method:'GET', url:'/api/bootstrap', scope:d, limits:SCOPE_LIMITS };
 }
 
-/* ============================ state / router ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   وضعیت برنامه و مسیریابی
+   شیء S وضعیت سراسری · NAV منو · TITLES عنوان‌ها · go و goBack پیمایش.
+   ═══════════════════════════════════════════════════════════════════ */
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
- superadmin:[['نظارت کلان',[['dashboard','📊','داشبورد مدیریتی'],['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه']]],['محتوا',[['subjects','📚','دروس'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['اداره آموزش و پرورش',[['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['کسب‌وکار',[['adminsubs','👨‍👩‍👦','اشتراک اولیا']]],['ارتباطات',[['notifications','🔔','اعلان‌ها']]]],
+ superadmin:[['نظارت کلان',[['dashboard','📊','داشبورد مدیریتی'],['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه']]],['محتوا',[['subjects','📚','دروس'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['اداره آموزش و پرورش',[['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['کسب‌وکار',[['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]],['ارتباطات',[['health','🩺','سلامت سامانه'],['notifications','🔔','اعلان‌ها']]]],
  manager:[['مدرسه من',[['import','📥','ورود اطلاعات'],['formssms','🖨️','فرم‌ها و پیامک'],['meetings','📅','جلسات اولیا'],['growth','📈','رشد مدرسه'],['atrisk','📉','افت تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['dashboard','📊','داشبورد مدرسه'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  teacher:[['کلاس‌های من',[['meetings','📅','جلسات اولیا'],['dashboard','📊','داشبورد'],['classes','🏛️','کلاس‌ها'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['ثبت اطلاعات',[['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['امتحانات',[['exams','👁️','برنامه مراقبت من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['پرونده من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['calendar','🗓️','تقویم آموزشی']]],['امور مالی',[['mytuition','💰','شهریه من']]],['درخواست‌ها',[['leaves','📨','مرخصی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['اداره من',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  parent:[['فرزندان من',[['meetings','📅','جلسات اولیا'],['dashboard','📊','خلاصه وضعیت'],['family','🏠','خانواده و مدارس'],['children','👨‍👩‍👦','پرونده فرزندان'],['exams','📝','برنامه امتحانات'],['calendar','🗓️','تقویم آموزشی']]],['امور مالی',[['mytuition','💰','شهریه و اقساط']]],['درخواست‌ها',[['leaves','📨','درخواست مرخصی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌های مدرسه'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو با مدرسه']]]]
 };
-const TITLES={import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
+const TITLES={finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
 S.stack=[];
@@ -1330,7 +1342,10 @@ function initSync(){
   if(pendingCount() && SYNC.online) scheduleSync(1500);
 }
 
-/* ============================ login ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   صفحهٔ ورود
+   ورود با نام کاربری و رمز، به‌همراه دکمه‌های حساب نمایشی.
+   ═══════════════════════════════════════════════════════════════════ */
 function demoAccounts(){
   const s=db.users.find(u=>u.role==='student'), p=db.users.find(u=>u.role==='parent');
   return [db.users.find(u=>u.role==='superadmin'),db.users.find(u=>u.username==='edu_kurdistan'),db.users.find(u=>u.username==='manager1'),db.users.find(u=>u.username==='teacher1_1'),s,db.users.find(u=>u.username==='parent_multi')||p].filter(Boolean);
@@ -1472,6 +1487,12 @@ var ACTION_ROLES = {
   'risk-notify':   ['manager','superadmin','teacher'],
   /* فرم‌های رسمی و پیامک — پیامک هزینه دارد، پس فقط مدیر */
   'form-print':    ['manager','superadmin'],
+  /* پنل سوپرادمین */
+  'pass-reset':    ['manager','superadmin'],
+  'pass-reset-ok': ['manager','superadmin'],
+  'health-backup': ['superadmin'],
+  'health-reindex':['superadmin'],
+  'health-retry':  ['superadmin'],
   /* ورود اکسل — رکورد انبوه می‌سازد، پس فقط مدیر */
   'imp-preview':   ['manager','superadmin'],
   'imp-commit':    ['manager','superadmin'],
@@ -1515,7 +1536,10 @@ function viewForbidden(){
     '</div></div>';
 }
 
-/* ============================ shell ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   پوستهٔ برنامه
+   سایدبار، نوار بالا و renderRoute که صفحه را انتخاب می‌کند.
+   ═══════════════════════════════════════════════════════════════════ */
 function renderShell(){
   const u=Object.assign({},S.user,{role:activePersona()}), school=u.school_id?byId('schools',u.school_id):(u.office_id?{name:(byId('offices',u.office_id)||{}).name}:null);
   const t=TITLES[S.route]||['سامانه','']; 
@@ -1573,6 +1597,8 @@ function renderRoute(){
     case 'growth':return viewGrowth();
     case 'formssms':return viewFormsSms();
     case 'import':return viewImport();
+    case 'finance':return viewFinance();
+    case 'health':return viewHealth();
     case 'dashboard':return S.user.role==='edu_office'?viewOfficeDash():viewDashboard();
     case 'schools':return viewSchools();
     case 'users':return viewUsers();
@@ -1604,7 +1630,10 @@ function renderRoute(){
   }
 }
 
-/* ============================ dashboard ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   داشبورد
+   نمای کلی هر نقش. هر نقش تابع خودش را دارد؛ داده از ایندکس می‌آید.
+   ═══════════════════════════════════════════════════════════════════ */
 function statCard(icon,val,label,tone){const m={blue:['var(--primary-soft)','var(--primary)'],green:['var(--green-soft)','var(--green)'],red:['var(--red-soft)','var(--red)'],amber:['var(--amber-soft)','var(--amber)'],purple:['var(--purple-soft)','var(--purple)']}[tone||'blue'];
  return `<div class="card stat"><div class="stat-icon" style="background:${m[0]};color:${m[1]}">${icon}</div><div><b>${val}</b><span>${esc(label)}</span></div></div>`;}
 
@@ -1733,7 +1762,10 @@ function familyDash(){
   return kids.map(summaryBlock).join('');
 }
 
-/* ============================ schools ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   مدیریت مدارس
+   ساخت، ویرایش، فعال‌سازی و «ورود به مدرسه» توسط سوپرادمین.
+   ═══════════════════════════════════════════════════════════════════ */
 function viewSchools(){
   const q=(S.filters.q||'').trim();
   const isAdmin=S.user.role==='superadmin';
@@ -1776,7 +1808,10 @@ function viewSchools(){
    </div>`;
 }
 
-/* ============================ users ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   کاربران
+   فهرست، جستجو، ویرایش و بازنشانی رمز. صفحه‌بندی ۱۵تایی.
+   ═══════════════════════════════════════════════════════════════════ */
 function viewUsers(){
   const u=S.user, canEdit=['superadmin','manager'].includes(u.role);
   const q=(S.filters.q||'').trim(), role=S.filters.role||'', sch=S.filters.school||'', act=S.filters.uactive||'';
@@ -1804,7 +1839,7 @@ function viewUsers(){
       <td class="muted">${esc(x.school_id?byId('schools',x.school_id).name:'—')}</td><td>${esc(x.role==='student'?((classOf(x.id)||{}).name||'—'):'—')}</td>
       <td class="muted">${esc(x.phone||'—')}</td>
       <td><span class="badge ${x.active?'b-green':'b-gray'}" ${canEdit?`data-act="user-toggle" data-id="${x.id}" style="cursor:pointer"`:''}>${x.active?'فعال':'غیرفعال'}</span></td>
-      ${canEdit?`<td><button class="icon-btn" data-act="user-edit" data-id="${x.id}">✏️</button> <button class="icon-btn danger" data-act="user-del" data-id="${x.id}">🗑️</button></td>`:''}</tr>`).join('')}
+      ${canEdit?`<td><button class="icon-btn" title="بازنشانی رمز" data-act="pass-reset" data-id="${x.id}">🔑</button> <button class="icon-btn" data-act="user-edit" data-id="${x.id}">✏️</button> <button class="icon-btn danger" data-act="user-del" data-id="${x.id}">🗑️</button></td>`:''}</tr>`).join('')}
     </tbody></table></div>${pager(page,pages)}`:empty('👥','کاربری یافت نشد','فیلترها را تغییر دهید یا کاربر جدید بسازید.')}
    </div>`;
 }
@@ -1814,7 +1849,10 @@ function pager(page,pages){ if(pages<2)return '';
    ${nums.map(n=>`<button class="${n===page?'active':''}" data-act="page" data-p="${n}">${fa(n)}</button>`).join('')}
    <button data-act="page" data-p="${page+1}" ${page>=pages?'disabled':''}>‹</button><span class="muted small">از ${fa(pages)} صفحه</span></div>`;}
 
-/* ============================ classes / subjects ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   کلاس‌ها و دروس
+   شبکهٔ کلاس‌ها با درصد پرشدن، و جدول دروس با فیلتر پایه و رشته.
+   ═══════════════════════════════════════════════════════════════════ */
 function viewClasses(){
   const canEdit=['superadmin','manager'].includes(S.user.role);
   const rows=visibleClasses();
@@ -1906,7 +1944,10 @@ function viewSubjects(){
    </div>`;
 }
 
-/* ============================ attendance ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   حضور و غیاب
+   ثبت روزانه بر پایهٔ کلاس و تاریخ. از ایندکس کلاس+روز استفاده می‌کند.
+   ═══════════════════════════════════════════════════════════════════ */
 function viewAttendance(){
   const cls=visibleClasses();
   if(!cls.length)return `<div class="card">${empty('🏛️','کلاسی در دسترس نیست','ابتدا باید کلاسی به شما تخصیص یابد.')}</div>`;
@@ -1938,7 +1979,10 @@ function viewAttendance(){
    </tbody></table></div>`:empty('🔍','دانش‌آموزی یافت نشد','این کلاس دانش‌آموزی ندارد یا جستجو نتیجه‌ای نداشت.')}</div>`;
 }
 
-/* ============================ grades ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   نمرات
+   ثبت و ویرایش نمره به تفکیک درس و نوبت.
+   ═══════════════════════════════════════════════════════════════════ */
 function viewGrades(){
   const u=S.user, canEdit=['superadmin','manager','teacher'].includes(u.role);
   const cls=visibleClasses(), subs=visibleSubjects();
@@ -1965,7 +2009,10 @@ function viewGrades(){
    </tbody></table></div>`:empty('📝','نمره‌ای ثبت نشده',canEdit?'با دکمه «ثبت نمره» شروع کنید.':'هنوز نمره‌ای برای شما ثبت نشده است.')}</div>`;
 }
 
-/* ============================ discipline ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   موارد انضباطی
+   ثبت مثبت و منفی با امتیاز.
+   ═══════════════════════════════════════════════════════════════════ */
 function viewDiscipline(){
   const u=S.user, canEdit=['superadmin','manager','teacher'].includes(u.role);
   const kind=S.filters.kind||'';
@@ -1989,7 +2036,10 @@ function viewDiscipline(){
    </tbody></table></div>`:empty('⚖️','پرونده انضباطی خالی است',u.role==='student'?'خوشبختانه موردی برای شما ثبت نشده است.':'موردی مطابق فیلتر یافت نشد.')}</div>`;
 }
 
-/* ============================ schedule ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   برنامهٔ هفتگی
+   جدول شش‌روزه؛ نمای دبیر و دانش‌آموز متفاوت است.
+   ═══════════════════════════════════════════════════════════════════ */
 function viewSchedule(){
   const u=S.user;
   const byTeacher=u.role==='teacher';
@@ -2009,7 +2059,10 @@ function viewSchedule(){
    </div>${canEditSched?`<div class="small muted" style="margin-top:12px;line-height:2">💡 روی هر خانه بزنید تا درس و دبیر آن را تعیین کنید. اگر دبیر در همان ساعت در <b>مدرسه دیگری</b> کلاس داشته باشد، ثبت نمی‌شود.</div>`:''}</div>`:empty('🗓️','برنامه‌ای ثبت نشده','برنامه هفتگی هنوز تنظیم نشده است.')}</div>`;
 }
 
-/* ============================ announcements ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   اطلاعیه‌ها
+   اطلاعیهٔ مدرسه یا سراسری (با شناسهٔ مدرسهٔ خالی).
+   ═══════════════════════════════════════════════════════════════════ */
 function viewAnnouncements(){
   const canEdit=['superadmin','manager','teacher'].includes(S.user.role);
   const rows=myAnnouncements();
@@ -2023,7 +2076,10 @@ function viewAnnouncements(){
    :empty('📢','اطلاعیه‌ای وجود ندارد',canEdit?'اولین اطلاعیه را منتشر کنید.':'به محض انتشار، اینجا نمایش داده می‌شود.')}</div>`;
 }
 
-/* ============================ student record ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   کارنامه و پروندهٔ دانش‌آموز
+   نمای دانش‌آموز از خودش و نمای ولی از فرزندان.
+   ═══════════════════════════════════════════════════════════════════ */
 function viewRecord(sid){
   const gr=db.grades.filter(g=>g.student_id===sid);
   const att=db.attendance.filter(a=>a.student_id===sid).slice().sort((a,b)=>b.date.localeCompare(a.date));
@@ -2062,7 +2118,10 @@ function viewChildren(){
    </div></div>${summaryBlock(active)}${viewRecord(active)}`;
 }
 
-/* ============================ modals ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   مودال و فرم
+   openModal, modalTpl, askConfirm و سازنده‌های فیلد: f, inp, sel, opt, V.
+   ═══════════════════════════════════════════════════════════════════ */
 function openModal(html){$('#modal').innerHTML=`<div class="modal-back" data-act="modal-back"><div class="modal">${html}</div></div>`;}
 function closeModal(){$('#modal').innerHTML='';}
 function modalTpl(title,body,saveAct,danger,okLabel){
@@ -3531,9 +3590,332 @@ function viewImport(){
     + '<div class="row" style="gap:6px;justify-content:space-between">' + barTop + '</div></div></div>' + body;
 }
 
-/* ============================ actions ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   پنل سوپرادمین — سه ابزار مدیریت کل سامانه
+   ═══════════════════════════════════════════════════════════════════
+   بخش ۱ ▸ داشبورد مالی سراسری   روت: finance
+   بخش ۲ ▸ بازنشانی رمز کاربر     اکشن: pass-reset
+   بخش ۳ ▸ سلامت سامانه           روت: health
+
+   ⚠️ همهٔ محاسبه‌ها با یک پیمایش گروه‌بندی می‌شوند، نه پیمایش جدول
+   به‌ازای هر مدرسه. در مقیاس ملی این تفاوت میان خطی و درجه‌دوم است.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ───────────────────────── بخش ۱: مالی ───────────────────────── */
+
+/**
+ * خلاصهٔ مالی کل سامانه با یک پیمایش روی هر جدول.
+ * خروجی: درآمد اشتراک، شهریه، وضعیت اشتراک‌ها و رتبهٔ مدارس.
+ */
+function financeSummary(){
+  var today = todayISO();
+  var soon = addDaysISO(today, 30);
+
+  /* اشتراک اولیا — یک پیمایش */
+  var sub = { active:0, trial:0, expired:0, none:0, revenue:0, expiringSoon:0 };
+  db.parent_subscriptions.forEach(function(s){
+    var st = s.status || 'none';
+    if(sub[st] !== undefined) sub[st]++;
+    if(s.paid_at) sub.revenue += Number(s.amount || 0);
+    if((st === 'active' || st === 'trial') && s.end_date && s.end_date >= today && s.end_date <= soon)
+      sub.expiringSoon++;
+  });
+
+  /* شهریه — یک پیمایش روی اقساط و یک پیمایش روی تراکنش‌ها */
+  var tuition = { billed:0, paid:0, overdue:0, overdueCount:0 };
+  db.installments.forEach(function(i){
+    tuition.billed += Number(i.amount || 0);
+    tuition.paid += Number(i.paid_amount || 0);
+    if(i.status !== 'paid' && i.due_date && i.due_date < today){
+      tuition.overdue += Number(i.amount || 0) - Number(i.paid_amount || 0);
+      tuition.overdueCount++;
+    }
+  });
+
+  /* درآمد ماه‌های اخیر برای نمودار ساده */
+  var byMonth = Object.create(null);
+  db.transactions.forEach(function(t){
+    if(t.kind !== 'income') return;
+    var m = String(t.date || '').slice(0, 7);
+    if(m) byMonth[m] = (byMonth[m] || 0) + Number(t.amount || 0);
+  });
+  var months = Object.keys(byMonth).sort().slice(-6).map(function(m){
+    return { month:m, amount:byMonth[m] };
+  });
+
+  /* رتبهٔ مدارس بر پایهٔ پرداخت شهریه — گروه‌بندی یک‌باره */
+  var paidBySchool = Object.create(null);
+  db.installments.forEach(function(i){
+    if(!i.school_id) return;
+    paidBySchool[i.school_id] = (paidBySchool[i.school_id] || 0) + Number(i.paid_amount || 0);
+  });
+  /* شمار اولیای هر مدرسه و اشتراک فعالشان */
+  var studentSchool = Object.create(null);
+  db.users.forEach(function(u){
+    if(u.role === 'student') studentSchool[u.id] = u.school_id;
+  });
+  var parentsOf = Object.create(null);
+  db.parent_links.forEach(function(l){
+    var sid = studentSchool[l.student_id];
+    if(!sid) return;
+    (parentsOf[sid] = parentsOf[sid] || Object.create(null))[l.parent_id] = true;
+  });
+  var subStatus = Object.create(null);
+  db.parent_subscriptions.forEach(function(s){ subStatus[s.user_id] = s.status; });
+
+  var schools = db.schools.map(function(sc){
+    var pl = parentsOf[sc.id] ? Object.keys(parentsOf[sc.id]) : [];
+    var act = 0;
+    pl.forEach(function(pid){ if(subStatus[pid] === 'active') act++; });
+    return { school: sc, parents: pl.length, active: act,
+      conv: pl.length ? Math.round(act / pl.length * 1000) / 10 : 0,
+      paid: paidBySchool[sc.id] || 0 };
+  }).sort(function(a, b){ return b.paid - a.paid; });
+
+  return { sub: sub, tuition: tuition, months: months, schools: schools };
+}
+
+function viewFinance(){
+  var d = financeSummary();
+  var maxM = d.months.reduce(function(a, b){ return Math.max(a, b.amount); }, 0) || 1;
+  var totalParents = d.sub.active + d.sub.trial + d.sub.expired + d.sub.none;
+  var conv = totalParents ? Math.round(d.sub.active / totalParents * 1000) / 10 : 0;
+
+  return '<div class="grid g4" style="margin-bottom:14px">'
+    + statCard('💰', rialShort(d.sub.revenue), 'درآمد اشتراک (ریال)', 'green')
+    + statCard('🏦', rialShort(d.tuition.paid), 'شهریه دریافتی (ریال)', 'blue')
+    + statCard('⏳', rialShort(d.tuition.overdue), 'شهریه معوق (ریال)', 'red')
+    + statCard('📈', fa(conv) + '٪', 'نرخ تبدیل اشتراک', 'purple') + '</div>'
+
+    + '<div class="grid g2" style="margin-bottom:14px">'
+    /* وضعیت اشتراک‌ها */
+    + '<div class="card"><div class="card-head"><h3>وضعیت اشتراک اولیا</h3>'
+    + (d.sub.expiringSoon ? '<span class="badge b-amber">' + fa(d.sub.expiringSoon)
+        + ' انقضا تا ۳۰ روز آینده</span>' : '') + '</div>'
+    + '<div class="card-body"><table class="table"><tbody>'
+    + [['فعال', d.sub.active, 'var(--green)'], ['در دورهٔ آزمایشی', d.sub.trial, 'var(--amber)'],
+       ['منقضی‌شده', d.sub.expired, 'var(--red)'], ['بدون اشتراک', d.sub.none, 'var(--muted)']]
+      .map(function(r){
+        var pct = totalParents ? Math.round(r[1] / totalParents * 100) : 0;
+        return '<tr><td>' + r[0] + '</td><td style="width:52%">' + bar(pct, 100, r[2]) + '</td>'
+          + '<td style="width:70px;text-align:left"><b>' + fa(r[1]) + '</b>'
+          + '<span class="small muted"> (' + fa(pct) + '٪)</span></td></tr>';
+      }).join('')
+    + '</tbody></table></div></div>'
+
+    /* شهریه */
+    + '<div class="card"><div class="card-head"><h3>وضعیت شهریه</h3></div>'
+    + '<div class="card-body"><table class="table"><tbody>'
+    + '<tr><td>کل صورت‌حساب</td><td style="text-align:left"><b>' + rial(d.tuition.billed) + '</b> ریال</td></tr>'
+    + '<tr><td>دریافت‌شده</td><td style="text-align:left"><b style="color:var(--green)">'
+      + rial(d.tuition.paid) + '</b> ریال</td></tr>'
+    + '<tr><td>معوق</td><td style="text-align:left"><b style="color:var(--red)">'
+      + rial(d.tuition.overdue) + '</b> ریال</td></tr>'
+    + '<tr><td>اقساط سررسیدگذشته</td><td style="text-align:left"><b>'
+      + fa(d.tuition.overdueCount) + '</b> فقره</td></tr>'
+    + '</tbody></table>'
+    + bar(d.tuition.billed ? Math.round(d.tuition.paid / d.tuition.billed * 100) : 0, 100, 'var(--green)')
+    + '<div class="small muted" style="margin-top:6px">درصد وصول شهریه</div>'
+    + '</div></div></div>'
+
+    /* روند درآمد */
+    + (d.months.length ? '<div class="card" style="margin-bottom:14px">'
+      + '<div class="card-head"><h3>روند درآمد شش ماه اخیر</h3></div><div class="card-body">'
+      + d.months.map(function(m){
+          return '<div class="row" style="gap:10px;margin-bottom:7px">'
+            + '<span class="small muted" style="width:74px">' + faD(m.month) + '</span>'
+            + '<div style="flex:1">' + bar(Math.round(m.amount / maxM * 100), 100, 'var(--primary)') + '</div>'
+            + '<b class="small" style="width:110px;text-align:left">' + rialShort(m.amount) + '</b></div>';
+        }).join('') + '</div></div>' : '')
+
+    /* رتبهٔ مدارس */
+    + '<div class="card"><div class="card-head"><h3>عملکرد مالی مدارس</h3></div>'
+    + '<div class="table-wrap"><table class="table"><thead><tr><th>#</th><th>مدرسه</th>'
+    + '<th>ولی</th><th>اشتراک فعال</th><th>نرخ تبدیل</th><th>شهریه دریافتی</th></tr></thead><tbody>'
+    + d.schools.map(function(r, i){
+        return '<tr><td>' + fa(i + 1) + '</td><td><b>' + esc(r.school.name) + '</b></td>'
+          + '<td>' + fa(r.parents) + '</td><td>' + fa(r.active) + '</td>'
+          + '<td><span class="badge ' + (r.conv >= 50 ? 'b-green' : r.conv >= 25 ? 'b-amber' : 'b-gray')
+          + '">' + fa(r.conv) + '٪</span></td>'
+          + '<td><b>' + rialShort(r.paid) + '</b></td></tr>';
+      }).join('')
+    + '</tbody></table></div></div>';
+}
+
+/* ──────────────────── بخش ۲: بازنشانی رمز ──────────────────── */
+
+/** رمز موقت خوانا: چهار حرف + چهار رقم، بدون نویسهٔ مبهم */
+function tempPassword(){
+  var letters = 'abcdefghjkmnpqrstuvwxyz', digits = '23456789', out = '';
+  for(var i = 0; i < 4; i++) out += letters[Math.floor(Math.random() * letters.length)];
+  for(var j = 0; j < 4; j++) out += digits[Math.floor(Math.random() * digits.length)];
+  return out;
+}
+
+/**
+ * بازنشانی رمز یک کاربر.
+ * حساب‌های هم‌رده یا بالاتر محافظت می‌شوند تا مدیر نتواند رمز
+ * سوپرادمین را عوض کند و کنترل سامانه را بگیرد.
+ */
+function canResetPassword(target, actorRole){
+  if(!target) return false;
+  actorRole = actorRole || (S.user && S.user.role);
+  if(actorRole === 'superadmin') return target.role !== 'superadmin' || target.id === S.user.id;
+  if(actorRole === 'manager'){
+    return target.school_id === S.user.school_id
+        && ['student','teacher','parent'].indexOf(target.role) > -1;
+  }
+  return false;
+}
+
+function resetPassword(userId){
+  var u = byId('users', userId);
+  if(!canResetPassword(u)) return null;
+  var pass = tempPassword();
+  update('users', userId, { password: pass, must_change_password: 1 });
+  insert('notifications', { user_id: userId, school_id: u.school_id || null,
+    type: 'announcement', title: '🔑 رمز عبور شما بازنشانی شد',
+    body: 'رمز تازهٔ شما «' + pass + '» است. پس از ورود آن را تغییر دهید.',
+    link: 'dashboard', read: 0, created_at: todayISO() });
+  return pass;
+}
+
+/* ─────────────────── بخش ۳: سلامت سامانه ─────────────────── */
+
+/**
+ * جمع‌آوری نشانه‌های سلامت از لایه‌های موجود.
+ * هیچ محاسبهٔ تازه‌ای انجام نمی‌شود؛ فقط ابزارهای آماده خوانده می‌شوند.
+ */
+function healthReport(){
+  var out = { storage:{}, index:{}, sync:{}, scope:{}, data:{} };
+
+  /* حافظهٔ مرورگر */
+  var logBytes = 0, queueBytes = 0;
+  try{ logBytes = (localStorage.getItem(LOG_KEY) || '').length; }catch(e){}
+  try{ queueBytes = (localStorage.getItem(SYNC_QUEUE_KEY) || '').length; }catch(e){}
+  var used = logBytes + queueBytes, limit = 5 * 1024 * 1024;
+  out.storage = { used: used, limit: limit,
+    percent: Math.round(used / limit * 1000) / 10,
+    ops: (typeof log !== 'undefined') ? log.length : 0,
+    full: (typeof STORAGE_FULL !== 'undefined') ? !!STORAGE_FULL : false };
+
+  /* لایهٔ ایندکس */
+  if(typeof idxReport === 'function'){
+    var r = idxReport();
+    var st = r.stats || {};
+    var tot = (st.hits || 0) + (st.misses || 0);
+    out.index = { hits: st.hits || 0, misses: st.misses || 0, builds: st.builds || 0,
+      rate: tot ? Math.round((st.hits || 0) / tot * 1000) / 10 : 0 };
+  }
+
+  /* صف همگام‌سازی */
+  if(typeof SYNC !== 'undefined'){
+    var q = SYNC.queue || [];
+    out.sync = { total: q.length,
+      pending: q.filter(function(x){ return x.status === 'pending'; }).length,
+      failed: q.filter(function(x){ return x.status === 'failed'; }).length,
+      conflict: q.filter(function(x){ return x.status === 'conflict'; }).length,
+      online: (typeof navigator !== 'undefined') ? navigator.onLine !== false : true,
+      demo: !!SYNC.demoMode, lastSync: SYNC.lastSync || null };
+  }
+
+  /* محدودهٔ دادهٔ نقش‌ها */
+  if(typeof scopeHealth === 'function'){
+    try{ out.scope = scopeHealth() || {}; }catch(e){ out.scope = {}; }
+  }
+
+  /* حجم داده */
+  var counts = {}, total = 0;
+  Object.keys(db).forEach(function(k){
+    if(Array.isArray(db[k])){ counts[k] = db[k].length; total += db[k].length; }
+  });
+  var top = Object.keys(counts).sort(function(a, b){ return counts[b] - counts[a]; }).slice(0, 8);
+  out.data = { total: total, collections: Object.keys(counts).length,
+    top: top.map(function(k){ return { name: k, n: counts[k] }; }) };
+
+  return out;
+}
+
+/** یک ردیف نشانه با چراغ وضعیت */
+function healthRow(label, value, level, hint){
+  var color = level === 'bad' ? 'var(--red)' : level === 'warn' ? 'var(--amber)' : 'var(--green)';
+  var icon = level === 'bad' ? '⛔' : level === 'warn' ? '⚠️' : '✅';
+  return '<tr><td style="width:34px">' + icon + '</td><td>' + esc(label) + '</td>'
+    + '<td style="text-align:left"><b style="color:' + color + '">' + value + '</b></td>'
+    + '<td class="small muted">' + esc(hint || '') + '</td></tr>';
+}
+
+function viewHealth(){
+  var h = healthReport();
+  var stLevel = h.storage.percent >= 80 ? 'bad' : h.storage.percent >= 50 ? 'warn' : 'ok';
+  var idxLevel = h.index.rate >= 90 ? 'ok' : h.index.rate >= 70 ? 'warn' : 'bad';
+  var syncLevel = (h.sync.failed || h.sync.conflict) ? 'bad'
+    : (h.sync.pending > 20) ? 'warn' : 'ok';
+
+  return '<div class="grid g4" style="margin-bottom:14px">'
+    + statCard('💾', fa(h.storage.percent) + '٪', 'مصرف حافظه مرورگر',
+        stLevel === 'bad' ? 'red' : stLevel === 'warn' ? 'amber' : 'green')
+    + statCard('⚡', fa(h.index.rate) + '٪', 'نرخ اصابت ایندکس',
+        idxLevel === 'ok' ? 'green' : 'amber')
+    + statCard('🔄', fa(h.sync.pending || 0), 'در صف ارسال به سرور',
+        syncLevel === 'ok' ? 'green' : syncLevel === 'warn' ? 'amber' : 'red')
+    + statCard('🗃️', fa(h.data.total), 'کل رکوردها', 'blue') + '</div>'
+
+    + '<div class="card" style="margin-bottom:14px"><div class="card-head"><h3>نشانه‌های سلامت</h3></div>'
+    + '<div class="table-wrap"><table class="table"><tbody>'
+    + healthRow('حافظهٔ مرورگر', fa(h.storage.percent) + '٪ از ۵ مگابایت', stLevel,
+        h.storage.full ? 'حافظه پر شده — تغییرات تازه ذخیره نمی‌شوند'
+          : stLevel === 'warn' ? 'به نیمهٔ ظرفیت رسیده' : 'در محدودهٔ مطلوب')
+    + healthRow('دفترچهٔ عملیات', fa(h.storage.ops) + ' عملیات',
+        h.storage.ops > 10000 ? 'warn' : 'ok', 'تغییرات ثبت‌شده از ابتدا')
+    + healthRow('نرخ اصابت ایندکس', fa(h.index.rate) + '٪', idxLevel,
+        fa(h.index.hits) + ' اصابت · ' + fa(h.index.builds) + ' بازسازی')
+    + healthRow('اتصال شبکه', h.sync.online ? 'برخط' : 'برون‌خط',
+        h.sync.online ? 'ok' : 'warn',
+        h.sync.online ? 'تغییرات بلافاصله ارسال می‌شوند' : 'تغییرات در صف می‌مانند')
+    + healthRow('صف همگام‌سازی', fa(h.sync.total || 0) + ' عملیات', syncLevel,
+        (h.sync.failed ? fa(h.sync.failed) + ' ناموفق · ' : '')
+        + (h.sync.conflict ? fa(h.sync.conflict) + ' تعارض · ' : '')
+        + (h.sync.demo ? 'حالت نمایشی — سرور واقعی متصل نیست' : 'متصل به سرور'))
+    + healthRow('محدودهٔ دادهٔ نقش‌ها',
+        h.scope.records != null ? fa(h.scope.records) + ' رکورد' : '—',
+        h.scope.ok === false ? 'warn' : 'ok', 'حجم دادهٔ ارسالی به هر مرورگر')
+    + '</tbody></table></div></div>'
+
+    + '<div class="grid g2">'
+    + '<div class="card"><div class="card-head"><h3>بزرگ‌ترین جدول‌ها</h3>'
+    + '<span class="badge b-gray">' + fa(h.data.collections) + ' مجموعه</span></div>'
+    + '<div class="card-body"><table class="table"><tbody>'
+    + h.data.top.map(function(t){
+        var pct = h.data.total ? Math.round(t.n / h.data.total * 100) : 0;
+        return '<tr><td class="small">' + esc(t.name) + '</td>'
+          + '<td style="width:45%">' + bar(pct, 100, 'var(--primary)') + '</td>'
+          + '<td style="width:78px;text-align:left"><b>' + fa(t.n) + '</b></td></tr>';
+      }).join('')
+    + '</tbody></table></div></div>'
+
+    + '<div class="card"><div class="card-head"><h3>ابزارهای نگهداری</h3></div>'
+    + '<div class="card-body" style="display:grid;gap:10px">'
+    + '<div class="row"><div style="flex:1"><b class="small">پشتیبان‌گیری</b>'
+    + '<div class="small muted">دریافت نسخهٔ پشتیبان از همهٔ تغییرات ثبت‌شده</div></div>'
+    + '<button class="btn ghost sm" data-act="health-backup">⬇️ دریافت</button></div>'
+    + '<div class="row"><div style="flex:1"><b class="small">بازسازی ایندکس‌ها</b>'
+    + '<div class="small muted">اگر نرخ اصابت پایین است، ایندکس‌ها را از نو بساز</div></div>'
+    + '<button class="btn ghost sm" data-act="health-reindex">♻️ بازسازی</button></div>'
+    + '<div class="row"><div style="flex:1"><b class="small">پاک‌سازی صف ناموفق</b>'
+    + '<div class="small muted">عملیات ناموفق را برای ارسال دوباره آماده کن</div></div>'
+    + '<button class="btn ghost sm" data-act="health-retry">🔁 تلاش دوباره</button></div>'
+    + '</div></div></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   کنترلگر مرکزی رویدادها
+   همهٔ دکمه‌ها اینجا مدیریت می‌شوند (واگذاری رویداد با data-act). گارد مجوز در ابتدای شنونده اعمال می‌شود.
+   ═══════════════════════════════════════════════════════════════════ */
 /** شناسهٔ نوبت انتخاب‌شده برای رزرو (بین باز شدن مودال و ثبت آن) */
 var SLOT_ID=null;
+/** شناسهٔ کاربری که رمزش بازنشانی می‌شود (بین مودال و تأیید) */
+var PASS_TARGET=null;
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el)return;
   const a=el.dataset.act, id=Number(el.dataset.id);
@@ -3735,6 +4117,57 @@ document.addEventListener('click',e=>{
      studentsOfClass(cid).forEach(s=>{const ex=_am?_day.get(s.id):db.attendance.find(x=>x.student_id===s.id&&x.date===date);
        if(ex)update('attendance',ex.id,{status:st});else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:s.id,date,status:st,note:null});});
      toast('همه دانش‌آموزان «'+ATT_FA[st]+'» ثبت شدند','ok');render();},
+   // ---- پنل سوپرادمین: بازنشانی رمز و نگهداری ----
+   'pass-reset'(){
+     const u=byId('users',id);
+     if(!u){toast('کاربر یافت نشد','err');return;}
+     if(!canResetPassword(u)){toast('اجازهٔ بازنشانی رمز این کاربر را ندارید','err');return;}
+     PASS_TARGET=id;
+     openModal(modalTpl('بازنشانی رمز عبور',
+       '<div class="small" style="line-height:2">رمز تازه‌ای برای <b>'+esc(u.full_name)+'</b>'
+       +' ('+esc(ROLE_FA[u.role]||u.role)+') ساخته می‌شود و از راه اعلان به او خبر داده می‌شود.'
+       +'<div class="muted" style="margin-top:8px">کاربر پس از ورود باید رمز را تغییر دهد.</div></div>',
+       'pass-reset-ok'));
+   },
+   'pass-reset-ok'(){
+     const u=byId('users',PASS_TARGET);
+     const pass=resetPassword(PASS_TARGET);
+     closeModal();
+     if(!pass){toast('بازنشانی انجام نشد','err');return;}
+     openModal(modalTpl('رمز تازه ساخته شد',
+       '<div style="text-align:center;padding:8px 0">'
+       +'<div class="small muted">رمز تازهٔ '+esc((u||{}).full_name||'')+'</div>'
+       +'<div style="font-size:26px;font-weight:800;letter-spacing:3px;color:var(--primary);margin:10px 0">'
+       +esc(pass)+'</div>'
+       +'<div class="small muted" style="line-height:2">این رمز را به کاربر بدهید.'
+       +' اعلان هم برای او فرستاده شد.</div></div>',''));
+     render();
+   },
+   'health-reindex'(){
+     if(typeof idxReset==='function')idxReset();
+     toast('ایندکس‌ها بازسازی شدند','ok'); render();
+   },
+   'health-retry'(){
+     if(typeof SYNC==='undefined'){toast('لایهٔ همگام‌سازی در دسترس نیست','err');return;}
+     let n=0;
+     SYNC.queue.forEach(q=>{ if(q.status==='failed'||q.status==='conflict'){q.status='pending';q.tries=0;q.error=null;n++;} });
+     if(typeof saveQueue==='function')saveQueue();
+     toast(n?fa(n)+' عملیات برای ارسال دوباره آماده شد':'عملیات ناموفقی وجود ندارد', n?'ok':'');
+     render();
+   },
+   'health-backup'(){
+     try{
+       const payload=JSON.stringify({version:1,created_at:new Date().toISOString(),
+         ops:(typeof log!=='undefined')?log:[]});
+       const blob=new Blob([payload],{type:'application/json'});
+       const a=document.createElement('a');
+       a.href=URL.createObjectURL(blob);
+       a.download='payesh-backup-'+todayISO()+'.json';
+       document.body.appendChild(a); a.click(); a.remove();
+       setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+       toast('نسخهٔ پشتیبان دریافت شد','ok');
+     }catch(e){ toast('دریافت پشتیبان ممکن نشد','err'); }
+   },
    // ---- ویزارد ورود اکسل ----
    'imp-back'(){
      const st=S.imp||{step:0,entity:'students'};
@@ -4968,7 +5401,10 @@ function viewCorrections(){
 
 /* ---------------- مودال تأیید فرزندان (نخستین ورود ولی) ---------------- */
 
-/* ============================ تقویم شمسی و انتخابگر تاریخ ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   تقویم شمسی
+   تبدیل میلادی و شمسی، انتخابگر تاریخ و قالب‌بندی فارسی.
+   ═══════════════════════════════════════════════════════════════════ */
 const J_MONTHS=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 const J_DAYS_SHORT=['ش','ی','د','س','چ','پ','ج'];
 const _div=(a,b)=>Math.floor(a/b);

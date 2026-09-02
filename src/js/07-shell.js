@@ -1,4 +1,7 @@
-/* ============================ shell ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   پوستهٔ برنامه
+   سایدبار، نوار بالا و renderRoute که صفحه را انتخاب می‌کند.
+   ═══════════════════════════════════════════════════════════════════ */
 function renderShell(){
   const u=Object.assign({},S.user,{role:activePersona()}), school=u.school_id?byId('schools',u.school_id):(u.office_id?{name:(byId('offices',u.office_id)||{}).name}:null);
   const t=TITLES[S.route]||['سامانه','']; 
@@ -56,6 +59,8 @@ function renderRoute(){
     case 'growth':return viewGrowth();
     case 'formssms':return viewFormsSms();
     case 'import':return viewImport();
+    case 'finance':return viewFinance();
+    case 'health':return viewHealth();
     case 'dashboard':return S.user.role==='edu_office'?viewOfficeDash():viewDashboard();
     case 'schools':return viewSchools();
     case 'users':return viewUsers();
