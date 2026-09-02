@@ -676,11 +676,11 @@ npm test             # ۳۱ + ۱۰۵ تست
 
 ---
 
-## ۱۲.۵ نسخهٔ سروری (مخزن گیت‌هاب)
+## ۱۲.۵ دو نسخه و فایل مرجع
 
 پروژه **دو نسخه** دارد و قاعدهٔ کاربر این است که هر قابلیت در هر دو پیاده شود.
 
-**نسخهٔ سروری** — `github.com/rezaa2544/payesh` (داخل `school.rar`):
+### الف) نسخهٔ سروری — `github.com/rezaa2544/payesh`
 
 | بخش | جزئیات |
 |---|---|
@@ -689,35 +689,62 @@ npm test             # ۳۱ + ۱۰۵ تست
 | امنیت | bcrypt، JWT + refresh چرخشی، helmet + CSP، zod، rate limit، `audit_log` |
 | زیرساخت | Docker، nginx، GitHub Actions، PgBouncer، Redis |
 | تست | ۱۶ فاز + bench + ui-smoke + mobile + standalone (۴۱۰+ سناریو) |
-| مستندات | `SPEC.md`, `ROADMAP.md`, `docs/SCALE-SECURITY.md` |
 
-### ۱۰ قابلیتی که هنوز در نسخهٔ تک‌فایلی نیست
+### ب) فایل مرجع تک‌فایلی — `reference/payesh-full-reference.html`
 
-| قابلیت | معادل سروری | شرح |
+از مخزن `github.com/rezaa2544/p2` استخراج شد (۵۳۴KB، ۳۶ تابع `view*`).
+**این فایل مرجعِ استخراج قابلیت‌های غایب است؛ سورس پروژه نیست و ویرایش نمی‌شود.**
+
+### ۶ صفحه‌ای که هنوز در نسخهٔ تک‌فایلی من نیست
+
+| صفحه | خطوط | شرح |
 |---|---|---|
-| چرخهٔ تحصیلی | `Lifecycle.jsx` | ارتقای پایه، فارغ‌التحصیلی، انتقال بین مدارس، تعارض کد ملی |
-| ویزارد ورود اکسل | `ImportWizard.jsx` | ۴ مرحله؛ خوانندهٔ xlsx بومی با `DecompressionStream` |
-| طرح‌های فروش | `Plans.jsx` | مدیریت پلان |
-| گزارش‌گیری | `Reports.jsx` | خروجی اکسل |
-| فرم‌ها و پیامک | `FormsSms.jsx` | فرم رسمی چاپی + پنل پیامک با کیف پول |
-| تنظیمات مدرسه | `Settings.jsx` | اطلاع غیبت/تأخیر به اولیا |
-| صورتحساب | `Billing.jsx` | رایگان/آزمایشی/فعال/منقضی |
-| جلسات اولیا | `Meetings.jsx` | نوبت‌دهی و رزرو (پیشوند اکشن `mtg-`) |
-| رشد مدرسه | `Growth.jsx` | کد معرف، نرخ تبدیل، دعوت گروهی |
-| افت تحصیلی | `AtRisk.jsx` | امتیاز ریسک، هشدار به خانواده |
+| `viewLifecycle` | ۱۳۶ | چرخهٔ تحصیلی: ارتقای پایه، فارغ‌التحصیلی، انتقال بین مدارس، تعارض کد ملی، کاربران ناقص |
+| `viewImport` | ۷۰ | ویزارد ورود اکسل — خوانندهٔ بومی xlsx با `DecompressionStream` |
+| `viewFormsSms` | ۴۶ | فرم‌های رسمی چاپی + پنل پیامک با کیف پول |
+| `viewMeetings` | ۳۲ | جلسات اولیا (نوبت‌دهی و رزرو) — پیشوند اکشن `mtg-` |
+| `viewGrowth` | ۳۲ | رشد مدرسه: کد معرف، نرخ تبدیل، دعوت گروهی |
+| `viewAtRisk` | ۲۶ | افت تحصیلی: امتیاز ریسک، هشدار به خانواده |
 
-> ⚠️ توجه: فایل مبنای نسخهٔ تک‌فایلی فعلی (`نسخه ۹`) این قابلیت‌ها را نداشت.
-> طبق ROADMAP مخزن، این‌ها در فایل `پایش-سامانه-مدیریت-مدرسه.html` (بدون شمارهٔ ۹)
-> پیاده شده‌اند. برای پیاده‌سازی دقیق، آن فایل مرجع لازم است.
+**۱۴ تابع کمکی لازم:**
+```
+generateP16  gradeFromName  graduateStudent  moveStudent  recordConflict
+incompleteUsers  atRiskList  smsWalletOf  printableDoc  parseCSV
+parseXLSX  prepSheet  suggestMap  validateImport
+```
 
-### درس‌های امنیتی نسخهٔ سروری که باید رعایت شود
-- رمز با **bcrypt** (۱۲ round در تولید) — هرگز متن ساده
-- **JWT کوتاه‌عمر (۳۰ دقیقه)** + refresh چرخشی با hash SHA-256
-- **قفل تدریجی ورود**: ۵ خطا → ۳۰ ثانیه، سپس ۲/۱۰/۳۰ دقیقه
-- `scopeOf(req)` مرز مدرسه را **سمت سرور** تحمیل می‌کند
-- همهٔ کوئری‌ها پارامتری + اعتبارسنجی `zod` + جلوگیری از prototype pollution
-- `audit_log` برای عملیات حساس + `X-Request-Id` برای ردیابی
-- سقف `limit` روی ۲۰۰؛ هیچ endpointای «همه ردیف‌ها» برنمی‌گرداند
+**۱۵ اکشن لازم:**
+```
+promote-run  tr-send  school-clearf  invite-parents  mtg-new  mtg-save
+mtg-book-ok  sms-new  sms-send  sms-topup  sms-topup-ok
+imp-preview  imp-commit  imp-back  imp-reset
+```
+
+**۷ مجموعهٔ دادهٔ لازم:**
+```
+student_transfers  transfer_requests  student_archive  nid_conflicts
+meeting_slots  sms_wallet  sms_log
+```
+
+**۶ روت لازم در `TITLES`/`NAV`:** `lifecycle` `import` `formssms` `meetings` `growth` `atrisk`
+
+### ⚠️ هشدار مهم هنگام انتقال
+
+فایل مرجع **سه مشکل کارایی** دارد که در نسخهٔ من رفع شده‌اند:
+
+| مشکل | مرجع | نسخهٔ من |
+|---|---|---|
+| جستجوی خطی در `viewAttendance` | دارد | رفع شد (ایندکس `Map`) |
+| ۱۴ پیمایش کامل در داشبورد | دارد | رفع شد (یک پیمایش) |
+| `saveLog` خطا را بی‌صدا می‌بلعد | دارد | رفع شد (هشدار) |
+
+**پس کد را کپی مستقیم نکن** — با الگوی ایندکس‌شده (`idxGroup`/`idxUnique`) بازنویسی کن.
+
+### ترتیب پیشنهادی افزودن
+۱. `lifecycle` (بزرگ‌ترین، ۴ مجموعهٔ داده می‌آورد) →
+۲. `meetings` + `growth` + `atrisk` (کوچک و مستقل) →
+۳. `formssms` →
+۴. `import` (پیچیده‌ترین)
 
 ---
 
@@ -729,7 +756,7 @@ npm test             # ۳۱ + ۱۰۵ تست
 - [ ] بک‌اند واقعی + اتصال `SYNC.demoMode=false`
 - [ ] UI حل تعارض (انتخاب نسخه محلی یا سرور)
 - [ ] Service Worker — تا خود برنامه هم بدون اینترنت بالا بیاید
-- [ ] **افزودن ۱۰ قابلیت نسخهٔ سروری به تک‌فایلی** (بخش ۱۲.۵)
+- [ ] **افزودن ۶ صفحهٔ غایب از فایل مرجع** (بخش ۱۲.۵) — lifecycle، import، formssms، meetings، growth، atrisk
 - [ ] پیاده‌سازی `/api/bootstrap` مطابق `scopeDescriptor`
 - [ ] ورود دومرحله‌ای (OTP) برای مدیر/سوپرادمین
 - [ ] `audit_log` برای عملیات حساس
