@@ -214,6 +214,55 @@ textarea.has-error{
   75%{transform:translateX(4px)}
 }
 .input.has-error,.select.has-error,textarea.has-error{ animation:fieldShake .28s ease }
+
+/* ═══════════════════════════════════════════════════════════════════
+   جای نوار پیمایش
+   ═══════════════════════════════════════════════════════════════════
+   خواستهٔ کاربر: نوارها در سمت راست باشند (راست منو، راست صفحه).
+
+   چرا این کار لازم است؟ صفحه راست‌به‌چپ (rtl) است و مرورگر در این
+   حالت نوار پیمایش را خودکار سمت چپ می‌گذارد. با تعریف جهت داخلی
+   ظرف‌ها به‌صورت چپ‌به‌راست، نوار به راست می‌رود؛ سپس محتوای درون
+   آن‌ها دوباره راست‌به‌چپ می‌شود تا متن فارسی درست بماند.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* نوار پیمایش کل صفحه → سمت راست */
+html{ direction:ltr }
+body{ direction:rtl }
+
+/* منوی کناری: نوار سمت راستِ خودِ منو */
+.sidebar{ direction:ltr }
+.sidebar > *{ direction:rtl }
+
+/* مودال‌ها */
+.modal{ direction:ltr }
+.modal > *{ direction:rtl }
+
+/* ظرف جدول‌های عریض */
+.table-wrap{ direction:ltr }
+.table-wrap > *{ direction:rtl }
+
+/* نوارهای افقی مثل زبانه‌ها */
+.tabs{ direction:ltr }
+.tabs > *{ direction:rtl }
+
+/* ظاهر یکدست نوار در مرورگرهای وب‌کیت */
+.sidebar::-webkit-scrollbar,
+.modal::-webkit-scrollbar,
+.table-wrap::-webkit-scrollbar,
+body::-webkit-scrollbar{ width:10px;height:10px }
+.sidebar::-webkit-scrollbar-track{ background:#0b1329 }
+.sidebar::-webkit-scrollbar-thumb{ background:#2a3a5c;border-radius:8px }
+.sidebar::-webkit-scrollbar-thumb:hover{ background:#3a4d78 }
+.modal::-webkit-scrollbar-track,
+.table-wrap::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track{ background:#eef1f6 }
+.modal::-webkit-scrollbar-thumb,
+.table-wrap::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb{ background:#c3ccdb;border-radius:8px }
+.modal::-webkit-scrollbar-thumb:hover,
+.table-wrap::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 /* ==================== موبایل: تطبیق کامل با عرض صفحه ==================== */
 @media(max-width:900px){
 .app{grid-template-columns:1fr}
