@@ -341,6 +341,88 @@ test('سابقه و فعالیت فقط برای سوپرادمین باز اس�
   }
 });
 
+console.log('\n▸ اشتراک مشترک: یک پرداخت برای هر دانش‌آموز');
+
+test('توابع اشتراک مشترک تعریف شده‌اند', () => {
+  assert(W("typeof studentSubscription==='function'&&typeof effectiveParentAccess==='function'"),
+    'توابع ناقص است');
+});
+
+test('اگر یک ولی بپردازد، ولی دیگرِ همان دانش‌آموز هم دسترسی دارد', () => {
+  const info = W('(function(){var g={};db.parent_links.forEach(function(l){'
+    + '(g[l.student_id]=g[l.student_id]||[]).push(l.parent_id);});'
+    + 'var k=Object.keys(g).filter(function(s){return g[s].length>1;})[0];'
+    + 'return k?{kid:Number(k),a:g[k][0],b:g[k][1]}:null;})()');
+  if(!W('(function(){var g={};db.parent_links.forEach(function(l){'
+    + '(g[l.student_id]=g[l.student_id]||[]).push(l.parent_id);});'
+    + 'return Object.keys(g).some(function(s){return g[s].length>1;});})()')) return;
+  const A = W('window.__A=(function(){var g={};db.parent_links.forEach(function(l){'
+    + '(g[l.student_id]=g[l.student_id]||[]).push(l.parent_id);});'
+    + 'var k=Object.keys(g).filter(function(s){return g[s].length>1;})[0];return g[k][0];})()');
+  const B = W('window.__B=(function(){var g={};db.parent_links.forEach(function(l){'
+    + '(g[l.student_id]=g[l.student_id]||[]).push(l.parent_id);});'
+    + 'var k=Object.keys(g).filter(function(s){return g[s].length>1;})[0];return g[k][1];})()');
+  const KID = W('window.__K=(function(){var g={};db.parent_links.forEach(function(l){'
+    + '(g[l.student_id]=g[l.student_id]||[]).push(l.parent_id);});'
+    + 'return Number(Object.keys(g).filter(function(s){return g[s].length>1;})[0]);})()');
+  /* فقط ولی الف پرداخت می‌کند */
+  W('db.parent_subscriptions.filter(function(s){return s.user_id===' + B + ';})'
+    + ".forEach(function(s){remove('parent_subscriptions',s.id);})");
+  W('db.parent_subscriptions.filter(function(s){return s.user_id===' + A + ';})'
+    + ".forEach(function(s){update('parent_subscriptions',s.id,"
+    + "{status:'active',end_date:addDaysISO(todayISO(),200),paid_at:todayISO()});})");
+  if(!W('db.parent_subscriptions.some(function(s){return s.user_id===' + A + ';})'))
+    W("insert('parent_subscriptions',{user_id:" + A + ",plan:'yearly',amount:2200000,"
+      + "status:'active',start_date:todayISO(),end_date:addDaysISO(todayISO(),200),paid_at:todayISO()})");
+  assert(W('!!studentSubscription(' + KID + ')'), 'اشتراک دانش‌آموز پیدا نشد');
+  assert(W('studentSubscription(' + KID + ').payerId') === A, 'پرداخت‌کننده نادرست');
+  assert(W('effectiveParentAccess(' + B + ').active') === true, 'ولی دوم دسترسی ندارد');
+  assert(W('effectiveParentAccess(' + B + ').own') === false, 'ولی دوم نباید صاحب اشتراک باشد');
+  assert(!!W('effectiveParentAccess(' + B + ').via'), 'مسیر دسترسی مشخص نیست');
+});
+
+test('پنل ولی دوم قفل نیست و صفحه‌ها باز است', () => {
+  const B = W('window.__B');
+  W("S.user=byId('users'," + B + ");S.persona='parent';S.boss=null;S.filters={}");
+  assert(W('parentLocked()') === false, 'پنل ولی دوم قفل است');
+  W("S.route='children'");
+  const o = W('renderRoute()');
+  assert(!/دسترسی مجاز نیست/.test(o) && o.length > 500, 'صفحه فرزندان باز نشد');
+});
+
+test('صفحه اشتراک دلیل باز بودن را توضیح می‌دهد', () => {
+  const B = W('window.__B');
+  W("S.user=byId('users'," + B + ");S.persona='parent';S.boss=null;S.route='subscription';S.filters={}");
+  const o = W('renderRoute()');
+  assert(o.indexOf('اشتراک شما از پیش فعال است') > -1, 'کارت توضیح نمایش داده نشد');
+  assert(o.indexOf('دانش‌آموز</b> تعلق دارد') > -1, 'توضیح تعلق اشتراک نیست');
+});
+
+test('اگر هیچ ولی‌ای نپردازد، دسترسی قطع می‌شود', () => {
+  const A = W('window.__A'), B = W('window.__B'), KID = W('window.__K');
+  W("db.parent_subscriptions.forEach(function(s){update('parent_subscriptions',s.id,"
+    + "{status:'expired',end_date:'2020-01-01'});})");
+  W('effectiveParentAccess(' + A + ');effectiveParentAccess(' + B + ')');
+  W("db.parent_subscriptions.forEach(function(s){update('parent_subscriptions',s.id,"
+    + "{status:'expired',end_date:'2020-01-01'});})");
+  assert(!W('studentSubscription(' + KID + ')'), 'اشتراک فعال نباید بماند');
+  assert(W('effectiveParentAccess(' + B + ').active') === false, 'ولی دوم هنوز دسترسی دارد');
+  assert(W('effectiveParentAccess(' + A + ').active') === false, 'ولی اول هنوز دسترسی دارد');
+});
+
+test('ولیِ بی‌ربط از اشتراک دیگران سود نمی‌برد', () => {
+  const A = W('window.__A');
+  W('db.parent_subscriptions.filter(function(s){return s.user_id===' + A + ';})'
+    + ".forEach(function(s){update('parent_subscriptions',s.id,"
+    + "{status:'active',end_date:addDaysISO(todayISO(),200)});})");
+  const far = W('(function(){var kidsA={};db.parent_links.filter(function(l){'
+    + 'return l.parent_id===' + A + ';}).forEach(function(l){kidsA[l.student_id]=1;});'
+    + "var o=db.users.find(function(u){return u.role==='parent'&&"
+    + '!db.parent_links.some(function(l){return l.parent_id===u.id&&kidsA[l.student_id];});});'
+    + 'return o?o.id:null;})()');
+  if(far) assert(W('effectiveParentAccess(' + far + ').active') === false, 'ولی بی‌ربط دسترسی گرفت');
+});
+
 console.log('\n▸ پلان فروش و پشتیبان‌گیری');
 
 test('توابع پلان و پشتیبان تعریف شده‌اند', () => {

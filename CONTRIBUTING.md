@@ -57,6 +57,7 @@ node scripts/dev-server.js   # سرور توسعه روی درگاه ۳۰۰۰
 | شناسنامه دانش‌آموز (تب) | `studentProfileCard` | `17-student-record.js` |
 | وضعیت مدارس · خروجی · اطلاعیه سراسری | `schoolsOverview` · `exportData` · `broadcastAnnouncement` | `37-admin-tools.js` |
 | پلان فروش · پشتیبان و بازیابی | `viewPlans` · `buildBackup` · `restoreBackup` | `38-plans-backup.js` |
+| اشتراک مشترک پدر و مادر | `studentSubscription` · `effectiveParentAccess` | `23-subscription.js` |
 
 **راه سریع‌تر:** نام صفحه را در برنامه ببینید، بعد `grep` بزنید:
 ```bash
@@ -235,6 +236,10 @@ test('توضیح فارسی آنچه بررسی می‌شود', () => {
 
 > ⚠️ کاربر را با **نام** جستجو نکنید؛ دادهٔ نمونه نام تکراری دارد.
 > با شناسه یا کد ملی جستجو کنید.
+
+> ⚠️ **اشتراک به دانش‌آموز تعلق دارد، نه به ولی.** اگر پدر پرداخت کرده،
+> مادر هم دسترسی دارد. برای بررسی دسترسی از `effectiveParentAccess`
+> استفاده کنید، نه `subOf` مستقیم.
 
 > ⚠️ هنگام ساخت خروجی csv حتماً پیشوند BOM بگذارید و سلول‌هایی را که با
 > `=` یا `+` شروع می‌شوند خنثی کنید (تابع `csvCell` این کار را می‌کند).

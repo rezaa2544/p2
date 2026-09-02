@@ -17,7 +17,19 @@ const SCHOOL_DEFS=[['دبیرستان شهید بهشتی','SH-101','متوسط�
 let db, ids={};
 const nid=()=>String(1000000000+Math.floor(rng()*899999999));
 function nextId(c){ids[c]=(ids[c]||0)+1;return ids[c];}
-function add(c,o){o.id=nextId(c);db[c].push(o);return o;}
+/**
+ * افزودن رکورد به دادهٔ نمونه.
+ * ⚠️ برخلاف insert()، این تابع در دفترچهٔ عملیات ثبت نمی‌شود چون
+ * دادهٔ پایه است نه تغییر کاربر. اما باید ایندکس را باطل کند، وگرنه
+ * اگر ایندکسی پیش از پایان تولید داده ساخته شده باشد کهنه می‌ماند و
+ * byId() رکوردهای تازه را پیدا نمی‌کند.
+ */
+function add(c,o){
+  o.id=nextId(c);
+  db[c].push(o);
+  if(typeof idxInvalidate==='function') idxInvalidate(c);
+  return o;
+}
 
 function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const iso=daysAgoISO(d);const w=new Date(iso).getDay();if(w===4||w===5)continue;out.push(iso);}return out;}
 

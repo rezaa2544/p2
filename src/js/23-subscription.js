@@ -78,11 +78,67 @@ function subOf(userId,createTrial){
   const daysLeft=row.end_date?Math.max(0,Math.round((new Date(row.end_date)-new Date(todayISO()))/864e5)):0;
   return Object.assign({},row,{active,daysLeft,trial:row.status==='trial'});
 }
+/* ═══════════════════════════════════════════════════════════════════
+   قاعدهٔ کسب‌وکار: اشتراک به دانش‌آموز تعلق دارد، نه به ولی
+   ═══════════════════════════════════════════════════════════════════
+   خواستهٔ صریح کاربر (نکتهٔ بازاریابی):
+   «کافی است پدر یا مادر یکی‌شان اشتراک را بپردازد؛ هر دو دسترسی
+   پیدا می‌کنند. لازم نیست برای یک دانش‌آموز هم پدر و هم مادر
+   جداگانه پرداخت کنند.»
+
+   پس معیار قفل بودن پنل، اشتراکِ خودِ ولی نیست؛ بلکه این است که
+   «آیا برای دست‌کم یکی از فرزندان او، کسی اشتراک فعال دارد؟»
+   ═══════════════════════════════════════════════════════════════════ */
+
+/**
+ * اشتراک فعالِ یک دانش‌آموز را پیدا می‌کند — از میان همهٔ اولیای او.
+ * خروجی: شیء اشتراک به‌همراه شناسه و نام پرداخت‌کننده، یا null.
+ */
+function studentSubscription(studentId){
+  var links = db.parent_links.filter(function(l){ return l.student_id === Number(studentId); });
+  for(var i = 0; i < links.length; i++){
+    /* createTrial عمداً false است: بررسی وضعیت نباید عوارض جانبی داشته باشد */
+    var sub = subOf(links[i].parent_id, false);
+    if(sub && sub.active)
+      return { sub: sub, payerId: links[i].parent_id,
+               payer: byId('users', links[i].parent_id), relation: links[i].relation || null };
+  }
+  return null;
+}
+
+/**
+ * دسترسی مؤثر یک ولی: اشتراک خودش، یا اشتراک هم‌ولیِ یکی از فرزندانش.
+ * این تابع قلب قاعدهٔ «یک اشتراک برای هر دانش‌آموز» است.
+ */
+function effectiveParentAccess(parentId){
+  parentId = parentId || (S.user && S.user.id);
+  if(!parentId) return { active:false, own:false, via:null };
+
+  /* ۱. اشتراک هم‌ولی زودتر بررسی می‌شود.
+     چرا؟ چون subOf(id, true) در نخستین فراخوانی خودش دورهٔ آزمایشی
+     می‌سازد. اگر اول آن را صدا بزنیم، ولیِ دومی که هم‌ولی‌اش پرداخت
+     کرده بی‌جهت یک دورهٔ آزمایشی مصرف می‌کند و در گزارش‌ها به‌اشتباه
+     «صاحب اشتراک» شمرده می‌شود. */
+  var kids = db.parent_links.filter(function(l){ return l.parent_id === parentId; });
+  for(var i = 0; i < kids.length; i++){
+    var found = studentSubscription(kids[i].student_id);
+    if(found && found.payerId !== parentId)
+      return { active:true, own:false, via:found, sub:found.sub,
+               student: byId('users', kids[i].student_id) };
+  }
+
+  /* ۲. اشتراک خودش — اینجا در نخستین ورود دورهٔ آزمایشی ساخته می‌شود */
+  var own = subOf(parentId, true);
+  if(own && own.active) return { active:true, own:true, via:null, sub:own };
+  return { active:false, own:false, via:null, sub:own };
+}
+
 /** آیا پنل اولیای کاربر جاری قفل است؟ */
 const parentLocked=()=>{
   if(activePersona()!=='parent')return false;
   if(!subSettings().paywall_enabled)return false;
-  return !subOf(S.user.id,true).active;   // نخستین ورود ⇒ مهلت تست رایگان
+  /* اشتراک به دانش‌آموز تعلق دارد: اگر هم‌ولی پرداخت کرده باشد، باز است */
+  return !effectiveParentAccess(S.user.id).active;
 };
 
 /* ---------------- داده نمونه ---------------- */
@@ -156,6 +212,25 @@ function panelPicker(){
 function viewSubscription(){
   const s=subOf(S.user.id,true);
   const hist=db.subscription_payments.filter(x=>x.user_id===S.user.id).sort((a,b)=>b.id-a.id);
+  /* اگر دسترسی از راه هم‌ولی است، به کاربر توضیح داده می‌شود که چرا
+     پنلش باز است و لازم نیست دوباره پرداخت کند */
+  const acc = effectiveParentAccess(S.user.id);
+  let shared = '';
+  if(acc.active && !acc.own && acc.via){
+    const payer = acc.via.payer || {};
+    const kid = acc.student || {};
+    shared = '<div class="card" style="margin-bottom:14px;background:linear-gradient(120deg,var(--green-soft),#fff)">'
+      + '<div class="card-body row"><div style="font-size:32px">🤝</div>'
+      + '<div style="flex:1"><b style="font-size:15px">اشتراک شما از پیش فعال است</b>'
+      + '<div class="small muted" style="line-height:2">'
+      + esc(payer.full_name || 'ولی دیگر')
+      + (kid.full_name ? ' برای <b>' + esc(kid.full_name) + '</b>' : '')
+      + ' اشتراک را پرداخت کرده است. اشتراک به <b>دانش‌آموز</b> تعلق دارد، '
+      + 'پس نیازی به پرداخت دوباره ندارید و همهٔ بخش‌ها برایتان باز است.'
+      + (acc.via.sub && acc.via.sub.daysLeft
+          ? '<br>اعتبار تا <b>' + fa(acc.via.sub.daysLeft) + '</b> روز دیگر.' : '')
+      + '</div></div></div></div>';
+  }
   let plans='';
   planList().forEach(function(p){
     plans+='<div class="card" style="text-align:center"><div class="card-head" style="justify-content:center"><h3>'+esc(p.title)+'</h3></div>'
@@ -165,7 +240,7 @@ function viewSubscription(){
       +'<button class="btn" style="width:100%;justify-content:center" data-act="sub-pay" data-r="'+p.code+'">'
       +(s.active?'➕ تمدید':'💳 پرداخت و فعال‌سازی')+'</button></div></div>';
   });
-  return '<div class="card" style="margin-bottom:14px;background:linear-gradient(120deg,'+(s.active?'var(--green-soft)':'var(--amber-soft)')+',#fff)">'
+  return shared+'<div class="card" style="margin-bottom:14px;background:linear-gradient(120deg,'+(s.active?'var(--green-soft)':'var(--amber-soft)')+',#fff)">'
     +'<div class="card-body"><div class="row"><div style="font-size:34px">'+(s.active?'✅':'🔒')+'</div><div>'
     +'<b style="font-size:16px">'+(s.active?'اشتراک پنل اولیا فعال است':'اشتراک پنل اولیا فعال نیست')+'</b>'
     +'<div class="small muted" style="line-height:2">'
