@@ -341,6 +341,120 @@ test('سابقه و فعالیت فقط برای سوپرادمین باز اس�
   }
 });
 
+console.log('\n▸ اعتبارسنجی دیداری فرم‌ها');
+
+test('توابع اعتبارسنجی تعریف شده‌اند', () => {
+  assert(W("typeof need==='function'&&typeof needAll==='function'"
+    + "&&typeof invalid==='function'&&typeof markFieldError==='function'"
+    + "&&typeof clearFieldErrors==='function'&&typeof focusField==='function'"), 'توابع ناقص');
+});
+
+test('فیلد خالی قرمز می‌شود و پیام می‌گیرد', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null;S.route='classes';S.filters={}");
+  W('classModal(null)');
+  W("document.getElementById('c_name').value=''");
+  const n0 = W('db.classes.length');
+  W("(function(){var el=document.createElement('button');el.setAttribute('data-act','class-save');"
+    + "document.body.appendChild(el);el.click();el.remove();})()");
+  assert(W('db.classes.length') === n0, 'با فیلد خالی ذخیره شد');
+  assert(W("document.getElementById('c_name').classList.contains('has-error')"), 'کادر قرمز نشد');
+  assert(W("!!document.querySelector('.field-error-msg')"), 'پیام زیر فیلد نیامد');
+});
+
+test('نشانه خطا با تایپ کاربر پاک می‌شود', () => {
+  W("(function(){var el=document.getElementById('c_name');el.value='کلاس آزمایشی';"
+    + "el.dispatchEvent(new window.Event('input',{bubbles:true}));})()");
+  assert(!W("document.getElementById('c_name').classList.contains('has-error')"), 'کادر قرمز پاک نشد');
+  W('closeModal()');
+});
+
+test('چند فیلد خالی هم‌زمان قرمز می‌شوند', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null;S.route='schools';S.filters={}");
+  W('schoolModal(null)');
+  W("document.getElementById('m_name').value='';document.getElementById('m_code').value=''");
+  const n0 = W('db.schools.length');
+  W("(function(){var el=document.createElement('button');el.setAttribute('data-act','school-save');"
+    + "document.body.appendChild(el);el.click();el.remove();})()");
+  assert(W('db.schools.length') === n0, 'با فیلد خالی ذخیره شد');
+  assert(W("document.querySelectorAll('.has-error').length") >= 2, 'هر دو فیلد قرمز نشدند');
+  W('closeModal()');
+});
+
+test('اعتبارسنجی کد ملی و موبایل کاربر', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null;S.route='users';S.filters={}");
+  W('userModal(null)');
+  if(!W("!!document.getElementById('u_nid')")) return;
+  W("document.getElementById('u_name').value='آزمون اعتبار'");
+  if(W("!!document.getElementById('u_user')")) W("document.getElementById('u_user').value='azm_val'");
+  W("document.getElementById('u_nid').value='1234567890'");
+  const n0 = W('db.users.length');
+  W("(function(){var el=document.createElement('button');el.setAttribute('data-act','user-save');"
+    + "document.body.appendChild(el);el.click();el.remove();})()");
+  assert(W('db.users.length') === n0, 'کد ملی نامعتبر ذخیره شد');
+  assert(W("document.getElementById('u_nid').classList.contains('has-error')"), 'فیلد کد ملی قرمز نشد');
+  W('closeModal()');
+});
+
+console.log('\n▸ نوع چیدمان کلاس: کلاس‌محور یا رشته‌محور');
+
+test('فرم کلاس گزینه نوع چیدمان دارد', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null;S.route='classes';S.filters={}");
+  W('classModal(null)');
+  const m = W("(document.getElementById('modal')||{}).innerHTML||''");
+  assert(m.indexOf('c_mode') > -1, 'گزینه نوع چیدمان نیست');
+  assert(m.indexOf('کلاس‌محور') > -1 && m.indexOf('رشته‌محور') > -1, 'دو گزینه نیستند');
+  W('closeModal()');
+});
+
+test('کلاس‌محور: رشته پنهان و اختیاری است', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null;S.route='classes';S.filters={}");
+  W('classModal(null)');
+  W("document.getElementById('c_name').value='ششم آزمون';document.getElementById('c_grade').value='ششم'");
+  W("(function(){var el=document.getElementById('c_mode');el.value='class';"
+    + "el.dispatchEvent(new window.Event('change',{bubbles:true}));})()");
+  assert(W("document.getElementById('c_fieldwrap_cls').style.display") === 'none', 'رشته پنهان نشد');
+  const n0 = W('db.classes.length');
+  W("(function(){var el=document.createElement('button');el.setAttribute('data-act','class-save');"
+    + "document.body.appendChild(el);el.click();el.remove();})()");
+  assert(W('db.classes.length') === n0 + 1, 'کلاس‌محور بدون رشته ذخیره نشد');
+  assert(W('db.classes[db.classes.length-1].class_mode') === 'class', 'نوع ذخیره نشد');
+  assert(W('db.classes[db.classes.length-1].grade_level') === 6, 'پایه استنتاج نشد');
+});
+
+test('رشته‌محور: رشته الزامی است', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null;S.route='classes';S.filters={}");
+  W('classModal(null)');
+  W("document.getElementById('c_name').value='دهم آزمون';document.getElementById('c_grade').value='دهم'");
+  W("(function(){var el=document.getElementById('c_mode');el.value='field';"
+    + "el.dispatchEvent(new window.Event('change',{bubbles:true}));})()");
+  W("document.getElementById('c_field').value=''");
+  const n0 = W('db.classes.length');
+  W("(function(){var el=document.createElement('button');el.setAttribute('data-act','class-save');"
+    + "document.body.appendChild(el);el.click();el.remove();})()");
+  assert(W('db.classes.length') === n0, 'بدون رشته ذخیره شد');
+  assert(W("document.getElementById('c_field').classList.contains('has-error')"), 'فیلد رشته قرمز نشد');
+  W("(function(){var el=document.getElementById('c_field');el.value='علوم تجربی';"
+    + "el.dispatchEvent(new window.Event('change',{bubbles:true}));})()");
+  W("(function(){var el=document.createElement('button');el.setAttribute('data-act','class-save');"
+    + "document.body.appendChild(el);el.click();el.remove();})()");
+  assert(W('db.classes.length') === n0 + 1, 'با رشته ذخیره نشد');
+  assert(W('db.classes[db.classes.length-1].field') === 'علوم تجربی', 'رشته ثبت نشد');
+  assert(W('db.classes[db.classes.length-1].class_mode') === 'field', 'نوع ذخیره نشد');
+});
+
+test('حالت خودکار نوع را از پایه حدس می‌زند', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null;S.route='classes';S.filters={}");
+  W('classModal(null)');
+  W("document.getElementById('c_name').value='یازدهم خودکار';document.getElementById('c_grade').value='یازدهم'");
+  W("document.getElementById('c_mode').value=''");
+  if(W("!!document.getElementById('c_field')")) W("document.getElementById('c_field').value='ریاضی فیزیک'");
+  const n0 = W('db.classes.length');
+  W("(function(){var el=document.createElement('button');el.setAttribute('data-act','class-save');"
+    + "document.body.appendChild(el);el.click();el.remove();})()");
+  assert(W('db.classes.length') === n0 + 1, 'ذخیره نشد');
+  assert(W('db.classes[db.classes.length-1].class_mode') === 'field', 'پایه ۱۱ باید رشته‌محور شود');
+});
+
 console.log('\n▸ چرخه سال تحصیلی و چیدمان کلاس');
 
 test('توابع چرخه سال تحصیلی تعریف شده‌اند', () => {

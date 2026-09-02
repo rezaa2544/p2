@@ -81,9 +81,9 @@ document.addEventListener('click',e=>{
      db.classes.filter(c=>c.school_id===sid).forEach(c=>remove('classes',c.id));
      remove('schools',sid);closeModal();toast('مدرسه حذف شد','ok');render();},
    'school-save'(){const s=window._edit;
-     if(!V('m_name')||!V('m_code')){toast('نام و کد مدرسه الزامی است','err');return;}
+     if(needAll([['m_name','نام و کد مدرسه الزامی است'],['m_code','نام و کد مدرسه الزامی است']]))return;
      const pid=Number(V('m_prov'))||null, cid=Number(V('m_county'))||null, did=Number(V('m_district'))||null;
-     if(!pid||!cid){toast('استان و شهرستان را انتخاب کنید','err');return;}
+     if(needAll([['m_prov','استان'],['m_county','شهرستان']]))return;
      if(db.schools.some(x=>x.code===V('m_code')&&x.id!==s.id)){toast('کد مدرسه تکراری است','err');return;}
      const dist=did?byId('districts',did):null;
      const data={name:V('m_name'),code:V('m_code'),
@@ -96,8 +96,8 @@ document.addEventListener('click',e=>{
 
      const mgName=V('mg_name'), mgUser=V('mg_user'), mgNid=V('mg_nid'), mgPhone=V('mg_phone'), mgPass=V('mg_pass');
      const existing=s.id?db.users.find(u=>u.school_id===s.id&&u.role==='manager'):null;
-     if(!s.id&&(!mgName||!mgUser)){toast('نام و نام کاربری مدیر مدرسه الزامی است','err');return;}
-     if(mgNid&&!validNid(mgNid)){toast('کد ملی مدیر معتبر نیست','err');return;}
+     if(!s.id&&needAll([['mg_name','نام مدیر'],['mg_user','نام کاربری مدیر']]))return;
+     if(invalid('mg_nid',mgNid&&!validNid(mgNid),'کد ملی مدیر معتبر نیست'))return;
      if(mgNid&&nidOwner(mgNid,existing?existing.id:0)){toast('این کد ملی قبلاً برای فرد دیگری ثبت شده است','err');return;}
      if(mgUser&&db.users.some(u=>u.username===mgUser&&(!existing||u.id!==existing.id))){toast('نام کاربری مدیر تکراری است','err');return;}
 
@@ -122,8 +122,12 @@ document.addEventListener('click',e=>{
    'user-del'(){confirmModal('حذف این کاربر؟ این عملیات قابل بازگشت نیست.','user-del-ok',id);},
    'user-del-ok'(){remove('users',window._delId);closeModal();toast('کاربر حذف شد','ok');render();},
    'user-save'(){const x=window._edit;
-     if(!V('u_name')||!V('u_user')&&!x.id){toast('نام و نام کاربری الزامی است','err');return;}
+     if(need('u_name','نام و نام خانوادگی الزامی است'))return;
+     if(!x.id&&need('u_user','نام کاربری الزامی است'))return;
      const schoolId=$('#u_school')?Number(V('u_school')):(x.school_id||S.user.school_id);
+     /* کد ملی اختیاری است، ولی اگر وارد شد باید معتبر باشد */
+     if(invalid('u_nid',V('u_nid')&&!validNid(V('u_nid')),'کد ملی معتبر نیست'))return;
+     if(invalid('u_phone',V('u_phone')&&!/^09\d{9}$/.test(V('u_phone')),'شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم باشد'))return;
      const data={full_name:V('u_name'),role:V('u_role'),national_id:V('u_nid'),phone:V('u_phone'),active:Number(V('u_active')),school_id:schoolId};
      if(V('u_pass'))data.password=V('u_pass');
      let uid=x.id;
@@ -140,8 +144,14 @@ document.addEventListener('click',e=>{
    'class-del'(){confirmModal('حذف این کلاس؟ ثبت‌نام‌های مرتبط نیز حذف می‌شوند.','class-del-ok',id);},
    'class-del-ok'(){const cid=window._delId;db.enrollments.filter(e=>e.class_id===cid).forEach(e=>remove('enrollments',e.id));remove('classes',cid);closeModal();toast('کلاس حذف شد','ok');render();},
    'class-save'(){const c=window._edit;
-     if(!V('c_name')){toast('نام کلاس الزامی است','err');return;}
-     const data={name:V('c_name'),grade:V('c_grade'),field:V('c_field'),room:V('c_room'),capacity:Number(V('c_cap'))||30,homeroom_teacher_id:V('c_ht')?Number(V('c_ht')):null};
+     if(need('c_name','نام کلاس الزامی است'))return;
+     /* نوع چیدمان: انتخاب مدیر، وگرنه حدس از روی پایه */
+     const _md=V('c_mode')||'';
+     const _gl=(typeof gradeFromName==='function')?gradeFromName(V('c_grade')||V('c_name')):null;
+     const _mode=_md||(_gl&&Number(_gl)>=10?'field':_gl?'class':'');
+     /* در کلاس‌محور رشته معنا ندارد؛ در رشته‌محور الزامی است */
+     if(invalid('c_field',_mode==='field'&&!V('c_field'),'در کلاس رشته‌محور، انتخاب رشته الزامی است'))return;
+     const data={name:V('c_name'),grade:V('c_grade'),field:_mode==='class'?null:(V('c_field')||null),class_mode:_mode||null,grade_level:_gl||null,room:V('c_room'),capacity:Number(V('c_cap'))||30,homeroom_teacher_id:V('c_ht')?Number(V('c_ht')):null};
      if($('#c_school'))data.school_id=Number(V('c_school'));else data.school_id=c.school_id;
      if(c.id)update('classes',c.id,data);else insert('classes',data);
      closeModal();toast('ذخیره شد','ok');render();},
@@ -151,11 +161,11 @@ document.addEventListener('click',e=>{
    'subject-del'(){confirmModal('حذف این درس؟','subject-del-ok',id);},
    'subject-del-ok'(){remove('subjects',window._delId);closeModal();toast('درس حذف شد','ok');render();},
    'subject-save'(){const s=window._edit;
-     if(!V('s_name')){toast('نام درس الزامی است','err');return;}
+     if(need('s_name','نام درس الزامی است'))return;
      const grade=V('s_grade')||'';
      const lv=levelOfGrade(grade);
      const field=needsField(lv)?(V('s_field')||''):'';
-     if(needsField(lv)&&!field){toast('برای پایه‌های متوسطه دوم، انتخاب رشته الزامی است','err');return;}
+     if(invalid('c_field',needsField(lv)&&!field,'برای پایه‌های متوسطه دوم، انتخاب رشته الزامی است'))return;
      const data={name:V('s_name'),code:V('s_code'),weekly_hours:Number(V('s_h'))||2,grade,field,
        school_id:$('#s_school')?Number(V('s_school')):s.school_id};
      if(s.id)update('subjects',s.id,data);else insert('subjects',data);
@@ -179,9 +189,9 @@ document.addEventListener('click',e=>{
    },
    'subject-import-save'(){
      const grade=V('im_grade'), lv=V('im_level');
-     if(!lv||!grade){toast('مقطع و پایه را انتخاب کنید','err');return;}
+     if(needAll([['s_level','مقطع'],['s_grade','پایه']]))return;
      const field=needsField(lv)?V('im_field'):'';
-     if(needsField(lv)&&!field){toast('شاخه و رشته را انتخاب کنید','err');return;}
+     if(invalid('s_field',needsField(lv)&&!field,'شاخه و رشته را انتخاب کنید'))return;
      const sid=$('#im_school')?Number(V('im_school')):S.user.school_id;
      const books=booksFor(grade,field);
      if(!books.length){toast('برای این انتخاب کتابی تعریف نشده','err');return;}
@@ -290,8 +300,8 @@ document.addEventListener('click',e=>{
    },
    'ann-broadcast-ok'(){
      const t=(V('bc_title')||'').trim(), b=(V('bc_body')||'').trim();
-     if(t.length<3){toast('عنوان کوتاه است','err');return;}
-     if(b.length<5){toast('متن اطلاعیه کوتاه است','err');return;}
+     if(invalid('bc_title',t.length<3,'عنوان باید دست‌کم سه نویسه باشد'))return;
+     if(invalid('bc_body',b.length<5,'متن اطلاعیه باید دست‌کم پنج نویسه باشد'))return;
      const n=broadcastAnnouncement(t,b,V('bc_scope')||'all');
      closeModal(); toast(fa(n)+' اطلاعیه ثبت شد','ok'); render();
    },
@@ -376,7 +386,7 @@ document.addEventListener('click',e=>{
      const hd=esc(school.name||'')+(school.code?' — کد '+esc(school.code):'');
      if(kind==='grade-sheet'){
        const cls=byId('classes',Number(V('fm_class')));
-       if(!cls){toast('کلاس را انتخاب کنید','err');return;}
+       if(invalid('fm_class',!cls,'کلاس را انتخاب کنید'))return;
        const subj=V('fm_subject')?byId('subjects',Number(V('fm_subject'))):null;
        const term=V('fm_term')||TERMS[0];
        const d=formGradeSheet(cls,subj,term);
@@ -387,7 +397,7 @@ document.addEventListener('click',e=>{
      }
      else if(kind==='exam-minutes'){
        const e=V('fm_exam')?byId('exams',Number(V('fm_exam'))):null;
-       if(!e){toast('جلسه امتحان را انتخاب کنید','err');return;}
+       if(invalid('fm_exam',!e,'جلسه امتحان را انتخاب کنید'))return;
        const d=formExamMinutes(e);
        printableDoc({title:'صورت‌جلسه برگزاری امتحان',school:hd,
          subtitle:esc(d.subj.name||'')+' — کلاس '+esc(d.cls.name||''),body:d.body,
@@ -411,7 +421,7 @@ document.addEventListener('click',e=>{
    },
    'sms-send'(){
      const sid=S.user.school_id, text=V('sm_text')||'';
-     if(text.trim().length<4){toast('متن پیام کوتاه است','err');return;}
+     if(invalid('sm_text',text.trim().length<4,'متن پیام باید دست‌کم چهار نویسه باشد'))return;
      const targets=smsTargets(sid,V('sm_aud'),V('sm_class'));
      if(!targets.length){toast('گیرنده‌ای با شماره معتبر یافت نشد','err');return;}
      const parts=smsParts(text), need=targets.length*parts;
@@ -477,7 +487,7 @@ document.addEventListener('click',e=>{
      const tid=S.user.role==='teacher'?S.user.id
        :(db.users.find(u=>u.role==='teacher'&&u.school_id===S.user.school_id)||{}).id;
      if(!tid){toast('دبیری در مدرسه نیست','err');return;}
-     if(!date){toast('تاریخ را وارد کنید','err');return;}
+     if(need('ms_date','تاریخ را وارد کنید'))return;
      batchWrites(()=>{
        for(let i=0;i<count;i++){
          const t=toHHMMP(mins);
@@ -589,7 +599,7 @@ document.addEventListener('click',e=>{
    'cls-parallel-ok'(){
      const sid=S.user.school_id;
      const g=Number(V('cp_grade'))||0;
-     if(!g){toast('پایه را وارد کنید','err');return;}
+     if(need('cp_grade','پایه را وارد کنید'))return;
      const fl=(V('cp_field')||'').trim()||null;
      const sfx=V('cp_suffix')||'';
      const c=createParallelClass(sid,g,fl,sfx);
@@ -653,7 +663,7 @@ document.addEventListener('click',e=>{
    },
    'tr-send'(){
      const nid=V('tq_nid');
-     if(!validNid(nid)){toast('کد ملی معتبر نیست','err');return;}
+     if(invalid('tq_nid',!validNid(nid),'کد ملی معتبر نیست'))return;
      const st=db.users.find(u=>u.role==='student'&&u.national_id===nid);
      if(!st){toast('دانش‌آموزی با این کد ملی یافت نشد','err');return;}
      if(st.school_id===S.user.school_id){toast('این دانش‌آموز در همین مدرسه است','err');return;}
@@ -712,7 +722,7 @@ document.addEventListener('click',e=>{
    'ann-new'(){annModal();},
    'ann-edit'(){annModal(byId('announcements',id));},
    'ann-del'(){const a=byId('announcements',id);askDelete(`اطلاعیه «${a.title}» حذف شود؟`,()=>{remove('announcements',id);toast('اطلاعیه حذف شد','ok');render();});},
-   'ann-save'(){ if(!V('a_title')||!V('a_body')){toast('عنوان و متن الزامی است','err');return;}
+   'ann-save'(){ if(needAll([['a_title','عنوان و متن الزامی است'],['a_body','عنوان و متن الزامی است']]))return;
      const data={title:V('a_title'),body:V('a_body'),audience:V('a_aud')};
      if(window._annEdit)update('announcements',window._annEdit,data);
      else insert('announcements',Object.assign({school_id:S.user.school_id||null,created_by:S.user.id,created_at:todayISO()},data));
@@ -740,6 +750,22 @@ document.addEventListener('input',e=>{
 /* آبشاری: مقطع → پایه → شاخه → رشته (فرم درس و فرم افزودن کتاب) */
 document.addEventListener('change',e=>{
   const id=e.target.id;
+
+  /* فرم کلاس: تغییر نوع چیدمان ⇒ نمایش یا پنهان‌کردن رشته */
+  if(id==='c_mode'){
+    const wrap=document.getElementById('c_fieldwrap_cls');
+    const hint=document.getElementById('c_mode_hint');
+    const v=e.target.value;
+    if(wrap) wrap.style.display = (v==='class') ? 'none' : '';
+    if(hint) hint.innerHTML = v==='class'
+      ? 'کلاس‌محور: ترکیب دانش‌آموزان تا پایان سال ثابت است و رشته لازم نیست. '
+        +'هر سال چیدمان از نو انجام می‌شود.'
+      : v==='field'
+        ? 'رشته‌محور: دانش‌آموز تا پایان دوازدهم در همان رشته می‌ماند. '
+          +'اگر تعداد یک رشته زیاد شد، کلاس موازی بسازید.'
+        : 'نوع بر پایهٔ پایه‌ای که وارد می‌کنید تعیین می‌شود: پایهٔ ۱۰ به بالا رشته‌محور.';
+    return;
+  }
 
   /* چیدمان دستی: انتخاب کلاس مقصد برای یک دانش‌آموز */
   if(e.target.dataset&&e.target.dataset.f==='place'){

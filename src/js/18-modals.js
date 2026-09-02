@@ -76,13 +76,52 @@ function userModal(x){
     ${f('وضعیت',sel('u_active',[[1,'فعال'],[0,'غیرفعال']],x.active?1:0))}</div>`,'user-save'));
   window._edit=x;
 }
+/**
+ * فرم تعریف و ویرایش کلاس.
+ *
+ * گزینهٔ «نوع چیدمان» افزوده شد تا مدیر سردرگم نشود:
+ *  • کلاس‌محور (ابتدایی و متوسطه اول): ترکیب دانش‌آموزان تا پایان سال
+ *    ثابت است و رشته معنا ندارد.
+ *  • رشته‌محور (متوسطه دوم): دانش‌آموز تا پایان دوازدهم در همان رشته
+ *    می‌ماند و انتخاب رشته الزامی است.
+ * انتخاب پایه، نوع را خودکار پیشنهاد می‌دهد ولی مدیر می‌تواند عوض کند.
+ */
 function classModal(c){
   const isSuper=S.user.role==='superadmin';
   c=c||{name:'',grade:'',field:'',room:'',capacity:30,school_id:isSuper?db.schools[0].id:S.user.school_id};
   const teachers=db.users.filter(u=>u.role==='teacher'&&u.school_id===c.school_id);
+  /* نوع ذخیره‌شده، وگرنه حدس از روی پایه */
+  const gl = c.grade_level || (typeof gradeFromName==='function' ? gradeFromName(c.grade||c.name) : null);
+  const mode = c.class_mode || (gl && Number(gl)>=10 ? 'field' : gl ? 'class' : '');
+  /* همهٔ رشته‌های شاخه‌های متوسطه دوم */
+  var fieldOpts = [];
+  try{
+    if(typeof BRANCHES === 'object' && typeof fieldsOfBranch === 'function'){
+      Object.keys(BRANCHES).forEach(function(b){
+        (fieldsOfBranch(b) || []).forEach(function(x){
+          if(fieldOpts.indexOf(x) < 0) fieldOpts.push(x); });
+      });
+    }
+  }catch(e){ fieldOpts = []; }
   openModal(modalTpl(c.id?'ویرایش کلاس':'کلاس جدید',
-   `<div class="grid g2">${f('نام کلاس *',inp('c_name',c.name))}${f('پایه',inp('c_grade',c.grade))}
-    ${f('رشته',inp('c_field',c.field))}${f('اتاق',inp('c_room',c.room))}${f('ظرفیت',inp('c_cap',c.capacity,'number'))}
+   `<div class="card" style="box-shadow:none;border:1px solid var(--border);margin-bottom:12px">
+      <div class="card-body" style="padding:12px">
+        ${f('نوع چیدمان کلاس',sel('c_mode',[
+            ['','— خودکار بر پایهٔ پایه —'],
+            ['class','کلاس‌محور (ابتدایی و متوسطه اول)'],
+            ['field','رشته‌محور (متوسطه دوم)']
+          ],mode))}
+        <div class="small muted" style="line-height:2;margin-top:6px" id="c_mode_hint">
+          در مدارس <b>کلاس‌محور</b> ترکیب دانش‌آموزان تا پایان سال ثابت است و رشته لازم نیست.<br>
+          در مدارس <b>رشته‌محور</b> دانش‌آموز تا پایان دوازدهم در همان رشته می‌ماند و انتخاب رشته الزامی است.
+        </div>
+      </div></div>
+    <div class="grid g2">${f('نام کلاس *',inp('c_name',c.name))}${f('پایه',inp('c_grade',c.grade))}
+    <div id="c_fieldwrap_cls" style="${mode==='class'?'display:none':''}">${
+      fieldOpts.length
+        ? f('رشته',sel('c_field',[['','— بدون رشته —']].concat(fieldOpts.map(x=>[x,x])),c.field||''))
+        : f('رشته',inp('c_field',c.field))}</div>
+    ${f('اتاق',inp('c_room',c.room))}${f('ظرفیت',inp('c_cap',c.capacity,'number'))}
     ${f('سرپرست کلاس',sel('c_ht',[['','— انتخاب دبیر —']].concat(teachers.map(t=>[t.id,t.full_name])),c.homeroom_teacher_id||''))}
     ${isSuper?f('مدرسه',sel('c_school',db.schools.map(s=>[s.id,s.name]),c.school_id)):''}</div>`,'class-save'));
   window._edit=c;
