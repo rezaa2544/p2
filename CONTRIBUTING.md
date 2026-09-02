@@ -102,6 +102,7 @@ grep -rn "function viewGrades" src/js/
 | فیلد الزامی تازه‌ای بررسی کنم | `40-form-validation.js` — `need('id','پیام')` |
 | گزینه‌ای به فرم کلاس اضافه کنم | `18-modals.js` — `classModal` |
 | ظرف اسکرول‌دار تازه بسازم | `base.css` — `direction:ltr` روی ظرف، `rtl` روی فرزندان |
+| اسکرول صفحه اصلی را عوض کنم | `base.css` — `.main` اسکرول می‌کند، نه `body` |
 
 ---
 

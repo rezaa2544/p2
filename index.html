@@ -226,9 +226,18 @@ textarea.has-error{
    آن‌ها دوباره راست‌به‌چپ می‌شود تا متن فارسی درست بماند.
    ═══════════════════════════════════════════════════════════════════ */
 
-/* نوار پیمایش کل صفحه → سمت راست */
+/* نوار پیمایش کل صفحه → سمت راست
+   نکته: body هم ارتفاع ۱۰۰٪ دارد و هم راست‌به‌چپ است، پس اگر اسکرول
+   روی خودش بیفتد نوارش به چپ می‌رود. راه‌حل: اسکرول عمودی از body
+   گرفته و به ناحیهٔ محتوا (.main) داده می‌شود که جهتش چپ‌به‌راست است. */
 html{ direction:ltr }
-body{ direction:rtl }
+body{ direction:rtl; overflow:hidden }
+
+/* ناحیهٔ محتوا خودش اسکرول می‌کند و نوارش سمت راست می‌افتد */
+.app{ height:100vh; height:100dvh; overflow:hidden }
+.main{ direction:ltr; overflow-y:auto; overflow-x:hidden; height:100vh; height:100dvh;
+       -webkit-overflow-scrolling:touch }
+.main > *{ direction:rtl }
 
 /* منوی کناری: نوار سمت راستِ خودِ منو */
 .sidebar{ direction:ltr }
