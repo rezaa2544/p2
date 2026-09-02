@@ -54,6 +54,8 @@ function renderRoute(){
     case 'atrisk':return viewAtRisk();
     case 'meetings':return viewMeetings();
     case 'growth':return viewGrowth();
+    case 'formssms':return viewFormsSms();
+    case 'import':return viewImport();
     case 'dashboard':return S.user.role==='edu_office'?viewOfficeDash():viewDashboard();
     case 'schools':return viewSchools();
     case 'users':return viewUsers();

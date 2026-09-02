@@ -202,6 +202,98 @@ document.addEventListener('click',e=>{
      studentsOfClass(cid).forEach(s=>{const ex=_am?_day.get(s.id):db.attendance.find(x=>x.student_id===s.id&&x.date===date);
        if(ex)update('attendance',ex.id,{status:st});else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:s.id,date,status:st,note:null});});
      toast('همه دانش‌آموزان «'+ATT_FA[st]+'» ثبت شدند','ok');render();},
+   // ---- ویزارد ورود اکسل ----
+   'imp-back'(){
+     const st=S.imp||{step:0,entity:'students'};
+     S.imp=Object.assign({},st,{step:Math.max(0,st.step-1)});render();
+   },
+   'imp-reset'(){ S.imp={step:0,entity:'students'}; render(); },
+   'imp-preview'(){
+     const st=S.imp;
+     if(!st||!st.sheet){toast('ابتدا فایل را انتخاب کنید','err');return;}
+     const need=IMP_FIELDS[st.entity].filter(x=>x[2]).map(x=>x[0]);
+     const have=Object.values(st.mapping||{});
+     const miss=need.filter(k=>have.indexOf(k)<0);
+     if(miss.length){toast('فیلد الزامی نگاشت نشده است','err');return;}
+     const preview=validateImport(st.sheet.rows,st.mapping,st.entity);
+     S.imp=Object.assign({},st,{step:2,preview});render();
+   },
+   'imp-commit'(){
+     const st=S.imp;
+     if(!st||!st.preview){toast('داده‌ای برای ثبت نیست','err');return;}
+     if(!st.preview.counts.ok){toast('هیچ ردیف سالمی برای ثبت وجود ندارد','err');return;}
+     const result=commitImport(st);
+     S.imp=Object.assign({},st,{step:3,result});
+     toast('اطلاعات با موفقیت ثبت شد','ok'); render();
+   },
+   // ---- فرم‌های رسمی و پیامک ----
+   'form-print'(){
+     const kind=el.dataset.r, sid=S.user.school_id, school=byId('schools',sid)||{};
+     const hd=esc(school.name||'')+(school.code?' — کد '+esc(school.code):'');
+     if(kind==='grade-sheet'){
+       const cls=byId('classes',Number(V('fm_class')));
+       if(!cls){toast('کلاس را انتخاب کنید','err');return;}
+       const subj=V('fm_subject')?byId('subjects',Number(V('fm_subject'))):null;
+       const term=V('fm_term')||TERMS[0];
+       const d=formGradeSheet(cls,subj,term);
+       printableDoc({title:'لیست نمرات کلاس',school:hd,
+         subtitle:'کلاس '+esc(cls.name)+(subj?' — درس '+esc(subj.name):'')+' · '+esc(term)+' · سال تحصیلی '+yearTitle(),
+         body:d.body,
+         note:'ستون‌های «مستمر»، «پایانی» و «امضا» برای تکمیل دستی در کلاس در نظر گرفته شده است.'});
+     }
+     else if(kind==='exam-minutes'){
+       const e=V('fm_exam')?byId('exams',Number(V('fm_exam'))):null;
+       if(!e){toast('جلسه امتحان را انتخاب کنید','err');return;}
+       const d=formExamMinutes(e);
+       printableDoc({title:'صورت‌جلسه برگزاری امتحان',school:hd,
+         subtitle:esc(d.subj.name||'')+' — کلاس '+esc(d.cls.name||''),body:d.body,
+         note:'موارد تخلف یا حوادث جلسه: ______________________________________________________<br>'
+              +'تعداد حاضران: ______ تعداد غایبان: ______ تعداد برگه تحویلی: ______'});
+     }
+     else if(kind==='statistics'){
+       const d=formStatistics(sid);
+       printableDoc({title:'دفتر آمار مدرسه',school:hd,landscape:true,
+         subtitle:'سال تحصیلی '+yearTitle()+' · '+esc(school.level||'')+' '+esc(school.gender||''),
+         body:d.body});
+     }
+   },
+   'sms-new'(){
+     openModal(modalTpl('ارسال پیامک گروهی',
+       f('گیرندگان',sel('sm_aud',[['parents','همه اولیا'],['teachers','همه دبیران'],
+         ['students','همه دانش‌آموزان'],['class','اولیای یک کلاس']]))
+       +f('کلاس (در صورت انتخاب)',sel('sm_class',visibleClasses().map(c=>[c.id,c.name])))
+       +f('متن پیام','<textarea class="input" id="sm_text" rows="4" placeholder="اولیای گرامی، جلسه اولیا و مربیان روز چهارشنبه ساعت ۱۶ برگزار می‌شود."></textarea>'),
+       'sms-send'));
+   },
+   'sms-send'(){
+     const sid=S.user.school_id, text=V('sm_text')||'';
+     if(text.trim().length<4){toast('متن پیام کوتاه است','err');return;}
+     const targets=smsTargets(sid,V('sm_aud'),V('sm_class'));
+     if(!targets.length){toast('گیرنده‌ای با شماره معتبر یافت نشد','err');return;}
+     const parts=smsParts(text), need=targets.length*parts;
+     const wal=smsWalletOf(sid);
+     if(wal.balance<need){
+       toast('اعتبار پیامک کافی نیست. نیاز: '+fa(need)+' — موجودی: '+fa(wal.balance),'err');return;}
+     batchWrites(()=>{
+       targets.forEach(t=>insert('sms_log',{school_id:sid,user_id:t.id,phone:t.phone,body:text,
+         parts,status:'sent',created_at:todayISO()}));
+       update('sms_wallet',wal.w.id,{balance:wal.balance-need});
+     });
+     closeModal(); toast(fa(targets.length)+' پیامک ارسال شد ('+fa(need)+' اعتبار)','ok'); render();
+   },
+   'sms-topup'(){
+     const wal=smsWalletOf(S.user.school_id);
+     openModal(modalTpl('شارژ اعتبار پیامک',
+       f('تعداد پیامک',sel('sm_count',[500,1000,2000,5000].map(n=>[n,fa(n)+' پیامک — '+rial(n*wal.price)+' ریال'])))
+       +'<div class="small muted" style="line-height:2;margin-top:8px">پرداخت آزمایشی است و مبلغی کسر نمی‌شود.</div>',
+       'sms-topup-ok'));
+   },
+   'sms-topup-ok'(){
+     const n=Number(V('sm_count'))||500;
+     const wal=smsWalletOf(S.user.school_id);
+     update('sms_wallet',wal.w.id,{balance:Number(wal.w.balance)+n});
+     closeModal(); toast(fa(n)+' پیامک شارژ شد','ok'); render();
+   },
    // ---- افت تحصیلی / جلسات اولیا / رشد مدرسه ----
    'risk-notify'(){
      const st=byId('users',id); if(!st)return;
@@ -410,6 +502,48 @@ document.addEventListener('input',e=>{
 /* آبشاری: مقطع → پایه → شاخه → رشته (فرم درس و فرم افزودن کتاب) */
 document.addEventListener('change',e=>{
   const id=e.target.id;
+
+  /* ویزارد ورود اکسل: انتخاب نوع اطلاعات */
+  if(id==='imp_entity'){
+    S.imp=Object.assign({},S.imp||{step:0},{entity:e.target.value});
+    return;
+  }
+  /* ویزارد ورود اکسل: انتخاب فایل ⇒ خواندن و رفتن به مرحله نگاشت */
+  if(id==='imp_file'){
+    const file=e.target.files&&e.target.files[0];
+    if(!file)return;
+    const entity=(S.imp&&S.imp.entity)||'students';
+    const done=rows=>{
+      if(!rows||!rows.length){toast('فایل خالی یا ناخوانا است','err');return;}
+      const sheet=prepSheet(rows,entity);
+      if(!sheet.headers.length){toast('ردیف تیتر یافت نشد','err');return;}
+      S.imp={step:1,entity,sheet,mapping:sheet.mapping,fileName:file.name};
+      render();
+    };
+    const fail=err=>toast(err&&err.message?err.message:'خواندن فایل ممکن نشد','err');
+    if(/\.csv$/i.test(file.name)){
+      file.text().then(t=>done(parseCSV(t))).catch(fail);
+    } else {
+      if(!canReadXlsx()){toast('مرورگر شما xlsx را باز نمی‌کند؛ فایل را csv ذخیره کنید','err');return;}
+      parseXLSX(file).then(sheets=>{
+        const first=(sheets||[]).filter(x=>x.rows&&x.rows.length)[0];
+        done(first?first.rows:null);
+      }).catch(fail);
+    }
+    return;
+  }
+  /* ویزارد ورود اکسل: تغییر دستی نگاشت یک ستون */
+  if(e.target.dataset&&e.target.dataset.f==='impmap'){
+    const i=Number(e.target.dataset.i), val=e.target.value;
+    const st=S.imp; if(!st)return;
+    const map=Object.assign({},st.mapping);
+    /* هر فیلد فقط به یک ستون نگاشت شود */
+    if(val)Object.keys(map).forEach(k=>{ if(map[k]===val&&Number(k)!==i)delete map[k]; });
+    if(val)map[i]=val; else delete map[i];
+    S.imp=Object.assign({},st,{mapping:map});
+    render();
+    return;
+  }
   const optsOf=(list,ph)=>[`<option value="">${ph}</option>`,...list.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`)].join('');
 
   /* فرم درس: تغییر پایه → نمایش یا پنهان‌کردن شاخه/رشته */

@@ -320,7 +320,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[]};
+  db={sms_wallet:[],sms_log:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:'09120000000',active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -750,13 +750,13 @@ function bootstrapRequest(){
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
  superadmin:[['نظارت کلان',[['dashboard','📊','داشبورد مدیریتی'],['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه']]],['محتوا',[['subjects','📚','دروس'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['اداره آموزش و پرورش',[['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['کسب‌وکار',[['adminsubs','👨‍👩‍👦','اشتراک اولیا']]],['ارتباطات',[['notifications','🔔','اعلان‌ها']]]],
- manager:[['مدرسه من',[['meetings','📅','جلسات اولیا'],['growth','📈','رشد مدرسه'],['atrisk','📉','افت تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['dashboard','📊','داشبورد مدرسه'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ manager:[['مدرسه من',[['import','📥','ورود اطلاعات'],['formssms','🖨️','فرم‌ها و پیامک'],['meetings','📅','جلسات اولیا'],['growth','📈','رشد مدرسه'],['atrisk','📉','افت تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['dashboard','📊','داشبورد مدرسه'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  teacher:[['کلاس‌های من',[['meetings','📅','جلسات اولیا'],['dashboard','📊','داشبورد'],['classes','🏛️','کلاس‌ها'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['ثبت اطلاعات',[['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['امتحانات',[['exams','👁️','برنامه مراقبت من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['پرونده من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['calendar','🗓️','تقویم آموزشی']]],['امور مالی',[['mytuition','💰','شهریه من']]],['درخواست‌ها',[['leaves','📨','مرخصی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['اداره من',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  parent:[['فرزندان من',[['meetings','📅','جلسات اولیا'],['dashboard','📊','خلاصه وضعیت'],['family','🏠','خانواده و مدارس'],['children','👨‍👩‍👦','پرونده فرزندان'],['exams','📝','برنامه امتحانات'],['calendar','🗓️','تقویم آموزشی']]],['امور مالی',[['mytuition','💰','شهریه و اقساط']]],['درخواست‌ها',[['leaves','📨','درخواست مرخصی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌های مدرسه'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو با مدرسه']]]]
 };
-const TITLES={atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
+const TITLES={import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
 S.stack=[];
@@ -1373,7 +1373,7 @@ function renderLogin(){
 /** روت‌هایی که در NAV نیستند ولی برای نقش مجازند (زیرصفحه یا مقصد پیمایش) */
 var EXTRA_ROUTES = {
   superadmin: ['dashboard','adminsubs','officedash','officeschools','record','geo','offices','lifecycle'],
-  manager:    ['record','corrections','teachers','exams','tuition','lifecycle','atrisk','meetings','growth'],
+  manager:    ['record','corrections','teachers','exams','tuition','lifecycle','atrisk','meetings','growth','formssms','import'],
   teacher:    ['record','exams','meetings'],
   student:    ['record','mytuition','notifications','announcements','subscription'],
   parent:     ['children','record','family','mytuition','notifications','announcements','subscription','calendar','meetings'],
@@ -1470,6 +1470,17 @@ var ACTION_ROLES = {
   'promote-run':   ['manager','superadmin'],
   /* افت تحصیلی / جلسات / رشد */
   'risk-notify':   ['manager','superadmin','teacher'],
+  /* فرم‌های رسمی و پیامک — پیامک هزینه دارد، پس فقط مدیر */
+  'form-print':    ['manager','superadmin'],
+  /* ورود اکسل — رکورد انبوه می‌سازد، پس فقط مدیر */
+  'imp-preview':   ['manager','superadmin'],
+  'imp-commit':    ['manager','superadmin'],
+  'imp-back':      ['manager','superadmin'],
+  'imp-reset':     ['manager','superadmin'],
+  'sms-new':       ['manager','superadmin'],
+  'sms-send':      ['manager','superadmin'],
+  'sms-topup':     ['manager','superadmin'],
+  'sms-topup-ok':  ['manager','superadmin'],
   'invite-parents':['manager','superadmin'],
   'mtg-new':       ['manager','superadmin','teacher'],
   'mtg-save':      ['manager','superadmin','teacher'],
@@ -1560,6 +1571,8 @@ function renderRoute(){
     case 'atrisk':return viewAtRisk();
     case 'meetings':return viewMeetings();
     case 'growth':return viewGrowth();
+    case 'formssms':return viewFormsSms();
+    case 'import':return viewImport();
     case 'dashboard':return S.user.role==='edu_office'?viewOfficeDash():viewDashboard();
     case 'schools':return viewSchools();
     case 'users':return viewUsers();
@@ -2804,6 +2817,720 @@ function viewGrowth(){
     + '</tbody></table></div></div></div>';
 }
 
+/* ============ فرم‌های رسمی و پنل پیامک ============
+   دو تب در روت «formssms» (مدیر و سوپرادمین):
+     forms — ساخت و چاپ سه فرم رسمی مدرسه روی کاغذ A4
+     sms   — کیف پول پیامک، ارسال گروهی و گزارش ارسال
+
+   ⚠️ با الگوی ایندکس‌شده نوشته شده، نه رونویسی از مرجع:
+   آمار کلاس‌ها در «دفتر آمار» با یک پیمایش گروه‌بندی می‌شود؛
+   در مرجع به‌ازای هر کلاس کل جدول نمرات و حضور پیمایش می‌شد
+   که در مدرسهٔ بزرگ رفتار درجه‌دوم داشت.
+   ==================================================== */
+
+/** هر ۷۰ نویسهٔ فارسی یک پیامک حساب می‌شود */
+var smsParts = function(t){
+  return Math.max(1, Math.ceil(Array.from(String(t || '')).length / 70));
+};
+
+/** کیف پول پیامک مدرسه؛ در نبود رکورد، ساخته می‌شود */
+function smsWalletOf(sid){
+  var w = db.sms_wallet.find(function(x){ return x.school_id === sid; });
+  if(!w) w = insert('sms_wallet', { school_id: sid, balance: 0 });
+  var price = Number(subSettings().sms_price || 1200);
+  return { w: w, balance: Number(w.balance), price: price };
+}
+
+/**
+ * باز کردن یک سند قابل چاپ در پنجرهٔ تازه.
+ * سبک چاپ جداست تا رنگ و سایهٔ رابط روی کاغذ نیاید.
+ */
+function printableDoc(o){
+  var win;
+  try{ win = window.open('', '_blank'); }catch(e){ win = null; }
+  if(!win){ toast('اجازه باز کردن پنجره داده نشد', 'err'); return false; }
+  var html = '<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">'
+    + '<title>' + esc(o.title) + '</title><style>'
+    + '@page{size:A4 ' + (o.landscape ? 'landscape' : 'portrait') + ';margin:12mm}'
+    + 'body{font-family:Vazirmatn,Tahoma,sans-serif;color:#10203a;font-size:12.5px;margin:0}'
+    + '.hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #14225a;padding-bottom:8px;margin-bottom:10px}'
+    + '.hd h1{font-size:16px;margin:0 0 3px;color:#14225a}.hd .s{font-size:11.5px;color:#5b6b8c}'
+    + '.meta{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:#33415c;margin-bottom:10px}'
+    + 'table{width:100%;border-collapse:collapse}th,td{border:1px solid #b9c4da;padding:5px 6px;text-align:right}'
+    + 'th{background:#eef3fb;font-weight:800;font-size:11.5px}td.c,th.c{text-align:center}'
+    + 'tr:nth-child(even) td{background:#fafcff}'
+    + '.sign{display:flex;justify-content:space-between;margin-top:26px;font-size:11.5px;color:#5b6b8c}'
+    + '.note{margin-top:10px;font-size:11px;color:#5b6b8c;line-height:1.9}.empty{height:22px}'
+    + '@media print{.np{display:none}}</style></head><body>'
+    + '<div class="hd"><div><h1>' + esc(o.title) + '</h1><div class="s">' + esc(o.school || '') + '</div></div>'
+    + '<div style="text-align:left" class="s">' + esc(o.subtitle || '')
+    + '<br>تاریخ چاپ: ' + isoToJalali(todayISO()) + '</div></div>'
+    + o.body + (o.note ? '<div class="note">' + o.note + '</div>' : '')
+    + '<div class="sign"><span>امضای دبیر / مسئول</span><span>مهر و امضای مدیر مدرسه</span></div>'
+    + '<div class="np" style="text-align:center;margin-top:16px">'
+    + '<button onclick="window.print()" style="padding:8px 22px;border:none;border-radius:9px;'
+    + 'background:#1668f0;color:#fff;font-family:inherit;font-size:13px;cursor:pointer">🖨️ چاپ</button></div>'
+    + '</body></html>';
+  try{
+    win.document.write(html);
+    win.document.close();
+    /* چاپ خودکار پس از بارگذاری فونت‌ها */
+    setTimeout(function(){ try{ win.print(); }catch(e){} }, 500);
+  }catch(e){ return false; }
+  return true;
+}
+
+/* ---------- سازندهٔ بدنهٔ سه فرم (جدا از چاپ، تا تست‌پذیر باشد) ---------- */
+
+/** لیست نمرات کلاس با ستون‌های خالی برای تکمیل دستی */
+function formGradeSheet(cls, subj, term){
+  var sts = studentsOfClass(cls.id);
+  var gmap = Object.create(null);
+  var gi = (typeof idxGradesByStudent === 'function') ? idxGradesByStudent() : null;
+  sts.forEach(function(s){
+    var list = gi ? (gi.get(s.id) || []) : db.grades.filter(function(g){ return g.student_id === s.id; });
+    var arr = [];
+    for(var i = 0; i < list.length; i++){
+      var g = list[i];
+      if(g.class_id !== cls.id) continue;
+      if(subj && g.subject_id !== subj.id) continue;
+      if(g.term !== term) continue;
+      arr.push(g.score);
+    }
+    if(arr.length) gmap[s.id] = arr;
+  });
+  return { count: sts.length,
+    body: '<div class="meta"><span>تعداد دانش‌آموز: <b>' + fa(sts.length) + '</b></span>'
+      + '<span>دبیر: ____________</span></div>'
+      + '<table><thead><tr><th class="c" style="width:34px">#</th><th>نام و نام خانوادگی</th>'
+      + '<th class="c" style="width:100px">کد ملی</th><th class="c" style="width:70px">نمره ثبت‌شده</th>'
+      + '<th class="c" style="width:70px">مستمر</th><th class="c" style="width:70px">پایانی</th>'
+      + '<th class="c" style="width:80px">امضا</th></tr></thead><tbody>'
+      + sts.map(function(s, i){
+          var arr = gmap[s.id] || [];
+          var av = arr.length ? Math.round(arr.reduce(function(a,b){ return a + b; }, 0) / arr.length * 100) / 100 : '';
+          return '<tr><td class="c">' + fa(i + 1) + '</td><td>' + esc(s.full_name) + '</td>'
+            + '<td class="c">' + esc(s.national_id || '—') + '</td>'
+            + '<td class="c">' + (av === '' ? '' : fa(av)) + '</td>'
+            + '<td class="empty"></td><td class="empty"></td><td class="empty"></td></tr>';
+        }).join('')
+      + '</tbody></table>' };
+}
+
+/** صورت‌جلسهٔ برگزاری امتحان با فهرست مراقبان و حاضران */
+function formExamMinutes(e){
+  var cls = byId('classes', e.class_id) || {}, subj = byId('subjects', e.subject_id) || {};
+  var sts = studentsOfClass(e.class_id);
+  var duties = db.exam_duties.filter(function(d){ return d.exam_id === e.id; });
+  return { count: sts.length, cls: cls, subj: subj,
+    body: '<div class="meta"><span>تاریخ: <b>' + jalaliLongFa(e.date) + '</b></span>'
+      + '<span>ساعت: <b>' + faD(e.start_time) + ' تا ' + faD(toHHMMP(toMinP(e.start_time) + e.duration)) + '</b></span>'
+      + '<span>مدت: <b>' + fa(e.duration) + ' دقیقه</b></span>'
+      + '<span>محل: <b>' + esc(e.room || '—') + '</b></span>'
+      + '<span>تعداد دانش‌آموز: <b>' + fa(sts.length) + '</b></span></div>'
+      + '<table style="margin-bottom:10px"><thead><tr><th>مراقبان جلسه</th>'
+      + '<th class="c" style="width:110px">سمت</th><th class="c" style="width:110px">امضا</th></tr></thead><tbody>'
+      + (duties.length ? duties.map(function(d){
+            return '<tr><td>' + esc((byId('users', d.teacher_id) || {}).full_name || '') + '</td>'
+              + '<td class="c">' + (d.role === 'main' ? 'مراقب اصلی' : 'کمک‌مراقب') + '</td>'
+              + '<td class="empty"></td></tr>';
+          }).join('')
+        : '<tr><td colspan="3" class="c">مراقبی ثبت نشده است</td></tr>')
+      + '</tbody></table><table><thead><tr><th class="c" style="width:34px">#</th>'
+      + '<th>نام و نام خانوادگی</th><th class="c" style="width:100px">کد ملی</th>'
+      + '<th class="c" style="width:80px">حاضر/غایب</th><th class="c" style="width:90px">امضا</th></tr></thead><tbody>'
+      + sts.map(function(s, i){
+          return '<tr><td class="c">' + fa(i + 1) + '</td><td>' + esc(s.full_name) + '</td>'
+            + '<td class="c">' + esc(s.national_id || '—') + '</td>'
+            + '<td class="empty"></td><td class="empty"></td></tr>';
+        }).join('') + '</tbody></table>' };
+}
+
+/** دفتر آمار مدرسه — یک پیمایش برای نمرات و یک پیمایش برای حضور */
+function formStatistics(sid){
+  var classes = db.classes.filter(function(c){ return c.school_id === sid; });
+  /* گروه‌بندی یک‌باره به‌جای پیمایش کل جدول به ازای هر کلاس */
+  var gSum = Object.create(null), gCnt = Object.create(null);
+  db.grades.forEach(function(g){
+    if(g.school_id !== sid) return;
+    gSum[g.class_id] = (gSum[g.class_id] || 0) + g.score;
+    gCnt[g.class_id] = (gCnt[g.class_id] || 0) + 1;
+  });
+  var absBy = Object.create(null), attAll = 0, presAll = 0;
+  db.attendance.forEach(function(a){
+    if(a.school_id !== sid) return;
+    attAll++;
+    if(a.status === 'present') presAll++;
+    else if(a.status === 'absent') absBy[a.class_id] = (absBy[a.class_id] || 0) + 1;
+  });
+  var tot = { students:0, girls:0, boys:0, capacity:0 };
+  var rows = classes.map(function(c){
+    var sts = studentsOfClass(c.id);
+    var girls = 0, boys = 0;
+    for(var i = 0; i < sts.length; i++){
+      if(sts[i].gender === 'دختر') girls++;
+      else if(sts[i].gender === 'پسر') boys++;
+    }
+    tot.students += sts.length; tot.girls += girls; tot.boys += boys;
+    tot.capacity += (c.capacity || 0);
+    return { c: c, n: sts.length, girls: girls, boys: boys,
+      avg: gCnt[c.id] ? Math.round(gSum[c.id] / gCnt[c.id] * 100) / 100 : 0,
+      abs: absBy[c.id] || 0 };
+  });
+  var rate = attAll ? Math.round(presAll / attAll * 1000) / 10 : 0;
+  var teachers = db.users.filter(function(u){ return u.school_id === sid && u.role === 'teacher'; }).length;
+  return { tot: tot, rows: rows, rate: rate,
+    body: '<div class="meta"><span>کل دانش‌آموزان: <b>' + fa(tot.students) + '</b></span>'
+      + '<span>دختر: <b>' + fa(tot.girls) + '</b> · پسر: <b>' + fa(tot.boys) + '</b></span>'
+      + '<span>کلاس‌ها: <b>' + fa(classes.length) + '</b></span>'
+      + '<span>دبیران: <b>' + fa(teachers) + '</b></span>'
+      + '<span>ظرفیت: <b>' + fa(tot.capacity) + '</b></span>'
+      + '<span>میانگین حضور: <b>' + fa(rate) + '٪</b></span></div>'
+      + '<table><thead><tr><th class="c" style="width:34px">#</th><th>کلاس</th><th class="c">پایه</th>'
+      + '<th class="c">رشته</th><th class="c">دانش‌آموز</th><th class="c">دختر</th><th class="c">پسر</th>'
+      + '<th class="c">ظرفیت</th><th class="c">میانگین</th><th class="c">غیبت</th></tr></thead><tbody>'
+      + rows.map(function(r, i){
+          return '<tr><td class="c">' + fa(i + 1) + '</td><td>' + esc(r.c.name) + '</td>'
+            + '<td class="c">' + (r.c.grade_level ? fa(r.c.grade_level) : '—') + '</td>'
+            + '<td class="c">' + esc(r.c.field || '—') + '</td>'
+            + '<td class="c"><b>' + fa(r.n) + '</b></td><td class="c">' + fa(r.girls) + '</td>'
+            + '<td class="c">' + fa(r.boys) + '</td><td class="c">' + fa(r.c.capacity || '—') + '</td>'
+            + '<td class="c">' + fa(r.avg) + '</td><td class="c">' + fa(r.abs) + '</td></tr>';
+        }).join('')
+      + '<tr style="background:#eef3fb;font-weight:800"><td colspan="4" class="c">جمع کل</td>'
+      + '<td class="c">' + fa(tot.students) + '</td><td class="c">' + fa(tot.girls) + '</td>'
+      + '<td class="c">' + fa(tot.boys) + '</td><td class="c">' + fa(tot.capacity) + '</td>'
+      + '<td class="c">—</td><td class="c">—</td></tr></tbody></table>' };
+}
+
+/** گیرندگان پیامک بر اساس مخاطب انتخاب‌شده — فقط شماره‌های معتبر */
+function smsTargets(sid, aud, cid){
+  var out = [], seen = Object.create(null), i;
+  var push = function(u){
+    if(u && !seen[u.id] && /^09\d{9}$/.test(u.phone || '')){ seen[u.id] = true; out.push(u); }
+  };
+  if(aud === 'class'){
+    var ec = (typeof idxEnrollByClass === 'function') ? idxEnrollByClass() : null;
+    var es = ec ? (ec.get(Number(cid)) || [])
+                : db.enrollments.filter(function(e){ return e.class_id === Number(cid); });
+    var kid = Object.create(null);
+    es.forEach(function(e){ kid[e.student_id] = true; });
+    db.parent_links.forEach(function(l){ if(kid[l.student_id]) push(byId('users', l.parent_id)); });
+  } else if(aud === 'parents'){
+    var mine = Object.create(null);
+    schoolStudents(sid).forEach(function(s){ mine[s.id] = true; });
+    db.parent_links.forEach(function(l){ if(mine[l.student_id]) push(byId('users', l.parent_id)); });
+  } else {
+    var role = aud === 'teachers' ? 'teacher' : 'student';
+    db.users.forEach(function(u){ if(u.school_id === sid && u.role === role && u.active) push(u); });
+  }
+  return out;
+}
+
+/* ------------------------------- نما ------------------------------- */
+function viewFormsSms(){
+  var tab = S.tab === 'sms' ? 'sms' : 'forms';
+  var sid = S.user.school_id;
+  var head = '<div class="row" style="margin-bottom:14px;gap:8px">'
+    + '<button class="btn ' + (tab === 'forms' ? '' : 'ghost') + '" data-act="tab" data-t="forms">🖨️ فرم‌های رسمی</button>'
+    + '<button class="btn ' + (tab === 'sms' ? '' : 'ghost') + '" data-act="tab" data-t="sms">📱 پنل پیامک</button></div>';
+
+  if(tab === 'forms'){
+    var classes = visibleClasses(), subs = visibleSubjects();
+    var exams = db.exams.filter(function(e){ return e.school_id === sid; }).slice(0, 50);
+    var cards = [
+      ['grade-sheet','لیست نمرات کلاس','با ستون خالی برای ثبت دستی نمره و امضا'],
+      ['exam-minutes','صورت‌جلسه امتحانات','مشخصات جلسه، مراقبان و فهرست حاضران با امضا'],
+      ['statistics','دفتر آمار مدرسه','آمار کلاس‌ها، جنسیت، ظرفیت، میانگین و غیبت']
+    ].map(function(x){
+      return '<div class="card"><div class="card-head"><h3>' + x[1] + '</h3></div><div class="card-body">'
+        + '<div class="small muted" style="min-height:42px;line-height:2">' + x[2] + '</div>'
+        + '<button class="btn" style="width:100%;justify-content:center" data-act="form-print" data-r="'
+        + x[0] + '">🖨️ ساخت و چاپ</button></div></div>';
+    }).join('');
+    return head + '<div class="card" style="margin-bottom:14px"><div class="card-body"><div class="grid g4">'
+      + f('کلاس', sel('fm_class', classes.map(function(c){ return [c.id, c.name]; })))
+      + f('درس', sel('fm_subject', [['','— بدون درس —']].concat(subs.map(function(x){ return [x.id, x.name]; }))))
+      + f('نوبت', sel('fm_term', TERMS.map(function(t){ return [t, t]; })))
+      + f('جلسه امتحان', sel('fm_exam', [['','— انتخاب —']].concat(exams.map(function(e){
+          return [e.id, jalali(e.date) + ' · ' + ((byId('classes', e.class_id) || {}).name || '')
+                 + ' · ' + ((byId('subjects', e.subject_id) || {}).name || '')];
+        }))))
+      + '</div></div></div><div class="grid g3">' + cards + '</div>';
+  }
+
+  var wal = smsWalletOf(sid);
+  var msgs = db.sms_log.filter(function(m){ return m.school_id === sid; })
+    .sort(function(a,b){ return b.id - a.id; }).slice(0, 60);
+  var sent = msgs.filter(function(m){ return m.status === 'sent'; }).length;
+  return head + '<div class="grid g4" style="margin-bottom:14px">'
+    + statCard('💬', fa(wal.balance), 'اعتبار پیامک', 'blue')
+    + statCard('✅', fa(sent), 'ارسال موفق', 'green')
+    + statCard('📅', fa(msgs.length), 'کل ارسال‌ها', 'amber')
+    + statCard('💰', rialShort(wal.balance * wal.price), 'ارزش اعتبار (ریال)', 'purple') + '</div>'
+    + '<div class="card" style="margin-bottom:14px"><div class="card-head"><h3>📱 ارسال پیامک</h3>'
+    + '<div class="row" style="gap:8px"><button class="btn ghost" data-act="sms-topup">➕ شارژ اعتبار</button>'
+    + '<button class="btn" data-act="sms-new">✉️ پیامک جدید</button></div></div>'
+    + '<div class="card-body small muted" style="line-height:2">تعرفه هر پیامک: <b>' + rial(wal.price)
+    + '</b> ریال · هر <b>۷۰</b> نویسه فارسی یک پیامک حساب می‌شود.'
+    + (wal.balance < 50 ? '<div style="color:var(--red)">⚠️ اعتبار شما رو به پایان است.</div>' : '')
+    + '</div></div>'
+    + '<div class="card"><div class="card-head"><h3>گزارش ارسال</h3></div>'
+    + (msgs.length ? '<div class="table-wrap"><table class="table"><thead><tr><th>گیرنده</th><th>شماره</th>'
+      + '<th>متن</th><th>وضعیت</th><th>زمان</th></tr></thead><tbody>'
+      + msgs.map(function(m){
+          return '<tr><td>' + esc((byId('users', m.user_id) || {}).full_name || '—') + '</td>'
+            + '<td class="small muted">' + esc(m.phone) + '</td>'
+            + '<td class="small" style="max-width:240px">' + esc(String(m.body).slice(0, 60)) + '…</td>'
+            + '<td><span class="badge ' + (m.status === 'sent' ? 'b-green' : 'b-amber') + '">'
+            + (m.status === 'sent' ? 'ارسال شد' : 'در صف') + '</span></td>'
+            + '<td class="small muted">' + jalali(m.created_at) + '</td></tr>';
+        }).join('')
+      + '</tbody></table></div>' : empty('📭','پیامکی ارسال نشده','')) + '</div>';
+}
+
+/* ============ ویزارد ورود اطلاعات از اکسل ============
+   چهار مرحله: انتخاب فایل ← نگاشت ستون‌ها ← بررسی خطاها ← ثبت نهایی
+
+   چرا خوانندهٔ اکسل بومی نوشته شده؟
+   پروژه «صفر وابستگی» است، پس نمی‌توان کتابخانهٔ بیرونی آورد.
+   فایل xlsx در واقع یک بایگانی zip است؛ با خواندن ساختار zip و
+   باز کردن فشرده‌سازی به کمک DecompressionStream مرورگر، محتوای
+   xml برگه‌ها استخراج می‌شود. اگر مرورگر این قابلیت را نداشته
+   باشد، پیام روشن داده می‌شود و csv همچنان کار می‌کند.
+
+   اصل طراحی: مدرسه نباید فایلش را با قالب ما تطبیق دهد؛
+   سامانه باید فایل موجود مدرسه را با هر ترتیب ستونی بفهمد.
+   ======================================================= */
+
+/** یکسان‌سازی نویسه‌های عربی/فارسی برای مقایسهٔ عنوان ستون‌ها */
+var normHdr = function(x){
+  return String(x || '')
+    .replace(/[ىي]/g, 'ی').replace(/ك/g, 'ک')
+    .replace(/\u200c/g, '')
+    .replace(/[_\-.:،؛/\\()]/g, ' ')
+    .replace(/\s+/g, ' ').trim().toLowerCase();
+};
+
+/** تبدیل ارقام فارسی و عربی به لاتین */
+var toLatinDigits = function(x){
+  return String(x || '')
+    .replace(/[۰-۹]/g, function(d){ return String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); })
+    .replace(/[٠-٩]/g, function(d){ return String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)); });
+};
+
+/** فیلدهای قابل ورود: کلید، عنوان، الزامی، مترادف‌ها */
+var IMP_FIELDS = {
+  students: [
+    ['full_name','نام و نام خانوادگی',1,['نام و نام خانوادگی','نام دانش آموز','نام کامل','نام']],
+    ['national_id','کد ملی',0,['کد ملی','کدملی','شماره ملی']],
+    ['class_name','کلاس',0,['کلاس','نام کلاس','پایه و کلاس']],
+    ['gender','جنسیت',0,['جنسیت','جنس']],
+    ['birth_date','تاریخ تولد',0,['تاریخ تولد','تولد']],
+    ['father_name','نام پدر',0,['نام پدر','پدر','نام ولی']],
+    ['father_nid','کد ملی پدر',0,['کد ملی پدر','کدملی پدر','کد ملی ولی']],
+    ['father_phone','موبایل پدر',0,['موبایل پدر','تلفن پدر','شماره تماس','تلفن ولی']],
+    ['mother_nid','کد ملی مادر',0,['کد ملی مادر','کدملی مادر']]
+  ],
+  teachers: [
+    ['full_name','نام و نام خانوادگی',1,['نام و نام خانوادگی','نام دبیر','نام معلم','نام']],
+    ['national_id','کد ملی',0,['کد ملی','کدملی']],
+    ['phone','موبایل',0,['موبایل','تلفن همراه','شماره تماس']],
+    ['subject','درس تخصصی',0,['درس','تخصص','رشته']]
+  ]
+};
+
+/** خواندن csv با پشتیبانی از کاما، نقطه‌ویرگول و تب */
+function parseCSV(text){
+  var lines = String(text).replace(/^\uFEFF/, '').split(/\r?\n/).filter(function(l){ return l.trim(); });
+  return lines.map(function(l){
+    return l.split(/[,;\t]/).map(function(c){ return c.replace(/^"|"$/g, '').trim(); });
+  });
+}
+
+/** آیا مرورگر از باز کردن فشرده‌سازی پشتیبانی می‌کند؟ */
+function canReadXlsx(){
+  return typeof DecompressionStream !== 'undefined' && typeof Blob !== 'undefined';
+}
+
+/**
+ * خواندن فایل xlsx بدون هیچ کتابخانه‌ای.
+ * ساختار zip خوانده می‌شود، سپس xml برگه‌ها تحلیل می‌گردد.
+ */
+async function parseXLSX(file){
+  var buf = new Uint8Array(await file.arrayBuffer());
+  var dv = new DataView(buf.buffer);
+  /* یافتن انتهای فهرست مرکزی بایگانی */
+  var eocd = -1;
+  for(var i = buf.length - 22; i >= 0; i--){
+    if(dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; }
+  }
+  if(eocd < 0) throw new Error('فایل اکسل معتبر نیست');
+  var count = dv.getUint16(eocd + 10, true), cdOff = dv.getUint32(eocd + 16, true);
+  var files = {}, p = cdOff;
+  for(var n = 0; n < count; n++){
+    if(dv.getUint32(p, true) !== 0x02014b50) break;
+    var method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    var nameLen = dv.getUint16(p + 28, true), extraLen = dv.getUint16(p + 30, true),
+        cmtLen = dv.getUint16(p + 32, true);
+    var lho = dv.getUint32(p + 42, true);
+    var name = new TextDecoder().decode(buf.slice(p + 46, p + 46 + nameLen));
+    var lNameLen = dv.getUint16(lho + 26, true), lExtraLen = dv.getUint16(lho + 28, true);
+    var dataStart = lho + 30 + lNameLen + lExtraLen;
+    files[name] = { method: method, data: buf.slice(dataStart, dataStart + csize) };
+    p += 46 + nameLen + extraLen + cmtLen;
+  }
+  var inflate = async function(e){
+    if(!e) return '';
+    if(e.method === 0) return new TextDecoder().decode(e.data);
+    if(!canReadXlsx()) throw new Error('مرورگر شما از خواندن xlsx پشتیبانی نمی‌کند؛ فایل را csv ذخیره کنید');
+    var ds = new DecompressionStream('deflate-raw');
+    var stream = new Blob([e.data]).stream().pipeThrough(ds);
+    return new TextDecoder().decode(new Uint8Array(await new Response(stream).arrayBuffer()));
+  };
+  var unent = function(x){
+    return String(x).replace(/&amp;/g,'&').replace(/&lt;/g,'<')
+      .replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'");
+  };
+  var sharedXml = await inflate(files['xl/sharedStrings.xml']);
+  var shared = (sharedXml.match(/<si>[\s\S]*?<\/si>/g) || []).map(function(si){
+    var parts = si.match(/<t[^>]*>([\s\S]*?)<\/t>/g) || [];
+    return unent(parts.map(function(t){ return t.replace(/<[^>]*>/g, ''); }).join(''));
+  });
+  var wbXml = await inflate(files['xl/workbook.xml']);
+  var sheetNames = (wbXml.match(/<sheet[^>]*name="([^"]*)"/g) || []).map(function(m){
+    return (m.match(/name="([^"]*)"/) || [])[1] || '';
+  });
+  var sheets = [], idx = 1;
+  while(files['xl/worksheets/sheet' + idx + '.xml']){
+    var xml = await inflate(files['xl/worksheets/sheet' + idx + '.xml']);
+    var rows = [];
+    (xml.match(/<row[^>]*>[\s\S]*?<\/row>/g) || []).forEach(function(rowXml){
+      var cells = [];
+      var re = /<c([^>]*)>([\s\S]*?)<\/c>|<c([^>]*)\/>/g, cm;
+      while((cm = re.exec(rowXml)) !== null){
+        var attrs = cm[1] || cm[3] || '', inner = cm[2] || '';
+        var ref = (attrs.match(/r="([A-Z]+)/) || [])[1] || '';
+        var col = 0;
+        for(var c2 = 0; c2 < ref.length; c2++) col = col * 26 + (ref.charCodeAt(c2) - 64);
+        var t = (attrs.match(/t="([^"]*)"/) || [])[1];
+        var v = (inner.match(/<v>([\s\S]*?)<\/v>/) || [])[1] || '';
+        if(t === 's') v = shared[Number(v)] || '';
+        else if(t === 'inlineStr') v = unent((inner.match(/<t[^>]*>([\s\S]*?)<\/t>/) || [])[1] || '');
+        else v = unent(v);
+        cells[Math.max(0, col - 1)] = String(v);
+      }
+      rows.push(cells);
+    });
+    sheets.push({ name: sheetNames[idx - 1] || ('برگه ' + idx), rows: rows });
+    idx++;
+  }
+  return sheets;
+}
+
+/** حدس هوشمند نگاشت ستون‌ها بر پایهٔ عنوان و مترادف‌ها */
+function suggestMap(headers, entity){
+  var out = {}, used = {};
+  headers.forEach(function(h, i){
+    var nh = normHdr(h);
+    if(!nh) return;
+    var best = null, score = 0;
+    IMP_FIELDS[entity].forEach(function(fld){
+      var key = fld[0];
+      if(used[key]) return;
+      [fld[1]].concat(fld[3]).forEach(function(sy){
+        var ns = normHdr(sy), sc = 0;
+        if(nh === ns) sc = 100;
+        else if(nh.indexOf(ns) > -1 || ns.indexOf(nh) > -1) sc = 70 + Math.min(20, ns.length);
+        if(sc > score){ score = sc; best = key; }
+      });
+    });
+    if(best && score >= 70){ out[i] = best; used[best] = true; }
+  });
+  return out;
+}
+
+/** تشخیص ردیف تیتر (پرمحتواترین ردیف میان پنج ردیف نخست) */
+function prepSheet(rows, entity){
+  var hi = 0, best = 0;
+  rows.slice(0, 5).forEach(function(r, i){
+    var n = r.filter(function(c){ return String(c || '').trim(); }).length;
+    if(n > best){ best = n; hi = i; }
+  });
+  var headers = (rows[hi] || []).map(function(h){ return String(h == null ? '' : h).trim(); });
+  var body = rows.slice(hi + 1).filter(function(r){
+    return r.some(function(c){ return String(c == null ? '' : c).trim(); });
+  });
+  return { headers: headers, rows: body, mapping: suggestMap(headers, entity) };
+}
+
+/**
+ * اعتبارسنجی ردیف‌ها پیش از ثبت.
+ * هیچ داده‌ای اینجا نوشته نمی‌شود جز ثبت تعارض کد ملی.
+ */
+function validateImport(rows, mapping, entity){
+  var sid = S.user.school_id, seen = {}, out = [], newClasses = [];
+  var classes = visibleClasses();
+  var clsByName = Object.create(null);
+  classes.forEach(function(c){ clsByName[normHdr(c.name)] = c; });
+
+  rows.forEach(function(row, i){
+    var o = {};
+    Object.keys(mapping).forEach(function(idx){
+      var fk = mapping[idx];
+      if(fk) o[fk] = String(row[Number(idx)] == null ? '' : row[Number(idx)]).trim();
+    });
+    var errors = [], warns = [], data = {};
+
+    data.full_name = (o.full_name || '').replace(/\s+/g, ' ').trim();
+    if(data.full_name.length < 3) errors.push('نام و نام خانوادگی الزامی است');
+
+    var nid = toLatinDigits(o.national_id).replace(/\D/g, '');
+    if(nid){
+      if(!validNid(nid)) errors.push('کد ملی «' + nid + '» معتبر نیست');
+      else if(seen[nid]) errors.push('کد ملی در همین فایل تکراری است');
+      else {
+        seen[nid] = true;
+        var owner = (typeof nidOwner === 'function') ? nidOwner(nid) : null;
+        if(owner){
+          if(owner.school_id === sid && owner.role === 'student'){
+            warns.push('قبلاً ثبت شده — به‌روزرسانی می‌شود');
+            data.existing_id = owner.id;
+          } else {
+            errors.push('کد ملی متعلق به «' + owner.full_name + '» در '
+              + ((byId('schools', owner.school_id) || {}).name || 'مدرسه دیگر') + ' است');
+            if(entity === 'students' && owner.role === 'student' && typeof recordConflict === 'function')
+              recordConflict(sid, nid, data.full_name, owner, 'excel');
+          }
+        }
+        data.national_id = nid;
+      }
+    } else warns.push('بدون کد ملی');
+
+    var ph = toLatinDigits(o.father_phone || o.phone).replace(/\D/g, '');
+    if(ph && /^09\d{9}$/.test(ph)) data.phone = ph;
+    else if(ph) warns.push('شماره موبایل نامعتبر است');
+
+    if(entity === 'students'){
+      var cname = (o.class_name || '').trim();
+      if(cname){
+        var cls = clsByName[normHdr(cname)];
+        if(cls) data.class_id = cls.id;
+        else {
+          data.new_class = cname;
+          if(newClasses.indexOf(cname) < 0) newClasses.push(cname);
+          warns.push('کلاس «' + cname + '» ساخته می‌شود');
+        }
+      } else warns.push('بدون کلاس');
+
+      if(o.birth_date){
+        var iso = '';
+        try{ iso = jalaliToIso(o.birth_date) || ''; }catch(e){ iso = ''; }
+        if(!iso && /^\d{4}-\d{2}-\d{2}$/.test(o.birth_date)) iso = o.birth_date;
+        if(iso) data.birth_date = iso; else warns.push('تاریخ تولد خوانده نشد');
+      }
+      var g = normHdr(o.gender);
+      data.gender = /پسر|مذکر/.test(g) ? 'پسر' : /دختر|مونث|مؤنث/.test(g) ? 'دختر' : null;
+      ['father_nid','mother_nid'].forEach(function(k){
+        var v = toLatinDigits(o[k]).replace(/\D/g, '');
+        if(v && validNid(v)) data[k] = v;
+        else if(v) warns.push('کد ملی ' + (k === 'father_nid' ? 'پدر' : 'مادر') + ' نامعتبر است');
+      });
+      data.father_name = (o.father_name || '').trim() || null;
+    } else {
+      data.subject = (o.subject || '').trim() || null;
+    }
+    out.push({ row: i + 1, data: data, errors: errors, warns: warns, ok: errors.length === 0 });
+  });
+
+  return { rows: out, newClasses: newClasses, counts: {
+    total: out.length,
+    ok: out.filter(function(r){ return r.ok; }).length,
+    failed: out.filter(function(r){ return !r.ok; }).length,
+    updates: out.filter(function(r){ return r.ok && r.data.existing_id; }).length } };
+}
+
+/** ثبت نهایی — همهٔ نوشتن‌ها در یک دسته تا رابط قفل نشود */
+function commitImport(st){
+  var sid = S.user.school_id, p = st.preview;
+  var report = { created:0, updated:0, parents:0, classes:0, skipped:p.counts.failed };
+  batchWrites(function(){
+    p.newClasses.forEach(function(cn){
+      if(visibleClasses().some(function(c){ return normHdr(c.name) === normHdr(cn); })) return;
+      insert('classes', { school_id: sid, name: cn,
+        grade: cn.split(' ')[0] || null, field: cn.split(' ').slice(1).join(' ') || null,
+        capacity: 40, grade_level: (typeof gradeFromName === 'function') ? gradeFromName(cn) : null });
+      report.classes++;
+    });
+    var seq = db.users.length;
+    var taken = Object.create(null);
+    db.users.forEach(function(u){ taken[u.username] = true; });
+    var freeName = function(pre){
+      var un = pre + (++seq);
+      while(taken[un]) un = pre + (++seq);
+      taken[un] = true;
+      return un;
+    };
+    p.rows.forEach(function(r){
+      if(!r.ok) return;
+      var d = r.data, uid = d.existing_id;
+      if(uid){
+        var cur = byId('users', uid) || {};
+        update('users', uid, { full_name: d.full_name, phone: d.phone || cur.phone,
+          father_nid: d.father_nid || cur.father_nid, mother_nid: d.mother_nid || cur.mother_nid,
+          birth_date: d.birth_date || cur.birth_date });
+        report.updated++;
+      } else {
+        uid = insert('users', { school_id: sid,
+          role: st.entity === 'students' ? 'student' : 'teacher',
+          full_name: d.full_name, username: freeName(st.entity === 'students' ? 'st' : 'tc'),
+          password: '123456', national_id: d.national_id || null, phone: d.phone || '',
+          active: 1, father_nid: d.father_nid || null, mother_nid: d.mother_nid || null,
+          birth_date: d.birth_date || null, gender: d.gender || null,
+          subject: d.subject || null, status: 'active', created_at: todayISO() }).id;
+        report.created++;
+      }
+      if(st.entity === 'students'){
+        var cls = d.class_id ? byId('classes', d.class_id)
+          : visibleClasses().filter(function(c){ return normHdr(c.name) === normHdr(d.new_class || ''); })[0];
+        if(cls){
+          db.enrollments.filter(function(e){ return e.student_id === uid; })
+            .forEach(function(e){ remove('enrollments', e.id); });
+          insert('enrollments', { school_id: sid, class_id: cls.id, student_id: uid });
+          update('users', uid, {
+            grade_level: cls.grade_level || ((typeof gradeFromName === 'function') ? gradeFromName(cls.name) : null) });
+        }
+        [[d.father_nid, d.father_name, 'پدر'], [d.mother_nid, null, 'مادر']].forEach(function(pair){
+          var pnid = pair[0], pname = pair[1], rel = pair[2];
+          if(!pnid && !pname) return;
+          var parent = pnid ? db.users.filter(function(u){
+            return u.national_id === pnid && ['parent','teacher','manager'].indexOf(u.role) > -1; })[0] : null;
+          if(!parent){
+            parent = insert('users', { school_id: sid, role: 'parent',
+              full_name: pname || (rel + ' ' + d.full_name), username: freeName('pr'),
+              password: '123456', national_id: pnid || null, phone: d.phone || '',
+              active: 1, status: 'active', created_at: todayISO() });
+            report.parents++;
+          }
+          if(parent && !db.parent_links.some(function(l){
+              return l.parent_id === parent.id && l.student_id === uid; })){
+            insert('parent_links', { parent_id: parent.id, student_id: uid, relation: rel });
+          }
+        });
+      }
+    });
+  });
+  return report;
+}
+
+/* ------------------------------- نما ------------------------------- */
+function viewImport(){
+  var st = S.imp || { step:0, entity:'students' };
+  var steps = ['انتخاب فایل','نگاشت ستون‌ها','بررسی و خطاها','ثبت نهایی'];
+  var barTop = steps.map(function(t, i){
+    return '<div class="row" style="gap:8px;flex:1;min-width:0">'
+      + '<span style="width:26px;height:26px;border-radius:50%;display:grid;place-items:center;flex:none;'
+      + 'font-weight:800;font-size:12.5px;background:' + (i <= st.step ? 'var(--primary)' : 'var(--surface-2)')
+      + ';color:' + (i <= st.step ? '#fff' : 'var(--muted)') + '">' + fa(i + 1) + '</span>'
+      + '<b class="small" style="color:'
+      + (i === st.step ? 'var(--primary)' : (i < st.step ? 'var(--text)' : 'var(--muted)'))
+      + '">' + t + '</b></div>';
+  }).join('');
+  var body = '';
+
+  if(st.step === 0){
+    body = '<div class="card"><div class="card-head"><h3>📄 فایل اطلاعات مدرسه را انتخاب کنید</h3></div><div class="card-body">'
+      + f('نوع اطلاعات', sel('imp_entity',
+          [['students','دانش‌آموزان (به‌همراه اولیا و کلاس)'],['teachers','دبیران']], st.entity))
+      + '<div style="margin-top:14px;border:2px dashed var(--border);border-radius:14px;padding:34px 16px;'
+      + 'text-align:center;background:var(--surface-2)">'
+      + '<div style="font-size:40px">📊</div><b style="display:block;margin:10px 0 4px">فایل را انتخاب کنید</b>'
+      + '<div class="small muted">فرمت‌های xlsx و csv</div>'
+      + '<input type="file" id="imp_file" accept=".xlsx,.csv" style="margin-top:12px" /></div>'
+      + '<div class="small muted" style="margin-top:14px;line-height:2">'
+      + '✅ نیازی به قالب آماده نیست؛ همان فایل موجود مدرسه با هر ترتیب ستونی قابل استفاده است.<br>'
+      + '✅ ردیف‌های تیتر خودکار تشخیص داده می‌شوند و ستون‌ها هوشمند نگاشت می‌شوند.<br>'
+      + '✅ تاریخ شمسی، اعداد فارسی و شماره‌های ناقص خودکار اصلاح یا گزارش می‌شوند.'
+      + (canReadXlsx() ? '' : '<br><span style="color:var(--amber)">⚠️ مرورگر شما xlsx را باز نمی‌کند؛ فایل را csv ذخیره کنید.</span>')
+      + '</div></div></div>';
+  }
+
+  if(st.step === 1 && st.sheet){
+    var fields = IMP_FIELDS[st.entity];
+    var mapped = Object.keys(st.mapping || {}).filter(function(k){ return st.mapping[k]; }).length;
+    body = '<div class="card"><div class="card-head"><h3>🔗 هر ستون فایل به کدام فیلد سامانه است؟</h3>'
+      + '<span class="badge b-blue">' + fa(mapped) + ' ستون نگاشت شد</span></div>'
+      + '<div class="table-wrap"><table class="table map-table"><thead><tr><th>ستون فایل</th>'
+      + '<th>نمونه داده</th><th>فیلد سامانه</th></tr></thead><tbody>'
+      + st.sheet.headers.map(function(h, i){
+          var sample = st.sheet.rows.slice(0, 2).map(function(r){ return r[i]; })
+            .filter(Boolean).join(' · ') || '—';
+          return '<tr' + (st.mapping[i] ? ' style="background:var(--green-soft)"' : '') + '>'
+            + '<td data-l="ستون فایل"><b>' + esc(h || ('ستون ' + fa(i + 1))) + '</b></td>'
+            + '<td data-l="نمونه داده" class="small muted">' + esc(sample) + '</td>'
+            + '<td data-l="فیلد سامانه"><select class="select" data-f="impmap" data-i="' + i + '">'
+            + '<option value="">— نادیده بگیر —</option>'
+            + fields.map(function(fl){
+                return '<option value="' + fl[0] + '" ' + (st.mapping[i] === fl[0] ? 'selected' : '') + '>'
+                  + fl[1] + (fl[2] ? ' *' : '') + '</option>';
+              }).join('')
+            + '</select></td></tr>';
+        }).join('')
+      + '</tbody></table></div><div class="card-body"><div class="row" style="gap:8px">'
+      + '<button class="btn ghost" data-act="imp-back">بازگشت</button>'
+      + '<button class="btn" data-act="imp-preview">بررسی داده‌ها ←</button></div></div></div>';
+  }
+
+  if(st.step === 2 && st.preview){
+    var p = st.preview;
+    body = '<div class="grid g4" style="margin-bottom:14px">'
+      + statCard('📋', fa(p.counts.total), 'کل ردیف‌ها', 'blue')
+      + statCard('✅', fa(p.counts.ok), 'آماده ثبت', 'green')
+      + statCard('⛔', fa(p.counts.failed), 'دارای خطا', 'red')
+      + statCard('♻️', fa(p.counts.updates), 'به‌روزرسانی موجود', 'amber') + '</div>'
+      + '<div class="card"><div class="card-head"><h3>بررسی ردیف‌به‌ردیف</h3>'
+      + (p.newClasses.length ? '<span class="badge b-amber">کلاس‌های جدید: '
+          + esc(p.newClasses.join('، ')) + '</span>' : '') + '</div>'
+      + '<div class="table-wrap"><table class="table"><thead><tr><th>#</th><th>وضعیت</th>'
+      + '<th>نام</th><th>کد ملی</th><th>پیام‌ها</th></tr></thead><tbody>'
+      + p.rows.slice(0, 200).map(function(r){
+          return '<tr' + (r.ok ? '' : ' style="background:var(--red-soft)"') + '>'
+            + '<td>' + fa(r.row) + '</td>'
+            + '<td><span class="badge ' + (r.ok ? (r.warns.length ? 'b-amber' : 'b-green') : 'b-red') + '">'
+            + (r.ok ? (r.warns.length ? 'با هشدار' : 'سالم') : 'خطا') + '</span></td>'
+            + '<td><b>' + esc(r.data.full_name || '—') + '</b></td>'
+            + '<td class="small muted">' + esc(r.data.national_id || '—') + '</td>'
+            + '<td class="small">'
+            + r.errors.map(function(e){ return '<div style="color:var(--red)">⛔ ' + esc(e) + '</div>'; }).join('')
+            + r.warns.map(function(x){ return '<div class="muted">⚠️ ' + esc(x) + '</div>'; }).join('')
+            + '</td></tr>';
+        }).join('')
+      + '</tbody></table></div><div class="card-body"><div class="row" style="gap:8px">'
+      + '<button class="btn ghost" data-act="imp-back">بازگشت به نگاشت</button>'
+      + '<button class="btn" data-act="imp-commit">ثبت ' + fa(p.counts.ok) + ' ردیف در سامانه</button>'
+      + (p.counts.failed ? '<span class="small muted">ردیف‌های خطادار رد می‌شوند.</span>' : '')
+      + '</div></div></div>';
+  }
+
+  if(st.step === 3 && st.result){
+    var r2 = st.result;
+    body = '<div class="card"><div class="card-body" style="text-align:center;padding:30px 16px">'
+      + '<div style="font-size:44px">🎉</div><h3 style="margin:10px 0 16px">ورود اطلاعات کامل شد</h3>'
+      + '<div class="grid g4" style="max-width:640px;margin:0 auto">'
+      + statCard('➕', fa(r2.created), 'رکورد جدید', 'green')
+      + statCard('♻️', fa(r2.updated), 'به‌روزرسانی', 'blue')
+      + statCard('👨‍👩‍👦', fa(r2.parents), 'حساب ولی', 'purple')
+      + statCard('🏛️', fa(r2.classes), 'کلاس جدید', 'amber') + '</div>'
+      + (r2.skipped ? '<div class="small muted" style="margin-top:12px">'
+          + fa(r2.skipped) + ' ردیف به‌دلیل خطا رد شد.</div>' : '')
+      + '<div style="margin-top:18px"><button class="btn" data-act="imp-reset">ورود فایل دیگر</button></div>'
+      + '</div></div>';
+  }
+
+  return '<div class="card" style="margin-bottom:14px"><div class="card-body">'
+    + '<div class="row" style="gap:6px;justify-content:space-between">' + barTop + '</div></div></div>' + body;
+}
+
 /* ============================ actions ============================ */
 /** شناسهٔ نوبت انتخاب‌شده برای رزرو (بین باز شدن مودال و ثبت آن) */
 var SLOT_ID=null;
@@ -3008,6 +3735,98 @@ document.addEventListener('click',e=>{
      studentsOfClass(cid).forEach(s=>{const ex=_am?_day.get(s.id):db.attendance.find(x=>x.student_id===s.id&&x.date===date);
        if(ex)update('attendance',ex.id,{status:st});else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:s.id,date,status:st,note:null});});
      toast('همه دانش‌آموزان «'+ATT_FA[st]+'» ثبت شدند','ok');render();},
+   // ---- ویزارد ورود اکسل ----
+   'imp-back'(){
+     const st=S.imp||{step:0,entity:'students'};
+     S.imp=Object.assign({},st,{step:Math.max(0,st.step-1)});render();
+   },
+   'imp-reset'(){ S.imp={step:0,entity:'students'}; render(); },
+   'imp-preview'(){
+     const st=S.imp;
+     if(!st||!st.sheet){toast('ابتدا فایل را انتخاب کنید','err');return;}
+     const need=IMP_FIELDS[st.entity].filter(x=>x[2]).map(x=>x[0]);
+     const have=Object.values(st.mapping||{});
+     const miss=need.filter(k=>have.indexOf(k)<0);
+     if(miss.length){toast('فیلد الزامی نگاشت نشده است','err');return;}
+     const preview=validateImport(st.sheet.rows,st.mapping,st.entity);
+     S.imp=Object.assign({},st,{step:2,preview});render();
+   },
+   'imp-commit'(){
+     const st=S.imp;
+     if(!st||!st.preview){toast('داده‌ای برای ثبت نیست','err');return;}
+     if(!st.preview.counts.ok){toast('هیچ ردیف سالمی برای ثبت وجود ندارد','err');return;}
+     const result=commitImport(st);
+     S.imp=Object.assign({},st,{step:3,result});
+     toast('اطلاعات با موفقیت ثبت شد','ok'); render();
+   },
+   // ---- فرم‌های رسمی و پیامک ----
+   'form-print'(){
+     const kind=el.dataset.r, sid=S.user.school_id, school=byId('schools',sid)||{};
+     const hd=esc(school.name||'')+(school.code?' — کد '+esc(school.code):'');
+     if(kind==='grade-sheet'){
+       const cls=byId('classes',Number(V('fm_class')));
+       if(!cls){toast('کلاس را انتخاب کنید','err');return;}
+       const subj=V('fm_subject')?byId('subjects',Number(V('fm_subject'))):null;
+       const term=V('fm_term')||TERMS[0];
+       const d=formGradeSheet(cls,subj,term);
+       printableDoc({title:'لیست نمرات کلاس',school:hd,
+         subtitle:'کلاس '+esc(cls.name)+(subj?' — درس '+esc(subj.name):'')+' · '+esc(term)+' · سال تحصیلی '+yearTitle(),
+         body:d.body,
+         note:'ستون‌های «مستمر»، «پایانی» و «امضا» برای تکمیل دستی در کلاس در نظر گرفته شده است.'});
+     }
+     else if(kind==='exam-minutes'){
+       const e=V('fm_exam')?byId('exams',Number(V('fm_exam'))):null;
+       if(!e){toast('جلسه امتحان را انتخاب کنید','err');return;}
+       const d=formExamMinutes(e);
+       printableDoc({title:'صورت‌جلسه برگزاری امتحان',school:hd,
+         subtitle:esc(d.subj.name||'')+' — کلاس '+esc(d.cls.name||''),body:d.body,
+         note:'موارد تخلف یا حوادث جلسه: ______________________________________________________<br>'
+              +'تعداد حاضران: ______ تعداد غایبان: ______ تعداد برگه تحویلی: ______'});
+     }
+     else if(kind==='statistics'){
+       const d=formStatistics(sid);
+       printableDoc({title:'دفتر آمار مدرسه',school:hd,landscape:true,
+         subtitle:'سال تحصیلی '+yearTitle()+' · '+esc(school.level||'')+' '+esc(school.gender||''),
+         body:d.body});
+     }
+   },
+   'sms-new'(){
+     openModal(modalTpl('ارسال پیامک گروهی',
+       f('گیرندگان',sel('sm_aud',[['parents','همه اولیا'],['teachers','همه دبیران'],
+         ['students','همه دانش‌آموزان'],['class','اولیای یک کلاس']]))
+       +f('کلاس (در صورت انتخاب)',sel('sm_class',visibleClasses().map(c=>[c.id,c.name])))
+       +f('متن پیام','<textarea class="input" id="sm_text" rows="4" placeholder="اولیای گرامی، جلسه اولیا و مربیان روز چهارشنبه ساعت ۱۶ برگزار می‌شود."></textarea>'),
+       'sms-send'));
+   },
+   'sms-send'(){
+     const sid=S.user.school_id, text=V('sm_text')||'';
+     if(text.trim().length<4){toast('متن پیام کوتاه است','err');return;}
+     const targets=smsTargets(sid,V('sm_aud'),V('sm_class'));
+     if(!targets.length){toast('گیرنده‌ای با شماره معتبر یافت نشد','err');return;}
+     const parts=smsParts(text), need=targets.length*parts;
+     const wal=smsWalletOf(sid);
+     if(wal.balance<need){
+       toast('اعتبار پیامک کافی نیست. نیاز: '+fa(need)+' — موجودی: '+fa(wal.balance),'err');return;}
+     batchWrites(()=>{
+       targets.forEach(t=>insert('sms_log',{school_id:sid,user_id:t.id,phone:t.phone,body:text,
+         parts,status:'sent',created_at:todayISO()}));
+       update('sms_wallet',wal.w.id,{balance:wal.balance-need});
+     });
+     closeModal(); toast(fa(targets.length)+' پیامک ارسال شد ('+fa(need)+' اعتبار)','ok'); render();
+   },
+   'sms-topup'(){
+     const wal=smsWalletOf(S.user.school_id);
+     openModal(modalTpl('شارژ اعتبار پیامک',
+       f('تعداد پیامک',sel('sm_count',[500,1000,2000,5000].map(n=>[n,fa(n)+' پیامک — '+rial(n*wal.price)+' ریال'])))
+       +'<div class="small muted" style="line-height:2;margin-top:8px">پرداخت آزمایشی است و مبلغی کسر نمی‌شود.</div>',
+       'sms-topup-ok'));
+   },
+   'sms-topup-ok'(){
+     const n=Number(V('sm_count'))||500;
+     const wal=smsWalletOf(S.user.school_id);
+     update('sms_wallet',wal.w.id,{balance:Number(wal.w.balance)+n});
+     closeModal(); toast(fa(n)+' پیامک شارژ شد','ok'); render();
+   },
    // ---- افت تحصیلی / جلسات اولیا / رشد مدرسه ----
    'risk-notify'(){
      const st=byId('users',id); if(!st)return;
@@ -3216,6 +4035,48 @@ document.addEventListener('input',e=>{
 /* آبشاری: مقطع → پایه → شاخه → رشته (فرم درس و فرم افزودن کتاب) */
 document.addEventListener('change',e=>{
   const id=e.target.id;
+
+  /* ویزارد ورود اکسل: انتخاب نوع اطلاعات */
+  if(id==='imp_entity'){
+    S.imp=Object.assign({},S.imp||{step:0},{entity:e.target.value});
+    return;
+  }
+  /* ویزارد ورود اکسل: انتخاب فایل ⇒ خواندن و رفتن به مرحله نگاشت */
+  if(id==='imp_file'){
+    const file=e.target.files&&e.target.files[0];
+    if(!file)return;
+    const entity=(S.imp&&S.imp.entity)||'students';
+    const done=rows=>{
+      if(!rows||!rows.length){toast('فایل خالی یا ناخوانا است','err');return;}
+      const sheet=prepSheet(rows,entity);
+      if(!sheet.headers.length){toast('ردیف تیتر یافت نشد','err');return;}
+      S.imp={step:1,entity,sheet,mapping:sheet.mapping,fileName:file.name};
+      render();
+    };
+    const fail=err=>toast(err&&err.message?err.message:'خواندن فایل ممکن نشد','err');
+    if(/\.csv$/i.test(file.name)){
+      file.text().then(t=>done(parseCSV(t))).catch(fail);
+    } else {
+      if(!canReadXlsx()){toast('مرورگر شما xlsx را باز نمی‌کند؛ فایل را csv ذخیره کنید','err');return;}
+      parseXLSX(file).then(sheets=>{
+        const first=(sheets||[]).filter(x=>x.rows&&x.rows.length)[0];
+        done(first?first.rows:null);
+      }).catch(fail);
+    }
+    return;
+  }
+  /* ویزارد ورود اکسل: تغییر دستی نگاشت یک ستون */
+  if(e.target.dataset&&e.target.dataset.f==='impmap'){
+    const i=Number(e.target.dataset.i), val=e.target.value;
+    const st=S.imp; if(!st)return;
+    const map=Object.assign({},st.mapping);
+    /* هر فیلد فقط به یک ستون نگاشت شود */
+    if(val)Object.keys(map).forEach(k=>{ if(map[k]===val&&Number(k)!==i)delete map[k]; });
+    if(val)map[i]=val; else delete map[i];
+    S.imp=Object.assign({},st,{mapping:map});
+    render();
+    return;
+  }
   const optsOf=(list,ph)=>[`<option value="">${ph}</option>`,...list.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`)].join('');
 
   /* فرم درس: تغییر پایه → نمایش یا پنهان‌کردن شاخه/رشته */

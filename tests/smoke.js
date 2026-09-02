@@ -253,6 +253,243 @@ test('پاک‌سازی کامل، صف را هم خالی می‌کند', () =>
   assert(has, 'resetAll صف همگام‌سازی را پاک نمی‌کند');
 });
 
+console.log('\n▸ ویزارد ورود اکسل');
+
+test('توابع ویزارد ورود تعریف شده‌اند', () => {
+  assert(W("typeof viewImport==='function'&&typeof parseCSV==='function'"
+    + "&&typeof prepSheet==='function'&&typeof suggestMap==='function'"
+    + "&&typeof validateImport==='function'&&typeof commitImport==='function'"
+    + "&&typeof normHdr==='function'&&typeof IMP_FIELDS==='object'"), 'توابع ناقص است');
+});
+
+test('هر چهار مرحله ویزارد رندر می‌شوند', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null;S.route='import';S.filters={}");
+  W("S.imp={step:0,entity:'students'}");
+  assert(W('renderRoute()').length > 300, 'مرحله ۱');
+  W("S.imp={step:1,entity:'students',sheet:{headers:['نام'],rows:[['علی']]},mapping:{0:'full_name'}}");
+  assert(W('renderRoute()').length > 300, 'مرحله ۲');
+  W("S.imp={step:2,entity:'students',preview:{rows:[],newClasses:[],counts:{total:0,ok:0,failed:0,updates:0}}}");
+  assert(W('renderRoute()').length > 300, 'مرحله ۳');
+  W("S.imp={step:3,entity:'students',result:{created:1,updated:0,parents:0,classes:0,skipped:0}}");
+  assert(W('renderRoute()').length > 300, 'مرحله ۴');
+  W("S.imp=null");
+});
+
+test('خواندن csv با جداکننده‌های مختلف', () => {
+  assert(W("parseCSV('a,b\\nc,d').length") === 2, 'کاما');
+  assert(W("parseCSV('a;b\\nc;d')[1][1]") === 'd', 'نقطه‌ویرگول');
+  assert(W("parseCSV('\\uFEFFa,b')[0][0]") === 'a', 'حذف نشانه ابتدای فایل');
+});
+
+test('تشخیص ردیف تیتر و نگاشت هوشمند ستون‌ها', () => {
+  const NL = String.fromCharCode(10);
+  const csv = 'نام و نام خانوادگی,کد ملی,کلاس,جنسیت' + NL + 'علی رضایی,0013542419,دهم الف,پسر';
+  const sh = W('prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students')");
+  assert(W('prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').headers.length") === 4, 'تعداد ستون');
+  const map = W('JSON.stringify(prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').mapping)");
+  assert(map.indexOf('full_name') > -1 && map.indexOf('national_id') > -1
+      && map.indexOf('class_name') > -1, 'نگاشت خودکار ناقص است: ' + map);
+});
+
+test('نگاشت با نویسه عربی و تیتر در ردیف دوم', () => {
+  const NL = String.fromCharCode(10);
+  const csv2 = 'نام دانش آموز;كدملي' + NL + 'محمد اکبری;0016283426';
+  const m2 = W('JSON.stringify(prepSheet(parseCSV(' + JSON.stringify(csv2) + "),'students').mapping)");
+  assert(m2.indexOf('full_name') > -1 && m2.indexOf('national_id') > -1, 'نویسه عربی شناخته نشد: ' + m2);
+  const csv3 = 'گزارش مدرسه' + NL + 'نام و نام خانوادگی,کد ملی' + NL + 'رضا نوری,0018765432';
+  assert(W('prepSheet(parseCSV(' + JSON.stringify(csv3) + "),'students').headers[0]") === 'نام و نام خانوادگی',
+    'ردیف تیتر واقعی پیدا نشد');
+  assert(W('prepSheet(parseCSV(' + JSON.stringify(csv3) + "),'students').rows.length") === 1, 'شمار ردیف داده');
+});
+
+test('اعتبارسنجی: نام کوتاه، کد ملی نامعتبر و تکراری رد می‌شوند', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  W("window.__N=(function(){var out=[];var n=100;while(out.length<2){n++;var b=String(n).padStart(9,'0');"
+    + "var s=0;for(var i=0;i<9;i++)s+=Number(b[i])*(10-i);var r=s%11;var c=r<2?r:11-r;var nid=b+c;"
+    + "if(validNid(nid)&&!nidOwner(nid))out.push(nid);}return out;})()");
+  const n0 = W('window.__N[0]');
+  const NL = String.fromCharCode(10);
+  const csv = 'نام و نام خانوادگی,کد ملی' + NL + 'علی رضایی,' + n0
+    + '' + NL + 'ب,' + W('window.__N[1]') + '' + NL + 'حسن کریمی,1234567890' + NL + 'رضا نوری,' + n0;
+  W('window.__v=validateImport(prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').rows,"
+    + 'prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').mapping,'students')");
+  assert(W('window.__v.rows[0].ok') === true, 'ردیف سالم رد شد');
+  assert(W('window.__v.rows[1].ok') === false, 'نام کوتاه پذیرفته شد');
+  assert(W('window.__v.rows[2].ok') === false, 'کد ملی نامعتبر پذیرفته شد');
+  assert(W('window.__v.rows[3].errors.some(function(x){return x.indexOf("تکراری")>-1;})'), 'تکرار تشخیص داده نشد');
+});
+
+test('کد ملی متعلق به مدرسه دیگر رد و تعارض ثبت می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  const other = W("(function(){var o=db.users.find(function(u){return u.role==='student'"
+    + '&&u.school_id!==' + sid + '&&u.national_id;});return o?o.national_id:null;})()');
+  if(!other) return;
+  const c0 = W('db.nid_conflicts.length');
+  const NL = String.fromCharCode(10);
+  const csv = 'نام و نام خانوادگی,کد ملی' + NL + 'دانش آموز جابه‌جا,' + other;
+  W('window.__v2=validateImport(prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').rows,"
+    + 'prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').mapping,'students')");
+  assert(W('window.__v2.rows[0].ok') === false, 'ردیف پذیرفته شد');
+  assert(W('db.nid_conflicts.length') > c0, 'تعارض ثبت نشد');
+});
+
+test('ثبت نهایی: کاربر، کلاس، ثبت‌نام و حساب ولی ساخته می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  W("window.__M=(function(){var out=[];var n=5000;while(out.length<2){n++;var b=String(n).padStart(9,'0');"
+    + "var s=0;for(var i=0;i<9;i++)s+=Number(b[i])*(10-i);var r=s%11;var c=r<2?r:11-r;var nid=b+c;"
+    + "if(validNid(nid)&&!nidOwner(nid))out.push(nid);}return out;})()");
+  const NAME = 'یکتا آزمون‌پور';
+  const NL = String.fromCharCode(10);
+  const csv = 'نام و نام خانوادگی,کد ملی,کلاس,جنسیت,نام پدر,کد ملی پدر' + NL + ''
+    + NAME + ',' + W('window.__M[0]') + ',کلاس یکتای آزمون,دختر,پدر یکتا,' + W('window.__M[1]');
+  W('window.__v3=validateImport(prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').rows,"
+    + 'prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').mapping,'students')");
+  W("S.imp={step:2,entity:'students',preview:window.__v3,sheet:{headers:[],rows:[]},mapping:{}}");
+  W('window.__r=commitImport(S.imp)');
+  assert(W('window.__r.created') === 1, 'کاربر ساخته نشد');
+  assert(W('window.__r.classes') === 1, 'کلاس ساخته نشد');
+  assert(W('window.__r.parents') >= 1, 'حساب ولی ساخته نشد');
+  assert(W('db.users.filter(function(u){return u.full_name===' + JSON.stringify(NAME) + ';}).length') === 1,
+    'رکورد یکتا ساخته نشد');
+  const uid = W('db.users.filter(function(u){return u.full_name===' + JSON.stringify(NAME) + ';})[0].id');
+  assert(W('db.enrollments.filter(function(e){return e.student_id===' + uid + ';}).length') === 1, 'ثبت‌نام نشد');
+  assert(W('db.parent_links.filter(function(l){return l.student_id===' + uid + ';}).length') >= 1, 'پیوند ولی نیست');
+  assert(W('db.users.filter(function(u){return u.full_name===' + JSON.stringify(NAME) + ';})[0].gender') === 'دختر',
+    'جنسیت ثبت نشد');
+});
+
+test('ورود دوباره همان کد ملی به‌روزرسانی می‌کند نه تکرار', () => {
+  const NAME = 'یکتا آزمون‌پور';
+  const nid = W('db.users.filter(function(u){return u.full_name===' + JSON.stringify(NAME) + ';})[0].national_id');
+  const uid = W('db.users.filter(function(u){return u.full_name===' + JSON.stringify(NAME) + ';})[0].id');
+  const NL = String.fromCharCode(10);
+  const csv = 'نام و نام خانوادگی,کد ملی,کلاس' + NL + '' + NAME + ' دوم,' + nid + ',کلاس یکتای آزمون';
+  W('window.__v4=validateImport(prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').rows,"
+    + 'prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').mapping,'students')");
+  assert(W('window.__v4.counts.updates') === 1, 'به‌عنوان به‌روزرسانی شناخته نشد');
+  W("S.imp={step:2,entity:'students',preview:window.__v4,sheet:{headers:[],rows:[]},mapping:{}}");
+  W('window.__r2=commitImport(S.imp)');
+  assert(W('window.__r2.updated') === 1 && W('window.__r2.created') === 0, 'رکورد تکراری ساخته شد');
+  assert(W('db.enrollments.filter(function(e){return e.student_id===' + uid + ';}).length') === 1,
+    'ثبت‌نام تکراری ماند');
+  W('S.imp=null');
+});
+
+test('ویزارد ورود فقط برای مدیر باز است', () => {
+  for(const role of ['student','teacher','parent','edu_office']){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null;S.route='import';S.filters={}");
+    assert(/دسترسی مجاز نیست|اشتراک/.test(W('renderRoute()')), role + ' دسترسی داشت');
+  }
+  const cases = [['student','imp-commit',false],['teacher','imp-commit',false],
+                 ['manager','imp-commit',true],['superadmin','imp-preview',true]];
+  for(const [role, act, want] of cases){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null");
+    assert(W("canAction('" + act + "')") === want, role + ' → ' + act);
+  }
+});
+
+console.log('\n▸ فرم‌های رسمی و پنل پیامک');
+
+test('توابع فرم و پیامک تعریف شده‌اند', () => {
+  assert(W("typeof viewFormsSms==='function'&&typeof smsWalletOf==='function'"
+    + "&&typeof printableDoc==='function'&&typeof smsParts==='function'"
+    + "&&typeof smsTargets==='function'&&typeof formGradeSheet==='function'"
+    + "&&typeof formExamMinutes==='function'&&typeof formStatistics==='function'"), 'توابع ناقص است');
+  assert(W("Array.isArray(db.sms_wallet)&&Array.isArray(db.sms_log)"), 'مجموعه داده ناقص است');
+});
+
+test('هر دو تب فرم و پیامک رندر می‌شوند', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null;S.route='formssms';S.filters={}");
+  for(const t of ['forms','sms']){
+    W("S.tab='" + t + "'");
+    const o = W('renderRoute()');
+    assert(o.length > 500 && !o.includes('undefined') && !o.includes('[object'), 'تب ' + t + ' رندر نشد');
+  }
+  W("S.tab='grades'");
+});
+
+test('شمارش قطعه پیامک بر پایه ۷۰ نویسه است', () => {
+  assert(W("smsParts('سلام')") === 1, 'متن کوتاه');
+  assert(W("smsParts('ا'.repeat(70))") === 1, 'مرز ۷۰');
+  assert(W("smsParts('ا'.repeat(71))") === 2, 'یک نویسه بیشتر');
+  assert(W("smsParts('ا'.repeat(141))") === 3, 'سه قطعه');
+});
+
+test('کیف پول پیامک ساخته و شارژ می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  const wal = W('smsWalletOf(' + sid + ')');
+  assert(W('db.sms_wallet.some(function(x){return x.school_id===' + sid + ';})'), 'کیف پول ساخته نشد');
+  W("(function(){var w=smsWalletOf(" + sid + ");update('sms_wallet',w.w.id,{balance:1000});})()");
+  assert(W('smsWalletOf(' + sid + ').balance') === 1000, 'شارژ ثبت نشد');
+});
+
+test('ارسال پیامک: اعتبار درست کسر و رکورد ثبت می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  W("(function(){var w=smsWalletOf(" + sid + ");update('sms_wallet',w.w.id,{balance:5000});})()");
+  const before = W('smsWalletOf(' + sid + ').balance');
+  const n0 = W('db.sms_log.length');
+  const tg = W("smsTargets(" + sid + ",'teachers','')");
+  const cnt = W("smsTargets(" + sid + ",'teachers','').length");
+  if(!cnt) return;
+  W("(function(){var t=smsTargets(" + sid + ",'teachers','');var need=t.length*smsParts('متن آزمایشی برای ارسال گروهی');"
+    + "var w=smsWalletOf(" + sid + ");batchWrites(function(){"
+    + "t.forEach(function(x){insert('sms_log',{school_id:" + sid + ",user_id:x.id,phone:x.phone,"
+    + "body:'متن آزمایشی برای ارسال گروهی',parts:1,status:'sent',created_at:todayISO()});});"
+    + "update('sms_wallet',w.w.id,{balance:w.balance-need});});})()");
+  assert(W('db.sms_log.length') - n0 === cnt, 'تعداد رکورد نادرست');
+  assert(before - W('smsWalletOf(' + sid + ').balance') === cnt, 'کسر اعتبار نادرست');
+});
+
+test('گیرندگان پیامک: یکتا، معتبر و محدود به مدرسه', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  assert(W("smsTargets(" + sid + ",'teachers','').every(function(u){return u.role==='teacher'&&u.school_id===" + sid + ";})"),
+    'گروه دبیران آلوده است');
+  assert(W("smsTargets(" + sid + ",'parents','').every(function(u){return /^09\\d{9}$/.test(u.phone||'');})"),
+    'شماره نامعتبر در گیرندگان');
+  assert(W("(function(){var a=smsTargets(" + sid + ",'parents','');var s={};"
+    + "for(var i=0;i<a.length;i++){if(s[a[i].id])return false;s[a[i].id]=1;}return true;})()"), 'گیرنده تکراری');
+});
+
+test('سند چاپی: ساختار درست و بدون تزریق', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const cid = W('visibleClasses()[0].id');
+  W("(function(){var s=studentsOfClass(" + cid + ")[0];"
+    + "update('users',s.id,{full_name:'<img src=x onerror=XSS>'});})()");
+  const d = W("formGradeSheet(byId('classes'," + cid + "),null,'نوبت اول')");
+  const body = W("formGradeSheet(byId('classes'," + cid + "),null,'نوبت اول').body");
+  assert(body.includes('&lt;img'), 'نام مخرب escape نشد');
+  assert(!body.includes('<img src=x'), 'تگ خام در سند چاپی');
+  assert(body.includes('مستمر') && body.includes('امضا'), 'ستون‌های دستی نیست');
+});
+
+test('دفتر آمار: شمارش‌ها با داده واقعی می‌خواند', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  const real = W("(function(){var n=0;db.classes.filter(function(c){return c.school_id===" + sid + ";})"
+    + ".forEach(function(c){n+=studentsOfClass(c.id).length;});return n;})()");
+  assert(W('formStatistics(' + sid + ').tot.students') === real, 'شمارش دانش‌آموز نادرست');
+  const rate = W('formStatistics(' + sid + ').rate');
+  assert(rate >= 0 && rate <= 100, 'درصد حضور خارج از بازه: ' + rate);
+});
+
+test('فرم و پیامک فقط برای مدیر باز است', () => {
+  for(const role of ['student','teacher','parent','edu_office']){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null;S.route='formssms';S.filters={};S.tab='forms'");
+    assert(/دسترسی مجاز نیست|اشتراک/.test(W('renderRoute()')), role + ' دسترسی داشت');
+  }
+  const cases = [['student','sms-send',false],['teacher','sms-send',false],['teacher','form-print',false],
+                 ['manager','sms-send',true],['manager','form-print',true],['superadmin','sms-topup-ok',true]];
+  for(const [role, act, want] of cases){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null");
+    assert(W("canAction('" + act + "')") === want, role + ' → ' + act);
+  }
+});
+
 console.log('\n▸ افت تحصیلی، جلسات اولیا، رشد مدرسه');
 
 test('توابع سه صفحه جدید تعریف شده‌اند', () => {

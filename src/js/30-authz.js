@@ -17,7 +17,7 @@
 /** روت‌هایی که در NAV نیستند ولی برای نقش مجازند (زیرصفحه یا مقصد پیمایش) */
 var EXTRA_ROUTES = {
   superadmin: ['dashboard','adminsubs','officedash','officeschools','record','geo','offices','lifecycle'],
-  manager:    ['record','corrections','teachers','exams','tuition','lifecycle','atrisk','meetings','growth'],
+  manager:    ['record','corrections','teachers','exams','tuition','lifecycle','atrisk','meetings','growth','formssms','import'],
   teacher:    ['record','exams','meetings'],
   student:    ['record','mytuition','notifications','announcements','subscription'],
   parent:     ['children','record','family','mytuition','notifications','announcements','subscription','calendar','meetings'],
@@ -114,6 +114,17 @@ var ACTION_ROLES = {
   'promote-run':   ['manager','superadmin'],
   /* افت تحصیلی / جلسات / رشد */
   'risk-notify':   ['manager','superadmin','teacher'],
+  /* فرم‌های رسمی و پیامک — پیامک هزینه دارد، پس فقط مدیر */
+  'form-print':    ['manager','superadmin'],
+  /* ورود اکسل — رکورد انبوه می‌سازد، پس فقط مدیر */
+  'imp-preview':   ['manager','superadmin'],
+  'imp-commit':    ['manager','superadmin'],
+  'imp-back':      ['manager','superadmin'],
+  'imp-reset':     ['manager','superadmin'],
+  'sms-new':       ['manager','superadmin'],
+  'sms-send':      ['manager','superadmin'],
+  'sms-topup':     ['manager','superadmin'],
+  'sms-topup-ok':  ['manager','superadmin'],
   'invite-parents':['manager','superadmin'],
   'mtg-new':       ['manager','superadmin','teacher'],
   'mtg-save':      ['manager','superadmin','teacher'],
