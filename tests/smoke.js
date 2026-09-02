@@ -341,6 +341,63 @@ test('سابقه و فعالیت فقط برای سوپرادمین باز اس�
   }
 });
 
+console.log('\n▸ ابزارهای تکمیلی سوپرادمین');
+
+test('توابع ابزارهای تکمیلی تعریف شده‌اند', () => {
+  assert(W("typeof schoolsOverview==='function'&&typeof schoolStatus==='function'"
+    + "&&typeof exportData==='function'&&typeof downloadCSV==='function'"
+    + "&&typeof csvCell==='function'&&typeof broadcastAnnouncement==='function'"), 'توابع ناقص');
+});
+
+test('وضعیت و فعالیت مدارس محاسبه می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null;S.filters={}");
+  assert(W('schoolsOverview().length') === W('db.schools.length'), 'همه مدارس نیستند');
+  assert(W('schoolsOverview()[0].st.students') >= 0, 'شمارش دانش‌آموز نادرست');
+  assert(W("['active','slow','idle','never'].indexOf(schoolsOverview()[0].st.state)>-1"),
+    'وضعیت نامعتبر');
+  W("S.route='schools'");
+  assert(W('renderRoute()').indexOf('آخرین فعالیت') > -1, 'ستون آخرین فعالیت نیست');
+});
+
+test('سلول csv در برابر تزریق فرمول امن است', () => {
+  assert(W("csvCell('=SUM(A1)').charAt(0)") === "'", 'فرمول خنثی نشد');
+  assert(W("csvCell('+1')").charAt(0) === "'", 'علامت مثبت خنثی نشد');
+  assert(W("csvCell('a,b')") === '"a,b"', 'کاما محصور نشد');
+  assert(W('csvCell(\'a"b\')') === '"a""b"', 'نقل‌قول escape نشد');
+});
+
+test('خروجی csv برای چهار صفحه ساخته می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null");
+  for(const r of ['schools','users','finance','audit']){
+    const n = W("exportData('" + r + "').rows.length");
+    const h = W("exportData('" + r + "').headers.length");
+    assert(h > 0, 'ستون ندارد: ' + r);
+    assert(n >= 0, 'ردیف نامعتبر: ' + r);
+  }
+  assert(W("exportData('schools').rows.length") === W('db.schools.length'), 'شمار مدارس');
+});
+
+test('اطلاعیه سراسری در دو حالت کار می‌کند', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null");
+  const n0 = W('db.announcements.length');
+  W("broadcastAnnouncement('عنوان آزمون','متن آزمون سراسری','all')");
+  assert(W('db.announcements.length') === n0 + 1, 'حالت سراسری');
+  assert(W('db.announcements[db.announcements.length-1].school_id') === null, 'دامنه سراسری نیست');
+  const n1 = W('db.announcements.length');
+  W("broadcastAnnouncement('عنوان دوم','متن برای هر مدرسه','each')");
+  assert(W('db.announcements.length') > n1, 'حالت هر مدرسه');
+});
+
+test('مجوز ابزارهای تکمیلی', () => {
+  const cases = [['superadmin','ann-broadcast',true],['manager','ann-broadcast',false],
+                 ['manager','export-csv',true],['student','export-csv',false],
+                 ['teacher','export-csv',false],['parent','ann-broadcast',false]];
+  for(const [role, act, want] of cases){
+    W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null");
+    assert(W("canAction('" + act + "')") === want, role + ' → ' + act);
+  }
+});
+
 console.log('\n▸ سازگاری با فایل واقعی مدرسه');
 
 test('ستون‌های فایل واقعی مدرسه شناخته می‌شوند', () => {

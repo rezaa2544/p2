@@ -1495,6 +1495,9 @@ var ACTION_ROLES = {
   /* فرم‌های رسمی و پیامک — پیامک هزینه دارد، پس فقط مدیر */
   'form-print':    ['manager','superadmin'],
   /* پنل سوپرادمین */
+  'export-csv':      ['manager','superadmin'],
+  'ann-broadcast':   ['superadmin'],
+  'ann-broadcast-ok':['superadmin'],
   'pass-reset':    ['manager','superadmin'],
   'pass-reset-ok': ['manager','superadmin'],
   'health-backup': ['superadmin'],
@@ -1806,7 +1809,8 @@ function viewSchools(){
   return `<div class="card"><div class="card-head">
     <h3>فهرست مدارس <span class="badge b-gray">${fa(rows.length)}</span></h3>
     <div class="row"><input class="input" style="width:180px" placeholder="جستجوی نام یا کد…" data-f="q" value="${esc(q)}" />
-    ${isAdmin?`<button class="btn" data-act="school-new">➕ تعریف مدرسه جدید</button>`:''}</div></div>
+    ${isAdmin?`<button class="btn ghost" data-act="export-csv" data-r="schools">⬇️ خروجی</button>
+    <button class="btn" data-act="school-new">➕ تعریف مدرسه جدید</button>`:''}</div></div>
    ${isAdmin?filterPanel('schools',`
        <select class="select" style="width:150px" data-f="sp">${opt(db.provinces.map(p=>[p.id,p.name]),fp,'همه استان‌ها')}</select>
        <select class="select" style="width:150px" data-f="sc">${opt(counties.map(c=>[c.id,c.name]),fc,'همه شهرستان‌ها')}</select>
@@ -1814,8 +1818,8 @@ function viewSchools(){
        <select class="select" style="width:140px" data-f="slevel">${opt([['ابتدایی','ابتدایی'],['متوسطه اول','متوسطه اول'],['متوسطه دوم','متوسطه دوم']],fl,'همه مقاطع')}</select>
        <select class="select" style="width:130px" data-f="sgender">${opt([['پسرانه','پسرانه'],['دخترانه','دخترانه']],fg,'همه جنسیت‌ها')}</select>
        <select class="select" style="width:130px" data-f="sactive">${opt([['1','فعال'],['0','غیرفعال']],fa_,'همه وضعیت‌ها')}</select>`):''}
-   ${rows.length?`<div class="table-wrap"><table><thead><tr><th>نام مدرسه</th><th>کد</th><th>مکان</th><th>مقطع</th><th>مدیر</th><th>تلفن ثابت</th><th>دانش‌آموز</th><th>دبیر</th><th>کلاس</th><th>وضعیت</th>${isAdmin?'<th></th>':''}</tr></thead><tbody>
-    ${rows.map(s=>{const us=db.users.filter(u=>u.school_id===s.id);const mg=us.find(u=>u.role==='manager');
+   ${rows.length?`<div class="table-wrap"><table><thead><tr><th>نام مدرسه</th><th>کد</th><th>مکان</th><th>مقطع</th><th>مدیر</th><th>تلفن ثابت</th><th>دانش‌آموز</th><th>دبیر</th><th>کلاس</th><th>آخرین فعالیت</th><th>وضعیت</th>${isAdmin?'<th></th>':''}</tr></thead><tbody>
+    ${(()=>{const _ov=schoolsOverview();const _by={};_ov.forEach(function(r){_by[r.school.id]=r.st;});return rows.map(s=>{const st_=_by[s.id]||{};const us=db.users.filter(u=>u.school_id===s.id);const mg=us.find(u=>u.role==='manager');
      return `<tr><td><b>${esc(s.name)}</b><div class="small muted">${esc(s.gender||'')}</div></td><td class="muted">${esc(s.code)}</td>
       <td>${esc((byId('provinces',s.province_id)||{}).name||s.city||'—')}<div class="small muted">${esc((byId('counties',s.county_id)||{}).name||'')}${s.district_id?' › '+esc((byId('districts',s.district_id)||{}).name||''):''}</div></td>
       <td><span class="badge b-blue">${esc(s.level||'—')}</span></td><td class="muted">${esc(mg?mg.full_name:'—')}</td>
@@ -1825,7 +1829,7 @@ function viewSchools(){
       ${isAdmin?`<td><div class="row" style="gap:5px;flex-wrap:nowrap">
         <button class="btn sm" data-act="school-enter" data-id="${s.id}" title="ورود به پنل این مدرسه به‌عنوان مدیر">🔑 ورود به پنل</button>
         <button class="icon-btn" title="ویرایش" data-act="school-edit" data-id="${s.id}">✏️</button>
-        <button class="icon-btn danger" title="حذف" data-act="school-del" data-id="${s.id}">🗑️</button></div></td>`:''}</tr>`;}).join('')}
+        <button class="icon-btn danger" title="حذف" data-act="school-del" data-id="${s.id}">🗑️</button></div></td>`:''}</tr>`;}).join('');})()}
     </tbody></table></div>`:empty('🏫','مدرسه‌ای یافت نشد',q?'نتیجه‌ای برای جستجو نبود.':'اولین مدرسه را تعریف کنید.',isAdmin?'<button class="btn" data-act="school-new">تعریف مدرسه</button>':'')}
    </div>`;
 }
@@ -1847,6 +1851,7 @@ function viewUsers(){
   const slice=rows.slice((page-1)*per,page*per);
   return `<div class="card"><div class="card-head">
     <h3>کاربران <span class="badge b-gray">${fa(rows.length)} نفر</span></h3>
+    <div class="row"><button class="btn ghost sm" data-act="export-csv" data-r="users">⬇️ خروجی</button></div>
     <div class="row">
      <input class="input" style="width:180px" placeholder="نام یا کد ملی…" data-f="q" value="${esc(q)}" />
      ${canEdit?`<button class="btn" data-act="user-new">➕ کاربر جدید</button>`:''}</div></div>
@@ -2089,7 +2094,7 @@ function viewAnnouncements(){
   const canEdit=['superadmin','manager','teacher'].includes(S.user.role);
   const rows=myAnnouncements();
   const AUD={all:'همه',teacher:'دبیران',student:'دانش‌آموزان',parent:'اولیا',manager:'مدیران'};
-  return `<div class="card"><div class="card-head"><h3>اطلاعیه‌ها</h3>${canEdit?`<button class="btn" data-act="ann-new">➕ اطلاعیه جدید</button>`:''}</div>
+  return `<div class="card"><div class="card-head"><h3>اطلاعیه‌ها</h3>${S.user.role==='superadmin'?`<button class="btn ghost" data-act="ann-broadcast">📢 اطلاعیه سراسری</button> `:''}${canEdit?`<button class="btn" data-act="ann-new">➕ اطلاعیه جدید</button>`:''}</div>
    ${rows.length?`<div class="card-body" style="display:grid;gap:12px">${rows.map(a=>{const au=a.created_by?byId('users',a.created_by):null;
     return `<div class="card" style="padding:15px;box-shadow:none;background:var(--surface-2)">
      <div class="row"><b style="font-size:15px">${esc(a.title)}</b><span class="badge b-blue">${AUD[a.audience]||'همه'}</span><div class="spacer"></div>
@@ -4553,6 +4558,185 @@ function viewActivity(){
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   ابزارهای تکمیلی سوپرادمین
+   ═══════════════════════════════════════════════════════════════════
+   بخش ۱ ▸ وضعیت و فعالیت مدارس   (ستون‌های تازه در فهرست مدارس)
+   بخش ۲ ▸ خروجی اکسل از فهرست‌ها  (اکشن: export-csv)
+   بخش ۳ ▸ اطلاعیهٔ سراسری         (ارسال به همهٔ مدارس)
+
+   ⚠️ خروجی با قالب csv و پیشوند BOM ساخته می‌شود تا اکسل فارسی
+   بدون به‌هم‌ریختگی حروف بازش کند. این جزئیات ریز اما حیاتی است.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─────────── بخش ۱: وضعیت و فعالیت مدارس ─────────── */
+
+/**
+ * آخرین فعالیت هر مدرسه بر پایهٔ دفترچهٔ عملیات.
+ * یک پیمایش، نه پیمایش دفترچه به‌ازای هر مدرسه.
+ */
+function schoolActivityMap(){
+  var out = Object.create(null);
+  var src = (typeof log !== 'undefined') ? log : [];
+  for(var i = 0; i < src.length; i++){
+    var op = src[i];
+    if(!op || !op.at) continue;
+    var sid = (op.data && op.data.school_id) || null;
+    if(!sid && op.by){ var u = byId('users', op.by); sid = u ? u.school_id : null; }
+    if(!sid) continue;
+    if(!out[sid] || op.at > out[sid].at) out[sid] = { at: op.at, n: (out[sid] ? out[sid].n : 0) + 1 };
+    else out[sid].n++;
+  }
+  return out;
+}
+
+/** خلاصهٔ وضعیت یک مدرسه: تعداد، اشتراک اولیا و آخرین فعالیت */
+function schoolStatus(sid, activityMap, parentsMap, subMap){
+  var students = 0, teachers = 0;
+  db.users.forEach(function(u){
+    if(u.school_id !== sid) return;
+    if(u.role === 'student' && (u.status || 'active') === 'active') students++;
+    else if(u.role === 'teacher') teachers++;
+  });
+  var pl = parentsMap[sid] ? Object.keys(parentsMap[sid]) : [];
+  var active = 0;
+  pl.forEach(function(p){ if(subMap[p] === 'active') active++; });
+  var act = activityMap[sid] || null;
+  var days = act ? Math.floor((Date.now() - Date.parse(act.at)) / 86400000) : null;
+  return { students: students, teachers: teachers, parents: pl.length, activeSubs: active,
+    conv: pl.length ? Math.round(active / pl.length * 1000) / 10 : 0,
+    lastAt: act ? act.at : null, idleDays: days, ops: act ? act.n : 0,
+    state: days === null ? 'never' : days <= 7 ? 'active' : days <= 30 ? 'slow' : 'idle' };
+}
+
+/** ساخت جدول وضعیت همهٔ مدارس — همهٔ گروه‌بندی‌ها یک‌باره */
+function schoolsOverview(){
+  var activity = schoolActivityMap();
+  var studentSchool = Object.create(null);
+  db.users.forEach(function(u){ if(u.role === 'student') studentSchool[u.id] = u.school_id; });
+  var parentsMap = Object.create(null);
+  db.parent_links.forEach(function(l){
+    var sid = studentSchool[l.student_id];
+    if(sid) (parentsMap[sid] = parentsMap[sid] || Object.create(null))[l.parent_id] = true;
+  });
+  var subMap = Object.create(null);
+  db.parent_subscriptions.forEach(function(s){ subMap[s.user_id] = s.status; });
+  return db.schools.map(function(sc){
+    return { school: sc, st: schoolStatus(sc.id, activity, parentsMap, subMap) };
+  });
+}
+
+/* ─────────── بخش ۲: خروجی اکسل ─────────── */
+
+/** یک سلول امن برای قالب csv */
+function csvCell(v){
+  var s = (v === undefined || v === null) ? '' : String(v);
+  /* جلوگیری از تفسیر شدن به‌عنوان فرمول در اکسل */
+  if(/^[=+\-@]/.test(s)) s = "'" + s;
+  if(/[",\n\r;]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+/**
+ * ساخت و دانلود فایل csv.
+ * پیشوند BOM لازم است وگرنه اکسل فارسی را به‌هم‌ریخته نشان می‌دهد.
+ */
+function downloadCSV(filename, headers, rows){
+  var lines = [headers.map(csvCell).join(',')];
+  rows.forEach(function(r){ lines.push(r.map(csvCell).join(',')); });
+  var content = '\uFEFF' + lines.join('\r\n');
+  try{
+    var blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+    return true;
+  }catch(e){ return false; }
+}
+
+/** دادهٔ خروجی بر پایهٔ صفحهٔ جاری */
+function exportData(route){
+  if(route === 'users'){
+    var rows = db.users.filter(function(u){ return u.role !== 'superadmin'; });
+    if(S.user.role !== 'superadmin')
+      rows = rows.filter(function(u){ return u.school_id === S.user.school_id; });
+    return { name: 'کاربران',
+      headers: ['ردیف','نام و نام خانوادگی','نام کاربری','نقش','کد ملی','موبایل','مدرسه','وضعیت'],
+      rows: rows.map(function(u, i){
+        return [i + 1, u.full_name, u.username, ROLE_FA[u.role] || u.role,
+          u.national_id || '', u.phone || '',
+          (byId('schools', u.school_id) || {}).name || '', u.active ? 'فعال' : 'غیرفعال'];
+      }) };
+  }
+  if(route === 'schools'){
+    var ov = schoolsOverview();
+    return { name: 'مدارس',
+      headers: ['ردیف','نام مدرسه','کد','شهر','دانش‌آموز','دبیر','ولی','اشتراک فعال','نرخ تبدیل','آخرین فعالیت'],
+      rows: ov.map(function(r, i){
+        return [i + 1, r.school.name, r.school.code || '', r.school.city || '',
+          r.st.students, r.st.teachers, r.st.parents, r.st.activeSubs,
+          r.st.conv + '٪', r.st.lastAt ? jalali(r.st.lastAt.slice(0, 10)) : 'هرگز'];
+      }) };
+  }
+  if(route === 'finance'){
+    var d = financeSummary();
+    return { name: 'گزارش مالی',
+      headers: ['ردیف','مدرسه','ولی','اشتراک فعال','نرخ تبدیل','شهریه دریافتی'],
+      rows: d.schools.map(function(r, i){
+        return [i + 1, r.school.name, r.parents, r.active, r.conv + '٪', r.paid];
+      }) };
+  }
+  if(route === 'audit'){
+    var list = auditList({});
+    return { name: 'سابقه تغییرات',
+      headers: ['ردیف','عمل','نوع داده','انجام‌دهنده','نقش','زمان'],
+      rows: list.slice(0, 1000).map(function(r, i){
+        return [i + 1, (OP_FA[r.op.t] || ['—'])[0], COLL_FA[r.op.c] || r.op.c,
+          r.actor ? r.actor.full_name : '—',
+          r.actor ? (ROLE_FA[r.actor.role] || '') : '',
+          r.at ? shortStamp(r.at) : ''];
+      }) };
+  }
+  /* پیش‌فرض: فهرست دانش‌آموزان مدرسهٔ جاری با پروندهٔ کامل */
+  var sts = schoolStudents(S.user.school_id);
+  return { name: 'دانش‌آموزان',
+    headers: ['ردیف','نام','نام خانوادگی','کد ملی','کلاس','رشته','معدل سال گذشته',
+              'نام پدر','شغل پدر','موبایل پدر','تحت پوشش','آدرس'],
+    rows: sts.map(function(u, i){
+      return [i + 1, u.first_name || u.full_name, u.last_name || '', u.national_id || '',
+        (classOf(u.id) || {}).name || '', u.field || '', u.last_gpa != null ? u.last_gpa : '',
+        u.father_name || '', u.father_job || '', u.father_phone || '',
+        u.covered === 1 ? 'بلی' : u.covered === 0 ? 'خیر' : '', u.address || ''];
+    }) };
+}
+
+/* ─────────── بخش ۳: اطلاعیهٔ سراسری ─────────── */
+
+/**
+ * ارسال اطلاعیه به همهٔ مدارس یا مدارس یک اداره.
+ * اطلاعیه با شناسهٔ مدرسهٔ خالی یعنی «همهٔ کشور».
+ */
+function broadcastAnnouncement(title, body, scope){
+  var count = 0;
+  batchWrites(function(){
+    if(scope === 'all'){
+      insert('announcements', { school_id: null, title: title, body: body,
+        author_id: S.user.id, date: todayISO(), pinned: 0 });
+      count = 1;
+    } else {
+      db.schools.forEach(function(sc){
+        if(!sc.active && sc.active !== undefined) return;
+        insert('announcements', { school_id: sc.id, title: title, body: body,
+          author_id: S.user.id, date: todayISO(), pinned: 0 });
+        count++;
+      });
+    }
+  });
+  return count;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    کنترلگر مرکزی رویدادها
    همهٔ دکمه‌ها اینجا مدیریت می‌شوند (واگذاری رویداد با data-act). گارد مجوز در ابتدای شنونده اعمال می‌شود.
    ═══════════════════════════════════════════════════════════════════ */
@@ -4761,6 +4945,31 @@ document.addEventListener('click',e=>{
      studentsOfClass(cid).forEach(s=>{const ex=_am?_day.get(s.id):db.attendance.find(x=>x.student_id===s.id&&x.date===date);
        if(ex)update('attendance',ex.id,{status:st});else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:s.id,date,status:st,note:null});});
      toast('همه دانش‌آموزان «'+ATT_FA[st]+'» ثبت شدند','ok');render();},
+   // ---- ابزارهای تکمیلی: خروجی و اطلاعیه سراسری ----
+   'export-csv'(){
+     const d=exportData(el.dataset.r||S.route);
+     if(!d.rows.length){toast('داده‌ای برای خروجی نیست','err');return;}
+     const okDl=downloadCSV('payesh-'+d.name+'-'+todayISO()+'.csv',d.headers,d.rows);
+     toast(okDl?fa(d.rows.length)+' ردیف خروجی گرفته شد':'دریافت خروجی ممکن نشد',okDl?'ok':'err');
+   },
+   'ann-broadcast'(){
+     openModal(modalTpl('اطلاعیه سراسری',
+       f('عنوان',inp('bc_title',''))
+       +f('متن','<textarea class="input" id="bc_body" rows="4" placeholder="متن اطلاعیه برای همه مدارس"></textarea>')
+       +f('دامنه',sel('bc_scope',[['all','همه کشور (یک اطلاعیه سراسری)'],
+                                   ['each','برای هر مدرسه جداگانه']]))
+       +'<div class="small muted" style="line-height:2;margin-top:8px">'
+       +'حالت «سراسری» یک اطلاعیه می‌سازد که همه می‌بینند. حالت «هر مدرسه» '
+       +'برای هر مدرسه نسخه‌ای جدا می‌سازد تا مدیرش بتواند ویرایشش کند.</div>',
+       'ann-broadcast-ok'));
+   },
+   'ann-broadcast-ok'(){
+     const t=(V('bc_title')||'').trim(), b=(V('bc_body')||'').trim();
+     if(t.length<3){toast('عنوان کوتاه است','err');return;}
+     if(b.length<5){toast('متن اطلاعیه کوتاه است','err');return;}
+     const n=broadcastAnnouncement(t,b,V('bc_scope')||'all');
+     closeModal(); toast(fa(n)+' اطلاعیه ثبت شد','ok'); render();
+   },
    // ---- پنل سوپرادمین: بازنشانی رمز و نگهداری ----
    'pass-reset'(){
      const u=byId('users',id);

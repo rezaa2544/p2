@@ -117,6 +117,9 @@ var ACTION_ROLES = {
   /* فرم‌های رسمی و پیامک — پیامک هزینه دارد، پس فقط مدیر */
   'form-print':    ['manager','superadmin'],
   /* پنل سوپرادمین */
+  'export-csv':      ['manager','superadmin'],
+  'ann-broadcast':   ['superadmin'],
+  'ann-broadcast-ok':['superadmin'],
   'pass-reset':    ['manager','superadmin'],
   'pass-reset-ok': ['manager','superadmin'],
   'health-backup': ['superadmin'],

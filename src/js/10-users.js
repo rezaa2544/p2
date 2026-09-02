@@ -15,6 +15,7 @@ function viewUsers(){
   const slice=rows.slice((page-1)*per,page*per);
   return `<div class="card"><div class="card-head">
     <h3>کاربران <span class="badge b-gray">${fa(rows.length)} نفر</span></h3>
+    <div class="row"><button class="btn ghost sm" data-act="export-csv" data-r="users">⬇️ خروجی</button></div>
     <div class="row">
      <input class="input" style="width:180px" placeholder="نام یا کد ملی…" data-f="q" value="${esc(q)}" />
      ${canEdit?`<button class="btn" data-act="user-new">➕ کاربر جدید</button>`:''}</div></div>

@@ -207,6 +207,31 @@ document.addEventListener('click',e=>{
      studentsOfClass(cid).forEach(s=>{const ex=_am?_day.get(s.id):db.attendance.find(x=>x.student_id===s.id&&x.date===date);
        if(ex)update('attendance',ex.id,{status:st});else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:s.id,date,status:st,note:null});});
      toast('همه دانش‌آموزان «'+ATT_FA[st]+'» ثبت شدند','ok');render();},
+   // ---- ابزارهای تکمیلی: خروجی و اطلاعیه سراسری ----
+   'export-csv'(){
+     const d=exportData(el.dataset.r||S.route);
+     if(!d.rows.length){toast('داده‌ای برای خروجی نیست','err');return;}
+     const okDl=downloadCSV('payesh-'+d.name+'-'+todayISO()+'.csv',d.headers,d.rows);
+     toast(okDl?fa(d.rows.length)+' ردیف خروجی گرفته شد':'دریافت خروجی ممکن نشد',okDl?'ok':'err');
+   },
+   'ann-broadcast'(){
+     openModal(modalTpl('اطلاعیه سراسری',
+       f('عنوان',inp('bc_title',''))
+       +f('متن','<textarea class="input" id="bc_body" rows="4" placeholder="متن اطلاعیه برای همه مدارس"></textarea>')
+       +f('دامنه',sel('bc_scope',[['all','همه کشور (یک اطلاعیه سراسری)'],
+                                   ['each','برای هر مدرسه جداگانه']]))
+       +'<div class="small muted" style="line-height:2;margin-top:8px">'
+       +'حالت «سراسری» یک اطلاعیه می‌سازد که همه می‌بینند. حالت «هر مدرسه» '
+       +'برای هر مدرسه نسخه‌ای جدا می‌سازد تا مدیرش بتواند ویرایشش کند.</div>',
+       'ann-broadcast-ok'));
+   },
+   'ann-broadcast-ok'(){
+     const t=(V('bc_title')||'').trim(), b=(V('bc_body')||'').trim();
+     if(t.length<3){toast('عنوان کوتاه است','err');return;}
+     if(b.length<5){toast('متن اطلاعیه کوتاه است','err');return;}
+     const n=broadcastAnnouncement(t,b,V('bc_scope')||'all');
+     closeModal(); toast(fa(n)+' اطلاعیه ثبت شد','ok'); render();
+   },
    // ---- پنل سوپرادمین: بازنشانی رمز و نگهداری ----
    'pass-reset'(){
      const u=byId('users',id);
