@@ -7558,13 +7558,19 @@ document.addEventListener('click',e=>{
    'grade-new'(){gradeModal(null);},
    'grade-edit'(){gradeModal(byId('grades',id));},
    'grade-del'(){confirmModal('حذف این نمره؟','grade-del-ok',id);},
-   'grade-del-ok'(){remove('grades',window._delId);closeModal();toast('نمره حذف شد','ok');render();},
+   'grade-del-ok'(){if(typeof notifyGradeCancel==='function')notifyGradeCancel(window._delId);remove('grades',window._delId);closeModal();toast('نمره حذف شد','ok');render();},
    'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
+     let gid=g.id;
      if(g.id)update('grades',g.id,{score,term:V('g_term'),exam_type:V('g_type')});
      else{const sid=Number(V('g_st')),cid=window._gclass;
-       insert('grades',{school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,term:V('g_term'),exam_type:V('g_type'),score,max_score:20,created_at:todayISO()});}
-     closeModal();toast('نمره ثبت شد','ok');render();},
+       const r=insert('grades',{school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,term:V('g_term'),exam_type:V('g_type'),score,max_score:20,created_at:todayISO()});
+       gid=r.id;}
+     /* گام ۷: نمرهٔ زیر آستانه برای اولیا پیامک می‌سازد (بعد از نوشتن
+        تا source_ref شناسهٔ واقعی باشد) */
+     let sms=0,fix=0;
+     if(typeof notifyGradeSync==='function'){const r=notifyGradeSync(gid);sms=r.made;fix=r.fixed;}
+     closeModal();toast('نمره ثبت شد'+(sms?' — '+fa(sms)+' پیامک ساخته شد':'')+(fix?' — '+fa(fix)+' اصلاحیه ساخته شد':''),'ok');render();},
    // discipline
    'disc-new'(){discModal(null);},
    'disc-edit'(){discModal(byId('discipline',id));},
@@ -8234,7 +8240,13 @@ const F7_ACTIONS = {
     const data={school_id:S.user.school_id||null,title:V('cl_title'),date:V('cl_date'),kind:V('cl_kind')};
     if(!data.title){toast('عنوان الزامی است','err');return;}
     if(c.id)update('calendar',c.id,data); else insert('calendar',data);
-    closeModal(); toast('رویداد ذخیره شد','ok'); render();
+    /* گام ۷: رویدادِ تازهٔ تقویم (نه ویرایش) برای اولیا پیامک می‌سازد.
+       فقط kind='event' — امتحان و تعطیلی الگوی دیگری دارند. */
+    let ev=0;
+    if(!c.id && data.kind==='event' && typeof notifyEvent==='function' && data.school_id){
+      ev=notifyEvent(data.school_id, data.title+' — '+jalali(data.date)).made;
+    }
+    closeModal(); toast('رویداد ذخیره شد'+(ev?' — '+fa(ev)+' پیامک ساخته شد':''),'ok'); render();
   },
   'cal-del'(el,id){ const c=byId('calendar',id);
     askDelete(`رویداد «${c.title}» حذف شود؟`,()=>{remove('calendar',id);toast('حذف شد','');render();}); },
@@ -12296,6 +12308,13 @@ var NOTIFY_TPL = {
     return 'اصلاحیه: ' + o.student + ' در ' + o.date + ' ' +
            (o.wasAbsent ? 'غایب نبوده است' : 'غایب بوده است') +
            '. پوزش می‌خواهیم. ' + o.school;
+  },
+  /* اصلاحیهٔ نمره: عدد را بازگو نمی‌کند؛ فقط می‌گوید اطلاع قبلی
+     نادرست بود و جزئیات در سامانه است (همان قاعدهٔ حریم نمره). */
+  gradeCorrection: function(o){
+    return 'اصلاحیه: اطلاع قبلی دربارهٔ نمرهٔ ' + o.student + ' در ' +
+           (o.subject || 'آزمون') + ' نادرست بود. وضعیت دقیق در سامانه. ' +
+           'پوزش می‌خواهیم. ' + o.school;
   }
 };
 
@@ -12331,7 +12350,11 @@ function notifyHash(kind, ref){
   if(kind === 'grade'){
     var g = (typeof byId === 'function') ? byId('grades', ref) : null;
     if(!g) return 'gone';
-    return g.student_id + '|' + g.exam_id + '|' + g.score;
+    /* ⚠️ فیلدهای واقعی رکورد نمره: subject_id, term, exam_type, score
+       (exam_id وجود ندارد). هش باید هر چیزی که در پیام اثر دارد را
+       پوشش دهد تا تغییرش اصلاحیه بسازد. */
+    return g.student_id + '|' + g.subject_id + '|' + g.term + '|'
+         + g.exam_type + '|' + g.score;
   }
   return String(ref);
 }
@@ -13082,6 +13105,265 @@ function notifyReconcileMany(attIds){
     if(r.action === 'created')   out.created++;
     if(r.action === 'cancelled') out.cancelled++;
     if(r.action === 'updated')   out.updated++;
+  });
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بخش ۱۲ ▸ نمره (گام ۷، دور ۴۲)
+   ═══════════════════════════════════════════════════════════════════
+   نمرهٔ زیر آستانه (gradeThreshold، پیش‌فرض ۱۰) برای اولیا پیامک
+   می‌شود. الگوی غیبت تکرار می‌شود ولی ساده‌تر، چون عدد نمره عمداً
+   در پیام نیست:
+
+   • تا وقتی نمره زیر آستانه بماند، پیام اول درست است و اصلاحیه
+     لازم نیست — حتی اگر عدد عوض شود (خانواده عدد را نمی‌داند).
+   • فقط وقتی نمره از «زیر آستانه» به «بالای آستانه» می‌رود و
+     پیامش قبلاً رفته، خانواده باید اصلاحیه بگیرد.
+   • پیام معلق که هنوز نرفته، کار پنجرهٔ مهلت است نه اصلاحیه.
+
+   ⚠️ توابع این بخش «بر پایهٔ kind» فیلتر می‌کنند تا شناسهٔ تکراری
+   بین مجموعه‌ها (attendance و grades شمارندهٔ جدا دارند) موجب
+   قاطی‌شدن پیام حضور و نمره نشود.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** آخرین پیام نمره‌ای که واقعاً ارسال شده (شامل اصلاحیه‌ها) */
+function notifyGradeLastSent(gradeId){
+  var best = null;
+  (db.notify_queue || []).forEach(function(q){
+    if(q.status !== 'sent') return;
+    if(q.source_ref !== gradeId || q.kind !== 'grade') return;
+    if(!best){ best = q; return; }
+    var a = String(q.decided_at || q.created_at);
+    var b = String(best.decided_at || best.created_at);
+    if(a > b || (a === b && q.id > best.id)) best = q;
+  });
+  return best;
+}
+
+/** آیا پیام نمرهٔ معلق (غیر اصلاحیه) برای این رکورد در صف هست؟ */
+function notifyPendingGrade(gradeId){
+  var out = null;
+  (db.notify_queue || []).forEach(function(q){
+    if(q.status !== 'pending' || q.correction_of) return;
+    if(q.kind !== 'grade' || q.source_ref !== gradeId) return;
+    if(!out || q.id > out.id) out = q;
+  });
+  return out;
+}
+
+/** آیا اصلاحیهٔ معلقی برای این نمره در صف هست؟ */
+function notifyPendingGradeCorrection(gradeId){
+  var out = null;
+  (db.notify_queue || []).forEach(function(q){
+    if(q.status !== 'pending' || !q.correction_of) return;
+    if(q.kind !== 'grade' || q.source_ref !== gradeId) return;
+    if(!out || q.id > out.id) out = q;
+  });
+  return out;
+}
+
+/** لغو همهٔ پیام‌های معلق نمرهٔ یک رکورد — برای حذف نمره */
+function notifyGradeCancel(gradeId){
+  var n = 0, stamp = new Date().toISOString();
+  var me = (typeof S !== 'undefined' && S.user) ? S.user.id : null;
+  batchWrites(function(){
+    (db.notify_queue || []).forEach(function(q){
+      if(q.status !== 'pending' || q.correction_of) return;
+      if(q.kind !== 'grade' || q.source_ref !== gradeId) return;
+      update('notify_queue', q.id, {
+        status: 'cancelled', decided_at: stamp, decided_by: me
+      });
+      n++;
+    });
+  });
+  return n;
+}
+
+/**
+ * ساخت یا به‌روزرسانی اصلاحیهٔ نمره — وقتی پیام رفته و نمره دیگر
+ * زیر آستانه نیست. برمی‌گرداند: 'created' | 'updated' | 'none'.
+ */
+function notifyGradeCorrection(g, last, cfg){
+  var st  = byId('users', g.student_id);
+  var sub = byId('subjects', g.subject_id);
+  var curHash = notifyHash('grade', g.id);
+  var body = notifyBody('gradeCorrection', {
+    student: st ? st.full_name : '—',
+    subject: sub ? sub.name : '',
+    school:  notifySchoolName(last.school_id)
+  });
+
+  /* اصلاحیهٔ معلق موجود؟ به‌روزرسانی، نه ساخت دومی */
+  var pend = notifyPendingGradeCorrection(g.id);
+  if(pend){
+    update('notify_queue', pend.id, {
+      body: body, parts: smsParts(body),
+      source_hash: curHash, created_at: new Date().toISOString()
+    });
+    return 'updated';
+  }
+
+  if(!cfg.enabled) return 'none';
+  var parents = last.parent_ids && last.parent_ids.length
+    ? last.parent_ids
+    : notifyParentsOf(last.student_id);
+  if(!parents.length) return 'none';
+
+  insert('notify_queue', {
+    school_id:  last.school_id,
+    kind:       'grade',
+    student_id: last.student_id,
+    class_id:   last.class_id || null,
+    parent_ids: parents,
+    body:       body,
+    parts:      smsParts(body),
+    status:     'pending',
+    source_ref: g.id,
+    source_hash: curHash,
+    created_at: new Date().toISOString(),
+    created_by: (typeof S !== 'undefined' && S.user) ? S.user.id : null,
+    auto:       cfg.autoSend ? 1 : 0,
+    /* 🔴 نشان اصلاحیه — جلوی حلقهٔ بی‌نهایت */
+    correction_of: last.id
+  });
+  return 'created';
+}
+
+/**
+ * همگام‌سازی پیامک یک رکورد نمره با وضعیتش.
+ * از `grade-save` پس از نوشتن صدا زده می‌شود (source_ref = شناسهٔ
+ * واقعی رکورد، همان قاعدهٔ att-commit).
+ *
+ * برمی‌گرداند: {made, cancelled, fixed, skip}
+ *   made      = پیام تازه ساخته شد
+ *   cancelled = پیام معلق لغو شد
+ *   fixed     = اصلاحیه ساخته/به‌روزرسانی شد
+ *   skip      = دلیل نساختن (null یعنی موردی نبود)
+ */
+function notifyGradeSync(gradeId){
+  var out = { made: 0, cancelled: 0, fixed: 0, skip: null };
+  var g = byId('grades', gradeId);
+  if(!g){
+    /* رکورد حذف شده ⇒ پیام معلقش بی‌معناست */
+    out.cancelled = notifyGradeCancel(gradeId);
+    out.skip = 'gone';
+    return out;
+  }
+  var cfg = notifySettings(g.school_id);
+  if(!cfg.enabled){ out.skip = 'disabled'; return out; }
+  if(cfg.kinds.grade === false){ out.skip = 'kind-off'; return out; }
+
+  var low  = Number(g.score) < Number(cfg.gradeThreshold);
+  var last = notifyGradeLastSent(gradeId);
+
+  if(!last){
+    /* هنوز چیزی برای این نمره ارسال نشده */
+    if(!low){
+      /* زیر آستانه نیست؛ پیام معلقِ احتمالی (خطای دبیر) لغو شود */
+      out.cancelled = notifyCancelIfFresh('grade', gradeId);
+      out.skip = 'not-low';
+      return out;
+    }
+    /* تکراری نساز: پیام معلقِ همین رکورد موجود است */
+    if(notifyPendingGrade(gradeId)){ out.skip = 'pending-exists'; return out; }
+    var st  = byId('users', g.student_id);
+    var sub = byId('subjects', g.subject_id);
+    var q = notifyRequest({
+      school_id:    g.school_id,
+      kind:         'grade',
+      student_id:   g.student_id,
+      class_id:     g.class_id,
+      student_name: st ? st.full_name : '',
+      subject:      sub ? sub.name : '',
+      source_ref:   gradeId
+    });
+    if(q) out.made = 1; else out.skip = notifyRequest.lastSkip;
+    return out;
+  }
+
+  /* پیامی قبلاً رفته — «خانواده چه می‌داند» با وضعیت فعلی بسنج */
+  var curHash = notifyHash('grade', gradeId);
+  if(last.source_hash === curHash){
+    /* همان که خانواده می‌داند؛ اصلاحیهٔ معلقِ کهنه را لغو کن */
+    var stale = notifyPendingGradeCorrection(gradeId);
+    if(stale){
+      update('notify_queue', stale.id, {
+        status: 'cancelled', decided_at: new Date().toISOString()
+      });
+      out.cancelled = 1;
+    }
+    return out;
+  }
+
+  if(low){
+    /* هنوز زیر آستانه است — عدد در پیام نبوده، پس پیام اول درست
+       است. فقط اصلاحیهٔ معلقِ نوسان قبلی را لغو کن. */
+    var stale2 = notifyPendingGradeCorrection(gradeId);
+    if(stale2){
+      update('notify_queue', stale2.id, {
+        status: 'cancelled', decided_at: new Date().toISOString()
+      });
+      out.cancelled = 1;
+    }
+    return out;
+  }
+
+  /* نمره از زیر آستانه بالا رفته ⇒ اطلاع قبلی نادرست شده است */
+  var r = notifyGradeCorrection(g, last, cfg);
+  if(r === 'created' || r === 'updated') out.fixed = 1;
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بخش ۱۳ ▸ رویداد (گام ۷، دور ۴۲)
+   ═══════════════════════════════════════════════════════════════════
+   رویداد تازهٔ تقویم آموزشی (kind='event') برای اولیای همهٔ
+   دانش‌آموزان پیامک می‌سازد — یک رکورد صف به‌ازای هر دانش‌آموزِ
+   دارای ولی، تا مدیر در صف دانش‌آموز و کلاس هر ردیف را ببیند.
+
+   ⚠️ کارایی: همهٔ درج‌ها داخل یک batchWrites انجام می‌شود. سنجش
+   گام ۷: بدون دسته‌بندی، هر insert جداگانه saveLog می‌کرد
+   (JSON.stringify کل دفترچهٔ تغییرات) ⇒ ۱۶۳ms برای ~۵۲۰ دانش‌آموز؛
+   با batchWrites فقط یک بار ذخیره ⇒ ۱۶ms.
+   ═══════════════════════════════════════════════════════════════════ */
+function notifyEvent(schoolId, text, opts){
+  opts = opts || {};
+  var out = { made: 0, skip: null };
+  var cfg = notifySettings(schoolId);
+  if(!cfg.enabled){ out.skip = 'disabled'; return out; }
+  if(cfg.kinds.event === false){ out.skip = 'kind-off'; return out; }
+  var t = String(text || '').trim();
+  if(t.length < 4){ out.skip = 'empty-body'; return out; }
+
+  var body  = notifyBody('event', { text: t, school: notifySchoolName(schoolId) });
+  var parts = (typeof smsParts === 'function') ? smsParts(body) : 1;
+  var by    = (typeof S !== 'undefined' && S.user) ? S.user.id : null;
+  var stamp = new Date().toISOString();
+
+  batchWrites(function(){
+    (db.users || []).forEach(function(u){
+      if(u.role !== 'student' || u.school_id !== schoolId) return;
+      var parents = notifyParentsOf(u.id);
+      if(!parents.length) return;
+      var rec = {
+        school_id:  schoolId,
+        kind:       'event',
+        student_id: u.id,
+        parent_ids: parents,
+        body:       body,
+        parts:      parts,
+        status:     'pending',
+        created_at: stamp,
+        created_by: by,
+        auto:       cfg.autoSend ? 1 : 0
+      };
+      var cl = (typeof classOf === 'function') ? classOf(u.id) : null;
+      if(cl && cl.id) rec.class_id = cl.id;
+      if(opts.source_ref) rec.source_ref = opts.source_ref;
+      insert('notify_queue', rec);
+      out.made++;
+    });
   });
   return out;
 }

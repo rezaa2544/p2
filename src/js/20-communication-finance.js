@@ -379,7 +379,13 @@ const F7_ACTIONS = {
     const data={school_id:S.user.school_id||null,title:V('cl_title'),date:V('cl_date'),kind:V('cl_kind')};
     if(!data.title){toast('عنوان الزامی است','err');return;}
     if(c.id)update('calendar',c.id,data); else insert('calendar',data);
-    closeModal(); toast('رویداد ذخیره شد','ok'); render();
+    /* گام ۷: رویدادِ تازهٔ تقویم (نه ویرایش) برای اولیا پیامک می‌سازد.
+       فقط kind='event' — امتحان و تعطیلی الگوی دیگری دارند. */
+    let ev=0;
+    if(!c.id && data.kind==='event' && typeof notifyEvent==='function' && data.school_id){
+      ev=notifyEvent(data.school_id, data.title+' — '+jalali(data.date)).made;
+    }
+    closeModal(); toast('رویداد ذخیره شد'+(ev?' — '+fa(ev)+' پیامک ساخته شد':''),'ok'); render();
   },
   'cal-del'(el,id){ const c=byId('calendar',id);
     askDelete(`رویداد «${c.title}» حذف شود؟`,()=>{remove('calendar',id);toast('حذف شد','');render();}); },

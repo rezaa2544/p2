@@ -79,6 +79,7 @@ node scripts/dev-server.js   # سرور توسعه روی درگاه ۳۰۰۰
 | تشخیص پایه و رشته از متن اکسل | `parsePlacement` · `detectField` | `41-class-placement.js` |
 | عیب‌یابی و تعمیر خودکار سامانه | `runDiagnostics` · `diagFix` | `42-self-diagnostics.js` |
 | ساعت زنگ‌ها و زنگ تفریح | `bellTimeline` · `bellSave` | `43-bell-schedule.js` |
+| صف پیام اولیا + پیامک خودکار | `viewNotifyQueue` · `notifyRequest` · `notifyGradeSync` · `notifyEvent` · `notifyReconcile` | `44-sms-notify.js` |
 
 **راه سریع‌تر:** نام صفحه را در برنامه ببینید، بعد `grep` بزنید:
 ```bash
@@ -104,6 +105,7 @@ grep -rn "function viewGrades" src/js/
 | تاریخ شمسی کار کنم | `22-jalali-calendar.js` |
 | نام فارسی یک مجموعه داده بگذارم | `36-audit-activity.js` — `COLL_FA` |
 | عملیاتی را «حساس» علامت بزنم | `36-audit-activity.js` — `SENSITIVE` |
+| پیامک خودکار بسازم (غیبت/نمره/رویداد) | `44-sms-notify.js` — `notifyRequest` · `notifyGradeSync` · `notifyEvent` · `notifyReconcile`؛ قلاب‌ها در `19-actions.js` (`grade-save`) و `20-communication-finance.js` (`cal-save`) |
 | ستون تازه‌ای به ورود اکسل اضافه کنم | `34-excel-import.js` — `IMP_FIELDS` (مترادف‌ها را هم بنویسید) |
 | فیلدی را در ثبت نهایی ذخیره کنم | `34-excel-import.js` — `IMP_EXTRA_FIELDS` |
 | فیلدی را در شناسنامه نشان دهم | `17-student-record.js` — `studentProfileCard` |

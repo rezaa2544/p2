@@ -3963,6 +3963,264 @@ test('اصلاحیه: با سامانهٔ خاموش ساخته نمی‌شود'
   });
 });
 
+/* ── نمره و رویداد (گام ۷، دور ۴۲) ─────────────────────────────
+   ⚠️ درس دور ۳۸: آزمون روی دادهٔ خام بی‌صدا سبز می‌شود. سامانه
+   پیش‌فرض خاموش و kinds.grade هم خاموش است؛ هر آزمون اینجا اول
+   خودش را روشن می‌کند و شمارندهٔ خروجی را می‌سنجد، نه فقط نبود خطا. */
+
+/** محیط خودکفای نمره: صف، نمره‌ها، کاربر و تنظیمات ذخیره و بازگردانی می‌شوند */
+function withGrade(fn) {
+  const sid = W('db.schools[0].id');
+  W('(()=>{db._gQ=db.notify_queue.slice();db._gG=db.grades.slice();'
+    + 'db._gU=S.user;db._gR=byId("schools",' + sid + ').notify_rules||null;'
+    + 'S.user=db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+    + 'S.persona=null;S.boss=null;'
+    + 'notifySaveSettings(' + sid + ',{enabled:true,kinds:{grade:true,event:true}});})()');
+  try { return fn(sid); }
+  finally {
+    W('(()=>{db.notify_queue=db._gQ;db.grades=db._gG;S.user=db._gU;'
+      + 'update("schools",' + sid + ',{notify_rules:db._gR});'
+      + 'delete db._gQ;delete db._gG;delete db._gU;delete db._gR;'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("grades");})()');
+  }
+}
+
+test('نمره: زیر آستانه پیام می‌سازد و عدد نمره را فاش نمی‌کند', () => {
+  withGrade((sid) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0);'
+      + 'const sub=db.subjects.find(s=>s.school_id===' + sid + ');'
+      + 'const mk=s=>insert("grades",{school_id:' + sid + ',student_id:st.id,class_id:null,'
+      + 'subject_id:sub.id,teacher_id:null,term:"نوبت اول",exam_type:"میان‌ترم",'
+      + 'score:s,max_score:20,created_at:todayISO()}).id;'
+      + 'const lowId=mk(5),highId=mk(18);'
+      + 'const low=notifyGradeSync(lowId);'
+      + 'const high=notifyGradeSync(highId);'
+      + 'const q=db.notify_queue.find(x=>x.kind==="grade"&&x.source_ref===lowId);'
+      + 'return JSON.stringify({made:low.made,highMade:high.made,highSkip:high.skip,'
+      + 'kind:q?q.kind:null,hasScore:q?(q.body.indexOf("5")>-1||q.body.indexOf("۵")>-1):false,'
+      + 'hasSubject:q?q.body.indexOf(sub.name)>-1:false});})()'));
+    assert(r.made === 1, 'نمرهٔ پایین باید پیام بسازد: ' + r.made);
+    assert(r.highMade === 0 && r.highSkip === 'not-low',
+      'نمرهٔ بالا نباید پیام بسازد: ' + r.highMade + '/' + r.highSkip);
+    assert(r.kind === 'grade', 'نوع پیام باید grade باشد');
+    assert(r.hasScore === false, '🔴 عدد نمره در متن پیام آمد — حریم نمره شکست');
+    assert(r.hasSubject === true, 'نام درس در پیام نیست');
+  });
+});
+
+test('نمره: با kinds.grade خاموش یا سامانهٔ خاموش ساخته نمی‌شود', () => {
+  withGrade((sid) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0);'
+      + 'const sub=db.subjects.find(s=>s.school_id===' + sid + ');'
+      + 'const mk=s=>insert("grades",{school_id:' + sid + ',student_id:st.id,class_id:null,'
+      + 'subject_id:sub.id,teacher_id:null,term:"نوبت اول",exam_type:"میان‌ترم",'
+      + 'score:s,max_score:20,created_at:todayISO()}).id;'
+      + 'const g1=mk(3);'
+      + 'notifySaveSettings(' + sid + ',{kinds:{grade:false}});'
+      + 'const a=notifyGradeSync(g1);'
+      + 'notifySaveSettings(' + sid + ',{enabled:false,kinds:{grade:true}});'
+      + 'const b=notifyGradeSync(mk(4));'
+      + 'notifySaveSettings(' + sid + ',{enabled:true,kinds:{grade:true}});'
+      + 'return JSON.stringify({aSkip:a.skip,bSkip:b.skip,aMade:a.made,bMade:b.made});})()'));
+    assert(r.aMade === 0 && r.aSkip === 'kind-off', 'خاموشی نوع رعایت نشد: ' + r.aSkip);
+    assert(r.bMade === 0 && r.bSkip === 'disabled', 'خاموشی سامانه رعایت نشد: ' + r.bSkip);
+  });
+});
+
+test('نمره: ثبت دوبارهٔ همان نمره پیام تکراری نمی‌سازد', () => {
+  withGrade((sid) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0);'
+      + 'const sub=db.subjects.find(s=>s.school_id===' + sid + ');'
+      + 'const g=insert("grades",{school_id:' + sid + ',student_id:st.id,class_id:null,'
+      + 'subject_id:sub.id,teacher_id:null,term:"نوبت اول",exam_type:"میان‌ترم",'
+      + 'score:6,max_score:20,created_at:todayISO()});'
+      + 'const a=notifyGradeSync(g.id);'
+      + 'const b=notifyGradeSync(g.id);'
+      + 'return JSON.stringify({aMade:a.made,bMade:b.made,bSkip:b.skip,'
+      + 'count:db.notify_queue.filter(q=>q.kind==="grade"&&q.source_ref===g.id'
+      + '&&!q.correction_of).length});})()'));
+    assert(r.aMade === 1, 'پیام اول ساخته نشد');
+    assert(r.bMade === 0 && r.bSkip === 'pending-exists',
+      'پیام تکراری ساخته شد: ' + r.bMade + '/' + r.bSkip);
+    assert(r.count === 1, 'بیش از یک پیام عادی برای یک نمره ساخته شد: ' + r.count);
+  });
+});
+
+test('نمره: بالا رفتن نمره پس از ارسال اصلاحیه می‌سازد و حلقه نمی‌زند', () => {
+  const sid = W('db.schools[0].id');
+  W('(()=>{db._gQ=db.notify_queue.slice();db._gG=db.grades.slice();'
+    + 'db._gU=S.user;db._gR=byId("schools",' + sid + ').notify_rules||null;'
+    + 'S.user=db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+    + 'S.persona=null;S.boss=null;'
+    + 'notifySaveSettings(' + sid + ',{enabled:true,kinds:{grade:true}});'
+    + 'const w=smsWalletOf(' + sid + ');update("sms_wallet",w.w.id,{balance:5000});})()');
+  try {
+    const r = JSON.parse(W('(()=>{'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0);'
+      + 'const sub=db.subjects.find(s=>s.school_id===' + sid + ');'
+      + 'const g=insert("grades",{school_id:' + sid + ',student_id:st.id,class_id:null,'
+      + 'subject_id:sub.id,teacher_id:null,term:"نوبت اول",exam_type:"میان‌ترم",'
+      + 'score:5,max_score:20,created_at:todayISO()});'
+      + 'const a=notifyGradeSync(g.id);'
+      + 'const pq=db.notify_queue.find(q=>q.kind==="grade"&&q.source_ref===g.id&&!q.correction_of);'
+      + 'notifySend([pq.id]);'
+      + 'update("grades",g.id,{score:15});'
+      + 'const b=notifyGradeSync(g.id);'
+      + 'const corrBefore=db.notify_queue.filter(q=>q.kind==="grade"&&q.source_ref===g.id'
+      + '&&q.correction_of).length;'
+      + 'for(let i=0;i<6;i++)notifyGradeSync(g.id);'
+      + 'const corrAfter=db.notify_queue.filter(q=>q.kind==="grade"&&q.source_ref===g.id'
+      + '&&q.correction_of).length;'
+      + 'const c0=db.notify_queue.find(q=>q.kind==="grade"&&q.source_ref===g.id&&q.correction_of);'
+      + 'return JSON.stringify({made:a.made,sent:byId("notify_queue",pq.id).status,'
+      + 'fixed:b.fixed,corrBefore:corrBefore,corrAfter:corrAfter,'
+      + 'corrOf:c0?c0.correction_of===pq.id:false,'
+      + 'plain:db.notify_queue.filter(q=>q.kind==="grade"&&q.source_ref===g.id'
+      + '&&!q.correction_of).length});})()'));
+    assert(r.made === 1 && r.sent === 'sent', 'محیط آزمون ناقص');
+    assert(r.fixed === 1, 'اصلاحیه ساخته نشد: ' + r.fixed);
+    assert(r.corrBefore === 1, 'اصلاحیه ساخته نشد (corrBefore=' + r.corrBefore + ')');
+    assert(r.corrAfter === r.corrBefore, '🔴 حلقه: اصلاحیه در وارسی پیاپی زیاد شد');
+    assert(r.corrOf === true, 'اصلاحیه به پیام اصلی ارجاع ندارد');
+    assert(r.plain === 1, 'پیام تکراری عادی ساخته شد');
+  } finally {
+    W('(()=>{db.notify_queue=db._gQ;db.grades=db._gG;S.user=db._gU;'
+      + 'update("schools",' + sid + ',{notify_rules:db._gR});'
+      + 'delete db._gQ;delete db._gG;delete db._gU;delete db._gR;'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("grades");})()');
+  }
+});
+
+test('نمره: ثبت از راه دکمه، پیامک زیر آستانه را می‌سازد (اتصال grade-save)', () => {
+  const sid = W('db.schools[0].id');
+  W('(()=>{db._gQ=db.notify_queue.slice();db._gG=db.grades.slice();'
+    + 'db._gU=S.user;db._gR=byId("schools",' + sid + ').notify_rules||null;'
+    + 'S.user=db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+    + 'S.persona=null;S.boss=null;S.route="grades";S.filters={};'
+    + 'notifySaveSettings(' + sid + ',{enabled:true,kinds:{grade:true}});})()');
+  try {
+    const r = JSON.parse(W('(()=>{'
+      + 'gradeModal(null);'
+      + 'const sub=db.subjects.find(s=>s.school_id===' + sid + ');'
+      + 'const sts=studentsOfClass(window._gclass);'
+      + 'const st=sts.find(s=>notifyParentsOf(s.id).length>0)||sts[0];'
+      + 'document.getElementById("g_st").value=String(st.id);'
+      + 'document.getElementById("g_sub").value=String(sub.id);'
+      + 'document.getElementById("g_score").value="4";'
+      + 'const click=function(a){const b=document.createElement("button");'
+      + 'b.setAttribute("data-act",a);document.body.appendChild(b);'
+      + 'b.dispatchEvent(new MouseEvent("click",{bubbles:true}));b.remove();};'
+      + 'click("grade-save");'
+      + 'const g=db.grades[db.grades.length-1];'
+      + 'return JSON.stringify({score:g.score,'
+      + 'queue:db.notify_queue.filter(q=>q.kind==="grade"&&q.source_ref===g.id).length});})()'));
+    assert(r.score === 4, 'نمره ذخیره نشد');
+    assert(r.queue === 1, '🔴 ثبت نمرهٔ پایین پیامک نساخت — اتصال grade-save قطع است: ' + r.queue);
+  } finally {
+    W('(()=>{db.notify_queue=db._gQ;db.grades=db._gG;S.user=db._gU;'
+      + 'update("schools",' + sid + ',{notify_rules:db._gR});'
+      + 'delete db._gQ;delete db._gG;delete db._gU;delete db._gR;'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("grades");})()');
+  }
+});
+
+test('رویداد: برای همهٔ دانش‌آموزان دارای ولی پیام می‌سازد (شمارنده)', () => {
+  withNotify({ enabled: true }, (sid) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'const exp=db.users.filter(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0).length;'
+      + 'const res=notifyEvent(' + sid + ',"جلسهٔ اولیا و مربیان");'
+      + 'const ev=db.notify_queue.filter(q=>q.kind==="event");'
+      + 'return JSON.stringify({made:res.made,exp:exp,'
+      + 'allEvent:ev.every(q=>q.kind==="event"&&q.status==="pending"),'
+      + 'hasText:ev.every(q=>q.body.indexOf("جلسهٔ اولیا")>-1),'
+      + 'uniq:new Set(ev.map(q=>q.student_id)).size===ev.length});})()'));
+    assert(r.exp > 0, 'محیط آزمون: دانش‌آموزِ دارای ولی نیست');
+    assert(r.made === r.exp, 'شمار پیام با دانش‌آموزان نمی‌خواند: ' + r.made + '≠' + r.exp);
+    assert(r.allEvent === true, 'رکورد رویداد نادرست است');
+    assert(r.hasText === true, 'متن رویداد در پیام نیست');
+    assert(r.uniq === true, 'برای یک دانش‌آموز چند پیام ساخته شد');
+  });
+});
+
+test('رویداد: دستهٔ انبوه یک بار ذخیره می‌کند (batchWrites)', () => {
+  withNotify({ enabled: true }, (sid) => {
+    const r = JSON.parse(W('(()=>{const orig=Store.set;let n=0;'
+      + 'Store.set=function(){n++;return orig.apply(this,arguments);};'
+      + 'const res=notifyEvent(' + sid + ',"جلسهٔ انجمن اولیا");'
+      + 'Store.set=orig;'
+      + 'return JSON.stringify({made:res.made,sets:n,depth:_BATCH_DEPTH});})()'));
+    assert(r.made > 10, 'محیط آزمون: رویداد باید ده‌ها پیام بسازد، ساخت: ' + r.made);
+    assert(r.sets <= 3, '🔴 ' + r.made + ' رکورد ' + r.sets
+      + ' بار ذخیره شد — batchWrites از کار افتاده');
+    assert(r.depth === 0, '🔴 batchWrites نشتی داد (depth=' + r.depth + ')');
+  });
+});
+
+test('رویداد: با خاموشی سامانه یا نوع event پیام نمی‌سازد', () => {
+  withNotify({ enabled: false }, (sid) => {
+    const a = JSON.parse(W('JSON.stringify(notifyEvent(' + sid + ',"جلسه"))'));
+    assert(a.made === 0 && a.skip === 'disabled', 'خاموشی سامانه رعایت نشد: ' + a.skip);
+  });
+  withNotify({ enabled: true, kinds: { event: false } }, (sid) => {
+    const b = JSON.parse(W('JSON.stringify(notifyEvent(' + sid + ',"جلسه"))'));
+    assert(b.made === 0 && b.skip === 'kind-off', 'خاموشی نوع رعایت نشد: ' + b.skip);
+  });
+});
+
+test('رویداد: متن خالی یا خیلی کوتاه پیام نمی‌سازد', () => {
+  withNotify({ enabled: true }, (sid) => {
+    const r = JSON.parse(W('(()=>{const a=notifyEvent(' + sid + ',"");'
+      + 'const b=notifyEvent(' + sid + ',"   ");'
+      + 'const c=notifyEvent(' + sid + ',"۱۲");'
+      + 'return JSON.stringify({aSkip:a.skip,bSkip:b.skip,cSkip:c.skip,'
+      + 'made:a.made+b.made+c.made});})()'));
+    assert(r.made === 0, 'متن ناقص پیام ساخت: ' + r.made);
+    assert(r.aSkip === 'empty-body' && r.bSkip === 'empty-body' && r.cSkip === 'empty-body',
+      'متن کوتاه باید empty-body بدهد: ' + r.aSkip + '/' + r.bSkip + '/' + r.cSkip);
+  });
+});
+
+test('رویداد: ذخیرهٔ رویداد تازهٔ تقویم پیامک می‌سازد (اتصال cal-save)', () => {
+  const sid = W('db.schools[0].id');
+  W('(()=>{db._gQ=db.notify_queue.slice();db._gC=db.calendar.slice();'
+    + 'db._gU=S.user;db._gR=byId("schools",' + sid + ').notify_rules||null;'
+    + 'S.user=db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+    + 'S.persona=null;S.boss=null;'
+    + 'notifySaveSettings(' + sid + ',{enabled:true,kinds:{event:true}});})()');
+  try {
+    const r = JSON.parse(W('(()=>{'
+      + 'const exp=db.users.filter(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0).length;'
+      + 'calModal(null);'
+      + 'document.getElementById("cl_title").value="اردوی علمی";'
+      + 'document.getElementById("cl_date").value="2026-12-01";'
+      + 'document.getElementById("cl_kind").value="event";'
+      + 'const click=function(a){const b=document.createElement("button");'
+      + 'b.setAttribute("data-act",a);document.body.appendChild(b);'
+      + 'b.dispatchEvent(new MouseEvent("click",{bubbles:true}));b.remove();};'
+      + 'click("cal-save");'
+      + 'const ev=db.notify_queue.filter(q=>q.kind==="event");'
+      + 'return JSON.stringify({made:ev.length,exp:exp,'
+      + 'hasText:ev.every(q=>q.body.indexOf("اردوی علمی")>-1)});})()'));
+    assert(r.exp > 0, 'محیط آزمون: دانش‌آموز دارای ولی نیست');
+    assert(r.made === r.exp, '🔴 رویداد تقویم پیامک نساخت: ' + r.made + '≠' + r.exp);
+    assert(r.hasText === true, 'متن رویداد در پیام نیست');
+  } finally {
+    W('(()=>{db.notify_queue=db._gQ;db.calendar=db._gC;S.user=db._gU;'
+      + 'update("schools",' + sid + ',{notify_rules:db._gR});'
+      + 'delete db._gQ;delete db._gC;delete db._gU;delete db._gR;'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("calendar");})()');
+  }
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

@@ -1038,13 +1038,19 @@ document.addEventListener('click',e=>{
    'grade-new'(){gradeModal(null);},
    'grade-edit'(){gradeModal(byId('grades',id));},
    'grade-del'(){confirmModal('حذف این نمره؟','grade-del-ok',id);},
-   'grade-del-ok'(){remove('grades',window._delId);closeModal();toast('نمره حذف شد','ok');render();},
+   'grade-del-ok'(){if(typeof notifyGradeCancel==='function')notifyGradeCancel(window._delId);remove('grades',window._delId);closeModal();toast('نمره حذف شد','ok');render();},
    'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
+     let gid=g.id;
      if(g.id)update('grades',g.id,{score,term:V('g_term'),exam_type:V('g_type')});
      else{const sid=Number(V('g_st')),cid=window._gclass;
-       insert('grades',{school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,term:V('g_term'),exam_type:V('g_type'),score,max_score:20,created_at:todayISO()});}
-     closeModal();toast('نمره ثبت شد','ok');render();},
+       const r=insert('grades',{school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,term:V('g_term'),exam_type:V('g_type'),score,max_score:20,created_at:todayISO()});
+       gid=r.id;}
+     /* گام ۷: نمرهٔ زیر آستانه برای اولیا پیامک می‌سازد (بعد از نوشتن
+        تا source_ref شناسهٔ واقعی باشد) */
+     let sms=0,fix=0;
+     if(typeof notifyGradeSync==='function'){const r=notifyGradeSync(gid);sms=r.made;fix=r.fixed;}
+     closeModal();toast('نمره ثبت شد'+(sms?' — '+fa(sms)+' پیامک ساخته شد':'')+(fix?' — '+fa(fix)+' اصلاحیه ساخته شد':''),'ok');render();},
    // discipline
    'disc-new'(){discModal(null);},
    'disc-edit'(){discModal(byId('discipline',id));},
