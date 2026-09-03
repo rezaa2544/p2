@@ -42,5 +42,6 @@
   "24-edu-office.js",
   "41-class-placement.js",
   "42-self-diagnostics.js",
-  "43-bell-schedule.js"
+  "43-bell-schedule.js",
+  "44-sms-notify.js"
 ]

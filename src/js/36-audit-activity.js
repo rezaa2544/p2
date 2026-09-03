@@ -36,6 +36,7 @@ var COLL_FA = {
   student_transfers:'انتقال دانش‌آموز', transfer_requests:'درخواست انتقال',
   student_archive:'بایگانی فارغ‌التحصیل', nid_conflicts:'تعارض کد ملی',
   meeting_slots:'نوبت جلسه', sms_wallet:'کیف پیامک', sms_log:'پیامک',
+  notify_queue:'صف پیام اولیا',
   app_settings:'تنظیمات'
 };
 

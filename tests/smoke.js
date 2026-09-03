@@ -2987,6 +2987,271 @@ test('قرارداد سرور: سه دفاع تکمیلی مستند شده‌ا
   assert(missing.length === 0, 'بند گمشده در قرارداد سرور: ' + missing.join(' · '));
 });
 
+/* ── اطلاع‌رسانی پیامکی: هستهٔ صف (گام ۱، دور ۴۲) ──────────────
+   ⚠️ درس دور ۳۸: آزمون روی دادهٔ خام بی‌صدا سبز می‌شود. اینجا
+   سامانه پیش‌فرض خاموش است، پس بدون روشن‌کردنش هر آزمون «صفر
+   پیام ساخته شد» می‌گیرد و بی‌معنا سبز می‌ماند. پس هر آزمون
+   شمارندهٔ خروجی را می‌سنجد، نه فقط نبود خطا. */
+function withNotify(cfg, fn) {
+  const sid = W('db.schools[0].id');
+  W('(()=>{db._nq=db.notify_queue.slice();db._nu=S.user;db._nr='
+    + 'byId("schools",' + sid + ').notify_rules||null;'
+    + 'S.user=db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+    + 'notifySaveSettings(' + sid + ',' + JSON.stringify(cfg) + ');})()');
+  try { return fn(sid); }
+  finally {
+    W('(()=>{db.notify_queue=db._nq;S.user=db._nu;'
+      + 'update("schools",' + sid + ',{notify_rules:db._nr});'
+      + 'delete db._nq;delete db._nu;delete db._nr;})()');
+  }
+}
+
+/** یک دانش‌آموز که دست‌کم یک ولیِ دارای شمارهٔ معتبر دارد */
+const kidWithParent = (sid) =>
+  W('(()=>{const s=db.users.find(u=>u.role==="student"&&u.school_id===' + sid
+    + '&&notifyParentsOf(u.id).length>0);return s?s.id:0;})()');
+
+test('اطلاع‌رسانی: پیش‌فرض‌ها امن‌اند — خاموش و بدون ارسال خودکار', () => {
+  const d = JSON.parse(W('JSON.stringify(NOTIFY_DEFAULTS)'));
+  assert(d.enabled === false, 'سامانه نباید پیش‌فرض روشن باشد');
+  assert(d.autoSend === false, 'ارسال خودکار باید پیش‌فرض خاموش باشد');
+  assert(d.kinds.grade === false, 'پیامک نمره باید پیش‌فرض خاموش باشد');
+  assert(d.graceMinutes === 20, 'پنجرهٔ مهلت باید ۲۰ دقیقه باشد');
+});
+
+test('اطلاع‌رسانی: وقتی خاموش است هیچ پیامی ساخته نمی‌شود', () => {
+  withNotify({ enabled: false }, (sid) => {
+    const st = kidWithParent(sid);
+    assert(st > 0, 'دانش‌آموز دارای ولی با شمارهٔ معتبر یافت نشد');
+    const r = W('(()=>{const q=notifyRequest({school_id:' + sid
+      + ',kind:"absence",student_id:' + st + ',student_name:"آزمون",date_fa:"۱۲ شهریور"});'
+      + 'return JSON.stringify({made:!!q,skip:notifyRequest.lastSkip});})()');
+    const o = JSON.parse(r);
+    assert(o.made === false, 'با سامانهٔ خاموش پیام ساخته شد');
+    assert(o.skip === 'disabled', 'دلیل رد باید disabled باشد، بود: ' + o.skip);
+  });
+});
+
+test('اطلاع‌رسانی: نوع خاموش (نمره) پیام نمی‌سازد ولی غیبت می‌سازد', () => {
+  withNotify({ enabled: true }, (sid) => {
+    const st = kidWithParent(sid);
+    const g = JSON.parse(W('(()=>{const q=notifyRequest({school_id:' + sid
+      + ',kind:"grade",student_id:' + st + ',student_name:"آزمون",subject:"ریاضی"});'
+      + 'return JSON.stringify({made:!!q,skip:notifyRequest.lastSkip});})()'));
+    assert(g.made === false && g.skip === 'kind-off',
+      'نمره باید رد شود، شد: ' + JSON.stringify(g));
+    const a = JSON.parse(W('(()=>{const q=notifyRequest({school_id:' + sid
+      + ',kind:"absence",student_id:' + st + ',student_name:"آزمون",date_fa:"۱۲ شهریور"});'
+      + 'return JSON.stringify({made:!!q,status:q&&q.status,parts:q&&q.parts});})()'));
+    assert(a.made === true, 'غیبت باید ساخته شود');
+    assert(a.status === 'pending', 'وضعیت اولیه باید pending باشد');
+  });
+});
+
+test('اطلاع‌رسانی: دانش‌آموز بدون ولی پیام نمی‌سازد', () => {
+  withNotify({ enabled: true }, (sid) => {
+    const r = JSON.parse(W('(()=>{const s=db.users.find(u=>u.role==="student"&&u.school_id==='
+      + sid + '&&notifyParentsOf(u.id).length===0);'
+      + 'if(!s)return JSON.stringify({skipTest:true});'
+      + 'const q=notifyRequest({school_id:' + sid + ',kind:"absence",student_id:s.id,'
+      + 'student_name:"ب",date_fa:"۱۲ شهریور"});'
+      + 'return JSON.stringify({made:!!q,skip:notifyRequest.lastSkip});})()'));
+    if (r.skipTest) return;                      /* همه ولی دارند */
+    assert(r.made === false && r.skip === 'no-parent',
+      'بدون ولی نباید پیام ساخته شود: ' + JSON.stringify(r));
+  });
+});
+
+test('اطلاع‌رسانی: قالب‌ها کد ملی و عدد نمره را فاش نمی‌کنند', () => {
+  const bodies = JSON.parse(W('(()=>{const o={student:"علی رضایی",date:"۱۲ شهریور",'
+    + 'subject:"ریاضی",text:"جلسه فردا",school:"دبیرستان نمونه",wasAbsent:true};'
+    + 'return JSON.stringify(Object.keys(NOTIFY_TPL).map(k=>NOTIFY_TPL[k](o)));})()'));
+  assert(bodies.length >= 4, 'قالب‌ها ناقص‌اند');
+  bodies.forEach((b) => {
+    assert(!/\d{10}/.test(b), 'کد ملی در قالب: ' + b);
+    assert(b.indexOf('http') === -1, 'لینک در قالب: ' + b);
+  });
+  /* عدد نمره: قالب نمره نباید هیچ عدد لاتینی داشته باشد */
+  const gr = W('NOTIFY_TPL.grade({student:"ع",subject:"ریاضی",school:"م"})');
+  assert(!/[0-9]/.test(gr), 'قالب نمره نباید عدد داشته باشد: ' + gr);
+});
+
+test('اطلاع‌رسانی: قالب غیبت و تأخیر یک قطعه بیشتر نمی‌شود', () => {
+  /* ⚠️ پیامک فارسی UCS-2 است: هر ۷۰ نویسه یک قطعه. دو قطعه یعنی
+     دو برابر هزینه. با طولانی‌ترین نام واقعی سنجیده می‌شود. */
+  const r = JSON.parse(W('(()=>{let nm="";db.users.filter(u=>u.role==="student")'
+    + '.forEach(u=>{if((u.full_name||"").length>nm.length)nm=u.full_name;});'
+    + 'let sc="";db.schools.forEach(s=>{if((s.name||"").length>sc.length)sc=s.name;});'
+    + 'const o={student:nm,date:"۱۲ شهریور",school:sc};'
+    + 'return JSON.stringify({name:nm,school:sc,'
+    + 'absence:smsParts(NOTIFY_TPL.absence(o)),late:smsParts(NOTIFY_TPL.late(o))});})()'));
+  assert(r.absence <= 2, 'قالب غیبت ' + r.absence + ' قطعه شد (نام: ' + r.name + ')');
+  assert(r.late <= 2, 'قالب تأخیر ' + r.late + ' قطعه شد');
+});
+
+test('اطلاع‌رسانی: پنجرهٔ مهلت — لغو درون بازه توسط همان دبیر', () => {
+  withNotify({ enabled: true, graceMinutes: 20 }, (sid) => {
+    const st = kidWithParent(sid);
+    const r = JSON.parse(W('(()=>{const me=S.user.id;'
+      + 'const q=notifyRequest({school_id:' + sid + ',kind:"absence",student_id:' + st
+      + ',student_name:"آ",date_fa:"۱۲ شهریور",source_ref:55501});'
+      + 'const n=notifyCancelIfFresh("absence",55501,me);'
+      + 'return JSON.stringify({made:!!q,cancelled:n,status:byId("notify_queue",q.id).status});})()'));
+    assert(r.made === true, 'پیام ساخته نشد');
+    assert(r.cancelled === 1, 'باید ۱ پیام لغو شود، شد: ' + r.cancelled);
+    assert(r.status === 'cancelled', 'وضعیت باید cancelled باشد: ' + r.status);
+  });
+});
+
+test('اطلاع‌رسانی: پنجرهٔ مهلت — پس از بازه لغو نمی‌شود', () => {
+  withNotify({ enabled: true, graceMinutes: 20 }, (sid) => {
+    const st = kidWithParent(sid);
+    /* created_at را ۲۱ دقیقه به عقب می‌بریم */
+    const r = JSON.parse(W('(()=>{const me=S.user.id;'
+      + 'const q=notifyRequest({school_id:' + sid + ',kind:"absence",student_id:' + st
+      + ',student_name:"آ",date_fa:"۱۲ شهریور",source_ref:55502});'
+      + 'update("notify_queue",q.id,{created_at:new Date(Date.now()-21*60000).toISOString()});'
+      + 'const n=notifyCancelIfFresh("absence",55502,me);'
+      + 'return JSON.stringify({cancelled:n,status:byId("notify_queue",q.id).status});})()'));
+    assert(r.cancelled === 0, 'پس از پنجره نباید لغو شود، شد: ' + r.cancelled);
+    assert(r.status === 'pending', 'باید pending بماند: ' + r.status);
+  });
+});
+
+test('اطلاع‌رسانی: پنجرهٔ مهلت — کاربر دیگر نمی‌تواند لغو کند', () => {
+  /* ⚠️ اگر فقط شرط زمان بود، مدیر می‌توانست بی‌ردپا پیام را محو کند */
+  withNotify({ enabled: true, graceMinutes: 20 }, (sid) => {
+    const st = kidWithParent(sid);
+    const r = JSON.parse(W('(()=>{'
+      + 'const q=notifyRequest({school_id:' + sid + ',kind:"absence",student_id:' + st
+      + ',student_name:"آ",date_fa:"۱۲ شهریور",source_ref:55503});'
+      + 'const other=(S.user.id===99901)?99902:99901;'
+      + 'const n=notifyCancelIfFresh("absence",55503,other);'
+      + 'return JSON.stringify({cancelled:n,status:byId("notify_queue",q.id).status});})()'));
+    assert(r.cancelled === 0, 'کاربر دیگر نباید بتواند لغو کند، کرد: ' + r.cancelled);
+    assert(r.status === 'pending', 'باید pending بماند: ' + r.status);
+  });
+});
+
+test('اطلاع‌رسانی: ارسال، کسر اعتبار و ثبت در دفتر پیامک', () => {
+  withNotify({ enabled: true }, (sid) => {
+    const r = JSON.parse(W('(()=>{const st=db.users.find(u=>u.role==="student"&&u.school_id==='
+      + sid + '&&notifyParentsOf(u.id).length>0);'
+      + 'const w=smsWalletOf(' + sid + ');update("sms_wallet",w.w.id,{balance:1000});'
+      + 'const q=notifyRequest({school_id:' + sid + ',kind:"absence",student_id:st.id,'
+      + 'student_name:"آ",date_fa:"۱۲ شهریور"});'
+      + 'const before=smsWalletOf(' + sid + ').balance;'
+      + 'const logBefore=db.sms_log.length;'
+      + 'const res=notifySend([q.id]);'
+      + 'return JSON.stringify({sent:res.sent,used:res.used,'
+      + 'drop:before-smsWalletOf(' + sid + ').balance,'
+      + 'newLogs:db.sms_log.length-logBefore,'
+      + 'status:byId("notify_queue",q.id).status,'
+      + 'recips:q.parent_ids.length,parts:q.parts});})()'));
+    assert(r.sent === 1, 'باید ۱ پیام برود، رفت: ' + r.sent);
+    assert(r.used === r.parts * r.recips,
+      'مصرف باید قطعه×گیرنده باشد: ' + r.used + ' ≠ ' + r.parts + '×' + r.recips);
+    assert(r.drop === r.used, 'کسر اعتبار با مصرف نخواند: ' + r.drop + ' ≠ ' + r.used);
+    assert(r.newLogs === r.recips, 'به ازای هر گیرنده یک رکورد sms_log لازم است');
+    assert(r.status === 'sent', 'وضعیت باید sent شود: ' + r.status);
+  });
+});
+
+test('اطلاع‌رسانی: اعتبار ناکافی پیام را گم نمی‌کند — در صف می‌ماند', () => {
+  /* ⚠️ اگر پیام هنگام کمبود اعتبار حذف شود، مدیر هرگز نمی‌فهمد
+     چه اطلاع‌رسانی‌ای انجام نشده. باید pending بماند. */
+  withNotify({ enabled: true }, (sid) => {
+    const r = JSON.parse(W('(()=>{const st=db.users.find(u=>u.role==="student"&&u.school_id==='
+      + sid + '&&notifyParentsOf(u.id).length>0);'
+      + 'const w=smsWalletOf(' + sid + ');update("sms_wallet",w.w.id,{balance:0});'
+      + 'const q=notifyRequest({school_id:' + sid + ',kind:"absence",student_id:st.id,'
+      + 'student_name:"آ",date_fa:"۱۲ شهریور"});'
+      + 'const res=notifySend([q.id]);'
+      + 'return JSON.stringify({sent:res.sent,skipped:res.skipped,reason:res.reason,'
+      + 'status:byId("notify_queue",q.id).status,exists:!!byId("notify_queue",q.id)});})()'));
+    assert(r.sent === 0, 'بدون اعتبار نباید چیزی برود');
+    assert(r.reason === 'no-credit', 'دلیل باید no-credit باشد: ' + r.reason);
+    assert(r.exists === true, 'رکورد نباید حذف شود');
+    assert(r.status === 'pending', 'باید pending بماند تا گم نشود: ' + r.status);
+  });
+});
+
+test('اطلاع‌رسانی: برآورد هزینه و هشدار حجم بالا', () => {
+  withNotify({ enabled: true, bulkWarn: 3, dailyCap: 5 }, (sid) => {
+    const r = JSON.parse(W('(()=>{const kids=db.users.filter(u=>u.role==="student"&&'
+      + 'u.school_id===' + sid + '&&notifyParentsOf(u.id).length>0).slice(0,4);'
+      + 'const w=smsWalletOf(' + sid + ');update("sms_wallet",w.w.id,{balance:1000});'
+      + 'const ids=kids.map(s=>notifyRequest({school_id:' + sid + ',kind:"absence",'
+      + 'student_id:s.id,student_name:s.full_name,date_fa:"۱۲ شهریور"})).filter(Boolean).map(q=>q.id);'
+      + 'const e=notifyEstimate(ids);'
+      + 'return JSON.stringify({n:ids.length,count:e.count,parts:e.parts,'
+      + 'overBulk:e.overBulk,overCap:e.overCap,enough:e.enough});})()'));
+    assert(r.n >= 3, 'برای این آزمون دست‌کم ۳ پیام لازم است، ساخته شد: ' + r.n);
+    assert(r.count === r.n, 'شمارش برآورد با تعداد نخواند');
+    assert(r.parts > 0, 'برآورد قطعه صفر شد — یعنی هیچ چیز سنجیده نشده');
+    assert(r.overBulk === true, 'با bulkWarn=3 باید هشدار حجم بدهد');
+    assert(r.overCap === true, 'با dailyCap=5 باید فراتر از سقف علامت بخورد');
+  });
+});
+
+test('اطلاع‌رسانی: پاک‌سازی کهنه‌ها pending را دست نمی‌زند', () => {
+  withNotify({ enabled: true }, (sid) => {
+    const r = JSON.parse(W('(()=>{const st=db.users.find(u=>u.role==="student"&&u.school_id==='
+      + sid + '&&notifyParentsOf(u.id).length>0);'
+      + 'const mk=()=>notifyRequest({school_id:' + sid + ',kind:"absence",student_id:st.id,'
+      + 'student_name:"آ",date_fa:"۱۲ شهریور"});'
+      + 'const oldSent=mk(),oldPend=mk(),fresh=mk();'
+      + 'const past=new Date(Date.now()-40*86400000).toISOString();'
+      + 'update("notify_queue",oldSent.id,{status:"sent",decided_at:past,created_at:past});'
+      + 'update("notify_queue",oldPend.id,{created_at:past});'
+      + 'const n=notifyPurge(30);'
+      + 'return JSON.stringify({purged:n,goneSent:!byId("notify_queue",oldSent.id),'
+      + 'keptPend:!!byId("notify_queue",oldPend.id),keptFresh:!!byId("notify_queue",fresh.id)});})()'));
+    assert(r.purged >= 1, 'باید دست‌کم یک رکورد کهنه پاک شود، شد: ' + r.purged);
+    assert(r.goneSent === true, 'رکورد sent کهنه باید پاک شود');
+    assert(r.keptPend === true, '🔴 رکورد pending کهنه نباید پاک شود');
+    assert(r.keptFresh === true, 'رکورد تازه نباید پاک شود');
+  });
+});
+
+test('اطلاع‌رسانی: صف هر مدرسه از مدرسهٔ دیگر جدا است', () => {
+  withNotify({ enabled: true }, (sid) => {
+    const r = JSON.parse(W('(()=>{const other=db.schools.find(s=>s.id!==' + sid + ');'
+      + 'if(!other)return JSON.stringify({skipTest:true});'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0);'
+      + 'notifyRequest({school_id:' + sid + ',kind:"absence",student_id:st.id,'
+      + 'student_name:"آ",date_fa:"۱۲ شهریور"});'
+      + 'return JSON.stringify({mine:notifyPending(' + sid + ').length,'
+      + 'theirs:notifyPending(other.id).length});})()'));
+    if (r.skipTest) return;
+    assert(r.mine > 0, 'صف مدرسهٔ خودی نباید خالی باشد');
+    assert(r.theirs === 0, 'صف مدرسهٔ دیگر باید خالی باشد، بود: ' + r.theirs);
+  });
+});
+
+test('اطلاع‌رسانی: تنظیمات تودرتوی kinds کلیدهای دیگر را پاک نمی‌کند', () => {
+  /* ⚠️ Object.assign سطحی است؛ ذخیرهٔ {kinds:{absence:false}} نباید
+     event و late را نابود کند. */
+  withNotify({ enabled: true }, (sid) => {
+    /* ⚠️ عمداً مستقیم روی notify_rules می‌نویسیم، نه از راه
+       notifySaveSettings — چون آن تابع خودش ادغام می‌کند و مسیر
+       خواندن هرگز با دادهٔ ناقص روبه‌رو نمی‌شد. تست جهش دور ۴۲
+       نشان داد نسخهٔ قبلی این آزمون هیچ چیز نمی‌سنجید: حذف کامل
+       ادغام در notifySettings آن را نمی‌انداخت. رکورد ذخیره‌شدهٔ
+       قدیمی (پیش از افزودن کلید تازه) دقیقاً همین شکلی است. */
+    const r = JSON.parse(W('(()=>{update("schools",' + sid + ','
+      + '{notify_rules:{enabled:true,kinds:{absence:false}}});'
+      + 'const c=notifySettings(' + sid + ');'
+      + 'return JSON.stringify({absence:c.kinds.absence,event:c.kinds.event,'
+      + 'late:c.kinds.late,enabled:c.enabled});})()'));
+    assert(r.absence === false, 'کلید تغییرداده‌شده اعمال نشد');
+    assert(r.event === true, '🔴 کلید event پاک شد');
+    assert(r.late === true, '🔴 کلید late پاک شد');
+    assert(r.enabled === true, 'کلید سطح بالا پاک شد');
+  });
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));
