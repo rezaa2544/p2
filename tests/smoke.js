@@ -2623,6 +2623,20 @@ test('IDOR: قرارداد سرور الگوی شمردن شناسه را مست
     assert(t.indexOf(k) > -1, 'بند گمشده در قرارداد سرور: ' + k));
 });
 
+test('قرارداد سرور: تعامل کارایی و سنجش محدوده هشدار داده شده', () => {
+  const fs = require('fs'), path = require('path');
+  const c = fs.readFileSync(
+    path.join(__dirname, '..', 'docs', 'SERVER_SECURITY_CONTRACT.md'), 'utf8');
+  ['بازسنجی', 'parent_links', 'ایندکس اختصاصی'].forEach(k =>
+    assert(c.indexOf(k) > -1, 'بند ۱.۲.۴ ناقص است — کلید گمشده: ' + k));
+
+  /* سند ظرفیت باید بداند اعدادش تاریخ انقضا دارند */
+  const cap = fs.readFileSync(
+    path.join(__dirname, '..', 'docs', 'CAPACITY_SIM.md'), 'utf8');
+  assert(cap.indexOf('سنجش محدوده') > -1,
+    'سند ظرفیت هشدار بی‌اعتبار شدن اعداد را ندارد');
+});
+
 test('قرارداد سرور: سه دفاع تکمیلی مستند شده‌اند', () => {
   const fs = require('fs'), path = require('path');
   const t = fs.readFileSync(
