@@ -20,6 +20,18 @@ var DIAG_SEVERITY = {
   info:     { fa: 'اطلاع',  color: 'var(--primary)',icon: '🔵', rank: 1 }
 };
 
+/* دو خانوادهٔ آزمون:
+   engine = پیکربندی، زیرساخت و موتور برنامه (مشکل کد و سامانه)
+   data   = کیفیت دادهٔ کاربر (مشکل محتوایی که مدرسه وارد کرده)
+   تفکیک مهم است: عیب موتور یعنی برنامه ایراد دارد، عیب داده یعنی
+   ورودی ایراد دارد. مسئول رفعشان هم فرق می‌کند. */
+var DIAG_CATS = {
+  engine: { fa:'پیکربندی و موتور برنامه', icon:'⚙️',
+            desc:'سلامت زیرساخت، ایندکس، حافظه، مسیرها و دسترسی‌ها' },
+  data:   { fa:'کیفیت دادهٔ کاربر', icon:'📋',
+            desc:'یکپارچگی و درستی اطلاعاتی که مدارس وارد کرده‌اند' }
+};
+
 /* تاریخچهٔ اجراها — در حافظه، برای مقایسهٔ روند */
 var DIAG_HISTORY = [];
 var DIAG_MAX_HISTORY = 20;
@@ -34,7 +46,7 @@ var DIAG_CHECKS = [
 
   /* ── ۱. یکپارچگی ارجاع‌ها ─────────────────────────────────────── */
   {
-    id: 'orphan-enrollments',
+    id: 'orphan-enrollments', cat: 'data',
     title: 'ثبت‌نام بی‌صاحب',
     desc: 'ثبت‌نامی که دانش‌آموز یا کلاسش پاک شده است',
     severity: 'critical',
@@ -60,7 +72,7 @@ var DIAG_CHECKS = [
   },
 
   {
-    id: 'duplicate-enrollment',
+    id: 'duplicate-enrollment', cat: 'data',
     title: 'ثبت‌نام تکراری',
     desc: 'یک دانش‌آموز در چند کلاس هم‌زمان',
     severity: 'critical',
@@ -102,7 +114,7 @@ var DIAG_CHECKS = [
   },
 
   {
-    id: 'orphan-parent-links',
+    id: 'orphan-parent-links', cat: 'data',
     title: 'پیوند ولی بی‌صاحب',
     desc: 'پیوندی که ولی یا دانش‌آموزش وجود ندارد',
     severity: 'warning',
@@ -128,7 +140,7 @@ var DIAG_CHECKS = [
   },
 
   {
-    id: 'orphan-users-school',
+    id: 'orphan-users-school', cat: 'data',
     title: 'کاربر بدون مدرسه',
     desc: 'کاربری که مدرسه‌اش پاک شده است',
     severity: 'critical',
@@ -149,7 +161,7 @@ var DIAG_CHECKS = [
 
   /* ── ۲. درستی داده ───────────────────────────────────────────── */
   {
-    id: 'duplicate-nid',
+    id: 'duplicate-nid', cat: 'data',
     title: 'کد ملی تکراری',
     desc: 'یک کد ملی برای دو نفر',
     severity: 'critical',
@@ -174,7 +186,7 @@ var DIAG_CHECKS = [
   },
 
   {
-    id: 'duplicate-username',
+    id: 'duplicate-username', cat: 'data',
     title: 'نام کاربری تکراری',
     desc: 'دو کاربر با یک نام کاربری — ورود مختل می‌شود',
     severity: 'critical',
@@ -222,7 +234,7 @@ var DIAG_CHECKS = [
   },
 
   {
-    id: 'invalid-nid',
+    id: 'invalid-nid', cat: 'data',
     title: 'کد ملی نامعتبر',
     desc: 'کد ملی که رقم کنترلش درست نیست',
     severity: 'warning',
@@ -243,7 +255,7 @@ var DIAG_CHECKS = [
   },
 
   {
-    id: 'class-over-capacity',
+    id: 'class-over-capacity', cat: 'data',
     title: 'کلاس پر از ظرفیت',
     desc: 'تعداد دانش‌آموز بیش از ظرفیت اعلام‌شده',
     severity: 'warning',
@@ -265,7 +277,7 @@ var DIAG_CHECKS = [
   },
 
   {
-    id: 'field-outside-branch',
+    id: 'field-outside-branch', cat: 'data',
     title: 'رشتهٔ خارج از شاخهٔ مدرسه',
     desc: 'کلاسی با رشته‌ای که مدرسه ارائه نمی‌دهد',
     severity: 'warning',
@@ -292,7 +304,7 @@ var DIAG_CHECKS = [
 
   /* ── ۳. سلامت ذخیره‌سازی ─────────────────────────────────────── */
   {
-    id: 'storage-pressure',
+    id: 'storage-pressure', cat: 'engine',
     title: 'فشار حافظهٔ مرورگر',
     desc: 'نزدیک‌شدن دفترچهٔ عملیات به سقف ۵ مگابایت',
     severity: 'warning',
@@ -321,7 +333,7 @@ var DIAG_CHECKS = [
   },
 
   {
-    id: 'sync-queue-stuck',
+    id: 'sync-queue-stuck', cat: 'engine',
     title: 'صف همگام‌سازی گیرکرده',
     desc: 'عملیاتی که مدت‌هاست به سرور نرفته‌اند',
     severity: 'warning',
@@ -338,7 +350,7 @@ var DIAG_CHECKS = [
 
   /* ── ۴. سلامت ایندکس و کارایی ────────────────────────────────── */
   {
-    id: 'index-health',
+    id: 'index-health', cat: 'engine',
     title: 'سلامت ایندکس‌ها',
     desc: 'نرخ اصابت ایندکس — پایین‌بودن یعنی کندی',
     severity: 'info',
@@ -360,7 +372,7 @@ var DIAG_CHECKS = [
   },
 
   {
-    id: 'index-staleness',
+    id: 'index-staleness', cat: 'engine',
     title: 'کهنگی ایندکس',
     desc: 'ناسازگاری بین ایندکس و دادهٔ واقعی',
     severity: 'critical',
@@ -389,7 +401,7 @@ var DIAG_CHECKS = [
 
   /* ── ۵. سلامت کاربران و دسترسی ───────────────────────────────── */
   {
-    id: 'school-without-manager',
+    id: 'school-without-manager', cat: 'data',
     title: 'مدرسهٔ بدون مدیر',
     desc: 'مدرسه‌ای که هیچ مدیری ندارد',
     severity: 'warning',
@@ -410,7 +422,7 @@ var DIAG_CHECKS = [
   },
 
   {
-    id: 'student-without-class',
+    id: 'student-without-class', cat: 'data',
     title: 'دانش‌آموز بدون کلاس',
     desc: 'دانش‌آموز فعالی که در هیچ کلاسی ثبت نشده',
     severity: 'warning',
@@ -433,7 +445,7 @@ var DIAG_CHECKS = [
   },
 
   {
-    id: 'weak-password',
+    id: 'weak-password', cat: 'data',
     title: 'رمز پیش‌فرض تغییرنیافته',
     desc: 'کاربرانی که هنوز رمز ۱۲۳۴۵۶ دارند',
     severity: 'warning',
@@ -453,7 +465,7 @@ var DIAG_CHECKS = [
 
   /* ── ۶. سلامت مالی ───────────────────────────────────────────── */
   {
-    id: 'negative-amounts',
+    id: 'negative-amounts', cat: 'data',
     title: 'مبلغ منفی',
     desc: 'قسط یا تراکنش با مبلغ منفی',
     severity: 'critical',
@@ -475,7 +487,7 @@ var DIAG_CHECKS = [
   },
 
   {
-    id: 'orphan-financial',
+    id: 'orphan-financial', cat: 'data',
     title: 'رکورد مالی بی‌صاحب',
     desc: 'قسط یا تراکنشی که دانش‌آموزش پاک شده',
     severity: 'warning',
@@ -501,6 +513,383 @@ var DIAG_CHECKS = [
   }
 ];
 
+
+/* ══════════════════════════════════════════════════════════════════
+   آزمون‌های پیکربندی، زیرساخت و موتور برنامه
+
+   این‌ها به دادهٔ مدرسه کاری ندارند؛ سلامت خودِ برنامه را می‌سنجند.
+   اگر یکی از این‌ها بشکند یعنی کد یا پیکربندی ایراد دارد، نه ورودی.
+   ══════════════════════════════════════════════════════════════════ */
+DIAG_CHECKS = DIAG_CHECKS.concat([
+
+  {
+    id: 'route-coverage', cat: 'engine',
+    title: 'مسیرهای بدون نما',
+    desc: 'گزینه‌ای در منو که صفحه‌اش تعریف نشده — کلیک روی آن صفحهٔ خالی می‌دهد',
+    severity: 'critical',
+    safe: false,
+    check: function(){
+      if(typeof NAV !== 'object' || typeof renderRoute !== 'function') return { ok:true };
+      var bad = [], seen = Object.create(null);
+      Object.keys(NAV).forEach(function(role){
+        (NAV[role] || []).forEach(function(grp){
+          (grp[1] || []).forEach(function(it){
+            var r = it[0];
+            if(seen[r]) return;
+            seen[r] = true;
+            var prev = S.route, out = null, err = null;
+            try{ S.route = r; out = renderRoute(); }
+            catch(e){ err = String(e && e.message); }
+            finally{ S.route = prev; }
+            if(err) bad.push({ route:r, نقش:role, خطا:err });
+            else if(!out || String(out).trim() === '')
+              bad.push({ route:r, نقش:role, خطا:'خروجی خالی' });
+          });
+        });
+      });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad.slice(0,20),
+            msg: bad.length + ' مسیر منو نمای سالم ندارند' }
+        : { ok:true, extra: Object.keys(seen).length + ' مسیر بررسی شد' };
+    },
+    fix: null
+  },
+
+  {
+    id: 'title-coverage', cat: 'engine',
+    title: 'مسیر بدون عنوان',
+    desc: 'صفحه‌ای که در جدول عنوان‌ها ثبت نشده و سرصفحه‌اش خالی می‌ماند',
+    severity: 'warning',
+    safe: false,
+    check: function(){
+      if(typeof NAV !== 'object' || typeof TITLES !== 'object') return { ok:true };
+      var bad = [], seen = Object.create(null);
+      Object.keys(NAV).forEach(function(role){
+        (NAV[role] || []).forEach(function(grp){
+          (grp[1] || []).forEach(function(it){
+            if(seen[it[0]]) return;
+            seen[it[0]] = true;
+            if(!TITLES[it[0]]) bad.push({ route: it[0], منو: it[2] || '' });
+          });
+        });
+      });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad.slice(0,20),
+            msg: bad.length + ' مسیر در جدول عنوان‌ها نیستند' }
+        : { ok:true };
+    },
+    fix: null
+  },
+
+  {
+    id: 'authz-coverage', cat: 'engine',
+    title: 'ناهماهنگی منو و مجوز',
+    desc: 'گزینه‌ای که در منوی نقشی هست ولی گارد دسترسی اجازه‌اش نمی‌دهد',
+    severity: 'critical',
+    safe: false,
+    check: function(){
+      if(typeof NAV !== 'object' || typeof canRoute !== 'function') return { ok:true };
+      var bad = [];
+      Object.keys(NAV).forEach(function(role){
+        (NAV[role] || []).forEach(function(grp){
+          (grp[1] || []).forEach(function(it){
+            var ok = false;
+            try{ ok = canRoute(it[0], role); }catch(e){ ok = false; }
+            if(!ok) bad.push({ نقش:role, route: it[0], منو: it[2] || '' });
+          });
+        });
+      });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad.slice(0,20),
+            msg: bad.length + ' گزینهٔ منو با گارد دسترسی نمی‌خواند' }
+        : { ok:true };
+    },
+    fix: null
+  },
+
+  {
+    id: 'collection-registry', cat: 'engine',
+    title: 'مجموعهٔ ثبت‌نشده',
+    desc: 'مجموعه‌ای که کد در آن می‌نویسد ولی در تعریف پایگاه داده نیست',
+    severity: 'critical',
+    safe: false,
+    check: function(){
+      var bad = [];
+      /* ids کلید هر مجموعه‌ای را دارد که در آن درج شده است */
+      Object.keys(ids || {}).forEach(function(c){
+        if(!Array.isArray(db[c]))
+          bad.push({ مجموعه:c, وضعیت:'در db تعریف نشده ولی در آن درج شده' });
+      });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad,
+            msg: bad.length + ' مجموعه در تعریف پایگاه داده نیست' }
+        : { ok:true, extra: Object.keys(db || {}).length + ' مجموعه سالم' };
+    },
+    fix: null
+  },
+
+  {
+    id: 'id-sequence', cat: 'engine',
+    title: 'شمارندهٔ شناسه عقب‌مانده',
+    desc: 'شمارنده از بزرگ‌ترین شناسهٔ موجود کوچک‌تر است — رکورد بعدی شناسهٔ تکراری می‌گیرد',
+    severity: 'critical',
+    safe: true,
+    check: function(){
+      var bad = [];
+      Object.keys(db || {}).forEach(function(c){
+        if(!Array.isArray(db[c]) || !db[c].length) return;
+        var max = 0;
+        db[c].forEach(function(r){ if(Number(r.id) > max) max = Number(r.id); });
+        var cur = Number((ids || {})[c] || 0);
+        if(cur < max) bad.push({ مجموعه:c, شمارنده:cur, بیشینه:max });
+      });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad,
+            msg: bad.length + ' شمارنده عقب افتاده — خطر شناسهٔ تکراری' }
+        : { ok:true };
+    },
+    fix: function(){
+      var n = 0;
+      Object.keys(db || {}).forEach(function(c){
+        if(!Array.isArray(db[c]) || !db[c].length) return;
+        var max = 0;
+        db[c].forEach(function(r){ if(Number(r.id) > max) max = Number(r.id); });
+        if(Number((ids || {})[c] || 0) < max){ ids[c] = max; n++; }
+      });
+      return n + ' شمارنده هم‌تراز شد';
+    }
+  },
+
+  {
+    id: 'duplicate-ids', cat: 'engine',
+    title: 'شناسهٔ تکراری در یک مجموعه',
+    desc: 'دو رکورد با یک شناسه — byId یکی را برای همیشه پنهان می‌کند',
+    severity: 'critical',
+    safe: false,
+    check: function(){
+      var bad = [];
+      Object.keys(db || {}).forEach(function(c){
+        if(!Array.isArray(db[c])) return;
+        var seen = Object.create(null), dup = 0;
+        db[c].forEach(function(r){
+          if(r.id == null) return;
+          if(seen[r.id]) dup++; else seen[r.id] = true;
+        });
+        if(dup) bad.push({ مجموعه:c, تکراری:dup });
+      });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad,
+            msg: bad.length + ' مجموعه شناسهٔ تکراری دارند' }
+        : { ok:true };
+    },
+    fix: null
+  },
+
+  {
+    id: 'localstorage-health', cat: 'engine',
+    title: 'دسترسی به حافظهٔ مرورگر',
+    desc: 'اگر نوشتن در حافظه کار نکند، داده پس از بستن مرورگر از بین می‌رود',
+    severity: 'critical',
+    safe: false,
+    check: function(){
+      try{
+        var k = '__diag_probe__';
+        localStorage.setItem(k, '1');
+        var v = localStorage.getItem(k);
+        localStorage.removeItem(k);
+        if(v !== '1')
+          return { ok:false, count:1, items:[{ خطا:'مقدار خوانده‌شده با نوشته‌شده فرق دارد' }],
+                   msg:'حافظهٔ مرورگر درست پاسخ نمی‌دهد' };
+        return { ok:true };
+      }catch(e){
+        return { ok:false, count:1, items:[{ خطا:String(e && e.message) }],
+          msg:'نوشتن در حافظهٔ مرورگر ممکن نیست — داده ماندگار نمی‌شود' };
+      }
+    },
+    fix: null
+  },
+
+  {
+    id: 'oplog-integrity', cat: 'engine',
+    title: 'سلامت دفترچهٔ عملیات',
+    desc: 'عملیات ناقص یا خراب در دفترچه — بازپخش داده را خراب می‌کند',
+    severity: 'critical',
+    safe: true,
+    check: function(){
+      if(typeof log === 'undefined' || !Array.isArray(log)) return { ok:true };
+      var bad = [];
+      log.forEach(function(op, i){
+        if(!op || typeof op !== 'object'){ bad.push({ ردیف:i, خطا:'عملیات خالی' }); return; }
+        if(['ins','upd','del'].indexOf(op.t) < 0)
+          bad.push({ ردیف:i, خطا:'نوع ناشناخته: ' + String(op.t) });
+        else if(!op.c || !Array.isArray(db[op.c]))
+          bad.push({ ردیف:i, خطا:'مجموعهٔ نامعتبر: ' + String(op.c) });
+        else if(op.t === 'ins' && (!op.data || op.data.id == null))
+          bad.push({ ردیف:i, خطا:'درج بدون شناسه' });
+      });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad.slice(0,20),
+            msg: bad.length + ' عملیات خراب در دفترچه' }
+        : { ok:true, extra: log.length + ' عملیات سالم' };
+    },
+    fix: function(){
+      var before = log.length;
+      var clean = log.filter(function(op){
+        if(!op || typeof op !== 'object') return false;
+        if(['ins','upd','del'].indexOf(op.t) < 0) return false;
+        if(!op.c || !Array.isArray(db[op.c])) return false;
+        if(op.t === 'ins' && (!op.data || op.data.id == null)) return false;
+        return true;
+      });
+      log.length = 0;
+      clean.forEach(function(op){ log.push(op); });
+      if(typeof saveLog === 'function') saveLog();
+      return (before - log.length) + ' عملیات خراب از دفترچه پاک شد';
+    }
+  },
+
+  {
+    id: 'sync-backlog', cat: 'engine',
+    title: 'انباشت صف همگام‌سازی',
+    desc: 'عملیات ناموفق یا متعارض که به سرور نرسیده‌اند',
+    severity: 'warning',
+    safe: false,
+    check: function(){
+      if(typeof SYNC === 'undefined' || !SYNC || !Array.isArray(SYNC.queue))
+        return { ok:true, extra:'لایهٔ همگام‌سازی فعال نیست' };
+      var failed = SYNC.queue.filter(function(x){ return x.status === 'failed'; }).length;
+      var conf   = SYNC.queue.filter(function(x){ return x.status === 'conflict'; }).length;
+      var pend   = SYNC.queue.filter(function(x){ return x.status === 'pending'; }).length;
+      if(conf > 0 || failed > 20 || pend > 500){
+        return { ok:false, count: conf + failed,
+          items:[{ متعارض:conf, ناموفق:failed, 'در انتظار':pend }],
+          msg: (conf ? conf + ' عملیات متعارض · ' : '') + failed + ' ناموفق · ' + pend + ' در انتظار' };
+      }
+      return { ok:true, extra: pend + ' در انتظار ارسال' };
+    },
+    fix: null
+  },
+
+  {
+    id: 'render-performance', cat: 'engine',
+    title: 'کندی رندر صفحات',
+    desc: 'صفحه‌ای که بیش از ۲۵۰ میلی‌ثانیه طول می‌کشد — کاربر کندی حس می‌کند',
+    severity: 'warning',
+    safe: false,
+    check: function(){
+      if(typeof renderRoute !== 'function' || typeof NAV !== 'object') return { ok:true };
+      var role = (S.user && S.user.role) || 'superadmin';
+      var slow = [], worst = 0, prev = S.route;
+      ((NAV[role] || [])).forEach(function(grp){
+        (grp[1] || []).forEach(function(it){
+          var t = Date.now();
+          try{ S.route = it[0]; renderRoute(); }catch(e){}
+          var ms = Date.now() - t;
+          if(ms > worst) worst = ms;
+          if(ms > 250) slow.push({ صفحه: it[2] || it[0], 'میلی‌ثانیه': ms });
+        });
+      });
+      S.route = prev;
+      return slow.length
+        ? { ok:false, count:slow.length, items:slow.slice(0,20),
+            msg: slow.length + ' صفحه کندتر از ۲۵۰ میلی‌ثانیه‌اند' }
+        : { ok:true, extra: 'کندترین صفحه ' + worst + ' میلی‌ثانیه' };
+    },
+    fix: null
+  },
+
+  {
+    id: 'missing-functions', cat: 'engine',
+    title: 'توابع حیاتی گمشده',
+    desc: 'تابعی که سایر بخش‌ها به آن تکیه دارند بارگذاری نشده',
+    severity: 'critical',
+    safe: false,
+    check: function(){
+      var need = ['render','renderRoute','insert','update','remove','byId',
+                  'batchWrites','saveLog','applyOp','canRoute','canAction',
+                  'idxById','idxReset','esc','fa','toast','openModal','closeModal'];
+      var miss = need.filter(function(n){
+        try{ return typeof eval(n) !== 'function'; }catch(e){ return true; }
+      }).map(function(n){ return { تابع:n }; });
+      return miss.length
+        ? { ok:false, count:miss.length, items:miss,
+            msg: miss.length + ' تابع حیاتی در دسترس نیست' }
+        : { ok:true, extra: need.length + ' تابع پایه سالم' };
+    },
+    fix: null
+  },
+
+  {
+    id: 'module-order', cat: 'engine',
+    title: 'ترتیب بارگذاری ماژول‌ها',
+    desc: 'ثابت یا جدولی که ماژول دیگری پیش از تعریفش استفاده می‌کند',
+    severity: 'warning',
+    safe: false,
+    check: function(){
+      var need = ['BRANCHES','GRADES_OF_LEVEL','LEVELS','NAV','TITLES',
+                  'ROLE_FA','DIAG_CHECKS','BELL_PRESETS','FIELD_ALIASES'];
+      var miss = need.filter(function(n){
+        try{ return typeof eval(n) === 'undefined'; }catch(e){ return true; }
+      }).map(function(n){ return { جدول:n }; });
+      return miss.length
+        ? { ok:false, count:miss.length, items:miss,
+            msg: miss.length + ' جدول پایه بارگذاری نشده' }
+        : { ok:true, extra: need.length + ' جدول پایه سالم' };
+    },
+    fix: null
+  },
+
+  {
+    id: 'bell-config', cat: 'engine',
+    title: 'پیکربندی زنگ‌ها',
+    desc: 'زمان‌بندی زنگ که بازه‌هایش نامعتبر یا متناقض است',
+    severity: 'warning',
+    safe: false,
+    check: function(){
+      if(typeof bellTimeline !== 'function') return { ok:true };
+      var bad = [];
+      (db.schools || []).forEach(function(sc){
+        var tl;
+        try{ tl = bellTimeline(sc.id); }
+        catch(e){ bad.push({ مدرسه:sc.name, خطا:String(e && e.message) }); return; }
+        if(!tl.length){ bad.push({ مدرسه:sc.name, خطا:'بدون زنگ' }); return; }
+        for(var i = 1; i < tl.length; i++){
+          if(tl[i].from !== tl[i-1].to){
+            bad.push({ مدرسه:sc.name, خطا:'گسست در ' + tl[i].from }); break;
+          }
+        }
+      });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad.slice(0,20),
+            msg: bad.length + ' مدرسه زمان‌بندی زنگ معیوب دارند' }
+        : { ok:true };
+    },
+    fix: null
+  },
+
+  {
+    id: 'school-config', cat: 'engine',
+    title: 'پیکربندی ناقص مدرسه',
+    desc: 'مدرسهٔ متوسطه دوم بدون شاخه، یا مدرسهٔ بدون مقطع',
+    severity: 'warning',
+    safe: false,
+    check: function(){
+      var bad = [];
+      (db.schools || []).forEach(function(s){
+        if(!s.active) return;
+        if(!s.level) bad.push({ مدرسه:s.name, ایراد:'مقطع تعریف نشده' });
+        else if(s.level === 'متوسطه دوم' && !(s.branches || []).length)
+          bad.push({ مدرسه:s.name, ایراد:'متوسطه دوم بدون شاخه' });
+      });
+      return bad.length
+        ? { ok:false, count:bad.length, items:bad.slice(0,20),
+            msg: bad.length + ' مدرسه پیکربندی ناقص دارند' }
+        : { ok:true };
+    },
+    fix: null
+  }
+]);
+
 /* ------------------------------------------------------------------ */
 /*  موتور اجرا                                                         */
 /* ------------------------------------------------------------------ */
@@ -510,10 +899,12 @@ var DIAG_CHECKS = [
  * ⚠️ هر آزمون در try است تا یک آزمون معیوب کل دیاگ را نخواباند —
  * دستگاه دیاگ نباید خودش خراب شود.
  */
-function runDiagnostics(){
+function runDiagnostics(onlyCat){
   var t0 = Date.now();
   var results = [];
-  DIAG_CHECKS.forEach(function(chk){
+  DIAG_CHECKS.filter(function(c){
+    return !onlyCat || (c.cat || 'data') === onlyCat;
+  }).forEach(function(chk){
     var r;
     try{
       r = chk.check();
@@ -523,7 +914,7 @@ function runDiagnostics(){
             selfError:true };
     }
     results.push({
-      id: chk.id, title: chk.title, desc: chk.desc,
+      id: chk.id, cat: chk.cat || 'data', title: chk.title, desc: chk.desc,
       severity: chk.severity, safe: chk.safe && !!chk.fix,
       fixable: !!chk.fix,
       ok: !!r.ok, msg: r.msg || '', count: r.count || 0,
@@ -540,8 +931,21 @@ function runDiagnostics(){
     critical: results.filter(function(r){ return !r.ok && r.severity === 'critical'; }).length,
     warning: results.filter(function(r){ return !r.ok && r.severity === 'warning'; }).length,
     info: results.filter(function(r){ return !r.ok && r.severity === 'info'; }).length,
-    autoFixable: results.filter(function(r){ return !r.ok && r.safe; }).length
+    autoFixable: results.filter(function(r){ return !r.ok && r.safe; }).length,
+    /* تفکیک دو خانواده: عیب موتور یعنی برنامه ایراد دارد،
+       عیب داده یعنی ورودی مدرسه ایراد دارد. */
+    byCat: {}
   };
+  Object.keys(DIAG_CATS).forEach(function(c){
+    var list = results.filter(function(r){ return (r.cat || 'data') === c; });
+    summary.byCat[c] = {
+      total: list.length,
+      passed: list.filter(function(r){ return r.ok; }).length,
+      critical: list.filter(function(r){ return !r.ok && r.severity === 'critical'; }).length,
+      warning: list.filter(function(r){ return !r.ok && r.severity === 'warning'; }).length,
+      failed: list.filter(function(r){ return !r.ok; }).length
+    };
+  });
   summary.health = diagHealthScore(summary, results);
 
   DIAG_HISTORY.push({ at: summary.at, health: summary.health,
@@ -691,7 +1095,9 @@ function viewDiagnostics(){
   var head = '<div class="card"><div class="card-head">'
     + '<h3>🔧 دیاگ سامانه</h3>'
     + '<div class="row">'
-    +   '<button class="btn" data-act="diag-run">🔍 اجرای بررسی کامل</button>'
+    +   '<button class="btn" data-act="diag-run">🔍 بررسی کامل</button>'
+    +   '<button class="btn ghost" data-act="diag-run" data-cat="engine">⚙️ فقط موتور</button>'
+    +   '<button class="btn ghost" data-act="diag-run" data-cat="data">📋 فقط داده</button>'
     +   (sum && sum.autoFixable
         ? '<button class="btn" style="background:var(--green)" data-act="diag-fixall">🛠️ تعمیر خودکار ('
           + fa(sum.autoFixable) + ')</button>' : '')
@@ -702,9 +1108,12 @@ function viewDiagnostics(){
   if(!out){
     head += '<div class="card-body">'
       + empty('🩺','هنوز بررسی نشده',
-          'دکمهٔ «اجرای بررسی کامل» را بزنید تا سامانه خودش را وارسی کند. '
-          + fa(DIAG_CHECKS.length) + ' آزمون روی یکپارچگی داده، حافظه، ایندکس، '
-          + 'دسترسی‌ها و رکوردهای مالی اجرا می‌شود.')
+          'دکمهٔ «بررسی کامل» را بزنید تا سامانه خودش را وارسی کند. '
+          + fa(DIAG_CHECKS.length) + ' آزمون در دو خانواده اجرا می‌شود: '
+          + '⚙️ پیکربندی و موتور برنامه (' 
+          + fa(DIAG_CHECKS.filter(function(c){return c.cat==="engine";}).length) + ' آزمون) '
+          + 'و 📋 کیفیت دادهٔ کاربر ('
+          + fa(DIAG_CHECKS.filter(function(c){return c.cat!=="engine";}).length) + ' آزمون).')
       + '</div></div>';
     return head;
   }
@@ -722,6 +1131,22 @@ function viewDiagnostics(){
     +     diagBar('اطلاع', sum.info, sum.total, 'var(--primary)')
     +   '</div>'
     + '</div>'
+    + '<div class="diag-cats">'
+    +   Object.keys(DIAG_CATS).map(function(c){
+          var k = sum.byCat && sum.byCat[c];
+          if(!k || !k.total) return '';
+          var bad = k.failed, col = k.critical ? 'var(--red)'
+                    : bad ? 'var(--amber)' : 'var(--green)';
+          return '<div class="diag-cat" style="border-color:' + col + '">'
+            + '<div class="diag-cat-h"><span>' + DIAG_CATS[c].icon + '</span>'
+            + '<b>' + DIAG_CATS[c].fa + '</b></div>'
+            + '<div class="small muted">' + esc(DIAG_CATS[c].desc) + '</div>'
+            + '<div class="diag-cat-n" style="color:' + col + '">'
+            +   fa(k.passed) + ' از ' + fa(k.total) + ' سالم'
+            +   (bad ? ' · ' + fa(bad) + ' عیب' : ' ✅')
+            + '</div></div>';
+        }).join('')
+    + '</div>'
     + '<div class="small muted" style="margin-top:10px">'
     +   'زمان بررسی: ' + fa(sum.ms) + ' میلی‌ثانیه · '
     +   fa(sum.total) + ' آزمون · '
@@ -737,18 +1162,23 @@ function viewDiagnostics(){
   var good = out.results.filter(function(r){ return r.ok; });
 
   var body = '';
-  if(bad.length){
+  /* عیب‌ها به تفکیک خانواده نمایش داده می‌شوند تا سوپرادمین بداند
+     مشکل از برنامه است یا از دادهٔ واردشده. */
+  Object.keys(DIAG_CATS).forEach(function(c){
+    var list = bad.filter(function(r){ return (r.cat || 'data') === c; });
+    if(!list.length) return;
     body += '<div class="card" style="margin-top:14px"><div class="card-head">'
-      + '<h3>عیب‌های یافت‌شده <span class="badge b-red">' + fa(bad.length) + '</span></h3></div>'
-      + '<div class="card-body">'
-      + bad.map(diagCard).join('') + '</div></div>';
-  }
+      + '<h3>' + DIAG_CATS[c].icon + ' عیب در ' + DIAG_CATS[c].fa
+      + ' <span class="badge b-red">' + fa(list.length) + '</span></h3></div>'
+      + '<div class="card-body">' + list.map(diagCard).join('') + '</div></div>';
+  });
   if(good.length){
     body += '<div class="card" style="margin-top:14px"><div class="card-head">'
       + '<h3>آزمون‌های سالم <span class="badge b-green">' + fa(good.length) + '</span></h3></div>'
       + '<div class="card-body"><div class="diag-ok-grid">'
       + good.map(function(r){
-          return '<div class="diag-ok">✅ <b>' + esc(r.title) + '</b>'
+          return '<div class="diag-ok">' + (DIAG_CATS[r.cat] || DIAG_CATS.data).icon
+            + ' <b>' + esc(r.title) + '</b>'
             + (r.extra ? '<span class="small muted"> — ' + esc(r.extra) + '</span>' : '')
             + '</div>'; }).join('')
       + '</div></div></div>';

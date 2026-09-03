@@ -2070,6 +2070,102 @@ test('نشانهٔ تغییر مسیر هنگام ناوبری ست می‌شو�
   assert(W('S.route') === 'diag', 'مسیر عوض نشد');
 });
 
+
+// ── دیاگ: دو خانوادهٔ موتور و داده
+test('آزمون‌ها به دو خانوادهٔ موتور و داده تقسیم شده‌اند', () => {
+  const eng = W("DIAG_CHECKS.filter(function(c){return c.cat==='engine';}).length");
+  const dat = W("DIAG_CHECKS.filter(function(c){return c.cat==='data';}).length");
+  assert(eng >= 14, 'آزمون موتور کم است: ' + eng);
+  assert(dat >= 12, 'آزمون داده کم است: ' + dat);
+  const noCat = W("DIAG_CHECKS.filter(function(c){return !c.cat;}).length");
+  assert(noCat === 0, noCat + ' آزمون بدون دسته مانده');
+});
+
+test('خلاصهٔ دیاگ تفکیک دسته می‌دهد', () => {
+  W("S.user=db.users.find(function(u){return u.role==='superadmin';})");
+  const sm = W('runDiagnostics().summary');
+  assert(sm.byCat && sm.byCat.engine && sm.byCat.data, 'byCat وجود ندارد');
+  assert(sm.byCat.engine.total + sm.byCat.data.total === sm.total, 'جمع دسته‌ها با کل نمی‌خواند');
+});
+
+test('اجرای گزینشی فقط یک خانواده را می‌دواند', () => {
+  const only = W("runDiagnostics('engine')");
+  const eng = W("DIAG_CHECKS.filter(function(c){return c.cat==='engine';}).length");
+  assert(only.summary.total === eng, 'باید فقط آزمون موتور اجرا شود: ' + only.summary.total);
+  assert(only.results.every(function (r) { return r.cat === 'engine'; }), 'نتیجهٔ غیرموتور آمده');
+});
+
+// ── آزمون‌های زیرساخت و موتور
+test('همهٔ مسیرهای منو نمای سالم دارند', () => {
+  W("S.user=db.users.find(function(u){return u.role==='superadmin';})");
+  const r = W("DIAG_CHECKS.filter(function(c){return c.id==='route-coverage';})[0].check()");
+  assert(r.ok === true, 'مسیر معیوب: ' + JSON.stringify(r.items || []));
+});
+
+test('همهٔ مسیرهای منو عنوان دارند', () => {
+  const r = W("DIAG_CHECKS.filter(function(c){return c.id==='title-coverage';})[0].check()");
+  assert(r.ok === true, 'مسیر بدون عنوان: ' + JSON.stringify(r.items || []));
+});
+
+test('منو و گارد دسترسی هماهنگ‌اند', () => {
+  const r = W("DIAG_CHECKS.filter(function(c){return c.id==='authz-coverage';})[0].check()");
+  assert(r.ok === true, 'ناهماهنگی مجوز: ' + JSON.stringify(r.items || []));
+});
+
+test('توابع حیاتی و جدول‌های پایه بارگذاری شده‌اند', () => {
+  const f = W("DIAG_CHECKS.filter(function(c){return c.id==='missing-functions';})[0].check()");
+  assert(f.ok === true, 'تابع گمشده: ' + JSON.stringify(f.items || []));
+  const m = W("DIAG_CHECKS.filter(function(c){return c.id==='module-order';})[0].check()");
+  assert(m.ok === true, 'جدول گمشده: ' + JSON.stringify(m.items || []));
+});
+
+test('هر مجموعه‌ای که در آن درج شده در db تعریف است', () => {
+  const r = W("DIAG_CHECKS.filter(function(c){return c.id==='collection-registry';})[0].check()");
+  assert(r.ok === true, 'مجموعهٔ ثبت‌نشده: ' + JSON.stringify(r.items || []));
+});
+
+test('شمارندهٔ عقب‌مانده تشخیص و هم‌تراز می‌شود', () => {
+  const max = W('Math.max.apply(null,db.classes.map(function(c){return c.id;}))');
+  W('ids.classes=1');
+  const r = W("DIAG_CHECKS.filter(function(c){return c.id==='id-sequence';})[0].check()");
+  assert(r.ok === false, 'شمارندهٔ عقب‌مانده تشخیص داده نشد');
+  W("diagFix('id-sequence')");
+  assert(W('ids.classes') >= max, 'شمارنده هم‌تراز نشد: ' + W('ids.classes'));
+});
+
+test('شناسهٔ تکراری در مجموعه تشخیص داده می‌شود', () => {
+  const r = W("DIAG_CHECKS.filter(function(c){return c.id==='duplicate-ids';})[0].check()");
+  assert(r.ok === true, 'شناسهٔ تکراری هست: ' + JSON.stringify(r.items || []));
+});
+
+test('دفترچهٔ عملیات خراب پاک‌سازی می‌شود', () => {
+  W("log.push({t:'نامعتبر',c:'users'})");
+  W("log.push({t:'ins',c:'مجموعهٔ_ناموجود',data:{id:1}})");
+  const r = W("DIAG_CHECKS.filter(function(c){return c.id==='oplog-integrity';})[0].check()");
+  assert(r.ok === false, 'عملیات خراب تشخیص داده نشد');
+  assert(r.count === 2, 'باید دو مورد باشد: ' + r.count);
+  W("diagFix('oplog-integrity')");
+  const after = W("DIAG_CHECKS.filter(function(c){return c.id==='oplog-integrity';})[0].check()");
+  assert(after.ok === true, 'پس از پاک‌سازی باید سالم باشد');
+});
+
+test('حافظهٔ مرورگر سالم گزارش می‌شود', () => {
+  const r = W("DIAG_CHECKS.filter(function(c){return c.id==='localstorage-health';})[0].check()");
+  assert(typeof r.ok === 'boolean', 'نتیجهٔ نامعتبر');
+});
+
+test('کندی رندر سنجیده می‌شود', () => {
+  W("S.user=db.users.find(function(u){return u.role==='manager';})");
+  const r = W("DIAG_CHECKS.filter(function(c){return c.id==='render-performance';})[0].check()");
+  assert(r.ok === true, 'صفحهٔ کند: ' + JSON.stringify(r.items || []));
+  W("S.user=db.users.find(function(u){return u.role==='superadmin';})");
+});
+
+test('پیکربندی زنگ همهٔ مدارس معتبر است', () => {
+  const r = W("DIAG_CHECKS.filter(function(c){return c.id==='bell-config';})[0].check()");
+  assert(r.ok === true, 'زنگ معیوب: ' + JSON.stringify(r.items || []));
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

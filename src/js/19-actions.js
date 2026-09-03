@@ -212,11 +212,14 @@ document.addEventListener('click',e=>{
       canAction آن را می‌سنجد. */
    'diag-run'(){
      if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
+     /* data-cat روی دکمه: فقط همان خانواده اجرا شود */
+     var cat=e.target.dataset.cat||'';
      var t=Date.now();
-     try{ S.diag=runDiagnostics(); }
-     catch(e){ toast('اجرای دیاگ ناموفق: '+e.message,'err'); return; }
+     try{ S.diag=runDiagnostics(cat||null); }
+     catch(err){ toast('اجرای دیاگ ناموفق: '+err.message,'err'); return; }
      var sm=S.diag.summary;
-     toast('بررسی کامل شد: نمرهٔ سلامت '+fa(sm.health)+' از ۱۰۰ ('+fa(Date.now()-t)+'ms)',
+     var what=cat?(DIAG_CATS[cat]?DIAG_CATS[cat].fa:cat):'بررسی کامل';
+     toast(what+': نمرهٔ سلامت '+fa(sm.health)+' از ۱۰۰ ('+fa(Date.now()-t)+' میلی‌ثانیه)',
        sm.critical?'err':'ok');
      render();
    },

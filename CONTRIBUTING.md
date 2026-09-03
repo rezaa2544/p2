@@ -74,6 +74,9 @@ node scripts/dev-server.js   # سرور توسعه روی درگاه ۳۰۰۰
 | اشتراک مشترک پدر و مادر | `studentSubscription` · `effectiveParentAccess` | `23-subscription.js` |
 | چرخه سال · چیدمان کلاس · ثبت‌نام | `viewSchoolYear` · `autoPlacement` · `applyPlacement` | `39-school-year.js` |
 | اعتبارسنجی فرم با کادر قرمز | `need` · `needAll` · `invalid` | `40-form-validation.js` |
+| تشخیص پایه و رشته از متن اکسل | `parsePlacement` · `detectField` | `41-class-placement.js` |
+| عیب‌یابی و تعمیر خودکار سامانه | `runDiagnostics` · `diagFix` | `42-self-diagnostics.js` |
+| ساعت زنگ‌ها و زنگ تفریح | `bellTimeline` · `bellSave` | `43-bell-schedule.js` |
 
 **راه سریع‌تر:** نام صفحه را در برنامه ببینید، بعد `grep` بزنید:
 ```bash
@@ -350,9 +353,21 @@ node build.js --check    # یکسانی بیت‌به‌بیت
 
 ## دیاگ سامانه و زمان‌بندی زنگ
 
+### دو خانوادهٔ آزمون
+دیاگ دو نوع عیب را جدا می‌کند، چون مسئول رفعشان فرق می‌کند:
+
+| خانواده | `cat` | چه می‌سنجد | مسئول |
+|---|---|---|---|
+| ⚙️ موتور | `engine` | پیکربندی، زیرساخت، مسیرها، ایندکس، حافظه | برنامه‌نویس |
+| 📋 داده | `data` | یکپارچگی اطلاعات واردشدهٔ مدارس | مدیر مدرسه |
+
+`runDiagnostics()` همه را می‌دواند؛ `runDiagnostics('engine')` فقط
+موتور را.
+
 | می‌خواهم… | فایل |
 |---|---|
 | آزمون عیب‌یابی تازه بیفزایم | `42-self-diagnostics.js` → `DIAG_CHECKS` |
+| خانوادهٔ تازه تعریف کنم | `42-self-diagnostics.js` → `DIAG_CATS` |
 | وزن نمرهٔ سلامت را عوض کنم | `42-self-diagnostics.js` → `diagHealthScore` |
 | بازهٔ پایش خودکار | `42-self-diagnostics.js` → `DIAG_AUTO.interval` |
 | الگوی زنگ تازه بسازم | `43-bell-schedule.js` → `BELL_PRESETS` |
@@ -360,7 +375,9 @@ node build.js --check    # یکسانی بیت‌به‌بیت
 
 ### افزودن آزمون به دیاگ
 ```js
-{ id:'شناسه-یکتا', title:'عنوان', desc:'توضیح یک‌خطی',
+{ id:'شناسه-یکتا',
+  cat:'engine',                    // یا 'data' — الزامی است
+  title:'عنوان', desc:'توضیح یک‌خطی',
   severity:'critical'|'warning'|'info',
   safe:true,                       // آیا تعمیر خودکار مجاز است؟
   check(){ return {ok:false, count:n, items:[...], msg:'...'}; },
@@ -370,3 +387,18 @@ node build.js --check    # یکسانی بیت‌به‌بیت
 🔴 **`safe:true` فقط وقتی** که تعمیر داده‌ای از بین نبرد یا
 برگشت‌پذیر باشد. حذف رکوردی که ممکن است درست باشد → `safe:false`
 و `fix:null`.
+
+⚠️ اگر آزمونتان `S.route` یا `S.user` را عوض می‌کند، حتماً در
+`finally` به حالت اول برگردانید — وگرنه کاربر پرت می‌شود.
+
+⚠️ آزمون خودتان نباید فرض کند داده تمیز است؛ آزمون‌های دیگر عمداً
+رکورد می‌سازند.
+
+### زمان‌بندی زنگ‌ها
+هر مدرسه رکوردی در `db.bell_schedules` دارد: ساعت شروع + آرایه‌ای از
+بازه‌های `lesson` و `break`. اگر تعریف نشده باشد، `bellOf()` الگوی
+متناسب با **شیفت و مقطع** مدرسه را برمی‌گرداند تا برنامه هرگز بدون
+ساعت نماند.
+
+⚠️ اعتبارسنجی در `bellSave()` است نه در نما، چون داده می‌تواند از
+همگام‌سازی هم بیاید.
