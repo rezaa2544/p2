@@ -9,11 +9,11 @@ function modalTpl(title,body,saveAct,danger,okLabel){
    <div class="card-body">${body}</div>
    <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border);justify-content:flex-end">
     <button class="btn ghost" data-act="modal-close">انصراف</button>
-    <button class="btn ${danger?'danger':''}" data-act="${saveAct}">${okLabel||(danger?'حذف کن':'ذخیره')}</button></div>`;
+    <button class="btn ${danger?'danger':''}" data-act="${escAttr(saveAct)}">${okLabel||(danger?'حذف کن':'ذخیره')}</button></div>`;
 }
 const f=(label,inner)=>`<div class="field"><label>${label}</label>${inner}</div>`;
-const inp=(id,val,type='text')=>`<input class="input" id="${id}" type="${type}" value="${esc(val??'')}" />`;
-const sel=(id,opts,val)=>`<select class="select" id="${id}">${opts.map(o=>`<option value="${esc(o[0])}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
+const inp=(id,val,type='text')=>`<input class="input" id="${escAttr(id)}" type="${escAttr(type)}" value="${esc(val??'')}" />`;
+const sel=(id,opts,val)=>`<select class="select" id="${escAttr(id)}">${opts.map(o=>`<option value="${esc(o[0])}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
 const V=id=>{const e=$('#'+id);return e?e.value.trim():'';};
 
 /** گزینه‌های کشویی محدوده (استان › شهرستان › منطقه) */
@@ -192,10 +192,10 @@ function gradeModal(g){
   g=g||{student_id:studs[0].id,subject_id:subs[0].id,term:TERMS[0],exam_type:EXAM_TYPES[0],score:20};
   openModal(modalTpl(g.id?'ویرایش نمره':'ثبت نمره جدید',
    `<div class="grid g2">
-    ${f('دانش‌آموز',`<select class="select" id="g_st" ${g.id?'disabled':''}>${studs.map(s=>`<option value="${s.id}" ${s.id===g.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
-    ${f('درس',`<select class="select" id="g_sub" ${g.id?'disabled':''}>${subs.map(s=>`<option value="${s.id}" ${s.id===g.subject_id?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`)}
+    ${f('دانش‌آموز',`<select class="select" id="g_st" ${g.id?'disabled':''}>${studs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
+    ${f('درس',`<select class="select" id="g_sub" ${g.id?'disabled':''}>${subs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.subject_id?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`)}
     ${f('نوبت',sel('g_term',TERMS.map(t=>[t,t]),g.term))}${f('نوع آزمون',sel('g_type',EXAM_TYPES.map(t=>[t,t]),g.exam_type))}
-    ${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${g.score}" />`)}</div>`,'grade-save'));
+    ${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${escAttr(g.score)}" />`)}</div>`,'grade-save'));
   window._edit=g;window._gclass=cid;
 }
 const PRESETS={positive:POS.map(p=>p[0]),negative:NEG.map(p=>p[0])};
@@ -208,7 +208,7 @@ function discModal(d){
   const opts=PRESETS[d.kind].includes(d.title)?PRESETS[d.kind]:PRESETS[d.kind].concat([d.title]);
   openModal(modalTpl(d.id?'ویرایش مورد انضباطی':'ثبت مورد انضباطی',
    `<div class="grid g2">
-    ${f('دانش‌آموز',`<select class="select" id="d_st" ${d.id?'disabled':''}>${(d.id?[byId('users',d.student_id)]:studs).map(s=>`<option value="${s.id}" ${s.id===d.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
+    ${f('دانش‌آموز',`<select class="select" id="d_st" ${d.id?'disabled':''}>${(d.id?[byId('users',d.student_id)]:studs).map(s=>`<option value="${escAttr(s.id)}" ${s.id===d.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
     ${f('نوع',sel('d_kind',[['positive','مثبت'],['negative','منفی']],d.kind))}
     ${f('عنوان',sel('d_title',opts.map(o=>[o,o]),d.title))}
     ${f('امتیاز',inp('d_points',d.points,'number'))}${f('تاریخ',jdate('d_date',d.date))}</div>

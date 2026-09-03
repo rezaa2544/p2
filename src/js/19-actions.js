@@ -25,13 +25,13 @@ document.addEventListener('click',e=>{
      const u=db.users.find(x=>x.username===V('lu'));
      if(!u||u.password!==$('#lp').value){$('#lerr').innerHTML='<div class="badge b-red" style="padding:9px 12px;margin-bottom:8px">⚠️ نام کاربری یا رمز عبور نادرست است</div>';return;}
      if(!u.active){$('#lerr').innerHTML='<div class="badge b-red" style="padding:9px 12px">⚠️ حساب غیرفعال است</div>';return;}
-     S.user=u;S.stack=[];S.persona=null;localStorage.removeItem(PERSONA_KEY);
+     S.user=u;S.stack=[];S.persona=null;Store.remove(PERSONA_KEY);
      linkAsParent(u);
      S.showPicker=panelsOf(u).length>1;
-     S.route=(u.role==='edu_office'?'officedash':'dashboard');localStorage.setItem(SESSION_KEY,u.username);if(typeof trackVisit==='function')trackVisit(u.id);toast('خوش آمدید، '+u.full_name,'ok');render();
+     S.route=(u.role==='edu_office'?'officedash':'dashboard');Store.set(SESSION_KEY,u.username);if(typeof trackVisit==='function')trackVisit(u.id);toast('خوش آمدید، '+u.full_name,'ok');render();
    },
    logout(){S.user=null;S.boss=null;S.stack=[];S.persona=null;S.showPicker=false;
-     localStorage.removeItem(SESSION_KEY);localStorage.removeItem(BOSS_KEY);localStorage.removeItem(PERSONA_KEY);render();},
+     Store.remove(SESSION_KEY);Store.remove(BOSS_KEY);Store.remove(PERSONA_KEY);render();},
    reset(){askConfirm('همه تغییرات شما پاک و داده‌های نمونه بازنشانی می‌شود. ادامه می‌دهید؟',()=>resetAll(),
      {title:'بازنشانی داده‌های نمونه',ok:'بازنشانی کن',danger:true,note:'تغییرات ذخیره‌شده در این مرورگر از بین می‌رود.'});},
    'do-reset'(){resetAll();},
@@ -64,15 +64,15 @@ document.addEventListener('click',e=>{
      askConfirm(`به‌عنوان «${mgr.full_name}» وارد پنل مدرسه «${sc.name}» می‌شوید. هر زمان می‌توانید با نوار بالای صفحه به پنل سوپر ادمین برگردید.`,
        ()=>{
          S.boss=S.user; S.user=mgr; S.stack=[]; S.route='dashboard'; S.page=1; S.filters={}; S.tab='grades'; S.child=null;
-         localStorage.setItem(BOSS_KEY,S.boss.username); localStorage.setItem(SESSION_KEY,mgr.username);
+         Store.set(BOSS_KEY,S.boss.username); Store.set(SESSION_KEY,mgr.username);
          toast('وارد پنل «'+sc.name+'» شدید','ok'); render();
        },{title:'ورود به پنل مدرسه',ok:'ورود به پنل',danger:false,note:false});
    },
    'stop-imp'(){
-     const boss=S.boss||db.users.find(u=>u.username===localStorage.getItem(BOSS_KEY));
+     const boss=S.boss||db.users.find(u=>u.username===Store.get(BOSS_KEY));
      if(!boss){toast('حساب سوپر ادمین یافت نشد','err');return;}
      S.user=boss; S.boss=null; S.stack=[]; S.route='schools'; S.page=1; S.filters={}; S.child=null;
-     localStorage.removeItem(BOSS_KEY); localStorage.setItem(SESSION_KEY,boss.username);
+     Store.remove(BOSS_KEY); Store.set(SESSION_KEY,boss.username);
      toast('به پنل سوپر ادمین بازگشتید','ok'); render();
    },
    'school-del'(){confirmModal('حذف مدرسه و تمام کاربران، کلاس‌ها و اطلاعات آن؟','school-del-ok',id);},
@@ -843,7 +843,7 @@ document.addEventListener('input',e=>{
   const k=el.dataset.f;
   if(el.tagName==='INPUT'&&el.type==='text'||el.placeholder){
     clearTimeout(window._deb);const v=el.value;
-    window._deb=setTimeout(()=>{S.filters[k]=v;S.page=1;render();const n=$(`[data-f="${k}"]`);if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);}},280);
+    window._deb=setTimeout(()=>{S.filters[k]=v;S.page=1;render();const n=$(`[data-f="${escAttr(k)}"]`);if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);}},280);
   }
 });
 /* آبشاری: مقطع → پایه → شاخه → رشته (فرم درس و فرم افزودن کتاب) */
@@ -1024,8 +1024,8 @@ document.addEventListener('change',e=>{
   if(id==='m_prov'||id==='m_county'){
     const pid=$('#m_prov')?$('#m_prov').value:'', cid=id==='m_prov'?'':($('#m_county')?$('#m_county').value:'');
     const g=geoOptions(pid,cid);
-    if(id==='m_prov'&&$('#m_county'))$('#m_county').innerHTML=g.counties.map(o=>`<option value="${o[0]}">${esc(o[1])}</option>`).join('');
-    if($('#m_district'))$('#m_district').innerHTML=(id==='m_prov'?geoOptions(pid,'').districts:g.districts).map(o=>`<option value="${o[0]}">${esc(o[1])}</option>`).join('');
+    if(id==='m_prov'&&$('#m_county'))$('#m_county').innerHTML=g.counties.map(o=>`<option value="${escAttr(o[0])}">${esc(o[1])}</option>`).join('');
+    if($('#m_district'))$('#m_district').innerHTML=(id==='m_prov'?geoOptions(pid,'').districts:g.districts).map(o=>`<option value="${escAttr(o[0])}">${esc(o[1])}</option>`).join('');
     const off=officeForDistrict(pid,$('#m_county')?$('#m_county').value:'',$('#m_district')?$('#m_district').value:'');
     if($('#m_office'))$('#m_office').innerHTML='اداره مربوطه: <b>'+esc(off?off.name:'—')+'</b>';
     return;

@@ -46,7 +46,7 @@ function generateP9(){
   const mk=(name,level,scope,username)=>{
     const o=add('offices',Object.assign({name,level,active:1},scope));
     const u=add('users',{school_id:null,office_id:o.id,role:'edu_office',full_name:'کارشناس '+name,
-      username,password:'123456',national_id:makeNid(),phone:'0918'+(1000000+ri(8999999)),active:1,created_at:daysAgoISO(320)});
+      username,password:'123456',national_id:makeNid(),phone:demoPhone(),active:1,created_at:daysAgoISO(320)});
     o.user_id=u.id;
     return o;
   };
@@ -121,24 +121,24 @@ function viewGeo(){
     ${statCard('📍',fa(db.districts.length),'منطقه / ناحیه','purple')}</div>
   <div class="grid g3">
     <div class="card"><div class="card-head"><h3>استان‌ها</h3><button class="btn sm" data-act="geo-new" data-t="province">➕</button></div>
-      ${db.provinces.length?db.provinces.map(p=>`<div class="row" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:${pid===p.id?'var(--primary-soft)':'#fff'}" data-act="geo-pick" data-t="province" data-id="${p.id}">
+      ${db.provinces.length?db.provinces.map(p=>`<div class="row" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:${pid===p.id?'var(--primary-soft)':'#fff'}" data-act="geo-pick" data-t="province" data-id="${escAttr(p.id)}">
         <b>${esc(p.name)}</b><div class="spacer"></div><span class="small muted">${fa(cnt(p,'province_id'))} مدرسه</span>
-        <button class="icon-btn" title="ویرایش" data-act="geo-edit" data-t="provinces" data-id="${p.id}">✏️</button>
-        <button class="icon-btn danger" title="حذف" data-act="geo-del" data-t="provinces" data-id="${p.id}">🗑️</button></div>`).join(''):empty('🗺️','استانی ثبت نشده','')}
+        <button class="icon-btn" title="ویرایش" data-act="geo-edit" data-t="provinces" data-id="${escAttr(p.id)}">✏️</button>
+        <button class="icon-btn danger" title="حذف" data-act="geo-del" data-t="provinces" data-id="${escAttr(p.id)}">🗑️</button></div>`).join(''):empty('🗺️','استانی ثبت نشده','')}
     </div>
     <div class="card"><div class="card-head"><h3>شهرستان‌ها</h3><button class="btn sm" data-act="geo-new" data-t="county">➕</button></div>
-      ${counties.length?counties.map(c=>`<div class="row" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:${cid===c.id?'var(--primary-soft)':'#fff'}" data-act="geo-pick" data-t="county" data-id="${c.id}">
+      ${counties.length?counties.map(c=>`<div class="row" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:${cid===c.id?'var(--primary-soft)':'#fff'}" data-act="geo-pick" data-t="county" data-id="${escAttr(c.id)}">
         <b>${esc(c.name)}</b><span class="small muted">${esc((byId('provinces',c.province_id)||{}).name||'')}</span><div class="spacer"></div>
         <span class="small muted">${fa(cnt(c,'county_id'))} مدرسه</span>
-        <button class="icon-btn" title="ویرایش" data-act="geo-edit" data-t="counties" data-id="${c.id}">✏️</button>
-        <button class="icon-btn danger" title="حذف" data-act="geo-del" data-t="counties" data-id="${c.id}">🗑️</button></div>`).join(''):empty('🏙️','شهرستانی نیست','')}
+        <button class="icon-btn" title="ویرایش" data-act="geo-edit" data-t="counties" data-id="${escAttr(c.id)}">✏️</button>
+        <button class="icon-btn danger" title="حذف" data-act="geo-del" data-t="counties" data-id="${escAttr(c.id)}">🗑️</button></div>`).join(''):empty('🏙️','شهرستانی نیست','')}
     </div>
     <div class="card"><div class="card-head"><h3>مناطق / نواحی</h3><button class="btn sm" data-act="geo-new" data-t="district">➕</button></div>
       ${districts.length?districts.map(d=>`<div class="row" style="padding:10px 14px;border-bottom:1px solid var(--border)">
         <b>${esc(d.name)}</b><span class="badge ${d.kind==='village'?'b-amber':'b-gray'}">${AREA_KIND[d.kind]||'منطقه'}</span>
         <div class="spacer"></div><span class="small muted">${fa(cnt(d,'district_id'))} مدرسه</span>
-        <button class="icon-btn" title="ویرایش" data-act="geo-edit" data-t="districts" data-id="${d.id}">✏️</button>
-        <button class="icon-btn danger" title="حذف" data-act="geo-del" data-t="districts" data-id="${d.id}">🗑️</button></div>`).join(''):empty('📍','منطقه‌ای نیست','')}
+        <button class="icon-btn" title="ویرایش" data-act="geo-edit" data-t="districts" data-id="${escAttr(d.id)}">✏️</button>
+        <button class="icon-btn danger" title="حذف" data-act="geo-del" data-t="districts" data-id="${escAttr(d.id)}">🗑️</button></div>`).join(''):empty('📍','منطقه‌ای نیست','')}
     </div></div>`;
 }
 
@@ -158,9 +158,9 @@ function viewOffices(){
       <td>${fa(r.schools)}</td><td>${fa(r.students)}</td>
       <td class="small">${r.u?`<b>${esc(r.u.username)}</b><div class="muted">${esc(r.u.full_name)}</div>`:'<span class="badge b-amber">بدون حساب</span>'}</td>
       <td><div class="row" style="gap:5px;flex-wrap:nowrap">
-        <button class="btn ghost sm" data-act="office-toggle" data-id="${r.o.id}">${r.o.active?'⏸️ غیرفعال':'▶️ فعال'}</button>
-        <button class="icon-btn" title="ویرایش" data-act="office-edit" data-id="${r.o.id}">✏️</button>
-        <button class="icon-btn danger" title="حذف" data-act="office-del" data-id="${r.o.id}">🗑️</button></div></td></tr>`).join('')}
+        <button class="btn ghost sm" data-act="office-toggle" data-id="${escAttr(r.o.id)}">${r.o.active?'⏸️ غیرفعال':'▶️ فعال'}</button>
+        <button class="icon-btn" title="ویرایش" data-act="office-edit" data-id="${escAttr(r.o.id)}">✏️</button>
+        <button class="icon-btn danger" title="حذف" data-act="office-del" data-id="${escAttr(r.o.id)}">🗑️</button></div></td></tr>`).join('')}
    </tbody></table></div>`:empty('🏛️','اداره‌ای تعریف نشده','با دکمه بالا اداره کل استان، اداره شهرستان یا منطقه را تعریف کنید.')}</div>`;
 }
 
@@ -189,9 +189,9 @@ function viewOfficeDash(){
       </div>
       ${filterPanel('officedash',`
         <select class="select" style="width:150px" data-f="province"><option value="">همه استان‌ها</option>
-          ${provinces.map(p=>`<option value="${p.id}" ${String(S.filters.province)===String(p.id)?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
+          ${provinces.map(p=>`<option value="${escAttr(p.id)}" ${String(S.filters.province)===String(p.id)?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
         <select class="select" style="width:150px" data-f="county"><option value="">همه شهرستان‌ها</option>
-          ${counties.map(c=>`<option value="${c.id}" ${String(S.filters.county)===String(c.id)?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`)}
+          ${counties.map(c=>`<option value="${escAttr(c.id)}" ${String(S.filters.county)===String(c.id)?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`)}
       </div></div>
 
    <div class="grid g4" style="margin-bottom:14px">
@@ -774,12 +774,12 @@ function render(){
 }
 setTimeout(()=>{
   generate(); generateExtras(); generateP8(); generateP9(); generateP10(); loadLog(); applyLog(); initSync();
-  const su=localStorage.getItem(SESSION_KEY);
+  const su=Store.get(SESSION_KEY);
   if(su){const u=db.users.find(x=>x.username===su);if(u){S.user=u;if(u.role==='edu_office'&&S.route==='dashboard')S.route='officedash';}}
-  const pk=localStorage.getItem(PERSONA_KEY);
+  const pk=Store.get(PERSONA_KEY);
   if(pk&&S.user){S.persona=pk;if(S.route==='dashboard'&&pk==='parent'&&!subOf(S.user.id).active)S.route='subscription';}
-  const bs=localStorage.getItem(BOSS_KEY);
-  if(bs&&S.user){const b=db.users.find(x=>x.username===bs);if(b&&b.id!==S.user.id)S.boss=b;else localStorage.removeItem(BOSS_KEY);}
+  const bs=Store.get(BOSS_KEY);
+  if(bs&&S.user){const b=db.users.find(x=>x.username===bs);if(b&&b.id!==S.user.id)S.boss=b;else Store.remove(BOSS_KEY);}
   /* یادآوری پایان سال به مدیر (فقط در تیر و مرداد، هر هفت روز یک بار) */
   if(typeof checkYearEnd === 'function') checkYearEnd();
   render();

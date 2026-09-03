@@ -413,6 +413,223 @@ th,td{padding:9px 8px;font-size:13px}
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
+   لایهٔ داده — تنها دروازهٔ برنامه به دنیای بیرون
+   ═══════════════════════════════════════════════════════════════════
+
+   ⚠️ قاعدهٔ طلایی این فایل:
+   هیچ جای دیگری از برنامه نباید مستقیم `localStorage` یا `fetch` را
+   صدا بزند. هر دسترسی به داده از همین‌جا رد می‌شود.
+
+   چرا؟ چون امروز داده در حافظهٔ مرورگر است و فردا روی سرور خواهد بود.
+   اگر صدها نقطه در برنامه مستقیم با حافظهٔ مرورگر حرف بزنند، روز
+   اتصال به سرور یعنی بازنویسی کل برنامه. با این لایه، آن روز فقط
+   بدنهٔ چند تابع در همین فایل عوض می‌شود و نما و منطق دست‌نخورده
+   می‌مانند.
+
+   ── نقشهٔ فایل ──────────────────────────────────────────────
+   ۱. DATA_MODE ....... محلی یا سروری
+   ۲. Store ........... انبار کلید-مقدار (امروز: حافظهٔ مرورگر)
+   ۳. Api ............. گفتگو با سرور (امروز: خاموش)
+   ۴. Data ............ چهار عمل داده: خواندن، افزودن، ویرایش، حذف
+   ─────────────────────────────────────────────────────────── */
+
+
+/* ─────────────────────────────────────────────────────────────
+   ۱. حالت داده
+   ───────────────────────────────────────────────────────────── */
+
+/** 'local' = همه‌چیز در مرورگر (دمو) · 'server' = پشت سر واقعی */
+var DATA_MODE = 'local';
+
+/** ریشهٔ نشانی سرور. در حالت محلی استفاده نمی‌شود. */
+var API_BASE = '';
+
+/** آیا به سرور واقعی وصلیم؟ */
+function isServerMode(){ return DATA_MODE === 'server'; }
+
+
+/* ─────────────────────────────────────────────────────────────
+   ۲. Store — انبار کلید-مقدار
+
+   امروز پشتش حافظهٔ مرورگر است. فردا می‌تواند حافظهٔ مرورگر برای
+   حالت آفلاین باشد و همگام‌سازی با سرور روی آن سوار شود.
+
+   هر متد در برابر خطا مقاوم است: مرورگر در حالت ناشناس یا با
+   حافظهٔ پر، استثنا پرتاب می‌کند و برنامه نباید از پا بیفتد.
+   ───────────────────────────────────────────────────────────── */
+
+var Store = {
+
+  /** خواندن رشتهٔ خام. اگر نبود یا خطا داد، `fallback` برمی‌گردد. */
+  get: function(key, fallback){
+    try{
+      var v = localStorage.getItem(key);
+      return v === null ? (fallback === undefined ? null : fallback) : v;
+    }catch(e){ return fallback === undefined ? null : fallback; }
+  },
+
+  /** نوشتن رشتهٔ خام. خروجی: آیا موفق بود؟ */
+  set: function(key, value){
+    try{ localStorage.setItem(key, value); return true; }
+    catch(e){ return false; }
+  },
+
+  /** پاک کردن یک کلید. */
+  remove: function(key){
+    try{ localStorage.removeItem(key); return true; }
+    catch(e){ return false; }
+  },
+
+  /** خواندن مقدار JSON. اگر خراب بود `fallback` برمی‌گردد، نه استثنا. */
+  getJSON: function(key, fallback){
+    try{
+      var raw = localStorage.getItem(key);
+      if(raw === null) return fallback;
+      return JSON.parse(raw);
+    }catch(e){ return fallback; }
+  },
+
+  /** نوشتن مقدار JSON. خروجی: آیا موفق بود؟ */
+  setJSON: function(key, value){
+    try{ localStorage.setItem(key, JSON.stringify(value)); return true; }
+    catch(e){ return false; }
+  },
+
+  /** اندازهٔ یک کلید بر حسب کاراکتر — برای سنجش فشار حافظه. */
+  bytes: function(key){
+    try{ return (localStorage.getItem(key) || '').length; }
+    catch(e){ return 0; }
+  },
+
+  /** آیا انبار اصلاً در دسترس است؟ (حالت ناشناس بعضی مرورگرها) */
+  available: function(){
+    try{
+      var k = '__probe__' + Date.now();
+      localStorage.setItem(k, '1');
+      var ok = localStorage.getItem(k) === '1';
+      localStorage.removeItem(k);
+      return ok;
+    }catch(e){ return false; }
+  }
+};
+
+
+/* ─────────────────────────────────────────────────────────────
+   ۳. Api — گفتگو با سرور
+
+   امروز در حالت محلی هر فراخوانی استثنا می‌دهد؛ این عمدی است تا
+   اگر کسی زودتر از موعد به سرور تکیه کند، بی‌صدا رد نشود.
+
+   روز اتصال، فقط بدنهٔ `request` باز می‌شود و بقیهٔ برنامه
+   نمی‌فهمد چیزی عوض شده.
+   ───────────────────────────────────────────────────────────── */
+
+var Api = {
+
+  /**
+   * درخواست به سرور.
+   * @param {string} path مسیر نسبی مثل '/students'
+   * @param {object} opts { method, body, headers }
+   * @returns {Promise<any>}
+   */
+  request: function(path, opts){
+    if(!isServerMode())
+      return Promise.reject(new Error('حالت محلی است؛ سرور در دسترس نیست: ' + path));
+
+    opts = opts || {};
+    var init = {
+      method: opts.method || 'GET',
+      headers: Object.assign(
+        { 'Content-Type': 'application/json' },
+        Api.authHeader(),
+        opts.headers || {}
+      ),
+      /* کوکی نشست سرور همراه درخواست برود */
+      credentials: 'include'
+    };
+    if(opts.body !== undefined) init.body = JSON.stringify(opts.body);
+
+    return fetch(API_BASE + path, init).then(function(res){
+      if(!res.ok) throw new Error('خطای سرور ' + res.status + ' در ' + path);
+      return res.status === 204 ? null : res.json();
+    });
+  },
+
+  /** سرآیند احراز هویت. امروز خالی؛ فردا ژتون نشست. */
+  authHeader: function(){ return {}; },
+
+  get:  function(p){        return Api.request(p, { method:'GET' }); },
+  post: function(p, body){  return Api.request(p, { method:'POST',  body:body }); },
+  put:  function(p, body){  return Api.request(p, { method:'PUT',   body:body }); },
+  del:  function(p){        return Api.request(p, { method:'DELETE' }); }
+};
+
+
+/* ─────────────────────────────────────────────────────────────
+   ۴. Data — چهار عمل داده
+
+   نما و منطق برنامه باید این چهار تا را صدا بزنند، نه دستکاری
+   مستقیم آرایه‌های `db` را.
+
+   ⚠️ نکتهٔ مهم دربارهٔ همگامی و ناهمگامی:
+   امروز این توابع نتیجه را فوری برمی‌گردانند چون داده در حافظه
+   است. در حالت سروری، نوشتن‌ها همچنان فوری‌اند — چون به صف
+   همگام‌سازی (27-sync.js) می‌روند و در پس‌زمینه ارسال می‌شوند.
+   این همان طراحی «اول آفلاین» است و دلیلش این است که دبیری که
+   وسط حضور و غیاب اینترنتش قطع می‌شود نباید منتظر سرور بماند.
+   پس امضای این توابع با اتصال به سرور هم عوض نمی‌شود.
+   ───────────────────────────────────────────────────────────── */
+
+var Data = {
+
+  /** همهٔ رکوردهای یک مجموعه. */
+  all: function(collection){
+    return db[collection] || [];
+  },
+
+  /** یک رکورد با شناسه. از ایندکس استفاده می‌کند تا خطی نگردد. */
+  find: function(collection, id){
+    if(typeof idxById === 'function'){
+      var m = idxById(collection);
+      if(m) return m.get(Number(id)) || null;
+    }
+    return (db[collection] || []).find(function(x){ return x.id === Number(id); }) || null;
+  },
+
+  /** رکوردهایی که شرط را دارند. */
+  where: function(collection, predicate){
+    return (db[collection] || []).filter(predicate);
+  },
+
+  /**
+   * افزودن رکورد. شناسه خودکار ساخته می‌شود.
+   * @returns رکورد ساخته‌شده (همراه شناسه)
+   */
+  create: function(collection, obj){
+    return insert(collection, obj);
+  },
+
+  /** ویرایش رکورد — فقط کلیدهای داده‌شده جایگزین می‌شوند. */
+  update: function(collection, id, patch){
+    return update(collection, id, patch);
+  },
+
+  /** حذف رکورد. */
+  delete: function(collection, id){
+    return remove(collection, id);
+  },
+
+  /**
+   * چند نوشتن با یک بار ذخیره‌سازی.
+   * در عملیات انبوه (ورود اکسل، ارتقای پایه) حتماً استفاده شود،
+   * وگرنه هزینه درجه‌دوم می‌شود.
+   */
+  batch: function(fn){
+    return batchWrites(fn);
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════════
    توابع کمکی پایه
    همهٔ ابزارهای عمومی اینجاست: esc, fa, faD, rial, toast, $ و…
    ═══════════════════════════════════════════════════════════════════ */
@@ -420,6 +637,19 @@ const $ = (s,r=document)=>r.querySelector(s);
 /* گزینش چندتایی: همیشه آرایهٔ واقعی برمی‌گرداند تا map/filter کار کند */
 const $$ = (s,r=document)=>Array.prototype.slice.call(r.querySelectorAll(s));
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* ---- امن‌سازی خروجی در برابر XSS ----
+   دو تابع داریم چون دو جای متفاوت دو خطر متفاوت دارند:
+
+   esc()     برای متنِ داخل تگ:  <b>${esc(u.full_name)}</b>
+   escAttr() برای مقدار صفت:     <div data-x="${escAttr(v)}">
+
+   تفاوت مهم: در صفت، حتی بدون کاراکتر کوچک‌تر می‌شود از کوتیشن فرار
+   کرد و صفت تازه چسباند. پس هر مقدار پویا داخل صفت باید از escAttr
+   رد شود، حتی اگر «فقط یک عدد» به نظر برسد؛ آن عدد فردا می‌تواند
+   رشتهٔ واردکردهٔ کاربر شود.
+
+   قاعده: هیچ مقدار پویایی بدون esc یا escAttr وارد innerHTML نشود. */
+const escAttr = v => String(v??'').replace(/[&<>"'`=]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;','=':'&#61;'}[c]));
 const fa = n => (n===null||n===undefined||n==='')?'—':Number(n).toLocaleString('fa-IR',{maximumFractionDigits:2});
 const jalali = iso => { if(!iso) return '—'; try{ return new Intl.DateTimeFormat('fa-IR-u-ca-persian',{year:'numeric',month:'long',day:'numeric'}).format(new Date(iso)); }catch(e){ return iso; } };
 const todayISO = ()=> new Date().toISOString().slice(0,10);
@@ -461,7 +691,21 @@ const SCHOOL_DEFS=[
   ['دبستان و متوسطه اندیشه','AN-106','متوسطه اول','دخترانه',[]]];
 
 let db, ids={};
-const nid=()=>String(1000000000+Math.floor(rng()*899999999));
+/* ---- شناسه‌های ساختگی برای نسخهٔ دمو ----
+   ⚠️ قاعده: هیچ دادهٔ واقعی وارد نسخهٔ دمو نمی‌شود.
+   کد ملی از بازهٔ ۹۹۹… ساخته می‌شود که در واقعیت صادر نمی‌شود، و
+   تلفن با پیش‌شمارهٔ ۰۹۹۹ که در ایران به هیچ اپراتوری تخصیص نیافته
+   است. اگر عدد کاملاً تصادفی می‌ساختیم، ممکن بود اتفاقاً با شمارهٔ
+   یک شهروند واقعی یکی شود. */
+/* کد ملی ساختگی معتبر. makeNid در 21-exams تعریف شده و آنجا بارگذاری
+   می‌شود؛ اینجا تا آماده شدنش نسخهٔ محلی با همان قاعده کار می‌کند. */
+const nid=()=>{
+  let b='999'; for(let i=0;i<6;i++) b += Math.floor(rng()*10);
+  const s=b.split('').reduce((a,d,i)=>a+Number(d)*(10-i),0)%11;
+  return b+String(s<2?s:11-s);
+};
+/** شمارهٔ تلفن ساختگی — پیش‌شمارهٔ ۰۹۹۹ به هیچ اپراتوری تعلق ندارد */
+const demoPhone=()=>'0999'+String(1000000+Math.floor(rng()*8999999));
 function nextId(c){ids[c]=(ids[c]||0)+1;return ids[c];}
 /**
  * افزودن رکورد به دادهٔ نمونه.
@@ -482,18 +726,18 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 function generate(){
   SEED=20260901; ids={};
   db={school_years:[],sms_wallet:[],sms_log:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[]};
-  add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:'09120000000',active:1,created_at:daysAgoISO(400)});
+  add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
   SCHOOL_DEFS.forEach((def,si)=>{
     const [name,code,level,gender,branches]=def, city=CITIES[si%CITIES.length];
     /* رشته‌های مدرسه = همهٔ رشته‌های شاخه‌هایی که ارائه می‌دهد */
     const sFields=(branches||[]).reduce((a,b)=>a.concat(fieldsOfBranch(b)),[]);
-    const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:'0'+(21+si)+(30000000+ri(9999999)),level,gender,branches:branches||[],fields:sFields,
+    const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:demoPhone(),level,gender,branches:branches||[],fields:sFields,
       shift: si===4 ? 'بعدازظهر' : (si===1 ? 'هر دو' : 'صبح'),capacity:400+ri(200),active:si===5?0:1,created_at:daysAgoISO(500-si*20)});
     const first = gender==='پسرانه'?MALE:FEMALE;
-    const manager=add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'manager'+(si+1),password:'123456',national_id:nid(),phone:'0912'+(1000000+ri(8999999)),active:1,title:'مدیر مدرسه',created_at:daysAgoISO(480)});
-    add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'deputy'+(si+1),password:'123456',national_id:nid(),phone:'0912'+(1000000+ri(8999999)),active:1,title:'معاون آموزشی',created_at:daysAgoISO(470)});
+    const manager=add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'manager'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,title:'مدیر مدرسه',created_at:daysAgoISO(480)});
+    add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'deputy'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,title:'معاون آموزشی',created_at:daysAgoISO(470)});
     /* دروس بر اساس برنامه‌ی درسی واقعی: پایه‌ها و (در متوسطه دوم) رشته‌ها */
     const _lvGrades = GRADES_OF_LEVEL[level] || [];
     const _lvFields = needsField(level) ? ['ریاضی فیزیک','علوم تجربی','ادبیات و علوم انسانی'] : [''];
@@ -508,7 +752,7 @@ function generate(){
     }));
     const teachers=[];
     for(let t=0;t<12;t++){const s=subs[t%subs.length];
-      teachers.push(add('users',{school_id:school.id,role:'teacher',full_name:pick(first)+' '+pick(LAST),username:'teacher'+(si+1)+'_'+(t+1),password:'123456',national_id:nid(),phone:'0913'+(1000000+ri(8999999)),active:1,subject_id:s.id,subject:s.name,degree:pick(['کارشناسی','کارشناسی ارشد','دکتری']),created_at:daysAgoISO(460-t)}));}
+      teachers.push(add('users',{school_id:school.id,role:'teacher',full_name:pick(first)+' '+pick(LAST),username:'teacher'+(si+1)+'_'+(t+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,subject_id:s.id,subject:s.name,degree:pick(['کارشناسی','کارشناسی ارشد','دکتری']),created_at:daysAgoISO(460-t)}));}
     const grades = _lvGrades;
     const fields = needsField(level)?_lvFields:['عمومی'];
     const classes=[];
@@ -524,9 +768,9 @@ function generate(){
       for(let k=0;k<per;k++){
         sCount++;
         const ln=pick(LAST);
-        const st=add('users',{school_id:school.id,role:'student',full_name:pick(first)+' '+ln,username:'student'+sCount,password:'123456',national_id:nid(),phone:'0935'+(1000000+ri(8999999)),active:chance(.98)?1:0,created_at:daysAgoISO(300+ri(120))});
+        const st=add('users',{school_id:school.id,role:'student',full_name:pick(first)+' '+ln,username:'student'+sCount,password:'123456',national_id:nid(),phone:demoPhone(),active:chance(.98)?1:0,created_at:daysAgoISO(300+ri(120))});
         add('enrollments',{school_id:school.id,class_id:c.id,student_id:st.id});
-        const pa=add('users',{school_id:school.id,role:'parent',full_name:pick(MALE)+' '+ln,username:'parent'+sCount,password:'123456',national_id:nid(),phone:'0919'+(1000000+ri(8999999)),active:1,job:pick(['کارمند','آزاد','پزشک','مهندس','معلم']),created_at:daysAgoISO(300)});
+        const pa=add('users',{school_id:school.id,role:'parent',full_name:pick(MALE)+' '+ln,username:'parent'+sCount,password:'123456',national_id:nid(),phone:demoPhone(),active:1,job:pick(['کارمند','آزاد','پزشک','مهندس','معلم']),created_at:daysAgoISO(300)});
         add('parent_links',{parent_id:pa.id,student_id:st.id,relation:'پدر'});
         dates.forEach(iso=>{const r=rng();let s='present';if(r>.965)s='absent';else if(r>.93)s='late';else if(r>.915)s='excused';
           add('attendance',{school_id:school.id,class_id:c.id,student_id:st.id,date:iso,status:s,note:s==='excused'?'مرخصی با اطلاع ولی':null});});
@@ -722,12 +966,21 @@ function idxReport(){
   return { stats:IDX_STATS, indexes:rows };
 }
 
-/* ============================ persistence (mutation log) ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   ماندگاری — دفترچهٔ تغییرات
+   ═══════════════════════════════════════════════════════════════════
+   داده به‌صورت «دفترچهٔ عملیات» نگه داشته می‌شود نه عکس لحظه‌ای:
+   هر درج/ویرایش/حذف یک سطر است و وضعیت فعلی از بازپخش آن‌ها می‌آید.
+   همین ساختار است که همگام‌سازی با سرور را ممکن می‌کند — همان سطرها
+   به صف 27-sync.js می‌روند.
+
+   ⚠️ دسترسی به حافظه فقط از راه `Store` (فایل 00-data-layer.js).
+   ═══════════════════════════════════════════════════════════════════ */
 const LOG_KEY='sms_log_v1', SESSION_KEY='sms_session_v1', BOSS_KEY='sms_boss_v1', PERSONA_KEY='sms_persona_v1';
 let log=[];
 /* هنگام بازپخش لاگ یا تولید داده نمونه، صف همگام‌سازی نباید پر شود */
 let SYNC_MUTED=false;
-function loadLog(){try{log=JSON.parse(localStorage.getItem(LOG_KEY)||'[]');}catch(e){log=[];}}
+function loadLog(){ log = Store.getJSON(LOG_KEY, []) || []; if(!Array.isArray(log)) log = []; }
 var STORAGE_WARNED=false, STORAGE_FULL=false;
 /* ---- دسته‌ای کردن ذخیره‌سازی ----
    هر بار saveLog کل لاگ را JSON.stringify می‌کند. در عملیات انبوه
@@ -756,23 +1009,22 @@ function batchWrites(fn){
 
 function saveLog(){
   if(_BATCH_DEPTH > 0){ _BATCH_DIRTY = true; return; }
-  try{
-    var payload=JSON.stringify(log);
-    localStorage.setItem(LOG_KEY,payload);
+  var payload = JSON.stringify(log);
+  /* Store.set خودش استثنا را می‌گیرد و false برمی‌گرداند */
+  if(Store.set(LOG_KEY, payload)){
     STORAGE_FULL=false;
     /* هشدار پیش از پرشدن: در ۸۰٪ سقف تقریبی ۵ مگابایت */
-    var used=payload.length+(function(){try{return (localStorage.getItem(SYNC_QUEUE_KEY)||'').length;}catch(e){return 0;}})();
+    var used = payload.length + Store.bytes(SYNC_QUEUE_KEY);
     if(!STORAGE_WARNED && used > 0.8*5*1048576){
       STORAGE_WARNED=true;
       if(typeof toast==='function')
         toast('حافظهٔ دستگاه رو به پر شدن است. لطفاً به اینترنت وصل شوید تا داده‌ها ارسال شود.','err');
     }
-  }catch(e){
+  }else{
     /* حافظه پر شد — کاربر باید بداند، وگرنه بی‌صدا داده از دست می‌رود */
     STORAGE_FULL=true;
     if(typeof toast==='function')
       toast('⚠️ حافظهٔ دستگاه پر است! تغییرات جدید ذخیره نشد. برای جلوگیری از از دست رفتن داده، به اینترنت وصل شوید.','err');
-    if(typeof console!=='undefined'&&console.error) console.error('saveLog failed:',e);
   }
 }
 /** آیا ذخیره‌سازی محلی دچار مشکل است؟ (برای نشانگر وضعیت) */
@@ -825,9 +1077,9 @@ const insert=(c,o)=>{o.id=nextId(c);applyOp({t:'ins',c,data:o});return o;};
 const update=(c,id,patch)=>applyOp({t:'upd',c,id,data:patch});
 const remove=(c,id)=>applyOp({t:'del',c,id});
 function resetAll(){
-  localStorage.removeItem(LOG_KEY);
-  localStorage.removeItem(SYNC_QUEUE_KEY);
-  localStorage.removeItem(SYNC_META_KEY);
+  Store.remove(LOG_KEY);
+  Store.remove(SYNC_QUEUE_KEY);
+  Store.remove(SYNC_META_KEY);
   location.reload();
 }
 
@@ -1052,14 +1304,14 @@ function filterPanel(route, inner){
   const open = !!S.fopen[route];
   return `
   <div class="filter-zone">
-    <button class="btn ghost sm filter-toggle${open?' on':''}${n?' has':''}" data-act="filters-toggle" data-key="${route}">
+    <button class="btn ghost sm filter-toggle${open?' on':''}${n?' has':''}" data-act="filters-toggle" data-key="${escAttr(route)}">
       <span>⚙️</span><span>فیلترها</span>
       ${n?`<span class="badge b-blue sm">${fa(n)}</span>`:''}
       <span class="chev">${open?'▲':'▼'}</span>
     </button>
     ${open?`<div class="filter-body">
       <div class="row" style="gap:8px;flex-wrap:wrap">${inner}</div>
-      ${n?`<div class="row" style="margin-top:10px"><button class="btn ghost sm" data-act="filters-clear" data-key="${route}">✖️ پاک کردن فیلترها</button></div>`:''}
+      ${n?`<div class="row" style="margin-top:10px"><button class="btn ghost sm" data-act="filters-clear" data-key="${escAttr(route)}">✖️ پاک کردن فیلترها</button></div>`:''}
     </div>`:''}
   </div>`;
 }
@@ -1303,10 +1555,10 @@ const SYNC = {
 
 /* ---------- ذخیره‌سازی صف ---------- */
 function loadQueue(){
-  try{ SYNC.queue = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]'); }
+  try{ SYNC.queue = Store.getJSON(SYNC_QUEUE_KEY, []) || []; }
   catch(e){ SYNC.queue = []; }
   try{
-    const m = JSON.parse(localStorage.getItem(SYNC_META_KEY) || '{}');
+    const m = Store.getJSON(SYNC_META_KEY, {}) || {};
     SYNC.lastSync = m.lastSync || null;
   }catch(e){}
 }
@@ -1315,10 +1567,10 @@ function saveQueue(){
      وگرنه هر عملیات کل صف را دوباره JSON.stringify می‌کند و هزینه
      درجه‌دوم می‌شود. پرچم در 03-persistence.js مدیریت می‌شود. */
   if(typeof _BATCH_DEPTH !== 'undefined' && _BATCH_DEPTH > 0){ _BATCH_QUEUE_DIRTY = true; return; }
-  try{ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(SYNC.queue)); }catch(e){}
+  Store.setJSON(SYNC_QUEUE_KEY, SYNC.queue);
 }
 function saveSyncMeta(){
-  try{ localStorage.setItem(SYNC_META_KEY, JSON.stringify({ lastSync: SYNC.lastSync })); }catch(e){}
+  Store.setJSON(SYNC_META_KEY, { lastSync: SYNC.lastSync });
 }
 
 /* ---------- افزودن عملیات به صف ---------- */
@@ -1473,7 +1725,7 @@ function syncBadge(){
       <span class="dot"></span><span>تعارض</span><span class="badge b-red sm">${fa(cf)}</span></button>`;
   }
   if(n){
-    return `<button class="sync-chip pend" data-act="sync-panel" title="${fa(n)} تغییر در صف ارسال">
+    return `<button class="sync-chip pend" data-act="sync-panel" title="${escAttr(fa(n))} تغییر در صف ارسال">
       <span class="dot"></span><span>در صف</span><span class="badge b-amber sm">${fa(n)}</span></button>`;
   }
   return `<button class="sync-chip ok" data-act="sync-panel" title="همه‌چیز همگام است">
@@ -1603,7 +1855,7 @@ function renderLogin(){
      <div id="lerr"></div>
      <button class="btn" style="width:100%;justify-content:center;padding:12px;font-size:15px" data-act="login">ورود</button>
      <div class="login-sep">حساب‌های نمونه</div>
-     ${accs.map(a=>`<div class="demo-item" data-act="pick" data-u="${a.username}">
+     ${accs.map(a=>`<div class="demo-item" data-act="pick" data-u="${escAttr(a.username)}">
         <span class="badge ${ROLE_BADGE[a.role]}">${ROLE_FA[a.role]}</span>
         <b>${esc(a.username)}</b></div>`).join('')}
    </div></div></div>`;
@@ -1802,7 +2054,7 @@ function renderShell(){
   <div class="app">
    <aside class="sidebar ${S.sidebar?'open':''}">
     <div class="brand"><img class="brand-logo" src="data:image/png;base64,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" alt="پایش" /><div><b>پـایـش</b><span>${school?esc(school.name):'مدیریت مرکزی'}</span></div></div>
-    ${(navFor(u)||[]).map(g=>`<div class="nav-group">${g[0]}</div>`+g[1].map(i=>`<div class="nav-item ${S.route===i[0]?'active':''}" data-act="go" data-r="${i[0]}"><span>${i[1]}</span>${i[2]}</div>`).join('')).join('')}
+    ${(navFor(u)||[]).map(g=>`<div class="nav-group">${g[0]}</div>`+g[1].map(i=>`<div class="nav-item ${S.route===i[0]?'active':''}" data-act="go" data-r="${escAttr(i[0])}"><span>${i[1]}</span>${i[2]}</div>`).join('')).join('')}
     <div class="sidebar-foot">
       <div class="user-chip"><div class="avatar">${esc(u.full_name[0])}</div><div><b>${esc(u.full_name)}</b><span>${ROLE_FA[u.role]}</span></div></div>
       ${isMultiRole()?`<button class="btn ghost" style="width:100%;justify-content:center;margin-top:6px" data-act="open-picker">🔄 تعویض پنل</button>`:''}
@@ -1963,7 +2215,7 @@ function adminDash(){
    </div>
    <div class="grid g2">
     <div class="card"><div class="card-head"><h3>روند حضور روزهای اخیر</h3><span class="badge b-blue">درصد حضور</span></div>
-     <div class="card-body">${trend.length?`<div class="chart">${trend.map(t=>`<div class="col" title="${t.rate}%"><i style="height:${t.rate}%"></i><span>${new Date(t.d).toLocaleDateString('fa-IR-u-ca-persian',{day:'numeric'})}</span></div>`).join('')}</div>`:empty('📈','داده‌ای نیست','')}</div></div>
+     <div class="card-body">${trend.length?`<div class="chart">${trend.map(t=>`<div class="col" title="${escAttr(t.rate)}%"><i style="height:${t.rate}%"></i><span>${new Date(t.d).toLocaleDateString('fa-IR-u-ca-persian',{day:'numeric'})}</span></div>`).join('')}</div>`:empty('📈','داده‌ای نیست','')}</div></div>
     <div class="card"><div class="card-head"><h3>وضعیت حضور امروز</h3><span class="muted small">${fa(tot)} رکورد</span></div>
      ${tot?`<div class="card-body" style="display:grid;gap:13px">${['present','absent','late','excused'].map(k=>{const n=attToday.filter(a=>a.status===k).length;
       return `<div><div class="row"><span>${ATT_FA[k]}</span><div class="spacer"></div><b>${fa(n)}</b><span class="muted small">(${fa(Math.round(n/tot*100))}٪)</span></div>${bar(n,tot,ATT_COLOR[k])}</div>`;}).join('')}
@@ -2029,7 +2281,7 @@ function summaryBlock(sid){
    <div class="grid g2">
     <div class="card"><div class="card-head"><h3>وضعیت حضور</h3><span class="badge b-green">${fa(tot?Math.round(cnt('present')/tot*100):0)}٪ حضور</span></div>
      <div class="card-body" style="display:grid;gap:12px">${['present','absent','late','excused'].map(k=>`<div><div class="row"><span>${ATT_FA[k]}</span><div class="spacer"></div><b>${fa(cnt(k))} روز</b></div>${bar(cnt(k),tot,ATT_COLOR[k])}</div>`).join('')}</div></div>
-    <div class="card"><div class="card-head"><h3>میانگین به تفکیک درس</h3><button class="btn ghost sm" data-act="go" data-r="${S.user.role==='student'?'record':'children'}">پرونده کامل</button></div>
+    <div class="card"><div class="card-head"><h3>میانگین به تفکیک درس</h3><button class="btn ghost sm" data-act="go" data-r="${escAttr(S.user.role==='student'?'record':'children')}">پرونده کامل</button></div>
      ${d.subs.length?`<div class="card-body" style="display:grid;gap:10px">${d.subs.map(s=>`<div><div class="row"><span>${esc(s.name)}</span><div class="spacer"></div><b style="color:${s.avg>=17?'var(--green)':s.avg>=12?'var(--text)':'var(--red)'}">${fa(s.avg.toFixed(2))}</b></div>${bar(s.avg,20,s.avg>=17?'var(--green)':s.avg>=12?'var(--primary)':'var(--red)')}</div>`).join('')}</div>`:empty('📝','نمره‌ای ثبت نشده','')}</div>
    </div>`;
 }
@@ -2060,7 +2312,7 @@ function viewSchools(){
   if(fbr)rows=rows.filter(s=>(s.branches||[]).indexOf(fbr)>=0);
   const counties=db.counties.filter(c=>!fp||String(c.province_id)===String(fp));
   const districts=db.districts.filter(d=>fc?String(d.county_id)===String(fc):(!fp||String(d.province_id)===String(fp)));
-  const opt=(list,val,label)=>[`<option value="">${label}</option>`,...list.map(o=>`<option value="${o[0]}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`)].join('');
+  const opt=(list,val,label)=>[`<option value="">${label}</option>`,...list.map(o=>`<option value="${escAttr(o[0])}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`)].join('');
   return `<div class="card"><div class="card-head">
     <h3>فهرست مدارس <span class="badge b-gray">${fa(rows.length)}</span></h3>
     <div class="row"><input class="input" style="width:180px" placeholder="جستجوی نام یا کد…" data-f="q" value="${esc(q)}" />
@@ -2081,11 +2333,11 @@ function viewSchools(){
       <td><span class="badge b-blue">${esc(s.level||'—')}</span>${(s.branches||[]).length?`<div class="small muted" style="margin-top:4px">${(s.branches||[]).map(b=>esc(b)).join('، ')}</div>`:''}</td><td class="muted">${esc(mg?mg.full_name:'—')}</td>
       <td class="small muted">${esc(s.landline||'—')}</td>
       <td>${fa(us.filter(u=>u.role==='student').length)}</td><td>${fa(us.filter(u=>u.role==='teacher').length)}</td><td>${fa(db.classes.filter(c=>c.school_id===s.id).length)}</td>
-      <td><span class="badge ${s.active?'b-green':'b-gray'}${isAdmin?' tgl':''}" ${isAdmin?`data-act="school-toggle" data-id="${s.id}" title="برای تغییر وضعیت کلیک کنید"`:''}>${s.active?'فعال':'غیرفعال'}</span></td>
+      <td><span class="badge ${s.active?'b-green':'b-gray'}${isAdmin?' tgl':''}" ${isAdmin?`data-act="school-toggle" data-id="${escAttr(s.id)}" title="برای تغییر وضعیت کلیک کنید"`:''}>${s.active?'فعال':'غیرفعال'}</span></td>
       ${isAdmin?`<td><div class="row" style="gap:5px;flex-wrap:nowrap">
-        <button class="btn sm" data-act="school-enter" data-id="${s.id}" title="ورود به پنل این مدرسه به‌عنوان مدیر">🔑 ورود به پنل</button>
-        <button class="icon-btn" title="ویرایش" data-act="school-edit" data-id="${s.id}">✏️</button>
-        <button class="icon-btn danger" title="حذف" data-act="school-del" data-id="${s.id}">🗑️</button></div></td>`:''}</tr>`;}).join('');})()}
+        <button class="btn sm" data-act="school-enter" data-id="${escAttr(s.id)}" title="ورود به پنل این مدرسه به‌عنوان مدیر">🔑 ورود به پنل</button>
+        <button class="icon-btn" title="ویرایش" data-act="school-edit" data-id="${escAttr(s.id)}">✏️</button>
+        <button class="icon-btn danger" title="حذف" data-act="school-del" data-id="${escAttr(s.id)}">🗑️</button></div></td>`:''}</tr>`;}).join('');})()}
     </tbody></table></div>`:empty('🏫','مدرسه‌ای یافت نشد',q?'نتیجه‌ای برای جستجو نبود.':'اولین مدرسه را تعریف کنید.',isAdmin?'<button class="btn" data-act="school-new">تعریف مدرسه</button>':'')}
    </div>`;
 }
@@ -2112,8 +2364,8 @@ function viewUsers(){
      <input class="input" style="width:180px" placeholder="نام یا کد ملی…" data-f="q" value="${esc(q)}" />
      ${canEdit?`<button class="btn" data-act="user-new">➕ کاربر جدید</button>`:''}</div></div>
    ${filterPanel('users',`
-     <select class="select" style="width:135px" data-f="role"><option value="">همه نقش‌ها</option>${['manager','teacher','student','parent'].map(r=>`<option value="${r}" ${role===r?'selected':''}>${ROLE_FA[r]}</option>`).join('')}</select>
-     ${u.role==='superadmin'?`<select class="select" style="width:170px" data-f="school"><option value="">همه مدارس</option>${db.schools.map(s=>`<option value="${s.id}" ${sch==String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`:''}
+     <select class="select" style="width:135px" data-f="role"><option value="">همه نقش‌ها</option>${['manager','teacher','student','parent'].map(r=>`<option value="${escAttr(r)}" ${role===r?'selected':''}>${ROLE_FA[r]}</option>`).join('')}</select>
+     ${u.role==='superadmin'?`<select class="select" style="width:170px" data-f="school"><option value="">همه مدارس</option>${db.schools.map(s=>`<option value="${escAttr(s.id)}" ${sch==String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`:''}
      <select class="select" style="width:130px" data-f="uactive"><option value="">همه وضعیت‌ها</option><option value="1" ${act==='1'?'selected':''}>فعال</option><option value="0" ${act==='0'?'selected':''}>غیرفعال</option></select>`)}
    ${slice.length?`<div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>نقش</th><th>نام کاربری</th><th>مدرسه</th><th>کلاس</th><th>تلفن</th><th>وضعیت</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
     ${slice.map(x=>`<tr><td><div class="row" style="flex-wrap:nowrap;gap:8px"><div class="avatar" style="width:30px;height:30px;font-size:12px;background:var(--primary-soft);color:var(--primary)">${esc(x.full_name[0])}</div>
@@ -2121,16 +2373,16 @@ function viewUsers(){
       <td><span class="badge ${ROLE_BADGE[x.role]}">${ROLE_FA[x.role]}</span></td><td class="muted">${esc(x.username)}</td>
       <td class="muted">${esc(x.school_id?byId('schools',x.school_id).name:'—')}</td><td>${esc(x.role==='student'?((classOf(x.id)||{}).name||'—'):'—')}</td>
       <td class="muted">${esc(x.phone||'—')}</td>
-      <td><span class="badge ${x.active?'b-green':'b-gray'}" ${canEdit?`data-act="user-toggle" data-id="${x.id}" style="cursor:pointer"`:''}>${x.active?'فعال':'غیرفعال'}</span></td>
-      ${canEdit?`<td><button class="icon-btn" title="بازنشانی رمز" data-act="pass-reset" data-id="${x.id}">🔑</button> <button class="icon-btn" data-act="user-edit" data-id="${x.id}">✏️</button> <button class="icon-btn danger" data-act="user-del" data-id="${x.id}">🗑️</button></td>`:''}</tr>`).join('')}
+      <td><span class="badge ${x.active?'b-green':'b-gray'}" ${canEdit?`data-act="user-toggle" data-id="${escAttr(x.id)}" style="cursor:pointer"`:''}>${x.active?'فعال':'غیرفعال'}</span></td>
+      ${canEdit?`<td><button class="icon-btn" title="بازنشانی رمز" data-act="pass-reset" data-id="${escAttr(x.id)}">🔑</button> <button class="icon-btn" data-act="user-edit" data-id="${escAttr(x.id)}">✏️</button> <button class="icon-btn danger" data-act="user-del" data-id="${escAttr(x.id)}">🗑️</button></td>`:''}</tr>`).join('')}
     </tbody></table></div>${pager(page,pages)}`:empty('👥','کاربری یافت نشد','فیلترها را تغییر دهید یا کاربر جدید بسازید.')}
    </div>`;
 }
 function pager(page,pages){ if(pages<2)return '';
   const nums=[];for(let i=Math.max(1,page-2);i<=Math.min(pages,page+2);i++)nums.push(i);
-  return `<div class="pager"><button data-act="page" data-p="${page-1}" ${page<=1?'disabled':''}>›</button>
-   ${nums.map(n=>`<button class="${n===page?'active':''}" data-act="page" data-p="${n}">${fa(n)}</button>`).join('')}
-   <button data-act="page" data-p="${page+1}" ${page>=pages?'disabled':''}>‹</button><span class="muted small">از ${fa(pages)} صفحه</span></div>`;}
+  return `<div class="pager"><button data-act="page" data-p="${escAttr(page-1)}" ${page<=1?'disabled':''}>›</button>
+   ${nums.map(n=>`<button class="${n===page?'active':''}" data-act="page" data-p="${escAttr(n)}">${fa(n)}</button>`).join('')}
+   <button data-act="page" data-p="${escAttr(page+1)}" ${page>=pages?'disabled':''}>‹</button><span class="muted small">از ${fa(pages)} صفحه</span></div>`;}
 
 /* ═══════════════════════════════════════════════════════════════════
    کلاس‌ها و دروس
@@ -2144,7 +2396,7 @@ function viewClasses(){
    ${rows.length?`<div class="grid g3" style="padding:16px">${(()=>{const _ec=(typeof idxEnrollByClass==='function')?idxEnrollByClass():null;return rows.map(c=>{const n=_ec?(_ec.get(c.id)||[]).length:db.enrollments.filter(e=>e.class_id===c.id).length;const fill=Math.min(100,Math.round(n/(c.capacity||30)*100));const ht=c.homeroom_teacher_id?byId('users',c.homeroom_teacher_id):null;
      return `<div class="card" style="padding:15px;box-shadow:none">
       <div class="row"><b style="font-size:15px">${esc(c.name)}</b><div class="spacer"></div>
-       ${canEdit?`<button class="icon-btn" data-act="class-edit" data-id="${c.id}">✏️</button> <button class="icon-btn danger" data-act="class-del" data-id="${c.id}">🗑️</button>`:''}</div>
+       ${canEdit?`<button class="icon-btn" data-act="class-edit" data-id="${escAttr(c.id)}">✏️</button> <button class="icon-btn danger" data-act="class-del" data-id="${escAttr(c.id)}">🗑️</button>`:''}</div>
       <div class="row small muted" style="margin-top:6px"><span class="badge b-blue">${esc(c.grade||'—')}</span>${c.field?`<span class="badge b-purple">${esc(c.field)}</span>`:''}${c.room?`<span>🚪 ${esc(c.room)}</span>`:''}</div>
       <div class="small muted" style="margin-top:8px">سرپرست: ${esc(ht?ht.full_name:'—')}</div>
       ${S.user.role==='superadmin'?`<div class="small muted">${esc(byId('schools',c.school_id).name)}</div>`:''}
@@ -2219,8 +2471,8 @@ function viewSubjects(){
        ${list.map(s=>`<tr><td><b>${esc(s.name)}</b></td><td class="muted">${esc(s.code||'—')}</td>
          <td><span class="badge b-blue">${fa(s.weekly_hours)} ساعت</span></td>
          ${isSuper?`<td class="muted">${esc((byId('schools',s.school_id)||{}).name||'—')}</td>`:''}
-         ${canEdit?`<td><button class="icon-btn" title="ویرایش" data-act="subject-edit" data-id="${s.id}">✏️</button>
-                      <button class="icon-btn danger" title="حذف" data-act="subject-del" data-id="${s.id}">🗑️</button></td>`:''}</tr>`).join('')}
+         ${canEdit?`<td><button class="icon-btn" title="ویرایش" data-act="subject-edit" data-id="${escAttr(s.id)}">✏️</button>
+                      <button class="icon-btn danger" title="حذف" data-act="subject-del" data-id="${escAttr(s.id)}">🗑️</button></td>`:''}</tr>`).join('')}
        </tbody></table></div></div>`;}).join('')
    :empty('📚','درسی یافت نشد',(q||flv||fgr||fbr||ffd)?'با این فیلترها نتیجه‌ای نبود.':'کتاب‌های استاندارد را وارد کنید یا درس جدید بسازید.',
      canEdit?'<button class="btn" data-act="subject-import">📥 افزودن کتاب‌های استاندارد</button>':'')}
@@ -2247,8 +2499,8 @@ function viewAttendance(){
   const all=roster.map(rec);
   const cnt=k=>all.filter(a=>a&&a.status===k).length;
   return `<div class="card"><div class="card-head">
-    <div class="row"><select class="select" style="width:180px" data-f="class">${cls.map(c=>`<option value="${c.id}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
-     <input class="input" style="width:160px" type="date" data-f="date" value="${date}" /><span class="badge b-gray">${jalali(date)}</span></div>
+    <div class="row"><select class="select" style="width:180px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
+     <input class="input" style="width:160px" type="date" data-f="date" value="${escAttr(date)}" /><span class="badge b-gray">${jalali(date)}</span></div>
     <div class="row"><input class="input" style="width:160px" placeholder="جستجوی دانش‌آموز…" data-f="q" value="${esc(q)}" />
      <button class="btn ghost sm" data-act="att-all" data-s="present">✅ همه حاضر</button>
      <button class="btn ghost sm" data-act="att-all" data-s="absent">❌ همه غایب</button></div></div>
@@ -2257,7 +2509,7 @@ function viewAttendance(){
     <span class="badge b-gray">ثبت‌نشده: ${fa(all.filter(a=>!a).length)}</span><div class="spacer"></div><span class="small muted">تغییرات بلافاصله ذخیره می‌شود</span></div>
    ${studs.length?`<div class="table-wrap"><table><thead><tr><th>#</th><th>نام دانش‌آموز</th><th>ثبت وضعیت</th><th>وضعیت فعلی</th></tr></thead><tbody>
     ${studs.map((s,i)=>{const r=rec(s);return `<tr><td class="muted">${fa(i+1)}</td><td><b>${esc(s.full_name)}</b>${r&&r.note?`<div class="small muted">${esc(r.note)}</div>`:''}</td>
-     <td>${['present','absent','late','excused'].map(k=>`<button class="att-btn ${r&&r.status===k?'on-'+k:''}" data-act="att-set" data-id="${s.id}" data-s="${k}">${ATT_FA[k]}</button>`).join('')}</td>
+     <td>${['present','absent','late','excused'].map(k=>`<button class="att-btn ${r&&r.status===k?'on-'+k:''}" data-act="att-set" data-id="${escAttr(s.id)}" data-s="${escAttr(k)}">${ATT_FA[k]}</button>`).join('')}</td>
      <td>${r?`<span class="badge ${ATT_BADGE[r.status]}">${ATT_FA[r.status]}</span>`:'<span class="badge b-gray">ثبت نشده</span>'}</td></tr>`;}).join('')}
    </tbody></table></div>`:empty('🔍','دانش‌آموزی یافت نشد','این کلاس دانش‌آموزی ندارد یا جستجو نتیجه‌ای نداشت.')}</div>`;
 }
@@ -2278,17 +2530,17 @@ function viewGrades(){
   rows=rows.slice().sort((a,b)=>b.id-a.id).slice(0,200);
   const avg=rows.length?avgOf(rows).toFixed(2):null;
   return `<div class="card"><div class="card-head"><div class="row">
-    ${u.role!=='student'?`<select class="select" style="width:170px" data-f="class">${cls.map(c=>`<option value="${c.id}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`:''}
+    ${u.role!=='student'?`<select class="select" style="width:170px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`:''}
     ${avg?`<span class="badge b-blue">میانگین: ${fa(avg)}</span>`:''}</div>
     ${canEdit?`<button class="btn" data-act="grade-new">➕ ثبت نمره</button>`:''}</div>
    ${filterPanel('grades',`
-    <select class="select" style="width:150px" data-f="subject"><option value="">همه دروس</option>${subs.map(s=>`<option value="${s.id}" ${sub==String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>
+    <select class="select" style="width:150px" data-f="subject"><option value="">همه دروس</option>${subs.map(s=>`<option value="${escAttr(s.id)}" ${sub==String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>
     <select class="select" style="width:125px" data-f="term"><option value="">همه نوبت‌ها</option>${TERMS.map(t=>`<option ${term===t?'selected':''}>${t}</option>`).join('')}</select>`)}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>درس</th><th>کلاس</th><th>نوبت</th><th>نوع آزمون</th><th>نمره</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
     ${rows.map(g=>`<tr><td><b>${esc(byId('users',g.student_id).full_name)}</b></td><td>${esc(byId('subjects',g.subject_id).name)}</td>
       <td class="muted">${esc(byId('classes',g.class_id).name)}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td class="muted">${esc(g.exam_type)}</td>
       <td><span class="badge ${g.score>=17?'b-green':g.score>=12?'b-blue':'b-red'}">${fa(g.score)} / ${fa(g.max_score)}</span></td>
-      ${canEdit?`<td><button class="icon-btn" data-act="grade-edit" data-id="${g.id}">✏️</button> <button class="icon-btn danger" data-act="grade-del" data-id="${g.id}">🗑️</button></td>`:''}</tr>`).join('')}
+      ${canEdit?`<td><button class="icon-btn" data-act="grade-edit" data-id="${escAttr(g.id)}">✏️</button> <button class="icon-btn danger" data-act="grade-del" data-id="${escAttr(g.id)}">🗑️</button></td>`:''}</tr>`).join('')}
    </tbody></table></div>`:empty('📝','نمره‌ای ثبت نشده',canEdit?'با دکمه «ثبت نمره» شروع کنید.':'هنوز نمره‌ای برای شما ثبت نشده است.')}</div>`;
 }
 
@@ -2315,7 +2567,7 @@ function viewDiscipline(){
      <td><span class="badge ${d.kind==='positive'?'b-green':'b-red'}">${d.kind==='positive'?'👍 مثبت':'👎 منفی'}</span></td><td>${esc(d.title)}</td>
      <td class="muted small" style="white-space:normal;max-width:240px">${esc(d.description||'—')}</td>
      <td><b style="color:${d.points>=0?'var(--green)':'var(--red)'}">${fa(d.points)}</b></td><td class="muted small">${jalali(d.date)}</td>
-     ${canEdit?`<td><button class="icon-btn" data-act="disc-edit" data-id="${d.id}">✏️</button> <button class="icon-btn danger" data-act="disc-del" data-id="${d.id}">🗑️</button></td>`:''}</tr>`;}).join('')}
+     ${canEdit?`<td><button class="icon-btn" data-act="disc-edit" data-id="${escAttr(d.id)}">✏️</button> <button class="icon-btn danger" data-act="disc-del" data-id="${escAttr(d.id)}">🗑️</button></td>`:''}</tr>`;}).join('')}
    </tbody></table></div>`:empty('⚖️','پرونده انضباطی خالی است',u.role==='student'?'خوشبختانه موردی برای شما ثبت نشده است.':'موردی مطابق فیلتر یافت نشد.')}</div>`;
 }
 
@@ -2332,13 +2584,13 @@ function viewSchedule(){
   const cell=(d,p)=>rows.find(r=>r.day===d&&r.period===p);
   const canEditSched=['manager','superadmin'].includes(u.role)&&!!cid;
   return `<div class="card"><div class="card-head"><h3>برنامه هفتگی ${byTeacher?'تدریس من':''}</h3>
-   ${!byTeacher&&u.role!=='student'?`<select class="select" style="width:190px" data-f="class">${cls.map(c=>`<option value="${c.id}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`:''}</div>
+   ${!byTeacher&&u.role!=='student'?`<select class="select" style="width:190px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`:''}</div>
    ${(rows.length||canEditSched)?`<div class="card-body table-wrap"><div class="timetable"><div></div>${DAYS.map(d=>`<div class="tt-head"><b>${d}</b></div>`).join('')}
     ${[1,2,3,4,5,6].map(p=>`<div class="tt-head" style="display:grid;place-items:center"><span class="badge b-blue">زنگ ${fa(p)}</span></div>
      ${DAYS.map((_,d)=>{const c=cell(d,p);
-       if(c)return `<div class="tt-cell" ${canEditSched?`style="cursor:pointer;position:relative" data-act="slot-edit" data-day="${d}" data-period="${p}" data-sid="${c.id}" data-class="${cid}"`:''}>
+       if(c)return `<div class="tt-cell" ${canEditSched?`style="cursor:pointer;position:relative" data-act="slot-edit" data-day="${escAttr(d)}" data-period="${escAttr(p)}" data-sid="${escAttr(c.id)}" data-class="${escAttr(cid)}"`:''}>
          <b>${esc(byId('subjects',c.subject_id).name)}</b><span>${esc(byTeacher?byId('classes',c.class_id).name:(c.teacher_id?byId('users',c.teacher_id).full_name:'بدون دبیر'))}</span></div>`;
-       return `<div class="tt-cell tt-empty" ${canEditSched?`style="cursor:pointer" data-act="slot-edit" data-day="${d}" data-period="${p}" data-class="${cid}"`:''}><span class="muted small">${canEditSched?'+ افزودن':'—'}</span></div>`;}).join('')}`).join('')}
+       return `<div class="tt-cell tt-empty" ${canEditSched?`style="cursor:pointer" data-act="slot-edit" data-day="${escAttr(d)}" data-period="${escAttr(p)}" data-class="${escAttr(cid)}"`:''}><span class="muted small">${canEditSched?'+ افزودن':'—'}</span></div>`;}).join('')}`).join('')}
    </div>${canEditSched?`<div class="small muted" style="margin-top:12px;line-height:2">💡 روی هر خانه بزنید تا درس و دبیر آن را تعیین کنید. اگر دبیر در همان ساعت در <b>مدرسه دیگری</b> کلاس داشته باشد، ثبت نمی‌شود.</div>`:''}</div>`:empty('🗓️','برنامه‌ای ثبت نشده','برنامه هفتگی هنوز تنظیم نشده است.')}</div>`;
 }
 
@@ -2354,7 +2606,7 @@ function viewAnnouncements(){
    ${rows.length?`<div class="card-body" style="display:grid;gap:12px">${rows.map(a=>{const au=a.created_by?byId('users',a.created_by):null;
     return `<div class="card" style="padding:15px;box-shadow:none;background:var(--surface-2)">
      <div class="row"><b style="font-size:15px">${esc(a.title)}</b><span class="badge b-blue">${AUD[a.audience]||'همه'}</span><div class="spacer"></div>
-      <span class="small muted">${jalali(a.created_at)}</span>${canEdit?`<button class="icon-btn" title="ویرایش" data-act="ann-edit" data-id="${a.id}">✏️</button> <button class="icon-btn danger" title="حذف" data-act="ann-del" data-id="${a.id}">🗑️</button>`:''}</div>
+      <span class="small muted">${jalali(a.created_at)}</span>${canEdit?`<button class="icon-btn" title="ویرایش" data-act="ann-edit" data-id="${escAttr(a.id)}">✏️</button> <button class="icon-btn danger" title="حذف" data-act="ann-del" data-id="${escAttr(a.id)}">🗑️</button>`:''}</div>
      <p style="margin:10px 0 0;line-height:2">${esc(a.body)}</p>${au?`<div class="small muted" style="margin-top:6px">✍️ ${esc(au.full_name)}</div>`:''}</div>`;}).join('')}</div>`
    :empty('📢','اطلاعیه‌ای وجود ندارد',canEdit?'اولین اطلاعیه را منتشر کنید.':'به محض انتشار، اینجا نمایش داده می‌شود.')}</div>`;
 }
@@ -2416,7 +2668,7 @@ function viewRecord(sid){
      <td class="muted small" style="white-space:normal;max-width:260px">${esc(d.description||'—')}</td><td><b style="color:${d.points>=0?'var(--green)':'var(--red)'}">${fa(d.points)}</b></td></tr>`).join('')}</tbody></table></div>`
     :empty('🌟','پرونده انضباطی پاک است','هیچ مورد انضباطی ثبت نشده است.');
   return `<div class="card"><div class="card-head" style="padding-bottom:0;border-bottom:none"><div class="tabs">
-    ${tabs.map(t=>`<div class="tab ${S.tab===t[0]?'active':''}" data-act="tab" data-t="${t[0]}">${t[1]}</div>`).join('')}</div></div>${body}</div>`;
+    ${tabs.map(t=>`<div class="tab ${S.tab===t[0]?'active':''}" data-act="tab" data-t="${escAttr(t[0])}">${t[1]}</div>`).join('')}</div></div>${body}</div>`;
 }
 
 function viewChildren(){
@@ -2424,7 +2676,7 @@ function viewChildren(){
   if(!kids.length)return `<div class="card">${empty('👨‍👩‍👦','دانش‌آموزی متصل نیست','با مدیر مدرسه تماس بگیرید.')}</div>`;
   const active=S.child||kids[0].id;
   return `<div class="card"><div class="card-body row">
-   ${kids.map(k=>`<button class="btn ${active===k.id?'':'ghost'}" data-act="child" data-id="${k.id}">🎒 ${esc(k.full_name)} <span class="small">(${esc((classOf(k.id)||{}).name||'—')})</span></button>`).join('')}
+   ${kids.map(k=>`<button class="btn ${active===k.id?'':'ghost'}" data-act="child" data-id="${escAttr(k.id)}">🎒 ${esc(k.full_name)} <span class="small">(${esc((classOf(k.id)||{}).name||'—')})</span></button>`).join('')}
    </div></div>${summaryBlock(active)}${viewRecord(active)}`;
 }
 
@@ -2531,11 +2783,11 @@ function modalTpl(title,body,saveAct,danger,okLabel){
    <div class="card-body">${body}</div>
    <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border);justify-content:flex-end">
     <button class="btn ghost" data-act="modal-close">انصراف</button>
-    <button class="btn ${danger?'danger':''}" data-act="${saveAct}">${okLabel||(danger?'حذف کن':'ذخیره')}</button></div>`;
+    <button class="btn ${danger?'danger':''}" data-act="${escAttr(saveAct)}">${okLabel||(danger?'حذف کن':'ذخیره')}</button></div>`;
 }
 const f=(label,inner)=>`<div class="field"><label>${label}</label>${inner}</div>`;
-const inp=(id,val,type='text')=>`<input class="input" id="${id}" type="${type}" value="${esc(val??'')}" />`;
-const sel=(id,opts,val)=>`<select class="select" id="${id}">${opts.map(o=>`<option value="${esc(o[0])}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
+const inp=(id,val,type='text')=>`<input class="input" id="${escAttr(id)}" type="${escAttr(type)}" value="${esc(val??'')}" />`;
+const sel=(id,opts,val)=>`<select class="select" id="${escAttr(id)}">${opts.map(o=>`<option value="${esc(o[0])}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
 const V=id=>{const e=$('#'+id);return e?e.value.trim():'';};
 
 /** گزینه‌های کشویی محدوده (استان › شهرستان › منطقه) */
@@ -2714,10 +2966,10 @@ function gradeModal(g){
   g=g||{student_id:studs[0].id,subject_id:subs[0].id,term:TERMS[0],exam_type:EXAM_TYPES[0],score:20};
   openModal(modalTpl(g.id?'ویرایش نمره':'ثبت نمره جدید',
    `<div class="grid g2">
-    ${f('دانش‌آموز',`<select class="select" id="g_st" ${g.id?'disabled':''}>${studs.map(s=>`<option value="${s.id}" ${s.id===g.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
-    ${f('درس',`<select class="select" id="g_sub" ${g.id?'disabled':''}>${subs.map(s=>`<option value="${s.id}" ${s.id===g.subject_id?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`)}
+    ${f('دانش‌آموز',`<select class="select" id="g_st" ${g.id?'disabled':''}>${studs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
+    ${f('درس',`<select class="select" id="g_sub" ${g.id?'disabled':''}>${subs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.subject_id?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`)}
     ${f('نوبت',sel('g_term',TERMS.map(t=>[t,t]),g.term))}${f('نوع آزمون',sel('g_type',EXAM_TYPES.map(t=>[t,t]),g.exam_type))}
-    ${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${g.score}" />`)}</div>`,'grade-save'));
+    ${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${escAttr(g.score)}" />`)}</div>`,'grade-save'));
   window._edit=g;window._gclass=cid;
 }
 const PRESETS={positive:POS.map(p=>p[0]),negative:NEG.map(p=>p[0])};
@@ -2730,7 +2982,7 @@ function discModal(d){
   const opts=PRESETS[d.kind].includes(d.title)?PRESETS[d.kind]:PRESETS[d.kind].concat([d.title]);
   openModal(modalTpl(d.id?'ویرایش مورد انضباطی':'ثبت مورد انضباطی',
    `<div class="grid g2">
-    ${f('دانش‌آموز',`<select class="select" id="d_st" ${d.id?'disabled':''}>${(d.id?[byId('users',d.student_id)]:studs).map(s=>`<option value="${s.id}" ${s.id===d.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
+    ${f('دانش‌آموز',`<select class="select" id="d_st" ${d.id?'disabled':''}>${(d.id?[byId('users',d.student_id)]:studs).map(s=>`<option value="${escAttr(s.id)}" ${s.id===d.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
     ${f('نوع',sel('d_kind',[['positive','مثبت'],['negative','منفی']],d.kind))}
     ${f('عنوان',sel('d_title',opts.map(o=>[o,o]),d.title))}
     ${f('امتیاز',inp('d_points',d.points,'number'))}${f('تاریخ',jdate('d_date',d.date))}</div>
@@ -4478,8 +4730,8 @@ function healthReport(){
 
   /* حافظهٔ مرورگر */
   var logBytes = 0, queueBytes = 0;
-  try{ logBytes = (localStorage.getItem(LOG_KEY) || '').length; }catch(e){}
-  try{ queueBytes = (localStorage.getItem(SYNC_QUEUE_KEY) || '').length; }catch(e){}
+  logBytes = Store.bytes(LOG_KEY);
+  queueBytes = Store.bytes(SYNC_QUEUE_KEY);
   var used = logBytes + queueBytes, limit = 5 * 1024 * 1024;
   out.storage = { used: used, limit: limit,
     percent: Math.round(used / limit * 1000) / 10,
@@ -4780,10 +5032,10 @@ function viewAudit(){
  * ساختار عمداً کوچک است: فقط شمارش روزانه و آخرین دیده‌شدن هر کاربر.
  */
 function loadVisits(){
-  try{ return JSON.parse(localStorage.getItem(VISITS_KEY)) || { days:{}, users:{}, sessions:0 }; }
+  try{ return Store.getJSON(VISITS_KEY, null) || { days:{}, users:{}, sessions:0 }; }
   catch(e){ return { days:{}, users:{}, sessions:0 }; }
 }
-function saveVisits(v){ try{ localStorage.setItem(VISITS_KEY, JSON.stringify(v)); }catch(e){} }
+function saveVisits(v){ Store.setJSON(VISITS_KEY, v); }
 
 /** ثبت یک بازدید تازه (هنگام ورود کاربر یا باز شدن برنامه) */
 function trackVisit(userId){
@@ -5853,13 +6105,13 @@ document.addEventListener('click',e=>{
      const u=db.users.find(x=>x.username===V('lu'));
      if(!u||u.password!==$('#lp').value){$('#lerr').innerHTML='<div class="badge b-red" style="padding:9px 12px;margin-bottom:8px">⚠️ نام کاربری یا رمز عبور نادرست است</div>';return;}
      if(!u.active){$('#lerr').innerHTML='<div class="badge b-red" style="padding:9px 12px">⚠️ حساب غیرفعال است</div>';return;}
-     S.user=u;S.stack=[];S.persona=null;localStorage.removeItem(PERSONA_KEY);
+     S.user=u;S.stack=[];S.persona=null;Store.remove(PERSONA_KEY);
      linkAsParent(u);
      S.showPicker=panelsOf(u).length>1;
-     S.route=(u.role==='edu_office'?'officedash':'dashboard');localStorage.setItem(SESSION_KEY,u.username);if(typeof trackVisit==='function')trackVisit(u.id);toast('خوش آمدید، '+u.full_name,'ok');render();
+     S.route=(u.role==='edu_office'?'officedash':'dashboard');Store.set(SESSION_KEY,u.username);if(typeof trackVisit==='function')trackVisit(u.id);toast('خوش آمدید، '+u.full_name,'ok');render();
    },
    logout(){S.user=null;S.boss=null;S.stack=[];S.persona=null;S.showPicker=false;
-     localStorage.removeItem(SESSION_KEY);localStorage.removeItem(BOSS_KEY);localStorage.removeItem(PERSONA_KEY);render();},
+     Store.remove(SESSION_KEY);Store.remove(BOSS_KEY);Store.remove(PERSONA_KEY);render();},
    reset(){askConfirm('همه تغییرات شما پاک و داده‌های نمونه بازنشانی می‌شود. ادامه می‌دهید؟',()=>resetAll(),
      {title:'بازنشانی داده‌های نمونه',ok:'بازنشانی کن',danger:true,note:'تغییرات ذخیره‌شده در این مرورگر از بین می‌رود.'});},
    'do-reset'(){resetAll();},
@@ -5892,15 +6144,15 @@ document.addEventListener('click',e=>{
      askConfirm(`به‌عنوان «${mgr.full_name}» وارد پنل مدرسه «${sc.name}» می‌شوید. هر زمان می‌توانید با نوار بالای صفحه به پنل سوپر ادمین برگردید.`,
        ()=>{
          S.boss=S.user; S.user=mgr; S.stack=[]; S.route='dashboard'; S.page=1; S.filters={}; S.tab='grades'; S.child=null;
-         localStorage.setItem(BOSS_KEY,S.boss.username); localStorage.setItem(SESSION_KEY,mgr.username);
+         Store.set(BOSS_KEY,S.boss.username); Store.set(SESSION_KEY,mgr.username);
          toast('وارد پنل «'+sc.name+'» شدید','ok'); render();
        },{title:'ورود به پنل مدرسه',ok:'ورود به پنل',danger:false,note:false});
    },
    'stop-imp'(){
-     const boss=S.boss||db.users.find(u=>u.username===localStorage.getItem(BOSS_KEY));
+     const boss=S.boss||db.users.find(u=>u.username===Store.get(BOSS_KEY));
      if(!boss){toast('حساب سوپر ادمین یافت نشد','err');return;}
      S.user=boss; S.boss=null; S.stack=[]; S.route='schools'; S.page=1; S.filters={}; S.child=null;
-     localStorage.removeItem(BOSS_KEY); localStorage.setItem(SESSION_KEY,boss.username);
+     Store.remove(BOSS_KEY); Store.set(SESSION_KEY,boss.username);
      toast('به پنل سوپر ادمین بازگشتید','ok'); render();
    },
    'school-del'(){confirmModal('حذف مدرسه و تمام کاربران، کلاس‌ها و اطلاعات آن؟','school-del-ok',id);},
@@ -6671,7 +6923,7 @@ document.addEventListener('input',e=>{
   const k=el.dataset.f;
   if(el.tagName==='INPUT'&&el.type==='text'||el.placeholder){
     clearTimeout(window._deb);const v=el.value;
-    window._deb=setTimeout(()=>{S.filters[k]=v;S.page=1;render();const n=$(`[data-f="${k}"]`);if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);}},280);
+    window._deb=setTimeout(()=>{S.filters[k]=v;S.page=1;render();const n=$(`[data-f="${escAttr(k)}"]`);if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);}},280);
   }
 });
 /* آبشاری: مقطع → پایه → شاخه → رشته (فرم درس و فرم افزودن کتاب) */
@@ -6852,8 +7104,8 @@ document.addEventListener('change',e=>{
   if(id==='m_prov'||id==='m_county'){
     const pid=$('#m_prov')?$('#m_prov').value:'', cid=id==='m_prov'?'':($('#m_county')?$('#m_county').value:'');
     const g=geoOptions(pid,cid);
-    if(id==='m_prov'&&$('#m_county'))$('#m_county').innerHTML=g.counties.map(o=>`<option value="${o[0]}">${esc(o[1])}</option>`).join('');
-    if($('#m_district'))$('#m_district').innerHTML=(id==='m_prov'?geoOptions(pid,'').districts:g.districts).map(o=>`<option value="${o[0]}">${esc(o[1])}</option>`).join('');
+    if(id==='m_prov'&&$('#m_county'))$('#m_county').innerHTML=g.counties.map(o=>`<option value="${escAttr(o[0])}">${esc(o[1])}</option>`).join('');
+    if($('#m_district'))$('#m_district').innerHTML=(id==='m_prov'?geoOptions(pid,'').districts:g.districts).map(o=>`<option value="${escAttr(o[0])}">${esc(o[1])}</option>`).join('');
     const off=officeForDistrict(pid,$('#m_county')?$('#m_county').value:'',$('#m_district')?$('#m_district').value:'');
     if($('#m_office'))$('#m_office').innerHTML='اداره مربوطه: <b>'+esc(off?off.name:'—')+'</b>';
     return;
@@ -7025,7 +7277,7 @@ function viewNotifications(){
   const items=myNotifs();
   return `<div class="card"><div class="card-head"><h3>🔔 اعلان‌های من</h3>
     ${items.some(n=>!n.read)?'<button class="btn ghost sm" data-act="notif-readall">خواندن همه</button>':''}</div>
-    ${items.length?items.map(n=>`<div class="row" style="padding:12px 16px;border-bottom:1px solid var(--border);background:${n.read?'#fff':'var(--primary-soft)'};cursor:pointer" data-act="notif-open" data-id="${n.id}">
+    ${items.length?items.map(n=>`<div class="row" style="padding:12px 16px;border-bottom:1px solid var(--border);background:${n.read?'#fff':'var(--primary-soft)'};cursor:pointer" data-act="notif-open" data-id="${escAttr(n.id)}">
       <span style="font-size:19px">${NOTIF_ICON[n.type]||'🔔'}</span>
       <div style="min-width:0"><b>${esc(n.title)}</b><div class="small muted" style="line-height:1.9">${esc(n.body||'')}</div>
       <div class="small muted" style="opacity:.7">${jalali(n.created_at)}</div></div></div>`).join('')
@@ -7055,8 +7307,8 @@ function viewLeaves(){
       ${rows.map(l=>{const st=byId('users',l.student_id)||{};return `<tr><td><b>${esc(st.full_name||'—')}</b></td><td>${jalali(l.from_date)}</td><td>${jalali(l.to_date)}</td>
         <td class="small">${esc(l.reason||'')}</td><td><span class="badge ${LEAVE_FA[l.status][1]}">${LEAVE_FA[l.status][0]}</span></td>
         ${canDecide?`<td><div class="row" style="gap:5px;flex-wrap:nowrap">
-          ${l.status==='pending'?`<button class="btn sm" data-act="leave-ok" data-id="${l.id}">تأیید</button><button class="btn ghost sm" data-act="leave-no" data-id="${l.id}">رد</button>`:''}
-          <button class="icon-btn danger" title="حذف" data-act="leave-del" data-id="${l.id}">🗑️</button></div></td>`:''}</tr>`;}).join('')}
+          ${l.status==='pending'?`<button class="btn sm" data-act="leave-ok" data-id="${escAttr(l.id)}">تأیید</button><button class="btn ghost sm" data-act="leave-no" data-id="${escAttr(l.id)}">رد</button>`:''}
+          <button class="icon-btn danger" title="حذف" data-act="leave-del" data-id="${escAttr(l.id)}">🗑️</button></div></td>`:''}</tr>`;}).join('')}
     </tbody></table></div>`:empty('📨','درخواستی ثبت نشده',canCreate?'با دکمه «ثبت درخواست» مرخصی فرزندتان را اعلام کنید.':'')}</div>`;
 }
 
@@ -7072,8 +7324,8 @@ function viewCalendar(){
     ${list.length?`<div class="card-body" style="display:grid;gap:8px">${list.map(r=>`<div class="row" style="background:var(--surface-2);padding:10px 14px;border-radius:10px">
       <span class="badge ${KIND[r.kind][1]}">${KIND[r.kind][0]}</span><b>${esc(r.title)}</b><div class="spacer"></div>
       <span class="small muted">${jalali(r.date)}</span>
-      ${canEdit?`<button class="icon-btn" title="ویرایش" data-act="cal-edit" data-id="${r.id}">✏️</button>
-        <button class="icon-btn danger" title="حذف" data-act="cal-del" data-id="${r.id}">🗑️</button>`:''}</div>`).join('')}</div>`:empty('📅','موردی ثبت نشده','')}</div>`;
+      ${canEdit?`<button class="icon-btn" title="ویرایش" data-act="cal-edit" data-id="${escAttr(r.id)}">✏️</button>
+        <button class="icon-btn danger" title="حذف" data-act="cal-del" data-id="${escAttr(r.id)}">🗑️</button>`:''}</div>`).join('')}</div>`:empty('📅','موردی ثبت نشده','')}</div>`;
   return `<div class="grid g2">${card('🗓️ رویدادهای پیش‌رو',upcoming)}${card('🕘 رویدادهای گذشته',past.reverse())}</div>`;
 }
 
@@ -7087,7 +7339,7 @@ function viewChat(){
   const msgs=active?db.messages.filter(m=>(m.from_id===u.id&&m.to_id===active.id)||(m.from_id===active.id&&m.to_id===u.id)).sort((a,b)=>(a.created_at||'').localeCompare(b.created_at||'')||a.id-b.id):[];
   return `<div class="grid" style="grid-template-columns:260px 1fr;gap:14px;align-items:start">
     <div class="card"><div class="card-head"><h3>مخاطبان</h3></div>
-      ${list.length?list.map(p=>`<div class="row" style="padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:${active&&active.id===p.id?'var(--primary-soft)':'#fff'}" data-act="chat-open" data-id="${p.id}">
+      ${list.length?list.map(p=>`<div class="row" style="padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:${active&&active.id===p.id?'var(--primary-soft)':'#fff'}" data-act="chat-open" data-id="${escAttr(p.id)}">
         <div class="avatar">${esc(p.full_name[0])}</div><div style="min-width:0"><b style="font-size:13px">${esc(p.full_name)}</b><div class="small muted">${ROLE_FA[p.role]}</div></div></div>`).join(''):empty('💬','مخاطبی نیست','')}
     </div>
     <div class="card"><div class="card-head"><h3>${active?esc(active.full_name):'گفتگو'}</h3></div>
@@ -7097,7 +7349,7 @@ function viewChat(){
       </div>
       ${active?`<div class="card-head" style="border-top:1px solid var(--border);border-bottom:none;gap:8px">
         <input class="input" id="chat_body" placeholder="پیام خود را بنویسید…" style="flex:1" />
-        <button class="btn" data-act="chat-send" data-id="${active.id}">ارسال</button></div>`:''}
+        <button class="btn" data-act="chat-send" data-id="${escAttr(active.id)}">ارسال</button></div>`:''}
     </div></div>`;
 }
 
@@ -7105,7 +7357,7 @@ function viewChat(){
 function viewTuition(){
   const st=financeStats(), tab=S.tab==='ledger'?'ledger':S.tab==='plans'?'plans':S.tab==='students'?'students':'dash';
   const tabs=[['dash','📊 نمای مالی'],['students','👨‍🎓 شهریه دانش‌آموزان'],['plans','📋 طرح‌ها'],['ledger','📒 درآمد و هزینه']]
-    .map(([k,l])=>`<button class="btn ${tab===k?'':'ghost'}" data-act="tab" data-t="${k}">${l}</button>`).join('');
+    .map(([k,l])=>`<button class="btn ${tab===k?'':'ghost'}" data-act="tab" data-t="${escAttr(k)}">${l}</button>`).join('');
   const cards=`<div class="grid g4" style="margin-bottom:14px">
     ${statCard('🧾',rialShort(st.billed),'شهریه صادرشده (ریال)','blue')}
     ${statCard('💰',rialShort(st.collected),`وصول‌شده — ${fa(st.rate)}٪`,'green')}
@@ -7148,17 +7400,17 @@ function viewTuition(){
         return `<tr><td><b>${esc(s.full_name||'—')}</b></td><td>${esc((byId('classes',t.class_id)||{}).name||'—')}</td>
         <td class="small">${esc(p.title||'—')}</td><td>${rial(t.payable)}</td><td>${rial(t.paid)}</td>
         <td><span class="badge ${S_[1]}">${S_[0]}</span></td>
-        <td><button class="btn sm" data-act="tuition-detail" data-id="${t.student_id}">اقساط</button></td></tr>`;}).join('')}
+        <td><button class="btn sm" data-act="tuition-detail" data-id="${escAttr(t.student_id)}">اقساط</button></td></tr>`;}).join('')}
       </tbody></table></div>
-      ${pages>1?`<div class="pager">${Array.from({length:pages},(_,i)=>`<button class="page ${S.page===i+1?'active':''}" data-act="page" data-p="${i+1}">${fa(i+1)}</button>`).slice(Math.max(0,S.page-4),S.page+3).join('')}</div>`:''}</div>`;
+      ${pages>1?`<div class="pager">${Array.from({length:pages},(_,i)=>`<button class="page ${S.page===i+1?'active':''}" data-act="page" data-p="${escAttr(i+1)}">${fa(i+1)}</button>`).slice(Math.max(0,S.page-4),S.page+3).join('')}</div>`:''}</div>`;
   } else if(tab==='plans'){
     const rows=schoolScope('tuition_plans');
     body=`<div class="card"><div class="card-head"><h3>طرح‌های شهریه</h3><button class="btn" data-act="plan-new">➕ طرح جدید</button></div>
       ${rows.length?`<div class="table-wrap"><table class="table"><thead><tr><th>عنوان</th><th>مبلغ</th><th>اقساط</th><th>اولین سررسید</th><th>صادرشده</th><th></th></tr></thead><tbody>
       ${rows.map(p=>`<tr><td><b>${esc(p.title)}</b></td><td>${rial(p.amount)}</td><td>${fa(p.installments)} قسط / هر ${fa(p.interval_days)} روز</td>
         <td class="small">${jalali(p.first_due)}</td><td>${fa(db.tuitions.filter(t=>t.plan_id===p.id).length)}</td>
-        <td><button class="icon-btn" title="ویرایش" data-act="plan-edit" data-id="${p.id}">✏️</button>
-          <button class="icon-btn danger" title="حذف" data-act="plan-del" data-id="${p.id}">🗑️</button></td></tr>`).join('')}
+        <td><button class="icon-btn" title="ویرایش" data-act="plan-edit" data-id="${escAttr(p.id)}">✏️</button>
+          <button class="icon-btn danger" title="حذف" data-act="plan-del" data-id="${escAttr(p.id)}">🗑️</button></td></tr>`).join('')}
       </tbody></table></div>`:empty('📋','طرحی تعریف نشده','')}</div>`;
   } else {
     const all=schoolScope('transactions').sort((a,b)=>b.date.localeCompare(a.date));
@@ -7168,10 +7420,10 @@ function viewTuition(){
       ${rows.map(t=>`<tr><td class="small">${jalali(t.date)}</td><td><span class="badge ${t.kind==='income'?'b-green':'b-red'}">${t.kind==='income'?'درآمد':'هزینه'}</span></td>
         <td>${esc(t.category)}</td><td class="small">${esc(t.description||'—')}</td>
         <td style="color:${t.kind==='income'?'var(--green)':'var(--red)'}"><b>${rial(t.amount)}</b></td>
-        <td>${t.installment_id?'<span class="small muted">مربوط به قسط</span>':`<button class="icon-btn" title="ویرایش" data-act="trx-edit" data-id="${t.id}">✏️</button>
-          <button class="icon-btn danger" title="حذف" data-act="trx-del" data-id="${t.id}">🗑️</button>`}</td></tr>`).join('')}
+        <td>${t.installment_id?'<span class="small muted">مربوط به قسط</span>':`<button class="icon-btn" title="ویرایش" data-act="trx-edit" data-id="${escAttr(t.id)}">✏️</button>
+          <button class="icon-btn danger" title="حذف" data-act="trx-del" data-id="${escAttr(t.id)}">🗑️</button>`}</td></tr>`).join('')}
       </tbody></table></div>
-      ${pages>1?`<div class="pager">${Array.from({length:pages},(_,i)=>`<button class="page ${S.page===i+1?'active':''}" data-act="page" data-p="${i+1}">${fa(i+1)}</button>`).slice(Math.max(0,S.page-4),S.page+3).join('')}</div>`:''}</div>`;
+      ${pages>1?`<div class="pager">${Array.from({length:pages},(_,i)=>`<button class="page ${S.page===i+1?'active':''}" data-act="page" data-p="${escAttr(i+1)}">${fa(i+1)}</button>`).slice(Math.max(0,S.page-4),S.page+3).join('')}</div>`:''}</div>`;
   }
   return cards+`<div class="row" style="margin-bottom:14px;flex-wrap:wrap">${tabs}</div>`+body;
 }
@@ -7184,7 +7436,7 @@ function viewMyTuition(){
   const sel_=S.child&&kids.some(k=>k.id===S.child)?S.child:kids[0].id;
   const s=tuitionSummary(sel_);
   return `<div class="card"><div class="card-head"><h3>💰 شهریه و اقساط</h3>
-    ${kids.length>1?`<div class="row" style="gap:6px">${kids.map(k=>`<button class="btn ${k.id===sel_?'':'ghost'} sm" data-act="child" data-id="${k.id}">${esc(k.full_name)}</button>`).join('')}</div>`:''}</div>
+    ${kids.length>1?`<div class="row" style="gap:6px">${kids.map(k=>`<button class="btn ${k.id===sel_?'':'ghost'} sm" data-act="child" data-id="${escAttr(k.id)}">${esc(k.full_name)}</button>`).join('')}</div>`:''}</div>
     <div class="card-body">
       <div class="grid g3" style="margin-bottom:14px">
         <div><div class="small muted">مبلغ کل</div><b>${rial(s.total)} ریال</b></div>
@@ -7198,8 +7450,8 @@ function viewMyTuition(){
           <td><span class="badge ${INST_FA[i.status][1]}">${INST_FA[i.status][0]}</span></td>
           <td class="small">${PAY_FA[i.method]||'—'}${i.ref_id?`<div class="small muted">${esc(i.ref_id)}</div>`:''}</td>
           <td><div class="row" style="gap:5px">
-            ${i.status!=='paid'&&i.status!=='canceled'?`<button class="btn sm" data-act="pay-online" data-id="${i.id}">💳 پرداخت</button>`:''}
-            ${i.paid_amount>0?`<button class="icon-btn" title="رسید" data-act="receipt" data-id="${i.id}">🧾</button>`:''}
+            ${i.status!=='paid'&&i.status!=='canceled'?`<button class="btn sm" data-act="pay-online" data-id="${escAttr(i.id)}">💳 پرداخت</button>`:''}
+            ${i.paid_amount>0?`<button class="icon-btn" title="رسید" data-act="receipt" data-id="${escAttr(i.id)}">🧾</button>`:''}
           </div></td></tr>`;}).join('')}
       </tbody></table></div>`:empty('🧾','قسطی ثبت نشده','')}
     </div></div>`;
@@ -7423,11 +7675,19 @@ function validNid(nid){
   const c=Number(s[9]), sum=s.slice(0,9).split('').reduce((a,d,i)=>a+Number(d)*(10-i),0)%11;
   return sum<2?c===sum:c===11-sum;
 }
+/* ---- ساخت کد ملی ساختگی ولی معتبر ----
+   ⚠️ در نسخهٔ دمو هیچ کد ملی واقعی نباید ساخته شود. اگر ۱۰ رقم را
+   کاملاً تصادفی بسازیم، ممکن است اتفاقاً کد ملی یک شهروند واقعی
+   دربیاید. پس سه رقم اول را روی ۹۹۹ ثابت می‌کنیم که سازمان ثبت احوال
+   صادر نمی‌کند، و شش رقم بعد را تصادفی می‌گیریم.
+   رقم کنترل با همان الگوریتم رسمی حساب می‌شود تا validNid قبولش کند
+   و مسیرهای اعتبارسنجی برنامه واقعاً آزموده شوند. */
+const DEMO_NID_PREFIX = '999';
 function makeNid(){
-  let b=''; for(let i=0;i<9;i++)b+=ri(10);
-  if(/^(\d)\1{8}$/.test(b))b='123456789';
-  const s=b.split('').reduce((a,d,i)=>a+Number(d)*(10-i),0)%11;
-  return b+String(s<2?s:11-s);
+  let b = DEMO_NID_PREFIX;
+  for(let i=0;i<6;i++) b += ri(10);
+  const s = b.split('').reduce((a,d,i)=>a+Number(d)*(10-i),0)%11;
+  return b + String(s<2?s:11-s);
 }
 /** کد ملی در کل سامانه یکتاست */
 /* یافتن دارندهٔ یک کد ملی. از ایندکس استفاده می‌کند تا در ورود انبوه
@@ -7460,7 +7720,7 @@ function generateP8(){
   // ولی با فرزندان در سه مدرسه مختلف
   const multiNid=makeNid();
   const dad=add('users',{school_id:db.schools[0].id,role:'parent',full_name:'کاظم رستمی',username:'parent_multi',password:'123456',
-    national_id:multiNid,phone:'09121234567',active:1,created_at:daysAgoISO(300)});
+    national_id:multiNid,phone:'09990001234',active:1,created_at:daysAgoISO(300)});
   db.schools.slice(0,3).forEach(sc=>{
     const st=db.users.find(u=>u.role==='student'&&u.school_id===sc.id);
     if(!st)return;
@@ -7573,9 +7833,9 @@ function viewTeachers(){
       <td>${fa(r.here)} زنگ</td><td>${fa(r.total)} زنگ</td>
       <td class="small">${r.schools.map(s=>esc(s.name)).join('، ')}</td>
       <td><div class="row" style="gap:5px;flex-wrap:nowrap">
-        <button class="btn ghost sm" data-act="teacher-plan" data-id="${r.id}">برنامه کامل</button>
-        ${r.shared?`<button class="icon-btn" title="ویرایش همکاری" data-act="ts-edit" data-id="${r.id}">✏️</button>
-        <button class="icon-btn danger" title="حذف از این مدرسه" data-act="ts-del" data-id="${r.id}">🗑️</button>`:''}</div></td></tr>`).join('')}
+        <button class="btn ghost sm" data-act="teacher-plan" data-id="${escAttr(r.id)}">برنامه کامل</button>
+        ${r.shared?`<button class="icon-btn" title="ویرایش همکاری" data-act="ts-edit" data-id="${escAttr(r.id)}">✏️</button>
+        <button class="icon-btn danger" title="حذف از این مدرسه" data-act="ts-del" data-id="${escAttr(r.id)}">🗑️</button>`:''}</div></td></tr>`).join('')}
    </tbody></table></div>`:empty('👨‍🏫','دبیری ثبت نشده','')}</div>`;
 }
 
@@ -7602,7 +7862,7 @@ function viewExams(){
       .sort((a,b)=>a.date.localeCompare(b.date)||a.start_time.localeCompare(b.start_time));
     const term=list.length?byId('exam_terms',list[0].term_id):null;
     return `<div class="card"><div class="card-head"><h3>📝 برنامه امتحانات</h3>
-      ${kids.length>1?`<div class="row" style="gap:6px">${kids.map(k=>`<button class="btn ${k.id===sel?'':'ghost'} sm" data-act="child" data-id="${k.id}">${esc(k.full_name)}</button>`).join('')}</div>`:''}</div>
+      ${kids.length>1?`<div class="row" style="gap:6px">${kids.map(k=>`<button class="btn ${k.id===sel?'':'ghost'} sm" data-act="child" data-id="${escAttr(k.id)}">${esc(k.full_name)}</button>`).join('')}</div>`:''}</div>
       ${term?`<div class="card-body"><div class="row" style="gap:18px">
         <div><div class="small muted">بازه امتحانات</div><b>${jalali(term.start_date)} تا ${jalali(term.end_date)}</b></div>
         ${term.note?`<div class="small" style="background:var(--amber-soft);padding:8px 12px;border-radius:10px">ℹ️ ${esc(term.note)}</div>`:''}</div></div>`:''}
@@ -7624,7 +7884,7 @@ function viewExams(){
 
   return `<div class="card" style="margin-bottom:14px"><div class="card-head"><h3>📝 فصل امتحانات</h3>
     <div class="row" style="gap:8px">
-      ${terms.length?`<select class="select" style="max-width:260px" data-f="term">${terms.map(t=>`<option value="${t.id}" ${term&&term.id===t.id?'selected':''}>${esc(t.title)} (${t.status==='published'?'منتشر شده':'پیش‌نویس'})</option>`).join('')}</select>`:''}
+      ${terms.length?`<select class="select" style="max-width:260px" data-f="term">${terms.map(t=>`<option value="${escAttr(t.id)}" ${term&&term.id===t.id?'selected':''}>${esc(t.title)} (${t.status==='published'?'منتشر شده':'پیش‌نویس'})</option>`).join('')}</select>`:''}
       <button class="btn" data-act="term-new">➕ فصل جدید</button></div></div>
    ${term?`<div class="card-body">
       <div class="grid g4">
@@ -7634,33 +7894,33 @@ function viewExams(){
         <div><div class="small muted">وضعیت</div><span class="badge ${term.status==='published'?'b-green':'b-amber'}">${term.status==='published'?'منتشر شده':'پیش‌نویس'}</span></div>
       </div>
       <div class="row" style="margin-top:14px;gap:8px">
-        <button class="btn ghost sm" data-act="term-edit" data-id="${term.id}">✏️ ویرایش</button>
-        <button class="btn sm ${term.status==='published'?'ghost':''}" data-act="term-publish" data-id="${term.id}">${term.status==='published'?'↩️ بازگشت به پیش‌نویس':'📣 انتشار برای اولیا و دبیران'}</button>
-        <button class="btn ghost sm" data-act="exam-print" data-id="${term.id}">🖨️ چاپ برنامه</button>
+        <button class="btn ghost sm" data-act="term-edit" data-id="${escAttr(term.id)}">✏️ ویرایش</button>
+        <button class="btn sm ${term.status==='published'?'ghost':''}" data-act="term-publish" data-id="${escAttr(term.id)}">${term.status==='published'?'↩️ بازگشت به پیش‌نویس':'📣 انتشار برای اولیا و دبیران'}</button>
+        <button class="btn ghost sm" data-act="exam-print" data-id="${escAttr(term.id)}">🖨️ چاپ برنامه</button>
         <div class="spacer"></div>
-        <button class="btn ghost sm danger" data-act="term-del" data-id="${term.id}">🗑️ حذف فصل</button>
+        <button class="btn ghost sm danger" data-act="term-del" data-id="${escAttr(term.id)}">🗑️ حذف فصل</button>
       </div></div>`:empty('🗓️','فصلی تعریف نشده','برای شروع یک فصل امتحانات بسازید.')}</div>
    ${term?`<div class="row" style="margin-bottom:14px;gap:8px">
      <button class="btn ${tab==='schedule'?'':'ghost'}" data-act="tab" data-t="schedule">🗓️ برنامه امتحانات</button>
      <button class="btn ${tab==='duties'?'':'ghost'}" data-act="tab" data-t="duties">👁️ برنامه مراقبت</button></div>`:''}
    ${!term?'':tab==='schedule'?`
-    <div class="card"><div class="card-head"><h3>جلسات امتحان</h3><button class="btn" data-act="exam-new" data-id="${term.id}">➕ افزودن جلسه</button></div>
+    <div class="card"><div class="card-head"><h3>جلسات امتحان</h3><button class="btn" data-act="exam-new" data-id="${escAttr(term.id)}">➕ افزودن جلسه</button></div>
      ${exams.length?`<div class="table-wrap"><table class="table"><thead><tr><th>تاریخ</th><th>ساعت</th><th>کلاس</th><th>درس</th><th>سالن</th><th>مراقبان</th><th></th></tr></thead><tbody>
       ${exams.map(e=>`<tr><td>${jalali(e.date)}</td><td><b>${e.start_time}</b><div class="small muted">تا ${toHHMMP(toMinP(e.start_time)+e.duration)}</div></td>
         <td>${esc((byId('classes',e.class_id)||{}).name||'—')}</td><td>${esc((byId('subjects',e.subject_id)||{}).name||'—')}</td>
         <td>${esc(e.room||'—')}</td>
         <td class="small">${dutyOf(e.id).map(d=>esc((byId('users',d.teacher_id)||{}).full_name||'')).join('، ')||'<span class="badge b-amber">بدون مراقب</span>'}</td>
-        <td><button class="icon-btn" data-act="exam-edit" data-id="${e.id}">✏️</button> <button class="icon-btn danger" data-act="exam-del" data-id="${e.id}">🗑️</button></td></tr>`).join('')}
+        <td><button class="icon-btn" data-act="exam-edit" data-id="${escAttr(e.id)}">✏️</button> <button class="icon-btn danger" data-act="exam-del" data-id="${escAttr(e.id)}">🗑️</button></td></tr>`).join('')}
      </tbody></table></div>`:empty('📝','جلسه‌ای ثبت نشده','تداخل ساعت هر کلاس خودکار بررسی می‌شود.')}</div>`
    :`<div class="grid" style="grid-template-columns:1fr 280px;gap:14px;align-items:start">
       <div class="card"><div class="card-head"><h3>ابلاغ مراقبت دبیران</h3>
-        <button class="btn" data-act="duty-auto" data-id="${term.id}">⚡ تخصیص خودکار</button></div>
+        <button class="btn" data-act="duty-auto" data-id="${escAttr(term.id)}">⚡ تخصیص خودکار</button></div>
         ${exams.length?`<div class="table-wrap"><table class="table"><thead><tr><th>تاریخ و ساعت</th><th>کلاس / درس</th><th>مراقبان</th><th>افزودن</th></tr></thead><tbody>
         ${exams.map(e=>`<tr><td><b>${jalali(e.date)}</b><div class="small muted">${e.start_time}</div></td>
           <td>${esc((byId('classes',e.class_id)||{}).name||'')}<div class="small muted">${esc((byId('subjects',e.subject_id)||{}).name||'')}</div></td>
-          <td><div class="row" style="gap:5px">${dutyOf(e.id).map(d=>`<span class="badge ${d.role==='main'?'b-blue':'b-gray'}" style="cursor:pointer" data-act="duty-del" data-id="${d.id}">${esc((byId('users',d.teacher_id)||{}).full_name||'')} ✕</span>`).join('')||'<span class="badge b-amber">بدون مراقب</span>'}</div></td>
-          <td><select class="select" data-f="duty-add" data-e="${e.id}"><option value="">انتخاب دبیر…</option>
-            ${schoolTeachers().map(t=>`<option value="${t.id}">${esc(t.full_name)}</option>`).join('')}</select></td></tr>`).join('')}
+          <td><div class="row" style="gap:5px">${dutyOf(e.id).map(d=>`<span class="badge ${d.role==='main'?'b-blue':'b-gray'}" style="cursor:pointer" data-act="duty-del" data-id="${escAttr(d.id)}">${esc((byId('users',d.teacher_id)||{}).full_name||'')} ✕</span>`).join('')||'<span class="badge b-amber">بدون مراقب</span>'}</div></td>
+          <td><select class="select" data-f="duty-add" data-e="${escAttr(e.id)}"><option value="">انتخاب دبیر…</option>
+            ${schoolTeachers().map(t=>`<option value="${escAttr(t.id)}">${esc(t.full_name)}</option>`).join('')}</select></td></tr>`).join('')}
         </tbody></table></div>`:empty('👁️','ابتدا جلسات را تعریف کنید','')}</div>
       <div class="card"><div class="card-head"><h3>توزیع بار مراقبت</h3></div>
         ${loadArr.length?`<div class="card-body" style="display:grid;gap:9px">${loadArr.map(([n,v])=>`<div>
@@ -7689,9 +7949,9 @@ function viewFamily(){
         <div class="spacer"></div>
         ${k.verify==='confirmed'?'<span class="badge b-green">تأیید شده</span>'
           :`<span class="badge b-amber">در انتظار تأیید</span>
-            <button class="btn sm" data-act="kid-confirm" data-id="${k.id}">تأیید</button>
-            <button class="btn ghost sm" data-act="kid-reject" data-id="${k.id}">فرزند من نیست</button>`}
-        <button class="btn ghost sm" data-act="child-open" data-id="${k.id}">پرونده</button>
+            <button class="btn sm" data-act="kid-confirm" data-id="${escAttr(k.id)}">تأیید</button>
+            <button class="btn ghost sm" data-act="kid-reject" data-id="${escAttr(k.id)}">فرزند من نیست</button>`}
+        <button class="btn ghost sm" data-act="child-open" data-id="${escAttr(k.id)}">پرونده</button>
       </div>`).join('')}</div></div>`).join('')
     :empty('👨‍👩‍👦','فرزندی به کد ملی شما متصل نیست','از مدرسه بخواهید کد ملی شما را در پرونده فرزندتان ثبت کند.')}`;
 }
@@ -7711,7 +7971,7 @@ function viewCorrections(){
       <td class="small">${esc(st.father_nid||'—')}</td><td>${esc(p.full_name||'—')}<div class="small muted">${esc(p.national_id||'')}</div></td>
       <td class="small">${esc(r.message||'')}</td>
       <td><span class="badge ${r.status==='open'?'b-amber':'b-green'}">${r.status==='open'?'در انتظار بررسی':'اصلاح شد'}</span></td>
-      <td>${r.status==='open'?`<button class="btn sm" data-act="corr-fix" data-id="${r.id}">بررسی و اصلاح</button>`:''}</td></tr>`;}).join('')}
+      <td>${r.status==='open'?`<button class="btn sm" data-act="corr-fix" data-id="${escAttr(r.id)}">بررسی و اصلاح</button>`:''}</td></tr>`;}).join('')}
     </tbody></table></div>`:empty('✅','درخواستی وجود ندارد','همه اطلاعات اولیا تأیید شده است.')}</div>`;
 }
 
@@ -8183,7 +8443,7 @@ const P10_ACTIONS = {
     S.stack=[];S.filters={};S.child=null;
     S.route=(role==='parent')?(subOf(S.user.id,true).active?'dashboard':'subscription')
       :(role==='edu_office'?'officedash':'dashboard');
-    localStorage.setItem(PERSONA_KEY,S.persona||'');
+    Store.set(PERSONA_KEY,S.persona||'');
     toast('وارد '+(PANEL_TITLE[role]||'پنل')+' شدید','ok');
     render();
   },
@@ -8264,7 +8524,7 @@ function generateP9(){
   const mk=(name,level,scope,username)=>{
     const o=add('offices',Object.assign({name,level,active:1},scope));
     const u=add('users',{school_id:null,office_id:o.id,role:'edu_office',full_name:'کارشناس '+name,
-      username,password:'123456',national_id:makeNid(),phone:'0918'+(1000000+ri(8999999)),active:1,created_at:daysAgoISO(320)});
+      username,password:'123456',national_id:makeNid(),phone:demoPhone(),active:1,created_at:daysAgoISO(320)});
     o.user_id=u.id;
     return o;
   };
@@ -8339,24 +8599,24 @@ function viewGeo(){
     ${statCard('📍',fa(db.districts.length),'منطقه / ناحیه','purple')}</div>
   <div class="grid g3">
     <div class="card"><div class="card-head"><h3>استان‌ها</h3><button class="btn sm" data-act="geo-new" data-t="province">➕</button></div>
-      ${db.provinces.length?db.provinces.map(p=>`<div class="row" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:${pid===p.id?'var(--primary-soft)':'#fff'}" data-act="geo-pick" data-t="province" data-id="${p.id}">
+      ${db.provinces.length?db.provinces.map(p=>`<div class="row" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:${pid===p.id?'var(--primary-soft)':'#fff'}" data-act="geo-pick" data-t="province" data-id="${escAttr(p.id)}">
         <b>${esc(p.name)}</b><div class="spacer"></div><span class="small muted">${fa(cnt(p,'province_id'))} مدرسه</span>
-        <button class="icon-btn" title="ویرایش" data-act="geo-edit" data-t="provinces" data-id="${p.id}">✏️</button>
-        <button class="icon-btn danger" title="حذف" data-act="geo-del" data-t="provinces" data-id="${p.id}">🗑️</button></div>`).join(''):empty('🗺️','استانی ثبت نشده','')}
+        <button class="icon-btn" title="ویرایش" data-act="geo-edit" data-t="provinces" data-id="${escAttr(p.id)}">✏️</button>
+        <button class="icon-btn danger" title="حذف" data-act="geo-del" data-t="provinces" data-id="${escAttr(p.id)}">🗑️</button></div>`).join(''):empty('🗺️','استانی ثبت نشده','')}
     </div>
     <div class="card"><div class="card-head"><h3>شهرستان‌ها</h3><button class="btn sm" data-act="geo-new" data-t="county">➕</button></div>
-      ${counties.length?counties.map(c=>`<div class="row" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:${cid===c.id?'var(--primary-soft)':'#fff'}" data-act="geo-pick" data-t="county" data-id="${c.id}">
+      ${counties.length?counties.map(c=>`<div class="row" style="padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:${cid===c.id?'var(--primary-soft)':'#fff'}" data-act="geo-pick" data-t="county" data-id="${escAttr(c.id)}">
         <b>${esc(c.name)}</b><span class="small muted">${esc((byId('provinces',c.province_id)||{}).name||'')}</span><div class="spacer"></div>
         <span class="small muted">${fa(cnt(c,'county_id'))} مدرسه</span>
-        <button class="icon-btn" title="ویرایش" data-act="geo-edit" data-t="counties" data-id="${c.id}">✏️</button>
-        <button class="icon-btn danger" title="حذف" data-act="geo-del" data-t="counties" data-id="${c.id}">🗑️</button></div>`).join(''):empty('🏙️','شهرستانی نیست','')}
+        <button class="icon-btn" title="ویرایش" data-act="geo-edit" data-t="counties" data-id="${escAttr(c.id)}">✏️</button>
+        <button class="icon-btn danger" title="حذف" data-act="geo-del" data-t="counties" data-id="${escAttr(c.id)}">🗑️</button></div>`).join(''):empty('🏙️','شهرستانی نیست','')}
     </div>
     <div class="card"><div class="card-head"><h3>مناطق / نواحی</h3><button class="btn sm" data-act="geo-new" data-t="district">➕</button></div>
       ${districts.length?districts.map(d=>`<div class="row" style="padding:10px 14px;border-bottom:1px solid var(--border)">
         <b>${esc(d.name)}</b><span class="badge ${d.kind==='village'?'b-amber':'b-gray'}">${AREA_KIND[d.kind]||'منطقه'}</span>
         <div class="spacer"></div><span class="small muted">${fa(cnt(d,'district_id'))} مدرسه</span>
-        <button class="icon-btn" title="ویرایش" data-act="geo-edit" data-t="districts" data-id="${d.id}">✏️</button>
-        <button class="icon-btn danger" title="حذف" data-act="geo-del" data-t="districts" data-id="${d.id}">🗑️</button></div>`).join(''):empty('📍','منطقه‌ای نیست','')}
+        <button class="icon-btn" title="ویرایش" data-act="geo-edit" data-t="districts" data-id="${escAttr(d.id)}">✏️</button>
+        <button class="icon-btn danger" title="حذف" data-act="geo-del" data-t="districts" data-id="${escAttr(d.id)}">🗑️</button></div>`).join(''):empty('📍','منطقه‌ای نیست','')}
     </div></div>`;
 }
 
@@ -8376,9 +8636,9 @@ function viewOffices(){
       <td>${fa(r.schools)}</td><td>${fa(r.students)}</td>
       <td class="small">${r.u?`<b>${esc(r.u.username)}</b><div class="muted">${esc(r.u.full_name)}</div>`:'<span class="badge b-amber">بدون حساب</span>'}</td>
       <td><div class="row" style="gap:5px;flex-wrap:nowrap">
-        <button class="btn ghost sm" data-act="office-toggle" data-id="${r.o.id}">${r.o.active?'⏸️ غیرفعال':'▶️ فعال'}</button>
-        <button class="icon-btn" title="ویرایش" data-act="office-edit" data-id="${r.o.id}">✏️</button>
-        <button class="icon-btn danger" title="حذف" data-act="office-del" data-id="${r.o.id}">🗑️</button></div></td></tr>`).join('')}
+        <button class="btn ghost sm" data-act="office-toggle" data-id="${escAttr(r.o.id)}">${r.o.active?'⏸️ غیرفعال':'▶️ فعال'}</button>
+        <button class="icon-btn" title="ویرایش" data-act="office-edit" data-id="${escAttr(r.o.id)}">✏️</button>
+        <button class="icon-btn danger" title="حذف" data-act="office-del" data-id="${escAttr(r.o.id)}">🗑️</button></div></td></tr>`).join('')}
    </tbody></table></div>`:empty('🏛️','اداره‌ای تعریف نشده','با دکمه بالا اداره کل استان، اداره شهرستان یا منطقه را تعریف کنید.')}</div>`;
 }
 
@@ -8407,9 +8667,9 @@ function viewOfficeDash(){
       </div>
       ${filterPanel('officedash',`
         <select class="select" style="width:150px" data-f="province"><option value="">همه استان‌ها</option>
-          ${provinces.map(p=>`<option value="${p.id}" ${String(S.filters.province)===String(p.id)?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
+          ${provinces.map(p=>`<option value="${escAttr(p.id)}" ${String(S.filters.province)===String(p.id)?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
         <select class="select" style="width:150px" data-f="county"><option value="">همه شهرستان‌ها</option>
-          ${counties.map(c=>`<option value="${c.id}" ${String(S.filters.county)===String(c.id)?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`)}
+          ${counties.map(c=>`<option value="${escAttr(c.id)}" ${String(S.filters.county)===String(c.id)?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`)}
       </div></div>
 
    <div class="grid g4" style="margin-bottom:14px">
@@ -8992,12 +9252,12 @@ function render(){
 }
 setTimeout(()=>{
   generate(); generateExtras(); generateP8(); generateP9(); generateP10(); loadLog(); applyLog(); initSync();
-  const su=localStorage.getItem(SESSION_KEY);
+  const su=Store.get(SESSION_KEY);
   if(su){const u=db.users.find(x=>x.username===su);if(u){S.user=u;if(u.role==='edu_office'&&S.route==='dashboard')S.route='officedash';}}
-  const pk=localStorage.getItem(PERSONA_KEY);
+  const pk=Store.get(PERSONA_KEY);
   if(pk&&S.user){S.persona=pk;if(S.route==='dashboard'&&pk==='parent'&&!subOf(S.user.id).active)S.route='subscription';}
-  const bs=localStorage.getItem(BOSS_KEY);
-  if(bs&&S.user){const b=db.users.find(x=>x.username===bs);if(b&&b.id!==S.user.id)S.boss=b;else localStorage.removeItem(BOSS_KEY);}
+  const bs=Store.get(BOSS_KEY);
+  if(bs&&S.user){const b=db.users.find(x=>x.username===bs);if(b&&b.id!==S.user.id)S.boss=b;else Store.remove(BOSS_KEY);}
   /* یادآوری پایان سال به مدیر (فقط در تیر و مرداد، هر هفت روز یک بار) */
   if(typeof checkYearEnd === 'function') checkYearEnd();
   render();
@@ -9989,19 +10249,12 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
     severity: 'critical',
     safe: false,
     check: function(){
-      try{
-        var k = '__diag_probe__';
-        localStorage.setItem(k, '1');
-        var v = localStorage.getItem(k);
-        localStorage.removeItem(k);
-        if(v !== '1')
-          return { ok:false, count:1, items:[{ خطا:'مقدار خوانده‌شده با نوشته‌شده فرق دارد' }],
-                   msg:'حافظهٔ مرورگر درست پاسخ نمی‌دهد' };
-        return { ok:true };
-      }catch(e){
-        return { ok:false, count:1, items:[{ خطا:String(e && e.message) }],
-          msg:'نوشتن در حافظهٔ مرورگر ممکن نیست — داده ماندگار نمی‌شود' };
-      }
+      /* از راه لایهٔ داده می‌سنجیم، نه مستقیم — همان مسیری که
+         خود برنامه استفاده می‌کند، وگرنه آزمون واقعیت را نمی‌گوید */
+      if(!Store.available())
+        return { ok:false, count:1, items:[{ خطا:'نوشتن یا خواندن ناموفق بود' }],
+          msg:'حافظهٔ مرورگر در دسترس نیست — داده ماندگار نمی‌شود' };
+      return { ok:true };
     },
     fix: null
   },
@@ -10341,7 +10594,7 @@ function diagAutoStart(intervalMs){
   if(intervalMs) DIAG_AUTO.interval = intervalMs;
   DIAG_AUTO.on = true;
   DIAG_AUTO.timer = setInterval(diagAutoTick, DIAG_AUTO.interval);
-  try{ localStorage.setItem('sms_diag_auto_v1', '1'); }catch(e){}
+  Store.set('sms_diag_auto_v1', '1');
   return true;
 }
 
@@ -10349,7 +10602,7 @@ function diagAutoStop(){
   if(DIAG_AUTO.timer) clearInterval(DIAG_AUTO.timer);
   DIAG_AUTO.timer = null;
   DIAG_AUTO.on = false;
-  try{ localStorage.removeItem('sms_diag_auto_v1'); }catch(e){}
+  Store.remove('sms_diag_auto_v1');
   return true;
 }
 

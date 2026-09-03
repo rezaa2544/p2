@@ -32,10 +32,10 @@ const SYNC = {
 
 /* ---------- ذخیره‌سازی صف ---------- */
 function loadQueue(){
-  try{ SYNC.queue = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]'); }
+  try{ SYNC.queue = Store.getJSON(SYNC_QUEUE_KEY, []) || []; }
   catch(e){ SYNC.queue = []; }
   try{
-    const m = JSON.parse(localStorage.getItem(SYNC_META_KEY) || '{}');
+    const m = Store.getJSON(SYNC_META_KEY, {}) || {};
     SYNC.lastSync = m.lastSync || null;
   }catch(e){}
 }
@@ -44,10 +44,10 @@ function saveQueue(){
      وگرنه هر عملیات کل صف را دوباره JSON.stringify می‌کند و هزینه
      درجه‌دوم می‌شود. پرچم در 03-persistence.js مدیریت می‌شود. */
   if(typeof _BATCH_DEPTH !== 'undefined' && _BATCH_DEPTH > 0){ _BATCH_QUEUE_DIRTY = true; return; }
-  try{ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(SYNC.queue)); }catch(e){}
+  Store.setJSON(SYNC_QUEUE_KEY, SYNC.queue);
 }
 function saveSyncMeta(){
-  try{ localStorage.setItem(SYNC_META_KEY, JSON.stringify({ lastSync: SYNC.lastSync })); }catch(e){}
+  Store.setJSON(SYNC_META_KEY, { lastSync: SYNC.lastSync });
 }
 
 /* ---------- افزودن عملیات به صف ---------- */
@@ -202,7 +202,7 @@ function syncBadge(){
       <span class="dot"></span><span>تعارض</span><span class="badge b-red sm">${fa(cf)}</span></button>`;
   }
   if(n){
-    return `<button class="sync-chip pend" data-act="sync-panel" title="${fa(n)} تغییر در صف ارسال">
+    return `<button class="sync-chip pend" data-act="sync-panel" title="${escAttr(fa(n))} تغییر در صف ارسال">
       <span class="dot"></span><span>در صف</span><span class="badge b-amber sm">${fa(n)}</span></button>`;
   }
   return `<button class="sync-chip ok" data-act="sync-panel" title="همه‌چیز همگام است">

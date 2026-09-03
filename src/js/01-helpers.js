@@ -6,6 +6,19 @@ const $ = (s,r=document)=>r.querySelector(s);
 /* گزینش چندتایی: همیشه آرایهٔ واقعی برمی‌گرداند تا map/filter کار کند */
 const $$ = (s,r=document)=>Array.prototype.slice.call(r.querySelectorAll(s));
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* ---- امن‌سازی خروجی در برابر XSS ----
+   دو تابع داریم چون دو جای متفاوت دو خطر متفاوت دارند:
+
+   esc()     برای متنِ داخل تگ:  <b>${esc(u.full_name)}</b>
+   escAttr() برای مقدار صفت:     <div data-x="${escAttr(v)}">
+
+   تفاوت مهم: در صفت، حتی بدون کاراکتر کوچک‌تر می‌شود از کوتیشن فرار
+   کرد و صفت تازه چسباند. پس هر مقدار پویا داخل صفت باید از escAttr
+   رد شود، حتی اگر «فقط یک عدد» به نظر برسد؛ آن عدد فردا می‌تواند
+   رشتهٔ واردکردهٔ کاربر شود.
+
+   قاعده: هیچ مقدار پویایی بدون esc یا escAttr وارد innerHTML نشود. */
+const escAttr = v => String(v??'').replace(/[&<>"'`=]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;','=':'&#61;'}[c]));
 const fa = n => (n===null||n===undefined||n==='')?'—':Number(n).toLocaleString('fa-IR',{maximumFractionDigits:2});
 const jalali = iso => { if(!iso) return '—'; try{ return new Intl.DateTimeFormat('fa-IR-u-ca-persian',{year:'numeric',month:'long',day:'numeric'}).format(new Date(iso)); }catch(e){ return iso; } };
 const todayISO = ()=> new Date().toISOString().slice(0,10);

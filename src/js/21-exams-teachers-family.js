@@ -13,11 +13,19 @@ function validNid(nid){
   const c=Number(s[9]), sum=s.slice(0,9).split('').reduce((a,d,i)=>a+Number(d)*(10-i),0)%11;
   return sum<2?c===sum:c===11-sum;
 }
+/* ---- ساخت کد ملی ساختگی ولی معتبر ----
+   ⚠️ در نسخهٔ دمو هیچ کد ملی واقعی نباید ساخته شود. اگر ۱۰ رقم را
+   کاملاً تصادفی بسازیم، ممکن است اتفاقاً کد ملی یک شهروند واقعی
+   دربیاید. پس سه رقم اول را روی ۹۹۹ ثابت می‌کنیم که سازمان ثبت احوال
+   صادر نمی‌کند، و شش رقم بعد را تصادفی می‌گیریم.
+   رقم کنترل با همان الگوریتم رسمی حساب می‌شود تا validNid قبولش کند
+   و مسیرهای اعتبارسنجی برنامه واقعاً آزموده شوند. */
+const DEMO_NID_PREFIX = '999';
 function makeNid(){
-  let b=''; for(let i=0;i<9;i++)b+=ri(10);
-  if(/^(\d)\1{8}$/.test(b))b='123456789';
-  const s=b.split('').reduce((a,d,i)=>a+Number(d)*(10-i),0)%11;
-  return b+String(s<2?s:11-s);
+  let b = DEMO_NID_PREFIX;
+  for(let i=0;i<6;i++) b += ri(10);
+  const s = b.split('').reduce((a,d,i)=>a+Number(d)*(10-i),0)%11;
+  return b + String(s<2?s:11-s);
 }
 /** کد ملی در کل سامانه یکتاست */
 /* یافتن دارندهٔ یک کد ملی. از ایندکس استفاده می‌کند تا در ورود انبوه
@@ -50,7 +58,7 @@ function generateP8(){
   // ولی با فرزندان در سه مدرسه مختلف
   const multiNid=makeNid();
   const dad=add('users',{school_id:db.schools[0].id,role:'parent',full_name:'کاظم رستمی',username:'parent_multi',password:'123456',
-    national_id:multiNid,phone:'09121234567',active:1,created_at:daysAgoISO(300)});
+    national_id:multiNid,phone:'09990001234',active:1,created_at:daysAgoISO(300)});
   db.schools.slice(0,3).forEach(sc=>{
     const st=db.users.find(u=>u.role==='student'&&u.school_id===sc.id);
     if(!st)return;
@@ -163,9 +171,9 @@ function viewTeachers(){
       <td>${fa(r.here)} زنگ</td><td>${fa(r.total)} زنگ</td>
       <td class="small">${r.schools.map(s=>esc(s.name)).join('، ')}</td>
       <td><div class="row" style="gap:5px;flex-wrap:nowrap">
-        <button class="btn ghost sm" data-act="teacher-plan" data-id="${r.id}">برنامه کامل</button>
-        ${r.shared?`<button class="icon-btn" title="ویرایش همکاری" data-act="ts-edit" data-id="${r.id}">✏️</button>
-        <button class="icon-btn danger" title="حذف از این مدرسه" data-act="ts-del" data-id="${r.id}">🗑️</button>`:''}</div></td></tr>`).join('')}
+        <button class="btn ghost sm" data-act="teacher-plan" data-id="${escAttr(r.id)}">برنامه کامل</button>
+        ${r.shared?`<button class="icon-btn" title="ویرایش همکاری" data-act="ts-edit" data-id="${escAttr(r.id)}">✏️</button>
+        <button class="icon-btn danger" title="حذف از این مدرسه" data-act="ts-del" data-id="${escAttr(r.id)}">🗑️</button>`:''}</div></td></tr>`).join('')}
    </tbody></table></div>`:empty('👨‍🏫','دبیری ثبت نشده','')}</div>`;
 }
 
@@ -192,7 +200,7 @@ function viewExams(){
       .sort((a,b)=>a.date.localeCompare(b.date)||a.start_time.localeCompare(b.start_time));
     const term=list.length?byId('exam_terms',list[0].term_id):null;
     return `<div class="card"><div class="card-head"><h3>📝 برنامه امتحانات</h3>
-      ${kids.length>1?`<div class="row" style="gap:6px">${kids.map(k=>`<button class="btn ${k.id===sel?'':'ghost'} sm" data-act="child" data-id="${k.id}">${esc(k.full_name)}</button>`).join('')}</div>`:''}</div>
+      ${kids.length>1?`<div class="row" style="gap:6px">${kids.map(k=>`<button class="btn ${k.id===sel?'':'ghost'} sm" data-act="child" data-id="${escAttr(k.id)}">${esc(k.full_name)}</button>`).join('')}</div>`:''}</div>
       ${term?`<div class="card-body"><div class="row" style="gap:18px">
         <div><div class="small muted">بازه امتحانات</div><b>${jalali(term.start_date)} تا ${jalali(term.end_date)}</b></div>
         ${term.note?`<div class="small" style="background:var(--amber-soft);padding:8px 12px;border-radius:10px">ℹ️ ${esc(term.note)}</div>`:''}</div></div>`:''}
@@ -214,7 +222,7 @@ function viewExams(){
 
   return `<div class="card" style="margin-bottom:14px"><div class="card-head"><h3>📝 فصل امتحانات</h3>
     <div class="row" style="gap:8px">
-      ${terms.length?`<select class="select" style="max-width:260px" data-f="term">${terms.map(t=>`<option value="${t.id}" ${term&&term.id===t.id?'selected':''}>${esc(t.title)} (${t.status==='published'?'منتشر شده':'پیش‌نویس'})</option>`).join('')}</select>`:''}
+      ${terms.length?`<select class="select" style="max-width:260px" data-f="term">${terms.map(t=>`<option value="${escAttr(t.id)}" ${term&&term.id===t.id?'selected':''}>${esc(t.title)} (${t.status==='published'?'منتشر شده':'پیش‌نویس'})</option>`).join('')}</select>`:''}
       <button class="btn" data-act="term-new">➕ فصل جدید</button></div></div>
    ${term?`<div class="card-body">
       <div class="grid g4">
@@ -224,33 +232,33 @@ function viewExams(){
         <div><div class="small muted">وضعیت</div><span class="badge ${term.status==='published'?'b-green':'b-amber'}">${term.status==='published'?'منتشر شده':'پیش‌نویس'}</span></div>
       </div>
       <div class="row" style="margin-top:14px;gap:8px">
-        <button class="btn ghost sm" data-act="term-edit" data-id="${term.id}">✏️ ویرایش</button>
-        <button class="btn sm ${term.status==='published'?'ghost':''}" data-act="term-publish" data-id="${term.id}">${term.status==='published'?'↩️ بازگشت به پیش‌نویس':'📣 انتشار برای اولیا و دبیران'}</button>
-        <button class="btn ghost sm" data-act="exam-print" data-id="${term.id}">🖨️ چاپ برنامه</button>
+        <button class="btn ghost sm" data-act="term-edit" data-id="${escAttr(term.id)}">✏️ ویرایش</button>
+        <button class="btn sm ${term.status==='published'?'ghost':''}" data-act="term-publish" data-id="${escAttr(term.id)}">${term.status==='published'?'↩️ بازگشت به پیش‌نویس':'📣 انتشار برای اولیا و دبیران'}</button>
+        <button class="btn ghost sm" data-act="exam-print" data-id="${escAttr(term.id)}">🖨️ چاپ برنامه</button>
         <div class="spacer"></div>
-        <button class="btn ghost sm danger" data-act="term-del" data-id="${term.id}">🗑️ حذف فصل</button>
+        <button class="btn ghost sm danger" data-act="term-del" data-id="${escAttr(term.id)}">🗑️ حذف فصل</button>
       </div></div>`:empty('🗓️','فصلی تعریف نشده','برای شروع یک فصل امتحانات بسازید.')}</div>
    ${term?`<div class="row" style="margin-bottom:14px;gap:8px">
      <button class="btn ${tab==='schedule'?'':'ghost'}" data-act="tab" data-t="schedule">🗓️ برنامه امتحانات</button>
      <button class="btn ${tab==='duties'?'':'ghost'}" data-act="tab" data-t="duties">👁️ برنامه مراقبت</button></div>`:''}
    ${!term?'':tab==='schedule'?`
-    <div class="card"><div class="card-head"><h3>جلسات امتحان</h3><button class="btn" data-act="exam-new" data-id="${term.id}">➕ افزودن جلسه</button></div>
+    <div class="card"><div class="card-head"><h3>جلسات امتحان</h3><button class="btn" data-act="exam-new" data-id="${escAttr(term.id)}">➕ افزودن جلسه</button></div>
      ${exams.length?`<div class="table-wrap"><table class="table"><thead><tr><th>تاریخ</th><th>ساعت</th><th>کلاس</th><th>درس</th><th>سالن</th><th>مراقبان</th><th></th></tr></thead><tbody>
       ${exams.map(e=>`<tr><td>${jalali(e.date)}</td><td><b>${e.start_time}</b><div class="small muted">تا ${toHHMMP(toMinP(e.start_time)+e.duration)}</div></td>
         <td>${esc((byId('classes',e.class_id)||{}).name||'—')}</td><td>${esc((byId('subjects',e.subject_id)||{}).name||'—')}</td>
         <td>${esc(e.room||'—')}</td>
         <td class="small">${dutyOf(e.id).map(d=>esc((byId('users',d.teacher_id)||{}).full_name||'')).join('، ')||'<span class="badge b-amber">بدون مراقب</span>'}</td>
-        <td><button class="icon-btn" data-act="exam-edit" data-id="${e.id}">✏️</button> <button class="icon-btn danger" data-act="exam-del" data-id="${e.id}">🗑️</button></td></tr>`).join('')}
+        <td><button class="icon-btn" data-act="exam-edit" data-id="${escAttr(e.id)}">✏️</button> <button class="icon-btn danger" data-act="exam-del" data-id="${escAttr(e.id)}">🗑️</button></td></tr>`).join('')}
      </tbody></table></div>`:empty('📝','جلسه‌ای ثبت نشده','تداخل ساعت هر کلاس خودکار بررسی می‌شود.')}</div>`
    :`<div class="grid" style="grid-template-columns:1fr 280px;gap:14px;align-items:start">
       <div class="card"><div class="card-head"><h3>ابلاغ مراقبت دبیران</h3>
-        <button class="btn" data-act="duty-auto" data-id="${term.id}">⚡ تخصیص خودکار</button></div>
+        <button class="btn" data-act="duty-auto" data-id="${escAttr(term.id)}">⚡ تخصیص خودکار</button></div>
         ${exams.length?`<div class="table-wrap"><table class="table"><thead><tr><th>تاریخ و ساعت</th><th>کلاس / درس</th><th>مراقبان</th><th>افزودن</th></tr></thead><tbody>
         ${exams.map(e=>`<tr><td><b>${jalali(e.date)}</b><div class="small muted">${e.start_time}</div></td>
           <td>${esc((byId('classes',e.class_id)||{}).name||'')}<div class="small muted">${esc((byId('subjects',e.subject_id)||{}).name||'')}</div></td>
-          <td><div class="row" style="gap:5px">${dutyOf(e.id).map(d=>`<span class="badge ${d.role==='main'?'b-blue':'b-gray'}" style="cursor:pointer" data-act="duty-del" data-id="${d.id}">${esc((byId('users',d.teacher_id)||{}).full_name||'')} ✕</span>`).join('')||'<span class="badge b-amber">بدون مراقب</span>'}</div></td>
-          <td><select class="select" data-f="duty-add" data-e="${e.id}"><option value="">انتخاب دبیر…</option>
-            ${schoolTeachers().map(t=>`<option value="${t.id}">${esc(t.full_name)}</option>`).join('')}</select></td></tr>`).join('')}
+          <td><div class="row" style="gap:5px">${dutyOf(e.id).map(d=>`<span class="badge ${d.role==='main'?'b-blue':'b-gray'}" style="cursor:pointer" data-act="duty-del" data-id="${escAttr(d.id)}">${esc((byId('users',d.teacher_id)||{}).full_name||'')} ✕</span>`).join('')||'<span class="badge b-amber">بدون مراقب</span>'}</div></td>
+          <td><select class="select" data-f="duty-add" data-e="${escAttr(e.id)}"><option value="">انتخاب دبیر…</option>
+            ${schoolTeachers().map(t=>`<option value="${escAttr(t.id)}">${esc(t.full_name)}</option>`).join('')}</select></td></tr>`).join('')}
         </tbody></table></div>`:empty('👁️','ابتدا جلسات را تعریف کنید','')}</div>
       <div class="card"><div class="card-head"><h3>توزیع بار مراقبت</h3></div>
         ${loadArr.length?`<div class="card-body" style="display:grid;gap:9px">${loadArr.map(([n,v])=>`<div>
@@ -279,9 +287,9 @@ function viewFamily(){
         <div class="spacer"></div>
         ${k.verify==='confirmed'?'<span class="badge b-green">تأیید شده</span>'
           :`<span class="badge b-amber">در انتظار تأیید</span>
-            <button class="btn sm" data-act="kid-confirm" data-id="${k.id}">تأیید</button>
-            <button class="btn ghost sm" data-act="kid-reject" data-id="${k.id}">فرزند من نیست</button>`}
-        <button class="btn ghost sm" data-act="child-open" data-id="${k.id}">پرونده</button>
+            <button class="btn sm" data-act="kid-confirm" data-id="${escAttr(k.id)}">تأیید</button>
+            <button class="btn ghost sm" data-act="kid-reject" data-id="${escAttr(k.id)}">فرزند من نیست</button>`}
+        <button class="btn ghost sm" data-act="child-open" data-id="${escAttr(k.id)}">پرونده</button>
       </div>`).join('')}</div></div>`).join('')
     :empty('👨‍👩‍👦','فرزندی به کد ملی شما متصل نیست','از مدرسه بخواهید کد ملی شما را در پرونده فرزندتان ثبت کند.')}`;
 }
@@ -301,7 +309,7 @@ function viewCorrections(){
       <td class="small">${esc(st.father_nid||'—')}</td><td>${esc(p.full_name||'—')}<div class="small muted">${esc(p.national_id||'')}</div></td>
       <td class="small">${esc(r.message||'')}</td>
       <td><span class="badge ${r.status==='open'?'b-amber':'b-green'}">${r.status==='open'?'در انتظار بررسی':'اصلاح شد'}</span></td>
-      <td>${r.status==='open'?`<button class="btn sm" data-act="corr-fix" data-id="${r.id}">بررسی و اصلاح</button>`:''}</td></tr>`;}).join('')}
+      <td>${r.status==='open'?`<button class="btn sm" data-act="corr-fix" data-id="${escAttr(r.id)}">بررسی و اصلاح</button>`:''}</td></tr>`;}).join('')}
     </tbody></table></div>`:empty('✅','درخواستی وجود ندارد','همه اطلاعات اولیا تأیید شده است.')}</div>`;
 }
 

@@ -17,7 +17,7 @@ function viewSchools(){
   if(fbr)rows=rows.filter(s=>(s.branches||[]).indexOf(fbr)>=0);
   const counties=db.counties.filter(c=>!fp||String(c.province_id)===String(fp));
   const districts=db.districts.filter(d=>fc?String(d.county_id)===String(fc):(!fp||String(d.province_id)===String(fp)));
-  const opt=(list,val,label)=>[`<option value="">${label}</option>`,...list.map(o=>`<option value="${o[0]}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`)].join('');
+  const opt=(list,val,label)=>[`<option value="">${label}</option>`,...list.map(o=>`<option value="${escAttr(o[0])}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`)].join('');
   return `<div class="card"><div class="card-head">
     <h3>فهرست مدارس <span class="badge b-gray">${fa(rows.length)}</span></h3>
     <div class="row"><input class="input" style="width:180px" placeholder="جستجوی نام یا کد…" data-f="q" value="${esc(q)}" />
@@ -38,11 +38,11 @@ function viewSchools(){
       <td><span class="badge b-blue">${esc(s.level||'—')}</span>${(s.branches||[]).length?`<div class="small muted" style="margin-top:4px">${(s.branches||[]).map(b=>esc(b)).join('، ')}</div>`:''}</td><td class="muted">${esc(mg?mg.full_name:'—')}</td>
       <td class="small muted">${esc(s.landline||'—')}</td>
       <td>${fa(us.filter(u=>u.role==='student').length)}</td><td>${fa(us.filter(u=>u.role==='teacher').length)}</td><td>${fa(db.classes.filter(c=>c.school_id===s.id).length)}</td>
-      <td><span class="badge ${s.active?'b-green':'b-gray'}${isAdmin?' tgl':''}" ${isAdmin?`data-act="school-toggle" data-id="${s.id}" title="برای تغییر وضعیت کلیک کنید"`:''}>${s.active?'فعال':'غیرفعال'}</span></td>
+      <td><span class="badge ${s.active?'b-green':'b-gray'}${isAdmin?' tgl':''}" ${isAdmin?`data-act="school-toggle" data-id="${escAttr(s.id)}" title="برای تغییر وضعیت کلیک کنید"`:''}>${s.active?'فعال':'غیرفعال'}</span></td>
       ${isAdmin?`<td><div class="row" style="gap:5px;flex-wrap:nowrap">
-        <button class="btn sm" data-act="school-enter" data-id="${s.id}" title="ورود به پنل این مدرسه به‌عنوان مدیر">🔑 ورود به پنل</button>
-        <button class="icon-btn" title="ویرایش" data-act="school-edit" data-id="${s.id}">✏️</button>
-        <button class="icon-btn danger" title="حذف" data-act="school-del" data-id="${s.id}">🗑️</button></div></td>`:''}</tr>`;}).join('');})()}
+        <button class="btn sm" data-act="school-enter" data-id="${escAttr(s.id)}" title="ورود به پنل این مدرسه به‌عنوان مدیر">🔑 ورود به پنل</button>
+        <button class="icon-btn" title="ویرایش" data-act="school-edit" data-id="${escAttr(s.id)}">✏️</button>
+        <button class="icon-btn danger" title="حذف" data-act="school-del" data-id="${escAttr(s.id)}">🗑️</button></div></td>`:''}</tr>`;}).join('');})()}
     </tbody></table></div>`:empty('🏫','مدرسه‌ای یافت نشد',q?'نتیجه‌ای برای جستجو نبود.':'اولین مدرسه را تعریف کنید.',isAdmin?'<button class="btn" data-act="school-new">تعریف مدرسه</button>':'')}
    </div>`;
 }

@@ -21,6 +21,6 @@ function viewDiscipline(){
      <td><span class="badge ${d.kind==='positive'?'b-green':'b-red'}">${d.kind==='positive'?'👍 مثبت':'👎 منفی'}</span></td><td>${esc(d.title)}</td>
      <td class="muted small" style="white-space:normal;max-width:240px">${esc(d.description||'—')}</td>
      <td><b style="color:${d.points>=0?'var(--green)':'var(--red)'}">${fa(d.points)}</b></td><td class="muted small">${jalali(d.date)}</td>
-     ${canEdit?`<td><button class="icon-btn" data-act="disc-edit" data-id="${d.id}">✏️</button> <button class="icon-btn danger" data-act="disc-del" data-id="${d.id}">🗑️</button></td>`:''}</tr>`;}).join('')}
+     ${canEdit?`<td><button class="icon-btn" data-act="disc-edit" data-id="${escAttr(d.id)}">✏️</button> <button class="icon-btn danger" data-act="disc-del" data-id="${escAttr(d.id)}">🗑️</button></td>`:''}</tr>`;}).join('')}
    </tbody></table></div>`:empty('⚖️','پرونده انضباطی خالی است',u.role==='student'?'خوشبختانه موردی برای شما ثبت نشده است.':'موردی مطابق فیلتر یافت نشد.')}</div>`;
 }

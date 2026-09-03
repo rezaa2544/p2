@@ -199,8 +199,8 @@ function healthReport(){
 
   /* حافظهٔ مرورگر */
   var logBytes = 0, queueBytes = 0;
-  try{ logBytes = (localStorage.getItem(LOG_KEY) || '').length; }catch(e){}
-  try{ queueBytes = (localStorage.getItem(SYNC_QUEUE_KEY) || '').length; }catch(e){}
+  logBytes = Store.bytes(LOG_KEY);
+  queueBytes = Store.bytes(SYNC_QUEUE_KEY);
   var used = logBytes + queueBytes, limit = 5 * 1024 * 1024;
   out.storage = { used: used, limit: limit,
     percent: Math.round(used / limit * 1000) / 10,

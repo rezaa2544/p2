@@ -180,10 +180,10 @@ function viewAudit(){
  * ساختار عمداً کوچک است: فقط شمارش روزانه و آخرین دیده‌شدن هر کاربر.
  */
 function loadVisits(){
-  try{ return JSON.parse(localStorage.getItem(VISITS_KEY)) || { days:{}, users:{}, sessions:0 }; }
+  try{ return Store.getJSON(VISITS_KEY, null) || { days:{}, users:{}, sessions:0 }; }
   catch(e){ return { days:{}, users:{}, sessions:0 }; }
 }
-function saveVisits(v){ try{ localStorage.setItem(VISITS_KEY, JSON.stringify(v)); }catch(e){} }
+function saveVisits(v){ Store.setJSON(VISITS_KEY, v); }
 
 /** ثبت یک بازدید تازه (هنگام ورود کاربر یا باز شدن برنامه) */
 function trackVisit(userId){

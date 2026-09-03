@@ -55,7 +55,7 @@ function viewRecord(sid){
      <td class="muted small" style="white-space:normal;max-width:260px">${esc(d.description||'—')}</td><td><b style="color:${d.points>=0?'var(--green)':'var(--red)'}">${fa(d.points)}</b></td></tr>`).join('')}</tbody></table></div>`
     :empty('🌟','پرونده انضباطی پاک است','هیچ مورد انضباطی ثبت نشده است.');
   return `<div class="card"><div class="card-head" style="padding-bottom:0;border-bottom:none"><div class="tabs">
-    ${tabs.map(t=>`<div class="tab ${S.tab===t[0]?'active':''}" data-act="tab" data-t="${t[0]}">${t[1]}</div>`).join('')}</div></div>${body}</div>`;
+    ${tabs.map(t=>`<div class="tab ${S.tab===t[0]?'active':''}" data-act="tab" data-t="${escAttr(t[0])}">${t[1]}</div>`).join('')}</div></div>${body}</div>`;
 }
 
 function viewChildren(){
@@ -63,7 +63,7 @@ function viewChildren(){
   if(!kids.length)return `<div class="card">${empty('👨‍👩‍👦','دانش‌آموزی متصل نیست','با مدیر مدرسه تماس بگیرید.')}</div>`;
   const active=S.child||kids[0].id;
   return `<div class="card"><div class="card-body row">
-   ${kids.map(k=>`<button class="btn ${active===k.id?'':'ghost'}" data-act="child" data-id="${k.id}">🎒 ${esc(k.full_name)} <span class="small">(${esc((classOf(k.id)||{}).name||'—')})</span></button>`).join('')}
+   ${kids.map(k=>`<button class="btn ${active===k.id?'':'ghost'}" data-act="child" data-id="${escAttr(k.id)}">🎒 ${esc(k.full_name)} <span class="small">(${esc((classOf(k.id)||{}).name||'—')})</span></button>`).join('')}
    </div></div>${summaryBlock(active)}${viewRecord(active)}`;
 }
 

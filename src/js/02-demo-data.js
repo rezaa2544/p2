@@ -23,7 +23,21 @@ const SCHOOL_DEFS=[
   ['دبستان و متوسطه اندیشه','AN-106','متوسطه اول','دخترانه',[]]];
 
 let db, ids={};
-const nid=()=>String(1000000000+Math.floor(rng()*899999999));
+/* ---- شناسه‌های ساختگی برای نسخهٔ دمو ----
+   ⚠️ قاعده: هیچ دادهٔ واقعی وارد نسخهٔ دمو نمی‌شود.
+   کد ملی از بازهٔ ۹۹۹… ساخته می‌شود که در واقعیت صادر نمی‌شود، و
+   تلفن با پیش‌شمارهٔ ۰۹۹۹ که در ایران به هیچ اپراتوری تخصیص نیافته
+   است. اگر عدد کاملاً تصادفی می‌ساختیم، ممکن بود اتفاقاً با شمارهٔ
+   یک شهروند واقعی یکی شود. */
+/* کد ملی ساختگی معتبر. makeNid در 21-exams تعریف شده و آنجا بارگذاری
+   می‌شود؛ اینجا تا آماده شدنش نسخهٔ محلی با همان قاعده کار می‌کند. */
+const nid=()=>{
+  let b='999'; for(let i=0;i<6;i++) b += Math.floor(rng()*10);
+  const s=b.split('').reduce((a,d,i)=>a+Number(d)*(10-i),0)%11;
+  return b+String(s<2?s:11-s);
+};
+/** شمارهٔ تلفن ساختگی — پیش‌شمارهٔ ۰۹۹۹ به هیچ اپراتوری تعلق ندارد */
+const demoPhone=()=>'0999'+String(1000000+Math.floor(rng()*8999999));
 function nextId(c){ids[c]=(ids[c]||0)+1;return ids[c];}
 /**
  * افزودن رکورد به دادهٔ نمونه.
@@ -44,18 +58,18 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 function generate(){
   SEED=20260901; ids={};
   db={school_years:[],sms_wallet:[],sms_log:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[]};
-  add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:'09120000000',active:1,created_at:daysAgoISO(400)});
+  add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
   SCHOOL_DEFS.forEach((def,si)=>{
     const [name,code,level,gender,branches]=def, city=CITIES[si%CITIES.length];
     /* رشته‌های مدرسه = همهٔ رشته‌های شاخه‌هایی که ارائه می‌دهد */
     const sFields=(branches||[]).reduce((a,b)=>a.concat(fieldsOfBranch(b)),[]);
-    const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:'0'+(21+si)+(30000000+ri(9999999)),level,gender,branches:branches||[],fields:sFields,
+    const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:demoPhone(),level,gender,branches:branches||[],fields:sFields,
       shift: si===4 ? 'بعدازظهر' : (si===1 ? 'هر دو' : 'صبح'),capacity:400+ri(200),active:si===5?0:1,created_at:daysAgoISO(500-si*20)});
     const first = gender==='پسرانه'?MALE:FEMALE;
-    const manager=add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'manager'+(si+1),password:'123456',national_id:nid(),phone:'0912'+(1000000+ri(8999999)),active:1,title:'مدیر مدرسه',created_at:daysAgoISO(480)});
-    add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'deputy'+(si+1),password:'123456',national_id:nid(),phone:'0912'+(1000000+ri(8999999)),active:1,title:'معاون آموزشی',created_at:daysAgoISO(470)});
+    const manager=add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'manager'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,title:'مدیر مدرسه',created_at:daysAgoISO(480)});
+    add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'deputy'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,title:'معاون آموزشی',created_at:daysAgoISO(470)});
     /* دروس بر اساس برنامه‌ی درسی واقعی: پایه‌ها و (در متوسطه دوم) رشته‌ها */
     const _lvGrades = GRADES_OF_LEVEL[level] || [];
     const _lvFields = needsField(level) ? ['ریاضی فیزیک','علوم تجربی','ادبیات و علوم انسانی'] : [''];
@@ -70,7 +84,7 @@ function generate(){
     }));
     const teachers=[];
     for(let t=0;t<12;t++){const s=subs[t%subs.length];
-      teachers.push(add('users',{school_id:school.id,role:'teacher',full_name:pick(first)+' '+pick(LAST),username:'teacher'+(si+1)+'_'+(t+1),password:'123456',national_id:nid(),phone:'0913'+(1000000+ri(8999999)),active:1,subject_id:s.id,subject:s.name,degree:pick(['کارشناسی','کارشناسی ارشد','دکتری']),created_at:daysAgoISO(460-t)}));}
+      teachers.push(add('users',{school_id:school.id,role:'teacher',full_name:pick(first)+' '+pick(LAST),username:'teacher'+(si+1)+'_'+(t+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,subject_id:s.id,subject:s.name,degree:pick(['کارشناسی','کارشناسی ارشد','دکتری']),created_at:daysAgoISO(460-t)}));}
     const grades = _lvGrades;
     const fields = needsField(level)?_lvFields:['عمومی'];
     const classes=[];
@@ -86,9 +100,9 @@ function generate(){
       for(let k=0;k<per;k++){
         sCount++;
         const ln=pick(LAST);
-        const st=add('users',{school_id:school.id,role:'student',full_name:pick(first)+' '+ln,username:'student'+sCount,password:'123456',national_id:nid(),phone:'0935'+(1000000+ri(8999999)),active:chance(.98)?1:0,created_at:daysAgoISO(300+ri(120))});
+        const st=add('users',{school_id:school.id,role:'student',full_name:pick(first)+' '+ln,username:'student'+sCount,password:'123456',national_id:nid(),phone:demoPhone(),active:chance(.98)?1:0,created_at:daysAgoISO(300+ri(120))});
         add('enrollments',{school_id:school.id,class_id:c.id,student_id:st.id});
-        const pa=add('users',{school_id:school.id,role:'parent',full_name:pick(MALE)+' '+ln,username:'parent'+sCount,password:'123456',national_id:nid(),phone:'0919'+(1000000+ri(8999999)),active:1,job:pick(['کارمند','آزاد','پزشک','مهندس','معلم']),created_at:daysAgoISO(300)});
+        const pa=add('users',{school_id:school.id,role:'parent',full_name:pick(MALE)+' '+ln,username:'parent'+sCount,password:'123456',national_id:nid(),phone:demoPhone(),active:1,job:pick(['کارمند','آزاد','پزشک','مهندس','معلم']),created_at:daysAgoISO(300)});
         add('parent_links',{parent_id:pa.id,student_id:st.id,relation:'پدر'});
         dates.forEach(iso=>{const r=rng();let s='present';if(r>.965)s='absent';else if(r>.93)s='late';else if(r>.915)s='excused';
           add('attendance',{school_id:school.id,class_id:c.id,student_id:st.id,date:iso,status:s,note:s==='excused'?'مرخصی با اطلاع ولی':null});});

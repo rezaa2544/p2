@@ -2166,6 +2166,139 @@ test('پیکربندی زنگ همهٔ مدارس معتبر است', () => {
   assert(r.ok === true, 'زنگ معیوب: ' + JSON.stringify(r.items || []));
 });
 
+// ── لایهٔ داده و امنیت خروجی (دور ۲۸) ─────────────────────────
+
+test('لایهٔ داده: Store و Api و Data تعریف شده‌اند', () => {
+  assert(W('typeof Store') === 'object', 'Store نیست');
+  assert(W('typeof Api') === 'object', 'Api نیست');
+  assert(W('typeof Data') === 'object', 'Data نیست');
+  assert(W('DATA_MODE') === 'local', 'حالت پیش‌فرض باید محلی باشد');
+});
+
+test('لایهٔ داده: Store خواندن و نوشتن و پاک کردن', () => {
+  assert(W('Store.set("__t1","abc")') === true, 'set ناموفق');
+  assert(W('Store.get("__t1")') === 'abc', 'get نادرست');
+  W('Store.remove("__t1")');
+  assert(W('Store.get("__t1","نبود")') === 'نبود', 'fallback کار نکرد');
+});
+
+test('لایهٔ داده: getJSON روی داده خراب استثنا نمی‌دهد', () => {
+  W('Store.set("__t2","{این JSON نیست")');
+  assert(W('JSON.stringify(Store.getJSON("__t2",{a:1}))') === '{"a":1}',
+    'باید fallback برگردد نه استثنا');
+  W('Store.remove("__t2")');
+});
+
+test('لایهٔ داده: Store.available درست پاسخ می‌دهد', () => {
+  assert(W('Store.available()') === true, 'حافظه باید در دسترس باشد');
+});
+
+test('لایهٔ داده: Api در حالت محلی رد می‌شود نه اینکه بی‌صدا بماند', () => {
+  assert(W('typeof Api.request') === 'function', 'request نیست');
+  assert(W('isServerMode()') === false, 'نباید حالت سروری باشد');
+});
+
+test('لایهٔ داده: Data.create و find و update و delete', () => {
+  const n0 = W('db.announcements.length');
+  const id = W('Data.create("announcements",{title:"آزمون لایه",body:"م",school_id:1,date:todayISO()}).id');
+  assert(W('db.announcements.length') === n0 + 1, 'create اضافه نکرد');
+  assert(W('Data.find("announcements",' + id + ').title') === 'آزمون لایه', 'find نیافت');
+  W('Data.update("announcements",' + id + ',{title:"ویرایش شد"})');
+  assert(W('Data.find("announcements",' + id + ').title') === 'ویرایش شد', 'update نکرد');
+  W('Data.delete("announcements",' + id + ')');
+  assert(W('Data.find("announcements",' + id + ')') === null, 'delete نکرد');
+  assert(W('db.announcements.length') === n0, 'تعداد برنگشت');
+});
+
+test('لایهٔ داده: Data.batch فقط یک بار ذخیره می‌کند', () => {
+  const n0 = W('db.announcements.length');
+  const ids = W('(function(){var out=[];Data.batch(function(){for(var i=0;i<5;i++)' +
+    'out.push(Data.create("announcements",{title:"د"+i,body:"م",school_id:1,date:todayISO()}).id);});return out;})()');
+  assert(W('db.announcements.length') === n0 + 5, 'batch درج نکرد');
+  W('Data.batch(function(){' + JSON.stringify(ids) + '.forEach(function(i){Data.delete("announcements",i)})})');
+  assert(W('db.announcements.length') === n0, 'پاک‌سازی ناقص');
+});
+
+test('امنیت: هیچ فایلی جز لایهٔ داده مستقیم به localStorage دست نمی‌زند', () => {
+  const fs = require('fs'), path = require('path');
+  const dir = path.join(__dirname, '..', 'src', 'js');
+  const bad = fs.readdirSync(dir).filter(f =>
+    f !== '00-data-layer.js' && /localStorage/.test(fs.readFileSync(path.join(dir, f), 'utf8')));
+  assert(bad.length === 0, 'دسترسی مستقیم در: ' + bad.join(', '));
+});
+
+test('امنیت: escAttr کاراکترهای خطرناک صفت را می‌بندد', () => {
+  const out = W('escAttr(String.fromCharCode(34)+" onclick="+String.fromCharCode(34)+"bad()")');
+  assert(out.indexOf(String.fromCharCode(34)) === -1, 'کوتیشن باز مانده');
+  assert(out.indexOf('=') === -1, 'مساوی باز مانده');
+  assert(W('escAttr(42)') === '42', 'عدد نباید خراب شود');
+  assert(W('escAttr(null)') === '', 'null باید رشتهٔ خالی شود');
+});
+
+test('امنیت: esc تگ را خنثی می‌کند', () => {
+  const out = W('esc("<img src=x onerror=alert(1)>")');
+  assert(out.indexOf('<') === -1, 'تگ باز مانده');
+  assert(out.indexOf('&lt;') === 0, 'باید به موجودیت تبدیل شود');
+});
+
+test('امنیت: نام مخرب کاربر در فهرست کاربران تگ نمی‌سازد', () => {
+  const payload = '<img src=x onerror=alert(1)>';
+  const uid = W('Data.create("users",{full_name:' + JSON.stringify(payload) +
+    ',username:"xss_probe",password:"123456",role:"teacher",school_id:1,national_id:"0499370899"}).id');
+  /* داده نمونه بیش از هزار کاربر دارد و فهرست صفحه‌بندی می‌شود؛
+     پس باید به صفحهٔ آخر برویم وگرنه رکورد آزمایشی اصلاً رندر نمی‌شود
+     و آزمون بی‌آنکه چیزی بسنجد سبز می‌شود. */
+  const oldPage = W('S.page');
+  try{
+    W('S.page = Math.ceil(db.users.length/15)');
+    const html = W('viewUsers()');
+    assert(html.indexOf('xss_probe') > -1, 'رکورد آزمایشی رندر نشد — آزمون بی‌اثر است');
+    const n = W('(function(){var d=document.createElement("div");' +
+      'd.innerHTML=viewUsers();return d.querySelectorAll("img").length;})()');
+    assert(n === 0, 'تگ img تزریق شد! تعداد: ' + n);
+    assert(html.indexOf('&lt;img') > -1, 'نام باید به‌صورت متن خنثی‌شده بیاید');
+  } finally { W('S.page = ' + oldPage); W('Data.delete("users",' + uid + ')'); }
+});
+
+test('امنیت: نام مخرب در صفت data تگ نمی‌شکند', () => {
+  const payload = 'x" data-act="logout" x="';
+  const aid = W('Data.create("announcements",{title:' + JSON.stringify(payload) +
+    ',body:"متن",school_id:1,date:todayISO()}).id');
+  try{
+    const n = W('(function(){var d=document.createElement("div");' +
+      'd.innerHTML=viewAnnouncements();' +
+      'return d.querySelectorAll("[data-act=logout]").length;})()');
+    assert(n === 0, 'صفت جعلی ساخته شد! تعداد: ' + n);
+  } finally { W('Data.delete("announcements",' + aid + ')'); }
+});
+
+test('حریم خصوصی: هیچ شمارهٔ تلفن قابل تخصیص در کد نیست', () => {
+  const fs = require('fs'), path = require('path');
+  const dir = path.join(__dirname, '..', 'src', 'js');
+  const bad = [];
+  fs.readdirSync(dir).forEach(f => {
+    (fs.readFileSync(path.join(dir, f), 'utf8').match(/09\d{9}/g) || [])
+      .forEach(p => { if(!p.startsWith('0999')) bad.push(f + ': ' + p); });
+  });
+  /* ۰۹۹۹ در ایران به هیچ اپراتوری تخصیص نیافته، پس امکان ندارد
+     شمارهٔ یک شهروند واقعی باشد */
+  assert(bad.length === 0, 'شمارهٔ بالقوه واقعی: ' + bad.slice(0, 3).join(' · '));
+});
+
+test('حریم خصوصی: کد ملی نمونه از بازهٔ صادرنشده ساخته می‌شود', () => {
+  const sample = W('db.users.slice(0,200).map(function(u){return u.national_id}).filter(Boolean)');
+  assert(sample.length > 50, 'نمونهٔ کافی نبود');
+  const outside = sample.filter(n => !String(n).startsWith('999'));
+  assert(outside.length === 0,
+    'کد ملی خارج از بازهٔ ساختگی: ' + outside.slice(0, 3).join(', '));
+});
+
+test('حریم خصوصی: تلفن کاربران نمونه همه ساختگی است', () => {
+  const phones = W('db.users.slice(0,300).map(function(u){return u.phone}).filter(Boolean)');
+  const bad = phones.filter(p => !String(p).startsWith('0999'));
+  assert(bad.length === 0, 'تلفن غیرساختگی: ' + bad.slice(0, 3).join(', '));
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

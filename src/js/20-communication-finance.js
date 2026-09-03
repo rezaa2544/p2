@@ -136,7 +136,7 @@ function viewNotifications(){
   const items=myNotifs();
   return `<div class="card"><div class="card-head"><h3>🔔 اعلان‌های من</h3>
     ${items.some(n=>!n.read)?'<button class="btn ghost sm" data-act="notif-readall">خواندن همه</button>':''}</div>
-    ${items.length?items.map(n=>`<div class="row" style="padding:12px 16px;border-bottom:1px solid var(--border);background:${n.read?'#fff':'var(--primary-soft)'};cursor:pointer" data-act="notif-open" data-id="${n.id}">
+    ${items.length?items.map(n=>`<div class="row" style="padding:12px 16px;border-bottom:1px solid var(--border);background:${n.read?'#fff':'var(--primary-soft)'};cursor:pointer" data-act="notif-open" data-id="${escAttr(n.id)}">
       <span style="font-size:19px">${NOTIF_ICON[n.type]||'🔔'}</span>
       <div style="min-width:0"><b>${esc(n.title)}</b><div class="small muted" style="line-height:1.9">${esc(n.body||'')}</div>
       <div class="small muted" style="opacity:.7">${jalali(n.created_at)}</div></div></div>`).join('')
@@ -166,8 +166,8 @@ function viewLeaves(){
       ${rows.map(l=>{const st=byId('users',l.student_id)||{};return `<tr><td><b>${esc(st.full_name||'—')}</b></td><td>${jalali(l.from_date)}</td><td>${jalali(l.to_date)}</td>
         <td class="small">${esc(l.reason||'')}</td><td><span class="badge ${LEAVE_FA[l.status][1]}">${LEAVE_FA[l.status][0]}</span></td>
         ${canDecide?`<td><div class="row" style="gap:5px;flex-wrap:nowrap">
-          ${l.status==='pending'?`<button class="btn sm" data-act="leave-ok" data-id="${l.id}">تأیید</button><button class="btn ghost sm" data-act="leave-no" data-id="${l.id}">رد</button>`:''}
-          <button class="icon-btn danger" title="حذف" data-act="leave-del" data-id="${l.id}">🗑️</button></div></td>`:''}</tr>`;}).join('')}
+          ${l.status==='pending'?`<button class="btn sm" data-act="leave-ok" data-id="${escAttr(l.id)}">تأیید</button><button class="btn ghost sm" data-act="leave-no" data-id="${escAttr(l.id)}">رد</button>`:''}
+          <button class="icon-btn danger" title="حذف" data-act="leave-del" data-id="${escAttr(l.id)}">🗑️</button></div></td>`:''}</tr>`;}).join('')}
     </tbody></table></div>`:empty('📨','درخواستی ثبت نشده',canCreate?'با دکمه «ثبت درخواست» مرخصی فرزندتان را اعلام کنید.':'')}</div>`;
 }
 
@@ -183,8 +183,8 @@ function viewCalendar(){
     ${list.length?`<div class="card-body" style="display:grid;gap:8px">${list.map(r=>`<div class="row" style="background:var(--surface-2);padding:10px 14px;border-radius:10px">
       <span class="badge ${KIND[r.kind][1]}">${KIND[r.kind][0]}</span><b>${esc(r.title)}</b><div class="spacer"></div>
       <span class="small muted">${jalali(r.date)}</span>
-      ${canEdit?`<button class="icon-btn" title="ویرایش" data-act="cal-edit" data-id="${r.id}">✏️</button>
-        <button class="icon-btn danger" title="حذف" data-act="cal-del" data-id="${r.id}">🗑️</button>`:''}</div>`).join('')}</div>`:empty('📅','موردی ثبت نشده','')}</div>`;
+      ${canEdit?`<button class="icon-btn" title="ویرایش" data-act="cal-edit" data-id="${escAttr(r.id)}">✏️</button>
+        <button class="icon-btn danger" title="حذف" data-act="cal-del" data-id="${escAttr(r.id)}">🗑️</button>`:''}</div>`).join('')}</div>`:empty('📅','موردی ثبت نشده','')}</div>`;
   return `<div class="grid g2">${card('🗓️ رویدادهای پیش‌رو',upcoming)}${card('🕘 رویدادهای گذشته',past.reverse())}</div>`;
 }
 
@@ -198,7 +198,7 @@ function viewChat(){
   const msgs=active?db.messages.filter(m=>(m.from_id===u.id&&m.to_id===active.id)||(m.from_id===active.id&&m.to_id===u.id)).sort((a,b)=>(a.created_at||'').localeCompare(b.created_at||'')||a.id-b.id):[];
   return `<div class="grid" style="grid-template-columns:260px 1fr;gap:14px;align-items:start">
     <div class="card"><div class="card-head"><h3>مخاطبان</h3></div>
-      ${list.length?list.map(p=>`<div class="row" style="padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:${active&&active.id===p.id?'var(--primary-soft)':'#fff'}" data-act="chat-open" data-id="${p.id}">
+      ${list.length?list.map(p=>`<div class="row" style="padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:${active&&active.id===p.id?'var(--primary-soft)':'#fff'}" data-act="chat-open" data-id="${escAttr(p.id)}">
         <div class="avatar">${esc(p.full_name[0])}</div><div style="min-width:0"><b style="font-size:13px">${esc(p.full_name)}</b><div class="small muted">${ROLE_FA[p.role]}</div></div></div>`).join(''):empty('💬','مخاطبی نیست','')}
     </div>
     <div class="card"><div class="card-head"><h3>${active?esc(active.full_name):'گفتگو'}</h3></div>
@@ -208,7 +208,7 @@ function viewChat(){
       </div>
       ${active?`<div class="card-head" style="border-top:1px solid var(--border);border-bottom:none;gap:8px">
         <input class="input" id="chat_body" placeholder="پیام خود را بنویسید…" style="flex:1" />
-        <button class="btn" data-act="chat-send" data-id="${active.id}">ارسال</button></div>`:''}
+        <button class="btn" data-act="chat-send" data-id="${escAttr(active.id)}">ارسال</button></div>`:''}
     </div></div>`;
 }
 
@@ -216,7 +216,7 @@ function viewChat(){
 function viewTuition(){
   const st=financeStats(), tab=S.tab==='ledger'?'ledger':S.tab==='plans'?'plans':S.tab==='students'?'students':'dash';
   const tabs=[['dash','📊 نمای مالی'],['students','👨‍🎓 شهریه دانش‌آموزان'],['plans','📋 طرح‌ها'],['ledger','📒 درآمد و هزینه']]
-    .map(([k,l])=>`<button class="btn ${tab===k?'':'ghost'}" data-act="tab" data-t="${k}">${l}</button>`).join('');
+    .map(([k,l])=>`<button class="btn ${tab===k?'':'ghost'}" data-act="tab" data-t="${escAttr(k)}">${l}</button>`).join('');
   const cards=`<div class="grid g4" style="margin-bottom:14px">
     ${statCard('🧾',rialShort(st.billed),'شهریه صادرشده (ریال)','blue')}
     ${statCard('💰',rialShort(st.collected),`وصول‌شده — ${fa(st.rate)}٪`,'green')}
@@ -259,17 +259,17 @@ function viewTuition(){
         return `<tr><td><b>${esc(s.full_name||'—')}</b></td><td>${esc((byId('classes',t.class_id)||{}).name||'—')}</td>
         <td class="small">${esc(p.title||'—')}</td><td>${rial(t.payable)}</td><td>${rial(t.paid)}</td>
         <td><span class="badge ${S_[1]}">${S_[0]}</span></td>
-        <td><button class="btn sm" data-act="tuition-detail" data-id="${t.student_id}">اقساط</button></td></tr>`;}).join('')}
+        <td><button class="btn sm" data-act="tuition-detail" data-id="${escAttr(t.student_id)}">اقساط</button></td></tr>`;}).join('')}
       </tbody></table></div>
-      ${pages>1?`<div class="pager">${Array.from({length:pages},(_,i)=>`<button class="page ${S.page===i+1?'active':''}" data-act="page" data-p="${i+1}">${fa(i+1)}</button>`).slice(Math.max(0,S.page-4),S.page+3).join('')}</div>`:''}</div>`;
+      ${pages>1?`<div class="pager">${Array.from({length:pages},(_,i)=>`<button class="page ${S.page===i+1?'active':''}" data-act="page" data-p="${escAttr(i+1)}">${fa(i+1)}</button>`).slice(Math.max(0,S.page-4),S.page+3).join('')}</div>`:''}</div>`;
   } else if(tab==='plans'){
     const rows=schoolScope('tuition_plans');
     body=`<div class="card"><div class="card-head"><h3>طرح‌های شهریه</h3><button class="btn" data-act="plan-new">➕ طرح جدید</button></div>
       ${rows.length?`<div class="table-wrap"><table class="table"><thead><tr><th>عنوان</th><th>مبلغ</th><th>اقساط</th><th>اولین سررسید</th><th>صادرشده</th><th></th></tr></thead><tbody>
       ${rows.map(p=>`<tr><td><b>${esc(p.title)}</b></td><td>${rial(p.amount)}</td><td>${fa(p.installments)} قسط / هر ${fa(p.interval_days)} روز</td>
         <td class="small">${jalali(p.first_due)}</td><td>${fa(db.tuitions.filter(t=>t.plan_id===p.id).length)}</td>
-        <td><button class="icon-btn" title="ویرایش" data-act="plan-edit" data-id="${p.id}">✏️</button>
-          <button class="icon-btn danger" title="حذف" data-act="plan-del" data-id="${p.id}">🗑️</button></td></tr>`).join('')}
+        <td><button class="icon-btn" title="ویرایش" data-act="plan-edit" data-id="${escAttr(p.id)}">✏️</button>
+          <button class="icon-btn danger" title="حذف" data-act="plan-del" data-id="${escAttr(p.id)}">🗑️</button></td></tr>`).join('')}
       </tbody></table></div>`:empty('📋','طرحی تعریف نشده','')}</div>`;
   } else {
     const all=schoolScope('transactions').sort((a,b)=>b.date.localeCompare(a.date));
@@ -279,10 +279,10 @@ function viewTuition(){
       ${rows.map(t=>`<tr><td class="small">${jalali(t.date)}</td><td><span class="badge ${t.kind==='income'?'b-green':'b-red'}">${t.kind==='income'?'درآمد':'هزینه'}</span></td>
         <td>${esc(t.category)}</td><td class="small">${esc(t.description||'—')}</td>
         <td style="color:${t.kind==='income'?'var(--green)':'var(--red)'}"><b>${rial(t.amount)}</b></td>
-        <td>${t.installment_id?'<span class="small muted">مربوط به قسط</span>':`<button class="icon-btn" title="ویرایش" data-act="trx-edit" data-id="${t.id}">✏️</button>
-          <button class="icon-btn danger" title="حذف" data-act="trx-del" data-id="${t.id}">🗑️</button>`}</td></tr>`).join('')}
+        <td>${t.installment_id?'<span class="small muted">مربوط به قسط</span>':`<button class="icon-btn" title="ویرایش" data-act="trx-edit" data-id="${escAttr(t.id)}">✏️</button>
+          <button class="icon-btn danger" title="حذف" data-act="trx-del" data-id="${escAttr(t.id)}">🗑️</button>`}</td></tr>`).join('')}
       </tbody></table></div>
-      ${pages>1?`<div class="pager">${Array.from({length:pages},(_,i)=>`<button class="page ${S.page===i+1?'active':''}" data-act="page" data-p="${i+1}">${fa(i+1)}</button>`).slice(Math.max(0,S.page-4),S.page+3).join('')}</div>`:''}</div>`;
+      ${pages>1?`<div class="pager">${Array.from({length:pages},(_,i)=>`<button class="page ${S.page===i+1?'active':''}" data-act="page" data-p="${escAttr(i+1)}">${fa(i+1)}</button>`).slice(Math.max(0,S.page-4),S.page+3).join('')}</div>`:''}</div>`;
   }
   return cards+`<div class="row" style="margin-bottom:14px;flex-wrap:wrap">${tabs}</div>`+body;
 }
@@ -295,7 +295,7 @@ function viewMyTuition(){
   const sel_=S.child&&kids.some(k=>k.id===S.child)?S.child:kids[0].id;
   const s=tuitionSummary(sel_);
   return `<div class="card"><div class="card-head"><h3>💰 شهریه و اقساط</h3>
-    ${kids.length>1?`<div class="row" style="gap:6px">${kids.map(k=>`<button class="btn ${k.id===sel_?'':'ghost'} sm" data-act="child" data-id="${k.id}">${esc(k.full_name)}</button>`).join('')}</div>`:''}</div>
+    ${kids.length>1?`<div class="row" style="gap:6px">${kids.map(k=>`<button class="btn ${k.id===sel_?'':'ghost'} sm" data-act="child" data-id="${escAttr(k.id)}">${esc(k.full_name)}</button>`).join('')}</div>`:''}</div>
     <div class="card-body">
       <div class="grid g3" style="margin-bottom:14px">
         <div><div class="small muted">مبلغ کل</div><b>${rial(s.total)} ریال</b></div>
@@ -309,8 +309,8 @@ function viewMyTuition(){
           <td><span class="badge ${INST_FA[i.status][1]}">${INST_FA[i.status][0]}</span></td>
           <td class="small">${PAY_FA[i.method]||'—'}${i.ref_id?`<div class="small muted">${esc(i.ref_id)}</div>`:''}</td>
           <td><div class="row" style="gap:5px">
-            ${i.status!=='paid'&&i.status!=='canceled'?`<button class="btn sm" data-act="pay-online" data-id="${i.id}">💳 پرداخت</button>`:''}
-            ${i.paid_amount>0?`<button class="icon-btn" title="رسید" data-act="receipt" data-id="${i.id}">🧾</button>`:''}
+            ${i.status!=='paid'&&i.status!=='canceled'?`<button class="btn sm" data-act="pay-online" data-id="${escAttr(i.id)}">💳 پرداخت</button>`:''}
+            ${i.paid_amount>0?`<button class="icon-btn" title="رسید" data-act="receipt" data-id="${escAttr(i.id)}">🧾</button>`:''}
           </div></td></tr>`;}).join('')}
       </tbody></table></div>`:empty('🧾','قسطی ثبت نشده','')}
     </div></div>`;

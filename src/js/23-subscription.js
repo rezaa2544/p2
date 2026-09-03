@@ -359,7 +359,7 @@ const P10_ACTIONS = {
     S.stack=[];S.filters={};S.child=null;
     S.route=(role==='parent')?(subOf(S.user.id,true).active?'dashboard':'subscription')
       :(role==='edu_office'?'officedash':'dashboard');
-    localStorage.setItem(PERSONA_KEY,S.persona||'');
+    Store.set(PERSONA_KEY,S.persona||'');
     toast('وارد '+(PANEL_TITLE[role]||'پنل')+' شدید','ok');
     render();
   },

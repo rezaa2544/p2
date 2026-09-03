@@ -692,19 +692,12 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
     severity: 'critical',
     safe: false,
     check: function(){
-      try{
-        var k = '__diag_probe__';
-        localStorage.setItem(k, '1');
-        var v = localStorage.getItem(k);
-        localStorage.removeItem(k);
-        if(v !== '1')
-          return { ok:false, count:1, items:[{ خطا:'مقدار خوانده‌شده با نوشته‌شده فرق دارد' }],
-                   msg:'حافظهٔ مرورگر درست پاسخ نمی‌دهد' };
-        return { ok:true };
-      }catch(e){
-        return { ok:false, count:1, items:[{ خطا:String(e && e.message) }],
-          msg:'نوشتن در حافظهٔ مرورگر ممکن نیست — داده ماندگار نمی‌شود' };
-      }
+      /* از راه لایهٔ داده می‌سنجیم، نه مستقیم — همان مسیری که
+         خود برنامه استفاده می‌کند، وگرنه آزمون واقعیت را نمی‌گوید */
+      if(!Store.available())
+        return { ok:false, count:1, items:[{ خطا:'نوشتن یا خواندن ناموفق بود' }],
+          msg:'حافظهٔ مرورگر در دسترس نیست — داده ماندگار نمی‌شود' };
+      return { ok:true };
     },
     fix: null
   },
@@ -1044,7 +1037,7 @@ function diagAutoStart(intervalMs){
   if(intervalMs) DIAG_AUTO.interval = intervalMs;
   DIAG_AUTO.on = true;
   DIAG_AUTO.timer = setInterval(diagAutoTick, DIAG_AUTO.interval);
-  try{ localStorage.setItem('sms_diag_auto_v1', '1'); }catch(e){}
+  Store.set('sms_diag_auto_v1', '1');
   return true;
 }
 
@@ -1052,7 +1045,7 @@ function diagAutoStop(){
   if(DIAG_AUTO.timer) clearInterval(DIAG_AUTO.timer);
   DIAG_AUTO.timer = null;
   DIAG_AUTO.on = false;
-  try{ localStorage.removeItem('sms_diag_auto_v1'); }catch(e){}
+  Store.remove('sms_diag_auto_v1');
   return true;
 }
 

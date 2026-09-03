@@ -1,9 +1,18 @@
-/* ============================ persistence (mutation log) ============================ */
+/* ═══════════════════════════════════════════════════════════════════
+   ماندگاری — دفترچهٔ تغییرات
+   ═══════════════════════════════════════════════════════════════════
+   داده به‌صورت «دفترچهٔ عملیات» نگه داشته می‌شود نه عکس لحظه‌ای:
+   هر درج/ویرایش/حذف یک سطر است و وضعیت فعلی از بازپخش آن‌ها می‌آید.
+   همین ساختار است که همگام‌سازی با سرور را ممکن می‌کند — همان سطرها
+   به صف 27-sync.js می‌روند.
+
+   ⚠️ دسترسی به حافظه فقط از راه `Store` (فایل 00-data-layer.js).
+   ═══════════════════════════════════════════════════════════════════ */
 const LOG_KEY='sms_log_v1', SESSION_KEY='sms_session_v1', BOSS_KEY='sms_boss_v1', PERSONA_KEY='sms_persona_v1';
 let log=[];
 /* هنگام بازپخش لاگ یا تولید داده نمونه، صف همگام‌سازی نباید پر شود */
 let SYNC_MUTED=false;
-function loadLog(){try{log=JSON.parse(localStorage.getItem(LOG_KEY)||'[]');}catch(e){log=[];}}
+function loadLog(){ log = Store.getJSON(LOG_KEY, []) || []; if(!Array.isArray(log)) log = []; }
 var STORAGE_WARNED=false, STORAGE_FULL=false;
 /* ---- دسته‌ای کردن ذخیره‌سازی ----
    هر بار saveLog کل لاگ را JSON.stringify می‌کند. در عملیات انبوه
@@ -32,23 +41,22 @@ function batchWrites(fn){
 
 function saveLog(){
   if(_BATCH_DEPTH > 0){ _BATCH_DIRTY = true; return; }
-  try{
-    var payload=JSON.stringify(log);
-    localStorage.setItem(LOG_KEY,payload);
+  var payload = JSON.stringify(log);
+  /* Store.set خودش استثنا را می‌گیرد و false برمی‌گرداند */
+  if(Store.set(LOG_KEY, payload)){
     STORAGE_FULL=false;
     /* هشدار پیش از پرشدن: در ۸۰٪ سقف تقریبی ۵ مگابایت */
-    var used=payload.length+(function(){try{return (localStorage.getItem(SYNC_QUEUE_KEY)||'').length;}catch(e){return 0;}})();
+    var used = payload.length + Store.bytes(SYNC_QUEUE_KEY);
     if(!STORAGE_WARNED && used > 0.8*5*1048576){
       STORAGE_WARNED=true;
       if(typeof toast==='function')
         toast('حافظهٔ دستگاه رو به پر شدن است. لطفاً به اینترنت وصل شوید تا داده‌ها ارسال شود.','err');
     }
-  }catch(e){
+  }else{
     /* حافظه پر شد — کاربر باید بداند، وگرنه بی‌صدا داده از دست می‌رود */
     STORAGE_FULL=true;
     if(typeof toast==='function')
       toast('⚠️ حافظهٔ دستگاه پر است! تغییرات جدید ذخیره نشد. برای جلوگیری از از دست رفتن داده، به اینترنت وصل شوید.','err');
-    if(typeof console!=='undefined'&&console.error) console.error('saveLog failed:',e);
   }
 }
 /** آیا ذخیره‌سازی محلی دچار مشکل است؟ (برای نشانگر وضعیت) */
@@ -101,8 +109,8 @@ const insert=(c,o)=>{o.id=nextId(c);applyOp({t:'ins',c,data:o});return o;};
 const update=(c,id,patch)=>applyOp({t:'upd',c,id,data:patch});
 const remove=(c,id)=>applyOp({t:'del',c,id});
 function resetAll(){
-  localStorage.removeItem(LOG_KEY);
-  localStorage.removeItem(SYNC_QUEUE_KEY);
-  localStorage.removeItem(SYNC_META_KEY);
+  Store.remove(LOG_KEY);
+  Store.remove(SYNC_QUEUE_KEY);
+  Store.remove(SYNC_META_KEY);
   location.reload();
 }

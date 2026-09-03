@@ -10,7 +10,7 @@ function viewClasses(){
    ${rows.length?`<div class="grid g3" style="padding:16px">${(()=>{const _ec=(typeof idxEnrollByClass==='function')?idxEnrollByClass():null;return rows.map(c=>{const n=_ec?(_ec.get(c.id)||[]).length:db.enrollments.filter(e=>e.class_id===c.id).length;const fill=Math.min(100,Math.round(n/(c.capacity||30)*100));const ht=c.homeroom_teacher_id?byId('users',c.homeroom_teacher_id):null;
      return `<div class="card" style="padding:15px;box-shadow:none">
       <div class="row"><b style="font-size:15px">${esc(c.name)}</b><div class="spacer"></div>
-       ${canEdit?`<button class="icon-btn" data-act="class-edit" data-id="${c.id}">✏️</button> <button class="icon-btn danger" data-act="class-del" data-id="${c.id}">🗑️</button>`:''}</div>
+       ${canEdit?`<button class="icon-btn" data-act="class-edit" data-id="${escAttr(c.id)}">✏️</button> <button class="icon-btn danger" data-act="class-del" data-id="${escAttr(c.id)}">🗑️</button>`:''}</div>
       <div class="row small muted" style="margin-top:6px"><span class="badge b-blue">${esc(c.grade||'—')}</span>${c.field?`<span class="badge b-purple">${esc(c.field)}</span>`:''}${c.room?`<span>🚪 ${esc(c.room)}</span>`:''}</div>
       <div class="small muted" style="margin-top:8px">سرپرست: ${esc(ht?ht.full_name:'—')}</div>
       ${S.user.role==='superadmin'?`<div class="small muted">${esc(byId('schools',c.school_id).name)}</div>`:''}
@@ -85,8 +85,8 @@ function viewSubjects(){
        ${list.map(s=>`<tr><td><b>${esc(s.name)}</b></td><td class="muted">${esc(s.code||'—')}</td>
          <td><span class="badge b-blue">${fa(s.weekly_hours)} ساعت</span></td>
          ${isSuper?`<td class="muted">${esc((byId('schools',s.school_id)||{}).name||'—')}</td>`:''}
-         ${canEdit?`<td><button class="icon-btn" title="ویرایش" data-act="subject-edit" data-id="${s.id}">✏️</button>
-                      <button class="icon-btn danger" title="حذف" data-act="subject-del" data-id="${s.id}">🗑️</button></td>`:''}</tr>`).join('')}
+         ${canEdit?`<td><button class="icon-btn" title="ویرایش" data-act="subject-edit" data-id="${escAttr(s.id)}">✏️</button>
+                      <button class="icon-btn danger" title="حذف" data-act="subject-del" data-id="${escAttr(s.id)}">🗑️</button></td>`:''}</tr>`).join('')}
        </tbody></table></div></div>`;}).join('')
    :empty('📚','درسی یافت نشد',(q||flv||fgr||fbr||ffd)?'با این فیلترها نتیجه‌ای نبود.':'کتاب‌های استاندارد را وارد کنید یا درس جدید بسازید.',
      canEdit?'<button class="btn" data-act="subject-import">📥 افزودن کتاب‌های استاندارد</button>':'')}

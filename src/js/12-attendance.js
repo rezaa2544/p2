@@ -18,8 +18,8 @@ function viewAttendance(){
   const all=roster.map(rec);
   const cnt=k=>all.filter(a=>a&&a.status===k).length;
   return `<div class="card"><div class="card-head">
-    <div class="row"><select class="select" style="width:180px" data-f="class">${cls.map(c=>`<option value="${c.id}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
-     <input class="input" style="width:160px" type="date" data-f="date" value="${date}" /><span class="badge b-gray">${jalali(date)}</span></div>
+    <div class="row"><select class="select" style="width:180px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
+     <input class="input" style="width:160px" type="date" data-f="date" value="${escAttr(date)}" /><span class="badge b-gray">${jalali(date)}</span></div>
     <div class="row"><input class="input" style="width:160px" placeholder="جستجوی دانش‌آموز…" data-f="q" value="${esc(q)}" />
      <button class="btn ghost sm" data-act="att-all" data-s="present">✅ همه حاضر</button>
      <button class="btn ghost sm" data-act="att-all" data-s="absent">❌ همه غایب</button></div></div>
@@ -28,7 +28,7 @@ function viewAttendance(){
     <span class="badge b-gray">ثبت‌نشده: ${fa(all.filter(a=>!a).length)}</span><div class="spacer"></div><span class="small muted">تغییرات بلافاصله ذخیره می‌شود</span></div>
    ${studs.length?`<div class="table-wrap"><table><thead><tr><th>#</th><th>نام دانش‌آموز</th><th>ثبت وضعیت</th><th>وضعیت فعلی</th></tr></thead><tbody>
     ${studs.map((s,i)=>{const r=rec(s);return `<tr><td class="muted">${fa(i+1)}</td><td><b>${esc(s.full_name)}</b>${r&&r.note?`<div class="small muted">${esc(r.note)}</div>`:''}</td>
-     <td>${['present','absent','late','excused'].map(k=>`<button class="att-btn ${r&&r.status===k?'on-'+k:''}" data-act="att-set" data-id="${s.id}" data-s="${k}">${ATT_FA[k]}</button>`).join('')}</td>
+     <td>${['present','absent','late','excused'].map(k=>`<button class="att-btn ${r&&r.status===k?'on-'+k:''}" data-act="att-set" data-id="${escAttr(s.id)}" data-s="${escAttr(k)}">${ATT_FA[k]}</button>`).join('')}</td>
      <td>${r?`<span class="badge ${ATT_BADGE[r.status]}">${ATT_FA[r.status]}</span>`:'<span class="badge b-gray">ثبت نشده</span>'}</td></tr>`;}).join('')}
    </tbody></table></div>`:empty('🔍','دانش‌آموزی یافت نشد','این کلاس دانش‌آموزی ندارد یا جستجو نتیجه‌ای نداشت.')}</div>`;
 }

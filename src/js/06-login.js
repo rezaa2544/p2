@@ -19,7 +19,7 @@ function renderLogin(){
      <div id="lerr"></div>
      <button class="btn" style="width:100%;justify-content:center;padding:12px;font-size:15px" data-act="login">ورود</button>
      <div class="login-sep">حساب‌های نمونه</div>
-     ${accs.map(a=>`<div class="demo-item" data-act="pick" data-u="${a.username}">
+     ${accs.map(a=>`<div class="demo-item" data-act="pick" data-u="${escAttr(a.username)}">
         <span class="badge ${ROLE_BADGE[a.role]}">${ROLE_FA[a.role]}</span>
         <b>${esc(a.username)}</b></div>`).join('')}
    </div></div></div>`;

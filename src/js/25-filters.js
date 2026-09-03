@@ -39,14 +39,14 @@ function filterPanel(route, inner){
   const open = !!S.fopen[route];
   return `
   <div class="filter-zone">
-    <button class="btn ghost sm filter-toggle${open?' on':''}${n?' has':''}" data-act="filters-toggle" data-key="${route}">
+    <button class="btn ghost sm filter-toggle${open?' on':''}${n?' has':''}" data-act="filters-toggle" data-key="${escAttr(route)}">
       <span>⚙️</span><span>فیلترها</span>
       ${n?`<span class="badge b-blue sm">${fa(n)}</span>`:''}
       <span class="chev">${open?'▲':'▼'}</span>
     </button>
     ${open?`<div class="filter-body">
       <div class="row" style="gap:8px;flex-wrap:wrap">${inner}</div>
-      ${n?`<div class="row" style="margin-top:10px"><button class="btn ghost sm" data-act="filters-clear" data-key="${route}">✖️ پاک کردن فیلترها</button></div>`:''}
+      ${n?`<div class="row" style="margin-top:10px"><button class="btn ghost sm" data-act="filters-clear" data-key="${escAttr(route)}">✖️ پاک کردن فیلترها</button></div>`:''}
     </div>`:''}
   </div>`;
 }
