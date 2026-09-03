@@ -2623,6 +2623,25 @@ test('IDOR: قرارداد سرور الگوی شمردن شناسه را مست
     assert(t.indexOf(k) > -1, 'بند گمشده در قرارداد سرور: ' + k));
 });
 
+test('قرارداد سرور: سه دفاع تکمیلی مستند شده‌اند', () => {
+  const fs = require('fs'), path = require('path');
+  const t = fs.readFileSync(
+    path.join(__dirname, '..', 'docs', 'SERVER_SECURITY_CONTRACT.md'), 'utf8');
+  /* هر کلید نمایندهٔ یک تصمیم است، نه فقط یک واژه */
+  const keys = [
+    'تأخیر تصاعدی',            // قفل سخت نباید بگذارند
+    'زمان پاسخ',               // نشت از راه اختلاف زمان
+    'Content-Security-Policy',
+    'nonce',                    // راه‌حل خروجی تک‌فایلی
+    'X-Frame-Options',
+    'Referrer-Policy',
+    'کندسازی',                 // پاسخ تدریجی نه قطع فوری
+    'فقط‌افزودنی'              // سابقهٔ سمت سرور
+  ];
+  const missing = keys.filter(k => t.indexOf(k) === -1);
+  assert(missing.length === 0, 'بند گمشده در قرارداد سرور: ' + missing.join(' · '));
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));
