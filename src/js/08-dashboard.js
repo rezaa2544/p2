@@ -13,7 +13,10 @@ function annCard(){
 
 function viewDashboard(){
   const u=S.user;
-  if(u.role==='superadmin'||u.role==='manager')return adminDash()+annCard();
+  if(u.role==='superadmin'||u.role==='manager')
+    return adminDash()
+      + (typeof notifyDailyCard==='function'?notifyDailyCard():'')
+      + annCard();
   if(u.role==='teacher')return teacherDash()+annCard();
   return familyDash()+annCard();
 }

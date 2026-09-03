@@ -72,6 +72,18 @@ function homeRoute(role){
    برخی اکشن‌ها داده را تغییر می‌دهند. حتی اگر مهاجم دکمه را دستی بسازد،
    باید رد شود. کلید = نام اکشن، مقدار = نقش‌های مجاز.               */
 var ACTION_ROLES = {
+  /* اطلاع‌رسانی پیامکی: تأیید و ارسال فقط مدیر.
+     ⚠️ دبیر پیام می‌سازد ولی حق تأییدش را ندارد — همان تفکیکی که
+     کل مکانیزم بازبینی بر آن بنا شده است. */
+  'notify-approve':     ['manager','superadmin'],
+  'notify-approve-sel': ['manager','superadmin'],
+  'notify-reject':      ['manager','superadmin'],
+  'notify-reject-sel':  ['manager','superadmin'],
+  'notify-edit':        ['manager','superadmin'],
+  'notify-save-edit':   ['manager','superadmin'],
+  'notify-settings':    ['manager','superadmin'],
+  'notify-save-settings':['manager','superadmin'],
+  'notify-auto-off':    ['manager','superadmin'],
   /* حضور و غیاب: فقط دبیر و مدیر */
   'att-set':       ['teacher','manager','superadmin'],
   'att-all':       ['teacher','manager','superadmin'],

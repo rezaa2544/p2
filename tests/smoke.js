@@ -3252,6 +3252,155 @@ test('اطلاع‌رسانی: تنظیمات تودرتوی kinds کلیدها�
   });
 });
 
+/* ── صفحهٔ صف مدیر (گام ۲، دور ۴۲) ───────────────────────────── */
+
+/** رندر صفحهٔ صف در نقش مدیرِ مدرسهٔ sid */
+const renderQueue = (sid) => W('(()=>{S.user=db.users.find(u=>u.role==="manager"&&'
+  + 'u.school_id===' + sid + ')||S.user;S.persona=null;S.boss=null;'
+  + 'S.route="notifyqueue";S.filters={};return renderRoute();})()');
+
+test('صف مدیر: با سامانهٔ خاموش راهنمای روشن‌کردن نشان می‌دهد', () => {
+  withNotify({ enabled: false }, (sid) => {
+    const h = renderQueue(sid);
+    assert(h.length > 200, 'صفحه کوتاه است: ' + h.length);
+    assert(h.indexOf('notify-settings') > -1, 'دکمهٔ تنظیمات نیست');
+    assert(h.indexOf('notify-auto-bar') === -1, 'هشدار خودکار نباید باشد');
+  });
+});
+
+test('صف مدیر: پیام‌های در انتظار را با دکمهٔ دسته‌جمعی نشان می‌دهد', () => {
+  withNotify({ enabled: true }, (sid) => {
+    const made = W('(()=>{const w=smsWalletOf(' + sid + ');'
+      + 'update("sms_wallet",w.w.id,{balance:1000});'
+      + 'const k=db.users.filter(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0).slice(0,4);let n=0;'
+      + 'k.forEach(s=>{if(notifyRequest({school_id:' + sid + ',kind:"absence",student_id:s.id,'
+      + 'student_name:s.full_name,date_fa:"۱۲ شهریور"}))n++;});return n;})()');
+    assert(made >= 3, 'برای این آزمون دست‌کم ۳ پیام لازم بود، ساخته شد: ' + made);
+    const h = renderQueue(sid);
+    const rows = (h.match(/nq-pick/g) || []).length;
+    assert(rows === made, 'شمار ردیف با پیام‌ها نخواند: ' + rows + ' ≠ ' + made);
+    assert(h.indexOf('notify-approve-sel') > -1, 'دکمهٔ تأیید دسته‌جمعی نیست');
+    assert(h.indexOf('notify-cost') > -1, 'کارت برآورد هزینه نیست');
+  });
+});
+
+test('صف مدیر: نام مخرب دانش‌آموز در صف اجرا نمی‌شود (XSS)', () => {
+  /* ⚠️ body متن پیامک است و مدیر ویرایشش می‌کند ⇒ ورودی کاربر تمام‌عیار */
+  withNotify({ enabled: true }, (sid) => {
+    const r = JSON.parse(W('(()=>{const s=db.users.find(u=>u.role==="student"&&u.school_id==='
+      + sid + '&&notifyParentsOf(u.id).length>0);const old=s.full_name;'
+      + 'const bad="<img src=x onerror=alert(1)>";update("users",s.id,{full_name:bad});'
+      + 'notifyRequest({school_id:' + sid + ',kind:"absence",student_id:s.id,'
+      + 'student_name:bad,date_fa:"۱۲ شهریور"});'
+      + 'S.user=db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+      + 'S.persona=null;S.route="notifyqueue";S.filters={};const h=renderRoute();'
+      + 'update("users",s.id,{full_name:old});'
+      + 'return JSON.stringify({raw:h.indexOf("<img src=x onerror")>-1,'
+      + 'escaped:h.indexOf("&lt;img src=x onerror")>-1});})()'));
+    assert(r.raw === false, '🔴 تگ خام در HTML رفت — رخنهٔ XSS');
+    assert(r.escaped === true, 'نام باید فرارداده‌شده دیده شود');
+  });
+});
+
+test('صف مدیر: هشدار حالت خودکار در همهٔ صفحات مدیر دیده می‌شود', () => {
+  /* ⚠️ مدیری که سراغ صف نمی‌رود، همان کسی است که خودکار را روشن
+     کرده. اگر هشدار فقط در صفحهٔ صف باشد، هرگز نمی‌بیندش. */
+  withNotify({ enabled: true, autoSend: true }, (sid) => {
+    const pages = ['dashboard', 'users', 'classes', 'attendance'];
+    const seen = JSON.parse(W('(()=>{S.user=db.users.find(u=>u.role==="manager"&&'
+      + 'u.school_id===' + sid + ')||S.user;S.persona=null;S.boss=null;'
+      + 'return JSON.stringify(' + JSON.stringify(pages) + '.map(p=>{'
+      + 'S.route=p;S.filters={};return renderShell().indexOf("notify-auto-bar")>-1;}));})()'));
+    const missing = pages.filter((p, i) => !seen[i]);
+    assert(missing.length === 0, 'هشدار در این صفحات نبود: ' + missing.join(' · '));
+  });
+});
+
+test('صف مدیر: با خودکارِ خاموش هیچ هشداری نشان داده نمی‌شود', () => {
+  withNotify({ enabled: true, autoSend: false }, (sid) => {
+    const h = W('(()=>{S.user=db.users.find(u=>u.role==="manager"&&u.school_id==='
+      + sid + ')||S.user;S.persona=null;S.route="dashboard";S.filters={};'
+      + 'return renderShell();})()');
+    assert(h.indexOf('notify-auto-bar') === -1,
+      '🔴 هشدار خودکار در حالت خاموش نمایش داده شد');
+  });
+});
+
+test('صف مدیر: دبیر به صفحهٔ صف دسترسی ندارد', () => {
+  const saved = W('JSON.stringify({u:S.user&&S.user.id,r:S.route})');
+  try {
+    const can = W('canRoute("notifyqueue","teacher")');
+    assert(can === false, '🔴 دبیر اجازهٔ دیدن صف را دارد');
+    const forbidden = W('(()=>{const t=db.users.find(u=>u.role==="teacher");'
+      + 'S.user=t;S.persona=null;S.boss=null;S.route="notifyqueue";S.filters={};'
+      + 'const h=renderRoute();return h.indexOf("nq-pick")===-1;})()');
+    assert(forbidden === true, '🔴 محتوای صف به دبیر نشان داده شد');
+  } finally {
+    const o = JSON.parse(saved);
+    W('S.user=byId("users",' + o.u + ')||S.user;S.route=' + JSON.stringify(o.r) + ';S.filters={}');
+  }
+});
+
+test('صف مدیر: کنش‌های تأیید و رد فقط برای مدیر مجازند', () => {
+  const acts = ['notify-approve', 'notify-approve-sel', 'notify-reject',
+                'notify-reject-sel', 'notify-save-settings'];
+  acts.forEach((a) => {
+    const roles = JSON.parse(W('JSON.stringify(ACTION_ROLES[' + JSON.stringify(a) + ']||[])'));
+    assert(roles.length > 0, 'کنش ' + a + ' در ACTION_ROLES ثبت نشده');
+    assert(roles.indexOf('teacher') === -1, '🔴 دبیر اجازهٔ ' + a + ' دارد');
+    assert(roles.indexOf('parent') === -1, '🔴 ولی اجازهٔ ' + a + ' دارد');
+    assert(roles.indexOf('manager') > -1, 'مدیر باید اجازهٔ ' + a + ' داشته باشد');
+  });
+});
+
+test('صف مدیر: فیلتر نوع، فقط همان دسته را نشان می‌دهد', () => {
+  withNotify({ enabled: true }, (sid) => {
+    const r = JSON.parse(W('(()=>{const w=smsWalletOf(' + sid + ');'
+      + 'update("sms_wallet",w.w.id,{balance:1000});'
+      + 'const k=db.users.filter(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0).slice(0,3);'
+      + 'k.forEach(s=>notifyRequest({school_id:' + sid + ',kind:"absence",student_id:s.id,'
+      + 'student_name:s.full_name,date_fa:"۱۲ شهریور"}));'
+      + 'notifyRequest({school_id:' + sid + ',kind:"event",student_id:k[0].id,'
+      + 'text:"جلسه فردا"});'
+      + 'S.user=db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+      + 'S.persona=null;S.route="notifyqueue";'
+      + 'S.filters={nkind:"event"};const ev=(renderRoute().match(/nq-pick/g)||[]).length;'
+      + 'S.filters={nkind:"absence"};const ab=(renderRoute().match(/nq-pick/g)||[]).length;'
+      + 'S.filters={};const all=(renderRoute().match(/nq-pick/g)||[]).length;'
+      + 'return JSON.stringify({ev:ev,ab:ab,all:all});})()'));
+    assert(r.all >= 4, 'دادهٔ کافی ساخته نشد: ' + r.all);
+    assert(r.ev === 1, 'فیلتر رویداد باید ۱ ردیف بدهد، داد: ' + r.ev);
+    assert(r.ab === r.all - 1, 'فیلتر غیبت درست کار نکرد: ' + r.ab + ' از ' + r.all);
+  });
+});
+
+test('صف مدیر: کارت داشبورد شمار در انتظار را درست می‌گوید', () => {
+  withNotify({ enabled: true }, (sid) => {
+    const r = JSON.parse(W('(()=>{const k=db.users.filter(u=>u.role==="student"&&'
+      + 'u.school_id===' + sid + '&&notifyParentsOf(u.id).length>0).slice(0,2);'
+      + 'k.forEach(s=>notifyRequest({school_id:' + sid + ',kind:"absence",student_id:s.id,'
+      + 'student_name:s.full_name,date_fa:"۱۲ شهریور"}));'
+      + 'const n=notifyPending(' + sid + ').length;'
+      + 'const h=notifyDailyCard();'
+      + 'return JSON.stringify({n:n,has:h.indexOf("notify-daily")>-1,'
+      + 'shows:h.indexOf(fa(n))>-1});})()'));
+    assert(r.n >= 2, 'پیام ساخته نشد: ' + r.n);
+    assert(r.has === true, 'کارت داشبورد رندر نشد');
+    assert(r.shows === true, 'شمار در انتظار در کارت دیده نمی‌شود');
+  });
+});
+
+test('صف مدیر: مسیر تازه عنوان و جایگاه منو دارد', () => {
+  const t = JSON.parse(W('JSON.stringify(TITLES.notifyqueue||null)'));
+  assert(t && t[0], 'عنوان مسیر notifyqueue تعریف نشده');
+  const inNav = W('(NAV.manager||[]).some(g=>g[1].some(i=>i[0]==="notifyqueue"))');
+  assert(inNav === true, 'مسیر در منوی مدیر نیست');
+  const teacherNav = W('(NAV.teacher||[]).some(g=>g[1].some(i=>i[0]==="notifyqueue"))');
+  assert(teacherNav === false, '🔴 مسیر در منوی دبیر هم هست');
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

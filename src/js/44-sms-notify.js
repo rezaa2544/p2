@@ -411,3 +411,192 @@ function notifyPending(schoolId){
   });
   return out;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   بخش ۹ ▸ صفحهٔ صف پیام‌ها (مدیر)            روت: notifyqueue
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** برچسب فارسی و رنگ هر نوع پیام */
+var NOTIFY_KIND_FA = {
+  absence:    ['غیبت',    'b-red'],
+  late:       ['تأخیر',   'b-amber'],
+  grade:      ['نمره',    'b-purple'],
+  event:      ['رویداد',  'b-blue'],
+  correction: ['اصلاحیه', 'b-red']
+};
+
+/** برچسب یک رکورد صف؛ اصلاحیه بر نوع اصلی مقدم است */
+function notifyKindTag(q){
+  var k = q.correction_of ? 'correction' : q.kind;
+  var m = NOTIFY_KIND_FA[k] || [k, 'b-gray'];
+  return '<span class="badge ' + m[1] + '">' +
+         (q.correction_of ? '🔴 ' : '') + esc(m[0]) + '</span>';
+}
+
+/** ساعت کوتاه از ISO کامل: «۰۸:۳۱» */
+function notifyClock(iso){
+  var t = String(iso || '').slice(11, 16);
+  return t ? faD(t) : '—';
+}
+
+/**
+ * نوار هشدار حالت ارسال خودکار.
+ *
+ * ⚠️ عمداً در renderShell صدا زده می‌شود، نه فقط در این صفحه.
+ * مدیری که سراغ صف نمی‌رود، دقیقاً همان کسی است که خودکار را روشن
+ * کرده و باید مدام یادآوری شود.
+ */
+function notifyAutoBanner(){
+  if(typeof S === 'undefined' || !S.user) return '';
+  var role = (typeof activePersona === 'function') ? activePersona() : S.user.role;
+  if(role !== 'manager' && role !== 'superadmin') return '';
+  var sid = S.user.school_id;
+  if(!sid) return '';
+  var cfg = notifySettings(sid);
+  if(!cfg.enabled || !cfg.autoSend) return '';
+  return '<div class="notify-auto-bar">⚠️ حالت ارسال خودکار پیامک فعال است — ' +
+         'پیام‌ها بدون تأیید شما برای اولیا ارسال می‌شوند.' +
+         '<button class="btn sm ghost" data-act="notify-auto-off">خاموش کردن</button></div>';
+}
+
+/** کارت برآورد هزینه بالای صفحه */
+function notifyCostCard(sid, pend){
+  var wal  = smsWalletOf(sid);
+  var cfg  = notifySettings(sid);
+  var today = notifySentToday(sid);
+  var need = 0;
+  pend.forEach(function(q){ need += q.parts * (q.parent_ids || []).length; });
+  var capPct = Math.min(100, (today / (cfg.dailyCap || 1)) * 100);
+  return '<div class="card"><div class="card-body notify-cost">'
+    + '<div><span class="small muted">موجودی کیف</span><b>' + fa(wal.balance) + ' قطعه</b></div>'
+    + '<div><span class="small muted">نیاز صف</span><b>' + fa(need) + ' قطعه</b></div>'
+    + '<div><span class="small muted">امروز ارسال شد</span><b>' + fa(today)
+    +   ' از ' + fa(cfg.dailyCap) + '</b>' + bar(today, cfg.dailyCap,
+        capPct >= 100 ? 'var(--red)' : 'var(--primary)') + '</div>'
+    + '<div><span class="small muted">پس از ارسال</span><b'
+    +   (wal.balance - need < 0 ? ' style="color:var(--red)"' : '') + '>'
+    +   fa(wal.balance - need) + ' قطعه</b></div>'
+    + '</div></div>';
+}
+
+/**
+ * صفحهٔ صف پیام‌های اولیا.
+ *
+ * ⚠️ همهٔ متن‌های برخاسته از ورودی کاربر (نام دانش‌آموز داخل body)
+ * از esc() می‌گذرند. body متن پیامک است و مدیر می‌تواند ویرایشش
+ * کند ⇒ کاملاً ورودی کاربر است.
+ */
+function viewNotifyQueue(){
+  var sid = S.user.school_id;
+  var cfg = notifySettings(sid);
+
+  if(!cfg.enabled){
+    return '<div class="page-head"><h2>📨 صف پیام‌های اولیا</h2></div>'
+      + notifyAutoBanner()
+      + empty('🔕', 'اطلاع‌رسانی پیامکی خاموش است',
+              'برای ارسال خودکار پیام غیبت و رویداد به اولیا، این قابلیت را روشن کنید.',
+              '<button class="btn" data-act="notify-settings">تنظیمات اطلاع‌رسانی</button>');
+  }
+
+  var all  = notifyPending(sid);
+  var f    = S.filters.nkind || '';
+  var pend = f ? all.filter(function(q){
+    return f === 'correction' ? !!q.correction_of : (q.kind === f && !q.correction_of);
+  }) : all;
+
+  /* شمار هر دسته برای دکمه‌های فیلتر */
+  var cnt = { absence:0, late:0, grade:0, event:0, correction:0 };
+  all.forEach(function(q){
+    if(q.correction_of) cnt.correction++;
+    else if(cnt[q.kind] !== undefined) cnt[q.kind]++;
+  });
+
+  var chips = ['<button class="chip' + (f ? '' : ' on') +
+               '" data-act="notify-filter" data-k="">همه ' + fa(all.length) + '</button>'];
+  Object.keys(cnt).forEach(function(k){
+    if(!cnt[k]) return;
+    chips.push('<button class="chip' + (f === k ? ' on' : '') +
+      '" data-act="notify-filter" data-k="' + escAttr(k) + '">' +
+      (k === 'correction' ? '🔴 ' : '') + esc(NOTIFY_KIND_FA[k][0]) + ' ' + fa(cnt[k]) + '</button>');
+  });
+
+  var head = '<div class="page-head"><h2>📨 صف پیام‌های اولیا</h2>'
+    + '<div class="row">'
+    + '<button class="btn ghost sm" data-act="notify-settings">⚙️ تنظیمات</button>'
+    + '<button class="btn ghost sm" data-act="go" data-r="formssms">📊 دفتر پیامک</button>'
+    + '</div></div>';
+
+  if(!all.length){
+    return head + notifyAutoBanner() + notifyCostCard(sid, [])
+      + empty('✅', 'صف خالی است',
+              cfg.autoSend
+                ? 'حالت خودکار فعال است و پیام‌ها مستقیم ارسال می‌شوند.'
+                : 'هیچ پیامی در انتظار تأیید شما نیست.');
+  }
+
+  var rows = pend.map(function(q){
+    var st = q.student_id ? byId('users', q.student_id) : null;
+    var cl = q.class_id ? byId('classes', q.class_id) : null;
+    return '<tr>'
+      + '<td><input type="checkbox" class="nq-pick" value="' + q.id + '"></td>'
+      + '<td>' + notifyKindTag(q) + '</td>'
+      + '<td>' + esc(st ? st.full_name : '—') + '</td>'
+      + '<td class="small muted">' + esc(cl ? cl.name : '—') + '</td>'
+      + '<td class="small muted">' + notifyClock(q.created_at) + '</td>'
+      + '<td class="small">' + fa(q.parts) + '×' + fa((q.parent_ids || []).length) + '</td>'
+      + '<td class="nq-body small">' + esc(q.body) + '</td>'
+      + '<td class="row nowrap">'
+      +   '<button class="btn ghost sm" data-act="notify-edit" data-id="' + q.id + '">✏️</button>'
+      +   '<button class="btn sm" data-act="notify-approve" data-id="' + q.id + '">✓</button>'
+      +   '<button class="btn danger sm" data-act="notify-reject" data-id="' + q.id + '">✗</button>'
+      + '</td></tr>';
+  }).join('');
+
+  return head
+    + notifyAutoBanner()
+    + notifyCostCard(sid, all)
+    + '<div class="chips">' + chips.join('') + '</div>'
+    + '<div class="card"><div class="table-wrap"><table class="table">'
+    + '<thead><tr>'
+    +   '<th><input type="checkbox" id="nq-all" data-act="notify-pick-all"></th>'
+    +   '<th>نوع</th><th>دانش‌آموز</th><th>کلاس</th><th>ساعت</th><th>قطعه</th>'
+    +   '<th>متن پیام</th><th>اقدام</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+    + '<div class="card-foot row">'
+    +   '<button class="btn" data-act="notify-approve-sel">✓ تأیید و ارسال انتخاب‌شده‌ها</button>'
+    +   '<button class="btn danger ghost" data-act="notify-reject-sel">✗ رد انتخاب‌شده‌ها</button>'
+    +   '<span class="small muted">' + fa(pend.length) + ' پیام در نمای فعلی</span>'
+    + '</div></div>';
+}
+
+/** شناسه‌های انتخاب‌شده در جدول */
+function notifyPicked(){
+  return $$('.nq-pick:checked').map(function(x){ return Number(x.value); });
+}
+
+/**
+ * گزارش روزانهٔ پیام‌های خودکار — کارت داشبورد مدیر.
+ * پس‌رصد است نه پیش‌تأیید: مدیری که خودکار را روشن کرده باید
+ * دست‌کم بداند چه رفته.
+ */
+function notifyDailyCard(){
+  if(typeof S === 'undefined' || !S.user || !S.user.school_id) return '';
+  var sid = S.user.school_id;
+  var cfg = notifySettings(sid);
+  if(!cfg.enabled) return '';
+  var d = todayISO(), n = 0, auto = 0;
+  (db.notify_queue || []).forEach(function(q){
+    if(q.school_id !== sid || q.status !== 'sent') return;
+    if(String(q.decided_at || '').slice(0, 10) !== d) return;
+    n++; if(q.auto) auto++;
+  });
+  var pend = notifyPending(sid).length;
+  return '<div class="card"><div class="card-head"><h3>📨 اطلاع‌رسانی امروز</h3>'
+    + '<button class="btn ghost sm" data-act="go" data-r="notifyqueue">مدیریت صف</button></div>'
+    + '<div class="card-body notify-daily">'
+    +   '<div><b>' + fa(n) + '</b><span class="small muted">پیام ارسال‌شده</span></div>'
+    +   '<div><b>' + fa(auto) + '</b><span class="small muted">خودکار</span></div>'
+    +   '<div><b' + (pend ? ' style="color:var(--amber)"' : '') + '>' + fa(pend)
+    +     '</b><span class="small muted">در انتظار تأیید</span></div>'
+    + '</div></div>';
+}

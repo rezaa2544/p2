@@ -350,6 +350,37 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 .diag-cat{border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;background:var(--surface-2)}
 .diag-cat-h{display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:4px}
 .diag-cat-n{font-size:13px;font-weight:800;margin-top:7px}
+
+/* ───────── اطلاع‌رسانی پیامکی به اولیا (دور ۴۲) ───────── */
+
+/* نوار هشدار حالت خودکار — در همهٔ صفحات مدیر دیده می‌شود */
+.notify-auto-bar{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  background:var(--red-soft);color:var(--red);
+  border:1px solid var(--red);border-radius:12px;
+  padding:12px 16px;margin-bottom:16px;
+  font-size:13px;font-weight:700;line-height:1.9;
+}
+.notify-auto-bar .btn{margin-inline-start:auto;flex:none}
+
+.notify-cost{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;
+}
+.notify-cost>div{display:flex;flex-direction:column;gap:4px}
+.notify-cost b{font-size:18px}
+
+.notify-daily{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;
+}
+.notify-daily>div{display:flex;flex-direction:column;gap:4px}
+.notify-daily b{font-size:22px}
+
+/* متن پیام در جدول: نباید ستون را بترکاند */
+.nq-body{
+  max-width:320px;line-height:1.9;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.nowrap{flex-wrap:nowrap}
 /* ==================== موبایل: تطبیق کامل با عرض صفحه ==================== */
 @media(max-width:900px){
 .app{grid-template-columns:1fr}
@@ -1274,13 +1305,13 @@ function bootstrapRequest(){
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
  superadmin:[['نظارت کلان',[['dashboard','📊','داشبورد مدیریتی'],['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['اداره آموزش و پرورش',[['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]],['ارتباطات',[['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها']]]],
- manager:[['مدرسه من',[['schoolyear','📅','چرخه سال تحصیلی'],['import','📥','ورود اطلاعات'],['formssms','🖨️','فرم‌ها و پیامک'],['meetings','📅','جلسات اولیا'],['growth','📈','رشد مدرسه'],['atrisk','📉','افت تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['dashboard','📊','داشبورد مدرسه'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ manager:[['مدرسه من',[['schoolyear','📅','چرخه سال تحصیلی'],['import','📥','ورود اطلاعات'],['formssms','🖨️','فرم‌ها و پیامک'],['notifyqueue','📨','صف پیام اولیا'],['meetings','📅','جلسات اولیا'],['growth','📈','رشد مدرسه'],['atrisk','📉','افت تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['dashboard','📊','داشبورد مدرسه'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  teacher:[['کلاس‌های من',[['meetings','📅','جلسات اولیا'],['dashboard','📊','داشبورد'],['classes','🏛️','کلاس‌ها'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['ثبت اطلاعات',[['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['امتحانات',[['exams','👁️','برنامه مراقبت من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['پرونده من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['calendar','🗓️','تقویم آموزشی']]],['امور مالی',[['mytuition','💰','شهریه من']]],['درخواست‌ها',[['leaves','📨','مرخصی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['اداره من',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  parent:[['فرزندان من',[['meetings','📅','جلسات اولیا'],['dashboard','📊','خلاصه وضعیت'],['family','🏠','خانواده و مدارس'],['children','👨‍👩‍👦','پرونده فرزندان'],['exams','📝','برنامه امتحانات'],['calendar','🗓️','تقویم آموزشی']]],['امور مالی',[['mytuition','💰','شهریه و اقساط']]],['درخواست‌ها',[['leaves','📨','درخواست مرخصی']]],['ارتباطات',[['announcements','📢','اطلاعیه‌های مدرسه'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو با مدرسه']]]]
 };
-const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
+const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
 S.stack=[];
@@ -1995,6 +2026,18 @@ function homeRoute(role){
    برخی اکشن‌ها داده را تغییر می‌دهند. حتی اگر مهاجم دکمه را دستی بسازد،
    باید رد شود. کلید = نام اکشن، مقدار = نقش‌های مجاز.               */
 var ACTION_ROLES = {
+  /* اطلاع‌رسانی پیامکی: تأیید و ارسال فقط مدیر.
+     ⚠️ دبیر پیام می‌سازد ولی حق تأییدش را ندارد — همان تفکیکی که
+     کل مکانیزم بازبینی بر آن بنا شده است. */
+  'notify-approve':     ['manager','superadmin'],
+  'notify-approve-sel': ['manager','superadmin'],
+  'notify-reject':      ['manager','superadmin'],
+  'notify-reject-sel':  ['manager','superadmin'],
+  'notify-edit':        ['manager','superadmin'],
+  'notify-save-edit':   ['manager','superadmin'],
+  'notify-settings':    ['manager','superadmin'],
+  'notify-save-settings':['manager','superadmin'],
+  'notify-auto-off':    ['manager','superadmin'],
   /* حضور و غیاب: فقط دبیر و مدیر */
   'att-set':       ['teacher','manager','superadmin'],
   'att-all':       ['teacher','manager','superadmin'],
@@ -2143,7 +2186,7 @@ function renderShell(){
       <button class="icon-btn" data-act="go" data-r="notifications" title="اعلان‌ها" style="position:relative;font-size:17px">🔔${(()=>{const n=unreadCount();return n?`<span style="position:absolute;top:-4px;inset-inline-end:-4px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border:2px solid #fff">${n>99?'۹۹+':fa(n)}</span>`:''})()}</button>
       ${typeof syncBadge==='function'?syncBadge():''}
       <span class="badge b-blue">${ROLE_FA[u.role]}</span></header>
-    <div class="content">${renderRoute()}</div>
+    <div class="content">${typeof notifyAutoBanner==='function'?notifyAutoBanner():''}${renderRoute()}</div>
    </div>
   </div>`;
 }
@@ -2188,6 +2231,7 @@ function _renderRouteInner(){
     case 'atrisk':return viewAtRisk();
     case 'meetings':return viewMeetings();
     case 'growth':return viewGrowth();
+    case 'notifyqueue':return viewNotifyQueue();
     case 'formssms':return viewFormsSms();
     case 'import':return viewImport();
     case 'finance':return viewFinance();
@@ -2246,7 +2290,10 @@ function annCard(){
 
 function viewDashboard(){
   const u=S.user;
-  if(u.role==='superadmin'||u.role==='manager')return adminDash()+annCard();
+  if(u.role==='superadmin'||u.role==='manager')
+    return adminDash()
+      + (typeof notifyDailyCard==='function'?notifyDailyCard():'')
+      + annCard();
   if(u.role==='teacher')return teacherDash()+annCard();
   return familyDash()+annCard();
 }
@@ -6958,6 +7005,111 @@ document.addEventListener('click',e=>{
        +'<div class="small muted" style="line-height:2;margin-top:8px">پرداخت آزمایشی است و مبلغی کسر نمی‌شود.</div>',
        'sms-topup-ok'));
    },
+   // ---- اطلاع‌رسانی پیامکی به اولیا (دور ۴۲) ----
+   'notify-filter'(){ S.filters.nkind = el.dataset.k || ''; render(); },
+   'notify-pick-all'(){
+     const on = el.checked;
+     $$('.nq-pick').forEach(x => { x.checked = on; });
+   },
+   'notify-approve'(){ _notifyApprove([Number(el.dataset.id)]); },
+   'notify-reject'(){
+     const n = notifyReject([Number(el.dataset.id)]);
+     if(n) toast('پیام رد شد','ok');
+     render();
+   },
+   'notify-approve-sel'(){
+     const ids = notifyPicked();
+     if(!ids.length){ toast('هیچ پیامی انتخاب نشده است','err'); return; }
+     _notifyApprove(ids);
+   },
+   'notify-reject-sel'(){
+     const ids = notifyPicked();
+     if(!ids.length){ toast('هیچ پیامی انتخاب نشده است','err'); return; }
+     askConfirm(`${fa(ids.length)} پیام رد شود و برای اولیا ارسال نشود؟`, () => {
+       const n = notifyReject(ids);
+       toast(fa(n) + ' پیام رد شد','ok');
+       render();
+     }, { title:'رد پیام‌ها', ok:'رد کن' });
+   },
+   'notify-edit'(){
+     const q = byId('notify_queue', Number(el.dataset.id));
+     if(!q) return;
+     window._nqEdit = q.id;
+     openModal(modalTpl('ویرایش متن پیام',
+       f('متن پیامک','<textarea class="input" id="nq_text" rows="4">' + esc(q.body) + '</textarea>')
+       + '<div class="small muted" style="line-height:2">'
+       + 'گیرندگان: ' + fa((q.parent_ids||[]).length) + ' نفر · '
+       + 'هر ۷۰ نویسه یک قطعه پیامک حساب می‌شود.</div>',
+       'notify-save-edit'));
+   },
+   'notify-save-edit'(){
+     const id = window._nqEdit, txt = (V('nq_text')||'').trim();
+     if(invalid('nq_text', txt.length < 4, 'متن پیام باید دست‌کم چهار نویسه باشد')) return;
+     const q = byId('notify_queue', id);
+     if(!q){ closeModal(); return; }
+     /* ⚠️ ویرایش مدیر ممکن است پیام را دوقطعه‌ای کند ⇒ parts دوباره
+        حساب می‌شود، وگرنه هزینه کمتر از واقع کسر می‌شود. */
+     update('notify_queue', id, { body: txt, parts: smsParts(txt) });
+     closeModal();
+     toast('متن پیام ویرایش شد','ok');
+     render();
+   },
+   'notify-auto-off'(){
+     notifySaveSettings(S.user.school_id, { autoSend:false });
+     toast('حالت ارسال خودکار خاموش شد','ok');
+     render();
+   },
+   'notify-settings'(){
+     const c = notifySettings(S.user.school_id);
+     const row = (id,on,label,hint) =>
+       '<label class="row" style="gap:10px;align-items:flex-start;padding:10px 0;'
+       + 'border-bottom:1px solid var(--border)">'
+       + '<input type="checkbox" id="' + id + '"' + (on?' checked':'')
+       + ' style="margin-top:3px;flex:none" />'
+       + '<span style="min-width:0"><b class="small">' + label + '</b>'
+       + '<div class="small muted" style="margin-top:2px;line-height:1.9">' + hint + '</div>'
+       + '</span></label>';
+     openModal(modalTpl('تنظیمات اطلاع‌رسانی پیامکی',
+       row('nf_on', c.enabled, 'اطلاع‌رسانی پیامکی فعال باشد',
+           'با خاموش بودن، هیچ پیامی ساخته نمی‌شود.')
+       + row('nf_auto', c.autoSend, '⚠️ ارسال خودکار بدون تأیید مدیر',
+           'خطای دبیر مستقیم به خانواده اطلاع داده می‌شود. با احتیاط روشن کنید.')
+       + row('nf_abs', c.kinds.absence, 'پیامک غیبت', 'پرتکرارترین پیام.')
+       + row('nf_late', c.kinds.late, 'پیامک تأخیر', '')
+       + row('nf_grade', c.kinds.grade, 'پیامک نمرهٔ پایین',
+           'عدد نمره در پیامک نمی‌آید؛ فقط اطلاع کلی.')
+       + row('nf_event', c.kinds.event, 'پیامک رویداد مدرسه', '')
+       + '<div class="grid g2" style="margin-top:10px">'
+       +   f('مهلت اصلاح دبیر (دقیقه)', inp('nf_grace', c.graceMinutes, 'number'))
+       +   f('سقف روزانه (قطعه)', inp('nf_cap', c.dailyCap, 'number'))
+       +   f('هشدار از این تعداد به بالا', inp('nf_bulk', c.bulkWarn, 'number'))
+       + '</div>',
+       'notify-save-settings'));
+   },
+   'notify-save-settings'(){
+     const sid = S.user.school_id;
+     const wasAuto = notifySettings(sid).autoSend;
+     const nowAuto = $('#nf_auto').checked;
+     const apply = () => {
+       notifySaveSettings(sid, {
+         enabled:  $('#nf_on').checked,
+         autoSend: nowAuto,
+         graceMinutes: Math.max(0, Number(V('nf_grace')) || 20),
+         dailyCap:     Math.max(1, Number(V('nf_cap'))   || 300),
+         bulkWarn:     Math.max(1, Number(V('nf_bulk'))  || 50),
+         kinds: { absence:$('#nf_abs').checked, late:$('#nf_late').checked,
+                  grade:$('#nf_grade').checked, event:$('#nf_event').checked }
+       });
+       closeModal(); toast('تنظیمات ذخیره شد','ok'); render();
+     };
+     /* ⚠️ روشن‌کردن خودکار تأیید صریح می‌خواهد — تصمیم پرریسکی است
+        و نباید با یک تیک بی‌توجه انجام شود. */
+     if(nowAuto && !wasAuto){
+       askConfirm('با روشن‌کردن ارسال خودکار، پیام‌ها بدون بازبینی شما به اولیا می‌روند.',
+         apply, { title:'تأیید ارسال خودکار', ok:'می‌پذیرم و روشن کن',
+                  note:'خطای دبیر در حضور و غیاب مستقیم به خانواده اطلاع داده می‌شود.' });
+     } else apply();
+   },
    'sms-topup-ok'(){
      const n=Number(V('sm_count'))||500;
      const wal=smsWalletOf(S.user.school_id);
@@ -7475,6 +7627,42 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){ if($('#modal').innerHTML)closeModal(); else if(S.user)goBack(); }
   if((e.key==='Backspace')&&S.user&&!/^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName||''))){e.preventDefault();goBack();}
   if(e.key==='Enter'&&!S.user&&$('#lu'))document.querySelector('[data-act="login"]').click();});
+
+
+/**
+ * تأیید و ارسال دستهٔ پیام، با هشدار پیش از ارسال حجم بالا.
+ *
+ * ⚠️ سه وضعیت جدا هشدار می‌گیرند: اعتبار ناکافی (بازدارنده)،
+ * فراتر از سقف روزانه (هشدار)، حجم بالا (هشدار). سقف ترمز است
+ * نه دیوار: مدیر می‌تواند آگاهانه رد شود.
+ */
+function _notifyApprove(ids){
+  var e = notifyEstimate(ids);
+  if(!e.count){ toast('پیامی برای ارسال نیست','err'); return; }
+
+  var go = function(){
+    var r = notifySend(ids);
+    if(r.sent) toast(fa(r.sent) + ' پیام ارسال شد (' + fa(r.used) + ' قطعه)', 'ok');
+    if(r.reason === 'no-credit')
+      toast('اعتبار پیامک تمام شد — ' + fa(r.skipped) + ' پیام در صف ماند', 'err');
+    render();
+  };
+
+  if(!e.enough){
+    toast('اعتبار کافی نیست. نیاز: ' + fa(e.parts) +
+          ' قطعه — موجودی: ' + fa(e.balance) + ' قطعه', 'err');
+    return;
+  }
+  if(e.overBulk || e.overCap){
+    var note = e.overCap
+      ? 'این ارسال از سقف روزانهٔ مدرسه فراتر می‌رود.'
+      : 'موجودی پس از ارسال: ' + fa(e.after) + ' قطعه.';
+    askConfirm(fa(e.count) + ' پیام (' + fa(e.parts) + ' قطعه) برای اولیا ارسال شود؟',
+      go, { title:'تأیید ارسال گروهی', ok:'تأیید و ارسال', danger:false, note:note });
+    return;
+  }
+  go();
+}
 
 /* ============================ boot ============================ */
 /* ============================ فازهای ۳ تا ۷ — همگام‌سازی نسخه تک‌فایلی ============================ */
@@ -12232,6 +12420,195 @@ function notifyPending(schoolId){
     return String(b.created_at).localeCompare(String(a.created_at));
   });
   return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بخش ۹ ▸ صفحهٔ صف پیام‌ها (مدیر)            روت: notifyqueue
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** برچسب فارسی و رنگ هر نوع پیام */
+var NOTIFY_KIND_FA = {
+  absence:    ['غیبت',    'b-red'],
+  late:       ['تأخیر',   'b-amber'],
+  grade:      ['نمره',    'b-purple'],
+  event:      ['رویداد',  'b-blue'],
+  correction: ['اصلاحیه', 'b-red']
+};
+
+/** برچسب یک رکورد صف؛ اصلاحیه بر نوع اصلی مقدم است */
+function notifyKindTag(q){
+  var k = q.correction_of ? 'correction' : q.kind;
+  var m = NOTIFY_KIND_FA[k] || [k, 'b-gray'];
+  return '<span class="badge ' + m[1] + '">' +
+         (q.correction_of ? '🔴 ' : '') + esc(m[0]) + '</span>';
+}
+
+/** ساعت کوتاه از ISO کامل: «۰۸:۳۱» */
+function notifyClock(iso){
+  var t = String(iso || '').slice(11, 16);
+  return t ? faD(t) : '—';
+}
+
+/**
+ * نوار هشدار حالت ارسال خودکار.
+ *
+ * ⚠️ عمداً در renderShell صدا زده می‌شود، نه فقط در این صفحه.
+ * مدیری که سراغ صف نمی‌رود، دقیقاً همان کسی است که خودکار را روشن
+ * کرده و باید مدام یادآوری شود.
+ */
+function notifyAutoBanner(){
+  if(typeof S === 'undefined' || !S.user) return '';
+  var role = (typeof activePersona === 'function') ? activePersona() : S.user.role;
+  if(role !== 'manager' && role !== 'superadmin') return '';
+  var sid = S.user.school_id;
+  if(!sid) return '';
+  var cfg = notifySettings(sid);
+  if(!cfg.enabled || !cfg.autoSend) return '';
+  return '<div class="notify-auto-bar">⚠️ حالت ارسال خودکار پیامک فعال است — ' +
+         'پیام‌ها بدون تأیید شما برای اولیا ارسال می‌شوند.' +
+         '<button class="btn sm ghost" data-act="notify-auto-off">خاموش کردن</button></div>';
+}
+
+/** کارت برآورد هزینه بالای صفحه */
+function notifyCostCard(sid, pend){
+  var wal  = smsWalletOf(sid);
+  var cfg  = notifySettings(sid);
+  var today = notifySentToday(sid);
+  var need = 0;
+  pend.forEach(function(q){ need += q.parts * (q.parent_ids || []).length; });
+  var capPct = Math.min(100, (today / (cfg.dailyCap || 1)) * 100);
+  return '<div class="card"><div class="card-body notify-cost">'
+    + '<div><span class="small muted">موجودی کیف</span><b>' + fa(wal.balance) + ' قطعه</b></div>'
+    + '<div><span class="small muted">نیاز صف</span><b>' + fa(need) + ' قطعه</b></div>'
+    + '<div><span class="small muted">امروز ارسال شد</span><b>' + fa(today)
+    +   ' از ' + fa(cfg.dailyCap) + '</b>' + bar(today, cfg.dailyCap,
+        capPct >= 100 ? 'var(--red)' : 'var(--primary)') + '</div>'
+    + '<div><span class="small muted">پس از ارسال</span><b'
+    +   (wal.balance - need < 0 ? ' style="color:var(--red)"' : '') + '>'
+    +   fa(wal.balance - need) + ' قطعه</b></div>'
+    + '</div></div>';
+}
+
+/**
+ * صفحهٔ صف پیام‌های اولیا.
+ *
+ * ⚠️ همهٔ متن‌های برخاسته از ورودی کاربر (نام دانش‌آموز داخل body)
+ * از esc() می‌گذرند. body متن پیامک است و مدیر می‌تواند ویرایشش
+ * کند ⇒ کاملاً ورودی کاربر است.
+ */
+function viewNotifyQueue(){
+  var sid = S.user.school_id;
+  var cfg = notifySettings(sid);
+
+  if(!cfg.enabled){
+    return '<div class="page-head"><h2>📨 صف پیام‌های اولیا</h2></div>'
+      + notifyAutoBanner()
+      + empty('🔕', 'اطلاع‌رسانی پیامکی خاموش است',
+              'برای ارسال خودکار پیام غیبت و رویداد به اولیا، این قابلیت را روشن کنید.',
+              '<button class="btn" data-act="notify-settings">تنظیمات اطلاع‌رسانی</button>');
+  }
+
+  var all  = notifyPending(sid);
+  var f    = S.filters.nkind || '';
+  var pend = f ? all.filter(function(q){
+    return f === 'correction' ? !!q.correction_of : (q.kind === f && !q.correction_of);
+  }) : all;
+
+  /* شمار هر دسته برای دکمه‌های فیلتر */
+  var cnt = { absence:0, late:0, grade:0, event:0, correction:0 };
+  all.forEach(function(q){
+    if(q.correction_of) cnt.correction++;
+    else if(cnt[q.kind] !== undefined) cnt[q.kind]++;
+  });
+
+  var chips = ['<button class="chip' + (f ? '' : ' on') +
+               '" data-act="notify-filter" data-k="">همه ' + fa(all.length) + '</button>'];
+  Object.keys(cnt).forEach(function(k){
+    if(!cnt[k]) return;
+    chips.push('<button class="chip' + (f === k ? ' on' : '') +
+      '" data-act="notify-filter" data-k="' + escAttr(k) + '">' +
+      (k === 'correction' ? '🔴 ' : '') + esc(NOTIFY_KIND_FA[k][0]) + ' ' + fa(cnt[k]) + '</button>');
+  });
+
+  var head = '<div class="page-head"><h2>📨 صف پیام‌های اولیا</h2>'
+    + '<div class="row">'
+    + '<button class="btn ghost sm" data-act="notify-settings">⚙️ تنظیمات</button>'
+    + '<button class="btn ghost sm" data-act="go" data-r="formssms">📊 دفتر پیامک</button>'
+    + '</div></div>';
+
+  if(!all.length){
+    return head + notifyAutoBanner() + notifyCostCard(sid, [])
+      + empty('✅', 'صف خالی است',
+              cfg.autoSend
+                ? 'حالت خودکار فعال است و پیام‌ها مستقیم ارسال می‌شوند.'
+                : 'هیچ پیامی در انتظار تأیید شما نیست.');
+  }
+
+  var rows = pend.map(function(q){
+    var st = q.student_id ? byId('users', q.student_id) : null;
+    var cl = q.class_id ? byId('classes', q.class_id) : null;
+    return '<tr>'
+      + '<td><input type="checkbox" class="nq-pick" value="' + q.id + '"></td>'
+      + '<td>' + notifyKindTag(q) + '</td>'
+      + '<td>' + esc(st ? st.full_name : '—') + '</td>'
+      + '<td class="small muted">' + esc(cl ? cl.name : '—') + '</td>'
+      + '<td class="small muted">' + notifyClock(q.created_at) + '</td>'
+      + '<td class="small">' + fa(q.parts) + '×' + fa((q.parent_ids || []).length) + '</td>'
+      + '<td class="nq-body small">' + esc(q.body) + '</td>'
+      + '<td class="row nowrap">'
+      +   '<button class="btn ghost sm" data-act="notify-edit" data-id="' + q.id + '">✏️</button>'
+      +   '<button class="btn sm" data-act="notify-approve" data-id="' + q.id + '">✓</button>'
+      +   '<button class="btn danger sm" data-act="notify-reject" data-id="' + q.id + '">✗</button>'
+      + '</td></tr>';
+  }).join('');
+
+  return head
+    + notifyAutoBanner()
+    + notifyCostCard(sid, all)
+    + '<div class="chips">' + chips.join('') + '</div>'
+    + '<div class="card"><div class="table-wrap"><table class="table">'
+    + '<thead><tr>'
+    +   '<th><input type="checkbox" id="nq-all" data-act="notify-pick-all"></th>'
+    +   '<th>نوع</th><th>دانش‌آموز</th><th>کلاس</th><th>ساعت</th><th>قطعه</th>'
+    +   '<th>متن پیام</th><th>اقدام</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+    + '<div class="card-foot row">'
+    +   '<button class="btn" data-act="notify-approve-sel">✓ تأیید و ارسال انتخاب‌شده‌ها</button>'
+    +   '<button class="btn danger ghost" data-act="notify-reject-sel">✗ رد انتخاب‌شده‌ها</button>'
+    +   '<span class="small muted">' + fa(pend.length) + ' پیام در نمای فعلی</span>'
+    + '</div></div>';
+}
+
+/** شناسه‌های انتخاب‌شده در جدول */
+function notifyPicked(){
+  return $$('.nq-pick:checked').map(function(x){ return Number(x.value); });
+}
+
+/**
+ * گزارش روزانهٔ پیام‌های خودکار — کارت داشبورد مدیر.
+ * پس‌رصد است نه پیش‌تأیید: مدیری که خودکار را روشن کرده باید
+ * دست‌کم بداند چه رفته.
+ */
+function notifyDailyCard(){
+  if(typeof S === 'undefined' || !S.user || !S.user.school_id) return '';
+  var sid = S.user.school_id;
+  var cfg = notifySettings(sid);
+  if(!cfg.enabled) return '';
+  var d = todayISO(), n = 0, auto = 0;
+  (db.notify_queue || []).forEach(function(q){
+    if(q.school_id !== sid || q.status !== 'sent') return;
+    if(String(q.decided_at || '').slice(0, 10) !== d) return;
+    n++; if(q.auto) auto++;
+  });
+  var pend = notifyPending(sid).length;
+  return '<div class="card"><div class="card-head"><h3>📨 اطلاع‌رسانی امروز</h3>'
+    + '<button class="btn ghost sm" data-act="go" data-r="notifyqueue">مدیریت صف</button></div>'
+    + '<div class="card-body notify-daily">'
+    +   '<div><b>' + fa(n) + '</b><span class="small muted">پیام ارسال‌شده</span></div>'
+    +   '<div><b>' + fa(auto) + '</b><span class="small muted">خودکار</span></div>'
+    +   '<div><b' + (pend ? ' style="color:var(--amber)"' : '') + '>' + fa(pend)
+    +     '</b><span class="small muted">در انتظار تأیید</span></div>'
+    + '</div></div>';
 }
 
 </script>

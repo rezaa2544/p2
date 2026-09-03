@@ -2838,3 +2838,37 @@ npm test             # ۳۱ + ۳۲۹ آزمون
 ⚠️ **اعتبار ناکافی پیام را حذف نمی‌کند** — `pending` می‌ماند.
 
 📄 ۱۵ آزمون تازه؛ **۳۴۷/۳۴۷**.
+
+
+### ۰.۵.۱۵ اطلاع‌رسانی پیامکی — گام ۲: صفحهٔ صف مدیر (دور ۴۲)
+
+بخش ۹ به `44-sms-notify.js` افزوده شد: `viewNotifyQueue` ·
+`notifyAutoBanner` · `notifyCostCard` · `notifyDailyCard` ·
+`notifyKindTag` · `notifyClock` · `notifyPicked` · `NOTIFY_KIND_FA`.
+
+کنش‌ها در `19-actions.js`: `notify-filter` · `notify-pick-all` ·
+`notify-approve`/`-sel` · `notify-reject`/`-sel` · `notify-edit` ·
+`notify-save-edit` · `notify-settings` · `notify-save-settings` ·
+`notify-auto-off` · کمکی `_notifyApprove`.
+
+مسیر تازه **`notifyqueue`**: `NAV.manager` + `TITLES` +
+`_renderRouteInner`. صفحه‌ها **۸۲ → ۸۳** شد.
+
+**سه تصمیم رابط که سنجیده شدند، نه فرض:**
+
+۱. **نوار هشدار خودکار در `renderShell` است نه در صفحهٔ صف.**
+   سنجش: در ۶/۶ صفحهٔ مدیر دیده می‌شود. دلیل: مدیری که سراغ صف
+   نمی‌رود، دقیقاً همان کسی است که خودکار را روشن کرده.
+
+۲. **`parts` پس از ویرایش مدیر دوباره حساب می‌شود.** ویرایش ممکن
+   است پیام را از ۱ به ۲ قطعه ببرد؛ بدون محاسبهٔ دوباره، هزینه
+   کمتر از واقع کسر می‌شد.
+
+۳. **روشن‌کردن `autoSend` تأیید صریح `askConfirm` می‌خواهد** —
+   خاموش‌کردنش نه. تصمیم پرریسک نباید با یک تیک بی‌توجه انجام شود.
+
+⚠️ **مجوز:** ۹ کنش تازه در `ACTION_ROLES` فقط `manager`/`superadmin`.
+دبیر پیام **می‌سازد** ولی حق **تأییدش** را ندارد — همان تفکیکی که
+کل مکانیزم بازبینی بر آن بنا شده است.
+
+📄 ۱۰ آزمون تازه (**۳۵۷/۳۵۷**) و **۵ جهش عمدی، هر پنج گرفته شد**.
