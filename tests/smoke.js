@@ -2637,6 +2637,29 @@ test('قرارداد سرور: تعامل کارایی و سنجش محدوده 
     'سند ظرفیت هشدار بی‌اعتبار شدن اعداد را ندارد');
 });
 
+test('معماری: سند تصمیمات قفل‌شده کامل است', () => {
+  const fs = require('fs'), path = require('path');
+  const f = path.join(__dirname, '..', 'docs', 'ARCHITECTURE_DECISIONS.md');
+  assert(fs.existsSync(f), 'سند تصمیمات معماری نیست');
+  const t = fs.readFileSync(f, 'utf8');
+  /* هر کلید یک تصمیم قفل‌شده است؛ حذفش یعنی فاز دوباره باز شده */
+  const keys = [
+    'HttpOnly', 'SameSite=Lax', 'bcrypt', 'DUMMY_HASH',
+    'base_version', 'deleted_at', 'nonce', 'عددی پیاپی',
+    'تأخیر تصاعدی', 'فقط‌افزودنی'
+  ];
+  const missing = keys.filter(k => t.indexOf(k) === -1);
+  assert(missing.length === 0, 'تصمیم گمشده: ' + missing.join(' · '));
+});
+
+test('معماری: سه تصمیم پایه در قرارداد سرور مستند شده‌اند', () => {
+  const fs = require('fs'), path = require('path');
+  const t = fs.readFileSync(
+    path.join(__dirname, '..', 'docs', 'SERVER_SECURITY_CONTRACT.md'), 'utf8');
+  ['۵.۸.۱', '۵.۸.۲', '۵.۸.۳', 'base_version', 'deleted_at', 'یکتایی جزئی']
+    .forEach(k => assert(t.indexOf(k) > -1, 'بند ۵.۸ ناقص — کلید گمشده: ' + k));
+});
+
 test('قرارداد سرور: راه‌حل نشت زمانی مستند شده', () => {
   const fs = require('fs'), path = require('path');
   const t = fs.readFileSync(
