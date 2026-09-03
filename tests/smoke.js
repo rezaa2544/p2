@@ -2449,6 +2449,80 @@ test('یادآور: رمز عبور هنوز متن ساده است — پیش �
   assert(todo.indexOf('bcrypt') > -1, 'یادآور bcrypt از سند کارهای باقی‌مانده حذف شده');
 });
 
+// ── جهت نوارهای اسکرول در چیدمان راست‌به‌چپ (دور ۳۰) ─────────
+//
+// قاعده‌ای که دو بار اشتباه شد و آزمون برای همین است:
+//   اسکرول عمودی ⇒ ظرف direction:ltr (نوار به لبهٔ راست می‌رود)
+//   اسکرول افقی  ⇒ ظرف direction:rtl (اسکرول از راست شروع می‌شود)
+// همان حیله‌ای که نوار عمودی را درست می‌کند، اگر روی ظرف افقی
+// بیفتد جدول را از ستون آخر نشان می‌دهد و کاربر باید دستی به راست
+// بکشد تا ستون نام را ببیند.
+
+test('چیدمان: ظرف جدول عریض از راست شروع می‌شود', () => {
+  const dir = W('(function(){' +
+    'var d=document.createElement("div");d.className="table-wrap";' +
+    'document.body.appendChild(d);' +
+    'var v=getComputedStyle(d).direction;d.remove();return v;})()');
+  assert(dir === 'rtl',
+    '.table-wrap باید rtl باشد وگرنه جدول از ستون آخر شروع می‌شود — دیده شد: ' + dir);
+});
+
+test('چیدمان: نوار زبانه‌ها از راست شروع می‌شود', () => {
+  const dir = W('(function(){' +
+    'var d=document.createElement("div");d.className="tabs";' +
+    'document.body.appendChild(d);' +
+    'var v=getComputedStyle(d).direction;d.remove();return v;})()');
+  assert(dir === 'rtl', '.tabs باید rtl باشد — دیده شد: ' + dir);
+});
+
+test('چیدمان: ظرف‌های اسکرول عمودی نوارشان سمت راست است', () => {
+  ['main', 'sidebar', 'vscroll'].forEach(cls => {
+    const dir = W('(function(){' +
+      'var d=document.createElement("div");d.className="' + cls + '";' +
+      'document.body.appendChild(d);' +
+      'var v=getComputedStyle(d).direction;d.remove();return v;})()');
+    assert(dir === 'ltr',
+      '.' + cls + ' باید ltr باشد تا نوار عمودی سمت راست بیفتد — دیده شد: ' + dir);
+  });
+});
+
+test('چیدمان: فرزندان ظرف عمودی به راست‌به‌چپ برمی‌گردند', () => {
+  const dir = W('(function(){' +
+    'var p=document.createElement("div");p.className="vscroll";' +
+    'var c=document.createElement("div");p.appendChild(c);' +
+    'document.body.appendChild(p);' +
+    'var v=getComputedStyle(c).direction;p.remove();return v;})()');
+  assert(dir === 'rtl', 'محتوای داخل ظرف باید rtl بماند — دیده شد: ' + dir);
+});
+
+test('چیدمان: هیچ ظرف اسکرول افقی با direction:ltr نمانده', () => {
+  const fs = require('fs'), path = require('path');
+  const css = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'styles', 'base.css'), 'utf8');
+  /* ظرف‌هایی که هم overflow-x دارند هم ltr — ترکیب غلط */
+  ['.table-wrap', '.tabs'].forEach(sel => {
+    const re = new RegExp('\\' + sel + '\\s*\\{[^}]*direction\\s*:\\s*ltr', 'g');
+    assert(!re.test(css), sel + ' دوباره ltr شده — جدول از ستون آخر شروع می‌شود');
+  });
+});
+
+test('چیدمان: ظرف‌های اسکرول عمودی درون‌خطی کلاس vscroll دارند', () => {
+  const fs = require('fs'), path = require('path');
+  const dir = path.join(__dirname, '..', 'src', 'js');
+  const bad = [];
+  fs.readdirSync(dir).forEach(f => {
+    fs.readFileSync(path.join(dir, f), 'utf8').split(String.fromCharCode(10))
+      .forEach((line, i) => {
+        /* ظرفی که max-height و overflow دارد ولی کلاس vscroll ندارد */
+        if(/max-height:\s*\d+px;\s*overflow:\s*auto/.test(line) &&
+           !/vscroll|diag-items/.test(line))
+          bad.push(f + ':' + (i + 1));
+      });
+  });
+  assert(bad.length === 0,
+    'ظرف اسکرول عمودی بدون کلاس vscroll (نوارش سمت چپ می‌افتد): ' + bad.join(' · '));
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

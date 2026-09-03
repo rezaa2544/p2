@@ -202,7 +202,7 @@ function viewChat(){
         <div class="avatar">${esc(p.full_name[0])}</div><div style="min-width:0"><b style="font-size:13px">${esc(p.full_name)}</b><div class="small muted">${ROLE_FA[p.role]}</div></div></div>`).join(''):empty('💬','مخاطبی نیست','')}
     </div>
     <div class="card"><div class="card-head"><h3>${active?esc(active.full_name):'گفتگو'}</h3></div>
-      <div class="card-body" style="display:grid;gap:8px;max-height:420px;overflow:auto">
+      <div class="card-body vscroll" style="display:grid;gap:8px;max-height:420px;overflow:auto">
         ${msgs.length?msgs.map(m=>`<div style="justify-self:${m.from_id===u.id?'start':'end'};max-width:75%;background:${m.from_id===u.id?'var(--primary-soft)':'var(--surface-2)'};padding:9px 13px;border-radius:12px">
           <div style="line-height:1.9">${esc(m.body)}</div><div class="small muted" style="opacity:.7">${jalali(m.created_at)}</div></div>`).join(''):empty('💬','پیامی نیست','اولین پیام را بفرستید.')}
       </div>

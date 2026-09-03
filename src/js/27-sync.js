@@ -264,7 +264,7 @@ function syncPanelModal(){
       بدون اینترنت هم می‌توانید کار کنید. همه‌ی تغییرات روی همین دستگاه ذخیره می‌شوند و
       به‌محض وصل شدن اینترنت، خودکار به سرور ارسال می‌گردند.</div>`:''}
 
-    ${q.length?`<div class="table-wrap" style="max-height:320px;overflow:auto"><table>
+    ${q.length?`<div class="table-wrap vscroll" style="max-height:320px;overflow:auto"><table>
       <thead><tr><th>عملیات</th><th>بخش</th><th>زمان</th><th>وضعیت</th></tr></thead><tbody>
       ${q.slice().reverse().map(x=>{
         const st=statusFa[x.status]||['—','b-gray'];

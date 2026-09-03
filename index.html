@@ -248,13 +248,37 @@ body{ direction:rtl; overflow:hidden }
 .modal{ direction:ltr }
 .modal > *{ direction:rtl }
 
-/* ظرف جدول‌های عریض */
-.table-wrap{ direction:ltr }
-.table-wrap > *{ direction:rtl }
+/* ---------- نوار افقی: باید از سمت راست شروع شود ----------
+   ⚠️ اینجا قاعده برعکسِ نوار عمودی است و همین جای اشتباه است.
 
-/* نوارهای افقی مثل زبانه‌ها */
-.tabs{ direction:ltr }
-.tabs > *{ direction:rtl }
+   برای نوار *عمودی* حیلهٔ `direction:ltr` لازم است تا نوار به لبهٔ
+   راست برود. ولی همان حیله روی ظرفی که *افقی* اسکرول می‌کند،
+   نقطهٔ شروع اسکرول را هم به چپ می‌برد: کاربر جدول را می‌بیند که
+   از ستون آخر شروع شده و باید دستی به راست بکشد تا ستون اول
+   (نام و ردیف) را ببیند.
+
+   در چیدمان راست‌به‌چپ، ستون اولِ جدول سمت راست است، پس نقطهٔ
+   شروع طبیعی هم باید همان‌جا باشد. راه‌حل: ظرف افقی `direction:rtl`
+   بماند تا مرورگر خودش اسکرول را از راست آغاز کند.
+
+   قاعدهٔ کلی برای هر ظرف تازه:
+     اسکرول عمودی  ⇒ direction:ltr روی ظرف، rtl روی فرزندان
+     اسکرول افقی   ⇒ direction:rtl (دست نزنید) */
+
+.table-wrap{ direction:rtl }
+
+/* نوارهای افقی مثل زبانه‌ها هم از راست شروع شوند */
+.tabs{ direction:rtl }
+
+/* ---------- کلاس کمکی برای فهرست‌های اسکرول عمودی ----------
+   هر ظرفی که `max-height` + `overflow:auto` دارد، نوار عمودی
+   می‌سازد و بدون این کلاس نوارش سمت چپ می‌افتد. */
+.vscroll{ direction:ltr }
+.vscroll > *{ direction:rtl }
+
+/* فهرست عیب‌های دیاگ اسکرول عمودی دارد */
+.diag-items{ direction:ltr }
+.diag-items > *{ direction:rtl }
 
 /* ظاهر یکدست نوار در مرورگرهای وب‌کیت */
 .sidebar::-webkit-scrollbar,
@@ -1800,7 +1824,7 @@ function syncPanelModal(){
       بدون اینترنت هم می‌توانید کار کنید. همه‌ی تغییرات روی همین دستگاه ذخیره می‌شوند و
       به‌محض وصل شدن اینترنت، خودکار به سرور ارسال می‌گردند.</div>`:''}
 
-    ${q.length?`<div class="table-wrap" style="max-height:320px;overflow:auto"><table>
+    ${q.length?`<div class="table-wrap vscroll" style="max-height:320px;overflow:auto"><table>
       <thead><tr><th>عملیات</th><th>بخش</th><th>زمان</th><th>وضعیت</th></tr></thead><tbody>
       ${q.slice().reverse().map(x=>{
         const st=statusFa[x.status]||['—','b-gray'];
@@ -7385,7 +7409,7 @@ function viewChat(){
         <div class="avatar">${esc(p.full_name[0])}</div><div style="min-width:0"><b style="font-size:13px">${esc(p.full_name)}</b><div class="small muted">${ROLE_FA[p.role]}</div></div></div>`).join(''):empty('💬','مخاطبی نیست','')}
     </div>
     <div class="card"><div class="card-head"><h3>${active?esc(active.full_name):'گفتگو'}</h3></div>
-      <div class="card-body" style="display:grid;gap:8px;max-height:420px;overflow:auto">
+      <div class="card-body vscroll" style="display:grid;gap:8px;max-height:420px;overflow:auto">
         ${msgs.length?msgs.map(m=>`<div style="justify-self:${m.from_id===u.id?'start':'end'};max-width:75%;background:${m.from_id===u.id?'var(--primary-soft)':'var(--surface-2)'};padding:9px 13px;border-radius:12px">
           <div style="line-height:1.9">${esc(m.body)}</div><div class="small muted" style="opacity:.7">${jalali(m.created_at)}</div></div>`).join(''):empty('💬','پیامی نیست','اولین پیام را بفرستید.')}
       </div>
