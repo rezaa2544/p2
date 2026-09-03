@@ -2637,6 +2637,21 @@ test('قرارداد سرور: تعامل کارایی و سنجش محدوده 
     'سند ظرفیت هشدار بی‌اعتبار شدن اعداد را ندارد');
 });
 
+test('قرارداد سرور: راه‌حل نشت زمانی مستند شده', () => {
+  const fs = require('fs'), path = require('path');
+  const t = fs.readFileSync(
+    path.join(__dirname, '..', 'docs', 'SERVER_SECURITY_CONTRACT.md'), 'utf8');
+  /* هر کلید نمایندهٔ یک تصمیم است، نه فقط یک واژه */
+  const keys = [
+    'DUMMY_HASH',        // راه‌حل اصلی: هش ساختگی
+    'همان هزینهٔ',        // هزینهٔ ساختگی باید با واقعی یکی باشد
+    'حساب غیرفعال',      // نباید پیش از bcrypt رد شود
+    'زمان کف ثابت'       // مکمل، نه جایگزین
+  ];
+  const missing = keys.filter(k => t.indexOf(k) === -1);
+  assert(missing.length === 0, 'بند ۵.۵.۳.۱ ناقص است — کلید گمشده: ' + missing.join(' · '));
+});
+
 test('قرارداد سرور: سه دفاع تکمیلی مستند شده‌اند', () => {
   const fs = require('fs'), path = require('path');
   const t = fs.readFileSync(
