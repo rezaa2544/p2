@@ -2637,6 +2637,108 @@ test('قرارداد سرور: تعامل کارایی و سنجش محدوده 
     'سند ظرفیت هشدار بی‌اعتبار شدن اعداد را ندارد');
 });
 
+/* ── توزیع خودکار: محیط کنترل‌شدهٔ سه شعبه ──────────────────────
+   ⚠️ کلاس بی‌شمارهٔ هم‌نام (مثل «دهم علوم تجربی») باید حذف شود،
+   وگرنه تطبیق نام دقیق روی آن می‌افتد و آزمون بی‌صدا سبز می‌شود. */
+function withBranches(cap, fn) {
+  const sid = W('db.schools[0].id');
+  const saved = W('JSON.stringify(db.classes.filter(c=>c.school_id===' + sid + ').map(c=>c.id))');
+  W('(()=>{db._bk=db.classes.slice();db.classes=db.classes.filter(c=>c.school_id!==' + sid + ');'
+    + 'for(let i=1;i<=3;i++)db.classes.push({id:870000+i,school_id:' + sid
+    + ',name:"دهم علوم تجربی "+i,grade_level:10,field:"علوم تجربی",capacity:' + cap + '});'
+    + '(typeof idxInvalidate==="function")&&idxInvalidate("classes");})()');
+  try { return fn(sid); }
+  finally {
+    W('(()=>{db.classes=db._bk;delete db._bk;'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("classes");})()');
+  }
+}
+const distOf = (sid, rows, opt) => JSON.parse(W(
+  '(()=>{const p=planPlacement(' + JSON.stringify(rows) + ',' + sid + ',' + (opt || '{}') + ');'
+  + 'const c={};Object.values(p.plan).forEach(x=>{if(x&&x.classId)c[x.classId]=(c[x.classId]||0)+1;});'
+  + 'return JSON.stringify({d:c,manual:p.manual.length,neu:p.create.length});})()'));
+const plainRows = (n) => Array.from({ length: n }, (_, i) => ({ index: i, text: 'دهم تجربی' }));
+
+test('توزیع: نُه نفر میان سه شعبه متعادل پخش می‌شوند', () => {
+  withBranches(10, (sid) => {
+    const r = distOf(sid, plainRows(9));
+    const counts = Object.values(r.d).sort();
+    assert(counts.length === 3, 'همهٔ شعبه‌ها استفاده نشدند: ' + JSON.stringify(r.d));
+    assert(counts.join(',') === '3,3,3', 'توزیع نامتعادل: ' + counts.join(','));
+  });
+});
+
+test('توزیع: ظرفیت رعایت می‌شود و سرریز «دستی» می‌شود', () => {
+  withBranches(10, (sid) => {
+    const r = distOf(sid, plainRows(35));
+    Object.keys(r.d).forEach(k => assert(r.d[k] <= 10, 'کلاس ' + k + ' سرریز شد: ' + r.d[k]));
+    assert(r.manual === 5, 'باید ۵ ردیف دستی شود، شد: ' + r.manual);
+    assert(r.neu === 0, 'نباید کلاس نو ساخته شود، ساخت: ' + r.neu);
+  });
+});
+
+test('توزیع: تکرارپذیر است — همان ورودی، همان نتیجه', () => {
+  const a = withBranches(20, (sid) => distOf(sid, plainRows(17)));
+  const b = withBranches(20, (sid) => distOf(sid, plainRows(17)));
+  assert(JSON.stringify(a) === JSON.stringify(b),
+    'دو اجرا فرق کرد: ' + JSON.stringify(a) + ' / ' + JSON.stringify(b));
+});
+
+test('توزیع: هیچ Math.random در مسیر کلاس‌بندی نیست', () => {
+  const fs = require('fs'), path = require('path');
+  let src = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'js', '41-class-placement.js'), 'utf8');
+  /* ⚠️ کامنت‌ها حذف شوند: خودِ سند می‌گوید «هیچ Math.random نیست»
+     و آزمونِ ساده‌لوح روی همان جمله شکست می‌خورد. */
+  src = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  assert(src.indexOf('Math.random') === -1,
+    'Math.random تکرارپذیری توزیع را می‌شکند');
+});
+
+test('توزیع: شعبهٔ صریح در فایل، توزیع را دور می‌زند', () => {
+  withBranches(20, (sid) => {
+    const got = W('(()=>{const p=planPlacement([{index:0,text:"دهم علوم تجربی ۳"}],' + sid + ');'
+      + 'const v=p.plan[0];return JSON.stringify({n:(byId("classes",v.classId)||{}).name,a:!!v.auto});})()');
+    const o = JSON.parse(got);
+    assert(/3$/.test(o.n), 'شعبهٔ صریح رعایت نشد: ' + o.n);
+    assert(o.a === false, 'انتخاب صریح نباید خودکار علامت بخورد');
+  });
+});
+
+test('توزیع: کلید تفکیک جنسیتی پیش‌فرض خاموش است', () => {
+  const d = JSON.parse(W('JSON.stringify(PLACE_DEFAULTS)'));
+  assert(d.separateGender === false, 'تفکیک جنسیتی نباید پیش‌فرض روشن باشد');
+  assert(d.keepSiblings === false, 'خواهر و برادر نباید پیش‌فرض روشن باشد');
+});
+
+test('توزیع: مدرسهٔ تک‌جنسیتی کلید جنسیت را خاموش می‌کند', () => {
+  const sid = W('db.schools[0].id');
+  const before = W('JSON.stringify(byId("schools",' + sid + ').gender||null)');
+  try {
+    W('byId("schools",' + sid + ').gender="پسرانه";'
+      + 'byId("schools",' + sid + ').place_rules={separateGender:true};');
+    const s1 = JSON.parse(W('JSON.stringify(placeSettings(' + sid + '))'));
+    assert(s1.separateGender === false, 'در مدرسهٔ پسرانه باید خاموش شود');
+    assert(W('isMixedSchool(' + sid + ')') === false, 'مدرسهٔ پسرانه مختلط نیست');
+    W('byId("schools",' + sid + ').gender="مختلط";');
+    const s2 = JSON.parse(W('JSON.stringify(placeSettings(' + sid + '))'));
+    assert(s2.separateGender === true, 'در مدرسهٔ مختلط باید محترم شمرده شود');
+  } finally {
+    W('byId("schools",' + sid + ').gender=' + before + ';'
+      + 'delete byId("schools",' + sid + ').place_rules;');
+  }
+});
+
+test('توزیع: خواهر و برادر فقط با کد ملی والدین، نه نام خانوادگی', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'js', '41-class-placement.js'), 'utf8');
+  const fk = src.slice(src.indexOf('function familyKey'), src.indexOf('function familyKey') + 400);
+  assert(fk.indexOf('last_name') === -1 && fk.indexOf('full_name') === -1,
+    'نام خانوادگی نباید مبنای تشخیص خواهر و برادر باشد');
+  assert(fk.indexOf('father_nid') > -1, 'کد ملی پدر باید مبنا باشد');
+});
+
 test('کلاس‌بندی: هزینه به تعداد کلاس وابسته نیست', () => {
   /* پیش‌تر findClassFor برای هر ردیف روی کل فهرست filter می‌زد:
      ۳۰۰۰ ردیف با ۹ کلاس ۲۱۱ms بود و با ۱۵۹ کلاس ۱۰۰۳ms.

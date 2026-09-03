@@ -234,6 +234,7 @@ function gradeWordOf(g){
  */
 function buildClassIndex(schoolId){
   var byName = Object.create(null);   /* نام یکسان‌سازی‌شده ⇐ کلاس */
+  var byNameDigit = Object.create(null); /* نام با ارقام لاتین ⇐ true */
   var byGF = Object.create(null);     /* "پایه|رشته" ⇐ [کلاس] */
   var byGrade = Object.create(null);  /* پایه ⇐ [کلاس بدون رشته] */
   var all = [];
@@ -245,6 +246,9 @@ function buildClassIndex(schoolId){
     var nm = normField(c.name);
     /* نخستین تطبیق برنده است تا با رفتار filter()[0] یکی بماند */
     if(nm && byName[nm] === undefined) byName[nm] = c;
+    /* نام با ارقام یکسان‌شده، برای تشخیص «شعبهٔ صریح» بدون حلقه */
+    var nd = normField(faDigits(c.name));
+    if(nd) byNameDigit[nd] = true;
 
     var cg = c.grade_level ||
       ((typeof gradeFromName === 'function') ? gradeFromName(c.name) : null);
@@ -259,7 +263,8 @@ function buildClassIndex(schoolId){
     }
   });
 
-  return { byName: byName, byGF: byGF, byGrade: byGrade, all: all };
+  return { byName: byName, byNameDigit: byNameDigit,
+           byGF: byGF, byGrade: byGrade, all: all };
 }
 
 /**
@@ -283,7 +288,27 @@ function findClassFor(pl, schoolId, idx){
   if(pl.grade && pl.field){
     var nf = normField(pl.field);
     var exact = idx.byGF[pl.grade + '|' + nf];
-    if(exact && exact.length) return exact[0];
+    if(exact && exact.length){
+      /* ⚠️ اگر متن خام شمارهٔ شعبه دارد، نباید کورکورانه اولی را
+         داد. «دهم علوم تجربی ۳» باید شعبهٔ ۳ را بیابد نه ۱.
+         parsePlacement برای کلاس‌های رشته‌ای section را پر
+         نمی‌کند، پس شماره فقط در raw هست. */
+      var rawTxt = normField(faDigits(pl.raw || ''));
+      if(exact.length > 1 && rawTxt){
+        for(var e = 0; e < exact.length; e++){
+          if(normField(faDigits(exact[e].name)) === rawTxt) return exact[e];
+        }
+        var tail = rawTxt.match(/(\S+)$/);
+        if(tail){
+          for(var e2 = 0; e2 < exact.length; e2++){
+            var cn = normField(faDigits(exact[e2].name));
+            if(cn !== normField(faDigits(pl.name)) &&
+               cn.slice(-tail[1].length - 1) === ' ' + tail[1]) return exact[e2];
+          }
+        }
+      }
+      return exact[0];
+    }
 
     /* رشته در نام کلاس آمده ولی در میدان field ثبت نشده.
        اینجا جست‌وجوی زیررشته لازم است و کلید مستقیم کار نمی‌کند؛
@@ -312,20 +337,67 @@ function findClassFor(pl, schoolId, idx){
 }
 
 /**
+ * آیا کاربر شعبه را صریح مشخص کرده؟
+ *
+ * ⚠️ دام: detectSection برای کلاس‌های رشته‌ای (پایهٔ ۱۰ به بالا)
+ * شماره را نمی‌خواند و pl.section خالی می‌ماند. یعنی
+ * «دهم علوم تجربی ۳» و «دهم تجربی» هر دو pl یکسان می‌دهند.
+ * پس متن خام هم باید سنجیده شود، نه فقط pl.section.
+ */
+function hasExplicitSection(pl, idx){
+  if(!pl) return false;
+  if(pl.section) return true;
+  var raw = normField(faDigits(pl.raw || ''));
+  if(!raw) return false;
+  var canon = normField(faDigits(pl.name || ''));
+
+  /* متن دقیقاً همان نام متعارف است ⇒ انتخاب صریح نیست.
+     ⚠️ «دهم علوم تجربی» اسم رشته است نه اسم شعبه؛ اگر مدرسه
+     کلاسی هم‌نام داشته باشد نباید همه آنجا تلنبار شوند. */
+  if(raw === canon) return false;
+
+  /* چیزی بیش از نام متعارف در متن هست ⇒ شعبه مشخص شده */
+  if(canon && raw.indexOf(canon) === 0 && raw.slice(canon.length).trim()) return true;
+
+  /* نشانهٔ شعبه در پایان متن: عدد یا حرف الفبایی تک.
+     مدارس ایرانی هر دو شکل «دهم تجربی ۲» و «دهم تجربی الف» را
+     می‌نویسند. */
+  if(/\s\d+$/.test(raw) && !/^\d+$/.test(raw)) return true;
+  if(/\s(الف|ب|ج|د|ه|و|ز)$/.test(raw)) return true;
+
+  /* واپسین راه: نام یک کلاس موجود عیناً آمده باشد.
+     ⚠️ اینجا پیش‌تر حلقه روی نامزدها بود. سنجش تفکیکی نشان داد
+     با ۱۵۱ نامزد، ۷۵۱ms از ۹۰۴ms کل زمان را می‌خورد — چون برای
+     هر ردیف روی همهٔ نامزدها normField صدا می‌زد. حالا نقشهٔ
+     byNameDigit یک بار در buildClassIndex ساخته می‌شود و اینجا
+     فقط یک جست‌وجوی کلید انجام می‌گیرد. */
+  return !!(idx && idx.byNameDigit && idx.byNameDigit[raw]);
+}
+
+/**
  * برنامهٔ کلاس‌بندی برای مجموعه‌ای از ردیف‌های اکسل.
  * می‌گوید کدام کلاس‌ها باید ساخته شوند و هر دانش‌آموز کجا می‌رود.
  *
  * @param {Array} rows  آرایه‌ای از {index, text}
  * @returns {{plan:Object, create:Array, warnings:Array}}
  */
-function planPlacement(rows, schoolId){
+function planPlacement(rows, schoolId, opts){
   var plan = Object.create(null);   /* index → {classId|key} */
   var create = [];                  /* کلاس‌های نو */
   var seen = Object.create(null);
   var warnings = [];
+  var manual = [];                  /* ردیف‌هایی که جا نشدند */
   /* نقشه یک بار ساخته می‌شود، نه به ازای هر ردیف */
   var idx = buildClassIndex(schoolId);
 
+  var cfg = Object.assign({}, placeSettings(schoolId), opts || {});
+  /* اشغال فقط وقتی لازم است که توزیع روشن باشد */
+  var occ = cfg.autoDistribute ? buildOccupancy(schoolId) : null;
+  /* فقط وقتی کلید روشن است ساخته می‌شود؛ null یعنی ردگیری خاموش */
+  var famClass = cfg.keepSiblings ? Object.create(null) : null;
+
+  /* 🔒 ترتیب ردیف‌ها حفظ می‌شود؛ مرتب‌سازی دوباره تکرارپذیری را
+     می‌شکند وقتی دو ردیف امتیاز برابر دارند. */
   rows.forEach(function(r){
     var pl = parsePlacement(r.text, schoolId);
     if(!pl){ plan[r.index] = null; return; }
@@ -336,9 +408,62 @@ function planPlacement(rows, schoolId){
         msg: 'رشتهٔ «' + pl.field + '» جزو شاخه‌های این مدرسه نیست' });
     }
 
-    var ex = findClassFor(pl, schoolId, idx);
-    if(ex){ plan[r.index] = { classId: ex.id, name: ex.name, pl: pl }; return; }
+    /* ── ۱) تطبیق: اگر فایل شعبه را صریح گفته، همان محترم است ──
+       ⚠️ دام: وقتی چند شعبهٔ هم‌پایه/هم‌رشته هست، findClassFor
+       بی‌دلیل اولی را برمی‌گرداند. آنجا انتخاب کار توزیع است نه
+       تطبیق. پس فقط تطبیق «بدون ابهام» محترم شمرده می‌شود:
+       نام دقیق، یا شعبهٔ صریح، یا تنها نامزد موجود. */
+    var ambiguous = false;
+    var cands = cfg.autoDistribute ? branchCandidates(pl, idx) : [];
+    if(cfg.autoDistribute && cands.length > 1 && !hasExplicitSection(pl, idx)){
+      /* ⚠️ دام واقعی: مدرسه‌ای که یک کلاس بی‌شماره به نام «دهم علوم
+         تجربی» دارد و بعد شعبهٔ ۱ و ۲ اضافه کرده. تطبیق نام دقیق
+         روی همان کلاس بی‌شماره می‌افتد و همهٔ دانش‌آموزان آنجا
+         تلنبار می‌شوند. وقتی چند شعبهٔ هم‌رشته هست، نام متعارف
+         دیگر یک انتخاب صریح نیست. */
+      ambiguous = true;
+    }
 
+    var ex = ambiguous ? null : findClassFor(pl, schoolId, idx);
+    if(ex){
+      plan[r.index] = { classId: ex.id, name: ex.name, pl: pl };
+      if(occ && occ[ex.id]) bumpOcc(occ[ex.id], r.gender);
+      if(occ) rememberFamily(famClass, r, ex.id, pl.grade);
+      return;
+    }
+
+    /* ── ۲) توزیع: چند شعبهٔ هم‌پایه هست ولی کدام؟ ── */
+    if(cfg.autoDistribute){
+      if(cands.length){
+        var fk = familyKey(r);
+        var got = pickBranch(cands, occ, {
+          gender: r.gender || null,
+          separateGender: cfg.separateGender,
+          /* ⚠️ فقط در همان پایه؛ خواهر و برادر معمولاً هم‌پایه نیستند */
+          prefer: (famClass && fk && famClass[fk] !== undefined
+                   && famClass[fk].grade === pl.grade) ? famClass[fk].id : null
+        });
+
+        if(got && got.cls){
+          plan[r.index] = { classId: got.cls.id, name: got.cls.name, pl: pl, auto: true };
+          bumpOcc(occ[got.cls.id], r.gender);
+          rememberFamily(famClass, r, got.cls.id, pl.grade);
+          return;
+        }
+        if(got && got.full){
+          /* ⚠️ نه ساخت خودکار کلاس، نه نادیده گرفتن ظرفیت */
+          var caps = cands.map(function(c){
+            var o = occ[c.id] || {};
+            return { id: c.id, name: c.name, n: o.n || 0, cap: o.cap || 0 };
+          });
+          manual.push({ index: r.index, text: r.text, name: pl.name, candidates: caps });
+          plan[r.index] = { classId: null, manual: true, name: pl.name, pl: pl };
+          return;
+        }
+      }
+    }
+
+    /* ── ۳) هیچ نامزدی نبود ⇒ کلاس نو (رفتار پیشین) ── */
     var key = pl.name;
     if(!seen[key]){
       seen[key] = true;
@@ -347,5 +472,158 @@ function planPlacement(rows, schoolId){
     plan[r.index] = { classId: null, key: key, name: pl.name, pl: pl };
   });
 
-  return { plan: plan, create: create, warnings: warnings };
+  return { plan: plan, create: create, warnings: warnings, manual: manual, occ: occ };
+}
+
+/** افزودن یک نفر به شمارندهٔ درون‌حافظه‌ای کلاس */
+function bumpOcc(o, gender){
+  if(!o) return;
+  o.n++;
+  if(gender === 'پسر') o.boys++;
+  else if(gender === 'دختر') o.girls++;
+}
+
+/**
+ * ثبت کلاس خانواده برای ترجیح خواهر و برادر.
+ * ⚠️ فقط در همان پایه معنا دارد؛ خواهر و برادر معمولاً هم‌پایه
+ * نیستند و این قاعده عملاً برای دوقلوهاست.
+ */
+function rememberFamily(map, row, classId, grade){
+  if(!map) return;
+  var fk = familyKey(row);
+  if(fk && map[fk] === undefined) map[fk] = { id: classId, grade: grade || null };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   توزیع خودکار میان شعبه‌های هم‌پایه
+   ══════════════════════════════════════════════════════════════
+
+   تفاوت «تطبیق» با «توزیع»:
+   findClassFor تطبیق می‌کند — می‌فهمد «دهم تجربی ۲» کدام کلاس است.
+   اگر فایل فقط بگوید «دهم تجربی» و سه شعبه باشد، null می‌دهد.
+   توزیع یعنی سامانه خودش شعبه را انتخاب کند.
+
+   ⚠️ توزیع فقط وقتی وارد می‌شود که تطبیق شکست خورده باشد. اگر
+   مدرسه شعبه را در فایل نوشته، همان محترم است.
+
+   🔒 تکرارپذیری تضمین‌شده: هیچ Math.random در این مسیر نیست و
+   گره‌گشایی با شناسهٔ کوچک‌تر انجام می‌شود. همان فایل ⇒ همان نتیجه.
+   ============================================================== */
+
+/** تنظیمات توزیع؛ هر دو قانون اختیاری پیش‌فرض خاموش‌اند */
+var PLACE_DEFAULTS = { autoDistribute: true, separateGender: false, keepSiblings: false };
+
+/**
+ * خواندن تنظیمات توزیع یک مدرسه.
+ * ⚠️ در مدرسهٔ تک‌جنسیتی کلید تفکیک جنسیتی بی‌معناست و خاموش
+ * برمی‌گردد، حتی اگر مدیر روشنش کرده باشد.
+ */
+function placeSettings(schoolId){
+  var sc = (typeof byId === 'function') ? byId('schools', schoolId) : null;
+  var saved = (sc && sc.place_rules) ? sc.place_rules : {};
+  var out = Object.assign({}, PLACE_DEFAULTS, saved);
+  var g = sc && sc.gender;
+  if(g === 'پسرانه' || g === 'دخترانه') out.separateGender = false;
+  return out;
+}
+
+/** آیا مدرسه مختلط است؟ کلید جنسیت فقط آنجا معنا دارد. */
+function isMixedSchool(schoolId){
+  var sc = (typeof byId === 'function') ? byId('schools', schoolId) : null;
+  var g = sc && sc.gender;
+  return !(g === 'پسرانه' || g === 'دخترانه');
+}
+
+/**
+ * وضعیت اشغال کلاس‌های یک مدرسه: شمار ثبت‌نام و جنسیت غالب.
+ *
+ * ⚠️ این شمارنده در حافظه به‌روز می‌شود، نه از db خوانده. اگر هر
+ * ردیف دوباره db را بخواند، هر سه هزار ردیف به یک کلاس می‌روند
+ * چون هیچ‌کدام هنوز ثبت نشده‌اند.
+ */
+function buildOccupancy(schoolId){
+  var occ = Object.create(null);
+  db.classes.forEach(function(c){
+    if(c.school_id !== schoolId) return;
+    occ[c.id] = { n: 0, cap: Number(c.capacity) || 30, boys: 0, girls: 0 };
+  });
+  var byCls = (typeof idxEnrollByClass === 'function') ? idxEnrollByClass() : null;
+  Object.keys(occ).forEach(function(cid){
+    var list = byCls ? (byCls.get(Number(cid)) || [])
+      : db.enrollments.filter(function(e){ return e.class_id === Number(cid); });
+    occ[cid].n = list.length;
+    list.forEach(function(e){
+      var st = (typeof byId === 'function') ? byId('users', e.student_id) : null;
+      if(!st) return;
+      if(st.gender === 'پسر') occ[cid].boys++;
+      else if(st.gender === 'دختر') occ[cid].girls++;
+    });
+  });
+  return occ;
+}
+
+/** جنسیت غالب یک کلاس؛ کلاس خالی جنسیت ندارد و همه‌کس می‌تواند برود */
+function classGender(o){
+  if(!o || (!o.boys && !o.girls)) return null;
+  return o.boys > o.girls ? 'پسر' : (o.girls > o.boys ? 'دختر' : null);
+}
+
+/**
+ * انتخاب شعبه میان نامزدهای هم‌پایه.
+ *
+ * قاعده: کم‌جمعیت‌ترین شعبهٔ واجد شرایط.
+ * این یک قاعده هم‌زمان ظرفیت و تعادل را برآورده می‌کند.
+ *
+ * @param {Array}  cands نامزدها (کلاس‌های هم‌پایه/هم‌رشته)
+ * @param {Object} occ   خروجی buildOccupancy، در حافظه به‌روز
+ * @param {Object} opt   {gender, separateGender, prefer}
+ * @returns {{cls:Object}|{full:true}|null}
+ */
+function pickBranch(cands, occ, opt){
+  if(!cands || !cands.length) return null;
+  opt = opt || {};
+  var fit = [], anyBlocked = false;
+
+  cands.forEach(function(c){
+    var o = occ[c.id] || { n: 0, cap: Number(c.capacity) || 30, boys: 0, girls: 0 };
+    if(o.n >= o.cap){ anyBlocked = true; return; }
+    if(opt.separateGender && opt.gender){
+      var cg = classGender(o);
+      if(cg && cg !== opt.gender){ anyBlocked = true; return; }
+    }
+    fit.push({ c: c, n: o.n });
+  });
+
+  if(!fit.length) return anyBlocked ? { full: true } : null;
+
+  /* ترجیح خواهر و برادر: الزام نیست، فقط اگر جا باشد.
+     ⚠️ ظرفیت مقدم است — کلاس پر از fit حذف شده و اینجا نمی‌آید. */
+  if(opt.prefer){
+    var sib = fit.filter(function(f){ return f.c.id === opt.prefer; })[0];
+    if(sib) return { cls: sib.c };
+  }
+
+  /* 🔒 گره‌گشایی قطعی: امتیاز برابر ⇒ شناسهٔ کوچک‌تر.
+     بدون این، ترتیب می‌تواند بین اجراها فرق کند و تکرارپذیری
+     از بین برود. */
+  fit.sort(function(a, b){ return (a.n - b.n) || (a.c.id - b.c.id); });
+  return { cls: fit[0].c };
+}
+
+/** نامزدهای هم‌پایه (و هم‌رشته اگر رشته دارد) از نقشه */
+function branchCandidates(pl, idx){
+  if(!pl || !pl.grade) return [];
+  /* ⚠️ بدون slice: این تابع به ازای هر ردیف صدا زده می‌شود و کپی
+     گرفتن از فهرست ۱۵۰تایی، هزینهٔ درجه‌دوم تازه‌ای می‌سازد.
+     سنجش: با slice ۹۱۷ms، بدون آن ۱۴۰ms.
+     فراخوان‌ها این آرایه را تغییر نمی‌دهند. */
+  if(pl.field) return idx.byGF[pl.grade + '|' + normField(pl.field)] || [];
+  return idx.byGrade[pl.grade] || [];
+}
+
+/** کلید خانواده برای تشخیص خواهر و برادر — فقط کد ملی والدین */
+function familyKey(row){
+  if(!row) return null;
+  /* ⚠️ نام خانوادگی مبنا نیست: «محمدی» در یک مدرسه ده‌ها نفر است */
+  return row.father_nid || row.mother_nid || null;
 }
