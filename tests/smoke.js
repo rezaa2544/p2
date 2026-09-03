@@ -2642,14 +2642,18 @@ test('قرارداد سرور: تعامل کارایی و سنجش محدوده 
    وگرنه تطبیق نام دقیق روی آن می‌افتد و آزمون بی‌صدا سبز می‌شود. */
 function withBranches(cap, fn) {
   const sid = W('db.schools[0].id');
-  const saved = W('JSON.stringify(db.classes.filter(c=>c.school_id===' + sid + ').map(c=>c.id))');
-  W('(()=>{db._bk=db.classes.slice();db.classes=db.classes.filter(c=>c.school_id!==' + sid + ');'
+  /* ⚠️ validateImport مدرسه را از S.user می‌خواند، نه از پارامتر.
+     آزمون‌ها وضعیت جهانی مشترک دارند و کاربر قبلی ممکن است
+     مدرسهٔ دیگری داشته باشد ⇒ جدول ظرفیت خالی درمی‌آید. */
+  W('(()=>{db._bkU=S.user;db._bk=db.classes.slice();'
+    + 'S.user=db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+    + 'db.classes=db.classes.filter(c=>c.school_id!==' + sid + ');'
     + 'for(let i=1;i<=3;i++)db.classes.push({id:870000+i,school_id:' + sid
     + ',name:"دهم علوم تجربی "+i,grade_level:10,field:"علوم تجربی",capacity:' + cap + '});'
     + '(typeof idxInvalidate==="function")&&idxInvalidate("classes");})()');
   try { return fn(sid); }
   finally {
-    W('(()=>{db.classes=db._bk;delete db._bk;'
+    W('(()=>{db.classes=db._bk;S.user=db._bkU;delete db._bk;delete db._bkU;'
       + '(typeof idxInvalidate==="function")&&idxInvalidate("classes");})()');
   }
 }
@@ -2658,6 +2662,114 @@ const distOf = (sid, rows, opt) => JSON.parse(W(
   + 'const c={};Object.values(p.plan).forEach(x=>{if(x&&x.classId)c[x.classId]=(c[x.classId]||0)+1;});'
   + 'return JSON.stringify({d:c,manual:p.manual.length,neu:p.create.length});})()'));
 const plainRows = (n) => Array.from({ length: n }, (_, i) => ({ index: i, text: 'دهم تجربی' }));
+
+/* کد ملی آزمایشی با رقم کنترل معتبر.
+   ⚠️ پیشوند ۹۹۹ که ثبت احوال صادر نمی‌کند. */
+function tNid(n) {
+  const b = ('999' + String(n).padStart(6, '0')).split('').map(Number);
+  const wts = [10, 9, 8, 7, 6, 5, 4, 3, 2];
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += b[i] * wts[i];
+  const r = sum % 11;
+  return b.join('') + (r < 2 ? r : 11 - r);
+}
+const IMP_MAP = '{0:"full_name",1:"national_id",2:"class_name",3:"gender"}';
+function impRows(n, txt, from) {
+  return Array.from({ length: n }, (_, i) =>
+    ['دانش‌آموز ' + (i + 1), tNid((from || 0) + i), txt, i % 2 ? 'دختر' : 'پسر']);
+}
+
+test('پیش‌نمایش: جدول ظرفیت اکنون/افزوده/مجموع را می‌سازد', () => {
+  withBranches(10, (sid) => {
+    const mgr = W('S.user'); void mgr;
+    const got = JSON.parse(W('JSON.stringify(validateImport('
+      + JSON.stringify(impRows(9, 'دهم تجربی')) + ',' + IMP_MAP + ',"students").capRows)'));
+    assert(got.length === 3, 'باید سه کلاس در جدول باشد، شد: ' + got.length);
+    got.forEach(r => {
+      assert(r.added === 3, 'هر شعبه باید ۳ نفر بگیرد: ' + r.name + ' ' + r.added);
+      assert(r.after === r.before + r.added, 'مجموع نادرست در ' + r.name);
+      assert(r.over === false, 'نباید فراتر از ظرفیت باشد');
+    });
+  });
+});
+
+test('پیش‌نمایش: مجموع فراتر از ظرفیت قرمز نشان داده می‌شود', () => {
+  const sid = W('db.schools[0].id');
+  W('(()=>{db._bk2=db.classes.slice();db._bkU2=S.user;'
+    + 'S.user=db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+    + 'db.classes=db.classes.filter(c=>c.school_id!==' + sid + ');'
+    + 'db.classes.push({id:871500,school_id:' + sid + ',name:"دهم علوم تجربی الف",'
+    + 'grade_level:10,field:"علوم تجربی",capacity:2});'
+    + '(typeof idxInvalidate==="function")&&idxInvalidate("classes");})()');
+  try {
+    const p = JSON.parse(W('JSON.stringify(validateImport('
+      + JSON.stringify(impRows(5, 'دهم علوم تجربی الف', 500)) + ',' + IMP_MAP + ',"students"))'));
+    const row = (p.capRows || [])[0];
+    assert(row, 'جدول ظرفیت خالی است');
+    assert(row.over === true, 'باید فراتر از ظرفیت علامت بخورد: ' + JSON.stringify(row));
+
+    /* رندر واقعی: عدد قرمز و هشدار متنی، نه فقط پرچم در داده */
+    W('S.imp={step:2,entity:"students",preview:' + JSON.stringify(p).replace(/</g, '\\u003c') + '};');
+    const html = W('impCapTable(S.imp.preview)');
+    assert(html.indexOf('فراتر از ظرفیت') > -1, 'برچسب قرمز در جدول نیست');
+    assert(/color:var\(--red\)/.test(html), 'مجموع با رنگ قرمز نمایش داده نشده');
+    assert(html.indexOf('از ظرفیت رد شده است') > -1, 'هشدار متنی زیر جدول نیست');
+  } finally {
+    W('(()=>{db.classes=db._bk2;S.user=db._bkU2;delete db._bk2;delete db._bkU2;'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("classes");})()');
+  }
+});
+
+test('پیش‌نمایش: بخش «نیازمند بررسی دستی» با دکمهٔ افزایش ظرفیت', () => {
+  withBranches(10, (sid) => {
+    const p = JSON.parse(W('JSON.stringify(validateImport('
+      + JSON.stringify(impRows(35, 'دهم تجربی')) + ',' + IMP_MAP + ',"students"))'));
+    assert(p.counts.manual === 5, 'باید ۵ ردیف دستی شود، شد: ' + p.counts.manual);
+    assert(p.counts.auto === 30, 'باید ۳۰ نفر خودکار جا بگیرند، شد: ' + p.counts.auto);
+    assert(p.newClasses.length === 0, 'نباید کلاس نو پیشنهاد شود');
+    const html = W('impManualBlock(' + JSON.stringify(p) + ')');
+    assert(html.indexOf('نیازمند بررسی دستی') > -1, 'عنوان بخش نیست');
+    assert(html.indexOf('imp-raise-cap') > -1, 'دکمهٔ افزایش ظرفیت نیست');
+    assert(html.indexOf('بقیهٔ ردیف‌ها بدون مشکل ثبت می‌شوند') > -1,
+      'باید روشن باشد که این ردیف‌ها مانع بقیه نیستند');
+  });
+});
+
+test('تنظیمات: کارت قواعد فقط توزیع را پیش‌فرض روشن دارد', () => {
+  const sid = W('db.schools[0].id');
+  const before = W('JSON.stringify(byId("schools",' + sid + ').gender||null)');
+  W('db._bkU3=S.user;S.user=db.users.find(u=>u.role==="manager"&&u.school_id==='
+    + sid + ')||S.user;');
+  try {
+    W('byId("schools",' + sid + ').gender="مختلط";delete byId("schools",' + sid + ').place_rules;');
+    const html = W('impRulesCard()');
+    ['pr_auto', 'pr_gender', 'pr_sib', 'place-rules-save'].forEach(k =>
+      assert(html.indexOf(k) > -1, 'کلید ' + k + ' در کارت نیست'));
+    const checked = (html.match(/checked/g) || []).length;
+    assert(checked === 1, 'فقط توزیع باید پیش‌فرض روشن باشد، روشن: ' + checked);
+  } finally {
+    W('byId("schools",' + sid + ').gender=' + before + ';'
+      + 'S.user=db._bkU3;delete db._bkU3;');
+  }
+});
+
+test('تنظیمات: در مدرسهٔ تک‌جنسیتی کلید جنسیت غیرفعال نمایش داده می‌شود', () => {
+  const sid = W('db.schools[0].id');
+  const before = W('JSON.stringify(byId("schools",' + sid + ').gender||null)');
+  try {
+    W('db._bkU4=S.user;S.user=db.users.find(u=>u.role==="manager"&&u.school_id==='
+      + sid + ')||S.user;byId("schools",' + sid + ').gender="پسرانه";');
+    const html = W('impRulesCard()');
+    assert(html.indexOf('disabled') > -1, 'کلید جنسیت باید غیرفعال باشد');
+    assert(html.indexOf('بی‌اثر است') > -1, 'باید توضیح دهد چرا بی‌اثر است');
+    W('byId("schools",' + sid + ').gender="مختلط";');
+    const mixed = W('impRulesCard()');
+    assert(mixed.indexOf('disabled') === -1, 'در مدرسهٔ مختلط نباید غیرفعال باشد');
+  } finally {
+    W('byId("schools",' + sid + ').gender=' + before + ';'
+      + 'S.user=db._bkU4;delete db._bkU4;');
+  }
+});
 
 test('توزیع: نُه نفر میان سه شعبه متعادل پخش می‌شوند', () => {
   withBranches(10, (sid) => {

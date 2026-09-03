@@ -4201,6 +4201,16 @@ function validateImport(rows, mapping, entity){
      رفتار درجه‌دوم روی محور تعداد کلاس می‌دهد */
   var placeIdx = (typeof buildClassIndex === 'function')
     ? buildClassIndex(sid) : null;
+  /* ── توزیع خودکار ──────────────────────────────────────────
+     تنظیمات و اشغال یک بار خوانده می‌شوند. شمارندهٔ اشغال با هر
+     تخصیص در همین حلقه به‌روز می‌شود؛ اگر از db خوانده شود همهٔ
+     ردیف‌ها به یک کلاس می‌روند چون هیچ‌کدام هنوز ثبت نشده‌اند. */
+  var pcfg = (typeof placeSettings === 'function') ? placeSettings(sid) : null;
+  var pocc = (pcfg && pcfg.autoDistribute && typeof buildOccupancy === 'function')
+    ? buildOccupancy(sid) : null;
+  var famCls = (pcfg && pcfg.keepSiblings) ? Object.create(null) : null;
+  var manualRows = [];   /* ردیف‌هایی که هیچ شعبه‌ای جا نداشت */
+  var addCount = Object.create(null);   /* شناسهٔ کلاس ⇐ شمار افزوده */
 
   rows.forEach(function(row, i){
     var o = {};
@@ -4274,15 +4284,56 @@ function validateImport(rows, mapping, entity){
             pl.name = pl.name.trim();
           }
         }
-        var ex = (pl && typeof findClassFor === 'function') ? findClassFor(pl, sid, placeIdx)
-               : clsByName[normHdr(placeTxt)];
+        /* چند شعبهٔ هم‌پایه هست و فایل شعبه را مشخص نکرده؟
+           آنجا انتخاب کار توزیع است نه تطبیق. */
+        var pcands = (pl && pocc && typeof branchCandidates === 'function')
+          ? branchCandidates(pl, placeIdx) : [];
+        var pAmbig = !!(pocc && pcands.length > 1
+          && typeof hasExplicitSection === 'function'
+          && !hasExplicitSection(pl, placeIdx));
+
+        var ex = (!pAmbig && pl && typeof findClassFor === 'function')
+               ? findClassFor(pl, sid, placeIdx)
+               : (pl ? null : clsByName[normHdr(placeTxt)]);
         if(!ex && !pl) ex = clsByName[normHdr(placeTxt)];
 
+        /* ── توزیع خودکار میان شعبه‌های هم‌پایه ── */
+        if(!ex && pAmbig){
+          var fkey = (typeof familyKey === 'function') ? familyKey(data) : null;
+          var picked = pickBranch(pcands, pocc, {
+            gender: data.gender || null,
+            separateGender: pcfg.separateGender,
+            prefer: (famCls && fkey && famCls[fkey] !== undefined
+                     && famCls[fkey].grade === pl.grade) ? famCls[fkey].id : null
+          });
+          if(picked && picked.cls){
+            ex = picked.cls;
+            data.auto_placed = true;
+          } else if(picked && picked.full){
+            /* ⚠️ نه ساخت خودکار کلاس، نه نادیده گرفتن ظرفیت */
+            manualRows.push({ row: i + 1, name: data.full_name,
+              text: placeTxt, wanted: pl.name,
+              candidates: pcands.map(function(c){
+                var o = pocc[c.id] || {};
+                return { id: c.id, name: c.name, n: o.n || 0, cap: o.cap || 0 };
+              }) });
+            data.needs_manual = true;
+            warns.push('همهٔ شعبه‌های «' + pl.name + '» پر است — نیازمند بررسی دستی');
+          }
+        }
+
+        if(ex && data.needs_manual) ex = null;
         if(ex){
           data.class_id = ex.id;
+          /* شمارندهٔ درون‌حافظه‌ای، نه از db */
+          if(pocc && pocc[ex.id] && typeof bumpOcc === 'function')
+            bumpOcc(pocc[ex.id], data.gender);
+          addCount[ex.id] = (addCount[ex.id] || 0) + 1;
+          if(famCls && typeof rememberFamily === 'function')
+            rememberFamily(famCls, data, ex.id, pl ? pl.grade : null);
           if(pl && pl.field && !pl.offered)
             warns.push('رشتهٔ «' + pl.field + '» جزو شاخه‌های این مدرسه نیست');
-        } else {
+        } else if(!data.needs_manual){
           var nm = pl ? pl.name : placeTxt;
           data.new_class = nm;
           data.place = pl || null;
@@ -4361,11 +4412,28 @@ function validateImport(rows, mapping, entity){
     out.push({ row: i + 1, data: data, errors: errors, warns: warns, ok: errors.length === 0 });
   });
 
-  return { rows: out, newClasses: newClasses, counts: {
-    total: out.length,
-    ok: out.filter(function(r){ return r.ok; }).length,
-    failed: out.filter(function(r){ return !r.ok; }).length,
-    updates: out.filter(function(r){ return r.ok && r.data.existing_id; }).length } };
+  /* جدول پیش‌نمایش ظرفیت: کلاس / اکنون / افزوده / مجموع / ظرفیت */
+  var capRows = Object.keys(addCount).map(function(cid){
+    var c = byId('classes', Number(cid)) || {};
+    var o = (pocc && pocc[cid]) ? pocc[cid] : null;
+    var added = addCount[cid];
+    var cap = o ? o.cap : (Number(c.capacity) || 30);
+    var after = o ? o.n : added;          /* اشغال پس از افزودن */
+    return { id: Number(cid), name: c.name || '—',
+             before: after - added, added: added, after: after, cap: cap,
+             over: after > cap };
+  }).sort(function(a, b){ return a.name < b.name ? -1 : (a.name > b.name ? 1 : 0); });
+
+  return { rows: out, newClasses: newClasses,
+    capRows: capRows, manualRows: manualRows,
+    settings: pcfg || {},
+    counts: {
+      total: out.length,
+      ok: out.filter(function(r){ return r.ok; }).length,
+      failed: out.filter(function(r){ return !r.ok; }).length,
+      manual: manualRows.length,
+      auto: out.filter(function(r){ return r.ok && r.data.auto_placed; }).length,
+      updates: out.filter(function(r){ return r.ok && r.data.existing_id; }).length } };
 }
 
 /** ثبت نهایی — همهٔ نوشتن‌ها در یک دسته تا رابط قفل نشود */
@@ -4496,6 +4564,152 @@ function commitImport(st){
 }
 
 /* ------------------------------- نما ------------------------------- */
+/**
+ * جدول پیش‌نمایش ظرفیت کلاس‌ها.
+ *
+ * ⚠️ مجموعی که از ظرفیت رد شود باید قرمز باشد. عدد خاکستری در
+ * جدول هشدار واقعی نیست و مدیر ماه‌ها بعد کلاس ۵۵ نفره کشف
+ * می‌کند.
+ */
+/**
+ * کارت قواعد کلاس‌بندی خودکار.
+ *
+ * ⚠️ هر دو قانون اختیاری پیش‌فرض خاموش‌اند:
+ * تفکیک جنسیتی چون مدارس کوچک و روستایی مختلط‌اند، و
+ * هم‌کلاسی خواهر و برادر چون بعضی مدارس عمداً جدا می‌کنند.
+ */
+function impRulesCard(){
+  if(typeof placeSettings !== 'function') return '';
+  var sid = S.user.school_id;
+  var cfg = placeSettings(sid);
+  var mixed = (typeof isMixedSchool === 'function') ? isMixedSchool(sid) : true;
+  var sc = byId('schools', sid) || {};
+
+  var chk = function(id, on, label, hint, disabled){
+    return '<label class="row" style="gap:10px;align-items:flex-start;padding:10px 0;'
+      + 'border-bottom:1px solid var(--border)' + (disabled ? ';opacity:.55' : '') + '">'
+      + '<input type="checkbox" id="' + id + '"' + (on ? ' checked' : '')
+      + (disabled ? ' disabled' : '') + ' style="margin-top:3px;flex:none" />'
+      + '<span style="min-width:0"><b class="small">' + label + '</b>'
+      + '<div class="small muted" style="margin-top:2px;line-height:1.9">' + hint + '</div>'
+      + '</span></label>';
+  };
+
+  return '<div class="card" style="margin-top:14px">'
+    + '<div class="card-head"><h3>⚙️ قواعد کلاس‌بندی خودکار</h3></div>'
+    + '<div class="card-body">'
+    + chk('pr_auto', cfg.autoDistribute !== false, 'توزیع خودکار میان شعبه‌ها',
+        'اگر فایل فقط «دهم تجربی» بنویسد و مدرسه چند شعبه داشته باشد، '
+        + 'دانش‌آموز به کم‌جمعیت‌ترین شعبهٔ دارای جا می‌رود. '
+        + 'شعبه‌ای که در فایل صریح آمده همیشه محترم است.')
+    + chk('pr_gender', cfg.separateGender === true, 'تفکیک جنسیتی شعبه‌ها',
+        mixed
+          ? 'دانش‌آموز به شعبه‌ای با جنسیت غالب مخالف فرستاده نمی‌شود. '
+            + 'کلاس خالی جنسیت ندارد و همه‌کس می‌تواند برود.'
+          : 'این مدرسه ' + esc(sc.gender || 'تک‌جنسیتی') + ' است و همهٔ '
+            + 'دانش‌آموزانش یک جنسیت دارند؛ این قاعده اینجا بی‌اثر است.',
+        !mixed)
+    + chk('pr_sib', cfg.keepSiblings === true, 'خواهر و برادر هم‌کلاس شوند',
+        'تشخیص فقط از روی کد ملی پدر یا مادر است، نه نام خانوادگی. '
+        + 'تنها در همان پایه اعمال می‌شود و اگر شعبه پر باشد، ظرفیت مقدم است.')
+    + '<div class="row" style="gap:8px;margin-top:12px">'
+    + '<button class="btn" data-act="place-rules-save">ذخیرهٔ قواعد</button>'
+    + '</div></div></div>';
+}
+
+function impCapTable(p){
+  var rows = p.capRows || [];
+  if(!rows.length) return '';
+  var over = rows.filter(function(r){ return r.over; }).length;
+  var auto = p.counts && p.counts.auto;
+
+  return '<div class="card" style="margin-bottom:14px">'
+    + '<div class="card-head"><h3>📊 نتیجهٔ کلاس‌بندی پیش از ثبت</h3>'
+    + (auto ? '<span class="badge b-blue">' + fa(auto) + ' نفر خودکار</span>' : '')
+    + (over ? '<span class="badge b-red">' + fa(over) + ' کلاس فراتر از ظرفیت</span>' : '')
+    + '</div>'
+    + '<div class="table-wrap"><table class="table"><thead><tr>'
+    + '<th>کلاس</th><th>اکنون</th><th>افزوده</th><th>مجموع</th>'
+    + '<th>ظرفیت</th><th>وضعیت</th></tr></thead><tbody>'
+    + rows.map(function(r){
+        var pct = r.cap ? Math.round(r.after / r.cap * 100) : 0;
+        var col = r.over ? 'var(--red)' : (pct > 90 ? 'var(--amber)' : 'var(--primary)');
+        return '<tr' + (r.over ? ' style="background:var(--red-soft)"' : '') + '>'
+          + '<td data-l="کلاس"><b>' + esc(r.name) + '</b></td>'
+          + '<td data-l="اکنون" class="muted">' + fa(r.before) + '</td>'
+          + '<td data-l="افزوده"><b style="color:var(--primary)">+' + fa(r.added) + '</b></td>'
+          + '<td data-l="مجموع"><b style="color:' + col + '">' + fa(r.after) + '</b></td>'
+          + '<td data-l="ظرفیت" class="muted">' + fa(r.cap) + '</td>'
+          + '<td data-l="وضعیت" style="min-width:120px">'
+          + (r.over
+              ? '<span class="badge b-red">فراتر از ظرفیت</span>'
+              : bar(Math.min(100, pct), 100, col))
+          + '</td></tr>';
+      }).join('')
+    + '</tbody></table></div>'
+    + (over ? '<div class="card-body"><div class="small" style="color:var(--red)">'
+        + '⛔ مجموع این کلاس‌ها از ظرفیت رد شده است. پیش از ثبت، ظرفیت را '
+        + 'اصلاح کنید یا ردیف‌ها را جابه‌جا کنید.</div></div>' : '')
+    + '</div>';
+}
+
+/**
+ * بخش «نیازمند بررسی دستی» — وقتی همهٔ شعبه‌ها پر باشند.
+ *
+ * ⚠️ نه کلاس خودکار ساخته می‌شود، نه ظرفیت نادیده گرفته می‌شود.
+ * ⚠️ این ردیف‌ها مانع ثبت بقیه نیستند.
+ */
+function impManualBlock(p){
+  var rows = p.manualRows || [];
+  if(!rows.length) return '';
+
+  /* کلاس‌های نامزد یکتا، برای دکمهٔ افزایش ظرفیت */
+  var seenC = Object.create(null), cls = [];
+  rows.forEach(function(r){
+    (r.candidates || []).forEach(function(c){
+      if(!seenC[c.id]){ seenC[c.id] = true; cls.push(c); }
+    });
+  });
+
+  return '<div class="card" style="margin-bottom:14px;border:1px solid var(--red)">'
+    + '<div class="card-head"><h3>🖐️ نیازمند بررسی دستی</h3>'
+    + '<span class="badge b-red">' + fa(rows.length) + ' ردیف</span></div>'
+    + '<div class="card-body"><div class="small muted" style="line-height:2">'
+    + 'همهٔ شعبه‌های این پایه پر هستند. سامانه عمداً نه کلاس تازه ساخته و '
+    + 'نه ظرفیت را نادیده گرفته است.<br>'
+    + '✅ بقیهٔ ردیف‌ها بدون مشکل ثبت می‌شوند؛ این‌ها کنار گذاشته می‌شوند.'
+    + '</div></div>'
+    + '<div class="table-wrap"><table class="table"><thead><tr>'
+    + '<th>#</th><th>نام</th><th>کلاس درخواستی</th><th>وضعیت شعبه‌ها</th>'
+    + '</tr></thead><tbody>'
+    + rows.slice(0, 100).map(function(r){
+        return '<tr><td data-l="#">' + fa(r.row) + '</td>'
+          + '<td data-l="نام"><b>' + esc(r.name || '—') + '</b></td>'
+          + '<td data-l="کلاس درخواستی">' + esc(r.wanted || r.text || '—') + '</td>'
+          + '<td data-l="وضعیت شعبه‌ها" class="small muted">'
+          + (r.candidates || []).map(function(c){
+              return esc(c.name) + ' ' + fa(c.n) + '/' + fa(c.cap);
+            }).join(' · ')
+          + '</td></tr>';
+      }).join('')
+    + '</tbody></table></div>'
+    + '<div class="card-body"><b class="small">افزایش ظرفیت کلاس</b>'
+    + '<div class="small muted" style="margin:6px 0 10px">'
+    + 'ظرفیت تازه را صریح وارد کنید؛ سامانه خودش آن را بالا نمی‌برد.</div>'
+    + '<div class="row" style="gap:8px;flex-wrap:wrap">'
+    + cls.map(function(c){
+        return '<div class="row" style="gap:6px;align-items:center;'
+          + 'border:1px solid var(--border);border-radius:10px;padding:6px 10px">'
+          + '<b class="small">' + esc(c.name) + '</b>'
+          + '<span class="small muted">' + fa(c.n) + '/' + fa(c.cap) + '</span>'
+          + '<input class="input" id="impcap_' + c.id + '" type="number" '
+          + 'value="' + escAttr(String(c.cap)) + '" style="width:78px" />'
+          + '<button class="btn sm" data-act="imp-raise-cap" data-id="'
+          + escAttr(String(c.id)) + '">ثبت</button></div>';
+      }).join('')
+    + '</div></div></div>';
+}
+
 function viewImport(){
   var st = S.imp || { step:0, entity:'students' };
   var steps = ['انتخاب فایل','نگاشت ستون‌ها','بررسی و خطاها','ثبت نهایی'];
@@ -4524,7 +4738,8 @@ function viewImport(){
       + '✅ ردیف‌های تیتر خودکار تشخیص داده می‌شوند و ستون‌ها هوشمند نگاشت می‌شوند.<br>'
       + '✅ تاریخ شمسی، اعداد فارسی و شماره‌های ناقص خودکار اصلاح یا گزارش می‌شوند.'
       + (canReadXlsx() ? '' : '<br><span style="color:var(--amber)">⚠️ مرورگر شما xlsx را باز نمی‌کند؛ فایل را csv ذخیره کنید.</span>')
-      + '</div></div></div>';
+      + '</div></div></div>'
+      + (st.entity === 'students' ? impRulesCard() : '');
   }
 
   if(st.step === 1 && st.sheet){
@@ -4560,6 +4775,14 @@ function viewImport(){
       + statCard('✅', fa(p.counts.ok), 'آماده ثبت', 'green')
       + statCard('⛔', fa(p.counts.failed), 'دارای خطا', 'red')
       + statCard('♻️', fa(p.counts.updates), 'به‌روزرسانی موجود', 'amber') + '</div>'
+      + ((p.counts.auto || p.counts.manual)
+          ? '<div class="grid g2" style="margin-bottom:14px">'
+            + statCard('🎯', fa(p.counts.auto || 0), 'کلاس‌بندی خودکار', 'blue')
+            + statCard('🖐️', fa(p.counts.manual || 0), 'نیازمند بررسی دستی',
+                       (p.counts.manual ? 'red' : 'green')) + '</div>'
+          : '')
+      + impCapTable(p)
+      + impManualBlock(p)
       + '<div class="card"><div class="card-head"><h3>بررسی ردیف‌به‌ردیف</h3>'
       + (p.newClasses.length ? '<span class="badge b-amber">کلاس‌های جدید: '
           + esc(p.newClasses.join('، ')) + '</span>' : '') + '</div>'
@@ -6632,6 +6855,36 @@ document.addEventListener('click',e=>{
      if(miss.length){toast('فیلد الزامی نگاشت نشده است','err');return;}
      const preview=validateImport(st.sheet.rows,st.mapping,st.entity);
      S.imp=Object.assign({},st,{step:2,preview});render();
+   },
+   'imp-raise-cap'(){
+     /* ⚠️ ظرفیت فقط با عدد صریح مدیر بالا می‌رود؛ سامانه خودش
+        بی‌سروصدا آن را زیاد نمی‌کند وگرنه مدیر ماه‌ها بعد کلاس
+        ۵۵ نفره کشف می‌کند. */
+     const id=Number(el.dataset.id), c=byId('classes',id);
+     if(!c){toast('کلاس یافت نشد','err');return;}
+     const v=Number(V('impcap_'+id));
+     if(!v||v<1){toast('ظرفیت معتبر وارد کنید','err');return;}
+     if(v<(c.capacity||0)){toast('ظرفیت تازه نباید کمتر از ظرفیت فعلی باشد','err');return;}
+     update('classes',id,{capacity:v});
+     toast('ظرفیت «'+c.name+'» به '+fa(v)+' نفر رسید','ok');
+     /* پیش‌نمایش با ظرفیت تازه دوباره ساخته شود */
+     const st=S.imp;
+     if(st&&st.sheet){
+       const preview=validateImport(st.sheet.rows,st.mapping,st.entity);
+       S.imp=Object.assign({},st,{preview});
+     }
+     render();
+   },
+   'place-rules-save'(){
+     /* دو قانون اختیاری؛ هر دو پیش‌فرض خاموش‌اند */
+     const sid=S.user.school_id, sc=byId('schools',sid);
+     if(!sc){toast('مدرسه یافت نشد','err');return;}
+     const rules={
+       autoDistribute:!!$('#pr_auto')?.checked,
+       separateGender:!!$('#pr_gender')?.checked,
+       keepSiblings:!!$('#pr_sib')?.checked };
+     update('schools',sid,{place_rules:rules});
+     toast('قواعد کلاس‌بندی ذخیره شد','ok'); render();
    },
    'imp-commit'(){
      const st=S.imp;

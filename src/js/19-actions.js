@@ -479,6 +479,36 @@ document.addEventListener('click',e=>{
      const preview=validateImport(st.sheet.rows,st.mapping,st.entity);
      S.imp=Object.assign({},st,{step:2,preview});render();
    },
+   'imp-raise-cap'(){
+     /* ⚠️ ظرفیت فقط با عدد صریح مدیر بالا می‌رود؛ سامانه خودش
+        بی‌سروصدا آن را زیاد نمی‌کند وگرنه مدیر ماه‌ها بعد کلاس
+        ۵۵ نفره کشف می‌کند. */
+     const id=Number(el.dataset.id), c=byId('classes',id);
+     if(!c){toast('کلاس یافت نشد','err');return;}
+     const v=Number(V('impcap_'+id));
+     if(!v||v<1){toast('ظرفیت معتبر وارد کنید','err');return;}
+     if(v<(c.capacity||0)){toast('ظرفیت تازه نباید کمتر از ظرفیت فعلی باشد','err');return;}
+     update('classes',id,{capacity:v});
+     toast('ظرفیت «'+c.name+'» به '+fa(v)+' نفر رسید','ok');
+     /* پیش‌نمایش با ظرفیت تازه دوباره ساخته شود */
+     const st=S.imp;
+     if(st&&st.sheet){
+       const preview=validateImport(st.sheet.rows,st.mapping,st.entity);
+       S.imp=Object.assign({},st,{preview});
+     }
+     render();
+   },
+   'place-rules-save'(){
+     /* دو قانون اختیاری؛ هر دو پیش‌فرض خاموش‌اند */
+     const sid=S.user.school_id, sc=byId('schools',sid);
+     if(!sc){toast('مدرسه یافت نشد','err');return;}
+     const rules={
+       autoDistribute:!!$('#pr_auto')?.checked,
+       separateGender:!!$('#pr_gender')?.checked,
+       keepSiblings:!!$('#pr_sib')?.checked };
+     update('schools',sid,{place_rules:rules});
+     toast('قواعد کلاس‌بندی ذخیره شد','ok'); render();
+   },
    'imp-commit'(){
      const st=S.imp;
      if(!st||!st.preview){toast('داده‌ای برای ثبت نیست','err');return;}
