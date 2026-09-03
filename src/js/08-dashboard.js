@@ -87,7 +87,7 @@ function teacherDash(){
      ${cls.length?`<div class="card-body" style="display:grid;gap:8px">${cls.map(c=>`<div class="row" style="background:var(--surface-2);padding:10px 14px;border-radius:10px"><b>${esc(c.name)}</b><span class="muted small">${fa(db.enrollments.filter(e=>e.class_id===c.id).length)} دانش‌آموز</span><div class="spacer"></div><button class="btn ghost sm" data-act="go" data-r="grades">ثبت نمره</button></div>`).join('')}</div>`:empty('🏛️','کلاسی تخصیص نیافته','')}</div>
     <div class="card"><div class="card-head"><h3>🗓️ زنگ‌های پیش‌رو</h3><button class="btn ghost sm" data-act="go" data-r="schedule">برنامه کامل</button></div>
      <div class="table-wrap"><table><thead><tr><th>روز</th><th>زنگ</th><th>درس</th><th>کلاس</th></tr></thead><tbody>
-     ${sched.map(s=>`<tr><td>${DAYS[s.day]}</td><td><span class="badge b-blue">زنگ ${fa(s.period)}</span></td><td>${esc(byId('subjects',s.subject_id).name)}</td><td class="muted">${esc(byId('classes',s.class_id).name)}</td></tr>`).join('')}
+     ${sched.map(s=>`<tr><td>${DAYS[s.day]}</td><td><span class="badge b-blue">زنگ ${fa(s.period)}</span></td><td>${esc((byId('subjects',s.subject_id)||{}).name||'—')}</td><td class="muted">${esc(byId('classes',s.class_id).name)}</td></tr>`).join('')}
      </tbody></table></div></div></div>`;
 }
 
@@ -98,7 +98,7 @@ function studentSummary(sid){
   const att=db.attendance.filter(a=>a.student_id===sid);
   const disc=db.discipline.filter(d=>d.student_id===sid);
   const bySub={};gr.forEach(g=>{(bySub[g.subject_id]=bySub[g.subject_id]||[]).push(g);});
-  const subs=Object.entries(bySub).map(([id,l])=>({name:byId('subjects',Number(id)).name,avg:avgOf(l)})).sort((a,b)=>b.avg-a.avg);
+  const subs=Object.entries(bySub).map(([id,l])=>({name:(byId('subjects',Number(id))||{}).name||'—',avg:avgOf(l)})).sort((a,b)=>b.avg-a.avg);
   let rank=1,size=0;
   if(cls){const peers=studentsOfClass(cls.id);size=peers.length;
     /* ایندکس نمره بر اساس دانش‌آموز: یک پیمایش به‌جای پیمایش کل جدول برای هر هم‌کلاسی */

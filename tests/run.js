@@ -160,6 +160,30 @@ test('سیستم paywall اولیا سالم است', () => {
   assert(html.includes('parentLocked()') , 'paywall در مسیریاب استفاده نشده');
 });
 
+test('نام درس همه‌جا با گارد خوانده می‌شود', () => {
+  /* 🔴 کشف دور ۴۲: نمره‌ای که درسش حذف شده، پنج صفحه را با
+     «Cannot read properties of undefined» می‌شکست. درس حذف
+     می‌شود ولی نمره‌اش در پایگاه داده می‌ماند.
+
+     ⚠️ اینجا سنجیده می‌شود نه در tests/smoke.js: سنجش رفتاری
+     نیازمند رندر ۸۳ صفحه بود و دقیقه‌ها طول می‌کشید. بررسی ایستا
+     همان چیز را در چند میلی‌ثانیه می‌گیرد. */
+  const js = order.map((f) => read(path.join(SRC, 'js', f))).join('\n')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  const bad = js.match(/byId\(\s*['"]subjects['"][^)]*\)\s*\.\s*name/g) || [];
+  assert(bad.length === 0,
+    'دسترسی بی‌گارد به نام درس (' + bad.length + ' مورد): ' + bad.slice(0, 3).join(' · '));
+});
+
+test('نام کلاس و کاربر در جدول‌های نمره گارد دارند', () => {
+  /* همان دام برای جدول‌هایی که رکورد یتیم می‌گیرند */
+  const js = read(path.join(SRC, 'js', '13-grades.js'))
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  const risky = js.match(/byId\(\s*['"](?:classes|users)['"][^)]*\)\s*\.\s*(?:name|full_name)/g) || [];
+  assert(risky.length === 0,
+    'دسترسی بی‌گارد در جدول نمرات: ' + risky.join(' · '));
+});
+
 // ───────────────────────────── نحو JavaScript
 group('صحت نحوی');
 

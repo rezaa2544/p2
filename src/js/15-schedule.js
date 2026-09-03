@@ -16,7 +16,7 @@ function viewSchedule(){
     ${[1,2,3,4,5,6].map(p=>`<div class="tt-head" style="display:grid;place-items:center"><span class="badge b-blue">زنگ ${fa(p)}</span></div>
      ${DAYS.map((_,d)=>{const c=cell(d,p);
        if(c)return `<div class="tt-cell" ${canEditSched?`style="cursor:pointer;position:relative" data-act="slot-edit" data-day="${escAttr(d)}" data-period="${escAttr(p)}" data-sid="${escAttr(c.id)}" data-class="${escAttr(cid)}"`:''}>
-         <b>${esc(byId('subjects',c.subject_id).name)}</b><span>${esc(byTeacher?byId('classes',c.class_id).name:(c.teacher_id?byId('users',c.teacher_id).full_name:'بدون دبیر'))}</span></div>`;
+         <b>${esc((byId('subjects',c.subject_id)||{}).name||'—')}</b><span>${esc(byTeacher?byId('classes',c.class_id).name:(c.teacher_id?byId('users',c.teacher_id).full_name:'بدون دبیر'))}</span></div>`;
        return `<div class="tt-cell tt-empty" ${canEditSched?`style="cursor:pointer" data-act="slot-edit" data-day="${escAttr(d)}" data-period="${escAttr(p)}" data-class="${escAttr(cid)}"`:''}><span class="muted small">${canEditSched?'+ افزودن':'—'}</span></div>`;}).join('')}`).join('')}
    </div>${canEditSched?`<div class="small muted" style="margin-top:12px;line-height:2">💡 روی هر خانه بزنید تا درس و دبیر آن را تعیین کنید. اگر دبیر در همان ساعت در <b>مدرسه دیگری</b> کلاس داشته باشد، ثبت نمی‌شود.</div>`:''}</div>`:empty('🗓️','برنامه‌ای ثبت نشده','برنامه هفتگی هنوز تنظیم نشده است.')}</div>`;
 }

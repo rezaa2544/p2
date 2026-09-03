@@ -2399,7 +2399,7 @@ function teacherDash(){
      ${cls.length?`<div class="card-body" style="display:grid;gap:8px">${cls.map(c=>`<div class="row" style="background:var(--surface-2);padding:10px 14px;border-radius:10px"><b>${esc(c.name)}</b><span class="muted small">${fa(db.enrollments.filter(e=>e.class_id===c.id).length)} دانش‌آموز</span><div class="spacer"></div><button class="btn ghost sm" data-act="go" data-r="grades">ثبت نمره</button></div>`).join('')}</div>`:empty('🏛️','کلاسی تخصیص نیافته','')}</div>
     <div class="card"><div class="card-head"><h3>🗓️ زنگ‌های پیش‌رو</h3><button class="btn ghost sm" data-act="go" data-r="schedule">برنامه کامل</button></div>
      <div class="table-wrap"><table><thead><tr><th>روز</th><th>زنگ</th><th>درس</th><th>کلاس</th></tr></thead><tbody>
-     ${sched.map(s=>`<tr><td>${DAYS[s.day]}</td><td><span class="badge b-blue">زنگ ${fa(s.period)}</span></td><td>${esc(byId('subjects',s.subject_id).name)}</td><td class="muted">${esc(byId('classes',s.class_id).name)}</td></tr>`).join('')}
+     ${sched.map(s=>`<tr><td>${DAYS[s.day]}</td><td><span class="badge b-blue">زنگ ${fa(s.period)}</span></td><td>${esc((byId('subjects',s.subject_id)||{}).name||'—')}</td><td class="muted">${esc(byId('classes',s.class_id).name)}</td></tr>`).join('')}
      </tbody></table></div></div></div>`;
 }
 
@@ -2410,7 +2410,7 @@ function studentSummary(sid){
   const att=db.attendance.filter(a=>a.student_id===sid);
   const disc=db.discipline.filter(d=>d.student_id===sid);
   const bySub={};gr.forEach(g=>{(bySub[g.subject_id]=bySub[g.subject_id]||[]).push(g);});
-  const subs=Object.entries(bySub).map(([id,l])=>({name:byId('subjects',Number(id)).name,avg:avgOf(l)})).sort((a,b)=>b.avg-a.avg);
+  const subs=Object.entries(bySub).map(([id,l])=>({name:(byId('subjects',Number(id))||{}).name||'—',avg:avgOf(l)})).sort((a,b)=>b.avg-a.avg);
   let rank=1,size=0;
   if(cls){const peers=studentsOfClass(cls.id);size=peers.length;
     /* ایندکس نمره بر اساس دانش‌آموز: یک پیمایش به‌جای پیمایش کل جدول برای هر هم‌کلاسی */
@@ -2748,8 +2748,8 @@ function viewGrades(){
     <select class="select" style="width:150px" data-f="subject"><option value="">همه دروس</option>${subs.map(s=>`<option value="${escAttr(s.id)}" ${sub==String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>
     <select class="select" style="width:125px" data-f="term"><option value="">همه نوبت‌ها</option>${TERMS.map(t=>`<option ${term===t?'selected':''}>${t}</option>`).join('')}</select>`)}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>درس</th><th>کلاس</th><th>نوبت</th><th>نوع آزمون</th><th>نمره</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
-    ${rows.map(g=>`<tr><td><b>${esc(byId('users',g.student_id).full_name)}</b></td><td>${esc(byId('subjects',g.subject_id).name)}</td>
-      <td class="muted">${esc(byId('classes',g.class_id).name)}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td class="muted">${esc(g.exam_type)}</td>
+    ${rows.map(g=>`<tr><td><b>${esc((byId('users',g.student_id)||{}).full_name||'—')}</b></td><td>${esc((byId('subjects',g.subject_id)||{}).name||'—')}</td>
+      <td class="muted">${esc((byId('classes',g.class_id)||{}).name||'—')}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td class="muted">${esc(g.exam_type)}</td>
       <td><span class="badge ${g.score>=17?'b-green':g.score>=12?'b-blue':'b-red'}">${fa(g.score)} / ${fa(g.max_score)}</span></td>
       ${canEdit?`<td><button class="icon-btn" data-act="grade-edit" data-id="${escAttr(g.id)}">✏️</button> <button class="icon-btn danger" data-act="grade-del" data-id="${escAttr(g.id)}">🗑️</button></td>`:''}</tr>`).join('')}
    </tbody></table></div>`:empty('📝','نمره‌ای ثبت نشده',canEdit?'با دکمه «ثبت نمره» شروع کنید.':'هنوز نمره‌ای برای شما ثبت نشده است.')}</div>`;
@@ -2800,7 +2800,7 @@ function viewSchedule(){
     ${[1,2,3,4,5,6].map(p=>`<div class="tt-head" style="display:grid;place-items:center"><span class="badge b-blue">زنگ ${fa(p)}</span></div>
      ${DAYS.map((_,d)=>{const c=cell(d,p);
        if(c)return `<div class="tt-cell" ${canEditSched?`style="cursor:pointer;position:relative" data-act="slot-edit" data-day="${escAttr(d)}" data-period="${escAttr(p)}" data-sid="${escAttr(c.id)}" data-class="${escAttr(cid)}"`:''}>
-         <b>${esc(byId('subjects',c.subject_id).name)}</b><span>${esc(byTeacher?byId('classes',c.class_id).name:(c.teacher_id?byId('users',c.teacher_id).full_name:'بدون دبیر'))}</span></div>`;
+         <b>${esc((byId('subjects',c.subject_id)||{}).name||'—')}</b><span>${esc(byTeacher?byId('classes',c.class_id).name:(c.teacher_id?byId('users',c.teacher_id).full_name:'بدون دبیر'))}</span></div>`;
        return `<div class="tt-cell tt-empty" ${canEditSched?`style="cursor:pointer" data-act="slot-edit" data-day="${escAttr(d)}" data-period="${escAttr(p)}" data-class="${escAttr(cid)}"`:''}><span class="muted small">${canEditSched?'+ افزودن':'—'}</span></div>`;}).join('')}`).join('')}
    </div>${canEditSched?`<div class="small muted" style="margin-top:12px;line-height:2">💡 روی هر خانه بزنید تا درس و دبیر آن را تعیین کنید. اگر دبیر در همان ساعت در <b>مدرسه دیگری</b> کلاس داشته باشد، ثبت نمی‌شود.</div>`:''}</div>`:empty('🗓️','برنامه‌ای ثبت نشده','برنامه هفتگی هنوز تنظیم نشده است.')}</div>`;
 }
@@ -2861,7 +2861,7 @@ function viewRecord(sid){
   let body='';
   if(S.tab==='profile') body = studentProfileCard(sid);
   if(S.tab==='grades') body = Object.keys(bySub).length?`<div class="card-body" style="display:grid;gap:14px">${Object.entries(bySub).map(([id,l])=>{const a=avgOf(l);
-    return `<div style="border:1px solid var(--border);border-radius:12px;padding:14px"><div class="row"><b>${esc(byId('subjects',Number(id)).name)}</b><div class="spacer"></div>
+    return `<div style="border:1px solid var(--border);border-radius:12px;padding:14px"><div class="row"><b>${esc((byId('subjects',Number(id))||{}).name||'—')}</b><div class="spacer"></div>
      <span class="badge ${a>=17?'b-green':a>=12?'b-blue':'b-red'}">میانگین ${fa(a.toFixed(2))}</span></div>
      <div style="margin:8px 0 12px">${bar(a,20,a>=17?'var(--green)':a>=12?'var(--primary)':'var(--red)')}</div>
      <div class="row">${l.map(g=>`<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}: <b>${fa(g.score)}</b></span>`).join('')}</div></div>`;}).join('')}</div>`
