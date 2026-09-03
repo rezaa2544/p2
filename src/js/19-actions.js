@@ -22,6 +22,14 @@ document.addEventListener('click',e=>{
   const A={
    pick(){ $('#lu').value=el.dataset.u; $('#lp').value='123456'; },
    login(){
+     /* 🔴 TODO پیش از اتصال به سرور — احراز هویت و رمز عبور
+        این مقایسه باید کاملاً حذف شود و جایش POST /auth/login بنشیند.
+        دو مشکل جداگانه اینجاست:
+        ۱. رمز متن ساده مقایسه می‌شود ⇒ باید bcrypt سمت سرور (هزینه ۱۲)
+        ۲. تصمیم ورود در مرورگر گرفته می‌شود ⇒ هرکس با ابزار توسعه
+           می‌تواند S.user را مستقیم ست کند و از اینجا رد شود.
+        تا وقتی این دو حل نشده‌اند، سامانه نباید دادهٔ واقعی بگیرد.
+        📄 docs/SERVER_SECURITY_CONTRACT.md بند ۵ */
      const u=db.users.find(x=>x.username===V('lu'));
      if(!u||u.password!==$('#lp').value){$('#lerr').innerHTML='<div class="badge b-red" style="padding:9px 12px;margin-bottom:8px">⚠️ نام کاربری یا رمز عبور نادرست است</div>';return;}
      if(!u.active){$('#lerr').innerHTML='<div class="badge b-red" style="padding:9px 12px">⚠️ حساب غیرفعال است</div>';return;}

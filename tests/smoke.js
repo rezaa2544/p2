@@ -2307,6 +2307,148 @@ test('حریم خصوصی: تلفن کاربران نمونه همه ساختگ�
   assert(bad.length === 0, 'تلفن غیرساختگی: ' + bad.slice(0, 3).join(', '));
 });
 
+// ── مرز امنیتی مرورگر: چه چیزی را نگه می‌دارد و چه چیزی را نه (دور ۲۹)
+//
+// ⚠️⚠️ خواندن این بخش پیش از تکیه بر آن الزامی است ⚠️⚠️
+//
+// آزمون‌های زیر «امنیت» را نمی‌سنجند. مرزی را ثبت می‌کنند که تا
+// وصل شدن سرور واقعی معتبر است و پس از آن باید سمت سرور تکرار شود.
+//
+// واقعیتی که این آزمون‌ها مستند می‌کنند:
+// کنترل دسترسی سمت مرورگر در برابر کاربر عادی کار می‌کند، ولی در
+// برابر کسی که ابزار توسعهٔ مرورگر را باز کند هیچ ارزشی ندارد.
+// این نقص پیاده‌سازی نیست؛ ذات کدی است که روی دستگاه کاربر اجرا
+// می‌شود. تنها پاسخ واقعی، سنجش دوباره سمت سرور است.
+//
+// 📄 قرارداد کامل: docs/SERVER_SECURITY_CONTRACT.md
+
+test('مرز: canAction جلوی کنش غیرمجاز نقش را می‌گیرد', () => {
+  const before = W('S.user ? S.user.role : null');
+  try{
+    W('S.user = db.users.find(function(u){return u.role==="teacher"})');
+    assert(W('canAction("subs-save")') === false, 'دبیر نباید تنظیمات اشتراک را ذخیره کند');
+    assert(W('canAction("tr-ok")') === false, 'دبیر نباید انتقالی را تأیید کند');
+    assert(W('canAction("att-save")') === true, 'دبیر باید حضور و غیاب را ذخیره کند');
+  } finally { if(before) W('S.user = db.users.find(function(u){return u.role==="' + before + '"})'); }
+});
+
+test('مرز: canRoute جلوی مسیر غیرمجاز نقش را می‌گیرد', () => {
+  assert(W('canRoute("schools","teacher")') === false, 'دبیر نباید فهرست مدارس را ببیند');
+  assert(W('canRoute("attendance","teacher")') === true, 'دبیر باید حضور و غیاب را ببیند');
+  assert(W('canRoute("schools","superadmin")') === true, 'مدیر کل باید ببیند');
+});
+
+test('مرز ⚠️: دستکاری نقش از کنسول، گارد مرورگر را دور می‌زند', () => {
+  /* این آزمون عمداً موفقیت حمله را تأیید می‌کند. اگر روزی شکست
+     خورد یعنی کسی گمان کرده مسئله را سمت مرورگر حل کرده — که ممکن
+     نیست. آن موقع باید بررسی شود چه چیزی واقعاً عوض شده. */
+  const before = W('S.user ? S.user.role : null');
+  try{
+    W('S.user = db.users.find(function(u){return u.role==="teacher"})');
+    assert(W('canAction("subs-save")') === false, 'پیش‌شرط برقرار نیست');
+    W('S.user.role = "superadmin"');
+    assert(W('canAction("subs-save")') === true,
+      'انتظار می‌رفت گارد دور زده شود — اگر نشد، فرض این آزمون عوض شده');
+  } finally {
+    W('(function(){var u=db.users.find(function(x){return x.username==="teacher1_1"});if(u)u.role="teacher";})()');
+    if(before) W('S.user = db.users.find(function(u){return u.role==="' + before + '"})');
+  }
+});
+
+test('مرز ⚠️: نوشتن مستقیم وارد صف می‌شود و مرورگر جلویش را نمی‌گیرد', () => {
+  /* ثبت صریح محدودیت: هیچ گاردی در `insert` نیست، چون هر گاردی هم
+     که بگذاریم از همان کنسول قابل بازنویسی است. سرور باید عملیات
+     را رد کند، نه مرورگر. */
+  const before = W('S.user ? S.user.id : null');
+  const n0 = W('SYNC.queue.length');
+  let id = null;
+  try{
+    W('S.user = db.users.find(function(u){return u.role==="teacher"})');
+    id = W('insert("announcements",{title:"آزمون مرز",body:"م",school_id:1,date:todayISO()}).id');
+    assert(W('SYNC.queue.length') === n0 + 1,
+      'عملیات باید وارد صف شود — مرورگر مرجع تصمیم نیست');
+  } finally {
+    if(id !== null) W('remove("announcements",' + id + ')');
+    if(before) W('S.user = db.users.find(function(u){return u.id===' + before + '})');
+  }
+});
+
+test('قرارداد سرور: هر عملیات صف مُهر هویت دارد تا سرور بسنجدش', () => {
+  /* سرور با همین فیلدها ادعای مرورگر را رد می‌کند: اگر op.by با
+     کاربر احراز هویت‌شدهٔ ژتون یکی نبود، کل دسته رد می‌شود.
+     پس نبودشان یعنی سرور ابزار داوری ندارد. */
+  const before = W('S.user ? S.user.id : null');
+  const n0 = W('SYNC.queue.length');
+  let id = null;
+  try{
+    W('S.user = db.users.find(function(u){return u.role==="manager"})');
+    const uid = W('S.user.id');
+    id = W('insert("announcements",{title:"آزمون مهر",body:"م",school_id:1,date:todayISO()}).id');
+    const item = W('SYNC.queue[SYNC.queue.length-1]');
+    assert(W('SYNC.queue[SYNC.queue.length-1].op.by') === uid, 'فیلد by ثبت نشد');
+    assert(W('SYNC.queue[SYNC.queue.length-1].user_id') === uid, 'user_id ثبت نشد');
+    assert(typeof W('SYNC.queue[SYNC.queue.length-1].op.at') === 'string', 'زمان ثبت نشد');
+    assert(typeof W('SYNC.queue[SYNC.queue.length-1].uid') === 'string', 'شناسهٔ یکتا نیست');
+  } finally {
+    if(id !== null) W('remove("announcements",' + id + ')');
+    if(before) W('S.user = db.users.find(function(u){return u.id===' + before + '})');
+  }
+});
+
+test('قرارداد سرور: uid هر عملیات یکتاست تا ارسال دوباره تکراری نسازد', () => {
+  const before = W('S.user ? S.user.id : null');
+  const ids = [];
+  try{
+    W('S.user = db.users.find(function(u){return u.role==="manager"})');
+    for(let i = 0; i < 5; i++)
+      ids.push(W('insert("announcements",{title:"ت' + i + '",body:"م",school_id:1,date:todayISO()}).id'));
+    const uids = W('JSON.stringify(SYNC.queue.slice(-5).map(function(x){return x.uid}))');
+    const arr = JSON.parse(uids);
+    assert(new Set(arr).size === 5, 'uid تکراری تولید شد: ' + uids);
+  } finally {
+    ids.forEach(i => W('remove("announcements",' + i + ')'));
+    if(before) W('S.user = db.users.find(function(u){return u.id===' + before + '})');
+  }
+});
+
+test('قرارداد سرور: حالت دمو فعال است و نشانی سرور خالی', () => {
+  /* وقتی این آزمون شکست بخورد یعنی کسی سرور را وصل کرده — و آن
+     لحظه دقیقاً همان لحظه‌ای است که فهرست پذیرش
+     docs/SERVER_SECURITY_CONTRACT.md باید کامل تیک خورده باشد. */
+  assert(W('SYNC.demoMode') === true, 'حالت دمو خاموش شده — قرارداد سرور را بررسی کنید');
+  assert(W('SYNC.serverUrl') === '', 'نشانی سرور تنظیم شده — قرارداد سرور را بررسی کنید');
+});
+
+test('قرارداد سرور: سند امنیتی و بندهای کلیدی‌اش موجودند', () => {
+  const fs = require('fs'), path = require('path');
+  const f = path.join(__dirname, '..', 'docs', 'SERVER_SECURITY_CONTRACT.md');
+  assert(fs.existsSync(f), 'سند قرارداد سرور نیست');
+  const t = fs.readFileSync(f, 'utf8');
+  ['HttpOnly', 'SameSite=Lax', 'bcrypt', 'canAction', 'canRoute', 'op.by']
+    .forEach(k => assert(t.indexOf(k) > -1, 'بند گمشده در قرارداد: ' + k));
+});
+
+test('یادآور: رمز عبور هنوز متن ساده است — پیش از سرور باید هش شود', () => {
+  /* این آزمون عمداً وضعیت ناامن فعلی را تثبیت می‌کند تا در
+     ممیزی‌های بعدی از قلم نیفتد. روزی که رمزها هش شوند، این آزمون
+     شکست می‌خورد و همان‌جا باید به آزمون هش تبدیل شود. */
+  /* ⚠️ به رکورد موجود تکیه نکن: آزمون «بازنشانی رمز» پیش‌تر رمز یک
+     دبیر را عوض می‌کند. رکورد تازه بساز تا سنجش مستقل باشد. */
+  let id = null;
+  try{
+    id = W('insert("users",{school_id:1,role:"student",full_name:"آزمون رمز",' +
+      'username:"pwd_probe",password:"رمزآزمون۱۲۳",active:1}).id');
+    const stored = W('byId("users",' + id + ').password');
+    assert(stored === 'رمزآزمون۱۲۳',
+      'رمز دیگر متن ساده نیست — اگر hash شده، این آزمون را به آزمون bcrypt تبدیل کنید');
+    assert(stored.length < 60 || !/^\$2[aby]\$/.test(stored),
+      'الگوی bcrypt دیده شد — آزمون باید به‌روز شود');
+  } finally { if(id !== null) W('remove("users",' + id + ')'); }
+  const fs = require('fs'), path = require('path');
+  const todo = fs.readFileSync(path.join(__dirname, '..', 'TODO_BEFORE_PRODUCTION.md'), 'utf8');
+  assert(todo.indexOf('bcrypt') > -1, 'یادآور bcrypt از سند کارهای باقی‌مانده حذف شده');
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));
