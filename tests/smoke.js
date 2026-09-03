@@ -2523,6 +2523,106 @@ test('چیدمان: ظرف‌های اسکرول عمودی درون‌خطی ک
     'ظرف اسکرول عمودی بدون کلاس vscroll (نوارش سمت چپ می‌افتد): ' + bad.join(' · '));
 });
 
+// ── IDOR: شمردن شناسه و نشت خارج از محدوده (دور ۳۱) ──────────
+//
+// ⚠️⚠️ این سه آزمون عمداً *وجود* آسیب‌پذیری را تأیید می‌کنند ⚠️⚠️
+//
+// در نسخهٔ دمو `byId(collection, id)` هیچ سنجش محدوده‌ای ندارد:
+// هر شناسه‌ای بدهید رکورد را می‌دهد. تا وقتی سروری نیست این پذیرفته
+// شده است، ولی عدد نشت باید ثبت شود تا معلوم باشد سرور دقیقاً چه
+// حجمی را باید ببندد.
+//
+// تفاوت این‌ها با آزمون‌های محدودهٔ موجود مهم است:
+//   آزمون‌های `scopeDescriptor` می‌پرسند «تابع محدوده درست می‌گوید؟»
+//   این‌ها می‌پرسند «اگر کسی شناسه بشمارد، چه بیرون می‌آید؟»
+// همان فاصلهٔ میان اعلام و اجرا که IDOR در آن زندگی می‌کند.
+//
+// روزی که سرور وصل شود، هر سه باید معکوس شوند: انتظار برود که
+// دسترسی خارج از محدوده **صفر** باشد.
+//
+// 📄 docs/SERVER_SECURITY_CONTRACT.md بند ۱.۲
+
+test('IDOR ⚠️: مدیر مدرسه با شمردن شناسه به کاربران مدارس دیگر می‌رسد', () => {
+  const before = W('S.user ? S.user.id : null');
+  try{
+    W('S.user = db.users.find(function(u){return u.role==="manager"})');
+    const mine = W('S.user.school_id');
+    const r = JSON.parse(W('(function(){' +
+      'var inScope=0,outScope=0;' +
+      'db.users.forEach(function(u){' +
+        'var rec=byId("users",u.id); if(!rec) return;' +
+        'if(rec.school_id===' + mine + ') inScope++; else outScope++;});' +
+      'return JSON.stringify({inScope:inScope,outScope:outScope,total:db.users.length});})()'));
+
+    assert(r.outScope > 0,
+      'انتظار می‌رفت نشت دیده شود — اگر صفر شده یعنی محدوده اعمال شده و ' +
+      'این آزمون باید معکوس شود');
+    /* عدد سنجیده‌شده روی دادهٔ نمونه: ۸۶۷ از ۱۱۳۶ کاربر خارج از محدوده */
+    assert(r.outScope > r.total * 0.5,
+      'نشت کمتر از انتظار: ' + r.outScope + ' از ' + r.total);
+    console.log('       ↳ نشت: ' + r.outScope + ' کاربر خارج از مدرسهٔ ' + mine +
+                ' (از ' + r.total + ' کل · درون محدوده: ' + r.inScope + ')');
+  } finally { if(before) W('S.user = db.users.find(function(u){return u.id===' + before + '})'); }
+});
+
+test('IDOR ⚠️: ولی با شمردن شناسه به دانش‌آموزان غیرفرزند می‌رسد', () => {
+  const before = W('S.user ? S.user.id : null');
+  try{
+    /* ولی‌ای انتخاب می‌شود که واقعاً پیوند فرزند دارد، وگرنه سنجش بی‌معناست */
+    W('S.user = (function(){' +
+      'var l=db.parent_links[0];' +
+      'return l ? byId("users",l.parent_id) : db.users.find(function(u){return u.role==="parent"});})()');
+    const r = JSON.parse(W('(function(){' +
+      'var kids=db.parent_links.filter(function(l){return l.parent_id===S.user.id})' +
+        '.map(function(l){return l.student_id});' +
+      'var own=0,other=0;' +
+      'db.users.forEach(function(u){ if(u.role!=="student") return;' +
+        'var rec=byId("users",u.id); if(!rec) return;' +
+        'if(kids.indexOf(u.id)>-1) own++; else other++;});' +
+      'return JSON.stringify({kids:kids.length,own:own,other:other});})()'));
+
+    assert(r.kids > 0, 'ولی بدون فرزند انتخاب شد — سنجش بی‌معنا می‌شود');
+    assert(r.other > 0,
+      'انتظار می‌رفت نشت دیده شود — اگر صفر شده این آزمون باید معکوس شود');
+    /* عدد سنجیده‌شده: ۵۲۲ دانش‌آموز غیرفرزند در برابر ۱ فرزند واقعی */
+    console.log('       ↳ نشت: ' + r.other + ' دانش‌آموز غیرفرزند قابل خواندن ' +
+                '(فرزند واقعی: ' + r.kids + ')');
+  } finally { if(before) W('S.user = db.users.find(function(u){return u.id===' + before + '})'); }
+});
+
+test('IDOR ⚠️: دبیر با شمردن شناسه به نمرات کلاس‌های غیرتخصیصی می‌رسد', () => {
+  const before = W('S.user ? S.user.id : null');
+  try{
+    W('S.user = db.users.find(function(u){return u.role==="teacher"})');
+    const r = JSON.parse(W('(function(){' +
+      'var mine=visibleClasses().map(function(c){return c.id});' +
+      'var clsIn=0,clsOut=0,grIn=0,grOut=0;' +
+      'db.classes.forEach(function(c){ var rec=byId("classes",c.id); if(!rec) return;' +
+        'if(mine.indexOf(c.id)>-1) clsIn++; else clsOut++;});' +
+      'db.grades.forEach(function(g){ var rec=byId("grades",g.id); if(!rec) return;' +
+        'if(mine.indexOf(rec.class_id)>-1) grIn++; else grOut++;});' +
+      'return JSON.stringify({mine:mine.length,clsIn:clsIn,clsOut:clsOut,' +
+        'grIn:grIn,grOut:grOut});})()'));
+
+    assert(r.mine > 0, 'دبیر بدون کلاس انتخاب شد — سنجش بی‌معنا می‌شود');
+    assert(r.clsOut > 0 && r.grOut > 0,
+      'انتظار می‌رفت نشت دیده شود — اگر صفر شده این آزمون باید معکوس شود');
+    /* اعداد سنجیده‌شده: ۳۳ کلاس و ۱۱٬۵۹۲ نمرهٔ خارج از محدوده */
+    assert(r.grOut > r.grIn,
+      'نشت نمره کمتر از دسترسی مجاز است — دادهٔ نمونه عوض شده؟');
+    console.log('       ↳ نشت: ' + r.clsOut + ' کلاس و ' + r.grOut +
+                ' نمرهٔ خارج از محدوده (مجاز: ' + r.mine + ' کلاس، ' + r.grIn + ' نمره)');
+  } finally { if(before) W('S.user = db.users.find(function(u){return u.id===' + before + '})'); }
+});
+
+test('IDOR: قرارداد سرور الگوی شمردن شناسه را مستند کرده', () => {
+  const fs = require('fs'), path = require('path');
+  const t = fs.readFileSync(
+    path.join(__dirname, '..', 'docs', 'SERVER_SECURITY_CONTRACT.md'), 'utf8');
+  ['شمردن شناسه', 'مالکیت'].forEach(k =>
+    assert(t.indexOf(k) > -1, 'بند گمشده در قرارداد سرور: ' + k));
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));
