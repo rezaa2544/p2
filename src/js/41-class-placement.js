@@ -214,40 +214,98 @@ function gradeWordOf(g){
  * تطبیق بر پایهٔ «پایه + رشته» است نه نام، چون مدرسه ممکن است کلاس را
  * «دهم الکتروتکنیک» ثبت کرده باشد و فایل «۱۰ الکترونیک» بنویسد.
  */
-function findClassFor(pl, schoolId){
+/**
+ * ساخت نقشه‌های جست‌وجوی کلاس برای یک مدرسه.
+ *
+ * چرا نقشه و نه filter؟
+ * پیش‌تر findClassFor برای هر ردیف تا چهار بار روی کل فهرست
+ * کلاس‌ها filter می‌زد ⇒ O(ردیف × کلاس).
+ * سنجش: ۳۰۰۰ ردیف با ۹ کلاس ۲۱۱ms بود، ولی با ۱۵۹ کلاس
+ * ۱۰۰۳ms — یعنی ۴٫۸ برابر کندتر بدون آنکه حتی یک ردیف
+ * اضافه شود.
+ *
+ * ⚠️ درس روش‌شناختی: بنچمارک اولیه فقط تعداد ردیف را زیاد کرده
+ * بود و خطی درآمد، پس «سالم» به نظر رسید. تابعی که دو ورودی
+ * دارد دو محور دارد؛ ثابت نگه داشتن یکی مشکل روی دیگری را
+ * پنهان می‌کند. دادهٔ نمونه ۹ کلاس دارد ⇒ کاملاً نامرئی بود.
+ *
+ * @param {number} schoolId
+ * @returns {{byName:Object, byGF:Object, byGrade:Object, all:Array}}
+ */
+function buildClassIndex(schoolId){
+  var byName = Object.create(null);   /* نام یکسان‌سازی‌شده ⇐ کلاس */
+  var byGF = Object.create(null);     /* "پایه|رشته" ⇐ [کلاس] */
+  var byGrade = Object.create(null);  /* پایه ⇐ [کلاس بدون رشته] */
+  var all = [];
+
+  db.classes.forEach(function(c){
+    if(c.school_id !== schoolId) return;
+    all.push(c);
+
+    var nm = normField(c.name);
+    /* نخستین تطبیق برنده است تا با رفتار filter()[0] یکی بماند */
+    if(nm && byName[nm] === undefined) byName[nm] = c;
+
+    var cg = c.grade_level ||
+      ((typeof gradeFromName === 'function') ? gradeFromName(c.name) : null);
+    if(cg == null) return;
+    cg = Number(cg);
+
+    if(c.field){
+      var k = cg + '|' + normField(c.field);
+      (byGF[k] = byGF[k] || []).push(c);
+    } else {
+      (byGrade[cg] = byGrade[cg] || []).push(c);
+    }
+  });
+
+  return { byName: byName, byGF: byGF, byGrade: byGrade, all: all };
+}
+
+/**
+ * یافتن کلاس موجود برای یک تشخیص کلاس‌بندی.
+ *
+ * @param {Object} pl        خروجی parsePlacement
+ * @param {number} schoolId
+ * @param {Object} [idx]     نقشهٔ buildClassIndex — اختیاری.
+ *   ⚠️ در حلقه حتماً پاس داده شود، وگرنه نقشه به ازای هر ردیف
+ *   دوباره ساخته می‌شود و همان رفتار درجه‌دوم برمی‌گردد.
+ */
+function findClassFor(pl, schoolId, idx){
   if(!pl) return null;
-  var list = db.classes.filter(function(c){ return c.school_id === schoolId; });
+  if(!idx) idx = buildClassIndex(schoolId);
 
   /* ۱) تطبیق دقیق نام */
-  var byName = list.filter(function(c){ return normField(c.name) === normField(pl.name); })[0];
+  var byName = idx.byName[normField(pl.name)];
   if(byName) return byName;
 
   /* ۲) تطبیق پایه + رشته */
   if(pl.grade && pl.field){
-    var byGF = list.filter(function(c){
-      var cg = c.grade_level || ((typeof gradeFromName === 'function') ? gradeFromName(c.name) : null);
-      return Number(cg) === pl.grade && normField(c.field || '') === normField(pl.field);
-    })[0];
-    if(byGF) return byGF;
-    /* رشته در نام کلاس آمده ولی در میدان field ثبت نشده */
-    var byGFName = list.filter(function(c){
-      var cg = c.grade_level || ((typeof gradeFromName === 'function') ? gradeFromName(c.name) : null);
-      return Number(cg) === pl.grade && normField(c.name).indexOf(normField(pl.field)) > -1;
-    })[0];
-    if(byGFName) return byGFName;
+    var nf = normField(pl.field);
+    var exact = idx.byGF[pl.grade + '|' + nf];
+    if(exact && exact.length) return exact[0];
+
+    /* رشته در نام کلاس آمده ولی در میدان field ثبت نشده.
+       اینجا جست‌وجوی زیررشته لازم است و کلید مستقیم کار نمی‌کند؛
+       ولی دامنه به کلاس‌های همان پایه محدود می‌شود، نه کل فهرست. */
+    var sameGrade = (idx.byGrade[pl.grade] || []).concat(
+      Object.keys(idx.byGF).reduce(function(acc, k){
+        if(k.indexOf(pl.grade + '|') === 0) acc = acc.concat(idx.byGF[k]);
+        return acc;
+      }, []));
+    for(var i = 0; i < sameGrade.length; i++){
+      if(normField(sameGrade[i].name).indexOf(nf) > -1) return sameGrade[i];
+    }
   }
 
   /* ۳) پایه + شاخهٔ کلاس (ابتدایی و متوسطه اول) */
   if(pl.grade && !pl.field){
-    var cands = list.filter(function(c){
-      var cg = c.grade_level || ((typeof gradeFromName === 'function') ? gradeFromName(c.name) : null);
-      return Number(cg) === pl.grade && !c.field;
-    });
+    var cands = idx.byGrade[pl.grade] || [];
     if(pl.section){
-      var byS = cands.filter(function(c){
-        return normField(faDigits(c.name)).indexOf(normField(faDigits(pl.section))) > -1;
-      })[0];
-      if(byS) return byS;
+      var ns = normField(faDigits(pl.section));
+      for(var j = 0; j < cands.length; j++){
+        if(normField(faDigits(cands[j].name)).indexOf(ns) > -1) return cands[j];
+      }
     } else if(cands.length === 1) return cands[0];
   }
   return null;
@@ -265,6 +323,8 @@ function planPlacement(rows, schoolId){
   var create = [];                  /* کلاس‌های نو */
   var seen = Object.create(null);
   var warnings = [];
+  /* نقشه یک بار ساخته می‌شود، نه به ازای هر ردیف */
+  var idx = buildClassIndex(schoolId);
 
   rows.forEach(function(r){
     var pl = parsePlacement(r.text, schoolId);
@@ -276,7 +336,7 @@ function planPlacement(rows, schoolId){
         msg: 'رشتهٔ «' + pl.field + '» جزو شاخه‌های این مدرسه نیست' });
     }
 
-    var ex = findClassFor(pl, schoolId);
+    var ex = findClassFor(pl, schoolId, idx);
     if(ex){ plan[r.index] = { classId: ex.id, name: ex.name, pl: pl }; return; }
 
     var key = pl.name;

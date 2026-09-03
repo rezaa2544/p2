@@ -2637,6 +2637,48 @@ test('قرارداد سرور: تعامل کارایی و سنجش محدوده 
     'سند ظرفیت هشدار بی‌اعتبار شدن اعداد را ندارد');
 });
 
+test('کلاس‌بندی: هزینه به تعداد کلاس وابسته نیست', () => {
+  /* پیش‌تر findClassFor برای هر ردیف روی کل فهرست filter می‌زد:
+     ۳۰۰۰ ردیف با ۹ کلاس ۲۱۱ms بود و با ۱۵۹ کلاس ۱۰۰۳ms.
+     این آزمون همان محور دوم را نگه می‌دارد. */
+  const sid = W('db.schools[0].id');
+  const names = ['دهم تجربی', 'یازدهم ریاضی', 'هفتم ۱'];
+  const rows = [];
+  for (let i = 0; i < 400; i++) rows.push({ index: i, text: names[i % names.length] });
+  const j = JSON.stringify(rows);
+  const run = () => W('(()=>{const t=Date.now();planPlacement(' + j + ',' + sid + ');return Date.now()-t;})()');
+
+  const added = [];
+  try {
+    const base = Math.max(run(), 1);
+    /* ۱۵۰ کلاس ساختگی به همان مدرسه */
+    const ids = W('(()=>{const out=[];for(let i=0;i<150;i++){const id=990000+i;'
+      + 'db.classes.push({id:id,school_id:' + sid + ',name:"محک "+i,grade_level:10,field:"تجربی"});'
+      + 'out.push(id);}return JSON.stringify(out);})()');
+    added.push.apply(added, JSON.parse(ids));
+    const big = run();
+    /* آستانه سخاوتمندانه: نویز زمان‌سنجی در jsdom زیاد است.
+       رفتار درجه‌دوم ۴٫۸× می‌داد؛ ۳× مرز روشنی است. */
+    assert(big < base * 3 + 40,
+      'هزینه با تعداد کلاس رشد کرد: ' + base + 'ms → ' + big + 'ms');
+  } finally {
+    if (added.length) W('db.classes=db.classes.filter(c=>c.id<990000);'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("classes");');
+  }
+});
+
+test('کلاس‌بندی: findClassFor بدون نقشه هم کار می‌کند', () => {
+  /* پارامتر سوم اختیاری است؛ فراخوان‌های قدیمی نباید بشکنند */
+  const sid = W('db.schools[0].id');
+  const two = W('(()=>{const pl=parsePlacement("دهم تجربی",' + sid + ');'
+    + 'return pl?String(!!findClassFor(pl,' + sid + ')):"nopl";})()');
+  assert(two !== 'nopl', 'parsePlacement کار نکرد');
+  const three = W('(()=>{const pl=parsePlacement("دهم تجربی",' + sid + ');'
+    + 'const ix=buildClassIndex(' + sid + ');'
+    + 'return String(!!findClassFor(pl,' + sid + ',ix));})()');
+  assert(two === three, 'نتیجه با نقشه و بدون نقشه فرق دارد: ' + two + ' / ' + three);
+});
+
 test('معماری: سند تصمیمات قفل‌شده کامل است', () => {
   const fs = require('fs'), path = require('path');
   const f = path.join(__dirname, '..', 'docs', 'ARCHITECTURE_DECISIONS.md');

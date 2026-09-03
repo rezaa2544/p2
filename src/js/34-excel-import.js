@@ -250,6 +250,10 @@ function validateImport(rows, mapping, entity){
   var classes = visibleClasses();
   var clsByName = Object.create(null);
   classes.forEach(function(c){ clsByName[normHdr(c.name)] = c; });
+  /* نقشهٔ کلاس‌بندی یک بار پیش از حلقه؛ درون حلقه ساختنش
+     رفتار درجه‌دوم روی محور تعداد کلاس می‌دهد */
+  var placeIdx = (typeof buildClassIndex === 'function')
+    ? buildClassIndex(sid) : null;
 
   rows.forEach(function(row, i){
     var o = {};
@@ -323,7 +327,7 @@ function validateImport(rows, mapping, entity){
             pl.name = pl.name.trim();
           }
         }
-        var ex = (pl && typeof findClassFor === 'function') ? findClassFor(pl, sid)
+        var ex = (pl && typeof findClassFor === 'function') ? findClassFor(pl, sid, placeIdx)
                : clsByName[normHdr(placeTxt)];
         if(!ex && !pl) ex = clsByName[normHdr(placeTxt)];
 
