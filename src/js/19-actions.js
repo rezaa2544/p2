@@ -394,19 +394,34 @@ document.addEventListener('click',e=>{
        });
      });
      /* پیامک پس از نوشتن ساخته می‌شود تا source_ref شناسهٔ واقعی باشد */
-     let sms=0;
+     let sms=0,fix=0;
      if(typeof notifyRequest==='function'){
        made.forEach(({c,recId})=>{
          if(c.to!=='absent'&&c.to!=='late')return;
+         /* ⚠️ اگر پیامی برای همین رکورد قبلاً ارسال شده، ساخت پیام
+            تازه یعنی خانواده دو بار خبر یکسان می‌گیرد. آنجا کار
+            اصلاحیه است نه پیام نو. */
+         const already=(typeof notifyLastSent==='function')&&
+           (notifyLastSent('absence',recId)||notifyLastSent('late',recId));
+         if(already)return;
          const q=notifyRequest({school_id:school,kind:c.to==='absent'?'absence':'late',
            student_id:c.student_id,class_id:cid,student_name:c.name,
            date_fa:jalali(date),source_ref:recId});
          if(q)sms++;
        });
+       /* اصلاحیه: برای رکوردهایی که پیامشان رفته و وضعیت عوض شده.
+          پس از لغو درون پنجره اجرا می‌شود تا پیام‌های لغوشده
+          دوباره اصلاحیه نگیرند. */
+       if(typeof notifyReconcileMany==='function'){
+         const r=notifyReconcileMany(made.map(m=>m.recId));
+         fix=r.created;
+       }
      }
      attDraftClear(cid,date);
      closeModal();
-     toast(fa(d.changes.length)+' تغییر ثبت شد'+(sms?' — '+fa(sms)+' پیامک ساخته شد':''),'ok');
+     toast(fa(d.changes.length)+' تغییر ثبت شد'
+       +(sms?' — '+fa(sms)+' پیامک ساخته شد':'')
+       +(fix?' — '+fa(fix)+' اصلاحیه ساخته شد':''),'ok');
      render();},
    // ---- پلان فروش و پشتیبان‌گیری ----
    'plan-settings'(){

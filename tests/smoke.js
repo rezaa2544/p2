@@ -3715,6 +3715,254 @@ test('پیش‌نویس: کنش‌های تازه در ACTION_ROLES ثبت شد�
   });
 });
 
+/* ── اصلاحیهٔ خودکار (گام ۵، دور ۴۲) ─────────────────────────────
+   ⚠️ محیط این آزمون‌ها باید خودکفا باشد (درس گام ۳): دادهٔ مشترک
+   را آزمون‌های پیشین عوض می‌کنند. */
+
+/**
+ * محیط کامل اصلاحیه: یک رکورد حضور + یک پیام ارسال‌شده.
+ * fn دریافت می‌کند: {sid, attId, qId, studentId}
+ */
+function withSentMsg(fn) {
+  const sid = W('db.schools[0].id');
+  W('(()=>{db._rcU=S.user;db._rcQ=db.notify_queue.slice();'
+    + 'db._rcR=byId("schools",' + sid + ').notify_rules||null;'
+    + 'S.user=db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+    + 'S.persona=null;S.boss=null;'
+    + 'notifySaveSettings(' + sid + ',{enabled:true});'
+    + 'const w=smsWalletOf(' + sid + ');update("sms_wallet",w.w.id,{balance:5000});})()');
+  try {
+    const env = JSON.parse(W('(()=>{'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0);'
+      + 'const cl=db.classes.find(c=>c.school_id===' + sid + ');'
+      + 'const rec=insert("attendance",{school_id:' + sid + ',class_id:cl?cl.id:null,'
+      + 'student_id:st.id,date:"2026-10-01",status:"absent",note:null});'
+      + 'const q=notifyRequest({school_id:' + sid + ',kind:"absence",student_id:st.id,'
+      + 'class_id:cl?cl.id:null,student_name:st.full_name,date_fa:"۹ مهر",source_ref:rec.id});'
+      + 'notifySend([q.id]);'
+      + 'return JSON.stringify({attId:rec.id,qId:q.id,studentId:st.id,'
+      + 'status:byId("notify_queue",q.id).status});})()'));
+    assert(env.status === 'sent', 'محیط آزمون: پیام ارسال نشد (' + env.status + ')');
+    return fn(sid, env);
+  } finally {
+    W('(()=>{db.notify_queue=db._rcQ;S.user=db._rcU;'
+      + 'update("schools",' + sid + ',{notify_rules:db._rcR});'
+      + 'delete db._rcQ;delete db._rcU;delete db._rcR;})()');
+  }
+}
+
+test('اصلاحیه: تغییر پس از ارسال، اصلاحیه می‌سازد', () => {
+  withSentMsg((sid, env) => {
+    const r = JSON.parse(W('(()=>{update("attendance",' + env.attId + ',{status:"present"});'
+      + 'const res=notifyReconcile(' + env.attId + ');'
+      + 'const c=res.queue;'
+      + 'return JSON.stringify({action:res.action,made:!!c,'
+      + 'corrOf:c?c.correction_of:null,status:c?c.status:null,'
+      + 'ref:c?c.source_ref:null,body:c?c.body:"",'
+      + 'origUntouched:byId("notify_queue",' + env.qId + ').status});})()'));
+    assert(r.action === 'created', 'اصلاحیه ساخته نشد: ' + r.action);
+    assert(r.corrOf === env.qId, 'اصلاحیه به پیام اصلی اشاره نمی‌کند: ' + r.corrOf);
+    assert(r.ref === env.attId, 'source_ref اشتباه است');
+    assert(r.status === 'pending', 'اصلاحیه باید در صف تأیید باشد: ' + r.status);
+    assert(r.body.indexOf('اصلاحیه') === 0, 'متن با «اصلاحیه» شروع نمی‌شود: ' + r.body);
+    assert(r.body.indexOf('غایب نبوده') > -1, 'جهت اصلاحیه غلط است: ' + r.body);
+    assert(r.origUntouched === 'sent', '🔴 پیام اصلی دست‌کاری شد');
+  });
+});
+
+test('اصلاحیه: 🔴 حلقهٔ بی‌نهایت نمی‌سازد', () => {
+  /* اصلاحیه خودش نباید موضوع اصلاحیهٔ بعدی شود، وگرنه هر وارسی
+     یک رکورد تازه می‌سازد و صف مدیر بی‌نهایت پر می‌شود. */
+  withSentMsg((sid, env) => {
+    const r = JSON.parse(W('(()=>{update("attendance",' + env.attId + ',{status:"present"});'
+      + 'notifyReconcile(' + env.attId + ');'
+      + 'const before=db.notify_queue.filter(q=>q.source_ref===' + env.attId + ').length;'
+      + 'for(let i=0;i<6;i++)notifyReconcile(' + env.attId + ');'
+      + 'const after=db.notify_queue.filter(q=>q.source_ref===' + env.attId + ').length;'
+      + 'return JSON.stringify({before:before,after:after});})()'));
+    assert(r.before >= 2, 'محیط آزمون ناقص: ' + r.before);
+    assert(r.after === r.before,
+      '🔴 ' + (r.after - r.before) + ' رکورد در ۶ وارسی پیاپی اضافه شد — حلقه');
+  });
+});
+
+test('اصلاحیه: 🔴 رفت‌وبرگشت دو پیام متناقض نمی‌فرستد', () => {
+  /* غایب → حاضر (اصلاحیه ساخته می‌شود) → غایب دوباره.
+     چون اصلاحیه هنوز نرفته و وضعیت به همان چیزی برگشته که
+     خانواده می‌داند، اصلاحیهٔ معلق باید لغو شود نه اینکه دومی
+     ساخته شود. */
+  withSentMsg((sid, env) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'update("attendance",' + env.attId + ',{status:"present"});'
+      + 'const a=notifyReconcile(' + env.attId + ');'
+      + 'const cid=a.queue?a.queue.id:0;'
+      + 'update("attendance",' + env.attId + ',{status:"absent"});'
+      + 'const b=notifyReconcile(' + env.attId + ');'
+      + 'const corr=db.notify_queue.filter(q=>q.source_ref===' + env.attId + '&&q.correction_of);'
+      + 'return JSON.stringify({first:a.action,second:b.action,'
+      + 'corrCount:corr.length,'
+      + 'cancelled:cid?byId("notify_queue",cid).status:null,'
+      + 'pendingCorr:corr.filter(q=>q.status==="pending").length});})()'));
+    assert(r.first === 'created', 'اصلاحیهٔ نخست ساخته نشد: ' + r.first);
+    assert(r.second === 'cancelled',
+      '🔴 بازگشت به وضعیت اول باید اصلاحیه را لغو کند، کرد: ' + r.second);
+    assert(r.cancelled === 'cancelled', 'اصلاحیهٔ معلق لغو نشد: ' + r.cancelled);
+    assert(r.corrCount === 1, '🔴 ' + r.corrCount + ' اصلاحیه ساخته شد، باید ۱ باشد');
+    assert(r.pendingCorr === 0, '🔴 اصلاحیهٔ متناقض هنوز معلق است');
+  });
+});
+
+test('اصلاحیه: پیام نرفته اصلاحیه نمی‌گیرد', () => {
+  /* تا وقتی پیام در صف است، خانواده چیزی نمی‌داند. آنجا کار
+     پنجرهٔ مهلت است نه اصلاحیه. */
+  withNotify({ enabled: true }, (sid) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0);'
+      + 'const rec=insert("attendance",{school_id:' + sid + ',class_id:null,'
+      + 'student_id:st.id,date:"2026-10-02",status:"absent",note:null});'
+      + 'notifyRequest({school_id:' + sid + ',kind:"absence",student_id:st.id,'
+      + 'student_name:st.full_name,date_fa:"۱۰ مهر",source_ref:rec.id});'
+      + 'update("attendance",rec.id,{status:"present"});'
+      + 'const before=db.notify_queue.length;'
+      + 'const res=notifyReconcile(rec.id);'
+      + 'return JSON.stringify({action:res.action,added:db.notify_queue.length-before});})()'));
+    assert(r.action === 'none', 'برای پیام معلق نباید اصلاحیه ساخته شود: ' + r.action);
+    assert(r.added === 0, '🔴 ' + r.added + ' رکورد اضافه شد');
+  });
+});
+
+test('اصلاحیه: رکورد بدون هیچ پیام قبلی اصلاحیه نمی‌گیرد', () => {
+  withNotify({ enabled: true }, (sid) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid + ');'
+      + 'const rec=insert("attendance",{school_id:' + sid + ',class_id:null,'
+      + 'student_id:st.id,date:"2026-10-03",status:"absent",note:null});'
+      + 'const before=db.notify_queue.length;'
+      + 'const res=notifyReconcile(rec.id);'
+      + 'return JSON.stringify({action:res.action,added:db.notify_queue.length-before});})()'));
+    assert(r.action === 'none', 'بدون پیام قبلی نباید اصلاحیه بسازد: ' + r.action);
+    assert(r.added === 0, '🔴 رکورد اضافه شد');
+  });
+});
+
+test('اصلاحیه: جهت متن با وضعیت تازه می‌خواند', () => {
+  withSentMsg((sid, env) => {
+    /* غایب بود ⇒ حاضر شد ⇒ «غایب نبوده است» */
+    const a = W('(()=>{update("attendance",' + env.attId + ',{status:"present"});'
+      + 'const r=notifyReconcile(' + env.attId + ');return r.queue?r.queue.body:"";})()');
+    assert(a.indexOf('غایب نبوده') > -1, 'جهت نخست غلط: ' + a);
+    /* حالا دوباره غایب و اصلاحیه را بفرست، سپس حاضر */
+    const b = W('(()=>{const c=db.notify_queue.filter(q=>q.correction_of&&'
+      + 'q.source_ref===' + env.attId + ')[0];'
+      + 'update("notify_queue",c.id,{status:"sent",decided_at:new Date().toISOString()});'
+      + 'update("attendance",' + env.attId + ',{status:"absent"});'
+      + 'const r=notifyReconcile(' + env.attId + ');return r.queue?r.queue.body:"";})()');
+    assert(b.indexOf('غایب بوده') > -1 && b.indexOf('غایب نبوده') === -1,
+      'جهت دوم غلط: ' + b);
+  });
+});
+
+test('اصلاحیه: ثبت نهایی از راه دکمه پیام تکراری نمی‌سازد', () => {
+  /* 🔴 تست جهش دور ۴۲ نشان داد گارد «already» در att-commit هیچ
+     پوششی نداشت. سناریوی واقعی: پیام غیبت رفته؛ دبیر روز بعد باز
+     همان کلاس را ثبت می‌کند. بدون گارد، خانواده دو بار خبر یکسان
+     می‌گیرد. این آزمون از مسیر واقعی کلیک می‌رود، نه صدا زدن
+     مستقیم تابع. */
+  const sid = W('db.schools[0].id');
+  W('(()=>{db._dupU=S.user;db._dupQ=db.notify_queue.slice();'
+    + 'db._dupC=db.classes.slice();db._dupE=db.enrollments.slice();'
+    + 'db._dupR=byId("schools",' + sid + ').notify_rules||null;'
+    + 'S.user=db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+    + 'S.persona=null;S.boss=null;S.route="attendance";Store.remove(ATT_DRAFT_KEY);'
+    + 'notifySaveSettings(' + sid + ',{enabled:true});'
+    + 'const w=smsWalletOf(' + sid + ');update("sms_wallet",w.w.id,{balance:5000});'
+    + 'db.classes.push({id:883001,school_id:' + sid + ',name:"آزمون تکرار",grade_level:10,capacity:40});'
+    + 'const st=db.users.filter(u=>u.role==="student"&&u.school_id===' + sid
+    + '&&notifyParentsOf(u.id).length>0).slice(0,2);'
+    + 'st.forEach((s,i)=>db.enrollments.push({id:884000+i,school_id:' + sid
+    + ',class_id:883001,student_id:s.id}));'
+    + '(typeof idxInvalidate==="function")&&(idxInvalidate("classes"),idxInvalidate("enrollments"));})()');
+  try {
+    const r = JSON.parse(W('(()=>{const cid=883001,d="2026-10-05";'
+      + 'S.filters={class:cid,date:d};'
+      + 'const kid=studentsOfClass(cid)[0].id;'
+      + 'const click=function(a,o){const b=document.createElement("button");'
+      + 'b.setAttribute("data-act",a);if(o)Object.keys(o).forEach(k=>b.setAttribute("data-"+k,o[k]));'
+      + 'document.body.appendChild(b);b.dispatchEvent(new MouseEvent("click",{bubbles:true}));b.remove();};'
+      /* نوبت اول: غیبت ثبت و پیام ارسال شود */
+      + 'click("att-set",{id:String(kid),s:"absent"});click("att-review");click("att-commit");'
+      + 'const q1=db.notify_queue.filter(q=>q.status==="pending"&&!q.correction_of).pop();'
+      + 'if(!q1)return JSON.stringify({fail:"پیام اول ساخته نشد"});'
+      + 'notifySend([q1.id]);'
+      + 'const ref=q1.source_ref;'
+      + 'const afterFirst=db.notify_queue.filter(q=>q.source_ref===ref&&!q.correction_of).length;'
+      /* نوبت دوم: دبیر باز همان وضعیت را ثبت می‌کند */
+      + 'attDraftSet(cid,d,kid,"present");'
+      + 'click("att-review");click("att-commit");'
+      + 'attDraftSet(cid,d,kid,"absent");'
+      + 'click("att-review");click("att-commit");'
+      + 'const plain=db.notify_queue.filter(q=>q.source_ref===ref&&!q.correction_of).length;'
+      + 'return JSON.stringify({afterFirst:afterFirst,plain:plain,'
+      + 'corr:db.notify_queue.filter(q=>q.source_ref===ref&&q.correction_of).length});})()'));
+    assert(!r.fail, r.fail);
+    assert(r.afterFirst === 1, 'محیط آزمون: پیام اول ساخته نشد (' + r.afterFirst + ')');
+    assert(r.plain === 1,
+      '🔴 ' + r.plain + ' پیام عادی برای یک رکورد ساخته شد — خانواده خبر تکراری می‌گیرد');
+  } finally {
+    W('(()=>{db.notify_queue=db._dupQ;db.classes=db._dupC;db.enrollments=db._dupE;'
+      + 'S.user=db._dupU;update("schools",' + sid + ',{notify_rules:db._dupR});'
+      + 'delete db._dupQ;delete db._dupC;delete db._dupE;delete db._dupU;delete db._dupR;'
+      + 'Store.remove(ATT_DRAFT_KEY);'
+      + '(typeof idxInvalidate==="function")&&(idxInvalidate("classes"),idxInvalidate("enrollments"));})()');
+  }
+});
+
+test('اصلاحیه: notifyLastSent فقط پیام ارسال‌شده را برمی‌گرداند', () => {
+  withSentMsg((sid, env) => {
+    const r = JSON.parse(W('(()=>{const last=notifyLastSent("absence",' + env.attId + ');'
+      + 'return JSON.stringify({found:!!last,id:last?last.id:0,'
+      + 'isSent:last?last.status==="sent":false});})()'));
+    assert(r.found === true, 'پیام ارسال‌شده پیدا نشد');
+    assert(r.isSent === true, 'پیام یافته‌شده ارسال‌شده نیست');
+    assert(r.id === env.qId, 'شناسهٔ پیام اشتباه: ' + r.id);
+  });
+});
+
+test('اصلاحیه: در صف مدیر بالاتر از بقیه و با نشان دیده می‌شود', () => {
+  withSentMsg((sid, env) => {
+    const r = JSON.parse(W('(()=>{update("attendance",' + env.attId + ',{status:"present"});'
+      + 'notifyReconcile(' + env.attId + ');'
+      + 'const st=db.users.filter(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0).slice(1,3);'
+      + 'st.forEach(s=>notifyRequest({school_id:' + sid + ',kind:"absence",student_id:s.id,'
+      + 'student_name:s.full_name,date_fa:"۹ مهر"}));'
+      + 'const p=notifyPending(' + sid + ');'
+      + 'S.user=db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+      + 'S.persona=null;S.route="notifyqueue";S.filters={};'
+      + 'const h=renderRoute();'
+      + 'return JSON.stringify({total:p.length,firstIsCorr:!!(p[0]&&p[0].correction_of),'
+      + 'badge:h.indexOf("🔴 اصلاحیه")>-1,filter:h.indexOf(\'data-k="correction"\')>-1});})()'));
+    assert(r.total >= 3, 'صف باید چند پیام داشته باشد: ' + r.total);
+    assert(r.firstIsCorr === true, '🔴 اصلاحیه بالای فهرست نیست');
+    assert(r.badge === true, 'نشان اصلاحیه در صفحه نیست');
+    assert(r.filter === true, 'فیلتر اصلاحیه در صفحه نیست');
+  });
+});
+
+test('اصلاحیه: با سامانهٔ خاموش ساخته نمی‌شود', () => {
+  withSentMsg((sid, env) => {
+    const r = JSON.parse(W('(()=>{notifySaveSettings(' + sid + ',{enabled:false});'
+      + 'update("attendance",' + env.attId + ',{status:"present"});'
+      + 'const before=db.notify_queue.length;'
+      + 'const res=notifyReconcile(' + env.attId + ');'
+      + 'notifySaveSettings(' + sid + ',{enabled:true});'
+      + 'return JSON.stringify({action:res.action,added:db.notify_queue.length-before});})()'));
+    assert(r.added === 0, '🔴 با سامانهٔ خاموش ' + r.added + ' اصلاحیه ساخته شد');
+  });
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

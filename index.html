@@ -6914,19 +6914,34 @@ document.addEventListener('click',e=>{
        });
      });
      /* پیامک پس از نوشتن ساخته می‌شود تا source_ref شناسهٔ واقعی باشد */
-     let sms=0;
+     let sms=0,fix=0;
      if(typeof notifyRequest==='function'){
        made.forEach(({c,recId})=>{
          if(c.to!=='absent'&&c.to!=='late')return;
+         /* ⚠️ اگر پیامی برای همین رکورد قبلاً ارسال شده، ساخت پیام
+            تازه یعنی خانواده دو بار خبر یکسان می‌گیرد. آنجا کار
+            اصلاحیه است نه پیام نو. */
+         const already=(typeof notifyLastSent==='function')&&
+           (notifyLastSent('absence',recId)||notifyLastSent('late',recId));
+         if(already)return;
          const q=notifyRequest({school_id:school,kind:c.to==='absent'?'absence':'late',
            student_id:c.student_id,class_id:cid,student_name:c.name,
            date_fa:jalali(date),source_ref:recId});
          if(q)sms++;
        });
+       /* اصلاحیه: برای رکوردهایی که پیامشان رفته و وضعیت عوض شده.
+          پس از لغو درون پنجره اجرا می‌شود تا پیام‌های لغوشده
+          دوباره اصلاحیه نگیرند. */
+       if(typeof notifyReconcileMany==='function'){
+         const r=notifyReconcileMany(made.map(m=>m.recId));
+         fix=r.created;
+       }
      }
      attDraftClear(cid,date);
      closeModal();
-     toast(fa(d.changes.length)+' تغییر ثبت شد'+(sms?' — '+fa(sms)+' پیامک ساخته شد':''),'ok');
+     toast(fa(d.changes.length)+' تغییر ثبت شد'
+       +(sms?' — '+fa(sms)+' پیامک ساخته شد':'')
+       +(fix?' — '+fa(fix)+' اصلاحیه ساخته شد':''),'ok');
      render();},
    // ---- پلان فروش و پشتیبان‌گیری ----
    'plan-settings'(){
@@ -12899,6 +12914,174 @@ function attDraftDiff(cid, date){
     out.counts[to] = (out.counts[to] || 0) + 1;
     if(to === 'absent') out.newAbsent.push(u ? u.full_name : '—');
     if(to === 'late')   out.newLate.push(u ? u.full_name : '—');
+  });
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بخش ۱۱ ▸ اصلاحیهٔ خودکار (گام ۵)
+   ═══════════════════════════════════════════════════════════════════
+   مسئله: پیامی رفته و بعد معلوم شده اشتباه بوده. خانواده نباید با
+   اطلاع غلط بماند.
+
+   ⚠️ چرا «آخرین پیام ارسال‌شده» مبنا است نه «پیام اصلی»؟
+   اگر دبیر غایب→حاضر→غایب کند، خانواده دو پیام گرفته: «غایب بود»
+   و «اصلاحیه: غایب نبوده». حالا که دوباره غایب شده، باید بداند.
+   اگر فقط با پیام اصلی می‌سنجیدیم، وضعیت فعلی با آن یکی بود و
+   هیچ اصلاحیه‌ای ساخته نمی‌شد — و خانواده با آخرین اطلاعِ غلط
+   («غایب نبوده») می‌ماند.
+
+   ⚠️ سه دامی که در طراحی لحاظ شده‌اند:
+   ۱. حلقهٔ بی‌نهایت — اصلاحیه خودش موضوع اصلاحیهٔ بعدی نمی‌شود
+      (رکوردهای دارای correction_of از سنجش کنار می‌مانند، ولی
+      hash‌شان به‌روز نگه داشته می‌شود).
+   ۲. رفت‌وبرگشت — اگر وضعیت به همان چیزی برگردد که خانواده
+      می‌داند، اصلاحیهٔ معلق لغو می‌شود، نه اینکه دو پیام برود.
+   ۳. پیام معلق — تا وقتی پیام نرفته، اصلاحیه بی‌معناست؛ همان
+      پیام معلق باید به‌روز یا لغو شود (کار notifyCancelIfFresh).
+   ═══════════════════════════════════════════════════════════════════ */
+
+/**
+ * آخرین پیامی که واقعاً برای این رکورد منشأ ارسال شده.
+ * یعنی «خانواده در این لحظه چه می‌داند».
+ */
+function notifyLastSent(kind, sourceRef){
+  var best = null;
+  (db.notify_queue || []).forEach(function(q){
+    if(q.status !== 'sent') return;
+    if(q.source_ref !== sourceRef) return;
+    if(q.kind !== kind && !q.correction_of) return;
+    if(!best) { best = q; return; }
+    /* تازه‌ترین بر پایهٔ زمان تصمیم؛ در تساوی شناسهٔ بزرگ‌تر */
+    var a = String(q.decided_at || q.created_at);
+    var b = String(best.decided_at || best.created_at);
+    if(a > b || (a === b && q.id > best.id)) best = q;
+  });
+  return best;
+}
+
+/** آیا برای این رکورد اصلاحیهٔ معلقی در صف هست؟ */
+function notifyPendingCorrection(sourceRef){
+  var out = null;
+  (db.notify_queue || []).forEach(function(q){
+    if(q.status !== 'pending' || !q.correction_of) return;
+    if(q.source_ref !== sourceRef) return;
+    if(!out || q.id > out.id) out = q;
+  });
+  return out;
+}
+
+/**
+ * وارسی یک رکورد حضور و غیاب و ساخت اصلاحیه در صورت نیاز.
+ *
+ * برمی‌گرداند: {action, queue}
+ *   action = 'none'      هیچ پیام ارسال‌شده‌ای نیست، یا وضعیت همان است
+ *          | 'created'   اصلاحیه ساخته شد
+ *          | 'cancelled' وضعیت برگشت؛ اصلاحیهٔ معلق لغو شد
+ *          | 'updated'   اصلاحیهٔ معلق با متن تازه به‌روز شد
+ *
+ * ⚠️ این تابع نباید پیام بفرستد. ساخت و ارسال جدا می‌مانند تا
+ * سقف روزانه و اعتبار در یک نقطه سنجیده شوند (همان قاعدهٔ گام ۱).
+ */
+function notifyReconcile(attId){
+  var out = { action: 'none', queue: null };
+  var rec = byId('attendance', attId);
+
+  /* دو نوع پیام ممکن است برای یک رکورد رفته باشد */
+  var kinds = ['absence', 'late'];
+  var last = null;
+  for(var i = 0; i < kinds.length; i++){
+    var c = notifyLastSent(kinds[i], attId);
+    if(c && (!last || String(c.decided_at || '') > String(last.decided_at || ''))) last = c;
+  }
+  if(!last) return out;                    /* چیزی نرفته ⇒ اصلاحیه بی‌معناست */
+
+  var cfg = notifySettings(last.school_id);
+  var curHash = notifyHash(last.correction_of ? (last.kind || 'absence') : last.kind, attId);
+
+  /* «خانواده چه می‌داند» = هش لحظهٔ ارسال آخرین پیام */
+  if(last.source_hash === curHash){
+    /* وضعیت همان است که خانواده می‌داند.
+       ⚠️ دام رفت‌وبرگشت: اگر اصلاحیهٔ معلقی هست، دیگر لازم نیست. */
+    var stale = notifyPendingCorrection(attId);
+    if(stale){
+      update('notify_queue', stale.id, {
+        status: 'cancelled',
+        decided_at: new Date().toISOString()
+      });
+      out.action = 'cancelled';
+      out.queue = stale;
+    }
+    return out;
+  }
+
+  /* وضعیت با آنچه خانواده می‌داند فرق دارد ⇒ اصلاحیه لازم است */
+  var st = rec ? byId('users', rec.student_id) : byId('users', last.student_id);
+  var nowAbsent = !!(rec && (rec.status === 'absent' || rec.status === 'late'));
+
+  var body = notifyBody('correction', {
+    student: st ? st.full_name : '—',
+    date: rec ? jalali(rec.date) : '',
+    /* wasAbsent=true یعنی «غایب نبوده است» */
+    wasAbsent: !nowAbsent,
+    school: notifySchoolName(last.school_id)
+  });
+
+  /* اگر اصلاحیهٔ معلقی هست، به‌جای ساخت دومی به‌روزش می‌کنیم —
+     وگرنه صف مدیر پر از اصلاحیه‌های متناقض می‌شود. */
+  var pend = notifyPendingCorrection(attId);
+  if(pend){
+    update('notify_queue', pend.id, {
+      body: body,
+      parts: smsParts(body),
+      source_hash: curHash,
+      created_at: new Date().toISOString()
+    });
+    out.action = 'updated';
+    out.queue = byId('notify_queue', pend.id);
+    return out;
+  }
+
+  if(!cfg.enabled) return out;
+
+  var parents = last.parent_ids && last.parent_ids.length
+    ? last.parent_ids
+    : notifyParentsOf(last.student_id);
+  if(!parents.length) return out;
+
+  var q = insert('notify_queue', {
+    school_id:  last.school_id,
+    kind:       last.correction_of ? (last.kind || 'absence') : last.kind,
+    student_id: last.student_id,
+    class_id:   last.class_id || null,
+    parent_ids: parents,
+    body:       body,
+    parts:      smsParts(body),
+    status:     'pending',
+    source_ref: attId,
+    source_hash: curHash,
+    created_at: new Date().toISOString(),
+    created_by: (typeof S !== 'undefined' && S.user) ? S.user.id : null,
+    auto:       cfg.autoSend ? 1 : 0,
+    /* 🔴 نشان اصلاحیه — همین فیلد جلوی حلقهٔ بی‌نهایت را می‌گیرد */
+    correction_of: last.id
+  });
+  out.action = 'created';
+  out.queue = q;
+  return out;
+}
+
+/**
+ * وارسی دسته‌ای پس از ثبت گروهی حضور و غیاب.
+ * برمی‌گرداند: {created, cancelled, updated}
+ */
+function notifyReconcileMany(attIds){
+  var out = { created: 0, cancelled: 0, updated: 0 };
+  (attIds || []).forEach(function(id){
+    var r = notifyReconcile(id);
+    if(r.action === 'created')   out.created++;
+    if(r.action === 'cancelled') out.cancelled++;
+    if(r.action === 'updated')   out.updated++;
   });
   return out;
 }
