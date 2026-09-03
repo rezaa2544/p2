@@ -773,7 +773,9 @@ function render(){
   if(main && S.__routeChanged){ main.scrollTop = 0; S.__routeChanged = false; }
 }
 setTimeout(()=>{
-  generate(); generateExtras(); generateP8(); generateP9(); generateP10(); loadLog(); applyLog(); initSync();
+  generate(); generateExtras(); generateP8(); generateP9(); generateP10();
+  if(typeof generateP11==='function') generateP11();
+  loadLog(); applyLog(); initSync();
   const su=Store.get(SESSION_KEY);
   if(su){const u=db.users.find(x=>x.username===su);if(u){S.user=u;if(u.role==='edu_office'&&S.route==='dashboard')S.route='officedash';}}
   const pk=Store.get(PERSONA_KEY);

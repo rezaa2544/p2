@@ -269,3 +269,89 @@ function bellRow(s, i){
     + '<button class="icon-btn danger" data-act="bell-del" data-i="' + i + '" title="حذف">🗑️</button>'
     + '</div>';
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   دادهٔ نمونهٔ نوبت‌های جلسهٔ اولیا و زمان‌بندی زنگ
+   ═══════════════════════════════════════════════════════════════════
+
+   چرا اینجا و نه در 02-demo-data.js؟
+   این داده به توابع همین ماژول (BELL_PRESETS) و به کاربرانی که در
+   فازهای بعدی ساخته می‌شوند وابسته است. الگوی generateP8/9/10.
+
+   ⚠️ نوبت جلسه باید در آینده باشد، نه گذشته. نوبت گذشته در صفحهٔ
+   ولی «قابل رزرو» نیست و صفحه دوباره خالی به نظر می‌رسد.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** افزودن n روز به امروز — نوبت‌ها باید آینده باشند */
+function daysAheadISO(n){
+  var t = new Date();
+  t.setDate(t.getDate() + n);
+  return t.toISOString().slice(0, 10);
+}
+
+/**
+ * دادهٔ نمونهٔ فاز ۱۱: نوبت جلسهٔ اولیا + زمان‌بندی زنگ مدرسه‌ها.
+ * بدون این، دو صفحه خالی باز می‌شوند در حالی که کدشان سالم است.
+ */
+function generateP11(){
+  db.meeting_slots = db.meeting_slots || [];
+  db.bell_schedules = db.bell_schedules || [];
+
+  /* ── ۱) زمان‌بندی زنگ ──────────────────────────────────────────
+     الگوی آماده بر پایهٔ مقطع و شیفت مدرسه ذخیره می‌شود تا صفحه
+     به‌جای «هنوز تعریف نشده» زمان‌بندی واقعی نشان دهد.
+     ⚠️ مدرسهٔ غیرفعال کنار گذاشته می‌شود. */
+  db.schools.forEach(function(s){
+    if(!s.active) return;
+    if(db.bell_schedules.some(function(b){ return b.school_id === s.id; })) return;
+    var key = (s.level === 'ابتدایی') ? 'ابتدایی'
+            : (s.shift === 'بعدازظهر') ? 'بعدازظهر' : 'صبح';
+    var pre = BELL_PRESETS[key] || BELL_PRESETS['صبح'];
+    add('bell_schedules', { school_id: s.id, start: pre.start,
+      slots: pre.slots.map(function(x){
+        return { kind: x.kind, min: x.min }; }) });
+  });
+
+  /* ── ۲) نوبت‌های جلسهٔ اولیا ───────────────────────────────────
+     برای هر مدرسهٔ فعال، دو دبیر نخست در دو روز آینده نوبت دارند.
+     بخشی رزروشده تا هر دو حالت «آزاد» و «رزرو» در صفحه دیده شود. */
+  var PLACES = ['دفتر مدرسه', 'اتاق مشاور', 'سالن اجتماعات'];
+
+  db.schools.forEach(function(s, si){
+    if(!s.active) return;
+    var teachers = db.users.filter(function(u){
+      return u.role === 'teacher' && u.school_id === s.id; }).slice(0, 2);
+    if(!teachers.length) return;
+
+    /* اولیای همین مدرسه، برای رزروهای نمونه */
+    var kids = db.users.filter(function(u){
+      return u.role === 'student' && u.school_id === s.id; });
+    var links = db.parent_links.filter(function(l){
+      return kids.some(function(k){ return k.id === l.student_id; }); });
+
+    teachers.forEach(function(t, ti){
+      /* دو روز آینده: پس‌فردا و چهار روز بعد */
+      [2 + ti, 4 + ti].forEach(function(off, di){
+        var date = daysAheadISO(off);
+        var mins = 15 * 60;              /* شروع ساعت ۱۵:۰۰ */
+        var dur = 15;
+        for(var i = 0; i < 6; i++){
+          var hh = Math.floor(mins / 60), mm = mins % 60;
+          var time = (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
+          /* دو نوبت نخست هر روز رزروشده، بقیه آزاد */
+          var booked = (i < 2 && links.length > i);
+          var lk = booked ? links[(si + ti + i) % links.length] : null;
+          add('meeting_slots', {
+            school_id: s.id, teacher_id: t.id, date: date, start_time: time,
+            duration: dur, location: PLACES[(ti + di) % PLACES.length],
+            status: booked ? 'booked' : 'open',
+            parent_id: lk ? lk.parent_id : null,
+            student_id: lk ? lk.student_id : null,
+            note: booked ? 'پیگیری وضعیت درسی' : null,
+            created_at: daysAgoISO(3) });
+          mins += dur;
+        }
+      });
+    });
+  });
+}

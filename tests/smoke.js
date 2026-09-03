@@ -2679,6 +2679,43 @@ function impRows(n, txt, from) {
     ['دانش‌آموز ' + (i + 1), tNid((from || 0) + i), txt, i % 2 ? 'دختر' : 'پسر']);
 }
 
+test('دادهٔ نمونه: نوبت جلسهٔ اولیا ساخته می‌شود و در آینده است', () => {
+  const n = W('db.meeting_slots.length');
+  assert(n > 0, 'هیچ نوبت جلسه‌ای در دادهٔ نمونه نیست');
+  /* ⚠️ نوبت گذشته قابل رزرو نیست و صفحهٔ ولی دوباره خالی می‌شود */
+  const past = W('db.meeting_slots.filter(m=>m.date<todayISO()).length');
+  assert(past === 0, past + ' نوبت در گذشته است');
+  const booked = W('db.meeting_slots.filter(m=>m.status==="booked").length');
+  const open = W('db.meeting_slots.filter(m=>m.status==="open").length');
+  assert(booked > 0 && open > 0,
+    'هر دو حالت آزاد و رزرو باید باشد: آزاد ' + open + ' رزرو ' + booked);
+});
+
+test('دادهٔ نمونه: زمان‌بندی زنگ برای مدارس فعال ذخیره شده', () => {
+  const n = W('db.bell_schedules.length');
+  assert(n > 0, 'زمان‌بندی زنگ ساخته نشده');
+  /* مدرسهٔ غیرفعال نباید زمان‌بندی بگیرد */
+  const bad = W('db.bell_schedules.filter(b=>{const s=byId("schools",b.school_id);'
+    + 'return !s||!s.active;}).length');
+  assert(bad === 0, bad + ' زمان‌بندی متعلق به مدرسهٔ غیرفعال است');
+  const slots = W('(db.bell_schedules[0].slots||[]).length');
+  assert(slots > 0, 'زمان‌بندی بدون بازه است');
+});
+
+test('صفحهٔ جلسات اولیا برای ولی خالی نیست', () => {
+  const saved = W('JSON.stringify({r:S.route,u:S.user&&S.user.id})');
+  try {
+    const len = W('(()=>{const p=db.users.find(u=>u.role==="parent"&&'
+      + 'db.meeting_slots.some(m=>m.school_id===u.school_id));'
+      + 'if(!p)return 0;S.user=p;S.persona=null;S.boss=null;'
+      + 'S.route="meetings";S.filters={};S.page=1;return renderRoute().length;})()');
+    assert(len > 2000, 'صفحهٔ جلسات ولی کوتاه است: ' + len + ' نویسه');
+  } finally {
+    const o = JSON.parse(saved);
+    W('S.route=' + JSON.stringify(o.r) + ';S.user=byId("users",' + o.u + ')||S.user;S.filters={}');
+  }
+});
+
 test('پیش‌نمایش: جدول ظرفیت اکنون/افزوده/مجموع را می‌سازد', () => {
   withBranches(10, (sid) => {
     const mgr = W('S.user'); void mgr;
