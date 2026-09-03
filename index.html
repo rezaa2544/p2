@@ -381,6 +381,37 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
 }
 .nowrap{flex-wrap:nowrap}
+
+/* ───────── پیش‌نویس حضور و غیاب (دور ۴۲) ───────── */
+
+/* راهنمای یک‌بارهٔ تغییر رفتار — دبیر قدیمی نباید گیج شود */
+.att-tip{
+  background:var(--primary-soft);border:1px solid var(--primary);
+  border-radius:12px;padding:14px 16px;margin-bottom:14px;line-height:2;
+}
+.att-tip b{display:block;margin-bottom:4px}
+.att-tip .btn{margin-top:10px}
+
+.att-draft-bar{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  background:var(--amber-soft);color:var(--amber);
+  border:1px solid var(--amber);border-radius:12px;
+  padding:12px 16px;margin-bottom:14px;font-weight:700;line-height:1.9;
+}
+.att-draft-bar .small{font-weight:400}
+.att-draft-bar .btn{margin-inline-start:auto;flex:none}
+.att-draft-bar .btn.ghost{margin-inline-start:0}
+
+/* ردیفی که تیک ثبت‌نشده دارد */
+.att-row-draft{background:var(--amber-soft)}
+
+.rev-line{padding:10px 0;border-bottom:1px solid var(--border);line-height:2}
+.rev-line .small{margin-top:4px}
+.rev-total{margin-top:12px;font-weight:700}
+.rev-sms{
+  margin-top:12px;padding:10px 12px;border-radius:10px;
+  background:var(--primary-soft);line-height:2;
+}
 /* ==================== موبایل: تطبیق کامل با عرض صفحه ==================== */
 @media(max-width:900px){
 .app{grid-template-columns:1fr}
@@ -2040,6 +2071,10 @@ var ACTION_ROLES = {
   'notify-auto-off':    ['manager','superadmin'],
   /* حضور و غیاب: فقط دبیر و مدیر */
   'att-set':       ['teacher','manager','superadmin'],
+  'att-review':    ['teacher','manager','superadmin'],
+  'att-commit':    ['teacher','manager','superadmin'],
+  'att-discard':   ['teacher','manager','superadmin'],
+  'att-tip-ok':    ['teacher','manager','superadmin','student','parent','edu_office'],
   'att-all':       ['teacher','manager','superadmin'],
   /* نمرات */
   'grade-save':    ['teacher','manager','superadmin'],
@@ -2599,7 +2634,41 @@ function viewSubjects(){
 /* ═══════════════════════════════════════════════════════════════════
    حضور و غیاب
    ثبت روزانه بر پایهٔ کلاس و تاریخ. از ایندکس کلاس+روز استفاده می‌کند.
+
+   ⚠️ تغییر رفتار در دور ۴۲: پیش از این هر تیک بلافاصله ذخیره
+   می‌شد. حالا تیک‌ها در پیش‌نویس جمع می‌شوند و با دکمهٔ «تأیید و
+   ثبت» یک‌جا نوشته می‌شوند. دلیل: غیبت به خانواده پیامک می‌شود و
+   تیک اشتباه هزینه دارد.
+
+   پیش‌نویس در Store است نه S ⇒ تعویض کلاس یا بستن مرورگر آن را
+   گم نمی‌کند. منطقش در 44-sms-notify.js بخش ۱۰.
    ═══════════════════════════════════════════════════════════════════ */
+
+/** کلید یادآوری تغییر رفتار؛ هر دبیر یک‌بار می‌بیند */
+var ATT_TIP_KEY = 'sms_att_tip_v1';
+
+/**
+ * نوار راهنمای تغییر رفتار.
+ *
+ * چرا لازم است؟ دبیری که ماه‌ها با ثبت فوری کار کرده، با دیدن
+ * صفحهٔ تازه گمان می‌کند تیک‌هایش ذخیره نشده. یک‌بار توضیح
+ * می‌دهیم و با زدن «متوجه شدم» دیگر نشان داده نمی‌شود.
+ */
+function attChangeTip(){
+  var uid = (S.user && S.user.id) || 0;
+  var seen = Store.getJSON(ATT_TIP_KEY, {}) || {};
+  if(seen[uid]) return '';
+  return '<div class="att-tip">'
+    + '<b>🆕 روش ثبت عوض شد</b>'
+    + '<div class="small">پیش از این هر تیک بی‌درنگ ذخیره می‌شد. '
+    + 'حالا وضعیت‌ها جمع می‌شوند و با دکمهٔ <b>«مرور و ثبت نهایی»</b> '
+    + 'یک‌جا ذخیره می‌شوند. پیش از ثبت، خلاصه‌ای از غایبان را می‌بینید '
+    + 'تا اگر اشتباهی رخ داده باشد اصلاحش کنید. '
+    + 'کار نیمه‌تمام شما محفوظ می‌ماند، حتی اگر به کلاس دیگری بروید.</div>'
+    + '<button class="btn sm" data-act="att-tip-ok">متوجه شدم</button>'
+    + '</div>';
+}
+
 function viewAttendance(){
   const cls=visibleClasses();
   if(!cls.length)return `<div class="card">${empty('🏛️','کلاسی در دسترس نیست','ابتدا باید کلاسی به شما تخصیص یابد.')}</div>`;
@@ -2613,9 +2682,28 @@ function viewAttendance(){
   if(_am){ _day=new Map(); const _rows=_am.get(cid+'|'+date)||[];
     for(let i=0;i<_rows.length;i++)_day.set(_rows[i].student_id,_rows[i]); }
   const rec=s=>_day?_day.get(s.id):db.attendance.find(a=>a.student_id===s.id&&a.date===date);
-  const all=roster.map(rec);
-  const cnt=k=>all.filter(a=>a&&a.status===k).length;
-  return `<div class="card"><div class="card-head">
+
+  /* پیش‌نویس: تیک‌های ثبت‌نشده. نمایش = پیش‌نویس اگر بود، وگرنه پایگاه داده. */
+  const draft=(typeof attDraftGet==='function')?attDraftGet(cid,date):{};
+  const nDraft=Object.keys(draft).length;
+  const shown=s=>draft[s.id]||((rec(s)||{}).status||null);
+
+  const all=roster.map(s=>shown(s));
+  const cnt=k=>all.filter(x=>x===k).length;
+  const unset=all.filter(x=>!x).length;
+
+  /* تفاوت واقعی با پایگاه داده — مبنای دکمهٔ ثبت */
+  const diff=(typeof attDraftDiff==='function')?attDraftDiff(cid,date):{changes:[]};
+  const nChange=diff.changes.length;
+
+  const bannerDraft = nDraft ? `<div class="att-draft-bar">
+     <b>✏️ ${fa(nChange)} تغییر ثبت‌نشده</b>
+     <span class="small">تا زمانی که «مرور و ثبت نهایی» را نزنید ذخیره نمی‌شود.</span>
+     <button class="btn" data-act="att-review">مرور و ثبت نهایی</button>
+     <button class="btn ghost sm" data-act="att-discard">دور ریختن</button>
+   </div>` : '';
+
+  return `${attChangeTip()}${bannerDraft}<div class="card"><div class="card-head">
     <div class="row"><select class="select" style="width:180px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
      <input class="input" style="width:160px" type="date" data-f="date" value="${escAttr(date)}" /><span class="badge b-gray">${jalali(date)}</span></div>
     <div class="row"><input class="input" style="width:160px" placeholder="جستجوی دانش‌آموز…" data-f="q" value="${esc(q)}" />
@@ -2623,12 +2711,18 @@ function viewAttendance(){
      <button class="btn ghost sm" data-act="att-all" data-s="absent">❌ همه غایب</button></div></div>
    <div class="card-body row" style="border-bottom:1px solid var(--border)">
     ${['present','absent','late','excused'].map(k=>`<span class="badge ${ATT_BADGE[k]}">${ATT_FA[k]}: ${fa(cnt(k))}</span>`).join('')}
-    <span class="badge b-gray">ثبت‌نشده: ${fa(all.filter(a=>!a).length)}</span><div class="spacer"></div><span class="small muted">تغییرات بلافاصله ذخیره می‌شود</span></div>
+    <span class="badge b-gray">ثبت‌نشده: ${fa(unset)}</span><div class="spacer"></div>
+    <span class="small muted">${nDraft?'تغییرات هنوز ذخیره نشده‌اند':'همه‌چیز ذخیره شده است'}</span></div>
    ${studs.length?`<div class="table-wrap"><table><thead><tr><th>#</th><th>نام دانش‌آموز</th><th>ثبت وضعیت</th><th>وضعیت فعلی</th></tr></thead><tbody>
-    ${studs.map((s,i)=>{const r=rec(s);return `<tr><td class="muted">${fa(i+1)}</td><td><b>${esc(s.full_name)}</b>${r&&r.note?`<div class="small muted">${esc(r.note)}</div>`:''}</td>
-     <td>${['present','absent','late','excused'].map(k=>`<button class="att-btn ${r&&r.status===k?'on-'+k:''}" data-act="att-set" data-id="${escAttr(s.id)}" data-s="${escAttr(k)}">${ATT_FA[k]}</button>`).join('')}</td>
-     <td>${r?`<span class="badge ${ATT_BADGE[r.status]}">${ATT_FA[r.status]}</span>`:'<span class="badge b-gray">ثبت نشده</span>'}</td></tr>`;}).join('')}
-   </tbody></table></div>`:empty('🔍','دانش‌آموزی یافت نشد','این کلاس دانش‌آموزی ندارد یا جستجو نتیجه‌ای نداشت.')}</div>`;
+    ${studs.map((s,i)=>{const r=rec(s);const d=draft[s.id];const v=d||((r||{}).status||null);
+      return `<tr${d?' class="att-row-draft"':''}><td class="muted">${fa(i+1)}</td><td><b>${esc(s.full_name)}</b>${r&&r.note?`<div class="small muted">${esc(r.note)}</div>`:''}</td>
+     <td>${['present','absent','late','excused'].map(k=>`<button class="att-btn ${v===k?'on-'+k:''}" data-act="att-set" data-id="${escAttr(s.id)}" data-s="${escAttr(k)}">${ATT_FA[k]}</button>`).join('')}</td>
+     <td>${v?`<span class="badge ${ATT_BADGE[v]}">${ATT_FA[v]}</span>${d?'<span class="badge b-amber">ثبت‌نشده</span>':''}`:'<span class="badge b-gray">ثبت نشده</span>'}</td></tr>`;}).join('')}
+   </tbody></table></div>`:empty('🔍','دانش‌آموزی یافت نشد','این کلاس دانش‌آموزی ندارد یا جستجو نتیجه‌ای نداشت.')}
+   ${nDraft?`<div class="card-foot row">
+     <button class="btn" data-act="att-review">✅ مرور و ثبت نهایی (${fa(nChange)} تغییر)</button>
+     <button class="btn ghost" data-act="att-discard">دور ریختن تغییرات</button></div>`:''}
+   </div>`;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -6739,21 +6833,101 @@ document.addEventListener('click',e=>{
      toast(`${fa(added)} کتاب اضافه شد${skipped?` — ${fa(skipped)} مورد تکراری بود`:''}`,'ok');
      render();
    },
-   // attendance
-   'att-set'(){const sid=id,st=el.dataset.s;const date=S.filters.date||todayISO();
+   // ---- حضور و غیاب ----
+   /* ⚠️ تغییر رفتار دور ۴۲: تیک دیگر بی‌درنگ ذخیره نمی‌شود؛ به
+      پیش‌نویس می‌رود. ثبت واقعی فقط با att-commit انجام می‌شود.
+      دلیل: غیبت به خانواده پیامک می‌شود و تیک اشتباه هزینه دارد. */
+   'att-set'(){const st=el.dataset.s;const date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
-     const ex=db.attendance.find(x=>x.student_id===sid&&x.date===date);
-     if(ex)update('attendance',ex.id,{status:st,class_id:cid});
-     else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:sid,date,status:st,note:null});
+     attDraftSet(cid,date,id,st);
      render();},
    'att-all'(){const st=el.dataset.s,date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
-     const _am=(typeof idxAttByClassDate==='function')?idxAttByClassDate():null;
-     const _day=new Map();
-     if(_am)(_am.get(cid+'|'+date)||[]).forEach(a=>_day.set(a.student_id,a));
-     studentsOfClass(cid).forEach(s=>{const ex=_am?_day.get(s.id):db.attendance.find(x=>x.student_id===s.id&&x.date===date);
-       if(ex)update('attendance',ex.id,{status:st});else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:s.id,date,status:st,note:null});});
-     toast('همه دانش‌آموزان «'+ATT_FA[st]+'» ثبت شدند','ok');render();},
+     attDraftSetAll(cid,date,studentsOfClass(cid).map(s=>s.id),st);
+     toast('همه «'+ATT_FA[st]+'» علامت خوردند — برای ذخیره «مرور و ثبت نهایی» را بزنید','ok');
+     render();},
+   'att-tip-ok'(){
+     const seen=Store.getJSON(ATT_TIP_KEY,{})||{};
+     seen[(S.user&&S.user.id)||0]=1;
+     Store.setJSON(ATT_TIP_KEY,seen);
+     render();},
+   'att-discard'(){
+     const date=S.filters.date||todayISO();
+     const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
+     askConfirm('تغییرات ثبت‌نشدهٔ این کلاس دور ریخته شود؟',()=>{
+       attDraftClear(cid,date);toast('پیش‌نویس پاک شد','ok');render();
+     },{title:'دور ریختن پیش‌نویس',ok:'دور بریز'});},
+   /* صفحهٔ مرور نهایی: خلاصهٔ تغییرات پیش از نوشتن در پایگاه داده */
+   'att-review'(){
+     const date=S.filters.date||todayISO();
+     const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
+     const d=attDraftDiff(cid,date);
+     if(!d.changes.length){toast('تغییری برای ثبت وجود ندارد','err');return;}
+     const nameList=a=>a.map(x=>esc(x)).join(' · ');
+     const line=(icon,label,arr,tone)=>arr.length
+       ? '<div class="rev-line"><span class="badge '+tone+'">'+icon+' '+label
+         +' '+fa(arr.length)+'</span><div class="small">'+nameList(arr)+'</div></div>' : '';
+     const cnt=d.counts||{};
+     const other=(cnt.present||0)+(cnt.excused||0);
+     /* پیامک فقط برای غیبت و تأخیرِ تازه ساخته می‌شود */
+     const cfg=(typeof notifySettings==='function')?notifySettings(S.user.school_id):{enabled:false,kinds:{}};
+     let smsN=0;
+     if(cfg.enabled){
+       if(cfg.kinds.absence)smsN+=d.newAbsent.length;
+       if(cfg.kinds.late)smsN+=d.newLate.length;
+     }
+     const smsNote=smsN
+       ? '<div class="rev-sms">📨 برای '+fa(smsN)+' مورد پیامک ساخته می‌شود'
+         +(cfg.autoSend?' و <b>مستقیم ارسال می‌گردد</b>.':' و به صف تأیید مدیر می‌رود.')
+         +'<div class="small muted">تا '+fa(cfg.graceMinutes||20)
+         +' دقیقه فرصت دارید خودتان اصلاح کنید؛ در این مدت پیام لغو می‌شود.</div></div>'
+       : '<div class="small muted">برای این تغییرات پیامکی ساخته نمی‌شود.</div>';
+     openModal(modalTpl('مرور نهایی — '+esc(byId('classes',cid).name)+' · '+jalali(date),
+       line('❌','غایب',d.newAbsent,'b-red')
+       +line('⏰','تأخیر',d.newLate,'b-amber')
+       +(other?'<div class="rev-line"><span class="badge b-green">✅ حاضر / موجه '+fa(other)+'</span></div>':'')
+       +'<div class="rev-total small muted">مجموع '+fa(d.changes.length)+' تغییر ثبت می‌شود.</div>'
+       +smsNote,
+       'att-commit',false,'تأیید و ثبت'));},
+   /* نوشتن واقعی در پایگاه داده */
+   'att-commit'(){
+     const date=S.filters.date||todayISO();
+     const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
+     const d=attDraftDiff(cid,date);
+     if(!d.changes.length){closeModal();return;}
+     const school=byId('classes',cid).school_id;
+     const made=[];
+     batchWrites(()=>{
+       d.changes.forEach(c=>{
+         let recId=c.rec_id;
+         if(recId){update('attendance',recId,{status:c.to,class_id:cid});
+           /* ⚠️ اصلاح درون پنجرهٔ مهلت: پیام معلقِ همین رکورد که
+              خود این دبیر ساخته بود، خاموش لغو می‌شود. اگر پیام
+              رفته باشد، گام ۵ (اصلاحیه) کارش را می‌کند. */
+           if(typeof notifyCancelIfFresh==='function'){
+             notifyCancelIfFresh('absence',recId);
+             notifyCancelIfFresh('late',recId);
+           }}
+         else recId=insert('attendance',{school_id:school,class_id:cid,
+           student_id:c.student_id,date,status:c.to,note:null}).id;
+         made.push({c,recId});
+       });
+     });
+     /* پیامک پس از نوشتن ساخته می‌شود تا source_ref شناسهٔ واقعی باشد */
+     let sms=0;
+     if(typeof notifyRequest==='function'){
+       made.forEach(({c,recId})=>{
+         if(c.to!=='absent'&&c.to!=='late')return;
+         const q=notifyRequest({school_id:school,kind:c.to==='absent'?'absence':'late',
+           student_id:c.student_id,class_id:cid,student_name:c.name,
+           date_fa:jalali(date),source_ref:recId});
+         if(q)sms++;
+       });
+     }
+     attDraftClear(cid,date);
+     closeModal();
+     toast(fa(d.changes.length)+' تغییر ثبت شد'+(sms?' — '+fa(sms)+' پیامک ساخته شد':''),'ok');
+     render();},
    // ---- پلان فروش و پشتیبان‌گیری ----
    'plan-settings'(){
      const st=subSettings();
@@ -12609,6 +12783,124 @@ function notifyDailyCard(){
     +   '<div><b' + (pend ? ' style="color:var(--amber)"' : '') + '>' + fa(pend)
     +     '</b><span class="small muted">در انتظار تأیید</span></div>'
     + '</div></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بخش ۱۰ ▸ پیش‌نویس حضور و غیاب (گام ۳)
+   ═══════════════════════════════════════════════════════════════════
+   چرا پیش‌نویس؟ پیش از این هر تیک بلافاصله ذخیره می‌شد. حالا که
+   غیبت به خانواده پیامک می‌شود، تیک اشتباه هزینه دارد. پس تیک‌ها
+   جمع می‌شوند و با یک «تأیید و ثبت» یک‌جا نوشته می‌شوند.
+
+   ⚠️ پیش‌نویس در Store است نه فقط S — اگر دبیر وسط کار به کلاس
+   دیگر برود و برگردد، یا مرورگر بسته شود، کارش نباید گم شود.
+   کلید شامل کاربر + کلاس + تاریخ است تا پیش‌نویس‌ها با هم قاطی
+   نشوند.
+   ═══════════════════════════════════════════════════════════════════ */
+
+var ATT_DRAFT_KEY = 'sms_att_draft_v1';
+
+/** کلید یکتای هر پیش‌نویس: کاربر | کلاس | تاریخ */
+function attDraftKey(cid, date){
+  var uid = (typeof S !== 'undefined' && S.user) ? S.user.id : 0;
+  return uid + '|' + cid + '|' + date;
+}
+
+/** همهٔ پیش‌نویس‌های ذخیره‌شده */
+function attDraftAll(){
+  return Store.getJSON(ATT_DRAFT_KEY, {}) || {};
+}
+
+/** پیش‌نویس یک کلاس و روز: نگاشت student_id → status */
+function attDraftGet(cid, date){
+  var all = attDraftAll();
+  var d = all[attDraftKey(cid, date)];
+  return (d && d.marks) ? d.marks : {};
+}
+
+/**
+ * ثبت یک تیک در پیش‌نویس.
+ * زدن دوبارهٔ همان وضعیت آن را برمی‌دارد (کلید رفت‌وبرگشتی).
+ */
+function attDraftSet(cid, date, studentId, status){
+  var all = attDraftAll();
+  var k = attDraftKey(cid, date);
+  var d = all[k] || { marks: {}, at: new Date().toISOString() };
+  if(d.marks[studentId] === status) delete d.marks[studentId];
+  else d.marks[studentId] = status;
+  d.at = new Date().toISOString();
+  if(Object.keys(d.marks).length) all[k] = d;
+  else delete all[k];                    /* پیش‌نویس خالی نگه‌داشتن ندارد */
+  Store.setJSON(ATT_DRAFT_KEY, all);
+  return d.marks;
+}
+
+/** ثبت وضعیت یکسان برای فهرستی از دانش‌آموزان (دکمهٔ «همه …») */
+function attDraftSetAll(cid, date, ids, status){
+  var all = attDraftAll();
+  var k = attDraftKey(cid, date);
+  var d = all[k] || { marks: {}, at: new Date().toISOString() };
+  ids.forEach(function(id){ d.marks[id] = status; });
+  d.at = new Date().toISOString();
+  all[k] = d;
+  Store.setJSON(ATT_DRAFT_KEY, all);
+  return d.marks;
+}
+
+/** پاک کردن پیش‌نویس یک کلاس و روز */
+function attDraftClear(cid, date){
+  var all = attDraftAll();
+  delete all[attDraftKey(cid, date)];
+  Store.setJSON(ATT_DRAFT_KEY, all);
+}
+
+/**
+ * پاک‌سازی پیش‌نویس‌های رهاشده.
+ * ⚠️ پیش‌نویس نیمه‌کاره‌ای که دبیر فراموشش کرده نباید تا ابد در
+ * حافظهٔ مرورگر بماند؛ سقف حافظه ~۵MB است.
+ */
+function attDraftPurge(days){
+  var keep = days || 7;
+  var cutoff = Date.now() - keep * 86400000;
+  var all = attDraftAll(), n = 0;
+  Object.keys(all).forEach(function(k){
+    var t = Date.parse(all[k] && all[k].at);
+    if(isNaN(t) || t < cutoff){ delete all[k]; n++; }
+  });
+  if(n) Store.setJSON(ATT_DRAFT_KEY, all);
+  return n;
+}
+
+/**
+ * تفاوت پیش‌نویس با آنچه در پایگاه داده است.
+ * خروجی: {changes:[{student_id,name,from,to}], counts:{...}, newAbsent:[…]}
+ *
+ * ⚠️ فقط تفاوت‌های واقعی برمی‌گردند. اگر دبیر روی «حاضر» بزند و
+ * از قبل هم «حاضر» بوده، تغییری نیست و نباید در مرور نهایی
+ * شمرده شود — وگرنه «۳۰ تغییر» نشان می‌دهد که ۲۷تایش هیچ است.
+ */
+function attDraftDiff(cid, date){
+  var marks = attDraftGet(cid, date);
+  var out = { changes: [], counts: {}, newAbsent: [], newLate: [] };
+  var am = (typeof idxAttByClassDate === 'function') ? idxAttByClassDate() : null;
+  var day = new Map();
+  if(am) (am.get(cid + '|' + date) || []).forEach(function(a){ day.set(a.student_id, a); });
+
+  Object.keys(marks).forEach(function(sid){
+    var id = Number(sid);
+    var cur = am ? day.get(id)
+                 : db.attendance.find(function(a){ return a.student_id === id && a.date === date; });
+    var to = marks[sid];
+    var from = cur ? cur.status : null;
+    if(from === to) return;                       /* بی‌تغییر */
+    var u = byId('users', id);
+    out.changes.push({ student_id: id, name: u ? u.full_name : '—',
+                       from: from, to: to, rec_id: cur ? cur.id : null });
+    out.counts[to] = (out.counts[to] || 0) + 1;
+    if(to === 'absent') out.newAbsent.push(u ? u.full_name : '—');
+    if(to === 'late')   out.newLate.push(u ? u.full_name : '—');
+  });
+  return out;
 }
 
 </script>

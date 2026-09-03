@@ -86,6 +86,10 @@ var ACTION_ROLES = {
   'notify-auto-off':    ['manager','superadmin'],
   /* حضور و غیاب: فقط دبیر و مدیر */
   'att-set':       ['teacher','manager','superadmin'],
+  'att-review':    ['teacher','manager','superadmin'],
+  'att-commit':    ['teacher','manager','superadmin'],
+  'att-discard':   ['teacher','manager','superadmin'],
+  'att-tip-ok':    ['teacher','manager','superadmin','student','parent','edu_office'],
   'att-all':       ['teacher','manager','superadmin'],
   /* نمرات */
   'grade-save':    ['teacher','manager','superadmin'],

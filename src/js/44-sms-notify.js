@@ -600,3 +600,121 @@ function notifyDailyCard(){
     +     '</b><span class="small muted">در انتظار تأیید</span></div>'
     + '</div></div>';
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   بخش ۱۰ ▸ پیش‌نویس حضور و غیاب (گام ۳)
+   ═══════════════════════════════════════════════════════════════════
+   چرا پیش‌نویس؟ پیش از این هر تیک بلافاصله ذخیره می‌شد. حالا که
+   غیبت به خانواده پیامک می‌شود، تیک اشتباه هزینه دارد. پس تیک‌ها
+   جمع می‌شوند و با یک «تأیید و ثبت» یک‌جا نوشته می‌شوند.
+
+   ⚠️ پیش‌نویس در Store است نه فقط S — اگر دبیر وسط کار به کلاس
+   دیگر برود و برگردد، یا مرورگر بسته شود، کارش نباید گم شود.
+   کلید شامل کاربر + کلاس + تاریخ است تا پیش‌نویس‌ها با هم قاطی
+   نشوند.
+   ═══════════════════════════════════════════════════════════════════ */
+
+var ATT_DRAFT_KEY = 'sms_att_draft_v1';
+
+/** کلید یکتای هر پیش‌نویس: کاربر | کلاس | تاریخ */
+function attDraftKey(cid, date){
+  var uid = (typeof S !== 'undefined' && S.user) ? S.user.id : 0;
+  return uid + '|' + cid + '|' + date;
+}
+
+/** همهٔ پیش‌نویس‌های ذخیره‌شده */
+function attDraftAll(){
+  return Store.getJSON(ATT_DRAFT_KEY, {}) || {};
+}
+
+/** پیش‌نویس یک کلاس و روز: نگاشت student_id → status */
+function attDraftGet(cid, date){
+  var all = attDraftAll();
+  var d = all[attDraftKey(cid, date)];
+  return (d && d.marks) ? d.marks : {};
+}
+
+/**
+ * ثبت یک تیک در پیش‌نویس.
+ * زدن دوبارهٔ همان وضعیت آن را برمی‌دارد (کلید رفت‌وبرگشتی).
+ */
+function attDraftSet(cid, date, studentId, status){
+  var all = attDraftAll();
+  var k = attDraftKey(cid, date);
+  var d = all[k] || { marks: {}, at: new Date().toISOString() };
+  if(d.marks[studentId] === status) delete d.marks[studentId];
+  else d.marks[studentId] = status;
+  d.at = new Date().toISOString();
+  if(Object.keys(d.marks).length) all[k] = d;
+  else delete all[k];                    /* پیش‌نویس خالی نگه‌داشتن ندارد */
+  Store.setJSON(ATT_DRAFT_KEY, all);
+  return d.marks;
+}
+
+/** ثبت وضعیت یکسان برای فهرستی از دانش‌آموزان (دکمهٔ «همه …») */
+function attDraftSetAll(cid, date, ids, status){
+  var all = attDraftAll();
+  var k = attDraftKey(cid, date);
+  var d = all[k] || { marks: {}, at: new Date().toISOString() };
+  ids.forEach(function(id){ d.marks[id] = status; });
+  d.at = new Date().toISOString();
+  all[k] = d;
+  Store.setJSON(ATT_DRAFT_KEY, all);
+  return d.marks;
+}
+
+/** پاک کردن پیش‌نویس یک کلاس و روز */
+function attDraftClear(cid, date){
+  var all = attDraftAll();
+  delete all[attDraftKey(cid, date)];
+  Store.setJSON(ATT_DRAFT_KEY, all);
+}
+
+/**
+ * پاک‌سازی پیش‌نویس‌های رهاشده.
+ * ⚠️ پیش‌نویس نیمه‌کاره‌ای که دبیر فراموشش کرده نباید تا ابد در
+ * حافظهٔ مرورگر بماند؛ سقف حافظه ~۵MB است.
+ */
+function attDraftPurge(days){
+  var keep = days || 7;
+  var cutoff = Date.now() - keep * 86400000;
+  var all = attDraftAll(), n = 0;
+  Object.keys(all).forEach(function(k){
+    var t = Date.parse(all[k] && all[k].at);
+    if(isNaN(t) || t < cutoff){ delete all[k]; n++; }
+  });
+  if(n) Store.setJSON(ATT_DRAFT_KEY, all);
+  return n;
+}
+
+/**
+ * تفاوت پیش‌نویس با آنچه در پایگاه داده است.
+ * خروجی: {changes:[{student_id,name,from,to}], counts:{...}, newAbsent:[…]}
+ *
+ * ⚠️ فقط تفاوت‌های واقعی برمی‌گردند. اگر دبیر روی «حاضر» بزند و
+ * از قبل هم «حاضر» بوده، تغییری نیست و نباید در مرور نهایی
+ * شمرده شود — وگرنه «۳۰ تغییر» نشان می‌دهد که ۲۷تایش هیچ است.
+ */
+function attDraftDiff(cid, date){
+  var marks = attDraftGet(cid, date);
+  var out = { changes: [], counts: {}, newAbsent: [], newLate: [] };
+  var am = (typeof idxAttByClassDate === 'function') ? idxAttByClassDate() : null;
+  var day = new Map();
+  if(am) (am.get(cid + '|' + date) || []).forEach(function(a){ day.set(a.student_id, a); });
+
+  Object.keys(marks).forEach(function(sid){
+    var id = Number(sid);
+    var cur = am ? day.get(id)
+                 : db.attendance.find(function(a){ return a.student_id === id && a.date === date; });
+    var to = marks[sid];
+    var from = cur ? cur.status : null;
+    if(from === to) return;                       /* بی‌تغییر */
+    var u = byId('users', id);
+    out.changes.push({ student_id: id, name: u ? u.full_name : '—',
+                       from: from, to: to, rec_id: cur ? cur.id : null });
+    out.counts[to] = (out.counts[to] || 0) + 1;
+    if(to === 'absent') out.newAbsent.push(u ? u.full_name : '—');
+    if(to === 'late')   out.newLate.push(u ? u.full_name : '—');
+  });
+  return out;
+}

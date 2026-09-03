@@ -3401,6 +3401,320 @@ test('صف مدیر: مسیر تازه عنوان و جایگاه منو دار�
   assert(teacherNav === false, '🔴 مسیر در منوی دبیر هم هست');
 });
 
+/* ── پیش‌نویس حضور و غیاب (گام ۳، دور ۴۲) ────────────────────────
+   ⚠️ تغییر رفتار: تیک دیگر بی‌درنگ ذخیره نمی‌شود. این آزمون‌ها
+   نگهبان همان تغییرند. */
+
+/** محیط دبیر روی یک کلاس و تاریخ مشخص؛ پیش‌نویس در پایان پاک می‌شود */
+function withDraft(fn) {
+  const sid = W('db.schools[0].id');
+  W('(()=>{db._dU=S.user;db._dF=S.filters;db._dR=S.route;'
+    + 'S.user=db.users.find(u=>u.role==="teacher"&&u.school_id===' + sid + ')'
+    + '||db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+    + 'S.persona=null;S.boss=null;S.route="attendance";'
+    + 'Store.remove(ATT_DRAFT_KEY);})()');
+  try {
+    /* ⚠️ درس دور ۴۲: visibleClasses()[0] کورکورانه انتخاب نشود.
+       آزمون‌های پیشین ثبت‌نام‌ها را عوض می‌کنند و کلاس نخست ممکن
+       است تنها ۱ دانش‌آموز داشته باشد ⇒ «۳ تیک نگرفت» دروغین.
+       کلاسی می‌خواهیم که واقعاً ظرفیت آزمون را داشته باشد. */
+    const cid = W('(()=>{const c=visibleClasses()'
+      + '.filter(x=>studentsOfClass(x.id).length>=3);'
+      + 'return c.length?c[0].id:(visibleClasses()[0]||{}).id||0;})()');
+    const roster = W('studentsOfClass(' + cid + ').length');
+    assert(roster >= 3, 'محیط آزمون کلاس سه‌نفره ندارد (بیشینه: ' + roster + ')');
+    return fn(sid, cid, '2026-09-04');
+  } finally {
+    W('(()=>{Store.remove(ATT_DRAFT_KEY);S.user=db._dU;S.filters=db._dF;'
+      + 'S.route=db._dR;delete db._dU;delete db._dF;delete db._dR;})()');
+  }
+}
+
+test('پیش‌نویس: تیک زدن چیزی در پایگاه داده نمی‌نویسد', () => {
+  withDraft((sid, cid, date) => {
+    const r = JSON.parse(W('(()=>{const st=studentsOfClass(' + cid + ').slice(0,3);'
+      + 'const before=db.attendance.filter(a=>a.class_id===' + cid
+      + '&&a.date==="' + date + '").length;'
+      + 'st.forEach(s=>attDraftSet(' + cid + ',"' + date + '",s.id,"absent"));'
+      + 'return JSON.stringify({marks:Object.keys(attDraftGet(' + cid + ',"' + date + '")).length,'
+      + 'roster:st.length,'
+      + 'before:before,after:db.attendance.filter(a=>a.class_id===' + cid
+      + '&&a.date==="' + date + '").length});})()'));
+    assert(r.roster === 3, 'محیط آزمون ۳ دانش‌آموز نداد: ' + r.roster);
+    assert(r.marks === 3, 'پیش‌نویس ۳ تیک نگرفت: ' + r.marks);
+    assert(r.after === r.before, '🔴 تیک مستقیم در پایگاه داده نوشته شد');
+  });
+});
+
+test('پیش‌نویس: تعویض کلاس آن را گم نمی‌کند', () => {
+  /* 🔴 خواستهٔ صریح کاربر: دبیر وسط کار به کلاس دیگر برود و برگردد،
+     کارش نباید بپرد. برای همین کلید Store شامل کلاس است.
+
+     ⚠️ دو دام که هر دو در دور ۴۲ رخ دادند:
+     ۱. تکیه بر کلاس‌های موجود ⇒ آزمون قبلی ثبت‌نام‌ها را عوض
+        می‌کرد، `cls.length<2` می‌شد و آزمون **بی‌صدا رد** می‌شد.
+        حالا محیط خودش را می‌سازد و skipTest ندارد.
+     ۲. سنجش فقط با شمار ⇒ با کلید مشترک، پیش‌نویس دو کلاس ادغام
+        می‌شود و شمار همچنان درست به نظر می‌رسد. محتوا را می‌سنجیم. */
+  const sid = W('db.schools[0].id');
+  W('(()=>{db._swU=S.user;db._swC=db.classes.slice();db._swE=db.enrollments.slice();'
+    + 'S.user=db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+    + 'S.persona=null;S.boss=null;Store.remove(ATT_DRAFT_KEY);'
+    + 'db.classes.push({id:881001,school_id:' + sid + ',name:"آزمون الف",grade_level:10,capacity:40});'
+    + 'db.classes.push({id:881002,school_id:' + sid + ',name:"آزمون ب",grade_level:10,capacity:40});'
+    + 'const st=db.users.filter(u=>u.role==="student"&&u.school_id===' + sid + ').slice(0,6);'
+    + 'st.slice(0,3).forEach((s,i)=>db.enrollments.push({id:882000+i,school_id:' + sid
+    + ',class_id:881001,student_id:s.id}));'
+    + 'st.slice(3,6).forEach((s,i)=>db.enrollments.push({id:882100+i,school_id:' + sid
+    + ',class_id:881002,student_id:s.id}));'
+    + '(typeof idxInvalidate==="function")&&(idxInvalidate("classes"),idxInvalidate("enrollments"));})()');
+  try {
+    const r = JSON.parse(W('(()=>{const A=881001,B=881002,d="2026-09-04";'
+      + 'const sA=studentsOfClass(A),sB=studentsOfClass(B);'
+      + 'sA.forEach(s=>attDraftSet(A,d,s.id,"absent"));'
+      + 'S.filters={class:B,date:d};'
+      + 'sB.slice(0,2).forEach(s=>attDraftSet(B,d,s.id,"late"));'
+      + 'S.filters={class:A,date:d};'
+      + 'const dA=attDraftGet(A,d),dB=attDraftGet(B,d);'
+      + 'const idsB=sB.map(x=>String(x.id));'
+      + 'return JSON.stringify({rosterA:sA.length,rosterB:sB.length,'
+      + 'a:Object.keys(dA).length,b:Object.keys(dB).length,'
+      + 'keys:Object.keys(attDraftAll()).length,'
+      + 'leak:Object.keys(dA).filter(k=>idsB.indexOf(k)>-1).length,'
+      + 'aVal:dA[Object.keys(dA)[0]],bVal:dB[Object.keys(dB)[0]]});})()'));
+    assert(r.rosterA === 3 && r.rosterB === 3,
+      'محیط آزمون ساخته نشد: ' + r.rosterA + '/' + r.rosterB);
+    assert(r.a === 3, '🔴 پیش‌نویس کلاس نخست پس از بازگشت گم شد: ' + r.a);
+    assert(r.b === 2, '🔴 پیش‌نویس کلاس دوم خراب شد: ' + r.b);
+    assert(r.keys === 2, '🔴 دو کلاس باید دو کلید جدا داشته باشند، دارند: ' + r.keys);
+    assert(r.leak === 0, '🔴 ' + r.leak + ' تیک کلاس ب به پیش‌نویس کلاس الف نشت کرد');
+    assert(r.aVal === 'absent', 'وضعیت کلاس الف عوض شد: ' + r.aVal);
+    assert(r.bVal === 'late', 'وضعیت کلاس ب عوض شد: ' + r.bVal);
+  } finally {
+    W('(()=>{db.classes=db._swC;db.enrollments=db._swE;S.user=db._swU;'
+      + 'delete db._swC;delete db._swE;delete db._swU;Store.remove(ATT_DRAFT_KEY);'
+      + '(typeof idxInvalidate==="function")&&(idxInvalidate("classes"),idxInvalidate("enrollments"));})()');
+  }
+});
+
+test('پیش‌نویس: تاریخ و کاربر هم بخشی از کلید‌اند', () => {
+  /* 🔴 تست جهش دور ۴۲: آزمون تعویض کلاس فقط جزء «کلاس» را پوشش
+     می‌داد. حذف تاریخ یا کاربر از کلید هیچ آزمونی را نمی‌انداخت.
+     پیامد واقعی: دو روز مختلف روی هم می‌افتند، یا دبیر جانشین
+     پیش‌نویس نیمه‌کارهٔ دبیر اصلی را می‌بیند و ثبتش می‌کند. */
+  const sid = W('db.schools[0].id');
+  W('(()=>{db._dkU=S.user;S.persona=null;S.boss=null;Store.remove(ATT_DRAFT_KEY);})()');
+  try {
+    const r = JSON.parse(W('(()=>{const cid=999901,s1=771,s2=772;'
+      + 'const t=db.users.find(u=>u.role==="teacher"&&u.school_id===' + sid + ');'
+      + 'const t2=db.users.find(u=>u.role==="teacher"&&u.school_id===' + sid
+      + '&&u.id!==t.id)||db.users.find(u=>u.role==="manager");'
+      + 'S.user=t;'
+      + 'attDraftSet(cid,"2026-09-04",s1,"absent");'
+      + 'const sameDay=Object.keys(attDraftGet(cid,"2026-09-04")).length;'
+      + 'const otherDay=Object.keys(attDraftGet(cid,"2026-09-05")).length;'
+      + 'S.user=t2;'
+      + 'const otherUser=Object.keys(attDraftGet(cid,"2026-09-04")).length;'
+      + 'S.user=t;'
+      + 'return JSON.stringify({sameDay:sameDay,otherDay:otherDay,'
+      + 'otherUser:otherUser,twoUsers:t.id!==t2.id});})()'));
+    assert(r.sameDay === 1, 'پیش‌نویس همان روز ثبت نشد: ' + r.sameDay);
+    assert(r.otherDay === 0,
+      '🔴 پیش‌نویس روز دیگر همان تیک‌ها را نشان داد — تاریخ در کلید نیست');
+    if (r.twoUsers) {
+      assert(r.otherUser === 0,
+        '🔴 کاربر دیگر پیش‌نویس این دبیر را دید — کاربر در کلید نیست');
+    }
+  } finally {
+    W('(()=>{S.user=db._dkU;delete db._dkU;Store.remove(ATT_DRAFT_KEY);})()');
+  }
+});
+
+test('پیش‌نویس: در Store می‌ماند، نه فقط در حافظهٔ صفحه', () => {
+  /* 🔴 اگر فقط در S باشد، بستن مرورگر کار دبیر را می‌برد.
+     می‌سنجیم که واقعاً در localStorage نوشته شده باشد. */
+  withDraft((sid, cid, date) => {
+    const r = JSON.parse(W('(()=>{studentsOfClass(' + cid + ').slice(0,2)'
+      + '.forEach(s=>attDraftSet(' + cid + ',"' + date + '",s.id,"absent"));'
+      + 'const raw=localStorage.getItem(ATT_DRAFT_KEY);'
+      + 'return JSON.stringify({raw:!!raw,len:(raw||"").length,'
+      + 'parsed:raw?Object.keys(JSON.parse(raw)).length:0});})()'));
+    assert(r.raw === true, '🔴 پیش‌نویس در localStorage نوشته نشد');
+    assert(r.len > 10, 'محتوای ذخیره‌شده خالی است');
+    assert(r.parsed >= 1, 'کلید پیش‌نویس در Store نیست');
+  });
+});
+
+test('پیش‌نویس: تیک بی‌تغییر در شمار تغییرات نمی‌آید', () => {
+  /* ⚠️ اگر دبیر روی «حاضر» بزند و از قبل هم حاضر بوده، تغییری
+     نیست. بدون این بررسی مرور نهایی «۳۰ تغییر» نشان می‌داد که
+     بیشترش هیچ بود. */
+  withDraft((sid, cid, date) => {
+    const r = JSON.parse(W('(()=>{const st=studentsOfClass(' + cid + ')[0];'
+      + 'const ex=db.attendance.find(a=>a.student_id===st.id&&a.date==="' + date + '");'
+      + 'if(ex)update("attendance",ex.id,{status:"present"});'
+      + 'else insert("attendance",{school_id:' + sid + ',class_id:' + cid
+      + ',student_id:st.id,date:"' + date + '",status:"present",note:null});'
+      + 'attDraftSet(' + cid + ',"' + date + '",st.id,"present");'
+      + 'const d=attDraftDiff(' + cid + ',"' + date + '");'
+      + 'return JSON.stringify({n:d.changes.length,'
+      + 'has:d.changes.some(c=>c.student_id===st.id)});})()'));
+    assert(r.has === false, '🔴 تیک بی‌تغییر جزو تغییرات شمرده شد');
+    assert(r.n === 0, 'نباید تغییری باشد، بود: ' + r.n);
+  });
+});
+
+test('پیش‌نویس: ثبت نهایی می‌نویسد، پیش‌نویس را پاک و پیامک را می‌سازد', () => {
+  withNotify({ enabled: true }, (sid) => {
+    const r = JSON.parse(W('(()=>{db._cU=S.user;'
+      + 'S.user=db.users.find(u=>u.role==="teacher"&&u.school_id===' + sid + ')'
+      + '||db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+      + 'S.persona=null;S.boss=null;S.route="attendance";Store.remove(ATT_DRAFT_KEY);'
+      + 'const cid=visibleClasses()[0].id,date="2026-09-07";'
+      + 'S.filters={class:cid,date:date};'
+      + 'const kids=studentsOfClass(cid).filter(s=>notifyParentsOf(s.id).length>0).slice(0,3);'
+      + 'if(kids.length<2){S.user=db._cU;return JSON.stringify({skipTest:true});}'
+      + 'kids.forEach((s,i)=>attDraftSet(cid,date,s.id,i===0?"absent":"present"));'
+      + 'const d=attDraftDiff(cid,date);const school=byId("classes",cid).school_id;'
+      + 'const made=[];batchWrites(()=>{d.changes.forEach(c=>{'
+      + 'let rid=c.rec_id;'
+      + 'if(rid)update("attendance",rid,{status:c.to,class_id:cid});'
+      + 'else rid=insert("attendance",{school_id:school,class_id:cid,student_id:c.student_id,'
+      + 'date:date,status:c.to,note:null}).id;made.push({c:c,rid:rid});});});'
+      + 'let sms=0;made.forEach(m=>{if(m.c.to!=="absent"&&m.c.to!=="late")return;'
+      + 'if(notifyRequest({school_id:school,kind:"absence",student_id:m.c.student_id,'
+      + 'class_id:cid,student_name:m.c.name,date_fa:"۱۳ شهریور",source_ref:m.rid}))sms++;});'
+      + 'attDraftClear(cid,date);'
+      + 'const res={written:db.attendance.filter(a=>a.class_id===cid&&a.date===date).length,'
+      + 'draft:Object.keys(attDraftGet(cid,date)).length,sms:sms,'
+      + 'refOk:db.notify_queue.filter(q=>q.source_ref).every(q=>!!byId("attendance",q.source_ref))};'
+      + 'S.user=db._cU;delete db._cU;Store.remove(ATT_DRAFT_KEY);'
+      + 'return JSON.stringify(res);})()'));
+    if (r.skipTest) return;
+    assert(r.written >= 2, 'رکورد حضور نوشته نشد: ' + r.written);
+    assert(r.draft === 0, '🔴 پیش‌نویس پس از ثبت پاک نشد');
+    assert(r.sms === 1, 'باید فقط برای غیبت پیامک ساخته شود، شد: ' + r.sms);
+    assert(r.refOk === true, '🔴 source_ref به رکورد واقعی اشاره نمی‌کند');
+  });
+});
+
+test('پیش‌نویس: راهنمای تغییر رفتار یک‌بار نشان داده می‌شود', () => {
+  /* ⚠️ دبیری که با روش قدیم کار کرده باید بفهمد چرا تیک‌هایش
+     بی‌درنگ ذخیره نمی‌شود، وگرنه گمان می‌کند برنامه خراب است. */
+  withDraft((sid, cid, date) => {
+    const r = JSON.parse(W('(()=>{Store.remove(ATT_TIP_KEY);'
+      + 'S.filters={class:' + cid + ',date:"' + date + '"};'
+      + 'const first=renderRoute().indexOf("att-tip")>-1;'
+      + 'const seen=Store.getJSON(ATT_TIP_KEY,{})||{};seen[S.user.id]=1;'
+      + 'Store.setJSON(ATT_TIP_KEY,seen);'
+      + 'const second=renderRoute().indexOf("att-tip")>-1;'
+      + 'Store.remove(ATT_TIP_KEY);'
+      + 'return JSON.stringify({first:first,second:second});})()'));
+    assert(r.first === true, '🔴 راهنمای تغییر رفتار نشان داده نشد');
+    assert(r.second === false, '🔴 راهنما پس از «متوجه شدم» باز هم آمد');
+  });
+});
+
+test('پیش‌نویس: صفحه تغییرات ثبت‌نشده را برجسته می‌کند', () => {
+  withDraft((sid, cid, date) => {
+    const r = JSON.parse(W('(()=>{S.filters={class:' + cid + ',date:"' + date + '"};'
+      + 'const clean=renderRoute();'
+      + 'studentsOfClass(' + cid + ').slice(0,2)'
+      + '.forEach(s=>attDraftSet(' + cid + ',"' + date + '",s.id,"absent"));'
+      + 'const dirty=renderRoute();'
+      + 'return JSON.stringify({barBefore:clean.indexOf("att-draft-bar")>-1,'
+      + 'barAfter:dirty.indexOf("att-draft-bar")>-1,'
+      + 'rows:(dirty.match(/att-row-draft/g)||[]).length,'
+      + 'review:dirty.indexOf("att-review")>-1});})()'));
+    assert(r.barBefore === false, 'بدون پیش‌نویس نباید نوار هشدار باشد');
+    assert(r.barAfter === true, '🔴 نوار «ثبت‌نشده» نمایش داده نشد');
+    assert(r.rows === 2, 'ردیف‌های علامت‌دار: ' + r.rows + ' (انتظار ۲)');
+    assert(r.review === true, 'دکمهٔ مرور نهایی نیست');
+  });
+});
+
+test('پیش‌نویس: دور ریختن، پایگاه داده را دست نمی‌زند', () => {
+  withDraft((sid, cid, date) => {
+    const r = JSON.parse(W('(()=>{const before=db.attendance.length;'
+      + 'studentsOfClass(' + cid + ').slice(0,3)'
+      + '.forEach(s=>attDraftSet(' + cid + ',"' + date + '",s.id,"absent"));'
+      + 'attDraftClear(' + cid + ',"' + date + '");'
+      + 'return JSON.stringify({draft:Object.keys(attDraftGet(' + cid + ',"' + date + '")).length,'
+      + 'dbSame:db.attendance.length===before});})()'));
+    assert(r.draft === 0, 'پیش‌نویس پاک نشد');
+    assert(r.dbSame === true, '🔴 دور ریختن پیش‌نویس پایگاه داده را تغییر داد');
+  });
+});
+
+test('پیش‌نویس: کهنه‌های رهاشده پاک می‌شوند', () => {
+  withDraft((sid, cid, date) => {
+    const r = JSON.parse(W('(()=>{studentsOfClass(' + cid + ').slice(0,2)'
+      + '.forEach(s=>attDraftSet(' + cid + ',"' + date + '",s.id,"absent"));'
+      + 'const all=attDraftAll();const k=Object.keys(all)[0];'
+      + 'all[k].at=new Date(Date.now()-10*86400000).toISOString();'
+      + 'Store.setJSON(ATT_DRAFT_KEY,all);'
+      + 'const n=attDraftPurge(7);'
+      + 'return JSON.stringify({purged:n,left:Object.keys(attDraftAll()).length});})()'));
+    assert(r.purged >= 1, 'پیش‌نویس کهنه پاک نشد: ' + r.purged);
+    assert(r.left === 0, 'پس از پاک‌سازی چیزی نباید بماند: ' + r.left);
+  });
+});
+
+test('پیش‌نویس: کلیک روی وضعیت چیزی ذخیره نمی‌کند تا ثبت نهایی', () => {
+  /* 🔴 تست جهش دور ۴۲: بازگرداندن att-set به رفتار قدیم (نوشتن
+     مستقیم) هیچ آزمونی را نمی‌انداخت، چون همه attDraftSet را
+     مستقیم صدا می‌زدند نه از راه دکمه. این آزمون از مسیر واقعی
+     کاربر می‌رود: کلیک روی DOM. */
+  withDraft((sid, cid, date) => {
+    const r = JSON.parse(W('(()=>{S.filters={class:' + cid + ',date:"' + date + '"};'
+      + 'const st=studentsOfClass(' + cid + ').slice(0,2);'
+      + 'const before=db.attendance.filter(a=>a.class_id===' + cid
+      + '&&a.date==="' + date + '").length;'
+      + 'st.forEach(s=>{const b=document.createElement("button");'
+      + 'b.setAttribute("data-act","att-set");b.setAttribute("data-id",String(s.id));'
+      + 'b.setAttribute("data-s","absent");document.body.appendChild(b);'
+      + 'b.dispatchEvent(new MouseEvent("click",{bubbles:true}));b.remove();});'
+      + 'return JSON.stringify({draft:Object.keys(attDraftGet(' + cid + ',"' + date + '")).length,'
+      + 'before:before,after:db.attendance.filter(a=>a.class_id===' + cid
+      + '&&a.date==="' + date + '").length});})()'));
+    assert(r.draft === 2, 'کلیک به پیش‌نویس نرفت: ' + r.draft);
+    assert(r.after === r.before,
+      '🔴 کلیک مستقیم در پایگاه داده نوشت — رفتار قدیم برگشته است');
+  });
+});
+
+test('پیش‌نویس: ثبت نهایی از راه دکمه، پیش‌نویس را پاک می‌کند', () => {
+  /* 🔴 تست جهش: حذف attDraftClear از att-commit را هیچ آزمونی
+     نمی‌گرفت. بدون پاک‌شدن، دبیر پس از ثبت باز هم نوار «ثبت‌نشده»
+     می‌بیند و دوباره ثبت می‌کند. */
+  withDraft((sid, cid, date) => {
+    const r = JSON.parse(W('(()=>{S.filters={class:' + cid + ',date:"' + date + '"};'
+      + 'const st=studentsOfClass(' + cid + ').slice(0,2);'
+      + 'st.forEach(s=>attDraftSet(' + cid + ',"' + date + '",s.id,"absent"));'
+      + 'const click=function(a){const b=document.createElement("button");'
+      + 'b.setAttribute("data-act",a);document.body.appendChild(b);'
+      + 'b.dispatchEvent(new MouseEvent("click",{bubbles:true}));b.remove();};'
+      + 'click("att-review");click("att-commit");'
+      + 'return JSON.stringify({draft:Object.keys(attDraftGet(' + cid + ',"' + date + '")).length,'
+      + 'written:db.attendance.filter(a=>a.class_id===' + cid
+      + '&&a.date==="' + date + '"&&a.status==="absent").length,'
+      + 'bar:renderRoute().indexOf("att-draft-bar")>-1});})()'));
+    assert(r.written >= 2, 'ثبت نهایی چیزی ننوشت: ' + r.written);
+    assert(r.draft === 0, '🔴 پیش‌نویس پس از ثبت نهایی پاک نشد');
+    assert(r.bar === false, '🔴 نوار «ثبت‌نشده» پس از ثبت هنوز دیده می‌شود');
+  });
+});
+
+test('پیش‌نویس: کنش‌های تازه در ACTION_ROLES ثبت شده‌اند', () => {
+  ['att-review', 'att-commit', 'att-discard'].forEach((a) => {
+    const roles = JSON.parse(W('JSON.stringify(ACTION_ROLES[' + JSON.stringify(a) + ']||[])'));
+    assert(roles.length > 0, 'کنش ' + a + ' ثبت نشده — هر نقشی می‌تواند اجرایش کند');
+    assert(roles.indexOf('teacher') > -1, 'دبیر باید اجازهٔ ' + a + ' داشته باشد');
+    assert(roles.indexOf('student') === -1, '🔴 دانش‌آموز اجازهٔ ' + a + ' دارد');
+    assert(roles.indexOf('parent') === -1, '🔴 ولی اجازهٔ ' + a + ' دارد');
+  });
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

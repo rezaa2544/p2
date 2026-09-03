@@ -313,21 +313,101 @@ document.addEventListener('click',e=>{
      toast(`${fa(added)} کتاب اضافه شد${skipped?` — ${fa(skipped)} مورد تکراری بود`:''}`,'ok');
      render();
    },
-   // attendance
-   'att-set'(){const sid=id,st=el.dataset.s;const date=S.filters.date||todayISO();
+   // ---- حضور و غیاب ----
+   /* ⚠️ تغییر رفتار دور ۴۲: تیک دیگر بی‌درنگ ذخیره نمی‌شود؛ به
+      پیش‌نویس می‌رود. ثبت واقعی فقط با att-commit انجام می‌شود.
+      دلیل: غیبت به خانواده پیامک می‌شود و تیک اشتباه هزینه دارد. */
+   'att-set'(){const st=el.dataset.s;const date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
-     const ex=db.attendance.find(x=>x.student_id===sid&&x.date===date);
-     if(ex)update('attendance',ex.id,{status:st,class_id:cid});
-     else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:sid,date,status:st,note:null});
+     attDraftSet(cid,date,id,st);
      render();},
    'att-all'(){const st=el.dataset.s,date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
-     const _am=(typeof idxAttByClassDate==='function')?idxAttByClassDate():null;
-     const _day=new Map();
-     if(_am)(_am.get(cid+'|'+date)||[]).forEach(a=>_day.set(a.student_id,a));
-     studentsOfClass(cid).forEach(s=>{const ex=_am?_day.get(s.id):db.attendance.find(x=>x.student_id===s.id&&x.date===date);
-       if(ex)update('attendance',ex.id,{status:st});else insert('attendance',{school_id:byId('classes',cid).school_id,class_id:cid,student_id:s.id,date,status:st,note:null});});
-     toast('همه دانش‌آموزان «'+ATT_FA[st]+'» ثبت شدند','ok');render();},
+     attDraftSetAll(cid,date,studentsOfClass(cid).map(s=>s.id),st);
+     toast('همه «'+ATT_FA[st]+'» علامت خوردند — برای ذخیره «مرور و ثبت نهایی» را بزنید','ok');
+     render();},
+   'att-tip-ok'(){
+     const seen=Store.getJSON(ATT_TIP_KEY,{})||{};
+     seen[(S.user&&S.user.id)||0]=1;
+     Store.setJSON(ATT_TIP_KEY,seen);
+     render();},
+   'att-discard'(){
+     const date=S.filters.date||todayISO();
+     const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
+     askConfirm('تغییرات ثبت‌نشدهٔ این کلاس دور ریخته شود؟',()=>{
+       attDraftClear(cid,date);toast('پیش‌نویس پاک شد','ok');render();
+     },{title:'دور ریختن پیش‌نویس',ok:'دور بریز'});},
+   /* صفحهٔ مرور نهایی: خلاصهٔ تغییرات پیش از نوشتن در پایگاه داده */
+   'att-review'(){
+     const date=S.filters.date||todayISO();
+     const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
+     const d=attDraftDiff(cid,date);
+     if(!d.changes.length){toast('تغییری برای ثبت وجود ندارد','err');return;}
+     const nameList=a=>a.map(x=>esc(x)).join(' · ');
+     const line=(icon,label,arr,tone)=>arr.length
+       ? '<div class="rev-line"><span class="badge '+tone+'">'+icon+' '+label
+         +' '+fa(arr.length)+'</span><div class="small">'+nameList(arr)+'</div></div>' : '';
+     const cnt=d.counts||{};
+     const other=(cnt.present||0)+(cnt.excused||0);
+     /* پیامک فقط برای غیبت و تأخیرِ تازه ساخته می‌شود */
+     const cfg=(typeof notifySettings==='function')?notifySettings(S.user.school_id):{enabled:false,kinds:{}};
+     let smsN=0;
+     if(cfg.enabled){
+       if(cfg.kinds.absence)smsN+=d.newAbsent.length;
+       if(cfg.kinds.late)smsN+=d.newLate.length;
+     }
+     const smsNote=smsN
+       ? '<div class="rev-sms">📨 برای '+fa(smsN)+' مورد پیامک ساخته می‌شود'
+         +(cfg.autoSend?' و <b>مستقیم ارسال می‌گردد</b>.':' و به صف تأیید مدیر می‌رود.')
+         +'<div class="small muted">تا '+fa(cfg.graceMinutes||20)
+         +' دقیقه فرصت دارید خودتان اصلاح کنید؛ در این مدت پیام لغو می‌شود.</div></div>'
+       : '<div class="small muted">برای این تغییرات پیامکی ساخته نمی‌شود.</div>';
+     openModal(modalTpl('مرور نهایی — '+esc(byId('classes',cid).name)+' · '+jalali(date),
+       line('❌','غایب',d.newAbsent,'b-red')
+       +line('⏰','تأخیر',d.newLate,'b-amber')
+       +(other?'<div class="rev-line"><span class="badge b-green">✅ حاضر / موجه '+fa(other)+'</span></div>':'')
+       +'<div class="rev-total small muted">مجموع '+fa(d.changes.length)+' تغییر ثبت می‌شود.</div>'
+       +smsNote,
+       'att-commit',false,'تأیید و ثبت'));},
+   /* نوشتن واقعی در پایگاه داده */
+   'att-commit'(){
+     const date=S.filters.date||todayISO();
+     const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
+     const d=attDraftDiff(cid,date);
+     if(!d.changes.length){closeModal();return;}
+     const school=byId('classes',cid).school_id;
+     const made=[];
+     batchWrites(()=>{
+       d.changes.forEach(c=>{
+         let recId=c.rec_id;
+         if(recId){update('attendance',recId,{status:c.to,class_id:cid});
+           /* ⚠️ اصلاح درون پنجرهٔ مهلت: پیام معلقِ همین رکورد که
+              خود این دبیر ساخته بود، خاموش لغو می‌شود. اگر پیام
+              رفته باشد، گام ۵ (اصلاحیه) کارش را می‌کند. */
+           if(typeof notifyCancelIfFresh==='function'){
+             notifyCancelIfFresh('absence',recId);
+             notifyCancelIfFresh('late',recId);
+           }}
+         else recId=insert('attendance',{school_id:school,class_id:cid,
+           student_id:c.student_id,date,status:c.to,note:null}).id;
+         made.push({c,recId});
+       });
+     });
+     /* پیامک پس از نوشتن ساخته می‌شود تا source_ref شناسهٔ واقعی باشد */
+     let sms=0;
+     if(typeof notifyRequest==='function'){
+       made.forEach(({c,recId})=>{
+         if(c.to!=='absent'&&c.to!=='late')return;
+         const q=notifyRequest({school_id:school,kind:c.to==='absent'?'absence':'late',
+           student_id:c.student_id,class_id:cid,student_name:c.name,
+           date_fa:jalali(date),source_ref:recId});
+         if(q)sms++;
+       });
+     }
+     attDraftClear(cid,date);
+     closeModal();
+     toast(fa(d.changes.length)+' تغییر ثبت شد'+(sms?' — '+fa(sms)+' پیامک ساخته شد':''),'ok');
+     render();},
    // ---- پلان فروش و پشتیبان‌گیری ----
    'plan-settings'(){
      const st=subSettings();
