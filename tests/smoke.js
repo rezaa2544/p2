@@ -2227,6 +2227,14 @@ test('امنیت: هیچ فایلی جز لایهٔ داده مستقیم به l
   assert(bad.length === 0, 'دسترسی مستقیم در: ' + bad.join(', '));
 });
 
+test('لایهٔ داده: هیچ فایلی جز لایه مستقیم fetch نمی‌زند', () => {
+  const fs = require('fs'), path = require('path');
+  const dir = path.join(__dirname, '..', 'src', 'js');
+  const bad = fs.readdirSync(dir).filter(f =>
+    f !== '00-data-layer.js' && /\bfetch\s*\(/.test(fs.readFileSync(path.join(dir, f), 'utf8')));
+  assert(bad.length === 0, 'fetch مستقیم در: ' + bad.join(', '));
+});
+
 test('امنیت: escAttr کاراکترهای خطرناک صفت را می‌بندد', () => {
   const out = W('escAttr(String.fromCharCode(34)+" onclick="+String.fromCharCode(34)+"bad()")');
   assert(out.indexOf(String.fromCharCode(34)) === -1, 'کوتیشن باز مانده');

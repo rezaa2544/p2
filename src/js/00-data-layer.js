@@ -119,7 +119,11 @@ var Api = {
    * @returns {Promise<any>}
    */
   request: function(path, opts){
-    if(!isServerMode())
+    /* در حالت محلی فقط نشانی مطلق (که همگام‌سازی صریح تنظیمش کرده)
+       اجازهٔ عبور دارد؛ بقیه رد می‌شوند تا اگر کسی زودتر از موعد به
+       سرور تکیه کند، بی‌صدا نماند. */
+    var absolute = /^https?:\/\//.test(path);
+    if(!isServerMode() && !absolute)
       return Promise.reject(new Error('حالت محلی است؛ سرور در دسترس نیست: ' + path));
 
     opts = opts || {};
@@ -135,7 +139,7 @@ var Api = {
     };
     if(opts.body !== undefined) init.body = JSON.stringify(opts.body);
 
-    return fetch(API_BASE + path, init).then(function(res){
+    return fetch((absolute ? '' : API_BASE) + path, init).then(function(res){
       if(!res.ok) throw new Error('خطای سرور ' + res.status + ' در ' + path);
       return res.status === 204 ? null : res.json();
     });

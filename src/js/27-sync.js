@@ -168,14 +168,14 @@ async function syncNow(manual){
 /* ---------- ارسال واقعی یا شبیه‌سازی ---------- */
 async function sendBatch(batch){
   if(!SYNC.demoMode && SYNC.serverUrl){
-    const r = await fetch(SYNC.serverUrl, {
-      method  : 'POST',
-      headers : { 'Content-Type': 'application/json' },
-      body    : JSON.stringify({ ops: batch.map(x => ({ uid: x.uid, ...x.op })) }),
+    /* ارسال از راه لایهٔ داده انجام می‌شود، نه fetch مستقیم — تا روز
+       اتصال به سرور واقعی، سرآیند احراز هویت و مدیریت خطا یک‌جا در
+       Api.request تعریف شود و اینجا دست نخورد. */
+    const data = await Api.request(SYNC.serverUrl, {
+      method: 'POST',
+      body  : { ops: batch.map(x => ({ uid: x.uid, ...x.op })) }
     });
-    if(!r.ok) throw new Error('خطای سرور: ' + r.status);
-    const data = await r.json();
-    return data.results || [];
+    return (data && data.results) || [];
   }
 
   /* حالت دمو: تأخیر شبکه را شبیه‌سازی می‌کند */
