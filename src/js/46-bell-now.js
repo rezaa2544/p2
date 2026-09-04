@@ -136,7 +136,10 @@ function currentSlot(schoolId, now){
     return out;
   }
 
-  var tl = (typeof bellTimeline === 'function') ? bellTimeline(schoolId) : [];
+  /* 🔴 روز هفته باید رد شود: بدون آن bellOf() همیشه برنامهٔ شنبه
+     (روز ۰) را برمی‌گرداند و در زمان‌بندی به‌تفکیک‌روز (نسخهٔ ۲)
+     زنگ اشتباهی تشخیص داده می‌شود — رفع بند ۲ در گام ۳. */
+  var tl = (typeof bellTimeline === 'function') ? bellTimeline(schoolId, out.day) : [];
   if(!tl.length){ return out; }
 
   var mins = t.getHours() * 60 + t.getMinutes();
@@ -233,6 +236,28 @@ function bellAutoAllowed(schoolId){
   if(!sid) return false;
   var slot = currentSlot(sid);
   return !!(slot.hasSchedule && slot.clock && slot.clock.ok);
+}
+
+/**
+ * کلاس فعلی دبیر برای پیش‌گزینش (گام ۳ طرح).
+ *
+ * 📄 مصرف‌کنندهٔ اصلی: viewAttendance (12-attendance.js).
+ *
+ * برمی‌گرداند: {classId, subjectId, ...} یا null.
+ * null یعنی «پیش‌گزینش نکن، رفتاری قدیم»:
+ *   • مدرسه bell_schedules ندارد (گارد bellAutoAllowed)
+ *   • ساعت دستگاه نامعتبر است
+ *   • الان زنگ درسی نیست (تفریح، پیش از شروع، پایان، تعطیل)
+ *   • دبیر در این زنگ کلاسی در برنامهٔ خودش ندارد
+ *
+ * ⚠️ `now` برای آزمون‌پذیری است — همان الگوی bellNowBar(now).
+ */
+function bellAutoClass(teacherId, schoolId, now){
+  var sid = schoolId || ((typeof S !== 'undefined' && S.user) ? S.user.school_id : null);
+  if(!bellAutoAllowed(sid)) return null;
+  var cur = teacherNowClass(teacherId, sid, now);
+  if(!cur || !cur.classId) return null;
+  return cur;
 }
 
 /* ═══════════════════════════════════════════════════════════════════

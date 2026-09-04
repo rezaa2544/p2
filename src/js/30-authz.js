@@ -127,6 +127,8 @@ var ACTION_ROLES = {
   'tnote-save':    ['teacher'],
   'tnote-del':     ['teacher'],
   'att-all':       ['teacher','manager'],
+  /* خروج از پیش‌گزینش زنگ (گام ۳ دور ۶۳): فقط فیلتر را عوض می‌کند */
+  'att-reset-class': ['teacher','manager'],
   /* نمرات */
   'grade-save':    ['teacher','manager'],
   'grade-del':     ['teacher','manager'],

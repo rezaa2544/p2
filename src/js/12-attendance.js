@@ -39,7 +39,16 @@ function attChangeTip(){
 function viewAttendance(){
   const cls=visibleClasses();
   if(!cls.length)return `<div class="card">${empty('🏛️','کلاسی در دسترس نیست','ابتدا باید کلاسی به شما تخصیص یابد.')}</div>`;
-  const cid=Number(S.filters.class||cls[0].id), date=S.filters.date||todayISO(), q=(S.filters.q||'').trim();
+  /* پیش‌گزینش زنگ (گام ۳ طرح PLAN_BELL_AUTOCLASS): اگر دبیر هنوز
+     کلاسی انتخاب نکرده و الان زنگ درسیِ مدرسهٔ واقعی است، کلاس
+     جاریِ برنامهٔ خودش پیش‌گزینش می‌شود. 🔴 انتخاب دستی (فیلتر
+     کلاس) همیشه بر پیش‌گزینش مقدم است. S.bellNow فقط برای
+     آزمون‌پذیری است — همان الگوی bellNowBar(now). */
+  const _now=(S.bellNow||null);
+  const _auto=(typeof bellAutoClass==='function')?bellAutoClass(null,null,_now):null;
+  const _autoOk=_auto&&cls.some(c=>c.id===_auto.classId);
+  const cid=Number(S.filters.class||(_autoOk&&_auto.classId)||cls[0].id), date=S.filters.date||todayISO(), q=(S.filters.q||'').trim();
+  const _autoShown=_autoOk&&!S.filters.class&&cid===_auto.classId;
   const roster=studentsOfClass(cid);
   let studs=roster;
   if(q)studs=roster.filter(s=>s.full_name.includes(q));
@@ -72,6 +81,7 @@ function viewAttendance(){
 
   return `${attChangeTip()}${bannerDraft}<div class="card"><div class="card-head">
     <div class="row"><select class="select" style="width:180px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
+     ${_autoShown?`<span class="badge b-blue" title="بر اساس زنگ جاری و برنامهٔ هفتگی شما — انتخاب دستی بر این مقدم است">🔔 انتخاب خودکار بر اساس زنگ</span><button class="btn ghost sm" data-act="att-reset-class">همهٔ کلاس‌ها</button>`:''}
      <input class="input" style="width:160px" type="date" data-f="date" value="${escAttr(date)}" /><span class="badge b-gray">${jalali(date)}</span></div>
     <div class="row"><input class="input" style="width:160px" placeholder="جستجوی دانش‌آموز…" data-f="q" value="${esc(q)}" />
      <button class="btn ghost sm" data-act="att-all" data-s="present">✅ همه حاضر</button>
