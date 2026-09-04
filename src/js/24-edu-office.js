@@ -186,6 +186,7 @@ function viewOfficeDash(){
       <div><b style="font-size:15px">${esc(o?o.name:'نمای کل کشور')}</b>
         <div class="small muted">${o?OFFICE_LEVEL[o.level]:'سوپر ادمین — همه مدارس'} · گزارش‌ها تجمیعی است و اطلاعات فردی دانش‌آموزان نمایش داده نمی‌شود.</div></div>
       <div class="spacer"></div>
+      ${(u.role==='edu_office'||isSuper)?`<button class="btn sm" data-act="office-msg">📢 پیام به مدیران</button>`:''}
       </div>
       ${filterPanel('officedash',`
         <select class="select" style="width:150px" data-f="province"><option value="">همه استان‌ها</option>
@@ -794,3 +795,56 @@ setTimeout(()=>{
   render();
   console.log('داده نمونه:',{مدارس:db.schools.length,کاربران:db.users.length,کلاس‌ها:db.classes.length,حضوروغیاب:db.attendance.length,نمرات:db.grades.length,انضباطی:db.discipline.length,اعلان‌ها:db.notifications.length,اقساط:db.installments.length,تراکنش‌ها:db.transactions.length});
 },50);
+/* ═══════════════════════════════════════════════════════════════════
+   پیام گروهی اداره به مدیران مدارس (دور ۴۳)
+   ═══════════════════════════════════════════════════════════════════
+   رئیس اداره باید بتواند یک بخشنامه یا اطلاع فوری را یک‌جا به همهٔ
+   مدیران محدوده‌اش برساند، بدون اینکه یکی‌یکی تماس بگیرد.
+
+   ⚠️ چرا اعلان درون‌برنامه‌ای و نه پیامک؟ کیف اعتبار پیامک متعلق
+   به **مدرسه** است نه اداره؛ خرج‌کردن از آن برای پیام اداره درست
+   نیست. مدیران کاربر فعال سامانه‌اند و اعلان را می‌بینند. اگر روزی
+   کیف اعتبار برای اداره تعریف شد، مسیر پیامکی هم اضافه می‌شود.
+
+   ⚠️ دامنه: فقط مدیران مدارسِ محدودهٔ همان اداره — از
+   officeScopeSchools که فیلتر استان/شهرستان/منطقه را اعمال می‌کند.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** مدیران مدارس تحت پوشش یک اداره */
+function officeManagers(office){
+  var schools = officeScopeSchools(office) || [];
+  var ids = Object.create(null);
+  schools.forEach(function(sc){ ids[sc.id] = 1; });
+  return (db.users || []).filter(function(u){
+    return u.role === 'manager' && ids[u.school_id];
+  });
+}
+
+/**
+ * ارسال اعلان گروهی به مدیران محدوده.
+ * برمی‌گرداند: {sent, schools}
+ */
+function officeBroadcast(office, title, body){
+  var out = { sent: 0, schools: 0 };
+  var mgrs = officeManagers(office);
+  if(!mgrs.length) return out;
+  var seen = Object.create(null);
+  batchWrites(function(){
+    mgrs.forEach(function(m){
+      insert('notifications', {
+        user_id: m.id,
+        school_id: m.school_id,
+        /* هم‌شکل با بقیهٔ اعلان‌های سامانه (20-communication-finance.js) */
+        type: 'office',
+        title: title,
+        body: body,
+        link: 'announcements',
+        read: 0,
+        created_at: todayISO()
+      });
+      out.sent++;
+      if(!seen[m.school_id]){ seen[m.school_id] = 1; out.schools++; }
+    });
+  });
+  return out;
+}

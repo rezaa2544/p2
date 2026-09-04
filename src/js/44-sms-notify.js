@@ -234,30 +234,54 @@ function minutesSince(iso){
  *   ۲) درون پنجرهٔ مهلت باشند
  *   ۳) همان کسی که ساخته، اصلاح کند
  *
- * ⚠️ هر سه شرط با && — نه ||. اگر فقط شرط زمان بود، مدیر هم
+ * ⚠️ هر سه شرط با && — نه ||. اگر فقط شرط زمان بود، هر کسی
  * می‌توانست بی‌ردپا پیام را محو کند. این پنجره امتیاز دبیر برای
  * اصلاح خطای خودش است، نه ابزار حذف عمومی.
  *
+ * 🔴 استثنای مدیر (دور ۴۳): مدیر مسئول مدرسه است و باید بتواند
+ * خطای آشکار دبیر را پیش از رفتن پیام بگیرد — حتی پس از پایان
+ * پنجره. ولی این اختیار **بی‌ردپا** نیست: `by_manager` روی رکورد
+ * می‌نشیند و در صفحهٔ صف دیده می‌شود. یعنی دسترسی باز شد، پاسخ‌گویی
+ * هم ماند. `opts.byManager` فقط از مسیرهایی پاس داده می‌شود که
+ * مجوزشان در ACTION_ROLES به مدیر محدود است.
+ *
+ * @param {object} [opts] {byManager:boolean}
  * برمی‌گرداند: تعداد لغوشده.
  */
-function notifyCancelIfFresh(kind, sourceRef, byUserId){
+function notifyCancelIfFresh(kind, sourceRef, byUserId, opts){
   var cfg = null, n = 0;
+  opts = opts || {};
   var who = (byUserId !== undefined && byUserId !== null)
     ? byUserId
     : ((typeof S !== 'undefined' && S.user) ? S.user.id : null);
+
+  /* اختیار مدیر فقط وقتی معتبر است که نقش فعلی واقعاً مدیر باشد.
+     ⚠️ به پارامتر تنها اعتماد نمی‌کنیم — نقش هم بررسی می‌شود،
+     وگرنه هر فراخوانی می‌توانست شرط را دور بزند. */
+  var role = (typeof activePersona === 'function')
+    ? activePersona()
+    : ((typeof S !== 'undefined' && S.user) ? S.user.role : null);
+  var asManager = !!opts.byManager && (role === 'manager' || role === 'superadmin');
 
   (db.notify_queue || []).forEach(function(q){
     if(q.status !== 'pending') return;
     if(q.source_ref !== sourceRef) return;
     if(q.kind !== kind) return;
-    if(q.created_by !== who) return;              /* شرط ۳ */
     if(!cfg) cfg = notifySettings(q.school_id);
-    if(minutesSince(q.created_at) > cfg.graceMinutes) return;  /* شرط ۲ */
-    update('notify_queue', q.id, {
+    if(asManager){
+      /* مدیر: بدون قید زمان و بدون قید سازنده — ولی با ردپا */
+      if(q.school_id !== ((typeof S !== 'undefined' && S.user) ? S.user.school_id : q.school_id)) return;
+    } else {
+      if(q.created_by !== who) return;                            /* شرط ۳ */
+      if(minutesSince(q.created_at) > cfg.graceMinutes) return;   /* شرط ۲ */
+    }
+    var patch = {
       status: 'cancelled',
       decided_at: new Date().toISOString(),
       decided_by: who
-    });
+    };
+    if(asManager) patch.by_manager = 1;
+    update('notify_queue', q.id, patch);
     n++;
   });
   return n;
@@ -566,7 +590,8 @@ function viewNotifyQueue(){
       + empty('✅', 'صف خالی است',
               cfg.autoSend
                 ? 'حالت خودکار فعال است و پیام‌ها مستقیم ارسال می‌شوند.'
-                : 'هیچ پیامی در انتظار تأیید شما نیست.');
+                : 'هیچ پیامی در انتظار تأیید شما نیست.')
+      + notifyManagerLogCard(sid);
   }
 
   var rows = pend.map(function(q){
@@ -602,6 +627,44 @@ function viewNotifyQueue(){
     +   '<button class="btn" data-act="notify-approve-sel">✓ تأیید و ارسال انتخاب‌شده‌ها</button>'
     +   '<button class="btn danger ghost" data-act="notify-reject-sel">✗ رد انتخاب‌شده‌ها</button>'
     +   '<span class="small muted">' + fa(pend.length) + ' پیام در نمای فعلی</span>'
+    + '</div></div>'
+    + notifyManagerLogCard(sid);
+}
+
+/**
+ * فهرست لغوهای مدیر (ردپای اختیار ویژه).
+ * در صفحهٔ صف زیر جدول نمایش داده می‌شود تا اختیار مدیر پنهان نماند.
+ */
+function notifyManagerCancels(schoolId, days){
+  var since = Date.now() - (days || 7) * 86400000;
+  return (db.notify_queue || []).filter(function(q){
+    if(q.school_id !== schoolId || !q.by_manager) return false;
+    var t = Date.parse(q.decided_at || q.created_at);
+    return isNaN(t) ? true : t >= since;
+  }).sort(function(a, b){
+    return String(b.decided_at || '').localeCompare(String(a.decided_at || ''));
+  });
+}
+
+/** کارت ردپای لغوهای مدیر */
+function notifyManagerLogCard(sid){
+  var rows = notifyManagerCancels(sid, 7);
+  if(!rows.length) return '';
+  return '<div class="card"><div class="card-head"><h3>🛡️ لغوهای مدیر (۷ روز اخیر)</h3></div>'
+    + '<div class="card-body" style="display:grid;gap:8px">'
+    + rows.slice(0, 10).map(function(q){
+        var st = q.student_id ? byId('users', q.student_id) : null;
+        var by = q.decided_by ? byId('users', q.decided_by) : null;
+        return '<div class="small" style="line-height:2">'
+          + '<span class="badge b-gray">' + notifyClock(q.decided_at) + '</span> '
+          + esc(by ? by.full_name : '—') + ' پیام '
+          + esc((NOTIFY_KIND_FA[q.kind] || [q.kind])[0]) + ' '
+          + esc(st ? st.full_name : '—') + ' را لغو کرد'
+          + '</div>';
+      }).join('')
+    + '<div class="small muted" style="line-height:1.9;margin-top:4px">'
+    + 'مدیر می‌تواند پیام دبیر را پس از پایان مهلت هم لغو کند؛ '
+    + 'این فهرست برای شفافیت نگه داشته می‌شود.</div>'
     + '</div></div>';
 }
 

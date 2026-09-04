@@ -372,6 +372,29 @@ function printReceipt(instId){
 
 /* ---------------- عملیات فازهای جدید ---------------- */
 const F7_ACTIONS = {
+  /* ---- پیام گروهی اداره به مدیران محدوده (دور ۴۳) ---- */
+  'office-msg'(){
+    const o=(typeof officeOf==='function')?officeOf(S.user):null;
+    const n=o?officeManagers(o).length:0;
+    if(!n){ toast('مدیری در محدودهٔ شما یافت نشد','err'); return; }
+    openModal(modalTpl('پیام گروهی به مدیران منطقه',
+      f('عنوان',inp('om_title','','text'))
+      +f('متن پیام','<textarea class="input" id="om_body" rows="4" placeholder="بخشنامهٔ شمارهٔ … به اطلاع می‌رساند…"></textarea>')
+      +'<div class="small muted" style="line-height:2">این پیام به‌صورت اعلان درون‌سامانه‌ای برای <b>'
+      +fa(n)+' مدیر</b> ارسال می‌شود و اعتبار پیامک مدارس مصرف نمی‌گردد.</div>',
+      'office-msg-send'));
+  },
+  'office-msg-send'(){
+    const t=(V('om_title')||'').trim(), b=(V('om_body')||'').trim();
+    if(invalid('om_title',t.length<3,'عنوان باید دست‌کم سه نویسه باشد'))return;
+    if(invalid('om_body',b.length<5,'متن پیام باید دست‌کم پنج نویسه باشد'))return;
+    const o=(typeof officeOf==='function')?officeOf(S.user):null;
+    if(!o){ toast('ادارهٔ شما شناسایی نشد','err'); return; }
+    const r=officeBroadcast(o,t,b);
+    closeModal();
+    toast(r.sent?fa(r.sent)+' مدیر از '+fa(r.schools)+' مدرسه اعلان گرفتند':'پیامی ارسال نشد',r.sent?'ok':'err');
+    render();
+  },
   'cal-new'(){ calModal(null); },
   'cal-edit'(el,id){ calModal(byId('calendar',id)); },
   'cal-save'(){

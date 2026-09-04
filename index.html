@@ -431,6 +431,11 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
   padding:12px 16px;margin-bottom:16px;line-height:2;font-size:13px;
 }
 .notify-cap-bar .small{font-weight:400;margin-top:4px}
+
+/* نمودار روند نمرات (دور ۴۳) */
+.trend-chart{height:150px}
+.trend-chart .col span{font-size:10px;color:var(--muted)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px 0}
 /* ==================== موبایل: تطبیق کامل با عرض صفحه ==================== */
 @media(max-width:900px){
 .app{grid-template-columns:1fr}
@@ -2104,6 +2109,11 @@ var ACTION_ROLES = {
   /* سابقه برای شفافیت با ولی است، پس همهٔ نقش‌ها می‌بینند.
      محتوایش فقط دربارهٔ رکوردی است که کاربر از قبل دسترسی دارد. */
   'att-hist':      ['teacher','manager','superadmin','student','parent','edu_office'],
+  /* فقط فیلتر نمایشی است؛ دسترسی به خود پرونده جداگانه سنجیده می‌شود */
+  'trend-sub':     ['teacher','manager','superadmin','student','parent','edu_office'],
+  /* پیام گروهی اداره: فقط رئیس اداره و مدیر کل سامانه */
+  'office-msg':      ['edu_office','superadmin'],
+  'office-msg-send': ['edu_office','superadmin'],
   'att-all':       ['teacher','manager','superadmin'],
   /* نمرات */
   'grade-save':    ['teacher','manager','superadmin'],
@@ -2889,7 +2899,7 @@ function viewRecord(sid){
               ['discipline','⚖️ پرونده انضباطی'],['profile','🪪 شناسنامه']];
   let body='';
   if(S.tab==='profile') body = studentProfileCard(sid);
-  if(S.tab==='grades') body = Object.keys(bySub).length?`<div class="card-body" style="display:grid;gap:14px">${Object.entries(bySub).map(([id,l])=>{const a=avgOf(l);
+  if(S.tab==='grades') body = Object.keys(bySub).length?`${gradeTrendCard(sid)}<div class="card-body" style="display:grid;gap:14px">${Object.entries(bySub).map(([id,l])=>{const a=avgOf(l);
     return `<div style="border:1px solid var(--border);border-radius:12px;padding:14px"><div class="row"><b>${esc((byId('subjects',Number(id))||{}).name||'—')}</b><div class="spacer"></div>
      <span class="badge ${a>=17?'b-green':a>=12?'b-blue':'b-red'}">میانگین ${fa(a.toFixed(2))}</span></div>
      <div style="margin:8px 0 12px">${bar(a,20,a>=17?'var(--green)':a>=12?'var(--primary)':'var(--red)')}</div>
@@ -3011,6 +3021,120 @@ function studentProfileCard(sid){
 
   return '<div class="card-body"><div class="grid g2" style="gap:12px">'
        + blocks.join('') + '</div></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   نمودار روند نمرات در طول سال (دور ۴۳)
+   ═══════════════════════════════════════════════════════════════════
+   ولی و دانش‌آموز باید ببینند نمره‌ها **رو به بهبود** است یا افت.
+   عدد نهایی به‌تنهایی این را نمی‌گوید: میانگین ۱۴ می‌تواند از
+   ۱۸→۱۰ آمده باشد یا از ۱۰→۱۸ — دو وضعیت کاملاً متفاوت.
+
+   ⚠️ دام داده‌ای: ترتیب باید بر پایهٔ `created_at` باشد نه ترتیب
+   درج در آرایه. نمره‌ها ممکن است با تأخیر یا خارج از ترتیب ثبت
+   شوند (مثلاً دبیر نمرهٔ آبان را در آذر وارد کند).
+
+   ⚠️ نمره‌ها همیشه از ۲۰ نیستند؛ برای مقایسه به مقیاس ۲۰ نرمال
+   می‌شوند وگرنه ۸ از ۱۰ کنار ۸ از ۲۰ گمراه‌کننده است.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** نمرات یک دانش‌آموز به‌ترتیب زمانی واقعی، نرمال‌شده به ۲۰ */
+function gradeTrendData(sid, subjectId){
+  var rows = (db.grades || []).filter(function(g){
+    if(g.student_id !== sid) return false;
+    if(subjectId && g.subject_id !== subjectId) return false;
+    return !isNaN(Number(g.score));
+  });
+  /* ⚠️ ترتیب زمانی از created_at، نه ترتیب آرایه */
+  rows.sort(function(a, b){
+    var ta = String(a.created_at || ''), tb = String(b.created_at || '');
+    if(ta !== tb) return ta.localeCompare(tb);
+    return (a.id || 0) - (b.id || 0);       /* گره‌گشایی قطعی */
+  });
+  return rows.map(function(g){
+    var max = Number(g.max_score) || 20;
+    return {
+      at:    g.created_at || null,
+      score: Number(g.score),
+      max:   max,
+      norm:  Math.max(0, Math.min(20, (Number(g.score) / max) * 20)),
+      term:  g.term || '',
+      type:  g.exam_type || '',
+      subject: (byId('subjects', g.subject_id) || {}).name || '—'
+    };
+  });
+}
+
+/** جهت روند: مقایسهٔ میانگین نیمهٔ اول با نیمهٔ دوم */
+function gradeTrendDirection(pts){
+  if(pts.length < 4) return null;            /* داده کم است، حکم ندهیم */
+  var half = Math.floor(pts.length / 2);
+  var avg = function(a){ return a.reduce(function(s, p){ return s + p.norm; }, 0) / a.length; };
+  var first = avg(pts.slice(0, half));
+  var last  = avg(pts.slice(pts.length - half));
+  var diff  = last - first;
+  if(Math.abs(diff) < 0.75) return { dir: 'flat', diff: diff };
+  return { dir: diff > 0 ? 'up' : 'down', diff: diff };
+}
+
+/**
+ * کارت نمودار روند.
+ * @param {number} sid شناسهٔ دانش‌آموز
+ */
+function gradeTrendCard(sid){
+  var subs = {};
+  (db.grades || []).forEach(function(g){
+    if(g.student_id === sid && g.subject_id) subs[g.subject_id] = 1;
+  });
+  var pick = Number(S.trendSub) || 0;
+  var pts  = gradeTrendData(sid, pick || null);
+  if(pts.length < 2){
+    return '<div class="card"><div class="card-head"><h3>📈 روند نمرات</h3></div>'
+      + empty('📈', 'برای نمایش روند دست‌کم دو نمره لازم است',
+              'با ثبت نمرات بیشتر، نمودار پیشرفت اینجا دیده می‌شود.')
+      + '</div>';
+  }
+
+  var chips = ['<button class="chip' + (pick ? '' : ' on')
+    + '" data-act="trend-sub" data-id="0">همهٔ درس‌ها</button>'];
+  Object.keys(subs).forEach(function(id){
+    var nm = (byId('subjects', Number(id)) || {}).name || '—';
+    chips.push('<button class="chip' + (pick === Number(id) ? ' on' : '')
+      + '" data-act="trend-sub" data-id="' + escAttr(id) + '">' + esc(nm) + '</button>');
+  });
+
+  var dirInfo = gradeTrendDirection(pts);
+  var badge = '';
+  if(dirInfo){
+    var m = { up:   ['b-green', '📈 رو به بهبود'],
+              down: ['b-red',   '📉 رو به افت'],
+              flat: ['b-blue',  '➖ تقریباً ثابت'] }[dirInfo.dir];
+    badge = '<span class="badge ' + m[0] + '">' + m[1]
+      + (dirInfo.dir === 'flat' ? '' : ' (' + fa(Math.abs(dirInfo.diff).toFixed(1)) + ' نمره)')
+      + '</span>';
+  }
+
+  var avgAll = pts.reduce(function(s, p){ return s + p.norm; }, 0) / pts.length;
+  var cols = pts.map(function(p){
+    var h = (p.norm / 20) * 100;
+    var color = p.norm >= 17 ? 'var(--green)' : (p.norm >= 12 ? 'var(--primary)' : 'var(--red)');
+    var when = p.at ? jalali(String(p.at).slice(0, 10)) : '—';
+    var tip = p.subject + ' • ' + p.type + ' • ' + fa(p.score) + ' از ' + fa(p.max) + ' • ' + when;
+    return '<div class="col" title="' + escAttr(tip) + '">'
+      + '<i style="height:' + h + '%;background:' + color + '"></i>'
+      + '<span>' + esc(faD(String(p.score))) + '</span></div>';
+  }).join('');
+
+  return '<div class="card"><div class="card-head"><h3>📈 روند نمرات در طول سال</h3>'
+    + badge + '</div>'
+    + (chips.length > 2 ? '<div class="chips">' + chips.join('') + '</div>' : '')
+    + '<div class="card-body">'
+    + '<div class="chart trend-chart">' + cols + '</div>'
+    + '<div class="row small muted" style="margin-top:10px;line-height:2">'
+    +   '<span>میانگین: <b>' + fa(avgAll.toFixed(2)) + '</b> از ۲۰</span>'
+    +   '<span>تعداد نمره: <b>' + fa(pts.length) + '</b></span>'
+    +   '<span>ترتیب بر پایهٔ تاریخ ثبت</span>'
+    + '</div></div></div>';
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -6884,6 +7008,8 @@ document.addEventListener('click',e=>{
      openModal(modalTpl('سابقهٔ تغییرات — '+esc(st?st.full_name:'')+' · '+(r?jalali(r.date):''),
        h||'<div class="small muted">تغییری برای این رکورد ثبت نشده است.</div>',null));
    },
+   /* انتخاب درس در نمودار روند (دور ۴۳) */
+   'trend-sub'(){ S.trendSub=Number(el.dataset.id)||0; render(); },
    'att-tip-ok'(){
      const seen=Store.getJSON(ATT_TIP_KEY,{})||{};
      seen[(S.user&&S.user.id)||0]=1;
@@ -6943,8 +7069,12 @@ document.addEventListener('click',e=>{
               خود این دبیر ساخته بود، خاموش لغو می‌شود. اگر پیام
               رفته باشد، گام ۵ (اصلاحیه) کارش را می‌کند. */
            if(typeof notifyCancelIfFresh==='function'){
-             notifyCancelIfFresh('absence',recId);
-             notifyCancelIfFresh('late',recId);
+             /* 🔴 مدیر پس از پنجرهٔ مهلت هم می‌تواند لغو کند (دور ۴۳)،
+                ولی رکورد نشان by_manager می‌گیرد تا ردپا بماند. */
+             const role=(typeof activePersona==='function')?activePersona():S.user.role;
+             const opt=(role==='manager'||role==='superadmin')?{byManager:true}:undefined;
+             notifyCancelIfFresh('absence',recId,null,opt);
+             notifyCancelIfFresh('late',recId,null,opt);
            }}
          else recId=insert('attendance',{school_id:school,class_id:cid,
            student_id:c.student_id,date,status:c.to,note:null}).id;
@@ -8271,6 +8401,29 @@ function printReceipt(instId){
 
 /* ---------------- عملیات فازهای جدید ---------------- */
 const F7_ACTIONS = {
+  /* ---- پیام گروهی اداره به مدیران محدوده (دور ۴۳) ---- */
+  'office-msg'(){
+    const o=(typeof officeOf==='function')?officeOf(S.user):null;
+    const n=o?officeManagers(o).length:0;
+    if(!n){ toast('مدیری در محدودهٔ شما یافت نشد','err'); return; }
+    openModal(modalTpl('پیام گروهی به مدیران منطقه',
+      f('عنوان',inp('om_title','','text'))
+      +f('متن پیام','<textarea class="input" id="om_body" rows="4" placeholder="بخشنامهٔ شمارهٔ … به اطلاع می‌رساند…"></textarea>')
+      +'<div class="small muted" style="line-height:2">این پیام به‌صورت اعلان درون‌سامانه‌ای برای <b>'
+      +fa(n)+' مدیر</b> ارسال می‌شود و اعتبار پیامک مدارس مصرف نمی‌گردد.</div>',
+      'office-msg-send'));
+  },
+  'office-msg-send'(){
+    const t=(V('om_title')||'').trim(), b=(V('om_body')||'').trim();
+    if(invalid('om_title',t.length<3,'عنوان باید دست‌کم سه نویسه باشد'))return;
+    if(invalid('om_body',b.length<5,'متن پیام باید دست‌کم پنج نویسه باشد'))return;
+    const o=(typeof officeOf==='function')?officeOf(S.user):null;
+    if(!o){ toast('ادارهٔ شما شناسایی نشد','err'); return; }
+    const r=officeBroadcast(o,t,b);
+    closeModal();
+    toast(r.sent?fa(r.sent)+' مدیر از '+fa(r.schools)+' مدرسه اعلان گرفتند':'پیامی ارسال نشد',r.sent?'ok':'err');
+    render();
+  },
   'cal-new'(){ calModal(null); },
   'cal-edit'(el,id){ calModal(byId('calendar',id)); },
   'cal-save'(){
@@ -9428,6 +9581,7 @@ function viewOfficeDash(){
       <div><b style="font-size:15px">${esc(o?o.name:'نمای کل کشور')}</b>
         <div class="small muted">${o?OFFICE_LEVEL[o.level]:'سوپر ادمین — همه مدارس'} · گزارش‌ها تجمیعی است و اطلاعات فردی دانش‌آموزان نمایش داده نمی‌شود.</div></div>
       <div class="spacer"></div>
+      ${(u.role==='edu_office'||isSuper)?`<button class="btn sm" data-act="office-msg">📢 پیام به مدیران</button>`:''}
       </div>
       ${filterPanel('officedash',`
         <select class="select" style="width:150px" data-f="province"><option value="">همه استان‌ها</option>
@@ -10036,6 +10190,60 @@ setTimeout(()=>{
   render();
   console.log('داده نمونه:',{مدارس:db.schools.length,کاربران:db.users.length,کلاس‌ها:db.classes.length,حضوروغیاب:db.attendance.length,نمرات:db.grades.length,انضباطی:db.discipline.length,اعلان‌ها:db.notifications.length,اقساط:db.installments.length,تراکنش‌ها:db.transactions.length});
 },50);
+/* ═══════════════════════════════════════════════════════════════════
+   پیام گروهی اداره به مدیران مدارس (دور ۴۳)
+   ═══════════════════════════════════════════════════════════════════
+   رئیس اداره باید بتواند یک بخشنامه یا اطلاع فوری را یک‌جا به همهٔ
+   مدیران محدوده‌اش برساند، بدون اینکه یکی‌یکی تماس بگیرد.
+
+   ⚠️ چرا اعلان درون‌برنامه‌ای و نه پیامک؟ کیف اعتبار پیامک متعلق
+   به **مدرسه** است نه اداره؛ خرج‌کردن از آن برای پیام اداره درست
+   نیست. مدیران کاربر فعال سامانه‌اند و اعلان را می‌بینند. اگر روزی
+   کیف اعتبار برای اداره تعریف شد، مسیر پیامکی هم اضافه می‌شود.
+
+   ⚠️ دامنه: فقط مدیران مدارسِ محدودهٔ همان اداره — از
+   officeScopeSchools که فیلتر استان/شهرستان/منطقه را اعمال می‌کند.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** مدیران مدارس تحت پوشش یک اداره */
+function officeManagers(office){
+  var schools = officeScopeSchools(office) || [];
+  var ids = Object.create(null);
+  schools.forEach(function(sc){ ids[sc.id] = 1; });
+  return (db.users || []).filter(function(u){
+    return u.role === 'manager' && ids[u.school_id];
+  });
+}
+
+/**
+ * ارسال اعلان گروهی به مدیران محدوده.
+ * برمی‌گرداند: {sent, schools}
+ */
+function officeBroadcast(office, title, body){
+  var out = { sent: 0, schools: 0 };
+  var mgrs = officeManagers(office);
+  if(!mgrs.length) return out;
+  var seen = Object.create(null);
+  batchWrites(function(){
+    mgrs.forEach(function(m){
+      insert('notifications', {
+        user_id: m.id,
+        school_id: m.school_id,
+        /* هم‌شکل با بقیهٔ اعلان‌های سامانه (20-communication-finance.js) */
+        type: 'office',
+        title: title,
+        body: body,
+        link: 'announcements',
+        read: 0,
+        created_at: todayISO()
+      });
+      out.sent++;
+      if(!seen[m.school_id]){ seen[m.school_id] = 1; out.schools++; }
+    });
+  });
+  return out;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    کلاس‌بندی خودکار هنگام ورود از اکسل
 
@@ -12490,30 +12698,54 @@ function minutesSince(iso){
  *   ۲) درون پنجرهٔ مهلت باشند
  *   ۳) همان کسی که ساخته، اصلاح کند
  *
- * ⚠️ هر سه شرط با && — نه ||. اگر فقط شرط زمان بود، مدیر هم
+ * ⚠️ هر سه شرط با && — نه ||. اگر فقط شرط زمان بود، هر کسی
  * می‌توانست بی‌ردپا پیام را محو کند. این پنجره امتیاز دبیر برای
  * اصلاح خطای خودش است، نه ابزار حذف عمومی.
  *
+ * 🔴 استثنای مدیر (دور ۴۳): مدیر مسئول مدرسه است و باید بتواند
+ * خطای آشکار دبیر را پیش از رفتن پیام بگیرد — حتی پس از پایان
+ * پنجره. ولی این اختیار **بی‌ردپا** نیست: `by_manager` روی رکورد
+ * می‌نشیند و در صفحهٔ صف دیده می‌شود. یعنی دسترسی باز شد، پاسخ‌گویی
+ * هم ماند. `opts.byManager` فقط از مسیرهایی پاس داده می‌شود که
+ * مجوزشان در ACTION_ROLES به مدیر محدود است.
+ *
+ * @param {object} [opts] {byManager:boolean}
  * برمی‌گرداند: تعداد لغوشده.
  */
-function notifyCancelIfFresh(kind, sourceRef, byUserId){
+function notifyCancelIfFresh(kind, sourceRef, byUserId, opts){
   var cfg = null, n = 0;
+  opts = opts || {};
   var who = (byUserId !== undefined && byUserId !== null)
     ? byUserId
     : ((typeof S !== 'undefined' && S.user) ? S.user.id : null);
+
+  /* اختیار مدیر فقط وقتی معتبر است که نقش فعلی واقعاً مدیر باشد.
+     ⚠️ به پارامتر تنها اعتماد نمی‌کنیم — نقش هم بررسی می‌شود،
+     وگرنه هر فراخوانی می‌توانست شرط را دور بزند. */
+  var role = (typeof activePersona === 'function')
+    ? activePersona()
+    : ((typeof S !== 'undefined' && S.user) ? S.user.role : null);
+  var asManager = !!opts.byManager && (role === 'manager' || role === 'superadmin');
 
   (db.notify_queue || []).forEach(function(q){
     if(q.status !== 'pending') return;
     if(q.source_ref !== sourceRef) return;
     if(q.kind !== kind) return;
-    if(q.created_by !== who) return;              /* شرط ۳ */
     if(!cfg) cfg = notifySettings(q.school_id);
-    if(minutesSince(q.created_at) > cfg.graceMinutes) return;  /* شرط ۲ */
-    update('notify_queue', q.id, {
+    if(asManager){
+      /* مدیر: بدون قید زمان و بدون قید سازنده — ولی با ردپا */
+      if(q.school_id !== ((typeof S !== 'undefined' && S.user) ? S.user.school_id : q.school_id)) return;
+    } else {
+      if(q.created_by !== who) return;                            /* شرط ۳ */
+      if(minutesSince(q.created_at) > cfg.graceMinutes) return;   /* شرط ۲ */
+    }
+    var patch = {
       status: 'cancelled',
       decided_at: new Date().toISOString(),
       decided_by: who
-    });
+    };
+    if(asManager) patch.by_manager = 1;
+    update('notify_queue', q.id, patch);
     n++;
   });
   return n;
@@ -12822,7 +13054,8 @@ function viewNotifyQueue(){
       + empty('✅', 'صف خالی است',
               cfg.autoSend
                 ? 'حالت خودکار فعال است و پیام‌ها مستقیم ارسال می‌شوند.'
-                : 'هیچ پیامی در انتظار تأیید شما نیست.');
+                : 'هیچ پیامی در انتظار تأیید شما نیست.')
+      + notifyManagerLogCard(sid);
   }
 
   var rows = pend.map(function(q){
@@ -12858,6 +13091,44 @@ function viewNotifyQueue(){
     +   '<button class="btn" data-act="notify-approve-sel">✓ تأیید و ارسال انتخاب‌شده‌ها</button>'
     +   '<button class="btn danger ghost" data-act="notify-reject-sel">✗ رد انتخاب‌شده‌ها</button>'
     +   '<span class="small muted">' + fa(pend.length) + ' پیام در نمای فعلی</span>'
+    + '</div></div>'
+    + notifyManagerLogCard(sid);
+}
+
+/**
+ * فهرست لغوهای مدیر (ردپای اختیار ویژه).
+ * در صفحهٔ صف زیر جدول نمایش داده می‌شود تا اختیار مدیر پنهان نماند.
+ */
+function notifyManagerCancels(schoolId, days){
+  var since = Date.now() - (days || 7) * 86400000;
+  return (db.notify_queue || []).filter(function(q){
+    if(q.school_id !== schoolId || !q.by_manager) return false;
+    var t = Date.parse(q.decided_at || q.created_at);
+    return isNaN(t) ? true : t >= since;
+  }).sort(function(a, b){
+    return String(b.decided_at || '').localeCompare(String(a.decided_at || ''));
+  });
+}
+
+/** کارت ردپای لغوهای مدیر */
+function notifyManagerLogCard(sid){
+  var rows = notifyManagerCancels(sid, 7);
+  if(!rows.length) return '';
+  return '<div class="card"><div class="card-head"><h3>🛡️ لغوهای مدیر (۷ روز اخیر)</h3></div>'
+    + '<div class="card-body" style="display:grid;gap:8px">'
+    + rows.slice(0, 10).map(function(q){
+        var st = q.student_id ? byId('users', q.student_id) : null;
+        var by = q.decided_by ? byId('users', q.decided_by) : null;
+        return '<div class="small" style="line-height:2">'
+          + '<span class="badge b-gray">' + notifyClock(q.decided_at) + '</span> '
+          + esc(by ? by.full_name : '—') + ' پیام '
+          + esc((NOTIFY_KIND_FA[q.kind] || [q.kind])[0]) + ' '
+          + esc(st ? st.full_name : '—') + ' را لغو کرد'
+          + '</div>';
+      }).join('')
+    + '<div class="small muted" style="line-height:1.9;margin-top:4px">'
+    + 'مدیر می‌تواند پیام دبیر را پس از پایان مهلت هم لغو کند؛ '
+    + 'این فهرست برای شفافیت نگه داشته می‌شود.</div>'
     + '</div></div>';
 }
 

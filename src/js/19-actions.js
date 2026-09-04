@@ -334,6 +334,8 @@ document.addEventListener('click',e=>{
      openModal(modalTpl('سابقهٔ تغییرات — '+esc(st?st.full_name:'')+' · '+(r?jalali(r.date):''),
        h||'<div class="small muted">تغییری برای این رکورد ثبت نشده است.</div>',null));
    },
+   /* انتخاب درس در نمودار روند (دور ۴۳) */
+   'trend-sub'(){ S.trendSub=Number(el.dataset.id)||0; render(); },
    'att-tip-ok'(){
      const seen=Store.getJSON(ATT_TIP_KEY,{})||{};
      seen[(S.user&&S.user.id)||0]=1;
@@ -393,8 +395,12 @@ document.addEventListener('click',e=>{
               خود این دبیر ساخته بود، خاموش لغو می‌شود. اگر پیام
               رفته باشد، گام ۵ (اصلاحیه) کارش را می‌کند. */
            if(typeof notifyCancelIfFresh==='function'){
-             notifyCancelIfFresh('absence',recId);
-             notifyCancelIfFresh('late',recId);
+             /* 🔴 مدیر پس از پنجرهٔ مهلت هم می‌تواند لغو کند (دور ۴۳)،
+                ولی رکورد نشان by_manager می‌گیرد تا ردپا بماند. */
+             const role=(typeof activePersona==='function')?activePersona():S.user.role;
+             const opt=(role==='manager'||role==='superadmin')?{byManager:true}:undefined;
+             notifyCancelIfFresh('absence',recId,null,opt);
+             notifyCancelIfFresh('late',recId,null,opt);
            }}
          else recId=insert('attendance',{school_id:school,class_id:cid,
            student_id:c.student_id,date,status:c.to,note:null}).id;

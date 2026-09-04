@@ -4454,6 +4454,233 @@ test('دفترچه: وضعیت اولیه در همهٔ جدول‌ها محفو
   assert(r.discPoints === -2, '🔴 امتیاز اولیه بازنویسی شد: ' + r.discPoints);
 });
 
+/* ── اختیار مدیر، نمودار روند، پیام اداره (دور ۴۳) ─────────────── */
+
+test('اختیار مدیر: پس از پنجرهٔ مهلت هم می‌تواند لغو کند', () => {
+  withNotify({ enabled: true, graceMinutes: 20 }, (sid) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'const cl=db.classes.find(c=>c.school_id===' + sid + ');'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0);'
+      + 'const t=db.users.find(u=>u.role==="teacher"&&u.school_id===' + sid + ');'
+      + 'const rec=insert("attendance",{school_id:' + sid + ',class_id:cl?cl.id:null,'
+      + 'student_id:st.id,date:"2027-02-10",status:"absent",note:null});'
+      + 'db._mgU=S.user;S.user=t;S.persona=null;'
+      + 'const q=notifyRequest({school_id:' + sid + ',kind:"absence",student_id:st.id,'
+      + 'student_name:st.full_name,date_fa:"۱",source_ref:rec.id});'
+      + 'update("notify_queue",q.id,{created_at:new Date(Date.now()-30*60000).toISOString()});'
+      /* دبیر خودش دیگر نمی‌تواند — پنجره تمام شده */
+      + 'const byTeacher=notifyCancelIfFresh("absence",rec.id);'
+      + 'S.user=db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+      + 'S.persona=null;'
+      + 'const byMgr=notifyCancelIfFresh("absence",rec.id,null,{byManager:true});'
+      + 'const after=byId("notify_queue",q.id);'
+      + 'S.user=db._mgU;delete db._mgU;'
+      + 'return JSON.stringify({byTeacher:byTeacher,byMgr:byMgr,'
+      + 'status:after.status,mark:after.by_manager||0});})()'));
+    assert(r.byTeacher === 0, 'دبیر پس از پنجره نباید بتواند لغو کند: ' + r.byTeacher);
+    assert(r.byMgr === 1, '🔴 مدیر نتوانست لغو کند: ' + r.byMgr);
+    assert(r.status === 'cancelled', 'وضعیت باید cancelled شود: ' + r.status);
+    assert(r.mark === 1, '🔴 ردپای by_manager ثبت نشد — اختیار بی‌حساب می‌شود');
+  });
+});
+
+test('اختیار مدیر: 🔴 دبیر با ادعای byManager نمی‌تواند دور بزند', () => {
+  /* پارامتر به‌تنهایی کافی نیست؛ نقش فعلی هم سنجیده می‌شود. */
+  withNotify({ enabled: true, graceMinutes: 20 }, (sid) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0);'
+      + 'const ts=db.users.filter(u=>u.role==="teacher"&&u.school_id===' + sid + ');'
+      + 'if(ts.length<2)return JSON.stringify({skipTest:true});'
+      + 'const rec=insert("attendance",{school_id:' + sid + ',class_id:null,'
+      + 'student_id:st.id,date:"2027-02-11",status:"absent",note:null});'
+      + 'db._tkU=S.user;S.user=ts[0];S.persona=null;'
+      + 'const q=notifyRequest({school_id:' + sid + ',kind:"absence",student_id:st.id,'
+      + 'student_name:st.full_name,date_fa:"۱",source_ref:rec.id});'
+      + 'update("notify_queue",q.id,{created_at:new Date(Date.now()-30*60000).toISOString()});'
+      + 'S.user=ts[1];S.persona=null;'
+      + 'const n=notifyCancelIfFresh("absence",rec.id,null,{byManager:true});'
+      + 'const after=byId("notify_queue",q.id);'
+      + 'S.user=db._tkU;delete db._tkU;'
+      + 'return JSON.stringify({n:n,status:after.status});})()'));
+    if (r.skipTest) return;
+    assert(r.n === 0, '🔴 دبیر با ادعای byManager پیام را لغو کرد — رخنهٔ ارتقای دسترسی');
+    assert(r.status === 'pending', 'پیام باید معلق بماند: ' + r.status);
+  });
+});
+
+test('اختیار مدیر: مدیر مدرسهٔ دیگر نمی‌تواند لغو کند', () => {
+  withNotify({ enabled: true, graceMinutes: 20 }, (sid) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'const other=db.users.find(u=>u.role==="manager"&&u.school_id!==' + sid
+      + '&&u.school_id);'
+      + 'if(!other)return JSON.stringify({skipTest:true});'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0);'
+      + 'const t=db.users.find(u=>u.role==="teacher"&&u.school_id===' + sid + ');'
+      + 'const rec=insert("attendance",{school_id:' + sid + ',class_id:null,'
+      + 'student_id:st.id,date:"2027-02-12",status:"absent",note:null});'
+      + 'db._otU=S.user;S.user=t;S.persona=null;'
+      + 'const q=notifyRequest({school_id:' + sid + ',kind:"absence",student_id:st.id,'
+      + 'student_name:st.full_name,date_fa:"۱",source_ref:rec.id});'
+      + 'update("notify_queue",q.id,{created_at:new Date(Date.now()-30*60000).toISOString()});'
+      + 'S.user=other;S.persona=null;'
+      + 'const n=notifyCancelIfFresh("absence",rec.id,null,{byManager:true});'
+      + 'S.user=db._otU;delete db._otU;'
+      + 'return JSON.stringify({n:n,status:byId("notify_queue",q.id).status});})()'));
+    if (r.skipTest) return;
+    assert(r.n === 0, '🔴 مدیر مدرسهٔ دیگر پیام را لغو کرد — نشت بین‌مدرسه‌ای');
+    assert(r.status === 'pending', 'پیام باید معلق بماند');
+  });
+});
+
+test('روند نمرات: 🔴 ترتیب زمانی است نه ترتیب درج', () => {
+  /* ⚠️ نمره ممکن است با تأخیر ثبت شود (نمرهٔ آبان در آذر وارد
+     شود). اگر ترتیب آرایه مبنا باشد، نمودار دروغ می‌گوید. */
+  const sid = W('db.schools[0].id');
+  W('(()=>{db._trG=db.grades.slice();})()');
+  try {
+    const r = JSON.parse(W('(()=>{'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid + ');'
+      + 'db.grades=db.grades.filter(function(g){return g.student_id!==st.id;});'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("grades");'
+      /* عمداً خارج از ترتیب زمانی درج می‌شوند */
+      + 'insert("grades",{school_id:' + sid + ',student_id:st.id,class_id:null,'
+      + 'subject_id:null,term:"اول",exam_type:"ک",score:18,max_score:20,created_at:"2026-12-01"});'
+      + 'insert("grades",{school_id:' + sid + ',student_id:st.id,class_id:null,'
+      + 'subject_id:null,term:"اول",exam_type:"ک",score:10,max_score:20,created_at:"2026-09-01"});'
+      + 'insert("grades",{school_id:' + sid + ',student_id:st.id,class_id:null,'
+      + 'subject_id:null,term:"اول",exam_type:"ک",score:14,max_score:20,created_at:"2026-10-15"});'
+      + 'const pts=gradeTrendData(st.id);'
+      + 'return JSON.stringify({order:pts.map(function(p){return p.score;}).join(","),'
+      + 'n:pts.length});})()'));
+    assert(r.n === 3, 'سه نمره باید خوانده شود: ' + r.n);
+    assert(r.order === '10,14,18',
+      '🔴 ترتیب زمانی رعایت نشد: ' + r.order + ' (انتظار ۱۰,۱۴,۱۸)');
+  } finally {
+    W('(()=>{db.grades=db._trG;delete db._trG;'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("grades");})()');
+  }
+});
+
+test('روند نمرات: مقیاس‌های مختلف به ۲۰ نرمال می‌شوند', () => {
+  /* ۸ از ۱۰ نمرهٔ خوبی است؛ کنار ۸ از ۲۰ گذاشتنش گمراه‌کننده است. */
+  const sid = W('db.schools[0].id');
+  W('(()=>{db._nrG=db.grades.slice();})()');
+  try {
+    const r = JSON.parse(W('(()=>{'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid + ');'
+      + 'db.grades=db.grades.filter(function(g){return g.student_id!==st.id;});'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("grades");'
+      + 'insert("grades",{school_id:' + sid + ',student_id:st.id,class_id:null,'
+      + 'subject_id:null,term:"اول",exam_type:"ش",score:8,max_score:10,created_at:"2026-09-01"});'
+      + 'insert("grades",{school_id:' + sid + ',student_id:st.id,class_id:null,'
+      + 'subject_id:null,term:"اول",exam_type:"ک",score:8,max_score:20,created_at:"2026-10-01"});'
+      + 'const pts=gradeTrendData(st.id);'
+      + 'return JSON.stringify({a:pts[0].norm,b:pts[1].norm});})()'));
+    assert(r.a === 16, '🔴 ۸ از ۱۰ باید ۱۶ شود، شد: ' + r.a);
+    assert(r.b === 8, '۸ از ۲۰ باید ۸ بماند، شد: ' + r.b);
+  } finally {
+    W('(()=>{db.grades=db._nrG;delete db._nrG;'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("grades");})()');
+  }
+});
+
+test('روند نمرات: جهت روند و کارت رندر می‌شوند', () => {
+  const sid = W('db.schools[0].id');
+  const saved = W('JSON.stringify({u:S.user&&S.user.id,r:S.route,t:S.tab})');
+  W('(()=>{db._dirG=db.grades.slice();})()');
+  try {
+    const r = JSON.parse(W('(()=>{'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid + ');'
+      + 'db.grades=db.grades.filter(function(g){return g.student_id!==st.id;});'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("grades");'
+      + '[[10,"2026-09-01"],[12,"2026-10-01"],[16,"2026-11-01"],[18,"2026-12-01"]]'
+      + '.forEach(function(p){insert("grades",{school_id:' + sid + ',student_id:st.id,'
+      + 'class_id:null,subject_id:null,term:"اول",exam_type:"ک",score:p[0],'
+      + 'max_score:20,created_at:p[1]});});'
+      + 'const d=gradeTrendDirection(gradeTrendData(st.id));'
+      + 'S.user=st;S.persona=null;S.boss=null;S.route="record";S.tab="grades";'
+      + 'S.filters={};S.trendSub=0;'
+      + 'const h=renderRoute();'
+      /* یک‌نمره‌ای نباید نمودار بدهد */
+      + 'const st2=db.users.filter(u=>u.role==="student"&&u.school_id===' + sid + ')[5];'
+      + 'db.grades=db.grades.filter(function(g){return g.student_id!==st2.id;});'
+      + 'insert("grades",{school_id:' + sid + ',student_id:st2.id,class_id:null,'
+      + 'subject_id:null,term:"اول",exam_type:"ک",score:12,max_score:20,created_at:"2026-09-01"});'
+      + 'const single=gradeTrendCard(st2.id);'
+      + 'return JSON.stringify({dir:d?d.dir:null,chart:h.indexOf("trend-chart")>-1,'
+      + 'badge:/رو به بهبود|رو به افت|تقریباً ثابت/.test(h),'
+      + 'singleGuard:single.indexOf("دست‌کم دو نمره")>-1});})()'));
+    assert(r.dir === 'up', '🔴 روند صعودی تشخیص داده نشد: ' + r.dir);
+    assert(r.chart === true, 'نمودار در پروندهٔ دانش‌آموز رندر نشد');
+    assert(r.badge === true, 'نشان جهت روند نمایش داده نشد');
+    assert(r.singleGuard === true, 'با یک نمره باید پیام راهنما بدهد نه نمودار');
+  } finally {
+    const o = JSON.parse(saved);
+    W('(()=>{db.grades=db._dirG;delete db._dirG;'
+      + 'S.user=byId("users",' + o.u + ')||S.user;S.route=' + JSON.stringify(o.r) + ';'
+      + 'S.tab=' + JSON.stringify(o.t || 'grades') + ';S.filters={};S.trendSub=0;'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("grades");})()');
+  }
+});
+
+test('پیام اداره: به همهٔ مدیران محدوده می‌رسد و به بیرون نه', () => {
+  const saved = W('JSON.stringify({u:S.user&&S.user.id,r:S.route})');
+  W('(()=>{db._obN=db.notifications.slice();})()');
+  try {
+    const r = JSON.parse(W('(()=>{'
+      + 'const eo=db.users.find(u=>u.role==="edu_office");'
+      + 'if(!eo)return JSON.stringify({skipTest:true});'
+      + 'S.user=eo;S.persona=null;S.boss=null;'
+      + 'const o=officeOf(eo);'
+      /* 🔴 انتظار را مستقل از officeManagers می‌سازیم. تست جهش دور
+         ۴۳ نشان داد اگر هر دو طرف از یک تابع بخوانند، خراب‌کردن
+         آن تابع هیچ آزمونی را نمی‌اندازد. اینجا مستقیم از
+         officeScopeSchools می‌خوانیم. */
+      + 'const scoped={};officeScopeSchools(o).forEach(function(sc){scoped[sc.id]=1;});'
+      + 'const expect=db.users.filter(function(u){'
+      + 'return u.role==="manager"&&scoped[u.school_id];}).length;'
+      + 'const allMgr=db.users.filter(function(u){return u.role==="manager";}).length;'
+      + 'const before=db.notifications.length;'
+      + 'const res=officeBroadcast(o,"بخشنامهٔ آزمایشی","متن آزمایشی بخشنامه");'
+      + 'const fresh=db.notifications.slice(before);'
+      + 'const outside=fresh.filter(function(n){'
+      + 'const u=byId("users",n.user_id);'
+      + 'return !u||!scoped[u.school_id];}).length;'
+      + 'return JSON.stringify({expect:expect,allMgr:allMgr,sent:res.sent,'
+      + 'schools:res.schools,added:fresh.length,outside:outside,'
+      + 'hasTitle:fresh.length?fresh[0].title==="بخشنامهٔ آزمایشی":false});})()'));
+    if (r.skipTest) return;
+    assert(r.expect > 0, 'محیط آزمون: مدیری در محدوده نیست');
+    assert(r.allMgr > r.expect,
+      'محیط آزمون بی‌معنا: محدوده همهٔ مدیران را می‌گیرد ('
+      + r.expect + '/' + r.allMgr + ') — نشت قابل سنجش نیست');
+    assert(r.sent === r.expect,
+      'همهٔ مدیرانِ محدوده باید اعلان بگیرند: ' + r.sent + '/' + r.expect);
+    assert(r.added === r.sent, 'شمار رکورد با ارسال نخواند');
+    assert(r.outside === 0,
+      '🔴 ' + r.outside + ' اعلان به مدیر بیرون از محدوده رفت — نشت بین‌منطقه‌ای');
+    assert(r.hasTitle === true, 'عنوان پیام درست ثبت نشد');
+  } finally {
+    const o = JSON.parse(saved);
+    W('(()=>{db.notifications=db._obN;delete db._obN;'
+      + 'S.user=byId("users",' + o.u + ')||S.user;S.route=' + JSON.stringify(o.r) + ';'
+      + 'S.filters={};(typeof idxInvalidate==="function")&&idxInvalidate("notifications");})()');
+  }
+});
+
+test('پیام اداره: مدیر مدرسه اجازهٔ ارسالش را ندارد', () => {
+  ['office-msg', 'office-msg-send'].forEach((a) => {
+    const roles = JSON.parse(W('JSON.stringify(ACTION_ROLES[' + JSON.stringify(a) + ']||[])'));
+    assert(roles.length > 0, 'کنش ' + a + ' در ACTION_ROLES ثبت نشده');
+    assert(roles.indexOf('edu_office') > -1, 'رئیس اداره باید اجازه داشته باشد');
+    assert(roles.indexOf('manager') === -1, '🔴 مدیر مدرسه اجازهٔ ' + a + ' دارد');
+    assert(roles.indexOf('teacher') === -1, '🔴 دبیر اجازهٔ ' + a + ' دارد');
+  });
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

@@ -93,6 +93,11 @@ var ACTION_ROLES = {
   /* سابقه برای شفافیت با ولی است، پس همهٔ نقش‌ها می‌بینند.
      محتوایش فقط دربارهٔ رکوردی است که کاربر از قبل دسترسی دارد. */
   'att-hist':      ['teacher','manager','superadmin','student','parent','edu_office'],
+  /* فقط فیلتر نمایشی است؛ دسترسی به خود پرونده جداگانه سنجیده می‌شود */
+  'trend-sub':     ['teacher','manager','superadmin','student','parent','edu_office'],
+  /* پیام گروهی اداره: فقط رئیس اداره و مدیر کل سامانه */
+  'office-msg':      ['edu_office','superadmin'],
+  'office-msg-send': ['edu_office','superadmin'],
   'att-all':       ['teacher','manager','superadmin'],
   /* نمرات */
   'grade-save':    ['teacher','manager','superadmin'],

@@ -36,7 +36,7 @@ function viewRecord(sid){
               ['discipline','⚖️ پرونده انضباطی'],['profile','🪪 شناسنامه']];
   let body='';
   if(S.tab==='profile') body = studentProfileCard(sid);
-  if(S.tab==='grades') body = Object.keys(bySub).length?`<div class="card-body" style="display:grid;gap:14px">${Object.entries(bySub).map(([id,l])=>{const a=avgOf(l);
+  if(S.tab==='grades') body = Object.keys(bySub).length?`${gradeTrendCard(sid)}<div class="card-body" style="display:grid;gap:14px">${Object.entries(bySub).map(([id,l])=>{const a=avgOf(l);
     return `<div style="border:1px solid var(--border);border-radius:12px;padding:14px"><div class="row"><b>${esc((byId('subjects',Number(id))||{}).name||'—')}</b><div class="spacer"></div>
      <span class="badge ${a>=17?'b-green':a>=12?'b-blue':'b-red'}">میانگین ${fa(a.toFixed(2))}</span></div>
      <div style="margin:8px 0 12px">${bar(a,20,a>=17?'var(--green)':a>=12?'var(--primary)':'var(--red)')}</div>
@@ -158,4 +158,118 @@ function studentProfileCard(sid){
 
   return '<div class="card-body"><div class="grid g2" style="gap:12px">'
        + blocks.join('') + '</div></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   نمودار روند نمرات در طول سال (دور ۴۳)
+   ═══════════════════════════════════════════════════════════════════
+   ولی و دانش‌آموز باید ببینند نمره‌ها **رو به بهبود** است یا افت.
+   عدد نهایی به‌تنهایی این را نمی‌گوید: میانگین ۱۴ می‌تواند از
+   ۱۸→۱۰ آمده باشد یا از ۱۰→۱۸ — دو وضعیت کاملاً متفاوت.
+
+   ⚠️ دام داده‌ای: ترتیب باید بر پایهٔ `created_at` باشد نه ترتیب
+   درج در آرایه. نمره‌ها ممکن است با تأخیر یا خارج از ترتیب ثبت
+   شوند (مثلاً دبیر نمرهٔ آبان را در آذر وارد کند).
+
+   ⚠️ نمره‌ها همیشه از ۲۰ نیستند؛ برای مقایسه به مقیاس ۲۰ نرمال
+   می‌شوند وگرنه ۸ از ۱۰ کنار ۸ از ۲۰ گمراه‌کننده است.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** نمرات یک دانش‌آموز به‌ترتیب زمانی واقعی، نرمال‌شده به ۲۰ */
+function gradeTrendData(sid, subjectId){
+  var rows = (db.grades || []).filter(function(g){
+    if(g.student_id !== sid) return false;
+    if(subjectId && g.subject_id !== subjectId) return false;
+    return !isNaN(Number(g.score));
+  });
+  /* ⚠️ ترتیب زمانی از created_at، نه ترتیب آرایه */
+  rows.sort(function(a, b){
+    var ta = String(a.created_at || ''), tb = String(b.created_at || '');
+    if(ta !== tb) return ta.localeCompare(tb);
+    return (a.id || 0) - (b.id || 0);       /* گره‌گشایی قطعی */
+  });
+  return rows.map(function(g){
+    var max = Number(g.max_score) || 20;
+    return {
+      at:    g.created_at || null,
+      score: Number(g.score),
+      max:   max,
+      norm:  Math.max(0, Math.min(20, (Number(g.score) / max) * 20)),
+      term:  g.term || '',
+      type:  g.exam_type || '',
+      subject: (byId('subjects', g.subject_id) || {}).name || '—'
+    };
+  });
+}
+
+/** جهت روند: مقایسهٔ میانگین نیمهٔ اول با نیمهٔ دوم */
+function gradeTrendDirection(pts){
+  if(pts.length < 4) return null;            /* داده کم است، حکم ندهیم */
+  var half = Math.floor(pts.length / 2);
+  var avg = function(a){ return a.reduce(function(s, p){ return s + p.norm; }, 0) / a.length; };
+  var first = avg(pts.slice(0, half));
+  var last  = avg(pts.slice(pts.length - half));
+  var diff  = last - first;
+  if(Math.abs(diff) < 0.75) return { dir: 'flat', diff: diff };
+  return { dir: diff > 0 ? 'up' : 'down', diff: diff };
+}
+
+/**
+ * کارت نمودار روند.
+ * @param {number} sid شناسهٔ دانش‌آموز
+ */
+function gradeTrendCard(sid){
+  var subs = {};
+  (db.grades || []).forEach(function(g){
+    if(g.student_id === sid && g.subject_id) subs[g.subject_id] = 1;
+  });
+  var pick = Number(S.trendSub) || 0;
+  var pts  = gradeTrendData(sid, pick || null);
+  if(pts.length < 2){
+    return '<div class="card"><div class="card-head"><h3>📈 روند نمرات</h3></div>'
+      + empty('📈', 'برای نمایش روند دست‌کم دو نمره لازم است',
+              'با ثبت نمرات بیشتر، نمودار پیشرفت اینجا دیده می‌شود.')
+      + '</div>';
+  }
+
+  var chips = ['<button class="chip' + (pick ? '' : ' on')
+    + '" data-act="trend-sub" data-id="0">همهٔ درس‌ها</button>'];
+  Object.keys(subs).forEach(function(id){
+    var nm = (byId('subjects', Number(id)) || {}).name || '—';
+    chips.push('<button class="chip' + (pick === Number(id) ? ' on' : '')
+      + '" data-act="trend-sub" data-id="' + escAttr(id) + '">' + esc(nm) + '</button>');
+  });
+
+  var dirInfo = gradeTrendDirection(pts);
+  var badge = '';
+  if(dirInfo){
+    var m = { up:   ['b-green', '📈 رو به بهبود'],
+              down: ['b-red',   '📉 رو به افت'],
+              flat: ['b-blue',  '➖ تقریباً ثابت'] }[dirInfo.dir];
+    badge = '<span class="badge ' + m[0] + '">' + m[1]
+      + (dirInfo.dir === 'flat' ? '' : ' (' + fa(Math.abs(dirInfo.diff).toFixed(1)) + ' نمره)')
+      + '</span>';
+  }
+
+  var avgAll = pts.reduce(function(s, p){ return s + p.norm; }, 0) / pts.length;
+  var cols = pts.map(function(p){
+    var h = (p.norm / 20) * 100;
+    var color = p.norm >= 17 ? 'var(--green)' : (p.norm >= 12 ? 'var(--primary)' : 'var(--red)');
+    var when = p.at ? jalali(String(p.at).slice(0, 10)) : '—';
+    var tip = p.subject + ' • ' + p.type + ' • ' + fa(p.score) + ' از ' + fa(p.max) + ' • ' + when;
+    return '<div class="col" title="' + escAttr(tip) + '">'
+      + '<i style="height:' + h + '%;background:' + color + '"></i>'
+      + '<span>' + esc(faD(String(p.score))) + '</span></div>';
+  }).join('');
+
+  return '<div class="card"><div class="card-head"><h3>📈 روند نمرات در طول سال</h3>'
+    + badge + '</div>'
+    + (chips.length > 2 ? '<div class="chips">' + chips.join('') + '</div>' : '')
+    + '<div class="card-body">'
+    + '<div class="chart trend-chart">' + cols + '</div>'
+    + '<div class="row small muted" style="margin-top:10px;line-height:2">'
+    +   '<span>میانگین: <b>' + fa(avgAll.toFixed(2)) + '</b> از ۲۰</span>'
+    +   '<span>تعداد نمره: <b>' + fa(pts.length) + '</b></span>'
+    +   '<span>ترتیب بر پایهٔ تاریخ ثبت</span>'
+    + '</div></div></div>';
 }
