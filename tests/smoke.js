@@ -5619,6 +5619,93 @@ test('اسکرول: منوی کناری هم جای خود را حفظ می‌ک
   }
 });
 
+/* ── هماهنگی منو و مجوز (دور ۶۳) ─────────────────────────────
+   منوی هر نقش باید دقیقاً با روت‌های مجازشخواند:
+   ۱. روت تکراری در منو نباشد
+   ۲. محتوای منو دقیقاً همان روت‌های مورد انتظار باشد (گم‌شدن
+      یا اضافه‌شدن آگاهانه نباشد — فهرست پایین تک‌منبع انتظار است)
+   ۳. هر روتِ منو عنوان داشته باشد و با آن نقش واقعاً رندر شود
+      (نه «دسترسی مجاز نیست» بدهد)
+   ۴. خانهٔ هر نقش در منوی خودش باشد
+   ۵. هر روت کمکی (EXTRA_ROUTES) مجاز و دارای نما باشد */
+
+const NAV_EXPECT = {
+  superadmin: ['dashboard','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications'],
+  manager: ['dashboard','atrisk','growth','calendar','formssms','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','leaves','exams','teachers','corrections','tuition','meetings','notifyqueue','announcements','notifications','chat'],
+  teacher: ['meetings','dashboard','classes','schedule','calendar','attendance','grades','discipline','leaves','exams','announcements','notifications','chat'],
+  student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','announcements','notifications','chat'],
+  edu_office: ['officedash','officeschools','announcements','notifications'],
+  parent: ['meetings','dashboard','family','children','exams','calendar','mytuition','leaves','announcements','notifications','chat']
+};
+
+const navRoutes = (role) => JSON.parse(W('JSON.stringify(navRoutesOf(' + JSON.stringify(role) + '))'));
+
+test('منو: هیچ نقشی روت تکراری ندارد', () => {
+  Object.keys(NAV_EXPECT).forEach((role) => {
+    const rs = navRoutes(role);
+    const dup = rs.filter((r, i) => rs.indexOf(r) !== i);
+    assert(dup.length === 0, role + ' روت تکراری دارد: ' + [...new Set(dup)].join(','));
+  });
+});
+
+test('منو: محتوای هر نقش دقیقاً با فهرست مورد انتظار یکی است', () => {
+  Object.keys(NAV_EXPECT).forEach((role) => {
+    const got = navRoutes(role).slice().sort();
+    const want = NAV_EXPECT[role].slice().sort();
+    assert(JSON.stringify(got) === JSON.stringify(want),
+      role + ': منو ≠ انتظار (گم‌شده: '
+      + want.filter((r) => got.indexOf(r) < 0).join(',')
+      + ' · اضافه: ' + got.filter((r) => want.indexOf(r) < 0).join(',') + ')');
+  });
+});
+
+test('منو: هر روت منو عنوان فارسی دارد', () => {
+  Object.keys(NAV_EXPECT).forEach((role) => {
+    NAV_EXPECT[role].forEach((r) => {
+      const t = W('TITLES[' + JSON.stringify(r) + ']');
+      assert(t && t[0], 'عنوان برای روت ' + r + ' (' + role + ') نیست');
+    });
+  });
+});
+
+test('منو: هر روت منو با همان نقش رندر می‌شود نه «دسترسی مجاز نیست»', () => {
+  Object.keys(NAV_EXPECT).forEach((role) => {
+    NAV_EXPECT[role].forEach((r) => {
+      const out = W('(function(){const u=db.users.find(function(x){return x.role===' + JSON.stringify(role) + ';});'
+        + 'if(!u)return JSON.stringify({noUser:true});'
+        + 'S.user=u;S.persona=null;S.boss=null;S.route=' + JSON.stringify(r)
+        + ';S.filters={};S.page=1;'
+        + 'return JSON.stringify({h:renderRoute().indexOf("دسترسی مجاز نیست")>-1});})()');
+      const res = JSON.parse(out);
+      assert(!res.noUser, 'دادهٔ نمونه کاربری برای ' + role + ' ندارد');
+      assert(res.h === false, role + ' → ' + r + ' «دسترسی مجاز نیست» داد');
+    });
+  });
+});
+
+test('منو: خانهٔ هر نقش در منوی خودش هست', () => {
+  Object.keys(NAV_EXPECT).forEach((role) => {
+    const home = W('homeRoute(' + JSON.stringify(role) + ')');
+    assert(navRoutes(role).indexOf(home) > -1,
+      role + ': خانهٔ ' + home + ' در منو نیست');
+  });
+});
+
+test('منو: همهٔ روت‌های کمکی مجازند و نما دارند', () => {
+  const roles = Object.keys(NAV_EXPECT);
+  roles.forEach((role) => {
+    const extras = JSON.parse(W('JSON.stringify(EXTRA_ROUTES[' + JSON.stringify(role) + ']||[])'));
+    extras.forEach((r) => {
+      assert(W('!!allowedRoutes(' + JSON.stringify(role) + ')[' + JSON.stringify(r) + ']') === true,
+        role + ': روت کمکی ' + r + ' مجاز نیست');
+      const out = W('(function(){const u=db.users.find(function(x){return x.role===' + JSON.stringify(role) + ';});'
+        + 'if(!u)return "0";S.user=u;S.persona=null;S.boss=null;S.route=' + JSON.stringify(r)
+        + ';S.filters={};S.page=1;return String(renderRoute().length);})()');
+      assert(Number(out) > 0, role + ': روت کمکی ' + r + ' رندر نمی‌شود');
+    });
+  });
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));
