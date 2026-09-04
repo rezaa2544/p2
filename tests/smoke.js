@@ -4368,6 +4368,92 @@ test('سابقه: کارت نمایش هشدار «سند رسمی نیست» د
   }
 });
 
+test('سقف: پیام‌های پشت سقف گم نمی‌شوند و مدیر باخبر می‌شود', () => {
+  /* 🔴 شکافی که کاربر در بازبینی دور ۴۲ پرسید: وقتی در حالت
+     خودکار سقف پر می‌شود، پیام‌های باقی‌مانده چه می‌شوند؟
+     پاسخ: `pending` می‌مانند و فردا خودکار می‌روند. ولی پیش از
+     این هیچ نشانی به مدیر داده نمی‌شد — «۴ خانواده امشب بی‌خبر
+     می‌مانند» نامرئی بود. */
+  withNotify({ enabled: true, autoSend: true, graceMinutes: 20, dailyCap: 2 }, (sid) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'db._capL=db.sms_log.slice();'
+      + 'db.sms_log=db.sms_log.filter(m=>m.school_id!==' + sid + ');'
+      + 'const w=smsWalletOf(' + sid + ');const bal0=w.balance;'
+      + 'update("sms_wallet",w.w.id,{balance:9000});'
+      + 'const kids=db.users.filter(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0).slice(0,5);'
+      + 'kids.forEach(function(s){var q=notifyRequest({school_id:' + sid + ','
+      + 'kind:"absence",student_id:s.id,student_name:s.full_name,date_fa:"۱"});'
+      + 'if(q)update("notify_queue",q.id,{created_at:new Date(Date.now()-30*60000).toISOString()});});'
+      + 'const made=db.notify_queue.length;'
+      + 'const res=notifyAutoFlush(' + sid + ');'
+      + 'const stat={};db.notify_queue.forEach(function(q){stat[q.status]=(stat[q.status]||0)+1;});'
+      + 'S.user=db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+      + 'S.persona=null;S.route="notifyqueue";S.filters={};'
+      + 'const page=renderRoute();const card=notifyDailyCard();'
+      /* فردا: شمارندهٔ امروز صفر می‌شود */
+      + 'db.sms_log.forEach(function(m){if(m.school_id===' + sid + ')'
+      + 'update("sms_log",m.id,{created_at:"2020-01-01"});});'
+      + 'const tomorrow=notifyAutoFlush(' + sid + ');'
+      + 'update("sms_wallet",w.w.id,{balance:bal0});'
+      + 'db.sms_log=db._capL;delete db._capL;'
+      + 'return JSON.stringify({made:made,total:db.notify_queue.length,'
+      + 'sent:res.sent,skipped:res.skipped,reason:res.reason,'
+      + 'pending:stat.pending||0,banner:page.indexOf("notify-cap-bar")>-1,'
+      + 'cardWarn:card.indexOf("سقف روزانه پر شده")>-1,'
+      + 'tomorrowSent:tomorrow.sent});})()'));
+    assert(r.made === 5, 'محیط آزمون: ۵ پیام ساخته نشد (' + r.made + ')');
+    assert(r.sent >= 1, 'دست‌کم یک پیام باید برود: ' + r.sent);
+    assert(r.reason === 'daily-cap', 'دلیل باید daily-cap باشد: ' + r.reason);
+    /* ۱) هیچ پیامی حذف نمی‌شود */
+    assert(r.total === r.made,
+      '🔴 ' + (r.made - r.total) + ' پیام ناپدید شد — پشت سقف نباید چیزی گم شود');
+    assert(r.pending > 0, 'پیام‌های نرفته باید pending بمانند');
+    /* ۲) مدیر باخبر می‌شود */
+    assert(r.banner === true, '🔴 نوار هشدار سقف در صفحهٔ صف نیست');
+    assert(r.cardWarn === true, '🔴 هشدار سقف در کارت داشبورد نیست');
+    /* ۳) فردا ادامه می‌یابد */
+    assert(r.tomorrowSent > 0,
+      '🔴 روز بعد ارسال ادامه نیافت — پیام‌ها برای همیشه گیر می‌کنند');
+  });
+});
+
+test('سقف: با ظرفیت کافی هشدار بی‌مورد نشان داده نمی‌شود', () => {
+  withNotify({ enabled: true, dailyCap: 500 }, (sid) => {
+    const r = W('(()=>{S.user=db.users.find(u=>u.role==="manager"&&u.school_id==='
+      + sid + ')||S.user;S.persona=null;S.route="notifyqueue";S.filters={};'
+      + 'return renderRoute().indexOf("notify-cap-bar")>-1;})()');
+    assert(r === false, '🔴 هشدار سقف با ظرفیت خالی نمایش داده شد');
+  });
+});
+
+test('دفترچه: وضعیت اولیه در همهٔ جدول‌ها محفوظ می‌ماند', () => {
+  /* 🔴 باگ دور ۴۲ در خودِ applyOp بود، پس همهٔ جدول‌ها را درگیر
+     می‌کرد نه فقط حضور و غیاب. این آزمون چند جدول حساس را
+     می‌سنجد تا رفع، سراسری بماند. */
+  const r = JSON.parse(W('(()=>{db._loG=db.grades.slice();db._loD=db.discipline.slice();'
+    + 'const sid=db.schools[0].id;const out={};'
+    + 'const g=insert("grades",{school_id:sid,student_id:1,class_id:1,subject_id:1,'
+    + 'term:"اول",exam_type:"کتبی",score:8,max_score:20});'
+    + 'update("grades",g.id,{score:18});'
+    + 'const gi=log.filter(function(o){return o.t==="ins"&&o.c==="grades"&&'
+    + 'o.data&&o.data.id===g.id;})[0];'
+    + 'out.grade=gi?gi.data.score:null;'
+    + 'const d=insert("discipline",{school_id:sid,student_id:1,kind:"negative",'
+    + 'title:"اولیه",points:-2,date:todayISO()});'
+    + 'update("discipline",d.id,{title:"عوض‌شده",points:5});'
+    + 'const di=log.filter(function(o){return o.t==="ins"&&o.c==="discipline"&&'
+    + 'o.data&&o.data.id===d.id;})[0];'
+    + 'out.discTitle=di?di.data.title:null;out.discPoints=di?di.data.points:null;'
+    + 'db.grades=db._loG;db.discipline=db._loD;delete db._loG;delete db._loD;'
+    + '(typeof idxInvalidate==="function")&&(idxInvalidate("grades"),idxInvalidate("discipline"));'
+    + 'return JSON.stringify(out);})()'));
+  assert(r.grade === 8, '🔴 نمرهٔ اولیه در دفترچه بازنویسی شد: ' + r.grade + ' (باید ۸)');
+  assert(r.discTitle === 'اولیه',
+    '🔴 عنوان اولیهٔ انضباطی بازنویسی شد: ' + r.discTitle);
+  assert(r.discPoints === -2, '🔴 امتیاز اولیه بازنویسی شد: ' + r.discPoints);
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

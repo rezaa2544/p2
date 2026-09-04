@@ -989,3 +989,53 @@ update('attendance', id, {status:'present'});
 برمی‌گرداند. بدون این، آزمون‌های پیشین ده‌ها رکورد جا می‌گذاشتند و
 توابعی که کل صف را می‌پیمایند (مثل `notifyAutoFlush`) اجرا را
 به دقیقه‌ها می‌کشاندند.
+
+
+## پشتیبان مستقل از `.git`
+
+سندباکس `.git/config` را جزو مسیرهای حساس از اسنپ‌شات حذف می‌کند و
+پوشه‌های خالی مثل `.git/refs/` را هم نگه نمی‌دارد. نتیجه: پس از
+راه‌اندازی دوباره، گیت `fatal: not a git repository` می‌دهد در حالی
+که **تاریخچه سالم است**.
+
+**رفع سریع:**
+```bash
+cd /home/user/payesh
+mkdir -p .git/refs/heads .git/refs/tags
+cat > .git/config <<'EOF'
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[user]
+	email = dev@payesh.local
+	name = Payesh Dev
+EOF
+git log --oneline -1   # باید کار کند
+```
+
+**پیشگیری — پشتیبان مستقل:**
+```bash
+git bundle create /home/user/gitbackup/payesh-$(date +%Y%m%d-%H%M).bundle --all
+git bundle verify /home/user/gitbackup/*.bundle   # باید بگوید «complete history»
+```
+
+باندل یک فایل تک است، مستقل از سلامت `.git/` داخلی، و با
+`git clone فایل.bundle مقصد` کامل بازمی‌گردد. **بیرون از پوشهٔ
+پروژه** نگه دارید.
+
+## سرنوشت پیامی که نمی‌تواند برود
+
+قاعدهٔ ثابت این ماژول: **هیچ پیامی بی‌صدا ناپدید نمی‌شود.**
+
+| مانع | سرنوشت پیام | مدیر چطور می‌فهمد |
+|---|---|---|
+| اعتبار ناکافی | `pending` می‌ماند | پیام خطا هنگام تأیید |
+| سقف روزانه (دستی) | ارسال می‌شود پس از تأیید صریح | پنجرهٔ `askConfirm` |
+| سقف روزانه (خودکار) | `pending` تا فردا | `notifyCapBanner` + کارت داشبورد |
+| پنجرهٔ مهلت | `cancelled` عمدی | خودِ دبیر اصلاح کرده |
+
+⚠️ `notifyPurge` فقط رکوردهای **بسته‌شده** را پاک می‌کند. اگر روزی
+منطقش را عوض کردید، مطمئن شوید `pending` همچنان مصون است — آزمون
+نگهبانش در `tests/smoke.js` هست.

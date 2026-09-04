@@ -470,6 +470,30 @@ function notifyAutoBanner(){
          '<button class="btn sm ghost" data-act="notify-auto-off">خاموش کردن</button></div>';
 }
 
+/**
+ * نوار هشدار «سقف روزانه پر شده».
+ *
+ * 🔴 چرا لازم است؟ در حالت خودکار وقتی سقف پر می‌شود، پیام‌ها
+ * `pending` می‌مانند و فردا خودکار می‌روند — گم نمی‌شوند. ولی
+ * مدیر هیچ نشانی نمی‌دید که «۴ خانواده امشب بی‌خبر می‌مانند».
+ * سنجش دور ۴۲ این شکاف را نشان داد.
+ */
+function notifyCapBanner(sid){
+  var cfg = notifySettings(sid);
+  if(!cfg.enabled) return '';
+  var today = notifySentToday(sid);
+  var cap   = Number(cfg.dailyCap) || 0;
+  if(today < cap) return '';
+  var stuck = notifyPending(sid).filter(function(q){ return q.auto; }).length;
+  return '<div class="notify-cap-bar">'
+    + '<b>⛔ سقف روزانهٔ پیامک پر شد</b> ('
+    + fa(today) + ' از ' + fa(cap) + ' قطعه)'
+    + (stuck ? ' — <b>' + fa(stuck) + ' پیام</b> تا فردا منتظر می‌مانند.' : '')
+    + '<div class="small">پیام‌ها حذف نمی‌شوند؛ فردا خودکار ارسال می‌شوند. '
+    + 'برای ارسال همین امروز، سقف را در تنظیمات بالا ببرید یا دستی تأیید کنید.</div>'
+    + '</div>';
+}
+
 /** کارت برآورد هزینه بالای صفحه */
 function notifyCostCard(sid, pend){
   var wal  = smsWalletOf(sid);
@@ -538,7 +562,7 @@ function viewNotifyQueue(){
     + '</div></div>';
 
   if(!all.length){
-    return head + notifyAutoBanner() + notifyCostCard(sid, [])
+    return head + notifyAutoBanner() + notifyCapBanner(sid) + notifyCostCard(sid, [])
       + empty('✅', 'صف خالی است',
               cfg.autoSend
                 ? 'حالت خودکار فعال است و پیام‌ها مستقیم ارسال می‌شوند.'
@@ -565,6 +589,7 @@ function viewNotifyQueue(){
 
   return head
     + notifyAutoBanner()
+    + notifyCapBanner(sid)
     + notifyCostCard(sid, all)
     + '<div class="chips">' + chips.join('') + '</div>'
     + '<div class="card"><div class="table-wrap"><table class="table">'
@@ -608,8 +633,16 @@ function notifyDailyCard(){
     +   '<div><b>' + fa(n) + '</b><span class="small muted">پیام ارسال‌شده</span></div>'
     +   '<div><b>' + fa(auto) + '</b><span class="small muted">خودکار</span></div>'
     +   '<div><b' + (pend ? ' style="color:var(--amber)"' : '') + '>' + fa(pend)
-    +     '</b><span class="small muted">در انتظار تأیید</span></div>'
-    + '</div></div>';
+    +     '</b><span class="small muted">'
+    +     (cfg.autoSend ? 'منتظر ارسال' : 'در انتظار تأیید') + '</span></div>'
+    + '</div>'
+    /* ⚠️ اگر سقف پر است، مدیر باید همین‌جا بفهمد — نه اینکه تصادفی
+       سراغ صفحهٔ صف برود. */
+    + (notifySentToday(sid) >= (Number(cfg.dailyCap) || 0)
+        ? '<div class="card-foot small" style="color:var(--red)">'
+          + '⛔ سقف روزانه پر شده — پیام‌های باقی‌مانده فردا ارسال می‌شوند.</div>'
+        : '')
+    + '</div>';
 }
 
 /* ═══════════════════════════════════════════════════════════════════
