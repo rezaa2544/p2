@@ -4681,6 +4681,246 @@ test('پیام اداره: مدیر مدرسه اجازهٔ ارسالش را ن
   });
 });
 
+/* ── ابزارهای دبیر: سابقهٔ چندساله و یادداشت خصوصی (دور ۴۴) ──── */
+
+/** دبیری که دست‌کم یک دانش‌آموز با سابقهٔ دوساله دارد */
+function withTeacherHistory(fn) {
+  const sid = W('db.schools[0].id');
+  W('(()=>{db._thU=S.user;db._thN=(db.teacher_notes||[]).slice();})()');
+  try {
+    const env = JSON.parse(W('(()=>{const sid=' + sid + ';'
+      + 'const t=db.users.filter(function(u){return u.role==="teacher"&&u.school_id===sid;})'
+      + '.find(function(x){return teacherClasses(x.id).some(function(c){'
+      + 'return studentsOfClass(c.id).some(function(s){return studentYearHistory(s.id).length>1;});});});'
+      + 'if(!t)return JSON.stringify({skipTest:true});'
+      + 'S.user=t;S.persona=null;S.boss=null;'
+      + 'const st=teacherClasses(t.id).reduce(function(a,c){return a.concat(studentsOfClass(c.id));},[])'
+      + '.find(function(s){return studentYearHistory(s.id).length>1;});'
+      + 'const ids={};teacherClasses(t.id).forEach(function(c){'
+      + 'studentsOfClass(c.id).forEach(function(s){ids[s.id]=1;});});'
+      + 'const other=db.users.find(function(u){return u.role==="student"&&u.school_id===sid&&!ids[u.id];});'
+      + 'return JSON.stringify({teacherId:t.id,studentId:st.id,'
+      + 'otherStudentId:other?other.id:0});})()'));
+    if (env.skipTest) return;
+    return fn(sid, env);
+  } finally {
+    W('(()=>{S.user=db._thU;db.teacher_notes=db._thN;'
+      + 'delete db._thU;delete db._thN;'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("teacher_notes");})()');
+  }
+}
+
+test('سابقه: سال تحصیلی از مهر شروع می‌شود نه فروردین', () => {
+  /* ⚠️ تاریخ‌های ماه ۱ تا ۶ شمسی به سال تحصیلی **قبل** تعلق
+     دارند. اگر این اشتباه باشد، نیمی از رکوردها در سال غلط
+     دسته‌بندی می‌شوند. */
+  const r = JSON.parse(W('(()=>{'
+    /* ۱۴۰۴/۰۸/۱۵ ≈ ۲۰۲۵-۱۱-۰۶ → سال ۱۴۰۴-۱۴۰۵ */
+    + 'const mehr=yearOfDate("2025-11-06");'
+    /* ۱۴۰۴/۰۲/۱۵ ≈ ۲۰۲۵-۰۵-۰۵ → سال ۱۴۰۳-۱۴۰۴ */
+    + 'const ord=yearOfDate("2025-05-05");'
+    + 'return JSON.stringify({mehr:mehr,ord:ord,bad:yearOfDate(null)});})()'));
+  assert(r.mehr === '1404-1405', 'آبان ۱۴۰۴ باید سال ۱۴۰۴-۱۴۰۵ باشد: ' + r.mehr);
+  assert(r.ord === '1403-1404',
+    '🔴 اردیبهشت ۱۴۰۴ باید سال ۱۴۰۳-۱۴۰۴ باشد (سال تحصیلی از مهر): ' + r.ord);
+  assert(r.bad === null, 'ورودی نامعتبر باید null بدهد');
+});
+
+test('سابقه: نمرات و حضور سال‌به‌سال تفکیک می‌شوند', () => {
+  withTeacherHistory((sid, env) => {
+    const r = JSON.parse(W('(()=>{const h=studentYearHistory(' + env.studentId + ');'
+      + 'return JSON.stringify({n:h.length,'
+      + 'years:h.map(function(x){return x.year;}),'
+      + 'hasGrades:h.every(function(x){return x.grades&&typeof x.grades.n==="number";}),'
+      + 'hasAtt:h.every(function(x){return x.attendance&&typeof x.attendance.n==="number";}),'
+      + 'sorted:h.map(function(x){return x.year;}).join(",")'
+      + '===h.map(function(x){return x.year;}).slice().sort().reverse().join(",")});})()'));
+    assert(r.n >= 2, 'دست‌کم دو سال باید باشد: ' + r.n);
+    assert(r.hasGrades && r.hasAtt, 'ساختار خروجی ناقص است');
+    assert(r.sorted === true, 'سال‌ها باید نزولی مرتب باشند: ' + r.years.join(','));
+  });
+});
+
+test('سابقه: 🔴 موارد انضباطی سال‌های گذشته نمایش داده نمی‌شود', () => {
+  /* تصمیم سیاستی کاربر (دور ۴۴): دبیر نباید با قضاوت پیشینی
+     دربارهٔ رفتار سال قبل وارد کلاس شود. */
+  withTeacherHistory((sid, env) => {
+    const r = JSON.parse(W('(()=>{const h=studentYearHistory(' + env.studentId + ');'
+      + 'const card=yearHistoryCard(' + env.studentId + ');'
+      + 'return JSON.stringify({'
+      + 'inData:JSON.stringify(h).indexOf("discipline")>-1,'
+      + 'keys:Object.keys(h[0]||{}),'
+      + 'disclosed:card.indexOf("انضباطی")>-1});})()'));
+    assert(r.inData === false,
+      '🔴 دادهٔ انضباطی در خروجی سابقه هست — نقض تصمیم سیاستی');
+    assert(r.keys.indexOf('discipline') === -1, 'کلید discipline نباید باشد');
+    assert(r.disclosed === true,
+      'کارت باید صریحاً بگوید انضباط نمایش داده نمی‌شود');
+  });
+});
+
+test('سابقه: 🔴 دبیر فقط دانش‌آموز کلاس فعلی خودش را می‌بیند', () => {
+  withTeacherHistory((sid, env) => {
+    if (!env.otherStudentId) return;
+    const r = JSON.parse(W('(()=>{'
+      + 'S.user=byId("users",' + env.teacherId + ');S.persona=null;S.boss=null;'
+      + 'return JSON.stringify({mine:teacherMaySeeHistory(' + env.studentId + '),'
+      + 'other:teacherMaySeeHistory(' + env.otherStudentId + '),'
+      + 'card:yearHistoryCard(' + env.otherStudentId + ')===""});})()'));
+    assert(r.mine === true, 'دبیر باید دانش‌آموز خودش را ببیند');
+    assert(r.other === false,
+      '🔴 دبیر سابقهٔ دانش‌آموز خارج از کلاسش را دید — نقض دامنه');
+    assert(r.card === true, 'کارت برای دانش‌آموز غیرمجاز باید خالی باشد');
+  });
+});
+
+test('سابقه: مدیر می‌بیند، ولی و مدیر مدرسهٔ دیگر نه', () => {
+  withTeacherHistory((sid, env) => {
+    const r = JSON.parse(W('(()=>{const out={};'
+      + 'S.user=db.users.find(function(u){return u.role==="manager"&&u.school_id===' + sid + ';});'
+      + 'S.persona=null;out.manager=teacherMaySeeHistory(' + env.studentId + ');'
+      + 'const p=db.parent_links.find(function(l){return l.student_id===' + env.studentId + ';});'
+      + 'if(p){S.user=byId("users",p.parent_id);S.persona=null;'
+      + 'out.parent=teacherMaySeeHistory(' + env.studentId + ');}'
+      + 'const om=db.users.find(function(u){return u.role==="manager"&&u.school_id&&'
+      + 'u.school_id!==' + sid + ';});'
+      + 'if(om){S.user=om;S.persona=null;out.otherMgr=teacherMaySeeHistory(' + env.studentId + ');}'
+      + 'return JSON.stringify(out);})()'));
+    assert(r.manager === true, 'مدیر مدرسه باید ببیند');
+    if (r.parent !== undefined) assert(r.parent === false, '🔴 ولی سابقه را دید');
+    if (r.otherMgr !== undefined) {
+      assert(r.otherMgr === false, '🔴 مدیر مدرسهٔ دیگر سابقه را دید');
+    }
+  });
+});
+
+test('یادداشت: 🔴 ولی و دانش‌آموز هرگز نمی‌بینند', () => {
+  withTeacherHistory((sid, env) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'S.user=byId("users",' + env.teacherId + ');S.persona=null;S.boss=null;'
+      + 'const made=addTeacherNote(' + env.studentId + ',"یادداشت آزمایشی برای سنجش");'
+      + 'const out={made:!!made};'
+      + 'const p=db.parent_links.find(function(l){return l.student_id===' + env.studentId + ';});'
+      + 'if(p){S.user=byId("users",p.parent_id);S.persona=null;'
+      + 'out.parentSees=teacherNotesFor(' + env.studentId + ').length;'
+      + 'out.parentCard=teacherNotesCard(' + env.studentId + ')==="";}'
+      + 'S.user=byId("users",' + env.studentId + ');S.persona=null;'
+      + 'out.studentSees=teacherNotesFor(' + env.studentId + ').length;'
+      + 'out.studentCard=teacherNotesCard(' + env.studentId + ')==="";'
+      + 'return JSON.stringify(out);})()'));
+    assert(r.made === true, 'یادداشت ثبت نشد');
+    if (r.parentSees !== undefined) {
+      assert(r.parentSees === 0, '🔴 ولی ' + r.parentSees + ' یادداشت خصوصی دید');
+      assert(r.parentCard === true, '🔴 کارت یادداشت به ولی نمایش داده شد');
+    }
+    assert(r.studentSees === 0, '🔴 دانش‌آموز یادداشت خصوصی خودش را دید');
+    assert(r.studentCard === true, '🔴 کارت یادداشت به دانش‌آموز نمایش داده شد');
+  });
+});
+
+test('یادداشت: مدیر می‌بیند ولی نمی‌نویسد', () => {
+  withTeacherHistory((sid, env) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'S.user=byId("users",' + env.teacherId + ');S.persona=null;S.boss=null;'
+      + 'addTeacherNote(' + env.studentId + ',"یادداشت برای سنجش دید مدیر");'
+      + 'S.user=db.users.find(function(u){return u.role==="manager"&&u.school_id===' + sid + ';});'
+      + 'S.persona=null;'
+      + 'const before=(db.teacher_notes||[]).length;'
+      + 'const tried=addTeacherNote(' + env.studentId + ',"مدیر نباید بتواند بنویسد");'
+      + 'return JSON.stringify({sees:teacherNotesFor(' + env.studentId + ').length,'
+      + 'mayWrite:mayWriteNote(' + env.studentId + '),'
+      + 'wrote:!!tried,added:(db.teacher_notes||[]).length-before});})()'));
+    assert(r.sees >= 1, 'مدیر باید یادداشت‌ها را ببیند: ' + r.sees);
+    assert(r.mayWrite === false, '🔴 مدیر اجازهٔ نوشتن یادداشت دارد');
+    assert(r.wrote === false && r.added === 0, '🔴 مدیر یادداشت نوشت');
+  });
+});
+
+test('یادداشت: 🔴 دبیر دیگر یادداشت همکارش را نمی‌بیند', () => {
+  withTeacherHistory((sid, env) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'S.user=byId("users",' + env.teacherId + ');S.persona=null;S.boss=null;'
+      + 'addTeacherNote(' + env.studentId + ',"یادداشت خصوصی دبیر نخست");'
+      + 'const t2=db.users.filter(function(u){return u.role==="teacher"&&'
+      + 'u.school_id===' + sid + '&&u.id!==' + env.teacherId + ';})[0];'
+      + 'if(!t2)return JSON.stringify({skip:true});'
+      + 'S.user=t2;S.persona=null;'
+      + 'return JSON.stringify({sees:teacherNotesFor(' + env.studentId + ').length});})()'));
+    if (r.skip) return;
+    assert(r.sees === 0, '🔴 دبیر دیگر ' + r.sees + ' یادداشت همکارش را دید');
+  });
+});
+
+test('یادداشت: 🔴 با انتقال دبیر، یادداشت در مدرسه می‌ماند', () => {
+  /* تصمیم سیاستی: مالکیت با مدرسه است نه دبیر. */
+  withTeacherHistory((sid, env) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'S.user=byId("users",' + env.teacherId + ');S.persona=null;S.boss=null;'
+      + 'addTeacherNote(' + env.studentId + ',"یادداشت پیش از انتقال");'
+      + 'const before=teacherNotesFor(' + env.studentId + ').length;'
+      + 'const t=byId("users",' + env.teacherId + ');const old=t.school_id;'
+      + 'const dest=db.schools.find(function(s){return s.id!==old;});'
+      + 'if(!dest)return JSON.stringify({skip:true});'
+      + 'update("users",t.id,{school_id:dest.id});'
+      + 'S.user=byId("users",' + env.teacherId + ');S.persona=null;'
+      + 'const after=teacherNotesFor(' + env.studentId + ').length;'
+      /* مدیر مدرسهٔ اصلی هنوز می‌بیند */
+      + 'S.user=db.users.find(function(u){return u.role==="manager"&&u.school_id===old;});'
+      + 'S.persona=null;'
+      + 'const mgrStill=teacherNotesFor(' + env.studentId + ').length;'
+      + 'update("users",t.id,{school_id:old});'
+      + 'return JSON.stringify({before:before,after:after,mgrStill:mgrStill});})()'));
+    if (r.skip) return;
+    assert(r.before >= 1, 'محیط آزمون: یادداشتی ثبت نشد');
+    assert(r.after === 0,
+      '🔴 دبیر پس از انتقال ' + r.after + ' یادداشت مدرسهٔ قبلی را دید');
+    assert(r.mgrStill >= 1,
+      '🔴 یادداشت با دبیر رفت — باید در مدرسه می‌ماند (' + r.mgrStill + ')');
+  });
+});
+
+test('یادداشت: هشدار حقوقی صریح در رابط کاربری هست', () => {
+  /* 🔴 دبیری که گمان کند یادداشتش کاملاً محرمانه است، ممکن است
+     چیزی بنویسد که در بازرسی علیه خودش استفاده شود. */
+  withTeacherHistory((sid, env) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'S.user=byId("users",' + env.teacherId + ');S.persona=null;S.boss=null;'
+      + 'const card=teacherNotesCard(' + env.studentId + ');'
+      + 'return JSON.stringify({warnConst:typeof NOTE_LEGAL_WARN==="string"&&'
+      + 'NOTE_LEGAL_WARN.indexOf("بازرسی")>-1,'
+      + 'inCard:card.indexOf("خصوصی")>-1&&card.indexOf("ولی")>-1,'
+      + 'mentionsManager:card.indexOf("مدیر")>-1});})()'));
+    assert(r.warnConst === true, '🔴 متن هشدار به بازرسی اشاره نمی‌کند');
+    assert(r.inCard === true, '🔴 هشدار در کارت یادداشت نیست');
+    assert(r.mentionsManager === true, 'کارت باید بگوید مدیر می‌بیند');
+  });
+});
+
+test('یادداشت: متن مخرب اجرا نمی‌شود (XSS)', () => {
+  withTeacherHistory((sid, env) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'S.user=byId("users",' + env.teacherId + ');S.persona=null;S.boss=null;'
+      + 'addTeacherNote(' + env.studentId + ',"<img src=x onerror=alert(1)>");'
+      + 'const card=teacherNotesCard(' + env.studentId + ');'
+      + 'return JSON.stringify({raw:card.indexOf("<img src=x onerror")>-1,'
+      + 'escaped:card.indexOf("&lt;img src=x onerror")>-1});})()'));
+    assert(r.raw === false, '🔴 تگ خام در کارت یادداشت — رخنهٔ XSS');
+    assert(r.escaped === true, 'متن باید فرارداده‌شده دیده شود');
+  });
+});
+
+test('یادداشت: کنش‌ها فقط برای دبیر مجازند', () => {
+  ['tnote-new', 'tnote-save', 'tnote-del'].forEach((a) => {
+    const roles = JSON.parse(W('JSON.stringify(ACTION_ROLES[' + JSON.stringify(a) + ']||[])'));
+    assert(roles.length > 0, 'کنش ' + a + ' در ACTION_ROLES ثبت نشده');
+    assert(roles.indexOf('teacher') > -1, 'دبیر باید اجازه داشته باشد');
+    assert(roles.indexOf('parent') === -1, '🔴 ولی اجازهٔ ' + a + ' دارد');
+    assert(roles.indexOf('student') === -1, '🔴 دانش‌آموز اجازهٔ ' + a + ' دارد');
+    assert(roles.indexOf('manager') === -1,
+      '🔴 مدیر اجازهٔ ' + a + ' دارد — طبق تصمیم سیاستی فقط می‌بیند');
+  });
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

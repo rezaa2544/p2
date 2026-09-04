@@ -37,6 +37,7 @@ var COLL_FA = {
   student_archive:'بایگانی فارغ‌التحصیل', nid_conflicts:'تعارض کد ملی',
   meeting_slots:'نوبت جلسه', sms_wallet:'کیف پیامک', sms_log:'پیامک',
   notify_queue:'صف پیام اولیا',
+  teacher_notes:'یادداشت دبیر',
   app_settings:'تنظیمات'
 };
 

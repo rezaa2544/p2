@@ -783,6 +783,7 @@ function render(){
 setTimeout(()=>{
   generate(); generateExtras(); generateP8(); generateP9(); generateP10();
   if(typeof generateP11==='function') generateP11();
+  if(typeof generateP12=== 'function') generateP12();
   loadLog(); applyLog(); initSync();
   const su=Store.get(SESSION_KEY);
   if(su){const u=db.users.find(x=>x.username===su);if(u){S.user=u;if(u.role==='edu_office'&&S.route==='dashboard')S.route='officedash';}}

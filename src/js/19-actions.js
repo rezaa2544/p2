@@ -336,6 +336,30 @@ document.addEventListener('click',e=>{
    },
    /* انتخاب درس در نمودار روند (دور ۴۳) */
    'trend-sub'(){ S.trendSub=Number(el.dataset.id)||0; render(); },
+   /* ---- یادداشت خصوصی دبیر (دور ۴۴) ---- */
+   'tnote-new'(){
+     window._tnStudent=id;
+     const st=byId('users',id);
+     openModal(modalTpl('یادداشت خصوصی — '+esc(st?st.full_name:''),
+       '<div class="tn-warn small" style="margin-bottom:10px">⚠️ '+esc(NOTE_LEGAL_WARN)+'</div>'
+       +f('متن یادداشت','<textarea class="input" id="tn_body" rows="4" placeholder="مشاهدهٔ آموزشی یا رفتاری…"></textarea>'),
+       'tnote-save'));
+   },
+   'tnote-save'(){
+     const txt=(V('tn_body')||'').trim();
+     if(invalid('tn_body',txt.length<3,'متن یادداشت باید دست‌کم سه نویسه باشد'))return;
+     const r=addTeacherNote(window._tnStudent,txt);
+     closeModal();
+     toast(r?'یادداشت ثبت شد':'اجازهٔ ثبت یادداشت برای این دانش‌آموز را ندارید',r?'ok':'err');
+     render();
+   },
+   'tnote-del'(){
+     askDelete('این یادداشت حذف شود؟',()=>{
+       const ok=removeTeacherNote(id);
+       toast(ok?'یادداشت حذف شد':'فقط نویسندهٔ یادداشت می‌تواند حذفش کند',ok?'ok':'err');
+       render();
+     });
+   },
    'att-tip-ok'(){
      const seen=Store.getJSON(ATT_TIP_KEY,{})||{};
      seen[(S.user&&S.user.id)||0]=1;

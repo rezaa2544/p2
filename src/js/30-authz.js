@@ -98,6 +98,11 @@ var ACTION_ROLES = {
   /* پیام گروهی اداره: فقط رئیس اداره و مدیر کل سامانه */
   'office-msg':      ['edu_office','superadmin'],
   'office-msg-send': ['edu_office','superadmin'],
+  /* یادداشت خصوصی: فقط دبیر می‌نویسد و پاک می‌کند.
+     ⚠️ مدیر می‌بیند ولی نمی‌نویسد — تصمیم سیاستی دور ۴۴. */
+  'tnote-new':     ['teacher'],
+  'tnote-save':    ['teacher'],
+  'tnote-del':     ['teacher'],
   'att-all':       ['teacher','manager','superadmin'],
   /* نمرات */
   'grade-save':    ['teacher','manager','superadmin'],

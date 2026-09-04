@@ -426,3 +426,16 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 .trend-chart{height:150px}
 .trend-chart .col span{font-size:10px;color:var(--muted)}
 .chips{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px 0}
+
+/* ───────── ابزارهای دبیر (دور ۴۴) ───────── */
+.yh-current{background:var(--primary-soft)}
+
+.tn-warn{
+  background:var(--amber-soft);color:var(--amber);
+  border-inline-start:3px solid var(--amber);
+  padding:10px 14px;line-height:1.9;
+}
+.tn-row{
+  border:1px solid var(--border);border-radius:10px;padding:10px 12px;
+  background:var(--bg);
+}
