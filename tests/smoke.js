@@ -2994,15 +2994,19 @@ test('قرارداد سرور: سه دفاع تکمیلی مستند شده‌ا
    شمارندهٔ خروجی را می‌سنجد، نه فقط نبود خطا. */
 function withNotify(cfg, fn) {
   const sid = W('db.schools[0].id');
+  /* ⚠️ صف در ورود خالی می‌شود: آزمون‌های پیشین ده‌ها رکورد جا
+     می‌گذارند و توابعی مثل notifyAutoFlush که کل صف را می‌پیمایند
+     به‌شدت کند می‌شوند. در finally نسخهٔ اصلی برمی‌گردد. */
+  W('(()=>{db._nq0=db.notify_queue.slice();db.notify_queue.length=0;})()');
   W('(()=>{db._nq=db.notify_queue.slice();db._nu=S.user;db._nr='
     + 'byId("schools",' + sid + ').notify_rules||null;'
     + 'S.user=db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
     + 'notifySaveSettings(' + sid + ',' + JSON.stringify(cfg) + ');})()');
   try { return fn(sid); }
   finally {
-    W('(()=>{db.notify_queue=db._nq;S.user=db._nu;'
+    W('(()=>{db.notify_queue=db._nq0||db._nq;S.user=db._nu;'
       + 'update("schools",' + sid + ',{notify_rules:db._nr});'
-      + 'delete db._nq;delete db._nu;delete db._nr;})()');
+      + 'delete db._nq;delete db._nq0;delete db._nu;delete db._nr;})()');
   }
 }
 
@@ -4218,6 +4222,149 @@ test('رویداد: ذخیرهٔ رویداد تازهٔ تقویم پیامک �
       + 'update("schools",' + sid + ',{notify_rules:db._gR});'
       + 'delete db._gQ;delete db._gC;delete db._gU;delete db._gR;'
       + '(typeof idxInvalidate==="function")&&idxInvalidate("calendar");})()');
+  }
+});
+
+/* ── ارسال خودکار و سابقه (گام‌های ۶ و ۹، دور ۴۲) ─────────────── */
+
+test('خودکار: با autoSend خاموش هیچ پیامی سررسید نمی‌شود', () => {
+  withNotify({ enabled: true, autoSend: false, graceMinutes: 20 }, (sid) => {
+    const r = JSON.parse(W('(()=>{db._afQ=db.notify_queue.slice();'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0);'
+      + 'const q=notifyRequest({school_id:' + sid + ',kind:"absence",student_id:st.id,'
+      + 'student_name:"آ",date_fa:"۱"});'
+      + 'if(q)update("notify_queue",q.id,{created_at:new Date(Date.now()-60*60000).toISOString()});'
+      + 'const due=notifyAutoDue(' + sid + ').length;'
+      + 'const res=notifyAutoFlush(' + sid + ');'
+      + 'db.notify_queue=db._afQ;delete db._afQ;'
+      + 'return JSON.stringify({made:!!q,due:due,sent:res.sent});})()'));
+    assert(r.made === true, 'محیط آزمون: پیام ساخته نشد');
+    assert(r.due === 0, '🔴 با خودکارِ خاموش ' + r.due + ' پیام سررسید شد');
+    assert(r.sent === 0, '🔴 با خودکارِ خاموش ' + r.sent + ' پیام رفت');
+  });
+});
+
+test('خودکار: 🔴 درون پنجرهٔ مهلت نمی‌فرستد', () => {
+  /* اگر خودکار بلافاصله بفرستد، پنجرهٔ مهلت اصلاح دبیر بی‌معنا
+     می‌شود: دبیر ۳۰ ثانیه بعد خطایش را می‌فهمد ولی پیام رفته. */
+  withNotify({ enabled: true, autoSend: true, graceMinutes: 20 }, (sid) => {
+    const r = JSON.parse(W('(()=>{db._afQ=db.notify_queue.slice();'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0);'
+      + 'const q=notifyRequest({school_id:' + sid + ',kind:"absence",student_id:st.id,'
+      + 'student_name:"آ",date_fa:"۱"});'
+      + 'const dueNow=notifyAutoDue(' + sid + ').length;'
+      + 'if(q)update("notify_queue",q.id,{created_at:new Date(Date.now()-25*60000).toISOString()});'
+      + 'const dueLater=notifyAutoDue(' + sid + ').length;'
+      + 'db.notify_queue=db._afQ;delete db._afQ;'
+      + 'return JSON.stringify({made:!!q,dueNow:dueNow,dueLater:dueLater});})()'));
+    assert(r.made === true, 'محیط آزمون: پیام ساخته نشد');
+    assert(r.dueNow === 0, '🔴 پیام تازه بلافاصله سررسید شد — پنجرهٔ مهلت بی‌اثر است');
+    assert(r.dueLater === 1, 'پس از پنجرهٔ مهلت باید سررسید شود، شد: ' + r.dueLater);
+  });
+});
+
+test('خودکار: پس از پنجرهٔ مهلت می‌فرستد و اعتبار کم می‌کند', () => {
+  withNotify({ enabled: true, autoSend: true, graceMinutes: 20, dailyCap: 300 }, (sid) => {
+    const r = JSON.parse(W('(()=>{db._afQ=db.notify_queue.slice();'
+      + 'const w=smsWalletOf(' + sid + ');const bal0=w.balance;'
+      + 'update("sms_wallet",w.w.id,{balance:5000});'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0);'
+      + 'const q=notifyRequest({school_id:' + sid + ',kind:"absence",student_id:st.id,'
+      + 'student_name:"آ",date_fa:"۱"});'
+      + 'update("notify_queue",q.id,{created_at:new Date(Date.now()-25*60000).toISOString()});'
+      + 'const before=smsWalletOf(' + sid + ').balance;'
+      + 'const res=notifyAutoFlush(' + sid + ');'
+      + 'const after=smsWalletOf(' + sid + ').balance;'
+      + 'const st2=byId("notify_queue",q.id).status;'
+      + 'update("sms_wallet",w.w.id,{balance:bal0});'
+      + 'db.notify_queue=db._afQ;delete db._afQ;'
+      + 'return JSON.stringify({sent:res.sent,used:res.used,'
+      + 'drop:before-after,status:st2});})()'));
+    assert(r.sent === 1, 'باید ۱ پیام خودکار برود، رفت: ' + r.sent);
+    assert(r.status === 'sent', 'وضعیت باید sent شود: ' + r.status);
+    assert(r.drop === r.used && r.used > 0,
+      'کسر اعتبار با مصرف نخواند: ' + r.drop + ' ≠ ' + r.used);
+  });
+});
+
+test('خودکار: 🔴 سقف روزانه در این حالت دیوار است نه ترمز', () => {
+  /* در مسیر دستی مدیر آگاهانه از سقف رد می‌شود؛ در حالت خودکار
+     کسی نیست که تصمیم بگیرد، پس نباید بی‌اجازه اعتبار مدرسه را
+     تمام کند. */
+  withNotify({ enabled: true, autoSend: true, graceMinutes: 20, dailyCap: 1 }, (sid) => {
+    const r = JSON.parse(W('(()=>{db._afQ=db.notify_queue.slice();'
+      + 'const w=smsWalletOf(' + sid + ');const bal0=w.balance;'
+      + 'update("sms_wallet",w.w.id,{balance:5000});'
+      + 'const kids=db.users.filter(u=>u.role==="student"&&u.school_id===' + sid
+      + '&&notifyParentsOf(u.id).length>0).slice(0,4);'
+      + 'kids.forEach(function(s){var q=notifyRequest({school_id:' + sid + ','
+      + 'kind:"absence",student_id:s.id,student_name:"آ",date_fa:"۱"});'
+      + 'if(q)update("notify_queue",q.id,{created_at:new Date(Date.now()-30*60000).toISOString()});});'
+      + 'const res=notifyAutoFlush(' + sid + ');'
+      + 'update("sms_wallet",w.w.id,{balance:bal0});'
+      + 'db.notify_queue=db._afQ;delete db._afQ;'
+      + 'return JSON.stringify({sent:res.sent,skipped:res.skipped,reason:res.reason});})()'));
+    assert(r.sent === 0, '🔴 با سقف ۱ قطعه ' + r.sent + ' پیام رفت');
+    assert(r.reason === 'daily-cap', 'دلیل باید daily-cap باشد: ' + r.reason);
+    assert(r.skipped > 0, 'پیام‌های ردشده باید شمرده شوند');
+  });
+});
+
+test('سابقه: 🔴 وضعیت اولیه در دفترچه بازنویسی نمی‌شود', () => {
+  /* 🔴 باگ کشف‌شده در دور ۴۲: applyOp شیءِ زندهٔ رکورد را در
+     دفترچه می‌گذاشت، پس هر update بعدی گذشته را بازنویسی می‌کرد و
+     سابقه دروغ می‌گفت («ثبت present» در حالی که absent ثبت شده
+     بود). رفع: رونوشت سطحی هنگام درج. */
+  const sid = W('db.schools[0].id');
+  W('(()=>{db._ahA=db.attendance.slice();})()');
+  try {
+    const r = JSON.parse(W('(()=>{'
+      + 'const cl=db.classes.find(c=>c.school_id===' + sid + ');'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid + ');'
+      + 'const rec=insert("attendance",{school_id:' + sid + ',class_id:cl?cl.id:null,'
+      + 'student_id:st.id,date:"2026-12-20",status:"absent",note:null});'
+      + 'update("attendance",rec.id,{status:"present"});'
+      + 'update("attendance",rec.id,{status:"late"});'
+      + 'const h=attHistory(rec.id);'
+      + 'return JSON.stringify({n:h.length,'
+      + 'chain:h.map(function(x){return (x.from||"-")+">"+x.to;}).join(","),'
+      + 'first:h[0]?h[0].to:null});})()'));
+    assert(r.n === 3, 'باید ۳ رویداد ثبت شود، شد: ' + r.n);
+    assert(r.first === 'absent',
+      '🔴 وضعیت اولیه بازنویسی شد: «' + r.first + '» به‌جای «absent»');
+    assert(r.chain === '->absent,absent>present,present>late',
+      'زنجیرهٔ تغییرات غلط است: ' + r.chain);
+  } finally {
+    W('(()=>{db.attendance=db._ahA;delete db._ahA;'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("attendance");})()');
+  }
+});
+
+test('سابقه: کارت نمایش هشدار «سند رسمی نیست» دارد', () => {
+  /* ⚠️ op.by ادعای سمت مرورگر است. تا اتصال سرور، این سابقه برای
+     شفافیت است نه اثبات حقوقی — و کاربر باید همین را ببیند. */
+  const sid = W('db.schools[0].id');
+  W('(()=>{db._ahB=db.attendance.slice();})()');
+  try {
+    const r = JSON.parse(W('(()=>{'
+      + 'const cl=db.classes.find(c=>c.school_id===' + sid + ');'
+      + 'const st=db.users.find(u=>u.role==="student"&&u.school_id===' + sid + ');'
+      + 'const rec=insert("attendance",{school_id:' + sid + ',class_id:cl?cl.id:null,'
+      + 'student_id:st.id,date:"2026-12-21",status:"absent",note:null});'
+      + 'update("attendance",rec.id,{status:"present"});'
+      + 'const card=attHistoryCard(rec.id);'
+      + 'return JSON.stringify({len:card.length,'
+      + 'warn:card.indexOf("سند رسمی")>-1,'
+      + 'empty:attHistoryCard(99999999)===""});})()'));
+    assert(r.len > 100, 'کارت سابقه ساخته نشد: ' + r.len);
+    assert(r.warn === true, '🔴 هشدار «سند رسمی نیست» در کارت نیست');
+    assert(r.empty === true, 'رکورد ناموجود باید رشتهٔ خالی بدهد');
+  } finally {
+    W('(()=>{db.attendance=db._ahB;delete db._ahB;'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("attendance");})()');
   }
 });
 

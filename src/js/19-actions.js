@@ -326,6 +326,14 @@ document.addEventListener('click',e=>{
      attDraftSetAll(cid,date,studentsOfClass(cid).map(s=>s.id),st);
      toast('همه «'+ATT_FA[st]+'» علامت خوردند — برای ذخیره «مرور و ثبت نهایی» را بزنید','ok');
      render();},
+   /* گام ۹: نمایش سابقهٔ تغییرات یک رکورد حضور و غیاب */
+   'att-hist'(){
+     const h=(typeof attHistoryCard==='function')?attHistoryCard(id):'';
+     const r=byId('attendance',id);
+     const st=r?byId('users',r.student_id):null;
+     openModal(modalTpl('سابقهٔ تغییرات — '+esc(st?st.full_name:'')+' · '+(r?jalali(r.date):''),
+       h||'<div class="small muted">تغییری برای این رکورد ثبت نشده است.</div>',null));
+   },
    'att-tip-ok'(){
      const seen=Store.getJSON(ATT_TIP_KEY,{})||{};
      seen[(S.user&&S.user.id)||0]=1;

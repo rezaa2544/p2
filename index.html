@@ -412,6 +412,17 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
   margin-top:12px;padding:10px 12px;border-radius:10px;
   background:var(--primary-soft);line-height:2;
 }
+
+/* ───────── سابقهٔ تغییرات حضور و غیاب (گام ۹، دور ۴۲) ───────── */
+.att-hist{
+  margin-top:14px;padding:12px 14px;border-radius:10px;
+  background:var(--bg);border:1px solid var(--border);
+}
+.att-hist-row{
+  display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;
+  padding:6px 0;border-bottom:1px dashed var(--border);line-height:1.9;
+}
+.att-hist-row:last-of-type{border-bottom:none}
 /* ==================== موبایل: تطبیق کامل با عرض صفحه ==================== */
 @media(max-width:900px){
 .app{grid-template-columns:1fr}
@@ -1167,6 +1178,13 @@ function applyOp(op,record=true){
       op.by = S.user.id;
       op.at = new Date().toISOString();
     }
+    /* 🔴 دام کشف‌شده در دور ۴۲: در عملیات درج، `op.data` همان شیءِ
+       زندهٔ رکورد است. هر `update` بعدی روی همان شیء می‌نویسد و
+       گذشتهٔ دفترچه را بازنویسی می‌کند ⇒ سابقهٔ تغییرات دروغ
+       می‌گفت («ثبت present» در حالی که absent ثبت شده بود).
+       یک رونوشت سطحی می‌گیریم؛ هزینه‌اش ناچیز است و فقط هنگام
+       ثبت در دفترچه رخ می‌دهد، نه در مسیر خواندن. */
+    if(op.t==='ins' && op.data) op = Object.assign({}, op, { data: Object.assign({}, op.data) });
     log.push(op);saveLog();
     /* هر تغییر واقعی کاربر وارد صف همگام‌سازی با سرور می‌شود */
     if(typeof enqueueOp==='function' && !SYNC_MUTED) enqueueOp(op);
@@ -2075,6 +2093,9 @@ var ACTION_ROLES = {
   'att-commit':    ['teacher','manager','superadmin'],
   'att-discard':   ['teacher','manager','superadmin'],
   'att-tip-ok':    ['teacher','manager','superadmin','student','parent','edu_office'],
+  /* سابقه برای شفافیت با ولی است، پس همهٔ نقش‌ها می‌بینند.
+     محتوایش فقط دربارهٔ رکوردی است که کاربر از قبل دسترسی دارد. */
+  'att-hist':      ['teacher','manager','superadmin','student','parent','edu_office'],
   'att-all':       ['teacher','manager','superadmin'],
   /* نمرات */
   'grade-save':    ['teacher','manager','superadmin'],
@@ -2868,8 +2889,9 @@ function viewRecord(sid){
     :empty('📝','نمره‌ای ثبت نشده','به محض ثبت نمره، کارنامه اینجا نمایش داده می‌شود.');
   if(S.tab==='attendance'){const cnt=k=>att.filter(a=>a.status===k).length;
     body= att.length?`<div class="card-body row">${['present','absent','late','excused'].map(k=>`<span class="badge ${ATT_BADGE[k]}">${ATT_FA[k]}: ${fa(cnt(k))} روز</span>`).join('')}</div>
-     <div class="table-wrap"><table><thead><tr><th>تاریخ</th><th>وضعیت</th><th>توضیح</th></tr></thead><tbody>
-     ${att.slice(0,60).map(r=>`<tr><td>${jalali(r.date)}</td><td><span class="badge ${ATT_BADGE[r.status]}">${ATT_FA[r.status]}</span></td><td class="muted">${esc(r.note||'—')}</td></tr>`).join('')}</tbody></table></div>`
+     <div class="table-wrap"><table><thead><tr><th>تاریخ</th><th>وضعیت</th><th>توضیح</th><th>تغییرات</th></tr></thead><tbody>
+     ${att.slice(0,60).map(r=>`<tr><td>${jalali(r.date)}</td><td><span class="badge ${ATT_BADGE[r.status]}">${ATT_FA[r.status]}</span></td><td class="muted">${esc(r.note||'—')}</td>
+      <td>${(typeof attHistory==='function'&&attHistory(r.id).length>1)?`<button class="btn ghost sm" data-act="att-hist" data-id="${escAttr(r.id)}">📜 سابقه</button>`:'<span class="small muted">—</span>'}</td></tr>`).join('')}</tbody></table></div>`
      :empty('✅','سابقه حضور و غیاب خالی است','');}
   if(S.tab==='discipline') body= disc.length?`<div class="card-body row">
      <span class="badge b-green">مجموع مثبت: ${fa(disc.filter(d=>d.points>0).reduce((a,b)=>a+b.points,0))}</span>
@@ -6846,6 +6868,14 @@ document.addEventListener('click',e=>{
      attDraftSetAll(cid,date,studentsOfClass(cid).map(s=>s.id),st);
      toast('همه «'+ATT_FA[st]+'» علامت خوردند — برای ذخیره «مرور و ثبت نهایی» را بزنید','ok');
      render();},
+   /* گام ۹: نمایش سابقهٔ تغییرات یک رکورد حضور و غیاب */
+   'att-hist'(){
+     const h=(typeof attHistoryCard==='function')?attHistoryCard(id):'';
+     const r=byId('attendance',id);
+     const st=r?byId('users',r.student_id):null;
+     openModal(modalTpl('سابقهٔ تغییرات — '+esc(st?st.full_name:'')+' · '+(r?jalali(r.date):''),
+       h||'<div class="small muted">تغییری برای این رکورد ثبت نشده است.</div>',null));
+   },
    'att-tip-ok'(){
      const seen=Store.getJSON(ATT_TIP_KEY,{})||{};
      seen[(S.user&&S.user.id)||0]=1;
@@ -9947,6 +9977,13 @@ function safeHTML(html){
  * چشم کاربر هیچ پرشی نمی‌بیند.
  */
 function render(){
+  /* ⚠️ ارسال خودکار پیامک: پیش از ساخت صفحه وارسی می‌شود تا اگر
+     چیزی رفت، شمارنده‌های همان رندر به‌روز باشند. محافظ ۳۰ ثانیه‌ای
+     درون خودِ تابع است، پس فراخوانی مکرر بی‌ضرر است. */
+  if(typeof notifyAutoTick === 'function'){
+    try{ notifyAutoTick(); }catch(e){}
+  }
+
   /* موقعیت اسکرول منو و ناحیهٔ محتوا پیش از بازسازی */
   var navEl = document.querySelector('.sidebar');
   var navTop = navEl ? navEl.scrollTop : 0;
@@ -13366,6 +13403,185 @@ function notifyEvent(schoolId, text, opts){
     });
   });
   return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بخش ۱۳ ▸ ارسال خودکار (گام ۶)
+   ═══════════════════════════════════════════════════════════════════
+   تا پیش از این، `autoSend` فقط رکورد را با `auto:1` برچسب می‌زد و
+   پیام همچنان منتظر تأیید دستی می‌ماند — یعنی وعده‌ای که به مدیر
+   داده شده بود («وقتی وقت سر زدن ندارم خودکار برود») عمل نمی‌شد.
+
+   ⚠️ چرا بلافاصله نمی‌فرستیم؟ اگر پیام همان لحظهٔ ساخت برود،
+   پنجرهٔ مهلت اصلاح دبیر (بخش ۵) بی‌معنا می‌شود: دبیر ۳۰ ثانیه بعد
+   خطایش را می‌فهمد ولی پیام رفته و باید اصلاحیه برود. پس ارسال
+   خودکار هم **پس از پایان پنجرهٔ مهلت** انجام می‌شود.
+
+   ⚠️ چرا زمان‌سنج (setInterval) نگذاشتیم؟ برنامه تک‌فایلی و آفلاین
+   است؛ ممکن است ساعت‌ها بسته باشد. به‌جای زمان‌سنج، هر بار که
+   برنامه رندر می‌شود صف وارسی می‌شود (`notifyAutoFlush`). این هم
+   ساده‌تر است هم در حالت آفلاین درست کار می‌کند.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/**
+ * پیام‌های آمادهٔ ارسال خودکار یک مدرسه.
+ * «آماده» یعنی: معلق · نشان‌دار `auto` · پنجرهٔ مهلتش تمام شده.
+ */
+function notifyAutoDue(schoolId){
+  var cfg = notifySettings(schoolId);
+  if(!cfg.enabled || !cfg.autoSend) return [];
+  var out = [];
+  (db.notify_queue || []).forEach(function(q){
+    if(q.school_id !== schoolId) return;
+    if(q.status !== 'pending') return;
+    if(!q.auto) return;                       /* پیش از روشن‌شدن ساخته شده */
+    if(minutesSince(q.created_at) < cfg.graceMinutes) return;
+    out.push(q.id);
+  });
+  return out;
+}
+
+/**
+ * ارسال خودکار پیام‌های سررسیده.
+ *
+ * برمی‌گرداند: {sent, used, skipped, reason} — همان قرارداد notifySend.
+ *
+ * ⚠️ سقف روزانه اینجا **دیوار** است نه ترمز، برخلاف مسیر دستی.
+ * دلیل: در مسیر دستی مدیر آگاهانه تصمیم می‌گیرد از سقف رد شود؛
+ * در حالت خودکار کسی نیست که تصمیم بگیرد، پس نباید بی‌اجازه
+ * اعتبار مدرسه را تمام کند. پیام‌ها معلق می‌مانند تا مدیر ببیند.
+ */
+function notifyAutoFlush(schoolId){
+  var out = { sent: 0, used: 0, skipped: 0, reason: null };
+  var ids = notifyAutoDue(schoolId);
+  if(!ids.length) return out;
+
+  var cfg = notifySettings(schoolId);
+  var today = notifySentToday(schoolId);
+  var room = (Number(cfg.dailyCap) || 0) - today;
+  if(room <= 0){
+    out.skipped = ids.length;
+    out.reason = 'daily-cap';
+    return out;
+  }
+
+  /* تا جایی که سقف اجازه می‌دهد، به ترتیب قدیمی‌ترین */
+  var pick = [], used = 0;
+  ids.sort(function(a, b){
+    var qa = byId('notify_queue', a), qb = byId('notify_queue', b);
+    return String(qa && qa.created_at).localeCompare(String(qb && qb.created_at));
+  });
+  for(var i = 0; i < ids.length; i++){
+    var q = byId('notify_queue', ids[i]);
+    if(!q) continue;
+    var need = q.parts * (q.parent_ids || []).length;
+    if(used + need > room){ out.skipped++; out.reason = 'daily-cap'; continue; }
+    pick.push(q.id);
+    used += need;
+  }
+  if(!pick.length) return out;
+
+  var r = notifySend(pick);
+  out.sent = r.sent;
+  out.used = r.used;
+  out.skipped += r.skipped;
+  if(r.reason) out.reason = r.reason;
+  return out;
+}
+
+/**
+ * قلاب رندر: هر بار که برنامه صفحه می‌سازد، صف خودکار وارسی شود.
+ *
+ * ⚠️ محافظ تکرار: رندر ممکن است چند بار پشت‌سرهم رخ دهد. بدون
+ * این محافظ، یک ارسال ممکن بود چند بار تلاش شود. فاصلهٔ کمینه
+ * ۳۰ ثانیه است.
+ */
+var _autoFlushAt = 0;
+
+function notifyAutoTick(){
+  if(typeof S === 'undefined' || !S.user) return null;
+  var sid = S.user.school_id;
+  if(!sid) return null;
+  var now = Date.now();
+  if(now - _autoFlushAt < 30000) return null;
+  _autoFlushAt = now;
+  var r = notifyAutoFlush(sid);
+  if(r.sent && typeof toast === 'function'){
+    toast(fa(r.sent) + ' پیامک خودکار برای اولیا ارسال شد', 'ok');
+  }
+  return r;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بخش ۱۴ ▸ سابقهٔ تغییرات حضور و غیاب (گام ۹)
+   ═══════════════════════════════════════════════════════════════════
+   وقتی ولی می‌پرسد «چرا پیامک غیبت گرفتم در حالی که بچه‌ام مدرسه
+   بود؟»، باید بشود نشان داد چه کسی، کِی، چه چیزی را ثبت کرد.
+
+   ⚠️ چیز تازه‌ای ذخیره نمی‌شود. `applyOp` در 03-persistence.js از
+   قبل `op.by` و `op.at` را روی هر تغییر می‌گذارد؛ اینجا فقط
+   همان دفترچه برای یک رکورد مشخص فیلتر می‌شود.
+
+   🔴 هشدار حقوقی: `op.by` ادعای سمت مرورگر است، نه اثبات. تا روز
+   اتصال سرور (قرارداد امنیتی، بند «op.by ادعاست») این سابقه برای
+   **شفافیت** معتبر است نه برای **اثبات**. رابط کاربری هم همین را
+   می‌گوید تا کسی رویش حساب حقوقی باز نکند.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/**
+ * تاریخچهٔ یک رکورد حضور و غیاب از دفترچهٔ عملیات.
+ * خروجی: [{at, by, name, from, to, kind}] — تازه‌ترین آخر.
+ */
+function attHistory(attId){
+  var src = (typeof log !== 'undefined') ? log : [];
+  var out = [], last = null;
+  for(var i = 0; i < src.length; i++){
+    var op = src[i];
+    if(!op || op.c !== 'attendance') continue;
+    var isMine = (op.t === 'ins')
+      ? (op.data && op.data.id === attId)
+      : (op.id === attId);
+    if(!isMine) continue;
+    var to = op.data ? op.data.status : null;
+    if(op.t === 'del'){ to = null; }
+    else if(to === undefined || to === null){ continue; }  /* تغییرِ بی‌ربط به وضعیت */
+    var u = op.by ? byId('users', op.by) : null;
+    out.push({
+      at:   op.at || null,
+      by:   op.by || null,
+      name: u ? u.full_name : 'نامشخص',
+      from: last,
+      to:   to,
+      kind: op.t
+    });
+    last = to;
+  }
+  return out;
+}
+
+/**
+ * کارت سابقه برای نمایش زیر برگهٔ حضور و غیاب.
+ * اگر رکوردی نباشد یا تاریخچه خالی باشد، رشتهٔ خالی برمی‌گرداند.
+ */
+function attHistoryCard(attId){
+  var h = attHistory(attId);
+  if(!h.length) return '';
+  var fa2 = function(s){ return (typeof ATT_FA === 'object' && ATT_FA[s]) ? ATT_FA[s] : (s || '—'); };
+  var rows = h.map(function(e){
+    var when = e.at ? shortStamp(e.at) : '—';
+    var what = (e.kind === 'ins')
+      ? 'ثبت «' + esc(fa2(e.to)) + '»'
+      : (e.kind === 'del' ? 'حذف رکورد'
+         : 'تغییر از «' + esc(fa2(e.from)) + '» به «' + esc(fa2(e.to)) + '»');
+    return '<div class="att-hist-row"><span class="small muted">' + esc(when) + '</span>'
+      + '<b class="small">' + esc(e.name) + '</b>'
+      + '<span class="small">' + what + '</span></div>';
+  }).join('');
+  return '<div class="att-hist"><div class="small muted" style="margin-bottom:6px">'
+    + '📜 سابقهٔ این رکورد</div>' + rows
+    + '<div class="small muted" style="margin-top:8px;line-height:1.9">'
+    + 'این سابقه از دفترچهٔ تغییرات دستگاه خوانده می‌شود و برای شفافیت است؛ '
+    + 'تا زمان اتصال به سرور، سند رسمی به شمار نمی‌رود.</div></div>';
 }
 
 </script>

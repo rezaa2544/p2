@@ -90,6 +90,9 @@ var ACTION_ROLES = {
   'att-commit':    ['teacher','manager','superadmin'],
   'att-discard':   ['teacher','manager','superadmin'],
   'att-tip-ok':    ['teacher','manager','superadmin','student','parent','edu_office'],
+  /* سابقه برای شفافیت با ولی است، پس همهٔ نقش‌ها می‌بینند.
+     محتوایش فقط دربارهٔ رکوردی است که کاربر از قبل دسترسی دارد. */
+  'att-hist':      ['teacher','manager','superadmin','student','parent','edu_office'],
   'att-all':       ['teacher','manager','superadmin'],
   /* نمرات */
   'grade-save':    ['teacher','manager','superadmin'],

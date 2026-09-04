@@ -743,6 +743,13 @@ function safeHTML(html){
  * چشم کاربر هیچ پرشی نمی‌بیند.
  */
 function render(){
+  /* ⚠️ ارسال خودکار پیامک: پیش از ساخت صفحه وارسی می‌شود تا اگر
+     چیزی رفت، شمارنده‌های همان رندر به‌روز باشند. محافظ ۳۰ ثانیه‌ای
+     درون خودِ تابع است، پس فراخوانی مکرر بی‌ضرر است. */
+  if(typeof notifyAutoTick === 'function'){
+    try{ notifyAutoTick(); }catch(e){}
+  }
+
   /* موقعیت اسکرول منو و ناحیهٔ محتوا پیش از بازسازی */
   var navEl = document.querySelector('.sidebar');
   var navTop = navEl ? navEl.scrollTop : 0;

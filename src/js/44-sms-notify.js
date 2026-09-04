@@ -1156,3 +1156,182 @@ function notifyEvent(schoolId, text, opts){
   });
   return out;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   بخش ۱۳ ▸ ارسال خودکار (گام ۶)
+   ═══════════════════════════════════════════════════════════════════
+   تا پیش از این، `autoSend` فقط رکورد را با `auto:1` برچسب می‌زد و
+   پیام همچنان منتظر تأیید دستی می‌ماند — یعنی وعده‌ای که به مدیر
+   داده شده بود («وقتی وقت سر زدن ندارم خودکار برود») عمل نمی‌شد.
+
+   ⚠️ چرا بلافاصله نمی‌فرستیم؟ اگر پیام همان لحظهٔ ساخت برود،
+   پنجرهٔ مهلت اصلاح دبیر (بخش ۵) بی‌معنا می‌شود: دبیر ۳۰ ثانیه بعد
+   خطایش را می‌فهمد ولی پیام رفته و باید اصلاحیه برود. پس ارسال
+   خودکار هم **پس از پایان پنجرهٔ مهلت** انجام می‌شود.
+
+   ⚠️ چرا زمان‌سنج (setInterval) نگذاشتیم؟ برنامه تک‌فایلی و آفلاین
+   است؛ ممکن است ساعت‌ها بسته باشد. به‌جای زمان‌سنج، هر بار که
+   برنامه رندر می‌شود صف وارسی می‌شود (`notifyAutoFlush`). این هم
+   ساده‌تر است هم در حالت آفلاین درست کار می‌کند.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/**
+ * پیام‌های آمادهٔ ارسال خودکار یک مدرسه.
+ * «آماده» یعنی: معلق · نشان‌دار `auto` · پنجرهٔ مهلتش تمام شده.
+ */
+function notifyAutoDue(schoolId){
+  var cfg = notifySettings(schoolId);
+  if(!cfg.enabled || !cfg.autoSend) return [];
+  var out = [];
+  (db.notify_queue || []).forEach(function(q){
+    if(q.school_id !== schoolId) return;
+    if(q.status !== 'pending') return;
+    if(!q.auto) return;                       /* پیش از روشن‌شدن ساخته شده */
+    if(minutesSince(q.created_at) < cfg.graceMinutes) return;
+    out.push(q.id);
+  });
+  return out;
+}
+
+/**
+ * ارسال خودکار پیام‌های سررسیده.
+ *
+ * برمی‌گرداند: {sent, used, skipped, reason} — همان قرارداد notifySend.
+ *
+ * ⚠️ سقف روزانه اینجا **دیوار** است نه ترمز، برخلاف مسیر دستی.
+ * دلیل: در مسیر دستی مدیر آگاهانه تصمیم می‌گیرد از سقف رد شود؛
+ * در حالت خودکار کسی نیست که تصمیم بگیرد، پس نباید بی‌اجازه
+ * اعتبار مدرسه را تمام کند. پیام‌ها معلق می‌مانند تا مدیر ببیند.
+ */
+function notifyAutoFlush(schoolId){
+  var out = { sent: 0, used: 0, skipped: 0, reason: null };
+  var ids = notifyAutoDue(schoolId);
+  if(!ids.length) return out;
+
+  var cfg = notifySettings(schoolId);
+  var today = notifySentToday(schoolId);
+  var room = (Number(cfg.dailyCap) || 0) - today;
+  if(room <= 0){
+    out.skipped = ids.length;
+    out.reason = 'daily-cap';
+    return out;
+  }
+
+  /* تا جایی که سقف اجازه می‌دهد، به ترتیب قدیمی‌ترین */
+  var pick = [], used = 0;
+  ids.sort(function(a, b){
+    var qa = byId('notify_queue', a), qb = byId('notify_queue', b);
+    return String(qa && qa.created_at).localeCompare(String(qb && qb.created_at));
+  });
+  for(var i = 0; i < ids.length; i++){
+    var q = byId('notify_queue', ids[i]);
+    if(!q) continue;
+    var need = q.parts * (q.parent_ids || []).length;
+    if(used + need > room){ out.skipped++; out.reason = 'daily-cap'; continue; }
+    pick.push(q.id);
+    used += need;
+  }
+  if(!pick.length) return out;
+
+  var r = notifySend(pick);
+  out.sent = r.sent;
+  out.used = r.used;
+  out.skipped += r.skipped;
+  if(r.reason) out.reason = r.reason;
+  return out;
+}
+
+/**
+ * قلاب رندر: هر بار که برنامه صفحه می‌سازد، صف خودکار وارسی شود.
+ *
+ * ⚠️ محافظ تکرار: رندر ممکن است چند بار پشت‌سرهم رخ دهد. بدون
+ * این محافظ، یک ارسال ممکن بود چند بار تلاش شود. فاصلهٔ کمینه
+ * ۳۰ ثانیه است.
+ */
+var _autoFlushAt = 0;
+
+function notifyAutoTick(){
+  if(typeof S === 'undefined' || !S.user) return null;
+  var sid = S.user.school_id;
+  if(!sid) return null;
+  var now = Date.now();
+  if(now - _autoFlushAt < 30000) return null;
+  _autoFlushAt = now;
+  var r = notifyAutoFlush(sid);
+  if(r.sent && typeof toast === 'function'){
+    toast(fa(r.sent) + ' پیامک خودکار برای اولیا ارسال شد', 'ok');
+  }
+  return r;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بخش ۱۴ ▸ سابقهٔ تغییرات حضور و غیاب (گام ۹)
+   ═══════════════════════════════════════════════════════════════════
+   وقتی ولی می‌پرسد «چرا پیامک غیبت گرفتم در حالی که بچه‌ام مدرسه
+   بود؟»، باید بشود نشان داد چه کسی، کِی، چه چیزی را ثبت کرد.
+
+   ⚠️ چیز تازه‌ای ذخیره نمی‌شود. `applyOp` در 03-persistence.js از
+   قبل `op.by` و `op.at` را روی هر تغییر می‌گذارد؛ اینجا فقط
+   همان دفترچه برای یک رکورد مشخص فیلتر می‌شود.
+
+   🔴 هشدار حقوقی: `op.by` ادعای سمت مرورگر است، نه اثبات. تا روز
+   اتصال سرور (قرارداد امنیتی، بند «op.by ادعاست») این سابقه برای
+   **شفافیت** معتبر است نه برای **اثبات**. رابط کاربری هم همین را
+   می‌گوید تا کسی رویش حساب حقوقی باز نکند.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/**
+ * تاریخچهٔ یک رکورد حضور و غیاب از دفترچهٔ عملیات.
+ * خروجی: [{at, by, name, from, to, kind}] — تازه‌ترین آخر.
+ */
+function attHistory(attId){
+  var src = (typeof log !== 'undefined') ? log : [];
+  var out = [], last = null;
+  for(var i = 0; i < src.length; i++){
+    var op = src[i];
+    if(!op || op.c !== 'attendance') continue;
+    var isMine = (op.t === 'ins')
+      ? (op.data && op.data.id === attId)
+      : (op.id === attId);
+    if(!isMine) continue;
+    var to = op.data ? op.data.status : null;
+    if(op.t === 'del'){ to = null; }
+    else if(to === undefined || to === null){ continue; }  /* تغییرِ بی‌ربط به وضعیت */
+    var u = op.by ? byId('users', op.by) : null;
+    out.push({
+      at:   op.at || null,
+      by:   op.by || null,
+      name: u ? u.full_name : 'نامشخص',
+      from: last,
+      to:   to,
+      kind: op.t
+    });
+    last = to;
+  }
+  return out;
+}
+
+/**
+ * کارت سابقه برای نمایش زیر برگهٔ حضور و غیاب.
+ * اگر رکوردی نباشد یا تاریخچه خالی باشد، رشتهٔ خالی برمی‌گرداند.
+ */
+function attHistoryCard(attId){
+  var h = attHistory(attId);
+  if(!h.length) return '';
+  var fa2 = function(s){ return (typeof ATT_FA === 'object' && ATT_FA[s]) ? ATT_FA[s] : (s || '—'); };
+  var rows = h.map(function(e){
+    var when = e.at ? shortStamp(e.at) : '—';
+    var what = (e.kind === 'ins')
+      ? 'ثبت «' + esc(fa2(e.to)) + '»'
+      : (e.kind === 'del' ? 'حذف رکورد'
+         : 'تغییر از «' + esc(fa2(e.from)) + '» به «' + esc(fa2(e.to)) + '»');
+    return '<div class="att-hist-row"><span class="small muted">' + esc(when) + '</span>'
+      + '<b class="small">' + esc(e.name) + '</b>'
+      + '<span class="small">' + what + '</span></div>';
+  }).join('');
+  return '<div class="att-hist"><div class="small muted" style="margin-bottom:6px">'
+    + '📜 سابقهٔ این رکورد</div>' + rows
+    + '<div class="small muted" style="margin-top:8px;line-height:1.9">'
+    + 'این سابقه از دفترچهٔ تغییرات دستگاه خوانده می‌شود و برای شفافیت است؛ '
+    + 'تا زمان اتصال به سرور، سند رسمی به شمار نمی‌رود.</div></div>';
+}

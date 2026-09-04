@@ -100,6 +100,13 @@ function applyOp(op,record=true){
       op.by = S.user.id;
       op.at = new Date().toISOString();
     }
+    /* 🔴 دام کشف‌شده در دور ۴۲: در عملیات درج، `op.data` همان شیءِ
+       زندهٔ رکورد است. هر `update` بعدی روی همان شیء می‌نویسد و
+       گذشتهٔ دفترچه را بازنویسی می‌کند ⇒ سابقهٔ تغییرات دروغ
+       می‌گفت («ثبت present» در حالی که absent ثبت شده بود).
+       یک رونوشت سطحی می‌گیریم؛ هزینه‌اش ناچیز است و فقط هنگام
+       ثبت در دفترچه رخ می‌دهد، نه در مسیر خواندن. */
+    if(op.t==='ins' && op.data) op = Object.assign({}, op, { data: Object.assign({}, op.data) });
     log.push(op);saveLog();
     /* هر تغییر واقعی کاربر وارد صف همگام‌سازی با سرور می‌شود */
     if(typeof enqueueOp==='function' && !SYNC_MUTED) enqueueOp(op);

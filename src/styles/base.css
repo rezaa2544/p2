@@ -402,3 +402,14 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
   margin-top:12px;padding:10px 12px;border-radius:10px;
   background:var(--primary-soft);line-height:2;
 }
+
+/* ───────── سابقهٔ تغییرات حضور و غیاب (گام ۹، دور ۴۲) ───────── */
+.att-hist{
+  margin-top:14px;padding:12px 14px;border-radius:10px;
+  background:var(--bg);border:1px solid var(--border);
+}
+.att-hist-row{
+  display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;
+  padding:6px 0;border-bottom:1px dashed var(--border);line-height:1.9;
+}
+.att-hist-row:last-of-type{border-bottom:none}

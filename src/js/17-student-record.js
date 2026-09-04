@@ -44,8 +44,9 @@ function viewRecord(sid){
     :empty('📝','نمره‌ای ثبت نشده','به محض ثبت نمره، کارنامه اینجا نمایش داده می‌شود.');
   if(S.tab==='attendance'){const cnt=k=>att.filter(a=>a.status===k).length;
     body= att.length?`<div class="card-body row">${['present','absent','late','excused'].map(k=>`<span class="badge ${ATT_BADGE[k]}">${ATT_FA[k]}: ${fa(cnt(k))} روز</span>`).join('')}</div>
-     <div class="table-wrap"><table><thead><tr><th>تاریخ</th><th>وضعیت</th><th>توضیح</th></tr></thead><tbody>
-     ${att.slice(0,60).map(r=>`<tr><td>${jalali(r.date)}</td><td><span class="badge ${ATT_BADGE[r.status]}">${ATT_FA[r.status]}</span></td><td class="muted">${esc(r.note||'—')}</td></tr>`).join('')}</tbody></table></div>`
+     <div class="table-wrap"><table><thead><tr><th>تاریخ</th><th>وضعیت</th><th>توضیح</th><th>تغییرات</th></tr></thead><tbody>
+     ${att.slice(0,60).map(r=>`<tr><td>${jalali(r.date)}</td><td><span class="badge ${ATT_BADGE[r.status]}">${ATT_FA[r.status]}</span></td><td class="muted">${esc(r.note||'—')}</td>
+      <td>${(typeof attHistory==='function'&&attHistory(r.id).length>1)?`<button class="btn ghost sm" data-act="att-hist" data-id="${escAttr(r.id)}">📜 سابقه</button>`:'<span class="small muted">—</span>'}</td></tr>`).join('')}</tbody></table></div>`
      :empty('✅','سابقه حضور و غیاب خالی است','');}
   if(S.tab==='discipline') body= disc.length?`<div class="card-body row">
      <span class="badge b-green">مجموع مثبت: ${fa(disc.filter(d=>d.points>0).reduce((a,b)=>a+b.points,0))}</span>
