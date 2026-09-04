@@ -178,40 +178,45 @@ document.addEventListener('click',e=>{
      }
      if(c.id)update('classes',c.id,data);else insert('classes',data);
      closeModal();toast('ذخیره شد','ok');render();},
-   /* ── زمان‌بندی زنگ‌ها ────────────────────────────────────────
-      مدیر مدرسه ساعت شروع، طول زنگ درس و تفریح را خودش تعیین می‌کند
-      چون در هر منطقه و مدرسه متفاوت است. */
+   /* ── زمان‌بندی زنگ‌ها (نسخهٔ ۲ — به تفکیک روز، دور ۶۳) ──
+      مدیر ساعت شروع هر روز و ساعت پایان هر بازه را خودش تعیین
+      می‌کند؛ زنجیرهٔ بازه‌ها خودکار جابه‌جا می‌شود. */
    'bell-edit'(){
      if(['manager','superadmin'].indexOf(S.user.role)<0){toast('دسترسی ندارید','err');return;}
      var sid=S.user.role==='superadmin'?(Number(S.filters.bschool)||db.schools[0].id):S.user.school_id;
      bellModal(sid);
    },
    'bell-add'(){
+     var ed=window._edit; if(!ed||!ed.days)return;
+     var day=Number(e.target.dataset.day);
      var kind=e.target.dataset.kind==='break'?'break':'lesson';
-     var box=$('#bl_rows'); if(!box)return;
-     var i=box.querySelectorAll('.bell-edit-row').length;
-     box.insertAdjacentHTML('beforeend',bellRow({kind:kind,min:kind==='break'?10:45},i));
+     ed.days[day].slots.push({kind:kind,min:kind==='break'?10:45});
+     bellRenderDay(day);
    },
    'bell-del'(){
+     var ed=window._edit; if(!ed||!ed.days)return;
+     var day=Number(e.target.dataset.day);
      var row=e.target.closest('.bell-edit-row');
-     if(row)row.remove();
+     if(!row)return;
+     var i=Number(row.dataset.i);
+     if(ed.days[day].slots.length<=1){toast('دست‌کم یک زنگ لازم است','err');return;}
+     ed.days[day].slots.splice(i,1);
+     bellRenderDay(day);
+   },
+   /* کپی ساعت روز قبل — روز شنبه «روز قبل» ندارد */
+   'bell-copy-prev'(){
+     var ed=window._edit; if(!ed||!ed.days)return;
+     var day=Number(e.target.dataset.day);
+     if(day<1)return;
+     ed.days[day]={start:ed.days[day-1].start,
+       slots:ed.days[day-1].slots.map(function(x){return {kind:x.kind,min:Number(x.min)||0};})};
+     bellRenderDay(day);
+     toast('ساعت '+DAYS[day-1]+' روی '+DAYS[day]+' کپی شد','ok');
    },
    'bell-save'(){
-     var sid=(window._edit||{}).school_id;
-     if(!sid){toast('مدرسه مشخص نیست','err');return;}
-     /* الگوی آماده انتخاب شده؟ همان اعمال شود */
-     var pk=V('bl_preset');
-     if(pk){
-       var pr=bellApplyPreset(sid,pk);
-       toast(pr.msg,pr.ok?'ok':'err');
-       if(pr.ok){closeModal();render();}
-       return;
-     }
-     var start=V('bl_start');
-     var slots=$$('#bl_rows .bl-min').map(function(inp){
-       return {kind:inp.dataset.kind,min:Number(inp.value)||0}; });
-     if(!slots.length){toast('دست‌کم یک زنگ لازم است','err');return;}
-     var r=bellSave(sid,start,slots);
+     var ed=window._edit;
+     if(!ed||!ed.days){toast('فرم زمان‌بندی آماده نیست','err');return;}
+     var r=bellSaveDays(ed.school_id,ed.days);
      toast(r.msg,r.ok?'ok':'err');
      if(r.ok){closeModal();render();}
    },
@@ -1131,6 +1136,43 @@ document.addEventListener('input',e=>{
 /* آبشاری: مقطع → پایه → شاخه → رشته (فرم درس و فرم افزودن کتاب) */
 document.addEventListener('change',e=>{
   const id=e.target.id;
+
+  /* زنگ‌ها: شروع روز ⇒ همهٔ بازه‌های همان روز جابه‌جا می‌شوند (دور ۶۳) */
+  if(e.target.classList && e.target.classList.contains('bl-start') && window._edit){
+    var bd0=Number(e.target.dataset.day);
+    if(window._edit.days[bd0]){window._edit.days[bd0].start=e.target.value;bellRenderDay(bd0);}
+    return;
+  }
+  /* زنگ‌ها: ساعت پایان یک بازه ⇒ مدت آن و زنجیرهٔ بعدی (دور ۶۳) */
+  if(e.target.classList && e.target.classList.contains('bl-to') && window._edit){
+    var edT=window._edit;
+    var d1=Number(e.target.dataset.day), ri=Number(e.target.dataset.i);
+    if(edT.days[d1]){
+      var dd=edT.days[d1];
+      var tl=bellDayTimeline(dd);
+      var fm=tl[ri]?timeToMin(tl[ri].from):timeToMin(dd.start);
+      var tm=timeToMin(e.target.value);
+      if(fm!=null&&tm!=null){
+        var dm=tm-fm;
+        if(dm<=0){toast('ساعت پایان باید بعد از شروع باشد','err');}
+        else dd.slots[ri].min=dm;
+      }
+      bellRenderDay(d1);
+    }
+    return;
+  }
+  /* زنگ‌ها: الگوی آماده برای یک روز مشخص (دور ۶۳) */
+  if(id && id.indexOf('bl_preset_')===0 && window._edit){
+    var dayP=Number(id.slice(10));
+    var keyP=e.target.value;
+    if(keyP && window._edit.days[dayP]){
+      var pd=bellPresetDays(keyP);
+      if(pd){window._edit.days[dayP]={start:pd[dayP].start,
+        slots:pd[dayP].slots.map(function(x){return {kind:x.kind,min:x.min};})};
+        bellRenderDay(dayP);}
+    }
+    return;
+  }
 
   /* فرم مدرسه: تیک شاخه ⇒ باز یا بستهٔ شدن فهرست رشته‌های همان شاخه.
      این‌ها شناسه ندارند و با کلاس تشخیص داده می‌شوند، پس پیش از
