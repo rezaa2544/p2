@@ -129,6 +129,7 @@ var ACTION_ROLES = {
   'att-all':       ['teacher','manager'],
   /* خروج از پیش‌گزینش زنگ (گام ۳ دور ۶۳): فقط فیلتر را عوض می‌کند */
   'att-reset-class': ['teacher','manager'],
+  'grade-reset-auto': ['teacher','manager'],
   /* نمرات */
   'grade-save':    ['teacher','manager'],
   'grade-del':     ['teacher','manager'],

@@ -335,6 +335,7 @@ document.addEventListener('click',e=>{
    /* خروج از پیش‌گزینش زنگ (گام ۳): انتخاب دستیِ صریح، پس
       پیش‌گزینش تا اتمام انتخاب دیگر اعمال نمی‌شود */
    'att-reset-class'(){const cls=visibleClasses();S.filters.class=cls.length?cls[0].id:null;render();},
+   'grade-reset-auto'(){const cls=visibleClasses();S.filters.class=cls.length?cls[0].id:null;S.filters.subject='';render();},
    /* گام ۹: نمایش سابقهٔ تغییرات یک رکورد حضور و غیاب */
    'att-hist'(){
      const h=(typeof attHistoryCard==='function')?attHistoryCard(id):'';
