@@ -807,7 +807,11 @@ const ATT_FA={present:'حاضر',absent:'غایب',late:'تأخیر',excused:'م
 const ATT_BADGE={present:'b-green',absent:'b-red',late:'b-amber',excused:'b-purple'};
 const ATT_COLOR={present:'var(--green)',absent:'var(--red)',late:'var(--amber)',excused:'var(--purple)'};
 const TERMS=['نوبت اول','نوبت دوم'];
-const EXAM_TYPES=['کلاسی','میان‌ترم','پایان‌ترم','عملی'];
+/* امتحان نهایی (دور ۶۳، بند ۵): آزمون پایانیِ پایه‌های پایانی
+   (نهم و دوازدهم). قاعدهٔ پایه در finalGradeOk (26-curriculum)
+   اعمال می‌شود — خودِ فهرست قاعده ندارد تا گزینه برای همه
+   در دسترس باشد و اعتبارسنجی در محل ثبت باشد. */
+const EXAM_TYPES=['کلاسی','میان‌ترم','پایان‌ترم','عملی','امتحان نهایی'];
 function toast(msg,type=''){const w=$('#toasts');const d=document.createElement('div');d.className='toast '+type;d.textContent=msg;w.appendChild(d);setTimeout(()=>d.remove(),3000);}
 function empty(emoji,title,desc,btn){return `<div class="empty"><span class="emoji">${emoji}</span><h4>${esc(title)}</h4><div class="small">${esc(desc||'')}</div>${btn?`<div style="margin-top:14px">${btn}</div>`:''}</div>`;}
 function bar(v,max,color){return `<div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,(v/(max||1))*100)}%;background:${color}"></div></div>`;}
@@ -829,12 +833,12 @@ const NEG=[['تأخیر در ورود به کلاس',-3],['بی‌نظمی در 
 /* عنصر پنجم: شاخه‌های متوسطه دوم. مدارس غیرمتوسطه‌دوم آرایهٔ خالی دارند.
    «مجتمع ایران‌زمین» عمداً دو شاخه دارد تا حالت چندشاخه‌ای آزموده شود. */
 const SCHOOL_DEFS=[
-  ['دبیرستان شهید بهشتی','SH-101','متوسطه دوم','پسرانه',['نظری']],
-  ['دبیرستان فرزانگان','FZ-102','متوسطه دوم','دخترانه',['نظری']],
-  ['مدرسه نمونه علامه حلی','AH-103','متوسطه اول','پسرانه',[]],
-  ['دبیرستان مریم مقدس','MM-104','متوسطه اول','دخترانه',[]],
-  ['مجتمع آموزشی ایران‌زمین','IZ-105','متوسطه دوم','پسرانه',['فنی و حرفه‌ای','کاردانش']],
-  ['دبستان و متوسطه اندیشه','AN-106','متوسطه اول','دخترانه',[]]];
+  ['دبیرستان شهید بهشتی','SH-101','متوسطه دوم','پسرانه',['نظری'],'علوم تجربی'],
+  ['دبیرستان فرزانگان','FZ-102','متوسطه دوم','دخترانه',['نظری'],'ریاضی'],
+  ['مدرسه نمونه علامه حلی','AH-103','متوسطه اول','پسرانه',[],'عادی'],
+  ['دبیرستان مریم مقدس','MM-104','متوسطه اول','دخترانه',[],'عادی'],
+  ['مجتمع آموزشی ایران‌زمین','IZ-105','متوسطه دوم','پسرانه',['فنی و حرفه‌ای','کاردانش'],'فنی و حرفه‌ای'],
+  ['دبستان و متوسطه اندیشه','AN-106','متوسطه اول','دخترانه',[],'عادی']];
 
 let db, ids={};
 /* 🔴 TODO پیش از اتصال به سرور — رمز عبور
@@ -885,10 +889,10 @@ function generate(){
   const dates=schoolDays(20);
   let sCount=0;
   SCHOOL_DEFS.forEach((def,si)=>{
-    const [name,code,level,gender,branches]=def, city=CITIES[si%CITIES.length];
+    const [name,code,level,gender,branches,type]=def, city=CITIES[si%CITIES.length];
     /* رشته‌های مدرسه = همهٔ رشته‌های شاخه‌هایی که ارائه می‌دهد */
     const sFields=(branches||[]).reduce((a,b)=>a.concat(fieldsOfBranch(b)),[]);
-    const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:demoPhone(),level,gender,branches:branches||[],fields:sFields,
+    const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:demoPhone(),level,type:type||'عادی',gender,branches:branches||[],fields:sFields,
       shift: si===4 ? 'بعدازظهر' : (si===1 ? 'هر دو' : 'صبح'),capacity:400+ri(200),active:si===5?0:1,created_at:daysAgoISO(500-si*20)});
     const first = gender==='پسرانه'?MALE:FEMALE;
     const manager=add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'manager'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,title:'مدیر مدرسه',created_at:daysAgoISO(480)});
@@ -982,6 +986,23 @@ function generate(){
     add('announcements',{school_id:school.id,title:'برنامه امتحانات نوبت دوم',body:'برنامه امتحانات پایانی از تاریخ ۱۵ خرداد آغاز می‌شود. دانش‌آموزان موظف به رعایت زمان‌بندی اعلام‌شده هستند.',audience:'all',created_by:manager.id,created_at:daysAgoISO(3)});
     add('announcements',{school_id:school.id,title:'جلسه اولیا و مربیان',body:'جلسه عمومی اولیا و مربیان روز چهارشنبه ساعت ۱۶ در سالن اجتماعات مدرسه برگزار می‌شود. حضور والدین گرامی الزامی است.',audience:'parent',created_by:manager.id,created_at:daysAgoISO(5)});
     add('announcements',{school_id:school.id,title:'ثبت نمرات میان‌ترم',body:'همکاران محترم تا پایان هفته جاری نسبت به ثبت نمرات میان‌ترم در سامانه اقدام فرمایند.',audience:'teacher',created_by:manager.id,created_at:daysAgoISO(7)});
+    /* امتحان نهایی (دور ۶۳، بند ۵): مدرسهٔ اول یک فصل منتشرشده با
+       یک جلسهٔ نهاییِ دوازدهم دارد تا نشان «نهایی» در نماهای
+       مدیر/دبیر/دانش‌آموز در دمو دیده شود. ⚠️ با add() — دادهٔ
+       پایه، بدون ثبت در دفترچهٔ عملیات. */
+    if(si===0){
+      const f12=db.classes.filter(c=>c.school_id===school.id&&c.grade==='دوازدهم')[0];
+      const fsub=f12?db.subjects.find(s2=>s2.school_id===school.id&&s2.grade==='دوازدهم'):null;
+      if(f12&&fsub){
+        const ft=add('exam_terms',{school_id:school.id,title:'امتحانات نهایی',term:'نوبت دوم',
+          start_date:addDaysISO(todayISO(),5),end_date:addDaysISO(todayISO(),12),
+          note:'جلسات امتحان نهایی پایهٔ دوازدهم',status:'published'});
+        const fe=add('exams',{school_id:school.id,term_id:ft.id,class_id:f12.id,subject_id:fsub.id,
+          date:ft.start_date,start_time:'09:00',duration:90,room:'سالن بزرگ',max_score:20,is_final:1});
+        const ftch=db.users.find(u2=>u2.school_id===school.id&&u2.role==='teacher');
+        if(ftch)add('exam_duties',{exam_id:fe.id,teacher_id:ftch.id,role:'main'});
+      }
+    }
   });
   add('announcements',{school_id:null,title:'به‌روزرسانی سامانه',body:'نسخه جدید سامانه مدیریت مدارس با قابلیت گزارش‌گیری پیشرفته و پنل اولیا منتشر شد.',audience:'all',created_by:1,created_at:daysAgoISO(1)});
 }
@@ -1561,11 +1582,28 @@ const FILTER_ACTIONS = {
 
 const LEVELS = ['ابتدایی', 'متوسطه اول', 'متوسطه دوم'];
 
+/* نوع مدرسه (دور ۶۳، بند ۵): طبقه‌بندی رسمی مدارس.
+   ⚠️ این فیلد اطلاعاتی/اداری است و قاعدهٔ آموزشی نمی‌سازد —
+   هر نوعی در هر مقطع قابل انتخاب است (اعتبارسنجی ترکیب
+   مقطع×نوع عمداً نیست). رکوردهای قدیمی بدون type، «عادی»
+   خوانده می‌شوند (s.type||'عادی'). */
+const SCHOOL_TYPES = ['عادی', 'علوم تجربی', 'ریاضی', 'فنی و حرفه‌ای'];
+
 const GRADES_OF_LEVEL = {
   'ابتدایی'    : ['اول', 'دوم', 'سوم', 'چهارم', 'پنجم', 'ششم'],
   'متوسطه اول' : ['هفتم', 'هشتم', 'نهم'],
   'متوسطه دوم' : ['دهم', 'یازدهم', 'دوازدهم'],
 };
+
+/* امتحان نهایی فقط پایه‌های پایانی هر مقطع: نهم (متوسطه اول)
+   و دوازدهم (متوسطه دوم). این تک‌منبع قاعده است — هم ثبت
+   جلسهٔ امتحان (exam-save) و هم ثبت نمره (grade-save) از
+   finalGradeOk می‌گذرند. */
+const FINAL_GRADES = ['نهم', 'دوازدهم'];
+
+function finalGradeOk(grade){
+  return FINAL_GRADES.indexOf(grade) > -1;
+}
 
 /* شاخه‌ها و رشته‌های متوسطه دوم */
 const BRANCHES = {
@@ -2647,7 +2685,7 @@ function viewSchools(){
     ${(()=>{const _ov=schoolsOverview();const _by={};_ov.forEach(function(r){_by[r.school.id]=r.st;});return rows.map(s=>{const st_=_by[s.id]||{};const us=db.users.filter(u=>u.school_id===s.id);const mg=us.find(u=>u.role==='manager');
      return `<tr><td><b>${esc(s.name)}</b><div class="small muted">${esc(s.gender||'')}${s.shift&&s.shift!=='صبح'?' · '+esc(s.shift):''}</div></td><td class="muted">${esc(s.code)}</td>
       <td>${esc((byId('provinces',s.province_id)||{}).name||s.city||'—')}<div class="small muted">${esc((byId('counties',s.county_id)||{}).name||'')}${s.district_id?' › '+esc((byId('districts',s.district_id)||{}).name||''):''}</div></td>
-      <td><span class="badge b-blue">${esc(s.level||'—')}</span>${(s.branches||[]).length?`<div class="small muted" style="margin-top:4px">${(s.branches||[]).map(b=>esc(b)).join('، ')}</div>`:''}</td><td class="muted">${esc(mg?mg.full_name:'—')}</td>
+      <td><span class="badge b-blue">${esc(s.level||'—')}</span>${s.type&&s.type!=='عادی'?`<div class="small muted" style="margin-top:4px">${esc(s.type)}</div>`:''}${(s.branches||[]).length?`<div class="small muted" style="margin-top:4px">${(s.branches||[]).map(b=>esc(b)).join('، ')}</div>`:''}</td><td class="muted">${esc(mg?mg.full_name:'—')}</td>
       <td class="small muted">${esc(s.landline||'—')}</td>
       <td>${fa(us.filter(u=>u.role==='student').length)}</td><td>${fa(us.filter(u=>u.role==='teacher').length)}</td><td>${fa(db.classes.filter(c=>c.school_id===s.id).length)}</td>
       <td><span class="badge ${s.active?'b-green':'b-gray'}${isAdmin?' tgl':''}" ${isAdmin?`data-act="school-toggle" data-id="${escAttr(s.id)}" title="برای تغییر وضعیت کلیک کنید"`:''}>${s.active?'فعال':'غیرفعال'}</span></td>
@@ -3341,6 +3379,7 @@ function schoolModal(s){
     <div class="small muted" id="m_office" style="margin:-4px 0 10px">اداره مربوطه: <b>${esc(off?off.name:'—')}</b></div>
     <div class="grid g2">
       ${f('مقطع',sel('m_level',[['ابتدایی','ابتدایی'],['متوسطه اول','متوسطه اول'],['متوسطه دوم','متوسطه دوم']],s.level))}
+      ${f('نوع',sel('m_type',SCHOOL_TYPES.map(x=>[x,x]),s.type||'عادی'))}
       ${f('جنسیت',sel('m_gender',[['پسرانه','پسرانه'],['دخترانه','دخترانه']],s.gender))}
       ${f('تلفن ثابت مدرسه',inp('m_landline',s.landline||''))}
       ${f('تلفن همراه رابط',inp('m_phone',s.phone||''))}
@@ -6908,7 +6947,7 @@ document.addEventListener('click',e=>{
        city:(byId('counties',cid)||{}).name||'',
        area_kind:dist?(dist.kind||'district'):'district',
        phone:V('m_phone'),landline:V('m_landline'),
-       level:V('m_level'),gender:V('m_gender'),shift:V('m_shift')||'صبح',
+       level:V('m_level'),type:V('m_type')||'عادی',gender:V('m_gender'),shift:V('m_shift')||'صبح',
        capacity:Number(V('m_cap'))||300,
        active:Number(V('m_active')),address:V('m_addr'),
        /* شاخه و رشته فقط برای متوسطه دوم معنا دارد؛ در بقیهٔ مقاطع خالی می‌ماند */
@@ -7889,6 +7928,14 @@ document.addEventListener('click',e=>{
    'grade-del-ok'(){if(typeof notifyGradeCancel==='function')notifyGradeCancel(window._delId);remove('grades',window._delId);closeModal();toast('نمره حذف شد','ok');render();},
    'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
+     /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk
+        (26-curriculum) که در exam-save اعمال می‌شود */
+     if(V('g_type')==='امتحان نهایی'){
+       const gcls=byId('classes',window._gclass);
+       if(!(typeof finalGradeOk==='function'&&finalGradeOk(gcls&&gcls.grade))){
+         toast('نمرهٔ امتحان نهایی فقط برای پایه‌های پایانی (نهم و دوازدهم) ثبت می‌شود','err');return;
+       }
+     }
      let gid=g.id;
      if(g.id)update('grades',g.id,{score,term:V('g_term'),exam_type:V('g_type')});
      else{const sid=Number(V('g_st')),cid=window._gclass;
@@ -8998,7 +9045,7 @@ function viewExams(){
       ${duties.length?`<div class="table-wrap"><table class="table"><thead><tr><th>تاریخ</th><th>ساعت</th><th>مدرسه</th><th>کلاس</th><th>درس</th><th>سالن</th><th>نقش</th></tr></thead><tbody>
       ${duties.map(d=>`<tr><td>${jalali(d.e.date)}</td><td>${d.e.start_time} تا ${toHHMMP(toMinP(d.e.start_time)+d.e.duration)}</td>
         <td>${esc((byId('schools',d.e.school_id)||{}).name||'—')}</td><td>${esc((byId('classes',d.e.class_id)||{}).name||'—')}</td>
-        <td>${esc((byId('subjects',d.e.subject_id)||{}).name||'—')}</td><td>${esc(d.e.room||'—')}</td>
+        <td>${esc((byId('subjects',d.e.subject_id)||{}).name||'—')}${d.e.is_final?' <span class="badge b-red">نهایی</span>':''}</td><td>${esc(d.e.room||'—')}</td>
         <td><span class="badge ${d.role==='main'?'b-blue':'b-gray'}">${d.role==='main'?'مراقب اصلی':'کمک‌مراقب'}</span></td></tr>`).join('')}
       </tbody></table></div>`:empty('🗓️','ابلاغ مراقبتی ندارید','')}</div>`;
   }
@@ -9017,7 +9064,7 @@ function viewExams(){
         ${term.note?`<div class="small" style="background:var(--amber-soft);padding:8px 12px;border-radius:10px">ℹ️ ${esc(term.note)}</div>`:''}</div></div>`:''}
       ${list.length?`<div class="table-wrap"><table class="table"><thead><tr><th>تاریخ</th><th>ساعت</th><th>درس</th><th>مدت</th><th>سالن</th></tr></thead><tbody>
         ${list.map(e=>`<tr><td><b>${jalali(e.date)}</b></td><td>${e.start_time} تا ${toHHMMP(toMinP(e.start_time)+e.duration)}</td>
-          <td>${esc((byId('subjects',e.subject_id)||{}).name||'—')}</td><td>${fa(e.duration)} دقیقه</td><td>${esc(e.room||'—')}</td></tr>`).join('')}
+          <td>${esc((byId('subjects',e.subject_id)||{}).name||'—')}${e.is_final?' <span class="badge b-red">نهایی</span>':''}</td><td>${fa(e.duration)} دقیقه</td><td>${esc(e.room||'—')}</td></tr>`).join('')}
       </tbody></table></div>`:empty('📭','برنامه‌ای منتشر نشده','به‌محض انتشار برنامه توسط مدرسه، اینجا نمایش داده می‌شود.')}</div>`;
   }
 
@@ -9056,7 +9103,7 @@ function viewExams(){
     <div class="card"><div class="card-head"><h3>جلسات امتحان</h3><button class="btn" data-act="exam-new" data-id="${escAttr(term.id)}">➕ افزودن جلسه</button></div>
      ${exams.length?`<div class="table-wrap"><table class="table"><thead><tr><th>تاریخ</th><th>ساعت</th><th>کلاس</th><th>درس</th><th>سالن</th><th>مراقبان</th><th></th></tr></thead><tbody>
       ${exams.map(e=>`<tr><td>${jalali(e.date)}</td><td><b>${e.start_time}</b><div class="small muted">تا ${toHHMMP(toMinP(e.start_time)+e.duration)}</div></td>
-        <td>${esc((byId('classes',e.class_id)||{}).name||'—')}</td><td>${esc((byId('subjects',e.subject_id)||{}).name||'—')}</td>
+        <td>${esc((byId('classes',e.class_id)||{}).name||'—')}</td><td>${esc((byId('subjects',e.subject_id)||{}).name||'—')}${e.is_final?' <span class="badge b-red">نهایی</span>':''}</td>
         <td>${esc(e.room||'—')}</td>
         <td class="small">${dutyOf(e.id).map(d=>esc((byId('users',d.teacher_id)||{}).full_name||'')).join('، ')||'<span class="badge b-amber">بدون مراقب</span>'}</td>
         <td><button class="icon-btn" data-act="exam-edit" data-id="${escAttr(e.id)}">✏️</button> <button class="icon-btn danger" data-act="exam-del" data-id="${escAttr(e.id)}">🗑️</button></td></tr>`).join('')}
@@ -10234,11 +10281,18 @@ const P8_ACTIONS = {
   'exam-save'(){
     const e=window._edit||{}, term=window._term;
     const date=V('ex_date'), st=V('ex_time'), dur=Number(V('ex_dur'))||90, cid=Number(V('ex_class'));
+    const isFinal=Number(V('ex_final'))===1;
+    /* امتحان نهایی فقط پایه‌های پایانی (نهم/دوازدهم) — قاعدهٔ
+       تک‌منبع در finalGradeOk (26-curriculum) */
+    const cls=byId('classes',cid);
+    if(isFinal&&!(typeof finalGradeOk==='function'&&finalGradeOk(cls&&cls.grade))){
+      toast('امتحان نهایی فقط برای پایه‌های پایانی (نهم و دوازدهم) است','err');return;
+    }
     if(date<term.start_date||date>term.end_date){toast('تاریخ باید در بازه فصل امتحانات باشد','err');return;}
     const clash=db.exams.find(x=>x.class_id===cid&&x.date===date&&x.id!==e.id&&overlapP(st,dur,x.start_time,x.duration));
     if(clash){toast(`تداخل: این کلاس در ساعت ${clash.start_time} امتحان دیگری دارد`,'err');return;}
     const data={school_id:S.user.school_id,term_id:term.id,class_id:cid,subject_id:Number(V('ex_subject')),date,
-      start_time:st,duration:dur,room:V('ex_room'),max_score:Number(V('ex_max'))||20};
+      start_time:st,duration:dur,room:V('ex_room'),max_score:Number(V('ex_max'))||20,is_final:isFinal?1:0};
     if(e.id)update('exams',e.id,data); else insert('exams',data);
     closeModal(); toast('جلسه امتحان ذخیره شد','ok'); render();
   },
@@ -10326,15 +10380,17 @@ function termModal(t){
 }
 function examModal(e,term){
   const classes=visibleClasses(), subs=visibleSubjects();
-  e=e||{class_id:(classes[0]||{}).id,subject_id:(subs[0]||{}).id,date:term.start_date,start_time:'08:00',duration:90,room:'',max_score:20};
+  e=e||{class_id:(classes[0]||{}).id,subject_id:(subs[0]||{}).id,date:term.start_date,start_time:'08:00',duration:90,room:'',max_score:20,is_final:0};
   openModal(modalTpl(e.id?'ویرایش جلسه امتحان':'افزودن جلسه امتحان',
     `<div class="grid g2">
       ${f('کلاس',sel('ex_class',classes.map(c=>[c.id,c.name]),e.class_id))}
       ${f('درس',sel('ex_subject',subs.map(s=>[s.id,s.name]),e.subject_id))}
+      ${f('نوع جلسه',sel('ex_final',[[0,'آزمون درسی'],[1,'امتحان نهایی']],e.is_final?1:0))}
       ${f('تاریخ',jdate('ex_date',e.date))}${f('ساعت شروع',inp('ex_time',e.start_time,'time'))}
       ${f('مدت (دقیقه)',inp('ex_dur',e.duration,'number'))}${f('سالن',inp('ex_room',e.room||''))}
       ${f('بارم',inp('ex_max',e.max_score,'number'))}</div>
-     <div class="small muted" style="margin-top:10px;line-height:2">ℹ️ تداخل ساعت با امتحان دیگرِ همین کلاس خودکار بررسی می‌شود.</div>`,'exam-save'));
+     <div class="small muted" style="margin-top:10px;line-height:2">ℹ️ تداخل ساعت با امتحان دیگرِ همین کلاس خودکار بررسی می‌شود.<br>
+     ℹ️ امتحان نهایی فقط برای پایه‌های پایانی (نهم و دوازدهم) ثبت می‌شود.</div>`,'exam-save'));
   window._edit=e; window._term=term;
 }
 function slotModal(s){

@@ -74,6 +74,7 @@ function schoolModal(s){
     <div class="small muted" id="m_office" style="margin:-4px 0 10px">اداره مربوطه: <b>${esc(off?off.name:'—')}</b></div>
     <div class="grid g2">
       ${f('مقطع',sel('m_level',[['ابتدایی','ابتدایی'],['متوسطه اول','متوسطه اول'],['متوسطه دوم','متوسطه دوم']],s.level))}
+      ${f('نوع',sel('m_type',SCHOOL_TYPES.map(x=>[x,x]),s.type||'عادی'))}
       ${f('جنسیت',sel('m_gender',[['پسرانه','پسرانه'],['دخترانه','دخترانه']],s.gender))}
       ${f('تلفن ثابت مدرسه',inp('m_landline',s.landline||''))}
       ${f('تلفن همراه رابط',inp('m_phone',s.phone||''))}

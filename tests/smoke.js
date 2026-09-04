@@ -6258,6 +6258,182 @@ test('اعلان الگو: دمو — مدرسهٔ ۱ روشن با پیام ن�
   assert(r.wallet === true, 'مدرسهٔ اول کیف پیامک ندارد');
 });
 
+/* ── نوع مدرسه و امتحان نهایی (دور ۶۳، بند ۵) ──────────────
+   نوع مدرسه فیلد اداری است (۴ گزینه، پیش‌فرض «عادی» —
+   رکوردهای قدیمی «عادی» خوانده می‌شوند). امتحان نهایی فقط
+   پایه‌های پایانی (نهم/دوازدهم) — قاعدهٔ تک‌منبع finalGradeOk
+   در دو محل ثبت (جلسهٔ امتحان و نمره) اعمال می‌شود. */
+
+test('نوع مدرسه: ۴ گزینه در فرم و همهٔ مدارس دمو نوع معتبر دارند', () => {
+  const r = JSON.parse(W('(()=>{'
+    + 'var ok=true;db.schools.forEach(function(s){if(SCHOOL_TYPES.indexOf(s.type||"عادی")<0)ok=false;});'
+    + 'schoolModal(null);'
+    + 'var m=((document.getElementById("modal")||{}).innerHTML)||"";'
+    + 'var opts=["عادی","علوم تجربی","ریاضی","فنی و حرفه‌ای"].filter(function(x){return m.indexOf(x)>-1;});'
+    + 'closeModal();'
+    + 'return JSON.stringify({n:SCHOOL_TYPES.length,ok:ok,opts:opts.length,'
+    + 's1:(byId("schools",1)||{}).type});})()'));
+  assert(r.n === 4, '🔴 فهرست انواع مدرسه کامل نیست: ' + r.n);
+  assert(r.ok === true, '🔴 مدرسه‌ای با نوع نامعتبر در دمو است');
+  assert(r.opts === 4, 'گزینه‌های نوع در فرم مدرسه نیستند: ' + r.opts);
+  assert(r.s1 === 'علوم تجربی', 'نوع نمونهٔ مدرسهٔ اول باید «علوم تجربی» باشد: ' + r.s1);
+});
+
+test('نوع مدرسه: ذخیره از فرم با کلیک واقعی و نمایش در فهرست', () => {
+  const sid = W('db.schools[2].id');
+  const saved = W('JSON.stringify((byId("schools",' + sid + ')||{}).type||null)');
+  try {
+    W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null");
+    const r = JSON.parse(W('(function(){'
+      + 'schoolModal(byId("schools",' + sid + '));'
+      + 'document.getElementById("m_type").value="ریاضی";'
+      + 'var b=document.querySelector(\'#modal [data-act="school-save"]\');'
+      + 'if(!b)return JSON.stringify({skipTest:true});'
+      + 'b.dispatchEvent(new MouseEvent("click",{bubbles:true}));'
+      + 'var t=(byId("schools",' + sid + ')||{}).type;'
+      + 'S.filters={};S.route="schools";S.page=1;var h=renderRoute();'
+      + 'return JSON.stringify({skipTest:false,type:t,shown:h.indexOf("ریاضی")>-1});})()'));
+    if (r.skipTest) return;
+    assert(r.type === 'ریاضی', '🔴 نوع ذخیره نشد: ' + r.type);
+    assert(r.shown === true, 'نوع در فهرست مدارس دیده نمی‌شود');
+  } finally {
+    W('update("schools",' + sid +',{type:' + JSON.stringify(saved || 'عادی') + '})');
+  }
+});
+
+test('امتحان نهایی: در فهرست انواع آزمون و قاعدهٔ پایه درست کار می‌کند', () => {
+  const r = JSON.parse(W('(()=>{'
+    + 'return JSON.stringify({'
+    + 'has:EXAM_TYPES.indexOf("امتحان نهایی")>-1,'
+    + 'ok9:finalGradeOk("نهم")===true,'
+    + 'ok12:finalGradeOk("دوازدهم")===true,'
+    + 'no10:finalGradeOk("دهم")===false,'
+    + 'no6:finalGradeOk("ششم")===false,'
+    + 'noX:finalGradeOk("")===false});})()'));
+  assert(r.has === true, '🔴 «امتحان نهایی» در EXAM_TYPES نیست');
+  assert(r.ok9 === true && r.ok12 === true, '🔴 قاعدهٔ پایه نهم/دوازدهم کار نمی‌کند');
+  assert(r.no10 === true && r.no6 === true && r.noX === true, '🔴 قاعدهٔ پایه برای پایهٔ غیرپایانی باز است');
+});
+
+test('امتحان نهایی: جلسهٔ نهایی فقط برای پایهٔ پایانی (کلیک واقعی در فرم)', () => {
+  withCounselor(() => {
+    const env = JSON.parse(W('(()=>{'
+      + 'var term=db.exam_terms.filter(function(t){return t.school_id===1&&t.status==="published";})[0];'
+      + 'var c12=db.classes.find(function(c){return c.school_id===1&&c.grade==="دوازدهم";});'
+      + 'var c10=db.classes.find(function(c){return c.school_id===1&&c.grade==="دهم";});'
+      + 'var sub=term?db.subjects.find(function(s){return s.school_id===1&&s.grade==="دوازدهم";}):null;'
+      + 'return JSON.stringify({skipTest:!(term&&c12&&c10&&sub),'
+      + 'term:term?term.id:0,c12:c12?c12.id:0,c10:c10?c10.id:0,sub:sub?sub.id:0});})()'));
+    if (env.skipTest) return;
+    const r = JSON.parse(W('(function(){'
+      + 'S.user=db.users.find(function(u){return u.role==="manager"&&u.school_id===1;});'
+      + 'S.persona=null;S.boss=null;S.filters={};'
+      + 'var term=byId("exam_terms",' + env.term + ');'
+      + 'function countFinal(){return db.exams.filter(function(x){return x.term_id===' + env.term + '&&x.is_final===1;}).length;}'
+      + 'function trySave(clsId,isFinal){'
+      + 'examModal(null,term);'
+      + 'document.getElementById("ex_class").value=String(clsId);'
+      + 'document.getElementById("ex_subject").value=String(' + env.sub + ');'
+      + 'document.getElementById("ex_final").value=isFinal?"1":"0";'
+      + 'document.getElementById("ex_date").value=term.start_date;'
+      + 'document.getElementById("ex_time").value="11:00";'
+      + 'var b=document.querySelector(\'#modal [data-act="exam-save"]\');'
+      + 'if(!b)return -1;'
+      + 'b.dispatchEvent(new MouseEvent("click",{bubbles:true}));'
+      + '}'
+      + 'var pre={};db.exams.filter(function(x){return x.term_id===' + env.term + '&&x.is_final===1;}).forEach(function(x){pre[x.id]=1;});'
+      + 'var before=countFinal();'
+      + 'trySave(' + env.c12 + ',true);'
+      + 'var after12=countFinal();'
+      + 'trySave(' + env.c10 + ',true);'
+      + 'var after10=countFinal();'
+      + 'db.exams.filter(function(x){return x.term_id===' + env.term + '&&x.is_final===1&&!pre[x.id];}).forEach(function(x){remove("exams",x.id);});'
+      + 'return JSON.stringify({before:before,after12:after12,after10:after10});})()'));
+    assert(r.after12 === r.before + 1, '🔴 جلسهٔ نهایی دوازدهم ذخیره نشد: ' + r.before + '→' + r.after12);
+    assert(r.after10 === r.after12, '🔴 جلسهٔ «نهایی» برای دهم ذخیره شد — قاعدهٔ پایه دور زده شد');
+  });
+});
+
+test('امتحان نهایی: نشان «نهایی» در نماهای مدیر، دبیر و دانش‌آموز', () => {
+  withCounselor(() => {
+    const r = JSON.parse(W('(()=>{'
+      + 'var fe=db.exams.find(function(x){return x.is_final===1;});'
+      + 'if(!fe)return JSON.stringify({skipTest:true});'
+      + 'S.user=db.users.find(function(u){return u.role==="manager"&&u.school_id===fe.school_id;});'
+      + 'S.persona=null;S.boss=null;S.filters={term:fe.term_id};S.route="exams";S.page=1;'
+      + 'var hm=renderRoute();'
+      + 'var duty=db.exam_duties.find(function(d){return d.exam_id===fe.id;});'
+      + 'var ht="";'
+      + 'if(duty){S.user=byId("users",duty.teacher_id);S.persona=null;S.boss=null;S.filters={};S.route="exams";ht=renderRoute();}'
+      + 'var stud=null;'
+      + 'db.users.forEach(function(u){if(stud)return;if(u.role!=="student"||u.school_id!==fe.school_id)return;var c=classOf(u.id);if(c&&c.id===fe.class_id)stud=u;});'
+      + 'var hs="";'
+      + 'if(stud){S.user=stud;S.persona=null;S.boss=null;S.filters={};S.route="exams";hs=renderRoute();}'
+      + 'return JSON.stringify({skipTest:false,manager:hm.indexOf("نهایی")>-1,'
+      + 'teacher:duty?ht.indexOf("نهایی")>-1:true,'
+      + 'student:stud?hs.indexOf("نهایی")>-1:true});})()'));
+    if (r.skipTest) return;
+    assert(r.manager === true, '🔴 نشان «نهایی» در نمای مدیر نیست');
+    assert(r.teacher === true, '🔴 نشان «نهایی» در برنامهٔ مراقبت دبیر نیست');
+    assert(r.student === true, '🔴 نشان «نهایی» در برنامهٔ دانش‌آموز نیست');
+  });
+});
+
+test('امتحان نهایی: نمرهٔ «امتحان نهایی» فقط برای پایهٔ پایانی (کلیک واقعی)', () => {
+  withCounselor(() => {
+    const env = JSON.parse(W('(()=>{'
+      + 'var c12=db.classes.find(function(c){return c.school_id===1&&c.grade==="دوازدهم";});'
+      + 'var c10=db.classes.find(function(c){return c.school_id===1&&c.grade==="دهم";});'
+      + 'var s12=c12?db.users.find(function(u){return u.role==="student"&&classOf(u.id)&&classOf(u.id).id===c12.id;}):null;'
+      + 'var s10=c10?db.users.find(function(u){return u.role==="student"&&classOf(u.id)&&classOf(u.id).id===c10.id;}):null;'
+      + 'return JSON.stringify({skipTest:!(c12&&c10&&s12&&s10),'
+      + 'c12:c12?c12.id:0,c10:c10?c10.id:0,s12:s12?s12.id:0,s10:s10?s10.id:0});})()'));
+    if (env.skipTest) return;
+    const r = JSON.parse(W('(function(){'
+      + 'S.user=db.users.find(function(u){return u.role==="manager"&&u.school_id===1;});'
+      + 'S.persona=null;S.boss=null;S.filters={};'
+      + 'function cntFinalGrade(cid){return db.grades.filter(function(g){return g.class_id===cid&&g.exam_type==="امتحان نهایی";}).length;}'
+      + 'function tryGrade(cid,stId){'
+      + 'S.filters.class=cid;'
+      + 'gradeModal(null);'
+      + 'document.getElementById("g_st").value=String(stId);'
+      + 'document.getElementById("g_type").value="امتحان نهایی";'
+      + 'document.getElementById("g_score").value="15";'
+      + 'var b=document.querySelector(\'#modal [data-act="grade-save"]\');'
+      + 'if(!b)return -1;'
+      + 'b.dispatchEvent(new MouseEvent("click",{bubbles:true}));'
+      + '}'
+      + 'var b12=cntFinalGrade(' + env.c12 + ');'
+      + 'tryGrade(' + env.c12 + ',' + env.s12 + ');'
+      + 'var a12=cntFinalGrade(' + env.c12 + ');'
+      + 'var b10=cntFinalGrade(' + env.c10 + ');'
+      + 'tryGrade(' + env.c10 + ',' + env.s10 + ');'
+      + 'var a10=cntFinalGrade(' + env.c10 + ');'
+      + 'db.grades.filter(function(g){return g.class_id===' + env.c12 + '&&g.exam_type==="امتحان نهایی";}).forEach(function(g){remove("grades",g.id);});'
+      + 'return JSON.stringify({b12:b12,a12:a12,b10:b10,a10:a10});})()'));
+    assert(r.a12 === r.b12 + 1, '🔴 نمرهٔ نهایی دوازدهم ثبت نشد: ' + r.b12 + '→' + r.a12);
+    assert(r.a10 === r.b10, '🔴 نمرهٔ «امتحان نهایی» برای دهم ثبت شد — قاعدهٔ پایه دور زده شد');
+  });
+});
+
+test('امتحان نهایی: دمو — فصل منتشرشدهٔ مدرسهٔ ۱ با جلسه نهایی دوازدهم', () => {
+  const r = JSON.parse(W('(()=>{'
+    + 'var term=db.exam_terms.filter(function(t){return t.school_id===1&&t.status==="published"&&t.title.indexOf("نهایی")>-1;})[0];'
+    + 'if(!term)return JSON.stringify({skipTest:true});'
+    + 'var fe=db.exams.filter(function(x){return x.term_id===term.id&&x.is_final===1;})[0]||{};'
+    + 'var cls=fe.class_id?byId("classes",fe.class_id):null;'
+    + 'var inRange=!!(fe.date&&fe.date>=term.start_date&&fe.date<=term.end_date);'
+    + 'return JSON.stringify({skipTest:false,has:!!fe,grade:cls?cls.grade:null,'
+    + 'inRange:inRange,duty:db.exam_duties.some(function(d){return d.exam_id===fe.id;}),'
+    + 'sub:!!(fe.subject_id&&byId("subjects",fe.subject_id))});})()'));
+  if (r.skipTest) return;
+  assert(r.has === true, '🔴 دمو: جلسهٔ نهایی نمونه نیست');
+  assert(r.grade === 'دوازدهم', 'جلسهٔ نمونه باید دوازدهم باشد: ' + r.grade);
+  assert(r.inRange === true, 'تاریخ جلسه در بازهٔ فصل نیست');
+  assert(r.duty === true, 'دبیر مراقب نمونه ندارد');
+  assert(r.sub === true, 'درس جلسهٔ نمونه نیست');
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

@@ -15,12 +15,12 @@ const NEG=[['تأخیر در ورود به کلاس',-3],['بی‌نظمی در 
 /* عنصر پنجم: شاخه‌های متوسطه دوم. مدارس غیرمتوسطه‌دوم آرایهٔ خالی دارند.
    «مجتمع ایران‌زمین» عمداً دو شاخه دارد تا حالت چندشاخه‌ای آزموده شود. */
 const SCHOOL_DEFS=[
-  ['دبیرستان شهید بهشتی','SH-101','متوسطه دوم','پسرانه',['نظری']],
-  ['دبیرستان فرزانگان','FZ-102','متوسطه دوم','دخترانه',['نظری']],
-  ['مدرسه نمونه علامه حلی','AH-103','متوسطه اول','پسرانه',[]],
-  ['دبیرستان مریم مقدس','MM-104','متوسطه اول','دخترانه',[]],
-  ['مجتمع آموزشی ایران‌زمین','IZ-105','متوسطه دوم','پسرانه',['فنی و حرفه‌ای','کاردانش']],
-  ['دبستان و متوسطه اندیشه','AN-106','متوسطه اول','دخترانه',[]]];
+  ['دبیرستان شهید بهشتی','SH-101','متوسطه دوم','پسرانه',['نظری'],'علوم تجربی'],
+  ['دبیرستان فرزانگان','FZ-102','متوسطه دوم','دخترانه',['نظری'],'ریاضی'],
+  ['مدرسه نمونه علامه حلی','AH-103','متوسطه اول','پسرانه',[],'عادی'],
+  ['دبیرستان مریم مقدس','MM-104','متوسطه اول','دخترانه',[],'عادی'],
+  ['مجتمع آموزشی ایران‌زمین','IZ-105','متوسطه دوم','پسرانه',['فنی و حرفه‌ای','کاردانش'],'فنی و حرفه‌ای'],
+  ['دبستان و متوسطه اندیشه','AN-106','متوسطه اول','دخترانه',[],'عادی']];
 
 let db, ids={};
 /* 🔴 TODO پیش از اتصال به سرور — رمز عبور
@@ -71,10 +71,10 @@ function generate(){
   const dates=schoolDays(20);
   let sCount=0;
   SCHOOL_DEFS.forEach((def,si)=>{
-    const [name,code,level,gender,branches]=def, city=CITIES[si%CITIES.length];
+    const [name,code,level,gender,branches,type]=def, city=CITIES[si%CITIES.length];
     /* رشته‌های مدرسه = همهٔ رشته‌های شاخه‌هایی که ارائه می‌دهد */
     const sFields=(branches||[]).reduce((a,b)=>a.concat(fieldsOfBranch(b)),[]);
-    const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:demoPhone(),level,gender,branches:branches||[],fields:sFields,
+    const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:demoPhone(),level,type:type||'عادی',gender,branches:branches||[],fields:sFields,
       shift: si===4 ? 'بعدازظهر' : (si===1 ? 'هر دو' : 'صبح'),capacity:400+ri(200),active:si===5?0:1,created_at:daysAgoISO(500-si*20)});
     const first = gender==='پسرانه'?MALE:FEMALE;
     const manager=add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'manager'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,title:'مدیر مدرسه',created_at:daysAgoISO(480)});
@@ -168,6 +168,23 @@ function generate(){
     add('announcements',{school_id:school.id,title:'برنامه امتحانات نوبت دوم',body:'برنامه امتحانات پایانی از تاریخ ۱۵ خرداد آغاز می‌شود. دانش‌آموزان موظف به رعایت زمان‌بندی اعلام‌شده هستند.',audience:'all',created_by:manager.id,created_at:daysAgoISO(3)});
     add('announcements',{school_id:school.id,title:'جلسه اولیا و مربیان',body:'جلسه عمومی اولیا و مربیان روز چهارشنبه ساعت ۱۶ در سالن اجتماعات مدرسه برگزار می‌شود. حضور والدین گرامی الزامی است.',audience:'parent',created_by:manager.id,created_at:daysAgoISO(5)});
     add('announcements',{school_id:school.id,title:'ثبت نمرات میان‌ترم',body:'همکاران محترم تا پایان هفته جاری نسبت به ثبت نمرات میان‌ترم در سامانه اقدام فرمایند.',audience:'teacher',created_by:manager.id,created_at:daysAgoISO(7)});
+    /* امتحان نهایی (دور ۶۳، بند ۵): مدرسهٔ اول یک فصل منتشرشده با
+       یک جلسهٔ نهاییِ دوازدهم دارد تا نشان «نهایی» در نماهای
+       مدیر/دبیر/دانش‌آموز در دمو دیده شود. ⚠️ با add() — دادهٔ
+       پایه، بدون ثبت در دفترچهٔ عملیات. */
+    if(si===0){
+      const f12=db.classes.filter(c=>c.school_id===school.id&&c.grade==='دوازدهم')[0];
+      const fsub=f12?db.subjects.find(s2=>s2.school_id===school.id&&s2.grade==='دوازدهم'):null;
+      if(f12&&fsub){
+        const ft=add('exam_terms',{school_id:school.id,title:'امتحانات نهایی',term:'نوبت دوم',
+          start_date:addDaysISO(todayISO(),5),end_date:addDaysISO(todayISO(),12),
+          note:'جلسات امتحان نهایی پایهٔ دوازدهم',status:'published'});
+        const fe=add('exams',{school_id:school.id,term_id:ft.id,class_id:f12.id,subject_id:fsub.id,
+          date:ft.start_date,start_time:'09:00',duration:90,room:'سالن بزرگ',max_score:20,is_final:1});
+        const ftch=db.users.find(u2=>u2.school_id===school.id&&u2.role==='teacher');
+        if(ftch)add('exam_duties',{exam_id:fe.id,teacher_id:ftch.id,role:'main'});
+      }
+    }
   });
   add('announcements',{school_id:null,title:'به‌روزرسانی سامانه',body:'نسخه جدید سامانه مدیریت مدارس با قابلیت گزارش‌گیری پیشرفته و پنل اولیا منتشر شد.',audience:'all',created_by:1,created_at:daysAgoISO(1)});
 }

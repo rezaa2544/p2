@@ -187,7 +187,7 @@ function viewExams(){
       ${duties.length?`<div class="table-wrap"><table class="table"><thead><tr><th>تاریخ</th><th>ساعت</th><th>مدرسه</th><th>کلاس</th><th>درس</th><th>سالن</th><th>نقش</th></tr></thead><tbody>
       ${duties.map(d=>`<tr><td>${jalali(d.e.date)}</td><td>${d.e.start_time} تا ${toHHMMP(toMinP(d.e.start_time)+d.e.duration)}</td>
         <td>${esc((byId('schools',d.e.school_id)||{}).name||'—')}</td><td>${esc((byId('classes',d.e.class_id)||{}).name||'—')}</td>
-        <td>${esc((byId('subjects',d.e.subject_id)||{}).name||'—')}</td><td>${esc(d.e.room||'—')}</td>
+        <td>${esc((byId('subjects',d.e.subject_id)||{}).name||'—')}${d.e.is_final?' <span class="badge b-red">نهایی</span>':''}</td><td>${esc(d.e.room||'—')}</td>
         <td><span class="badge ${d.role==='main'?'b-blue':'b-gray'}">${d.role==='main'?'مراقب اصلی':'کمک‌مراقب'}</span></td></tr>`).join('')}
       </tbody></table></div>`:empty('🗓️','ابلاغ مراقبتی ندارید','')}</div>`;
   }
@@ -206,7 +206,7 @@ function viewExams(){
         ${term.note?`<div class="small" style="background:var(--amber-soft);padding:8px 12px;border-radius:10px">ℹ️ ${esc(term.note)}</div>`:''}</div></div>`:''}
       ${list.length?`<div class="table-wrap"><table class="table"><thead><tr><th>تاریخ</th><th>ساعت</th><th>درس</th><th>مدت</th><th>سالن</th></tr></thead><tbody>
         ${list.map(e=>`<tr><td><b>${jalali(e.date)}</b></td><td>${e.start_time} تا ${toHHMMP(toMinP(e.start_time)+e.duration)}</td>
-          <td>${esc((byId('subjects',e.subject_id)||{}).name||'—')}</td><td>${fa(e.duration)} دقیقه</td><td>${esc(e.room||'—')}</td></tr>`).join('')}
+          <td>${esc((byId('subjects',e.subject_id)||{}).name||'—')}${e.is_final?' <span class="badge b-red">نهایی</span>':''}</td><td>${fa(e.duration)} دقیقه</td><td>${esc(e.room||'—')}</td></tr>`).join('')}
       </tbody></table></div>`:empty('📭','برنامه‌ای منتشر نشده','به‌محض انتشار برنامه توسط مدرسه، اینجا نمایش داده می‌شود.')}</div>`;
   }
 
@@ -245,7 +245,7 @@ function viewExams(){
     <div class="card"><div class="card-head"><h3>جلسات امتحان</h3><button class="btn" data-act="exam-new" data-id="${escAttr(term.id)}">➕ افزودن جلسه</button></div>
      ${exams.length?`<div class="table-wrap"><table class="table"><thead><tr><th>تاریخ</th><th>ساعت</th><th>کلاس</th><th>درس</th><th>سالن</th><th>مراقبان</th><th></th></tr></thead><tbody>
       ${exams.map(e=>`<tr><td>${jalali(e.date)}</td><td><b>${e.start_time}</b><div class="small muted">تا ${toHHMMP(toMinP(e.start_time)+e.duration)}</div></td>
-        <td>${esc((byId('classes',e.class_id)||{}).name||'—')}</td><td>${esc((byId('subjects',e.subject_id)||{}).name||'—')}</td>
+        <td>${esc((byId('classes',e.class_id)||{}).name||'—')}</td><td>${esc((byId('subjects',e.subject_id)||{}).name||'—')}${e.is_final?' <span class="badge b-red">نهایی</span>':''}</td>
         <td>${esc(e.room||'—')}</td>
         <td class="small">${dutyOf(e.id).map(d=>esc((byId('users',d.teacher_id)||{}).full_name||'')).join('، ')||'<span class="badge b-amber">بدون مراقب</span>'}</td>
         <td><button class="icon-btn" data-act="exam-edit" data-id="${escAttr(e.id)}">✏️</button> <button class="icon-btn danger" data-act="exam-del" data-id="${escAttr(e.id)}">🗑️</button></td></tr>`).join('')}
