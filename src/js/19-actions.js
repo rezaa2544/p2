@@ -332,6 +332,9 @@ document.addEventListener('click',e=>{
      attDraftSetAll(cid,date,studentsOfClass(cid).map(s=>s.id),st);
      toast('همه «'+ATT_FA[st]+'» علامت خوردند — برای ذخیره «مرور و ثبت نهایی» را بزنید','ok');
      render();},
+   /* خروج از پیش‌گزینش زنگ (گام ۳): انتخاب دستیِ صریح، پس
+      پیش‌گزینش تا اتمام انتخاب دیگر اعمال نمی‌شود */
+   'att-reset-class'(){const cls=visibleClasses();S.filters.class=cls.length?cls[0].id:null;render();},
    /* گام ۹: نمایش سابقهٔ تغییرات یک رکورد حضور و غیاب */
    'att-hist'(){
      const h=(typeof attHistoryCard==='function')?attHistoryCard(id):'';

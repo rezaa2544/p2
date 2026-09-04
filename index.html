@@ -2262,6 +2262,8 @@ var ACTION_ROLES = {
   'tnote-save':    ['teacher'],
   'tnote-del':     ['teacher'],
   'att-all':       ['teacher','manager'],
+  /* خروج از پیش‌گزینش زنگ (گام ۳ دور ۶۳): فقط فیلتر را عوض می‌کند */
+  'att-reset-class': ['teacher','manager'],
   /* نمرات */
   'grade-save':    ['teacher','manager'],
   'grade-del':     ['teacher','manager'],
@@ -2875,7 +2877,16 @@ function attChangeTip(){
 function viewAttendance(){
   const cls=visibleClasses();
   if(!cls.length)return `<div class="card">${empty('🏛️','کلاسی در دسترس نیست','ابتدا باید کلاسی به شما تخصیص یابد.')}</div>`;
-  const cid=Number(S.filters.class||cls[0].id), date=S.filters.date||todayISO(), q=(S.filters.q||'').trim();
+  /* پیش‌گزینش زنگ (گام ۳ طرح PLAN_BELL_AUTOCLASS): اگر دبیر هنوز
+     کلاسی انتخاب نکرده و الان زنگ درسیِ مدرسهٔ واقعی است، کلاس
+     جاریِ برنامهٔ خودش پیش‌گزینش می‌شود. 🔴 انتخاب دستی (فیلتر
+     کلاس) همیشه بر پیش‌گزینش مقدم است. S.bellNow فقط برای
+     آزمون‌پذیری است — همان الگوی bellNowBar(now). */
+  const _now=(S.bellNow||null);
+  const _auto=(typeof bellAutoClass==='function')?bellAutoClass(null,null,_now):null;
+  const _autoOk=_auto&&cls.some(c=>c.id===_auto.classId);
+  const cid=Number(S.filters.class||(_autoOk&&_auto.classId)||cls[0].id), date=S.filters.date||todayISO(), q=(S.filters.q||'').trim();
+  const _autoShown=_autoOk&&!S.filters.class&&cid===_auto.classId;
   const roster=studentsOfClass(cid);
   let studs=roster;
   if(q)studs=roster.filter(s=>s.full_name.includes(q));
@@ -2908,6 +2919,7 @@ function viewAttendance(){
 
   return `${attChangeTip()}${bannerDraft}<div class="card"><div class="card-head">
     <div class="row"><select class="select" style="width:180px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
+     ${_autoShown?`<span class="badge b-blue" title="بر اساس زنگ جاری و برنامهٔ هفتگی شما — انتخاب دستی بر این مقدم است">🔔 انتخاب خودکار بر اساس زنگ</span><button class="btn ghost sm" data-act="att-reset-class">همهٔ کلاس‌ها</button>`:''}
      <input class="input" style="width:160px" type="date" data-f="date" value="${escAttr(date)}" /><span class="badge b-gray">${jalali(date)}</span></div>
     <div class="row"><input class="input" style="width:160px" placeholder="جستجوی دانش‌آموز…" data-f="q" value="${esc(q)}" />
      <button class="btn ghost sm" data-act="att-all" data-s="present">✅ همه حاضر</button>
@@ -7175,6 +7187,9 @@ document.addEventListener('click',e=>{
      attDraftSetAll(cid,date,studentsOfClass(cid).map(s=>s.id),st);
      toast('همه «'+ATT_FA[st]+'» علامت خوردند — برای ذخیره «مرور و ثبت نهایی» را بزنید','ok');
      render();},
+   /* خروج از پیش‌گزینش زنگ (گام ۳): انتخاب دستیِ صریح، پس
+      پیش‌گزینش تا اتمام انتخاب دیگر اعمال نمی‌شود */
+   'att-reset-class'(){const cls=visibleClasses();S.filters.class=cls.length?cls[0].id:null;render();},
    /* گام ۹: نمایش سابقهٔ تغییرات یک رکورد حضور و غیاب */
    'att-hist'(){
      const h=(typeof attHistoryCard==='function')?attHistoryCard(id):'';
@@ -14935,7 +14950,10 @@ function currentSlot(schoolId, now){
     return out;
   }
 
-  var tl = (typeof bellTimeline === 'function') ? bellTimeline(schoolId) : [];
+  /* 🔴 روز هفته باید رد شود: بدون آن bellOf() همیشه برنامهٔ شنبه
+     (روز ۰) را برمی‌گرداند و در زمان‌بندی به‌تفکیک‌روز (نسخهٔ ۲)
+     زنگ اشتباهی تشخیص داده می‌شود — رفع بند ۲ در گام ۳. */
+  var tl = (typeof bellTimeline === 'function') ? bellTimeline(schoolId, out.day) : [];
   if(!tl.length){ return out; }
 
   var mins = t.getHours() * 60 + t.getMinutes();
@@ -15032,6 +15050,28 @@ function bellAutoAllowed(schoolId){
   if(!sid) return false;
   var slot = currentSlot(sid);
   return !!(slot.hasSchedule && slot.clock && slot.clock.ok);
+}
+
+/**
+ * کلاس فعلی دبیر برای پیش‌گزینش (گام ۳ طرح).
+ *
+ * 📄 مصرف‌کنندهٔ اصلی: viewAttendance (12-attendance.js).
+ *
+ * برمی‌گرداند: {classId, subjectId, ...} یا null.
+ * null یعنی «پیش‌گزینش نکن، رفتاری قدیم»:
+ *   • مدرسه bell_schedules ندارد (گارد bellAutoAllowed)
+ *   • ساعت دستگاه نامعتبر است
+ *   • الان زنگ درسی نیست (تفریح، پیش از شروع، پایان، تعطیل)
+ *   • دبیر در این زنگ کلاسی در برنامهٔ خودش ندارد
+ *
+ * ⚠️ `now` برای آزمون‌پذیری است — همان الگوی bellNowBar(now).
+ */
+function bellAutoClass(teacherId, schoolId, now){
+  var sid = schoolId || ((typeof S !== 'undefined' && S.user) ? S.user.school_id : null);
+  if(!bellAutoAllowed(sid)) return null;
+  var cur = teacherNowClass(teacherId, sid, now);
+  if(!cur || !cur.classId) return null;
+  return cur;
 }
 
 /* ═══════════════════════════════════════════════════════════════════

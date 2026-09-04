@@ -5864,7 +5864,7 @@ function withCounselor(fn) {
   finally {
     const o = JSON.parse(saved);
     W('S.user=byId("users",' + (o.u||0) + ')||S.user;S.route=' + JSON.stringify(o.r||'dashboard')
-      + ';S.filters=' + JSON.stringify(o.f||{}) + ';S.page=1;S.persona=null;S.boss=null');
+      + ';S.filters=' + JSON.stringify(o.f||{}) + ';S.page=1;S.persona=null;S.boss=null;S.bellNow=null');
   }
 }
 
@@ -6432,6 +6432,153 @@ test('امتحان نهایی: دمو — فصل منتشرشدهٔ مدرسهٔ
   assert(r.inRange === true, 'تاریخ جلسه در بازهٔ فصل نیست');
   assert(r.duty === true, 'دبیر مراقب نمونه ندارد');
   assert(r.sub === true, 'درس جلسهٔ نمونه نیست');
+});
+
+/* ── گام ۳ زنگ: پیش‌گزینش حضور و غیاب (دور ۶۳، بند ۶) ─────────
+   bellAutoClass کلاس جاری دبیر را برمی‌گرداند (یا null). انتخاب
+   دستی (S.filters.class) همیشه بر پیش‌گزینش مقدم است. همهٔ
+   آزمون‌ها با زمان ساختگی (S.bellNow / پارامتر now) کار می‌کنند —
+   به ساعت واقعی وابسته نیستند. */
+
+/* زمان‌ساز صفحه‌ای: تاریخ با روز هفتهٔ مشخص (۰=شنبه) و ساعت دلخواه
+   در سال داده‌شده. (di+6)%7 تبدیل شمارهٔ برنامه به getDay است. */
+const BELL_DATE_AT = 'function dateAtY(di,hh,mm,yr){var js=(di+6)%7;var b=new Date();var d=new Date(yr,b.getMonth(),b.getDate()+((js-b.getDay()+7)%7));d.setHours(hh,mm,0,0);return d;}';
+
+test('گام ۳: bellAutoClass کلاس درست را با زمان مشخص می‌یابد (زنگ/تفریح/ساعت نادرست)', () => {
+  const r = JSON.parse(W('(()=>{'
+    + BELL_DATE_AT
+    + 'var row=null;db.schedule.forEach(function(rw){if(row)return;if(rw.day===0&&Number(rw.period)===1&&rw.teacher_id&&rw.class_id){var u=byId("users",rw.teacher_id);if(u&&u.role==="teacher")row=rw;}});'
+    + 'if(!row)return JSON.stringify({skipTest:true});'
+    + 'var tid=row.teacher_id,sid=row.school_id;'
+    + 'var tl=bellTimeline(sid,0);'
+    + 'var les=tl.filter(function(x){return x.kind==="lesson";})[0];'
+    + 'var brk=tl.filter(function(x){return x.kind==="break";})[0];'
+    + 'if(!les||!brk)return JSON.stringify({skipTest:true});'
+    + 'var f=les.from.split(":");'
+    + 'var dLes=dateAtY(0,Number(f[0]),Number(f[1])+5,new Date().getFullYear());'
+    + 'var rLes=bellAutoClass(tid,sid,dLes);'
+    + 'var g=brk.from.split(":");'
+    + 'var dBk=dateAtY(0,Number(g[0]),Number(g[1])+5,new Date().getFullYear());'
+    + 'var rBk=bellAutoClass(tid,sid,dBk);'
+    + 'var dOld=dateAtY(0,Number(f[0]),Number(f[1])+5,new Date().getFullYear()-5);'
+    + 'var rOld=bellAutoClass(tid,sid,dOld);'
+    + 'return JSON.stringify({skipTest:false,'
+    + 'ok:!!(rLes&&rLes.classId===row.class_id),'
+    + 'subj:!!(rLes&&rLes.subjectId===row.subject_id),'
+    + 'breakNull:rBk===null,'
+    + 'oldNull:rOld===null});})()'));
+  if (r.skipTest) return;
+  assert(r.ok === true, '🔴 bellAutoClass کلاس دبیر را در زنگ درست نیافت');
+  assert(r.subj === true, 'درس زنگ از برنامهٔ هفتگی خوانده نشد');
+  assert(r.breakNull === true, '🔴 در زنگ تفریح کلاس پیش‌گزینش شد');
+  assert(r.oldNull === true, '🔴 چک سلامت ساعت (سال نادرست) اعمال نمی‌شود');
+});
+
+test('گام ۳: خط زمانی بر اساس روز هفتهٔ واقعی است (نه همیشه شنبه)', () => {
+  const r = JSON.parse(W('(()=>{'
+    + BELL_DATE_AT
+    + 'var row=null;db.schedule.forEach(function(rw){if(row)return;if(rw.day===0&&Number(rw.period)===1&&rw.teacher_id&&rw.class_id){var u=byId("users",rw.teacher_id);if(u&&u.role==="teacher")row=rw;}});'
+    + 'if(!row)return JSON.stringify({skipTest:true});'
+    + 'var tid=row.teacher_id,sid=row.school_id;'
+    + 'var rec=null;db.bell_schedules.forEach(function(b){if(b.school_id===sid)rec=b;});'
+    + 'if(!rec||!rec.days||!rec.days[2])return JSON.stringify({skipTest:true});'
+    + 'var saved=JSON.parse(JSON.stringify(rec.days[2]));'
+    + 'var tmp={school_id:sid,day:2,period:1,teacher_id:tid,class_id:row.class_id,subject_id:row.subject_id};'
+    + 'db.schedule.push(tmp);'
+    + 'rec.days[2]={start:"23:00",slots:rec.days[2].slots};'
+    + 'var tl0=bellTimeline(sid,0);'
+    + 'var les=tl0.filter(function(x){return x.kind==="lesson";})[0];var f=les.from.split(":");'
+    + 'var dThu=dateAtY(2,Number(f[0]),Number(f[1])+5,new Date().getFullYear());'
+    + 'var res=bellAutoClass(tid,sid,dThu);'
+    + 'rec.days[2]=saved;db.schedule.splice(db.schedule.indexOf(tmp),1);'
+    + 'return JSON.stringify({skipTest:false,thuNull:res===null});})()'));
+  if (r.skipTest) return;
+  assert(r.thuNull === true, '🔴 خط زمانی چهارشنبه به‌جای برنامهٔ خودش، شنبه را می‌خواند — روز هفته نادیده گرفته می‌شود');
+});
+
+test('گام ۳: 🔴 انتخاب دستی دبیر بر پیش‌گزینش زنگ مقدم است', () => {
+  withCounselor(() => {
+    const r = JSON.parse(W('(()=>{'
+      + BELL_DATE_AT
+      + 'var row=null;db.schedule.forEach(function(rw){if(row)return;if(rw.day===0&&Number(rw.period)===1&&rw.teacher_id&&rw.class_id){var u=byId("users",rw.teacher_id);if(u&&u.role==="teacher")row=rw;}});'
+      + 'if(!row)return JSON.stringify({skipTest:true});'
+      + 'var tid=row.teacher_id,sid=row.school_id;'
+      + 'var tl=bellTimeline(sid,0);'
+      + 'var les=tl.filter(function(x){return x.kind==="lesson";})[0];var f=les.from.split(":");'
+      + 'var dNow=dateAtY(0,Number(f[0]),Number(f[1])+5,new Date().getFullYear());'
+      + 'var auto=bellAutoClass(tid,sid,dNow);'
+      + 'if(!auto)return JSON.stringify({skipTest:true});'
+      + 'var cls=visibleClasses();'
+      + 'var other=cls.filter(function(c){return c.id!==auto.classId;});'
+      + 'if(!other.length)return JSON.stringify({skipTest:true});'
+      + 'var manual=other[0];'
+      + 'S.user=byId("users",tid);S.persona=null;S.boss=null;S.bellNow=dNow;'
+      + 'S.filters={class:manual.id};S.route="attendance";S.page=1;'
+      + 'var h=renderRoute();'
+      + 'S.bellNow=null;S.filters={};'
+      + 'var sel=new RegExp("value=\\""+manual.id+"\\" selected").test(h);'
+      + 'var autoSel=new RegExp("value=\\""+auto.classId+"\\" selected").test(h);'
+      + 'return JSON.stringify({skipTest:false,sel:sel,autoSel:autoSel});})()'));
+    if (r.skipTest) return;
+    assert(r.sel === true, '🔴 انتخاب دستی در انتخابگر انتخاب نشده است');
+    assert(r.autoSel === false, '🔴 پیش‌گزینش زنگ بر انتخاب دستی مقدم شد');
+  });
+});
+
+test('گام ۳: مدرسهٔ بدون bell_schedules رفتار قدیم دارد (بدون پیش‌گزینش و بدون نشان)', () => {
+  withCounselor(() => {
+    const r = JSON.parse(W('(()=>{'
+      + BELL_DATE_AT
+      + 'var tid=null;db.schedule.forEach(function(rw){if(tid)return;if(rw.day===0&&Number(rw.period)===1&&rw.teacher_id){var u=byId("users",rw.teacher_id);if(u&&u.role==="teacher")tid=rw.teacher_id;}});'
+      + 'if(!tid)return JSON.stringify({skipTest:true});'
+      + 'var u=byId("users",tid),sid=u.school_id;'
+      + 'var saved=db.bell_schedules.filter(function(b){return b.school_id===sid;});'
+      + 'if(!saved.length)return JSON.stringify({skipTest:true});'
+      + 'db.bell_schedules=db.bell_schedules.filter(function(b){return b.school_id!==sid;});'
+      + 'var tl0=bellTimeline(sid,0);'
+      + 'var les=tl0.filter(function(x){return x.kind==="lesson";})[0];var f=les.from.split(":");'
+      + 'var dNow=dateAtY(0,Number(f[0]),Number(f[1])+5,new Date().getFullYear());'
+      + 'S.user=u;S.persona=null;S.boss=null;S.bellNow=dNow;S.filters={};S.route="attendance";S.page=1;'
+      + 'var allowed=bellAutoAllowed(sid);'
+      + 'var h=renderRoute();'
+      + 'db.bell_schedules=db.bell_schedules.concat(saved);'
+      + 'S.bellNow=null;S.filters={};'
+      + 'var fc=visibleClasses()[0];'
+      + 'return JSON.stringify({skipTest:false,allowed:allowed,ind:h.indexOf("انتخاب خودکار")===-1,firstCls:new RegExp("value=\\""+fc.id+"\\" selected").test(h)});})()'));
+    if (r.skipTest) return;
+    assert(r.allowed === false, '🔴 bellAutoAllowed برای مدرسهٔ بدون زمان‌بندی زنگ حقیقی true شد');
+    assert(r.ind === true, '🔴 نشان پیش‌گزینش بدون زنگ واقعی نمایش داده شد');
+    assert(r.firstCls === true, 'رفتار قدیم (کلاس نخست) حفظ نشد');
+  });
+});
+
+test('گام ۳: نشان «انتخاب خودکار بر اساس زنگ» + کلاس خودکار + خروج با انتخاب دستی', () => {
+  withCounselor(() => {
+    const r = JSON.parse(W('(()=>{'
+      + BELL_DATE_AT
+      + 'var row=null;db.schedule.forEach(function(rw){if(row)return;if(rw.day===0&&Number(rw.period)===1&&rw.teacher_id&&rw.class_id){var u=byId("users",rw.teacher_id);if(u&&u.role==="teacher")row=rw;}});'
+      + 'if(!row)return JSON.stringify({skipTest:true});'
+      + 'var tid=row.teacher_id,sid=row.school_id;'
+      + 'var tl=bellTimeline(sid,0);'
+      + 'var les=tl.filter(function(x){return x.kind==="lesson";})[0];var f=les.from.split(":");'
+      + 'var dNow=dateAtY(0,Number(f[0]),Number(f[1])+5,new Date().getFullYear());'
+      + 'S.user=byId("users",tid);S.persona=null;S.boss=null;S.bellNow=dNow;'
+      + 'S.filters={};S.route="attendance";S.page=1;'
+      + 'var h=renderRoute();'
+      + 'var hasInd=h.indexOf("انتخاب خودکار بر اساس زنگ")>-1;'
+      + 'var hasBtn=h.indexOf("att-reset-class")>-1;'
+      + 'var autoSel=new RegExp("value=\\""+row.class_id+"\\" selected").test(h);'
+      + 'S.filters={class:(function(){var c=visibleClasses();return c.length?c[0].id:null;})()};'
+      + 'var h2=renderRoute();'
+      + 'S.bellNow=null;S.filters={};'
+      + 'return JSON.stringify({skipTest:false,hasInd:hasInd,hasBtn:hasBtn,autoSel:autoSel,'
+      + 'gone:h2.indexOf("انتخاب خودکار بر اساس زنگ")==-1});})()'));
+    if (r.skipTest) return;
+    assert(r.hasInd === true, '🔴 نشان «انتخاب خودکار بر اساس زنگ» نمایش داده نشد');
+    assert(r.hasBtn === true, '🔴 دکمه «همهٔ کلاس‌ها» نمایش داده نشد');
+    assert(r.autoSel === true, '🔴 کلاس خودکار در انتخابگر انتخاب نشده است');
+    assert(r.gone === true, '🔴 نشان پس از انتخاب دستی ناپدید نشد');
+  });
 });
 
 // ── نتیجه
