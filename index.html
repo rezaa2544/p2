@@ -115,7 +115,11 @@ a{color:inherit;text-decoration:none}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:4px 11px;border-radius:999px;font-size:12.5px;font-weight:700;border:1px solid currentColor}
 .b-blue{background:var(--primary-soft);color:var(--primary-dark)}.b-green{background:var(--green-soft);color:var(--green)}
 .b-red{background:var(--red-soft);color:var(--red)}.b-amber{background:var(--amber-soft);color:var(--amber)}
-.b-purple{background:var(--purple-soft);color:var(--purple)}.b-gray{background:#eef1f6;color:var(--muted)}
+.b-purple{background:var(--purple-soft);color:var(--purple)}.b-gray{background:#eef1f6;color:var(--muted)}.b-cyan{background:#e2f4fb;color:#0b7fa8}
+/* عوامل اجرایی (دور ۶۳) */
+.staff-row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 16px;border:1px solid var(--border);border-radius:14px;margin-bottom:10px;background:var(--surface)}
+.staff-row.reserved{opacity:.62;background:var(--surface-2)}
+.staff-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse}
 th{text-align:right;font-size:13px;color:var(--text);font-weight:800;padding:11px 13px;background:#eaf0fb;border-bottom:2px solid var(--border-strong);white-space:nowrap}
@@ -797,8 +801,8 @@ const jalali = iso => { if(!iso) return '—'; try{ return new Intl.DateTimeForm
 const todayISO = ()=> new Date().toISOString().slice(0,10);
 const daysAgoISO = d => { const t=new Date(); t.setDate(t.getDate()-d); return t.toISOString().slice(0,10); };
 const DAYS=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه'];
-const ROLE_FA={superadmin:'سوپر ادمین',manager:'مدیر مدرسه',teacher:'دبیر',student:'دانش‌آموز',parent:'ولی',edu_office:'اداره آموزش و پرورش'};
-const ROLE_BADGE={superadmin:'b-purple',manager:'b-blue',teacher:'b-green',student:'b-amber',parent:'b-gray',edu_office:'b-purple'};
+const ROLE_FA={superadmin:'سوپر ادمین',manager:'مدیر مدرسه',teacher:'دبیر',student:'دانش‌آموز',parent:'ولی',edu_office:'اداره آموزش و پرورش',counselor:'مشاور'};
+const ROLE_BADGE={superadmin:'b-purple',manager:'b-blue',teacher:'b-green',student:'b-amber',parent:'b-gray',edu_office:'b-purple',counselor:'b-cyan'};
 const ATT_FA={present:'حاضر',absent:'غایب',late:'تأخیر',excused:'موجه'};
 const ATT_BADGE={present:'b-green',absent:'b-red',late:'b-amber',excused:'b-purple'};
 const ATT_COLOR={present:'var(--green)',absent:'var(--red)',late:'var(--amber)',excused:'var(--purple)'};
@@ -876,7 +880,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -1358,6 +1362,13 @@ function scopeDescriptor(user, persona){
                      'attendance:school:window','grades:school:current_terms',
                      'discipline:school:window','schedule:school','tuition:school',
                      'announcements:school','notifications:mine'];
+  } else if(role === 'counselor'){
+    /* 🔴 محدودیت مشاور (دور ۶۳): فقط صف ارجاع مدرسهٔ خودش.
+       نمره/برنامه/پروندهٔ کامل دانش‌آموز در برش مشاور نیست —
+       students فقط به‌اندازهٔ نام و کلاسِ ارجاع‌شده‌ها. */
+    d.scope = { school_id: user.school_id, queue_only: true };
+    d.collections = ['self','counselor_refs:school','students:referees:name-class',
+                     'announcements:mine','notifications:mine'];
   } else if(role === 'edu_office'){
     /* ادارهٔ آموزش‌وپرورش هرگز دادهٔ فردی نمی‌گیرد — فقط تجمیع */
     d.scope = { office_id: user.office_id, aggregate_only: true };
@@ -1436,13 +1447,14 @@ function bootstrapRequest(){
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
  superadmin:[['نظارت روزانه',[['dashboard','📊','داشبورد مدیریتی'],['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها']]],['مدارس و کاربران',[['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه'],['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]]],
- manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['formssms','🖨️','فرم‌ها و پیامک']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['formssms','🖨️','فرم‌ها و پیامک']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  teacher:[['کار روزانه',[['dashboard','📊','داشبورد'],['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کار آموزشی',[['meetings','📅','جلسات اولیا'],['classes','🏛️','کلاس‌ها'],['exams','👁️','برنامه مراقبت من'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['calendar','🗓️','تقویم آموزشی']]],['پروندهٔ من',[['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['leaves','📨','مرخصی']]],['امور مالی',[['mytuition','💰','شهریه من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['کار روزانه',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
- parent:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['children','👨‍👩‍👦','پرونده فرزندان'],['exams','📝','برنامه امتحانات'],['calendar','🗓️','تقویم آموزشی']]],['نوبت و درخواست‌ها',[['meetings','📅','جلسات اولیا'],['leaves','📨','درخواست مرخصی']]],['خانواده و مالی',[['family','🏠','خانواده و مدارس'],['mytuition','💰','شهریه و اقساط']]],['ارتباطات',[['announcements','📢','اطلاعیه‌های مدرسه'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو با مدرسه']]]]
+ parent:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['children','👨‍👩‍👦','پرونده فرزندان'],['exams','📝','برنامه امتحانات'],['calendar','🗓️','تقویم آموزشی']]],['نوبت و درخواست‌ها',[['meetings','📅','جلسات اولیا'],['leaves','📨','درخواست مرخصی']]],['خانواده و مالی',[['family','🏠','خانواده و مدارس'],['mytuition','💰','شهریه و اقساط']]],['ارتباطات',[['announcements','📢','اطلاعیه‌های مدرسه'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو با مدرسه']]]],
+ counselor:[['کار من',[['cqueue','📨','صف ارجاع'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]]
 };
-const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
+const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
 S.stack=[];
@@ -2062,7 +2074,7 @@ function initSync(){
    ═══════════════════════════════════════════════════════════════════ */
 function demoAccounts(){
   const s=db.users.find(u=>u.role==='student'), p=db.users.find(u=>u.role==='parent');
-  return [db.users.find(u=>u.role==='superadmin'),db.users.find(u=>u.username==='edu_kurdistan'),db.users.find(u=>u.username==='manager1'),db.users.find(u=>u.username==='teacher1_1'),s,db.users.find(u=>u.username==='parent_multi')||p].filter(Boolean);
+  return [db.users.find(u=>u.role==='superadmin'),db.users.find(u=>u.username==='edu_kurdistan'),db.users.find(u=>u.username==='manager1'),db.users.find(u=>u.username==='teacher1_1'),s,db.users.find(u=>u.username==='parent_multi')||p,db.users.find(u=>u.username==='counselor1')].filter(Boolean);
 }
 function renderLogin(){
   const accs=demoAccounts();
@@ -2106,7 +2118,11 @@ var EXTRA_ROUTES = {
   teacher:    ['record','exams','meetings'],
   student:    ['record','mytuition','notifications','announcements','subscription'],
   parent:     ['children','record','family','mytuition','notifications','announcements','subscription','calendar','meetings'],
-  edu_office: ['officedash','officeschools','notifications','announcements']
+  edu_office: ['officedash','officeschools','notifications','announcements'],
+  /* 🔴 محدودیت مشاور: فقط صف ارجاع و صفحه‌های عمومی (COMMON_ROUTES).
+     record/attendance/users و بقیه عمداً نیستند — مشاور پروندهٔ
+     کامل دانش‌آموز را نمی‌بیند، فقط دادهٔ ارجاع. */
+  counselor:  []
 };
 
 /** روت‌هایی که برای همهٔ نقش‌های واردشده باز است */
@@ -2150,7 +2166,8 @@ function canRoute(route, role){
 /** روت خانهٔ هر نقش */
 function homeRoute(role){
   role = role || (typeof activePersona === 'function' ? activePersona() : (S.user && S.user.role));
-  return role === 'edu_office' ? 'officedash' : 'dashboard';
+  /* خانهٔ مشاور صف ارجاع است، نه داشبورد عمومی */
+  return role === 'edu_office' ? 'officedash' : (role === 'counselor' ? 'cqueue' : 'dashboard');
 }
 
 /* ---------- مجوز اکشن‌ها ----------
@@ -2291,7 +2308,12 @@ var ACTION_ROLES = {
   'tr-box':        ['manager'],
   'conf-dismiss':  ['manager','superadmin'],
   'subs-settings': ['superadmin'],
-  'subs-save':     ['superadmin']
+  'subs-save':     ['superadmin'],
+  /* مشاور مدرسه (دور ۶۳): ارجاع کار مدیر است؛ رسیدگی کار مشاور
+     (مدیر هم می‌تواند ارجاع خودش را ببندد). اعلان به ولی
+     عمداً در کنش‌ها نیست — خودکار نیست. */
+  'counselor-ref':   ['manager'],
+  'counselor-handle':['counselor','manager']
 };
 
 /* 🔴 TODO پیش از اتصال به سرور — تکرار عین این منطق سمت سرور
@@ -2437,6 +2459,9 @@ function _renderRouteInner(){
     case 'offices':return viewOffices();
     case 'officedash':return viewOfficeDash();
     case 'officeschools':return viewOfficeSchools();
+    case 'cqueue':return viewCounselorQueue();
+    case 'followup':return viewFollowup();
+    case 'staff':return viewStaff();
     default:return viewDashboard();
   }
 }
@@ -2461,6 +2486,9 @@ function viewDashboard(){
       + (typeof notifyDailyCard==='function'?notifyDailyCard():'')
       + annCard();
   if(u.role==='teacher')return teacherDash()+annCard();
+  /* مشاور: نه داشبورد مدیر (دادهٔ سراسری مدرسه) نه داشبورد ولی —
+     داشبورد خودش، مبتنی بر صف ارجاع */
+  if(u.role==='counselor')return counselorDash()+annCard();
   return familyDash()+annCard();
 }
 
@@ -2649,7 +2677,7 @@ function viewUsers(){
      <input class="input" style="width:180px" placeholder="نام یا کد ملی…" data-f="q" value="${esc(q)}" />
      ${canEdit?`<button class="btn" data-act="user-new">➕ کاربر جدید</button>`:''}</div></div>
    ${filterPanel('users',`
-     <select class="select" style="width:135px" data-f="role"><option value="">همه نقش‌ها</option>${['manager','teacher','student','parent'].map(r=>`<option value="${escAttr(r)}" ${role===r?'selected':''}>${ROLE_FA[r]}</option>`).join('')}</select>
+     <select class="select" style="width:135px" data-f="role"><option value="">همه نقش‌ها</option>${['manager','teacher','student','parent','counselor'].map(r=>`<option value="${escAttr(r)}" ${role===r?'selected':''}>${ROLE_FA[r]}</option>`).join('')}</select>
      ${u.role==='superadmin'?`<select class="select" style="width:170px" data-f="school"><option value="">همه مدارس</option>${db.schools.map(s=>`<option value="${escAttr(s.id)}" ${sch==String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`:''}
      <select class="select" style="width:130px" data-f="uactive"><option value="">همه وضعیت‌ها</option><option value="1" ${act==='1'?'selected':''}>فعال</option><option value="0" ${act==='0'?'selected':''}>غیرفعال</option></select>`)}
    ${slice.length?`<div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>نقش</th><th>نام کاربری</th><th>مدرسه</th><th>کلاس</th><th>تلفن</th><th>وضعیت</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
@@ -3338,7 +3366,7 @@ function userModal(x){
   openModal(modalTpl(x.id?'ویرایش کاربر':'افزودن کاربر',
    `<div class="grid g2">${f('نام و نام خانوادگی *',inp('u_name',x.full_name))}
     ${f('نام کاربری *',`<input class="input" id="u_user" value="${esc(x.username)}" ${x.id?'disabled':''} />`)}
-    ${f('نقش',sel('u_role',[['manager','مدیر مدرسه'],['teacher','دبیر'],['student','دانش‌آموز'],['parent','ولی']],x.role))}
+    ${f('نقش',sel('u_role',[['manager','مدیر مدرسه'],['teacher','دبیر'],['student','دانش‌آموز'],['parent','ولی'],['counselor','مشاور']],x.role))}
     ${isSuper?f('مدرسه',sel('u_school',db.schools.map(s=>[s.id,s.name]),x.school_id)):''}
     ${f('کد ملی',inp('u_nid',x.national_id))}${f('تلفن همراه',inp('u_phone',x.phone))}
     ${f('کلاس (برای دانش‌آموز)',sel('u_class',[['','— بدون کلاس —']].concat(clsList.map(c=>[c.id,c.name])),cur))}
@@ -6808,7 +6836,8 @@ document.addEventListener('click',e=>{
      S.user=u;S.stack=[];S.persona=null;Store.remove(PERSONA_KEY);
      linkAsParent(u);
      S.showPicker=panelsOf(u).length>1;
-     S.route=(u.role==='edu_office'?'officedash':'dashboard');Store.set(SESSION_KEY,u.username);if(typeof trackVisit==='function')trackVisit(u.id);toast('خوش آمدید، '+u.full_name,'ok');render();
+     /* روت خانهٔ هر نقش — مشاور به صف ارجاع می‌رود نه داشبورد */
+     S.route=(typeof homeRoute==='function'?homeRoute(u.role):(u.role==='edu_office'?'officedash':'dashboard'));Store.set(SESSION_KEY,u.username);if(typeof trackVisit==='function')trackVisit(u.id);toast('خوش آمدید، '+u.full_name,'ok');render();
    },
    logout(){S.user=null;S.boss=null;S.stack=[];S.persona=null;S.showPicker=false;
      Store.remove(SESSION_KEY);Store.remove(BOSS_KEY);Store.remove(PERSONA_KEY);render();},
@@ -7884,7 +7913,29 @@ document.addEventListener('click',e=>{
      const data={title:V('a_title'),body:V('a_body'),audience:V('a_aud')};
      if(window._annEdit)update('announcements',window._annEdit,data);
      else insert('announcements',Object.assign({school_id:S.user.school_id||null,created_by:S.user.id,created_at:todayISO()},data));
-     closeModal();toast(window._annEdit?'اطلاعیه ویرایش شد':'اطلاعیه منتشر شد','ok');window._annEdit=0;render();}
+     closeModal();toast(window._annEdit?'اطلاعیه ویرایش شد':'اطلاعیه منتشر شد','ok');window._annEdit=0;render();},
+   /* ── مشاور مدرسه و پیگیری الگوها (دور ۶۳) ── */
+   'fu-days'(){S.filters.fu_days=Number(el.dataset.d);render();},
+   'counselor-ref'(){
+     const stId=Number(el.dataset.s),key=el.dataset.k;
+     const days=Number(S.filters.fu_days)>0?Number(S.filters.fu_days):30;
+     const row=(patternFlagged(S.user.school_id,days)||[]).find(rw=>rw.user.id===stId);
+     const bre=row&&row.breaches.find(b=>b.key===key);
+     if(!bre){toast('الگو دیگر معتبر نیست — صفحه را تازه کنید','err');render();return;}
+     const res=counselorRef(S.user.school_id,stId,bre,S.user.id);
+     toast(res.msg,res.ok?'ok':'err');
+     if(res.ok)render();
+   },
+   'counselor-handle'(){
+     const ref=(typeof byId==='function')?byId('counselor_refs',Number(el.dataset.r)):null;
+     if(!ref){toast('ارجاع پیدا نشد','err');return;}
+     /* مرز بین‌مدرسه‌ای: فقط ارجاعِ مدرسهٔ خودت */
+     if(ref.school_id!==S.user.school_id){toast('دسترسی به ارجاع مدرسهٔ دیگر مجاز نیست','err');return;}
+     const inp=el.ownerDocument&&$('#ch_note_'+ref.id);
+     const note=inp?inp.value.trim():'';
+     if(counselorHandle(ref.id,S.user.id,note)){toast('ارجاع رسیدگی‌شده شد','ok');render();}
+     else toast('این ارجاع از پیش رسیدگی شده است','err');
+   }
   };
   if(A[a]){e.preventDefault();A[a]();}
   else if(typeof F7_ACTIONS!=='undefined'&&F7_ACTIONS[a]){e.preventDefault();F7_ACTIONS[a](el,id);}
@@ -14975,6 +15026,425 @@ function bellNowBar(now){
     + (cur.conflict
         ? ' <span class="badge b-amber">تداخل برنامه</span>' : '')
     + '</div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   مشاور مدرسه و عوامل اجرایی (دور ۶۳)
+
+   نقش تازهٔ «مشاور» را مدیر مدرسه مثل سایر کادرها تعریف می‌کند
+   (بخش «دبیران و دانش‌آموزان» با نقش «مشاور»). اولین وظیفهٔ
+   مشاور: دیدن صف دانش‌آموزانی که **دستوری** (نه خودکار) توسط
+   مدیر ارجاع شده‌اند — بر پایهٔ شمارندهٔ الگوی تکرار، طرح
+   ۴.۷ «حالت‌های حضور و غیاب» (docs/PLAN_ATTENDANCE_STATES.md).
+
+   مکانیزم ارجاع: دکمهٔ «ارجاع به مشاور» در نمای پیگیری مدیر.
+   سامانه **خودکار به اولیا پیام نمی‌دهد** (تصمیم بند ۴ دور ۶۳)؛
+   پیگیری و ارتباط با خانواده با مشاور است.
+
+   بخش «عوامل اجرایی»: EXEC_ROLES تک‌منبع حقیقت نقش‌های کادر
+   اجرایی است؛ معاونت‌های آموزشی/اداری/فنی/تحصیلی رزرو شده‌اند
+   و بعداً همان‌جا فعال می‌شوند — بدون بازطراحی کامل.
+
+   ⚠️ محدوده: مشاور فقط صف ارجاع‌های مدرسهٔ خودش را می‌بیند.
+   نمره، برنامهٔ درسی و پروندهٔ کامل دانش‌آموز در این صف نیست
+   — فقط نام، کلاس و دادهٔ الگو (تأخیر/غیبت) که برای تصمیم
+   پیگیری لازم است.
+   ═══════════════════════════════════════════════════════════════ */
+
+/** کادر اجرایی — فعلاً فقط مشاور فعال است؛ بقیه رزرو‌اند */
+var EXEC_ROLES=[
+  {key:'counselor',fa:'مشاور',active:true,desc:'صف دانش‌آموزان ارجاع‌شدهٔ الگوهای رفتاری را پیگیری می‌کند'},
+  {key:'deputy_edu',fa:'معاون آموزشی',active:false,reserved:true,desc:''},
+  {key:'deputy_exec',fa:'معاون اجرایی',active:false,reserved:true,desc:''},
+  {key:'deputy_tech',fa:'معاون فنی',active:false,reserved:true,desc:''},
+  {key:'deputy_culture',fa:'معاون پرورشی',active:false,reserved:true,desc:''}
+];
+
+/** آستانه‌های الگو — پیش‌فرض‌های طرح ۴.۷.
+    ⚠️ وقتی طرح «حالت‌های حضور و غیاب» اجرا شد، این‌ها از
+    `schools.discipline_rules` خوانده می‌شوند (قابل تنظیم مدرسه‌به‌مدرسه). */
+var PATTERN_RULES={late_month:4,absent_month:3,exit_week:3,exit_min_week:45};
+var BREACH_FA={late:'تأخیر مکرر',absent:'غیبت مکرر',exits:'خروج مکرر از کلاس'};
+var TREND_FA={rising:'📈 رو به افزایش',steady:'➖ پایدار',falling:'📉 رو به کاهش'};
+
+function patternRules(schoolId){
+  var sc=(typeof byId==='function')?byId('schools',schoolId)||{}:{};
+  var r=sc.discipline_rules||{};
+  return {
+    late_month:Number(r.pattern_late_month)>0?Number(r.pattern_late_month):PATTERN_RULES.late_month,
+    absent_month:Number(r.pattern_absent_month)>0?Number(r.pattern_absent_month):PATTERN_RULES.absent_month,
+    exit_week:Number(r.pattern_exit_week)>0?Number(r.pattern_exit_week):PATTERN_RULES.exit_week,
+    exit_min_week:Number(r.pattern_exit_min)>0?Number(r.pattern_exit_min):PATTERN_RULES.exit_min_week
+  };
+}
+
+/** روند: نیمهٔ اول بازه با نیمهٔ دوم مقایسه می‌شود
+    (همان روش نمودار روند نمرات، دور ۴۳) */
+function patternTrend(dates){
+  var d=(dates||[]).slice().sort();
+  if(d.length<2)return 'steady';
+  var mid=Math.floor(d.length/2);
+  var a=d.slice(0,mid).length,b=d.slice(mid).length;
+  if(b>a*1.25)return 'rising';
+  if(a>b*1.25)return 'falling';
+  return 'steady';
+}
+
+/**
+ * الگوی تکرار دانش‌آموز (طرح ۴.۷) — از داده‌ای که امروز وجود دارد:
+ * تأخیر (رکوردهای حضور با status 'late') و غیبت (status 'absent').
+ * ⚠️ شمارندهٔ خروج از کلاس با پیاده‌سازی جدول `class_exits`
+ * (بخش ۳ طرح) می‌آید — تا آن‌جا صفر می‌ماند.
+ * ⚠️ فیلد late_minutes هنوز در رکورد حضور نیست (بخش ۲ طرح)؛
+ * با اضافه‌شدنش، مجموع دقیقه دقیق می‌شود.
+ */
+function patternCheck(studentId,days){
+  var n=Number(days)>0?Number(days):30;
+  var from=daysAgoISO(n);
+  var late=[],absent=[],lateMin=0,unexcused=0;
+  (db.attendance||[]).forEach(function(a){
+    if(a.student_id!==studentId||a.date<from)return;
+    if(a.status==='late'){late.push(a.date);lateMin+=Number(a.late_minutes)||0;}
+    else if(a.status==='absent'){absent.push(a.date);if(!a.excused)unexcused++;}
+  });
+  return {
+    days:n,
+    late:{count:late.length,totalMinutes:lateMin,trend:patternTrend(late)},
+    absent:{count:absent.length,unexcused:unexcused,trend:patternTrend(absent)},
+    /* ⚠️ با پیاده‌سازی class_exits از آن جدول پر می‌شود */
+    exits:{count:0,totalMinutes:0,trend:'steady'}
+  };
+}
+
+/** الگوهای دانش‌آموزی که آستانهٔ (مدرسهٔ) خودش را رد کرده */
+function patternBreaches(studentId,schoolId,days){
+  var c=patternCheck(studentId,days);
+  var r=patternRules(schoolId);
+  var out=[];
+  if(c.late.count>=r.late_month)
+    out.push({key:'late',fa:BREACH_FA.late,count:c.late.count,totalMinutes:c.late.totalMinutes,trend:c.late.trend,limit:r.late_month+' بار در ماه'});
+  if(c.absent.count>=r.absent_month)
+    out.push({key:'absent',fa:BREACH_FA.absent,count:c.absent.count,unexcused:c.absent.unexcused,trend:c.absent.trend,limit:r.absent_month+' بار در ماه'});
+  if(c.exits.count>=r.exit_week)
+    out.push({key:'exits',fa:BREACH_FA.exits,count:c.exits.count,trend:c.exits.trend,limit:r.exit_week+' بار در هفته'});
+  return out;
+}
+
+/**
+ * دانش‌آموزان مدرسه با الگوی نیازمند پیگیری.
+ * ⚠️ کارایی (هشدار گام ۹ طرح): شمارنده‌ها با **یک پیمایش** روی
+ * جدول حضور ساخته می‌شوند نه با یک فیلتر کامل برای هر دانش‌آموز.
+ */
+function patternFlagged(schoolId,days){
+  var n=Number(days)>0?Number(days):30;
+  var from=daysAgoISO(n);
+  var by=Object.create(null);
+  (db.attendance||[]).forEach(function(a){
+    if(a.date<from)return;
+    var e=by[a.student_id];
+    if(!e)e=by[a.student_id]={late:[],absent:[],lateMin:0,unexcused:0};
+    if(a.status==='late'){e.late.push(a.date);e.lateMin+=Number(a.late_minutes)||0;}
+    else if(a.status==='absent'){e.absent.push(a.date);if(!a.excused)e.unexcused++;}
+  });
+  var r=patternRules(schoolId);
+  var out=[];
+  (db.users||[]).forEach(function(st){
+    if(st.role!=='student'||st.school_id!==schoolId||(st.status||'active')!=='active')return;
+    var e=by[st.id];
+    if(!e)return;
+    var check={
+      days:n,
+      late:{count:e.late.length,totalMinutes:e.lateMin,trend:patternTrend(e.late)},
+      absent:{count:e.absent.length,unexcused:e.unexcused,trend:patternTrend(e.absent)},
+      exits:{count:0,totalMinutes:0,trend:'steady'}
+    };
+    var br=[];
+    if(check.late.count>=r.late_month)
+      br.push({key:'late',fa:BREACH_FA.late,count:check.late.count,totalMinutes:check.late.totalMinutes,trend:check.late.trend,limit:r.late_month+' بار در ماه'});
+    if(check.absent.count>=r.absent_month)
+      br.push({key:'absent',fa:BREACH_FA.absent,count:check.absent.count,unexcused:check.unexcused,trend:check.absent.trend,limit:r.absent_month+' بار در ماه'});
+    if(!br.length)return;
+    out.push({user:st,cls:classOf(st.id),breaches:br,check:check});
+  });
+  out.sort(function(a,b){
+    return b.breaches.reduce(function(s,x){return s+x.count;},0)
+         - a.breaches.reduce(function(s,x){return s+x.count;},0);
+  });
+  return out;
+}
+
+/* ─────────── صف ارجاع به مشاور (counselor_refs) ─────────── */
+
+/** صف ارجاع‌های مدرسه (onlyOpen: فقط بازها) — تازه‌ترین بالا */
+function counselorQueue(schoolId,onlyOpen){
+  var q=(db.counselor_refs||[]).filter(function(r){
+    return r.school_id===schoolId&&(!onlyOpen||r.status==='open');
+  });
+  q.sort(function(a,b){return String(b.created_at||'').localeCompare(String(a.created_at||''));});
+  return q;
+}
+
+/** ارجاع بازِ یک دانش‌آموز برای یک دلیل (وگرنه null) */
+function counselorOpenRef(schoolId,studentId,breachKey){
+  return (db.counselor_refs||[]).filter(function(r){
+    return r.school_id===schoolId&&r.student_id===studentId&&r.breach_key===breachKey&&r.status==='open';
+  })[0]||null;
+}
+
+/**
+ * ارجاع یک دانش‌آموز به مشاور (دستوری — توسط مدیر).
+ * اگر برای همان دلیل ارجاع باز وجود داشته باشد، تکرار نمی‌شود.
+ */
+function counselorRef(schoolId,studentId,breach,referrerId){
+  var dupe=counselorOpenRef(schoolId,studentId,breach.key);
+  if(dupe)return {ok:false,msg:'برای این دلیل از پیش ارجاع باز وجود دارد',ref:dupe};
+  var c=patternCheck(studentId,30);
+  var rec=insert('counselor_refs',{
+    school_id:schoolId,student_id:studentId,breach_key:breach.key,
+    reason:breach.fa+' — '+breach.count+' بار در '+c.days+' روز گذشته',
+    pattern:JSON.parse(JSON.stringify(c)),
+    referred_by:referrerId,status:'open',
+    created_at:new Date().toISOString()
+  });
+  return {ok:true,msg:'دانش‌آموز به مشاور ارجاع شد',ref:rec};
+}
+
+/** رسیدگی به یک ارجاع (مشاور یا مدیر) — رکورد پاک نمی‌شود، وضعیتش عوض می‌شود */
+function counselorHandle(refId,userId,note){
+  var rec=(typeof byId==='function')?byId('counselor_refs',refId):null;
+  if(!rec||rec.status!=='open')return false;
+  update('counselor_refs',refId,{status:'handled',handled_by:userId,
+    handled_at:new Date().toISOString(),note:note||null});
+  return true;
+}
+
+/* ─────────── نماها ─────────── */
+
+/** صف ارجاع‌ها — صفحهٔ خانهٔ مشاور */
+function viewCounselorQueue(){
+  var u=S.user,sid=u.school_id;
+  var open=counselorQueue(sid,true);
+  var done=counselorQueue(sid).filter(function(r){return r.status!=='open';}).slice(0,5);
+  var h='<div class="card"><div class="card-head"><h3>📨 صف ارجاع به مشاور</h3>'
+    +'<span class="badge '+(open.length?'b-amber':'b-green')+'">'+open.length+' باز</span></div><div class="card-body">';
+  h+='<div class="small muted" style="margin-bottom:12px">دانش‌آموزانی که مدیر برای الگوی رفتاری (تأخیر/غیبت مکرر) به شما ارجاع داده است. فقط ارجاع‌های مدرسهٔ شما دیده می‌شود؛ نمره و پروندهٔ کامل در این صف نیست — تصمیم پیگیری و ارتباط با خانواده با شماست (سامانه خودکار به اولیا پیام نمی‌دهد).</div>';
+  if(!open.length){
+    h+=empty('📨','صف خالی است','هنوز دانش‌آموزی ارجاع نشده. وقتی الغویی آستانه را رد کند، مدیر از صفحهٔ «پیگیری الگوها» ارجاع می‌زند.');
+  }
+  open.forEach(function(r){
+    var st=byId('users',r.student_id);
+    if(!st){h+='<div class="small muted" style="padding:8px 0">ارجاع یتیم (رکورد دانش‌آموز نیست) — شمارهٔ '+r.id+'</div>';return;}
+    var cls=classOf(st.id);
+    var p=r.pattern||{};
+    var byU=byId('users',r.referred_by);
+    h+='<div class="counsel-ref" style="border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px">'
+      +'<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'
+      +'<b style="font-size:15px">'+esc(st.full_name)+'</b>'
+      +'<span class="badge b-gray">'+esc(cls?cls.name:'—')+'</span>'
+      +'<span class="badge b-amber">'+esc(r.reason||'')+'</span>'
+      +'</div>'
+      +'<div class="small muted" style="margin-top:7px">'
+      +(p.late?'تأخیر: '+p.late.count+' بار'+(p.late.totalMinutes?' ('+p.late.totalMinutes+' دقیقه)':'')+' · ':'')
+      +(p.absent?'غیبت: '+p.absent.count+' بار ('+p.absent.unexcused+' غیرموجه) · ':'')
+      +(p.late&&p.late.trend&&p.late.trend!=='steady'?'روند تأخیر: '+TREND_FA[p.late.trend]+' · ':'')
+      +'ارجاع‌دهنده: '+(byU?esc(byU.full_name):'—')
+      +' · '+String(r.created_at||'').slice(0,10)
+      +'</div>'
+      +'<div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">'
+      +'<input class="input" id="ch_note_'+r.id+'" placeholder="یادداشت پیگیری (اختیاری)" style="max-width:360px">'
+      +'<button class="btn" data-act="counselor-handle" data-r="'+r.id+'">✅ رسیدگی شد</button>'
+      +'</div></div>';
+  });
+  if(done.length){
+    h+='<div class="card-head" style="margin-top:16px"><h3 style="font-size:14px">رسیدگی‌شده (۵ مورد آخر)</h3></div>';
+    done.forEach(function(r){
+      var st=byId('users',r.student_id);
+      var byU=byId('users',r.handled_by);
+      h+='<div class="small" style="padding:7px 0;border-bottom:1px solid #e8edf5">'
+        +'<span class="badge b-green">رسیدگی‌شده</span> '+(st?esc(st.full_name):'—')
+        +' · '+esc(r.reason||'')
+        +(r.note?' · <span class="muted">یادداشت: '+esc(r.note)+'</span>':'')
+        +' · توسط: '+(byU?esc(byU.full_name):'—')
+        +'</div>';
+    });
+  }
+  return h+'</div></div>';
+}
+
+/** پیگیری الگوها — نمای مدیر: شمارنده + دکمهٔ ارجاع */
+function viewFollowup(){
+  var u=S.user,sid=u.school_id;
+  var days=Number(S.filters.fu_days)>0?Number(S.filters.fu_days):30;
+  var r=patternRules(sid);
+  var flagged=patternFlagged(sid,days);
+  var openRefs=counselorQueue(sid,true);
+  var h='<div class="card"><div class="card-head"><h3>📈 پیگیری الگوها</h3>'
+    +'<div style="display:flex;gap:6px">'
+    +[30,60].map(function(d){
+      return '<button class="btn'+(days===d?'':' ghost')+'" data-act="fu-days" data-d="'+d+'">'+d+' روز</button>';
+    }).join('')
+    +'</div></div><div class="card-body">';
+  h+='<div class="small muted" style="margin-bottom:10px">آستانه‌ها: تأخیر مکرر '+r.late_month+' بار در ماه · غیبت مکرر '+r.absent_month+' بار در ماه · خروج مکرر '+r.exit_week+' بار در هفته. وقتی دانش‌آموزی آستانه را رد کند، او را به مشاور ارجاع دهید — اعلان به ولی **خودکار نیست**؛ پیگیری با مشاور است.</div>';
+  if(!flagged.length){
+    h+=empty('📈','الگویی در این بازه نیست','هیچ دانش‌آموزی در '+days+' روز گذشته آستانهٔ الگوها را رد نکرده است.');
+  } else {
+    h+='<div class="table-wrap"><table class="table"><thead><tr>'
+      +'<th>دانش‌آموز</th><th>تأخیر</th><th>غیبت</th><th>روند</th><th>اقدام</th>'
+      +'</tr></thead><tbody>';
+    flagged.forEach(function(row){
+      var st=row.user;
+      var br={};row.breaches.forEach(function(b){br[b.key]=b;});
+      var tb=row.breaches[0]||{};
+      h+='<tr><td><b>'+esc(st.full_name)+'</b><div class="small muted">'+esc(row.cls?row.cls.name:'—')+'</div></td>'
+        +'<td>'+(br.late?'<span class="badge b-amber">'+br.late.count+' بار</span>':'—')+'</td>'
+        +'<td>'+(br.absent?'<span class="badge b-red">'+br.absent.count+' بار</span>':'—')+'</td>'
+        +'<td class="small">'+TREND_FA[tb.trend||'steady']+'</td>'
+        +'<td>'
+        +row.breaches.map(function(b){
+          var ref=counselorOpenRef(sid,st.id,b.key);
+          return ref
+            ?'<span class="badge b-blue" title="برای این دلیل ارجاع باز وجود دارد">ارجاع‌شده</span>'
+            :'<button class="btn" data-act="counselor-ref" data-s="'+st.id+'" data-k="'+b.key+'">🕊️ ارجاع به مشاور</button>';
+        }).join(' ')
+        +'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  h+='<div class="card-head" style="margin-top:16px"><h3 style="font-size:14px">ارجاع‌های باز شما: '+openRefs.length+'</h3></div>';
+  openRefs.slice(0,8).forEach(function(r2){
+    var st=byId('users',r2.student_id);
+    h+='<div class="small" style="padding:6px 0;border-bottom:1px solid #e8edf5">'
+      +'<span class="badge b-amber">باز</span> '+(st?esc(st.full_name):'—')
+      +' · '+esc(r2.reason||'')+' · '+String(r2.created_at||'').slice(0,10)
+      +'</div>';
+  });
+  return h+'</div></div>';
+}
+
+/** عوامل اجرایی — مشاور فعال + معاونت‌های رزرو‌شده */
+function viewStaff(){
+  var u=S.user,sid=u.school_id;
+  var h='<div class="card"><div class="card-head"><h3>📇 عوامل اجرایی</h3></div><div class="card-body">';
+  h+='<div class="small muted" style="margin-bottom:12px">عوامل اجرایی مثل سایر کادرها در بخش «دبیران و دانش‌آموزان» توسط مدیر تعریف می‌شوند (با نقش «مشاور»). فعلاً فقط مشاور فعال است؛ معاونت‌ها رزرو شده‌اند و بعداً بدون بازطراحی کامل فعال می‌شوند.</div>';
+  EXEC_ROLES.forEach(function(r){
+    var people=r.active
+      ?db.users.filter(function(x){return x.role===r.key&&x.school_id===sid&&x.active;})
+      :[];
+    h+='<div class="staff-row'+(r.active?'':' reserved')+'">'
+      +'<div><b>'+esc(r.fa)+'</b> '
+      +(r.active?'<span class="badge b-green">فعال</span>':'<span class="badge b-gray">رزرو</span>')
+      +(r.desc?'<div class="small muted">'+esc(r.desc)+'</div>':'')
+      +'</div>'
+      +'<div class="staff-right">'
+      +(r.active
+        ?(people.length
+           ?'<span class="small">'+esc(people.map(function(p){return p.full_name;}).join(' · '))+'</span>'
+           :'<span class="badge b-amber">تعریف نشده</span> <button class="btn" data-act="user-new">افزودن مشاور</button>')
+        :'به‌زودی')
+      +'</div></div>';
+  });
+  return h+'</div></div>';
+}
+
+/** داشبورد مشاور */
+function counselorDash(){
+  var u=S.user,sid=u.school_id;
+  var open=counselorQueue(sid,true).length;
+  var done=counselorQueue(sid).filter(function(r){return r.status!=='open';}).length;
+  var school=(typeof byId==='function')?byId('schools',sid):null;
+  var h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px">'
+    +'<div class="card stat"><div class="stat-num">'+open+'</div><div class="stat-label">ارجاع باز</div></div>'
+    +'<div class="card stat"><div class="stat-num">'+done+'</div><div class="stat-label">رسیدگی‌شده</div></div>'
+    +'<div class="card stat"><div class="stat-num" style="font-size:15px">'+esc(school?school.name:'—')+'</div><div class="stat-label">مدرسهٔ من</div></div>'
+    +'</div>';
+  h+='<div class="card"><div class="card-body">'
+    +(open
+      ?'<button class="btn" data-act="go" data-r="cqueue">باز کردن صف ارجاع ←</button>'
+      :'<div class="small muted">ارجاع بازی نیست. وقتی مدیر دانش‌آموزی را ارجاع کند، اینجا برای پیگیری می‌آید.</div>')
+    +'</div></div>';
+  return h;
+}
+
+/* ─────────── دادهٔ نمونه (فاز ۱۲) ─────────── */
+
+/**
+ * مشاوران + دانش‌آموزانِ دارای الگو + صف ارجاع اولیه.
+ * ⚠️ قطعی است (rng با SEED ثابت) و با add() نوشته می‌شود،
+ * نه insert() — دادهٔ پایه در دفترچهٔ عملیات ثبت نمی‌شود
+ * (وگرنه «تولید داده نمونه صف را پر نکرده» آزمون را می‌شکست).
+ */
+function generateP12(){
+  /* یک مشاور برای هر مدرسهٔ فعال */
+  db.schools.filter(function(s){return s.active;}).forEach(function(s,si){
+    var first=(s.gender==='دخترانه')?FEMALE:MALE;
+    add('users',{school_id:s.id,role:'counselor',full_name:pick(first)+' '+pick(LAST),
+      username:'counselor'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),
+      active:1,title:'مشاور مدرسه',created_at:daysAgoISO(470-si)});
+  });
+  /* دانش‌آموزان الگودار — تا نمای پیگیری و صف مشاور در دمو خالی نباشد */
+  /* nStart/nEnd: فاصله از انتهای بازهٔ زمانی (آخر = ۰).
+     ⚠️ slice(-7,0) خالی برمی‌گردد — ایندکس‌ها مثبت می‌شوند. */
+  function setRecent(stId,nStart,nEnd,status){
+    var recs=db.attendance.filter(function(a){return a.student_id===stId;})
+      .sort(function(a,b){return a.date<b.date?-1:1;});
+    var n=recs.length;
+    var a0=Math.max(0,n-nStart);
+    var a1=nEnd<0?Math.max(0,n-nEnd):n;
+    recs.slice(a0,a1).forEach(function(a){a.status=status;});
+  }
+  function mkRef(st,kind,who,counselor,dayAgo){
+    var c=patternCheck(st.id,30);
+    var part=kind==='late'?c.late:c.absent;
+    add('counselor_refs',{
+      school_id:st.school_id,student_id:st.id,breach_key:kind,
+      reason:breachFa(kind)+' — '+part.count+' بار در ۳۰ روز گذشته',
+      pattern:c,referred_by:who.id,status:'open',
+      created_at:new Date(Date.now()-dayAgo*86400000).toISOString()
+    });
+    void counselor;
+  }
+  function breachFa(kind){return BREACH_FA[kind]||kind;}
+  var sid1=db.schools[0].id,sid2=db.schools[1].id;
+  var kids1=db.users.filter(function(x){return x.role==='student'&&x.school_id===sid1&&(x.status||'active')==='active';});
+  var kids2=db.users.filter(function(x){return x.role==='student'&&x.school_id===sid2&&(x.status||'active')==='active';});
+  if(kids1.length>=3){
+    var k1=kids1[0],k2=kids1[1],k3=kids1[2];
+    /* ۷ تأخیر در ۷ روزِ آخرینِ مدرسه → آستانهٔ ۴ رد می‌شود، روند رو به افزایش */
+    setRecent(k1.id,7,0,'late');
+    /* ۴ غیبت → آستانهٔ ۳ */
+    setRecent(k2.id,4,0,'absent');
+    /* ترکیبی: ۳ غیبت + ۴ تأخیر */
+    setRecent(k3.id,7,4,'absent');
+    setRecent(k3.id,4,0,'late');
+    var mgr1=db.users.find(function(u){return u.role==='manager'&&u.school_id===sid1;});
+    if(mgr1){mkRef(k1,'late',mgr1,null,1);mkRef(k2,'absent',mgr1,null,2);mkRef(k3,'late',mgr1,null,3);}
+  }
+  if(kids2.length>=1){
+    /* یک الگو + یک ارجاع در مدرسهٔ دوم — برای سنجش مرز بین‌مدرسه‌ای */
+    setRecent(kids2[0].id,4,0,'absent');
+    var mgr2=db.users.find(function(u){return u.role==='manager'&&u.school_id===sid2;});
+    if(mgr2)mkRef(kids2[0],'absent',mgr2,null,1);
+  }
+  /* یک ارجاعِ رسیدگی‌شده برای مدرسهٔ اول — بخش «رسیدگی‌شده» خالی نماند */
+  var kids3=db.users.filter(function(x){return x.role==='student'&&x.school_id===sid1&&(x.status||'active')==='active';});
+  if(kids3.length>=4){
+    setRecent(kids3[3].id,4,0,'late');
+    var mgr1b=db.users.find(function(u){return u.role==='manager'&&u.school_id===sid1;});
+    var cous1=db.users.find(function(u){return u.role==='counselor'&&u.school_id===sid1;});
+    if(mgr1b&&cous1){
+      var c=patternCheck(kids3[3].id,30);
+      add('counselor_refs',{
+        school_id:sid1,student_id:kids3[3].id,breach_key:'late',
+        reason:breachFa('late')+' — '+c.late.count+' بار در ۳۰ روز گذشته',
+        pattern:c,referred_by:mgr1b.id,status:'handled',
+        referred_at:null,
+        handled_by:cous1.id,
+        handled_at:new Date(Date.now()-6*86400000).toISOString(),
+        note:'جلسهٔ نخست برگزار شد؛ خانواده در جریان قرار گرفت',
+        created_at:new Date(Date.now()-8*86400000).toISOString()
+      });
+    }
+  }
 }
 
 </script>
