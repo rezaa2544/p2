@@ -3416,25 +3416,30 @@ test('صف مدیر: مسیر تازه عنوان و جایگاه منو دار�
    ⚠️ تغییر رفتار: تیک دیگر بی‌درنگ ذخیره نمی‌شود. این آزمون‌ها
    نگهبان همان تغییرند. */
 
-/** محیط دبیر روی یک کلاس و تاریخ مشخص؛ پیش‌نویس در پایان پاک می‌شود */
+/** محیط دبیر روی یک کلاس و تاریخ مشخص؛ پیش‌نویس در پایان پاک می‌شود.
+    ⚠️ درس دور ۴۲: visibleClasses()[0] کورکورانه انتخاب نشود.
+    آزمون‌های پیشین ثبت‌نام‌ها را عوض می‌کنند و کلاس نخست ممکن
+    است تنها ۱ دانش‌آموز داشته باشد ⇒ «۳ تیک نگرفت» دروغین.
+    ⚠️ درس دور ۵۱: دبیر نخست هم ثابت نگذارد. آزمون‌های چرخهٔ
+    پایان‌سال کلاس‌های ۱–۲ مدرسهٔ نخست را خالی می‌کنند و گسترش
+    داده به ۶ زنگ (کامیت 474f618) نگاشت دبیر و کلاس در جدول
+    برنامه را عوض کرد؛ نتیجه: دبیر نخست کلاسِ پُرِ تنها را گم کرد
+    و نه آزمون پیش‌نویس سبز ماند. حالا نخستین دبیری را می‌گردیم
+    که واقعاً کلاسی با سه دانش‌آموز داشته باشد. */
 function withDraft(fn) {
-  const sid = W('db.schools[0].id');
+  const env = W('(()=>{for(const t of db.users.filter(u=>u.role==="teacher")){'
+    + 'for(const c of teacherClasses(t.id)){if(studentsOfClass(c.id).length>=3)'
+    + 'return JSON.stringify({t:t.id,s:t.school_id,c:c.id});}}return null;})()');
+  assert(env, 'محیط آزمون: هیچ دبری با کلاس سه‌نفره پیدا نشد');
+  const e = JSON.parse(env);
   W('(()=>{db._dU=S.user;db._dF=S.filters;db._dR=S.route;'
-    + 'S.user=db.users.find(u=>u.role==="teacher"&&u.school_id===' + sid + ')'
-    + '||db.users.find(u=>u.role==="manager"&&u.school_id===' + sid + ')||S.user;'
+    + 'S.user=byId("users",' + e.t + ');'
     + 'S.persona=null;S.boss=null;S.route="attendance";'
     + 'Store.remove(ATT_DRAFT_KEY);})()');
   try {
-    /* ⚠️ درس دور ۴۲: visibleClasses()[0] کورکورانه انتخاب نشود.
-       آزمون‌های پیشین ثبت‌نام‌ها را عوض می‌کنند و کلاس نخست ممکن
-       است تنها ۱ دانش‌آموز داشته باشد ⇒ «۳ تیک نگرفت» دروغین.
-       کلاسی می‌خواهیم که واقعاً ظرفیت آزمون را داشته باشد. */
-    const cid = W('(()=>{const c=visibleClasses()'
-      + '.filter(x=>studentsOfClass(x.id).length>=3);'
-      + 'return c.length?c[0].id:(visibleClasses()[0]||{}).id||0;})()');
-    const roster = W('studentsOfClass(' + cid + ').length');
+    const roster = W('studentsOfClass(' + e.c + ').length');
     assert(roster >= 3, 'محیط آزمون کلاس سه‌نفره ندارد (بیشینه: ' + roster + ')');
-    return fn(sid, cid, '2026-09-04');
+    return fn(e.s, e.c, '2026-09-04');
   } finally {
     W('(()=>{Store.remove(ATT_DRAFT_KEY);S.user=db._dU;S.filters=db._dF;'
       + 'S.route=db._dR;delete db._dU;delete db._dF;delete db._dR;})()');
