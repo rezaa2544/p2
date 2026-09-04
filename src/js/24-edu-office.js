@@ -607,11 +607,18 @@ const P8_ACTIONS = {
   'exam-save'(){
     const e=window._edit||{}, term=window._term;
     const date=V('ex_date'), st=V('ex_time'), dur=Number(V('ex_dur'))||90, cid=Number(V('ex_class'));
+    const isFinal=Number(V('ex_final'))===1;
+    /* امتحان نهایی فقط پایه‌های پایانی (نهم/دوازدهم) — قاعدهٔ
+       تک‌منبع در finalGradeOk (26-curriculum) */
+    const cls=byId('classes',cid);
+    if(isFinal&&!(typeof finalGradeOk==='function'&&finalGradeOk(cls&&cls.grade))){
+      toast('امتحان نهایی فقط برای پایه‌های پایانی (نهم و دوازدهم) است','err');return;
+    }
     if(date<term.start_date||date>term.end_date){toast('تاریخ باید در بازه فصل امتحانات باشد','err');return;}
     const clash=db.exams.find(x=>x.class_id===cid&&x.date===date&&x.id!==e.id&&overlapP(st,dur,x.start_time,x.duration));
     if(clash){toast(`تداخل: این کلاس در ساعت ${clash.start_time} امتحان دیگری دارد`,'err');return;}
     const data={school_id:S.user.school_id,term_id:term.id,class_id:cid,subject_id:Number(V('ex_subject')),date,
-      start_time:st,duration:dur,room:V('ex_room'),max_score:Number(V('ex_max'))||20};
+      start_time:st,duration:dur,room:V('ex_room'),max_score:Number(V('ex_max'))||20,is_final:isFinal?1:0};
     if(e.id)update('exams',e.id,data); else insert('exams',data);
     closeModal(); toast('جلسه امتحان ذخیره شد','ok'); render();
   },
@@ -699,15 +706,17 @@ function termModal(t){
 }
 function examModal(e,term){
   const classes=visibleClasses(), subs=visibleSubjects();
-  e=e||{class_id:(classes[0]||{}).id,subject_id:(subs[0]||{}).id,date:term.start_date,start_time:'08:00',duration:90,room:'',max_score:20};
+  e=e||{class_id:(classes[0]||{}).id,subject_id:(subs[0]||{}).id,date:term.start_date,start_time:'08:00',duration:90,room:'',max_score:20,is_final:0};
   openModal(modalTpl(e.id?'ویرایش جلسه امتحان':'افزودن جلسه امتحان',
     `<div class="grid g2">
       ${f('کلاس',sel('ex_class',classes.map(c=>[c.id,c.name]),e.class_id))}
       ${f('درس',sel('ex_subject',subs.map(s=>[s.id,s.name]),e.subject_id))}
+      ${f('نوع جلسه',sel('ex_final',[[0,'آزمون درسی'],[1,'امتحان نهایی']],e.is_final?1:0))}
       ${f('تاریخ',jdate('ex_date',e.date))}${f('ساعت شروع',inp('ex_time',e.start_time,'time'))}
       ${f('مدت (دقیقه)',inp('ex_dur',e.duration,'number'))}${f('سالن',inp('ex_room',e.room||''))}
       ${f('بارم',inp('ex_max',e.max_score,'number'))}</div>
-     <div class="small muted" style="margin-top:10px;line-height:2">ℹ️ تداخل ساعت با امتحان دیگرِ همین کلاس خودکار بررسی می‌شود.</div>`,'exam-save'));
+     <div class="small muted" style="margin-top:10px;line-height:2">ℹ️ تداخل ساعت با امتحان دیگرِ همین کلاس خودکار بررسی می‌شود.<br>
+     ℹ️ امتحان نهایی فقط برای پایه‌های پایانی (نهم و دوازدهم) ثبت می‌شود.</div>`,'exam-save'));
   window._edit=e; window._term=term;
 }
 function slotModal(s){

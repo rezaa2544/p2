@@ -104,7 +104,7 @@ document.addEventListener('click',e=>{
        city:(byId('counties',cid)||{}).name||'',
        area_kind:dist?(dist.kind||'district'):'district',
        phone:V('m_phone'),landline:V('m_landline'),
-       level:V('m_level'),gender:V('m_gender'),shift:V('m_shift')||'صبح',
+       level:V('m_level'),type:V('m_type')||'عادی',gender:V('m_gender'),shift:V('m_shift')||'صبح',
        capacity:Number(V('m_cap'))||300,
        active:Number(V('m_active')),address:V('m_addr'),
        /* شاخه و رشته فقط برای متوسطه دوم معنا دارد؛ در بقیهٔ مقاطع خالی می‌ماند */
@@ -1085,6 +1085,14 @@ document.addEventListener('click',e=>{
    'grade-del-ok'(){if(typeof notifyGradeCancel==='function')notifyGradeCancel(window._delId);remove('grades',window._delId);closeModal();toast('نمره حذف شد','ok');render();},
    'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
+     /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk
+        (26-curriculum) که در exam-save اعمال می‌شود */
+     if(V('g_type')==='امتحان نهایی'){
+       const gcls=byId('classes',window._gclass);
+       if(!(typeof finalGradeOk==='function'&&finalGradeOk(gcls&&gcls.grade))){
+         toast('نمرهٔ امتحان نهایی فقط برای پایه‌های پایانی (نهم و دوازدهم) ثبت می‌شود','err');return;
+       }
+     }
      let gid=g.id;
      if(g.id)update('grades',g.id,{score,term:V('g_term'),exam_type:V('g_type')});
      else{const sid=Number(V('g_st')),cid=window._gclass;
