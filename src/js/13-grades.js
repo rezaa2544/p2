@@ -5,8 +5,14 @@
 function viewGrades(){
   const u=S.user, canEdit=['superadmin','manager','teacher'].includes(u.role);
   const cls=visibleClasses(), subs=visibleSubjects();
-  const cid=u.role==='student'?((classOf(u.id)||{}).id):Number(S.filters.class||(cls[0]||{}).id);
-  const sub=S.filters.subject||'', term=S.filters.term||'';
+  /* طرح زنگ (گام ثبت نمره): کلاس و درس از زنگ جاری پیش‌گزینش می‌شوند.
+     انتخاب دستی همیشه مقدم است؛ S.bellNow فقط برای آزمون‌پذیری. */
+  const _now=(S.bellNow||null);
+  const _auto=(typeof bellAutoClass==='function')?bellAutoClass(null,null,_now):null;
+  const _autoOk=_auto&&cls.some(c=>c.id===_auto.classId)&&subs.some(s=>s.id===_auto.subjectId);
+  const cid=u.role==='student'?((classOf(u.id)||{}).id):Number(S.filters.class||(_autoOk&&_auto.classId)||(cls[0]||{}).id);
+  const sub=S.filters.subject||(_autoOk&&!S.filters.class?String(_auto.subjectId):''), term=S.filters.term||'';
+  const _autoShown=_autoOk&&!S.filters.class&&!S.filters.subject&&cid===_auto.classId&&sub===String(_auto.subjectId);
   let rows=db.grades.filter(g=>u.role==='student'?g.student_id===u.id:g.class_id===cid);
   if(u.role==='teacher')rows=rows.filter(g=>g.teacher_id===u.id||true);
   if(sub)rows=rows.filter(g=>g.subject_id===Number(sub));
@@ -14,7 +20,7 @@ function viewGrades(){
   rows=rows.slice().sort((a,b)=>b.id-a.id).slice(0,200);
   const avg=rows.length?avgOf(rows).toFixed(2):null;
   return `<div class="card"><div class="card-head"><div class="row">
-    ${u.role!=='student'?`<select class="select" style="width:170px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`:''}
+    ${u.role!=='student'?`<select class="select" style="width:170px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>${_autoShown?`<span class="badge b-blue" title="بر اساس زنگ جاری و برنامهٔ هفتگی شما — انتخاب دستی بر این مقدم است">🔔 انتخاب خودکار بر اساس زنگ</span><button class="btn ghost sm" data-act="grade-reset-auto">همهٔ کلاس و درس</button>`:''}`:''}
     ${avg?`<span class="badge b-blue">میانگین: ${fa(avg)}</span>`:''}</div>
     ${canEdit?`<button class="btn" data-act="grade-new">➕ ثبت نمره</button>`:''}</div>
    ${filterPanel('grades',`
