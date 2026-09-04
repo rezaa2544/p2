@@ -35,7 +35,7 @@ var NOTIFY_DEFAULTS = {
   graceMinutes: 20,
   dailyCap:     300,
   bulkWarn:     50,
-  kinds:        { absence: true, late: true, grade: false, event: true },
+  kinds:        { absence: true, late: true, grade: false, event: true, pattern: true },
   gradeThreshold: 10
 };
 
@@ -97,6 +97,16 @@ var NOTIFY_TPL = {
     return 'اصلاحیه: ' + o.student + ' در ' + o.date + ' ' +
            (o.wasAbsent ? 'غایب نبوده است' : 'غایب بوده است') +
            '. پوزش می‌خواهیم. ' + o.school;
+  },
+  /* الگوی تکرار (دور ۶۳، بند ۴): فقط با تأیید مدیر ساخته می‌شود —
+     این خودِ قالب، دروازهٔ اعلان نیست. قاعدهٔ «بدون نام دبیر»
+     اینجا محوری‌تر است: الگو از ثبت چند دبیر ممکن است باشد.
+     ⚠️ طول: با نام‌های بلند از ۷۰ نویسه می‌گذرد (۲ قطعه) — سنجش
+     دور ۶۳؛ پیام ماهیتاً بلندتر از اطلاع یک‌روداده‌ای است. */
+  pattern: function(o){
+    return 'اولیای گرامی، در ' + o.days + ' روز اخیر ' + o.count +
+           ' بار ' + o.what + ' برای ' + o.student +
+           ' ثبت شده است. ' + o.school;
   },
   /* اصلاحیهٔ نمره: عدد را بازگو نمی‌کند؛ فقط می‌گوید اطلاع قبلی
      نادرست بود و جزئیات در سامانه است (همان قاعدهٔ حریم نمره). */
@@ -457,6 +467,7 @@ var NOTIFY_KIND_FA = {
   late:       ['تأخیر',   'b-amber'],
   grade:      ['نمره',    'b-purple'],
   event:      ['رویداد',  'b-blue'],
+  pattern:    ['الگو',    'b-cyan'],
   correction: ['اصلاحیه', 'b-red']
 };
 
@@ -564,7 +575,7 @@ function viewNotifyQueue(){
   }) : all;
 
   /* شمار هر دسته برای دکمه‌های فیلتر */
-  var cnt = { absence:0, late:0, grade:0, event:0, correction:0 };
+  var cnt = { absence:0, late:0, grade:0, event:0, pattern:0, correction:0 };
   all.forEach(function(q){
     if(q.correction_of) cnt.correction++;
     else if(cnt[q.kind] !== undefined) cnt[q.kind]++;
