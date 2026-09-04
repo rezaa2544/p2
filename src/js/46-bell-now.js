@@ -234,3 +234,81 @@ function bellAutoAllowed(schoolId){
   var slot = currentSlot(sid);
   return !!(slot.hasSchedule && slot.clock && slot.clock.ok);
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   بخش ۵ ▸ نوار وضعیت زنگ (گام ۲)
+   ═══════════════════════════════════════════════════════════════════
+   کارت کوچک بالای داشبورد دبیر که می‌گوید «الان زنگ چندم است و
+   کدام کلاس».
+
+   🔴 این گام **فقط نمایش** است. هیچ رفتاری عوض نمی‌شود، هیچ
+   پیش‌گزینشی انجام نمی‌شود. گام‌های ۳ و ۴ طرح روی همین سوارند.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** آیا نوار زنگ برای این کاربر معنا دارد؟ */
+function bellBarApplies(){
+  if(typeof S === 'undefined' || !S.user) return false;
+  var role = (typeof activePersona === 'function') ? activePersona() : S.user.role;
+  return role === 'teacher' && !!S.user.school_id;
+}
+
+/**
+ * نوار وضعیت زنگ برای دبیر.
+ *
+ * ⚠️ رشتهٔ خالی برمی‌گرداند اگر: کاربر دبیر نیست · مدرسه
+ * `bell_schedules` ندارد · ساعت دستگاه نامعتبر است.
+ * سه حالت آخر عمدی‌اند — نوار نباید اطلاعات نادرست بدهد.
+ */
+function bellNowBar(now){
+  if(!bellBarApplies()) return '';
+  var sid = S.user.school_id;
+  var slot = currentSlot(sid, now);
+
+  /* ساعت نامعتبر ⇒ به‌جای زنگ، هشدار */
+  if(slot.kind === 'unknown'){
+    return '<div class="bell-bar bell-bar-warn">⚠️ '
+      + esc(clockWarnText(slot.clock)) + '</div>';
+  }
+
+  /* 🔴 گارد تصمیم سیاستی: مدرسه‌ای که زنگ ثبت نکرده، ساعتش
+     خیالی است (BELL_PRESETS). نوار نمایش داده نمی‌شود. */
+  if(!slot.hasSchedule) return '';
+
+  if(slot.kind === 'holiday'){
+    return '<div class="bell-bar bell-bar-off">🌙 امروز روز درسی نیست.</div>';
+  }
+  if(slot.kind === 'before'){
+    var n0 = slot.next;
+    return '<div class="bell-bar bell-bar-off">🕗 هنوز مدرسه شروع نشده'
+      + (n0 ? ' — نخستین زنگ ' + esc(timeFa(n0.from)) : '') + '.</div>';
+  }
+  if(slot.kind === 'after'){
+    return '<div class="bell-bar bell-bar-off">🌆 ساعت مدرسه تمام شده است.</div>';
+  }
+  if(slot.kind === 'break'){
+    var nx = slot.next;
+    return '<div class="bell-bar bell-bar-break">☕ زنگ تفریح'
+      + ' <span class="small">(' + esc(timeFa(slot.from)) + ' تا '
+      + esc(timeFa(slot.to)) + ')</span>'
+      + (nx && nx.kind === 'lesson'
+          ? ' — زنگ بعدی ' + esc(timeFa(nx.from)) : '')
+      + '</div>';
+  }
+  if(slot.kind !== 'lesson') return '';
+
+  /* زنگ درسی: آیا این دبیر همین حالا کلاس دارد؟ */
+  var cur = teacherNowClass(S.user.id, sid, now);
+  var head = '🔔 <b>' + esc(slot.label) + '</b> <span class="small">('
+    + esc(timeFa(slot.from)) + ' تا ' + esc(timeFa(slot.to)) + ')</span>';
+
+  if(!cur){
+    return '<div class="bell-bar bell-bar-free">' + head
+      + ' — <span class="small">در این زنگ کلاسی ندارید.</span></div>';
+  }
+  return '<div class="bell-bar bell-bar-live">' + head
+    + ' — <b>' + esc(cur.className) + '</b>'
+    + ' <span class="small">' + esc(cur.subjectName) + '</span>'
+    + (cur.conflict
+        ? ' <span class="badge b-amber">تداخل برنامه</span>' : '')
+    + '</div>';
+}

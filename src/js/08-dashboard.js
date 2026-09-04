@@ -77,7 +77,9 @@ function teacherDash(){
   const students=new Set();cls.forEach(c=>db.enrollments.filter(e=>e.class_id===c.id).forEach(e=>students.add(e.student_id)));
   const mine=db.grades.filter(g=>g.teacher_id===u.id);
   const sched=db.schedule.filter(s=>s.teacher_id===u.id).sort((a,b)=>a.day-b.day||a.period-b.period).slice(0,6);
-  return `<div class="grid g4">
+  /* نوار وضعیت زنگ (گام ۲ دور ۵۰) — فقط نمایش، بدون تغییر رفتار */
+  const bellBar=(typeof bellNowBar==='function')?bellNowBar():'';
+  return `${bellBar}<div class="grid g4">
    ${statCard('🏛️',fa(cls.length),'کلاس تحت تدریس','blue')}
    ${statCard('🎒',fa(students.size),'دانش‌آموز','green')}
    ${statCard('📝',fa(mine.length),'نمره ثبت‌شده','amber')}

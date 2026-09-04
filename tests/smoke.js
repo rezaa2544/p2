@@ -5400,6 +5400,146 @@ test('زنگ: 🔴 پیش‌گزینش فقط با زمان‌بندی ثبت‌
   }
 });
 
+/* ── نوار وضعیت زنگ + دادهٔ ۶ زنگ (گام ۲، دور ۵۰) ──────────────── */
+
+/** محیط دبیرِ مدرسه‌ای که زمان‌بندی زنگ ثبت کرده */
+function withBellTeacher(fn) {
+  const env = JSON.parse(W('(()=>{'
+    + 'if(!db.bell_schedules.length)return JSON.stringify({skipTest:true});'
+    + 'const sid=db.bell_schedules[0].school_id;'
+    + 'const row=db.schedule.filter(function(x){'
+    + 'return x.school_id===sid&&x.day===0&&Number(x.period)===1;})[0];'
+    + 'if(!row)return JSON.stringify({skipTest:true});'
+    + 'const tl=bellTimeline(sid).filter(function(x){return x.kind==="lesson";});'
+    + 'const br=bellTimeline(sid).filter(function(x){return x.kind==="break";})[0];'
+    + 'return JSON.stringify({sid:sid,teacherId:row.teacher_id,classId:row.class_id,'
+    + 'lessonFrom:tl[0].from,lessonCount:tl.length,'
+    + 'breakFrom:br?br.from:null});})()'));
+  if (env.skipTest) return;
+  const saved = W('JSON.stringify({u:S.user&&S.user.id,r:S.route})');
+  W('(()=>{S.user=byId("users",' + env.teacherId + ');S.persona=null;S.boss=null;})()');
+  try { return fn(env); }
+  finally {
+    const o = JSON.parse(saved);
+    W('S.user=byId("users",' + o.u + ')||S.user;S.route=' + JSON.stringify(o.r)
+      + ';S.persona=null;S.boss=null;S.filters={}');
+  }
+}
+
+test('دادهٔ نمونه: برنامهٔ هفتگی همهٔ زنگ‌های الگو را پوشش می‌دهد', () => {
+  /* 🔴 پیش از دور ۵۰ فقط ۴ زنگ ساخته می‌شد ولی الگوی پیش‌فرض
+     ۵ زنگ درسی دارد ⇒ زنگ ۵ هیچ کلاسی نداشت و
+     teacherNowClass برایش null می‌داد. */
+  const r = JSON.parse(W('(()=>{'
+    + 'const periods={};db.schedule.forEach(function(x){periods[x.period]=1;});'
+    + 'const sid=db.bell_schedules.length?db.bell_schedules[0].school_id:db.schools[0].id;'
+    + 'const lessons=bellTimeline(sid).filter(function(x){return x.kind==="lesson";}).length;'
+    + 'const maxP=Math.max.apply(null,Object.keys(periods).map(Number));'
+    + 'return JSON.stringify({maxPeriod:maxP,lessonSlots:lessons,'
+    + 'rows:db.schedule.length});})()'));
+  assert(r.maxPeriod >= r.lessonSlots,
+    '🔴 برنامهٔ هفتگی تا زنگ ' + r.maxPeriod + ' است ولی الگو '
+    + r.lessonSlots + ' زنگ درسی دارد — زنگ‌های آخر کلاس ندارند');
+  assert(r.rows > 900, 'شمار ردیف برنامه کم است: ' + r.rows);
+});
+
+test('نوار زنگ: وسط زنگ درسی کلاس دبیر را نشان می‌دهد', () => {
+  withBellTeacher((env) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'const hm=minToTime(timeToMin("' + env.lessonFrom + '")+5);'
+      + 'const bar=bellNowBar(new Date("2026-09-05T"+hm+":00"));'
+      + 'const cls=byId("classes",' + env.classId + ');'
+      + 'return JSON.stringify({empty:bar==="",live:bar.indexOf("bell-bar-live")>-1,'
+      + 'hasClass:cls?bar.indexOf(cls.name)>-1:false,'
+      + 'hasBell:bar.indexOf("زنگ")>-1});})()'));
+    assert(r.empty === false, '🔴 نوار در زنگ درسی خالی بود');
+    assert(r.live === true, 'نوار باید حالت live باشد');
+    assert(r.hasClass === true, '🔴 نام کلاس در نوار نیست');
+    assert(r.hasBell === true, 'شمارهٔ زنگ در نوار نیست');
+  });
+});
+
+test('نوار زنگ: تفریح، پیش و پس از مدرسه، و تعطیلی', () => {
+  withBellTeacher((env) => {
+    const r = JSON.parse(W('(()=>{'
+      + 'const at=function(iso){return bellNowBar(new Date(iso));};'
+      + 'const brHm=' + (env.breakFrom ? '"' + env.breakFrom + '"' : 'null') + ';'
+      + 'const out={};'
+      + 'if(brHm){const h=minToTime(timeToMin(brHm)+2);'
+      + 'out.brk=at("2026-09-05T"+h+":00").indexOf("bell-bar-break")>-1;}'
+      + 'out.before=at("2026-09-05T05:00:00").indexOf("bell-bar-off")>-1;'
+      + 'out.after=at("2026-09-05T23:00:00").indexOf("bell-bar-off")>-1;'
+      + 'out.friday=at("2026-09-11T09:00:00").indexOf("روز درسی نیست")>-1;'
+      + 'return JSON.stringify(out);})()'));
+    if (r.brk !== undefined) assert(r.brk === true, 'وسط تفریح حالت break نداد');
+    assert(r.before === true, 'پیش از مدرسه حالت off نداد');
+    assert(r.after === true, 'پس از مدرسه حالت off نداد');
+    assert(r.friday === true, '🔴 جمعه باید «روز درسی نیست» بگوید');
+  });
+});
+
+test('نوار زنگ: 🔴 ساعت نامعتبر هشدار می‌دهد نه زنگ', () => {
+  withBellTeacher(() => {
+    const r = JSON.parse(W('(()=>{'
+      + 'const bar=bellNowBar(new Date("1999-09-05T09:00:00"));'
+      + 'return JSON.stringify({warn:bar.indexOf("bell-bar-warn")>-1,'
+      + 'hasYear:bar.indexOf("۱۹۹۹")>-1,'
+      + 'noLesson:bar.indexOf("bell-bar-live")===-1});})()'));
+    assert(r.warn === true, '🔴 با ساعت نامعتبر باید هشدار بدهد');
+    assert(r.hasYear === true, 'هشدار باید سال اشتباه را بگوید');
+    assert(r.noLesson === true, '🔴 با ساعت نامعتبر زنگ نمایش داد');
+  });
+});
+
+test('نوار زنگ: 🔴 مدرسهٔ بدون زمان‌بندی نوار نمی‌گیرد', () => {
+  /* گارد تصمیم سیاستی: bellOf با BELL_PRESETS ساعت خیالی می‌دهد. */
+  const saved = W('JSON.stringify({u:S.user&&S.user.id})');
+  try {
+    const r = JSON.parse(W('(()=>{'
+      + 'const noB=db.schools.find(function(s){'
+      + 'return !db.bell_schedules.some(function(b){return b.school_id===s.id;});});'
+      + 'if(!noB)return JSON.stringify({skipTest:true});'
+      + 'const t=db.users.find(function(u){'
+      + 'return u.role==="teacher"&&u.school_id===noB.id;});'
+      + 'if(!t)return JSON.stringify({skipTest:true});'
+      + 'S.user=t;S.persona=null;S.boss=null;'
+      + 'return JSON.stringify({bar:bellNowBar(new Date("2026-09-05T08:00:00")),'
+      + 'timeline:bellTimeline(noB.id).length});})()'));
+    if (r.skipTest) return;
+    assert(r.bar === '',
+      '🔴 مدرسهٔ بدون bell_schedules نوار گرفت — با ساعت خیالی کار می‌کند');
+    assert(r.timeline > 0, 'الگوی پیش‌فرض باید همچنان بازه بدهد');
+  } finally {
+    const o = JSON.parse(saved);
+    W('S.user=byId("users",' + o.u + ')||S.user;S.persona=null');
+  }
+});
+
+test('نوار زنگ: فقط دبیر می‌بیند', () => {
+  const saved = W('JSON.stringify({u:S.user&&S.user.id})');
+  try {
+    const r = JSON.parse(W('(()=>{const bad=[];'
+      + '["manager","student","parent","superadmin","edu_office"].forEach(function(role){'
+      + 'const u=db.users.find(function(x){return x.role===role;});'
+      + 'if(!u)return;S.user=u;S.persona=null;S.boss=null;'
+      + 'if(bellNowBar(new Date("2026-09-05T08:00:00"))!=="")bad.push(role);});'
+      + 'return JSON.stringify({bad:bad});})()'));
+    assert(r.bad.length === 0, '🔴 این نقش‌ها نوار زنگ دیدند: ' + r.bad.join(' · '));
+  } finally {
+    const o = JSON.parse(saved);
+    W('S.user=byId("users",' + o.u + ')||S.user;S.persona=null');
+  }
+});
+
+test('نوار زنگ: در داشبورد دبیر رندر می‌شود', () => {
+  withBellTeacher(() => {
+    const r = W('(()=>{S.route="dashboard";S.filters={};'
+      + 'return typeof teacherDash==="function"'
+      + '&&teacherDash().indexOf("${bellBar}")===-1;})()');
+    assert(r === true, 'قالب داشبورد دبیر درست جایگزین نشده');
+  });
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

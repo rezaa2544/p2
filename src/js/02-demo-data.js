@@ -124,7 +124,12 @@ function generate(){
     let famTarget=1;             /* این خانواده چند فرزند بگیرد */
     let famIndex=0;              /* شمارندهٔ خانواده در این مدرسه */
     classes.forEach(c=>{
-      for(let d=0;d<5;d++)for(let p=1;p<=4;p++){const s=chosen[(d*4+p)%chosen.length];const t=teachers.find(x=>x.subject_id===s.id)||teachers[0];
+      /* ⚠️ شش زنگ درسی (دور ۵۰): الگوی پیش‌فرض BELL_PRESETS پنج
+         زنگ درسی دارد؛ با ۴ زنگ در جدول برنامه، زنگ ۵ هیچ کلاسی
+         نداشت و `teacherNowClass` برایش null می‌داد — فنی درست
+         ولی در دمو گیج‌کننده. تصمیم رضا: دادهٔ نمونه گسترش یابد،
+         نه کاهش الگو. شش زنگ حاشیهٔ امن هم می‌دهد. */
+      for(let d=0;d<5;d++)for(let p=1;p<=6;p++){const s=chosen[(d*6+p)%chosen.length];const t=teachers.find(x=>x.subject_id===s.id)||teachers[0];
         add('schedule',{school_id:school.id,class_id:c.id,subject_id:s.id,teacher_id:t.id,day:d,period:p});}
       const per=13+ri(4);
       for(let k=0;k<per;k++){
