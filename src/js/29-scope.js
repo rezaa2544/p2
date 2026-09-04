@@ -49,6 +49,13 @@ function scopeDescriptor(user, persona){
                      'attendance:school:window','grades:school:current_terms',
                      'discipline:school:window','schedule:school','tuition:school',
                      'announcements:school','notifications:mine'];
+  } else if(role === 'counselor'){
+    /* 🔴 محدودیت مشاور (دور ۶۳): فقط صف ارجاع مدرسهٔ خودش.
+       نمره/برنامه/پروندهٔ کامل دانش‌آموز در برش مشاور نیست —
+       students فقط به‌اندازهٔ نام و کلاسِ ارجاع‌شده‌ها. */
+    d.scope = { school_id: user.school_id, queue_only: true };
+    d.collections = ['self','counselor_refs:school','students:referees:name-class',
+                     'announcements:mine','notifications:mine'];
   } else if(role === 'edu_office'){
     /* ادارهٔ آموزش‌وپرورش هرگز دادهٔ فردی نمی‌گیرد — فقط تجمیع */
     d.scope = { office_id: user.office_id, aggregate_only: true };

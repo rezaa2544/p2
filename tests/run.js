@@ -117,8 +117,8 @@ test('زبان فارسی و جهت RTL تنظیم شده', () => {
   assert(/<html[^>]*dir="rtl"/.test(html), 'dir="rtl" نیست');
 });
 
-test('هر ۶ نقش کاربری در NAV تعریف شده‌اند', () => {
-  ['superadmin', 'manager', 'teacher', 'student', 'parent', 'edu_office'].forEach((r) => {
+test('هر ۷ نقش کاربری در NAV تعریف شده‌اند', () => {
+  ['superadmin', 'manager', 'teacher', 'student', 'parent', 'edu_office', 'counselor'].forEach((r) => {
     assert(new RegExp(`\\b${r}\\s*:\\s*\\[`).test(html), `نقش ${r} در NAV نیست`);
   });
 });

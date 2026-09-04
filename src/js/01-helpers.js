@@ -24,8 +24,8 @@ const jalali = iso => { if(!iso) return '—'; try{ return new Intl.DateTimeForm
 const todayISO = ()=> new Date().toISOString().slice(0,10);
 const daysAgoISO = d => { const t=new Date(); t.setDate(t.getDate()-d); return t.toISOString().slice(0,10); };
 const DAYS=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه'];
-const ROLE_FA={superadmin:'سوپر ادمین',manager:'مدیر مدرسه',teacher:'دبیر',student:'دانش‌آموز',parent:'ولی',edu_office:'اداره آموزش و پرورش'};
-const ROLE_BADGE={superadmin:'b-purple',manager:'b-blue',teacher:'b-green',student:'b-amber',parent:'b-gray',edu_office:'b-purple'};
+const ROLE_FA={superadmin:'سوپر ادمین',manager:'مدیر مدرسه',teacher:'دبیر',student:'دانش‌آموز',parent:'ولی',edu_office:'اداره آموزش و پرورش',counselor:'مشاور'};
+const ROLE_BADGE={superadmin:'b-purple',manager:'b-blue',teacher:'b-green',student:'b-amber',parent:'b-gray',edu_office:'b-purple',counselor:'b-cyan'};
 const ATT_FA={present:'حاضر',absent:'غایب',late:'تأخیر',excused:'موجه'};
 const ATT_BADGE={present:'b-green',absent:'b-red',late:'b-amber',excused:'b-purple'};
 const ATT_COLOR={present:'var(--green)',absent:'var(--red)',late:'var(--amber)',excused:'var(--purple)'};

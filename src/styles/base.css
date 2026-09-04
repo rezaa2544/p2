@@ -105,7 +105,11 @@ a{color:inherit;text-decoration:none}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:4px 11px;border-radius:999px;font-size:12.5px;font-weight:700;border:1px solid currentColor}
 .b-blue{background:var(--primary-soft);color:var(--primary-dark)}.b-green{background:var(--green-soft);color:var(--green)}
 .b-red{background:var(--red-soft);color:var(--red)}.b-amber{background:var(--amber-soft);color:var(--amber)}
-.b-purple{background:var(--purple-soft);color:var(--purple)}.b-gray{background:#eef1f6;color:var(--muted)}
+.b-purple{background:var(--purple-soft);color:var(--purple)}.b-gray{background:#eef1f6;color:var(--muted)}.b-cyan{background:#e2f4fb;color:#0b7fa8}
+/* عوامل اجرایی (دور ۶۳) */
+.staff-row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 16px;border:1px solid var(--border);border-radius:14px;margin-bottom:10px;background:var(--surface)}
+.staff-row.reserved{opacity:.62;background:var(--surface-2)}
+.staff-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse}
 th{text-align:right;font-size:13px;color:var(--text);font-weight:800;padding:11px 13px;background:#eaf0fb;border-bottom:2px solid var(--border-strong);white-space:nowrap}

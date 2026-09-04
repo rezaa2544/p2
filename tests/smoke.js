@@ -158,6 +158,7 @@ const ROUTES = {
   manager: ['dashboard', 'classes', 'subjects', 'schedule', 'calendar', 'users', 'attendance', 'grades', 'discipline', 'leaves', 'exams', 'teachers', 'corrections', 'tuition', 'announcements', 'notifications', 'chat'],
   teacher: ['dashboard', 'classes', 'schedule', 'calendar', 'attendance', 'grades', 'discipline', 'leaves', 'exams', 'announcements', 'notifications', 'chat'],
   student: ['dashboard', 'schedule', 'exams', 'record', 'calendar', 'mytuition', 'leaves', 'announcements', 'notifications', 'chat'],
+  counselor: ['cqueue', 'dashboard', 'announcements', 'notifications'],
 };
 
 Object.entries(ROUTES).forEach(([role, routes]) => {
@@ -5774,11 +5775,13 @@ test('اسکرول: منوی کناری هم جای خود را حفظ می‌ک
 
 const NAV_EXPECT = {
   superadmin: ['dashboard','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications'],
-  manager: ['dashboard','atrisk','growth','calendar','formssms','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','leaves','exams','teachers','corrections','tuition','meetings','notifyqueue','announcements','notifications','chat'],
+  manager: ['dashboard','atrisk','growth','calendar','formssms','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','followup','leaves','exams','teachers','corrections','staff','tuition','meetings','notifyqueue','announcements','notifications','chat'],
   teacher: ['meetings','dashboard','classes','schedule','calendar','attendance','grades','discipline','leaves','exams','announcements','notifications','chat'],
   student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','announcements','notifications','chat'],
   edu_office: ['officedash','officeschools','announcements','notifications'],
-  parent: ['meetings','dashboard','family','children','exams','calendar','mytuition','leaves','announcements','notifications','chat']
+  parent: ['meetings','dashboard','family','children','exams','calendar','mytuition','leaves','announcements','notifications','chat'],
+  /* دور ۶۳: نقش تازهٔ مشاور — فقط صف ارجاع + صفحه‌های عمومی */
+  counselor: ['cqueue','dashboard','announcements','notifications']
 };
 
 const navRoutes = (role) => JSON.parse(W('JSON.stringify(navRoutesOf(' + JSON.stringify(role) + '))'));
@@ -5847,6 +5850,222 @@ test('منو: همهٔ روت‌های کمکی مجازند و نما دارن�
       assert(Number(out) > 0, role + ': روت کمکی ' + r + ' رندر نمی‌شود');
     });
   });
+});
+
+
+/* ── مشاور مدرسه و عوامل اجرایی (دور ۶۳) ─────────────────────────
+   نقش تازهٔ «مشاور»: صف دانش‌آموزان ارجاع‌شدهٔ الگوی تکرار.
+   ارجاع **دستوری** است (دکمه در نمای پیگیری مدیر) و اعلان به
+   ولی خودکار نیست. هر آزمون محیط خودش را ذخیره/بازگردانی می‌کند. */
+
+function withCounselor(fn) {
+  const saved = W('JSON.stringify({u:S.user&&S.user.id,r:S.route,f:S.filters})');
+  try { return fn(); }
+  finally {
+    const o = JSON.parse(saved);
+    W('S.user=byId("users",' + (o.u||0) + ')||S.user;S.route=' + JSON.stringify(o.r||'dashboard')
+      + ';S.filters=' + JSON.stringify(o.f||{}) + ';S.page=1;S.persona=null;S.boss=null');
+  }
+}
+
+test('مشاور: برای هر مدرسهٔ فعال مشاور تعریف شده و صف نمونه پر است', () => {
+  const r = JSON.parse(W('(()=>{var cs=db.users.filter(function(u){return u.role==="counselor";});'
+    + 'var ok=true;cs.forEach(function(c){if(!c.school_id||!c.active)ok=false;});'
+    + 'return JSON.stringify({n:cs.length,ok:ok});})()'));
+  assert(r.n >= 5, '🔴 مشاور نمونه کم است: ' + r.n);
+  assert(r.ok === true, 'مشاور بدون مدرسه یا غیرفعال');
+  const q = JSON.parse(W('(()=>{var o1=counselorQueue(1,true);var o2=counselorQueue(2,true);'
+    + 'var valid=true;o1.forEach(function(x){'
+    + 'if(!x.student_id||!x.breach_key||!x.pattern||!x.pattern.late||!byId("users",x.student_id))valid=false;});'
+    + 'return JSON.stringify({n1:o1.length,n2:o2.length,valid:valid});})()'));
+  assert(q.n1 >= 3, '🔴 صف نمونهٔ مدرسهٔ اول خالی است: ' + q.n1);
+  assert(q.n2 >= 1, 'صف مدرسهٔ دوم خالی است — سنجش مرز بین‌مدرسه‌ای بی‌معنا می‌شود: ' + q.n2);
+  assert(q.valid === true, 'رکورد ارجاع ناقص است');
+});
+
+test('مشاور: شمارندهٔ الگو دادهٔ واقعی را می‌خواند (آستانه و روند)', () => {
+  const r = JSON.parse(W('(()=>{'
+    + 'const flagged=patternFlagged(1,30);'
+    + 'const big=flagged.find(function(x){return x.breaches.some(function(b){return b.key==="late"&&b.count>=7;});});'
+    + 'if(!big)return JSON.stringify({skipTest:true});'
+    + 'const st=big.user.id;'
+    + 'const clean=db.users.filter(function(u){return u.role==="student"&&u.school_id===1&&(u.status||"active")==="active";})'
+    + '.find(function(u){'
+    + 'var n=0;db.attendance.forEach(function(a){if(a.student_id===u.id&&a.date>=daysAgoISO(30))n++;});'
+    + 'if(n<10)return false;var c=patternCheck(u.id,30);return c.late.count===0&&c.absent.count===0;});'
+    + 'var realLate=0;'
+    + 'db.attendance.forEach(function(a){if(a.student_id===st&&a.status==="late"&&a.date>=daysAgoISO(30))realLate++;});'
+    + 'return JSON.stringify({skipTest:false,'
+    + 'lateCount:patternCheck(st,30).late.count,'
+    + 'realLate:realLate,'
+    + 'hasLate:big.breaches.some(function(b){return b.key==="late";}),'
+    + 'trend:big.check.late.trend,'
+    + 'cleanN:clean?patternBreaches(clean.id,1,30).length:99});})()'));
+  if (r.skipTest) return;
+  assert(r.lateCount === r.realLate, '🔴 شمارندهٔ تأخیر با رکوردهای واقعی نمی‌خواند: ' + r.lateCount + ' ≠ ' + r.realLate);
+  assert(r.realLate >= 7, 'محیط آزمون: دانش‌آموز نمونه دستکم ۷ تأخیر باید دارد: ' + r.realLate);
+  assert(r.hasLate === true, 'الگوی تأخیر مکرر تشخیص داده نشد');
+  assert(r.trend === 'rising', '🔴 روندِ تأخیرهای متراکم در نیمهٔ دوم «رو به افزایش» نشد: ' + r.trend);
+  assert(r.cleanN === 0, '🔴 دانش‌آموز بدون تأخیر/غیبت الگو شد — شمارنده دروغ می‌گوید');
+});
+
+test('مشاور: 🔴 آستانه‌ها قابل تنظیم مدرسه‌به‌مدرسه است', () => {
+  const sid = W('db.schools[0].id');
+  const saved = W('JSON.stringify(byId("schools",' + sid + ').discipline_rules||null)');
+  try {
+    const r = JSON.parse(W('(()=>{'
+      + 'const f0=patternFlagged(' + sid + ',30).length;'
+      + 'update("schools",' + sid +',{discipline_rules:{pattern_late_month:99,pattern_absent_month:99}});'
+      + 'const fH=patternFlagged(' + sid + ',30).length;'
+      + 'return JSON.stringify({f0:f0,fH:fH});})()'));
+    assert(r.f0 > 0, 'محیط آزمون: مدرسهٔ اول الگو ندارد');
+    assert(r.fH === 0, '🔴 با آستانهٔ ۹۹ باز هم الگو شمرد — قاعدهٔ مدرسه خوانده نمی‌شود: ' + r.fH);
+  } finally {
+    W('(()=>{const v=' + JSON.stringify(saved) + ';update("schools",' + sid +',{discipline_rules:v});})()');
+  }
+});
+
+test('مشاور: صف صفحه، دادهٔ مدرسهٔ خود را نشان می‌دهد و مدرسهٔ دیگر نشت نمی‌کند', () => {
+  withCounselor(() => {
+    const r = JSON.parse(W('(()=>{'
+      + 'S.user=db.users.find(function(u){return u.username==="counselor1";});'
+      + 'S.persona=null;S.boss=null;S.route="cqueue";S.filters={};S.page=1;'
+      + 'const h=renderRoute();'
+      + 'const mine=counselorQueue(1,true);'
+      + 'const q2=db.counselor_refs.filter(function(q){return q.school_id===2&&q.status==="open";})[0];'
+      + 'const name2=q2?byId("users",q2.student_id).full_name:"";'
+      + 'const name1=mine.length?byId("users",mine[0].student_id).full_name:"";'
+      + 'return JSON.stringify({len:h.length,'
+      + 'hasMine:name1?h.indexOf(name1)>-1:false,'
+      + 'dataLeak:mine.some(function(q){return q.school_id!==1;}),'
+      + 'htmlLeak:(name2&&name2!==name1)?h.indexOf(name2)>-1:null,'
+      + 'forbidden:h.indexOf("دسترسی مجاز نیست")>-1});})()'));
+    assert(r.len > 500, 'صفحه رندر نشد: ' + r.len);
+    assert(r.hasMine === true, '🔴 دانش‌آموز ارجاع‌شده در صف نیست');
+    assert(r.dataLeak === false, '🔴 رکورد ارجاع مدرسهٔ دیگر در برش مشاور است');
+    assert(r.htmlLeak === null || r.htmlLeak === false, '🔴 نام دانش‌آموز مدرسهٔ دیگر در صف مشاور یک آمد');
+    assert(r.forbidden === false, 'صفحهٔ خودش «دسترسی مجاز نیست» داد');
+  });
+});
+
+test('مشاور: صفحه‌های حساس (حضور/نمره/انضباطی/کاربران/برنامه/پرونده) باز نیستند', () => {
+  withCounselor(() => {
+    W("S.user=db.users.find(u=>u.username==='counselor1');S.persona=null;S.boss=null;S.filters={}");
+    for (const r of ['attendance','record','users','discipline','schedule','grades','staff','followup']) {
+      W("S.route='" + r + "'");
+      assert(/دسترسی مجاز نیست/.test(W('renderRoute()')), '🔴 مشاور → ' + r + ' باز بود');
+    }
+  });
+});
+
+test('مشاور: ارجاع از نمای پیگیری (کلیک واقعی) و ارجاع تکراری نمی‌شود', () => {
+  withCounselor(() => {
+    const env = JSON.parse(W('(()=>{S.user=db.users.find(function(u){return u.username==="manager1";});'
+      + 'S.persona=null;S.boss=null;S.filters={};S.route="followup";S.page=1;'
+      + 'const h=renderRoute();'
+      + 'var row=(patternFlagged(1,30)||[]).filter(function(x){'
+      + 'return x.breaches.some(function(b){return !counselorOpenRef(1,x.user.id,b.key);});})[0];'
+      + 'var bre=null;'
+      + 'if(row)row.breaches.forEach(function(b){if(!counselorOpenRef(1,row.user.id,b.key))bre=b;});'
+      + 'return JSON.stringify({s:row?row.user.id:0,k:bre?bre.key:null,'
+      + 'btns:(h.match(/data-act="counselor-ref"/g)||[]).length});})()'));
+    assert(env.s > 0, 'محیط آزمون: ردیف ارجاع‌پذیری در نمای پیگیری نیست');
+    assert(env.btns > 0, '🔴 دکمهٔ ارجاع در نمای پیگیری رندر نشد');
+    const r = JSON.parse(W('(function(){'
+      + 'S.user=db.users.find(function(u){return u.username==="manager1";});'
+      + 'S.persona=null;S.boss=null;'
+      + 'var before=counselorQueue(1,true).length;'
+      + 'function click(){var b=document.createElement("button");'
+      + 'b.setAttribute("data-act","counselor-ref");'
+      + 'b.setAttribute("data-s","' + env.s + '");'
+      + 'b.setAttribute("data-k","' + env.k + '");'
+      + 'document.body.appendChild(b);'
+      + 'b.dispatchEvent(new MouseEvent("click",{bubbles:true}));'
+      + 'b.remove();}'
+      + 'click();'
+      + 'var after=counselorQueue(1,true).length;'
+      + 'click();'
+      + 'var after2=counselorQueue(1,true).length;'
+      + 'var ref=counselorOpenRef(1,' + env.s + ',"' + env.k + '");'
+      + 'return JSON.stringify({before:before,after:after,after2:after2,'
+      + 'refOk:!!(ref&&ref.student_id===' + env.s + '&&ref.breach_key==="' + env.k + '"&&ref.referred_by===S.user.id),'
+      + 'hasPattern:!!(ref&&ref.pattern&&ref.pattern.late&&typeof ref.pattern.late.count==="number")});})()'));
+    assert(r.after === r.before + 1, '🔴 ارجاع ساخته نشد: ' + r.before + '→' + r.after);
+    assert(r.after2 === r.after, '🔴 ارجاع تکراری ساخته شد: ' + r.after + '→' + r.after2);
+    assert(r.refOk === true, 'فیلدهای رکورد ارجاع نادرست‌اند');
+    assert(r.hasPattern === true, 'اسنپشات الگو به ارجاع چسبیده نیست');
+  });
+});
+
+test('مشاور: رسیدگی، رکورد را پاک نمی‌کند — وضعیتش را عوض می‌کند', () => {
+  withCounselor(() => {
+    const r = JSON.parse(W('(function(){'
+      + 'S.user=db.users.find(function(u){return u.username==="counselor1";});'
+      + 'S.persona=null;S.boss=null;'
+      + 'var ref=counselorQueue(1,true)[0];'
+      + 'if(!ref)return JSON.stringify({skipTest:true});'
+      + 'var b=document.createElement("button");'
+      + 'b.setAttribute("data-act","counselor-handle");'
+      + 'b.setAttribute("data-r",String(ref.id));'
+      + 'document.body.appendChild(b);'
+      + 'b.dispatchEvent(new MouseEvent("click",{bubbles:true}));'
+      + 'b.remove();'
+      + 'var after=byId("counselor_refs",ref.id);'
+      + 'return JSON.stringify({skipTest:false,'
+      + 'status:after.status,'
+      + 'by:after.handled_by===S.user.id,'
+      + 'inOpen:counselorQueue(1,true).some(function(x){return x.id===ref.id;}),'
+      + 'recordKept:!!byId("counselor_refs",ref.id)});})()'));
+    if (r.skipTest) return;
+    assert(r.status === 'handled', '🔴 وضعیت «رسیدگی‌شده» نشد: ' + r.status);
+    assert(r.by === true, '🔴 رسیدگی‌کننده ثبت نشد');
+    assert(r.inOpen === false, 'هنوز در صف باز است');
+    assert(r.recordKept === true, '🔴 رکورد ارجاع پاک شد — باید فقط وضعیتش عوض می‌شد');
+  });
+});
+
+test('عوامل اجرایی: مشاور فعال و معاونت‌ها رزرو‌اند (ساختار گسترش‌پذیر)', () => {
+  withCounselor(() => {
+    const r = JSON.parse(W('(()=>{S.user=db.users.find(function(u){return u.username==="manager1";});'
+      + 'S.persona=null;S.boss=null;S.filters={};S.route="staff";S.page=1;'
+      + 'const h=renderRoute();'
+      + 'return JSON.stringify({'
+      + 'active:h.indexOf("مشاور")>-1&&h.indexOf("فعال")>-1,'
+      + 'reserved:["معاون آموزشی","معاون اجرایی","معاون فنی","معاون پرورشی"].every(function(n){return h.indexOf(n)>-1;}),'
+      + 'hasReservedBadge:h.indexOf("رزرو")>-1,'
+      + 'roles:EXEC_ROLES.length===5,'
+      + 'counselorCount:db.users.filter(function(u){return u.role==="counselor"&&u.school_id===S.user.school_id;}).length>0'
+      + '});})()'));
+    assert(r.active === true, 'مشاور فعال نشد');
+    assert(r.reserved === true, '🔴 معاونت‌های رزرو‌شده در صفحه نیستند');
+    assert(r.hasReservedBadge === true, 'نشان «رزرو» نیست');
+    assert(r.roles === true, 'ساختار EXEC_ROLES ناقص است');
+    assert(r.counselorCount === true, 'دادهٔ نمونه مشاور این مدرسه را ندارد');
+  });
+});
+
+test('مشاور: نقش در فرم کاربر و صافی فهرست کاربران هست (تعریف مثل سایر کادرها)', () => {
+  withCounselor(() => {
+    const r = JSON.parse(W('(()=>{S.user=db.users.find(function(u){return u.username==="manager1";});'
+      + 'S.persona=null;S.boss=null;S.filters={};'
+      + 'userModal(null);'
+      + 'const m=((document.getElementById("modal")||{}).innerHTML)||"";'
+      + 'const hasOpt=m.indexOf("counselor")>-1&&m.indexOf("مشاور")>-1;'
+      + 'closeModal();'
+      + 'S.fopen={users:true};S.route="users";'
+      + 'const u=viewUsers();'
+      + 'return JSON.stringify({form:hasOpt,list:u.indexOf("مشاور")>-1});})()'));
+    assert(r.form === true, '🔴 گزینهٔ «مشاور» در فرم کاربر نیست');
+    assert(r.list === true, 'گزینهٔ «مشاور» در صافی فهرست کاربران نیست');
+  });
+});
+
+test('مشاور: خانهٔ نقش صف ارجاع است و حساب نمونه در صفحهٔ ورود هست', () => {
+  assert(W("homeRoute('counselor')") === 'cqueue', '🔴 خانه مشاور cqueue نیست');
+  const r = JSON.parse(W('(()=>{const accs=demoAccounts().map(function(a){return a.username;});'
+    + 'return JSON.stringify({has:accs.indexOf("counselor1")>-1,nav:!!NAV.counselor});})()'));
+  assert(r.has === true, 'counselor1 در حساب‌های نمونهٔ صفحهٔ ورود نیست');
+  assert(r.nav === true, 'counselor در NAV نیست');
 });
 
 // ── نتیجه

@@ -36,7 +36,8 @@ document.addEventListener('click',e=>{
      S.user=u;S.stack=[];S.persona=null;Store.remove(PERSONA_KEY);
      linkAsParent(u);
      S.showPicker=panelsOf(u).length>1;
-     S.route=(u.role==='edu_office'?'officedash':'dashboard');Store.set(SESSION_KEY,u.username);if(typeof trackVisit==='function')trackVisit(u.id);toast('خوش آمدید، '+u.full_name,'ok');render();
+     /* روت خانهٔ هر نقش — مشاور به صف ارجاع می‌رود نه داشبورد */
+     S.route=(typeof homeRoute==='function'?homeRoute(u.role):(u.role==='edu_office'?'officedash':'dashboard'));Store.set(SESSION_KEY,u.username);if(typeof trackVisit==='function')trackVisit(u.id);toast('خوش آمدید، '+u.full_name,'ok');render();
    },
    logout(){S.user=null;S.boss=null;S.stack=[];S.persona=null;S.showPicker=false;
      Store.remove(SESSION_KEY);Store.remove(BOSS_KEY);Store.remove(PERSONA_KEY);render();},
@@ -1112,7 +1113,29 @@ document.addEventListener('click',e=>{
      const data={title:V('a_title'),body:V('a_body'),audience:V('a_aud')};
      if(window._annEdit)update('announcements',window._annEdit,data);
      else insert('announcements',Object.assign({school_id:S.user.school_id||null,created_by:S.user.id,created_at:todayISO()},data));
-     closeModal();toast(window._annEdit?'اطلاعیه ویرایش شد':'اطلاعیه منتشر شد','ok');window._annEdit=0;render();}
+     closeModal();toast(window._annEdit?'اطلاعیه ویرایش شد':'اطلاعیه منتشر شد','ok');window._annEdit=0;render();},
+   /* ── مشاور مدرسه و پیگیری الگوها (دور ۶۳) ── */
+   'fu-days'(){S.filters.fu_days=Number(el.dataset.d);render();},
+   'counselor-ref'(){
+     const stId=Number(el.dataset.s),key=el.dataset.k;
+     const days=Number(S.filters.fu_days)>0?Number(S.filters.fu_days):30;
+     const row=(patternFlagged(S.user.school_id,days)||[]).find(rw=>rw.user.id===stId);
+     const bre=row&&row.breaches.find(b=>b.key===key);
+     if(!bre){toast('الگو دیگر معتبر نیست — صفحه را تازه کنید','err');render();return;}
+     const res=counselorRef(S.user.school_id,stId,bre,S.user.id);
+     toast(res.msg,res.ok?'ok':'err');
+     if(res.ok)render();
+   },
+   'counselor-handle'(){
+     const ref=(typeof byId==='function')?byId('counselor_refs',Number(el.dataset.r)):null;
+     if(!ref){toast('ارجاع پیدا نشد','err');return;}
+     /* مرز بین‌مدرسه‌ای: فقط ارجاعِ مدرسهٔ خودت */
+     if(ref.school_id!==S.user.school_id){toast('دسترسی به ارجاع مدرسهٔ دیگر مجاز نیست','err');return;}
+     const inp=el.ownerDocument&&$('#ch_note_'+ref.id);
+     const note=inp?inp.value.trim():'';
+     if(counselorHandle(ref.id,S.user.id,note)){toast('ارجاع رسیدگی‌شده شد','ok');render();}
+     else toast('این ارجاع از پیش رسیدگی شده است','err');
+   }
   };
   if(A[a]){e.preventDefault();A[a]();}
   else if(typeof F7_ACTIONS!=='undefined'&&F7_ACTIONS[a]){e.preventDefault();F7_ACTIONS[a](el,id);}

@@ -18,6 +18,9 @@ function viewDashboard(){
       + (typeof notifyDailyCard==='function'?notifyDailyCard():'')
       + annCard();
   if(u.role==='teacher')return teacherDash()+annCard();
+  /* مشاور: نه داشبورد مدیر (دادهٔ سراسری مدرسه) نه داشبورد ولی —
+     داشبورد خودش، مبتنی بر صف ارجاع */
+  if(u.role==='counselor')return counselorDash()+annCard();
   return familyDash()+annCard();
 }
 

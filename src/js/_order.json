@@ -45,5 +45,6 @@
   "43-bell-schedule.js",
   "44-sms-notify.js",
   "45-teacher-tools.js",
-  "46-bell-now.js"
+  "46-bell-now.js",
+  "47-counselor.js"
 ]

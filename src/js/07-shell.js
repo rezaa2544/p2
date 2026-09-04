@@ -113,6 +113,9 @@ function _renderRouteInner(){
     case 'offices':return viewOffices();
     case 'officedash':return viewOfficeDash();
     case 'officeschools':return viewOfficeSchools();
+    case 'cqueue':return viewCounselorQueue();
+    case 'followup':return viewFollowup();
+    case 'staff':return viewStaff();
     default:return viewDashboard();
   }
 }

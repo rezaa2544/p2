@@ -21,7 +21,11 @@ var EXTRA_ROUTES = {
   teacher:    ['record','exams','meetings'],
   student:    ['record','mytuition','notifications','announcements','subscription'],
   parent:     ['children','record','family','mytuition','notifications','announcements','subscription','calendar','meetings'],
-  edu_office: ['officedash','officeschools','notifications','announcements']
+  edu_office: ['officedash','officeschools','notifications','announcements'],
+  /* 🔴 محدودیت مشاور: فقط صف ارجاع و صفحه‌های عمومی (COMMON_ROUTES).
+     record/attendance/users و بقیه عمداً نیستند — مشاور پروندهٔ
+     کامل دانش‌آموز را نمی‌بیند، فقط دادهٔ ارجاع. */
+  counselor:  []
 };
 
 /** روت‌هایی که برای همهٔ نقش‌های واردشده باز است */
@@ -65,7 +69,8 @@ function canRoute(route, role){
 /** روت خانهٔ هر نقش */
 function homeRoute(role){
   role = role || (typeof activePersona === 'function' ? activePersona() : (S.user && S.user.role));
-  return role === 'edu_office' ? 'officedash' : 'dashboard';
+  /* خانهٔ مشاور صف ارجاع است، نه داشبورد عمومی */
+  return role === 'edu_office' ? 'officedash' : (role === 'counselor' ? 'cqueue' : 'dashboard');
 }
 
 /* ---------- مجوز اکشن‌ها ----------
@@ -206,7 +211,12 @@ var ACTION_ROLES = {
   'tr-box':        ['manager'],
   'conf-dismiss':  ['manager','superadmin'],
   'subs-settings': ['superadmin'],
-  'subs-save':     ['superadmin']
+  'subs-save':     ['superadmin'],
+  /* مشاور مدرسه (دور ۶۳): ارجاع کار مدیر است؛ رسیدگی کار مشاور
+     (مدیر هم می‌تواند ارجاع خودش را ببندد). اعلان به ولی
+     عمداً در کنش‌ها نیست — خودکار نیست. */
+  'counselor-ref':   ['manager'],
+  'counselor-handle':['counselor','manager']
 };
 
 /* 🔴 TODO پیش از اتصال به سرور — تکرار عین این منطق سمت سرور

@@ -4,7 +4,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 function demoAccounts(){
   const s=db.users.find(u=>u.role==='student'), p=db.users.find(u=>u.role==='parent');
-  return [db.users.find(u=>u.role==='superadmin'),db.users.find(u=>u.username==='edu_kurdistan'),db.users.find(u=>u.username==='manager1'),db.users.find(u=>u.username==='teacher1_1'),s,db.users.find(u=>u.username==='parent_multi')||p].filter(Boolean);
+  return [db.users.find(u=>u.role==='superadmin'),db.users.find(u=>u.username==='edu_kurdistan'),db.users.find(u=>u.username==='manager1'),db.users.find(u=>u.username==='teacher1_1'),s,db.users.find(u=>u.username==='parent_multi')||p,db.users.find(u=>u.username==='counselor1')].filter(Boolean);
 }
 function renderLogin(){
   const accs=demoAccounts();
