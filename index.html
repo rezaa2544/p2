@@ -2136,25 +2136,43 @@ function homeRoute(role){
 /* ---------- مجوز اکشن‌ها ----------
    برخی اکشن‌ها داده را تغییر می‌دهند. حتی اگر مهاجم دکمه را دستی بسازد،
    باید رد شود. کلید = نام اکشن، مقدار = نقش‌های مجاز.               */
+/* 🔴 تفکیک نقش سوپرادمین از مدیر مدرسه (دور ۴۷)
+   ────────────────────────────────────────────────────────────
+   پیش از این سوپرادمین **۸۸ از ۹۳ کنش** را داشت، از جمله ورود
+   اکسل، ثبت نمره و حضور و غیاب. طبق تعریف درست، این‌ها کار
+   **مدیر مدرسه** است نه مدیر کل سامانه. سوپرادمین باید فقط به
+   مدیریت مدارس، ادارات، اشتراک‌ها و پشتیبانی دسترسی داشته باشد.
+
+   ✅ **مسیر جانشینی نمی‌شکند.** وقتی سوپرادمین با `school-enter`
+   وارد پنل مدرسه می‌شود، `S.user` **خودِ مدیر** می‌شود
+   (`19-actions.js:74`) و `activePersona()` هم `'manager'`
+   برمی‌گرداند. پس همان‌جا همهٔ کنش‌های مدیر را دارد — چون واقعاً
+   به‌جای مدیر عمل می‌کند، نه به‌عنوان خودش. آزمون نگهبانش در
+   `tests/smoke.js` هر دو حالت را جدا می‌سنجد.
+
+   ⚠️ **معیار حذف: صفحهٔ آن کنش در منوی سوپرادمین هست یا نه.**
+   کنش‌هایی مثل `user-save` و `subject-save` نگه داشته شدند چون
+   صفحه‌هایشان (`users`, `subjects`) واقعاً در منوی سوپرادمین
+   هستند و حذفشان آن صفحه‌ها را می‌شکست. */
 var ACTION_ROLES = {
   /* اطلاع‌رسانی پیامکی: تأیید و ارسال فقط مدیر.
      ⚠️ دبیر پیام می‌سازد ولی حق تأییدش را ندارد — همان تفکیکی که
      کل مکانیزم بازبینی بر آن بنا شده است. */
-  'notify-approve':     ['manager','superadmin'],
-  'notify-approve-sel': ['manager','superadmin'],
-  'notify-reject':      ['manager','superadmin'],
-  'notify-reject-sel':  ['manager','superadmin'],
-  'notify-edit':        ['manager','superadmin'],
-  'notify-save-edit':   ['manager','superadmin'],
-  'notify-settings':    ['manager','superadmin'],
-  'notify-save-settings':['manager','superadmin'],
-  'notify-auto-off':    ['manager','superadmin'],
+  'notify-approve':     ['manager'],
+  'notify-approve-sel': ['manager'],
+  'notify-reject':      ['manager'],
+  'notify-reject-sel':  ['manager'],
+  'notify-edit':        ['manager'],
+  'notify-save-edit':   ['manager'],
+  'notify-settings':    ['manager'],
+  'notify-save-settings':['manager'],
+  'notify-auto-off':    ['manager'],
   /* حضور و غیاب: فقط دبیر و مدیر */
-  'att-set':       ['teacher','manager','superadmin'],
-  'att-review':    ['teacher','manager','superadmin'],
-  'att-commit':    ['teacher','manager','superadmin'],
-  'att-discard':   ['teacher','manager','superadmin'],
-  'att-tip-ok':    ['teacher','manager','superadmin','student','parent','edu_office'],
+  'att-set':       ['teacher','manager'],
+  'att-review':    ['teacher','manager'],
+  'att-commit':    ['teacher','manager'],
+  'att-discard':   ['teacher','manager'],
+  'att-tip-ok':    ['teacher','manager','student','parent','edu_office'],
   /* سابقه برای شفافیت با ولی است، پس همهٔ نقش‌ها می‌بینند.
      محتوایش فقط دربارهٔ رکوردی است که کاربر از قبل دسترسی دارد. */
   'att-hist':      ['teacher','manager','superadmin','student','parent','edu_office'],
@@ -2168,15 +2186,15 @@ var ACTION_ROLES = {
   'tnote-new':     ['teacher'],
   'tnote-save':    ['teacher'],
   'tnote-del':     ['teacher'],
-  'att-all':       ['teacher','manager','superadmin'],
+  'att-all':       ['teacher','manager'],
   /* نمرات */
-  'grade-save':    ['teacher','manager','superadmin'],
-  'grade-del':     ['teacher','manager','superadmin'],
-  'grade-modal':   ['teacher','manager','superadmin'],
+  'grade-save':    ['teacher','manager'],
+  'grade-del':     ['teacher','manager'],
+  'grade-modal':   ['teacher','manager'],
   /* انضباطی */
-  'disc-save':     ['teacher','manager','superadmin'],
-  'disc-del':      ['manager','superadmin'],
-  'disc-modal':    ['teacher','manager','superadmin'],
+  'disc-save':     ['teacher','manager'],
+  'disc-del':      ['manager'],
+  'disc-modal':    ['teacher','manager'],
   /* کاربران و مدارس */
   'user-save':     ['manager','superadmin'],
   'user-del':      ['manager','superadmin'],
@@ -2188,8 +2206,8 @@ var ACTION_ROLES = {
   'school-toggle': ['superadmin'],
   'school-enter':  ['superadmin'],
   /* کلاس و درس */
-  'class-save':    ['manager','superadmin'],
-  'class-del':     ['manager','superadmin'],
+  'class-save':    ['manager'],
+  'class-del':     ['manager'],
   'subject-save':  ['manager','superadmin'],
   'subject-del':   ['manager','superadmin'],
   /* اطلاعیه */
@@ -2198,32 +2216,32 @@ var ACTION_ROLES = {
   /* مالی */
   'plan-save':     ['manager','superadmin'],
   'plan-del':      ['manager','superadmin'],
-  'ins-pay':       ['manager','superadmin'],
+  'ins-pay':       ['manager'],
   /* اداره */
   'office-save':   ['superadmin'],
   'office-del':    ['superadmin'],
   'office-toggle': ['superadmin'],
   /* اشتراک (پنل مدیریتی) */
   /* چرخهٔ تحصیلی — عملیات سنگین و برگشت‌ناپذیر: فقط مدیر و سوپرادمین */
-  'promote-run':   ['manager','superadmin'],
+  'promote-run':   ['manager'],
   /* چرخهٔ سال تحصیلی */
-  'year-close':    ['manager','superadmin'],
-  'year-reopen':   ['manager','superadmin'],
-  'place-auto':    ['manager','superadmin'],
-  'cls-parallel':  ['manager','superadmin'],
-  'cls-parallel-ok':['manager','superadmin'],
-  'enroll-paid':   ['manager','superadmin'],
+  'year-close':    ['manager'],
+  'year-reopen':   ['manager'],
+  'place-auto':    ['manager'],
+  'cls-parallel':  ['manager'],
+  'cls-parallel-ok':['manager'],
+  'enroll-paid':   ['manager'],
   /* افت تحصیلی / جلسات / رشد */
-  'risk-notify':   ['manager','superadmin','teacher'],
+  'risk-notify':   ['manager','teacher'],
   /* فرم‌های رسمی و پیامک — پیامک هزینه دارد، پس فقط مدیر */
-  'form-print':    ['manager','superadmin'],
+  'form-print':    ['manager'],
   /* پنل سوپرادمین */
   'plan-settings':   ['superadmin'],
   'plan-save':       ['superadmin'],
   'backup-make':     ['superadmin'],
   'restore-pick':    ['superadmin'],
   'restore-ok':      ['superadmin'],
-  'export-csv':      ['manager','superadmin'],
+  'export-csv':      ['manager'],
   'ann-broadcast':   ['superadmin'],
   'ann-broadcast-ok':['superadmin'],
   'pass-reset':    ['manager','superadmin'],
@@ -2232,25 +2250,25 @@ var ACTION_ROLES = {
   'health-reindex':['superadmin'],
   'health-retry':  ['superadmin'],
   /* ورود اکسل — رکورد انبوه می‌سازد، پس فقط مدیر */
-  'imp-preview':   ['manager','superadmin'],
-  'imp-commit':    ['manager','superadmin'],
-  'imp-back':      ['manager','superadmin'],
-  'imp-reset':     ['manager','superadmin'],
-  'sms-new':       ['manager','superadmin'],
-  'sms-send':      ['manager','superadmin'],
-  'sms-topup':     ['manager','superadmin'],
-  'sms-topup-ok':  ['manager','superadmin'],
-  'invite-parents':['manager','superadmin'],
-  'mtg-new':       ['manager','superadmin','teacher'],
-  'mtg-save':      ['manager','superadmin','teacher'],
-  'mtg-del':       ['manager','superadmin','teacher'],
+  'imp-preview':   ['manager'],
+  'imp-commit':    ['manager'],
+  'imp-back':      ['manager'],
+  'imp-reset':     ['manager'],
+  'sms-new':       ['manager'],
+  'sms-send':      ['manager'],
+  'sms-topup':     ['manager'],
+  'sms-topup-ok':  ['manager'],
+  'invite-parents':['manager'],
+  'mtg-new':       ['manager','teacher'],
+  'mtg-save':      ['manager','teacher'],
+  'mtg-del':       ['manager','teacher'],
   'mtg-book':      ['parent'],
   'mtg-book-ok':   ['parent'],
-  'tr-new':        ['manager','superadmin'],
-  'tr-send':       ['manager','superadmin'],
-  'tr-ok':         ['manager','superadmin'],
-  'tr-no':         ['manager','superadmin'],
-  'tr-box':        ['manager','superadmin'],
+  'tr-new':        ['manager'],
+  'tr-send':       ['manager'],
+  'tr-ok':         ['manager'],
+  'tr-no':         ['manager'],
+  'tr-box':        ['manager'],
   'conf-dismiss':  ['manager','superadmin'],
   'subs-settings': ['superadmin'],
   'subs-save':     ['superadmin']

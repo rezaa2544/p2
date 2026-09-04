@@ -1135,7 +1135,10 @@ test('ویزارد ورود فقط برای مدیر باز است', () => {
     assert(/دسترسی مجاز نیست|اشتراک/.test(W('renderRoute()')), role + ' دسترسی داشت');
   }
   const cases = [['student','imp-commit',false],['teacher','imp-commit',false],
-                 ['manager','imp-commit',true],['superadmin','imp-preview',true]];
+                 ['manager','imp-commit',true],
+                 /* 🔴 دور ۴۷: سوپرادمین به‌عنوان خودش دیگر ورود اکسل ندارد —
+                    کار مدیر مدرسه است. از راه S.boss همچنان دارد. */
+                 ['superadmin','imp-preview',false]];
   for(const [role, act, want] of cases){
     W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null");
     assert(W("canAction('" + act + "')") === want, role + ' → ' + act);
@@ -1238,7 +1241,9 @@ test('فرم و پیامک فقط برای مدیر باز است', () => {
     assert(/دسترسی مجاز نیست|اشتراک/.test(W('renderRoute()')), role + ' دسترسی داشت');
   }
   const cases = [['student','sms-send',false],['teacher','sms-send',false],['teacher','form-print',false],
-                 ['manager','sms-send',true],['manager','form-print',true],['superadmin','sms-topup-ok',true]];
+                 ['manager','sms-send',true],['manager','form-print',true],
+                 /* 🔴 دور ۴۷: پیامک و فرم مدرسه کار مدیر است، نه سوپرادمین */
+                 ['superadmin','sms-topup-ok',false]];
   for(const [role, act, want] of cases){
     W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null");
     assert(W("canAction('" + act + "')") === want, role + ' → ' + act);
@@ -1456,7 +1461,9 @@ test('دانش‌آموز و دبیر به چرخه تحصیلی دسترسی ن
 
 test('اکشن‌های چرخه تحصیلی فقط برای مدیر مجاز است', () => {
   const cases = [['student','promote-run',false],['teacher','tr-ok',false],
-                 ['manager','promote-run',true],['manager','tr-ok',true],['superadmin','tr-send',true]];
+                 ['manager','promote-run',true],['manager','tr-ok',true],
+                 /* 🔴 دور ۴۷: چرخهٔ تحصیلی و انتقال کار مدیر مدرسه است */
+                 ['superadmin','tr-send',false]];
   for(const [role, act, want] of cases){
     W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null");
     assert(W("canAction('" + act + "')") === want, role + ' → ' + act);
@@ -5065,6 +5072,115 @@ test('خواهر/برادر: کد ملی پدر مشترک است (پایهٔ ke
   assert(r.total > 0, 'محیط آزمون: دانش‌آموزی با father_nid نیست');
   assert(r.siblingFamilies >= 5,
     '🔴 فقط ' + r.siblingFamilies + ' خانوادهٔ هم‌پدر — keepSiblings آزمودنی نیست');
+});
+
+/* ── تفکیک نقش سوپرادمین از مدیر مدرسه (دور ۴۷) ───────────────── */
+
+/** کنش‌های مدرسه‌محور که سوپرادمین نباید به‌عنوان خودش داشته باشد */
+const SCHOOL_ONLY_ACTS = ['imp-commit', 'imp-preview', 'att-set', 'att-commit',
+  'grade-save', 'class-save', 'export-csv', 'sms-send', 'notify-approve'];
+
+/** کنش‌هایی که سوپرادمین باید نگه دارد (سامانه‌محور) */
+const SYSTEM_ACTS = ['school-save', 'office-save', 'backup-make', 'subs-save'];
+
+test('نقش: سوپرادمین به‌عنوان خودش کنش مدرسه‌محور ندارد', () => {
+  /* 🔴 پیش از دور ۴۷ سوپرادمین ۸۸ از ۹۳ کنش را داشت، از جمله
+     ورود اکسل و ثبت نمره. کار مدیر مدرسه است نه مدیر سامانه. */
+  const saved = W('JSON.stringify({u:S.user&&S.user.id,b:S.boss&&S.boss.id})');
+  try {
+    const r = JSON.parse(W('(()=>{const s=db.users.find(function(u){'
+      + 'return u.role==="superadmin";});'
+      + 'S.user=s;S.persona=null;S.boss=null;'
+      + 'const acts=' + JSON.stringify(SCHOOL_ONLY_ACTS) + ';'
+      + 'const sys=' + JSON.stringify(SYSTEM_ACTS) + ';'
+      + 'return JSON.stringify({'
+      + 'persona:activePersona(),'
+      + 'granted:acts.filter(function(a){return canAction(a);}),'
+      + 'lostSystem:sys.filter(function(a){return !canAction(a);})});})()'));
+    assert(r.persona === 'superadmin', 'محیط آزمون: نقش سوپرادمین نشد');
+    assert(r.granted.length === 0,
+      '🔴 سوپرادمین این کنش‌های مدرسه‌محور را دارد: ' + r.granted.join(' · '));
+    assert(r.lostSystem.length === 0,
+      '🔴 کنش سامانه‌محور از سوپرادمین گرفته شد: ' + r.lostSystem.join(' · '));
+  } finally {
+    const o = JSON.parse(saved);
+    W('S.user=byId("users",' + o.u + ')||S.user;S.boss=null;S.persona=null');
+  }
+});
+
+test('نقش: 🔴 سوپرادمین از راه S.boss همان کنش‌ها را دارد', () => {
+  /* خط قرمز کاربر: مسیر جانشینی (پشتیبانی فنی) نباید بشکند.
+     آنجا S.user **خودِ مدیر** می‌شود (19-actions.js:74)، پس
+     واقعاً به‌جای مدیر عمل می‌کند نه به‌عنوان خودش. */
+  const saved = W('JSON.stringify({u:S.user&&S.user.id,b:S.boss&&S.boss.id})');
+  try {
+    const r = JSON.parse(W('(()=>{const s=db.users.find(function(u){'
+      + 'return u.role==="superadmin";});'
+      + 'const mgr=db.users.find(function(u){return u.role==="manager"&&u.active;});'
+      + 'if(!mgr)return JSON.stringify({skipTest:true});'
+      /* همان کاری که کنش school-enter می‌کند */
+      + 'S.boss=s;S.user=mgr;S.persona=null;'
+      + 'const acts=' + JSON.stringify(SCHOOL_ONLY_ACTS) + ';'
+      + 'return JSON.stringify({'
+      + 'persona:activePersona(),'
+      + 'bossIsSuper:S.boss&&S.boss.role==="superadmin",'
+      + 'denied:acts.filter(function(a){return !canAction(a);})});})()'));
+    if (r.skipTest) return;
+    assert(r.bossIsSuper === true, 'محیط آزمون: S.boss سوپرادمین نیست');
+    assert(r.persona === 'manager',
+      '🔴 در جانشینی نقش فعال باید manager باشد: ' + r.persona);
+    assert(r.denied.length === 0,
+      '🔴 مسیر جانشینی شکست — این کنش‌ها از مدیر گرفته شده: '
+      + r.denied.join(' · '));
+  } finally {
+    const o = JSON.parse(saved);
+    W('S.user=byId("users",' + o.u + ')||S.user;S.boss=null;S.persona=null');
+  }
+});
+
+test('نقش: 🔴 دو حالت سوپرادمین از هم جدا رفتار می‌کنند', () => {
+  /* آزمون یکپارچه: همان کنش، دو نتیجهٔ متفاوت بسته به اینکه
+     سوپرادمین خودش است یا جانشین مدیر. اگر این دو یکی شوند،
+     یا تفکیک شکسته یا جانشینی. */
+  const saved = W('JSON.stringify({u:S.user&&S.user.id,b:S.boss&&S.boss.id})');
+  try {
+    const r = JSON.parse(W('(()=>{const s=db.users.find(function(u){'
+      + 'return u.role==="superadmin";});'
+      + 'const mgr=db.users.find(function(u){return u.role==="manager"&&u.active;});'
+      + 'if(!mgr)return JSON.stringify({skipTest:true});'
+      + 'const probe="imp-commit";'
+      + 'S.user=s;S.persona=null;S.boss=null;'
+      + 'const asSelf=canAction(probe);'
+      + 'S.boss=s;S.user=mgr;S.persona=null;'
+      + 'const asBoss=canAction(probe);'
+      + 'return JSON.stringify({asSelf:asSelf,asBoss:asBoss});})()'));
+    if (r.skipTest) return;
+    assert(r.asSelf === false, '🔴 سوپرادمینِ خودش imp-commit دارد');
+    assert(r.asBoss === true, '🔴 سوپرادمینِ جانشین imp-commit ندارد');
+    assert(r.asSelf !== r.asBoss,
+      '🔴 دو حالت یکسان رفتار کردند — تفکیک بی‌اثر است');
+  } finally {
+    const o = JSON.parse(saved);
+    W('S.user=byId("users",' + o.u + ')||S.user;S.boss=null;S.persona=null');
+  }
+});
+
+test('نقش: هر کنشِ مجازِ سوپرادمین صفحه‌اش را هم دارد', () => {
+  /* ⚠️ معیار تفکیک: اگر صفحه‌اش در منوی سوپرادمین نیست، کنشش هم
+     نباید باشد. دفاع باید دولایه بماند نه اینکه فقط گارد صفحه
+     جلویش را بگیرد. */
+  const r = JSON.parse(W('(()=>{const map={'
+    + '"imp-commit":"import","imp-preview":"import","att-set":"attendance",'
+    + '"att-commit":"attendance","grade-save":"grades","class-save":"classes",'
+    + '"export-csv":"formssms","sms-send":"formssms","notify-approve":"notifyqueue"};'
+    + 'const bad=[];'
+    + 'Object.keys(map).forEach(function(a){'
+    + 'const actOk=(ACTION_ROLES[a]||[]).indexOf("superadmin")>-1;'
+    + 'const pageOk=canRoute(map[a],"superadmin");'
+    + 'if(actOk!==pageOk)bad.push(a+"(کنش="+actOk+" صفحه="+pageOk+")");});'
+    + 'return JSON.stringify({bad:bad});})()'));
+  assert(r.bad.length === 0,
+    '🔴 ناهماهنگی کنش و صفحه برای سوپرادمین: ' + r.bad.join(' · '));
 });
 
 // ── نتیجه
