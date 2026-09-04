@@ -2310,10 +2310,14 @@ var ACTION_ROLES = {
   'subs-settings': ['superadmin'],
   'subs-save':     ['superadmin'],
   /* مشاور مدرسه (دور ۶۳): ارجاع کار مدیر است؛ رسیدگی کار مشاور
-     (مدیر هم می‌تواند ارجاع خودش را ببندد). اعلان به ولی
-     عمداً در کنش‌ها نیست — خودکار نیست. */
+     (مدیر هم می‌تواند ارجاع خودش را ببندد). */
   'counselor-ref':   ['manager'],
-  'counselor-handle':['counselor','manager']
+  'counselor-handle':['counselor','manager'],
+  /* اعلان الگو به ولی (بند ۴ دور ۶۳): خودکار نیست — فقط مدیر از
+     «پیگیری الگوها» پیام را در صف اولیا می‌گذارد. مشاور عمداً
+     بی‌خیال این اختیار است (تفکیک: پیگیری با مشاور، اطلاع‌رسانی
+     رسمی با مدیر). */
+  'pattern-notify':  ['manager']
 };
 
 /* 🔴 TODO پیش از اتصال به سرور — تکرار عین این منطق سمت سرور
@@ -7935,6 +7939,19 @@ document.addEventListener('click',e=>{
      const note=inp?inp.value.trim():'';
      if(counselorHandle(ref.id,S.user.id,note)){toast('ارجاع رسیدگی‌شده شد','ok');render();}
      else toast('این ارجاع از پیش رسیدگی شده است','err');
+   },
+   /* اعلان الگو به ولی (بند ۴ دور ۶۳): فقط مدیر. پیام نمی‌رود —
+      در صف پیام اولیا می‌نشیند و با تأیید مدیر ارسال می‌شود. */
+   'pattern-notify'(){
+     const stId=Number(el.dataset.s);
+     const days=Number(S.filters.fu_days)>0?Number(S.filters.fu_days):30;
+     const row=(patternFlagged(S.user.school_id,days)||[]).find(rw=>rw.user.id===stId);
+     /* بدترین الگو (بیشترین تعداد) ملاک متن پیام است */
+     const bre=row&&row.breaches.slice().sort((a,b)=>b.count-a.count)[0];
+     if(!bre){toast('الگو دیگر معتبر نیست — صفحه را تازه کنید','err');render();return;}
+     const res=patternNotifyParent(stId,S.user.school_id,bre,days,S.user.id);
+     toast(res.msg,res.ok?'ok':'err');
+     if(res.ok)render();
    }
   };
   if(A[a]){e.preventDefault();A[a]();}
@@ -12933,7 +12950,7 @@ var NOTIFY_DEFAULTS = {
   graceMinutes: 20,
   dailyCap:     300,
   bulkWarn:     50,
-  kinds:        { absence: true, late: true, grade: false, event: true },
+  kinds:        { absence: true, late: true, grade: false, event: true, pattern: true },
   gradeThreshold: 10
 };
 
@@ -12995,6 +13012,16 @@ var NOTIFY_TPL = {
     return 'اصلاحیه: ' + o.student + ' در ' + o.date + ' ' +
            (o.wasAbsent ? 'غایب نبوده است' : 'غایب بوده است') +
            '. پوزش می‌خواهیم. ' + o.school;
+  },
+  /* الگوی تکرار (دور ۶۳، بند ۴): فقط با تأیید مدیر ساخته می‌شود —
+     این خودِ قالب، دروازهٔ اعلان نیست. قاعدهٔ «بدون نام دبیر»
+     اینجا محوری‌تر است: الگو از ثبت چند دبیر ممکن است باشد.
+     ⚠️ طول: با نام‌های بلند از ۷۰ نویسه می‌گذرد (۲ قطعه) — سنجش
+     دور ۶۳؛ پیام ماهیتاً بلندتر از اطلاع یک‌روداده‌ای است. */
+  pattern: function(o){
+    return 'اولیای گرامی، در ' + o.days + ' روز اخیر ' + o.count +
+           ' بار ' + o.what + ' برای ' + o.student +
+           ' ثبت شده است. ' + o.school;
   },
   /* اصلاحیهٔ نمره: عدد را بازگو نمی‌کند؛ فقط می‌گوید اطلاع قبلی
      نادرست بود و جزئیات در سامانه است (همان قاعدهٔ حریم نمره). */
@@ -13355,6 +13382,7 @@ var NOTIFY_KIND_FA = {
   late:       ['تأخیر',   'b-amber'],
   grade:      ['نمره',    'b-purple'],
   event:      ['رویداد',  'b-blue'],
+  pattern:    ['الگو',    'b-cyan'],
   correction: ['اصلاحیه', 'b-red']
 };
 
@@ -13462,7 +13490,7 @@ function viewNotifyQueue(){
   }) : all;
 
   /* شمار هر دسته برای دکمه‌های فیلتر */
-  var cnt = { absence:0, late:0, grade:0, event:0, correction:0 };
+  var cnt = { absence:0, late:0, grade:0, event:0, pattern:0, correction:0 };
   all.forEach(function(q){
     if(q.correction_of) cnt.correction++;
     else if(cnt[q.kind] !== undefined) cnt[q.kind]++;
@@ -15218,6 +15246,67 @@ function counselorHandle(refId,userId,note){
   return true;
 }
 
+/* ─────────── اعلان الگو به ولی — فقط با تأیید مدیر (بند ۴) ───────────
+   طرح ۴.۷ سه اثر برای رد آستانه می‌گوید: نشان در پرونده، رکورد
+   در صف پیگیری، و اعلان به ولی — که **خودکار نیست**. اینجا همان
+   مسیر سوم: مدیر از «پیگیری الگوها» یک کلیک می‌کند و پیام در صف
+   پیام اولیا (سامانهٔ دور ۴۲) می‌نشیند — با همان سقف روزانه،
+   اعتبار و تأیید نهایی.
+
+   ⚠️ تفکیک عمدی: صف مشاور (cqueue) این دکمه را **ندارد**. مشاور
+   با خانواده صحبت می‌کند؛ اعلان رسمی پیامکی اختیار مدیر است.
+
+   ⚠️ تکرار: پیام معلقِ همین دانش‌آموز ⇒ رد می‌شود. پیامی که
+   ۷ روز گذشته رفته ⇒ رد می‌شود (آزار خانواده). قدیمی‌تر ⇒
+   مجاز — الگو ممکن است بعد از پیگیری ادامه داشته باشد. */
+
+/** وضعیت اعلان الگوی یک دانش‌آموز: {pending, lastSentAt} */
+function patternNotifyState(schoolId,studentId){
+  var out={pending:null,lastSentAt:null};
+  var cut=Date.now()-7*86400000;
+  (db.notify_queue||[]).forEach(function(q){
+    if(q.school_id!==schoolId||q.kind!=='pattern')return;
+    if(q.student_id!==studentId)return;
+    if(q.status==='pending'&&!out.pending)out.pending=q;
+    else if(q.status==='sent'){
+      var t=Date.parse(q.decided_at||q.created_at);
+      if(!isNaN(t)&&t>=cut&&(!out.lastSentAt||t>out.lastSentAt))out.lastSentAt=t;
+    }
+  });
+  return out;
+}
+
+/**
+ * ساخت اعلان الگو برای ولی — فقط با فراخوانی صریح مدیر.
+ * برمی‌گرداند: {ok,msg,rec?}
+ * ⚠️ پیام را نمی‌فرستد — همان قرارداد notifyRequest: ساخت و ارسال
+ * جدا می‌مانند تا سقف روزانه و اعتبار در یک نقطه سنجیده شوند.
+ */
+function patternNotifyParent(studentId,schoolId,breach,days,byUserId){
+  var cfg=(typeof notifySettings==='function')?notifySettings(schoolId):null;
+  if(!cfg||!cfg.enabled)return {ok:false,msg:'اطلاع‌رسانی پیامکی این مدرسه خاموش است'};
+  if(cfg.kinds&&cfg.kinds.pattern===false)return {ok:false,msg:'اعلان الگو در تنظیمات اطلاع‌رسانی خاموش است'};
+  var st=(typeof byId==='function')?byId('users',studentId):null;
+  if(!st)return {ok:false,msg:'دانش‌آموز پیدا نشد'};
+  var state=patternNotifyState(schoolId,studentId);
+  if(state.pending)return {ok:false,msg:'پیام این دانش‌آموز در صف تأیید است — تکرار لازم نیست',rec:state.pending};
+  if(state.lastSentAt)return {ok:false,msg:'در ۷ روز گذشته به اولیای این دانش‌آموز اعلان داده شده است'};
+  var n=Number(days)>0?Number(days):30;
+  var what={late:'تأخیر',absent:'غیبت',exits:'خروج از کلاس'}[breach.key]||breach.fa;
+  var body=(typeof notifyBody==='function')?notifyBody('pattern',{
+    student:st.full_name,count:fa(breach.count),what:what,
+    days:fa(n),school:(typeof notifySchoolName==='function')?notifySchoolName(schoolId):'مدرسه'
+  }):'';
+  if(!body||body.length<4)return {ok:false,msg:'متن پیام ساخته نشد'};
+  var cl=(typeof classOf==='function')?classOf(studentId):null;
+  var q=(typeof notifyRequest==='function')?notifyRequest({
+    school_id:schoolId,kind:'pattern',student_id:studentId,
+    class_id:cl?cl.id:null,student_name:st.full_name,body:body
+  }):null;
+  if(!q)return {ok:false,msg:'پیام در صف قرار نگرفت: '+((typeof notifyRequest!=='undefined'&&notifyRequest.lastSkip)||'نامشخص')};
+  return {ok:true,msg:'در صف پیام اولیا قرار گرفت — با تأیید شما ارسال می‌شود',rec:q};
+}
+
 /* ─────────── نماها ─────────── */
 
 /** صف ارجاع‌ها — صفحهٔ خانهٔ مشاور */
@@ -15284,17 +15373,25 @@ function viewFollowup(){
       return '<button class="btn'+(days===d?'':' ghost')+'" data-act="fu-days" data-d="'+d+'">'+d+' روز</button>';
     }).join('')
     +'</div></div><div class="card-body">';
-  h+='<div class="small muted" style="margin-bottom:10px">آستانه‌ها: تأخیر مکرر '+r.late_month+' بار در ماه · غیبت مکرر '+r.absent_month+' بار در ماه · خروج مکرر '+r.exit_week+' بار در هفته. وقتی دانش‌آموزی آستانه را رد کند، او را به مشاور ارجاع دهید — اعلان به ولی **خودکار نیست**؛ پیگیری با مشاور است.</div>';
+  var ncfg=(typeof notifySettings==='function')?notifySettings(sid):null;
+  var notifyOn=!!ncfg&&!!ncfg.enabled&&ncfg.kinds.pattern!==false;
+  h+='<div class="small muted" style="margin-bottom:10px">آستانه‌ها: تأخیر مکرر '+r.late_month+' بار در ماه · غیبت مکرر '+r.absent_month+' بار در ماه · خروج مکرر '+r.exit_week+' بار در هفته. وقتی دانش‌آموزی آستانه را رد کند، او را به مشاور ارجاع دهید. اعلان به ولی **خودکار نیست** — با دکمهٔ «اعلان به ولی» پیام در صف پیام اولیا می‌نشیند و با تأیید شما ارسال می‌شود (در ۷ روز برای هر دانش‌آموز یک‌بار).</div>';
   if(!flagged.length){
     h+=empty('📈','الگویی در این بازه نیست','هیچ دانش‌آموزی در '+days+' روز گذشته آستانهٔ الگوها را رد نکرده است.');
   } else {
     h+='<div class="table-wrap"><table class="table"><thead><tr>'
-      +'<th>دانش‌آموز</th><th>تأخیر</th><th>غیبت</th><th>روند</th><th>اقدام</th>'
+      +'<th>دانش‌آموز</th><th>تأخیر</th><th>غیبت</th><th>روند</th><th>اقدام</th><th>اعلان به ولی</th>'
       +'</tr></thead><tbody>';
     flagged.forEach(function(row){
       var st=row.user;
       var br={};row.breaches.forEach(function(b){br[b.key]=b;});
       var tb=row.breaches[0]||{};
+      var nst=patternNotifyState(sid,st.id);
+      var notifyCell;
+      if(!notifyOn)notifyCell='<span class="small muted">خاموش</span>';
+      else if(nst.pending)notifyCell='<span class="badge b-blue" title="در صف پیام اولیا">در صف</span>';
+      else if(nst.lastSentAt)notifyCell='<span class="badge b-green" title="در ۷ روز گذشته ارسال شده">اعلان‌شده</span>';
+      else notifyCell='<button class="btn ghost sm" data-act="pattern-notify" data-s="'+st.id+'">📨 اعلان به ولی</button>';
       h+='<tr><td><b>'+esc(st.full_name)+'</b><div class="small muted">'+esc(row.cls?row.cls.name:'—')+'</div></td>'
         +'<td>'+(br.late?'<span class="badge b-amber">'+br.late.count+' بار</span>':'—')+'</td>'
         +'<td>'+(br.absent?'<span class="badge b-red">'+br.absent.count+' بار</span>':'—')+'</td>'
@@ -15306,7 +15403,8 @@ function viewFollowup(){
             ?'<span class="badge b-blue" title="برای این دلیل ارجاع باز وجود دارد">ارجاع‌شده</span>'
             :'<button class="btn" data-act="counselor-ref" data-s="'+st.id+'" data-k="'+b.key+'">🕊️ ارجاع به مشاور</button>';
         }).join(' ')
-        +'</td></tr>';
+        +'</td>'
+        +'<td>'+notifyCell+'</td></tr>';
     });
     h+='</tbody></table></div>';
   }
@@ -15424,6 +15522,40 @@ function generateP12(){
     setRecent(kids2[0].id,4,0,'absent');
     var mgr2=db.users.find(function(u){return u.role==='manager'&&u.school_id===sid2;});
     if(mgr2)mkRef(kids2[0],'absent',mgr2,null,1);
+  }
+  /* اعلان الگو نمونه (بند ۴): مدرسهٔ اول اطلاع‌رسانی روشن دارد و
+     یک اعلان الگوی معلق در صف پیام اولیا می‌بیند. مدرسهٔ دوم
+     عمداً خاموش می‌ماند — مرز «مدرسهٔ بدون اطلاع‌رسانی» هم در
+     دمو دیده شود و نشت رکورد به آن نشود.
+     ⚠️ مثل بقیهٔ دادهٔ پایه با add() — در دفترچهٔ عملیات نمی‌نشیند. */
+  if(mgr1){
+    var s1rec=db.schools.filter(function(s){return s.id===sid1;})[0];
+    if(s1rec)s1rec.notify_rules={enabled:true,autoSend:false};
+    var hasWal=db.sms_wallet.filter(function(x){return x.school_id===sid1;})[0];
+    if(!hasWal)add('sms_wallet',{school_id:sid1,balance:500});
+    /* نخستین دانش‌آموز الگودارِ دارای ولی — پیام نمونه در صف اولیا */
+    var patRow=(patternFlagged(sid1,30)||[]).filter(function(f){
+      return notifyParentsOf(f.user.id).length>0;
+    })[0];
+    if(patRow){
+      var pk=patRow.user;
+      var pkey=patRow.breaches.slice().sort(function(a,b){return b.count-a.count;})[0].key;
+      var ppart=pkey==='late'?patRow.check.late:patRow.check.absent;
+      var pbody=(typeof notifyBody==='function')?notifyBody('pattern',{
+        student:pk.full_name,count:fa(ppart.count),
+        what:pkey==='late'?'تأخیر':'غیبت',days:fa(30),
+        school:(typeof notifySchoolName==='function')?notifySchoolName(sid1):'مدرسه'
+      }):'';
+      if(pbody)add('notify_queue',{
+        school_id:sid1,kind:'pattern',student_id:pk.id,
+        class_id:(classOf(pk.id)||{}).id||null,
+        parent_ids:notifyParentsOf(pk.id),
+        body:pbody,parts:(typeof smsParts==='function')?smsParts(pbody):1,
+        status:'pending',
+        created_at:new Date(Date.now()-86400000).toISOString(),
+        created_by:mgr1.id,auto:0
+      });
+    }
   }
   /* یک ارجاعِ رسیدگی‌شده برای مدرسهٔ اول — بخش «رسیدگی‌شده» خالی نماند */
   var kids3=db.users.filter(function(x){return x.role==='student'&&x.school_id===sid1&&(x.status||'active')==='active';});

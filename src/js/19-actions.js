@@ -1135,6 +1135,19 @@ document.addEventListener('click',e=>{
      const note=inp?inp.value.trim():'';
      if(counselorHandle(ref.id,S.user.id,note)){toast('ارجاع رسیدگی‌شده شد','ok');render();}
      else toast('این ارجاع از پیش رسیدگی شده است','err');
+   },
+   /* اعلان الگو به ولی (بند ۴ دور ۶۳): فقط مدیر. پیام نمی‌رود —
+      در صف پیام اولیا می‌نشیند و با تأیید مدیر ارسال می‌شود. */
+   'pattern-notify'(){
+     const stId=Number(el.dataset.s);
+     const days=Number(S.filters.fu_days)>0?Number(S.filters.fu_days):30;
+     const row=(patternFlagged(S.user.school_id,days)||[]).find(rw=>rw.user.id===stId);
+     /* بدترین الگو (بیشترین تعداد) ملاک متن پیام است */
+     const bre=row&&row.breaches.slice().sort((a,b)=>b.count-a.count)[0];
+     if(!bre){toast('الگو دیگر معتبر نیست — صفحه را تازه کنید','err');render();return;}
+     const res=patternNotifyParent(stId,S.user.school_id,bre,days,S.user.id);
+     toast(res.msg,res.ok?'ok':'err');
+     if(res.ok)render();
    }
   };
   if(A[a]){e.preventDefault();A[a]();}

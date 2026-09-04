@@ -6068,6 +6068,196 @@ test('مشاور: خانهٔ نقش صف ارجاع است و حساب نمون�
   assert(r.nav === true, 'counselor در NAV نیست');
 });
 
+/* ── اعلان الگو به ولی — فقط با تأیید مدیر (دور ۶۳، بند ۴) ──────
+   اثر سوم طرح ۴.۷: اعلان به ولی **خودکار نیست** — مدیر از «پیگیری
+   الگوها» کلیک می‌کند و پیام در صف پیام اولیا (۴۴) می‌نشیند.
+   صف مشاور عمداً این دکمه را ندارد (تفکیک). تکرار: تا معلق
+   نباشد یک‌بار، در ۷ روز یک‌بار. */
+
+function patEnv() {
+  return JSON.parse(W('(()=>{S.user=db.users.find(function(u){return u.role==="manager"&&u.school_id===1;});'
+    + 'S.persona=null;S.boss=null;S.filters={};S.route="followup";S.page=1;'
+    + 'var h=renderRoute();'
+    + 'var s=0;'
+    + '(patternFlagged(1,30)||[]).forEach(function(row){'
+    + 'if(s)return;'
+    + 'var stt=patternNotifyState(1,row.user.id);'
+    + 'if(stt.pending||stt.lastSentAt)return;'
+    + 'if(notifyParentsOf(row.user.id).length<1)return;'
+    + 's=row.user.id;});'
+    + 'return JSON.stringify({s:s,btns:(h.match(/data-act="pattern-notify"/g)||[]).length});})()'));
+}
+
+function patClick(s) {
+  return 'var b=document.createElement("button");'
+    + 'b.setAttribute("data-act","pattern-notify");'
+    + 'b.setAttribute("data-s",String(s));'
+    + 'document.body.appendChild(b);'
+    + 'b.dispatchEvent(new MouseEvent("click",{bubbles:true}));'
+    + 'b.remove();';
+}
+
+test('اعلان الگو: کلیک مدیر پیام درست در صف پیام اولیا می‌سازد', () => {
+  withCounselor(() => {
+    const env = patEnv();
+    assert(env.s > 0, 'محیط آزمون: دانش‌آموز تازهٔ اعلان‌پذیر نیست (معلق ندارد + ولی معتبر)');
+    assert(env.btns > 0, '🔴 دکمه اعلان در نمای پیگیری رندر نشد');
+    const r = JSON.parse(W('(function(){'
+      + 'S.user=db.users.find(function(u){return u.role==="manager"&&u.school_id===1;});'
+      + 'S.persona=null;S.boss=null;S.filters={};'
+      + 'var s=' + env.s + ';'
+      + 'function mine(){return db.notify_queue.filter(function(q){return q.school_id===1&&q.kind==="pattern"&&q.student_id===s&&q.status==="pending";});}'
+      + 'var before=mine().length;'
+      + patClick(env.s)
+      + 'var rec=mine()[0]||{};'
+      + 'var st=byId("users",s);'
+      + 'return JSON.stringify({before:before,after:mine().length,'
+      + 'kind:rec.kind,status:rec.status,'
+      + 'parents:(rec.parent_ids||[]).length>0,'
+      + 'body:!!(rec.body&&st&&rec.body.indexOf(st.full_name)>-1),'
+      + 'parts:rec.parts>=1,cls:!!rec.class_id,school:rec.school_id===1});})()'));
+    assert(r.after === r.before + 1, '🔴 پیام ساخته نشد: ' + r.before + '→' + r.after);
+    assert(r.kind === 'pattern' && r.status === 'pending', 'فیلدهای رکورد نادرست: ' + r.kind + '/' + r.status);
+    assert(r.parents === true, '🔴 گیرندهٔ معتبر برای پیام پیدا نشد');
+    assert(r.body === true, 'نام دانش‌آموز در متن پیام نیست');
+    assert(r.parts === true, 'parts ذخیره نشده');
+    assert(r.cls === true, 'class_id ذخیره نشده');
+    assert(r.school === true, 'school_id نادرست');
+  });
+});
+
+test('اعلان الگو: تکراری نمی‌شود — معلق و ۷ روزه باز هم یک‌بار', () => {
+  withCounselor(() => {
+    const env = patEnv();
+    assert(env.s > 0, 'محیط آزمون: دانش‌آموز تازهٔ اعلان‌پذیر نیست');
+    const r = JSON.parse(W('(function(){'
+      + 'S.user=db.users.find(function(u){return u.role==="manager"&&u.school_id===1;});'
+      + 'S.persona=null;S.boss=null;S.filters={};'
+      + 'var s=' + env.s + ';'
+      + 'function mine(){return db.notify_queue.filter(function(q){return q.school_id===1&&q.kind==="pattern"&&q.student_id===s;});}'
+      + 'function cnt(){return mine().length;}'
+      + patClick(env.s) + 'var a1=cnt();var q1=mine()[0];'
+      + patClick(env.s) + 'var a2=cnt();'
+      + 'update("notify_queue",q1.id,{status:"sent",decided_at:new Date().toISOString()});'
+      + patClick(env.s) + 'var a3=cnt();'
+      + 'update("notify_queue",q1.id,{decided_at:new Date(Date.now()-8*86400000).toISOString()});'
+      + patClick(env.s) + 'var a4=cnt();'
+      + 'mine().forEach(function(q){remove("notify_queue",q.id);});'
+      + 'return JSON.stringify({a1:a1,a2:a2,a3:a3,a4:a4});})()'));
+    assert(r.a1 === 1, '🔴 پیام نخست ساخته نشد: ' + r.a1);
+    assert(r.a2 === 1, '🔴 در صف بودن و باز هم ساخت — تکرار: ' + r.a2);
+    assert(r.a3 === 1, '🔴 در ۷ روز گذشته رفته و باز هم ساخته شد: ' + r.a3);
+    assert(r.a4 === 2, 'بعد از ۷ روز باید اعلان تازه می‌شد: ' + r.a4);
+  });
+});
+
+test('اعلان الگو: در صف پیام اولیا با نشان «الگو» دیده می‌شود', () => {
+  withCounselor(() => {
+    const r = JSON.parse(W('(()=>{S.user=db.users.find(function(u){return u.role==="manager"&&u.school_id===1;});'
+      + 'S.persona=null;S.boss=null;S.filters={};S.route="notifyqueue";S.page=1;'
+      + 'var rec=db.notify_queue.filter(function(q){return q.school_id===1&&q.kind==="pattern"&&q.status==="pending";})[0]||{};'
+      + 'var st=rec.student_id?byId("users",rec.student_id):null;'
+      + 'if(!st)return JSON.stringify({skipTest:true});'
+      + 'var h=renderRoute();'
+      + 'return JSON.stringify({skipTest:false,len:h.length,'
+      + 'name:h.indexOf(st.full_name)>-1,tag:h.indexOf("الگو")>-1});})()'));
+    if (r.skipTest) return;
+    assert(r.len > 500, 'صفحه رندر نشد: ' + r.len);
+    assert(r.name === true, '🔴 پیام الگو در صف پیام اولیا نیست');
+    assert(r.tag === true, '🔴 نشان «الگو» رندر نشد');
+  });
+});
+
+test('اعلان الگو: 🔴 مدرسهٔ بدون اطلاع‌رسانی پیام نمی‌سازد (رابط و فراخوان مستقیم)', () => {
+  withCounselor(() => {
+    const r = JSON.parse(W('(()=>{'
+      + 'var m2=db.users.find(function(u){return u.role==="manager"&&u.school_id===2;});'
+      + 'if(!m2)return JSON.stringify({skipTest:true});'
+      + 'S.user=m2;S.persona=null;S.boss=null;S.filters={};S.route="followup";S.page=1;'
+      + 'var cfg=notifySettings(2);'
+      + 'var h=renderRoute();'
+      + 'var flagged=patternFlagged(2,30);'
+      + 'var made=null,madeMsg=null;'
+      + 'if(flagged.length){'
+      + 'var row=flagged[0];'
+      + 'var bre=row.breaches.slice().sort(function(a,b){return b.count-a.count;})[0];'
+      + 'var res=patternNotifyParent(row.user.id,2,bre,30,m2.id);'
+      + 'made=res.ok;madeMsg=!!(res.msg&&res.msg.indexOf("خاموش است")>-1);}'
+      + 'return JSON.stringify({skipTest:false,enabled:cfg.enabled===false,madeMsg:!!madeMsg,'
+      + 'btns:(h.match(/data-act="pattern-notify"/g)||[]).length,'
+      + 'offText:h.indexOf("خاموش")>-1,'
+      + 'hasFlagged:flagged.length>0,made:made,'
+      + 'nPatt:db.notify_queue.filter(function(q){return q.school_id===2&&q.kind==="pattern";}).length});})()'));
+    if (r.skipTest) return;
+    assert(r.enabled === true, 'محیط آزمون: مدرسهٔ دوم باید خاموش باشد');
+    assert(r.hasFlagged === true, 'محیط آزمون: مدرسهٔ دوم دانش‌آموز الگودار ندارد');
+    assert(r.btns === 0, '🔴 دکمهٔ اعلان در مدرسهٔ خاموش رندر شد');
+    assert(r.offText === true, 'وضعیت «خاموش» در سلول نیست');
+    assert(r.made === false, '🔴 فراخوان مستقیم در حالی که مدرسه خاموش است پیام ساخت');
+    assert(r.madeMsg === true, '🔴 پیام خطای «خاموش» برای مدیر خوانا نیست');
+    assert(r.nPatt === 0, '🔴 مدرسهٔ دوم رکورد الگو دارد — نشت مرز بین‌مدرسه‌ای');
+  });
+});
+
+test('اعلان الگو: 🔴 دبیر نمی‌تواند اعلان بسازد (گارد نقش)', () => {
+  withCounselor(() => {
+    const env = JSON.parse(W('(()=>{'
+      + 'var t=db.users.find(function(u){return u.role==="teacher"&&u.school_id===1&&u.active;});'
+      + 'if(!t)return JSON.stringify({skipTest:true,s:0});'
+      + 'var s=0;'
+      + '(patternFlagged(1,30)||[]).forEach(function(row){'
+      + 'if(s)return;'
+      + 'var stt=patternNotifyState(1,row.user.id);'
+      + 'if(stt.pending||stt.lastSentAt)return;'
+      + 'if(notifyParentsOf(row.user.id).length<1)return;'
+      + 's=row.user.id;});'
+      + 'return JSON.stringify({skipTest:false,s:s,tid:t.id});})()'));
+    if (env.skipTest) return;
+    assert(env.s > 0, 'محیط آزمون: دانش‌آموز تازهٔ اعلان‌پذیر نیست');
+    const r = JSON.parse(W('(function(){'
+      + 'S.user=byId("users",' + env.tid + ');S.persona=null;S.boss=null;S.filters={};'
+      + 'var s=' + env.s + ';'
+      + 'function cnt(){return db.notify_queue.filter(function(q){return q.school_id===1&&q.kind==="pattern"&&q.student_id===s;}).length;}'
+      + 'var before=cnt();'
+      + patClick(env.s)
+      + 'return JSON.stringify({before:before,after:cnt()});})()'));
+    assert(r.after === r.before, '🔴 دبیر اعلان به ولی ساخت — گارد نقش کار نکرد');
+  });
+});
+
+test('اعلان الگو: صف مشاور دکمهٔ اعلان به ولی ندارد (تفکیک)', () => {
+  withCounselor(() => {
+    const r = JSON.parse(W('(()=>{S.user=db.users.find(function(u){return u.username==="counselor1";});'
+      + 'S.persona=null;S.boss=null;S.filters={};S.route="cqueue";S.page=1;'
+      + 'var h=renderRoute();'
+      + 'return JSON.stringify({len:h.length,'
+      + 'btn:h.indexOf("pattern-notify")>-1,'
+      + 'txt:h.indexOf("اعلان به ولی")>-1});})()'));
+    assert(r.len > 500, 'صفحه رندر نشد: ' + r.len);
+    assert(r.btn === false, '🔴 دکمه اعلان در صف مشاور رندر شد');
+    assert(r.txt === false, '🔴 عبارت «اعلان به ولی» در صف مشاور آمد');
+  });
+});
+
+test('اعلان الگو: دمو — مدرسهٔ ۱ روشن با پیام نمونه، مدرسهٔ ۲ خاموش', () => {
+  const r = JSON.parse(W('(()=>{'
+    + 'var c1=notifySettings(1),c2=notifySettings(2);'
+    + 'var pend=db.notify_queue.filter(function(q){return q.school_id===1&&q.kind==="pattern"&&q.status==="pending";});'
+    + 'var ok=true;'
+    + 'pend.forEach(function(q){if(!q.student_id||(q.parent_ids||[]).length<1||!q.body||q.parts<1)ok=false;});'
+    + 'var wal=db.sms_wallet.filter(function(x){return x.school_id===1;})[0];'
+    + 'return JSON.stringify({on1:c1.enabled===true,off2:c2.enabled===false,'
+    + 'n1:pend.length,valid:ok,'
+    + 'n2:db.notify_queue.filter(function(q){return q.school_id===2&&q.kind==="pattern";}).length,'
+    + 'wallet:!!wal});})()'));
+  assert(r.on1 === true, '🔴 دمو: مدرسهٔ اول باید اطلاع‌رسانی روشن داشته باشد');
+  assert(r.off2 === true, 'دمو: مدرسهٔ دوم باید خاموش بماند');
+  assert(r.n1 >= 1, '🔴 دمو: پیام الگوی معلق نمونه نیست');
+  assert(r.valid === true, 'رکورد نمونهٔ اعلان ناقص است');
+  assert(r.n2 === 0, '🔴 مدرسهٔ دوم رکورد الگو دارد — نشت مرز بین‌مدرسه‌ای');
+  assert(r.wallet === true, 'مدرسهٔ اول کیف پیامک ندارد');
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));
