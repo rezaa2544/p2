@@ -897,17 +897,53 @@ function generate(){
       classes.push(add('classes',{school_id:school.id,name:cname,grade:g,field:f,room:'کلاس '+(100+classes.length+1),capacity:30,homeroom_teacher_id:teachers[classes.length%teachers.length].id}));
     }));
     const chosen=subs.slice(0,8);
+    /* ─────────── خانوادهٔ چندفرزندی (دور ۴۶) ───────────
+       تا پیش از این هر دانش‌آموز یک ولیِ تازه می‌گرفت، پس رابطه
+       همیشه یک‌به‌یک بود و قابلیت سوییچ بین فرزندان — که از نظر
+       کد کار می‌کرد — در دمو نامرئی می‌ماند.
+
+       ⚠️ انتخاب **قطعی** است نه تصادفی: generate() با SEED ثابت
+       اجرا می‌شود و اگر این انتخاب به rng() وابسته باشد، هر بار
+       خانوادهٔ متفاوتی چندفرزندی می‌شود و آزمون‌ها ناپایدار.
+
+       قاعده: هر دومین دانش‌آموز از هر چهارتا به خانوادهٔ قبلی
+       می‌پیوندد ⇒ حدود ۲۵٪ خانواده‌ها دوفرزندی. مبنا: بُعد خانوار
+       ایران ~۳٫۳ نفر یعنی میانگین ~۱٫۳ فرزند.
+
+       ⚠️ این تغییر حجم را **کم** می‌کند: هر ادغام یک رکورد ولی
+       (۲۲۳ بایت) حذف می‌کند و فقط یک parent_links (۵۹ بایت)
+       می‌ماند. */
+    let famParent=null;          /* ولیِ خانوادهٔ در حال ساخت */
+    let famSize=0;               /* چند فرزند تا الان گرفته */
+    let famLast='';              /* نام خانوادگی مشترک */
+    let famTarget=1;             /* این خانواده چند فرزند بگیرد */
+    let famIndex=0;              /* شمارندهٔ خانواده در این مدرسه */
     classes.forEach(c=>{
       for(let d=0;d<5;d++)for(let p=1;p<=4;p++){const s=chosen[(d*4+p)%chosen.length];const t=teachers.find(x=>x.subject_id===s.id)||teachers[0];
         add('schedule',{school_id:school.id,class_id:c.id,subject_id:s.id,teacher_id:t.id,day:d,period:p});}
       const per=13+ri(4);
       for(let k=0;k<per;k++){
         sCount++;
-        const ln=pick(LAST);
+        /* آیا این دانش‌آموز به خانوادهٔ قبلی می‌پیوندد؟ */
+        const joinFamily = famParent && famSize < famTarget;
+        const ln = joinFamily ? famLast : pick(LAST);
         const st=add('users',{school_id:school.id,role:'student',full_name:pick(first)+' '+ln,username:'student'+sCount,password:'123456',national_id:nid(),phone:demoPhone(),active:chance(.98)?1:0,created_at:daysAgoISO(300+ri(120))});
         add('enrollments',{school_id:school.id,class_id:c.id,student_id:st.id});
-        const pa=add('users',{school_id:school.id,role:'parent',full_name:pick(MALE)+' '+ln,username:'parent'+sCount,password:'123456',national_id:nid(),phone:demoPhone(),active:1,job:pick(['کارمند','آزاد','پزشک','مهندس','معلم']),created_at:daysAgoISO(300)});
-        add('parent_links',{parent_id:pa.id,student_id:st.id,relation:'پدر'});
+        if(joinFamily){
+          /* خواهر/برادر: ولیِ موجود، نام خانوادگی یکسان، بدون رکورد کاربر تازه */
+          add('parent_links',{parent_id:famParent.id,student_id:st.id,relation:'پدر'});
+          famSize++;
+        } else {
+          const pa=add('users',{school_id:school.id,role:'parent',full_name:pick(MALE)+' '+ln,username:'parent'+sCount,password:'123456',national_id:nid(),phone:demoPhone(),active:1,job:pick(['کارمند','آزاد','پزشک','مهندس','معلم']),created_at:daysAgoISO(300)});
+          add('parent_links',{parent_id:pa.id,student_id:st.id,relation:'پدر'});
+          /* خانوادهٔ تازه: اندازه‌اش را همین‌جا قطعی تعیین می‌کنیم.
+             دو خانوادهٔ نخستِ مدرسهٔ اول سه‌فرزندی می‌شوند تا حالت
+             «بیش از دو» هم در دمو آزمودنی باشد. */
+          famIndex++;
+          famParent=pa; famSize=0; famLast=ln;
+          famTarget = (si===0 && (famIndex===2 || famIndex===4)) ? 2
+                    : (famIndex % 4 === 2 ? 1 : 0);
+        }
         dates.forEach(iso=>{const r=rng();let s='present';if(r>.965)s='absent';else if(r>.93)s='late';else if(r>.915)s='excused';
           add('attendance',{school_id:school.id,class_id:c.id,student_id:st.id,date:iso,status:s,note:s==='excused'?'مرخصی با اطلاع ولی':null});});
         chosen.forEach(s=>{const t=teachers.find(x=>x.subject_id===s.id)||teachers[0];const base=11+rng()*8;

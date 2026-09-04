@@ -4921,6 +4921,152 @@ test('یادداشت: کنش‌ها فقط برای دبیر مجازند', () =
   });
 });
 
+/* ── خانوادهٔ چندفرزندی در دادهٔ نمونه (دور ۴۶) ─────────────────
+   ⚠️ دو مورد چندفرزندی **عمدی و از پیش موجود** هستند و کنار
+   می‌مانند: `parent_multi` («کاظم رستمی») با فرزندان در سه مدرسه
+   (فاز ۸)، و یک کاربر نقش‌`teacher` که پیوند ولی دارد. */
+
+/** خانواده‌های چندفرزندیِ ساختهٔ generate() — بدون موارد عمدی */
+function genFamilies() {
+  return JSON.parse(W('(()=>{const c={};'
+    + 'db.parent_links.forEach(function(l){'
+    + 'const u=byId("users",l.parent_id);'
+    + 'if(u&&u.role==="parent"&&u.username!=="parent_multi")'
+    + '(c[l.parent_id]=c[l.parent_id]||[]).push(l.student_id);});'
+    + 'return JSON.stringify(Object.keys(c).filter(function(k){return c[k].length>1;})'
+    + '.map(function(k){return {parent:Number(k),kids:c[k]};}));})()'));
+}
+
+/**
+ * محیط ولیِ دوفرزندی با اشتراک فعال.
+ *
+ * 🔴 سنجش دور ۴۶: هیچ ولیِ دوفرزندی اشتراک فعال ندارد (اشتراک‌ها
+ * پیش از این تغییر ساخته می‌شوند). بدون اشتراک، دیوار پرداخت
+ * `parentLocked()` صفحه را می‌بندد و آزمون «صفر دکمه» می‌گیرد —
+ * نتیجهٔ دروغین که دو بار گمراهم کرد. پس اشتراک را خودمان
+ * می‌سازیم و در finally برمی‌گردانیم.
+ */
+function withSubscribedParent(fn) {
+  const fams = genFamilies();
+  const two = fams.filter(function (f) { return f.kids.length === 2; })[0];
+  assert(two, 'محیط آزمون: ولیِ دوفرزندی در دادهٔ نمونه نیست');
+  const saved = W('JSON.stringify({u:S.user&&S.user.id,r:S.route,c:S.child,'
+    + 't:S.tab,g:S.gateSkipped})');
+  /* ⚠️ subOf با `find` نخستین رکورد را برمی‌دارد؛ اگر ردیف کهنه‌ای
+     برای این کاربر باشد، رکورد افزوده‌شده نادیده می‌ماند. پس
+     ردیف‌های پیشین همین کاربر حذف و رکورد تازه جلو گذاشته می‌شود. */
+  W('(()=>{db._spS=(db.parent_subscriptions||[]).slice();'
+    + 'db.parent_subscriptions=db.parent_subscriptions.filter(function(x){'
+    + 'return x.user_id!==' + two.parent + ';});'
+    + 'db.parent_subscriptions.unshift({id:990001,user_id:' + two.parent + ','
+    + 'plan:"yearly",amount:0,status:"active",start_date:"2026-01-01",'
+    + 'end_date:"2099-12-31",paid_at:"2026-01-01",ref_id:"TEST"});'
+    + '(typeof idxInvalidate==="function")&&idxInvalidate("parent_subscriptions");})()');
+  try {
+    return fn(two);
+  } finally {
+    const o = JSON.parse(saved);
+    W('(()=>{db.parent_subscriptions=db._spS;delete db._spS;'
+      + 'S.user=byId("users",' + o.u + ')||S.user;S.route=' + JSON.stringify(o.r) + ';'
+      + 'S.child=' + (o.c || 'null') + ';S.tab=' + JSON.stringify(o.t || 'grades') + ';'
+      + 'S.gateSkipped=' + (o.g ? 'true' : 'false') + ';S.filters={};'
+      + '(typeof idxInvalidate==="function")&&idxInvalidate("parent_subscriptions");})()');
+  }
+}
+
+test('دادهٔ نمونه: خانوادهٔ چندفرزندی به‌قدر کافی دارد', () => {
+  /* 🔴 پیش از دور ۴۶ فقط **یک** ولی چند فرزند داشت (آن هم از
+     فاز ۸)، پس قابلیت سوییچ بین فرزندان در دمو نامرئی بود. */
+  const fams = genFamilies();
+  assert(fams.length >= 50,
+    '🔴 فقط ' + fams.length + ' خانوادهٔ چندفرزندی — سوییچ در دمو دیده نمی‌شود');
+  const three = fams.filter(function (f) { return f.kids.length >= 3; });
+  assert(three.length >= 2,
+    'دست‌کم دو خانوادهٔ سه‌فرزندی لازم است: ' + three.length);
+});
+
+test('دادهٔ نمونه: خواهر/برادرها نام خانوادگی و مدرسهٔ یکسان دارند', () => {
+  const r = JSON.parse(W('(()=>{const c={};'
+    + 'db.parent_links.forEach(function(l){'
+    + 'const u=byId("users",l.parent_id);'
+    + 'if(u&&u.role==="parent"&&u.username!=="parent_multi")'
+    + '(c[l.parent_id]=c[l.parent_id]||[]).push(l.student_id);});'
+    + 'let badName=0,badSchool=0,n=0;'
+    + 'Object.keys(c).forEach(function(k){'
+    + 'if(c[k].length<2)return;n++;'
+    + 'const kids=c[k].map(function(i){return byId("users",i);}).filter(Boolean);'
+    + 'const lns={},scs={};'
+    + 'kids.forEach(function(x){lns[x.full_name.split(" ").slice(-1)[0]]=1;scs[x.school_id]=1;});'
+    + 'if(Object.keys(lns).length>1)badName++;'
+    + 'if(Object.keys(scs).length>1)badSchool++;});'
+    + 'return JSON.stringify({n:n,badName:badName,badSchool:badSchool});})()'));
+  assert(r.n > 0, 'محیط آزمون: خانوادهٔ چندفرزندی نیست');
+  assert(r.badName === 0,
+    '🔴 ' + r.badName + ' خانواده نام خانوادگی ناهمخوان دارد');
+  assert(r.badSchool === 0, '🔴 ' + r.badSchool + ' خانواده در چند مدرسه پخش است');
+});
+
+test('سوییچ فرزند: برای هر فرزند یک دکمه رندر می‌شود', () => {
+  withSubscribedParent(function (two) {
+    const r = JSON.parse(W('(()=>{S.user=byId("users",' + two.parent + ');'
+      + 'S.persona=null;S.boss=null;S.gateSkipped=true;'
+      + 'S.route="children";S.filters={};S.child=null;S.tab="grades";'
+      + 'const locked=(typeof parentLocked==="function")?parentLocked():false;'
+      + 'const h=renderRoute();'
+      + 'return JSON.stringify({locked:locked,'
+      + 'btns:(h.match(/data-act="child"/g)||[]).length,len:h.length});})()'));
+    assert(r.locked === false, 'محیط آزمون: دیوار پرداخت هنوز فعال است');
+    assert(r.btns === 2,
+      '🔴 برای ولیِ دوفرزندی ' + r.btns + ' دکمهٔ سوییچ رندر شد (انتظار ۲)');
+    assert(r.len > 500, 'صفحهٔ فرزندان کوتاه است: ' + r.len);
+  });
+});
+
+test('سوییچ فرزند: 🔴 کلیک روی دکمه واقعاً فرزند را عوض می‌کند', () => {
+  /* 🔴 تست جهش دور ۴۶: نسخهٔ نخست این آزمون `S.child` را مستقیم
+     می‌نوشت، پس خراب‌کردن کنش `child` (که همان نوشتن را انجام
+     می‌دهد) نمی‌انداختش. حالا از مسیر واقعی کاربر می‌رود: کلیک
+     روی DOM. */
+  withSubscribedParent(function (two) {
+    const r = JSON.parse(W('(()=>{S.user=byId("users",' + two.parent + ');'
+      + 'S.persona=null;S.boss=null;S.gateSkipped=true;'
+      + 'S.route="children";S.filters={};S.tab="grades";S.child=null;'
+      + 'const click=function(id){const b=document.createElement("button");'
+      + 'b.setAttribute("data-act","child");b.setAttribute("data-id",String(id));'
+      + 'document.body.appendChild(b);'
+      + 'b.dispatchEvent(new MouseEvent("click",{bubbles:true}));b.remove();};'
+      + 'click(' + two.kids[0] + ');const first=S.child;const h1=renderRoute();'
+      + 'click(' + two.kids[1] + ');const second=S.child;const h2=renderRoute();'
+      + 'const k2=byId("users",' + two.kids[1] + ');'
+      + 'return JSON.stringify({first:first,second:second,'
+      + 'want1:' + two.kids[0] + ',want2:' + two.kids[1] + ','
+      + 'changed:h1!==h2,hasK2:h2.indexOf(k2.full_name)>-1,len1:h1.length});})()'));
+    assert(r.len1 > 500, 'محیط آزمون: صفحه رندر نشد');
+    assert(r.first === r.want1,
+      '🔴 کلیک روی فرزند نخست S.child را ننوشت: ' + r.first);
+    assert(r.second === r.want2,
+      '🔴 کلیک روی فرزند دوم S.child را عوض نکرد: ' + r.second);
+    assert(r.changed === true, '🔴 محتوای صفحه با سوییچ عوض نشد');
+    assert(r.hasK2 === true, 'نام فرزند انتخاب‌شده در خروجی نیست');
+  });
+});
+
+test('خواهر/برادر: کد ملی پدر مشترک است (پایهٔ keepSiblings)', () => {
+  /* ⚠️ توزیع خودکار کلاس با `keepSiblings` از `father_nid` استفاده
+     می‌کند. پیش از دور ۴۶ این قاعده روی دادهٔ نمونه **هرگز فعال
+     نمی‌شد** چون خواهر/برادری وجود نداشت. */
+  const r = JSON.parse(W('(()=>{const sid=db.schools[0].id;'
+    + 'const kids=db.users.filter(function(u){'
+    + 'return u.role==="student"&&u.school_id===sid&&u.father_nid;});'
+    + 'const byFam={};kids.forEach(function(k){'
+    + '(byFam[k.father_nid]=byFam[k.father_nid]||[]).push(k.id);});'
+    + 'const sib=Object.keys(byFam).filter(function(k){return byFam[k].length>1;});'
+    + 'return JSON.stringify({total:kids.length,siblingFamilies:sib.length});})()'));
+  assert(r.total > 0, 'محیط آزمون: دانش‌آموزی با father_nid نیست');
+  assert(r.siblingFamilies >= 5,
+    '🔴 فقط ' + r.siblingFamilies + ' خانوادهٔ هم‌پدر — keepSiblings آزمودنی نیست');
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));
