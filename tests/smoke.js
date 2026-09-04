@@ -5540,6 +5540,80 @@ test('نوار زنگ: در داشبورد دبیر رندر می‌شود', () 
   });
 });
 
+/* ── حفظ اسکرول هنگام رندر (دور ۶۰) ─────────────────────────── */
+
+test('اسکرول: 🔴 کلیک عادی صفحه را به بالا نمی‌پراند', () => {
+  /* 🔴 دام دور ۶۰: عنصر محتوا با هر رندر تازه ساخته می‌شود، پس
+     اسکرولش صفر می‌شد و کاربر با هر کلیک به ابتدای صفحه
+     پرتاب می‌شد. سنجش پیش از رفع: ۲۵۰ → ۰. */
+  const saved = W('JSON.stringify({u:S.user&&S.user.id,r:S.route})');
+  try {
+    const r = JSON.parse(W('(function(){'
+      + 'S.user=db.users.find(function(u){return u.role==="manager";});'
+      + 'S.persona=null;S.boss=null;S.route="users";S.filters={};'
+      + 'S.__routeChanged=false;render();'
+      + 'var m=document.querySelector(".main");'
+      + 'if(!m)return JSON.stringify({skipTest:true});'
+      + 'm.scrollTop=250;var before=m.scrollTop;'
+      + 'S.__routeChanged=false;render();'
+      + 'var after=(document.querySelector(".main")||{}).scrollTop;'
+      + 'return JSON.stringify({before:before,after:after});})()'));
+    if (r.skipTest) return;
+    assert(r.before === 250, 'محیط آزمون: اسکرول ثبت نشد');
+    assert(r.after === 250,
+      '🔴 اسکرول پس از رندر پرید: ' + r.before + ' → ' + r.after);
+  } finally {
+    const o = JSON.parse(saved);
+    W('S.user=byId("users",' + o.u + ')||S.user;S.route=' + JSON.stringify(o.r)
+      + ';S.filters={};S.__routeChanged=false');
+  }
+});
+
+test('اسکرول: تغییر مسیر صفحه را از بالا شروع می‌کند', () => {
+  /* رفتار عکسِ آزمون بالا — صفحهٔ تازه نباید وسط محتوا باز شود. */
+  const saved = W('JSON.stringify({u:S.user&&S.user.id,r:S.route})');
+  try {
+    const r = JSON.parse(W('(function(){'
+      + 'S.user=db.users.find(function(u){return u.role==="manager";});'
+      + 'S.persona=null;S.boss=null;S.route="users";S.filters={};render();'
+      + 'var m=document.querySelector(".main");'
+      + 'if(!m)return JSON.stringify({skipTest:true});'
+      + 'm.scrollTop=250;'
+      + 'S.__routeChanged=true;render();'
+      + 'var after=(document.querySelector(".main")||{}).scrollTop;'
+      + 'return JSON.stringify({after:after,flagCleared:!S.__routeChanged});})()'));
+    if (r.skipTest) return;
+    assert(r.after === 0,
+      '🔴 صفحهٔ تازه از بالا شروع نشد: ' + r.after);
+    assert(r.flagCleared === true, 'نشانهٔ تغییر مسیر پاک نشد');
+  } finally {
+    const o = JSON.parse(saved);
+    W('S.user=byId("users",' + o.u + ')||S.user;S.route=' + JSON.stringify(o.r)
+      + ';S.filters={};S.__routeChanged=false');
+  }
+});
+
+test('اسکرول: منوی کناری هم جای خود را حفظ می‌کند', () => {
+  const saved = W('JSON.stringify({u:S.user&&S.user.id,r:S.route})');
+  try {
+    const r = JSON.parse(W('(function(){'
+      + 'S.user=db.users.find(function(u){return u.role==="manager";});'
+      + 'S.persona=null;S.boss=null;S.route="users";S.filters={};'
+      + 'S.__routeChanged=false;render();'
+      + 'var sb=document.querySelector(".sidebar");'
+      + 'if(!sb)return JSON.stringify({skipTest:true});'
+      + 'sb.scrollTop=80;S.__routeChanged=false;render();'
+      + 'var after=(document.querySelector(".sidebar")||{}).scrollTop;'
+      + 'return JSON.stringify({after:after});})()'));
+    if (r.skipTest) return;
+    assert(r.after === 80, '🔴 اسکرول منو پرید: ' + r.after);
+  } finally {
+    const o = JSON.parse(saved);
+    W('S.user=byId("users",' + o.u + ')||S.user;S.route=' + JSON.stringify(o.r)
+      + ';S.filters={};S.__routeChanged=false');
+  }
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

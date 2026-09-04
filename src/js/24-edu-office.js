@@ -751,9 +751,20 @@ function render(){
     try{ notifyAutoTick(); }catch(e){}
   }
 
-  /* موقعیت اسکرول منو و ناحیهٔ محتوا پیش از بازسازی */
+  /* موقعیت اسکرول منو و ناحیهٔ محتوا پیش از بازسازی.
+
+     🔴 دام دور ۶۰: عنصر محتوا با هر رندر **تازه** ساخته می‌شود
+     (چون ریشه بازنویسی می‌گردد)، پس اسکرولش صفر می‌شد و صفحه با
+     هر کلیک به بالا می‌پرید. سنجش: ۲۵۰ → ۰.
+     راه‌حل: مثل منو، پیش از بازسازی خوانده و پس از آن بازگردانده
+     شود. */
   var navEl = document.querySelector('.sidebar');
   var navTop = navEl ? navEl.scrollTop : 0;
+  var mainEl = document.querySelector('.main');
+  var mainTop = mainEl ? mainEl.scrollTop : 0;
+  /* اسکرول پنجره هم برای نمای موبایل که محتوا اسکرول جدا ندارد */
+  var winTop = 0;
+  try { winTop = window.pageYOffset || document.documentElement.scrollTop || 0; } catch(e) {}
 
   const picker=(S.user&&S.showPicker&&isMultiRole())?panelPicker():'';
   const gate=(S.user&&activePersona()==='parent'&&!parentLocked()&&!S.gateSkipped&&!picker)?safeHTML(parentGate()):'';
@@ -776,9 +787,23 @@ function render(){
       }
     }
   }
-  /* هر صفحهٔ تازه از بالا شروع شود (نه ادامهٔ اسکرول صفحهٔ قبلی) */
+  /* بازگرداندن اسکرول محتوا.
+
+     دو حالت جدا:
+     • تغییر مسیر ⇒ صفحهٔ تازه از بالا شروع شود
+     • همان صفحه (کلیک دکمه، فیلتر، تیک) ⇒ جای کاربر حفظ شود
+
+     بدون این تفکیک، یا هر کلیک به بالا می‌پرد یا صفحهٔ تازه وسط
+     محتوا باز می‌شود. */
   var main = document.querySelector('.main');
-  if(main && S.__routeChanged){ main.scrollTop = 0; S.__routeChanged = false; }
+  if(S.__routeChanged){
+    if(main) main.scrollTop = 0;
+    try { window.scrollTo(0, 0); } catch(e) {}
+    S.__routeChanged = false;
+  } else {
+    if(main && mainTop) main.scrollTop = mainTop;
+    if(winTop) { try { window.scrollTo(0, winTop); } catch(e) {} }
+  }
 }
 setTimeout(()=>{
   generate(); generateExtras(); generateP8(); generateP9(); generateP10();
