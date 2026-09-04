@@ -3778,6 +3778,7 @@ ISO/جلالی، index.html دست‌نخورده، کامیت+push+ls-remote، 
 | `software-architect` | ✅ تصمیم‌های معماری (ضمیمهٔ الف و ب) |
 | `scalability-performance` | ✅ «کارکردن با کاربر کم دلیل مقیاس‌پذیری نیست» |
 | `payesh-standards` | ✅ **اختصاصی پایش** — قوانین ثابت پروژه (جهش اجباری، اجرای واقعی، esc، journal، HANDOFF، اعداد فارسی) — در Arena: بوت‌پرامپت سشن |
+| `security-review-payesh` | ✅ **اختصاصی پایش** — بازبینی امنیتی کلاینت‌ساید؛ الگوی Dilaz: «بدون exploit کارکردن (آزمون jsdom)، یافته نداریم» + فهرست نقض‌های دور ۲۸ برای جلوگیری از هشدار کاذب |
 | `database-architect` | ⏸️ PostgreSQL‌محور — **روز سرور** |
 | `devops-cloud` | ⏸️ Docker/K8s — **روز سرور** |
 | `network-infrastructure` | ⏸️ **روز سرور** |
