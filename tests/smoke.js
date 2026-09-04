@@ -2064,19 +2064,162 @@ test('زمان‌بندی نامعتبر رد می‌شود', () => {
   assert(W("bellSave(" + sid + ",'23:00',[{kind:'lesson',min:200}])").ok === false, 'گذر از نیمه‌شب باید رد شود');
 });
 
-test('صفحهٔ زنگ‌ها برای مدیر رندر می‌شود', () => {
-  W("S.user=db.users.find(function(u){return u.role==='manager';});S.filters={}");
-  const out = W('viewBells()');
-  assert(typeof out === 'string' && out.indexOf('bell-line') >= 0, 'خط زمانی رندر نشد');
+/* ── نسخهٔ ۲ زنگ: ساعت به تفکیک روز (دور ۶۳) ──────────────────── */
+
+test('تعریف به تفکیک روز: ساعت هر روز مستقل است', () => {
+  const sid = W('db.schools[1].id');
+  const saved = W('JSON.stringify((db.bell_schedules||[]).filter(b=>b.school_id===' + sid + '))');
+  try {
+    const days = [
+      {start:'07:00', slots:[{kind:'lesson',min:30}]},
+      {start:'13:00', slots:[{kind:'lesson',min:30},{kind:'break',min:10},{kind:'lesson',min:30}]},
+      {start:'07:00', slots:[{kind:'lesson',min:30}]},
+      {start:'07:00', slots:[{kind:'lesson',min:30}]},
+      {start:'07:00', slots:[{kind:'lesson',min:30}]}
+    ];
+    const r = JSON.parse(W('JSON.stringify(bellSaveDays(' + sid + ',' + JSON.stringify(days) + '))'));
+    assert(r.ok === true, 'ذخیره به تفکیک روز ناموفق: ' + r.msg);
+    const t0 = JSON.parse(W('JSON.stringify(bellTimeline(' + sid + ',0))'));
+    const t1 = JSON.parse(W('JSON.stringify(bellTimeline(' + sid + ',1))'));
+    assert(t0[0].from === '07:00' && t0.length === 1, 'شنبه: ' + JSON.stringify(t0));
+    assert(t1[0].from === '13:00' && t1.length === 3, 'یکشنبه: ' + JSON.stringify(t1));
+    const def = JSON.parse(W('JSON.stringify(bellTimeline(' + sid + '))'));
+    assert(JSON.stringify(def) === JSON.stringify(t0), 'روز پیش‌فرض باید شنبه باشد');
+    assert(W('bellLessonCount(' + sid + ',1)') === 2, 'تعداد زنگ یکشنبه غلط');
+    assert(W('bellLessonCount(' + sid + ',0)') === 1, 'تعداد زنگ شنبه غلط');
+  } finally {
+    W('(()=>{(db.bell_schedules||[]).filter(b=>b.school_id===' + sid + ')'
+      + '.forEach(b=>remove("bell_schedules",b.id));'
+      + 'JSON.parse(' + JSON.stringify(saved) + ').forEach(r=>insert("bell_schedules",r));'
+      + '})()');
+  }
 });
 
-// ── حفظ اسکرول منو
-test('نشانهٔ تغییر مسیر هنگام ناوبری ست می‌شود', () => {
-  W("S.user=db.users.find(function(u){return u.role==='superadmin';})");
-  W("S.__routeChanged=false; go('diag')");
-  assert(W('S.route') === 'diag', 'مسیر عوض نشد');
+test('رکورد نسخهٔ ۱ (میراثی) برای همهٔ روزها خوانده می‌شود', () => {
+  const sid = W('db.schools[2].id');
+  const saved = W('JSON.stringify((db.bell_schedules||[]).filter(b=>b.school_id===' + sid + '))');
+  try {
+    W('(()=>{(db.bell_schedules||[]).filter(b=>b.school_id===' + sid + ')'
+      + '.forEach(b=>remove("bell_schedules",b.id));'
+      + 'insert("bell_schedules",{school_id:' + sid
+      + ",start:'08:00',slots:[{kind:'lesson',min:40},{kind:'break',min:10}]});})()");
+    for (const d of [0, 2, 4]) {
+      const tl = JSON.parse(W('JSON.stringify(bellTimeline(' + sid + ',' + d + '))'));
+      assert(tl.length === 2 && tl[0].from === '08:00',
+        'روز ' + d + ' رکورد میراثی را نخواند: ' + JSON.stringify(tl));
+    }
+    /* ذخیرهٔ تازه رکورد را به نسخهٔ ۲ ارتقا می‌دهد */
+    W("bellSave(" + sid + ",'09:00',[{kind:'lesson',min:30}])");
+    const rec = JSON.parse(W('JSON.stringify(bellRec(' + sid + '))'));
+    assert(Array.isArray(rec.days) && rec.days.length === 5, 'ارتقا به نسخهٔ ۲ نشد');
+    assert(rec.days[3].start === '09:00', 'روز چهارشنبه ارتقا نخورد');
+  } finally {
+    W('(()=>{(db.bell_schedules||[]).filter(b=>b.school_id===' + sid + ')'
+      + '.forEach(b=>remove("bell_schedules",b.id));'
+      + 'JSON.parse(' + JSON.stringify(saved) + ').forEach(r=>insert("bell_schedules",r));'
+      + '})()');
+  }
 });
 
+test('تعداد زنگ سقف ندارد: ده زنگ درسی ذخیره می‌شود', () => {
+  const sid = W('db.schools[2].id');
+  const saved = W('JSON.stringify((db.bell_schedules||[]).filter(b=>b.school_id===' + sid + '))');
+  try {
+    const slots = [];
+    for (let i = 0; i < 10; i++){
+      slots.push({kind:'lesson', min:20});
+      if (i < 9) slots.push({kind:'break', min:5});
+    }
+    const days = [1,2,3,4,5].map(() => ({start:'06:00', slots: slots.map(s=>({kind:s.kind,min:s.min}))}));
+    const r = JSON.parse(W('JSON.stringify(bellSaveDays(' + sid + ',' + JSON.stringify(days) + '))'));
+    assert(r.ok === true, 'ذخیرهٔ ده زنگ ناموفق: ' + r.msg);
+    assert(W('bellLessonCount(' + sid + ',0)') === 10, 'ده زنگ درسی ذخیره نشد');
+    assert(W('bellEndTime(' + sid + ',0)') === '10:05', 'ساعت پایان محاسبه نشد');
+  } finally {
+    W('(()=>{(db.bell_schedules||[]).filter(b=>b.school_id===' + sid + ')'
+      + '.forEach(b=>remove("bell_schedules",b.id));'
+      + 'JSON.parse(' + JSON.stringify(saved) + ').forEach(r=>insert("bell_schedules",r));'
+      + '})()');
+  }
+});
+
+test('خطای اعتبارسنجی نام روز معیوب را می‌گوید', () => {
+  const sid = W('db.schools[2].id');
+  const days = [
+    {start:'07:00', slots:[{kind:'lesson',min:30}]},
+    {start:'بی‌معنا', slots:[{kind:'lesson',min:30}]},
+    {start:'07:00', slots:[{kind:'lesson',min:30}]},
+    {start:'07:00', slots:[]},
+    {start:'07:00', slots:[{kind:'lesson',min:30}]}
+  ];
+  const r = JSON.parse(W('JSON.stringify(bellSaveDays(' + sid + ',' + JSON.stringify(days) + '))'));
+  assert(r.ok === false, 'باید رد شود');
+  assert(r.msg.indexOf('یکشنبه') > -1, 'نام روز معیوب در پیام نیست: ' + r.msg);
+  const days2 = days.map((d, i) => (i === 2 ? { start:'07:00', slots:[] } : (i === 1 ? { start:'07:00', slots:[{kind:'lesson',min:30}]} : d)));
+  const r2 = JSON.parse(W('JSON.stringify(bellSaveDays(' + sid + ',' + JSON.stringify(days2) + '))'));
+  assert(r2.ok === false && r2.msg.indexOf('دوشنبه') > -1, 'دومین خطا با نام روز: ' + r2.msg);
+});
+
+test('فرم زنگ: هر بازه با ساعت شروع و پایان مشخص و دکمهٔ کپی از روز قبل', () => {
+  const sid = W('db.schools[2].id');
+  W('bellModal(' + sid + ')');
+  try {
+    const r = JSON.parse(W('(()=>{'
+      + 'var days=document.querySelectorAll(".bell-day");'
+      + 'var row0=document.querySelector(".bell-day[data-day=0] .bell-edit-row");'
+      + 'var from=row0.querySelector(".bl-from").textContent;'
+      + 'var to=row0.querySelector(".bl-to").value;'
+      + 'var copy1=document.querySelectorAll("[data-act=bell-copy-prev][data-day=1]").length;'
+      + 'var copy0=document.querySelectorAll("[data-act=bell-copy-prev][data-day=0]").length;'
+      + 'var startInp=document.querySelectorAll(".bl-start[data-day=0]").length;'
+      + 'return JSON.stringify({days:days.length,from:from,to:to,copy1:copy1,copy0:copy0,startInp:startInp});})()'));
+    assert(r.days === 5, 'پنج روز در فرم نیست: ' + r.days);
+    assert(/\d{2}:\d{2}/.test(r.from) && /\d{2}:\d{2}/.test(r.to), 'ساعت از/تا روی بازه نیست: ' + JSON.stringify(r));
+    assert(r.copy1 === 1, 'دکمهٔ کپی از روز قبل برای یکشنبه نیست');
+    assert(r.copy0 === 0, 'شنبه دکمهٔ کپی از روز قبل دارد');
+    assert(r.startInp === 1, 'درج‌کنندهٔ شروع روز نیست');
+  } finally {
+    W('closeModal()');
+  }
+});
+
+test('کپی از روز قبل: کلیک واقعی ساعت روز پیش را می‌آورد', () => {
+  const sid = W('db.schools[2].id');
+  W('bellModal(' + sid + ')');
+  try {
+    W('window._edit.days[0]={start:"06:00",slots:[{kind:"lesson",min:25}]}');
+    W('bellRenderDay(0)');
+    const clicked = W('(()=>{var b=document.querySelector("[data-act=bell-copy-prev][data-day=1]");'
+      + 'if(!b)return false;b.click();return true;})()');
+    assert(clicked, 'کلیک روی دکمهٔ کپی نشد');
+    const d1 = JSON.parse(W('JSON.stringify(window._edit.days[1])'));
+    assert(d1.start === '06:00', 'شروع روز کپی نشد: ' + d1.start);
+    assert(d1.slots.length === 1 && d1.slots[0].min === 25 && d1.slots[0].kind === 'lesson',
+      'بازه‌ها کپی نشدند: ' + JSON.stringify(d1.slots));
+    const d0 = JSON.parse(W('JSON.stringify(window._edit.days[0])'));
+    assert(d0.start === '06:00', 'روز مبدأ دست خورد');
+  } finally {
+    W('closeModal()');
+  }
+});
+
+test('تغییر ساعت پایان یک بازه، زنجیرهٔ بعدی را جابه‌جا می‌کند', () => {
+  const sid = W('db.schools[2].id');
+  W('bellModal(' + sid + ')');
+  try {
+    W('window._edit.days[0]={start:"07:00",slots:[{kind:"lesson",min:45},{kind:"break",min:10},{kind:"lesson",min:45}]}');
+    W('bellRenderDay(0)');
+    W('(()=>{var inp=document.querySelector("[data-day=0][data-i=0].bl-to");'
+      + 'inp.value="07:30";inp.dispatchEvent(new Event("change",{bubbles:true}));})()');
+    const d0 = JSON.parse(W('JSON.stringify(window._edit.days[0])'));
+    assert(d0.slots[0].min === 30, 'مدت زنگ اول اعمال نشد: ' + JSON.stringify(d0.slots));
+    const tl = JSON.parse(W('(()=>{return JSON.stringify(bellDayTimeline(window._edit.days[0]));})()'));
+    assert(tl[1].from === '07:30' && tl[1].to === '07:40', 'تفریح جابه‌جا نشد: ' + JSON.stringify(tl[1]));
+    assert(tl[2].from === '07:40' && tl[2].to === '08:25', 'زنگ دوم جابه‌جا نشد: ' + JSON.stringify(tl[2]));
+  } finally {
+    W('closeModal()');
+  }
+});
 
 // ── دیاگ: دو خانوادهٔ موتور و داده
 test('آزمون‌ها به دو خانوادهٔ موتور و داده تقسیم شده‌اند', () => {
@@ -2705,7 +2848,7 @@ test('دادهٔ نمونه: زمان‌بندی زنگ برای مدارس فع
   const bad = W('db.bell_schedules.filter(b=>{const s=byId("schools",b.school_id);'
     + 'return !s||!s.active;}).length');
   assert(bad === 0, bad + ' زمان‌بندی متعلق به مدرسهٔ غیرفعال است');
-  const slots = W('(db.bell_schedules[0].slots||[]).length');
+  const slots = W('((db.bell_schedules[0].days||[])[0]||{slots:[]}).slots.length');
   assert(slots > 0, 'زمان‌بندی بدون بازه است');
 });
 

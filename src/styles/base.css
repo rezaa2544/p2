@@ -334,6 +334,9 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 .bell-tag{font-size:12.5px;font-weight:700;padding:3px 10px;border-radius:999px;flex:none;min-width:78px;text-align:center}
 .bell-tag.ls{background:var(--primary-soft);color:var(--primary-dark)}
 .bell-tag.br{background:var(--amber-soft);color:var(--amber)}
+/* زنگ: بخش روز در فرم و برجستگی روز جاری در نما (دور ۶۳) */
+.bell-day{border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:12px;background:var(--surface-2)}
+.bell-day-block.today{background:var(--primary-soft);border-radius:12px;padding:10px 12px}
 
 /* ---------- دسته‌های دیاگ ---------- */
 .diag-cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:11px;margin-top:14px}

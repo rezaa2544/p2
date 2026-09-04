@@ -841,20 +841,23 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
     check: function(){
       if(typeof bellTimeline !== 'function') return { ok:true };
       var bad = [];
+      var days = (typeof DAYS !== 'undefined') ? DAYS : ['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه'];
       (db.schools || []).forEach(function(sc){
-        var tl;
-        try{ tl = bellTimeline(sc.id); }
-        catch(e){ bad.push({ مدرسه:sc.name, خطا:String(e && e.message) }); return; }
-        if(!tl.length){ bad.push({ مدرسه:sc.name, خطا:'بدون زنگ' }); return; }
-        for(var i = 1; i < tl.length; i++){
-          if(tl[i].from !== tl[i-1].to){
-            bad.push({ مدرسه:sc.name, خطا:'گسست در ' + tl[i].from }); break;
+        for(var d = 0; d < days.length; d++){
+          var tl;
+          try{ tl = bellTimeline(sc.id, d); }
+          catch(e){ bad.push({ مدرسه:sc.name, روز:days[d], خطا:String(e && e.message) }); return; }
+          if(!tl.length){ bad.push({ مدرسه:sc.name, روز:days[d], خطا:'بدون زنگ' }); continue; }
+          for(var i = 1; i < tl.length; i++){
+            if(tl[i].from !== tl[i-1].to){
+              bad.push({ مدرسه:sc.name, روز:days[d], خطا:'گسست در ' + tl[i].from }); break;
+            }
           }
         }
       });
       return bad.length
         ? { ok:false, count:bad.length, items:bad.slice(0,20),
-            msg: bad.length + ' مدرسه زمان‌بندی زنگ معیوب دارند' }
+            msg: bad.length + ' روز زمان‌بندی زنگ معیوب دارند' }
         : { ok:true };
     },
     fix: null
