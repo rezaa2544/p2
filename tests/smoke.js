@@ -5183,6 +5183,223 @@ test('نقش: هر کنشِ مجازِ سوپرادمین صفحه‌اش را �
     '🔴 ناهماهنگی کنش و صفحه برای سوپرادمین: ' + r.bad.join(' · '));
 });
 
+/* ── زنگ جاری: هستهٔ زمان (گام ۱، دور ۴۸) ────────────────────────
+   ⚠️ همهٔ آزمون‌ها با تاریخ **ثابت** کار می‌کنند نه `new Date()`
+   واقعی، وگرنه نتیجه به لحظهٔ اجرای آزمون بستگی پیدا می‌کند و
+   آزمون شب‌ها یا جمعه‌ها متفاوت می‌شود. */
+
+/** ۲۰۲۶-۰۹-۰۵ شنبه است (getDay=6) — مبنای همهٔ سنجش‌ها */
+const SAT = '2026-09-05';
+
+test('زنگ: 🔴 نگاشت روز هفته در هر هفت روز درست است', () => {
+  /* 🔴 دام اصلی این ماژول: `Date.getDay()` یکشنبه‌محور است
+     (یکشنبه=۰) ولی `schedule.day` شنبه‌محور (شنبه=۰). اگر این
+     اشتباه شود، برنامهٔ **روز دیگری** نشان داده می‌شود و هیچ
+     خطایی هم پرتاب نمی‌شود — فقط دادهٔ غلط. */
+  const r = JSON.parse(W('(()=>{const want=['
+    + '["2026-09-05",0],["2026-09-06",1],["2026-09-07",2],'
+    + '["2026-09-08",3],["2026-09-09",4],["2026-09-10",5],["2026-09-11",6]];'
+    + 'const bad=[];'
+    + 'want.forEach(function(p){'
+    + 'const got=todayIndex(new Date(p[0]+"T09:00:00"));'
+    + 'if(got!==p[1])bad.push(p[0]+": "+got+"≠"+p[1]);});'
+    + 'return JSON.stringify({bad:bad,'
+    + 'satIsZero:todayIndex(new Date("' + SAT + 'T09:00:00"))===0,'
+    + 'thuNotSchool:isSchoolDay(5)===false,'
+    + 'friNotSchool:isSchoolDay(6)===false,'
+    + 'wedIsSchool:isSchoolDay(4)===true});})()'));
+  assert(r.bad.length === 0, '🔴 نگاشت روز غلط: ' + r.bad.join(' · '));
+  assert(r.satIsZero === true, '🔴 شنبه باید ۰ باشد');
+  assert(r.thuNotSchool && r.friNotSchool, 'پنج‌شنبه و جمعه نباید روز درسی باشند');
+  assert(r.wedIsSchool === true, 'چهارشنبه باید روز درسی باشد');
+});
+
+test('زنگ: ساعت نامعتبر تشخیص داده می‌شود', () => {
+  const r = JSON.parse(W('(()=>{'
+    + 'const old=clockSanity(new Date("1999-05-05T09:00:00"));'
+    + 'const far=clockSanity(new Date("2050-05-05T09:00:00"));'
+    + 'const ok=clockSanity(new Date("' + SAT + 'T09:00:00"));'
+    + 'return JSON.stringify({oldOk:old.ok,oldReason:old.reason,'
+    + 'farOk:far.ok,okOk:ok.ok,'
+    + 'warnHasYear:clockWarnText(old).indexOf("۱۹۹۹")>-1,'
+    + 'warnEmpty:clockWarnText(ok)===""});})()'));
+  assert(r.oldOk === false && r.oldReason === 'year', 'سال ۱۹۹۹ باید رد شود');
+  assert(r.farOk === false, 'سال ۲۰۵۰ باید رد شود');
+  assert(r.okOk === true, 'سال معتبر رد شد');
+  assert(r.warnHasYear === true, 'پیام هشدار باید سال را بگوید');
+  assert(r.warnEmpty === true, 'ساعت سالم نباید هشدار بدهد');
+});
+
+test('زنگ: 🔴 ساعت نامعتبر پیش‌گزینش را خاموش می‌کند', () => {
+  const r = JSON.parse(W('(()=>{const sid=db.bell_schedules.length'
+    + '?db.bell_schedules[0].school_id:db.schools[0].id;'
+    + 'const bad=currentSlot(sid,new Date("1999-09-05T09:00:00"));'
+    + 'return JSON.stringify({kind:bad.kind,clockOk:bad.clock.ok});})()'));
+  assert(r.kind === 'unknown',
+    '🔴 با ساعت نامعتبر باید unknown بدهد، داد: ' + r.kind);
+  assert(r.clockOk === false, 'وضعیت ساعت باید ناسالم گزارش شود');
+});
+
+test('زنگ: بازهٔ جاری در ساعت‌های مختلف درست تشخیص داده می‌شود', () => {
+  const r = JSON.parse(W('(()=>{const sid=db.bell_schedules.length'
+    + '?db.bell_schedules[0].school_id:db.schools[0].id;'
+    + 'const tl=bellTimeline(sid);'
+    + 'if(!tl.length)return JSON.stringify({skipTest:true});'
+    + 'const first=tl[0];'
+    + 'const at=function(hm){return currentSlot(sid,new Date("' + SAT + 'T"+hm+":00"));};'
+    + 'const before=at("05:00");'
+    + 'const inFirst=at(first.from);'
+    + 'const after=at("23:30");'
+    + 'return JSON.stringify({'
+    + 'before:before.kind,inFirst:inFirst.kind,inFirstNo:inFirst.no,'
+    + 'after:after.kind,firstFrom:first.from});})()'));
+  if (r.skipTest) return;
+  assert(r.before === 'before', 'پیش از شروع مدرسه: ' + r.before);
+  assert(r.inFirst === 'lesson' && r.inFirstNo === 1,
+    'لحظهٔ شروع باید زنگ ۱ باشد: ' + r.inFirst + '/' + r.inFirstNo);
+  assert(r.after === 'after', 'پس از پایان مدرسه: ' + r.after);
+});
+
+test('زنگ: 🔴 مرز بازه شامل شروع است و شامل پایان نیست', () => {
+  /* اگر مرز [from, to] باشد، لحظهٔ دقیق پایان به دو بازه تعلق
+     می‌گیرد و نتیجه به ترتیب حلقه بستگی پیدا می‌کند. */
+  const r = JSON.parse(W('(()=>{const sid=db.bell_schedules.length'
+    + '?db.bell_schedules[0].school_id:db.schools[0].id;'
+    + 'const tl=bellTimeline(sid);'
+    + 'if(tl.length<2)return JSON.stringify({skipTest:true});'
+    + 'const atStart=currentSlot(sid,new Date("' + SAT + 'T"+tl[0].from+":00"));'
+    + 'const atEnd=currentSlot(sid,new Date("' + SAT + 'T"+tl[0].to+":00"));'
+    + 'return JSON.stringify({startKind:atStart.kind,startNo:atStart.no,'
+    + 'endKind:atEnd.kind,endNo:atEnd.no,'
+    + 'nextKind:tl[1].kind,nextNo:tl[1].no});})()'));
+  if (r.skipTest) return;
+  assert(r.startNo === 1, 'لحظهٔ شروع باید در همان بازه بیفتد');
+  assert(!(r.endKind === 'lesson' && r.endNo === 1),
+    '🔴 لحظهٔ پایان هنوز در بازهٔ قبلی است — مرز بسته است');
+  assert(r.endKind === r.nextKind,
+    'لحظهٔ پایان باید در بازهٔ بعدی بیفتد: ' + r.endKind + ' ≠ ' + r.nextKind);
+});
+
+test('زنگ: وسط تفریح کلاسی برنمی‌گردد', () => {
+  const r = JSON.parse(W('(()=>{const sid=db.bell_schedules.length'
+    + '?db.bell_schedules[0].school_id:db.schools[0].id;'
+    + 'const tl=bellTimeline(sid);'
+    + 'const br=tl.filter(function(x){return x.kind==="break";})[0];'
+    + 'if(!br)return JSON.stringify({skipTest:true});'
+    + 'const mid=timeToMin(br.from)+1;'
+    + 'const hm=minToTime(mid);'
+    + 'const slot=currentSlot(sid,new Date("' + SAT + 'T"+hm+":00"));'
+    + 'const t=db.users.find(function(u){return u.role==="teacher"&&u.school_id===sid;});'
+    + 'const cls=t?teacherNowClass(t.id,sid,new Date("' + SAT + 'T"+hm+":00")):null;'
+    + 'return JSON.stringify({kind:slot.kind,no:slot.no,hasClass:!!cls});})()'));
+  if (r.skipTest) return;
+  assert(r.kind === 'break', 'وسط تفریح باید break باشد: ' + r.kind);
+  assert(r.no === null, 'تفریح شمارهٔ زنگ ندارد');
+  assert(r.hasClass === false, '🔴 در تفریح کلاس برگردانده شد');
+});
+
+test('زنگ: 🔴 پنج‌شنبه و جمعه تعطیل‌اند', () => {
+  const r = JSON.parse(W('(()=>{const sid=db.bell_schedules.length'
+    + '?db.bell_schedules[0].school_id:db.schools[0].id;'
+    + 'const thu=currentSlot(sid,new Date("2026-09-10T09:00:00"));'
+    + 'const fri=currentSlot(sid,new Date("2026-09-11T09:00:00"));'
+    + 'const t=db.users.find(function(u){return u.role==="teacher"&&u.school_id===sid;});'
+    + 'const cls=t?teacherNowClass(t.id,sid,new Date("2026-09-10T09:00:00")):null;'
+    + 'return JSON.stringify({thu:thu.kind,fri:fri.kind,hasClass:!!cls});})()'));
+  assert(r.thu === 'holiday', '🔴 پنج‌شنبه باید تعطیل باشد: ' + r.thu);
+  assert(r.fri === 'holiday', '🔴 جمعه باید تعطیل باشد: ' + r.fri);
+  assert(r.hasClass === false, '🔴 روز تعطیل کلاس برگردانده شد');
+});
+
+test('زنگ: کلاس فعلی دبیر از تقاطع روز و زنگ می‌آید', () => {
+  const r = JSON.parse(W('(()=>{const sid=db.bell_schedules.length'
+    + '?db.bell_schedules[0].school_id:db.schools[0].id;'
+    + 'const tl=bellTimeline(sid);'
+    + 'const l1=tl.filter(function(x){return x.kind==="lesson"&&x.no===1;})[0];'
+    + 'if(!l1)return JSON.stringify({skipTest:true});'
+    + 'const hm=minToTime(timeToMin(l1.from)+5);'
+    + 'const when=new Date("' + SAT + 'T"+hm+":00");'
+    /* دبیری که شنبه زنگ ۱ کلاس دارد */
+    + 'const row=db.schedule.filter(function(x){'
+    + 'return x.school_id===sid&&x.day===0&&Number(x.period)===1;})[0];'
+    + 'if(!row)return JSON.stringify({skipTest:true});'
+    + 'const got=teacherNowClass(row.teacher_id,sid,when);'
+    + 'return JSON.stringify({found:!!got,'
+    + 'classMatch:got?got.classId===row.class_id:false,'
+    + 'periodMatch:got?got.period===1:false,'
+    + 'hasNames:got?(!!got.className&&!!got.subjectName):false});})()'));
+  if (r.skipTest) return;
+  assert(r.found === true, '🔴 کلاس زنگ ۱ شنبه پیدا نشد');
+  assert(r.classMatch === true, 'شناسهٔ کلاس با جدول برنامه نمی‌خواند');
+  assert(r.periodMatch === true, 'شمارهٔ زنگ اشتباه است');
+  assert(r.hasNames === true, 'نام کلاس یا درس خالی است');
+});
+
+test('زنگ: 🔴 کلاس دبیر به روز هفته حساس است', () => {
+  /* 🔴 تست جهش دور ۴۸: حذف شرط `r.day === slot.day` از
+     teacherNowClass هیچ آزمونی را نمی‌انداخت. سناریوی واقعی:
+     دبیری که شنبه زنگ ۱ کلاس دارد ولی یکشنبه زنگ ۱ ندارد — اگر
+     روز نادیده گرفته شود، یکشنبه هم کلاس شنبه را می‌بیند. */
+  const r = JSON.parse(W('(()=>{const sid=db.bell_schedules.length'
+    + '?db.bell_schedules[0].school_id:db.schools[0].id;'
+    + 'const tl=bellTimeline(sid);'
+    + 'const l1=tl.filter(function(x){return x.kind==="lesson"&&x.no===1;})[0];'
+    + 'if(!l1)return JSON.stringify({skipTest:true});'
+    + 'const hm=minToTime(timeToMin(l1.from)+5);'
+    /* دبیری که شنبه زنگ ۱ دارد */
+    + 'const sat=db.schedule.filter(function(x){'
+    + 'return x.school_id===sid&&x.day===0&&Number(x.period)===1;})[0];'
+    + 'if(!sat)return JSON.stringify({skipTest:true});'
+    /* آیا همین دبیر یکشنبه زنگ ۱ هم دارد؟ */
+    + 'const sun=db.schedule.filter(function(x){'
+    + 'return x.school_id===sid&&x.day===1&&Number(x.period)===1'
+    + '&&x.teacher_id===sat.teacher_id;})[0];'
+    + 'const onSat=teacherNowClass(sat.teacher_id,sid,'
+    + 'new Date("2026-09-05T"+hm+":00"));'
+    + 'const onSun=teacherNowClass(sat.teacher_id,sid,'
+    + 'new Date("2026-09-06T"+hm+":00"));'
+    + 'return JSON.stringify({'
+    + 'satClass:onSat?onSat.classId:null,'
+    + 'sunClass:onSun?onSun.classId:null,'
+    + 'sunHasRow:!!sun,'
+    + 'sunExpected:sun?sun.class_id:null});})()'));
+  if (r.skipTest) return;
+  assert(r.satClass !== null, 'محیط آزمون: کلاس شنبه پیدا نشد');
+  if (r.sunHasRow) {
+    /* اگر یکشنبه هم ردیف دارد، باید کلاس **همان روز** برگردد */
+    assert(r.sunClass === r.sunExpected,
+      '🔴 یکشنبه کلاس روز دیگری برگشت: ' + r.sunClass + ' ≠ ' + r.sunExpected);
+  } else {
+    /* اگر یکشنبه ردیفی ندارد، باید null بدهد نه کلاس شنبه */
+    assert(r.sunClass === null,
+      '🔴 دبیر یکشنبه کلاس ندارد ولی کلاس شنبه برگشت — روز نادیده گرفته شده');
+  }
+});
+
+test('زنگ: 🔴 پیش‌گزینش فقط با زمان‌بندی ثبت‌شدهٔ مدرسه مجاز است', () => {
+  /* تصمیم تأییدشدهٔ کاربر: `bellOf()` نبودِ رکورد را با
+     BELL_PRESETS جبران می‌کند، یعنی ساعت خیالی. مدرسه‌ای که زنگ
+     ثبت نکرده نباید پیش‌گزینش بگیرد. */
+  const r = JSON.parse(W('(()=>{'
+    + 'const withB=db.bell_schedules[0];'
+    + 'if(!withB)return JSON.stringify({skipTest:true});'
+    + 'const noB=db.schools.find(function(s){'
+    + 'return !db.bell_schedules.some(function(b){return b.school_id===s.id;});});'
+    + 'const a=currentSlot(withB.school_id,new Date("' + SAT + 'T09:00:00"));'
+    + 'const out={hasA:a.hasSchedule};'
+    + 'if(noB){const b=currentSlot(noB.id,new Date("' + SAT + 'T09:00:00"));'
+    + 'out.hasB=b.hasSchedule;out.timelineB=bellTimeline(noB.id).length;}'
+    + 'return JSON.stringify(out);})()'));
+  if (r.skipTest) return;
+  assert(r.hasA === true, 'مدرسهٔ دارای رکورد باید hasSchedule=true بدهد');
+  if (r.hasB !== undefined) {
+    assert(r.hasB === false,
+      '🔴 مدرسهٔ بدون رکورد hasSchedule=true داد — با ساعت خیالی کار می‌کند');
+    assert(r.timelineB > 0,
+      'الگوی پیش‌فرض باید همچنان بازه بدهد (فقط پیش‌گزینش ممنوع است)');
+  }
+});
+
 // ── نتیجه
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));
