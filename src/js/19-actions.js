@@ -757,6 +757,14 @@ document.addEventListener('click',e=>{
          body:d.body});
      }
    },
+   /* گواهی نمرات (بند ۱.۶): چاپ از تب کارنامهٔ پروندهٔ دانش‌آموز.
+      نسخهٔ PDF قفل‌شده است — اینجا فقط چاپِ اچ‌تی‌ام‌ال است. */
+   'cert-print'(){
+     const sid=Number(el.dataset.sid)||(S.user&&S.user.role==='student'?S.user.id:0);
+     const d=transcriptCert(sid,V('cert_term'));
+     if(!d.ok){toast(d.msg,'err');return;}
+     printableDoc(d);
+   },
    'sms-new'(){
      openModal(modalTpl('ارسال پیامک گروهی',
        f('گیرندگان',sel('sm_aud',[['parents','همه اولیا'],['teachers','همه دبیران'],

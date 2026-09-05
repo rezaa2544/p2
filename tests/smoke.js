@@ -7304,6 +7304,41 @@ test('بند ۱.۵: جابه‌جای فقط برای مدیر و سوپرادم
 });
 
 
+// ── بند ۱.۶: گواهی نمرات (چاپ — PDF بعداً) ────────────────────
+test('بند ۱.۶: گواهی نمرات — معدل وزنی و محتوای گواهی درست است', () => {
+  /* دانش‌آموزِ کنترل‌شده با دو درسِ ساعت‌های مختلف و نمره‌های
+     مختلف — تا میانگین وزنی و ساده همیشه فرق داشته باشند */
+  const fx = W('(()=>{var subs=db.subjects.filter(function(s){return s.school_id===1&&s.weekly_hours;});var a=null,b=null;subs.forEach(function(x){if(!a&&Number(x.weekly_hours)>=3)a=x;if(!b&&Number(x.weekly_hours)===2&&x.id!==(a?a.id:0))b=x;});if(!b){subs.forEach(function(x){if(b||x.id===(a?a.id:0))return;b=x;});}var st=insert("users",{school_id:1,role:"student",full_name:"گواهی تستی",national_id:"",phone:"",active:1,status:"active",created_at:"2026-09-05"});insert("grades",{school_id:1,student_id:st.id,subject_id:a.id,term:"نوبت اول",exam_type:"کلاسی",score:20,max_score:20});insert("grades",{school_id:1,student_id:st.id,subject_id:b.id,term:"نوبت اول",exam_type:"کلاسی",score:10,max_score:20});return JSON.stringify({sid:st.id,ah:Number(a.weekly_hours),bh:Number(b.weekly_hours),aName:a.name});})()');
+  const f = JSON.parse(fx);
+  assert(f.sid > 0 && f.ah > 0 && f.bh > 0 && f.ah !== f.bh, 'دو درسِ ساعت‌های متفاوت برای تست پیدا نشد');
+  const d = W('JSON.stringify(transcriptCert(' + f.sid + ',"نوبت اول"))');
+  const cert = JSON.parse(d);
+  try {
+    assert(cert.ok === true, 'گواهی ساخته نشد: ' + cert.msg);
+    assert(cert.title === 'گواهی نمرات', 'عنوان گواهی غلط است');
+    assert(cert.body.indexOf('گواهی تستی') > -1, 'نام دانش‌آموز در گواهی نیست');
+    assert(cert.body.indexOf(f.aName) > -1, 'نام درس در گواهی نیست');
+    const expW = Math.round((20 * f.ah + 10 * f.bh) / (f.ah + f.bh) * 100) / 100;
+    const m = cert.body.match(/معدل وزنی: <b style="font-size:13px">([^<]+)<\/b>/);
+    assert(m && m[1] === W('fa(' + expW + ')'), 'معدل وزنی غلط محاسبه شد: ' + (m && m[1]) + ' به‌جای ' + expW);
+  } finally {
+    W('db.grades=db.grades.filter(function(g){return g.student_id!==' + f.sid + ';});db.users=db.users.filter(function(u){return u.id!==' + f.sid + ';});0');
+  }
+});
+
+
+
+test('بند ۱.۶: گواهی بدون نمره رد می‌شود و دکمه چاپ در تب کارنامه است', () => {
+  const r = W('(()=>{var u=db.users.filter(function(x){return x.role==="student";})[0];var d=transcriptCert(u.id,"");var noGrades=(!d.ok);var u2=null;db.users.forEach(function(x){if(u2)return;if(x.role==="student"&&db.grades.filter(function(g){return g.student_id===x.id;}).length>2)u2=x;});var u3=db.users.filter(function(x){return x.role==="student"&&!db.grades.some(function(g){return g.student_id===x.id;})&&x.id!==(u2?u2.id:0);})[0];if(!u3)return JSON.stringify({first:noGrades,withGrades:!!u2,missingStudent:true});var d3=transcriptCert(u3.id,"");return JSON.stringify({first:noGrades,withGrades:!!u2,sid3:u3.id,ok3:d3.ok});})()');
+  const t = JSON.parse(r);
+  assert(t.withGrades, 'دانش‌آموز با نمره برای تست نیست');
+  assert(t.ok3 === false, 'گواهی برای دانش‌آموز بی‌نمره ساخته شد');
+  const out = W("(S.route='record', S.child=" + W('(()=>{var u=null;db.users.forEach(function(x){if(u)return;if(x.role==="student"&&db.grades.filter(function(g){return g.student_id===x.id;}).length>2)u=x;});return u.id;})()') + ", S.user=(function(){var m=db.users.find(u=>u.role==='manager');return m;})(), S.persona=null, S.tab='grades', renderRoute())");
+  assert(out.indexOf('گواهی نمرات') > -1, 'نوار گواهی در تب کارنامه نیست');
+  assert(out.indexOf('cert-print') > -1, 'دکمهٔ چاپ گواهی نیست');
+});
+
+
 
 await Promise.all(testQueue);   // همهٔ آزمون‌های ناهمگام تا سرِ صف برسد
 const total = pass + fail;

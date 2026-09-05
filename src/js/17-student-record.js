@@ -63,7 +63,20 @@ function viewRecord(sid){
   if(S.tab==='profile') body = studentProfileCard(sid)
     + ((typeof yearHistoryCard==='function')?yearHistoryCard(sid):'')
     + ((typeof teacherNotesCard==='function')?teacherNotesCard(sid):'');
-  if(S.tab==='grades') body = Object.keys(bySub).length?`${gradeTrendCard(sid)}<div class="card-body" style="display:grid;gap:14px">${Object.entries(bySub).map(([id,l])=>{const a=avgOf(l);
+  /* نوار گواهی نمرات (بند ۱.۶): فقط وقتی نمره‌ای هست، بالای تب کارنامه */
+  const certBar=(function(){
+    if(S.tab!=='grades')return '';
+    const certTerms=[];gr.forEach(g=>{if(certTerms.indexOf(g.term)<0)certTerms.push(g.term);});
+    if(!certTerms.length)return '';
+    return '<div class="card-body row" style="gap:10px;align-items:center;border:1px dashed var(--border);border-radius:12px;padding:10px 14px;flex-wrap:wrap">'
+      + '<span>🖨️</span><span class="small"><b>گواهی نمرات</b> (چاپ — PDF بعداً)</span>'
+      + '<select class="select" style="width:150px" id="cert_term">'
+      + certTerms.map(t=>'<option value="'+escAttr(t)+'">'+esc(t)+'</option>').join('')
+      + '<option value="">همهٔ نوبت‌ها</option></select>'
+      + '<button class="btn sm" data-act="cert-print" data-sid="'+escAttr(sid)+'">چاپ گواهی</button>'
+      + '</div>';
+  })();
+  if(S.tab==='grades') body = Object.keys(bySub).length?certBar+`${gradeTrendCard(sid)}<div class="card-body" style="display:grid;gap:14px">${Object.entries(bySub).map(([id,l])=>{const a=avgOf(l);
     return `<div style="border:1px solid var(--border);border-radius:12px;padding:14px"><div class="row"><b>${esc((byId('subjects',Number(id))||{}).name||'—')}</b><div class="spacer"></div>
      <span class="badge ${a>=17?'b-green':a>=12?'b-blue':'b-red'}">میانگین ${fa(a.toFixed(2))}</span></div>
      <div style="margin:8px 0 12px">${bar(a,20,a>=17?'var(--green)':a>=12?'var(--primary)':'var(--red)')}</div>

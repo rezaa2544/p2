@@ -61,7 +61,54 @@ function printableDoc(o){
   return true;
 }
 
-/* ---------- سازندهٔ بدنهٔ سه فرم (جدا از چاپ، تا تست‌پذیر باشد) ---------- */
+/* ---------- سازندهٔ بدنه سه فرم (جدا از چاپ، تا تست‌پذیر باشد) ---------- */
+
+/**
+ * گواهی نمرات یک دانش‌آموز برای یک نوبت (بند ۱.۶).
+ * امروز: اچ‌تی‌ام‌الِ چاپ‌شونده (printableDoc). نسخهٔ PDF قفل‌شده است
+ * در ARCHITECTURE_DECISIONS.md (بخش «قفل‌شده — منتظر پیاده‌سازی کامل»)
+ * و فقط وقتی زمانش فرا برسد ساخته می‌شود.
+ */
+function transcriptCert(sid, term){
+  const st = byId('users', sid);
+  if(!st || st.role !== 'student') return {ok:false, msg:'دانش‌آموز پیدا نشد.'};
+  const cls = classOf(sid);
+  const school = byId('schools', st.school_id) || {};
+  const list = db.grades.filter(g=>g.student_id===sid && (!term || g.term===term));
+  if(!list.length) return {ok:false, msg:'برای این نوبت نمره‌ای ثبت نشده است.'};
+  const bySub = Object.create(null);
+  list.forEach(g=>{ (bySub[g.subject_id] = bySub[g.subject_id] || []).push(g); });
+  let tw=0, ts=0;
+  const rows = Object.keys(bySub).map(id=>{
+    const sub = byId('subjects', Number(id)) || {};
+    const arr = bySub[id];
+    const av = Math.round(arr.reduce((a,g)=>a+g.score,0)/arr.length*100)/100;
+    const w = Number(sub.weekly_hours) || 1;
+    tw += w; ts += av*w;
+    return {name: sub.name || '—', w: w, av: av, n: arr.length};
+  }).sort((a,b)=>a.name < b.name ? -1 : 1);
+  const gpa = tw ? Math.round(ts/tw*100)/100 : 0;
+  const body =
+    '<div class="meta"><span>نام: <b>' + esc(st.full_name) + '</b></span>'
+    + '<span>کد ملی: <b>' + esc(st.national_id || '—') + '</b></span>'
+    + '<span>کلاس: <b>' + esc(cls ? cls.name : '—') + '</b></span>'
+    + '<span>پایه: <b>' + esc(cls ? (cls.grade || '—') : '—') + '</b></span></div>'
+    + '<table><thead><tr><th class="c" style="width:34px">#</th><th>درس</th>'
+    + '<th class="c" style="width:80px">ساعت هفتگی</th><th class="c" style="width:90px">تعداد برگه</th>'
+    + '<th class="c" style="width:100px">نمره (از ۲۰)</th></tr></thead><tbody>'
+    + rows.map((r,i)=>'<tr><td class="c">' + fa(i+1) + '</td><td>' + esc(r.name) + '</td>'
+        + '<td class="c">' + fa(r.w) + '</td><td class="c">' + fa(r.n) + '</td>'
+        + '<td class="c"><b>' + fa(r.av) + '</b></td></tr>').join('')
+    + '</tbody></table>'
+    + '<div class="meta" style="margin-top:10px"><span>معدل وزنی: <b style="font-size:13px">'
+    + fa(gpa) + '</b> از ۲۰</span></div>';
+  return {ok:true,
+    title:'گواهی نمرات',
+    school: esc(school.name || '') + (school.code ? ' — کد ' + esc(school.code) : ''),
+    subtitle: 'دانش‌آموز: ' + esc(st.full_name) + ' · ' + (term || 'همهٔ نوبت‌ها') + ' · سال تحصیلی ' + yearTitle(),
+    body: body,
+    note:'نمرهٔ هر درس میانگین برگه‌های ثبت‌شدهٔ همان نوبت است و معدل با وزنی بر پایهٔ ساعت هفتگی محاسبه می‌شود. این گواهی از سامانهٔ پایش چاپ شده است.'};
+}
 
 /** لیست نمرات کلاس با ستون‌های خالی برای تکمیل دستی */
 function formGradeSheet(cls, subj, term){
