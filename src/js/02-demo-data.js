@@ -66,7 +66,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -82,11 +82,15 @@ function generate(){
       /* بند ۵: ساختار «سازمان» — امروز همیشه خالی (تک‌مدرسه).
          قفل‌شده و مستند در ARCHITECTURE_DECISIONS.md: پیاده‌سازی کامل
          وقتی دو مدرسه با یک مالک مشترک وارد سامانه شوند. */
+      /* دور ۶۵ بند روزهای کاری: پیش‌فرض شنبه تا چهارشنبه؛ SH-101 پنجشنبه هم کار می‌کند (دمو) */
+      work_days: si===0?[0,1,2,3,4,5]:[0,1,2,3,4],
       organization_id: null,
       created_at:daysAgoISO(500-si*20)});
     const first = gender==='پسرانه'?MALE:FEMALE;
     const manager=add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'manager'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,title:'مدیر مدرسه',created_at:daysAgoISO(480)});
     add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'deputy'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,title:'معاون آموزشی',created_at:daysAgoISO(470)});
+    /* روزِ جبرانی (دمو): اولین جمعهٔ پیشِ رو برای FZ-102 */
+    if(si===1){/* جمعهٔ پیشِ رو — getDay در JS: جمعه=۵ (نزدِ جدولِ برنامه شنبه=۰!) */var _frOff=(5-new Date().getDay()+7)%7; if(_frOff===0)_frOff=7; add('makeup_classes',{school_id:school.id,date:addDaysISO(todayISO(),_frOff),note:'روزِ جبرانی (دمو)'});}
     /* دروس بر اساس برنامه‌ی درسی واقعی: پایه‌ها و (در متوسطه دوم) رشته‌ها */
     const _lvGrades = GRADES_OF_LEVEL[level] || [];
     const _lvFields = needsField(level) ? ['ریاضی فیزیک','علوم تجربی','ادبیات و علوم انسانی'] : [''];

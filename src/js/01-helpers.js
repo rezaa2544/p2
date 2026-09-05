@@ -24,6 +24,8 @@ const jalali = iso => { if(!iso) return '—'; try{ return new Intl.DateTimeForm
 const todayISO = ()=> new Date().toISOString().slice(0,10);
 const daysAgoISO = d => { const t=new Date(); t.setDate(t.getDate()-d); return t.toISOString().slice(0,10); };
 const DAYS=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه'];
+const DAYS_FULL=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه'];
+const DEFAULT_WORK_DAYS=[0,1,2,3,4]; /* شنبه تا چهارشنبه — پنجشنبه اختیاری و پیش‌فرض خاموش (تصمیم کاربر) */
 const ROLE_FA={superadmin:'سوپر ادمین',manager:'مدیر مدرسه',teacher:'دبیر',student:'دانش‌آموز',parent:'ولی',edu_office:'اداره آموزش و پرورش',counselor:'مشاور',driver:'راننده سرویس'};
 const ROLE_BADGE={superadmin:'b-purple',manager:'b-blue',teacher:'b-green',student:'b-amber',parent:'b-gray',edu_office:'b-purple',counselor:'b-cyan'};
 const ATT_FA={present:'حاضر',absent:'غایب',late:'تأخیر',excused:'موجه'};

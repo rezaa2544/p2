@@ -43,6 +43,32 @@ function isSchoolDay(dayIdx){
   return dayIdx >= 0 && dayIdx <= 4;
 }
 
+/**
+ * روزهای کاریِ یک مدرسه (دور ۶۵ بند روزهای کاری).
+ * پیش‌فرض: شنبه تا سه‌شنبه — چهارشنبه فقط اگر مدرسه روشن کرده باشد.
+ * @returns {number[]} ایندکس‌های روز (شنبه=۰ … جمعه=۶)
+ */
+function workDaysOf(schoolId){
+  var sc = (typeof byId === 'function') ? (byId('schools', schoolId) || {}) : {};
+  var wd = sc.work_days;
+  if(Array.isArray(wd) && wd.length) return wd.map(Number);
+  return (typeof DEFAULT_WORK_DAYS !== 'undefined') ? DEFAULT_WORK_DAYS.slice() : [0,1,2,3];
+}
+
+/**
+ * آیا این تاریخ برای این مدرسه روز کاری است؟
+ * روزهای هفتهٔ کاری + روزهای جبرانیِ ثبت‌شده (makeup_classes).
+ */
+function isWorkDay(schoolId, dateISO, now){
+  var t = now || new Date(dateISO + 'T12:00:00');
+  var idx = todayIndex(t);
+  if(workDaysOf(schoolId).indexOf(idx) > -1) return true;
+  var mk = (db.makeup_classes || []).some(function(m){
+    return m.school_id === schoolId && m.date === dateISO;
+  });
+  return !!mk;
+}
+
 /* ─────────────── بخش ۲: سلامت ساعت دستگاه ─────────────── */
 
 /**
@@ -130,16 +156,26 @@ function currentSlot(schoolId, now){
   out.hasSchedule = (db.bell_schedules || [])
     .some(function(b){ return b.school_id === schoolId; });
 
-  if(!isSchoolDay(out.day)){
+  /* دور ۶۵ بند روزهای کاری: روزِ کاریِ خودِ مدرسه (پیش‌فرض شنبه تا
+     سه‌شنبه) + روزهای جبرانی — به‌جای پنج‌روزهٔ سراسریِ قدیمی. */
+  var wd = workDaysOf(schoolId);
+  var inWeek = wd.indexOf(out.day) > -1;
+  var isMakeup = (db.makeup_classes || []).some(function(m){
+    return m.school_id === schoolId && m.date === localISOOf(t);
+  });
+  if(!inWeek && !isMakeup){
     out.kind = 'holiday';
-    out.label = 'روز تعطیل';
+    out.label = (out.day === 5) ? 'پنجشنبه برای این مدرسه روز کاری نیست' : 'روز تعطیل';
     return out;
   }
 
   /* 🔴 روز هفته باید رد شود: بدون آن bellOf() همیشه برنامهٔ شنبه
      (روز ۰) را برمی‌گرداند و در زمان‌بندی به‌تفکیک‌روز (نسخهٔ ۲)
-     زنگ اشتباهی تشخیص داده می‌شود — رفع بند ۲ در گام ۳. */
-  var tl = (typeof bellTimeline === 'function') ? bellTimeline(schoolId, out.day) : [];
+     زنگ اشتباهی تشخیص داده می‌شود — رفع بند ۲ در گام ۳.
+     روزِ جبرانیِ بیرون از هفتهٔ کاری (مثلاً جمعه) از برنامهٔ شنبه
+     استفاده می‌کند — schedDay همان روزِ برنامهٔ درسی است. */
+  out.schedDay = inWeek ? out.day : 0;
+  var tl = (typeof bellTimeline === 'function') ? bellTimeline(schoolId, out.schedDay) : [];
   if(!tl.length){ return out; }
 
   var mins = t.getHours() * 60 + t.getMinutes();
@@ -199,10 +235,11 @@ function teacherNowClass(teacherId, schoolId, now){
   var slot = currentSlot(sid, now);
   if(slot.kind !== 'lesson' || !slot.no) return null;
 
+  var schedDay = (slot.schedDay != null) ? slot.schedDay : slot.day;
   var rows = (db.schedule || []).filter(function(r){
     return r.teacher_id === tid
         && r.school_id === sid
-        && r.day === slot.day
+        && r.day === schedDay
         && Number(r.period) === Number(slot.no);
   });
   if(!rows.length) return null;
