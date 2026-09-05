@@ -893,6 +893,7 @@ setTimeout(()=>{
   if(typeof generateVisitorsDemo==='function') generateVisitorsDemo();
   if(typeof generateLibraryDemo==='function') generateLibraryDemo();
   if(typeof generateAssetsDemo==='function') generateAssetsDemo();
+  if(typeof generateSidaDemo==='function') generateSidaDemo();
   loadLog(); applyLog(); initSync();
   /* ⚠️ فقط دمو (DEMO-ONLY): ورود خودکار با نام کاربریِ ذخیره‌شده — بدون
      هیچ رمز یا تأیید هویت — صرفاً برای حالت آفلاین/نمایش است و بخشی از

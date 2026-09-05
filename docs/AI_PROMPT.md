@@ -496,6 +496,7 @@ src/body.html  ─┘
 53-visitors       ⭐ مهمان‌ها (بند ۷) — ورود/خروج غیردانش‌آموز و غیرکارکنان؛ صفحهٔ مدیر
 54-library       ⭐ کتابخانه (بند ۸) — کتاب‌ها + امانت به دانش‌آموز + بازگشت + وضعیت (کتاب/امانت/دیرکرد)؛ صفحهٔ مدیر
 55-assets        ⭐ املاک و موجودی (بند ۹) — تجهیزات با وضعیت (در دسترس/در حال استفاده/در تعمیرات) + مکان؛ صفحهٔ مدیر
+56-sida-diff     ⭐ اختلاف با سیدا (بند ۱۰/۴.۱۲) — نمرهٔ سیدا دستی توسط مدیر؛ صفحه فقط مقایسه می‌کند، هیچ نمره‌ای را اصلاح نمی‌کند
 25-filters       ⭐ فیلترهای جمع‌شونده (مشترک همه پنل‌ها)
 26-curriculum       ⭐ ساختار مقطع/پایه/شاخه/رشته + کتاب‌های درسی
 27-sync             ⭐ لایه offline-first: صف ارسال، تشخیص اتصال، backoff
@@ -2306,6 +2307,19 @@ status,location,note,created_at}`. صفحهٔ `assets` فقط **مدیر** (هم
 اکشن‌ها `as-new`/`as-save`/`as-status`/`as-status-save`/`as-del`؛ گاردها
 روی داده در `assetAdd`/`assetSetStatus`/`assetDel` (نقش + `school_id`
 + اعتبارِ وضعیت). سئوت مستقل با ۵ بخش A1–A5. اجرا: `node tests/assets.js`
+
+### اختلاف با سیدا (tests/sidadiff.js)
+ماژول `56-sida-diff.js` (بند ۱۰ / بند ۴.۱۲): جدول `sedascores
+{school_id,student_id,subject_id,term,score,entered_by,created_at,
+note}` — نمرهٔ سیدا را **مدیر دستی** وارد می‌کند؛ کلیدِ منحصربه‌فرد
+(دانش‌آموز، درس، نوبت) است و ورودِ تکراری همان ردیف را به‌روز می‌کند
+(`sedasUpsert`). **فقط مقایسه، بدون اصلاح** (قفل ۱۰.۱): نمرهٔ پایش =
+mیانگینِ برگه‌های `grades` همان نوبت (منطق `transcriptCert`، تابع
+`payeshAvgOf`)؛ اختلاف = سیدا − پایش با ۲ رقم اعشار (`sedaRowStatus`:
+`same`/`seda-high`/`payesh-high`/`missing`). صفحهٔ `sidadiff` فقط مدیر.
+اکشن‌ها `sd-new`/`sd-save`/`sd-del`؛ گاردها روی داده در `sedasUpsert`/
+`sedasDel` (نقش + `school_id` دانش‌آموز و درس + نمرهٔ ۰ تا ۲۰).
+سئوت مستقل با ۵ بخش D1–D5. اجرا: `node tests/sidadiff.js`
 
 ### گواهی‌های رسمی (tests/certify.js)
 بند ۶ در `33-forms-sms.js` (همین الگوی `transcriptCert` + `printableDoc`):
