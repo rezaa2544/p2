@@ -24,6 +24,7 @@
 /** کادر اجرایی — فعلاً فقط مشاور فعال است؛ بقیه رزرو‌اند */
 var EXEC_ROLES=[
   {key:'counselor',fa:'مشاور',active:true,desc:'صف دانش‌آموزان ارجاع‌شدهٔ الگوهای رفتاری را پیگیری می‌کند'},
+  {key:'driver',fa:'راننده سرویس',active:true,desc:'رویدادهای سوار/پیاده شدن مسیر خودش را ثبت می‌کند؛ برای خانواده پیامک می‌رود (بدون جی‌پی‌اس)'},
   {key:'deputy_edu',fa:'معاون آموزشی',active:false,reserved:true,desc:''},
   {key:'deputy_exec',fa:'معاون اجرایی',active:false,reserved:true,desc:''},
   {key:'deputy_tech',fa:'معاون فنی',active:false,reserved:true,desc:''},
@@ -379,7 +380,7 @@ function viewStaff(){
       +(r.active
         ?(people.length
            ?'<span class="small">'+esc(people.map(function(p){return p.full_name;}).join(' · '))+'</span>'
-           :'<span class="badge b-amber">تعریف نشده</span> <button class="btn" data-act="user-new">افزودن مشاور</button>')
+           :'<span class="badge b-amber">تعریف نشده</span> <button class="btn" data-act="user-new">افزودن '+esc(r.fa)+'</button>')
         :'به‌زودی')
       +'</div></div>';
   });

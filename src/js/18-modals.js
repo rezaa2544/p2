@@ -107,7 +107,7 @@ function userModal(x){
   openModal(modalTpl(x.id?'ویرایش کاربر':'افزودن کاربر',
    `<div class="grid g2">${f('نام و نام خانوادگی *',inp('u_name',x.full_name))}
     ${f('نام کاربری *',`<input class="input" id="u_user" value="${esc(x.username)}" ${x.id?'disabled':''} />`)}
-    ${f('نقش',sel('u_role',[['manager','مدیر مدرسه'],['teacher','دبیر'],['student','دانش‌آموز'],['parent','ولی'],['counselor','مشاور']],x.role))}
+    ${f('نقش',sel('u_role',[['manager','مدیر مدرسه'],['teacher','دبیر'],['student','دانش‌آموز'],['parent','ولی'],['counselor','مشاور'],['driver','راننده سرویس']],x.role))}
     ${isSuper?f('مدرسه',sel('u_school',db.schools.map(s=>[s.id,s.name]),x.school_id)):''}
     ${f('کد ملی',inp('u_nid',x.national_id))}${f('تلفن همراه',inp('u_phone',x.phone))}
     ${f('کلاس (برای دانش‌آموز)',sel('u_class',[['','— بدون کلاس —']].concat(clsList.map(c=>[c.id,c.name])),cur))}
