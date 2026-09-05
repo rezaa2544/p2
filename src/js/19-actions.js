@@ -29,6 +29,8 @@ document.addEventListener('click',e=>{
   }
   const A={
    pick(){ $('#lu').value=el.dataset.u; $('#lp').value='123456'; },
+   /* سیاست حریم خصوصی — برای همه (حتی پیش از ورود) در دسترس است (ملاک گوگل‌پلی) */
+   'privacy-open'(){ openPrivacyPolicy(); },
    login(){
      /* 🔴 TODO پیش از اتصال به سرور — احراز هویت و رمز عبور
         این مقایسه باید کاملاً حذف شود و جایش POST /auth/login بنشیند.
