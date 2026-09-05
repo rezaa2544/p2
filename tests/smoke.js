@@ -4261,6 +4261,35 @@ test('نمره: زیر آستانه پیام می‌سازد و عدد نمره 
   });
 });
 
+test('نمره: مرز بین‌دبیری — هر دبیر فقط نمرات خودش را می‌بیند', () => {
+  const sid = W('db.schools[0].id');
+  const r = JSON.parse(W(`(()=>{
+    db._tG=db.grades.slice();db._tU=S.user;db._tF=S.filters;
+    var sid=${sid};
+    var t1=db.users.find(u=>u.username==='teacher1_1');
+    var t2=db.users.find(u=>u.role==='teacher'&&u.school_id===sid&&u.id!==t1.id);
+    var c=db.classes.find(cl=>cl.school_id===sid);
+    var st=db.users.find(u=>u.role==='student'&&u.school_id===sid&&db.enrollments.some(e=>e.student_id===u.id&&e.class_id===c.id))
+        ||db.users.find(u=>u.role==='student'&&u.school_id===sid);
+    var s1=db.subjects.find(s=>s.id===t1.subject_id)||db.subjects[0];
+    var s2=db.subjects.find(s=>s.id===t2.subject_id)||db.subjects[0];
+    var g1=insert('grades',{school_id:sid,student_id:st.id,class_id:c.id,subject_id:s1.id,teacher_id:t1.id,term:'نوبت اول',exam_type:'میان‌ترم',score:13,max_score:20,created_at:todayISO()}).id;
+    var g2=insert('grades',{school_id:sid,student_id:st.id,class_id:c.id,subject_id:s2.id,teacher_id:t2.id,term:'نوبت اول',exam_type:'میان‌ترم',score:14,max_score:20,created_at:todayISO()}).id;
+    function as(uid){S.user=db.users.find(u=>u.id===uid);S.persona=null;S.boss=null;
+      S.filters={class:c.id,subject:''};
+      var h=viewGrades();
+      var n1='data-id="'+g1+'"',n2='data-id="'+g2+'"';
+      return {seen1:h.indexOf(n1)>=0,seen2:h.indexOf(n2)>=0};}
+    var a=as(t1.id),b=as(t2.id);
+    db.grades=db._tG;S.user=db._tU;S.filters=db._tF;delete db._tG;delete db._tU;delete db._tF;
+    (typeof idxInvalidate==='function')&&idxInvalidate('grades');
+    return JSON.stringify({t1:a,t2:b});})()`));
+  assert(r.t1.seen1 === true, 'دبیر ۱ نمرهٔ خودش را نمی‌بیند');
+  assert(r.t1.seen2 === false, '🔴 دبیر ۱ نمرهٔ دبیر دیگرِ همان کلاس را می‌بیند');
+  assert(r.t2.seen1 === false, '🔴 دبیر ۲ نمرهٔ دبیر ۱ را می‌بیند');
+  assert(r.t2.seen2 === true, 'دبیر ۲ نمرهٔ خودش را نمی‌بیند');
+});
+
 test('نمره: با kinds.grade خاموش یا سامانهٔ خاموش ساخته نمی‌شود', () => {
   withGrade((sid) => {
     const r = JSON.parse(W('(()=>{'
