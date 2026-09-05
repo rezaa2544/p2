@@ -491,6 +491,38 @@ document.addEventListener('click',e=>{
        toast('تجهیز حذف شد','ok'); render();
      }, {title:'حذف تجهیز', ok:'حذف', danger:true});
    },
+   'sd-new'(){
+     const u = S.user;
+     const studs = db.users.filter(function(x){
+       return x.role==='student' && x.school_id===u.school_id && x.active!==0;
+     }).sort(function(a,x){ return (a.full_name||'').localeCompare(x.full_name||'', 'fa'); });
+     if(!studs.length){ toast('دانش‌آموزی نیست','err'); return; }
+     const subs = db.subjects.filter(function(x){ return x.school_id===u.school_id; })
+       .sort(function(a,x){ return (a.name||'').localeCompare(x.name||'', 'fa'); });
+     if(!subs.length){ toast('درسی تعریف نشده','err'); return; }
+     openModal(modalTpl('نمرهٔ سیدا',
+       f('دانش‌آموز *', sel('sd_stu', studs.map(function(x){return [x.id, x.full_name];}), ''))
+       + f('درس *', sel('sd_sub', subs.map(function(x){return [x.id, x.name];}), ''))
+       + f('نوبت *', sel('sd_term', TERMS.map(function(t){return [t, t];}), TERMS[0]))
+       + f('نمرهٔ سیدا (از ۲۰) *', inp('sd_score','','number'))
+       + f('یادداشت (اختیاری)', inp('sd_note','')),
+       'sd-save'));
+   },
+   'sd-save'(){
+     const r = sedasUpsert(Number(V('sd_stu')), Number(V('sd_sub')), V('sd_term'), V('sd_score'), V('sd_note'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal();
+     const st = byId('users', Number(V('sd_stu'))) || {};
+     toast('نمرهٔ سیدا برای «' + (st.full_name||'؟') + '» ثبت شد' + (r.updated?' (به‌روزرسانی)':''), 'ok');
+     render();
+   },
+   'sd-del'(){
+     askConfirm('این ردیفِ سیدا حذف شود؟', function(){
+       const r = sedasDel(Number(id));
+       if(!r.ok){ toast(r.msg,'err'); return; }
+       toast('ردیف حذف شد','ok'); render();
+     }, {title:'حذف ردیف سیدا', ok:'حذف', danger:true});
+   },
    'att-set'(){const st=el.dataset.s;const date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
      attDraftSet(cid,date,id,st);

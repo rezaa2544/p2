@@ -160,6 +160,7 @@ function _renderRouteInner(){
     case 'visitors':return viewVisitors();
     case 'library':return viewLibrary();
     case 'assets':return viewAssets();
+    case 'sidadiff':return viewSidaDiff();
     case 'cqueue':return viewCounselorQueue();
     case 'followup':return viewFollowup();
     case 'staff':return viewStaff();
