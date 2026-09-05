@@ -35,6 +35,39 @@ const classSubjectMembers=(cid,sid)=>{
   }
   return studentsOfClass(cid);
 };
+/**
+ * زمینهٔ نمرات یک کلاس در یک دور — برای نمایش «میانگین کلاس» کنار
+ * هر نمره (بند ۳). بدون نام: فقط عدد.
+ * خروجی: { "subjectId|term|examType": {avg, n, students} }
+ * فقط وقتی حداقل ۲ دانش‌آموزِ عضو در همان (درس، نوبت، نوع) نمره
+ * داشته باشند مقدار تولید می‌شود — میانگینِ تک‌نفره بی‌معناست.
+ * عضویتِ هر درس از classSubjectMembers (مدل چندپایه، بند ۲) می‌آید.
+ */
+function classScoreContext(classId){
+  var cls=byId('classes',Number(classId));
+  var out=Object.create(null);
+  if(!cls||!db.grades) return out;
+  var groups=Object.create(null);
+  db.grades.forEach(function(g){
+    var k=g.subject_id+'|'+g.term+'|'+g.exam_type;
+    if(!groups[k]) groups[k]={subject:g.subject_id, rows:[]};
+    groups[k].rows.push(g);
+  });
+  Object.keys(groups).forEach(function(k){
+    var grp=groups[k];
+    var ids=Object.create(null);
+    classSubjectMembers(cls.id, grp.subject).forEach(function(u){ids[u.id]=true;});
+    var sum=0,n=0,students=Object.create(null);
+    grp.rows.forEach(function(g){
+      if(!ids[g.student_id]) return;
+      sum+=g.score;n++;students[g.student_id]=true;
+    });
+    var cnt=Object.keys(students).length;
+    if(cnt<2) return;
+    out[k]={avg:n?sum/n:0, n:n, students:cnt};
+  });
+  return out;
+}
 /** تطبیق نقشهٔ درس↔دانش‌آموز (برای ماژول آتی؛ امروز فراخوانی نمی‌شود) */
 function setClassSubjectMembers(cid,sid,studentIds){
   cid=Number(cid);sid=Number(sid);
