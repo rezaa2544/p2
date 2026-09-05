@@ -141,6 +141,13 @@ const parentLocked=()=>{
   return !effectiveParentAccess(S.user.id).active;
 };
 
+/* ─────────── دیوار پرداخت (بند ۴) ───────────
+   دادهٔ پایهٔ مدرسه همیشه رایگان است: نمره، حضور و غیاب، برنامهٔ
+   کلاس، برنامهٔ امتحانات، تقویم و شهریهٔ فرزند. دیوار پرداخت فقط
+   «ارتباط و درخواست‌ها» را می‌گیرد: نوبت جلسه، درخواست مرخصی،
+   گفتگو. فهرست روت‌های همیشه‌باز برای ولی: */
+const PARENT_FREE_ROUTES=['dashboard','children','record','exams','calendar','family','mytuition','subscription','notifications','announcements'];
+
 /* ---------------- داده نمونه ---------------- */
 function generateP10(){
   db.parent_subscriptions=db.parent_subscriptions||[];
@@ -258,11 +265,13 @@ function viewSubscription(){
 
 /** صفحه قفل — وقتی اشتراک فعال نیست */
 function viewLocked(){
+  /* بند ۴: دادهٔ پایه (نمره/حضور/برنامه کلاس/امتحانات/شهریه) همیشه رایگان است */
   return '<div class="card" style="text-align:center;padding:38px 20px">'
     +'<div style="font-size:44px">🔒</div>'
-    +'<h3 style="margin:12px 0 6px;font-size:17px">برای دیدن این بخش، اشتراک پنل اولیا لازم است</h3>'
-    +'<div class="small muted" style="line-height:2;max-width:430px;margin:0 auto 16px">'
-    +'با فعال‌سازی اشتراک، نمرات، حضور و غیاب، پرونده انضباطی، برنامه امتحانات و شهریه فرزندانتان نمایش داده می‌شود.</div>'
+    +'<h3 style="margin:12px 0 6px;font-size:17px">برای این بخش، اشتراک پنل اولیا لازم است</h3>'
+    +'<div class="small muted" style="line-height:2;max-width:460px;margin:0 auto 16px">'
+    +'نمرات، حضور و غیاب، برنامهٔ کلاس، برنامهٔ امتحانات و شهریهٔ فرزندتان همیشه بدون اشتراک در دسترس است. '
+    +'با فعال‌سازی اشتراک می‌توانید نوبت جلسهٔ اولیا بگیرید، درخواست مرخصی بفرستید و با مدرسه گفتگو کنید.</div>'
     +'<div><button class="btn" data-act="go" data-r="subscription">مشاهده طرح‌ها و پرداخت</button></div></div>';
 }
 

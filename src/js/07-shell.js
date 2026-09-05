@@ -49,7 +49,14 @@ function navFor(u){
   }).filter(function(g){ return g[1].length>0; });
   if(u.role==='parent'){
     nav=nav.concat([['حساب من',[['subscription','💳','اشتراک پنل اولیا']]]]);
-    if(parentLocked())nav=[['حساب من',[['subscription','💳','اشتراک پنل اولیا'],['notifications','🔔','اعلان‌ها'],['announcements','📢','اطلاعیه‌ها']]]];
+    /* بند ۴: ولیِ بدون اشتراک فقط «ارتباط و درخواست‌ها» را از دست
+       می‌دهد؛ دادهٔ پایه (نمره/حضور/برنامه/امتحانات/شهریه) باقی می‌ماند */
+    if(parentLocked()){
+      var free=(typeof PARENT_FREE_ROUTES!=='undefined')?PARENT_FREE_ROUTES:[];
+      nav=nav.map(function(g){
+        return [g[0],g[1].filter(function(it){ return free.indexOf(it[0])>-1; })];
+      }).filter(function(g){ return g[1].length>0; });
+    }
   }
   return nav;
 }
@@ -70,8 +77,10 @@ function renderRoute(){
   }
 }
 function _renderRouteInner(){
-  /* دیوار پرداخت: در پنل اولیا بدون اشتراک فقط چند صفحه باز است */
-  if(parentLocked()&&!['subscription','notifications','announcements'].includes(S.route))
+  /* دیوار پرداخت (بند ۴): برای ولیِ بدون اشتراک فقط «ارتباط و
+     درخواست‌ها» قفل است؛ دادهٔ پایه همیشه رایگان باز است */
+  var free=(typeof PARENT_FREE_ROUTES!=='undefined')?PARENT_FREE_ROUTES:['subscription','notifications','announcements'];
+  if(parentLocked()&&free.indexOf(S.route)<0)
     return viewLocked();
   /* گارد مجوز: نقش فعلی فقط روت‌های مجاز خودش را می‌بیند.
      بدون این بررسی، تغییر hash آدرس هر صفحه‌ای را باز می‌کرد. */

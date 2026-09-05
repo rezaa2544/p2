@@ -5434,7 +5434,50 @@ test('سوییچ فرزند: برای هر فرزند یک دکمه رندر م�
   });
 });
 
-test('سوییچ فرزند: 🔴 کلیک روی دکمه واقعاً فرزند را عوض می‌کند', () => {
+
+test('بند ۴: دیوار پرداخت نمرات/حضور/برنامه هفتگی را بند نمی‌کند', () => {
+  const r = JSON.parse(W(`(()=>{
+    var pt=null;
+    db.users.forEach(function(u){ if(pt) return; if(u.role!=='teacher'||!u.active) return;
+      if(db.parent_links.some(function(l){return l.parent_id===u.id;})) pt=u; });
+    if(!pt) return JSON.stringify({err:'no-locked-parent'});
+    saveSubSettings({trial_enabled:0});
+    db.parent_subscriptions.filter(function(x){return x.user_id===pt.id;}).forEach(function(x){remove('parent_subscriptions',x.id);});
+    S.user=pt; S.persona='parent'; S.boss=null; S.gateSkipped=true; S.filters={}; S.tab='grades';
+    var kid=db.parent_links.filter(function(l){return l.parent_id===pt.id;})[0].student_id;
+    S.child=kid;
+    var locked=(typeof parentLocked==='function')?parentLocked():false;
+    if(locked!==true) return JSON.stringify({err:'parent-not-locked',locked:locked});
+    var nav=navFor(Object.assign({},pt,{role:'parent'})).map(function(g){return g[1].map(function(i){return i[0];}).join(',');}).join('|');
+    S.route='record';
+    var hRec=renderRoute();
+    var recOk=hRec.indexOf('کارنامه')>-1&&hRec.indexOf('اشتراک پنل اولیا لازم است')<0;
+    S.tab='schedule';
+    var hSch=renderRoute();
+    var noTT=hSch.indexOf('tt-head')>-1;
+    S.tab='attendance';
+    var hAtt=renderRoute();
+    var attOk=hAtt.indexOf('حضور')>-1;
+    S.tab='grades';S.route='meetings';
+    var hMeet=renderRoute();
+    var meetLocked=hMeet.indexOf('🔒')>-1;
+    S.persona=null;S.boss=null;S.route='dashboard';S.child=null;S.gateSkipped=false;
+    return JSON.stringify({ptId:pt.id,locked:locked,nav:nav,recOk:recOk,noTT:noTT,attOk:attOk,meetLocked:meetLocked});
+  })()`));
+  /* بازیابی: دوره آزمایشی روشن — ردیف‌های ساخت آزمون پاک */
+  W('saveSubSettings({trial_enabled:1});db.parent_subscriptions.filter(function(x){return x.user_id=='+(r.ptId||0)+';}).forEach(function(x){remove("parent_subscriptions",x.id);});');
+  assert(r.err !== 'no-locked-parent', 'محیط آزمون: ولی‌ای بدون اشتراک در داده نمونه نیست');
+  assert(r.err !== 'parent-not-locked', 'محیط آزمون: ولی قفل نشد');
+  assert(r.locked === true, 'دیوار پرداخت خاموش است');
+  assert(r.nav.indexOf('children')>-1&&r.nav.indexOf('dashboard')>-1&&r.nav.indexOf('calendar')>-1&&r.nav.indexOf('mytuition')>-1,
+    '🔴 داده‌های پایه از منوی ولیِ قفل‌شده حذف شده (منو: ' + r.nav + ')');
+  assert(r.nav.indexOf('meetings')<0&&r.nav.indexOf('chat')<0,
+    '🔴 موارد پرمیوم (نوبت/گفتگو) هنوز در منوی ولیِ قفل است');
+  assert(r.recOk === true, '🔴 کارنامه برای ولی‌ای بدون اشتراک قفل است');
+  assert(r.noTT === true, '🔴 تب برنامه هفتگی کلاس رندر نشد');
+  assert(r.attOk === true, '🔴 حضور و غیاب قفل است');
+  assert(r.meetLocked === true, '🔴 نوبت جلسه بدون اشتراک باز است — دیوار پرداخت از کار افتاده');
+});test('سوییچ فرزند: 🔴 کلیک روی دکمه واقعاً فرزند را عوض می‌کند', () => {
   /* 🔴 تست جهش دور ۴۶: نسخهٔ نخست این آزمون `S.child` را مستقیم
      می‌نوشت، پس خراب‌کردن کنش `child` (که همان نوشتن را انجام
      می‌دهد) نمی‌انداختش. حالا از مسیر واقعی کاربر می‌رود: کلیک
