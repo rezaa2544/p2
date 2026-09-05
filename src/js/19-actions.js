@@ -132,7 +132,7 @@ document.addEventListener('click',e=>{
 
      let sid=s.id;
      if(s.id)update('schools',s.id,data);
-     else sid=insert('schools',Object.assign({created_at:todayISO()},data)).id;
+     else sid=insert('schools',Object.assign({created_at:todayISO(),organization_id:null},data)).id;
 
      if(existing){
        const patch={full_name:mgName||existing.full_name,national_id:mgNid||existing.national_id,phone:mgPhone||existing.phone};

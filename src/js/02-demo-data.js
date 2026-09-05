@@ -79,6 +79,10 @@ function generate(){
       /* پروفایل قابلیت: هر مدرسه کلیدهای مستقل روشن/خاموش دارد؛
          در نبود مقدار، پیش‌فرض‌های CAP_DEFAULTS اعمال می‌شود. */
       capabilities: caps||null,
+      /* بند ۵: ساختار «سازمان» — امروز همیشه خالی (تک‌مدرسه).
+         قفل‌شده و مستند در ARCHITECTURE_DECISIONS.md: پیاده‌سازی کامل
+         وقتی دو مدرسه با یک مالک مشترک وارد سامانه شوند. */
+      organization_id: null,
       created_at:daysAgoISO(500-si*20)});
     const first = gender==='پسرانه'?MALE:FEMALE;
     const manager=add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'manager'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,title:'مدیر مدرسه',created_at:daysAgoISO(480)});
