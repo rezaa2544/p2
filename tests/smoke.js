@@ -22,20 +22,29 @@ const errors = [];
 /* test() با fn همگام یا ناهمگام (Promise) کار می‌کند؛ ترتیب ثبت حفظ
    می‌شود و در پایان main همهٔ Promiseها منتظر می‌مانند. */
 const testQueue = [];
+let __seq = Promise.resolve();
 function test(name, fn) {
-  testQueue.push(new Promise((resolve) => {
-    let p;
-    try { p = fn(); }
+  /* آزمون‌ها به‌نوبت (نه هم‌زمان) اجرا می‌شوند: ترتیب قطعی، حافظهٔ کم.
+     در محیط‌های کم‌حافظه با --expose-gc اجرا کنید تا بعد از هر تست
+     زبالهٔ رندر آزاد شود و هیپ از مرز عبور نکند. */
+  const p = __seq.then(() => new Promise((resolve) => {
+    let q;
+    try { q = fn(); }
     catch (e) {
       fail++; errors.push(`${name}: ${e.message}`);
       console.log(`  ❌ ${name}\n     ${e.message}`);
       resolve(); return;
     }
-    Promise.resolve(p).then(
+    Promise.resolve(q).then(
       () => { pass++; console.log(`  ✅ ${name}`); },
       (e) => { fail++; errors.push(`${name}: ${e.message}`); console.log(`  ❌ ${name}\n     ${e.message}`); }
-    ).then(resolve);
+    ).then(() => {
+      if (typeof gc === 'function') gc();
+      resolve();
+    });
   }));
+  __seq = p;
+  testQueue.push(p);
 }
 const assert = (c, m) => { if (!c) throw new Error(m || 'شرط برقرار نیست'); };
 
@@ -6687,7 +6696,7 @@ test('گام ۳: مدرسهٔ بدون bell_schedules رفتار قدیم دار
       + 'db.bell_schedules=db.bell_schedules.concat(saved);'
       + 'S.bellNow=null;S.filters={};'
       + 'var fc=visibleClasses()[0];'
-      + 'return JSON.stringify({skipTest:false,allowed:allowed,ind:h.indexOf("انتخاب خودکار")===-1,firstCls:new RegExp("value=\\""+fc.id+"\\" selected").test(h)});})()'));
+            + 'return JSON.stringify({skipTest:false,allowed:allowed,ind:h.indexOf("انتخاب خودکار")===-1,firstCls:new RegExp("value=\\""+fc.id+"\\" selected").test(h)});})()'));
     if (r.skipTest) return;
     assert(r.allowed === false, '🔴 bellAutoAllowed برای مدرسهٔ بدون زمان‌بندی زنگ حقیقی true شد');
     assert(r.ind === true, '🔴 نشان پیش‌گزینش بدون زنگ واقعی نمایش داده شد');
@@ -6797,6 +6806,48 @@ test('گام ۴: انتخاب دستی (کلاس یا درس) بر پیش‌گز
     assert(r.subMan === true, '🔴 درس انتخاب‌شدهٔ دستی انتخاب نبود');
     assert(r.clsAuto === true, 'کلاس خودکار با انتخاب دستیِ درس باید بماند');
     assert(r.ind2 === true, '🔴 با انتخاب دستیِ درس، نشان پیش‌گزینش ماند');
+  });
+});
+
+test('گام ۴ (فرم): کلاس و درس زنگ جاری در فرمِ تازهٔ ثبت نمره پیش‌گزینش می‌شوند', () => {
+  withCounselor(() => {
+    const r = JSON.parse(W('(()=>{'
+      + BELL_DATE_AT
+      + 'var row=null;db.schedule.forEach(function(rw){if(row)return;if(rw.day===0&&Number(rw.period)===1&&rw.teacher_id&&rw.class_id&&rw.subject_id){var u=byId("users",rw.teacher_id);if(u&&u.role==="teacher")row=rw;}});'
+      + 'if(!row)return JSON.stringify({skipTest:true});'
+      + 'var tid=row.teacher_id,sid=row.school_id;'
+      + 'var tl=bellTimeline(sid,0);'
+      + 'var les=tl.filter(function(x){return x.kind==="lesson";})[0];'
+      + 'var brk=tl.filter(function(x){return x.kind==="break";})[0];'
+      + 'if(!les||!brk)return JSON.stringify({skipTest:true});'
+      + 'var f=les.from.split(":");'
+      + 'var dLes=dateAtY(0,Number(f[0]),Number(f[1])+5,new Date().getFullYear());'
+      + 'var g=brk.from.split(":");'
+      + 'var dBk=dateAtY(0,Number(g[0]),Number(g[1])+5,new Date().getFullYear());'
+      + 'S.user=byId("users",tid);S.persona=null;S.boss=null;S.filters={};'
+      + 'var fc=visibleClasses()[0];'
+      + 'function formState(){var h=document.getElementById("modal").innerHTML;'
+      + 'return {gclass:window._gclass,'
+      + 'subSel:new RegExp("value=\\""+row.subject_id+"\\" selected").test(h)};}'
+      + 'S.bellNow=dLes;gradeModal(null);var s1=formState();closeModal();'
+      + 'S.bellNow=dBk;gradeModal(null);var s2=formState();closeModal();'
+      + 'var s3=null;'
+      + 'if(fc.id!==row.class_id){'
+      + 'var st=studentsOfClass(fc.id)[0];'
+      + 'if(st){var subs=visibleSubjects();'
+      + 'var gid=insert("grades",{school_id:sid,student_id:st.id,class_id:fc.id,subject_id:subs[0].id,teacher_id:tid,term:"نوبت اول",exam_type:"میان‌ترم",score:10,max_score:20,created_at:todayISO()}).id;'
+      + 'S.bellNow=dLes;gradeModal(byId("grades",gid));s3={gclass:window._gclass};closeModal();'
+      + 'remove("grades",gid);(typeof idxInvalidate==="function")&&idxInvalidate("grades");}}'
+      + 'S.bellNow=null;S.filters={};'
+      + 'return JSON.stringify({skipTest:false,cls:row.class_id,'
+      + 'les:{g:s1.gclass,s:s1.subSel},'
+      + 'bk:{g:s2.gclass,s:s2.subSel},edit:s3,fc:fc.id});})()'));
+    if (r.skipTest) return;
+    assert(r.les.g === r.cls, '🔴 در زمان درس، فرم کلاسِ زنگ جاری را پیش‌گزینش نکرد');
+    assert(r.les.s === true, '🔴 در زمان درس، فرم درسِ زنگ جاری را پیش‌گزینش نکرد');
+    assert(r.bk.g === r.fc, '🔴 در تفریح، رفتار قدیم فرم (نخستین کلاس) حفظ نشد');
+    assert(r.bk.s === false, '🔴 در تفریح، درس زنگ جاری در فرم پیش‌گزینش شد');
+    if (r.edit) assert(r.edit.gclass === r.fc, '🔴 در حالت ویرایش، فرم کلاس نمرهٔ موجود را با کلاس زنگ عوض کرد');
   });
 });
 

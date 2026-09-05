@@ -10,7 +10,7 @@
     "build:check": "node build.js --check",
     "dev": "node scripts/dev-server.js",
     "start": "node server/index.js",
-    "test": "node tests/run.js && node --max-old-space-size=2048 tests/smoke.js",
+    "test": "node tests/run.js && node --expose-gc --max-old-space-size=2048 tests/smoke.js",
     "clean": "rm -rf dist",
     "test:smoke": "node tests/smoke.js"
   },
