@@ -6585,25 +6585,25 @@ test('امتحان نهایی: جلسهٔ نهایی فقط برای پایهٔ 
       + 'S.user=db.users.find(function(u){return u.role==="manager"&&u.school_id===1;});'
       + 'S.persona=null;S.boss=null;S.filters={};'
       + 'var term=byId("exam_terms",' + env.term + ');'
-      + 'function countFinal(){return db.exams.filter(function(x){return x.term_id===' + env.term + '&&x.is_final===1;}).length;}'
+      + 'function countFinal(){return db.exams.filter(function(x){return x.term_id===' + env.term + '&&examSource(x)===\'national_final\';}).length;}'
       + 'function trySave(clsId,isFinal){'
       + 'examModal(null,term);'
       + 'document.getElementById("ex_class").value=String(clsId);'
       + 'document.getElementById("ex_subject").value=String(' + env.sub + ');'
-      + 'document.getElementById("ex_final").value=isFinal?"1":"0";'
+      + 'document.getElementById("ex_source").value=isFinal?"national_final":"internal";'
       + 'document.getElementById("ex_date").value=term.start_date;'
       + 'document.getElementById("ex_time").value="11:00";'
       + 'var b=document.querySelector(\'#modal [data-act="exam-save"]\');'
       + 'if(!b)return -1;'
       + 'b.dispatchEvent(new MouseEvent("click",{bubbles:true}));'
       + '}'
-      + 'var pre={};db.exams.filter(function(x){return x.term_id===' + env.term + '&&x.is_final===1;}).forEach(function(x){pre[x.id]=1;});'
+      + 'var pre={};db.exams.filter(function(x){return x.term_id===' + env.term + '&&examSource(x)===\'national_final\';}).forEach(function(x){pre[x.id]=1;});'
       + 'var before=countFinal();'
       + 'trySave(' + env.c12 + ',true);'
       + 'var after12=countFinal();'
       + 'trySave(' + env.c10 + ',true);'
       + 'var after10=countFinal();'
-      + 'db.exams.filter(function(x){return x.term_id===' + env.term + '&&x.is_final===1&&!pre[x.id];}).forEach(function(x){remove("exams",x.id);});'
+      + 'db.exams.filter(function(x){return x.term_id===' + env.term + '&&examSource(x)===\'national_final\'&&!pre[x.id];}).forEach(function(x){remove("exams",x.id);});'
       + 'return JSON.stringify({before:before,after12:after12,after10:after10});})()'));
     assert(r.after12 === r.before + 1, '🔴 جلسهٔ نهایی دوازدهم ذخیره نشد: ' + r.before + '→' + r.after12);
     assert(r.after10 === r.after12, '🔴 جلسهٔ «نهایی» برای دهم ذخیره شد — قاعدهٔ پایه دور زده شد');
@@ -6613,7 +6613,7 @@ test('امتحان نهایی: جلسهٔ نهایی فقط برای پایهٔ 
 test('امتحان نهایی: نشان «نهایی» در نماهای مدیر، دبیر و دانش‌آموز', () => {
   withCounselor(() => {
     const r = JSON.parse(W('(()=>{'
-      + 'var fe=db.exams.find(function(x){return x.is_final===1;});'
+      + 'var fe=db.exams.find(function(x){return examSource(x)===\'national_final\';});'
       + 'if(!fe)return JSON.stringify({skipTest:true});'
       + 'S.user=db.users.find(function(u){return u.role==="manager"&&u.school_id===fe.school_id;});'
       + 'S.persona=null;S.boss=null;S.filters={term:fe.term_id};S.route="exams";S.page=1;'
@@ -6676,7 +6676,7 @@ test('امتحان نهایی: دمو — فصل منتشرشدهٔ مدرسهٔ
   const r = JSON.parse(W('(()=>{'
     + 'var term=db.exam_terms.filter(function(t){return t.school_id===1&&t.status==="published"&&t.title.indexOf("نهایی")>-1;})[0];'
     + 'if(!term)return JSON.stringify({skipTest:true});'
-    + 'var fe=db.exams.filter(function(x){return x.term_id===term.id&&x.is_final===1;})[0]||{};'
+    + 'var fe=db.exams.filter(function(x){return x.term_id===term.id&&examSource(x)===\'national_final\';})[0]||{};'
     + 'var cls=fe.class_id?byId("classes",fe.class_id):null;'
     + 'var inRange=!!(fe.date&&fe.date>=term.start_date&&fe.date<=term.end_date);'
     + 'return JSON.stringify({skipTest:false,has:!!fe,grade:cls?cls.grade:null,'
@@ -6688,6 +6688,63 @@ test('امتحان نهایی: دمو — فصل منتشرشدهٔ مدرسهٔ
   assert(r.inRange === true, 'تاریخ جلسه در بازهٔ فصل نیست');
   assert(r.duty === true, 'دبیر مراقب نمونه ندارد');
   assert(r.sub === true, 'درس جلسهٔ نمونه نیست');
+});
+
+test('بند ۳: منشأ جلسهې امتحان درسی/نهایی/جبرانی', () => {
+  const stSave = W('JSON.stringify({u:S.user&&S.user.id,t:S.tab,r:S.route})');
+  const code = `(()=>{
+    if(typeof examSource!=='function')return JSON.stringify({err:'no-api'});
+    var compatF=examSource({is_final:1}),compatI=examSource({}),
+        mk=examSource({source:'makeup'}),nf=examSource({source:'national_final'});
+    var bMk=examSourceBadge({source:'makeup'}),bInt=examSourceBadge({});
+    var selN=(typeof EXAM_SOURCES!=='undefined')?EXAM_SOURCES.length:0;
+    var mkEx=db.exams.find(function(x){return examSource(x)==='makeup';});
+    var viewHas=false;
+    if(mkEx){
+      S.user=db.users.find(function(u){return u.role==='manager'&&u.school_id===mkEx.school_id;});
+      S.persona=null;S.boss=null;S.filters={term:mkEx.term_id};S.route='exams';S.page=1;
+      viewHas=renderRoute().indexOf('جبرانی')>-1;
+    }
+    var term=db.exam_terms.filter(function(t){return t.status==='published';})[0];
+    var saved=null;
+    if(term){
+      var c10=db.classes.find(function(c){return c.school_id===1&&c.grade==='دهم';});
+      var sub=term?db.subjects.find(function(x){return x.school_id===1&&x.grade==='دهم';}):null;
+      if(c10&&sub){
+        S.user=db.users.find(function(u){return u.role==='manager'&&u.school_id===1;});
+        S.persona=null;S.boss=null;S.filters={};
+        examModal(null,term);
+        document.getElementById('ex_class').value=String(c10.id);
+        document.getElementById('ex_subject').value=String(sub.id);
+        document.getElementById('ex_source').value='makeup';
+        document.getElementById('ex_date').value=term.start_date;
+        document.getElementById('ex_time').value='14:00';
+        document.querySelector('#modal [data-act="exam-save"]').dispatchEvent(new MouseEvent('click',{bubbles:true}));
+        saved=db.exams.filter(function(x){return x.class_id===c10.id&&x.date===term.start_date&&x.start_time==='14:00';}).pop()||null;
+        if(saved)remove('exams',saved.id);
+      }
+    }
+    return JSON.stringify({compatF:compatF,compatI:compatI,mk:mk,nf:nf,
+      mkHasBadge:bMk.indexOf('جبرانی')>-1,intEmpty:bInt==='',selN:selN,
+      demoMk:!!mkEx,viewHas:viewHas,saved:!!saved,savedSrc:saved?saved.source:null,
+      savedHasIsFinal:saved?('is_final' in saved):nullArray.prototype.map.call(document.querySelectorAll('.toast'),function(t){return t.textContent;})});
+  })()`;
+  let r;
+  try { r = JSON.parse(W(code)); }
+  catch (e) { console.log('EVAL FAILED; code was:\n' + code); throw e; }
+  finally { W('S.user=byId("users",' + JSON.parse(stSave).u + ')||db.users.find(function(x){return x.role==="manager"&&x.school_id===1;});S.tab=' + JSON.stringify(JSON.parse(stSave).t||'') + ';S.route=' + JSON.stringify(JSON.parse(stSave).r||'dashboard') + ';'); }
+  assert(r.err !== 'no-api', 'API منشآ امتحان وجود ندارد');
+  assert(r.compatF === 'national_final', 'سازگاری: is_final=1 خانده نشد');
+  assert(r.compatI === 'internal', 'سازگاری: بدون field ⇒ درسی نشد');
+  assert(r.mk === 'makeup' && r.nf === 'national_final', 'خاندن source جدید کار نکرد');
+  assert(r.selN === 3, '🔴 سه گزینه‌ای منشآ در فرم نیست (' + r.selN + ')');
+  assert(r.mkHasBadge === true, 'نشان جبرانی ساخته نشد');
+  assert(r.intEmpty === true, 'جلسه‌ای درسی نشان بی‌معنی گرفت');
+  assert(r.demoMk === true, 'دمو: جلسه‌ای جبرانی نمونه نیست');
+  assert(r.viewHas === true, '🔴 نشان چبرانی‌ در نمای‌ای مدیر نیست');
+  assert(r.saved === true, '🔴 جلسه جبرانی از فرم ذخیره نشد');
+  assert(r.savedSrc === 'makeup', '🔴 source ذخیره نشد: ' + r.savedSrc);
+  assert(r.savedHasIsFinal === false, '🔴 is_final هنوز نوشته می‌شود');
 });
 
 /* ── گام ۳ زنگ: پیش‌گزینش حضور و غیاب (دور ۶۳، بند ۶) ─────────

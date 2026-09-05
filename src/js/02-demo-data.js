@@ -184,7 +184,14 @@ function generate(){
           start_date:addDaysISO(todayISO(),5),end_date:addDaysISO(todayISO(),12),
           note:'جلسات امتحان نهایی پایهٔ دوازدهم',status:'published'});
         const fe=add('exams',{school_id:school.id,term_id:ft.id,class_id:f12.id,subject_id:fsub.id,
-          date:ft.start_date,start_time:'09:00',duration:90,room:'سالن بزرگ',max_score:20,is_final:1});
+          date:ft.start_date,start_time:'09:00',duration:90,room:'سالن بزرگ',max_score:20,source:'national_final'});
+        /* یک جلسهٔ جبرانی (بند ۳) تا منشأ سوم در دمو دیده شود */
+        const f11=db.classes.filter(c=>c.school_id===school.id&&c.grade==='یازدهم')[0];
+        const fsub11=f11?db.subjects.find(s2=>s2.school_id===school.id&&s2.grade==='یازدهم'):null;
+        if(f11&&fsub11){
+          add('exams',{school_id:school.id,term_id:ft.id,class_id:f11.id,subject_id:fsub11.id,
+            date:addDaysISO(todayISO(),2),start_time:'11:00',duration:90,room:'سالن کوچک',max_score:20,source:'makeup'});
+        }
         const ftch=db.users.find(u2=>u2.school_id===school.id&&u2.role==='teacher');
         if(ftch)add('exam_duties',{exam_id:fe.id,teacher_id:ftch.id,role:'main'});
       }
