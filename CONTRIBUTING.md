@@ -135,6 +135,7 @@ build.js                 چسبانندهٔ همه‌چیز به index.html
 tests/run.js             ۳۳ آزمون ایستا (بدون مرورگر)
 tests/smoke.js           ۴۹۷ آزمون رفتاری (با jsdom)
 tests/simulation.js      ۳۵ سناریوی جامع: چند مدرسه/نقش/حالت زنگ + چالش‌ها (jsdom)
+tests/security.js      پنتست — ۱۴ سناریو: سطح بیرونی، fuzz XSS ذخیره‌شده، نشت داده
 docs/AI_PROMPT.md        سند مرجع کامل پروژه
 ```
 
@@ -248,6 +249,7 @@ npm test                  # هر دو مجموعه
 node tests/run.js         # فقط ایستا — سریع
 node tests/smoke.js       # فقط رفتاری — خروجی کامل را ببینید
 node tests/simulation.js  # شبیه‌سازی جامع (jsdom) — بعد از تغییرات بزرگ
+node tests/security.js    # پنتست (jsdom) — بعد از تغییر در ورود/ورود مجدد/خروجی‌ها
 ```
 
 الگوی نوشتن آزمون:

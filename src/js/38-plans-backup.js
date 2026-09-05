@@ -137,7 +137,19 @@ function buildBackup(){
     counts: { ops: (typeof log !== 'undefined') ? log.length : 0,
               users: db.users.length, schools: db.schools.length },
     settings: subSettings(),
-    ops: (typeof log !== 'undefined') ? log : []
+    /* ⚠️ امنیت (پنتست ۲۰۲-۰۹-۵): رمز عبور جزو دادهٔ عملیات «کاربران» در
+       دفترچه می‌نشیند (برای بازیابی لازم است) ولی فایل پشتیبانِ قابل
+       دانلود هرگز نباید آن را حمل کند. */
+    ops: (typeof log !== 'undefined') ? log.map(function(op){
+      if(op && op.c==='users' && op.data && Object.prototype.hasOwnProperty.call(op.data,'password')){
+        var d={};
+        Object.keys(op.data).forEach(function(k){ d[k]=(k==='password')?'[redacted]':op.data[k]; });
+        var o={};
+        Object.keys(op).forEach(function(k){ o[k]=(k==='data')?d:op[k]; });
+        return o;
+      }
+      return op;
+    }) : []
   };
 }
 
