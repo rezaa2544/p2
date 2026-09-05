@@ -181,6 +181,26 @@ document.addEventListener('click',e=>{
      /* id از محیّطِ کلِک‌لیسنر (بسته‌بندیِ A) می‌آید — مثلِ بقیهٔ اکشن‌ها */
      remove('makeup_classes',Number(id));render();
    },
+   'nudge-send'(){
+     var clsId=Number(id);
+     var slot=currentSlot(S.user.school_id);
+     if(slot.kind!=='lesson'||!slot.no){toast('الان زنگ درسی نیست','err');return;}
+     var schedDay=(slot.schedDay!=null)?slot.schedDay:slot.day;
+     var row=(db.schedule||[]).find(r=>r.school_id===S.user.school_id&&r.day===schedDay&&Number(r.period)===Number(slot.no)&&r.class_id===clsId);
+     if(!row){toast('برنامهٔ این کلاس در این زنگ نیست','err');return;}
+     var r=nudgeTeacher({schoolId:S.user.school_id,classId:clsId,teacherId:row.teacher_id,period:slot.no,dateISO:todayISO(),by:S.user.id});
+     toast(r.msg,r.ok?'ok':'err');render();
+   },
+   'nudge-reply'(){
+     var nu=byId('nudges',Number(id));
+     if(!nu)return;
+     var r=nudgeReply(Number(id), el&&el.dataset.r?el.dataset.r:'later');
+     if(r.ok){
+       /* میان‌برِ دبیر (تصمیم کاربر): «حالا ثبت می‌کنم» = پیش‌گزینشِ همان کلاس */
+       if(el&&el.dataset.r==='ok-now'){S.filters.class=nu.class_id;S.filters.date=nu.date;}
+     }
+     toast(r.msg,r.ok?'ok':'err');render();
+   },
    'user-new'(){userModal(null);},
    'user-edit'(){userModal(byId('users',id));},
    'user-toggle'(){const u=byId('users',id);update('users',id,{active:u.active?0:1});render();},

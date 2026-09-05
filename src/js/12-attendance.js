@@ -50,6 +50,9 @@ function viewAttendance(){
   const cid=Number(S.filters.class||(_autoOk&&_auto.classId)||cls[0].id), date=S.filters.date||todayISO(), q=(S.filters.q||'').trim();
   const _autoShown=_autoOk&&!S.filters.class&&cid===_auto.classId;
   const _smBanner=(typeof virtualModeBanner==='function')?virtualModeBanner(date):'';
+  /* دور ۶۵ بند N2: کارتِ مدیر (کلاس‌های ثبت‌نشده + یادآوری) و بنرِ دبیر */
+  /* ⚠️ پرانتز الزامی: سلسلۀ ternary ضعیف‌تر از + است — بدون آن بنر گم می‌شود */
+  const _nudge=((typeof nudgeManagerCard==='function')?nudgeManagerCard(_now):'')+((typeof nudgeTeacherBanner==='function')?nudgeTeacherBanner(_now):'');
   const roster=studentsOfClass(cid);
   let studs=roster;
   if(q)studs=roster.filter(s=>s.full_name.includes(q));
@@ -80,7 +83,7 @@ function viewAttendance(){
      <button class="btn ghost sm" data-act="att-discard">دور ریختن</button>
    </div>` : '';
 
-  return `${_smBanner}${attChangeTip()}${bannerDraft}<div class="card"><div class="card-head">
+  return `${_smBanner}${_nudge}${attChangeTip()}${bannerDraft}<div class="card"><div class="card-head">
     <div class="row"><select class="select" style="width:180px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
      ${_autoShown?`<span class="badge b-blue" title="بر اساس زنگ جاری و برنامهٔ هفتگی شما — انتخاب دستی بر این مقدم است">🔔 انتخاب خودکار بر اساس زنگ</span><button class="btn ghost sm" data-act="att-reset-class">همهٔ کلاس‌ها</button>`:''}
      <input class="input" style="width:160px" type="date" data-f="date" value="${escAttr(date)}" /><span class="badge b-gray">${jalali(date)}</span></div>
