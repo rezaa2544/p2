@@ -494,6 +494,7 @@ src/body.html  ─┘
 51-homework       ⭐ تکالیف — بارگذاری تصویر دانش‌آموز + تصحیح دیجیتال (خطِ خوددست روی تصویر + نمره)
 52-dojo           ⭐ گیمیفیکیشن سبک ابتدایی (بند ۵) — مدل امتیازِ مدرسه‌پیکربند (dojo_types) + چیپ‌ها در فرم انضباط + بجِ مجموع
 53-visitors       ⭐ مهمان‌ها (بند ۷) — ورود/خروج غیردانش‌آموز و غیرکارکنان؛ صفحهٔ مدیر
+54-library       ⭐ کتابخانه (بند ۸) — کتاب‌ها + امانت به دانش‌آموز + بازگشت + وضعیت (کتاب/امانت/دیرکرد)؛ صفحهٔ مدیر
 25-filters       ⭐ فیلترهای جمع‌شونده (مشترک همه پنل‌ها)
 26-curriculum       ⭐ ساختار مقطع/پایه/شاخه/رشته + کتاب‌های درسی
 27-sync             ⭐ لایه offline-first: صف ارسال، تشخیص اتصال، backoff
@@ -2281,6 +2282,19 @@ purpose,in_at,out_at,registered_by,created_at}` — ورود/خروجِ افرا
 (در `visitorRegister`/`visitorCheckout`). زمان‌ها ISO، نمایش
 شمسی با `jalaliDateTime`. سئوت مستقل با ۵ بخش W1–W5.
 اجرا: `node tests/visitors.js`
+
+### کتابخانه (tests/library.js)
+ماژول `54-library.js` (بند ۸): جدول‌ها `lib_books{school_id,title,
+author,code,created_at}` و `lib_loans{school_id,book_id,student_id,
+loan_at,due_at,returned_at,registered_by,created_at}`. صفحهٔ `library` فقط
+**مدیر** (همین الگوی مهمان‌ها؛ قفل ۸.۱). **وضعیت هرگز ذخیره نمی‌شود** —
+`libBookStatus` محاسبه می‌کند: `loaned` = امانتِ فعال (returned_at خالی)،
+`late` = فعال + `today > due_at`، `free` = بقیه. مهلت پیش‌فرض امانت ۱۴ روز
+(`LIB_DEFAULT_DAYS`)، قابل تنظیم در مودال. اکشن‌ها `lib-new`/`lib-save`/
+`lib-del`/`lib-lend`/`lib-lend-save`/`lib-return`؛ گاردها روی داده در
+`libAddBook`/`libDelBook`/`libLend`/`libReturn` (نقش + `school_id` کتاب و
+دانش‌آموز؛ حذف کتابِ امانت‌رفته رد می‌شود؛ بازگشت تکراری رد می‌شود).
+سئوت مستقل با ۵ بخش L1–L5. اجرا: `node tests/library.js`
 
 ### گواهی‌های رسمی (tests/certify.js)
 بند ۶ در `33-forms-sms.js` (همین الگوی `transcriptCert` + `printableDoc`):
