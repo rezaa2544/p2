@@ -509,6 +509,46 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 .child-switcher .cs-btn.on{background:var(--primary);border-color:var(--primary);color:#fff}
 /* کارت امروز */
 .today-card .card-head{border-bottom:1px dashed var(--border)}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بهبودهای بصری — ui-improvements
+   فقط سایه / گلو / ترنزیشن / بلر — بدون تغییر چیدمان یا ساختار
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── sidebar: گلو روی آیتم فعال + ترنزیشن نرم ── */
+.nav-item{transition:background .15s,color .15s,box-shadow .15s,border-color .15s}
+.nav-item.active{box-shadow:inset 3px 0 0 var(--brand-cyan),0 0 18px rgba(22,179,240,.13),0 2px 10px rgba(22,104,240,.10)}
+
+/* ── avatar: حلقه‌ی درخشان ── */
+.avatar{box-shadow:0 0 0 2px rgba(22,179,240,.4),0 0 10px rgba(22,104,240,.25)}
+
+/* ── topbar: جلوه شیشه‌ای ── */
+.topbar{backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+
+/* ── stat icon: سایه ملایم ── */
+.stat-icon{box-shadow:0 4px 12px rgba(16,34,90,.13)}
+
+/* ── att-btn: ترنزیشن + سایه رنگی روی حالت فعال ── */
+.att-btn{transition:background .14s,color .14s,border-color .14s,box-shadow .14s,transform .14s}
+.att-btn.on-present{box-shadow:0 4px 12px rgba(15,157,99,.38)}
+.att-btn.on-absent{box-shadow:0 4px 12px rgba(224,64,90,.38)}
+.att-btn.on-late{box-shadow:0 4px 12px rgba(224,142,23,.38)}
+.att-btn.on-excused{box-shadow:0 4px 12px rgba(123,92,240,.38)}
+
+/* ── badge: سایه رنگی بسیار ملایم ── */
+.badge{box-shadow:0 1px 5px rgba(16,34,90,.07)}
+.b-green.badge,.badge.b-green{box-shadow:0 1px 6px rgba(15,157,99,.16)}
+.b-red.badge,.badge.b-red{box-shadow:0 1px 6px rgba(224,64,90,.16)}
+.b-blue.badge,.badge.b-blue{box-shadow:0 1px 6px rgba(22,104,240,.16)}
+.b-purple.badge,.badge.b-purple{box-shadow:0 1px 6px rgba(123,92,240,.16)}
+.b-amber.badge,.badge.b-amber{box-shadow:0 1px 6px rgba(224,142,23,.16)}
+.b-cyan.badge,.badge.b-cyan{box-shadow:0 1px 6px rgba(22,179,240,.16)}
+
+/* ── login-art: شکل دکوراتیو دوم ── */
+.login-art::before{content:'';position:absolute;top:-80px;inset-inline-start:-60px;width:260px;height:260px;border-radius:50%;background:rgba(22,179,240,.15);pointer-events:none}
+
+/* ── brand-logo: سایه آبی بهتر ── */
+.brand-logo{box-shadow:0 6px 20px -8px rgba(22,104,240,.40),0 2px 8px rgba(0,0,0,.14)}
 /* ==================== موبایل: تطبیق کامل با عرض صفحه ==================== */
 @media(max-width:900px){
 .app{grid-template-columns:1fr}
