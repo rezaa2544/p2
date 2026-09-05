@@ -165,6 +165,8 @@ var ACTION_ROLES = {
   'bus-follow-save':        ['manager','superadmin'],
   'bus-follow-close':       ['manager','superadmin'],
   'bus-follow-close-save':  ['manager','superadmin'],
+  'vclass-links':    ['teacher','manager','superadmin'],
+  'vclass-link-copy':['teacher','manager','student','parent','superadmin'],
   'vc-join':         ['student'],
   'vc-leave':        ['student'],
   'hw-window':       ['teacher','manager','superadmin'],
