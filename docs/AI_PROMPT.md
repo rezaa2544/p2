@@ -472,7 +472,7 @@ src/body.html  ─┘
 30-authz            ⭐ مجوزدهی روت و اکشن (پس از NAV، پیش از shell)
 31-student-lifecycle        ⭐ چرخهٔ تحصیلی (پیش از actions بارگذاری می‌شود)
 32-atrisk-meetings-growth       ⭐ افت تحصیلی، جلسات اولیا، رشد مدرسه
-33-forms-sms        ⭐ فرم‌های رسمی چاپی و پنل پیامک
+33-forms-sms        ⭐ فرم‌های رسمی چاپی و پنل پیامک + گواهی‌های نمرات/اشتغال/انتقالی با کد احراز (بند ۶)
 34-excel-import     ⭐ ویزارد ورود اکسل (خوانندهٔ بومی xlsx)
 35-superadmin       ⭐ مالی سراسری · بازنشانی رمز · سلامت سامانه
 36-audit-activity   ⭐ سابقهٔ تغییرات · بازدید و بار سامانه
@@ -2269,6 +2269,18 @@ HW1–HW8: دادهٔ نمونه، امنیت ساخت، امنیت+رفتار �
 ندارد — فیکسورِ سئوت خودش می‌سازد (قفل ۵.۱). سئوت مستقل با ۶ بخش
 J1–J6 (دروازهٔ مقطع، امنیت مدل، چیپ+ذخیره، نمایش، همگام‌سازی+بقای
 سابقه، اعتبارسنجی). اجرا: `node tests/dojo.js`
+
+### گواهی‌های رسمی (tests/certify.js)
+بند ۶ در `33-forms-sms.js` (همین الگوی `transcriptCert` + `printableDoc`):
+`enrollmentCert(sid)` (اشتغال به تحصیل) و `transferCert(sid)` (انتقالی با
+بازهٔ زمانی و «وضعیت کلی» اختیاری از میانگین وزنی نمرات) + `certCodeCalc`
+(کد احرازِ **قطعی** از نوع/دانش‌آموز/مدرسه/سال — بدون سرور) +
+`certVerify` (حساس به حروف کوچک نیست) + `certRecord` (جدول
+`certificates` برای سابقهٔ صدور) + `certAllowedStudent` (دانش‌آموز
+فقط خودش، ولی فقط فرزندش — روی داده). کارت گواهی‌ها + کادر احراز
+در تب شناسنامهٔ پرونده (`certsCard` در `17-student-record.js`)؛
+اکشن‌ها `cert-enroll-print`/`cert-transfer-print`/`cert-verify`.
+سئوت مستقل با ۶ بخش C1–C6. اجرا: `node tests/certify.js`
 
 ### شبیه‌سازی جامع (tests/simulation.js)
 آزمون‌های smoke.js نگهبانِ regression هستند؛ tests/simulation.js (۳۵

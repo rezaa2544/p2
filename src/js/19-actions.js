@@ -776,6 +776,33 @@ document.addEventListener('click',e=>{
      if(!d.ok){toast(d.msg,'err');return;}
      printableDoc(d);
    },
+   /* ─────── گواهی‌های رسمی دیگر (بند ۶) ───────
+      همان الگوی cert-print؛ مجوز داده‌ای در certAllowedStudent. */
+   'cert-enroll-print'(){
+     const sid=Number(el.dataset.sid)||(S.user&&S.user.role==='student'?S.user.id:0);
+     const chk=certAllowedStudent(sid);
+     if(!chk.ok){toast(chk.msg,'err');return;}
+     const d=enrollmentCert(sid);
+     if(!d.ok){toast(d.msg,'err');return;}
+     certRecord('enrollment',sid);
+     printableDoc(d);
+   },
+   'cert-transfer-print'(){
+     const sid=Number(el.dataset.sid)||(S.user&&S.user.role==='student'?S.user.id:0);
+     const chk=certAllowedStudent(sid);
+     if(!chk.ok){toast(chk.msg,'err');return;}
+     const d=transferCert(sid);
+     if(!d.ok){toast(d.msg,'err');return;}
+     certRecord('transfer',sid);
+     printableDoc(d);
+   },
+   'cert-verify'(){
+     const sid=Number(el.dataset.sid)||(S.user&&S.user.role==='student'?S.user.id:0);
+     const chk=certAllowedStudent(sid);
+     if(!chk.ok){toast(chk.msg,'err');return;}
+     const r=certVerify(V('cert_code'),sid);
+     toast(r.msg,r.ok?'ok':'err');
+   },
    'sms-new'(){
      openModal(modalTpl('ارسال پیامک گروهی',
        f('گیرندگان',sel('sm_aud',[['parents','همه اولیا'],['teachers','همه دبیران'],
