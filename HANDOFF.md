@@ -37,7 +37,7 @@
   [دانش‌آموز], schoolModeOf [پیش‌فرض برنده], schoolVirtual [معکوس])
 
 ### آزمونِ کامل
-- smoke ۵۳۶/۵۳ ✅ · schoolmode ۴/۴ ✅ · vclass2 ۴/۴ ✅ · homework2 ۵/۵ ✅ ·
+- smoke ۵۳۶/۵۳۶ ✅ · schoolmode ۴/۴ ✅ · vclass2 ۴/۴ ✅ · homework2 ۵/۵ ✅ ·
   vclass ۱۱/۱۱ ✅ · homework ۸/۸ ✅ · bus2 ۵/۵ ✅ · sidadiff ۵/۵ ✅ · dojo ۶/۶ ✅
 
 ### قفل (docs/ARCHITECTURE_DECISIONS.md)
