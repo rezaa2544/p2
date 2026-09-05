@@ -850,6 +850,9 @@ function render(){
   const gate=(S.user&&activePersona()==='parent'&&!parentLocked()&&!S.gateSkipped&&!picker)?safeHTML(parentGate()):'';
   $('#root').innerHTML = (S.user?renderShell():renderLogin())+picker+gate;
 
+  /* کارت‌های زنده (زنگ) — زمان‌سنجِ پُلِ دوره‌ای؛ آیدمپتان */
+  if(typeof bellLiveEnsure==='function') bellLiveEnsure();
+
   /* بازگرداندن اسکرول منو */
   if(navTop){
     var el = document.querySelector('.sidebar');

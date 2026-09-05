@@ -3051,7 +3051,7 @@ function teacherDash(){
   const sched=db.schedule.filter(s=>s.teacher_id===u.id).sort((a,b)=>a.day-b.day||a.period-b.period).slice(0,6);
   /* نوار وضعیت زنگ (گام ۲ دور ۵۰) — فقط نمایش، بدون تغییر رفتار */
   const bellBar=(typeof bellNowBar==='function')?bellNowBar():'';
-  return `${bellBar}<div class="grid g4">
+  return `<div class="bell-live-root" data-bell-live="teacher">${bellBar}</div><div class="grid g4">
    ${statCard('🏛️',fa(cls.length),'کلاس تحت تدریس','blue')}
    ${statCard('🎒',fa(students.size),'دانش‌آموز','green')}
    ${statCard('📝',fa(mine.length),'نمره ثبت‌شده','amber')}
@@ -3142,8 +3142,9 @@ function summaryBlock(sid){
 function familyDash(){
   const u=S.user;
   const kids=u.role==='student'?[u.id]:db.parent_links.filter(p=>p.parent_id===u.id).map(p=>p.student_id);
-  if(!kids.length)return `<div class="card">${empty('👨‍👩‍👦','دانش‌آموزی متصل نیست','با مدیر مدرسه تماس بگیرید.')}</div>`;
-  return kids.map(summaryBlock).join('');
+  const live=(typeof familyBellCards==='function')?familyBellCards():'';
+  if(!kids.length)return live+`<div class="card">${empty('👨‍👩‍👦','دانش‌آموزی متصل نیست','با مدیر مدرسه تماس بگیرید.')}</div>`;
+  return live+kids.map(summaryBlock).join('');
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -12905,6 +12906,9 @@ function render(){
   const gate=(S.user&&activePersona()==='parent'&&!parentLocked()&&!S.gateSkipped&&!picker)?safeHTML(parentGate()):'';
   $('#root').innerHTML = (S.user?renderShell():renderLogin())+picker+gate;
 
+  /* کارت‌های زنده (زنگ) — زمان‌سنجِ پُلِ دوره‌ای؛ آیدمپتان */
+  if(typeof bellLiveEnsure==='function') bellLiveEnsure();
+
   /* بازگرداندن اسکرول منو */
   if(navTop){
     var el = document.querySelector('.sidebar');
@@ -18347,6 +18351,158 @@ function bellNowBar(now){
     + (cur.conflict
         ? ' <span class="badge b-amber">تداخل برنامه</span>' : '')
     + '</div>';
+}
+/* ═══════════════════════════════════════════════════════════════════
+   بخش ۶ ▸ کارتِ زندهٔ زنگ برای خانواده (دور ۶۵ بند زنگ زنده)
+   ═══════════════════════════════════════════════════════════════════
+   ولی (و خودِ دانش‌آموز) برای هر فرزند یک کارتِ زنده می‌بیند:
+   زنگِ جاری · کلاسِ فرزند · اسم دبیرِ آن زنگ · وضعیتِ امروز.
+
+   🔴 این کارت **همیشه رایگان** است — دادهٔ پایه (حضور + برنامه)
+   است و ربطی به اشتراک ندارد (تصمیمِ کاربر: کارتِ ولی رایگان
+   می‌ماند و اسم دبیر را هم می‌بیند). اشتراک فقط امکاناتِ اضافه
+   (گزارش‌های تحلیلی) را کنترل می‌کند.
+
+   🔴 استریم = «پُلِ دوره‌ای»: هر ۴۵ ثانیه (پنجرهٔ ۳۰–۶۰ ثانیهٔ
+   تصمیمِ کاربر) فقط همین کارت‌ها بازندهی می‌شوند — نه رندرِ
+   کل صفحه، نه وب‌سوکت. اگر برچسبِ زنده از DOM رفته باشد،
+   زمان‌سنج خودکار خاموش می‌شود.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** دبیری که کلاسِ مشخص در روز/زنگِ مشخص تدریس می‌کند (اسم برای ولی). */
+function classNowTeacher(classId, day, period){
+  var r = (db.schedule || []).filter(function(x){
+    return x.class_id === classId && x.day === day && Number(x.period) === Number(period);
+  })[0];
+  if(!r) return null;
+  return (byId('users', r.teacher_id) || {}).full_name || null;
+}
+
+/** تاریخِ محلیِ یک Date به شکل ISO (برای آزمون‌پذیری با nowِ ساختگی). */
+function localISOOf(t){
+  var p = function(n){ return String(n).padStart(2,'0'); };
+  return t.getFullYear() + '-' + p(t.getMonth()+1) + '-' + p(t.getDate());
+}
+
+/**
+ * وضعیتِ زندهٔ یک فرزند: زنگِ جاری + کلاس + دبیر + حضورِ امروز.
+ * تابعِ خالص است (داده را نمی‌چرخاند) — برای تست با `now` ثابت.
+ */
+function childNowStatus(studentId, now){
+  var st = byId('users', studentId);
+  if(!st) return null;
+  var sid = st.school_id;
+  var t = now || new Date();
+  var slot = currentSlot(sid, t);
+  var cls = classOf(studentId) || {};
+  var out = {
+    studentId: studentId,
+    name: st.full_name || '—',
+    className: cls.name || '—',
+    classId: cls.id || null,
+    schoolId: sid,
+    slot: slot,
+    teacherName: null,
+    att: null
+  };
+  if(slot.kind === 'lesson' && slot.no && out.classId){
+    out.teacherName = classNowTeacher(out.classId, slot.day, slot.no);
+  }
+  var a = (db.attendance || []).filter(function(x){
+    return x.student_id === studentId && x.date === localISOOf(t);
+  })[0];
+  out.att = a ? a.status : null;
+  return out;
+}
+
+/** HTMLِ کارتِ یک فرزند (بخشِ رایگانِ نمایِ زنده). */
+function familyBellCardHTML(c){
+  var slot = c.slot;
+  var slotHTML = '';
+  if(!slot.hasSchedule){
+    slotHTML = '<div class="small muted">مدرسهٔ این فرزند هنوز برنامهٔ زنگ ثبت نکرده است.</div>';
+  } else if(slot.kind === 'holiday'){
+    slotHTML = '<div class="small">🌙 امروز روز درسی نیست.</div>';
+  } else if(slot.kind === 'before'){
+    slotHTML = '<div class="small">🕗 هنوز مدرسه شروع نشده'
+      + (slot.next ? ' — نخستین زنگ ' + esc(timeFa(slot.next.from)) : '') + '.</div>';
+  } else if(slot.kind === 'after'){
+    slotHTML = '<div class="small">🌆 ساعت مدرسه تمام شده است.</div>';
+  } else if(slot.kind === 'break'){
+    slotHTML = '<div class="small">☕ زنگ تفریح'
+      + (slot.next && slot.next.kind === 'lesson' ? ' — زنگ بعدی ' + esc(timeFa(slot.next.from)) : '') + '</div>';
+  } else if(slot.kind === 'lesson'){
+    slotHTML = '<div class="small">🔔 <b>' + esc(slot.label) + '</b> <span class="muted">('
+      + esc(timeFa(slot.from)) + ' تا ' + esc(timeFa(slot.to)) + ')</span>'
+      + (c.teacherName ? ' — با <b>' + esc(c.teacherName) + '</b> در کلاس'
+                       : ' — برای این کلاس در برنامه، دبیری ثبت نشده') + '</div>';
+  } else {
+    slotHTML = '<div class="small muted">برنامهٔ زنگ امروز تعیین نیست.</div>';
+  }
+  var attMap = { present:'✅ حاضر', absent:'❌ غایب', late:'⏰ دیر', excused:'📋 مرخصی' };
+  var attClass = c.att === 'present' ? 'b-green' : (c.att === 'absent' ? 'b-red' : 'b-amber');
+  var attHTML = c.att
+    ? '<span class="badge ' + attClass + '">امروز: ' + attMap[c.att] + '</span>'
+    : '<span class="badge b-gray">امروز: هنوز ثبت نشده</span>';
+  return '<div class="card" style="margin-bottom:10px"><div class="card-head">'
+    + '<h3 style="font-size:15px">' + esc(c.name) + '</h3>'
+    + '<span class="badge b-gray">' + esc(c.className) + '</span></div>'
+    + '<div class="card-body" style="display:grid;gap:8px">' + slotHTML + attHTML + '</div></div>';
+}
+
+/** محتوای کارت‌های همهٔ فرزندان (بدون قاب) — برای تیکِ زنده. */
+function familyBellCardsInner(now){
+  var role = (typeof activePersona === 'function') ? activePersona() : S.user.role;
+  if(role !== 'parent' && role !== 'student') return '';
+  var kids = S.user.role === 'student' ? [S.user.id]
+    : db.parent_links.filter(function(p){ return p.parent_id === S.user.id; }).map(function(p){ return p.student_id; });
+  if(!kids.length) return '';
+  return kids.map(function(k){
+    var c = childNowStatus(k, now);
+    if(!c) return '';
+    return familyBellCardHTML(c);
+  }).join('');
+}
+
+/** کارتِ زندهٔ زنگ برای ولی/دانش‌آموز — همیشه رایگان، بدون گارد اشتراک. */
+function familyBellCards(now){
+  if(typeof S === 'undefined' || !S.user) return '';
+  var inner = familyBellCardsInner(now);
+  if(!inner) return '';
+  return '<div style="margin-bottom:10px">'
+    + '<div class="row" style="padding:8px 14px 0"><b style="font-size:13px">🔔 زنگ زنده</b>'
+    + '<span class="small muted">دادهٔ پایه — همیشه رایگان</span></div>'
+    + '<div class="bell-live-root" data-bell-live="family">' + inner + '</div></div>';
+}
+
+/* ── تیکِ زنده: پُلِ دوره‌ای ۴۵ ثانیه‌ای (فقط کارت‌ها، نه کل صفحه) ── */
+var BELL_LIVE_INTERVAL = 45000;   /* پنجرهٔ ۳۰–۶۰ ثانیهٔ تصمیمِ کاربر */
+var bellLiveTimer = null;
+
+function bellLiveTick(){
+  try{
+    var roots = document.querySelectorAll('[data-bell-live]');
+    if(!roots.length){ bellLiveStop(); return; }
+    roots.forEach(function(root){
+      var kind = root.getAttribute('data-bell-live');
+      if(kind === 'family'){
+        root.innerHTML = familyBellCardsInner();
+      } else {
+        root.innerHTML = (typeof bellNowBar === 'function') ? bellNowBar() : '';
+      }
+    });
+  }catch(e){ /* تیکِ زنده هرگز نباید برنامه را شکند */ }
+}
+
+/** زمان‌سنجِ زنده را تضمین می‌کند (آیدمپتان — در رندر صدا زده می‌شود). */
+function bellLiveEnsure(){
+  if(typeof S === 'undefined' || !S.user){ bellLiveStop(); return; }
+  if(bellLiveTimer) return;
+  try{ bellLiveTimer = setInterval(bellLiveTick, BELL_LIVE_INTERVAL); }catch(e){}
+}
+
+function bellLiveStop(){
+  if(bellLiveTimer){ try{ clearInterval(bellLiveTimer); }catch(e){} bellLiveTimer = null; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
