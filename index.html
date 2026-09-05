@@ -10428,6 +10428,18 @@ function generateExtras(){
       t.paid=paidSum; t.status = paidSum>=payable?'settled':paidSum>0?'partial':'open';
     });
 
+    // یک قسطِ معوق بخشیده می‌شود (نمایشِ وضعیتِ canceled + کاهشِ بدهی)
+    {
+      const od=db.installments.filter(i=>i.school_id===school.id&&i.status!=='paid'&&i.status!=='canceled'&&i.due_date<todayISO());
+      if(od.length){
+        const w=od[0];
+        update('installments',w.id,{status:'canceled'});
+        const wt=byId('tuitions',w.tuition_id);
+        if(wt){const pay=Math.max(0,wt.payable-(w.amount-w.paid_amount));
+          update('tuitions',wt.id,{payable:pay,status:pay<=wt.paid?'settled':(wt.paid>0?'partial':'open')});}
+      }
+    }
+
     // هزینه‌های ۶ ماه اخیر
     for(let m=0;m<6;m++) EXPENSE_CATS.forEach(cat=>{
       if(chance(0.25))return;
@@ -10495,6 +10507,84 @@ function financeStats(){
   return {count:tu.length,settled:tu.filter(t=>t.status==='settled').length,billed,collected,remaining:billed-collected,
     rate:billed?Math.round(collected/billed*1000)/10:0,odCount:od.length,odAmount:od.reduce((a,b)=>a+(b.amount-b.paid_amount),0),
     soonCount:soon.length,income,expense,balance:income-expense,debtors,months:Object.entries(months).sort().slice(-8)};
+}
+
+/* ---------------- تکمیل‌های مالی (دور ۶۴: نیازهای واقعی مدرسهٔ غیردولتی) ---------------- */
+
+/**
+ * صدور صورتحساب از یک طرح برای یک دانش‌آموز.
+ * برگرداندن {ok, msg} — گاردها در سطح داده:
+ *  - دانش‌آموز نباید صورتحسابِ باز داشته باشد
+ *  - طرح باید فعال باشد و متعلق به همان مدرسه
+ */
+function issueTuition(studentId, planId, discount){
+  var st = byId('users', studentId);
+  if(!st || st.role !== 'student') return {ok:false, msg:'دانش‌آموز معتبر نیست'};
+  var plan = byId('tuition_plans', planId);
+  if(!plan || plan.school_id !== st.school_id) return {ok:false, msg:'طرح معتبر نیست'};
+  if(!plan.active) return {ok:false, msg:'این طرح فعال نیست'};
+  var open = db.tuitions.filter(function(t){ return t.student_id===st.id && t.status!=='settled'; });
+  if(open.length) return {ok:false, msg:'این دانش‌آموز هنوز صورتحسابِ باز دارد — پیش از صدورِ تازه باید تسویه شود'};
+  discount = Math.max(0, Math.min(Number(discount)||0, plan.amount));
+  var payable = plan.amount - discount;
+  var cls = (typeof classOf==='function') ? (classOf(st.id)||{}) : {};
+  var t = insert('tuitions',{school_id:st.school_id, student_id:st.id, plan_id:plan.id, class_id:cls.id||null,
+    total:plan.amount, discount:discount, payable:payable, paid:0, status:'open'});
+  var n = plan.installments, per = Math.floor(payable/n), made = 0;
+  for(var i=1;i<=n;i++){
+    var amount = (i===n) ? payable-per*(n-1) : per;
+    var due = addDaysISO(plan.first_due, (i-1)*plan.interval_days);
+    insert('installments',{tuition_id:t.id, school_id:st.school_id, student_id:st.id, seq:i,
+      due_date:due, amount:amount, paid_amount:0, status:'pending', method:null, ref_id:null, paid_at:null});
+    made++;
+  }
+  return {ok:true, msg:fa(made)+' قسط ساخته شد', tuition:t.id};
+}
+
+/**
+ * یادآوری خودکارِ اقساطِ سررسیدِ گذشته.
+ * 🔴 (idempotent): برای هر قسط فقط یک اعلان — با نشانهٔ `ref`.
+ * در بوتِ برنامه اجرا می‌شود و دکمهٔ «ارسال یادآوری» هم همین را صدا می‌زند.
+ * برگرداندن {made, skipped}
+ */
+function tuitionReminders(){
+  var made=0, skipped=0, today=todayISO();
+  db.installments.forEach(function(i){
+    if(i.status!=='pending' && i.status!=='partial') return;
+    if(!(i.due_date < today)) return;
+    if(db.notifications.some(function(n){ return n.ref==='tr_'+i.id; })){ skipped++; return; }
+    var st = byId('users', i.student_id); if(!st) return;
+    var targets=[i.student_id].concat(db.parent_links.filter(function(l){return l.student_id===i.student_id;}).map(function(l){return l.parent_id;}));
+    targets.forEach(function(uid){
+      insert('notifications',{user_id:uid, school_id:i.school_id, type:'tuition_due', ref:'tr_'+i.id,
+        title:'⏳ یادآوری قسطِ سررسیدِ گذشته',
+        body:'قسط '+fa(i.seq)+' به مبلغ '+rial(i.amount-i.paid_amount)+' ریال — سررسید '+jalali(i.due_date)+' گذشته است.',
+        link:'mytuition', read:0, created_at:today});
+    });
+    made++;
+  });
+  return {made:made, skipped:skipped};
+}
+
+/** بخشیدنِ (ساقط‌کردنِ) ماندهٔ یک قسط — با کاستنِ بدهی از صورتحساب */
+function waiveInstallment(instId){
+  var i = byId('installments', instId);
+  if(!i) return {ok:false, msg:'قسط یافت نشد'};
+  if(i.status==='paid') return {ok:false, msg:'قسطِ تسویه‌شده بخشیدنی نیست'};
+  if(i.status==='canceled') return {ok:false, msg:'این قسط قبلاً بخشیده شده'};
+  var remaining = i.amount - i.paid_amount;
+  update('installments', i.id, {status:'canceled'});
+  var t = byId('tuitions', i.tuition_id);
+  if(t){
+    var payable = Math.max(0, t.payable - remaining);
+    var status = payable<=t.paid ? 'settled' : (t.paid>0?'partial':'open');
+    update('tuitions', t.id, {payable:payable, status:status});
+  }
+  var st = byId('users', i.student_id);
+  if(st) insert('notifications',{user_id:st.id, school_id:i.school_id, type:'tuition_paid',
+    title:'🧾 قسط بخشیده شد', body:'ماندهٔ قسط '+fa(i.seq)+' ('+rial(remaining)+' ریال) بخشیده شد.',
+    link:'mytuition', read:0, created_at:todayISO()});
+  return {ok:true, msg:'ماندهٔ '+rial(remaining)+' ریال بخشیده شد'};
 }
 
 /* ---------------- اعلان‌ها ---------------- */
@@ -10580,14 +10670,15 @@ function viewChat(){
 
 /* ---------------- شهریه (مدیر) ---------------- */
 function viewTuition(){
-  const st=financeStats(), tab=S.tab==='ledger'?'ledger':S.tab==='plans'?'plans':S.tab==='students'?'students':'dash';
-  const tabs=[['dash','📊 نمای مالی'],['students','👨‍🎓 شهریه دانش‌آموزان'],['plans','📋 طرح‌ها'],['ledger','📒 درآمد و هزینه']]
+  const st=financeStats(), tab=['ledger','plans','students','debtors'].indexOf(S.tab)>-1?S.tab:'dash';
+  const tabs=[['dash','📊 نمای مالی'],['students','👨‍🎓 شهریه دانش‌آموزان'],['debtors','⚠️ بدهکاران'],['plans','📋 طرح‌ها'],['ledger','📒 درآمد و هزینه']]
     .map(([k,l])=>`<button class="btn ${tab===k?'':'ghost'}" data-act="tab" data-t="${escAttr(k)}">${l}</button>`).join('');
   const cards=`<div class="grid g4" style="margin-bottom:14px">
     ${statCard('🧾',rialShort(st.billed),'شهریه صادرشده (ریال)','blue')}
     ${statCard('💰',rialShort(st.collected),`وصول‌شده — ${fa(st.rate)}٪`,'green')}
     ${statCard('⏳',rialShort(st.remaining),'مانده مطالبات (ریال)','amber')}
-    ${statCard('⚠️',rialShort(st.odAmount),`معوق — ${fa(st.odCount)} قسط`,'red')}</div>`;
+    ${statCard('⚠️',rialShort(st.odAmount),`معوق — ${fa(st.odCount)} قسط`,'red')}
+    ${S.user.role==='manager'||S.user.role==='superadmin'?`<div style="display:flex;gap:8px;align-items:center;justify-content:center;padding:8px 10px"><span class="small muted">یادآوریِ خودکارِ سررسیدِ گذشته</span><button class="btn sm" data-act="remind-due">📨 ارسال یادآوری</button></div>`:''}</div>`;
   let body='';
   if(tab==='dash'){
     const max=Math.max(1,...st.months.flatMap(([,v])=>[v.income,v.expense]));
@@ -10618,7 +10709,7 @@ function viewTuition(){
   } else if(tab==='students'){
     const all=schoolScope('tuitions'); const per=15, pages=Math.max(1,Math.ceil(all.length/per));
     const rows=all.slice((S.page-1)*per,S.page*per);
-    body=`<div class="card"><div class="card-head"><h3>صورتحساب دانش‌آموزان</h3><span class="badge b-gray">${fa(all.length)} صورتحساب</span></div>
+    body=`<div class="card"><div class="card-head"><h3>صورتحساب دانش‌آموزان</h3><span class="badge b-gray">${fa(all.length)} صورتحساب</span><button class="btn" data-act="tuition-new">➕ صدور صورتحساب</button></div>
       <div class="table-wrap"><table class="table"><thead><tr><th>دانش‌آموز</th><th>کلاس</th><th>طرح</th><th>قابل پرداخت</th><th>پرداخت‌شده</th><th>وضعیت</th><th></th></tr></thead><tbody>
       ${rows.map(t=>{const s=byId('users',t.student_id)||{},p=byId('tuition_plans',t.plan_id)||{};
         const S_={open:['پرداخت‌نشده','b-amber'],partial:['جزئی','b-blue'],settled:['تسویه','b-green']}[t.status]||['—','b-gray'];
@@ -10637,6 +10728,26 @@ function viewTuition(){
         <td><button class="icon-btn" title="ویرایش" data-act="plan-edit" data-id="${escAttr(p.id)}">✏️</button>
           <button class="icon-btn danger" title="حذف" data-act="plan-del" data-id="${escAttr(p.id)}">🗑️</button></td></tr>`).join('')}
       </tbody></table></div>`:empty('📋','طرحی تعریف نشده','')}</div>`;
+  } else if(tab==='debtors'){
+    const qd=(S.filters.q||'').trim(), fc=(S.filters.debtclass||'');
+    let rows=schoolScope('tuitions').filter(t=>t.payable>t.paid);
+    if(fc)rows=rows.filter(t=>String(t.class_id)===String(fc));
+    if(qd)rows=rows.filter(t=>((byId('users',t.student_id)||{}).full_name||'').includes(qd));
+    const totalDebt=rows.reduce((a,b)=>a+(b.payable-b.paid),0);
+    const clsList= schoolScope('classes');
+    body=`<div class="card"><div class="card-head"><h3>⚠️ گزارش بدهکاران</h3>
+      <div class="row"><select class="select" style="width:170px" data-f="debtclass"><option value="">همه کلاس‌ها</option>${clsList.map(c=>`<option value="${escAttr(c.id)}" ${String(c.id)===String(fc)?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
+      <input class="input" style="width:170px" placeholder="جستجوی دانش‌آموز…" data-f="q" value="${esc(qd)}" /></div></div>
+      ${rows.length?`<div class="card-body" style="border-bottom:1px solid var(--border);display:grid;gap:6px">
+        <div class="row"><span class="badge b-red">${fa(rows.length)} بدهکار</span><b>جمع: ${rial(totalDebt)} ریال</b>
+        <div class="spacer"></div><span class="small muted">بدهی = قابل پرداخت − پرداخت‌شده (اقساطِ بخشیده‌شده کسر شده‌اند)</span></div></div>
+      <div class="table-wrap"><table class="table"><thead><tr><th>#</th><th>دانش‌آموز</th><th>کلاس</th><th>طرح</th><th>قابل پرداخت</th><th>پرداخت‌شده</th><th>بدهی</th><th></th></tr></thead><tbody>
+      ${rows.sort((a,b)=>(b.payable-b.paid)-(a.payable-a.paid)).map((t,i)=>{const s2=byId('users',t.student_id)||{},p=byId('tuition_plans',t.plan_id)||{};
+        return `<tr><td>${fa(i+1)}</td><td><b>${esc(s2.full_name||'—')}</b></td><td>${esc((byId('classes',t.class_id)||{}).name||'—')}</td>
+        <td class="small">${esc(p.title||'—')}</td><td>${rial(t.payable)}</td><td style="color:var(--green)">${rial(t.paid)}</td>
+        <td style="color:var(--red)"><b>${rial(t.payable-t.paid)}</b></td>
+        <td><button class="btn sm" data-act="tuition-detail" data-id="${escAttr(t.student_id)}">اقساط</button></td></tr>`;}).join('')}
+      </tbody></table></div>`:empty('🎉','بدهکار نیست','')}</div>`;
   } else {
     const all=schoolScope('transactions').sort((a,b)=>b.date.localeCompare(a.date));
     const per=15,pages=Math.max(1,Math.ceil(all.length/per)),rows=all.slice((S.page-1)*per,S.page*per);
@@ -10677,6 +10788,8 @@ function viewMyTuition(){
           <td><div class="row" style="gap:5px">
             ${i.status!=='paid'&&i.status!=='canceled'?`<button class="btn sm" data-act="pay-online" data-id="${escAttr(i.id)}">💳 پرداخت</button>`:''}
             ${i.paid_amount>0?`<button class="icon-btn" title="رسید" data-act="receipt" data-id="${escAttr(i.id)}">🧾</button>`:''}
+            ${['manager','superadmin'].includes(u.role)&&i.status!=='paid'&&i.status!=='canceled'?`<button class="icon-btn" title="بخشیدنِ مانده" data-act="inst-cancel" data-id="${escAttr(i.id)}">🕊️</button>`:''
+}
           </div></td></tr>`;}).join('')}
       </tbody></table></div>`:empty('🧾','قسطی ثبت نشده','')}
     </div></div>`;
@@ -10809,6 +10922,35 @@ const F7_ACTIONS = {
     S.filters.chat=id; render();
   },
   'tuition-detail'(el,id){ S.child=id; go('mytuition'); },
+  'tuition-new'(){
+    const stu=schoolScope('users').filter(x=>x.role==='student'&&x.active);
+    const plans=schoolScope('tuition_plans').filter(p=>p.active);
+    if(!stu.length||!plans.length){toast('برای صدور، دانش‌آموز و طرحِ فعال لازم است','err');return;}
+    openModal(modalTpl('صدور صورتحساب شهریه',
+      `${f('دانش‌آموز *',sel('tn_st',stu.map(x=>[x.id,x.full_name])))}
+       ${f('طرح *',sel('tn_pl',plans.map(p=>[p.id,`${p.title} — ${rial(p.amount)} ریال`])))}
+       ${f('تخفیف (ریال)',inp('tn_disc',0,'number'))}
+       <div class="small muted" style="line-height:2">اقساط طبقِ زمان‌بندیِ طرح ساخته می‌شوند؛ اگر دانش‌آموز صورتحسابِ باز داشته باشد، صدور رد می‌شود.</div>`,
+      'tuition-new-save'));
+  },
+  'tuition-new-save'(){
+    const r=issueTuition(Number(V('tn_st')),Number(V('tn_pl')),V('tn_disc'));
+    if(!r.ok){toast(r.msg,'err');return;}
+    closeModal(); toast('صورتحساب صادر شد — '+r.msg,'ok'); render();
+  },
+  'remind-due'(){
+    const r=tuitionReminders();
+    toast(r.made?`یادآوری برای ${fa(r.made)} قسط ساخته شد`:'قسطِ سررسیدِ گذشته‌ای بدون یادآوری نیست',r.made?'ok':'');
+    render();
+  },
+  'inst-cancel'(el,id){
+    const i=byId('installments',id); if(!i)return;
+    const rem=i.amount-i.paid_amount;
+    askConfirm('ماندهٔ این قسط ('+rial(rem)+' ریال) بخشیده شود؟ بدهیِ دانش‌آموز همین‌قدر کم می‌شود.',()=>{
+      const r=waiveInstallment(id);
+      toast(r.msg,r.ok?'ok':'err'); render();
+    },{title:'بخشیدنِ قسط',ok:'بخشیدن',danger:false,note:false});
+  },
   'pay-online'(el,id){
     const i=byId('installments',id); if(!i)return;
     const remaining=i.amount-i.paid_amount;
@@ -12638,6 +12780,10 @@ setTimeout(()=>{
   if(typeof generateAssetsDemo==='function') generateAssetsDemo();
   if(typeof generateSidaDemo==='function') generateSidaDemo();
   if(typeof generateSchoolModeDemo==='function') generateSchoolModeDemo();
+  /* یادآوریِ خودکارِ اقساطِ سررسیدِ گذشته — هر بوت یک‌بار،멪 */
+  if(typeof tuitionReminders==='function')tuitionReminders();
+  /* یادآوریِ خودکارِ اقساطِ سررسیدِ گذشته — هر بوت یک‌بار،멪 */
+  if(typeof tuitionReminders==='function')tuitionReminders();
   loadLog(); applyLog(); initSync();
   /* بند ۱۵: لینکِ اختصاصی — بارگذاری صفحه با hash + تغییرِ hash */
   if(typeof vclassAutoJoinFromHash==='function'){

@@ -897,6 +897,10 @@ setTimeout(()=>{
   if(typeof generateAssetsDemo==='function') generateAssetsDemo();
   if(typeof generateSidaDemo==='function') generateSidaDemo();
   if(typeof generateSchoolModeDemo==='function') generateSchoolModeDemo();
+  /* یادآوریِ خودکارِ اقساطِ سررسیدِ گذشته — هر بوت یک‌بار،멪 */
+  if(typeof tuitionReminders==='function')tuitionReminders();
+  /* یادآوریِ خودکارِ اقساطِ سررسیدِ گذشته — هر بوت یک‌بار،멪 */
+  if(typeof tuitionReminders==='function')tuitionReminders();
   loadLog(); applyLog(); initSync();
   /* بند ۱۵: لینکِ اختصاصی — بارگذاری صفحه با hash + تغییرِ hash */
   if(typeof vclassAutoJoinFromHash==='function'){
