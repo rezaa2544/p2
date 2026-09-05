@@ -37,6 +37,29 @@ function saveYearState(sid, patch){
     { school_id: sid, year_code: yearCode(), closed: 0, promoted: 0, placement: null }, patch));
 }
 
+/* ─────────── سال تحصیلی به‌عنوان موجودیت مستقل (بند ۰.۲) ───────────
+   سال تحصیلی فقط «نتیجهٔ تاریخ» نیست؛ هر مدرسه ردیفی در school_years
+   دارد و سالِ مقصدِ چیدمان (placement_year) هنگام بستن سال ثبت می‌شود.
+   بنابراین چیدمان و پیش‌ثبت‌نام همیشه به سالِ مشخصی تعلق دارند،
+   نه به «هر سال که باشد». */
+
+/** سال تحصیلی بعد از یک سال (پیش‌فرض: سال جاری) — «۱۴۰۴-۱۴۰۵» ⇒ «۱۴۰۵-۱۴۰۶» */
+function nextYearCode(c){
+  var a = Number(String(c || yearCode()).split('-')[0]);
+  return (a + 1) + '-' + (a + 2);
+}
+
+/** سالِ مقصدِ چیدمان/ثبت‌نام برای یک مدرسه:
+    سالِ بسته‌شده، چیدمان برای «سال بعد» است (مورد ثبت‌نام شهریور). */
+function targetYearOf(sid){
+  var st = yearState(sid);
+  if(st.placement_year) return st.placement_year;
+  return st.closed ? nextYearCode(st.year_code) : st.year_code;
+}
+
+/** عنوان سال بعد، برای نمایش در قیف پیش‌ثبت‌نام */
+function nextYearTitle(){ var c = nextYearCode().split('-'); return faD(c[0]) + '-' + faD(c[1]); }
+
 /**
  * آیا اکنون فصل پایان سال است؟
  * تیر و مرداد (ماه ۴ و ۵ شمسی) فصل بستن سال است.
@@ -157,22 +180,29 @@ function autoPlacement(students, classes){
   return buckets;
 }
 
-/** اعمال چیدمان: ثبت‌نام دانش‌آموزان در کلاس‌های تعیین‌شده */
-function applyPlacement(pairs){
+/** اعمال چیدمان: ثبت‌نام دانش‌آموزان در کلاس‌های تعیین‌شده.
+    سالِ ثبت‌نام = سالِ مقصد (placement_year سالِ بسته‌شده) — بند ۰.۲.
+    ردیفِ پیش‌ثبت‌نامِ دانش‌آموزِ چیده‌شده در همان سال، «چیده شد» می‌شود. */
+function applyPlacement(pairs, sid){
   var n = 0;
+  var targetYear = (sid != null) ? targetYearOf(sid) : null;
   batchWrites(function(){
     pairs.forEach(function(p){
       if(!p.classId || !p.studentId) return;
       var cls = byId('classes', p.classId);
       if(!cls) return;
+      var ey = targetYear || targetYearOf(cls.school_id);
       db.enrollments.filter(function(e){ return e.student_id === p.studentId; })
         .forEach(function(e){ remove('enrollments', e.id); });
       insert('enrollments', { school_id: cls.school_id, class_id: cls.id,
-        student_id: p.studentId, year: yearCode() });
+        student_id: p.studentId, year: ey });
       /* رشته و پایهٔ دانش‌آموز با کلاس هماهنگ می‌شود */
       var patch = { grade_level: cls.grade_level || gradeFromName(cls.name) };
       if(cls.field) patch.field = cls.field;
       update('users', p.studentId, patch);
+      (db.pre_enrollments || []).filter(function(pe){
+        return pe.student_id === p.studentId && pe.year_code === ey && pe.status !== 'placed';
+      }).forEach(function(pe){ update('pre_enrollments', pe.id, { status: 'placed' }); });
       n++;
     });
   });
@@ -213,14 +243,103 @@ function enrollmentList(sid){
   });
 }
 
+/* ─────────── قیف پیش‌ثبت‌نام سال آینده (بند ۰.۲) ───────────
+   مدیر می‌تواند قبل از شروع سال تازه، دانش‌آموز تازه‌واردها و
+   بازگشتی‌ها را برای «سال بعد» پیش‌ثبت‌نام کند. قیف چهار مرحله
+   دارد: ثبت (registered) ← تأیید (confirmed) ← چیدمان
+   (placed) | رد (rejected). تأیید یک پیش‌ثبت‌نام تازه‌وارد،
+   حساب دانش‌آموز را می‌سازد؛ اگر کد ملی با دانش‌آموز فعلی یکی
+   باشد، به همان حساب وصل می‌شود (ساخت تکراری نمی‌شود). */
+
+const PRE_STATUS=[['registered','ثبت‌شده','b-blue'],['confirmed','تأییدشده','b-amber'],
+                  ['placed','چیده شد','b-green'],['rejected','رد شد','b-gray']];
+
+/** فهرست پیش‌ثبت‌نام‌های سال آیندهٔ یک مدرسه */
+function preEnrollFor(sid){
+  return (db.pre_enrollments || []).filter(function(p){
+    return p.school_id === sid && p.year_code === nextYearCode(); });
+}
+
+/** ساخت ردیف پیش‌ثبت‌نام (بازگشتی یا تازه‌وارد) */
+function preAddRow(sid, data){
+  db.pre_enrollments = db.pre_enrollments || [];
+  return insert('pre_enrollments', Object.assign({
+    school_id: sid, year_code: nextYearCode(), student_id: null,
+    source: 'new', status: 'registered', created_at: todayISO() }, data));
+}
+
+/**
+ * تأیید پیش‌ثبت‌نام: حساب دانش‌آموز ساخته/وصل می‌شود.
+ * بازگشت: {ok, student_id, created, err}
+ */
+function preConfirm(sid, preId){
+  var pe = byId('pre_enrollments', preId);
+  if(!pe || pe.school_id !== sid) return { ok:false, err:'ردیف یافت نشد' };
+  if(pe.status === 'placed') return { ok:false, err:'این ردیف در کلاس چیده شده است' };
+  var name = String(pe.name || '').trim();
+  var nid = String(pe.national_id || '').trim();
+  if(!name) return { ok:false, err:'نام الزامی است' };
+  /* ۱) دانش‌آموز فعلی با همین کد ملی؟ وصل می‌شود */
+  var existing = null;
+  if(nid){
+    existing = db.users.filter(function(u){
+      return u.role === 'student' && u.school_id === sid && String(u.national_id || '') === nid;
+    })[0] || null;
+  }
+  var sidStu, created = false;
+  if(existing){ sidStu = existing.id; }
+  else {
+    /* ۲) کد ملیِ فرد دیگری در این مدرسه؟ */
+    if(nid && db.users.some(function(u){
+        return u.school_id === sid && String(u.national_id || '') === nid && u.role !== 'student'; })){
+      return { ok:false, err:'این کد ملی قبلاً برای فرد دیگری ثبت شده است' };
+    }
+    var uname = 'st' + nid + String(Date.now()).slice(-4);
+    sidStu = insert('users', {
+      school_id: sid, role: 'student', full_name: name,
+      username: uname, password: '123456', national_id: nid || null,
+      phone: pe.phone || null, grade_level: Number(pe.grade || 0) || null,
+      field: pe.field || null, status: 'active', active: 1,
+      created_at: todayISO() }).id;
+    created = true;
+  }
+  update('pre_enrollments', preId, { status: 'confirmed', student_id: sidStu,
+    name: existing && existing.full_name ? existing.full_name : name });
+  return { ok:true, student_id: sidStu, created: created };
+}
+
+/**
+ * افزودن دانش‌آموزان فعلیِ مدرسه به پیش‌ثبت‌نام سال آینده
+ * (یک‌بار؛ ردیف‌های تکراری ساخته نمی‌شوند).
+ */
+function preAddReturning(sid){
+  var n = 0;
+  db.pre_enrollments = db.pre_enrollments || [];
+  db.users.forEach(function(u){
+    if(u.role !== 'student' || u.school_id !== sid) return;
+    if((u.status || 'active') !== 'active') return;
+    var has = db.pre_enrollments.some(function(p){
+      return p.school_id === sid && p.year_code === nextYearCode()
+        && p.student_id === u.id; });
+    if(has) return;
+    preAddRow(sid, { student_id: u.id, name: u.full_name,
+      national_id: u.national_id || null, phone: u.phone || null,
+      grade: u.grade_level || null, field: u.field || null,
+      source: 'returning' });
+    n++;
+  });
+  return n;
+}
+
 /* ─────────── نما ─────────── */
 
 function viewSchoolYear(){
   var sid = S.user.school_id;
   var st = yearState(sid);
-  var tab = ['placement','enroll'].indexOf(S.tab) > -1 ? S.tab : 'status';
+  var tab = ['placement','enroll','pre'].indexOf(S.tab) > -1 ? S.tab : 'status';
   var pending = needPlacement(sid);
-  var tabs = [['status','📅 وضعیت سال'],['placement','🏛️ چیدمان کلاس‌ها'],['enroll','💳 ثبت‌نام']]
+  var tabs = [['status','📅 وضعیت سال'],['placement','🏛️ چیدمان کلاس‌ها'],['enroll','💳 ثبت‌نام'],
+              ['pre','📝 پیش‌ثبت‌نام سال آینده']]
     .map(function(t){
       return '<button class="btn ' + (tab === t[0] ? '' : 'ghost') + '" data-act="tab" data-t="'
         + t[0] + '">' + t[1] + '</button>'; }).join('');
@@ -349,6 +468,61 @@ function viewSchoolYear(){
               + '<td class="small muted">نیازمند چیدمان کلاس</td></tr>';
           }).join('')
         + '</tbody></table></div>' : empty('✅','کسی در انتظار ثبت‌نام نیست','')) + '</div>';
+  }
+
+  if(tab === 'pre'){
+    /* قیف پیش‌ثبت‌نام سال آینده (بند ۰.۲) */
+    var list = preEnrollFor(sid);
+    var cnt = { registered: 0, confirmed: 0, placed: 0, rejected: 0 };
+    list.forEach(function(p){ cnt[p.status] = (cnt[p.status] || 0) + 1; });
+    var gradeOpts = Object.keys(GRADE_WORDS).reverse().map(function(w){
+      return [GRADE_WORDS[w], 'پایهٔ ' + w]; }).concat([[0,'بدون پایه (تازه‌واردهای مقطع پایین)']]);
+    body = '<div class="card" style="margin-bottom:14px;background:linear-gradient(120deg,var(--primary-soft),#fff)">'
+      + '<div class="card-body row"><div style="font-size:30px">📝</div>'
+      + '<div style="flex:1"><b style="font-size:15px">پیش‌ثبت‌نام سال تحصیلی ' + nextYearTitle() + '</b>'
+      + '<div class="small muted" style="line-height:2">دانش‌آموزان تازه‌واردها و بازگشتی‌ها را از همین‌جا برای سال آینده ثبت کنید. با «تأیید»، حساب دانش‌آموز ساخته یا وصل می‌شود و در مرحلهٔ بعدی در کلاس چیده می‌شود.</div></div></div></div>'
+      + '<div class="grid g4" style="margin-bottom:14px">'
+      + statCard('📋', fa(cnt.registered), 'ثبت‌شده', 'blue')
+      + statCard('✅', fa(cnt.confirmed), 'تأییدشده', 'amber')
+      + statCard('🟢', fa(cnt.placed), 'چیده‌شده', 'green')
+      + statCard('⚫', fa(cnt.rejected), 'ردشده', 'red') + '</div>'
+      + '<div class="card" style="margin-bottom:14px"><div class="card-head">'
+      + '<h3>افزودن پیش‌ثبت‌نام تازه</h3>'
+      + '<button class="btn ghost sm" data-act="pre-returning">↩️ افزودن همهٔ دانش‌آموزان فعلی (بازگشتی)</button></div>'
+      + '<div class="card-body">'
+      + '<div class="grid g3">'
+      + f('نام و نام خانوادگی *', inp('pre_name', ''))
+      + f('کد ملی', inp('pre_nid', ''))
+      + f('تلفن همراه', inp('pre_phone', ''))
+      + f('پایهٔ ورود به سال آینده', sel('pre_grade', gradeOpts, 10))
+      + f('رشته (در متوسطه دوم)', inp('pre_field', ''))
+      + '</div>'
+      + '<div class="row" style="margin-top:10px;gap:8px">'
+      + '<button class="btn" data-act="pre-add">➕ ثبت پیش‌نویس</button>'
+      + '<span class="small muted">اگر کد ملی با دانش‌آموز فعلی یکی باشد، در تأیید به همان حساب وصل می‌شود.</span></div>'
+      + '</div></div>'
+      + '<div class="card"><div class="card-head"><h3>فهرست پیش‌ثبت‌نام‌های سال ' + nextYearTitle() + '</h3></div>'
+      + (list.length
+        ? '<div class="table-wrap"><table class="table"><thead><tr><th>نام</th><th>کد ملی</th>'
+          + '<th>پایه</th><th>رشته</th><th>منبع</th><th>وضعیت</th><th></th></tr></thead><tbody>'
+          + list.map(function(p){
+              var st3 = PRE_STATUS.filter(function(x){ return x[0] === p.status; })[0] || PRE_STATUS[0];
+              return '<tr><td><b>' + esc(p.name || '—') + '</b></td>'
+                + '<td class="small muted">' + esc(p.national_id || '—') + '</td>'
+                + '<td>' + fa(p.grade || '—') + '</td>'
+                + '<td class="small">' + esc(p.field || '—') + '</td>'
+                + '<td><span class="badge b-gray">' + (p.source === 'returning' ? 'بازگشتی' : 'تازه‌وارد') + '</span></td>'
+                + '<td><span class="badge ' + st3[2] + '">' + st3[1] + '</span></td>'
+                + '<td class="row" style="gap:4px">'
+                + (p.status === 'registered' ? '<button class="btn sm" data-act="pre-confirm" data-id="' + p.id + '">✔ تأیید</button>' : '')
+                + (p.status === 'registered' ? '<button class="btn ghost sm" data-act="pre-reject" data-id="' + p.id + '">رد</button>' : '')
+                + (p.status !== 'placed' ? '<button class="btn ghost sm" data-act="pre-del" data-id="' + p.id + '">✖</button>' : '')
+                + '</td></tr>';
+            }).join('')
+          + '</tbody></table></div>'
+        : empty('📝', 'هنوز پیش‌ثبت‌نامی ثبت نشده',
+            'از فرم بالا تازه‌واردها را ثبت کنید یا دکمهٔ «بازگشتی» را بزنید.'))
+      + '</div>';
   }
 
   return '<div class="row" style="margin-bottom:14px;flex-wrap:wrap;gap:8px">' + tabs + '</div>' + body;
