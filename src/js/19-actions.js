@@ -383,6 +383,25 @@ document.addEventListener('click',e=>{
    /* ⚠️ تغییر رفتار دور ۴۲: تیک دیگر بی‌درنگ ذخیره نمی‌شود؛ به
       پیش‌نویس می‌رود. ثبت واقعی فقط با att-commit انجام می‌شود.
       دلیل: غیبت به خانواده پیامک می‌شود و تیک اشتباه هزینه دارد. */
+   /* ─────────────── مهمان‌ها (بند ۷) ─────────────── */
+   'vis-new'(){
+     openModal(modalTpl('ثبت مهمان',
+       f('نام *', inp('vis_name',''))
+       + f('هدف مراجعه', inp('vis_purpose','')),
+       'vis-save'));
+   },
+   'vis-save'(){
+     const r = visitorRegister(V('vis_name'), V('vis_purpose'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('مهمان ثبت شد — ساعت ورود: ' + faD(new Date().toTimeString().slice(0,5)),'ok');
+     render();
+   },
+   'vis-out'(){
+     const r = visitorCheckout(Number(id));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     toast('خروج ثبت شد','ok');
+     render();
+   },
    'att-set'(){const st=el.dataset.s;const date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
      attDraftSet(cid,date,id,st);
