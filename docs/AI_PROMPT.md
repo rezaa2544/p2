@@ -496,7 +496,7 @@ src/body.html  ─┘
 12-attendance       حضور و غیاب
 13-grades           نمرات
 14-discipline       پرونده انضباطی
-15-schedule         برنامه هفتگی
+15-schedule         برنامه هفتگی (با پایه و دبیر پایهٔ کلاس + نمای سرپرستی — بند ۱.۲)
 16-announcements    اطلاعیه‌ها
 17-student-record   کارنامه دانش‌آموز
 18-modals           پنجره‌های محاوره‌ای + f/inp/sel helpers

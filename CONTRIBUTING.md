@@ -56,6 +56,7 @@ node scripts/dev-server.js   # سرور توسعه روی درگاه ۳۰۰۰
 | نمرات | `viewGrades` | `13-grades.js` |
 | انضباطی | `viewDiscipline` | `14-discipline.js` |
 | برنامه هفتگی | `viewSchedule` | `15-schedule.js` |
+| پایه/دبیر پایه در برنامه کلاسی (بند ۱.۲) | `15-schedule.js` — `viewSchedule`؛ دبیر پایه همان `homeroom_teacher_id` خودِ کلاس است (در ویرایش کلاس تنظیم می‌شود)؛ نمای «سرپرستی» دبیر با `S.filters.homepick` انتخاب می‌شود |
 | اطلاعیه‌ها | `viewAnnouncements` | `16-announcements.js` |
 | کارنامه · فرزندان | `viewRecord` · `viewChildren` | `17-student-record.js` |
 | اعلان · مرخصی · تقویم · گفتگو · شهریه | ۵ تابع | `20-communication-finance.js` |

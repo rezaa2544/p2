@@ -7223,12 +7223,35 @@ test('بند ۱.۸: ویزارد حضور — وضعیت فارسی/انگلیس
 
 test('بند ۱.۸: گام نخست ویزارد هر چهار نوع اطلاعات را نشان می‌دهد', () => {
   W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
-  W("S.imp={step:0,entity:'students'}");
-  W("S.tab='import';render()");
-  const body = W('document.body.textContent');
-  assert(body.indexOf('نمرات دورهٔ گذشته') > -1, 'نوع نمرات در انتخاب نیست');
-  assert(body.indexOf('حضور و غیاب دورهٔ گذشته') > -1, 'نوع حضور در انتخاب نیست');
-  W('S.imp=null');
+  const out = W("(S.route='import', S.imp={step:0,entity:'students'}, renderRoute())");
+  assert(out.indexOf('نمرات دورهٔ گذشته') > -1, 'نوع نمرات در انتخاب نیست');
+  assert(out.indexOf('حضور و غیاب دورهٔ گذشته') > -1, 'نوع حضور در انتخاب نیست');
+  W('S.imp=null;S.route="dashboard";0');
+});
+
+
+// ── بند ۱.۲: برنامه کلاسی با دبیر پایه ──────────────────────────
+test('بند ۱.۲: نمای مدیر — پایهٔ کلاس و دبیر پایه در برنامهٔ کلاسی دیده می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const r = W('(()=>{var c=db.classes.filter(function(x){return x.homeroom_teacher_id&&x.grade;})[0];var t=db.users.find(u=>u.id===c.homeroom_teacher_id);return JSON.stringify({cid:c.id,grade:c.grade,ht:t.full_name});})()');
+  const cls = JSON.parse(r);
+  assert(cls && cls.cid && cls.ht, 'کلاس دمو با دبیر پایه نیست');
+  const out = W("(S.route='schedule', S.filters={class:'" + cls.cid + "'}, renderRoute())");
+  assert(typeof out === 'string' && out.indexOf('دبیر پایه: ' + cls.ht) > -1, 'دبیر پایه در نمای مدیر دیده نمی‌شود');
+  assert(out.indexOf('پایه: ' + cls.grade) > -1, 'پایهٔ کلاس دیده نمی‌شود');
+});
+
+test('بند ۱.۲: دبیر می‌تواند برنامهٔ کامل کلاس سرپرستی‌اش را ببیند', () => {
+  const r = W('(()=>{var out=null;db.users.filter(function(x){return x.role==="teacher";}).forEach(function(u){if(out)return;db.classes.filter(function(c){return c.school_id===u.school_id&&c.homeroom_teacher_id===u.id;}).forEach(function(c){if(out)return;var rows=db.schedule.filter(function(s){return s.class_id===c.id;});var other=rows.some(function(s){return s.teacher_id!==u.id;});if(rows.length&&other)out={uid:u.id,cid:c.id,name:c.name};});});return out?JSON.stringify(out):"none";})()');
+  assert(r !== 'none', 'دبیر دمو با کلاس سرپرستیِ دارای برنامه نیست');
+  const home = JSON.parse(r);
+  W('S.user=db.users.find(u=>u.id===' + home.uid + ');S.persona=null;S.boss=null');
+  let out = W("(S.route='schedule', S.filters={}, renderRoute())");
+  assert(out.indexOf('سرپرستی: ' + home.name) > -1, 'انتخابگر سرپرستی دیده نمی‌شود');
+  out = W("(S.route='schedule', S.filters={homepick:'" + home.cid + "'}, renderRoute())");
+  assert(out.indexOf('برنامهٔ کلاسی ' + home.name) > -1, 'برنامهٔ کامل کلاس سرپرستی باز نشد');
+  const o = W('(()=>{var u=S.user;var row=db.schedule.filter(function(s){return s.class_id===' + home.cid + '&&s.teacher_id!==u.id;})[0];return row?db.users.find(x=>x.id===row.teacher_id).full_name:"none";})()');
+  assert(o !== 'none' && out.indexOf(o) > -1, 'دبیرانِ دیگرِ کلاس سرپرستی در خانه‌ها دیده نمی‌شوند');
 });
 
 
