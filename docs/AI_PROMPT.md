@@ -465,7 +465,7 @@ src/body.html  ─┘
 02-demo-data        موتور تولید داده شبه‌تصادفی (SEED ثابت = 20260901)
 03-persistence      applyOp / insert / update / remove + mutation log + قلاب sync
                     + باطل‌سازی خودکار ایندکس + هشدار پرشدن حافظه
-04-queries          کوئری‌های مبتنی بر نقش: visibleClasses, visibleSubjects… + مدل چندپایهٔ زودهنگام (classSubjectMembers با fallback تنبل، جدول class_subject_members — قفل‌شدهٔ ۲.۱ در ARCHITECTURE_DECISIONS)
+04-queries          کوئری‌های مبتنی بر نقش: visibleClasses, visibleSubjects… + مدل چندپایهٔ زودهنگام (classSubjectMembers با fallback تنبل، جدول class_subject_members — قفل‌شدهٔ ۲.۱) + classScoreContext (زمینهٔ «میانگین کلاس» بند ۳: فقط عدد، بدون نام؛ حداقل ۲ دانش‌آموز)
 05-router           شیء S، NAV، TITLES، go/goBack، مدیریت history
 28-indexes          ⭐ لایه ایندکس (پیش از persistence بارگذاری می‌شود)
 29-scope            ⭐ محدودهٔ دادهٔ هر نقش + قرارداد bootstrap سرور
@@ -2224,6 +2224,12 @@ DATA_MODE = 'local' | 'server'  ·  isServerMode()
 
 ---
 
+
+### مدل کلاس (tests/classmodel.js)
+سئوت مستقل (پروسهٔ جدا از smoke به‌دلیل heap) با ۶ بخش: مدل
+چندپایه (fallback تنبل، تطبیق ردیف‌ها، جدایی دروس) + میانگین کلاس
+(دور context، نمایش کنار نمره بدون نام، حذف میانگین تک‌نفره).
+اجرا: `node tests/classmodel.js`
 
 ### کلاس مجازی (tests/vclass.js)
 سئوت مستقل (پروسهٔ جدا) با ۱۱ بخش (V1–V11): دادهٔ نمونه، پنل دبیر،

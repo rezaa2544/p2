@@ -64,6 +64,7 @@ node scripts/dev-server.js   # سرور توسعه روی درگاه ۳۰۰۰
 | سرویس مدرسه — بدون جی‌پی‌اس | `48-bus-service.js` — جداول `bus_routes`/`bus_students`/`bus_events`؛ پنل مدیر (`busservice`) + پنل راننده (`myservice`، خانهٔ نقش `driver`)؛ `busEvent` با بررسی مالکیت مسیر روی داده (راننده فقط مسیر خودش)؛ پیامک از صف با انواع `bus_on`/`bus_off`؛ نقش `driver` در `ROLE_FA`/`EXEC_ROLES`/NAV |
 | کلاس مجازی (نسخهٔ سبک) | `50-vclass.js` + `49-vclass-idb.js` — جداول `vclass_sessions`/`vclass_questions`؛ فایل در IndexedDB (استور `vclass_files`، سقف نرم ۲۰۰ مگابایت + نمایش فضای باقی‌مانده)؛ پنل دبیر (`vclass`) + تب «کلاس مجازی» در پروندهٔ دانش‌آموز/ولی (ولی فقط‌خوان)؛ سؤالات فقط درون‌برنامه‌ای؛ پیامک از صف با نوع `event`؛ سئوت مستقل `tests/vclass.js` (۱۱ بخش) |
 | مدل چندپایه (زودهنگام) | فقط دادهٔ مدل: جدول `class_subject_members` + `classSubjectMembers` (fallback تنبل = همهٔ دانش‌آموزان کلاس) + `setClassSubjectMembers` (فراخوانی نمی‌شود). بدون UI، صفر تغییر رفتار — قفل‌شدهٔ ۲.۱ در `docs/ARCHITECTURE_DECISIONS.md` |
+| میانگین کلاس کنار نمره (پنهان‌نام) | `classScoreContext` در `04-queries.js` — تب کارنامهٔ پرونده (دانش‌آموز و ولی) هر نمره را کنار میانگین همان (درس، نوبت، نوع) در کلاس نشان می‌دهد؛ بدون نام، فقط عدد؛ فقط با ≥۲ دانش‌آموز عضو. سئوت `tests/classmodel.js` (۶ بخش، پروسهٔ جدا از smoke) |
 | اطلاعیه‌ها | `viewAnnouncements` | `16-announcements.js` |
 | کارنامه · فرزندان | `viewRecord` · `viewChildren` | `17-student-record.js` |
 | اعلان · مرخصی · تقویم · گفتگو · شهریه | ۵ تابع | `20-communication-finance.js` |
