@@ -28,6 +28,26 @@ function finalGradeOk(grade){
   return FINAL_GRADES.indexOf(grade) > -1;
 }
 
+/* ─────────── منشأ جلسهٔ امتحان (بند ۳) ───────────
+   «نهایی/غیرنهایی» یک بول نبود؛ واقعیت سه حالت دارد:
+   درسی (internal)، نهایی (national_final)، جبرانی (makeup).
+   داده‌های قدیمی که فقط is_final دارند، خوانده می‌شوند ولی
+   هرگز دوباره is_final نوشته نمی‌شود. */
+const EXAM_SOURCES=[['internal','درسی'],['national_final','نهایی'],['makeup','جبرانی']];
+/** منشأ یک جلسهٔ امتحان (با سازگاری رو به عقب برای is_final) */
+function examSource(e){
+  if(!e) return 'internal';
+  if(e.source) return e.source;
+  return e.is_final ? 'national_final' : 'internal';
+}
+/** نشان رنگی منشأ برای نماها */
+function examSourceBadge(e){
+  const s=examSource(e);
+  if(s==='national_final') return ' <span class="badge b-red">نهایی</span>';
+  if(s==='makeup') return ' <span class="badge b-amber">جبرانی</span>';
+  return '';
+}
+
 /* شاخه‌ها و رشته‌های متوسطه دوم */
 const BRANCHES = {
   'نظری': ['ریاضی فیزیک', 'علوم تجربی', 'ادبیات و علوم انسانی', 'علوم و معارف اسلامی'],
