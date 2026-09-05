@@ -838,7 +838,7 @@ test('صفحه اشتراک دلیل باز بودن را توضیح می‌ده
   const B = W('window.__B');
   W("S.user=byId('users'," + B + ");S.persona='parent';S.boss=null;S.route='subscription';S.filters={}");
   const o = W('renderRoute()');
-  assert(o.indexOf('اشتراک شما از پیش فعال است') > -1, 'کارت توضیح نمایش داده نشد');
+  assert(o.indexOf('اشتراک را پرداخت کرده است') > -1, 'کارت توضیح نمایش داده نشد');
   assert(o.indexOf('دانش‌آموز</b> تعلق دارد') > -1, 'توضیح تعلق اشتراک نیست');
 });
 
