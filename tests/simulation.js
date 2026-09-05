@@ -102,15 +102,15 @@ async function main() {
       assert(typeof h === 'string' && h.length > 100, `رندر ${role} خالی است`);
     }
   });
-  sim('ورود', 'حساب مدرسهٔ غیرفعال (manager6) — رفتار مرز', () => {
+  sim('ورود', 'حساب مدرسهٔ غیرفعال (manager6) — ورود مسدود (F-3)', () => {
     clk('logout');
     W(`document.getElementById('lu').value='manager6';document.getElementById('lp').value='123456'`);
     clk('login');
     const loggedIn = W('S.user && S.user.role') === 'manager';
-    const route = W('S.route');
-    assert(loggedIn, 'manager6 اصلاً وارد نشد');
-    assert(typeof route === 'string', 'روت تعیین نشد');
-    console.log('   ⓘ رفتار ثبت‌شده: ورود manager6 آزاد (بررسی school.active در ورود: نیست) — روت: ' + route);
+    const err = W(`(document.getElementById('lerr')||{}).textContent||''`);
+    assert(loggedIn === false, '🔴 کاربر مدرسهٔ غیرفعال وارد سامانه شد (نگهبان F-3 شکست)');
+    assert(err.indexOf('این مدرسه غیرفعال است') > -1, '🔴 پیام غیرفنی «مدرسه غیرفعال است» نمایش داده نشد');
+    console.log('   ⓘ F-3: ورود manager6 مسدود شد + پیام غیرفنی نمایش داده شد');
   });
 
   console.log('\n▸ ب — مرزهای بین‌مدرسه‌ای (IDOR)');
