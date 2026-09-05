@@ -61,6 +61,7 @@ function viewRecord(sid){
   const tabs=[['grades','📝 کارنامه'],['attendance','✅ حضور و غیاب'],
               ['schedule','📅 برنامه کلاس'],['discipline','⚖️ پرونده انضباطی'],['profile','🪪 شناسنامه']];
   if(persona==='student'||persona==='parent')tabs.push(['vclass','🖥️ کلاس مجازی']);
+  if(persona==='student'||persona==='parent')tabs.push(['bus','🚌 سرویس']);
   let body='';
   if(S.tab==='profile') body = studentProfileCard(sid)
     + ((typeof certsCard==='function')?certsCard(sid):'')
@@ -89,6 +90,9 @@ function viewRecord(sid){
     :empty('📝','نمره‌ای ثبت نشده','به محض ثبت نمره، کارنامه اینجا نمایش داده می‌شود.');
   if(S.tab==='schedule') body = classScheduleCard(sid);
   if(S.tab==='vclass') body = (typeof vclassRecordTab==='function')?vclassRecordTab(sid):'';
+  if(S.tab==='bus') body = persona==='parent'
+    ? ((typeof busParentTab==='function')?busParentTab(sid):'')
+    : ((typeof busStudentTab==='function')?busStudentTab(sid):'');
   if(S.tab==='attendance'){const cnt=k=>att.filter(a=>a.status===k).length;
     body= att.length?`<div class="card-body row">${['present','absent','late','excused'].map(k=>`<span class="badge ${ATT_BADGE[k]}">${ATT_FA[k]}: ${fa(cnt(k))} روز</span>`).join('')}</div>
      <div class="table-wrap"><table><thead><tr><th>تاریخ</th><th>وضعیت</th><th>توضیح</th><th>تغییرات</th></tr></thead><tbody>

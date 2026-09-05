@@ -7527,12 +7527,14 @@ test('🔴 سرویس: امنیت — نقش‌های غیرمجاز و رانن
     const r = JSON.parse(W(`(()=>{
       var stu=db.bus_students[0].student_id;
       var sch=db.schools[0];
-      var st=db.users.find(function(u){return u.role==='student'&&u.school_id===sch.id;});
+      var stList=db.users.filter(function(u){return u.role==='student'&&u.school_id===sch.id;});
+      var st=stList[0];
+      var stOther=stList.filter(function(u){return u.id!==stu;})[0]||stList[0];
       var tch=db.users.find(function(u){return u.role==='teacher'&&u.school_id===sch.id;});
       var pFake=insert('users',{school_id:sch.id,role:'driver',full_name:'رانندهٔ غریبه',username:'testdriver17',phone:'',active:1});
       S.persona=null; S.boss=null;
-      S.user=st;
-      var asStudent=busEvent(stu,'on');
+      S.user=stOther;
+      var asStudent=busEvent(stu,'on'); /* بند ۱۱: دانش‌آموز فقط رویدادِ خودش — برای دیگری رد */
       S.user=tch;
       var asTeacher=busEvent(stu,'on');
       S.user=pFake;
@@ -7547,7 +7549,7 @@ test('🔴 سرویس: امنیت — نقش‌های غیرمجاز و رانن
         fake: pFake.id, stu: stu
       });
     })()`));
-    assert(r.student === true, '🔴 دانش‌آموز رویداد ثبت کرد');
+    assert(r.student === true, '🔴 دانش‌آموز رویدادِ دانش‌آموزِ دیگر را ثبت کرد');
     assert(r.teacher === true, '🔴 دبیر رویداد ثبت کرد');
     assert(r.otherDriver === true, '🔴 رانندهٔ غیرمسیر رویداد ثبت کرد');
     assert(r.manager === true, 'مدیر رویداد ثبت نکرد');
