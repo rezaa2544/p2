@@ -2,6 +2,42 @@
    مدیریت مدارس
    ساخت، ویرایش، فعال‌سازی و «ورود به مدرسه» توسط سوپرادمین.
    ═══════════════════════════════════════════════════════════════════ */
+
+/* ─────────── پروفایل قابلیت مدرسه (دور ۶۳، بند ۰.۱) ───────────
+   نوع مدرسه دیگر زنجیرهٔ شرط «اگر دولتی… اگر غیردولتی…» نیست؛
+   هر مدرسه یک پروفایل کلید-قابلیت دارد که هر کلید مستقل
+   روشن/خاموش می‌شود. رابط کاربری بر اساس همین کلیدها
+   ماژول‌های غیرمرتبط را مخفی می‌کند (navFor در 07-shell.js).
+   کلیدهایی که هنوز ماژولشان ساخته نشده (has_dorm و…) ساختاری
+   هستند: قفل‌شده در ARCHITECTURE_DECISIONS.md منتظر پیاده‌سازی
+   کامل — ماژول آتی باید همین کلید را بخواند، نه شرط جدید بسازد. */
+const CAP_DEFS=[
+  ['has_tuition','شهریه','مدرسه شهریه می‌گیرد — ماژول مالی و شهریه فعال است'],
+  ['has_dorm','اسکان و خانه‌دانش‌آموزی','مدرسه بخش اسکان دارد'],
+  ['has_iep','پشتیبانی ویژه (IEP)','طرح فردی یادگیری برای دانش‌آموزان نیازمند ویژه'],
+  ['has_workshop','کارگاه و آزمایشگاه','فضای عملی/فنی برای پروژه‌های کارگاهی'],
+  ['has_multigrade','کلاس‌های چندپایه','چند پایه در یک کلاس (روستایی/کوچک)'],
+  ['has_second_term_exam','امتحان نوبت دوم','مدرسه امتحان نوبت دوم می‌گذارد']
+];
+const CAP_DEFAULTS={has_tuition:1,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1};
+/** پروفایل قابلیت یک مدرسه با اعمال پیش‌فرض‌ها */
+function schoolCaps(sid){
+  const s=(typeof byId==='function')?byId('schools',sid):null;
+  const c=(s&&s.capabilities)?s.capabilities:{};
+  const out={};
+  CAP_DEFS.forEach(function(k){ out[k[0]]=c[k[0]]==null?CAP_DEFAULTS[k[0]]:Number(c[k[0]]); });
+  return out;
+}
+/** آیا مدرسه صاحب این قابلیت است؟ */
+function hasCap(sid,key){ return !!schoolCaps(sid)[key]; }
+/** چیکنک‌های پروفایل قابلیت برای فرم مدرسه */
+function capPickerHTML(s){
+  const caps=schoolCaps(s&&s.id);
+  return CAP_DEFS.map(function(k){
+    return `<label style="display:flex;gap:8px;align-items:center;padding:7px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer"><input type="checkbox" class="m-cap" value="${k[0]}" ${caps[k[0]]?'checked':''} /><span><b class="small">${k[1]}</b><div class="small muted" style="font-size:11px">${k[2]}</div></span></label>`;
+  }).join('');
+}
+
 function viewSchools(){
   const q=(S.filters.q||'').trim();
   const isAdmin=S.user.role==='superadmin';

@@ -4322,6 +4322,48 @@ test('ورود: مدرسهٔ غیرفعال، حتی با حساب فعال، ر
   assert(r.msg.indexOf('این مدرسه غیرفعال است') >= 0, 'پیام مناسب نمایش داده نشد: ' + r.msg);
 });
 
+test('پروفایل قابلیت (۰.۱): منوی مدرسه طبق کلیدهای capability فیلتر می‌شود', () => {
+  const r = JSON.parse(W(`(()=>{
+    if(typeof hasCap!=='function'||typeof CAP_DEFS==='undefined') return JSON.stringify({err:'no-cap-api'});
+    var m1=db.users.find(u=>u.username==='manager1');
+    var sid=m1.school_id;
+    var school=byId('schools',sid);
+    var savedCaps=JSON.stringify(school.capabilities||null);
+    var savedSTE=school.capabilities?school.capabilities.has_second_term_exam:null;
+    /* ۱) پیش‌فرض: مدرسهٔ ۱ شهریه دارد ⇒ tuition در منوی مدیر */
+    var navOn=navFor(m1).map(function(g){return g[1].map(function(i){return i[0];}).join(',');}).join('|');
+    /* ۲) خاموش‌کردن has_tuition ⇒ tuition و mytuition پنهان */
+    var caps=Object.assign({},schoolCaps(sid),{has_tuition:0});
+    update('schools',sid,{capabilities:caps});
+    var navOff=navFor(m1).map(function(g){return g[1].map(function(i){return i[0];}).join(',');}).join('|');
+    /* ۳) ولی با فرزند در همین مدرسه: mytuition پنهان */
+    var par=db.parent_links.find(function(l){var st=byId('users',l.student_id);return st&&st.school_id===sid;});
+    var parNavOn='';var parUser=byId('users',par.parent_id);
+    S.user=parUser;S.persona='parent';S.filters={};
+    parNavOn=navFor(parUser).map(function(g){return g[1].map(function(i){return i[0];}).join(',');}).join('|');
+    S.user=m1;S.persona=null;
+    /* ۴) خاموش‌کردن has_second_term_exam ⇒ گزینهٔ نوبت دوم از فرم فصل امتحانات */
+    caps=Object.assign({},schoolCaps(sid),{has_tuition:1,has_second_term_exam:0});
+    update('schools',sid,{capabilities:caps});
+    var opts=termOptsFor(m1).join(',');
+    /* ۵) فرم مدرسه: شش چیکنک قابلیت */
+    schoolModal(school);
+    var nCap=document.querySelectorAll('.m-cap').length;
+    closeModal();
+    /* بازگردانی */
+    update('schools',sid,{capabilities:savedCaps?JSON.parse(savedCaps):null});
+    S.user=m1;S.persona=null;S.filters={};
+    return JSON.stringify({navOn:navOn,navOff:navOff,parNavOn:parNavOn,opts:opts,nCap:nCap,
+      defTuition:hasCap(1,'has_tuition')||hasCap(sid,'has_tuition')});})()`));
+  assert(r.err !== 'no-cap-api', 'API قابلیت وجود ندارد (hasCap/CAP_DEFS)');
+  assert(r.navOn.indexOf('tuition') >= 0, '🔴 با has_tuition روشن، شهریه در منوی مدیر نیست');
+  assert(r.navOff.indexOf('tuition') < 0, '🔴 با has_tuition خاموش، شهریه هنوز در منوی مدیر است');
+  assert(r.navOff.indexOf('mytuition') < 0, '🔴 mytuition بدون قابلیت شهریه پنهان نشد');
+  assert(r.parNavOn.indexOf('mytuition') < 0, '🔴 منوی ولی، mytuition مدرسهٔ بدون شهریه را نشان می‌دهد');
+  assert(r.opts.indexOf('نوبت دوم') < 0, '🔴 گزینهٔ نوبت دوم برای مدرسه‌ای بدون آن قابلیت مانده');
+  assert(r.nCap === 6, '🔴 فرم مدرسه شش چیکنک قابلیت ندارد (' + r.nCap + ')');
+});
+
 test('نمره: با kinds.grade خاموش یا سامانهٔ خاموش ساخته نمی‌شود', () => {
   withGrade((sid) => {
     const r = JSON.parse(W('(()=>{'

@@ -695,11 +695,19 @@ const P8_ACTIONS = {
       ()=>{remove('schedule',id);toast('زنگ حذف شد','');render();}); },
 };
 
+/** گزینه‌های نوبت برای فرم فصل امتحانات — مدرسه‌ای که امتحان
+    نوبت دوم نمی‌گذارد (پروفایل قابلیت، بند ۰.۱) آن گزینه را نمی‌بیند */
+function termOptsFor(u){
+  var all=['نوبت اول','نوبت دوم','میان‌ترم','جبرانی','شهریور'];
+  if(u&&u.school_id&&(typeof hasCap==='function')&&!hasCap(u.school_id,'has_second_term_exam'))
+    all=all.filter(function(x){ return x!=='نوبت دوم'; });
+  return all;
+}
 function termModal(t){
   t=t||{title:'امتحانات نوبت اول',term:'نوبت اول',start_date:addDaysISO(todayISO(),10),end_date:addDaysISO(todayISO(),24),note:''};
   openModal(modalTpl(t.id?'ویرایش فصل امتحانات':'فصل امتحانات جدید',
     `<div class="grid g2">${f('عنوان *',inp('tm_title',t.title))}
-      ${f('نوبت',sel('tm_term',['نوبت اول','نوبت دوم','میان‌ترم','جبرانی','شهریور'].map(x=>[x,x]),t.term))}
+      ${f('نوبت',sel('tm_term',termOptsFor(S.user).map(x=>[x,x]),t.term))}
       ${f('تاریخ شروع',jdate('tm_start',t.start_date))}${f('تاریخ پایان',jdate('tm_end',t.end_date))}</div>
      ${f('توضیح برای اولیا',`<textarea class="input" id="tm_note" rows="2">${esc(t.note||'')}</textarea>`)}`,'term-save'));
   window._edit=t;
