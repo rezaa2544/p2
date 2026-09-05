@@ -29,8 +29,13 @@ var DIAG_CATS = {
   engine: { fa:'پیکربندی و موتور برنامه', icon:'⚙️',
             desc:'سلامت زیرساخت، ایندکس، حافظه، مسیرها و دسترسی‌ها' },
   data:   { fa:'کیفیت دادهٔ کاربر', icon:'📋',
-            desc:'یکپارچگی و درستی اطلاعاتی که مدارس وارد کرده‌اند' }
+            desc:'یکپارچگی و درستی اطلاعاتی که مدارس وارد کرده‌اند' },
+  infra:  { fa:'ارتباط، هاست و زیرساخت', icon:'🌐',
+            desc:'شبکه، سرور، نسخه، ساعت دستگاه و کلِ حافظهٔ مرورگر' }
 };
+
+/* نسخهٔ بیلد — در حالت سرور با نسخهٔ سرور مقایسه می‌شود (آزمون api-version) */
+var APP_VERSION = '2026.09.05.2';
 
 /* تاریخچهٔ اجراها — در حافظه، برای مقایسهٔ روند */
 var DIAG_HISTORY = [];
@@ -156,7 +161,10 @@ var DIAG_CHECKS = [
             msg: bad.length + ' کاربر به مدرسهٔ پاک‌شده وابسته‌اند' }
         : { ok:true };
     },
-    fix: null
+    fix: null,
+    when: 'مدرسهٔ کاربر پاک شده ولی کاربرانش مانده‌اند',
+    fixDesc: 'کاربران را به مدرسهٔ فعال منتقل کنید (فرم کاربر) یا غیرفعالشان کنید؛ اگر مدرسه اشتباهی پاک شده، از فایل پشتیبان بازیابی کنید.',
+    owner: 'admin'
   },
 
   /* ── ۲. درستی داده ───────────────────────────────────────────── */
@@ -182,7 +190,10 @@ var DIAG_CHECKS = [
             msg: dups.length + ' کد ملی بین چند کاربر مشترک است' }
         : { ok:true };
     },
-    fix: null
+    fix: null,
+    when: 'admin',
+    fixDesc: 'undefined',
+    owner: 'undefined'
   },
 
   {
@@ -251,15 +262,19 @@ var DIAG_CHECKS = [
             msg: bad.length + ' کاربر کد ملی نامعتبر دارند' }
         : { ok:true };
     },
-    fix: null
+    fix: null,
+    when: 'admin',
+    fixDesc: 'undefined',
+    owner: 'undefined'
   },
 
   {
     id: 'class-over-capacity', cat: 'data',
     title: 'کلاس پر از ظرفیت',
     desc: 'تعداد دانش‌آموز بیش از ظرفیت اعلام‌شده',
+    when: 'ظرفیت در فرم کلاس اشتباه ثبت شده یا دانش‌آموز به کلاس افزوده شده و ظرفیت به‌روز نشده',
     severity: 'warning',
-    safe: false,
+    safe: true,
     check: function(){
       var cnt = Object.create(null);
       db.enrollments.forEach(function(e){ cnt[e.class_id] = (cnt[e.class_id]||0) + 1; });
@@ -273,25 +288,47 @@ var DIAG_CHECKS = [
             msg: over.length + ' کلاس از ظرفیتشان بیشتر دانش‌آموز دارند' }
         : { ok:true };
     },
-    fix: null
+    fix: function(){
+      /* واقعیت را بپذیر: ظرفیت به تعداد واقعی دانش‌آموزان بالا می‌رود.
+         اگر اضافه‌بودنِ خودِ ثبت‌نام اشتباه باشد، جابه‌جایی دانش‌آموز
+         تصمیم مدیر است (از دیاگ انجام نمی‌شود). */
+      var cnt = Object.create(null);
+      db.enrollments.forEach(function(e){ cnt[e.class_id] = (cnt[e.class_id]||0) + 1; });
+      var before = [], n = 0;
+      batchWrites(function(){
+        db.classes.forEach(function(c){
+          if(c.capacity && (cnt[c.id]||0) > c.capacity){
+            before.push({ coll:'classes', rec:Object.assign({}, c), existed:true });
+            update('classes', c.id, { capacity: cnt[c.id] });
+            n++;
+          }
+        });
+      });
+      return { msg: n + ' کلاس: ظرفیت به تعداد واقعی دانش‌آموزان تنظیم شد', before: before };
+    },
+    fixDesc:'ظرفیت به تعداد واقعی دانش‌آموزان بالا می‌رود (بازگشت‌پذیر). اگر خودِ ثبت‌نام‌ها اضافه است، چند دانش‌آموز را از صفحهٔ کلاس‌ها جابه‌جا کنید.',
+    owner:'app'
   },
 
   {
     id: 'field-outside-branch', cat: 'data',
     title: 'رشتهٔ خارج از شاخهٔ مدرسه',
     desc: 'کلاسی با رشته‌ای که مدرسه ارائه نمی‌دهد',
+    when: 'رشتهٔ کلاس هنگام ساخت انتخاب شده ولی در فهرست رشته‌های مدرسه ثبت نشده (پیکربندی ناقص مدرسه یا انتخاب اشتباه رشتهٔ کلاس)',
     severity: 'warning',
-    safe: false,
+    safe: true,
     check: function(){
       if(typeof schoolFields !== 'function') return { ok:true };
       var bad = [];
       db.classes.forEach(function(c){
         if(!c.field) return;
-        var mine = schoolFields(c.school_id) || [];
-        if(mine.length && mine.indexOf(c.field) < 0){
-          var s = byId('schools', c.school_id);
-          bad.push({ id:c.id, name:c.name, field:c.field,
-                     school: s ? s.name : '؟' });
+        var s = byId('schools', c.school_id);
+        /* فقط مدرسه‌ای که فهرست رشتهٔ صریح اعلام کرده «تخلف» معنا می‌دهد؛
+           مدرسهٔ بدون فهرست (عادی/متوسطه اول) از پیش‌فرضِ همه‌شاخه‌ها
+           استفاده می‌کند و رشتهٔ «عمومی» هم در آن معنا ندارد. */
+        if(!s || !Array.isArray(s.fields) || !s.fields.length) return;
+        if(s.fields.indexOf(c.field) < 0){
+          bad.push({ id:c.id, name:c.name, field:c.field, school:s.name });
         }
       });
       return bad.length
@@ -299,7 +336,38 @@ var DIAG_CHECKS = [
             msg: bad.length + ' کلاس رشته‌ای دارند که مدرسه اعلام نکرده است' }
         : { ok:true };
     },
-    fix: null
+    fix: function(){
+      /* تعمیرِ کم‌خطر: فهرست رشته‌های مدرسه را «تکمیل» می‌کنیم، نه
+         رشتهٔ کلاس را پاک — حذف داده هیچ‌وقت اولویت دیاگ نیست. اگر در
+         واقع رشتهٔ کلاس اشتباه باشد، مدیر آن را از فرم کلاس عوض می‌کند. */
+      if(typeof schoolFields !== 'function') return { msg:'آزمون رشته در دسترس نیست', before:[] };
+      /* ۱) پیش‌بینی: کدام رشته‌ها به کدام مدرسه افزوده می‌شوند؟ */
+      var plan = Object.create(null); /* schoolId -> {rec: عکس قبل, add: [fields]} */
+      db.classes.forEach(function(c){
+        if(!c.field) return;
+        var s = byId('schools', c.school_id);
+        if(!s || !Array.isArray(s.fields) || !s.fields.length) return;
+        if(s.fields.indexOf(c.field) > -1) return;
+        if(!plan[s.id]) plan[s.id] = { rec:Object.assign({}, s), add:[] };
+        if(plan[s.id].add.indexOf(c.field) < 0) plan[s.id].add.push(c.field);
+      });
+      var n = 0;
+      /* ۲) اعمال — با همان فهرستِ «قبل» + رشته‌های جدید (نه شیءِ زنده) */
+      batchWrites(function(){
+        Object.keys(plan).forEach(function(sid){
+          var p = plan[sid];
+          update('schools', p.rec.id, { fields: p.rec.fields.concat(p.add) });
+          n++;
+        });
+      });
+      /* ۳) عکس «قبل» از همان پیش‌بینی — برای بازگردانی */
+      var before = Object.keys(plan).map(function(sid){
+        return { coll:'schools', rec:plan[sid].rec, existed:true };
+      });
+      return { msg: n + ' مدرسه: رشتهٔ گم‌شده به فهرست رشته‌هایشان افزوده شد', before: before };
+    },
+    fixDesc:'رشتهٔ کلاس به فهرست رشته‌های مدرسه افزوده می‌شود (فرض: اعلام مدرسه ناقص است، نه کلاس). اگر رشتهٔ خودِ کلاس اشتباه است، آن را از فرم کلاس اصلاح کنید. بازگشت‌پذیر.',
+    owner:'app'
   },
 
   /* ── ۳. سلامت ذخیره‌سازی ─────────────────────────────────────── */
@@ -339,13 +407,23 @@ var DIAG_CHECKS = [
     severity: 'warning',
     safe: false,
     check: function(){
-      if(typeof syncQueue === 'undefined' || !syncQueue) return { ok:true };
-      var n = syncQueue.length || 0;
+      if(typeof SYNC === 'undefined' || !SYNC || !Array.isArray(SYNC.queue)) return { ok:true };
+      var n = SYNC.queue.length || 0;
       if(n < 50) return { ok:true, extra: n + ' عملیات در صف' };
       return { ok:false, count:n, items:[{ n:n }],
         msg: n + ' عملیات در صف همگام‌سازی مانده است' };
     },
-    fix: null
+    fix: function(){
+      if(typeof SYNC === 'undefined' || !SYNC || typeof syncNow !== 'function')
+        return { msg:'لایهٔ همگام‌سازی در دسترس نیست', before:[] };
+      if(!SYNC.online)
+        return { msg:'آنلاین نیستیم — اتصال شبکه بازگردد، صف خودکار ارسال می‌شود', before:[] };
+      var n = SYNC.queue.filter(function(x){ return x.status==='pending'||x.status==='failed'; }).length;
+      try{ syncNow(true); }catch(e){}
+      return { msg: n + ' عملیات به‌صورت دستی به سرور فرستاده شد؛ نتیجه در چند لحظه در همین آزمون می‌آید', before:[] };
+    },
+    fixDesc:'صف به‌صورت دستی ارسال می‌شود. اگر همچنان ماند: اتصال به سرور (سنجش سرور) را ببینید.',
+    owner:'server'
   },
 
   /* ── ۴. سلامت ایندکس و کارایی ────────────────────────────────── */
@@ -418,7 +496,10 @@ var DIAG_CHECKS = [
             msg: bad.length + ' مدرسهٔ فعال مدیر ندارند' }
         : { ok:true };
     },
-    fix: null
+    fix: null,
+    when: 'admin',
+    fixDesc: 'undefined',
+    owner: 'undefined'
   },
 
   {
@@ -441,15 +522,19 @@ var DIAG_CHECKS = [
             msg: bad.length + ' دانش‌آموز فعال در هیچ کلاسی نیستند' }
         : { ok:true };
     },
-    fix: null
+    fix: null,
+    when: 'admin',
+    fixDesc: 'undefined',
+    owner: 'undefined'
   },
 
   {
     id: 'weak-password', cat: 'data',
     title: 'رمز پیش‌فرض تغییرنیافته',
     desc: 'کاربرانی که هنوز رمز ۱۲۳۴۵۶ دارند',
+    when: 'حساب ساخته شده ولی کاربر هرگز رمز خود را عوض نکرده — خطر ورود شخص ناآشنا با نام کاربری حدس‌خور',
     severity: 'warning',
-    safe: false,
+    safe: true,
     check: function(){
       var bad = db.users.filter(function(u){
         return u.active && u.password === '123456' &&
@@ -460,7 +545,34 @@ var DIAG_CHECKS = [
             msg: bad.length + ' کاربر مدیریتی رمز پیش‌فرض دارند' }
         : { ok:true };
     },
-    fix: null
+    fix: function(){
+      /* رمز تازه می‌سازیم و به خودِ کاربر اطلاع می‌دهیم.
+         حالتِ قبل (رمز ۱۲۳۴۵۶) در تاریخچهٔ تعمیرات نگه می‌ماند. */
+      var bad = db.users.filter(function(u){
+        return u.active && u.password === '123456' &&
+               ['superadmin','manager','edu_office'].indexOf(u.role) > -1;
+      });
+      var before = bad.map(function(u){ return { coll:'users', rec:Object.assign({}, u), existed:true }; });
+      var news = [], n = 0;
+      batchWrites(function(){
+        bad.forEach(function(u){
+          var p = diagRandPass();
+          update('users', u.id, { password: p });
+          news.push((u.full_name || u.username) + ' → ' + p);
+          try{
+            insert('notifications', { user_id:u.id,
+              title:'رمز شما توسط دیاگ سامانه تغییر کرد',
+              body:'رمز جدید: ' + p + ' — پس از ورود، از منوی کاربر آن را عوض کنید.',
+              date:todayISO(), read:0 });
+          }catch(e){}
+          n++;
+        });
+      });
+      return { msg: n + ' رمز پیش‌فرض عوض شد. رمزهای جدید (به هر حساب هم اعلان رفت): '
+                   + news.join(' ، '), before: before };
+    },
+    fixDesc:'برای هر حساب رمز تصادفی جدید ساخته می‌شود و به همان حساب اعلان می‌رود (بازگشت‌پذیر). پس از ورود، کاربر رمز دلخواهش را می‌گذارد.',
+    owner:'app'
   },
 
   /* ── ۶. سلامت مالی ───────────────────────────────────────────── */
@@ -483,7 +595,10 @@ var DIAG_CHECKS = [
             msg: bad.length + ' رکورد مالی مبلغ منفی دارند' }
         : { ok:true };
     },
-    fix: null
+    fix: null,
+    when: 'admin',
+    fixDesc: 'undefined',
+    owner: 'undefined'
   },
 
   {
@@ -526,33 +641,35 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
     id: 'route-coverage', cat: 'engine',
     title: 'مسیرهای بدون نما',
     desc: 'گزینه‌ای در منو که صفحه‌اش تعریف نشده — کلیک روی آن صفحهٔ خالی می‌دهد',
+    when: 'بیلد ناقص یا خراب است، یا ماژول یک نما حذف/تغییر کرده ولی منو به‌روز نشده — یعنی مشکل از کد است، نه داده',
     severity: 'critical',
-    safe: false,
+    safe: true,
     check: function(){
-      if(typeof NAV !== 'object' || typeof renderRoute !== 'function') return { ok:true };
-      var bad = [], seen = Object.create(null);
-      Object.keys(NAV).forEach(function(role){
-        (NAV[role] || []).forEach(function(grp){
-          (grp[1] || []).forEach(function(it){
-            var r = it[0];
-            if(seen[r]) return;
-            seen[r] = true;
-            var prev = S.route, out = null, err = null;
-            try{ S.route = r; out = renderRoute(); }
-            catch(e){ err = String(e && e.message); }
-            finally{ S.route = prev; }
-            if(err) bad.push({ route:r, نقش:role, خطا:err });
-            else if(!out || String(out).trim() === '')
-              bad.push({ route:r, نقش:role, خطا:'خروجی خالی' });
-          });
-        });
-      });
-      return bad.length
-        ? { ok:false, count:bad.length, items:bad.slice(0,20),
-            msg: bad.length + ' مسیر منو نمای سالم ندارند' }
-        : { ok:true, extra: Object.keys(seen).length + ' مسیر بررسی شد' };
+      var r = diagProbeRoutes();
+      return r.length
+        ? { ok:false, count:r.length, items:r.slice(0,20),
+            msg: r.length + ' مسیر منو نمای سالم ندارند' }
+        : { ok:true, extra: diagProbeRoutesSeen + ' مسیر بررسی شد' };
     },
-    fix: null
+    fix: function(){
+      /* مشکل از کد است و دیاگ نمی‌تواند کد بنویسد؛ ولی می‌تواند
+         «بخش شکسته» را از چرخه خارج کند: گزینه‌های معیوب تا زمان
+         تعمیر پنهان می‌شوند تا بقیهٔ سامانه کار کند. */
+      var bad = diagProbeRoutes().map(function(x){ return x.route; });
+      var cur = navDisabledRoutes();
+      var before = [{ coll:'__nav', rec:cur.slice(), existed:true }];
+      var added = 0;
+      bad.forEach(function(r){
+        if(cur.indexOf(r) < 0){ cur.push(r); added++; }
+      });
+      try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){}
+      if(!added) return { msg:'گزینه‌های معیوب قبلاً پنهان بودند', before:[] };
+      return { msg: added + ' گزینهٔ معیوب تا زمان تعمیر از منو پنهان شد'
+                  + ' (دکمهٔ «بازگردانی گزینه‌های پنهان» در بالای صفحه)',
+               before: before };
+    },
+    fixDesc:'گزینه‌های شکسته از منو پنهان می‌شوند (برنامه ادامه می‌دهد) و عیب در دیاگ معلوم می‌ماند. توسعه‌دهنده کد را می‌سازد؛ سپس «بازگردانی گزینه‌های پنهان» بزنید.',
+    owner:'dev'
   },
 
   {
@@ -578,7 +695,29 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
             msg: bad.length + ' مسیر در جدول عنوان‌ها نیستند' }
         : { ok:true };
     },
-    fix: null
+    fix: function(){
+      if(typeof NAV !== 'object' || typeof TITLES !== 'object')
+        return { msg:'آزمون عنوان در دسترس نیست', before:[] };
+      var bad = [], seen = Object.create(null);
+      Object.keys(NAV).forEach(function(role){
+        (NAV[role] || []).forEach(function(grp){
+          (grp[1] || []).forEach(function(it){
+            if(seen[it[0]]) return;
+            seen[it[0]] = true;
+            if(!TITLES[it[0]]) bad.push(it[0]);
+          });
+        });
+      });
+      var cur = navDisabledRoutes();
+      var before = [{ coll:'__nav', rec:cur.slice(), existed:true }];
+      var added = 0;
+      bad.forEach(function(r){ if(cur.indexOf(r) < 0){ cur.push(r); added++; } });
+      try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){}
+      if(!added) return { msg:'گزینه‌ها قبلاً پنهان بودند', before:[] };
+      return { msg: added + ' مسیرِ بی‌عنوان تا زمان تعمیر از منو پنهان شد', before: before };
+    },
+    fixDesc:'گزینه از منو پنهان می‌شود تا توسعه‌دهنده عنوانش را در جدول TITLES ثبت کند.',
+    owner:'dev'
   },
 
   {
@@ -604,7 +743,33 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
             msg: bad.length + ' گزینهٔ منو با گارد دسترسی نمی‌خواند' }
         : { ok:true };
     },
-    fix: null
+    fix: function(){
+      /* گارد دسترسی (canRoute) مرجع است؛ منو اشتباه است. گزینه‌های
+         مجوز‌دار-نه را پنهان می‌کنیم تا مسیرِ دور زدن بسته شود. */
+      if(typeof NAV !== 'object' || typeof canRoute !== 'function')
+        return { msg:'آزمون مجوز در دسترس نیست', before:[] };
+      var bad = [], seen = Object.create(null);
+      Object.keys(NAV).forEach(function(role){
+        (NAV[role] || []).forEach(function(grp){
+          (grp[1] || []).forEach(function(it){
+            if(seen[it[0]]) return;
+            seen[it[0]] = true;
+            var ok = false;
+            try{ ok = canRoute(it[0], role); }catch(e){ ok = false; }
+            if(!ok) bad.push(it[0]);
+          });
+        });
+      });
+      var cur = navDisabledRoutes();
+      var before = [{ coll:'__nav', rec:cur.slice(), existed:true }];
+      var added = 0;
+      bad.forEach(function(r){ if(cur.indexOf(r) < 0){ cur.push(r); added++; } });
+      try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){}
+      if(!added) return { msg:'گزینه‌ها قبلاً پنهان بودند', before:[] };
+      return { msg: added + ' گزینهٔ بی‌مجوز تا زمان هماهنگ‌سازی منو پنهان شد', before: before };
+    },
+    fixDesc:'گزینه‌ای که گارد دسترسی اجازه نمی‌دهد، از منو پنهان می‌شود (سوراخ امنیتیِ بالقوه می‌بندد). هماهنگ‌سازی منو و مجوز با توسعه‌دهنده.',
+    owner:'dev'
   },
 
   {
@@ -625,7 +790,10 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
             msg: bad.length + ' مجموعه در تعریف پایگاه داده نیست' }
         : { ok:true, extra: Object.keys(db || {}).length + ' مجموعه سالم' };
     },
-    fix: null
+    fix: null,
+    when: 'dev',
+    fixDesc: 'undefined',
+    owner: 'undefined'
   },
 
   {
@@ -682,7 +850,10 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
             msg: bad.length + ' مجموعه شناسهٔ تکراری دارند' }
         : { ok:true };
     },
-    fix: null
+    fix: null,
+    when: 'dev',
+    fixDesc: 'undefined',
+    owner: 'undefined'
   },
 
   {
@@ -699,7 +870,10 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
           msg:'حافظهٔ مرورگر در دسترس نیست — داده ماندگار نمی‌شود' };
       return { ok:true };
     },
-    fix: null
+    fix: null,
+    when: 'user',
+    fixDesc: 'undefined',
+    owner: 'undefined'
   },
 
   {
@@ -760,7 +934,16 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
       }
       return { ok:true, extra: pend + ' در انتظار ارسال' };
     },
-    fix: null
+    fix: function(){
+      if(typeof SYNC === 'undefined' || !SYNC || typeof syncNow !== 'function')
+        return { msg:'لایهٔ همگام‌سازی در دسترس نیست', before:[] };
+      if(!SYNC.online)
+        return { msg:'آنلاین نیستیم — اتصال شبکه بازگردد، صف خودکار ارسال می‌شود', before:[] };
+      try{ syncNow(true); }catch(e){}
+      return { msg:'صف به‌صورت دستی ارسال شد؛ عملیات ناموفق دوباره امتحان می‌شوند. عملیات «متعارض» نیاز به تصمیم مدیر دارد (دو نسخه از یک رکورد).', before:[] };
+    },
+    fixDesc:'عملیات ناموفق دوباره ارسال می‌شوند. عملیات متعارض (دو نسخه از یک رکورد) دستی از صفحهٔ مالی/کاربرانه حل می‌شود.',
+    owner:'server'
   },
 
   {
@@ -788,7 +971,10 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
             msg: slow.length + ' صفحه کندتر از ۲۵۰ میلی‌ثانیه‌اند' }
         : { ok:true, extra: 'کندترین صفحه ' + worst + ' میلی‌ثانیه' };
     },
-    fix: null
+    fix: null,
+    when: 'dev',
+    fixDesc: 'undefined',
+    owner: 'undefined'
   },
 
   {
@@ -809,7 +995,14 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
             msg: miss.length + ' تابع حیاتی در دسترس نیست' }
         : { ok:true, extra: need.length + ' تابع پایه سالم' };
     },
-    fix: null
+    fix: function(){
+      /* بارگذاری ناقص معمولاً با تازه‌بارگیری حل می‌شود؛ اگر باقی
+         ماند، فایل قدیمی یا خراب است. */
+      try{ window.location.reload(); }catch(e){}
+      return { msg:'صفحه تازه‌بارگیری شد تا همهٔ ماژول‌ها دوباره بیایند', before:[] };
+    },
+    fixDesc:'صفحه تازه‌بارگیری می‌شود. اگر خطا باقی ماند، فایلِ باز‌شده قدیمی یا ناقص است — آخرین بیلد را باز کنید.',
+    owner:'dev'
   },
 
   {
@@ -829,7 +1022,12 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
             msg: miss.length + ' جدول پایه بارگذاری نشده' }
         : { ok:true, extra: need.length + ' جدول پایه سالم' };
     },
-    fix: null
+    fix: function(){
+      try{ window.location.reload(); }catch(e){}
+      return { msg:'صفحه تازه‌بارگیری شد تا ترتیب ماژول‌ها دوباره اجرا شود', before:[] };
+    },
+    fixDesc:'صفحه تازه‌بارگیری می‌شود. اگر تکرار شد، ترتیب بارگذاری در بیلد خراب است — بیلد دوباره ساخته شود.',
+    owner:'dev'
   },
 
   {
@@ -860,7 +1058,10 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
             msg: bad.length + ' روز زمان‌بندی زنگ معیوب دارند' }
         : { ok:true };
     },
-    fix: null
+    fix: null,
+    when: 'admin',
+    fixDesc: 'undefined',
+    owner: 'undefined'
   },
 
   {
@@ -882,7 +1083,172 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
             msg: bad.length + ' مدرسه پیکربندی ناقص دارند' }
         : { ok:true };
     },
-    fix: null
+    fix: null,
+    when: 'admin',
+    fixDesc: 'undefined',
+    owner: 'undefined'
+  }
+]);
+
+DIAG_CHECKS = DIAG_CHECKS.concat([
+
+  /* ── خانوادهٔ سوم: ارتباط، هاست و زیرساخت ─────────────────── */
+  {
+    id: 'runtime-errors', cat: 'engine',
+    title: 'خطاهای زمان‌اجرا (برنامه)',
+    desc: 'خطایی که در کد برنامه از لحظهٔ باز شدن صفحه تاکنون پنهان افتاده',
+    when: 'هر throw بدون try، Promise شکسته، یا دسترسی به شیءِ موجودنیست — حتی اگر صفحه «نORMAL» به نظر برسد',
+    severity: 'critical',
+    safe: true,
+    check: function(){
+      diagSyslogLoad();
+      if(!DIAG_SYSLOG.length) return { ok:true, extra:'از باز شدن صفحه، خطایی ثبت نشده' };
+      return { ok:false, count:DIAG_SYSLOG.length,
+        items: DIAG_SYSLOG.slice(-10).reverse().map(function(x){
+          return { خطا:x.msg, خط:(x.line!=null?x.line:'-'), زمان:x.t.slice(11,16), کاربر:x.user };
+        }),
+        msg: DIAG_SYSLOG.length + ' خطای برنامه در لاگ زمان‌اجرا — برنامه ممکن است ناقص کار کند' };
+    },
+    fix: function(){
+      var n = DIAG_SYSLOG.length;
+      DIAG_SYSLOG.length = 0;
+      try{ Store.setJSON(DIAG_SYSLOG_KEY, []); }catch(e){}
+      return { msg: n + ' خطای قدیمی از لاگ پاک شد (خطاهای تازه دوباره ثبت می‌شوند)', before:[] };
+    },
+    fixDesc:'لاگ موقت پاک می‌شود تا بررسی بعدی تازه باشد. اگر خطا مکرر است، متن و شمارهٔ خط را برای توسعه‌دهنده بفرستید — این آزمون «مشکل کدنویسی» را از دایرهٔ بی‌خبری بیرون می‌آورد.',
+    owner:'dev'
+  },
+
+  {
+    id: 'server-mode', cat: 'infra',
+    title: 'حالت اجرا (تک‌فایل یا سرور)',
+    desc: 'آیا این بیلد به سرور وصل است یا نسخهٔ محلیِ تک‌فایل است',
+    when: 'همیشه — نقطهٔ شروع آزمون‌های ارتباطی',
+    severity: 'info',
+    safe: false,
+    check: function(){
+      if(diagServerOn()) return { ok:true, extra:'حالت سرور — ارتباط از طریق API' };
+      return { ok:true, extra:'نسخهٔ تک‌فایل — آزمون‌های ارتباطی در حالت سرور اجرا می‌شوند' };
+    },
+    fixDesc:'این یک گزارش حالت است، نه عیب.',
+    owner:'server'
+  },
+
+  {
+    id: 'api-health', cat: 'infra',
+    title: 'صلابت سرور (نقطهٔ سلامت)',
+    desc: 'سرور جواب می‌دهد؟ چند میلی‌ثانیه طول می‌کشد؟',
+    when: 'هاست قطع است، پورت درست نیست، HTTPS خراب است، یا سرور بار زیاد دارد',
+    severity: 'critical',
+    safe: true,
+    check: function(){
+      if(!diagServerOn()) return { ok:true, extra:'در حالت تک‌فایل اجرا نمی‌شود' };
+      var p = DIAG_PROBES.health;
+      if(!p) return { ok:true, extra:'هنوز سنجش نشده — دکمهٔ «سنجش سرور»' };
+      if(p.err) return { ok:false, count:1, items:[{ خطا:p.err }],
+        msg:'وصل به سرور نمی‌شود: ' + p.err };
+      if(!p.ok) return { ok:false, count:1, items:[{ code:p.code }],
+        msg:'سرور کد ' + p.code + ' برمی‌گرداند — بیلد یا پیکربندی سرور را بررسی کنید' };
+      return { ok:true, extra:'سالم — پاسخ در ' + p.ms + ' میلی‌ثانیه' };
+    },
+    fix: function(){
+      return diagProbeHealth().then(function(r){ return r.msg; });
+    },
+    fixDesc:'نقطهٔ سلامت (/api/health) دوباره سنجیده می‌شود. اگر وصل نمی‌شود: دامنه، پورت، HTTPS و اجرای فرایند سرور را بررسی کنید.',
+    owner:'server'
+  },
+
+  {
+    id: 'api-version', cat: 'infra',
+    title: 'هم‌نسخه‌بودن برنامه و سرور',
+    desc: 'نسخهٔ بیلدِ باز با نسخهٔ اجراشده روی سرور یکی باشد',
+    when: 'سرور به‌روز شده ولی کاربر هنوز بیلد قدیمی در مرورگرش دارد (کش) — رفتارهای عجیب و شکست‌های مبهم',
+    severity: 'warning',
+    safe: true,
+    check: function(){
+      if(!diagServerOn()) return { ok:true, extra:'در حالت تک‌فایل اجرا نمی‌شود' };
+      var p = DIAG_PROBES.health;
+      if(!p || !p.version) return { ok:true, extra:'نسخهٔ سرور ثبت نشده — اول «سنجش سرور»' };
+      if(p.version !== APP_VERSION)
+        return { ok:false, count:1,
+          items:[{ کلاینت:APP_VERSION, سرور:p.version }],
+          msg:'نسخهٔ برنامه (' + APP_VERSION + ') با سرور (' + p.version + ') نمی‌خواند — صفحه را تازه‌بارگیری کنید' };
+      return { ok:true, extra:'نسخهٔ مشترک: ' + p.version };
+    },
+    fix: function(){
+      try{ window.location.reload(); }catch(e){}
+      return { msg:'صفحه تازه‌بارگیری شد تا بیلدِ هم‌نسخه بیاید', before:[] };
+    },
+    fixDesc:'صفحه تازه‌بارگیری می‌شود (کش را عبور می‌کند). اگر همچنان نمی‌خواند، بیلدِ سمت سرور به‌روز نشده است.',
+    owner:'server'
+  },
+
+  {
+    id: 'time-drift', cat: 'infra',
+    title: 'اختلاف ساعت دستگاه با سرور',
+    desc: 'ساعت محلی که مهلت‌ها، زنگ‌ها و مهلت ثبت را می‌شکند',
+    when: 'ساعت سیستم‌عامل دستی و غلط تنظیم است — زنگ‌ها زود/دیر می‌زنند و مهلت‌ها خطا می‌کنند',
+    severity: 'warning',
+    safe: false,
+    check: function(){
+      if(!diagServerOn()) return { ok:true, extra:'در حالت تک‌فایل اجرا نمی‌شود' };
+      var d = DIAG_PROBES.driftMs;
+      if(d == null) return { ok:true, extra:'سنجش نشده — اول «سنجش سرور»' };
+      if(d > 5 * 60000)
+        return { ok:false, count:1, items:[{ دقیقه:Math.round(d / 60000) }],
+          msg:'ساعت دستگاه با سرور ' + Math.round(d / 60000) + ' دقیقه اختلاف دارد — زنگ و مهلت‌ها خطا می‌کنند' };
+      return { ok:true, extra:'اختلاف ' + Math.round(d / 1000) + ' ثانیه (جایز)' };
+    },
+    fixDesc:'برنامه نمی‌تواند ساعت دستگاه را عوض کند: تنظیمات ویرایش سیستم‌عامل ← زمان و تاریخ ← «تنظیم خودکار ساعت» را روشن کنید.',
+    owner:'user'
+  },
+
+  {
+    id: 'offline-status', cat: 'infra',
+    title: 'اتصال شبکه',
+    desc: 'مرورگر الان آنلاین است یا آفلاین',
+    when: 'مودم قطع، سیم‌کارت/وای‌فای رفته — در حالت سرور، داده محلی می‌ماند و بعداً می‌رود',
+    severity: 'warning',
+    safe: false,
+    check: function(){
+      var on = (typeof navigator === 'undefined') ? true : navigator.onLine !== false;
+      if(on) return { ok:true, extra:'آنلاین' };
+      return { ok:false, count:1, items:[],
+        msg:'شبکه قطع است — تغییرات در حافظهٔ محلی ذخیره می‌شوند و بعد از اتصال ارسال می‌شوند' };
+    },
+    fixDesc:'اتصال را بازگردانید؛ صف همگام‌سازی خودکار ارسال می‌شود (آزمون صف همگام‌سازی نتیجه را نشان می‌دهد).',
+    owner:'user'
+  },
+
+  {
+    id: 'storage-quota', cat: 'infra',
+    title: 'حجم کلِ حافظهٔ مرورگر',
+    desc: 'جمع حجم کلیدهای حافظهٔ مرورگر — پرشدن آن نوشتن‌ها را خاموش می‌کند',
+    when: 'داده‌های انباشته یا لاگ‌های بزرگ — از اینجا اولین علائم «داده ذخیره نمی‌شود» می‌آید',
+    severity: 'warning',
+    safe: true,
+    check: function(){
+      var used = 0, keyList = Store.keys(), keys = keyList.length;
+      keyList.forEach(function(k){
+        var v = Store.get(k) || '';
+        used += k.length + v.length;
+      });
+      var mb = used / 1048576;
+      if(mb < 3) return { ok:true, extra: mb.toFixed(2) + ' مگابایت از ' + keys + ' کلید' };
+      return { ok:false, count:1, items:[{ mb:mb.toFixed(2) }],
+        msg:'حافظهٔ مرورگر ' + mb.toFixed(2) + ' مگابایت پر است — فشرده‌سازی و پاک‌سازی بزنید' };
+    },
+    fix: function(){
+      var n = 0;
+      if(typeof compactLog === 'function'){ try{ compactLog(); n++; }catch(e){} }
+      DIAG_SYSLOG.length = 0;
+      try{ Store.setJSON(DIAG_SYSLOG_KEY, []); }catch(e){}
+      DIAG_PROBES = {};
+      try{ Store.setJSON('sms_diag_probes_v1', {}); }catch(e){}
+      return { msg: (n ? 'دفترچهٔ عملیات فشرده و ' : '') + 'لاگ‌های دیاگ پاک شد', before:[] };
+    },
+    fixDesc:'دفترچهٔ عملیات فشرده و لاگ‌های دیاگ پاک می‌شود. اگر باز هم پر بود: پشتیبان کامل بگیرید، سپس داده‌های سال‌های قدیمی را از طریق توسعه‌دهنده بایگانی کنید.',
+    owner:'app'
   }
 ]);
 
@@ -911,6 +1277,7 @@ function runDiagnostics(onlyCat){
     }
     results.push({
       id: chk.id, cat: chk.cat || 'data', title: chk.title, desc: chk.desc,
+      when: chk.when || '', fixDesc: chk.fixDesc || '', owner: chk.owner || 'admin',
       severity: chk.severity, safe: chk.safe && !!chk.fix,
       fixable: !!chk.fix,
       ok: !!r.ok, msg: r.msg || '', count: r.count || 0,
@@ -967,46 +1334,72 @@ function diagHealthScore(sum){
  */
 function diagFix(id){
   var chk = DIAG_CHECKS.filter(function(c){ return c.id === id; })[0];
-  if(!chk) return { ok:false, msg:'آزمون یافت نشد' };
-  if(!chk.fix) return { ok:false, msg:'این عیب تعمیر خودکار ندارد' };
+  if(!chk) return Promise.resolve({ ok:false, msg:'آزمون یافت نشد', short:'آزمون یافت نشد' });
+  if(!chk.fix) return Promise.resolve({ ok:false, msg:'این عیب تعمیر خودکار ندارد',
+                                         short:'تعمیر خودکار ندارد' });
 
   /* پشتیبان پیش از تعمیر */
   var snap = null;
   try{ snap = diagSnapshot(); }catch(e){}
 
-  var before, after, msg;
-  try{
-    before = chk.check();
-    msg = chk.fix(before);
-    after = chk.check();
-  }catch(e){
-    /* تعمیر شکست خورد ⇒ بازگردانی */
-    if(snap) try{ diagRestore(snap); }catch(e2){}
-    return { ok:false, msg:'تعمیر ناموفق بود و تغییرات برگشت داده شد: '
-                            + String(e && e.message) };
-  }
+  var before;
+  try{ before = chk.check(); }catch(e){ before = { ok:false, count:0 }; }
 
-  if(typeof recordAudit === 'function'){
-    try{ recordAudit('diag-fix', chk.title + ' — ' + msg); }catch(e){}
+  var finish = function(msg){
+    var after;
+    try{ after = chk.check(); }catch(e){ after = { ok:false, count:0 }; }
+    var text  = (msg && typeof msg === 'object') ? msg.msg : String(msg);
+    var beforeRec = (msg && typeof msg === 'object') ? msg.before : null;
+    if(!after.ok){
+      if(snap){ try{ diagRestore(snap); }catch(e2){} }
+      return { ok:false, msg:'تعمیر کامل نشد و تغییرات برگشت داده شد: ' + text,
+               short:'تعمیر ناموفق — تغییرات برگشت داده شد' };
+    }
+    if(beforeRec && beforeRec.length) diagRecordRepair(chk, beforeRec, text);
+    if(typeof recordAudit === 'function'){
+      try{ recordAudit('diag-fix', chk.title + ' — ' + text); }catch(e){}
+    }
+    var short = text.length > 60 ? text.slice(0, 60) + '…' : text;
+    return { ok: !!after.ok, msg:text, short:short,
+             before: before.count || 0, after: after.count || 0 };
+  };
+
+  var r;
+  try{ r = chk.fix(before); }
+  catch(e){
+    if(snap){ try{ diagRestore(snap); }catch(e2){} }
+    return Promise.resolve({ ok:false,
+      msg:'تعمیر خطا داد و تغییرات برگشت داده شد: ' + String(e && e.message),
+      short:'تعمیر خطا داد' });
   }
-  return { ok: !!after.ok, msg: msg,
-           before: before.count || 0, after: after.count || 0 };
+  if(r && typeof r.then === 'function'){
+    return r.then(
+      function(msg){ return finish(msg); },
+      function(err){
+        if(snap){ try{ diagRestore(snap); }catch(e2){} }
+        return { ok:false, msg:'تعمیر ناموفق بود: ' + String(err && (err.message || err)),
+                 short:'تعمیر ناموفق' };
+      }
+    );
+  }
+  return Promise.resolve(finish(r));
 }
 
-/** تعمیر همهٔ عیب‌های امن، یکجا */
+/** تعمیر همهٔ عیب‌های امن، یکجا (Promise — بعضی تعمیرات ناهمگام‌اند) */
 function diagFixAll(){
-  var done = [], failed = [];
+  var done = [], failed = [], jobs = [];
   DIAG_CHECKS.forEach(function(chk){
     if(!chk.fix || !chk.safe) return;
     var r;
     try{ r = chk.check(); }catch(e){ return; }
     if(r.ok) return;
-    var f = diagFix(chk.id);
-    if(f.ok) done.push(chk.title + ': ' + f.msg);
-    else failed.push(chk.title + ': ' + f.msg);
+    jobs.push(Promise.resolve(diagFix(chk.id)).then(function(f){
+      (f.ok ? done : failed).push(chk.title + ': ' + (f.short || f.msg));
+    }));
   });
-  return { done: done, failed: failed };
+  return Promise.all(jobs).then(function(){ return { done: done, failed: failed }; });
 }
+
 
 /** عکس فوری از مجموعه‌های حساس، برای بازگردانی پس از تعمیر ناموفق */
 function diagSnapshot(){
@@ -1058,18 +1451,256 @@ function diagAutoTick(){
   DIAG_AUTO.lastRun = out.summary;
   if(out.summary.autoFixable > 0){
     var f = diagFixAll();
-    DIAG_AUTO.fixes += f.done.length;
-    if(f.done.length && typeof insert === 'function'){
-      try{
-        db.notifications && insert('notifications', {
-          user_id: (db.users.filter(function(u){ return u.role==='superadmin'; })[0]||{}).id,
-          title: 'تعمیر خودکار سامانه',
-          body: f.done.length + ' عیب خودکار برطرف شد: ' + f.done.join(' · '),
-          date: todayISO(), read: 0
-        });
-      }catch(e){}
+    if(f && f.then){
+      f.then(function(res){
+        DIAG_AUTO.fixes += res.done.length;
+        if(res.done.length && typeof insert === 'function'){
+          try{
+            var admin = db.users.filter(function(u){ return u.role==='superadmin'; })[0];
+            if(db.notifications && admin) insert('notifications', {
+              user_id: admin.id,
+              title: 'تعمیر خودکار سامانه',
+              body: res.done.length + ' عیب خودکار برطرف شد: ' + res.done.join(' · '),
+              date: todayISO(), read: 0
+            });
+          }catch(e){}
+        }
+      });
     }
   }
+}
+
+/* بارگذاری وضعیت پایدار در لحظهٔ ساخت صفحه — فقط یک‌بار */
+try{
+  diagSyslogLoad();
+  diagRepairsLoad();
+}catch(e){}
+
+/* ------------------------------------------------------------------ */
+/*  لاگ خطای زمان‌اجرا (syslog) — دام‌گیر «مشکلات کدنویسی»               */
+/*                                                                     */
+/*  هر خطای واقعی برنامه (throw نشده در try، Promise شکسته) اینجا ثبت   */
+/*  می‌شود تا در صفحهٔ دیاگ دیده شود. دستگاه دیاگ باید خطای کد را         */
+/*  «ببیند» حتی وقتی هیچ صفحه‌ای از آن خبر ندارد.                        */
+/* ------------------------------------------------------------------ */
+var DIAG_SYSLOG = [];
+var DIAG_SYSLOG_KEY = 'sms_diag_syslog_v1';
+var DIAG_SYSLOG_MAX = 100;
+
+function diagSyslogLoad(){
+  if(DIAG_SYSLOG.length) return;
+  try{
+    var s = Store.getJSON(DIAG_SYSLOG_KEY, null);
+    if(Array.isArray(s)) DIAG_SYSLOG = s.slice(-DIAG_SYSLOG_MAX);
+  }catch(e){}
+}
+
+function diagLogError(rec){
+  rec = rec || {};
+  DIAG_SYSLOG.push({
+    t: new Date().toISOString(),
+    msg: String(rec.message || (rec.reason && rec.reason.message) || rec.reason || 'خطای نامشخص'),
+    src: String(rec.filename || ''),
+    line: (rec.lineno != null) ? rec.lineno : null,
+    user: (typeof S !== 'undefined' && S.user) ? S.user.role : 'guest'
+  });
+  if(DIAG_SYSLOG.length > DIAG_SYSLOG_MAX) DIAG_SYSLOG = DIAG_SYSLOG.slice(-DIAG_SYSLOG_MAX);
+  try{ Store.setJSON(DIAG_SYSLOG_KEY, DIAG_SYSLOG); }catch(e){}
+}
+
+(function diagWireErrors(){
+  try{
+    window.addEventListener('error', function(ev){
+      diagLogError({ message: ev && ev.message, filename: ev && ev.filename,
+                     lineno: ev && ev.lineno });
+    });
+    window.addEventListener('unhandledrejection', function(ev){
+      var r = ev && ev.reason;
+      diagLogError({ message: (r && r.message) ? r.message : String(r), reason: r });
+    });
+  }catch(e){}
+})();
+
+/* ------------------------------------------------------------------ */
+/*  تاریخچهٔ تعمیرات — پایدار، قابل بازگردانی                           */
+/*                                                                     */
+/*  هر تعمیر خودکار، «حالت قبل» رکوردهای تحت تأثیر را همین‌جا نگه         */
+/*  می‌دارد تا با یک کلیک به حالت قبل برگردد. این چیزی است که تعمیرات     */
+/*  «تغییردهنده» (مثل عوض‌کردن رمز یا افزودن رشته به مدرسه) را امن می‌کند:  */
+/*  داده از بین نمی‌رود، فقط جابه‌جا می‌شود.                              */
+/* ------------------------------------------------------------------ */
+var DIAG_REPAIRS = [];
+var DIAG_REPAIRS_KEY = 'sms_diag_repairs_v1';
+var DIAG_REPAIRS_MAX = 50;
+
+function diagRepairsLoad(){
+  if(DIAG_REPAIRS.length) return;
+  try{
+    var s = Store.getJSON(DIAG_REPAIRS_KEY, null);
+    if(Array.isArray(s)) DIAG_REPAIRS = s.slice(0, DIAG_REPAIRS_MAX);
+  }catch(e){}
+}
+
+/** ثبت یک تعمیر همراه با حالتِ قبلِ رکوردها */
+function diagRecordRepair(chk, beforeList, msg){
+  DIAG_REPAIRS.unshift({
+    at: new Date().toISOString(),
+    id: chk.id, title: chk.title, msg: String(msg || ''),
+    before: beforeList || []
+  });
+  if(DIAG_REPAIRS.length > DIAG_REPAIRS_MAX) DIAG_REPAIRS.length = DIAG_REPAIRS_MAX;
+  try{ Store.setJSON(DIAG_REPAIRS_KEY, DIAG_REPAIRS); }catch(e){}
+}
+
+/** بازگردانی یک تعمیر به حالت قبل */
+function diagRollback(i){
+  var rec = DIAG_REPAIRS[i];
+  if(!rec) return { ok:false, msg:'ردیف تعمیر یافت نشد' };
+  var n = 0, err = null;
+  try{
+    batchWrites(function(){
+      (rec.before || []).forEach(function(b){
+        if(b.coll === '__nav'){
+          try{ Store.setJSON('nav_disabled_v1', b.rec || []); }catch(e){}
+          n++; return;
+        }
+        if(b.coll === '__ids'){
+          try{ ids[b.rec.c] = b.rec.from; }catch(e){}
+          n++; return;
+        }
+        if(b.existed && b.rec){
+          var cur = byId(b.coll, b.rec.id);
+          if(cur){ update(b.coll, b.rec.id, b.rec); }
+          else{ applyOp({ t:'ins', c:b.coll, data:Object.assign({}, b.rec) }); }
+        }else if(!b.existed && b.rec && b.rec.id != null){
+          if(byId(b.coll, b.rec.id)) remove(b.coll, b.rec.id);
+        }
+        n++;
+      });
+    });
+    if(typeof idxReset === 'function') idxReset();
+  }catch(e){ err = String(e && e.message); }
+  if(!err){
+    try{ DIAG_REPAIRS.splice(i, 1); Store.setJSON(DIAG_REPAIRS_KEY, DIAG_REPAIRS); }catch(e){}
+  }
+  return err
+    ? { ok:false, msg:'بازگردانی خطا داد: ' + err }
+    : { ok:true, msg: fa(n) + ' رکورد به حالت قبل از تعمیر برگشت' };
+}
+
+/* ------------------------------------------------------------------ */
+/*  سنجش ارتباط با سرور — فقط در حالت سرور معنا دارد                      */
+/*  در بیلد تک‌فایل، آزمون‌های این بخش صادقانه «اجرا نمی‌شود» گزارش       */
+/*  می‌کنند و خودِ پروب‌ها آمادهٔ اولین لحظهٔ اتصال به سرور است.            */
+/* ------------------------------------------------------------------ */
+var DIAG_PROBES = Store.getJSON('sms_diag_probes_v1', {}) || {};
+
+/** آیا بیلد در حالت سرور اجرا می‌شود؟ */
+function diagServerOn(){
+  try{
+    return !!(window.__PAYESH_SERVER__ || Store.get('payesh_server_url_v1'));
+  }catch(e){ return false; }
+}
+/** آدرس پایهٔ سرور (در حالت هم‌میزان، خالی = هم‌خود) */
+function diagServerUrl(){
+  try{ return Store.get('payesh_server_url_v1') || ''; }catch(e){ return ''; }
+}
+
+/** GET با JSON و مهلت زمانی — از لایهٔ داده، چون لمسِ شبکه فقط آنجا مجاز است */
+function diagFetchJson(url, timeoutMs){
+  if(typeof httpGetJson !== 'function')
+    return Promise.reject(new Error('لایهٔ شبکه در دسترس نیست'));
+  return httpGetJson(url, timeoutMs);
+}
+
+/** پروب نقطهٔ سلامت سرور (/api/health) — نتیجه را می‌سنجد و نگه می‌دارد */
+function diagProbeHealth(){
+  if(!diagServerOn()){
+    return Promise.resolve({ ok:false, probed:false,
+      msg:'این بیلد تک‌فایل است — آدرس سرور تعریف نشده؛ آزمون‌های ارتباطی در حالت سرور اجرا می‌شوند' });
+  }
+  var t0 = Date.now();
+  return diagFetchJson(diagServerUrl() + '/api/health', 6000).then(function(r){
+    var ms = Date.now() - t0;
+    var rec = { at:new Date().toISOString(), ok:r.ok, code:r.code, ms:ms,
+                version:(r.data && r.data.version) || null, serverTime:r.serverTime };
+    DIAG_PROBES.health = rec;
+    if(rec.serverTime){
+      var drift = Math.abs(Date.parse(rec.serverTime) - Date.now());
+      if(drift < 86400000) DIAG_PROBES.driftMs = drift; /* ساعت سرور عجیب نبود */
+    }
+    try{ Store.setJSON('sms_diag_probes_v1', DIAG_PROBES); }catch(e){}
+    var msg = r.ok
+      ? 'سرور پاسخ داد (' + ms + ' میلی‌ثانیه)'
+        + (rec.version ? ' · نسخهٔ سرور: ' + rec.version : '')
+      : 'سرور با کد ' + r.code + ' پاسخ داد';
+    return { ok:r.ok, probed:true, msg:msg };
+  }, function(err){
+    var rec = { at:new Date().toISOString(), ok:false,
+                err:String((err && err.message) || err), ms:Date.now() - t0 };
+    DIAG_PROBES.health = rec;
+    try{ Store.setJSON('sms_diag_probes_v1', DIAG_PROBES); }catch(e){}
+    return { ok:false, probed:true,
+      msg:'وصل به سرور نشد: ' + String((err && err.message) || err)
+         + ' — دامنه، پورت، HTTPS و اجرای سرور را بررسی کنید' };
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/*  پنهان‌سازی خودکار گزینه‌های شکستهٔ منو                               */
+/*                                                                     */
+/*  وقتی آزمون route-coverage ببیند گزینه‌ای از منو صفحهٔ خالی یا خطا     */
+/*  می‌دهد (یعنی مشکل از کد است)، آن گزینه را تا زمان تعمیر پنهان می‌کند —  */
+/*  بقیهٔ سامانه بی‌صدا کار می‌کند و عیب در دیاگ معلوم می‌ماند.              */
+/* ------------------------------------------------------------------ */
+function navDisabledRoutes(){
+  try{
+    var a = Store.getJSON('nav_disabled_v1', null);
+    return Array.isArray(a) ? a : [];
+  }catch(e){ return []; }
+}
+function navDisableAdd(route){
+  var cur = navDisabledRoutes();
+  if(cur.indexOf(route) < 0) cur.push(route);
+  try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){}
+  return cur;
+}
+function navRestoreAll(){
+  try{ Store.remove('nav_disabled_v1'); }catch(e){}
+}
+
+/** اسکن همهٔ مسیرهای منو؛ خروجی: فهرست مسیرهای معیوب + شمارندهٔ دیده‌شده‌ها */
+var diagProbeRoutesSeen = 0;
+function diagProbeRoutes(){
+  var bad = [], seen = Object.create(null);
+  diagProbeRoutesSeen = 0;
+  if(typeof NAV !== 'object' || typeof renderRoute !== 'function') return bad;
+  Object.keys(NAV).forEach(function(role){
+    (NAV[role] || []).forEach(function(grp){
+      (grp[1] || []).forEach(function(it){
+        var r = it[0];
+        if(seen[r]) return;
+        seen[r] = true;
+        diagProbeRoutesSeen++;
+        var prev = S.route, out = null, err = null;
+        try{ S.route = r; out = renderRoute(); }
+        catch(e){ err = String(e && e.message); }
+        finally{ S.route = prev; }
+        if(err) bad.push({ route:r, نقش:role, خطا:err });
+        else if(!out || String(out).trim() === '')
+          bad.push({ route:r, نقش:role, خطا:'خروجی خالی' });
+      });
+    });
+  });
+  return bad;
+}
+
+/* رمز تصادفی ۸ رقمی برای تعمیر «رمز پیش‌فرض» (بدون نویسه‌های مبهم) */
+function diagRandPass(){
+  var set = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  var p = '';
+  for(var i = 0; i < 8; i++) p += set.charAt(Math.floor(Math.random() * set.length));
+  return p;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1088,28 +1719,42 @@ function viewDiagnostics(){
   var out = S.diag || null;
   var sum = out ? out.summary : null;
 
+  var hidden = navDisabledRoutes();
   var head = '<div class="card"><div class="card-head">'
     + '<h3>🔧 دیاگ سامانه</h3>'
     + '<div class="row">'
     +   '<button class="btn" data-act="diag-run">🔍 بررسی کامل</button>'
     +   '<button class="btn ghost" data-act="diag-run" data-cat="engine">⚙️ فقط موتور</button>'
     +   '<button class="btn ghost" data-act="diag-run" data-cat="data">📋 فقط داده</button>'
+    +   '<button class="btn ghost" data-act="diag-run" data-cat="infra">🌐 فقط ارتباط/زیرساخت</button>'
+    +   (diagServerOn() ? '<button class="btn ghost" data-act="diag-probe">📡 سنجش سرور</button>' : '')
+    +   (hidden.length
+        ? '<button class="btn ghost" style="color:var(--amber)" data-act="diag-nav-restore">↩️ بازگردانی گزینه‌های پنهان (' + fa(hidden.length) + ')</button>' : '')
     +   (sum && sum.autoFixable
         ? '<button class="btn" style="background:var(--green)" data-act="diag-fixall">🛠️ تعمیر خودکار ('
           + fa(sum.autoFixable) + ')</button>' : '')
     +   '<button class="btn ghost" data-act="diag-auto">'
     +     (DIAG_AUTO.on ? '⏸️ توقف پایش خودکار' : '▶️ پایش خودکار') + '</button>'
     + '</div></div>';
+  if(hidden.length){
+    head += '<div class="card-body" style="border-bottom:1px solid var(--border)">'
+      + '<div class="small" style="color:var(--amber)">🚫 ' + fa(hidden.length)
+      + ' گزینهٔ منو به‌دلیل عیبِ کدنویسی تا زمان تعمیر پنهان است: '
+      + hidden.map(function(r){ return esc(r); }).join('، ')
+      + ' — بعد از تعمیر بیلد، دکمهٔ «بازگردانی گزینه‌های پنهان» را بزنید.</div></div>';
+  }
 
   if(!out){
+    var nEng = DIAG_CHECKS.filter(function(c){return c.cat==="engine";}).length;
+    var nInf = DIAG_CHECKS.filter(function(c){return c.cat==="infra";}).length;
+    var nDat = DIAG_CHECKS.length - nEng - nInf;
     head += '<div class="card-body">'
       + empty('🩺','هنوز بررسی نشده',
           'دکمهٔ «بررسی کامل» را بزنید تا سامانه خودش را وارسی کند. '
-          + fa(DIAG_CHECKS.length) + ' آزمون در دو خانواده اجرا می‌شود: '
-          + '⚙️ پیکربندی و موتور برنامه (' 
-          + fa(DIAG_CHECKS.filter(function(c){return c.cat==="engine";}).length) + ' آزمون) '
-          + 'و 📋 کیفیت دادهٔ کاربر ('
-          + fa(DIAG_CHECKS.filter(function(c){return c.cat!=="engine";}).length) + ' آزمون).')
+          + fa(DIAG_CHECKS.length) + ' آزمون در سه خانواده اجرا می‌شود: '
+          + '⚙️ پیکربندی و موتور برنامه (' + fa(nEng) + ' آزمون)، '
+          + '📋 کیفیت دادهٔ کاربر (' + fa(nDat) + ' آزمون) و '
+          + '🌐 ارتباط، هاست و زیرساخت (' + fa(nInf) + ' آزمون).')
       + '</div></div>';
     return head;
   }
@@ -1179,7 +1824,61 @@ function viewDiagnostics(){
             + '</div>'; }).join('')
       + '</div></div></div>';
   }
+
+  /* تاریخچهٔ تعمیرات + کتابچهٔ عملیات — دانشِ «چطور رفع می‌شود» */
+  body += viewDiagRepairs();
+  body += viewDiagPlaybook();
+
   return head + body;
+}
+
+var DIAG_OWNER_FA = { app:'خودکار (برنامه)', admin:'مدیر سامانه',
+                      server:'سرور/زیرساخت', dev:'توسعه‌دهنده', user:'کاربر دستگاه' };
+
+/** تاریخچهٔ تعمیرات خودکار با دکمهٔ بازگردانی */
+function viewDiagRepairs(){
+  if(!DIAG_REPAIRS.length) return '';
+  return '<div class="card" style="margin-top:14px"><div class="card-head">'
+    + '<h3>📜 تاریخچه تعمیرات خودکار <span class="badge b-blue">' + fa(DIAG_REPAIRS.length) + '</span></h3>'
+    + '<div class="row"><button class="btn ghost sm" data-act="diag-clear-repairs">پاک‌کردن تاریخچه</button></div></div>'
+    + '<div class="card-body"><div class="diag-items">'
+    + DIAG_REPAIRS.slice(0, 10).map(function(r, i){
+        return '<div class="diag-item"><div class="diag-item-head">'
+          + '<span class="diag-ico">🛠️</span>'
+          + '<div style="flex:1;min-width:0"><b>' + esc(r.title) + '</b>'
+          + '<div class="small muted">' + esc(r.at) + ' · ' + esc(r.msg) + '</div></div>'
+          + '<button class="btn ghost sm" data-act="diag-rollback" data-i="' + i
+          + '" title="به حالت قبل از این تعمیر برگردد">↩️ بازگردانی</button>'
+          + '</div></div>';
+      }).join('')
+    + '</div></div></div>';
+}
+
+/** کتابچهٔ عملیات — همهٔ سناریوهای مشکل، نحوهٔ تشخیص و رفع، و مسئول */
+function viewDiagPlaybook(){
+  var rows = DIAG_CHECKS.map(function(c){
+    return {
+      title: c.title,
+      cat: (DIAG_CATS[c.cat || 'data'] || DIAG_CATS.data).fa,
+      when: c.when || c.desc || '',
+      auto: c.fix ? (c.safe ? 'بله' : 'با تأیید') : 'خیر',
+      fix: c.fixDesc || 'بررسی دستی و رفع از فرم مربوطه',
+      owner: DIAG_OWNER_FA[c.owner || 'admin']
+    };
+  });
+  return '<div class="card" style="margin-top:14px"><details class="diag-details">'
+    + '<summary>📕 کتابچهٔ عملیات — ' + fa(rows.length)
+    + ' سناریوی مشکل: چه‌وقتی رخ می‌دهد، چطور تشخیص داده و چطور رفع می‌شود</summary>'
+    + '<div class="table-wrap" style="margin-top:10px"><table><thead><tr>'
+    + '<th>سناریوی مشکل</th><th>خانواده</th><th>وقتی رخ می‌دهد</th>'
+    + '<th>رفع خودکار</th><th>نحوهٔ رفع</th><th>مسئول</th>'
+    + '</tr></thead><tbody>'
+    + rows.map(function(r){
+        return '<tr><td><b>' + esc(r.title) + '</b></td><td>' + esc(r.cat) + '</td>'
+          + '<td>' + esc(r.when) + '</td><td>' + esc(r.auto) + '</td>'
+          + '<td>' + esc(r.fix) + '</td><td>' + esc(r.owner) + '</td></tr>';
+      }).join('')
+    + '</tbody></table></div></details></div>';
 }
 
 function diagBar(label, n, total, color){
@@ -1221,12 +1920,13 @@ function diagCard(r){
       + 'data-act="diag-fix" data-id="' + esc(r.id) + '">🛠️ تعمیر خودکار</button>'
       + '<span class="small muted" style="margin-inline-start:8px">'
       + 'برگشت‌پذیر است؛ پیش از تعمیر پشتیبان گرفته می‌شود.</span></div>';
-  } else if(r.fixable){
-    h += '<div class="small muted" style="margin-top:8px">'
-      + '⚠️ تعمیر خودکار ندارد چون نیاز به تصمیم شماست.</div>';
+    if(r.fixDesc)
+      h += '<div class="small muted" style="margin-top:6px">📖 ' + esc(r.fixDesc) + '</div>';
   } else {
     h += '<div class="small muted" style="margin-top:8px">'
-      + 'ℹ️ این مورد باید دستی بررسی شود.</div>';
+      + 'ℹ️ ' + esc(r.fixDesc || 'این مورد باید دستی بررسی شود.') + '</div>';
+    if(r.owner && r.owner !== 'app')
+      h += '<div class="small muted">مسئول رفع: ' + esc(DIAG_OWNER_FA[r.owner] || 'مدیر سامانه') + '</div>';
   }
   return h + '</div>';
 }

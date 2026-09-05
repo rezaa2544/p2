@@ -35,7 +35,12 @@ function renderShell(){
 
 /** منوی پنل جاری؛ در پنل اولیای قفل، فقط اشتراک و ارتباطات نمایش داده می‌شود */
 function navFor(u){
-  let nav=NAV[u.role]||[];
+  /* گزینه‌هایی که دیاگ به‌دلیل عیب کدنویسی پنهان کرده، از منو حذف می‌شوند —
+     بقیهٔ برنامه کار می‌کند و عیب در صفحهٔ دیاگ معلوم می‌ماند. */
+  var dis=(typeof navDisabledRoutes==='function')?navDisabledRoutes():[];
+  let nav=(NAV[u.role]||[]).map(function(g){
+    return [g[0],(g[1]||[]).filter(function(it){ return dis.indexOf(it[0])<0; })];
+  }).filter(function(g){ return g[1].length>0; });
   if(u.role==='parent'){
     nav=nav.concat([['حساب من',[['subscription','💳','اشتراک پنل اولیا']]]]);
     if(parentLocked())nav=[['حساب من',[['subscription','💳','اشتراک پنل اولیا'],['notifications','🔔','اعلان‌ها'],['announcements','📢','اطلاعیه‌ها']]]];

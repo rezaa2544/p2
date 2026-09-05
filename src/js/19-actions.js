@@ -240,6 +240,10 @@ document.addEventListener('click',e=>{
    'diag-fix'(){
      if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
      var r=diagFix(id);
+     if(r&&r.then){
+       r.then(function(x){ toast(x.short||x.msg, x.ok?'ok':'err'); S.diag=runDiagnostics(); render(); });
+       return;
+     }
      toast(r.msg, r.ok?'ok':'err');
      S.diag=runDiagnostics();
      render();
@@ -247,11 +251,50 @@ document.addEventListener('click',e=>{
    'diag-fixall'(){
      if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
      var r=diagFixAll();
+     if(r&&r.then){
+       r.then(function(res){
+         if(!res.done.length && !res.failed.length) toast('چیزی برای تعمیر خودکار نبود','ok');
+         else toast(fa(res.done.length)+' عیب برطرف شد'
+           +(res.failed.length?' · '+fa(res.failed.length)+' ناموفق':''), res.failed.length?'err':'ok');
+         S.diag=runDiagnostics();
+         render();
+       });
+       return;
+     }
      if(!r.done.length && !r.failed.length) toast('چیزی برای تعمیر خودکار نبود','ok');
      else toast(fa(r.done.length)+' عیب برطرف شد'
        +(r.failed.length?' · '+fa(r.failed.length)+' ناموفق':''), r.failed.length?'err':'ok');
      S.diag=runDiagnostics();
      render();
+   },
+   'diag-rollback'(){
+     if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
+     var r=diagRollback(Number(e.target.dataset.i));
+     toast(r.msg, r.ok?'ok':'err');
+     S.diag=runDiagnostics();
+     render();
+   },
+   'diag-nav-restore'(){
+     if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
+     navRestoreAll();
+     toast('گزینه‌های پنهان به منو برگشتند','ok');
+     render();
+   },
+   'diag-clear-repairs'(){
+     if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
+     DIAG_REPAIRS.length=0;
+     try{Store.setJSON('sms_diag_repairs_v1',[]);}catch(err){}
+     toast('تاریخچهٔ تعمیرات پاک شد','ok');
+     render();
+   },
+   'diag-probe'(){
+     if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
+     var p=diagProbeHealth();
+     p.then(function(x){
+       toast(x.msg, x.ok?'ok':'err');
+       S.diag=runDiagnostics();
+       render();
+     });
    },
    'diag-auto'(){
      if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
