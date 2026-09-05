@@ -108,6 +108,7 @@ grep -rn "function viewGrades" src/js/
 | پیامک خودکار بسازم (غیبت/نمره/رویداد) | `44-sms-notify.js` — `notifyRequest` · `notifyGradeSync` · `notifyEvent` · `notifyReconcile`؛ قلاب‌ها در `19-actions.js` (`grade-save`) و `20-communication-finance.js` (`cal-save`) |
 | ستون تازه‌ای به ورود اکسل اضافه کنم | `34-excel-import.js` — `IMP_FIELDS` (مترادف‌ها را هم بنویسید) |
 | فیلدی را در ثبت نهایی ذخیره کنم | `34-excel-import.js` — `IMP_EXTRA_FIELDS` |
+| نوع تازه‌ای به ویزارد ورود اضافه کنم (مثل نمرات/حضور) | `34-excel-import.js` — سه جا با هم: `IMP_FIELDS` (ستون‌ها) + شاخهٔ `validateImport` + شاخهٔ `commitImport` (دانش‌آموز از پیش هست، فقط پیدا می‌شود) + گزینهٔ انتخاب در گام صفرِ `viewImport` |
 | فیلدی را در شناسنامه نشان دهم | `17-student-record.js` — `studentProfileCard` |
 | ستونی به خروجی اکسل اضافه کنم | `37-admin-tools.js` — `exportData` |
 | پلان فروش تازه‌ای اضافه کنم | `38-plans-backup.js` — `PLAN_DEFS` |
