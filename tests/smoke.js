@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * تست دودی (smoke) — برنامه را در یک DOM واقعی اجرا می‌کند،
  * با هر نقش وارد می‌شود و همه‌ی صفحات را رندر می‌کند تا خطای زمان اجرا پیدا شود.
@@ -492,9 +493,9 @@ test('توابع چرخه سال تحصیلی تعریف شده‌اند', () =>
   assert(W('Array.isArray(db.school_years)'), 'مجموعه school_years نیست');
 });
 
-test('سه تب چرخه سال رندر می‌شوند', () => {
+test('چهار تب چرخه سال رندر می‌شوند', () => {
   W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null;S.route='schoolyear';S.filters={}");
-  for(const t of ['status','placement','enroll']){
+  for(const t of ['status','placement','enroll','pre']){
     W("S.tab='" + t + "'");
     const o = W('renderRoute()');
     assert(o.length > 500 && !o.includes('undefined') && !o.includes('[object'), 'تب ' + t);
@@ -526,6 +527,67 @@ test('بستن سال: ارتقای پایه و ثبت وضعیت', () => {
     + "saveYearState(" + sid + ",{closed:1,closed_at:new Date().toISOString(),promoted:1});})");
   assert(W('yearState(' + sid + ').closed') === 1, 'سال بسته نشد');
   assert(W("byId('users',window.__sy).grade_level") === 11, 'پایه ارتقا نیافت');
+});
+
+test('بند ۰.۲: سال به‌عنوان موجودیت مستقل + قیف پیش‌ثبت‌نام سال آینده', () => {
+  W("window.__saveS=S.user;window.__saveTab=S.tab;window.__saveRoute=S.route");
+  const r = JSON.parse(W(`(()=>{
+    var cur=yearCode(),nx=nextYearCode(cur);
+    var ok1=Number(nx.split('-')[0])===Number(cur.split('-')[0])+1
+      &&Number(nx.split('-')[1])===Number(cur.split('-')[1])+1;
+    /* مدرسهٔ مجازی جدا — آلودگی دادهٔ دمو نباشد */
+    var sc=insert('schools',{name:'مدرسهٔ تست صفر-دو',code:'TEST-02X',city:'شهر تست',level:'متوسطه دوم',
+      type:'عادی',gender:'پسرانه',branches:[],fields:[],active:1,created_at:todayISO()}).id;
+    insert('users',{school_id:sc,role:'manager',full_name:'مدیر تست',username:'mgrtest02',
+      password:'123456',national_id:'0000000001',phone:'09100000001',active:1,title:'مدیر مدرسه',created_at:todayISO()});
+    var cls=insert('classes',{school_id:sc,name:'نهم ۱',grade:'نهم',grade_level:9,capacity:30}).id;
+    var stu=insert('users',{school_id:sc,role:'student',full_name:'دانش‌آموز تست',username:'sttest02a',
+      national_id:'0000000002',phone:null,grade_level:9,status:'active',active:1,created_at:todayISO()}).id;
+    insert('enrollments',{school_id:sc,class_id:cls,student_id:stu,year:cur});
+    /* بستن سال (همان پیمانی که اکشن year-close می‌زند) */
+    saveYearState(sc,{closed:1,closed_at:new Date().toISOString(),promoted:1,placement_year:nextYearCode(cur)});
+    var py=targetYearOf(sc);
+    /* چیدمان: سالِ ثبت‌نام باید سالِ مقصد (سال بعد) باشد */
+    applyPlacement([{studentId:stu,classId:cls}],sc);
+    var en=db.enrollments.filter(function(e){return e.student_id===stu&&e.class_id===cls;})[0];
+    /* قیف: ثبت ← تأیید (ساخت/وصل) ← چیدمان (نشانهٔ placed) */
+    var p1=preAddRow(sc,{name:'تازه‌وارد تست',national_id:'0000000003',phone:'09100000003',grade:9,field:null}).id;
+    var p2=preAddRow(sc,{name:'بازگشتی تست',national_id:'0000000002',phone:null,grade:10,field:null}).id;
+    var nRet=preAddReturning(sc);
+    var c1=preConfirm(sc,p1);
+    var c2=preConfirm(sc,p2);
+    applyPlacement([{studentId:c2.student_id,classId:cls}],sc);
+    var stAfter=byId('pre_enrollments',p2).status;
+    /* نما: تب پیش‌ثبت‌نام رندر می‌شود */
+    S.user=db.users.find(function(u){return u.username==='mgrtest02';});
+    S.persona=null;S.route='schoolyear';S.tab='pre';
+    var h=renderRoute();
+    var viewOk=h.indexOf('پیش‌ثبت‌نام')>-1&&h.indexOf('بازگشتی')>-1;
+    /* پاک‌سازی: مدرسهٔ مجازی نباید در تست‌های بعدی مانده باشد */
+    db.pre_enrollments.filter(function(p){return p.school_id===sc;})
+      .forEach(function(p){remove('pre_enrollments',p.id);});
+    db.school_years.filter(function(y){return y.school_id===sc;})
+      .forEach(function(y){remove('school_years',y.id);});
+    db.enrollments.filter(function(e){return e.school_id===sc;})
+      .forEach(function(e){remove('enrollments',e.id);});
+    db.users.filter(function(u){return u.school_id===sc;})
+      .forEach(function(u){remove('users',u.id);});
+    db.classes.filter(function(c){return c.school_id===sc;})
+      .forEach(function(c){remove('classes',c.id);});
+    remove('schools',sc);
+    return JSON.stringify({ok1:ok1,nx:nx,targetIsNext:py===nx,enYear:en?en.year:null,
+      nRet:nRet,c1ok:c1.ok,c1created:c1.created,c2ok:c2.ok,c2created:c2.created,
+      c2linked:c2.student_id===stu,viewOk:viewOk,stAfter:stAfter});
+  })()`));
+  W("S.user=window.__saveS;S.tab=window.__saveTab;S.route=window.__saveRoute");
+  assert(r.ok1 === true, 'nextYearCode سال بعد را درست نمی‌سازد');
+  assert(r.targetIsNext === true, '🔴 سالِ مقصدِ سالِ بسته‌شده، سال بعد نیست');
+  assert(r.enYear === r.nx, '🔴 چیدمان در سالِ مقصد ثبت نشد (ثبت: ' + r.enYear + '، مورد انتظار: ' + r.nx + ')');
+  assert(r.c1ok === true && r.c1created === true, '🔴 تأیید پیش‌ثبت‌نام تازه‌وارد حساب نساخت');
+  assert(r.c2ok === true && r.c2created === false && r.c2linked === true, '🔴 کد ملی موجود به حساب فعلی وصل نشد');
+  assert(r.nRet >= 1, '🔴 افزودن دانش‌آموزان بازگشتی کار نکرد');
+  assert(r.stAfter === 'placed', '🔴 پیش‌ثبت‌نامِ دانش‌آموزِ چیده‌شده «چیده شد» نشد');
+  assert(r.viewOk === true, '🔴 تب پیش‌ثبت‌نام رندر نشد');
 });
 
 test('ناسازگاری پایه و کلاس شناسایی می‌شود', () => {

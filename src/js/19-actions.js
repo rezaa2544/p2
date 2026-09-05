@@ -999,7 +999,9 @@ document.addEventListener('click',e=>{
              else {update('users',st.id,{grade_level:g+1});promoted++;}
            });
          });
-         saveYearState(sid,{closed:1,closed_at:new Date().toISOString(),promoted:1});
+         /* بند ۰.۲: سالِ مقصدِ چیدمان همان لحظهٔ بستن ثبت می‌شود */
+         saveYearState(sid,{closed:1,closed_at:new Date().toISOString(),promoted:1,
+           placement_year:nextYearCode(yearCode())});
        });
        toast(fa(promoted)+' ارتقا · '+fa(graduated)+' فارغ‌التحصیل · '+fa(leavers)+' پایان مقطع','ok');
        S.tab='placement'; render();
@@ -1025,7 +1027,7 @@ document.addEventListener('click',e=>{
        const buckets=autoPlacement(list,cls);
        const pairs=[];
        buckets.forEach(b=>b.list.forEach(s=>pairs.push({studentId:s.user.id,classId:b.cls.id})));
-       const n=applyPlacement(pairs);
+       const n=applyPlacement(pairs, sid);
        toast(fa(n)+' دانش‌آموز در کلاس‌ها چیده شدند','ok'); render();
      },{title:'چیدمان خودکار',ok:'انجام بده'});
    },
@@ -1070,11 +1072,47 @@ document.addEventListener('click',e=>{
          const buckets=autoPlacement(byGroup[k],cls);
          const pairs=[];
          buckets.forEach(b=>b.list.forEach(s=>pairs.push({studentId:s.user.id,classId:b.cls.id})));
-         total+=applyPlacement(pairs);
+         total+=applyPlacement(pairs, sid);
        });
        toast(fa(total)+' ثبت‌نام شد'+(skipped?' · '+fa(skipped)+' بدون کلاس مقصد':''),'ok');
        render();
      },{title:'ثبت‌نام خودکار',ok:'انجام بده'});
+   },
+   /* ---- قیف پیش‌ثبت‌نام سال آینده (بند ۰.۲) ---- */
+   'pre-add'(){
+     const sid=S.user.school_id;
+     const name=V('pre_name');
+     if(need('pre_name','نام الزامی است'))return;
+     const nid=(V('pre_nid')||'').trim();
+     if(nid&&!validNid(nid)){toast('کد ملی معتبر نیست','err');return;}
+     preAddRow(sid,{name:name,national_id:nid||null,phone:(V('pre_phone')||'').trim()||null,
+       grade:Number(V('pre_grade'))||0,field:(V('pre_field')||'').trim()||null});
+     toast('پیش‌ثبت‌نام ثبت شد؛ حالا «تأیید» بزنید تا حساب ساخته شود','ok'); render();
+   },
+   'pre-returning'(){
+     const sid=S.user.school_id;
+     const n=preAddReturning(sid);
+     toast(n?('تعداد '+fa(n)+' دانش‌آموز فعلی به پیش‌ثبت‌نام سال آینده افزوده شد'):'همهٔ دانش‌آموزان فعلی قبلاً ثبت‌اند','ok');
+     render();
+   },
+   'pre-confirm'(el,id){
+     const sid=S.user.school_id;
+     askConfirm('این پیش‌ثبت‌نام تأیید شود؟ حساب دانش‌آموز ساخته یا به حساب موجود وصل می‌شود.',()=>{
+       const r=preConfirm(sid,id);
+       if(!r.ok){toast(r.err,'err');return;}
+       toast(r.created?'تأیید شد و حساب دانش‌آموز ساخته شد':'تأیید شد و به حساب موجود وصل شد','ok');
+       render();
+     },{title:'تأیید پیش‌ثبت‌نام',ok:'تأیید کن'});
+   },
+   'pre-reject'(el,id){
+     update('pre_enrollments',id,{status:'rejected'});
+     toast('رد شد',''); render();
+   },
+   'pre-del'(el,id){
+     askConfirm('این ردیف پیش‌ثبت‌نام حذف شود؟',()=>{
+       remove('pre_enrollments',id);
+       toast('حذف شد',''); render();
+     },{title:'حذف پیش‌ثبت‌نام',ok:'حذف',danger:true});
    },
    // ---- چرخه تحصیلی ----
    'tr-box'(){S.filters.box=el.dataset.r;render();},
@@ -1324,7 +1362,7 @@ document.addEventListener('change',e=>{
   if(e.target.dataset&&e.target.dataset.f==='place'){
     const sidStu=Number(e.target.dataset.s), cid=Number(e.target.value);
     if(!sidStu||!cid)return;
-    const n=applyPlacement([{studentId:sidStu,classId:cid}]);
+    const n=applyPlacement([{studentId:sidStu,classId:cid}], S.user&&S.user.school_id);
     if(n){const c=byId('classes',cid);toast('در کلاس «'+(c?c.name:'')+'» ثبت شد','ok');render();}
     return;
   }

@@ -66,7 +66,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -190,5 +190,26 @@ function generate(){
       }
     }
   });
+  /* قیف پیش‌ثبت‌نام سال آینده (دور ۶۳، بند ۲): مدرسهٔ اول چند ردیف
+     پیش‌ثبت‌نام برای سال بعد دارد تا قیف در دمو دیده شود.
+     ⚠️ با add() — دادهٔ پایه، بدون ثبت در دفترچهٔ عملیات. */
+  (function(){
+    const s1=db.schools[0];
+    if(!s1)return;
+    const yNext=String(Number(yearCode().split('-')[0])+1)+'-'+String(Number(yearCode().split('-')[0])+2);
+    const st1=db.users.find(u=>u.school_id===s1.id&&u.role==='student'&&(u.status||'active')==='active');
+    if(st1)add('pre_enrollments',{school_id:s1.id,year_code:yNext,student_id:st1.id,
+      name:st1.full_name,national_id:st1.national_id,phone:st1.phone,
+      grade:Number(st1.grade_level)+1||null,field:st1.field||null,
+      source:'returning',status:'confirmed',created_at:daysAgoISO(20),note:null});
+    add('pre_enrollments',{school_id:s1.id,year_code:yNext,student_id:null,
+      name:'آرمان رستگار',national_id:nid(),phone:demoPhone(),
+      grade:10,field:'علوم تجربی',
+      source:'new',status:'registered',created_at:daysAgoISO(9),note:'تازه‌وارد — منتظر تأیید'});
+    add('pre_enrollments',{school_id:s1.id,year_code:yNext,student_id:null,
+      name:'نیما صالحی',national_id:nid(),phone:demoPhone(),
+      grade:11,field:'ریاضی',
+      source:'new',status:'registered',created_at:daysAgoISO(4),note:null});
+  })();
   add('announcements',{school_id:null,title:'به‌روزرسانی سامانه',body:'نسخه جدید سامانه مدیریت مدارس با قابلیت گزارش‌گیری پیشرفته و پنل اولیا منتشر شد.',audience:'all',created_by:1,created_at:daysAgoISO(1)});
 }
