@@ -14,7 +14,7 @@ function viewGrades(){
   const sub=S.filters.subject||(_autoOk&&!S.filters.class?String(_auto.subjectId):''), term=S.filters.term||'';
   const _autoShown=_autoOk&&!S.filters.class&&!S.filters.subject&&cid===_auto.classId&&sub===String(_auto.subjectId);
   let rows=db.grades.filter(g=>u.role==='student'?g.student_id===u.id:g.class_id===cid);
-  if(u.role==='teacher')rows=rows.filter(g=>g.teacher_id===u.id||true);
+  if(u.role==='teacher')rows=rows.filter(g=>g.teacher_id===u.id);
   if(sub)rows=rows.filter(g=>g.subject_id===Number(sub));
   if(term)rows=rows.filter(g=>g.term===term);
   rows=rows.slice().sort((a,b)=>b.id-a.id).slice(0,200);
