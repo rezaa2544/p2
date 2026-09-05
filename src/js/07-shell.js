@@ -157,6 +157,7 @@ function _renderRouteInner(){
     case 'myservice':return viewMyService();
     case 'vclass':return viewVclass();
     case 'homework':return viewHomework();
+    case 'visitors':return viewVisitors();
     case 'cqueue':return viewCounselorQueue();
     case 'followup':return viewFollowup();
     case 'staff':return viewStaff();
