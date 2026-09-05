@@ -958,7 +958,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -2508,6 +2508,8 @@ var ACTION_ROLES = {
   'bus-follow-save':        ['manager','superadmin'],
   'bus-follow-close':       ['manager','superadmin'],
   'bus-follow-close-save':  ['manager','superadmin'],
+  'vclass-links':    ['teacher','manager','superadmin'],
+  'vclass-link-copy':['teacher','manager','student','parent','superadmin'],
   'vc-join':         ['student'],
   'vc-leave':        ['student'],
   'hw-window':       ['teacher','manager','superadmin'],
@@ -8792,6 +8794,12 @@ document.addEventListener('click',e=>{
      const d=attDraftDiff(cid,date);
      if(!d.changes.length){closeModal();return;}
      const school=byId('classes',cid).school_id;
+     /* بند ۱۶: روزِ غیرحضوری، ثبتِ حضوری مسدود است (حضور فقط از کلاس مجازی) */
+     if(typeof schoolVirtual==='function' && schoolVirtual(school, date)){
+       closeModal();
+       if(typeof toast==='function') toast('در روز غیرحضوری، ثبتِ حضوری مسدود است — حضور از «کلاس مجازی» ثبت می‌شود','err');
+       return;
+     }
      const made=[];
      batchWrites(()=>{
        d.changes.forEach(c=>{
@@ -9310,6 +9318,17 @@ document.addEventListener('click',e=>{
      closeModal(); toast('✅ پیگیری بسته شد','ok'); render();
    },
    /* بند ۱۲: حضورِ خودکار کلاس مجازی */
+   /* بند ۱۵: لینک‌های اختصاصیِ کلاس مجازی */
+   'vclass-links'(){ vclassLinksModal(Number(id)); },
+   'vclass-link-copy'(){
+     const l = byId('vclass_links', Number(id));
+     if(!l) return;
+     const url = vclassLinkFullUrl(l);
+     if(navigator.clipboard && navigator.clipboard.writeText){
+       navigator.clipboard.writeText(url).then(function(){ toast('لینک کپی شد','ok'); },
+         function(){ window.prompt('لینک را کپی کنید:', url); });
+     } else { window.prompt('لینک را کپی کنید:', url); }
+   },
    'vc-join'(){
      const r = vclassJoin(Number(id));
      if(!r.ok) return toast(r.msg,'err');
@@ -12558,6 +12577,11 @@ setTimeout(()=>{
   if(typeof generateSidaDemo==='function') generateSidaDemo();
   if(typeof generateSchoolModeDemo==='function') generateSchoolModeDemo();
   loadLog(); applyLog(); initSync();
+  /* بند ۱۵: لینکِ اختصاصی — بارگذاری صفحه با hash + تغییرِ hash */
+  if(typeof vclassAutoJoinFromHash==='function'){
+    vclassAutoJoinFromHash();
+    window.addEventListener('hashchange', function(){ vclassAutoJoinFromHash(); });
+  }
   /* ⚠️ فقط دمو (DEMO-ONLY): ورود خودکار با نام کاربریِ ذخیره‌شده — بدون
      هیچ رمز یا تأیید هویت — صرفاً برای حالت آفلاین/نمایش است و بخشی از
      طراحی تولید نیست. در نسخهٔ نهایی ورود فقط با تلفن + کد ملی
@@ -20013,6 +20037,7 @@ function viewVclass(){
   var h = '<div class="page-head"><h2>🖥️ کلاس مجازی</h2></div>'
     + '<div class="small muted" style="margin-bottom:14px">'
     + 'پایش میزبان ویدیوی زنده نیست: یا لینک جلسهٔ شاد ثبت می‌شود، یا فایل/ویدیوی ضبط‌شده + سؤالات متنی. '
+    + 'هر دانش‌آموز یک <b>لینکِ اختصاصی</b> دارد: با باز کردنِ آن وارد کلاس می‌شود و حضورش خودکار ثبت می‌شود (مرحلهٔ بعد: اتصال به اتاق شاد — قفل ۱۲.۱). '
     + 'فایل‌ها در IndexedDB ذخیره می‌شوند (سقف نرم ' + idbSizeLabel(VCLASS_FILE_CAP) + ' برای هر فایل).</div>'
   + ((typeof virtualModeBanner==='function') ? virtualModeBanner() : '');
   if(!clsList.length){
@@ -20047,6 +20072,17 @@ function viewVclass(){
               ? '<a class="btn ghost sm" href="' + escAttr(s.shad_url) + '" target="_blank" rel="noopener">ورود به شاد</a>'
               : (s.file_key
                   ? '<button class="btn ghost sm" data-act="vclass-play" data-id="' + s.id + '">پخش</button>' : ''))
+          + (role === 'student'
+              ? (function(){
+                  var _a = vclassAttOf(s.id, u.id);
+                  return (_a && !_a.left_at)
+                    ? '<button class="btn ghost sm" data-act="vc-leave" data-id="' + s.id + '">🚪 خروج از کلاس</button>'
+                    : '';
+                })()
+              : '')
+          + (role !== 'student'
+              ? '<button class="btn ghost sm" data-act="vclass-links" data-id="' + s.id + '">🔗 لینک‌ها</button>'
+              : '')
           + (role !== 'student'
               ? '<button class="btn ghost sm" data-act="vclass-del" data-id="' + s.id + '">حذف</button>'
               : '')
@@ -20277,7 +20313,116 @@ function vclassAttCard(session, sid){
       h += '<button class="btn sm" data-act="vc-join" data-id="' + session.id + '">🚪 ورود به کلاس (حضورِ خودکار)</button>';
     }
   }
+  var _link = vclassLinkEnsure(session.id, sid);
+  h += '<div class="row" style="gap:8px;align-items:center;margin-top:8px">'
+    + '<span class="small muted">🔗 لینکِ اختصاصی:</span>'
+    + '<code class="small" style="direction:ltr">' + esc(_link.token) + '</code>'
+    + '<button class="btn ghost sm" data-act="vclass-link-copy" data-id="' + _link.id + '">کپی</button>'
+    + '</div>';
   return h + '</div></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بند ۱۵ (اصلِ واقعیت) — لینکِ اختصاصیِ واقعیِ هر دانش‌آموز
+
+   «حضورِ خودکار» واقعی: هر دانش‌آموز برای هر نشست یک لینکِ
+   اختصاصی دارد (جدول vclass_links، توکنِ قطعی از hash). وقتی
+   دانش‌آموز لینکش را باز کند، واردِ همان نشست می‌شود و حضورش
+   ثبت می‌شود (vclassJoinLink) — با همهٔ گاردهای روی داده
+   (فقط مالکِ لینک + فقط دانش‌آموز + فقط کلاسِ خودش). خروج هم
+   واقعی است (دکمهٔ خروج / لینکِ بعدی). مرحلهٔ باقی‌مانده:
+   تشخیصِ حضورِ واقعی از داخلِ اتاق شاد (API/سرور) — قفل ۱۲.۱.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const VC_LINK_PREFIX = 'vc-';
+
+/** hash قطعی djb2 → base36 (توکنِ بدونِ تصادف؛ در سرورِ واقعی:
+    توکنِ نامشخصِ سمت سرور — ساختارِ جدول دست‌نخورده) */
+function vclassHash36(str){
+  var h = 5381;
+  for(var i=0;i<str.length;i++){ h = ((h<<5)+h+str.charCodeAt(i))|0; }
+  return (h>>>0).toString(36);
+}
+function vclassLinkOf(sessionId, studentId){
+  for(var i=0;i<db.vclass_links.length;i++){
+    var l = db.vclass_links[i];
+    if(l.session_id===sessionId && l.student_id===studentId) return l;
+  }
+  return null;
+}
+/** لینکِ اختصاصی (ساختِ به‌تأخیر، upsert بر پایهٔ نشست+دانش‌آموز) */
+function vclassLinkEnsure(sessionId, studentId){
+  var existing = vclassLinkOf(sessionId, studentId);
+  if(existing) return existing;
+  var token = VC_LINK_PREFIX + vclassHash36(sessionId + ':' + studentId);
+  return insert('vclass_links', {
+    session_id: sessionId, student_id: studentId, token: token,
+    created_at: new Date().toISOString()
+  });
+}
+/** آدرسِ کاملِ لینک (در پوستهٔ دمو: همین فایل + hash) */
+function vclassLinkFullUrl(link){
+  var base = (typeof location!=='undefined' && location.href) ? String(location.href).split('#')[0] : 'index.html';
+  return base + '#' + link.token;
+}
+/** ورود از لینک: فقط مالک + گاردهای عادیِ حضور */
+function vclassJoinLink(token){
+  var t = String(token||'').replace(/^#/,'');
+  var link = null;
+  for(var i=0;i<db.vclass_links.length;i++){
+    if(db.vclass_links[i].token===t){ link = db.vclass_links[i]; break; }
+  }
+  if(!link) return {ok:false, msg:'این لینک معتبر نیست'};
+  var s = byId('vclass_sessions', link.session_id);
+  if(!s) return {ok:false, msg:'این نشست دیگر وجود ندارد'};
+  var u = S.user;
+  if(!u) return {ok:false, msg:'وارد نشده‌اید'};
+  var role = (typeof activePersona==='function') ? activePersona() : u.role;
+  if(role !== 'student') return {ok:false, msg:'فقط دانش‌آموز می‌تواند با لینکِ اختصاصی وارد شود'};
+  if(u.id !== link.student_id) return {ok:false, msg:'این لینک متعلق به دانش‌آموز دیگری است'};
+  var r = vclassJoin(s.id);
+  if(!r.ok) return r;
+  return {ok:true, rec:r.rec, session:s};
+}
+/** خودکار: وقتی صفحه با hashِ لینک باز می‌شود (بارگذاری/تغییر hash) */
+function vclassAutoJoinFromHash(){
+  if(typeof location === 'undefined') return;
+  var h = String(location.hash||'').replace(/^#/,'');
+  if(h.indexOf(VC_LINK_PREFIX) !== 0) return;
+  var r = vclassJoinLink(h);
+  if(!r.ok){ toast(r.msg,'err'); return; }
+  toast('🚪 وارد کلاس مجازی شدید — حضور شما ثبت شد','ok');
+  S.route = 'vclass'; S.filters = {}; S.page = 1;
+  render();
+}
+/** مودالِ لینک‌های اختصاصی (دبیرِ کلاس/مدیر مدرسه/سوپرادمین — گارد روی داده) */
+function vclassLinksModal(sessionId){
+  var s = byId('vclass_sessions', sessionId);
+  if(!s) return;
+  var u = S.user;
+  var role = (typeof activePersona==='function') ? activePersona() : u.role;
+  var cls = byId('classes', s.class_id);
+  if(role === 'teacher'){
+    if(!(cls && teacherClasses(u.id).some(function(c){ return c.id===cls.id; })))
+      return toast('شما فقط لینکِ کلاس‌های خودتان را می‌توانید ببینید','err');
+  } else if(role === 'manager'){
+    if(!(cls && cls.school_id === u.school_id))
+      return toast('این نشست متعلق به مدرسهٔ شما نیست','err');
+  } else if(role !== 'superadmin'){
+    return;
+  }
+  var studs = studentsOfClass(s.class_id);
+  var body = '<div class="small muted" style="margin-bottom:8px">لینکِ اختصاصیِ هر دانش‌آموز: وقتی بازش کند وارد این نشست می‌شود و حضورش خودکار ثبت می‌شود. (مرحلهٔ بعد: اتصالِ مستقیم به اتاق شاد — قفل ۱۲.۱)</div>'
+    + '<div style="display:grid;gap:6px;max-height:55vh;overflow:auto">';
+  studs.forEach(function(st){
+    var l = vclassLinkEnsure(s.id, st.id);
+    body += '<div class="row" style="gap:8px;align-items:center">'
+      + '<b class="small" style="min-width:110px;max-width:110px;overflow:hidden;text-overflow:ellipsis">' + esc(st.full_name) + '</b>'
+      + '<code class="small" style="direction:ltr;flex:1;overflow:hidden;text-overflow:ellipsis">' + esc(l.token) + '</code>'
+      + '<button class="btn ghost sm" data-act="vclass-link-copy" data-id="' + l.id + '">کپی</button>'
+      + '</div>';
+  });
+  openModal(modalTpl('لینک‌های اختصاصی — ' + s.title, body + '</div>', ''));
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -21048,6 +21193,9 @@ function visitorRegister(name, purpose){
   var role = (typeof activePersona === 'function') ? activePersona() : u.role;
   if(role !== 'manager') return {ok:false, msg:'فقط مدیر مدرسه می‌تواند مهمان ثبت کند'};
   if(!u.school_id) return {ok:false, msg:'مدرسهٔ فعالی مشخص نیست'};
+  /* بند ۱۶: روزِ غیرحضوری، ورودِ فیزیکیِ مهمان نیست */
+  if(typeof schoolVirtual==='function' && schoolVirtual(u.school_id, todayISO()))
+    return {ok:false, msg:'امروز مدرسه غیرحضوری است؛ ثبت مهمان امکان ندارد (مسدود)'};
   name = String(name || '').trim();
   if(!name) return {ok:false, msg:'نام مهمان خالی است'};
   var rec = {
@@ -21228,6 +21376,9 @@ function libLend(bookId, studentId, dueDate){
   var role = (typeof activePersona === 'function') ? activePersona() : u.role;
   if(role !== 'manager') return {ok:false, msg:'فقط مدیر مدرسه می‌تواند امانت بدهد'};
   if(!u.school_id) return {ok:false, msg:'مدرسهٔ فعالی مشخص نیست'};
+  /* بند ۱۶: روزِ غیرحضوری، کتابخانهٔ فیزیکی کار نمی‌کند */
+  if(typeof schoolVirtual==='function' && schoolVirtual(u.school_id, todayISO()))
+    return {ok:false, msg:'امروز مدرسه غیرحضوری است؛ امانت کتاب انجام نمی‌شود (مسدود)'};
   var b = byId('lib_books', bookId);
   if(!b) return {ok:false, msg:'کتاب پیدا نشد'};
   if(b.school_id !== u.school_id) return {ok:false, msg:'این کتاب متعلق به مدرسهٔ شما نیست'};
@@ -21417,6 +21568,11 @@ function assetSetStatus(assetId, status, location){
   var u = S.user;
   var role = (typeof activePersona === 'function') ? activePersona() : u.role;
   if(role !== 'manager') return {ok:false, msg:'فقط مدیر مدرسه می‌تواند وضعیت تجهیز را عوض کند'};
+  /* بند ۱۶: «استفاده» یعنی تحویلِ فیزیکی — در روزِ غیرحضوری مسدود
+     (چکِ روز قبل از چکِ مالکیت است: روزِ غیرحضوری اصلاً تجهیز
+     فیزیکی تحویل نمی‌شود) */
+  if(status==='in_use' && typeof schoolVirtual==='function' && schoolVirtual(u.school_id, todayISO()))
+    return {ok:false, msg:'امروز مدرسه غیرحضوری است؛ «استفاده» از تجهیز ثبت نمی‌شود (مسدود)'};
   var a = byId('assets', assetId);
   if(!a) return {ok:false, msg:'تجهیز پیدا نشد'};
   if(a.school_id !== u.school_id) return {ok:false, msg:'این تجهیز متعلق به مدرسهٔ شما نیست'};
@@ -21737,13 +21893,65 @@ function setSchoolMode(schoolId, dateISO, mode, u){
   if(!okScope) return {ok:false, msg:'شما مجوز تغییر حالت این مدرسه را ندارید'};
   var now = new Date().toISOString();
   var row = schoolModeRow(schoolId, dateISO);
+  var rec;
   if(row){
     update('attendance_modes', row.id, {mode:mode, set_by:u.id, set_at:now});
-    return {ok:true, rec: byId('attendance_modes', row.id)};
+    rec = byId('attendance_modes', row.id);
+  } else {
+    rec = insert('attendance_modes',
+      {school_id:schoolId, date:dateISO, mode:mode, set_by:u.id, set_at:now});
   }
-  var rec = insert('attendance_modes',
-    {school_id:schoolId, date:dateISO, mode:mode, set_by:u.id, set_at:now});
-  return {ok:true, rec:rec};
+  /* بند ۱۶: وقتی روزی غیرحضوری می‌شود، اولیا همان لحظه در صف پیام
+     (نقشِ رویداد) خبر می‌گیرند؛ وقتی دوباره حضوری شد، پیام‌های
+     معلقِ همان روز لغو می‌شوند. (ارسال واقعی = مرحلهٔ سرور) */
+  var notify = (mode === 'virtual')
+    ? smQueueVirtualNotice(schoolId, dateISO)
+    : {cancelled: smCancelVirtualNotice(schoolId, dateISO)};
+  return {ok:true, rec:rec, notify:notify};
+}
+
+/** صف‌کردنِ خبرِ «روزِ غیرحضوری» برای همهٔ اولیای فعالِ مدرسه */
+function smQueueVirtualNotice(schoolId, dateISO){
+  schoolId = Number(schoolId);
+  var s = byId('schools', schoolId);
+  if(!s || typeof notifyRequest !== 'function') return {created:0, skipped:0};
+  var studs = db.users.filter(function(x){
+    return x.role==='student' && x.school_id===schoolId && (x.status||'active')==='active';
+  });
+  var created = 0, skipped = 0;
+  studs.forEach(function(st){
+    /* ref برای هر دانش‌آموز جدا — تکراری یعنی همین اولیای همین دانش‌آموز */
+    var ref = 'schoolmode:' + schoolId + ':' + dateISO + ':' + st.id;
+    var dup = (db.notify_queue||[]).some(function(q){
+      return q.source_ref===ref && q.status!=='rejected' && q.status!=='cancelled';
+    });
+    if(dup){ skipped++; return; }
+    var q = notifyRequest({
+      school_id: schoolId,
+      kind: 'event',
+      student_id: st.id,
+      student_name: st.full_name,
+      body: 'اولیای گرامی، مدرسهٔ ' + s.name + ' در تاریخ '
+        + ((typeof jalali==='function') ? jalali(dateISO) : dateISO)
+        + ' غیرحضوری (مجازی) است؛ کلاس‌ها از طریق «کلاس مجازی» برگزار می‌شود.',
+      source_ref: ref
+    });
+    if(q) created++; else skipped++;
+  });
+  return {created:created, skipped:skipped};
+}
+
+/** لغوِ پیام‌های معلقِ خبرِ غیرحضوریِ یک روز (وقتی روز حضوری شد) */
+function smCancelVirtualNotice(schoolId, dateISO){
+  var pre = 'schoolmode:' + schoolId + ':' + dateISO + ':';
+  var n = 0;
+  (db.notify_queue||[]).slice().forEach(function(q){
+    if(q.source_ref && q.source_ref.indexOf(pre)===0 && q.status==='pending'){
+      update('notify_queue', q.id, {status:'cancelled'});
+      n++;
+    }
+  });
+  return n;
 }
 
 /** بجِ حالتِ یک مدرسه در یک روز (برای فهرستِ اداره) */
@@ -21766,7 +21974,8 @@ function virtualModeBanner(dateISO){
     + '🏠 این مدرسه در تاریخ ' + esc((typeof jalali==='function' ? jalali(d) : d))
     + ' در حالت <b>غیرحضوری (مجازی)</b> است — همهٔ کلاس، فضا و تجهیزات '
     + 'برای این روز به‌صورت خودکار مجازی‌اند؛ حضورِ کلاس‌ها از «کلاس مجازی» '
-    + 'ثبت می‌شود. (تغییر: مدیر مدرسه یا ادارهٔ آموزش و پرورش)</div>';
+    + 'ثبت می‌شود. ثبتِ حضوری، امانت کتاب، ثبت مهمان و «استفاده» از تجهیز '
+    + 'برای این روز مسدود است. (تغییر: مدیر مدرسه یا ادارهٔ آموزش و پرورش)</div>';
 }
 
 /** مودالِ انتخابِ حالت (اداره/مدیر) */
