@@ -298,7 +298,7 @@ document.addEventListener('click',e=>{
    },
    'health-gauge-style'(){
      var s=el.dataset.s;
-     if(s!=='needle'&&s!=='dial'&&s!=='thermo')return;
+     if(s!=='needle'&&s!=='dial'&&s!=='bar')return;
      Store.set('payesh_health_gauge_v1', s);
      render();
    },
