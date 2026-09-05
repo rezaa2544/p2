@@ -465,7 +465,7 @@ src/body.html  ─┘
 02-demo-data        موتور تولید داده شبه‌تصادفی (SEED ثابت = 20260901)
 03-persistence      applyOp / insert / update / remove + mutation log + قلاب sync
                     + باطل‌سازی خودکار ایندکس + هشدار پرشدن حافظه
-04-queries          کوئری‌های مبتنی بر نقش: visibleClasses, visibleSubjects…
+04-queries          کوئری‌های مبتنی بر نقش: visibleClasses, visibleSubjects… + مدل چندپایهٔ زودهنگام (classSubjectMembers با fallback تنبل، جدول class_subject_members — قفل‌شدهٔ ۲.۱ در ARCHITECTURE_DECISIONS)
 05-router           شیء S، NAV، TITLES، go/goBack، مدیریت history
 28-indexes          ⭐ لایه ایندکس (پیش از persistence بارگذاری می‌شود)
 29-scope            ⭐ محدودهٔ دادهٔ هر نقش + قرارداد bootstrap سرور
