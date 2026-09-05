@@ -142,7 +142,8 @@ function viewLibrary(){
   var books = libBooksOf(u.school_id);
   var actives = db.lib_loans.filter(function(l){ return l.school_id===u.school_id && !l.returned_at; });
   var lates = actives.filter(function(l){ return libLoanStatus(l)==='late'; });
-  var h = '<div class="page-head"><h2>📚 کتابخانه</h2></div>';
+  var h = '<div class="page-head"><h2>📚 کتابخانه</h2></div>'
+    + ((typeof virtualModeBanner==='function') ? virtualModeBanner() : '');
   h += '<div class="card"><div class="card-head"><div class="row" style="gap:8px;flex-wrap:wrap">'
     + '<span class="badge b-gray">کتاب: ' + fa(books.length) + '</span>'
     + '<span class="badge b-amber">امانت‌رفته: ' + fa(actives.length) + '</span>'

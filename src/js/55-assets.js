@@ -85,7 +85,8 @@ function viewAssets(){
   var list = assetsOf(u.school_id);
   var inUse = list.filter(function(a){ return a.status==='in_use'; });
   var repair = list.filter(function(a){ return a.status==='repair'; });
-  var h = '<div class="page-head"><h2>🧰 املاک و موجودی</h2></div>';
+  var h = '<div class="page-head"><h2>🧰 املاک و موجودی</h2></div>'
+    + ((typeof virtualModeBanner==='function') ? virtualModeBanner() : '');
   h += '<div class="card"><div class="card-head"><div class="row" style="gap:8px;flex-wrap:wrap">'
     + '<span class="badge b-gray">تجهیز: ' + fa(list.length) + '</span>'
     + '<span class="badge b-green">در دسترس: ' + fa(list.length - inUse.length - repair.length) + '</span>'

@@ -1135,6 +1135,20 @@ document.addEventListener('click',e=>{
      toast(r.rec.locked ? 'تکلیف قفل شد' : 'تکلیف باز شد','ok'); render();
    },
    'hw-view'(){ hwViewModal(Number(id)); },
+   /* بند ۱۳: حالت حضوری/غیرحضوری مدرسه */
+   'smode-open'(){ smodeModal(Number(id)); },
+   'smode-save'(){
+     const r = setSchoolMode(window._smodeId, V('sm_date'), V('sm_mode'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('حالت ثبت شد','ok'); render();
+   },
+   'smode-mgr'(){
+     const t = todayISO();
+     const cur = schoolModeOf(S.user.school_id, t);
+     const r = setSchoolMode(S.user.school_id, t, cur==='virtual'?'in_person':'virtual');
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     toast(r.rec.mode==='virtual' ? 'مدرسه امروز غیرحضوری (مجازی) شد' : 'مدرسه امروز حضوری شد','ok'); render();
+   },
    /* خلاصهٔ روزانه (بند ۱.۷): برای همهٔ دانش‌آموزان فعال؛ تکراری رد می‌شود */
    'daily-summary'(){
      const r = notifyDailySummaryAll(S.user.school_id);

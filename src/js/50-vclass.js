@@ -155,7 +155,8 @@ function viewVclass(){
   var h = '<div class="page-head"><h2>🖥️ کلاس مجازی</h2></div>'
     + '<div class="small muted" style="margin-bottom:14px">'
     + 'پایش میزبان ویدیوی زنده نیست: یا لینک جلسهٔ شاد ثبت می‌شود، یا فایل/ویدیوی ضبط‌شده + سؤالات متنی. '
-    + 'فایل‌ها در IndexedDB ذخیره می‌شوند (سقف نرم ' + idbSizeLabel(VCLASS_FILE_CAP) + ' برای هر فایل).</div>';
+    + 'فایل‌ها در IndexedDB ذخیره می‌شوند (سقف نرم ' + idbSizeLabel(VCLASS_FILE_CAP) + ' برای هر فایل).</div>'
+  + ((typeof virtualModeBanner==='function') ? virtualModeBanner() : '');
   if(!clsList.length){
     return h + '<div class="card">' + empty('🖥️','کلاسی در دسترس نیست','') + '</div>';
   }

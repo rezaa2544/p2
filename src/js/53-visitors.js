@@ -64,7 +64,8 @@ function viewVisitors(){
   var u = S.user;
   var list = visitorsOf(u.school_id);
   var nowIn = list.filter(function(v){ return visitorStatus(v)==='in'; }).length;
-  var h = '<div class="page-head"><h2>🚪 مهمان‌ها</h2></div>';
+  var h = '<div class="page-head"><h2>🚪 مهمان‌ها</h2></div>'
+    + ((typeof virtualModeBanner==='function') ? virtualModeBanner() : '');
   h += '<div class="card"><div class="card-head"><div class="row" style="gap:8px;flex-wrap:wrap">'
     + '<span class="badge b-amber">در حال حاضر در مدرسه: ' + fa(nowIn) + '</span>'
     + '<span class="badge b-gray">کل ثبت‌شده: ' + fa(list.length) + '</span></div>'

@@ -5,7 +5,8 @@
 function viewClasses(){
   const canEdit=['superadmin','manager'].includes(S.user.role);
   const rows=visibleClasses();
-  return `<div class="card"><div class="card-head"><h3>کلاس‌ها <span class="badge b-gray">${fa(rows.length)}</span></h3>
+  const _smBanner=(typeof virtualModeBanner==='function')?virtualModeBanner():'';
+  return `${_smBanner}<div class="card"><div class="card-head"><h3>کلاس‌ها <span class="badge b-gray">${fa(rows.length)}</span></h3>
     ${canEdit?`<button class="btn" data-act="class-new">➕ کلاس جدید</button>`:''}</div>
    ${rows.length?`<div class="grid g3" style="padding:16px">${(()=>{const _ec=(typeof idxEnrollByClass==='function')?idxEnrollByClass():null;return rows.map(c=>{const n=_ec?(_ec.get(c.id)||[]).length:db.enrollments.filter(e=>e.class_id===c.id).length;const fill=Math.min(100,Math.round(n/(c.capacity||30)*100));const ht=c.homeroom_teacher_id?byId('users',c.homeroom_teacher_id):null;
      return `<div class="card" style="padding:15px;box-shadow:none">
