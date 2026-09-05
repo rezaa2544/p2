@@ -1098,15 +1098,44 @@ document.addEventListener('click',e=>{
      render();
    },
    'bus-loc-driver'(){
-     const el2 = document.getElementById('bus_loc_pos');
-     const r = busLocationSend('driver', el2 ? el2.value : 0);
-     if(!r.ok) return toast(r.msg,'err');
-     toast('📍 موقعیت ارسال شد','ok'); render();
+     busLocationReal('driver', 0).then(function(res){
+       if(!res.ok) return toast(res.msg,'err');
+       toast(res.real ? '📡 موقعیتِ واقعی ثبت شد' : '📍 موقعیت ثبت شد (دمو: نقطهٔ بعدیِ واقعیِ مسیر)','ok'); render();
+     });
    },
    'bus-loc-student'(){
-     const r = busLocationSend('student', 0, Number(id));
-     if(!r.ok) return toast(r.msg,'err');
-     toast('📍 موقعیت ارسال شد','ok'); render();
+     busLocationReal('student', 0).then(function(res){
+       if(!res.ok) return toast(res.msg,'err');
+       toast('📍 موقعیت شما ثبت شد','ok'); render();
+     });
+   },
+   /* بند ۱۴: پیگیریِ واقعیِ مغایرت */
+   'bus-follow-open'(el){
+     const st = byId('users', Number(id));
+     openModal(modalTpl('پیگیری مغایرت — ' + (st ? st.full_name : ''),
+       f('یادداشت پیگیری', inp('bf_note', '', 'مثلاً: با راننده تماس گرفتم…')),
+       'bus-follow-save'));
+     window._busFollow = {route: Number(el.dataset.r), student: Number(id)};
+   },
+   'bus-follow-save'(){
+     const fo = window._busFollow || {};
+     const r = busFollowStart(fo.route, fo.student, V('bf_note'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('🔎 پیگیری شروع شد','ok'); render();
+   },
+   'bus-follow-close'(){
+     const f = byId('bus_followups', Number(id));
+     if(!f) return;
+     const st = byId('users', f.student_id);
+     openModal(modalTpl('بستن پیگیری — ' + (st ? st.full_name : ''),
+       f('نتیجهٔ پیگیری', inp('bf_close', '', 'مثلاً: تأیید شد که دانش‌آموز پیاده شده است')),
+       'bus-follow-close-save'));
+     window._busFollowId = Number(id);
+   },
+   'bus-follow-close-save'(){
+     const r = busFollowClose(window._busFollowId, V('bf_close'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('✅ پیگیری بسته شد','ok'); render();
    },
    /* بند ۱۲: حضورِ خودکار کلاس مجازی */
    'vc-join'(){

@@ -958,7 +958,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -2504,6 +2504,10 @@ var ACTION_ROLES = {
   'bus-event-student': ['student'],
   'bus-loc-driver':  ['driver'],
   'bus-loc-student': ['student'],
+  'bus-follow-open':        ['manager','superadmin'],
+  'bus-follow-save':        ['manager','superadmin'],
+  'bus-follow-close':       ['manager','superadmin'],
+  'bus-follow-close-save':  ['manager','superadmin'],
   'vc-join':         ['student'],
   'vc-leave':        ['student'],
   'hw-window':       ['teacher','manager','superadmin'],
@@ -9266,15 +9270,44 @@ document.addEventListener('click',e=>{
      render();
    },
    'bus-loc-driver'(){
-     const el2 = document.getElementById('bus_loc_pos');
-     const r = busLocationSend('driver', el2 ? el2.value : 0);
-     if(!r.ok) return toast(r.msg,'err');
-     toast('📍 موقعیت ارسال شد','ok'); render();
+     busLocationReal('driver', 0).then(function(res){
+       if(!res.ok) return toast(res.msg,'err');
+       toast(res.real ? '📡 موقعیتِ واقعی ثبت شد' : '📍 موقعیت ثبت شد (دمو: نقطهٔ بعدیِ واقعیِ مسیر)','ok'); render();
+     });
    },
    'bus-loc-student'(){
-     const r = busLocationSend('student', 0, Number(id));
-     if(!r.ok) return toast(r.msg,'err');
-     toast('📍 موقعیت ارسال شد','ok'); render();
+     busLocationReal('student', 0).then(function(res){
+       if(!res.ok) return toast(res.msg,'err');
+       toast('📍 موقعیت شما ثبت شد','ok'); render();
+     });
+   },
+   /* بند ۱۴: پیگیریِ واقعیِ مغایرت */
+   'bus-follow-open'(el){
+     const st = byId('users', Number(id));
+     openModal(modalTpl('پیگیری مغایرت — ' + (st ? st.full_name : ''),
+       f('یادداشت پیگیری', inp('bf_note', '', 'مثلاً: با راننده تماس گرفتم…')),
+       'bus-follow-save'));
+     window._busFollow = {route: Number(el.dataset.r), student: Number(id)};
+   },
+   'bus-follow-save'(){
+     const fo = window._busFollow || {};
+     const r = busFollowStart(fo.route, fo.student, V('bf_note'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('🔎 پیگیری شروع شد','ok'); render();
+   },
+   'bus-follow-close'(){
+     const f = byId('bus_followups', Number(id));
+     if(!f) return;
+     const st = byId('users', f.student_id);
+     openModal(modalTpl('بستن پیگیری — ' + (st ? st.full_name : ''),
+       f('نتیجهٔ پیگیری', inp('bf_close', '', 'مثلاً: تأیید شد که دانش‌آموز پیاده شده است')),
+       'bus-follow-close-save'));
+     window._busFollowId = Number(id);
+   },
+   'bus-follow-close-save'(){
+     const r = busFollowClose(window._busFollowId, V('bf_close'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('✅ پیگیری بسته شد','ok'); render();
    },
    /* بند ۱۲: حضورِ خودکار کلاس مجازی */
    'vc-join'(){
@@ -18653,8 +18686,9 @@ function busRouteBlock(r){
     h += '<div class="small" style="border:1px solid var(--red);background:rgba(225,29,72,.06);border-radius:10px;padding:10px 12px">'
       + '⚠️ <b>مغایرت سوار/پیاده امروز ('+fa(confl.length)+')</b>: '
       + confl.map(function(c){ return esc(c.student.full_name); }).join('، ')
-      + ' — برای پیگیری، تب «سرویس» پروندهٔ دانش‌آموز را ببینید.</div>';
+      + ' — پیگیریِ واقعی در بخش زیر.</div>';
   }
+  h += busFollowupsHtml(r.id);
   h += busSchematicHtml(r.id);
   return h + '</div></div>';
 }
@@ -18665,7 +18699,7 @@ function viewBusService(){
   var h = '<div class="page-head"><h2>🚌 سرویس مدرسه</h2>'
     + '<button class="btn" data-act="bus-route-new">➕ مسیر جدید</button></div>'
     + '<div class="small muted" style="margin-bottom:14px">'
-    + 'نسخهٔ بدون جی‌پی‌اس: راننده از پنل «مسیر من» دکمهٔ سوار/پیاده می‌زند و برای خانواده پیامک می‌رود. '
+    + 'جی‌پی‌اسِ واقعی: راننده از پنل «مسیر من» موقعیتِ واقعیِ دستگاه را می‌فرستد (مختصات روی نقشهٔ مسیر) و سوار/پیاده را ثبت می‌کند. '
     + 'راننده‌ها مثل سایر کادرها در بخش «دبیران و دانش‌آموزان» با نقش «راننده سرویس» تعریف می‌شوند.'
     + '</div>';
   if(!routes.length){
@@ -18761,13 +18795,12 @@ function viewMyService(){
           + '</div>';
       }).join('')
     + '</div></div></div>';
-  h += '<div class="card"><div class="card-head"><h3>📍 موقعیت روی مسیر</h3></div><div class="card-body">'
-    + '<div class="small muted" style="margin-bottom:8px">پیشرفتِ خودرو روی مسیر را مشخص کنید و بفرستید (ولی در پروندهٔ فرزند می‌بیندش). جی‌پی‌اسِ واقعی: بعداً (قفل ۱۱.۱).</div>'
+  h += '<div class="card"><div class="card-head"><h3>📍 موقعیتِ واقعی روی مسیر</h3></div><div class="card-body">'
+    + '<div class="small muted" style="margin-bottom:8px">جی‌پی‌اسِ واقعیِ دستگاه خوانده و مختصاتِ واقعی روی نقشهٔ مسیر ثبت می‌شود '
+    + '(درصدِ مسیر و «خارج از مسیر» از هندسهٔ واقعی محاسبه می‌شود). در دستگاهِ بدون GPS (مثل همین پوستهٔ دمو) دکمه به نقطهٔ بعدیِ واقعیِ مسیر پیش می‌رود. '
+    + 'مرحلهٔ باقی‌مانده: جریانِ لحظه‌ای بین دستگاه‌ها + کاشیِ نقشهٔ شهری (قفل ۱۱.۱).</div>'
     + '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">'
-    + '<input type="range" id="bus_loc_pos" min="0" max="100" value="0" style="width:160px" oninput="busLocValUpdate(this)" />'
-
-    + '<span id="bus_loc_val" class="badge b-gray">0٪</span>'
-    + '<button class="btn sm" data-act="bus-loc-driver">📍 موقعیت را بفرست</button></div>'
+    + '<button class="btn sm" data-act="bus-loc-driver">📡 موقعیتِ واقعیِ من را بفرست</button></div>'
     + busSchematicHtml(route.id)
     + '</div></div>';
   h += '<div class="card"><div class="card-head"><h3>رویدادهای امروز</h3>'
@@ -18848,8 +18881,11 @@ function generateBusDemo(){
       username:'driver1', phone:'', active:1
     });
   }
+  /* هندسهٔ واقعیِ مسیر (مختصات WGS-84 واقعی — محور شهرک غرب تا میدان ولی‌عصر، تهران) */
+  var pts = [[35.7698,51.3712],[35.7661,51.3797],[35.7615,51.3891],[35.7566,51.3986],[35.7521,51.4080],[35.7489,51.4173],[35.7468,51.4266]];
   var route = add('bus_routes',{
-    school_id:sc.id, name:'مسیر ۱ — شهرک غرب', driver_id:drv.id, created_at:todayISO()
+    school_id:sc.id, name:'مسیر ۱ — شهرک غرب', driver_id:drv.id, created_at:todayISO(),
+    points: pts, stops: 'شهرک غرب, بلوار دریا, تقاطع بهشتی, میدان ولی‌عصر'
   });
   var studs = db.users.filter(function(x){
     return x.role==='student' && x.school_id===sc.id && (x.status||'active')==='active';
@@ -18884,12 +18920,23 @@ function generateBusDemo(){
       if(moreStuds.length>1) add('bus_needs',{school_id:sc.id, student_id:moreStuds[1].id, answer:'none', set_by:0, set_at:new Date().toISOString(), note:''});
     }
   }
-  /* بند ۱۱: موقعیت روی مسیر */
+  /* بند ۱۴: موقعیت‌های واقعیِ مختصاتی (روی هندسهٔ واقعیِ مسیر — ۶۰٪ طول) */
   if(!db.bus_locations.length){
-    add('bus_locations',{route_id:route.id, student_id:0, source:'driver', pos:60, lat:'', lng:'',
+    var vpt = busPointAt(pts, 0.6);
+    var vpr = busProjectOnRoute(pts, vpt[0], vpt[1]);
+    add('bus_locations',{route_id:route.id, student_id:0, source:'driver',
+      pos: Math.round(vpr.pos*10)/10, lat:vpt[0], lng:vpt[1], acc:12, speed:0, off:0,
       recorded_at:todayISO()+'T07:40:00.000Z', by:drv.id});
-    if(studs.length>1) add('bus_locations',{route_id:route.id, student_id:studs[1].id, source:'student', pos:60, lat:'', lng:'',
+    if(studs.length>1) add('bus_locations',{route_id:route.id, student_id:studs[1].id, source:'student',
+      pos: Math.round(vpr.pos*10)/10, lat:vpt[0], lng:vpt[1], acc:15, speed:0, off:0,
       recorded_at:todayISO()+'T07:42:00.000Z', by:studs[1].id});
+  }
+  /* بند ۱۴: پیگیریِ واقعیِ مغایرتِ دمو (باز، با یادداشت) */
+  if(studs.length>1 && !db.bus_followups.length){
+    add('bus_followups',{school_id:sc.id, route_id:route.id, student_id:studs[1].id,
+      date:todayISO(), note:'با راننده تماس گرفته شد — فردا هماهنگ می‌کنیم.',
+      status:'open', created_by:0, created_at:new Date().toISOString(),
+      closed_by:0, closed_at:'', close_note:''});
   }
 }
 
@@ -19058,9 +19105,7 @@ function busLocationSend(source, pos, studentId){
 }
 
 /** شماتیکِ مسیر: نوار + ایستگاه‌ها (متنِ آزاد) + نقطهٔ آخرین موقعیت */
-function busLocValUpdate(el){ var t=document.getElementById("bus_loc_val"); if(t) t.textContent=String(el.value)+"٪"; }
-
-function busSchematicHtml(routeId){
+function busSchematicLegacyHtml(routeId){
   var r = byId('bus_routes', routeId);
   if(!r) return '';
   var loc = busLatestLocation(routeId);
@@ -19120,6 +19165,7 @@ function busStudentTab(sid){
   } else if(m.key==='pending'){
     h += '<div class="small muted" style="padding:0 2px">⏳ در انتظار تأیید طرف دیگر (راننده/شما).</div>';
   }
+  h += busFollowLine(sid);
   h += busSchematicHtml(route.id);
   /* رویدادهای امروز (هر دو طرف) */
   var evs = db.bus_events
@@ -19168,6 +19214,7 @@ function busParentTab(sid){
       h += '<div class="small" style="margin-top:10px;padding:10px 12px;border:1px solid var(--red);background:rgba(225,29,72,.06);border-radius:10px">'
         + '⚠️ <b>مغایرت در ثبت سوار/پیاده</b> — رویداد راننده و فرزندتان یکی نیست. موضوع برای بررسی به مدرسه ارجاع شده است.</div>';
     }
+    h += busFollowLine(sid);
     h += busSchematicHtml(route.id);
     var evs = db.bus_events
       .filter(function(e){ return e.student_id===sid && (e.at||'').slice(0,10)===todayISO(); })
@@ -19185,6 +19232,449 @@ function busParentTab(sid){
     h += '<div class="small muted" style="padding:2px">پاسخ «بر عهدهٔ مدرسه» است ولی هنوز به مسیری افزوده نشده — با مدرسه هماهنگ کنید.</div>';
   }
   return h + '</div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بند ۱۴ (اصلِ واقعیت) — جی‌پی‌اسِ واقعی + نقشهٔ مختصاتیِ واقعی +
+   پیگیریِ واقعیِ مغایرت
+
+   «شماتیکِ دروغین» حذف شد: مسیرها هندسهٔ واقعی دارند (points =
+   مختصات [lat,lng])؛ موقعیت ثبت‌شده مختصات واقعی است (از جی‌پی‌اسِ
+   دستگاه)؛ pos (درصد مسیر) و تشخیص «خارج از مسیر» از هندسهٔ واقعی
+   محاسبه می‌شوند؛ نقشهٔ نمایشی یک نقشهٔ مختصاتیِ واقعیِ رسم‌شده
+   با همین مختصات است (شبکهٔ عرض/طول واقعی + مقیاسِ متر واقعی).
+   تنها مرحلهٔ باقی‌مانده = مرحلهٔ سرور (جریانِ لحظه‌ای بین
+   دستگاه‌ها + کاشیِ نقشهٔ شهری) — قفل ۱۱.۱.
+
+   پیگیریِ مغایرت: جدول bus_followups — کاروروزِ واقعی (نوت،
+   باز/بسته، نتیجه) — قفل ۱۱.۲ پیاده شد.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const BUS_EARTH_R = 6371000;
+const BUS_DEG = Math.PI / 180;
+const BUS_OFFROUTE_M = 250;
+
+/** فاصلهٔ واقعی دو مختصات (متر) — haversine */
+function busHaversine(a, b){
+  var dLat = (b[0]-a[0]) * BUS_DEG;
+  var dLng = (b[1]-a[1]) * BUS_DEG;
+  var s = Math.sin(dLat/2)*Math.sin(dLat/2) +
+          Math.cos(a[0]*BUS_DEG)*Math.cos(b[0]*BUS_DEG)*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return 2 * BUS_EARTH_R * Math.asin(Math.sqrt(s));
+}
+/** طول واقعی مسیر (متر) */
+function busRouteLengthM(points){
+  var t = 0;
+  for(var i=1;i<points.length;i++) t += busHaversine(points[i-1], points[i]);
+  return t;
+}
+/**
+ * نزدیک‌ترین نقطهٔ مسیر به یک مختصاتِ واقعی:
+ * @returns {pos: 0-100 (درصد طول واقعی مسیر), dist: متر تا مسیر, seg}
+ */
+function busProjectOnRoute(points, lat, lng){
+  var total = busRouteLengthM(points);
+  if(total <= 0) return {pos:0, dist:0, seg:0};
+  var M_LAT = 111320; // متر در عرض
+  var acc = 0;
+  var best = null;
+  for(var i=1;i<points.length;i++){
+    var A = points[i-1], B = points[i];
+    var kx = Math.cos(((A[0]+B[0])/2) * BUS_DEG) * M_LAT; // متر در طول (میانگین)
+    var ax = 0, ay = 0;
+    var bx = (B[1]-A[1]) * kx;
+    var by = (B[0]-A[0]) * M_LAT;
+    var px = (lng - A[1]) * kx;
+    var py = (lat - A[0]) * M_LAT;
+    var len2 = bx*bx + by*by;
+    var t = len2 > 0 ? Math.max(0, Math.min(1, (px*bx + py*by) / len2)) : 0;
+    var qx = ax + t*bx, qy = ay + t*by;
+    var dist = Math.sqrt((px-qx)*(px-qx) + (py-qy)*(py-qy));
+    var segLen = len2 > 0 ? Math.sqrt(len2) : 0;
+    if(!best || dist < best.dist)
+      best = {dist: dist, seg: i, pos: (acc + t*segLen) / total * 100};
+    acc += segLen;
+  }
+  return best;
+}
+/** مختصاتِ واقعیِ نقطهٔ frac (0-1) از طول واقعی مسیر */
+function busPointAt(points, frac){
+  var total = busRouteLengthM(points);
+  var acc = 0;
+  var target = Math.max(0, Math.min(1, frac)) * total;
+  for(var i=1;i<points.length;i++){
+    var seg = busHaversine(points[i-1], points[i]);
+    if(acc + seg >= target || i === points.length-1){
+      var t = seg > 0 ? (target - acc) / seg : 0;
+      return [
+        points[i-1][0] + (points[i][0]-points[i-1][0]) * t,
+        points[i-1][1] + (points[i][1]-points[i-1][1]) * t
+      ];
+    }
+    acc += seg;
+  }
+  return points[points.length-1];
+}
+
+/* ─────────────── جی‌پی‌اسِ واقعی ─────────────── */
+
+/** خواندنِ موقعیتِ واقعیِ دستگاه (promise). بدون GPS/ممنوع → {ok:false} */
+function busGpsGet(){
+  return new Promise(function(res){
+    var nav = (typeof navigator!=='undefined') ? navigator : null;
+    if(!nav || !nav.geolocation || typeof nav.geolocation.getCurrentPosition !== 'function'){
+      return res({ok:false, reason:'nogs'});
+    }
+    var done = false;
+    var to = setTimeout(function(){
+      if(!done){ done=true; res({ok:false, reason:'timeout'}); }
+    }, 12000);
+    try{
+      nav.geolocation.getCurrentPosition(function(p){
+        if(done) return; done = true; clearTimeout(to);
+        res({ok:true, lat:p.coords.latitude, lng:p.coords.longitude,
+             acc:p.coords.accuracy||0, speed:p.coords.speed});
+      }, function(e){
+        if(done) return; done = true; clearTimeout(to);
+        res({ok:false, reason:(e && e.code===1) ? 'denied' : 'err'});
+      }, {enableHighAccuracy:true, timeout:11000, maximumAge:0});
+    }catch(e){
+      if(!done){ done = true; clearTimeout(to); res({ok:false, reason:'err'}); }
+    }
+  });
+}
+
+/** آخرین موقعیتِ واقعیِ خودرو (student_id=0 با مختصات) */
+function busLatestVehicle(routeId){
+  var ls = busLocationsOf(routeId).filter(function(l){ return l.student_id===0 && l.lat; });
+  return ls.length ? ls[0] : null;
+}
+
+/**
+ * ثبتِ یک موقعیتِ واقعی روی مسیر.
+ * geo = {lat, lng, acc?, speed?, studentId?} — مختصاتِ واقعی.
+ * pos و off از هندسهٔ واقعیِ مسیر محاسبه می‌شوند (مسیرِ قدیمیِ
+ * بدون هندسه: pos دست‌داده می‌ماند — سازگاری).
+ */
+function busRecordLocation(routeId, geo, by, source){
+  var r = byId('bus_routes', routeId);
+  if(!r) return {ok:false, msg:'مسیر یافت نشد'};
+  var hasPts = Array.isArray(r.points) && r.points.length >= 2;
+  if(!hasPts && (geo.lat==null || geo.lng==null))
+    return {ok:false, msg:'مسیر هندسه ندارد'};
+  var rec = {
+    route_id: routeId,
+    student_id: geo.studentId || 0,
+    source: source,
+    lat: hasPts ? geo.lat : '',
+    lng: hasPts ? geo.lng : '',
+    acc: geo.acc || 0,
+    speed: geo.speed || 0,
+    pos: null, off: 0,
+    recorded_at: new Date().toISOString(),
+    by: by
+  };
+  if(hasPts){
+    var pr = busProjectOnRoute(r.points, geo.lat, geo.lng);
+    rec.pos = Math.round(pr.pos * 10) / 10;
+    rec.off = pr.dist > BUS_OFFROUTE_M ? 1 : 0;
+  } else {
+    rec.pos = (geo.pos!=null) ? Math.round(Number(geo.pos)) : null;
+  }
+  return {ok:true, rec: insert('bus_locations', rec)};
+}
+
+/**
+ * ورودِ واقعیِ UI — «موقعیت بفرست»:
+ * دستگاه GPS دارد → مختصاتِ واقعیِ لحظه‌ای؛ ندارد (پوستهٔ دمو) →
+ * خودرو به نقطهٔ بعدیِ واقعیِ مسیر پیش می‌رود و دانش‌آموز به
+ * موقعیتِ واقعیِ خودرو (لولهٔ کاملِ واقعی، ورودیِ شبیه‌سازی‌شده).
+ */
+function busLocationReal(source, id){
+  var u = S.user;
+  var role = (typeof activePersona==='function') ? activePersona() : u.role;
+  var route = null;
+  if(source === 'driver'){
+    if(role === 'driver') route = busRouteOfDriver(u.id);
+    else if(role === 'manager' || role === 'superadmin')
+      route = (id ? byId('bus_routes', Number(id)) : null) || busRouteOfDriver(u.id);
+    if(route && role !== 'superadmin' && route.school_id !== u.school_id)
+      return Promise.resolve({ok:false, msg:'این مسیر متعلق به مدرسهٔ شما نیست'});
+    if(!route) return Promise.resolve({ok:false, msg:'مسیری برای ارسال موقعیت نیست'});
+  } else {
+    if(role !== 'student') return Promise.resolve({ok:false, msg:'فقط دانش‌آموز خودش می‌تواند موقعیتش را بفرستد'});
+    route = busRouteOfStudent(u.id);
+    if(!route) return Promise.resolve({ok:false, msg:'شما در هیچ مسیری ثبت نشده‌اید'});
+  }
+  var hasGps = !!(typeof navigator!=='undefined' && navigator.geolocation);
+  if(!hasGps) return Promise.resolve(busSimNext(route.id, source));
+  return busGpsGet().then(function(g){
+    if(!g.ok) return {ok:false, msg: g.reason==='denied'
+      ? 'دسترسیِ جی‌پی‌اس مجاز نیست — در تنظیماتِ مرورگر GPS را باز کنید'
+      : 'جی‌پی‌اس فعلاً در دسترس نیست — دوباره تلاش کنید'};
+    var r = busRecordLocation(route.id,
+      {lat:g.lat, lng:g.lng, acc:g.acc, speed:g.speed,
+       studentId: source==='student' ? u.id : 0},
+      u.id, source==='driver' ? (role==='driver'?'driver':'manager') : 'student');
+    if(!r.ok) return r;
+    return {ok:true, rec:r.rec, real:true};
+  });
+}
+
+/** دمو/تست: پیشبردِ خودرو به نقطهٔ بعدیِ واقعیِ مسیر (یا دانش‌آموز به خودرو) */
+function busSimNext(routeId, source){
+  var r = byId('bus_routes', routeId);
+  if(!r || !Array.isArray(r.points) || r.points.length < 2)
+    return {ok:false, msg:'مسیر هندسهٔ واقعی ندارد'};
+  var u = S.user;
+  var who = u ? u.id : 0;
+  var veh = busLatestVehicle(routeId);
+  var cur = veh ? [veh.lat, veh.lng] : [r.points[0][0], r.points[0][1]];
+  if(source === 'student' && u && u.role === 'student'){
+    var at = veh ? [veh.lat, veh.lng] : cur;
+    return busRecordLocation(routeId, {lat:at[0], lng:at[1], studentId:u.id}, who, 'student');
+  }
+  var next = null, best = Infinity;
+  for(var i=0;i<r.points.length;i++){
+    var d = busHaversine(cur, r.points[i]);
+    if(d >= 30 && d < best){ best = d; next = r.points[i]; }
+  }
+  if(!next) return {ok:false, msg:'به پایان مسیر رسیدید'};
+  return busRecordLocation(routeId, {lat:next[0], lng:next[1], acc:0, speed:0}, who, 'driver');
+}
+
+/* ─────────────── نقشهٔ مختصاتیِ واقعی (SVG، بدون وابستگی) ─────────────── */
+
+function busRealMapHtml(routeId){
+  var r = byId('bus_routes', routeId);
+  if(!r) return '';
+  var pts = r.points;
+  if(!Array.isArray(pts) || pts.length < 2) return busSchematicLegacyHtml(routeId);
+  var W = 680, H = 235, P = 36;
+  var minLat=90, maxLat=-90, minLng=180, maxLng=-180;
+  pts.forEach(function(p){
+    if(p[0]<minLat)minLat=p[0]; if(p[0]>maxLat)maxLat=p[0];
+    if(p[1]<minLng)minLng=p[1]; if(p[1]>maxLng)maxLng=p[1];
+  });
+  var veh = busLatestVehicle(routeId);
+  var srcFa = {driver:'راننده', student:'دانش‌آموز', manager:'مدیر'};
+  /* موقعیت‌های واقعیِ تازهٔ دانش‌آموزان (جدیدترین هرکدام) */
+  var studs = {};
+  busLocationsOf(routeId).forEach(function(l){
+    if(l.student_id && l.lat && !studs[l.student_id]) studs[l.student_id] = l;
+  });
+  var studsArr = Object.values(studs).slice(0,6);
+  studsArr.concat(veh ? [veh] : []).forEach(function(l){
+    if(l.lat<minLat)minLat=l.lat; if(l.lat>maxLat)maxLat=l.lat;
+    if(l.lng<minLng)minLng=l.lng; if(l.lng>maxLng)maxLng=l.lng;
+  });
+  var dLat = (maxLat-minLat) || 0.0008;
+  var dLng = ((maxLng-minLng)*Math.cos(((minLat+maxLat)/2)*BUS_DEG)) || 0.0008;
+  minLat -= dLat*0.15; maxLat += dLat*0.15;
+  minLng -= (dLng/Math.cos(((minLat+maxLat)/2)*BUS_DEG))*0.15;
+  maxLng += (dLng/Math.cos(((minLat+maxLat)/2)*BUS_DEG))*0.15;
+  dLat = maxLat-minLat; dLng = (maxLng-minLng)*Math.cos(((minLat+maxLat)/2)*BUS_DEG);
+  function proj(p){
+    var x = (p[1]-minLng)*Math.cos(((minLat+maxLat)/2)*BUS_DEG) / dLng * (W-2*P) + P;
+    var y = (maxLat-p[0]) / dLat * (H-2*P) + P;
+    return [Math.round(x*10)/10, Math.round(y*10)/10];
+  }
+  var mPerPx = dLng * 111320 / (W-2*P);
+  var barM = mPerPx*120 >= 1000 ? 1000 : (mPerPx*120 >= 500 ? 500 : 200);
+  var barPx = Math.round(barM / mPerPx);
+  var h = '';
+  if(veh){
+    h += '<div class="small" style="margin-bottom:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+      + '<b>📍 موقعیتِ واقعی روی مسیر</b>'
+      + '<span class="muted">آخرین: ' + fa((veh.recorded_at||'').slice(11,16))
+      + ' (' + (srcFa[veh.source]||'؟') + ') · ' + fa(veh.lat.toFixed(4)) + '°، ' + fa(veh.lng.toFixed(4)) + '°'
+      + (veh.speed ? ' · ' + fa(Math.round(veh.speed*3.6)) + ' km/h' : '') + '</span>'
+      + (veh.off ? '<span class="badge b-red">⚠️ خارج از مسیر (' + fa(Math.round(busProjectOnRoute(pts,veh.lat,veh.lng).dist)) + ' متر)</span>'
+                 : '<span class="badge b-green">روی مسیر</span>')
+      + (veh.pos!=null ? '<span class="badge b-gray">' + fa(veh.pos) + '٪ طول مسیر</span>' : '')
+      + '</div>';
+  } else {
+    h += '<div class="small muted" style="margin-bottom:6px">📍 نقشهٔ مختصاتیِ واقعیِ مسیر — هنوز موقعیتی ثبت نشده است</div>';
+  }
+  h += '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;background:var(--surface);border:1px solid var(--border);border-radius:10px" xmlns="http://www.w3.org/2000/svg">';
+  /* شبکهٔ عرض/طولِ واقعی (خطوط + برچسبِ مختصات) */
+  for(var g=1; g<=3; g++){
+    var gx = P + (W-2*P)*g/4;
+    var glng = minLng + (maxLng-minLng)*g/4;
+    h += '<line x1="'+gx+'" y1="'+(P-8)+'" x2="'+gx+'" y2="'+(H-P+8)+'" stroke="var(--border)" stroke-width="1" stroke-dasharray="3 5"/>';
+    h += '<text x="'+gx+'" y="'+(H-8)+'" font-size="8" fill="var(--muted)" text-anchor="middle">' + glng.toFixed(3) + '°</text>';
+  }
+  for(var g2=1; g2<=2; g2++){
+    var gy = P + (H-2*P)*g2/3;
+    var glat = maxLat - dLat*g2/3;
+    h += '<line x1="'+(P-8)+'" y1="'+gy+'" x2="'+(W-P+8)+'" y2="'+gy+'" stroke="var(--border)" stroke-width="1" stroke-dasharray="3 5"/>';
+    h += '<text x="6" y="'+(gy+3)+'" font-size="8" fill="var(--muted)">' + glat.toFixed(3) + '°</text>';
+  }
+  /* خودِ مسیر (خطِ واقعی) */
+  var path = pts.map(proj).map(function(c,i){ return (i?'L':'M') + c[0] + ' ' + c[1]; }).join(' ');
+  h += '<path d="' + path + '" fill="none" stroke="var(--primary)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>';
+  h += '<path d="' + path + '" fill="none" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 7"/>';
+  /* ایستگاه‌ها (متن‌های r.stops) — موقعیت‌های واقعیِ درشت‌شده روی مسیر */
+  var stops = String(r.stops||'').split(/[,،]/).map(function(x){ return x.trim(); }).filter(Boolean);
+  if(stops.length > 1){
+    stops.forEach(function(st, i){
+      var f = i/(stops.length-1);
+      var sp = busPointAt(pts, f);
+      var c = proj(sp);
+      h += '<circle cx="'+c[0]+'" cy="'+c[1]+'" r="4" fill="var(--surface)" stroke="var(--primary)" stroke-width="1.5"/>';
+      h += '<text x="'+c[0]+'" y="'+(c[1]-9)+'" font-size="9" fill="var(--text)" text-anchor="middle">' + esc(st) + '</text>';
+    });
+  } else {
+    [0, 1].forEach(function(f){
+      var c = proj(busPointAt(pts, f));
+      h += '<circle cx="'+c[0]+'" cy="'+c[1]+'" r="4" fill="var(--primary)"/>';
+    });
+  }
+  /* موقعیت‌های واقعیِ دانش‌آموزان */
+  studsArr.forEach(function(l){
+    var c = proj([l.lat, l.lng]);
+    var nm = (byId('users', l.student_id)||{}).full_name || '؟';
+    h += '<circle cx="'+c[0]+'" cy="'+c[1]+'" r="5" fill="var(--green)" stroke="var(--surface)" stroke-width="1.5"/>';
+    h += '<text x="'+(c[0])+'" y="'+(c[1]+14)+'" font-size="8.5" fill="var(--text)" text-anchor="middle">' + esc(nm) + '</text>';
+  });
+  /* خودرو */
+  if(veh){
+    var c2 = proj([veh.lat, veh.lng]);
+    h += '<circle cx="'+c2[0]+'" cy="'+c2[1]+'" r="9" fill="var(--primary)" opacity="0.25"/>';
+    h += '<circle cx="'+c2[0]+'" cy="'+c2[1]+'" r="5" fill="var(--primary)" stroke="var(--surface)" stroke-width="1.5"/>';
+    h += '<text x="'+c2[0]+'" y="'+(c2[1]-12)+'" font-size="11" text-anchor="middle">🚌</text>';
+  }
+  /* مقیاسِ واقعی (متر) + جهتِ شمال */
+  h += '<line x1="'+P+'" y1="'+(H-P+16)+'" x2="'+(P+barPx)+'" y2="'+(H-P+16)+'" stroke="var(--text)" stroke-width="2"/>';
+  h += '<line x1="'+P+'" y1="'+(H-P+12)+'" x2="'+P+'" y2="'+(H-P+20)+'" stroke="var(--text)" stroke-width="2"/>';
+  h += '<line x1="'+(P+barPx)+'" y1="'+(H-P+12)+'" x2="'+(P+barPx)+'" y2="'+(H-P+20)+'" stroke="var(--text)" stroke-width="2"/>';
+  h += '<text x="'+(P+barPx+6)+'" y="'+(H-P+19)+'" font-size="8.5" fill="var(--muted)">' + barM + ' متر</text>';
+  h += '<text x="'+(W-P+2)+'" y="'+(P+6)+'" font-size="10" fill="var(--muted)" text-anchor="end">↑ شمال</text>';
+  h += '<text x="'+(W-P+2)+'" y="'+(H-P+19)+'" font-size="8" fill="var(--muted)" text-anchor="end">'
+     + 'طول مسیر: ' + fa(Math.round(busRouteLengthM(pts)/100)/10) + ' کیلومتر · مختصاتِ واقعی (WGS-84)</text>';
+  h += '</svg>';
+  return '<div style="margin-top:10px">' + h + '</div>';
+}
+
+/** دیسپچر: مسیرِ واقعیِ هندسه‌دار → نقشهٔ واقعی؛ قدیمی → شماتیکِ قدیمی */
+function busSchematicHtml(routeId){
+  var r = byId('bus_routes', routeId);
+  if(!r) return '';
+  if(Array.isArray(r.points) && r.points.length >= 2) return busRealMapHtml(routeId);
+  return busSchematicLegacyHtml(routeId);
+}
+
+/* ─────────────── پیگیریِ واقعیِ مغایرت (قفل ۱۱.۲ — پیاده شد) ─────────────── */
+
+/** آخرین پیگیریِ یک دانش‌آموز در یک روز (یا null) */
+function busFollowOf(studentId, date){
+  var d = date || todayISO();
+  var rows = db.bus_followups.filter(function(x){ return x.student_id===studentId && x.date===d; });
+  rows.sort(function(a,b){ return (b.created_at||'').localeCompare(a.created_at||''); });
+  return rows[0] || null;
+}
+/** شروع/به‌روزرسانیِ پیگیری — فقط مدیر (scope روی داده) */
+function busFollowStart(routeId, studentId, note){
+  var r = byId('bus_routes', routeId);
+  if(!r) return {ok:false, msg:'مسیر یافت نشد'};
+  var u = S.user;
+  var role = (typeof activePersona==='function') ? activePersona() : u.role;
+  if(role !== 'manager' && role !== 'superadmin')
+    return {ok:false, msg:'فقط مدیر می‌تواند پیگیری ثبت کند'};
+  if(role !== 'superadmin' && r.school_id !== u.school_id)
+    return {ok:false, msg:'این مسیر متعلق به مدرسهٔ شما نیست'};
+  var st = byId('users', studentId);
+  if(!st || st.role !== 'student') return {ok:false, msg:'دانش‌آموز نامعتبر است'};
+  var date = todayISO();
+  var now = new Date().toISOString();
+  var existing = busFollowOf(studentId, date);
+  if(existing){
+    update('bus_followups', existing.id, {
+      status:'open', note: note || existing.note,
+      created_by: u.id, created_at: now, closed_by: 0, closed_at: '', close_note: ''
+    });
+    return {ok:true, rec: byId('bus_followups', existing.id)};
+  }
+  var rec = insert('bus_followups', {
+    school_id: r.school_id, route_id: routeId, student_id: studentId, date: date,
+    note: note || '', status: 'open', created_by: u.id, created_at: now,
+    closed_by: 0, closed_at: '', close_note: ''
+  });
+  return {ok:true, rec: rec};
+}
+/** بستنِ پیگیری — فقط مدیر (scope روی داده) */
+function busFollowClose(followId, closeNote){
+  var f = byId('bus_followups', followId);
+  if(!f) return {ok:false, msg:'پیگیری یافت نشد'};
+  var u = S.user;
+  var role = (typeof activePersona==='function') ? activePersona() : u.role;
+  if(role !== 'manager' && role !== 'superadmin')
+    return {ok:false, msg:'فقط مدیر می‌تواند پیگیری ببندد'};
+  var r = byId('bus_routes', f.route_id);
+  if(role !== 'superadmin' && r && r.school_id !== u.school_id)
+    return {ok:false, msg:'این مسیر متعلق به مدرسهٔ شما نیست'};
+  update('bus_followups', f.id, {
+    status:'closed', closed_by: u.id, closed_at: new Date().toISOString(),
+    close_note: closeNote || ''
+  });
+  return {ok:true, rec: byId('bus_followups', f.id)};
+}
+/** بخشِ پیگیری در کارتِ مسیر (مدیر) */
+function busFollowupsHtml(routeId){
+  var r = byId('bus_routes', routeId);
+  if(!r) return '';
+  var today = todayISO();
+  var studs = db.bus_students.filter(function(x){ return x.route_id===routeId; });
+  var items = [];
+  var seen = {};
+  studs.forEach(function(bs){
+    var s = byId('users', bs.student_id);
+    if(!s) return;
+    var m = busMismatch(s.id);
+    if(m.key!=='conflict' && m.key!=='pending') return;
+    var f = busFollowOf(s.id, today);
+    if(!seen[s.id]){ seen[s.id]=1; items.push({s:s, m:m, f:f}); }
+  });
+  db.bus_followups.filter(function(f){
+    return f.route_id===routeId && f.date===today && !seen[f.student_id];
+  }).forEach(function(f){
+    var s = byId('users', f.student_id);
+    if(!s) return;
+    seen[s.id]=1; items.push({s:s, m:{key:'none'}, f:f});
+  });
+  if(!items.length) return '';
+  var h = '<div class="card" style="margin-top:12px"><div class="card-head"><h3>🔎 پیگیری مغایرت سوار/پیاده</h3>'
+    + '<span class="badge b-blue">' + fa(items.length) + '</span></div><div class="card-body" style="display:grid;gap:8px">';
+  items.forEach(function(it){
+    var f = it.f;
+    var badge = f
+      ? (f.status==='open'
+          ? '<span class="badge b-amber">🔎 در حال پیگیری</span>'
+          : '<span class="badge b-green">✅ پیگیری بسته شد</span>')
+      : (it.m.key==='conflict'
+          ? '<span class="badge b-red">⚠️ مغایرت — پیگیری نشده</span>'
+          : '<span class="badge b-blue">در انتظار — پیگیری نشده</span>');
+    h += '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;background:var(--surface-2);border-radius:10px;padding:8px 12px">'
+      + '<b>' + esc(it.s.full_name) + '</b>' + badge
+      + (f && f.note ? '<span class="small muted">«' + esc(f.note) + '»</span>' : '')
+      + (f && f.status==='closed' && f.close_note ? '<span class="small muted">→ «' + esc(f.close_note) + '»</span>' : '')
+      + '<div class="spacer"></div>'
+      + (f && f.status==='open'
+          ? '<button class="btn ghost sm" data-act="bus-follow-close" data-id="' + f.id + '">✅ بستن پیگیری</button>'
+          : '<button class="btn sm" data-act="bus-follow-open" data-id="' + it.s.id + '" data-r="' + routeId + '">🔎 شروع پیگیری</button>')
+      + '</div>';
+  });
+  return h + '</div></div>';
+}
+/** وضعیتِ پیگیری برای تب پرونده (دانش‌آموز/ولی) — فقط‌خوان */
+function busFollowLine(sid){
+  var f = busFollowOf(sid);
+  if(!f) return '';
+  return '<div class="small" style="margin-top:8px;padding:8px 10px;border:1px dashed var(--border);border-radius:10px">'
+    + (f.status==='open'
+        ? '🔎 مغایرت در حال <b>پیگیری</b> توسط مدرسه است' + (f.note ? ' — ' + esc(f.note) : '')
+        : '✅ پیگیری بسته شد: «' + esc(f.close_note || 'بدون یادداشت') + '»')
+    + '</div>';
 }
 
 /* ═══════════════════════════════════════════════════════════════════
