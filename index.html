@@ -958,7 +958,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],vclass_sessions:[],vclass_questions:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],certificates:[],visitors:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],vclass_sessions:[],vclass_questions:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],certificates:[],visitors:[],lib_books:[],lib_loans:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -1652,7 +1652,7 @@ function bootstrapRequest(){
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
  superadmin:[['نظارت روزانه',[['dashboard','📊','داشبورد مدیریتی'],['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها']]],['مدارس و کاربران',[['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه'],['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]]],
- manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  teacher:[['کار روزانه',[['dashboard','📊','داشبورد'],['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کار آموزشی',[['meetings','📅','جلسات اولیا'],['classes','🏛️','کلاس‌ها'],['vclass','🖥️','کلاس مجازی'],['exams','👁️','برنامه مراقبت من'],['homework','📓','تکالیف'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['calendar','🗓️','تقویم آموزشی']]],['پروندهٔ من',[['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['leaves','📨','مرخصی'],['homework','📓','تکالیف من']]],['امور مالی',[['mytuition','💰','شهریه من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['کار روزانه',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
@@ -1660,7 +1660,7 @@ const NAV={
  counselor:[['کار من',[['cqueue','📨','صف ارجاع'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  driver:[['سرویس من',[['myservice','🚌','مسیر من'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]]
 };
-const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],visitors:['مهمان‌ها','ورود/خروج افراد غیردانش‌آموز و غیرکارکنان — نسخهٔ سبک'],homework:['تکالیف','بارگذاری تصویر تکلیف + تصحیح دیجیتال با خطِ خوددست و نمره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
+const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],library:['کتابخانه','کتاب‌ها + امانت به دانش‌آموز + بازگشت — نسخهٔ سبک'],visitors:['مهمان‌ها','ورود/خروج افراد غیردانش‌آموز و غیرکارکنان — نسخهٔ سبک'],homework:['تکالیف','بارگذاری تصویر تکلیف + تصحیح دیجیتال با خطِ خوددست و نمره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
 S.stack=[];
@@ -2491,6 +2491,13 @@ var ACTION_ROLES = {
   'vis-new':        ['manager'],
   'vis-save':       ['manager'],
   'vis-out':        ['manager'],
+  /* کتابخانه (بند ۸): فقط مدیر؛ مالکیت مدرسه در توابع دامنه روی داده */
+  'lib-new':        ['manager'],
+  'lib-save':       ['manager'],
+  'lib-del':        ['manager'],
+  'lib-lend':       ['manager'],
+  'lib-lend-save':  ['manager'],
+  'lib-return':     ['manager'],
   'att-set':       ['teacher','manager'],
   'att-review':    ['teacher','manager'],
   'att-commit':    ['teacher','manager'],
@@ -2803,6 +2810,7 @@ function _renderRouteInner(){
     case 'vclass':return viewVclass();
     case 'homework':return viewHomework();
     case 'visitors':return viewVisitors();
+    case 'library':return viewLibrary();
     case 'cqueue':return viewCounselorQueue();
     case 'followup':return viewFollowup();
     case 'staff':return viewStaff();
@@ -7442,6 +7450,7 @@ function restoreBackup(obj){
     if(typeof generateVclassDemo==='function') generateVclassDemo();
     if(typeof generateHomeworkDemo==='function') generateHomeworkDemo();
     if(typeof generateVisitorsDemo==='function') generateVisitorsDemo();
+    if(typeof generateLibraryDemo==='function') generateLibraryDemo();
     /* ۲. جایگزینی دفترچه و اجرای دوبارهٔ عملیات */
     log.length = 0;
     obj.ops.forEach(function(o){ log.push(o); });
@@ -8520,6 +8529,59 @@ document.addEventListener('click',e=>{
      const r = visitorCheckout(Number(id));
      if(!r.ok){ toast(r.msg,'err'); return; }
      toast('خروج ثبت شد','ok');
+     render();
+   },
+   /* ─────────────── کتابخانه (بند ۸) ─────────────── */
+   'lib-new'(){
+     openModal(modalTpl('کتاب جدید',
+       f('عنوان *', inp('lib_title',''))
+       + f('نویسنده', inp('lib_author',''))
+       + f('کد/رگال (اختیاری)', inp('lib_code','')),
+       'lib-save'));
+   },
+   'lib-save'(){
+     const r = libAddBook(V('lib_title'), V('lib_author'), V('lib_code'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('کتاب ثبت شد','ok');
+     render();
+   },
+   'lib-del'(){
+     askConfirm('این کتاب و سابقهٔ امانت‌هایش حذف شود؟', function(){
+       const r = libDelBook(Number(id));
+       if(!r.ok){ toast(r.msg,'err'); return; }
+       toast('کتاب حذف شد','ok'); render();
+     }, {title:'حذف کتاب', ok:'حذف', danger:true});
+   },
+   'lib-lend'(){
+     const b = byId('lib_books', Number(id));
+     if(!b) return;
+     const u = S.user;
+     const studs = db.users.filter(function(x){
+       return x.role==='student' && x.school_id===u.school_id && x.active!==0;
+     }).sort(function(a,x){ return (a.full_name||'').localeCompare(x.full_name||'', 'fa'); });
+     if(!studs.length){ toast('دانش‌آموزی برای امانت نیست','err'); return; }
+     const defaultDue = new Date(Date.now() + LIB_DEFAULT_DAYS*86400000).toISOString().slice(0,10);
+     window._libLendBook = b.id;
+     openModal(modalTpl('امانت — ' + b.title,
+       f('دانش‌آموز *', sel('lib_stu', studs.map(function(s){return [s.id, s.full_name];}), ''))
+       + f('مهلت بازگشت (پیش‌فرض ' + fa(LIB_DEFAULT_DAYS) + ' روز)', inp('lib_due', defaultDue, 'date')),
+       'lib-lend-save'));
+   },
+   'lib-lend-save'(){
+     const sid = Number(V('lib_stu'));
+     const due = V('lib_due');
+     if(!sid){ toast('دانش‌آموز را انتخاب کنید','err'); return; }
+     const r = libLend(window._libLendBook, sid, due);
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal();
+     const stu = byId('users', sid) || {};
+     toast('امانت به «' + (stu.full_name||'؟') + '» ثبت شد','ok');
+     render();
+   },
+   'lib-return'(){
+     const r = libReturn(Number(id));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     toast('بازگشت ثبت شد','ok');
      render();
    },
    'att-set'(){const st=el.dataset.s;const date=S.filters.date||todayISO();
@@ -12278,6 +12340,7 @@ setTimeout(()=>{
   if(typeof generateVclassDemo==='function') generateVclassDemo();
   if(typeof generateHomeworkDemo==='function') generateHomeworkDemo();
   if(typeof generateVisitorsDemo==='function') generateVisitorsDemo();
+  if(typeof generateLibraryDemo==='function') generateLibraryDemo();
   loadLog(); applyLog(); initSync();
   /* ⚠️ فقط دمو (DEMO-ONLY): ورود خودکار با نام کاربریِ ذخیره‌شده — بدون
      هیچ رمز یا تأیید هویت — صرفاً برای حالت آفلاین/نمایش است و بخشی از
@@ -19742,6 +19805,233 @@ function generateVisitorsDemo(){
     in_at: t2.toISOString(), out_at: '',
     registered_by: mgr ? mgr.id : 0, created_at: t2.toISOString()
   });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   کتابخانهٔ مدرسه (بند ۸) — نسخهٔ سبک
+
+   فهرست کتاب‌ها + امانت به دانش‌آموز + بازگشت.
+   هر کتاب یک ردیف است (کپی متعدد = چند بار امانت هم‌زمان).
+
+   داده:
+     lib_books  {school_id, title, author, code, created_at}
+     lib_loans  {school_id, book_id, student_id, loan_at, due_at,
+                 returned_at, registered_by, created_at}
+
+   وضعیت (محاسبه‌شده، ذخیره نمی‌شود):
+     • بازگشته   = returned_at دارد
+     • امانت‌رفته = بازگشت ندارد و هنوز به مهلت نرسیده
+     • دیرکرد    = بازگشت ندارد و از مهلت گذشته
+   وضعیت کتاب = اگر امانتِ فعالِ دیرکرد داشته «دیرکرد»،
+   اگر امانتِ فعال داشته «امانت‌رفته» (با نام و مهلت)،
+   وگرنه «در دسترس».
+
+   امنیت: همهٔ تغییرات فقط **مدیر** + ردیف‌ها باید از مدرسهٔ
+   خودِ مدیر + دانش‌آموزِ امانت باید دانش‌آموزِ همان مدرسه باشد
+   (روی داده، نه فقط دکمه).
+   ═══════════════════════════════════════════════════════════════════ */
+
+var LIB_DEFAULT_DAYS = 14; /* مهلت پیش‌فرض امانت: ۱۴ روز */
+
+function libBooksOf(schoolId){
+  return db.lib_books
+    .filter(function(b){ return b.school_id === schoolId; })
+    .sort(function(a,b){ return (a.title||'').localeCompare(b.title||'', 'fa'); });
+}
+function libLoansOf(bookId){
+  return db.lib_loans
+    .filter(function(l){ return l.book_id === bookId; })
+    .sort(function(a,b){ return (b.loan_at||'').localeCompare(a.loan_at||''); });
+}
+function libActiveLoan(loanId){
+  var l = byId('lib_loans', loanId);
+  return l && !l.returned_at ? l : null;
+}
+function libLoanStatus(l, nowIso){
+  if(!l) return 'none';
+  if(l.returned_at) return 'returned';
+  var due = (l.due_at||'').slice(0,10);
+  var today = (nowIso || new Date().toISOString()).slice(0,10);
+  return due && today > due ? 'late' : 'loaned';
+}
+/** وضعیتِ نمایشیِ یک کتاب (جدول فهرست) */
+function libBookStatus(bookId, nowIso){
+  var actives = libLoansOf(bookId).filter(function(l){ return !l.returned_at; });
+  if(!actives.length) return {key:'free', label:'در دسترس'};
+  var late = actives.find(function(l){ return libLoanStatus(l, nowIso)==='late'; });
+  var pick = late || actives[0];
+  var stu = byId('users', pick.student_id) || {};
+  var due = (pick.due_at||'').slice(0,10);
+  return late
+    ? {key:'late', label:'دیرکرد — ' + (stu.full_name||'؟') + ' (مهلت: ' + (typeof jalali==='function'?jalali(due):due) + ')'}
+    : {key:'loaned', label:'امانت‌رفته — ' + (stu.full_name||'؟') + ' (تا ' + (typeof jalali==='function'?jalali(due):due) + ')'};
+}
+
+/* ─────────────── کتاب (مدیر) ─────────────── */
+
+function libAddBook(title, author, code){
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  if(role !== 'manager') return {ok:false, msg:'فقط مدیر مدرسه می‌تواند کتاب ثبت کند'};
+  if(!u.school_id) return {ok:false, msg:'مدرسهٔ فعالی مشخص نیست'};
+  title = String(title || '').trim();
+  if(!title) return {ok:false, msg:'عنوان کتاب خالی است'};
+  var rec = {
+    school_id: u.school_id,
+    title: title,
+    author: String(author || '').trim(),
+    code: String(code || '').trim(),
+    created_at: new Date().toISOString()
+  };
+  return {ok:true, rec: add('lib_books', rec)};
+}
+function libDelBook(bookId){
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  if(role !== 'manager') return {ok:false, msg:'فقط مدیر مدرسه می‌تواند کتاب حذف کند'};
+  var b = byId('lib_books', bookId);
+  if(!b) return {ok:false, msg:'کتاب پیدا نشد'};
+  if(b.school_id !== u.school_id) return {ok:false, msg:'این کتاب متعلق به مدرسهٔ شما نیست'};
+  var actives = libLoansOf(bookId).filter(function(l){ return !l.returned_at; });
+  if(actives.length) return {ok:false, msg:'این کتاب هنوز امانت‌رفته است — اول بازگشتش را ثبت کنید'};
+  libLoansOf(bookId).forEach(function(l){ remove('lib_loans', l.id); });
+  remove('lib_books', bookId);
+  return {ok:true};
+}
+
+/* ─────────────── امانت (مدیر) ─────────────── */
+
+function libLend(bookId, studentId, dueDate){
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  if(role !== 'manager') return {ok:false, msg:'فقط مدیر مدرسه می‌تواند امانت بدهد'};
+  if(!u.school_id) return {ok:false, msg:'مدرسهٔ فعالی مشخص نیست'};
+  var b = byId('lib_books', bookId);
+  if(!b) return {ok:false, msg:'کتاب پیدا نشد'};
+  if(b.school_id !== u.school_id) return {ok:false, msg:'این کتاب متعلق به مدرسهٔ شما نیست'};
+  var st = byId('users', studentId);
+  if(!st || st.role !== 'student') return {ok:false, msg:'دانش‌آموز پیدا نشد'};
+  if(st.school_id !== u.school_id) return {ok:false, msg:'این دانش‌آموز متعلق به مدرسهٔ شما نیست'};
+  /* مهلت: تاریخِ داده‌شده یا پیش‌فرض +۱۴ روز */
+  var due;
+  if(dueDate && !isNaN(Date.parse(dueDate))){
+    due = String(dueDate);
+  } else {
+    due = new Date(Date.now() + LIB_DEFAULT_DAYS*86400000).toISOString().slice(0,10);
+  }
+  var now = new Date().toISOString();
+  var rec = {
+    school_id: u.school_id,
+    book_id: bookId,
+    student_id: studentId,
+    loan_at: now,
+    due_at: due,
+    returned_at: '',
+    registered_by: u.id,
+    created_at: now
+  };
+  return {ok:true, rec: add('lib_loans', rec)};
+}
+function libReturn(loanId){
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  if(role !== 'manager') return {ok:false, msg:'فقط مدیر مدرسه می‌تواند بازگشت ثبت کند'};
+  var l = byId('lib_loans', loanId);
+  if(!l) return {ok:false, msg:'امانت پیدا نشد'};
+  if(l.school_id !== u.school_id) return {ok:false, msg:'این امانت متعلق به مدرسهٔ شما نیست'};
+  if(l.returned_at) return {ok:false, msg:'بازگشت قبلاً ثبت شده است'};
+  update('lib_loans', loanId, {returned_at: new Date().toISOString()});
+  return {ok:true};
+}
+
+/* ─────────────── نمای مدیر ─────────────── */
+
+function viewLibrary(){
+  var u = S.user;
+  var books = libBooksOf(u.school_id);
+  var actives = db.lib_loans.filter(function(l){ return l.school_id===u.school_id && !l.returned_at; });
+  var lates = actives.filter(function(l){ return libLoanStatus(l)==='late'; });
+  var h = '<div class="page-head"><h2>📚 کتابخانه</h2></div>';
+  h += '<div class="card"><div class="card-head"><div class="row" style="gap:8px;flex-wrap:wrap">'
+    + '<span class="badge b-gray">کتاب: ' + fa(books.length) + '</span>'
+    + '<span class="badge b-amber">امانت‌رفته: ' + fa(actives.length) + '</span>'
+    + (lates.length ? '<span class="badge b-red">دیرکرد: ' + fa(lates.length) + '</span>' : '')
+    + '</div><button class="btn" data-act="lib-new">➕ کتاب جدید</button></div><div class="card-body">';
+  if(!books.length){
+    h += empty('📚','کتابی ثبت نشده','اولین کتاب را با دکمهٔ بالا ثبت کنید.');
+  } else {
+    h += '<div style="display:grid;gap:10px">' + books.map(function(b){
+      var st = libBookStatus(b.id);
+      var badge = st.key==='free' ? 'b-green' : (st.key==='late' ? 'b-red' : 'b-blue');
+      var openLoans = libLoansOf(b.id).filter(function(l){ return !l.returned_at; });
+      return '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 14px">'
+        + '<div class="row" style="flex-wrap:wrap;gap:8px">'
+        + '<b>' + esc(b.title) + '</b>'
+        + (b.author ? '<span class="muted small">' + esc(b.author) + '</span>' : '')
+        + (b.code ? '<span class="badge b-gray">' + esc(b.code) + '</span>' : '')
+        + '<span class="badge ' + badge + '">' + esc(st.label) + '</span>'
+        + '<div class="spacer"></div>'
+        + '<button class="btn ghost sm" data-act="lib-lend" data-id="' + b.id + '">📤 امانت</button>'
+        + '<button class="btn ghost sm" data-act="lib-del" data-id="' + b.id + '">حذف</button>'
+        + '</div>'
+        + (openLoans.length
+            ? '<div class="row" style="margin-top:8px;flex-wrap:wrap;gap:8px">'
+              + openLoans.map(function(l){
+                  var s2 = byId('users', l.student_id) || {};
+                  return '<span class="badge ' + (libLoanStatus(l)==='late'?'b-red':'b-blue') + '">'
+                    + esc(s2.full_name||'؟') + ' — مهلت: ' + (typeof jalali==='function'?jalali(l.due_at):esc(l.due_at||'—'))
+                    + ' <button class="icon-btn" data-act="lib-return" data-id="' + l.id + '" title="ثبت بازگشت">↩️</button></span>';
+                }).join('')
+              + '</div>'
+            : '')
+        + '</div>';
+    }).join('') + '</div>';
+  }
+  return h + '</div></div>';
+}
+
+/* ─────────────── دادهٔ نمونه (قطعی، فقط دمو) ─────────────── */
+
+function generateLibraryDemo(){
+  if(db.lib_books.length) return;
+  var sc = db.schools.filter(function(s){ return s.active; })[0];
+  if(!sc) return;
+  var mgr = db.users.filter(function(x){ return x.role==='manager' && x.school_id===sc.id; })[0];
+  var now = new Date();
+  var day = 86400000;
+  var mk = function(title, author, code){
+    return add('lib_books', {school_id: sc.id, title: title, author: author, code: code, created_at: now.toISOString()});
+  };
+  var b1 = mk('شیمی دهم — بنیادی', 'نویسندگان سازمان سنجش', 'K10-01');
+  var b2 = mk('آدینه‌ها', 'صادق هدایت', 'LIT-114');
+  var b3 = mk('ریاضی ششم — تمرین‌های تکمیلی', 'مجلهٔ ریاضی', 'K6-203');
+  var st = db.users.filter(function(x){ return x.role==='student' && x.school_id===sc.id; });
+  if(st.length >= 2){
+    /* امانتِ فعالِ بامهلت */
+    add('lib_loans', {
+      school_id: sc.id, book_id: b1.id, student_id: st[0].id,
+      loan_at: new Date(now.getTime()-5*day).toISOString(),
+      due_at: new Date(now.getTime()+9*day).toISOString().slice(0,10),
+      returned_at: '', registered_by: mgr ? mgr.id : 0, created_at: now.toISOString()
+    });
+    /* امانتِ دیرکرد */
+    add('lib_loans', {
+      school_id: sc.id, book_id: b3.id, student_id: st[1].id,
+      loan_at: new Date(now.getTime()-25*day).toISOString(),
+      due_at: new Date(now.getTime()-11*day).toISOString().slice(0,10),
+      returned_at: '', registered_by: mgr ? mgr.id : 0, created_at: now.toISOString()
+    });
+  }
+  /* امانتِ برگشتهٔ قدیمی (سابقه) */
+  if(st.length){
+    add('lib_loans', {
+      school_id: sc.id, book_id: b2.id, student_id: st[0].id,
+      loan_at: new Date(now.getTime()-60*day).toISOString(),
+      due_at: new Date(now.getTime()-46*day).toISOString().slice(0,10),
+      returned_at: new Date(now.getTime()-48*day).toISOString(),
+      registered_by: mgr ? mgr.id : 0, created_at: now.toISOString()
+    });
+  }
 }
 
 </script>

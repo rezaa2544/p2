@@ -402,6 +402,59 @@ document.addEventListener('click',e=>{
      toast('خروج ثبت شد','ok');
      render();
    },
+   /* ─────────────── کتابخانه (بند ۸) ─────────────── */
+   'lib-new'(){
+     openModal(modalTpl('کتاب جدید',
+       f('عنوان *', inp('lib_title',''))
+       + f('نویسنده', inp('lib_author',''))
+       + f('کد/رگال (اختیاری)', inp('lib_code','')),
+       'lib-save'));
+   },
+   'lib-save'(){
+     const r = libAddBook(V('lib_title'), V('lib_author'), V('lib_code'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('کتاب ثبت شد','ok');
+     render();
+   },
+   'lib-del'(){
+     askConfirm('این کتاب و سابقهٔ امانت‌هایش حذف شود؟', function(){
+       const r = libDelBook(Number(id));
+       if(!r.ok){ toast(r.msg,'err'); return; }
+       toast('کتاب حذف شد','ok'); render();
+     }, {title:'حذف کتاب', ok:'حذف', danger:true});
+   },
+   'lib-lend'(){
+     const b = byId('lib_books', Number(id));
+     if(!b) return;
+     const u = S.user;
+     const studs = db.users.filter(function(x){
+       return x.role==='student' && x.school_id===u.school_id && x.active!==0;
+     }).sort(function(a,x){ return (a.full_name||'').localeCompare(x.full_name||'', 'fa'); });
+     if(!studs.length){ toast('دانش‌آموزی برای امانت نیست','err'); return; }
+     const defaultDue = new Date(Date.now() + LIB_DEFAULT_DAYS*86400000).toISOString().slice(0,10);
+     window._libLendBook = b.id;
+     openModal(modalTpl('امانت — ' + b.title,
+       f('دانش‌آموز *', sel('lib_stu', studs.map(function(s){return [s.id, s.full_name];}), ''))
+       + f('مهلت بازگشت (پیش‌فرض ' + fa(LIB_DEFAULT_DAYS) + ' روز)', inp('lib_due', defaultDue, 'date')),
+       'lib-lend-save'));
+   },
+   'lib-lend-save'(){
+     const sid = Number(V('lib_stu'));
+     const due = V('lib_due');
+     if(!sid){ toast('دانش‌آموز را انتخاب کنید','err'); return; }
+     const r = libLend(window._libLendBook, sid, due);
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal();
+     const stu = byId('users', sid) || {};
+     toast('امانت به «' + (stu.full_name||'؟') + '» ثبت شد','ok');
+     render();
+   },
+   'lib-return'(){
+     const r = libReturn(Number(id));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     toast('بازگشت ثبت شد','ok');
+     render();
+   },
    'att-set'(){const st=el.dataset.s;const date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
      attDraftSet(cid,date,id,st);

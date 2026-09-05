@@ -148,6 +148,13 @@ var ACTION_ROLES = {
   'vis-new':        ['manager'],
   'vis-save':       ['manager'],
   'vis-out':        ['manager'],
+  /* کتابخانه (بند ۸): فقط مدیر؛ مالکیت مدرسه در توابع دامنه روی داده */
+  'lib-new':        ['manager'],
+  'lib-save':       ['manager'],
+  'lib-del':        ['manager'],
+  'lib-lend':       ['manager'],
+  'lib-lend-save':  ['manager'],
+  'lib-return':     ['manager'],
   'att-set':       ['teacher','manager'],
   'att-review':    ['teacher','manager'],
   'att-commit':    ['teacher','manager'],
