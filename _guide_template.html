@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="payesh-build" content="000000000000" />
+<meta name="description" content="راهنمای کاملِ کاربریِ سامانهٔ هوشمند مدیریت مدرسه «پایش» — نقش‌ها، قابلیت‌ها و تصاویرِ واقعی" />
+<title>پایش — راهنمای کاملِ کاربر</title>
+<style>
+:root{
+  --navy:#14225a; --blue:#2563eb; --green:#16a34a; --red:#dc2626; --amber:#d97706;
+  --bg:#f1f5f9; --card:#ffffff; --border:#e2e8f0; --text:#0f172a; --muted:#64748b;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:Tahoma,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.9}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px 80px}
+header.hero{background:linear-gradient(135deg,#14225a 0%,#1d3a8a 60%,#2563eb 100%);color:#fff;
+  padding:44px 16px 36px;text-align:center}
+header.hero h1{margin:0 0 8px;font-size:30px}
+header.hero p{margin:4px auto;max-width:760px;opacity:.92;font-size:14.5px}
+.badge{display:inline-block;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);
+  border-radius:999px;padding:2px 12px;font-size:12.5px;margin:3px}
+nav.toc{background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:14px 18px;margin:22px 0;font-size:13.5px}
+nav.toc b{color:var(--navy)}
+nav.toc a{color:var(--blue);text-decoration:none;margin-inline-end:14px;white-space:nowrap}
+nav.toc a:hover{text-decoration:underline}
+section.card{background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:22px 24px;margin:20px 0;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+h2{font-size:21px;margin:0 0 10px;color:var(--navy);display:flex;align-items:center;gap:8px}
+h3{font-size:16.5px;margin:20px 0 6px;color:var(--navy)}
+p{margin:8px 0}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+img.shot{width:100%;border:1px solid var(--border);border-radius:12px;
+  box-shadow:0 2px 10px rgba(15,23,42,.08);margin:10px 0}
+figure{margin:14px 0}
+figcaption{font-size:12.5px;color:var(--muted);text-align:center;margin-top:6px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0}
+th{background:#eef2ff;color:var(--navy);text-align:right}
+th,td{border:1px solid var(--border);padding:8px 10px;vertical-align:top}
+tr:nth-child(even) td{background:#f8fafc}
+.role{border-inline-start:6px solid var(--blue)}
+.role h2 .ico{font-size:24px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.chip{background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:999px;
+  padding:2px 12px;font-size:12.5px}
+.callout{border-radius:10px;padding:10px 14px;font-size:13.5px;margin:10px 0}
+.callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+.callout.green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+.callout.amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.callout.red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+ul{margin:6px 0;padding-inline-start:22px}
+li{margin:3px 0}
+code{background:#f1f5f9;border:1px solid var(--border);border-radius:5px;
+  padding:1px 6px;font-size:12.5px;direction:ltr;unicode-bidi:embed;display:inline-block}
+.footer{color:var(--muted);font-size:12.5px;text-align:center;margin-top:30px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:800px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>📘 راهنمای کاملِ کاربر — پایش</h1>
+  <p>سامانهٔ هوشمند مدیریت مدرسه: حضور و غیاب، نمرات، سرویس مدرسه، کلاس مجازی، کتابخانه، انضباط، مالی و اطلاع‌رسانی — همه در یک سامانه.</p>
+  <div>
+    <span class="badge">تک‌فایلی و کاملاً آفلاین</span>
+    <span class="badge">۸ نقش کاربری</span>
+    <span class="badge">تصاویر واقعی از نسخهٔ ۲۰۲۶/۰۹/۵</span>
+    <span class="badge">مُهر بیلد: <span id="stamp">—</span></span>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc">
+  <b>فهرست:</b>
+  <a href="#intro">آشنایی</a>
+  <a href="#login">ورود و حساب‌های دمو</a>
+  <a href="#r-manager">مدیر مدرسه</a>
+  <a href="#r-teacher">دبیر</a>
+  <a href="#r-student">دانش‌آموز</a>
+  <a href="#r-parent">ولی</a>
+  <a href="#r-counselor">مشاور</a>
+  <a href="#r-driver">راننده</a>
+  <a href="#r-office">ادارهٔ آموزش</a>
+  <a href="#r-super">سوپرادمین</a>
+  <a href="#diag">دیاگ و خودتعمیر</a>
+  <a href="#sms">پیامک و اعلان</a>
+  <a href="#vmode">روزِ غیرحضوری</a>
+  <a href="#privacy">حریم خصوصی</a>
+  <a href="#demo">دادهٔ دمو</a>
+  <a href="#sync">قاعدهٔ همگامی</a>
+</nav>
+
+<!-- ═══════════════ ۱. آشنایی ═══════════════ -->
+<section class="card" id="intro">
+  <h2>🧭 پایش چیست؟</h2>
+  <p>«پایش» سامانهٔ مدیریتِ روزمرهٔ مدرسه است: از لحظهٔ صبح (ثبتِ حضور) تا شب (ارسالِ نتیجه به والدین).
+  یک برنامهٔ <b>تک‌فایلی</b> است — تمامِ کد، فونت و دادهٔ نمونه داخلِ یک فایلِ <code>index.html</code> جا شده و
+  <b>بدونِ اینترنت</b> کار می‌کند.</p>
+  <div class="callout amber">
+    <b>نسخهٔ دمو و نسخهٔ تولید:</b> این نسخه که می‌بینید با <b>دادهٔ نمونه</b> کار می‌کند و همهٔ
+    بخش‌ها واقعاً کار می‌کنند (ثبت، ذخیره، گزارش — همه واقعی روی دستگاهِ خودتان). تنها مرحلهٔ باقی‌مانده
+    «وصل به سرور و زیرسازی» است: در نسخهٔ تولید، داده روی سرور مدرسه می‌ماند، ورود با احراز هویت است
+    (بدون رمز عبور) و پیامک‌ها از درگاهِ رسمی ارسال می‌شوند. هیچ بخشی «پوستهٔ نمایشی» نیست.
+  </div>
+  <h3>نقش‌های سامانه</h3>
+  <p>هر کاربر با یک <b>نقش</b> وارد می‌شود و فقط آن‌چه به وظیفه‌اش مربوط است را می‌بیند.
+  کنترلِ دسترسی در <b>سطحِ داده</b> اعمال می‌شود (نه فقط پنهان‌کردنِ دکمه): برای مثال دبیر فقط
+  نمرهٔ درسِ خودش در کلاسِ خودش را می‌بیند و مدیرِ مدرسهٔ الف به هیچ‌وجه به دادهٔ مدرسهٔ ب دسترسی ندارد.</p>
+  <table>
+    <tr><th>نقش</th><th>یک‌خطی</th></tr>
+    <tr><td>🏫 مدیر مدرسه</td><td>همهٔ کارِ روزمرهٔ مدرسه: حضور، نمرات، کلاس، سرویس، مالی، فرم‌ها</td></tr>
+    <tr><td>👨‍🏫 دبیر</td><td>حضورِ کلاس‌هایش، نمرهٔ درش، کلاس مجازی، تکالیف</td></tr>
+    <tr><td>🎓 دانش‌آموز</td><td>برنامه، نمرات، تکالیف، شهریهٔ خودش — فقط‌خوان</td></tr>
+    <tr><td>👨‍👩‍👦 ولی</td><td>پروندهٔ فرزند/فرزندان (فقط‌خوان) + نوبت‌های اولیا</td></tr>
+    <tr><td>🧭 مشاور</td><td>صفِ ارجاع‌های افت تحصیلی و پیگیری</td></tr>
+    <tr><td>🚌 راننده</td><td>مسیرِ خودش + ثبتِ سوار/پیاده</td></tr>
+    <tr><td>🏛️ ادارهٔ آموزش</td><td>داشبوردِ آماریِ منطقه + فهرستِ مدارس (لایسنس و اعتماد)</td></tr>
+    <tr><td>🛡️ سوپرادمین</td><td>نظارتِ کلِ سامانه: مدارس، کاربران، دیاگ و خودتعمیر</td></tr>
+  </table>
+</section>
+
+<!-- ═══════════════ ۲. ورود ══════════════ -->
+<section class="card" id="login">
+  <h2>🔑 ورود به سامانه</h2>
+  <figure>
+    <img class="shot" src="{{IMG:login}}" alt="صفحهٔ ورود" />
+    <figcaption>صفحهٔ ورود — با کلیک روی هر حسابِ نمونه، نامِ کاربری و رمز آن حساب پر می‌شود</figcaption>
+  </figure>
+  <p>در نسخهٔ دمو، <b>۸ حسابِ نمونه</b> آماده است (همه با رمز <code>123456</code>). با کلیک روی هر حساب
+  فرم پر می‌شود؛ با «ورود» وارد می‌شوید. اگر یک حساب چند نقش داشته باشد (مثل مدیری که هم ولی است)،
+  پنجرهٔ «انتخاب پنل» باز می‌شود.</p>
+  <table>
+    <tr><th>نامِ کاربری</th><th>نقش</th><th>برای دیدنِ چه</th></tr>
+    <tr><td><code>superadmin</code></td><td>سوپرادمین</td><td>کلِ سامانه + دیاگ</td></tr>
+    <tr><td><code>manager1</code></td><td>مدیر مدرسه (۲ نقش: مدیر + ولی)</td><td>کارِ روزمرهٔ مدرسه</td></tr>
+    <tr><td><code>teacher1_1</code></td><td>دبیر</td><td>حضور/نمره/کلاس مجازی/تکالیف</td></tr>
+    <tr><td><code>student1</code></td><td>دانش‌آموز</td><td>وضعیتِ خودش</td></tr>
+    <tr><td><code>parent_multi</code></td><td>ولی با دو فرزند</td><td>پروندهٔ فرزندان + سوییچر</td></tr>
+    <tr><td><code>counselor1</code></td><td>مشاور</td><td>صفِ ارجاع</td></tr>
+    <tr><td><code>edu_kurdistan</code></td><td>ادارهٔ آموزش</td><td>داشبوردِ منطقه</td></tr>
+    <tr><td><code>driver1</code></td><td>رانندهٔ سرویس</td><td>مسیرِ خودش (در فهرستِ صفحهٔ ورود نیست؛ مستقیم وارد کنید)</td></tr>
+  </table>
+  <p class="small muted">در نسخهٔ تولید، ورود با <b>موبایل + کد ملی</b> از راهِ درگاهِ رسمی است و
+  رمز عبور وجود ندارد. لینکِ «سیاست حریم خصوصی» پایینِ همین صفحه هم همیشه در دسترس است.</p>
+</section>
+
+<!-- ═══════════════ ۳. مدیر مدرسه ═══════════════ -->
+<section class="card role" id="r-manager" style="border-color:var(--blue)">
+  <h2><span class="ico">🏫</span> مدیر مدرسه — شلوغ‌ترین نقش</h2>
+  <p><b>وظیفه:</b> مسئولِ همهٔ کارِ روزمرهٔ <u>همان مدرسه</u>. از ثبتِ حضور تا چاپِ کارنامه، از ثبتِ
+  شهریه تا تنظیمِ زنگ. ۳۳ بخشِ منو در اختیار اوست — کامل‌ترین نقشِ سامانه.</p>
+  <h3>چه چیزهایی می‌بیند و انجام می‌دهد</h3>
+  <div class="chips">
+    <span class="chip">📊 داشبوردِ مدرسه</span><span class="chip">✅ حضور و غیابِ همهٔ کلاس‌ها</span>
+    <span class="chip">📝 نمرات و کارنامه</span><span class="chip">📝 آزمون‌ها</span>
+    <span class="chip">🏛️ کلاس‌ها و دانش‌آموزان</span><span class="chip">📚 دروس و کتاب‌ها</span>
+    <span class="chip">🗓️ برنامهٔ زنگ + زمان‌بندی</span><span class="chip">💰 شهریه و مالی</span>
+    <span class="chip">🚌 سرویس مدرسه + نقشهٔ مسیر</span><span class="chip">📚 کتابخانه</span>
+    <span class="chip">🧰 املاک و تجهیزات</span><span class="chip">🚪 مهمان‌ها</span>
+    <span class="chip">⚖️ انضباط</span><span class="chip">📉 افت تحصیلی</span>
+    <span class="chip">📈 رشد تحصیلی</span><span class="chip">🖨️ فرم‌ها و گواهی‌های رسمی</span>
+    <span class="chip">📅 چرخهٔ سال تحصیلی (بستن/ارتقا)</span><span class="chip">📥 ورودی اکسل</span>
+    <span class="chip">📨 صفِ پیامک</span><span class="chip">📢 اطلاعیه‌ها</span><span class="chip">💬 گفتگو</span>
+  </div>
+  <figure>
+    <img class="shot" src="{{IMG:mg-dashboard}}" alt="داشبورد مدیر" />
+    <figcaption>داشبوردِ مدیر: وضعیتِ امروز (حضور، زنگ‌ها، رویدادها) + خلاصهٔ مالی و انضباط در یک نگاه</figcaption>
+  </figure>
+  <figure>
+    <img class="shot" src="{{IMG:mg-attendance}}" alt="حضور و غیاب" />
+    <figcaption>حضور و غیاب: ثبتِ دسته‌جمعیِ هر کلاس با حالت‌های معنادار (حاضر/غیرحضوری/دیر/مرخصی) — ثبتِ هر کلاس در کسری از ثانیه</figcaption>
+  </figure>
+  <h3>سرویس مدرسه (مسیر + نقشهٔ واقعی)</h3>
+  <p>مسیرها، ایستگاه‌ها و دانش‌آموزانِ هر مسیر را تعریف می‌کند. موقعیتِ سرویس <b>واقعی</b> است
+  (جی‌پی‌اسِ دستگاه) و روی نقشهٔ SVG که خودِ برنامه می‌کشد دیده می‌شود. اگر سرویس بیش از ۲۵۰ متر
+  از خطِ مسیر دور شود، علامت «خارجِ مسیر» روشن می‌شود و در کاروروزِ پیگیری ثبت می‌گردد.</p>
+  <figure>
+    <img class="shot" src="{{IMG:mg-bus}}" alt="سرویس مدرسه" />
+    <figcaption>پنلِ سرویس: مسیر ۱ شهرک — ایستگاه‌ها با وضعیتِ سوار/غیرسوار، مغایرت‌های امروز و «بازگشتِ خودکار» داده‌های نمونه</figcaption>
+  </figure>
+  <figure>
+    <img class="shot" src="{{IMG:mg-tuition}}" alt="شهریه" />
+    <figcaption>شهریه و مالی: اقساط، تراکنش‌ها و وضعیتِ پرداختِ هر دانش‌آموز — فقطِ دانش‌آموزانِ همان مدرسه</figcaption>
+  </figure>
+  <div class="callout blue"><b>حدِ دسترسی:</b> مدیر فقط <b>مدرسهٔ خودش</b> را می‌بیند. این قفل در
+  <b>سطحِ داده</b> است: حتی اگر آدرسِ رکوردِ مدرسهٔ دیگری را دستی بسازد، پاسخ «یافت نشد» می‌گیرد
+  (نه «دسترسی ندارید» — تا حتی وجودِ رکورد هم فاش نشود).</div>
+</section>
+
+<!-- ═══════════════ ۴. دبیر ═══════════════ -->
+<section class="card role" id="r-teacher" style="border-color:var(--green)">
+  <h2><span class="ico">👨‍🏫</span> دبیر — کلاس‌ها و دروسِ خودش</h2>
+  <p><b>وظیفه:</b> حضور و غیابِ کلاس‌هایی که درس می‌دهد، ثبتِ نمرهٔ دروسش، برگزاریِ کلاس مجازی،
+  ارسال و تصحیحِ تکالیف، و نوبت‌های اولیا.</p>
+  <div class="chips">
+    <span class="chip">✅ حضور (کلاس‌هایش)</span><span class="chip">📝 نمره (درس‌هایش)</span>
+    <span class="chip">🖥️ کلاس مجازی (ویدیو + سؤال درون‌برنامه‌ای)</span>
+    <span class="chip">📓 تکالیف (فایل/صوت + تصحیح)</span>
+    <span class="chip">🗓️ برنامهٔ زنگ</span><span class="chip">📅 نوبت‌های اولیا</span>
+    <span class="chip">👁️ مشاهدهٔ آزمون‌ها</span><span class="chip">⚖️ موارد انضباطی (ثبت)</span>
+    <span class="chip">📨 مرخصی‌ها</span><span class="chip">💬 گفتگو</span>
+  </div>
+  <figure>
+    <img class="shot" src="{{IMG:tc-dashboard}}" alt="داشبورد دبیر" />
+    <figcaption>داشبوردِ دبیر: کلاس‌های امروز و زنگ‌های پیشِ رو</figcaption>
+  </figure>
+  <figure>
+    <img class="shot" src="{{IMG:tc-vclass}}" alt="کلاس مجازی" />
+    <figcaption>کلاس مجازی: ویدیوی درس با <b>لینکِ اختصاصیِ هر دانش‌آموز</b> — بازشدنِ لینک = حضورِ واقعی (توکنِ امن، بدون رمز)</figcaption>
+  </figure>
+  <figure>
+    <img class="shot" src="{{IMG:tc-homework}}" alt="تکالیف" />
+    <figcaption>تکالیف: ارسال با فایل/صوت (تا ۲۰۰ مگابایت)، باز/بستهٔ زمانِ تحویل، و تصحیح با نمره</figcaption>
+  </figure>
+  <div class="callout blue"><b>حدِ دسترسی:</b> فقط کلاس‌ها و دروسی که در برنامهٔ زنگ <u>به او</u> داده شده.
+  نمرهٔ درسی که تدریس نمی‌کند را نمی‌بیند و نمی‌تواند وارد شود.</div>
+</section>
+
+<!-- ═══════════════ ۵. دانش‌آموز ═══════════════ -->
+<section class="card role" id="r-student" style="border-color:#7c3aed">
+  <h2><span class="ico">🎓</span> دانش‌آموز — وضعیتِ خودش</h2>
+  <p><b>وظیفه:</b> دیدنِ وضعیتِ تحصیلیِ خودش و تحویلِ تکالیف. این نقش <b>فقط‌خوان</b> است:
+  هیچ چیزی را نمی‌تواند تغییر دهد.</p>
+  <div class="chips">
+    <span class="chip">📊 خلاصهٔ وضعیت (امروز + نمرات + حضور)</span>
+    <span class="chip">🗓️ برنامهٔ درسی</span><span class="chip">📝 نمرات و کارنامه</span>
+    <span class="chip">📓 تکالیف (دیدن + تحویلِ فایل/صوت)</span>
+    <span class="chip">💰 شهریهٔ خودش</span><span class="chip">📨 درخواستِ مرخصی</span>
+    <span class="chip">📢 اطلاعیه‌ها</span><span class="chip">💬 گفتگو</span>
+  </div>
+  <figure>
+    <img class="shot" src="{{IMG:st-dashboard}}" alt="داشبورد دانش‌آموز" />
+    <figcaption>داشبوردِ دانش‌آموز: وضعیتِ امروز، نمراتِ اخیر و تکالیفِ باز در یک نگاه</figcaption>
+  </figure>
+  <figure>
+    <img class="shot" src="{{IMG:st-schedule}}" alt="برنامهٔ درسی" />
+    <figcaption>برنامهٔ درسیِ هفته — زنگ‌به‌زنگ با درس و کلاس</figcaption>
+  </figure>
+  <figure>
+    <img class="shot" src="{{IMG:st-homework}}" alt="تکالیف دانش‌آموز" />
+    <figcaption>تکالیف: لیست با وضعیتِ هر تکلیف (تحویل‌داده/تصحیح‌شده/نمره)</figcaption>
+  </figure>
+  <div class="callout green"><b>حریم:</b> هر دانش‌آموز <u>فقط رکوردهای خودش</u> را می‌بیند.
+  نمرهٔ همکلاسی، برنامهٔ کلاسِ دیگر و شهریهٔ بقیه در هیچ مسیری قابل دسترس نیست — حتی با ساختِ دستیِ آدرس.</div>
+</section>
+
+<!-- ═══════════════ ۶. ولی ═══════════════ -->
+<section class="card role" id="r-parent" style="border-color:#db2777">
+  <h2><span class="ico">👨‍👩‍👦</span> ولی — همراهِ فرزند/فرزندان</h2>
+  <p><b>وظیفه:</b> دیدنِ وضعیتِ فرزند (حضور، نمرات، انضباط، اطلاعیه‌ها)، گرفتنِ نوبتِ ملاقات با دبیر،
+  پرداخت/مشاهدهٔ شهریهٔ فرزند و دریافتِ پیامک‌های مدرسه.</p>
+  <div class="chips">
+    <span class="chip">📊 خلاصهٔ وضعیتِ فرزند</span>
+    <span class="chip">👨‍👩‍ پروندهٔ هر فرزند (فقط‌خوان)</span>
+    <span class="chip">📅 نوبتِ ملاقات اولیا-دبیر</span>
+    <span class="chip">💰 شهریهٔ فرزند</span>
+    <span class="chip">📨 درخواستِ مرخصی</span>
+    <span class="chip">📢 اطلاعیه‌ها</span><span class="chip">💬 گفتگو</span>
+  </div>
+  <figure>
+    <img class="shot" src="{{IMG:pa-dashboard}}" alt="داشبورد ولی" />
+    <figcaption>داشبوردِ ولی: وضعیتِ امروزِ هر فرزند (حضور، زنگ، تکالیف)</figcaption>
+  </figure>
+  <figure>
+    <img class="shot" src="{{IMG:pa-children}}" alt="پروندهٔ فرزند" />
+    <figcaption>پروندهٔ فرزند: حضور، نمرات، انضباط و کارنامه — کامل، ولی <b>فقط‌خوان</b></figcaption>
+  </figure>
+  <div class="callout blue"><b>چند فرزند:</b> اگر ولی چند فرزند داشته باشد، نوارِ «سوییچرِ فرزند»
+  بالای صفحه باز می‌ماند و با یک کلیک پرونده جابه‌جا می‌شود. ولی فقط فرزندی را می‌بیند که
+  <u>به‌صراحت</u> به حسابش وصل شده — فرزندِ هیچ خانوادهٔ دیگر.</div>
+</section>
+
+<!-- ═══════════════ ۷. مشاور ═══════════════ -->
+<section class="card role" id="r-counselor" style="border-color:#0891b2">
+  <h2><span class="ico">🧭</span> مشاور — پیگیریِ افت تحصیلی</h2>
+  <p><b>وظیفه:</b> وقتی سامانه (یا مدیر) دانش‌آموزی را در فهرستِ «افت تحصیلی» ثبت می‌کند،
+  به <b>صفِ ارجاعِ مشاور</b> می‌رود. مشاور موارد را می‌بیند، بررسی می‌کند و نتیجهٔ پیگیری را ثبت می‌کند.</p>
+  <div class="chips">
+    <span class="chip">📨 صفِ ارجاع (موردبه‌مورد)</span>
+    <span class="chip">📊 داشبوردِ مشاور</span>
+    <span class="chip">📢 اطلاعیه‌ها</span>
+  </div>
+  <figure>
+    <img class="shot" src="{{IMG:co-queue}}" alt="صف ارجاع مشاور" />
+    <figcaption>صفِ ارجاع: هر مورد با علتِ ارجاع، تاریخ و وضعیتِ پیگیری — فقطِ دانش‌آموزانِ مدرسهٔ خودش</figcaption>
+  </figure>
+</section>
+
+<!-- ═══════════════ ۸. راننده ═══════════════ -->
+<section class="card role" id="r-driver" style="border-color:#ea580c">
+  <h2><span class="ico">🚌</span> راننده — مسیرِ خودش</h2>
+  <p><b>وظیفه:</b> در طولِ روز، برای هر ایستگاه دکمهٔ <b>«سوار شد»</b> و <b>«پیاده شد»</b> را می‌زند.
+  هر رویداد در سامانه ثبت می‌شود و به ولیِ همان دانش‌آموز اطلاع‌رسانی می‌رود. راننده فقط
+  <u>مسیر خودش</u> را می‌بیند.</p>
+  <div class="chips">
+    <span class="chip">🚌 مسیر من (ایستگاه‌ها + دانش‌آموزان)</span>
+    <span class="chip">📊 داشبورد</span>
+    <span class="chip">📢 اطلاعیه‌ها</span>
+  </div>
+  <figure>
+    <img class="shot" src="{{IMG:dr-service}}" alt="پنل راننده" />
+    <figcaption>پنلِ راننده: ایستگاه‌های مسیر به‌ترتیب + دکمهٔ سوار/پیادهٔ هر دانش‌آموز</figcaption>
+  </figure>
+  <div class="callout blue"><b>امنیت:</b> رانندهٔ مسیرِ الف نمی‌تواند رویدادی برای دانش‌آموزِ مسیرِ ب ثبت کند —
+  مالکیتِ مسیر در سطحِ داده بررسی می‌شود.</div>
+</section>
+
+<!-- ═══════════════ ۹. اداره آموزش ═══════════════ -->
+<section class="card role" id="r-office" style="border-color:#475569">
+  <h2><span class="ico">🏛️</span> ادارهٔ آموزش و پرورش — نظارتِ منطقه</h2>
+  <p><b>وظیفه:</b> دیدنِ <b>آمارِ منطقه</b> (داشبوردِ آماری: حضورِ کلی، افت تحصیلی، روند مدارس)
+  و فهرستِ مدارسِ زیرِ مسئولیت. این نقش عمداً <b>محدود</b> طراحی شده: برای <u>لایسنس و اعتماد</u>
+  است — مدیریتِ جزئیات هر مدرسه کارِ مدیرِ همان مدرسه است.</p>
+  <div class="chips">
+    <span class="chip">📈 داشبوردِ آماریِ منطقه</span>
+    <span class="chip">🏫 فهرستِ مدارس (scope اداره)</span>
+    <span class="chip">📢 اطلاعیه منطقه‌ای</span>
+  </div>
+  <figure>
+    <img class="shot" src="{{IMG:ed-office}}" alt="داشبورد اداره" />
+    <figcaption>داشبوردِ منطقه: نمودارهای آماریِ مدارسِ زیرِ پوشش — بدونِ دسترسی به جزئیاتِ شخصی</figcaption>
+  </figure>
+  <figure>
+    <img class="shot" src="{{IMG:ed-schools}}" alt="فهرست مدارس اداره" />
+    <figcaption>فهرستِ مدارسِ منطقه با وضعیت و آخرین به‌روزرسانی — قابلِ فیلتر</figcaption>
+  </figure>
+  <div class="callout blue"><b>حدِ دسترسی:</b> فقط مدارسِ <u>scope</u> (منطقهٔ) خودش. این نقش نمی‌تواند
+  رکوردی را ویرایش کند — فقط گزارش و نظارت.</div>
+</section>
+
+<!-- ═══════════════ ۱۰. سوپرادمین ═══════════════ -->
+<section class="card role" id="r-super" style="border-color:var(--navy)">
+  <h2><span class="ico">🛡️</span> سوپرادمین — نظارتِ کلِ سامانه</h2>
+  <p><b>وظیفه:</b> تعریفِ مدارس، ادارات و مناطق؛ مدیریتِ کاربرانِ همهٔ مدارس؛ پیکربندیِ دروس،
+  زنگ‌ها و تقویم؛ و مهم‌تر از همه <b>دیاگ</b>: پایشِ سلامتِ کلِ سامانه و تعمیرِ خودکار.</p>
+  <div class="chips">
+    <span class="chip">📊 داشبوردِ مدیریتی</span><span class="chip">📡 فعالیتِ زنده</span>
+    <span class="chip">📜 حسابرسی</span><span class="chip">🏫 مدیریتِ مدارس</span>
+    <span class="chip">🏛️ ادارات و مناطق</span><span class="chip">🗺️ جغرافیا</span>
+    <span class="chip">👥 کاربرانِ سامانه</span><span class="chip">📚 دروس</span>
+    <span class="chip">🔔 زمان‌بندیِ زنگ</span><span class="chip">🗓️ تقویمِ تحصیلی</span>
+    <span class="chip">🩺 سلامتِ سامانه</span><span class="chip">🔧 دیاگ و خودتعمیر</span>
+    <span class="chip">💳 برنامه‌ها</span><span class="chip">💰 مالیِ کل</span>
+  </div>
+  <figure>
+    <img class="shot" src="{{IMG:sa-dashboard}}" alt="داشبورد سوپرادمین" />
+    <figcaption>داشبوردِ مدیریتی: کلِ سامانه در یک نگاه — مدارس، کاربران، رویدادهای اخیر</figcaption>
+  </figure>
+  <figure>
+    <img class="shot" src="{{IMG:sa-schools}}" alt="مدیریت مدارس" />
+    <figcaption>مدیریتِ مدارس: تعریف و پیکربندیِ هر مدرسه (مقطع، شاخه‌ها، رشته‌ها، ظرفیت)</figcaption>
+  </figure>
+</section>
+
+<!-- ═══════════════ ۱۱. دیاگ ═══════════════ -->
+<section class="card" id="diag">
+  <h2>🔧 دیاگ سامانه — عیب‌یاب و تعمیرکارِ خودکار</h2>
+  <p>مثلِ دستگاهِ دیاگِ خودرو: خودش می‌گردد، عیب را پیدا می‌کند، شدتش را می‌گوید و هر جا
+  <b>امن</b> باشد خودش تعمیر می‌کند. ۳۴ آزمون در سه خانواده اجرا می‌شود:</p>
+  <ul>
+    <li>⚙️ <b>پیکربندی و موتور برنامه</b> — مشکلِ کد و زیرساخت (مسیرها، ایندکس، حافظه، توابع حیاتی)</li>
+    <li>📋 <b>کیفیتِ دادهٔ کاربر</b> — مشکلِ محتوایی (ارجاعِ بی‌صاحب، کد ملی تکراری، کلاسِ پر)</li>
+    <li>🌐 <b>ارتباط و زیرساخت</b> — شبکه، نسخهٔ سرور، ساعتِ دستگاه، سقفِ حافظه</li>
+  </ul>
+  <figure>
+    <img class="shot" src="{{IMG:sa-diag}}" alt="دیاگ سامانه" />
+    <figcaption>صفحهٔ دیاگ: نمرهٔ سلامت از ۱۰۰، تفکیکِ سه خانواده، و کارتِ هر عیب با دکمهٔ تعمیر</figcaption>
+  </figure>
+  <h3>قوانینِ تعمیرِ خودکار</h3>
+  <ul>
+    <li>هر تعمیر <b>بازگشت‌پذیر</b> است: قبل از اجرا «حالتِ قبل» پشتیبان گرفته می‌شود و در
+    «تاریخچهٔ تعمیرات» با دکمهٔ <b>↩️ بازگردانی</b> می‌ماند.</li>
+    <li>عملیاتی که <b>داده حذف</b> می‌کند یا قضاوتِ انسانی می‌خواهد (مثل کد ملی تکراری)
+    هرگز خودکار انجام نمی‌شود — فقط گزارش می‌شود و «مسئولِ رفع» مشخص است.</li>
+    <li>اگر بعد از تعمیر، آزمون هنوز رد شود، <b>همهٔ تغییرات خودکار برمی‌گردد</b>.</li>
+    <li>با «▶️ پایشِ خودکار» دیاگ هر ۵ دقیقه (قابلِ تنظیم) در پس‌زمینه می‌دود، عیب‌های امن را
+    خودکار درست می‌کند و به سوپرادمین اطلاع می‌دهد.</li>
+    <li>«📕 کتابچهٔ عملیات» پایینِ صفحه، همهٔ ۳۴ سناریو را با «چه‌وقتی رخ می‌دهد، چطور رفع می‌شود،
+    مسئول کیست» جمع کرده است.</li>
+  </ul>
+  <div class="callout green"><b>خطاهای زمان‌اجرا:</b> هر خطای واقعیِ برنامه از لحظهٔ باز شدنِ صفحه
+  در «لاگِ زمان‌اجرا» ثبت می‌شود و در همین صفحه دیده می‌شود (متن، فایل، شمارهٔ خط، زمان، کاربر).
+  دکمهٔ تعمیرِ آن کارت لاگ را پاک می‌کند تا بررسیِ بعدی تازه باشد؛ اگر خطا مکرر بود،
+  همان متن و شمارهٔ خط را به توسعه‌دهنده بفرستید.</div>
+</section>
+
+<!-- ═══════════════ ۱۲. پیامک ═══════════════ -->
+<section class="card" id="sms">
+  <h2>📨 پیامک و اعلان‌ها</h2>
+  <p>همهٔ اطلاع‌رسانی‌ها (حضور، نمره، سوار/پیادهٔ سرویس، کلاس مجازی، اطلاعیه) در <b>صفِ اعلان</b>
+  سامانه می‌نشینند. هر رویداد یک‌بار ثبت می‌شود (بدون تکراری) و برای گیرندهٔ درست — فقط ولیِ
+  همان دانش‌آموز — آماده می‌شود.</p>
+  <div class="callout amber"><b>دمو در برابر تولید:</b> در این نسخه، صف <b>واقعاً</b> ساخته و مدیریت می‌شود
+  (ساخت، فیلتر، تکراری‌گیری، لغو) ولی ارسالِ فیزیکیِ پیامک مرحلهٔ «وصل به سرور و درگاهِ رسمی» است.
+  در صفحهٔ «صفِ پیامک» (مدیر) می‌توانید محتوایِ هر پیام قبل از ارسال را ببینید.</div>
+</section>
+
+<!-- ═══════════════ ۱۳. روز غیرحضوری ═══════════════ -->
+<section class="card" id="vmode">
+  <h2>🏠 روزِ غیرحضوری مدرسه</h2>
+  <p>مدیر (یا سوپرادمین) می‌تواند مدرسه را برای یک روز «غیرحضوری» کند — مثلاً روزِ بارندگی یا
+  امتحان. در این حالت:</p>
+  <ul>
+    <li>نوارِ هشدار در ۶ بخشِ اصلی (حضور، کلاس‌ها، کلاس مجازی، کتابخانه، مهمان، املاک) روشن می‌شود.</li>
+    <li>ثبتِ حضور، امانتِ کتاب، ثبتِ مهمان و «درِ دسترس»کردنِ تجهیزات در <b>سطحِ داده</b> قفل می‌شود —
+    از هیچ مسیری قابلِ دور زدن نیست.</li>
+    <li>با تغییرِ حالت، اطلاع‌رسانیِ «روزِ غیرحضوری» به صفِ اولیا می‌رود؛ با بازگشت به حضوری، خودکار لغو می‌شود.</li>
+  </ul>
+  <p class="small muted">نمونهٔ استفاده: دکمهٔ «حالت» روی داشبوردِ مدیر یا در فهرستِ مدارسِ اداره.</p>
+</section>
+
+<!-- ═══════════════ ۱۴. حریم خصوصی ═══════════════ -->
+<section class="card" id="privacy">
+  <h2>🔐 حریم خصوصی</h2>
+  <ul>
+    <li>سیاستِ حریم خصوصی از <b>پایینِ صفحهٔ ورود</b> (و از هر جای برنامه) در دسترس است — داخلِ اپ،
+    مطابقِ ملاکِ فروشگاه‌ها.</li>
+    <li>در نسخهٔ دمو داده <b>فقط روی دستگاهِ شما</b> می‌ماند و برنامه هیچ درخواستی به شبکه نمی‌فرستد.</li>
+    <li>در نسخهٔ تولید داده روی سرورِ مدرسه می‌ماند، انتقال با رمزنگاریِ HTTPS است،
+    داده به کسی فروخته یا داده نمی‌شود، و هر حساب می‌تواند حذفِ کاملِ داده‌هایش را درخواست کند.</li>
+    <li>اطلاعاتِ هر دانش‌آموز فقط برای <u>ولیِ متصلِ خودش</u> و کادرِ <u>مدرسهٔ خودش</u> قابل دسترس است.</li>
+  </ul>
+</section>
+
+<!-- ═══════════════ ۱۵. دادهٔ دمو ═══════════════ -->
+<section class="card" id="demo">
+  <h2>🧪 داده دمو — واقعیتِ پشتِ اعداد</h2>
+  <p>این نسخه با <b>دادهٔ نمونه</b> شروع می‌شود: چند مدرسه، کلاس‌ها، دانش‌آموزان، نمرات، مسیرهای
+  سرویس و فایل‌های نمونهٔ کلاس مجازی — تا همهٔ بخش‌ها <u>واقعی</u> قابلِ آزمایش باشند.
+  همهٔ تغییراتی که می‌کنید روی <b>حافظهٔ مرورگرِ دستگاهِ شما</b> ذخیره می‌شود.</p>
+  <ul>
+    <li>برای شروعِ تازه: «بازگشتِ خودکارِ داده‌های نمونه» (دیاگ) یا پاک‌کردنِ داده‌هایِ سایت از تنظیماتِ مرورگر.</li>
+    <li>در نسخهٔ تولید، دادهٔ نمونه‌ای وجود ندارد — همهٔ چیزی که می‌بینید رکوردِ واقعیِ مدرسه است.</li>
+  </ul>
+</section>
+
+<!-- ═══════════════ ۱۶. قاعدهٔ همگامی ═══════════════ -->
+<section class="card" id="sync">
+  <h2>🔁 قاعدهٔ همگامی — این راهنما و index.html همیشه با هم</h2>
+  <p>این یک <b>اصل</b> است: هر تغییری که روی برنامه (فایلِ <code>index.html</code>) اعمال می‌شود،
+  باید در همین دورِ کاری روی راهنما هم اعمال شود — متن، تصاویر و فهرستِ قابلیت‌ها.</p>
+  <table>
+    <tr><th>چه می‌شود</th><th>چکار می‌شود</th></tr>
+    <tr><td>هر <code>node build.js</code></td><td>مُهرِ بیلدِ این فایل <b>خودکار</b> تازه می‌شود (meta <code>payesh-build</code>) — اگر راهنما قدیمی باشد، حالتِ <code>--check</code> build می‌شکند.</td></tr>
+    <tr><td>تغییرِ ظاهرِ یک صفحه</td><td>عکسِ مربوط با <code>node _shots.js</code> دوباره گرفته می‌شود (ورودِ واقعی + کلیکِ واقعی).</td></tr>
+    <tr><td>افزودن/حذفِ بخش یا نقش</td><td>فهرستِ قابلیت‌ها، جدولِ نقش‌ها و فهرستِ بالا به‌روز می‌شود.</td></tr>
+    <tr><td>تغییرِ حساب‌های دمو</td><td>جدولِ بخشِ «ورود» به‌روز می‌شود.</td></tr>
+  </table>
+  <p class="small muted">مُهرِ فعلیِ بیلد در بالای صفحه (badge) و در <code>head</code> همین فایل
+  (<code>meta payesh-build</code>) ثبت است.</p>
+</section>
+
+<p class="footer">
+  پایش — سامانهٔ هوشمند مدیریت مدرسه · راهنمای کاربر · نسخهٔ ۲۰۲۶/۰۹/۵ ·
+  تک‌فایلی و کاملاً آفلاین — بدونِ وابستگیِ خارجی
+</p>
+
+</div>
+
+<script>
+(function(){
+  var m=document.querySelector('meta[name="payesh-build"]');
+  var s=document.getElementById('stamp');
+  if(m&&s) s.textContent=m.getAttribute('content');
+})();
+</script>
+</body>
+</html>
