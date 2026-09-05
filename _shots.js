@@ -57,8 +57,10 @@ const SHOTS = [
         await sleep(900);
         if (user) {
           await page.evaluate((u) => {
-            document.getElementById('lu').value = u;
-            document.getElementById('lp').value = '123456';
+            const x = db.users.find(y => y.username === u);
+            document.getElementById('lpn').value = x.phone;
+            document.getElementById('lnid').value = x.national_id;
+            document.getElementById('lcode').value = SmsPanel.sendCode(x.phone);
             document.querySelector('[data-act="login"]').click();
           }, user);
           await sleep(1200);
