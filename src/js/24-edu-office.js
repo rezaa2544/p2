@@ -901,7 +901,7 @@ setTimeout(()=>{
   /* دور ۶۴ بند ۱: موتور یادآور خودکار اقساط — در هر بول اجرا می‌شود؛
      گاردهای reminded_at و خلاصهٔ روزانهٔ مدیر آن را کُندوم و ضداسپم
      می‌کنند (دور تکراری = صفر عمل). */
-  if(typeof runTuitionReminders==='function') runTuitionReminders();
+  if(typeof tuitionReminders==='function') tuitionReminders();
   /* بند ۱۵: لینکِ اختصاصی — بارگذاری صفحه با hash + تغییرِ hash */
   if(typeof vclassAutoJoinFromHash==='function'){
     vclassAutoJoinFromHash();
