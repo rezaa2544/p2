@@ -27,13 +27,38 @@ function recordTargetId(){
    کارنامه و پروندهٔ دانش‌آموز
    نمای دانش‌آموز از خودش و نمای ولی از فرزندان.
    ═══════════════════════════════════════════════════════════════════ */
+
+/** برنامهٔ هفتگی کلاسِ دانش‌آموز — فقط‌خواندنی.
+    بند ۴: برنامهٔ کلاس دادهٔ پایه است و برای ولی همیشه رایگان است. */
+function classScheduleCard(sid){
+  var cls=classOf(sid);
+  if(!cls) return '<div class="card-body">'+empty('🗓️','دانش‌آموزی کلاس ندارد','')+'</div>';
+  var rows=db.schedule.filter(function(s){return s.class_id===cls.id;});
+  if(!rows.length)
+    return '<div class="card-body">'+empty('🗓️','برنامه‌ای ثبت نشده','برنامهٔ هفتگی این کلاس هنوز تنظیم نشده است.')+'</div>';
+  var cell=function(d,p){return rows.find(function(r){return r.day===d&&r.period===p;});};
+  var grid='<div class="table-wrap"><div class="timetable"><div></div>'
+    +DAYS.map(function(d){return '<div class="tt-head"><b>'+d+'</b></div>';}).join('')
+    +[1,2,3,4,5,6].map(function(p){
+        return '<div class="tt-head" style="display:grid;place-items:center"><span class="badge b-blue">زنگ '+fa(p)+'</span></div>'
+          +DAYS.map(function(_,d){
+              var c=cell(d,p);
+              if(c)return '<div class="tt-cell"><b>'+esc((byId('subjects',c.subject_id)||{}).name||'—')+'</b>'
+                +'<span>'+esc(c.teacher_id?((byId('users',c.teacher_id)||{}).full_name||'—'):'بدون دبیر')+'</span></div>';
+              return '<div class="tt-cell tt-empty"><span class="muted small">—</span></div>';
+            }).join('');
+      }).join('')
+    +'</div></div>';
+  return '<div class="card-body small muted" style="margin-bottom:10px">برنامهٔ هفتگی کلاس <b>'+esc(cls.name)+'</b></div>'+grid;
+}
+
 function viewRecord(sid){
   const gr=db.grades.filter(g=>g.student_id===sid);
   const att=db.attendance.filter(a=>a.student_id===sid).slice().sort((a,b)=>b.date.localeCompare(a.date));
   const disc=db.discipline.filter(d=>d.student_id===sid).slice().sort((a,b)=>b.date.localeCompare(a.date));
   const bySub={};gr.forEach(g=>{(bySub[g.subject_id]=bySub[g.subject_id]||[]).push(g);});
   const tabs=[['grades','📝 کارنامه'],['attendance','✅ حضور و غیاب'],
-              ['discipline','⚖️ پرونده انضباطی'],['profile','🪪 شناسنامه']];
+              ['schedule','📅 برنامه کلاس'],['discipline','⚖️ پرونده انضباطی'],['profile','🪪 شناسنامه']];
   let body='';
   if(S.tab==='profile') body = studentProfileCard(sid)
     + ((typeof yearHistoryCard==='function')?yearHistoryCard(sid):'')
@@ -44,6 +69,7 @@ function viewRecord(sid){
      <div style="margin:8px 0 12px">${bar(a,20,a>=17?'var(--green)':a>=12?'var(--primary)':'var(--red)')}</div>
      <div class="row">${l.map(g=>`<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}: <b>${fa(g.score)}</b></span>`).join('')}</div></div>`;}).join('')}</div>`
     :empty('📝','نمره‌ای ثبت نشده','به محض ثبت نمره، کارنامه اینجا نمایش داده می‌شود.');
+  if(S.tab==='schedule') body = classScheduleCard(sid);
   if(S.tab==='attendance'){const cnt=k=>att.filter(a=>a.status===k).length;
     body= att.length?`<div class="card-body row">${['present','absent','late','excused'].map(k=>`<span class="badge ${ATT_BADGE[k]}">${ATT_FA[k]}: ${fa(cnt(k))} روز</span>`).join('')}</div>
      <div class="table-wrap"><table><thead><tr><th>تاریخ</th><th>وضعیت</th><th>توضیح</th><th>تغییرات</th></tr></thead><tbody>
