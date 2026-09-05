@@ -25,5 +25,6 @@ function renderLogin(){
      ${accs.map(a=>`<div class="demo-item" data-act="pick" data-u="${escAttr(a.username)}">
         <span class="badge ${ROLE_BADGE[a.role]}">${ROLE_FA[a.role]}</span>
         <b>${esc(a.username)}</b></div>`).join('')}
+     <div class="small muted" style="margin-top:16px;text-align:center"><span data-act="privacy-open" style="text-decoration:underline;cursor:pointer">سیاست حریم خصوصی و امنیت داده</span></div>
    </div></div></div>`;
 }
