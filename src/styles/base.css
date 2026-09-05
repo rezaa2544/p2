@@ -490,3 +490,11 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 @media (prefers-reduced-motion:reduce){
   .hgt-needle,.hgt-dot,.hgt-fill{ animation:none; }
 }
+
+/* ── سوییچر فرزندان ثابت (بند ۱.۷) ── */
+.child-switcher{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:8px;padding:8px 18px;background:var(--surface);border-bottom:1px solid var(--border)}
+.child-switcher .cs-label{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
+.child-switcher .cs-btn{border:1px solid var(--border);background:var(--surface-2);color:var(--muted);border-radius:999px;padding:3px 14px;font-size:12.5px;font-weight:600;cursor:pointer}
+.child-switcher .cs-btn.on{background:var(--primary);border-color:var(--primary);color:#fff}
+/* کارت امروز */
+.today-card .card-head{border-bottom:1px dashed var(--border)}

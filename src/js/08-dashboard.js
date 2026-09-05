@@ -115,10 +115,49 @@ function studentSummary(sid){
   return {st,cls,avg,att,disc,subs,rank,size,points:disc.reduce((a,b)=>a+b.points,0)};
 }
 
+/* ─────────────── کارت «امروز» (بند ۱.۷ — بستهٔ طراحی پایه) ───────────────
+   سه تکه برای خانوادهٔ دانش‌آموز: تاریخ شمسی امروز، وضعیت حضور امروز
+   (با رنگ معنادار) و زنگ‌های امروز از برنامهٔ کلاس. */
+
+/** روز هفته با شنبه=۰ — همان قرارداد برنامهٔ کلاسی (بند ۱.۵) */
+function todayDow(iso){
+  var d=iso?new Date(iso.slice(0,10)+'T12:00:00'):new Date();
+  return (d.getDay()+1)%7;
+}
+
+function todayCard(sid,iso){
+  iso=iso||todayISO();
+  var cls=classOf(sid);
+  var recs=db.attendance.filter(function(a){ return a.student_id===sid&&a.date===iso; });
+  var rec=recs.length?recs[recs.length-1]:null;
+  var dow=todayDow(iso);
+  var periods=cls
+    ?db.schedule.filter(function(s){ return s.class_id===cls.id&&s.day===dow; })
+              .sort(function(a,b){ return a.period-b.period; })
+    :[];
+  var attFA={present:'حاضر',absent:'غایب',late:'با تأخیر',excused:'موجه'};
+  var attColor={present:'var(--green)',absent:'var(--red)',late:'var(--amber)',excused:'var(--primary)'};
+  return `<div class="card today-card"><div class="card-head"><h3>🌅 امروز</h3>
+    <span class="badge b-blue">${jalali(iso)} — ${DAYS[dow]}</span></div>
+   <div class="card-body" style="display:grid;gap:12px">
+    ${rec
+     ?`<div class="row"><span>وضعیت حضور امروز</span><div class="spacer"></div><b style="color:${attColor[rec.status]||'var(--text)'}">${attFA[rec.status]||'—'}</b></div>`
+     :`<div class="row"><span>وضعیت حضور امروز</span><div class="spacer"></div><span class="badge b-gray">ثبت نشده</span></div>`}
+    ${periods.length
+     ?`<div><div class="small muted" style="margin-bottom:6px">${fa(periods.length)} زنگ امروز:</div>
+        ${periods.map(s=>`<div class="row" style="padding:7px 10px;background:var(--surface-2);border-radius:8px;margin-bottom:6px">
+          <span class="badge b-blue" style="flex:none">زنگ ${fa(s.period)}</span>
+          <b style="margin-inline-start:8px">${esc((byId('subjects',s.subject_id)||{}).name||'—')}</b>
+          ${s.teacher_id?`<span class="muted small" style="margin-inline-start:auto">${esc((byId('users',s.teacher_id)||{}).full_name||'')}</span>`:''}
+        </div>`).join('')}</div>`
+     :empty('🗓️','امروز زنگی ثبت نشده','برنامهٔ هفتگی کلاس برای این روز خالی است.')}
+   </div></div>`;
+}
+
 function summaryBlock(sid){
   const d=studentSummary(sid), tot=d.att.length;
   const cnt=k=>d.att.filter(a=>a.status===k).length;
-  return `<div class="grid g4">
+  return `${todayCard(sid)}<div class="grid g4">
    ${statCard('🎒',esc(d.st.full_name),d.cls?'کلاس '+d.cls.name:'بدون کلاس','blue')}
    ${statCard('📊',fa(d.avg.toFixed(2)),'معدل کل','green')}
    ${statCard('🏅',fa(d.rank)+' از '+fa(d.size),'رتبه در کلاس','amber')}

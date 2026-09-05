@@ -35,7 +35,10 @@ var NOTIFY_DEFAULTS = {
   graceMinutes: 20,
   dailyCap:     300,
   bulkWarn:     50,
-  kinds:        { absence: true, late: true, grade: false, event: true, pattern: true },
+  /* daily (بند ۱.۷): خلاصهٔ روزانه پیش‌فرض خاموش است — مدیر خودش
+     برای هر مدرسه روشن می‌کند؛ با دکمهٔ «خلاصهٔ امروز» هم دستی ساخته
+     می‌شود. bus_on/bus_off: رویدادهای سرویس مدرسه (پیش‌فرض روشن). */
+  kinds:        { absence: true, late: true, grade: false, event: true, pattern: true, daily: false, bus_on: true, bus_off: true },
   gradeThreshold: 10
 };
 
@@ -114,6 +117,20 @@ var NOTIFY_TPL = {
     return 'اصلاحیه: اطلاع قبلی دربارهٔ نمرهٔ ' + o.student + ' در ' +
            (o.subject || 'آزمون') + ' نادرست بود. وضعیت دقیق در سامانه. ' +
            'پوزش می‌خواهیم. ' + o.school;
+  },
+  /* خلاصهٔ روزانه (بند ۱.۷): پیام تجمیعی — زنگ‌های امروز + وضعیت
+     حضور. در عمل body را notifyDailySummary آماده می‌کند و مستقیم
+     می‌فرستد؛ این قالب برای خوانایی تک‌منبعِ متن‌ها نگه داشته شده. */
+  daily: function(o){
+    return 'اولیای گرامی، خلاصهٔ امروز (' + o.date + ') برای ' + o.student +
+           ': ' + (o.detail || '') + '. ' + o.school;
+  },
+  /* رویدادهای سرویس مدرسه (نسخهٔ بدون جی‌پی‌اس) */
+  bus_on: function(o){
+    return 'اولیای گرامی، ' + o.student + ' به سرویس مدرسه سوار شد. ' + o.school;
+  },
+  bus_off: function(o){
+    return 'اولیای گرامی، ' + o.student + ' از سرویس مدرسه پیاده شد. ' + o.school;
   }
 };
 
@@ -156,6 +173,69 @@ function notifyHash(kind, ref){
          + g.exam_type + '|' + g.score;
   }
   return String(ref);
+}
+
+/* ─────────────── خلاصهٔ روزانه (بند ۱.۷ — بستهٔ طراحی پایه) ───────────────
+   پیام تجمیعی به هر خانواده: زنگ‌های امروز + وضعیت حضور.
+   • منبعِ قطعی (source_ref) بر پایهٔ دانش‌آموز+تاریخ است ⇒ برای هر
+     دانش‌آموز و هر روز فقط یک خلاصه ساخته می‌شود (نه با ثبت چند بار
+     حضور، نه با دکمهٔ دستی + خودکار).
+   • یک‌طرفه است: اگر بعداً وضعیت حضور عوض شود، خلاصهٔ رفته اصلاحیه
+     نمی‌گیرد — این پیام «عکس لحظهٔ ثبت» است، نه گزارش رسمی. */
+
+function dailySummaryDetail(studentId, dateIso){
+  var cls = (typeof classOf === 'function') ? classOf(studentId) : null;
+  var dow = (typeof todayDow === 'function') ? todayDow(dateIso)
+             : ((new Date(dateIso+'T12:00:00').getDay()+1)%7);
+  var n = cls
+    ? db.schedule.filter(function(s){ return s.class_id===cls.id && s.day===dow; }).length
+    : 0;
+  var recs = db.attendance.filter(function(a){
+    return a.student_id===studentId && a.date===dateIso;
+  });
+  var rec = recs.length ? recs[recs.length-1] : null;
+  var attFA = { present:'حاضر', absent:'غایب', late:'با تأخیر', excused:'موجه' };
+  var att = rec ? attFA[rec.status] : 'ثبت نشده';
+  return (n ? fa(n) + ' زنگ کلاس' : 'بدون کلاس') + '، حضور: ' + att;
+}
+
+/** ساخت (یا بازگشت null برای) خلاصهٔ امروزِ یک دانش‌آموز */
+function notifyDailySummary(studentId, dateIso){
+  dateIso = dateIso || todayISO();
+  var u = byId('users', studentId);
+  if(!u || u.role !== 'student') return null;
+  /* حذف تکراری: رکورد معلق یا ارسال‌شدهٔ همان دانش‌آموز+روز */
+  var ref = 'daily:' + studentId + ':' + dateIso;
+  var dup = db.notify_queue.some(function(q){
+    return q.kind === 'daily' && q.source_ref === ref &&
+           q.status !== 'rejected' && q.status !== 'cancelled';
+  });
+  if(dup) return null;
+  return notifyRequest({
+    school_id:   u.school_id,
+    kind:        'daily',
+    student_id:  studentId,
+    student_name: u.full_name,
+    date_fa:     (typeof jalali === 'function') ? jalali(dateIso) : '',
+    body: 'اولیای گرامی، خلاصهٔ امروز (' + (typeof jalali==='function'?jalali(dateIso):dateIso) +
+          ') برای ' + u.full_name + ': ' + dailySummaryDetail(studentId, dateIso) +
+          '. ' + notifySchoolName(u.school_id),
+    source_ref:  ref
+  });
+}
+
+/** خلاصهٔ همهٔ دانش‌آموزان فعال یک مدرسه (دکمهٔ «خلاصهٔ امروز») */
+function notifyDailySummaryAll(schoolId, dateIso){
+  dateIso = dateIso || todayISO();
+  var studs = db.users.filter(function(u){
+    return u.role==='student' && u.school_id===schoolId &&
+           (u.status||'active')==='active';
+  });
+  var created = 0, skipped = 0;
+  studs.forEach(function(s){
+    if(notifyDailySummary(s.id, dateIso)) created++; else skipped++;
+  });
+  return {created:created, skipped:skipped};
 }
 
 /* ─────────────── بخش ۴: ساخت درخواست پیام ─────────────── */
@@ -468,7 +548,10 @@ var NOTIFY_KIND_FA = {
   grade:      ['نمره',    'b-purple'],
   event:      ['رویداد',  'b-blue'],
   pattern:    ['الگو',    'b-cyan'],
-  correction: ['اصلاحیه', 'b-red']
+  correction: ['اصلاحیه', 'b-red'],
+  daily:      ['خلاصهٔ روزانه', 'b-green'],
+  bus_on:     ['سرویس: سوار', 'b-blue'],
+  bus_off:    ['سرویس: پیاده', 'b-blue']
 };
 
 /** برچسب یک رکورد صف؛ اصلاحیه بر نوع اصلی مقدم است */
@@ -575,7 +658,7 @@ function viewNotifyQueue(){
   }) : all;
 
   /* شمار هر دسته برای دکمه‌های فیلتر */
-  var cnt = { absence:0, late:0, grade:0, event:0, pattern:0, correction:0 };
+  var cnt = { absence:0, late:0, grade:0, event:0, pattern:0, daily:0, bus_on:0, bus_off:0, correction:0 };
   all.forEach(function(q){
     if(q.correction_of) cnt.correction++;
     else if(cnt[q.kind] !== undefined) cnt[q.kind]++;
@@ -593,6 +676,7 @@ function viewNotifyQueue(){
   var head = '<div class="page-head"><h2>📨 صف پیام‌های اولیا</h2>'
     + '<div class="row">'
     + '<button class="btn ghost sm" data-act="notify-settings">⚙️ تنظیمات</button>'
+    + '<button class="btn ghost sm" data-act="daily-summary" title="خلاصهٔ امروز (زنگ‌ها + وضعیت حضور) برای همهٔ خانواده‌ها">🌅 خلاصهٔ امروز</button>'
     + '<button class="btn ghost sm" data-act="go" data-r="formssms">📊 دفتر پیامک</button>'
     + '</div></div>';
 

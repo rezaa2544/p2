@@ -28,7 +28,7 @@ function renderShell(){
       <button class="icon-btn" data-act="go" data-r="notifications" title="اعلان‌ها" style="position:relative;font-size:17px">🔔${(()=>{const n=unreadCount();return n?`<span style="position:absolute;top:-4px;inset-inline-end:-4px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border:2px solid #fff">${n>99?'۹۹+':fa(n)}</span>`:''})()}</button>
       ${typeof syncBadge==='function'?syncBadge():''}
       <span class="badge b-blue">${ROLE_FA[u.role]}</span></header>
-    <div class="content">${typeof notifyAutoBanner==='function'?notifyAutoBanner():''}${renderRoute()}</div>
+    <div class="content">${childSwitcherBar()}${typeof notifyAutoBanner==='function'?notifyAutoBanner():''}${renderRoute()}</div>
    </div>
   </div>`;
 }
@@ -60,6 +60,26 @@ function navFor(u){
   }
   return nav;
 }
+/* ─────────────── سوییچر فرزندان ثابت (بند ۱.۷ — بستهٔ طراحی پایه) ───────────────
+   برای ولی با دو یا چند فرزند: نوار چسبنده در بالای همهٔ صفحه‌های پنل،
+   فرزندِ انتخاب‌شده را نشان می‌دهد و با یک لمس عوض می‌کند. هدفِ
+   پرونده (record) و کارت‌های داشبورد از همین انتخاب (S.child) می‌آیند. */
+function childSwitcherBar(){
+  var role=(typeof activePersona==='function')?activePersona():S.user.role;
+  if(role!=='parent')return '';
+  var kids=db.parent_links
+    .filter(function(p){ return p.parent_id===S.user.id; })
+    .map(function(p){ return byId('users',p.student_id); })
+    .filter(Boolean);
+  if(kids.length<2)return '';
+  var active=S.child||kids[0].id;
+  return `<div class="child-switcher"><span class="cs-label">🎒 فرزند:</span>`
+    + kids.map(function(k){
+        return `<button class="cs-btn${active===k.id?' on':''}" data-act="child" data-id="${escAttr(k.id)}">${esc(k.full_name)}</button>`;
+      }).join('')
+    + `</div>`;
+}
+
 /* یادآوری فصل پایان سال به مدیر — هر هفت روز یک بار در تیر و مرداد */
 function checkYearEnd(){
   if(typeof yearEndReminder === 'function'){ try{ yearEndReminder(); }catch(e){} }
@@ -133,6 +153,8 @@ function _renderRouteInner(){
     case 'offices':return viewOffices();
     case 'officedash':return viewOfficeDash();
     case 'officeschools':return viewOfficeSchools();
+    case 'busservice':return viewBusService();
+    case 'myservice':return viewMyService();
     case 'cqueue':return viewCounselorQueue();
     case 'followup':return viewFollowup();
     case 'staff':return viewStaff();

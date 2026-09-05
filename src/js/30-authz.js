@@ -70,7 +70,7 @@ function canRoute(route, role){
 function homeRoute(role){
   role = role || (typeof activePersona === 'function' ? activePersona() : (S.user && S.user.role));
   /* خانهٔ مشاور صف ارجاع است، نه داشبورد عمومی */
-  return role === 'edu_office' ? 'officedash' : (role === 'counselor' ? 'cqueue' : 'dashboard');
+  return role === 'edu_office' ? 'officedash' : (role === 'counselor' ? 'cqueue' : (role === 'driver' ? 'myservice' : 'dashboard'));
 }
 
 /* ---------- مجوز اکشن‌ها ----------
@@ -107,6 +107,16 @@ var ACTION_ROLES = {
   'notify-settings':    ['manager'],
   'notify-save-settings':['manager'],
   'notify-auto-off':    ['manager'],
+  /* خلاصهٔ روزانه (بند ۱.۷): ساخت انبوهِ پیام ⇒ فقط مدیر */
+  'daily-summary':      ['manager'],
+  /* سرویس مدرسه (بدون جی‌پی‌اس): راننده فقط مسیر خودش را ثبت می‌کند —
+     بررسی مالکیت مسیر در busEvent() روی داده تکرار می‌شود. */
+  'bus-event':        ['driver','manager'],
+  'bus-route-new':    ['manager'],
+  'bus-route-save':   ['manager'],
+  'bus-route-del':    ['manager'],
+  'bus-students':     ['manager'],
+  'bus-students-save':['manager'],
   /* حضور و غیاب: فقط دبیر و مدیر */
   'att-set':       ['teacher','manager'],
   'att-review':    ['teacher','manager'],

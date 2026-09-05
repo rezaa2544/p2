@@ -6086,13 +6086,15 @@ test('اسکرول: منوی کناری هم جای خود را حفظ می‌ک
 
 const NAV_EXPECT = {
   superadmin: ['dashboard','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications'],
-  manager: ['dashboard','atrisk','growth','calendar','formssms','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','followup','leaves','exams','teachers','corrections','staff','tuition','meetings','notifyqueue','announcements','notifications','chat'],
+  manager: ['dashboard','atrisk','growth','calendar','formssms','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','followup','leaves','exams','teachers','corrections','staff','tuition','meetings','notifyqueue','announcements','notifications','chat','busservice'],
   teacher: ['meetings','dashboard','classes','schedule','calendar','attendance','grades','discipline','leaves','exams','announcements','notifications','chat'],
   student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','announcements','notifications','chat'],
   edu_office: ['officedash','officeschools','announcements','notifications'],
   parent: ['meetings','dashboard','family','children','exams','calendar','mytuition','leaves','announcements','notifications','chat'],
   /* دور ۶۳: نقش تازهٔ مشاور — فقط صف ارجاع + صفحه‌های عمومی */
-  counselor: ['cqueue','dashboard','announcements','notifications']
+  counselor: ['cqueue','dashboard','announcements','notifications'],
+  /* سرویس مدرسه (بدون جی‌پی‌اس): راننده فقط مسیر خودش + صفحه‌های عمومی */
+  driver: ['myservice','dashboard','announcements','notifications']
 };
 
 const navRoutes = (role) => JSON.parse(W('JSON.stringify(navRoutesOf(' + JSON.stringify(role) + '))'));
@@ -6335,19 +6337,21 @@ test('مشاور: رسیدگی، رکورد را پاک نمی‌کند — وض
   });
 });
 
-test('عوامل اجرایی: مشاور فعال و معاونت‌ها رزرو‌اند (ساختار گسترش‌پذیر)', () => {
+test('عوامل اجرایی: مشاور و راننده فعال، معاونت‌ها رزرو‌اند (ساختار گسترش‌پذیر)', () => {
   withCounselor(() => {
     const r = JSON.parse(W('(()=>{S.user=db.users.find(function(u){return u.username==="manager1";});'
       + 'S.persona=null;S.boss=null;S.filters={};S.route="staff";S.page=1;'
       + 'const h=renderRoute();'
       + 'return JSON.stringify({'
       + 'active:h.indexOf("مشاور")>-1&&h.indexOf("فعال")>-1,'
+      + 'driverActive:EXEC_ROLES.some(function(x){return x.key==="driver"&&x.active===true;}),'
       + 'reserved:["معاون آموزشی","معاون اجرایی","معاون فنی","معاون پرورشی"].every(function(n){return h.indexOf(n)>-1;}),'
       + 'hasReservedBadge:h.indexOf("رزرو")>-1,'
-      + 'roles:EXEC_ROLES.length===5,'
+      + 'roles:EXEC_ROLES.length===6,'
       + 'counselorCount:db.users.filter(function(u){return u.role==="counselor"&&u.school_id===S.user.school_id;}).length>0'
       + '});})()'));
     assert(r.active === true, 'مشاور فعال نشد');
+    assert(r.driverActive === true, '🔴 راننده سرویس در EXEC_ROLES فعال نیست');
     assert(r.reserved === true, '🔴 معاونت‌های رزرو‌شده در صفحه نیستند');
     assert(r.hasReservedBadge === true, 'نشان «رزرو» نیست');
     assert(r.roles === true, 'ساختار EXEC_ROLES ناقص است');
@@ -7339,6 +7343,259 @@ test('بند ۱.۶: گواهی بدون نمره رد می‌شود و دکمه 
 });
 
 
+
+
+// ── بند ۱.۷: بستهٔ طراحی پایه ───────────────────────────────────
+
+test('بند ۱.۷: کارت امروز تاریخ، حضور و زنگ‌های امروز را می‌دهد', () => {
+  let schedId, attId;
+  try{
+    const t = JSON.parse(W(`(()=>{
+      var cls=db.classes[0];
+      var st=db.users.filter(function(x){return x.role==='student'&&x.school_id===cls.school_id;})[0];
+      return JSON.stringify({sid:st.id, cls:cls.id, dow:todayDow()});
+    })()`));
+    schedId = W(`(insert('schedule',{school_id:byId('classes',${t.cls}).school_id,class_id:${t.cls},subject_id:db.subjects[0].id,teacher_id:null,day:${t.dow},period:1,id:null}).id)`);
+    attId = W(`(insert('attendance',{school_id:byId('classes',${t.cls}).school_id,class_id:${t.cls},student_id:${t.sid},date:todayISO(),status:'present',note:null}).id)`);
+    const out = W(`todayCard(${t.sid})`);
+    assert(out.indexOf('🌅 امروز') > -1, 'کارت امروز رندر نشد');
+    assert(out.indexOf('حاضر') > -1, 'وضعیت حضور امروز نیست');
+    assert(out.indexOf('زنگ ۱') > -1, 'زنگ امروز نیست');
+  } finally {
+    W(`(function(){${schedId?`remove('schedule',${schedId});`:''}${attId?`remove('attendance',${attId});`:''}})()`);
+  }
+});
+
+test('بند ۱.۷: سوییچر فرزندان ثابت فقط برای ولیِ چندفرزند است + کارت امروز در داشبورد', () => {
+  const r = JSON.parse(W(`(()=>{
+    var p=null;
+    db.users.forEach(function(u){
+      if(u.role!=='parent'||p) return;
+      var n=db.parent_links.filter(function(l){return l.parent_id===u.id;}).length;
+      if(n>=2) p=u;
+    });
+    var t=db.users.find(function(x){return x.role==='teacher';});
+    S.user=p; S.persona=null; S.boss=null; S.route='dashboard'; S.child=null;
+    var hParent=renderShell();
+    S.user=t;
+    var hTeacher=renderShell();
+    return JSON.stringify({p:!!p, barParent:hParent.indexOf('child-switcher')>-1,
+      barTeacher:hTeacher.indexOf('child-switcher')>-1,
+      todayCard: p? hParent.indexOf('🌅 امروز')>-1 : false});
+  })()`));
+  assert(r.p, 'ولیِ چندفرزند نمونه نیست');
+  assert(r.barParent === true, 'نوار سوییچر برای ولی نیست');
+  assert(r.barTeacher === false, 'نوار سوییچر برای دبیر است (نباید باشد)');
+  assert(r.todayCard === true, 'کارت «امروز» در داشبورد ولی نیست');
+});
+
+test('بند ۱.۷: خلاصهٔ روزانه یک‌بار ساخته می‌شود و با تنظیم خاموش می‌شود', () => {
+  let t=null;
+  try{
+    t = JSON.parse(W(`(()=>{
+      var sch=db.schools[0];
+      var p=insert('users',{school_id:sch.id,role:'parent',full_name:'والد تست',username:'testparent17',phone:'09123456717',active:1});
+      var st=insert('users',{school_id:sch.id,role:'student',full_name:'دانش‌آموز تست',username:'teststud17',phone:'',active:1});
+      var l=insert('parent_links',{parent_id:p.id,student_id:st.id});
+      notifySaveSettings(sch.id,{enabled:true,autoSend:false,kinds:{daily:true,absence:false,late:false,grade:false,event:false,pattern:false,bus_on:false,bus_off:false}});
+      return JSON.stringify({sch:sch.id,p:p.id,st:st.id,l:l.id});
+    })()`));
+    const r1 = W(`notifyDailySummary(${t.st})`);
+    assert(!!r1, 'خلاصهٔ نخست ساخته نشد: ' + W('notifyRequest.lastSkip||""'));
+    const body1 = W(`db.notify_queue.filter(function(q){return q.source_ref==='daily:${t.st}:'+todayISO();})[0].body`);
+    assert(body1.indexOf('دانش‌آموز تست') > -1, 'نام دانش‌آموز در خلاصه نیست');
+    assert(body1.indexOf('حضور') > -1, 'وضعیت حضور در خلاصه نیست');
+    const r2 = W(`notifyDailySummary(${t.st})`);
+    assert(r2 === null, 'خلاصهٔ تکراری ساخته شد (حذف تکراری کار نمی‌کند)');
+    W(`notifySaveSettings(${t.sch},{kinds:{daily:false}})`);
+    const r3 = W(`notifyDailySummary(${t.st}, '2099-01-01')`);
+    assert(r3 === null, 'با kinds.daily=false خلاصه ساخته شد: ' + W('notifyRequest.lastSkip||""'));
+  } finally {
+    if(t) W(`(function(){
+      db.notify_queue.slice().forEach(function(q){ if(typeof q.source_ref==='string'&&q.source_ref.indexOf('daily:${t.st}:')===0) remove('notify_queue',q.id); });
+      remove('parent_links',${t.l}); remove('users',${t.st}); remove('users',${t.p});
+      notifySaveSettings(${t.sch},{enabled:false,kinds:{daily:false}});
+    })()`);
+  }
+});
+
+test('بند ۱.۷: با ثبت حضور واقعی، خلاصهٔ روزانه خودکار ساخته می‌شود', () => {
+  let t=null;
+  try{
+    t = JSON.parse(W(`(()=>{
+      var sch=db.schools[0];
+      var p=insert('users',{school_id:sch.id,role:'parent',full_name:'والد تست۲',username:'testparent17b',phone:'09123456718',active:1});
+      var cls=db.classes.filter(function(c){return c.school_id===sch.id;})[0];
+      var st=insert('users',{school_id:sch.id,role:'student',full_name:'دانش‌آموز تست۲',username:'teststud17b',phone:'',active:1});
+      insert('enrollments',{class_id:cls.id,student_id:st.id,school_id:sch.id});
+      insert('parent_links',{parent_id:p.id,student_id:st.id});
+      notifySaveSettings(sch.id,{enabled:true,autoSend:false,kinds:{daily:true,absence:false,late:false,grade:false,event:false,pattern:false,bus_on:false,bus_off:false}});
+      return JSON.stringify({sch:sch.id,st:st.id,cls:cls.id,date:'2099-02-01'});
+    })()`));
+    // جریان واقعی: پیش‌نویس → مرور → تأیید و ثبت (کلیک واقعی)
+    W(`(function(){
+      var mgr=db.users.find(function(u){return u.username==='manager1';});
+      S.user=mgr; S.persona=null; S.boss=null;
+      S.route='attendance'; S.filters={date:'${t.date}',class:${t.cls}}; S.page=1;
+      attDraftSet(${t.cls},'${t.date}',${t.st},'present');
+      render();
+      document.querySelector('[data-act="att-review"]').click();
+      document.querySelector('[data-act="att-commit"]').click();
+    })()`);
+    const r = JSON.parse(W(`(()=>{
+      var a=db.attendance.filter(function(x){return x.student_id===${t.st}&&x.date==='${t.date}';});
+      var q=db.notify_queue.filter(function(x){return typeof x.source_ref==='string'&&x.source_ref==='daily:${t.st}:${t.date}';});
+      return JSON.stringify({att:a.length, q:q.length, attId:a.length?a[0].id:0});
+    })()`));
+    assert(r.att === 1, 'رکورد حضور ثبت نشد');
+    assert(r.q === 1, '🔴 خلاصهٔ روزانه در جریان واقعیِ ثبت حضور ساخته نشد');
+  } finally {
+    if(t) W(`(function(){
+      db.attendance.slice().forEach(function(a){ if(a.student_id===${t.st}&&a.date==='${t.date}') remove('attendance',a.id); });
+      db.notify_queue.slice().forEach(function(q){ if(typeof q.source_ref==='string'&&q.source_ref.indexOf('daily:${t.st}:')===0) remove('notify_queue',q.id); });
+      db.parent_links.slice().forEach(function(l){ if(l.student_id===${t.st}) remove('parent_links',l.id); });
+      db.enrollments.slice().forEach(function(e){ if(e.student_id===${t.st}) remove('enrollments',e.id); });
+      db.users.slice().forEach(function(u){ if(u.username==='teststud17b'||u.username==='testparent17b') remove('users',u.id); });
+      notifySaveSettings(${t.sch},{enabled:false,kinds:{daily:false}});
+    })()`);
+  }
+});
+
+// ── سرویس مدرسه (بدون جی‌پی‌اس) ──────────────────────────────────
+
+test('سرویس: دادهٔ نمونه (راننده، مسیر، دانش‌آموزان، رویداد امروز) هست', () => {
+  const r = JSON.parse(W(`(()=>{
+    var drv=db.users.filter(function(u){return u.role==='driver';});
+    var rt=db.bus_routes[0];
+    var studs=rt?busStudentsOf(rt.id):[];
+    var evs=rt?busEventsOf(rt.id):[];
+    return JSON.stringify({d:drv.length,r:!!rt,s:studs.length,e:evs.length,
+      routeOfDriverOk: rt&&drv.length&&busRouteOfDriver(drv[0].id)==rt});
+  })()`));
+  assert(r.d >= 1, 'رانندهٔ نمونه نیست');
+  assert(r.r === true, 'مسیر نمونه نیست');
+  assert(r.s >= 3, 'دانش‌آموزان مسیر نمونه کم است');
+  assert(r.e >= 2, 'رویداد نمونه نیست');
+  assert(r.routeOfDriverOk === true, 'مسیر به رانندهٔ درست وصل نیست');
+});
+
+test('سرویس: پنل راننده مسیر خودش، دکمه‌ها و حالت روی‌سرویس را نشان می‌دهد', () => {
+  const r = JSON.parse(W(`(()=>{
+    var drv=db.users.filter(function(u){return u.role==='driver';})[0];
+    S.user=drv; S.persona=null; S.boss=null; S.route='myservice'; S.filters={};
+    var h=renderRoute();
+    var rt=busRouteOfDriver(drv.id);
+    var studs=busStudentsOf(rt.id);
+    var on=studs.filter(function(s){return busOnBoard(s.id)===true;})[0];
+    return JSON.stringify({
+      name:h.indexOf(rt.name)>-1,
+      hasOn:!!on,
+      onShown: on? h.indexOf('روی سرویس')>-1 : true,
+      btnOn:h.indexOf('data-t="on"')>-1,
+      btnOff:h.indexOf('data-t="off"')>-1,
+      nameOf: studs.length? h.indexOf(studs[0].full_name)>-1 : false
+    });
+  })()`));
+  assert(r.name === true, 'نام مسیر در پنل راننده نیست');
+  assert(r.nameOf === true, 'دانش‌آموز مسیر نیست');
+  assert(r.btnOn === true && r.btnOff === true, 'دکمه‌های سوار/پیاده نیستند');
+  if(r.hasOn) assert(r.onShown === true, 'حالت «روی سرویس» نشان داده نمی‌شود');
+});
+
+test('سرویس: پنل مدیر مسیرها، دانش‌آموزان و رویدادهای امروز را نشان می‌دهد', () => {
+  const r = JSON.parse(W(`(()=>{
+    var mgr=db.users.find(function(u){return u.username==='manager1';});
+    S.user=mgr; S.persona=null; S.boss=null; S.route='busservice'; S.filters={};
+    var h=renderRoute();
+    var rt=db.bus_routes.filter(function(x){return x.school_id===mgr.school_id;})[0];
+    var evs=rt?busEventsOf(rt.id):[];
+    return JSON.stringify({
+      route: rt? h.indexOf(rt.name)>-1 : false,
+      driver: rt? h.indexOf((byId('users',rt.driver_id)||{}).full_name||'@@')>-1 : false,
+      evShown: evs.length? h.indexOf(BUS_EVENT_FA[evs[0].type])>-1 : true,
+      newBtn: h.indexOf('bus-route-new')>-1
+    });
+  })()`));
+  assert(r.route === true, 'مسیر در پنل مدیر نیست');
+  assert(r.driver === true, 'نام راننده نیست');
+  assert(r.evShown === true, 'رویداد امروز نیست');
+  assert(r.newBtn === true, 'دکمهٔ مسیر جدید نیست');
+});
+
+test('🔴 سرویس: امنیت — نقش‌های غیرمجاز و رانندهٔ مسیر دیگر رد می‌شوند', () => {
+  try{
+    const r = JSON.parse(W(`(()=>{
+      var stu=db.bus_students[0].student_id;
+      var sch=db.schools[0];
+      var st=db.users.find(function(u){return u.role==='student'&&u.school_id===sch.id;});
+      var tch=db.users.find(function(u){return u.role==='teacher'&&u.school_id===sch.id;});
+      var pFake=insert('users',{school_id:sch.id,role:'driver',full_name:'رانندهٔ غریبه',username:'testdriver17',phone:'',active:1});
+      S.persona=null; S.boss=null;
+      S.user=st;
+      var asStudent=busEvent(stu,'on');
+      S.user=tch;
+      var asTeacher=busEvent(stu,'on');
+      S.user=pFake;
+      var asOther=busEvent(stu,'on');
+      S.user=db.users.find(function(u){return u.username==='manager1';});
+      var asMgr=busEvent(stu,'off');
+      return JSON.stringify({
+        student: asStudent.ok===false,
+        teacher: asTeacher.ok===false,
+        otherDriver: asOther.ok===false,
+        manager: asMgr.ok===true,
+        fake: pFake.id, stu: stu
+      });
+    })()`));
+    assert(r.student === true, '🔴 دانش‌آموز رویداد ثبت کرد');
+    assert(r.teacher === true, '🔴 دبیر رویداد ثبت کرد');
+    assert(r.otherDriver === true, '🔴 رانندهٔ غیرمسیر رویداد ثبت کرد');
+    assert(r.manager === true, 'مدیر رویداد ثبت نکرد');
+    W(`remove('users',${r.fake})`);
+  } finally {
+    W(`(function(){var u=db.users.filter(function(x){return x.username==='testdriver17';});u.forEach(function(x){remove('users',x.id);});})()`);
+  }
+});
+
+test('سرویس: رویداد سوار/پیاده، رکورد می‌سازد و پیامک در صف می‌گذارد', () => {
+  let evIds=[], qIds=[];
+  try{
+    const t = JSON.parse(W(`(()=>{
+      var rt=db.bus_routes[0];
+      var drv=db.users.filter(function(u){return u.role==='driver';})[0];
+      var studs=busStudentsOf(rt.id);
+      var st=studs[0];
+      notifySaveSettings(rt.school_id,{enabled:true,autoSend:false,kinds:{bus_on:true,bus_off:true,daily:false,absence:false,late:false,grade:false,event:false,pattern:false}});
+      S.user=drv; S.persona=null; S.boss=null;
+      var r1=busEvent(st.id,'on');
+      var r2=busEvent(st.id,'off');
+      return JSON.stringify({ok1:r1.ok,ok2:r2.ok,e1:r1.rec?r1.rec.id:0,e2:r2.rec?r2.rec.id:0,st:st.id});
+    })()`));
+    evIds=[t.e1,t.e2];
+    const r = JSON.parse(W(`(()=>{
+      var q=db.notify_queue.filter(function(x){return (x.kind==='bus_on'||x.kind==='bus_off')&&x.student_id===${t.st};});
+      var onQ=q.filter(function(x){return x.kind==='bus_on';})[0];
+      var offQ=q.filter(function(x){return x.kind==='bus_off';})[0];
+      return JSON.stringify({n:q.length,
+        onBody: onQ? onQ.body.indexOf('به سرویس مدرسه سوار شد')>-1 : false,
+        offBody: offQ? offQ.body.indexOf('پیاده شد')>-1 : false,
+        state: busOnBoard(${t.st})===false});
+    })()`));
+    qIds = JSON.parse(W(`JSON.stringify(db.notify_queue.filter(function(x){return (x.kind==='bus_on'||x.kind==='bus_off')&&x.student_id===${t.st};}).map(function(x){return x.id;}))`));
+    assert(t.ok1===true&&t.ok2===true, 'رویداد ثبت نشد');
+    assert(r.n === 2, 'هر دو رویداد پیامک نساخت: ' + r.n);
+    assert(r.onBody === true, 'متن پیامک سوار نادرست است');
+    assert(r.offBody === true, 'متن پیامک پیاده نادرست است');
+    assert(r.state === true, 'حالت بعد از پیاده شدن «پیاده شده» نیست');
+  } finally {
+    W(`(function(){
+      ${evIds.map(function(id){ return `remove('bus_events',${id});`; }).join('')}
+      (${JSON.stringify(qIds)}).forEach(function(qid){ remove('notify_queue',qid); });
+      var rt=db.bus_routes[0];
+      notifySaveSettings(rt.school_id,{enabled:false,kinds:{bus_on:true,bus_off:true,daily:false}});
+    })()`);
+  }
+});
 
 await Promise.all(testQueue);   // همهٔ آزمون‌های ناهمگام تا سرِ صف برسد
 const total = pass + fail;

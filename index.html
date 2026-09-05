@@ -500,6 +500,14 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 @media (prefers-reduced-motion:reduce){
   .hgt-needle,.hgt-dot,.hgt-fill{ animation:none; }
 }
+
+/* ── سوییچر فرزندان ثابت (بند ۱.۷) ── */
+.child-switcher{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:8px;padding:8px 18px;background:var(--surface);border-bottom:1px solid var(--border)}
+.child-switcher .cs-label{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
+.child-switcher .cs-btn{border:1px solid var(--border);background:var(--surface-2);color:var(--muted);border-radius:999px;padding:3px 14px;font-size:12.5px;font-weight:600;cursor:pointer}
+.child-switcher .cs-btn.on{background:var(--primary);border-color:var(--primary);color:#fff}
+/* کارت امروز */
+.today-card .card-head{border-bottom:1px dashed var(--border)}
 /* ==================== موبایل: تطبیق کامل با عرض صفحه ==================== */
 @media(max-width:900px){
 .app{grid-template-columns:1fr}
@@ -867,7 +875,7 @@ const jalali = iso => { if(!iso) return '—'; try{ return new Intl.DateTimeForm
 const todayISO = ()=> new Date().toISOString().slice(0,10);
 const daysAgoISO = d => { const t=new Date(); t.setDate(t.getDate()-d); return t.toISOString().slice(0,10); };
 const DAYS=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه'];
-const ROLE_FA={superadmin:'سوپر ادمین',manager:'مدیر مدرسه',teacher:'دبیر',student:'دانش‌آموز',parent:'ولی',edu_office:'اداره آموزش و پرورش',counselor:'مشاور'};
+const ROLE_FA={superadmin:'سوپر ادمین',manager:'مدیر مدرسه',teacher:'دبیر',student:'دانش‌آموز',parent:'ولی',edu_office:'اداره آموزش و پرورش',counselor:'مشاور',driver:'راننده سرویس'};
 const ROLE_BADGE={superadmin:'b-purple',manager:'b-blue',teacher:'b-green',student:'b-amber',parent:'b-gray',edu_office:'b-purple',counselor:'b-cyan'};
 const ATT_FA={present:'حاضر',absent:'غایب',late:'تأخیر',excused:'موجه'};
 const ATT_BADGE={present:'b-green',absent:'b-red',late:'b-amber',excused:'b-purple'};
@@ -950,7 +958,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -1581,14 +1589,15 @@ function bootstrapRequest(){
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
  superadmin:[['نظارت روزانه',[['dashboard','📊','داشبورد مدیریتی'],['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها']]],['مدارس و کاربران',[['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه'],['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]]],
- manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['formssms','🖨️','فرم‌ها و پیامک']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  teacher:[['کار روزانه',[['dashboard','📊','داشبورد'],['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کار آموزشی',[['meetings','📅','جلسات اولیا'],['classes','🏛️','کلاس‌ها'],['exams','👁️','برنامه مراقبت من'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['calendar','🗓️','تقویم آموزشی']]],['پروندهٔ من',[['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['leaves','📨','مرخصی']]],['امور مالی',[['mytuition','💰','شهریه من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['کار روزانه',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  parent:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['children','👨‍👩‍👦','پرونده فرزندان'],['exams','📝','برنامه امتحانات'],['calendar','🗓️','تقویم آموزشی']]],['نوبت و درخواست‌ها',[['meetings','📅','جلسات اولیا'],['leaves','📨','درخواست مرخصی']]],['خانواده و مالی',[['family','🏠','خانواده و مدارس'],['mytuition','💰','شهریه و اقساط']]],['ارتباطات',[['announcements','📢','اطلاعیه‌های مدرسه'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو با مدرسه']]]],
- counselor:[['کار من',[['cqueue','📨','صف ارجاع'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]]
+ counselor:[['کار من',[['cqueue','📨','صف ارجاع'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
+ driver:[['سرویس من',[['myservice','🚌','مسیر من'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]]
 };
-const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
+const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
 S.stack=[];
@@ -2341,7 +2350,7 @@ function canRoute(route, role){
 function homeRoute(role){
   role = role || (typeof activePersona === 'function' ? activePersona() : (S.user && S.user.role));
   /* خانهٔ مشاور صف ارجاع است، نه داشبورد عمومی */
-  return role === 'edu_office' ? 'officedash' : (role === 'counselor' ? 'cqueue' : 'dashboard');
+  return role === 'edu_office' ? 'officedash' : (role === 'counselor' ? 'cqueue' : (role === 'driver' ? 'myservice' : 'dashboard'));
 }
 
 /* ---------- مجوز اکشن‌ها ----------
@@ -2378,6 +2387,16 @@ var ACTION_ROLES = {
   'notify-settings':    ['manager'],
   'notify-save-settings':['manager'],
   'notify-auto-off':    ['manager'],
+  /* خلاصهٔ روزانه (بند ۱.۷): ساخت انبوهِ پیام ⇒ فقط مدیر */
+  'daily-summary':      ['manager'],
+  /* سرویس مدرسه (بدون جی‌پی‌اس): راننده فقط مسیر خودش را ثبت می‌کند —
+     بررسی مالکیت مسیر در busEvent() روی داده تکرار می‌شود. */
+  'bus-event':        ['driver','manager'],
+  'bus-route-new':    ['manager'],
+  'bus-route-save':   ['manager'],
+  'bus-route-del':    ['manager'],
+  'bus-students':     ['manager'],
+  'bus-students-save':['manager'],
   /* حضور و غیاب: فقط دبیر و مدیر */
   'att-set':       ['teacher','manager'],
   'att-review':    ['teacher','manager'],
@@ -2561,7 +2580,7 @@ function renderShell(){
       <button class="icon-btn" data-act="go" data-r="notifications" title="اعلان‌ها" style="position:relative;font-size:17px">🔔${(()=>{const n=unreadCount();return n?`<span style="position:absolute;top:-4px;inset-inline-end:-4px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border:2px solid #fff">${n>99?'۹۹+':fa(n)}</span>`:''})()}</button>
       ${typeof syncBadge==='function'?syncBadge():''}
       <span class="badge b-blue">${ROLE_FA[u.role]}</span></header>
-    <div class="content">${typeof notifyAutoBanner==='function'?notifyAutoBanner():''}${renderRoute()}</div>
+    <div class="content">${childSwitcherBar()}${typeof notifyAutoBanner==='function'?notifyAutoBanner():''}${renderRoute()}</div>
    </div>
   </div>`;
 }
@@ -2593,6 +2612,26 @@ function navFor(u){
   }
   return nav;
 }
+/* ─────────────── سوییچر فرزندان ثابت (بند ۱.۷ — بستهٔ طراحی پایه) ───────────────
+   برای ولی با دو یا چند فرزند: نوار چسبنده در بالای همهٔ صفحه‌های پنل،
+   فرزندِ انتخاب‌شده را نشان می‌دهد و با یک لمس عوض می‌کند. هدفِ
+   پرونده (record) و کارت‌های داشبورد از همین انتخاب (S.child) می‌آیند. */
+function childSwitcherBar(){
+  var role=(typeof activePersona==='function')?activePersona():S.user.role;
+  if(role!=='parent')return '';
+  var kids=db.parent_links
+    .filter(function(p){ return p.parent_id===S.user.id; })
+    .map(function(p){ return byId('users',p.student_id); })
+    .filter(Boolean);
+  if(kids.length<2)return '';
+  var active=S.child||kids[0].id;
+  return `<div class="child-switcher"><span class="cs-label">🎒 فرزند:</span>`
+    + kids.map(function(k){
+        return `<button class="cs-btn${active===k.id?' on':''}" data-act="child" data-id="${escAttr(k.id)}">${esc(k.full_name)}</button>`;
+      }).join('')
+    + `</div>`;
+}
+
 /* یادآوری فصل پایان سال به مدیر — هر هفت روز یک بار در تیر و مرداد */
 function checkYearEnd(){
   if(typeof yearEndReminder === 'function'){ try{ yearEndReminder(); }catch(e){} }
@@ -2666,6 +2705,8 @@ function _renderRouteInner(){
     case 'offices':return viewOffices();
     case 'officedash':return viewOfficeDash();
     case 'officeschools':return viewOfficeSchools();
+    case 'busservice':return viewBusService();
+    case 'myservice':return viewMyService();
     case 'cqueue':return viewCounselorQueue();
     case 'followup':return viewFollowup();
     case 'staff':return viewStaff();
@@ -2790,10 +2831,49 @@ function studentSummary(sid){
   return {st,cls,avg,att,disc,subs,rank,size,points:disc.reduce((a,b)=>a+b.points,0)};
 }
 
+/* ─────────────── کارت «امروز» (بند ۱.۷ — بستهٔ طراحی پایه) ───────────────
+   سه تکه برای خانوادهٔ دانش‌آموز: تاریخ شمسی امروز، وضعیت حضور امروز
+   (با رنگ معنادار) و زنگ‌های امروز از برنامهٔ کلاس. */
+
+/** روز هفته با شنبه=۰ — همان قرارداد برنامهٔ کلاسی (بند ۱.۵) */
+function todayDow(iso){
+  var d=iso?new Date(iso.slice(0,10)+'T12:00:00'):new Date();
+  return (d.getDay()+1)%7;
+}
+
+function todayCard(sid,iso){
+  iso=iso||todayISO();
+  var cls=classOf(sid);
+  var recs=db.attendance.filter(function(a){ return a.student_id===sid&&a.date===iso; });
+  var rec=recs.length?recs[recs.length-1]:null;
+  var dow=todayDow(iso);
+  var periods=cls
+    ?db.schedule.filter(function(s){ return s.class_id===cls.id&&s.day===dow; })
+              .sort(function(a,b){ return a.period-b.period; })
+    :[];
+  var attFA={present:'حاضر',absent:'غایب',late:'با تأخیر',excused:'موجه'};
+  var attColor={present:'var(--green)',absent:'var(--red)',late:'var(--amber)',excused:'var(--primary)'};
+  return `<div class="card today-card"><div class="card-head"><h3>🌅 امروز</h3>
+    <span class="badge b-blue">${jalali(iso)} — ${DAYS[dow]}</span></div>
+   <div class="card-body" style="display:grid;gap:12px">
+    ${rec
+     ?`<div class="row"><span>وضعیت حضور امروز</span><div class="spacer"></div><b style="color:${attColor[rec.status]||'var(--text)'}">${attFA[rec.status]||'—'}</b></div>`
+     :`<div class="row"><span>وضعیت حضور امروز</span><div class="spacer"></div><span class="badge b-gray">ثبت نشده</span></div>`}
+    ${periods.length
+     ?`<div><div class="small muted" style="margin-bottom:6px">${fa(periods.length)} زنگ امروز:</div>
+        ${periods.map(s=>`<div class="row" style="padding:7px 10px;background:var(--surface-2);border-radius:8px;margin-bottom:6px">
+          <span class="badge b-blue" style="flex:none">زنگ ${fa(s.period)}</span>
+          <b style="margin-inline-start:8px">${esc((byId('subjects',s.subject_id)||{}).name||'—')}</b>
+          ${s.teacher_id?`<span class="muted small" style="margin-inline-start:auto">${esc((byId('users',s.teacher_id)||{}).full_name||'')}</span>`:''}
+        </div>`).join('')}</div>`
+     :empty('🗓️','امروز زنگی ثبت نشده','برنامهٔ هفتگی کلاس برای این روز خالی است.')}
+   </div></div>`;
+}
+
 function summaryBlock(sid){
   const d=studentSummary(sid), tot=d.att.length;
   const cnt=k=>d.att.filter(a=>a.status===k).length;
-  return `<div class="grid g4">
+  return `${todayCard(sid)}<div class="grid g4">
    ${statCard('🎒',esc(d.st.full_name),d.cls?'کلاس '+d.cls.name:'بدون کلاس','blue')}
    ${statCard('📊',fa(d.avg.toFixed(2)),'معدل کل','green')}
    ${statCard('🏅',fa(d.rank)+' از '+fa(d.size),'رتبه در کلاس','amber')}
@@ -2920,7 +3000,7 @@ function viewUsers(){
      <input class="input" style="width:180px" placeholder="نام یا کد ملی…" data-f="q" value="${esc(q)}" />
      ${canEdit?`<button class="btn" data-act="user-new">➕ کاربر جدید</button>`:''}</div></div>
    ${filterPanel('users',`
-     <select class="select" style="width:135px" data-f="role"><option value="">همه نقش‌ها</option>${['manager','teacher','student','parent','counselor'].map(r=>`<option value="${escAttr(r)}" ${role===r?'selected':''}>${ROLE_FA[r]}</option>`).join('')}</select>
+     <select class="select" style="width:135px" data-f="role"><option value="">همه نقش‌ها</option>${['manager','teacher','student','parent','counselor','driver'].map(r=>`<option value="${escAttr(r)}" ${role===r?'selected':''}>${ROLE_FA[r]}</option>`).join('')}</select>
      ${u.role==='superadmin'?`<select class="select" style="width:170px" data-f="school"><option value="">همه مدارس</option>${db.schools.map(s=>`<option value="${escAttr(s.id)}" ${sch==String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`:''}
      <select class="select" style="width:130px" data-f="uactive"><option value="">همه وضعیت‌ها</option><option value="1" ${act==='1'?'selected':''}>فعال</option><option value="0" ${act==='0'?'selected':''}>غیرفعال</option></select>`)}
    ${slice.length?`<div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>نقش</th><th>نام کاربری</th><th>مدرسه</th><th>کلاس</th><th>تلفن</th><th>وضعیت</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
@@ -3697,7 +3777,7 @@ function userModal(x){
   openModal(modalTpl(x.id?'ویرایش کاربر':'افزودن کاربر',
    `<div class="grid g2">${f('نام و نام خانوادگی *',inp('u_name',x.full_name))}
     ${f('نام کاربری *',`<input class="input" id="u_user" value="${esc(x.username)}" ${x.id?'disabled':''} />`)}
-    ${f('نقش',sel('u_role',[['manager','مدیر مدرسه'],['teacher','دبیر'],['student','دانش‌آموز'],['parent','ولی'],['counselor','مشاور']],x.role))}
+    ${f('نقش',sel('u_role',[['manager','مدیر مدرسه'],['teacher','دبیر'],['student','دانش‌آموز'],['parent','ولی'],['counselor','مشاور'],['driver','راننده سرویس']],x.role))}
     ${isSuper?f('مدرسه',sel('u_school',db.schools.map(s=>[s.id,s.name]),x.school_id)):''}
     ${f('کد ملی',inp('u_nid',x.national_id))}${f('تلفن همراه',inp('u_phone',x.phone))}
     ${f('کلاس (برای دانش‌آموز)',sel('u_class',[['','— بدون کلاس —']].concat(clsList.map(c=>[c.id,c.name])),cur))}
@@ -7091,6 +7171,7 @@ function restoreBackup(obj){
     if(typeof generateP10 === 'function') generateP10();
     if(typeof generateP11 === 'function') generateP11();
     if(typeof generateP12 === 'function') generateP12();
+    if(typeof generateBusDemo==='function') generateBusDemo();
     /* ۲. جایگزینی دفترچه و اجرای دوبارهٔ عملیات */
     log.length = 0;
     obj.ops.forEach(function(o){ log.push(o); });
@@ -8286,6 +8367,17 @@ document.addEventListener('click',e=>{
            date_fa:jalali(date),source_ref:recId});
          if(q)sms++;
        });
+       /* خلاصهٔ روزانه (بند ۱.۷): برای هر دانش‌آموزی که وضعیتش در
+          همین ثبت قطعی شد، اگر امروز هنوز خلاصه‌ای ساخته نشده،
+          یک‌بار ساخته می‌شود (حذف تکراری در notifyDailySummary). */
+       if(typeof notifyDailySummary==='function'){
+         var _dailySeen=Object.create(null);
+         made.forEach(function(m){
+           if(_dailySeen[m.c.student_id])return;
+           _dailySeen[m.c.student_id]=true;
+           if(notifyDailySummary(m.c.student_id,date))sms++;
+         });
+       }
        /* اصلاحیه: برای رکوردهایی که پیامشان رفته و وضعیت عوض شده.
           پس از لغو درون پنجره اجرا می‌شود تا پیام‌های لغوشده
           دوباره اصلاحیه نگیرند. */
@@ -8619,6 +8711,64 @@ document.addEventListener('click',e=>{
      toast('حالت ارسال خودکار خاموش شد','ok');
      render();
    },
+   /* ─────── سرویس مدرسه — نسخهٔ بدون جی‌پی‌اس ─────── */
+   'bus-route-new'(){ busRouteModal(null); },
+   'bus-route-save'(){
+     const r0 = window._busRoute || {};
+     const name = V('br_name');
+     if(!name) return toast('نام مسیر را بنویسید','err');
+     const drv = V('br_driver') ? Number(V('br_driver')) : null;
+     if(r0.id){ update('bus_routes', r0.id, {name:name, driver_id:drv}); }
+     else { insert('bus_routes',{school_id:S.user.school_id, name:name, driver_id:drv, created_at:todayISO()}); }
+     closeModal(); toast('مسیر ذخیره شد','ok'); render();
+   },
+   'bus-route-del'(){
+     askConfirm('این مسیر حذف شود؟ رویدادهای ثبت‌شده حفظ می‌مانند ولی دانش‌آموزان از مسیر جدا می‌شوند.',
+       function(){
+         batchWrites(function(){
+           db.bus_students.slice().forEach(function(b){
+             if(b.route_id===id) remove('bus_students', b.id);
+           });
+           remove('bus_routes', id);
+         });
+         toast('مسیر حذف شد','ok'); render();
+       },
+       {title:'حذف مسیر', ok:'حذف کن', danger:true});
+   },
+   'bus-students'(){ busStudentsModal(Number(id)); },
+   'bus-students-save'(){
+     const rid = window._busRouteId;
+     if(!rid) return;
+     const checked = $$('.bs-chk:checked').map(function(c){ return Number(c.value); });
+     batchWrites(function(){
+       db.bus_students.slice().forEach(function(b){
+         if(b.route_id===rid && checked.indexOf(b.student_id)<0) remove('bus_students', b.id);
+       });
+       checked.forEach(function(sid2){
+         /* دانش‌آموز در مسیر دیگری باشد ⇒ رد می‌شود (قانون تک‌مسیر) */
+         if(busRouteOfStudent(sid2) && busRouteOfStudent(sid2).id!==rid) return;
+         if(!db.bus_students.some(function(b){ return b.route_id===rid && b.student_id===sid2; }))
+           insert('bus_students',{route_id:rid, student_id:sid2});
+       });
+     });
+     closeModal(); toast('دانش‌آموزان مسیر به‌روز شد','ok'); render();
+   },
+   /* ثبت رویداد سوار/پیاده — بررسی مالکیت مسیر در busEvent() روی داده */
+   'bus-event'(){
+     const t = el.dataset.t;
+     const r = busEvent(Number(id), t);
+     if(!r.ok) return toast(r.msg,'err');
+     toast(t==='on' ? '🚌 سوار شد — پیامک در صف است' : '🏫 پیاده شد — پیامک در صف است','ok');
+     render();
+   },
+   /* خلاصهٔ روزانه (بند ۱.۷): برای همهٔ دانش‌آموزان فعال؛ تکراری رد می‌شود */
+   'daily-summary'(){
+     const r = notifyDailySummaryAll(S.user.school_id);
+     toast(r.created
+       ? fa(r.created)+' خلاصه در صف قرار گرفت'+(r.skipped?' ('+fa(r.skipped)+' تکراری یا بدون والد، رد شد)':'')
+       : 'خلاصه‌ای ساخته نشد (همه تکراری یا بدون والد)', r.created?'ok':'err');
+     render();
+   },
    'notify-settings'(){
      const c = notifySettings(S.user.school_id);
      const row = (id,on,label,hint) =>
@@ -8639,6 +8789,10 @@ document.addEventListener('click',e=>{
        + row('nf_grade', c.kinds.grade, 'پیامک نمرهٔ پایین',
            'عدد نمره در پیامک نمی‌آید؛ فقط اطلاع کلی.')
        + row('nf_event', c.kinds.event, 'پیامک رویداد مدرسه', '')
+       + row('nf_daily', c.kinds.daily, 'پیامک خلاصهٔ روزانه',
+           'پس از ثبت حضور، یک پیام تجمیعی (زنگ‌ها + وضعیت حضور) به هر خانواده؛ با دکمهٔ «خلاصهٔ امروز» هم دستی ساخته می‌شود.')
+       + row('nf_bus', (c.kinds.bus_on!==false&&c.kinds.bus_off!==false), 'پیامک رویدادهای سرویس (سوار/پیاده)',
+           'با هر کلیک راننده، به خانوادهٔ دانش‌آموز پیامک می‌رود.')
        + '<div class="grid g2" style="margin-top:10px">'
        +   f('مهلت اصلاح دبیر (دقیقه)', inp('nf_grace', c.graceMinutes, 'number'))
        +   f('سقف روزانه (قطعه)', inp('nf_cap', c.dailyCap, 'number'))
@@ -8658,7 +8812,9 @@ document.addEventListener('click',e=>{
          dailyCap:     Math.max(1, Number(V('nf_cap'))   || 300),
          bulkWarn:     Math.max(1, Number(V('nf_bulk'))  || 50),
          kinds: { absence:$('#nf_abs').checked, late:$('#nf_late').checked,
-                  grade:$('#nf_grade').checked, event:$('#nf_event').checked }
+                  grade:$('#nf_grade').checked, event:$('#nf_event').checked,
+                  daily:$('#nf_daily').checked,
+                  bus_on:$('#nf_bus').checked, bus_off:$('#nf_bus').checked }
        });
        closeModal(); toast('تنظیمات ذخیره شد','ok'); render();
      };
@@ -11612,6 +11768,7 @@ setTimeout(()=>{
   generate(); generateExtras(); generateP8(); generateP9(); generateP10();
   if(typeof generateP11==='function') generateP11();
   if(typeof generateP12=== 'function') generateP12();
+  if(typeof generateBusDemo==='function') generateBusDemo();
   loadLog(); applyLog(); initSync();
   /* ⚠️ فقط دمو (DEMO-ONLY): ورود خودکار با نام کاربریِ ذخیره‌شده — بدون
      هیچ رمز یا تأیید هویت — صرفاً برای حالت آفلاین/نمایش است و بخشی از
@@ -14839,7 +14996,10 @@ var NOTIFY_DEFAULTS = {
   graceMinutes: 20,
   dailyCap:     300,
   bulkWarn:     50,
-  kinds:        { absence: true, late: true, grade: false, event: true, pattern: true },
+  /* daily (بند ۱.۷): خلاصهٔ روزانه پیش‌فرض خاموش است — مدیر خودش
+     برای هر مدرسه روشن می‌کند؛ با دکمهٔ «خلاصهٔ امروز» هم دستی ساخته
+     می‌شود. bus_on/bus_off: رویدادهای سرویس مدرسه (پیش‌فرض روشن). */
+  kinds:        { absence: true, late: true, grade: false, event: true, pattern: true, daily: false, bus_on: true, bus_off: true },
   gradeThreshold: 10
 };
 
@@ -14918,6 +15078,20 @@ var NOTIFY_TPL = {
     return 'اصلاحیه: اطلاع قبلی دربارهٔ نمرهٔ ' + o.student + ' در ' +
            (o.subject || 'آزمون') + ' نادرست بود. وضعیت دقیق در سامانه. ' +
            'پوزش می‌خواهیم. ' + o.school;
+  },
+  /* خلاصهٔ روزانه (بند ۱.۷): پیام تجمیعی — زنگ‌های امروز + وضعیت
+     حضور. در عمل body را notifyDailySummary آماده می‌کند و مستقیم
+     می‌فرستد؛ این قالب برای خوانایی تک‌منبعِ متن‌ها نگه داشته شده. */
+  daily: function(o){
+    return 'اولیای گرامی، خلاصهٔ امروز (' + o.date + ') برای ' + o.student +
+           ': ' + (o.detail || '') + '. ' + o.school;
+  },
+  /* رویدادهای سرویس مدرسه (نسخهٔ بدون جی‌پی‌اس) */
+  bus_on: function(o){
+    return 'اولیای گرامی، ' + o.student + ' به سرویس مدرسه سوار شد. ' + o.school;
+  },
+  bus_off: function(o){
+    return 'اولیای گرامی، ' + o.student + ' از سرویس مدرسه پیاده شد. ' + o.school;
   }
 };
 
@@ -14960,6 +15134,69 @@ function notifyHash(kind, ref){
          + g.exam_type + '|' + g.score;
   }
   return String(ref);
+}
+
+/* ─────────────── خلاصهٔ روزانه (بند ۱.۷ — بستهٔ طراحی پایه) ───────────────
+   پیام تجمیعی به هر خانواده: زنگ‌های امروز + وضعیت حضور.
+   • منبعِ قطعی (source_ref) بر پایهٔ دانش‌آموز+تاریخ است ⇒ برای هر
+     دانش‌آموز و هر روز فقط یک خلاصه ساخته می‌شود (نه با ثبت چند بار
+     حضور، نه با دکمهٔ دستی + خودکار).
+   • یک‌طرفه است: اگر بعداً وضعیت حضور عوض شود، خلاصهٔ رفته اصلاحیه
+     نمی‌گیرد — این پیام «عکس لحظهٔ ثبت» است، نه گزارش رسمی. */
+
+function dailySummaryDetail(studentId, dateIso){
+  var cls = (typeof classOf === 'function') ? classOf(studentId) : null;
+  var dow = (typeof todayDow === 'function') ? todayDow(dateIso)
+             : ((new Date(dateIso+'T12:00:00').getDay()+1)%7);
+  var n = cls
+    ? db.schedule.filter(function(s){ return s.class_id===cls.id && s.day===dow; }).length
+    : 0;
+  var recs = db.attendance.filter(function(a){
+    return a.student_id===studentId && a.date===dateIso;
+  });
+  var rec = recs.length ? recs[recs.length-1] : null;
+  var attFA = { present:'حاضر', absent:'غایب', late:'با تأخیر', excused:'موجه' };
+  var att = rec ? attFA[rec.status] : 'ثبت نشده';
+  return (n ? fa(n) + ' زنگ کلاس' : 'بدون کلاس') + '، حضور: ' + att;
+}
+
+/** ساخت (یا بازگشت null برای) خلاصهٔ امروزِ یک دانش‌آموز */
+function notifyDailySummary(studentId, dateIso){
+  dateIso = dateIso || todayISO();
+  var u = byId('users', studentId);
+  if(!u || u.role !== 'student') return null;
+  /* حذف تکراری: رکورد معلق یا ارسال‌شدهٔ همان دانش‌آموز+روز */
+  var ref = 'daily:' + studentId + ':' + dateIso;
+  var dup = db.notify_queue.some(function(q){
+    return q.kind === 'daily' && q.source_ref === ref &&
+           q.status !== 'rejected' && q.status !== 'cancelled';
+  });
+  if(dup) return null;
+  return notifyRequest({
+    school_id:   u.school_id,
+    kind:        'daily',
+    student_id:  studentId,
+    student_name: u.full_name,
+    date_fa:     (typeof jalali === 'function') ? jalali(dateIso) : '',
+    body: 'اولیای گرامی، خلاصهٔ امروز (' + (typeof jalali==='function'?jalali(dateIso):dateIso) +
+          ') برای ' + u.full_name + ': ' + dailySummaryDetail(studentId, dateIso) +
+          '. ' + notifySchoolName(u.school_id),
+    source_ref:  ref
+  });
+}
+
+/** خلاصهٔ همهٔ دانش‌آموزان فعال یک مدرسه (دکمهٔ «خلاصهٔ امروز») */
+function notifyDailySummaryAll(schoolId, dateIso){
+  dateIso = dateIso || todayISO();
+  var studs = db.users.filter(function(u){
+    return u.role==='student' && u.school_id===schoolId &&
+           (u.status||'active')==='active';
+  });
+  var created = 0, skipped = 0;
+  studs.forEach(function(s){
+    if(notifyDailySummary(s.id, dateIso)) created++; else skipped++;
+  });
+  return {created:created, skipped:skipped};
 }
 
 /* ─────────────── بخش ۴: ساخت درخواست پیام ─────────────── */
@@ -15272,7 +15509,10 @@ var NOTIFY_KIND_FA = {
   grade:      ['نمره',    'b-purple'],
   event:      ['رویداد',  'b-blue'],
   pattern:    ['الگو',    'b-cyan'],
-  correction: ['اصلاحیه', 'b-red']
+  correction: ['اصلاحیه', 'b-red'],
+  daily:      ['خلاصهٔ روزانه', 'b-green'],
+  bus_on:     ['سرویس: سوار', 'b-blue'],
+  bus_off:    ['سرویس: پیاده', 'b-blue']
 };
 
 /** برچسب یک رکورد صف؛ اصلاحیه بر نوع اصلی مقدم است */
@@ -15379,7 +15619,7 @@ function viewNotifyQueue(){
   }) : all;
 
   /* شمار هر دسته برای دکمه‌های فیلتر */
-  var cnt = { absence:0, late:0, grade:0, event:0, pattern:0, correction:0 };
+  var cnt = { absence:0, late:0, grade:0, event:0, pattern:0, daily:0, bus_on:0, bus_off:0, correction:0 };
   all.forEach(function(q){
     if(q.correction_of) cnt.correction++;
     else if(cnt[q.kind] !== undefined) cnt[q.kind]++;
@@ -15397,6 +15637,7 @@ function viewNotifyQueue(){
   var head = '<div class="page-head"><h2>📨 صف پیام‌های اولیا</h2>'
     + '<div class="row">'
     + '<button class="btn ghost sm" data-act="notify-settings">⚙️ تنظیمات</button>'
+    + '<button class="btn ghost sm" data-act="daily-summary" title="خلاصهٔ امروز (زنگ‌ها + وضعیت حضور) برای همهٔ خانواده‌ها">🌅 خلاصهٔ امروز</button>'
     + '<button class="btn ghost sm" data-act="go" data-r="formssms">📊 دفتر پیامک</button>'
     + '</div></div>';
 
@@ -16996,6 +17237,7 @@ function bellNowBar(now){
 /** کادر اجرایی — فعلاً فقط مشاور فعال است؛ بقیه رزرو‌اند */
 var EXEC_ROLES=[
   {key:'counselor',fa:'مشاور',active:true,desc:'صف دانش‌آموزان ارجاع‌شدهٔ الگوهای رفتاری را پیگیری می‌کند'},
+  {key:'driver',fa:'راننده سرویس',active:true,desc:'رویدادهای سوار/پیاده شدن مسیر خودش را ثبت می‌کند؛ برای خانواده پیامک می‌رود (بدون جی‌پی‌اس)'},
   {key:'deputy_edu',fa:'معاون آموزشی',active:false,reserved:true,desc:''},
   {key:'deputy_exec',fa:'معاون اجرایی',active:false,reserved:true,desc:''},
   {key:'deputy_tech',fa:'معاون فنی',active:false,reserved:true,desc:''},
@@ -17351,7 +17593,7 @@ function viewStaff(){
       +(r.active
         ?(people.length
            ?'<span class="small">'+esc(people.map(function(p){return p.full_name;}).join(' · '))+'</span>'
-           :'<span class="badge b-amber">تعریف نشده</span> <button class="btn" data-act="user-new">افزودن مشاور</button>')
+           :'<span class="badge b-amber">تعریف نشده</span> <button class="btn" data-act="user-new">افزودن '+esc(r.fa)+'</button>')
         :'به‌زودی')
       +'</div></div>';
   });
@@ -17490,6 +17732,312 @@ function generateP12(){
         created_at:new Date(Date.now()-8*86400000).toISOString()
       });
     }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   سرویس مدرسه — نسخهٔ بدون جی‌پی‌اس (مورد ۴.۵ نقشه‌راه، سبک)
+
+   مدیر مدرسه مسیر تعریف می‌کند: نام + راننده (نقش «راننده سرویس»)
+   + دانش‌آموزان مسیر (هر دانش‌آموز در یک مسیر). راننده در پنل
+   «مسیر من» لیست دانش‌آموزان را می‌بیند و برای هرکدام دکمهٔ
+   «سوار شد» / «پیاده شد» می‌زند. با هر کلیک:
+     ۱. رویداد در جدول bus_events ثبت می‌شود (وقت دقیق + ثبت‌کننده)
+     ۲. از صف پیام اولیا، پیامک به خانواده می‌رود (همان قرارداد)
+
+   بدون جی‌پی‌اس، بدون نقشهٔ زنده — فقط این دو رویداد.
+   هر دانش‌آموز در هر تاریخ در نهایت در یک مسیر سوار است؛
+   «روی سرویس بودن» = آخرین رویدادش «سوار» باشد و بعدش «پیاده»
+   نخورد.
+
+   🔴 امنیت: راننده فقط مسیر خودش را می‌بیند و فقط برای مسیر خودش
+   ثبت می‌کند. بررسی در busEvent() روی خودِ داده تکرار می‌شود —
+   کنترل سمت کلاینت مجوزدهی نیست (30-authz).
+   ═══════════════════════════════════════════════════════════════════ */
+
+var BUS_EVENT_FA = { on:'سوار شد', off:'پیاده شد' };
+
+/** همهٔ مسیرهای یک مدرسه */
+function busRoutesOf(schoolId){
+  return db.bus_routes.filter(function(r){ return r.school_id===schoolId; });
+}
+
+/** دانش‌آموزان یک مسیر (شیء کاربر) */
+function busStudentsOf(routeId){
+  return db.bus_students
+    .filter(function(x){ return x.route_id===routeId; })
+    .map(function(x){ return byId('users',x.student_id); })
+    .filter(Boolean);
+}
+
+/** مسیری که یک دانش‌آموز در آن ثبت شده (حداکثر یکی) */
+function busRouteOfStudent(studentId){
+  var x = null;
+  for(var i=0;i<db.bus_students.length;i++){
+    if(db.bus_students[i].student_id===studentId){ x=db.bus_students[i]; break; }
+  }
+  return x ? byId('bus_routes',x.route_id) : null;
+}
+
+/** مسیری که یک راننده آن را می‌رانَد (حداکثر یکی) */
+function busRouteOfDriver(driverId){
+  for(var i=0;i<db.bus_routes.length;i++){
+    if(db.bus_routes[i].driver_id===driverId) return db.bus_routes[i];
+  }
+  return null;
+}
+
+/** رویدادهای یک مسیر برای یک تاریخ، تازه‌ترین اول */
+function busEventsOf(routeId, dateIso){
+  var d = dateIso || todayISO();
+  return db.bus_events
+    .filter(function(e){ return e.route_id===routeId && (e.at||'').slice(0,10)===d; })
+    .sort(function(a,b){ return (b.at||'').localeCompare(a.at||''); });
+}
+
+/** آیا دانش‌آموز همین الان روی سرویس است؟ (null = هنوز رویدادی ندارد) */
+function busOnBoard(studentId){
+  var evs = db.bus_events
+    .filter(function(e){ return e.student_id===studentId; })
+    .sort(function(a,b){ return (a.at||'').localeCompare(b.at||''); });
+  if(!evs.length) return null;
+  return evs[evs.length-1].type === 'on';
+}
+
+/* ─────────────── عمل اصلی ─────────────── */
+
+/**
+ * ثبت رویداد سوار/پیاده شدن + پیامک به خانواده.
+ * @param {number} studentId
+ * @param {'on'|'off'} type
+ * @returns {{ok:boolean,msg?:string,rec?:object}}
+ */
+function busEvent(studentId, type){
+  if(type!=='on' && type!=='off') return {ok:false,msg:'نوع رویداد نامعتبر است'};
+  var route = busRouteOfStudent(studentId);
+  if(!route) return {ok:false,msg:'این دانش‌آموز در هیچ مسیری ثبت نشده است'};
+  var u = S.user;
+  var role = (typeof activePersona==='function') ? activePersona() : u.role;
+  /* 🔴 راننده فقط مالک مسیر است؛ مدیر/سوپرادمین به‌جای او ثبت می‌کند.
+     هر نقش دیگر — حتی با شناسهٔ درست دانش‌آموز — رد می‌شود. */
+  var allowed = role==='manager' || role==='superadmin' ||
+                (role==='driver' && route.driver_id===u.id);
+  if(!allowed) return {ok:false,msg:'شما اجازهٔ ثبت رویداد برای این مسیر را ندارید'};
+  var st = byId('users',studentId);
+  if(!st) return {ok:false,msg:'دانش‌آموز یافت نشد'};
+  var at = new Date().toISOString();
+  var rec = insert('bus_events',{
+    school_id: route.school_id,
+    route_id:  route.id,
+    student_id: studentId,
+    type:      type,
+    at:        at,
+    by:        u.id
+  });
+  /* پیامک از همان صف پیام اولیا (enabled/kinds را خودِ صف کنترل می‌کند) */
+  if(typeof notifyRequest==='function'){
+    var kind = type==='on' ? 'bus_on' : 'bus_off';
+    var what = type==='on' ? 'به سرویس مدرسه سوار شد' : 'از سرویس مدرسه پیاده شد';
+    notifyRequest({
+      school_id:   route.school_id,
+      kind:        kind,
+      student_id:  studentId,
+      student_name: st.full_name,
+      body: 'اولیای گرامی، ' + st.full_name + ' ' + what + ' (' +
+            fa(at.slice(11,16)) + '). ' + notifySchoolName(route.school_id),
+      source_ref:  'bus:' + studentId + ':' + type + ':' + at
+    });
+  }
+  return {ok:true, rec:rec};
+}
+
+/* ─────────────── نمای مدیر: مدیریت سرویس ─────────────── */
+
+function busRouteBlock(r){
+  var studs = busStudentsOf(r.id);
+  var evs = busEventsOf(r.id);
+  var h = '<div class="card"><div class="card-head" style="flex-wrap:wrap;gap:8px">'
+    + '<h3>🚌 '+esc(r.name)+'</h3>'
+    + '<span class="muted small">راننده: <b>'+esc((byId('users',r.driver_id)||{}).full_name||'تعریف نشده')+'</b></span>'
+    + '<div class="spacer"></div>'
+    + '<button class="btn ghost sm" data-act="bus-students" data-id="'+r.id+'">🎒 دانش‌آموزان مسیر</button>'
+    + '<button class="btn ghost sm" data-act="bus-route-del" data-id="'+r.id+'">حذف مسیر</button>'
+    + '</div><div class="card-body" style="display:grid;gap:14px">';
+  h += '<div><div class="small muted" style="margin-bottom:6px">'+fa(studs.length)+' دانش‌آموز در این مسیر:</div>'
+    + (studs.length
+        ? '<div style="display:flex;flex-wrap:wrap;gap:6px">'
+          + studs.map(function(s){
+              var on = busOnBoard(s.id);
+              return '<span class="badge '+(on===true?'b-green':on===false?'b-gray':'b-blue')+'">'
+                + esc(s.full_name)
+                + (on===true?' 🚌':on===false?'':'')
+                + '</span>';
+            }).join('') + '</div>'
+        : empty('🎒','دانش‌آموزی به مسیر اضافه نشده','دکمهٔ «دانش‌آموزان مسیر» را بزنید.'))
+    + '</div>';
+  h += '<div><div class="small muted" style="margin-bottom:6px">رویدادهای امروز ('+fa(evs.length)+'):</div>'
+    + (evs.length
+        ? '<div class="table-wrap"><table><thead><tr><th>ساعت</th><th>دانش‌آموز</th><th>رویداد</th></tr></thead><tbody>'
+          + evs.map(function(e){
+              return '<tr><td class="muted">'+fa(e.at.slice(11,16))+'</td>'
+                + '<td>'+esc((byId('users',e.student_id)||{}).full_name||'—')+'</td>'
+                + '<td><span class="badge '+(e.type==='on'?'b-green':'b-blue')+'">'
+                  + (e.type==='on'?'🚌 ':'🏫 ')+BUS_EVENT_FA[e.type]+'</span></td></tr>';
+            }).join('') + '</tbody></table></div>'
+        : '<div class="small muted">هنوز امروز رویدادی ثبت نشده است.</div>')
+    + '</div>';
+  return h + '</div></div>';
+}
+
+function viewBusService(){
+  var sid = S.user.school_id;
+  var routes = busRoutesOf(sid);
+  var h = '<div class="page-head"><h2>🚌 سرویس مدرسه</h2>'
+    + '<button class="btn" data-act="bus-route-new">➕ مسیر جدید</button></div>'
+    + '<div class="small muted" style="margin-bottom:14px">'
+    + 'نسخهٔ بدون جی‌پی‌اس: راننده از پنل «مسیر من» دکمهٔ سوار/پیاده می‌زند و برای خانواده پیامک می‌رود. '
+    + 'راننده‌ها مثل سایر کادرها در بخش «دبیران و دانش‌آموزان» با نقش «راننده سرویس» تعریف می‌شوند.'
+    + '</div>';
+  if(!routes.length){
+    return h + '<div class="card">'+empty('🚌','هنوز مسیری تعریف نشده',
+      'مسیر جدید بسازید، راننده و دانش‌آموزان آن را مشخص کنید.')+'</div>';
+  }
+  routes.forEach(function(r){ h += busRouteBlock(r); });
+  return h;
+}
+
+/* ─────────────── نمای راننده: مسیر من ─────────────── */
+
+function viewMyService(){
+  var u = S.user;
+  var route = busRouteOfDriver(u.id);
+  if(!route){
+    return '<div class="card">'+empty('🚌','مسیری به شما واگذار نشده',
+      'مدرسه باید شما را رانندهٔ یک مسیر کند.')+'</div>';
+  }
+  var studs = busStudentsOf(route.id);
+  var evs = busEventsOf(route.id);
+  var h = '<div class="page-head"><h2>🚌 مسیر من — '+esc(route.name)+'</h2></div>';
+  if(!studs.length){
+    return h + '<div class="card">'+empty('🎒','دانش‌آموزی در مسیر شما نیست',
+      'دبیر مدرسه باید دانش‌آموزان مسیر را مشخص کند.')+'</div>';
+  }
+  h += '<div class="card"><div class="card-head"><h3>دانش‌آموزان مسیر</h3>'
+    + '<span class="badge b-blue">'+fa(studs.length)+' نفر</span></div><div class="card-body">';
+  h += '<div style="display:grid;gap:8px">'
+    + studs.map(function(s){
+        var on = busOnBoard(s.id);
+        var state = on===true
+          ? '<span class="badge b-green">🚌 روی سرویس</span>'
+          : on===false
+            ? '<span class="badge b-gray">🏫 پیاده شده</span>'
+            : '<span class="badge b-blue">هنوز رویدادی ندارد</span>';
+        return '<div class="row" style="background:var(--surface-2);border-radius:10px;padding:10px 14px;flex-wrap:wrap;gap:8px">'
+          + '<b>'+esc(s.full_name)+'</b>'
+          + '<span class="muted small">'+esc((classOf(s.id)||{}).name||'')+'</span>'
+          + state
+          + '<div class="spacer"></div>'
+          + '<button class="btn sm" data-act="bus-event" data-id="'+s.id+'" data-t="on">🚌 سوار شد</button>'
+          + '<button class="btn ghost sm" data-act="bus-event" data-id="'+s.id+'" data-t="off">🏫 پیاده شد</button>'
+          + '</div>';
+      }).join('')
+    + '</div></div></div>';
+  h += '<div class="card"><div class="card-head"><h3>رویدادهای امروز</h3>'
+    + '<span class="badge b-blue">'+fa(evs.length)+'</span></div><div class="card-body">'
+    + (evs.length
+        ? '<div style="display:grid;gap:6px">'
+          + evs.map(function(e){
+              return '<div class="row" style="gap:10px"><span class="muted small" style="flex:none">'+fa(e.at.slice(11,16))+'</span>'
+                + '<b>'+esc((byId('users',e.student_id)||{}).full_name||'—')+'</b>'
+                + '<span class="badge '+(e.type==='on'?'b-green':'b-blue')+'">'
+                + (e.type==='on'?'🚌 سوار شد':'🏫 پیاده شد')+'</span></div>';
+            }).join('') + '</div>'
+        : '<div class="small muted">هنوز امروز رویدادی ثبت نشده است.</div>')
+    + '</div></div>';
+  return h;
+}
+
+/* ─────────────── مودال‌ها ─────────────── */
+
+function busRouteModal(r){
+  r = r || {name:'', driver_id:'', school_id:S.user.school_id};
+  var drivers = db.users.filter(function(x){
+    return x.role==='driver' && x.school_id===S.user.school_id && x.active;
+  });
+  openModal(modalTpl(r.id?'ویرایش مسیر':'مسیر جدید',
+    f('نام مسیر *', inp('br_name', r.name))
+    + f('راننده', sel('br_driver',
+        [['','— بدون راننده —']].concat(drivers.map(function(d){ return [d.id,d.full_name]; })),
+        r.driver_id)),
+    'bus-route-save'));
+  window._busRoute = r;
+}
+
+function busStudentsModal(routeId){
+  var route = byId('bus_routes',routeId);
+  if(!route) return;
+  var sid = route.school_id;
+  var inRoute = {};
+  db.bus_students.forEach(function(b){ if(b.route_id===routeId) inRoute[b.student_id]=true; });
+  var studs = db.users.filter(function(x){
+    return x.role==='student' && x.school_id===sid && (x.status||'active')==='active';
+  });
+  openModal(modalTpl('دانش‌آموزان مسیر — '+route.name,
+    '<div class="small muted" style="margin-bottom:10px">دانش‌آموزانی که به این مسیر سوار می‌شوند. هر دانش‌آموز فقط در یک مسیر می‌تواند باشد؛ اگر در مسیر دیگری باشد، غیرفعال می‌ماند.</div>'
+    + '<div class="vscroll" style="max-height:280px;overflow:auto;display:grid;gap:4px;padding-inline-end:4px">'
+    + studs.map(function(s){
+        var checked = !!inRoute[s.id];
+        var other = !checked && busRouteOfStudent(s.id);
+        return '<label class="row" style="gap:8px;padding:5px 8px;border-radius:8px;'
+          + (other?'opacity:.45;pointer-events:none':'cursor:pointer') + '">'
+          + '<input type="checkbox" class="bs-chk" value="'+s.id+'"'+(checked?' checked':'')+'/>'
+          + '<span>'+esc(s.full_name)
+          + ' <span class="muted small">('+esc((classOf(s.id)||{}).name||'—')+')'
+          + (other?' — در مسیر دیگر':'')+'</span></label>';
+      }).join('')
+    + '</div>',
+    'bus-students-save'));
+  window._busRouteId = routeId;
+}
+
+/* ─────────────── دادهٔ نمونه (قطعی، فقط دمو) ─────────────── */
+
+/**
+ * یک راننده + یک مسیر + چهار دانش‌آموز + دو رویداد امروز برای مدرسهٔ اول.
+ * با add() نوشته می‌شود تا دفترچهٔ عملیات پر نشود (الگوی generateP12).
+ */
+function generateBusDemo(){
+  if(db.bus_routes.length) return;
+  var sc = db.schools.filter(function(s){ return s.active; })[0];
+  if(!sc) return;
+  var drv = db.users.filter(function(x){
+    return x.role==='driver' && x.school_id===sc.id;
+  })[0];
+  if(!drv){
+    drv = add('users',{
+      school_id:sc.id, role:'driver',
+      full_name:(typeof pick==='function')?pick(MALE)+' '+pick(LAST):'علی رضایی',
+      username:'driver1', phone:'', active:1
+    });
+  }
+  var route = add('bus_routes',{
+    school_id:sc.id, name:'مسیر ۱ — شهرک غرب', driver_id:drv.id, created_at:todayISO()
+  });
+  var studs = db.users.filter(function(x){
+    return x.role==='student' && x.school_id===sc.id && (x.status||'active')==='active';
+  }).slice(0,4);
+  studs.forEach(function(s){
+    add('bus_students',{route_id:route.id, student_id:s.id});
+  });
+  if(studs.length){
+    add('bus_events',{school_id:sc.id, route_id:route.id, student_id:studs[0].id,
+      type:'on', at:todayISO()+'T07:12:00.000Z', by:drv.id});
+  }
+  if(studs.length>1){
+    add('bus_events',{school_id:sc.id, route_id:route.id, student_id:studs[1].id,
+      type:'on', at:todayISO()+'T07:15:00.000Z', by:drv.id});
+    add('bus_events',{school_id:sc.id, route_id:route.id, student_id:studs[1].id,
+      type:'off', at:todayISO()+'T08:05:00.000Z', by:drv.id});
   }
 }
 

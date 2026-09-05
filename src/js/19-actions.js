@@ -517,6 +517,17 @@ document.addEventListener('click',e=>{
            date_fa:jalali(date),source_ref:recId});
          if(q)sms++;
        });
+       /* خلاصهٔ روزانه (بند ۱.۷): برای هر دانش‌آموزی که وضعیتش در
+          همین ثبت قطعی شد، اگر امروز هنوز خلاصه‌ای ساخته نشده،
+          یک‌بار ساخته می‌شود (حذف تکراری در notifyDailySummary). */
+       if(typeof notifyDailySummary==='function'){
+         var _dailySeen=Object.create(null);
+         made.forEach(function(m){
+           if(_dailySeen[m.c.student_id])return;
+           _dailySeen[m.c.student_id]=true;
+           if(notifyDailySummary(m.c.student_id,date))sms++;
+         });
+       }
        /* اصلاحیه: برای رکوردهایی که پیامشان رفته و وضعیت عوض شده.
           پس از لغو درون پنجره اجرا می‌شود تا پیام‌های لغوشده
           دوباره اصلاحیه نگیرند. */
@@ -850,6 +861,64 @@ document.addEventListener('click',e=>{
      toast('حالت ارسال خودکار خاموش شد','ok');
      render();
    },
+   /* ─────── سرویس مدرسه — نسخهٔ بدون جی‌پی‌اس ─────── */
+   'bus-route-new'(){ busRouteModal(null); },
+   'bus-route-save'(){
+     const r0 = window._busRoute || {};
+     const name = V('br_name');
+     if(!name) return toast('نام مسیر را بنویسید','err');
+     const drv = V('br_driver') ? Number(V('br_driver')) : null;
+     if(r0.id){ update('bus_routes', r0.id, {name:name, driver_id:drv}); }
+     else { insert('bus_routes',{school_id:S.user.school_id, name:name, driver_id:drv, created_at:todayISO()}); }
+     closeModal(); toast('مسیر ذخیره شد','ok'); render();
+   },
+   'bus-route-del'(){
+     askConfirm('این مسیر حذف شود؟ رویدادهای ثبت‌شده حفظ می‌مانند ولی دانش‌آموزان از مسیر جدا می‌شوند.',
+       function(){
+         batchWrites(function(){
+           db.bus_students.slice().forEach(function(b){
+             if(b.route_id===id) remove('bus_students', b.id);
+           });
+           remove('bus_routes', id);
+         });
+         toast('مسیر حذف شد','ok'); render();
+       },
+       {title:'حذف مسیر', ok:'حذف کن', danger:true});
+   },
+   'bus-students'(){ busStudentsModal(Number(id)); },
+   'bus-students-save'(){
+     const rid = window._busRouteId;
+     if(!rid) return;
+     const checked = $$('.bs-chk:checked').map(function(c){ return Number(c.value); });
+     batchWrites(function(){
+       db.bus_students.slice().forEach(function(b){
+         if(b.route_id===rid && checked.indexOf(b.student_id)<0) remove('bus_students', b.id);
+       });
+       checked.forEach(function(sid2){
+         /* دانش‌آموز در مسیر دیگری باشد ⇒ رد می‌شود (قانون تک‌مسیر) */
+         if(busRouteOfStudent(sid2) && busRouteOfStudent(sid2).id!==rid) return;
+         if(!db.bus_students.some(function(b){ return b.route_id===rid && b.student_id===sid2; }))
+           insert('bus_students',{route_id:rid, student_id:sid2});
+       });
+     });
+     closeModal(); toast('دانش‌آموزان مسیر به‌روز شد','ok'); render();
+   },
+   /* ثبت رویداد سوار/پیاده — بررسی مالکیت مسیر در busEvent() روی داده */
+   'bus-event'(){
+     const t = el.dataset.t;
+     const r = busEvent(Number(id), t);
+     if(!r.ok) return toast(r.msg,'err');
+     toast(t==='on' ? '🚌 سوار شد — پیامک در صف است' : '🏫 پیاده شد — پیامک در صف است','ok');
+     render();
+   },
+   /* خلاصهٔ روزانه (بند ۱.۷): برای همهٔ دانش‌آموزان فعال؛ تکراری رد می‌شود */
+   'daily-summary'(){
+     const r = notifyDailySummaryAll(S.user.school_id);
+     toast(r.created
+       ? fa(r.created)+' خلاصه در صف قرار گرفت'+(r.skipped?' ('+fa(r.skipped)+' تکراری یا بدون والد، رد شد)':'')
+       : 'خلاصه‌ای ساخته نشد (همه تکراری یا بدون والد)', r.created?'ok':'err');
+     render();
+   },
    'notify-settings'(){
      const c = notifySettings(S.user.school_id);
      const row = (id,on,label,hint) =>
@@ -870,6 +939,10 @@ document.addEventListener('click',e=>{
        + row('nf_grade', c.kinds.grade, 'پیامک نمرهٔ پایین',
            'عدد نمره در پیامک نمی‌آید؛ فقط اطلاع کلی.')
        + row('nf_event', c.kinds.event, 'پیامک رویداد مدرسه', '')
+       + row('nf_daily', c.kinds.daily, 'پیامک خلاصهٔ روزانه',
+           'پس از ثبت حضور، یک پیام تجمیعی (زنگ‌ها + وضعیت حضور) به هر خانواده؛ با دکمهٔ «خلاصهٔ امروز» هم دستی ساخته می‌شود.')
+       + row('nf_bus', (c.kinds.bus_on!==false&&c.kinds.bus_off!==false), 'پیامک رویدادهای سرویس (سوار/پیاده)',
+           'با هر کلیک راننده، به خانوادهٔ دانش‌آموز پیامک می‌رود.')
        + '<div class="grid g2" style="margin-top:10px">'
        +   f('مهلت اصلاح دبیر (دقیقه)', inp('nf_grace', c.graceMinutes, 'number'))
        +   f('سقف روزانه (قطعه)', inp('nf_cap', c.dailyCap, 'number'))
@@ -889,7 +962,9 @@ document.addEventListener('click',e=>{
          dailyCap:     Math.max(1, Number(V('nf_cap'))   || 300),
          bulkWarn:     Math.max(1, Number(V('nf_bulk'))  || 50),
          kinds: { absence:$('#nf_abs').checked, late:$('#nf_late').checked,
-                  grade:$('#nf_grade').checked, event:$('#nf_event').checked }
+                  grade:$('#nf_grade').checked, event:$('#nf_event').checked,
+                  daily:$('#nf_daily').checked,
+                  bus_on:$('#nf_bus').checked, bus_off:$('#nf_bus').checked }
        });
        closeModal(); toast('تنظیمات ذخیره شد','ok'); render();
      };
