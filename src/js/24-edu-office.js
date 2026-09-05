@@ -898,6 +898,10 @@ setTimeout(()=>{
   if(typeof generateSidaDemo==='function') generateSidaDemo();
   if(typeof generateSchoolModeDemo==='function') generateSchoolModeDemo();
   loadLog(); applyLog(); initSync();
+  /* دور ۶۴ بند ۱: موتور یادآور خودکار اقساط — در هر بول اجرا می‌شود؛
+     گاردهای reminded_at و خلاصهٔ روزانهٔ مدیر آن را کُندوم و ضداسپم
+     می‌کنند (دور تکراری = صفر عمل). */
+  if(typeof runTuitionReminders==='function') runTuitionReminders();
   /* بند ۱۵: لینکِ اختصاصی — بارگذاری صفحه با hash + تغییرِ hash */
   if(typeof vclassAutoJoinFromHash==='function'){
     vclassAutoJoinFromHash();
