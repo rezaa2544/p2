@@ -222,6 +222,7 @@ function discModal(d){
     ${f('نوع',sel('d_kind',[['positive','مثبت'],['negative','منفی']],d.kind))}
     ${f('عنوان',sel('d_title',opts.map(o=>[o,o]),d.title))}
     ${f('امتیاز',inp('d_points',d.points,'number'))}${f('تاریخ',jdate('d_date',d.date))}</div>
+    ${(()=>{const _sid=d.student_id;try{if(typeof dojoAvailableForStudent!=='function'||!dojoAvailableForStudent(_sid))return '';const _sc=dojoSchoolOfStudent(_sid);return dojoChipsHtml(_sc.id);}catch(e){return '';}})()}
     ${f('توضیحات',`<textarea class="input" id="d_desc" rows="3">${esc(d.description||'')}</textarea>`)}`,'disc-save'));
   window._edit=d;
 }

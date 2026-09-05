@@ -11,9 +11,11 @@ function viewDiscipline(){
     rows=db.discipline.filter(d=>ids.has(d.student_id));}
   if(kind)rows=rows.filter(d=>d.kind===kind);
   rows=rows.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,150);
-  return `<div class="card"><div class="card-head"><div class="row">
-    <span class="badge b-gray">${fa(rows.length)} مورد</span></div>
-    ${canEdit?`<button class="btn" data-act="disc-new">➕ ثبت مورد انضباطی</button>`:''}</div>
+  const _isMgr=(u.role==='manager');
+  const _dojoBadge=(u.role==='student'&&typeof dojoBadge==='function')?dojoBadge(u.id):'';
+  return `<div class="card"><div class="card-head"><div class="row" style="flex-wrap:wrap;gap:6px">
+    <span class="badge b-gray">${fa(rows.length)} مورد</span>${_dojoBadge}</div>
+    <div class="row" style="gap:8px">${canEdit?`<button class="btn" data-act="disc-new">➕ ثبت مورد انضباطی</button>`:''}${_isMgr&&typeof dojoConfigModal==='function'?'<button class="btn ghost" data-act="dojo-config">⭐ مدل امتیازها</button>':''}</div></div>
    ${filterPanel('discipline',`
     <select class="select" style="width:150px" data-f="kind"><option value="">همه موارد</option><option value="positive" ${kind==='positive'?'selected':''}>موارد مثبت 👍</option><option value="negative" ${kind==='negative'?'selected':''}>موارد منفی 👎</option></select>`)}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>کلاس</th><th>نوع</th><th>عنوان</th><th>توضیحات</th><th>امتیاز</th><th>تاریخ</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
