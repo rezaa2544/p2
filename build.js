@@ -54,6 +54,7 @@ function main() {
     const same = html === original;
     if (same) {
       console.log('✅ خروجی build با index.html بیت‌به‌بیت یکسان است.');
+      syncGuide(html, true);
       process.exit(0);
     } else {
       console.error('❌ خروجی build با index.html تفاوت دارد.');
@@ -79,6 +80,46 @@ function main() {
   console.log(`✅ ساخته شد: dist/payesh.html  (${kb} KB)`);
   console.log(`   CSS: ${CSS_ORDER.length} فایل | JS: ${JS_ORDER.length} ماژول`);
   console.log('   تک‌فایلی، کاملاً آفلاین، بدون وابستگی خارجی.');
+
+  /* اصل همگامی: راهنما و index.html همیشه با هم به‌روز می‌شوند.
+     هر بارِ build، مُهرِ بیلد داخل USER_GUIDE.html تازه می‌شود.
+     (محتوای راهنما — متن و عکس — هم باید در همان دور به‌روز شود؛
+     این بند در docs/PLAY_STORE_CHECKLIST نیست؛ اصل: CONTRIBUTING.md) */
+  syncGuide(html, false);
+}
+
+/* ═══ مُهرِ همگامیِ راهنما (USER_GUIDE.html) ══════════════════════ */
+const GUIDE = path.join(ROOT, 'USER_GUIDE.html');
+const buildHash = (h) => require('crypto').createHash('sha1').update(h).digest('hex').slice(0, 12);
+const GUIDE_STAMP_RE = /<meta name="payesh-build" content="([0-9a-f]{12})"\s*\/?>/;
+
+function syncGuide(html, check){
+  if(!fs.existsSync(GUIDE)) return;
+  const g = read(GUIDE);
+  const m = g.match(GUIDE_STAMP_RE);
+  if(!m){
+    if(check){
+      console.error('❌ USER_GUIDE.html مُهرِ بیلد ندارد — این meta را به head اضافه کنید:');
+      console.error('   <meta name="payesh-build" content="000000000000">');
+      process.exit(1);
+    }
+    return;
+  }
+  const hash = buildHash(html);
+  if(check){
+    if(m[1] !== hash){
+      console.error(`❌ راهنما (USER_GUIDE.html) همگام با index.html نیست (مُهر ${m[1]} ≠ ${hash}).`);
+      console.error('   node build.js را بزنید (مُهر خودکار تازه می‌شود) و محتوای راهنما را هم به‌روز کنید.');
+      process.exit(1);
+    }
+    console.log('✅ راهنما همگام با index.html است.');
+    return;
+  }
+  if(m[1] !== hash){
+    const tail = m[0].slice(m[0].lastIndexOf('"') + 1); /* شکلِ پایانیِ تگ (مثلِ " />") حفظ شود */
+    fs.writeFileSync(GUIDE, g.replace(m[0], '<meta name="payesh-build" content="' + hash + '"' + tail), 'utf8');
+    console.log('   مُهرِ راهنما تازه شد: ' + hash);
+  }
 }
 
 main();
