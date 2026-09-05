@@ -127,6 +127,15 @@ var ACTION_ROLES = {
   'vclass-q-save':    ['student'],
   'vclass-q-answer':  ['teacher','manager'],
   'vclass-q-answer-save':['teacher','manager'],
+  /* تکالیف (بند ۴): مالکیت کلاس در hwCreateAssignment/hwSubmit/hwSaveGrading روی داده تکرار می‌شود */
+  'hw-new':         ['teacher','manager'],
+  'hw-save':        ['teacher','manager'],
+  'hw-del':         ['teacher','manager'],
+  'hw-list':        ['teacher','manager'],
+  'hw-grade':       ['teacher','manager'],
+  'hw-grade-save':  ['teacher','manager'],
+  'hw-canvas-clear':['teacher','manager'],
+  'hw-submit':      ['student'],
   /* حضور و غیاب: فقط دبیر و مدیر */
   'att-set':       ['teacher','manager'],
   'att-review':    ['teacher','manager'],

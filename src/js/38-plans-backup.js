@@ -192,6 +192,7 @@ function restoreBackup(obj){
     if(typeof generateP12 === 'function') generateP12();
     if(typeof generateBusDemo==='function') generateBusDemo();
     if(typeof generateVclassDemo==='function') generateVclassDemo();
+    if(typeof generateHomeworkDemo==='function') generateHomeworkDemo();
     /* ۲. جایگزینی دفترچه و اجرای دوبارهٔ عملیات */
     log.length = 0;
     obj.ops.forEach(function(o){ log.push(o); });

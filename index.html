@@ -958,7 +958,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],vclass_sessions:[],vclass_questions:[],class_subject_members:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],vclass_sessions:[],vclass_questions:[],class_subject_members:[],hw_assignments:[],hw_submissions:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -1653,14 +1653,14 @@ const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sid
 const NAV={
  superadmin:[['نظارت روزانه',[['dashboard','📊','داشبورد مدیریتی'],['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها']]],['مدارس و کاربران',[['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه'],['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]]],
  manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
- teacher:[['کار روزانه',[['dashboard','📊','داشبورد'],['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کار آموزشی',[['meetings','📅','جلسات اولیا'],['classes','🏛️','کلاس‌ها'],['vclass','🖥️','کلاس مجازی'],['exams','👁️','برنامه مراقبت من'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
- student:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['calendar','🗓️','تقویم آموزشی']]],['پروندهٔ من',[['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['leaves','📨','مرخصی']]],['امور مالی',[['mytuition','💰','شهریه من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ teacher:[['کار روزانه',[['dashboard','📊','داشبورد'],['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کار آموزشی',[['meetings','📅','جلسات اولیا'],['classes','🏛️','کلاس‌ها'],['vclass','🖥️','کلاس مجازی'],['exams','👁️','برنامه مراقبت من'],['homework','📓','تکالیف'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ student:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['calendar','🗓️','تقویم آموزشی']]],['پروندهٔ من',[['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['leaves','📨','مرخصی'],['homework','📓','تکالیف من']]],['امور مالی',[['mytuition','💰','شهریه من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['کار روزانه',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  parent:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['children','👨‍👩‍👦','پرونده فرزندان'],['exams','📝','برنامه امتحانات'],['calendar','🗓️','تقویم آموزشی']]],['نوبت و درخواست‌ها',[['meetings','📅','جلسات اولیا'],['leaves','📨','درخواست مرخصی']]],['خانواده و مالی',[['family','🏠','خانواده و مدارس'],['mytuition','💰','شهریه و اقساط']]],['ارتباطات',[['announcements','📢','اطلاعیه‌های مدرسه'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو با مدرسه']]]],
  counselor:[['کار من',[['cqueue','📨','صف ارجاع'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  driver:[['سرویس من',[['myservice','🚌','مسیر من'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]]
 };
-const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
+const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],homework:['تکالیف','بارگذاری تصویر تکلیف + تصحیح دیجیتال با خطِ خوددست و نمره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
 S.stack=[];
@@ -2470,6 +2470,15 @@ var ACTION_ROLES = {
   'vclass-q-save':    ['student'],
   'vclass-q-answer':  ['teacher','manager'],
   'vclass-q-answer-save':['teacher','manager'],
+  /* تکالیف (بند ۴): مالکیت کلاس در hwCreateAssignment/hwSubmit/hwSaveGrading روی داده تکرار می‌شود */
+  'hw-new':         ['teacher','manager'],
+  'hw-save':        ['teacher','manager'],
+  'hw-del':         ['teacher','manager'],
+  'hw-list':        ['teacher','manager'],
+  'hw-grade':       ['teacher','manager'],
+  'hw-grade-save':  ['teacher','manager'],
+  'hw-canvas-clear':['teacher','manager'],
+  'hw-submit':      ['student'],
   /* حضور و غیاب: فقط دبیر و مدیر */
   'att-set':       ['teacher','manager'],
   'att-review':    ['teacher','manager'],
@@ -2781,6 +2790,7 @@ function _renderRouteInner(){
     case 'busservice':return viewBusService();
     case 'myservice':return viewMyService();
     case 'vclass':return viewVclass();
+    case 'homework':return viewHomework();
     case 'cqueue':return viewCounselorQueue();
     case 'followup':return viewFollowup();
     case 'staff':return viewStaff();
@@ -7252,6 +7262,7 @@ function restoreBackup(obj){
     if(typeof generateP12 === 'function') generateP12();
     if(typeof generateBusDemo==='function') generateBusDemo();
     if(typeof generateVclassDemo==='function') generateVclassDemo();
+    if(typeof generateHomeworkDemo==='function') generateHomeworkDemo();
     /* ۲. جایگزینی دفترچه و اجرای دوبارهٔ عملیات */
     log.length = 0;
     obj.ops.forEach(function(o){ log.push(o); });
@@ -8937,6 +8948,69 @@ document.addEventListener('click',e=>{
        answer: ans, answered_at: new Date().toISOString(), answered_by: S.user.id
      });
      closeModal(); toast('پاسخ ثبت شد','ok'); render();
+   },
+   /* ─────────────── تکالیف (بند ۴) ─────────────── */
+   'hw-new'(){
+     const cls = byId('classes', Number(id));
+     if(!cls) return;
+     window._hwClass = Number(id);
+     const subs = (typeof visibleSubjects==='function'?visibleSubjects():[]).filter(function(x){return x.school_id===cls.school_id;});
+     openModal(modalTpl('تکلیف جدید — ' + cls.name,
+       f('عنوان *', inp('hw_title',''))
+       + f('درس', sel('hw_subject', [['','—']] .concat(subs.map(function(x){return [x.id,x.name];})), ''))
+       + f('توضیح', inp('hw_desc',''))
+       + f('مهلت (اختیاری)', inp('hw_due','','date'))
+       , 'hw-save'));
+   },
+   'hw-save'(){
+     const r = hwCreateAssignment({
+       classId: window._hwClass,
+       title: V('hw_title'),
+       subjectId: Number(V('hw_subject')) || 0,
+       description: V('hw_desc'),
+       dueDate: V('hw_due')
+     });
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('تکلیف ثبت شد','ok'); render();
+   },
+   'hw-del'(){
+     askConfirm('این تکلیف و فهرست بارگذاری‌هایش حذف شود؟ (خود فایل‌ها در ذخیره‌گاه می‌مانند)', function(){
+       const a = byId('hw_assignments', id);
+       if(!a) return;
+       const cls = byId('classes', a.class_id);
+       const u = S.user;
+       const role = (typeof activePersona==='function') ? activePersona() : u.role;
+       const isTeacher = role==='teacher' && cls && teacherClasses(u.id).some(function(c){ return c.id===cls.id; });
+       if(!(isTeacher || role==='manager' || role==='superadmin')){
+         toast('شما مجوز حذف این تکلیف را ندارید','err'); return;
+       }
+       hwSubmissionsOf(a.id).forEach(function(s){ remove('hw_submissions', s.id); });
+       remove('hw_assignments', a.id);
+       toast('تکلیف حذف شد','ok'); render();
+     }, {title:'حذف تکلیف', ok:'حذف', danger:true});
+   },
+   'hw-list'(){ hwListModal(Number(id)); },
+   'hw-grade'(){ hwGradeModal(Number(id)); },
+   'hw-grade-save'(){
+     const raw = V('hw_score');
+     const score = raw==='' ? null : Number(raw);
+     if(raw!=='' && (isNaN(score) || score<0 || score>20)){ toast('نمره باید ۰ تا ۲۰ باشد','err'); return; }
+     hwSaveGrading(score).then(function(r){
+       if(!r.ok){ toast(r.msg,'err'); return; }
+       closeModal(); toast('تصحیح ثبت شد','ok'); render();
+     });
+   },
+   'hw-canvas-clear'(){ _hwStrokes = []; hwCanvasRedraw(); },
+   'hw-submit'(){
+     const inpEl = document.getElementById('hwfile_' + id);
+     const file = (inpEl && inpEl.files && inpEl.files[0]) ? inpEl.files[0] : null;
+     if(!file){ toast('تصویر تکلیف را انتخاب کنید','err'); return; }
+     toast('در حال بارگذاری…','');
+     hwSubmit(Number(id), file).then(function(r){
+       if(!r.ok){ toast(r.msg,'err'); return; }
+       toast('تکلیف بارگذاری شد — در انتظار تصحیح دبیر','ok');
+       render();
+     });
    },
    'notify-settings'(){
      const c = notifySettings(S.user.school_id);
@@ -11939,6 +12013,7 @@ setTimeout(()=>{
   if(typeof generateP12=== 'function') generateP12();
   if(typeof generateBusDemo==='function') generateBusDemo();
   if(typeof generateVclassDemo==='function') generateVclassDemo();
+  if(typeof generateHomeworkDemo==='function') generateHomeworkDemo();
   loadLog(); applyLog(); initSync();
   /* ⚠️ فقط دمو (DEMO-ONLY): ورود خودکار با نام کاربریِ ذخیره‌شده — بدون
      هیچ رمز یا تأیید هویت — صرفاً برای حالت آفلاین/نمایش است و بخشی از
@@ -18701,6 +18776,403 @@ function generateVclassDemo(){
       });
     }
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   تکالیف — بارگذاری فایل + تصحیح دیجیتال (نسخهٔ سبک)
+
+   جریان:
+     ۱. دبیر تکلیف می‌سازد (عنوان، درس، مهلت) — برای کلاس خودش.
+     ۲. دانش‌آموز تصویرِ تکلیفش را بارگذاری می‌کند (فایل در IDB،
+        استور hw_files — همان ماژول 49-vclass-idb.js؛ سقف نرم مشترک).
+     ۳. دبیر روی تصویر **خوددست خط می‌کشد** (canvas ساده — نه PDF)
+        و نمره ثبت می‌کند؛ تصویر تصحیح‌شده به‌صورت PNG در IDB می‌ماند.
+
+   امنیت: ساخت/حذف/تصحیح فقط دبیرِ کلاس یا مدیر؛ بارگذاری فقط
+   دانش‌آموزِ کلاسِ تکلیف — همه روی داده (نه فقط روی دکمه).
+   ═══════════════════════════════════════════════════════════════════ */
+
+var HW_STORE = 'hw_files';
+
+function hwAssignmentsOfClass(classId){
+  return db.hw_assignments
+    .filter(function(a){ return a.class_id===classId; })
+    .sort(function(a,b){ return (b.created_at||'').localeCompare(a.created_at||''); });
+}
+function hwSubmissionsOf(assignmentId){
+  return db.hw_submissions
+    .filter(function(s){ return s.assignment_id===assignmentId; })
+    .sort(function(a,b){ return (b.submitted_at||'').localeCompare(a.submitted_at||''); });
+}
+function hwSubmissionKey(subId){ return 'hw:' + subId; }
+function hwAnnotatedKey(subId){ return 'hwann:' + subId; }
+
+/* ─────────────── ساخت تکلیف (دبیر) ─────────────── */
+
+function hwCreateAssignment(opts){
+  var cls = byId('classes', opts.classId);
+  if(!cls) return {ok:false, msg:'کلاس یافت نشد'};
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  var isTeacher = role === 'teacher' && teacherClasses(u.id).some(function(c){ return c.id === cls.id; });
+  if(!(isTeacher || role === 'manager' || role === 'superadmin'))
+    return {ok:false, msg:'شما دبیر این کلاس نیستید'};
+  if(!opts.title) return {ok:false, msg:'عنوان تکلیف خالی است'};
+  var rec = {
+    school_id: cls.school_id, class_id: cls.id,
+    subject_id: opts.subjectId || 0,
+    title: opts.title, description: opts.description || '',
+    due_date: opts.dueDate || '',
+    created_at: new Date().toISOString(), created_by: u.id
+  };
+  return {ok:true, rec: insert('hw_assignments', rec)};
+}
+
+/* ─────────────── بارگذاری دانش‌آموز ─────────────── */
+
+/**
+ * بارگذاری تصویر تکلیف (فایل در IDB + رکورد در db).
+ * @returns {Promise<{ok:boolean,msg?:string,rec?:object}>}
+ */
+function hwSubmit(assignmentId, file){
+  var a = byId('hw_assignments', assignmentId);
+  if(!a) return Promise.resolve({ok:false, msg:'تکلیف یافت نشد'});
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  /* 🔴 فقط خودِ دانش‌آموز (ولی نمی‌تواند به‌جای فرزند بارگذاری کند)
+     و فقط تکلیفِ کلاس خودش */
+  if(role !== 'student')
+    return Promise.resolve({ok:false, msg:'فقط دانش‌آموز می‌تواند تکلیف بارگذاری کند'});
+  var sid = u.id;
+  var cls = classOf(sid);
+  if(!cls || cls.id !== a.class_id)
+    return Promise.resolve({ok:false, msg:'این تکلیف مربوط به کلاس شما نیست'});
+  if(vclassOverCap(file.size))
+    return Promise.resolve({ok:false, msg:'حجم فایل از ' + idbSizeLabel(VCLASS_FILE_CAP) + ' بیشتر است'});
+  var exists = db.hw_submissions.some(function(s){
+    return s.assignment_id===a.id && s.student_id===sid;
+  });
+  if(exists) return Promise.resolve({ok:false, msg:'شما قبلاً این تکلیف را بارگذاری کرده‌اید'});
+  var key = 'hw:tmp:' + Date.now() + ':' + Math.floor(Math.random()*1e6);
+  return vclassIdbPut(HW_STORE, key, file).then(function(ok){
+    if(!ok) return {ok:false, msg:'فایل در ذخیره‌گاه ثبت نشد'};
+    var rec = insert('hw_submissions', {
+      assignment_id: a.id, student_id: sid,
+      file_key: key, file_name: file.name || 'file',
+      mime: file.type || 'image/png', size: file.size,
+      score: null, annotated_key: '',
+      submitted_at: new Date().toISOString(), graded_at: '', graded_by: 0
+    });
+    /* کلید قطعی بعد از شناخت شناسهٔ رکورد */
+    var finalKey = hwSubmissionKey(rec.id);
+    return vclassIdbDel(HW_STORE, key).then(function(){
+      return vclassIdbPut(HW_STORE, finalKey, file).then(function(ok2){
+        if(!ok2) return {ok:false, msg:'فایل نهایی ثبت نشد'};
+        rec.file_key = finalKey;
+        update('hw_submissions', rec.id, {file_key: finalKey});
+        return {ok:true, rec: rec};
+      });
+    });
+  });
+}
+
+/* ─────────────── مودال تصحیح (دبیر) ─────────────── */
+
+function hwGradeModal(submissionId){
+  var s = byId('hw_submissions', submissionId);
+  if(!s || !s.file_key) return;
+  window._hwGrading = submissionId;
+  vclassIdbGet(HW_STORE, s.file_key).then(function(blob){
+    if(!blob){ toast('فایل تکلیف در دسترس نیست','err'); return; }
+    var url = (typeof URL!=='undefined' && URL.createObjectURL) ? URL.createObjectURL(blob) : '';
+    var stu = byId('users', s.student_id) || {};
+    var body =
+      '<div style="display:grid;gap:10px;direction:rtl">'
+      + '<div class="small"><b>' + esc(stu.full_name || '—') + '</b>'
+      + (s.score!=null ? ' <span class="badge b-green">نمرهٔ فعلی: ' + fa(s.score) + '</span>' : '')
+      + (s.annotated_key ? ' <span class="badge b-blue">تصویر تصحیح‌شده موجود است</span>' : '')
+      + '</div>'
+      + '<div style="position:relative;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#f6f7f9">'
+      +   '<img id="hw_img" src="' + escAttr(url) + '" style="width:100%;display:block" />'
+      +   '<canvas id="hw_canvas" style="position:absolute;inset:0;width:100%;height:100%;cursor:crosshair"></canvas>'
+      + '</div>'
+      + '<div class="row" style="gap:8px;flex-wrap:wrap">'
+      +   '<label class="small">رنگ خط</label>'
+      +   '<input type="color" id="hw_color" value="#e11d48" style="width:42px;height:30px;border:none;background:none" />'
+      +   '<label class="small">ضخامت</label>'
+      +   '<input type="range" id="hw_size" min="2" max="14" value="5" style="width:120px" />'
+      +   '<button class="btn ghost sm" data-act="hw-canvas-clear">پاک‌کردن خطوط</button>'
+      + '</div>'
+      + f('نمره (از ' + '۲۰' + ')', inp('hw_score', s.score!=null?String(s.score):''))
+      + '</div>';
+    openModal(modalTpl('✏️ تصحیح تکلیف',
+      body,
+      'hw-grade-save'));
+    setTimeout(hwCanvasInit, 60);
+  });
+}
+
+/* نقشهٔ خطِ خوددست در مختصات تصویر اصلی (برای ترکیب نهایی) */
+var _hwStrokes = [];
+function hwCanvasInit(){
+  var img = document.getElementById('hw_img');
+  var cv = document.getElementById('hw_canvas');
+  if(!img || !cv) return;
+  _hwStrokes = [];
+  function sync(){
+    cv.width = img.clientWidth;
+    cv.height = img.clientHeight;
+    hwCanvasRedraw();
+  }
+  /* jsdom canvas ندارد — در محیط تست خط‌ها بی‌صدا رد می‌شوند */
+  var _probe = null;
+  try{ _probe = cv.getContext ? cv.getContext('2d') : null; }catch(e){ _probe = null; }
+  if(!_probe) return;
+  var drawing = false, cur = null;
+  cv.onpointerdown = function(e){
+    var r = cv.getBoundingClientRect();
+    drawing = true;
+    cur = {color: (document.getElementById('hw_color')||{}).value || '#e11d48',
+           size: Number((document.getElementById('hw_size')||{}).value || 5),
+           pts: [{x: e.clientX-r.left, y: e.clientY-r.top}]};
+  };
+  cv.onpointermove = function(e){
+    if(!drawing) return;
+    var r = cv.getBoundingClientRect();
+    cur.pts.push({x: e.clientX-r.left, y: e.clientY-r.top});
+    hwCanvasRedraw();
+  };
+  window.__hwUp = function(e){
+    if(!drawing) return;
+    drawing = false;
+    if(cur && cur.pts.length) _hwStrokes.push(cur);
+    cur = null;
+  };
+  cv.onpointerup = window.__hwUp;
+  cv.onpointerleave = window.__hwUp;
+  window.__hwSync = sync;
+  if(img.complete) sync(); else img.onload = sync;
+}
+function hwCanvasRedraw(){
+  var cv = document.getElementById('hw_canvas');
+  if(!cv) return;
+  var ctx = null;
+  try{ ctx = cv.getContext ? cv.getContext('2d') : null; }catch(e){ ctx = null; }
+  if(!ctx) return;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  (_hwStrokes||[]).forEach(function(st){
+    if(!st.pts.length) return;
+    ctx.strokeStyle = st.color;
+    ctx.lineWidth = st.size;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(st.pts[0].x, st.pts[0].y);
+    st.pts.forEach(function(p){ ctx.lineTo(p.x, p.y); });
+    ctx.stroke();
+  });
+}
+
+/* ذخیرهٔ تصحیح: تصویر + خطوط → PNG در IDB + نمره */
+function hwSaveGrading(score){
+  var subId = window._hwGrading;
+  var s = byId('hw_submissions', subId);
+  if(!s) return Promise.resolve({ok:false, msg:'تکلیف یافت نشد'});
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  var a = byId('hw_assignments', s.assignment_id);
+  var cls = a ? byId('classes', a.class_id) : null;
+  var isTeacher = role === 'teacher' && cls && teacherClasses(u.id).some(function(c){ return c.id === cls.id; });
+  if(!(isTeacher || role === 'manager' || role === 'superadmin'))
+    return Promise.resolve({ok:false, msg:'شما مجوز تصحیح این تکلیف را ندارید'});
+  var img = document.getElementById('hw_img');
+  if(!img || !img.naturalWidth){
+    /* بدون تصویر (فایل نامعتبر) — فقط نمره */
+    update('hw_submissions', s.id, {score: score, graded_at: new Date().toISOString(), graded_by: u.id});
+    return Promise.resolve({ok:true});
+  }
+  /* ترکیب: تصویر اصلی + خطوط در مختصات اصلی */
+  var out = document.createElement('canvas');
+  out.width = img.naturalWidth;
+  out.height = img.naturalHeight;
+  var octx = null;
+  try{ octx = out.getContext ? out.getContext('2d') : null; }catch(e){ octx = null; }
+  if(!octx){
+    /* بدون canvas (محیط تست) — فقط نمره */
+    update('hw_submissions', s.id, {score: score, graded_at: new Date().toISOString(), graded_by: u.id});
+    return Promise.resolve({ok:true});
+  }
+  octx.drawImage(img, 0, 0);
+  var sx = img.naturalWidth / (img.clientWidth || img.naturalWidth);
+  var sy = img.naturalHeight / (img.clientHeight || img.naturalHeight);
+  (_hwStrokes||[]).forEach(function(st){
+    if(!st.pts.length) return;
+    octx.strokeStyle = st.color;
+    octx.lineWidth = st.size * sx;
+    octx.lineCap = 'round';
+    octx.lineJoin = 'round';
+    octx.beginPath();
+    octx.moveTo(st.pts[0].x * sx, st.pts[0].y * sy);
+    st.pts.forEach(function(p){ octx.lineTo(p.x * sx, p.y * sy); });
+    octx.stroke();
+  });
+  var annKey = hwAnnotatedKey(s.id);
+  return new Promise(function(resolve){
+    out.toBlob(function(blob){
+      if(!blob){ resolve({ok:false, msg:'ساخت تصویر تصحیح‌شده ناموفق بود'}); return; }
+      vclassIdbPut(HW_STORE, annKey, blob).then(function(ok){
+        update('hw_submissions', s.id, {
+          score: score, annotated_key: ok ? annKey : s.annotated_key,
+          graded_at: new Date().toISOString(), graded_by: u.id
+        });
+        resolve(ok ? {ok:true} : {ok:false, msg:'تصویر تصحیح‌شده ذخیره نشد (اما نمره ثبت شد)'});
+      });
+    }, 'image/png');
+  });
+}
+
+/* ─────────────── نمای دبیر ─────────────── */
+
+function viewHomework(){
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  var isStudent = role === 'student';
+  var h = '<div class="page-head"><h2>' + (isStudent ? '📓 تکالیف من' : '📓 تکالیف') + '</h2></div>';
+  if(isStudent) return h + hwStudentView();
+  var clsList = (role === 'teacher') ? teacherClasses(u.id)
+             : db.classes.filter(function(c){ return c.school_id === u.school_id; });
+  h += '<div class="small muted" style="margin-bottom:14px">تصویر تکلیف در IndexedDB می‌ماند؛ تصحیح با خطِ خوددست روی تصویر + نمره (نه PDF).</div>';
+  if(!clsList.length) return h + '<div class="card">' + empty('📓','کلاسی در دسترس نیست','') + '</div>';
+  clsList.forEach(function(c){
+    var list = hwAssignmentsOfClass(c.id);
+    h += '<div class="card"><div class="card-head"><h3>' + esc(c.name) + '</h3>'
+      + '<button class="btn sm" data-act="hw-new" data-id="' + c.id + '">➕ تکلیف جدید</button></div><div class="card-body">';
+    if(!list.length){
+      h += empty('📓','تکلیفی ثبت نشده','');
+    } else {
+      h += '<div style="display:grid;gap:10px">' + list.map(function(a){
+        var subs = hwSubmissionsOf(a.id);
+        var sub = byId('subjects', a.subject_id) || {};
+        return '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 14px">'
+          + '<div class="row" style="flex-wrap:wrap;gap:8px">'
+          + '<b>' + esc(a.title) + '</b>'
+          + (sub.name ? '<span class="badge b-gray">' + esc(sub.name) + '</span>' : '')
+          + (a.due_date ? '<span class="muted small">⏳ مهلت: ' + jalali(a.due_date) + '</span>' : '')
+          + '<span class="muted small">' + jalali(a.created_at) + '</span>'
+          + '<span class="badge b-amber">بارگذاری: ' + fa(subs.length) + '</span>'
+          + '<div class="spacer"></div>'
+          + '<button class="btn ghost sm" data-act="hw-list" data-id="' + a.id + '">مشاهدهٔ بارگذاری‌ها</button>'
+          + '<button class="btn ghost sm" data-act="hw-del" data-id="' + a.id + '">حذف</button>'
+          + '</div>'
+          + '</div>';
+      }).join('') + '</div>';
+    }
+    return h + '</div></div>';
+  });
+  return h;
+}
+
+/* فهرست بارگذاری‌های یک تکلیف (مودال) */
+function hwListModal(assignmentId){
+  var a = byId('hw_assignments', assignmentId);
+  if(!a) return;
+  var subs = hwSubmissionsOf(assignmentId);
+  var rows = subs.map(function(s){
+    var stu = byId('users', s.student_id) || {};
+    return '<div class="row" style="gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding:8px 0">'
+      + '<b class="small">' + esc(stu.full_name || '—') + '</b>'
+      + '<span class="muted small">' + jalali(s.submitted_at) + '</span>'
+      + (s.score!=null ? '<span class="badge b-green">نمره: ' + fa(s.score) + '</span>' : '<span class="badge b-gray">تصحیح‌نشده</span>')
+      + (s.annotated_key ? '<span class="badge b-blue">تصحیح‌شده</span>' : '')
+      + '<div class="spacer"></div>'
+      + '<button class="btn ghost sm" data-act="hw-grade" data-id="' + s.id + '">✏️ تصحیح</button>'
+      + '</div>';
+  }).join('');
+  openModal(modalTpl('بارگذاری‌ها — ' + a.title,
+    rows || empty('📓','هنوز کسی بارگذاری نکرده است',''), ''));
+}
+
+/* ─────────────── نمای دانش‌آموز ─────────────── */
+
+function hwStudentView(){
+  var u = S.user;
+  var cls = classOf(u.id);
+  if(!cls) return '<div class="card">' + empty('📓','برای شما کلاسی ثبت نشده','') + '</div>';
+  var list = hwAssignmentsOfClass(cls.id);
+  if(!list.length) return '<div class="card">' + empty('📓','تکلیفی ثبت نشده','دبیر هنوز تکلیفی نگذاشته است.') + '</div>';
+  var h = '<div class="card"><div class="card-body" style="display:grid;gap:12px">';
+  list.forEach(function(a){
+    var sub = byId('subjects', a.subject_id) || {};
+    var mine = db.hw_submissions.filter(function(s){
+      return s.assignment_id===a.id && s.student_id===u.id;
+    })[0];
+    h += '<div style="border:1px solid var(--border);border-radius:12px;padding:14px">'
+      + '<div class="row" style="flex-wrap:wrap;gap:8px">'
+      + '<b>' + esc(a.title) + '</b>'
+      + (sub.name ? '<span class="badge b-gray">' + esc(sub.name) + '</span>' : '')
+      + (a.due_date ? '<span class="muted small">⏳ مهلت: ' + jalali(a.due_date) + '</span>' : '')
+      + '</div>'
+      + (a.description ? '<div class="small muted" style="margin-top:6px">' + esc(a.description) + '</div>' : '')
+      + (mine
+          ? '<div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap">'
+            + '<span class="badge b-blue">✅ بارگذاری شده — ' + esc(mine.file_name) + ' (' + idbSizeLabel(mine.size) + ')</span>'
+            + (mine.score!=null
+                ? '<span class="badge b-green">نمره: ' + fa(mine.score) + '</span>'
+                : '<span class="badge b-amber">در انتظار تصحیح</span>')
+            + '</div>'
+          : '<div style="margin-top:10px">'
+            + '<input type="file" id="hwfile_' + a.id + '" accept="image/*" class="input" />'
+            + ' <button class="btn sm" data-act="hw-submit" data-id="' + a.id + '">⬆️ بارگذاری</button>'
+            + '</div>')
+      + '</div>';
+  });
+  return h + '</div></div>';
+}
+
+/* ─────────────── دادهٔ نمونه (قطعی، فقط دمو) ─────────────── */
+
+function generateHomeworkDemo(){
+  if(db.hw_assignments.length) return;
+  var sc = db.schools.filter(function(s){ return s.active; })[0];
+  if(!sc) return;
+  var cls = db.classes.filter(function(c){ return c.school_id === sc.id; })[0];
+  if(!cls) return;
+  var t = db.users.filter(function(x){ return x.role === 'teacher' && x.school_id === sc.id; })[0];
+  var sub = db.subjects.filter(function(x){ return x.school_id === sc.id; })[0];
+  var now = new Date().toISOString();
+  var a = add('hw_assignments', {
+    school_id: sc.id, class_id: cls.id, subject_id: sub ? sub.id : 0,
+    title: 'تکلیف فصل ۲', description: 'تمرین‌های ۱ تا ۵ را عکس بگیرید و بفرستید.',
+    due_date: now.slice(0,10),
+    created_at: now, created_by: t ? t.id : 0
+  });
+  var stud = db.users.filter(function(x){
+    return x.role === 'student' && x.school_id === sc.id;
+  })[0];
+  if(!stud) return;
+  /* تصویر دمو: یک PNG کوچک رنگی با canvas (اگر موجود باشد) */
+  /* PNGِ ۱x۱ کدگذاری‌شده — دمو بدون وابستگی به canvas
+     (jsdom canvas ندارد و خطای «not implemented» می‌زند) */
+  var b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  try{
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for(var bi=0; bi<bin.length; bi++) bytes[bi] = bin.charCodeAt(bi);
+    var blob = new Blob([bytes], {type: 'image/png'});
+    hwDemoPut(a.id, stud.id, blob, now, t);
+  }catch(e){}
+}
+function hwDemoPut(assignmentId, studentId, blob, now, t){
+  if(!blob) return;
+  var key = 'hw:demo:' + assignmentId;
+  add('hw_submissions', {
+    assignment_id: assignmentId, student_id: studentId,
+    file_key: key, file_name: 'demo-homework.png',
+    mime: 'image/png', size: blob.size,
+    score: null, annotated_key: '',
+    submitted_at: now, graded_at: '', graded_by: 0
+  });
+  vclassIdbPut(HW_STORE, key, blob); /* async؛ بدون backend بی‌صدا رد می‌شود */
 }
 
 </script>
