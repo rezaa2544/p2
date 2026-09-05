@@ -589,6 +589,18 @@ test('بند ۰.۲: سال به‌عنوان موجودیت مستقل + قیف 
   assert(r.stAfter === 'placed', '🔴 پیش‌ثبت‌نامِ دانش‌آموزِ چیده‌شده «چیده شد» نشد');
   assert(r.viewOk === true, '🔴 تب پیش‌ثبت‌نام رندر نشد');
 });
+test('بند ۵: organization_id ساختاری روی مدرسه‌های نمونه است', () => {
+  const r = JSON.parse(W(`(()=>{
+    var all=db.schools;
+    var missing=all.filter(function(x){return !('organization_id' in x);}).length;
+    var nonNull=all.filter(function(x){return x.organization_id!==null;}).length;
+    return JSON.stringify({n:all.length,missing:missing,nonNull:nonNull});
+  })()`));
+  assert(r.n>0, 'مدرسه در داده نمونه نیست');
+  assert(r.missing===0, '🔴 organization_id روی همه‌ای مدرسه‌های نمونه نیست');
+  assert(r.nonNull===0, '🔴 organization_id باید ساده باشد باماند (امروز همیشه بدون مالک)');
+});
+
 
 test('ناسازگاری پایه و کلاس شناسایی می‌شود', () => {
   W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
