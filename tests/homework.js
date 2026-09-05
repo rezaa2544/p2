@@ -316,7 +316,7 @@ function hwClean(assignmentId){
         S.route='homework';S.filters={};S.page=1;
         return renderRoute();
       })()`);
-      assert(out.indexOf('accept="image/*"')>=0, 'فرم بارگذاری نیست');
+      assert(out.indexOf('accept="image/*,audio/*,video/*,.pdf,.doc,.docx"')>=0, 'فرم بارگذاری نیست');
       /* بارگذاری + تصحیح */
       await W(`(function(){
         var fake = makeIdbFake(); vclassIdbSetBackend(fake);

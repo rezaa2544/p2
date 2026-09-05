@@ -172,12 +172,15 @@ function viewVclass(){
     } else {
       h += '<div style="display:grid;gap:10px">' + list.map(function(s){
         var qs = vclassQuestionsOf(s.id);
+        var att = vclassParticipantsOf(s.id);
+        var now = vclassPresentNow(s.id);
         return '<div class="row" style="border:1px solid var(--border);border-radius:10px;padding:10px 14px;flex-wrap:wrap;gap:8px">'
           + '<span class="badge ' + (s.type === 'shad' ? 'b-blue' : 'b-purple') + '">'
           + (s.type === 'shad' ? '🔗 شاد' : '🎬 ویدیو') + '</span>'
           + '<b>' + esc(s.title) + '</b>'
           + (s.shad_time ? '<span class="muted small">🕐 ' + esc(s.shad_time) + '</span>' : '')
           + (s.size ? '<span class="muted small">' + idbSizeLabel(s.size) + '</span>' : '')
+          + (att.length ? '<span class="badge b-green">🟢 الان: ' + fa(now.length) + '</span><span class="badge b-gray">شرکت‌کردن: ' + fa(att.length) + '</span>' : '')
           + '<span class="muted small">' + jalali(s.created_at) + '</span>'
           + (qs.length ? '<span class="badge b-amber">❓ ' + fa(qs.length) + ' سؤال</span>' : '')
           + '<div class="spacer"></div>'
@@ -240,6 +243,7 @@ function vclassRecordTab(sid){
                 ? '<button class="btn sm" data-act="vclass-play" data-id="' + s.id + '">▶️ پخش فایل (' + idbSizeLabel(s.size) + ')</button>'
                 : '<span class="small muted">فایل در دسترس نیست</span>')
             + '</div>')
+      + (typeof vclassAttCard === 'function' ? vclassAttCard(s, sid) : '')
       + '</div>';
     /* سؤالات — هر کس (دانش‌آموز یا ولی) فقط سؤالات خودِ فرزند/دانش‌آموز را می‌بیند */
     var qs = vclassQuestionsOf(s.id).filter(function(q){ return q.student_id === sid; });
@@ -295,6 +299,13 @@ function generateVclassDemo(){
   var studs = db.users.filter(function(x){
     return x.role === 'student' && x.school_id === sc.id;
   });
+  /* بند ۱۲: حضورِ خودکار — یکی الان داخل، یکی شرکت‌کرده و خارج */
+  if(studs.length && !db.vclass_attendance.length){
+    add('vclass_attendance', {session_id: s1.id, student_id: studs[0].id,
+      joined_at: now.slice(0,11) + '10:00', left_at: '', by: studs[0].id});
+    if(studs.length > 1) add('vclass_attendance', {session_id: s1.id, student_id: studs[1].id,
+      joined_at: now.slice(0,11) + '08:00', left_at: now.slice(0,11) + '11:30', by: studs[1].id});
+  }
   if(studs.length){
     add('vclass_questions', {
       session_id: s2.id, student_id: studs[0].id,
@@ -309,4 +320,103 @@ function generateVclassDemo(){
       });
     }
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   افزودۀ بند ۱۲ — حضورِ خودکارِ کلاس مجازی (شاد/ویدیو)
+
+   «فضای کلاس توی پایش اجرا می‌شود؛ حضور و غیاب اتوماتیک است:
+   دانش‌آموز با ورود به کلاس حاضر و با خروجش مشخص می‌شود و در
+   پرونده درج می‌شود.»
+
+   جدول: vclass_attendance{session_id, student_id, joined_at,
+   left_at, by} — یک ردیف برای هر (نشست، دانش‌آموز)؛ ورود =
+   ثبت joined_at (یا بازموردن = پاک‌کردن left_at)، خروج = ثبت
+   left_at. «حالا داخل کلاس» = joined_at دارد و left_at خالی است.
+   نمایش: تب کلاس مجازیِ پرونده (دانش‌آموز/ولی) + شمارندهٔ
+   شرکت‌کنندگان در نمای دبیر.
+
+   🔴 ورود/خروج فقط خودِ دانش‌آموز و فقط نشستِ کلاس خودش
+   (روی داده، نه فقط دکمه).
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** ردیفِ شرکتِ یک دانش‌آموز در یک نشست (یا null) */
+function vclassAttOf(sessionId, studentId){
+  for(var i=0;i<db.vclass_attendance.length;i++){
+    var a = db.vclass_attendance[i];
+    if(a.session_id===sessionId && a.student_id===studentId) return a;
+  }
+  return null;
+}
+/** همهٔ شرکت‌کنندگان یک نشست (تازه‌ترین joined اول) */
+function vclassParticipantsOf(sessionId){
+  return db.vclass_attendance
+    .filter(function(a){ return a.session_id===sessionId; })
+    .sort(function(a,b){ return (b.joined_at||'').localeCompare(a.joined_at||''); });
+}
+/** حالا داخل کلاس (joined و left خالی) */
+function vclassPresentNow(sessionId){
+  return vclassParticipantsOf(sessionId).filter(function(a){ return !a.left_at; });
+}
+
+/** ورود به کلاس (حضورِ خودکار) — فقط دانش‌آموزِ کلاسِ نشست */
+function vclassJoin(sessionId){
+  var s = byId('vclass_sessions', sessionId);
+  if(!s) return {ok:false, msg:'نشست یافت نشد'};
+  var u = S.user;
+  var role = (typeof activePersona==='function') ? activePersona() : u.role;
+  if(role!=='student') return {ok:false, msg:'فقط دانش‌آموز می‌تواند وارد کلاس شود'};
+  var cls = byId('classes', s.class_id);
+  var myCls = classOf(u.id);
+  if(!cls || !myCls || myCls.id!==cls.id)
+    return {ok:false, msg:'این نشست مربوط به کلاس شما نیست'};
+  var now = new Date().toISOString();
+  var existing = vclassAttOf(sessionId, u.id);
+  if(existing && !existing.left_at) return {ok:false, msg:'شما همین الان داخل کلاس هستید'};
+  if(existing){
+    /* بازموردن: left پاک و joined تازه */
+    update('vclass_attendance', existing.id, {joined_at: now, left_at: '', by: u.id});
+    return {ok:true, rec: byId('vclass_attendance', existing.id)};
+  }
+  var rec = {session_id: sessionId, student_id: u.id,
+             joined_at: now, left_at: '', by: u.id};
+  return {ok:true, rec: insert('vclass_attendance', rec)};
+}
+
+/** خروج از کلاس — فقط اگر هنوز داخل است */
+function vclassLeave(sessionId){
+  var s = byId('vclass_sessions', sessionId);
+  if(!s) return {ok:false, msg:'نشست یافت نشد'};
+  var u = S.user;
+  var role = (typeof activePersona==='function') ? activePersona() : u.role;
+  if(role!=='student') return {ok:false, msg:'فقط دانش‌آموز می‌تواند از کلاس خارج شود'};
+  var existing = vclassAttOf(sessionId, u.id);
+  if(!existing || !existing.joined_at) return {ok:false, msg:'شما وارد کلاس نشده‌اید'};
+  if(existing.left_at) return {ok:false, msg:'شما قبلاً از کلاس خارج شده‌اید'};
+  update('vclass_attendance', existing.id, {left_at: new Date().toISOString(), by: u.id});
+  return {ok:true};
+}
+
+/** کارتِ شرکتِ من در تب پرونده (دانش‌آموز: با دکمه؛ ولی: فقط‌خوان) */
+function vclassAttCard(session, sid){
+  var isParent = (typeof activePersona === 'function' ? activePersona() : S.user.role) === 'parent';
+  var a = vclassAttOf(session.id, sid);
+  var h = '<div style="margin-top:10px;padding:10px 12px;border:1px dashed var(--border);border-radius:10px">'
+    + '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">';
+  if(a && !a.left_at){
+    h += '<span class="badge b-green">🟢 الان داخل کلاس — از ' + fa((a.joined_at||'').slice(11,16)) + '</span>';
+  } else if(a && a.left_at){
+    h += '<span class="badge b-gray">✅ شرکت‌کرد — ' + fa((a.joined_at||'').slice(11,16)) + ' تا ' + fa((a.left_at||'').slice(11,16)) + '</span>';
+  } else {
+    h += '<span class="badge b-amber">هنوز وارد نشده</span>';
+  }
+  h += '<div class="spacer"></div>';
+  if(!isParent){
+    if(a && !a.left_at){
+      h += '<button class="btn ghost sm" data-act="vc-leave" data-id="' + session.id + '">🚪 خروج از کلاس</button>';
+    } else {
+      h += '<button class="btn sm" data-act="vc-join" data-id="' + session.id + '">🚪 ورود به کلاس (حضورِ خودکار)</button>';
+    }
+  }
+  return h + '</div></div>';
 }

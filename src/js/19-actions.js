@@ -1108,6 +1108,33 @@ document.addEventListener('click',e=>{
      if(!r.ok) return toast(r.msg,'err');
      toast('📍 موقعیت ارسال شد','ok'); render();
    },
+   /* بند ۱۲: حضورِ خودکار کلاس مجازی */
+   'vc-join'(){
+     const r = vclassJoin(Number(id));
+     if(!r.ok) return toast(r.msg,'err');
+     toast('🚪 وارد کلاس شدید — حضورِ شما ثبت شد','ok'); render();
+   },
+   'vc-leave'(){
+     const r = vclassLeave(Number(id));
+     if(!r.ok) return toast(r.msg,'err');
+     toast('خروج شما ثبت شد','ok'); render();
+   },
+   /* بند ۱۲: تکالیف — بازه/قفل + مشاهده */
+   'hw-window'(){ hwWindowModal(Number(id)); },
+   'hw-window-save'(){
+     const locked = !!(document.getElementById('hww_locked')||{}).checked;
+     const r = hwSetWindow(window._hwWindowId, locked, V('hww_open'), V('hww_close'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('بازهٔ ارسال به‌روز شد','ok'); render();
+   },
+   'hw-lock'(){
+     const a = byId('hw_assignments', Number(id));
+     if(!a) return;
+     const r = hwSetWindow(Number(id), !a.locked, a.window_open||'', a.window_close||'');
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     toast(r.rec.locked ? 'تکلیف قفل شد' : 'تکلیف باز شد','ok'); render();
+   },
+   'hw-view'(){ hwViewModal(Number(id)); },
    /* خلاصهٔ روزانه (بند ۱.۷): برای همهٔ دانش‌آموزان فعال؛ تکراری رد می‌شود */
    'daily-summary'(){
      const r = notifyDailySummaryAll(S.user.school_id);

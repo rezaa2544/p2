@@ -67,6 +67,12 @@ function hwSubmit(assignmentId, file){
   var cls = classOf(sid);
   if(!cls || cls.id !== a.class_id)
     return Promise.resolve({ok:false, msg:'این تکلیف مربوط به کلاس شما نیست'});
+  var _open = hwIsOpen(a);
+  if(!_open.open){
+    if(_open.reason==='locked') return Promise.resolve({ok:false, msg:'این تکلیف قفل است — ارسال باز نیست'});
+    if(_open.reason==='before') return Promise.resolve({ok:false, msg:'فضای ارسال هنوز باز نشده (' + (_open.openAt||'').replace('T',' ') + ')'});
+    return Promise.resolve({ok:false, msg:'مهلت ارسال تمام شده (' + (_open.closeAt||'').replace('T',' ') + ')'});
+  }
   if(vclassOverCap(file.size))
     return Promise.resolve({ok:false, msg:'حجم فایل از ' + idbSizeLabel(VCLASS_FILE_CAP) + ' بیشتر است'});
   var exists = db.hw_submissions.some(function(s){
@@ -278,10 +284,13 @@ function viewHomework(){
           + '<b>' + esc(a.title) + '</b>'
           + (sub.name ? '<span class="badge b-gray">' + esc(sub.name) + '</span>' : '')
           + (a.due_date ? '<span class="muted small">⏳ مهلت: ' + jalali(a.due_date) + '</span>' : '')
+          + (typeof hwWindowBadge==='function' ? hwWindowBadge(a) : '')
           + '<span class="muted small">' + jalali(a.created_at) + '</span>'
           + '<span class="badge b-amber">بارگذاری: ' + fa(subs.length) + '</span>'
           + '<div class="spacer"></div>'
           + '<button class="btn ghost sm" data-act="hw-list" data-id="' + a.id + '">مشاهدهٔ بارگذاری‌ها</button>'
+          + '<button class="btn ghost sm" data-act="hw-window" data-id="' + a.id + '">🕐 بازه/قفل</button>'
+          + '<button class="btn ghost sm" data-act="hw-lock" data-id="' + a.id + '">' + (a.locked?'🔓 باز کردن':'🔒 قفل') + '</button>'
           + '<button class="btn ghost sm" data-act="hw-del" data-id="' + a.id + '">حذف</button>'
           + '</div>'
           + '</div>';
@@ -305,6 +314,7 @@ function hwListModal(assignmentId){
       + (s.score!=null ? '<span class="badge b-green">نمره: ' + fa(s.score) + '</span>' : '<span class="badge b-gray">تصحیح‌نشده</span>')
       + (s.annotated_key ? '<span class="badge b-blue">تصحیح‌شده</span>' : '')
       + '<div class="spacer"></div>'
+      + '<button class="btn ghost sm" data-act="hw-view" data-id="' + s.id + '">👁️ مشاهده</button>'
       + '<button class="btn ghost sm" data-act="hw-grade" data-id="' + s.id + '">✏️ تصحیح</button>'
       + '</div>';
   }).join('');
@@ -339,10 +349,21 @@ function hwStudentView(){
             + (mine.score!=null
                 ? '<span class="badge b-green">نمره: ' + fa(mine.score) + '</span>'
                 : '<span class="badge b-amber">در انتظار تصحیح</span>')
+            + '<button class="btn ghost sm" data-act="hw-view" data-id="' + mine.id + '">👁️ مشاهده</button>'
             + '</div>'
           : '<div style="margin-top:10px">'
-            + '<input type="file" id="hwfile_' + a.id + '" accept="image/*" class="input" />'
-            + ' <button class="btn sm" data-act="hw-submit" data-id="' + a.id + '">⬆️ بارگذاری</button>'
+            + (function(){
+                var stt = hwIsOpen(a);
+                var badge = stt.open
+                  ? '<span class="badge b-green">فضا باز است</span>'
+                  : stt.reason==='locked' ? '<span class="badge b-red">🔒 قفل است</span>'
+                  : stt.reason==='before' ? '<span class="badge b-amber">🔒 باز می‌شود: ' + esc((stt.openAt||'').replace('T',' ')) + '</span>'
+                  : '<span class="badge b-amber">🔒 بسته شد</span>';
+                var dis = stt.open ? '' : ' disabled';
+                return badge
+                  + '<input type="file" id="hwfile_' + a.id + '" accept="image/*,audio/*,video/*,.pdf,.doc,.docx" class="input"' + dis + ' />'
+                  + ' <button class="btn sm" data-act="hw-submit" data-id="' + a.id + '"' + dis + '>⬆️ بارگذاری</button>';
+              })()
             + '</div>')
       + '</div>';
   });
@@ -364,6 +385,21 @@ function generateHomeworkDemo(){
     school_id: sc.id, class_id: cls.id, subject_id: sub ? sub.id : 0,
     title: 'تکلیف فصل ۲', description: 'تمرین‌های ۱ تا ۵ را عکس بگیرید و بفرستید.',
     due_date: now.slice(0,10),
+    locked: false, window_open: now.slice(0,11) + '08:00', window_close: '',
+    created_at: now, created_by: t ? t.id : 0
+  });
+  add('hw_assignments', {
+    school_id: sc.id, class_id: cls.id, subject_id: sub ? sub.id : 0,
+    title: 'آهنگ واژگان (تکلیف صوتی)', description: 'واژگان درس ۳ را ضبط کنید و بفرستید. فضا باز است.',
+    due_date: now.slice(0,10),
+    locked: false, window_open: '', window_close: '',
+    created_at: now, created_by: t ? t.id : 0
+  });
+  add('hw_assignments', {
+    school_id: sc.id, class_id: cls.id, subject_id: sub ? sub.id : 0,
+    title: 'پایان‌نامهٔ قفل‌شده (نمونه)', description: 'ارسال بسته است — برای نمایش حالت قفل.',
+    due_date: now.slice(0,10),
+    locked: true, window_open: '', window_close: '',
     created_at: now, created_by: t ? t.id : 0
   });
   var stud = db.users.filter(function(x){
@@ -393,4 +429,114 @@ function hwDemoPut(assignmentId, studentId, blob, now, t){
     submitted_at: now, graded_at: '', graded_by: 0
   });
   vclassIdbPut(HW_STORE, key, blob); /* async؛ بدون backend بی‌صدا رد می‌شود */
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   افزودۀ بند ۱۲ — تکالیف: فایل/صوت + قفل/باز + تایمر (بازهٔ باز)
+
+   • نوع فایل: تصویر، صوت و فایلِ عمومی (PDF/Office/…) — ستون‌های
+     `mime`/`file_name`/`size` از قبل وجود داشتند (قفل ۴.۱)؛ فقط
+     `accept` ورودی و نمایشِ پخش اضافه شد.
+   • قفل/باز: `locked` (دستی، در اختیار دبیر) + `window_open`/
+     `window_close` (تایمر — «فضا ساعت ۸ تا ۹ باز است»).
+     `hwIsOpen(a, now)` محاسبه می‌کند: قفلِ دستی همیشه مقدم است؛
+     بعد بازهٔ زمانی. بارگذاری فقط وقتی open (روی داده در hwSubmit).
+   • نمایش در پنل دبیر: دکمهٔ «مشاهده» برای هر بارگذاری —
+     تصویر/ویدیو/صوت پخش می‌شود، فایلِ عمومی نام + حجم + دانلود.
+   نمره‌دهی همان مسیرِ قبل (hw-grade + خطِ خوددست روی تصویر).
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** آیا فضا برای بارگذاری باز است؟ (قفل دستی مقدم بر تایمر) */
+function hwIsOpen(a, nowIso){
+  if(!a) return {open:false, reason:'no'};
+  var now = nowIso || new Date().toISOString();
+  if(a.locked) return {open:false, reason:'locked'};
+  var o = (a.window_open||'').slice(0,16);
+  var c = (a.window_close||'').slice(0,16);
+  if(o && now.slice(0,16) < o) return {open:false, reason:'before', openAt:o};
+  if(c && now.slice(0,16) > c) return {open:false, reason:'after', closeAt:c};
+  return {open:true, reason:'open'};
+}
+
+/** قفل/باز + بازهٔ زمانی — فقط دبیرِ کلاس یا مدیر/سوپرادمین */
+function hwSetWindow(assignmentId, locked, openDt, closeDt){
+  var a = byId('hw_assignments', assignmentId);
+  if(!a) return {ok:false, msg:'تکلیف یافت نشد'};
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  var cls = byId('classes', a.class_id);
+  var isTeacher = role === 'teacher' && cls && teacherClasses(u.id).some(function(c){ return c.id === cls.id; });
+  if(!(isTeacher || role === 'manager' || role === 'superadmin'))
+    return {ok:false, msg:'شما مجوز این کار را ندارید'};
+  var patch = {locked: !!locked};
+  var o = String(openDt||'').trim(), c = String(closeDt||'').trim();
+  if(o && isNaN(Date.parse(o))) return {ok:false, msg:'ساعتِ شروع معتبر نیست'};
+  if(c && isNaN(Date.parse(c))) return {ok:false, msg:'ساعتِ پایان معتبر نیست'};
+  if(o && c && c <= o) return {ok:false, msg:'پایان باید بعد از شروع باشد'};
+  patch.window_open = o; patch.window_close = c;
+  update('hw_assignments', assignmentId, patch);
+  return {ok:true, rec: byId('hw_assignments', assignmentId)};
+}
+
+/** بجِ وضعیتِ باز/بسته برای نمایش */
+function hwWindowBadge(a){
+  var st = hwIsOpen(a);
+  if(st.open) return '<span class="badge b-green"> فضا باز است</span>';
+  if(st.reason==='locked') return '<span class="badge b-red">🔒 قفل‌شده (دستی)</span>';
+  if(st.reason==='before') return '<span class="badge b-amber">🔒 باز می‌شود: ' + esc((st.openAt||'').replace('T',' ')) + '</span>';
+  if(st.reason==='after') return '<span class="badge b-amber">🔒 بسته شد در: ' + esc((st.closeAt||'').replace('T',' ')) + '</span>';
+  return '<span class="badge b-gray">بسته</span>';
+}
+
+/** مودالِ مشاهدهٔ بارگذاری (دبیر/مدیر/خودِ دانش‌آموز) — پخش بر اساس mime */
+function hwViewModal(submissionId){
+  var sub = byId('hw_submissions', submissionId);
+  if(!sub || !sub.file_key) return;
+  var a = byId('hw_assignments', sub.assignment_id);
+  var cls = a ? byId('classes', a.class_id) : null;
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  /* دانش‌آموز فقط بارگذاریِ خودش */
+  if(role === 'student' && sub.student_id !== u.id) return;
+  var stu = byId('users', sub.student_id) || {};
+  var mime = sub.mime || '';
+  vclassIdbGet(HW_STORE, sub.file_key).then(function(blob){
+    if(!blob){ toast('فایل در دسترس نیست','err'); return; }
+    var url = (typeof URL!=='undefined' && URL.createObjectURL) ? URL.createObjectURL(blob) : '';
+    var player;
+    if(mime.indexOf('image/')===0){
+      player = '<img src="' + escAttr(url) + '" style="width:100%;display:block;border-radius:10px" />';
+    } else if(mime.indexOf('audio/')===0){
+      player = '<audio controls src="' + escAttr(url) + '" style="width:100%"></audio>';
+    } else if(mime.indexOf('video/')===0){
+      player = '<video controls src="' + escAttr(url) + '" style="width:100%;border-radius:10px"></video>';
+    } else {
+      player = '<div class="small muted">فایلِ ذخیره‌شده (نمایشِ مستقیم ندارد): '
+        + esc(sub.file_name) + ' — ' + idbSizeLabel(sub.size) + '</div>'
+        + '<a class="btn ghost sm" href="' + escAttr(url) + '" download="' + escAttr(sub.file_name) + '">⬇️ دانلود</a>';
+    }
+    openModal(modalTpl('بارگذاری — ' + (stu.full_name||'؟'),
+      '<div style="display:grid;gap:10px">'
+      + (a ? '<div class="small muted">تکلیف: ' + esc(a.title) + '</div>' : '')
+      + '<div class="small">' + esc(sub.file_name) + ' · ' + idbSizeLabel(sub.size)
+      + ' · ' + jalaliDateTime(sub.submitted_at) + '</div>'
+      + (sub.score!=null ? '<span class="badge b-green">نمره: ' + fa(sub.score) + '</span>' : '<span class="badge b-gray">تصحیح‌نشده</span>')
+      + player + '</div>',
+      ''));
+  });
+}
+
+/** مودالِ بازهٔ زمانی/قفل (دبیر) */
+function hwWindowModal(assignmentId){
+  var a = byId('hw_assignments', assignmentId);
+  if(!a) return;
+  window._hwWindowId = assignmentId;
+  openModal(modalTpl('بازهٔ ارسال — ' + a.title,
+    '<div class="row" style="gap:8px;align-items:center;margin-bottom:8px">'
+    + '<input type="checkbox" id="hww_locked"' + (a.locked?' checked':'') + ' />'
+    + '<label class="small" for="hww_locked">قفلِ دستی (تا باز شود، کسی نمی‌تواند بفرستد)</label></div>'
+    + f('باز می‌شود (اختیاری)', inp('hww_open', a.window_open||'','','datetime-local'))
+    + f('بسته می‌شود (اختیاری)', inp('hww_close', a.window_close||'','','datetime-local'))
+    + '<div class="small muted" style="margin-top:8px">مثال: «فضا ساعت ۸ تا  باز است تا تکالیفتان را بفرستید». قفلِ دستی روی تایمر مقدم است.</div>',
+    'hw-window-save'));
 }
