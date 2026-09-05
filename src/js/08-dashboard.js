@@ -87,7 +87,7 @@ function teacherDash(){
   const sched=db.schedule.filter(s=>s.teacher_id===u.id).sort((a,b)=>a.day-b.day||a.period-b.period).slice(0,6);
   /* نوار وضعیت زنگ (گام ۲ دور ۵۰) — فقط نمایش، بدون تغییر رفتار */
   const bellBar=(typeof bellNowBar==='function')?bellNowBar():'';
-  return `${bellBar}<div class="grid g4">
+  return `<div class="bell-live-root" data-bell-live="teacher">${bellBar}</div><div class="grid g4">
    ${statCard('🏛️',fa(cls.length),'کلاس تحت تدریس','blue')}
    ${statCard('🎒',fa(students.size),'دانش‌آموز','green')}
    ${statCard('📝',fa(mine.length),'نمره ثبت‌شده','amber')}
@@ -178,6 +178,7 @@ function summaryBlock(sid){
 function familyDash(){
   const u=S.user;
   const kids=u.role==='student'?[u.id]:db.parent_links.filter(p=>p.parent_id===u.id).map(p=>p.student_id);
-  if(!kids.length)return `<div class="card">${empty('👨‍👩‍👦','دانش‌آموزی متصل نیست','با مدیر مدرسه تماس بگیرید.')}</div>`;
-  return kids.map(summaryBlock).join('');
+  const live=(typeof familyBellCards==='function')?familyBellCards():'';
+  if(!kids.length)return live+`<div class="card">${empty('👨‍👩‍👦','دانش‌آموزی متصل نیست','با مدیر مدرسه تماس بگیرید.')}</div>`;
+  return live+kids.map(summaryBlock).join('');
 }
