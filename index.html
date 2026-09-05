@@ -958,7 +958,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],vclass_sessions:[],vclass_questions:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],certificates:[],visitors:[],lib_books:[],lib_loans:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],vclass_sessions:[],vclass_questions:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -1652,7 +1652,7 @@ function bootstrapRequest(){
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
  superadmin:[['نظارت روزانه',[['dashboard','📊','داشبورد مدیریتی'],['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها']]],['مدارس و کاربران',[['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه'],['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]]],
- manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['assets','🧰','املاک'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  teacher:[['کار روزانه',[['dashboard','📊','داشبورد'],['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کار آموزشی',[['meetings','📅','جلسات اولیا'],['classes','🏛️','کلاس‌ها'],['vclass','🖥️','کلاس مجازی'],['exams','👁️','برنامه مراقبت من'],['homework','📓','تکالیف'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['calendar','🗓️','تقویم آموزشی']]],['پروندهٔ من',[['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['leaves','📨','مرخصی'],['homework','📓','تکالیف من']]],['امور مالی',[['mytuition','💰','شهریه من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['کار روزانه',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
@@ -1660,7 +1660,7 @@ const NAV={
  counselor:[['کار من',[['cqueue','📨','صف ارجاع'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  driver:[['سرویس من',[['myservice','🚌','مسیر من'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]]
 };
-const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],library:['کتابخانه','کتاب‌ها + امانت به دانش‌آموز + بازگشت — نسخهٔ سبک'],visitors:['مهمان‌ها','ورود/خروج افراد غیردانش‌آموز و غیرکارکنان — نسخهٔ سبک'],homework:['تکالیف','بارگذاری تصویر تکلیف + تصحیح دیجیتال با خطِ خوددست و نمره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
+const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],library:['کتابخانه','کتاب‌ها + امانت به دانش‌آموز + بازگشت — نسخهٔ سبک'],assets:['املاک و موجودی','تجهیزات با وضعیت + مکان — نسخهٔ سبک'],visitors:['مهمان‌ها','ورود/خروج افراد غیردانش‌آموز و غیرکارکنان — نسخهٔ سبک'],homework:['تکالیف','بارگذاری تصویر تکلیف + تصحیح دیجیتال با خطِ خوددست و نمره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
 S.stack=[];
@@ -2498,6 +2498,11 @@ var ACTION_ROLES = {
   'lib-lend':       ['manager'],
   'lib-lend-save':  ['manager'],
   'lib-return':     ['manager'],
+  'as-new':         ['manager'],
+  'as-save':        ['manager'],
+  'as-status':      ['manager'],
+  'as-status-save': ['manager'],
+  'as-del':         ['manager'],
   'att-set':       ['teacher','manager'],
   'att-review':    ['teacher','manager'],
   'att-commit':    ['teacher','manager'],
@@ -2811,6 +2816,7 @@ function _renderRouteInner(){
     case 'homework':return viewHomework();
     case 'visitors':return viewVisitors();
     case 'library':return viewLibrary();
+    case 'assets':return viewAssets();
     case 'cqueue':return viewCounselorQueue();
     case 'followup':return viewFollowup();
     case 'staff':return viewStaff();
@@ -7451,6 +7457,7 @@ function restoreBackup(obj){
     if(typeof generateHomeworkDemo==='function') generateHomeworkDemo();
     if(typeof generateVisitorsDemo==='function') generateVisitorsDemo();
     if(typeof generateLibraryDemo==='function') generateLibraryDemo();
+    if(typeof generateAssetsDemo==='function') generateAssetsDemo();
     /* ۲. جایگزینی دفترچه و اجرای دوبارهٔ عملیات */
     log.length = 0;
     obj.ops.forEach(function(o){ log.push(o); });
@@ -8583,6 +8590,42 @@ document.addEventListener('click',e=>{
      if(!r.ok){ toast(r.msg,'err'); return; }
      toast('بازگشت ثبت شد','ok');
      render();
+   },
+   'as-new'(){
+     openModal(modalTpl('تجهیز جدید',
+       f('نام *', inp('as_name',''))
+       + f('دسته', inp('as_category',''))
+       + f('مکان', inp('as_location',''))
+       + f('وضعیت', sel('as_status',[['available','در دسترس'],['in_use','در حال استفاده'],['repair','در تعمیرات']],'available')),
+       'as-save'));
+   },
+   'as-save'(){
+     const r = assetAdd(V('as_name'), V('as_category'), V('as_location'), V('as_status'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('تجهیز ثبت شد','ok');
+     render();
+   },
+   'as-status'(){
+     const a = byId('assets', Number(id));
+     if(!a) return;
+     window._asEditId = a.id;
+     openModal(modalTpl('وضعیت — ' + a.name,
+       f('وضعیت', sel('as_status',[['available','در دسترس'],['in_use','در حال استفاده'],['repair','در تعمیرات']], a.status))
+       + f('مکان', inp('as_location', a.location||'')),
+       'as-status-save'));
+   },
+   'as-status-save'(){
+     const r = assetSetStatus(window._asEditId, V('as_status'), V('as_location'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('وضعیت به‌روز شد','ok');
+     render();
+   },
+   'as-del'(){
+     askConfirm('این تجهیز حذف شود؟', function(){
+       const r = assetDel(Number(id));
+       if(!r.ok){ toast(r.msg,'err'); return; }
+       toast('تجهیز حذف شد','ok'); render();
+     }, {title:'حذف تجهیز', ok:'حذف', danger:true});
    },
    'att-set'(){const st=el.dataset.s;const date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
@@ -12341,6 +12384,7 @@ setTimeout(()=>{
   if(typeof generateHomeworkDemo==='function') generateHomeworkDemo();
   if(typeof generateVisitorsDemo==='function') generateVisitorsDemo();
   if(typeof generateLibraryDemo==='function') generateLibraryDemo();
+  if(typeof generateAssetsDemo==='function') generateAssetsDemo();
   loadLog(); applyLog(); initSync();
   /* ⚠️ فقط دمو (DEMO-ONLY): ورود خودکار با نام کاربریِ ذخیره‌شده — بدون
      هیچ رمز یا تأیید هویت — صرفاً برای حالت آفلاین/نمایش است و بخشی از
@@ -20032,6 +20076,135 @@ function generateLibraryDemo(){
       registered_by: mgr ? mgr.id : 0, created_at: now.toISOString()
     });
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   املاک و موجودی (بند ۹) — نسخهٔ سبک
+
+   فهرست تجهیزات مدرسه با وضعیت + مکان.
+   هر تجهیز یک ردیف است؛ وضعیت با دکمه عوض می‌شود (درستِ ذخیره‌شده،
+   چون برخلاف امانتِ کتاب، هیچ تاریخ‌محوری ندارد).
+
+   داده:
+     assets {school_id, name, category, status, location, note,
+             created_at}
+
+   وضعیت‌های مجاز (ENUM):
+     available = در دسترس
+     in_use    = در حال استفاده
+     repair    = در تعمیرات
+
+   امنیت: همهٔ تغییرات فقط **مدیر** + ردیف باید از مدرسهٔ خودِ مدیر
+   (روی داده، نه فقط دکمه) + وضعیت خارج از ENUM رد می‌شود.
+   ═══════════════════════════════════════════════════════════════════ */
+
+var ASSET_STATUSES = {
+  available: 'در دسترس',
+  in_use: 'در حال استفاده',
+  repair: 'در تعمیرات'
+};
+
+function assetsOf(schoolId){
+  return db.assets
+    .filter(function(a){ return a.school_id === schoolId; })
+    .sort(function(a,b){ return (a.name||'').localeCompare(b.name||'', 'fa'); });
+}
+function assetStatusBadge(key){
+  return key==='available' ? 'b-green' : (key==='in_use' ? 'b-blue' : 'b-amber');
+}
+
+/* ─────────────── ثبت/ویرایش (مدیر) ─────────────── */
+
+function assetAdd(name, category, location, status, note){
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  if(role !== 'manager') return {ok:false, msg:'فقط مدیر مدرسه می‌تواند تجهیز ثبت کند'};
+  if(!u.school_id) return {ok:false, msg:'مدرسهٔ فعالی مشخص نیست'};
+  name = String(name || '').trim();
+  if(!name) return {ok:false, msg:'نام تجهیز خالی است'};
+  if(!ASSET_STATUSES[status]) return {ok:false, msg:'وضعیت معتبر نیست'};
+  var rec = {
+    school_id: u.school_id,
+    name: name,
+    category: String(category || '').trim(),
+    status: status,
+    location: String(location || '').trim(),
+    note: String(note || '').trim(),
+    created_at: new Date().toISOString()
+  };
+  return {ok:true, rec: add('assets', rec)};
+}
+function assetSetStatus(assetId, status, location){
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  if(role !== 'manager') return {ok:false, msg:'فقط مدیر مدرسه می‌تواند وضعیت تجهیز را عوض کند'};
+  var a = byId('assets', assetId);
+  if(!a) return {ok:false, msg:'تجهیز پیدا نشد'};
+  if(a.school_id !== u.school_id) return {ok:false, msg:'این تجهیز متعلق به مدرسهٔ شما نیست'};
+  if(!ASSET_STATUSES[status]) return {ok:false, msg:'وضعیت معتبر نیست'};
+  var patch = {status: status};
+  if(location !== undefined) patch.location = String(location || '').trim();
+  update('assets', assetId, patch);
+  return {ok:true};
+}
+function assetDel(assetId){
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  if(role !== 'manager') return {ok:false, msg:'فقط مدیر مدرسه می‌تواند تجهیز حذف کند'};
+  var a = byId('assets', assetId);
+  if(!a) return {ok:false, msg:'تجهیز پیدا نشد'};
+  if(a.school_id !== u.school_id) return {ok:false, msg:'این تجهیز متعلق به مدرسهٔ شما نیست'};
+  remove('assets', assetId);
+  return {ok:true};
+}
+
+/* ─────────────── نمای مدیر ─────────────── */
+
+function viewAssets(){
+  var u = S.user;
+  var list = assetsOf(u.school_id);
+  var inUse = list.filter(function(a){ return a.status==='in_use'; });
+  var repair = list.filter(function(a){ return a.status==='repair'; });
+  var h = '<div class="page-head"><h2>🧰 املاک و موجودی</h2></div>';
+  h += '<div class="card"><div class="card-head"><div class="row" style="gap:8px;flex-wrap:wrap">'
+    + '<span class="badge b-gray">تجهیز: ' + fa(list.length) + '</span>'
+    + '<span class="badge b-green">در دسترس: ' + fa(list.length - inUse.length - repair.length) + '</span>'
+    + '<span class="badge b-blue">در حال استفاده: ' + fa(inUse.length) + '</span>'
+    + (repair.length ? '<span class="badge b-amber">در تعمیرات: ' + fa(repair.length) + '</span>' : '')
+    + '</div><button class="btn" data-act="as-new">➕ تجهیز جدید</button></div><div class="card-body">';
+  if(!list.length){
+    h += empty('🧰','تجهیزی ثبت نشده','اولین تجهیز را با دکمهٔ بالا ثبت کنید.');
+  } else {
+    h += '<div style="display:grid;gap:10px">' + list.map(function(a){
+      var label = ASSET_STATUSES[a.status] || a.status || '؟';
+      return '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 14px">'
+        + '<div class="row" style="flex-wrap:wrap;gap:8px">'
+        + '<b>' + esc(a.name) + '</b>'
+        + (a.category ? '<span class="badge b-gray">' + esc(a.category) + '</span>' : '')
+        + (a.location ? '<span class="muted small">📍 ' + esc(a.location) + '</span>' : '')
+        + '<span class="badge ' + assetStatusBadge(a.status) + '">' + esc(label) + '</span>'
+        + '<div class="spacer"></div>'
+        + '<button class="btn ghost sm" data-act="as-status" data-id="' + a.id + '">🔄 وضعیت</button>'
+        + '<button class="btn ghost sm" data-act="as-del" data-id="' + a.id + '">حذف</button>'
+        + '</div>'
+        + (a.note ? '<div class="muted small" style="margin-top:6px">' + esc(a.note) + '</div>' : '')
+        + '</div>';
+    }).join('') + '</div>';
+  }
+  return h + '</div></div>';
+}
+
+/* ─────────────── دادهٔ نمونه (قطعی، فقط دمو) ─────────────── */
+
+function generateAssetsDemo(){
+  if(db.assets.length) return;
+  var sc = db.schools.filter(function(s){ return s.active; })[0];
+  if(!sc) return;
+  var now = new Date().toISOString();
+  add('assets', {school_id: sc.id, name: 'رایانهٔ کلاس ۱۰', category: 'کامپیوتر', status: 'in_use', location: 'کارگاه کامپیوتر', note: '', created_at: now});
+  add('assets', {school_id: sc.id, name: 'پروژکتور', category: 'پروژکتور', status: 'available', location: 'کلاس ۱۰۲', note: 'با ریموت', created_at: now});
+  add('assets', {school_id: sc.id, name: 'پروژکتور قدیمی', category: 'پروژکتور', status: 'repair', location: 'اداری', note: 'لامپ سوخته — برای تعمیر فرستاده شده', created_at: now});
+  add('assets', {school_id: sc.id, name: 'توپ فوتبال', category: 'ورزشی', status: 'available', location: 'سالن ورزش', note: '', created_at: now});
 }
 
 </script>

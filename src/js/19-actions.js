@@ -455,6 +455,42 @@ document.addEventListener('click',e=>{
      toast('بازگشت ثبت شد','ok');
      render();
    },
+   'as-new'(){
+     openModal(modalTpl('تجهیز جدید',
+       f('نام *', inp('as_name',''))
+       + f('دسته', inp('as_category',''))
+       + f('مکان', inp('as_location',''))
+       + f('وضعیت', sel('as_status',[['available','در دسترس'],['in_use','در حال استفاده'],['repair','در تعمیرات']],'available')),
+       'as-save'));
+   },
+   'as-save'(){
+     const r = assetAdd(V('as_name'), V('as_category'), V('as_location'), V('as_status'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('تجهیز ثبت شد','ok');
+     render();
+   },
+   'as-status'(){
+     const a = byId('assets', Number(id));
+     if(!a) return;
+     window._asEditId = a.id;
+     openModal(modalTpl('وضعیت — ' + a.name,
+       f('وضعیت', sel('as_status',[['available','در دسترس'],['in_use','در حال استفاده'],['repair','در تعمیرات']], a.status))
+       + f('مکان', inp('as_location', a.location||'')),
+       'as-status-save'));
+   },
+   'as-status-save'(){
+     const r = assetSetStatus(window._asEditId, V('as_status'), V('as_location'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('وضعیت به‌روز شد','ok');
+     render();
+   },
+   'as-del'(){
+     askConfirm('این تجهیز حذف شود؟', function(){
+       const r = assetDel(Number(id));
+       if(!r.ok){ toast(r.msg,'err'); return; }
+       toast('تجهیز حذف شد','ok'); render();
+     }, {title:'حذف تجهیز', ok:'حذف', danger:true});
+   },
    'att-set'(){const st=el.dataset.s;const date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
      attDraftSet(cid,date,id,st);
