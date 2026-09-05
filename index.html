@@ -899,12 +899,12 @@ const NEG=[['تأخیر در ورود به کلاس',-3],['بی‌نظمی در 
 /* عنصر پنجم: شاخه‌های متوسطه دوم. مدارس غیرمتوسطه‌دوم آرایهٔ خالی دارند.
    «مجتمع ایران‌زمین» عمداً دو شاخه دارد تا حالت چندشاخه‌ای آزموده شود. */
 const SCHOOL_DEFS=[
-  ['دبیرستان شهید بهشتی','SH-101','متوسطه دوم','پسرانه',['نظری'],'علوم تجربی'],
-  ['دبیرستان فرزانگان','FZ-102','متوسطه دوم','دخترانه',['نظری'],'ریاضی'],
-  ['مدرسه نمونه علامه حلی','AH-103','متوسطه اول','پسرانه',[],'عادی'],
-  ['دبیرستان مریم مقدس','MM-104','متوسطه اول','دخترانه',[],'عادی'],
-  ['مجتمع آموزشی ایران‌زمین','IZ-105','متوسطه دوم','پسرانه',['فنی و حرفه‌ای','کاردانش'],'فنی و حرفه‌ای'],
-  ['دبستان و متوسطه اندیشه','AN-106','متوسطه اول','دخترانه',[],'عادی']];
+  ['دبیرستان شهید بهشتی','SH-101','متوسطه دوم','پسرانه',['نظری'],'علوم تجربی',{has_tuition:1,has_dorm:1,has_iep:1,has_workshop:1,has_multigrade:1,has_second_term_exam:1}],
+  ['دبیرستان فرزانگان','FZ-102','متوسطه دوم','دخترانه',['نظری'],'ریاضی',{has_tuition:1,has_dorm:1,has_iep:1,has_workshop:1,has_multigrade:0,has_second_term_exam:1}],
+  ['مدرسه نمونه علامه حلی','AH-103','متوسطه اول','پسرانه',[],'عادی',{has_tuition:1,has_dorm:1,has_iep:1,has_workshop:0,has_multigrade:0,has_second_term_exam:1}],
+  ['دبیرستان مریم مقدس','MM-104','متوسطه اول','دخترانه',[],'عادی',{has_tuition:1,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1}],
+  ['مجتمع آموزشی ایران‌زمین','IZ-105','متوسطه دوم','پسرانه',['فنی و حرفه‌ای','کاردانش'],'فنی و حرفه‌ای',{has_tuition:1,has_dorm:1,has_iep:0,has_workshop:1,has_multigrade:1,has_second_term_exam:1}],
+  ['دبستان و متوسطه اندیشه','AN-106','متوسطه اول','دخترانه',[],'عادی',{has_tuition:0,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1}]];
 
 let db, ids={};
 /* 🔴 TODO پیش از اتصال به سرور — رمز عبور
@@ -955,11 +955,15 @@ function generate(){
   const dates=schoolDays(20);
   let sCount=0;
   SCHOOL_DEFS.forEach((def,si)=>{
-    const [name,code,level,gender,branches,type]=def, city=CITIES[si%CITIES.length];
+    const [name,code,level,gender,branches,type,caps]=def, city=CITIES[si%CITIES.length];
     /* رشته‌های مدرسه = همهٔ رشته‌های شاخه‌هایی که ارائه می‌دهد */
     const sFields=(branches||[]).reduce((a,b)=>a.concat(fieldsOfBranch(b)),[]);
     const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:demoPhone(),level,type:type||'عادی',gender,branches:branches||[],fields:sFields,
-      shift: si===4 ? 'بعدازظهر' : (si===1 ? 'هر دو' : 'صبح'),capacity:400+ri(200),active:si===5?0:1,created_at:daysAgoISO(500-si*20)});
+      shift: si===4 ? 'بعدازظهر' : (si===1 ? 'هر دو' : 'صبح'),capacity:400+ri(200),active:si===5?0:1,
+      /* پروفایل قابلیت: هر مدرسه کلیدهای مستقل روشن/خاموش دارد؛
+         در نبود مقدار، پیش‌فرض‌های CAP_DEFAULTS اعمال می‌شود. */
+      capabilities: caps||null,
+      created_at:daysAgoISO(500-si*20)});
     const first = gender==='پسرانه'?MALE:FEMALE;
     const manager=add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'manager'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,title:'مدیر مدرسه',created_at:daysAgoISO(480)});
     add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'deputy'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,title:'معاون آموزشی',created_at:daysAgoISO(470)});
@@ -2498,8 +2502,14 @@ function navFor(u){
   /* گزینه‌هایی که دیاگ به‌دلیل عیب کدنویسی پنهان کرده، از منو حذف می‌شوند —
      بقیهٔ برنامه کار می‌کند و عیب در صفحهٔ دیاگ معلوم می‌ماند. */
   var dis=(typeof navDisabledRoutes==='function')?navDisabledRoutes():[];
+  /* پروفایل قابلیت (بند ۰.۱): ماژول‌هایی که مدرسه آن قابلیت را ندارد
+     اصلاً در منو دیده نمی‌شوند — نه «غیرفعال»، که «بی‌ربط». */
+  var capHidden=[];
+  if(u.school_id&&(typeof hasCap==='function')){
+    if(!hasCap(u.school_id,'has_tuition'))capHidden.push('tuition','mytuition');
+  }
   let nav=(NAV[u.role]||[]).map(function(g){
-    return [g[0],(g[1]||[]).filter(function(it){ return dis.indexOf(it[0])<0; })];
+    return [g[0],(g[1]||[]).filter(function(it){ return dis.indexOf(it[0])<0&&capHidden.indexOf(it[0])<0; })];
   }).filter(function(g){ return g[1].length>0; });
   if(u.role==='parent'){
     nav=nav.concat([['حساب من',[['subscription','💳','اشتراک پنل اولیا']]]]);
@@ -2729,6 +2739,42 @@ function familyDash(){
    مدیریت مدارس
    ساخت، ویرایش، فعال‌سازی و «ورود به مدرسه» توسط سوپرادمین.
    ═══════════════════════════════════════════════════════════════════ */
+
+/* ─────────── پروفایل قابلیت مدرسه (دور ۶۳، بند ۰.۱) ───────────
+   نوع مدرسه دیگر زنجیرهٔ شرط «اگر دولتی… اگر غیردولتی…» نیست؛
+   هر مدرسه یک پروفایل کلید-قابلیت دارد که هر کلید مستقل
+   روشن/خاموش می‌شود. رابط کاربری بر اساس همین کلیدها
+   ماژول‌های غیرمرتبط را مخفی می‌کند (navFor در 07-shell.js).
+   کلیدهایی که هنوز ماژولشان ساخته نشده (has_dorm و…) ساختاری
+   هستند: قفل‌شده در ARCHITECTURE_DECISIONS.md منتظر پیاده‌سازی
+   کامل — ماژول آتی باید همین کلید را بخواند، نه شرط جدید بسازد. */
+const CAP_DEFS=[
+  ['has_tuition','شهریه','مدرسه شهریه می‌گیرد — ماژول مالی و شهریه فعال است'],
+  ['has_dorm','اسکان و خانه‌دانش‌آموزی','مدرسه بخش اسکان دارد'],
+  ['has_iep','پشتیبانی ویژه (IEP)','طرح فردی یادگیری برای دانش‌آموزان نیازمند ویژه'],
+  ['has_workshop','کارگاه و آزمایشگاه','فضای عملی/فنی برای پروژه‌های کارگاهی'],
+  ['has_multigrade','کلاس‌های چندپایه','چند پایه در یک کلاس (روستایی/کوچک)'],
+  ['has_second_term_exam','امتحان نوبت دوم','مدرسه امتحان نوبت دوم می‌گذارد']
+];
+const CAP_DEFAULTS={has_tuition:1,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1};
+/** پروفایل قابلیت یک مدرسه با اعمال پیش‌فرض‌ها */
+function schoolCaps(sid){
+  const s=(typeof byId==='function')?byId('schools',sid):null;
+  const c=(s&&s.capabilities)?s.capabilities:{};
+  const out={};
+  CAP_DEFS.forEach(function(k){ out[k[0]]=c[k[0]]==null?CAP_DEFAULTS[k[0]]:Number(c[k[0]]); });
+  return out;
+}
+/** آیا مدرسه صاحب این قابلیت است؟ */
+function hasCap(sid,key){ return !!schoolCaps(sid)[key]; }
+/** چیکنک‌های پروفایل قابلیت برای فرم مدرسه */
+function capPickerHTML(s){
+  const caps=schoolCaps(s&&s.id);
+  return CAP_DEFS.map(function(k){
+    return `<label style="display:flex;gap:8px;align-items:center;padding:7px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer"><input type="checkbox" class="m-cap" value="${k[0]}" ${caps[k[0]]?'checked':''} /><span><b class="small">${k[1]}</b><div class="small muted" style="font-size:11px">${k[2]}</div></span></label>`;
+  }).join('');
+}
+
 function viewSchools(){
   const q=(S.filters.q||'').trim();
   const isAdmin=S.user.role==='superadmin';
@@ -3482,6 +3528,9 @@ function schoolModal(s){
     <div class="small muted" style="margin:-4px 0 10px">
       شیفت بر ساعت شروع زنگ‌ها اثر می‌گذارد. زمان‌بندی دقیق زنگ‌ها را
       مدیر مدرسه در صفحهٔ «زمان‌بندی زنگ‌ها» تعیین می‌کند.</div>
+    <div class="sec-title">🏫 پروفایل قابلیت این مدرسه</div>
+    <div class="small muted" style="margin-bottom:8px">هر کلید مستقل روشن/خاموش می‌شود؛ ماژول‌های غیرمرتبط از منوی این مدرسه پنهان می‌شوند.</div>
+    ${typeof capPickerHTML==='function'?capPickerHTML(s):''}
     <div id="m_branch_box" style="display:${s.level==='متوسطه دوم'?'block':'none'}">${branchPicker(s)}</div>
     ${f('آدرس',`<textarea class="input" id="m_addr" rows="2">${esc(s.address||'')}</textarea>`)}
     <div class="sec-title">👤 مشخصات مدیر مدرسه ${mgr?'':'<span class="small muted">(حساب کاربری او ساخته می‌شود)</span>'}</div>
@@ -7293,7 +7342,9 @@ document.addEventListener('click',e=>{
        active:Number(V('m_active')),address:V('m_addr'),
        /* شاخه و رشته فقط برای متوسطه دوم معنا دارد؛ در بقیهٔ مقاطع خالی می‌ماند */
        branches:V('m_level')==='متوسطه دوم'?$$('.m-branch:checked').map(x=>x.value):[],
-       fields:V('m_level')==='متوسطه دوم'?$$('.m-field:checked').filter(x=>$$('.m-branch:checked').some(b=>b.value===x.dataset.branch)).map(x=>x.value):[]};
+       fields:V('m_level')==='متوسطه دوم'?$$('.m-field:checked').filter(x=>$$('.m-branch:checked').some(b=>b.value===x.dataset.branch)).map(x=>x.value):[],
+       /* پروفایل قابلیت (بند ۰.۱): هر کلید جداگانه خوانده می‌شود */
+       capabilities:(typeof CAP_DEFS!=='undefined')?Object.fromEntries(CAP_DEFS.map(k=>[k[0],$$('.m-cap[value="'+k[0]+'"]').some(c=>c.checked)?1:0])):(s.capabilities||null)};
 
      const mgName=V('mg_name'), mgUser=V('mg_user'), mgNid=V('mg_nid'), mgPhone=V('mg_phone'), mgPass=V('mg_pass');
      const existing=s.id?db.users.find(u=>u.school_id===s.id&&u.role==='manager'):null;
@@ -10762,11 +10813,19 @@ const P8_ACTIONS = {
       ()=>{remove('schedule',id);toast('زنگ حذف شد','');render();}); },
 };
 
+/** گزینه‌های نوبت برای فرم فصل امتحانات — مدرسه‌ای که امتحان
+    نوبت دوم نمی‌گذارد (پروفایل قابلیت، بند ۰.۱) آن گزینه را نمی‌بیند */
+function termOptsFor(u){
+  var all=['نوبت اول','نوبت دوم','میان‌ترم','جبرانی','شهریور'];
+  if(u&&u.school_id&&(typeof hasCap==='function')&&!hasCap(u.school_id,'has_second_term_exam'))
+    all=all.filter(function(x){ return x!=='نوبت دوم'; });
+  return all;
+}
 function termModal(t){
   t=t||{title:'امتحانات نوبت اول',term:'نوبت اول',start_date:addDaysISO(todayISO(),10),end_date:addDaysISO(todayISO(),24),note:''};
   openModal(modalTpl(t.id?'ویرایش فصل امتحانات':'فصل امتحانات جدید',
     `<div class="grid g2">${f('عنوان *',inp('tm_title',t.title))}
-      ${f('نوبت',sel('tm_term',['نوبت اول','نوبت دوم','میان‌ترم','جبرانی','شهریور'].map(x=>[x,x]),t.term))}
+      ${f('نوبت',sel('tm_term',termOptsFor(S.user).map(x=>[x,x]),t.term))}
       ${f('تاریخ شروع',jdate('tm_start',t.start_date))}${f('تاریخ پایان',jdate('tm_end',t.end_date))}</div>
      ${f('توضیح برای اولیا',`<textarea class="input" id="tm_note" rows="2">${esc(t.note||'')}</textarea>`)}`,'term-save'));
   window._edit=t;

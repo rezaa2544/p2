@@ -38,8 +38,14 @@ function navFor(u){
   /* گزینه‌هایی که دیاگ به‌دلیل عیب کدنویسی پنهان کرده، از منو حذف می‌شوند —
      بقیهٔ برنامه کار می‌کند و عیب در صفحهٔ دیاگ معلوم می‌ماند. */
   var dis=(typeof navDisabledRoutes==='function')?navDisabledRoutes():[];
+  /* پروفایل قابلیت (بند ۰.۱): ماژول‌هایی که مدرسه آن قابلیت را ندارد
+     اصلاً در منو دیده نمی‌شوند — نه «غیرفعال»، که «بی‌ربط». */
+  var capHidden=[];
+  if(u.school_id&&(typeof hasCap==='function')){
+    if(!hasCap(u.school_id,'has_tuition'))capHidden.push('tuition','mytuition');
+  }
   let nav=(NAV[u.role]||[]).map(function(g){
-    return [g[0],(g[1]||[]).filter(function(it){ return dis.indexOf(it[0])<0; })];
+    return [g[0],(g[1]||[]).filter(function(it){ return dis.indexOf(it[0])<0&&capHidden.indexOf(it[0])<0; })];
   }).filter(function(g){ return g[1].length>0; });
   if(u.role==='parent'){
     nav=nav.concat([['حساب من',[['subscription','💳','اشتراک پنل اولیا']]]]);
