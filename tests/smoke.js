@@ -941,6 +941,34 @@ test('صفحه مالی و سلامت برای سوپرادمین رندر می�
   }
 });
 
+test('سلامت: دایره‌های آنالوگ — پیش‌فرض عقربه‌ای و انتخاب کاربر ماندگار', () => {
+  W("S.user=db.users.find(u=>u.role==='superadmin')");
+  const page = W('viewHealth()');
+  assert(page.indexOf('دایره‌های آنالوگ') >= 0, 'کارت دایره‌ها نیست');
+  assert(page.indexOf('hgt-needle') >= 0, 'شیوهٔ پیش‌فرض (عقربه‌ای) رندر نشد');
+  assert((page.match(/data-act="health-gauge-style"/g) || []).length === 3, 'سه دکمهٔ انتخاب شیوه نیست');
+  W("Store.set('payesh_health_gauge_v1','thermo')");
+  const p2 = W('viewHealth()');
+  assert(p2.indexOf('hgt-liquid') >= 0 && p2.indexOf('hgt-glow') >= 0, 'شیوهٔ دماسنجی رندر نشد');
+  assert(p2.indexOf('hgt-needle') === -1, 'شیوهٔ قبلی هنوز جا دارد');
+  W("Store.set('payesh_health_gauge_v1','dial')");
+  assert(W('viewHealth()').indexOf('hgt-dot') >= 0, 'شیوهٔ آنالوگ رندر نشد');
+  W("Store.set('payesh_health_gauge_v1','bogus')");
+  assert(W('viewHealth()').indexOf('hgt-needle') >= 0, 'شیوهٔ ناشناخته باید به پیش‌فرض برگردد');
+  W("Store.remove('payesh_health_gauge_v1')");
+});
+
+test('سلامت: دایره‌های آنالوگ مقادیر خارج از حد را سنجاق می‌کنند', () => {
+  const over = W("healthGauge('needle',{label:'تست',unit:'٪',value:999,max:100,tone:'ok'})");
+  assert(over.indexOf('rotate(120.00deg)') >= 0, 'مقدار بیش از حد، عقربه را از ۱۲۰ درجه گذراند');
+  const under = W("healthGauge('thermo',{label:'تست',unit:'٪',value:-50,max:100,tone:'ok'})");
+  assert(under.indexOf('hgt-liquid') >= 0 && under.indexOf('NaN') === -1, 'مقدار منفی خرابی ساخت');
+  const zero = W("healthGauge('dial',{label:'تست',unit:'٪',value:0,max:100,tone:'blue'})");
+  assert(zero.indexOf('hgt-svg') >= 0 && zero.indexOf('NaN') === -1, 'صفر در شیوهٔ آنالوگ خراب شد');
+  const nil = W("healthGauge('needle',{label:'تست',unit:'',value:undefined,max:100,tone:'ok'})");
+  assert(nil.indexOf('NaN') === -1, 'مقدار تعریف‌نشده باید صفر خوانده شود');
+});
+
 test('اعداد مالی با پایگاه داده می‌خوانند', () => {
   W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null");
   const realRev = W('db.parent_subscriptions.filter(function(s){return s.paid_at;})'

@@ -458,3 +458,32 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 .bell-bar-break{background:var(--amber-soft);border-color:var(--amber)}
 .bell-bar-off{background:var(--bg)}
 .bell-bar-warn{background:var(--red-soft);color:var(--red);border-color:var(--red)}
+
+/* ── دایره‌های آنالوگِ صفحهٔ سلامت ─────────────────────────────
+   سه شیوهٔ نمایش (عقربه‌ای/آنالوگ/دماسنجی) انتخابی کاربر است؛
+   انتخاب در payesh_health_gauge_v1 ماندگار می‌شود. */
+.hgt-svg{ width:100%; height:auto; display:block; }
+.hgt-tile{ background:var(--surface); border:1px solid var(--border);
+  border-radius:14px; padding:10px 8px 8px; box-shadow:var(--shadow);
+  transition:transform .18s ease, box-shadow .18s ease; }
+.hgt-tile:hover{ transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+.hgt-lbl{ font-size:12px; font-weight:700; color:var(--text); margin-top:4px; }
+.hgt-seg{ display:flex; gap:6px; }
+.hgt-seg .btn{ font-size:12px; padding:4px 10px; }
+.hgt-seg .btn.on{ background:var(--primary); border-color:var(--primary); color:#fff; }
+/* عقربه از -۱۲ درجه (سمت چپ) تا زاویهٔ نهاییِ inline جارو می‌کند */
+@keyframes hgtSweep{ from{ transform:rotate(-120deg); } }
+.hgt-needle{ transform-origin:60px 68px;
+  animation:hgtSweep .9s cubic-bezier(.2,.75,.3,1.15); }
+/* ستون مایعِ دماسنج با محو‌شدنِ ملایم بالا می‌آید */
+@keyframes hgtFadeUp{ from{ opacity:0; transform:translateY(6px); } }
+.hgt-liquid{ animation:hgtFadeUp .8s ease-out; }
+/* نبضِ نور حباب دماسنج */
+@keyframes hgtPulse{ 0%,100%{ opacity:.30; } 50%{ opacity:.10; } }
+.hgt-glow{ animation:hgtPulse 2.8s ease-in-out infinite; }
+/* نقطهٔ انتهای قوسِ آنالوگ */
+@keyframes hgtDot{ 0%,100%{ opacity:1; } 50%{ opacity:.55; } }
+.hgt-dot{ animation:hgtDot 2.2s ease-in-out infinite; }
+@media (prefers-reduced-motion:reduce){
+  .hgt-needle,.hgt-liquid,.hgt-glow,.hgt-dot{ animation:none; }
+}
