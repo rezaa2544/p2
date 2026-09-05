@@ -23,10 +23,10 @@ function schoolStudents(sid){
  * امتیاز ریسک ۰ تا ۱۰۰ از ترکیب پنج نشانه.
  * خروجی فقط شامل کسانی است که امتیاز ≥ ۲۰ دارند، مرتب‌شده نزولی.
  */
-function atRiskList(days){
+function atRiskList(days, sidOpt){
   days = days || 60;
   var from = daysAgoISO(days);
-  var sid = S.user.school_id;
+  var sid = sidOpt!=null?sidOpt:S.user.school_id;
   var gi = (typeof idxGradesByStudent === 'function') ? idxGradesByStudent() : null;
   var ai = (typeof idxAttByStudent === 'function') ? idxAttByStudent() : null;
   /* موارد انضباطی منفی یک بار گروه‌بندی می‌شود، نه به‌ازای هر دانش‌آموز */
