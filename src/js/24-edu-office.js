@@ -852,6 +852,8 @@ function render(){
 
   /* کارت‌های زنده (زنگ) — زمان‌سنجِ پُلِ دوره‌ای؛ آیدمپتان */
   if(typeof bellLiveEnsure==='function') bellLiveEnsure();
+  /* یادآوریِ دبیر (دور ۶۵): لایهٔ صفِ پیامک — با ۳۰ ثانیه محافظ */
+  if(typeof nudgeTick==='function') nudgeTick();
 
   /* بازگرداندن اسکرول منو */
   if(navTop){
