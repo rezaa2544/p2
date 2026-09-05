@@ -265,6 +265,8 @@ function viewOfficeSchools(){
         <div style="text-align:center"><b>${fa(r.avg)}</b><div class="small muted">میانگین</div></div>
         <div style="text-align:center"><b>${fa(r.att)}٪</b><div class="small muted">حضور</div></div>
         <span class="badge ${r.s.active?'b-green':'b-red'}">${r.s.active?'فعال':'غیرفعال'}</span>
+        ${(typeof schoolModeBadge==='function')?schoolModeBadge(r.s.id,todayISO()):''}
+        <button class="btn ghost sm" data-act="smode-open" data-id="${r.s.id}">حالت</button>
       </div></div>`).join('')}</div>`:empty('🏫','مدرسه‌ای در محدوده شما نیست','')}</div>`;
 }
 
@@ -894,6 +896,7 @@ setTimeout(()=>{
   if(typeof generateLibraryDemo==='function') generateLibraryDemo();
   if(typeof generateAssetsDemo==='function') generateAssetsDemo();
   if(typeof generateSidaDemo==='function') generateSidaDemo();
+  if(typeof generateSchoolModeDemo==='function') generateSchoolModeDemo();
   loadLog(); applyLog(); initSync();
   /* ⚠️ فقط دمو (DEMO-ONLY): ورود خودکار با نام کاربریِ ذخیره‌شده — بدون
      هیچ رمز یا تأیید هویت — صرفاً برای حالت آفلاین/نمایش است و بخشی از

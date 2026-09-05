@@ -56,6 +56,11 @@ function adminDash(){
     ${statCard('🏛️',fa(counts.classes),'کلاس فعال','amber')}
     ${u.role==='manager'?statCard('👨‍👩‍👦',fa(counts.parents),'ولی ثبت‌شده','purple'):''}
    </div>
+   ${u.role==='manager'&&typeof schoolModeBadge==='function'?`<div class="row" style="background:var(--surface-2);padding:10px 14px;border-radius:12px;align-items:center">
+    <b>حالت مدرسه امروز:</b> ${schoolModeBadge(u.school_id,todayISO())}
+    <div class="spacer"></div>
+    <button class="btn ghost sm" data-act="smode-mgr">${schoolModeOf(u.school_id,todayISO())==='virtual'?'🏫 حضوری کردن امروز':'🏠 غیرحضوری کردن امروز'}</button>
+   </div>`:''}
    <div class="grid g2">
     <div class="card"><div class="card-head"><h3>روند حضور روزهای اخیر</h3><span class="badge b-blue">درصد حضور</span></div>
      <div class="card-body">${trend.length?`<div class="chart">${trend.map(t=>`<div class="col" title="${escAttr(t.rate)}%"><i style="height:${t.rate}%"></i><span>${new Date(t.d).toLocaleDateString('fa-IR-u-ca-persian',{day:'numeric'})}</span></div>`).join('')}</div>`:empty('📈','داده‌ای نیست','')}</div></div>

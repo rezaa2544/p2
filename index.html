@@ -2510,6 +2510,9 @@ var ACTION_ROLES = {
   'hw-window-save':  ['teacher','manager','superadmin'],
   'hw-lock':         ['teacher','manager','superadmin'],
   'hw-view':         ['teacher','manager','student','superadmin'],
+  'smode-open':      ['edu_office','manager','superadmin'],
+  'smode-save':      ['edu_office','manager','superadmin'],
+  'smode-mgr':       ['manager','superadmin'],
   'as-new':         ['manager'],
   'as-save':        ['manager'],
   'as-status':      ['manager'],
@@ -2898,6 +2901,11 @@ function adminDash(){
     ${statCard('🏛️',fa(counts.classes),'کلاس فعال','amber')}
     ${u.role==='manager'?statCard('👨‍👩‍👦',fa(counts.parents),'ولی ثبت‌شده','purple'):''}
    </div>
+   ${u.role==='manager'&&typeof schoolModeBadge==='function'?`<div class="row" style="background:var(--surface-2);padding:10px 14px;border-radius:12px;align-items:center">
+    <b>حالت مدرسه امروز:</b> ${schoolModeBadge(u.school_id,todayISO())}
+    <div class="spacer"></div>
+    <button class="btn ghost sm" data-act="smode-mgr">${schoolModeOf(u.school_id,todayISO())==='virtual'?'🏫 حضوری کردن امروز':'🏠 غیرحضوری کردن امروز'}</button>
+   </div>`:''}
    <div class="grid g2">
     <div class="card"><div class="card-head"><h3>روند حضور روزهای اخیر</h3><span class="badge b-blue">درصد حضور</span></div>
      <div class="card-body">${trend.length?`<div class="chart">${trend.map(t=>`<div class="col" title="${escAttr(t.rate)}%"><i style="height:${t.rate}%"></i><span>${new Date(t.d).toLocaleDateString('fa-IR-u-ca-persian',{day:'numeric'})}</span></div>`).join('')}</div>`:empty('📈','داده‌ای نیست','')}</div></div>
@@ -3153,7 +3161,8 @@ function pager(page,pages){ if(pages<2)return '';
 function viewClasses(){
   const canEdit=['superadmin','manager'].includes(S.user.role);
   const rows=visibleClasses();
-  return `<div class="card"><div class="card-head"><h3>کلاس‌ها <span class="badge b-gray">${fa(rows.length)}</span></h3>
+  const _smBanner=(typeof virtualModeBanner==='function')?virtualModeBanner():'';
+  return `${_smBanner}<div class="card"><div class="card-head"><h3>کلاس‌ها <span class="badge b-gray">${fa(rows.length)}</span></h3>
     ${canEdit?`<button class="btn" data-act="class-new">➕ کلاس جدید</button>`:''}</div>
    ${rows.length?`<div class="grid g3" style="padding:16px">${(()=>{const _ec=(typeof idxEnrollByClass==='function')?idxEnrollByClass():null;return rows.map(c=>{const n=_ec?(_ec.get(c.id)||[]).length:db.enrollments.filter(e=>e.class_id===c.id).length;const fill=Math.min(100,Math.round(n/(c.capacity||30)*100));const ht=c.homeroom_teacher_id?byId('users',c.homeroom_teacher_id):null;
      return `<div class="card" style="padding:15px;box-shadow:none">
@@ -3292,6 +3301,7 @@ function viewAttendance(){
   const _autoOk=_auto&&cls.some(c=>c.id===_auto.classId);
   const cid=Number(S.filters.class||(_autoOk&&_auto.classId)||cls[0].id), date=S.filters.date||todayISO(), q=(S.filters.q||'').trim();
   const _autoShown=_autoOk&&!S.filters.class&&cid===_auto.classId;
+  const _smBanner=(typeof virtualModeBanner==='function')?virtualModeBanner(date):'';
   const roster=studentsOfClass(cid);
   let studs=roster;
   if(q)studs=roster.filter(s=>s.full_name.includes(q));
@@ -3322,7 +3332,7 @@ function viewAttendance(){
      <button class="btn ghost sm" data-act="att-discard">دور ریختن</button>
    </div>` : '';
 
-  return `${attChangeTip()}${bannerDraft}<div class="card"><div class="card-head">
+  return `${_smBanner}${attChangeTip()}${bannerDraft}<div class="card"><div class="card-head">
     <div class="row"><select class="select" style="width:180px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
      ${_autoShown?`<span class="badge b-blue" title="بر اساس زنگ جاری و برنامهٔ هفتگی شما — انتخاب دستی بر این مقدم است">🔔 انتخاب خودکار بر اساس زنگ</span><button class="btn ghost sm" data-act="att-reset-class">همهٔ کلاس‌ها</button>`:''}
      <input class="input" style="width:160px" type="date" data-f="date" value="${escAttr(date)}" /><span class="badge b-gray">${jalali(date)}</span></div>
@@ -7479,6 +7489,7 @@ function restoreBackup(obj){
     if(typeof generateLibraryDemo==='function') generateLibraryDemo();
     if(typeof generateAssetsDemo==='function') generateAssetsDemo();
     if(typeof generateSidaDemo==='function') generateSidaDemo();
+    if(typeof generateSchoolModeDemo==='function') generateSchoolModeDemo();
     /* ۲. جایگزینی دفترچه و اجرای دوبارهٔ عملیات */
     log.length = 0;
     obj.ops.forEach(function(o){ log.push(o); });
@@ -9292,6 +9303,20 @@ document.addEventListener('click',e=>{
      toast(r.rec.locked ? 'تکلیف قفل شد' : 'تکلیف باز شد','ok'); render();
    },
    'hw-view'(){ hwViewModal(Number(id)); },
+   /* بند ۱۳: حالت حضوری/غیرحضوری مدرسه */
+   'smode-open'(){ smodeModal(Number(id)); },
+   'smode-save'(){
+     const r = setSchoolMode(window._smodeId, V('sm_date'), V('sm_mode'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('حالت ثبت شد','ok'); render();
+   },
+   'smode-mgr'(){
+     const t = todayISO();
+     const cur = schoolModeOf(S.user.school_id, t);
+     const r = setSchoolMode(S.user.school_id, t, cur==='virtual'?'in_person':'virtual');
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     toast(r.rec.mode==='virtual' ? 'مدرسه امروز غیرحضوری (مجازی) شد' : 'مدرسه امروز حضوری شد','ok'); render();
+   },
    /* خلاصهٔ روزانه (بند ۱.۷): برای همهٔ دانش‌آموزان فعال؛ تکراری رد می‌شود */
    'daily-summary'(){
      const r = notifyDailySummaryAll(S.user.school_id);
@@ -11867,6 +11892,8 @@ function viewOfficeSchools(){
         <div style="text-align:center"><b>${fa(r.avg)}</b><div class="small muted">میانگین</div></div>
         <div style="text-align:center"><b>${fa(r.att)}٪</b><div class="small muted">حضور</div></div>
         <span class="badge ${r.s.active?'b-green':'b-red'}">${r.s.active?'فعال':'غیرفعال'}</span>
+        ${(typeof schoolModeBadge==='function')?schoolModeBadge(r.s.id,todayISO()):''}
+        <button class="btn ghost sm" data-act="smode-open" data-id="${r.s.id}">حالت</button>
       </div></div>`).join('')}</div>`:empty('🏫','مدرسه‌ای در محدوده شما نیست','')}</div>`;
 }
 
@@ -12496,6 +12523,7 @@ setTimeout(()=>{
   if(typeof generateLibraryDemo==='function') generateLibraryDemo();
   if(typeof generateAssetsDemo==='function') generateAssetsDemo();
   if(typeof generateSidaDemo==='function') generateSidaDemo();
+  if(typeof generateSchoolModeDemo==='function') generateSchoolModeDemo();
   loadLog(); applyLog(); initSync();
   /* ⚠️ فقط دمو (DEMO-ONLY): ورود خودکار با نام کاربریِ ذخیره‌شده — بدون
      هیچ رمز یا تأیید هویت — صرفاً برای حالت آفلاین/نمایش است و بخشی از
@@ -19495,7 +19523,8 @@ function viewVclass(){
   var h = '<div class="page-head"><h2>🖥️ کلاس مجازی</h2></div>'
     + '<div class="small muted" style="margin-bottom:14px">'
     + 'پایش میزبان ویدیوی زنده نیست: یا لینک جلسهٔ شاد ثبت می‌شود، یا فایل/ویدیوی ضبط‌شده + سؤالات متنی. '
-    + 'فایل‌ها در IndexedDB ذخیره می‌شوند (سقف نرم ' + idbSizeLabel(VCLASS_FILE_CAP) + ' برای هر فایل).</div>';
+    + 'فایل‌ها در IndexedDB ذخیره می‌شوند (سقف نرم ' + idbSizeLabel(VCLASS_FILE_CAP) + ' برای هر فایل).</div>'
+  + ((typeof virtualModeBanner==='function') ? virtualModeBanner() : '');
   if(!clsList.length){
     return h + '<div class="card">' + empty('🖥️','کلاسی در دسترس نیست','') + '</div>';
   }
@@ -20564,7 +20593,8 @@ function viewVisitors(){
   var u = S.user;
   var list = visitorsOf(u.school_id);
   var nowIn = list.filter(function(v){ return visitorStatus(v)==='in'; }).length;
-  var h = '<div class="page-head"><h2>🚪 مهمان‌ها</h2></div>';
+  var h = '<div class="page-head"><h2>🚪 مهمان‌ها</h2></div>'
+    + ((typeof virtualModeBanner==='function') ? virtualModeBanner() : '');
   h += '<div class="card"><div class="card-head"><div class="row" style="gap:8px;flex-wrap:wrap">'
     + '<span class="badge b-amber">در حال حاضر در مدرسه: ' + fa(nowIn) + '</span>'
     + '<span class="badge b-gray">کل ثبت‌شده: ' + fa(list.length) + '</span></div>'
@@ -20753,7 +20783,8 @@ function viewLibrary(){
   var books = libBooksOf(u.school_id);
   var actives = db.lib_loans.filter(function(l){ return l.school_id===u.school_id && !l.returned_at; });
   var lates = actives.filter(function(l){ return libLoanStatus(l)==='late'; });
-  var h = '<div class="page-head"><h2>📚 کتابخانه</h2></div>';
+  var h = '<div class="page-head"><h2>📚 کتابخانه</h2></div>'
+    + ((typeof virtualModeBanner==='function') ? virtualModeBanner() : '');
   h += '<div class="card"><div class="card-head"><div class="row" style="gap:8px;flex-wrap:wrap">'
     + '<span class="badge b-gray">کتاب: ' + fa(books.length) + '</span>'
     + '<span class="badge b-amber">امانت‌رفته: ' + fa(actives.length) + '</span>'
@@ -20923,7 +20954,8 @@ function viewAssets(){
   var list = assetsOf(u.school_id);
   var inUse = list.filter(function(a){ return a.status==='in_use'; });
   var repair = list.filter(function(a){ return a.status==='repair'; });
-  var h = '<div class="page-head"><h2>🧰 املاک و موجودی</h2></div>';
+  var h = '<div class="page-head"><h2>🧰 املاک و موجودی</h2></div>'
+    + ((typeof virtualModeBanner==='function') ? virtualModeBanner() : '');
   h += '<div class="card"><div class="card-head"><div class="row" style="gap:8px;flex-wrap:wrap">'
     + '<span class="badge b-gray">تجهیز: ' + fa(list.length) + '</span>'
     + '<span class="badge b-green">در دسترس: ' + fa(list.length - inUse.length - repair.length) + '</span>'
@@ -21147,6 +21179,134 @@ function generateSidaDemo(){
     var p2 = payeshAvgOf(s2.id, b2.id, 'نوبت دوم');
     if(p2 !== null) mk(s2.id, b2.id, 'نوبت دوم', Math.max(0, Math.round((p2-1.5)*100)/100), 'تفاوت میانگین‌گیری');
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   حالت حضوری/غیرحضوری مدرسه (بند ۱۳) — نسخهٔ سبک
+
+   سرکار ادارهٔ آموزش و پرورش (edu_office) برای هر **مدرسه** و هر
+   **روز** داخل محدودهٔ خودش (استان/شهرستان/منطقه — همان scope
+   اداره) می‌تواند مدرسه را «غیرحضوری (مجازی)» کند؛ **مدیر** فقط
+   مدرسهٔ خودش را. وقتی مدرسهٔ روزِ X غیرحضوری است، همهٔ کلاس/
+   فضا/تجهیزاتش برای همان روز به‌صورت **خودکار** مجازی می‌شوند —
+   در این نسخه این «خودکار» یعنی: نوارِ حالت در همهٔ نمای‌های
+   فضا (حضور، کلاس‌ها، کلاس مجازی، کتابخانه، مهمان، املاک) و
+   بجِ حالت در فهرست مدارسِ اداره (قفل ۱۳.۱ برای تغییرِ رفتاریِ
+   واقعیِ ماژول‌ها).
+
+   داده:
+     attendance_modes {school_id, date, mode:'in_person'|'virtual',
+                       set_by, set_at}
+   یک ردیف برای هر (مدرسه، روز) — ثبتِ تکراری همان ردیف را
+   به‌روز می‌کند (upsert). بدون ردیف = حضوری (پیش‌فرض).
+
+   امنیت: مالکیتِ مدرسه روی داده در `setSchoolMode` (نه فقط
+   دکمه): سوپرادمین همه؛ مدیر فقط مدرسهٔ خودش؛ edu_office فقط
+   مدرسه‌هایِ داخل scope ادارهٔ خودش.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const SM_MODES = {in_person:'حضوری', virtual:'غیرحضوری (مجازی)'};
+
+/** ردیفِ حالتِ یک مدرسه در یک روز (یا null) */
+function schoolModeRow(schoolId, dateISO){
+  for(var i=0;i<db.attendance_modes.length;i++){
+    var r = db.attendance_modes[i];
+    if(r.school_id===Number(schoolId) && r.date===dateISO) return r;
+  }
+  return null;
+}
+/** حالتِ یک مدرسه در یک روز — بدون ردیف = حضوری */
+function schoolModeOf(schoolId, dateISO){
+  var r = schoolModeRow(schoolId, dateISO);
+  return r ? (SM_MODES[r.mode] ? r.mode : 'in_person') : 'in_person';
+}
+function schoolVirtual(schoolId, dateISO){
+  return schoolModeOf(schoolId, dateISO) === 'virtual';
+}
+
+/** ثبت/تغییر حالت — فقط سوپرادمین/مدیرِ مدرسه/ادارهٔ scope */
+function setSchoolMode(schoolId, dateISO, mode, u){
+  schoolId = Number(schoolId);
+  dateISO = String(dateISO||'');
+  mode = String(mode||'');
+  if(!SM_MODES[mode]) return {ok:false, msg:'حالت نامعتبر است'};
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dateISO) || isNaN(Date.parse(dateISO)))
+    return {ok:false, msg:'تاریخ معتبر نیست'};
+  var s = byId('schools', schoolId);
+  if(!s) return {ok:false, msg:'مدرسه یافت نشد'};
+  u = u || S.user;
+  var role = (typeof activePersona==='function') ? activePersona() : u.role;
+  var okScope = false;
+  if(role === 'superadmin') okScope = true;
+  else if(role === 'manager') okScope = (u.school_id === schoolId);
+  else if(role === 'edu_office'){
+    var o = (typeof officeOf==='function') ? officeOf(u) : null;
+    var list = (o && typeof officeScopeSchools==='function') ? officeScopeSchools(o) : [];
+    okScope = list.some(function(x){ return x.id === schoolId; });
+  }
+  if(!okScope) return {ok:false, msg:'شما مجوز تغییر حالت این مدرسه را ندارید'};
+  var now = new Date().toISOString();
+  var row = schoolModeRow(schoolId, dateISO);
+  if(row){
+    update('attendance_modes', row.id, {mode:mode, set_by:u.id, set_at:now});
+    return {ok:true, rec: byId('attendance_modes', row.id)};
+  }
+  var rec = insert('attendance_modes',
+    {school_id:schoolId, date:dateISO, mode:mode, set_by:u.id, set_at:now});
+  return {ok:true, rec:rec};
+}
+
+/** بجِ حالتِ یک مدرسه در یک روز (برای فهرستِ اداره) */
+function schoolModeBadge(schoolId, dateISO){
+  var m = schoolModeOf(schoolId, dateISO);
+  return m === 'virtual'
+    ? '<span class="badge b-purple">🏠 غیرحضوری</span>'
+    : '<span class="badge b-gray">🏫 حضوری</span>';
+}
+
+/** نوارِ حالتِ غیرحضوری برای نمای‌هایِ فضا (فقط کارکنانِ همان مدرسه) */
+function virtualModeBanner(dateISO){
+  var d = dateISO || todayISO();
+  var u = S.user;
+  if(!u) return '';
+  if(u.role!=='manager' && u.role!=='teacher' && u.role!=='counselor' && u.role!=='driver') return '';
+  if(!u.school_id) return '';
+  if(!schoolVirtual(u.school_id, d)) return '';
+  return '<div class="bell-bar bell-bar-warn" style="margin-bottom:12px">'
+    + '🏠 این مدرسه در تاریخ ' + esc((typeof jalali==='function' ? jalali(d) : d))
+    + ' در حالت <b>غیرحضوری (مجازی)</b> است — همهٔ کلاس، فضا و تجهیزات '
+    + 'برای این روز به‌صورت خودکار مجازی‌اند؛ حضورِ کلاس‌ها از «کلاس مجازی» '
+    + 'ثبت می‌شود. (تغییر: مدیر مدرسه یا ادارهٔ آموزش و پرورش)</div>';
+}
+
+/** مودالِ انتخابِ حالت (اداره/مدیر) */
+function smodeModal(schoolId){
+  var s = byId('schools', schoolId);
+  if(!s) return;
+  window._smodeId = schoolId;
+  var t = todayISO();
+  var row = schoolModeRow(schoolId, t);
+  var cur = row ? row.mode : 'in_person';
+  openModal(modalTpl('حالت مدرسه — ' + s.name,
+    f('تاریخ *', inp('sm_date', t, '', 'date'))
+    + f('حالت', sel('sm_mode',
+        [['in_person', SM_MODES.in_person], ['virtual', SM_MODES.virtual]],
+        cur))
+    + '<div class="small muted" style="margin-top:8px">وقتی یک روز غیرحضوری باشد، همهٔ کلاس/فضا/تجهیزاتِ این مدرسه برای همان روز به‌صورت خودکار مجازی می‌شوند. بدون ردیف = حضوری.</div>',
+    'smode-save'));
+}
+
+/* ─────────────── دادهٔ نمونه ────────────── */
+/** دمو: دومین مدرسهٔ فعال «امروز» غیرحضوری است (برای نمایشِ بج و
+    نوار) — مدرسهٔ اول حضوری می‌ماند تا جریانِ عادیِ دمو دست‌نخورده بماند */
+function generateSchoolModeDemo(){
+  if(db.attendance_modes.length) return;
+  var list = db.schools.filter(function(s){ return s.active; });
+  if(list.length < 2) return;
+  add('attendance_modes', {
+    school_id: list[1].id, date: todayISO(), mode: 'virtual',
+    set_by: 0, set_at: new Date().toISOString()
+  });
 }
 
 </script>
