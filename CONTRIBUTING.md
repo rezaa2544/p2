@@ -132,8 +132,9 @@ src/
      ├─ _order.json      ⚠️ ترتیب بارگذاری — منبع حقیقت
      └─ ۳۵ ماژول
 build.js                 چسبانندهٔ همه‌چیز به index.html
-tests/run.js             ۳۱ آزمون ایستا (بدون مرورگر)
-tests/smoke.js           ۱۵۳ آزمون رفتاری (با jsdom)
+tests/run.js             ۳۳ آزمون ایستا (بدون مرورگر)
+tests/smoke.js           ۴۹۷ آزمون رفتاری (با jsdom)
+tests/simulation.js      ۳۵ سناریوی جامع: چند مدرسه/نقش/حالت زنگ + چالش‌ها (jsdom)
 docs/AI_PROMPT.md        سند مرجع کامل پروژه
 ```
 
@@ -246,6 +247,7 @@ batchWrites(() => rows.forEach(r => insert('users', r)));
 npm test                  # هر دو مجموعه
 node tests/run.js         # فقط ایستا — سریع
 node tests/smoke.js       # فقط رفتاری — خروجی کامل را ببینید
+node tests/simulation.js  # شبیه‌سازی جامع (jsdom) — بعد از تغییرات بزرگ
 ```
 
 الگوی نوشتن آزمون:
