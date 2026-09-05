@@ -694,6 +694,47 @@ const P8_ACTIONS = {
   'slot-del'(el,id){ const s=byId('schedule',id);
     askDelete(`درس «${esc((byId('subjects',s.subject_id)||{}).name||'')}» در ${DAYS[s.day]} زنگ ${fa(s.period)} حذف شود؟`,
       ()=>{remove('schedule',id);toast('زنگ حذف شد','');render();}); },
+  /* --- جابه‌جای موقت (بند ۱.۵) --- */
+  'sub-save'(){
+    const s=window._edit;
+    if(!s||!s.id){toast('ابتدا زنگ را انتخاب کنید','err');return;}
+    const date=V('sub_date'), tid=Number(V('sub_teacher'))||0;
+    if(!date){toast('تاریخ جابه‌جای را انتخاب کنید','err');return;}
+    if(!tid){toast('دبیر جایگزین را انتخاب کنید','err');return;}
+    if(tid===s.teacher_id){toast('دبیر جایگزین نمی‌تواند همان دبیرِ زنگ باشد','err');return;}
+    /* تاریخ باید روی همان روز هفتهٔ زنگ باشد (شنبه=۰ تا پنجشنبه=۵) */
+    const dow=(new Date(date+'T12:00:00').getDay()+1)%7;
+    if(dow>5){toast('این تاریخ جزو هفتهٔ آموزشی (شنبه تا پنجشنبه) نیست','err');return;}
+    if(dow!==s.day){toast('تاریخ باید روز «'+DAYS[s.day]+'» باشد — همان روز این زنگ','err');return;}
+    /* دبیر جایگزین در آن ساعت آزاد باشد (همین زنگ مستثنا) */
+    const busy=teacherBusyAt(tid,s.day,s.period,s.id);
+    if(busy){
+      const sc=byId('schools',busy.school_id)||{}, c=byId('classes',busy.class_id)||{};
+      toast('تداخل ساعت: این دبیر در '+DAYS[s.day]+' زنگ '+fa(s.period)+' در «'+(sc.name||'')+'» کلاس «'+(c.name||'')+'» را دارد','err');
+      return;
+    }
+    /* یک جابه‌جای به ازای هر زنگ و هر تاریخ */
+    const ex=db.substitutions.find(x=>x.schedule_id===s.id&&x.date===date);
+    const data={school_id:s.school_id,schedule_id:s.id,sub_teacher_id:tid,date,created_at:todayISO()};
+    if(ex)update('substitutions',ex.id,data); else insert('substitutions',data);
+    closeModal();toast('جابه‌جای ثبت شد','ok');render();
+  },
+  'sub-del'(){
+    const s=window._edit;
+    if(!s||!s.id)return;
+    const date=V('sub_date');
+    const r=db.substitutions.find(x=>x.schedule_id===s.id&&x.date===date);
+    if(!r){toast('جابه‌جای مشخص‌شده‌ای برای حذف نیست','err');return;}
+    remove('substitutions',r.id);
+    closeModal();toast('جابه‌جای حذف شد','ok');render();
+  },
+  'sub-del-route'(el,id){
+    const r=byId('substitutions',id);
+    if(!r)return;
+    const slot=byId('schedule',r.schedule_id)||{};
+    askDelete(`جابه‌جای ${DAYS[slot.day]||''} زنگ ${fa(slot.period||0)} (تاریخ ${jalali(r.date)}) حذف شود؟`,
+      ()=>{remove('substitutions',id);toast('جابه‌جای حذف شد','ok');render();});
+  },
 };
 
 /** گزینه‌های نوبت برای فرم فصل امتحانات — مدرسه‌ای که امتحان
@@ -735,13 +776,32 @@ function slotModal(s){
     const sc=busy?(byId('schools',busy.school_id)||{}).name:'';
     return {id:t.id,name:`${busy?'🔴':'🟢'} ${t.full_name}${busy?` — مشغول در ${sc}`:''}`,busy:!!busy};
   });
+  /* جابه‌جای موقت (بند ۱.۵): اگر دبیرِ این زنگ در روز مشخصی غایب
+     است، جایگزینش همان‌جا تعیین می‌شود. فقط برای زنگِ موجود. */
+  let subBlock='';
+  if(s.id){
+    const exSub=db.substitutions.find(x=>x.schedule_id===s.id);
+    subBlock=`<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border)">
+      <b class="small">🔁 جابه‌جای موقت</b>
+      <div class="small muted" style="margin:4px 0 8px">اگر دبیر در روز خاصی غایب است، یک دبیر جایگزین برای همان تاریخ تعیین کنید.</div>
+      ${exSub?`<div class="small" style="margin-bottom:8px">جابه‌جای فعلی: <b>${esc((byId('users',exSub.sub_teacher_id)||{}).full_name||'—')}</b> در ${esc(jalali(exSub.date))}</div>`:''}
+      <div class="grid g2">
+        ${f('تاریخ جابه‌جای',jdate('sub_date',exSub?exSub.date:''))}
+        ${f('دبیر جایگزین',sel('sub_teacher',[['','— انتخاب دبیر —'],...teachers.map(t=>[t.id,t.name])],exSub?exSub.sub_teacher_id:''))}
+      </div>
+      <div class="row" style="gap:8px;margin-top:10px">
+        <button class="btn sm" data-act="sub-save">ثبت جابه‌جای</button>
+        ${exSub?`<button class="btn ghost sm" data-act="sub-del">حذف جابه‌جای</button>`:''}
+      </div></div>`;
+  }
   openModal(modalTpl(s.id?'ویرایش زنگ':`افزودن درس — ${DAYS[s.day]} زنگ ${fa(s.period)}`,
     `<div class="grid g2">
       ${f('روز',sel('sl_day',DAYS.map((d,i)=>[i,d]),s.day))}
       ${f('زنگ',sel('sl_period',[1,2,3,4,5,6].map(p=>[p,'زنگ '+fa(p)]),s.period))}
       ${f('درس',sel('sl_subject',subs.map(x=>[x.id,x.name]),s.subject_id))}
       ${f('دبیر',sel('sl_teacher',[['','— بدون دبیر —'],...teachers.map(t=>[t.id,t.name])],s.teacher_id||''))}</div>
-     <div class="small muted" style="margin-top:10px;line-height:2">🟢 آزاد · 🔴 مشغول در همان ساعت (در این مدرسه یا مدرسه دیگر) — ثبت دبیر مشغول ممکن نیست.</div>`,'slot-save'));
+     <div class="small muted" style="margin-top:10px;line-height:2">🟢 آزاد · 🔴 مشغول در همان ساعت (در این مدرسه یا مدرسه دیگر) — ثبت دبیر مشغول ممکن نیست.</div>
+     ${subBlock}`,'slot-save'));
   window._edit=s;
 }
 

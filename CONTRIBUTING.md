@@ -57,6 +57,7 @@ node scripts/dev-server.js   # سرور توسعه روی درگاه ۳۰۰۰
 | انضباطی | `viewDiscipline` | `14-discipline.js` |
 | برنامه هفتگی | `viewSchedule` | `15-schedule.js` |
 | پایه/دبیر پایه در برنامه کلاسی (بند ۱.۲) | `15-schedule.js` — `viewSchedule`؛ دبیر پایه همان `homeroom_teacher_id` خودِ کلاس است (در ویرایش کلاس تنظیم می‌شود)؛ نمای «سرپرستی» دبیر با `S.filters.homepick` انتخاب می‌شود |
+| جابه‌جای موقت برای دبیر غایب (بند ۱.۵) | جدول `db.substitutions` (زنگ، تاریخ، دبیر جایگزین)؛ ثبت/حذف در مودال زنگ (`slotModal` در `24-edu-office.js` + اکشن‌های `sub-save`/`sub-del`/`sub-del-route`)؛ نمایش در `15-schedule.js`؛ فقط مدیر/سوپرادمین (جدول مجوزها در `30-authz.js`) |
 | اطلاعیه‌ها | `viewAnnouncements` | `16-announcements.js` |
 | کارنامه · فرزندان | `viewRecord` · `viewChildren` | `17-student-record.js` |
 | اعلان · مرخصی · تقویم · گفتگو · شهریه | ۵ تابع | `20-communication-finance.js` |

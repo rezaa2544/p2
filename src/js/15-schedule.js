@@ -19,6 +19,10 @@ function viewSchedule(){
   const inHome=!!(homePick&&homeCls.some(c=>c.id===homePick));
   const cid=byTeacher?(inHome?homePick:null):Number(S.filters.class||(u.role==='student'?(classOf(u.id)||{}).id:(cls[0]||{}).id));
   const rows=inHome?db.schedule.filter(s=>s.class_id===cid):(byTeacher?db.schedule.filter(s=>s.teacher_id===u.id):db.schedule.filter(s=>s.class_id===cid));
+  /* جابه‌جای‌های امروز (بند ۱.۵): یک نقشهٔ زنگ ⇐ جابه‌جای برای
+     نمایش در خانه‌ها — بدون پیمایش تکراری در هر خانه. */
+  const subsToday=Object.create(null);
+  if(typeof db!=='undefined'&&db.substitutions)db.substitutions.forEach(x=>{if(x.date===todayISO())subsToday[x.schedule_id]=x;});
   const cell=(d,p)=>rows.find(r=>r.day===d&&r.period===p);
   const canEditSched=['manager','superadmin'].includes(u.role)&&!!cid;
   const cObj=(byTeacher&&!inHome)?null:byId('classes',cid);
@@ -35,7 +39,13 @@ function viewSchedule(){
     ${[1,2,3,4,5,6].map(p=>`<div class="tt-head" style="display:grid;place-items:center"><span class="badge b-blue">زنگ ${fa(p)}</span></div>
      ${DAYS.map((_,d)=>{const c=cell(d,p);
        if(c)return `<div class="tt-cell" ${canEditSched?`style="cursor:pointer;position:relative" data-act="slot-edit" data-day="${escAttr(d)}" data-period="${escAttr(p)}" data-sid="${escAttr(c.id)}" data-class="${escAttr(cid)}"`:''}>
-         <b>${esc((byId('subjects',c.subject_id)||{}).name||'—')}</b><span>${esc(showTeacher?(c.teacher_id?byId('users',c.teacher_id).full_name:'بدون دبیر'):byId('classes',c.class_id).name)}</span></div>`;
+         <b>${esc((byId('subjects',c.subject_id)||{}).name||'—')}</b><span>${esc(showTeacher?(c.teacher_id?byId('users',c.teacher_id).full_name:'بدون دبیر'):byId('classes',c.class_id).name)}</span>${subsToday[c.id]?`<span class="badge b-amber" style="display:block;margin-top:3px">🔁 جابه‌جای: ${esc((byId('users',subsToday[c.id].sub_teacher_id)||{}).full_name||'—')}</span>`:''}</div>`;
        return `<div class="tt-cell tt-empty" ${canEditSched?`style="cursor:pointer" data-act="slot-edit" data-day="${escAttr(d)}" data-period="${escAttr(p)}" data-class="${escAttr(cid)}"`:''}><span class="muted small">${canEditSched?'+ افزودن':'—'}</span></div>`;}).join('')}`).join('')}
-   </div>${canEditSched?`<div class="small muted" style="margin-top:12px;line-height:2">💡 روی هر خانه بزنید تا درس و دبیر آن را تعیین کنید. اگر دبیر در همان ساعت در <b>مدرسه دیگری</b> کلاس داشته باشد، ثبت نمی‌شود.</div>`:''}</div>`:empty('🗓️','برنامه‌ای ثبت نشده','برنامه هفتگی هنوز تنظیم نشده است.')}</div>`;
+   </div>${canEditSched?`<div class="small muted" style="margin-top:12px;line-height:2">💡 روی هر خانه بزنید تا درس و دبیر آن را تعیین کنید. اگر دبیر در همان ساعت در <b>مدرسه دیگری</b> کلاس داشته باشد، ثبت نمی‌شود.</div>`:''}
+   ${canEditSched?(()=>{const clsSubs=db.substitutions.filter(x=>rows.some(r=>r.id===x.schedule_id)).sort((a,b)=>a.date<b.date?-1:1);
+     return clsSubs.length?`<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border)">
+       <b class="small">🔁 جابه‌جای‌های موقت این کلاس</b>
+       <div style="line-height:2.3;margin-top:4px">${clsSubs.map(x=>{const r=rows.find(rr=>rr.id===x.schedule_id)||{};
+         return `<span style="margin-inline-end:18px" data-l="جابه‌جای">${esc(jalali(x.date))} — ${esc(DAYS[r.day]||'')} زنگ ${fa(r.period||0)}، ${esc((byId('subjects',r.subject_id)||{}).name||'—')} — <b>${esc((byId('users',x.sub_teacher_id)||{}).full_name||'—')}</b> <a data-act="sub-del-route" data-id="${escAttr(x.id)}" style="color:var(--red);cursor:pointer;font-weight:600">حذف</a></span>`;}).join('')}</div>
+     </div>`:'';})():''}</div>`:empty('🗓️','برنامه‌ای ثبت نشده','برنامه هفتگی هنوز تنظیم نشده است.')}</div>`;
 }
