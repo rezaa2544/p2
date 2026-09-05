@@ -889,6 +889,7 @@ setTimeout(()=>{
   if(typeof generateP12=== 'function') generateP12();
   if(typeof generateBusDemo==='function') generateBusDemo();
   if(typeof generateVclassDemo==='function') generateVclassDemo();
+  if(typeof generateHomeworkDemo==='function') generateHomeworkDemo();
   loadLog(); applyLog(); initSync();
   /* ⚠️ فقط دمو (DEMO-ONLY): ورود خودکار با نام کاربریِ ذخیره‌شده — بدون
      هیچ رمز یا تأیید هویت — صرفاً برای حالت آفلاین/نمایش است و بخشی از
