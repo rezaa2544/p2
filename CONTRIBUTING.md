@@ -136,6 +136,7 @@ tests/run.js             ۳۳ آزمون ایستا (بدون مرورگر)
 tests/smoke.js           ۴۹۷ آزمون رفتاری (با jsdom)
 tests/simulation.js      ۳۵ سناریوی جامع: چند مدرسه/نقش/حالت زنگ + چالش‌ها (jsdom)
 tests/security.js      پنتست — ۱۴ سناریو: سطح بیرونی، fuzz XSS ذخیره‌شده، نشت داده
+tests/diag2.js         موتور خودتعمیر دیاگ — ۱۰ سناریو: تشخیص → تعمیر → راستی‌آزمایی → بازگردانی
 docs/AI_PROMPT.md        سند مرجع کامل پروژه
 ```
 
@@ -250,6 +251,7 @@ node tests/run.js         # فقط ایستا — سریع
 node tests/smoke.js       # فقط رفتاری — خروجی کامل را ببینید
 node tests/simulation.js  # شبیه‌سازی جامع (jsdom) — بعد از تغییرات بزرگ
 node tests/security.js    # پنتست (jsdom) — بعد از تغییر در ورود/ورود مجدد/خروجی‌ها
+node tests/diag2.js       # موتور خودتعمیر دیاگ (jsdom) — بعد از تغییر در دیاگ/منو/لایهٔ داده
 ```
 
 الگوی نوشتن آزمون:

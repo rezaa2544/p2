@@ -66,6 +66,15 @@ var Store = {
     catch(e){ return false; }
   },
 
+  /** فهرست کلیدهای موجود (فقط نام‌ها) — برای سنجش حجم و پاک‌سازی */
+  keys: function(){
+    try{
+      var out = [];
+      for(var i = 0; i < localStorage.length; i++) out.push(localStorage.key(i));
+      return out;
+    }catch(e){ return []; }
+  },
+
   /** خواندن مقدار JSON. اگر خراب بود `fallback` برمی‌گردد، نه استثنا. */
   getJSON: function(key, fallback){
     try{
@@ -218,3 +227,28 @@ var Data = {
     return batchWrites(fn);
   }
 };
+
+/**
+ * HTTP GET با پاسخ JSON — تنها نقطهٔ لمسِ شبکه در کل برنامه.
+ * (قاعدهٔ سئوت دودی: هیچ فایلی جز همین لایه fetch نمی‌زند.)
+ * خروجی: { ok, code, serverTime, data } — serverTime از سرآیندهٔ Date
+ * برای سنجش اختلاف ساعت استفاده می‌شود.
+ */
+function httpGetJson(url, timeoutMs){
+  return new Promise(function(resolve, reject){
+    if(typeof fetch !== 'function'){ reject(new Error('fetch در دسترس نیست')); return; }
+    var ctl = null, to = null;
+    try{ ctl = new AbortController(); }catch(e){}
+    if(ctl) to = setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, timeoutMs || 6000);
+    fetch(url, { method:'GET', signal: ctl ? ctl.signal : undefined })
+      .then(function(res){
+        if(to) clearTimeout(to);
+        var serverTime = null;
+        try{ serverTime = res.headers ? res.headers.get('Date') : null; }catch(e){}
+        return res.json()
+          .then(function(j){ return { ok:res.ok, code:res.status, serverTime:serverTime, data:j }; })
+          .catch(function(){ return { ok:res.ok, code:res.status, serverTime:serverTime, data:null }; });
+      })
+      .then(resolve, function(err){ if(to) clearTimeout(to); reject(err); });
+  });
+}

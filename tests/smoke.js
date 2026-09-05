@@ -19,9 +19,23 @@ const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 let pass = 0, fail = 0;
 const errors = [];
 
+/* test() با fn همگام یا ناهمگام (Promise) کار می‌کند؛ ترتیب ثبت حفظ
+   می‌شود و در پایان main همهٔ Promiseها منتظر می‌مانند. */
+const testQueue = [];
 function test(name, fn) {
-  try { fn(); pass++; console.log(`  ✅ ${name}`); }
-  catch (e) { fail++; errors.push(`${name}: ${e.message}`); console.log(`  ❌ ${name}\n     ${e.message}`); }
+  testQueue.push(new Promise((resolve) => {
+    let p;
+    try { p = fn(); }
+    catch (e) {
+      fail++; errors.push(`${name}: ${e.message}`);
+      console.log(`  ❌ ${name}\n     ${e.message}`);
+      resolve(); return;
+    }
+    Promise.resolve(p).then(
+      () => { pass++; console.log(`  ✅ ${name}`); },
+      (e) => { fail++; errors.push(`${name}: ${e.message}`); console.log(`  ❌ ${name}\n     ${e.message}`); }
+    ).then(resolve);
+  }));
 }
 const assert = (c, m) => { if (!c) throw new Error(m || 'شرط برقرار نیست'); };
 
@@ -1950,16 +1964,16 @@ test('دیاگ اجرا می‌شود و خلاصهٔ معتبر می‌دهد',
   assert(h1 >= h0, 'تعمیر خودکار نباید نمره را پایین بیاورد: ' + h0 + ' → ' + h1);
 });
 
-test('دیاگ ثبت‌نام بی‌صاحب را پیدا و تعمیر می‌کند', () => {
+test('دیاگ ثبت‌نام بی‌صاحب را پیدا و تعمیر می‌کند', async () => {
   /* ابتدا هرچه بی‌صاحب هست پاک شود تا سنجش از پایهٔ تمیز باشد */
-  W("diagFix('orphan-enrollments')");
+  await W("diagFix('orphan-enrollments')");
   const clean = W('db.enrollments.length');
   W("insert('enrollments',{school_id:1,class_id:987654,student_id:987653})");
   W("insert('enrollments',{school_id:1,class_id:987655,student_id:987652})");
   const r = W("DIAG_CHECKS.filter(function(c){return c.id==='orphan-enrollments';})[0].check()");
   assert(r.ok === false, 'ثبت‌نام بی‌صاحب تشخیص داده نشد');
   assert(r.count === 2, 'باید دو مورد باشد: ' + r.count);
-  const fx = W("diagFix('orphan-enrollments')");
+  const fx = await W("diagFix('orphan-enrollments')");
   assert(fx.ok === true, 'تعمیر ناموفق: ' + fx.msg);
   assert(W('db.enrollments.length') === clean, 'پس از تعمیر باید به حالت تمیز برگردد');
 });
@@ -1987,10 +2001,10 @@ test('نام کاربری تکراری خودکار اصلاح می‌شود', (
   W("remove('users'," + dup.id + ')');
 });
 
-test('عیب نیازمند قضاوت انسانی خودکار تعمیر نمی‌شود', () => {
+test('عیب نیازمند قضاوت انسانی خودکار تعمیر نمی‌شود', async () => {
   const unsafe = W("DIAG_CHECKS.filter(function(c){return c.id==='duplicate-nid';})[0]");
   assert(!unsafe.safe || !unsafe.fix, 'کد ملی تکراری نباید خودکار تعمیر شود');
-  const r = W("diagFix('duplicate-nid')");
+  const r = await W("diagFix('duplicate-nid')");
   assert(r.ok === false, 'باید رد شود');
 });
 
@@ -2010,6 +2024,38 @@ test('صفحهٔ دیاگ فقط برای سوپرادمین باز است', () 
   W("S.user=db.users.find(function(u){return u.role==='superadmin';});S.diag=runDiagnostics()");
   const ok = W('viewDiagnostics()');
   assert(ok.indexOf('diag-gauge') >= 0, 'سوپرادمین باید گیج سلامت ببیند');
+});
+
+test('موتور خودتعمیر: کنش‌ها از طریق کلیک واقعی کار می‌کنند', async () => {
+  const clickAct = (act) => W(
+    `(function(){var el=document.createElement('button');el.setAttribute('data-act','${act}');` +
+    `document.body.appendChild(el);el.dispatchEvent(new MouseEvent('click',{bubbles:true}));el.remove();})()`);
+  const toastText = () => W(`(document.getElementById('toasts')||{textContent:''}).textContent`);
+
+  /* کنش «بازگردانی گزینه‌های پنهان» — کلیک واقعی، اثر واقعی */
+  W("navDisableAdd('bells')");
+  clickAct('diag-nav-restore');
+  await sleep(50);
+  const routes = W("(function(){var r=[];navFor({role:'superadmin'}).forEach(function(g){g[1].forEach(function(i){r.push(i[0]);});});return r;})()");
+  assert(routes.indexOf('bells') > -1, 'کنش بازگردانی از کلیک کار نکرد');
+
+  /* کنش «سنجش سرور» در حالت تک‌فایل باید صادقانه رد شود */
+  clickAct('diag-probe');
+  await sleep(100);
+  assert(toastText().indexOf('تک‌فایل') > -1, 'سنجش سرور در حالت تک‌فایل پیام صادقانه نداد: ' + toastText());
+
+  const page = W('viewDiagnostics()');
+  assert(page.indexOf('کتابچهٔ عملیات') >= 0, 'کتابچهٔ عملیات در صفحهٔ دیاگ نیست');
+  assert(page.indexOf('ارتباط، هاست و زیرساخت') >= 0, 'خانوادهٔ زیرساخت در دیاگ نیست');
+});
+
+test('پنهان‌سازی خودکار گزینهٔ منو و بازگردانی', () => {
+  W("navDisableAdd('bells')");
+  const routes = W("(function(){var r=[];navFor({role:'superadmin'}).forEach(function(g){g[1].forEach(function(i){r.push(i[0]);});});return r;})()");
+  assert(routes.indexOf('bells') === -1, 'گزینهٔ پنهان‌شده هنوز در منو است');
+  W('navRestoreAll()');
+  const routes2 = W("(function(){var r=[];navFor({role:'superadmin'}).forEach(function(g){g[1].forEach(function(i){r.push(i[0]);});});return r;})()");
+  assert(routes2.indexOf('bells') > -1, 'بازگردانی کار نکرد');
 });
 
 // ── زمان‌بندی زنگ‌ها و شیفت
@@ -2236,7 +2282,8 @@ test('خلاصهٔ دیاگ تفکیک دسته می‌دهد', () => {
   W("S.user=db.users.find(function(u){return u.role==='superadmin';})");
   const sm = W('runDiagnostics().summary');
   assert(sm.byCat && sm.byCat.engine && sm.byCat.data, 'byCat وجود ندارد');
-  assert(sm.byCat.engine.total + sm.byCat.data.total === sm.total, 'جمع دسته‌ها با کل نمی‌خواند');
+  const sumCats = Object.keys(sm.byCat).reduce((a, c) => a + sm.byCat[c].total, 0);
+  assert(sumCats === sm.total, 'جمع دسته‌ها با کل نمی‌خواند: ' + sumCats + ' ≠ ' + sm.total);
 });
 
 test('اجرای گزینشی فقط یک خانواده را می‌دواند', () => {
@@ -6734,6 +6781,7 @@ test('گام ۴: نشان + کلاس و درس خودکار + خروج با grad
 
 
 // ── نتیجه
+await Promise.all(testQueue);   // همهٔ آزمون‌های ناهمگام تا سرِ صف برسد
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));
 console.log(`تست دودی: ${pass}/${total} موفق` + (fail ? `  —  ${fail} ناموفق` : '  —  بدون خطا ✅'));
