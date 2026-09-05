@@ -74,8 +74,10 @@ const sec = async (name, fn) => {
 
   await sec('S3 کلیکِ واقعی روی «خروجی» صفحهٔ کاربران: بدونِ ردِ مجوز', async () => {
     W(`(function(){
-      document.getElementById('lu').value='superadmin';
-      document.getElementById('lp').value='123456';
+      (function(){var u=db.users.find(x=>x.username==='superadmin');
+        document.getElementById('lpn').value=u.phone;
+        document.getElementById('lnid').value=u.national_id;
+        document.getElementById('lcode').value=SmsPanel.sendCode(u.phone);})();
       document.querySelector('[data-act="login"]').click();
     })()`);
     await sleep(400);

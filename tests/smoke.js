@@ -85,6 +85,111 @@ test('پایگاه داده‌ی نمونه ساخته شد', () => {
   assert(W('db.schools.length') > 0, 'db یا مدارس خالی است');
 });
 
+console.log('\n▸ ورود: جریان بدونِ رمز (شماره + کد + کد ملی)');
+/* کلیکِ واقعی روی دکمه‌ای که data-act دارد (همین‌طور که در بقیهٔ سئوت استفاده می‌شود) */
+const clkLogin=(act,attrs={})=>W(`(function(){var el=document.createElement('button');el.setAttribute('data-act','${act}');`+Object.entries(attrs).map(([k,v])=>`el.setAttribute('data-${k}','${v}');`).join('')+`document.body.appendChild(el);el.dispatchEvent(new MouseEvent('click',{bubbles:true}));el.remove();})()`);
+
+test('فرمِ ورود فیلدِ رمز ندارد؛ سه فیلدِ شماره/کد/کد ملی هست', () => {
+  W("S.user=null;S.persona=null;S.boss=null;S.route='login';render()");
+  assert(W("!document.getElementById('lp')") === true, 'فیلدِ رمز (#lp) هنوز در فرم است');
+  assert(W("!!document.getElementById('lpn')&&!!document.getElementById('lcode')&&!!document.getElementById('lnid')"),
+    'سه فیلدِ شماره/کد/کد ملی نیست');
+});
+
+test('ورود کاملِ موفق (کلیکِ واقعی): شماره → کد → کد ملی → استعلام و ورود', () => {
+  W("S.user=null;S.persona=null;S.boss=null;S.route='login';render()");
+  const r=W("(function(){var u=db.users.find(x=>x.username==='manager1');return [u.id,u.phone,u.national_id];})()");
+  W(`document.getElementById('lpn').value=${JSON.stringify(r[1])}`);
+  clkLogin('login-code');
+  W(`document.getElementById('lcode').value=SmsPanel.demoCode()`);
+  W(`document.getElementById('lnid').value=${JSON.stringify(r[2])}`);
+  clkLogin('login');
+  assert(W('S.user && S.user.id')===Number(r[0]), 'ورود انجام نشد');
+  W('S.user=null;S.route="login";render()');
+});
+
+test('شمارهٔ ناشناس رد می‌شود', () => {
+  W("S.user=null;S.persona=null;S.boss=null;S.route='login';render()");
+  W(`document.getElementById('lpn').value='09199999999'`);
+  clkLogin('login-code');
+  const err1=W(`document.getElementById('lerr').textContent`);
+  assert(err1.indexOf('یافت نشد')>-1, 'خطای شمارهٔ ناشناس نمایش داده نشد: '+err1);
+});
+
+test('کدِ اشتباه رد می‌شود', () => {
+  W("S.user=null;S.persona=null;S.boss=null;S.route='login';render()");
+  const r=W("(function(){var u=db.users.find(x=>x.username==='manager1');return [u.phone,u.national_id];})()");
+  W(`document.getElementById('lpn').value=${JSON.stringify(r[0])}`);
+  clkLogin('login-code');
+  W(`document.getElementById('lcode').value='0000'`);
+  W(`document.getElementById('lnid').value=${JSON.stringify(r[1])}`);
+  clkLogin('login');
+  assert(W('S.user')===null, 'با کدِ اشتباه وارد شد!');
+  assert(W(`document.getElementById('lerr').textContent`).indexOf('کد')>-1, 'خطای کد نمایش داده نشد');
+});
+
+test('کد ملیِ ثبت‌نشده → احراز ناقص', () => {
+  W("S.user=null;S.persona=null;S.boss=null;S.route='login';render()");
+  const r=W("(function(){var u=db.users.find(x=>x.username==='manager1');return [u.phone,u.national_id];})()");
+  W(`document.getElementById('lpn').value=${JSON.stringify(r[0])}`);
+  clkLogin('login-code');
+  W(`document.getElementById('lcode').value=SmsPanel.demoCode()`);
+  W(`document.getElementById('lnid').value='1234567890'`);
+  clkLogin('login');
+  assert(W('S.user')===null, 'با کد ملیِ ثبت‌نشده وارد شد!');
+  assert(W(`document.getElementById('lerr').textContent`).indexOf('ثبت نیست')>-1, 'پیام احرازِ ناقص نیست');
+});
+
+test('کد ملیِ مغایر با شماره → احراز ناقص (مطابقتِ مالکیت)', () => {
+  W("S.user=null;S.persona=null;S.boss=null;S.route='login';render()");
+  const r=W("(function(){var u=db.users.find(x=>x.username==='manager1');var t=db.users.find(x=>x.username==='teacher1_1');return [u.phone,t.national_id];})()");
+  W(`document.getElementById('lpn').value=${JSON.stringify(r[0])}`);
+  clkLogin('login-code');
+  W(`document.getElementById('lcode').value=SmsPanel.demoCode()`);
+  W(`document.getElementById('lnid').value=${JSON.stringify(r[1])}`);
+  clkLogin('login');
+  assert(W('S.user')===null, 'با کد ملیِ شخصِ دیگر وارد شد!');
+  assert(W(`document.getElementById('lerr').textContent`).indexOf('مطابقت ندارد')>-1, 'پیام مغایرت نیست');
+});
+
+test('دو سامانه جدا‌اند: پنلِ پیامکی و سامانهٔ تطبیقِ کد ملی', () => {
+  assert(W("SmsPanel!==IdmSystem && Array.isArray(SmsPanel.log) && Array.isArray(IdmSystem.log) && SmsPanel.log!==IdmSystem.log"),
+    'دو سامانه جدا تعریف نشده‌اند');
+  const n0=W('IdmSystem.log.length');
+  W("IdmSystem.match('9999999999')");
+  assert(W('IdmSystem.log.length')===n0+1, 'استعلام در لاگِ سامانهٔ تطبیق ثبت نشد');
+  /* حالتِ پنلِ پیامکی بر سامانهٔ تطبیق اثر ندارد (جدا بودنِ واقعی) */
+  W("SmsPanel._sent=null");
+  const ok=W(`IdmSystem.match(db.users.find(u=>u.username==='manager1').national_id)`);
+  assert(ok===true, 'سامانهٔ تطبیق به حالتِ پنلِ پیامکی وابسته است');
+});
+
+test('ورود از راهِ سامانهٔ تطبیق می‌رود (لاگِ استعلام رشد می‌کند)', () => {
+  W("S.user=null;S.persona=null;S.boss=null;S.route='login';render()");
+  const r=W("(function(){var u=db.users.find(x=>x.username==='manager1');return [u.phone,u.national_id];})()");
+  const n0=W('IdmSystem.log.length');
+  W(`document.getElementById('lpn').value=${JSON.stringify(r[0])}`);
+  clkLogin('login-code');
+  W(`document.getElementById('lcode').value=SmsPanel.demoCode()`);
+  W(`document.getElementById('lnid').value=${JSON.stringify(r[1])}`);
+  clkLogin('login');
+  assert(W('S.user')!==null, 'ورود موفق انجام نشد');
+  assert(W('IdmSystem.log.length')>=n0+1, 'استعلامِ ورود از سامانهٔ تطبیق رد نشد (لاگ رشد نکرد)');
+  W('S.user=null;S.route="login";render()');
+});
+
+test('حساب‌های نمونه (چیپ): فرم را پر و ورود را کامل می‌کند', () => {
+  W("S.user=null;S.persona=null;S.boss=null;S.route='login';render()");
+  clkLogin('pick',{u:'teacher1_1'});
+  assert(W(`document.getElementById('lpn').value`)===W(`db.users.find(u=>u.username==='teacher1_1').phone`),
+    'شماره در فرم پر نشد');
+  assert(W(`document.getElementById('lnid').value`)===W(`db.users.find(u=>u.username==='teacher1_1').national_id`),
+    'کد ملی در فرم پر نشد');
+  clkLogin('login');
+  assert(W('S.user && S.user.username')==='teacher1_1', 'ورود با چیپ انجام نشد');
+  W('S.user=null;S.route="login";render()');
+});
+
 console.log('\n▸ برنامه‌ی درسی و کتاب‌ها');
 
 test('نوع منطقه فقط «منطقه» و «روستا» است', () => {
@@ -1010,9 +1115,9 @@ console.log('\n▸ پنل سوپرادمین: مالی، رمز، سلامت');
 
 test('توابع پنل سوپرادمین تعریف شده‌اند', () => {
   assert(W("typeof viewFinance==='function'&&typeof financeSummary==='function'"
-    + "&&typeof viewHealth==='function'&&typeof healthReport==='function'"
-    + "&&typeof resetPassword==='function'&&typeof canResetPassword==='function'"
-    + "&&typeof tempPassword==='function'"), 'توابع ناقص است');
+    + "&&typeof viewHealth==='function'&&typeof healthReport==='function'"), 'توابع ناقص است');
+  /* از ۲۰۲-۰۹-۰۵: محصول رمز کاربری ندارد — resetPassword/canResetPassword/
+     tempPassword عمداً حذف شدند (اصل: ورود فقط شماره + کد ملی). */
 });
 
 test('صفحه مالی و سلامت برای سوپرادمین رندر می‌شوند', () => {
@@ -1081,46 +1186,6 @@ test('اعداد مالی با پایگاه داده می‌خوانند', () =>
     + 'if(a[i-1].paid<a[i].paid)return false;return true;})()'), 'رتبه‌بندی نزولی نیست');
 });
 
-test('بازنشانی رمز: مرز نقش‌ها رعایت می‌شود', () => {
-  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null");
-  assert(W("canResetPassword(db.users.find(function(u){return u.role==='student';}))") === true,
-    'سوپرادمین نتوانست رمز دانش‌آموز را بازنشانی کند');
-  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
-  const sid = W('S.user.school_id');
-  assert(W("canResetPassword(db.users.find(function(u){return u.role==='student'&&u.school_id===" + sid + ";}))") === true,
-    'مدیر نتوانست رمز دانش‌آموز مدرسه خودش را عوض کند');
-  assert(W("canResetPassword(db.users.find(function(u){return u.role==='student'&&u.school_id!==" + sid + ";}))") === false,
-    'مدیر به دانش‌آموز مدرسه دیگر دسترسی داشت');
-  assert(W("canResetPassword(db.users.find(function(u){return u.role==='superadmin';}))") === false,
-    'مدیر توانست رمز سوپرادمین را عوض کند');
-  W("S.user=db.users.find(u=>u.role==='student');S.persona=null;S.boss=null");
-  assert(W("canResetPassword(db.users.find(function(u){return u.role==='teacher';}))") === false,
-    'دانش‌آموز اجازه بازنشانی داشت');
-});
-
-test('بازنشانی رمز واقعاً رمز را عوض و اعلان می‌فرستد', () => {
-  W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null");
-  const tid = W("db.users.find(function(u){return u.role==='teacher';}).id");
-  const old = W("byId('users'," + tid + ").password");
-  const n0 = W('db.notifications.length');
-  const pass = W('resetPassword(' + tid + ')');
-  assert(pass && pass !== old, 'رمز عوض نشد');
-  assert(/^[a-z]{4}[2-9]{4}$/.test(pass), 'قالب رمز نادرست: ' + pass);
-  assert(W("byId('users'," + tid + ").must_change_password") === 1, 'پرچم تغییر رمز ست نشد');
-  assert(W('db.notifications.length') > n0, 'اعلان فرستاده نشد');
-  assert(W('db.notifications[db.notifications.length-1].user_id') === tid, 'اعلان به کاربر اشتباه رفت');
-});
-
-test('رمزهای موقت یکتا هستند', () => {
-  const seen = {};
-  let uniq = 0;
-  for(let i = 0; i < 30; i++){
-    const p = W('tempPassword()');
-    if(!seen[p]){ seen[p] = 1; uniq++; }
-  }
-  assert(uniq >= 28, 'رمزها به‌اندازه کافی یکتا نیستند: ' + uniq);
-});
-
 test('گزارش سلامت مقادیر معتبر می‌دهد', () => {
   W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null");
   const h = W('healthReport()');
@@ -1141,7 +1206,6 @@ test('مالی و سلامت فقط برای سوپرادمین باز است', 
     }
   }
   W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
-  assert(W("canAction('pass-reset')") === true, 'مدیر باید بتواند رمز بازنشانی کند');
   assert(W("canAction('health-backup')") === false, 'مدیر نباید پشتیبان بگیرد');
 });
 
@@ -2754,25 +2818,27 @@ test('قرارداد سرور: سند امنیتی و بندهای کلیدی‌
     .forEach(k => assert(t.indexOf(k) > -1, 'بند گمشده در قرارداد: ' + k));
 });
 
-test('یادآور: رمز عبور هنوز متن ساده است — پیش از سرور باید هش شود', () => {
-  /* این آزمون عمداً وضعیت ناامن فعلی را تثبیت می‌کند تا در
-     ممیزی‌های بعدی از قلم نیفتد. روزی که رمزها هش شوند، این آزمون
-     شکست می‌خورد و همان‌جا باید به آزمون هش تبدیل شود. */
-  /* ⚠️ به رکورد موجود تکیه نکن: آزمون «بازنشانی رمز» پیش‌تر رمز یک
-     دبیر را عوض می‌کند. رکورد تازه بساز تا سنجش مستقل باشد. */
+test('یادآور: محصول رمز کاربری ندارد — ستون آرشیوی در ورود خوانده نمی‌شود', () => {
+  /* دور ۶۴: ستونِ `password` فقط آرشیو است (ساختارِ رکورد/پشتیبان) و
+     هیچ کدی آن را نمی‌خواند. بدهیِ bcrypt **مشروط** است: فقط اگر روزی
+     رمز دوباره معرفی شود. این آزمون قفل می‌کند که ورود همچنان از
+     ستونِ آرشیوی استفاده نکند. */
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'js', '19-actions.js'), 'utf8');
+  const loginBlock = src.slice(src.indexOf('login(){'), src.indexOf('logout(){'));
+  assert(loginBlock !== '' && loginBlock.indexOf('password') === -1,
+    'تابعِ ورود به ستونِ آرشیویِ رمز دست زده — مدلِ بدونِ رمز شکسته شده');
+  const formSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'js', '06-login.js'), 'utf8');
+  assert(formSrc.indexOf('type="password"') === -1, 'فیلدِ رمز در فرمِ ورود بازگشته');
   let id = null;
   try{
-    id = W('insert("users",{school_id:1,role:"student",full_name:"آزمون رمز",' +
-      'username:"pwd_probe",password:"رمزآزمون۱۲۳",active:1}).id');
+    id = W('insert("users",{school_id:1,role:"student",full_name:"آزمون آرشیو",' +
+      'username:"pwd_probe",password:"رمزآزمون۱۲",active:1}).id');
     const stored = W('byId("users",' + id + ').password');
-    assert(stored === 'رمزآزمون۱۲۳',
-      'رمز دیگر متن ساده نیست — اگر hash شده، این آزمون را به آزمون bcrypt تبدیل کنید');
-    assert(stored.length < 60 || !/^\$2[aby]\$/.test(stored),
-      'الگوی bcrypt دیده شد — آزمون باید به‌روز شود');
+    assert(stored === 'رمزآزمون۱۲', 'وضعیتِ ذخیرهٔ ستونِ آرشیوی عوض شده');
   } finally { if(id !== null) W('remove("users",' + id + ')'); }
-  const fs = require('fs'), path = require('path');
   const todo = fs.readFileSync(path.join(__dirname, '..', 'TODO_BEFORE_PRODUCTION.md'), 'utf8');
-  assert(todo.indexOf('bcrypt') > -1, 'یادآور bcrypt از سند کارهای باقی‌مانده حذف شده');
+  assert(todo.indexOf('bcrypt') > -1, 'یادآورِ bcrypt از سندِ کارهای باقی‌مانده حذف شده (بدهیِ مشروط باید بماند)');
 });
 
 // ── جهت نوارهای اسکرول در چیدمان راست‌به‌چپ (دور ۳۰) ─────────
@@ -4384,9 +4450,9 @@ test('ورود: مدرسهٔ غیرفعال، حتی با حساب فعال، ر
     var guardOn=!!schoolInactiveMsg(mgr);
     var guardOff=!!schoolInactiveMsg(db.users.find(u=>u.username==='manager1'));
     S.user=null;S.persona=null;S.boss=null;S.route='login';render();
-    var lu=document.getElementById('lu'),lp=document.getElementById('lp');
-    if(!lu||!lp) return JSON.stringify({err:'no-form'});
-    lu.value=mgr.username;lp.value=mgr.password;
+    var lpn=document.getElementById('lpn'),lc=document.getElementById('lcode'),ln=document.getElementById('lnid');
+    if(!lpn||!lc||!ln) return JSON.stringify({err:'no-form'});
+    lpn.value=mgr.phone;lc.value=SmsPanel.sendCode(mgr.phone);ln.value=mgr.national_id;
     document.querySelector('[data-act="login"]').click();
     var msg=document.getElementById('lerr').textContent||'';
     return JSON.stringify({guardOn:guardOn,guardOff:guardOff,blocked:!S.user,msg:msg});})()`));
@@ -6094,6 +6160,7 @@ const NAV_EXPECT = {
   /* سرویس مدرسه (بدون جی‌پی‌اس): راننده فقط مسیر خودش + صفحه‌های عمومی */
   driver: ['myservice','dashboard','announcements','notifications']
 };
+
 
 const navRoutes = (role) => JSON.parse(W('JSON.stringify(navRoutesOf(' + JSON.stringify(role) + '))'));
 

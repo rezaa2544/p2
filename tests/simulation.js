@@ -70,18 +70,27 @@ async function main() {
   });
 
   console.log('\n▸ الف — ورود و پوسته');
+  /* ورود بدونِ رمز (از ۲۰-۰۹-۵): شماره + کد (پنلِ پیامکی) + کد ملی
+     (سامانهٔ تطبیق — جدا از پنل) */
+  const loginFill = (un) => W(`(function(){var u=db.users.find(x=>x.username===${JSON.stringify(un)});
+    document.getElementById('lpn').value=u.phone;
+    document.getElementById('lnid').value=u.national_id;
+    document.getElementById('lcode').value=SmsPanel.sendCode(u.phone);return true;})()`);
   sim('ورود', 'ورود واقعی سوپرادمین (فرم + کلیک)', () => {
-    W(`document.getElementById('lu').value='superadmin';document.getElementById('lp').value='123456'`);
+    loginFill('superadmin');
     clk('login');
     assert(W('S.user && S.user.role') === 'superadmin', 'ورود انجام نشد');
     assert(W('S.route') === 'dashboard', 'روت خانهٔ سوپرادمین: ' + W('S.route'));
   });
-  sim('ورود', 'رمز اشتباه رد می‌شود', () => {
+  sim('ورود', 'کد اشتباه رد می‌شود', () => {
     clk('logout');
-    W(`document.getElementById('lu').value='superadmin';document.getElementById('lp').value='wrong'`);
+    W(`(function(){var u=db.users.find(x=>x.username==='superadmin');
+      document.getElementById('lpn').value=u.phone;
+      document.getElementById('lnid').value=u.national_id;
+      document.getElementById('lcode').value='0000';})()`);
     clk('login');
-    assert(W('S.user') === null, 'با رمز اشتباه وارد شد!');
-    assert(W(`document.getElementById('lerr').textContent`).includes('نادرست'), 'خطای ورود نمایش داده نشد');
+    assert(W('S.user') === null, 'با کدِ اشتباه وارد شد!');
+    assert(W(`document.getElementById('lerr').textContent`).includes('کد'), 'خطای ورود نمایش داده نشد');
   });
   const ROLES = [
     ['superadmin', 'superadmin'], ['edu_office', 'edu_kurdistan'],
@@ -93,7 +102,7 @@ async function main() {
   sim('ورود', 'ورود واقعی هر ۷ نقش + روت خانهٔ درست', () => {
     for (const [role, un] of ROLES) {
       clk('logout');
-      W(`document.getElementById('lu').value=${JSON.stringify(un)};document.getElementById('lp').value='123456'`);
+      loginFill(un);
       clk('login');
       assert(W('S.user && S.user.role') === role, `ورود ${role} (${un}) انجام نشد`);
       const home = W(`homeRoute(${JSON.stringify(role)})`);
@@ -104,7 +113,7 @@ async function main() {
   });
   sim('ورود', 'حساب مدرسهٔ غیرفعال (manager6) — ورود مسدود (F-3)', () => {
     clk('logout');
-    W(`document.getElementById('lu').value='manager6';document.getElementById('lp').value='123456'`);
+    loginFill('manager6');
     clk('login');
     const loggedIn = W('S.user && S.user.role') === 'manager';
     const err = W(`(document.getElementById('lerr')||{}).textContent||''`);
