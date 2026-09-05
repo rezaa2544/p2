@@ -102,6 +102,11 @@ function _renderRouteInner(){
   var free=(typeof PARENT_FREE_ROUTES!=='undefined')?PARENT_FREE_ROUTES:['subscription','notifications','announcements'];
   if(parentLocked()&&free.indexOf(S.route)<0)
     return viewLocked();
+  /* قفلِ فرزندبه‌فرزند: اگر فرزندِ انتخاب‌شده اشتراکِ فعال نداشته باشد،
+     فقط بخش‌های اشتراکیِ همان فرزند قفل می‌شوند (دادهٔ پایه رایگان است) */
+  if(activePersona()==='parent'&&free.indexOf(S.route)<0&&S.child
+     &&!studentSubOf(S.child,S.user.id,false).active)
+    return viewLocked((byId('users',S.child)||{}).full_name);
   /* گارد مجوز: نقش فعلی فقط روت‌های مجاز خودش را می‌بیند.
      بدون این بررسی، تغییر hash آدرس هر صفحه‌ای را باز می‌کرد. */
   if(typeof canRoute==='function' && !canRoute(S.route))
