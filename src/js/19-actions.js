@@ -1456,6 +1456,44 @@ document.addEventListener('click',e=>{
      if(d.id)update('discipline',d.id,data);
      else{const sid=Number(V('d_st'));insert('discipline',Object.assign({school_id:byId('users',sid).school_id,student_id:sid,created_by:S.user.id},data));}
      closeModal();toast('مورد انضباطی ثبت شد','ok');render();},
+   /* ─────────────── گیمیفیکیشن ابتدایی (بند ۵) ─────────────── */
+   'dojo-config'(){ dojoConfigModal(); },
+   'dojo-row-add'(){ dojoAddRow('⭐','', 1); },
+   'dojo-apply-defaults'(){ dojoApplyDefaults(); },
+   'dojo-row-del'(){ dojoRemoveRow(el); },
+   'dojo-save'(){
+     const r = dojoSaveModel();
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('مدل امتیازها ذخیره شد','ok'); render();
+   },
+   'dojo-pick'(){
+     /* چیپ فقط فرمِ بازِ انضباط را پر می‌کند (ذخیره از مسیر مجاز disc-save) */
+     var types = null;
+     try{
+       var d = window._edit;
+       if(!d) return;
+       var sc = (typeof dojoSchoolOfStudent==='function') ? dojoSchoolOfStudent(d.student_id) : null;
+       if(!sc || (typeof dojoAvailableForStudent!=='function') || !dojoAvailableForStudent(d.student_id)) return;
+       types = dojoTypes(sc.id);
+     }catch(e){ return; }
+     var t = types[Number(el.dataset.i)];
+     if(!t) return;
+     var kind = t.delta > 0 ? 'positive' : 'negative';
+     function setVal(id, val){ var e2 = document.getElementById(id); if(e2) e2.value = val; }
+     function setSelectVal(id, val){
+       var e2 = document.getElementById(id);
+       if(!e2) return;
+       var has = false;
+       for(var i2=0;i2<e2.options.length;i2++){ if(e2.options[i2].value===val){ has=true; break; } }
+       if(!has){ var op=document.createElement('option'); op.value=val; op.textContent=val; e2.appendChild(op); }
+       e2.value = val;
+     }
+     setSelectVal('d_title', t.label);
+     setVal('d_points', String(t.delta));
+     setSelectVal('d_kind', kind);
+     toast(t.icon + ' «' + t.label + '» اعمال شد — توضیح را بنویسید و ذخیره کنید','');
+   },
+   // announcements
    // announcements
    'ann-new'(){annModal();},
    'ann-edit'(){annModal(byId('announcements',id));},

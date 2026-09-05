@@ -136,6 +136,13 @@ var ACTION_ROLES = {
   'hw-grade-save':  ['teacher','manager'],
   'hw-canvas-clear':['teacher','manager'],
   'hw-submit':      ['student'],
+  /* گیمیفیکیشن ابتدایی (بند ۵): مدل فقط مدیر؛ چیپ فقط فرم می‌زند (ذخیره از disc-save) */
+  'dojo-config':    ['manager'],
+  'dojo-save':      ['manager'],
+  'dojo-row-add':   ['manager'],
+  'dojo-apply-defaults':['manager'],
+  'dojo-row-del':   ['manager'],
+  'dojo-pick':      ['teacher','manager'],
   /* حضور و غیاب: فقط دبیر و مدیر */
   'att-set':       ['teacher','manager'],
   'att-review':    ['teacher','manager'],
