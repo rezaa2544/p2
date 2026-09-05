@@ -469,33 +469,36 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 .bell-bar-off{background:var(--bg)}
 .bell-bar-warn{background:var(--red-soft);color:var(--red);border-color:var(--red)}
 
-/* ── دایره‌های آنالوگِ صفحهٔ سلامت ─────────────────────────────
-   سه شیوهٔ نمایش (عقربه‌ای/آنالوگ/دماسنجی) انتخابی کاربر است؛
-   انتخاب در payesh_health_gauge_v1 ماندگار می‌شود. */
+/* ── دایره‌های آنالوگِ صفحهٔ سلامت (نسل دوم) ─────────────────── */
 .hgt-svg{ width:100%; height:auto; display:block; }
-.hgt-tile{ background:var(--surface); border:1px solid var(--border);
-  border-radius:14px; padding:10px 8px 8px; box-shadow:var(--shadow);
+.hgt-tile{ background:linear-gradient(180deg,#ffffff 0%,#f3f7ff 100%);
+  border:1px solid var(--border); border-radius:16px; padding:12px 8px 10px;
+  box-shadow:var(--shadow); position:relative; overflow:hidden;
   transition:transform .18s ease, box-shadow .18s ease; }
-.hgt-tile:hover{ transform:translateY(-2px); box-shadow:var(--shadow-lg); }
-.hgt-lbl{ font-size:12px; font-weight:700; color:var(--text); margin-top:4px; }
+.hgt-tile::before{ content:''; position:absolute; top:-34px; inset-inline-start:-34px;
+  width:90px; height:90px; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle, rgba(22,104,240,.09), transparent 70%); }
+.hgt-tile::after{ content:''; position:absolute; bottom:-40px; inset-inline-end:-40px;
+  width:100px; height:100px; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle, rgba(92,181,49,.07), transparent 70%); }
+.hgt-tile:hover{ transform:translateY(-3px); box-shadow:var(--shadow-lg); }
+.hgt-lbl{ font-size:12px; font-weight:700; color:var(--text); margin-top:6px;
+  position:relative; z-index:1; }
 .hgt-seg{ display:flex; gap:6px; }
 .hgt-seg .btn{ font-size:12px; padding:4px 10px; }
 .hgt-seg .btn.on{ background:var(--primary); border-color:var(--primary); color:#fff; }
-/* عقربه از -۱۲ درجه (سمت چپ) تا زاویهٔ نهاییِ inline جارو می‌کند */
+/* عقربه از سمت چپ جارو می‌کند و روی مقدار واقعی می‌ایستد */
 @keyframes hgtSweep{ from{ transform:rotate(-120deg); } }
 .hgt-needle{ transform-origin:60px 68px;
   animation:hgtSweep .9s cubic-bezier(.2,.75,.3,1.15); }
-/* ستون مایعِ دماسنج با محو‌شدنِ ملایم بالا می‌آید */
-@keyframes hgtFadeUp{ from{ opacity:0; transform:translateY(6px); } }
-.hgt-liquid{ animation:hgtFadeUp .8s ease-out; }
-/* نبضِ نور حباب دماسنج */
-@keyframes hgtPulse{ 0%,100%{ opacity:.30; } 50%{ opacity:.10; } }
-.hgt-glow{ animation:hgtPulse 2.8s ease-in-out infinite; }
-/* نقطهٔ انتهای قوسِ آنالوگ */
-@keyframes hgtDot{ 0%,100%{ opacity:1; } 50%{ opacity:.55; } }
+/* نقطهٔ انتهای قوسِ آنالوگ می‌دمد */
+@keyframes hgtDot{ 0%,100%{ opacity:1; } 50%{ opacity:.5; } }
 .hgt-dot{ animation:hgtDot 2.2s ease-in-out infinite; }
+/* پرشدگی میلهٔ عمودی با درخشش بالا می‌آید */
+@keyframes hgtFillUp{ from{ opacity:0; transform:translateY(8px); } }
+.hgt-fill{ animation:hgtFillUp .85s cubic-bezier(.25,.8,.3,1); }
 @media (prefers-reduced-motion:reduce){
-  .hgt-needle,.hgt-liquid,.hgt-glow,.hgt-dot{ animation:none; }
+  .hgt-needle,.hgt-dot,.hgt-fill{ animation:none; }
 }
 /* ==================== موبایل: تطبیق کامل با عرض صفحه ==================== */
 @media(max-width:900px){
@@ -5634,12 +5637,15 @@ function healthRow(label, value, level, hint){
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   دایره‌های آنالوگِ صفحهٔ سلامت
+   دایره‌های آنالوگِ صفحهٔ سلامت — نسل دوم (گرافیک بالا‌برده)
    کاربر یکی از سه شیوهٔ نمایش را انتخاب می‌کند (در
-   payesh_health_gauge_v1 ماندگار است): عقربه‌ای / آنالوگ / دماسنجی.
-   همهٔ سه، SVG خالص هستند: بدون تصویر، بدون وابستگی، و در صفحه‌نماهای
-   با ترازی بالا هم تیز می‌مانند. مقدارها همیشه به بازهٔ ۰..۱
-   سنجاق می‌شوند تا دایره هرگز «بیش از حد» نشود.
+   payesh_health_gauge_v1 ماندگار است): عقربه‌ای / آنالوگ / میله‌ای.
+   نکات کلیدی:
+   • رنگِ عقربه پیروِ «محدوده‌ای» است که در آن ایستاده (سبز/کهربایی/سرخ).
+   • همهٔ ترسیم‌ها SVG خالص با گرادیان و فیلتر نور — بدون تصویر و
+     بدون وابستگی. شناسهٔ تعریف‌ها (uid) به هر دایره جداگانه داده
+     می‌شود تا تداخل id رخ ندهد.
+   • مقادیر همیشه به ۰..۱ سنجاق می‌شوند.
    ═══════════════════════════════════════════════════════════════════ */
 var HGT_TONES = {
   ok:   'var(--green)',
@@ -5650,7 +5656,7 @@ var HGT_TONES = {
 var HGT_STYLES = [
   ['needle', '⏱️', 'عقربه‌ای'],
   ['dial',   '🕹️', 'آنالوگ'],
-  ['thermo', '🌡️', 'دماسنجی']
+  ['bar',    '📊', 'میله‌ای عمودی']
 ];
 
 function hgtFrac(value, max){
@@ -5659,7 +5665,13 @@ function hgtFrac(value, max){
   return Math.max(0, Math.min(1, f));
 }
 
-/* مسیر کمان SVG بین دو زاویه (درجه؛ در دستگاه SVG، افزایش = پادساعت‌گردِ بصری) */
+/* رنگِ محدودهٔ فعلی — همان رنگی که عقربه باید بگیرد */
+function hgtZoneTone(f, goodHigh){
+  if(goodHigh) return f >= .7 ? HGT_TONES.ok : f >= .4 ? HGT_TONES.warn : HGT_TONES.bad;
+  return f < .6 ? HGT_TONES.ok : f < .85 ? HGT_TONES.warn : HGT_TONES.bad;
+}
+
+/* مسیر کمان SVG بین دو زاویه (درجه) */
 function hgtArcPath(cx, cy, r, a0, a1){
   var x0 = cx + r * Math.cos(a0 * Math.PI / 180), y0 = cy + r * Math.sin(a0 * Math.PI / 180);
   var x1 = cx + r * Math.cos(a1 * Math.PI / 180), y1 = cy + r * Math.sin(a1 * Math.PI / 180);
@@ -5668,100 +5680,157 @@ function hgtArcPath(cx, cy, r, a0, a1){
          x1.toFixed(2) + ' ' + y1.toFixed(2);
 }
 
-/* شیوهٔ ۱ — عقربه‌ای: ۲۴۰ درجه، سه ناحیهٔ رنگی، عقربهٔ چرخان با پیکان مرکزی */
-function healthGaugeNeedle(g){
+/* تعریف‌های مشترک (گرادیان‌ها + فیلتر نور) — با شناسهٔ یکتا برای هر دایره */
+function hgtDefs(uid, tone){
+  return '<defs>' +
+    '<filter id="hgtGlow' + uid + '" x="-40%" y="-40%" width="180%" height="180%">' +
+      '<feGaussianBlur stdDeviation="2.4" result="b"/>' +
+      '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>' +
+    '</filter>' +
+    '<linearGradient id="hgtArc' + uid + '" x1="0" y1="0" x2="1" y2="0">' +
+      '<stop offset="0" stop-color="' + tone + '" stop-opacity=".5"/>' +
+      '<stop offset="1" stop-color="' + tone + '"/>' +
+    '</linearGradient>' +
+    '<radialGradient id="hgtFace' + uid + '" cx=".5" cy=".42" r=".8">' +
+      '<stop offset="0" stop-color="#ffffff"/>' +
+      '<stop offset="1" stop-color="#e9f0fc"/>' +
+    '</radialGradient>' +
+    '<linearGradient id="hgtBar' + uid + '" x1="0" y1="1" x2="0" y2="0">' +
+      '<stop offset="0" stop-color="' + tone + '" stop-opacity=".82"/>' +
+      '<stop offset="1" stop-color="' + tone + '"/>' +
+    '</linearGradient>' +
+  '</defs>';
+}
+
+/* برچسبِ کوتاه برای اعداد بزرگ (۱٬۲۳۴ ← ۱.۲ هزار) */
+function hgtShortNum(n){
+  n = Number(n) || 0;
+  if(n >= 10000) return fa(Math.round(n / 10000)) + ' هزار';
+  if(n >= 1000) return fa(Math.round(n / 1000)) + ' هزار';
+  return fa(Math.round(n));
+}
+
+/* ── شیوهٔ ۱: عقربه‌ای ────────────────────────────────────────────
+   رنگِ عقربه رنگِ همان محدوده‌ای است که در آن ایستاده است. */
+function healthGaugeNeedle(g, uid){
   var f = hgtFrac(g.value, g.max);
   var tone = HGT_TONES[g.tone] || HGT_TONES.blue;
+  var zoneTone = hgtZoneTone(f, g.goodHigh);
   var zones = g.goodHigh
     ? [ [0, .4, HGT_TONES.bad], [.4, .7, HGT_TONES.warn], [.7, 1, HGT_TONES.ok] ]
     : [ [0, .6, HGT_TONES.ok], [.6, .85, HGT_TONES.warn], [.85, 1, HGT_TONES.bad] ];
-  var A0 = -210, SWEEP = 240;
+  var A0 = -210, SWEEP = 240, GAP = 2.2;
   var z = zones.map(function(zn){
-    return '<path d="' + hgtArcPath(60, 68, 46, A0 + zn[0] * SWEEP, A0 + zn[1] * SWEEP) +
-      '" fill="none" stroke="' + zn[2] + '" stroke-width="8" opacity=".45"/>';
+    return '<path d="' + hgtArcPath(60, 68, 47, A0 + zn[0] * SWEEP + GAP, A0 + zn[1] * SWEEP - GAP) +
+      '" fill="none" stroke="' + zn[2] + '" stroke-width="9" stroke-linecap="round" opacity=".85"/>';
   }).join('');
   var ticks = '';
-  for(var i = 0; i <= 10; i++){
-    var a = (A0 + (i / 10) * SWEEP) * Math.PI / 180;
-    ticks += '<line x1="' + (60 + 40 * Math.cos(a)).toFixed(1) + '" y1="' + (68 + 40 * Math.sin(a)).toFixed(1) +
-      '" x2="' + (60 + 35 * Math.cos(a)).toFixed(1) + '" y2="' + (68 + 35 * Math.sin(a)).toFixed(1) +
-      '" stroke="var(--border-strong)" stroke-width="' + (i % 5 === 0 ? 2 : 1) + '"/>';
+  for(var i = 0; i <= 12; i++){
+    var a = (A0 + (i / 12) * SWEEP) * Math.PI / 180;
+    var major = i % 3 === 0;
+    ticks += '<line x1="' + (60 + (major ? 41 : 43) * Math.cos(a)).toFixed(1) + '" y1="' + (68 + (major ? 41 : 43) * Math.sin(a)).toFixed(1) +
+      '" x2="' + (60 + 37 * Math.cos(a)).toFixed(1) + '" y2="' + (68 + 37 * Math.sin(a)).toFixed(1) +
+      '" stroke="' + (major ? 'var(--border-strong)' : 'var(--border)') + '" stroke-width="' + (major ? 2 : 1) + '"/>';
   }
+  /* برچسب‌های عددی: صفر، میانه، حداکثر */
+  var lb = function(t, txt){
+    var a = (A0 + t * SWEEP) * Math.PI / 180;
+    return '<text x="' + (60 + 54 * Math.cos(a)).toFixed(1) + '" y="' + (68 + 54 * Math.sin(a) + 3).toFixed(1) +
+      '" text-anchor="middle" font-size="7.5" fill="var(--muted)">' + txt + '</text>';
+  };
+  var labels = lb(0, '۰') + lb(.5, hgtShortNum(g.max / 2)) + lb(1, hgtShortNum(g.max));
   var rot = (-120 + f * 240).toFixed(2);
   var valTxt = fa(Math.round(Number(g.value) || 0));
-  return '<svg viewBox="0 0 120 120" class="hgt-svg">' +
-    '<circle cx="60" cy="68" r="36" fill="' + tone + '" opacity=".07"/>' +
-    z + ticks +
+  return '<svg viewBox="0 0 120 122" class="hgt-svg">' +
+    hgtDefs(uid, tone) +
+    '<circle cx="60" cy="68" r="44" fill="url(#hgtFace' + uid + ')" stroke="var(--border)" stroke-width="1"/>' +
+    z + ticks + labels +
     '<g class="hgt-needle" style="transform:rotate(' + rot + 'deg)">' +
-      '<line x1="60" y1="68" x2="60" y2="30" stroke="' + tone + '" stroke-width="3.5" stroke-linecap="round"/>' +
-      '<line x1="60" y1="68" x2="60" y2="79" stroke="var(--text)" stroke-width="3" stroke-linecap="round" opacity=".55"/>' +
+      '<path class="hgt-needle-body" d="M60 29 L56.6 66 L60 71 L63.4 66 Z" fill="' + zoneTone +
+        '" filter="url(#hgtGlow' + uid + ')" stroke="#ffffff" stroke-width=".6" stroke-opacity=".5"/>' +
+      '<line x1="60" y1="71" x2="60" y2="81" stroke="' + zoneTone + '" stroke-width="3" stroke-linecap="round" opacity=".45"/>' +
     '</g>' +
-    '<circle cx="60" cy="68" r="5.5" fill="var(--surface)" stroke="' + tone + '" stroke-width="2.5"/>' +
-    '<text x="60" y="103" text-anchor="middle" font-size="17" font-weight="800" fill="var(--text)">' + valTxt + '</text>' +
-    '<text x="60" y="115" text-anchor="middle" font-size="8.5" fill="var(--muted)">' + esc(g.unit) + '</text>' +
+    '<circle cx="60" cy="68" r="7" fill="var(--surface)" stroke="' + zoneTone + '" stroke-width="2.5"/>' +
+    '<circle cx="60" cy="68" r="2.8" fill="' + zoneTone + '"/>' +
+    '<text x="60" y="105" text-anchor="middle" font-size="17" font-weight="800" fill="' + zoneTone + '">' + valTxt + '</text>' +
+    '<text x="60" y="117" text-anchor="middle" font-size="8.5" fill="var(--muted)">' + esc(g.unit) + '</text>' +
   '</svg>';
 }
 
-/* شیوهٔ ۲ — آنالوگ: نیم‌دایرهٔ قوس‌دار با پرشدگی گرد و نقطهٔ دمیده‌شونده */
-function healthGaugeDial(g){
+/* ── شیوهٔ ۲: آنالوگ ──────────────────────────────────────────────
+   نیم‌دایره با قوسِ گرادیانی، سایهٔ درونی ریل و نقطهٔ دمیده. */
+function healthGaugeDial(g, uid){
   var f = hgtFrac(g.value, g.max);
   var tone = HGT_TONES[g.tone] || HGT_TONES.blue;
   var endA = 180 + f * 180;
   var dx = 60 + 40 * Math.cos(endA * Math.PI / 180);
   var dy = 66 + 40 * Math.sin(endA * Math.PI / 180);
   var ticks = '';
-  for(var i = 0; i <= 8; i++){
-    var a = (180 + (i / 8) * 180) * Math.PI / 180;
-    ticks += '<line x1="' + (60 + 45 * Math.cos(a)).toFixed(1) + '" y1="' + (66 + 45 * Math.sin(a)).toFixed(1) +
-      '" x2="' + (60 + 49 * Math.cos(a)).toFixed(1) + '" y2="' + (66 + 49 * Math.sin(a)).toFixed(1) +
-      '" stroke="var(--border-strong)" stroke-width="' + (i % 4 === 0 ? 2 : 1) + '"/>';
+  for(var i = 0; i <= 10; i++){
+    var a = (180 + (i / 10) * 180) * Math.PI / 180;
+    var major = i % 5 === 0;
+    ticks += '<line x1="' + (60 + (major ? 46 : 48) * Math.cos(a)).toFixed(1) + '" y1="' + (66 + (major ? 46 : 48) * Math.sin(a)).toFixed(1) +
+      '" x2="' + (60 + 52 * Math.cos(a)).toFixed(1) + '" y2="' + (66 + 52 * Math.sin(a)).toFixed(1) +
+      '" stroke="' + (major ? 'var(--border-strong)' : 'var(--border)') + '" stroke-width="' + (major ? 2 : 1) + '"/>';
   }
   var valTxt = fa(Math.round(Number(g.value) || 0));
-  return '<svg viewBox="0 0 120 82" class="hgt-svg">' +
-    '<path d="' + hgtArcPath(60, 66, 40, 180, 360) + '" fill="none" stroke="var(--border)" stroke-width="10" stroke-linecap="round" opacity=".45"/>' +
+  return '<svg viewBox="0 0 120 86" class="hgt-svg">' +
+    hgtDefs(uid, tone) +
+    '<path d="' + hgtArcPath(60, 67, 40, 180, 360) + '" fill="none" stroke="var(--border-strong)" stroke-width="13" stroke-linecap="round" opacity=".25"/>' +
+    '<path d="' + hgtArcPath(60, 66, 40, 180, 360) + '" fill="none" stroke="var(--surface)" stroke-width="11" stroke-linecap="round"/>' +
+    '<path d="' + hgtArcPath(60, 66, 40, 180, 360) + '" fill="none" stroke="var(--border)" stroke-width="11" stroke-linecap="round" opacity=".5"/>' +
     (f > 0.004
-      ? '<path d="' + hgtArcPath(60, 66, 40, 180, Math.max(181, endA)) + '" fill="none" stroke="' + tone + '" stroke-width="10" stroke-linecap="round"/>'
+      ? '<path d="' + hgtArcPath(60, 66, 40, 180, Math.max(181.5, endA)) + '" fill="none" stroke="url(#hgtArc' + uid + ')" stroke-width="11" stroke-linecap="round" filter="url(#hgtGlow' + uid + ')"/>'
       : '') +
     ticks +
-    '<circle class="hgt-dot" cx="' + dx.toFixed(1) + '" cy="' + dy.toFixed(1) + '" r="6" fill="var(--surface)" stroke="' + tone + '" stroke-width="3"/>' +
+    '<circle class="hgt-dot" cx="' + dx.toFixed(1) + '" cy="' + dy.toFixed(1) + '" r="7" fill="var(--surface)" stroke="' + tone + '" stroke-width="3" filter="url(#hgtGlow' + uid + ')"/>' +
+    '<circle cx="' + dx.toFixed(1) + '" cy="' + dy.toFixed(1) + '" r="2.5" fill="' + tone + '"/>' +
+    '<text x="18" y="82" text-anchor="middle" font-size="7.5" fill="var(--muted)">۰</text>' +
+    '<text x="102" y="82" text-anchor="middle" font-size="7.5" fill="var(--muted)">' + hgtShortNum(g.max) + '</text>' +
     '<text x="60" y="58" text-anchor="middle" font-size="18" font-weight="800" fill="var(--text)">' + valTxt + '</text>' +
     '<text x="60" y="74" text-anchor="middle" font-size="8.5" fill="var(--muted)">' + esc(g.unit) + '</text>' +
   '</svg>';
 }
 
-/* شیوهٔ ۳ — دماسنجی: لولهٔ شیشه‌ای، حباب نورانی، ستون مایع و درجه‌بندی */
-function healthGaugeThermo(g){
+/* ── شیوهٔ ۳: میله‌ای عمودی ───────────────────────────────────────
+   میلهٔ گرد با پرشدگی گرادیانی، براقیت شیشه‌ای، خط سطح و درجه‌بندی. */
+function healthGaugeBar(g, uid){
   var f = hgtFrac(g.value, g.max);
   var tone = HGT_TONES[g.tone] || HGT_TONES.blue;
-  var topY = 116 - f * 100;
+  var topY = 130 - f * 116;
   var ticks = '';
   [0, .25, .5, .75, 1].forEach(function(t){
-    var y = 116 - t * 100;
-    ticks += '<line x1="38" y1="' + y.toFixed(1) + '" x2="44" y2="' + y.toFixed(1) + '" stroke="var(--border-strong)" stroke-width="1.5"/>' +
-      '<text x="47" y="' + (y + 3).toFixed(1) + '" font-size="7.5" fill="var(--muted)">' + fa(Math.round(t * 100)) + '</text>';
+    var y = 130 - t * 116;
+    ticks += '<line x1="62" y1="' + y.toFixed(1) + '" x2="68" y2="' + y.toFixed(1) + '" stroke="var(--border-strong)" stroke-width="1.5"/>' +
+      '<text x="71" y="' + (y + 3).toFixed(1) + '" font-size="7.5" fill="var(--muted)">' + fa(Math.round(t * 100)) + '</text>';
   });
   var valTxt = fa(Math.round(Number(g.value) || 0));
-  return '<svg viewBox="0 0 64 160" class="hgt-svg">' +
-    '<circle class="hgt-glow" cx="30" cy="128" r="19" fill="' + tone + '"/>' +
-    '<rect x="25" y="16" width="10" height="104" rx="5" fill="var(--surface)" stroke="var(--border)" stroke-width="1.5"/>' +
-    '<rect class="hgt-liquid" x="26.5" y="' + topY.toFixed(1) + '" width="7" height="' + (116 - topY).toFixed(1) + '" rx="3.5" fill="' + tone + '"/>' +
-    '<circle cx="30" cy="128" r="13" fill="var(--surface)" stroke="var(--border)" stroke-width="1.5"/>' +
-    '<circle cx="30" cy="128" r="10" fill="' + tone + '"/>' +
+  return '<svg viewBox="0 0 96 152" class="hgt-svg">' +
+    hgtDefs(uid, tone) +
+    '<rect x="36" y="12" width="20" height="124" rx="10" fill="#edf2fb" stroke="var(--border)" stroke-width="1.2"/>' +
+    (f > 0.004
+      ? '<g class="hgt-fill" filter="url(#hgtGlow' + uid + ')">' +
+        '<rect x="39" y="' + topY.toFixed(1) + '" width="14" height="' + (130 - topY).toFixed(1) + '" rx="7" fill="url(#hgtBar' + uid + ')"/>' +
+        '<rect x="41" y="' + topY.toFixed(1) + '" width="10" height="2.6" rx="1.3" fill="#ffffff" opacity=".55"/>' +
+      '</g>'
+      : '') +
+    '<rect x="39.5" y="15" width="4.5" height="118" rx="2.25" fill="#ffffff" opacity=".5"/>' +
     ticks +
-    '<text x="32" y="150" text-anchor="middle" font-size="11" font-weight="800" fill="var(--text)">' + valTxt + '</text>' +
-    '<text x="32" y="159" text-anchor="middle" font-size="7.5" fill="var(--muted)">' + esc(g.unit) + '</text>' +
+    '<text x="46" y="146" text-anchor="middle" font-size="12" font-weight="800" fill="' + tone + '">' + valTxt + '</text>' +
+    '<text x="46" y="150.5" text-anchor="middle" font-size="7" fill="var(--muted)">' + esc(g.unit) + '</text>' +
   '</svg>';
 }
 
-function healthGauge(style, g){
-  if(style === 'dial') return healthGaugeDial(g);
-  if(style === 'thermo') return healthGaugeThermo(g);
-  return healthGaugeNeedle(g);
+function healthGauge(style, g, uid){
+  if(style === 'dial') return healthGaugeDial(g, uid);
+  if(style === 'bar') return healthGaugeBar(g, uid);
+  return healthGaugeNeedle(g, uid);
 }
 
 /* کارتِ دایره‌ها با انتخاب‌گر شیوهٔ نمایش (مردگار) */
 function healthGaugePanel(h, stLevel, idxLevel, syncLevel){
   var style = Store.get('payesh_health_gauge_v1') || 'needle';
+  if(style === 'thermo') style = 'bar'; /* سازگاری با نامِ قدیمی */
   if(HGT_STYLES.filter(function(s){ return s[0] === style; }).length === 0) style = 'needle';
   var gauges = [
     { label: 'مصرف حافظهٔ مرورگر', unit: '٪ از ۵ مگابایت', value: h.storage.percent, max: 100, tone: stLevel },
@@ -5777,8 +5846,8 @@ function healthGaugePanel(h, stLevel, idxLevel, syncLevel){
     + '<h3>📟 دایره‌های آنالوگ</h3>'
     + '<div class="row hgt-seg">' + seg + '</div></div>'
     + '<div class="card-body"><div class="grid g4 hgt-grid">'
-    + gauges.map(function(g){
-        return '<div class="hgt-tile">' + healthGauge(style, g)
+    + gauges.map(function(g, gi){
+        return '<div class="hgt-tile">' + healthGauge(style, g, 'g' + gi)
           + '<div class="hgt-lbl">' + esc(g.label) + '</div></div>';
       }).join('')
     + '</div></div></div>';
@@ -7397,7 +7466,7 @@ document.addEventListener('click',e=>{
    },
    'health-gauge-style'(){
      var s=el.dataset.s;
-     if(s!=='needle'&&s!=='dial'&&s!=='thermo')return;
+     if(s!=='needle'&&s!=='dial'&&s!=='bar')return;
      Store.set('payesh_health_gauge_v1', s);
      render();
    },

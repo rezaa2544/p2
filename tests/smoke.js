@@ -947,10 +947,12 @@ test('سلامت: دایره‌های آنالوگ — پیش‌فرض عقرب�
   assert(page.indexOf('دایره‌های آنالوگ') >= 0, 'کارت دایره‌ها نیست');
   assert(page.indexOf('hgt-needle') >= 0, 'شیوهٔ پیش‌فرض (عقربه‌ای) رندر نشد');
   assert((page.match(/data-act="health-gauge-style"/g) || []).length === 3, 'سه دکمهٔ انتخاب شیوه نیست');
-  W("Store.set('payesh_health_gauge_v1','thermo')");
+  W("Store.set('payesh_health_gauge_v1','bar')");
   const p2 = W('viewHealth()');
-  assert(p2.indexOf('hgt-liquid') >= 0 && p2.indexOf('hgt-glow') >= 0, 'شیوهٔ دماسنجی رندر نشد');
+  assert(p2.indexOf('hgt-fill') >= 0, 'شیوهٔ میله‌ای رندر نشد');
   assert(p2.indexOf('hgt-needle') === -1, 'شیوهٔ قبلی هنوز جا دارد');
+  W("Store.set('payesh_health_gauge_v1','thermo')");
+  assert(W('viewHealth()').indexOf('hgt-fill') >= 0, 'نامِ قدیمی (thermo) باید به میله‌ای نگاشت شود');
   W("Store.set('payesh_health_gauge_v1','dial')");
   assert(W('viewHealth()').indexOf('hgt-dot') >= 0, 'شیوهٔ آنالوگ رندر نشد');
   W("Store.set('payesh_health_gauge_v1','bogus')");
@@ -958,14 +960,28 @@ test('سلامت: دایره‌های آنالوگ — پیش‌فرض عقرب�
   W("Store.remove('payesh_health_gauge_v1')");
 });
 
+test('سلامت: رنگ عقربه پیروِ محدودهٔ فعلی است', () => {
+  assert(W("hgtZoneTone(0.2,false)") === 'var(--green)', 'محدودهٔ پایین باید سبز باشد');
+  assert(W("hgtZoneTone(0.7,false)") === 'var(--amber)', 'محدودهٔ میانی باید کهربایی باشد');
+  assert(W("hgtZoneTone(0.9,false)") === 'var(--red)', 'محدودهٔ بالا باید سرخ باشد');
+  assert(W("hgtZoneTone(0.9,true)") === 'var(--green)', 'در شاخصِ هرچه-بالاتر-بهتر، بالا سبز است');
+  assert(W("hgtZoneTone(0.2,true)") === 'var(--red)', 'در شاخصِ هرچه-بالاتر-بهتر، پایین سرخ است');
+  const over = W("healthGauge('needle',{label:'تست',unit:'٪',value:999,max:100,tone:'bad'},'tz')");
+  assert(/class="hgt-needle-body"[^>]*fill="var\(--red\)"/.test(over), 'عقربه در محدودهٔ سرخ، رنگ سرخ نگرفت');
+  const low = W("healthGauge('needle',{label:'تست',unit:'٪',value:5,max:100,tone:'bad'},'tz')");
+  assert(/class="hgt-needle-body"[^>]*fill="var\(--green\)"/.test(low), 'عقربه در محدودهٔ سبز، رنگ سبز نگرفت');
+  const goodHi = W("healthGauge('needle',{label:'تست',unit:'٪',value:95,max:100,tone:'ok',goodHigh:true},'tz')");
+  assert(/class="hgt-needle-body"[^>]*fill="var\(--green\)"/.test(goodHi), 'در شاخصِ هرچه-بالاتر-بهتر، بالا باید سبز بماند');
+});
+
 test('سلامت: دایره‌های آنالوگ مقادیر خارج از حد را سنجاق می‌کنند', () => {
-  const over = W("healthGauge('needle',{label:'تست',unit:'٪',value:999,max:100,tone:'ok'})");
+  const over = W("healthGauge('needle',{label:'تست',unit:'٪',value:999,max:100,tone:'ok'},'t1')");
   assert(over.indexOf('rotate(120.00deg)') >= 0, 'مقدار بیش از حد، عقربه را از ۱۲۰ درجه گذراند');
-  const under = W("healthGauge('thermo',{label:'تست',unit:'٪',value:-50,max:100,tone:'ok'})");
-  assert(under.indexOf('hgt-liquid') >= 0 && under.indexOf('NaN') === -1, 'مقدار منفی خرابی ساخت');
-  const zero = W("healthGauge('dial',{label:'تست',unit:'٪',value:0,max:100,tone:'blue'})");
+  const under = W("healthGauge('bar',{label:'تست',unit:'٪',value:-50,max:100,tone:'ok'},'t2')");
+  assert(under.indexOf('hgt-svg') >= 0 && under.indexOf('NaN') === -1, 'مقدار منفی خرابی ساخت');
+  const zero = W("healthGauge('dial',{label:'تست',unit:'٪',value:0,max:100,tone:'blue'},'t3')");
   assert(zero.indexOf('hgt-svg') >= 0 && zero.indexOf('NaN') === -1, 'صفر در شیوهٔ آنالوگ خراب شد');
-  const nil = W("healthGauge('needle',{label:'تست',unit:'',value:undefined,max:100,tone:'ok'})");
+  const nil = W("healthGauge('needle',{label:'تست',unit:'',value:undefined,max:100,tone:'ok'},'t4')");
   assert(nil.indexOf('NaN') === -1, 'مقدار تعریف‌نشده باید صفر خوانده شود');
 });
 

@@ -459,31 +459,34 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 .bell-bar-off{background:var(--bg)}
 .bell-bar-warn{background:var(--red-soft);color:var(--red);border-color:var(--red)}
 
-/* ── دایره‌های آنالوگِ صفحهٔ سلامت ─────────────────────────────
-   سه شیوهٔ نمایش (عقربه‌ای/آنالوگ/دماسنجی) انتخابی کاربر است؛
-   انتخاب در payesh_health_gauge_v1 ماندگار می‌شود. */
+/* ── دایره‌های آنالوگِ صفحهٔ سلامت (نسل دوم) ─────────────────── */
 .hgt-svg{ width:100%; height:auto; display:block; }
-.hgt-tile{ background:var(--surface); border:1px solid var(--border);
-  border-radius:14px; padding:10px 8px 8px; box-shadow:var(--shadow);
+.hgt-tile{ background:linear-gradient(180deg,#ffffff 0%,#f3f7ff 100%);
+  border:1px solid var(--border); border-radius:16px; padding:12px 8px 10px;
+  box-shadow:var(--shadow); position:relative; overflow:hidden;
   transition:transform .18s ease, box-shadow .18s ease; }
-.hgt-tile:hover{ transform:translateY(-2px); box-shadow:var(--shadow-lg); }
-.hgt-lbl{ font-size:12px; font-weight:700; color:var(--text); margin-top:4px; }
+.hgt-tile::before{ content:''; position:absolute; top:-34px; inset-inline-start:-34px;
+  width:90px; height:90px; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle, rgba(22,104,240,.09), transparent 70%); }
+.hgt-tile::after{ content:''; position:absolute; bottom:-40px; inset-inline-end:-40px;
+  width:100px; height:100px; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle, rgba(92,181,49,.07), transparent 70%); }
+.hgt-tile:hover{ transform:translateY(-3px); box-shadow:var(--shadow-lg); }
+.hgt-lbl{ font-size:12px; font-weight:700; color:var(--text); margin-top:6px;
+  position:relative; z-index:1; }
 .hgt-seg{ display:flex; gap:6px; }
 .hgt-seg .btn{ font-size:12px; padding:4px 10px; }
 .hgt-seg .btn.on{ background:var(--primary); border-color:var(--primary); color:#fff; }
-/* عقربه از -۱۲ درجه (سمت چپ) تا زاویهٔ نهاییِ inline جارو می‌کند */
+/* عقربه از سمت چپ جارو می‌کند و روی مقدار واقعی می‌ایستد */
 @keyframes hgtSweep{ from{ transform:rotate(-120deg); } }
 .hgt-needle{ transform-origin:60px 68px;
   animation:hgtSweep .9s cubic-bezier(.2,.75,.3,1.15); }
-/* ستون مایعِ دماسنج با محو‌شدنِ ملایم بالا می‌آید */
-@keyframes hgtFadeUp{ from{ opacity:0; transform:translateY(6px); } }
-.hgt-liquid{ animation:hgtFadeUp .8s ease-out; }
-/* نبضِ نور حباب دماسنج */
-@keyframes hgtPulse{ 0%,100%{ opacity:.30; } 50%{ opacity:.10; } }
-.hgt-glow{ animation:hgtPulse 2.8s ease-in-out infinite; }
-/* نقطهٔ انتهای قوسِ آنالوگ */
-@keyframes hgtDot{ 0%,100%{ opacity:1; } 50%{ opacity:.55; } }
+/* نقطهٔ انتهای قوسِ آنالوگ می‌دمد */
+@keyframes hgtDot{ 0%,100%{ opacity:1; } 50%{ opacity:.5; } }
 .hgt-dot{ animation:hgtDot 2.2s ease-in-out infinite; }
+/* پرشدگی میلهٔ عمودی با درخشش بالا می‌آید */
+@keyframes hgtFillUp{ from{ opacity:0; transform:translateY(8px); } }
+.hgt-fill{ animation:hgtFillUp .85s cubic-bezier(.25,.8,.3,1); }
 @media (prefers-reduced-motion:reduce){
-  .hgt-needle,.hgt-liquid,.hgt-glow,.hgt-dot{ animation:none; }
+  .hgt-needle,.hgt-dot,.hgt-fill{ animation:none; }
 }
