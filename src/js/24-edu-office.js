@@ -109,6 +109,20 @@ function perSchoolRows(schools){
   }).sort((a,b)=>b.avg-a.avg);
 }
 
+/* ─────────────── دور ۶۵ بند ۶: شناسایی مدرسهٔ نیازمندِ عتِمَام ───────────────
+   برای رئیس اداره: نه رتبه‌بندی، که سیگنال‌های واقعی از دادهٔ خودش.
+   هر سیگنال جداگانه و شفاف است تا کارشناس بداند دقیقاً چه چیزی نیاز دارد. */
+function schoolSupportSignals(r){
+  var out=[];
+  if(r.s.area_kind==='village') out.push('مدرسهٔ روستایی');
+  if(r.avg>0&&r.avg<14) out.push('میانگین نمره پایین ('+fa(r.avg)+')');
+  if(r.att>0&&r.att<85) out.push('حضور پایین ('+fa(r.att)+')٪');
+  var hi=0;
+  try{ hi=(typeof atRiskList==='function')?atRiskList(90,r.s.id).filter(function(i){return i.level==='high';}).length:0; }catch(e){}
+  if(hi>=3) out.push('پیش‌آگهیِ افت بالا ('+fa(hi)+' دانش‌آموزِ پرخطر)');
+  return out;
+}
+
 /* ---------------- صفحه: تقسیمات کشوری (سوپرادمین) ---------------- */
 function viewGeo(){
   const pid=Number(S.filters.gp||0), cid=Number(S.filters.gc||0);
@@ -244,17 +258,24 @@ function viewOfficeSchools(){
   if(og)schools=schools.filter(s=>s.gender===og);
   if(ok)schools=schools.filter(s=>(s.area_kind||'district')===ok);
   const rows=perSchoolRows(schools);
+  /* بند ۶: سیگنال‌های «نیازمندِ عتِمَام» — پیش از فیلترهای دیگر محاسبه */
+  const _sig=rows.map(r=>schoolSupportSignals(r));
+  const needN=_sig.filter(x=>x.length>0).length;
+  const osup=!!S.filters.onesup;
+  const shown=osup?rows.filter((r,i)=>_sig[i].length>0):rows;
   const oopt=(list,val,label)=>[`<option value="">${label}</option>`,
     ...list.map(x=>`<option value="${esc(x[0])}" ${String(val)===String(x[0])?'selected':''}>${esc(x[1])}</option>`)].join('');
   return `<div class="card"><div class="card-head"><h3>🏫 مدارس تحت پوشش</h3>
     <div class="row"><input class="input" style="width:180px" placeholder="جستجوی نام مدرسه…" data-f="q" value="${esc(q)}" />
-    <span class="badge b-blue">${fa(schools.length)} مدرسه</span></div></div>
+    <span class="badge b-blue">${fa(schools.length)} مدرسه</span>
+    <span class="badge ${needN?'b-amber':'b-green'}">${needN?('🟠 '+fa(needN)+' مورد نیازمندِ عتِمَام'):'✅ بدون موردِ ویژه'}</span></div></div>
    ${filterPanel('officeschools',`
      <select class="select" style="width:145px" data-f="olevel">${oopt(LEVELS.map(l=>[l,l]),ol,'همه مقاطع')}</select>
      <select class="select" style="width:130px" data-f="ogender">${oopt([['پسرانه','پسرانه'],['دخترانه','دخترانه']],og,'همه جنسیت‌ها')}</select>
-     <select class="select" style="width:130px" data-f="okind">${oopt(Object.entries(AREA_KIND),ok,'منطقه و روستا')}</select>`)}
-   ${rows.length?`<div class="card-body" style="display:grid;gap:10px">
-    ${rows.map(r=>`<div class="row" style="background:var(--surface-2);padding:12px 14px;border-radius:12px">
+     <select class="select" style="width:130px" data-f="okind">${oopt(Object.entries(AREA_KIND),ok,'منطقه و روستا')}</select>
+     <select class="select" style="width:170px" data-f="onesup"><option value="" ${!osup?'selected':''}>همهٔ وضعیت‌ها</option><option value="1" ${osup?'selected':''}>🟠 فقط نیازمندِ عتِمَام</option></select>`)}
+   ${shown.length?`<div class="card-body" style="display:grid;gap:10px">
+    ${shown.map(r=>`<div class="row" style="background:var(--surface-2);padding:12px 14px;border-radius:12px">
       <div style="min-width:0"><b>${esc(r.s.name)}</b>
         <div class="small muted">${esc(r.s.level||'')} · ${esc(r.s.gender||'')} · ${esc((byId('counties',r.s.county_id)||{}).name||'')} › ${esc((byId('districts',r.s.district_id)||{}).name||'')}</div>
         <div class="small muted">مدیر: ${esc((db.users.find(u=>u.school_id===r.s.id&&u.role==='manager')||{}).full_name||'—')} · تلفن: ${esc(r.s.phone||'—')}</div></div>
@@ -265,9 +286,10 @@ function viewOfficeSchools(){
         <div style="text-align:center"><b>${fa(r.avg)}</b><div class="small muted">میانگین</div></div>
         <div style="text-align:center"><b>${fa(r.att)}٪</b><div class="small muted">حضور</div></div>
         <span class="badge ${r.s.active?'b-green':'b-red'}">${r.s.active?'فعال':'غیرفعال'}</span>
+        ${_sig[rows.indexOf(r)].length?`<span class="badge b-amber" title="${escAttr(_sig[rows.indexOf(r)].join(' · '))}">🟠 نیازمندِ عتِمَام</span>`:''}
         ${(typeof schoolModeBadge==='function')?schoolModeBadge(r.s.id,todayISO()):''}
         <button class="btn ghost sm" data-act="smode-open" data-id="${r.s.id}">حالت</button>
-      </div></div>`).join('')}</div>`:empty('🏫','مدرسه‌ای در محدوده شما نیست','')}</div>`;
+      </div></div>`).join('')}</div>`:(rows.length?empty('🟠','در این فیلتر مدرسه‌ای نیازمندِ عتِمَام نیست',''):empty('🏫','مدرسه‌ای در محدوده شما نیست',''))}</div>`;
 }
 
 /* ---------------- عملیات فاز ۹ ---------------- */
