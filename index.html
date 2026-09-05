@@ -4744,7 +4744,72 @@ var IMP_FIELDS = {
     ['subject','درس تخصصی',0,['درس','تخصص','رشته','درس تخصصی']],
     ['degree','مدرک تحصیلی',0,['مدرک','تحصیلات','مدرک تحصیلی']],
     ['address','آدرس',0,['آدرس','نشانی']]
+  ],
+  /* نمرات دورهٔ گذشته: دانش‌آموز با کد ملی یا نام پیدا می‌شود؛
+     درس با نام در بانک درس‌های همین مدرسه تطبیق می‌یابد. */
+  grades: [
+    ['full_name','نام و نام خانوادگی',0,['نام','نام دانش آموز','اسم','نام و نام خانوادگی','نام کامل']],
+    ['national_id','کد ملی',0,['کد ملی','کدملی','شماره ملی','شماره‌ملی']],
+    ['class_name','کلاس',0,['کلاس','نام کلاس','پایه و کلاس']],
+    ['subject','درس',1,['درس','نام درس','درس تحصیلی','برگه']],
+    ['term','نوبت',0,['نوبت','ترم','نوبت تحصیلی','نیم‌سال']],
+    ['exam_type','نوع آزمون',0,['نوع آزمون','آزمون','نوع برگه','برگه امتحان']],
+    ['score','نمره',1,['نمره','نمره درس','امتیاز','نتیجه']],
+    ['date','تاریخ آزمون',0,['تاریخ آزمون','تاریخ','تاریخ ثبت']]
+  ],
+  /* حضور و غیاب دورهٔ گذشته: تاریخ الزامی است؛ وضعیت فارسی/انگلیسی
+     هر دو خوانده می‌شود و به چهار وضعیت سامانه تقلیل می‌یابد. */
+  attendance: [
+    ['full_name','نام و نام خانوادگی',0,['نام','نام دانش آموز','اسم','نام و نام خانوادگی','نام کامل']],
+    ['national_id','کد ملی',0,['کد ملی','کدملی','شماره ملی','شماره‌ملی']],
+    ['class_name','کلاس',0,['کلاس','نام کلاس','پایه و کلاس']],
+    ['date','تاریخ',1,['تاریخ','تاریخ حضور','تاریغ']],
+    ['status','وضعیت',1,['وضعیت','حضور و غیاب','حالت','حضور','غیبت']],
+    ['note','توضیح',0,['توضیح','یادداشت','شرح','علت']]
   ]
+};
+
+/**
+ * درس را با نام در بانک درس‌های همان مدرسه پیدا کند.
+ * نام تکراری بین رشته‌ها ممکن است (مثل «دین و زندگی ۱» در هر سه
+ * شعبه)؛ پارامتر سوم (پایهٔ کلاس دانش‌آموز) ابهام را برطرف می‌کند.
+ */
+function findSubjectByName(name, sid, gradeWord){
+  var subs = (typeof db !== 'undefined' && db) ? (db.subjects || []) : [];
+  var want = normHdr(name);
+  if(!want) return null;
+  var exacts = [], part = null, gw = normHdr(gradeWord || '');
+  subs.forEach(function(s){
+    if(s.school_id !== sid) return;
+    var sn = normHdr(s.name);
+    if(!sn) return;
+    if(sn === want) exacts.push(s);
+    else if(!part && (sn.indexOf(want) > -1 || want.indexOf(sn) > -1)) part = s;
+  });
+  if(exacts.length === 1) return exacts[0];
+  if(exacts.length > 1 && gw){
+    var byGrade = exacts.filter(function(s){ return normHdr(s.grade || '') === gw; });
+    if(byGrade.length) return byGrade[0];
+  }
+  return exacts[0] || part;
+}
+
+/* وضعیت‌های حضور و غیاب: هر آنچه در فایل مدرسه بیاید،
+   به چهار وضعیتِ واحدِ سامانه (ATT_FA) تقلیل می‌یابد */
+var ATT_IMPORT_MAP = {
+  'present':'present','حاضر':'present','حضور':'present','پ':'present',
+  'absent':'absent','غایب':'absent','غیبت':'absent','غ':'absent',
+  'late':'late','تأخیر':'late','تاخیر':'late','دیر':'late','د':'late',
+  'excused':'excused','موجه':'excused','مرخصی':'excused','م':'excused'
+};
+
+/* نوبت: هر شکلی که بیاید به دو نوبتِ واحد تقلیل می‌یابد */
+var TERM_IMPORT_MAP = function(x){
+  var t = normHdr(toLatinDigits(x));
+  if(!t) return null;
+  if(/اول|یکم|1$/.test(t)) return 'نوبت اول';
+  if(/دوم|دویم|2$/.test(t)) return 'نوبت دوم';
+  return null;
 };
 
 /* ستون‌هایی که هرگز نباید نگاشت شوند (شماره ردیف و ستون‌های خالی) */
@@ -4906,6 +4971,20 @@ function validateImport(rows, mapping, entity){
   var pocc = (pcfg && pcfg.autoDistribute && typeof buildOccupancy === 'function')
     ? buildOccupancy(sid) : null;
   var famCls = (pcfg && pcfg.keepSiblings) ? Object.create(null) : null;
+  /* نمرات و حضور: دانش‌آموز از پیش در سامانه هست — فقط باید پیدا
+     شود، نه ساخته. دو نقشهٔ درهم‌سازی یک بار پیش از حلقه. */
+  var stuByNid = Object.create(null), stuByName = Object.create(null), stuCls = Object.create(null);
+  if(entity === 'grades' || entity === 'attendance'){
+    db.users.forEach(function(u){
+      if(u.school_id !== sid || u.role !== 'student' || u.active === 0) return;
+      if(u.national_id) stuByNid[u.national_id] = u;
+      var nm = normHdr(u.full_name);
+      if(nm)(stuByName[nm] = stuByName[nm] || []).push(u);
+    });
+    db.enrollments.forEach(function(e){
+      if(!stuCls[e.student_id]) stuCls[e.student_id] = e.class_id;
+    });
+  }
   var manualRows = [];   /* ردیف‌هایی که هیچ شعبه‌ای جا نداشت */
   var addCount = Object.create(null);   /* شناسهٔ کلاس ⇐ شمار افزوده */
 
@@ -4925,12 +5004,12 @@ function validateImport(rows, mapping, entity){
       || (fn + ' ' + ln).trim();
     if(fn) data.first_name = fn;
     if(ln) data.last_name = ln;
-    if(data.full_name.length < 3) errors.push('نام و نام خانوادگی الزامی است');
+    if((entity === 'students' || entity === 'teachers') && data.full_name.length < 3) errors.push('نام و نام خانوادگی الزامی است');
 
     var nid = toLatinDigits(o.national_id).replace(/\D/g, '');
     if(nid){
       if(!validNid(nid)) errors.push('کد ملی «' + nid + '» معتبر نیست');
-      else if(seen[nid]) errors.push('کد ملی در همین فایل تکراری است');
+      else if(seen[nid] && entity !== 'grades' && entity !== 'attendance') errors.push('کد ملی در همین فایل تکراری است');
       else {
         seen[nid] = true;
         var owner = (typeof nidOwner === 'function') ? nidOwner(nid) : null;
@@ -5099,12 +5178,81 @@ function validateImport(rows, mapping, entity){
       /* شمارهٔ ثابت */
       var land = toLatinDigits(o.landline).replace(/\D/g, '');
       if(land) data.landline = land;
-    } else {
+    } else if(entity === 'teachers'){
       data.subject = (o.subject || '').trim() || null;
       ['degree','address'].forEach(function(k){
         var v = (o[k] || '').trim();
         if(v) data[k] = v;
       });
+    } else {
+      /* نمرات و حضور و غیاب: دانش‌آموز از پیش هست — فقط پیدا می‌شود.
+         کد ملی اولویت دارد؛ وگرنه نام (با کلاس برای رفع ابهام). */
+      var stu = data.national_id ? stuByNid[data.national_id] : null;
+      if(!stu && data.full_name){
+        var nm = normHdr(data.full_name);
+        var cands = stuByName[nm] || [];
+        if(o.class_name){
+          var cn2 = normHdr(o.class_name);
+          var inCls = cands.filter(function(u2){
+            var c2 = byId('classes', stuCls[u2.id]);
+            return c2 && normHdr(c2.name) === cn2;
+          });
+          if(inCls.length) cands = inCls;
+        }
+        if(cands.length === 1) stu = cands[0];
+        else if(cands.length > 1)
+          errors.push('چند دانش‌آموز «' + esc(data.full_name) + '» هستن — کد ملی بنویسید');
+      }
+      if(!stu) errors.push(data.national_id
+        ? 'دانش‌آموز با کد ملی «' + data.national_id + '» در این مدرسه نیست'
+        : 'دانش‌آموز «' + esc(data.full_name || '؟') + '» در این مدرسه پیدا نشد');
+      if(stu){
+        data.student_id = stu.id;
+        data.class_id = stuCls[stu.id]
+          || (clsByName[normHdr(o.class_name || '')] || {}).id || null;
+      }
+      if(entity === 'grades'){
+        var subjTxt = (o.subject || '').trim();
+        if(!subjTxt) errors.push('نام درس الزامی است');
+        else{
+          /* پایهٔ کلاسِ دانش‌آموز برای رفع ابهامِ درس‌های هم‌نام */
+          var stuClsObj = byId('classes', stu ? stuCls[stu.id] : null);
+          var gword = (stuClsObj && typeof gradeWordOf === 'function' && stuClsObj.grade_level)
+            ? gradeWordOf(stuClsObj.grade_level) : null;
+          var su = findSubjectByName(subjTxt, sid, gword);
+          if(su) data.subject_id = su.id;
+          else errors.push('درس «' + esc(subjTxt) + '» در بانک درس‌های این مدرسه نیست');
+        }
+        var sc2 = toNumFa(o.score);
+        if(sc2 === null || isNaN(sc2)) errors.push('نمره خوانده نشد');
+        else if(sc2 < 0 || sc2 > 20) errors.push('نمره «' + esc(String(o.score)) + '» خارج از بازهٔ ۰ تا ۲۰ است');
+        else data.score = sc2;
+        if(o.term){
+          data.term = TERM_IMPORT_MAP(o.term) || null;
+          if(!data.term) warns.push('نوبت «' + esc(String(o.term)) + '» خوانده نشد — «نوبت اول» می‌شود');
+        }
+        data.exam_type = (o.exam_type || '').trim() || 'کلاسی';
+        if(o.date){
+          var iso2 = '';
+          try{ iso2 = jalaliToIso(o.date) || ''; }catch(e2){ iso2 = ''; }
+          if(!iso2 && /^\d{4}-\d{2}-\d{2}$/.test(o.date)) iso2 = o.date;
+          if(iso2) data.date = iso2; else warns.push('تاریخ آزمون خوانده نشد');
+        }
+      } else {
+        if(!o.date) errors.push('تاریخ الزامی است');
+        else{
+          var iso3 = '';
+          try{ iso3 = jalaliToIso(o.date) || ''; }catch(e3){ iso3 = ''; }
+          if(!iso3 && /^\d{4}-\d{2}-\d{2}$/.test(o.date)) iso3 = o.date;
+          if(iso3) data.date = iso3;
+          else errors.push('تاریخ «' + esc(String(o.date)) + '» خوانده نشد');
+        }
+        var stRaw = String(o.status == null ? '' : o.status);
+        var stKey = ATT_IMPORT_MAP[normHdr(stRaw)] || ATT_IMPORT_MAP[stRaw.trim()];
+        if(!stKey) errors.push('وضعیت «' + esc(stRaw) + '» شناخته نمی‌شود (حاضر/غایب/تأخیر/موجه)');
+        else data.status = stKey;
+        data.note = (o.note || '').trim() || null;
+      }
     }
     out.push({ row: i + 1, data: data, errors: errors, warns: warns, ok: errors.length === 0 });
   });
@@ -5138,6 +5286,30 @@ function commitImport(st){
   var sid = S.user.school_id, p = st.preview;
   var report = { created:0, updated:0, parents:0, classes:0, skipped:p.counts.failed };
   batchWrites(function(){
+
+    /* نمرات و حضور: دانش‌آموز از پیش هست — فقط رکورد اضافه می‌شود.
+       field source:'import' یعنی این رکورد از فایل مدرسه آمده است. */
+    if(st.entity === 'grades' || st.entity === 'attendance'){
+      p.rows.forEach(function(r){
+        if(!r.ok || !r.data || !r.data.student_id) return;
+        var d = r.data;
+        if(st.entity === 'grades'){
+          insert('grades', { school_id: sid, student_id: d.student_id,
+            class_id: d.class_id || null, subject_id: d.subject_id,
+            teacher_id: null, term: d.term || 'نوبت اول',
+            exam_type: d.exam_type || 'کلاسی', score: d.score,
+            max_score: 20, date: d.date || null,
+            source: 'import', created_at: todayISO() });
+        } else {
+          insert('attendance', { school_id: sid,
+            class_id: d.class_id || null, student_id: d.student_id,
+            date: d.date, status: d.status, note: d.note || null,
+            source: 'import' });
+        }
+        report.created++;
+      });
+      return;
+    }
 
     /* ── نقشه‌های درهم‌سازی ──────────────────────────────────────
        پیش‌تر هر ردیف کل جدول کاربران را می‌پیمود تا ولی را پیدا کند.
@@ -5424,7 +5596,10 @@ function viewImport(){
   if(st.step === 0){
     body = '<div class="card"><div class="card-head"><h3>📄 فایل اطلاعات مدرسه را انتخاب کنید</h3></div><div class="card-body">'
       + f('نوع اطلاعات', sel('imp_entity',
-          [['students','دانش‌آموزان (به‌همراه اولیا و کلاس)'],['teachers','دبیران']], st.entity))
+          [['students','دانش‌آموزان (به‌همراه اولیا و کلاس)'],
+           ['teachers','دبیران'],
+           ['grades','نمرات دورهٔ گذشته'],
+           ['attendance','حضور و غیاب دورهٔ گذشته']], st.entity))
       + '<div style="margin-top:14px;border:2px dashed var(--border);border-radius:14px;padding:34px 16px;'
       + 'text-align:center;background:var(--surface-2)">'
       + '<div style="font-size:40px">📊</div><b style="display:block;margin:10px 0 4px">فایل را انتخاب کنید</b>'
@@ -5509,8 +5684,12 @@ function viewImport(){
     body = '<div class="card"><div class="card-body" style="text-align:center;padding:30px 16px">'
       + '<div style="font-size:44px">🎉</div><h3 style="margin:10px 0 16px">ورود اطلاعات کامل شد</h3>'
       + '<div class="grid g4" style="max-width:640px;margin:0 auto">'
-      + statCard('➕', fa(r2.created), 'رکورد جدید', 'green')
-      + statCard('♻️', fa(r2.updated), 'به‌روزرسانی', 'blue')
+      + statCard('➕', fa(r2.created),
+          st.entity === 'grades' ? 'نمره ثبت‌شده'
+          : st.entity === 'attendance' ? 'حضور ثبت‌شده' : 'رکورد جدید', 'green')
+      + (st.entity === 'grades' || st.entity === 'attendance'
+          ? statCard('⏭️', fa(r2.skipped || 0), 'ردیف ردشده', 'blue')
+          : statCard('♻️', fa(r2.updated), 'به‌روزرسانی', 'blue'))
       + statCard('👨‍👩‍👦', fa(r2.parents), 'حساب ولی', 'purple')
       + statCard('🏛️', fa(r2.classes), 'کلاس جدید', 'amber') + '</div>'
       + (r2.skipped ? '<div class="small muted" style="margin-top:12px">'
@@ -8163,6 +8342,12 @@ document.addEventListener('click',e=>{
      const have=Object.values(st.mapping||{});
      const miss=need.filter(k=>have.indexOf(k)<0);
      if(miss.length){toast('فیلد الزامی نگاشت نشده است','err');return;}
+     /* نمرات و حضور: دانش‌آموز باید قابل شناسایی باشد —
+        نام یا کد ملی (هر دو هم خوب است) */
+     if((st.entity==='grades'||st.entity==='attendance')
+        && have.indexOf('full_name')<0 && have.indexOf('national_id')<0){
+       toast('نام یا کد ملی دانش‌آموز نگاشت نشده است','err');return;
+     }
      const preview=validateImport(st.sheet.rows,st.mapping,st.entity);
      S.imp=Object.assign({},st,{step:2,preview});render();
    },

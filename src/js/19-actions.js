@@ -679,6 +679,12 @@ document.addEventListener('click',e=>{
      const have=Object.values(st.mapping||{});
      const miss=need.filter(k=>have.indexOf(k)<0);
      if(miss.length){toast('فیلد الزامی نگاشت نشده است','err');return;}
+     /* نمرات و حضور: دانش‌آموز باید قابل شناسایی باشد —
+        نام یا کد ملی (هر دو هم خوب است) */
+     if((st.entity==='grades'||st.entity==='attendance')
+        && have.indexOf('full_name')<0 && have.indexOf('national_id')<0){
+       toast('نام یا کد ملی دانش‌آموز نگاشت نشده است','err');return;
+     }
      const preview=validateImport(st.sheet.rows,st.mapping,st.entity);
      S.imp=Object.assign({},st,{step:2,preview});render();
    },

@@ -7143,7 +7143,96 @@ test('گام ۴: نشان + کلاس و درس خودکار + خروج با grad
 });
 
 
-// ── نتیجه
+// ── نتیجه// ── بند ۱.۸: ورود دسته‌ای نمرات و حضور و غیاب از اکسل ─────────────
+test('بند ۱.۸: ویزارد نمرات — دانش‌آموز، درس و نمرهٔ فارسی درست خوانده می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  /* یک دانش‌آموز یکتا بساز (نام تکراری دمو نمی‌تواند آزمودنی باشد) */
+  const nid = W('(()=>{var n=900000001;while(true){n++;var b=String(n).slice(0,9).padStart(9,"0");var s=0;for(var i=0;i<9;i++)s+=Number(b[i])*(10-i);var r=s%11;var c=r<2?r:11-r;var v=b+c;if(validNid(v)&&!nidOwner(v))return v;}return ""})()');
+  assert(nid, 'کد ملی تستی ساخته نشد');
+  const tid = W('insert("users",{school_id:' + sid + ',role:"student",full_name:"تست نمره یکتا",national_id:' + JSON.stringify(nid) + ',phone:"",active:1,status:"active",created_at:"2026-09-05"}).id');
+  try {
+    const subj = W('db.subjects.filter(function(s){return s.school_id===' + sid + '&&s.name;})[0]');
+    assert(subj && subj.name, 'درس برای تست نیست');
+    const rows = [
+      ['تست نمره یکتا', subj.name, '۱۴/۵', 'نوبت اول', '1403-05-10'],
+      ['تست نمره یکتا', subj.name, '25', '', ''],
+      ['تست نمره یکتا', 'درس ناموجود تستی', '10', '', ''],
+      ['کسرت نمره نامدار', subj.name, '10', '', '']
+    ];
+    const mapping = {0:'full_name',1:'subject',2:'score',3:'term',4:'date'};
+    W('window.__g=validateImport(' + JSON.stringify(rows) + ',' + JSON.stringify(mapping) + ",'grades')");
+    const g = W('window.__g');
+    assert(g.counts.total === 4, 'تعداد ردیف درست نیست: ' + g.counts.total);
+    assert(g.counts.ok === 1 && g.counts.failed === 3, 'ردیف‌های خطادار جدا نشدند: ' + g.counts.ok + '/' + g.counts.failed);
+    assert(g.rows[0].data.student_id === tid, 'دانش‌آموز با نام پیدا نشد');
+    assert(g.rows[0].data.subject_id === subj.id, 'درس به بانک درس‌ها وصل نشد');
+    assert(g.rows[0].data.score === 14.5, 'نمرهٔ فارسی اعشاری خوانده نشد: ' + g.rows[0].data.score);
+    assert(g.rows[0].data.term === 'نوبت اول', 'نوبت نرمال نشد: ' + g.rows[0].data.term);
+    assert(g.rows[0].data.date && /^\d{4}-\d{2}-\d{2}$/.test(g.rows[0].data.date), 'تاریخ شمسی به ISO نشد: ' + g.rows[0].data.date);
+    assert(/۲۰|20/.test(g.rows[1].errors.join(' ')), 'نمرهٔ ۲۵ خطا نشد');
+    assert(/درس/.test(g.rows[2].errors.join(' ')), 'درس ناموجود خطا نشد');
+    assert(/پیدا نشد/.test(g.rows[3].errors.join(' ')), 'دانش‌آموز ناموجود خطا نشد');
+    /* ثبت نهایی */
+    W('S.imp={step:2,entity:"grades",sheet:{headers:[],rows:[]},mapping:' + JSON.stringify(mapping) + ',preview:window.__g}');
+    W('window.__rg=commitImport(S.imp)');
+    assert(W('window.__rg.created') === 1, 'فقط ردیف سالم باید ثبت شود: ' + W('window.__rg.created'));
+    const gi = W('(()=>{var a=db.grades.filter(function(x){return x.student_id===' + tid + '&&x.source==="import";});return JSON.stringify(a[a.length-1]||null);})()');
+    assert(gi, 'ردیف نمره ثبت نشد');
+    const row = JSON.parse(gi);
+    assert(row.score === 14.5 && row.term === 'نوبت اول' && row.max_score === 20, 'محتوای نمره غلط: ' + gi);
+    assert(row.subject_id === subj.id, 'درس غلط ثبت شد');
+    assert(W('db.attendance.filter(function(x){return x.source==="import";}).length') === 0, 'نمرات به حضور نشت می‌کند');
+  } finally {
+    W('db.grades=db.grades.filter(function(x){return x.student_id!==' + tid + '||x.source!=="import";});');
+    W('db.users=db.users.filter(function(u){return u.id!==' + tid + ';});');
+  }
+});
+
+test('بند ۱.۸: ویزارد حضور — وضعیت فارسی/انگلیسی به چهار وضعیتِ واحد تقلیل می‌یابد', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const sid = W('S.user.school_id');
+  const st = W('(()=>{var a=[];db.users.forEach(function(u){if(u.school_id===' + sid + "&&u.role==='student'&&u.national_id&&u.active!==0)a.push(u);});return JSON.stringify(a.slice(0,2).map(function(x){return{id:x.id,nid:x.national_id};}));})()");
+  const [a, b] = JSON.parse(st);
+  assert(a && b, 'دانش‌آموز دمو برای تست حضور نیست');
+  const rows = [
+    [a.nid, '1403-01-05', 'حاضر', ''],
+    [b.nid, '1403-01-05', 'غایب', 'تلفنی اطلاع داده شد'],
+    [a.nid, '1403-01-06', 'late', ''],
+    [b.nid, '1403-01-06', 'مرخصی', ''],
+    [a.nid, 'تاریخ خراب', 'حاضر', ''],
+    ['9999999999', '1403-01-05', 'حاضر', '']
+  ];
+  const mapping = {0:'national_id',1:'date',2:'status',3:'note'};
+  W('window.__t=validateImport(' + JSON.stringify(rows) + ',' + JSON.stringify(mapping) + ",'attendance')");
+  const t = W('window.__t');
+  assert(t.counts.ok === 4 && t.counts.failed === 2, 'خطاهای حضور جدا نشدند: ' + t.counts.ok + '/' + t.counts.failed);
+  assert(t.rows[0].data.status === 'present' && t.rows[0].data.student_id === a.id, 'حاضر تقلیل/تطبیق نشد');
+  assert(t.rows[1].data.status === 'absent' && t.rows[1].data.note === 'تلفنی اطلاع داده شد', 'غایب+توضیح درست نبود');
+  assert(t.rows[2].data.status === 'late', 'late انگلیسی خوانده نشد');
+  assert(t.rows[3].data.status === 'excused', 'مرخصی به موجه نیامد');
+  assert(/خوانده نشد/.test(t.rows[4].errors.join(' ')), 'تاریخ خراب خطا نشد');
+  assert(/کد ملی/.test(t.rows[5].errors.join(' ')), 'کد ملی ناشناس خطا نشد');
+  W('S.imp={step:2,entity:"attendance",sheet:{headers:[],rows:[]},mapping:' + JSON.stringify(mapping) + ',preview:window.__t}');
+  W('window.__rt=commitImport(S.imp)');
+  assert(W('window.__rt.created') === 4, 'چهار حضور سالم ثبت نشد: ' + W('window.__rt.created'));
+  assert(W('db.attendance.filter(function(x){return x.student_id===' + a.id + '&&x.source==="import";}).length') === 2, 'حضور دانش‌آموز اول ثبت نشد');
+  assert(W('db.grades.filter(function(x){return x.source==="import";}).length') === 0, 'حضور به نمرات نشت می‌کند');
+  W('db.attendance=db.attendance.filter(function(x){return x.source!=="import";});');
+});
+
+test('بند ۱.۸: گام نخست ویزارد هر چهار نوع اطلاعات را نشان می‌دهد', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  W("S.imp={step:0,entity:'students'}");
+  W("S.tab='import';render()");
+  const body = W('document.body.textContent');
+  assert(body.indexOf('نمرات دورهٔ گذشته') > -1, 'نوع نمرات در انتخاب نیست');
+  assert(body.indexOf('حضور و غیاب دورهٔ گذشته') > -1, 'نوع حضور در انتخاب نیست');
+  W('S.imp=null');
+});
+
+
+
 await Promise.all(testQueue);   // همهٔ آزمون‌های ناهمگام تا سرِ صف برسد
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));
