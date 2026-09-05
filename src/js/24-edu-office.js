@@ -898,6 +898,11 @@ setTimeout(()=>{
   if(typeof generateSidaDemo==='function') generateSidaDemo();
   if(typeof generateSchoolModeDemo==='function') generateSchoolModeDemo();
   loadLog(); applyLog(); initSync();
+  /* بند ۱۵: لینکِ اختصاصی — بارگذاری صفحه با hash + تغییرِ hash */
+  if(typeof vclassAutoJoinFromHash==='function'){
+    vclassAutoJoinFromHash();
+    window.addEventListener('hashchange', function(){ vclassAutoJoinFromHash(); });
+  }
   /* ⚠️ فقط دمو (DEMO-ONLY): ورود خودکار با نام کاربریِ ذخیره‌شده — بدون
      هیچ رمز یا تأیید هویت — صرفاً برای حالت آفلاین/نمایش است و بخشی از
      طراحی تولید نیست. در نسخهٔ نهایی ورود فقط با تلفن + کد ملی

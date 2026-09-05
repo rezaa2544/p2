@@ -155,6 +155,7 @@ function viewVclass(){
   var h = '<div class="page-head"><h2>🖥️ کلاس مجازی</h2></div>'
     + '<div class="small muted" style="margin-bottom:14px">'
     + 'پایش میزبان ویدیوی زنده نیست: یا لینک جلسهٔ شاد ثبت می‌شود، یا فایل/ویدیوی ضبط‌شده + سؤالات متنی. '
+    + 'هر دانش‌آموز یک <b>لینکِ اختصاصی</b> دارد: با باز کردنِ آن وارد کلاس می‌شود و حضورش خودکار ثبت می‌شود (مرحلهٔ بعد: اتصال به اتاق شاد — قفل ۱۲.۱). '
     + 'فایل‌ها در IndexedDB ذخیره می‌شوند (سقف نرم ' + idbSizeLabel(VCLASS_FILE_CAP) + ' برای هر فایل).</div>'
   + ((typeof virtualModeBanner==='function') ? virtualModeBanner() : '');
   if(!clsList.length){
@@ -189,6 +190,17 @@ function viewVclass(){
               ? '<a class="btn ghost sm" href="' + escAttr(s.shad_url) + '" target="_blank" rel="noopener">ورود به شاد</a>'
               : (s.file_key
                   ? '<button class="btn ghost sm" data-act="vclass-play" data-id="' + s.id + '">پخش</button>' : ''))
+          + (role === 'student'
+              ? (function(){
+                  var _a = vclassAttOf(s.id, u.id);
+                  return (_a && !_a.left_at)
+                    ? '<button class="btn ghost sm" data-act="vc-leave" data-id="' + s.id + '">🚪 خروج از کلاس</button>'
+                    : '';
+                })()
+              : '')
+          + (role !== 'student'
+              ? '<button class="btn ghost sm" data-act="vclass-links" data-id="' + s.id + '">🔗 لینک‌ها</button>'
+              : '')
           + (role !== 'student'
               ? '<button class="btn ghost sm" data-act="vclass-del" data-id="' + s.id + '">حذف</button>'
               : '')
@@ -419,5 +431,114 @@ function vclassAttCard(session, sid){
       h += '<button class="btn sm" data-act="vc-join" data-id="' + session.id + '">🚪 ورود به کلاس (حضورِ خودکار)</button>';
     }
   }
+  var _link = vclassLinkEnsure(session.id, sid);
+  h += '<div class="row" style="gap:8px;align-items:center;margin-top:8px">'
+    + '<span class="small muted">🔗 لینکِ اختصاصی:</span>'
+    + '<code class="small" style="direction:ltr">' + esc(_link.token) + '</code>'
+    + '<button class="btn ghost sm" data-act="vclass-link-copy" data-id="' + _link.id + '">کپی</button>'
+    + '</div>';
   return h + '</div></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بند ۱۵ (اصلِ واقعیت) — لینکِ اختصاصیِ واقعیِ هر دانش‌آموز
+
+   «حضورِ خودکار» واقعی: هر دانش‌آموز برای هر نشست یک لینکِ
+   اختصاصی دارد (جدول vclass_links، توکنِ قطعی از hash). وقتی
+   دانش‌آموز لینکش را باز کند، واردِ همان نشست می‌شود و حضورش
+   ثبت می‌شود (vclassJoinLink) — با همهٔ گاردهای روی داده
+   (فقط مالکِ لینک + فقط دانش‌آموز + فقط کلاسِ خودش). خروج هم
+   واقعی است (دکمهٔ خروج / لینکِ بعدی). مرحلهٔ باقی‌مانده:
+   تشخیصِ حضورِ واقعی از داخلِ اتاق شاد (API/سرور) — قفل ۱۲.۱.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const VC_LINK_PREFIX = 'vc-';
+
+/** hash قطعی djb2 → base36 (توکنِ بدونِ تصادف؛ در سرورِ واقعی:
+    توکنِ نامشخصِ سمت سرور — ساختارِ جدول دست‌نخورده) */
+function vclassHash36(str){
+  var h = 5381;
+  for(var i=0;i<str.length;i++){ h = ((h<<5)+h+str.charCodeAt(i))|0; }
+  return (h>>>0).toString(36);
+}
+function vclassLinkOf(sessionId, studentId){
+  for(var i=0;i<db.vclass_links.length;i++){
+    var l = db.vclass_links[i];
+    if(l.session_id===sessionId && l.student_id===studentId) return l;
+  }
+  return null;
+}
+/** لینکِ اختصاصی (ساختِ به‌تأخیر، upsert بر پایهٔ نشست+دانش‌آموز) */
+function vclassLinkEnsure(sessionId, studentId){
+  var existing = vclassLinkOf(sessionId, studentId);
+  if(existing) return existing;
+  var token = VC_LINK_PREFIX + vclassHash36(sessionId + ':' + studentId);
+  return insert('vclass_links', {
+    session_id: sessionId, student_id: studentId, token: token,
+    created_at: new Date().toISOString()
+  });
+}
+/** آدرسِ کاملِ لینک (در پوستهٔ دمو: همین فایل + hash) */
+function vclassLinkFullUrl(link){
+  var base = (typeof location!=='undefined' && location.href) ? String(location.href).split('#')[0] : 'index.html';
+  return base + '#' + link.token;
+}
+/** ورود از لینک: فقط مالک + گاردهای عادیِ حضور */
+function vclassJoinLink(token){
+  var t = String(token||'').replace(/^#/,'');
+  var link = null;
+  for(var i=0;i<db.vclass_links.length;i++){
+    if(db.vclass_links[i].token===t){ link = db.vclass_links[i]; break; }
+  }
+  if(!link) return {ok:false, msg:'این لینک معتبر نیست'};
+  var s = byId('vclass_sessions', link.session_id);
+  if(!s) return {ok:false, msg:'این نشست دیگر وجود ندارد'};
+  var u = S.user;
+  if(!u) return {ok:false, msg:'وارد نشده‌اید'};
+  var role = (typeof activePersona==='function') ? activePersona() : u.role;
+  if(role !== 'student') return {ok:false, msg:'فقط دانش‌آموز می‌تواند با لینکِ اختصاصی وارد شود'};
+  if(u.id !== link.student_id) return {ok:false, msg:'این لینک متعلق به دانش‌آموز دیگری است'};
+  var r = vclassJoin(s.id);
+  if(!r.ok) return r;
+  return {ok:true, rec:r.rec, session:s};
+}
+/** خودکار: وقتی صفحه با hashِ لینک باز می‌شود (بارگذاری/تغییر hash) */
+function vclassAutoJoinFromHash(){
+  if(typeof location === 'undefined') return;
+  var h = String(location.hash||'').replace(/^#/,'');
+  if(h.indexOf(VC_LINK_PREFIX) !== 0) return;
+  var r = vclassJoinLink(h);
+  if(!r.ok){ toast(r.msg,'err'); return; }
+  toast('🚪 وارد کلاس مجازی شدید — حضور شما ثبت شد','ok');
+  S.route = 'vclass'; S.filters = {}; S.page = 1;
+  render();
+}
+/** مودالِ لینک‌های اختصاصی (دبیرِ کلاس/مدیر مدرسه/سوپرادمین — گارد روی داده) */
+function vclassLinksModal(sessionId){
+  var s = byId('vclass_sessions', sessionId);
+  if(!s) return;
+  var u = S.user;
+  var role = (typeof activePersona==='function') ? activePersona() : u.role;
+  var cls = byId('classes', s.class_id);
+  if(role === 'teacher'){
+    if(!(cls && teacherClasses(u.id).some(function(c){ return c.id===cls.id; })))
+      return toast('شما فقط لینکِ کلاس‌های خودتان را می‌توانید ببینید','err');
+  } else if(role === 'manager'){
+    if(!(cls && cls.school_id === u.school_id))
+      return toast('این نشست متعلق به مدرسهٔ شما نیست','err');
+  } else if(role !== 'superadmin'){
+    return;
+  }
+  var studs = studentsOfClass(s.class_id);
+  var body = '<div class="small muted" style="margin-bottom:8px">لینکِ اختصاصیِ هر دانش‌آموز: وقتی بازش کند وارد این نشست می‌شود و حضورش خودکار ثبت می‌شود. (مرحلهٔ بعد: اتصالِ مستقیم به اتاق شاد — قفل ۱۲.۱)</div>'
+    + '<div style="display:grid;gap:6px;max-height:55vh;overflow:auto">';
+  studs.forEach(function(st){
+    var l = vclassLinkEnsure(s.id, st.id);
+    body += '<div class="row" style="gap:8px;align-items:center">'
+      + '<b class="small" style="min-width:110px;max-width:110px;overflow:hidden;text-overflow:ellipsis">' + esc(st.full_name) + '</b>'
+      + '<code class="small" style="direction:ltr;flex:1;overflow:hidden;text-overflow:ellipsis">' + esc(l.token) + '</code>'
+      + '<button class="btn ghost sm" data-act="vclass-link-copy" data-id="' + l.id + '">کپی</button>'
+      + '</div>';
+  });
+  openModal(modalTpl('لینک‌های اختصاصی — ' + s.title, body + '</div>', ''));
 }

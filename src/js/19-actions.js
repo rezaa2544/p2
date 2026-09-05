@@ -1138,6 +1138,17 @@ document.addEventListener('click',e=>{
      closeModal(); toast('✅ پیگیری بسته شد','ok'); render();
    },
    /* بند ۱۲: حضورِ خودکار کلاس مجازی */
+   /* بند ۱۵: لینک‌های اختصاصیِ کلاس مجازی */
+   'vclass-links'(){ vclassLinksModal(Number(id)); },
+   'vclass-link-copy'(){
+     const l = byId('vclass_links', Number(id));
+     if(!l) return;
+     const url = vclassLinkFullUrl(l);
+     if(navigator.clipboard && navigator.clipboard.writeText){
+       navigator.clipboard.writeText(url).then(function(){ toast('لینک کپی شد','ok'); },
+         function(){ window.prompt('لینک را کپی کنید:', url); });
+     } else { window.prompt('لینک را کپی کنید:', url); }
+   },
    'vc-join'(){
      const r = vclassJoin(Number(id));
      if(!r.ok) return toast(r.msg,'err');
