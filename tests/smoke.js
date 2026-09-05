@@ -181,7 +181,7 @@ console.log('\n▸ رندر همه‌ی صفحات با همه‌ی نقش‌ه�
 const ROUTES = {
   superadmin: ['dashboard', 'schools', 'users', 'subjects', 'announcements', 'calendar', 'geo', 'offices', 'officedash', 'regions', 'adminsubs', 'notifications'],
   manager: ['dashboard', 'classes', 'subjects', 'schedule', 'calendar', 'users', 'attendance', 'grades', 'discipline', 'leaves', 'exams', 'teachers', 'corrections', 'tuition', 'announcements', 'notifications', 'chat'],
-  teacher: ['dashboard', 'classes', 'schedule', 'calendar', 'attendance', 'grades', 'discipline', 'leaves', 'exams', 'announcements', 'notifications', 'chat'],
+  teacher: ['dashboard', 'classes', 'schedule', 'calendar', 'attendance', 'grades', 'discipline', 'leaves', 'exams', 'vclass', 'announcements', 'notifications', 'chat'],
   student: ['dashboard', 'schedule', 'exams', 'record', 'calendar', 'mytuition', 'leaves', 'announcements', 'notifications', 'chat'],
   counselor: ['cqueue', 'dashboard', 'announcements', 'notifications'],
 };
@@ -6087,7 +6087,7 @@ test('اسکرول: منوی کناری هم جای خود را حفظ می‌ک
 const NAV_EXPECT = {
   superadmin: ['dashboard','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications'],
   manager: ['dashboard','atrisk','growth','calendar','formssms','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','followup','leaves','exams','teachers','corrections','staff','tuition','meetings','notifyqueue','announcements','notifications','chat','busservice'],
-  teacher: ['meetings','dashboard','classes','schedule','calendar','attendance','grades','discipline','leaves','exams','announcements','notifications','chat'],
+  teacher: ['meetings','dashboard','classes','schedule','calendar','attendance','grades','discipline','leaves','exams','vclass','announcements','notifications','chat'],
   student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','announcements','notifications','chat'],
   edu_office: ['officedash','officeschools','announcements','notifications'],
   parent: ['meetings','dashboard','family','children','exams','calendar','mytuition','leaves','announcements','notifications','chat'],

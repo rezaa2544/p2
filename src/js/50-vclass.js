@@ -1,0 +1,312 @@
+/* ═══════════════════════════════════════════════════════════════════
+   کلاس مجازی — نسخهٔ سبک (طرح تأییدشده: docs/PLAN_VIRTUAL_CLASS.md)
+
+   پایش میزبان ویدیوی زنده نمی‌شود. دو حالت:
+     (الف) نشست «شاد» — لینک + زمان؛ اطلاع‌رسانی از صف پیام
+     (ب) فایل/ویدیوی ضبط‌شده — آپلود در IndexedDB (ماژول
+         49-vclass-idb.js) + توضیح + سؤالات متنی زیر آن
+
+   پنل‌ها:
+     • دبیر: مسیر `vclass` — فهرست کلاس‌ها، نشست جدید، حذف
+     • دانش‌آموز: تب «کلاس مجازی» در پروندهٔ من
+     • ولی: تب «کلاس مجازی» در پروندهٔ فرزند (فقط‌خوان)
+
+   سقف نرم هر فایل: ۲۰ مگابایت + نمایش فضای باقی‌مانده.
+   فایل در IDB می‌نشیند؛ در db فعلی فقط متادیتا.
+   ═══════════════════════════════════════════════════════════════════ */
+
+var VCLASS_STORE = 'vclass_files';
+
+/** نشست‌های یک کلاس، تازه‌ترین اول */
+function vclassSessionsOf(classId){
+  return db.vclass_sessions
+    .filter(function(s){ return s.class_id===classId; })
+    .sort(function(a,b){ return (b.created_at||'').localeCompare(a.created_at||''); });
+}
+
+/** آیا فایلِ این نشست هنوز در IDB هست؟ (فقط علامت‌گذاری؛ async) */
+function vclassHasFile(session){
+  if(!session || !session.file_key) return Promise.resolve(false);
+  return vclassIdbGet(VCLASS_STORE, session.file_key).then(function(b){
+    return !!b;
+  });
+}
+
+/** سؤالات یک نشست */
+function vclassQuestionsOf(sessionId){
+  return db.vclass_questions
+    .filter(function(q){ return q.session_id===sessionId; })
+    .sort(function(a,b){ return (b.created_at||'').localeCompare(a.created_at||''); });
+}
+
+/* ─────────────── مودال نشست جدید (دبیر) ─────────────── */
+
+function vclassNewModal(classId){
+  var cls = byId('classes', classId);
+  if(!cls) return;
+  window._vclassClass = classId;
+  openModal(modalTpl('نشست جدید کلاس مجازی — ' + cls.name,
+    f('عنوان *', inp('vc_title',''))
+    + f('نوع نشست', sel('vc_type', [['shad','لینک جلسهٔ شاد'],['video','فایل/ویدیوی ضبط‌شده']], 'shad'))
+    + '<div id="vc_shad" class="grid g2" style="margin-top:8px">'
+    +   f('لینک شاد *', inp('vc_url',''))
+    +   f('زمان جلسه', inp('vc_time','','datetime-local'))
+    + '</div>'
+    + '<div id="vc_video" style="display:none;margin-top:8px">'
+    +   f('فایل ویدیو * (حداکثر ' + idbSizeLabel(VCLASS_FILE_CAP) + ')',
+      '<input type="file" id="vc_file" class="input" accept="video/*,audio/*,.pdf,.ppt,.doc,.docx" />')
+    +   f('توضیح زیر ویدیو', inp('vc_desc',''))
+    + '</div>'
+    + '<div class="small muted" style="margin-top:8px" id="vc_space">…</div>',
+    'vclass-save'));
+  /* جابه‌جایی بخش‌ها با نوع */
+  document.getElementById('vc_type').onchange = function(){
+    var shad = this.value === 'shad';
+    document.getElementById('vc_shad').style.display = shad ? '' : 'none';
+    document.getElementById('vc_video').style.display = shad ? 'none' : '';
+  };
+  /* فضای باقی‌مانده (async) */
+  vclassIdbSpace().then(function(sp){
+    var el = document.getElementById('vc_space');
+    if(!el) return;
+    el.innerHTML = 'فضای ذخیرهٔ فایل: ' + (sp.known
+      ? idbSizeLabel(sp.usage) + ' از ' + idbSizeLabel(sp.quota) + ' (باقی‌ماندهٔ تقریبی ' + idbSizeLabel(sp.left) + ')'
+      : 'تقریباً ' + idbSizeLabel(sp.left) + ' (تخمین)');
+  });
+}
+
+/* ─────────────── ساخت نشست ─────────────── */
+
+/**
+ * ساخت نشست + (در صورت ویدیو) آپلود فایل در IDB + اطلاع‌رسانی کلاس.
+ * @returns {Promise<{ok:boolean,msg?:string,rec?:object}>}
+ */
+function vclassCreateSession(opts, file){
+  var cls = byId('classes', opts.classId);
+  if(!cls) return Promise.resolve({ok:false, msg:'کلاس یافت نشد'});
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  /* 🔴 فقط دبیرِ کلاس یا مدیر */
+  var isTeacher = role === 'teacher' && teacherClasses(u.id).some(function(c){ return c.id === cls.id; });
+  if(!(isTeacher || role === 'manager' || role === 'superadmin'))
+    return Promise.resolve({ok:false, msg:'شما دبیر این کلاس نیستید'});
+  var rec = {
+    school_id: cls.school_id, class_id: cls.id,
+    type: opts.type === 'video' ? 'video' : 'shad',
+    title: opts.title,
+    shad_url: opts.type === 'shad' ? (opts.url || '') : '',
+    shad_time: opts.type === 'shad' ? (opts.time || '') : '',
+    file_key: '', file_name: '', mime: '', size: 0,
+    description: opts.type === 'video' ? (opts.desc || '') : '',
+    created_at: new Date().toISOString(), created_by: u.id
+  };
+  var chain = Promise.resolve(true);
+  if(opts.type === 'video' && file){
+    if(vclassOverCap(file.size))
+      return Promise.resolve({ok:false, msg:'حجم فایل از ' + idbSizeLabel(VCLASS_FILE_CAP) + ' بیشتر است'});
+    rec.file_key = 'vclass:' + Date.now() + ':' + Math.floor(Math.random() * 1e6);
+    rec.file_name = file.name || 'file';
+    rec.mime = file.type || '';
+    rec.size = file.size;
+    chain = vclassIdbPut(VCLASS_STORE, rec.file_key, file);
+  }
+  return chain.then(function(ok){
+    if(ok === false) return {ok:false, msg:'فایل در ذخیره‌گاه ثبت نشد'};
+    var inserted = insert('vclass_sessions', rec);
+    /* اطلاع‌رسانی کلاس از صف موجود (نوع event) */
+    vclassNotifyClass(cls, rec.title, rec.type);
+    return {ok:true, rec:inserted};
+  });
+}
+
+/** آیا حجم فایل به سقف نرم می‌رسد یا از آن می‌گذرد؟ (تابع خالص برای تست/جهش) */
+function vclassOverCap(bytes){
+  return (bytes == null || bytes >= VCLASS_FILE_CAP);
+}
+
+/** اطلاع‌رسانی به همهٔ اولیای کلاس (از صف پیام، نوع event) */
+function vclassNotifyClass(cls, title, type){
+  if(typeof notifySettings !== 'function') return;
+  var cfg = notifySettings(cls.school_id);
+  if(!cfg.enabled || cfg.kinds.event === false) return;
+  var pids = [];
+  db.enrollments.filter(function(e){ return e.class_id === cls.id; })
+    .forEach(function(e){
+      notifyParentsOf(e.student_id).forEach(function(p){
+        if(pids.indexOf(p) < 0) pids.push(p);
+      });
+    });
+  if(!pids.length) return;
+  notifyRequest({
+    school_id: cls.school_id, kind: 'event', parent_ids: pids,
+    body: 'اولیای گرامی، در کلاس ' + cls.name + ' نشست «' + title +
+          '» کلاس مجازی ثبت شد (' + (type === 'shad' ? 'لینک شاد' : 'فایل ضبط‌شده') + '). ' +
+          notifySchoolName(cls.school_id)
+  });
+}
+
+/* ─────────────── نمای دبیر ─────────────── */
+
+function viewVclass(){
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  var clsList = (role === 'teacher') ? teacherClasses(u.id)
+             : db.classes.filter(function(c){ return c.school_id === u.school_id; });
+  var h = '<div class="page-head"><h2>🖥️ کلاس مجازی</h2></div>'
+    + '<div class="small muted" style="margin-bottom:14px">'
+    + 'پایش میزبان ویدیوی زنده نیست: یا لینک جلسهٔ شاد ثبت می‌شود، یا فایل/ویدیوی ضبط‌شده + سؤالات متنی. '
+    + 'فایل‌ها در IndexedDB ذخیره می‌شوند (سقف نرم ' + idbSizeLabel(VCLASS_FILE_CAP) + ' برای هر فایل).</div>';
+  if(!clsList.length){
+    return h + '<div class="card">' + empty('🖥️','کلاسی در دسترس نیست','') + '</div>';
+  }
+  clsList.forEach(function(c){
+    var list = vclassSessionsOf(c.id);
+    h += '<div class="card"><div class="card-head">'
+      + '<h3>' + esc(c.name) + '</h3>'
+      + (role !== 'student'
+          ? '<button class="btn sm" data-act="vclass-new" data-id="' + c.id + '">➕ نشست جدید</button>'
+          : '')
+      + '</div><div class="card-body">';
+    if(!list.length){
+      h += empty('🖥️','نشستی ثبت نشده','دکمهٔ «نشست جدید» را بزنید.');
+    } else {
+      h += '<div style="display:grid;gap:10px">' + list.map(function(s){
+        var qs = vclassQuestionsOf(s.id);
+        return '<div class="row" style="border:1px solid var(--border);border-radius:10px;padding:10px 14px;flex-wrap:wrap;gap:8px">'
+          + '<span class="badge ' + (s.type === 'shad' ? 'b-blue' : 'b-purple') + '">'
+          + (s.type === 'shad' ? '🔗 شاد' : '🎬 ویدیو') + '</span>'
+          + '<b>' + esc(s.title) + '</b>'
+          + (s.shad_time ? '<span class="muted small">🕐 ' + esc(s.shad_time) + '</span>' : '')
+          + (s.size ? '<span class="muted small">' + idbSizeLabel(s.size) + '</span>' : '')
+          + '<span class="muted small">' + jalali(s.created_at) + '</span>'
+          + (qs.length ? '<span class="badge b-amber">❓ ' + fa(qs.length) + ' سؤال</span>' : '')
+          + '<div class="spacer"></div>'
+          + (s.type === 'shad' && s.shad_url
+              ? '<a class="btn ghost sm" href="' + escAttr(s.shad_url) + '" target="_blank" rel="noopener">ورود به شاد</a>'
+              : (s.file_key
+                  ? '<button class="btn ghost sm" data-act="vclass-play" data-id="' + s.id + '">پخش</button>' : ''))
+          + (role !== 'student'
+              ? '<button class="btn ghost sm" data-act="vclass-del" data-id="' + s.id + '">حذف</button>'
+              : '')
+          + '</div>'
+          /* سؤالات (دبیر/مدیر: همه + پاسخ‌گویی) */
+          + (qs.length ? '<div style="display:grid;gap:6px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">'
+            + qs.map(function(q){
+                var st = byId('users', q.student_id) || {};
+                return '<div class="row" style="gap:8px;flex-wrap:wrap">'
+                  + '<span class="small muted">سؤال ' + esc(st.full_name || '—') + ':</span>'
+                  + '<span class="small">' + esc(q.body) + '</span>'
+                  + (q.answer
+                      ? '<span class="badge b-green">پاسخ: ' + esc(q.answer) + '</span>'
+                      : (role === 'teacher' || role === 'manager'
+                          ? '<button class="btn ghost sm" data-act="vclass-q-answer" data-id="' + q.id + '">پاسخ</button>'
+                          : '<span class="badge b-gray">در انتظار پاسخ</span>'))
+                  + '</div>';
+              }).join('') + '</div>' : '')
+        + '</div>';
+      }).join('') + '</div>';
+    }
+    return h + '</div></div>';
+  });
+  return h;
+}
+
+/* ─────────────── تب پرونده (دانش‌آموز/ولی) ─────────────── */
+
+function vclassRecordTab(sid){
+  var cls = classOf(sid);
+  var isParent = (typeof activePersona === 'function' ? activePersona() : S.user.role) === 'parent';
+  if(!cls) return empty('🖥️','برای این دانش‌آموز کلاسی ثبت نشده','');
+  var list = vclassSessionsOf(cls.id);
+  var h = '<div class="card-body" style="display:grid;gap:12px">';
+  if(!list.length) return '<div>' + empty('🖥️','نشستی برای کلاس ثبت نشده','دبیر هنوز نشستی ثبت نکرده است.') + '</div>';
+  list.forEach(function(s){
+    h += '<div style="border:1px solid var(--border);border-radius:12px;padding:14px">'
+      + '<div class="row" style="flex-wrap:wrap;gap:8px">'
+      + '<span class="badge ' + (s.type === 'shad' ? 'b-blue' : 'b-purple') + '">'
+      + (s.type === 'shad' ? '🔗 شاد' : '🎬 ویدیو') + '</span>'
+      + '<b>' + esc(s.title) + '</b>'
+      + '<span class="muted small">' + jalali(s.created_at) + '</span></div>'
+      + (s.type === 'shad'
+          ? '<div class="row" style="margin-top:10px;gap:8px">'
+            + (s.shad_time ? '<span class="small muted">🕐 زمان: ' + esc(s.shad_time) + '</span>' : '')
+            + (s.shad_url
+                ? '<a class="btn sm" href="' + escAttr(s.shad_url) + '" target="_blank" rel="noopener">ورود به جلسهٔ شاد</a>'
+                : '<span class="small muted">لینک ثبت نشده</span>')
+            + '</div>'
+          : '<div style="margin-top:10px;display:grid;gap:8px">'
+            + (s.description ? '<div class="small muted">' + esc(s.description) + '</div>' : '')
+            + (s.file_key
+                ? '<button class="btn sm" data-act="vclass-play" data-id="' + s.id + '">▶️ پخش فایل (' + idbSizeLabel(s.size) + ')</button>'
+                : '<span class="small muted">فایل در دسترس نیست</span>')
+            + '</div>')
+      + '</div>';
+    /* سؤالات — هر کس (دانش‌آموز یا ولی) فقط سؤالات خودِ فرزند/دانش‌آموز را می‌بیند */
+    var qs = vclassQuestionsOf(s.id).filter(function(q){ return q.student_id === sid; });
+    if(!isParent){
+      h += '<div style="margin-top:10px"><button class="btn ghost sm" data-act="vclass-q-ask" data-id="' + s.id + '">❓ سؤال بپرس</button></div>';
+    }
+    if(qs.length){
+      h += '<div style="display:grid;gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">'
+        + qs.map(function(q){
+            return '<div class="row" style="gap:8px;flex-wrap:wrap">'
+              + '<span class="small">' + esc(q.body) + '</span>'
+              + (q.answer
+                  ? '<span class="badge b-green">پاسخ دبیر: ' + esc(q.answer) + '</span>'
+                  : '<span class="badge b-gray">در انتظار پاسخ</span>')
+              + '</div>';
+          }).join('') + '</div>';
+    }
+  });
+  return h + '</div>';
+}
+
+/* ─────────────── دادهٔ نمونه (قطعی، فقط دمو) ─────────────── */
+
+function generateVclassDemo(){
+  if(db.vclass_sessions.length) return;
+  var sc = db.schools.filter(function(s){ return s.active; })[0];
+  if(!sc) return;
+  var cls = db.classes.filter(function(c){ return c.school_id === sc.id; })[0];
+  if(!cls) return;
+  var t = db.users.filter(function(x){ return x.role === 'teacher' && x.school_id === sc.id; })[0];
+  var now = new Date().toISOString();
+  var s1 = add('vclass_sessions', {
+    school_id: sc.id, class_id: cls.id, type: 'shad',
+    title: 'جلسهٔ مرور ریاضی', shad_url: 'https://shad.ir/class/123',
+    shad_time: now.slice(0,16) + ':00', file_key:'', file_name:'', mime:'', size:0,
+    description:'', created_at: now, created_by: t ? t.id : 0
+  });
+  /* فایل دمو: چند کیلوبایت بایت (پخش واقعی ندارد ولی مکانیزم کامل است) */
+  var blob = null;
+  try{ blob = new Blob([new Uint8Array(2048).fill(7)], {type:'video/mp4'}); }catch(e){}
+  var key = 'vclass:demo:' + s1.id;
+  add('vclass_sessions', {
+    school_id: sc.id, class_id: cls.id, type: 'video',
+    title: 'ویدیوی توضیح فصل ۲', shad_url:'', shad_time:'',
+    file_key: key, file_name: 'demo-lesson.mp4', mime: 'video/mp4', size: blob ? 2048 : 0,
+    description: 'مرور کلی فصل دوم با تمرین‌ها',
+    created_at: now, created_by: t ? t.id : 0
+  }).id;
+  var s2 = db.vclass_sessions[db.vclass_sessions.length - 1];
+  if(blob && typeof vclassIdbPut === 'function'){
+    vclassIdbPut(VCLASS_STORE, key, blob); /* async؛ اگر backend نباشد بی‌صدا رد می‌شود */
+  }
+  var studs = db.users.filter(function(x){
+    return x.role === 'student' && x.school_id === sc.id;
+  });
+  if(studs.length){
+    add('vclass_questions', {
+      session_id: s2.id, student_id: studs[0].id,
+      body: 'سؤال ۳ تمرین را کامل نکردم، می‌شود توضیح دهید؟',
+      created_at: now, answer: 'بله، جلسهٔ بعد توضیح می‌دهم.', answered_at: now, answered_by: t ? t.id : 0
+    });
+    if(studs.length > 1){
+      add('vclass_questions', {
+        session_id: s2.id, student_id: studs[1].id,
+        body: 'ویدیو را دوباره می‌توانم ببینم؟',
+        created_at: now, answer: '', answered_at: '', answered_by: 0
+      });
+    }
+  }
+}

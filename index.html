@@ -958,7 +958,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],vclass_sessions:[],vclass_questions:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -1590,14 +1590,14 @@ const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sid
 const NAV={
  superadmin:[['نظارت روزانه',[['dashboard','📊','داشبورد مدیریتی'],['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها']]],['مدارس و کاربران',[['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه'],['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]]],
  manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی']]],['مالی',[['tuition','💰','شهریه و امور مالی']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
- teacher:[['کار روزانه',[['dashboard','📊','داشبورد'],['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کار آموزشی',[['meetings','📅','جلسات اولیا'],['classes','🏛️','کلاس‌ها'],['exams','👁️','برنامه مراقبت من'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ teacher:[['کار روزانه',[['dashboard','📊','داشبورد'],['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کار آموزشی',[['meetings','📅','جلسات اولیا'],['classes','🏛️','کلاس‌ها'],['vclass','🖥️','کلاس مجازی'],['exams','👁️','برنامه مراقبت من'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['calendar','🗓️','تقویم آموزشی']]],['پروندهٔ من',[['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['leaves','📨','مرخصی']]],['امور مالی',[['mytuition','💰','شهریه من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['کار روزانه',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  parent:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['children','👨‍👩‍👦','پرونده فرزندان'],['exams','📝','برنامه امتحانات'],['calendar','🗓️','تقویم آموزشی']]],['نوبت و درخواست‌ها',[['meetings','📅','جلسات اولیا'],['leaves','📨','درخواست مرخصی']]],['خانواده و مالی',[['family','🏠','خانواده و مدارس'],['mytuition','💰','شهریه و اقساط']]],['ارتباطات',[['announcements','📢','اطلاعیه‌های مدرسه'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو با مدرسه']]]],
  counselor:[['کار من',[['cqueue','📨','صف ارجاع'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  driver:[['سرویس من',[['myservice','🚌','مسیر من'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]]
 };
-const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
+const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
 S.stack=[];
@@ -2397,6 +2397,16 @@ var ACTION_ROLES = {
   'bus-route-del':    ['manager'],
   'bus-students':     ['manager'],
   'bus-students-save':['manager'],
+  /* کلاس مجازی (نسخهٔ سبک): ساخت/حذف فقط دبیرِ کلاس یا مدیر —
+     بررسی مالکیت کلاس در vclassCreateSession/vclass-del روی داده تکرار می‌شود */
+  'vclass-new':       ['teacher','manager'],
+  'vclass-save':      ['teacher','manager'],
+  'vclass-del':       ['teacher','manager'],
+  'vclass-play':      ['teacher','manager','student','parent'],
+  'vclass-q-ask':     ['student'],
+  'vclass-q-save':    ['student'],
+  'vclass-q-answer':  ['teacher','manager'],
+  'vclass-q-answer-save':['teacher','manager'],
   /* حضور و غیاب: فقط دبیر و مدیر */
   'att-set':       ['teacher','manager'],
   'att-review':    ['teacher','manager'],
@@ -2707,6 +2717,7 @@ function _renderRouteInner(){
     case 'officeschools':return viewOfficeSchools();
     case 'busservice':return viewBusService();
     case 'myservice':return viewMyService();
+    case 'vclass':return viewVclass();
     case 'cqueue':return viewCounselorQueue();
     case 'followup':return viewFollowup();
     case 'staff':return viewStaff();
@@ -3410,8 +3421,10 @@ function viewRecord(sid){
   const att=db.attendance.filter(a=>a.student_id===sid).slice().sort((a,b)=>b.date.localeCompare(a.date));
   const disc=db.discipline.filter(d=>d.student_id===sid).slice().sort((a,b)=>b.date.localeCompare(a.date));
   const bySub={};gr.forEach(g=>{(bySub[g.subject_id]=bySub[g.subject_id]||[]).push(g);});
+  const persona=(typeof activePersona==='function')?activePersona():S.user.role;
   const tabs=[['grades','📝 کارنامه'],['attendance','✅ حضور و غیاب'],
               ['schedule','📅 برنامه کلاس'],['discipline','⚖️ پرونده انضباطی'],['profile','🪪 شناسنامه']];
+  if(persona==='student'||persona==='parent')tabs.push(['vclass','🖥️ کلاس مجازی']);
   let body='';
   if(S.tab==='profile') body = studentProfileCard(sid)
     + ((typeof yearHistoryCard==='function')?yearHistoryCard(sid):'')
@@ -3436,6 +3449,7 @@ function viewRecord(sid){
      <div class="row">${l.map(g=>`<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}: <b>${fa(g.score)}</b></span>`).join('')}</div></div>`;}).join('')}</div>`
     :empty('📝','نمره‌ای ثبت نشده','به محض ثبت نمره، کارنامه اینجا نمایش داده می‌شود.');
   if(S.tab==='schedule') body = classScheduleCard(sid);
+  if(S.tab==='vclass') body = (typeof vclassRecordTab==='function')?vclassRecordTab(sid):'';
   if(S.tab==='attendance'){const cnt=k=>att.filter(a=>a.status===k).length;
     body= att.length?`<div class="card-body row">${['present','absent','late','excused'].map(k=>`<span class="badge ${ATT_BADGE[k]}">${ATT_FA[k]}: ${fa(cnt(k))} روز</span>`).join('')}</div>
      <div class="table-wrap"><table><thead><tr><th>تاریخ</th><th>وضعیت</th><th>توضیح</th><th>تغییرات</th></tr></thead><tbody>
@@ -7172,6 +7186,7 @@ function restoreBackup(obj){
     if(typeof generateP11 === 'function') generateP11();
     if(typeof generateP12 === 'function') generateP12();
     if(typeof generateBusDemo==='function') generateBusDemo();
+    if(typeof generateVclassDemo==='function') generateVclassDemo();
     /* ۲. جایگزینی دفترچه و اجرای دوبارهٔ عملیات */
     log.length = 0;
     obj.ops.forEach(function(o){ log.push(o); });
@@ -8768,6 +8783,95 @@ document.addEventListener('click',e=>{
        ? fa(r.created)+' خلاصه در صف قرار گرفت'+(r.skipped?' ('+fa(r.skipped)+' تکراری یا بدون والد، رد شد)':'')
        : 'خلاصه‌ای ساخته نشد (همه تکراری یا بدون والد)', r.created?'ok':'err');
      render();
+   },
+   /* ─────────────── کلاس مجازی (نسخهٔ سبک) ─────────────── */
+   'vclass-new'(){ vclassNewModal(Number(id)); },
+   'vclass-save'(){
+     const clsId = window._vclassClass;
+     const title = V('vc_title');
+     if(!title) return toast('عنوان نشست را بنویسید','err');
+     const type = V('vc_type');
+     const fEl = $('#vc_file');
+     const file = (fEl && fEl.files && fEl.files[0]) ? fEl.files[0] : null;
+     if(type==='video' && !file) return toast('فایل ویدیو را انتخاب کنید','err');
+     closeModal();
+     vclassCreateSession({classId:clsId, type:type, title:title,
+       url:V('vc_url'), time:V('vc_time'), desc:V('vc_desc')}, file).then(function(r){
+       if(!r.ok){ toast(r.msg,'err'); return; }
+       toast('نشست در کلاس مجازی ثبت شد','ok');
+       render();
+     });
+   },
+   'vclass-del'(){
+     askConfirm('این نشست (و در صورت وجود، فایل آن از ذخیره‌گاه) حذف شود؟', function(){
+       const s = byId('vclass_sessions', id);
+       if(!s) return;
+       const u = S.user;
+       const role = (typeof activePersona==='function') ? activePersona() : u.role;
+       const isTeacher = role==='teacher' && teacherClasses(u.id).some(function(c){ return c.id===s.class_id; });
+       if(!(isTeacher || role==='manager' || role==='superadmin')){
+         toast('شما مجوز حذف این نشست را ندارید','err'); return;
+       }
+       vclassQuestionsOf(s.id).forEach(function(q){ remove('vclass_questions', q.id); });
+       remove('vclass_sessions', s.id);
+       /* فایل IDB ناهمگام است — پیام و رندر بعد از پاک‌شدن واقعی */
+       vclassIdbDel(VCLASS_STORE, s.file_key || '').then(function(){
+         toast('نشست حذف شد','ok'); render();
+       });
+     }, {title:'حذف نشست', ok:'حذف', danger:true});
+   },
+   'vclass-play'(){
+     const s = byId('vclass_sessions', id);
+     if(!s || !s.file_key){ toast('فایل این نشست در دسترس نیست','err'); return; }
+     toast('فایل در حال بارگذاری است…','');
+     vclassIdbGet(VCLASS_STORE, s.file_key).then(function(blob){
+       if(!blob){ toast('فایل دیگر در ذخیره‌گاه نیست','err'); return; }
+       const url = (typeof URL!=='undefined' && URL.createObjectURL) ? URL.createObjectURL(blob) : '';
+       openModal(modalTpl('🎬 ' + (s.title||''),
+         '<video controls style="width:100%;max-height:62vh;background:#000;border-radius:10px" data-vurl="'+escAttr(url)+'"></video>'
+         + (s.description ? '<div class="small muted" style="margin-top:10px">'+esc(s.description)+'</div>' : ''), ''));
+       setTimeout(function(){
+         const v = document.querySelector('#modal video');
+         if(v && v.getAttribute('data-vurl')) v.src = v.getAttribute('data-vurl');
+       }, 60);
+     });
+   },
+   'vclass-q-ask'(){
+     window._vcQSession = id;
+     openModal(modalTpl('❓ سؤال از دبیر',
+       '<textarea id="vc_qbody" class="input" rows="4" placeholder="سؤال خود را بنویسید"></textarea>',
+       'vclass-q-save'));
+   },
+   'vclass-q-save'(){
+     const s = byId('vclass_sessions', window._vcQSession);
+     if(!s) return;
+     const body = V('vc_qbody');
+     if(!body) return toast('متن سؤال را بنویسید','err');
+     const u = S.user;
+     const role = (typeof activePersona==='function') ? activePersona() : u.role;
+     /* 🔴 سؤال فقط به اسم خودِ دانش‌آموز و فقط در نشستِ کلاس خودش */
+     const sid2 = role==='student' ? u.id : S.child;
+     const cls2 = sid2 ? classOf(sid2) : null;
+     if(!cls2 || cls2.id !== s.class_id){ toast('این نشست مربوط به کلاس شما نیست','err'); return; }
+     insert('vclass_questions', {
+       session_id: s.id, student_id: sid2, body: body,
+       created_at: new Date().toISOString(), answer:'', answered_at:'', answered_by:0
+     });
+     closeModal(); toast('سؤال ثبت شد — پاسخ دبیر همین‌جا می‌آید','ok'); render();
+   },
+   'vclass-q-answer'(){
+     window._vcQId = id;
+     openModal(modalTpl('✍️ پاسخ به سؤال',
+       '<textarea id="vc_qans" class="input" rows="3" placeholder="پاسخ خود را بنویسید"></textarea>',
+       'vclass-q-answer-save'));
+   },
+   'vclass-q-answer-save'(){
+     const ans = V('vc_qans');
+     if(!ans) return toast('متن پاسخ را بنویسید','err');
+     update('vclass_questions', window._vcQId, {
+       answer: ans, answered_at: new Date().toISOString(), answered_by: S.user.id
+     });
+     closeModal(); toast('پاسخ ثبت شد','ok'); render();
    },
    'notify-settings'(){
      const c = notifySettings(S.user.school_id);
@@ -11769,6 +11873,7 @@ setTimeout(()=>{
   if(typeof generateP11==='function') generateP11();
   if(typeof generateP12=== 'function') generateP12();
   if(typeof generateBusDemo==='function') generateBusDemo();
+  if(typeof generateVclassDemo==='function') generateVclassDemo();
   loadLog(); applyLog(); initSync();
   /* ⚠️ فقط دمو (DEMO-ONLY): ورود خودکار با نام کاربریِ ذخیره‌شده — بدون
      هیچ رمز یا تأیید هویت — صرفاً برای حالت آفلاین/نمایش است و بخشی از
@@ -18038,6 +18143,498 @@ function generateBusDemo(){
       type:'on', at:todayISO()+'T07:15:00.000Z', by:drv.id});
     add('bus_events',{school_id:sc.id, route_id:route.id, student_id:studs[1].id,
       type:'off', at:todayISO()+'T08:05:00.000Z', by:drv.id});
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   IndexedDB — ماژول فایل (کلاس مجازی + تکالیف؛ یک‌بار ساخت، دوبار استفاده)
+
+   چرا IndexedDB؟ سقف ذخیرهٔ محلی (db فعلی) ~۵ مگابایت است و دمو از آن ~۴٫۷
+   مگابایت اشغال کرده؛ فایل/ویدیو فقط در IDB جا می‌شود. (هر دو در مرورگر، نه سرور.) الگو:
+     • فایل (Blob)     → IndexedDB (دیتابیس `payesh`)
+     • متادیتا + متون  → db فعلی (ذخیرهٔ محلی)
+
+   سطح API به ۵ عضو محدود است (open/transaction/put/get/delete)؛
+   wrapper روی Promise است تا مستقل از بستر باشد.
+
+   🧪 تست (smoke/jsdom): jsdom IndexedDB ندارد؛ `vclassIdbSetBackend`
+   یک fake کوچک می‌پذیرد (سطح همان ۵ عضو) — wrapper بدون تغییر روی
+   fake کار می‌کند. در مرورگر واقعی، IndexedDB خودِ مرورگر.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* backend: پیش‌فرض = IndexedDB واقعیِ مرورگر؛ تست fake جایگزین می‌کند */
+var _IDB_BACKEND = null;
+function vclassIdbBackend(){
+  if(_IDB_BACKEND) return _IDB_BACKEND;
+  if(typeof indexedDB !== 'undefined' && indexedDB) return indexedDB;
+  return null; /* بدون backend — همهٔ فراخوانی‌ها promise خالی می‌دهند */
+}
+/** تزریق backend (تست) یا برگرداندن به واقعی (null) — کش دیتابیس هم تازه می‌شود */
+function vclassIdbSetBackend(b){ _IDB_BACKEND = b || null; _IDB_DB = null; }
+
+/** باز کردن دیتابیس و مطمئن شدن از وجود استورها */
+var _IDB_DB = null;
+function vclassIdbOpen(storeNames){
+  var idb = vclassIdbBackend();
+  return new Promise(function(resolve, reject){
+    if(!idb) return resolve(null);
+    var req = idb.open('payesh', 1);
+    req.onupgradeneeded = function(e){
+      var d = e.target.result;
+      (storeNames || []).forEach(function(n){
+        if(!d.objectStoreNames.contains(n)) d.createObjectStore(n);
+      });
+    };
+    req.onsuccess = function(e){
+      _IDB_DB = e.target.result;
+      resolve(_IDB_DB);
+    };
+    req.onerror = function(){ reject(req.error || new Error('idb-open')); };
+  });
+}
+
+/** ذخیرهٔ فایل/بلاگ */
+function vclassIdbPut(store, key, value){
+  return vclassIdbOpen([store]).then(function(db){
+    if(!db) return Promise.resolve(false);
+    return new Promise(function(resolve){
+      db.transaction(store, 'readwrite').objectStore(store)
+        .put(value, key).onsuccess = function(){ resolve(true); };
+    });
+  });
+}
+
+/** خواندن فایل/بلاگ */
+function vclassIdbGet(store, key){
+  return vclassIdbOpen([store]).then(function(db){
+    if(!db) return Promise.resolve(null);
+    return new Promise(function(resolve){
+      var req = db.transaction(store).objectStore(store).get(key);
+      req.onsuccess = function(){ resolve(req.result || null); };
+    });
+  });
+}
+
+/** حذف فایل */
+function vclassIdbDel(store, key){
+  return vclassIdbOpen([store]).then(function(db){
+    if(!db) return Promise.resolve(false);
+    return new Promise(function(resolve){
+      db.transaction(store, 'readwrite').objectStore(store)
+        .delete(key).onsuccess = function(){ resolve(true); };
+    });
+  });
+}
+
+/* ─────────────── کمک‌های ظرفیت و فرمت ─────────────── */
+
+var VCLASS_FILE_CAP = 200 * 1024 * 1024; /* سقف نرم ۲۰۰ مگابایت */
+
+/** برچسب خوانا برای بایت */
+function idbSizeLabel(bytes){
+  if(bytes == null || isNaN(bytes)) return '—';
+  var mb = bytes / 1048576;
+  if(mb >= 1) return fa(Math.round(mb * 10) / 10) + ' مگابایت';
+  var kb = bytes / 1024;
+  if(kb >= 1) return fa(Math.round(kb)) + ' کیلوبایت';
+  return fa(bytes) + ' بایت';
+}
+
+/**
+ * تخمین فضای باقی‌ماندهٔ IDB (navigator.storage.estimate).
+ * promise است؛ در نبود API، حدس محافظه‌کارانهٔ ۴۰ مگابایت برمی‌گرداند.
+ */
+function vclassIdbSpace(){
+  return new Promise(function(resolve){
+    try{
+      if(typeof navigator !== 'undefined' && navigator.storage &&
+         typeof navigator.storage.estimate === 'function'){
+        navigator.storage.estimate().then(function(est){
+          var usage = est.usage || 0, quota = est.quota || 0;
+          resolve({usage:usage, quota:quota,
+            left: quota > usage ? quota - usage : 0,
+            known: quota > 0});
+        }).catch(function(){
+          resolve({usage:0, quota:400*1048576, left:400*1048576, known:false});
+        });
+        return;
+      }
+    }catch(e){}
+    resolve({usage:0, quota:400*1048576, left:400*1048576, known:false});
+  });
+}
+
+/* ─────────────── fake کوچک برای تست (سطح ۵ عضو) ─────────────── */
+
+/**
+ * fake حداقلی IndexedDB — فقط برای smoke (jsdom).
+ * ساخت: vclassIdbSetBackend(makeIdbFake());  — بازنشانی: null
+ */
+function makeIdbFake(){
+  var stores = new Map();
+  function mkDb(){
+    return {
+      transaction: function(storeName){
+        return {
+          objectStore: function(n){
+            if(!stores.has(n)) stores.set(n, new Map());
+            var m = stores.get(n);
+            return {
+              put: function(value, key){
+                var req = {};
+                m.set(String(key), value);
+                setTimeout(function(){ if(req.onsuccess) req.onsuccess(); }, 0);
+                return req;
+              },
+              get: function(key){
+                var req = { result: m.has(String(key)) ? m.get(String(key)) : undefined };
+                setTimeout(function(){ if(req.onsuccess) req.onsuccess(); }, 0);
+                return req;
+              },
+              delete: function(key){
+                var req = {};
+                m.delete(String(key));
+                setTimeout(function(){ if(req.onsuccess) req.onsuccess(); }, 0);
+                return req;
+              }
+            };
+          }
+        };
+      },
+      objectStoreNames: {
+        contains: function(n){ return stores.has(n); }
+      }
+    };
+  }
+  var db = mkDb();
+  return {
+    open: function(name, version){
+      var req = { result: db };
+      setTimeout(function(){
+        var ev = { target:{ result: db } };
+        if(req.onupgradeneeded){
+          try{ req.onupgradeneeded(ev); }catch(e){}
+        }
+        if(req.onsuccess){
+          try{ req.onsuccess(ev); }catch(e){}
+        }
+      }, 0);
+      return req;
+    },
+    __stores: stores
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   کلاس مجازی — نسخهٔ سبک (طرح تأییدشده: docs/PLAN_VIRTUAL_CLASS.md)
+
+   پایش میزبان ویدیوی زنده نمی‌شود. دو حالت:
+     (الف) نشست «شاد» — لینک + زمان؛ اطلاع‌رسانی از صف پیام
+     (ب) فایل/ویدیوی ضبط‌شده — آپلود در IndexedDB (ماژول
+         49-vclass-idb.js) + توضیح + سؤالات متنی زیر آن
+
+   پنل‌ها:
+     • دبیر: مسیر `vclass` — فهرست کلاس‌ها، نشست جدید، حذف
+     • دانش‌آموز: تب «کلاس مجازی» در پروندهٔ من
+     • ولی: تب «کلاس مجازی» در پروندهٔ فرزند (فقط‌خوان)
+
+   سقف نرم هر فایل: ۲۰ مگابایت + نمایش فضای باقی‌مانده.
+   فایل در IDB می‌نشیند؛ در db فعلی فقط متادیتا.
+   ═══════════════════════════════════════════════════════════════════ */
+
+var VCLASS_STORE = 'vclass_files';
+
+/** نشست‌های یک کلاس، تازه‌ترین اول */
+function vclassSessionsOf(classId){
+  return db.vclass_sessions
+    .filter(function(s){ return s.class_id===classId; })
+    .sort(function(a,b){ return (b.created_at||'').localeCompare(a.created_at||''); });
+}
+
+/** آیا فایلِ این نشست هنوز در IDB هست؟ (فقط علامت‌گذاری؛ async) */
+function vclassHasFile(session){
+  if(!session || !session.file_key) return Promise.resolve(false);
+  return vclassIdbGet(VCLASS_STORE, session.file_key).then(function(b){
+    return !!b;
+  });
+}
+
+/** سؤالات یک نشست */
+function vclassQuestionsOf(sessionId){
+  return db.vclass_questions
+    .filter(function(q){ return q.session_id===sessionId; })
+    .sort(function(a,b){ return (b.created_at||'').localeCompare(a.created_at||''); });
+}
+
+/* ─────────────── مودال نشست جدید (دبیر) ─────────────── */
+
+function vclassNewModal(classId){
+  var cls = byId('classes', classId);
+  if(!cls) return;
+  window._vclassClass = classId;
+  openModal(modalTpl('نشست جدید کلاس مجازی — ' + cls.name,
+    f('عنوان *', inp('vc_title',''))
+    + f('نوع نشست', sel('vc_type', [['shad','لینک جلسهٔ شاد'],['video','فایل/ویدیوی ضبط‌شده']], 'shad'))
+    + '<div id="vc_shad" class="grid g2" style="margin-top:8px">'
+    +   f('لینک شاد *', inp('vc_url',''))
+    +   f('زمان جلسه', inp('vc_time','','datetime-local'))
+    + '</div>'
+    + '<div id="vc_video" style="display:none;margin-top:8px">'
+    +   f('فایل ویدیو * (حداکثر ' + idbSizeLabel(VCLASS_FILE_CAP) + ')',
+      '<input type="file" id="vc_file" class="input" accept="video/*,audio/*,.pdf,.ppt,.doc,.docx" />')
+    +   f('توضیح زیر ویدیو', inp('vc_desc',''))
+    + '</div>'
+    + '<div class="small muted" style="margin-top:8px" id="vc_space">…</div>',
+    'vclass-save'));
+  /* جابه‌جایی بخش‌ها با نوع */
+  document.getElementById('vc_type').onchange = function(){
+    var shad = this.value === 'shad';
+    document.getElementById('vc_shad').style.display = shad ? '' : 'none';
+    document.getElementById('vc_video').style.display = shad ? 'none' : '';
+  };
+  /* فضای باقی‌مانده (async) */
+  vclassIdbSpace().then(function(sp){
+    var el = document.getElementById('vc_space');
+    if(!el) return;
+    el.innerHTML = 'فضای ذخیرهٔ فایل: ' + (sp.known
+      ? idbSizeLabel(sp.usage) + ' از ' + idbSizeLabel(sp.quota) + ' (باقی‌ماندهٔ تقریبی ' + idbSizeLabel(sp.left) + ')'
+      : 'تقریباً ' + idbSizeLabel(sp.left) + ' (تخمین)');
+  });
+}
+
+/* ─────────────── ساخت نشست ─────────────── */
+
+/**
+ * ساخت نشست + (در صورت ویدیو) آپلود فایل در IDB + اطلاع‌رسانی کلاس.
+ * @returns {Promise<{ok:boolean,msg?:string,rec?:object}>}
+ */
+function vclassCreateSession(opts, file){
+  var cls = byId('classes', opts.classId);
+  if(!cls) return Promise.resolve({ok:false, msg:'کلاس یافت نشد'});
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  /* 🔴 فقط دبیرِ کلاس یا مدیر */
+  var isTeacher = role === 'teacher' && teacherClasses(u.id).some(function(c){ return c.id === cls.id; });
+  if(!(isTeacher || role === 'manager' || role === 'superadmin'))
+    return Promise.resolve({ok:false, msg:'شما دبیر این کلاس نیستید'});
+  var rec = {
+    school_id: cls.school_id, class_id: cls.id,
+    type: opts.type === 'video' ? 'video' : 'shad',
+    title: opts.title,
+    shad_url: opts.type === 'shad' ? (opts.url || '') : '',
+    shad_time: opts.type === 'shad' ? (opts.time || '') : '',
+    file_key: '', file_name: '', mime: '', size: 0,
+    description: opts.type === 'video' ? (opts.desc || '') : '',
+    created_at: new Date().toISOString(), created_by: u.id
+  };
+  var chain = Promise.resolve(true);
+  if(opts.type === 'video' && file){
+    if(vclassOverCap(file.size))
+      return Promise.resolve({ok:false, msg:'حجم فایل از ' + idbSizeLabel(VCLASS_FILE_CAP) + ' بیشتر است'});
+    rec.file_key = 'vclass:' + Date.now() + ':' + Math.floor(Math.random() * 1e6);
+    rec.file_name = file.name || 'file';
+    rec.mime = file.type || '';
+    rec.size = file.size;
+    chain = vclassIdbPut(VCLASS_STORE, rec.file_key, file);
+  }
+  return chain.then(function(ok){
+    if(ok === false) return {ok:false, msg:'فایل در ذخیره‌گاه ثبت نشد'};
+    var inserted = insert('vclass_sessions', rec);
+    /* اطلاع‌رسانی کلاس از صف موجود (نوع event) */
+    vclassNotifyClass(cls, rec.title, rec.type);
+    return {ok:true, rec:inserted};
+  });
+}
+
+/** آیا حجم فایل به سقف نرم می‌رسد یا از آن می‌گذرد؟ (تابع خالص برای تست/جهش) */
+function vclassOverCap(bytes){
+  return (bytes == null || bytes >= VCLASS_FILE_CAP);
+}
+
+/** اطلاع‌رسانی به همهٔ اولیای کلاس (از صف پیام، نوع event) */
+function vclassNotifyClass(cls, title, type){
+  if(typeof notifySettings !== 'function') return;
+  var cfg = notifySettings(cls.school_id);
+  if(!cfg.enabled || cfg.kinds.event === false) return;
+  var pids = [];
+  db.enrollments.filter(function(e){ return e.class_id === cls.id; })
+    .forEach(function(e){
+      notifyParentsOf(e.student_id).forEach(function(p){
+        if(pids.indexOf(p) < 0) pids.push(p);
+      });
+    });
+  if(!pids.length) return;
+  notifyRequest({
+    school_id: cls.school_id, kind: 'event', parent_ids: pids,
+    body: 'اولیای گرامی، در کلاس ' + cls.name + ' نشست «' + title +
+          '» کلاس مجازی ثبت شد (' + (type === 'shad' ? 'لینک شاد' : 'فایل ضبط‌شده') + '). ' +
+          notifySchoolName(cls.school_id)
+  });
+}
+
+/* ─────────────── نمای دبیر ─────────────── */
+
+function viewVclass(){
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  var clsList = (role === 'teacher') ? teacherClasses(u.id)
+             : db.classes.filter(function(c){ return c.school_id === u.school_id; });
+  var h = '<div class="page-head"><h2>🖥️ کلاس مجازی</h2></div>'
+    + '<div class="small muted" style="margin-bottom:14px">'
+    + 'پایش میزبان ویدیوی زنده نیست: یا لینک جلسهٔ شاد ثبت می‌شود، یا فایل/ویدیوی ضبط‌شده + سؤالات متنی. '
+    + 'فایل‌ها در IndexedDB ذخیره می‌شوند (سقف نرم ' + idbSizeLabel(VCLASS_FILE_CAP) + ' برای هر فایل).</div>';
+  if(!clsList.length){
+    return h + '<div class="card">' + empty('🖥️','کلاسی در دسترس نیست','') + '</div>';
+  }
+  clsList.forEach(function(c){
+    var list = vclassSessionsOf(c.id);
+    h += '<div class="card"><div class="card-head">'
+      + '<h3>' + esc(c.name) + '</h3>'
+      + (role !== 'student'
+          ? '<button class="btn sm" data-act="vclass-new" data-id="' + c.id + '">➕ نشست جدید</button>'
+          : '')
+      + '</div><div class="card-body">';
+    if(!list.length){
+      h += empty('🖥️','نشستی ثبت نشده','دکمهٔ «نشست جدید» را بزنید.');
+    } else {
+      h += '<div style="display:grid;gap:10px">' + list.map(function(s){
+        var qs = vclassQuestionsOf(s.id);
+        return '<div class="row" style="border:1px solid var(--border);border-radius:10px;padding:10px 14px;flex-wrap:wrap;gap:8px">'
+          + '<span class="badge ' + (s.type === 'shad' ? 'b-blue' : 'b-purple') + '">'
+          + (s.type === 'shad' ? '🔗 شاد' : '🎬 ویدیو') + '</span>'
+          + '<b>' + esc(s.title) + '</b>'
+          + (s.shad_time ? '<span class="muted small">🕐 ' + esc(s.shad_time) + '</span>' : '')
+          + (s.size ? '<span class="muted small">' + idbSizeLabel(s.size) + '</span>' : '')
+          + '<span class="muted small">' + jalali(s.created_at) + '</span>'
+          + (qs.length ? '<span class="badge b-amber">❓ ' + fa(qs.length) + ' سؤال</span>' : '')
+          + '<div class="spacer"></div>'
+          + (s.type === 'shad' && s.shad_url
+              ? '<a class="btn ghost sm" href="' + escAttr(s.shad_url) + '" target="_blank" rel="noopener">ورود به شاد</a>'
+              : (s.file_key
+                  ? '<button class="btn ghost sm" data-act="vclass-play" data-id="' + s.id + '">پخش</button>' : ''))
+          + (role !== 'student'
+              ? '<button class="btn ghost sm" data-act="vclass-del" data-id="' + s.id + '">حذف</button>'
+              : '')
+          + '</div>'
+          /* سؤالات (دبیر/مدیر: همه + پاسخ‌گویی) */
+          + (qs.length ? '<div style="display:grid;gap:6px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">'
+            + qs.map(function(q){
+                var st = byId('users', q.student_id) || {};
+                return '<div class="row" style="gap:8px;flex-wrap:wrap">'
+                  + '<span class="small muted">سؤال ' + esc(st.full_name || '—') + ':</span>'
+                  + '<span class="small">' + esc(q.body) + '</span>'
+                  + (q.answer
+                      ? '<span class="badge b-green">پاسخ: ' + esc(q.answer) + '</span>'
+                      : (role === 'teacher' || role === 'manager'
+                          ? '<button class="btn ghost sm" data-act="vclass-q-answer" data-id="' + q.id + '">پاسخ</button>'
+                          : '<span class="badge b-gray">در انتظار پاسخ</span>'))
+                  + '</div>';
+              }).join('') + '</div>' : '')
+        + '</div>';
+      }).join('') + '</div>';
+    }
+    return h + '</div></div>';
+  });
+  return h;
+}
+
+/* ─────────────── تب پرونده (دانش‌آموز/ولی) ─────────────── */
+
+function vclassRecordTab(sid){
+  var cls = classOf(sid);
+  var isParent = (typeof activePersona === 'function' ? activePersona() : S.user.role) === 'parent';
+  if(!cls) return empty('🖥️','برای این دانش‌آموز کلاسی ثبت نشده','');
+  var list = vclassSessionsOf(cls.id);
+  var h = '<div class="card-body" style="display:grid;gap:12px">';
+  if(!list.length) return '<div>' + empty('🖥️','نشستی برای کلاس ثبت نشده','دبیر هنوز نشستی ثبت نکرده است.') + '</div>';
+  list.forEach(function(s){
+    h += '<div style="border:1px solid var(--border);border-radius:12px;padding:14px">'
+      + '<div class="row" style="flex-wrap:wrap;gap:8px">'
+      + '<span class="badge ' + (s.type === 'shad' ? 'b-blue' : 'b-purple') + '">'
+      + (s.type === 'shad' ? '🔗 شاد' : '🎬 ویدیو') + '</span>'
+      + '<b>' + esc(s.title) + '</b>'
+      + '<span class="muted small">' + jalali(s.created_at) + '</span></div>'
+      + (s.type === 'shad'
+          ? '<div class="row" style="margin-top:10px;gap:8px">'
+            + (s.shad_time ? '<span class="small muted">🕐 زمان: ' + esc(s.shad_time) + '</span>' : '')
+            + (s.shad_url
+                ? '<a class="btn sm" href="' + escAttr(s.shad_url) + '" target="_blank" rel="noopener">ورود به جلسهٔ شاد</a>'
+                : '<span class="small muted">لینک ثبت نشده</span>')
+            + '</div>'
+          : '<div style="margin-top:10px;display:grid;gap:8px">'
+            + (s.description ? '<div class="small muted">' + esc(s.description) + '</div>' : '')
+            + (s.file_key
+                ? '<button class="btn sm" data-act="vclass-play" data-id="' + s.id + '">▶️ پخش فایل (' + idbSizeLabel(s.size) + ')</button>'
+                : '<span class="small muted">فایل در دسترس نیست</span>')
+            + '</div>')
+      + '</div>';
+    /* سؤالات — هر کس (دانش‌آموز یا ولی) فقط سؤالات خودِ فرزند/دانش‌آموز را می‌بیند */
+    var qs = vclassQuestionsOf(s.id).filter(function(q){ return q.student_id === sid; });
+    if(!isParent){
+      h += '<div style="margin-top:10px"><button class="btn ghost sm" data-act="vclass-q-ask" data-id="' + s.id + '">❓ سؤال بپرس</button></div>';
+    }
+    if(qs.length){
+      h += '<div style="display:grid;gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">'
+        + qs.map(function(q){
+            return '<div class="row" style="gap:8px;flex-wrap:wrap">'
+              + '<span class="small">' + esc(q.body) + '</span>'
+              + (q.answer
+                  ? '<span class="badge b-green">پاسخ دبیر: ' + esc(q.answer) + '</span>'
+                  : '<span class="badge b-gray">در انتظار پاسخ</span>')
+              + '</div>';
+          }).join('') + '</div>';
+    }
+  });
+  return h + '</div>';
+}
+
+/* ─────────────── دادهٔ نمونه (قطعی، فقط دمو) ─────────────── */
+
+function generateVclassDemo(){
+  if(db.vclass_sessions.length) return;
+  var sc = db.schools.filter(function(s){ return s.active; })[0];
+  if(!sc) return;
+  var cls = db.classes.filter(function(c){ return c.school_id === sc.id; })[0];
+  if(!cls) return;
+  var t = db.users.filter(function(x){ return x.role === 'teacher' && x.school_id === sc.id; })[0];
+  var now = new Date().toISOString();
+  var s1 = add('vclass_sessions', {
+    school_id: sc.id, class_id: cls.id, type: 'shad',
+    title: 'جلسهٔ مرور ریاضی', shad_url: 'https://shad.ir/class/123',
+    shad_time: now.slice(0,16) + ':00', file_key:'', file_name:'', mime:'', size:0,
+    description:'', created_at: now, created_by: t ? t.id : 0
+  });
+  /* فایل دمو: چند کیلوبایت بایت (پخش واقعی ندارد ولی مکانیزم کامل است) */
+  var blob = null;
+  try{ blob = new Blob([new Uint8Array(2048).fill(7)], {type:'video/mp4'}); }catch(e){}
+  var key = 'vclass:demo:' + s1.id;
+  add('vclass_sessions', {
+    school_id: sc.id, class_id: cls.id, type: 'video',
+    title: 'ویدیوی توضیح فصل ۲', shad_url:'', shad_time:'',
+    file_key: key, file_name: 'demo-lesson.mp4', mime: 'video/mp4', size: blob ? 2048 : 0,
+    description: 'مرور کلی فصل دوم با تمرین‌ها',
+    created_at: now, created_by: t ? t.id : 0
+  }).id;
+  var s2 = db.vclass_sessions[db.vclass_sessions.length - 1];
+  if(blob && typeof vclassIdbPut === 'function'){
+    vclassIdbPut(VCLASS_STORE, key, blob); /* async؛ اگر backend نباشد بی‌صدا رد می‌شود */
+  }
+  var studs = db.users.filter(function(x){
+    return x.role === 'student' && x.school_id === sc.id;
+  });
+  if(studs.length){
+    add('vclass_questions', {
+      session_id: s2.id, student_id: studs[0].id,
+      body: 'سؤال ۳ تمرین را کامل نکردم، می‌شود توضیح دهید؟',
+      created_at: now, answer: 'بله، جلسهٔ بعد توضیح می‌دهم.', answered_at: now, answered_by: t ? t.id : 0
+    });
+    if(studs.length > 1){
+      add('vclass_questions', {
+        session_id: s2.id, student_id: studs[1].id,
+        body: 'ویدیو را دوباره می‌توانم ببینم؟',
+        created_at: now, answer: '', answered_at: '', answered_by: 0
+      });
+    }
   }
 }
 
