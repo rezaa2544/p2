@@ -18,6 +18,36 @@ const byId=(c,id)=>{const m=(typeof idxById==='function')?idxById(c):null;return
 const classOf=sid=>{const m=(typeof idxEnrollByStudent==='function')?idxEnrollByStudent():null;const e=m?m.get(Number(sid)):db.enrollments.find(e=>e.student_id===sid);return e?byId('classes',e.class_id):null;};
 const studentsOfClass=cid=>{cid=Number(cid);const m=(typeof idxEnrollByClass==='function')?idxEnrollByClass():null;const es=m?(m.get(cid)||[]):db.enrollments.filter(e=>e.class_id===cid);const out=[];for(let i=0;i<es.length;i++){const u=byId('users',es[i].student_id);if(u)out.push(u);}return (typeof sortByNameFa==='function')?sortByNameFa(out):out.sort((a,b)=>a.full_name.localeCompare(b.full_name,'fa'));};
 const teacherClasses=tid=>{const _im=(typeof idxScheduleByTeacher==='function')?idxScheduleByTeacher():null;const _rows=_im?(_im.get(tid)||[]):db.schedule.filter(x=>x.teacher_id===tid);const s=new Set(_rows.map(x=>x.class_id));db.classes.filter(c=>c.homeroom_teacher_id===tid).forEach(c=>s.add(c.id));return [...s].map(id=>byId('classes',id)).filter(Boolean);};
+/* ── مدل چندپایهٔ زودهنگام (فقط دادهٔ مدل، بدون UI) ──────────
+   بندهای متوسطهٔ دوم می‌توانند چند «پایه/رشته» داشته باشند؛ نقشهٔ
+   درس↔دانش‌آموز در سطح دانش‌آموز است، نه سطح کلاس. جدول
+   class_subject_members این نقشه را نگه می‌دارد. تا وقتی ردیفی
+   نباشد، رفتار دقیقاً همان امروز است: همهٔ دانش‌آموزان کلاس برای
+   همهٔ دروس (fallback تنبل) — یعنی صفر تغییر رفتار.
+   📄 docs/ARCHITECTURE_DECISIONS.md «قفل‌شده» ردیف ۲.۱ */
+const classSubjectMembers=(cid,sid)=>{
+  cid=Number(cid);sid=Number(sid);
+  const rows=(db.class_subject_members||[]).filter(function(x){return x.class_id===cid&&x.subject_id===sid;});
+  if(rows.length){
+    const out=[];
+    rows.forEach(function(x){const u=byId('users',x.student_id);if(u)out.push(u);});
+    return out;
+  }
+  return studentsOfClass(cid);
+};
+/** تطبیق نقشهٔ درس↔دانش‌آموز (برای ماژول آتی؛ امروز فراخوانی نمی‌شود) */
+function setClassSubjectMembers(cid,sid,studentIds){
+  cid=Number(cid);sid=Number(sid);
+  const keep=studentIds.map(Number);
+  (db.class_subject_members||[]).slice().forEach(function(x){
+    if(x.class_id===cid&&x.subject_id===sid&&keep.indexOf(x.student_id)<0)
+      remove('class_subject_members',x.id);
+  });
+  keep.forEach(function(st){
+    const exists=(db.class_subject_members||[]).some(function(x){return x.class_id===cid&&x.subject_id===sid&&x.student_id===st;});
+    if(!exists) insert('class_subject_members',{class_id:cid,subject_id:sid,student_id:st});
+  });
+}
 const avgOf=list=>list.length?list.reduce((a,b)=>a+b.score,0)/list.length:0;
 function visibleClasses(){const u=S.user;if(u.role==='superadmin')return db.classes;if(u.role==='manager')return db.classes.filter(c=>c.school_id===u.school_id);if(u.role==='teacher')return teacherClasses(u.id);const c=classOf(u.id);return c?[c]:[];}
 function visibleSubjects(){const u=S.user;return u.role==='superadmin'?db.subjects:db.subjects.filter(s=>s.school_id===u.school_id);}

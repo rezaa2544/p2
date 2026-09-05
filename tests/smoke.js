@@ -7597,6 +7597,78 @@ test('سرویس: رویداد سوار/پیاده، رکورد می‌سازد 
   }
 });
 
+
+/* ═══════════════ مدل چندپایه (بند ۲ — فقط دادهٔ مدل) ═══════════════ */
+
+console.log('\n▸ مدل چندپایه (class_subject_members)');
+
+test('چندپایه: بدون ردیف، fallback تنبل = همهٔ دانش‌آموزان کلاس (رفتار امروز)', () => {
+  const r = JSON.parse(W(`JSON.stringify((function(){
+    var sc = db.schools.filter(function(s){return s.active;})[0];
+    var cls = db.classes.filter(function(c){return c.school_id===sc.id;})[0];
+    var sub = db.subjects.filter(function(x){return x.school_id===sc.id;})[0];
+    var all = studentsOfClass(cls.id).map(function(u){return u.id;}).sort(function(a,b){return a-b;});
+    var got = classSubjectMembers(cls.id, sub.id).map(function(u){return u.id;}).sort(function(a,b){return a-b;});
+    return {all:all, got:got};
+  })())`));
+  assert(JSON.stringify(r.all) === JSON.stringify(r.got),
+    'fallback با studentsOfClass یکسان نیست: ' + JSON.stringify(r));
+});
+
+test('چندپایه: با ردیف، فقط همان دانش‌آموزان (و تطبیق setClassSubjectMembers)', () => {
+  const r = JSON.parse(W(`JSON.stringify((function(){
+    var sc = db.schools.filter(function(s){return s.active;})[0];
+    var cls = null;
+    for(var ci=0; ci<db.classes.length; ci++){
+      if(db.classes[ci].school_id!==sc.id) continue;
+      if(studentsOfClass(db.classes[ci].id).length >= 2){ cls = db.classes[ci]; break; }
+    }
+    if(!cls) return {skip:true};
+    var sub = db.subjects.filter(function(x){return x.school_id===sc.id;})[0];
+    var all = studentsOfClass(cls.id);
+    setClassSubjectMembers(cls.id, sub.id, [all[0].id, all[1].id]);
+    var got = classSubjectMembers(cls.id, sub.id).map(function(u){return u.id;});
+    /* افزودن و کم کردن */
+    setClassSubjectMembers(cls.id, sub.id, [all[1].id]);
+    var got2 = classSubjectMembers(cls.id, sub.id).map(function(u){return u.id;});
+    /* پاک‌سازی */
+    (db.class_subject_members||[]).slice().forEach(function(x){
+      if(x.class_id===cls.id&&x.subject_id===sub.id) remove('class_subject_members',x.id);
+    });
+    var left = (db.class_subject_members||[]).filter(function(x){return x.class_id===cls.id&&x.subject_id===sub.id;}).length;
+    return {skip:false, n1:got.length, s1:got.indexOf(all[0].id)>=0, s2:got.indexOf(all[1].id)>=0,
+            n2:got2.length, only2:got2.indexOf(all[1].id)>=0, left:left};
+  })())`));
+  assert(!r.skip, 'کلاس آزمایشی دانش‌آموز ندارد');
+  assert(r.n1===2 && r.s1 && r.s2, 'با ردیف، فهرست باید فقط همان دو نفر باشد: ' + JSON.stringify(r));
+  assert(r.n2===1 && r.only2, 'تطبیق (کم‌کردن) کار نکرد: ' + JSON.stringify(r));
+  assert(r.left===0, 'پاک‌سازی ردیف‌ها کار نکرد');
+});
+
+test('چندپایه: ردیفِ درس دیگر را نمی‌خواند', () => {
+  const r = JSON.parse(W(`JSON.stringify((function(){
+    var sc = db.schools.filter(function(s){return s.active;})[0];
+    var cls = db.classes.filter(function(c){return c.school_id===sc.id;})[0];
+    var subs = db.subjects.filter(function(x){return x.school_id===sc.id;});
+    if(subs.length < 2) return {skip:true};
+    var all = studentsOfClass(cls.id);
+    if(all.length < 1) return {skip:true};
+    insert('class_subject_members',{class_id:cls.id,subject_id:subs[0].id,student_id:all[0].id});
+    var inA = classSubjectMembers(cls.id, subs[0].id).map(function(u){return u.id;});
+    var inB = classSubjectMembers(cls.id, subs[1].id).map(function(u){return u.id;});
+    (db.class_subject_members||[]).slice().forEach(function(x){
+      if(x.class_id===cls.id&&x.subject_id===subs[0].id) remove('class_subject_members',x.id);
+    });
+    var allB = studentsOfClass(cls.id).map(function(u){return u.id;});
+    return {skip:false, nA:inA.length, a:inA.indexOf(all[0].id)>=0,
+            sameB:JSON.stringify(inB.sort())===JSON.stringify(allB.sort())};
+  })())`));
+  assert(!r.skip, 'دادهٔ آزمایشی کافی نیست');
+  assert(r.nA===1 && r.a, 'درس الف باید فقط عضو خودش را بدهد');
+  assert(r.sameB===true, 'درس ب باید fallback (همهٔ کلاس) بدهد');
+});
+
+
 await Promise.all(testQueue);   // همهٔ آزمون‌های ناهمگام تا سرِ صف برسد
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));
