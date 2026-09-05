@@ -19772,24 +19772,61 @@ function vclassIdbBackend(){
 /** تزریق backend (تست) یا برگرداندن به واقعی (null) — کش دیتابیس هم تازه می‌شود */
 function vclassIdbSetBackend(b){ _IDB_BACKEND = b || null; _IDB_DB = null; }
 
-/** باز کردن دیتابیس و مطمئن شدن از وجود استورها */
+/** باز کردن دیتابیس و مطمئن شدن از وجود استورها
+ *
+ * ⚠️ رویهٔ مهم (باگ واقعیِ ۱۴۰۵/۰۶/۱۴): onupgradeneeded فقط هنگامِ
+ * «نسخهٔ بالاتر» اجرا می‌شود. دیتابیسِ قدیمی (مثلاً نسخه‌ای که فقط
+ * store اول را ساخته) اگر دوباره با همان نسخه باز شود، استورِ دوم
+ * هرگز ساخته نمی‌شود و transaction خطای «store not found» می‌دهد.
+ * راه‌حل: نسخهٔ فعلی را پیدا کن؛ اگر استوری لازم نباشد، با نسخهٔ
+ * یکی بالاتر دوباره باز کن تا upgradeneeded استورها را بسازد. */
 var _IDB_DB = null;
+var _IDB_NAME = 'payesh';
 function vclassIdbOpen(storeNames){
   var idb = vclassIdbBackend();
+  var names = storeNames || [];
   return new Promise(function(resolve, reject){
     if(!idb) return resolve(null);
-    var req = idb.open('payesh', 1);
-    req.onupgradeneeded = function(e){
-      var d = e.target.result;
-      (storeNames || []).forEach(function(n){
-        if(!d.objectStoreNames.contains(n)) d.createObjectStore(n);
-      });
+    var openAt = function(ver, allowBump){
+      var req;
+      try{ req = idb.open(_IDB_NAME, ver); }
+      catch(e){ return reject(e); }
+      req.onupgradeneeded = function(e){
+        var d = e.target.result;
+        names.forEach(function(n){
+          if(!d.objectStoreNames.contains(n)) d.createObjectStore(n);
+        });
+      };
+      req.onsuccess = function(e){
+        var d = e.target.result;
+        var missing = names.filter(function(n){ return !d.objectStoreNames.contains(n); });
+        if(missing.length && allowBump && ver < 10){
+          /* استورِ لازم در این نسخه ساخته نشده — نسخه را یکی بالا ببر
+             تا onupgradeneeded استورها را بسازد */
+          try{ d.close(); }catch(e){}
+          _IDB_DB = null;
+          return openAt(ver + 1, allowBump);
+        }
+        _IDB_DB = d;
+        resolve(_IDB_DB);
+      };
+      req.onerror = function(){
+        if(allowBump && ver < 10){
+          /* دیتابیس روی نسخهٔ بالاتری است (خطای نسخه) — نسخهٔ بالاتر امتحان می‌شود */
+          return openAt(ver + 1, allowBump);
+        }
+        reject((req && req.error) || new Error('idb-open'));
+      };
     };
-    req.onsuccess = function(e){
-      _IDB_DB = e.target.result;
-      resolve(_IDB_DB);
-    };
-    req.onerror = function(){ reject(req.error || new Error('idb-open')); };
+    var start = function(ver){ openAt(ver, true); };
+    if(typeof idb.databases === 'function'){
+      Promise.resolve(idb.databases()).then(function(list){
+        var hit = (list || []).filter(function(d){ return d.name === _IDB_NAME; })[0];
+        start(hit ? Math.max(1, Number(hit.version) || 1) : 1);
+      }).catch(function(){ start(1); });
+    } else {
+      start(1);
+    }
   });
 }
 
@@ -19867,18 +19904,33 @@ function vclassIdbSpace(){
 /* ─────────────── fake کوچک برای تست (سطح ۵ عضو) ─────────────── */
 
 /**
- * fake حداقلی IndexedDB — فقط برای smoke (jsdom).
+ * fake حداقلی IndexedDB — فقط برای تست (jsdom).
+ *
+ * ⚠️ باید **هم‌رفتارِ واقعی** باشد، نه راحت‌تر:
+ *  • onupgradeneeded فقط وقتی اجرا می‌شود که نسخه بالاتر خواسته شود
+ *  • transaction روی استورِ ناموجود **throw** می‌کند (مثل مرورگر واقعی)
+ *  • باز کردن با نسخهٔ پایین‌تر از موجود → خطای نسخه
+ * fake قدیمی استورها را خودکار می‌ساخت و این باگ‌ها را پنهان می‌کرد.
+ *
  * ساخت: vclassIdbSetBackend(makeIdbFake());  — بازنشانی: null
  */
 function makeIdbFake(){
   var stores = new Map();
+  var version = 0;
   function mkDb(){
     return {
+      close: function(){},
+      objectStoreNames: { contains: function(n){ return stores.has(n); } },
+      createObjectStore: function(n){ stores.set(n, new Map()); },
       transaction: function(storeName){
+        if(!stores.has(storeName)){
+          var e = new Error("Failed to execute 'transaction' on 'IDBDatabase': One of the specified object stores was not found.");
+          e.name = 'InvalidStateError';
+          throw e;
+        }
+        var m = stores.get(storeName);
         return {
           objectStore: function(n){
-            if(!stores.has(n)) stores.set(n, new Map());
-            var m = stores.get(n);
             return {
               put: function(value, key){
                 var req = {};
@@ -19900,30 +19952,37 @@ function makeIdbFake(){
             };
           }
         };
-      },
-      objectStoreNames: {
-        contains: function(n){ return stores.has(n); }
       }
     };
   }
   var db = mkDb();
   return {
-    open: function(name, version){
-      var req = { result: db };
+    databases: function(){ return Promise.resolve([{ name:'payesh', version: version }]); },
+    open: function(name, ver){
+      var req = {};
       setTimeout(function(){
-        var ev = { target:{ result: db } };
-        if(req.onupgradeneeded){
-          try{ req.onupgradeneeded(ev); }catch(e){}
+        if(ver < version){
+          var e = new Error('VersionError: cannot open ' + _IDB_NAME + ' at ' + ver + ' (current ' + version + ')');
+          e.name = 'VersionError';
+          req.error = e;
+          if(req.onerror) req.onerror({ target: req });
+          return;
         }
-        if(req.onsuccess){
-          try{ req.onsuccess(ev); }catch(e){}
+        if(ver > version){
+          version = ver;
+          if(req.onupgradeneeded){
+            try{ req.onupgradeneeded({ target:{ result: db } }); }catch(err){}
+          }
         }
+        req.result = db;
+        if(req.onsuccess) req.onsuccess({ target:{ result: db } });
       }, 0);
       return req;
     },
     __stores: stores
   };
 }
+
 
 /* ═══════════════════════════════════════════════════════════════════
    کلاس مجازی — نسخهٔ سبک (طرح تأییدشده: docs/PLAN_VIRTUAL_CLASS.md)
