@@ -14,8 +14,11 @@ function renderLogin(){
    </div>
    <div class="login-panel"><div class="login-card">
      <h2>ورود به سامانه</h2>
-     <div class="field"><label>نام کاربری</label><input class="input" id="lu" value="superadmin" /></div>
-     <div class="field"><label>رمز عبور</label><input class="input" id="lp" type="password" value="123456" /></div>
+     /* ⚠️ امنیت (پنتست ۲۰۲-۰۹-۰۵): پیش‌فرضِ حساب مدیریتی در فرم ورود
+        ممنوع است — هر بازدیدکننده با یک کلیک وارد پرریسک‌ترین حساب می‌شد.
+        حساب‌های نمونهٔ پایین همین کار را با یک کلیکِ آگاهانه انجام می‌دهند. */
+     <div class="field"><label>نام کاربری</label><input class="input" id="lu" /></div>
+     <div class="field"><label>رمز عبور</label><input class="input" id="lp" type="password" /></div>
      <div id="lerr"></div>
      <button class="btn" style="width:100%;justify-content:center;padding:12px;font-size:15px" data-act="login">ورود</button>
      <div class="login-sep">حساب‌های نمونه</div>
