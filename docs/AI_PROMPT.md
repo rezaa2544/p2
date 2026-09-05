@@ -489,6 +489,8 @@ src/body.html  ─┘
 46-bell-now       ⭐ نوار زنگ زنده
 47-counselor      ⭐ مشاور و عوامل اجرایی (EXEC_ROLES) + دادهٔ نمونهٔ الگوها
 48-bus-service    ⭐ سرویس مدرسه — نسخهٔ بدون جی‌پی‌اس: مسیرها، راننده، رویداد سوار/پیاده + پیامک
+49-vclass-idb     ⭐ ماژول فایل IndexedDB — wrapper با Promise (idbOpen/idbPut/idbGet/idbDel) + تزریق backend تستی + سقف نرم و تخمین فضای navigator.storage.estimate
+50-vclass         ⭐ کلاس مجازی (نسخهٔ سبک) — نشست شاد/ویدیو، سؤالات، پنل دبیر (vclass) + تب پروندهٔ دانش‌آموز/ولی
 25-filters       ⭐ فیلترهای جمع‌شونده (مشترک همه پنل‌ها)
 26-curriculum       ⭐ ساختار مقطع/پایه/شاخه/رشته + کتاب‌های درسی
 27-sync             ⭐ لایه offline-first: صف ارسال، تشخیص اتصال، backoff
@@ -2222,6 +2224,13 @@ DATA_MODE = 'local' | 'server'  ·  isServerMode()
 
 ---
 
+
+### کلاس مجازی (tests/vclass.js)
+سئوت مستقل (پروسهٔ جدا) با ۱۱ بخش (V1–V11): دادهٔ نمونه، پنل دبیر،
+ساخت نشست + پیامک event، آپلود/بازیابی فایل با backend تستی، سقف نرم،
+تب دانش‌آموز/ولی، سؤالات و دو بخش امنیت (دانش‌آموز خارج کلاس، دبیر
+غیرمالک) + حذف نشست با پاک‌شدن فایل از IDB. فیکسور هر بخش دانش‌آموز/
+ولی/نشست تازه می‌سازد و در finally تخریب می‌کند. اجرا: `node tests/vclass.js`
 
 ### شبیه‌سازی جامع (tests/simulation.js)
 آزمون‌های smoke.js نگهبانِ regression هستند؛ tests/simulation.js (۳۵

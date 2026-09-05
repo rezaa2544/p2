@@ -919,6 +919,95 @@ document.addEventListener('click',e=>{
        : 'خلاصه‌ای ساخته نشد (همه تکراری یا بدون والد)', r.created?'ok':'err');
      render();
    },
+   /* ─────────────── کلاس مجازی (نسخهٔ سبک) ─────────────── */
+   'vclass-new'(){ vclassNewModal(Number(id)); },
+   'vclass-save'(){
+     const clsId = window._vclassClass;
+     const title = V('vc_title');
+     if(!title) return toast('عنوان نشست را بنویسید','err');
+     const type = V('vc_type');
+     const fEl = $('#vc_file');
+     const file = (fEl && fEl.files && fEl.files[0]) ? fEl.files[0] : null;
+     if(type==='video' && !file) return toast('فایل ویدیو را انتخاب کنید','err');
+     closeModal();
+     vclassCreateSession({classId:clsId, type:type, title:title,
+       url:V('vc_url'), time:V('vc_time'), desc:V('vc_desc')}, file).then(function(r){
+       if(!r.ok){ toast(r.msg,'err'); return; }
+       toast('نشست در کلاس مجازی ثبت شد','ok');
+       render();
+     });
+   },
+   'vclass-del'(){
+     askConfirm('این نشست (و در صورت وجود، فایل آن از ذخیره‌گاه) حذف شود؟', function(){
+       const s = byId('vclass_sessions', id);
+       if(!s) return;
+       const u = S.user;
+       const role = (typeof activePersona==='function') ? activePersona() : u.role;
+       const isTeacher = role==='teacher' && teacherClasses(u.id).some(function(c){ return c.id===s.class_id; });
+       if(!(isTeacher || role==='manager' || role==='superadmin')){
+         toast('شما مجوز حذف این نشست را ندارید','err'); return;
+       }
+       vclassQuestionsOf(s.id).forEach(function(q){ remove('vclass_questions', q.id); });
+       remove('vclass_sessions', s.id);
+       /* فایل IDB ناهمگام است — پیام و رندر بعد از پاک‌شدن واقعی */
+       vclassIdbDel(VCLASS_STORE, s.file_key || '').then(function(){
+         toast('نشست حذف شد','ok'); render();
+       });
+     }, {title:'حذف نشست', ok:'حذف', danger:true});
+   },
+   'vclass-play'(){
+     const s = byId('vclass_sessions', id);
+     if(!s || !s.file_key){ toast('فایل این نشست در دسترس نیست','err'); return; }
+     toast('فایل در حال بارگذاری است…','');
+     vclassIdbGet(VCLASS_STORE, s.file_key).then(function(blob){
+       if(!blob){ toast('فایل دیگر در ذخیره‌گاه نیست','err'); return; }
+       const url = (typeof URL!=='undefined' && URL.createObjectURL) ? URL.createObjectURL(blob) : '';
+       openModal(modalTpl('🎬 ' + (s.title||''),
+         '<video controls style="width:100%;max-height:62vh;background:#000;border-radius:10px" data-vurl="'+escAttr(url)+'"></video>'
+         + (s.description ? '<div class="small muted" style="margin-top:10px">'+esc(s.description)+'</div>' : ''), ''));
+       setTimeout(function(){
+         const v = document.querySelector('#modal video');
+         if(v && v.getAttribute('data-vurl')) v.src = v.getAttribute('data-vurl');
+       }, 60);
+     });
+   },
+   'vclass-q-ask'(){
+     window._vcQSession = id;
+     openModal(modalTpl('❓ سؤال از دبیر',
+       '<textarea id="vc_qbody" class="input" rows="4" placeholder="سؤال خود را بنویسید"></textarea>',
+       'vclass-q-save'));
+   },
+   'vclass-q-save'(){
+     const s = byId('vclass_sessions', window._vcQSession);
+     if(!s) return;
+     const body = V('vc_qbody');
+     if(!body) return toast('متن سؤال را بنویسید','err');
+     const u = S.user;
+     const role = (typeof activePersona==='function') ? activePersona() : u.role;
+     /* 🔴 سؤال فقط به اسم خودِ دانش‌آموز و فقط در نشستِ کلاس خودش */
+     const sid2 = role==='student' ? u.id : S.child;
+     const cls2 = sid2 ? classOf(sid2) : null;
+     if(!cls2 || cls2.id !== s.class_id){ toast('این نشست مربوط به کلاس شما نیست','err'); return; }
+     insert('vclass_questions', {
+       session_id: s.id, student_id: sid2, body: body,
+       created_at: new Date().toISOString(), answer:'', answered_at:'', answered_by:0
+     });
+     closeModal(); toast('سؤال ثبت شد — پاسخ دبیر همین‌جا می‌آید','ok'); render();
+   },
+   'vclass-q-answer'(){
+     window._vcQId = id;
+     openModal(modalTpl('✍️ پاسخ به سؤال',
+       '<textarea id="vc_qans" class="input" rows="3" placeholder="پاسخ خود را بنویسید"></textarea>',
+       'vclass-q-answer-save'));
+   },
+   'vclass-q-answer-save'(){
+     const ans = V('vc_qans');
+     if(!ans) return toast('متن پاسخ را بنویسید','err');
+     update('vclass_questions', window._vcQId, {
+       answer: ans, answered_at: new Date().toISOString(), answered_by: S.user.id
+     });
+     closeModal(); toast('پاسخ ثبت شد','ok'); render();
+   },
    'notify-settings'(){
      const c = notifySettings(S.user.school_id);
      const row = (id,on,label,hint) =>

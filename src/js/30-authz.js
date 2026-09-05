@@ -117,6 +117,16 @@ var ACTION_ROLES = {
   'bus-route-del':    ['manager'],
   'bus-students':     ['manager'],
   'bus-students-save':['manager'],
+  /* کلاس مجازی (نسخهٔ سبک): ساخت/حذف فقط دبیرِ کلاس یا مدیر —
+     بررسی مالکیت کلاس در vclassCreateSession/vclass-del روی داده تکرار می‌شود */
+  'vclass-new':       ['teacher','manager'],
+  'vclass-save':      ['teacher','manager'],
+  'vclass-del':       ['teacher','manager'],
+  'vclass-play':      ['teacher','manager','student','parent'],
+  'vclass-q-ask':     ['student'],
+  'vclass-q-save':    ['student'],
+  'vclass-q-answer':  ['teacher','manager'],
+  'vclass-q-answer-save':['teacher','manager'],
   /* حضور و غیاب: فقط دبیر و مدیر */
   'att-set':       ['teacher','manager'],
   'att-review':    ['teacher','manager'],

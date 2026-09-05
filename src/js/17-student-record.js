@@ -57,8 +57,10 @@ function viewRecord(sid){
   const att=db.attendance.filter(a=>a.student_id===sid).slice().sort((a,b)=>b.date.localeCompare(a.date));
   const disc=db.discipline.filter(d=>d.student_id===sid).slice().sort((a,b)=>b.date.localeCompare(a.date));
   const bySub={};gr.forEach(g=>{(bySub[g.subject_id]=bySub[g.subject_id]||[]).push(g);});
+  const persona=(typeof activePersona==='function')?activePersona():S.user.role;
   const tabs=[['grades','📝 کارنامه'],['attendance','✅ حضور و غیاب'],
               ['schedule','📅 برنامه کلاس'],['discipline','⚖️ پرونده انضباطی'],['profile','🪪 شناسنامه']];
+  if(persona==='student'||persona==='parent')tabs.push(['vclass','🖥️ کلاس مجازی']);
   let body='';
   if(S.tab==='profile') body = studentProfileCard(sid)
     + ((typeof yearHistoryCard==='function')?yearHistoryCard(sid):'')
@@ -83,6 +85,7 @@ function viewRecord(sid){
      <div class="row">${l.map(g=>`<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}: <b>${fa(g.score)}</b></span>`).join('')}</div></div>`;}).join('')}</div>`
     :empty('📝','نمره‌ای ثبت نشده','به محض ثبت نمره، کارنامه اینجا نمایش داده می‌شود.');
   if(S.tab==='schedule') body = classScheduleCard(sid);
+  if(S.tab==='vclass') body = (typeof vclassRecordTab==='function')?vclassRecordTab(sid):'';
   if(S.tab==='attendance'){const cnt=k=>att.filter(a=>a.status===k).length;
     body= att.length?`<div class="card-body row">${['present','absent','late','excused'].map(k=>`<span class="badge ${ATT_BADGE[k]}">${ATT_FA[k]}: ${fa(cnt(k))} روز</span>`).join('')}</div>
      <div class="table-wrap"><table><thead><tr><th>تاریخ</th><th>وضعیت</th><th>توضیح</th><th>تغییرات</th></tr></thead><tbody>

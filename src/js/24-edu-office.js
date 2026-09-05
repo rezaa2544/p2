@@ -888,6 +888,7 @@ setTimeout(()=>{
   if(typeof generateP11==='function') generateP11();
   if(typeof generateP12=== 'function') generateP12();
   if(typeof generateBusDemo==='function') generateBusDemo();
+  if(typeof generateVclassDemo==='function') generateVclassDemo();
   loadLog(); applyLog(); initSync();
   /* ⚠️ فقط دمو (DEMO-ONLY): ورود خودکار با نام کاربریِ ذخیره‌شده — بدون
      هیچ رمز یا تأیید هویت — صرفاً برای حالت آفلاین/نمایش است و بخشی از
