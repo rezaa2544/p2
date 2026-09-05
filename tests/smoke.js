@@ -66,6 +66,7 @@ await sleep(300);   // اجازه بده بوت و تایمرها کامل شو�
 
 console.log('\n▸ بوت برنامه');
 
+
 test('اسکریپت بدون خطای بارگذاری اجرا شد', () => {
   assert(consoleErrors.length === 0, consoleErrors.slice(0, 2).join(' | '));
 });
@@ -4288,6 +4289,28 @@ test('نمره: مرز بین‌دبیری — هر دبیر فقط نمرات �
   assert(r.t1.seen2 === false, '🔴 دبیر ۱ نمرهٔ دبیر دیگرِ همان کلاس را می‌بیند');
   assert(r.t2.seen1 === false, '🔴 دبیر ۲ نمرهٔ دبیر ۱ را می‌بیند');
   assert(r.t2.seen2 === true, 'دبیر ۲ نمرهٔ خودش را نمی‌بیند');
+});
+
+test('ورود: مدرسهٔ غیرفعال، حتی با حساب فعال، راه نمی‌افتد (F-3)', () => {
+  const r = JSON.parse(W(`(()=>{
+    var sch=db.schools.find(s=>!s.active);
+    if(!sch) return JSON.stringify({err:'no-inactive-school'});
+    var mgr=db.users.find(u=>u.school_id===sch.id&&u.role==='manager'&&u.active);
+    if(!mgr) return JSON.stringify({err:'no-active-mgr'});
+    if(typeof schoolInactiveMsg!=='function') return JSON.stringify({err:'no-guard'});
+    var guardOn=!!schoolInactiveMsg(mgr);
+    var guardOff=!!schoolInactiveMsg(db.users.find(u=>u.username==='manager1'));
+    S.user=null;S.persona=null;S.boss=null;S.route='login';render();
+    var lu=document.getElementById('lu'),lp=document.getElementById('lp');
+    if(!lu||!lp) return JSON.stringify({err:'no-form'});
+    lu.value=mgr.username;lp.value=mgr.password;
+    document.querySelector('[data-act="login"]').click();
+    var msg=document.getElementById('lerr').textContent||'';
+    return JSON.stringify({guardOn:guardOn,guardOff:guardOff,blocked:!S.user,msg:msg});})()`));
+  assert(r.guardOn === true, 'نگهبان، مدرسهٔ غیرفعال را نشناخت');
+  assert(r.guardOff === false, 'نگهبان، مدرسهٔ فعال را هم مسدود کرد');
+  assert(r.blocked === true, '🔴 ورود با حساب فعال ولی مدرسهٔ غیرفعال انجام شد');
+  assert(r.msg.indexOf('این مدرسه غیرفعال است') >= 0, 'پیام مناسب نمایش داده نشد: ' + r.msg);
 });
 
 test('نمره: با kinds.grade خاموش یا سامانهٔ خاموش ساخته نمی‌شود', () => {

@@ -10,6 +10,14 @@ var PASS_TARGET=null;
 var RESTORE_PKG=null;
 /** پایه و رشتهٔ کلاس موازی در حال ساخت */
 var PARALLEL=null;
+/* F-3: نگهبان مدرسهٔ غیرفعال — حتی حساب فعال هم نمی‌تواند وارد مدرسه‌ای
+   شود که در سطح مدرسه غیرفعال شده است. پیام باید برای انسانی باشد که
+   حسابش را می‌شناسد، نه پیام فنی. (برگردانده: null اگر راه باز است؛
+   کاربران بدون مدرسه مثل سوپرادمین را در بر نمی‌گیرد) */
+function schoolInactiveMsg(u){
+  const sch=(u&&u.school_id)?byId('schools',u.school_id):null;
+  return (sch&&!sch.active)?'این مدرسه غیرفعال است؛ برای پیگیری با پشتیبانی سامانه تماس بگیرید':null;
+}
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el)return;
   const a=el.dataset.act, id=Number(el.dataset.id);
@@ -33,6 +41,8 @@ document.addEventListener('click',e=>{
      const u=db.users.find(x=>x.username===V('lu'));
      if(!u||u.password!==$('#lp').value){$('#lerr').innerHTML='<div class="badge b-red" style="padding:9px 12px;margin-bottom:8px">⚠️ نام کاربری یا رمز عبور نادرست است</div>';return;}
      if(!u.active){$('#lerr').innerHTML='<div class="badge b-red" style="padding:9px 12px">⚠️ حساب غیرفعال است</div>';return;}
+     const _smsg=schoolInactiveMsg(u);
+     if(_smsg){$('#lerr').innerHTML='<div class="badge b-red" style="padding:9px 12px">⚠️ '+_smsg+'</div>';return;}
      S.user=u;S.stack=[];S.persona=null;Store.remove(PERSONA_KEY);
      linkAsParent(u);
      S.showPicker=panelsOf(u).length>1;
