@@ -2891,6 +2891,11 @@ function _renderRouteInner(){
   var free=(typeof PARENT_FREE_ROUTES!=='undefined')?PARENT_FREE_ROUTES:['subscription','notifications','announcements'];
   if(parentLocked()&&free.indexOf(S.route)<0)
     return viewLocked();
+  /* قفلِ فرزندبه‌فرزند: اگر فرزندِ انتخاب‌شده اشتراکِ فعال نداشته باشد،
+     فقط بخش‌های اشتراکیِ همان فرزند قفل می‌شوند (دادهٔ پایه رایگان است) */
+  if(activePersona()==='parent'&&free.indexOf(S.route)<0&&S.child
+     &&!studentSubOf(S.child,S.user.id,false).active)
+    return viewLocked((byId('users',S.child)||{}).full_name);
   /* گارد مجوز: نقش فعلی فقط روت‌های مجاز خودش را می‌بیند.
      بدون این بررسی، تغییر hash آدرس هر صفحه‌ای را باز می‌کرد. */
   if(typeof canRoute==='function' && !canRoute(S.route))
@@ -11571,48 +11576,82 @@ function subOf(userId,createTrial){
    ═══════════════════════════════════════════════════════════════════ */
 
 /**
- * اشتراک فعالِ یک دانش‌آموز را پیدا می‌کند — از میان همهٔ اولیای او.
- * خروجی: شیء اشتراک به‌همراه شناسه و نام پرداخت‌کننده، یا null.
+ * اشتراکِ فعالِ یک دانش‌آموز — از میان همهٔ سطرهای مربوط به او.
+ * سطرهای قدیمی (بدون student_id) «هر فرزندِ آن ولی» را می‌بازند؛
+ * سطرهای جدید فقط همان دانش‌آموزِ مشخص را.
+ * @param {number} studentId شناسهٔ دانش‌آموز
+ * @param {number|null} asParent شناسهٔ ولیِ در حال عمل (برای ساختِ تست)
+ * @param {boolean} createTrial اگر فعال باشد و سطر نباشد، دورهٔ تست بسازد
+ */
+function studentSubOf(studentId, asParent, createTrial){
+  studentId = Number(studentId);
+  const sidParents = new Set(db.parent_links.filter(l=>l.student_id===studentId).map(l=>l.parent_id));
+  let best = null;
+  db.parent_subscriptions.forEach(function(row){
+    if(row.status === 'none') return;
+    const isLegacy = !row.student_id;
+    const owned = (asParent && row.user_id===asParent) || sidParents.has(row.user_id);
+    if(!owned) return;
+    if(!isLegacy && Number(row.student_id)!==studentId) return;
+    if(!best || new Date(row.end_date||'0000') > new Date(best.end_date||'0000')) best = row;
+  });
+  if(!best && createTrial && asParent){
+    const st = subSettings();
+    if(st.trial_enabled && st.trial_days>0)
+      best = insert('parent_subscriptions',{user_id:asParent,student_id:studentId,plan:'trial',amount:0,status:'trial',
+        start_date:todayISO(),end_date:addDaysISO(todayISO(),st.trial_days)});
+  }
+  if(!best) return {status:'none',active:false,daysLeft:0,plan:null,end_date:null};
+  const expired = best.end_date && best.end_date < todayISO();
+  if(expired && best.status!=='expired'){update('parent_subscriptions',best.id,{status:'expired'});best=byId('parent_subscriptions',best.id);}
+  const active = ['active','trial'].includes(best.status) && (!best.end_date || best.end_date>=todayISO());
+  const daysLeft = best.end_date ? Math.max(0,Math.round((new Date(best.end_date)-new Date(todayISO()))/864e5)) : 0;
+  return Object.assign({},best,{active:active,daysLeft:daysLeft,trial:best.status==='trial'});
+}
+
+/**
+ * اشتراک فعالِ یک دانش‌آموز — از میان همهٔ اولیای او.
+ * خروجی: {sub, payerId, payer, relation} یا null.
+ * بررسی وضعیت عوارض جانبی ندارد (createTrial=false).
  */
 function studentSubscription(studentId){
-  var links = db.parent_links.filter(function(l){ return l.student_id === Number(studentId); });
-  for(var i = 0; i < links.length; i++){
-    /* createTrial عمداً false است: بررسی وضعیت نباید عوارض جانبی داشته باشد */
-    var sub = subOf(links[i].parent_id, false);
-    if(sub && sub.active)
-      return { sub: sub, payerId: links[i].parent_id,
-               payer: byId('users', links[i].parent_id), relation: links[i].relation || null };
+  var sub = studentSubOf(studentId, null, false);
+  if(sub && sub.active){
+    var link = db.parent_links.find(function(l){ return l.student_id===Number(studentId) && l.parent_id===sub.user_id; });
+    return { sub:sub, payerId:sub.user_id,
+             payer:byId('users',sub.user_id)||null,
+             relation:(link && link.relation) || null };
   }
   return null;
 }
 
 /**
- * دسترسی مؤثر یک ولی: اشتراک خودش، یا اشتراک هم‌ولیِ یکی از فرزندانش.
- * این تابع قلب قاعدهٔ «یک اشتراک برای هر دانش‌آموز» است.
+ * دسترسی مؤثر یک ولی: اگر برای دست‌کم یکی از فرزندانش اشتراک فعال
+ * باشد (خودش یا هم‌ولیِ دیگر)، پنلش باز است.
  */
 function effectiveParentAccess(parentId){
   parentId = parentId || (S.user && S.user.id);
-  if(!parentId) return { active:false, own:false, via:null };
+  if(!parentId) return { active:false, own:false, via:null, sub:null };
 
-  /* ۱. اشتراک هم‌ولی زودتر بررسی می‌شود.
-     چرا؟ چون subOf(id, true) در نخستین فراخوانی خودش دورهٔ آزمایشی
-     می‌سازد. اگر اول آن را صدا بزنیم، ولیِ دومی که هم‌ولی‌اش پرداخت
-     کرده بی‌جهت یک دورهٔ آزمایشی مصرف می‌کند و در گزارش‌ها به‌اشتباه
-     «صاحب اشتراک» شمرده می‌شود. */
-  var kids = db.parent_links.filter(function(l){ return l.parent_id === parentId; });
-  for(var i = 0; i < kids.length; i++){
+  var kids = db.parent_links.filter(function(l){ return l.parent_id===parentId; });
+
+  /* ۱. از راه هم‌ولی (برای یکی از فرزندان، دیگری پرداخت کرده) */
+  for(var i=0;i<kids.length;i++){
     var found = studentSubscription(kids[i].student_id);
-    if(found && found.payerId !== parentId)
+    if(found && found.payerId!==parentId)
       return { active:true, own:false, via:found, sub:found.sub,
-               student: byId('users', kids[i].student_id) };
+               student:byId('users',kids[i].student_id) };
   }
 
-  /* ۲. اشتراک خودش — اینجا در نخستین ورود دورهٔ آزمایشی ساخته می‌شود */
-  var own = subOf(parentId, true);
-  if(own && own.active) return { active:true, own:true, via:null, sub:own };
-  return { active:false, own:false, via:null, sub:own };
+  /* ۲. اشتراک خودش برای هر یک از فرزندان — اینجا تستِ هر فرزند ساخته می‌شود */
+  for(var j=0;j<kids.length;j++){
+    var own = studentSubOf(kids[j].student_id, parentId, true);
+    if(own && own.active)
+      return { active:true, own:true, via:null, sub:own,
+               student:byId('users',kids[j].student_id) };
+  }
+  return { active:false, own:false, via:null, sub:null };
 }
-
 /** آیا پنل اولیای کاربر جاری قفل است؟ */
 const parentLocked=()=>{
   if(activePersona()!=='parent')return false;
@@ -11632,12 +11671,30 @@ const PARENT_FREE_ROUTES=['dashboard','children','record','exams','calendar','fa
 function generateP10(){
   db.parent_subscriptions=db.parent_subscriptions||[];
   db.subscription_payments=db.subscription_payments||[];
-  // همه اولیای نمونه اشتراک فعال دارند
+  // همه اولیای نمونه برای هر فرزندشان اشتراک فعال دارند (مدل فرزندبه‌فرزند)
   db.users.filter(u=>u.role==='parent').forEach(p=>{
-    if(db.parent_subscriptions.some(s=>s.user_id===p.id))return;
-    add('parent_subscriptions',{user_id:p.id,plan:'yearly',amount:2200000,status:'active',
-      start_date:daysAgoISO(30),end_date:addDaysISO(todayISO(),300),paid_at:daysAgoISO(30),ref_id:'SUB-S'+p.id});
+    const kids=db.parent_links.filter(l=>l.parent_id===p.id).map(l=>byId('users',l.student_id)).filter(Boolean);
+    kids.forEach(k=>{
+      if(db.parent_subscriptions.some(s=>s.user_id===p.id&&(!s.student_id||Number(s.student_id)===k.id)))return;
+      add('parent_subscriptions',{user_id:p.id,student_id:k.id,plan:'yearly',amount:2200000,status:'active',
+        start_date:daysAgoISO(30),end_date:addDaysISO(todayISO(),300),paid_at:daysAgoISO(30),ref_id:'SUB-S'+p.id+'-'+k.id});
+    });
   });
+  // خانوادهٔ چندفرزندِ نمونه: اشتراکِ فرزندِ دوم — حتی از سمتِ ولیِ دیگر —
+  // منقضی است تا وضعیتِ فرزندبه‌فرزند در پنل دیده شود
+  {
+    const multi=db.users.find(u=>u.username==='parent_multi');
+    if(multi){
+      const mk=db.parent_links.filter(l=>l.parent_id===multi.id).map(l=>byId('users',l.student_id)).filter(Boolean);
+      if(mk.length>=2){
+        const target=mk[1].id;
+        db.parent_subscriptions
+          .filter(s=>Number(s.student_id)===target
+            ||(!s.student_id&&db.parent_links.some(l=>l.student_id===target&&l.parent_id===s.user_id)))
+          .forEach(s=>update('parent_subscriptions',s.id,{status:'expired',end_date:daysAgoISO(3)}));
+      }
+    }
+  }
   // یک «دبیرِ ولی» و یک «مدیرِ ولی» بدون اشتراک (برای نمایش صفحه پرداخت)
   const t=db.users.find(u=>u.role==='teacher'&&u.active);
   const m=db.users.find(u=>u.role==='manager'&&u.active);
@@ -11668,14 +11725,13 @@ function panelPicker(){
   panels.forEach(function(p){
     let sub='';
     if(p.role==='parent'){
-      const s=subOf(S.user.id);
+      const kact=p.children.filter(k=>studentSubOf(k.id,S.user.id,false).active).length;
       const kidNames=p.children.map(function(k){return esc(k.full_name);}).join('، ');
-      const badge=s.active
-        ?(s.status==='trial'?'<span class="badge b-amber">🎁 تست رایگان — '+fa(s.daysLeft)+' روز</span>'
-                            :'<span class="badge b-green">اشتراک فعال — '+fa(s.daysLeft)+' روز</span>')
-        :(subSettings().trial_enabled&&!db.parent_subscriptions.some(x=>x.user_id===S.user.id)
-            ?'<span class="badge b-blue">🎁 '+fa(subSettings().trial_days)+' روز تست رایگان</span>'
-            :'<span class="badge b-amber">نیازمند پرداخت اشتراک</span>');
+      const badge=p.children.length
+        ?(kact===p.children.length?'<span class="badge b-green">اشتراک فعال — همهٔ فرزندان</span>'
+          :(kact>0?'<span class="badge b-amber">'+fa(kact)+' از '+fa(p.children.length)+' فرزند فعال</span>'
+            :'<span class="badge b-amber">نیازمند پرداخت اشتراک</span>'))
+        :'<span class="badge b-gray">بدون فرزند</span>';
       sub='<div class="small muted" style="line-height:1.9">'
         +(p.children.length?fa(p.children.length)+' فرزند: '+kidNames:'بدون فرزند')+'<div>'+badge+'</div></div>';
     } else sub='<div class="small muted">پنل اصلی حساب شما</div>';
@@ -11696,62 +11752,65 @@ function panelPicker(){
 }
 
 /* ---------------- صفحه اشتراک ---------------- */
+/* ---------------- صفحه اشتراک (پرداختِ فرزندبه‌فرزند) ---------------- */
 function viewSubscription(){
-  const s=subOf(S.user.id,true);
-  const hist=db.subscription_payments.filter(x=>x.user_id===S.user.id).sort((a,b)=>b.id-a.id);
-  /* اگر دسترسی از راه هم‌ولی است، به کاربر توضیح داده می‌شود که چرا
-     پنلش باز است و لازم نیست دوباره پرداخت کند */
-  const acc = effectiveParentAccess(S.user.id);
-  let shared = '';
+  const kids=childrenOfUser(S.user);
+  const st=subSettings();
+  const acc=effectiveParentAccess(S.user.id);
+  let shared='';
   if(acc.active && !acc.own && acc.via){
-    const payer = acc.via.payer || {};
-    const kid = acc.student || {};
-    shared = '<div class="card" style="margin-bottom:14px;background:linear-gradient(120deg,var(--green-soft),#fff)">'
-      + '<div class="card-body row"><div style="font-size:32px">🤝</div>'
-      + '<div style="flex:1"><b style="font-size:15px">اشتراک شما از پیش فعال است</b>'
-      + '<div class="small muted" style="line-height:2">'
-      + esc(payer.full_name || 'ولی دیگر')
-      + (kid.full_name ? ' برای <b>' + esc(kid.full_name) + '</b>' : '')
-      + ' اشتراک را پرداخت کرده است. اشتراک به <b>دانش‌آموز</b> تعلق دارد، '
-      + 'پس نیازی به پرداخت دوباره ندارید و همهٔ بخش‌ها برایتان باز است.'
-      + (acc.via.sub && acc.via.sub.daysLeft
-          ? '<br>اعتبار تا <b>' + fa(acc.via.sub.daysLeft) + '</b> روز دیگر.' : '')
-      + '</div></div></div></div>';
+    const payer=acc.via.payer||{};
+    const kid=acc.student||{};
+    shared='<div class="card" style="margin-bottom:14px;background:linear-gradient(120deg,var(--green-soft),#fff)">'
+      +'<div class="card-body row"><div style="font-size:32px">🤝</div>'
+      +'<div style="flex:1"><b style="font-size:15px">برای '+esc(kid.full_name||'یکی از فرزندان')+'، '+esc(payer.full_name||'ولی دیگر')+' اشتراک را پرداخت کرده است</b>'
+      +'<div class="small muted" style="line-height:2">اشتراک به <b>دانش‌آموز</b> تعلق دارد، پس نیازی به پرداخت دوباره برای همین فرزند ندارید.'
+      +(acc.via.sub&&acc.via.sub.daysLeft?'<br>اعتبار تا <b>'+fa(acc.via.sub.daysLeft)+'</b> روز دیگر.':'')
+      +'</div></div></div></div>';
   }
-  let plans='';
-  planList().forEach(function(p){
-    plans+='<div class="card" style="text-align:center"><div class="card-head" style="justify-content:center"><h3>'+esc(p.title)+'</h3></div>'
-      +'<div class="card-body"><div style="font-size:26px;font-weight:700;color:var(--primary)">'+rial(p.amount)+'</div>'
-      +'<div class="small muted">ریال / '+fa(p.months)+' ماه</div>'
-      +'<div class="small" style="margin:12px 0;min-height:44px;line-height:2">'+esc(p.desc)+'</div>'
-      +'<button class="btn" style="width:100%;justify-content:center" data-act="sub-pay" data-r="'+p.code+'">'
-      +(s.active?'➕ تمدید':'💳 پرداخت و فعال‌سازی')+'</button></div></div>';
+  let kidCards='';
+  kids.forEach(function(k){
+    const sub=studentSubOf(k.id,S.user.id,false);
+    const act=sub.active;
+    let badge,head;
+    if(act&&sub.status==='trial'){badge='<span class="badge b-amber">🎁 تست رایگان — '+fa(sub.daysLeft)+' روز</span>';head='دورهٔ تست رایگان — تا '+jalali(sub.end_date);}
+    else if(act){badge='<span class="badge b-green">✅ فعال — تا '+jalali(sub.end_date)+'</span>';head='طرح '+(SUB_PLANS.find(p=>p.code===sub.plan)||{title:sub.plan}).title+' — تا '+jalali(sub.end_date)+' ('+fa(sub.daysLeft)+' روز)';}
+    else if(sub.status==='expired'){badge='<span class="badge b-red">منقضی — '+jalali(sub.end_date)+'</span>';head='اشتراک این فرزند منقضی شده است.';}
+    else {badge='<span class="badge b-gray">بدون اشتراک</span>';head=st.trial_enabled?'با نخستین استفاده، '+fa(st.trial_days)+' روز تست رایگان فعال می‌شود.':'برای باز شدن این فرزند، اشتراک بگیرید.';}
+    let btns='';
+    planList().forEach(function(p){
+      btns+='<div class="row" style="gap:6px;align-items:center"><b>'+esc(p.title)+'</b><span class="small muted">'+rial(p.amount)+' ریال</span>'
+        +'<div class="spacer"></div><button class="btn sm" data-act="sub-pay" data-r="'+p.code+'" data-kid="'+escAttr(k.id)+'">'+(act?'➕ تمدید':'💳 پرداخت')+'</button></div>';
+    });
+    kidCards+='<div class="card" style="margin-bottom:12px;background:linear-gradient(120deg,'+(act?'var(--green-soft)':'var(--amber-soft)')+',#fff)">'
+      +'<div class="card-body"><div class="row"><div style="font-size:30px">'+(act?'✅':'🔒')+'</div><div style="flex:1">'
+      +'<b style="font-size:16px">'+esc(k.full_name)+'</b> '+badge
+      +'<div class="small muted" style="line-height:1.9">'+head+'</div></div></div>'
+      +'<div style="display:grid;gap:8px;margin-top:10px">'+btns+'</div>'
+      +(act?'<div class="row" style="margin-top:10px"><button class="btn ghost sm" data-act="sub-cancel" data-kid="'+escAttr(k.id)+'">لغو اشتراک این فرزند</button></div>':'')
+      +'</div></div>';
   });
-  return shared+'<div class="card" style="margin-bottom:14px;background:linear-gradient(120deg,'+(s.active?'var(--green-soft)':'var(--amber-soft)')+',#fff)">'
-    +'<div class="card-body"><div class="row"><div style="font-size:34px">'+(s.active?'✅':'🔒')+'</div><div>'
-    +'<b style="font-size:16px">'+(s.active?'اشتراک پنل اولیا فعال است':'اشتراک پنل اولیا فعال نیست')+'</b>'
-    +'<div class="small muted" style="line-height:2">'
-    +(s.active?(s.status==='trial'
-        ?('🎁 دوره تست رایگان — تا '+jalali(s.end_date)+' ('+fa(s.daysLeft)+' روز باقی‌مانده). برای ادامه دسترسی، پیش از پایان مهلت اشتراک بگیرید.')
-        :('طرح '+esc((SUB_PLANS.find(p=>p.code===s.plan)||{title:s.plan}).title)+' — تا '+jalali(s.end_date)+' ('+fa(s.daysLeft)+' روز باقی‌مانده)'))
-              :'برای مشاهده نمرات، حضور و غیاب، پرونده انضباطی و شهریه فرزندان، یکی از طرح‌های زیر را فعال کنید.')
-    +'</div></div></div></div></div>'
-    +'<div class="grid g3">'+plans+'</div>'
-    +'<div class="card" style="margin-top:14px"><div class="card-head"><h3>سابقه پرداخت‌ها</h3></div>'
-    +(hist.length?'<div class="table-wrap"><table class="table"><thead><tr><th>تاریخ</th><th>طرح</th><th>مدت</th><th>مبلغ</th><th>کد رهگیری</th></tr></thead><tbody>'
-      +hist.map(function(h){return '<tr><td>'+jalali(h.paid_at)+'</td><td>'+esc((SUB_PLANS.find(p=>p.code===h.plan)||{title:h.plan}).title)+'</td><td>'+fa(h.months)+' ماه</td><td>'+rial(h.amount)+' ریال</td><td class="small muted">'+esc(h.ref_id)+'</td></tr>';}).join('')
+  if(!kids.length)kidCards=empty('👨‍👩‍','فرزند ثبت نشده است','برای استفاده از این پنل، باید فرزند داشته باشید.');
+  const hist=db.subscription_payments.filter(x=>x.user_id===S.user.id).sort((a,b)=>b.id-a.id);
+  const kidName=id=>id?(byId('users',id)||{}).full_name||'—':'همهٔ فرزندان';
+  const intro='<div class="card" style="margin-bottom:14px"><div class="card-body"><b style="font-size:15px">💳 اشتراک فرزندبه‌فرزند</b><div class="small muted" style="line-height:2">اشتراک به <b>هر دانش‌آموز</b> جداگانه تعلق دارد. کافی است یکی از والدین برای هر فرزند پرداخت کند؛ والدِ دیگر هم به‌صورت خودکار به همان فرزند دسترسی پیدا می‌کند. نمرات، حضور و غیاب، برنامهٔ کلاس، امتحانات و شهریه همیشه رایگان است.</div></div></div>';
+  const histCard='<div class="card"><div class="card-head"><h3>سابقه پرداخت‌ها</h3></div>'
+    +(hist.length?'<div class="table-wrap"><table class="table"><thead><tr><th>تاریخ</th><th>فرزند</th><th>طرح</th><th>مدت</th><th>مبلغ</th><th>کد رهگیری</th></tr></thead><tbody>'
+      +hist.map(function(h){return '<tr><td>'+jalali(h.paid_at)+'</td><td class="small">'+esc(kidName(h.student_id))+'</td><td>'+esc((SUB_PLANS.find(p=>p.code===h.plan)||{title:h.plan}).title)+'</td><td>'+fa(h.months)+' ماه</td><td>'+rial(h.amount)+' ریال</td><td class="small muted">'+esc(h.ref_id)+'</td></tr>';}).join('')
       +'</tbody></table></div>':'<div class="card-body small muted">هنوز پرداختی ثبت نشده است.</div>')+'</div>';
+  return shared+intro+kidCards+histCard;
 }
 
-/** صفحه قفل — وقتی اشتراک فعال نیست */
-function viewLocked(){
-  /* بند ۴: دادهٔ پایه (نمره/حضور/برنامه کلاس/امتحانات/شهریه) همیشه رایگان است */
+/** صفحه قفل — وقتی اشتراکِ لازم فعال نیست (childName برای قفلِ فرزندبه‌فرزند) */
+function viewLocked(childName){
+  const title=childName?('برای '+esc(childName)+'، اشتراک لازم است'):'برای این بخش، اشتراک پنل اولیا لازم است';
+  const lead=childName
+    ?('اشتراک این فرزند فعال نیست. نمرات، حضور و غیاب، برنامهٔ کلاس، امتحانات و شهریهٔ '+esc(childName)+' همیشه رایگان باز است؛ برای دریافت نوبت جلسه، درخواست مرخصی و گفتگو، اشتراک این فرزند را فعال کنید.')
+    :('نمرات، حضور و غیاب، برنامهٔ کلاس، برنامهٔ امتحانات و شهریهٔ فرزندتان همیشه بدون اشتراک در دسترس است. با فعال‌سازی اشتراک می‌توانید نوبت جلسهٔ اولیا بگیرید، درخواست مرخصی بفرستید و با مدرسه گفتگو کنید.');
   return '<div class="card" style="text-align:center;padding:38px 20px">'
     +'<div style="font-size:44px">🔒</div>'
-    +'<h3 style="margin:12px 0 6px;font-size:17px">برای این بخش، اشتراک پنل اولیا لازم است</h3>'
-    +'<div class="small muted" style="line-height:2;max-width:460px;margin:0 auto 16px">'
-    +'نمرات، حضور و غیاب، برنامهٔ کلاس، برنامهٔ امتحانات و شهریهٔ فرزندتان همیشه بدون اشتراک در دسترس است. '
-    +'با فعال‌سازی اشتراک می‌توانید نوبت جلسهٔ اولیا بگیرید، درخواست مرخصی بفرستید و با مدرسه گفتگو کنید.</div>'
+    +'<h3 style="margin:12px 0 6px;font-size:17px">'+title+'</h3>'
+    +'<div class="small muted" style="line-height:2;max-width:480px;margin:0 auto 16px">'+lead+'</div>'
     +'<div><button class="btn" data-act="go" data-r="subscription">مشاهده طرح‌ها و پرداخت</button></div></div>';
 }
 
@@ -11760,10 +11819,12 @@ function viewAdminSubs(){
   const st=subSettings();
   const subs=db.parent_subscriptions.map(function(x){
     const u=byId('users',x.user_id)||{};
-    return Object.assign({},x,{full_name:u.full_name||'—',username:u.username||'',role:u.role||''});
+    const k=x.student_id?(byId('users',x.student_id)||{}):null;
+    return Object.assign({},x,{full_name:u.full_name||'—',username:u.username||'',role:u.role||'',
+      kid_name:(k&&k.full_name)?k.full_name:'همهٔ فرزندان'});
   });
   const q=(S.filters.subq||'').trim();
-  const rows=subs.filter(function(r){return !q||(r.full_name+r.username).includes(q);});
+  const rows=subs.filter(function(r){return !q||(r.full_name+r.username+r.kid_name).includes(q);});
   const cnt=function(st_){return subs.filter(function(x){return x.status===st_;}).length;};
   const income=db.subscription_payments.reduce(function(a,b){return a+(b.amount||0);},0);
   const ST_={trial:['آزمایشی','b-amber'],active:['فعال','b-green'],expired:['منقضی','b-red'],none:['بدون اشتراک','b-gray']};
@@ -11787,18 +11848,19 @@ function viewAdminSubs(){
     +fa(st.trial_days)+' روز دسترسی رایگان می‌گیرد؛ پس از آن برای دیدن اطلاعات فرزندان باید اشتراک بخرد.</div></div></div>'
     +'<div class="card"><div class="card-head"><h3>👨‍👩‍👦 اشتراک اولیا</h3>'
     +'<input class="input" style="max-width:220px" placeholder="جستجوی نام یا نام کاربری…" data-f="subq" value="'+esc(q)+'" /></div>'
-    +(rows.length?'<div class="table-wrap"><table class="table"><thead><tr><th>کاربر</th><th>نقش</th><th>طرح</th><th>وضعیت</th><th>پایان</th><th>مبلغ</th><th></th></tr></thead><tbody>'
+    +(rows.length?'<div class="table-wrap"><table class="table"><thead><tr><th>کاربر</th><th>نقش</th><th>فرزند</th><th>طرح</th><th>وضعیت</th><th>پایان</th><th>مبلغ</th><th></th></tr></thead><tbody>'
       +rows.slice(0,100).map(function(r){
         const stx=ST_[r.status]||['—','b-gray'];
         return '<tr><td><b>'+esc(r.full_name)+'</b><div class="small muted">'+esc(r.username)+'</div></td>'
           +'<td class="small">'+esc(roleFa(r.role))+'</td>'
+          +'<td class="small">'+esc(r.kid_name)+'</td>'
           +'<td class="small">'+esc(r.plan==='trial'?'آزمایشی':(r.plan==='none'?'—':((SUB_PLANS.find(p=>p.code===r.plan)||{title:r.plan}).title)))+'</td>'
           +'<td><span class="badge '+stx[1]+'">'+stx[0]+'</span></td>'
           +'<td class="small">'+(r.end_date?jalali(r.end_date):'—')+'</td>'
           +'<td class="small">'+(r.amount?rial(r.amount):'—')+'</td>'
           +'<td><div class="row" style="gap:5px;flex-wrap:nowrap">'
           +'<button class="btn ghost sm" data-act="sub-grant" data-id="'+r.user_id+'">🎁 فعال‌سازی</button>'
-          +'<button class="icon-btn danger" title="بازنشانی" data-act="sub-reset" data-id="'+r.user_id+'">♻️</button>'
+          +'<button class="icon-btn danger" title="بازنشانی" data-act="sub-reset" data-id="'+r.id+'">♻️</button>'
           +'</div></td></tr>';}).join('')
       +'</tbody></table></div>'
       +(rows.length>100?'<div class="card-body small muted">۱۰۰ مورد نخست نمایش داده شد.</div>':'')
@@ -11817,26 +11879,42 @@ const P10_ACTIONS = {
   },
   'sub-grant'(el,id){
     const u=byId('users',id);
+    const kids=childrenOfUser(u);
     openModal(modalTpl('فعال‌سازی اشتراک — '+esc(u.full_name),
-      f('مدت (روز)',inp('gr_days',30,'number')),'sub-grant-ok'));
+      f('مدت (روز)',inp('gr_days',30,'number'))
+      +f('برای کدام فرزند؟',sel('gr_kid',[['','همهٔ فرزندان']].concat(kids.map(k=>[k.id,k.full_name])),'')),
+      'sub-grant-ok'));
     window._grantId=id;
   },
   'sub-grant-ok'(){
     const id=window._grantId, days=Number(V('gr_days'))||30;
-    const cur=subOf(id);
+    const kidId=V('gr_kid')?Number(V('gr_kid')):null;
+    const kid=kidId?byId('users',kidId):null;
+    const cur=kidId?studentSubOf(kidId,id,false):subOf(id,false);
     const from=(cur.active&&cur.end_date&&cur.end_date>todayISO())?cur.end_date:todayISO();
     const end=addDaysISO(from,days);
-    const row=db.parent_subscriptions.find(s=>s.user_id===id);
-    if(row)update('parent_subscriptions',row.id,{status:'active',start_date:todayISO(),end_date:end});
-    else insert('parent_subscriptions',{user_id:id,plan:'gift',amount:0,status:'active',start_date:todayISO(),end_date:end});
-    insert('notifications',{user_id:id,school_id:(byId('users',id)||{}).school_id||null,type:'announcement',
-      title:'🎁 اشتراک پنل اولیا فعال شد',body:'اشتراک شما تا '+jalali(end)+' فعال است.',link:'subscription',read:0,created_at:todayISO()});
+    const row=kidId?db.parent_subscriptions.find(s=>s.user_id===id&&Number(s.student_id)===kidId)
+                   :db.parent_subscriptions.find(s=>s.user_id===id&&!s.student_id);
+    if(row){
+      const patch={status:'active',start_date:todayISO(),end_date:end};
+      if(kidId)patch.student_id=kidId;
+      update('parent_subscriptions',row.id,patch);
+    }
+    else insert('parent_subscriptions',{user_id:id,student_id:kidId,plan:'gift',amount:0,status:'active',start_date:todayISO(),end_date:end});
+    const notifyIds=kidId?db.parent_links.filter(l=>l.student_id===kidId).map(l=>l.parent_id):[id];
+    notifyIds.forEach(uid=>{
+      insert('notifications',{user_id:uid,school_id:(byId('users',id)||{}).school_id||null,type:'announcement',
+        title:'🎁 اشتراک پنل اولیا فعال شد',
+        body:(kid?('اشتراک '+esc(kid.full_name)+' تا '):'اشتراک شما تا ')+jalali(end)+' فعال است.',
+        link:'subscription',read:0,created_at:todayISO()});
+    });
     closeModal(); toast('اشتراک فعال شد','ok'); render();
   },
   'sub-reset'(el,id){
-    const u=byId('users',id);
-    askConfirm('اشتراک «'+u.full_name+'» بازنشانی شود؟ دوره تست رایگان دوباره از ابتدا محاسبه می‌شود.',()=>{
-      const row=db.parent_subscriptions.find(s=>s.user_id===id);
+    const row=byId('parent_subscriptions',id);
+    const u=byId('users',(row||{}).user_id)||{};
+    const kName=row&&row.student_id?((byId('users',row.student_id)||{}).full_name||''):'';
+    askConfirm('اشتراک «'+(u.full_name||'—')+(kName?' برای '+kName:' (همهٔ فرزندان)')+'» بازنشانی شود؟',()=>{
       if(row)remove('parent_subscriptions',row.id);
       toast('بازنشانی شد',''); render();
     },{title:'بازنشانی اشتراک',ok:'بازنشانی کن',danger:true,note:false});
@@ -11846,7 +11924,7 @@ const P10_ACTIONS = {
     S.showPicker=false;
     if(role===S.user.role)S.persona=null; else S.persona=role;
     S.stack=[];S.filters={};S.child=null;
-    S.route=(role==='parent')?(subOf(S.user.id,true).active?'dashboard':'subscription')
+    S.route=(role==='parent')?(effectiveParentAccess(S.user.id).active?'dashboard':'subscription')
       :(role==='edu_office'?'officedash':'dashboard');
     Store.set(PERSONA_KEY,S.persona||'');
     toast('وارد '+(PANEL_TITLE[role]||'پنل')+' شدید','ok');
@@ -11856,25 +11934,37 @@ const P10_ACTIONS = {
   'open-picker'(){ S.showPicker=true; render(); },
   'sub-pay'(el){
     const plan=planList().find(p=>p.code===el.dataset.r);
-    askConfirm('پرداخت اشتراک «'+plan.title+'» به مبلغ '+rial(plan.amount)+' ریال انجام شود؟',()=>{
-      const cur=subOf(S.user.id);
+    const kidId=el.dataset.kid?Number(el.dataset.kid):null;
+    const kid=kidId?byId('users',kidId):null;
+    askConfirm('پرداخت اشتراک «'+plan.title+'»'+(kid?' برای '+kid.full_name:'')+' به مبلغ '+rial(plan.amount)+' ریال انجام شود؟',()=>{
+      const ref='SUB-'+String(Date.now()).slice(-8);
+      const cur=kidId?studentSubOf(kidId,S.user.id,false):subOf(S.user.id,false);
       const from=(cur.active&&cur.end_date&&cur.end_date>todayISO())?cur.end_date:todayISO();
       const end=addDaysISO(from,plan.months*30);
-      const ref='SUB-'+String(Date.now()).slice(-8);
-      const row=db.parent_subscriptions.find(s=>s.user_id===S.user.id);
+      const row=kidId?db.parent_subscriptions.find(s=>s.user_id===S.user.id&&Number(s.student_id)===kidId)
+                     :db.parent_subscriptions.find(s=>s.user_id===S.user.id&&!s.student_id);
       if(row)update('parent_subscriptions',row.id,{plan:plan.code,amount:plan.amount,status:'active',start_date:todayISO(),end_date:end,paid_at:todayISO(),ref_id:ref});
-      else insert('parent_subscriptions',{user_id:S.user.id,plan:plan.code,amount:plan.amount,status:'active',start_date:todayISO(),end_date:end,paid_at:todayISO(),ref_id:ref});
-      insert('subscription_payments',{user_id:S.user.id,plan:plan.code,amount:plan.amount,months:plan.months,ref_id:ref,method:'online',paid_at:todayISO()});
-      insert('notifications',{user_id:S.user.id,school_id:S.user.school_id||null,type:'announcement',
-        title:'✅ اشتراک پنل اولیا فعال شد',body:'طرح '+plan.title+' تا '+jalali(end)+' فعال شد. کد رهگیری: '+ref,
-        link:'subscription',read:0,created_at:todayISO()});
+      else insert('parent_subscriptions',{user_id:S.user.id,student_id:kidId,plan:plan.code,amount:plan.amount,status:'active',start_date:todayISO(),end_date:end,paid_at:todayISO(),ref_id:ref});
+      insert('subscription_payments',{user_id:S.user.id,student_id:kidId,plan:plan.code,amount:plan.amount,months:plan.months,ref_id:ref,method:'online',paid_at:todayISO()});
+      /* پرداختِ یکی از والدین، همهٔ والدینِ آن فرزند را باز می‌کند */
+      const notifyIds=kidId?db.parent_links.filter(l=>l.student_id===kidId).map(l=>l.parent_id):[S.user.id];
+      notifyIds.forEach(uid=>{
+        insert('notifications',{user_id:uid,school_id:kid?(byId('users',kid)||{}).school_id:(S.user.school_id||null),type:'announcement',
+          title:'✅ اشتراک پنل اولیا فعال شد',
+          body:'طرح '+plan.title+(kid?' برای '+kid.full_name:'')+' تا '+jalali(end)+' فعال شد. کد رهگیری: '+ref,
+          link:'subscription',read:0,created_at:todayISO()});
+      });
       toast('اشتراک فعال شد — کد رهگیری '+ref,'ok');
       render();
     },{title:'پرداخت اشتراک',ok:'پرداخت',danger:false,note:'پرداخت آزمایشی است و مبلغی از حساب شما کسر نمی‌شود.'});
   },
-  'sub-cancel'(){
-    askDelete('اشتراک پنل اولیا لغو شود؟ دسترسی به اطلاعات فرزندان بسته می‌شود.',()=>{
-      const row=db.parent_subscriptions.find(s=>s.user_id===S.user.id);
+  'sub-cancel'(el){
+    const kidId=el.dataset.kid?Number(el.dataset.kid):null;
+    const kid=kidId?byId('users',kidId):null;
+    askDelete('اشتراک'+(kid?' «'+kid.full_name+'»':' پنل اولیا')+' لغو شود؟ دسترسی به بخش‌های اشتراکی'+(kid?' برای همین فرزند':'')+' بسته می‌شود؛ دادهٔ پایه همچنان رایگان باقی می‌ماند.',()=>{
+      const row=db.parent_subscriptions.find(s=>s.user_id===S.user.id
+        &&(kidId?(Number(s.student_id)===kidId):(!s.student_id))
+        &&['active','trial'].includes(s.status));
       if(row)update('parent_subscriptions',row.id,{status:'expired',end_date:todayISO()});
       toast('اشتراک لغو شد',''); render();
     });
