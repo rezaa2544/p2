@@ -528,53 +528,6 @@ var DIAG_CHECKS = [
     owner: 'undefined'
   },
 
-  {
-    id: 'weak-password', cat: 'data',
-    title: 'رمز پیش‌فرض تغییرنیافته',
-    desc: 'کاربرانی که هنوز رمز ۱۲۳۴۵۶ دارند',
-    when: 'حساب ساخته شده ولی کاربر هرگز رمز خود را عوض نکرده — خطر ورود شخص ناآشنا با نام کاربری حدس‌خور',
-    severity: 'warning',
-    safe: true,
-    check: function(){
-      var bad = db.users.filter(function(u){
-        return u.active && u.password === '123456' &&
-               ['superadmin','manager','edu_office'].indexOf(u.role) > -1;
-      }).map(function(u){ return { id:u.id, name:u.full_name, role:u.role }; });
-      return bad.length
-        ? { ok:false, count:bad.length, items:bad.slice(0,20),
-            msg: bad.length + ' کاربر مدیریتی رمز پیش‌فرض دارند' }
-        : { ok:true };
-    },
-    fix: function(){
-      /* رمز تازه می‌سازیم و به خودِ کاربر اطلاع می‌دهیم.
-         حالتِ قبل (رمز ۱۲۳۴۵۶) در تاریخچهٔ تعمیرات نگه می‌ماند. */
-      var bad = db.users.filter(function(u){
-        return u.active && u.password === '123456' &&
-               ['superadmin','manager','edu_office'].indexOf(u.role) > -1;
-      });
-      var before = bad.map(function(u){ return { coll:'users', rec:Object.assign({}, u), existed:true }; });
-      var news = [], n = 0;
-      batchWrites(function(){
-        bad.forEach(function(u){
-          var p = diagRandPass();
-          update('users', u.id, { password: p });
-          news.push((u.full_name || u.username) + ' → ' + p);
-          try{
-            insert('notifications', { user_id:u.id,
-              title:'رمز شما توسط دیاگ سامانه تغییر کرد',
-              body:'رمز جدید: ' + p + ' — پس از ورود، از منوی کاربر آن را عوض کنید.',
-              date:todayISO(), read:0 });
-          }catch(e){}
-          n++;
-        });
-      });
-      return { msg: n + ' رمز پیش‌فرض عوض شد. رمزهای جدید (به هر حساب هم اعلان رفت): '
-                   + news.join(' ، '), before: before };
-    },
-    fixDesc:'برای هر حساب رمز تصادفی جدید ساخته می‌شود و به همان حساب اعلان می‌رود (بازگشت‌پذیر). پس از ورود، کاربر رمز دلخواهش را می‌گذارد.',
-    owner:'app'
-  },
-
   /* ── ۶. سلامت مالی ───────────────────────────────────────────── */
   {
     id: 'negative-amounts', cat: 'data',
@@ -1695,13 +1648,6 @@ function diagProbeRoutes(){
   return bad;
 }
 
-/* رمز تصادفی ۸ رقمی برای تعمیر «رمز پیش‌فرض» (بدون نویسه‌های مبهم) */
-function diagRandPass(){
-  var set = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  var p = '';
-  for(var i = 0; i < 8; i++) p += set.charAt(Math.floor(Math.random() * set.length));
-  return p;
-}
 
 /* ------------------------------------------------------------------ */
 /*  نما — صفحهٔ دیاگ                                                   */

@@ -94,8 +94,7 @@ function schoolModal(s){
       ${f('نام و نام خانوادگی'+(s.id?'':' *'),inp('mg_name',mgr?mgr.full_name:''))}
       ${f('کد ملی',inp('mg_nid',mgr?mgr.national_id:''))}
       ${f('تلفن همراه',inp('mg_phone',mgr?mgr.phone:''))}
-      ${f('نام کاربری'+(s.id?'':' *'),inp('mg_user',mgr?mgr.username:''))}
-      ${f(mgr?'رمز جدید (خالی = بدون تغییر)':'رمز عبور',inp('mg_pass',mgr?'':'123456'))}</div>`,
+      ${f('نام کاربری'+(s.id?'':' *'),inp('mg_user',mgr?mgr.username:''))}</div>`,
    'school-save'));
   window._edit=s;
 }
@@ -111,7 +110,6 @@ function userModal(x){
     ${isSuper?f('مدرسه',sel('u_school',db.schools.map(s=>[s.id,s.name]),x.school_id)):''}
     ${f('کد ملی',inp('u_nid',x.national_id))}${f('تلفن همراه',inp('u_phone',x.phone))}
     ${f('کلاس (برای دانش‌آموز)',sel('u_class',[['','— بدون کلاس —']].concat(clsList.map(c=>[c.id,c.name])),cur))}
-    ${f('رمز عبور',inp('u_pass',x.id?'':'123456'))}
     ${f('وضعیت',sel('u_active',[[1,'فعال'],[0,'غیرفعال']],x.active?1:0))}</div>`,'user-save'));
   window._edit=x;
 }

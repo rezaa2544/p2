@@ -353,7 +353,7 @@ function generateBusDemo(){
     drv = add('users',{
       school_id:sc.id, role:'driver',
       full_name:(typeof pick==='function')?pick(MALE)+' '+pick(LAST):'علی رضایی',
-      username:'driver1', phone:'', active:1
+      username:'driver1', phone:(typeof demoPhone==='function')?demoPhone():'', national_id:(typeof nid==='function')?nid():'', active:1
     });
   }
   /* هندسهٔ واقعیِ مسیر (مختصات WGS-84 واقعی — محور شهرک غرب تا میدان ولی‌عصر، تهران) */

@@ -1,9 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════
-   پنل سوپرادمین — سه ابزار مدیریت کل سامانه
+   پنل سوپرادمین — دو ابزار مدیریت کل سامانه
    ═══════════════════════════════════════════════════════════════════
    بخش ۱ ▸ داشبورد مالی سراسری   روت: finance
-   بخش ۲ ▸ بازنشانی رمز کاربر     اکشن: pass-reset
-   بخش ۳ ▸ سلامت سامانه           روت: health
+   بخش ۲ ▸ سلامت سامانه           روت: health
 
    ⚠️ همهٔ محاسبه‌ها با یک پیمایش گروه‌بندی می‌شوند، نه پیمایش جدول
    به‌ازای هر مدرسه. در مقیاس ملی این تفاوت میان خطی و درجه‌دوم است.
@@ -150,45 +149,7 @@ function viewFinance(){
     + '</tbody></table></div></div>';
 }
 
-/* ──────────────────── بخش ۲: بازنشانی رمز ──────────────────── */
-
-/** رمز موقت خوانا: چهار حرف + چهار رقم، بدون نویسهٔ مبهم */
-function tempPassword(){
-  var letters = 'abcdefghjkmnpqrstuvwxyz', digits = '23456789', out = '';
-  for(var i = 0; i < 4; i++) out += letters[Math.floor(Math.random() * letters.length)];
-  for(var j = 0; j < 4; j++) out += digits[Math.floor(Math.random() * digits.length)];
-  return out;
-}
-
-/**
- * بازنشانی رمز یک کاربر.
- * حساب‌های هم‌رده یا بالاتر محافظت می‌شوند تا مدیر نتواند رمز
- * سوپرادمین را عوض کند و کنترل سامانه را بگیرد.
- */
-function canResetPassword(target, actorRole){
-  if(!target) return false;
-  actorRole = actorRole || (S.user && S.user.role);
-  if(actorRole === 'superadmin') return target.role !== 'superadmin' || target.id === S.user.id;
-  if(actorRole === 'manager'){
-    return target.school_id === S.user.school_id
-        && ['student','teacher','parent'].indexOf(target.role) > -1;
-  }
-  return false;
-}
-
-function resetPassword(userId){
-  var u = byId('users', userId);
-  if(!canResetPassword(u)) return null;
-  var pass = tempPassword();
-  update('users', userId, { password: pass, must_change_password: 1 });
-  insert('notifications', { user_id: userId, school_id: u.school_id || null,
-    type: 'announcement', title: '🔑 رمز عبور شما بازنشانی شد',
-    body: 'رمز تازهٔ شما «' + pass + '» است. پس از ورود آن را تغییر دهید.',
-    link: 'dashboard', read: 0, created_at: todayISO() });
-  return pass;
-}
-
-/* ─────────────────── بخش ۳: سلامت سامانه ─────────────────── */
+/* ─────────────────── بخش ۲: سلامت سامانه ─────────────────── */
 
 /**
  * جمع‌آوری نشانه‌های سلامت از لایه‌های موجود.

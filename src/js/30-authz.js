@@ -271,8 +271,6 @@ var ACTION_ROLES = {
   'export-csv':      ['manager'],
   'ann-broadcast':   ['superadmin'],
   'ann-broadcast-ok':['superadmin'],
-  'pass-reset':    ['manager','superadmin'],
-  'pass-reset-ok': ['manager','superadmin'],
   'health-backup': ['superadmin'],
   'health-reindex':['superadmin'],
   'health-retry':  ['superadmin'],

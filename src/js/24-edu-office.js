@@ -343,7 +343,7 @@ const P9_ACTIONS = {
          ${f('شهرستان',sel('of_c',[['','—'],...db.counties.map(c=>[c.id,c.name])]))}
          ${f('منطقه',sel('of_d',[['','—'],...db.districts.map(d=>[d.id,d.name])]))}</div>
        <div class="grid g2">${f('نام کارشناس',inp('of_user','کارشناس اداره'))}${f('نام کاربری *',inp('of_username','edu_'))}</div>
-       <div class="small muted" style="line-height:2;margin-top:8px">ℹ️ رمز عبور پیش‌فرض <b>123456</b> است. اداره فقط آمار تجمیعی محدوده خود را می‌بیند و به پرونده فردی دانش‌آموزان دسترسی ندارد.</div>`,'office-save'));
+       <div class="small muted" style="line-height:2;margin-top:8px">ℹ️ ورود با <b>شمارهٔ همراه + کد ملی</b> است (بدونِ رمز)؛ در دمو کد روی صفحه نمایش داده می‌شود. اداره فقط آمار تجمیعی محدوده خود را می‌بیند و به پرونده فردی دانش‌آموزان دسترسی ندارد.</div>`,'office-save'));
   },
   'office-save'(){
     const name=V('of_name'), username=V('of_username');

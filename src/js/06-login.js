@@ -1,7 +1,64 @@
 /* ═══════════════════════════════════════════════════════════════════
-   صفحهٔ ورود
-   ورود با نام کاربری و رمز، به‌همراه دکمه‌های حساب نمایشی.
+   صفحهٔ ورود — بدونِ رمز (اصل: در محصول هیچ رمز کاربری نیست)
+   جریان: شماره → کد (پنلِ پیامکی) → کد ملی (سامانهٔ تطبیقِ کد ملی)
+   → «استعلام و ورود». 📄 docs/PLAN_PHONE_AUTH.md
+   در نسخهٔ دمو کد روی همین صفحه نمایش داده می‌شود (پیامکِ واقعی
+   ارسال نمی‌شود) — شبیه‌سازیِ صادقانهٔ درگاه.
    ═══════════════════════════════════════════════════════════════════ */
+
+/* ── پنلِ پیامکی (درگاهِ شاهکار) — در دمو شبیه‌سازی ──────────────
+   این سامانه **فقط کانالِ ارسالِ پیامک** است. در نسخهٔ واقعی: درگاهِ
+   واقعی. عمداً جدا از سامانهٔ تطبیقِ کد ملی تعریف شده است (تصمیمِ
+   کاربر ۲۰۲۶-۰۹-۰۵: «سامانهٔ تطبیقِ کد ملی با پنلِ پیامکی فرق دارد و
+   جدا از هم تعریف می‌شوند»). */
+const SmsPanel={
+  log:[],
+  _sent:null,
+  sendCode(phone){
+    const code=String(1000+Math.floor(Math.random()*9000));
+    this._sent={phone:String(phone),code:code,at:Date.now()};
+    this.log.push(this._sent);
+    return code;
+  },
+  checkCode(phone,code){
+    return !!(this._sent && this._sent.phone===String(phone)
+              && this._sent.code===String(code||'').trim());
+  },
+  /* APIِ روخوانِ دمو (درگاهِ واقعی کد را هرگز نشان نمی‌دهد) */
+  demoCode(){ return this._sent ? this._sent.code : ''; }
+};
+
+/* ── سامانهٔ تطبیقِ کد ملی (استعلامِ هویت) — جدا از پنلِ پیامکی ──
+   در نسخهٔ واقعی: سرویسِ استعلامِ هویتِ مستقل؛ بانکِ هویت = دادهٔ
+   پایهٔ مدرسه (همان اکسلِ ورود اطلاعات). پوستهٔ دمو پاسخش را شبیه
+   می‌کند و **لاگِ استعلامِ خودش** را دارد. */
+const IdmSystem={
+  log:[],
+  match(nid){
+    const n=String(nid||'').trim();
+    const ok=n.length>0 && db.users.some(function(u){return String(u.national_id)===n;});
+    this.log.push({nid:n,ok:ok,at:Date.now()});
+    return ok;
+  }
+};
+
+/* تطبیقِ شمارهٔ همراه (فاصله/خط تیره بی‌اهمیت؛ ۱۰ رقمِ آخر هم کافی است) */
+function normPhone(s){ return String(s||'').replace(/[\s\-()]/g,''); }
+function phoneMatches(a,b){
+  a=normPhone(a); b=normPhone(b);
+  if(!a||!b) return false;
+  if(a===b) return true;
+  return a.length>=10 && b.length>=10 && a.slice(-10)===b.slice(-10);
+}
+
+function loginDemoHint(code){
+  const d=document.getElementById('ldemo');
+  if(d){ d.textContent='حالتِ دمو: پیامکِ واقعی ارسال نمی‌شود — کدِ این شماره '+code+' است'; d.style.display='block'; }
+}
+function loginErr(msg){
+  document.getElementById('lerr').innerHTML='<div class="badge b-red" style="padding:9px 12px;margin-bottom:8px">⚠️ '+msg+'</div>';
+}
+
 function demoAccounts(){
   const s=db.users.find(u=>u.role==='student'), p=db.users.find(u=>u.role==='parent');
   return [db.users.find(u=>u.role==='superadmin'),db.users.find(u=>u.username==='edu_kurdistan'),db.users.find(u=>u.username==='manager1'),db.users.find(u=>u.username==='teacher1_1'),s,db.users.find(u=>u.username==='parent_multi')||p,db.users.find(u=>u.username==='counselor1')].filter(Boolean);
@@ -17,14 +74,19 @@ function renderLogin(){
      /* ⚠️ امنیت (پنتست ۲۰۲-۰۹-۰۵): پیش‌فرضِ حساب مدیریتی در فرم ورود
         ممنوع است — هر بازدیدکننده با یک کلیک وارد پرریسک‌ترین حساب می‌شد.
         حساب‌های نمونهٔ پایین همین کار را با یک کلیکِ آگاهانه انجام می‌دهند. */
-     <div class="field"><label>نام کاربری</label><input class="input" id="lu" /></div>
-     <div class="field"><label>رمز عبور</label><input class="input" id="lp" type="password" /></div>
+     <div class="small muted" style="line-height:1.9;margin-bottom:10px">ورود با <b>شماره + کد + کد ملی</b> است — بدونِ رمز عبور.</div>
+     <div class="field"><label>شمارهٔ همراه</label><input class="input" id="lpn" inputmode="tel" placeholder="09xxxxxxxxx" style="direction:ltr;text-align:left" /></div>
+     <button class="btn" style="width:100%;justify-content:center;margin-bottom:8px;padding:9px" data-act="login-code">ارسالِ کد</button>
+     <div class="field"><label>کد</label><input class="input" id="lcode" inputmode="numeric" placeholder="کد ۴ رقمی" style="direction:ltr;text-align:left" /></div>
+     <div class="field"><label>کد ملی</label><input class="input" id="lnid" inputmode="numeric" placeholder="کد ملی ۱۰ رقمی" style="direction:ltr;text-align:left" /></div>
+     <div id="ldemo" class="small" style="display:none;background:var(--soft,#eef2f7);border:1px dashed var(--border,#c9d4e0);border-radius:8px;padding:8px 10px;margin-bottom:8px;line-height:1.8"></div>
      <div id="lerr"></div>
-     <button class="btn" style="width:100%;justify-content:center;padding:12px;font-size:15px" data-act="login">ورود</button>
+     <button class="btn" style="width:100%;justify-content:center;padding:12px;font-size:15px" data-act="login">استعلام و ورود</button>
      <div class="login-sep">حساب‌های نمونه</div>
      ${accs.map(a=>`<div class="demo-item" data-act="pick" data-u="${escAttr(a.username)}">
         <span class="badge ${ROLE_BADGE[a.role]}">${ROLE_FA[a.role]}</span>
-        <b>${esc(a.username)}</b></div>`).join('')}
+        <b>${esc(a.full_name)}</b>
+        <span class="small muted" style="direction:ltr;margin-inline-start:auto">${esc(a.phone||'—')}</span></div>`).join('')}
      <div class="small muted" style="margin-top:16px;text-align:center"><span data-act="privacy-open" style="text-decoration:underline;cursor:pointer">سیاست حریم خصوصی و امنیت داده</span></div>
    </div></div></div>`;
 }
