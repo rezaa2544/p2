@@ -620,6 +620,12 @@ document.addEventListener('click',e=>{
      const d=attDraftDiff(cid,date);
      if(!d.changes.length){closeModal();return;}
      const school=byId('classes',cid).school_id;
+     /* بند ۱۶: روزِ غیرحضوری، ثبتِ حضوری مسدود است (حضور فقط از کلاس مجازی) */
+     if(typeof schoolVirtual==='function' && schoolVirtual(school, date)){
+       closeModal();
+       if(typeof toast==='function') toast('در روز غیرحضوری، ثبتِ حضوری مسدود است — حضور از «کلاس مجازی» ثبت می‌شود','err');
+       return;
+     }
      const made=[];
      batchWrites(()=>{
        d.changes.forEach(c=>{

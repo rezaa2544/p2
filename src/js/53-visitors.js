@@ -29,6 +29,9 @@ function visitorRegister(name, purpose){
   var role = (typeof activePersona === 'function') ? activePersona() : u.role;
   if(role !== 'manager') return {ok:false, msg:'فقط مدیر مدرسه می‌تواند مهمان ثبت کند'};
   if(!u.school_id) return {ok:false, msg:'مدرسهٔ فعالی مشخص نیست'};
+  /* بند ۱۶: روزِ غیرحضوری، ورودِ فیزیکیِ مهمان نیست */
+  if(typeof schoolVirtual==='function' && schoolVirtual(u.school_id, todayISO()))
+    return {ok:false, msg:'امروز مدرسه غیرحضوری است؛ ثبت مهمان امکان ندارد (مسدود)'};
   name = String(name || '').trim();
   if(!name) return {ok:false, msg:'نام مهمان خالی است'};
   var rec = {

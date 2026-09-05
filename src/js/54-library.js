@@ -97,6 +97,9 @@ function libLend(bookId, studentId, dueDate){
   var role = (typeof activePersona === 'function') ? activePersona() : u.role;
   if(role !== 'manager') return {ok:false, msg:'فقط مدیر مدرسه می‌تواند امانت بدهد'};
   if(!u.school_id) return {ok:false, msg:'مدرسهٔ فعالی مشخص نیست'};
+  /* بند ۱۶: روزِ غیرحضوری، کتابخانهٔ فیزیکی کار نمی‌کند */
+  if(typeof schoolVirtual==='function' && schoolVirtual(u.school_id, todayISO()))
+    return {ok:false, msg:'امروز مدرسه غیرحضوری است؛ امانت کتاب انجام نمی‌شود (مسدود)'};
   var b = byId('lib_books', bookId);
   if(!b) return {ok:false, msg:'کتاب پیدا نشد'};
   if(b.school_id !== u.school_id) return {ok:false, msg:'این کتاب متعلق به مدرسهٔ شما نیست'};

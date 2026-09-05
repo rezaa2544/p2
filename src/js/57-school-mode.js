@@ -64,13 +64,65 @@ function setSchoolMode(schoolId, dateISO, mode, u){
   if(!okScope) return {ok:false, msg:'شما مجوز تغییر حالت این مدرسه را ندارید'};
   var now = new Date().toISOString();
   var row = schoolModeRow(schoolId, dateISO);
+  var rec;
   if(row){
     update('attendance_modes', row.id, {mode:mode, set_by:u.id, set_at:now});
-    return {ok:true, rec: byId('attendance_modes', row.id)};
+    rec = byId('attendance_modes', row.id);
+  } else {
+    rec = insert('attendance_modes',
+      {school_id:schoolId, date:dateISO, mode:mode, set_by:u.id, set_at:now});
   }
-  var rec = insert('attendance_modes',
-    {school_id:schoolId, date:dateISO, mode:mode, set_by:u.id, set_at:now});
-  return {ok:true, rec:rec};
+  /* بند ۱۶: وقتی روزی غیرحضوری می‌شود، اولیا همان لحظه در صف پیام
+     (نقشِ رویداد) خبر می‌گیرند؛ وقتی دوباره حضوری شد، پیام‌های
+     معلقِ همان روز لغو می‌شوند. (ارسال واقعی = مرحلهٔ سرور) */
+  var notify = (mode === 'virtual')
+    ? smQueueVirtualNotice(schoolId, dateISO)
+    : {cancelled: smCancelVirtualNotice(schoolId, dateISO)};
+  return {ok:true, rec:rec, notify:notify};
+}
+
+/** صف‌کردنِ خبرِ «روزِ غیرحضوری» برای همهٔ اولیای فعالِ مدرسه */
+function smQueueVirtualNotice(schoolId, dateISO){
+  schoolId = Number(schoolId);
+  var s = byId('schools', schoolId);
+  if(!s || typeof notifyRequest !== 'function') return {created:0, skipped:0};
+  var studs = db.users.filter(function(x){
+    return x.role==='student' && x.school_id===schoolId && (x.status||'active')==='active';
+  });
+  var created = 0, skipped = 0;
+  studs.forEach(function(st){
+    /* ref برای هر دانش‌آموز جدا — تکراری یعنی همین اولیای همین دانش‌آموز */
+    var ref = 'schoolmode:' + schoolId + ':' + dateISO + ':' + st.id;
+    var dup = (db.notify_queue||[]).some(function(q){
+      return q.source_ref===ref && q.status!=='rejected' && q.status!=='cancelled';
+    });
+    if(dup){ skipped++; return; }
+    var q = notifyRequest({
+      school_id: schoolId,
+      kind: 'event',
+      student_id: st.id,
+      student_name: st.full_name,
+      body: 'اولیای گرامی، مدرسهٔ ' + s.name + ' در تاریخ '
+        + ((typeof jalali==='function') ? jalali(dateISO) : dateISO)
+        + ' غیرحضوری (مجازی) است؛ کلاس‌ها از طریق «کلاس مجازی» برگزار می‌شود.',
+      source_ref: ref
+    });
+    if(q) created++; else skipped++;
+  });
+  return {created:created, skipped:skipped};
+}
+
+/** لغوِ پیام‌های معلقِ خبرِ غیرحضوریِ یک روز (وقتی روز حضوری شد) */
+function smCancelVirtualNotice(schoolId, dateISO){
+  var pre = 'schoolmode:' + schoolId + ':' + dateISO + ':';
+  var n = 0;
+  (db.notify_queue||[]).slice().forEach(function(q){
+    if(q.source_ref && q.source_ref.indexOf(pre)===0 && q.status==='pending'){
+      update('notify_queue', q.id, {status:'cancelled'});
+      n++;
+    }
+  });
+  return n;
 }
 
 /** بجِ حالتِ یک مدرسه در یک روز (برای فهرستِ اداره) */
@@ -93,7 +145,8 @@ function virtualModeBanner(dateISO){
     + '🏠 این مدرسه در تاریخ ' + esc((typeof jalali==='function' ? jalali(d) : d))
     + ' در حالت <b>غیرحضوری (مجازی)</b> است — همهٔ کلاس، فضا و تجهیزات '
     + 'برای این روز به‌صورت خودکار مجازی‌اند؛ حضورِ کلاس‌ها از «کلاس مجازی» '
-    + 'ثبت می‌شود. (تغییر: مدیر مدرسه یا ادارهٔ آموزش و پرورش)</div>';
+    + 'ثبت می‌شود. ثبتِ حضوری، امانت کتاب، ثبت مهمان و «استفاده» از تجهیز '
+    + 'برای این روز مسدود است. (تغییر: مدیر مدرسه یا ادارهٔ آموزش و پرورش)</div>';
 }
 
 /** مودالِ انتخابِ حالت (اداره/مدیر) */
