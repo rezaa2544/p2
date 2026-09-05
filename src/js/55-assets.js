@@ -58,6 +58,11 @@ function assetSetStatus(assetId, status, location){
   var u = S.user;
   var role = (typeof activePersona === 'function') ? activePersona() : u.role;
   if(role !== 'manager') return {ok:false, msg:'فقط مدیر مدرسه می‌تواند وضعیت تجهیز را عوض کند'};
+  /* بند ۱۶: «استفاده» یعنی تحویلِ فیزیکی — در روزِ غیرحضوری مسدود
+     (چکِ روز قبل از چکِ مالکیت است: روزِ غیرحضوری اصلاً تجهیز
+     فیزیکی تحویل نمی‌شود) */
+  if(status==='in_use' && typeof schoolVirtual==='function' && schoolVirtual(u.school_id, todayISO()))
+    return {ok:false, msg:'امروز مدرسه غیرحضوری است؛ «استفاده» از تجهیز ثبت نمی‌شود (مسدود)'};
   var a = byId('assets', assetId);
   if(!a) return {ok:false, msg:'تجهیز پیدا نشد'};
   if(a.school_id !== u.school_id) return {ok:false, msg:'این تجهیز متعلق به مدرسهٔ شما نیست'};
