@@ -296,6 +296,12 @@ document.addEventListener('click',e=>{
        render();
      });
    },
+   'health-gauge-style'(){
+     var s=el.dataset.s;
+     if(s!=='needle'&&s!=='dial'&&s!=='thermo')return;
+     Store.set('payesh_health_gauge_v1', s);
+     render();
+   },
    'diag-auto'(){
      if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
      if(DIAG_AUTO.on){ diagAutoStop(); toast('پایش خودکار خاموش شد','ok'); }

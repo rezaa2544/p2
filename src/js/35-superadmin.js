@@ -253,6 +253,158 @@ function healthRow(label, value, level, hint){
     + '<td class="small muted">' + esc(hint || '') + '</td></tr>';
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   دایره‌های آنالوگِ صفحهٔ سلامت
+   کاربر یکی از سه شیوهٔ نمایش را انتخاب می‌کند (در
+   payesh_health_gauge_v1 ماندگار است): عقربه‌ای / آنالوگ / دماسنجی.
+   همهٔ سه، SVG خالص هستند: بدون تصویر، بدون وابستگی، و در صفحه‌نماهای
+   با ترازی بالا هم تیز می‌مانند. مقدارها همیشه به بازهٔ ۰..۱
+   سنجاق می‌شوند تا دایره هرگز «بیش از حد» نشود.
+   ═══════════════════════════════════════════════════════════════════ */
+var HGT_TONES = {
+  ok:   'var(--green)',
+  warn: 'var(--amber)',
+  bad:  'var(--red)',
+  blue: 'var(--primary)'
+};
+var HGT_STYLES = [
+  ['needle', '⏱️', 'عقربه‌ای'],
+  ['dial',   '🕹️', 'آنالوگ'],
+  ['thermo', '🌡️', 'دماسنجی']
+];
+
+function hgtFrac(value, max){
+  var f = Number(value) / Number(max);
+  if(isNaN(f) || !isFinite(f)) f = 0;
+  return Math.max(0, Math.min(1, f));
+}
+
+/* مسیر کمان SVG بین دو زاویه (درجه؛ در دستگاه SVG، افزایش = پادساعت‌گردِ بصری) */
+function hgtArcPath(cx, cy, r, a0, a1){
+  var x0 = cx + r * Math.cos(a0 * Math.PI / 180), y0 = cy + r * Math.sin(a0 * Math.PI / 180);
+  var x1 = cx + r * Math.cos(a1 * Math.PI / 180), y1 = cy + r * Math.sin(a1 * Math.PI / 180);
+  return 'M' + x0.toFixed(2) + ' ' + y0.toFixed(2) +
+         ' A' + r + ' ' + r + ' 0 ' + ((a1 - a0) > 180 ? 1 : 0) + ' 1 ' +
+         x1.toFixed(2) + ' ' + y1.toFixed(2);
+}
+
+/* شیوهٔ ۱ — عقربه‌ای: ۲۴۰ درجه، سه ناحیهٔ رنگی، عقربهٔ چرخان با پیکان مرکزی */
+function healthGaugeNeedle(g){
+  var f = hgtFrac(g.value, g.max);
+  var tone = HGT_TONES[g.tone] || HGT_TONES.blue;
+  var zones = g.goodHigh
+    ? [ [0, .4, HGT_TONES.bad], [.4, .7, HGT_TONES.warn], [.7, 1, HGT_TONES.ok] ]
+    : [ [0, .6, HGT_TONES.ok], [.6, .85, HGT_TONES.warn], [.85, 1, HGT_TONES.bad] ];
+  var A0 = -210, SWEEP = 240;
+  var z = zones.map(function(zn){
+    return '<path d="' + hgtArcPath(60, 68, 46, A0 + zn[0] * SWEEP, A0 + zn[1] * SWEEP) +
+      '" fill="none" stroke="' + zn[2] + '" stroke-width="8" opacity=".45"/>';
+  }).join('');
+  var ticks = '';
+  for(var i = 0; i <= 10; i++){
+    var a = (A0 + (i / 10) * SWEEP) * Math.PI / 180;
+    ticks += '<line x1="' + (60 + 40 * Math.cos(a)).toFixed(1) + '" y1="' + (68 + 40 * Math.sin(a)).toFixed(1) +
+      '" x2="' + (60 + 35 * Math.cos(a)).toFixed(1) + '" y2="' + (68 + 35 * Math.sin(a)).toFixed(1) +
+      '" stroke="var(--border-strong)" stroke-width="' + (i % 5 === 0 ? 2 : 1) + '"/>';
+  }
+  var rot = (-120 + f * 240).toFixed(2);
+  var valTxt = fa(Math.round(Number(g.value) || 0));
+  return '<svg viewBox="0 0 120 120" class="hgt-svg">' +
+    '<circle cx="60" cy="68" r="36" fill="' + tone + '" opacity=".07"/>' +
+    z + ticks +
+    '<g class="hgt-needle" style="transform:rotate(' + rot + 'deg)">' +
+      '<line x1="60" y1="68" x2="60" y2="30" stroke="' + tone + '" stroke-width="3.5" stroke-linecap="round"/>' +
+      '<line x1="60" y1="68" x2="60" y2="79" stroke="var(--text)" stroke-width="3" stroke-linecap="round" opacity=".55"/>' +
+    '</g>' +
+    '<circle cx="60" cy="68" r="5.5" fill="var(--surface)" stroke="' + tone + '" stroke-width="2.5"/>' +
+    '<text x="60" y="103" text-anchor="middle" font-size="17" font-weight="800" fill="var(--text)">' + valTxt + '</text>' +
+    '<text x="60" y="115" text-anchor="middle" font-size="8.5" fill="var(--muted)">' + esc(g.unit) + '</text>' +
+  '</svg>';
+}
+
+/* شیوهٔ ۲ — آنالوگ: نیم‌دایرهٔ قوس‌دار با پرشدگی گرد و نقطهٔ دمیده‌شونده */
+function healthGaugeDial(g){
+  var f = hgtFrac(g.value, g.max);
+  var tone = HGT_TONES[g.tone] || HGT_TONES.blue;
+  var endA = 180 + f * 180;
+  var dx = 60 + 40 * Math.cos(endA * Math.PI / 180);
+  var dy = 66 + 40 * Math.sin(endA * Math.PI / 180);
+  var ticks = '';
+  for(var i = 0; i <= 8; i++){
+    var a = (180 + (i / 8) * 180) * Math.PI / 180;
+    ticks += '<line x1="' + (60 + 45 * Math.cos(a)).toFixed(1) + '" y1="' + (66 + 45 * Math.sin(a)).toFixed(1) +
+      '" x2="' + (60 + 49 * Math.cos(a)).toFixed(1) + '" y2="' + (66 + 49 * Math.sin(a)).toFixed(1) +
+      '" stroke="var(--border-strong)" stroke-width="' + (i % 4 === 0 ? 2 : 1) + '"/>';
+  }
+  var valTxt = fa(Math.round(Number(g.value) || 0));
+  return '<svg viewBox="0 0 120 82" class="hgt-svg">' +
+    '<path d="' + hgtArcPath(60, 66, 40, 180, 360) + '" fill="none" stroke="var(--border)" stroke-width="10" stroke-linecap="round" opacity=".45"/>' +
+    (f > 0.004
+      ? '<path d="' + hgtArcPath(60, 66, 40, 180, Math.max(181, endA)) + '" fill="none" stroke="' + tone + '" stroke-width="10" stroke-linecap="round"/>'
+      : '') +
+    ticks +
+    '<circle class="hgt-dot" cx="' + dx.toFixed(1) + '" cy="' + dy.toFixed(1) + '" r="6" fill="var(--surface)" stroke="' + tone + '" stroke-width="3"/>' +
+    '<text x="60" y="58" text-anchor="middle" font-size="18" font-weight="800" fill="var(--text)">' + valTxt + '</text>' +
+    '<text x="60" y="74" text-anchor="middle" font-size="8.5" fill="var(--muted)">' + esc(g.unit) + '</text>' +
+  '</svg>';
+}
+
+/* شیوهٔ ۳ — دماسنجی: لولهٔ شیشه‌ای، حباب نورانی، ستون مایع و درجه‌بندی */
+function healthGaugeThermo(g){
+  var f = hgtFrac(g.value, g.max);
+  var tone = HGT_TONES[g.tone] || HGT_TONES.blue;
+  var topY = 116 - f * 100;
+  var ticks = '';
+  [0, .25, .5, .75, 1].forEach(function(t){
+    var y = 116 - t * 100;
+    ticks += '<line x1="38" y1="' + y.toFixed(1) + '" x2="44" y2="' + y.toFixed(1) + '" stroke="var(--border-strong)" stroke-width="1.5"/>' +
+      '<text x="47" y="' + (y + 3).toFixed(1) + '" font-size="7.5" fill="var(--muted)">' + fa(Math.round(t * 100)) + '</text>';
+  });
+  var valTxt = fa(Math.round(Number(g.value) || 0));
+  return '<svg viewBox="0 0 64 160" class="hgt-svg">' +
+    '<circle class="hgt-glow" cx="30" cy="128" r="19" fill="' + tone + '"/>' +
+    '<rect x="25" y="16" width="10" height="104" rx="5" fill="var(--surface)" stroke="var(--border)" stroke-width="1.5"/>' +
+    '<rect class="hgt-liquid" x="26.5" y="' + topY.toFixed(1) + '" width="7" height="' + (116 - topY).toFixed(1) + '" rx="3.5" fill="' + tone + '"/>' +
+    '<circle cx="30" cy="128" r="13" fill="var(--surface)" stroke="var(--border)" stroke-width="1.5"/>' +
+    '<circle cx="30" cy="128" r="10" fill="' + tone + '"/>' +
+    ticks +
+    '<text x="32" y="150" text-anchor="middle" font-size="11" font-weight="800" fill="var(--text)">' + valTxt + '</text>' +
+    '<text x="32" y="159" text-anchor="middle" font-size="7.5" fill="var(--muted)">' + esc(g.unit) + '</text>' +
+  '</svg>';
+}
+
+function healthGauge(style, g){
+  if(style === 'dial') return healthGaugeDial(g);
+  if(style === 'thermo') return healthGaugeThermo(g);
+  return healthGaugeNeedle(g);
+}
+
+/* کارتِ دایره‌ها با انتخاب‌گر شیوهٔ نمایش (مردگار) */
+function healthGaugePanel(h, stLevel, idxLevel, syncLevel){
+  var style = Store.get('payesh_health_gauge_v1') || 'needle';
+  if(HGT_STYLES.filter(function(s){ return s[0] === style; }).length === 0) style = 'needle';
+  var gauges = [
+    { label: 'مصرف حافظهٔ مرورگر', unit: '٪ از ۵ مگابایت', value: h.storage.percent, max: 100, tone: stLevel },
+    { label: 'نرخ اصابت ایندکس', unit: '٪', value: h.index.rate, max: 100, tone: idxLevel, goodHigh: true },
+    { label: 'صف ارسال به سرور', unit: 'عملیات', value: h.sync.pending || 0, max: Math.max(50, (h.sync.pending || 0) * 1.5), tone: syncLevel },
+    { label: 'کل رکوردها', unit: 'رکورد', value: h.data.total, max: Math.max(1000, Math.ceil((h.data.total || 1) * 1.25)), tone: 'blue' }
+  ];
+  var seg = HGT_STYLES.map(function(s){
+    return '<button class="btn sm ghost' + (style === s[0] ? ' on' : '') + '" '
+      + 'data-act="health-gauge-style" data-s="' + s[0] + '">' + s[1] + ' ' + s[2] + '</button>';
+  }).join('');
+  return '<div class="card" style="margin-bottom:14px"><div class="card-head">'
+    + '<h3>📟 دایره‌های آنالوگ</h3>'
+    + '<div class="row hgt-seg">' + seg + '</div></div>'
+    + '<div class="card-body"><div class="grid g4 hgt-grid">'
+    + gauges.map(function(g){
+        return '<div class="hgt-tile">' + healthGauge(style, g)
+          + '<div class="hgt-lbl">' + esc(g.label) + '</div></div>';
+      }).join('')
+    + '</div></div></div>';
+}
+
+
 function viewHealth(){
   var h = healthReport();
   var stLevel = h.storage.percent >= 80 ? 'bad' : h.storage.percent >= 50 ? 'warn' : 'ok';
@@ -268,6 +420,8 @@ function viewHealth(){
     + statCard('🔄', fa(h.sync.pending || 0), 'در صف ارسال به سرور',
         syncLevel === 'ok' ? 'green' : syncLevel === 'warn' ? 'amber' : 'red')
     + statCard('🗃️', fa(h.data.total), 'کل رکوردها', 'blue') + '</div>'
+
+    + healthGaugePanel(h, stLevel, idxLevel, syncLevel)
 
     + '<div class="card" style="margin-bottom:14px"><div class="card-head"><h3>نشانه‌های سلامت</h3></div>'
     + '<div class="table-wrap"><table class="table"><tbody>'
