@@ -259,6 +259,35 @@ async function main() {
     assert(sum.byCat.engine && sum.byCat.data, 'خلاصهٔ دو خانوادهٔ دیگر نیست');
   });
 
+  /* ── D11: دکمهٔ تعمیرِ کارت — کلیکِ واقعی، نه فراخوانیِ تابع ───── */
+  await sec('D11 دکمهٔ تعمیرِ کارت: کلیکِ واقعی روی دکمهٔ رندرشده → تعمیر در داده', async () => {
+    const uname = 'diag2_click_' + Date.now();
+    const sid = W('db.schools[0].id');
+    const mk  = W(`(function(){return insert('users',{school_id:${sid},role:'teacher',full_name:'معلم D11',username:'${uname}',password:'x1',national_id:'',phone:'',active:1}).id;})()`);
+    const mk2 = W(`(function(){return insert('users',{school_id:${sid},role:'teacher',full_name:'معلم D11-2',username:'${uname}',password:'x2',national_id:'',phone:'',active:1}).id;})()`);
+    try {
+      W('S.diag=runDiagnostics()');
+      let r = getResult('duplicate-username');
+      assert(r && r.ok === false, 'نام کاربری تکراری تشخیص داده نشد: ' + JSON.stringify(r && r.msg));
+
+      /* صفحهٔ دیاگ رندر شود و دکمهٔ واقعیِ کارت در DOM باشد */
+      W(`S.route='diag';render();true`);
+      const found = W(`!!document.querySelector('[data-act="diag-fix"][data-id="duplicate-username"]')`);
+      assert(found, 'دکمهٔ تعمیرِ کارتِ «نام کاربری تکراری» در صفحهٔ رندرشده نیست');
+
+      W(`(function(){var b=document.querySelector('[data-act="diag-fix"][data-id="duplicate-username"]');b.dispatchEvent(new MouseEvent('click',{bubbles:true}));})()`);
+      await sleep(600); /* تعمیر ناهمگام (Promise) + اجرای دوبارهٔ آزمون‌ها + رندر */
+
+      /* «آزمون یافت نشد» نباید پیش آمده باشد: عیب حالا در خودِ داده برطرف است */
+      r = getResult('duplicate-username');
+      assert(r && r.ok === true, 'بعد از کلیکِ واقعی، عیب هنوز هست (دکمه کار نکرد): ' + JSON.stringify(r && r.msg));
+      const names = W(`db.users.filter(function(u){return u.id===${mk}||u.id===${mk2};}).map(function(u){return u.username;})`);
+      assert(names.length === 2 && names[0] !== names[1], 'نام کاربری‌ها هنوز تکراری‌اند: ' + JSON.stringify(names));
+    } finally {
+      W(`remove('users',${mk});remove('users',${mk2});true`);
+    }
+  });
+
   /* ── خاتمه ─────────────────────────────────────────────────── */
   console.log('────────────────────────────────────────────────────────────');
   results.forEach((r) => {

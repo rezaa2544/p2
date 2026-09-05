@@ -1105,7 +1105,7 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
       if(!DIAG_SYSLOG.length) return { ok:true, extra:'از باز شدن صفحه، خطایی ثبت نشده' };
       return { ok:false, count:DIAG_SYSLOG.length,
         items: DIAG_SYSLOG.slice(-10).reverse().map(function(x){
-          return { خطا:x.msg, خط:(x.line!=null?x.line:'-'), زمان:x.t.slice(11,16), کاربر:x.user };
+          return { خطا:x.msg, خط:(x.line!=null?x.line:'-'), منبع:(x.src||'-'), زمان:x.t.slice(11,16), کاربر:x.user };
         }),
         msg: DIAG_SYSLOG.length + ' خطای برنامه در لاگ زمان‌اجرا — برنامه ممکن است ناقص کار کند' };
     },
