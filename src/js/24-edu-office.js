@@ -820,7 +820,13 @@ setTimeout(()=>{
   if(typeof generateP12=== 'function') generateP12();
   loadLog(); applyLog(); initSync();
   const su=Store.get(SESSION_KEY);
-  if(su){const u=db.users.find(x=>x.username===su);if(u){S.user=u;if(u.role==='edu_office'&&S.route==='dashboard')S.route='officedash';}}
+  if(su){const u=db.users.find(x=>x.username===su);
+    if(u){
+      /* F-3: مدرسهٔ غیرفعال، نشست ذخیره‌شده را هم رد می‌کند؛ کاربر به
+         صفحهٔ ورود می‌رود و هنگام تلاش برای ورود، پیام مناسب می‌بیند. */
+      if(typeof schoolInactiveMsg==='function'&&schoolInactiveMsg(u)){Store.remove(SESSION_KEY);}
+      else{S.user=u;if(u.role==='edu_office'&&S.route==='dashboard')S.route='officedash';}
+    }}
   const pk=Store.get(PERSONA_KEY);
   if(pk&&S.user){S.persona=pk;if(S.route==='dashboard'&&pk==='parent'&&!subOf(S.user.id).active)S.route='subscription';}
   const bs=Store.get(BOSS_KEY);

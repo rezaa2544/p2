@@ -91,6 +91,20 @@ async function main() {
       ' (تصمیم UX/محصولی + قرارداد سرور بند ۱.۲ — کوکی HttpOnly)');
   });
 
+  await sec('client', 'F-3 بیرونی', 'مدرسهٔ غیرفعال: نشست ذخیره‌شده در بوت رد می‌شود', async () => {
+    const inactMgr = W("((function(){var s=db.schools.find(x=>!x.active);"
+      + "var m=s&&db.users.find(u=>u.school_id===s.id&&u.role==='manager');return m&&m.username;})())");
+    assert(inactMgr, 'دادهٔ نمونه باید یک مدیرِ مدرسهٔ غیرفعال داشته باشد');
+    const d3 = mkDom((w) => { try { w.localStorage.setItem('sms_session_v1', inactMgr); } catch (e) { } });
+    await sleep(700);
+    const leaked = d3.window.eval('S.user && S.user.username ? S.user.username : null');
+    const key = d3.window.eval("(function(){try{return localStorage.getItem('sms_session_v1')}catch(e){return null}})()");
+    d3.window.close();
+    assert(leaked === null,
+      '🔴 کاربرِ مدرسهٔ غیرفعال با نشست ذخیره‌شده وارد سامانه شد: ' + leaked);
+    assert(key === null, '🔴 نشست ذخیره‌شدهٔ مدرسهٔ غیرفعال پاک نشد');
+  });
+
   await sec('server', 'بیرونی', 'جعل هویت: ست مستقیم S.user بدون احراز (کنسول مرورگر)', () => {
     W('S.user=null;');
     const h = W(`(function(){S.user=db.users.find(u=>u.role==='superadmin');S.route='dashboard';return renderRoute();})()`);
