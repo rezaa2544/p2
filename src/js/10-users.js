@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    کاربران
-   فهرست، جستجو، ویرایش و بازنشانی رمز. صفحه‌بندی ۱۵تایی.
+   فهرست، جستجو و ویرایش. صفحه‌بندی ۱۵تایی. (بدونِ رمز — ورود با شماره + کد ملی)
    ═══════════════════════════════════════════════════════════════════ */
 function viewUsers(){
   const u=S.user, canEdit=['superadmin','manager'].includes(u.role);
@@ -30,7 +30,7 @@ function viewUsers(){
       <td class="muted">${esc(x.school_id?byId('schools',x.school_id).name:'—')}</td><td>${esc(x.role==='student'?((classOf(x.id)||{}).name||'—'):'—')}</td>
       <td class="muted">${esc(x.phone||'—')}</td>
       <td><span class="badge ${x.active?'b-green':'b-gray'}" ${canEdit?`data-act="user-toggle" data-id="${escAttr(x.id)}" style="cursor:pointer"`:''}>${x.active?'فعال':'غیرفعال'}</span></td>
-      ${canEdit?`<td><button class="icon-btn" title="بازنشانی رمز" data-act="pass-reset" data-id="${escAttr(x.id)}">🔑</button> <button class="icon-btn" data-act="user-edit" data-id="${escAttr(x.id)}">✏️</button> <button class="icon-btn danger" data-act="user-del" data-id="${escAttr(x.id)}">🗑️</button></td>`:''}</tr>`).join('')}
+      ${canEdit?`<td><button class="icon-btn" data-act="user-edit" data-id="${escAttr(x.id)}">✏️</button> <button class="icon-btn danger" data-act="user-del" data-id="${escAttr(x.id)}">🗑️</button></td>`:''}</tr>`).join('')}
     </tbody></table></div>${pager(page,pages)}`:empty('👥','کاربری یافت نشد','فیلترها را تغییر دهید یا کاربر جدید بسازید.')}
    </div>`;
 }

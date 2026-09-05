@@ -5,7 +5,6 @@
 /** شناسهٔ نوبت انتخاب‌شده برای رزرو (بین باز شدن مودال و ثبت آن) */
 var SLOT_ID=null;
 /** شناسهٔ کاربری که رمزش بازنشانی می‌شود (بین مودال و تأیید) */
-var PASS_TARGET=null;
 /** بستهٔ پشتیبانی که کاربر برای بازیابی انتخاب کرده است */
 var RESTORE_PKG=null;
 /** پایه و رشتهٔ کلاس موازی در حال ساخت */
@@ -29,23 +28,44 @@ document.addEventListener('click',e=>{
     return;
   }
   const A={
-   pick(){ $('#lu').value=el.dataset.u; $('#lp').value='123456'; },
+   pick(){
+     /* دمو: فرم با شماره + کد ملیِ همان حساب پر می‌شود و کد ارسال (شبیه‌سازی)
+        و در فیلد می‌نشیند — کاربر با «استعلام و ورود» کاملش می‌کند. */
+     const u=db.users.find(x=>x.username===el.dataset.u);
+     if(!u){toast('حساب یافت نشد','err');return;}
+     if(!u.phone||!u.national_id){toast('این حساب شماره/کد ملی برای ورود ندارد','err');return;}
+     const code=SmsPanel.sendCode(u.phone);
+     $('#lpn').value=u.phone; $('#lnid').value=u.national_id; $('#lcode').value=code;
+     loginDemoHint(code);
+   },
+   /* ارسالِ کد — پنلِ پیامکی (در دمو: شبیه‌سازی + نمایشِ کد روی صفحه) */
+   'login-code'(){
+     const phone=normPhone(V('lpn'));
+     if(!phone){loginErr('شمارهٔ همراه را وارد کنید');return;}
+     const u=db.users.find(x=>phoneMatches(x.phone,phone));
+     if(!u){loginErr('برای این شماره حسابی یافت نشد');return;}
+     const code=SmsPanel.sendCode(u.phone);
+     $('#lcode').value='';
+     loginDemoHint(code);
+     toast('کد ارسال شد (دمو: روی صفحه نمایش داده شد)','ok');
+   },
    /* سیاست حریم خصوصی — برای همه (حتی پیش از ورود) در دسترس است (ملاک گوگل‌پلی) */
    'privacy-open'(){ openPrivacyPolicy(); },
    login(){
-     /* 🔴 TODO پیش از اتصال به سرور — احراز هویت و رمز عبور
-        این مقایسه باید کاملاً حذف شود و جایش POST /auth/login بنشیند.
-        دو مشکل جداگانه اینجاست:
-        ۱. رمز متن ساده مقایسه می‌شود ⇒ باید bcrypt سمت سرور (هزینه ۱۲)
-        ۲. تصمیم ورود در مرورگر گرفته می‌شود ⇒ هرکس با ابزار توسعه
-           می‌تواند S.user را مستقیم ست کند و از اینجا رد شود.
-        تا وقتی این دو حل نشده‌اند، سامانه نباید دادهٔ واقعی بگیرد.
-        📄 docs/SERVER_SECURITY_CONTRACT.md بند ۵ */
-     const u=db.users.find(x=>x.username===V('lu'));
-     if(!u||u.password!==$('#lp').value){$('#lerr').innerHTML='<div class="badge b-red" style="padding:9px 12px;margin-bottom:8px">⚠️ نام کاربری یا رمز عبور نادرست است</div>';return;}
-     if(!u.active){$('#lerr').innerHTML='<div class="badge b-red" style="padding:9px 12px">⚠️ حساب غیرفعال است</div>';return;}
+     /* 📄 PLAN_PHONE_AUTH — جریانِ نهاییِ ورود: بدونِ هیچ رمزی.
+        شماره + کد (پنلِ پیامکی) + کد ملی (استعلام در سامانهٔ تطبیقِ
+        کد ملی — سامانه‌ای جدا از پنلِ پیامکی). نسخهٔ واقعی: درگاهِ
+        واقعی + استعلامِ سمتِ سرور (SERVER_SECURITY_CONTRACT بند ۵). */
+     const phone=normPhone(V('lpn'));
+     const u=phone?db.users.find(x=>phoneMatches(x.phone,phone)):null;
+     if(!u){loginErr('برای این شماره حسابی یافت نشد');return;}
+     if(!SmsPanel.checkCode(u.phone,V('lcode'))){loginErr('کد اشتباه است یا منقضی شده');return;}
+     const nidIn=String(V('lnid')||'').trim();
+     if(!IdmSystem.match(nidIn)){loginErr('احراز هویت ناقص است: کد ملی در سامانهٔ تطبیق ثبت نیست');return;}
+     if(String(u.national_id)!==nidIn){loginErr('احراز هویت ناقص است: کد ملی با این شماره مطابقت ندارد');return;}
+     if(!u.active){loginErr('حساب غیرفعال است');return;}
      const _smsg=schoolInactiveMsg(u);
-     if(_smsg){$('#lerr').innerHTML='<div class="badge b-red" style="padding:9px 12px">⚠️ '+_smsg+'</div>';return;}
+     if(_smsg){loginErr(_smsg);return;}
      S.user=u;S.stack=[];S.persona=null;Store.remove(PERSONA_KEY);
      linkAsParent(u);
      S.showPicker=panelsOf(u).length>1;
@@ -126,7 +146,7 @@ document.addEventListener('click',e=>{
        /* پروفایل قابلیت (بند ۰.۱): هر کلید جداگانه خوانده می‌شود */
        capabilities:(typeof CAP_DEFS!=='undefined')?Object.fromEntries(CAP_DEFS.map(k=>[k[0],$$('.m-cap[value="'+k[0]+'"]').some(c=>c.checked)?1:0])):(s.capabilities||null)};
 
-     const mgName=V('mg_name'), mgUser=V('mg_user'), mgNid=V('mg_nid'), mgPhone=V('mg_phone'), mgPass=V('mg_pass');
+     const mgName=V('mg_name'), mgUser=V('mg_user'), mgNid=V('mg_nid'), mgPhone=V('mg_phone');
      const existing=s.id?db.users.find(u=>u.school_id===s.id&&u.role==='manager'):null;
      if(!s.id&&needAll([['mg_name','نام مدیر'],['mg_user','نام کاربری مدیر']]))return;
      if(invalid('mg_nid',mgNid&&!validNid(mgNid),'کد ملی مدیر معتبر نیست'))return;
@@ -140,10 +160,9 @@ document.addEventListener('click',e=>{
      if(existing){
        const patch={full_name:mgName||existing.full_name,national_id:mgNid||existing.national_id,phone:mgPhone||existing.phone};
        if(mgUser)patch.username=mgUser;
-       if(mgPass)patch.password=mgPass;
        update('users',existing.id,patch);
      } else if(mgName&&mgUser){
-       insert('users',{school_id:sid,role:'manager',full_name:mgName,username:mgUser,password:mgPass||'123456',
+       insert('users',{school_id:sid,role:'manager',full_name:mgName,username:mgUser,password:'123456', /* ستونِ آرشیوی — محصول رمز ندارد */
          national_id:mgNid||makeNid(),phone:mgPhone||'',active:1,title:'مدیر مدرسه',created_at:todayISO()});
      }
      closeModal();toast(s.id?'تغییرات ذخیره شد':'مدرسه و حساب مدیر ثبت شد','ok');render();},
@@ -161,11 +180,10 @@ document.addEventListener('click',e=>{
      if(invalid('u_nid',V('u_nid')&&!validNid(V('u_nid')),'کد ملی معتبر نیست'))return;
      if(invalid('u_phone',V('u_phone')&&!/^09\d{9}$/.test(V('u_phone')),'شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم باشد'))return;
      const data={full_name:V('u_name'),role:V('u_role'),national_id:V('u_nid'),phone:V('u_phone'),active:Number(V('u_active')),school_id:schoolId};
-     if(V('u_pass'))data.password=V('u_pass');
      let uid=x.id;
      if(uid)update('users',uid,data);
      else{ if(db.users.some(u=>u.username===V('u_user'))){toast('نام کاربری تکراری است','err');return;}
-       uid=insert('users',Object.assign({username:V('u_user'),password:V('u_pass')||'123456',created_at:todayISO()},data)).id; }
+       uid=insert('users',Object.assign({username:V('u_user'),password:'123456',created_at:todayISO()},data)).id; } /* ستونِ آرشیوی */
      const cls=$('#u_class')?V('u_class'):'';
      if(data.role==='student'){db.enrollments.filter(en=>en.student_id===uid).forEach(en=>remove('enrollments',en.id));
        if(cls)insert('enrollments',{school_id:schoolId,class_id:Number(cls),student_id:uid});}
@@ -774,32 +792,6 @@ document.addEventListener('click',e=>{
      if(invalid('bc_body',b.length<5,'متن اطلاعیه باید دست‌کم پنج نویسه باشد'))return;
      const n=broadcastAnnouncement(t,b,V('bc_scope')||'all');
      closeModal(); toast(fa(n)+' اطلاعیه ثبت شد','ok'); render();
-   },
-   // ---- پنل سوپرادمین: بازنشانی رمز و نگهداری ----
-   'pass-reset'(){
-     const u=byId('users',id);
-     if(!u){toast('کاربر یافت نشد','err');return;}
-     if(!canResetPassword(u)){toast('اجازهٔ بازنشانی رمز این کاربر را ندارید','err');return;}
-     PASS_TARGET=id;
-     openModal(modalTpl('بازنشانی رمز عبور',
-       '<div class="small" style="line-height:2">رمز تازه‌ای برای <b>'+esc(u.full_name)+'</b>'
-       +' ('+esc(ROLE_FA[u.role]||u.role)+') ساخته می‌شود و از راه اعلان به او خبر داده می‌شود.'
-       +'<div class="muted" style="margin-top:8px">کاربر پس از ورود باید رمز را تغییر دهد.</div></div>',
-       'pass-reset-ok'));
-   },
-   'pass-reset-ok'(){
-     const u=byId('users',PASS_TARGET);
-     const pass=resetPassword(PASS_TARGET);
-     closeModal();
-     if(!pass){toast('بازنشانی انجام نشد','err');return;}
-     openModal(modalTpl('رمز تازه ساخته شد',
-       '<div style="text-align:center;padding:8px 0">'
-       +'<div class="small muted">رمز تازهٔ '+esc((u||{}).full_name||'')+'</div>'
-       +'<div style="font-size:26px;font-weight:800;letter-spacing:3px;color:var(--primary);margin:10px 0">'
-       +esc(pass)+'</div>'
-       +'<div class="small muted" style="line-height:2">این رمز را به کاربر بدهید.'
-       +' اعلان هم برای او فرستاده شد.</div></div>',''));
-     render();
    },
    'health-reindex'(){
      if(typeof idxReset==='function')idxReset();
@@ -2093,7 +2085,7 @@ document.addEventListener('change',e=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){ if($('#modal').innerHTML)closeModal(); else if(S.user)goBack(); }
   if((e.key==='Backspace')&&S.user&&!/^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName||''))){e.preventDefault();goBack();}
-  if(e.key==='Enter'&&!S.user&&$('#lu'))document.querySelector('[data-act="login"]').click();});
+  if(e.key==='Enter'&&!S.user&&$('#lnid'))document.querySelector('[data-act="login"]').click();});
 
 
 /**
