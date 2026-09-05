@@ -181,6 +181,18 @@ document.addEventListener('click',e=>{
      /* id از محیّطِ کلِک‌لیسنر (بسته‌بندیِ A) می‌آید — مثلِ بقیهٔ اکشن‌ها */
      remove('makeup_classes',Number(id));render();
    },
+   'assoc-add'(){
+     var sid=S.user.school_id;
+     if(!sid||(typeof hasCap==='function')&&hasCap(sid,'has_tuition')){toast('این صفحه فقط برای مدارس دولتی است','err');return;}
+     var amt=Number(String(V('a-aamt')).replace(/[^0-9]/g,''));
+     var who=V('a-asoc');
+     if(!who){toast('نام واریزکننده / بابتِ هزینه را بنویسید','err');return;}
+     if(!(amt>0)){toast('مبلغ معتبر نیست','err');return;}
+     var kind=V('a-akind')==='expense'?'expense':'income';
+     var note=V('a-anote');
+     insert('transactions',{school_id:sid,kind:kind,category:'کمک مردمی',amount:amt,date:todayISO(),description:who+(note?(' — '+note):''),by:S.user.id});
+     toast('تراکنش انجمن ثبت شد','ok');render();
+   },
    'nudge-send'(){
      var clsId=Number(id);
      var slot=currentSlot(S.user.school_id);

@@ -43,6 +43,7 @@ function navFor(u){
   var capHidden=[];
   if(u.school_id&&(typeof hasCap==='function')){
     if(!hasCap(u.school_id,'has_tuition'))capHidden.push('tuition','mytuition');
+    else capHidden.push('association'); /* مدرسهٔ غیردولتی: انجمن جای شهریه نیست */
   }
   let nav=(NAV[u.role]||[]).map(function(g){
     return [g[0],(g[1]||[]).filter(function(it){ return dis.indexOf(it[0])<0&&capHidden.indexOf(it[0])<0; })];
@@ -148,6 +149,7 @@ function _renderRouteInner(){
     case 'calendar':return viewCalendar();
     case 'chat':return viewChat();
     case 'tuition':return viewTuition();
+    case 'association':return viewAssociation();
     case 'mytuition':return viewMyTuition();
     case 'regions':return viewRegions();
     case 'exams':return viewExams();

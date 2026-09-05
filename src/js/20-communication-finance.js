@@ -80,6 +80,15 @@ function generateExtras(){
       add('transactions',{school_id:school.id,kind:'expense',category:cat,amount:Math.round((15000000+ri(300000000))/1000000)*1000000,date:daysAgoISO(m*30+1+ri(25)),description:'هزینه '+cat});
     });
 
+    /* دور ۶۵ بند : مدرسهٔ دولتی (بدون شهریه) — کمک‌های داوطلبانهٔ انجمن */
+    if(!school.has_tuition){
+      [['کمک‌هزینهٔ داوطلبانه — ولیٔ دانش‌آموز', 'income', 25000000, 6],
+       ['خرید کتاب دانش‌خانه', 'expense', 18000000, 18],
+       ['کمک‌هزینهٔ داوطلبانه — اردوی پاییزی', 'income', 35000000, 31],
+       ['خرید ماژول و لوازم سفیدبرگ', 'expense', 6000000, 44]]
+       .forEach(([d,k,amt,ago])=>add('transactions',{school_id:school.id,kind:k,category:'کمک مردمی',amount:amt,date:daysAgoISO(ago),description:d}));
+    }
+
     // مرخصی‌ها
     students.slice(0,14).forEach(st=>{
       if(chance(0.55))return;
