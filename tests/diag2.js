@@ -55,7 +55,10 @@ async function main() {
   await sleep(600);
 
   /* ورود سوپرادمین تا دیاگ اجازهٔ اجرا دهد */
-  W(`document.getElementById('lu').value='superadmin';document.getElementById('lp').value='123456'`);
+  W(`(function(){var u=db.users.find(x=>x.username==='superadmin');
+    document.getElementById('lpn').value=u.phone;
+    document.getElementById('lnid').value=u.national_id;
+    document.getElementById('lcode').value=SmsPanel.sendCode(u.phone);})()`);
   clk('login');
   assert(W('S.user && S.user.role') === 'superadmin', 'ورود سوپرادمین انجام نشد');
 
@@ -104,28 +107,21 @@ async function main() {
     W(`update('schools',${sid},{fields:${orig}});true`);
   });
 
-  /* ── D2: رمز پیش‌فرض — تعمیر + اعلان + بازگردانی ──────────── */
-  await sec('D2 رمز پیش‌فرضِ کاربر مدیریتی: تشخیص → رمز تازه → اعلان → بازگردانی', async () => {
-    const sid = W(`db.schools[0].id`);
-    const uid = W(`(function(){var u=insert('users',{school_id:${sid},role:'manager',full_name:'مدیر تست دیاگ',username:'diag2_mgr_'+Date.now(),password:'123456',national_id:'',phone:'09120000001',active:1});return u.id;})()`);
-
+  /* ── D2: محصول رمز کاربری ندارد (از ۲۰۲-۰۹-۵) ─────────────────── */
+  await sec('D2 دیاگ «رمز ضعیف» نمی‌بیند و هیچ داده‌ای تغییر نمی‌کند', async () => {
+    /* ورود فقط با شماره + کد ملی است؛ ستونِ password آرشیوی‌ست و دیاگ
+       نباید به آن دست بزند (گزارشِ واقعی: دیاگ همهٔ رمزها را عوض کرده بود). */
+    assert(W(`!DIAG_CHECKS.some(c => c.id === 'weak-password')`) === true,
+      'آزمونِ weak-password هنوز در فهرستِ آزمون‌هاست — محصول رمز ندارد');
+    const snap = W(`JSON.stringify(db.users.map(u=>u.password))`);
+    const notif0 = W(`db.notifications.length`);
     W('S.diag=runDiagnostics()');
-    let r = getResult('weak-password');
-    assert(r && r.ok === false, 'کاربرِ رمزپیش‌فرض تشخیص داده نشد');
-
-    const f = await W(`diagFix('weak-password')`);
-    assert(f.ok === true, 'تعمیر رمز ناموفق: ' + f.msg);
-    const nowPass = W(`byId('users',${uid}).password`);
-    assert(nowPass && nowPass !== '123456', 'رمز هنوز ۱۲۳۴۵۶ است');
-    assert(f.msg.indexOf(nowPass) > -1, 'رمز جدید در گزارش تعمیر نیست');
-    const notif = W(`db.notifications.filter(function(x){return x.user_id===${uid}&&x.title.indexOf('دیاگ')>-1;}).length`);
-    assert(notif > 0, 'اعلان رمز جدید به حساب کاربر نرفت');
-
-    const rb = await W('diagRollback(0)');
-    assert(rb.ok === true, 'بازگردانی رمز ناموفق: ' + rb.msg);
-    assert(W(`byId('users',${uid}).password`) === '123456', 'رمز به حالت قبل بازنگشت');
-
-    W(`remove('users',${uid});true`);
+    assert(getResult('weak-password') === null, 'دیاگ هنوز weak-password برمی‌گرداند');
+    await W(`diagFixAll()`);
+    assert(W(`JSON.stringify(db.users.map(u=>u.password))`) === snap,
+      'دیاگ داده‌ها را تغییر داد — باید بدونِ اثر بماند');
+    assert(W(`db.notifications.length`) === notif0, 'دیاگ اعلانِ کذبِ تغییر رمز فرستاد');
+    assert(typeof diagRandPass === 'undefined', 'تابعِ تولیدِ رمزِ تصادفی هنوز وجود دارد');
   });
 
   /* ── D3: ظرفیت کلاس ───────────────────────────────────────── */

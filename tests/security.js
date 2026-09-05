@@ -64,16 +64,22 @@ async function main() {
 
   console.log('\n▸ الف — سطح بیرونی (شبکه/دستگاه اشتراکی)');
 
-  await sec('client', 'بیرونی', 'فرم ورود پیش‌فرضِ حساب مدیریتی ندارد (prefill)', () => {
-    const lu = W(`document.getElementById('lu').value`);
-    const lp = W(`document.getElementById('lp').value`);
-    assert(lu === '' && lp === '',
-      '🔴 ورودی ورود پیش‌فرض پر است: lu=' + JSON.stringify(lu) + ' — یک کلیک = ورود با حساب پرریسک‌ترین کاربر');
+  await sec('client', 'بیرونی', 'فرم ورود پیش‌فرض ندارد + فیلدِ رمز اصلاً نیست (prefill)', () => {
+    const lpn = W(`document.getElementById('lpn').value`);
+    const lc = W(`document.getElementById('lcode').value`);
+    const ln = W(`document.getElementById('lnid').value`);
+    const hasLp = W(`!!document.getElementById('lp')`);
+    assert(!hasLp, '🔴 فیلدِ رمز (#lp) هنوز در فرمِ ورود است — محصول رمز ندارد');
+    assert(lpn === '' && lc === '' && ln === '',
+      '🔴 ورودیِ ورود پیش‌فرض پر است: lpn=' + JSON.stringify(lpn) + ' — یک کلیک = ورود با حساب پرریسک‌ترین کاربر');
   });
 
   /* ورود واقعی تا پوستهٔ اپ (و #main) وجود داشته باشد؛ بعد از آن همهٔ
      renderRoute واقعاً در DOM می‌نشینند و آزمون‌های XSS صوری نمی‌شوند. */
-  W(`document.getElementById('lu').value='superadmin';document.getElementById('lp').value='123456'`);
+  W(`(function(){var u=db.users.find(x=>x.username==='superadmin');
+    document.getElementById('lpn').value=u.phone;
+    document.getElementById('lnid').value=u.national_id;
+    document.getElementById('lcode').value=SmsPanel.sendCode(u.phone);})()`);
   clk('login');
   assert(W('S.user && S.user.role') === 'superadmin', 'ورود اولیه برای بقیهٔ سناریوها انجام نشد');
   assert(W(`!!document.querySelector('.content')`), 'پوستهٔ اپ بعد از ورود رندر نشد');
@@ -122,21 +128,24 @@ async function main() {
       `🔴 باندل index.html خودش ${n} رمز متن‌ساده سفت‌درج دارد و در اجرای دمو ${nRuntime} کاربر با همان رمز ۱۲۳۴۵۶ ساخته می‌شود + کد ملی — هر بازدیدکننده با یک GET کل اعتبارنامه‌ها را می‌گیرد (در نسخهٔ سروری، دادهٔ دمو نباید در باندل باشد)`);
   });
 
-  await sec('server', 'بیرونی', 'برون‌فهمی ورود: ۲۵ تلاش ناموفق پشت‌سرهم بدون تأخیر/قفل', () => {
+  await sec('server', 'بیرونی', 'برون‌فهمی ورود: ۲۵ تلاشِ کدِ اشتباه پشت‌سرهم بدون تأخیر/قفل', () => {
     W('S.user=null;render();'); // صفحهٔ ورود
+    const sup = JSON.parse(W(`(function(){var u=db.users.find(x=>x.username==='superadmin');return JSON.stringify({p:u.phone,n:u.national_id});})()`));
     const t0 = Date.now();
     for (let i = 0; i < 25; i++) {
-      W(`document.getElementById('lu').value='superadmin';document.getElementById('lp').value='wrong-${i}'`);
+      W(`document.getElementById('lpn').value=${JSON.stringify(sup.p)};document.getElementById('lcode').value='99${String(i).padStart(2,'0')}';document.getElementById('lnid').value=${JSON.stringify(sup.n)}`);
       clk('login');
       const one = Date.now() - t0;
       if (one > 300) { /* تأخیر تصاعدی فعال شده */ break; }
     }
     const dt = Date.now() - t0;
-    W(`document.getElementById('lu').value='superadmin';document.getElementById('lp').value='123456'`);
+    W(`(function(){document.getElementById('lpn').value=${JSON.stringify(sup.p)};
+      document.getElementById('lcode').value=SmsPanel.sendCode(${JSON.stringify(sup.p)});
+      document.getElementById('lnid').value=${JSON.stringify(sup.n)};})()`);
     clk('login');
     const canLogin = W('S.user && S.user.role === "superadmin"');
     assert(dt > 1500 || !canLogin,
-      `🔴 ۲۵ تلاش ناموفق در ${dt}ms بدون هیچ تأخیر تصاعدی یا قفل — حدس رمز رایگان است (قرارداد بند ۲.۲ — سمت سرور)`);
+      `🔴 ۲۵ تلاشِ ناموفق در ${dt}ms بدون هیچ تأخیر تصاعدی یا قفل — حدس کد رایگان است (قرارداد بند ۲.۲ — سمت سرور)`);
     /* نکته: ورود موفقِ آخر همین‌جا پوستهٔ اپ را می‌سازد و بقیهٔ سناریوها
        با نشست زندهٔ سوپرادمین ادامه می‌دهند (bootstrap). */
     assert(W(`!!document.querySelector('.content')`), 'پوستهٔ اپ بعد از ورود نهایی رندر نشد');
@@ -270,13 +279,9 @@ async function main() {
   await sec('client', 'نشت', 'فایل پشتیبان خروجی: رمز کاربرِ ساخته‌شده در فایل نمی‌ماند', () => {
     W(`S.user=db.users.find(u=>u.username==='superadmin');S.persona=null;S.boss=null;`);
     const secret = 'sec' + Date.now();
-    W('userModal(null)');
-    W(`document.getElementById('u_name').value='کاربر آزمایشی'`);
-    W(`document.getElementById('u_user').value='sectest${Date.now()}'`);
-    W(`document.getElementById('u_role').value='student'`);
-    W(`document.getElementById('u_pass').value=${JSON.stringify(secret)}`);
-    clk('user-save');
-    const uid = W('db.users[db.users.length-1].id');
+    /* محصول دیگر فیلدِ رمز ندارد؛ آلودگی را در سطحِ داده می‌سازیم تا
+       تضمینِ «رمز در فایلِ پشتیبان نمی‌ماند» همچنان تست شود. */
+    const uid = W(`insert('users',{school_id:db.schools[0].id,role:'student',full_name:'کاربر آزمایشی',username:'sectest'+Date.now(),password:${JSON.stringify(secret)},national_id:'',phone:'',active:1}).id`);
     const backup = JSON.parse(W(`JSON.stringify(buildBackup())`));
     const blob = JSON.stringify(backup);
     assert(blob.indexOf(secret) === -1,
