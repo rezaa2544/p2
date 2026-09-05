@@ -3584,11 +3584,17 @@ function subjectModal(s){
   window._edit=s;
 }
 function gradeModal(g){
-  const cls=visibleClasses();
-  const cid=Number(S.filters.class||(cls[0]||{}).id);
-  const studs=studentsOfClass(cid), subs=visibleSubjects();
+  const cls=visibleClasses(), subs=visibleSubjects();
+  /* طرح زنگ (گام ثبت نمره، فرم): برای فرمِ تازه (نه ویرایش)، کلاس و
+     درس از زنگ جاریِ دبیر پیش‌گزینش می‌شوند — همان الگویی که نماي
+     فهرست و حضور و غیاب اجرا می‌کنند. انتخاب دستی همیشه مقدم است. */
+  const _now=(S.bellNow||null);
+  const _auto=(typeof bellAutoClass==='function')?bellAutoClass(null,null,_now):null;
+  const _autoOk=!g&&_auto&&cls.some(c=>c.id===_auto.classId)&&subs.some(s=>s.id===_auto.subjectId);
+  const cid=Number(S.filters.class||(_autoOk&&_auto.classId)||(cls[0]||{}).id);
+  const studs=studentsOfClass(cid);
   if(!studs.length){toast('این کلاس دانش‌آموزی ندارد','err');return;}
-  g=g||{student_id:studs[0].id,subject_id:subs[0].id,term:TERMS[0],exam_type:EXAM_TYPES[0],score:20};
+  g=g||{student_id:studs[0].id,subject_id:(_autoOk?_auto.subjectId:subs[0].id),term:TERMS[0],exam_type:EXAM_TYPES[0],score:20};
   openModal(modalTpl(g.id?'ویرایش نمره':'ثبت نمره جدید',
    `<div class="grid g2">
     ${f('دانش‌آموز',`<select class="select" id="g_st" ${g.id?'disabled':''}>${studs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
