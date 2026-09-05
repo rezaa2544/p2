@@ -1279,9 +1279,9 @@ test('ویزارد ورود فقط برای مدیر باز است', () => {
   }
   const cases = [['student','imp-commit',false],['teacher','imp-commit',false],
                  ['manager','imp-commit',true],
-                 /* 🔴 دور ۴۷: سوپرادمین به‌عنوان خودش دیگر ورود اکسل ندارد —
-                    کار مدیر مدرسه است. از راه S.boss همچنان دارد. */
-                 ['superadmin','imp-preview',false]];
+                                  /* 🔴 تا دور ۴۷: ورود اکسل به‌عنوان خودش حذف بود — باطل شد. */
+                                     /* سوپرادمین همهٔ کنش‌ها را دارد (اصلِ ۲۰/۰۹/۵، تفکیک دور ۴۷ باطل). */
+                 ['superadmin','imp-preview',true]];
   for(const [role, act, want] of cases){
     W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null");
     assert(W("canAction('" + act + "')") === want, role + ' → ' + act);
@@ -1385,8 +1385,8 @@ test('فرم و پیامک فقط برای مدیر باز است', () => {
   }
   const cases = [['student','sms-send',false],['teacher','sms-send',false],['teacher','form-print',false],
                  ['manager','sms-send',true],['manager','form-print',true],
-                 /* 🔴 دور ۴۷: پیامک و فرم مدرسه کار مدیر است، نه سوپرادمین */
-                 ['superadmin','sms-topup-ok',false]];
+                                  /* اصلِ ۲۰/۰۹/۵: سوپرادمین بدون محدودیت (تفکیک دور ۴۷ باطل) */
+                 ['superadmin','sms-topup-ok',true]];
   for(const [role, act, want] of cases){
     W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null");
     assert(W("canAction('" + act + "')") === want, role + ' → ' + act);
@@ -1605,8 +1605,8 @@ test('دانش‌آموز و دبیر به چرخه تحصیلی دسترسی ن
 test('اکشن‌های چرخه تحصیلی فقط برای مدیر مجاز است', () => {
   const cases = [['student','promote-run',false],['teacher','tr-ok',false],
                  ['manager','promote-run',true],['manager','tr-ok',true],
-                 /* 🔴 دور ۴۷: چرخهٔ تحصیلی و انتقال کار مدیر مدرسه است */
-                 ['superadmin','tr-send',false]];
+                                  /* اصلِ ۲۰/۰۹/۵: سوپرادمین بدون محدودیت (تفکیک دور ۴۷ باطل) */
+                 ['superadmin','tr-send',true]];
   for(const [role, act, want] of cases){
     W("S.user=db.users.find(u=>u.role==='" + role + "');S.persona=null;S.boss=null");
     assert(W("canAction('" + act + "')") === want, role + ' → ' + act);
@@ -5543,7 +5543,7 @@ const SCHOOL_ONLY_ACTS = ['imp-commit', 'imp-preview', 'att-set', 'att-commit',
 /** کنش‌هایی که سوپرادمین باید نگه دارد (سامانه‌محور) */
 const SYSTEM_ACTS = ['school-save', 'office-save', 'backup-make', 'subs-save'];
 
-test('نقش: سوپرادمین به‌عنوان خودش کنش مدرسه‌محور ندارد', () => {
+test('نقش: سوپرادمین به‌عنوان خودش همهٔ کنش‌ها را دارد (اصلِ ۲۰/۰۹/۵)', () => {
   /* 🔴 پیش از دور ۴۷ سوپرادمین ۸۸ از ۹۳ کنش را داشت، از جمله
      ورود اکسل و ثبت نمره. کار مدیر مدرسه است نه مدیر سامانه. */
   const saved = W('JSON.stringify({u:S.user&&S.user.id,b:S.boss&&S.boss.id})');
@@ -5555,11 +5555,11 @@ test('نقش: سوپرادمین به‌عنوان خودش کنش مدرسه‌
       + 'const sys=' + JSON.stringify(SYSTEM_ACTS) + ';'
       + 'return JSON.stringify({'
       + 'persona:activePersona(),'
-      + 'granted:acts.filter(function(a){return canAction(a);}),'
+      + 'missing:acts.filter(function(a){return !canAction(a);}),'
       + 'lostSystem:sys.filter(function(a){return !canAction(a);})});})()'));
     assert(r.persona === 'superadmin', 'محیط آزمون: نقش سوپرادمین نشد');
-    assert(r.granted.length === 0,
-      '🔴 سوپرادمین این کنش‌های مدرسه‌محور را دارد: ' + r.granted.join(' · '));
+    assert(r.missing.length === 0,
+      '🔴 سوپرادمین این کنش‌ها را ندارد: ' + r.missing.join(' · '));
     assert(r.lostSystem.length === 0,
       '🔴 کنش سامانه‌محور از سوپرادمین گرفته شد: ' + r.lostSystem.join(' · '));
   } finally {
@@ -5598,7 +5598,7 @@ test('نقش: 🔴 سوپرادمین از راه S.boss همان کنش‌ها 
   }
 });
 
-test('نقش: 🔴 دو حالت سوپرادمین از هم جدا رفتار می‌کنند', () => {
+test('نقش: 🔴 سوپرادمین در هر دو حالت (خودش/جانشین) کامل کار می‌کند', () => {
   /* آزمون یکپارچه: همان کنش، دو نتیجهٔ متفاوت بسته به اینکه
      سوپرادمین خودش است یا جانشین مدیر. اگر این دو یکی شوند،
      یا تفکیک شکسته یا جانشینی. */
@@ -5615,10 +5615,8 @@ test('نقش: 🔴 دو حالت سوپرادمین از هم جدا رفتار 
       + 'const asBoss=canAction(probe);'
       + 'return JSON.stringify({asSelf:asSelf,asBoss:asBoss});})()'));
     if (r.skipTest) return;
-    assert(r.asSelf === false, '🔴 سوپرادمینِ خودش imp-commit دارد');
+    assert(r.asSelf === true, '🔴 سوپرادمینِ خودش imp-commit ندارد (اصلِ ۲۰/۰۹/۵)');
     assert(r.asBoss === true, '🔴 سوپرادمینِ جانشین imp-commit ندارد');
-    assert(r.asSelf !== r.asBoss,
-      '🔴 دو حالت یکسان رفتار کردند — تفکیک بی‌اثر است');
   } finally {
     const o = JSON.parse(saved);
     W('S.user=byId("users",' + o.u + ')||S.user;S.boss=null;S.persona=null');
@@ -5635,7 +5633,7 @@ test('نقش: هر کنشِ مجازِ سوپرادمین صفحه‌اش را �
     + '"export-csv":"formssms","sms-send":"formssms","notify-approve":"notifyqueue"};'
     + 'const bad=[];'
     + 'Object.keys(map).forEach(function(a){'
-    + 'const actOk=(ACTION_ROLES[a]||[]).indexOf("superadmin")>-1;'
+    + 'const actOk=canAction(a,"superadmin"); /* اصلِ ۲۰/۰۹/۵: بای‌پسِ سوپرادمین */'
     + 'const pageOk=canRoute(map[a],"superadmin");'
     + 'if(actOk!==pageOk)bad.push(a+"(کنش="+actOk+" صفحه="+pageOk+")");});'
     + 'return JSON.stringify({bad:bad});})()'));
