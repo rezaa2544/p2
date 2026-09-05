@@ -197,9 +197,8 @@ document.addEventListener('click',e=>{
    'bell-del'(){
      var ed=window._edit; if(!ed||!ed.days)return;
      var day=Number(e.target.dataset.day);
-     var row=e.target.closest('.bell-edit-row');
-     if(!row)return;
-     var i=Number(row.dataset.i);
+     var i=Number(e.target.dataset.i);
+     if(!Number.isFinite(i))return;
      if(ed.days[day].slots.length<=1){toast('دست‌کم یک زنگ لازم است','err');return;}
      ed.days[day].slots.splice(i,1);
      bellRenderDay(day);
