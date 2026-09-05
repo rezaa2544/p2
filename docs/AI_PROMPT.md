@@ -495,6 +495,7 @@ src/body.html  ─┘
 52-dojo           ⭐ گیمیفیکیشن سبک ابتدایی (بند ۵) — مدل امتیازِ مدرسه‌پیکربند (dojo_types) + چیپ‌ها در فرم انضباط + بجِ مجموع
 53-visitors       ⭐ مهمان‌ها (بند ۷) — ورود/خروج غیردانش‌آموز و غیرکارکنان؛ صفحهٔ مدیر
 54-library       ⭐ کتابخانه (بند ۸) — کتاب‌ها + امانت به دانش‌آموز + بازگشت + وضعیت (کتاب/امانت/دیرکرد)؛ صفحهٔ مدیر
+55-assets        ⭐ املاک و موجودی (بند ۹) — تجهیزات با وضعیت (در دسترس/در حال استفاده/در تعمیرات) + مکان؛ صفحهٔ مدیر
 25-filters       ⭐ فیلترهای جمع‌شونده (مشترک همه پنل‌ها)
 26-curriculum       ⭐ ساختار مقطع/پایه/شاخه/رشته + کتاب‌های درسی
 27-sync             ⭐ لایه offline-first: صف ارسال، تشخیص اتصال، backoff
@@ -2295,6 +2296,16 @@ loan_at,due_at,returned_at,registered_by,created_at}`. صفحهٔ `library` فق
 `libAddBook`/`libDelBook`/`libLend`/`libReturn` (نقش + `school_id` کتاب و
 دانش‌آموز؛ حذف کتابِ امانت‌رفته رد می‌شود؛ بازگشت تکراری رد می‌شود).
 سئوت مستقل با ۵ بخش L1–L5. اجرا: `node tests/library.js`
+
+### املاک و موجودی (tests/assets.js)
+ماژول `55-assets.js` (بند ۹): جدول `assets{school_id,name,category,
+status,location,note,created_at}`. صفحهٔ `assets` فقط **مدیر** (همین
+الگوی کتابخانه؛ قفل ۹.۱). وضعیت **ENUMِ ذخیره‌شده** است — برخلاف
+کتابخانه که تاریخ‌محور بود، تجهیزات تاریخ‌محور نیستند، پس وضعیت
+با اکشن عوض می‌شود: `available`/`in_use`/`repair` (`ASSET_STATUSES`).
+اکشن‌ها `as-new`/`as-save`/`as-status`/`as-status-save`/`as-del`؛ گاردها
+روی داده در `assetAdd`/`assetSetStatus`/`assetDel` (نقش + `school_id`
++ اعتبارِ وضعیت). سئوت مستقل با ۵ بخش A1–A5. اجرا: `node tests/assets.js`
 
 ### گواهی‌های رسمی (tests/certify.js)
 بند ۶ در `33-forms-sms.js` (همین الگوی `transcriptCert` + `printableDoc`):
