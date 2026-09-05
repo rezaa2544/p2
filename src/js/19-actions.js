@@ -20,7 +20,8 @@ function schoolInactiveMsg(u){
 }
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el)return;
-  const a=el.dataset.act, id=Number(el.dataset.id);
+  const a=el.dataset.act, rawId=el.dataset.id,
+       id=(rawId!=null && /^\d+$/.test(rawId))?Number(rawId):rawId; /* شناسهٔ عددی می‌ماند عدد؛ شناسهٔ متنی (مثل دکمه‌های تعمیرِ دیاگ) دست‌نخورده می‌ماند */
   /* گارد مجوز اکشن: حتی اگر مهاجم دکمه را دستی بسازد، اکشن‌های تغییردهندهٔ
      داده برای نقش‌های غیرمجاز اجرا نمی‌شوند. */
   if(S.user && typeof canAction==='function' && !canAction(a)){
