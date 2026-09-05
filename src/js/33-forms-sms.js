@@ -110,6 +110,153 @@ function transcriptCert(sid, term){
     note:'نمرهٔ هر درس میانگین برگه‌های ثبت‌شدهٔ همان نوبت است و معدل با وزنی بر پایهٔ ساعت هفتگی محاسبه می‌شود. این گواهی از سامانهٔ پایش چاپ شده است.'};
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   گواهی‌های رسمی دیگر (بند ۶): اشتغال به تحصیل + انتقالی
+   همین الگوی گواهی نمرات (سازندهٔ بدنهٔ خالص + printableDoc) +
+   کد احرازِ ساده و قطعی (بدون سرور، بدون امضای دیجیتال).
+   ═══════════════════════════════════════════════════════════════════ */
+
+/**
+ * کد احرازِ ساده: قطعی از (نوع، دانش‌آموز، مدرسه، سال تحصیلی).
+ * همان گواهی همیشه همان کد را می‌دهد — پس دریافت‌کننده می‌تواند
+ * بدون سرور، با همان داده‌های روی کاغذ، کد را بازسازی کند.
+ */
+function certCodeCalc(type, sid, schoolId){
+  var s = type + ':' + sid + ':' + schoolId + ':' + (typeof yearCode==='function'?yearCode():'');
+  var h = 5381;
+  for(var i=0;i<s.length;i++){ h = ((h<<5)+h) ^ s.charCodeAt(i); }
+  var A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var x = Math.abs(h), out = '';
+  for(var k=0;k<6;k++){ out += A[x % A.length]; x = Math.floor(x / A.length); }
+  return (type==='enrollment' ? 'GHT-' : 'GNT-') + out;
+}
+
+/** مجوز داده‌ای: آیا این کاربر می‌تواند گواهیِ این دانش‌آموز را ببیند/بزند؟ */
+function certAllowedStudent(sid){
+  var u = S.user;
+  if(!u) return {ok:false, msg:'کاربر فعال نیست'};
+  var role = (typeof activePersona==='function') ? activePersona() : u.role;
+  if(role === 'student')
+    return sid === u.id ? {ok:true} : {ok:false, msg:'فقط گواهیِ خودتان'};
+  if(role === 'parent'){
+    var kids = db.parent_links.filter(function(p){ return p.parent_id===u.id; })
+      .map(function(p){ return p.student_id; });
+    return kids.indexOf(sid) >= 0 ? {ok:true} : {ok:false, msg:'این دانش‌آموز از فرزندان شما نیست'};
+  }
+  return {ok:true}; /* کارکنان — دسترسی روی صفحهٔ پرونده محدود شده است */
+}
+
+/** ثبت صدور (برای سابقه) + بازگشت کد */
+function certRecord(type, sid){
+  var st = byId('users', sid);
+  if(!st || st.role !== 'student') return {ok:false, msg:'دانش‌آموز پیدا نشد.'};
+  var sch = byId('schools', st.school_id) || {};
+  var code = certCodeCalc(type, sid, sch.id || 0);
+  var rec = add('certificates', {
+    school_id: sch.id || null, student_id: sid, type: type,
+    year: (typeof yearCode==='function') ? yearCode() : '',
+    code: code, issued_at: new Date().toISOString(),
+    issued_by: (S.user && S.user.id) || 0
+  });
+  return {ok:true, rec: rec, code: code};
+}
+
+/** راستی‌آزمایی کد: با دادهٔ همان دانش‌آموز/مدرسه/سال بازسازی می‌شود */
+function certVerify(code, sid){
+  var st = byId('users', sid);
+  if(!st || st.role !== 'student') return {ok:false, msg:'دانش‌آموز پیدا نشد.'};
+  var sch = byId('schools', st.school_id) || {};
+  var c = String(code || '').trim().toUpperCase();
+  if(c === certCodeCalc('enrollment', sid, sch.id || 0))
+    return {ok:true, msg:'کدِ گواهی اشتغال به تحصیل معتبر است'};
+  if(c === certCodeCalc('transfer', sid, sch.id || 0))
+    return {ok:true, msg:'کدِ گواهی انتقالی معتبر است'};
+  return {ok:false, msg:'کد معتبر نیست'};
+}
+
+/** میانگین کل نمرات (برای «وضعیت کلی» گواهی انتقالی) — فقط اگر نمره هست */
+function certOverall(sid){
+  var list = db.grades.filter(function(g){ return g.student_id===sid; });
+  if(!list.length) return null;
+  var bySub = Object.create(null);
+  list.forEach(function(g){ (bySub[g.subject_id] = bySub[g.subject_id] || []).push(g); });
+  var tw=0, ts=0;
+  Object.keys(bySub).forEach(function(id){
+    var arr = bySub[id];
+    var av = arr.reduce(function(a,g){ return a+g.score; },0)/arr.length;
+    var w = Number((byId('subjects', Number(id))||{}).weekly_hours) || 1;
+    tw += w; ts += av*w;
+  });
+  if(!tw) return null;
+  var gpa = Math.round(ts/tw*100)/100;
+  var label = gpa >= 17 ? 'خوب' : (gpa >= 14 ? 'متوسط' : 'نیازمند تلاش بیشتر');
+  return {gpa: gpa, label: label};
+}
+
+/** گواهی اشتغال به تحصیل */
+function enrollmentCert(sid){
+  var st = byId('users', sid);
+  if(!st || st.role !== 'student') return {ok:false, msg:'دانش‌آموز پیدا نشد.'};
+  var cls = classOf(sid);
+  var school = byId('schools', st.school_id) || {};
+  var yr = (typeof yearTitle==='function') ? yearTitle() : '';
+  var code = certCodeCalc('enrollment', sid, school.id || 0);
+  var body =
+    '<div class="meta"><span>نام: <b>' + esc(st.full_name) + '</b></span>'
+    + '<span>کد ملی: <b>' + esc(st.national_id || '—') + '</b></span>'
+    + (cls ? '<span>پایه: <b>' + esc(cls.grade || '—') + '</b></span>'
+           + '<span>کلاس: <b>' + esc(cls.name || '—') + '</b></span>' : '')
+    + '</div>'
+    + '<div style="font-size:14px;line-height:2.5;background:#f6f9ff;border:1px solid #cdd9f2;border-radius:10px;padding:14px 16px;margin-top:8px">'
+    + 'گواهی می‌شود که دانش‌آموزی به نام <b>' + esc(st.full_name) + '</b> با کد ملی <b>'
+    + esc(st.national_id || '—') + '</b>'
+    + (cls ? '، در پایهٔ <b>' + esc(cls.grade || '—') + '</b> و کلاس <b>' + esc(cls.name || '—') + '</b>' : '')
+    + '، در سال تحصیلی ' + esc(yr) + ' در <b>' + esc(school.name || '—') + '</b> مشغول به تحصیل است.'
+    + '</div>'
+    + '<div class="meta" style="margin-top:12px"><span>کد احراز: <b style="letter-spacing:2px;direction:ltr;display:inline-block">' + code + '</b></span></div>';
+  return {ok:true,
+    title:'گواهی اشتغال به تحصیل',
+    school: esc(school.name || '') + (school.code ? ' — کد ' + esc(school.code) : ''),
+    subtitle:'دانش‌آموز: ' + esc(st.full_name) + ' · سال تحصیلی ' + esc(yr),
+    body: body,
+    note:'این گواهی از سامانهٔ پایش چاپ شده است و با کد احرازِ درج‌شده قابل راستی‌آزمایی است؛ نسخهٔ الکترونیکی و بدون نیاز به مهر است.'};
+}
+
+/** گواهی انتقالی */
+function transferCert(sid){
+  var st = byId('users', sid);
+  if(!st || st.role !== 'student') return {ok:false, msg:'دانش‌آموز پیدا نشد.'};
+  var cls = classOf(sid);
+  var school = byId('schools', st.school_id) || {};
+  var yr = (typeof yearTitle==='function') ? yearTitle() : '';
+  var today = (typeof isoToJalali==='function') ? isoToJalali(todayISO()) : todayISO();
+  var ov = certOverall(sid);
+  var code = certCodeCalc('transfer', sid, school.id || 0);
+  var body =
+    '<div class="meta"><span>نام: <b>' + esc(st.full_name) + '</b></span>'
+    + '<span>کد ملی: <b>' + esc(st.national_id || '—') + '</b></span>'
+    + (cls ? '<span>پایه: <b>' + esc(cls.grade || '—') + '</b></span>'
+           + '<span>کلاس: <b>' + esc(cls.name || '—') + '</b></span>' : '')
+    + '</div>'
+    + '<div style="font-size:14px;line-height:2.5;background:#f6f9ff;border:1px solid #cdd9f2;border-radius:10px;padding:14px 16px;margin-top:8px">'
+    + 'گواهی می‌شود که دانش‌آموزی به نام <b>' + esc(st.full_name) + '</b> با کد ملی <b>'
+    + esc(st.national_id || '—') + '</b>'
+    + (cls ? '، دانش‌آموز پایهٔ <b>' + esc(cls.grade || '—') + '</b> و کلاس <b>' + esc(cls.name || '—') + '</b>' : '')
+    + '، از ابتدای سال تحصیلی ' + esc(yr) + ' لغو تاریخ ' + esc(today)
+    + ' در <b>' + esc(school.name || '—') + '</b> مشغول به تحصیل بوده'
+    + (ov ? ' و با داشتن وضعیت کلی «<b>' + esc(ov.label) + '</b>» (معدل ' + fa(ov.gpa) + ') برای ادامهٔ تحصیل در مقطع/مدرسهٔ مقصد، انتقال می‌یابد' : ' و برای ادامهٔ تحصیل، انتقال می‌یابد')
+    + '.'
+    + '</div>'
+    + '<div class="meta" style="margin-top:12px"><span>کد احراز: <b style="letter-spacing:2px;direction:ltr;display:inline-block">' + code + '</b></span></div>';
+  return {ok:true,
+    title:'گواهی انتقالی',
+    school: esc(school.name || '') + (school.code ? ' — کد ' + esc(school.code) : ''),
+    subtitle:'دانش‌آموز: ' + esc(st.full_name) + ' · سال تحصیلی ' + esc(yr),
+    body: body,
+    note:'این گواهی از سامانهٔ پایش چاپ شده است و با کد احرازِ درج‌شده قابل راستی‌آزمایی است؛ «وضعیت کلی» بر پایهٔ میانگین وزنی نمراتِ ثبت‌شده تا تاریخ صدور است.'};
+}
+
+
 /** لیست نمرات کلاس با ستون‌های خالی برای تکمیل دستی */
 function formGradeSheet(cls, subj, term){
   var sts = studentsOfClass(cls.id);

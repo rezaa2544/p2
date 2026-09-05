@@ -63,6 +63,7 @@ function viewRecord(sid){
   if(persona==='student'||persona==='parent')tabs.push(['vclass','🖥️ کلاس مجازی']);
   let body='';
   if(S.tab==='profile') body = studentProfileCard(sid)
+    + ((typeof certsCard==='function')?certsCard(sid):'')
     + ((typeof yearHistoryCard==='function')?yearHistoryCard(sid):'')
     + ((typeof teacherNotesCard==='function')?teacherNotesCard(sid):'');
   /* نوار گواهی نمرات (بند ۱.۶): فقط وقتی نمره‌ای هست، بالای تب کارنامه */
@@ -103,6 +104,21 @@ function viewRecord(sid){
     :empty('🌟','پرونده انضباطی پاک است','هیچ مورد انضباطی ثبت نشده است.');
   return `<div class="card"><div class="card-head" style="padding-bottom:0;border-bottom:none"><div class="tabs">
     ${tabs.map(t=>`<div class="tab ${S.tab===t[0]?'active':''}" data-act="tab" data-t="${escAttr(t[0])}">${t[1]}</div>`).join('')}</div></div>${body}</div>`;
+}
+
+/** کارت گواهی‌های رسمی (بند ۶) — تب شناسنامهٔ پرونده */
+function certsCard(sid){
+  return '<div style="border:1px dashed var(--border);border-radius:12px;padding:12px 14px;display:grid;gap:10px">'
+    + '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">'
+    + '<span>📜</span><span class="small"><b>گواهی‌های رسمی</b> (چاپ + کد احراز)</span>'
+    + '<button class="btn sm" data-act="cert-enroll-print" data-sid="'+escAttr(sid)+'">گواهی اشتغال به تحصیل</button>'
+    + '<button class="btn sm" data-act="cert-transfer-print" data-sid="'+escAttr(sid)+'">گواهی انتقالی</button>'
+    + '</div>'
+    + '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">'
+    + '<label class="small">کد احراز:</label>'
+    + '<input class="input" id="cert_code" placeholder="GHT-XXXXXX" style="width:170px;direction:ltr;text-align:left" />'
+    + '<button class="btn ghost sm" data-act="cert-verify" data-sid="'+escAttr(sid)+'">راستی‌آزمایی</button>'
+    + '</div></div>';
 }
 
 function viewChildren(){
