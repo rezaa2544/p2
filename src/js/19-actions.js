@@ -1078,6 +1078,36 @@ document.addEventListener('click',e=>{
      toast(t==='on' ? '🚌 سوار شد — پیامک در صف است' : '🏫 پیاده شد — پیامک در صف است','ok');
      render();
    },
+   'bus-need-set'(){ busNeedModal(Number(id)); },
+   'bus-need-save'(){
+     const r = busNeedSet(window._busNeedStudent, (document.querySelector('input[name="bus_need_m"]:checked')||{}).value, V('bus_need_note'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('پاسخ سرویس ثبت شد','ok'); render();
+   },
+   'bus-need-parent-save'(){
+     const v = (document.querySelector('#bus_need_opts input[name="bus_need"]:checked')||{}).value;
+     if(!v){ toast('یکی از گزینه‌ها را انتخاب کنید','err'); return; }
+     const r = busNeedSet(Number(id), v, '');
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     toast('پاسخ شما ثبت شد','ok'); render();
+   },
+   'bus-event-student'(){
+     const r = busEvent(Number(id), el.dataset.t, 'student');
+     if(!r.ok) return toast(r.msg,'err');
+     toast(el.dataset.t==='on' ? '🚌 ثبت شد — پیامک در صف است' : '🏫 ثبت شد — پیامک در صف است','ok');
+     render();
+   },
+   'bus-loc-driver'(){
+     const el2 = document.getElementById('bus_loc_pos');
+     const r = busLocationSend('driver', el2 ? el2.value : 0);
+     if(!r.ok) return toast(r.msg,'err');
+     toast('📍 موقعیت ارسال شد','ok'); render();
+   },
+   'bus-loc-student'(){
+     const r = busLocationSend('student', 0, Number(id));
+     if(!r.ok) return toast(r.msg,'err');
+     toast('📍 موقعیت ارسال شد','ok'); render();
+   },
    /* خلاصهٔ روزانه (بند ۱.۷): برای همهٔ دانش‌آموزان فعال؛ تکراری رد می‌شود */
    'daily-summary'(){
      const r = notifyDailySummaryAll(S.user.school_id);
