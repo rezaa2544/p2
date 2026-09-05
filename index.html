@@ -10886,6 +10886,13 @@ setTimeout(()=>{
   if(typeof generateP11==='function') generateP11();
   if(typeof generateP12=== 'function') generateP12();
   loadLog(); applyLog(); initSync();
+  /* ⚠️ فقط دمو (DEMO-ONLY): ورود خودکار با نام کاربریِ ذخیره‌شده — بدون
+     هیچ رمز یا تأیید هویت — صرفاً برای حالت آفلاین/نمایش است و بخشی از
+     طراحی تولید نیست. در نسخهٔ نهایی ورود فقط با تلفن + کد ملی
+     (docs/PLAN_PHONE_AUTH.md) انجام می‌شود و نشست با کوکی HttpOnly
+     (قرارداد امنیت سرور، بند ۲٫۱) زنده می‌ماند — بند ۱٫۲ و ۱٫۵
+     TODO_BEFORE_PRODUCTION.md. این بلوک و فرم رمز عبور در نسخهٔ
+     سروری حذف/جایگزین می‌شوند. */
   const su=Store.get(SESSION_KEY);
   if(su){const u=db.users.find(x=>x.username===su);
     if(u){
