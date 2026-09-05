@@ -153,6 +153,12 @@ var ACTION_ROLES = {
   'class-del':     ['manager'],
   'subject-save':  ['manager','superadmin'],
   'subject-del':   ['manager','superadmin'],
+  /* برنامه هفتگی و جابه‌جای موقت (بند ۱.۵) — فقط مدیر و سوپرادمین */
+  'slot-save':     ['manager','superadmin'],
+  'slot-del':      ['manager','superadmin'],
+  'sub-save':      ['manager','superadmin'],
+  'sub-del':       ['manager','superadmin'],
+  'sub-del-route': ['manager','superadmin'],
   /* اطلاعیه */
   'ann-save':      ['manager','superadmin','edu_office'],
   'ann-del':       ['manager','superadmin','edu_office'],

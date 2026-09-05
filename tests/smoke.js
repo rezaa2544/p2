@@ -7255,6 +7255,55 @@ test('بند ۱.۲: دبیر می‌تواند برنامهٔ کامل کلاس 
 });
 
 
+// ── بند ۱.۵: جابه‌جای دبیر غایب (تعیین موقت کلاس) ─────────────
+test('بند ۱.۵: ثبت جابه‌جای + رد دبیر مشغول + حذف', () => {
+  W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
+  const r = W('(()=>{var u=S.user;var out=null;db.schedule.filter(function(s){var c=byId("classes",s.class_id);return c&&c.school_id===u.school_id&&s.teacher_id;}).forEach(function(slot){if(out)return;var cand=null;schoolTeachers().forEach(function(t){if(cand)return;if(t.id===slot.teacher_id)return;var b=teacherBusyAt(t.id,slot.day,slot.period,slot.id);if(!b)cand=t.id;});if(cand)out={sid:slot.id,day:slot.day,sub:cand};});return out?JSON.stringify(out):"none";})()');
+  assert(r !== 'none', 'زنگ تستی با جایگزین آزاد پیدا نشد');
+  const slot = JSON.parse(r);
+  const date = W('(()=>{var t=todayISO();var dow=(new Date(t+"T12:00:00").getDay()+1)%7;if(dow==='+slot.day+')return t;for(var k=1;k<8;k++){var t2=addDaysISO(t,k);var d2=(new Date(t2+"T12:00:00").getDay()+1)%7;if(d2==='+slot.day+')return t2;}return "";})()');
+  assert(date, 'تاریخ مطابق روز زنگ پیدا نشد');
+  W('slotModal(byId("schedule",' + slot.sid + '))');
+  W("document.getElementById('sub_date').value=" + JSON.stringify(date));
+  W("document.getElementById('sub_teacher').value=" + slot.sub);
+  W("(function(){var el=document.createElement('button');el.setAttribute('data-act','sub-save');document.body.appendChild(el);el.click();el.remove();})()");
+  const n1 = W("db.substitutions.filter(function(x){return x.schedule_id===" + slot.sid + "&&x.date===" + JSON.stringify(date) + "&&x.sub_teacher_id===" + slot.sub + ";}).length");
+  assert(n1 === 1, 'جابه‌جای ثبت نشد');
+  const busy = W('(()=>{var s=byId("schedule",' + slot.sid + ');var b=schoolTeachers().filter(function(t){return t.id!==s.teacher_id&&teacherBusyAt(t.id,s.day,s.period,s.id);})[0];return b?b.id:"none";})()');
+  if(busy !== 'none'){
+    W('slotModal(byId("schedule",' + slot.sid + '))');
+    W("document.getElementById('sub_date').value=" + JSON.stringify(date));
+    W("document.getElementById('sub_teacher').value=" + busy);
+    W("(function(){var el=document.createElement('button');el.setAttribute('data-act','sub-save');document.body.appendChild(el);el.click();el.remove();})()");
+    const n2 = W("db.substitutions.filter(function(x){return x.schedule_id===" + slot.sid + "&&x.sub_teacher_id===" + busy + ";}).length");
+    assert(n2 === 0, 'دبیر مشغول به‌عنوان جابه‌جای ثبت شد');
+  }
+  W('slotModal(byId("schedule",' + slot.sid + '))');
+  W("document.getElementById('sub_date').value=" + JSON.stringify(date));
+  W("(function(){var el=document.createElement('button');el.setAttribute('data-act','sub-del');document.body.appendChild(el);el.click();el.remove();})()");
+  const n3 = W("db.substitutions.filter(function(x){return x.schedule_id===" + slot.sid + "&&x.date===" + JSON.stringify(date) + ";}).length");
+  assert(n3 === 0, 'جابه‌جای حذف نشد');
+});
+
+test('بند ۱.۵: جابه‌جایِ امروز در خانهٔ برنامه و فهرست دیده می‌شود', () => {
+  W("S.user=db.users.find(u=>u.role==='manager'&&u.school_id===1);S.persona=null;S.boss=null");
+  const r = W('(()=>{var x=db.substitutions.find(function(s){return s.school_id===1&&(s.date===todayISO()||s.date===addDaysISO(todayISO(),1));});if(!x)return "none";var slot=byId("schedule",x.schedule_id);var cls=byId("classes",slot.class_id);var sub=db.users.find(u=>u.id===x.sub_teacher_id);return JSON.stringify({cid:cls.id,sub:sub.full_name,today:x.date===todayISO()});})()');
+  assert(r !== 'none', 'جابه‌جای نمونهٔ دمو نیست');
+  const d = JSON.parse(r);
+  const out = W("(S.route='schedule', S.filters={class:'" + d.cid + "'}, renderRoute())");
+  assert(out.indexOf('جابه‌جای‌های موقت این کلاس') > -1, 'فهرست جابه‌جای‌ها دیده نمی‌شود');
+  if(d.today) assert(out.indexOf('جابه‌جای: ' + d.sub) > -1, 'نشان جابه‌جای در خانهٔ برنامه نیست');
+});
+
+test('بند ۱.۵: جابه‌جای فقط برای مدیر و سوپرادمین است', () => {
+  W("S.user=db.users.find(u=>u.role==='teacher');S.persona=null;S.boss=null");
+  assert(W("canAction('sub-save')") === false, 'دبیر اجازهٔ ثبت جابه‌جای دارد');
+  assert(W("canAction('sub-del-route')") === false, 'دبیر اجازهٔ حذف جابه‌جای دارد');
+  assert(W("canAction('sub-save','manager')") === true, 'مدیر اجازهٔ ثبت جابه‌جای ندارد');
+  W("S.user=null");
+});
+
+
 
 await Promise.all(testQueue);   // همهٔ آزمون‌های ناهمگام تا سرِ صف برسد
 const total = pass + fail;
