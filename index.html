@@ -916,6 +916,8 @@ const jalali = iso => { if(!iso) return '—'; try{ return new Intl.DateTimeForm
 const todayISO = ()=> new Date().toISOString().slice(0,10);
 const daysAgoISO = d => { const t=new Date(); t.setDate(t.getDate()-d); return t.toISOString().slice(0,10); };
 const DAYS=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه'];
+const DAYS_FULL=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه'];
+const DEFAULT_WORK_DAYS=[0,1,2,3,4]; /* شنبه تا چهارشنبه — پنجشنبه اختیاری و پیش‌فرض خاموش (تصمیم کاربر) */
 const ROLE_FA={superadmin:'سوپر ادمین',manager:'مدیر مدرسه',teacher:'دبیر',student:'دانش‌آموز',parent:'ولی',edu_office:'اداره آموزش و پرورش',counselor:'مشاور',driver:'راننده سرویس'};
 const ROLE_BADGE={superadmin:'b-purple',manager:'b-blue',teacher:'b-green',student:'b-amber',parent:'b-gray',edu_office:'b-purple',counselor:'b-cyan'};
 const ATT_FA={present:'حاضر',absent:'غایب',late:'تأخیر',excused:'موجه'};
@@ -999,7 +1001,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -1015,11 +1017,15 @@ function generate(){
       /* بند ۵: ساختار «سازمان» — امروز همیشه خالی (تک‌مدرسه).
          قفل‌شده و مستند در ARCHITECTURE_DECISIONS.md: پیاده‌سازی کامل
          وقتی دو مدرسه با یک مالک مشترک وارد سامانه شوند. */
+      /* دور ۶۵ بند روزهای کاری: پیش‌فرض شنبه تا چهارشنبه؛ SH-101 پنجشنبه هم کار می‌کند (دمو) */
+      work_days: si===0?[0,1,2,3,4,5]:[0,1,2,3,4],
       organization_id: null,
       created_at:daysAgoISO(500-si*20)});
     const first = gender==='پسرانه'?MALE:FEMALE;
     const manager=add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'manager'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,title:'مدیر مدرسه',created_at:daysAgoISO(480)});
     add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'deputy'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,title:'معاون آموزشی',created_at:daysAgoISO(470)});
+    /* روزِ جبرانی (دمو): اولین جمعهٔ پیشِ رو برای FZ-102 */
+    if(si===1){/* جمعهٔ پیشِ رو — getDay در JS: جمعه=۵ (نزدِ جدولِ برنامه شنبه=۰!) */var _frOff=(5-new Date().getDay()+7)%7; if(_frOff===0)_frOff=7; add('makeup_classes',{school_id:school.id,date:addDaysISO(todayISO(),_frOff),note:'روزِ جبرانی (دمو)'});}
     /* دروس بر اساس برنامه‌ی درسی واقعی: پایه‌ها و (در متوسطه دوم) رشته‌ها */
     const _lvGrades = GRADES_OF_LEVEL[level] || [];
     const _lvFields = needsField(level) ? ['ریاضی فیزیک','علوم تجربی','ادبیات و علوم انسانی'] : [''];
@@ -4037,6 +4043,11 @@ function schoolModal(s){
     <div class="small muted" style="margin:-4px 0 10px">
       شیفت بر ساعت شروع زنگ‌ها اثر می‌گذارد. زمان‌بندی دقیق زنگ‌ها را
       مدیر مدرسه در صفحهٔ «زمان‌بندی زنگ‌ها» تعیین می‌کند.</div>
+    <div class="sec-title">🗓️ روزهای کاری</div>
+    <div class="row" style="gap:12px;flex-wrap:wrap;padding:4px 0">
+      ${(typeof DAYS_FULL!=='undefined'?DAYS_FULL:['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه']).map((d,i)=>`<label class="row" style="gap:5px;cursor:pointer"><input type="checkbox" class="m-wd" value="${i}" ${((s.work_days&&s.work_days.length?s.work_days:(typeof DEFAULT_WORK_DAYS!=='undefined'?DEFAULT_WORK_DAYS:[0,1,2,3])).indexOf(i)>-1)?'checked':''}/> ${d}</label>`).join('')}
+    </div>
+    <div class="small muted" style="margin:-2px 0 10px">در روزِ غیرکاری، برنامهٔ زنگ و پیش‌گزینشِ خودکار کلاس فعال نیست. روزهای جبرانی را در «زمان‌بندی زنگ‌ها» ثبت کنید.</div>
     <div class="sec-title">🏫 پروفایل قابلیت این مدرسه</div>
     <div class="small muted" style="margin-bottom:8px">هر کلید مستقل روشن/خاموش می‌شود؛ ماژول‌های غیرمرتبط از منوی این مدرسه پنهان می‌شوند.</div>
     ${typeof capPickerHTML==='function'?capPickerHTML(s):''}
@@ -8387,6 +8398,8 @@ document.addEventListener('click',e=>{
        level:V('m_level'),type:V('m_type')||'عادی',gender:V('m_gender'),shift:V('m_shift')||'صبح',
        capacity:Number(V('m_cap'))||300,
        active:Number(V('m_active')),address:V('m_addr'),
+       /* دور ۶۵ بند روزهای کاری: روزهای روشن‌شده در مودال */
+       work_days:$$('.m-wd:checked').map(x=>Number(x.value)).sort((a,b)=>a-b),
        /* شاخه و رشته فقط برای متوسطه دوم معنا دارد؛ در بقیهٔ مقاطع خالی می‌ماند */
        branches:V('m_level')==='متوسطه دوم'?$$('.m-branch:checked').map(x=>x.value):[],
        fields:V('m_level')==='متوسطه دوم'?$$('.m-field:checked').filter(x=>$$('.m-branch:checked').some(b=>b.value===x.dataset.branch)).map(x=>x.value):[],
@@ -8414,6 +8427,18 @@ document.addEventListener('click',e=>{
      }
      closeModal();toast(s.id?'تغییرات ذخیره شد':'مدرسه و حساب مدیر ثبت شد','ok');render();},
    // users
+   'makeup-add'(){
+     var d=V('m_mk_date');
+     if(!d){toast('تاریخ را انتخاب کنید','err');return;}
+     var sid=(S.user.role==='superadmin')?(Number(S.filters.bschool)||db.schools[0].id):S.user.school_id;
+     if((db.makeup_classes||[]).some(m=>m.school_id===sid&&m.date===d)){toast('این تاریخ قبلاً روز جبرانی است','err');return;}
+     insert('makeup_classes',{school_id:sid,date:d,note:V('m_mk_note')||''});
+     toast('روز جبرانی افزوده شد','ok');render();
+   },
+   'makeup-del'(){
+     /* id از محیّطِ کلِک‌لیسنر (بسته‌بندیِ A) می‌آید — مثلِ بقیهٔ اکشن‌ها */
+     remove('makeup_classes',Number(id));render();
+   },
    'user-new'(){userModal(null);},
    'user-edit'(){userModal(byId('users',id));},
    'user-toggle'(){const u=byId('users',id);update('users',id,{active:u.active?0:1});render();},
@@ -15871,6 +15896,26 @@ function viewBells(){
     + bellStat('شنبه: پایان', timeFa(bellEndTime(sid, 0)), '⏹️')
     + '</div>';
 
+  /* دور ۶۵ بند روزهای کاری: روزهای جبرانی این مدرسه */
+  var mks = (db.makeup_classes || []).filter(function(m){ return m.school_id === sid; })
+    .sort(function(x, y){ return x.date < y.date ? -1 : 1; });
+  h += '<div class="diag-item" style="margin-bottom:14px"><b>📆 روزهای جبرانی</b>'
+    + '<div class="small muted" style="margin-top:4px">در روزِ غیرکاری که به‌عنوان جبرانی ثبت شود، برنامهٔ زنگِ شنبه اجرا می‌شود.</div>'
+    + (mks.length
+        ? '<div style="margin-top:8px;display:grid;gap:5px">' + mks.map(function(m){
+            return '<div class="row" style="gap:8px;align-items:center"><span class="badge b-amber">'
+              + esc(jalali(m.date)) + '</span>'
+              + (m.note ? '<span class="small muted">' + esc(m.note) + '</span>' : '')
+              + (canEdit ? '<button class="icon-btn danger" title="حذف" data-act="makeup-del" data-id="' + m.id + '">🗑️</button>' : '')
+              + '</div>'; }).join('') + '</div>'
+        : '')
+    + (canEdit
+        ? '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><input type="date" class="input" style="width:160px" id="m_mk_date" />'
+          + '<input class="input" style="width:180px" id="m_mk_note" placeholder="یادداشت (اختیاری)" />'
+          + '<button class="btn sm" data-act="makeup-add">＋ افزودن روز جبرانی</button></div>'
+        : '')
+    + '</div>';
+
   /* آیا ساعت روزها با هم فرق دارند؟ */
   var differs = false;
   for(var di = 1; di < DAYS.length && !differs; di++){
@@ -18058,6 +18103,32 @@ function isSchoolDay(dayIdx){
   return dayIdx >= 0 && dayIdx <= 4;
 }
 
+/**
+ * روزهای کاریِ یک مدرسه (دور ۶۵ بند روزهای کاری).
+ * پیش‌فرض: شنبه تا سه‌شنبه — چهارشنبه فقط اگر مدرسه روشن کرده باشد.
+ * @returns {number[]} ایندکس‌های روز (شنبه=۰ … جمعه=۶)
+ */
+function workDaysOf(schoolId){
+  var sc = (typeof byId === 'function') ? (byId('schools', schoolId) || {}) : {};
+  var wd = sc.work_days;
+  if(Array.isArray(wd) && wd.length) return wd.map(Number);
+  return (typeof DEFAULT_WORK_DAYS !== 'undefined') ? DEFAULT_WORK_DAYS.slice() : [0,1,2,3];
+}
+
+/**
+ * آیا این تاریخ برای این مدرسه روز کاری است؟
+ * روزهای هفتهٔ کاری + روزهای جبرانیِ ثبت‌شده (makeup_classes).
+ */
+function isWorkDay(schoolId, dateISO, now){
+  var t = now || new Date(dateISO + 'T12:00:00');
+  var idx = todayIndex(t);
+  if(workDaysOf(schoolId).indexOf(idx) > -1) return true;
+  var mk = (db.makeup_classes || []).some(function(m){
+    return m.school_id === schoolId && m.date === dateISO;
+  });
+  return !!mk;
+}
+
 /* ─────────────── بخش ۲: سلامت ساعت دستگاه ─────────────── */
 
 /**
@@ -18145,16 +18216,26 @@ function currentSlot(schoolId, now){
   out.hasSchedule = (db.bell_schedules || [])
     .some(function(b){ return b.school_id === schoolId; });
 
-  if(!isSchoolDay(out.day)){
+  /* دور ۶۵ بند روزهای کاری: روزِ کاریِ خودِ مدرسه (پیش‌فرض شنبه تا
+     سه‌شنبه) + روزهای جبرانی — به‌جای پنج‌روزهٔ سراسریِ قدیمی. */
+  var wd = workDaysOf(schoolId);
+  var inWeek = wd.indexOf(out.day) > -1;
+  var isMakeup = (db.makeup_classes || []).some(function(m){
+    return m.school_id === schoolId && m.date === localISOOf(t);
+  });
+  if(!inWeek && !isMakeup){
     out.kind = 'holiday';
-    out.label = 'روز تعطیل';
+    out.label = (out.day === 5) ? 'پنجشنبه برای این مدرسه روز کاری نیست' : 'روز تعطیل';
     return out;
   }
 
   /* 🔴 روز هفته باید رد شود: بدون آن bellOf() همیشه برنامهٔ شنبه
      (روز ۰) را برمی‌گرداند و در زمان‌بندی به‌تفکیک‌روز (نسخهٔ ۲)
-     زنگ اشتباهی تشخیص داده می‌شود — رفع بند ۲ در گام ۳. */
-  var tl = (typeof bellTimeline === 'function') ? bellTimeline(schoolId, out.day) : [];
+     زنگ اشتباهی تشخیص داده می‌شود — رفع بند ۲ در گام ۳.
+     روزِ جبرانیِ بیرون از هفتهٔ کاری (مثلاً جمعه) از برنامهٔ شنبه
+     استفاده می‌کند — schedDay همان روزِ برنامهٔ درسی است. */
+  out.schedDay = inWeek ? out.day : 0;
+  var tl = (typeof bellTimeline === 'function') ? bellTimeline(schoolId, out.schedDay) : [];
   if(!tl.length){ return out; }
 
   var mins = t.getHours() * 60 + t.getMinutes();
@@ -18214,10 +18295,11 @@ function teacherNowClass(teacherId, schoolId, now){
   var slot = currentSlot(sid, now);
   if(slot.kind !== 'lesson' || !slot.no) return null;
 
+  var schedDay = (slot.schedDay != null) ? slot.schedDay : slot.day;
   var rows = (db.schedule || []).filter(function(r){
     return r.teacher_id === tid
         && r.school_id === sid
-        && r.day === slot.day
+        && r.day === schedDay
         && Number(r.period) === Number(slot.no);
   });
   if(!rows.length) return null;

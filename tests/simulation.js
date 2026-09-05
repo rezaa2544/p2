@@ -433,8 +433,8 @@ async function main() {
     assert(r.brkShown === true, 'نوار تفریح نشد');
     assert(r.noPre === true, 'در تفریح پیش‌گزینش شد!');
   });
-  sim('زنگ', 'جمعه: نوار «روز درسی نیست» + حضور/نمره بدون خطا', () => {
-    W('S.user=db.users.find(u=>u.username==="teacher1_1");S.persona=null;S.boss=null;');
+  sim('زنگ', 'پنجشنبه (روزِ غیرکاری): نوار «روز درسی نیست» + حضور/نمره بدون خطا', () => {
+    W('S.user=db.users.find(u=>u.username==="teacher3_1");S.persona=null;S.boss=null;');
     const r = JSON.parse(W(`(()=>{
       ${DATE_AT}
       var bar=bellNowBar(dateAtY(5,10,0,new Date().getFullYear()));

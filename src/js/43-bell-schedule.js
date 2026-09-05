@@ -316,6 +316,26 @@ function viewBells(){
     + bellStat('شنبه: پایان', timeFa(bellEndTime(sid, 0)), '⏹️')
     + '</div>';
 
+  /* دور ۶۵ بند روزهای کاری: روزهای جبرانی این مدرسه */
+  var mks = (db.makeup_classes || []).filter(function(m){ return m.school_id === sid; })
+    .sort(function(x, y){ return x.date < y.date ? -1 : 1; });
+  h += '<div class="diag-item" style="margin-bottom:14px"><b>📆 روزهای جبرانی</b>'
+    + '<div class="small muted" style="margin-top:4px">در روزِ غیرکاری که به‌عنوان جبرانی ثبت شود، برنامهٔ زنگِ شنبه اجرا می‌شود.</div>'
+    + (mks.length
+        ? '<div style="margin-top:8px;display:grid;gap:5px">' + mks.map(function(m){
+            return '<div class="row" style="gap:8px;align-items:center"><span class="badge b-amber">'
+              + esc(jalali(m.date)) + '</span>'
+              + (m.note ? '<span class="small muted">' + esc(m.note) + '</span>' : '')
+              + (canEdit ? '<button class="icon-btn danger" title="حذف" data-act="makeup-del" data-id="' + m.id + '">🗑️</button>' : '')
+              + '</div>'; }).join('') + '</div>'
+        : '')
+    + (canEdit
+        ? '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><input type="date" class="input" style="width:160px" id="m_mk_date" />'
+          + '<input class="input" style="width:180px" id="m_mk_note" placeholder="یادداشت (اختیاری)" />'
+          + '<button class="btn sm" data-act="makeup-add">＋ افزودن روز جبرانی</button></div>'
+        : '')
+    + '</div>';
+
   /* آیا ساعت روزها با هم فرق دارند؟ */
   var differs = false;
   for(var di = 1; di < DAYS.length && !differs; di++){

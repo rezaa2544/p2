@@ -5822,15 +5822,23 @@ test('زنگ: وسط تفریح کلاسی برنمی‌گردد', () => {
   assert(r.hasClass === false, '🔴 در تفریح کلاس برگردانده شد');
 });
 
-test('زنگ: 🔴 پنج‌شنبه و جمعه تعطیل‌اند', () => {
-  const r = JSON.parse(W('(()=>{const sid=db.bell_schedules.length'
-    + '?db.bell_schedules[0].school_id:db.schools[0].id;'
-    + 'const thu=currentSlot(sid,new Date("2026-09-10T09:00:00"));'
-    + 'const fri=currentSlot(sid,new Date("2026-09-11T09:00:00"));'
-    + 'const t=db.users.find(function(u){return u.role==="teacher"&&u.school_id===sid;});'
-    + 'const cls=t?teacherNowClass(t.id,sid,new Date("2026-09-10T09:00:00")):null;'
-    + 'return JSON.stringify({thu:thu.kind,fri:fri.kind,hasClass:!!cls});})()'));
-  assert(r.thu === 'holiday', '🔴 پنج‌شنبه باید تعطیل باشد: ' + r.thu);
+test('زنگ: 🔴 پنج‌شنبه و جمعه (برای مدرسهٔ ۵ روزه) تعطیل‌اند', () => {
+  const r = JSON.parse(W('(()=>{'
+    + '/* مدرسه‌ای که پنجشنبه کار نمی‌کند و روز جبرانیِ ثبت‌شده‌ای ندارد */'
+    + 'var sid=(db.bell_schedules.map(function(b){return b.school_id;}))'
+    + '.find(function(x){var sc=byId("schools",x);'
+    + 'return sc&&(sc.work_days||[0,1,2,3,4]).indexOf(5)<0'
+    + '&&!(db.makeup_classes||[]).some(function(m){return m.school_id===x;});});'
+    + 'if(!sid)return JSON.stringify({skipTest:true});'
+    + 'var thu=(function(){var d=new Date();var off=(4-d.getDay()+7)%7;if(!off)off=7;return addDaysISO(todayISO(),off);})();'
+    + 'var fri=(function(){var d=new Date();var off=(5-d.getDay()+7)%7;if(!off)off=7;return addDaysISO(todayISO(),off);})();'
+    + 'var t1=new Date(thu+"T09:00:00"),t2=new Date(fri+"T09:00:00");'
+    + 'var s1=currentSlot(sid,t1),s2=currentSlot(sid,t2);'
+    + 'var t=db.users.find(function(u){return u.role==="teacher"&&u.school_id===sid;});'
+    + 'var cls=t?teacherNowClass(t.id,sid,t1):null;'
+    + 'return JSON.stringify({thu:s1.kind,fri:s2.kind,hasClass:!!cls});})()'));
+  if(r.skipTest)return;
+  assert(r.thu === 'holiday', '🔴 پنجشنبه برای مدرسهٔ ۵ روزه باید تعطیل باشد: ' + r.thu);
   assert(r.fri === 'holiday', '🔴 جمعه باید تعطیل باشد: ' + r.fri);
   assert(r.hasClass === false, '🔴 روز تعطیل کلاس برگردانده شد');
 });

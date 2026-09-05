@@ -140,6 +140,8 @@ document.addEventListener('click',e=>{
        level:V('m_level'),type:V('m_type')||'عادی',gender:V('m_gender'),shift:V('m_shift')||'صبح',
        capacity:Number(V('m_cap'))||300,
        active:Number(V('m_active')),address:V('m_addr'),
+       /* دور ۶۵ بند روزهای کاری: روزهای روشن‌شده در مودال */
+       work_days:$$('.m-wd:checked').map(x=>Number(x.value)).sort((a,b)=>a-b),
        /* شاخه و رشته فقط برای متوسطه دوم معنا دارد؛ در بقیهٔ مقاطع خالی می‌ماند */
        branches:V('m_level')==='متوسطه دوم'?$$('.m-branch:checked').map(x=>x.value):[],
        fields:V('m_level')==='متوسطه دوم'?$$('.m-field:checked').filter(x=>$$('.m-branch:checked').some(b=>b.value===x.dataset.branch)).map(x=>x.value):[],
@@ -167,6 +169,18 @@ document.addEventListener('click',e=>{
      }
      closeModal();toast(s.id?'تغییرات ذخیره شد':'مدرسه و حساب مدیر ثبت شد','ok');render();},
    // users
+   'makeup-add'(){
+     var d=V('m_mk_date');
+     if(!d){toast('تاریخ را انتخاب کنید','err');return;}
+     var sid=(S.user.role==='superadmin')?(Number(S.filters.bschool)||db.schools[0].id):S.user.school_id;
+     if((db.makeup_classes||[]).some(m=>m.school_id===sid&&m.date===d)){toast('این تاریخ قبلاً روز جبرانی است','err');return;}
+     insert('makeup_classes',{school_id:sid,date:d,note:V('m_mk_note')||''});
+     toast('روز جبرانی افزوده شد','ok');render();
+   },
+   'makeup-del'(){
+     /* id از محیّطِ کلِک‌لیسنر (بسته‌بندیِ A) می‌آید — مثلِ بقیهٔ اکشن‌ها */
+     remove('makeup_classes',Number(id));render();
+   },
    'user-new'(){userModal(null);},
    'user-edit'(){userModal(byId('users',id));},
    'user-toggle'(){const u=byId('users',id);update('users',id,{active:u.active?0:1});render();},
