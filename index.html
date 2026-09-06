@@ -2403,6 +2403,16 @@ function pathwayGuideCard(sid){
 const SYNC_QUEUE_KEY = 'sms_syncq_v1';
 const SYNC_META_KEY  = 'sms_syncmeta_v1';
 
+/* کدهایِ ردِّ پایدارِ سرور — عملیاتِ «مسموم»: دوباره‌ارسال بی‌فایده است.
+   (دور ۸۵, P0-2) op به وضعیت rejected می‌رود و از چرخهٔ ارسال خارج
+   می‌شود تا صف سالم‌ها را نگیرد؛ کاربر در پنلِ همگام‌سازی می‌بیند
+   و می‌تواند حذفش کند. ردِ گذرا (مثل virtual_day یا 401 نشست) این‌جا
+   نیست — همان «failed» با backoff می‌ماند. */
+const SYNC_DEAD_CODES = {
+  field_denied: 1, malformed_op: 1, role_denied: 1, out_of_scope: 1,
+  forged_by: 1, user_mismatch: 1, school_mismatch: 1
+};
+
 const SYNC = {
   queue      : [],          /* عملیات منتظر ارسال */
   online     : (typeof navigator !== 'undefined') ? navigator.onLine !== false : true,
@@ -2459,6 +2469,7 @@ function enqueueOp(op){
 /* ---------- شمارنده‌ها ---------- */
 const pendingCount  = () => SYNC.queue.filter(x => x.status === 'pending' || x.status === 'failed').length;
 const conflictCount = () => SYNC.queue.filter(x => x.status === 'conflict').length;
+const rejectedCount = () => SYNC.queue.filter(x => x.status === 'rejected').length;
 
 /* ---------- تشخیص آنلاین/آفلاین ---------- */
 function setOnline(v){
@@ -2516,6 +2527,14 @@ async function syncNow(manual){
         item.status = 'conflict';
         item.error  = r.message || 'تعارض با نسخه سرور';
         item.server = r.server;
+      }else if(r.code === 'duplicate_ignored'){
+        /* uid قبلاً اعمال شده (ارسال دوباره پس از قطعی) — روی سرور
+           همان تغییری هست که ما می‌خواستیم؛ صف را نگیراند. */
+        item.status = 'synced';
+      }else if(SYNC_DEAD_CODES[r.code]){
+        /* ردِّ پایدار — دوباره‌ارسال بی‌فایده است (P0-2) */
+        item.status = 'rejected';
+        item.error  = r.message || 'رد سرور';
       }else{
         item.status = 'failed';
         item.tries += 1;
@@ -2523,16 +2542,20 @@ async function syncNow(manual){
       }
     });
 
-    /* موارد موفق از صف حذف می‌شوند */
+    /* موارد موفق (و duplicates) از صف حذف می‌شوند */
     SYNC.queue = SYNC.queue.filter(x => x.status !== 'synced');
     SYNC.lastSync = new Date().toISOString();
     saveSyncMeta();
     saveQueue();
 
-    const okCount = res.filter(r => r.ok).length;
-    const bad     = res.length - okCount;
-    if(okCount && (manual || bad)) toast(`${fa(okCount)} تغییر ارسال شد${bad ? ` — ${fa(bad)} ناموفق` : ''}`, bad ? 'warn' : 'ok');
-    else if(okCount && !manual)     toast(`${fa(okCount)} تغییر همگام شد ✓`, 'ok');
+    const okCount   = res.filter(r => r.ok).length;
+    const deadCount = res.filter(r => !r.ok && (r.code === 'duplicate_ignored' || SYNC_DEAD_CODES[r.code])).length;
+    const bad       = res.length - okCount - deadCount; /* فقط خطاهایِ قابلِ تلاشِ دوباره */
+    if(okCount){
+      const extra = (deadCount ? ` — ${fa(deadCount)} رد شد` : '') + (bad ? ` — ${fa(bad)} ناموفق` : '');
+      if(manual || bad || deadCount) toast(`${fa(okCount)} تغییر ارسال شد${extra}`, (bad || deadCount) ? 'warn' : 'ok');
+      else toast(`${fa(okCount)} تغییر همگام شد ✓`, 'ok');
+    }
 
     SYNC.attempts = bad ? SYNC.attempts + 1 : 0;
     if(bad) scheduleSync(backoffDelay());
@@ -2567,12 +2590,25 @@ async function sendBatch(batch){
   if(!SYNC.demoMode && SYNC.serverUrl){
     /* ارسال از راه لایهٔ داده انجام می‌شود، نه fetch مستقیم — تا روز
        اتصال به سرور واقعی، سرآیند احراز هویت و مدیریت خطا یک‌جا در
-       Api.request تعریف شود و اینجا دست نخورد. */
-    const data = await Api.request(SYNC.serverUrl, {
+       Api.request تعریف شود و اینجا دست نخورد.
+       raw:true (P0-2): ردِ کل دسته (400/403) بدنهٔ معناداری دارد؛
+       بدون raw، Api.request می‌انداخت و کل دسته برای همیشه در چرخهٔ
+       «failed → retry» می‌ماند. */
+    const raw = await Api.request(SYNC.serverUrl, {
       method: 'POST',
-      body  : { ops: batch.map(x => ({ uid: x.uid, ...x.op })) }
+      body  : { ops: batch.map(x => ({ uid: x.uid, ...x.op })) },
+      raw   : true
     });
-    return (data && data.results) || [];
+    if(raw.status < 300){
+      return (raw.body && raw.body.results) || [];
+    }
+    if(raw.status >= 500) throw new Error('خطای سرور ' + raw.status + ' در ' + SYNC.serverUrl);
+    const code = (raw.body && raw.body.code) || 'http_' + raw.status;
+    /* 401 = نشستِ ناکام — گذرا؛ بعد از ورودِ دوباره دوباره تلاش می‌شود */
+    if(raw.status === 401 || code === 'no_session') throw new Error('نشست سرور معتبر نیست (401)');
+    /* 400/403 = ردِّ پایدارِ کل دسته → هر op به‌صورتِ ردِ پایدار
+       برمی‌گردد تا dead-letter آن را از صفِ ارسال جدا کند */
+    return batch.map(x => ({ uid: x.uid, ok: false, code: code, message: (raw.body && raw.body.message) || 'رد سرور' }));
   }
 
   /* حالت دمو: تأخیر شبکه را شبیه‌سازی می‌کند */
@@ -2585,6 +2621,7 @@ async function sendBatch(batch){
 function syncBadge(){
   const n  = pendingCount();
   const cf = conflictCount();
+  const rd = rejectedCount();
 
   if(!SYNC.online){
     return `<button class="sync-chip off" data-act="sync-panel" title="آفلاین — تغییرات ذخیره می‌شوند">
@@ -2594,9 +2631,10 @@ function syncBadge(){
     return `<button class="sync-chip busy" data-act="sync-panel" title="در حال همگام‌سازی">
       <span class="spin"></span><span>همگام‌سازی…</span></button>`;
   }
-  if(cf){
+  if(cf || rd){
+    const lab = (cf && rd) ? 'تعارض و رد' : (cf ? 'تعارض' : 'رد شده');
     return `<button class="sync-chip warn" data-act="sync-panel" title="نیاز به بررسی">
-      <span class="dot"></span><span>تعارض</span><span class="badge b-red sm">${fa(cf)}</span></button>`;
+      <span class="dot"></span><span>${lab}</span>${cf ? `<span class="badge b-red sm">${fa(cf)}</span>` : ''}${rd ? `<span class="badge b-red sm">${fa(rd)}</span>` : ''}</button>`;
   }
   if(n){
     return `<button class="sync-chip pend" data-act="sync-panel" title="${escAttr(fa(n))} تغییر در صف ارسال">
@@ -2621,6 +2659,7 @@ function syncPanelModal(){
   const q  = SYNC.queue;
   const n  = pendingCount();
   const cf = conflictCount();
+  const rd = rejectedCount();
 
   const label = {
     ins: 'ثبت جدید', upd: 'ویرایش', del: 'حذف',
@@ -2635,6 +2674,7 @@ function syncPanelModal(){
   const statusFa = {
     pending :['در صف','b-amber'], sending:['در حال ارسال','b-blue'],
     failed  :['ناموفق','b-red'],  conflict:['تعارض','b-red'],
+    rejected:['رد شده','b-red'],
   };
 
   const body = `
@@ -2642,6 +2682,7 @@ function syncPanelModal(){
       <span class="badge ${SYNC.online?'b-green':'b-gray'}">${SYNC.online?'🌐 آنلاین':'📴 آفلاین'}</span>
       ${n ?`<span class="badge b-amber">${fa(n)} تغییر در صف</span>`:'<span class="badge b-green">همه‌چیز همگام است</span>'}
       ${cf?`<span class="badge b-red">${fa(cf)} تعارض</span>`:''}
+      ${rd?`<span class="badge b-red" title="عملیات‌هایی که سرور آن‌ها را به‌صورتِ پایدار رد کرده است — دوباره ارسال نمی‌شوند">${fa(rd)} رد شده</span>`:''}
       <div class="spacer"></div>
       <span class="small muted">آخرین همگام‌سازی: ${SYNC.lastSync?jalaliDateTime(SYNC.lastSync):'—'}</span>
     </div>
@@ -2660,7 +2701,9 @@ function syncPanelModal(){
           <td class="small muted">${jalaliDateTime(x.created_at)}</td>
           <td><span class="badge ${st[1]}">${st[0]}</span>
             ${x.error?`<div class="small muted">${esc(x.error)}</div>`:''}
-            ${x.tries>1?`<div class="small muted">${fa(x.tries)} تلاش</div>`:''}</td>
+            ${x.tries>1?`<div class="small muted">${fa(x.tries)} تلاش</div>`:''}
+            ${x.status==='rejected'?`<div style="margin-top:6px"><button class="btn ghost sm" data-act="sync-del" data-uid="${escAttr(x.uid)}" title="این عملیات دوباره ارسال نمی‌شود؛ اگر مطمئنید لازم نیست، حذفش کنید">حذف از صف</button></div>`:''}
+          </td>
         </tr>`;}).join('')}
       </tbody></table></div>`
     :`<div class="empty" style="padding:24px"><span class="emoji">✅</span>
@@ -2695,6 +2738,19 @@ const SYNC_ACTIONS = {
   'sync-panel'(){ syncPanelModal(); },
   'sync-run'(){ closeModal(); syncNow(true); },
   'sync-toggle-net'(){ closeModal(); setOnline(!SYNC.online); },
+  /* حذفِ دستیِ عملیاتِ «رد شده» (dead-letter) از صف.
+     (SYNC_ACTIONS برخلافِ A با (el, id) فراخوانی می‌شود.) */
+  'sync-del'(el){
+    const uid = (el && el.dataset) ? el.dataset.uid : null;
+    if(!uid) return;
+    const before = SYNC.queue.length;
+    SYNC.queue = SYNC.queue.filter(x => x.uid !== uid);
+    if(SYNC.queue.length === before) return;
+    saveQueue();
+    refreshSyncBadge();
+    toast('عملیاتِ ردشده از صف حذف شد', 'ok');
+    syncPanelModal();
+  },
 };
 
 /* ---------- راه‌اندازی ---------- */
