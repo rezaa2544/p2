@@ -216,3 +216,57 @@ function schoolFields(schoolId){
     return a.concat(fieldsOfBranch(b));
   }, []).filter(function(x, i, arr){ return arr.indexOf(x) === i; });
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   مسیرهای ادامهٔ تحصیل بعد از نهم (دور ۷۱، بند ۵.۱)
+   نهم، سالِ آخرِ متوسطهٔ اول است؛ در پایانِ سال، دانش‌آموز مسیرِ
+   دهم را انتخاب می‌کند. این بخش **فقط اطلاع‌رسانی** است:
+   جایگزینِ مشاورهٔ تخصصی نیست و انتخابِ رسمی در سامانهٔ
+   «استعدادهای درخشان» انجام می‌شود — ما فقط مسیرها را با دروسِ
+   تخصصیِ دهمِ هرکدام معرفی می‌کنیم تا انتخاب آگاهانه‌تر باشد.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** توصیفِ کوتاهِ مسیرهای نظری (مسیرهای فنی/کاردانش با دروسشان شناخته می‌شوند) */
+const PATHWAY_NOTES = {
+  'ریاضی فیزیک': 'برای علاقه‌مندان به ریاضی و فیزیک — دروس سنگین‌ترِ ریاضی و فیزیک؛ بیشتر رشته‌های مهندسی و علوم دانشگاهی.',
+  'علوم تجربی': 'برای علاقه‌مندان به زیست‌شناسی و علوم — پزشکی، داروسازی، دامپزشکی و بسیاری از رشته‌های علمی.',
+  'ادبیات و علوم انسانی': 'برای علاقه‌مندان به زبان، ادبیات و علوم اجتماعی — ادبیات، حقوق، مدیریت و علوم انسانی.',
+  'علوم و معارف اسلامی': 'برای علاقه‌مندان به علوم دینی و قرآن — الهیات، علوم قرآن و فرهنگ اسلامی.'
+};
+
+/** دروس تخصصیِ پایهٔ دهمِ یک مسیر (از فهرستِ کتاب‌های استاندارد) */
+function pathwayTenthSubjects(field){
+  const arr = (BOOKS_HIGH_FIELD[field] && BOOKS_HIGH_FIELD[field]['دهم']) || [];
+  return arr.map(function(b){ return b[0]; });
+}
+
+/**
+ * کارتِ اطلاع‌رسانیِ مسیرها — فقط در پروندهٔ دانش‌آموزِ پایهٔ نهم.
+ * @param {number} sid شناسهٔ دانش‌آموز
+ */
+function pathwayGuideCard(sid){
+  var u = byId('users', sid);
+  if(!u) return '';
+  var cls = (typeof classOf === 'function') ? classOf(sid) : null;
+  var g = Number(u.grade_level || (cls && (cls.grade_level || gradeFromName(cls.name))) || 0);
+  if(g !== 9) return '';
+  var fields = schoolFields(u.school_id);
+  if(!fields.length) return '';
+  var h = '<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:14px">'
+    + '<div class="row" style="align-items:center;gap:10px;flex-wrap:wrap"><b>🧭 مسیرهای ادامهٔ تحصیل بعد از نهم</b>'
+    + '<span class="badge b-blue">فقط اطلاع‌رسانی</span></div>'
+    + '<div class="muted small" style="margin-top:6px;line-height:2">'
+    + 'این بخش فقط مسیرها را معرفی می‌کند. انتخابِ رشته توسط خودِ دانش‌آموز و خانواده در سامانهٔ «استعدادهای درخشان» انجام می‌شود و این صفحه جایگزینِ مشاورهٔ تخصصی نیست.'
+    + '</div><div style="display:grid;gap:10px;margin-top:10px">';
+  fields.forEach(function(f){
+    var subs = pathwayTenthSubjects(f);
+    h += '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px">'
+      + '<div class="row" style="align-items:center;gap:8px;flex-wrap:wrap"><b>' + esc(f) + '</b>'
+      + '<span class="badge b-gray small">' + esc(branchOfField(f)) + '</span></div>'
+      + (PATHWAY_NOTES[f] ? '<div class="small muted" style="margin-top:4px;line-height:1.9">' + esc(PATHWAY_NOTES[f]) + '</div>' : '')
+      + (subs.length ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">'
+          + subs.map(function(s){ return '<span class="badge b-gray small">' + esc(s) + '</span>'; }).join('') + '</div>' : '')
+      + '</div>';
+  });
+  return h + '</div></div>';
+}

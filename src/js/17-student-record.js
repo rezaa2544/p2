@@ -64,6 +64,7 @@ function viewRecord(sid){
   if(persona==='student'||persona==='parent')tabs.push(['bus','🚌 سرویس']);
   let body='';
   if(S.tab==='profile') body = studentProfileCard(sid)
+    + ((typeof pathwayGuideCard==='function')?pathwayGuideCard(sid):'')
     + ((typeof certsCard==='function')?certsCard(sid):'')
     + ((typeof yearHistoryCard==='function')?yearHistoryCard(sid):'')
     + ((typeof teacherNotesCard==='function')?teacherNotesCard(sid):'')
