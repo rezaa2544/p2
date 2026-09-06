@@ -7,7 +7,7 @@
  *   D1  بدون نشست → 401
  *   D2  ولی حذف می‌کند: کاربر + parent_links از disk می‌روند؛ فرزند و بقیه سالم
  *   D3  نشستِ باز می‌میرد (/me با کوکیِ قدیم = 401)
- *   D4  ورودِ دوباره بعد از حذف بسته است (send-code no_account + login با کدِ معتبر bad_code)
+ *   D4  ورودِ دوباره بعد از حذف بسته است (send-code: پاسخِ یک‌شکلِ بدونِ نشت + login با کدِ معتبر bad_code)
  *   D5  پیام‌های فرستاده‌شده می‌روند؛ داده‌های نهادی (حضور) دست‌نخورده
  *   D6  آدیت: account_deleted بدونِ شماره/کدِ ملی (بهداشتی)
  *   D7  صفحهٔ وبِ جداگانه: سرو می‌شود، فرمِ کامل، بدون وابستگیِ خارجی
@@ -135,9 +135,11 @@ process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }
   /* حتی با همان کدِ معتبرِ قبلی، کاربرِ حذف‌شده دیگر نمی‌تواند وارد شود */
   const relogin = await httpReq(port, 'POST', '/api/auth/login',
     { phone: par.phone, code: origCode, national_id: par.national_id }, jar2);
-  /* login با کدِ معتبر = bad_code (چکِ کد قبل از وجودِ کاربر است — زمانِ مساوی) */
-  chk('D4 ورودِ دوباره بعد از حذف بسته است (send-code = no_account؛ login با کدِ معتبر = bad_code)',
-    send2.status === 404 && send2.json && send2.json.code === 'no_account' &&
+  /* دور ۷۳ (S-73-2): send-code دیگر 404/no_account نمی‌دهد — پاسخِ یک‌شکل
+     برای هر شماره (ناشناخته/حذف‌شده/موجود) تا phone-enumeration بسته بماند.
+     login با کدِ معتبرِ قبلی = bad_code (چکِ کد قبل از وجودِ کاربر — زمانِ مساوی). */
+  chk('D4 ورودِ دوباره بعد از حذف بسته است (send-code بدونِ نشتِ وجود؛ login با کدِ معتبر = bad_code)',
+    send2.status === 200 && send2.json && send2.json.ok === true && send2.json.code === 'sent' && !send2.json.demo_code &&
     relogin.status === 401 && relogin.json && relogin.json.code === 'bad_code',
     'send:' + send2.raw + ' login:' + relogin.raw);
 

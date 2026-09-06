@@ -53,8 +53,9 @@ function createAdmin(ctx){
     const data = {};
     for(const k of Object.keys(store)) if(k.indexOf('__') !== 0) data[k] = store[k];
     try{
-      fs.writeFileSync(tmp, JSON.stringify(data));
+      fs.writeFileSync(tmp, JSON.stringify(data), { encoding: 'utf8', mode: 0o600 }); /* S-73-3: PII — owner-only */
       fs.renameSync(tmp, final);
+      try{ fs.chmodSync(final, 0o600); }catch(e){}
     }catch(e){
       return null;
     }
@@ -92,13 +93,21 @@ function createAdmin(ctx){
       audit('restore_failed', { user_id: g.user.id, file: name, reason: 'corrupt' });
       return sendJson(res, 409, { ok: false, code: 'corrupt_backup' });
     }
-    /* جایگزینیِ درجا (حالأِ آبجکت محفوظ می‌ماند — ماژول‌ها reference دارند) */
+    /* S-73-1: in-place swap — the live object is kept (modules hold its
+       reference). Internal auth state is captured BEFORE the swap and
+       restored AFTER: only the DATA collections come from the file.
+    */
+    const kept_auth = store.__auth;
+    const kept_uids = store.__processed_uids;
+    const kept_rev  = store.__revoked_jti;
     for(const k of Object.keys(store)) delete store[k];
     for(const k of Object.keys(data)) store[k] = data[k];
-    /* حالتِ داخلی از نو — اسنپ‌شات حاوی __* نبود */
-    store.__auth = { codes: {}, login_fail: {}, code_rate: {} };
-    store.__processed_uids = {};
-    store.__revoked_jti = {};
+    /* S-73-1: a session logged out before the restore STAYS logged out
+       (revocation is permanent); rate-limit state is not reset, so a
+       restore cannot be used to restart brute force. */
+    store.__auth = kept_auth || { codes: {}, login_fail: {}, code_rate: {} };
+    store.__processed_uids = kept_uids || {};
+    store.__revoked_jti = kept_rev || {};
     if(markDirty) markDirty();
     audit('restore_completed', { user_id: g.user.id, file: name });
     return sendJson(res, 200, { ok: true, file: name });
