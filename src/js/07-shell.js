@@ -44,6 +44,7 @@ function navFor(u){
   if(u.school_id&&(typeof hasCap==='function')){
     if(!hasCap(u.school_id,'has_tuition'))capHidden.push('tuition','mytuition');
     else capHidden.push('association'); /* مدرسهٔ غیردولتی: انجمن جای شهریه نیست */
+    if(!hasCap(u.school_id,'has_dorm'))capHidden.push('dorm'); /* اسکان فقط برای مدارسِ صاحبِ توان */
   }
   let nav=(NAV[u.role]||[]).map(function(g){
     return [g[0],(g[1]||[]).filter(function(it){ return dis.indexOf(it[0])<0&&capHidden.indexOf(it[0])<0; })];
@@ -194,6 +195,7 @@ function _renderRouteInner(){
     case 'visitors':return viewVisitors();
     case 'library':return viewLibrary();
     case 'assets':return viewAssets();
+    case 'dorm':return viewDorm();
     case 'sidadiff':return viewSidaDiff();
     case 'cqueue':return viewCounselorQueue();
     case 'followup':return viewFollowup();

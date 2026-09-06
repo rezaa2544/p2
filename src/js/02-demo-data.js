@@ -62,7 +62,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -331,6 +331,33 @@ function generate(){
       name:'نیما صالحی',national_id:nid(),phone:demoPhone(),
       grade:11,field:'ریاضی',
       source:'new',status:'registered',created_at:daysAgoISO(4),note:null});
+  })();
+  /* اسکان/خوابگاه (دور ۷۸ بند ۷): چند مدرسهٔ دمو توانِ has_dorm دارند
+     (SH-101، FZ-102، AH-103، IZ-105)؛ برای هرکدام چند اتاق + انتساب +
+     وعدهٔ هفتگی تا ماژول در دمو دیده شود. ⚠️ انتخاب‌های قطعی (بدون
+     rng) تا جریانِ تصادفیِ دمو جابه‌جا نشود. */
+  (function(){
+    const dormSchools=db.schools.filter(s=>s.capabilities&&s.capabilities.has_dorm);
+    dormSchools.forEach(sch=>{
+      const mkRoom=(name,capacity)=>add('dorm_rooms',{school_id:sch.id,name,capacity,created_at:daysAgoISO(120)});
+      const r1=mkRoom('اتاق ۱۰',4), r2=mkRoom('اتاق ۱۰۲',3), r3=mkRoom('اتاق ۲۰۱',2);
+      const studs=db.users.filter(u=>u.role==='student'&&u.school_id===sch.id&&(u.active||u.status!=='dropped_out')).slice(0,6);
+      const rooms=[r1,r2,r3];
+      studs.forEach((st,i)=>{
+        add('dorm_assignments',{school_id:sch.id,room_id:rooms[i%rooms.length].id,student_id:st.id,since:daysAgoISO(100+i)});
+      });
+      /* وعده‌های هفتگی: شنبه تا چهارشنبه، سه وعده؛ منوهای ساده و ثابت */
+      const menus={
+        breakfast:['نوشاب، پنیر و سبزی','شیر و بیسکویت و ساندویچ','روغنی و کره و عسل'],
+        lunch:['چلو و خورشت قورمه','ماکارونی و سالاد','برنج و خورشت فسنجان'],
+        dinner:['چای و بیسکویت','ماست و خیار و نان','پنیر و سبزی و نان']
+      };
+      for(let d=0;d<5;d++){
+        add('dorm_meals',{school_id:sch.id,day:d,kind:'breakfast',menu:menus.breakfast[d%menus.breakfast.length],created_at:daysAgoISO(30)});
+        add('dorm_meals',{school_id:sch.id,day:d,kind:'lunch',menu:menus.lunch[d%menus.lunch.length],created_at:daysAgoISO(30)});
+        add('dorm_meals',{school_id:sch.id,day:d,kind:'dinner',menu:menus.dinner[d%menus.dinner.length],created_at:daysAgoISO(30)});
+      }
+    });
   })();
   add('announcements',{school_id:null,title:'به‌روزرسانی سامانه',body:'نسخه جدید سامانه مدیریت مدارس با قابلیت گزارش‌گیری پیشرفته و پنل اولیا منتشر شد.',audience:'all',created_by:1,created_at:daysAgoISO(1)});
 }

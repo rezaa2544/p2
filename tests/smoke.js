@@ -6167,7 +6167,7 @@ const NAV_EXPECT = {
   superadmin: ['dashboard','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications'],
   /* دور ۷۷: چهار ماژولِ مدیری (preapps/scholarships دور ۶۱-۶۲، reexams/summerclasses دور ۷۰)
      به منوی مدیر اضافه شدند ولی این فهرست به‌روز نشد و تا کرشِ قدیمیِ smoke پنهان ماند */
-  manager: ['dashboard','atrisk','growth','calendar','visitors','library','assets','sidadiff','formssms','preapps','scholarships','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','followup','leaves','exams','reexams','teachers','corrections','staff','tuition','association','meetings','notifyqueue','announcements','notifications','chat','busservice','summerclasses'],
+  manager: ['dashboard','atrisk','growth','calendar','visitors','library','assets','dorm','sidadiff','formssms','preapps','scholarships','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','followup','leaves','exams','reexams','teachers','corrections','staff','tuition','association','meetings','notifyqueue','announcements','notifications','chat','busservice','summerclasses'],
   teacher: ['meetings','dashboard','classes','schedule','calendar','attendance','grades','discipline','leaves','exams','vclass','homework','announcements','notifications','chat'],
   student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','homework','announcements','notifications','chat'],
   edu_office: ['officedash','officeschools','announcements','notifications'],
@@ -7744,6 +7744,111 @@ test('دور ۷۸ بند ۶: ماژول سبک نوبت دوم/کلاس شبان
   }
 });
 
+
+test('دور ۷۸ بند ۷: ماژول اسکان/خوابگاه — اتاق، انتساب، وعده، مرخصیِ آخر هفته', () => {
+  const prev = W('JSON.stringify(S.user?S.user.id:null)');
+  const made = {rooms:[],ass:[],meals:[],leave:null,notes:[]};
+  try {
+    /* ── ۱) دروازهٔ قابلیت ── */
+    W(`S.user=db.users.find(u=>u.role==='manager'&&u.school_id===1);S.persona=null;S.boss=null;S.route='dorm';S.filters={};render()`);
+    assert(W("hasCap(1,'has_dorm')") === true, 'مدرسهٔ ۱ِ دمو باید has_dorm داشته باشد');
+    const v1 = W('viewDorm()');
+    assert(v1.indexOf('اتاق‌ها و ساکنان') > -1, 'viewDorm رندر نشد');
+    assert(v1.indexOf('اتاق ۱۰') > -1, 'اتاقِ دموی مدرسهٔ ۱ در صفحه نیست');
+    const m2 = W('db.users.find(u=>u.role==="manager"&&u.school_id===4)');
+    assert(m2 && m2.id, 'مدیری برای مدرسهٔ ۴ پیدا نشد');
+    W(`S.user=byId('users',${m2.id});S.persona=null;S.boss=null;S.route='dorm';S.filters={};`);
+    assert(W("hasCap(4,'has_dorm')") === false, 'مدرسهٔ ۴ نباید has_dorm داشته باشد');
+    const v2 = W('viewDorm()');
+    assert(v2.indexOf('این مدرسه بخش اسکان ندارد') > -1, 'پیامِ مدرسهٔ بدونِ توان نشان داده نشد');
+    assert(v2.indexOf('اتاق جدید') === -1, 'دکمهٔ اتاق در مدرسهٔ بدونِ توان نشان داده شد');
+    /* مجوز اکشن: فقط مدیر */
+    assert(W("canAction('dorm-leave','teacher')") === false, 'dorm-leave برای دبیر باز مانده');
+    assert(W("canAction('dorm-leave','parent')") === false, 'dorm-leave برای ولی باز مانده');
+    assert(W("canAction('dorm-room-save','manager')") === true, 'dorm-room-save برای مدیر بسته است');
+    W(`S.user=db.users.find(u=>u.role==='manager'&&u.school_id===1);S.route='dorm';S.filters={};render()`);
+    /* ── ۲) اتاق: ساخت از مسیرِ واقعیِ دکمه ── */
+    W(`document.querySelector('[data-act="dorm-room-new"]').click()`);
+    W(`$('#dorm_room_name').value='اتاق تست';$('#dorm_room_cap').value='2';document.querySelector('[data-act="dorm-room-save"]').click()`);
+    const r1id = W(`db.dorm_rooms.filter(r=>r.school_id===1&&r.name==='اتاق تست')[0].id`);
+    assert(r1id, 'اتاق تست ساخته نشد');
+    made.rooms.push(r1id);
+    /* ویرایش ظرفیت */
+    W(`document.querySelector('[data-act="dorm-room-edit"][data-id="${r1id}"]').click()`);
+    W(`$('#dorm_room_name').value='اتاق تست';$('#dorm_room_cap').value='1';document.querySelector('[data-act="dorm-room-save"]').click()`);
+    assert(W(`byId('dorm_rooms',${r1id}).capacity`) === 1, 'ظرفیت ویرایش نشد');
+    /* ── ) انتساب + قانون تک‌اتاق + ظرفیت ── */
+    const st1 = W(`(function(){var asg=db.dorm_assignments.map(a=>a.student_id);var u=db.users.filter(u=>u.role==='student'&&u.school_id===1&&u.active&&asg.indexOf(u.id)<0)[0];return u?u.id:0;})()`);
+    assert(st1, 'دانش‌آموزِ بدونِ اتاقی پیدا نشد');
+    W(`document.querySelector('[data-act="dorm-assign"][data-id="${r1id}"]').click()`);
+    const pick1 = W(`document.querySelector('#modal [data-act="dorm-assign-pick"]') ? document.querySelector('#modal [data-act="dorm-assign-pick"]').dataset.sid : 0`);
+    assert(Number(pick1), 'لیستِ انتساب خالی بود');
+    W(`document.querySelector('#modal [data-act="dorm-assign-pick"]').click()`);
+    assert(W(`dormAssignOf(${pick1}).room_id`) === r1id, 'انتسابِ نخست ثبت نشد');
+    made.ass.push(Number(pick1));
+    /* ظرفیت ۱: انتخابِ دوم باید مسدود شود */
+    W(`S.route='dorm';render()`);
+    W(`document.querySelector('[data-act="dorm-assign"][data-id="${r1id}"]').click()`);
+    const pick2 = W(`(function(){var asg=db.dorm_assignments.map(a=>a.student_id);var el=[...document.querySelectorAll('#modal [data-act="dorm-assign-pick"]')].find(x=>asg.indexOf(Number(x.dataset.sid))<0);return el?el.dataset.sid:0;})()`);
+    assert(Number(pick2), 'لیستِ دومِ انتساب خالی بود');
+    const occBefore = W(`db.dorm_assignments.filter(a=>a.room_id===${r1id}).length`);
+    W(`document.querySelector('#modal [data-act="dorm-assign-pick"][data-sid="${pick2}"]').click()`);
+    assert(W(`db.dorm_assignments.filter(a=>a.room_id===${r1id}).length`) === occBefore, 'ظرفیتِ اتاق دور زده شد');
+    assert(W(`dormAssignOf(${pick2})`) === null, 'دانش‌آموزِ دوم به اتاقِ پر انتساب شد');
+    /* ── ) وعده‌های هفتگی: ثبت + پاک‌کردن با منوی خالی ──
+       روز ۵ (پنجشنبه) در دمو پر نشده است تا رکوردِ پایه دست‌نخورده بماند */
+    const mealCell = W(`(function(){var el=document.querySelector('[data-act="dorm-meal"][data-day="5"][data-kind="lunch"]');return el?1:0;})()`);
+    assert(mealCell, 'سلولِ وعدهٔ پنجشنبه/ناهار در صفحه نیست');
+    W(`document.querySelector('[data-act="dorm-meal"][data-day="5"][data-kind="lunch"]').click()`);
+    W(`$('#dorm_meal_menu').value='چلو و قورمه (تست)';document.querySelector('[data-act="dorm-meal-save"]').click()`);
+    assert(W(`dormMealOf(1,5,'lunch').menu`) === 'چلو و قورمه (تست)', 'منوی وعده ذخیره نشد');
+    W(`S.route='dorm';render()`);
+    W(`document.querySelector('[data-act="dorm-meal"][data-day="5"][data-kind="lunch"]').click()`);
+    W(`$('#dorm_meal_menu').value='';document.querySelector('[data-act="dorm-meal-save"]').click()`);
+    assert(W(`dormMealOf(1,5,'lunch')`) === null, 'منوی خالی رکورد را نپاک کرد');
+    /* ── ) مرخصیِ رفت‌وبرگشتِ آخر هفته ── */
+    const nBefore = W('db.notifications.length');
+    const attdBefore = W(`(db.attendance||[]).filter(a=>a.student_id===${pick1}).map(a=>a.date).join(',')`);
+    W(`S.route='dorm';render()`);
+    W(`document.querySelector('[data-act="dorm-leave"][data-sid="${pick1}"]').click()`);
+    const lv = W(`(function(){var l=db.leaves.filter(l=>l.student_id===${pick1}&&l.kind==='dorm_weekend');return JSON.stringify(l[l.length-1]||null);})()`);
+    const lrec = JSON.parse(lv);
+    assert(lrec, 'رکوردِ مرخصیِ خوابگاه ساخته نشد');
+    made.leave = lrec.id;
+    const exp = W(`(function(){var f=addDaysISO(todayISO(),((5-new Date().getDay())+7)%7);return JSON.stringify({f:f,t:addDaysISO(f,1)});})()`);
+    const expd = JSON.parse(exp);
+    assert(lrec.from_date === expd.f && lrec.to_date === expd.t, 'بازهٔ پنجشنبه→جمعه نادرست بود');
+    assert(lrec.status === 'approved', 'مرخصیِ خوابگاه باید مستقیم تأییدشده باشد');
+    assert(lrec.kind === 'dorm_weekend', 'نوعِ رکورد dorm_weekend نیست');
+    assert(W(`db.notifications.length`) > nBefore, 'اعلان برای دانش‌آموز/ولی ساخته نشد');
+    assert(W(`(db.attendance||[]).filter(a=>a.student_id===${pick1}).map(a=>a.date).join(',')`) === attdBefore, 'مرخصیِ آخر هفته روی حضور اثر گذاشت');
+    /* نشانِ نوع در صفحهٔ مرخصی‌ها */
+    const lvView = W(`(function(){var h=viewLeaves();return h.indexOf('خوابگاه')>-1;})()`);
+    assert(lvView === true, 'نشانِ «🏠 خوابگاه» در صفحهٔ مرخصی نیست');
+    /* ── ۶) پاک‌سازی + حذف اتاقِ پُر مسدود است ── */
+    W(`document.querySelector('[data-act="dorm-room-del"][data-id="${r1id}"]').click()`);
+    assert(W(`!!byId('dorm_rooms',${r1id})`), 'اتاقِ دارایِ ساکن حذف شد');
+    /* برداشتنِ ساکن از چیپ (پرسش تأیید → تأیید) */
+    W(`document.querySelector('[data-act="dorm-unassign"][data-sid="${pick1}"]').click()`);
+    W(`document.querySelector('#modal [data-act="ask-ok"]').click()`);
+    assert(W(`dormAssignOf(${pick1})`) === null, 'انتساب برداشته نشد');
+    W(`document.querySelector('[data-act="dorm-room-del"][data-id="${r1id}"]').click()`);
+    W(`document.querySelector('#modal [data-act="ask-ok"]').click()`);
+    assert(!W(`byId('dorm_rooms',${r1id})`), 'اتاقِ خالی حذف نشد');
+  } finally {
+    /* تمیزکاری نباید خطای اصلیِ آزمون را بپوشاند */
+    try {
+      W(`(function(){
+        [${made.rooms.join(',')},0].filter(Boolean).forEach(function(id){var r=byId('dorm_rooms',id);if(r)remove('dorm_rooms',id);});
+        (db.dorm_assignments||[]).slice().filter(function(a){return [${made.ass.join(',')},0].indexOf(a.student_id)>-1;}).forEach(function(a){remove('dorm_assignments',a.id);});
+        (db.leaves||[]).slice().filter(function(l){return l.kind==='dorm_weekend'&&l.student_id===${made.ass[0]||0};}).forEach(function(l){remove('leaves',l.id);});
+        (db.notifications||[]).slice().filter(function(n){return n.link==='leaves'&&n.title.indexOf('خوابگاه')>-1;}).forEach(function(n){remove('notifications',n.id);});
+      })()`);
+    } catch (cle) { console.log('   ⚠️ تمیزسازی بند ۷: ' + cle.message); }
+    const pid = JSON.parse(prev);
+    W(`S.user=${pid === null ? 'null' : `byId('users',${pid})`};S.persona=null;S.boss=null;S.route='login';render()`);
+  }
+});
 
 await Promise.all(testQueue);   // همهٔ آزمون‌های ناهمگام تا سرِ صف برسد
 const total = pass + fail;

@@ -308,7 +308,7 @@ function viewLeaves(){
   return `<div class="card"><div class="card-head"><h3>📨 درخواست‌های مرخصی</h3>
     ${canCreate?'<button class="btn" data-act="leave-new">➕ ثبت درخواست</button>':`<span class="badge b-gray">${fa(rows.filter(r=>r.status==='pending').length)} در انتظار بررسی</span>`}</div>
     ${rows.length?`<div class="table-wrap"><table class="table"><thead><tr><th>دانش‌آموز</th><th>از تاریخ</th><th>تا تاریخ</th><th>دلیل</th><th>وضعیت</th>${canDecide?'<th></th>':''}</tr></thead><tbody>
-      ${rows.map(l=>{const st=byId('users',l.student_id)||{};return `<tr><td><b>${esc(st.full_name||'—')}</b></td><td>${jalali(l.from_date)}</td><td>${jalali(l.to_date)}</td>
+      ${rows.map(l=>{const st=byId('users',l.student_id)||{};return `<tr><td><b>${esc(st.full_name||'—')}</b>${l.kind==='dorm_weekend'?' <span class="badge b-purple" title="مرخصیِ رفت‌وبرگشتِ آخر هفتهٔ خوابگاه — جدا از مرخصیِ آکادمیک">🏠 خوابگاه</span>':''}</td><td>${jalali(l.from_date)}</td><td>${jalali(l.to_date)}</td>
         <td class="small">${esc(l.reason||'')}</td><td><span class="badge ${LEAVE_FA[l.status][1]}">${LEAVE_FA[l.status][0]}</span></td>
         ${canDecide?`<td><div class="row" style="gap:5px;flex-wrap:nowrap">
           ${l.status==='pending'?`<button class="btn sm" data-act="leave-ok" data-id="${escAttr(l.id)}">تأیید</button><button class="btn ghost sm" data-act="leave-no" data-id="${escAttr(l.id)}">رد</button>`:''}
