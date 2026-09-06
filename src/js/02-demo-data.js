@@ -18,7 +18,8 @@ const SCHOOL_DEFS=[
   ['دبیرستان شهید بهشتی','SH-101','متوسطه دوم','پسرانه',['نظری'],'علوم تجربی',{has_tuition:1,has_dorm:1,has_iep:1,has_workshop:1,has_multigrade:1,has_second_term_exam:1}],
   ['دبیرستان فرزانگان','FZ-102','متوسطه دوم','دخترانه',['نظری'],'ریاضی',{has_tuition:1,has_dorm:1,has_iep:1,has_workshop:1,has_multigrade:0,has_second_term_exam:1}],
   ['مدرسه نمونه علامه حلی','AH-103','متوسطه اول','پسرانه',[],'عادی',{has_tuition:1,has_dorm:1,has_iep:1,has_workshop:0,has_multigrade:0,has_second_term_exam:1}],
-  ['دبیرستان مریم مقدس','MM-104','متوسطه اول','دخترانه',[],'عادی',{has_tuition:1,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1}],
+  /* MM-104: غیردولتی با شاخهٔ نوبت دوم (کلاس‌های شبانهٔ بزرگسالان) — دِمؤ توانِ has_evening (دور ۷۸) */
+  ['دبیرستان مریم مقدس','MM-104','متوسطه اول','دخترانه',[],'عادی',{has_tuition:1,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1,has_evening:1}],
   ['مجتمع آموزشی ایران‌زمین','IZ-105','متوسطه دوم','پسرانه',['فنی و حرفه‌ای','کاردانش'],'فنی و حرفه‌ای',{has_tuition:1,has_dorm:1,has_iep:0,has_workshop:1,has_multigrade:1,has_second_term_exam:1}],
   ['دبستان و متوسطه اندیشه','AN-106','متوسطه اول','دخترانه',[],'عادی',{has_tuition:0,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1}]];
 
@@ -70,7 +71,8 @@ function generate(){
     /* رشته‌های مدرسه = همهٔ رشته‌های شاخه‌هایی که ارائه می‌دهد */
     const sFields=(branches||[]).reduce((a,b)=>a.concat(fieldsOfBranch(b)),[]);
     const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:demoPhone(),level,type:type||'عادی',gender,branches:branches||[],fields:sFields,
-      shift: si===4 ? 'بعدازظهر' : (si===1 ? 'هر دو' : 'صبح'),capacity:400+ri(200),active:si===5?0:1,
+      /* si===3 (MM-104) «هر دو»: روز + شاخهٔ شبانهٔ بزرگسالان (دور ۷۸) */
+      shift: si===4 ? 'بعدازظهر' : (si===1||si===3 ? 'هر دو' : 'صبح'),capacity:400+ri(200),active:si===5?0:1,
       /* پروفایل قابلیت: هر مدرسه کلیدهای مستقل روشن/خاموش دارد؛
          در نبود مقدار، پیش‌فرض‌های CAP_DEFAULTS اعمال می‌شود. */
       capabilities: caps||null,

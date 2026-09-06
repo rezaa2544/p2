@@ -1155,7 +1155,8 @@ const SCHOOL_DEFS=[
   ['دبیرستان شهید بهشتی','SH-101','متوسطه دوم','پسرانه',['نظری'],'علوم تجربی',{has_tuition:1,has_dorm:1,has_iep:1,has_workshop:1,has_multigrade:1,has_second_term_exam:1}],
   ['دبیرستان فرزانگان','FZ-102','متوسطه دوم','دخترانه',['نظری'],'ریاضی',{has_tuition:1,has_dorm:1,has_iep:1,has_workshop:1,has_multigrade:0,has_second_term_exam:1}],
   ['مدرسه نمونه علامه حلی','AH-103','متوسطه اول','پسرانه',[],'عادی',{has_tuition:1,has_dorm:1,has_iep:1,has_workshop:0,has_multigrade:0,has_second_term_exam:1}],
-  ['دبیرستان مریم مقدس','MM-104','متوسطه اول','دخترانه',[],'عادی',{has_tuition:1,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1}],
+  /* MM-104: غیردولتی با شاخهٔ نوبت دوم (کلاس‌های شبانهٔ بزرگسالان) — دِمؤ توانِ has_evening (دور ۷۸) */
+  ['دبیرستان مریم مقدس','MM-104','متوسطه اول','دخترانه',[],'عادی',{has_tuition:1,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1,has_evening:1}],
   ['مجتمع آموزشی ایران‌زمین','IZ-105','متوسطه دوم','پسرانه',['فنی و حرفه‌ای','کاردانش'],'فنی و حرفه‌ای',{has_tuition:1,has_dorm:1,has_iep:0,has_workshop:1,has_multigrade:1,has_second_term_exam:1}],
   ['دبستان و متوسطه اندیشه','AN-106','متوسطه اول','دخترانه',[],'عادی',{has_tuition:0,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1}]];
 
@@ -1207,7 +1208,8 @@ function generate(){
     /* رشته‌های مدرسه = همهٔ رشته‌های شاخه‌هایی که ارائه می‌دهد */
     const sFields=(branches||[]).reduce((a,b)=>a.concat(fieldsOfBranch(b)),[]);
     const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:demoPhone(),level,type:type||'عادی',gender,branches:branches||[],fields:sFields,
-      shift: si===4 ? 'بعدازظهر' : (si===1 ? 'هر دو' : 'صبح'),capacity:400+ri(200),active:si===5?0:1,
+      /* si===3 (MM-104) «هر دو»: روز + شاخهٔ شبانهٔ بزرگسالان (دور ۷۸) */
+      shift: si===4 ? 'بعدازظهر' : (si===1||si===3 ? 'هر دو' : 'صبح'),capacity:400+ri(200),active:si===5?0:1,
       /* پروفایل قابلیت: هر مدرسه کلیدهای مستقل روشن/خاموش دارد؛
          در نبود مقدار، پیش‌فرض‌های CAP_DEFAULTS اعمال می‌شود. */
       capabilities: caps||null,
@@ -3576,9 +3578,10 @@ const CAP_DEFS=[
   ['has_iep','پشتیبانی ویژه (IEP)','طرح فردی یادگیری برای دانش‌آموزان نیازمند ویژه'],
   ['has_workshop','کارگاه و آزمایشگاه','فضای عملی/فنی برای پروژه‌های کارگاهی'],
   ['has_multigrade','کلاس‌های چندپایه','چند پایه در یک کلاس (روستایی/کوچک)'],
-  ['has_second_term_exam','امتحان نوبت دوم','مدرسه امتحان نوبت دوم می‌گذارد']
+  ['has_second_term_exam','امتحان نوبت دوم','مدرسه امتحان نوبت دوم می‌گذارد'],
+  ['has_evening','نوبت دوم / کلاس شبانه','برنامهٔ فشردهٔ بزرگسالان — کلاس‌های شبانه با تراکمِ هفتگیِ بالاتر']
 ];
-const CAP_DEFAULTS={has_tuition:1,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1};
+const CAP_DEFAULTS={has_tuition:1,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1,has_evening:0};
 /** پروفایل قابلیت یک مدرسه با اعمال پیش‌فرض‌ها */
 function schoolCaps(sid){
   const s=(typeof byId==='function')?byId('schools',sid):null;
@@ -3748,6 +3751,7 @@ function viewSubjects(){
       ${canEdit?`<button class="btn ghost" data-act="subject-import">📥 افزودن کتاب‌های استاندارد</button>
                  <button class="btn" data-act="subject-new">➕ درس جدید</button>`:''}
     </div></div>
+   ${(u.school_id&&(typeof hasCap==='function')&&hasCap(u.school_id,'has_evening'))?`<div class="callout" style="margin:0 16px 12px"><b>🌙 برنامهٔ فشردهٔ نوبت دوم:</b> این مدرسهٔ کلاس‌های شبانهٔ بزرگسالان است — در این برنامه‌ها <u>ساعتِ هفتگیِ دروس بالاتر</u> از مدارس عادی است: با ویرایشِ «ساعت هفتگی» هر کتاب تراکمِ برنامه را تنظیم کنید. برنامهٔ زنگ را با الگوی «شیفت شب» از بخش «زمان‌بندیِ زنگ‌ها» بگذارید.</div>`:''}
    ${filterPanel('subjects',`
      <select class="select" style="width:145px" data-f="sublevel">${opt(LEVELS.map(l=>[l,l]),flv,'همه مقاطع')}</select>
      <select class="select" style="width:135px" data-f="subgrade">${opt(gradeList.map(g=>[g,g]),fgr,'همه پایه‌ها')}</select>
@@ -4807,7 +4811,7 @@ function schoolModal(s){
       ${f('تلفن همراه رابط',inp('m_phone',s.phone||''))}
       ${f('ظرفیت',inp('m_cap',s.capacity,'number'))}
       ${f('وضعیت',sel('m_active',[[1,'فعال'],[0,'غیرفعال']],s.active?1:0))}
-      ${f('شیفت',sel('m_shift',[['صبح','صبح'],['بعدازظهر','بعدازظهر'],['هر دو','هر دو شیفت']],s.shift||'صبح'))}</div>
+      ${f('شیفت',sel('m_shift',[['صبح','صبح'],['بعدازظهر','بعدازظهر'],['شب','شب (نوبت دوم / بزرگسالان)'],['هر دو','هر دو شیفت']],s.shift||'صبح'))}</div>
     <div class="small muted" style="margin:-4px 0 10px">
       شیفت بر ساعت شروع زنگ‌ها اثر می‌گذارد. زمان‌بندی دقیق زنگ‌ها را
       مدیر مدرسه در صفحهٔ «زمان‌بندی زنگ‌ها» تعیین می‌کند.</div>
@@ -17508,6 +17512,16 @@ var BELL_PRESETS = {
       { kind:'lesson', min:45 }
     ]
   },
+  'شب': {
+    title: 'شیفت شب (نوبت دوم / بزرگسالان — برنامهٔ فشرده)',
+    start: '17:30',
+    slots: [
+      { kind:'lesson', min:60 }, { kind:'break', min:10 },
+      { kind:'lesson', min:60 }, { kind:'break', min:15 },
+      { kind:'lesson', min:60 }, { kind:'break', min:10 },
+      { kind:'lesson', min:60 }
+    ]
+  },
   'ابتدایی': {
     title: 'ابتدایی (زنگ کوتاه‌تر، تفریح بلندتر)',
     start: '07:45',
@@ -17584,7 +17598,8 @@ function bellOf(schoolId, day){
 
   var s = byId('schools', schoolId) || {};
   var key = (s.level === 'ابتدایی') ? 'ابتدایی'
-          : (s.shift === 'بعدازظهر') ? 'بعدازظهر' : 'صبح';
+          : (s.shift === 'بعدازظهر') ? 'بعدازظهر'
+          : (s.shift === 'شب') ? 'شب' : 'صبح';
   var p = BELL_PRESETS[key];
   return { school_id: schoolId, start: p.start,
            slots: p.slots.map(function(x){ return { kind:x.kind, min:x.min }; }),
@@ -17947,7 +17962,8 @@ function generateP11(){
     if(!s.active) return;
     if(db.bell_schedules.some(function(b){ return b.school_id === s.id; })) return;
     var key = (s.level === 'ابتدایی') ? 'ابتدایی'
-            : (s.shift === 'بعدازظهر') ? 'بعدازظهر' : 'صبح';
+            : (s.shift === 'بعدازظهر') ? 'بعدازظهر'
+            : (s.shift === 'شب') ? 'شب' : 'صبح';
     var pre = BELL_PRESETS[key] || BELL_PRESETS['صبح'];
     add('bell_schedules', { school_id: s.id,
       days: DAYS.map(function(){
