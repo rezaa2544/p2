@@ -68,9 +68,38 @@ syncAttach(store);
 
 let dirty = false;
 function markDirty(){ dirty = true; }
+
+/* ── GC of internal state (Round 85, P1-3 — AD 85.2) ──────────────
+   Three maps that only grow:
+   __processed_uids — idempotency; client queues outlive less than 30
+     days, so older uids will never be resent. Replaying an old uid
+     after GC is contract-safe (idempotency holds per queue lifetime).
+   __revoked_jti — only meaningful within the session TTL (8h, §2.1).
+   __auth.codes — expired codes are dead anyway (TTL 5 min).
+   Runs inside the persist loop: three sweeps, negligible for normal
+   stores, and payesh.json (and its backups) stop growing unbounded. */
+const UID_GC_MS = 30 * 24 * 3600 * 1000;
+const JTI_GC_MS = SESSION_TTL_S * 1000;
+function gcStore(){
+  const now = Date.now();
+  let n = 0;
+  for(const k in store.__processed_uids){
+    if(now - store.__processed_uids[k] > UID_GC_MS){ delete store.__processed_uids[k]; n++; }
+  }
+  for(const k in store.__revoked_jti){
+    if(now - store.__revoked_jti[k] > JTI_GC_MS){ delete store.__revoked_jti[k]; n++; }
+  }
+  for(const k in store.__auth.codes){
+    const rec = store.__auth.codes[k];
+    if(!rec || now - (rec.at || 0) >= CODE_TTL_MS){ delete store.__auth.codes[k]; n++; }
+  }
+  return n;
+}
 function persistStore(){
   if(!dirty) return;
   dirty = false;
+  const gc = gcStore();
+  if(gc) try { audit('store_gc', { removed: gc }); } catch(e){}
   try{
     const tmp = STORE_FILE + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(store), { encoding: 'utf8', mode: 0o600 }); /* S-73-3: PII — owner-only */
