@@ -306,6 +306,38 @@ function assocMinModal(){
    ${f('مصوبات جلسه (هر خط یک مصوبه)',`<textarea class="input" id="am_res" rows="5" placeholder="مثلاً:\nتصویبِ کمکِ داوطلبانهٔ ۵ میلیونی برای کتابخانه\nتعیینِ اردوی پاییز در اواخرِ مهر" style="line-height:1.9"></textarea>`)}
    `,'assoc-min-save'));
 }
+/* بند ۶.۴ — مودال‌های کلاس‌های تابستانی */
+function summerModal(){
+  var ts=db.users.filter(function(u){return u.role==='teacher'&&u.school_id===S.user.school_id&&u.active;})
+    .sort(function(a,b){return a.full_name.localeCompare(b.full_name,'fa');});
+  var topts=ts.map(function(u){return '<option value="'+u.id+'">'+esc(u.full_name)+'</option>';}).join('');
+  openModal(modalTpl('کلاسِ تابستانیِ تازه',
+   `
+   ${f('نام کلاس *',`<input class="input" id="su_name" value="" placeholder="مثلاً تکمیلی ریاضی تابستان" />`)}
+   ${f('دبیر *',`<select class="input" id="su_teacher">${topts}</select>`)}
+   <div class="grid g2">
+   ${f('تاریخِ شروع *',`<input class="input" id="su_start" type="date" value="${todayISO()}" /> <span class="badge b-gray">${jalali(todayISO())}</span>`)}
+   ${f('تاریخِ پایان',`<input class="input" id="su_end" type="date" value="" />`)}
+   </div>
+   ${f('یادداشت (اختیاری)',`<input class="input" id="su_note" value="" placeholder="مثلاً ساعت و روزهای برگزاری" />`)}
+   `,'summer-save'));
+}
+function summerStudentsModal(){
+  var sc=byId('summer_classes',window._suId);
+  if(!sc)return;
+  var have=sc.student_ids||[];
+  var studs=db.users.filter(function(u){return u.role==='student'&&u.school_id===S.user.school_id&&u.active;})
+    .sort(function(a,b){return a.full_name.localeCompare(b.full_name,'fa');});
+  var rows=studs.map(function(u){
+    var on=have.indexOf(u.id)>-1;
+    return '<label style="display:flex;gap:8px;align-items:center;padding:4px 0;cursor:pointer">'
+      +'<input type="checkbox" class="su-chk" value="'+u.id+'" '+(on?'checked':'')+' /> '+esc(u.full_name)+'</label>';
+  }).join('');
+  openModal(modalTpl('دانش‌آموزان — ' + sc.name,
+   `<div class="small muted" style="margin-bottom:6px">دانش‌آموزانِ این کلاس را انتخاب کنید (هر کلاس تا ${fa(15)} نفر).</div>
+   <div style="max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px">${rows}</div>
+   `,'summer-students-save'));
+}
 const PRESETS={positive:POS.map(p=>p[0]),negative:NEG.map(p=>p[0])};
 function discModal(d){
   const cls=visibleClasses();

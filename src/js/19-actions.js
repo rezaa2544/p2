@@ -2008,6 +2008,27 @@ document.addEventListener('click',e=>{
      closeModal();toast('نمرهٔ نهایی: '+fa(n),'ok');render();},
    'reexam-del'(){confirmModal('حذف رکوردِ تجدیدی؟','reexam-del-ok',id);},
    'reexam-del-ok'(){remove('reexams',window._delId);closeModal();toast('حذف شد','ok');render();},
+   /* ─────────────── بند ۶.۴: کلاس‌های تابستانی (فقط مدیر) ─────────────── */
+   'summer-new'(){summerModal();},
+   'summer-save'(){
+     const name=V('su_name');
+     const tid=Number(V('su_teacher'));
+     const start=V('su_start');
+     if(!name){toast('نام کلاس لازم است','err');return;}
+     if(!tid){toast('دبیر را انتخاب کنید','err');return;}
+     if(!start){toast('تاریخِ شروع لازم است','err');return;}
+     insert('summer_classes',{school_id:S.user.school_id,name:name,teacher_id:tid,student_ids:[],start_date:start,end_date:V('su_end'),note:V('su_note'),created_at:todayISO(),updated_at:todayISO()});
+     closeModal();toast('کلاسِ تابستانی ثبت شد','ok');render();},
+   'summer-students'(){window._suId=Number(id);summerStudentsModal();},
+   'summer-students-save'(){
+     const sc=byId('summer_classes',window._suId);
+     if(!sc){closeModal();return;}
+     const sel=Array.from(document.querySelectorAll('.su-chk:checked')).map(c=>Number(c.value));
+     if(sel.length>15){toast('هر کلاسِ تابستانی حداکثر ۱۵ نفر است','err');return;}
+     update('summer_classes',sc.id,{student_ids:sel,updated_at:todayISO()});
+     closeModal();toast('دانش‌آموزان به‌روز شد','ok');render();},
+   'summer-del'(){confirmModal('حذف این کلاسِ تابستانی؟','summer-del-ok',id);},
+   'summer-del-ok'(){remove('summer_classes',Number(window._delId));closeModal();toast('حذف شد','ok');render();},
    'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk

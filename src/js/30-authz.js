@@ -246,6 +246,12 @@ var ACTION_ROLES = {
   'assoc-min-print': ['manager'],
   'assoc-min-toggle': ['manager'],
   'assoc-min-del': ['manager'],
+  /* بند ۶.۴ — کلاس‌های تابستانی: فقط مدیر */
+  'summer-new': ['manager'],
+  'summer-save': ['manager'],
+  'summer-students': ['manager'],
+  'summer-students-save': ['manager'],
+  'summer-del': ['manager'],
   /* انضباطی */
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],
