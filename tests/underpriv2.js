@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * سئوتِ شاخصِ صریحِ کم‌برخوارد (دور ۷۹ بند ۶ — مورد ۲.۳ نقشه)
- *  - rule: کم‌برخوارد = area_kind==='village' (ساختاری، نه عملکردی)
- *  - بجِ ردیفی 🟤 + شمارشِ سربرگ + فیلترِ «فقط کم‌برخوارد» (data-f=ounder)
+ * سئوتِ شاخصِ صریحِ کم‌برخوردار (دور ۷۹ بند ۶ — مورد ۲.۳ نقشه)
+ *  - rule: کم‌برخوردار = area_kind==='village' (ساختاری، نه عملکردی)
+ *  - بجِ ردیفی 🟤 + شمارشِ سربرگ + فیلترِ «فقط کم‌برخوردار» (data-f=ounder)
  *  - استقلالِ ساختاری: نمرهٔ بالا بج را نمی‌برد؛ فیلترِ ترکیبی درست می‌بندد
  *  - پاک‌سازی = آخرین تست زنجیر (درسِ دور ۷۹ بند ۴)
  *
@@ -40,7 +40,7 @@ dom.window.addEventListener('error', (e) => { if (!/Could not parse CSS/.test(e.
 const W = (s) => dom.window.eval(s);
 
 /* نشانه‌های فارسی با کدپوینتِ صریح (ضدِ افتِ کاراکتر) */
-const UP = String.fromCharCode(0x6A9, 0x645, 0x200C, 0x628, 0x631, 0x62E, 0x648, 0x627, 0x631, 0x62F); /* کم‌برخوارد */
+const UP = String.fromCharCode(0x6A9, 0x645, 0x200C, 0x628, 0x631, 0x62E, 0x648, 0x631, 0x62F, 0x627, 0x631); /* کم‌برخوردار */
 
 /* مدرسهٔ هدف: ۴ (در دمو district است) — پاک‌سازی U6 آن را برمی‌گرداند */
 const TARGET = 4;
@@ -69,16 +69,16 @@ test('U0 — بوتِ بدون خطا + شناساییِ سوپرادمین', as
 const go = (flt) => W(`S.user=byId('users',${SA});S.persona=null;S.boss=null;S.route='officeschools';S.filters=${flt};S.page=1;render()`);
 
 test('U1 — rule: ساختاری، نه عملکردی', () => {
-  assert(W(`schoolIsUnderprivileged({area_kind:'village'})`) === true, 'village باید کم‌برخوارد باشد');
-  assert(W(`schoolIsUnderprivileged({area_kind:'district'})`) === false, 'district کم‌برخوارد نیست');
+  assert(W(`schoolIsUnderprivileged({area_kind:'village'})`) === true, 'village باید کم‌برخوردار باشد');
+  assert(W(`schoolIsUnderprivileged({area_kind:'district'})`) === false, 'district کم‌برخوردار نیست');
   assert(W(`schoolIsUnderprivileged({})`) === false, 'حالتِ خالی: خیر');
   assert(W(`schoolIsUnderprivileged(undefined)`) === false, 'undefined: بدون خطا خیر');
 });
 
-test('U2 — دموِ سالم: هیچ بجِ کم‌برخوارد نیست', () => {
+test('U2 — دموِ سالم: هیچ بجِ کم‌برخوردار نیست', () => {
   go('{}');
   const h = W(`document.querySelector('.main').innerHTML`);
-  assert(h.indexOf(UP) === -1, 'در دموی سالم (همه district) بج/شمارشِ کم‌برخوارد نباید باشد');
+  assert(h.indexOf(UP) === -1, 'در دموی سالم (همه district) بج/شمارشِ کم‌برخوردار نباید باشد');
 });
 
 test('U3 — تغییرِ واقعی: مدرسهٔ ۴ روستایی می‌شود → بجِ ردیفی + شمارشِ سربرگ', async () => {
@@ -91,11 +91,11 @@ test('U3 — تغییرِ واقعی: مدرسهٔ ۴ روستایی می‌شو
   const name4 = W(`db.schools.find(s=>s.id===${TARGET}).name`);
   const i4 = h.indexOf(name4);
     assert(i4 > -1, 'مدرسهٔ ۴ در فهرست نیست');
-  assert(h.slice(i4, i4 + 1200).indexOf(UP) > -1, 'بجِ کم‌برخوارد روی ردیفِ مدرسهٔ ۴ نیست');
+  assert(h.slice(i4, i4 + 1200).indexOf(UP) > -1, 'بجِ کم‌برخوردار روی ردیفِ مدرسهٔ ۴ نیست');
   assert(h.indexOf(W(`fa(1)`) + ' ' + UP) > -1, 'شمارشِ سربرگ (۱ ' + UP + ') نیست');
   const name1 = W(`db.schools.find(s=>s.id===1).name`);
   const i1 = h.indexOf(name1);
-  assert(h.slice(i1, i1 + 1200).indexOf(UP) === -1, 'مدرسهٔ شهریِ سالم بجِ کم‌برخوارد گرفت!');
+  assert(h.slice(i1, i1 + 1200).indexOf(UP) === -1, 'مدرسهٔ شهریِ سالم بجِ کم‌برخوردار گرفت!');
 });
 
 test('U4 — استقلالِ ساختاری: میانگینِ ۲۰ نمی‌تواند بج را ببرد', () => {
@@ -105,7 +105,7 @@ test('U4 — استقلالِ ساختاری: میانگینِ ۲۰ نمی‌ت�
   const h = W(`document.querySelector('.main').innerHTML`);
   const name4 = W(`db.schools.find(s=>s.id===${TARGET}).name`);
   const i4 = h.indexOf(name4);
-  assert(h.slice(i4, i4 + 1200).indexOf(UP) > -1, 'با میانگینِ ۲۰، بجِ ساختاریِ کم‌برخوارد افتاد!');
+  assert(h.slice(i4, i4 + 1200).indexOf(UP) > -1, 'با میانگینِ ۲۰، بجِ ساختاریِ کم‌برخوردار افتاد!');
   const sig = W(`(function(){var r=perSchoolRows(db.schools.filter(s=>s.id===${TARGET}))[0];return JSON.stringify(schoolSupportSignals(r));})()`);
   assert(sig.indexOf(String.fromCharCode(0x631, 0x648, 0x633, 0x62A, 0x627, 0x6CC, 0x6CC)) > -1,
     'سیگنالِ روستایی باید همچنان در سیگنال‌هایِ نیازمندی باشد: ' + sig);
@@ -122,13 +122,13 @@ test('U4 — استقلالِ ساختاری: میانگینِ ۲۰ نمی‌ت�
   assert(row1.indexOf(UP) === -1, 'مدرسهٔ شهری (با هر میانگینی) بجِ کم‌برخوردار گرفت — شاخص ساختاری، عملکردی شده است!');
 });
 
-test('U5 — فیلترِ «فقط کم‌برخوارد» + ترکیب با «فقط نیازمند»', () => {
+test('U5 — فیلترِ «فقط کم‌برخوردار» + ترکیب با «فقط نیازمند»', () => {
   go(`{ounder:'1'}`);
   const h = W(`document.querySelector('.main').innerHTML`);
   const name4 = W(`db.schools.find(s=>s.id===${TARGET}).name`);
   const name1 = W(`db.schools.find(s=>s.id===1).name`);
-  assert(h.indexOf(name4) > -1, 'مدرسهٔ کم‌برخوارد در فیلتر نیست');
-  assert(h.indexOf(name1) === -1, 'مدرسهٔ شهری در فیلترِ «فقط کم‌برخوارد» مانده!');
+  assert(h.indexOf(name4) > -1, 'مدرسهٔ کم‌برخوردار در فیلتر نیست');
+  assert(h.indexOf(name1) === -1, 'مدرسهٔ شهری در فیلترِ «فقط کم‌برخوردار» مانده!');
   /* ترکیب: هر مدرسهٔ روستایی همیشه سیگنالِ ساختاریِ «مدرسهٔ روستایی» را در
      سیگنال‌هایِ دور ۶۵ دارد، پس با onesup هم می‌ماند؛ ولی مدرسهٔ شهریِ سالم
      (بدونِ سیگنال) با onesup خارج می‌شود — هر دو شرطِ فیلترِ ترکیبی صحت دارد */
@@ -144,13 +144,13 @@ test('U6 — پاک‌سازی: دمو برمی‌گردد + قراردادِ د
   W(`db.schools.find(s=>s.id===${TARGET}).area_kind='district'`);
   go('{}');
   const h = W(`document.querySelector('.main').innerHTML`);
-  assert(h.indexOf(UP) === -1, 'پس از پاک‌سازی، بج/شمارشِ کم‌برخوارد هنوز هست!');
+  assert(h.indexOf(UP) === -1, 'پس از پاک‌سازی، بج/شمارشِ کم‌برخوردار هنوز هست!');
   assert(h.indexOf('بدون موردِ ویژه') > -1, 'سربرگِ «بدون موردِ ویژه» برگشته نیست (دور ۶۵)');
 });
 
 __seq.then(() => {
   console.log('\n────────────────────────────────────────────────────');
-  console.log(`underpriv2 (شاخصِ کم‌برخوارد): ${pass + fail} بررسی — ✅ ${pass} · ❌ ${fail}`);
+  console.log(`underpriv2 (شاخصِ کم‌برخوردار): ${pass + fail} بررسی — ✅ ${pass} · ❌ ${fail}`);
   if (errors.length) { console.log('\nخطاها:'); errors.slice(0, 10).forEach(e => console.log(' •', e)); }
   console.log('────────────────────────────────────────────────────');
   process.exit(fail ? 1 : 0);
