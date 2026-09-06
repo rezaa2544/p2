@@ -2029,6 +2029,23 @@ document.addEventListener('click',e=>{
      closeModal();toast('دانش‌آموزان به‌روز شد','ok');render();},
    'summer-del'(){confirmModal('حذف این کلاسِ تابستانی؟','summer-del-ok',id);},
    'summer-del-ok'(){remove('summer_classes',Number(window._delId));closeModal();toast('حذف شد','ok');render();},
+   /* ─────────────── بند ۶.۵ (سبک): تداخل برنامه — پیشنهاد و جابه‌جایی ─────────────── */
+   'sched-conf-sug'(){
+     const key=el&&el.dataset.key?String(el.dataset.key):'';
+     const sid=el&&el.dataset.sid?String(el.dataset.sid):'';
+     const div=document.getElementById('conf-sug-'+key.replace(/[^a-z0-9]/gi,'')+'-'+sid);
+     if(!div)return;
+     div.style.display=(div.style.display==='none')?'flex':'none';
+   },
+   'sched-conf-move'(){
+     const id=Number(el.dataset.sid), day=Number(el.dataset.day), period=Number(el.dataset.period);
+     const r=byId('schedule',id);
+     if(!r){render();return;}
+     /* گاردِ لحظهٔ اجرا: کلاس و دبیر در مقصد واقعاً آزاد باشند */
+     if(db.schedule.some(x=>x.class_id===r.class_id&&x.day===day&&x.period===period&&x.id!==id)){toast('این جایِ کلاس دیگر پر شده است','err');render();return;}
+     if(r.teacher_id&&teacherBusyAt(r.teacher_id,day,period,id)){toast('این دبیر در آن ساعت مشغول است','err');render();return;}
+     update('schedule',id,{day,period});
+     toast('زنگ جابه‌جا شد: '+DAYS[day]+' زنگ '+fa(period),'ok');render();},
    'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk
