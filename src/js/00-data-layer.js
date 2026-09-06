@@ -119,6 +119,38 @@ var Store = {
    نمی‌فهمد چیزی عوض شده.
    ───────────────────────────────────────────────────────────── */
 
+/* ─────────────────────────────────────────────────────────────
+   اتصال به سرور (مرحلهٔ ۱)
+   ─────────────────────────────────────────────────────────────
+   برنامه وقتی که خودش از سرور سرو می‌شود، در راه‌اندازی /api/health را
+   می‌پرسد؛ اگر سرور زنده باشد، حالت سروری فعال می‌شود:
+     DATA_MODE='server'  → Api.request مسیرهای نسبی را اجازه می‌دهد
+     SYNC.demoMode=false → صفِ همگام‌سازی واقعاً به /api/sync می‌رود
+   در حالت فایلِ محلی (file:// / about:blank) هیچ درخواستی نمی‌رود و
+   همه‌چیز عین دموِ آفلاین می‌ماند.
+   */
+
+var SERVER_DETECTED = false;
+
+function detectServer(){
+  if(DATA_MODE !== 'local') return Promise.resolve(false);
+  var proto = (typeof location !== 'undefined' && location) ? location.protocol : '';
+  if(proto !== 'http:' && proto !== 'https:') return Promise.resolve(false);
+  if(typeof httpGetJson !== 'function') return Promise.resolve(false);
+  return httpGetJson('/api/health', 2500).then(function(r){
+    if(r && r.ok === true && r.data && r.data.ok === true){
+      DATA_MODE = 'server';
+      SERVER_DETECTED = true;
+      if(typeof SYNC !== 'undefined'){ SYNC.demoMode = false; SYNC.serverUrl = '/api/sync'; }
+      return true;
+    }
+    return false;
+  }).catch(function(){ return false; });
+}
+
+function serverDetected(){ return DATA_MODE === 'server'; }
+
+
 var Api = {
 
   /**
@@ -149,6 +181,13 @@ var Api = {
     if(opts.body !== undefined) init.body = JSON.stringify(opts.body);
 
     return fetch((absolute ? '' : API_BASE) + path, init).then(function(res){
+      /* opts.raw: پاسخِ خام (status + body) — برای مسیرهای احراز که
+         در خطا هم بدنهٔ معنادار دارند (مثل {code:'no_account'}) */
+      if(opts.raw){
+        return res.status === 204 ? {status: res.status, body: null}
+          : res.json().then(function(b){ return {status: res.status, body: b}; })
+            .catch(function(){ return {status: res.status, body: {}}; });
+      }
       if(!res.ok) throw new Error('خطای سرور ' + res.status + ' در ' + path);
       return res.status === 204 ? null : res.json();
     });
@@ -157,8 +196,8 @@ var Api = {
   /** سرآیند احراز هویت. امروز خالی؛ فردا ژتون نشست. */
   authHeader: function(){ return {}; },
 
-  get:  function(p){        return Api.request(p, { method:'GET' }); },
-  post: function(p, body){  return Api.request(p, { method:'POST',  body:body }); },
+  get:  function(p, opts){  return Api.request(p, Object.assign({ method:'GET' }, opts||{})); },
+  post: function(p, body, opts){ return Api.request(p, Object.assign({ method:'POST', body:body }, opts||{})); },
   put:  function(p, body){  return Api.request(p, { method:'PUT',   body:body }); },
   del:  function(p){        return Api.request(p, { method:'DELETE' }); }
 };

@@ -925,6 +925,27 @@ setTimeout(()=>{
   if(typeof generateSidaDemo==='function') generateSidaDemo();
   if(typeof generateSchoolModeDemo==='function') generateSchoolModeDemo();
   loadLog(); applyLog(); initSync();
+
+  /* اتصال به سرور (مرحلهٔ ۱): اگر برنامه از سرور سرو می‌شود، وضعیتِ نشست
+     تصمیمِ سرور است: /api/auth/me با کوکی بررسی می‌شود. نشستِ معتبر →
+     همان کاربرِ محلی (id ها مشترک‌اند)؛ کوکی نیست/باطل → نشست محلی
+     هم پاک می‌شود. اگر شبکه نبود، تغییری نمی‌شود (حالت آفلاین امن). */
+  detectServer().then(function(srv){
+    if(!srv) return;
+    Api.get('/api/auth/me',{raw:true}).then(function(r){
+      var b = r && r.body, changed = false;
+      if(r.status < 400 && b && b.ok && b.user){
+        if(!S.user || S.user.id !== b.user.id){
+          var u2 = db.users.find(function(x){ return x.id === b.user.id; });
+          if(u2 && u2.active){ S.user = u2; changed = true; }
+        }
+      } else if(S.user){
+        S.user = null; Store.remove(SESSION_KEY); changed = true;
+      }
+      if(changed) render();
+    }).catch(function(){});
+  }).catch(function(){});
+
   /* دور ۶۴ بند ۱: موتور یادآور خودکار اقساط — در هر بول اجرا می‌شود؛
      گاردهای reminded_at و خلاصهٔ روزانهٔ مدیر آن را کُندوم و ضداسپم
      می‌کنند (دور تکراری = صفر عمل). */

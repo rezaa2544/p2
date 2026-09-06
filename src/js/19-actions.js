@@ -27,6 +27,29 @@ document.addEventListener('click',e=>{
     if(typeof toast==='function') toast('شما اجازهٔ انجام این عملیات را ندارید','err');
     return;
   }
+  /* ورودِ نهایی (مشترکِ حالت محلی و سرور) — تصمیمِ «آیا وارد شود یا نه»
+     جداست از «جایی که اعتبارسنجی شد». */
+  function finishLogin(u){
+     S.user=u;S.stack=[];S.persona=null;Store.remove(PERSONA_KEY);
+     linkAsParent(u);
+     S.showPicker=panelsOf(u).length>1;
+     /* روت خانهٔ هر نقش — مشاور به صف ارجاع می‌رود نه داشبورد */
+     S.route=(typeof homeRoute==='function'?homeRoute(u.role):(u.role==='edu_office'?'officedash':'dashboard'));
+     Store.set(SESSION_KEY,u.username);if(typeof trackVisit==='function')trackVisit(u.id);toast('خوش آمدید، '+u.full_name,'ok');render();
+  }
+  /* نگاشتِ خطاهای سرور به پیامِ فارسیِ هم‌شکل با خطاهای محلی
+     (سرور هیچ جزئیاتِ فنی به کاربر نمی‌دهد). */
+  function loginServerMsg(code){
+    const m={ no_account:'برای این شماره حسابی یافت نشد',
+      bad_code:'کد اشتباه است یا منقضی شده',
+      nid_mismatch:'کد ملی با این شماره مطابقت ندارد',
+      inactive:'حساب غیرفعال است',
+      school_inactive:'مدرسهٔ این حساب فعال نیست',
+      rate_limited:'تلاش‌های زیادی بود — کمی صبر کنید و دوباره امتحان کنید',
+      missing_fields:'شماره، کد و کد ملی را کامل وارد کنید',
+      no_session:'نشست منقضی شده است' };
+    return m[code]||'ورود انجام نشد — دوباره تلاش کنید';
+  }
   const A={
    pick(){
      /* دمو: فرم با شماره + کد ملیِ همان حساب پر می‌شود و کد ارسال (شبیه‌سازی)
@@ -34,14 +57,38 @@ document.addEventListener('click',e=>{
      const u=db.users.find(x=>x.username===el.dataset.u);
      if(!u){toast('حساب یافت نشد','err');return;}
      if(!u.phone||!u.national_id){toast('این حساب شماره/کد ملی برای ورود ندارد','err');return;}
+     $('#lpn').value=u.phone; $('#lnid').value=u.national_id;
+     if(typeof serverDetected==='function'&&serverDetected()){
+       /* حالت سروری: کد واقعی از سرور (در فاز دمو: سرور آن را برمی‌گرداند) */
+       $('#lcode').value='';
+       Api.post('/api/auth/send-code',{phone:u.phone},{raw:true}).then(function(r){
+         var b=r&&r.body;
+         if(r.status<400&&b&&b.ok){ if(b.demo_code){ $('#lcode').value=b.demo_code; loginDemoHint(b.demo_code); } }
+         else loginErr(loginServerMsg(b&&b.code));
+       }).catch(function(){ loginErr('اتصال به سرور برقرار نشد'); });
+       return;
+     }
      const code=SmsPanel.sendCode(u.phone);
-     $('#lpn').value=u.phone; $('#lnid').value=u.national_id; $('#lcode').value=code;
+     $('#lcode').value=code;
      loginDemoHint(code);
    },
    /* ارسالِ کد — پنلِ پیامکی (در دمو: شبیه‌سازی + نمایشِ کد روی صفحه) */
    'login-code'(){
      const phone=normPhone(V('lpn'));
      if(!phone){loginErr('شمارهٔ همراه را وارد کنید');return;}
+     if(typeof serverDetected==='function'&&serverDetected()){
+       /* حالت سروری: کد توسطِ سرور ساخته و ثبت می‌شود (دروازهٔ واقعی
+          جداست؛ در فاز دمو همان سرور، کد را در پاسخ برمی‌گرداند) */
+       Api.post('/api/auth/send-code',{phone:phone},{raw:true}).then(function(r){
+         var b=r&&r.body;
+         if(r.status<400&&b&&b.ok){
+           $('#lcode').value='';
+           if(b.demo_code) loginDemoHint(b.demo_code);
+           toast('کد ارسال شد','ok');
+         } else loginErr(loginServerMsg(b&&b.code));
+       }).catch(function(){ loginErr('اتصال به سرور برقرار نشد'); });
+       return;
+     }
      const u=db.users.find(x=>phoneMatches(x.phone,phone));
      if(!u){loginErr('برای این شماره حسابی یافت نشد');return;}
      const code=SmsPanel.sendCode(u.phone);
@@ -57,23 +104,41 @@ document.addEventListener('click',e=>{
         کد ملی — سامانه‌ای جدا از پنلِ پیامکی). نسخهٔ واقعی: درگاهِ
         واقعی + استعلامِ سمتِ سرور (SERVER_SECURITY_CONTRACT بند ۵). */
      const phone=normPhone(V('lpn'));
+     const nidIn=String(V('lnid')||'').trim();
+     if(typeof serverDetected==='function'&&serverDetected()){
+       /* حالت سروری: همهٔ اعتبارسنجی‌ها سمتِ سرور است (بند ۳ قرارداد
+          امنیتی) — کلاینت فقط پیامِ خطا را نشان می‌دهد. */
+       Api.post('/api/auth/login',{phone:phone,code:String(V('lcode')||'').trim(),national_id:nidIn},{raw:true}).then(function(r){
+         var b=r&&r.body;
+         if(r.status<400&&b&&b.ok&&b.user){
+           const u=db.users.find(function(x){return x.id===b.user.id;})||db.users.find(function(x){return phoneMatches(x.phone,phone);});
+           if(!u){loginErr('حساب در سرور تأیید شد اما در دادهٔ محلی نیست — صفحه را تازه کنید');return;}
+           if(!u.active){loginErr('حساب غیرفعال است');return;}
+           const _sm=schoolInactiveMsg(u);
+           if(_sm){loginErr(_sm);return;}
+           finishLogin(u);
+         } else loginErr(loginServerMsg(b&&b.code));
+       }).catch(function(){ loginErr('اتصال به سرور برقرار نشد'); });
+       return;
+     }
      const u=phone?db.users.find(x=>phoneMatches(x.phone,phone)):null;
      if(!u){loginErr('برای این شماره حسابی یافت نشد');return;}
      if(!SmsPanel.checkCode(u.phone,V('lcode'))){loginErr('کد اشتباه است یا منقضی شده');return;}
-     const nidIn=String(V('lnid')||'').trim();
      if(!IdmSystem.match(nidIn)){loginErr('احراز هویت ناقص است: کد ملی در سامانهٔ تطبیق ثبت نیست');return;}
      if(String(u.national_id)!==nidIn){loginErr('احراز هویت ناقص است: کد ملی با این شماره مطابقت ندارد');return;}
      if(!u.active){loginErr('حساب غیرفعال است');return;}
      const _smsg=schoolInactiveMsg(u);
      if(_smsg){loginErr(_smsg);return;}
-     S.user=u;S.stack=[];S.persona=null;Store.remove(PERSONA_KEY);
-     linkAsParent(u);
-     S.showPicker=panelsOf(u).length>1;
-     /* روت خانهٔ هر نقش — مشاور به صف ارجاع می‌رود نه داشبورد */
-     S.route=(typeof homeRoute==='function'?homeRoute(u.role):(u.role==='edu_office'?'officedash':'dashboard'));Store.set(SESSION_KEY,u.username);if(typeof trackVisit==='function')trackVisit(u.id);toast('خوش آمدید، '+u.full_name,'ok');render();
+     finishLogin(u);
    },
-   logout(){S.user=null;S.boss=null;S.stack=[];S.persona=null;S.showPicker=false;
-     Store.remove(SESSION_KEY);Store.remove(BOSS_KEY);Store.remove(PERSONA_KEY);render();},
+   logout(){
+     /* حالت سروری: نشستِ سرور را هم باطل می‌کنیم (jti → لیستِ سلب) */
+     if(typeof serverDetected==='function'&&serverDetected()){
+       try{ Api.post('/api/auth/logout'); }catch(e){}
+     }
+     S.user=null;S.boss=null;S.stack=[];S.persona=null;S.showPicker=false;
+     Store.remove(SESSION_KEY);Store.remove(BOSS_KEY);Store.remove(PERSONA_KEY);render();
+   },
    reset(){askConfirm('همه تغییرات شما پاک و داده‌های نمونه بازنشانی می‌شود. ادامه می‌دهید؟',()=>resetAll(),
      {title:'بازنشانی داده‌های نمونه',ok:'بازنشانی کن',danger:true,note:'تغییرات ذخیره‌شده در این مرورگر از بین می‌رود.'});},
    'do-reset'(){resetAll();},
