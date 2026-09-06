@@ -114,6 +114,10 @@ function applySnapshot(e){
    واقعی فقط هنگام فشردنِ واقعی (هر ~۵۰۰ op یک بار) انجام می‌شود. */
 var COMPACT_OPS=30000, COMPACT_BYTES=3*1048576, COMPACT_KEEP=500;
 var _LOG_BYTES=0, _DB_BYTES=0, _COMPACT_REJECT_BYTES=0;
+/* نسخهٔ داده: با هر عملیاتِ ثبت‌شده زیاد می‌شود — کش‌هایِ هر-رندر
+   (مثلِ classScoreContext) با مقایسهٔ این عدد، کهنه‌شدن را می‌فهمند.
+   (دور 85 بند W3 — بند 2.7 بازبینی) */
+var _DATA_VER=0;
 function compactLogIfNeeded(){
   if(log.length<=COMPACT_OPS && _LOG_BYTES<=COMPACT_BYTES) return false;
   if(_LOG_BYTES <= _COMPACT_REJECT_BYTES*1.1) return false; /* بعد از رد، با رشدِ ۱۰٪ دوباره */
@@ -181,6 +185,7 @@ function applyOp(op,record=true){
        ثبت در دفترچه رخ می‌دهد، نه در مسیر خواندن. */
     if(op.t==='ins' && op.data) op = Object.assign({}, op, { data: Object.assign({}, op.data) });
     log.push(op);
+    _DATA_VER++;
     _LOG_BYTES += JSON.stringify(op).length + 1;
     if(op.t==='ins' && op.data) _DB_BYTES += JSON.stringify(op.data).length + 2;
     else if(op.t==='upd' && op.data) _DB_BYTES += JSON.stringify(op.data).length;

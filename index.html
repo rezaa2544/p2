@@ -1811,6 +1811,10 @@ function applySnapshot(e){
    واقعی فقط هنگام فشردنِ واقعی (هر ~۵۰۰ op یک بار) انجام می‌شود. */
 var COMPACT_OPS=30000, COMPACT_BYTES=3*1048576, COMPACT_KEEP=500;
 var _LOG_BYTES=0, _DB_BYTES=0, _COMPACT_REJECT_BYTES=0;
+/* نسخهٔ داده: با هر عملیاتِ ثبت‌شده زیاد می‌شود — کش‌هایِ هر-رندر
+   (مثلِ classScoreContext) با مقایسهٔ این عدد، کهنه‌شدن را می‌فهمند.
+   (دور 85 بند W3 — بند 2.7 بازبینی) */
+var _DATA_VER=0;
 function compactLogIfNeeded(){
   if(log.length<=COMPACT_OPS && _LOG_BYTES<=COMPACT_BYTES) return false;
   if(_LOG_BYTES <= _COMPACT_REJECT_BYTES*1.1) return false; /* بعد از رد، با رشدِ ۱۰٪ دوباره */
@@ -1878,6 +1882,7 @@ function applyOp(op,record=true){
        ثبت در دفترچه رخ می‌دهد، نه در مسیر خواندن. */
     if(op.t==='ins' && op.data) op = Object.assign({}, op, { data: Object.assign({}, op.data) });
     log.push(op);
+    _DATA_VER++;
     _LOG_BYTES += JSON.stringify(op).length + 1;
     if(op.t==='ins' && op.data) _DB_BYTES += JSON.stringify(op.data).length + 2;
     else if(op.t==='upd' && op.data) _DB_BYTES += JSON.stringify(op.data).length;
@@ -1948,10 +1953,17 @@ const classSubjectMembers=(cid,sid)=>{
  * داشته باشند مقدار تولید می‌شود — میانگینِ تک‌نفره بی‌معناست.
  * عضویتِ هر درس از classSubjectMembers (مدل چندپایه، بند ۲) می‌آید.
  */
+/* دور 85 (W3 — بند 2.7 بازبینی): زمینهٔ هر کلاس تا بعد از نخستین
+   تغییرِ داده کش می‌شود (نسخهٔ _DATA_VER). پیش از این، هر رندر کلِ
+   db.grades را می‌گذشت — درست همان الگوی خطی که قاعدهٔ 8 منع می‌کند. */
+var _CLS_CTX_CACHE=Object.create(null);
 function classScoreContext(classId){
+  var ver=(typeof _DATA_VER!=='undefined')?_DATA_VER:0;
+  var cached=_CLS_CTX_CACHE[classId];
+  if(cached && cached.ver===ver) return cached.ctx;
   var cls=byId('classes',Number(classId));
   var out=Object.create(null);
-  if(!cls||!db.grades) return out;
+  if(!cls||!db.grades){ _CLS_CTX_CACHE[classId]={ver:ver,ctx:out}; return out; }
   var groups=Object.create(null);
   db.grades.forEach(function(g){
     var k=g.subject_id+'|'+g.term+'|'+g.exam_type;
@@ -1976,6 +1988,7 @@ function classScoreContext(classId){
     if(cnt<2) return;
     out[k]={avg:n?sum/n:0, avgNorm:n?sumN/n:0, n:n, students:cnt};
   });
+  _CLS_CTX_CACHE[classId]={ver:ver,ctx:out};
   return out;
 }
 /** تطبیق نقشهٔ درس↔دانش‌آموز (برای ماژول آتی؛ امروز فراخوانی نمی‌شود) */
@@ -11320,152 +11333,11 @@ document.addEventListener('click',e=>{
      render();
    },
    /* ─────── سرویس مدرسه — نسخهٔ بدون جی‌پی‌اس ─────── */
-   'bus-route-new'(){ busRouteModal(null); },
-   'bus-route-save'(){
-     const r0 = window._busRoute || {};
-     const name = V('br_name');
-     if(!name) return toast('نام مسیر را بنویسید','err');
-     const drv = V('br_driver') ? Number(V('br_driver')) : null;
-     if(r0.id){ update('bus_routes', r0.id, {name:name, driver_id:drv}); }
-     else { insert('bus_routes',{school_id:S.user.school_id, name:name, driver_id:drv, created_at:todayISO()}); }
-     closeModal(); toast('مسیر ذخیره شد','ok'); render();
-   },
-   'bus-route-del'(){
-     askConfirm('این مسیر حذف شود؟ رویدادهای ثبت‌شده حفظ می‌مانند ولی دانش‌آموزان از مسیر جدا می‌شوند.',
-       function(){
-         batchWrites(function(){
-           db.bus_students.slice().forEach(function(b){
-             if(b.route_id===id) remove('bus_students', b.id);
-           });
-           remove('bus_routes', id);
-         });
-         toast('مسیر حذف شد','ok'); render();
-       },
-       {title:'حذف مسیر', ok:'حذف کن', danger:true});
-   },
-   'bus-students'(){ busStudentsModal(Number(id)); },
-   'bus-students-save'(){
-     const rid = window._busRouteId;
-     if(!rid) return;
-     const checked = $$('.bs-chk:checked').map(function(c){ return Number(c.value); });
-     batchWrites(function(){
-       db.bus_students.slice().forEach(function(b){
-         if(b.route_id===rid && checked.indexOf(b.student_id)<0) remove('bus_students', b.id);
-       });
-       checked.forEach(function(sid2){
-         /* دانش‌آموز در مسیر دیگری باشد ⇒ رد می‌شود (قانون تک‌مسیر) */
-         if(busRouteOfStudent(sid2) && busRouteOfStudent(sid2).id!==rid) return;
-         if(!db.bus_students.some(function(b){ return b.route_id===rid && b.student_id===sid2; }))
-           insert('bus_students',{route_id:rid, student_id:sid2});
-       });
-     });
-     closeModal(); toast('دانش‌آموزان مسیر به‌روز شد','ok'); render();
-   },
    /* ثبت رویداد سوار/پیاده — بررسی مالکیت مسیر در busEvent() روی داده */
-   'bus-event'(){
-     const t = el.dataset.t;
-     const r = busEvent(Number(id), t);
-     if(!r.ok) return toast(r.msg,'err');
-     toast(t==='on' ? '🚌 سوار شد — پیامک در صف است' : '🏫 پیاده شد — پیامک در صف است','ok');
-     render();
-   },
-   'bus-need-set'(){ busNeedModal(Number(id)); },
-   'bus-need-save'(){
-     const r = busNeedSet(window._busNeedStudent, (document.querySelector('input[name="bus_need_m"]:checked')||{}).value, V('bus_need_note'));
-     if(!r.ok){ toast(r.msg,'err'); return; }
-     closeModal(); toast('پاسخ سرویس ثبت شد','ok'); render();
-   },
-   'bus-need-parent-save'(){
-     const v = (document.querySelector('#bus_need_opts input[name="bus_need"]:checked')||{}).value;
-     if(!v){ toast('یکی از گزینه‌ها را انتخاب کنید','err'); return; }
-     const r = busNeedSet(Number(id), v, '');
-     if(!r.ok){ toast(r.msg,'err'); return; }
-     toast('پاسخ شما ثبت شد','ok'); render();
-   },
-   'bus-event-student'(){
-     const r = busEvent(Number(id), el.dataset.t, 'student');
-     if(!r.ok) return toast(r.msg,'err');
-     toast(el.dataset.t==='on' ? '🚌 ثبت شد — پیامک در صف است' : '🏫 ثبت شد — پیامک در صف است','ok');
-     render();
-   },
-   'bus-loc-driver'(){
-     busLocationReal('driver', 0).then(function(res){
-       if(!res.ok) return toast(res.msg,'err');
-       toast(res.real ? '📡 موقعیتِ واقعی ثبت شد' : '📍 موقعیت ثبت شد (دمو: نقطهٔ بعدیِ واقعیِ مسیر)','ok'); render();
-     });
-   },
-   'bus-loc-student'(){
-     busLocationReal('student', 0).then(function(res){
-       if(!res.ok) return toast(res.msg,'err');
-       toast('📍 موقعیت شما ثبت شد','ok'); render();
-     });
-   },
    /* بند ۱۴: پیگیریِ واقعیِ مغایرت — el/id از محیّط (دور ۷۹: پارامترِ سای‌کننده برداشته شد) */
-   'bus-follow-open'(){
-     const st = byId('users', Number(id));
-     openModal(modalTpl('پیگیری مغایرت — ' + (st ? st.full_name : ''),
-       f('یادداشت پیگیری', inp('bf_note', '', 'مثلاً: با راننده تماس گرفتم…')),
-       'bus-follow-save'));
-     window._busFollow = {route: Number(el.dataset.r), student: Number(id)};
-   },
-   'bus-follow-save'(){
-     const fo = window._busFollow || {};
-     const r = busFollowStart(fo.route, fo.student, V('bf_note'));
-     if(!r.ok){ toast(r.msg,'err'); return; }
-     closeModal(); toast('🔎 پیگیری شروع شد','ok'); render();
-   },
-   'bus-follow-close'(){
-     const f = byId('bus_followups', Number(id));
-     if(!f) return;
-     const st = byId('users', f.student_id);
-     openModal(modalTpl('بستن پیگیری — ' + (st ? st.full_name : ''),
-       f('نتیجهٔ پیگیری', inp('bf_close', '', 'مثلاً: تأیید شد که دانش‌آموز پیاده شده است')),
-       'bus-follow-close-save'));
-     window._busFollowId = Number(id);
-   },
-   'bus-follow-close-save'(){
-     const r = busFollowClose(window._busFollowId, V('bf_close'));
-     if(!r.ok){ toast(r.msg,'err'); return; }
-     closeModal(); toast('✅ پیگیری بسته شد','ok'); render();
-   },
    /* بند ۱۲: حضورِ خودکار کلاس مجازی */
    /* بند ۱۵: لینک‌های اختصاصیِ کلاس مجازی */
-   'vclass-links'(){ vclassLinksModal(Number(id)); },
-   'vclass-link-copy'(){
-     const l = byId('vclass_links', Number(id));
-     if(!l) return;
-     const url = vclassLinkFullUrl(l);
-     if(navigator.clipboard && navigator.clipboard.writeText){
-       navigator.clipboard.writeText(url).then(function(){ toast('لینک کپی شد','ok'); },
-         function(){ window.prompt('لینک را کپی کنید:', url); });
-     } else { window.prompt('لینک را کپی کنید:', url); }
-   },
-   'vc-join'(){
-     const r = vclassJoin(Number(id));
-     if(!r.ok) return toast(r.msg,'err');
-     toast('🚪 وارد کلاس شدید — حضورِ شما ثبت شد','ok'); render();
-   },
-   'vc-leave'(){
-     const r = vclassLeave(Number(id));
-     if(!r.ok) return toast(r.msg,'err');
-     toast('خروج شما ثبت شد','ok'); render();
-   },
    /* بند ۱۲: تکالیف — بازه/قفل + مشاهده */
-   'hw-window'(){ hwWindowModal(Number(id)); },
-   'hw-window-save'(){
-     const locked = !!(document.getElementById('hww_locked')||{}).checked;
-     const r = hwSetWindow(window._hwWindowId, locked, V('hww_open'), V('hww_close'));
-     if(!r.ok){ toast(r.msg,'err'); return; }
-     closeModal(); toast('بازهٔ ارسال به‌روز شد','ok'); render();
-   },
-   'hw-lock'(){
-     const a = byId('hw_assignments', Number(id));
-     if(!a) return;
-     const r = hwSetWindow(Number(id), !a.locked, a.window_open||'', a.window_close||'');
-     if(!r.ok){ toast(r.msg,'err'); return; }
-     toast(r.rec.locked ? 'تکلیف قفل شد' : 'تکلیف باز شد','ok'); render();
-   },
-   'hw-view'(){ hwViewModal(Number(id)); },
    /* بند ۱۳: حالت حضوری/غیرحضوری مدرسه */
    'smode-open'(){ smodeModal(Number(id)); },
    'smode-save'(){
@@ -11489,157 +11361,7 @@ document.addEventListener('click',e=>{
      render();
    },
    /* ─────────────── کلاس مجازی (نسخهٔ سبک) ─────────────── */
-   'vclass-new'(){ vclassNewModal(Number(id)); },
-   'vclass-save'(){
-     const clsId = window._vclassClass;
-     const title = V('vc_title');
-     if(!title) return toast('عنوان نشست را بنویسید','err');
-     const type = V('vc_type');
-     const fEl = $('#vc_file');
-     const file = (fEl && fEl.files && fEl.files[0]) ? fEl.files[0] : null;
-     if(type==='video' && !file) return toast('فایل ویدیو را انتخاب کنید','err');
-     closeModal();
-     vclassCreateSession({classId:clsId, type:type, title:title,
-       url:V('vc_url'), time:V('vc_time'), desc:V('vc_desc')}, file).then(function(r){
-       if(!r.ok){ toast(r.msg,'err'); return; }
-       toast('نشست در کلاس مجازی ثبت شد','ok');
-       render();
-     });
-   },
-   'vclass-del'(){
-     askConfirm('این نشست (و در صورت وجود، فایل آن از ذخیره‌گاه) حذف شود؟', function(){
-       const s = byId('vclass_sessions', id);
-       if(!s) return;
-       const u = S.user;
-       const role = (typeof activePersona==='function') ? activePersona() : u.role;
-       const isTeacher = role==='teacher' && teacherClasses(u.id).some(function(c){ return c.id===s.class_id; });
-       if(!(isTeacher || role==='manager' || role==='superadmin')){
-         toast('شما مجوز حذف این نشست را ندارید','err'); return;
-       }
-       vclassQuestionsOf(s.id).forEach(function(q){ remove('vclass_questions', q.id); });
-       remove('vclass_sessions', s.id);
-       /* فایل IDB ناهمگام است — پیام و رندر بعد از پاک‌شدن واقعی */
-       vclassIdbDel(VCLASS_STORE, s.file_key || '').then(function(){
-         toast('نشست حذف شد','ok'); render();
-       });
-     }, {title:'حذف نشست', ok:'حذف', danger:true});
-   },
-   'vclass-play'(){
-     const s = byId('vclass_sessions', id);
-     if(!s || !s.file_key){ toast('فایل این نشست در دسترس نیست','err'); return; }
-     toast('فایل در حال بارگذاری است…','');
-     vclassIdbGet(VCLASS_STORE, s.file_key).then(function(blob){
-       if(!blob){ toast('فایل دیگر در ذخیره‌گاه نیست','err'); return; }
-       const url = (typeof URL!=='undefined' && URL.createObjectURL) ? URL.createObjectURL(blob) : '';
-       openModal(modalTpl('🎬 ' + (s.title||''),
-         '<video controls style="width:100%;max-height:62vh;background:#000;border-radius:10px" data-vurl="'+escAttr(url)+'"></video>'
-         + (s.description ? '<div class="small muted" style="margin-top:10px">'+esc(s.description)+'</div>' : ''), ''));
-       setTimeout(function(){
-         const v = document.querySelector('#modal video');
-         if(v && v.getAttribute('data-vurl')) v.src = v.getAttribute('data-vurl');
-       }, 60);
-     });
-   },
-   'vclass-q-ask'(){
-     window._vcQSession = id;
-     openModal(modalTpl('❓ سؤال از دبیر',
-       '<textarea id="vc_qbody" class="input" rows="4" placeholder="سؤال خود را بنویسید"></textarea>',
-       'vclass-q-save'));
-   },
-   'vclass-q-save'(){
-     const s = byId('vclass_sessions', window._vcQSession);
-     if(!s) return;
-     const body = V('vc_qbody');
-     if(!body) return toast('متن سؤال را بنویسید','err');
-     const u = S.user;
-     const role = (typeof activePersona==='function') ? activePersona() : u.role;
-     /* 🔴 سؤال فقط به اسم خودِ دانش‌آموز و فقط در نشستِ کلاس خودش */
-     const sid2 = role==='student' ? u.id : S.child;
-     const cls2 = sid2 ? classOf(sid2) : null;
-     if(!cls2 || cls2.id !== s.class_id){ toast('این نشست مربوط به کلاس شما نیست','err'); return; }
-     insert('vclass_questions', {
-       session_id: s.id, student_id: sid2, body: body,
-       created_at: new Date().toISOString(), answer:'', answered_at:'', answered_by:0
-     });
-     closeModal(); toast('سؤال ثبت شد — پاسخ دبیر همین‌جا می‌آید','ok'); render();
-   },
-   'vclass-q-answer'(){
-     window._vcQId = id;
-     openModal(modalTpl('✍️ پاسخ به سؤال',
-       '<textarea id="vc_qans" class="input" rows="3" placeholder="پاسخ خود را بنویسید"></textarea>',
-       'vclass-q-answer-save'));
-   },
-   'vclass-q-answer-save'(){
-     const ans = V('vc_qans');
-     if(!ans) return toast('متن پاسخ را بنویسید','err');
-     update('vclass_questions', window._vcQId, {
-       answer: ans, answered_at: new Date().toISOString(), answered_by: S.user.id
-     });
-     closeModal(); toast('پاسخ ثبت شد','ok'); render();
-   },
    /* ─────────────── تکالیف (بند ۴) ─────────────── */
-   'hw-new'(){
-     const cls = byId('classes', Number(id));
-     if(!cls) return;
-     window._hwClass = Number(id);
-     const subs = (typeof visibleSubjects==='function'?visibleSubjects():[]).filter(function(x){return x.school_id===cls.school_id;});
-     openModal(modalTpl('تکلیف جدید — ' + cls.name,
-       f('عنوان *', inp('hw_title',''))
-       + f('درس', sel('hw_subject', [['','—']] .concat(subs.map(function(x){return [x.id,x.name];})), ''))
-       + f('توضیح', inp('hw_desc',''))
-       + f('مهلت (اختیاری)', inp('hw_due','','date'))
-       , 'hw-save'));
-   },
-   'hw-save'(){
-     const r = hwCreateAssignment({
-       classId: window._hwClass,
-       title: V('hw_title'),
-       subjectId: Number(V('hw_subject')) || 0,
-       description: V('hw_desc'),
-       dueDate: V('hw_due')
-     });
-     if(!r.ok){ toast(r.msg,'err'); return; }
-     closeModal(); toast('تکلیف ثبت شد','ok'); render();
-   },
-   'hw-del'(){
-     askConfirm('این تکلیف و فهرست بارگذاری‌هایش حذف شود؟ (خود فایل‌ها در ذخیره‌گاه می‌مانند)', function(){
-       const a = byId('hw_assignments', id);
-       if(!a) return;
-       const cls = byId('classes', a.class_id);
-       const u = S.user;
-       const role = (typeof activePersona==='function') ? activePersona() : u.role;
-       const isTeacher = role==='teacher' && cls && teacherClasses(u.id).some(function(c){ return c.id===cls.id; });
-       if(!(isTeacher || role==='manager' || role==='superadmin')){
-         toast('شما مجوز حذف این تکلیف را ندارید','err'); return;
-       }
-       hwSubmissionsOf(a.id).forEach(function(s){ remove('hw_submissions', s.id); });
-       remove('hw_assignments', a.id);
-       toast('تکلیف حذف شد','ok'); render();
-     }, {title:'حذف تکلیف', ok:'حذف', danger:true});
-   },
-   'hw-list'(){ hwListModal(Number(id)); },
-   'hw-grade'(){ hwGradeModal(Number(id)); },
-   'hw-grade-save'(){
-     const raw = V('hw_score');
-     const score = raw==='' ? null : Number(raw);
-     if(raw!=='' && (isNaN(score) || score<0 || score>20)){ toast('نمره باید ۰ تا ۲۰ باشد','err'); return; }
-     hwSaveGrading(score).then(function(r){
-       if(!r.ok){ toast(r.msg,'err'); return; }
-       closeModal(); toast('تصحیح ثبت شد','ok'); render();
-     });
-   },
-   'hw-canvas-clear'(){ _hwStrokes = []; hwCanvasRedraw(); },
-   'hw-submit'(){
-     const inpEl = document.getElementById('hwfile_' + id);
-     const file = (inpEl && inpEl.files && inpEl.files[0]) ? inpEl.files[0] : null;
-     if(!file){ toast('تصویر تکلیف را انتخاب کنید','err'); return; }
-     toast('در حال بارگذاری…','');
-     hwSubmit(Number(id), file).then(function(r){
-       if(!r.ok){ toast(r.msg,'err'); return; }
-       toast('تکلیف بارگذاری شد — در انتظار تصحیح دبیر','ok');
-       render();
-     });
-   },
    'notify-settings'(){
      const c = notifySettings(S.user.school_id);
      const row = (id,on,label,hint) =>
@@ -12245,6 +11967,9 @@ document.addEventListener('click',e=>{
    }
   };
   if(A[a]){e.preventDefault();A[a]();}
+  else if(typeof BUS_ACTIONS!=='undefined'&&BUS_ACTIONS[a]){e.preventDefault();BUS_ACTIONS[a](el,id);}
+  else if(typeof VCLASS_ACTIONS!=='undefined'&&VCLASS_ACTIONS[a]){e.preventDefault();VCLASS_ACTIONS[a](el,id);}
+  else if(typeof HW_ACTIONS!=='undefined'&&HW_ACTIONS[a]){e.preventDefault();HW_ACTIONS[a](el,id);}
   else if(typeof F7_ACTIONS!=='undefined'&&F7_ACTIONS[a]){e.preventDefault();F7_ACTIONS[a](el,id);}
   else if(typeof P8_ACTIONS!=='undefined'&&P8_ACTIONS[a]){e.preventDefault();P8_ACTIONS[a](el,id);}
   else if(typeof P9_ACTIONS!=='undefined'&&P9_ACTIONS[a]){e.preventDefault();P9_ACTIONS[a](el,id);}
@@ -23734,6 +23459,119 @@ function busFollowLine(sid){
     + '</div>';
 }
 
+/* const BUS_ACTIONS — دور 85 (W3 — بند 2.8 بازبینی): اکشن‌های سرویسِ سرویس (دور 77) از A به این ماژولِ خودش منتقل شد. زنجیرهٔ dispatch در 19-actions.js این آبجکت را با (el,id) صدا می‌زند. */
+const BUS_ACTIONS={
+   'bus-route-new'(el,id){ busRouteModal(null); },
+
+   'bus-route-save'(el,id){
+     const r0 = window._busRoute || {};
+     const name = V('br_name');
+     if(!name) return toast('نام مسیر را بنویسید','err');
+     const drv = V('br_driver') ? Number(V('br_driver')) : null;
+     if(r0.id){ update('bus_routes', r0.id, {name:name, driver_id:drv}); }
+     else { insert('bus_routes',{school_id:S.user.school_id, name:name, driver_id:drv, created_at:todayISO()}); }
+     closeModal(); toast('مسیر ذخیره شد','ok'); render();
+   },
+   'bus-route-del'(el,id){
+     askConfirm('این مسیر حذف شود؟ رویدادهای ثبت‌شده حفظ می‌مانند ولی دانش‌آموزان از مسیر جدا می‌شوند.',
+       function(){
+         batchWrites(function(){
+           db.bus_students.slice().forEach(function(b){
+             if(b.route_id===id) remove('bus_students', b.id);
+           });
+           remove('bus_routes', id);
+         });
+         toast('مسیر حذف شد','ok'); render();
+       },
+       {title:'حذف مسیر', ok:'حذف کن', danger:true});
+   },
+   'bus-students'(el,id){ busStudentsModal(Number(id)); },
+
+   'bus-students-save'(el,id){
+     const rid = window._busRouteId;
+     if(!rid) return;
+     const checked = $$('.bs-chk:checked').map(function(c){ return Number(c.value); });
+     batchWrites(function(){
+       db.bus_students.slice().forEach(function(b){
+         if(b.route_id===rid && checked.indexOf(b.student_id)<0) remove('bus_students', b.id);
+       });
+       checked.forEach(function(sid2){
+         /* دانش‌آموز در مسیر دیگری باشد ⇒ رد می‌شود (قانون تک‌مسیر) */
+         if(busRouteOfStudent(sid2) && busRouteOfStudent(sid2).id!==rid) return;
+         if(!db.bus_students.some(function(b){ return b.route_id===rid && b.student_id===sid2; }))
+           insert('bus_students',{route_id:rid, student_id:sid2});
+       });
+     });
+     closeModal(); toast('دانش‌آموزان مسیر به‌روز شد','ok'); render();
+   },
+   'bus-event'(el,id){
+     const t = el.dataset.t;
+     const r = busEvent(Number(id), t);
+     if(!r.ok) return toast(r.msg,'err');
+     toast(t==='on' ? '🚌 سوار شد — پیامک در صف است' : '🏫 پیاده شد — پیامک در صف است','ok');
+     render();
+   },
+   'bus-need-set'(el,id){ busNeedModal(Number(id)); },
+
+   'bus-need-save'(el,id){
+     const r = busNeedSet(window._busNeedStudent, (document.querySelector('input[name="bus_need_m"]:checked')||{}).value, V('bus_need_note'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('پاسخ سرویس ثبت شد','ok'); render();
+   },
+   'bus-need-parent-save'(el,id){
+     const v = (document.querySelector('#bus_need_opts input[name="bus_need"]:checked')||{}).value;
+     if(!v){ toast('یکی از گزینه‌ها را انتخاب کنید','err'); return; }
+     const r = busNeedSet(Number(id), v, '');
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     toast('پاسخ شما ثبت شد','ok'); render();
+   },
+   'bus-event-student'(el,id){
+     const r = busEvent(Number(id), el.dataset.t, 'student');
+     if(!r.ok) return toast(r.msg,'err');
+     toast(el.dataset.t==='on' ? '🚌 ثبت شد — پیامک در صف است' : '🏫 ثبت شد — پیامک در صف است','ok');
+     render();
+   },
+   'bus-loc-driver'(el,id){
+     busLocationReal('driver', 0).then(function(res){
+       if(!res.ok) return toast(res.msg,'err');
+       toast(res.real ? '📡 موقعیتِ واقعی ثبت شد' : '📍 موقعیت ثبت شد (دمو: نقطهٔ بعدیِ واقعیِ مسیر)','ok'); render();
+     });
+   },
+   'bus-loc-student'(el,id){
+     busLocationReal('student', 0).then(function(res){
+       if(!res.ok) return toast(res.msg,'err');
+       toast('📍 موقعیت شما ثبت شد','ok'); render();
+     });
+   },
+   'bus-follow-open'(el,id){
+     const st = byId('users', Number(id));
+     openModal(modalTpl('پیگیری مغایرت — ' + (st ? st.full_name : ''),
+       f('یادداشت پیگیری', inp('bf_note', '', 'مثلاً: با راننده تماس گرفتم…')),
+       'bus-follow-save'));
+     window._busFollow = {route: Number(el.dataset.r), student: Number(id)};
+   },
+   'bus-follow-save'(el,id){
+     const fo = window._busFollow || {};
+     const r = busFollowStart(fo.route, fo.student, V('bf_note'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('🔎 پیگیری شروع شد','ok'); render();
+   },
+   'bus-follow-close'(el,id){
+     const f = byId('bus_followups', Number(id));
+     if(!f) return;
+     const st = byId('users', f.student_id);
+     openModal(modalTpl('بستن پیگیری — ' + (st ? st.full_name : ''),
+       f('نتیجهٔ پیگیری', inp('bf_close', '', 'مثلاً: تأیید شد که دانش‌آموز پیاده شده است')),
+       'bus-follow-close-save'));
+     window._busFollowId = Number(id);
+   },
+   'bus-follow-close-save'(el,id){
+     const r = busFollowClose(window._busFollowId, V('bf_close'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('✅ پیگیری بسته شد','ok'); render();
+   },
+};
+
 /* ═══════════════════════════════════════════════════════════════════
    IndexedDB — ماژول فایل (کلاس مجازی + تکالیف؛ یک‌بار ساخت، دوبار استفاده)
 
@@ -24509,6 +24347,120 @@ function vclassLinksModal(sessionId){
   openModal(modalTpl('لینک‌های اختصاصی — ' + s.title, body + '</div>', ''));
 }
 
+/* const VCLASS_ACTIONS — دور 85 (W3 — بند 2.8 بازبینی): اکشن‌های کلاسِ مجازی (دور 78) از A به این ماژولِ خودش منتقل شد. زنجیرهٔ dispatch در 19-actions.js این آبجکت را با (el,id) صدا می‌زند. */
+const VCLASS_ACTIONS={
+   'vclass-links'(el,id){ vclassLinksModal(Number(id)); },
+
+   'vclass-link-copy'(el,id){
+     const l = byId('vclass_links', Number(id));
+     if(!l) return;
+     const url = vclassLinkFullUrl(l);
+     if(navigator.clipboard && navigator.clipboard.writeText){
+       navigator.clipboard.writeText(url).then(function(){ toast('لینک کپی شد','ok'); },
+         function(){ window.prompt('لینک را کپی کنید:', url); });
+     } else { window.prompt('لینک را کپی کنید:', url); }
+   },
+   'vc-join'(el,id){
+     const r = vclassJoin(Number(id));
+     if(!r.ok) return toast(r.msg,'err');
+     toast('🚪 وارد کلاس شدید — حضورِ شما ثبت شد','ok'); render();
+   },
+   'vc-leave'(el,id){
+     const r = vclassLeave(Number(id));
+     if(!r.ok) return toast(r.msg,'err');
+     toast('خروج شما ثبت شد','ok'); render();
+   },
+   'vclass-new'(el,id){ vclassNewModal(Number(id)); },
+
+   'vclass-save'(el,id){
+     const clsId = window._vclassClass;
+     const title = V('vc_title');
+     if(!title) return toast('عنوان نشست را بنویسید','err');
+     const type = V('vc_type');
+     const fEl = $('#vc_file');
+     const file = (fEl && fEl.files && fEl.files[0]) ? fEl.files[0] : null;
+     if(type==='video' && !file) return toast('فایل ویدیو را انتخاب کنید','err');
+     closeModal();
+     vclassCreateSession({classId:clsId, type:type, title:title,
+       url:V('vc_url'), time:V('vc_time'), desc:V('vc_desc')}, file).then(function(r){
+       if(!r.ok){ toast(r.msg,'err'); return; }
+       toast('نشست در کلاس مجازی ثبت شد','ok');
+       render();
+     });
+   },
+   'vclass-del'(el,id){
+     askConfirm('این نشست (و در صورت وجود، فایل آن از ذخیره‌گاه) حذف شود؟', function(){
+       const s = byId('vclass_sessions', id);
+       if(!s) return;
+       const u = S.user;
+       const role = (typeof activePersona==='function') ? activePersona() : u.role;
+       const isTeacher = role==='teacher' && teacherClasses(u.id).some(function(c){ return c.id===s.class_id; });
+       if(!(isTeacher || role==='manager' || role==='superadmin')){
+         toast('شما مجوز حذف این نشست را ندارید','err'); return;
+       }
+       vclassQuestionsOf(s.id).forEach(function(q){ remove('vclass_questions', q.id); });
+       remove('vclass_sessions', s.id);
+       /* فایل IDB ناهمگام است — پیام و رندر بعد از پاک‌شدن واقعی */
+       vclassIdbDel(VCLASS_STORE, s.file_key || '').then(function(){
+         toast('نشست حذف شد','ok'); render();
+       });
+     }, {title:'حذف نشست', ok:'حذف', danger:true});
+   },
+   'vclass-play'(el,id){
+     const s = byId('vclass_sessions', id);
+     if(!s || !s.file_key){ toast('فایل این نشست در دسترس نیست','err'); return; }
+     toast('فایل در حال بارگذاری است…','');
+     vclassIdbGet(VCLASS_STORE, s.file_key).then(function(blob){
+       if(!blob){ toast('فایل دیگر در ذخیره‌گاه نیست','err'); return; }
+       const url = (typeof URL!=='undefined' && URL.createObjectURL) ? URL.createObjectURL(blob) : '';
+       openModal(modalTpl('🎬 ' + (s.title||''),
+         '<video controls style="width:100%;max-height:62vh;background:#000;border-radius:10px" data-vurl="'+escAttr(url)+'"></video>'
+         + (s.description ? '<div class="small muted" style="margin-top:10px">'+esc(s.description)+'</div>' : ''), ''));
+       setTimeout(function(){
+         const v = document.querySelector('#modal video');
+         if(v && v.getAttribute('data-vurl')) v.src = v.getAttribute('data-vurl');
+       }, 60);
+     });
+   },
+   'vclass-q-ask'(el,id){
+     window._vcQSession = id;
+     openModal(modalTpl('❓ سؤال از دبیر',
+       '<textarea id="vc_qbody" class="input" rows="4" placeholder="سؤال خود را بنویسید"></textarea>',
+       'vclass-q-save'));
+   },
+   'vclass-q-save'(el,id){
+     const s = byId('vclass_sessions', window._vcQSession);
+     if(!s) return;
+     const body = V('vc_qbody');
+     if(!body) return toast('متن سؤال را بنویسید','err');
+     const u = S.user;
+     const role = (typeof activePersona==='function') ? activePersona() : u.role;
+     /* 🔴 سؤال فقط به اسم خودِ دانش‌آموز و فقط در نشستِ کلاس خودش */
+     const sid2 = role==='student' ? u.id : S.child;
+     const cls2 = sid2 ? classOf(sid2) : null;
+     if(!cls2 || cls2.id !== s.class_id){ toast('این نشست مربوط به کلاس شما نیست','err'); return; }
+     insert('vclass_questions', {
+       session_id: s.id, student_id: sid2, body: body,
+       created_at: new Date().toISOString(), answer:'', answered_at:'', answered_by:0
+     });
+     closeModal(); toast('سؤال ثبت شد — پاسخ دبیر همین‌جا می‌آید','ok'); render();
+   },
+   'vclass-q-answer'(el,id){
+     window._vcQId = id;
+     openModal(modalTpl('✍️ پاسخ به سؤال',
+       '<textarea id="vc_qans" class="input" rows="3" placeholder="پاسخ خود را بنویسید"></textarea>',
+       'vclass-q-answer-save'));
+   },
+   'vclass-q-answer-save'(el,id){
+     const ans = V('vc_qans');
+     if(!ans) return toast('متن پاسخ را بنویسید','err');
+     update('vclass_questions', window._vcQId, {
+       answer: ans, answered_at: new Date().toISOString(), answered_by: S.user.id
+     });
+     closeModal(); toast('پاسخ ثبت شد','ok'); render();
+   },
+};
+
 /* ═══════════════════════════════════════════════════════════════════
    تکالیف — بارگذاری فایل + تصحیح دیجیتال (نسخهٔ سبک)
 
@@ -25051,6 +25003,92 @@ function hwWindowModal(assignmentId){
     + '<div class="small muted" style="margin-top:8px">مثال: «فضا ساعت ۸ تا  باز است تا تکالیفتان را بفرستید». قفلِ دستی روی تایمر مقدم است.</div>',
     'hw-window-save'));
 }
+
+/* const HW_ACTIONS — دور 85 (W3 — بند 2.8 بازبینی): اکشن‌های تکالیف (دور 78) از A به این ماژولِ خودش منتقل شد. زنجیرهٔ dispatch در 19-actions.js این آبجکت را با (el,id) صدا می‌زند. */
+const HW_ACTIONS={
+   'hw-window'(el,id){ hwWindowModal(Number(id)); },
+
+   'hw-window-save'(el,id){
+     const locked = !!(document.getElementById('hww_locked')||{}).checked;
+     const r = hwSetWindow(window._hwWindowId, locked, V('hww_open'), V('hww_close'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('بازهٔ ارسال به‌روز شد','ok'); render();
+   },
+   'hw-lock'(el,id){
+     const a = byId('hw_assignments', Number(id));
+     if(!a) return;
+     const r = hwSetWindow(Number(id), !a.locked, a.window_open||'', a.window_close||'');
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     toast(r.rec.locked ? 'تکلیف قفل شد' : 'تکلیف باز شد','ok'); render();
+   },
+   'hw-view'(el,id){ hwViewModal(Number(id)); },
+
+   'hw-new'(el,id){
+     const cls = byId('classes', Number(id));
+     if(!cls) return;
+     window._hwClass = Number(id);
+     const subs = (typeof visibleSubjects==='function'?visibleSubjects():[]).filter(function(x){return x.school_id===cls.school_id;});
+     openModal(modalTpl('تکلیف جدید — ' + cls.name,
+       f('عنوان *', inp('hw_title',''))
+       + f('درس', sel('hw_subject', [['','—']] .concat(subs.map(function(x){return [x.id,x.name];})), ''))
+       + f('توضیح', inp('hw_desc',''))
+       + f('مهلت (اختیاری)', inp('hw_due','','date'))
+       , 'hw-save'));
+   },
+   'hw-save'(el,id){
+     const r = hwCreateAssignment({
+       classId: window._hwClass,
+       title: V('hw_title'),
+       subjectId: Number(V('hw_subject')) || 0,
+       description: V('hw_desc'),
+       dueDate: V('hw_due')
+     });
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('تکلیف ثبت شد','ok'); render();
+   },
+   'hw-del'(el,id){
+     askConfirm('این تکلیف و فهرست بارگذاری‌هایش حذف شود؟ (خود فایل‌ها در ذخیره‌گاه می‌مانند)', function(){
+       const a = byId('hw_assignments', id);
+       if(!a) return;
+       const cls = byId('classes', a.class_id);
+       const u = S.user;
+       const role = (typeof activePersona==='function') ? activePersona() : u.role;
+       const isTeacher = role==='teacher' && cls && teacherClasses(u.id).some(function(c){ return c.id===cls.id; });
+       if(!(isTeacher || role==='manager' || role==='superadmin')){
+         toast('شما مجوز حذف این تکلیف را ندارید','err'); return;
+       }
+       hwSubmissionsOf(a.id).forEach(function(s){ remove('hw_submissions', s.id); });
+       remove('hw_assignments', a.id);
+       toast('تکلیف حذف شد','ok'); render();
+     }, {title:'حذف تکلیف', ok:'حذف', danger:true});
+   },
+   'hw-list'(el,id){ hwListModal(Number(id)); },
+
+   'hw-grade'(el,id){ hwGradeModal(Number(id)); },
+
+   'hw-grade-save'(el,id){
+     const raw = V('hw_score');
+     const score = raw==='' ? null : Number(raw);
+     if(raw!=='' && (isNaN(score) || score<0 || score>20)){ toast('نمره باید ۰ تا ۲۰ باشد','err'); return; }
+     hwSaveGrading(score).then(function(r){
+       if(!r.ok){ toast(r.msg,'err'); return; }
+       closeModal(); toast('تصحیح ثبت شد','ok'); render();
+     });
+   },
+   'hw-canvas-clear'(el,id){ _hwStrokes = []; hwCanvasRedraw(); },
+
+   'hw-submit'(el,id){
+     const inpEl = document.getElementById('hwfile_' + id);
+     const file = (inpEl && inpEl.files && inpEl.files[0]) ? inpEl.files[0] : null;
+     if(!file){ toast('تصویر تکلیف را انتخاب کنید','err'); return; }
+     toast('در حال بارگذاری…','');
+     hwSubmit(Number(id), file).then(function(r){
+       if(!r.ok){ toast(r.msg,'err'); return; }
+       toast('تکلیف بارگذاری شد — در انتظار تصحیح دبیر','ok');
+       render();
+     });
+   },
+};
 
 /* ═══════════════════════════════════════════════════════════════════
    گیمیفیکیشن سبک ابتدایی (بند ۵) — لایهٔ امتیازِ ClassDojo-وار

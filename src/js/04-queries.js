@@ -43,10 +43,17 @@ const classSubjectMembers=(cid,sid)=>{
  * داشته باشند مقدار تولید می‌شود — میانگینِ تک‌نفره بی‌معناست.
  * عضویتِ هر درس از classSubjectMembers (مدل چندپایه، بند ۲) می‌آید.
  */
+/* دور 85 (W3 — بند 2.7 بازبینی): زمینهٔ هر کلاس تا بعد از نخستین
+   تغییرِ داده کش می‌شود (نسخهٔ _DATA_VER). پیش از این، هر رندر کلِ
+   db.grades را می‌گذشت — درست همان الگوی خطی که قاعدهٔ 8 منع می‌کند. */
+var _CLS_CTX_CACHE=Object.create(null);
 function classScoreContext(classId){
+  var ver=(typeof _DATA_VER!=='undefined')?_DATA_VER:0;
+  var cached=_CLS_CTX_CACHE[classId];
+  if(cached && cached.ver===ver) return cached.ctx;
   var cls=byId('classes',Number(classId));
   var out=Object.create(null);
-  if(!cls||!db.grades) return out;
+  if(!cls||!db.grades){ _CLS_CTX_CACHE[classId]={ver:ver,ctx:out}; return out; }
   var groups=Object.create(null);
   db.grades.forEach(function(g){
     var k=g.subject_id+'|'+g.term+'|'+g.exam_type;
@@ -71,6 +78,7 @@ function classScoreContext(classId){
     if(cnt<2) return;
     out[k]={avg:n?sum/n:0, avgNorm:n?sumN/n:0, n:n, students:cnt};
   });
+  _CLS_CTX_CACHE[classId]={ver:ver,ctx:out};
   return out;
 }
 /** تطبیق نقشهٔ درس↔دانش‌آموز (برای ماژول آتی؛ امروز فراخوانی نمی‌شود) */

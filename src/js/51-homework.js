@@ -540,3 +540,89 @@ function hwWindowModal(assignmentId){
     + '<div class="small muted" style="margin-top:8px">مثال: «فضا ساعت ۸ تا  باز است تا تکالیفتان را بفرستید». قفلِ دستی روی تایمر مقدم است.</div>',
     'hw-window-save'));
 }
+
+/* const HW_ACTIONS — دور 85 (W3 — بند 2.8 بازبینی): اکشن‌های تکالیف (دور 78) از A به این ماژولِ خودش منتقل شد. زنجیرهٔ dispatch در 19-actions.js این آبجکت را با (el,id) صدا می‌زند. */
+const HW_ACTIONS={
+   'hw-window'(el,id){ hwWindowModal(Number(id)); },
+
+   'hw-window-save'(el,id){
+     const locked = !!(document.getElementById('hww_locked')||{}).checked;
+     const r = hwSetWindow(window._hwWindowId, locked, V('hww_open'), V('hww_close'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('بازهٔ ارسال به‌روز شد','ok'); render();
+   },
+   'hw-lock'(el,id){
+     const a = byId('hw_assignments', Number(id));
+     if(!a) return;
+     const r = hwSetWindow(Number(id), !a.locked, a.window_open||'', a.window_close||'');
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     toast(r.rec.locked ? 'تکلیف قفل شد' : 'تکلیف باز شد','ok'); render();
+   },
+   'hw-view'(el,id){ hwViewModal(Number(id)); },
+
+   'hw-new'(el,id){
+     const cls = byId('classes', Number(id));
+     if(!cls) return;
+     window._hwClass = Number(id);
+     const subs = (typeof visibleSubjects==='function'?visibleSubjects():[]).filter(function(x){return x.school_id===cls.school_id;});
+     openModal(modalTpl('تکلیف جدید — ' + cls.name,
+       f('عنوان *', inp('hw_title',''))
+       + f('درس', sel('hw_subject', [['','—']] .concat(subs.map(function(x){return [x.id,x.name];})), ''))
+       + f('توضیح', inp('hw_desc',''))
+       + f('مهلت (اختیاری)', inp('hw_due','','date'))
+       , 'hw-save'));
+   },
+   'hw-save'(el,id){
+     const r = hwCreateAssignment({
+       classId: window._hwClass,
+       title: V('hw_title'),
+       subjectId: Number(V('hw_subject')) || 0,
+       description: V('hw_desc'),
+       dueDate: V('hw_due')
+     });
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('تکلیف ثبت شد','ok'); render();
+   },
+   'hw-del'(el,id){
+     askConfirm('این تکلیف و فهرست بارگذاری‌هایش حذف شود؟ (خود فایل‌ها در ذخیره‌گاه می‌مانند)', function(){
+       const a = byId('hw_assignments', id);
+       if(!a) return;
+       const cls = byId('classes', a.class_id);
+       const u = S.user;
+       const role = (typeof activePersona==='function') ? activePersona() : u.role;
+       const isTeacher = role==='teacher' && cls && teacherClasses(u.id).some(function(c){ return c.id===cls.id; });
+       if(!(isTeacher || role==='manager' || role==='superadmin')){
+         toast('شما مجوز حذف این تکلیف را ندارید','err'); return;
+       }
+       hwSubmissionsOf(a.id).forEach(function(s){ remove('hw_submissions', s.id); });
+       remove('hw_assignments', a.id);
+       toast('تکلیف حذف شد','ok'); render();
+     }, {title:'حذف تکلیف', ok:'حذف', danger:true});
+   },
+   'hw-list'(el,id){ hwListModal(Number(id)); },
+
+   'hw-grade'(el,id){ hwGradeModal(Number(id)); },
+
+   'hw-grade-save'(el,id){
+     const raw = V('hw_score');
+     const score = raw==='' ? null : Number(raw);
+     if(raw!=='' && (isNaN(score) || score<0 || score>20)){ toast('نمره باید ۰ تا ۲۰ باشد','err'); return; }
+     hwSaveGrading(score).then(function(r){
+       if(!r.ok){ toast(r.msg,'err'); return; }
+       closeModal(); toast('تصحیح ثبت شد','ok'); render();
+     });
+   },
+   'hw-canvas-clear'(el,id){ _hwStrokes = []; hwCanvasRedraw(); },
+
+   'hw-submit'(el,id){
+     const inpEl = document.getElementById('hwfile_' + id);
+     const file = (inpEl && inpEl.files && inpEl.files[0]) ? inpEl.files[0] : null;
+     if(!file){ toast('تصویر تکلیف را انتخاب کنید','err'); return; }
+     toast('در حال بارگذاری…','');
+     hwSubmit(Number(id), file).then(function(r){
+       if(!r.ok){ toast(r.msg,'err'); return; }
+       toast('تکلیف بارگذاری شد — در انتظار تصحیح دبیر','ok');
+       render();
+     });
+   },
+};
