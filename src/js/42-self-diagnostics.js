@@ -1575,6 +1575,17 @@ function diagProbeHealth(){
   var t0 = Date.now();
   return diagFetchJson(diagServerUrl() + '/api/health', 6000).then(function(r){
     var ms = Date.now() - t0;
+    /* P1-2 (دور ۸۵): httpGetJson دیگر reject نمی‌کند — شکستِ شبکه/مهلت
+       با r.error می‌آید؛ پیامِ همیشگیِ «وصل نشد» دقیقاً حفظ می‌شود. */
+    if(!r.ok && r.error && (r.networkError || r.timedOut || String(r.error).indexOf('fetch') === 0)){
+      var recNet = { at:new Date().toISOString(), ok:false,
+                     err:String(r.error), ms:ms };
+      DIAG_PROBES.health = recNet;
+      try{ Store.setJSON('sms_diag_probes_v1', DIAG_PROBES); }catch(e){}
+      return { ok:false, probed:true,
+        msg:'وصل به سرور نشد: ' + String(r.error)
+           + ' — دامنه، پورت، HTTPS و اجرای سرور را بررسی کنید' };
+    }
     var rec = { at:new Date().toISOString(), ok:r.ok, code:r.code, ms:ms,
                 version:(r.data && r.data.version) || null, serverTime:r.serverTime };
     DIAG_PROBES.health = rec;

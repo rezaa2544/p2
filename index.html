@@ -1074,25 +1074,46 @@ var Data = {
 /**
  * HTTP GET با پاسخ JSON — تنها نقطهٔ لمسِ شبکه در کل برنامه.
  * (قاعدهٔ سئوت دودی: هیچ فایلی جز همین لایه fetch نمی‌زند.)
- * خروجی: { ok, code, serverTime, data } — serverTime از سرآیندهٔ Date
- * برای سنجش اختلاف ساعت استفاده می‌شود.
+ *
+ * خروجی (دور ۸۵, P1-2) — همیشه resolve، هرگز reject نمی‌کند:
+ *   { ok, status, code, serverTime, data, error, networkError?, timedOut? }
+ *   ok        ← res.ok (HTTP < 400) — تمایز 4xx/5xx از راه status
+ *   status    ← کد HTTP؛ 0 برای شکستِ سطحِ شبکه/مهلت
+ *   code      ← همان status (نگه‌داشتنی: مصرف‌کننده‌های قدیمی مثل
+ *               42-self-diagnostics از r.code استفاده می‌کنند)
+ *   data      ← بدنهٔ JSON؛ null اگر بدنه نبوده یا خراب باشد
+ *   error     ← null در پاسخِ HTTP (هر status)؛ در غیر این‌ها
+ *               'bad_json' یا 'network: ...' / 'timeout: ...'
+ *   serverTime← سرآیندهٔ Date برای سنجش اختلاف ساعت
+ * مصرف‌کننده‌ها (46-bell-now, detectServer) بدون تغییر عمل می‌کنند:
+ * r.ok/r.data همان معنای پیشین دارند و مسیرِ catchشان بی‌ضرر می‌ماند.
  */
 function httpGetJson(url, timeoutMs){
-  return new Promise(function(resolve, reject){
-    if(typeof fetch !== 'function'){ reject(new Error('fetch در دسترس نیست')); return; }
-    var ctl = null, to = null;
+  return new Promise(function(resolve){
+    if(typeof fetch !== 'function'){
+      resolve({ ok:false, status:0, code:0, serverTime:null, data:null,
+                error:'fetch در دسترس نیست', networkError:true });
+      return;
+    }
+    var ctl = null, to = null, timedOut = false;
     try{ ctl = new AbortController(); }catch(e){}
-    if(ctl) to = setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, timeoutMs || 6000);
+    if(ctl) to = setTimeout(function(){ timedOut = true; try{ ctl.abort(); }catch(e){} }, timeoutMs || 6000);
     fetch(url, { method:'GET', signal: ctl ? ctl.signal : undefined })
       .then(function(res){
         if(to) clearTimeout(to);
         var serverTime = null;
         try{ serverTime = res.headers ? res.headers.get('Date') : null; }catch(e){}
         return res.json()
-          .then(function(j){ return { ok:res.ok, code:res.status, serverTime:serverTime, data:j }; })
-          .catch(function(){ return { ok:res.ok, code:res.status, serverTime:serverTime, data:null }; });
+          .then(function(j){ return { ok:res.ok, status:res.status, code:res.status, serverTime:serverTime, data:j, error:null }; })
+          .catch(function(){ return { ok:res.ok, status:res.status, code:res.status, serverTime:serverTime, data:null, error:'bad_json' }; });
       })
-      .then(resolve, function(err){ if(to) clearTimeout(to); reject(err); });
+      .then(function(r){ resolve(r); }, function(err){
+        if(to) clearTimeout(to);
+        var msg = String((err && err.message) || err);
+        resolve({ ok:false, status:0, code:0, serverTime:null, data:null,
+                  error: (timedOut ? 'timeout: ' : 'network: ') + msg,
+                  networkError: !timedOut, timedOut: !!timedOut });
+      });
   });
 }
 
@@ -17424,6 +17445,17 @@ function diagProbeHealth(){
   var t0 = Date.now();
   return diagFetchJson(diagServerUrl() + '/api/health', 6000).then(function(r){
     var ms = Date.now() - t0;
+    /* P1-2 (دور ۸۵): httpGetJson دیگر reject نمی‌کند — شکستِ شبکه/مهلت
+       با r.error می‌آید؛ پیامِ همیشگیِ «وصل نشد» دقیقاً حفظ می‌شود. */
+    if(!r.ok && r.error && (r.networkError || r.timedOut || String(r.error).indexOf('fetch') === 0)){
+      var recNet = { at:new Date().toISOString(), ok:false,
+                     err:String(r.error), ms:ms };
+      DIAG_PROBES.health = recNet;
+      try{ Store.setJSON('sms_diag_probes_v1', DIAG_PROBES); }catch(e){}
+      return { ok:false, probed:true,
+        msg:'وصل به سرور نشد: ' + String(r.error)
+           + ' — دامنه، پورت، HTTPS و اجرای سرور را بررسی کنید' };
+    }
     var rec = { at:new Date().toISOString(), ok:r.ok, code:r.code, ms:ms,
                 version:(r.data && r.data.version) || null, serverTime:r.serverTime };
     DIAG_PROBES.health = rec;
