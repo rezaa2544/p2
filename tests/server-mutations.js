@@ -65,6 +65,13 @@ const MUTS = [
     mut: "if(false){}",
     name: 'M7 خروج بدونِ خبرِ سرور',
     expectFail: 'F2'
+  },
+  {
+    file: 'src/js/00-data-layer.js', suite: 'tests/server3.js', heap: 1500,
+    bad: "SYNC.queue = SYNC.queue.filter(function(x){ return x && x.user_id != null; });",
+    mut: "SYNC.queue = SYNC.queue.filter(function(x){ return true; });",
+    name: 'M8 عملیات‌های بی‌هویت در صفِ سروری می‌مانند',
+    expectFail: 'S5a'
   }
 ];
 
