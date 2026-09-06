@@ -68,6 +68,78 @@ function dropUsersUpdate(s, op){
   return keys.every(k => DROP_KEYS.indexOf(k) > -1);
 }
 
+/* ── FIELD_ALLOWLISTS — field-level rules per collection (arch review P0-1) ──
+   The role/scope gates above answer "may this role write this collection,
+   to this record?". FIELD_ALLOWLISTS answers the finer question:
+   "may this role write THIS FIELD?".
+   Today: `leaves`.
+     • ins — the requester creates a REQUEST: initial status is 'pending'
+       only. Exception: manager/superadmin may create directly with a
+       decision status — locked flow AD 78.3 (dorm manager creates the
+       weekend leave already approved).
+     • upd — only manager/superadmin may touch `status`, and only to a
+       decision ('approved' | 'rejected'). Other fields (reason, dates…)
+       stay writable for any role holding the collection permission.
+   Without this, a parent could forge an approved leave for their child
+   (ins/upd with status:'approved') — see docs/ARCHITECTURE_REVIEW.md §2.2. */
+const FIELD_ALLOWLISTS = {
+  leaves: {
+    ins: {
+      defaultRoles : ['pending'],
+      managerRoles : ['pending', 'approved', 'rejected']
+    },
+    upd: {
+      statusRoles  : ['manager', 'superadmin'],
+      statusValues : ['approved', 'rejected']
+    }
+  }
+};
+
+/**
+ * Shared field-level exception gate (arch review P0-1). Passes all three
+ * field exceptions through ONE helper:
+ *   1) users + IEP keys   (teacher)  — the existing IEP exception
+ *   2) users + dropout    (manager)  — the existing dropout whitelist
+ *   3) leaves status      (P0-1)     — the new field allowlist
+ * Returns:
+ *   null                       — no field rule applies (normal path)
+ *   { kind:'allow' }           — exception grants the write (IEP/DROP)
+ *   { kind:'reject', code }    — reject the WHOLE batch, as before
+ *                                (403; keeps IEP/DROP semantics byte-identical)
+ *   { kind:'reject_op', code } — reject THIS op only (200 + ok:false),
+ *                                like virtual_day; the rest of the batch
+ *                                continues. Used by the leaves rule.
+ */
+function filterFields(op, collection, role){
+  const fa = FIELD_ALLOWLISTS[collection];
+  if(fa){
+    const d = (op && op.data) || {};
+    const isMgr = role === 'manager' || role === 'superadmin';
+    if(op.t === 'ins'){
+      const allowed = isMgr ? fa.ins.managerRoles : fa.ins.defaultRoles;
+      if(d.status != null && allowed.indexOf(d.status) === -1)
+        return { kind: 'reject_op', code: 'field_denied' };
+      if(d.status == null) d.status = fa.ins.defaultRoles[0]; /* normalize */
+      return null;
+    }
+    if(op.t === 'upd' && d.status != null){
+      if(!isMgr || fa.upd.statusValues.indexOf(d.status) === -1)
+        return { kind: 'reject_op', code: 'field_denied' };
+      return null;
+    }
+    return null;
+  }
+  if(collection === 'users' && op && op.t === 'upd'){
+    if(role === 'teacher' && iepUsersUpdate({ role }, op)) return { kind: 'allow' };
+    if(dropTouchesDropout(op)){
+      if(role === 'superadmin') return null;
+      if(role === 'manager' && dropUsersUpdate({ role }, op)) return { kind: 'allow' };
+      return { kind: 'reject', code: 'role_denied' };
+    }
+  }
+  return null;
+}
+
 /* #4 — is the target record inside this user's scope? Real records
    from the store; unknown ids fail closed. */
 function inScope(session, coll, recId, data){
@@ -198,12 +270,19 @@ function createSync(ctx){
       /* #2 — stamps must match the token */
       if(op.user_id != null && Number(op.user_id) !== s.id) return all('user_mismatch');
       if(op.school_id != null && s.school_id != null && Number(op.school_id) !== s.school_id) return all('school_mismatch');
-      /* #3 — role may write this collection (fail closed) */
-      if(!canWrite(s.role, op.c) && !iepUsersUpdate(s, op)) return all('role_denied');
-      /* Round 76 — dropout whitelist: any users update touching
-         dropout/status fields must be a clean dropout op (manager,
-         own keys only). Teacher → role_denied; other-school manager
-         is caught by inScope (#4, fail closed). */
+      /* #3 — field-level exceptions first: ONE gate for all three
+         (IEP / dropout / leaves — see filterFields).
+           reject    → whole batch, 403 (IEP/DROP semantics unchanged)
+           reject_op → this op only, 200 + ok:false (batch continues) */
+      const ff = filterFields(op, op.c, s.role);
+      if(ff && ff.kind === 'reject') return all(ff.code);
+      if(ff && ff.kind === 'reject_op'){
+        audit('sync_field_denied', { user_id: s.id, uid: op.uid, collection: op.c });
+        results.push({ uid: op.uid, ok: false, code: ff.code, message: 'تغییر این فیلد برای نقش شما مجاز نیست' });
+        continue;
+      }
+      if(!canWrite(s.role, op.c) && !(ff && ff.kind === 'allow') && !iepUsersUpdate(s, op)) return all('role_denied');
+      /* Round 76 — dropout whitelist double guard (semantics unchanged) */
       if(dropTouchesDropout(op) && s.role !== 'superadmin' && !dropUsersUpdate(s, op)) return all('role_denied');
       /* #4 — target record inside scope */
       const recId = op.id != null ? op.id : (op.data && op.data.id);
@@ -252,4 +331,4 @@ function createSync(ctx){
 
   return { apiSync, canWrite, inScope };
 }
-module.exports = { createSync, attach, canWrite, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout };
+module.exports = { createSync, attach, canWrite, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS };
