@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
  * پایش — اسکریپت ساخت (Build)
- * ماژول‌های src/ را دوباره در یک فایل HTML تک‌فایلی و کاملاً آفلاین ادغام می‌کند.
+ * ماژول‌های src/ را دوباره در یک فایل HTML تک‌فایلی و کاملاً آفلاین ادغام می‌گند.
  *
  *   node build.js            → dist/payesh.html
- *   node build.js --check    → فقط بررسی می‌کند خروجی با index.html یکسان است
+ *   node build.js --check    → فقط بررسی می‌گند خروجی با index.html یکسان است
  */
 const fs = require('fs');
 const path = require('path');
@@ -33,12 +33,16 @@ function build() {
     .map((f) => read(path.join(SRC, 'js', f)))
     .join('\n');
 
+  /* CSP nonce (قرارداد امنیت سرور، بند ۵٫۶٫۲): بیلد جای‌نکهدار می‌کزارد
+     و سرورِ واقعی آن را با مقدار تصادفیِ هر درخواست پر می‌گند — بدون
+     'unsafe-inline'. در حالت فایلِ محلی (file://) سرآیندی نیست و
+     جای‌نکهدار بی‌ضرر باقی می‌ماند. */
   const html =
     head + '\n' +
-    '<style>\n' + css + '\n</style>\n' +
+    '<style nonce="__PAYESH_NONCE__">\n' + css + '\n</style>\n' +
     '</head>\n' +
     body + '\n' +
-    '<script>\n' + js + '\n</script>\n' +
+    '<script nonce="__PAYESH_NONCE__">\n' + js + '\n</script>\n' +
     '</body>\n' +
     '</html>\n';
 
