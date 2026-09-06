@@ -264,6 +264,26 @@ document.addEventListener('click',e=>{
      insert('transactions',{school_id:sid,kind:kind,category:'کمک مردمی',amount:amt,date:todayISO(),description:who+(note?(' — '+note):''),by:S.user.id});
      toast('تراکنش انجمن ثبت شد','ok');render();
    },
+  /* ─────── بند ۶.۲: صورت‌جلسهٔ انجمن (فقط مدیر، فقط مدرسهٔ خود) ────── */
+  'assoc-min-new'(){
+    const sid=S.user.school_id;
+    if(!sid||(typeof hasCap==='function')&&hasCap(sid,'has_tuition')){toast('این بخش فقط برای مدارس دولتی است','err');return;}
+    assocMinModal();},
+  'assoc-min-save'(){
+    const sid=S.user.school_id;
+    const date=V('am_date');const att=V('am_att');const res=V('am_res');
+    if(!date){toast('تاریخِ جلسه لازم است','err');return;}
+    if(!att){toast('حاضرین را بنویسید','err');return;}
+    insert('assoc_minutes',{school_id:sid,meeting_date:date,attendees:att,resolutions:res,archived:false,created_at:todayISO(),updated_at:todayISO()});
+    closeModal();toast('صورت‌جلسه ثبت شد','ok');render();},
+  'assoc-min-print'(){assocMinPrint(id);},
+  'assoc-min-toggle'(){
+    const m=byId('assoc_minutes',Number(id));
+    if(!m)return;
+    update('assoc_minutes',m.id,{archived:!m.archived,updated_at:todayISO()});
+    toast(m.archived?'برگردانده شد: فعال':'بایگانی شد','ok');render();},
+  'assoc-min-del'(){confirmModal('حذف این صورت‌جلسه؟','assoc-min-del-ok',id);},
+  'assoc-min-del-ok'(){remove('assoc_minutes',Number(window._delId));closeModal();toast('حذف شد','ok');render();},
    'nudge-send'(){
      var clsId=Number(id);
      var slot=currentSlot(S.user.school_id);

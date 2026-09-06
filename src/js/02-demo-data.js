@@ -66,7 +66,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -268,6 +268,14 @@ function generate(){
     add('reexams',{school_id:1,student_id:studs[2].id,subject_id:subs[1].id,original_score:11,exam_date:daysAgoISO(3),new_score:14,status:'done',created_at:daysAgoISO(15),updated_at:daysAgoISO(2)});
   })();
   /* کمک‌هزینه (بند ۲.۴): رکوردهای نمونه — فقط ثبت، بدون پرداخت */
+  /* صورت‌جلسهٔ انجمن (بند ۶.۲): دو رکوردِ نمونه — مدرسهٔ دولتیِ اندیشه (۶) */
+  (function(){
+    var s6=db.schools.find(function(x){return x.id===6;});
+    if(!s6)return;
+    add('assoc_minutes',{school_id:6,meeting_date:daysAgoISO(40),attendees:'آقای کریمی — رئیس انجمن\nسرکار خانم موسوی — نمایندهٔ اولیا\nآقای نجفی — مدیر مدرسه',resolutions:'تصویبِ کمکِ داوطلبانهٔ ۱۰ میلیونی برای کتابخانه\nتعیینِ اردوی پاییزی در اواخرِ مهر',archived:true,created_at:daysAgoISO(40),updated_at:daysAgoISO(38)});
+    add('assoc_minutes',{school_id:6,meeting_date:daysAgoISO(5),attendees:'آقای کریمی — رئیس انجمن\nسرکار خانم موسوی — نمایندهٔ اولیا\nآقای نجفی — مدیر مدرسه',resolutions:'تصویبِ برگزاریِ جلسهٔ اطلاع‌رسانیِ ثبت‌نام\nانتخابِ سرپرستِ تازه برای انجمن',archived:false,created_at:daysAgoISO(5),updated_at:daysAgoISO(5)});
+  })();
+
   (function(){
     var defs=[
       [1,'requested','بررسیِ وضعیتِ اقتصادیِ خانواده',5],
