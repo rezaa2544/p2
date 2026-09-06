@@ -68,11 +68,12 @@ node server/index.js   # https://0.0.0.0:3000 — HSTS + کوکیِ Secure خو�
 - `server/data/` در `.gitignore` است — پایگاه، آدیت و کلید هرگز در گیت نیستند.
 - آزمون‌ها: `node tests/server1.js` (۳۰ تستِ سمت سرور) ·
   `node tests/server2.js` (۲۵ تستِ کلاینت با fetch استاب) ·
-`node tests/server-mutations.js` (۱۲ جهش — همه باید بکشند).
+`node tests/server-mutations.js` (۱۳ جهش — همه باید بکشند).
   `node tests/server3.js` (۱۹ تستِ سر به سر: سرورِ واقعی + کلاینتِ واقعی با HTTP واقعی —
   برای این تست فقط jsdom لازم است، نه سرور جدا) ·
   `node tests/server4.js` (۱۶ تستِ TLS واقعی: گواهی، https، HSTS، CSP، کوکی‌ها) ·
-  `node tests/server5.js` (۱۴ تستِ پُلِ دوره‌ای: scope سرور + تیکِ کلاینت)
+  `node tests/server5.js` (۱۴ تستِ پُلِ دوره‌ای: scope سرور + تیکِ کلاینت) ·
+  `node tests/server6.js` (۹ تستِ گاردِ روزِ غیرحضوریِ سمتِ سرور — بند ۱۳.۱)
 
 ## افزودن ماژول جدید
 

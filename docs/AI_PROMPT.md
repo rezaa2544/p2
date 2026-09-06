@@ -299,9 +299,14 @@ IDOR زندگی می‌کند.
   تیکِ سروری + ساعتِ سرور در `SERVER_TIME_KEY` + overlayِ حضورِ سرور + گاردِ سختِ بدن
   (وگرنه پس‌رویِ محلی) + dedupe.
 - health حالا `pid` دارد؛ boot-waitِ تست‌ها با آن portِ دست‌سپارِ دورِ شکسته را رد می‌کند.
+- **گاردهای روزِ غیرحضوری سمتِ سرور (باقی‌ماندهٔ ۱۳.۱):** `server/sync.js` چهار عملیاتِ
+  فیزیکی (حضوری/تأخیر/غیابِ `attendance` — `excused` آزاد، امانت، مهمان، `in_use` تجهیز)
+  را در روزِ غیرحضوری ردِ عملیات‌به‌عملیات می‌کند (`virtual_day` + پیام + آدیت)؛
+  جریانِ کلاسِ مجازی دست‌نخورده است.
 - آزمون‌ها: `tests/server4.js` (۱۶ تستِ TLS واقعی) · `tests/server5.js` (۱۴ تستِ پُل:
-  scope + تیکِ کلاینت در jsdom) · `tests/server-mutations.js` حالا ۱۲ جهش
-  (M9 scope · M10 Secure · M11 گاردِ بدن · M12 overlay).
+  scope + تیکِ کلاینت در jsdom) · `tests/server6.js` (۹ تستِ گاردِ روزِ غیرحضوریِ سمتِ سرور) ·
+  `tests/server-mutations.js` حالا ۱۳ جهش
+  (M9 scope · M10 Secure · M11 گاردِ بدن · M12 overlay · M13 گاردِ غیرحضوری).
 - دامِ کشف‌شده: DERِ X.509 دست‌ساز را `openssl asn1parse` «پذیرا ولی نالاغر» می‌خواند —
   اعتبارسنجی فقط با `X509Certificate`/`openssl x509` معتبر است (جزئیات در CONTRIBUTING).
 

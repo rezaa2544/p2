@@ -7,6 +7,28 @@
 > `docs/HANDOFF_ARCHIVE.md` منتقل می‌شوند.
 >
 > پیام کامیت: `docs: update HANDOFF.md with session summary [تاریخ]`
+## Handoff — گاردِ روزِ غیرحضوریِ سمتِ سرور (باقی‌ماندهٔ ۱۳.۱) — 2026-09-06
+
+### ۱) چه شد
+- `server/sync.js` — آینهٔ سروری از گاردهایِ بند ۱۶: `isVirtualDay` + `virtualDayViolation`.
+  چهار عملیاتِ فیزیکی در روزِ غیرحضوری رد می‌شوند (present/late/absent در `attendance` — excused آزاد،
+  امانتِ `lib_loans`، مهمانِ `visitors`، `in_use` در `assets`) — ردِ عملیات‌به‌عملیات با
+  `code:'virtual_day'` + پیامِ فارسی + آدیتِ `sync_virtual_day_blocked`؛ uidِ رد‌شده در
+  `__processed_uids` نمی‌نشیند. جریانِ `vclass_*` دست‌نخورده (جدولِ جدا).
+- `tests/server6.js` ۹/۹ (boot با pid-guard، دستهٔ مخلوط، disk، امانت، مهمان، تجهیز، vclass، آدیت) +
+  جهشِ M13 (گارد خاموش) کشته شد → suite حالا ۱۳/۱۳.
+- بازگشت‌آزمون سبز: server1 ۳۰ · server2 ۲۵ · server3 ۱۹ · run ۳۳ · bell2 ۸ · schoolmode2 ۶.
+
+### ۲) نکات برای دورِ بعد
+- `persistStore` هر ۲ ثانیه است (interval+unref) — هر تستی که «روی disk» چک می‌کند باید ≥۲.۵ ثانیه صبر کند.
+- ردِ عملیات‌به‌عملیات از قبل در کلاینت فهمیده می‌شود (27-sync.js: `ok:false` → failed + backoff + toast) —
+  کلاینت دست‌نخورده ماند.
+- `vclass_attendance` فیلدِ `school_id` ندارد → scopeٔ مدیر از راهِ #4 پاس نمی‌شود (رفتارِ ازپیش‌موجود).
+  تست با نقشِ دبیر سنجیده شد.
+
+### ۳) باقی‌ماندهٔ ۱۳.۱
+فقط صفِ پیامکِ واقعی (درگاهِ خارجی).
+
 ## Handoff — «اتصال به سرور» مرحلهٔ ۲: TLS واقعی + پُلِ دوره‌ای ۱۳.۴ — 2026-09-06
 
 ### ۱) چه شد (کامیت‌ها — سه تیکه)
@@ -897,7 +919,7 @@ diag2 ۱۰ · simulation ۳۵ · security (پنتست) — همه ✅
   شد).
 * در آزمون‌های smoke، `const t` داخل `try` را در `finally` استفاده
   نکن (ReferenceError خطای اصلی را پنهان می‌کند)؛ `source_ref`
-  رگوردهای صف می‌تواند عدد باشد (rکورد حضور) — همیشه
+  رگوردهای صف می‌تواند عدد باشد (رکورد حضور) — همیشه
   `typeof === 'string'` قبل از indexOf.
 * lint استاتیک smoke: هر خطی با `max-height:..px;overflow:auto`
   باید گلاس `vscroll` داشته باشد (نوار اسکرول سمت راست).
