@@ -233,11 +233,27 @@ if(TLS_CERT || TLS_KEY){
     console.error('generate one:  node server/tls-cert.js');
     process.exit(1);
   }
+  const keyPem  = fs.readFileSync(TLS_KEY);
+  const certPem = fs.readFileSync(TLS_CERT);
+  /* Round 85 (P1-4): production fail-fast. A self-signed cert (e.g. the
+     dev one from `node server/tls-cert.js`) is fine for local dev, but a
+     deployment that declares PAYESH_ENV=production must present a
+     CA-issued cert — real PII (nid/phone) must not ride a cert the
+     client cannot verify. subject===issuer is the self-signed marker. */
+  if(process.env.PAYESH_ENV === 'production'){
+    try{
+      const x509 = new (require('crypto').X509Certificate)(certPem);
+      if(x509.subject === x509.issuer){
+        console.error('Error: Production requires valid CA certificate (self-signed cert detected; see DEPLOY.md §TLS — certbot)');
+        process.exit(1);
+      }
+    }catch(e){
+      console.error('Error: Production requires valid CA certificate (cert unreadable: ' + e.message + ')');
+      process.exit(1);
+    }
+  }
   const https = require('https');
-  server = https.createServer({
-    key:  fs.readFileSync(TLS_KEY),
-    cert: fs.readFileSync(TLS_CERT)
-  }, onRequest);
+  server = https.createServer({ key: keyPem, cert: certPem }, onRequest);
 }else{
   server = http.createServer(onRequest);
 }
