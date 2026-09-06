@@ -73,6 +73,53 @@ let store_ref = null;
 function get_store(){ return store_ref; }
 function attach(store){ store_ref = store; }
 
+/* §13.1 — روزِ غیرحضوری (virtual): عملیاتِ فیزیکی مسدود است.
+   آینهٔ سمتِ سرور از گاردِ کلاینت (schoolVirtual — 57-school-mode.js، بند ۱۶).
+   عملیات‌های فیزیکی:
+     - attendance: وضعیتِ present/late/absent (excused = رکوردِ اداری، آزاد)
+     - lib_loans:  امانتِ جدید (بازگشت = returned_at، آزاد)
+     - visitors:   مهمانِ جدید (خروج = out_at، آزاد)
+     - assets:     وضعیتِ in_use (تحویلِ فیزیکی)
+   جریانِ کلاسِ مجازی (vclass_*) دست‌نخورده است — جدولِ جدا. */
+function isoDay(v){ return String(v || '').slice(0, 10); }
+function isVirtualDay(store, schoolId, dateISO){
+  if(schoolId == null) return false;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(dateISO || ''))) return false;
+  return (store.attendance_modes || []).some(
+    m => m.school_id === Number(schoolId) && m.date === dateISO && m.mode === 'virtual');
+}
+function virtualDayViolation(op, store){
+  const c = op.c;
+  const d = op.data || {};
+  const nowIso = new Date().toISOString();
+  if(c === 'attendance'){
+    const rec = op.id != null ? (store.attendance || []).find(x => x.id === Number(op.id)) : null;
+    const eff = Object.assign({}, rec, d);
+    if(['present','late','absent'].indexOf(eff.status) === -1) return null;
+    if(isVirtualDay(store, eff.school_id, eff.date)) return { schoolId: eff.school_id, date: eff.date };
+    return null;
+  }
+  if(c === 'lib_loans' && op.t === 'ins'){
+    const day = isoDay(d.loan_at || op.at || nowIso);
+    if(isVirtualDay(store, d.school_id, day)) return { schoolId: d.school_id, date: day };
+    return null;
+  }
+  if(c === 'visitors' && op.t === 'ins'){
+    const day = isoDay(d.in_at || op.at || nowIso);
+    if(isVirtualDay(store, d.school_id, day)) return { schoolId: d.school_id, date: day };
+    return null;
+  }
+  if(c === 'assets' && op.t === 'upd'){
+    if(d.status !== 'in_use') return null;
+    const rec = (store.assets || []).find(x => x.id === Number(op.id != null ? op.id : d.id));
+    if(!rec) return null; /* شناسهٔ ناشناس توسط بند #4 (fail-closed) سنجیده می‌شود */
+    const day = isoDay(op.at || nowIso);
+    if(isVirtualDay(store, rec.school_id, day)) return { schoolId: rec.school_id, date: day };
+    return null;
+  }
+  return null;
+}
+
 function nextId(c){
   let m = 0;
   for(const x of store_ref[c]) if(x.id != null && x.id > m) m = x.id;
@@ -116,6 +163,13 @@ function createSync(ctx){
       /* #4 — target record inside scope */
       const recId = op.id != null ? op.id : (op.data && op.data.id);
       if(!inScope(s, op.c, recId, op.data)) return all('out_of_scope');
+      /* §13.1 — non-in-person day: physical ops rejected per-op (rest continues) */
+      const vd = virtualDayViolation(op, store);
+      if(vd){
+        audit('sync_virtual_day_blocked', { user_id: s.id, uid: op.uid, collection: op.c, school_id: vd.schoolId, date: vd.date });
+        results.push({ uid: op.uid, ok: false, code: 'virtual_day', message: 'در روز غیرحضوری، این عملیاتِ فیزیکی مسدود است' });
+        continue;
+      }
       /* §3.3 — idempotency: a repeated uid is already applied */
       if(store.__processed_uids[op.uid]){
         results.push({ uid: op.uid, ok: true, code: 'duplicate_ignored', serverTime: new Date().toISOString() });
@@ -153,4 +207,4 @@ function createSync(ctx){
 
   return { apiSync, canWrite, inScope };
 }
-module.exports = { createSync, attach, canWrite, inScope, WRITE_PERMS };
+module.exports = { createSync, attach, canWrite, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS };
