@@ -237,6 +237,31 @@ function viewOfficeDash(){
       </tbody></table></div></div>
    </div>
 
+   /* دور ۷۶ — آمارِ ترک تحصیل (تجمیعیِ محدودهٔ اداره؛ آگهی فردی نیست) */
+   ${(()=>{
+     if(typeof dropStats!=='function')return '';
+     const ds=dropStats(schools.map(x=>x.id));
+     const reasons=Object.entries(ds.byReason).sort((a2,b2)=>b2[1]-a2[1]);
+     const maxR=Math.max(1,...reasons.map(r2=>r2[1]));
+     const grades=Object.entries(ds.byGrade).sort((a2,b2)=>Number(a2[0])-Number(b2[0]));
+     const dropFa=(k)=>((typeof DROP_REASONS==='object'&&DROP_REASONS[k])?DROP_REASONS[k]:'نامشخص');
+     return `<div class="card" style="margin-top:14px"><div class="card-head"><h3>🚪 آمار ترک تحصیل (تجمیعی)</h3>
+       <span class="badge b-gray">فقط آمار — بدون نام فرد</span></div>
+       <div class="card-body"><div class="row" style="margin-bottom:10px">
+         <div><b style="font-size:20px">${fa(ds.total)}</b><span class="small muted"> نفر در وضعیتِ ترک تحصیل</span></div>
+         <div class="small muted">پسر: <b>${fa(ds.byGender['پسر'])}</b> · دختر: <b>${fa(ds.byGender['دختر'])}</b></div>
+       </div>
+       <div class="grid g2">
+         <div><div class="small muted" style="margin-bottom:6px">تفکیک بر اساسِ دلیل</div>
+           ${reasons.length?reasons.map(([k,n])=>`<div style="margin-bottom:6px">
+             <div class="row" style="justify-content:space-between"><span class="small">${esc(dropFa(k))}</span><b class="small">${fa(n)}</b></div>
+             ${bar(n,maxR,'var(--red)')}</div>`).join(''):empty('📊','ترک تحصیلی ثبت نشده','')}
+         </div>
+         <div><div class="small muted" style="margin-bottom:6px">تفکیک بر اساسِ پایه</div>
+           ${grades.length?`<table class="table"><tbody>${grades.map(([g,n])=>`<tr><td>پایهٔ ${fa(g)}</td><td><b>${fa(n)}</b> نفر</td></tr>`).join('')}</tbody></table>`:empty('📊','—','')}
+         </div>
+       </div></div></div>`;
+   })()}
    <div class="card" style="margin-top:14px"><div class="card-head"><h3>عملکرد مدارس محدوده</h3>
      <button class="btn ghost sm" data-act="office-print">🖨️ چاپ گزارش</button></div>
     ${rows.length?`<div class="table-wrap"><table class="table"><thead><tr><th>#</th><th>مدرسه</th><th>شهرستان</th><th>مقطع</th><th>دانش‌آموز</th><th>دبیر</th><th>میانگین نمره</th><th>درصد حضور</th><th>اشغال ظرفیت</th></tr></thead><tbody>

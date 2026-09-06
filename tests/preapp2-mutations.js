@@ -51,7 +51,7 @@ function restore(p) { /* backup handled inline per mutation */ }
 {
   const f = path.join(ROOT, 'server/sync.js');
   const orig = fs.readFileSync(f, 'utf8');
-  const bad = orig.replace("'internships','preapps']", "'internships']");
+  const bad = orig.replace("'preapps','scholarships'", "'scholarships'");
   chk(bad !== orig, 'M3 جهشِ WRITE_PERMS سرور اعمال شد');
   if (bad !== orig) {
     fs.writeFileSync(f, bad, 'utf8');

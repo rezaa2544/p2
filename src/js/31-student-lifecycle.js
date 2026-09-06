@@ -336,3 +336,138 @@ function viewLifecycle(){
 
   return '<div class="row" style="margin-bottom:14px;flex-wrap:wrap;gap:8px">' + tabs + '</div>' + body;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   دور ۷۶ — ترک تحصیل (بدون حذف داده — حذف نرم)
+   ───────────────────────────────────────────────────────────────────
+   ثبت ترک تحصیل، فقط وضعیت کاربر را 'dropped_out' می‌کند
+   (همان الگوی graduated: status + active:0). کل پرونده — نمرات،
+   حضور، انضباط، سابقه — دست‌نخورده می‌ماند.
+   بازگشت به تحصیل: وضعیت 'active' + returned_at؛ فیلدهای ترک
+   هم می‌مانند (سابقهٔ واقعی است، نه دادهٔ قابلِ حذف).
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** فهرستِ دلایلِ ترک تحصیل (بر پایهٔ منابع رسمی: مرکز آمارِ ایران
+    و مرکز پژوهش‌های مجلس). «other» توضیحِ آزادِ الزامی دارد. */
+var DROP_REASONS = {
+  economic:   'مشکلات اقتصادی/معیشتی خانواده',
+  child_work: 'اشتغال دانش‌آموز / کار کودک',
+  marriage:   'ازدواجِ زودهنگام (عمدتاً دختران — با حساسیت ثبت می‌شود)',
+  family:     'مشکلات خانوادگی (طلاق، مهاجرت، بی‌سرپرستی)',
+  academics:  'افت تحصیلی مکرر / تجدیدی پی‌درپی',
+  health:     'مشکلات جسمی/روانی دانش‌آموز',
+  distance:   'دوری مسیر / نبود دسترسی به مدرسه (مناطق محروم/روستایی)',
+  motivation: 'نبود انگیزه (بی‌اعتقادی به ارزش تحصیل، دیدنِ بیکاری فارغ‌التحصیلان)',
+  bullying:   'قلدری/آزار در مدرسه',
+  migration:  'مهاجرتِ خانواده به شهر/کشور دیگر',
+  other:      'سایر (توضیحِ آزادِ الزامی)'
+};
+
+/** برچسبِ فارسیِ یک دلیل */
+function dropReasonFa(key){
+  return DROP_REASONS[key] || 'نامشخص';
+}
+
+/**
+ * ثبتِ ترک تحصیل.
+ * date: ISO (YYYY-MM-DD) · reason: کلیدِ DROP_REASONS · note: اختیاری
+ * فقط وضعیت تغییر می‌کند — هیچ داده‌ای حذف نمی‌شود.
+ */
+function dropRegister(studentId, date, reason, note, byUserId){
+  var u = (typeof byId === 'function') ? byId('users', studentId) : null;
+  if(!u || u.role !== 'student') return { ok: false, msg: 'دانش‌آموز پیدا نشد' };
+  if((u.status || 'active') === 'dropped_out') return { ok: false, msg: 'قبلاً ثبت شده است' };
+  if((u.status || 'active') === 'graduated') return { ok: false, msg: 'دانش‌آموز فارغ‌التحصیل است' };
+  if(!DROP_REASONS[reason]) return { ok: false, msg: 'دلیل الزامی است' };
+  if(reason === 'other' && !(note || '').trim()) return { ok: false, msg: 'برای «سایر»، توضیحِ آزاد الزامی است' };
+  update('users', u.id, {
+    status: 'dropped_out',
+    active: 0,
+    dropped_out_at: date,
+    dropped_out_by: byUserId != null ? byUserId : ((typeof S !== 'undefined' && S.user) ? S.user.id : null),
+    dropped_out_reason: reason,
+    dropped_out_note: (note || '').trim() || null
+  });
+  return { ok: true };
+}
+
+/**
+ * بازگشت به تحصیل: dropped_out → active، با تاریخِ بازگشت.
+ * فیلدهایِ ترک (دلیل/تاریخ/ثبت‌کننده) می‌مانند — سابقهٔ واقعی.
+ */
+function dropReturn(studentId, date, byUserId){
+  var u = (typeof byId === 'function') ? byId('users', studentId) : null;
+  if(!u || u.role !== 'student') return { ok: false, msg: 'دانش‌آموز پیدا نشد' };
+  if((u.status || 'active') !== 'dropped_out') return { ok: false, msg: 'در وضعیتِ ترک تحصیل نیست' };
+  update('users', u.id, {
+    status: 'active',
+    active: 1,
+    returned_at: date,
+    returned_by: byUserId != null ? byUserId : ((typeof S !== 'undefined' && S.user) ? S.user.id : null)
+  });
+  return { ok: true };
+}
+
+/**
+ * آمارِ ترک تحصیل — تجمیعی (مبنای داشبوردِ اداره).
+ * schoolIds: فهرستِ شناسهٔ مدارسِ محدوده (اداره/منطقه/کل).
+ * خروجی: {total, byReason:{کلید:n}, byGrade:{پایه:n}, byGender:{'دختر':n,'پسر':n},
+ *         recent:[{name,reason,date,grade}]}
+ */
+function dropStats(schoolIds){
+  var set = {};
+  (schoolIds || []).forEach(function(x){ set[x] = true; });
+  var out = { total: 0, byReason: {}, byGrade: {}, byGender: { 'دختر': 0, 'پسر': 0 }, recent: [] };
+  (db.users || []).forEach(function(u){
+    if(u.role !== 'student') return;
+    if((u.status || 'active') !== 'dropped_out') return;
+    if(!set[u.school_id]) return;
+    out.total++;
+    var r = u.dropped_out_reason || 'other';
+    out.byReason[r] = (out.byReason[r] || 0) + 1;
+    /* پایه: از کلاس (جدول) وگرنه از خودِ کاربر */
+    var g = u.grade_level;
+    if(g == null){
+      var cls = (typeof classOf === 'function') ? classOf(u.id) : null;
+      if(cls) g = cls.grade_level != null ? cls.grade_level : gradeFromName(cls.name);
+    }
+    if(g != null) out.byGrade[g] = (out.byGrade[g] || 0) + 1;
+    /* جنسیت: از جنسیتِ مدرسه (مدرسهٔ دخترانه/پسرانه) */
+    var sc = (typeof byId === 'function') ? byId('schools', u.school_id) : null;
+    var gender = (sc && sc.gender === 'دخترانه') ? 'دختر' : 'پسر';
+    out.byGender[gender]++;
+    out.recent.push({
+      id: u.id, name: u.full_name, reason: r,
+      date: u.dropped_out_at || null, grade: (g != null ? g : null),
+      schoolId: u.school_id
+    });
+  });
+  out.recent.sort(function(a, b){ return String(b.date || '').localeCompare(String(a.date || '')); });
+  return out;
+}
+
+/**
+ * نوارِ وضعیتِ ترک تحصیل برای بالایِ پروندهٔ دانش‌آموز.
+ * اگر دانش‌آموز dropped_out نیست، '' برمی‌گرداند.
+ * canManage: مدیر/سوپرادمین — دکمهٔ «بازگشت به تحصیل» می‌بیند.
+ */
+function dropStatusStrip(sid){
+  var u = (typeof byId === 'function') ? byId('users', sid) : null;
+  if(!u || (u.status || 'active') !== 'dropped_out') return '';
+  var who = u.dropped_out_by ? (byId('users', u.dropped_out_by) || {}).full_name : '—';
+  var ret = u.returned_at ? ' · بازگشت: ' + (typeof jalali === 'function' ? jalali(u.returned_at) : u.returned_at) : '';
+  var strip = '<div class="callout red" style="margin:10px 14px 0">'
+    + '<b>🚪 ترک تحصیل ثبت شده</b> — '
+    + (u.dropped_out_at ? (typeof jalali === 'function' ? jalali(u.dropped_out_at) : u.dropped_out_at) + ' · ' : '')
+    + 'دلیل: <b>' + esc(dropReasonFa(u.dropped_out_reason)) + '</b>'
+    + (u.dropped_out_note ? ' · ' + esc(u.dropped_out_note) : '')
+    + ' · ثبت‌کننده: ' + esc(who) + ret
+    + '<div class="small" style="margin-top:6px">هیچ داده‌ای حذف نشده — نمرات، حضور و سابقهٔ این دانش‌آموز کامل در پرونده باقی است.</div>'
+    + '</div>';
+  var persona = (typeof activePersona === 'function') ? activePersona() : (typeof S !== 'undefined' && S.user ? S.user.role : null);
+  if(persona === 'manager' || persona === 'superadmin'){
+    strip += '<div style="padding:0 14px 10px"><button class="btn sm" data-act="drop-return" data-id="'
+      + escAttr(u.id) + '">↩️ بازگشت به تحصیل (با ثبتِ تاریخ)</button></div>';
+  }
+  return strip;
+}

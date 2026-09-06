@@ -41,8 +41,8 @@ mutate('src/js/19-actions.js',
   'tests/scholarship2.js', /❌ S4/, 'M2 برداشتنِ گاردِ جابه‌جاییِ نامجاز');
 
 mutate('server/sync.js',
-  "'internships','preapps','scholarships']",
-  "'internships','preapps']",
+  "'scholarships','reexams'",
+  "'reexams'",
   'tests/scholarship3.js', /❌ B1/, 'M3 برداشتنِ scholarships از WRITE_PERMS');
 
 /* بازسازی + خطِّ پایه */

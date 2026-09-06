@@ -186,6 +186,11 @@ var ACTION_ROLES = {
   'sd-new':         ['manager'],
   'sd-save':        ['manager'],
   'sd-del':         ['manager'],
+  /* دور ۷۶ — ترک تحصیل: فقط مدیر (سوپرادمین با اصلِ ساختاری دور می‌زند) */
+  'drop-register':  ['manager'],
+  'drop-register-confirm': ['manager'],
+  'drop-return':    ['manager'],
+  'drop-return-confirm': ['manager'],
   'att-set':       ['teacher','manager'],
   'att-time-save': ['teacher','manager'],
   'att-exempt':    ['manager'],
