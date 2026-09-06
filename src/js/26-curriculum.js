@@ -216,11 +216,3 @@ function schoolFields(schoolId){
     return a.concat(fieldsOfBranch(b));
   }, []).filter(function(x, i, arr){ return arr.indexOf(x) === i; });
 }
-
-/** برچسب خوانا برای یک درس/کتاب */
-function subjectScopeLabel(s){
-  if(!s.grade) return 'عمومی';
-  const lv = levelOfGrade(s.grade);
-  if(needsField(lv) && s.field) return `${s.grade} — ${s.field}`;
-  return s.grade;
-}

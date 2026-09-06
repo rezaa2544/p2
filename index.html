@@ -1566,11 +1566,6 @@ function idxScheduleByTeacher(){
   return idxGroup('schedule','teacher_id',function(s){ return s.teacher_id; });
 }
 
-/** school_id → کلاس‌ها */
-function idxClassesBySchool(){
-  return idxGroup('classes','school_id',function(c){ return c.school_id; });
-}
-
 /* ---------- کمکی: مرتب‌سازی فارسی با کش کلید ----------
    localeCompare فارسی گران است. با Intl.Collator یک‌بار ساخته
    و کلید مرتب‌سازی کش می‌شود.                                */
@@ -1880,27 +1875,6 @@ function scopeDescriptor(user, persona){
   return d;
 }
 
-/** برآورد حجم برش کاربر — برای پایش و هشدار */
-function scopeEstimate(user, persona){
-  var role = persona || (user && user.role);
-  var n = 0;
-  try{
-    if(role === 'student'){
-      n = 1 + countBy('attendance', function(a){ return a.student_id === user.id; })
-            + countBy('grades', function(g){ return g.student_id === user.id; });
-    } else if(role === 'teacher'){
-      var cls = (typeof teacherClasses === 'function') ? teacherClasses(user.id) : [];
-      var ids = {}; cls.forEach(function(c){ ids[c.id] = 1; });
-      n = countBy('attendance', function(a){ return ids[a.class_id]; })
-        + countBy('grades', function(g){ return ids[g.class_id]; });
-    } else if(role === 'manager'){
-      n = countBy('attendance', function(a){ return a.school_id === user.school_id; })
-        + countBy('grades', function(g){ return g.school_id === user.school_id; });
-    }
-  }catch(e){}
-  return n;
-}
-
 function countBy(coll, fn){
   var a = db[coll] || [], n = 0;
   for(var i=0;i<a.length;i++) if(fn(a[i])) n++;
@@ -1928,17 +1902,6 @@ function scopeHealth(){
   };
 }
 
-/* ---------- قرارداد دریافت داده از سرور ----------
-   GET /api/bootstrap  → { scope, data:{...}, cursor }
-   سرور موظف است:
-     • محدوده را از روی توکن کاربر تعیین کند، نه از پارامتر کلاینت
-     • هرگز دادهٔ خارج از محدوده نفرستد
-     • فهرست‌های بزرگ را صفحه‌بندی کند
-   ------------------------------------------------ */
-function bootstrapRequest(){
-  var d = scopeDescriptor(S.user, (typeof activePersona === 'function') ? activePersona() : null);
-  return { method:'GET', url:'/api/bootstrap', scope:d, limits:SCOPE_LIMITS };
-}
 
 /* ═══════════════════════════════════════════════════════════════════
    وضعیت برنامه و مسیریابی
@@ -2273,14 +2236,6 @@ function schoolFields(schoolId){
   return schoolBranches(schoolId).reduce(function(a, b){
     return a.concat(fieldsOfBranch(b));
   }, []).filter(function(x, i, arr){ return arr.indexOf(x) === i; });
-}
-
-/** برچسب خوانا برای یک درس/کتاب */
-function subjectScopeLabel(s){
-  if(!s.grade) return 'عمومی';
-  const lv = levelOfGrade(s.grade);
-  if(needsField(lv) && s.field) return `${s.grade} — ${s.field}`;
-  return s.grade;
 }
 
 /* ============================ لایه همگام‌سازی آفلاین ============================ */
@@ -7496,14 +7451,6 @@ function trackVisit(userId){
   return v;
 }
 
-/** به‌روزرسانی نشان «هنوز فعال است» برای کاربر جاری */
-function touchPresence(){
-  if(!S.user) return;
-  var v = loadVisits();
-  v.users[S.user.id] = new Date().toISOString();
-  saveVisits(v);
-}
-
 /**
  * چه کسانی هم‌اکنون برخط‌اند؟
  * تعریف: کاربری که در پنج دقیقهٔ اخیر فعالیتی داشته است.
@@ -12021,7 +11968,6 @@ const teacherSchoolsOf = tid=>{
 };
 const teacherBusyAt=(tid,day,period,exceptId=0)=>db.schedule.find(s=>s.teacher_id===tid&&s.day===day&&s.period===period&&s.id!==exceptId);
 const schoolTeachers=()=>db.users.filter(u=>u.role==='teacher'&&u.active&&(u.school_id===S.user.school_id||db.teacher_schools.some(t=>t.teacher_id===u.id&&t.school_id===S.user.school_id&&t.active)));
-const myTerm=()=>db.exam_terms.filter(t=>t.school_id===S.user.school_id).sort((a,b)=>b.start_date.localeCompare(a.start_date))[0];
 
 /* ---------------- صفحه: دبیران و مدارس ---------------- */
 function viewTeachers(){
@@ -12234,8 +12180,6 @@ function jalaliLongFa(iso){ if(!iso)return '—'; const d=new Date(String(iso).s
   const j=toJalali(d.getFullYear(),d.getMonth()+1,d.getDate());
   const wd=['شنبه','یک‌شنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنج‌شنبه','جمعه'][(d.getDay()+1)%7];
   return wd+' '+faD(j[2])+' '+J_MONTHS[j[1]-1]+' '+faD(j[0]); }
-function schoolYearOf(iso){ const j=toJalali(...String(iso||todayISO()).slice(0,10).split('-').map(Number));
-  const st=j[1]>=7?j[0]:j[0]-1; return {start:st,end:st+1,title:faD(st)+'-'+faD(st+1)}; }
 function monthMatrix(jy,jm){
   const days=jMonthDays(jy,jm); const g=toGregorian(jy,jm,1);
   const first=(new Date(g[0],g[1]-1,g[2]).getDay()+1)%7;
@@ -13173,7 +13117,7 @@ const P9_ACTIONS = {
          ${f('شهرستان',sel('of_c',[['','—'],...db.counties.map(c=>[c.id,c.name])],o.county_id||''))}
          ${f('منطقه',sel('of_d',[['','—'],...db.districts.map(d=>[d.id,d.name])],o.district_id||''))}</div>
        <div class="grid g2">${f('نام کارشناس',inp('of_user',u.full_name||''))}${f('نام کاربری',inp('of_username',u.username||''))}</div>
-       ${f('رمز عبور جدید (خالی = بدون تغییر)',inp('of_pass',''))}`,'office-edit-save'));
+       <div class="small muted">ورود کارشناس با تلفن + کد است (محصول رمز ندارد) — ستونِ رمزِ قدیمی فقط آرشیوی است.</div>`,'office-edit-save'));
     window._officeEdit=id;
   },
   'office-edit-save'(){
@@ -13185,7 +13129,6 @@ const P9_ACTIONS = {
     if(u){
       const patch={full_name:V('of_user')||u.full_name};
       if(username)patch.username=username;
-      if(V('of_pass'))patch.password=V('of_pass');
       update('users',u.id,patch);
     }
     closeModal(); toast('اداره ویرایش شد','ok'); render();
@@ -13745,8 +13688,8 @@ setTimeout(()=>{
      طراحی تولید نیست. در نسخهٔ نهایی ورود فقط با تلفن + کد ملی
      (docs/PLAN_PHONE_AUTH.md) انجام می‌شود و نشست با کوکی HttpOnly
      (قرارداد امنیت سرور، بند ۲٫۱) زنده می‌ماند — بند ۱٫۲ و ۱٫۵
-     TODO_BEFORE_PRODUCTION.md. این بلوک و فرم رمز عبور در نسخهٔ
-     سروری حذف/جایگزین می‌شوند. */
+     TODO_BEFORE_PRODUCTION.md. این بلوک در نسخهٔ
+     سروری حذف/جایگزین می‌شود. (فرمِ رمز عبور در دور ۷۰ حذف شد — محصول رمز ندارد.) */
   const su=Store.get(SESSION_KEY);
   if(su){const u=db.users.find(x=>x.username===su);
     if(u){
@@ -16498,13 +16441,6 @@ function bellDayTimeline(d){
   return out;
 }
 
-/** ساعت زنگ شمارهٔ n در روز مشخص — برای نمایش کنار برنامهٔ هفتگی */
-function bellTimeOf(schoolId, period, day){
-  var tl = bellTimeline(schoolId, day);
-  var hit = tl.filter(function(x){ return x.kind === 'lesson' && x.no === Number(period); })[0];
-  return hit ? (hit.from + ' تا ' + hit.to) : '';
-}
-
 /** تعداد زنگ درسی یک روز */
 function bellLessonCount(schoolId, day){
   return bellTimeline(schoolId, day).filter(function(x){ return x.kind === 'lesson'; }).length;
@@ -16592,22 +16528,6 @@ function bellSave(schoolId, start, slots){
   var days = DAYS.map(function(){
     return { start: start, slots: norm.map(function(s){ return { kind:s.kind, min:s.min }; }) };
   });
-  return bellSaveDays(schoolId, days);
-}
-
-/** بازگرداندن به الگوی آماده — برای یک روز، یا همهٔ روزها (dayIdx=null) */
-function bellApplyPreset(schoolId, key, dayIdx){
-  var pd = bellPresetDays(key);
-  if(!pd) return { ok:false, msg:'الگو یافت نشد' };
-  var rec = bellRec(schoolId);
-  var days = bellCurrentDays(schoolId);
-  if(dayIdx == null){
-    days = pd.map(function(d){ return { start:d.start,
-      slots:d.slots.map(function(x){ return { kind:x.kind, min:x.min }; }) }; });
-  } else {
-    days[dayIdx] = { start: pd[dayIdx].start,
-      slots: pd[dayIdx].slots.map(function(x){ return { kind:x.kind, min:x.min }; }) };
-  }
   return bellSaveDays(schoolId, days);
 }
 
@@ -21723,14 +21643,6 @@ function vclassSessionsOf(classId){
     .sort(function(a,b){ return (b.created_at||'').localeCompare(a.created_at||''); });
 }
 
-/** آیا فایلِ این نشست هنوز در IDB هست؟ (فقط علامت‌گذاری؛ async) */
-function vclassHasFile(session){
-  if(!session || !session.file_key) return Promise.resolve(false);
-  return vclassIdbGet(VCLASS_STORE, session.file_key).then(function(b){
-    return !!b;
-  });
-}
-
 /** سؤالات یک نشست */
 function vclassQuestionsOf(sessionId){
   return db.vclass_questions
@@ -23129,10 +23041,6 @@ function libLoansOf(bookId){
   return db.lib_loans
     .filter(function(l){ return l.book_id === bookId; })
     .sort(function(a,b){ return (b.loan_at||'').localeCompare(a.loan_at||''); });
-}
-function libActiveLoan(loanId){
-  var l = byId('lib_loans', loanId);
-  return l && !l.returned_at ? l : null;
 }
 function libLoanStatus(l, nowIso){
   if(!l) return 'none';
