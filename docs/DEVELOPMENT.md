@@ -30,6 +30,21 @@ node server/seed.js    # ساختِ server/data/payesh.json از دنیای دم
 node server/index.js   # http://0.0.0.0:3000
 ```
 
+### TLS واقعی (مرحلهٔ ۲ — ۲۰۲۶-۰۹-۰۶)
+
+گواهیِ self-signed **فقط با stdlib** ساخته می‌شود (بدون openssl — همان DER دست‌ساز که `tests/server4.js` با `X509Certificate` می‌خواند):
+
+```bash
+node server/tls-cert.js /tmp/payesh-tls payesh-local   # → tls.crt + tls.key (CN دلخواه)
+export PAYESH_TLS_CERT=/tmp/payesh-tls/tls.crt
+export PAYESH_TLS_KEY=/tmp/payesh-tls/tls.key
+node server/index.js   # https://0.0.0.0:3000 — HSTS + کوکیِ Secure خودکار
+```
+
+- یکی‌شان بدونِ دیگری، یا فایلِ غایب = راه‌اندازی **شکسته** با پیامِ روشن (خروج از فرآیند).
+- گواهیِ production (رسمی) بعداً — این گواهی فقط برای مرحلهٔ محلی/تست است و مرورگرها آن را نامعتبر می‌دانند (در تست‌ها `rejectUnauthorized:false`).
+- endpointِ تازه: `GET /api/bell/now` (پُلِ دوره‌ای ۱۳.۴ — scope فقط از نشست).
+
 متغیرهای محیطی:
 
 | متغیر | پیش‌فرض | کاربرد |
@@ -42,6 +57,8 @@ node server/index.js   # http://0.0.0.0:3000
 | `PAYESH_JWT_SECRET` | — | اگر خورده شود، به‌جای کلیدِ فایل |
 | `PAYESH_DEMO_CODE` | `1` | `1`: کدِ ارسال‌شده در پاسخِ دمو بازتاب می‌یابد (فقط فازِ دمو) · `0`: کد مخفی می‌ماند |
 | `PAYESH_HTTPS` | `0` | `1`: کوکیِ نشست `Secure` می‌شود (پشت TLS واقعی) |
+| `PAYESH_TLS_CERT` | — | مسیرِ گواهیِ PEM — با `PAYESH_TLS_KEY` سرور واقعاً `https` می‌شود (مرحلهٔ ۲) |
+| `PAYESH_TLS_KEY` | — | مسیرِ کلیدِ خصوصیِ PEM (همراهِ `PAYESH_TLS_CERT`) |
 
 نکته‌ها:
 
@@ -51,9 +68,11 @@ node server/index.js   # http://0.0.0.0:3000
 - `server/data/` در `.gitignore` است — پایگاه، آدیت و کلید هرگز در گیت نیستند.
 - آزمون‌ها: `node tests/server1.js` (۳۰ تستِ سمت سرور) ·
   `node tests/server2.js` (۲۵ تستِ کلاینت با fetch استاب) ·
-`node tests/server-mutations.js` (۸ جهش — همه باید بکشند).
+`node tests/server-mutations.js` (۱۲ جهش — همه باید بکشند).
   `node tests/server3.js` (۱۹ تستِ سر به سر: سرورِ واقعی + کلاینتِ واقعی با HTTP واقعی —
-  برای این تست فقط jsdom لازم است، نه سرور جدا)
+  برای این تست فقط jsdom لازم است، نه سرور جدا) ·
+  `node tests/server4.js` (۱۶ تستِ TLS واقعی: گواهی، https، HSTS، CSP، کوکی‌ها) ·
+  `node tests/server5.js` (۱۴ تستِ پُلِ دوره‌ای: scope سرور + تیکِ کلاینت)
 
 ## افزودن ماژول جدید
 
