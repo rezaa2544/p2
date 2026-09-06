@@ -28,6 +28,18 @@ function canWrite(role, coll){
   return list.indexOf('*') > -1 || list.indexOf(coll) > -1;
 }
 
+/* بند ۲.۲ — IEP: دبیر می‌تواند رکوردِ دانش‌آموز (users) را بروزرسانی کند،
+   ولی فقط با فیلدهای IEP — استثنأ محدوده‌دار از fail-closed روی users.
+   scope (inScope: همان مدرسه) همچنان جدا اعمال می‌شود. */
+const IEP_KEYS = ['iep_notes','iep_staff','iep_updated'];
+function iepUsersUpdate(s, op){
+  if(op.c !== 'users' || s.role !== 'teacher') return false;
+  if(op.t !== 'upd' || op.id == null) return false;
+  const d = op.data || {};
+  const keys = Object.keys(d).filter(k => k !== 'id');
+  return keys.length > 0 && keys.every(k => IEP_KEYS.indexOf(k) > -1);
+}
+
 /* #4 — is the target record inside this user's scope? Real records
    from the store; unknown ids fail closed. */
 function inScope(session, coll, recId, data){
@@ -159,7 +171,7 @@ function createSync(ctx){
       if(op.user_id != null && Number(op.user_id) !== s.id) return all('user_mismatch');
       if(op.school_id != null && s.school_id != null && Number(op.school_id) !== s.school_id) return all('school_mismatch');
       /* #3 — role may write this collection (fail closed) */
-      if(!canWrite(s.role, op.c)) return all('role_denied');
+      if(!canWrite(s.role, op.c) && !iepUsersUpdate(s, op)) return all('role_denied');
       /* #4 — target record inside scope */
       const recId = op.id != null ? op.id : (op.data && op.data.id);
       if(!inScope(s, op.c, recId, op.data)) return all('out_of_scope');
@@ -207,4 +219,4 @@ function createSync(ctx){
 
   return { apiSync, canWrite, inScope };
 }
-module.exports = { createSync, attach, canWrite, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS };
+module.exports = { createSync, attach, canWrite, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, iepUsersUpdate, IEP_KEYS };

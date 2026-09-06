@@ -1917,6 +1917,11 @@ document.addEventListener('click',e=>{
        toast('فقط دبیرِ مربوطه یا مدیرِ مدرسه می‌تواند تأیید کند','err');return;}
      update('internships',rec.id,{status:'approved',approved_by:S.user.id,approved_at:todayISO()});
      toast('ساعتِ کارآموزی تأیید شد','ok');render();},
+   /* ─────────────── بند ۲.۲: برنامهٔ آموزشی فردی (IEP) ─────────────── */
+   'iep-edit'(){iepModal(Number(id));},
+   'iep-save'(){const sid=window._iepSid;const u=byId('users',sid);if(!u)return;
+     update('users',sid,{iep_notes:V('iep_notes'),iep_staff:V('iep_staff'),iep_updated:todayISO()});
+     closeModal();toast('برنامهٔ آموزشی فردی ذخیره شد','ok');render();},
    'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk

@@ -244,6 +244,18 @@ function generate(){
       }
     }
   });
+  /* IEP (بند ۲.۲): یک دانش‌آموزِ نمونه در مدرسه‌ای با توانِ has_iep
+     یادداشتِ نیازِ ویژه و کارکنانِ کمکی دارد تا بخش در دمو دیده شود.
+     ⚠️ تغییرِ مستقیمِ رکوردِ دمو (بدون add) — دادهٔ پایه. */
+  (function(){
+    var s1=db.schools[0];
+    if(!s1||!(s1.capabilities&&s1.capabilities.has_iep))return;
+    var cls=db.classes.find(function(c){return c.school_id===s1.id&&c.grade==='دوازدهم';});
+    var st=cls?db.users.find(function(u){return u.role==='student'&&u.active&&(db.enrollments.some(function(e){return e.class_id===cls.id&&e.student_id===u.id;}));}):null;
+    if(st){st.iep_notes='نیاز به زمانِ بیشتر در آزمون‌های کتبی؛ پاسخِ مثبت به توضیحِ صوتی. هدفِ امسال: تثبیتِ پایهٔ ریاضی و کاهشِ اضطرابِ آزمون.';
+      st.iep_staff='مشاورِ مدرسه (هفتگی) + معاونِ آموزشی (پایشِ تکالیف)';
+      st.iep_updated=daysAgoISO(12);}
+  })();
   /* قیف پیش‌ثبت‌نام سال آینده (دور ۶۳، بند ۲): مدرسهٔ اول چند ردیف
      پیش‌ثبت‌نام برای سال بعد دارد تا قیف در دمو دیده شود.
      ⚠️ با add() — دادهٔ پایه، بدون ثبت در دفترچهٔ عملیات. */
