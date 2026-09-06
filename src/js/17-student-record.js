@@ -81,6 +81,7 @@ function viewRecord(sid){
       + certTerms.map(t=>'<option value="'+escAttr(t)+'">'+esc(t)+'</option>').join('')
       + '<option value="">همهٔ نوبت‌ها</option></select>'
       + '<button class="btn sm" data-act="cert-print" data-sid="'+escAttr(sid)+'">چاپ گواهی</button>'
+      + '<button class="btn ghost sm" data-act="report-print" data-sid="'+escAttr(sid)+'" title="قالبِ حرفه‌ایِ A4 — چاپ یا ذخیرهٔ PDF">🖨️ چاپ کارنامه</button>'
       + '</div>';
   })();
   if(S.tab==='grades'){const _cid=(typeof classOf==='function')?classOf(sid):null;S.__clsCtx=(typeof classScoreContext==='function'&&_cid)?classScoreContext(_cid.id):{};}

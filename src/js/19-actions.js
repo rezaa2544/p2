@@ -1144,6 +1144,16 @@ document.addEventListener('click',e=>{
      if(!d.ok){toast(d.msg,'err');return;}
      printableDoc(d);
    },
+   /* کارنامهٔ چاپ‌شونده (بند ۴.۳): قالبِ حرفه‌ایِ A4 از تبِ کارنامه.
+      همان مجوزِ داده‌ایِ گواهی‌ها (certAllowedStudent). */
+   'report-print'(){
+     const sid=Number(el.dataset.sid)||(S.user&&S.user.role==='student'?S.user.id:0);
+     const chk=certAllowedStudent(sid);
+     if(!chk.ok){toast(chk.msg,'err');return;}
+     const d=reportCardCert(sid,V('cert_term'));
+     if(!d.ok){toast(d.msg,'err');return;}
+     printableDoc(d);
+   },
    /* ─────── گواهی‌های رسمی دیگر (بند ۶) ───────
       همان الگوی cert-print؛ مجوز داده‌ای در certAllowedStudent. */
    'cert-enroll-print'(){
