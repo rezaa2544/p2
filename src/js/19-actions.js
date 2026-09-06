@@ -1921,7 +1921,20 @@ document.addEventListener('click',e=>{
    'iep-edit'(){iepModal(Number(id));},
    'iep-save'(){const sid=window._iepSid;const u=byId('users',sid);if(!u)return;
      update('users',sid,{iep_notes:V('iep_notes'),iep_staff:V('iep_staff'),iep_updated:todayISO()});
-     closeModal();toast('برنامهٔ آموزشی فردی ذخیره شد','ok');render();},
+     closeModal();toast('برنامهٔ آموزشی فردی ذخیره شد','ok');render();},   /* ─────────────── بند ۴.۴: قیف پیش‌ثبت‌نامِ رقابتی ─────────────── */
+   'preapp-new'(){preappModal();},
+   'preapp-save'(){const name=V('pa_name');const phone=V('pa_phone');
+     if(!name||!phone){toast('نام و تلفن الزامی است','err');return;}
+     insert('preapps',{school_id:S.user.school_id,name:name,phone:phone,note:V('pa_note'),stage:'contact',stage_at:todayISO(),created_at:todayISO()});
+     closeModal();toast('پیش‌ثبت‌نام ساخته شد — مرحلهٔ تماسِ اولیه','ok');render();},
+   'preapp-next'(){const r=byId('preapps',id);if(!r)return;
+     let i=-1;
+     for(var k=0;k<PREAPP_STAGES.length;k++){if(PREAPP_STAGES[k][0]===r.stage){i=k;break;}}
+     if(i<0||i>=PREAPP_STAGES.length-1){toast('این مرحله آخرین مرحله است','err');return;}
+     update('preapps',r.id,{stage:PREAPP_STAGES[i+1][0],stage_at:todayISO()});
+     toast('مرحله تازه: '+PREAPP_STAGES[i+1][1],'ok');render();},
+   'preapp-del'(){confirmModal('حذف این پیش‌ثبت‌نام؟','preapp-del-ok',id);},
+   'preapp-del-ok'(){remove('preapps',window._delId);closeModal();toast('حذف شد','ok');render();},
    'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk

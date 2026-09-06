@@ -66,7 +66,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -244,6 +244,20 @@ function generate(){
       }
     }
   });
+  /* قیف پیش‌ثبت‌نامِ رقابتی (بند ۴.۴): چند ردیف تا قیف در دمو دیده شود.
+     ⚠️ بدون مصرفِ rng() — مقادیر قطعی. */
+  (function(){
+    var defs=[
+      [1,'contact','تماسِ تلفنیِ اول — دربارهٔ شهریه پرسید',14],
+      [1,'visit','بازدیدِ انجام شد؛ نوبتِ آزمونِ ورودی می‌گیرد',7],
+      [2,'exam','آزمونِ ورودی را داد — در انتظارِ اعلامِ نتیجه',4],
+      [5,'enrolled','با موفقیت قبول شد و ثبت‌نامِ قطعی انجام داد',2]
+    ];
+    var names=['سارا محمدی','امیرحسین رستمی','نگار احمدی','پارسا کریمی'];
+    defs.forEach(function(d,idx){
+      add('preapps',{school_id:d[0],name:names[idx],phone:'0912'+String(1000000+idx*137).slice(0,7),note:d[2],stage:d[1],stage_at:daysAgoISO(d[3]),created_at:daysAgoISO(d[3]+10)});
+    });
+  })();
   /* IEP (بند ۲.۲): یک دانش‌آموزِ نمونه در مدرسه‌ای با توانِ has_iep
      یادداشتِ نیازِ ویژه و کارکنانِ کمکی دارد تا بخش در دمو دیده شود.
      ⚠️ تغییرِ مستقیمِ رکوردِ دمو (بدون add) — دادهٔ پایه. */
