@@ -74,7 +74,7 @@ function patternCheck(studentId,days){
   var from=daysAgoISO(n);
   var late=[],absent=[],lateMin=0,unexcused=0,exit=[],exitMin=0;
   (db.attendance||[]).forEach(function(a){
-    if(a.student_id!==studentId||a.date<from)return;
+    if(a.student_id!==studentId||a.date<from||a.date>todayISO())return;
     if(a.status==='late'){late.push(a.date);lateMin+=Number(a.late_minutes)||0;}
     else if(a.status==='absent'){absent.push(a.date);if(!a.excused)unexcused++;}
     /* بند 15.1: خروج زودهنگام */
