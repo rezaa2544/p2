@@ -37,6 +37,8 @@ function attChangeTip(){
 }
 
 function viewAttendance(){
+  /* دور ۷۵: اگر تایمرِ «خروج از کلاس» فعال است، تیکِ یک‌ثانیه‌ای روشن می‌ماند */
+  if(typeof attTickSync==='function')attTickSync();
   const cls=visibleClasses();
   if(!cls.length)return `<div class="card">${empty('🏛️','کلاسی در دسترس نیست','ابتدا باید کلاسی به شما تخصیص یابد.')}</div>`;
   /* پیش‌گزینش زنگ (گام ۳ طرح PLAN_BELL_AUTOCLASS): اگر دبیر هنوز
@@ -68,6 +70,9 @@ function viewAttendance(){
   const dfields=(typeof attDraftFields==='function')?attDraftFields(cid,date):{};
   /* بند 15.1: موجه‌سازیِ پس از ثبت فقط برای مدیر/سوپرادمین */
   const canExempt=!!(S.user&&(S.user.role==='manager'||S.user.role==='superadmin'));
+  /* دور ۷۵: تایمرهایِ «خروج از کلاس»ِ فعالِ همین کلاس و روز */
+  const _timers=(typeof attTimersGet==='function')?attTimersGet(cid,date):{};
+  const _nTimers=Object.keys(_timers).length;
   const nDraft=Object.keys(draft).length;
   const shown=s=>draft[s.id]||((rec(s)||{}).status||null);
 
@@ -95,18 +100,32 @@ function viewAttendance(){
      <button class="btn ghost sm" data-act="att-all" data-s="absent">❌ همه غایب</button></div></div>
    <div class="card-body row" style="border-bottom:1px solid var(--border)">
     ${['present','absent','late','excused','early_exit'].map(k=>`<span class="badge ${ATT_BADGE[k]}">${ATT_FA[k]}: ${fa(cnt(k))}</span>`).join('')}
-    <span class="badge b-gray">ثبت‌نشده: ${fa(unset)}</span><div class="spacer"></div>
+    <span class="badge b-gray">ثبت‌نشده: ${fa(unset)}</span>${_nTimers?`<span class="badge b-cyan" title="دانش‌آموزی که تایمرِ خروجش فعال است — هنگامِ برگشت، دکمهٔ «⏱ توقف خروج» را بزنید">⏱ خروج فعال: ${fa(_nTimers)}</span>`:''}<div class="spacer"></div>
     <span class="small muted">${nDraft?'تغییرات هنوز ذخیره نشده‌اند':'همه‌چیز ذخیره شده است'}</span></div>
    ${studs.length?`<div class="table-wrap"><table><thead><tr><th>#</th><th>نام دانش‌آموز</th><th>ثبت وضعیت</th><th>وضعیت فعلی</th>${canExempt?'<th>اقدام</th>':''}</tr></thead><tbody>
     ${studs.map((s,i)=>{const r=rec(s);const d=draft[s.id];const v=d||((r||{}).status||null);
       /* ساعتِ وضعیتِ زمان‌دار (بند 15.1): از پیش‌نویس اگر بود، وگرنه رکورد */
       const _t=d?(dfields[s.id]||{}):(r||{});
-      const _time=(v==='late'&&(_t.late_at||(r&&r.late_at)))||(v==='early_exit'&&(_t.exit_at||(r&&r.exit_at)))||'';
+      /* دور ۷۵: زمان + دقیقه + بازهٔ خروج (تا بازگشت) از پیش‌نویس یا رکورد */
+      const _tmRun=_timers[s.id]||'';
+      const _lateAt=(v==='late'&&(_t.late_at||(r&&r.late_at)))||'';
+      const _exAt=(v==='early_exit'&&(_t.exit_at||(r&&r.exit_at)))||'';
+      const _exRet=(v==='early_exit'&&(_t.exit_return_at||(r&&r.exit_return_at)))||'';
+      const _min=(v==='late'&&_t.late_minutes!=null)?_t.late_minutes:
+                 ((v==='late'&&r&&r.late_minutes!=null)?r.late_minutes:
+                 ((v==='early_exit'&&_t.exit_minutes!=null)?_t.exit_minutes:
+                 ((v==='early_exit'&&r&&r.exit_minutes!=null)?r.exit_minutes:null)));
+      const _tfa=(typeof timeFa==='function')?timeFa:null;
+      let _timeTxt='';
+      if(_lateAt)_timeTxt=' '+(_tfa?_tfa(_lateAt):_lateAt);
+      if(_exAt)_timeTxt=' '+(_tfa?_tfa(_exAt):_exAt)+(_exRet?'–'+(_tfa?_tfa(_exRet):_exRet):'');
+      if(_min!=null)_timeTxt+=' · '+fa(Number(_min))+' دقیقه';
+      const _timerBadge=_tmRun?`<span class="badge b-cyan" data-att-timer="${escAttr(s.id)}" data-att-start="${escAttr(_tmRun)}">🚪 خروج از کلاس — ⏱ 0:00:00</span>`:'';
       const _just=!d&&r&&r.excused;
       const _exempt=!d&&r&&['absent','late','early_exit'].indexOf(r.status)>-1&&!r.excused;
       return `<tr${d?' class="att-row-draft"':''}><td class="muted">${fa(i+1)}</td><td><b>${esc(s.full_name)}</b>${r&&r.note?`<div class="small muted">${esc(r.note)}</div>`:''}</td>
-     <td>${['present','absent','late','excused','early_exit'].map(k=>`<button class="att-btn ${v===k?'on-'+k:''}" data-act="att-set" data-id="${escAttr(s.id)}" data-s="${escAttr(k)}">${ATT_FA[k]}</button>`).join('')}</td>
-     <td>${v?`<span class="badge ${ATT_BADGE[v]}">${ATT_FA[v]}${_time?(typeof timeFa==='function'?timeFa(_time):' '+_time):''}</span>${_just?'<span class="badge b-purple" title="موجه‌شده پس از ثبت — ردپا در سابقه">موجه‌شده</span>':''}${d?'<span class="badge b-amber">ثبت‌نشده</span>':''}`:'<span class="badge b-gray">ثبت نشده</span>'}</td>${canExempt?`<td>${_exempt?`<button class="btn ghost sm" data-act="att-exempt" data-id="${escAttr(r.id)}">موجه‌سازی</button>`:''}</td>`:''}</tr>`;}).join('')}
+     <td>${['present','absent','late','excused','early_exit'].map(k=>`<button class="att-btn ${v===k?'on-'+k:''}" data-act="att-set" data-id="${escAttr(s.id)}" data-s="${escAttr(k)}">${(k==='early_exit'&&_tmRun)?'⏱ توقف خروج':ATT_FA[k]}</button>`).join('')}</td>
+     <td>${v?`<span class="badge ${ATT_BADGE[v]}">${ATT_FA[v]}${_timeTxt}</span>${_just?'<span class="badge b-purple" title="موجه‌شده پس از ثبت — ردپا در سابقه">موجه‌شده</span>':''}${d?'<span class="badge b-amber">ثبت‌نشده</span>':''}${(_tmRun&&v!=='early_exit')?_timerBadge:''}`:(_tmRun?_timerBadge:'<span class="badge b-gray">ثبت نشده</span>')}</td>${canExempt?`<td>${_exempt?`<button class="btn ghost sm" data-act="att-exempt" data-id="${escAttr(r.id)}">موجه‌سازی</button>`:''}</td>`:''}</tr>`;}).join('')}
    </tbody></table></div>`:empty('🔍','دانش‌آموزی یافت نشد','این کلاس دانش‌آموزی ندارد یا جستجو نتیجه‌ای نداشت.')}
    ${nDraft?`<div class="card-foot row">
      <button class="btn" data-act="att-review">✅ مرور و ثبت نهایی (${fa(nChange)} تغییر)</button>
