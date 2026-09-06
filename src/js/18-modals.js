@@ -297,6 +297,15 @@ function reexamScoreModal(sid){
    `,'reexam-score-save'));
   window._rxSid=Number(sid);
 }
+/* بند ۶.۲ — مودالِ صورت‌جلسهٔ انجمن */
+function assocMinModal(){
+  openModal(modalTpl('صورت‌جلسهٔ جلسهٔ انجمن',
+   `
+   ${f('تاریخِ جلسه *',`<input class="input" id="am_date" type="date" value="${todayISO()}" /> <span class="badge b-gray">${jalali(todayISO())}</span>`)}
+   ${f('حاضرین در جلسه * (هر خط یک مورد)',`<textarea class="input" id="am_att" rows="4" placeholder="مثلاً:\nآقای محمدی — رئیس انجمن\nسرکار خانم احمدی — نمایندهٔ اولیا\nآقای رضایی — مدیر مدرسه" style="line-height:1.9"></textarea>`)}
+   ${f('مصوبات جلسه (هر خط یک مصوبه)',`<textarea class="input" id="am_res" rows="5" placeholder="مثلاً:\nتصویبِ کمکِ داوطلبانهٔ ۵ میلیونی برای کتابخانه\nتعیینِ اردوی پاییز در اواخرِ مهر" style="line-height:1.9"></textarea>`)}
+   `,'assoc-min-save'));
+}
 const PRESETS={positive:POS.map(p=>p[0]),negative:NEG.map(p=>p[0])};
 function discModal(d){
   const cls=visibleClasses();

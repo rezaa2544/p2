@@ -240,6 +240,12 @@ var ACTION_ROLES = {
   'reexam-score': ['manager'],
   'reexam-score-save': ['manager'],
   'reexam-del': ['manager'],
+  /* بند ۶.۲ — صورت‌جلسهٔ انجمن: فقط مدیر */
+  'assoc-min-new': ['manager'],
+  'assoc-min-save': ['manager'],
+  'assoc-min-print': ['manager'],
+  'assoc-min-toggle': ['manager'],
+  'assoc-min-del': ['manager'],
   /* انضباطی */
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],
