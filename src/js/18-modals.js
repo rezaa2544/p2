@@ -236,6 +236,17 @@ function internshipModal(i,fixedSid){
     ${f('یادداشت',`<textarea class="input" id="in_note" rows="2">${esc(i.note||'')}</textarea>`)}`,'internship-save'));
   window._inEdit=i;window._inClass=cid;
 }
+
+/* بند ۲.۲ — مودالِ ویرایشِ برنامهٔ آموزشی فردی (IEP): فیلدهای آزاد */
+function iepModal(sid){
+  var u=byId('users',sid);
+  if(!u)return;
+  openModal(modalTpl('برنامهٔ آموزشی فردی (IEP) — '+u.full_name,
+   `${f('یادداشتِ نیازِ ویژه',`<textarea class="input" id="iep_notes" rows="4" placeholder="مثلاً: نیاز به زمانِ بیشتر، توضیحِ صوتی، هدفِ امسال…">${esc(u.iep_notes||'')}</textarea>`)}
+    ${f('کارکنانِ کمکیِ مرتبط',`<textarea class="input" id="iep_staff" rows="2" placeholder="مثلاً: مشاورِ مدرسه (هفتگی)، معاونِ آموزشی…">${esc(u.iep_staff||'')}</textarea>`)}
+    ${u.iep_updated?`<div class="small muted">آخرین به‌روزرسانی: ${jalali(u.iep_updated)}</div>`:''}`,'iep-save'));
+  window._iepSid=Number(sid);
+}
 const PRESETS={positive:POS.map(p=>p[0]),negative:NEG.map(p=>p[0])};
 function discModal(d){
   const cls=visibleClasses();

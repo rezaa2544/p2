@@ -222,6 +222,8 @@ var ACTION_ROLES = {
   'internship-save':    ['teacher','manager'],
   'internship-approve': ['teacher','manager'],
   'internship-del':     ['manager'],
+  /* بند ۲.۲ — IEP: فیلدِ آزاد است ولی تغییرش اختیارِ کادر است (دبیر/مدیر) */
+  'iep-save': ['teacher','manager'],
   /* انضباطی */
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],

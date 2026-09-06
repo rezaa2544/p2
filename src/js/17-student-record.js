@@ -66,7 +66,8 @@ function viewRecord(sid){
   if(S.tab==='profile') body = studentProfileCard(sid)
     + ((typeof certsCard==='function')?certsCard(sid):'')
     + ((typeof yearHistoryCard==='function')?yearHistoryCard(sid):'')
-    + ((typeof teacherNotesCard==='function')?teacherNotesCard(sid):'');
+    + ((typeof teacherNotesCard==='function')?teacherNotesCard(sid):'')
+    + ((typeof iepCard==='function')?iepCard(sid):'');
   /* نوار گواهی نمرات (بند ۱.۶): فقط وقتی نمره‌ای هست، بالای تب کارنامه */
   const certBar=(function(){
     if(S.tab!=='grades')return '';
@@ -146,6 +147,35 @@ function internshipCard(sid){
     h+='</tbody></table></div>';
   } else {
     h+='<div class="muted small" style="padding:10px 0">هنوز ساعتی ثبت نشده است.</div>';
+  }
+  return h+'</div>';
+}
+
+/** بند ۲.۲ — برنامهٔ آموزشی فردی (IEP): پروندهٔ انعطاف‌پذیر، نه فرمِ سفت.
+    فقط در مدرسه‌ای با توانِ has_iep نمایش داده می‌شود. فیلدها آزادن:
+    یادداشتِ نیازِ ویژه + کارکنانِ کمکیِ مرتبط. */
+function iepCard(sid){
+  var u=byId('users',sid);
+  if(!u)return '';
+  var school=byId('schools',u.school_id);
+  var iepOn=!(!school||!(typeof hasCap==='function')||!hasCap(school.id,'has_iep'));
+  if(!iepOn)return '';
+  var persona=(typeof activePersona==='function')?activePersona():(S.user&&S.user.role);
+  var canEdit=persona==='manager'||persona==='superadmin'||persona==='teacher';
+  var notes=u.iep_notes||'', staff=u.iep_staff||'';
+  var h='<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:14px">'
+   +'<div class="row" style="align-items:center;gap:10px;flex-wrap:wrap"><b>🌱 برنامهٔ آموزشی فردی (IEP)</b>'
+   +(u.iep_updated?'<span class="badge b-gray small">به‌روزرسانی: '+jalali(u.iep_updated)+'</span>':'')
+   +'<div class="spacer"></div>'
+   +(canEdit?'<button class="btn sm" data-act="iep-edit" data-id="'+escAttr(sid)+'">'+(notes||staff?'✏️ ویرایش':'➕ ثبت')+'</button>':'')
+   +'</div>';
+  if(notes||staff){
+    h+='<table class="table" style="margin-top:8px"><tbody>'
+     +(notes?'<tr><td class="small muted" style="width:42%">یادداشتِ نیازِ ویژه</td><td style="white-space:normal;line-height:2">'+esc(notes)+'</td></tr>':'')
+     +(staff?'<tr><td class="small muted">کارکنانِ کمکیِ مرتبط</td><td style="white-space:normal;line-height:2">'+esc(staff)+'</td></tr>':'')
+     +'</tbody></table>';
+  } else {
+    h+='<div class="muted small" style="padding:8px 0">هنوز چیزی ثبت نشده است — این بخش برای نیازهای ویژهٔ یادگیری (به‌صورتِ آزاد، نه فرمِ سفت) است.</div>';
   }
   return h+'</div>';
 }
