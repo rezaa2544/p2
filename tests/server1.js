@@ -404,7 +404,7 @@ async function main(){
     const cStore = path.join(cTMP, 'store.json');
     fs.copyFileSync(REAL_STORE, cStore);
     let port = null, proc = null;
-    for (const p of [8989, 8988]) {
+    for (const p of [8989, 8988, 8985, 8984]) {
       const env = Object.assign({}, process.env, {
         PORT: String(p), HOST: '127.0.0.1',
         PAYESH_STORE: cStore, PAYESH_AUDIT: path.join(cTMP, 'audit.log'), PAYESH_KEY: path.join(cTMP, 'jwt.key')
@@ -422,14 +422,17 @@ async function main(){
       proc.kill('SIGKILL');
     }
     assert(port !== null, 'child server did not boot');
-    const phone = String(manager1.phone).replace(/[\s\-()]/g, '');
-    const res = await fetch('http://127.0.0.1:' + port + '/api/auth/send-code', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone })
-    });
-    const j = await res.json();
-    assert(res.status === 200 && j.ok === true && j.code === 'sent', 'send-code: ' + res.status + ' ' + JSON.stringify(j));
-    assert(j.demo_code === undefined || j.demo_code === null, 'demo_code must not be echoed by default: ' + JSON.stringify(j));
-    proc.kill('SIGKILL');
+    try {
+      const phone = String(manager1.phone).replace(/[\s\-()]/g, '');
+      const res = await fetch('http://127.0.0.1:' + port + '/api/auth/send-code', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone })
+      });
+      const j = await res.json();
+      assert(res.status === 200 && j.ok === true && j.code === 'sent', 'send-code: ' + res.status + ' ' + JSON.stringify(j));
+      assert(j.demo_code === undefined || j.demo_code === null, 'demo_code must not be echoed by default: ' + JSON.stringify(j));
+    } finally {
+      proc.kill('SIGKILL'); /* هرگز orphanِ سرور نماند — حتی با assertِ شکست‌خورده */
+    }
   });
 
   await seq;
