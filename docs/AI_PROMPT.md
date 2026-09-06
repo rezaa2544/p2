@@ -318,6 +318,10 @@ IDOR زندگی می‌کند.
   (`patternFlagged`/`patternCheck` — آستانه‌های `exit_week`/`exit_min_week`)؛ پیامکِ خروج
   kind تازهٔ `exit` (پیش‌فرض روشن). گاردِ روزِ غیرحضوریِ `sync.js` شامل `early_exit` شد.
   آزمون: `tests/att2.js` ۶/۶ + `tests/att2-mutations.js` ۵/۵ (M1–M5).
+- **بکاپِ دوره‌ایِ خودکار (15.2 — دور ۶۷، باقی‌ماندهٔ 2.4):** `admin.startAutoBackup(ms)`
+  درون‌پروسه (بدون cron) — همان هستهٔ `backupNow`؛ روشن با `PAYESH_BACKUP_EVERY_HOURS`
+  (یا `PAYESH_BACKUP_EVERY_MS` برای تست)؛ آدیت `backup_created` با `source:"auto"`/`user_id:null`.
+  آزمون: `tests/server9.js` 10/10 + M18 (suite حالا ۱۸ جهش).
 - آزمون‌ها: `tests/server4.js` (۱۶ تستِ TLS واقعی) · `tests/server5.js` (۱۴ تستِ پُل:
   scope + تیکِ کلاینت در jsdom) · `tests/server6.js` (۹ تستِ گاردِ روزِ غیرحضوریِ سمتِ سرور) ·
   `tests/server8.js` (۹ تستِ پشتیبان/بازیابی) ·
