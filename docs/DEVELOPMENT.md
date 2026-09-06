@@ -45,6 +45,7 @@ node server/index.js   # https://0.0.0.0:3000 — HSTS + کوکیِ Secure خو�
 - گواهیِ production (رسمی) بعداً — این گواهی فقط برای مرحلهٔ محلی/تست است و مرورگرها آن را نامعتبر می‌دانند (در تست‌ها `rejectUnauthorized:false`).
 - endpointِ تازه: `GET /api/bell/now` (پُلِ دوره‌ای ۱۳.۴ — scope فقط از نشست).
 - حذفِ حساب (قفل ۹.۵): `POST /api/auth/delete-account` (با نشست) + صفحهٔ وبِ جداگانهٔ خودکفا `/account-deletion` (فرمِ شماره+کد ملی+کد → حذف).
+- صفحهٔ وبِ سیاستِ حریم خصوصی (بند ۱۵.۳ — ملاکِ Play): `/privacy` (و `/privacy.html`) → `privacy.html` — نسخهٔ وبِ سیاستِ رسمی؛ خودکفا (هیچ اسکریپت/فونت/استایلِ بیرونی) و با دکمهٔ مستقیم به `/account-deletion`.
 - پشتیبان/بازیابی (OPEN_ITEMS 2.4): `POST /api/admin/backup` و `POST /api/admin/restore` — **فقط superadmin**؛ پشتیبان‌ها در `backups/` کنارِ فایلِ store (حداکثر ۱۰ نسخه).
 
 متغیرهای محیطی:
@@ -72,7 +73,7 @@ node server/index.js   # https://0.0.0.0:3000 — HSTS + کوکیِ Secure خو�
 - `server/data/` در `.gitignore` است — پایگاه، آدیت و کلید هرگز در گیت نیستند.
 - آزمون‌ها: `node tests/server1.js` (۳۰ تستِ سمت سرور) ·
   `node tests/server2.js` (۲۵ تستِ کلاینت با fetch استاب) ·
-`node tests/server-mutations.js` (۱۸ جهش — همه باید بکشند).
+`node tests/server-mutations.js` (۱۹ جهش — همه باید بکشند).
   `node tests/server3.js` (۱۹ تستِ سر به سر: سرورِ واقعی + کلاینتِ واقعی با HTTP واقعی —
   برای این تست فقط jsdom لازم است، نه سرور جدا) ·
   `node tests/server4.js` (۱۶ تستِ TLS واقعی: گواهی، https، HSTS، CSP، کوکی‌ها) ·
@@ -82,6 +83,7 @@ node server/index.js   # https://0.0.0.0:3000 — HSTS + کوکیِ Secure خو�
   `node tests/server8.js` (۹ تستِ پشتیبان‌گیری/بازیابی — OPEN_ITEMS 2.4) ·
   `node tests/att2.js` (۶ تستِ حالت‌های زمان‌دارِ غیاب — بند ۱۵.۱) +
   `node tests/server9.js` (۱۰ تستِ بکاپِ دوره‌ایِ خودکار — بند 15.2) ·
+  `node tests/server10.js` (۷ تستِ صفحهٔ وبِ سیاستِ حریم خصوصی — بند 15.3: صفحه، بخش‌ها، خودکفایی، CSP، همگامی با داخلِ اپ، لینکِ حذفِ حساب) ·
   `node tests/att2-mutations.js` (۵ جهشِ کلاینتی — همه باید بکشند)
 
 ## افزودن ماژول جدید
