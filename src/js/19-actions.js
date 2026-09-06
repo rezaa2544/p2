@@ -330,6 +330,28 @@ document.addEventListener('click',e=>{
    'class-edit'(){classModal(byId('classes',id));},
    'class-del'(){confirmModal('حذف این کلاس؟ ثبت‌نام‌های مرتبط نیز حذف می‌شوند.','class-del-ok',id);},
    'class-del-ok'(){const cid=window._delId;db.enrollments.filter(e=>e.class_id===cid).forEach(e=>remove('enrollments',e.id));remove('classes',cid);closeModal();toast('کلاس حذف شد','ok');render();},
+   /* ── بند ۲.۱ — کلاسِ چندپایه: عضویتِ جداگانهٔ هر درس ── */
+   'class-membership'(){classMembershipModal(id);},
+   'class-membership-save'(){
+     const cid=window._memCid, cls=byId('classes',cid);
+     if(!cls){closeModal();return;}
+     const bySub=Object.create(null);
+     document.querySelectorAll('.mem-cb').forEach(function(cb){
+       bySub[cb.dataset.sub]=bySub[cb.dataset.sub]||[];
+       if(cb.checked)bySub[cb.dataset.sub].push(Number(cb.dataset.stu));
+     });
+     const allKids=studentsOfClass(cls.id);
+     Object.keys(bySub).forEach(function(subId){
+       const s=Number(subId);
+       (db.class_subject_members||[]).filter(function(x){return x.class_id===cls.id&&x.subject_id===s;})
+         .forEach(function(x){remove('class_subject_members',x.id);});
+       const chosen=bySub[subId];
+       /* همهٔ کلاس (یا خالی) ⇒ بدون ردیف = fallback = رفتارِ امروز */
+       if(chosen.length&&chosen.length<allKids.length)
+         chosen.forEach(function(k){insert('class_subject_members',{class_id:cls.id,subject_id:s,student_id:k});});
+     });
+     closeModal();toast('عضویتِ دروس ذخیره شد','ok');render();
+   },
    'class-save'(){const c=window._edit;
      if(need('c_name','نام کلاس الزامی است'))return;
      /* نوع چیدمان: انتخاب مدیر، وگرنه حدس از روی پایه */
@@ -339,6 +361,7 @@ document.addEventListener('click',e=>{
      /* در کلاس‌محور رشته معنا ندارد؛ در رشته‌محور الزامی است */
      if(invalid('c_field',_mode==='field'&&!V('c_field'),'در کلاس رشته‌محور، انتخاب رشته الزامی است'))return;
      const data={name:V('c_name'),grade:V('c_grade'),field:_mode==='class'?null:(V('c_field')||null),class_mode:_mode||null,grade_level:_gl||null,room:V('c_room'),capacity:Number(V('c_cap'))||30,homeroom_teacher_id:V('c_ht')?Number(V('c_ht')):null};
+     if($('#c_multigrade'))data.multigrade=$('#c_multigrade').checked?1:0;
      if($('#c_school'))data.school_id=Number(V('c_school'));else data.school_id=c.school_id;
      /* رشتهٔ کلاس باید جزو شاخه‌های همان مدرسه باشد. رشتهٔ قبلی خودِ
         کلاس استثناست تا ویرایش کلاس‌های قدیمی مسدود نشود. */

@@ -254,6 +254,8 @@ var ACTION_ROLES = {
   'summer-del': ['manager'],
   /* بند ۶.۵ (سبک) — جابه‌جاییِ زنگِ متداخل: فقط مدیر */
   'sched-conf-move': ['manager','superadmin'],
+  /* بند ۲.۱ — کلاسِ چندپایه: عضویتِ دروس فقط مدیر (و سوپرادمین) */
+  'class-membership-save': ['manager','superadmin'],
   /* انضباطی */
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],

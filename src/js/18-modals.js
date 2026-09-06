@@ -164,8 +164,47 @@ function classModal(c){
         : f('رشته',inp('c_field',c.field))}</div>
     ${f('اتاق',inp('c_room',c.room))}${f('ظرفیت',inp('c_cap',c.capacity,'number'))}
     ${f('سرپرست کلاس',sel('c_ht',[['','— انتخاب دبیر —']].concat(teachers.map(t=>[t.id,t.full_name])),c.homeroom_teacher_id||''))}
-    ${isSuper?f('مدرسه',sel('c_school',db.schools.map(s=>[s.id,s.name]),c.school_id)):''}</div>`,'class-save'));
+        ${(typeof hasCap==='function'&&hasCap(c.school_id,'has_multigrade'))?`
+    <label style="display:flex;gap:8px;align-items:center;cursor:pointer" title="کلاسی که دانش‌آموزانِ چند پایه را یک‌جا دارد (مدرسه‌های کوچک/روستایی)">
+      <input type="checkbox" id="c_multigrade" ${c.multigrade?'checked':''}/>
+      <span class="small"><b>کلاسِ چندپایه</b> <span class="muted">— عضویتِ هر درس جدا انتخاب می‌شود</span></span>
+    </label>`:''}
+${isSuper?f('مدرسه',sel('c_school',db.schools.map(s=>[s.id,s.name]),c.school_id)):''}</div>`,'class-save'));
   window._edit=c;
+}
+/** بند ۲.۱ — ویرایشِ عضویتِ دروسِ کلاسِ چندپایه
+   دروس از برنامهٔ هفتگیِ کلاس می‌آیند؛ برای هر درس انتخاب می‌کنیم
+   کدام دانش‌آموزانِ کلاس آن درس را می‌خوانند. «همه انتخاب‌شده»
+   = بدون ردیف (fallback تنبلِ classSubjectMembers) = رفتارِ امروز. */
+function classMembershipModal(cid){
+  const cls=byId('classes',Number(cid));
+  if(!cls){toast('کلاس پیدا نشد','err');return;}
+  var subs=Object.create(null);
+  db.schedule.forEach(function(s){ if(s.class_id===cls.id&&s.subject_id) subs[s.subject_id]=1; });
+  const subIds=Object.keys(subs).map(Number);
+  const kids=studentsOfClass(cls.id);
+  if(!subIds.length){toast('در برنامهٔ هفتگیِ این کلاس درسی نیست','err');return;}
+  if(!kids.length){toast('این کلاس دانش‌آموزی ندارد','err');return;}
+  const rows=(db.class_subject_members||[]).filter(function(x){return x.class_id===cls.id;});
+  var html='<div class="small muted" style="line-height:2;margin-bottom:10px">برای هر درس انتخاب کنید <b>کدام دانش‌آموزان</b> آن درس را می‌خوانند. اگر برای درسی <b>همهٔ</b> کلاس انتخاب باشد، همان رفتارِ امروز دارد (بدون ردیف).</div>';
+  html+='<div style="max-height:55vh;overflow:auto;display:grid;gap:12px">';
+  subIds.forEach(function(subId){
+    const sub=byId('subjects',subId)||{};
+    const have=rows.filter(function(x){return x.subject_id===subId;}).map(function(x){return x.student_id;});
+    const custom=have.length>0;
+    html+='<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px">'
+      +'<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b>'+esc(sub.name||'—')+'</b>'
+      +(custom?'<span class="badge b-amber">عضویتِ سفارشی</span>':'<span class="badge b-gray">همهٔ کلاس</span>')+'</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px">';
+    kids.forEach(function(k){
+      const on=custom?have.indexOf(k.id)>-1:true;
+      html+='<label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" class="mem-cb" data-sub="'+subId+'" data-stu="'+k.id+'" '+(on?'checked':'')+' /><span class="small">'+esc(k.full_name)+'</span></label>';
+    });
+    html+='</div></div>';
+  });
+  html+='</div>';
+  openModal(modalTpl('عضویتِ دروس — کلاسِ چندپایه', html, 'class-membership-save'));
+  window._memCid=cls.id;
 }
 function subjectModal(s){
   const isSuper=S.user.role==='superadmin';
