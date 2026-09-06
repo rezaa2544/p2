@@ -4952,3 +4952,55 @@ template با ternary، هر دو طرف را پرانتز بزنید. (دور �
 راه‌حل: نشانگرهای آزمون را با `String.fromCharCode(0x6F1,0x6F2)` (منبعِ
 آسکی) بسازید و هر شکستِ «رشتهٔ فارسی پیدا نشد» را با `codePointAt` در
 **همان** آزمون ردیابی کنید.
+
+### 🔴 بایگانی دور 85: قراردادِ 5 رفعِ حیاتی (fix/pre-deployment-critical)
+
+#### 1) هر درِ فیلد از `filterFields` رد می‌شود (server/sync.js)
+از دور 85، هر سه استثنا (IEP / سفیدفهرستِ ترک / `leaves`) از یک
+تابعِ مشترک `filterFields(op, collection, role)` عبور می‌کنند که
+`null` (مسیرِ عادی) یا `{kind:'allow'}` یا `{kind:'reject',code}`
+(ردِّ کل‌دسته، 403) یا `{kind:'reject_op',code}` (ردِّ این op — 200 +
+ok:false، دسته ادامه می‌یابد) برمی‌گرداند. استثناِ تازهٔ فیلدی
+**اینجا** افزوده می‌شود، نه با if جدا در حلقهٔ apiSync. قاعدهٔ `leaves`:
+ins → والد فقط `pending` (مدیر/سوپرادمین: `pending|approved|rejected` —
+روندِ خوابگاهِ AD 78.3)، upd → تغییرِ `status` فقط مدیر/سوپرادمین به
+`approved|rejected`. خطِ #3 حلقه، `filterFields` را **قبل** از
+`canWrite` صدا می‌زند؛ ترتیب را عوض نکنید.
+
+#### 2) Dead-letter: `SYNC_DEAD_CODES` (src/js/27-sync.js)
+کدهایِ ردِّ پایدارِ سرور (`field_denied`, `malformed_op`, `role_denied`,
+`out_of_scope`, `forged_by`, `user_mismatch`, `school_mismatch`) op را
+به `rejected` می‌رانند — op هرگز دوباره ارسال نمی‌شود و کاربر از پنل
+با `sync-del` حذفش می‌کند. `401/5xx/شبکه` گذراست (`failed` + backoff) و
+`duplicate_ignored` یعنی قبلاً اعمال شده (`synced`). `sendBatch` با
+`raw:true` می‌فرستد — اگر این پرچم را بردارید، بدنهٔ 200 بدون `status`
+می‌شود و کلِ قرارداد خراب می‌شود (جهشِ M2 همین را می‌سنجد).
+
+#### 3) `httpGetJson` هرگز reject نمی‌کند (00-data-layer.js)
+خروجی همیشه resolve می‌شود: `{ ok, status, code, serverTime, data,
+error, networkError?, timedOut? }`. `code` aliasِ `status` است — برای
+مصرف‌کننده‌های قدیمی (مثل diagProbeHealth در 42-self-diagnostics) نگه
+داشته شد؛ آن را حذف نکنید. مصرف‌کنندهٔ تازه `r.error` را چک می‌کند
+(شبکه/مهلت/bad_json) و `r.status` را برای تمایزِ 4xx/5xx.
+`.catch`هایِ قدیمی بی‌ضرر مانده‌اند ولی دیگر نمی‌افتند.
+
+#### 4) `PAYESH_DEMO_CODE` پیش‌فرضِ خاموش است
+`=== '1'` بدون fallback. هر spawnِ تست که به `demo_code` پاسخ
+وابسته است **باید** صریحاً `PAYESH_DEMO_CODE: '1'` بگذارد (هر 21
+سئوتِ فعلی این را دارد — سئوتِ تازهٔ سروری همین الگو را کپی کند).
+`PAYESH_ENV=production` + گواهیِ self-signed (`subject===issuer`) =
+exit(1) با «Error: Production requires valid CA certificate».
+
+#### 5) محیط: /tmp، orphan، و .git/config
+- `/tmp` این سنبوکس tmpfsِ 993MB است؛ هر سئوتِ سروری ~5MB دایرکتوری
+  موقت می‌سازد که با SIGKILL پاک **نمی‌شود**. پیش از هر battery:
+  `rm -rf /tmp/payesh-*`. `ENOSPC` خودش را به‌صورتِ «child server did
+  not boot» یا «پس از restore سبز نیست» نشان می‌دهد — اول `df -h /tmp`.
+- سرورهایِ spawn‌شدهٔ تست اگر assert پیش از kill شکست بخورد orphan
+  می‌شوند و پورت‌هایِ بعدیِ battery را می‌گیرند: kill را در
+  `finally` بگذارید (الگوی S31 در server1.js).
+- ریسِتِ سنبوکس `.git/config` (remote + identity) را پاک می‌کند:
+  remote = `https://github.com/rezaa2544/p2.git` (توکن:
+  `~/.payesh_gh_token`)، identity = `Payesh Dev <dev@payesh.local>`.
+  رفرانس‌هایِ tracking ممکن است کهنه بمانند — `git ls-remote` را
+  پیش از هر resetِ وابسته به remote بزنید.

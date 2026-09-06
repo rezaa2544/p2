@@ -14,6 +14,35 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## Handoff — دور 85: 5 رفعِ حیاتیِ پیش از استقرار (برنچ fix/pre-deployment-critical) — ۱۶/۰۶/۱۴۰۵ (2026-09-07)
+
+### 1) چه شد (6 کامیت — push شد)
+دستورِ کارفرما: reset به main (bab2036)، رهایِ برنچِ پیشین، برنچِ تازه‌ای به نام fix/pre-deployment-critical و **فقط 5 رفعِ حیاتی** — هرکدام یک کامیت، با gate (build + smoke + همهٔ server*) بعد از هرکدام. مواردِ P0-3 (compaction) / P1-3 (GC) / ریفکتورِ 19-actions / base_version **صریحاً ممنوع** اعلام شدند و انجام نشدند.
+- **بند 1 · 3e68008 (P0-1):** سفیدفهرستِ فیلد برای leaves در sync.js — درِ مشترکِ filterFields برای 3 استثنا (IEP/ترک/leaves)؛ ins: والد فقط pending، مدیر/سوپرادمین pending|approved|rejected (روندِ قفل‌شدهٔ خوابگاه AD 78.3 حفظ شد)؛ upd status: فقط مدیر/سوپرادمین به approved|rejected. ردِّ per-op (200 + ok:false + field_denied + آدیت sync_field_denied) به‌جای 403ِ کل‌دسته. server12: 18/18 + جهش 2/2.
+- **بند 2 · 6b32db0 (P0-2):** dead-letter در 27-sync.js — sendBatch با raw:true؛ کدهایِ پایدار → rejected (خارج از دسته‌های بعدی)؛ 401/5xx/شبکه → failed با backoff؛ duplicate_ignored → synced (حلقهٔ ابدیِ قبل بسته شد)؛ نشانگر/پنل «رد شده» + sync-del. deadletter: 18/18 + جهش 2/2.
+- **بند 3 · 773d94f (P0-4):** DEMO_CODE پیش‌فرضِ خاموش (=== '1'). سِوهٔ 21 تستِ وابسته: شکاف صفر (همه از قبل env صریح می‌ستند). server1 S31 (سرورِ فرزندِ بی-env) + جهش M20 → server-mutations 20/20. DEVELOPMENT.md به‌روز (DEPLOY.md از قبل همین را می‌گفت).
+- **بند 4 · 19d5b37 (P1-4):** fail-fastِ TLS — production + self-signed (subject===issuer در X509Certificate) → exit(1) با «Error: Production requires valid CA certificate»؛ گواهیِ خراب → «cert unreadable»؛ development دست‌نخورده. server13: 9/9 + جهش 1/1 (گواهیِ leaf با ابزارِ DERِ خودِ پروژه، صفرِ وابستگی).
+- **بند 5 · 43018d6 (P1-2):** httpGetJson قراردادِ هم‌شکل (ok/status/code/serverTime/data/error/networkError/timedOut) — همیشه resolve؛ تمایز 4xx/5xx؛ code = aliasِ status (42-self-diagnostics: مسیرِ شبکه از راه r.error، UX دقیقاً حفظ). 46-bell-now و detectServer: صفرِ تغییر. httpgetjson: 10/10 + جهش 3/3.
+- **بند 6 · 2be3af7 (اسناد):** IMPLEMENTATION_SUMMARY.md در ریشه (لیستِ هش‌ها + نتایج + تصمیم‌ها + یافته‌های محیط).
+- HEAD: 6 کامیت روی bab2036؛ push + ls-remote (2be3af7 = local = remote) ✓.
+
+### 2) چه پیداکرد
+1. **انحرافِ spec:** دستور «ins → فقط pending» با روندِ قفل‌شدهٔ خوابگاه (مدیر ins با approved — AD 78.3، smoke-test‌شده) برخورد داشت → قاعدهٔ نقش‌محور (مستند در IMPLEMENTATION_SUMMARY).
+2. **چشم‌اندازِ تستِ P0-2:** ردِّ کل‌دستهٔ 403 (مثل role_denied) op سالم را هم رد می‌کند → سناریوی «سالم+خراب» باید از ردِّ per-op (field_deniedِ بند 1) استفاده کند.
+3. **P0-4 شکاف صفر:** هر 21 تستِ وابسته از قبل PAYESH_DEMO_CODE:'1' صریح می‌ستند.
+4. **محیطِ سنبوکس:** /tmp = tmpfs 993MB که با 166 دایرکتوریِ موقتِ تست (هر ~5MB) پر شد و ENOSPC چند «شکست کاذب» ساخت → بینِ batteryها rm -rf /tmp/payesh-*؛ سرورهایِ orphan روی پورت → try/finally + poolِ پورت (S31/S13). ریسِتِ سنبوکس .git/config (remote+identity) را پاک می‌کند؛ رفرانسِ کهنهٔ origin/main یک بار reset را گمراه کرد (main واقعیِ GitHub = bab2036 با ls-remote تأیید شد).
+5. **server11-child.js هاپِر است** (با آرگومان فراخوانی می‌شود) — در gate مستقیم اجرا نمی‌شود.
+
+### 3) چی موند
+- **موردِ بعدی (اگر دستور برسد):** 5 رفعِ باقی‌ماندهٔ ARCHITECTURE_REVIEW: P0-3 compactionِ log · P1-3 GCِ سرور · ریفکتورِ 19-actions (بند 8) · P1-1 SSoT · P2 (base_version و ...) — همین حالا با ابزارِ آموخته‌شده (gate + جهش + این برنچ یا برنچِ تازه) قابلِ اجراست.
+- mergeِ fix/pre-deployment-critical به main — منتظرِ دستور.
+- پیامکِ واقعی / سرور+دامنه / Play — 4 موردِ دائمی دست‌نخورده.
+
+### 4) وضعیتِ فنی
+- آزمونِ نهایی: smoke 546/546 + server1 31/31 + server2 25 + server3 14 + server4 16 + server5 14 + server6 9 + server7 15 + server8 9 + server9 10 + server10 7 + server11-sms 9 + server11-mutations 6 + server12 18 + server12-mutations 2 + server13 9 + server13-mutations 1 + deadletter 18 + httpgetjson 10 + httpgetjson-mutations 3 + server-mutations 20 — همه سبز؛ 0 فرآیندِ سرورِ مانده.
+- build --check: راهنما همگام با index.html ✓. درخت: تمیز.
+- آرشیو: قدیمی‌ترین ورودی (پشتیبان/بازیابی 2026-09-06) به docs/HANDOFF_ARCHIVE.md منتقل شد (سقف 20).
+
 ## Handoff — دور 84: ذخیرهٔ بازبینیِ معماری در فایل — ۱۶/۰۶/۱۴۰۵ (2026-09-07)
 
 ### 1) چه شد (2 کامیت)
@@ -692,27 +721,3 @@ workshop2 ۱۲ + جهش ۴ · iep2 ۷ + iep3 ۸ + جهش ۳ · preapp2 ۸ + prea
   را قدیمی می‌کند (دامِ تستی که خوردیم).
 - `!arr.indexOf(x) > -1` دامِ سبک‌سالی است (اولویتِ `!`) — همیشه `indexOf(x) === -1`.
 - اسناد: AD بند ۱۵.۱ + OPEN_WORK (شش طرح = شش ✅) + راهنما (دو کال‌اوتِ تازه).
-
-## Handoff — پشتیبان‌گیری/بازیابی (OPEN_ITEMS 2.4) + به‌روزرسانیِ اسنادِ ردیاب — 2026-09-06
-
-### ۱) چه شد
-- **`server/admin.js`** — `POST /api/admin/backup` + `POST /api/admin/restore` (فقط superadmin، fail-closed):
-  اسنپ‌شاتِ اتمیِ **فقط‌داده** (کلیدهای `__*` وارد فایل نمی‌شود) در `backups/` کنارِ فایلِ store،
-  نگه‌داریِ ۱۰ نسخهٔ تازه (نام با millisecond — کالاشنِ ثانیه‌ای نیست)؛ restore به آخرین/فایلِ دلخواه
-  (تطبیقِ نام)؛ فایلِ خراب = 409 `corrupt_backup` + store دست‌نخورده؛ بازیابی `__auth/...` را از نو می‌سازد؛
-  آدیتِ `backup_created`/`restore_completed`/`restore_failed`.
-- `tests/server8.js` ۹/۹ + جهش‌های M16 (گاردِ نقش) / M17 (اعتبارسنجی) → suite ۱۷/۱۷.
-- بازگشت‌آزمون سبز: server1 ۳۰ · server3 ۱۹ · server4 ۱۶ · run ۳۳.
-- **اسنادِ ردیاب تازه شدند** (دارند پوسیده می‌شدند):
-  - `OPEN_ITEMS.md` — وارسیِ کامل با شواهد: چهار مسدودکنندهٔ ۱.۱–۱.۴ بسته شد (۱.۱ با تغییرِ طراحی: اصلاً رمز نیست)؛
-    بخش ۲ (2.1–2.8) همه سبز/تصمیم‌شده؛ وابستگیِ ۴.۱ رفع شد.
-  - `OPEN_WORK.md` — جدولِ شش طرح با کد تطبیق: ۵ از ۶ پیاده (زنگ خودکار `bellAutoClass`، نمای زنده،
-    تقویم+جبرانی، ورودِ موبایل، دسته‌بندیِ منو)؛ فقط «خروجِ زمان‌دار» از طرحِ ۱ باز است.
-  - AD بند ۱۴.۳ تازه (پشتیبان/بازیابی).
-  - ۴ تایپوی تاریخِ فارسی قدیمی (۲۰۶/۲۰۲/۲۰-۰۹-...) در اسناد پیدا و اصلاح شد.
-
-### ۲) نکات برای دورِ بعد
-- backup کنارِ `STORE_FILE` نوشته می‌شود (نه `DATA_DIR`) — اگر `PAYESH_STORE` جایِ دیگری باشد،
-  `backups/` هم همان‌جا ساخته می‌شود (در تست‌ها = ایزولهٔ tmp).
-- restore کلِ store را `delete` + `assign` می‌کند — حالاِ آبجکت همان است (ماژول‌ها reference دارند).
-- بازگشتِ کاملِ smoke در این sandbox ممکن نیست (OOM) — در محیطِ بزرگ‌تر.
