@@ -11,6 +11,11 @@
      M5 چکِ /me که نشستِ محلی را پاک نمی‌کند
      M6 ورودی که وضعیتِ خطای سرور را نادیده می‌گیرد
      M7 خروجی که به سرور خبر نمی‌دهد
+   چهار جهشِ مرحلهٔ ۲ (TLS + پُلِ دوره‌ای):
+     M9 فیلترِ scope در bell.js (تست: tests/server5.js)
+     M10 پرچمِ Secure در کوکی (تست: tests/server4.js)
+     M11 گاردِ بدنِ پاسخ در تیکِ سروری (تست: tests/server5.js)
+     M12 اولویتِ overlayِ حضور (تست: tests/server5.js)
    هر جهش: جایگزینی، build، اجرای تستِ مربوطه، بررسیِ شکست، بازگشت.
    ───────────────────────────────────────────────────────────── */
 const { execSync } = require('child_process');
@@ -72,6 +77,34 @@ const MUTS = [
     mut: "SYNC.queue = SYNC.queue.filter(function(x){ return true; });",
     name: 'M8 عملیات‌های بی‌هویت در صفِ سروری می‌مانند',
     expectFail: 'S5a'
+  },
+  {
+    file: 'server/bell.js', suite: 'tests/server5.js', heap: 1500,
+    bad: "      .filter((p) => p.parent_id === userId)",
+    mut: "      .filter((p) => true)",
+    name: 'M9 ولی فرزندِ همه را می‌بیند (فیلترِ scope حذف)',
+    expectFail: 'B2 parent'
+  },
+  {
+    file: 'server/auth.js', suite: 'tests/server4.js', heap: 1500,
+    bad: "    const secure = isHttps(req) ? 'Secure; ' : '';",
+    mut: "    const secure = '';",
+    name: 'M10 کوکیِ Secure در https حذف شد',
+    expectFail: 'T4c'
+  },
+  {
+    file: 'src/js/46-bell-now.js', suite: 'tests/server5.js', heap: 1500,
+    bad: "    if(!j || j.ok !== true || typeof j.ts !== 'number' || !Array.isArray(j.family)){",
+    mut: "    if(false){",
+    name: 'M11 گاردِ بدنِ پاسخ حذف شد (بدنِ هرچنان پذیرفته می‌شود)',
+    expectFail: 'C2'
+  },
+  {
+    file: 'src/js/46-bell-now.js', suite: 'tests/server5.js', heap: 1500,
+    bad: "      if(r && r.studentId != null) attMap[r.studentId] = (r.att == null ? null : r.att);",
+    mut: "      if(false) attMap[r.studentId] = (r.att == null ? null : r.att);",
+    name: 'M12 overlayِ حضورِ سرور بی‌اثر شد (att محلی می‌ماند)',
+    expectFail: 'C1c'
   }
 ];
 
