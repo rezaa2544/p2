@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * تست‌های مقایسهٔ نمره با میانگین کلاس (بند ۴.۹)
- *  - classScoreContext: میانگینِ ناشناس (avg/n/students) برای هر
+ *  - classScoreContext: میانگینِ ناشناس (avg/avgNorm/n/students) برای هر
  *    (درس، نوبت، نوع) — فقط وقتی ≥۲ دانش‌آموزِ عضو نمره دارند
  *  - بدونِ نام/شناسه (فقط عدد)
  *  - نمایِ پرونده (مدیر/دبیر) و پنلِ ولی: بجِ «· کلاس: X.XX»
@@ -116,8 +116,10 @@ test('G1 واحدها: میانگین درست + آستانهٔ ۲ نفر', () =
 
 test('G2 ناشناسی: فقط عدد — نه نام، نه شناسه', () => {
   const keys = W(`Object.keys(classScoreContext(${ctx.cid})[${JSON.stringify(ctx.k)}])`);
-  assert(JSON.stringify(keys.sort()) === JSON.stringify(['avg','n','students']),
-    'کلیدهای ورودی فقط avg/n/students باید باشند (گرفت: ' + JSON.stringify(keys) + ')');
+  /* دور ۷۹ بند ۴: avgNorm افزوده شد (میانگینِ نرمالِ ۲۰ برای پوشِ
+     نمودارِ ۴.۹) — همچنان فقط عدد، بدونِ هیچ هویتی */
+  assert(JSON.stringify(keys.sort()) === JSON.stringify(['avg','avgNorm','n','students']),
+    'کلیدهای ورودی فقط avg/avgNorm/n/students باید باشند (گرفت: ' + JSON.stringify(keys) + ')');
   const raw = W(`JSON.stringify(classScoreContext(${ctx.cid}))`);
   const names = W(`db.users.filter(function(u){return u.full_name;}).map(function(u){return u.full_name;})`);
   names.forEach((nm) => assert(raw.indexOf(nm) === -1, 'نامِ «' + nm + '» در خروجیِ ناشناس است!'));

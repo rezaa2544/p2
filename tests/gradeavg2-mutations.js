@@ -41,8 +41,8 @@ mutate('src/js/04-queries.js',
   null, /❌ G6/, 'M2 آستانهٔ ۲ نفر → ۱');
 
 mutate('src/js/04-queries.js',
-  'sum+=g.score;n++;students[g.student_id]=true;',
-  'sum+=1;n++;students[g.student_id]=true;',
+  'sum+=g.score;',
+  'sum+=1;',
   null, /❌ G1/, 'M3 جمعِ نمره → شمارشِ ردیف');
 
 /* بازسازی + خطِّ پایه */

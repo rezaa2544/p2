@@ -57,14 +57,19 @@ function classScoreContext(classId){
     var grp=groups[k];
     var ids=Object.create(null);
     classSubjectMembers(cls.id, grp.subject).forEach(function(u){ids[u.id]=true;});
-    var sum=0,n=0,students=Object.create(null);
+    var sum=0,sumN=0,n=0,students=Object.create(null);
     grp.rows.forEach(function(g){
       if(!ids[g.student_id]) return;
-      sum+=g.score;n++;students[g.student_id]=true;
+      sum+=g.score;
+      /* دور ۷۹ (بند ۴.۹): میانگینِ نرمال‌شدهٔ ۲۰ — برای هم‌سطح‌سازی
+         نمراتِ با max متفاوت در نمودارِ مقایسه‌ای */
+      var mx=Number(g.max_score)||20;
+      sumN+=Math.max(0,Math.min(20,(Number(g.score)/mx)*20));
+      n++;students[g.student_id]=true;
     });
     var cnt=Object.keys(students).length;
     if(cnt<2) return;
-    out[k]={avg:n?sum/n:0, n:n, students:cnt};
+    out[k]={avg:n?sum/n:0, avgNorm:n?sumN/n:0, n:n, students:cnt};
   });
   return out;
 }
