@@ -111,6 +111,117 @@ function transcriptCert(sid, term){
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   کارنامهٔ چاپ‌شونده (بند ۴.۳ — دور ۷۱)
+   کارنامه تا امروز فقط روی صفحه بود (تب کارنامهٔ پرونده). حالا یک
+   قالبِ حرفه‌ایِ A4 برایش ساخته می‌شود — همان الگوی فرم‌های رسمی:
+   سازندهٔ بدنهٔ خالص (تست‌پذیر) + printableDoc برای چاپ/ذخیرهٔ PDF.
+   ⚠️ صداقتِ داده‌ای: کارنامهٔ رسمیِ کشور دو ستونِ مستمر/پایانی دارد؛
+   ما در داده‌ها «برگه» (exam_type) داریم نه نوع مستمر/پایانی، پس
+   ستون‌ها دقیقاً با همان داده‌ای که داریم ساخته می‌شود: میانگینِ
+   برگه‌های همان نوبت + میانگینِ کلاس + رتبهٔ کلاس.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/**
+ * کارنامهٔ یک دانش‌آموز برای یک نوبت — قالبِ چاپ‌شوندهٔ حرفه‌ای.
+ * @returns {ok:boolean, title, school, subtitle, body, note} یا {ok:false, msg}
+ */
+function reportCardCert(sid, term){
+  var st = byId('users', sid);
+  if(!st || st.role !== 'student') return {ok:false, msg:'دانش‌آموز پیدا نشد.'};
+  var cls = classOf(sid);
+  var school = byId('schools', st.school_id) || {};
+  var list = db.grades.filter(function(g){ return g.student_id===sid && (!term || g.term===term); });
+  if(!list.length) return {ok:false, msg:'برای این نوبت نمره‌ای ثبت نشده است.'};
+  var bySub = Object.create(null);
+  list.forEach(function(g){ (bySub[g.subject_id] = bySub[g.subject_id] || []).push(g); });
+  /* میانگینِ کلاس برای هر درس — یک پیمایش (الگوی ایندکسِ این فایل) */
+  var clsAvg = Object.create(null);
+  if(cls){
+    var kidsSet = Object.create(null);
+    studentsOfClass(cls.id).forEach(function(s){ kidsSet[s.id] = 1; });
+    db.grades.forEach(function(g){
+      if(g.class_id !== cls.id) return;
+      if(term && g.term !== term) return;
+      if(!kidsSet[g.student_id]) return;
+      (clsAvg[g.subject_id] = clsAvg[g.subject_id] || []).push(g.score);
+    });
+  }
+  var tw = 0, ts = 0;
+  var rows = Object.keys(bySub).map(function(id){
+    var sub = byId('subjects', Number(id)) || {};
+    var arr = bySub[id];
+    var av = Math.round(arr.reduce(function(a,g){ return a+g.score; },0)/arr.length*100)/100;
+    var w = Number(sub.weekly_hours) || 1;
+    tw += w; ts += av*w;
+    var ca = clsAvg[id] ? Math.round(clsAvg[id].reduce(function(a,b){ return a+b; },0)/clsAvg[id].length*100)/100 : null;
+    return {name: sub.name || '—', w: w, av: av, ca: ca};
+  }).sort(function(a,b){ return a.name < b.name ? -1 : 1; });
+  var gpa = tw ? Math.round(ts/tw*100)/100 : 0;
+  /* رتبهٔ کلاس: معدلِ وزنیِ هم‌کلاسی‌ها برای همان نوبت — یک پیمایش */
+  var rank = null, inClass = 0;
+  if(cls){
+    var byKid = Object.create(null);
+    db.grades.forEach(function(g){
+      if(g.class_id !== cls.id) return;
+      if(term && g.term !== term) return;
+      var b = (byKid[g.student_id] = byKid[g.student_id] || Object.create(null));
+      (b[g.subject_id] = b[g.subject_id] || []).push(g.score);
+    });
+    Object.keys(byKid).forEach(function(k){ inClass++; });
+    var gpaOf = function(b){
+      var ww = 0, ss = 0;
+      Object.keys(b).forEach(function(id){
+        var a = b[id], m = a.reduce(function(x,y){ return x+y; },0)/a.length;
+        var w2 = Number((byId('subjects', Number(id))||{}).weekly_hours) || 1;
+        ww += w2; ss += m*w2;
+      });
+      return ww ? ss/ww : null;
+    };
+    var mine = gpaOf(byKid[sid]);
+    if(mine != null){
+      var above = 0;
+      Object.keys(byKid).forEach(function(k){
+        if(k === String(sid)) return;
+        var g2 = gpaOf(byKid[k]);
+        if(g2 != null && g2 > mine + 1e-9) above++;
+      });
+      rank = above + 1;
+    }
+  }
+  /* حضورِ کلِ سال (حضوروغیاب فیلدِ نوبت ندارد) */
+  var att = db.attendance.filter(function(a){ return a.student_id===sid; });
+  var pres = att.filter(function(a){ return a.status==='present'; }).length;
+  var absn = att.filter(function(a){ return a.status==='absent'; }).length;
+  var body =
+    '<div class="meta"><span>نام: <b>' + esc(st.full_name) + '</b></span>'
+    + '<span>کد ملی: <b>' + esc(st.national_id || '—') + '</b></span>'
+    + '<span>کلاس: <b>' + esc(cls ? cls.name : '—') + '</b></span>'
+    + '<span>پایه: <b>' + esc(cls ? (cls.grade || cls.grade_level || '—') : '—') + '</b></span></div>'
+    + '<table><thead><tr><th class="c" style="width:34px">#</th><th>درس</th>'
+    + '<th class="c" style="width:86px">ساعت هفتگی</th>'
+    + '<th class="c" style="width:104px">نمرهٔ دانش‌آموز (از ۲۰)</th>'
+    + '<th class="c" style="width:96px">میانگین کلاس (از ۲۰)</th></tr></thead><tbody>'
+    + rows.map(function(r,i){
+        return '<tr><td class="c">' + fa(i+1) + '</td><td>' + esc(r.name) + '</td>'
+          + '<td class="c">' + fa(r.w) + '</td>'
+          + '<td class="c"><b>' + fa(r.av) + '</b></td>'
+          + '<td class="c">' + (r.ca == null ? '—' : fa(r.ca)) + '</td></tr>';
+      }).join('')
+    + '</tbody></table>'
+    + '<div class="meta" style="margin-top:10px;gap:22px">'
+    + '<span>معدلِ وزنی: <b style="font-size:13px">' + fa(gpa) + '</b> از ۲۰</span>'
+    + (rank != null ? '<span>رتبهٔ کلاس: <b>' + fa(rank) + '</b> از ' + fa(inClass) + '</span>' : '')
+    + '<span>حضور (کل سال): <b>' + fa(pres) + '</b> روز</span>'
+    + '<span>غیبت (کل سال): <b>' + fa(absn) + '</b> روز</span></div>';
+  return {ok:true,
+    title:'کارنامه',
+    school: esc(school.name || '') + (school.code ? ' — کد ' + esc(school.code) : ''),
+    subtitle:'دانش‌آموز: ' + esc(st.full_name) + ' · ' + (term || 'همهٔ نوبت‌ها') + ' · سال تحصیلی ' + yearTitle(),
+    body: body,
+    note:'نمرهٔ هر درس میانگینِ برگه‌های ثبت‌شدهٔ همان نوبت است؛ «میانگین کلاس» برای همان درس و نوبت از همهٔ هم‌کلاسی‌ها و «رتبهٔ کلاس» بر پایهٔ معدلِ وزنی (ساعت هفتگی) محاسبه می‌شود. این کارنامه از سامانهٔ پایش چاپ شده است.'};
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    گواهی‌های رسمی دیگر (بند ۶): اشتغال به تحصیل + انتقالی
    همین الگوی گواهی نمرات (سازندهٔ بدنهٔ خالص + printableDoc) +
    کد احرازِ ساده و قطعی (بدون سرور، بدون امضای دیجیتال).
