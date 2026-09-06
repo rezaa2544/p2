@@ -86,8 +86,10 @@ function viewRecord(sid){
      <span class="badge ${a>=17?'b-green':a>=12?'b-blue':'b-red'}">میانگین ${fa(a.toFixed(2))}</span></div>
      <div style="margin:8px 0 12px">${bar(a,20,a>=17?'var(--green)':a>=12?'var(--primary)':'var(--red)')}</div>
      <div class="row">${l.map(g=>{const c=(typeof classScoreContext!=='undefined'&&S.__clsCtx)?S.__clsCtx[Number(id)+'|'+g.term+'|'+g.exam_type]:null;
-     return `<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}: <b>${fa(g.score)}</b>${c?' <span class="muted" style="font-weight:400">· کلاس: '+fa(c.avg.toFixed(2))+'</span>':''}</span>`;}).join('')}</div></div>`;}).join('')}</div>`
+     return `<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}${g.kind==='practical'?' • عملی':''}: <b>${fa(g.score)}</b>${c?' <span class="muted" style="font-weight:400">· کلاس: '+fa(c.avg.toFixed(2))+'</span>':''}</span>`;}).join('')}</div></div>`;}).join('')}</div>`
     :empty('📝','نمره‌ای ثبت نشده','به محض ثبت نمره، کارنامه اینجا نمایش داده می‌شود.');
+  /* بند ۴.۲: کارتِ کارآموزی زیرِ کارنامه (فقط سالِ آخرِ رشته‌های فنی) */
+  if(S.tab==='grades') body += (typeof internshipCard==='function')?internshipCard(sid):'';
   if(S.tab==='schedule') body = classScheduleCard(sid);
   if(S.tab==='vclass') body = (typeof vclassRecordTab==='function')?vclassRecordTab(sid):'';
   if(S.tab==='bus') body = persona==='parent'
@@ -108,6 +110,44 @@ function viewRecord(sid){
     :empty('🌟','پرونده انضباطی پاک است','هیچ مورد انضباطی ثبت نشده است.');
   return `<div class="card"><div class="card-head" style="padding-bottom:0;border-bottom:none"><div class="tabs">
     ${tabs.map(t=>`<div class="tab ${S.tab===t[0]?'active':''}" data-act="tab" data-t="${escAttr(t[0])}">${t[1]}</div>`).join('')}</div></div>${body}</div>`;
+}
+
+/** بند ۴.۲ — کارتِ ساعتِ کارآموزی: فقط برای دانش‌آموزِ سالِ آخرِ
+    رشته‌های فنی‌وحرفه‌ای/کاردانش در مدرسهٔ دارای رشته. */
+function internshipCard(sid){
+  var u=byId('users',sid);
+  if(!u)return '';
+  var school=byId('schools',u.school_id);
+  if(!(school&&workshopSchool(school.id)))return '';
+  if(!isFinalYearStudent(sid))return '';
+  var rows=internshipSessions(sid);
+  var tot=internshipTotals(sid);
+  var persona=(typeof activePersona==='function')?activePersona():(S.user&&S.user.role);
+  var canManage=persona==='manager'||persona==='superadmin';
+  var canApprove=canManage||persona==='teacher';
+  var h='<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:14px">'
+   +'<div class="row" style="align-items:center;gap:10px;flex-wrap:wrap"><b>🏭 ساعتِ کارآموزی</b>'
+   +'<span class="badge b-green">مجموع: '+fa(tot.total)+' ساعت</span>'
+   +'<span class="badge b-blue">تأییدشده: '+fa(tot.approved)+' ساعت</span>'
+   +'<div class="spacer"></div>'
+   +(canManage?'<button class="btn sm" data-act="internship-new" data-id="'+escAttr(sid)+'">➕ ثبتِ ساعت</button>':'')
+   +'</div>';
+  if(rows.length){
+    h+='<div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>تاریخ</th><th>ساعت</th><th>محل</th><th>وضعیت</th><th>تأییدکننده</th><th></th></tr></thead><tbody>';
+    rows.forEach(function(r){
+      var appr=r.approved_by?(((byId('users',r.approved_by)||{}).full_name)||'—'):'—';
+      var acts='';
+      if(r.status!=='approved'&&canApprove)acts+='<button class="btn ghost sm" data-act="internship-approve" data-id="'+escAttr(r.id)+'">✅ تأیید</button> ';
+      if(canManage)acts+='<button class="icon-btn danger" data-act="internship-del" data-id="'+escAttr(r.id)+'" title="حذف">🗑️</button>';
+      h+='<tr><td>'+jalali(r.date)+'</td><td><b>'+fa(r.hours)+'</b></td><td class="muted">'+esc(r.location||'—')+'</td>'
+       +'<td><span class="badge '+(r.status==='approved'?'b-green':'b-amber')+'">'+(r.status==='approved'?'تأییدشده':'در انتظار تأیید')+'</span></td>'
+       +'<td class="muted small">'+esc(appr)+'</td><td>'+acts+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  } else {
+    h+='<div class="muted small" style="padding:10px 0">هنوز ساعتی ثبت نشده است.</div>';
+  }
+  return h+'</div>';
 }
 
 /** کارت گواهی‌های رسمی (بند ۶) — تب شناسنامهٔ پرونده */

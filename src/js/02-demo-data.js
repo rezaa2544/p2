@@ -66,7 +66,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -220,6 +220,27 @@ function generate(){
         }
         const ftch=db.users.find(u2=>u2.school_id===school.id&&u2.role==='teacher');
         if(ftch)add('exam_duties',{exam_id:fe.id,teacher_id:ftch.id,role:'main'});
+      }
+    }
+    /* نمرهٔ عملی/کارگاهی + ساعتِ کارآموزی (بند ۴.۲): فقط مجتمع ایران‌زمین
+       (فنی و حرفه‌ای/کاردانش). ⚠️ بدون مصرفِ rng(): همهٔ مقادیر قطعی‌اند
+       تا جریانِ دنیای دمو (حساب‌های بعدی) دست‌نخورده بماند. */
+    if(si===4){
+      const w12=db.classes.filter(c=>c.school_id===school.id&&c.grade==='دوازدهم')[0];
+      if(w12){
+        const wstuds=db.users.filter(u=>u.role==='student'&&(db.enrollments.some(e=>e.class_id===w12.id&&e.student_id===u.id))&&u.active);
+        const wteach=db.users.find(u=>u.school_id===school.id&&u.role==='teacher');
+        const wsubs=db.subjects.filter(s2=>s2.school_id===school.id).slice(0,2);
+        wstuds.slice(0,4).forEach(function(st,idx){
+          if(idx<2&&wsubs[0]&&wteach){
+            add('grades',{school_id:school.id,student_id:st.id,class_id:w12.id,subject_id:wsubs[0].id,teacher_id:wteach.id,term:'نوبت اول',exam_type:'کارگاهی',kind:'practical',score:16+idx*2,max_score:20,created_at:daysAgoISO(30-idx)});
+          }
+          /* دو جلسهٔ کارآموزی: جلسهٔ اول تأییدشده، جلسهٔ دوم در انتظار (برای idx زوج) */
+          add('internships',{school_id:school.id,student_id:st.id,date:daysAgoISO(21-idx*7),hours:16,location:idx%2?'کارگاهِ صنعتیِ شهر':'معاونتِ فنیِ منطقه',status:'approved',approved_by:wteach?wteach.id:null,approved_at:daysAgoISO(18-idx*7),note:'حضورِ کامل',created_by:manager.id,created_at:daysAgoISO(21-idx*7)});
+          if(idx%2===0){
+            add('internships',{school_id:school.id,student_id:st.id,date:daysAgoISO(7-idx*3),hours:24,location:'کارگاهِ صنعتیِ شهر',status:'pending',note:'در انتظارِ تأییدِ دبیر',created_by:manager.id,created_at:daysAgoISO(7-idx*3)});
+          }
+        });
       }
     }
   });

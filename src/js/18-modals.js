@@ -202,14 +202,39 @@ function gradeModal(g){
   const cid=Number(S.filters.class||(_autoOk&&_auto.classId)||(cls[0]||{}).id);
   const studs=studentsOfClass(cid);
   if(!studs.length){toast('این کلاس دانش‌آموزی ندارد','err');return;}
-  g=g||{student_id:studs[0].id,subject_id:(_autoOk?_auto.subjectId:subs[0].id),term:TERMS[0],exam_type:EXAM_TYPES[0],score:20};
+  g=g||{student_id:studs[0].id,subject_id:(_autoOk?_auto.subjectId:subs[0].id),term:TERMS[0],exam_type:EXAM_TYPES[0],score:20,kind:'theory'};
+  /* بند ۴.۲: در مدارسِ فنی‌وحرفه‌ای/کاردانش، نوعِ نمره (تئوری/عملی) انتخاب می‌شود */
+  const _gsc=byId('schools',(byId('classes',cid)||{}).school_id);
+  const _gkindOpts=(typeof workshopSchool==='function'&&workshopSchool(_gsc&&_gsc.id))?
+    `${f('نوع نمره',sel('g_kind',[['theory','تئوری'],['practical','عملی/کارگاهی']],g.kind||'theory'))}`:'';
   openModal(modalTpl(g.id?'ویرایش نمره':'ثبت نمره جدید',
    `<div class="grid g2">
     ${f('دانش‌آموز',`<select class="select" id="g_st" ${g.id?'disabled':''}>${studs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
     ${f('درس',`<select class="select" id="g_sub" ${g.id?'disabled':''}>${subs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.subject_id?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`)}
     ${f('نوبت',sel('g_term',TERMS.map(t=>[t,t]),g.term))}${f('نوع آزمون',sel('g_type',EXAM_TYPES.map(t=>[t,t]),g.exam_type))}
+    ${_gkindOpts}
     ${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${escAttr(g.score)}" />`)}</div>`,'grade-save'));
   window._edit=g;window._gclass=cid;
+}
+
+/* بند ۴.۲ — مودالِ ثبت/ویرایشِ ساعتِ کارآموزی.
+   fixedSid: اگر داده شود (از کارتِ پروندهٔ دانش‌آموز)، دانش‌آموز فیکس است. */
+function internshipModal(i,fixedSid){
+  const cls=visibleClasses();
+  const cid=Number(S.filters.class||(cls[0]||{}).id);
+  let studs=studentsOfClass(cid);
+  if(fixedSid)studs=studs.filter(s=>s.id===Number(fixedSid));
+  studs=studs.filter(s=>workshopStudent(s.id)&&isFinalYearStudent(s.id));
+  if(!studs.length){toast('دانش‌آموزِ سالِ آخرِ رشتهٔ فنی/کاردانشی در این کلاس نیست','err');return;}
+  i=i||{student_id:studs[0].id,date:todayISO(),hours:8,location:'',status:'pending',note:''};
+  openModal(modalTpl(i.id?'ویرایشِ ساعتِ کارآموزی':'ثبتِ ساعتِ کارآموزی',
+   `<div class="grid g2">
+    ${f('دانش‌آموز',`<select class="select" id="in_st" ${i.id?'disabled':''}>${studs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===i.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
+    ${f('تاریخ',jdate('in_date',i.date))}
+    ${f('تعدادِ ساعت',`<input class="input" id="in_hours" type="number" min="1" max="40" value="${escAttr(i.hours)}" />`)}
+    ${f('محلِ کارآموزی',inp('in_loc',i.location))}</div>
+    ${f('یادداشت',`<textarea class="input" id="in_note" rows="2">${esc(i.note||'')}</textarea>`)}`,'internship-save'));
+  window._inEdit=i;window._inClass=cid;
 }
 const PRESETS={positive:POS.map(p=>p[0]),negative:NEG.map(p=>p[0])};
 function discModal(d){
