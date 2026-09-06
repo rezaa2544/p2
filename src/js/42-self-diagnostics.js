@@ -840,6 +840,11 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
       var bad = [];
       log.forEach(function(op, i){
         if(!op || typeof op !== 'object'){ bad.push({ ردیف:i, خطا:'عملیات خالی' }); return; }
+        if(op.t==='snap'){
+          if(!op.db || typeof op.db !== 'object')
+            bad.push({ ردیف:i, خطا:'اسنپ‌شات بدون وضعیت' });
+          return; /* اسنپ‌شات عملیات نیست (AD 85.1) */
+        }
         if(['ins','upd','del'].indexOf(op.t) < 0)
           bad.push({ ردیف:i, خطا:'نوع ناشناخته: ' + String(op.t) });
         else if(!op.c || !Array.isArray(db[op.c]))
@@ -856,6 +861,7 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
       var before = log.length;
       var clean = log.filter(function(op){
         if(!op || typeof op !== 'object') return false;
+        if(op.t==='snap') return !!op.db; /* اسنپ‌شات سالم بماند (AD 85.1) */
         if(['ins','upd','del'].indexOf(op.t) < 0) return false;
         if(!op.c || !Array.isArray(db[op.c])) return false;
         if(op.t === 'ins' && (!op.data || op.data.id == null)) return false;

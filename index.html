@@ -1758,7 +1758,77 @@ function saveLog(){
 }
 /** آیا ذخیره‌سازی محلی دچار مشکل است؟ (برای نشانگر وضعیت) */
 function storageFull(){ return STORAGE_FULL; }
-function applyLog(){SYNC_MUTED=true;log.forEach(e=>applyOp(e,false));SYNC_MUTED=false;}
+function applyLog(){
+  SYNC_MUTED=true;
+  for(var i=0;i<log.length;i++){
+    var e=log[i];
+    if(!e) continue;
+    if(e.t==='snap'){ applySnapshot(e); continue; }
+    if(e.__a) continue; /* فقط‌سابقه — وضعیتِ اسنپ‌شات آن را دارد */
+    applyOp(e,false);
+  }
+  SYNC_MUTED=false;
+  /* شمارنده‌های فشردن را با وضعیتِ واقعیِ پایانِ بازپخش پر می‌کنیم */
+  _LOG_BYTES = JSON.stringify(log).length;
+  _DB_BYTES = JSON.stringify(db).length;
+}
+/* اسنپ‌شات = وضعیتِ کامل در لحظهٔ فشردن (AD 85.1). ارجاعاتِ آرایه‌ها
+   حفظ می‌شوند (ماژول‌های دیگر نگه‌دارند) و ids از نو محاسبه می‌شود. */
+function applySnapshot(e){
+  var s = e.db || {};
+  for(var c in s){
+    if(!Object.prototype.hasOwnProperty.call(s,c)) continue;
+    if(!Object.prototype.hasOwnProperty.call(db,c)) db[c] = [];
+    var rows = JSON.parse(JSON.stringify(s[c]||[]));
+    db[c].length = 0;
+    for(var i=0;i<rows.length;i++){
+      db[c].push(rows[i]);
+      var id=Number(rows[i].id);
+      if(id>(ids[c]||0)) ids[c]=id;
+    }
+    if(typeof idxInvalidate==='function') idxInvalidate(c);
+  }
+  /* حالتِ nextId: idهایِ ردیف‌هایِ بعداًِ حذف‌شده هم مصرف شده‌اند —
+     باید همان خطِ دستگاهِ اصلی ادامه یابد، وگرنه idها دوباره استفاده
+     می‌شوند (با سرور/آدیتِ قدیمی می‌درگند). */
+  if(e.ids && typeof e.ids==='object'){
+    for(var c2 in e.ids){
+      if(!Object.prototype.hasOwnProperty.call(e.ids,c2)) continue;
+      if(e.ids[c2]>(ids[c2]||0)) ids[c2]=e.ids[c2];
+    }
+  }
+}
+/* ---- فشردنِ دفترچه (AD 85.1 — P0-3 دور 85) ----
+   دستگاهِ طولانی‌کار دفترچه را بی‌پایان بزرگ می‌کند؛ هر saveLog کلِ
+   آن را stringify می‌کند و هر بوت کلِ آن را بازپخش می‌کند.
+   روی آستانه (30٬000 op یا ۳MB) دفترچه «اسنپ‌شات + ۵۰۰ op آخر» می‌شود.
+   opهایِ ماندگار `__a` می‌گیرند: فقط‌سابقه — بازپخش نمی‌شوند (اسنپ‌شات
+   پس از آن‌ها گرفته شده است؛ بازپخشِ مجدد فقط هزینهٔ بی‌مورد است).
+   آدیت (36) فقط c/t/by/at/id می‌خواند و ردیفِ اسنپ‌شات (بدون c) را
+   خودش رد می‌کند — شکلِ سابقهٔ تغییرات عوض نمی‌شود.
+   گارد: فقط وقتی فشردن واقعاً کوچک می‌کند (cand < 90٪ قدیمی).
+   برآورد O(1) با شمارنده است تا خودِ بررسی درجه‌دوم نشود؛ stringify
+   واقعی فقط هنگام فشردنِ واقعی (هر ~۵۰۰ op یک بار) انجام می‌شود. */
+var COMPACT_OPS=30000, COMPACT_BYTES=3*1048576, COMPACT_KEEP=500;
+var _LOG_BYTES=0, _DB_BYTES=0, _COMPACT_REJECT_BYTES=0;
+function compactLogIfNeeded(){
+  if(log.length<=COMPACT_OPS && _LOG_BYTES<=COMPACT_BYTES) return false;
+  if(_LOG_BYTES <= _COMPACT_REJECT_BYTES*1.1) return false; /* بعد از رد، با رشدِ ۱۰٪ دوباره */
+  var avg = _LOG_BYTES/Math.max(1,log.length);
+  var est = _DB_BYTES + COMPACT_KEEP*avg;
+  if(est >= _LOG_BYTES*0.9){ _COMPACT_REJECT_BYTES=_LOG_BYTES; return false; }
+  var tail = log.slice(-COMPACT_KEEP);
+  for(var i=0;i<tail.length;i++) if(tail[i]) tail[i].__a = 1;
+  /* رونوشتِ عمیق: اسنپ‌شات وضعیتِ «یخ‌زده» است — ارجاعِ زندهٔ db
+     باعث می‌شد opهایِ بعدی اسنپ‌شات را هم بازنویسی کنند. */
+  var snapDb = JSON.parse(JSON.stringify(db));
+  var snapIds = JSON.parse(JSON.stringify(ids));
+  log = [{ t:'snap', at:new Date().toISOString(), db:snapDb, ids:snapIds }].concat(tail);
+  _LOG_BYTES = JSON.stringify(log).length;
+  _DB_BYTES = JSON.stringify(snapDb).length;
+  _COMPACT_REJECT_BYTES = 0;
+  return true;
+}
 function applyOp(op,record=true){
   const arr=db[op.c];
   if(op.t==='ins'){
@@ -1786,7 +1856,10 @@ function applyOp(op,record=true){
   }
   else if(op.t==='del'){
     if(typeof idxInvalidate==='function') idxInvalidate(op.c);
-    const i=arr.findIndex(x=>x.id===op.id); if(i>-1)arr.splice(i,1);
+    const i=arr.findIndex(x=>x.id===op.id);
+    /* اندازهٔ ردیفِ حذف‌شده — برای اصلاحِ شمارندهٔ حجمِ وضعیت (_DB_BYTES) */
+    var _delBytes = (i>-1) ? JSON.stringify(arr[i]).length + 2 : 0;
+    if(i>-1)arr.splice(i,1);
   }
   else if(typeof idxInvalidate==='function') idxInvalidate(op.c);
   if(record){
@@ -1804,7 +1877,13 @@ function applyOp(op,record=true){
        یک رونوشت سطحی می‌گیریم؛ هزینه‌اش ناچیز است و فقط هنگام
        ثبت در دفترچه رخ می‌دهد، نه در مسیر خواندن. */
     if(op.t==='ins' && op.data) op = Object.assign({}, op, { data: Object.assign({}, op.data) });
-    log.push(op);saveLog();
+    log.push(op);
+    _LOG_BYTES += JSON.stringify(op).length + 1;
+    if(op.t==='ins' && op.data) _DB_BYTES += JSON.stringify(op.data).length + 2;
+    else if(op.t==='upd' && op.data) _DB_BYTES += JSON.stringify(op.data).length;
+    else if(op.t==='del') _DB_BYTES = Math.max(0, _DB_BYTES - _delBytes);
+    compactLogIfNeeded(); /* اگر فشرد، saveLog همان شکلِ تازه را می‌نویسد */
+    saveLog();
     /* هر تغییر واقعی کاربر وارد صف همگام‌سازی با سرور می‌شود */
     /* در حالت سروری، عملیاتی که کاربرِ احراز‌شده ندارد (مثل تولیدِ
        دنیای دمو پیش از ورود) وارد صفِ ارسال نمی‌شود: سرور نمی‌تواند آن
@@ -15118,6 +15197,12 @@ function render(){
   }
 }
 setTimeout(()=>{
+  /* دفترچه را پیش از مولدِ دنیای دمو بخوان: مولد (generateExtras) op
+     ثبت می‌کند و saveLog، ledgerِ ذخیره‌شده را با وضعیتِ حافظه‌ایِ
+     تازه (تقریباً خالی) بازنویسی می‌کند و در هر بارِ راه‌اندازی،
+     تغییراتِ نشست‌های پیشین از دفترچه پاک می‌شد.
+     (کشفِ دورِ 85 بندِ W1 — آزمون: tests/compact.js) */
+  loadLog();
   generate(); generateExtras(); generateP8(); generateP9(); generateP10();
   if(typeof generateP11==='function') generateP11();
   if(typeof generateP12=== 'function') generateP12();
@@ -15129,7 +15214,8 @@ setTimeout(()=>{
   if(typeof generateAssetsDemo==='function') generateAssetsDemo();
   if(typeof generateSidaDemo==='function') generateSidaDemo();
   if(typeof generateSchoolModeDemo==='function') generateSchoolModeDemo();
-  loadLog(); applyLog(); initSync();
+  /* loadLog در ابتدای این بلاک اجرا شده — اینجا فقط بازپخش و همگام‌سازی */
+  applyLog(); initSync();
 
   /* اتصال به سرور (مرحلهٔ ۱): اگر برنامه از سرور سرو می‌شود، وضعیتِ نشست
      تصمیمِ سرور است: /api/auth/me با کوکی بررسی می‌شود. نشستِ معتبر →
@@ -16710,6 +16796,11 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
       var bad = [];
       log.forEach(function(op, i){
         if(!op || typeof op !== 'object'){ bad.push({ ردیف:i, خطا:'عملیات خالی' }); return; }
+        if(op.t==='snap'){
+          if(!op.db || typeof op.db !== 'object')
+            bad.push({ ردیف:i, خطا:'اسنپ‌شات بدون وضعیت' });
+          return; /* اسنپ‌شات عملیات نیست (AD 85.1) */
+        }
         if(['ins','upd','del'].indexOf(op.t) < 0)
           bad.push({ ردیف:i, خطا:'نوع ناشناخته: ' + String(op.t) });
         else if(!op.c || !Array.isArray(db[op.c]))
@@ -16726,6 +16817,7 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
       var before = log.length;
       var clean = log.filter(function(op){
         if(!op || typeof op !== 'object') return false;
+        if(op.t==='snap') return !!op.db; /* اسنپ‌شات سالم بماند (AD 85.1) */
         if(['ins','upd','del'].indexOf(op.t) < 0) return false;
         if(!op.c || !Array.isArray(db[op.c])) return false;
         if(op.t === 'ins' && (!op.data || op.data.id == null)) return false;
