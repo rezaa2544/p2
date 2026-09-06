@@ -41,7 +41,12 @@ function test(name, fn) {
       (e) => { fail++; errors.push(`${name}: ${e.message}`); console.log(`  ❌ ${name}\n     ${e.message}`); }
     ).then(() => {
       if (typeof gc === 'function') gc();
-      resolve();
+      /* jsdom رویدادهای storage را با setTimeout مؤخّر می‌کند و تا شلوغیِ
+         تایمر، رشته‌هایِ قدیمی/تازهٔ setItem در صف زنده می‌مانند. مرورگرِ
+         واقعی میانِ هر کنش، چرخهٔ رویداد را می‌چرخاند؛ اینجا هم بعد از
+         هر تست یک دورِ میکروتسک+مکروتسک می‌دهیم تا صف تخلیه شود
+         (وگرنه در سئوتِ بلند، هیپ به‌تدریج پر می‌شود و OOM می‌شود). */
+      setTimeout(resolve, 0);
     });
   }));
   __seq = p;
@@ -844,11 +849,13 @@ test('صفحه اشتراک دلیل باز بودن را توضیح می‌ده
 
 test('اگر هیچ ولی‌ای نپردازد، دسترسی قطع می‌شود', () => {
   const A = W('window.__A'), B = W('window.__B'), KID = W('window.__K');
-  W("db.parent_subscriptions.forEach(function(s){update('parent_subscriptions',s.id,"
-    + "{status:'expired',end_date:'2020-01-01'});})");
+  /* عملیات انبوه داخل Data.batch — وگرنه هر update کل لاگ را stringify می‌کند
+     و در یک evalِ همگامِ بلند، هیپِ کوچکی (مثل سئوت) نمی‌رسد به نفس. */
+  W("Data.batch(function(){db.parent_subscriptions.forEach(function(s){update('parent_subscriptions',s.id,"
+    + "{status:'expired',end_date:'2020-01-01'});});})");
   W('effectiveParentAccess(' + A + ');effectiveParentAccess(' + B + ')');
-  W("db.parent_subscriptions.forEach(function(s){update('parent_subscriptions',s.id,"
-    + "{status:'expired',end_date:'2020-01-01'});})");
+  W("Data.batch(function(){db.parent_subscriptions.forEach(function(s){update('parent_subscriptions',s.id,"
+    + "{status:'expired',end_date:'2020-01-01'});});})");
   assert(!W('studentSubscription(' + KID + ')'), 'اشتراک فعال نباید بماند');
   assert(W('effectiveParentAccess(' + B + ').active') === false, 'ولی دوم هنوز دسترسی دارد');
   assert(W('effectiveParentAccess(' + A + ').active') === false, 'ولی اول هنوز دسترسی دارد');
@@ -6158,7 +6165,9 @@ test('اسکرول: منوی کناری هم جای خود را حفظ می‌ک
 
 const NAV_EXPECT = {
   superadmin: ['dashboard','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications'],
-  manager: ['dashboard','atrisk','growth','calendar','visitors','library','assets','sidadiff','formssms','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','followup','leaves','exams','teachers','corrections','staff','tuition','association','meetings','notifyqueue','announcements','notifications','chat','busservice'],
+  /* دور ۷۷: چهار ماژولِ مدیری (preapps/scholarships دور ۶۱-۶۲، reexams/summerclasses دور ۷۰)
+     به منوی مدیر اضافه شدند ولی این فهرست به‌روز نشد و تا کرشِ قدیمیِ smoke پنهان ماند */
+  manager: ['dashboard','atrisk','growth','calendar','visitors','library','assets','sidadiff','formssms','preapps','scholarships','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','followup','leaves','exams','reexams','teachers','corrections','staff','tuition','association','meetings','notifyqueue','announcements','notifications','chat','busservice','summerclasses'],
   teacher: ['meetings','dashboard','classes','schedule','calendar','attendance','grades','discipline','leaves','exams','vclass','homework','announcements','notifications','chat'],
   student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','homework','announcements','notifications','chat'],
   edu_office: ['officedash','officeschools','announcements','notifications'],
@@ -6301,7 +6310,7 @@ test('مشاور: 🔴 آستانه‌ها قابل تنظیم مدرسه‌به
   try {
     const r = JSON.parse(W('(()=>{'
       + 'const f0=patternFlagged(' + sid + ',30).length;'
-      + 'update("schools",' + sid +',{discipline_rules:{pattern_late_month:99,pattern_absent_month:99}});'
+      + 'update("schools",' + sid +',{discipline_rules:{pattern_late_month:99,pattern_absent_month:99,pattern_exit_week:99,pattern_exit_min:99999}});'
       + 'const fH=patternFlagged(' + sid + ',30).length;'
       + 'return JSON.stringify({f0:f0,fH:fH});})()'));
     assert(r.f0 > 0, 'محیط آزمون: مدرسهٔ اول الگو ندارد');

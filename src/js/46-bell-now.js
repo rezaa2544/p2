@@ -557,9 +557,9 @@ function bellLiveTickServer(){
     });
   };
   try{
-    fetch('/api/bell/now', { credentials: 'same-origin' })
-      .then(function(r){ if(!r.ok) throw new Error('http_' + r.status); return r.json(); })
-      .then(function(j){ finish(true, j); })
+    /* ⚠️ فقط از راهِ لایهٔ داده (httpGetJson) — قاعدهٔ طلاییِ 00-data-layer */
+    httpGetJson('/api/bell/now', 2500)
+      .then(function(r){ finish(r && r.ok === true, r ? r.data : null); })
       .catch(function(){ finish(false, null); });
   }catch(e){ finish(false, null); }
 }
