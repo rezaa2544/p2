@@ -23,17 +23,17 @@ const MUTS = [
   },
   {
     file: 'src/js/19-actions.js',
-    name: 'M2 فیلدهای زمان از رکوردِ ثبت‌شده (att-commit) حذف شود',
-    bad: 'note:null},c.fields||{})).id;',
-    mut: 'note:null})).id;',
-    expectFail: 'ساعتِ خروج در رکوردِ ثبت‌شده نیست',
+    name: 'M2 فیلدهای رویداد از رکوردِ ثبت‌شده (att-commit) حذف شود',
+    bad: "if(typeof applyAttEvents==='function')applyAttEvents(evf,evs,null);",
+    mut: 'if(false)applyAttEvents(evf,evs,null);',
+    expectFail: 'رکورد باید غایب باشد',
   },
   {
     file: 'src/js/47-counselor.js',
-    name: 'M3 شمارشِ خروج در patternFlagged حذف شود',
-    bad: "    else if(a.status==='early_exit'){e.exit.push(a.date);e.exitMin+=Number(a.exit_minutes)||0;}",
-    mut: "    else if(a.status==='__no_exit__'){e.exit.push(a.date);e.exitMin+=Number(a.exit_minutes)||0;}",
-    expectFail: 'الگوی خروج مکرر شناسایی نشد',
+    name: 'M3 شمارشِ خروج (رویدادی) در patternFlagged حذف شود',
+    bad: '      if(!a.exit_excused){e.exit.push(a.date);e.exitMin+=Number(a.exit_minutes)||0;}',
+    mut: '      if(!a.exit_excused){/* mutation: no counting */}',
+    expectFail: 'در فهرستِ الگوها نیست',
   },
   {
     file: 'src/js/12-attendance.js',
@@ -44,9 +44,9 @@ const MUTS = [
   },
   {
     file: 'src/js/19-actions.js',
-    name: 'M5 اثرِ موجه‌سازی (excused:true) خاموش شود',
-    bad: '       excused:true,\n       justified_by:S.user.id,',
-    mut: '       excused:false,\n       justified_by:S.user.id,',
+    name: 'M5 هستهٔ موجهِ یکپارچه (att-exempt-confirm) بی‌اثر شود',
+    bad: "?attExcuseCore(rec.id,'record',reason)",
+    mut: "?{ok:true,msg:'mutation: no-op'}",
     expectFail: 'موجه‌سازی روی رکورد اعمال نشد',
   },
 ];

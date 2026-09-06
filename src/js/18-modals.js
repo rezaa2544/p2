@@ -89,6 +89,9 @@ function schoolModal(s){
       ${(typeof DAYS_FULL!=='undefined'?DAYS_FULL:['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه']).map((d,i)=>`<label class="row" style="gap:5px;cursor:pointer"><input type="checkbox" class="m-wd" value="${i}" ${((s.work_days&&s.work_days.length?s.work_days:(typeof DEFAULT_WORK_DAYS!=='undefined'?DEFAULT_WORK_DAYS:[0,1,2,3])).indexOf(i)>-1)?'checked':''}/> ${d}</label>`).join('')}
     </div>
     <div class="small muted" style="margin:-2px 0 10px">در روزِ غیرکاری، برنامهٔ زنگ و پیش‌گزینشِ خودکار کلاس فعال نیست. روزهای جبرانی را در «زمان‌بندی زنگ‌ها» ثبت کنید.</div>
+    <div class="sec-title">🕓 پنجرهٔ موجهِ حضور و غیاب</div>
+    ${f('دقیقهٔ بعد از پایان زنگ',`<input class="input" id="m_excuse_window" type="number" min="0" max="240" value="${s.excuse_window_minutes!=null?s.excuse_window_minutes:15}"/>`)}
+    <div class="small muted" style="margin:-2px 0 10px">دبیر فقط تا این تعداد دقیقه بعد از پایانِ زنگِ رویداد می‌تواند تأخیر/خروج را موجه کند (دور ۷۷). پیش‌فرض: ۱۵ دقیقه.</div>
     <div class="sec-title">🏫 پروفایل قابلیت این مدرسه</div>
     <div class="small muted" style="margin-bottom:8px">هر کلید مستقل روشن/خاموش می‌شود؛ ماژول‌های غیرمرتبط از منوی این مدرسه پنهان می‌شوند.</div>
     ${typeof capPickerHTML==='function'?capPickerHTML(s):''}

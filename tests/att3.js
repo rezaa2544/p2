@@ -140,11 +140,13 @@ async function main() {
     assert(l2 && l2.indexOf('توقف') > -1, 'ضربهٔ دوم «توقف» نیست: ' + l2);
     const end = W(`(function(){
       var m=attDraftGet(${ctx.cls},todayISO());
-      var f=attDraftFields(${ctx.cls},todayISO());
+      var e=(attDraftEvents(${ctx.cls},todayISO())[${st}]||{});
       var t=attTimersGet(${ctx.cls},todayISO());
-      return {mark:m[${st}], f:f[${st}]||null, run:!!t[${st}]};
+      return {mark:m[${st}], f:e.exit||null, run:!!t[${st}]};
     })()`);
-    assert(end.mark === 'early_exit', 'پیش‌نویسِ خروج پس از توقف ثبت نشد');
+    /* Round 77: exit is an EVENT — base status is NOT marked */
+    assert(!end.mark, 'وضعیتِ پایه نباید علامت بخورد (خروج رویداد است: ' + end.mark + ')');
+    assert(end.f, 'رویدادِ خروج پس از توقف در پیش‌نویس نیست');
     assert(end.f && end.f.exit_minutes === 65,
       'دقیقهٔ سپری‌شده درست نیست (گرفت: ' + (end.f&&end.f.exit_minutes) + ' انتظار: 65)');
     assert(end.f && /^\d{2}:\d{2}$/.test(end.f.exit_at) && /^\d{2}:\d{2}$/.test(end.f.exit_return_at),
@@ -175,7 +177,9 @@ async function main() {
     W(`document.querySelector('[data-act="att-commit"]').click()`);
     const rec = W(`(db.attendance||[]).find(function(a){return a.student_id===${st}&&a.date===todayISO();})||null`);
     assert(rec, 'رکورد ساخته نشد');
-    assert(rec.status === 'early_exit', 'وضعیتِ رکورد درست نیست (' + rec.status + ')');
+    /* Round 77: 40 minutes > 30% of the bell -> forced ABSENT (30% rule) */
+    assert(rec.status === 'absent', 'قاعدهٔ ۳۰٪: رکورد باید غایب باشد (گرفت: ' + rec.status + ')');
+    assert(rec.note && rec.note.indexOf('۳۰٪') > -1, 'قاعدهٔ ۳۰٪ در توضیح نیست: ' + rec.note);
     assert(rec.exit_minutes === 40, 'دقیقهٔ تایمر در رکورد درست نیست (گرفت: ' + rec.exit_minutes + ')');
     assert(rec.exit_return_at && /^\d{2}:\d{2}$/.test(rec.exit_return_at), 'ساعتِ بازگشت در رکورد نیست');
     assert(rec.taken_at, 'taken_at در رکوردِ تازه نیست');
@@ -219,16 +223,21 @@ async function main() {
     teacherOn(`document.querySelector('[data-act="att-set"][data-id="${st}"][data-s="late"]').click();`);
     const r = W(`(function(){
       var m=attDraftGet(${ctx.cls},todayISO());
-      var f=attDraftFields(${ctx.cls},todayISO());
-      return {mark:m[${st}], f:f[${st}]||null, modal:!!document.getElementById('att_time')};
+      var e=(attDraftEvents(${ctx.cls},todayISO())[${st}]||{});
+      return {mark:m[${st}], f:e.late||null, modal:!!document.getElementById('att_time')};
     })()`);
     assert(!r.modal, 'مودالِ ساعت باز شد — غیبتِ موجود باید خودکار می‌شد');
-    assert(r.mark === 'late', 'پیش‌نویسِ تأخیر ثبت نشد (' + r.mark + ')');
+    /* Round 77: NO automatic conversion — base status stays absent */
+    assert(!r.mark, 'وضعیتِ پایه نباید عوض می‌شد (تبدیلِ خودکار حذف شد: ' + r.mark + ')');
+    assert(r.f, 'رویدادِ تأخیر در پیش‌نویس نیست');
     assert(r.f && r.f.late_minutes >= 9 && r.f.late_minutes <= 11,
       'دقیقهٔ تاخیر (~۱۰) درست نیست (گرفت: ' + (r.f&&r.f.late_minutes) + ')');
     assert(r.f && /^\d{2}:\d{2}$/.test(r.f.late_at), 'ساعتِ تأخیر ثبت نشد');
     assert(r.f && r.f.note && r.f.note.indexOf('تأخیر') > -1 && r.f.note.indexOf('دقیقه') > -1,
-      'توضیحِ تبدیل در پیش‌نویس نیست');
+      'توضیحِ تاخیر در پیش‌نویس نیست');
+    /* رکوردِ پایگاه: وضعیتِ غایب دست‌نخورده */
+    const recStill = W(`(db.attendance||[]).find(function(a){return a.student_id===${st}&&a.date===todayISO();})`);
+    assert(recStill && recStill.status === 'absent', 'رکورد باید هنوز غایب بماند');
   });
 
   /* ── ۶) بدونِ taken_at ⇒ مبنایِ محاسبه = شروعِ روز از زنگ ── */
@@ -238,7 +247,8 @@ async function main() {
       date:todayISO(),status:'absent',note:null})`);
     teacherOn(`document.querySelector('[data-act="att-set"][data-id="${st}"][data-s="late"]').click();`);
     const r = W(`(function(){
-      var f=attDraftFields(${ctx.cls},todayISO())[${st}]||null;
+      var e=(attDraftEvents(${ctx.cls},todayISO())[${st}]||{});
+      var f=e.late||null;
       var span=attDaySpan(${ctx.sid},todayISO());
       var exp=null;
       if(span&&span.firstFrom!=null){

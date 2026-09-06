@@ -75,10 +75,15 @@ function patternCheck(studentId,days){
   var late=[],absent=[],lateMin=0,unexcused=0,exit=[],exitMin=0;
   (db.attendance||[]).forEach(function(a){
     if(a.student_id!==studentId||a.date<from||a.date>todayISO())return;
-    if(a.status==='late'){late.push(a.date);lateMin+=Number(a.late_minutes)||0;}
-    else if(a.status==='absent'){absent.push(a.date);if(!a.excused)unexcused++;}
-    /* بند 15.1: خروج زودهنگام */
-    else if(a.status==='early_exit'){exit.push(a.date);exitMin+=Number(a.exit_minutes)||0;}
+    /* Round 77: event-based - late/exit are FIELD events (the legacy
+       statuses still count) and EXCUSED events are not counted. */
+    if(a.late_at||a.status==='late'){
+      if(!a.late_excused){late.push(a.date);lateMin+=Number(a.late_minutes)||0;}
+    }
+    if(a.status==='absent'){absent.push(a.date);if(!a.excused)unexcused++;}
+    if(a.exit_at||(a.exit_minutes>0)||a.status==='early_exit'){
+      if(!a.exit_excused){exit.push(a.date);exitMin+=Number(a.exit_minutes)||0;}
+    }
   });
   return {
     days:n,
@@ -115,10 +120,14 @@ function patternFlagged(schoolId,days){
     if(a.date<from)return;
     var e=by[a.student_id];
     if(!e)e=by[a.student_id]={late:[],absent:[],lateMin:0,unexcused:0,exit:[],exitMin:0};
-    if(a.status==='late'){e.late.push(a.date);e.lateMin+=Number(a.late_minutes)||0;}
-    else if(a.status==='absent'){e.absent.push(a.date);if(!a.excused)e.unexcused++;}
-    /* بند 15.1: خروج زودهنگام — شمارش + دقیقهٔ از‌دست‌رفته */
-    else if(a.status==='early_exit'){e.exit.push(a.date);e.exitMin+=Number(a.exit_minutes)||0;}
+    /* Round 77: event-based + excused events excluded */
+    if(a.late_at||a.status==='late'){
+      if(!a.late_excused){e.late.push(a.date);e.lateMin+=Number(a.late_minutes)||0;}
+    }
+    if(a.status==='absent'){e.absent.push(a.date);if(!a.excused)e.unexcused++;}
+    if(a.exit_at||(a.exit_minutes>0)||a.status==='early_exit'){
+      if(!a.exit_excused){e.exit.push(a.date);e.exitMin+=Number(a.exit_minutes)||0;}
+    }
   });
   var r=patternRules(schoolId);
   var out=[];
