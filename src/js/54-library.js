@@ -5,7 +5,8 @@
    هر کتاب یک ردیف است (کپی متعدد = چند بار امانت هم‌زمان).
 
    داده:
-     lib_books  {school_id, title, author, code, created_at}
+     lib_books  {school_id, title, author, code, serial, created_at}
+     serial = شمارهٔ سریالِ فیزیکیِ کتاب (اختیاری، در هر مدرسه یکتا)
      lib_loans  {school_id, book_id, student_id, loan_at, due_at,
                  returned_at, registered_by, created_at}
 
@@ -56,21 +57,38 @@ function libBookStatus(bookId, nowIso){
 
 /* ─────────────── کتاب (مدیر) ─────────────── */
 
-function libAddBook(title, author, code){
+function libAddBook(title, author, code, serial){
   var u = S.user;
   var role = (typeof activePersona === 'function') ? activePersona() : u.role;
   if(role !== 'manager') return {ok:false, msg:'فقط مدیر مدرسه می‌تواند کتاب ثبت کند'};
   if(!u.school_id) return {ok:false, msg:'مدرسهٔ فعالی مشخص نیست'};
   title = String(title || '').trim();
   if(!title) return {ok:false, msg:'عنوان کتاب خالی است'};
+  serial = String(serial || '').trim();
+  if(serial && db.lib_books.some(function(x){ return x.school_id===u.school_id && x.serial===serial; }))
+    return {ok:false, msg:'این شمارهٔ سریال برای کتاب دیگری در همین مدرسه ثبت شده است'};
   var rec = {
     school_id: u.school_id,
     title: title,
     author: String(author || '').trim(),
     code: String(code || '').trim(),
+    serial: serial,
     created_at: new Date().toISOString()
   };
   return {ok:true, rec: add('lib_books', rec)};
+}
+function libSetSerial(bookId, serial){
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  if(role !== 'manager') return {ok:false, msg:'فقط مدیر مدرسه می‌تواند سریال را ویرایش کند'};
+  var b = byId('lib_books', bookId);
+  if(!b) return {ok:false, msg:'کتاب پیدا نشد'};
+  if(b.school_id !== u.school_id) return {ok:false, msg:'این کتاب متعلق به مدرسهٔ شما نیست'};
+  serial = String(serial || '').trim();
+  if(serial && db.lib_books.some(function(x){ return x.school_id===b.school_id && x.serial===serial && x.id!==bookId; }))
+    return {ok:false, msg:'این شمارهٔ سریال برای کتاب دیگری در همین مدرسه ثبت شده است'};
+  update('lib_books', bookId, {serial: serial});
+  return {ok:true};
 }
 function libDelBook(bookId){
   var u = S.user;
@@ -145,6 +163,7 @@ function viewLibrary(){
     + ((typeof virtualModeBanner==='function') ? virtualModeBanner() : '');
   h += '<div class="card"><div class="card-head"><div class="row" style="gap:8px;flex-wrap:wrap">'
     + '<span class="badge b-gray">کتاب: ' + fa(books.length) + '</span>'
+    + '<span class="badge b-cyan">با سریال: ' + fa(books.filter(function(b){return b.serial;}).length) + '</span>'
     + '<span class="badge b-amber">امانت‌رفته: ' + fa(actives.length) + '</span>'
     + (lates.length ? '<span class="badge b-red">دیرکرد: ' + fa(lates.length) + '</span>' : '')
     + '</div><button class="btn" data-act="lib-new">➕ کتاب جدید</button></div><div class="card-body">';
@@ -160,8 +179,10 @@ function viewLibrary(){
         + '<b>' + esc(b.title) + '</b>'
         + (b.author ? '<span class="muted small">' + esc(b.author) + '</span>' : '')
         + (b.code ? '<span class="badge b-gray">' + esc(b.code) + '</span>' : '')
+        + (b.serial ? '<span class="badge b-cyan">🔢 سریال: ' + esc(b.serial) + '</span>' : '')
         + '<span class="badge ' + badge + '">' + esc(st.label) + '</span>'
         + '<div class="spacer"></div>'
+        + '<button class="btn ghost sm" data-act="lib-serial" data-id="' + b.id + '" title="شمارهٔ سریال">🔢 سریال</button>'
         + '<button class="btn ghost sm" data-act="lib-lend" data-id="' + b.id + '">📤 امانت</button>'
         + '<button class="btn ghost sm" data-act="lib-del" data-id="' + b.id + '">حذف</button>'
         + '</div>'
@@ -169,8 +190,9 @@ function viewLibrary(){
             ? '<div class="row" style="margin-top:8px;flex-wrap:wrap;gap:8px">'
               + openLoans.map(function(l){
                   var s2 = byId('users', l.student_id) || {};
+                  var bk = byId('lib_books', l.book_id) || {};
                   return '<span class="badge ' + (libLoanStatus(l)==='late'?'b-red':'b-blue') + '">'
-                    + esc(s2.full_name||'؟') + ' — مهلت: ' + (typeof jalali==='function'?jalali(l.due_at):esc(l.due_at||'—'))
+                    + esc(s2.full_name||'؟') + (bk.serial ? ' (سریال: ' + esc(bk.serial) + ')' : '') + ' — مهلت: ' + (typeof jalali==='function'?jalali(l.due_at):esc(l.due_at||'—'))
                     + ' <button class="icon-btn" data-act="lib-return" data-id="' + l.id + '" title="ثبت بازگشت">↩️</button></span>';
                 }).join('')
               + '</div>'
@@ -190,12 +212,12 @@ function generateLibraryDemo(){
   var mgr = db.users.filter(function(x){ return x.role==='manager' && x.school_id===sc.id; })[0];
   var now = new Date();
   var day = 86400000;
-  var mk = function(title, author, code){
-    return add('lib_books', {school_id: sc.id, title: title, author: author, code: code, created_at: now.toISOString()});
+  var mk = function(title, author, code, serial){
+    return add('lib_books', {school_id: sc.id, title: title, author: author, code: code, serial: serial || '', created_at: now.toISOString()});
   };
-  var b1 = mk('شیمی دهم — بنیادی', 'نویسندگان سازمان سنجش', 'K10-01');
-  var b2 = mk('آدینه‌ها', 'صادق هدایت', 'LIT-114');
-  var b3 = mk('ریاضی ششم — تمرین‌های تکمیلی', 'مجلهٔ ریاضی', 'K6-203');
+  var b1 = mk('شیمی دهم — بنیادی', 'نویسندگان سازمان سنجش', 'K10-01', 'SN-K10-001');
+  var b2 = mk('آدینه‌ها', 'صادق هدایت', 'LIT-114', 'SN-LIT-114');
+  var b3 = mk('ریاضی ششم — تمرین‌های تکمیلی', 'مجلهٔ ریاضی', 'K6-203', 'SN-K6-203');
   var st = db.users.filter(function(x){ return x.role==='student' && x.school_id===sc.id; });
   if(st.length >= 2){
     /* امانتِ فعالِ بامهلت */
