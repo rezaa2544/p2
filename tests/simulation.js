@@ -605,6 +605,166 @@ async function main() {
     assert(ms < 60000, `۵۰ رندر خیلی کند شد: ${ms}ms`);
   });
 
+  console.log('\n▸ و — ماژول‌های تازه (دور ۶۹–۷۰): بدونِ تداخل با هم');
+  sim('ماژولٔازه', 'کتابخانه + سریال: رندر + امانت + سریال در بج + بازگشت', () => {
+    W('S.user=db.users.find(u=>u.username==="manager1");S.persona=null;S.boss=null;S.route="library";S.filters={};');
+    const h = W('renderRoute()');
+    assert(h.indexOf('🔢 سریال:') > -1, 'بجِ سریال در کارتِ کتاب نیست');
+    const r = JSON.parse(W(`(()=>{
+      var b=db.lib_books.find(x=>x.serial);
+      var st=db.users.find(x=>x.role==="student"&&x.school_id===S.user.school_id&&x.active);
+      var r1=libLend(b.id,st.id);
+      if(!r1.ok)return JSON.stringify({err:r1.msg});
+      var l=r1.rec;
+      var hh=renderRoute();
+      var shows=hh.indexOf('(سریال: '+b.serial+')')>-1;
+      var r2=libReturn(l.id);
+      return JSON.stringify({l:!!l,shows:shows,ret:r2.ok});})()`));
+    assert(r.ret === true, 'بازگشت نشد: ' + (r.err || ''));
+    assert(r.shows === true, 'سریال در بجِ امانت نبود');
+  });
+  sim('ماژولٔازه', 'املاک: رندر + ردیف‌های دمو', () => {
+    W('S.user=db.users.find(u=>u.username==="manager1");S.persona=null;S.boss=null;S.route="assets";S.filters={};');
+    const h = W('renderRoute()');
+    assert(h.length > 200, 'صفحهٔ اموال رندر نشد');
+    assert(W('(db.assets||[]).length') > 0, 'دادهٔ نمونهٔ اموال نیست');
+  });
+  sim('ماژولٔازه', 'سرویس مدرسه: رندر مدیر + مسیرها', () => {
+    W('S.user=db.users.find(u=>u.username==="manager1");S.persona=null;S.boss=null;S.route="busservice";S.filters={};');
+    const h = W('renderRoute()');
+    assert(h.length > 200, 'صفحهٔ سرویس رندر نشد');
+  });
+  sim('ماژولٔازه', 'کلاس مجازی: رندر دبیر + جلسه‌های دمو', () => {
+    W('S.user=db.users.find(u=>u.username==="teacher1_1");S.persona=null;S.boss=null;S.route="vclass";S.filters={};');
+    const h = W('renderRoute()');
+    assert(h.length > 200, 'صفحهٔ کلاس مجازی رندر نشد');
+  });
+  sim('ماژولٔازه', 'دوجو: صفحهٔ انضباط مدیر + دکمهٔ مدلِ امتیازها', () => {
+    W('S.user=db.users.find(u=>u.username==="manager1");S.persona=null;S.boss=null;S.route="discipline";S.filters={};');
+    const h = W('renderRoute()');
+    assert(h.indexOf('dojo-config') > -1, 'دکمهٔ مدلِ امتیازهای دوجو نیست');
+  });
+  sim('ماژولٔازه', 'IEP: کارت در تبِ مشخصاتِ پرونده (مدرسهٔ has_iep)', () => {
+    const r = JSON.parse(W(`(()=>{
+      var st=db.users.find(u=>u.role==="student"&&u.school_id===db.schools[0].id);
+      var m=db.users.find(u=>u.role==="manager"&&u.school_id===db.schools[0].id);
+      S.user=m;S.persona=null;S.boss=null;S.child=st.id;S.route="record";S.tab="profile";S.filters={};
+      var h=renderRoute();
+      return JSON.stringify({card:h.indexOf("IEP")>-1||h.indexOf("برنامهٔ ویژه")>-1,cardFn:(typeof iepCard==="function")?iepCard(st.id):null});})()`));
+    assert(typeof r.cardFn === 'string' && r.cardFn.length > 50, 'کارت IEP ساخته نشد');
+    assert(r.card === true, 'کارت IEP در نمای پرونده نیست');
+  });
+  sim('ماژولٔازه', 'هنرستان: شناساییِ شاخه + رندر نمراتِ مدرسهٔ فنی', () => {
+    const r = JSON.parse(W(`(()=>{
+      var br=detectBranch('هنرستان فنی برق — نهم');
+      var m5=db.users.find(u=>u.role==="manager"&&u.school_id===db.schools[4].id);
+      S.user=m5;S.persona=null;S.boss=null;S.route="grades";S.filters={};S.fopen={grades:true};
+      var h=renderRoute();
+      return JSON.stringify({br:br,render:h.length>200});})()`));
+    assert(r.br === 'فنی و حرفه‌ای', 'شناساییِ شاخهٔ هنرستان: ' + r.br);
+    assert(r.render === true, 'نمراتِ مدرسهٔ فنی رندر نشد');
+  });
+  sim('ماژولٔازه', 'قیف پیش‌ثبت‌نام: رندر مدیر + رکوردهای دمو', () => {
+    W('S.user=db.users.find(u=>u.username==="manager1");S.persona=null;S.boss=null;S.route="preapps";S.filters={};');
+    const h = W('renderRoute()');
+    assert(h.length > 200, 'صفحهٔ پیش‌ثبت‌نام رندر نشد');
+    assert(W('(db.preapps||[]).length') >= 1, 'دادهٔ نمونهٔ پیش‌ثبت‌نام نیست');
+  });
+  sim('ماژولٔازه', 'کمک‌هزینه/بورسیه: رندر + بج در پروندهٔ دانش‌آموز', () => {
+    const r = JSON.parse(W(`(()=>{
+      var m1=db.users.find(u=>u.username==="manager1");
+      S.user=m1;S.persona=null;S.boss=null;S.route="scholarships";S.filters={};
+      var h=renderRoute();
+      var sc=db.scholarships[0];
+      var badge=sc?scholarshipBadge(sc.student_id):null;
+      return JSON.stringify({page:h.indexOf("scholar-new")>-1,rec:!!sc,badge:typeof badge});})()`));
+    assert(r.page === true, 'صفحهٔ کمک‌هزینه رندر نشد');
+    assert(r.badge === 'string', 'بجِ کمک‌هزینه ساخته نشد');
+  });
+  sim('ماژولٔازه', 'تجدیدی: رندر + ثبتِ نمرهٔ مجدد از فرم → انجام‌شده', () => {
+    const r = JSON.parse(W(`(()=>{
+      var m1=db.users.find(u=>u.username==="manager1");
+      S.user=m1;S.persona=null;S.boss=null;S.route="reexams";S.filters={};
+      var h=renderRoute();
+      var row=db.reexams.find(x=>x.school_id===m1.school_id&&x.status==="scheduled");
+      if(!row)return JSON.stringify({page:h.indexOf("reexam-new")>-1,skip:true});
+      var orig=row.original_score;
+      reexamScoreModal(row.id);
+      document.getElementById('rx_new').value='19';
+      __clk('reexam-score-save');
+      var after=byId('reexams',row.id);
+      return JSON.stringify({page:h.indexOf("reexam-new")>-1,skip:false,
+        done:after.status==="done",ns:after.new_score===19,
+        fin:reexamFinalScore(after),orig:orig});})()`));
+    assert(r.page === true, 'صفحهٔ تجدیدی رندر نشد');
+    assert(!r.skip, 'رکوردِ برنامه‌ریزی‌شدهٔ دمو نبود');
+    assert(r.done === true && r.ns === true, 'نمرهٔ مجدد ثبت نشد');
+    assert(r.fin === 19 && r.fin !== r.orig, 'نمرهٔ نهایی ≠ نمرهٔ مجدد');
+  });
+  sim('ماژولٔازه', 'صورت‌جلسهٔ انجمن: رندر مدیرِ ۶ + چاپ', () => {
+    const r = JSON.parse(W(`(()=>{
+      var m6=db.users.find(u=>u.username==="manager6");
+      S.user=m6;S.persona=null;S.boss=null;S.route="association";S.filters={};
+      var h=renderRoute();
+      var m=(db.assoc_minutes||[]).find(x=>x.school_id===m6.school_id);
+      window.open=function(){window.__pw={h:''};return {document:{write:function(s){window.__pw.h+=s;},close:function(){}}};};
+      assocMinPrint(m.id);
+      var p=window.__pw.h;
+      return JSON.stringify({page:h.indexOf("assoc-min-new")>-1,n:(db.assoc_minutes||[]).filter(x=>x.school_id===m6.school_id).length,
+        print:p.indexOf("صورت‌جلسه")>-1&&p.indexOf("مصوبات")>-1});})()`));
+    assert(r.page === true, 'بخشِ صورت‌جلسه رندر نشد');
+    assert(r.n >= 2, 'رکوردهای صورت‌جلسهٔ مدرسهٔ ۶ نیست');
+    assert(r.print === true, 'خروجیِ چاپ ناقص است');
+  });
+  sim('ماژولٔازه', 'کلاس تابستانی: رندر + ثبت + انتخاب دانش‌آموز', () => {
+    const r = JSON.parse(W(`(()=>{
+      var m1=db.users.find(u=>u.username==="manager1");
+      S.user=m1;S.persona=null;S.boss=null;S.route="summerclasses";S.filters={};
+      var h=renderRoute();
+      var n0=db.summer_classes.length;
+      var t=db.users.find(u=>u.role==="teacher"&&u.school_id===m1.school_id);
+      var st=db.users.find(u=>u.role==="student"&&u.school_id===m1.school_id);
+      summerModal();
+      document.getElementById('su_name').value='شبیه‌سازی تابستان';
+      document.getElementById('su_teacher').value=String(t.id);
+      document.getElementById('su_start').value=todayISO();
+      __clk('summer-save');
+      var sc=db.summer_classes[db.summer_classes.length-1];
+      window._suId=sc.id;
+      summerStudentsModal();
+      var c=Array.from(document.querySelectorAll('.su-chk')).find(x=>x.value===String(st.id));
+      c.checked=true;
+      __clk('summer-students-save');
+      var after=byId('summer_classes',sc.id);
+      return JSON.stringify({page:h.indexOf("summer-new")>-1,made:db.summer_classes.length-n0,
+        has:after.student_ids.indexOf(st.id)>-1});})()`));
+    assert(r.page === true, 'صفحهٔ تابستانی رندر نشد');
+    assert(r.made === 1, 'کلاسِ تابستانی ساخته نشد');
+    assert(r.has === true, 'دانش‌آموز انتخاب نشد');
+  });
+  sim('ماژولٔازه', 'هم‌روندی: هر روتِ تازه ۵ دور × هر سه نقشِ اصلی بدون خطا', () => {
+    const routes = ['library','assets','busservice','vclass','preapps','scholarships','reexams','summerclasses','association','discipline'];
+    const r = JSON.parse(W(`(()=>{
+      var routes=${JSON.stringify(routes)};
+      var out=[];
+      var roles=[["manager","manager1"],["teacher","teacher1_1"],["parent",null]];
+      roles.forEach(function(rp){
+        var un=rp[1];
+        var u=un?db.users.find(x=>x.username===un):db.users.find(x=>x.role==="parent"&&(x.parent_links||db.parent_links.filter(l=>l.parent_id===x.id).length));
+        if(!u)return;
+        S.user=u;S.persona=null;S.boss=null;S.filters={};
+        for(var i=0;i<5;i++){
+          routes.forEach(function(rt){
+            if(typeof canRoute==="function"&&canRoute(rt,u.role)===false)return;
+            S.route=rt;renderRoute();
+          });
+        }
+        out.push(u.role+":"+routes.length);
+      });
+      return JSON.stringify({roles:out});})()`));
+    assert(Array.isArray(r.roles) && r.roles.length >= 3, 'نقش‌ها اجرا نشدند: ' + JSON.stringify(r));
+  });
+
   // ── نتیجه
   const total = results.length;
   const ok = results.filter(r => r.ok).length;
