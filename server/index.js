@@ -156,7 +156,7 @@ function serveStatic(res, urlPath, nonce){
 }
 
 /* ── router ────────────────────────────────────────────────────────── */
-const server = http.createServer(async (req, res) => {
+const onRequest = async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   const p = url.pathname;
   const https = isHttps(req);
@@ -164,7 +164,7 @@ const server = http.createServer(async (req, res) => {
   securityHeaders(res, nonce, https);
   try{
     if(p === '/api/health' && (req.method === 'GET' || req.method === 'HEAD'))
-      return sendJson(res, 200, { ok: true, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0' });
+      return sendJson(res, 200, { ok: true, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid });
     if(p === '/api/auth/send-code' && req.method === 'POST') return await auth.apiSendCode(req, res, await readBody(req));
     if(p === '/api/auth/login'     && req.method === 'POST') return await auth.apiLogin(req, res, await readBody(req));
     if(p === '/api/auth/me'        && req.method === 'GET')  return await auth.apiMe(req, res);
@@ -178,11 +178,37 @@ const server = http.createServer(async (req, res) => {
     if(!res.headersSent) sendJson(res, 500, { ok: false, code: 'server_error' });
     else res.end();
   }
-});
+};
+
+/* ── TLS (stage 2): real https when PAYESH_TLS_CERT / PAYESH_TLS_KEY
+     point at PEM files (self-signed: `node server/tls-cert.js`).
+     PAYESH_HTTPS=1 still means "behind a TLS reverse proxy". ──────── */
+const TLS_CERT = process.env.PAYESH_TLS_CERT || null;
+const TLS_KEY  = process.env.PAYESH_TLS_KEY  || null;
+let server;
+if(TLS_CERT || TLS_KEY){
+  if(!TLS_CERT || !TLS_KEY){
+    console.error('TLS needs BOTH PAYESH_TLS_CERT and PAYESH_TLS_KEY');
+    process.exit(1);
+  }
+  if(!fs.existsSync(TLS_CERT) || !fs.existsSync(TLS_KEY)){
+    console.error('TLS file missing: ' + (TLS_CERT + ' / ' + TLS_KEY));
+    console.error('generate one:  node server/tls-cert.js');
+    process.exit(1);
+  }
+  const https = require('https');
+  server = https.createServer({
+    key:  fs.readFileSync(TLS_KEY),
+    cert: fs.readFileSync(TLS_CERT)
+  }, onRequest);
+}else{
+  server = http.createServer(onRequest);
+}
 
 if(require.main === module){
   server.listen(PORT, HOST, () => {
-    console.log('payesh-server (phase 1) on http://' + HOST + ':' + PORT);
+    const proto = (TLS_CERT && TLS_KEY) ? 'https' : 'http';
+    console.log('payesh-server (phase 1' + (TLS_CERT ? ' + TLS' : '') + ') on ' + proto + '://' + HOST + ':' + PORT);
     console.log('  static : ' + path.join(ROOT, 'index.html'));
     console.log('  api    : /api/health /api/auth/* /api/sync /api/students/:id');
     console.log('  store  : ' + STORE_FILE + '  (' + (store.users || []).length + ' users)');
