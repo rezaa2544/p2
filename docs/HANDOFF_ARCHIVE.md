@@ -2240,3 +2240,23 @@ diag2 ۱۰ · simulation ۳۵ · security (پنتست) — همه ✅
    تطبیق می‌خورند.
 ۳) فارسیِ نمایشی و نامِ یونی‌کد در این محیط معتبر نیست؛ فقط عملِ
    بایتی با شمارشِ تأییدشده و مقایسه با HEAD.
+
+---
+
+## Handoff — «اتصال به سرور» مرحلهٔ ۲: TLS واقعی + پُلِ دوره‌ای ۱۳.۴ — 2026-09-06
+
+### ۱) چه شد (کامیت‌ها — سه تیکه)
+- **TLS واقعی:** `server/tls-cert.js` — گواهیِ self-signedِ X.509 v3 (RSA-2048/SHA-256) **فقط با `crypto`** (DER دست‌ساز، بدون openssl؛ CN دلخواه، −۱ روز تا +۸۲۵ روز، serial تصادفی ۱۵ بایت، basicConstraints CA:TRUE). `server/index.js`: با `PAYESH_TLS_CERT`/`PAYESH_TLS_KEY` سرور واقعاً `https` می‌شود (HSTS + کوکیِ `Secure` خودکار)؛ یکی‌شان ناقص یا فایلِ غایب = راه‌اندازیِ شکسته با پیامِ روشن. health حالا `pid` دارد.
+- **پُلِ دوره‌ای ۱۳.۴:** `server/bell.js` — `GET /api/bell/now`: scope فقط از JWT (ولی→`parent_links` خودش، دانش‌آموز→خودش، دبیر→`teacher.schoolId`)، `401 no_session`، payload خُرد `{ok, ts, date, family:[{studentId,att}], teacher}` + آدیتِ `bell_now`. کلاینت (`46-bell-now.js`): تیکِ سروری (فقط `DATA_MODE==='server'`)، ساعتِ سرور → `SERVER_TIME_KEY`، overlayِ حضورِ سرور بر دادهٔ محلی، **گاردِ سختِ بدن** (`ok:true` + `ts` عدد + `family` آرایه؛ وگرنه پس‌رویِ محلی)، dedupe درِ حالِ پُل، `bellLiveCache` برای تست.
+- **آزمون‌ها:** `tests/server4.js` ۱۶/۱۶ (TLS واقعی: گواهی با `X509Certificate`، https، HSTS، CSP با nonce، send-code/login/کوکی‌ها شامل `Secure`، گواهیِ غایب) · `tests/server5.js` ۱۴/۱۴ (scope‌های واقعی + تیکِ کلاینت در jsdom) · `tests/server-mutations.js` ۱۲/۱۲ (M9 scope · M10 Secure · M11 گاردِ بدن · M12 overlay).
+- **بازگشت‌آزمون سبز:** server1 ۳۰ · server2 ۲۵ · server3 ۱۹ · run ۳۳ · bell2 ۸.
+
+### ۲) غاردها و دام‌های کشف‌شده (برای دورِ بعد)
+- **portِ دست‌سپار:** سرورِ ماندهٔ دورِ شکسته port تست را نگه داشته بود و پاسخِ «no_session» می‌داد — با کدِ تازه! تشخیص فقط با `pid` در health ممکن شد (boot-wait حالا pid را تطبیق می‌دهد). هر سرورِ spawn‌شده‌ای که test kill نکند، با `ss -tlnp` پیدا و kill شود.
+- **catch-allِ fetch:** اگر `finish` داخل `then` پرت کند، `.catch` همان `finish(false,null)` را صدا می‌زند — پس جهشِ «حذفِ گاردِ بدن» با بدنی که `family` ندارد **پیدایی نمی‌شود**؛ M11 با بدنی بدونِ `ok` ولی `ts`/`family` معتبر کشته شد (دنیایِ بدونِ گارد آن را در cache ذخیره می‌کند).
+- **DERِ X.509:** `openssl asn1parse` گواهیِ خراب را هم پارس می‌کند — اعتبارسنجی فقط با `X509Certificate` (دام در CONTRIBUTING ثبت شد).
+- **`sessionFrom` کاربرِ ادغام‌شده می‌گرداند** (`{jti,token}+user` با `id`، بدون `sub`) — endpoint‌ها مستقیم از آن استفاده کنند، نه lookup دوم.
+- **conflictِ متعهدشده:** `USER_GUIDE.html` markerهای `<<<<<<<` از یک mergeٔ قدیمی داشت — حل شد (مُهرِ واحد `88a301dece50`).
+
+### ۳) باقی‌ماندهٔ مرحلهٔ ۲ (خارجی/تصمیمِ کاربر)
+- درگاه‌های واقعیِ پیامک و استعلامِ کد ملی · استورِ آبجکت (۱۳.۳ قفل) · گواهیِ production.

@@ -14,6 +14,28 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## Handoff — دور ۸۱: دادهٔ نمونهٔ پایلوت + استقرارِ تولید + قراردادِ درگاه — ۱۵/۰۶/۱۴۰ (2026-09-06)
+
+### ۱) چه شد (۴ کامیت روی 9040b0d)
+- **بند ۱ (`05d460b`):** فایل‌هایِ نمونهٔ ورودِ اطلاعات: `docs/samples/students_sample.csv` + `teachers_sample.csv` (ستون‌هایِ جابه‌جاشده + ارقامِ فارسی + کد ملیِ معتبرِ checksum) + سئوتِ **سرتاسری** `tests/import2.js` **11/11** از مسیرِ واقعیِ ویزارد (parseCSV→prepSheet→validateImport→commitImport: ۴ دانش‌آموز + ۵ ولی + ثبت‌نام + جایگزینیِ شمارهٔ پدر + ۳ دبیر + خطایِ نام/تکراری) + جهش‌ها **4/4**. یادداشتِ نمونه‌ها در PILOT_ONBOARDING §۵.
+- **بند ۲ (`290a532`):** `docs/DEPLOY.md` — دستورِ کارِ کاملِ استقرارِ تولید (سخت‌افزار، نصب، جدولِ متغیرهایِ محیطیِ **دقیق از کد**، TLS با certbot (پیش‌فرض: درون‌پروسه)، systemd + hardening، بکاپ/بازیابی + کپیِ بیرونیِ آروان‌کلاود (قفل)، بروزرسانی، چک‌لیستِ ۱۰ بندیِ go-live) + `server/README.md` همگام (دیگر «رزرو» نیست).
+- **بند ۳ (`ad7a30d`):** `docs/PLAN_SMS_GATEWAY.md` — قراردادِ درگاه (طراحیِ قفل): مرزِ دقیقِ شبیه‌سازی (تنها `notifyApprove`) + ۴ شکاف با شواهد + معماریِ هدف (ارسالِ فقطِ سرور، سازگارِ قابل‌تعویض، ایدمپوتانس، همه-یا-هیچ، سقفِ روزانه، dry-run، ترازِ هفتگی) + switchoverِ ۵ گامه + طراحیِ آزمونِ server11. قفلِ **۸۱.۱** در AD. **کدِ درگاه عمداً بدون قرارداد نوشته نشد.**
+- گزارشِ تجمیعی: `docs/REPORT_2026-09-06_ROUND81.md`.
+
+### ۲) چه پیداکرد
+- `commitImport(st)` انتظار `st.entity` + `st.preview` دارد (UI: S.imp = Object.assign({}, st, {preview}) — صدا زدنِ مستقیم با فقطِ preview، دانش‌آموز را با role=teacher می‌سازد؛ تستِ I5 گرفت).
+- صف/کیف/لاگِ پیامک در `WRITE_PERMS` نیستند (fail-closed) — برایِ حالتِ واقعی باید `notify_queue` به manager/teacher برسد (شکافِ ۱ِ PLAN).
+- دامِ کپی-پیستِ CSV: یک سلولِ جابه‌جا = ولیِ «نامش شمارهٔ تلفن است» — سئوتِ I4/I6 همین را گرفت (نمونهٔ اصلاح شد).
+
+### ۳) چی موند
+- بازِ واقعی: **مدرسهٔ پایلوت + تاریخ** (PILOT_KICKOFF + نمونه‌هایِ داده آماده) · **قراردادِ درگاهِ پیامک** (PLAN آماده؛ گامِ ۱ = کدِ server11 + endpoint) · سرور/دامنه (DEPLOY آماده) · حسابِ Play.
+- ترتیبِ منطقی (ثبت در DEPLOY §۹): درگاه ← سرور+دامنه ← go-live.
+
+### ۴) وضعیتِ فنی
+- HEAD محلی: ۴ کامیتِ دور ۸۱ (05d460b ← … ← ad7a30d + گزارش) روی `9040b0d`؛ push + ls-remote در پایانِ دور.
+- آزمون‌ها: smoke ۵۴۶/۵۴۶ · run.js 33/33 · server1-10 154/154 · sim_full2 58/58 · sim_full3 24/24 · **import2 11/11 + جهش‌ها 4/4 (تازه)** · trendcmp2/underpriv2/reporttpl2/gradeavg2/pathway2 7/7 · report2 10/10 · officesupp2 5/5 · uiclick 4/4 + همهٔ جهش‌ها سبز.
+- مستنداتِ هم‌دور: AD (۸۱.۱) · AI_PROMPT بند ۳ · DEPLOY · PLAN_SMS_GATEWAY · PILOT_ONBOARDING (نمونه‌ها) · server/README.
+
 ## Handoff — دور ۸۰: یکپارچگیِ مستندات + بستهٔ پایلوت + رفعِ املأ — ۱۵/۰۶/۱۴۰۵ (2026-09-06)
 
 ### ۱) چه شد (۵ کامیت روی 4ed0fdf)
@@ -677,21 +699,3 @@ workshop2 ۱۲ + جهش ۴ · iep2 ۷ + iep3 ۸ + جهش ۳ · preapp2 ۸ + prea
 
 ### ۳) باقی‌ماندهٔ ۱۳.۱
 فقط صفِ پیامکِ واقعی (درگاهِ خارجی).
-
-## Handoff — «اتصال به سرور» مرحلهٔ ۲: TLS واقعی + پُلِ دوره‌ای ۱۳.۴ — 2026-09-06
-
-### ۱) چه شد (کامیت‌ها — سه تیکه)
-- **TLS واقعی:** `server/tls-cert.js` — گواهیِ self-signedِ X.509 v3 (RSA-2048/SHA-256) **فقط با `crypto`** (DER دست‌ساز، بدون openssl؛ CN دلخواه، −۱ روز تا +۸۲۵ روز، serial تصادفی ۱۵ بایت، basicConstraints CA:TRUE). `server/index.js`: با `PAYESH_TLS_CERT`/`PAYESH_TLS_KEY` سرور واقعاً `https` می‌شود (HSTS + کوکیِ `Secure` خودکار)؛ یکی‌شان ناقص یا فایلِ غایب = راه‌اندازیِ شکسته با پیامِ روشن. health حالا `pid` دارد.
-- **پُلِ دوره‌ای ۱۳.۴:** `server/bell.js` — `GET /api/bell/now`: scope فقط از JWT (ولی→`parent_links` خودش، دانش‌آموز→خودش، دبیر→`teacher.schoolId`)، `401 no_session`، payload خُرد `{ok, ts, date, family:[{studentId,att}], teacher}` + آدیتِ `bell_now`. کلاینت (`46-bell-now.js`): تیکِ سروری (فقط `DATA_MODE==='server'`)، ساعتِ سرور → `SERVER_TIME_KEY`، overlayِ حضورِ سرور بر دادهٔ محلی، **گاردِ سختِ بدن** (`ok:true` + `ts` عدد + `family` آرایه؛ وگرنه پس‌رویِ محلی)، dedupe درِ حالِ پُل، `bellLiveCache` برای تست.
-- **آزمون‌ها:** `tests/server4.js` ۱۶/۱۶ (TLS واقعی: گواهی با `X509Certificate`، https، HSTS، CSP با nonce، send-code/login/کوکی‌ها شامل `Secure`، گواهیِ غایب) · `tests/server5.js` ۱۴/۱۴ (scope‌های واقعی + تیکِ کلاینت در jsdom) · `tests/server-mutations.js` ۱۲/۱۲ (M9 scope · M10 Secure · M11 گاردِ بدن · M12 overlay).
-- **بازگشت‌آزمون سبز:** server1 ۳۰ · server2 ۲۵ · server3 ۱۹ · run ۳۳ · bell2 ۸.
-
-### ۲) غاردها و دام‌های کشف‌شده (برای دورِ بعد)
-- **portِ دست‌سپار:** سرورِ ماندهٔ دورِ شکسته port تست را نگه داشته بود و پاسخِ «no_session» می‌داد — با کدِ تازه! تشخیص فقط با `pid` در health ممکن شد (boot-wait حالا pid را تطبیق می‌دهد). هر سرورِ spawn‌شده‌ای که test kill نکند، با `ss -tlnp` پیدا و kill شود.
-- **catch-allِ fetch:** اگر `finish` داخل `then` پرت کند، `.catch` همان `finish(false,null)` را صدا می‌زند — پس جهشِ «حذفِ گاردِ بدن» با بدنی که `family` ندارد **پیدایی نمی‌شود**؛ M11 با بدنی بدونِ `ok` ولی `ts`/`family` معتبر کشته شد (دنیایِ بدونِ گارد آن را در cache ذخیره می‌کند).
-- **DERِ X.509:** `openssl asn1parse` گواهیِ خراب را هم پارس می‌کند — اعتبارسنجی فقط با `X509Certificate` (دام در CONTRIBUTING ثبت شد).
-- **`sessionFrom` کاربرِ ادغام‌شده می‌گرداند** (`{jti,token}+user` با `id`، بدون `sub`) — endpoint‌ها مستقیم از آن استفاده کنند، نه lookup دوم.
-- **conflictِ متعهدشده:** `USER_GUIDE.html` markerهای `<<<<<<<` از یک mergeٔ قدیمی داشت — حل شد (مُهرِ واحد `88a301dece50`).
-
-### ۳) باقی‌ماندهٔ مرحلهٔ ۲ (خارجی/تصمیمِ کاربر)
-- درگاه‌های واقعیِ پیامک و استعلامِ کد ملی · استورِ آبجکت (۱۳.۳ قفل) · گواهیِ production.
