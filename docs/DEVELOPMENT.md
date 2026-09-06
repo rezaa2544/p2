@@ -77,7 +77,9 @@ node server/index.js   # https://0.0.0.0:3000 — HSTS + کوکیِ Secure خو�
   `node tests/server5.js` (۱۴ تستِ پُلِ دوره‌ای: scope سرور + تیکِ کلاینت) ·
   `node tests/server6.js` (۹ تستِ گاردِ روزِ غیرحضوریِ سمتِ سرور — بند ۱۳.۱) ·
   `node tests/server7.js` (۱۵ تستِ حذفِ حساب — قفل ۹.۵: سرور + کلاینت + صفحهٔ وب) ·
-  `node tests/server8.js` (۹ تستِ پشتیبان‌گیری/بازیابی — OPEN_ITEMS 2.4)
+  `node tests/server8.js` (۹ تستِ پشتیبان‌گیری/بازیابی — OPEN_ITEMS 2.4) ·
+  `node tests/att2.js` (۶ تستِ حالت‌های زمان‌دارِ غیاب — بند ۱۵.۱) +
+  `node tests/att2-mutations.js` (۵ جهشِ کلاینتی — همه باید بکشند)
 
 ## افزودن ماژول جدید
 
