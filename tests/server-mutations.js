@@ -43,8 +43,8 @@ const MUTS = [
   },
   {
     file: 'server/sync.js', suite: 'tests/server1.js', heap: 1500,
-    bad: "if(!canWrite(s.role, op.c)) return all('role_denied');",
-    mut: "if(!canWrite('superadmin', op.c)) return all('role_denied');",
+    bad: "if(!canWrite(s.role, op.c) && !iepUsersUpdate(s, op)) return all('role_denied');",
+    mut: "if(!canWrite('superadmin', op.c) && !iepUsersUpdate(s, op)) return all('role_denied');",
     name: 'M3 نقشِ همه‌گیر (canWrite)',
     expectFail: 'S20'
   },
