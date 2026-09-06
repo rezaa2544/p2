@@ -388,7 +388,7 @@ const P9_ACTIONS = {
          ${f('شهرستان',sel('of_c',[['','—'],...db.counties.map(c=>[c.id,c.name])],o.county_id||''))}
          ${f('منطقه',sel('of_d',[['','—'],...db.districts.map(d=>[d.id,d.name])],o.district_id||''))}</div>
        <div class="grid g2">${f('نام کارشناس',inp('of_user',u.full_name||''))}${f('نام کاربری',inp('of_username',u.username||''))}</div>
-       ${f('رمز عبور جدید (خالی = بدون تغییر)',inp('of_pass',''))}`,'office-edit-save'));
+       <div class="small muted">ورود کارشناس با تلفن + کد است (محصول رمز ندارد) — ستونِ رمزِ قدیمی فقط آرشیوی است.</div>`,'office-edit-save'));
     window._officeEdit=id;
   },
   'office-edit-save'(){
@@ -400,7 +400,6 @@ const P9_ACTIONS = {
     if(u){
       const patch={full_name:V('of_user')||u.full_name};
       if(username)patch.username=username;
-      if(V('of_pass'))patch.password=V('of_pass');
       update('users',u.id,patch);
     }
     closeModal(); toast('اداره ویرایش شد','ok'); render();
@@ -960,8 +959,8 @@ setTimeout(()=>{
      طراحی تولید نیست. در نسخهٔ نهایی ورود فقط با تلفن + کد ملی
      (docs/PLAN_PHONE_AUTH.md) انجام می‌شود و نشست با کوکی HttpOnly
      (قرارداد امنیت سرور، بند ۲٫۱) زنده می‌ماند — بند ۱٫۲ و ۱٫۵
-     TODO_BEFORE_PRODUCTION.md. این بلوک و فرم رمز عبور در نسخهٔ
-     سروری حذف/جایگزین می‌شوند. */
+     TODO_BEFORE_PRODUCTION.md. این بلوک در نسخهٔ
+     سروری حذف/جایگزین می‌شود. (فرمِ رمز عبور در دور ۷۰ حذف شد — محصول رمز ندارد.) */
   const su=Store.get(SESSION_KEY);
   if(su){const u=db.users.find(x=>x.username===su);
     if(u){

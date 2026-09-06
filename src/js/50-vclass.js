@@ -24,14 +24,6 @@ function vclassSessionsOf(classId){
     .sort(function(a,b){ return (b.created_at||'').localeCompare(a.created_at||''); });
 }
 
-/** آیا فایلِ این نشست هنوز در IDB هست؟ (فقط علامت‌گذاری؛ async) */
-function vclassHasFile(session){
-  if(!session || !session.file_key) return Promise.resolve(false);
-  return vclassIdbGet(VCLASS_STORE, session.file_key).then(function(b){
-    return !!b;
-  });
-}
-
 /** سؤالات یک نشست */
 function vclassQuestionsOf(sessionId){
   return db.vclass_questions

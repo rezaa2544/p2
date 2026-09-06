@@ -146,11 +146,6 @@ function idxScheduleByTeacher(){
   return idxGroup('schedule','teacher_id',function(s){ return s.teacher_id; });
 }
 
-/** school_id → کلاس‌ها */
-function idxClassesBySchool(){
-  return idxGroup('classes','school_id',function(c){ return c.school_id; });
-}
-
 /* ---------- کمکی: مرتب‌سازی فارسی با کش کلید ----------
    localeCompare فارسی گران است. با Intl.Collator یک‌بار ساخته
    و کلید مرتب‌سازی کش می‌شود.                                */

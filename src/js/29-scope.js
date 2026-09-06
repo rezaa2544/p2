@@ -67,27 +67,6 @@ function scopeDescriptor(user, persona){
   return d;
 }
 
-/** برآورد حجم برش کاربر — برای پایش و هشدار */
-function scopeEstimate(user, persona){
-  var role = persona || (user && user.role);
-  var n = 0;
-  try{
-    if(role === 'student'){
-      n = 1 + countBy('attendance', function(a){ return a.student_id === user.id; })
-            + countBy('grades', function(g){ return g.student_id === user.id; });
-    } else if(role === 'teacher'){
-      var cls = (typeof teacherClasses === 'function') ? teacherClasses(user.id) : [];
-      var ids = {}; cls.forEach(function(c){ ids[c.id] = 1; });
-      n = countBy('attendance', function(a){ return ids[a.class_id]; })
-        + countBy('grades', function(g){ return ids[g.class_id]; });
-    } else if(role === 'manager'){
-      n = countBy('attendance', function(a){ return a.school_id === user.school_id; })
-        + countBy('grades', function(g){ return g.school_id === user.school_id; });
-    }
-  }catch(e){}
-  return n;
-}
-
 function countBy(coll, fn){
   var a = db[coll] || [], n = 0;
   for(var i=0;i<a.length;i++) if(fn(a[i])) n++;
@@ -115,14 +94,3 @@ function scopeHealth(){
   };
 }
 
-/* ---------- قرارداد دریافت داده از سرور ----------
-   GET /api/bootstrap  → { scope, data:{...}, cursor }
-   سرور موظف است:
-     • محدوده را از روی توکن کاربر تعیین کند، نه از پارامتر کلاینت
-     • هرگز دادهٔ خارج از محدوده نفرستد
-     • فهرست‌های بزرگ را صفحه‌بندی کند
-   ------------------------------------------------ */
-function bootstrapRequest(){
-  var d = scopeDescriptor(S.user, (typeof activePersona === 'function') ? activePersona() : null);
-  return { method:'GET', url:'/api/bootstrap', scope:d, limits:SCOPE_LIMITS };
-}

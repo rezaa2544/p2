@@ -169,13 +169,6 @@ function bellDayTimeline(d){
   return out;
 }
 
-/** ساعت زنگ شمارهٔ n در روز مشخص — برای نمایش کنار برنامهٔ هفتگی */
-function bellTimeOf(schoolId, period, day){
-  var tl = bellTimeline(schoolId, day);
-  var hit = tl.filter(function(x){ return x.kind === 'lesson' && x.no === Number(period); })[0];
-  return hit ? (hit.from + ' تا ' + hit.to) : '';
-}
-
 /** تعداد زنگ درسی یک روز */
 function bellLessonCount(schoolId, day){
   return bellTimeline(schoolId, day).filter(function(x){ return x.kind === 'lesson'; }).length;
@@ -263,22 +256,6 @@ function bellSave(schoolId, start, slots){
   var days = DAYS.map(function(){
     return { start: start, slots: norm.map(function(s){ return { kind:s.kind, min:s.min }; }) };
   });
-  return bellSaveDays(schoolId, days);
-}
-
-/** بازگرداندن به الگوی آماده — برای یک روز، یا همهٔ روزها (dayIdx=null) */
-function bellApplyPreset(schoolId, key, dayIdx){
-  var pd = bellPresetDays(key);
-  if(!pd) return { ok:false, msg:'الگو یافت نشد' };
-  var rec = bellRec(schoolId);
-  var days = bellCurrentDays(schoolId);
-  if(dayIdx == null){
-    days = pd.map(function(d){ return { start:d.start,
-      slots:d.slots.map(function(x){ return { kind:x.kind, min:x.min }; }) }; });
-  } else {
-    days[dayIdx] = { start: pd[dayIdx].start,
-      slots: pd[dayIdx].slots.map(function(x){ return { kind:x.kind, min:x.min }; }) };
-  }
   return bellSaveDays(schoolId, days);
 }
 

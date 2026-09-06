@@ -201,14 +201,6 @@ function trackVisit(userId){
   return v;
 }
 
-/** به‌روزرسانی نشان «هنوز فعال است» برای کاربر جاری */
-function touchPresence(){
-  if(!S.user) return;
-  var v = loadVisits();
-  v.users[S.user.id] = new Date().toISOString();
-  saveVisits(v);
-}
-
 /**
  * چه کسانی هم‌اکنون برخط‌اند؟
  * تعریف: کاربری که در پنج دقیقهٔ اخیر فعالیتی داشته است.

@@ -42,8 +42,6 @@ function jalaliLongFa(iso){ if(!iso)return '—'; const d=new Date(String(iso).s
   const j=toJalali(d.getFullYear(),d.getMonth()+1,d.getDate());
   const wd=['شنبه','یک‌شنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنج‌شنبه','جمعه'][(d.getDay()+1)%7];
   return wd+' '+faD(j[2])+' '+J_MONTHS[j[1]-1]+' '+faD(j[0]); }
-function schoolYearOf(iso){ const j=toJalali(...String(iso||todayISO()).slice(0,10).split('-').map(Number));
-  const st=j[1]>=7?j[0]:j[0]-1; return {start:st,end:st+1,title:faD(st)+'-'+faD(st+1)}; }
 function monthMatrix(jy,jm){
   const days=jMonthDays(jy,jm); const g=toGregorian(jy,jm,1);
   const first=(new Date(g[0],g[1]-1,g[2]).getDay()+1)%7;

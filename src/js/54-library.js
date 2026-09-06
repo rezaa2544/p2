@@ -34,10 +34,6 @@ function libLoansOf(bookId){
     .filter(function(l){ return l.book_id === bookId; })
     .sort(function(a,b){ return (b.loan_at||'').localeCompare(a.loan_at||''); });
 }
-function libActiveLoan(loanId){
-  var l = byId('lib_loans', loanId);
-  return l && !l.returned_at ? l : null;
-}
 function libLoanStatus(l, nowIso){
   if(!l) return 'none';
   if(l.returned_at) return 'returned';

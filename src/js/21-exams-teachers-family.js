@@ -146,7 +146,6 @@ const teacherSchoolsOf = tid=>{
 };
 const teacherBusyAt=(tid,day,period,exceptId=0)=>db.schedule.find(s=>s.teacher_id===tid&&s.day===day&&s.period===period&&s.id!==exceptId);
 const schoolTeachers=()=>db.users.filter(u=>u.role==='teacher'&&u.active&&(u.school_id===S.user.school_id||db.teacher_schools.some(t=>t.teacher_id===u.id&&t.school_id===S.user.school_id&&t.active)));
-const myTerm=()=>db.exam_terms.filter(t=>t.school_id===S.user.school_id).sort((a,b)=>b.start_date.localeCompare(a.start_date))[0];
 
 /* ---------------- صفحه: دبیران و مدارس ---------------- */
 function viewTeachers(){
