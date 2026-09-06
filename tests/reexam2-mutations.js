@@ -41,8 +41,8 @@ mutate('src/js/19-actions.js',
   'tests/reexam2.js', /❌ R4/, 'M2 برداشتنِ وضعیتِ انجام‌شده');
 
 mutate('server/sync.js',
-  "'preapps','scholarships','reexams']",
-  "'preapps','scholarships']",
+  "'reexams','assoc_minutes'",
+  "'assoc_minutes'",
   'tests/reexam3.js', /❌ B1/, 'M3 برداشتنِ reexams از WRITE_PERMS');
 
 /* بازسازی + خطِّ پایه */

@@ -125,8 +125,14 @@ function viewRecord(sid){
     ${disc.map(d=>`<tr><td>${jalali(d.date)}</td><td><span class="badge ${d.kind==='positive'?'b-green':'b-red'}">${d.kind==='positive'?'👍 مثبت':'👎 منفی'}</span></td><td>${esc(d.title)}</td>
      <td class="muted small" style="white-space:normal;max-width:260px">${esc(d.description||'—')}</td><td><b style="color:${d.points>=0?'var(--green)':'var(--red)'}">${fa(d.points)}</b></td></tr>`).join('')}</tbody></table></div>`
     :empty('🌟','پرونده انضباطی پاک است','هیچ مورد انضباطی ثبت نشده است.');
-  return `<div class="card"><div class="card-head" style="padding-bottom:0;border-bottom:none"><div class="tabs">
-    ${tabs.map(t=>`<div class="tab ${S.tab===t[0]?'active':''}" data-act="tab" data-t="${escAttr(t[0])}">${t[1]}</div>`).join('')}</div></div>${body}</div>`;
+  /* دور ۷۶ — ترک تحصیل: نوارِ وضعیت (اگر dropped_out) + دکمهٔ ثبت (مدیر) */
+  const _du=byId('users',sid);
+  const _dropStrip=(typeof dropStatusStrip==='function')?dropStatusStrip(sid):'';
+  const _persona2=(typeof activePersona==='function')?activePersona():S.user.role;
+  const _dropBtn=(_du&&(_du.status||'active')==='active'&&(_persona2==='manager'||_persona2==='superadmin'))
+    ? `<div style="padding:0 14px 10px;display:flex;justify-content:flex-end"><button class="btn danger ghost sm" data-act="drop-register" data-id="${escAttr(sid)}">🚪 ثبت ترک تحصیل (بدون حذفِ داده)</button></div>` : '';
+  return `<div class="card">${_dropStrip}<div class="card-head" style="padding-bottom:0;border-bottom:none"><div class="tabs">
+    ${tabs.map(t=>`<div class="tab ${S.tab===t[0]?'active':''}" data-act="tab" data-t="${escAttr(t[0])}">${t[1]}</div>`).join('')}</div></div>${_dropBtn}${body}</div>`;
 }
 
 /** بند ۴.۲ — کارتِ ساعتِ کارآموزی: فقط برای دانش‌آموزِ سالِ آخرِ

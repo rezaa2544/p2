@@ -40,6 +40,34 @@ function iepUsersUpdate(s, op){
   return keys.length > 0 && keys.every(k => IEP_KEYS.indexOf(k) > -1);
 }
 
+/* Round 76 — Dropout (soft status, no data deletion): a scoped,
+   whitelist exception on `users` updates that touch dropout fields —
+   same pattern as IEP above.
+     • only a MANAGER may write them (teachers stay IEP_KEYS-only)
+     • all changed keys must be within DROP_KEYS (no mixing)
+     • status, if present, must be 'active' | 'dropped_out'
+   School domain (own school, fail-closed) is enforced separately by
+   inScope (#4) — unchanged. */
+/* Only the dropout-specific fields gate the whitelist: existing
+   status flows (promotion/graduation/transfer) keep the manager's
+   general `users` permission, still scoped by inScope. */
+const DROP_FIELD_KEYS = ['dropped_out_at','dropped_out_by','dropped_out_reason','dropped_out_note','returned_at','returned_by'];
+const DROP_KEYS = ['status','active'].concat(DROP_FIELD_KEYS);
+function dropTouchesDropout(op){
+  if(op.c !== 'users' || op.t !== 'upd') return false;
+  const d = op.data || {};
+  return Object.keys(d).some(k => DROP_FIELD_KEYS.indexOf(k) > -1);
+}
+function dropUsersUpdate(s, op){
+  if(op.c !== 'users' || s.role !== 'manager') return false;
+  if(op.t !== 'upd' || op.id == null) return false;
+  const d = op.data || {};
+  const keys = Object.keys(d).filter(k => k !== 'id');
+  if(keys.length === 0) return false;
+  if(keys.indexOf('status') > -1 && d.status !== 'active' && d.status !== 'dropped_out') return false;
+  return keys.every(k => DROP_KEYS.indexOf(k) > -1);
+}
+
 /* #4 — is the target record inside this user's scope? Real records
    from the store; unknown ids fail closed. */
 function inScope(session, coll, recId, data){
@@ -172,6 +200,11 @@ function createSync(ctx){
       if(op.school_id != null && s.school_id != null && Number(op.school_id) !== s.school_id) return all('school_mismatch');
       /* #3 — role may write this collection (fail closed) */
       if(!canWrite(s.role, op.c) && !iepUsersUpdate(s, op)) return all('role_denied');
+      /* Round 76 — dropout whitelist: any users update touching
+         dropout/status fields must be a clean dropout op (manager,
+         own keys only). Teacher → role_denied; other-school manager
+         is caught by inScope (#4, fail closed). */
+      if(dropTouchesDropout(op) && s.role !== 'superadmin' && !dropUsersUpdate(s, op)) return all('role_denied');
       /* #4 — target record inside scope */
       const recId = op.id != null ? op.id : (op.data && op.data.id);
       if(!inScope(s, op.c, recId, op.data)) return all('out_of_scope');
@@ -219,4 +252,4 @@ function createSync(ctx){
 
   return { apiSync, canWrite, inScope };
 }
-module.exports = { createSync, attach, canWrite, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, iepUsersUpdate, IEP_KEYS };
+module.exports = { createSync, attach, canWrite, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout };
