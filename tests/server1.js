@@ -6,6 +6,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const fs = require('fs');
+const { opX } = require('./helpers/opx');
 const os = require('os');
 const path = require('path');
 
@@ -232,13 +233,13 @@ async function main(){
 
   /* ── S15 sync without session → 401 ────────────────────────────── */
   test('S15 sync without session → 401', async () => {
-    const r = await req('POST', '/api/sync', { body: { ops: [{ uid: 'u1', t: 'ins', c: 'announcements', by: manager1.id, data: { school_id: 1, title: 'x' } }] } });
+    const r = await req('POST', '/api/sync', { body: { ops: [opX({ uid: 'u1', by: manager1.id, collection: 'announcements', type: 'ins', data: { school_id: 1, title: 'x' } })] } });
     assert(r.status === 401, 'got ' + r.status);
   });
 
   /* ── S16 sync ins in scope → applied ───────────────────────────── */
   test('S16 sync ins in scope → 200 + record in store', async () => {
-    const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [{ uid: 't16', t: 'ins', c: 'announcements', by: manager1.id, user_id: manager1.id, school_id: 1, at: new Date().toISOString(), data: { school_id: 1, title: 'test-ann' } }] } });
+    const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [opX({ uid: 't16', by: manager1.id, collection: 'announcements', type: 'ins', user_id: manager1.id, school_id: 1, data: { school_id: 1, title: 'test-ann' } })] } });
     assert(r.status === 200 && r.json.ok, r.status + ' ' + JSON.stringify(r.json));
     assert(r.json.results[0].ok === true, 'result not ok');
     const rec = store.announcements.find(a => a.title === 'test-ann');
@@ -249,8 +250,8 @@ async function main(){
   test('S17 ins data.school_id foreign → 403 out_of_scope, nothing applied', async () => {
     const before = store.announcements.length;
     const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [
-      { uid: 't17a', t: 'ins', c: 'announcements', by: manager1.id, user_id: manager1.id, school_id: 1, data: { school_id: 1, title: 'ok-ann' } },
-      { uid: 't17b', t: 'ins', c: 'announcements', by: manager1.id, user_id: manager1.id, school_id: 1, data: { school_id: 2, title: 'evil-ann' } },
+      opX({ uid: 't17a', by: manager1.id, collection: 'announcements', type: 'ins', user_id: manager1.id, school_id: 1, data: { school_id: 1, title: 'ok-ann' } }),
+      opX({ uid: 't17b', by: manager1.id, collection: 'announcements', type: 'ins', user_id: manager1.id, school_id: 1, data: { school_id: 2, title: 'evil-ann' } }),
     ] } });
     assert(r.status === 403 && r.json.code === 'out_of_scope', r.status + ' ' + JSON.stringify(r.json));
     assert(store.announcements.length === before, 'batch was applied despite 403');
@@ -260,8 +261,8 @@ async function main(){
   test('S18 forged by → 403 forged_by, WHOLE batch rejected', async () => {
     const before = store.announcements.length;
     const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [
-      { uid: 't18a', t: 'ins', c: 'announcements', by: manager1.id, user_id: manager1.id, school_id: 1, data: { school_id: 1, title: 'innocent-ann' } },
-      { uid: 't18b', t: 'ins', c: 'announcements', by: manager2.id, user_id: manager1.id, school_id: 1, data: { school_id: 1, title: 'forged-ann' } },
+      opX({ uid: 't18a', by: manager1.id, collection: 'announcements', type: 'ins', user_id: manager1.id, school_id: 1, data: { school_id: 1, title: 'innocent-ann' } }),
+      opX({ uid: 't18b', by: manager2.id, collection: 'announcements', type: 'ins', user_id: manager1.id, school_id: 1, data: { school_id: 1, title: 'forged-ann' } }),
     ] } });
     assert(r.status === 403 && r.json.code === 'forged_by', r.status + ' ' + JSON.stringify(r.json));
     assert(store.announcements.length === before, 'innocent op was applied');
@@ -270,7 +271,7 @@ async function main(){
 
   /* ── S19 uid idempotency (contract §3.3) ───────────────────────── */
   test('S19 repeated uid → duplicate_ignored, no double record', async () => {
-    const op = { uid: 't19', t: 'ins', c: 'announcements', by: manager1.id, user_id: manager1.id, school_id: 1, at: new Date().toISOString(), data: { school_id: 1, title: 'idem-ann' } };
+    const op = opX({ uid: 't19', by: manager1.id, collection: 'announcements', type: 'ins', user_id: manager1.id, school_id: 1, data: { school_id: 1, title: 'idem-ann' } });
     let r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [op] } });
     assert(r.status === 200, 'first send: ' + r.status);
     r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [op] } });
@@ -281,19 +282,19 @@ async function main(){
 
   /* ── S20 role may not write the collection → 403 ───────────────── */
   test('S20 teacher ins users → 403 role_denied', async () => {
-    const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [{ uid: 't20', t: 'ins', c: 'messages', by: manager1.id, user_id: manager1.id, school_id: 1, data: { school_id: 1, student_id: stOwn.id } }] } });
+    const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [opX({ uid: 't20', by: manager1.id, collection: 'messages', type: 'ins', user_id: manager1.id, school_id: 1, data: { school_id: 1, student_id: stOwn.id } })] } });
     assert(r.status === 200, 'manager ins message should pass: ' + r.status + ' ' + JSON.stringify(r.json));
     /* now a teacher writing users */
     const rt = await loginAs(teacher1);
     const ck = cookieOf(rt);
-    const r2 = await req('POST', '/api/sync', { cookie: ck, body: { ops: [{ uid: 't20b', t: 'ins', c: 'users', by: teacher1.id, user_id: teacher1.id, school_id: 1, data: { school_id: 1, role: 'student' } }] } });
+    const r2 = await req('POST', '/api/sync', { cookie: ck, body: { ops: [opX({ uid: 't20b', by: teacher1.id, collection: 'users', type: 'ins', user_id: teacher1.id, school_id: 1, data: { school_id: 1, role: 'student' } })] } });
     assert(r2.status === 403 && r2.json.code === 'role_denied', r2.status + ' ' + JSON.stringify(r2.json));
   });
 
   /* ── S21 batch > 500 → 413 ─────────────────────────────────────── */
   test('S21 batch over 500 → 413', async () => {
     const ops = [];
-    for(let i = 0; i < 501; i++) ops.push({ uid: 't21' + i, t: 'ins', c: 'announcements', by: manager1.id, data: { school_id: 1, title: 'x' + i } });
+    for(let i = 0; i < 501; i++) ops.push(opX({ uid: 't21' + i, by: manager1.id, collection: 'announcements', type: 'ins', data: { school_id: 1, title: 'x' + i } }));
     const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops } });
     assert(r.status === 413 && r.json.code === 'batch_too_large', r.status + ' ' + JSON.stringify(r.json));
   });
@@ -360,10 +361,10 @@ async function main(){
   test('S27 upd own-school grade ok / other-school 403', async () => {
     const gOwn = store.grades.find(g => g.student_id === stOwn.id && g.school_id === 1) || store.grades.find(g => g.school_id === 1);
     const gAway = store.grades.find(g => g.school_id === 2);
-    const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [{ uid: 't27a', t: 'upd', c: 'grades', by: manager1.id, user_id: manager1.id, school_id: 1, id: gOwn.id, data: { value: 20 } }] } });
+    const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [opX({ uid: 't27a', by: manager1.id, collection: 'grades', type: 'upd', id: gOwn.id, user_id: manager1.id, school_id: 1, data: { value: 20 } })] } });
     assert(r.status === 200, 'own upd: ' + r.status + ' ' + JSON.stringify(r.json));
     assert(store.grades.find(g => g.id === gOwn.id).value === 20, 'not applied');
-    const r2 = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [{ uid: 't27b', t: 'upd', c: 'grades', by: manager1.id, user_id: manager1.id, school_id: 1, id: gAway.id, data: { value: 21 } }] } });
+    const r2 = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [opX({ uid: 't27b', by: manager1.id, collection: 'grades', type: 'upd', id: gAway.id, user_id: manager1.id, school_id: 1, data: { value: 21 } })] } });
     assert(r2.status === 403 && r2.json.code === 'out_of_scope', 'away upd: ' + r2.status + ' ' + JSON.stringify(r2.json));
     assert(store.grades.find(g => g.id === gAway.id).value !== 21, 'away record was changed');
   });
@@ -371,14 +372,14 @@ async function main(){
   /* ── S28 del in scope ──────────────────────────────────────────── */
   test('S28 del own announcement → removed', async () => {
     const rec = store.announcements.find(a => a.title === 'test-ann');
-    const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [{ uid: 't28', t: 'del', c: 'announcements', by: manager1.id, user_id: manager1.id, school_id: 1, id: rec.id }] } });
+    const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [opX({ uid: 't28', by: manager1.id, collection: 'announcements', type: 'del', id: rec.id, user_id: manager1.id, school_id: 1 })] } });
     assert(r.status === 200, r.status + ' ' + JSON.stringify(r.json));
     assert(!store.announcements.some(a => a.id === rec.id), 'not deleted');
   });
 
   /* ── S29 clock skew: >24h `at` → accepted + logged ─────────────── */
   test('S29 clock-skew op accepted and logged', async () => {
-    const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [{ uid: 't29', t: 'ins', c: 'announcements', by: manager1.id, user_id: manager1.id, school_id: 1, at: new Date(Date.now() - 25 * 3600 * 1000).toISOString(), data: { school_id: 1, title: 'skew-ann' } }] } });
+    const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [opX({ uid: 't29', by: manager1.id, collection: 'announcements', type: 'ins', user_id: manager1.id, school_id: 1, at: new Date(Date.now() - 25 * 3600 * 1000).toISOString(), data: { school_id: 1, title: 'skew-ann' } })] } });
     assert(r.status === 200 && r.json.results[0].ok, r.status + ' ' + JSON.stringify(r.json));
     const auditTxt = fs.readFileSync(T_AUDIT, 'utf8');
     assert(auditTxt.indexOf('"sync_clock_skew"') > -1, 'no clock-skew log');
@@ -386,7 +387,7 @@ async function main(){
 
   /* ── S30 unknown collection → fail closed ──────────────────────── */
   test('S30 unknown collection → 403 role_denied (fail closed)', async () => {
-    const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [{ uid: 't30', t: 'ins', c: 'totally_unknown_coll', by: manager1.id, data: { school_id: 1 } }] } });
+    const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [opX({ uid: 't30', by: manager1.id, collection: 'totally_unknown_coll', type: 'ins', data: { school_id: 1 } })] } });
     assert(r.status === 403 && r.json.code === 'role_denied', r.status + ' ' + JSON.stringify(r.json));
   });
 

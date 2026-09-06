@@ -16,6 +16,7 @@
  * اجرا: node tests/server6.js
  */
 const fs = require('fs');
+const { opX } = require('./helpers/opx');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -131,9 +132,9 @@ process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }
 
   // V1: دستهٔ مخلوط
   const mixed = await syncOps(mgrJar, mgr.id, 1, [
-    { uid: 'v6-1', t: 'ins', c: 'attendance', by: mgr.id, data: { school_id: 1, class_id: 1, student_id: 16, date: T, status: 'present', note: null } },
-    { uid: 'v6-2', t: 'ins', c: 'attendance', by: mgr.id, data: { school_id: 1, class_id: 1, student_id: 16, date: T, status: 'excused', note: 'مرخصی' } },
-    { uid: 'v6-3', t: 'ins', c: 'attendance', by: mgr.id, data: { school_id: 1, class_id: 1, student_id: 16, date: Y, status: 'present', note: null } }
+    opX({ uid: 'v6-1', by: mgr.id, collection: 'attendance', type: 'ins', data: { school_id: 1, class_id: 1, student_id: 16, date: T, status: 'present', note: null } }),
+    opX({ uid: 'v6-2', by: mgr.id, collection: 'attendance', type: 'ins', data: { school_id: 1, class_id: 1, student_id: 16, date: T, status: 'excused', note: 'مرخصی' } }),
+    opX({ uid: 'v6-3', by: mgr.id, collection: 'attendance', type: 'ins', data: { school_id: 1, class_id: 1, student_id: 16, date: Y, status: 'present', note: null } })
   ]);
   const res = (mixed.json && mixed.json.results) || [];
   const r1 = res.find(x => x.uid === 'v6-1') || {};
@@ -154,22 +155,22 @@ process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }
 
   // V3: امانت کتاب
   const loan = await syncOps(mgrJar, mgr.id, 1, [
-    { uid: 'v6-4', t: 'ins', c: 'lib_loans', by: mgr.id, data: { school_id: 1, book_id: 1, student_id: 16, loan_at: T + 'T10:00:00.000Z', due_at: Y + 'T10:00:00.000Z', returned_at: '', registered_by: mgr.id } }
+    opX({ uid: 'v6-4', by: mgr.id, collection: 'lib_loans', type: 'ins', data: { school_id: 1, book_id: 1, student_id: 16, loan_at: T + 'T10:00:00.000Z', due_at: Y + 'T10:00:00.000Z', returned_at: '', registered_by: mgr.id } })
   ]);
   chk('V3 امانتِ کتابِ روزِ غیرحضوری رد شد',
     (((loan.json && loan.json.results) || [{}]).find(x => x.uid === 'v6-4') || {}).code === 'virtual_day', loan.raw.slice(0, 200));
 
   // V4: مهمان
   const vis = await syncOps(mgrJar, mgr.id, 1, [
-    { uid: 'v6-5', t: 'ins', c: 'visitors', by: mgr.id, data: { school_id: 1, name: 'مهمانِ تستی', purpose: '', in_at: T + 'T09:00:00.000Z', out_at: '', registered_by: mgr.id } }
+    opX({ uid: 'v6-5', by: mgr.id, collection: 'visitors', type: 'ins', data: { school_id: 1, name: 'مهمانِ تستی', purpose: '', in_at: T + 'T09:00:00.000Z', out_at: '', registered_by: mgr.id } })
   ]);
   chk('V4 ثبتِ مهمانِ روزِ غیرحضوری رد شد',
     (((vis.json && vis.json.results) || [{}]).find(x => x.uid === 'v6-5') || {}).code === 'virtual_day', vis.raw.slice(0, 200));
 
   // V5: تجهیز
   const asset = await syncOps(mgrJar, mgr.id, 1, [
-    { uid: 'v6-6', t: 'upd', c: 'assets', by: mgr.id, id: 2, data: { status: 'in_use' } },
-    { uid: 'v6-7', t: 'upd', c: 'assets', by: mgr.id, id: 2, data: { status: 'available' } }
+    opX({ uid: 'v6-6', by: mgr.id, collection: 'assets', type: 'upd', id: 2, data: { status: 'in_use' } }),
+    opX({ uid: 'v6-7', by: mgr.id, collection: 'assets', type: 'upd', id: 2, data: { status: 'available' } })
   ]);
   const ares = (asset.json && asset.json.results) || [];
   chk('V5 «in_use» تجهیز مسدود + وضعیتِ غیرِ فیزیکی پذیرفته',
@@ -178,7 +179,7 @@ process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }
 
   // V6: کلاسِ مجازی دست‌نخورده
   const vc = await syncOps(teaJar, tea.id, 1, [
-    { uid: 'v6-8', t: 'ins', c: 'vclass_attendance', by: tea.id, data: { session_id: 1, student_id: 16, joined_at: nowIso, left_at: '', by: tea.id } }
+    opX({ uid: 'v6-8', by: tea.id, collection: 'vclass_attendance', type: 'ins', data: { session_id: 1, student_id: 16, joined_at: nowIso, left_at: '', by: tea.id } })
   ]);
   chk('V6 جریانِ کلاسِ مجازی (vclass_attendance) دست‌نخورده است',
     (((vc.json && vc.json.results) || [{}]).find(x => x.uid === 'v6-8') || {}).ok === true, vc.raw.slice(0, 200));
