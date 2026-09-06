@@ -538,3 +538,131 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 
 /* ── brand-logo: سایه آبی بهتر ── */
 .brand-logo{box-shadow:0 6px 20px -8px rgba(22,104,240,.40),0 2px 8px rgba(0,0,0,.14)}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بهبودهای بصری جامع — همه بخش‌ها
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── دکمه‌ها: تمام حالت‌ها ── */
+.btn{transition:background .16s,transform .16s,box-shadow .16s}
+.btn.danger{box-shadow:0 6px 16px -8px rgba(224,64,90,.6)}
+.btn.danger:hover{box-shadow:0 8px 20px -8px rgba(224,64,90,.8);transform:translateY(-1px)}
+.btn.ghost:hover{box-shadow:0 2px 8px rgba(16,34,90,.09)}
+.btn:disabled{box-shadow:none}
+
+/* ── کارت‌ها: ترنزیشن کامل‌تر ── */
+.card{transition:box-shadow .18s,transform .18s,border-color .18s}
+
+/* ── مودال: سایه عمیق‌تر ── */
+.modal{box-shadow:0 32px 80px -24px rgba(16,34,90,.45),0 0 0 1px rgba(16,34,90,.06)}
+
+/* ── جدول: hover نرم‌تر ── */
+tbody tr{transition:background .12s}
+tbody tr:hover{background:linear-gradient(90deg,#eef4ff 0%,#f3f7ff 100%)}
+
+/* ── تب‌ها: indicator قوی‌تر + ترنزیشن ── */
+.tab{transition:color .15s,border-color .15s,font-weight .15s}
+.tab.active{font-weight:700;text-shadow:0 0 14px rgba(22,104,240,.16)}
+
+/* ── نمودار ستونی: گرادیان غنی‌تر ── */
+.chart .col i{background:linear-gradient(180deg,#16b3f0 0%,#1668f0 65%,#0f4fc4 100%);transition:opacity .15s}
+.chart .col:hover i{opacity:.78}
+
+/* ── تقویم جلالی: روز انتخابی + امروز ── */
+.jd{transition:background .12s,box-shadow .12s}
+.jd.sel{box-shadow:0 4px 12px rgba(22,104,240,.4)}
+.jd.today{box-shadow:inset 0 0 0 1.5px var(--primary)}
+
+/* ── toast: سایه رنگی ── */
+.toast{box-shadow:0 8px 24px -8px rgba(16,26,46,.45)}
+.toast.ok{box-shadow:0 8px 24px -8px rgba(15,157,99,.55)}
+.toast.err{box-shadow:0 8px 24px -8px rgba(224,64,90,.55)}
+.toast.warn{box-shadow:0 8px 24px -8px rgba(224,142,23,.55)}
+
+/* ── صفحه‌شمار: دکمه فعال ── */
+.pager button{transition:background .14s,box-shadow .14s,color .14s}
+.pager button.active{box-shadow:0 4px 12px rgba(22,104,240,.38)}
+
+/* ── ردیف زنگ: سایه‌ی وضعیت ── */
+.bell-slot{transition:box-shadow .15s}
+.bell-slot.lesson{box-shadow:0 3px 10px rgba(22,104,240,.14)}
+.bell-slot.break{box-shadow:0 3px 10px rgba(224,142,23,.14)}
+
+/* ── ردیف کارکنان: hover ── */
+.staff-row{transition:box-shadow .16s,border-color .16s}
+.staff-row:hover{border-color:var(--border-strong);box-shadow:0 3px 12px rgba(16,34,90,.09)}
+
+/* ── انتخاب شاخه/رشته: glow حالت فعال ── */
+.branch-card{transition:border-color .15s,background .15s,box-shadow .15s}
+.branch-card.on{box-shadow:0 0 0 2px rgba(22,104,240,.18),0 4px 14px rgba(22,104,240,.12)}
+.field-chip{transition:border-color .15s,background .15s,box-shadow .15s}
+.field-chip.on{box-shadow:0 0 0 2px rgba(22,104,240,.16)}
+
+/* ── ورودی‌ها: focus glow بهتر ── */
+.input:focus,.select:focus,textarea.input:focus{box-shadow:0 0 0 3px rgba(22,104,240,.18),0 2px 8px rgba(22,104,240,.09)}
+
+/* ── نشانگر همگام‌سازی: hover رنگی ── */
+.sync-chip{transition:filter .14s,box-shadow .14s}
+.sync-chip:hover{box-shadow:0 2px 8px rgba(16,34,90,.1)}
+.sync-chip.ok:hover{box-shadow:0 2px 10px rgba(15,157,99,.22)}
+.sync-chip.warn:hover{box-shadow:0 2px 10px rgba(224,64,90,.22)}
+.sync-chip.pend:hover{box-shadow:0 2px 10px rgba(224,142,23,.22)}
+
+/* ── سوییچر فرزند: دکمه فعال ── */
+.child-switcher .cs-btn{transition:background .14s,border-color .14s,box-shadow .14s,color .14s}
+.child-switcher .cs-btn.on{box-shadow:0 3px 10px rgba(22,104,240,.32)}
+
+/* ── نوار وضعیت زنگ ── */
+.bell-bar{transition:box-shadow .15s}
+.bell-bar-live{box-shadow:0 2px 10px rgba(15,157,99,.15)}
+.bell-bar-free{box-shadow:0 2px 10px rgba(22,104,240,.12)}
+.bell-bar-break{box-shadow:0 2px 10px rgba(224,142,23,.13)}
+
+/* ── کارت سلامت: hover قوی‌تر ── */
+.hgt-tile{transition:transform .18s ease,box-shadow .18s ease}
+.hgt-tile:hover{box-shadow:0 20px 48px -18px rgba(22,104,240,.28),0 1px 3px rgba(16,34,90,.08)}
+
+/* ── عنوان بخش: border رنگی ── */
+.sec-title{border-inline-start:3px solid var(--primary-dark)}
+
+/* ── demo-item (صفحه ورود): hover بهتر ── */
+.demo-item{transition:border-color .14s,background .14s,box-shadow .14s}
+.demo-item:hover{box-shadow:0 2px 10px rgba(22,104,240,.12)}
+
+/* ── فیلتر جمع‌شونده: shadow باز شدن ── */
+.filter-body{box-shadow:0 4px 14px rgba(16,34,90,.08)}
+
+/* ── نوارهای هشدار: ترنزیشن ── */
+.notify-auto-bar,.notify-cap-bar,.att-tip,.att-draft-bar,.sync-note{transition:box-shadow .15s}
+.notify-auto-bar:hover,.notify-cap-bar:hover{box-shadow:0 3px 12px rgba(224,64,90,.15)}
+.att-tip:hover{box-shadow:0 3px 12px rgba(22,104,240,.12)}
+.att-draft-bar:hover{box-shadow:0 3px 12px rgba(224,142,23,.15)}
+
+/* ── آیتم دیاگ: border رنگی بهتر ── */
+.diag-item{transition:box-shadow .15s}
+.diag-item:hover{box-shadow:0 3px 12px rgba(16,34,90,.09)}
+
+/* ── دکمه بازگشت ── */
+.back-btn{transition:background .15s,color .15s,border-color .15s,box-shadow .15s}
+
+/* ── icon-btn: ترنزیشن ── */
+.icon-btn{transition:background .14s,border-color .14s,box-shadow .14s}
+
+/* ── نوار وارد کردن داده (imp-bar): shadow ── */
+.imp-bar{box-shadow:0 2px 12px rgba(247,148,29,.22)}
+
+/* ── اسپینر لودینگ: رنگ cyan ── */
+.spinner{border-top-color:var(--brand-cyan)}
+
+/* ── نقطه/dot همگام‌سازی: pend pulse بهتر ── */
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
+
+/* ── scrollbar sidebar: رنگ بهتر ── */
+.sidebar::-webkit-scrollbar-thumb{background:#2d4070;border-radius:8px}
+.sidebar::-webkit-scrollbar-thumb:hover{background:#3d5490}
+
+/* ── bar-fill: ترنزیشن نرم‌تر ── */
+.bar-fill{transition:width .6s cubic-bezier(.25,.8,.25,1)}
+
+/* ── skeleton: gradient نرم‌تر ── */
+.skeleton{background:linear-gradient(90deg,#eef1f7 25%,#e0e8f4 50%,#eef1f7 75%);background-size:200% 100%}
