@@ -148,6 +148,9 @@ const STATIC = {
   '/guide.html':    { file: 'USER_GUIDE.html', type: 'text/html; charset=utf-8' },
   '/account-deletion.html': { file: 'account-deletion.html', type: 'text/html; charset=utf-8' },
   '/account-deletion':    { file: 'account-deletion.html', type: 'text/html; charset=utf-8' },
+  /* ملاک گوگل‌پلی: سیاستِ حریم خصوصی باید به‌عنوان صفحهٔ وب هم قابل دسترس باشد (بند 15.3) */
+  '/privacy.html': { file: 'privacy.html', type: 'text/html; charset=utf-8' },
+  '/privacy':      { file: 'privacy.html', type: 'text/html; charset=utf-8' },
 };
 function serveStatic(res, urlPath, nonce){
   const entry = STATIC[urlPath];

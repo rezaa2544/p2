@@ -20,6 +20,7 @@
      M14/M15 حذفِ حساب: پیوندِ شکسته‌نشدنی / تقلیل به غیرفعال (تست: tests/server7.js)
      M16/M17 پشتیبان/بازیابی: گاردِ نقش / اعتبارسنجیِ فایل (تست: tests/server8.js)
      M18 بکاپِ خودکار: زمان‌بندیِ درون‌پروسه (تست: tests/server9.js)
+     M19 صفحهٔ وبِ سیاستِ حریم خصوصی: روتِ /privacy (تست: tests/server10.js)
    هر جهش: جایگزینی، build، اجرای تستِ مربوطه، بررسیِ شکست، بازگشت.
    ───────────────────────────────────────────────────────────── */
 const { execSync } = require('child_process');
@@ -151,6 +152,13 @@ const MUTS = [
     mut: 'if(false) admin.startAutoBackup(BACKUP_EVERY_MS);',
     name: 'M18 زمان‌بندیِ بکاپِ خودکار خاموش شد',
     expectFail: 'A2'
+  },
+  {
+    file: 'server/index.js', suite: 'tests/server10.js', heap: 1500,
+    bad: "  '/privacy':      { file: 'privacy.html', type: 'text/html; charset=utf-8' },",
+    mut: '  /* M19: /privacy */',
+    name: 'M19 روتِ صفحهٔ وبِ سیاست حذف شد',
+    expectFail: 'P1'
   }
 ];
 
