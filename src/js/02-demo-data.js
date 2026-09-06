@@ -66,7 +66,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -256,6 +256,21 @@ function generate(){
     var names=['سارا محمدی','امیرحسین رستمی','نگار احمدی','پارسا کریمی'];
     defs.forEach(function(d,idx){
       add('preapps',{school_id:d[0],name:names[idx],phone:'0912'+String(1000000+idx*137).slice(0,7),note:d[2],stage:d[1],stage_at:daysAgoISO(d[3]),created_at:daysAgoISO(d[3]+10)});
+    });
+  })();
+  /* کمک‌هزینه (بند ۲.۴): رکوردهای نمونه — فقط ثبت، بدون پرداخت */
+  (function(){
+    var defs=[
+      [1,'requested','بررسیِ وضعیتِ اقتصادیِ خانواده',5],
+      [1,'review','در جلسهٔ هفته پیش مطرح شد',3],
+      [1,'approved','تأییدِ انجمن برای ترمِ جاری',1],
+      [2,'rejected','امسال بودجهٔ جدید نیست',2]
+    ];
+    defs.forEach(function(d,idx){
+      var list=db.users.filter(function(u){return u.role==='student'&&u.school_id===d[0]&&u.active;});
+      var st=list[idx%list.length];
+      if(!st) return;
+      add('scholarships',{school_id:d[0],student_id:st.id,status:d[1],note:d[2],created_at:daysAgoISO(d[3]+7),updated_at:daysAgoISO(d[3])});
     });
   })();
   /* IEP (بند ۲.۲): یک دانش‌آموزِ نمونه در مدرسه‌ای با توانِ has_iep

@@ -257,6 +257,19 @@ function preappModal(){
     </div>
     ${f('یادداشت',`<textarea class="input" id="pa_note" rows="2"></textarea>`)}`,'preapp-save'));
 }
+
+/* بند ۲.۴ — مودالِ کمک‌هزینه: دانش‌آموزِ نیازمند + یادداشت */
+function scholarshipModal(){
+  var studs=db.users.filter(function(u){return u.role==='student'&&u.school_id===S.user.school_id&&u.active;})
+    .sort(function(a,b){return a.full_name.localeCompare(b.full_name,'fa');});
+  var opts=studs.map(function(u){return '<option value="'+u.id+'">'+esc(u.full_name)+'</option>';}).join('');
+  openModal(modalTpl('ثبتِ دانش‌آموزِ نیازمند',
+   `
+   ${f('دانش‌آموز *',`<select class="input" id="sc_student">${opts}</select>`)}
+   ${f('یادداشت (کوتاه)',`<textarea class="input" id="sc_note" rows="2" placeholder="مثلاً: بررسیِ وضعیتِ اقتصادی توسطِ انجمن"></textarea>`)}
+   <div class="small muted">وضعیت از «درخواست‌شده» شروع می‌شود و بعداً از همان صفحه جابه‌جا می‌شود. این ماژول فقط ثبت است — به پرداخت وصل نیست.</div>
+   `,'scholar-save'));
+}
 const PRESETS={positive:POS.map(p=>p[0]),negative:NEG.map(p=>p[0])};
 function discModal(d){
   const cls=visibleClasses();

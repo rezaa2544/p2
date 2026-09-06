@@ -229,6 +229,11 @@ var ACTION_ROLES = {
   'preapp-save': ['manager'],
   'preapp-next': ['manager'],
   'preapp-del':  ['manager'],
+  /* بند ۲.۴ — کمک‌هزینه: علامت‌گذاری و پیگیریِ دانش‌آموزِ نیازمند، فقط مدیر */
+  'scholar-new': ['manager'],
+  'scholar-save': ['manager'],
+  'scholar-set': ['manager'],
+  'scholar-del': ['manager'],
   /* انضباطی */
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],
