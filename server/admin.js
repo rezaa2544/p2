@@ -39,9 +39,8 @@ function createAdmin(ctx){
     return { user: s };
   }
 
-  function apiBackup(req, res){
-    const g = checkAdmin(req, res);
-    if(g.done) return g.done;
+  /* هستهٔ پشتیبان‌گیری — مشترک بین endpoint و زمان‌بندیِ خودکار */
+  function backupNow(source, userId){
     ensureDir();
     const now = new Date();
     const p = n => String(n).padStart(2, '0');
@@ -57,7 +56,7 @@ function createAdmin(ctx){
       fs.writeFileSync(tmp, JSON.stringify(data));
       fs.renameSync(tmp, final);
     }catch(e){
-      return sendJson(res, 500, { ok: false, code: 'backup_failed' });
+      return null;
     }
     const all = listBackups();
     for(const f of all.slice(0, Math.max(0, all.length - RETENTION))){
@@ -65,8 +64,16 @@ function createAdmin(ctx){
     }
     let size = 0;
     try{ size = fs.statSync(final).size; }catch(e){}
-    audit('backup_created', { user_id: g.user.id, file: name, size });
-    return sendJson(res, 200, { ok: true, file: name, size, count: listBackups().length });
+    audit('backup_created', { user_id: (userId == null ? null : userId), file: name, size, source: source || 'manual' });
+    return { name: name, size: size, count: listBackups().length };
+  }
+
+  function apiBackup(req, res){
+    const g = checkAdmin(req, res);
+    if(g.done) return g.done;
+    const r = backupNow('manual', g.user.id);
+    if(!r) return sendJson(res, 500, { ok: false, code: 'backup_failed' });
+    return sendJson(res, 200, { ok: true, file: r.name, size: r.size, count: r.count });
   }
 
   function apiRestore(req, res, body){
@@ -85,7 +92,7 @@ function createAdmin(ctx){
       audit('restore_failed', { user_id: g.user.id, file: name, reason: 'corrupt' });
       return sendJson(res, 409, { ok: false, code: 'corrupt_backup' });
     }
-    /* جایگزینیِ درجا (حالا‌یِ آبجکت محفوظ می‌ماند — ماژول‌ها reference دارند) */
+    /* جایگزینیِ درجا (حالأِ آبجکت محفوظ می‌ماند — ماژول‌ها reference دارند) */
     for(const k of Object.keys(store)) delete store[k];
     for(const k of Object.keys(data)) store[k] = data[k];
     /* حالتِ داخلی از نو — اسنپ‌شات حاوی __* نبود */
@@ -97,6 +104,21 @@ function createAdmin(ctx){
     return sendJson(res, 200, { ok: true, file: name });
   }
 
-  return { apiBackup, apiRestore, listBackups };
+  /*
+   * زمان‌بندیِ خودکار (باقی‌ماندهٔ 2.4) — درون‌پروسه، بدون cronِ بیرونی.
+   * ms <= 0 → باز نمی‌گردد. unref: تایمر فرآیندِ تست را درگیر نمی‌کند.
+   */
+  function startAutoBackup(ms){
+    if(!ms || ms <= 0) return null;
+    const t = setInterval(() => {
+      const r = backupNow('auto', null);
+      if(r) console.log('auto-backup: ' + r.name + ' (count ' + r.count + ')');
+    }, ms);
+    if(t.unref) t.unref();
+    return t;
+  }
+
+  return { apiBackup, apiRestore, listBackups, backupNow, startAutoBackup };
+
 }
 module.exports = { createAdmin, RETENTION };

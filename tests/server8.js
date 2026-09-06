@@ -65,6 +65,7 @@ function makeJar() {
 async function main() {
   console.log('\n▸ پشتیبان‌گیری و بازیابی (OPEN_ITEMS 2.4)');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-s8-'));
+process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} }); /* پاک‌سازیِ tmp تا /tmp پر نشود */
   const storeFile = path.join(tmp, 'payesh.json');
   fs.copyFileSync(path.join(ROOT, 'server/data/payesh.json'), storeFile);
   const keyFile = path.join(tmp, 'jwt.key');

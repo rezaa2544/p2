@@ -18,6 +18,7 @@ if(!fs.existsSync(REAL_STORE)){
 
 /* ── isolated data files for this run ─────────────────────────────── */
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-srv-'));
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} }); /* پاک‌سازیِ tmp تا /tmp پر نشود */
 const T_STORE = path.join(TMP, 'store.json');
 const T_AUDIT = path.join(TMP, 'audit.log');
 const T_KEY   = path.join(TMP, 'jwt.key');

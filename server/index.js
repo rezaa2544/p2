@@ -215,13 +215,25 @@ if(TLS_CERT || TLS_KEY){
   server = http.createServer(onRequest);
 }
 
+/* ── بکاپِ دوره‌ایِ خودکار (باقی‌ماندهٔ 2.4) — درون‌پروسه ─────────
+   PAYESH_BACKUP_EVERY_HOURS (production، مثلاً 24) یا
+   PAYESH_BACKUP_EVERY_MS (تست). بی‌ارزش/صفر = خاموش. */
+const BACKUP_EVERY_MS = (Number(process.env.PAYESH_BACKUP_EVERY_MS) > 0)
+  ? Number(process.env.PAYESH_BACKUP_EVERY_MS)
+  : (Number(process.env.PAYESH_BACKUP_EVERY_HOURS) > 0
+      ? Number(process.env.PAYESH_BACKUP_EVERY_HOURS) * 3600000 : 0);
+
 if(require.main === module){
+  if(BACKUP_EVERY_MS > 0) admin.startAutoBackup(BACKUP_EVERY_MS);
   server.listen(PORT, HOST, () => {
     const proto = (TLS_CERT && TLS_KEY) ? 'https' : 'http';
     console.log('payesh-server (phase 1' + (TLS_CERT ? ' + TLS' : '') + ') on ' + proto + '://' + HOST + ':' + PORT);
     console.log('  static : ' + path.join(ROOT, 'index.html'));
     console.log('  api    : /api/health /api/auth/* /api/sync /api/students/:id /api/bell/now /api/admin/{backup,restore}');
     console.log('  store  : ' + STORE_FILE + '  (' + (store.users || []).length + ' users)');
+    if(BACKUP_EVERY_MS > 0){
+      console.log('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');
+    }
   });
 }
 module.exports = { server, store, audit, isHttps, persistStore };

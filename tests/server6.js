@@ -72,6 +72,7 @@ const Y = dayISO(new Date(Date.now() - 86400000));
 async function main() {
   console.log('\n▸ گاردِ روزِ غیرحضوری — سمتِ سرور (بند ۱۳.۱)');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-s6-'));
+process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} }); /* پاک‌سازیِ tmp تا /tmp پر نشود */
   const storeFile = path.join(tmp, 'payesh.json');
   fs.copyFileSync(path.join(ROOT, 'server/data/payesh.json'), storeFile);
   const keyFile = path.join(tmp, 'jwt.key');

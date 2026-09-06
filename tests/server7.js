@@ -72,6 +72,7 @@ function makeJar() {
 async function partA() {
   console.log('\n▸ حذفِ حساب — سرور (قفل ۹.۵)');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-s7-'));
+process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} }); /* پاک‌سازیِ tmp تا /tmp پر نشود */
   const storeFile = path.join(tmp, 'payesh.json');
   fs.copyFileSync(path.join(ROOT, 'server/data/payesh.json'), storeFile);
   const keyFile = path.join(tmp, 'jwt.key');

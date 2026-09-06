@@ -19,6 +19,7 @@
      M13 گاردِ روزِ غیرحضوریِ سرور (تست: tests/server6.js)
      M14/M15 حذفِ حساب: پیوندِ شکسته‌نشدنی / تقلیل به غیرفعال (تست: tests/server7.js)
      M16/M17 پشتیبان/بازیابی: گاردِ نقش / اعتبارسنجیِ فایل (تست: tests/server8.js)
+     M18 بکاپِ خودکار: زمان‌بندیِ درون‌پروسه (تست: tests/server9.js)
    هر جهش: جایگزینی، build، اجرای تستِ مربوطه، بررسیِ شکست، بازگشت.
    ───────────────────────────────────────────────────────────── */
 const { execSync } = require('child_process');
@@ -143,6 +144,13 @@ const MUTS = [
     mut: "    if(false){",
     name: 'M17 اعتبارسنجیِ پشتیبانِ خراب حذف شد',
     expectFail: 'B5'
+  },
+  {
+    file: 'server/index.js', suite: 'tests/server9.js', heap: 1500,
+    bad: 'if(BACKUP_EVERY_MS > 0) admin.startAutoBackup(BACKUP_EVERY_MS);',
+    mut: 'if(false) admin.startAutoBackup(BACKUP_EVERY_MS);',
+    name: 'M18 زمان‌بندیِ بکاپِ خودکار خاموش شد',
+    expectFail: 'A2'
   }
 ];
 

@@ -93,6 +93,7 @@ async function httpsReq(port, method, p, body, jar) {
 
 async function main() {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-tls-'));
+process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} }); /* پاک‌سازیِ tmp تا /tmp پر نشود */
   const certDir = path.join(tmp, 'certs');
   const storeFile = path.join(tmp, 'payesh.json');
   const auditFile = path.join(tmp, 'audit.log');
