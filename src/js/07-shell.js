@@ -146,6 +146,7 @@ function _renderRouteInner(){
     case 'preapps':return viewPreapps();
     case 'scholarships':return viewScholarships();
     case 'reexams':return viewReexams();
+    case 'summerclasses':return viewSummerClasses();
     case 'children':return viewChildren();
     case 'notifications':return viewNotifications();
     case 'leaves':return viewLeaves();

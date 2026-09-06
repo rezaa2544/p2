@@ -66,7 +66,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -269,6 +269,15 @@ function generate(){
   })();
   /* کمک‌هزینه (بند ۲.۴): رکوردهای نمونه — فقط ثبت، بدون پرداخت */
   /* صورت‌جلسهٔ انجمن (بند ۶.۲): دو رکوردِ نمونه — مدرسهٔ دولتیِ اندیشه (۶) */
+  /* کلاس‌های تابستانی (بند ۶.۴): دو کلاسِ نمونه — جدا از سالِ رسمی */
+  (function(){
+    var t=db.users.filter(function(u){return u.role==='teacher'&&u.school_id===1&&u.active;});
+    var studs=db.users.filter(function(u){return u.role==='student'&&u.school_id===1&&u.active;});
+    if(t.length<2||studs.length<4) return;
+    add('summer_classes',{school_id:1,name:'تکمیلی ریاضی تابستان',teacher_id:t[0].id,student_ids:[studs[0].id,studs[1].id,studs[2].id],start_date:'2026-06-14',end_date:'2026-07-15',note:'ساعت ۹ تا ۱۱ — سه‌شنبه‌ها',created_at:'2026-06-01',updated_at:'2026-06-10'});
+    add('summer_classes',{school_id:1,name:'کارگاه انگلیسی تابستان',teacher_id:t[1].id,student_ids:[studs[3].id,studs[4].id],start_date:'2026-06-20',end_date:'',note:'',created_at:'2026-06-05',updated_at:'2026-06-05'});
+  })();
+
   (function(){
     var s6=db.schools.find(function(x){return x.id===6;});
     if(!s6)return;
