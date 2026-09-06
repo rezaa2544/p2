@@ -72,18 +72,19 @@ function patternTrend(dates){
 function patternCheck(studentId,days){
   var n=Number(days)>0?Number(days):30;
   var from=daysAgoISO(n);
-  var late=[],absent=[],lateMin=0,unexcused=0;
+  var late=[],absent=[],lateMin=0,unexcused=0,exit=[],exitMin=0;
   (db.attendance||[]).forEach(function(a){
     if(a.student_id!==studentId||a.date<from)return;
     if(a.status==='late'){late.push(a.date);lateMin+=Number(a.late_minutes)||0;}
     else if(a.status==='absent'){absent.push(a.date);if(!a.excused)unexcused++;}
+    /* بند 15.1: خروج زودهنگام */
+    else if(a.status==='early_exit'){exit.push(a.date);exitMin+=Number(a.exit_minutes)||0;}
   });
   return {
     days:n,
     late:{count:late.length,totalMinutes:lateMin,trend:patternTrend(late)},
     absent:{count:absent.length,unexcused:unexcused,trend:patternTrend(absent)},
-    /* ⚠️ با پیاده‌سازی class_exits از آن جدول پر می‌شود */
-    exits:{count:0,totalMinutes:0,trend:'steady'}
+    exits:{count:exit.length,totalMinutes:exitMin,trend:patternTrend(exit)}
   };
 }
 
@@ -113,9 +114,11 @@ function patternFlagged(schoolId,days){
   (db.attendance||[]).forEach(function(a){
     if(a.date<from)return;
     var e=by[a.student_id];
-    if(!e)e=by[a.student_id]={late:[],absent:[],lateMin:0,unexcused:0};
+    if(!e)e=by[a.student_id]={late:[],absent:[],lateMin:0,unexcused:0,exit:[],exitMin:0};
     if(a.status==='late'){e.late.push(a.date);e.lateMin+=Number(a.late_minutes)||0;}
     else if(a.status==='absent'){e.absent.push(a.date);if(!a.excused)e.unexcused++;}
+    /* بند 15.1: خروج زودهنگام — شمارش + دقیقهٔ از‌دست‌رفته */
+    else if(a.status==='early_exit'){e.exit.push(a.date);e.exitMin+=Number(a.exit_minutes)||0;}
   });
   var r=patternRules(schoolId);
   var out=[];
@@ -127,13 +130,16 @@ function patternFlagged(schoolId,days){
       days:n,
       late:{count:e.late.length,totalMinutes:e.lateMin,trend:patternTrend(e.late)},
       absent:{count:e.absent.length,unexcused:e.unexcused,trend:patternTrend(e.absent)},
-      exits:{count:0,totalMinutes:0,trend:'steady'}
+      exits:{count:e.exit.length,totalMinutes:e.exitMin,trend:patternTrend(e.exit)}
     };
     var br=[];
     if(check.late.count>=r.late_month)
       br.push({key:'late',fa:BREACH_FA.late,count:check.late.count,totalMinutes:check.late.totalMinutes,trend:check.late.trend,limit:r.late_month+' بار در ماه'});
     if(check.absent.count>=r.absent_month)
-      br.push({key:'absent',fa:BREACH_FA.absent,count:check.absent.count,unexcused:check.unexcused,trend:check.absent.trend,limit:r.absent_month+' بار در ماه'});
+      br.push({key:'absent',fa:BREACH_FA.absent,count:check.absent.count,unexcused:check.absent.unexcused,trend:check.absent.trend,limit:r.absent_month+' بار در ماه'});
+    /* بند 15.1: خروج مکرر — شمارش هفتگی یا مجموعِ دقیقه‌های از‌دست‌رفته */
+    if(check.exits.count>=r.exit_week||check.exits.totalMinutes>=r.exit_min_week)
+      br.push({key:'exits',fa:BREACH_FA.exits,count:check.exits.count,totalMinutes:check.exits.totalMinutes,trend:check.exits.trend,limit:r.exit_week+' بار در هفته یا '+r.exit_min_week+' دقیقه'});
     if(!br.length)return;
     out.push({user:st,cls:classOf(st.id),breaches:br,check:check});
   });
@@ -323,7 +329,7 @@ function viewFollowup(){
     h+=empty('📈','الگویی در این بازه نیست','هیچ دانش‌آموزی در '+days+' روز گذشته آستانهٔ الگوها را رد نکرده است.');
   } else {
     h+='<div class="table-wrap"><table class="table"><thead><tr>'
-      +'<th>دانش‌آموز</th><th>تأخیر</th><th>غیبت</th><th>روند</th><th>اقدام</th><th>اعلان به ولی</th>'
+      +'<th>دانش‌آموز</th><th>تأخیر</th><th>غیبت</th><th>خروج</th><th>روند</th><th>اقدام</th><th>اعلان به ولی</th>'
       +'</tr></thead><tbody>';
     flagged.forEach(function(row){
       var st=row.user;
@@ -338,6 +344,7 @@ function viewFollowup(){
       h+='<tr><td><b>'+esc(st.full_name)+'</b><div class="small muted">'+esc(row.cls?row.cls.name:'—')+'</div></td>'
         +'<td>'+(br.late?'<span class="badge b-amber">'+br.late.count+' بار</span>':'—')+'</td>'
         +'<td>'+(br.absent?'<span class="badge b-red">'+br.absent.count+' بار</span>':'—')+'</td>'
+        +'<td>'+(br.exits?'<span class="badge b-cyan">'+br.exits.count+' بار · '+br.exits.totalMinutes+' دقیقه</span>':'—')+'</td>'
         +'<td class="small">'+TREND_FA[tb.trend||'steady']+'</td>'
         +'<td>'
         +row.breaches.map(function(b){

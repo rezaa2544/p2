@@ -65,6 +65,9 @@ function viewAttendance(){
 
   /* پیش‌نویس: تیک‌های ثبت‌نشده. نمایش = پیش‌نویس اگر بود، وگرنه پایگاه داده. */
   const draft=(typeof attDraftGet==='function')?attDraftGet(cid,date):{};
+  const dfields=(typeof attDraftFields==='function')?attDraftFields(cid,date):{};
+  /* بند 15.1: موجه‌سازیِ پس از ثبت فقط برای مدیر/سوپرادمین */
+  const canExempt=!!(S.user&&(S.user.role==='manager'||S.user.role==='superadmin'));
   const nDraft=Object.keys(draft).length;
   const shown=s=>draft[s.id]||((rec(s)||{}).status||null);
 
@@ -91,14 +94,19 @@ function viewAttendance(){
      <button class="btn ghost sm" data-act="att-all" data-s="present">✅ همه حاضر</button>
      <button class="btn ghost sm" data-act="att-all" data-s="absent">❌ همه غایب</button></div></div>
    <div class="card-body row" style="border-bottom:1px solid var(--border)">
-    ${['present','absent','late','excused'].map(k=>`<span class="badge ${ATT_BADGE[k]}">${ATT_FA[k]}: ${fa(cnt(k))}</span>`).join('')}
+    ${['present','absent','late','excused','early_exit'].map(k=>`<span class="badge ${ATT_BADGE[k]}">${ATT_FA[k]}: ${fa(cnt(k))}</span>`).join('')}
     <span class="badge b-gray">ثبت‌نشده: ${fa(unset)}</span><div class="spacer"></div>
     <span class="small muted">${nDraft?'تغییرات هنوز ذخیره نشده‌اند':'همه‌چیز ذخیره شده است'}</span></div>
-   ${studs.length?`<div class="table-wrap"><table><thead><tr><th>#</th><th>نام دانش‌آموز</th><th>ثبت وضعیت</th><th>وضعیت فعلی</th></tr></thead><tbody>
+   ${studs.length?`<div class="table-wrap"><table><thead><tr><th>#</th><th>نام دانش‌آموز</th><th>ثبت وضعیت</th><th>وضعیت فعلی</th>${canExempt?'<th>اقدام</th>':''}</tr></thead><tbody>
     ${studs.map((s,i)=>{const r=rec(s);const d=draft[s.id];const v=d||((r||{}).status||null);
+      /* ساعتِ وضعیتِ زمان‌دار (بند 15.1): از پیش‌نویس اگر بود، وگرنه رکورد */
+      const _t=d?(dfields[s.id]||{}):(r||{});
+      const _time=(v==='late'&&(_t.late_at||(r&&r.late_at)))||(v==='early_exit'&&(_t.exit_at||(r&&r.exit_at)))||'';
+      const _just=!d&&r&&r.excused;
+      const _exempt=!d&&r&&['absent','late','early_exit'].indexOf(r.status)>-1&&!r.excused;
       return `<tr${d?' class="att-row-draft"':''}><td class="muted">${fa(i+1)}</td><td><b>${esc(s.full_name)}</b>${r&&r.note?`<div class="small muted">${esc(r.note)}</div>`:''}</td>
-     <td>${['present','absent','late','excused'].map(k=>`<button class="att-btn ${v===k?'on-'+k:''}" data-act="att-set" data-id="${escAttr(s.id)}" data-s="${escAttr(k)}">${ATT_FA[k]}</button>`).join('')}</td>
-     <td>${v?`<span class="badge ${ATT_BADGE[v]}">${ATT_FA[v]}</span>${d?'<span class="badge b-amber">ثبت‌نشده</span>':''}`:'<span class="badge b-gray">ثبت نشده</span>'}</td></tr>`;}).join('')}
+     <td>${['present','absent','late','excused','early_exit'].map(k=>`<button class="att-btn ${v===k?'on-'+k:''}" data-act="att-set" data-id="${escAttr(s.id)}" data-s="${escAttr(k)}">${ATT_FA[k]}</button>`).join('')}</td>
+     <td>${v?`<span class="badge ${ATT_BADGE[v]}">${ATT_FA[v]}${_time?(typeof timeFa==='function'?timeFa(_time):' '+_time):''}</span>${_just?'<span class="badge b-purple" title="موجه‌شده پس از ثبت — ردپا در سابقه">موجه‌شده</span>':''}${d?'<span class="badge b-amber">ثبت‌نشده</span>':''}`:'<span class="badge b-gray">ثبت نشده</span>'}</td>${canExempt?`<td>${_exempt?`<button class="btn ghost sm" data-act="att-exempt" data-id="${escAttr(r.id)}">موجه‌سازی</button>`:''}</td>`:''}</tr>`;}).join('')}
    </tbody></table></div>`:empty('🔍','دانش‌آموزی یافت نشد','این کلاس دانش‌آموزی ندارد یا جستجو نتیجه‌ای نداشت.')}
    ${nDraft?`<div class="card-foot row">
      <button class="btn" data-act="att-review">✅ مرور و ثبت نهایی (${fa(nChange)} تغییر)</button>

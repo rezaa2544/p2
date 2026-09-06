@@ -4,6 +4,10 @@
    ═══════════════════════════════════════════════════════════════════ */
 /** شناسهٔ نوبت انتخاب‌شده برای رزرو (بین باز شدن مودال و ثبت آن) */
 var SLOT_ID=null;
+/** بند 15.1: وضعیتِ زمان‌دارِ در انتظارِ ثبتِ ساعت (بین مودال و تأیید) */
+var attTimePending=null;
+/** بند 15.1: شناسهٔ رکوردِ موجه‌سازی در انتظار تأیید (بین مودال و تأیید) */
+var attExemptId=null;
 /** شناسهٔ کاربری که رمزش بازنشانی می‌شود (بین مودال و تأیید) */
 /** بستهٔ پشتیبانی که کاربر برای بازیابی انتخاب کرده است */
 var RESTORE_PKG=null;
@@ -659,8 +663,77 @@ document.addEventListener('click',e=>{
    },
    'att-set'(){const st=el.dataset.s;const date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
+     /* بند 15.1: وضعیت‌های زمان‌دار ساعت می‌خواهند — مودال زمان */
+     if(st==='late'||st==='early_exit'){
+       const school=byId('classes',cid).school_id;
+       const cur=(function(){
+         const row=(db.attendance||[]).find(a=>a.student_id===id&&a.date===date);
+         const t=(st==='late'&&row&&row.late_at)||(st==='early_exit'&&row&&row.exit_at);
+         const n=new Date();
+        return t||((n.getHours()<10?'0':'')+n.getHours()+':'+(n.getMinutes()<10?'0':'')+n.getMinutes());
+       })();
+       const span=(typeof attDaySpan==='function')?attDaySpan(school,date):null;
+       const hint=span
+         ?(typeof timeFa==='function'?timeFa(minToTime(span.firstFrom)):minToTime(span.firstFrom))
+         :null;
+       attTimePending={cid,date,studentId:id,st};
+       openModal(modalTpl(st==='late'?'تأخیر با زمان':'خروج از کلاس — با زمان',
+         f('ساعت',`<input class="input" id="att_time" type="time" value="${escAttr(cur)}" />`)
+         +(hint?`<div class="small muted" style="margin-top:8px">شروع مدرسه: ${hint}`+(st==='early_exit'?' · پایان: '+(typeof timeFa==='function'?timeFa(minToTime(span.lastTo)):minToTime(span.lastTo)):'')+'</div>':'')
+         +'<div class="small muted" style="margin-top:8px">میزان '+(st==='late'?'تأخیر':'خروج')+' بر پایهٔ زمان‌بندی زنگِ مدرسه محاسبه می‌شود.</div>',
+         'att-time-save',false,'ثبت'));
+       return;
+     }
      attDraftSet(cid,date,id,st);
      render();},
+   /* ثبت ساعتِ انتخابیِ وضعیتِ زمان‌دار (بند 15.1) */
+   'att-time-save'(){
+     if(!attTimePending)return;
+     const {cid,date,studentId,st}=attTimePending;
+     const v=($('#att_time')?String($('#att_time').value||''):'' );
+     const school=byId('classes',cid).school_id;
+     const fields=(typeof attTimeFields==='function')?attTimeFields(school,date,st,v):{};
+     attDraftSet(cid,date,studentId,st,fields);
+     attTimePending=null;
+     closeModal();
+     toast(ATT_FA[st]+(v?' — ساعت ثبت شد':' ثبت شد')+'؛ «مرور و ثبت نهایی» را بزنید','ok');
+     render();
+   },
+   /* موجه‌سازیِ پس از ثبت (بند 15.1) — فقط مدیر/سوپرادمین */
+   'att-exempt'(){
+     const rec=(typeof byId==='function')?byId('attendance',id):null;
+     if(!rec){toast('رکورد پیدا نشد','err');return;}
+     attExemptId=rec.id;
+     const st=byId('users',rec.student_id);
+     if(['absent','late','early_exit'].indexOf(rec.status) === -1){toast('این رکورد قابل موجه‌سازی نیست','err');return;}
+     if(rec.excused){toast('این رکورد از پیش موجه‌شده است','err');return;}
+     openModal(modalTpl('موجه‌سازی پس از ثبت',
+       '<div class="small muted" style="margin-bottom:10px">'+esc(st?st.full_name:'—')
+       +' · '+jalali(rec.date)+' · وضعیت: '+ATT_FA[rec.status]+'</div>'
+       +f('دلیل موجه‌سازی',`<textarea class="input" id="att_exempt_reason" rows="2" placeholder="مثلاً: مرخصی کتبی ولی / هماهنگی پزشکی"></textarea>`),
+       'att-exempt-confirm',false,'موجه‌سازی'));
+   },
+   'att-exempt-confirm'(){
+     if(attExemptId==null){closeModal();return;}
+     const rec=(typeof byId==='function')?byId('attendance',attExemptId):null;
+     if(!rec){attExemptId=null;closeModal();return;}
+     const reason=$('#att_exempt_reason')?String($('#att_exempt_reason').value||'').trim():'';
+     if(!reason){toast('دلیل موجه‌سازی را بنویسید','err');return;}
+     update('attendance',rec.id,{
+       excused:true,
+       justified_by:S.user.id,
+       justified_at:new Date().toISOString(),
+       note:reason});
+     /* اگر پیامِ معلقِ همین رکورد هنوز رفته نبوده، خاموش لغو می‌شود */
+     if(typeof notifyCancelIfFresh==='function'){
+       const opt=(S.user.role==='manager'||S.user.role==='superadmin')?{byManager:true}:undefined;
+       ['absence','late','exit'].forEach(k=>notifyCancelIfFresh(k,rec.id,null,opt));
+     }
+     attExemptId=null;
+     closeModal();
+     toast('رکورد موجه شد — ردپا با نام شما ماند','ok');
+     render();
+   },
    'att-all'(){const st=el.dataset.s,date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
      attDraftSetAll(cid,date,studentsOfClass(cid).map(s=>s.id),st);
@@ -733,6 +806,7 @@ document.addEventListener('click',e=>{
      if(cfg.enabled){
        if(cfg.kinds.absence)smsN+=d.newAbsent.length;
        if(cfg.kinds.late)smsN+=d.newLate.length;
+       if(cfg.kinds.exit)smsN+=d.newExit.length;
      }
      const smsNote=smsN
        ? '<div class="rev-sms">📨 برای '+fa(smsN)+' مورد پیامک ساخته می‌شود'
@@ -743,6 +817,7 @@ document.addEventListener('click',e=>{
      openModal(modalTpl('مرور نهایی — '+esc(byId('classes',cid).name)+' · '+jalali(date),
        line('❌','غایب',d.newAbsent,'b-red')
        +line('⏰','تأخیر',d.newLate,'b-amber')
+       +line('🚪','خروج از کلاس',d.newExit,'b-cyan')
        +(other?'<div class="rev-line"><span class="badge b-green">✅ حاضر / موجه '+fa(other)+'</span></div>':'')
        +'<div class="rev-total small muted">مجموع '+fa(d.changes.length)+' تغییر ثبت می‌شود.</div>'
        +smsNote,
@@ -764,7 +839,7 @@ document.addEventListener('click',e=>{
      batchWrites(()=>{
        d.changes.forEach(c=>{
          let recId=c.rec_id;
-         if(recId){update('attendance',recId,{status:c.to,class_id:cid});
+         if(recId){update('attendance',recId,Object.assign({status:c.to,class_id:cid},c.fields||{}));
            /* ⚠️ اصلاح درون پنجرهٔ مهلت: پیام معلقِ همین رکورد که
               خود این دبیر ساخته بود، خاموش لغو می‌شود. اگر پیام
               رفته باشد، گام ۵ (اصلاحیه) کارش را می‌کند. */
@@ -775,9 +850,10 @@ document.addEventListener('click',e=>{
              const opt=(role==='manager'||role==='superadmin')?{byManager:true}:undefined;
              notifyCancelIfFresh('absence',recId,null,opt);
              notifyCancelIfFresh('late',recId,null,opt);
+             notifyCancelIfFresh('exit',recId,null,opt);
            }}
-         else recId=insert('attendance',{school_id:school,class_id:cid,
-           student_id:c.student_id,date,status:c.to,note:null}).id;
+         else recId=insert('attendance',Object.assign({school_id:school,class_id:cid,
+           student_id:c.student_id,date,status:c.to,note:null},c.fields||{})).id;
          made.push({c,recId});
        });
      });
@@ -785,14 +861,15 @@ document.addEventListener('click',e=>{
      let sms=0,fix=0;
      if(typeof notifyRequest==='function'){
        made.forEach(({c,recId})=>{
-         if(c.to!=='absent'&&c.to!=='late')return;
+         if(c.to!=='absent'&&c.to!=='late'&&c.to!=='early_exit')return;
          /* ⚠️ اگر پیامی برای همین رکورد قبلاً ارسال شده، ساخت پیام
             تازه یعنی خانواده دو بار خبر یکسان می‌گیرد. آنجا کار
             اصلاحیه است نه پیام نو. */
          const already=(typeof notifyLastSent==='function')&&
-           (notifyLastSent('absence',recId)||notifyLastSent('late',recId));
+           (notifyLastSent('absence',recId)||notifyLastSent('late',recId)||notifyLastSent('exit',recId));
          if(already)return;
-         const q=notifyRequest({school_id:school,kind:c.to==='absent'?'absence':'late',
+         const kind=c.to==='absent'?'absence':(c.to==='late'?'late':'exit');
+         const q=notifyRequest({school_id:school,kind,
            student_id:c.student_id,class_id:cid,student_name:c.name,
            date_fa:jalali(date),source_ref:recId});
          if(q)sms++;
@@ -1480,6 +1557,8 @@ document.addEventListener('click',e=>{
            'خطای دبیر مستقیم به خانواده اطلاع داده می‌شود. با احتیاط روشن کنید.')
        + row('nf_abs', c.kinds.absence, 'پیامک غیبت', 'پرتکرارترین پیام.')
        + row('nf_late', c.kinds.late, 'پیامک تأخیر', '')
+       + row('nf_exit', c.kinds.exit, 'پیامک خروج زودهنگام از کلاس',
+           'رویدادِ ایمنی است — پیش‌فرض روشن است؛ با هر خروجِ ثبت‌شده، خانواده همان لحظه خبر می‌گیرد.')
        + row('nf_grade', c.kinds.grade, 'پیامک نمرهٔ پایین',
            'عدد نمره در پیامک نمی‌آید؛ فقط اطلاع کلی.')
        + row('nf_event', c.kinds.event, 'پیامک رویداد مدرسه', '')
@@ -1506,6 +1585,7 @@ document.addEventListener('click',e=>{
          dailyCap:     Math.max(1, Number(V('nf_cap'))   || 300),
          bulkWarn:     Math.max(1, Number(V('nf_bulk'))  || 50),
          kinds: { absence:$('#nf_abs').checked, late:$('#nf_late').checked,
+                  exit:$('#nf_exit').checked,
                   grade:$('#nf_grade').checked, event:$('#nf_event').checked,
                   daily:$('#nf_daily').checked,
                   bus_on:$('#nf_bus').checked, bus_off:$('#nf_bus').checked }

@@ -63,7 +63,7 @@ function allowedRoutes(role){
 function canRoute(route, role){
   role = role || (typeof activePersona === 'function' ? activePersona() : (S.user && S.user.role));
   if(!role) return false;
-  /* اصل (تصمیمِ کاربر ۲۰۶/۰۹/۵): سوپرادمین هیچ محدودیتی ندارد */
+  /* اصل (تصمیمِ کاربر ۲۰۲۶/۰۹/۰۵): سوپرادمین هیچ محدودیتی ندارد */
   if(role === 'superadmin') return true;
   return !!allowedRoutes(role)[route];
 }
@@ -187,6 +187,9 @@ var ACTION_ROLES = {
   'sd-save':        ['manager'],
   'sd-del':         ['manager'],
   'att-set':       ['teacher','manager'],
+  'att-time-save': ['teacher','manager'],
+  'att-exempt':    ['manager'],
+  'att-exempt-confirm': ['manager'],
   'att-review':    ['teacher','manager'],
   'att-commit':    ['teacher','manager'],
   'att-discard':   ['teacher','manager'],
@@ -324,7 +327,7 @@ function canAction(act, role){
   if(!allowed) return true;                 // اکشن‌های عمومی محدود نیستند
   role = role || (typeof activePersona === 'function' ? activePersona() : (S.user && S.user.role));
   /* در حالت جانشینی، نقشِ کاربرِ جانشین‌شده ملاک است (همان S.user) */
-  /* اصل (تصمیمِ کاربر ۲۰۶/۰۹/۵): سوپرادمین هیچ محدودیتی ندارد —
+  /* اصل (تصمیمِ کاربر ۲۰۲۶/۰۹/۰۵): سوپرادمین هیچ محدودیتی ندارد —
      جدولِ مجوزها هرگز او را نگه نمی‌دارد (مثل export-csv که فقط
      ['manager] بود و خروجیِ سوپرادمین را می‌بست). */
   if(role === 'superadmin') return true;
