@@ -461,6 +461,10 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 /* نمودار روند نمرات (دور ۴۳) */
 .trend-chart{height:150px}
 .trend-chart .col span{font-size:10px;color:var(--muted)}
+/* بند ۴.۹ (دور ۷۹): plot wrapper — the class-average tick and the bar
+   share the same zero line, so their % heights are directly comparable. */
+.trend-chart .col .plot{position:relative;width:100%;flex:1;min-height:0;display:flex;align-items:flex-end;justify-content:center}
+.trend-chart .avg-tick{position:absolute;left:0;right:0;height:0;border-top:2px dashed var(--amber);opacity:.9;pointer-events:none;z-index:2}
 .chips{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px 0}
 
 /* ───────── ابزارهای دبیر (دور ۴۴) ───────── */

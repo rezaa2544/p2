@@ -472,6 +472,10 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 /* نمودار روند نمرات (دور ۴۳) */
 .trend-chart{height:150px}
 .trend-chart .col span{font-size:10px;color:var(--muted)}
+/* بند ۴.۹ (دور ۷۹): plot wrapper — the class-average tick and the bar
+   share the same zero line, so their % heights are directly comparable. */
+.trend-chart .col .plot{position:relative;width:100%;flex:1;min-height:0;display:flex;align-items:flex-end;justify-content:center}
+.trend-chart .avg-tick{position:absolute;left:0;right:0;height:0;border-top:2px dashed var(--amber);opacity:.9;pointer-events:none;z-index:2}
 .chips{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px 0}
 
 /* ───────── ابزارهای دبیر (دور ۴۴) ───────── */
@@ -1858,14 +1862,19 @@ function classScoreContext(classId){
     var grp=groups[k];
     var ids=Object.create(null);
     classSubjectMembers(cls.id, grp.subject).forEach(function(u){ids[u.id]=true;});
-    var sum=0,n=0,students=Object.create(null);
+    var sum=0,sumN=0,n=0,students=Object.create(null);
     grp.rows.forEach(function(g){
       if(!ids[g.student_id]) return;
-      sum+=g.score;n++;students[g.student_id]=true;
+      sum+=g.score;
+      /* دور ۷۹ (بند ۴.۹): میانگینِ نرمال‌شدهٔ ۲۰ — برای هم‌سطح‌سازی
+         نمراتِ با max متفاوت در نمودارِ مقایسه‌ای */
+      var mx=Number(g.max_score)||20;
+      sumN+=Math.max(0,Math.min(20,(Number(g.score)/mx)*20));
+      n++;students[g.student_id]=true;
     });
     var cnt=Object.keys(students).length;
     if(cnt<2) return;
-    out[k]={avg:n?sum/n:0, n:n, students:cnt};
+    out[k]={avg:n?sum/n:0, avgNorm:n?sumN/n:0, n:n, students:cnt};
   });
   return out;
 }
@@ -4692,6 +4701,7 @@ function gradeTrendData(sid, subjectId){
       norm:  Math.max(0, Math.min(20, (Number(g.score) / max) * 20)),
       term:  g.term || '',
       type:  g.exam_type || '',
+      subjectId: g.subject_id,
       subject: (byId('subjects', g.subject_id) || {}).name || '—'
     };
   });
@@ -4747,15 +4757,33 @@ function gradeTrendCard(sid){
   }
 
   var avgAll = pts.reduce(function(s, p){ return s + p.norm; }, 0) / pts.length;
+  /* بند ۴.۹ (دور ۷۹): پوشِ میانگینِ کلاس روی نمودارِ روند.
+     منبع: classScoreContext (ناشناس؛ فقط عدد؛ حداقل ۲ دانش‌آموزِ عضو).
+     ارتفاعِ تیک با همان فرمولِ ستون (norm/20) است — داخلِ .plot تا
+     صفرِ هر دو یکی باشد. */
+  var tcls = (typeof classOf === 'function') ? classOf(sid) : null;
+  var tctx = (tcls && typeof classScoreContext === 'function') ? classScoreContext(tcls.id) : {};
+  var hasTick = false;
   var cols = pts.map(function(p){
     var h = (p.norm / 20) * 100;
     var color = p.norm >= 17 ? 'var(--green)' : (p.norm >= 12 ? 'var(--primary)' : 'var(--red)');
     var when = p.at ? jalali(String(p.at).slice(0, 10)) : '—';
     var tip = p.subject + ' • ' + p.type + ' • ' + fa(p.score) + ' از ' + fa(p.max) + ' • ' + when;
+    var cAvg = (tctx[p.subjectId + '|' + p.term + '|' + p.type] || {}).avgNorm;
+    var tick = '';
+    if (typeof cAvg === 'number' && isFinite(cAvg)) {
+      hasTick = true;
+      tip += ' • میانگین کلاس: ' + fa(cAvg.toFixed(2));
+      tick = '<b class="avg-tick" style="bottom:' + ((cAvg / 20) * 100).toFixed(1) + '%"></b>';
+    }
     return '<div class="col" title="' + escAttr(tip) + '">'
-      + '<i style="height:' + h + '%;background:' + color + '"></i>'
+      + '<div class="plot">' + tick
+      + '<i style="height:' + h + '%;background:' + color + '"></i></div>'
       + '<span>' + esc(faD(String(p.score))) + '</span></div>';
   }).join('');
+  var tickLegend = hasTick
+    ? '<span><b style="color:var(--amber)">- -</b> میانگین کلاس (حداقل ۲ هم‌کلاسیِ دارایِ همان نمره)</span>'
+    : '';
 
   return '<div class="card"><div class="card-head"><h3>📈 روند نمرات در طول سال</h3>'
     + badge + '</div>'
@@ -4764,6 +4792,7 @@ function gradeTrendCard(sid){
     + '<div class="chart trend-chart">' + cols + '</div>'
     + '<div class="row small muted" style="margin-top:10px;line-height:2">'
     +   '<span>میانگین: <b>' + fa(avgAll.toFixed(2)) + '</b> از ۲۰</span>'
+    +   tickLegend
     +   '<span>تعداد نمره: <b>' + fa(pts.length) + '</b></span>'
     +   '<span>ترتیب بر پایهٔ تاریخ ثبت</span>'
     + '</div></div></div>';

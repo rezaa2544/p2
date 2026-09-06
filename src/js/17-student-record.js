@@ -364,6 +364,7 @@ function gradeTrendData(sid, subjectId){
       norm:  Math.max(0, Math.min(20, (Number(g.score) / max) * 20)),
       term:  g.term || '',
       type:  g.exam_type || '',
+      subjectId: g.subject_id,
       subject: (byId('subjects', g.subject_id) || {}).name || '—'
     };
   });
@@ -419,15 +420,33 @@ function gradeTrendCard(sid){
   }
 
   var avgAll = pts.reduce(function(s, p){ return s + p.norm; }, 0) / pts.length;
+  /* بند ۴.۹ (دور ۷۹): پوشِ میانگینِ کلاس روی نمودارِ روند.
+     منبع: classScoreContext (ناشناس؛ فقط عدد؛ حداقل ۲ دانش‌آموزِ عضو).
+     ارتفاعِ تیک با همان فرمولِ ستون (norm/20) است — داخلِ .plot تا
+     صفرِ هر دو یکی باشد. */
+  var tcls = (typeof classOf === 'function') ? classOf(sid) : null;
+  var tctx = (tcls && typeof classScoreContext === 'function') ? classScoreContext(tcls.id) : {};
+  var hasTick = false;
   var cols = pts.map(function(p){
     var h = (p.norm / 20) * 100;
     var color = p.norm >= 17 ? 'var(--green)' : (p.norm >= 12 ? 'var(--primary)' : 'var(--red)');
     var when = p.at ? jalali(String(p.at).slice(0, 10)) : '—';
     var tip = p.subject + ' • ' + p.type + ' • ' + fa(p.score) + ' از ' + fa(p.max) + ' • ' + when;
+    var cAvg = (tctx[p.subjectId + '|' + p.term + '|' + p.type] || {}).avgNorm;
+    var tick = '';
+    if (typeof cAvg === 'number' && isFinite(cAvg)) {
+      hasTick = true;
+      tip += ' • میانگین کلاس: ' + fa(cAvg.toFixed(2));
+      tick = '<b class="avg-tick" style="bottom:' + ((cAvg / 20) * 100).toFixed(1) + '%"></b>';
+    }
     return '<div class="col" title="' + escAttr(tip) + '">'
-      + '<i style="height:' + h + '%;background:' + color + '"></i>'
+      + '<div class="plot">' + tick
+      + '<i style="height:' + h + '%;background:' + color + '"></i></div>'
       + '<span>' + esc(faD(String(p.score))) + '</span></div>';
   }).join('');
+  var tickLegend = hasTick
+    ? '<span><b style="color:var(--amber)">- -</b> میانگین کلاس (حداقل ۲ هم‌کلاسیِ دارایِ همان نمره)</span>'
+    : '';
 
   return '<div class="card"><div class="card-head"><h3>📈 روند نمرات در طول سال</h3>'
     + badge + '</div>'
@@ -436,6 +455,7 @@ function gradeTrendCard(sid){
     + '<div class="chart trend-chart">' + cols + '</div>'
     + '<div class="row small muted" style="margin-top:10px;line-height:2">'
     +   '<span>میانگین: <b>' + fa(avgAll.toFixed(2)) + '</b> از ۲۰</span>'
+    +   tickLegend
     +   '<span>تعداد نمره: <b>' + fa(pts.length) + '</b></span>'
     +   '<span>ترتیب بر پایهٔ تاریخ ثبت</span>'
     + '</div></div></div>';
