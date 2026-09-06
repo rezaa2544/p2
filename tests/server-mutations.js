@@ -16,6 +16,7 @@
      M10 پرچمِ Secure در کوکی (تست: tests/server4.js)
      M11 گاردِ بدنِ پاسخ در تیکِ سروری (تست: tests/server5.js)
      M12 اولویتِ overlayِ حضور (تست: tests/server5.js)
+     M13 گاردِ روزِ غیرحضوریِ سرور (تست: tests/server6.js)
    هر جهش: جایگزینی، build، اجرای تستِ مربوطه، بررسیِ شکست، بازگشت.
    ───────────────────────────────────────────────────────────── */
 const { execSync } = require('child_process');
@@ -105,6 +106,13 @@ const MUTS = [
     mut: "      if(false) attMap[r.studentId] = (r.att == null ? null : r.att);",
     name: 'M12 overlayِ حضورِ سرور بی‌اثر شد (att محلی می‌ماند)',
     expectFail: 'C1c'
+  },
+  {
+    file: 'server/sync.js', suite: 'tests/server6.js', heap: 1500,
+    bad: "      const vd = virtualDayViolation(op, store);",
+    mut: "      const vd = null;",
+    name: 'M13 گاردِ روزِ غیرحضوریِ سرور خاموش شد',
+    expectFail: 'V1a'
   }
 ];
 
