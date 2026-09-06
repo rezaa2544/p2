@@ -67,7 +67,8 @@ function viewRecord(sid){
     + ((typeof certsCard==='function')?certsCard(sid):'')
     + ((typeof yearHistoryCard==='function')?yearHistoryCard(sid):'')
     + ((typeof teacherNotesCard==='function')?teacherNotesCard(sid):'')
-    + ((typeof iepCard==='function')?iepCard(sid):'');
+    + ((typeof iepCard==='function')?iepCard(sid):'')
+    + ((typeof scholarshipBadge==='function')?scholarshipBadge(sid):'');
   /* نوار گواهی نمرات (بند ۱.۶): فقط وقتی نمره‌ای هست، بالای تب کارنامه */
   const certBar=(function(){
     if(S.tab!=='grades')return '';

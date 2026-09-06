@@ -144,6 +144,7 @@ function _renderRouteInner(){
        می‌کنند؛ دانش‌آموز خودش همیشه پروندهٔ خودش را می‌بیند. */
     case 'record':return viewRecord(recordTargetId());
     case 'preapps':return viewPreapps();
+    case 'scholarships':return viewScholarships();
     case 'children':return viewChildren();
     case 'notifications':return viewNotifications();
     case 'leaves':return viewLeaves();

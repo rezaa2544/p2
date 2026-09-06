@@ -1934,7 +1934,21 @@ document.addEventListener('click',e=>{
      update('preapps',r.id,{stage:PREAPP_STAGES[i+1][0],stage_at:todayISO()});
      toast('مرحله تازه: '+PREAPP_STAGES[i+1][1],'ok');render();},
    'preapp-del'(){confirmModal('حذف این پیش‌ثبت‌نام؟','preapp-del-ok',id);},
-   'preapp-del-ok'(){remove('preapps',window._delId);closeModal();toast('حذف شد','ok');render();},
+   'preapp-del-ok'(){remove('preapps',window._delId);closeModal();toast('حذف شد','ok');render();},   /* ─────────────── بند ۲.۴: کمک‌هزینه و بورسیه ─────────────── */
+   'scholar-new'(){scholarshipModal();},
+   'scholar-save'(){const sid=Number(document.getElementById('sc_student').value);const u=byId('users',sid);
+     if(!u){toast('دانش‌آموز انتخاب نشد','err');return;}
+     insert('scholarships',{school_id:S.user.school_id,student_id:sid,status:'requested',note:V('sc_note'),created_at:todayISO(),updated_at:todayISO()});
+     closeModal();toast('درخواستِ کمک‌هزینه ثبت شد','ok');render();},
+   'scholar-set'(){const r=byId('scholarships',id);if(!r)return;
+     const to=(el&&el.dataset)?el.dataset.to:null;
+     const allowed=(SCHOLAR_NEXT[r.status]||[]).some(function(n){return n[0]===to;});
+     if(!to||!allowed){toast('این جابه‌جایی مجاز نیست','err');return;}
+     update('scholarships',r.id,{status:to,updated_at:todayISO()});
+     const lbl=(SCHOLAR_STATUSES.find(function(x){return x[0]===to;})||['','؟'])[1];
+     toast('وضعیت تازه: '+lbl,'ok');render();},
+   'scholar-del'(){confirmModal('حذف رکوردِ کمک‌هزینه؟','scholar-del-ok',id);},
+   'scholar-del-ok'(){remove('scholarships',window._delId);closeModal();toast('حذف شد','ok');render();},
    'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk
