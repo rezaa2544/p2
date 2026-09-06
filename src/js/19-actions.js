@@ -723,12 +723,40 @@ document.addEventListener('click',e=>{
    },
    'att-set'(){const st=el.dataset.s;const date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
-     /* بند 15.1: وضعیت‌های زمان‌دار ساعت می‌خواهند — مودال زمان */
-     if(st==='late'||st==='early_exit'){
+     const _who=byId('users',id);
+     /* دور ۷۵: «خروج از کلاس» تایمرِ رفت‌وبرگشتی است — نه مودالِ ساعت.
+        ضربهٔ نخست: شروعِ تایمر (لحظهٔ خروج). ضربهٔ دوم: توقف +
+        ثبتِ دقیقهٔ سپری‌شده (خروج تا بازگشت) در پیش‌نویس. */
+     if(st==='early_exit'){
+       const _tm=(typeof attTimersGet==='function')?attTimersGet(cid,date):{};
+       if(_tm[id]){
+         const r=(typeof attTimerStop==='function')?attTimerStop(cid,date,id):null;
+         if(r) toast('خروج از کلاس ثبت شد — '+esc(_who?_who.full_name:'')+' : '+fa(r.minutes)+' دقیقه ('+timeFa(r.exit_at)+' تا '+timeFa(r.exit_return_at)+') — «مرور و ثبت نهایی» را بزنید','ok');
+         else  toast('تایمرِ خروج بسته شد','err');
+       } else {
+         (typeof attTimerStart==='function')?attTimerStart(cid,date,id):null;
+         toast('تایمرِ «خروج از کلاس» برای '+esc(_who?_who.full_name:'')+' شروع شد — هنگامِ برگشت، همین گزینه را دوباره بزنید','ok');
+       }
+       render();
+       return;
+     }
+     /* دور ۷۵: غیبتِ موجود + زدنِ «تأخیر» ⇒ تبدیلِ خودکار از
+        زمانِ حاضر و غیاب‌زدن (taken_at) تا حالا — بدون مودال */
+     if(st==='late'){
+       const auto=(typeof attAutoLate==='function')?attAutoLate(cid,date,id):null;
+       if(auto&&auto.converted){
+         attDraftSet(cid,date,id,'late',auto.fields);
+         toast('غیبت به «تأخیر» تبدیل شد — '+fa(auto.minutes)+' دقیقه (از ساعتِ '+auto.taken_label+') — «مرور و ثبت نهایی» را بزنید','ok');
+         render();
+         return;
+       }
+     }
+     /* بند 15.1: تأخیرِ بدونِ غیبتِ ازپیش، ساعت می‌خواهد — مودال زمان */
+     if(st==='late'){
        const school=byId('classes',cid).school_id;
        const cur=(function(){
          const row=(db.attendance||[]).find(a=>a.student_id===id&&a.date===date);
-         const t=(st==='late'&&row&&row.late_at)||(st==='early_exit'&&row&&row.exit_at);
+         const t=st==='late'&&row&&row.late_at;
          const n=new Date();
         return t||((n.getHours()<10?'0':'')+n.getHours()+':'+(n.getMinutes()<10?'0':'')+n.getMinutes());
        })();
@@ -737,11 +765,11 @@ document.addEventListener('click',e=>{
          ?(typeof timeFa==='function'?timeFa(minToTime(span.firstFrom)):minToTime(span.firstFrom))
          :null;
        attTimePending={cid,date,studentId:id,st};
-       openModal(modalTpl(st==='late'?'تأخیر با زمان':'خروج از کلاس — با زمان',
+       openModal(modalTpl('تأخیر با زمان',
          f('ساعت',`<input class="input" id="att_time" type="time" value="${escAttr(cur)}" />`)
-         +(hint?`<div class="small muted" style="margin-top:8px">شروع مدرسه: ${hint}`+(st==='early_exit'?' · پایان: '+(typeof timeFa==='function'?timeFa(minToTime(span.lastTo)):minToTime(span.lastTo)):'')+'</div>':'')
-         +'<div class="small muted" style="margin-top:8px">میزان '+(st==='late'?'تأخیر':'خروج')+' بر پایهٔ زمان‌بندی زنگِ مدرسه محاسبه می‌شود.</div>',
-         'att-time-save',false,'ثبت'));
+         +(hint?`<div class="small muted" style="margin-top:8px">شروع مدرسه: ${hint}</div>`:'')
+         +'<div class="small muted" style="margin-top:8px">میزانِ تأخیر بر پایهٔ زمان‌بندی زنگِ مدرسه محاسبه می‌شود.</div>',
+         'att-time-save',false,'ثبت'))
        return;
      }
      attDraftSet(cid,date,id,st);
@@ -846,7 +874,7 @@ document.addEventListener('click',e=>{
      const date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
      askConfirm('تغییرات ثبت‌نشدهٔ این کلاس دور ریخته شود؟',()=>{
-       attDraftClear(cid,date);toast('پیش‌نویس پاک شد','ok');render();
+       attDraftClearKeepTimers(cid,date);toast('پیش‌نویس پاک شد','ok');render();
      },{title:'دور ریختن پیش‌نویس',ok:'دور بریز'});},
    /* صفحهٔ مرور نهایی: خلاصهٔ تغییرات پیش از نوشتن در پایگاه داده */
    'att-review'(){
@@ -899,7 +927,12 @@ document.addEventListener('click',e=>{
      batchWrites(()=>{
        d.changes.forEach(c=>{
          let recId=c.rec_id;
-         if(recId){update('attendance',recId,Object.assign({status:c.to,class_id:cid},c.fields||{}));
+         if(recId){const _old=byId('attendance',recId);
+           /* دور ۷۵: taken_at = زمانِ حاضر و غیاب‌زدن — مبنایِ دقیقهٔ
+              تبدیلِ خودکارِ غیبت به تأخیر. روی رکوردِ قدیمی باقی
+              می‌ماند؛ فقط اگر نباشد، پر می‌شود. */
+           update('attendance',recId,Object.assign({status:c.to,class_id:cid},
+             c.fields||{}, _old&&_old.taken_at?{taken_at:_old.taken_at}:{taken_at:new Date().toISOString()}));
            /* ⚠️ اصلاح درون پنجرهٔ مهلت: پیام معلقِ همین رکورد که
               خود این دبیر ساخته بود، خاموش لغو می‌شود. اگر پیام
               رفته باشد، گام ۵ (اصلاحیه) کارش را می‌کند. */
@@ -913,7 +946,8 @@ document.addEventListener('click',e=>{
              notifyCancelIfFresh('exit',recId,null,opt);
            }}
          else recId=insert('attendance',Object.assign({school_id:school,class_id:cid,
-           student_id:c.student_id,date,status:c.to,note:null},c.fields||{})).id;
+           student_id:c.student_id,date,status:c.to,note:null,
+           taken_at:new Date().toISOString()},c.fields||{})).id;
          made.push({c,recId});
        });
      });
@@ -953,7 +987,7 @@ document.addEventListener('click',e=>{
          fix=r.created;
        }
      }
-     attDraftClear(cid,date);
+     attDraftClearKeepTimers(cid,date);
      closeModal();
      toast(fa(d.changes.length)+' تغییر ثبت شد'
        +(sms?' — '+fa(sms)+' پیامک ساخته شد':'')

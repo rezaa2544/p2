@@ -118,48 +118,69 @@ async function main() {
     assert(Object.keys(r.fb).length === 0, 'ساعتِ نامعتبر نباید فیلد بسازد');
   });
 
-  /* ── ۲) رابطِ دبیر: خروج + مودالِ زمان ────────────────────── */
-  test('T2 رابط: دکمهٔ خروج + مودالِ ساعت (دبیر)', () => {
+  /* ── ۲) رابطِ دبیر: خروج از کلاس = تایمر (دور ۷۵) ─────────── */
+  test('T2 رابط: دکمهٔ «خروج از کلاس» + تایمر (دبیر)', () => {
     W(`(function(){
       S.user=byId('users',${ctx.teacher});S.persona=null;S.boss=null;
       S.filters={class:${ctx.cls},date:todayISO()};S.route='attendance';render();
     })()`);
     const n = W(`document.querySelectorAll('[data-act="att-set"][data-s="early_exit"]').length`);
-    assert(n >= 2, 'دکمهٔ «خروج» در جدول نیست (تعداد: ' + n + ')');
-    const hasExempt = W(`document.querySelectorAll('[data-act="att-exempt"]').length`);
-    assert(hasExempt === 0, 'دبیر نباید دکمهٔ موجه‌سازی ببیند');
+    assert(n >= 2, 'دکمهٔ «خروج از کلاس» در جدول نیست (تعداد: ' + n + ')');
+    const label = W(`document.querySelector('[data-act="att-set"][data-s="early_exit"]').textContent`);
+    assert(label.indexOf('خروج از کلاس') > -1, 'برچسبِ دکمه «خروج از کلاس» نیست: ' + label);
 
-    /* کلیکِ واقعی روی دکمهٔ خروجِ نخستین دانش‌آموز */
-    stId = Number(W(`document.querySelector('[data-act="att-set"][data-s="early_exit"]').dataset.id`));
-    W(`(function(){
-      document.querySelector('[data-act="att-set"][data-s="early_exit"]').click();
-    })()`);
-    const modal = W(`(function(){
+    /* دانش‌آموزی که امروز رکوردی ندارد (تایمر روی رکوردِ قدینی نشیند) */
+    stId = Number(W(`(function(){
+      var studs=db.enrollments.filter(function(e){return e.class_id===${ctx.cls};})
+        .map(function(e){return byId('users',e.student_id);});
+      var c=studs.find(function(x){
+        return !(db.attendance||[]).some(function(a){
+          return a.student_id===x.id&&a.date===todayISO();});});
+      return c?c.id:studs[0].id;
+    })()`));
+    const stSel='[data-act="att-set"][data-id="'+stId+'"][data-s="early_exit"]';
+    W(`document.querySelector('${stSel}').click()`);
+    const after1 = W(`(function(){
       var t=document.getElementById('att_time');
-      return t ? {id:t.id, value:t.value, hasSave:!!document.querySelector('[data-act="att-time-save"]')} : null;
+      var m=attTimersGet(${ctx.cls},todayISO());
+      var el=document.querySelector('[data-att-timer]');
+      var mk=attDraftGet(${ctx.cls},todayISO());
+      return {modal:!!t, timer:m[${stId}]||null, badge:!!el, mark:mk[${stId}]||null};
     })()`);
-    assert(modal, 'مودالِ ساعت باز نشد');
-    assert(/^\d{2}:\d{2}$/.test(modal.value), 'ساعتِ پیش‌فرضِ مودال درست نیست (' + modal.value + ')');
+    assert(!after1.modal, 'مودالِ ساعت نباید باز شود (دور ۷۵: تایمر است)');
+    assert(after1.timer, 'شروعِ تایمر در پیش‌نویس نیست');
+    assert(after1.badge, 'نشانِ زندهٔ تایمر در جدول نیست');
+    assert(!after1.mark, 'پیش از توقف، وضعیت نباید علامت بخورد (' + after1.mark + ')');
 
-    /* ساعت بگذار و ثبت کن */
+    /* ضربهٔ دوم باید «توقف» را نشان دهد */
+    const stopLabel = W(`document.querySelector('${stSel}').textContent`);
+    assert(stopLabel.indexOf('توقف') > -1, 'ضربهٔ دوم «توقف» نشان نمی‌دهد: ' + stopLabel);
+
+    /* تایمر را ۶۵ دقیقه عقب بفرست و ضربهٔ دوم: توقف + ثبت */
     W(`(function(){
-      document.getElementById('att_time').value='10:15';
-      document.querySelector('[data-act="att-time-save"]').click();
+      var all=attDraftAll(); var k=attDraftKey(${ctx.cls},todayISO());
+      all[k].timers[${stId}]=new Date(Date.now()-65*60000).toISOString();
+      Store.setJSON('sms_att_draft_v1',all);
     })()`);
-    assert(stId, 'شناسهٔ دانش‌آموزِ کلیک‌شده گرفته نشد');
+    W(`document.querySelector('${stSel}').click()`);
     const dr = W(`(function(){
       var m=attDraftGet(${ctx.cls},todayISO());
       var f=attDraftFields(${ctx.cls},todayISO());
-      return {mark:m[${stId}], fields:f[${stId}],
-              expExit:attExitMinutes(${ctx.sid},todayISO(),'10:15')};
+      var t=attTimersGet(${ctx.cls},todayISO());
+      return {mark:m[${stId}], fields:f[${stId}]||null, stillRunning:!!t[${stId}]};
     })()`);
-    assert(dr.mark === 'early_exit', 'پیش‌نویسِ خروج ثبت نشد (' + dr.mark + ')');
-    assert(dr.fields && dr.fields.exit_at === '10:15', 'فیلدِ ساعت در پیش‌نویس نیست');
-    assert(dr.fields && dr.fields.exit_minutes === dr.expExit,
-      'دقیقهٔ خروج در پیش‌نویس درست نیست');
+    assert(dr.mark === 'early_exit', 'پس از توقف، پیش‌نویسِ خروج ثبت نشد (' + dr.mark + ')');
+    assert(dr.fields && dr.fields.exit_minutes === 65,
+      'دقیقهٔ سپری‌شده درست نیست (گرفت: ' + (dr.fields&&dr.fields.exit_minutes) + ' انتظار: 65)');
+    assert(dr.fields && /^\d{2}:\d{2}$/.test(dr.fields.exit_at) &&
+           /^\d{2}:\d{2}$/.test(dr.fields.exit_return_at),
+      'ساعت‌های خروج/بازگشت ثبت نشدند');
+    assert(dr.fields && dr.fields.note && dr.fields.note.indexOf('خروج از کلاس') > -1,
+      'توضیحِ خروج در پیش‌نویس نیست');
+    assert(!dr.stillRunning, 'تایمر پس از توقف هنوز فعال است');
   });
 
-  /* ── ۳) مرور و ثبت نهایی: فیلدها در رکورد + پیامک خروج ──── */
+
   test('T3 ثبت نهایی: فیلدها در رکورد واقعاً نوشته می‌شوند + پیامک', () => {
     /* اطلاع‌رسانی مدرسه روشن می‌شود تا مسیرِ پیامک هم سنجیده شود */
     W(`(function(){
@@ -195,9 +216,12 @@ async function main() {
     })()`);
     assert(rec, 'رکوردِ حضور ساخته نشد');
     assert(rec.status === 'early_exit', 'وضعیتِ رکورد درست نیست (' + rec.status + ')');
-    assert(rec.exit_at === '10:15', 'ساعتِ خروج در رکوردِ ثبت‌شده نیست');
-    assert(typeof rec.exit_minutes === 'number' && rec.exit_minutes > 0,
-      'دقیقهٔ خروج در رکوردِ ثبت‌شده نیست');
+    assert(rec.exit_at && /^\d{2}:\d{2}$/.test(rec.exit_at), 'ساعتِ خروج در رکوردِ ثبت‌شده نیست');
+    assert(rec.exit_return_at && /^\d{2}:\d{2}$/.test(rec.exit_return_at),
+      'ساعتِ بازگشت (تایمر) در رکوردِ ثبت‌شده نیست');
+    assert(rec.exit_minutes === 65, 'دقیقهٔ سپری‌شدهٔ تایمر در رکورد درست نیست (گرفت: ' + rec.exit_minutes + ')');
+    assert(rec.taken_at, 'taken_at (زمانِ حاضر و غیاب‌زدن) در رکوردِ تازه نیست');
+    assert(rec.note && rec.note.indexOf('خروج از کلاس') > -1, 'توضیحِ تایمر در رکورد نیست');
     const afterQ = W(`(function(){
       return (db.notify_queue||[]).filter(function(q){
         return q.kind==='exit' && q.student_id===${stId} && q.source_ref===${rec.id};}).length;

@@ -185,6 +185,9 @@ function generate(){
           const sv=(st.id*31+iso.charCodeAt(iso.length-1)*7+iso.charCodeAt(iso.length-2)*13)%97;
           if(s==='late'){rec.late_at='08:'+String(10+sv%45).padStart(2,'0');rec.late_minutes=15+sv%40;}
           if(s==='early_exit'){rec.exit_at='11:'+String(30+((sv>>2)%25)).padStart(2,'0');rec.exit_minutes=40+((sv>>3)%60);}
+          /* دور ۷۵: لحظهٔ حاضر و غیاب‌زدن (مبنایِ تبدیلِ خودکارِ غیبت به
+             تأخیر) — از همان هاشِ قطعی، بدونِ مصرفِ rng() */
+          rec.taken_at=iso+'T07:'+String(50+(sv%10)).padStart(2,'0')+':00';
           add('attendance',rec);});
         chosen.forEach(s=>{const t=teachers.find(x=>x.subject_id===s.id)||teachers[0];const base=11+rng()*8;
           [['نوبت اول','کلاسی'],['نوبت اول','پایان‌ترم'],['نوبت دوم','میان‌ترم']].forEach(tt=>{

@@ -931,6 +931,63 @@ function attExitMinutes(schoolId, dateISO, timeStr){
   return Math.max(0, span.lastTo - m);
 }
 
+/**
+ * تبدیلِ خودکارِ غیبت به تأخیر (دور ۷۵).
+ *
+ * وقتی دانش‌آموزی **غایب** خورده (ثبت‌شده یا در پیش‌نویس) و بعداً
+ * وارد کلاس می‌شود، دبیر با زدنِ «تأخیر» دیگر مودالِ ساعت نمی‌بیند:
+ * غیبت به تأخیر تبدیل می‌شود و دقیقه، از **زمانِ حاضر و غیاب‌زدن**
+ * (taken_at روی رکورد) تا لحظهٔ تبدیل سنجیده می‌شود.
+ *
+ * ⚠️ فقط وقتی وضعیتِ مؤثر «absent» است. در غیر این صورت
+ * (حاضر/تأخیر/ثبت‌نشده) مسیرِ قدیمی — مودالِ ساعت — پیش می‌رود.
+ * ⚠️ رکوردهایِ کهنهٔ بدونِ taken_at: مبنایِ محاسبه، شروعِ
+ * روزِ مدرسه از برنامهٔ زنگ است (attDaySpan).
+ *
+ * برمی‌گرداند: {converted:false,reason} یا
+ *              {converted:true,minutes,taken_label,fields}
+ */
+function attAutoLate(cid, date, studentId){
+  studentId = Number(studentId);
+  var marks = attDraftGet(cid, date);
+  var rec = (db.attendance || []).find(function(a){
+    return a.student_id === studentId && a.date === date;
+  }) || null;
+  var cur = marks[studentId] || (rec ? rec.status : null);
+  if(cur !== 'absent') return { converted: false, reason: 'no-absent' };
+
+  var school = (rec && rec.school_id)
+    ? rec.school_id
+    : ((byId('classes', cid) || {}).school_id || null);
+  var now = Date.now();
+  var taken = (rec && rec.taken_at) ? Date.parse(rec.taken_at) : null;
+  var tFa = (typeof timeFa === 'function') ? timeFa : function(x){ return x; };
+  if(isNaN(taken) || !taken || taken > now){
+    /* بدونِ taken_at (یا خراب) ⇒ مبنایِ روز از برنامهٔ زنگ */
+    var span = attDaySpan(school, date);
+    if(span && span.firstFrom != null){
+      var base = new Date(String(date) + 'T12:00:00');
+      base.setHours(Math.floor(span.firstFrom / 60), span.firstFrom % 60, 0, 0);
+      taken = base.getTime();
+    } else {
+      taken = now;
+    }
+  }
+  var minutes = Math.max(0, Math.floor((now - taken) / 60000));
+  var t = attHHMM(now);
+  return {
+    converted:   true,
+    minutes:     minutes,
+    taken_at:    taken,
+    taken_label: tFa(attHHMM(taken)),
+    fields: {
+      late_at: t,
+      late_minutes: minutes,
+      note: 'تأخیر: ' + fa(minutes) + ' دقیقه (از ساعت ' + tFa(attHHMM(taken)) + ')'
+    }
+  };
+}
+
 /** فیلدهای زمان‌دار از ساعتِ انتخابی؛ زمانِ نامعتبر = فیلدِ خالی */
 function attTimeFields(schoolId, dateISO, status, timeStr){
   var f = {};
@@ -946,11 +1003,181 @@ function attTimeFields(schoolId, dateISO, status, timeStr){
   return f;
 }
 
+/* ─────────── دور ۷۵: تایمرِ «خروج از کلاس» ───────────
+   دکمهٔ «خروج از کلاس» رفت‌وبرگشتی است:
+   زده شود  ⇒ تایمر شروع می‌شود (لحظهٔ خروج، در پیش‌نویس)؛
+   دوباره زده شود ⇒ تایمر توقف می‌کند و مدتِ سپری‌شده
+   (دقیقهٔ خروج تا بازگشت) در پیش‌نویس ثبت می‌شود و با
+   «مرور و ثبت نهایی» وارد رکورد، پرونده و گزارش‌ها می‌شود.
+
+   ⚠️ شروعِ تایمر در پیش‌نویس (Store) است نه فقط حافظهٔ صفحه:
+   تعویضِ کلاس/مرورگر آن را گم نمی‌کند (همان قاعدهٔ بخش ۱۰).
+   ⚠️ تایمر «رکورد» نیست — پیش از «ثبت نهایی» وضعیت در پایگاه
+   داده نمی‌نشیند (همان قاعدهٔ پیش‌نویسِ دور ۴۲).
+   ⚠️ معنای exit_minutes برای خروجِ تایمری = مدتِ غیبت
+   (خروج تا بازگشت)؛ خروج‌هایِ دستیِ قدیمی = تا پایانِ مدرسه.
+   ─────────────────────────────────────────────────────── */
+
+/** ساعتِ محلیِ «HH:MM» از یک زمانِ میلی‌ثانیه‌ای */
+function attHHMM(ms){
+  var d = new Date(ms);
+  var h = d.getHours(), m = d.getMinutes();
+  return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+}
+
+/** تایمرهایِ فعالِ یک کلاس و روز: نگاشت student_id → ISOِ شروع */
+function attTimersGet(cid, date){
+  var all = attDraftAll();
+  var d = all[attDraftKey(cid, date)];
+  return (d && d.timers) ? d.timers : {};
+}
+
+/** همهٔ تایمرهایِ فعال (هر کلاسی) — برای شمارندهٔ نوار و تیک */
+function attAllTimers(){
+  var out = {};
+  var all = attDraftAll();
+  Object.keys(all).forEach(function(k){
+    var t = all[k] && all[k].timers;
+    if(!t) return;
+    Object.keys(t).forEach(function(sid){ out[k + '|' + sid] = t[sid]; });
+  });
+  return out;
+}
+
+/** شروعِ تایمرِ خروج. اگه قبلاً فعال است، null برمی‌گرداند */
+function attTimerStart(cid, date, studentId){
+  var all = attDraftAll();
+  var k = attDraftKey(cid, date);
+  var d = all[k] || { marks: {}, fields: {}, at: new Date().toISOString() };
+  if(!d.timers) d.timers = {};
+  if(d.timers[studentId]) return null;               /* از پیش فعال */
+  d.timers[studentId] = new Date().toISOString();
+  d.at = new Date().toISOString();
+  all[k] = d;
+  Store.setJSON(ATT_DRAFT_KEY, all);
+  attTickSync();
+  return d.timers[studentId];
+}
+
+/**
+ * توقفِ تایمر و ثبتِ خروج در پیش‌نویس.
+ * برمی‌گرداند {startIso, endIso, minutes, exit_at, exit_return_at}
+ * یا null اگر تایمری فعال نباشد.
+ */
+function attTimerStop(cid, date, studentId){
+  var all = attDraftAll();
+  var k = attDraftKey(cid, date);
+  var d = all[k];
+  var start = (d && d.timers) ? d.timers[studentId] : null;
+  if(!start) return null;
+  var s = Date.parse(start), now = Date.now();
+  if(isNaN(s) || s > now){
+    /* دادهٔ خراب (ساعتِ آینده): تایمر را بی‌صدا دور بریز */
+    delete d.timers[studentId];
+    Store.setJSON(ATT_DRAFT_KEY, all);
+    attTickSync();
+    return null;
+  }
+  var minutes = Math.max(0, Math.floor((now - s) / 60000));
+  var tFa = (typeof timeFa === 'function') ? timeFa : function(x){ return x; };
+  var fields = {
+    exit_at:        attHHMM(s),
+    exit_return_at: attHHMM(now),
+    exit_minutes:   minutes,
+    note: 'خروج از کلاس: ' + tFa(attHHMM(s)) + ' تا ' + tFa(attHHMM(now)) +
+         ' (' + fa(minutes) + ' دقیقه)'
+  };
+  d.marks[studentId] = 'early_exit';
+  if(!d.fields) d.fields = {};
+  d.fields[studentId] = fields;
+  delete d.timers[studentId];
+  d.at = new Date().toISOString();
+  all[k] = d;
+  Store.setJSON(ATT_DRAFT_KEY, all);
+  attTickSync();
+  return { startIso: start, endIso: new Date(now).toISOString(),
+           minutes: minutes, exit_at: fields.exit_at,
+           exit_return_at: fields.exit_return_at };
+}
+
+/** تعدادِ تایمرهایِ فعال (همهٔ کلاس‌ها) */
+function attTimerCount(){
+  return Object.keys(attAllTimers()).length;
+}
+
+/** قالبِ «H:MM:SS» فارسی برای نمایشِ زندهٔ تایمر */
+function attTimerHMS(ms){
+  var sec = Math.max(0, Math.floor(ms / 1000));
+  var h = Math.floor(sec / 3600);
+  var m = Math.floor((sec % 3600) / 60);
+  var s2 = sec % 60;
+  return fa(h) + ':' + fa(m < 10 ? '0' + m : m) + ':' + fa(s2 < 10 ? '0' + s2 : s2);
+}
+
+/**
+ * رنگ‌آمیزیِ زندهٔ نشان‌هایِ تایمر در DOM.
+ * هر نشان `data-att-timer` و `data-att-start` (ISO) دارد؛ متنش
+ * هر ثانیه با مدتِ سپری‌شده به‌روز می‌شود.
+ */
+function attTimerPaint(){
+  if(typeof document === 'undefined') return;
+  var els = document.querySelectorAll('[data-att-timer]');
+  for(var i = 0; i < els.length; i++){
+    var el = els[i];
+    var start = Date.parse(el.getAttribute('data-att-start'));
+    if(isNaN(start)) continue;
+    var ms = Date.now() - start;
+    el.textContent = '🚪 خروج از کلاس — ⏱ ' + attTimerHMS(ms) +
+                     ' (' + fa(Math.floor(ms / 60000)) + ' دقیقه)';
+  }
+}
+
+/**
+ * همگام‌سازیِ تیکِ سراسری: اگر تایمر فعالی هست، زمان‌سنجِ
+ * یک‌ثانیه‌ای روشن می‌ماند؛ وگرنه خاموش (برنامهٔ آفلاین نباید
+ * بدونِ نیاز زنده بماند).
+ */
+var _attTimerIv = null;
+function attTickSync(){
+  var has = attTimerCount() > 0;
+  if(typeof document !== 'undefined'){
+    has = has || !!document.querySelector('[data-att-timer]');
+  }
+  if(!has){
+    if(_attTimerIv){ clearInterval(_attTimerIv); _attTimerIv = null; }
+    return;
+  }
+  if(typeof setInterval === 'undefined') return;
+  if(!_attTimerIv){
+    _attTimerIv = setInterval(attTimerPaint, 1000);
+    attTimerPaint();
+  }
+}
+
 /** پاک کردن پیش‌نویس یک کلاس و روز */
 function attDraftClear(cid, date){
   var all = attDraftAll();
   delete all[attDraftKey(cid, date)];
   Store.setJSON(ATT_DRAFT_KEY, all);
+}
+
+/**
+ * پاک‌کردنِ پیش‌نویس اما با حفظِ تایمرهایِ فعال.
+ * تایمر «خروج از کلاس» وضعیتِ دنیایِ واقعی است (دانش‌آموز هنوز
+ * بیرون است) — نه تغییری که «ثبت نهایی» یا «دور ریختن»
+ * مالکش باشد. پس هر دو مسیر، تایمرها را زنده می‌گذارند.
+ */
+function attDraftClearKeepTimers(cid, date){
+  var all = attDraftAll();
+  var k = attDraftKey(cid, date);
+  var t = all[k] && all[k].timers;
+  attDraftClear(cid, date);
+  if(t && Object.keys(t).length){
+    var all2 = attDraftAll();
+    all2[k] = { marks: {}, fields: {}, timers: t,
+                at: new Date().toISOString() };
+    Store.setJSON(ATT_DRAFT_KEY, all2);
+  }
 }
 
 /**
