@@ -67,8 +67,9 @@ function persistStore(){
   dirty = false;
   try{
     const tmp = STORE_FILE + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify(store), 'utf8');
+    fs.writeFileSync(tmp, JSON.stringify(store), { encoding: 'utf8', mode: 0o600 }); /* S-73-3: PII — owner-only */
     fs.renameSync(tmp, STORE_FILE);
+    try{ fs.chmodSync(STORE_FILE, 0o600); }catch(e){}
   }catch(e){ /* store file may be gone (tests) — never crash on exit */ }
 }
 setInterval(persistStore, 2000).unref();
@@ -87,8 +88,16 @@ if(!JWT_SECRET){
 }
 
 /* ── audit log (append-only, sanitized: no phone / nid / password) ─── */
+let auditInit = false;
 function audit(type, detail){
   try{
+    /* S-73-3: audit log is 0600 — created owner-only, and an existing
+       file (created by an older version) is fixed up once. */
+    if(!auditInit){
+      auditInit = true;
+      try{ fs.openSync(AUDIT_FILE, 'a', 0o600); }catch(e){}
+      try{ fs.chmodSync(AUDIT_FILE, 0o600); }catch(e){}
+    }
     fs.appendFileSync(AUDIT_FILE, JSON.stringify({ ts: new Date().toISOString(), type, detail: detail || {} }) + '\n', 'utf8');
   }catch(e){ /* never break the request path on logging */ }
 }
@@ -96,9 +105,16 @@ function audit(type, detail){
 /* ── shared helpers ────────────────────────────────────────────────── */
 function isHttps(req){
   if(req && req.socket && req.socket.encrypted) return true;
-  const xfp = (req && req.headers['x-forwarded-proto']) || '';
-  if(xfp === 'https') return true;
-  return process.env.PAYESH_HTTPS === '1';
+  /* S-73-4: X-Forwarded-Proto is a TRUSTED-proxy claim. We honor it only
+     when the deployment declares itself behind a TLS proxy
+     (PAYESH_HTTPS=1). Direct clients spoofing the header must not be able
+     to flip the Secure-cookie / HSTS decisions. */
+  if(process.env.PAYESH_HTTPS === '1'){
+    const xfp = (req && req.headers['x-forwarded-proto']) || '';
+    if(xfp === 'https') return true;
+    return true; /* declared proxy mode: the proxy terminates TLS upstream */
+  }
+  return false;
 }
 function sendJson(res, status, obj){
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -217,6 +233,13 @@ if(TLS_CERT || TLS_KEY){
 }else{
   server = http.createServer(onRequest);
 }
+/* S-73-6: connection/request timeouts — a stalled client must not hold a
+   socket forever (slowloris surface). 65s covers the slowest legit op. */
+try{
+  if('requestTimeout' in server) server.requestTimeout = 65000;
+  if('headersTimeout' in server) server.headersTimeout = 65000;
+  server.keepAliveTimeout = 65000;
+}catch(e){}
 
 /* ── بکاپِ دوره‌ایِ خودکار (باقی‌ماندهٔ 2.4) — درون‌پروسه ─────────
    PAYESH_BACKUP_EVERY_HOURS (production، مثلاً 24) یا

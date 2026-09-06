@@ -133,10 +133,10 @@ async function main(){
     assert(r.headers.get('permissions-policy') && r.headers.get('referrer-policy') === 'same-origin', 'pp/rp');
   });
 
-  /* ── S4 send-code: unknown phone → 404 ─────────────────────────── */
-  test('S4 send-code unknown phone → 404 no_account', async () => {
+  /* ── S4 send-code: unknown phone — no existence leak (round 73) ──── */
+  test('S4 send-code unknown phone → 200 single shape (no no_account leak)', async () => {
     const r = await req('POST', '/api/auth/send-code', { body: { phone: '09129999999' } });
-    assert(r.status === 404 && r.json.code === 'no_account', r.status + ' ' + JSON.stringify(r.json));
+    assert(r.status === 200 && r.json.ok === true && r.json.code === 'sent' && !r.json.demo_code, r.status + ' ' + JSON.stringify(r.json));
   });
 
   /* ── S5 send-code: real phone → 200 + demo_code ────────────────── */

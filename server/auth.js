@@ -89,17 +89,20 @@ function createAuth(ctx){
   async function apiSendCode(req, res, body){
     const phone = String((body && body.phone) || '').replace(/[\s\-()]/g, '');
     if(!/^\+?\d{10,15}$/.test(phone)) return sendJson(res, 400, { ok: false, code: 'bad_phone' });
-    const user = (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === phone.slice(-10));
-    /* equal-time probe whether or not the phone is known */
-    checkCodeSafe('probe', String((store.__auth.codes[phone] || {}).code || '0000'));
-    if(!user) return sendJson(res, 404, { ok: false, code: 'no_account' });
-
-    /* rate limit: 5 codes / phone / 10 min — throttle, never hard lock */
+    /* S-73-2: rate limit BEFORE the existence check — probing unknown
+       phones must cost the same as known ones (5 / 10 min). */
     const now = Date.now();
     const rl = (store.__auth.code_rate[phone] = store.__auth.code_rate[phone] || []);
     while(rl.length && rl[0] < now - 10 * 60 * 1000) rl.shift();
     if(rl.length >= 5) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
     rl.push(now);
+
+    const user = (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === phone.slice(-10));
+    /* S-73-2: ONE response shape whether or not the phone is known —
+       a 404 here would let an attacker enumerate registered phones.
+       Equal-time probe (no timing oracle either way). */
+    checkCodeSafe('probe', String((store.__auth.codes[phone] || {}).code || '0000'));
+    if(!user) return sendJson(res, 200, { ok: true, code: 'sent' });
 
     const code = String(1000 + Math.floor(Math.random() * 9000));
     store.__auth.codes[phone] = { code, at: now, user_id: user.id, tries: 0 };
@@ -136,8 +139,9 @@ function createAuth(ctx){
     rec.tries = (rec.tries || 0) + 1;
     if(!user || rec.user_id !== user.id) return fail('bad_code');
 
-    /* 2) identity match — the national id must belong to THIS phone */
-    if(String(user.national_id) !== nid) return fail('nid_mismatch');
+    /* 2) identity match — the national id must belong to THIS phone.
+       S-73-5: constant-time compare (no length/prefix timing oracle). */
+    if(!checkCodeSafe(user.national_id, nid)) return fail('nid_mismatch');
     if(!user.active) return fail('inactive');
     const school = (store.schools || []).find(s => s.id === user.school_id);
     if(school && !school.active) return fail('school_inactive');
@@ -182,7 +186,7 @@ function createAuth(ctx){
       const keep = rows.filter(r => !pred(r));
       if(keep.length !== rows.length){ purged[coll] = rows.length - keep.length; store[coll] = keep; }
     }
-    purge('parent_links', r => Number(r.parent_id) === uid);
+    purge('parent_links', r => Number(r.parent_id) === uid || Number(r.student_id) === uid);
     purge('parent_verifications', r => Number(r.parent_id) === uid);
     purge('parent_subscriptions', r => Number(r.user_id) === uid);
     purge('messages', r => Number(r.from_id) === uid);
