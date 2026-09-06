@@ -51,6 +51,16 @@ var BELL_PRESETS = {
       { kind:'lesson', min:45 }
     ]
   },
+  'شب': {
+    title: 'شیفت شب (نوبت دوم / بزرگسالان — برنامهٔ فشرده)',
+    start: '17:30',
+    slots: [
+      { kind:'lesson', min:60 }, { kind:'break', min:10 },
+      { kind:'lesson', min:60 }, { kind:'break', min:15 },
+      { kind:'lesson', min:60 }, { kind:'break', min:10 },
+      { kind:'lesson', min:60 }
+    ]
+  },
   'ابتدایی': {
     title: 'ابتدایی (زنگ کوتاه‌تر، تفریح بلندتر)',
     start: '07:45',
@@ -127,7 +137,8 @@ function bellOf(schoolId, day){
 
   var s = byId('schools', schoolId) || {};
   var key = (s.level === 'ابتدایی') ? 'ابتدایی'
-          : (s.shift === 'بعدازظهر') ? 'بعدازظهر' : 'صبح';
+          : (s.shift === 'بعدازظهر') ? 'بعدازظهر'
+          : (s.shift === 'شب') ? 'شب' : 'صبح';
   var p = BELL_PRESETS[key];
   return { school_id: schoolId, start: p.start,
            slots: p.slots.map(function(x){ return { kind:x.kind, min:x.min }; }),
@@ -490,7 +501,8 @@ function generateP11(){
     if(!s.active) return;
     if(db.bell_schedules.some(function(b){ return b.school_id === s.id; })) return;
     var key = (s.level === 'ابتدایی') ? 'ابتدایی'
-            : (s.shift === 'بعدازظهر') ? 'بعدازظهر' : 'صبح';
+            : (s.shift === 'بعدازظهر') ? 'بعدازظهر'
+            : (s.shift === 'شب') ? 'شب' : 'صبح';
     var pre = BELL_PRESETS[key] || BELL_PRESETS['صبح'];
     add('bell_schedules', { school_id: s.id,
       days: DAYS.map(function(){

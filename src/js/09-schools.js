@@ -17,9 +17,10 @@ const CAP_DEFS=[
   ['has_iep','پشتیبانی ویژه (IEP)','طرح فردی یادگیری برای دانش‌آموزان نیازمند ویژه'],
   ['has_workshop','کارگاه و آزمایشگاه','فضای عملی/فنی برای پروژه‌های کارگاهی'],
   ['has_multigrade','کلاس‌های چندپایه','چند پایه در یک کلاس (روستایی/کوچک)'],
-  ['has_second_term_exam','امتحان نوبت دوم','مدرسه امتحان نوبت دوم می‌گذارد']
+  ['has_second_term_exam','امتحان نوبت دوم','مدرسه امتحان نوبت دوم می‌گذارد'],
+  ['has_evening','نوبت دوم / کلاس شبانه','برنامهٔ فشردهٔ بزرگسالان — کلاس‌های شبانه با تراکمِ هفتگیِ بالاتر']
 ];
-const CAP_DEFAULTS={has_tuition:1,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1};
+const CAP_DEFAULTS={has_tuition:1,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1,has_evening:0};
 /** پروفایل قابلیت یک مدرسه با اعمال پیش‌فرض‌ها */
 function schoolCaps(sid){
   const s=(typeof byId==='function')?byId('schools',sid):null;

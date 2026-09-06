@@ -4493,7 +4493,7 @@ test('پروفایل قابلیت (۰.۱): منوی مدرسه طبق کلیده
     caps=Object.assign({},schoolCaps(sid),{has_tuition:1,has_second_term_exam:0});
     update('schools',sid,{capabilities:caps});
     var opts=termOptsFor(m1).join(',');
-    /* ۵) فرم مدرسه: شش چیکنک قابلیت */
+    /* ۵) فرم مدرسه: هفت چیکنک قابلیت (دور ۷۸: has_evening اضافه شد) */
     schoolModal(school);
     var nCap=document.querySelectorAll('.m-cap').length;
     closeModal();
@@ -4508,7 +4508,7 @@ test('پروفایل قابلیت (۰.۱): منوی مدرسه طبق کلیده
   assert(r.navOff.indexOf('mytuition') < 0, '🔴 mytuition بدون قابلیت شهریه پنهان نشد');
   assert(r.parNavOn.indexOf('mytuition') < 0, '🔴 منوی ولی، mytuition مدرسهٔ بدون شهریه را نشان می‌دهد');
   assert(r.opts.indexOf('نوبت دوم') < 0, '🔴 گزینهٔ نوبت دوم برای مدرسه‌ای بدون آن قابلیت مانده');
-  assert(r.nCap === 6, '🔴 فرم مدرسه شش چیکنک قابلیت ندارد (' + r.nCap + ')');
+  assert(r.nCap === 7, '🔴 فرم مدرسه هفت چیکنک قابلیت ندارد (' + r.nCap + ')');
 });
 
 test('نمره: با kinds.grade خاموش یا سامانهٔ خاموش ساخته نمی‌شود', () => {
@@ -7706,6 +7706,39 @@ test('دور ۷۸ بند ۴: برچسب پویای «پروندهٔ N فرزند
     const SL = JSON.parse(W(`(function(){var out={};navFor(byId('users',${single})).forEach(function(g){g[1].forEach(function(i){out[i[0]]=i[2];});});return JSON.stringify(out);})()`));
     assert(SL['children'] === 'پروندهٔ فرزندم', 'برچسبِ تک‌فرزند درست نیست: ' + SL['children']);
   } finally {
+    const pid = JSON.parse(prev);
+    W(`S.user=${pid === null ? 'null' : `byId('users',${pid})`};S.persona=null;S.boss=null;`);
+  }
+});
+
+
+test('دور ۷۸ بند ۶: ماژول سبک نوبت دوم/کلاس شبانه — توان has_evening + الگوی زنگ شب + برنامهٔ فشرده', () => {
+  /* بخش ب بند ۶: مدارسِ بزرگسال/نوبت دوم — برنامهٔ فشرده (کلاس شبانه،
+     تراکمِ واحدِ هفتگی بالاتر). سبک اما واقعی: کلیدِ توان + الگوی زنگ +
+     کالآوتِ راهنما در صفحهٔ دروس. (اسکنِ کدپوینت: نشانگرهای آزمون
+     بدونِ ZWNJ/فارسیِ حساس — قاعدهٔ AI_PROMPT بند ۶.) */
+  const prev = W('JSON.stringify(S.user ? S.user.id : null)');
+  let tmpId = null;
+  try {
+    assert(W('hasCap(4,"has_evening")') === true, 'مدرسهٔ ۴ دمو باید توانِ has_evening داشته باشد');
+    assert(W('hasCap(1,"has_evening")') === false, 'پیش‌فرضِ توان برای مدرسهٔ بدونِ کلید باید خام باشد');
+    assert(W("capPickerHTML(byId('schools',1))").indexOf('has_evening') > -1, 'has_evening در فرمِ پروفایلِ قابلیت نیست');
+    const P = JSON.parse(W("JSON.stringify(BELL_PRESETS['شب'])"));
+    assert(P && P.start === '17:30', 'الگوی شب: ساعتِ شروع باید 17:30 باشد');
+    assert((P.slots||[]).filter(x=>x.kind==='lesson').length === 4, 'الگوی شب: ۴ زنگِ درسی');
+    tmpId = W(`insert('schools',{name:'آزمون نوبت دوم',code:'TST-EVE-1',level:'متوسطه دوم',gender:'پسرانه',shift:'شب',active:1,capacity:100}).id`);
+    const B = JSON.parse(W(`JSON.stringify(bellOf(${tmpId},0))`));
+    assert(B.preset === 'شب' && B.start === '17:30', 'bellOf به مدرسهٔ شیفتِ شب، الگوی شب نداد');
+    W(`S.user=db.users.find(u=>u.username==='manager4');S.persona=null;S.boss=null;S.route='subjects';S.filters={};`);
+    assert(W("viewSubjects()").indexOf('🌙') > -1, 'کالآوتِ برنامهٔ فشرده در صفحهٔ دروسِ مدرسهٔ ۴ نیست');
+    W(`S.user=db.users.find(u=>u.username==='manager1');S.route='subjects';S.filters={};`);
+    assert(W("viewSubjects()").indexOf('🌙') === -1, 'کالآوتِ فشرده در مدرسهٔ بدونِ توان نادرست نشان داده شد');
+    W(`S.user=db.users.find(u=>u.role==='superadmin');`);
+    W(`schoolModal(byId('schools',1))`);
+    assert(W(`$('#modal').innerHTML`).indexOf('بزرگسالان') > -1, 'گزینهٔ «شب» در فیلدِ شیفت نیست');
+    W(`closeModal()`);
+  } finally {
+    if(tmpId) W(`remove('schools',${tmpId})`);
     const pid = JSON.parse(prev);
     W(`S.user=${pid === null ? 'null' : `byId('users',${pid})`};S.persona=null;S.boss=null;`);
   }

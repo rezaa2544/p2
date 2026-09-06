@@ -62,6 +62,7 @@ function viewSubjects(){
       ${canEdit?`<button class="btn ghost" data-act="subject-import">📥 افزودن کتاب‌های استاندارد</button>
                  <button class="btn" data-act="subject-new">➕ درس جدید</button>`:''}
     </div></div>
+   ${(u.school_id&&(typeof hasCap==='function')&&hasCap(u.school_id,'has_evening'))?`<div class="callout" style="margin:0 16px 12px"><b>🌙 برنامهٔ فشردهٔ نوبت دوم:</b> این مدرسهٔ کلاس‌های شبانهٔ بزرگسالان است — در این برنامه‌ها <u>ساعتِ هفتگیِ دروس بالاتر</u> از مدارس عادی است: با ویرایشِ «ساعت هفتگی» هر کتاب تراکمِ برنامه را تنظیم کنید. برنامهٔ زنگ را با الگوی «شیفت شب» از بخش «زمان‌بندیِ زنگ‌ها» بگذارید.</div>`:''}
    ${filterPanel('subjects',`
      <select class="select" style="width:145px" data-f="sublevel">${opt(LEVELS.map(l=>[l,l]),flv,'همه مقاطع')}</select>
      <select class="select" style="width:135px" data-f="subgrade">${opt(gradeList.map(g=>[g,g]),fgr,'همه پایه‌ها')}</select>
