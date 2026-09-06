@@ -123,6 +123,18 @@ function schoolSupportSignals(r){
   return out;
 }
 
+/* ─────────────── دور ۷۹ بند ۶ (۲.۳): شاخصِ صریحِ کم‌برخوارد ───────────────
+   کم‌برخوارد = خاصیتِ ساختاریِ مدرسه (روستایی/دورافتاده) — جدا از
+   عملکرد (سیگنال‌هایِ «نیازمندِ عتِمَام»): مدرسهٔ روستاییِ پرفورمنسِ بالا
+   هم کم‌برخوارد است، و مدرسهٔ شهریِ خوش‌برخورد با میانگینِ پایین
+   «نیازمندِ عتِمَام» است، نه کم‌برخوارد.
+   امروزِ تنها دادهٔ ساختاری در مدل area_kind='village' است؛ اگر فیلدهای
+   ساختاریِ تازه (تجهیزات، تعدادِ کلاس و…) آمد، همین تابع نقطهٔ تنها
+   تعریفِ شاخص است. */
+function schoolIsUnderprivileged(s){
+  return !!(s && s.area_kind==='village');
+}
+
 /* ---------------- صفحه: تقسیمات کشوری (سوپرادمین) ---------------- */
 function viewGeo(){
   const pid=Number(S.filters.gp||0), cid=Number(S.filters.gc||0);
@@ -287,18 +299,24 @@ function viewOfficeSchools(){
   const _sig=rows.map(r=>schoolSupportSignals(r));
   const needN=_sig.filter(x=>x.length>0).length;
   const osup=!!S.filters.onesup;
-  const shown=osup?rows.filter((r,i)=>_sig[i].length>0):rows;
+  /* دور ۷۹ بند ۶ (۲.۳): شاخصِ ساختاریِ کم‌برخوارد — مستقل از عملکرد */
+  const _up=rows.map(r=>schoolIsUnderprivileged(r.s));
+  const upN=_up.filter(Boolean).length;
+  const onder=!!S.filters.ounder;
+  const shown=rows.filter((r,i)=>(!osup||_sig[i].length>0)&&(!onder||_up[i]));
   const oopt=(list,val,label)=>[`<option value="">${label}</option>`,
     ...list.map(x=>`<option value="${esc(x[0])}" ${String(val)===String(x[0])?'selected':''}>${esc(x[1])}</option>`)].join('');
   return `<div class="card"><div class="card-head"><h3>🏫 مدارس تحت پوشش</h3>
     <div class="row"><input class="input" style="width:180px" placeholder="جستجوی نام مدرسه…" data-f="q" value="${esc(q)}" />
     <span class="badge b-blue">${fa(schools.length)} مدرسه</span>
-    <span class="badge ${needN?'b-amber':'b-green'}">${needN?('🟠 '+fa(needN)+' مورد نیازمندِ عتِمَام'):'✅ بدون موردِ ویژه'}</span></div></div>
+    <span class="badge ${needN?'b-amber':'b-green'}">${needN?('🟠 '+fa(needN)+' مورد نیازمندِ عتِمَام'):'✅ بدون موردِ ویژه'}</span>
+    ${upN?`<span class="badge b-purple" title="شاخصِ ساختاری: مدرسهٔ روستایی/دورافتاده — جدا از سیگنال‌هایِ عملکردی">🟤 ${fa(upN)} کم‌برخوارد</span>`:''}</div></div>
    ${filterPanel('officeschools',`
      <select class="select" style="width:145px" data-f="olevel">${oopt(LEVELS.map(l=>[l,l]),ol,'همه مقاطع')}</select>
      <select class="select" style="width:130px" data-f="ogender">${oopt([['پسرانه','پسرانه'],['دخترانه','دخترانه']],og,'همه جنسیت‌ها')}</select>
      <select class="select" style="width:130px" data-f="okind">${oopt(Object.entries(AREA_KIND),ok,'منطقه و روستا')}</select>
-     <select class="select" style="width:170px" data-f="onesup"><option value="" ${!osup?'selected':''}>همهٔ وضعیت‌ها</option><option value="1" ${osup?'selected':''}>🟠 فقط نیازمندِ عتِمَام</option></select>`)}
+     <select class="select" style="width:170px" data-f="onesup"><option value="" ${!osup?'selected':''}>همهٔ وضعیت‌ها</option><option value="1" ${osup?'selected':''}>🟠 فقط نیازمندِ عتِمَام</option></select>
+<select class="select" style="width:150px" data-f="ounder"><option value="" ${!onder?'selected':''}>همهٔ مناطق</option><option value="1" ${onder?'selected':''}>🟤 فقط کم‌برخوارد</option></select>`)}
    ${shown.length?`<div class="card-body" style="display:grid;gap:10px">
     ${shown.map(r=>`<div class="row" style="background:var(--surface-2);padding:12px 14px;border-radius:12px">
       <div style="min-width:0"><b>${esc(r.s.name)}</b>
@@ -312,9 +330,10 @@ function viewOfficeSchools(){
         <div style="text-align:center"><b>${fa(r.att)}٪</b><div class="small muted">حضور</div></div>
         <span class="badge ${r.s.active?'b-green':'b-red'}">${r.s.active?'فعال':'غیرفعال'}</span>
         ${_sig[rows.indexOf(r)].length?`<span class="badge b-amber" title="${escAttr(_sig[rows.indexOf(r)].join(' · '))}">🟠 نیازمندِ عتِمَام</span>`:''}
+        ${_up[rows.indexOf(r)]?'<span class="badge b-purple" title="مدرسهٔ روستایی/دورافتاده — شاخصِ ساختاریِ کم‌برخواردی (جدا از عملکرد)">🟤 کم‌برخوارد</span>':''}
         ${(typeof schoolModeBadge==='function')?schoolModeBadge(r.s.id,todayISO()):''}
         <button class="btn ghost sm" data-act="smode-open" data-id="${r.s.id}">حالت</button>
-      </div></div>`).join('')}</div>`:(rows.length?empty('🟠','در این فیلتر مدرسه‌ای نیازمندِ عتِمَام نیست',''):empty('🏫','مدرسه‌ای در محدوده شما نیست',''))}</div>`;
+      </div></div>`).join('')}</div>`:(rows.length?empty('🏫','مدرسه‌ای با این فیلترها در محدودهٔ شما نیست',''):empty('🏫','مدرسه‌ای در محدوده شما نیست',''))}</div>`;
 }
 
 /* ---------------- عملیات فاز ۹ ---------------- */
