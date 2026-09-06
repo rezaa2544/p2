@@ -50,6 +50,29 @@ function navFor(u){
   }).filter(function(g){ return g[1].length>0; });
   if(u.role==='parent'){
     nav=nav.concat([['حساب من',[['subscription','💳','اشتراک پنل اولیا']]]]);
+    /* بند ۴ دور ۷۸ (بماندهٔ DISCOVERABILITY_R43، مورد ۲): برچسب پویای
+       «پروندهٔ N فرزند» — عدد خودش دعوت به کلیک است. فقط برچسبِ منو
+       می‌تازد؛ آیتم از NAV حذف نمی‌شود (allowedRoutes از NAV ساخته
+       می‌شود — حذفِ منو، دسترسیِ مسیر را قطع می‌کرد). */
+    var pKids=db.parent_links
+      .filter(function(p){ return p.parent_id===u.id; })
+      .map(function(p){ return byId('users',p.student_id); })
+      .filter(Boolean);
+    if(pKids.length>=2){
+      nav=nav.map(function(g){
+        return [g[0],(g[1]||[]).map(function(it){
+          if(it[0]==='children') return [it[0],it[1],'پروندهٔ ' + fa(pKids.length) + ' فرزند'];
+          return it;
+        })];
+      });
+    } else if(pKids.length===1){
+      nav=nav.map(function(g){
+        return [g[0],(g[1]||[]).map(function(it){
+          if(it[0]==='children') return [it[0],it[1],'پروندهٔ فرزندم'];
+          return it;
+        })];
+      });
+    }
     /* بند ۴: ولیِ بدون اشتراک فقط «ارتباط و درخواست‌ها» را از دست
        می‌دهد؛ دادهٔ پایه (نمره/حضور/برنامه/امتحانات/شهریه) باقی می‌ماند */
     if(parentLocked()){

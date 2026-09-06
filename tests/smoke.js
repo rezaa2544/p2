@@ -7682,6 +7682,36 @@ test('سرویس: رویداد سوار/پیاده، رکورد می‌سازد 
 });
 
 
+test('دور ۷۸ بند ۴: برچسب پویای «پروندهٔ N فرزند» + تمایز family/children (بماندهٔ R43)', () => {
+  /* دو بماندهٔ docs/DISCOVERABILITY_R43.md مورد ۲:
+     ۱) برچسبِ پویای «پروندهٔ N فرزند» برای ولیِ چندفرزند
+     ۲) تمایزِ family/children از خودِ برچسب‌ها و زیرنویس‌ها.
+     ⚠️ قاعده (تصمیمِ کاربر دور ۷۸): آیتم از NAV حذف نمی‌شود —
+     allowedRoutes از NAV ساخته می‌شود؛ فقط برچسبِ منو می‌تازد. */
+  const prev = W('JSON.stringify(S.user ? S.user.id : null)');
+  try {
+    W(`S.user=db.users.find(u=>u.username==='parent_multi');S.persona=null;S.boss=null;`);
+    const kids = W(`db.parent_links.filter(p=>p.parent_id===S.user.id).length`);
+    assert(kids >= 2, 'دمو: ولیِ چندفرزند لازم است (parent_multi)');
+    const L = JSON.parse(W(`(function(){var out={};navFor(S.user).forEach(function(g){g[1].forEach(function(i){out[i[0]]=i[2];});});return JSON.stringify(out);})()`));
+    assert(L['children'] === 'پروندهٔ ' + W(`fa(${kids})`) + ' فرزند', 'برچسبِ پویا درست نیست: ' + L['children']);
+    assert(W(`canRoute('children','parent')`) === true, 'دسترسیِ مسیرِ children قطع شده');
+    assert(W(`canRoute('family','parent')`) === true, 'دسترسیِ مسیرِ family قطع شده');
+    assert(L['family'] === 'خانواده و مدارس', 'برچسبِ منوی family تغییر کرده');
+    const subs = JSON.parse(W(`JSON.stringify([TITLES['children'][1], TITLES['family'][1]])`));
+    assert(/جابه‌جا/.test(subs[0]), 'زیرنویسِ children: توضیحِ جابه‌جایی بین فرزندان ندارد');
+    assert(/مدارس مختلف/.test(subs[1]), 'زیرنویسِ family: تمایزِ مدارسِ مختلف را نمی‌گوید');
+    const single = W(`(function(){var m={};db.parent_links.forEach(function(p){m[p.parent_id]=(m[p.parent_id]||0)+1;});var ids=Object.keys(m).map(Number).filter(function(id){return m[id]===1&&byId('users',id)&&byId('users',id).role==='parent';});return ids.length?ids[0]:null;})()`);
+    assert(single !== null, 'دمو: ولیِ تک‌فرزند لازم است');
+    const SL = JSON.parse(W(`(function(){var out={};navFor(byId('users',${single})).forEach(function(g){g[1].forEach(function(i){out[i[0]]=i[2];});});return JSON.stringify(out);})()`));
+    assert(SL['children'] === 'پروندهٔ فرزندم', 'برچسبِ تک‌فرزند درست نیست: ' + SL['children']);
+  } finally {
+    const pid = JSON.parse(prev);
+    W(`S.user=${pid === null ? 'null' : `byId('users',${pid})`};S.persona=null;S.boss=null;`);
+  }
+});
+
+
 await Promise.all(testQueue);   // همهٔ آزمون‌های ناهمگام تا سرِ صف برسد
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));
