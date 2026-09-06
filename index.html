@@ -11191,8 +11191,8 @@ document.addEventListener('click',e=>{
        toast('📍 موقعیت شما ثبت شد','ok'); render();
      });
    },
-   /* بند ۱۴: پیگیریِ واقعیِ مغایرت */
-   'bus-follow-open'(el){
+   /* بند ۱۴: پیگیریِ واقعیِ مغایرت — el/id از محیّط (دور ۷۹: پارامترِ سای‌کننده برداشته شد) */
+   'bus-follow-open'(){
      const st = byId('users', Number(id));
      openModal(modalTpl('پیگیری مغایرت — ' + (st ? st.full_name : ''),
        f('یادداشت پیگیری', inp('bf_note', '', 'مثلاً: با راننده تماس گرفتم…')),
@@ -11683,7 +11683,11 @@ document.addEventListener('click',e=>{
      },{title:'ثبت‌نام خودکار',ok:'انجام بده'});
    },
    /* ---- قیف پیش‌ثبت‌نام سال آینده (بند ۰.۲) ---- */
-   'pre-add'(){
+  /* ⚠️ دور ۷۹: اکشن‌هایِ A بدونِ پارامتر صدا زده می‌شوند (A[a]()) — el/id
+     از محیّطِ کلِک‌لیسنر می‌آیند. هرگز پارامترِ اعلام‌شده نزنید؛ سایِ
+     آن‌ها id/el را با undefined می‌پوشاند (باگِ واقعیِ پیشین: pre-confirm/
+     pre-reject/pre-del/bus-follow-open). */
+  'pre-add'(){
      const sid=S.user.school_id;
      const name=V('pre_name');
      if(need('pre_name','نام الزامی است'))return;
@@ -11699,7 +11703,7 @@ document.addEventListener('click',e=>{
      toast(n?('تعداد '+fa(n)+' دانش‌آموز فعلی به پیش‌ثبت‌نام سال آینده افزوده شد'):'همهٔ دانش‌آموزان فعلی قبلاً ثبت‌اند','ok');
      render();
    },
-   'pre-confirm'(el,id){
+   'pre-confirm'(){
      const sid=S.user.school_id;
      askConfirm('این پیش‌ثبت‌نام تأیید شود؟ حساب دانش‌آموز ساخته یا به حساب موجود وصل می‌شود.',()=>{
        const r=preConfirm(sid,id);
@@ -11708,11 +11712,11 @@ document.addEventListener('click',e=>{
        render();
      },{title:'تأیید پیش‌ثبت‌نام',ok:'تأیید کن'});
    },
-   'pre-reject'(el,id){
+   'pre-reject'(){
      update('pre_enrollments',id,{status:'rejected'});
      toast('رد شد',''); render();
    },
-   'pre-del'(el,id){
+   'pre-del'(){
      askConfirm('این ردیف پیش‌ثبت‌نام حذف شود؟',()=>{
        remove('pre_enrollments',id);
        toast('حذف شد',''); render();
