@@ -137,7 +137,7 @@ function buildBackup(){
     counts: { ops: (typeof log !== 'undefined') ? log.length : 0,
               users: db.users.length, schools: db.schools.length },
     settings: subSettings(),
-    /* ⚠️ امنیت (پنتست ۲۰۲-۰۹-۵): رمز عبور جزو دادهٔ عملیات «کاربران» در
+    /* ⚠️ امنیت (پنتست ۲۰۲۶-۰۹-۰۵): رمز عبور جزو دادهٔ عملیات «کاربران» در
        دفترچه می‌نشیند (برای بازیابی لازم است) ولی فایل پشتیبانِ قابل
        دانلود هرگز نباید آن را حمل کند. */
     ops: (typeof log !== 'undefined') ? log.map(function(op){

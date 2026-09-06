@@ -177,8 +177,15 @@ function generate(){
           famTarget = (si===0 && (famIndex===2 || famIndex===4)) ? 2
                     : (famIndex % 4 === 2 ? 1 : 0);
         }
-        dates.forEach(iso=>{const r=rng();let s='present';if(r>.965)s='absent';else if(r>.93)s='late';else if(r>.915)s='excused';
-          add('attendance',{school_id:school.id,class_id:c.id,student_id:st.id,date:iso,status:s,note:s==='excused'?'مرخصی با اطلاع ولی':null});});
+        dates.forEach(iso=>{const r=rng();let s='present';if(r>.97)s='absent';else if(r>.94)s='late';else if(r>.925)s='early_exit';else if(r>.915)s='excused';
+          const rec={school_id:school.id,class_id:c.id,student_id:st.id,date:iso,status:s,note:s==='excused'?'مرخصی با اطلاع ولی':null};
+          /* بند 15.1: وضعیت‌های زمان‌دار — ⚠️ بدون مصرفِ rng(): ساعت/دقیقه
+             از هاشِ قطعیِ شناسه+تاریخ می‌آید تا جریانِ RNG (و حساب‌های
+             دموِ بعدی) دست‌نخورده بماند. */
+          const sv=(st.id*31+iso.charCodeAt(iso.length-1)*7+iso.charCodeAt(iso.length-2)*13)%97;
+          if(s==='late'){rec.late_at='08:'+String(10+sv%45).padStart(2,'0');rec.late_minutes=15+sv%40;}
+          if(s==='early_exit'){rec.exit_at='11:'+String(30+((sv>>2)%25)).padStart(2,'0');rec.exit_minutes=40+((sv>>3)%60);}
+          add('attendance',rec);});
         chosen.forEach(s=>{const t=teachers.find(x=>x.subject_id===s.id)||teachers[0];const base=11+rng()*8;
           [['نوبت اول','کلاسی'],['نوبت اول','پایان‌ترم'],['نوبت دوم','میان‌ترم']].forEach(tt=>{
             const sc=Math.max(4,Math.min(20,base+(rng()*4-2)));

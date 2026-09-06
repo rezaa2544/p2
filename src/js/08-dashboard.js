@@ -65,7 +65,7 @@ function adminDash(){
     <div class="card"><div class="card-head"><h3>روند حضور روزهای اخیر</h3><span class="badge b-blue">درصد حضور</span></div>
      <div class="card-body">${trend.length?`<div class="chart">${trend.map(t=>`<div class="col" title="${escAttr(t.rate)}%"><i style="height:${t.rate}%"></i><span>${new Date(t.d).toLocaleDateString('fa-IR-u-ca-persian',{day:'numeric'})}</span></div>`).join('')}</div>`:empty('📈','داده‌ای نیست','')}</div></div>
     <div class="card"><div class="card-head"><h3>وضعیت حضور امروز</h3><span class="muted small">${fa(tot)} رکورد</span></div>
-     ${tot?`<div class="card-body" style="display:grid;gap:13px">${['present','absent','late','excused'].map(k=>{const n=attToday.filter(a=>a.status===k).length;
+     ${tot?`<div class="card-body" style="display:grid;gap:13px">${['present','absent','late','excused','early_exit'].map(k=>{const n=attToday.filter(a=>a.status===k).length;
       return `<div><div class="row"><span>${ATT_FA[k]}</span><div class="spacer"></div><b>${fa(n)}</b><span class="muted small">(${fa(Math.round(n/tot*100))}٪)</span></div>${bar(n,tot,ATT_COLOR[k])}</div>`;}).join('')}
       <div class="row"><span class="badge b-green">👍 موارد مثبت: ${fa(disc.filter(d=>d.kind==='positive').length)}</span><span class="badge b-red">👎 موارد منفی: ${fa(disc.filter(d=>d.kind==='negative').length)}</span></div></div>`
       :empty('🕗','امروز حضور و غیابی ثبت نشده','از پنل دبیر می‌توانید ثبت کنید.')}</div>
@@ -169,7 +169,7 @@ function summaryBlock(sid){
    ${statCard('⚖️',fa(d.points),'امتیاز انضباطی ('+fa(d.disc.length)+' مورد)',d.points>=0?'purple':'red')}</div>
    <div class="grid g2">
     <div class="card"><div class="card-head"><h3>وضعیت حضور</h3><span class="badge b-green">${fa(tot?Math.round(cnt('present')/tot*100):0)}٪ حضور</span></div>
-     <div class="card-body" style="display:grid;gap:12px">${['present','absent','late','excused'].map(k=>`<div><div class="row"><span>${ATT_FA[k]}</span><div class="spacer"></div><b>${fa(cnt(k))} روز</b></div>${bar(cnt(k),tot,ATT_COLOR[k])}</div>`).join('')}</div></div>
+     <div class="card-body" style="display:grid;gap:12px">${['present','absent','late','excused','early_exit'].map(k=>`<div><div class="row"><span>${ATT_FA[k]}</span><div class="spacer"></div><b>${fa(cnt(k))} روز</b></div>${bar(cnt(k),tot,ATT_COLOR[k])}</div>`).join('')}</div></div>
     <div class="card"><div class="card-head"><h3>میانگین به تفکیک درس</h3><button class="btn ghost sm" data-act="go" data-r="${escAttr(S.user.role==='student'?'record':'children')}">پرونده کامل</button></div>
      ${d.subs.length?`<div class="card-body" style="display:grid;gap:10px">${d.subs.map(s=>`<div><div class="row"><span>${esc(s.name)}</span><div class="spacer"></div><b style="color:${s.avg>=17?'var(--green)':s.avg>=12?'var(--text)':'var(--red)'}">${fa(s.avg.toFixed(2))}</b></div>${bar(s.avg,20,s.avg>=17?'var(--green)':s.avg>=12?'var(--primary)':'var(--red)')}</div>`).join('')}</div>`:empty('📝','نمره‌ای ثبت نشده','')}</div>
    </div>`;

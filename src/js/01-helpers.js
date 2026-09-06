@@ -28,9 +28,9 @@ const DAYS_FULL=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چ�
 const DEFAULT_WORK_DAYS=[0,1,2,3,4]; /* شنبه تا چهارشنبه — پنجشنبه اختیاری و پیش‌فرض خاموش (تصمیم کاربر) */
 const ROLE_FA={superadmin:'سوپر ادمین',manager:'مدیر مدرسه',teacher:'دبیر',student:'دانش‌آموز',parent:'ولی',edu_office:'اداره آموزش و پرورش',counselor:'مشاور',driver:'راننده سرویس'};
 const ROLE_BADGE={superadmin:'b-purple',manager:'b-blue',teacher:'b-green',student:'b-amber',parent:'b-gray',edu_office:'b-purple',counselor:'b-cyan'};
-const ATT_FA={present:'حاضر',absent:'غایب',late:'تأخیر',excused:'موجه'};
-const ATT_BADGE={present:'b-green',absent:'b-red',late:'b-amber',excused:'b-purple'};
-const ATT_COLOR={present:'var(--green)',absent:'var(--red)',late:'var(--amber)',excused:'var(--purple)'};
+const ATT_FA={present:'حاضر',absent:'غایب',late:'تأخیر',excused:'موجه',early_exit:'خروج'};
+const ATT_BADGE={present:'b-green',absent:'b-red',late:'b-amber',excused:'b-purple',early_exit:'b-cyan'};
+const ATT_COLOR={present:'var(--green)',absent:'var(--red)',late:'var(--amber)',excused:'var(--purple)',early_exit:'#0b7fa8'};
 const TERMS=['نوبت اول','نوبت دوم'];
 /* امتحان نهایی (دور ۶۳، بند ۵): آزمون پایانیِ پایه‌های پایانی
    (نهم و دوازدهم). قاعدهٔ پایه در finalGradeOk (26-curriculum)

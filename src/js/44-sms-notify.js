@@ -38,7 +38,7 @@ var NOTIFY_DEFAULTS = {
   /* daily (بند ۱.۷): خلاصهٔ روزانه پیش‌فرض خاموش است — مدیر خودش
      برای هر مدرسه روشن می‌کند؛ با دکمهٔ «خلاصهٔ امروز» هم دستی ساخته
      می‌شود. bus_on/bus_off: رویدادهای سرویس مدرسه (پیش‌فرض روشن). */
-  kinds:        { absence: true, late: true, grade: false, event: true, pattern: true, daily: false, bus_on: true, bus_off: true },
+  kinds:        { absence: true, late: true, exit: true, grade: false, event: true, pattern: true, daily: false, bus_on: true, bus_off: true },
   gradeThreshold: 10
 };
 
@@ -87,6 +87,11 @@ var NOTIFY_TPL = {
   late: function(o){
     return 'اولیای گرامی، ' + o.student + ' امروز ' + o.date +
            ' با تأخیر آمد. ' + o.school;
+  },
+  /* خروج زودهنگام رویدادِ ایمنی است — پیش‌فرض روشن (بند 15.1) */
+  exit: function(o){
+    return 'اولیای گرامی، ' + o.student + ' امروز ' + o.date +
+           ' پیش از پایانِ کلاس از مدرسه خارج شده است. ' + o.school;
   },
   /* نمره: عدد عمداً نیست. ولی با ورود به سامانه عدد دقیق را می‌بیند. */
   grade: function(o){
@@ -158,7 +163,7 @@ function notifyBody(kind, o){
  * نه امنیت. رشتهٔ ساده هم کافی است و از هزینهٔ محاسبه می‌کاهد.
  */
 function notifyHash(kind, ref){
-  if(kind === 'absence' || kind === 'late'){
+  if(kind === 'absence' || kind === 'late' || kind === 'exit'){
     var a = (typeof byId === 'function') ? byId('attendance', ref) : null;
     if(!a) return 'gone';
     return a.student_id + '|' + a.date + '|' + a.status;
@@ -194,7 +199,7 @@ function dailySummaryDetail(studentId, dateIso){
     return a.student_id===studentId && a.date===dateIso;
   });
   var rec = recs.length ? recs[recs.length-1] : null;
-  var attFA = { present:'حاضر', absent:'غایب', late:'با تأخیر', excused:'موجه' };
+  var attFA = { present:'حاضر', absent:'غایب', late:'با تأخیر', excused:'موجه', early_exit:'خروج زودهنگام' };
   var att = rec ? attFA[rec.status] : 'ثبت نشده';
   return (n ? fa(n) + ' زنگ کلاس' : 'بدون کلاس') + '، حضور: ' + att;
 }
@@ -836,16 +841,36 @@ function attDraftGet(cid, date){
   return (d && d.marks) ? d.marks : {};
 }
 
+/** فیلدهای زمان‌دارِ پیش‌نویس: نگاشت student_id → {late_at…|exit_at…} */
+function attDraftFields(cid, date){
+  var all = attDraftAll();
+  var d = all[attDraftKey(cid, date)];
+  return (d && d.fields) ? d.fields : {};
+}
+
 /**
  * ثبت یک تیک در پیش‌نویس.
  * زدن دوبارهٔ همان وضعیت آن را برمی‌دارد (کلید رفت‌وبرگشتی).
  */
-function attDraftSet(cid, date, studentId, status){
+/**
+ * @param fields فیلدهای اختیاریِ وضعیتِ زمان‌دار (بند 15.1):
+ *   تأخیر → {late_at:'HH:MM', late_minutes:عدد}
+ *   خروج → {exit_at:'HH:MM', exit_minutes:عدد}
+ *   وضعیت‌های بدون زمان → null یا بی‌ارگومان
+ */
+function attDraftSet(cid, date, studentId, status, fields){
   var all = attDraftAll();
   var k = attDraftKey(cid, date);
-  var d = all[k] || { marks: {}, at: new Date().toISOString() };
-  if(d.marks[studentId] === status) delete d.marks[studentId];
-  else d.marks[studentId] = status;
+  var d = all[k] || { marks: {}, fields: {}, at: new Date().toISOString() };
+  if(!d.fields) d.fields = {};
+  if(d.marks[studentId] === status){
+    delete d.marks[studentId];
+    delete d.fields[studentId];
+  } else {
+    d.marks[studentId] = status;
+    if(fields && Object.keys(fields).length) d.fields[studentId] = fields;
+    else delete d.fields[studentId];
+  }
   d.at = new Date().toISOString();
   if(Object.keys(d.marks).length) all[k] = d;
   else delete all[k];                    /* پیش‌نویس خالی نگه‌داشتن ندارد */
@@ -863,6 +888,62 @@ function attDraftSetAll(cid, date, ids, status){
   all[k] = d;
   Store.setJSON(ATT_DRAFT_KEY, all);
   return d.marks;
+}
+
+/* ─────────── وضعیت‌های زمان‌دار (بند 15.1) ───────────
+   تأخیر → late_at + late_minutes (از شروعِ مدرسه)
+   خروج  → exit_at + exit_minutes (تا پایانِ مدرسه)
+   بازهٔ روز دقیقاً از همان برنامهٔ زنگِ مدرسه می‌آید
+   (همان مرزِ currentSlot: نخستین from تا آخرین to). */
+
+/** بازهٔ روز از برنامهٔ زنگ؛ null اگر برنامهٔ قابل‌خواندن نیست */
+function attDaySpan(schoolId, dateISO){
+  if(typeof bellTimeline !== 'function' || typeof timeToMin !== 'function') return null;
+  var t = new Date(String(dateISO) + 'T12:00:00');
+  var day = (t.getDay() + 1) % 7;                     /* شنبه=۰ … جمعه=۶ */
+  var wd = (typeof workDaysOf === 'function') ? workDaysOf(schoolId) : [0,1,2,3];
+  var inWeek = wd.indexOf(day) > -1;
+  var isMakeup = (db.makeup_classes || []).some(function(m){
+    return m.school_id === schoolId && m.date === String(dateISO); });
+  if(!inWeek && !isMakeup) return null;
+  var schedDay = inWeek ? day : 0;                    /* روزِ جبرانی ← برنامهٔ شنبه */
+  var tl = bellTimeline(schoolId, schedDay);
+  if(!tl || !tl.length) return null;
+  var firstFrom = timeToMin(tl[0].from);
+  var lastTo = timeToMin(tl[tl.length - 1].to);
+  if(firstFrom == null || lastTo == null) return null;
+  return { firstFrom: firstFrom, lastTo: lastTo };
+}
+
+/** دقیقهٔ تأخیر: فاصلهٔ ساعتِ ثبت تا شروعِ مدرسه (کمینه صفر) */
+function attLateMinutes(schoolId, dateISO, timeStr){
+  var span = attDaySpan(schoolId, dateISO);
+  var m = (typeof timeToMin === 'function') ? timeToMin(timeStr) : null;
+  if(!span || m == null) return 0;
+  return Math.max(0, m - span.firstFrom);
+}
+
+/** دقیقهٔ خروج: فاصلهٔ ساعتِ خروج تا پایانِ مدرسه (کمینه صفر) */
+function attExitMinutes(schoolId, dateISO, timeStr){
+  var span = attDaySpan(schoolId, dateISO);
+  var m = (typeof timeToMin === 'function') ? timeToMin(timeStr) : null;
+  if(!span || m == null) return 0;
+  return Math.max(0, span.lastTo - m);
+}
+
+/** فیلدهای زمان‌دار از ساعتِ انتخابی؛ زمانِ نامعتبر = فیلدِ خالی */
+function attTimeFields(schoolId, dateISO, status, timeStr){
+  var f = {};
+  var t = String(timeStr || '').trim();
+  if(!/^\d{1,2}:\d{2}$/.test(t)) return f;
+  if(status === 'late'){
+    f.late_at = t;
+    f.late_minutes = attLateMinutes(schoolId, dateISO, t);
+  } else if(status === 'early_exit'){
+    f.exit_at = t;
+    f.exit_minutes = attExitMinutes(schoolId, dateISO, t);
+  }
+  return f;
 }
 
 /** پاک کردن پیش‌نویس یک کلاس و روز */
@@ -899,7 +980,8 @@ function attDraftPurge(days){
  */
 function attDraftDiff(cid, date){
   var marks = attDraftGet(cid, date);
-  var out = { changes: [], counts: {}, newAbsent: [], newLate: [] };
+  var fields = attDraftFields(cid, date);
+  var out = { changes: [], counts: {}, newAbsent: [], newLate: [], newExit: [] };
   var am = (typeof idxAttByClassDate === 'function') ? idxAttByClassDate() : null;
   var day = new Map();
   if(am) (am.get(cid + '|' + date) || []).forEach(function(a){ day.set(a.student_id, a); });
@@ -913,10 +995,12 @@ function attDraftDiff(cid, date){
     if(from === to) return;                       /* بی‌تغییر */
     var u = byId('users', id);
     out.changes.push({ student_id: id, name: u ? u.full_name : '—',
-                       from: from, to: to, rec_id: cur ? cur.id : null });
+                       from: from, to: to, rec_id: cur ? cur.id : null,
+                       fields: fields[sid] || null });
     out.counts[to] = (out.counts[to] || 0) + 1;
     if(to === 'absent') out.newAbsent.push(u ? u.full_name : '—');
     if(to === 'late')   out.newLate.push(u ? u.full_name : '—');
+    if(to === 'early_exit') out.newExit.push(u ? u.full_name : '—');
   });
   return out;
 }
@@ -990,8 +1074,8 @@ function notifyReconcile(attId){
   var out = { action: 'none', queue: null };
   var rec = byId('attendance', attId);
 
-  /* دو نوع پیام ممکن است برای یک رکورد رفته باشد */
-  var kinds = ['absence', 'late'];
+  /* سه نوع پیام ممکن است برای یک رکورد رفته باشد */
+  var kinds = ['absence', 'late', 'exit'];
   var last = null;
   for(var i = 0; i < kinds.length; i++){
     var c = notifyLastSent(kinds[i], attId);

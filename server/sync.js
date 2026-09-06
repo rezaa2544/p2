@@ -76,7 +76,7 @@ function attach(store){ store_ref = store; }
 /* §13.1 — روزِ غیرحضوری (virtual): عملیاتِ فیزیکی مسدود است.
    آینهٔ سمتِ سرور از گاردِ کلاینت (schoolVirtual — 57-school-mode.js، بند ۱۶).
    عملیات‌های فیزیکی:
-     - attendance: وضعیتِ present/late/absent (excused = رکوردِ اداری، آزاد)
+     - attendance: وضعیتِ present/late/absent/early_exit (excused = رکوردِ اداری، آزاد)
      - lib_loans:  امانتِ جدید (بازگشت = returned_at، آزاد)
      - visitors:   مهمانِ جدید (خروج = out_at، آزاد)
      - assets:     وضعیتِ in_use (تحویلِ فیزیکی)
@@ -95,7 +95,7 @@ function virtualDayViolation(op, store){
   if(c === 'attendance'){
     const rec = op.id != null ? (store.attendance || []).find(x => x.id === Number(op.id)) : null;
     const eff = Object.assign({}, rec, d);
-    if(['present','late','absent'].indexOf(eff.status) === -1) return null;
+    if(['present','late','absent','early_exit'].indexOf(eff.status) === -1) return null;
     if(isVirtualDay(store, eff.school_id, eff.date)) return { schoolId: eff.school_id, date: eff.date };
     return null;
   }
