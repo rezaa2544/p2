@@ -213,6 +213,8 @@ document.addEventListener('click',e=>{
        active:Number(V('m_active')),address:V('m_addr'),
        /* دور ۶۵ بند روزهای کاری: روزهای روشن‌شده در مودال */
        work_days:$$('.m-wd:checked').map(x=>Number(x.value)).sort((a,b)=>a-b),
+       /* Round 77: excuse window (minutes after bell end) */
+       excuse_window_minutes:(V('m_excuse_window')!==''?Number(V('m_excuse_window')):null),
        /* شاخه و رشته فقط برای متوسطه دوم معنا دارد؛ در بقیهٔ مقاطع خالی می‌ماند */
        branches:V('m_level')==='متوسطه دوم'?$$('.m-branch:checked').map(x=>x.value):[],
        fields:V('m_level')==='متوسطه دوم'?$$('.m-field:checked').filter(x=>$$('.m-branch:checked').some(b=>b.value===x.dataset.branch)).map(x=>x.value):[],
@@ -724,6 +726,15 @@ document.addEventListener('click',e=>{
    'att-set'(){const st=el.dataset.s;const date=S.filters.date||todayISO();
      const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
      const _who=byId('users',id);
+     const _tmAll=(typeof attTimersGet==='function')?attTimersGet(cid,date):{};
+     /* Round 77: while the exit timer of this student runs, the other
+        options are LOCKED - only the stop option is allowed. */
+     if(st!=='early_exit'&&_tmAll[id]){
+       toast('دانش‌آموز هنوز بیرون است — اول «⏱ توقف خروج» را بزنید','err');
+       render();
+       return;
+     }
+
      /* دور ۷۵: «خروج از کلاس» تایمرِ رفت‌وبرگشتی است — نه مودالِ ساعت.
         ضربهٔ نخست: شروعِ تایمر (لحظهٔ خروج). ضربهٔ دوم: توقف +
         ثبتِ دقیقهٔ سپری‌شده (خروج تا بازگشت) در پیش‌نویس. */
@@ -740,19 +751,36 @@ document.addEventListener('click',e=>{
        render();
        return;
      }
-     /* دور ۷۵: غیبتِ موجود + زدنِ «تأخیر» ⇒ تبدیلِ خودکار از
-        زمانِ حاضر و غیاب‌زدن (taken_at) تا حالا — بدون مودال */
+     /* ── دور ۷۷: تاخیر = رویدادِ مستقل از وضعیت ──
+        - رویدادِ موجود (پیش‌نویس یا ثبت‌شده، غیرموجه) → مودالِ ویرایش
+        - وضعیتِ مؤثر «غایب» → بدون مودال و **بدون تبدیل**:
+          دقیقه از taken_at تا حالا (فقط فیلدهایِ رویداد؛ وضعیت
+          دست‌نخورده — «اتومات غایب به حاضر تبدیل نمی‌شود»)
+        - حاضر/ثبت‌نشده → مودالِ ساعت (بند 15.1) — فقط فیلدها */
      if(st==='late'){
-       const auto=(typeof attAutoLate==='function')?attAutoLate(cid,date,id):null;
-       if(auto&&auto.converted){
-         attDraftSet(cid,date,id,'late',auto.fields);
-         toast('غیبت به «تأخیر» تبدیل شد — '+fa(auto.minutes)+' دقیقه (از ساعتِ '+auto.taken_label+') — «مرور و ثبت نهایی» را بزنید','ok');
-         render();
+       const _evs=(typeof attDraftEvents==='function')?attDraftEvents(cid,date):{};
+       const _rec=(db.attendance||[]).find(a=>a.student_id===id&&a.date===date);
+       const _de=(_evs[id]&&_evs[id].late)||null;
+       const _hasEvent=_de||(_rec&&(_rec.late_at||_rec.status==='late')&&!_rec.late_excused);
+       if(_hasEvent){
+         attTimePending={cid,date,studentId:id,st};
+         const _t0=(_de&&_de.late_at)||(_rec?_rec.late_at:null);
+         openModal(modalTpl('ویرایشِ رویدادِ تاخیر',
+           f('ساعتِ ورودِ تازه',`<input class="input" id="att_time" type="time" value="${escAttr(_t0||'')}" />`),
+           'att-time-save',false,'ذخیره'))
          return;
        }
-     }
-     /* بند 15.1: تأخیرِ بدونِ غیبتِ ازپیش، ساعت می‌خواهد — مودال زمان */
-     if(st==='late'){
+       const _mk=(typeof attDraftGet==='function')?attDraftGet(cid,date):{};
+       const _eff=_mk[id]||(_rec?_rec.status:null);
+       if(_eff==='absent'){
+         const auto=(typeof attAutoLate==='function')?attAutoLate(cid,date,id):null;
+         if(auto&&auto.converted){
+           attDraftEvent(cid,date,id,'late',auto.fields);
+           toast('تأخیرِ '+fa(auto.minutes)+' دقیقه ثبت شد (از ساعتِ '+auto.taken_label+') — وضعیتِ دانش‌آموز دست‌نخورده است؛ اگر برگشت «حاضر» را بزنید. ویرایش/حذف/موجه از گزارشِ پایین.','ok');
+           render();
+           return;
+         }
+       }
        const school=byId('classes',cid).school_id;
        const cur=(function(){
          const row=(db.attendance||[]).find(a=>a.student_id===id&&a.date===date);
@@ -768,7 +796,7 @@ document.addEventListener('click',e=>{
        openModal(modalTpl('تأخیر با زمان',
          f('ساعت',`<input class="input" id="att_time" type="time" value="${escAttr(cur)}" />`)
          +(hint?`<div class="small muted" style="margin-top:8px">شروع مدرسه: ${hint}</div>`:'')
-         +'<div class="small muted" style="margin-top:8px">میزانِ تأخیر بر پایهٔ زمان‌بندی زنگِ مدرسه محاسبه می‌شود.</div>',
+         +'<div class="small muted" style="margin-top:8px">میزانِ تأخیر بر پایهٔ زمان‌بندی زنگِ مدرسه محاسبه می‌شود. وضعیتِ حاضر/غایب دست‌نخورده می‌ماند.</div>',
          'att-time-save',false,'ثبت'))
        return;
      }
@@ -781,20 +809,29 @@ document.addEventListener('click',e=>{
      const v=($('#att_time')?String($('#att_time').value||''):'' );
      const school=byId('classes',cid).school_id;
      const fields=(typeof attTimeFields==='function')?attTimeFields(school,date,st,v):{};
-     attDraftSet(cid,date,studentId,st,fields);
+      if(st==='late'){
+        /* Round 77: late is an EVENT - status stays untouched */
+        attDraftEvent(cid,date,studentId,'late',fields);
+        attTimePending=null;closeModal();
+        toast('رویدادِ تاخیر ثبت شد — ویرایش/حذف/موجه از گزارشِ پایین','ok');
+        render();
+        return;
+      }
+      attDraftSet(cid,date,studentId,st,fields);
      attTimePending=null;
      closeModal();
      toast(ATT_FA[st]+(v?' — ساعت ثبت شد':' ثبت شد')+'؛ «مرور و ثبت نهایی» را بزنید','ok');
      render();
    },
-   /* موجه‌سازیِ پس از ثبت (بند 15.1) — فقط مدیر/سوپرادمین */
    'att-exempt'(){
      const rec=(typeof byId==='function')?byId('attendance',id):null;
      if(!rec){toast('رکورد پیدا نشد','err');return;}
      attExemptId=rec.id;
      const st=byId('users',rec.student_id);
-     if(['absent','late','early_exit'].indexOf(rec.status) === -1){toast('این رکورد قابل موجه‌سازی نیست','err');return;}
-     if(rec.excused){toast('این رکورد از پیش موجه‌شده است','err');return;}
+     const _hasLate=rec.late_at||rec.status==='late';
+     const _hasExit=rec.exit_at||rec.status==='early_exit';
+     const _can=(rec.status==='absent'&&!rec.excused)||(_hasLate&&!rec.late_excused)||(_hasExit&&!rec.exit_excused);
+     if(!_can){toast('این رکورد قابل موجه‌سازی نیست','err');return;}
      openModal(modalTpl('موجه‌سازی پس از ثبت',
        '<div class="small muted" style="margin-bottom:10px">'+esc(st?st.full_name:'—')
        +' · '+jalali(rec.date)+' · وضعیت: '+ATT_FA[rec.status]+'</div>'
@@ -807,19 +844,114 @@ document.addEventListener('click',e=>{
      if(!rec){attExemptId=null;closeModal();return;}
      const reason=$('#att_exempt_reason')?String($('#att_exempt_reason').value||'').trim():'';
      if(!reason){toast('دلیل موجه‌سازی را بنویسید','err');return;}
-     update('attendance',rec.id,{
-       excused:true,
-       justified_by:S.user.id,
-       justified_at:new Date().toISOString(),
-       note:reason});
-     /* اگر پیامِ معلقِ همین رکورد هنوز رفته نبوده، خاموش لغو می‌شود */
-     if(typeof notifyCancelIfFresh==='function'){
-       const opt=(S.user.role==='manager'||S.user.role==='superadmin')?{byManager:true}:undefined;
-       ['absence','late','exit'].forEach(k=>notifyCancelIfFresh(k,rec.id,null,opt));
-     }
+    /* Round 77: unified excuse core - record + its events.
+       A record-level excuse only makes sense for an ABSENT record
+       (excused hides the record from the file); present records
+       only get their EVENTS excused. */
+    let r={ok:true,msg:'رکورد موجه شد'};
+    if(rec.status==='absent'){
+      r=(typeof attExcuseCore==='function')
+        ?attExcuseCore(rec.id,'record',reason)
+        :{ok:false,msg:'هستهٔ موجه در دسترس نیست'};
+    }
+    if(typeof attExcuseCore==='function'){
+      const _rec2=byId('attendance',rec.id);
+      if(_rec2.late_at||_rec2.status==='late') attExcuseCore(rec.id,'late',reason);
+      if(_rec2.exit_at||_rec2.status==='early_exit') attExcuseCore(rec.id,'exit',reason);
+    }
      attExemptId=null;
      closeModal();
-     toast('رکورد موجه شد — ردپا با نام شما ماند','ok');
+     toast(r.ok?r.msg:r.msg,r.ok?'ok':'err');
+     render();
+   },
+   /* ─────────── Round 77 - event report: edit/delete/excuse ─────────── */
+   'att-event-edit'(){
+     const which=el.dataset.w; if(which!=='late'&&which!=='exit')return;
+     const sid=Number(id);
+     const date=S.filters.date||todayISO();
+     const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
+     const v=(typeof attEventView==='function')?attEventView(cid,date,sid):{late:null,exit:null};
+     const ef=v[which];
+     if(!ef){toast('رویداد پیدا نشد','err');return;}
+     window._evtEdit={cid,date,sid,which};
+     if(which==='late'){
+       openModal(modalTpl('ویرایشِ رویدادِ تاخیر',
+         f('ساعتِ ورود',`<input class="input" id="att_evt_time" type="time" value="${escAttr(ef.late_at||'')}" />`),
+         'att-event-edit-save',false,'ذخیره'));
+     } else {
+       openModal(modalTpl('ویرایشِ رویدادِ خروج',
+         '<div class="row" style="gap:8px">'
+         +'<div class="col">'+f('ساعتِ خروج',`<input class="input" id="att_evt_from" type="time" value="${escAttr(ef.exit_at||'')}" />`)+'</div>'
+         +'<div class="col">'+f('ساعتِ بازگشت',`<input class="input" id="att_evt_to" type="time" value="${escAttr(ef.exit_return_at||'')}" />`)+'</div>'
+         +'</div>'
+         +'<div class="small muted" style="margin-top:8px">دقیقهٔ خروج از فاصلهٔ دو ساعت محاسبه می‌شود.</div>',
+         'att-event-edit-save',false,'ذخیره'));
+     }
+   },
+   'att-event-edit-save'(){
+     const e=window._evtEdit; if(!e){closeModal();return;}
+     const sch=byId('classes',e.cid).school_id;
+     if(e.which==='late'){
+       const t=$('#att_evt_time')?String($('#att_evt_time').value||''):'';
+       const fields=(typeof attTimeFields==='function')?attTimeFields(sch,e.date,'late',t):null;
+       if(!fields||!Object.keys(fields).length){toast('ساعت معتبر وارد کنید','err');return;}
+       attDraftEvent(e.cid,e.date,e.sid,'late',fields);
+     } else {
+       const tf=$('#att_evt_from')?String($('#att_evt_from').value||''):'';
+       const tt=$('#att_evt_to')?String($('#att_evt_to').value||''):'';
+       if(!tf||!tt){toast('هر دو ساعت را وارد کنید','err');return;}
+       const mins=Math.max(0,(timeToMin(tt)||0)-(timeToMin(tf)||0));
+       attDraftEvent(e.cid,e.date,e.sid,'exit',{
+         exit_at:tf,exit_return_at:tt,exit_minutes:mins,
+         note:'خروج از کلاس: '+tFa(tf)+' تا '+tFa(tt)+' ('+fa(mins)+' دقیقه)'});
+     }
+     window._evtEdit=null;closeModal();
+     toast('ویرایشِ رویداد ذخیره شد — با «ثبت نهایی» قطعی می‌شود','ok');render();
+   },
+   'att-event-del'(){
+     const which=el.dataset.w; if(which!=='late'&&which!=='exit')return;
+     const sid=Number(id);
+     const date=S.filters.date||todayISO();
+     const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
+     askConfirm(which==='late'?'این رویدادِ تأخیر حذف شود؟':'این رویدادِ خروج حذف شود؟',
+       ()=>{
+         attDraftEvent(cid,date,sid,which,null);
+         toast('حذفِ رویداد ذخیره شد — با «ثبت نهایی» قطعی می‌شود','ok');
+         render();
+       },
+       {title:'حذف رویداد',ok:'حذف',danger:true,
+        note:'رویداد از رکوردِ حضور (اگر ثبت‌شده باشد) حذف می‌شود؛ بقیهٔ رکورد دست‌نخورده می‌ماند.'});
+   },
+   'att-excuse-event'(){
+     const which=el.dataset.w; if(which!=='late'&&which!=='exit')return;
+     const sid=Number(id);
+     const date=S.filters.date||todayISO();
+     const cls=visibleClasses();const cid=Number(S.filters.class||cls[0].id);
+     const v=(typeof attEventView==='function')?attEventView(cid,date,sid):{rec:null,late:null,exit:null};
+     if(!v.rec){toast('این رویداد هنوز ثبتِ قطعی ندارد — پس از «ثبت نهایی» قابل موجه است','err');return;}
+     const ef=v[which];
+     if(!ef){toast('رویداد پیدا نشد','err');return;}
+     const ex=which==='late'?!!ef.late_excused:!!ef.exit_excused;
+     if(ex){toast('این رویداد از پیش موجه‌شده است','err');return;}
+     const sc=byId('classes',cid).school_id;
+     const w=(typeof attExcuseWindow==='function')
+       ?attExcuseWindow(sc,date,which==='late'?ef.late_at:ef.exit_at):null;
+     window._evtExcuse={recId:v.rec.id,which};
+     openModal(modalTpl('موجه‌سازیِ '+(which==='late'?'تأخیر':'خروج از کلاس'),
+       '<div class="small muted" style="margin-bottom:10px">رویداد از پروندهٔ حضور و غیابِ دانش‌آموز حذف می‌شود (حتی اگر مدیر تأیید کرده باشد) و پیامِ توضیحی با دلیل به صفِ اولیا و مدیر می‌رود.</div>'
+       +(w?('<div class="small" style="margin-bottom:10px;font-weight:700">'+(w.open?'🕓 '+w.label:'⛔ پنجرهٔ موجه بسته است — '+w.label)+'</div>'):'')
+       +f('دلیل (الزامی)',`<textarea class="input" id="att_exc_evt_reason" rows="2" placeholder="مثلاً: مأموریت اداری، مسمومیت، تماس اورژانس…"></textarea>`),
+       'att-excuse-event-confirm',false,'موجه کن'));
+   },
+   'att-excuse-event-confirm'(){
+     const e=window._evtExcuse; if(!e){closeModal();return;}
+     const reason=$('#att_exc_evt_reason')?String($('#att_exc_evt_reason').value||'').trim():'';
+     const r=(typeof attExcuseCore==='function')
+       ?attExcuseCore(e.recId,e.which,reason)
+       :{ok:false,msg:'هستهٔ موجه در دسترس نیست'};
+     window._evtExcuse=null;
+     closeModal();
+     toast(r.ok?r.msg:r.msg,r.ok?'ok':'err');
      render();
    },
    'att-all'(){const st=el.dataset.s,date=S.filters.date||todayISO();
@@ -925,49 +1057,81 @@ document.addEventListener('click',e=>{
      }
      const made=[];
      batchWrites(()=>{
-       d.changes.forEach(c=>{
-         let recId=c.rec_id;
-         if(recId){const _old=byId('attendance',recId);
-           /* دور ۷۵: taken_at = زمانِ حاضر و غیاب‌زدن — مبنایِ دقیقهٔ
-              تبدیلِ خودکارِ غیبت به تأخیر. روی رکوردِ قدیمی باقی
-              می‌ماند؛ فقط اگر نباشد، پر می‌شود. */
-           update('attendance',recId,Object.assign({status:c.to,class_id:cid},
-             c.fields||{}, _old&&_old.taken_at?{taken_at:_old.taken_at}:{taken_at:new Date().toISOString()}));
-           /* ⚠️ اصلاح درون پنجرهٔ مهلت: پیام معلقِ همین رکورد که
-              خود این دبیر ساخته بود، خاموش لغو می‌شود. اگر پیام
-              رفته باشد، گام ۵ (اصلاحیه) کارش را می‌کند. */
-           if(typeof notifyCancelIfFresh==='function'){
-             /* 🔴 مدیر پس از پنجرهٔ مهلت هم می‌تواند لغو کند (دور ۴۳)،
-                ولی رکورد نشان by_manager می‌گیرد تا ردپا بماند. */
-             const role=(typeof activePersona==='function')?activePersona():S.user.role;
-             const opt=(role==='manager'||role==='superadmin')?{byManager:true}:undefined;
-             notifyCancelIfFresh('absence',recId,null,opt);
-             notifyCancelIfFresh('late',recId,null,opt);
-             notifyCancelIfFresh('exit',recId,null,opt);
-           }}
-         else recId=insert('attendance',Object.assign({school_id:school,class_id:cid,
-           student_id:c.student_id,date,status:c.to,note:null,
-           taken_at:new Date().toISOString()},c.fields||{})).id;
-         made.push({c,recId});
-       });
+        d.changes.forEach(c=>{
+          let recId=c.rec_id;
+          const evs=c.events||{};
+          if(recId){const _old=byId('attendance',recId);
+            const patch=Object.assign({status:c.to,class_id:cid},c.fields||{});
+            /* Round 77: apply late/exit event fields (set or clear) */
+            if(typeof applyAttEvents==='function')applyAttEvents(patch,evs,_old);
+            patch.taken_at=(_old&&_old.taken_at)?_old.taken_at:new Date().toISOString();
+            /* Round 77: 30% rule -> if total > 30% of the bell, absent */
+            if(c.to!=='absent'&&typeof attOutRule==='function'){
+              const view=Object.assign({},_old,patch);
+              const rule=attOutRule(school,date,view);
+              if(rule&&rule.over){
+                patch.status='absent';
+                patch.note='غیبت: مجموعِ تأخیر و خروج از کلاس بیش از ۳۰٪ زنگ بود'+
+                  (patch.note?' — '+patch.note:'');
+              }
+            }
+            update('attendance',recId,patch);
+            /* ⚠️ in-window correction: silently cancel the pending
+               messages this teacher created for this record. */
+            if(typeof notifyCancelIfFresh==='function'){
+              const role=(typeof activePersona==='function')?activePersona():S.user.role;
+              const opt=(role==='manager'||role==='superadmin')?{byManager:true}:undefined;
+              notifyCancelIfFresh('absence',recId,null,opt);
+              notifyCancelIfFresh('late',recId,null,opt);
+              notifyCancelIfFresh('exit',recId,null,opt);
+            }}
+          else {
+            /* Round 77: event-only change with no record -> 'present' */
+            const st=c.to||'present';
+            const evf=Object.assign({},c.fields||{});
+            if(typeof applyAttEvents==='function')applyAttEvents(evf,evs,null);
+            const baseNote=(evf.note!=null)?evf.note:null;
+            delete evf.note;
+            const base={school_id:school,class_id:cid,
+              student_id:c.student_id,date,status:st,note:baseNote,
+              taken_at:new Date().toISOString()};
+            if(st!=='absent'&&typeof attOutRule==='function'){
+              const view=Object.assign({},base,evf);
+              const rule=attOutRule(school,date,view);
+              if(rule&&rule.over){
+                base.status='absent';
+                base.note='غیبت: مجموعِ تأخیر و خروج از کلاس بیش از ۳۰٪ زنگ بود'+
+                  (baseNote?' — '+baseNote:'');
+              }
+            }
+            recId=insert('attendance',Object.assign(base,evf)).id;
+          }
+          made.push({c,recId});
+        });
      });
      /* پیامک پس از نوشتن ساخته می‌شود تا source_ref شناسهٔ واقعی باشد */
      let sms=0,fix=0;
      if(typeof notifyRequest==='function'){
-       made.forEach(({c,recId})=>{
-         if(c.to!=='absent'&&c.to!=='late'&&c.to!=='early_exit')return;
-         /* ⚠️ اگر پیامی برای همین رکورد قبلاً ارسال شده، ساخت پیام
-            تازه یعنی خانواده دو بار خبر یکسان می‌گیرد. آنجا کار
-            اصلاحیه است نه پیام نو. */
-         const already=(typeof notifyLastSent==='function')&&
-           (notifyLastSent('absence',recId)||notifyLastSent('late',recId)||notifyLastSent('exit',recId));
-         if(already)return;
-         const kind=c.to==='absent'?'absence':(c.to==='late'?'late':'exit');
-         const q=notifyRequest({school_id:school,kind,
-           student_id:c.student_id,class_id:cid,student_name:c.name,
-           date_fa:jalali(date),source_ref:recId});
-         if(q)sms++;
-       });
+        made.forEach(({c,recId})=>{
+          const rec=(typeof byId==='function')?byId('attendance',recId):null;
+          const evs=c.events||{};
+          const kinds=[];
+          if(rec&&rec.status==='absent')kinds.push('absence');
+          if(evs.late&&evs.late!==null&&!evs.late.late_excused)kinds.push('late');
+          if(evs.exit&&evs.exit!==null&&!evs.exit.exit_excused)kinds.push('exit');
+          if(!kinds.length)return;
+          /* ⚠️ if a message for this record was already sent, a new
+             one means the family gets the same news twice. */
+          const already=(typeof notifyLastSent==='function')&&
+            kinds.some(k=>notifyLastSent(k,recId));
+          if(already)return;
+          kinds.forEach(k=>{
+            const q=notifyRequest({school_id:school,kind:k,
+              student_id:c.student_id,class_id:cid,student_name:c.name,
+              date_fa:jalali(date),source_ref:recId});
+            if(q)sms++;
+          });
+        });
        /* خلاصهٔ روزانه (بند ۱.۷): برای هر دانش‌آموزی که وضعیتش در
           همین ثبت قطعی شد، اگر امروز هنوز خلاصه‌ای ساخته نشده،
           یک‌بار ساخته می‌شود (حذف تکراری در notifyDailySummary). */

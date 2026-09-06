@@ -116,8 +116,16 @@ test('N5 — کارتِ مدیر: کلاسِ ناقص با دکمهٔ یادآو
   W(`S.user=byId('users',${mgr});S.persona=null;S.boss=null;S.bellNow=${P2};S.route='attendance';S.filters={};S.page=1;render()`);
   let h = W(`document.querySelector('.main').innerHTML`);
   assert(h.indexOf('کلاس ثبت نشده') > -1, 'کارتِ مدیر نیست');
-  /* کلاسِ ۱ را کامل می‌کنیم → باید از فهرست برود */
-  W(`insert('attendance',{school_id:1,class_id:1,student_id:${global.__nstu},date:todayISO(),status:'present'})`);
+  /* کلاسِ ۱ را کامل می‌کنیم → باید از فهرست برود
+     Round 77: demo no longer pre-marks today, so mark EVERY class-1
+     student present (previously only the extra student was missing) */
+  W(`(function(){
+    var studs=db.enrollments.filter(function(e){return e.class_id===1;}).map(function(e){return e.student_id;});
+    studs.forEach(function(sid){
+      var has=(db.attendance||[]).some(function(a){return a.student_id===sid&&a.date===todayISO();});
+      if(!has)insert('attendance',{school_id:1,class_id:1,student_id:sid,date:todayISO(),status:'present'});
+    });
+  })()`);
   W(`render()`);
   h = W(`document.querySelector('.main').innerHTML`);
   /* اگر کلاس ۱ تنها کلاسِ ناقص بود، حالا «همهٔ کلاس‌ها ثبت شده» */

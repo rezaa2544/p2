@@ -104,17 +104,26 @@ function viewRecord(sid){
   if(S.tab==='bus') body = persona==='parent'
     ? ((typeof busParentTab==='function')?busParentTab(sid):'')
     : ((typeof busStudentTab==='function')?busStudentTab(sid):'');
-  if(S.tab==='attendance'){const cnt=k=>att.filter(a=>a.status===k).length;
-    body= att.length?`<div class="card-body row">${['present','absent','late','excused','early_exit'].map(k=>`<span class="badge ${ATT_BADGE[k]}">${ATT_FA[k]}: ${fa(cnt(k))} روز</span>`).join('')}</div>
+  if(S.tab==='attendance'){
+    /* Round 77: an EXCUSED record is REMOVED from the file (even if
+       the manager approved the SMS) - trace stays in the data. */
+    const attFile=att.filter(x=>!x.excused);
+    const cnt=k=>attFile.filter(a=>a.status===k).length;
+    body= attFile.length?`<div class="card-body row">${['present','absent','late','excused','early_exit'].map(k=>`<span class="badge ${ATT_BADGE[k]}">${ATT_FA[k]}: ${fa(cnt(k))} روز</span>`).join('')}</div>
      <div class="table-wrap"><table><thead><tr><th>تاریخ</th><th>وضعیت</th><th>توضیح</th><th>تغییرات</th></tr></thead><tbody>
-     ${att.slice(0,60).map(r=>{
+     ${attFile.slice(0,60).map(r=>{
        /* دور ۷۵: توضیح = یادداشت دبیر؛ اگر نبود، جزئیاتِ زمانِ خودکار:
           تأخیر (ساعت + دقیقه) / خروج از کلاس (بازهٔ خروج تا بازگشت + دقیقه) */
+       /* Round 77: description is EVENT-based (works for the legacy
+          statuses too) and EXCUSED events are not written in the file. */
        const _desc=(rr)=>{ if(rr.note)return rr.note;
          const _tf=(typeof timeFa==='function')?timeFa:null;
-         if(rr.status==='late'&&rr.late_at)return 'تأخیر: ساعت '+(_tf?_tf(rr.late_at):rr.late_at)+((rr.late_minutes!=null)?' — '+fa(rr.late_minutes)+' دقیقه':'');
-         if(rr.status==='early_exit'&&rr.exit_at)return 'خروج از کلاس: ساعت '+(_tf?_tf(rr.exit_at):rr.exit_at)+((rr.exit_return_at)?' تا '+(_tf?_tf(rr.exit_return_at):rr.exit_return_at):'')+((rr.exit_minutes!=null)?' — '+fa(rr.exit_minutes)+' دقیقه':'');
-         return '—'; };
+         const _parts=[];
+         if(!rr.late_excused&&(rr.late_at||rr.status==='late'))
+           _parts.push('تأخیر: ساعت '+(rr.late_at?(_tf?_tf(rr.late_at):rr.late_at):'—')+((rr.late_minutes!=null)?' — '+fa(rr.late_minutes)+' دقیقه':''));
+         if(!rr.exit_excused&&(rr.exit_at||rr.status==='early_exit'))
+           _parts.push('خروج از کلاس: ساعت '+(rr.exit_at?(_tf?_tf(rr.exit_at):rr.exit_at):'—')+((rr.exit_return_at)?' تا '+(_tf?_tf(rr.exit_return_at):rr.exit_return_at):'')+((rr.exit_minutes!=null)?' — '+fa(rr.exit_minutes)+' دقیقه':''));
+         return _parts.length?_parts.join(' · '):'—'; };
        return `<tr><td>${jalali(r.date)}</td><td><span class="badge ${ATT_BADGE[r.status]}">${ATT_FA[r.status]}</span></td><td class="muted">${esc(_desc(r))}</td>
       <td>${(typeof attHistory==='function'&&attHistory(r.id).length>1)?`<button class="btn ghost sm" data-act="att-hist" data-id="${escAttr(r.id)}">📜 سابقه</button>`:'<span class="small muted">—</span>'}</td></tr>`;}).join('')}</tbody></table></div>`
      :empty('✅','سابقه حضور و غیاب خالی است','');}

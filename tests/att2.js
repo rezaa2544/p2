@@ -165,17 +165,18 @@ async function main() {
     W(`document.querySelector('${stSel}').click()`);
     const dr = W(`(function(){
       var m=attDraftGet(${ctx.cls},todayISO());
-      var f=attDraftFields(${ctx.cls},todayISO());
+      var e=(attDraftEvents(${ctx.cls},todayISO())[${stId}]||{});
       var t=attTimersGet(${ctx.cls},todayISO());
-      return {mark:m[${stId}], fields:f[${stId}]||null, stillRunning:!!t[${stId}]};
+      return {mark:m[${stId}], ev:e.exit||null, stillRunning:!!t[${stId}]};
     })()`);
-    assert(dr.mark === 'early_exit', 'پس از توقف، پیش‌نویسِ خروج ثبت نشد (' + dr.mark + ')');
-    assert(dr.fields && dr.fields.exit_minutes === 65,
-      'دقیقهٔ سپری‌شده درست نیست (گرفت: ' + (dr.fields&&dr.fields.exit_minutes) + ' انتظار: 65)');
-    assert(dr.fields && /^\d{2}:\d{2}$/.test(dr.fields.exit_at) &&
-           /^\d{2}:\d{2}$/.test(dr.fields.exit_return_at),
+    /* Round 77: exit is an EVENT - the base status must NOT be marked */
+    assert(!dr.mark, 'وضعیتِ پایه نباید علامت بخورد (خروج رویداد است: ' + dr.mark + ')');
+    assert(dr.ev && dr.ev.exit_minutes === 65,
+      'دقیقهٔ سپری‌شده درست نیست (گرفت: ' + (dr.ev&&dr.ev.exit_minutes) + ' انتظار: 65)');
+    assert(dr.ev && /^\d{2}:\d{2}$/.test(dr.ev.exit_at) &&
+           /^\d{2}:\d{2}$/.test(dr.ev.exit_return_at),
       'ساعت‌های خروج/بازگشت ثبت نشدند');
-    assert(dr.fields && dr.fields.note && dr.fields.note.indexOf('خروج از کلاس') > -1,
+    assert(dr.ev && dr.ev.note && dr.ev.note.indexOf('خروج از کلاس') > -1,
       'توضیحِ خروج در پیش‌نویس نیست');
     assert(!dr.stillRunning, 'تایمر پس از توقف هنوز فعال است');
   });
@@ -215,13 +216,16 @@ async function main() {
         return a.student_id===${stId} && a.date===todayISO();}) || null;
     })()`);
     assert(rec, 'رکوردِ حضور ساخته نشد');
-    assert(rec.status === 'early_exit', 'وضعیتِ رکورد درست نیست (' + rec.status + ')');
+    /* Round 77: 65 minutes > 30% of the bell -> forced ABSENT (30% rule),
+       and the exit event stays on the record as fields. */
+    assert(rec.status === 'absent', 'قاعدهٔ ۳۰٪: رکورد باید غایب باشد (گرفت: ' + rec.status + ')');
     assert(rec.exit_at && /^\d{2}:\d{2}$/.test(rec.exit_at), 'ساعتِ خروج در رکوردِ ثبت‌شده نیست');
     assert(rec.exit_return_at && /^\d{2}:\d{2}$/.test(rec.exit_return_at),
       'ساعتِ بازگشت (تایمر) در رکوردِ ثبت‌شده نیست');
     assert(rec.exit_minutes === 65, 'دقیقهٔ سپری‌شدهٔ تایمر در رکورد درست نیست (گرفت: ' + rec.exit_minutes + ')');
     assert(rec.taken_at, 'taken_at (زمانِ حاضر و غیاب‌زدن) در رکوردِ تازه نیست');
     assert(rec.note && rec.note.indexOf('خروج از کلاس') > -1, 'توضیحِ تایمر در رکورد نیست');
+    assert(rec.note.indexOf('۳۰٪') > -1, 'قاعدهٔ ۳۰٪ در توضیحِ رکورد نیست: ' + rec.note);
     const afterQ = W(`(function(){
       return (db.notify_queue||[]).filter(function(q){
         return q.kind==='exit' && q.student_id===${stId} && q.source_ref===${rec.id};}).length;
@@ -282,11 +286,14 @@ async function main() {
     W(`(function(){
       var sid=${ctx.sid};
       var cls=${ctx.cls};
+      /* Round 77: clear ALL records of this student in the window first
+         (exit events count regardless of status) */
+      var from=daysAgoISO(31);
+      (db.attendance||[]).slice().forEach(function(a){
+        if(a.student_id===${stId2} && a.date>=from) remove('attendance',a.id);
+      });
       for(var i=1;i<=3;i++){
         var d=new Date(Date.now() - i*86400000).toISOString().slice(0,10);
-        var old=(db.attendance||[]).filter(function(a){
-          return a.student_id===${stId2} && a.date===d;});
-        old.forEach(function(x){db.attendance.splice(db.attendance.indexOf(x),1);});
         insert('attendance',{school_id:sid,class_id:cls,student_id:${stId2},date:d,
           status:'early_exit',exit_at:'11:40',exit_minutes:20,note:null});
       }

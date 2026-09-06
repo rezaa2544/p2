@@ -37,15 +37,15 @@ const MUTS = [
   {
     file: 'src/js/19-actions.js',
     name: 'M4 taken_at در رکوردِ تازهٔ ثبت‌شده نوشته نشود',
-    bad: "           taken_at:new Date().toISOString()},c.fields||{})).id;",
-    mut: '           },c.fields||{})).id;',
+    bad: 'student_id:c.student_id,date,status:st,note:baseNote,\n              taken_at:new Date().toISOString()};',
+    mut: 'student_id:c.student_id,date,status:st,note:baseNote,\n              taken_at:null};',
     expectFail: 'taken_at در رکوردِ تازه نیست',
   },
   {
     file: 'src/js/17-student-record.js',
-    name: 'M5 توضیحِ خودکارِ پرونده (بازهٔ خروج تا بازگشت) خاموش شود',
-    bad: "if(rr.status==='early_exit'&&rr.exit_at)return 'خروج از کلاس: ساعت '+(_tf?_tf(rr.exit_at):rr.exit_at)+((rr.exit_return_at)?' تا '+(_tf?_tf(rr.exit_return_at):rr.exit_return_at):'')+((rr.exit_minutes!=null)?' — '+fa(rr.exit_minutes)+' دقیقه':'');",
-    mut: "if(rr.status==='early_exit'&&rr.exit_at)return '—';",
+    name: 'M5 توضیحِ خودکارِ پرونده (رویدادِ خروج: بازه تا بازگشت) خاموش شود',
+    bad: "_parts.push('خروج از کلاس: ساعت '+(rr.exit_at?(_tf?_tf(rr.exit_at):rr.exit_at):'—')+((rr.exit_return_at)?' تا '+(_tf?_tf(rr.exit_return_at):rr.exit_return_at):'')+((rr.exit_minutes!=null)?' — '+fa(rr.exit_minutes)+' دقیقه':''));",
+    mut: "_parts.push('—');",
     expectFail: 'توضیحِ خروجِ تایمری در پرونده نیست',
   },
 ];

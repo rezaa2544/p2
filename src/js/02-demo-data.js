@@ -177,7 +177,7 @@ function generate(){
           famTarget = (si===0 && (famIndex===2 || famIndex===4)) ? 2
                     : (famIndex % 4 === 2 ? 1 : 0);
         }
-        dates.forEach(iso=>{const r=rng();let s='present';if(r>.97)s='absent';else if(r>.94)s='late';else if(r>.925)s='early_exit';else if(r>.915)s='excused';
+        dates.forEach(iso=>{const r=rng();if(iso===todayISO())return; /* Round 77: today starts UNMARKED - the teacher marks it live (no preset 'حاضر'). ⚠️ rng() before the skip: the demo RNG stream must not shift (sample accounts!). */ let s='present';if(r>.97)s='absent';else if(r>.94)s='late';else if(r>.925)s='early_exit';else if(r>.915)s='excused';
           const rec={school_id:school.id,class_id:c.id,student_id:st.id,date:iso,status:s,note:s==='excused'?'مرخصی با اطلاع ولی':null};
           /* بند 15.1: وضعیت‌های زمان‌دار — ⚠️ بدون مصرفِ rng(): ساعت/دقیقه
              از هاشِ قطعیِ شناسه+تاریخ می‌آید تا جریانِ RNG (و حساب‌های

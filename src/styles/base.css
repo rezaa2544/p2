@@ -137,12 +137,40 @@ tbody tr:hover{background:#eef4ff}
 .tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);overflow-x:auto;width:100%}
 .tab{padding:9px 14px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);white-space:nowrap}
 .tab.active{color:var(--primary);border-color:var(--primary)}
-.att-btn{border:1px solid var(--border);background:#fff;padding:5px 10px;border-radius:8px;cursor:pointer;font-size:12.5px;margin-left:3px}
+/* Round 77: compact buttons — designed for a standard phone screen.
+   Row = [حاضر][غایب][تاخیر] + visual gap + [🚪 خروج از کلاس].
+   No button shows an active state before anything is marked. */
+.att-btn{border:1px solid var(--border);background:#fff;padding:4px 8px;border-radius:8px;cursor:pointer;font-size:12px;line-height:1.1;margin-left:3px;white-space:nowrap}
 .att-btn.on-present{background:var(--green);color:#fff;border-color:var(--green)}
 .att-btn.on-absent{background:var(--red);color:#fff;border-color:var(--red)}
 .att-btn.on-late{background:var(--amber);color:#fff;border-color:var(--amber)}
 .att-btn.on-excused{background:var(--purple);color:#fff;border-color:var(--purple)}
 .att-btn.on-early_exit{background:#0b7fa8;color:#fff;border-color:#0b7fa8}
+/* the three status buttons form one group */
+.att-group{display:inline-flex;gap:3px}
+/* visual gap separating "خروج از کلاس" from the three status buttons */
+.att-sep{display:inline-block;width:10px;height:20px;border-inline-start:1px dashed var(--border);margin:0 6px 0 2px;vertical-align:middle}
+/* while the exit timer runs, the other three are locked */
+.att-btn[disabled],.att-btn.att-btn-lock{opacity:.4;cursor:not-allowed;background:#f1f3f7;color:var(--muted)}
+.att-btn-exit{border-color:#0b7fa8}
+.att-btn-running{background:#0b7fa8;color:#fff;border-color:#0b7fa8;animation:att-pulse 1.2s ease-in-out infinite}
+@keyframes att-pulse{0%,100%{box-shadow:0 0 0 0 rgba(11,127,168,.35)}50%{box-shadow:0 0 0 4px rgba(11,127,168,0)}}
+/* sub-badges (late/exit/30%) rendered under the base status */
+.att-sub{margin-top:4px;font-size:11px}
+.att-sub .badge{font-size:11px}
+.att-status-cell{min-width:120px}
+.att-ctrl{white-space:nowrap}
+/* bottom event report */
+.att-report{margin-top:12px}
+.att-report-tbl td{font-size:12px}
+.att-report-actions{white-space:nowrap}
+.att-report-actions .btn{margin-left:4px;padding:3px 7px;font-size:11px}
+.att-excused-row{opacity:.65}
+@media(max-width:640px){
+  .att-btn{padding:3px 6px;font-size:11px;margin-left:2px}
+  .att-sep{width:6px;margin:0 4px 0 1px}
+  .att-status-cell{min-width:96px}
+}
 .timetable{display:grid;grid-template-columns:70px repeat(5,1fr);gap:7px;min-width:640px}
 .tt-head{font-size:12px;color:var(--muted);text-align:center;padding:5px}
 .tt-cell{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:8px;min-height:60px}
