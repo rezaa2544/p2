@@ -1199,7 +1199,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -1468,6 +1468,33 @@ function generate(){
       name:'نیما صالحی',national_id:nid(),phone:demoPhone(),
       grade:11,field:'ریاضی',
       source:'new',status:'registered',created_at:daysAgoISO(4),note:null});
+  })();
+  /* اسکان/خوابگاه (دور ۷۸ بند ۷): چند مدرسهٔ دمو توانِ has_dorm دارند
+     (SH-101، FZ-102، AH-103، IZ-105)؛ برای هرکدام چند اتاق + انتساب +
+     وعدهٔ هفتگی تا ماژول در دمو دیده شود. ⚠️ انتخاب‌های قطعی (بدون
+     rng) تا جریانِ تصادفیِ دمو جابه‌جا نشود. */
+  (function(){
+    const dormSchools=db.schools.filter(s=>s.capabilities&&s.capabilities.has_dorm);
+    dormSchools.forEach(sch=>{
+      const mkRoom=(name,capacity)=>add('dorm_rooms',{school_id:sch.id,name,capacity,created_at:daysAgoISO(120)});
+      const r1=mkRoom('اتاق ۱۰',4), r2=mkRoom('اتاق ۱۰۲',3), r3=mkRoom('اتاق ۲۰۱',2);
+      const studs=db.users.filter(u=>u.role==='student'&&u.school_id===sch.id&&(u.active||u.status!=='dropped_out')).slice(0,6);
+      const rooms=[r1,r2,r3];
+      studs.forEach((st,i)=>{
+        add('dorm_assignments',{school_id:sch.id,room_id:rooms[i%rooms.length].id,student_id:st.id,since:daysAgoISO(100+i)});
+      });
+      /* وعده‌های هفتگی: شنبه تا چهارشنبه، سه وعده؛ منوهای ساده و ثابت */
+      const menus={
+        breakfast:['نوشاب، پنیر و سبزی','شیر و بیسکویت و ساندویچ','روغنی و کره و عسل'],
+        lunch:['چلو و خورشت قورمه','ماکارونی و سالاد','برنج و خورشت فسنجان'],
+        dinner:['چای و بیسکویت','ماست و خیار و نان','پنیر و سبزی و نان']
+      };
+      for(let d=0;d<5;d++){
+        add('dorm_meals',{school_id:sch.id,day:d,kind:'breakfast',menu:menus.breakfast[d%menus.breakfast.length],created_at:daysAgoISO(30)});
+        add('dorm_meals',{school_id:sch.id,day:d,kind:'lunch',menu:menus.lunch[d%menus.lunch.length],created_at:daysAgoISO(30)});
+        add('dorm_meals',{school_id:sch.id,day:d,kind:'dinner',menu:menus.dinner[d%menus.dinner.length],created_at:daysAgoISO(30)});
+      }
+    });
   })();
   add('announcements',{school_id:null,title:'به‌روزرسانی سامانه',body:'نسخه جدید سامانه مدیریت مدارس با قابلیت گزارش‌گیری پیشرفته و پنل اولیا منتشر شد.',audience:'all',created_by:1,created_at:daysAgoISO(1)});
 }
@@ -1964,7 +1991,7 @@ function scopeHealth(){
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
  superadmin:[['نظارت روزانه',[['dashboard','📊','داشبورد مدیریتی'],['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها']]],['مدارس و کاربران',[['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه'],['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]]],
- manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['assets','🧰','املاک'],['sidadiff','⚖️','سیدا'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک'],['preapps','📥','قیف پیش‌ثبت‌نام'],['scholarships','🎓','کمک‌هزینه و بورسیه']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات'],['reexams','🔁','امتحانات تجدیدی (شهریور)']]],['کلاس‌های تابستان',[['summerclasses','☀️','کلاس‌های تابستانی']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی']]],['مالی',[['tuition','💰','شهریه و امور مالی'],['association','🤝','انجمن و کمک‌ها']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['assets','🧰','املاک'],['dorm','🏠','اسکان و خوابگاه'],['sidadiff','⚖️','سیدا'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک'],['preapps','📥','قیف پیش‌ثبت‌نام'],['scholarships','🎓','کمک‌هزینه و بورسیه']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات'],['reexams','🔁','امتحانات تجدیدی (شهریور)']]],['کلاس‌های تابستان',[['summerclasses','☀️','کلاس‌های تابستانی']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی']]],['مالی',[['tuition','💰','شهریه و امور مالی'],['association','🤝','انجمن و کمک‌ها']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  teacher:[['کار روزانه',[['dashboard','📊','داشبورد'],['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کار آموزشی',[['meetings','📅','جلسات اولیا'],['classes','🏛️','کلاس‌ها'],['vclass','🖥️','کلاس مجازی'],['exams','👁️','برنامه مراقبت من'],['homework','📓','تکالیف'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['calendar','🗓️','تقویم آموزشی']]],['پروندهٔ من',[['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['leaves','📨','مرخصی'],['homework','📓','تکالیف من']]],['امور مالی',[['mytuition','💰','شهریه من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['کار روزانه',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
@@ -1974,7 +2001,7 @@ const NAV={
 };
 const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','پروندهٔ کاملِ هر فرزند: کارنامه، حضور و انضباط — با دکمه‌های بالای صفحه بین فرزندان جابه‌جا شوید (برچسبِ منو به‌صورتِ «پروندهٔ N فرزند» نمایش داده می‌شود)'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],
 reexams:['امتحانات تجدیدی (شهریور)','دروسِ نیازمندِ امتحانِ مجدد + نمرهٔ نهایی پس از تجدیدی'],
-summerclasses:['کلاس‌های تابستانی','نام + دبیر + دانش‌آموزان + تاریخ‌ها — جدا از سالِ تحصیلیِ رسمی'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده و مدارس','همهٔ فرزندان و مدرسهٔ هرکدام — حتی وقتی در مدارس مختلف‌اند؛ اتصالِ فرزندان به کد ملی و تأییدِ آن‌ها (برای پروندهٔ کاملِ تک‌تک، «پرونده فرزندان» را باز کنید)'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],library:['کتابخانه','کتاب‌ها + امانت به دانش‌آموز + بازگشت — نسخهٔ سبک'],assets:['املاک و موجودی','تجهیزات با وضعیت + مکان — نسخهٔ سبک'],sidadiff:['اختلاف با سیدا','نمرهٔ سیدا دستی — مقایسه با پایش، فقط خواندنی برای بقیه'],preapps:['قیف پیش‌ثبت‌نام','تماس → بازدید → آزمون → ثبت‌نامِ قطعی — جدا از ثبت‌نامِ رسمی'],
+summerclasses:['کلاس‌های تابستانی','نام + دبیر + دانش‌آموزان + تاریخ‌ها — جدا از سالِ تحصیلیِ رسمی'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده و مدارس','همهٔ فرزندان و مدرسهٔ هرکدام — حتی وقتی در مدارس مختلف‌اند؛ اتصالِ فرزندان به کد ملی و تأییدِ آن‌ها (برای پروندهٔ کاملِ تک‌تک، «پرونده فرزندان» را باز کنید)'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],library:['کتابخانه','کتاب‌ها + امانت به دانش‌آموز + بازگشت — نسخهٔ سبک'],assets:['املاک و موجودی','تجهیزات با وضعیت + مکان — نسخهٔ سبک'],dorm:['اسکان و خوابگاه','اتاق‌ها + انتساب دانش‌آموز + وعده‌های هفتگی + مرخصیِ رفت‌وبرگشتِ آخر هفته — نسخهٔ سبک'],sidadiff:['اختلاف با سیدا','نمرهٔ سیدا دستی — مقایسه با پایش، فقط خواندنی برای بقیه'],preapps:['قیف پیش‌ثبت‌نام','تماس → بازدید → آزمون → ثبت‌نامِ قطعی — جدا از ثبت‌نامِ رسمی'],
 scholarships:['کمک‌هزینه و بورسیه','علامت‌گذاری دانش‌آموزِ نیازمند + وضعیت (درخواست‌شده/بررسی/تأیید/رد) — فقط ثبت، بدون پرداخت'],visitors:['مهمان‌ها','ورود/خروج افراد غیردانش‌آموز و غیرکارکنان — نسخهٔ سبک'],homework:['تکالیف','بارگذاری تصویر تکلیف + تصحیح دیجیتال با خطِ خوددست و نمره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها'],association:['انجمن و کمک‌ها','در مدارس دولتی به‌جای شهریه: کمک‌های داوطلبانهٔ اولیا با ثبت شفاف']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
@@ -2934,6 +2961,17 @@ var ACTION_ROLES = {
   'lib-lend':       ['manager'],
   'lib-lend-save':  ['manager'],
   'lib-return':     ['manager'],
+  /* خوابگاه/اسکان (دور ۷۸ بند ۷): فقط مدیر؛ مالکیت مدرسه در توابع دامنه روی داده */
+  'dorm-room-new':  ['manager'],
+  'dorm-room-edit': ['manager'],
+  'dorm-room-save': ['manager'],
+  'dorm-room-del':  ['manager'],
+  'dorm-assign':    ['manager'],
+  'dorm-assign-pick':['manager'],
+  'dorm-unassign':  ['manager'],
+  'dorm-meal':      ['manager'],
+  'dorm-meal-save': ['manager'],
+  'dorm-leave':     ['manager'],
   'bus-need-set':   ['manager','superadmin'],
   'bus-need-save':  ['manager','superadmin'],
   'bus-need-parent-save': ['parent'],
@@ -3216,6 +3254,7 @@ function navFor(u){
   if(u.school_id&&(typeof hasCap==='function')){
     if(!hasCap(u.school_id,'has_tuition'))capHidden.push('tuition','mytuition');
     else capHidden.push('association'); /* مدرسهٔ غیردولتی: انجمن جای شهریه نیست */
+    if(!hasCap(u.school_id,'has_dorm'))capHidden.push('dorm'); /* اسکان فقط برای مدارسِ صاحبِ توان */
   }
   let nav=(NAV[u.role]||[]).map(function(g){
     return [g[0],(g[1]||[]).filter(function(it){ return dis.indexOf(it[0])<0&&capHidden.indexOf(it[0])<0; })];
@@ -3366,6 +3405,7 @@ function _renderRouteInner(){
     case 'visitors':return viewVisitors();
     case 'library':return viewLibrary();
     case 'assets':return viewAssets();
+    case 'dorm':return viewDorm();
     case 'sidadiff':return viewSidaDiff();
     case 'cqueue':return viewCounselorQueue();
     case 'followup':return viewFollowup();
@@ -10022,6 +10062,101 @@ document.addEventListener('click',e=>{
      toast('خروج ثبت شد','ok');
      render();
    },
+   /* ─────────────── خوابگاه/اسکان (دور ۷۸ بند ۷) ─────────────── */
+   'dorm-room-new'(){
+     openModal(modalTpl('اتاق جدید',
+       f('نام اتاق *', inp('dorm_room_name',''))
+       + f('ظرفیت *', inp('dorm_room_cap','4','number')),
+       'dorm-room-save'));
+   },
+   'dorm-room-edit'(){
+     const r=byId('dorm_rooms',id)||{};
+     openModal(modalTpl('ویرایش اتاق',
+       `<input type="hidden" id="dorm_room_id" value="${escAttr(id)}" />`
+       + f('نام اتاق *', inp('dorm_room_name',r.name||''))
+       + f('ظرفیت *', inp('dorm_room_cap',r.capacity||1,'number')),
+       'dorm-room-save'));
+   },
+   'dorm-room-save'(){
+     const sid=S.user.school_id;
+     const name=V('dorm_room_name').trim(), cap=Number(V('dorm_room_cap'))||1;
+     if(!name){toast('نام اتاق را بنویسید','err');return;}
+     const rid=V('dorm_room_id');
+     if(rid) update('dorm_rooms',Number(rid),{name,capacity:cap});
+     else insert('dorm_rooms',{school_id:sid,name,capacity:cap,created_at:todayISO()});
+     closeModal(); toast('اتاق ذخیره شد','ok'); render();
+   },
+   'dorm-room-del'(){
+     const r=byId('dorm_rooms',id); if(!r)return;
+     if((db.dorm_assignments||[]).some(a=>a.room_id===id)){
+       toast('اول ساکنان این اتاق را بردارید','err');return;
+     }
+     askDelete(`اتاق «${r.name}» حذف شود؟`,()=>{remove('dorm_rooms',id);toast('حذف شد','');render();});
+   },
+   'dorm-assign'(){
+     const sid=S.user.school_id, roomId=Number(id);
+     const room=byId('dorm_rooms',roomId); if(!room)return;
+     const occ=(db.dorm_assignments||[]).filter(a=>a.room_id===roomId).length;
+     const assignedIds=(db.dorm_assignments||[]).filter(a=>a.school_id===sid).map(a=>a.student_id);
+     const free=db.users.filter(u=>u.role==='student'&&u.school_id===sid&&u.active&&assignedIds.indexOf(u.id)<0)
+       .sort((a,b)=>a.full_name.localeCompare(b.full_name,'fa'));
+     if(!free.length){toast('دانش‌آموزِ فعالِ بدونِ اتاقی نیست','err');return;}
+     openModal(modalTpl(`انتساب به اتاق ${room.name} (${occ}/${room.capacity})`,
+       free.map(u=>`<div class="row" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer" data-act="dorm-assign-pick" data-id="${escAttr(roomId)}" data-sid="${escAttr(u.id)}"><b>${esc(u.full_name)}</b><span class="small muted">${esc((classOf(u.id)||{}).name||'—')}</span></div>`).join('')));
+   },
+   'dorm-assign-pick'(){
+     const roomId=Number(id), studentId=Number(el.dataset.sid);
+     const room=byId('dorm_rooms',roomId); if(!room||!studentId)return;
+     const occ=(db.dorm_assignments||[]).filter(a=>a.room_id===roomId).length;
+     if(occ>=(Number(room.capacity)||0)){toast('اتاق پر است — ظرفیت را بیشتر کنید یا اتاق دیگری انتخاب کنید','err');render();return;}
+     const old=dormAssignOf(studentId);
+     if(old)remove('dorm_assignments',old.id);
+     insert('dorm_assignments',{school_id:S.user.school_id,room_id:roomId,student_id:studentId,since:todayISO()});
+     closeModal(); toast('انتساب شد','ok'); render();
+   },
+   'dorm-unassign'(){
+     const studentId=Number(el.dataset.sid);
+     const a=studentId?dormAssignOf(studentId):null;
+     if(!a){render();return;}
+     const st=byId('users',studentId)||{};
+     askDelete(`«${st.full_name||''}» از اتاق برشود؟`,()=>{remove('dorm_assignments',a.id);toast('برداشت شد','');render();});
+   },
+   'dorm-meal'(){
+     const day=Number(el.dataset.day), kind=el.dataset.kind;
+     const m=dormMealOf(S.user.school_id,day,kind);
+     const kindFa=(DORM_MEAL_KINDS.find(k=>k[0]===kind)||['','؟'])[1];
+     openModal(modalTpl(`منوی ${DORM_DAYS[day]} — ${kindFa}`,
+       `<input type="hidden" id="dorm_meal_day" value="${day}" /><input type="hidden" id="dorm_meal_kind" value="${escAttr(kind)}" />`
+       + f('منو (خالی = حذف)', `<textarea class="input" id="dorm_meal_menu" rows="3" placeholder="مثلاً برنج و خورشت قورمه + سالاد">`+(m&&m.menu?esc(m.menu):'')+`</textarea>`),
+       'dorm-meal-save'));
+   },
+   'dorm-meal-save'(){
+     const sid=S.user.school_id, day=Number(V('dorm_meal_day')), kind=V('dorm_meal_kind');
+     const menu=V('dorm_meal_menu').trim();
+     const old=dormMealOf(sid,day,kind);
+     if(!menu){ if(old)remove('dorm_meals',old.id); }
+     else if(old) update('dorm_meals',old.id,{menu});
+     else insert('dorm_meals',{school_id:sid,day,kind,menu,created_at:todayISO()});
+     closeModal(); toast('منو ذخیره شد','ok'); render();
+   },
+   /* مرخصیِ رفت‌وبرگشتِ آخر هفته: جدا از مرخصیِ آکادمیک — مستقیمِ
+      مدیر (بدونِ صفِ بررسی)، پنجشنبه→جمعهٔ پیشِ رو، بدونِ اثر روی
+      حضور (weekend اصلاً رکوردِ حضور ندارد). */
+   'dorm-leave'(){
+     const studentId=Number(el.dataset.sid);
+     const st=studentId?byId('users',studentId):null;
+     if(!st){render();return;}
+     const jsDay=new Date().getDay(); /* ۰=یکشنبه … ۵=پنجشنبه */
+     const dUntilFri=((5-jsDay)+7)%7; /* اگر امروز پنجشنبه باشد: ۰ */
+     const from=addDaysISO(todayISO(),dUntilFri), to=addDaysISO(from,1);
+     const l=insert('leaves',{school_id:st.school_id,student_id:st.id,from_date:from,to_date:to,
+       reason:'مرخصیِ رفت‌وبرگشتِ آخر هفته (خوابگاه)',kind:'dorm_weekend',status:'approved',created_at:todayISO()});
+     [st.id,...db.parent_links.filter(x=>x.student_id===st.id).map(x=>x.parent_id)].forEach(uid=>
+       insert('notifications',{user_id:uid,school_id:st.school_id,type:'leave',title:'🏠 مرخصیِ آخر هفتهٔ خوابگاه',
+         body:`${st.full_name} از ${faD(from)} تا ${faD(to)} مرخصیِ رفت‌وبرگشتِ آخر هفته دارد.`,link:'leaves',read:0,created_at:todayISO()}));
+     toast('مرخصیِ آخر هفته ثبت شد: '+faD(from)+' تا '+faD(to),'ok');
+     render();
+   },
    /* ─────────────── کتابخانه (بند ۸) ─────────────── */
    'lib-new'(){
      openModal(modalTpl('کتاب جدید',
@@ -12511,7 +12646,7 @@ function viewLeaves(){
   return `<div class="card"><div class="card-head"><h3>📨 درخواست‌های مرخصی</h3>
     ${canCreate?'<button class="btn" data-act="leave-new">➕ ثبت درخواست</button>':`<span class="badge b-gray">${fa(rows.filter(r=>r.status==='pending').length)} در انتظار بررسی</span>`}</div>
     ${rows.length?`<div class="table-wrap"><table class="table"><thead><tr><th>دانش‌آموز</th><th>از تاریخ</th><th>تا تاریخ</th><th>دلیل</th><th>وضعیت</th>${canDecide?'<th></th>':''}</tr></thead><tbody>
-      ${rows.map(l=>{const st=byId('users',l.student_id)||{};return `<tr><td><b>${esc(st.full_name||'—')}</b></td><td>${jalali(l.from_date)}</td><td>${jalali(l.to_date)}</td>
+      ${rows.map(l=>{const st=byId('users',l.student_id)||{};return `<tr><td><b>${esc(st.full_name||'—')}</b>${l.kind==='dorm_weekend'?' <span class="badge b-purple" title="مرخصیِ رفت‌وبرگشتِ آخر هفتهٔ خوابگاه — جدا از مرخصیِ آکادمیک">🏠 خوابگاه</span>':''}</td><td>${jalali(l.from_date)}</td><td>${jalali(l.to_date)}</td>
         <td class="small">${esc(l.reason||'')}</td><td><span class="badge ${LEAVE_FA[l.status][1]}">${LEAVE_FA[l.status][0]}</span></td>
         ${canDecide?`<td><div class="row" style="gap:5px;flex-wrap:nowrap">
           ${l.status==='pending'?`<button class="btn sm" data-act="leave-ok" data-id="${escAttr(l.id)}">تأیید</button><button class="btn ghost sm" data-act="leave-no" data-id="${escAttr(l.id)}">رد</button>`:''}
@@ -26060,6 +26195,101 @@ function viewSummerClasses(){
     h+='<div class="card-body">'+empty('☀️','کلاسِ تابستانی ثبت نشده','نام، دبیر و تاریخ‌ها را ثبت کنید و بعد دانش‌آموزان را اضافه کنید.')+'</div>';
   }
   return h+'</div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   اسکان و خانه‌دانش‌آموزی (خوابگاه) — نسخهٔ سبک (دور ۷۸ بند ۷)
+
+   کلیدِ توان: `has_dorm` (پروفایلِ قابلیتِ مدرسه — کلید از دورِ نخست
+   وجود داشت ولی ماژولش ساخته نشده بود؛ این ماژول همان کلید را می‌خواند
+   و شرطِ تازه‌ای نساخته — قفلِ AD ۱.۱).
+
+   چهار بخش (سبک، روی رکورد، بدون جدولِ پنهان):
+   ۱. اتاق‌ها: `dorm_rooms` — نام + ظرفیت.
+   ۲. انتصاب: `dorm_assignments` — هر دانش‌آموز حداکثر یک اتاق.
+   ۳. وعده‌های غذاییِ هفتگی: `dorm_meals` — (روز، وعده) → منو.
+   ۴. مرخصیِ رفت‌وبرگشتِ آخر هفته: روی همان جدولِ `leaves` با
+      `kind:'dorm_weekend'` — از مرخصیِ آکادمیک (درخواستِ دانش‌آموز/ولی
+      با بررسی) جداست: مدیرِ خوابگاه مستقیم می‌سازد و به اولیا نوتیف
+      می‌رود.
+   ═══════════════════════════════════════════════════════════════════ */
+const DORM_MEAL_KINDS=[['breakfast','صبحانه'],['lunch','ناهار'],['dinner','شام']];
+/* روزهای هفته: ۰=شنبه … ۶=جمعه (همان قراردادِ بقیهٔ برنامه) */
+const DORM_DAYS=(typeof DAYS_FULL!=='undefined')?DAYS_FULL:['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه'];
+
+/** اتاق‌های یک مدرسه با شمارِ ساکنان */
+function dormRoomList(sid){
+  const rooms=(db.dorm_rooms||[]).filter(r=>r.school_id===sid);
+  return rooms.map(r=>{
+    const occ=(db.dorm_assignments||[]).filter(a=>a.room_id===r.id).length;
+    return Object.assign({},r,{occ});
+  });
+}
+/** تک‌واحدیِ انتصاب: دانش‌آموزی حداکثر یک اتاق دارد */
+function dormAssignOf(studentId){
+  return (db.dorm_assignments||[]).find(a=>a.student_id===studentId)||null;
+}
+/** وعدهٔ (روز، نوع) یک مدرسه */
+function dormMealOf(sid,day,kind){
+  return (db.dorm_meals||[]).find(m=>m.school_id===sid&&m.day===day&&m.kind===kind)||null;
+}
+
+function viewDorm(){
+  const u=S.user, sid=u.school_id;
+  if(!sid||!(typeof hasCap==='function')||!hasCap(sid,'has_dorm'))
+    return `<div class="card"><div class="card-body">${empty('🏠','این مدرسه بخش اسکان ندارد','توانِ «اسکان و خانه‌دانش‌آموزی» در مودالِ مدرسه روشن است. این صفحه برای همین مدارس معنا دارد.')}</div></div>`;
+  const rooms=dormRoomList(sid);
+  const assigned=(db.dorm_assignments||[]).filter(a=>a.school_id===sid);
+  const occ=assigned.length;
+  const cap=rooms.reduce((t,r)=>t+(Number(r.capacity)||0),0);
+  return `
+  <div class="grid g3" style="margin-bottom:14px">
+    ${statCard('🛏️',fa(rooms.length),'اتاق','blue')}
+    ${statCard('🧳',fa(occ),'ساکن','green')}
+    ${statCard('📏',cap?fa(Math.round(occ/cap*100))+'٪':'—','پرشدگی','amber')}
+  </div>
+  <div class="card" style="margin-bottom:14px"><div class="card-head">
+    <h3>🛏️ اتاق‌ها و ساکنان</h3>
+    <button class="btn" data-act="dorm-room-new">➕ اتاق جدید</button></div>
+   <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
+    ${rooms.length?rooms.map(r=>{
+      const list=(db.dorm_assignments||[]).filter(a=>a.room_id===r.id)
+        .map(a=>byId('users',a.student_id)).filter(Boolean);
+      return `<div style="border:1px solid var(--border);border-radius:12px;padding:12px">
+        <div class="row"><b>${esc(r.name)}</b><span class="badge b-gray">${fa(r.occ)}/${fa(r.capacity)}</span>
+        <div class="spacer"></div>
+        <button class="icon-btn" title="ویرایش" data-act="dorm-room-edit" data-id="${escAttr(r.id)}">✏️</button>
+        <button class="icon-btn danger" title="حذف" data-act="dorm-room-del" data-id="${escAttr(r.id)}">🗑️</button></div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+        ${list.length?list.map(st=>`<span class="badge b-blue" style="display:inline-flex;gap:5px;align-items:center">${esc(st.full_name)}
+           <span role="button" style="cursor:pointer" title="برداشتن از اتاق" data-act="dorm-unassign" data-sid="${escAttr(st.id)}">✕</span></span>`).join(''):'<span class="small muted">خالی</span>'}
+        </div>
+        <button class="btn ghost sm" style="margin-top:8px;width:100%" data-act="dorm-assign" data-id="${escAttr(r.id)}">➕ انتساب دانش‌آموز</button>
+      </div>`;}).join(''):`${empty('🛏️','اتاقی تعریف نشده','اولین اتاق را بسازید.')}`}
+   </div></div>
+  <div class="card" style="margin-bottom:14px"><div class="card-head">
+    <h3>🍽️ وعده‌های غذاییِ هفتگی</h3>
+    <span class="small muted">با کلیک روی هر خانه، منوی همان روز/وعده ثبت می‌شود</span></div>
+   <div class="card-body" style="overflow-x:auto">
+    <table style="min-width:640px"><thead><tr><th style="width:110px">روز</th>${DORM_MEAL_KINDS.map(k=>`<th>${esc(k[1])}</th>`).join('')}</tr></thead><tbody>
+    ${DORM_DAYS.map((d,i)=>`<tr><td><b>${esc(d)}</b></td>
+      ${DORM_MEAL_KINDS.map(k=>{const m=dormMealOf(sid,i,k[0]);
+        return `<td><span style="cursor:pointer;display:block;padding:6px 8px;border:1px dashed var(--border);border-radius:8px;min-height:32px" data-act="dorm-meal" data-day="${i}" data-kind="${k[0]}">${m&&m.menu?esc(m.menu):'<span class="muted small">—</span>'}</span></td>`;}).join('')}</tr>`).join('')}
+    </tbody></table></div></div>
+  <div class="card"><div class="card-head">
+    <h3>🏠 مرخصیِ رفت‌وبرگشتِ آخر هفته</h3>
+    <span class="small muted">جدا از مرخصیِ آکادمیک: مستقیمِ مدیر، برای پنجشنبه→جمعهٔ پیشِ رو</span></div>
+   <div class="card-body">
+    ${occ?`<table><thead><tr><th>دانش‌آموز</th><th>اتاق</th><th>آخرین مرخصیِ آخر هفته</th><th></th></tr></thead><tbody>
+    ${assigned.map(a=>{const st=byId('users',a.student_id)||{};const rm=byId('dorm_rooms',a.room_id)||{};
+      const last=(db.leaves||[]).filter(l=>l.student_id===st.id&&l.kind==='dorm_weekend')
+        .sort((x,y)=>String(y.from_date).localeCompare(String(x.from_date)))[0];
+      return `<tr><td><b>${esc(st.full_name||'—')}</b></td><td class="muted">${esc(rm.name||'—')}</td>
+      <td class="muted small">${last?(esc(last.from_date)+' تا '+esc(last.to_date)):'—'}</td>
+      <td><button class="btn sm" data-act="dorm-leave" data-sid="${escAttr(st.id)}">🏠 مرخصیِ آخر هفته</button></td></tr>`;}).join('')}
+    </tbody></table>`
+   :`${empty('🧳','هنوز دانش‌آموزی انتصاب نشده است','از بخشِ اتاق‌ها، دانش‌آموز انتصاب کنید.')}`}
+   </div></div>`;
 }
 
 </script>
