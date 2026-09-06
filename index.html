@@ -2993,6 +2993,8 @@ var ACTION_ROLES = {
   'summer-del': ['manager'],
   /* بند ۶.۵ (سبک) — جابه‌جاییِ زنگِ متداخل: فقط مدیر */
   'sched-conf-move': ['manager','superadmin'],
+  /* بند ۲.۱ — کلاسِ چندپایه: عضویتِ دروس فقط مدیر (و سوپرادمین) */
+  'class-membership-save': ['manager','superadmin'],
   /* انضباطی */
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],
@@ -3627,8 +3629,9 @@ function viewClasses(){
    ${rows.length?`<div class="grid g3" style="padding:16px">${(()=>{const _ec=(typeof idxEnrollByClass==='function')?idxEnrollByClass():null;return rows.map(c=>{const n=_ec?(_ec.get(c.id)||[]).length:db.enrollments.filter(e=>e.class_id===c.id).length;const fill=Math.min(100,Math.round(n/(c.capacity||30)*100));const ht=c.homeroom_teacher_id?byId('users',c.homeroom_teacher_id):null;
      return `<div class="card" style="padding:15px;box-shadow:none">
       <div class="row"><b style="font-size:15px">${esc(c.name)}</b><div class="spacer"></div>
+       ${canEdit&&(typeof hasCap==='function'&&hasCap(c.school_id,'has_multigrade'))?`<button class="icon-btn" title="عضویتِ دروس (کلاسِ چندپایه)" data-act="class-membership" data-id="${escAttr(c.id)}">👥</button> `:''}
        ${canEdit?`<button class="icon-btn" data-act="class-edit" data-id="${escAttr(c.id)}">✏️</button> <button class="icon-btn danger" data-act="class-del" data-id="${escAttr(c.id)}">🗑️</button>`:''}</div>
-      <div class="row small muted" style="margin-top:6px"><span class="badge b-blue">${esc(c.grade||'—')}</span>${c.field?`<span class="badge b-purple">${esc(c.field)}</span>`:''}${c.room?`<span>🚪 ${esc(c.room)}</span>`:''}</div>
+      <div class="row small muted" style="margin-top:6px"><span class="badge b-blue">${esc(c.grade||'—')}</span>${c.multigrade?`<span class="badge b-amber">چندپایه</span>`:''}${c.field?`<span class="badge b-purple">${esc(c.field)}</span>`:''}${c.room?`<span>🚪 ${esc(c.room)}</span>`:''}</div>
       <div class="small muted" style="margin-top:8px">سرپرست: ${esc(ht?ht.full_name:'—')}</div>
       ${S.user.role==='superadmin'?`<div class="small muted">${esc(byId('schools',c.school_id).name)}</div>`:''}
       <div style="margin-top:10px"><div class="row small"><span>${fa(n)} از ${fa(c.capacity)} نفر</span><div class="spacer"></div><span class="muted">${fa(fill)}٪</span></div>${bar(fill,100,fill>90?'var(--red)':'var(--primary)')}</div></div>`;}).join('');})()}</div>`
@@ -4671,8 +4674,47 @@ function classModal(c){
         : f('رشته',inp('c_field',c.field))}</div>
     ${f('اتاق',inp('c_room',c.room))}${f('ظرفیت',inp('c_cap',c.capacity,'number'))}
     ${f('سرپرست کلاس',sel('c_ht',[['','— انتخاب دبیر —']].concat(teachers.map(t=>[t.id,t.full_name])),c.homeroom_teacher_id||''))}
-    ${isSuper?f('مدرسه',sel('c_school',db.schools.map(s=>[s.id,s.name]),c.school_id)):''}</div>`,'class-save'));
+        ${(typeof hasCap==='function'&&hasCap(c.school_id,'has_multigrade'))?`
+    <label style="display:flex;gap:8px;align-items:center;cursor:pointer" title="کلاسی که دانش‌آموزانِ چند پایه را یک‌جا دارد (مدرسه‌های کوچک/روستایی)">
+      <input type="checkbox" id="c_multigrade" ${c.multigrade?'checked':''}/>
+      <span class="small"><b>کلاسِ چندپایه</b> <span class="muted">— عضویتِ هر درس جدا انتخاب می‌شود</span></span>
+    </label>`:''}
+${isSuper?f('مدرسه',sel('c_school',db.schools.map(s=>[s.id,s.name]),c.school_id)):''}</div>`,'class-save'));
   window._edit=c;
+}
+/** بند ۲.۱ — ویرایشِ عضویتِ دروسِ کلاسِ چندپایه
+   دروس از برنامهٔ هفتگیِ کلاس می‌آیند؛ برای هر درس انتخاب می‌کنیم
+   کدام دانش‌آموزانِ کلاس آن درس را می‌خوانند. «همه انتخاب‌شده»
+   = بدون ردیف (fallback تنبلِ classSubjectMembers) = رفتارِ امروز. */
+function classMembershipModal(cid){
+  const cls=byId('classes',Number(cid));
+  if(!cls){toast('کلاس پیدا نشد','err');return;}
+  var subs=Object.create(null);
+  db.schedule.forEach(function(s){ if(s.class_id===cls.id&&s.subject_id) subs[s.subject_id]=1; });
+  const subIds=Object.keys(subs).map(Number);
+  const kids=studentsOfClass(cls.id);
+  if(!subIds.length){toast('در برنامهٔ هفتگیِ این کلاس درسی نیست','err');return;}
+  if(!kids.length){toast('این کلاس دانش‌آموزی ندارد','err');return;}
+  const rows=(db.class_subject_members||[]).filter(function(x){return x.class_id===cls.id;});
+  var html='<div class="small muted" style="line-height:2;margin-bottom:10px">برای هر درس انتخاب کنید <b>کدام دانش‌آموزان</b> آن درس را می‌خوانند. اگر برای درسی <b>همهٔ</b> کلاس انتخاب باشد، همان رفتارِ امروز دارد (بدون ردیف).</div>';
+  html+='<div style="max-height:55vh;overflow:auto;display:grid;gap:12px">';
+  subIds.forEach(function(subId){
+    const sub=byId('subjects',subId)||{};
+    const have=rows.filter(function(x){return x.subject_id===subId;}).map(function(x){return x.student_id;});
+    const custom=have.length>0;
+    html+='<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px">'
+      +'<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b>'+esc(sub.name||'—')+'</b>'
+      +(custom?'<span class="badge b-amber">عضویتِ سفارشی</span>':'<span class="badge b-gray">همهٔ کلاس</span>')+'</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px">';
+    kids.forEach(function(k){
+      const on=custom?have.indexOf(k.id)>-1:true;
+      html+='<label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" class="mem-cb" data-sub="'+subId+'" data-stu="'+k.id+'" '+(on?'checked':'')+' /><span class="small">'+esc(k.full_name)+'</span></label>';
+    });
+    html+='</div></div>';
+  });
+  html+='</div>';
+  openModal(modalTpl('عضویتِ دروس — کلاسِ چندپایه', html, 'class-membership-save'));
+  window._memCid=cls.id;
 }
 function subjectModal(s){
   const isSuper=S.user.role==='superadmin';
@@ -9366,6 +9408,28 @@ document.addEventListener('click',e=>{
    'class-edit'(){classModal(byId('classes',id));},
    'class-del'(){confirmModal('حذف این کلاس؟ ثبت‌نام‌های مرتبط نیز حذف می‌شوند.','class-del-ok',id);},
    'class-del-ok'(){const cid=window._delId;db.enrollments.filter(e=>e.class_id===cid).forEach(e=>remove('enrollments',e.id));remove('classes',cid);closeModal();toast('کلاس حذف شد','ok');render();},
+   /* ── بند ۲.۱ — کلاسِ چندپایه: عضویتِ جداگانهٔ هر درس ── */
+   'class-membership'(){classMembershipModal(id);},
+   'class-membership-save'(){
+     const cid=window._memCid, cls=byId('classes',cid);
+     if(!cls){closeModal();return;}
+     const bySub=Object.create(null);
+     document.querySelectorAll('.mem-cb').forEach(function(cb){
+       bySub[cb.dataset.sub]=bySub[cb.dataset.sub]||[];
+       if(cb.checked)bySub[cb.dataset.sub].push(Number(cb.dataset.stu));
+     });
+     const allKids=studentsOfClass(cls.id);
+     Object.keys(bySub).forEach(function(subId){
+       const s=Number(subId);
+       (db.class_subject_members||[]).filter(function(x){return x.class_id===cls.id&&x.subject_id===s;})
+         .forEach(function(x){remove('class_subject_members',x.id);});
+       const chosen=bySub[subId];
+       /* همهٔ کلاس (یا خالی) ⇒ بدون ردیف = fallback = رفتارِ امروز */
+       if(chosen.length&&chosen.length<allKids.length)
+         chosen.forEach(function(k){insert('class_subject_members',{class_id:cls.id,subject_id:s,student_id:k});});
+     });
+     closeModal();toast('عضویتِ دروس ذخیره شد','ok');render();
+   },
    'class-save'(){const c=window._edit;
      if(need('c_name','نام کلاس الزامی است'))return;
      /* نوع چیدمان: انتخاب مدیر، وگرنه حدس از روی پایه */
@@ -9375,6 +9439,7 @@ document.addEventListener('click',e=>{
      /* در کلاس‌محور رشته معنا ندارد؛ در رشته‌محور الزامی است */
      if(invalid('c_field',_mode==='field'&&!V('c_field'),'در کلاس رشته‌محور، انتخاب رشته الزامی است'))return;
      const data={name:V('c_name'),grade:V('c_grade'),field:_mode==='class'?null:(V('c_field')||null),class_mode:_mode||null,grade_level:_gl||null,room:V('c_room'),capacity:Number(V('c_cap'))||30,homeroom_teacher_id:V('c_ht')?Number(V('c_ht')):null};
+     if($('#c_multigrade'))data.multigrade=$('#c_multigrade').checked?1:0;
      if($('#c_school'))data.school_id=Number(V('c_school'));else data.school_id=c.school_id;
      /* رشتهٔ کلاس باید جزو شاخه‌های همان مدرسه باشد. رشتهٔ قبلی خودِ
         کلاس استثناست تا ویرایش کلاس‌های قدیمی مسدود نشود. */

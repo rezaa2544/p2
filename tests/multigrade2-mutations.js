@@ -1,0 +1,54 @@
+#!/usr/bin/env node
+/**
+ * تست‌های جهشیِ کلاسِ چندپایه (بند ۲.۱)
+ *  M1 — classSubjectMembers ردیف‌ها را نادیده بگیرد (همیشه همهٔ کلاس) → G4
+ *  M2 — ذخیرهٔ عضویت هیچ ردیفی ننویسد → G4
+ *  M3 — برداشتنِ گاردِ has_multigrade از دکمه → G1
+ *
+ * اجرا:  node tests/multigrade2-mutations.js
+ */
+const fs = require('fs');
+const path = require('path');
+const { execFileSync, spawnSync } = require('child_process');
+
+const ROOT = path.join(__dirname, '..');
+let pass = 0, fail = 0;
+function chk(c, m) { if (c) { pass++; console.log('  ✅ ' + m); } else { fail++; console.log('  ❌ ' + m); } }
+
+function mutate(file, from, to, suite, killRe, tag) {
+  const f = path.join(ROOT, file);
+  const orig = fs.readFileSync(f, 'utf8');
+  const bad = orig.replace(from, to);
+  if (bad === orig) { chk(false, tag + ': جهش اعمال نشد (نماد پیدا نشد)'); return; }
+  fs.writeFileSync(f, bad, 'utf8');
+  try {
+    execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
+    const r = spawnSync('node', [path.join(ROOT, suite)], { cwd: ROOT, encoding: 'utf8' });
+    chk(r.status !== 0 && killRe.test(r.stdout), tag + ' کشته شد');
+  } finally {
+    fs.writeFileSync(f, orig, 'utf8');
+  }
+}
+
+mutate('src/js/04-queries.js',
+  "const rows=(db.class_subject_members||[]).filter(function(x){return x.class_id===cid&&x.subject_id===sid;});",
+  "const rows=[];",
+  'tests/multigrade2.js', /❌ G4/, 'M1 نادیده‌گرفتنِ ردیف‌ها در classSubjectMembers');
+
+mutate('src/js/19-actions.js',
+  "chosen.forEach(function(k){insert('class_subject_members',{class_id:cls.id,subject_id:s,student_id:k});});",
+  "chosen.forEach(function(k){/* جهش: نوشته نمی‌شود */});",
+  'tests/multigrade2.js', /❌ G4/, 'M2 ذخیرهٔ عضویت بدون نوشتنِ ردیف');
+
+mutate('src/js/11-classes-subjects.js',
+  "${canEdit&&(typeof hasCap==='function'&&hasCap(c.school_id,'has_multigrade'))?`",
+  "${canEdit?`",
+  'tests/multigrade2.js', /❌ G1/, 'M3 برداشتنِ گاردِ has_multigrade');
+
+/* بازسازی + خطِّ پایه */
+execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
+const b2 = spawnSync('node', [path.join(ROOT, 'tests/multigrade2.js')], { cwd: ROOT, encoding: 'utf8' });
+chk(b2.status === 0, 'خطِّ پایهٔ multigrade2 سبز است');
+
+console.log(`\nmultigrade2-mutations: ${pass + fail} بررسی — ✅ ${pass} · ❌ ${fail}`);
+process.exit(fail ? 1 : 0);
