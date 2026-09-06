@@ -8411,6 +8411,8 @@ document.addEventListener('click',e=>{
    },
    /* سیاست حریم خصوصی — برای همه (حتی پیش از ورود) در دسترس است (ملاک گوگل‌پلی) */
    'privacy-open'(){ openPrivacyPolicy(); },
+   /* حذف حساب (قفل ۹.۵) — تابع در 58-privacy.js */
+   'delete-account-req'(){ if(typeof requestAccountDeletion === 'function') requestAccountDeletion(); },
    login(){
      /* 📄 PLAN_PHONE_AUTH — جریانِ نهاییِ ورود: بدونِ هیچ رمزی.
         شماره + کد (پنلِ پیامکی) + کد ملی (استعلام در سامانهٔ تطبیقِ
@@ -23220,8 +23222,14 @@ function privacyPolicyHtml(){
     + 'ورود با احراز هویت (شمارهٔ همراه + کد پیامکی + استعلامِ کد ملی) انجام می‌شود و در هیچ نسخه‌ای رمز عبور وجود ندارد. '
     + 'در نسخهٔ نمایشی، هرگز حسابِ مدیریتی خود را با دیگران به اشتراک نگذارید.</p>';
   d += '<h4 style="margin:10px 0 4px">۷. حذف حساب و داده</h4><p class="small" style="margin:0 0 8px">'
-    + 'در نسخهٔ تولید، هر حساب می‌تواند از **داخلِ برنامه** (تنظیمات) و از **یک صفحهٔ وبِ جداگانه** درخواستِ حذف دهد؛ '
-    + 'پس از حذف، همهٔ داده‌های مرتبط **کاملاً حذف می‌شود** (نه فقط غیرفعال). در نسخهٔ دمو، با پاک‌کردنِ داده‌های مرورگر همه‌چیز از دستگاه شما حذف می‌شود.</p>';
+    + 'هر حساب می‌تواند از **داخلِ برنامه** (این صفحه) و از **یک صفحهٔ وبِ جداگانه** درخواستِ حذف دهد؛ '
+    + 'پس از تأیید، همهٔ داده‌های مرتبط (حساب، پیوندِ اولیا با فرزندان، پیام‌های فرستاده‌شده) **کاملاً حذف می‌شود** '
+    + 'و نه فقط غیرفعال. در نسخهٔ نمایشی، این عملیات داده‌های همین دستگاه را هم پاک می‌کند.</p>';
+  d += '<div style="margin:0 0 14px;padding:12px 14px;border:1px solid #fecaca;background:#fef2f2;border-radius:10px">'
+    + '<b style="color:#dc2626">حذفِ حساب</b>'
+    + '<p class="small" style="margin:6px 0 10px">با حذف، همهٔ داده‌های حساب شما <b>برای همیشه</b> پاک می‌شود — این کار قابل بازگشت نیست.</p>'
+    + '<button type="button" data-act="delete-account-req" '
+    + 'style="background:#dc2626;color:#fff;border:0;border-radius:10px;padding:9px 18px;font-size:14px;font-family:inherit;cursor:pointer">درخواستِ حذفِ حساب</button></div>';
   d += '<h4 style="margin:10px 0 4px">۸. تماس</h4><p class="small" style="margin:0">'
     + 'سؤال یا درخواستِ مربوط به داده‌هایتان را از راهِ پشتیبانیِ سامانه (داخلِ برنامه) ارسال کنید؛ '
     + 'شمارهٔ تماسِ داده (تلفن) در زمانِ انتشارِ رسمی تکمیل خواهد شد.</p>';
@@ -23231,6 +23239,53 @@ function privacyPolicyHtml(){
 function openPrivacyPolicy(){
   if(typeof openModal !== 'function' || typeof modalTpl !== 'function') return;
   openModal(modalTpl('سیاست حریم خصوصی — پایش', privacyPolicyHtml(), ''));
+}
+
+/* ── حذف حساب (قفل ۹.۵ — ملاک حذفِ حسابِ گوگل‌پلی) ─────────────
+   در حالتِ سروری: سرور داده‌های شخصیِ حساب را حذف می‌کند (و نشست‌ها
+   می‌میرند)؛ در هر حالت، داده‌های این دستگاه هم پاک می‌شود.
+   صفحهٔ وبِ جداگانه: /account-deletion (فقط روی سرور). */
+function requestAccountDeletion(){
+  if(typeof S === 'undefined' || !S.user){
+    if(typeof toast === 'function') toast('برای حذف حساب باید وارد شده باشید', 'err');
+    return;
+  }
+  if(typeof askConfirm !== 'function') return;
+  askConfirm('با این کار حسابِ شما و همهٔ داده‌های مرتبط (پیوندِ فرزندان، پیام‌های فرستاده‌شده و ...) برای همیشه حذف می‌شود — قابل بازگشت نیست. ادامه می‌دهید؟', function(){
+    doDeleteAccount();
+  });
+}
+function clearDeviceData(){
+  try{ (Store.keys() || []).forEach(function(k){ Store.remove(k); }); }catch(e){}
+  try{
+    if(typeof indexedDB !== 'undefined' && indexedDB.databases){
+      indexedDB.databases().then(function(list){
+        list.forEach(function(db){ try{ indexedDB.deleteDatabase(db.name); }catch(e){} });
+      }).catch(function(){});
+    }
+  }catch(e){}
+  try{ if(typeof SYNC !== 'undefined'){ SYNC.queue = []; } }catch(e){}
+  S.user = null; S.persona = null; S.boss = null;
+  try{ if(typeof refreshSyncBadge === 'function') refreshSyncBadge(); }catch(e){}
+}
+function doDeleteAccount(){
+  var isSrv = (typeof DATA_MODE !== 'undefined' && DATA_MODE === 'server');
+  var finish = function(){
+    clearDeviceData();
+    if(typeof toast === 'function')
+      toast(isSrv ? 'حساب و داده‌های مرتبط از سرور حذف شد — صفحه تازه می‌شود'
+                  : 'داده‌های این دستگاه پاک شد — صفحه تازه می‌شود', 'ok');
+    setTimeout(function(){ try{ location.reload(); }catch(e){} }, 900);
+  };
+  if(!isSrv){ finish(); return; }
+  if(typeof Api === 'undefined' || typeof Api.request !== 'function'){ finish(); return; }
+  Api.request('/api/auth/delete-account', { method: 'POST', raw: true }).then(function(r){
+    if(r && r.status === 200 && r.body && r.body.ok === true){ finish(); return; }
+    if(typeof toast === 'function')
+      toast('حذف از سرور ناموفق بود: ' + ((r && r.body && r.body.message) || 'خطای ناشناخته'), 'err');
+  }).catch(function(e){
+    if(typeof toast === 'function') toast('حذف از سرور ناموفق بود: ' + (e && e.message || 'خطا'), 'err');
+  });
 }
 
 </script>

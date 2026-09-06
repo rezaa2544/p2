@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>پایش — حذف حساب</title>
+<style>
+:root{--navy:#14225a;--blue:#2563eb;--green:#16a34a;--red:#dc2626;--bg:#f1f5f9;--card:#fff;--border:#e2e8f0;--text:#0f172a;--muted:#64748b;}
+*{box-sizing:border-box}
+body{margin:0;font-family:Tahoma,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);line-height:1.9}
+.wrap{max-width:520px;margin:40px auto 60px;padding:0 16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 24px;margin-bottom:16px}
+h1{font-size:20px;margin:0 0 6px;color:var(--navy)}
+.muted{color:var(--muted);font-size:13px}
+label{display:block;font-size:13px;margin:12px 0 4px}
+input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit}
+input:focus{outline:2px solid var(--blue);border-color:transparent}
+.btn{display:block;width:100%;margin-top:16px;padding:11px 0;border:0;border-radius:10px;font-size:15px;font-family:inherit;cursor:pointer}
+.btn.primary{background:var(--blue);color:#fff}
+.btn.danger{background:var(--red);color:#fff}
+.btn:disabled{opacity:.5;cursor:default}
+.msg{margin-top:12px;font-size:14px;padding:10px 12px;border-radius:10px}
+.msg.err{background:#fef2f2;color:var(--red)}
+.msg.ok{background:#f0fdf4;color:var(--green)}
+.warn{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;font-size:13.5px;margin-top:14px}
+.done{text-align:center;padding:30px 10px}
+.done .big{font-size:44px}
+.offline{background:#fef2f2;border:1px solid #fecaca}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" id="step-head">
+    <h1>حذف حساب — سامانهٔ پایش</h1>
+    <div class="muted">برای حذف کامل حساب، شمارهٔ همراه، کد ملی و کد تأیید را وارد کنید.</div>
+  </div>
+
+  <div class="card offline" id="pane-offline" style="display:none">
+    <div class="msg err">این صفحه فقط روی سرورِ سامانه در دسترس است. برای دسترسی، آدرسِ صفحهٔ اصلیِ برنامه را باز کنید.</div>
+  </div>
+
+  <div class="card" id="pane-form">
+    <label for="f-phone">شمارهٔ همراه</label>
+    <input id="f-phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="09xxxxxxxxx" />
+    <label for="f-nid">کد ملی</label>
+    <input id="f-nid" type="text" inputmode="numeric" autocomplete="off" placeholder="۱۰ رقم" />
+    <button class="btn primary" id="b-code" type="button">دریافت کد تأیید</button>
+
+    <label for="f-code" id="l-code" style="display:none">کد تأیید</label>
+    <input id="f-code" type="text" inputmode="numeric" autocomplete="one-time-code" style="display:none" placeholder="کد را وارد کنید" />
+
+    <div class="warn" id="w-del" style="display:none">
+      با تأیید، <b>همهٔ داده‌های مرتبط با این حساب برای همیشه حذف می‌شود</b> (حساب، پیوند با فرزندان، پیام‌های فرستاده‌شده و ...) —
+      این کار <b>قابل بازگشت نیست</b>.
+    </div>
+    <button class="btn danger" id="b-del" type="button" style="display:none">تأیید و حذف کامل</button>
+    <div class="msg err" id="m-err" style="display:none"></div>
+    <div class="msg ok" id="m-ok" style="display:none"></div>
+  </div>
+
+  <div class="card done" id="pane-done" style="display:none">
+    <div class="big">✅</div>
+    <h1>حساب حذف شد</h1>
+    <div class="muted">همهٔ داده‌های مرتبط با این حساب از سرور حذف شد. نشست‌های باز هم باطل شدند.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var esc = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+
+  function $(id){ return document.getElementById(id); }
+  function show(id){ $(id).style.display = ''; }
+  function hide(id){ $(id).style.display = 'none'; }
+  function err(m){ $('m-err').textContent = m; show('m-err'); }
+  function ok(m){ $('m-ok').textContent = m; show('m-ok'); }
+
+  /* آیا اصلاً روی سرورِ سامانه‌ایم؟ (file:// و آدرس‌های دیگر = این صفحه بی‌فایده است) */
+  var isApp = /^https?:$/.test(location.protocol) && !/^file:/.test(location.protocol);
+
+  function api(path, body){
+    return fetch(path, {
+      method: body ? 'POST' : 'GET',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function(r){
+      return r.json().catch(function(){ return null; }).then(function(j){
+        if(!r.ok) throw new Error((j && j.message) || 'خطای سرور (' + r.status + ')');
+        return j;
+      });
+    });
+  }
+
+  if(!isApp){
+    hide('pane-form');
+    show('pane-offline');
+    return;
+  }
+
+  $('b-code').addEventListener('click', function(){
+    var phone = $('f-phone').value.trim();
+    var nid = $('f-nid').value.trim();
+    if(!/^\d{10,11}$/.test(phone)){ err('شمارهٔ همراه معتبر نیست'); return; }
+    if(!/^\d{10}$/.test(nid)){ err('کد ملی باید ۱۰ رقم باشد'); return; }
+    $('b-code').disabled = true;
+    api('/api/auth/send-code', { phone: phone }).then(function(j){
+      $('l-code').style.display = '';
+      $('f-code').style.display = '';
+      $('w-del').style.display = '';
+      $('b-del').style.display = '';
+      if(j && j.demo_code){
+        $('f-code').value = String(j.demo_code);
+        ok('کد دریافت شد (نمایشِ دمو). حالا دکمهٔ قرمز را بزنید.');
+      }else{
+        ok('کد تأیید به شمارهٔ شما پیامک شد.');
+      }
+    }).catch(function(e){ err(esc(e.message)); }).finally(function(){
+      $('b-code').disabled = false;
+    });
+  });
+
+  $('b-del').addEventListener('click', function(){
+    var phone = $('f-phone').value.trim();
+    var nid = $('f-nid').value.trim();
+    var code = $('f-code').value.trim();
+    if(!code){ err('کد تأیید را وارد کنید'); return; }
+    $('b-del').disabled = true;
+    api('/api/auth/login', { phone: phone, code: code, national_id: nid })
+      .then(function(){ return api('/api/auth/delete-account', {}); })
+      .then(function(){
+        hide('pane-form');
+        hide('step-head');
+        show('pane-done');
+      })
+      .catch(function(e){ err(esc(e.message)); })
+      .finally(function(){ $('b-del').disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>

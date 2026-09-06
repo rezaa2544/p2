@@ -133,7 +133,7 @@ function securityHeaders(res, nonce, https){
 }
 
 /* ── compose modules ───────────────────────────────────────────────── */
-const auth = createAuth({ store, JWT_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps });
+const auth = createAuth({ store, JWT_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty });
 const sync = createSync({ store, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson, markDirty });
 const idor = createIdor({ store, ENUM_WINDOW_MS, ENUM_THRESHOLD, ENUM_SLOW_MS, audit, sessionFrom: auth.sessionFrom, sendJson });
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson });
@@ -144,6 +144,8 @@ const STATIC = {
   '/index.html':    { file: 'index.html',      type: 'text/html; charset=utf-8' },
   '/USER_GUIDE.html': { file: 'USER_GUIDE.html', type: 'text/html; charset=utf-8' },
   '/guide.html':    { file: 'USER_GUIDE.html', type: 'text/html; charset=utf-8' },
+  '/account-deletion.html': { file: 'account-deletion.html', type: 'text/html; charset=utf-8' },
+  '/account-deletion':    { file: 'account-deletion.html', type: 'text/html; charset=utf-8' },
 };
 function serveStatic(res, urlPath, nonce){
   const entry = STATIC[urlPath];
@@ -171,6 +173,7 @@ const onRequest = async (req, res) => {
     if(p === '/api/auth/login'     && req.method === 'POST') return await auth.apiLogin(req, res, await readBody(req));
     if(p === '/api/auth/me'        && req.method === 'GET')  return await auth.apiMe(req, res);
     if(p === '/api/auth/logout'    && req.method === 'POST') return await auth.apiLogout(req, res);
+    if(p === '/api/auth/delete-account' && req.method === 'POST') return await auth.apiDeleteAccount(req, res);
     if(p === '/api/sync'           && req.method === 'POST') return await sync.apiSync(req, res, await readBody(req));
     if(/^\/api\/students\/\d+$/.test(p) && req.method === 'GET') return await idor.apiStudent(req, res, p.split('/')[3]);
     if(p === '/api/bell/now' && req.method === 'GET') return bell.apiBellNow(req, res);

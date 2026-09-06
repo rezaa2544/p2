@@ -98,6 +98,8 @@ document.addEventListener('click',e=>{
    },
    /* سیاست حریم خصوصی — برای همه (حتی پیش از ورود) در دسترس است (ملاک گوگل‌پلی) */
    'privacy-open'(){ openPrivacyPolicy(); },
+   /* حذف حساب (قفل ۹.۵) — تابع در 58-privacy.js */
+   'delete-account-req'(){ if(typeof requestAccountDeletion === 'function') requestAccountDeletion(); },
    login(){
      /* 📄 PLAN_PHONE_AUTH — جریانِ نهاییِ ورود: بدونِ هیچ رمزی.
         شماره + کد (پنلِ پیامکی) + کد ملی (استعلام در سامانهٔ تطبیقِ
