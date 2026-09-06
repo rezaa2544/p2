@@ -4420,6 +4420,7 @@ function viewRecord(sid){
       + '<select class="select" style="width:150px" id="cert_term">'
       + certTerms.map(t=>'<option value="'+escAttr(t)+'">'+esc(t)+'</option>').join('')
       + '<option value="">همهٔ نوبت‌ها</option></select>'
+      + '<select class="select" style="width:150px" id="cert_tpl"><option value="classic" selected>قالبِ کلاسیک</option><option value="compact">قالبِ فشرده (دوستونه)</option></select>'
       + '<button class="btn sm" data-act="cert-print" data-sid="'+escAttr(sid)+'">چاپ گواهی</button>'
       + '<button class="btn ghost sm" data-act="report-print" data-sid="'+escAttr(sid)+'" title="قالبِ حرفه‌ایِ A4 — چاپ یا ذخیرهٔ PDF">🖨️ چاپ کارنامه</button>'
       + '</div>';
@@ -6074,7 +6075,7 @@ function transcriptCert(sid, term){
  * کارنامهٔ یک دانش‌آموز برای یک نوبت — قالبِ چاپ‌شوندهٔ حرفه‌ای.
  * @returns {ok:boolean, title, school, subtitle, body, note} یا {ok:false, msg}
  */
-function reportCardCert(sid, term){
+function reportCardCert(sid, term, tpl){
   var st = byId('users', sid);
   if(!st || st.role !== 'student') return {ok:false, msg:'دانش‌آموز پیدا نشد.'};
   var cls = classOf(sid);
@@ -6141,7 +6142,7 @@ function reportCardCert(sid, term){
   var att = db.attendance.filter(function(a){ return a.student_id===sid; });
   var pres = att.filter(function(a){ return a.status==='present'; }).length;
   var absn = att.filter(function(a){ return a.status==='absent'; }).length;
-  var body =
+  var bodyClassic =
     '<div class="meta"><span>نام: <b>' + esc(st.full_name) + '</b></span>'
     + '<span>کد ملی: <b>' + esc(st.national_id || '—') + '</b></span>'
     + '<span>کلاس: <b>' + esc(cls ? cls.name : '—') + '</b></span>'
@@ -6162,6 +6163,29 @@ function reportCardCert(sid, term){
     + (rank != null ? '<span>رتبهٔ کلاس: <b>' + fa(rank) + '</b> از ' + fa(inClass) + '</span>' : '')
     + '<span>حضور (کل سال): <b>' + fa(pres) + '</b> روز</span>'
     + '<span>غیبت (کل سال): <b>' + fa(absn) + '</b> روز</span></div>';
+  /* قالبِ دوم (۴.۳): همان داده، چیدمانِ فشردهٔ دوستونه — بدون جدول،
+     مناسبِ پرینتِ سریع / کاغذِ کوچک. همهٔ ورودی‌ها از همان مقادیرِ
+     محاسبه‌شده (rows/gpa/rank/pres/absn) — هیچ محاسبهٔ جداگانه‌ای ندارد. */
+  var bodyCompact =
+    '<div class="meta"><span>نام: <b>' + esc(st.full_name) + '</b></span>'
+    + '<span>کد ملی: <b>' + esc(st.national_id || '—') + '</b></span>'
+    + '<span>کلاس: <b>' + esc(cls ? cls.name : '—') + '</b></span>'
+    + '<span>پایه: <b>' + esc(cls ? (cls.grade || cls.grade_level || '—') : '—') + '</b></span></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">'
+    + rows.map(function(r){
+        return '<div style="border:1px solid #b9c4da;border-radius:8px;padding:5px 9px;display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:12px">'
+          + '<b>' + esc(r.name) + '</b>'
+          + '<span>نمره: <b>' + fa(r.av) + '</b></span>'
+          + '<span>میانگین کلاس: ' + (r.ca == null ? '—' : fa(r.ca)) + '</span>'
+          + '<span>ساعت: ' + fa(r.w) + '</span></div>';
+      }).join('')
+    + '</div>'
+    + '<div class="meta" style="margin-top:10px;gap:22px">'
+    + '<span>معدلِ وزنی: <b style="font-size:13px">' + fa(gpa) + '</b> از ۲۰</span>'
+    + (rank != null ? '<span>رتبهٔ کلاس: <b>' + fa(rank) + '</b> از ' + fa(inClass) + '</span>' : '')
+    + '<span>حضور (کل سال): <b>' + fa(pres) + '</b> روز</span>'
+    + '<span>غیبت (کل سال): <b>' + fa(absn) + '</b> روز</span></div>';
+  var body = (tpl === 'compact') ? bodyCompact : bodyClassic;
   return {ok:true,
     title:'کارنامه',
     school: esc(school.name || '') + (school.code ? ' — کد ' + esc(school.code) : ''),
@@ -6261,7 +6285,7 @@ function enrollmentCert(sid){
   var school = byId('schools', st.school_id) || {};
   var yr = (typeof yearTitle==='function') ? yearTitle() : '';
   var code = certCodeCalc('enrollment', sid, school.id || 0);
-  var body =
+  var bodyClassic =
     '<div class="meta"><span>نام: <b>' + esc(st.full_name) + '</b></span>'
     + '<span>کد ملی: <b>' + esc(st.national_id || '—') + '</b></span>'
     + (cls ? '<span>پایه: <b>' + esc(cls.grade || '—') + '</b></span>'
@@ -6292,7 +6316,7 @@ function transferCert(sid){
   var today = (typeof isoToJalali==='function') ? isoToJalali(todayISO()) : todayISO();
   var ov = certOverall(sid);
   var code = certCodeCalc('transfer', sid, school.id || 0);
-  var body =
+  var bodyClassic =
     '<div class="meta"><span>نام: <b>' + esc(st.full_name) + '</b></span>'
     + '<span>کد ملی: <b>' + esc(st.national_id || '—') + '</b></span>'
     + (cls ? '<span>پایه: <b>' + esc(cls.grade || '—') + '</b></span>'
@@ -11023,7 +11047,7 @@ document.addEventListener('click',e=>{
      const sid=Number(el.dataset.sid)||(S.user&&S.user.role==='student'?S.user.id:0);
      const chk=certAllowedStudent(sid);
      if(!chk.ok){toast(chk.msg,'err');return;}
-     const d=reportCardCert(sid,V('cert_term'));
+     const d=reportCardCert(sid,V('cert_term'),V('cert_tpl')||'classic');
      if(!d.ok){toast(d.msg,'err');return;}
      printableDoc(d);
    },

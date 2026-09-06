@@ -83,6 +83,7 @@ function viewRecord(sid){
       + '<select class="select" style="width:150px" id="cert_term">'
       + certTerms.map(t=>'<option value="'+escAttr(t)+'">'+esc(t)+'</option>').join('')
       + '<option value="">همهٔ نوبت‌ها</option></select>'
+      + '<select class="select" style="width:150px" id="cert_tpl"><option value="classic" selected>قالبِ کلاسیک</option><option value="compact">قالبِ فشرده (دوستونه)</option></select>'
       + '<button class="btn sm" data-act="cert-print" data-sid="'+escAttr(sid)+'">چاپ گواهی</button>'
       + '<button class="btn ghost sm" data-act="report-print" data-sid="'+escAttr(sid)+'" title="قالبِ حرفه‌ایِ A4 — چاپ یا ذخیرهٔ PDF">🖨️ چاپ کارنامه</button>'
       + '</div>';
