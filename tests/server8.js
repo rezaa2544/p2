@@ -15,6 +15,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { opX } = require('./helpers/opx');
 const { spawn } = require('child_process');
 const http = require('http');
 
@@ -150,11 +151,11 @@ process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }
   // B4: بازیابی
   // تغییرِ ۱ (قبل از پشتیبان) → پشتیبان → تغییرِ ۲ (بعد) → restore → تغییرِ ۲ می‌رود، تغییرِ ۱ می‌ماند
   await syncOps(saJar, null, [
-    { uid: 's8-a', t: 'ins', c: 'attendance', by: 1, at: nowIso, data: { school_id: 1, class_id: 1, student_id: 99901, date: T, status: 'present', note: null } }
+    opX({ uid: 's8-a', by: 1, collection: 'attendance', type: 'ins', data: { school_id: 1, class_id: 1, student_id: 99901, date: T, status: 'present', note: null } })
   ]);
   const b4 = await httpReq(port, 'POST', '/api/admin/backup', {}, saJar);
   await syncOps(saJar, null, [
-    { uid: 's8-b', t: 'ins', c: 'attendance', by: 1, at: nowIso, data: { school_id: 1, class_id: 1, student_id: 99902, date: T, status: 'present', note: null } }
+    opX({ uid: 's8-b', by: 1, collection: 'attendance', type: 'ins', data: { school_id: 1, class_id: 1, student_id: 99902, date: T, status: 'present', note: null } })
   ]);
   const rest = await httpReq(port, 'POST', '/api/admin/restore', { file: b4.json && b4.json.file }, saJar);
   await sleep(2500); /* persistStore */
