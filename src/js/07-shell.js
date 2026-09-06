@@ -143,6 +143,7 @@ function _renderRouteInner(){
     /* پروندهٔ دانش‌آموز: کارکنان و ولی با S.child دانش‌آموز را انتخاب
        می‌کنند؛ دانش‌آموز خودش همیشه پروندهٔ خودش را می‌بیند. */
     case 'record':return viewRecord(recordTargetId());
+    case 'preapps':return viewPreapps();
     case 'children':return viewChildren();
     case 'notifications':return viewNotifications();
     case 'leaves':return viewLeaves();

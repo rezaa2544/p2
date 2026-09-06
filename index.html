@@ -1175,7 +1175,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -1331,7 +1331,54 @@ function generate(){
         if(ftch)add('exam_duties',{exam_id:fe.id,teacher_id:ftch.id,role:'main'});
       }
     }
+    /* نمرهٔ عملی/کارگاهی + ساعتِ کارآموزی (بند ۴.۲): فقط مجتمع ایران‌زمین
+       (فنی و حرفه‌ای/کاردانش). ⚠️ بدون مصرفِ rng(): همهٔ مقادیر قطعی‌اند
+       تا جریانِ دنیای دمو (حساب‌های بعدی) دست‌نخورده بماند. */
+    if(si===4){
+      const w12=db.classes.filter(c=>c.school_id===school.id&&c.grade==='دوازدهم')[0];
+      if(w12){
+        const wstuds=db.users.filter(u=>u.role==='student'&&(db.enrollments.some(e=>e.class_id===w12.id&&e.student_id===u.id))&&u.active);
+        const wteach=db.users.find(u=>u.school_id===school.id&&u.role==='teacher');
+        const wsubs=db.subjects.filter(s2=>s2.school_id===school.id).slice(0,2);
+        wstuds.slice(0,4).forEach(function(st,idx){
+          if(idx<2&&wsubs[0]&&wteach){
+            add('grades',{school_id:school.id,student_id:st.id,class_id:w12.id,subject_id:wsubs[0].id,teacher_id:wteach.id,term:'نوبت اول',exam_type:'کارگاهی',kind:'practical',score:16+idx*2,max_score:20,created_at:daysAgoISO(30-idx)});
+          }
+          /* دو جلسهٔ کارآموزی: جلسهٔ اول تأییدشده، جلسهٔ دوم در انتظار (برای idx زوج) */
+          add('internships',{school_id:school.id,student_id:st.id,date:daysAgoISO(21-idx*7),hours:16,location:idx%2?'کارگاهِ صنعتیِ شهر':'معاونتِ فنیِ منطقه',status:'approved',approved_by:wteach?wteach.id:null,approved_at:daysAgoISO(18-idx*7),note:'حضورِ کامل',created_by:manager.id,created_at:daysAgoISO(21-idx*7)});
+          if(idx%2===0){
+            add('internships',{school_id:school.id,student_id:st.id,date:daysAgoISO(7-idx*3),hours:24,location:'کارگاهِ صنعتیِ شهر',status:'pending',note:'در انتظارِ تأییدِ دبیر',created_by:manager.id,created_at:daysAgoISO(7-idx*3)});
+          }
+        });
+      }
+    }
   });
+  /* قیف پیش‌ثبت‌نامِ رقابتی (بند ۴.۴): چند ردیف تا قیف در دمو دیده شود.
+     ⚠️ بدون مصرفِ rng() — مقادیر قطعی. */
+  (function(){
+    var defs=[
+      [1,'contact','تماسِ تلفنیِ اول — دربارهٔ شهریه پرسید',14],
+      [1,'visit','بازدیدِ انجام شد؛ نوبتِ آزمونِ ورودی می‌گیرد',7],
+      [2,'exam','آزمونِ ورودی را داد — در انتظارِ اعلامِ نتیجه',4],
+      [5,'enrolled','با موفقیت قبول شد و ثبت‌نامِ قطعی انجام داد',2]
+    ];
+    var names=['سارا محمدی','امیرحسین رستمی','نگار احمدی','پارسا کریمی'];
+    defs.forEach(function(d,idx){
+      add('preapps',{school_id:d[0],name:names[idx],phone:'0912'+String(1000000+idx*137).slice(0,7),note:d[2],stage:d[1],stage_at:daysAgoISO(d[3]),created_at:daysAgoISO(d[3]+10)});
+    });
+  })();
+  /* IEP (بند ۲.۲): یک دانش‌آموزِ نمونه در مدرسه‌ای با توانِ has_iep
+     یادداشتِ نیازِ ویژه و کارکنانِ کمکی دارد تا بخش در دمو دیده شود.
+     ⚠️ تغییرِ مستقیمِ رکوردِ دمو (بدون add) — دادهٔ پایه. */
+  (function(){
+    var s1=db.schools[0];
+    if(!s1||!(s1.capabilities&&s1.capabilities.has_iep))return;
+    var cls=db.classes.find(function(c){return c.school_id===s1.id&&c.grade==='دوازدهم';});
+    var st=cls?db.users.find(function(u){return u.role==='student'&&u.active&&(db.enrollments.some(function(e){return e.class_id===cls.id&&e.student_id===u.id;}));}):null;
+    if(st){st.iep_notes='نیاز به زمانِ بیشتر در آزمون‌های کتبی؛ پاسخِ مثبت به توضیحِ صوتی. هدفِ امسال: تثبیتِ پایهٔ ریاضی و کاهشِ اضطرابِ آزمون.';
+      st.iep_staff='مشاورِ مدرسه (هفتگی) + معاونِ آموزشی (پایشِ تکالیف)';
+      st.iep_updated=daysAgoISO(12);}
+  })();
   /* قیف پیش‌ثبت‌نام سال آینده (دور ۶۳، بند ۲): مدرسهٔ اول چند ردیف
      پیش‌ثبت‌نام برای سال بعد دارد تا قیف در دمو دیده شود.
      ⚠️ با add() — دادهٔ پایه، بدون ثبت در دفترچهٔ عملیات. */
@@ -1885,7 +1932,7 @@ function bootstrapRequest(){
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
  superadmin:[['نظارت روزانه',[['dashboard','📊','داشبورد مدیریتی'],['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها']]],['مدارس و کاربران',[['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه'],['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]]],
- manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['assets','🧰','املاک'],['sidadiff','⚖️','سیدا'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی']]],['مالی',[['tuition','💰','شهریه و امور مالی'],['association','🤝','انجمن و کمک‌ها']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['assets','🧰','املاک'],['sidadiff','⚖️','سیدا'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک'],['preapps','📥','قیف پیش‌ثبت‌نام']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی']]],['مالی',[['tuition','💰','شهریه و امور مالی'],['association','🤝','انجمن و کمک‌ها']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  teacher:[['کار روزانه',[['dashboard','📊','داشبورد'],['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کار آموزشی',[['meetings','📅','جلسات اولیا'],['classes','🏛️','کلاس‌ها'],['vclass','🖥️','کلاس مجازی'],['exams','👁️','برنامه مراقبت من'],['homework','📓','تکالیف'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['calendar','🗓️','تقویم آموزشی']]],['پروندهٔ من',[['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['leaves','📨','مرخصی'],['homework','📓','تکالیف من']]],['امور مالی',[['mytuition','💰','شهریه من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['کار روزانه',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
@@ -1893,7 +1940,7 @@ const NAV={
  counselor:[['کار من',[['cqueue','📨','صف ارجاع'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  driver:[['سرویس من',[['myservice','🚌','مسیر من'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]]
 };
-const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],library:['کتابخانه','کتاب‌ها + امانت به دانش‌آموز + بازگشت — نسخهٔ سبک'],assets:['املاک و موجودی','تجهیزات با وضعیت + مکان — نسخهٔ سبک'],sidadiff:['اختلاف با سیدا','نمرهٔ سیدا دستی — مقایسه با پایش، فقط خواندنی برای بقیه'],visitors:['مهمان‌ها','ورود/خروج افراد غیردانش‌آموز و غیرکارکنان — نسخهٔ سبک'],homework:['تکالیف','بارگذاری تصویر تکلیف + تصحیح دیجیتال با خطِ خوددست و نمره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها'],association:['انجمن و کمک‌ها','در مدارس دولتی به‌جای شهریه: کمک‌های داوطلبانهٔ اولیا با ثبت شفاف']};
+const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],library:['کتابخانه','کتاب‌ها + امانت به دانش‌آموز + بازگشت — نسخهٔ سبک'],assets:['املاک و موجودی','تجهیزات با وضعیت + مکان — نسخهٔ سبک'],sidadiff:['اختلاف با سیدا','نمرهٔ سیدا دستی — مقایسه با پایش، فقط خواندنی برای بقیه'],preapps:['قیف پیش‌ثبت‌نام','تماس → بازدید → آزمون → ثبت‌نامِ قطعی — جدا از ثبت‌نامِ رسمی'],visitors:['مهمان‌ها','ورود/خروج افراد غیردانش‌آموز و غیرکارکنان — نسخهٔ سبک'],homework:['تکالیف','بارگذاری تصویر تکلیف + تصحیح دیجیتال با خطِ خوددست و نمره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها'],association:['انجمن و کمک‌ها','در مدارس دولتی به‌جای شهریه: کمک‌های داوطلبانهٔ اولیا با ثبت شفاف']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
 S.stack=[];
@@ -2854,6 +2901,20 @@ var ACTION_ROLES = {
   'grade-save':    ['teacher','manager'],
   'grade-del':     ['teacher','manager'],
   'grade-modal':   ['teacher','manager'],
+  /* بند ۴.۲ — کارآموزی هنرستان: ثبت دبیر/مدیر؛ تأیید دبیرِ مربوطه/مدیر
+     (بررسیِ «دبیرِ مربوطه» در canApproveInternship روی داده تکرار می‌شود)؛
+     حذف فقط مدیر. */
+  'internship-new':     ['teacher','manager'],
+  'internship-save':    ['teacher','manager'],
+  'internship-approve': ['teacher','manager'],
+  'internship-del':     ['manager'],
+  /* بند ۲.۲ — IEP: فیلدِ آزاد است ولی تغییرش اختیارِ کادر است (دبیر/مدیر) */
+  'iep-save': ['teacher','manager'],
+  /* بند ۴.۴ — قیف پیش‌ثبت‌نام: پیگیریِ داوطلب کارِ مدیر است */
+  'preapp-new':  ['manager'],
+  'preapp-save': ['manager'],
+  'preapp-next': ['manager'],
+  'preapp-del':  ['manager'],
   /* انضباطی */
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],
@@ -3127,6 +3188,7 @@ function _renderRouteInner(){
     /* پروندهٔ دانش‌آموز: کارکنان و ولی با S.child دانش‌آموز را انتخاب
        می‌کنند؛ دانش‌آموز خودش همیشه پروندهٔ خودش را می‌بیند. */
     case 'record':return viewRecord(recordTargetId());
+    case 'preapps':return viewPreapps();
     case 'children':return viewChildren();
     case 'notifications':return viewNotifications();
     case 'leaves':return viewLeaves();
@@ -3687,6 +3749,53 @@ function viewAttendance(){
    نمرات
    ثبت و ویرایش نمره به تفکیک درس و نوبت.
    ═══════════════════════════════════════════════════════════════════ */
+
+/* ── بند ۴.۲: نمرهٔ عملی/کارگاهی هنرستان + ساعتِ کارآموزی ──
+   «مدرسهٔ کارگاهی» = مدرسه‌ای با رشتهٔ فنی‌وحرفه‌ای/کاردانش و
+   توانِ has_workshop. «سالِ آخر» = پایهٔ دوازدهم (پایانِ این رشته‌ها). */
+function workshopSchool(id){
+  var s=id?(byId('schools',Number(id))||{}):{};
+  var tr=s.branches||[];
+  var cap=(typeof hasCap==='function')?hasCap(s.id,'has_workshop'):false;
+  return !!(cap&&tr.length&&tr.some(function(t){return /فنی|حرفه|کاردانش/.test(t);}));
+}
+function workshopStudent(sid){
+  var u=byId('users',sid);
+  return !!(u&&workshopSchool(u.school_id));
+}
+function isFinalYearStudent(sid){
+  var cls=(typeof classOf==='function')?classOf(sid):null;
+  return !!(cls&&cls.grade==='دوازدهم');
+}
+function internshipSessions(sid){
+  return (db.internships||[]).filter(function(x){return x.student_id===Number(sid);})
+    .slice().sort(function(a,b){return String(b.date).localeCompare(String(a.date));});
+}
+function internshipTotals(sid){
+  var total=0,approved=0;
+  internshipSessions(sid).forEach(function(r){
+    var h=Number(r.hours)||0;
+    total+=h;
+    if(r.status==='approved')approved+=h;
+  });
+  return {total:total,approved:approved,count:internshipSessions(sid).length};
+}
+/** آیا کاربرِ فعلی می‌تواند این رکوردِ کارآموزی را تأیید کند؟
+    (مدیر هر مدرسهٔ خود؛ دبیر فقط وقتی دبیرِ مربوطهٔ دانش‌آموز است) */
+function canApproveInternship(rec,role){
+  role=role||((typeof activePersona==='function')?activePersona():(S.user&&S.user.role));
+  if(!role||!rec)return false;
+  if(role==='superadmin')return true;
+  if(role==='manager')return true;
+  if(role!=='teacher')return false;
+  var u=S.user;if(!u)return false;
+  var enr=(db.enrollments||[]).find(function(e){return e.student_id===Number(rec.student_id);});
+  var cls=enr?(byId('classes',enr.class_id)||null):null;
+  if(!cls)return false;
+  if(cls.homeroom_teacher_id===u.id)return true;
+  return (db.schedule||[]).some(function(s){return s.class_id===cls.id&&s.teacher_id===u.id;});
+}
+
 function viewGrades(){
   const u=S.user, canEdit=['superadmin','manager','teacher'].includes(u.role);
   const cls=visibleClasses(), subs=visibleSubjects();
@@ -3713,7 +3822,7 @@ function viewGrades(){
     <select class="select" style="width:125px" data-f="term"><option value="">همه نوبت‌ها</option>${TERMS.map(t=>`<option ${term===t?'selected':''}>${t}</option>`).join('')}</select>`)}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>درس</th><th>کلاس</th><th>نوبت</th><th>نوع آزمون</th><th>نمره</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
     ${rows.map(g=>`<tr><td><b>${esc((byId('users',g.student_id)||{}).full_name||'—')}</b></td><td>${esc((byId('subjects',g.subject_id)||{}).name||'—')}</td>
-      <td class="muted">${esc((byId('classes',g.class_id)||{}).name||'—')}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td class="muted">${esc(g.exam_type)}</td>
+      <td class="muted">${esc((byId('classes',g.class_id)||{}).name||'—')}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td class="muted">${esc(g.exam_type)}${g.kind==='practical'?' <span class="badge b-purple" title="نمرهٔ عملی/کارگاهی (بند ۴.۲)">عملی</span>':''}</td>
       <td><span class="badge ${g.score>=17?'b-green':g.score>=12?'b-blue':'b-red'}">${fa(g.score)} / ${fa(g.max_score)}</span></td>
       ${canEdit?`<td><button class="icon-btn" data-act="grade-edit" data-id="${escAttr(g.id)}">✏️</button> <button class="icon-btn danger" data-act="grade-del" data-id="${escAttr(g.id)}">🗑️</button></td>`:''}</tr>`).join('')}
    </tbody></table></div>`:empty('📝','نمره‌ای ثبت نشده',canEdit?'با دکمه «ثبت نمره» شروع کنید.':'هنوز نمره‌ای برای شما ثبت نشده است.')}</div>`;
@@ -3885,7 +3994,8 @@ function viewRecord(sid){
   if(S.tab==='profile') body = studentProfileCard(sid)
     + ((typeof certsCard==='function')?certsCard(sid):'')
     + ((typeof yearHistoryCard==='function')?yearHistoryCard(sid):'')
-    + ((typeof teacherNotesCard==='function')?teacherNotesCard(sid):'');
+    + ((typeof teacherNotesCard==='function')?teacherNotesCard(sid):'')
+    + ((typeof iepCard==='function')?iepCard(sid):'');
   /* نوار گواهی نمرات (بند ۱.۶): فقط وقتی نمره‌ای هست، بالای تب کارنامه */
   const certBar=(function(){
     if(S.tab!=='grades')return '';
@@ -3905,8 +4015,10 @@ function viewRecord(sid){
      <span class="badge ${a>=17?'b-green':a>=12?'b-blue':'b-red'}">میانگین ${fa(a.toFixed(2))}</span></div>
      <div style="margin:8px 0 12px">${bar(a,20,a>=17?'var(--green)':a>=12?'var(--primary)':'var(--red)')}</div>
      <div class="row">${l.map(g=>{const c=(typeof classScoreContext!=='undefined'&&S.__clsCtx)?S.__clsCtx[Number(id)+'|'+g.term+'|'+g.exam_type]:null;
-     return `<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}: <b>${fa(g.score)}</b>${c?' <span class="muted" style="font-weight:400">· کلاس: '+fa(c.avg.toFixed(2))+'</span>':''}</span>`;}).join('')}</div></div>`;}).join('')}</div>`
+     return `<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}${g.kind==='practical'?' • عملی':''}: <b>${fa(g.score)}</b>${c?' <span class="muted" style="font-weight:400">· کلاس: '+fa(c.avg.toFixed(2))+'</span>':''}</span>`;}).join('')}</div></div>`;}).join('')}</div>`
     :empty('📝','نمره‌ای ثبت نشده','به محض ثبت نمره، کارنامه اینجا نمایش داده می‌شود.');
+  /* بند ۴.۲: کارتِ کارآموزی زیرِ کارنامه (فقط سالِ آخرِ رشته‌های فنی) */
+  if(S.tab==='grades') body += (typeof internshipCard==='function')?internshipCard(sid):'';
   if(S.tab==='schedule') body = classScheduleCard(sid);
   if(S.tab==='vclass') body = (typeof vclassRecordTab==='function')?vclassRecordTab(sid):'';
   if(S.tab==='bus') body = persona==='parent'
@@ -3927,6 +4039,73 @@ function viewRecord(sid){
     :empty('🌟','پرونده انضباطی پاک است','هیچ مورد انضباطی ثبت نشده است.');
   return `<div class="card"><div class="card-head" style="padding-bottom:0;border-bottom:none"><div class="tabs">
     ${tabs.map(t=>`<div class="tab ${S.tab===t[0]?'active':''}" data-act="tab" data-t="${escAttr(t[0])}">${t[1]}</div>`).join('')}</div></div>${body}</div>`;
+}
+
+/** بند ۴.۲ — کارتِ ساعتِ کارآموزی: فقط برای دانش‌آموزِ سالِ آخرِ
+    رشته‌های فنی‌وحرفه‌ای/کاردانش در مدرسهٔ دارای رشته. */
+function internshipCard(sid){
+  var u=byId('users',sid);
+  if(!u)return '';
+  var school=byId('schools',u.school_id);
+  if(!(school&&workshopSchool(school.id)))return '';
+  if(!isFinalYearStudent(sid))return '';
+  var rows=internshipSessions(sid);
+  var tot=internshipTotals(sid);
+  var persona=(typeof activePersona==='function')?activePersona():(S.user&&S.user.role);
+  var canManage=persona==='manager'||persona==='superadmin';
+  var canApprove=canManage||persona==='teacher';
+  var h='<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:14px">'
+   +'<div class="row" style="align-items:center;gap:10px;flex-wrap:wrap"><b>🏭 ساعتِ کارآموزی</b>'
+   +'<span class="badge b-green">مجموع: '+fa(tot.total)+' ساعت</span>'
+   +'<span class="badge b-blue">تأییدشده: '+fa(tot.approved)+' ساعت</span>'
+   +'<div class="spacer"></div>'
+   +(canManage?'<button class="btn sm" data-act="internship-new" data-id="'+escAttr(sid)+'">➕ ثبتِ ساعت</button>':'')
+   +'</div>';
+  if(rows.length){
+    h+='<div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>تاریخ</th><th>ساعت</th><th>محل</th><th>وضعیت</th><th>تأییدکننده</th><th></th></tr></thead><tbody>';
+    rows.forEach(function(r){
+      var appr=r.approved_by?(((byId('users',r.approved_by)||{}).full_name)||'—'):'—';
+      var acts='';
+      if(r.status!=='approved'&&canApprove)acts+='<button class="btn ghost sm" data-act="internship-approve" data-id="'+escAttr(r.id)+'">✅ تأیید</button> ';
+      if(canManage)acts+='<button class="icon-btn danger" data-act="internship-del" data-id="'+escAttr(r.id)+'" title="حذف">🗑️</button>';
+      h+='<tr><td>'+jalali(r.date)+'</td><td><b>'+fa(r.hours)+'</b></td><td class="muted">'+esc(r.location||'—')+'</td>'
+       +'<td><span class="badge '+(r.status==='approved'?'b-green':'b-amber')+'">'+(r.status==='approved'?'تأییدشده':'در انتظار تأیید')+'</span></td>'
+       +'<td class="muted small">'+esc(appr)+'</td><td>'+acts+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  } else {
+    h+='<div class="muted small" style="padding:10px 0">هنوز ساعتی ثبت نشده است.</div>';
+  }
+  return h+'</div>';
+}
+
+/** بند ۲.۲ — برنامهٔ آموزشی فردی (IEP): پروندهٔ انعطاف‌پذیر، نه فرمِ سفت.
+    فقط در مدرسه‌ای با توانِ has_iep نمایش داده می‌شود. فیلدها آزادن:
+    یادداشتِ نیازِ ویژه + کارکنانِ کمکیِ مرتبط. */
+function iepCard(sid){
+  var u=byId('users',sid);
+  if(!u)return '';
+  var school=byId('schools',u.school_id);
+  var iepOn=!(!school||!(typeof hasCap==='function')||!hasCap(school.id,'has_iep'));
+  if(!iepOn)return '';
+  var persona=(typeof activePersona==='function')?activePersona():(S.user&&S.user.role);
+  var canEdit=persona==='manager'||persona==='superadmin'||persona==='teacher';
+  var notes=u.iep_notes||'', staff=u.iep_staff||'';
+  var h='<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:14px">'
+   +'<div class="row" style="align-items:center;gap:10px;flex-wrap:wrap"><b>🌱 برنامهٔ آموزشی فردی (IEP)</b>'
+   +(u.iep_updated?'<span class="badge b-gray small">به‌روزرسانی: '+jalali(u.iep_updated)+'</span>':'')
+   +'<div class="spacer"></div>'
+   +(canEdit?'<button class="btn sm" data-act="iep-edit" data-id="'+escAttr(sid)+'">'+(notes||staff?'✏️ ویرایش':'➕ ثبت')+'</button>':'')
+   +'</div>';
+  if(notes||staff){
+    h+='<table class="table" style="margin-top:8px"><tbody>'
+     +(notes?'<tr><td class="small muted" style="width:42%">یادداشتِ نیازِ ویژه</td><td style="white-space:normal;line-height:2">'+esc(notes)+'</td></tr>':'')
+     +(staff?'<tr><td class="small muted">کارکنانِ کمکیِ مرتبط</td><td style="white-space:normal;line-height:2">'+esc(staff)+'</td></tr>':'')
+     +'</tbody></table>';
+  } else {
+    h+='<div class="muted small" style="padding:8px 0">هنوز چیزی ثبت نشده است — این بخش برای نیازهای ویژهٔ یادگیری (به‌صورتِ آزاد، نه فرمِ سفت) است.</div>';
+  }
+  return h+'</div>';
 }
 
 /** کارت گواهی‌های رسمی (بند ۶) — تب شناسنامهٔ پرونده */
@@ -4363,14 +4542,60 @@ function gradeModal(g){
   const cid=Number(S.filters.class||(_autoOk&&_auto.classId)||(cls[0]||{}).id);
   const studs=studentsOfClass(cid);
   if(!studs.length){toast('این کلاس دانش‌آموزی ندارد','err');return;}
-  g=g||{student_id:studs[0].id,subject_id:(_autoOk?_auto.subjectId:subs[0].id),term:TERMS[0],exam_type:EXAM_TYPES[0],score:20};
+  g=g||{student_id:studs[0].id,subject_id:(_autoOk?_auto.subjectId:subs[0].id),term:TERMS[0],exam_type:EXAM_TYPES[0],score:20,kind:'theory'};
+  /* بند ۴.۲: در مدارسِ فنی‌وحرفه‌ای/کاردانش، نوعِ نمره (تئوری/عملی) انتخاب می‌شود */
+  const _gsc=byId('schools',(byId('classes',cid)||{}).school_id);
+  const _gkindOpts=(typeof workshopSchool==='function'&&workshopSchool(_gsc&&_gsc.id))?
+    `${f('نوع نمره',sel('g_kind',[['theory','تئوری'],['practical','عملی/کارگاهی']],g.kind||'theory'))}`:'';
   openModal(modalTpl(g.id?'ویرایش نمره':'ثبت نمره جدید',
    `<div class="grid g2">
     ${f('دانش‌آموز',`<select class="select" id="g_st" ${g.id?'disabled':''}>${studs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
     ${f('درس',`<select class="select" id="g_sub" ${g.id?'disabled':''}>${subs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.subject_id?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`)}
     ${f('نوبت',sel('g_term',TERMS.map(t=>[t,t]),g.term))}${f('نوع آزمون',sel('g_type',EXAM_TYPES.map(t=>[t,t]),g.exam_type))}
+    ${_gkindOpts}
     ${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${escAttr(g.score)}" />`)}</div>`,'grade-save'));
   window._edit=g;window._gclass=cid;
+}
+
+/* بند ۴.۲ — مودالِ ثبت/ویرایشِ ساعتِ کارآموزی.
+   fixedSid: اگر داده شود (از کارتِ پروندهٔ دانش‌آموز)، دانش‌آموز فیکس است. */
+function internshipModal(i,fixedSid){
+  const cls=visibleClasses();
+  const cid=Number(S.filters.class||(cls[0]||{}).id);
+  let studs=studentsOfClass(cid);
+  if(fixedSid)studs=studs.filter(s=>s.id===Number(fixedSid));
+  studs=studs.filter(s=>workshopStudent(s.id)&&isFinalYearStudent(s.id));
+  if(!studs.length){toast('دانش‌آموزِ سالِ آخرِ رشتهٔ فنی/کاردانشی در این کلاس نیست','err');return;}
+  i=i||{student_id:studs[0].id,date:todayISO(),hours:8,location:'',status:'pending',note:''};
+  openModal(modalTpl(i.id?'ویرایشِ ساعتِ کارآموزی':'ثبتِ ساعتِ کارآموزی',
+   `<div class="grid g2">
+    ${f('دانش‌آموز',`<select class="select" id="in_st" ${i.id?'disabled':''}>${studs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===i.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
+    ${f('تاریخ',jdate('in_date',i.date))}
+    ${f('تعدادِ ساعت',`<input class="input" id="in_hours" type="number" min="1" max="40" value="${escAttr(i.hours)}" />`)}
+    ${f('محلِ کارآموزی',inp('in_loc',i.location))}</div>
+    ${f('یادداشت',`<textarea class="input" id="in_note" rows="2">${esc(i.note||'')}</textarea>`)}`,'internship-save'));
+  window._inEdit=i;window._inClass=cid;
+}
+
+/* بند ۲.۲ — مودالِ ویرایشِ برنامهٔ آموزشی فردی (IEP): فیلدهای آزاد */
+function iepModal(sid){
+  var u=byId('users',sid);
+  if(!u)return;
+  openModal(modalTpl('برنامهٔ آموزشی فردی (IEP) — '+u.full_name,
+   `${f('یادداشتِ نیازِ ویژه',`<textarea class="input" id="iep_notes" rows="4" placeholder="مثلاً: نیاز به زمانِ بیشتر، توضیحِ صوتی، هدفِ امسال…">${esc(u.iep_notes||'')}</textarea>`)}
+    ${f('کارکنانِ کمکیِ مرتبط',`<textarea class="input" id="iep_staff" rows="2" placeholder="مثلاً: مشاورِ مدرسه (هفتگی)، معاونِ آموزشی…">${esc(u.iep_staff||'')}</textarea>`)}
+    ${u.iep_updated?`<div class="small muted">آخرین به‌روزرسانی: ${jalali(u.iep_updated)}</div>`:''}`,'iep-save'));
+  window._iepSid=Number(sid);
+}
+
+/* بند ۴.۴ — مودالِ پیش‌ثبت‌نامِ تازه */
+function preappModal(){
+  openModal(modalTpl('پیش‌ثبت‌نامِ تازه',
+   `<div class="grid g2">
+    ${f('نام داوطلب *',inp('pa_name',''))}
+    ${f('تلفن *',`<input class="input" id="pa_phone" type="tel" value="" style="direction:ltr;text-align:left" />`)}
+    </div>
+    ${f('یادداشت',`<textarea class="input" id="pa_note" rows="2"></textarea>`)}`,'preapp-save'));
 }
 const PRESETS={positive:POS.map(p=>p[0]),negative:NEG.map(p=>p[0])};
 function discModal(d){
@@ -10358,6 +10583,43 @@ document.addEventListener('click',e=>{
    'grade-edit'(){gradeModal(byId('grades',id));},
    'grade-del'(){confirmModal('حذف این نمره؟','grade-del-ok',id);},
    'grade-del-ok'(){if(typeof notifyGradeCancel==='function')notifyGradeCancel(window._delId);remove('grades',window._delId);closeModal();toast('نمره حذف شد','ok');render();},
+   /* ─────────────── بند ۴.۲: ساعتِ کارآموزی هنرستان ─────────────── */
+   'internship-new'(){internshipModal(null,id?Number(id):null);},
+   'internship-edit'(){internshipModal(byId('internships',id),Number(id));},
+   'internship-del'(){confirmModal('حذف این ردیفِ کارآموزی؟','internship-del-ok',id);},
+   'internship-del-ok'(){remove('internships',window._delId);closeModal();toast('حذف شد','ok');render();},
+   'internship-save'(){const i=window._inEdit;if(!i)return;
+     const hours=Number(V('in_hours'));
+     if(!hours||hours<1||hours>40){toast('ساعت باید عددی بین ۱ تا ۰ باشد','err');return;}
+     const data={date:V('in_date'),hours:hours,location:V('in_loc'),note:V('in_note')};
+     if(i.id){update('internships',i.id,data);}
+     else{const sid=Number(V('in_st'));const st=byId('users',sid);if(!st)return;
+       insert('internships',Object.assign({school_id:st.school_id,student_id:sid,status:'pending',created_by:S.user.id,created_at:todayISO()},data));}
+     closeModal();toast('ساعتِ کارآموزی ثبت شد','ok');render();},
+   'internship-approve'(){const rec=byId('internships',id);if(!rec)return;
+     if(rec.status==='approved'){toast('این رکورد از پیش تأیید شده است','err');return;}
+     if(!(typeof canApproveInternship==='function'&&canApproveInternship(rec))){
+       toast('فقط دبیرِ مربوطه یا مدیرِ مدرسه می‌تواند تأیید کند','err');return;}
+     update('internships',rec.id,{status:'approved',approved_by:S.user.id,approved_at:todayISO()});
+     toast('ساعتِ کارآموزی تأیید شد','ok');render();},
+   /* ─────────────── بند ۲.۲: برنامهٔ آموزشی فردی (IEP) ─────────────── */
+   'iep-edit'(){iepModal(Number(id));},
+   'iep-save'(){const sid=window._iepSid;const u=byId('users',sid);if(!u)return;
+     update('users',sid,{iep_notes:V('iep_notes'),iep_staff:V('iep_staff'),iep_updated:todayISO()});
+     closeModal();toast('برنامهٔ آموزشی فردی ذخیره شد','ok');render();},   /* ─────────────── بند ۴.۴: قیف پیش‌ثبت‌نامِ رقابتی ─────────────── */
+   'preapp-new'(){preappModal();},
+   'preapp-save'(){const name=V('pa_name');const phone=V('pa_phone');
+     if(!name||!phone){toast('نام و تلفن الزامی است','err');return;}
+     insert('preapps',{school_id:S.user.school_id,name:name,phone:phone,note:V('pa_note'),stage:'contact',stage_at:todayISO(),created_at:todayISO()});
+     closeModal();toast('پیش‌ثبت‌نام ساخته شد — مرحلهٔ تماسِ اولیه','ok');render();},
+   'preapp-next'(){const r=byId('preapps',id);if(!r)return;
+     let i=-1;
+     for(var k=0;k<PREAPP_STAGES.length;k++){if(PREAPP_STAGES[k][0]===r.stage){i=k;break;}}
+     if(i<0||i>=PREAPP_STAGES.length-1){toast('این مرحله آخرین مرحله است','err');return;}
+     update('preapps',r.id,{stage:PREAPP_STAGES[i+1][0],stage_at:todayISO()});
+     toast('مرحله تازه: '+PREAPP_STAGES[i+1][1],'ok');render();},
+   'preapp-del'(){confirmModal('حذف این پیش‌ثبت‌نام؟','preapp-del-ok',id);},
+   'preapp-del-ok'(){remove('preapps',window._delId);closeModal();toast('حذف شد','ok');render();},
    'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk
@@ -10368,11 +10630,13 @@ document.addEventListener('click',e=>{
          toast('نمرهٔ امتحان نهایی فقط برای پایه‌های پایانی (نهم و دوازدهم) ثبت می‌شود','err');return;
        }
      }
-     let gid=g.id;
-     if(g.id)update('grades',g.id,{score,term:V('g_term'),exam_type:V('g_type')});
-     else{const sid=Number(V('g_st')),cid=window._gclass;
-       const r=insert('grades',{school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,term:V('g_term'),exam_type:V('g_type'),score,max_score:20,created_at:todayISO()});
-       gid=r.id;}
+    let gid=g.id;
+    /* بند ۴.۲: نوعِ نمره — در مدرسهٔ غیرکارگاهی فیلد نیست و همیشه تئوری */
+    const gkind=V('g_kind')==='practical'?'practical':'theory';
+    if(g.id)update('grades',g.id,{score,term:V('g_term'),exam_type:V('g_type'),kind:gkind});
+    else{const sid=Number(V('g_st')),cid=window._gclass;
+      const r=insert('grades',{school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,term:V('g_term'),exam_type:V('g_type'),kind:gkind,score,max_score:20,created_at:todayISO()});
+      gid=r.id;}
      /* گام ۷: نمرهٔ زیر آستانه برای اولیا پیامک می‌سازد (بعد از نوشتن
         تا source_ref شناسهٔ واقعی باشد) */
      let sms=0,fix=0;
@@ -23604,6 +23868,55 @@ function doDeleteAccount(){
   }).catch(function(e){
     if(typeof toast === 'function') toast('حذف از سرور ناموفق بود: ' + (e && e.message || 'خطا'), 'err');
   });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بند ۴.۴ — قیف پیش‌ثبت‌نامِ رقابتی (مدارس غیردولتی با آزمون ورودی)
+   مرحله‌ها: تماسِ اولیه → بازدید از مدرسه → آزمونِ ورودی → ثبت‌نامِ قطعی
+   ⚠️ این قیف جدا از ثبت‌نامِ رسمی (enrollments) است و هیچ تبدیلِ
+   خودکاری ندارد؛ مدیر خودش تصمیم می‌گیرد.
+   ═══════════════════════════════════════════════════════════════════ */
+const PREAPP_STAGES=[['contact','تماسِ اولیه'],['visit','بازدید از مدرسه'],['exam','آزمونِ ورودی'],['enrolled','ثبت‌نامِ قطعی']];
+const PREAPP_BADGE={contact:'b-gray',visit:'b-blue',exam:'b-purple',enrolled:'b-green'};
+
+function viewPreapps(){
+  var u=S.user;
+  var rows=(db.preapps||[]).filter(function(r){return r.school_id===u.school_id;})
+    .slice().sort(function(a,b){return String(b.created_at).localeCompare(String(a.created_at));});
+  var counts={};
+  PREAPP_STAGES.forEach(function(s){counts[s[0]]=0;});
+  rows.forEach(function(r){counts[r.stage]=(counts[r.stage]||0)+1;});
+  var h='<div class="card">';
+  h+='<div class="card-body" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">';
+  PREAPP_STAGES.forEach(function(s){
+    h+='<div style="border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">'
+      +'<div class="small muted">'+esc(s[1])+'</div>'
+      +'<div style="font-size:26px;font-weight:800;color:var(--primary)">'+fa(counts[s[0]]||0)+'</div></div>';
+  });
+  h+='</div>';
+  h+='<div class="card-head" style="border-bottom:1px solid var(--border)"><div class="row" style="flex-wrap:wrap;gap:8px">'
+    +'<span class="small muted">پیگیریِ داوطلبان — این قیف جدا از ثبت‌نامِ رسمی است.</span><div class="spacer"></div>'
+    +'<button class="btn sm" data-act="preapp-new">➕ ثبتِ تازه</button></div></div>';
+  if(rows.length){
+    h+='<div class="table-wrap"><table><thead><tr><th>نام</th><th>تلفن</th><th>مرحله</th><th>تغییرِ مرحله</th><th>یادداشت</th><th></th></tr></thead><tbody>';
+    rows.forEach(function(r){
+      var i=-1;
+      for(var k=0;k<PREAPP_STAGES.length;k++){if(PREAPP_STAGES[k][0]===r.stage){i=k;break;}}
+      var next=(i>-1&&i<PREAPP_STAGES.length-1)?PREAPP_STAGES[i+1]:null;
+      var label=(i>-1?PREAPP_STAGES[i][1]:'—');
+      h+='<tr><td><b>'+esc(r.name)+'</b></td><td dir="ltr" class="muted">'+esc(r.phone)+'</td>'
+        +'<td><span class="badge '+(PREAPP_BADGE[r.stage]||'b-gray')+'">'+esc(label)+'</span></td>'
+        +'<td class="muted small">'+jalali(r.stage_at)+'</td>'
+        +'<td class="muted small" style="white-space:normal;max-width:240px">'+esc(r.note||'—')+'</td>'
+        +'<td style="white-space:nowrap">'
+        +(next?'<button class="btn ghost sm" data-act="preapp-next" data-id="'+escAttr(r.id)+'">→ '+esc(next[1])+'</button> ':'')
+        +'<button class="icon-btn danger" data-act="preapp-del" data-id="'+escAttr(r.id)+'" title="حذف">🗑️</button></td></tr>';
+    });
+    h+='</tbody></table></div>';
+  } else {
+    h+='<div class="card-body">'+empty('📥','هنوز پیش‌ثبت‌نامی نیست','برای پیگیریِ داوطلب، «ثبتِ تازه» را بزنید.')+'</div>';
+  }
+  return h+'</div>';
 }
 
 </script>

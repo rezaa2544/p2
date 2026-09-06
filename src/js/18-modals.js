@@ -247,6 +247,16 @@ function iepModal(sid){
     ${u.iep_updated?`<div class="small muted">آخرین به‌روزرسانی: ${jalali(u.iep_updated)}</div>`:''}`,'iep-save'));
   window._iepSid=Number(sid);
 }
+
+/* بند ۴.۴ — مودالِ پیش‌ثبت‌نامِ تازه */
+function preappModal(){
+  openModal(modalTpl('پیش‌ثبت‌نامِ تازه',
+   `<div class="grid g2">
+    ${f('نام داوطلب *',inp('pa_name',''))}
+    ${f('تلفن *',`<input class="input" id="pa_phone" type="tel" value="" style="direction:ltr;text-align:left" />`)}
+    </div>
+    ${f('یادداشت',`<textarea class="input" id="pa_note" rows="2"></textarea>`)}`,'preapp-save'));
+}
 const PRESETS={positive:POS.map(p=>p[0]),negative:NEG.map(p=>p[0])};
 function discModal(d){
   const cls=visibleClasses();

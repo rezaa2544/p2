@@ -224,6 +224,11 @@ var ACTION_ROLES = {
   'internship-del':     ['manager'],
   /* بند ۲.۲ — IEP: فیلدِ آزاد است ولی تغییرش اختیارِ کادر است (دبیر/مدیر) */
   'iep-save': ['teacher','manager'],
+  /* بند ۴.۴ — قیف پیش‌ثبت‌نام: پیگیریِ داوطلب کارِ مدیر است */
+  'preapp-new':  ['manager'],
+  'preapp-save': ['manager'],
+  'preapp-next': ['manager'],
+  'preapp-del':  ['manager'],
   /* انضباطی */
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],
