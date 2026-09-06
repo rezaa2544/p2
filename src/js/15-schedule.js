@@ -9,6 +9,48 @@
      همان کلاس (همهٔ درس‌ها و دبیرها) را می‌بیند — نه فقط کلاس‌های
      خودش.
    ═══════════════════════════════════════════════════════════════════ */
+/* ─────────────── بند ۶.۵ (نسخهٔ سبک): کنترل تداخل + پیشنهاد جایگزین ───────────────
+   «تولید خودکار» نمی‌کنیم؛ فقط تداخلِ موجود را می‌یابیم و جایِ آزاد
+   پیشنهاد می‌دهیم. مدیر خودش جابه‌جا می‌کند.
+   تداخلِ دبیر **سراسری** است (دبیر می‌تواند در چند مدرسه باشد)؛
+   تداخلِ کلاس طبیعتاً درونِ همان کلاس است. */
+function scheduleConflicts(schoolId){
+  const mine=(db.schedule||[]).filter(x=>x.school_id===schoolId);
+  const out=[], seenT={}, seenC={};
+  mine.forEach(r=>{
+    if(r.teacher_id){
+      const k='t|'+r.teacher_id+'|'+r.day+'|'+r.period;
+      if(seenT[k])return; seenT[k]=1;
+      const all=db.schedule.filter(x=>x.teacher_id===r.teacher_id&&x.day===r.day&&x.period===r.period);
+      if(all.length>1)out.push({kind:'teacher',key:k,teacher_id:r.teacher_id,day:r.day,period:r.period,rows:all.slice().sort((a,b)=>a.id-b.id)});
+    }
+    const kc='c|'+r.class_id+'|'+r.day+'|'+r.period;
+    if(seenC[kc])return; seenC[kc]=1;
+    const allc=db.schedule.filter(x=>x.class_id===r.class_id&&x.day===r.day&&x.period===r.period);
+    if(allc.length>1)out.push({kind:'class',key:kc,class_id:r.class_id,day:r.day,period:r.period,rows:allc.slice().sort((a,b)=>a.id-b.id)});
+  });
+  out.sort((a,b)=>(a.day-b.day)||(a.period-b.period)||(a.kind===b.kind?0:(a.kind==='class'?-1:1)));
+  return out;
+}
+/** جای‌های آزادِ پیشنهادی برای یک زنگ (کلاس و دبیر هر دو آزاد) — حداکثر ۳ */
+function suggestSlots(rowId){
+  const row=byId('schedule',rowId);
+  if(!row)return [];
+  /* فقط روی روزهای کاریِ همین مدرسه (پیش‌فرض شنبه تا سه‌شنبه) */
+  const days=(typeof workDaysOf==='function'?workDaysOf(row.school_id):[0,1,2,3])
+    .filter(d=>(typeof isSchoolDay==='function'?isSchoolDay(d):(d>=0&&d<=4)));
+  const out=[];
+  for(let di=0;di<days.length&&out.length<3;di++){
+    const d=days[di];
+    for(let p=1;p<=6&&out.length<3;p++){
+      if(d===row.day&&p===row.period)continue;
+      if(db.schedule.some(x=>x.class_id===row.class_id&&x.day===d&&x.period===p&&x.id!==row.id))continue;
+      if(row.teacher_id&&teacherBusyAt(row.teacher_id,d,p,row.id))continue;
+      out.push({day:d,period:p});
+    }
+  }
+  return out;
+}
 function viewSchedule(){
   const u=S.user;
   const byTeacher=u.role==='teacher';
@@ -31,7 +73,47 @@ function viewSchedule(){
      نام کلاس را می‌بیند. */
   const showTeacher=!byTeacher||inHome;
   const title=inHome?'برنامهٔ کلاسی '+(cObj?esc(cObj.name):''):(byTeacher?'برنامه هفتگی تدریس من':'برنامه هفتگی');
-  return `<div class="card"><div class="card-head"><h3>${title}</h3>
+  /* کنترل تداخل (بند ۶.): مدیر = کامل با پیشنهاد؛ دبیر = فقط اطلاع */
+  const confs=scheduleConflicts(u.school_id);
+  let confBlock='';
+  if(u.role==='manager'||u.role==='superadmin'){
+    if(confs.length){
+      confBlock=`<div class="card" style="border-color:var(--red);background:var(--red-soft,#fdf2f4)">
+       <div class="card-body" style="line-height:2.2">
+       <b style="color:var(--red)">⚠️ ${fa(confs.length)} تداخل در برنامهٔ هفتگی</b>
+       ${confs.map(c=>{
+         const who=c.kind==='teacher'?(byId('users',c.teacher_id)||{}).full_name:(byId('classes',c.class_id)||{}).name;
+         const other=c.kind==='teacher'
+           ?c.rows.map(r=>esc((byId('classes',r.class_id)||{}).name||'—')+((r.school_id!==u.school_id)?' («'+esc((byId('schools',r.school_id)||{}).name||'؟')+'»)':'')).join(' و ')
+           :c.rows.map(r=>esc((byId('subjects',r.subject_id)||{}).name||'—')).join(' و ');
+         return `<div style="margin-top:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff">
+          <div><b>${c.kind==='teacher'?'دبیر':'کلاس'}: ${esc(who)}</b> — ${DAYS[c.day]} زنگ ${fa(c.period)}: ${other}</div>
+          ${c.rows.filter(r=>r.school_id===u.school_id).map(r=>{
+            const sugs=suggestSlots(r.id);
+            const label=c.kind==='teacher'?'زنگ «'+esc((byId('classes',r.class_id)||{}).name||'')+'»':'درس «'+esc((byId('subjects',r.subject_id)||{}).name||'')+'»';
+            return `<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:6px">
+             <span class="small muted">${label}:</span>
+             <button class="btn ghost sm" data-act="sched-conf-sug" data-key="${escAttr(c.key)}" data-sid="${r.id}">🔎 پیشنهاد جایِ آزاد</button>
+             <div id="conf-sug-${c.key.replace(/[^a-z0-9]/gi,'')}-${r.id}" style="display:none;flex-wrap:wrap;gap:6px">
+               ${sugs.length?sugs.map(g=>`<button class="btn sm" data-act="sched-conf-move" data-sid="${r.id}" data-day="${g.day}" data-period="${g.period}">جا‌به‌جایی به ${DAYS[g.day]} زنگ ${fa(g.period)}</button>`).join(''):'<span class="small" style="color:var(--red)">جایِ آزاد پیدا نشد — یک زنگ را دستی خالی کنید.</span>'}
+             </div></div>`;
+          }).join('')}
+         </div>`;
+       }).join('')}
+       </div></div>`;
+    } else {
+      confBlock=`<div class="card"><div class="card-body"><span class="badge b-green">✅ بدون تداخل — همهٔ زنگ‌ها آزاد است</span></div></div>`;
+    }
+  } else if(u.role==='teacher'){
+    const mine=confs.filter(c=>c.kind==='teacher'&&c.teacher_id===u.id);
+    if(mine.length){
+      confBlock=`<div class="card" style="border-color:var(--amber)"><div class="card-body" style="line-height:2">
+       <b style="color:var(--amber)">⚠️ ${fa(mine.length)} تداخل ساعتی شما در برنامه</b>
+       <div class="small muted">${mine.map(c=>`${DAYS[c.day]} زنگ ${fa(c.period)} — با کلاس «${esc((byId('classes',c.rows[0].class_id)||{}).name||'')}»`).join(' · ')}</div>
+       <div class="small muted">جابه‌جایی را مدیر انجام می‌دهد.</div></div></div>`;
+    }
+  }
+  return confBlock+`<div class="card"><div class="card-head"><h3>${title}</h3>
    ${!byTeacher&&u.role!=='student'?`<select class="select" style="width:190px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`:''}
    ${byTeacher&&homeCls.length?`<select class="select" style="width:210px" data-f="homepick"><option value="">تدریس من</option>${homeCls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===homePick?'selected':''}>سرپرستی: ${esc(c.name)}</option>`).join('')}</select>`:''}
    ${cObj?`<span class="badge b-gray" style="margin-inline-start:8px">پایه: ${esc(cObj.grade||'—')}</span><span class="badge b-purple" style="margin-inline-start:6px">دبیر پایه: ${ht?esc(ht.full_name):'بدون دبیر پایه'}</span>`:''}</div>

@@ -252,6 +252,8 @@ var ACTION_ROLES = {
   'summer-students': ['manager'],
   'summer-students-save': ['manager'],
   'summer-del': ['manager'],
+  /* بند ۶.۵ (سبک) — جابه‌جاییِ زنگِ متداخل: فقط مدیر */
+  'sched-conf-move': ['manager','superadmin'],
   /* انضباطی */
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],
