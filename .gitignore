@@ -23,3 +23,6 @@ reference/
 
 # عکس‌های راهنما (محتوا در USER_GUIDE.html inline است؛ با node _shots.js بازتولید می‌شوند)
 _guide_shots/
+
+# server runtime data (store + JWT secret + audit log) — never commit
+server/data/
