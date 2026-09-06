@@ -409,8 +409,12 @@ function localISOOf(t){
 /**
  * وضعیتِ زندهٔ یک فرزند: زنگِ جاری + کلاس + دبیر + حضورِ امروز.
  * تابعِ خالص است (داده را نمی‌چرخاند) — برای تست با `now` ثابت.
+ *
+ * `attMap` (اختیاری، حالتِ سروری): پوشِ خواندنی از حضورِ امروز که
+ * سرور فرستاده است — اگر برای این دانش‌آموز رکورد داشته باشد
+ * اولویتش با دادهٔ محلی است (مرورِ چنددستگاهیِ ۱۳.۴).
  */
-function childNowStatus(studentId, now){
+function childNowStatus(studentId, now, attMap){
   var st = byId('users', studentId);
   if(!st) return null;
   var sid = st.school_id;
@@ -434,6 +438,9 @@ function childNowStatus(studentId, now){
     return x.student_id === studentId && x.date === localISOOf(t);
   })[0];
   out.att = a ? a.status : null;
+  if(attMap && Object.prototype.hasOwnProperty.call(attMap, studentId)){
+    out.att = attMap[studentId];
+  }
   return out;
 }
 
@@ -473,14 +480,14 @@ function familyBellCardHTML(c){
 }
 
 /** محتوای کارت‌های همهٔ فرزندان (بدون قاب) — برای تیکِ زنده. */
-function familyBellCardsInner(now){
+function familyBellCardsInner(now, attMap){
   var role = (typeof activePersona === 'function') ? activePersona() : S.user.role;
   if(role !== 'parent' && role !== 'student') return '';
   var kids = S.user.role === 'student' ? [S.user.id]
     : db.parent_links.filter(function(p){ return p.parent_id === S.user.id; }).map(function(p){ return p.student_id; });
   if(!kids.length) return '';
   return kids.map(function(k){
-    var c = childNowStatus(k, now);
+    var c = childNowStatus(k, now, attMap);
     if(!c) return '';
     return familyBellCardHTML(c);
   }).join('');
@@ -500,22 +507,74 @@ function familyBellCards(now){
 /* ── تیکِ زنده: پُلِ دوره‌ای ۴۵ ثانیه‌ای (فقط کارت‌ها، نه کل صفحه) ── */
 var BELL_LIVE_INTERVAL = 45000;   /* پنجرهٔ ۳۰–۶۰ ثانیهٔ تصمیمِ کاربر */
 var bellLiveTimer = null;
+var bellLiveInFlight = false;     /* دو پُل هم‌زمان نباشند */
+var bellLiveCache = null;         /* آخرین پاسخِ معتبرِ سرور (برای تست و عیب‌یابی) */
 
-function bellLiveTick(){
-  try{
+/** رندرِ محلی — حالتِ آفلاین و پس‌رویِ امنِ حالتِ سروری. */
+function bellLiveRenderLocal(){
+  var roots = document.querySelectorAll('[data-bell-live]');
+  roots.forEach(function(root){
+    var kind = root.getAttribute('data-bell-live');
+    if(kind === 'family'){
+      root.innerHTML = familyBellCardsInner();
+    } else {
+      root.innerHTML = (typeof bellNowBar === 'function') ? bellNowBar() : '';
+    }
+  });
+}
+
+/** حالتِ سروری (۱۳.۴): پُل با endpoint خُردِ /api/bell/now.
+    - ساعتِ سرور به قلابِ SERVER_TIME_KEY می‌نشیند (لایهٔ ۳ِ clockSanity).
+    - حضورِ امروز از storeٔ سرور می‌آید (مرورِ چنددستگاهی).
+    - هر خطا (نشستِ مرده، سرورِ خاموش، بدنِ نامعتبر) = پس‌رویِ محلی. */
+function bellLiveTickServer(){
+  if(bellLiveInFlight) return;
+  bellLiveInFlight = true;
+  var finish = function(ok, j){
+    bellLiveInFlight = false;
+    if(typeof S === 'undefined' || !S.user) return;
+    if(!ok){ bellLiveRenderLocal(); return; }
+    /* پاسخ باید دقیقاً این شکل را داشته باشد — وگرنه رندرِ محلی */
+    if(!j || j.ok !== true || typeof j.ts !== 'number' || !Array.isArray(j.family)){
+      bellLiveRenderLocal(); return;
+    }
+    var now = new Date(j.ts);
+    var attMap = {};
+    j.family.forEach(function(r){
+      if(r && r.studentId != null) attMap[r.studentId] = (r.att == null ? null : r.att);
+    });
+    bellLiveCache = j;
+    try{ (typeof Store !== 'undefined') && Store.set(SERVER_TIME_KEY, now.toISOString()); }catch(e){}
     var roots = document.querySelectorAll('[data-bell-live]');
     if(!roots.length){ bellLiveStop(); return; }
     roots.forEach(function(root){
       var kind = root.getAttribute('data-bell-live');
       if(kind === 'family'){
-        root.innerHTML = familyBellCardsInner();
+        root.innerHTML = familyBellCardsInner(now, attMap);
       } else {
-        root.innerHTML = (typeof bellNowBar === 'function') ? bellNowBar() : '';
+        root.innerHTML = (typeof bellNowBar === 'function') ? bellNowBar(now) : '';
       }
     });
-  }catch(e){ /* تیکِ زنده هرگز نباید برنامه را شکند */ }
+  };
+  try{
+    fetch('/api/bell/now', { credentials: 'same-origin' })
+      .then(function(r){ if(!r.ok) throw new Error('http_' + r.status); return r.json(); })
+      .then(function(j){ finish(true, j); })
+      .catch(function(){ finish(false, null); });
+  }catch(e){ finish(false, null); }
 }
 
+function bellLiveTick(){
+  try{
+    var roots = document.querySelectorAll('[data-bell-live]');
+    if(!roots.length){ bellLiveStop(); return; }
+    if(typeof DATA_MODE !== 'undefined' && DATA_MODE === 'server'){
+      bellLiveTickServer();
+      return;
+    }
+    bellLiveRenderLocal();
+  }catch(e){ /* تیکِ زنده هرگز نباید برنامه را بشکند */ }
+}
 /** زمان‌سنجِ زنده را تضمین می‌کند (آیدمپتان — در رندر صدا زده می‌شود). */
 function bellLiveEnsure(){
   if(typeof S === 'undefined' || !S.user){ bellLiveStop(); return; }
