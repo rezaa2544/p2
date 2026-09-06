@@ -23,11 +23,7 @@ function http(method, url, body, cookie) {
     body: body ? JSON.stringify(body) : undefined,
   }).then(async (r) => ({ status: r.status, json: await r.json().catch(() => ({})), hdr: r.headers.get('set-cookie') || '' }));
 }
-let opSeq = 0;
-function op(uid, c, t, id, data) {
-  opSeq += 1;
-  return { uid: 'pa3-' + Date.now() + '-' + opSeq, c, t, id: id ?? null, data: data ?? {}, by: uid, at: new Date().toISOString() };
-}
+const { opX } = require('./helpers/opx');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let pass = 0, fail = 0;
 const T = (c, m) => { if (c) { pass++; console.log('  ✅ ' + m); } else { fail++; console.log('  ❌ ' + m); } };
@@ -75,11 +71,11 @@ try {
   const sc1 = mgrU.school_id;
 
   /* A1: مدیر ins preapps */
-  const ins = await http('POST', '/api/sync', { ops: [op(mgrU.id, 'preapps', 'ins', null, { school_id: sc1, name: 'داوطلبِ سرور', phone: '09351112222', note: '', stage: 'contact', stage_at: '2026-09-01', created_at: '2026-09-01' })] }, mgrC);
+  const ins = await http('POST', '/api/sync', { ops: [opX({ by: mgrU.id, collection: 'preapps', type: 'ins', data: { school_id: sc1, name: 'داوطلبِ سرور', phone: '09351112222', note: '', stage: 'contact', stage_at: '2026-09-01', created_at: '2026-09-01' }})] }, mgrC);
   T(ins.status === 200, 'A1 مدیر: ins preapps → 200 (گرفت: ' + ins.status + ' ' + JSON.stringify(ins.json).slice(0,120) + ')');
 
   /* A2: دبیر ins preapps → 403 */
-  const tins = await http('POST', '/api/sync', { ops: [op(teaU.id, 'preapps', 'ins', null, { school_id: sc1, name: 'خرابکار', phone: '09359999999', stage: 'contact', stage_at: '2026-09-01', created_at: '2026-09-01' })] }, teaC);
+  const tins = await http('POST', '/api/sync', { ops: [opX({ by: teaU.id, collection: 'preapps', type: 'ins', data: { school_id: sc1, name: 'خرابکار', phone: '09359999999', stage: 'contact', stage_at: '2026-09-01', created_at: '2026-09-01' }})] }, teaC);
   T(tins.status === 403, 'A2 دبیر: ins preapps → 403 (گرفت: ' + tins.status + ')');
   T(tins.json && tins.json.code === 'role_denied', 'A2b کد خطا role_denied (گرفت: ' + (tins.json && tins.json.code) + ')');
 
@@ -92,7 +88,7 @@ try {
   if (!pid) { console.log('  (بدون id — بقیهٔ تست‌ها رد می‌شوند)'); }
 
   /* A3: مدیر upd مرحله */
-  const upd = await http('POST', '/api/sync', { ops: [op(mgrU.id, 'preapps', 'upd', pid, { stage: 'exam', stage_at: '2026-09-05' })] }, mgrC);
+  const upd = await http('POST', '/api/sync', { ops: [opX({ by: mgrU.id, collection: 'preapps', type: 'upd', id: pid, data: { stage: 'exam', stage_at: '2026-09-05' }})] }, mgrC);
   T(upd.status === 200, 'A3 مدیر: upd مرحله → 200 (گرفت: ' + upd.status + ')');
 
   /* A4: فلش → مرحلهٔ به‌روز رسیده */
@@ -102,7 +98,7 @@ try {
   T(row && row.stage === 'exam', 'A4 فلش: مرحلهٔ به‌روزشده (exam) در store است');
 
   /* A5: مدیر del + فلش + بررسیِ نبود */
-  const del = await http('POST', '/api/sync', { ops: [op(mgrU.id, 'preapps', 'del', pid)] }, mgrC);
+  const del = await http('POST', '/api/sync', { ops: [opX({ by: mgrU.id, collection: 'preapps', type: 'del', id: pid })] }, mgrC);
   T(del.status === 200, 'A5 مدیر: del preapps → 200');
   await sleep(2300);
   st = JSON.parse(fs.readFileSync(store, 'utf8'));
