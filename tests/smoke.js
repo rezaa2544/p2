@@ -2848,6 +2848,26 @@ test('یادآور: محصول رمز کاربری ندارد — ستون آر�
   assert(todo.indexOf('bcrypt') > -1, 'یادآورِ bcrypt از سندِ کارهای باقی‌مانده حذف شده (بدهیِ مشروط باید بماند)');
 });
 
+test('دیسپاتچِ A: هیچ اکشنی پارامترِ اعلام‌شده ندارد (el/id از محیّط) — دور ۷۹', () => {
+  /* الگویِ باگِ پنهانِ دور ۷۹: اکشن‌هایِ A بدونِ پارامتر صدا زده می‌شوند
+     (A[a]()) — پارامترِ اعلام‌شدهٔ (el,id) آن‌ها را با undefined سای می‌کند
+     و دکمه‌ها بی‌صدا می‌میرند (pre-confirm/pre-reject/pre-del/bus-follow-open).
+     این اسکنِ استاتیک همهٔ اکشن‌هایِ A را نگه می‌دارد (کشف: با کلیکِ
+     واقعیِ DOM در tests/uiclick.js، نه با فراخوانیِ مستقیمِ تابع). */
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'js', '19-actions.js'), 'utf8');
+  const a0 = src.indexOf('const A={');
+  const a1 = src.indexOf('if(A[a]){e.preventDefault();A[a]();}');
+  assert(a0 > -1 && a1 > a0, 'مرزِ آبجکتِ A در 19-actions پیدا نشد');
+  const body = src.slice(a0, a1);
+  const re = /(?:^|\n)\s*('[a-zA-Z0-9_-]+')\s*\(([^)]*)\)\s*\{/g;
+  const bad = [];
+  let m;
+  while ((m = re.exec(body))) if (m[2].trim()) bad.push(m[1].replace(/'/g, ''));
+  assert(bad.length === 0,
+    'اکشن‌هایِ A با پارامترِ اعلام‌شده (سایِ el/id): ' + bad.join(', '));
+});
+
 // ── جهت نوارهای اسکرول در چیدمان راست‌به‌چپ (دور ۳۰) ─────────
 //
 // قاعده‌ای که دو بار اشتباه شد و آزمون برای همین است:
