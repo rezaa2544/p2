@@ -565,13 +565,30 @@ document.addEventListener('click',e=>{
      openModal(modalTpl('کتاب جدید',
        f('عنوان *', inp('lib_title',''))
        + f('نویسنده', inp('lib_author',''))
-       + f('کد/رگال (اختیاری)', inp('lib_code','')),
+       + f('کد/رگال (اختیاری)', inp('lib_code',''))
+       + f('شمارهٔ سریال (اختیاری — در هر مدرسه یکتا)', inp('lib_serial','')),
        'lib-save'));
    },
    'lib-save'(){
-     const r = libAddBook(V('lib_title'), V('lib_author'), V('lib_code'));
+     const r = libAddBook(V('lib_title'), V('lib_author'), V('lib_code'), V('lib_serial'));
      if(!r.ok){ toast(r.msg,'err'); return; }
      closeModal(); toast('کتاب ثبت شد','ok');
+     render();
+   },
+   /* بند ۶.۳ — شمارهٔ سریال کتاب */
+   'lib-serial'(){
+     const b = byId('lib_books', Number(id));
+     if(!b) return;
+     window._libSerialBook = b.id;
+     openModal(modalTpl('شمارهٔ سریال — ' + b.title,
+       f('شمارهٔ سریال (خالی = حذف سریال)', inp('lib_ser2', b.serial || ''))
+       + '<div class="small muted">سریالِ هر کتابِ فیزیکی در همین مدرسه یکتا است؛ برای چندین کپیِ یک کتاب، چند ردیفِ جدا با سریال‌های متفاوت ثبت کنید.</div>',
+       'lib-serial-save'));
+   },
+   'lib-serial-save'(){
+     const r = libSetSerial(window._libSerialBook, V('lib_ser2'));
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     closeModal(); toast('سریال ذخیره شد','ok');
      render();
    },
    'lib-del'(){
