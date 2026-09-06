@@ -17,6 +17,7 @@
      M11 گاردِ بدنِ پاسخ در تیکِ سروری (تست: tests/server5.js)
      M12 اولویتِ overlayِ حضور (تست: tests/server5.js)
      M13 گاردِ روزِ غیرحضوریِ سرور (تست: tests/server6.js)
+     M14/M15 حذفِ حساب: پیوندِ شکسته‌نشدنی / تقلیل به غیرفعال (تست: tests/server7.js)
    هر جهش: جایگزینی، build، اجرای تستِ مربوطه، بررسیِ شکست، بازگشت.
    ───────────────────────────────────────────────────────────── */
 const { execSync } = require('child_process');
@@ -113,6 +114,20 @@ const MUTS = [
     mut: "      const vd = null;",
     name: 'M13 گاردِ روزِ غیرحضوریِ سرور خاموش شد',
     expectFail: 'V1a'
+  },
+  {
+    file: 'server/auth.js', suite: 'tests/server7.js', heap: 1500,
+    bad: "    purge('parent_links', r => Number(r.parent_id) === uid);",
+    mut: "    purge('parent_links', r => false);",
+    name: 'M14 حذفِ حساب، parent_links را نمی‌شکند (پیوند باقی می‌ماند)',
+    expectFail: 'D2b'
+  },
+  {
+    file: 'server/auth.js', suite: 'tests/server7.js', heap: 1500,
+    bad: "    purge('users', r => Number(r.id) === uid);",
+    mut: "    { const u2 = (store.users || []).find(r => Number(r.id) === uid); if(u2) u2.active = false; }",
+    name: 'M15 حذفِ حساب به «غیرفعال‌کردن» تقلیل می‌یابد',
+    expectFail: 'D2b'
   }
 ];
 

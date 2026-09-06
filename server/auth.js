@@ -166,11 +166,39 @@ function createAuth(ctx){
     sendJson(res, 200, { ok: true });
   }
 
+  /* حذف حساب (ملاک حذفِ حسابِ گوگل‌پلی — قفل ۹.۵):
+     حذفِ کاملِ داده‌های شخصیِ کاربر از store — هرگز «غیرفعال».
+     داده‌های نهادی (حضور/نمرات/انضباط) متعلق به مدرسه/دانش‌آموز است و می‌ماند.
+     نشست‌های باز خودبه‌خود باطل می‌شوند: sessionFrom کاربر را پیدا نمی‌کند.
+     آدیت فقط user_id/role — هرگز phone/nid (قفلِ قرارداد). */
+  async function apiDeleteAccount(req, res){
+    const s = sessionFrom(req);
+    if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
+    const uid = s.id;
+    const purged = {};
+    function purge(coll, pred){
+      const rows = store[coll];
+      if(!Array.isArray(rows)) return;
+      const keep = rows.filter(r => !pred(r));
+      if(keep.length !== rows.length){ purged[coll] = rows.length - keep.length; store[coll] = keep; }
+    }
+    purge('parent_links', r => Number(r.parent_id) === uid);
+    purge('parent_verifications', r => Number(r.parent_id) === uid);
+    purge('parent_subscriptions', r => Number(r.user_id) === uid);
+    purge('messages', r => Number(r.from_id) === uid);
+    purge('users', r => Number(r.id) === uid);
+    audit('account_deleted', { user_id: uid, role: s.role, purged: purged });
+    if(ctx.markDirty) ctx.markDirty();
+    /* نشستِ فعلی هم همین حالا می‌میرد (cookie پاک) */
+    res.setHeader('Set-Cookie', SESSION_NAME + '=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
+    sendJson(res, 200, { ok: true, deleted: true });
+  }
+
   function sendJson(res, status, obj){
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(obj));
   }
 
-  return { jwtSign, jwtVerify, sessionFrom, setSessionCookie, checkCodeSafe, apiSendCode, apiLogin, apiMe, apiLogout };
+  return { jwtSign, jwtVerify, sessionFrom, setSessionCookie, checkCodeSafe, apiSendCode, apiLogin, apiMe, apiLogout, apiDeleteAccount };
 }
 module.exports = { createAuth };
