@@ -62,6 +62,9 @@ function viewRecord(sid){
               ['schedule','📅 برنامه کلاس'],['discipline','⚖️ پرونده انضباطی'],['profile','🪪 شناسنامه']];
   if(persona==='student'||persona==='parent')tabs.push(['vclass','🖥️ کلاس مجازی']);
   if(persona==='student'||persona==='parent')tabs.push(['bus','🚌 سرویس']);
+  /* بند ۵.۲ — مسیرِ دوازدهم↔مشاور (همهٔ نقش‌ها می‌بینند؛ ارسال فقط
+     دانش‌آموز/ولی/مشاور — گاردِ داده در counselorMsgSend) */
+  if((typeof isTwelfthGrader==='function')&&isTwelfthGrader(sid))tabs.push(['counsel','🕊️ مشاور']);
   let body='';
   if(S.tab==='profile') body = studentProfileCard(sid)
     + ((typeof pathwayGuideCard==='function')?pathwayGuideCard(sid):'')
@@ -96,6 +99,7 @@ function viewRecord(sid){
   if(S.tab==='grades') body += (typeof internshipCard==='function')?internshipCard(sid):'';
   if(S.tab==='grades') body += (typeof reexamCard==='function')?reexamCard(sid):'';
   if(S.tab==='schedule') body = classScheduleCard(sid);
+  if(S.tab==='counsel') body = ((typeof isTwelfthGrader==='function')&&isTwelfthGrader(sid)&&(typeof counselorChannelCard==='function'))?counselorChannelCard(sid):'';
   if(S.tab==='vclass') body = (typeof vclassRecordTab==='function')?vclassRecordTab(sid):'';
   if(S.tab==='bus') body = persona==='parent'
     ? ((typeof busParentTab==='function')?busParentTab(sid):'')

@@ -195,6 +195,115 @@ function counselorHandle(refId,userId,note){
   return true;
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   ۵.۲ — مسیر ارتباطِ ساختاریافته با مشاور برای دوازدهم
+   دانش‌آموزِ دوازدهم (و ولی‌اش) می‌تواند مستقیم با مشاور مدرسه
+   صحبت کند — نه از طریق صف ارجاعِ مدیر (بند ۱.۴). رشتهٔ گفت‌وگو
+   فقط برای همان دانش‌آموز + مشاور (و دیده‌شدن در پرونده) است؛
+   مشاور پروندهٔ کامل دانش‌آموز را نمی‌بیند (اصلِ دور ۶۳).
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** آیا این دانش‌آموز دوازدهم است؟ (پایهٔ کاربر، وگرنه از نامِ کلاس) */
+function isTwelfthGrader(sid){
+  var u=(typeof byId==='function')?byId('users',sid):null;
+  if(!u)return false;
+  var cls=(typeof classOf==='function')?classOf(sid):null;
+  var g=Number(u.grade_level||(cls&&(cls.grade_level||gradeFromName(cls.name)))||0);
+  return g===12;
+}
+
+/** رشتهٔ گفت‌وگوی یک دانش‌آموز با مشاور (قدیمی به تازه) */
+function counselorThread(studentId){
+  return (db.counselor_msgs||[]).filter(function(m){return m.student_id===studentId;})
+    .sort(function(a,b){return String(a.created_at||'').localeCompare(String(b.created_at||''))||((a.id||0)-(b.id||0));});
+}
+
+/** صندوقِ مشاور: تازه‌ترین رشته‌های دوازدهم (بالاترین فعالیت اول) */
+function counselorMsgInbox(schoolId,limit){
+  var by=Object.create(null);
+  (db.counselor_msgs||[]).forEach(function(m){
+    if(m.school_id!==schoolId)return;
+    var e=by[m.student_id];
+    if(!e)e=by[m.student_id]={last:'',n:0,fromStudent:0};
+    e.n++;
+    if(String(m.created_at||'')>e.last)e.last=String(m.created_at||'');
+    if(m.author_role==='student'||m.author_role==='parent')e.fromStudent++;
+  });
+  var out=[];
+  Object.keys(by).forEach(function(k){
+    var st=(typeof byId==='function')?byId('users',Number(k)):null;
+    if(!st||st.role!=='student')return;
+    if(!isTwelfthGrader(st.id))return;
+    out.push({student:st,cls:(typeof classOf==='function')?classOf(st.id):null,
+      count:by[k].n,last:by[k].last,fromStudent:by[k].fromStudent});
+  });
+  out.sort(function(a,b){return String(b.last||'').localeCompare(String(a.last||''));});
+  return out.slice(0,Number(limit)||15);
+}
+
+/**
+ * ارسالِ پیام در مسیر دوازدهم↔مشاور (دانش‌آموز/ولی/مشاور).
+ * گاردهای ساختاری: دوازدهم بودن، طول ۳–۵۰۰، هم‌خوانیِ هویتِ
+ * فرستنده با رکورد (دانش‌آموز فقط خودش، ولی فقط فرزندش،
+ * مشاور فقط مدرسهٔ خودش).
+ */
+function counselorMsgSend(studentId,authorUser,body){
+  var st=(typeof byId==='function')?byId('users',studentId):null;
+  if(!st||st.role!=='student')return {ok:false,msg:'دانش‌آموز پیدا نشد'};
+  if(!isTwelfthGrader(studentId))return {ok:false,msg:'این مسیر برای دانش‌آموزانِ دوازدهم است'};
+  var b=String(body||'').trim();
+  if(b.length<3)return {ok:false,msg:'پیام خیلی کوتاه است'};
+  if(b.length>500)return {ok:false,msg:'پیام خیلی بلند است (حداکثر ۵۰۰ نویسه)'};
+  var role=authorUser.role, authorId=authorUser.id;
+  if(role==='student'){
+    if(authorId!==studentId)return {ok:false,msg:'فقط در رشتهٔ خودتان می‌توانید بنویسید'};
+  } else if(role==='parent'){
+    var kids=(db.parent_links||[]).filter(function(p){return p.parent_id===authorId;}).map(function(p){return p.student_id;});
+    if(kids.indexOf(studentId)<0)return {ok:false,msg:'این دانش‌آموز از فرزندان شما نیست'};
+  } else if(role==='counselor'){
+    if(authorUser.school_id&&authorUser.school_id!==st.school_id)return {ok:false,msg:'فقط در رشته‌های مدرسهٔ خودتان پاسخ می‌دهید'};
+  } else return {ok:false,msg:'شما نمی‌توانید در این مسیر بنویسید'};
+  var rec=insert('counselor_msgs',{
+    school_id:st.school_id,student_id:studentId,
+    author_id:authorId,author_role:role,body:b,status:'open',
+    created_at:new Date().toISOString()
+  });
+  return {ok:true,msg:role==='counselor'?'پاسخ ارسال شد':'پیام به مشاور ارسال شد',rec:rec};
+}
+
+/** کارتِ مسیرِ مشاور — در پروندهٔ دانش‌آموزِ دوازدهم (تب) */
+function counselorChannelCard(sid){
+  if(!(typeof isTwelfthGrader==='function'&&isTwelfthGrader(sid)))return '';
+  var u=S.user;
+  var persona=(typeof activePersona==='function')?activePersona():(u&&u.role);
+  var st=byId('users',sid);
+  if(!st)return '';
+  var thread=counselorThread(sid);
+  var canSend=persona==='student'?st.id===u.id
+    :persona==='parent'?(db.parent_links||[]).some(function(p){return p.parent_id===u.id&&p.student_id===sid;})
+    :persona==='counselor';
+  var h='<div class="card-body"><div class="small muted" style="line-height:2;margin-bottom:10px">مسیرِ ساختاریافتهٔ گفت‌وگو با مشاورِ مدرسه — برای دوازدهم: امتحان نهایی، کنکور، انتخاب رشته و هر سؤالِ دیگری. مشاور فقط همین رشتهٔ گفت‌وگو را می‌بیند، نه پروندهٔ کامل.</div>';
+  h+='<div style="display:grid;gap:8px;max-height:46vh;overflow:auto;margin-bottom:10px">';
+  if(!thread.length)h+='<div class="small muted" style="padding:8px 0">هنوز پیامی نیست.</div>';
+  thread.forEach(function(m){
+    var a=byId('users',m.author_id)||{};
+    var me=(persona==='student'&&m.author_role==='student'&&m.author_id===u.id)
+      ||(persona==='counselor'&&m.author_role==='counselor');
+    h+='<div style="border:1px solid var(--border);border-radius:10px;padding:8px 10px'+(me?';background:#f4f8ff':'')+'">'
+      +'<div class="small" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>'+(m.author_role==='counselor'?'🕊️ مشاور':esc(a.full_name||'—'))+'</b>'
+      +'<span class="muted">'+String(m.created_at||'').slice(0,10)+'</span></div>'
+      +'<div style="margin-top:4px;line-height:1.9">'+esc(m.body)+'</div></div>';
+  });
+  h+='</div>';
+  if(canSend){
+    h+='<textarea class="input" id="cmsg_body" rows="2" maxlength="500" placeholder="پیام‌تان را بنویسید (حداکثر ۵۰۰ نویسه)…" style="width:100%"></textarea>'
+      +'<div class="row" style="margin-top:8px;justify-content:flex-start"><button class="btn" data-act="counselor-msg-send" data-sid="'+escAttr(sid)+'">🕊️ ارسال به مشاور</button></div>';
+  } else {
+    h+='<div class="small muted">با نقشِ کنونی فقط می‌توانید این مسیر را ببینید.</div>';
+  }
+  return h+'</div>';
+}
+
 /* ─────────── اعلان الگو به ولی — فقط با تأیید مدیر (بند ۴) ───────────
    طرح ۴.۷ سه اثر برای رد آستانه می‌گوید: نشان در پرونده، رکورد
    در صف پیگیری، و اعلان به ولی — که **خودکار نیست**. اینجا همان
@@ -305,6 +414,36 @@ function viewCounselorQueue(){
         +' · توسط: '+(byU?esc(byU.full_name):'—')
         +'</div>';
     });
+  }
+  /* ── ۵.۲ — مسیرِ دوازدهم↔مشاور (صندوق + رشتهٔ باز) ── */
+  var inbox=counselorMsgInbox(sid,10);
+  if(inbox.length){
+    h+='<div class="card-head" style="margin-top:16px"><h3 style="font-size:14px">💬 مسیرِ دوازدهم‌ها</h3></div>';
+    var openStu=S.filters.cmsg_stu?byId('users',Number(S.filters.cmsg_stu)):null;
+    if(openStu&&openStu.role==='student'&&isTwelfthGrader(openStu.id)){
+      var th=counselorThread(openStu.id);
+      h+='<div class="card-body">';
+      th.forEach(function(m){
+        var a=byId('users',m.author_id)||{};
+        h+='<div style="border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:8px'+(m.author_role==='counselor'?';background:#f4f8ff':'')+'">'
+          +'<div class="small" style="display:flex;gap:8px;align-items:center"><b>'+(m.author_role==='counselor'?'🕊️ من (مشاور)':esc(a.full_name||'—'))+'</b>'
+          +'<span class="muted">'+String(m.created_at||'').slice(0,10)+'</span></div>'
+          +'<div style="margin-top:4px;line-height:1.9">'+esc(m.body)+'</div></div>';
+      });
+      h+='<textarea class="input" id="cmsg_body" rows="2" maxlength="500" placeholder="پاسخ مشاور…" style="width:100%"></textarea>'
+        +'<div class="row" style="margin-top:8px;gap:8px">'
+        +'<button class="btn" data-act="counselor-msg-reply" data-sid="'+escAttr(openStu.id)+'">ارسال پاسخ</button>'
+        +'<button class="btn ghost" data-act="cmsg-close">← فهرستِ رشته‌ها</button></div></div>';
+    } else {
+      inbox.forEach(function(row){
+        h+='<div class="small" style="padding:8px 0;border-bottom:1px solid #e8edf5;display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+          +'<b>'+esc(row.student.full_name)+'</b>'
+          +'<span class="badge b-gray">'+esc(row.cls?row.cls.name:'—')+'</span>'
+          +'<span class="badge '+(row.fromStudent?'b-amber':'b-blue')+'">'+fa(row.count)+' پیام</span>'
+          +'<span class="muted">'+String(row.last||'').slice(0,10)+'</span><div class="spacer"></div>'
+          +'<button class="btn ghost sm" data-act="cmsg-open" data-id="'+row.student.id+'">باز کردنِ رشته</button></div>';
+      });
+    }
   }
   return h+'</div></div>';
 }
@@ -527,4 +666,25 @@ function generateP12(){
       });
     }
   }
+  /* ۵.۲ — مسیرِ نمونهٔ دوازدهم↔مشاور تا بخشِ دمو خالی نباشد
+     (همان مثلِ بقیهٔ دادهٔ پایه با add()) */
+  (function(){
+    var twelfth=null;
+    db.users.forEach(function(st){
+      if(st.role!=='student'||(st.status||'active')!=='active')return;
+      var cls=(typeof classOf==='function')?classOf(st.id):null;
+      var g=Number(st.grade_level||(cls&&(cls.grade_level||gradeFromName(cls.name)))||0);
+      if(g===12&&!twelfth)twelfth=st;
+    });
+    if(!twelfth)return;
+    var cous=db.users.find(function(u){return u.role==='counselor'&&u.school_id===twelfth.school_id;})||null;
+    add('counselor_msgs',{school_id:twelfth.school_id,student_id:twelfth.id,
+      author_id:twelfth.id,author_role:'student',
+      body:'سلام، دربارهٔ تقسیم‌بندی نمرهٔ نهایی و انتخاب رشته سؤال دارم. کی می‌توانم بیایم؟',
+      status:'open',created_at:new Date(Date.now()-2*86400000).toISOString()});
+    if(cous)add('counselor_msgs',{school_id:twelfth.school_id,student_id:twelfth.id,
+      author_id:cous.id,author_role:'counselor',
+      body:'سلام! روز سه‌شنبه ساعت ۱۲ در دفتر مشغول شما هستم. برنامهٔ مشاوره کنکور را هم با خودتان بیاورید.',
+      status:'open',created_at:new Date(Date.now()-1*86400000).toISOString()});
+  })();
 }

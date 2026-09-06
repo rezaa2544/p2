@@ -33,11 +33,11 @@ function scopeDescriptor(user, persona){
   if(role === 'student'){
     d.scope = { student_id: user.id };
     d.collections = ['self','my_class','my_school_meta','attendance:self','grades:self',
-                     'discipline:self','announcements:mine','notifications:mine','tuition:self'];
+                     'discipline:self','announcements:mine','notifications:mine','tuition:self','counselor_msgs:self'];
   } else if(role === 'parent'){
     d.scope = { parent_id: user.id, children: 'resolved_server_side' };
     d.collections = ['self','children','attendance:children','grades:children',
-                     'discipline:children','announcements:mine','notifications:mine','tuition:children'];
+                     'discipline:children','announcements:mine','notifications:mine','tuition:children','counselor_msgs:children'];
   } else if(role === 'teacher'){
     d.scope = { teacher_id: user.id, classes: 'resolved_server_side' };
     d.collections = ['self','my_classes','students:my_classes','subjects:my_schools',
@@ -54,7 +54,7 @@ function scopeDescriptor(user, persona){
        نمره/برنامه/پروندهٔ کامل دانش‌آموز در برش مشاور نیست —
        students فقط به‌اندازهٔ نام و کلاسِ ارجاع‌شده‌ها. */
     d.scope = { school_id: user.school_id, queue_only: true };
-    d.collections = ['self','counselor_refs:school','students:referees:name-class',
+    d.collections = ['self','counselor_refs:school','counselor_msgs:school','students:referees:name-class',
                      'announcements:mine','notifications:mine'];
   } else if(role === 'edu_office'){
     /* ادارهٔ آموزش‌وپرورش هرگز دادهٔ فردی نمی‌گیرد — فقط تجمیع */

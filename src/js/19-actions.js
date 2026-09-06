@@ -2177,9 +2177,25 @@ document.addEventListener('click',e=>{
      if(ref.school_id!==S.user.school_id){toast('دسترسی به ارجاع مدرسهٔ دیگر مجاز نیست','err');return;}
      const inp=el.ownerDocument&&$('#ch_note_'+ref.id);
      const note=inp?inp.value.trim():'';
-     if(counselorHandle(ref.id,S.user.id,note)){toast('ارجاع رسیدگی‌شده شد','ok');render();}
-     else toast('این ارجاع از پیش رسیدگی شده است','err');
-   },
+    if(counselorHandle(ref.id,S.user.id,note)){toast('ارجاع رسیدگی‌شده شد','ok');render();}
+    else toast('این ارجاع از پیش رسیدگی شده است','err');
+  },
+  /* ── ۵.۲ — مسیرِ دوازدهم↔مشاور ── */
+  'counselor-msg-send'(){
+    const sid=Number(el.dataset.sid)||0;
+    const target=S.user.role==='student'?S.user.id:sid;
+    const res=counselorMsgSend(target,S.user,V('cmsg_body'));
+    if(!res.ok){toast(res.msg,'err');return;}
+    toast(res.msg,'ok');render();
+  },
+  'counselor-msg-reply'(){
+    const sid=Number(el.dataset.sid)||0;
+    const res=counselorMsgSend(sid,S.user,V('cmsg_body'));
+    if(!res.ok){toast(res.msg,'err');return;}
+    toast(res.msg,'ok');render();
+  },
+  'cmsg-open'(){S.filters.cmsg_stu=id;render();},
+  'cmsg-close'(){S.filters.cmsg_stu=null;render();},
    /* اعلان الگو به ولی (بند ۴ دور ۶۳): فقط مدیر. پیام نمی‌رود —
       در صف پیام اولیا می‌نشیند و با تأیید مدیر ارسال می‌شود. */
    'pattern-notify'(){
