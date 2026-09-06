@@ -1517,7 +1517,7 @@ document.addEventListener('click',e=>{
      const sid=Number(el.dataset.sid)||(S.user&&S.user.role==='student'?S.user.id:0);
      const chk=certAllowedStudent(sid);
      if(!chk.ok){toast(chk.msg,'err');return;}
-     const d=reportCardCert(sid,V('cert_term'));
+     const d=reportCardCert(sid,V('cert_term'),V('cert_tpl')||'classic');
      if(!d.ok){toast(d.msg,'err');return;}
      printableDoc(d);
    },
