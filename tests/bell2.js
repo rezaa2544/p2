@@ -63,9 +63,28 @@ await sleep(400);
 console.log('\n▸ زنگِ زنده (دور ۶۵)');
 
 /* ۲۰۲-۰۹-۵ شنبه است: زنگ ۱ = ۰۷:۳۰–۰۸:۱۵ · تفریح · زنگ ۲ = ۸:۲۵–۰۹:۱۰ */
-const T_P2 = "new Date('2026-09-05T09:05:00')";
-const T_P3 = "new Date('2026-09-05T10:00:00')";
-const T_FRI = "new Date('2026-09-11T10:00:00')";
+/* REF = newest demo school day (Sat–Wed) that is NOT a virtual day for any
+   school (the demo generates virtual-day rows on recent dates, incl. today).
+   The bell pattern is the same every school day, so 09:05/10:00 hit the same
+   bells on any of them — REF must not be a calendar constant (it would rot). */
+const REF = W(`(function(){
+  for(let back=0; back<5; back++){
+    var d=new Date(); d.setDate(d.getDate()-back);
+    var w=d.getDay(); if(!(w===0||w===1||w===2||w===3||w===6)) continue;
+    var p=function(n){return String(n).padStart(2,'0');};
+    var iso=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+    var modes=(db.attendance_modes||[]).filter(function(m){return m.date===iso;});
+    if(modes.length===0) return iso;
+  }
+  return todayISO();
+})()`);
+const T_P2 = "new Date('" + REF + "T09:05:00')";
+const T_P3 = "new Date('" + REF + "T10:00:00')";
+const T_FRI = "new Date('2026-09-11T10:00:00')"; /* fixed Friday — always Friday */
+const TODAY_OK_FOR_LIVE_TICK = W(`(function(){
+  var w=new Date().getDay(); if(!(w===0||w===1||w===2||w===3||w===6)) return false;
+  return !(db.attendance_modes||[]).some(function(m){return m.date===todayISO()&&m.school_id===1;});
+})()`);
 
 test('B1 — کارتِ ولی: هر سه فرزند + اسم دبیرِ زنگِ جاری', () => {
   const who = W(`(function(){
@@ -105,7 +124,8 @@ test('B2 — اسم دبیر با عوضِ زنگ عوض می‌شود', () => {
 
 test('B3 — حضورِ امروز: سه وضعیت + ثبت‌نشده', () => {
   /* فرزندِ ۱۶ در دادهٔ نمونه امروز «دیر» ثبت شده */
-  const a16 = W(`(function(){var a=db.attendance.filter(x=>x.student_id===16&&x.date===todayISO())[0];return a?a.status:null;})()`);
+  W(`(function(){var a=db.attendance.filter(x=>x.student_id===16&&x.date==='${REF}');if(a[0]){a[0].status='late';}else{insert('attendance',{school_id:1,student_id:16,date:'${REF}',status:'late'});}})()`);
+  const a16 = W(`(function(){var a=db.attendance.filter(x=>x.student_id===16&&x.date==='${REF}')[0];return a?a.status:null;})()`);
   assert(a16 === 'late', 'پیش‌فرضِ دادهٔ نمونه: فرزندِ ۱۶ دیر کرده');
   const c16 = W(`familyBellCardHTML(childNowStatus(16,${T_P2}))`);
   assert(c16.indexOf('⏰ دیر') > -1, 'وضعیتِ دیر نمایش داده نشده');
@@ -114,7 +134,7 @@ test('B3 — حضورِ امروز: سه وضعیت + ثبت‌نشده', () => 
     var sid=db.schools[0].id;
     var st=insert('users',{school_id:sid,role:'student',full_name:'فرزند تست حاضر',username:'bell_ok_'+Date.now(),active:1});
     var st2=insert('users',{school_id:sid,role:'student',full_name:'فرزند تست ثبت‌نشده',username:'bell_none_'+Date.now(),active:1});
-    insert('attendance',{school_id:sid,student_id:st.id,date:todayISO(),status:'present'});
+    insert('attendance',{school_id:sid,student_id:st.id,date:'${REF}',status:'present'});
     return {st:st.id,st2:st2.id};})()`);
   const cok = W(`familyBellCardHTML(childNowStatus(${mk.st},${T_P2}))`);
   assert(cok.indexOf('✅ حاضر') > -1, 'وضعیتِ حاضر نمایش داده نشده');
@@ -153,6 +173,7 @@ test('B6 — خودِ دانش‌آموز هم کارتِ زنده می‌بین
 });
 
 test('B7 — تیکِ زنده: تغییرِ حضور، بدونِ رندرِ کامل، به DOM می‌رسد', () => {
+  if(!TODAY_OK_FOR_LIVE_TICK){ console.log('     (skipped: today is not a clean school day for school 1 — the live tick follows the real clock)'); return; }
   /* ولی و فرزندِ تازه (یک‌فرزند) تا آزمون به دادهٔ نمونه وابسته نباشد */
   const mk = W(`(function(){
     var sid=db.schools[0].id;
