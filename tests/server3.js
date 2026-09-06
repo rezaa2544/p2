@@ -59,6 +59,7 @@ function waitHealth(base, timeoutMs) {
 async function main() {
   /* ── آماده‌سازی: store موقت + سرورِ واقعی ── */
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-e2e-'));
+process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} }); /* پاک‌سازیِ tmp تا /tmp پر نشود */
   const storeFile = path.join(tmp, 'payesh.json');
   const auditFile = path.join(tmp, 'audit.log');
   const keyFile = path.join(tmp, 'jwt.key');
