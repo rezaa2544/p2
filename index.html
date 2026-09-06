@@ -1175,7 +1175,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -1366,6 +1366,15 @@ function generate(){
     defs.forEach(function(d,idx){
       add('preapps',{school_id:d[0],name:names[idx],phone:'0912'+String(1000000+idx*137).slice(0,7),note:d[2],stage:d[1],stage_at:daysAgoISO(d[3]),created_at:daysAgoISO(d[3]+10)});
     });
+  })();
+  /* امتحاناتِ تجدیدی (بند ۶.۱): دو رکوردِ نمونه */
+  (function(){
+    var school1=db.schools.find(function(x){return x.id===1;});
+    var studs=db.users.filter(function(u){return u.role==='student'&&u.school_id===1&&u.active;});
+    var subs=db.subjects.slice(0,2);
+    if(studs.length<2||subs.length<2) return;
+    add('reexams',{school_id:1,student_id:studs[1].id,subject_id:subs[0].id,original_score:9,exam_date:daysAgoISO(-12),new_score:null,status:'scheduled',created_at:daysAgoISO(6),updated_at:daysAgoISO(6)});
+    add('reexams',{school_id:1,student_id:studs[2].id,subject_id:subs[1].id,original_score:11,exam_date:daysAgoISO(3),new_score:14,status:'done',created_at:daysAgoISO(15),updated_at:daysAgoISO(2)});
   })();
   /* کمک‌هزینه (بند ۲.۴): رکوردهای نمونه — فقط ثبت، بدون پرداخت */
   (function(){
@@ -1910,7 +1919,7 @@ function scopeHealth(){
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
  superadmin:[['نظارت روزانه',[['dashboard','📊','داشبورد مدیریتی'],['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها']]],['مدارس و کاربران',[['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه'],['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]]],
- manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['assets','🧰','املاک'],['sidadiff','⚖️','سیدا'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک'],['preapps','📥','قیف پیش‌ثبت‌نام'],['scholarships','🎓','کمک‌هزینه و بورسیه']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی']]],['مالی',[['tuition','💰','شهریه و امور مالی'],['association','🤝','انجمن و کمک‌ها']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['assets','🧰','املاک'],['sidadiff','⚖️','سیدا'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک'],['preapps','📥','قیف پیش‌ثبت‌نام'],['scholarships','🎓','کمک‌هزینه و بورسیه']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات'],['reexams','🔁','امتحانات تجدیدی (شهریور)']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی']]],['مالی',[['tuition','💰','شهریه و امور مالی'],['association','🤝','انجمن و کمک‌ها']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  teacher:[['کار روزانه',[['dashboard','📊','داشبورد'],['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کار آموزشی',[['meetings','📅','جلسات اولیا'],['classes','🏛️','کلاس‌ها'],['vclass','🖥️','کلاس مجازی'],['exams','👁️','برنامه مراقبت من'],['homework','📓','تکالیف'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['calendar','🗓️','تقویم آموزشی']]],['پروندهٔ من',[['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['leaves','📨','مرخصی'],['homework','📓','تکالیف من']]],['امور مالی',[['mytuition','💰','شهریه من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['کار روزانه',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
@@ -1918,7 +1927,8 @@ const NAV={
  counselor:[['کار من',[['cqueue','📨','صف ارجاع'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  driver:[['سرویس من',[['myservice','🚌','مسیر من'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]]
 };
-const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],library:['کتابخانه','کتاب‌ها + امانت به دانش‌آموز + بازگشت — نسخهٔ سبک'],assets:['املاک و موجودی','تجهیزات با وضعیت + مکان — نسخهٔ سبک'],sidadiff:['اختلاف با سیدا','نمرهٔ سیدا دستی — مقایسه با پایش، فقط خواندنی برای بقیه'],preapps:['قیف پیش‌ثبت‌نام','تماس → بازدید → آزمون → ثبت‌نامِ قطعی — جدا از ثبت‌نامِ رسمی'],
+const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','وضعیت درسی و انضباطی فرزندان'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],
+reexams:['امتحانات تجدیدی (شهریور)','دروسِ نیازمندِ امتحانِ مجدد + نمرهٔ نهایی پس از تجدیدی'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده من','همه فرزندان شما، حتی در مدارس مختلف'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],library:['کتابخانه','کتاب‌ها + امانت به دانش‌آموز + بازگشت — نسخهٔ سبک'],assets:['املاک و موجودی','تجهیزات با وضعیت + مکان — نسخهٔ سبک'],sidadiff:['اختلاف با سیدا','نمرهٔ سیدا دستی — مقایسه با پایش، فقط خواندنی برای بقیه'],preapps:['قیف پیش‌ثبت‌نام','تماس → بازدید → آزمون → ثبت‌نامِ قطعی — جدا از ثبت‌نامِ رسمی'],
 scholarships:['کمک‌هزینه و بورسیه','علامت‌گذاری دانش‌آموزِ نیازمند + وضعیت (درخواست‌شده/بررسی/تأیید/رد) — فقط ثبت، بدون پرداخت'],visitors:['مهمان‌ها','ورود/خروج افراد غیردانش‌آموز و غیرکارکنان — نسخهٔ سبک'],homework:['تکالیف','بارگذاری تصویر تکلیف + تصحیح دیجیتال با خطِ خوددست و نمره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها'],association:['انجمن و کمک‌ها','در مدارس دولتی به‌جای شهریه: کمک‌های داوطلبانهٔ اولیا با ثبت شفاف']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
@@ -2891,6 +2901,12 @@ var ACTION_ROLES = {
   'scholar-save': ['manager'],
   'scholar-set': ['manager'],
   'scholar-del': ['manager'],
+  /* بند ۶.۱ — امتحاناتِ تجدیدی: فقط مدیر */
+  'reexam-new': ['manager'],
+  'reexam-save': ['manager'],
+  'reexam-score': ['manager'],
+  'reexam-score-save': ['manager'],
+  'reexam-del': ['manager'],
   /* انضباطی */
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],
@@ -3166,6 +3182,7 @@ function _renderRouteInner(){
     case 'record':return viewRecord(recordTargetId());
     case 'preapps':return viewPreapps();
     case 'scholarships':return viewScholarships();
+    case 'reexams':return viewReexams();
     case 'children':return viewChildren();
     case 'notifications':return viewNotifications();
     case 'leaves':return viewLeaves();
@@ -3997,6 +4014,7 @@ function viewRecord(sid){
     :empty('📝','نمره‌ای ثبت نشده','به محض ثبت نمره، کارنامه اینجا نمایش داده می‌شود.');
   /* بند ۴.۲: کارتِ کارآموزی زیرِ کارنامه (فقط سالِ آخرِ رشته‌های فنی) */
   if(S.tab==='grades') body += (typeof internshipCard==='function')?internshipCard(sid):'';
+  if(S.tab==='grades') body += (typeof reexamCard==='function')?reexamCard(sid):'';
   if(S.tab==='schedule') body = classScheduleCard(sid);
   if(S.tab==='vclass') body = (typeof vclassRecordTab==='function')?vclassRecordTab(sid):'';
   if(S.tab==='bus') body = persona==='parent'
@@ -4587,6 +4605,33 @@ function scholarshipModal(){
    ${f('یادداشت (کوتاه)',`<textarea class="input" id="sc_note" rows="2" placeholder="مثلاً: بررسیِ وضعیتِ اقتصادی توسطِ انجمن"></textarea>`)}
    <div class="small muted">وضعیت از «درخواست‌شده» شروع می‌شود و بعداً از همان صفحه جابه‌جا می‌شود. این ماژول فقط ثبت است — به پرداخت وصل نیست.</div>
    `,'scholar-save'));
+}
+
+/* بند ۶.۱ — مودال‌های امتحاناتِ تجدیدی */
+function reexamModal(){
+  var studs=db.users.filter(function(u){return u.role==='student'&&u.school_id===S.user.school_id&&u.active;})
+    .sort(function(a,b){return a.full_name.localeCompare(b.full_name,'fa');});
+  var sopts=studs.map(function(u){return '<option value="'+u.id+'">'+esc(u.full_name)+'</option>';}).join('');
+  var subopts=db.subjects.map(function(x){return '<option value="'+x.id+'">'+esc(x.name)+'</option>';}).join('');
+  openModal(modalTpl('ثبتِ درسِ تجدیدی',
+   `<div class="grid g2">
+    ${f('دانش‌آموز *',`<select class="input" id="rx_student">${sopts}</select>`)}
+    ${f('درس *',`<select class="input" id="rx_subject">${subopts}</select>`)}
+    </div>
+    <div class="grid g2">
+    ${f('نمرهٔ اصلی *',`<input class="input" id="rx_orig" type="number" min="0" max="20" step="0.5" value="" />`)}
+    ${f('تاریخِ امتحانِ مجدد',`<input class="input" id="rx_date" type="date" value="${todayISO()}" /> <span class="badge b-gray">${jalali(todayISO())}</span>`)}
+    </div>
+   `,'reexam-save'));
+}
+function reexamScoreModal(sid){
+  var r=byId('reexams',sid);
+  openModal(modalTpl('نمرهٔ مجدد — '+(r?esc((byId('users',r.student_id)||{}).full_name||''):''),
+   `
+   ${f('نمرهٔ مجدد (۰ تا ۲۰) *',`<input class="input" id="rx_new" type="number" min="0" max="20" step="0.5" value="${r&&r.new_score!=null?r.new_score:''}" />`)}
+   <div class="small muted">با ثبت، وضعیت «انجام‌شده» می‌شود و <b>نمرهٔ نهایی</b> در کارنامه و پرونده همین نمره است.</div>
+   `,'reexam-score-save'));
+  window._rxSid=Number(sid);
 }
 const PRESETS={positive:POS.map(p=>p[0]),negative:NEG.map(p=>p[0])};
 function discModal(d){
@@ -10616,7 +10661,29 @@ document.addEventListener('click',e=>{
      const lbl=(SCHOLAR_STATUSES.find(function(x){return x[0]===to;})||['','؟'])[1];
      toast('وضعیت تازه: '+lbl,'ok');render();},
    'scholar-del'(){confirmModal('حذف رکوردِ کمک‌هزینه؟','scholar-del-ok',id);},
-   'scholar-del-ok'(){remove('scholarships',window._delId);closeModal();toast('حذف شد','ok');render();},
+   'scholar-del-ok'(){remove('scholarships',window._delId);closeModal();toast('حذف شد','ok');render();},   /* ─────────────── بند ۶.۱: امتحاناتِ تجدیدی (شهریور) ─────────────── */
+   'reexam-new'(){reexamModal();},
+   'reexam-save'(){
+     const sid=Number(document.getElementById('rx_student').value);
+     const sub=Number(document.getElementById('rx_subject').value);
+     const orig=V('rx_orig');
+     if(!sid||!sub||orig===''){toast('دانش‌آموز، درس و نمرهٔ اصلی لازم است','err');return;}
+     const o=Number(orig);
+     if(o<0||o>20){toast('نمره باید ۰ تا ۲۰ باشد','err');return;}
+     insert('reexams',{school_id:S.user.school_id,student_id:sid,subject_id:sub,original_score:o,exam_date:V('rx_date')||todayISO(),new_score:null,status:'scheduled',created_at:todayISO(),updated_at:todayISO()});
+     closeModal();toast('درسِ تجدیدی ثبت شد','ok');render();},
+   'reexam-score'(){reexamScoreModal(id);},
+   'reexam-score-save'(){
+     const sid=window._rxSid;const r=byId('reexams',sid);
+     if(!r){closeModal();return;}
+     const v=V('rx_new');
+     if(v===''){toast('نمرهٔ مجدد لازم است','err');return;}
+     const n=Number(v);
+     if(n<0||n>20){toast('نمره باید ۰ تا ۲۰ باشد','err');return;}
+     update('reexams',sid,{new_score:n,status:'done',updated_at:todayISO()});
+     closeModal();toast('نمرهٔ نهایی: '+fa(n),'ok');render();},
+   'reexam-del'(){confirmModal('حذف رکوردِ تجدیدی؟','reexam-del-ok',id);},
+   'reexam-del-ok'(){remove('reexams',window._delId);closeModal();toast('حذف شد','ok');render();},
    'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk
@@ -23942,6 +24009,77 @@ function scholarshipBadge(sid){
     +'<b>🎓 کمک‌هزینه</b><span class="badge '+(SCHOLAR_BADGE[rec.status]||'b-gray')+'">'+esc(st)+'</span>'
     +(rec.note?'<span class="muted small">'+esc(rec.note)+'</span>':'')
     +'</div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بند ۶.۱ — گردش کار امتحانات شهریور/تجدیدی
+   ثبتِ درسِ تجدیدی + تاریخِ امتحانِ مجدد + نمرهٔ نهاییِ پس از
+   تجدیدی. نمرهٔ نهایی = نمرهٔ مجدد (وقتی ثبت شد)، وگرنه نمرهٔ
+   اصلی.
+   ═══════════════════════════════════════════════════════════════════ */
+const REEXAM_STATUSES=[['scheduled','برنامه‌ریزی‌شده'],['done','انجام‌شده']];
+const REEXAM_BADGE={scheduled:'b-blue',done:'b-green'};
+
+function reexamFinalScore(r){
+  if(r.status==='done' && r.new_score!=null && r.new_score!=='') return Number(r.new_score);
+  return r.original_score!=null?Number(r.original_score):null;
+}
+
+function viewReexams(){
+  var u=S.user;
+  var rows=(db.reexams||[]).filter(function(r){return r.school_id===u.school_id;})
+    .slice().sort(function(a,b){return String(b.updated_at||'').localeCompare(String(a.updated_at||''));});
+  var counts={scheduled:0,done:0};
+  rows.forEach(function(r){counts[r.status]=(counts[r.status]||0)+1;});
+  var h='<div class="card">';
+  h+='<div class="card-body" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">';
+  REEXAM_STATUSES.forEach(function(s){
+    h+='<div style="border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">'
+      +'<div class="small muted">'+esc(s[1])+'</div>'
+      +'<div style="font-size:26px;font-weight:800;color:var(--primary)">'+fa(counts[s[0]]||0)+'</div></div>';
+  });
+  h+='</div>';
+  h+='<div class="card-head" style="border-bottom:1px solid var(--border)"><div class="row" style="flex-wrap:wrap;gap:8px">'
+    +'<span class="small muted">دروسِ نیازمندِ امتحانِ مجدد (شهریور/تجدیدی) — نمرهٔ نهایی پس از ثبتِ نمرهٔ مجدد به‌روز می‌شود.</span><div class="spacer"></div>'
+    +'<button class="btn sm" data-act="reexam-new">➕ ثبتِ درسِ تجدیدی</button></div></div>';
+  if(rows.length){
+    h+='<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>درس</th><th>نمرهٔ اصلی</th><th>تاریخِ مجدد</th><th>نمرهٔ مجدد</th><th>نمرهٔ نهایی</th><th>وضعیت</th><th></th></tr></thead><tbody>';
+    rows.forEach(function(r){
+      var st=(REEXAM_STATUSES.find(function(x){return x[0]===r.status;})||['','—'])[1];
+      h+='<tr><td><b>'+esc((byId('users',r.student_id)||{}).full_name||'—')+'</b></td>'
+        +'<td>'+esc((byId('subjects',r.subject_id)||{}).name||'—')+'</td>'
+        +'<td>'+fa(r.original_score)+'</td>'
+        +'<td class="muted small">'+(r.exam_date?jalali(r.exam_date):'—')+'</td>'
+        +'<td>'+(r.new_score!=null&&r.new_score!==''?fa(r.new_score):'—')+'</td>'
+        +'<td><b>'+(reexamFinalScore(r)!=null?fa(reexamFinalScore(r)):'—')+'</b></td>'
+        +'<td><span class="badge '+(REEXAM_BADGE[r.status]||'b-gray')+'">'+esc(st)+'</span></td>'
+        +'<td style="white-space:nowrap">'
+        +'<button class="btn ghost sm" data-act="reexam-score" data-id="'+escAttr(r.id)+'">✍️ '+(r.status==='done'?'تغییرِ نمرهٔ مجدد':'ثبتِ نمرهٔ مجدد')+'</button> '
+        +'<button class="icon-btn danger" data-act="reexam-del" data-id="'+escAttr(r.id)+'" title="حذف">🗑️</button></td></tr>';
+    });
+    h+='</tbody></table></div>';
+  } else {
+    h+='<div class="card-body">'+empty('📝','درسی برای تجدیدی ثبت نشده','دانش‌آموز و درسِ نیازمندِ امتحانِ مجدد را ثبت کنید.')+'</div>';
+  }
+  return h+'</div>';
+}
+
+/** کارتِ فقط‌خواندنی در تبِ کارنامهٔ پرونده: دروسِ تجدیدی این دانش‌آموز */
+function reexamCard(sid){
+  var rows=(db.reexams||[]).filter(function(r){return r.student_id===sid;});
+  if(!rows.length)return '';
+  var h='<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:14px">'
+    +'<div class="row" style="align-items:center;gap:10px;margin-bottom:8px"><b>📝 امتحاناتِ تجدیدی (شهریور)</b></div>';
+  h+='<table class="table" style="margin-top:0"><thead><tr><th>درس</th><th>نمرهٔ اصلی</th><th>تاریخِ مجدد</th><th>نمرهٔ نهایی</th><th>وضعیت</th></tr></thead><tbody>';
+  rows.forEach(function(r){
+    var st=(REEXAM_STATUSES.find(function(x){return x[0]===r.status;})||['','—'])[1];
+    h+='<tr><td>'+esc((byId('subjects',r.subject_id)||{}).name||'—')+'</td>'
+      +'<td>'+fa(r.original_score)+'</td>'
+      +'<td class="muted small">'+(r.exam_date?jalali(r.exam_date):'—')+'</td>'
+      +'<td><b>'+(reexamFinalScore(r)!=null?fa(reexamFinalScore(r)):'—')+'</b></td>'
+      +'<td><span class="badge '+(REEXAM_BADGE[r.status]||'b-gray')+' small">'+esc(st)+'</span></td></tr>';
+  });
+  return h+'</tbody></table></div>';
 }
 
 </script>

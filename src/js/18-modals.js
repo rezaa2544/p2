@@ -270,6 +270,33 @@ function scholarshipModal(){
    <div class="small muted">وضعیت از «درخواست‌شده» شروع می‌شود و بعداً از همان صفحه جابه‌جا می‌شود. این ماژول فقط ثبت است — به پرداخت وصل نیست.</div>
    `,'scholar-save'));
 }
+
+/* بند ۶.۱ — مودال‌های امتحاناتِ تجدیدی */
+function reexamModal(){
+  var studs=db.users.filter(function(u){return u.role==='student'&&u.school_id===S.user.school_id&&u.active;})
+    .sort(function(a,b){return a.full_name.localeCompare(b.full_name,'fa');});
+  var sopts=studs.map(function(u){return '<option value="'+u.id+'">'+esc(u.full_name)+'</option>';}).join('');
+  var subopts=db.subjects.map(function(x){return '<option value="'+x.id+'">'+esc(x.name)+'</option>';}).join('');
+  openModal(modalTpl('ثبتِ درسِ تجدیدی',
+   `<div class="grid g2">
+    ${f('دانش‌آموز *',`<select class="input" id="rx_student">${sopts}</select>`)}
+    ${f('درس *',`<select class="input" id="rx_subject">${subopts}</select>`)}
+    </div>
+    <div class="grid g2">
+    ${f('نمرهٔ اصلی *',`<input class="input" id="rx_orig" type="number" min="0" max="20" step="0.5" value="" />`)}
+    ${f('تاریخِ امتحانِ مجدد',`<input class="input" id="rx_date" type="date" value="${todayISO()}" /> <span class="badge b-gray">${jalali(todayISO())}</span>`)}
+    </div>
+   `,'reexam-save'));
+}
+function reexamScoreModal(sid){
+  var r=byId('reexams',sid);
+  openModal(modalTpl('نمرهٔ مجدد — '+(r?esc((byId('users',r.student_id)||{}).full_name||''):''),
+   `
+   ${f('نمرهٔ مجدد (۰ تا ۲۰) *',`<input class="input" id="rx_new" type="number" min="0" max="20" step="0.5" value="${r&&r.new_score!=null?r.new_score:''}" />`)}
+   <div class="small muted">با ثبت، وضعیت «انجام‌شده» می‌شود و <b>نمرهٔ نهایی</b> در کارنامه و پرونده همین نمره است.</div>
+   `,'reexam-score-save'));
+  window._rxSid=Number(sid);
+}
 const PRESETS={positive:POS.map(p=>p[0]),negative:NEG.map(p=>p[0])};
 function discModal(d){
   const cls=visibleClasses();

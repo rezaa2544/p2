@@ -1948,7 +1948,29 @@ document.addEventListener('click',e=>{
      const lbl=(SCHOLAR_STATUSES.find(function(x){return x[0]===to;})||['','؟'])[1];
      toast('وضعیت تازه: '+lbl,'ok');render();},
    'scholar-del'(){confirmModal('حذف رکوردِ کمک‌هزینه؟','scholar-del-ok',id);},
-   'scholar-del-ok'(){remove('scholarships',window._delId);closeModal();toast('حذف شد','ok');render();},
+   'scholar-del-ok'(){remove('scholarships',window._delId);closeModal();toast('حذف شد','ok');render();},   /* ─────────────── بند ۶.۱: امتحاناتِ تجدیدی (شهریور) ─────────────── */
+   'reexam-new'(){reexamModal();},
+   'reexam-save'(){
+     const sid=Number(document.getElementById('rx_student').value);
+     const sub=Number(document.getElementById('rx_subject').value);
+     const orig=V('rx_orig');
+     if(!sid||!sub||orig===''){toast('دانش‌آموز، درس و نمرهٔ اصلی لازم است','err');return;}
+     const o=Number(orig);
+     if(o<0||o>20){toast('نمره باید ۰ تا ۲۰ باشد','err');return;}
+     insert('reexams',{school_id:S.user.school_id,student_id:sid,subject_id:sub,original_score:o,exam_date:V('rx_date')||todayISO(),new_score:null,status:'scheduled',created_at:todayISO(),updated_at:todayISO()});
+     closeModal();toast('درسِ تجدیدی ثبت شد','ok');render();},
+   'reexam-score'(){reexamScoreModal(id);},
+   'reexam-score-save'(){
+     const sid=window._rxSid;const r=byId('reexams',sid);
+     if(!r){closeModal();return;}
+     const v=V('rx_new');
+     if(v===''){toast('نمرهٔ مجدد لازم است','err');return;}
+     const n=Number(v);
+     if(n<0||n>20){toast('نمره باید ۰ تا ۲۰ باشد','err');return;}
+     update('reexams',sid,{new_score:n,status:'done',updated_at:todayISO()});
+     closeModal();toast('نمرهٔ نهایی: '+fa(n),'ok');render();},
+   'reexam-del'(){confirmModal('حذف رکوردِ تجدیدی؟','reexam-del-ok',id);},
+   'reexam-del-ok'(){remove('reexams',window._delId);closeModal();toast('حذف شد','ok');render();},
    'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk
