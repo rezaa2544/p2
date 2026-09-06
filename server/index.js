@@ -43,7 +43,12 @@ const AT_DRIFT_MS = 24 * 3600 * 1000;  /* §3.3: do not reject, log */
 const ENUM_WINDOW_MS = 60 * 1000;
 const ENUM_THRESHOLD = 100;            /* §5.7 — >100 reads / minute */
 const ENUM_SLOW_MS = 50;               /* per 10 requests above threshold */
-const DEMO_CODE_ECHO = (process.env.PAYESH_DEMO_CODE || '1') === '1';
+/* Round 85 (P0-4): DEMO_CODE defaults to OFF. Echoing the login code in
+   the HTTP response is a test-only convenience; in production the code
+   comes from the real SMS gateway, so the echo must require an explicit
+   opt-in: PAYESH_DEMO_CODE=1. (DEPLOY.md §env already documented this
+   default — the code now matches the docs.) */
+const DEMO_CODE_ECHO = process.env.PAYESH_DEMO_CODE === '1';
 
 /* ── store ────────────────────────────────────────────────────────── */
 function loadStore(){

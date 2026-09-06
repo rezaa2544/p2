@@ -159,6 +159,13 @@ const MUTS = [
     mut: '  /* M19: /privacy */',
     name: 'M19 روتِ صفحهٔ وبِ سیاست حذف شد',
     expectFail: 'P1'
+  },
+  {
+    file: 'server/index.js', suite: 'tests/server1.js', heap: 1500,
+    bad: "const DEMO_CODE_ECHO = process.env.PAYESH_DEMO_CODE === '1';",
+    mut: "const DEMO_CODE_ECHO = (process.env.PAYESH_DEMO_CODE || '1') === '1';",
+    name: 'M20 پیش‌فرضِ DEMO_CODE به روشن برگشت (P0-4)',
+    expectFail: 'S31'
   }
 ];
 
