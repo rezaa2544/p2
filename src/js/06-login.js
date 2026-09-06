@@ -56,7 +56,17 @@ function loginDemoHint(code){
   if(d){ d.textContent='حالتِ دمو: پیامکِ واقعی ارسال نمی‌شود — کدِ این شماره '+code+' است'; d.style.display='block'; }
 }
 function loginErr(msg){
-  document.getElementById('lerr').innerHTML='<div class="badge b-red" style="padding:9px 12px;margin-bottom:8px">⚠️ '+msg+'</div>';
+  /* S-73-C1: build the node — never innerHTML a server-originated string
+     (defense in depth: a future caller must not be able to inject markup). */
+  const box=document.getElementById('lerr');
+  if(!box) return;
+  box.textContent='';
+  const d=document.createElement('div');
+  d.className='badge b-red';
+  d.style.padding='9px 12px';
+  d.style.marginBottom='8px';
+  d.textContent='⚠️ '+msg;
+  box.appendChild(d);
 }
 
 function demoAccounts(){
