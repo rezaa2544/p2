@@ -92,6 +92,7 @@ function viewRecord(sid){
     :empty('📝','نمره‌ای ثبت نشده','به محض ثبت نمره، کارنامه اینجا نمایش داده می‌شود.');
   /* بند ۴.۲: کارتِ کارآموزی زیرِ کارنامه (فقط سالِ آخرِ رشته‌های فنی) */
   if(S.tab==='grades') body += (typeof internshipCard==='function')?internshipCard(sid):'';
+  if(S.tab==='grades') body += (typeof reexamCard==='function')?reexamCard(sid):'';
   if(S.tab==='schedule') body = classScheduleCard(sid);
   if(S.tab==='vclass') body = (typeof vclassRecordTab==='function')?vclassRecordTab(sid):'';
   if(S.tab==='bus') body = persona==='parent'

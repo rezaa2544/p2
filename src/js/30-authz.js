@@ -234,6 +234,12 @@ var ACTION_ROLES = {
   'scholar-save': ['manager'],
   'scholar-set': ['manager'],
   'scholar-del': ['manager'],
+  /* بند ۶.۱ — امتحاناتِ تجدیدی: فقط مدیر */
+  'reexam-new': ['manager'],
+  'reexam-save': ['manager'],
+  'reexam-score': ['manager'],
+  'reexam-score-save': ['manager'],
+  'reexam-del': ['manager'],
   /* انضباطی */
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],
