@@ -2,6 +2,53 @@
    نمرات
    ثبت و ویرایش نمره به تفکیک درس و نوبت.
    ═══════════════════════════════════════════════════════════════════ */
+
+/* ── بند ۴.۲: نمرهٔ عملی/کارگاهی هنرستان + ساعتِ کارآموزی ──
+   «مدرسهٔ کارگاهی» = مدرسه‌ای با رشتهٔ فنی‌وحرفه‌ای/کاردانش و
+   توانِ has_workshop. «سالِ آخر» = پایهٔ دوازدهم (پایانِ این رشته‌ها). */
+function workshopSchool(id){
+  var s=id?(byId('schools',Number(id))||{}):{};
+  var tr=s.branches||[];
+  var cap=(typeof hasCap==='function')?hasCap(s.id,'has_workshop'):false;
+  return !!(cap&&tr.length&&tr.some(function(t){return /فنی|حرفه|کاردانش/.test(t);}));
+}
+function workshopStudent(sid){
+  var u=byId('users',sid);
+  return !!(u&&workshopSchool(u.school_id));
+}
+function isFinalYearStudent(sid){
+  var cls=(typeof classOf==='function')?classOf(sid):null;
+  return !!(cls&&cls.grade==='دوازدهم');
+}
+function internshipSessions(sid){
+  return (db.internships||[]).filter(function(x){return x.student_id===Number(sid);})
+    .slice().sort(function(a,b){return String(b.date).localeCompare(String(a.date));});
+}
+function internshipTotals(sid){
+  var total=0,approved=0;
+  internshipSessions(sid).forEach(function(r){
+    var h=Number(r.hours)||0;
+    total+=h;
+    if(r.status==='approved')approved+=h;
+  });
+  return {total:total,approved:approved,count:internshipSessions(sid).length};
+}
+/** آیا کاربرِ فعلی می‌تواند این رکوردِ کارآموزی را تأیید کند؟
+    (مدیر هر مدرسهٔ خود؛ دبیر فقط وقتی دبیرِ مربوطهٔ دانش‌آموز است) */
+function canApproveInternship(rec,role){
+  role=role||((typeof activePersona==='function')?activePersona():(S.user&&S.user.role));
+  if(!role||!rec)return false;
+  if(role==='superadmin')return true;
+  if(role==='manager')return true;
+  if(role!=='teacher')return false;
+  var u=S.user;if(!u)return false;
+  var enr=(db.enrollments||[]).find(function(e){return e.student_id===Number(rec.student_id);});
+  var cls=enr?(byId('classes',enr.class_id)||null):null;
+  if(!cls)return false;
+  if(cls.homeroom_teacher_id===u.id)return true;
+  return (db.schedule||[]).some(function(s){return s.class_id===cls.id&&s.teacher_id===u.id;});
+}
+
 function viewGrades(){
   const u=S.user, canEdit=['superadmin','manager','teacher'].includes(u.role);
   const cls=visibleClasses(), subs=visibleSubjects();
@@ -28,7 +75,7 @@ function viewGrades(){
     <select class="select" style="width:125px" data-f="term"><option value="">همه نوبت‌ها</option>${TERMS.map(t=>`<option ${term===t?'selected':''}>${t}</option>`).join('')}</select>`)}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>درس</th><th>کلاس</th><th>نوبت</th><th>نوع آزمون</th><th>نمره</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
     ${rows.map(g=>`<tr><td><b>${esc((byId('users',g.student_id)||{}).full_name||'—')}</b></td><td>${esc((byId('subjects',g.subject_id)||{}).name||'—')}</td>
-      <td class="muted">${esc((byId('classes',g.class_id)||{}).name||'—')}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td class="muted">${esc(g.exam_type)}</td>
+      <td class="muted">${esc((byId('classes',g.class_id)||{}).name||'—')}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td class="muted">${esc(g.exam_type)}${g.kind==='practical'?' <span class="badge b-purple" title="نمرهٔ عملی/کارگاهی (بند ۴.۲)">عملی</span>':''}</td>
       <td><span class="badge ${g.score>=17?'b-green':g.score>=12?'b-blue':'b-red'}">${fa(g.score)} / ${fa(g.max_score)}</span></td>
       ${canEdit?`<td><button class="icon-btn" data-act="grade-edit" data-id="${escAttr(g.id)}">✏️</button> <button class="icon-btn danger" data-act="grade-del" data-id="${escAttr(g.id)}">🗑️</button></td>`:''}</tr>`).join('')}
    </tbody></table></div>`:empty('📝','نمره‌ای ثبت نشده',canEdit?'با دکمه «ثبت نمره» شروع کنید.':'هنوز نمره‌ای برای شما ثبت نشده است.')}</div>`;

@@ -215,6 +215,13 @@ var ACTION_ROLES = {
   'grade-save':    ['teacher','manager'],
   'grade-del':     ['teacher','manager'],
   'grade-modal':   ['teacher','manager'],
+  /* بند ۴.۲ — کارآموزی هنرستان: ثبت دبیر/مدیر؛ تأیید دبیرِ مربوطه/مدیر
+     (بررسیِ «دبیرِ مربوطه» در canApproveInternship روی داده تکرار می‌شود)؛
+     حذف فقط مدیر. */
+  'internship-new':     ['teacher','manager'],
+  'internship-save':    ['teacher','manager'],
+  'internship-approve': ['teacher','manager'],
+  'internship-del':     ['manager'],
   /* انضباطی */
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],

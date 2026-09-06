@@ -1898,6 +1898,25 @@ document.addEventListener('click',e=>{
    'grade-edit'(){gradeModal(byId('grades',id));},
    'grade-del'(){confirmModal('حذف این نمره؟','grade-del-ok',id);},
    'grade-del-ok'(){if(typeof notifyGradeCancel==='function')notifyGradeCancel(window._delId);remove('grades',window._delId);closeModal();toast('نمره حذف شد','ok');render();},
+   /* ─────────────── بند ۴.۲: ساعتِ کارآموزی هنرستان ─────────────── */
+   'internship-new'(){internshipModal(null,id?Number(id):null);},
+   'internship-edit'(){internshipModal(byId('internships',id),Number(id));},
+   'internship-del'(){confirmModal('حذف این ردیفِ کارآموزی؟','internship-del-ok',id);},
+   'internship-del-ok'(){remove('internships',window._delId);closeModal();toast('حذف شد','ok');render();},
+   'internship-save'(){const i=window._inEdit;if(!i)return;
+     const hours=Number(V('in_hours'));
+     if(!hours||hours<1||hours>40){toast('ساعت باید عددی بین ۱ تا ۰ باشد','err');return;}
+     const data={date:V('in_date'),hours:hours,location:V('in_loc'),note:V('in_note')};
+     if(i.id){update('internships',i.id,data);}
+     else{const sid=Number(V('in_st'));const st=byId('users',sid);if(!st)return;
+       insert('internships',Object.assign({school_id:st.school_id,student_id:sid,status:'pending',created_by:S.user.id,created_at:todayISO()},data));}
+     closeModal();toast('ساعتِ کارآموزی ثبت شد','ok');render();},
+   'internship-approve'(){const rec=byId('internships',id);if(!rec)return;
+     if(rec.status==='approved'){toast('این رکورد از پیش تأیید شده است','err');return;}
+     if(!(typeof canApproveInternship==='function'&&canApproveInternship(rec))){
+       toast('فقط دبیرِ مربوطه یا مدیرِ مدرسه می‌تواند تأیید کند','err');return;}
+     update('internships',rec.id,{status:'approved',approved_by:S.user.id,approved_at:todayISO()});
+     toast('ساعتِ کارآموزی تأیید شد','ok');render();},
    'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk
@@ -1908,11 +1927,13 @@ document.addEventListener('click',e=>{
          toast('نمرهٔ امتحان نهایی فقط برای پایه‌های پایانی (نهم و دوازدهم) ثبت می‌شود','err');return;
        }
      }
-     let gid=g.id;
-     if(g.id)update('grades',g.id,{score,term:V('g_term'),exam_type:V('g_type')});
-     else{const sid=Number(V('g_st')),cid=window._gclass;
-       const r=insert('grades',{school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,term:V('g_term'),exam_type:V('g_type'),score,max_score:20,created_at:todayISO()});
-       gid=r.id;}
+    let gid=g.id;
+    /* بند ۴.۲: نوعِ نمره — در مدرسهٔ غیرکارگاهی فیلد نیست و همیشه تئوری */
+    const gkind=V('g_kind')==='practical'?'practical':'theory';
+    if(g.id)update('grades',g.id,{score,term:V('g_term'),exam_type:V('g_type'),kind:gkind});
+    else{const sid=Number(V('g_st')),cid=window._gclass;
+      const r=insert('grades',{school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,term:V('g_term'),exam_type:V('g_type'),kind:gkind,score,max_score:20,created_at:todayISO()});
+      gid=r.id;}
      /* گام ۷: نمرهٔ زیر آستانه برای اولیا پیامک می‌سازد (بعد از نوشتن
         تا source_ref شناسهٔ واقعی باشد) */
      let sms=0,fix=0;
