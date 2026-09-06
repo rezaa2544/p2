@@ -256,6 +256,10 @@ var ACTION_ROLES = {
   'sched-conf-move': ['manager','superadmin'],
   /* بند ۲.۱ — کلاسِ چندپایه: عضویتِ دروس فقط مدیر (و سوپرادمین) */
   'class-membership-save': ['manager','superadmin'],
+  /* بند ۵.۲ — مسیرِ دوازدهم↔مشاور: دانش‌آموز/ولی می‌نویسند، مشاور پاسخ می‌دهد
+     (گاردهای داده‌ای — دوازدهم بودن، فرزند بودن، مدرسه — در counselorMsgSend) */
+  'counselor-msg-send': ['student','parent','counselor'],
+  'counselor-msg-reply': ['counselor'],
   /* انضباطی */
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],
