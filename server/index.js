@@ -24,6 +24,7 @@ const { createAuth } = require('./auth');
 const { createSync, attach: syncAttach } = require('./sync');
 const { createIdor } = require('./idor');
 const { createBell } = require('./bell');
+const { createAdmin } = require('./admin');
 
 const ROOT = path.join(__dirname, '..');
 const DATA_DIR = path.join(__dirname, 'data');
@@ -137,6 +138,7 @@ const auth = createAuth({ store, JWT_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_T
 const sync = createSync({ store, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson, markDirty });
 const idor = createIdor({ store, ENUM_WINDOW_MS, ENUM_THRESHOLD, ENUM_SLOW_MS, audit, sessionFrom: auth.sessionFrom, sendJson });
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson });
+const admin = createAdmin({ store, audit, sessionFrom: auth.sessionFrom, sendJson, markDirty, dataDir: path.dirname(STORE_FILE) });
 
 /* ── static ────────────────────────────────────────────────────────── */
 const STATIC = {
@@ -177,6 +179,8 @@ const onRequest = async (req, res) => {
     if(p === '/api/sync'           && req.method === 'POST') return await sync.apiSync(req, res, await readBody(req));
     if(/^\/api\/students\/\d+$/.test(p) && req.method === 'GET') return await idor.apiStudent(req, res, p.split('/')[3]);
     if(p === '/api/bell/now' && req.method === 'GET') return bell.apiBellNow(req, res);
+    if(p === '/api/admin/backup'  && req.method === 'POST') return await admin.apiBackup(req, res);
+    if(p === '/api/admin/restore' && req.method === 'POST') return await admin.apiRestore(req, res, await readBody(req));
     if(p.indexOf('/api/') === 0) return sendJson(res, 404, { ok: false, code: 'not_found' });
     return serveStatic(res, p, nonce);
   }catch(err){
@@ -216,7 +220,7 @@ if(require.main === module){
     const proto = (TLS_CERT && TLS_KEY) ? 'https' : 'http';
     console.log('payesh-server (phase 1' + (TLS_CERT ? ' + TLS' : '') + ') on ' + proto + '://' + HOST + ':' + PORT);
     console.log('  static : ' + path.join(ROOT, 'index.html'));
-    console.log('  api    : /api/health /api/auth/* /api/sync /api/students/:id /api/bell/now');
+    console.log('  api    : /api/health /api/auth/* /api/sync /api/students/:id /api/bell/now /api/admin/{backup,restore}');
     console.log('  store  : ' + STORE_FILE + '  (' + (store.users || []).length + ' users)');
   });
 }

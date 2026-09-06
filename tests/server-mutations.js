@@ -18,6 +18,7 @@
      M12 اولویتِ overlayِ حضور (تست: tests/server5.js)
      M13 گاردِ روزِ غیرحضوریِ سرور (تست: tests/server6.js)
      M14/M15 حذفِ حساب: پیوندِ شکسته‌نشدنی / تقلیل به غیرفعال (تست: tests/server7.js)
+     M16/M17 پشتیبان/بازیابی: گاردِ نقش / اعتبارسنجیِ فایل (تست: tests/server8.js)
    هر جهش: جایگزینی، build، اجرای تستِ مربوطه، بررسیِ شکست، بازگشت.
    ───────────────────────────────────────────────────────────── */
 const { execSync } = require('child_process');
@@ -128,6 +129,20 @@ const MUTS = [
     mut: "    { const u2 = (store.users || []).find(r => Number(r.id) === uid); if(u2) u2.active = false; }",
     name: 'M15 حذفِ حساب به «غیرفعال‌کردن» تقلیل می‌یابد',
     expectFail: 'D2b'
+  },
+  {
+    file: 'server/admin.js', suite: 'tests/server8.js', heap: 1500,
+    bad: "    if(s.role !== 'superadmin') return { done: sendJson(res, 403, { ok: false, code: 'forbidden' }) };",
+    mut: "    if(false) return { done: sendJson(res, 403, { ok: false, code: 'forbidden' }) };",
+    name: 'M16 گاردِ superadmin در پشتیبان/بازیابی خاموش شد',
+    expectFail: 'B1'
+  },
+  {
+    file: 'server/admin.js', suite: 'tests/server8.js', heap: 1500,
+    bad: "    if(!data || typeof data !== 'object' || !Array.isArray(data.users)){",
+    mut: "    if(false){",
+    name: 'M17 اعتبارسنجیِ پشتیبانِ خراب حذف شد',
+    expectFail: 'B5'
   }
 ];
 
