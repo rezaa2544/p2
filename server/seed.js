@@ -47,8 +47,9 @@ setTimeout(() => {
     }
     fs.mkdirSync(DATA_DIR, { recursive: true });
     const tmp = OUT + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify(db), 'utf8');
+    fs.writeFileSync(tmp, JSON.stringify(db), { encoding: 'utf8', mode: 0o600 }); /* PII — owner-only (S-73-3) */
     fs.renameSync(tmp, OUT);
+    try{ fs.chmodSync(OUT, 0o600); }catch(e){}
     const kb = (Buffer.byteLength(JSON.stringify(db), 'utf8') / 1024).toFixed(0);
     console.log('✅ store written: ' + OUT + '  (' + kb + ' KB)');
     console.log('   users: ' + db.users.length +

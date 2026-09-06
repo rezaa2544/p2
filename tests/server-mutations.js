@@ -17,7 +17,7 @@
      M11 گاردِ بدنِ پاسخ در تیکِ سروری (تست: tests/server5.js)
      M12 اولویتِ overlayِ حضور (تست: tests/server5.js)
      M13 گاردِ روزِ غیرحضوریِ سرور (تست: tests/server6.js)
-     M14/M15 حذفِ حساب: پیوندِ شکسته‌نشدنی / تقلیل به غیرفعال (تست: tests/server7.js)
+     M14/M15 حذفِ حساب: پیوندِ شکسته‌نشدنی / تقلیل به غیرفعال (تست: tests/security2.js + tests/server7.js)
      M16/M17 پشتیبان/بازیابی: گاردِ نقش / اعتبارسنجیِ فایل (تست: tests/server8.js)
      M18 بکاپِ خودکار: زمان‌بندیِ درون‌پروسه (تست: tests/server9.js)
      M19 صفحهٔ وبِ سیاستِ حریم خصوصی: روتِ /privacy (تست: tests/server10.js)
@@ -119,11 +119,11 @@ const MUTS = [
     expectFail: 'V1a'
   },
   {
-    file: 'server/auth.js', suite: 'tests/server7.js', heap: 1500,
-    bad: "    purge('parent_links', r => Number(r.parent_id) === uid);",
-    mut: "    purge('parent_links', r => false);",
-    name: 'M14 حذفِ حساب، parent_links را نمی‌شکند (پیوند باقی می‌ماند)',
-    expectFail: 'D2b'
+    file: 'server/auth.js', suite: 'tests/security2.js', heap: 1500,
+    bad: "    purge('parent_links', r => Number(r.parent_id) === uid || Number(r.student_id) === uid);",
+    mut: "    purge('parent_links', r => Number(r.parent_id) === uid);",
+    name: 'M14 حذفِ حساب، parent_links را نمی‌شکند (پیوندِ student باقی می‌ماند)',
+    expectFail: 'S7'
   },
   {
     file: 'server/auth.js', suite: 'tests/server7.js', heap: 1500,
