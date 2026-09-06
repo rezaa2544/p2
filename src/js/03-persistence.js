@@ -109,7 +109,12 @@ function applyOp(op,record=true){
     if(op.t==='ins' && op.data) op = Object.assign({}, op, { data: Object.assign({}, op.data) });
     log.push(op);saveLog();
     /* هر تغییر واقعی کاربر وارد صف همگام‌سازی با سرور می‌شود */
-    if(typeof enqueueOp==='function' && !SYNC_MUTED) enqueueOp(op);
+    /* در حالت سروری، عملیاتی که کاربرِ احراز‌شده ندارد (مثل تولیدِ
+       دنیای دمو پیش از ورود) وارد صفِ ارسال نمی‌شود: سرور نمی‌تواند آن
+       را با توکن بسنجد (by باید کاربرِ توکن باشد) و دنیای دمو خودِ
+       seedِ سرور است. در حالت محلی رفتار عوض نمی‌شود. */
+    var _svrNoUser = (typeof DATA_MODE!=='undefined' && DATA_MODE==='server' && !(typeof S!=='undefined' && S.user));
+    if(typeof enqueueOp==='function' && !SYNC_MUTED && !_svrNoUser) enqueueOp(op);
   }
 }
 const insert=(c,o)=>{o.id=nextId(c);applyOp({t:'ins',c,data:o});return o;};

@@ -142,6 +142,12 @@ function detectServer(){
       DATA_MODE = 'server';
       SERVER_DETECTED = true;
       if(typeof SYNC !== 'undefined'){ SYNC.demoMode = false; SYNC.serverUrl = '/api/sync'; }
+      /* عملیات‌های بی‌هویت (بدون user_id) — مثل تولیدِ دمو قبل از
+         تشخیصِ سرور — از صف پاک می‌شوند؛ سرور آن‌ها را رد می‌کند. */
+      if(typeof SYNC !== 'undefined' && Array.isArray(SYNC.queue)){
+        SYNC.queue = SYNC.queue.filter(function(x){ return x && x.user_id != null; });
+        if(typeof saveQueue === 'function') saveQueue();
+      }
       return true;
     }
     return false;
