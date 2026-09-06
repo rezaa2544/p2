@@ -140,7 +140,9 @@ async function main(){
     assert(r.status === 200 && r.json.ok === true && r.json.code === 'sent' && !r.json.demo_code, r.status + ' ' + JSON.stringify(r.json));
   });
 
-  /* ── S5 send-code: real phone → 200 + demo_code ────────────────── */
+  /* ── S5 send-code: real phone → 200 + demo_code
+     (فقط چون envِ این فرآیند صریحاً PAYESH_DEMO_CODE=1 است — پیش‌فرض
+      خاموش است؛ حالتِ پیش‌فرض را S31 روی سرورِ فرزند می‌سنجد) ────── */
   test('S5 send-code real phone → 200 + demo_code', async () => {
     const phone = String(manager1.phone).replace(/[\s\-()]/g, '');
     const r = await req('POST', '/api/auth/send-code', { body: { phone } });
@@ -389,6 +391,45 @@ async function main(){
   test('S30 unknown collection → 403 role_denied (fail closed)', async () => {
     const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [opX({ uid: 't30', by: manager1.id, collection: 'totally_unknown_coll', type: 'ins', data: { school_id: 1 } })] } });
     assert(r.status === 403 && r.json.code === 'role_denied', r.status + ' ' + JSON.stringify(r.json));
+  });
+
+  /* ── S31 PAYESH_DEMO_CODE default OFF (round 85, P0-4) ──────────────
+     A child server WITHOUT the env var must not echo demo_code, even
+     for a real phone (login itself still works — the code arrives via
+     the real gateway in production). */
+  test('S31 child server without PAYESH_DEMO_CODE → send-code has no demo_code', async () => {
+    const { spawn } = require('child_process');
+    const cTMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-s31-'));
+    process.on('exit', () => { try { fs.rmSync(cTMP, { recursive: true, force: true }); } catch (e) {} });
+    const cStore = path.join(cTMP, 'store.json');
+    fs.copyFileSync(REAL_STORE, cStore);
+    let port = null, proc = null;
+    for (const p of [8989, 8988]) {
+      const env = Object.assign({}, process.env, {
+        PORT: String(p), HOST: '127.0.0.1',
+        PAYESH_STORE: cStore, PAYESH_AUDIT: path.join(cTMP, 'audit.log'), PAYESH_KEY: path.join(cTMP, 'jwt.key')
+      });
+      delete env.PAYESH_DEMO_CODE; /* the whole point of the test */
+      proc = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env, stdio: 'pipe' });
+      let booted = false;
+      for (let i = 0; i < 50; i++) {
+        const h = await fetch('http://127.0.0.1:' + p + '/api/health').then(r => r.json()).catch(() => null);
+        if (h && h.ok && h.pid === proc.pid) { booted = true; break; }
+        if (h && h.ok) break;
+        await sleep(300);
+      }
+      if (booted) { port = p; break; }
+      proc.kill('SIGKILL');
+    }
+    assert(port !== null, 'child server did not boot');
+    const phone = String(manager1.phone).replace(/[\s\-()]/g, '');
+    const res = await fetch('http://127.0.0.1:' + port + '/api/auth/send-code', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone })
+    });
+    const j = await res.json();
+    assert(res.status === 200 && j.ok === true && j.code === 'sent', 'send-code: ' + res.status + ' ' + JSON.stringify(j));
+    assert(j.demo_code === undefined || j.demo_code === null, 'demo_code must not be echoed by default: ' + JSON.stringify(j));
+    proc.kill('SIGKILL');
   });
 
   await seq;

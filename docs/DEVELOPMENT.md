@@ -58,7 +58,7 @@ node server/index.js   # https://0.0.0.0:3000 — HSTS + کوکیِ Secure خو�
 | `PAYESH_AUDIT` | `server/data/audit.log` | لاگِ آدیتِ append-only |
 | `PAYESH_KEY` | `server/data/jwt.key` | کلیدِ JWT (خود ساخته می‌شود) |
 | `PAYESH_JWT_SECRET` | — | اگر خورده شود، به‌جای کلیدِ فایل |
-| `PAYESH_DEMO_CODE` | `1` | `1`: کدِ ارسال‌شده در پاسخِ دمو بازتاب می‌یابد (فقط فازِ دمو) · `0`: کد مخفی می‌ماند |
+| `PAYESH_DEMO_CODE` | خاموش | دور ۸۵ (P0-4): پیش‌فرض خاموش شد — بازتابِ کدِ دمو فقط با `PAYESH_DEMO_CODE=1` صریح (فازِ دمو/تست). بدونِ آن، کد در پاسخ نمی‌آید. |
 | `PAYESH_BACKUP_EVERY_HOURS` | — (خاموش) | بکاپِ دوره‌ایِ خودکارِ درون‌پروسه هر N ساعت (با اولین استقرار) — آدیت با `source:"auto"` |
 | `PAYESH_BACKUP_EVERY_MS` | — (خاموش) | همان، به میلی‌ثانیه — فقط برای تست |
 | `PAYESH_HTTPS` | `0` | `1`: کوکیِ نشست `Secure` می‌شود (پشت TLS واقعی) |
