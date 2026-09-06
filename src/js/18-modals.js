@@ -377,7 +377,7 @@ function summerStudentsModal(){
   }).join('');
   openModal(modalTpl('دانش‌آموزان — ' + sc.name,
    `<div class="small muted" style="margin-bottom:6px">دانش‌آموزانِ این کلاس را انتخاب کنید (هر کلاس تا ${fa(15)} نفر).</div>
-   <div style="max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px">${rows}</div>
+   <div class="vscroll" style="max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px">${rows}</div>
    `,'summer-students-save'));
 }
 const PRESETS={positive:POS.map(p=>p[0]),negative:NEG.map(p=>p[0])};
