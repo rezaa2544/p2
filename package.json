@@ -1,8 +1,7 @@
 {
-  "name": "payesh",
+  "name": "@rezaa2544/payesh",
   "version": "1.0.0",
   "description": "پایش — سامانه هوشمند مدیریت مدرسه (تک‌فایلی، آفلاین، فارسی/RTL)",
-  "private": true,
   "type": "commonjs",
   "main": "server/index.js",
   "scripts": {
@@ -23,12 +22,15 @@
     "single-file"
   ],
   "author": "",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "engines": {
     "node": ">=18"
   },
   "dependencies": {},
   "devDependencies": {
     "jsdom": "^25.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
   }
 }
