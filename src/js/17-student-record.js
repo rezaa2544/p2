@@ -126,7 +126,7 @@ function viewRecord(sid){
            _parts.push('خروج از کلاس: ساعت '+(rr.exit_at?(_tf?_tf(rr.exit_at):rr.exit_at):'—')+((rr.exit_return_at)?' تا '+(_tf?_tf(rr.exit_return_at):rr.exit_return_at):'')+((rr.exit_minutes!=null)?' — '+fa(rr.exit_minutes)+' دقیقه':''));
          return _parts.length?_parts.join(' · '):'—'; };
        return `<tr><td>${jalali(r.date)}</td><td><span class="badge ${ATT_BADGE[r.status]}">${ATT_FA[r.status]}</span></td><td class="muted">${esc(_desc(r))}</td>
-      <td>${(typeof attHistory==='function'&&attHistory(r.id).length>1)?`<button class="btn ghost sm" data-act="att-hist" data-id="${escAttr(r.id)}">📜 سابقه</button>`:'<span class="small muted">—</span>'}</td></tr>`;}).join('')}</tbody></table></div>`
+      <td>${(typeof attHistory==='function'&&attHistory(r.id).length>1)?`<button class="btn ghost sm" data-act="att-hist" data-id="${escAttr(r.id)}">📜 سابقه</button>`:'<span class="small muted">—</span>'} ${(persona==='parent'||persona==='student')&&r.status==='absent'?`<button class="btn ghost sm" data-act="quick-excuse" data-id="${escAttr(r.id)}" title="ثبتِ درخواستِ موجه برای این غیبت (پس از تأییدِ مدیر)">🕊️ موجه اعلام کنم</button>`:''} </td></tr>`;}).join('')}</tbody></table></div>`
      :empty('✅','سابقه حضور و غیاب خالی است','');}
   if(S.tab==='discipline') body= disc.length?`<div class="card-body row">
      <span class="badge b-green">مجموع مثبت: ${fa(disc.filter(d=>d.points>0).reduce((a,b)=>a+b.points,0))}</span>
@@ -141,7 +141,8 @@ function viewRecord(sid){
   const _persona2=(typeof activePersona==='function')?activePersona():S.user.role;
   const _dropBtn=(_du&&(_du.status||'active')==='active'&&(_persona2==='manager'||_persona2==='superadmin'))
     ? `<div style="padding:0 14px 10px;display:flex;justify-content:flex-end"><button class="btn danger ghost sm" data-act="drop-register" data-id="${escAttr(sid)}">🚪 ثبت ترک تحصیل (بدون حذفِ داده)</button></div>` : '';
-  return `<div class="card">${_dropStrip}<div class="card-head" style="padding-bottom:0;border-bottom:none"><div class="tabs">
+  return ((persona==='parent'||persona==='student')?(typeof clientFeaturesCard==='function'?clientFeaturesCard(sid):''):'')
+    + `<div class="card">${_dropStrip}<div class="card-head" style="padding-bottom:0;border-bottom:none"><div class="tabs">
     ${tabs.map(t=>`<div class="tab ${S.tab===t[0]?'active':''}" data-act="tab" data-t="${escAttr(t[0])}">${t[1]}</div>`).join('')}</div></div>${_dropBtn}${body}</div>`;
 }
 
