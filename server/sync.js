@@ -26,8 +26,8 @@ const WRITE_PERMS = {
   manager    : ['attendance','attendance_modes','notify_queue','grades','discipline','leaves','announcements','notifications','messages','installments','transactions','tuitions','tuition_plans','schedule','classes','subjects','users','corrections','assets','visitors','lib_books','lib_loans','certificates','meeting_slots','bus_routes','bus_students','bus_events','bus_needs','bus_followups','counselor_refs','pre_enrollments','enrollments','student_transfers','transfer_requests','vclass_sessions','vclass_attendance','internships','preapps','scholarships','reexams','assoc_minutes','summer_classes','dorm_rooms','dorm_assignments','dorm_meals','class_subject_members','schools','sedascores','nid_conflicts','parent_links','sms_log','sms_wallet','school_years','student_archive','dojo_types','substitutions','vclass_links','vclass_questions','hw_assignments','hw_submissions','parent_subscriptions'],
   teacher    : ['attendance','notify_queue','grades','discipline','messages','corrections','hw_assignments','hw_submissions','vclass_sessions','vclass_attendance','vclass_questions','vclass_links','substitutions','teacher_notes','nudges','teacher_sms','internships','notifications','meeting_slots'],
   counselor  : ['counselor_refs','messages','counselor_msgs'],
-  student    : ['messages','hw_submissions','vclass_questions','counselor_msgs','bus_events','notify_queue','bus_locations','vclass_attendance'],
-  parent     : ['leaves','messages','parent_verifications','counselor_msgs','meeting_slots','notifications','bus_needs'],
+  student    : ['messages','hw_submissions','vclass_questions','counselor_msgs','bus_events','notify_queue','bus_locations','vclass_attendance','notifications'],
+  parent     : ['leaves','messages','parent_verifications','counselor_msgs','meeting_slots','notifications','bus_needs','corrections','parent_links'],
   driver     : ['bus_events','notify_queue','bus_locations'],
 };
 function canWrite(role, coll){
@@ -156,6 +156,18 @@ function inScope(session, coll, recId, data){
   const rec = recId != null ? (store_get(coll).find(x => x.id === Number(recId))) : null;
   function store_get(c){ return (get_store() || {})[c] || []; }
 
+  /* Round 89 — ownership that does not ride on student_id:
+     messages  : the sender (from_id) owns the record — chat for parent/teacher/student
+                 (fail-closed: a message op without from_id is refused for non-admins)
+     notifications: the recipient (user_id) may update their own record (read badge) */
+  if(coll === 'messages'){
+    const f = (data && data.from_id != null) ? Number(data.from_id)
+             : (rec && rec.from_id != null) ? Number(rec.from_id) : null;
+    if(f == null) return false;
+    return f === u.id;
+  }
+  if(coll === 'notifications' && rec && Number(rec.user_id) === u.id) return true;
+
   if(u.role === 'student'){
     if(coll === 'users' && rec && rec.id === u.id) return true;
     if(rec && rec.student_id != null) return rec.student_id === u.id;
@@ -165,10 +177,26 @@ function inScope(session, coll, recId, data){
   if(u.role === 'parent'){
     const kids = (get_store().parent_links || []).filter(l => l.parent_id === u.id).map(l => l.student_id);
     const sid = rec ? rec.student_id : (data && data.student_id);
+    /* Round 89 — parent_links (kid-reject flow removes their own link):
+       a NEW link must belong to the parent themselves (no forging links for others) */
+    if(coll === 'parent_links' && !rec && data && Number(data.parent_id) !== u.id) return false;
     if(sid == null) return !!(rec && rec.parent_id === u.id);
     return kids.indexOf(Number(sid)) > -1;
   }
   if(u.role === 'teacher'){
+    /* Round 89 — class-level collections: a teacher is bound to classes they actually
+       teach (homeroom or schedule) — fail-closed for any other class.
+       meeting_slots: their own slots (created with parent_id/student_id null). */
+    const t2 = rec || data || {};
+    if(coll === 'meeting_slots' && t2.teacher_id != null){
+      return Number(t2.teacher_id) === u.id;
+    }
+    if((coll === 'hw_assignments' || coll === 'vclass_sessions') && t2.class_id != null){
+      const cls2 = (get_store().classes || []).find(c => c.id === Number(t2.class_id));
+      if(!cls2) return false;
+      if(cls2.homeroom_teacher_id === u.id) return true;
+      return (get_store().schedule || []).some(x => x.class_id === cls2.id && x.teacher_id === u.id);
+    }
     const sid = rec ? rec.student_id : (data && data.student_id);
     if(sid != null){
       const enr = (get_store().enrollments || []).find(e => e.student_id === Number(sid));
@@ -332,25 +360,62 @@ function createSync(ctx){
       }
       store.__processed_uids[op.uid] = Date.now();
     }
-    /* PR#2 (دور ۸۸) — سمتِ سرور: درخواستِ مرخصیِ pending از نقشِ درخواست‌کننده
-       (parent/student/teacher) → اعلانِ مدیرِ همان مدرسه را خودِ سرور می‌سازد.
-       کلاینت نمی‌تواند: inScope، «notifications» از والد را به‌ساختار رد می‌کند
-       (رکوردِ اعلان student_id ندارد) — اثباتِ زنده: 403 out_of_scope. */
+    /* Round 88 + Round 89 — server side: the client cannot create notifications
+       (inScope structurally rejects ins notifications for every non-manager role);
+       the server therefore creates the needed one for the ACTION itself:
+       1) leaves pending (non-manager)  -> school manager   (R88; R89 generalized wording)
+       2) messages / chat (non-manager) -> the recipient    (R89)
+       3) corrections open (non-manager)-> school manager   (R89)
+       Manager/superadmin actions keep the client-created notification (applied),
+       so the hook skips them — no duplicates. */
     for(const op of apply){
+      if(!Array.isArray(store.notifications)) store.notifications = [];
+      const todayD = new Date().toISOString().slice(0, 10);
       if(op.c === 'leaves' && op.t === 'ins' && op.data && op.data.status === 'pending'
          && s.role !== 'manager' && s.role !== 'superadmin'){
         const d = op.data;
         const mgr = (store.users || []).find(x => x.school_id === d.school_id && x.role === 'manager');
         if(mgr){
           const st = (store.users || []).find(x => x.id === d.student_id);
-          if(!Array.isArray(store.notifications)) store.notifications = [];
           store.notifications.push({
             id: nextId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'leave',
-            title: '📨 درخواست موجه (غیبت)',
-            body: 'برای ' + ((st && st.full_name) || '') + ' غیبتِ ' + d.from_date + ' موجه اعلام شد — در انتظارِ بررسی.',
-            link: 'leaves', read: 0, created_at: new Date().toISOString().slice(0, 10)
+            title: '📨 درخواست مرخصی جدید',
+            body: 'برای ' + ((st && st.full_name) || '') + ' از ' + d.from_date + ' تا ' + d.to_date + ' — در انتظارِ بررسی.',
+            link: 'leaves', read: 0, created_at: todayD
           });
           audit('leave_request_notified', { user_id: s.id, leave_id: d.id, school_id: d.school_id });
+        }
+      }
+      if(op.c === 'messages' && op.t === 'ins' && op.data && op.data.to_id != null
+         && s.role !== 'manager' && s.role !== 'superadmin'
+         && Number(op.data.to_id) !== s.id){
+        const to = (store.users || []).find(x => x.id === Number(op.data.to_id));
+        if(to){
+          const from = (store.users || []).find(x => x.id === Number(op.data.from_id != null ? op.data.from_id : s.id));
+          store.notifications.push({
+            id: nextId('notifications'), user_id: to.id,
+            school_id: op.data.school_id != null ? op.data.school_id : to.school_id,
+            type: 'chat', title: '💬 پیام جدید',
+            body: ((from && from.full_name) || '') + ': ' + String(op.data.body || '').slice(0, 60),
+            link: 'chat', read: 0, created_at: todayD
+          });
+          audit('chat_notified', { user_id: s.id, to_user_id: to.id });
+        }
+      }
+      if(op.c === 'corrections' && op.t === 'ins' && op.data && op.data.status === 'open'
+         && s.role !== 'manager' && s.role !== 'superadmin'){
+        const d = op.data;
+        const mgr = (store.users || []).find(x => x.school_id === d.school_id && x.role === 'manager');
+        if(mgr){
+          const st = (store.users || []).find(x => x.id === d.student_id);
+          const par = (store.users || []).find(x => x.id === d.parent_id);
+          store.notifications.push({
+            id: nextId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'announcement',
+            title: '⚠️ درخواست اصلاح اطلاعات ولی',
+            body: ((par && par.full_name) || '') + ' اعلام کرد ' + ((st && st.full_name) || '') + ' فرزند او نیست.',
+            link: 'corrections', read: 0, created_at: todayD
+          });
+          audit('correction_notified', { user_id: s.id, correction_id: d.id, school_id: d.school_id });
         }
       }
     }
