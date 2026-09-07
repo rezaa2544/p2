@@ -26820,6 +26820,16 @@ function cfAddDays(iso,n){
   var q=function(x){return String(x).padStart(2,'0');};
   return d.getFullYear()+'-'+q(d.getMonth()+1)+'-'+q(d.getDate());
 }
+/* پالایشِ مقدارِ TEXT در ICS (RFC 5545): بک‌اسلش/سمیکالن/کاما/خط‌تجزیه
+   — بدونِ آن، دادهٔ ورودی می‌تواند فیلدِ کاذب به فایل تزریق کند.
+   (esc() اینجا صحیح نیست: آن پالایشِ HTML است، نه ICS) */
+function icsEsc(s){
+  return String(s==null?'':s)
+    .replace(/\\/g,'\\\\')
+    .replace(/;/g,'\\;')
+    .replace(/,/g,'\\,')
+    .replace(/\r\n|\r|\n/g,'\\n');
+}
 
 /* ویژگی ۱: چک‌لیستِ فردا — برنامهٔ کلاس + امتحانِ همان روز */
 function tomorrowChecklistItems(sid){
@@ -26827,7 +26837,10 @@ function tomorrowChecklistItems(sid){
   if(!cls||!cls.id) return {school:false};
   var tomorrow=cfAddDays(todayISO(),1);
   var day=cfAppDay(tomorrow);
-  var out={date:tomorrow, day:day, school:day<=4, rows:[], exams:[]};
+  /* روزهای کاریِ خودِ مدرسه (work_days + روزهای جبرانی) — نه فقط ۰ تا ۴ */
+  var out={date:tomorrow, day:day,
+    school:(typeof isWorkDay==='function')?isWorkDay(cls.school_id,tomorrow):(day>=0&&day<=4),
+    rows:[], exams:[]};
   if(out.school){
     out.rows=db.schedule.filter(function(x){return x.class_id===cls.id&&x.day===day;})
       .map(function(x){return {period:Number(x.period),
@@ -26862,18 +26875,23 @@ function icsForStudent(sid){
   var L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Payesh//FA','CALSCALE:GREGORIAN'];
   db.exams.filter(function(e){return e.class_id===cls.id&&e.date>=today&&e.date<=horizon;})
     .forEach(function(e){
+      /* امتحانِ ساعت‌دار = رویدادِ DATE-TIME (ساعتِ محلیِ شناور — بدونِ Z،
+         چون ساعتِ مدرسه به وقتِ محلی است، نه UTC)؛ بدونِ ساعت = تمام‌روز */
+      var hm=/^\d{1,2}:\d{2}/.test(String(e.start_time||''))?String(e.start_time).slice(0,5).replace(':',''):'';
+      var dtstart=hm?('DTSTART:'+e.date.replace(/-/g,'')+'T'+(hm.length===4?hm:'0'+hm)+'00')
+                    :('DTSTART;VALUE=DATE:'+e.date.replace(/-/g,''));
       L.push('BEGIN:VEVENT','UID:payesh-exam-'+e.id+'@payesh',
         'DTSTAMP:'+today.replace(/-/g,'')+'T000000Z',
-        'DTSTART;VALUE=DATE:'+e.date.replace(/-/g,''),
-        'SUMMARY:امتحان '+((byId('subjects',e.subject_id)||{}).name||'امتحان')+(e.start_time?' '+e.start_time:''),
-        e.room?('LOCATION:'+e.room):'','END:VEVENT');
+        dtstart,
+        'SUMMARY:امتحان '+icsEsc((byId('subjects',e.subject_id)||{}).name||'امتحان')+(e.start_time?' '+icsEsc(e.start_time):''),
+        e.room?('LOCATION:'+icsEsc(e.room)):'','END:VEVENT');
     });
   db.calendar.filter(function(c){return c.school_id===cls.school_id&&c.date>=today&&c.date<=horizon;})
     .forEach(function(c){
       L.push('BEGIN:VEVENT','UID:payesh-cal-'+c.id+'@payesh',
         'DTSTAMP:'+today.replace(/-/g,'')+'T000000Z',
         'DTSTART;VALUE=DATE:'+c.date.replace(/-/g,''),
-        'SUMMARY:'+(c.title||'رویداد مدرسه'),'END:VEVENT');
+        'SUMMARY:'+icsEsc(c.title||'رویداد مدرسه'),'END:VEVENT');
     });
   L.push('END:VCALENDAR');
   return L.join('\r\n');
@@ -26925,6 +26943,18 @@ function clientFeaturesCard(sid){
   return h+'</div></div>';
 }
 
+/* نقشِ فعال (حالتِ چندنقشی) — همانِ الگوی 17-student-record */
+function cfPersona(u){
+  return (typeof activePersona==='function')?activePersona():((u&&u.role)||null);
+}
+/* گاردِ مشترک: آیا این کاربر می‌تواند روی همین رکوردِ حضور موجه اعلام کند؟ */
+function cfCanExcuse(u,rec){
+  var persona=cfPersona(u);
+  if(persona==='parent') return (db.parent_links||[]).some(function(p){return p.parent_id===u.id&&p.student_id===rec.student_id;});
+  if(persona==='student') return u.id===rec.student_id;
+  return false;
+}
+
 /* اکشن‌ها */
 const CF_ACTIONS = {
   /* ویژگی ۳: خروجی ICS */
@@ -26937,9 +26967,7 @@ const CF_ACTIONS = {
     var rec=byId('attendance',id);
     if(!rec) return;
     var u=S.user;
-    var ok = u.role==='parent' ? db.parent_links.some(function(p){return p.parent_id===u.id&&p.student_id===rec.student_id;})
-           : (u.role==='student'&&u.id===rec.student_id);
-    if(!ok){ toast('این دسترسی را ندارید','err'); return; }
+    if(!u||!cfCanExcuse(u,rec)){ toast('این دسترسی را ندارید','err'); return; }
     if(rec.excused){ toast('این غیبت از قبل موجه است','err'); return; }
     S.__cfRid=rec.id;
     openModal(modalTpl('موجه‌سازی غیبت — '+jalali(rec.date),
@@ -26950,7 +26978,10 @@ const CF_ACTIONS = {
   /* ویژگی ۴: ذخیره — همانِ جریانِ موجودِ درخواست/تأیید (pending) */
   'qe-save'(){
     var rec=byId('attendance',S.__cfRid||0);
-    if(!rec){ closeModal(); return; }
+    var u=S.user;
+    /* بررسیِ دوبارهٔ مالکیت در لحظهٔ ذخیره — S.__cfRid ادعای کلاینت است؛
+       باورِ کور آن = درخواستِ جعلی برای رکوردِ دیگران (تأییدِ Devin) */
+    if(!rec||!u||!cfCanExcuse(u,rec)){ S.__cfRid=0; closeModal(); toast('این دسترسی را ندارید','err'); return; }
     var reason=V('qe_reason');
     var st=byId('users',rec.student_id)||{};
     insert('leaves',{school_id:rec.school_id,student_id:rec.student_id,from_date:rec.date,to_date:rec.date,
