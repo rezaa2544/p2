@@ -369,17 +369,28 @@ function generateBusDemo(){
     add('bus_students',{route_id:route.id, student_id:s.id});
   });
   if(studs.length){
+    /* 🔴 رانشِ زمان (رفع‌شده در فاز ۳): ساعت‌هایِ ثابت (مثلِ 07:12Z)
+       هر روز، پیش از آن ساعت، رویدادِ دمو را «در آیندهٔ» رویدادهایِ
+       «الان» می‌نهادند — busOnBoard آخرین رویداد را می‌گیرد، پس حالت
+       «روی سرویس» وارونه می‌شد و تستِ smoke می‌شکست. زمان‌ها اکنون
+       نسبت به «الان» (چند دقیقهٔ پیش) ساخته می‌شوند و همیشه در
+       گذشته‌اند؛ ترتیبِ رویدادها حفظ است. */
+    var _demoAt = function(minAgo){
+      var d = new Date(Date.now() - minAgo * 60000);
+      var today = todayISO();
+      return (d.toISOString().slice(0,10) === today) ? d.toISOString() : (today + 'T00:00:00.000Z');
+    };
     var _ev0 = add('bus_events',{school_id:sc.id, route_id:route.id, student_id:studs[0].id,
-      type:'on', at:todayISO()+'T07:12:00.000Z', by:drv.id, source:'driver'});
+      type:'on', at:_demoAt(90), by:drv.id, source:'driver'});
   }
   if(studs.length>1){
     add('bus_events',{school_id:sc.id, route_id:route.id, student_id:studs[1].id,
-      type:'on', at:todayISO()+'T07:15:00.000Z', by:drv.id, source:'driver'});
+      type:'on', at:_demoAt(85), by:drv.id, source:'driver'});
     add('bus_events',{school_id:sc.id, route_id:route.id, student_id:studs[1].id,
-      type:'off', at:todayISO()+'T08:05:00.000Z', by:drv.id, source:'driver'});
+      type:'off', at:_demoAt(55), by:drv.id, source:'driver'});
     /* بند ۱۱: مغایرت — دانش‌آموز می‌گوید هنوز سوار است */
     add('bus_events',{school_id:sc.id, route_id:route.id, student_id:studs[1].id,
-      type:'on', at:todayISO()+'T08:10:00.000Z', by:studs[1].id, source:'student'});
+      type:'on', at:_demoAt(50), by:studs[1].id, source:'student'});
   }
   /* بند ۱۱: پاسخ اولیا */
   if(!db.bus_needs.length){
