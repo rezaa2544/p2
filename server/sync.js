@@ -13,14 +13,22 @@
 /* Core mirror of the client's ACTION_ROLES table for WRITE operations.
    The full table mirror is the next phase (AD.md §14) — unknown
    collection/role here FAILS CLOSED. */
+/* تک‌منبعِ حقیقتِ مجوزها (فاز ۲ بند ۳ + W4): این جدول از واقعیتِ
+   اکشن‌هایِ کلاینت همگام است و tools/check-authz.js (سیم‌شده به
+   node build.js --check + tests/check-authz.js) در هر دور نگهبانی
+   می‌دهد: هر اکشنی که روی مجموعه‌ای می‌نویسد، نقش‌های مجازش باید
+   این‌جا حقِ نوشتن داشته باشند.
+   استثنایِ users روی teacher محدودیتِ فیلدیِ سمتِ سرور است
+   (IEP_KEYS/DROP_KEYS — بند ۲.۲). */
 const WRITE_PERMS = {
   superadmin : ['*'],
-  edu_office : [],
-  manager    : ['attendance','attendance_modes','notify_queue','grades','discipline','leaves','announcements','notifications','messages','installments','transactions','tuitions','tuition_plans','schedule','classes','subjects','users','corrections','assets','visitors','lib_books','lib_loans','certificates','meeting_slots','bus_routes','bus_students','bus_events','bus_needs','bus_followups','counselor_refs','pre_enrollments','enrollments','student_transfers','transfer_requests','vclass_sessions','vclass_attendance','internships','preapps','scholarships','reexams','assoc_minutes','summer_classes','dorm_rooms','dorm_assignments','dorm_meals'],
-  teacher    : ['attendance','notify_queue','grades','discipline','messages','corrections','hw_assignments','hw_submissions','vclass_sessions','vclass_attendance','vclass_questions','vclass_links','substitutions','teacher_notes','nudges','teacher_sms','internships'],
+  edu_office : ['announcements','notifications','attendance_modes','notify_queue'],
+  manager    : ['attendance','attendance_modes','notify_queue','grades','discipline','leaves','announcements','notifications','messages','installments','transactions','tuitions','tuition_plans','schedule','classes','subjects','users','corrections','assets','visitors','lib_books','lib_loans','certificates','meeting_slots','bus_routes','bus_students','bus_events','bus_needs','bus_followups','counselor_refs','pre_enrollments','enrollments','student_transfers','transfer_requests','vclass_sessions','vclass_attendance','internships','preapps','scholarships','reexams','assoc_minutes','summer_classes','dorm_rooms','dorm_assignments','dorm_meals','class_subject_members','schools','sedascores','nid_conflicts','parent_links','sms_log','sms_wallet','school_years','student_archive','dojo_types','substitutions','vclass_links','vclass_questions','hw_assignments','hw_submissions','parent_subscriptions'],
+  teacher    : ['attendance','notify_queue','grades','discipline','messages','corrections','hw_assignments','hw_submissions','vclass_sessions','vclass_attendance','vclass_questions','vclass_links','substitutions','teacher_notes','nudges','teacher_sms','internships','notifications','meeting_slots'],
   counselor  : ['counselor_refs','messages','counselor_msgs'],
-  student    : ['messages','hw_submissions','vclass_questions','counselor_msgs'],
-  parent     : ['leaves','messages','parent_verifications','counselor_msgs'],
+  student    : ['messages','hw_submissions','vclass_questions','counselor_msgs','bus_events','notify_queue','bus_locations','vclass_attendance'],
+  parent     : ['leaves','messages','parent_verifications','counselor_msgs','meeting_slots','notifications','bus_needs'],
+  driver     : ['bus_events','notify_queue','bus_locations'],
 };
 function canWrite(role, coll){
   const list = WRITE_PERMS[role];
