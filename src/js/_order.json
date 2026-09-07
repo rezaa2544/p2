@@ -73,5 +73,6 @@
  "63-reexam.js",
  "64-summer-classes.js",
  "65-dorm.js",
- "66-client-features.js"
+ "66-client-features.js",
+ "99-theme-loader.js"
 ]
