@@ -18,6 +18,7 @@
    S13 آدیت: sync_field_denied وجود دارد، بدونِ شمارهٔ تلفن
    Round 88: S14–S17 (دامنهٔ leaves + هُکِ اعلانِ سروریِ مدیر)
    Round 89: S18–S26 (چت/تکلیف/نوبت/نشانِ خوانده/ردِ فرزند + هُک‌هایِ چت و corrections)
+   Round 90: S27 (upd اعلانِ خود فقط پرچمِ read)
    اجرا: node tests/server12.js
    ═══════════════════════════════════════════════════════════════════ */
 const fs = require('fs');
@@ -316,6 +317,14 @@ async function main() {
   const r26 = await syncOps(cP, [{ t: 'ins', c: 'parent_links', data: { parent_id: STU.id, student_id: KID }, __by: P.id }]);
   const s26 = r26.json && r26.json.results && r26.json.results[0];
   chk('S26 والد: parent_link با parent_idِ دیگر → 403 out_of_scope', r26.status === 403 && s26 && !s26.ok && s26.code === 'out_of_scope', JSON.stringify(r26.json).slice(0, 140));
+
+  /* Round 90 — S27: upd اعلانِ خود فقط پرچمِ read می‌پذیرد */
+  const r27 = pNotifId != null ? await syncOps(cP, [{ t: 'upd', c: 'notifications', id: pNotifId, data: { read: 1, title: 'R90-S27 forged' }, __by: P.id }]) : { status: 0 };
+  const s27 = r27.json && r27.json.results && r27.json.results[0];
+  chk('S27 والد: upd اعلانِ خود با فیلدِ غیر-read → 403', r27.status === 403 && s27 && !s27.ok && s27.code === 'out_of_scope', JSON.stringify(r27.json).slice(0, 140));
+  await sleep(1500);
+  const n27 = (JSON.parse(fs.readFileSync(storeFile, 'utf8')).notifications || []).find(n => n.id === pNotifId);
+  chk('S27b عنوانِ اعلان روی disk دست‌نخورده است', n27 && n27.title === 'R89-S23', n27 && n27.title);
 
   /* S13 — آدیت */
   await sleep(2500);
