@@ -16,6 +16,8 @@
    S11 دستهٔ مخلوط: op سالم + op جعلی → سالم ok، جعلی field_denied (۲۰)
    S12 disk: وضعیتِ نهاییِ رکوردِ والد = pending + reasonِ تازه
    S13 آدیت: sync_field_denied وجود دارد، بدونِ شمارهٔ تلفن
+   Round 88: S14–S17 (دامنهٔ leaves + هُکِ اعلانِ سروریِ مدیر)
+   Round 89: S18–S26 (چت/تکلیف/نوبت/نشانِ خوانده/ردِ فرزند + هُک‌هایِ چت و corrections)
    اجرا: node tests/server12.js
    ═══════════════════════════════════════════════════════════════════ */
 const fs = require('fs');
@@ -228,6 +230,92 @@ async function main() {
   await sleep(2500);
   const notifsAfter = (JSON.parse(fs.readFileSync(storeFile, 'utf8')).notifications || []).length;
   chk('S17b اعلانِ تازه‌ای برایِ درخواستِ مدیر ساخته نشده', notifsAfter === notifsMid, notifsAfter + ' vs ' + notifsMid);
+
+  /* ══ Round 89 — جریان‌هایِ همگام‌سازیِ نقش‌هایِ غیرمدیر (چت/تکلیف/نشان/ردِ فرزند) ══ */
+  const STU = src.users.find(u => u.role === 'student' && u.school_id === 1);
+  const T1CLASS = (src.classes || []).find(c => c.school_id === 1 &&
+    (c.homeroom_teacher_id === T1.id || (src.schedule || []).some(s => s.class_id === c.id && s.teacher_id === T1.id)));
+  const FOREIGN_CLASS = (src.classes || []).find(c => c.school_id === 1 && c.id !== (T1CLASS && T1CLASS.id) &&
+    c.homeroom_teacher_id !== T1.id && !(src.schedule || []).some(s => s.class_id === c.id && s.teacher_id === T1.id));
+  const T2 = src.users.find(u => u.role === 'teacher' && u.school_id === 1 && u.id !== T1.id);
+  chk('R89 حساب‌هایِ تست موجودند (دانش‌آموز/کلاسِ دبیر/کلاسِ بی‌ربط/دبیرِ دوم)', !!(STU && T1CLASS && FOREIGN_CLASS && T2));
+  const cST = await login(STU);
+  chk('R89 نشستِ دانش‌آموز ساخته شد', !!cST);
+
+  /* S18 — والد: چت (از خودش) → ok */
+  const r18 = await syncOps(cP, [{ t: 'ins', c: 'messages', data: { school_id: 1, from_id: P.id, to_id: M1.id, body: 'R89-S18', created_at: '2026-09-08' }, __by: P.id }]);
+  const s18 = r18.json && r18.json.results && r18.json.results[0];
+  chk('S18 والد: چت (from خود) → ok', r18.status === 200 && s18 && s18.ok, JSON.stringify(r18.json).slice(0, 140));
+
+  /* S19 — والد: چتِ جعلی (from کاربرِ دیگر) → out_of_scope */
+  const r19 = await syncOps(cP, [{ t: 'ins', c: 'messages', data: { school_id: 1, from_id: STU.id, to_id: M1.id, body: 'R89-S19 forged', created_at: '2026-09-08' }, __by: P.id }]);
+  const s19 = r19.json && r19.json.results && r19.json.results[0];
+  chk('S19 والد: چت با from_idِ دیگر → 403 out_of_scope', r19.status === 403 && s19 && !s19.ok && s19.code === 'out_of_scope', JSON.stringify(r19.json).slice(0, 140));
+
+  /* S20 — دبیر: تکلیفِ کلاسِ خودش → ok · کلاسِ بی‌ربط → out_of_scope */
+  const r20 = await syncOps(cT, [{ t: 'ins', c: 'hw_assignments', data: { school_id: 1, class_id: T1CLASS.id, subject_id: 1, title: 'R89-S20', description: '', due_date: '2026-09-15', created_by: T1.id, created_at: '2026-09-08' }, __by: T1.id }]);
+  const s20 = r20.json && r20.json.results && r20.json.results[0];
+  chk('S20a دبیر: تکلیفِ کلاسِ خودش → ok', r20.status === 200 && s20 && s20.ok, JSON.stringify(r20.json).slice(0, 140));
+  const r20b = await syncOps(cT, [{ t: 'ins', c: 'hw_assignments', data: { school_id: 1, class_id: FOREIGN_CLASS.id, subject_id: 1, title: 'R89-S20b', description: '', due_date: '2026-09-15', created_by: T1.id, created_at: '2026-09-08' }, __by: T1.id }]);
+  const s20b = r20b.json && r20b.json.results && r20b.json.results[0];
+  chk('S20b دبیر: تکلیفِ کلاسِ بی‌ربط → 403 out_of_scope', r20b.status === 403 && s20b && !s20b.ok && s20b.code === 'out_of_scope', JSON.stringify(r20b.json).slice(0, 140));
+
+  /* S21 — دبیر: نوبتِ مشاورهٔ خودش → ok · نوبتِ دبیرِ دیگر → out_of_scope */
+  const r21 = await syncOps(cT, [{ t: 'ins', c: 'meeting_slots', data: { school_id: 1, teacher_id: T1.id, date: '2026-09-15', start_time: '15:00', duration: 30, location: 'test', status: 'open', parent_id: null, student_id: null, created_at: '2026-09-08' }, __by: T1.id }]);
+  const s21 = r21.json && r21.json.results && r21.json.results[0];
+  chk('S21a دبیر: نوبتِ خودش → ok', r21.status === 200 && s21 && s21.ok, JSON.stringify(r21.json).slice(0, 140));
+  const r21b = await syncOps(cT, [{ t: 'ins', c: 'meeting_slots', data: { school_id: 1, teacher_id: T2.id, date: '2026-09-15', start_time: '15:30', duration: 30, location: 'test', status: 'open', parent_id: null, student_id: null, created_at: '2026-09-08' }, __by: T1.id }]);
+  const s21b = r21b.json && r21b.json.results && r21b.json.results[0];
+  chk('S21b دبیر: نوبتِ دبیرِ دیگر → 403 out_of_scope', r21b.status === 403 && s21b && !s21b.ok && s21b.code === 'out_of_scope', JSON.stringify(r21b.json).slice(0, 140));
+
+  /* S22 — دانش‌آموز: چت (از خودش) → ok */
+  const r22 = await syncOps(cST, [{ t: 'ins', c: 'messages', data: { school_id: 1, from_id: STU.id, to_id: T1.id, body: 'R89-S22', created_at: '2026-09-08' }, __by: STU.id }]);
+  const s22 = r22.json && r22.json.results && r22.json.results[0];
+  chk('S22 دانش‌آموز: چت (from خود) → ok', r22.status === 200 && s22 && s22.ok, JSON.stringify(r22.json).slice(0, 140));
+
+  /* S23 — نشانِ خوانده‌شدن: مدیر یک اعلان برایِ والد می‌سازد، والد read می‌کند → روی disk */
+  const r23 = await syncOps(cM, [{ t: 'ins', c: 'notifications', data: { user_id: P.id, school_id: 1, type: 'announcement', title: 'R89-S23', body: 'x', link: 'record', read: 0, created_at: '2026-09-08' }, __by: M1.id }]);
+  let pNotifId = null;
+  for (let i = 0; i < 10 && pNotifId == null; i++) {
+    await sleep(1000);
+    const cand = (JSON.parse(fs.readFileSync(storeFile, 'utf8')).notifications || []);
+    pNotifId = ((cand.find(n => n.title === 'R89-S23')) || {}).id || null;
+  }
+  chk('S23a اعلانِ والد روی disk نشست', pNotifId != null);
+  const r23b = pNotifId != null ? await syncOps(cP, [{ t: 'upd', c: 'notifications', id: pNotifId, data: { read: 1 }, __by: P.id }]) : { status: 0 };
+  const s23b = r23b.json && r23b.json.results && r23b.json.results[0];
+  chk('S23b والد: upd اعلانِ خودش (read) → ok', r23b.status === 200 && s23b && s23b.ok, JSON.stringify(r23b.json).slice(0, 140));
+  let readOk = false;
+  for (let i = 0; i < 10 && !readOk; i++) {
+    await sleep(1000);
+    readOk = (JSON.parse(fs.readFileSync(storeFile, 'utf8')).notifications || []).some(n => n.id === pNotifId && n.read === 1);
+  }
+  chk('S23c پرچمِ read روی disk نشست', readOk);
+  const r23d = await syncOps(cP, [{ t: 'upd', c: 'notifications', id: 1, data: { read: 1 }, __by: P.id }]);
+  const s23d = r23d.json && r23d.json.results && r23d.json.results[0];
+  chk('S23d والد: upd اعلانِ بی‌ربط (id=1) → 403', r23d.status === 403 && s23d && !s23d.ok, JSON.stringify(r23d.json).slice(0, 140));
+
+  /* S24 — ردِ فرزند: corrections (فرزندِ خودش) → ok + اعلانِ مدیر از هُک */
+  const r24 = await syncOps(cP, [{ t: 'ins', c: 'corrections', data: { school_id: 1, student_id: KID, parent_id: P.id, parent_nid: P.national_id, message: 'R89-S24', status: 'open', created_at: '2026-09-08' }, __by: P.id }]);
+  const s24 = r24.json && r24.json.results && r24.json.results[0];
+  chk('S24a والد: corrections برایِ فرزندِ خودش → ok', r24.status === 200 && s24 && s24.ok, JSON.stringify(r24.json).slice(0, 140));
+  let corrNotif = null;
+  for (let i = 0; i < 10 && !corrNotif; i++) {
+    await sleep(1000);
+    const cand = (JSON.parse(fs.readFileSync(storeFile, 'utf8')).notifications || []);
+    corrNotif = cand.find(n => n.user_id === M1.id && n.type === 'announcement' && String(n.title || '').indexOf('اصلاح اطلاعات ولی') > -1);
+  }
+  chk('S24b هُک: اعلانِ «درخواست اصلاح اطلاعات ولی» روی disk نشست', !!corrNotif);
+
+  /* S25 — هُکِ چت: پیامِ S18 (والد→مدیر) → دقیقاً یک اعلانِ chat برایِ مدیر */
+  await sleep(1500);
+  const chatNotifs = (JSON.parse(fs.readFileSync(storeFile, 'utf8')).notifications || []).filter(n => n.user_id === M1.id && n.type === 'chat' && String(n.body || '').indexOf('R89-S18') > -1);
+  chk('S25 هُکِ چت: مدیر دقیقاً یک اعلانِ پیامِ والد گرفت', chatNotifs.length === 1, 'count=' + chatNotifs.length);
+
+  /* S26 — جعلِ parent_link: parent_idِ کاربرِ دیگر (فرزندِ خودش) → out_of_scope */
+  const r26 = await syncOps(cP, [{ t: 'ins', c: 'parent_links', data: { parent_id: STU.id, student_id: KID }, __by: P.id }]);
+  const s26 = r26.json && r26.json.results && r26.json.results[0];
+  chk('S26 والد: parent_link با parent_idِ دیگر → 403 out_of_scope', r26.status === 403 && s26 && !s26.ok && s26.code === 'out_of_scope', JSON.stringify(r26.json).slice(0, 140));
 
   /* S13 — آدیت */
   await sleep(2500);
