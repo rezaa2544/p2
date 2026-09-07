@@ -32,6 +32,22 @@ const BASE = `http://127.0.0.1:${PORT}`;
 let pass = 0, fail = 0;
 const T = (c, m) => { if (c) { pass++; console.log('  ✅ ' + m); } else { fail++; console.log('  ❌ ' + m); } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/* 🔴 رفعِ race (دور ۸۷): حلقهٔ persist سرور هر ۲ ثانیه فایلِ store را
+   می‌نویسد؛ خواندنِ فایل بلافاصله بعد از پاسخِ HTTP (که وضعیتِ حافظه‌ای
+   تازه را دارد) می‌تواند پیش از flush بعدی باشد. الگوی server12:
+   تا برآوردِ شرط روی فایلِ disk برقرار نشود، با فاصلهٔ کوتاه دوباره
+   بخوان. در timeout، آخرین snapshot برمی‌گردد تا خودِ ادعا با دادهٔ
+   واقعی شکست (نه کرشِ مبهم). */
+async function waitForDisk(file, predicate, timeoutMs = 6000, intervalMs = 100) {
+  const t0 = Date.now();
+  let snap = null;
+  for (;;) {
+    snap = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (predicate(snap)) return snap;
+    if (Date.now() - t0 >= timeoutMs) return snap;
+    await sleep(intervalMs);
+  }
+}
 
 function http(method, url, body, cookie) {
   return fetch(BASE + url, {
@@ -152,9 +168,8 @@ async function main() {
   const dupOp = opReal(m2U, { by: m2U.id, collection: 'announcements', type: 'ins', uid: 'sim3-dup-' + Date.now(), data: { school_id: 2, title: 'sim3-dup', body: 'اول', role: 'manager' } });
   const r6a = await http('POST', '/api/sync', { ops: [dupOp] }, tok['manager-2']);
   const r6b = await http('POST', '/api/sync', { ops: [dupOp] }, tok['manager-2']);
-  await sleep(800);
-  const diskAfter6 = JSON.parse(fs.readFileSync(store, 'utf8'));
   T(r6a.status === 200 && r6b.json.results && r6b.json.results[0] && r6b.json.results[0].code === 'duplicate_ignored', 'T6a تکرارِ uid → duplicate_ignored');
+  const diskAfter6 = await waitForDisk(store, (d) => ((d.announcements || []).filter((a) => a.title === 'sim3-dup')).length === 1);
   T(((diskAfter6.announcements || []).filter((a) => a.title === 'sim3-dup')).length === 1, 'T6b فقط یک رکورد روی disk');
 
   console.log('\n▸ T7 — batch بزرگ');
@@ -190,8 +205,11 @@ async function main() {
     const codes10 = (r10.json.results || []).map((x) => x.code);
   T(codes10.indexOf('virtual_day') > -1, 'T10b حضورِ فیزیکی در روزِ غیرحضوری → virtual_day');
   T((r10.json.results || []).some((r) => r.ok === true), 'T10c عملیاتِ غیرفیزیکیِ همان batch ادامه خورد (per-op، نه همه)');
-  const r10c = await http('POST', '/api/sync', { ops: [opReal(mgr2U, { by: mgr2U.id, collection: 'attendance_modes', type: 'del', id: (JSON.parse(fs.readFileSync(store, 'utf8')).attendance_modes || []).find((m) => m.school_id === 2 && m.date === vday).id, data: {} })] }, tok['manager-2']);
-  T(r10c.status === 200, 'T10d پاک‌سازیِ حالتِ غیرحضوری');
+  const diskForDel = await waitForDisk(store, (d) => (d.attendance_modes || []).some((m) => m.school_id === 2 && m.date === vday));
+  const modeRec = (diskForDel.attendance_modes || []).find((m) => m.school_id === 2 && m.date === vday);
+  T(!!modeRec, 'T10d رکوردِ غیرحضوری روی disk دیده شد (پیش از پاک‌سازی)');
+  const r10c = modeRec ? await http('POST', '/api/sync', { ops: [opReal(mgr2U, { by: mgr2U.id, collection: 'attendance_modes', type: 'del', id: modeRec.id, data: {} })] }, tok['manager-2']) : null;
+  T(r10c && r10c.status === 200, 'T10e پاک‌سازیِ حالتِ غیرحضوری');
 
   console.log('\n▸ T11 — flush واقعی به disk + آدیت');
   const flushTitle = 'sim3-flush-' + Date.now();
