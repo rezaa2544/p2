@@ -26919,7 +26919,9 @@ function clientFeaturesCard(sid){
   var tc=tomorrowChecklistItems(sid);
   var ne=nextExamOf(sid);
   var h='<div class="card" style="margin-bottom:12px"><div class="card-head"><h3>🗓️ فردا و امتحانات</h3><div class="spacer"></div>'
-    + '<button class="btn ghost sm" data-act="ics-export" data-sid="'+escAttr(sid)+'" title="دانلودِ تقویمِ امتحانات و رویدادهای مدرسه (فایل ICS — با هر تقویمی باز می‌شود)">📥 تقویم (ICS)</button></div>'
+    /* بدونِ data-sid/data-id عمدی — هدف در خودِ اکشن از recordTargetId()
+       گرفته می‌شود تا شناسهٔ آمده از DOM نتواند دامنه را بشکند (دورِ ۸۹). */
+    + '<button class="btn ghost sm" data-act="ics-export" title="دانلودِ تقویمِ امتحانات و رویدادهای مدرسه (فایل ICS — با هر تقویمی باز می‌شود)">📥 تقویم (ICS)</button></div>'
     + '<div class="card-body" style="display:grid;gap:10px">';
   if(tc.school){
     h+='<div><b>فردا — '+jalali(tc.date)+'</b>';
@@ -26957,9 +26959,24 @@ function cfCanExcuse(u,rec){
 
 /* اکشن‌ها */
 const CF_ACTIONS = {
-  /* ویژگی ۳: خروجی ICS */
-  'ics-export'(el,id){
-    var sid=id?Number(id):((typeof recordTargetId==='function')?recordTargetId():null);
+  /* ویژگی ۳: خروجی ICS
+     🔴 دورِ ۸۹ — نشتِ دامنه (کشف با پروبِ زنده، بازبینیِ خودکار ندیده بود):
+     نسخهٔ پیشین اگر `data-id` می‌آمد همان را بی‌چون‌وچرا هدف می‌گرفت:
+        var sid = id ? Number(id) : recordTargetId();
+     دکمهٔ واقعی `data-sid` دارد و دیسپچر فقط `data-id` را می‌خواند، پس در
+     استفادهٔ عادی همیشه شاخهٔ امن اجرا می‌شد و کسی متوجه نمی‌شد. ولی مهاجم
+     (کاربرِ معتبرِ سامانه) با ساختنِ دستیِ یک دکمه:
+        <button data-act="ics-export" data-id="<شناسهٔ بیگانه>">
+     تقویمِ دانش‌آموزِ **مدرسهٔ دیگر** را دانلود می‌کرد (اثباتِ زنده: مدرسهٔ ۶
+     فایلِ مدرسهٔ ۱ را گرفت). `canAction` جلویش را نمی‌گیرد چون این اکشن
+     بی‌برچسب است، و `server/idor.js` هم نه — این خواندنِ حافظهٔ محلی است،
+     نه درخواستِ شبکه.
+     رفع: هدف **همیشه** از `recordTargetId()` می‌آید که ولی را به
+     `parent_links` خودش و دانش‌آموز را به خودش محدود می‌کند. ورودیِ
+     `id` عمداً نادیده گرفته می‌شود (اصلِ نهم: دادهٔ بیرون از دامنه اصلاً
+     نباید ساخته شود). نگهبان: `tests/client-features.js` بخشِ F5. */
+  'ics-export'(){
+    var sid=(typeof recordTargetId==='function')?recordTargetId():null;
     if(sid) icsDownload(sid);
   },
   /* ویژگی ۴: موجه‌سازیِ سریع — بازکردنِ فرم */
