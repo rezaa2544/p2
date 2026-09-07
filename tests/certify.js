@@ -214,6 +214,27 @@ async function cfFxTearDown(){
     } finally { await cfFxTearDown(); }
   });
 
+  await sec('C7 گلدن: ورودی ثابت → کد ثابت (محافظت از الگوریتم)', async () => {
+    /* با سالِ ثابت (1404) خروجی کاملاً قطعی است؛ هر تغییری در الگوریتمِ هش
+       (ثابتِ 5381 / الفبای 32/پیشوند) این ادعا را می‌شکند */
+    const g = JSON.parse(W(`(function(){
+      var orig = window.yearCode;
+      window.yearCode = function(){ return '1404'; };
+      try {
+        return JSON.stringify({
+          a: certCodeCalc('enrollment', 16, 1),
+          b: certCodeCalc('transfer', 16, 1),
+          c: certCodeCalc('enrollment', 16, 2),
+          d: certCodeCalc('transfer', 999, 3)
+        });
+      } finally { window.yearCode = orig; }
+    })()`));
+    assert(g.a === 'GHT-NQCHCY', 'golden enrollment(16,1) نادرست: ' + g.a);
+    assert(g.b === 'GNT-DVJ55T', 'golden transfer(16,1) نادرست: ' + g.b);
+    assert(g.c === 'GHT-RZ8SQS', 'golden enrollment(16,2) نادرست: ' + g.c);
+    assert(g.d === 'GNT-BHUNW5', 'golden transfer(999,3) نادرست: ' + g.d);
+  });
+
   const ok = results.filter((r) => r.ok).length;
   console.log('\n──────────────────────────────────────────');
   for (const r of results) {
