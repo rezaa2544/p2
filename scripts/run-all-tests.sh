@@ -52,9 +52,11 @@ if ! git remote get-url origin >/dev/null 2>&1 && [ -f ~/.payesh_gh_token ]; the
   echo "!! git remote missing — restoring" | tee -a $OUT
   git remote add origin "https://$(cat ~/.payesh_gh_token)@github.com/rezaa2544/p2" || true
 fi
-if pgrep -f 'node server/index.js' >/dev/null 2>&1; then
-  echo "!! stale server processes found — killing (R92: they hold fixed test ports → env false-alives)" | tee -a $OUT
-  pkill -f 'node server/index.js' || true
+# R92: pattern must match BOTH `node server/index.js` and absolute-path spawns
+# (spawn(path.join(ROOT,'server/index.js')) — the first R92 pattern missed those)
+if pgrep -f 'node .*server/index\.js' >/dev/null 2>&1; then
+  echo "!! stale server processes found — killing (R92: they hold fixed test ports → env false-verdicts)" | tee -a $OUT
+  pkill -f 'node .*server/index\.js' || true
   sleep 1
 fi
 if [ ! -f server/data/payesh.json ]; then
@@ -94,12 +96,13 @@ PHASE2_SET=$( { echo "$REBUILDING"; echo "$SERVERS"; echo "$MUTS"; } | sed '/^$/
 PHASE1_SET=$(echo "$ALL" | grep -vxFf <(echo "$PHASE2_SET"))
 
 # port-holding detection: literal 89xx/90xx port in the suite file, OR (for
-# mutation suites) in the suite file(s) they boot via `suite: 'tests/x.js'`
+# mutation suites) in any suite file they boot — both `suite: 'tests/x.js'`
+# fields and quoted 'tests/x.js' arguments (R92: old-style mutate() calls)
 uses_port() {
   local f="$1"
   grep -qE "89[0-9]{2}|90[0-9]{2}" "$f" && return 0
-  local refs
-  refs=$(grep -oE "suite[[:space:]]*:[[:space:]]*['\"][^'\"]+\.js" "$f" | sed -E "s/.*['\"]//")
+  local refs r
+  refs=$(grep -ohE "['\"]tests/[^'\"]+\.js['\"]" "$f" | tr -d "'\"" | sort -u)
   for r in $refs; do
     [ -f "$r" ] && grep -qE "89[0-9]{2}|90[0-9]{2}" "$r" && return 0
   done
@@ -153,7 +156,7 @@ run_copy() {
 # ── serial lane: port-holding suites (fixed 89xx/90xx — never in parallel) ─
 # R92: after each suite, kill any leaked server (crashed suites leave them holding
 # fixed ports → next suite dies before its expected check → env false-verdicts)
-lane_sweep() { pkill -f 'node server/index.js' 2>/dev/null; sleep 1; return 0; }
+lane_sweep() { pkill -f 'node .*server/index\.js' 2>/dev/null; sleep 1; return 0; }
 port_lane() {
   for f in $PORT_P1; do run_one "$f"; lane_sweep; done
   for f in $PORT_P2; do run_copy "$f"; lane_sweep; done
@@ -171,10 +174,11 @@ port_lane &
 PORT_PID=$!
 echo "$LANE_A" | sed '/^$/d' | xargs -d '\n' -P $WORKERS -I{} bash -c 'run_one "$@"' _ {}
 # mid-run sweep: server suites leak /tmp/payesh-*/store.json (5.6MB each).
-# R92: only delete idle copy dirs (modified >2 min ago) — the port lane may be
-# inside /tmp/mut-* concurrently; -mmin +2 protects live suites, still cleans leaks
-find /tmp -maxdepth 1 -name 'mut-*' -mmin +2 -exec rm -rf {} + 2>/dev/null || true
-rm -rf /tmp/payesh-* /tmp/authzchk-* 2>/dev/null || true
+# R92: only delete idle dirs (modified >2 min ago) — the port lane may be
+# inside /tmp/mut-* or /tmp/payesh-* concurrently (sim_full3 store!);
+# -mmin +2 protects live suites, still cleans leaks
+find /tmp -maxdepth 1 \( -name 'mut-*' -o -name 'payesh-*' \) -mmin +2 -exec rm -rf {} + 2>/dev/null || true
+rm -rf /tmp/authzchk-* 2>/dev/null || true
 echo "$LANE_B" | sed '/^$/d' | xargs -d '\n' -P $WORKERS -I{} bash -c 'run_copy "$@"' _ {}
 wait $PORT_PID
 

@@ -18,7 +18,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-let pass = 0, fail = 0;
+let pass = 0, fail = 0, envFails = 0;
 function chk(c, m) { if (c) { pass++; console.log('  ✅ ' + m); } else { fail++; console.log('  ❌ ' + m); } }
 
 function mutate(file, from, to, killRe, tag) {
@@ -29,8 +29,21 @@ function mutate(file, from, to, killRe, tag) {
   fs.writeFileSync(f, bad, 'utf8');
   try {
     execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
-    const r = spawnSync('node', [path.join(ROOT, 'tests/uiclick.js')], { cwd: ROOT, encoding: 'utf8' });
-    chk(r.status !== 0 && killRe.test(r.stdout || r.stderr || ''), tag + ' کشته شد');
+    const runOnce = () => spawnSync('node', [path.join(ROOT, 'tests/uiclick.js')], { cwd: ROOT, encoding: 'utf8' });
+    const outOf = (x) => x.stdout || x.stderr || '';
+  /* R92: مرگِ زودهنگامِ کشف‌کننده (پورت اشغال/حافظه — قبل از چاپِ چکِ موردِ انتظار و خطِ خلاصه) → retry یک‌بار، بعد env-failِ صریح. هرگز «زنده ماند»ِ کاذب. */
+    const completed = (o) => /uiclick: \d+ بخش سبز/.test(o || '');
+    let r = runOnce();
+    if (r.status !== 0 && !killRe.test(outOf(r)) && !completed(outOf(r))) {
+      const r2 = runOnce();
+      if (r2.status === 0 || killRe.test(outOf(r2)) || completed(outOf(r2))) r = r2;
+    }
+    if (r.status !== 0 && !killRe.test(outOf(r)) && !completed(outOf(r))) {
+      envFails++;
+      chk(false, tag + ' — خطای محیطی: چکِ موردِ انتظار هرگز چاپ نشد (مرگِ زودهنگامِ تست — پورت/حافظه) — نه کشته و نه زنده شمرده شد');
+      return;
+    }
+    chk(r.status !== 0 && killRe.test(outOf(r)), tag + ' کشته شد');
   } finally {
     fs.writeFileSync(f, orig, 'utf8');
   }
