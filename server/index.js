@@ -68,9 +68,39 @@ syncAttach(store);
 
 let dirty = false;
 function markDirty(){ dirty = true; }
+
+/* ── GC of internal state (دور ۸۵ P1-3 — AD ۸۵.۲) ─────────────
+   سه نقشهٔ فقط-رشد:
+   __processed_uids — ایدمپوتانس؛ صفِ کلاینت‌ها عمرش کمتر از ۳۰ روز
+     است، پس uidهایِ کهنه‌تر هرگز دوباره ارسال نمی‌شوند. ری‌پلایِ
+     یک uidِ کهنه پس از GC با قرارداد سازگار است (ایدمپوتانس در
+     حدِ عمرِ صف برقرار است).
+   __revoked_jti — فقط در حدِ TTLِ نشست (۸h، بند ۲.۱) معنا دارد.
+   __auth.codes — کدهایِ منقضی از قبل مرده‌اند (TTL ۵ دقیقه).
+   در حلقهٔ persist اجرا می‌شود: سه جارو O(n) ناچیز؛ payesh.json
+   (و بکاپ‌هایش) دیگر بی‌پایان رشد نمی‌کنند. */
+const UID_GC_MS = 30 * 24 * 3600 * 1000;
+const JTI_GC_MS = SESSION_TTL_S * 1000;
+function gcStore(){
+  const now = Date.now();
+  let n = 0;
+  for(const k in store.__processed_uids){
+    if(now - store.__processed_uids[k] > UID_GC_MS){ delete store.__processed_uids[k]; n++; }
+  }
+  for(const k in store.__revoked_jti){
+    if(now - store.__revoked_jti[k] > JTI_GC_MS){ delete store.__revoked_jti[k]; n++; }
+  }
+  for(const k in store.__auth.codes){
+    const rec = store.__auth.codes[k];
+    if(!rec || now - (rec.at || 0) >= CODE_TTL_MS){ delete store.__auth.codes[k]; n++; }
+  }
+  return n;
+}
 function persistStore(){
   if(!dirty) return;
   dirty = false;
+  const gc = gcStore();
+  if(gc) try { audit('store_gc', { removed: gc }); } catch(e){}
   try{
     const tmp = STORE_FILE + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(store), { encoding: 'utf8', mode: 0o600 }); /* S-73-3: PII — owner-only */
