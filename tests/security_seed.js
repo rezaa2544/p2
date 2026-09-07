@@ -21,10 +21,14 @@ function chk(name, cond, extra) {
 }
 const sha = (f) => crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex');
 
+/* عزل: نمونه از store اصلی در /tmp — تست باخورد می‌کند، بعد باز می‌گردد
+   (حالتِ محیطِ اجرا مستقل می‌شود؛ درخت واقعی دست‌نخورده می‌ماند) */
+const os = require('os');
+const TMP_STORE = path.join(os.tmpdir(), 'payesh-security-seed-' + process.pid + '.json');
+
 function main() {
   console.log('\n▸ دور ۷۳ — ابزارِ seed (بستنِ پایش)');
-  const before = sha(STORE);
-  const beforeRaw = fs.readFileSync(STORE, 'utf8');
+  fs.copyFileSync(STORE, TMP_STORE); /* (الف) نمونه از store واقعی، قبل از seed */
   const modeBefore = fs.statSync(STORE).mode & 0o777;
   if (modeBefore === 0o600) fs.chmodSync(STORE, 0o644); /* Z1 واقعی بسنجیم */
 
@@ -38,9 +42,11 @@ function main() {
   chk('Z1-B store سالم است (users >= 1000)', Array.isArray(db.users) && db.users.length >= 1000, String(db.users && db.users.length));
 
   const afterRaw = fs.readFileSync(STORE, 'utf8');
-  /* مقایسهٔ معنایی: seed، timestampِ لحظهٔ اجرا را در چند رکورد می‌زند
-     (رفتارِ قدیمی و شناخته‌شده) — فقط ساختار و مقادیرِ غیر-زمانی باید
-     دقیقاً با storeِ committed یکی باشند. */
+  /* مقایسهٔ معناییِ معزول: دو seedِ پشتِ‌سرهم باید ساختار/مقادیر یکسان تولید کنند
+     (بدونِ وابستگی بهِ محتوایِ قبلیِ فایل — همانِ ریشهٔ قرمزِ اجرایِ توالی‌ای). */
+  const r2 = spawnSync(process.execPath, ['server/seed.js'], { cwd: ROOT, timeout: 90000, encoding: 'utf8' });
+  chk('Z2-pre seed دوم بدونِ خطا تمام شد', r2.status === 0, (r2.stderr || '').slice(0, 200));
+  const after2Raw = fs.readFileSync(STORE, 'utf8');
   const canonical = (raw) => {
     const o = JSON.parse(raw);
     (function strip(x){
@@ -55,12 +61,18 @@ function main() {
     return JSON.stringify(o, Object.keys(o).sort());
   };
   try {
-    const same = canonical(beforeRaw) === canonical(afterRaw);
-    chk('Z2 store دترمینیک است (ساختار/مقادیر بدونِ دررفتگی؛ فقط timestamp عوض می‌شود)', same);
+    const same = canonical(afterRaw) === canonical(after2Raw);
+    chk('Z2 store دترمینیک است (دو seedِ تازه، بعد از حذفِ timestamp، یکسان)', same);
   } catch(e) {
     chk('Z2 store دترمینیک است', false, e.message);
   }
-  fs.chmodSync(STORE, 0o600); /* درخت تمیز بماند */
+  /* (ب) بازگردانی: store اصلی به حالتِ پیش از تست برمی‌گردد */
+  try {
+    fs.copyFileSync(TMP_STORE, STORE);
+    fs.chmodSync(STORE, 0o600);
+  } finally {
+    try { fs.unlinkSync(TMP_STORE); } catch (e) {}
+  }
 
   console.log('\nsecurity_seed: ' + pass + ' ✅ / ' + fail + ' ❌');
   if (fail) { errors.forEach((e) => console.log('  — ' + e)); process.exit(1); }
