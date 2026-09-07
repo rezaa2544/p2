@@ -52,6 +52,11 @@ if ! git remote get-url origin >/dev/null 2>&1 && [ -f ~/.payesh_gh_token ]; the
   echo "!! git remote missing — restoring" | tee -a $OUT
   git remote add origin "https://$(cat ~/.payesh_gh_token)@github.com/rezaa2544/p2" || true
 fi
+if pgrep -f 'node server/index.js' >/dev/null 2>&1; then
+  echo "!! stale server processes found — killing (R92: they hold fixed test ports → env false-alives)" | tee -a $OUT
+  pkill -f 'node server/index.js' || true
+  sleep 1
+fi
 if [ ! -f server/data/payesh.json ]; then
   echo "!! payesh.json missing — reseeding" | tee -a $OUT
   node server/seed.js >>$OUT 2>&1 || { echo "!! reseed FAILED" | tee -a $OUT; exit 2; }
