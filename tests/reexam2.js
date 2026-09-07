@@ -17,6 +17,8 @@ try { ({ JSDOM } = require('jsdom')); }
 catch { console.log('⏭️  jsdom نصب نیست — تست رد شد.  (npm i --no-save jsdom)'); process.exit(0); }
 
 const ROOT = path.join(__dirname, '..');
+// hardening: rebuild base index.html (a previously crashed mutation suite may have left a mutated build)
+try { require('child_process').execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
 let pass = 0, fail = 0;
@@ -167,6 +169,8 @@ test('R7 کارتِ پرونده: دانش‌آموزِ دارای رکورد م
 await sleep(100);
 console.log('\n────────────────────────────────────────────────────');
 console.log(`reexam2 (تجدیدی): ${pass + fail} بررسی — ✅ ${pass} · ❌ ${fail}`);
+// hardening: rebuild base index.html (a previously crashed mutation suite may have left a mutated build)
+try { require('child_process').execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
 if (fail) process.exit(1);
 process.exit(0);
 }
