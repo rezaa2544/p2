@@ -8,7 +8,7 @@ const fs = require('fs');
 
 const FILES = {
   'src/js/17-student-record.js': fs.readFileSync('src/js/17-student-record.js', 'utf8'),
-  'src/js/19-actions.js': fs.readFileSync('src/js/19-actions.js', 'utf8'),
+  'src/js/19-actions-core.js': fs.readFileSync('src/js/19-actions-core.js', 'utf8'),
 };
 
 const MUTS = [
@@ -27,7 +27,7 @@ const MUTS = [
     expectFail: 'دانش‌آموز نباید دکمهٔ ویرایش داشته باشد',
   },
   {
-    file: 'src/js/19-actions.js',
+    file: 'src/js/19-actions-core.js',
     name: 'M3 تاریخِ به‌روزرسانی در IEP ذخیره نشود',
     bad: "     update('users',sid,{iep_notes:V('iep_notes'),iep_staff:V('iep_staff'),iep_updated:todayISO()});",
     mut: "     update('users',sid,{iep_notes:V('iep_notes'),iep_staff:V('iep_staff')});",

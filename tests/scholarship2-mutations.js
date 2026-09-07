@@ -35,7 +35,7 @@ mutate('src/js/62-scholarship.js',
   'function(r){return true;}',
   'tests/scholarship2.js', /❌ S1|❌ S2/, 'M1 برداشتنِ دامنهٔ مدرسه');
 
-mutate('src/js/19-actions.js',
+mutate('src/js/19-actions-core.js',
   "if(!to||!allowed){toast('این جابه‌جایی مجاز نیست','err');return;}",
   "if(!to){toast('این جابه‌جایی مجاز نیست','err');return;}",
   'tests/scholarship2.js', /❌ S4/, 'M2 برداشتنِ گاردِ جابه‌جاییِ نامجاز');

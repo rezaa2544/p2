@@ -35,7 +35,7 @@ mutate('src/js/63-reexam.js',
   'function(r){return true;}',
   'tests/reexam2.js', /❌ R2/, 'M1 برداشتنِ دامنهٔ مدرسه');
 
-mutate('src/js/19-actions.js',
+mutate('src/js/19-actions-core.js',
   "update('reexams',sid,{new_score:n,status:'done',updated_at:todayISO()});",
   "update('reexams',sid,{new_score:n,status:'scheduled',updated_at:todayISO()});",
   'tests/reexam2.js', /❌ R4/, 'M2 برداشتنِ وضعیتِ انجام‌شده');

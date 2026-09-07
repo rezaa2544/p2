@@ -8,7 +8,7 @@ const fs = require('fs');
 
 const FILES = {
   'src/js/44-sms-notify.js': fs.readFileSync('src/js/44-sms-notify.js', 'utf8'),
-  'src/js/19-actions.js':    fs.readFileSync('src/js/19-actions.js', 'utf8'),
+  'src/js/19-actions-core.js':    fs.readFileSync('src/js/19-actions-core.js', 'utf8'),
   'src/js/17-student-record.js': fs.readFileSync('src/js/17-student-record.js', 'utf8'),
 };
 
@@ -35,7 +35,7 @@ const MUTS = [
     expectFail: 'دقیقهٔ تاخیر (~۱۰) درست نیست',
   },
   {
-    file: 'src/js/19-actions.js',
+    file: 'src/js/19-actions-core.js',
     name: 'M4 taken_at در رکوردِ تازهٔ ثبت‌شده نوشته نشود',
     bad: 'student_id:c.student_id,date,status:st,note:baseNote,\n              taken_at:new Date().toISOString()};',
     mut: 'student_id:c.student_id,date,status:st,note:baseNote,\n              taken_at:null};',

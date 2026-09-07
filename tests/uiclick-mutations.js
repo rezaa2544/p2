@@ -21,8 +21,8 @@ const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 function chk(c, m) { if (c) { pass++; console.log('  ✅ ' + m); } else { fail++; console.log('  ❌ ' + m); } }
 
-function mutate(from, to, killRe, tag) {
-  const f = path.join(ROOT, 'src/js/19-actions.js');
+function mutate(file, from, to, killRe, tag) {
+  const f = path.join(ROOT, file);
   const orig = fs.readFileSync(f, 'utf8');
   const bad = orig.replace(from, to);
   if (bad === orig) { chk(false, tag + ': جهش اعمال نشد (نماد پیدا نشد)'); return; }
@@ -36,10 +36,10 @@ function mutate(from, to, killRe, tag) {
   }
 }
 
-mutate("'pre-confirm'(){", "'pre-confirm'(el,id){", /❌ U1/, 'M1 سایِ el/id روی pre-confirm');
-mutate("'pre-reject'(){", "'pre-reject'(el,id){", /❌ U2/, 'M2 سایِ el/id روی pre-reject');
-mutate("'pre-del'(){", "'pre-del'(el,id){", /❌ U3/, 'M3 سایِ el/id روی pre-del');
-mutate("'bus-follow-open'(){", "'bus-follow-open'(el){", /❌ U4/, 'M4 سایِ el روی bus-follow-open');
+mutate('src/js/19-actions-core.js', "'pre-confirm'(){", "'pre-confirm'(el,id){", /❌ U1/, 'M1 سایِ el/id روی pre-confirm');
+mutate('src/js/19-actions-core.js', "'pre-reject'(){", "'pre-reject'(el,id){", /❌ U2/, 'M2 سایِ el/id روی pre-reject');
+mutate('src/js/19-actions-core.js', "'pre-del'(){", "'pre-del'(el,id){", /❌ U3/, 'M3 سایِ el/id روی pre-del');
+mutate('src/js/19-actions-bus.js', "'bus-follow-open'(){", "'bus-follow-open'(el){", /❌ U4/, 'M4 سایِ el روی bus-follow-open');
 
 /* بازسازی + خطِّ پایه */
 execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });

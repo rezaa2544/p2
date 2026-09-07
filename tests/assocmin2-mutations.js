@@ -35,14 +35,14 @@ mutate('src/js/60-association.js',
   'function(m){return true;}',
   'tests/assocmin2.js', /❌ A1/, 'M1 برداشتنِ دامنهٔ مدرسه');
 
-mutate('src/js/19-actions.js',
+mutate('src/js/19-actions-core.js',
   "update('assoc_minutes',m.id,{archived:!m.archived,updated_at:todayISO()});",
   "update('assoc_minutes',m.id,{archived:true,updated_at:todayISO()});",
   'tests/assocmin2.js', /❌ A4/, 'M2 ثابت‌کردنِ archived:true');
 
 mutate('server/sync.js',
-  "'reexams','assoc_minutes']",
-  "'reexams']",
+  "'reexams','assoc_minutes','summer_classes'",
+  "'reexams','summer_classes'",
   'tests/assocmin3.js', /❌ B1/, 'M3 برداشتنِ assoc_minutes از WRITE_PERMS');
 
 /* بازسازی + خطِّ پایه */

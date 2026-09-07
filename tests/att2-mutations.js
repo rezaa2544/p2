@@ -8,7 +8,7 @@ const fs = require('fs');
 
 const FILES = {
   'src/js/44-sms-notify.js': fs.readFileSync('src/js/44-sms-notify.js', 'utf8'),
-  'src/js/19-actions.js': fs.readFileSync('src/js/19-actions.js', 'utf8'),
+  'src/js/19-actions-core.js': fs.readFileSync('src/js/19-actions-core.js', 'utf8'),
   'src/js/12-attendance.js': fs.readFileSync('src/js/12-attendance.js', 'utf8'),
   'src/js/47-counselor.js': fs.readFileSync('src/js/47-counselor.js', 'utf8'),
 };
@@ -22,7 +22,7 @@ const MUTS = [
     expectFail: 'تأخیرِ دقیقه‌ای محاسبه نشد',
   },
   {
-    file: 'src/js/19-actions.js',
+    file: 'src/js/19-actions-core.js',
     name: 'M2 فیلدهای رویداد از رکوردِ ثبت‌شده (att-commit) حذف شود',
     bad: "if(typeof applyAttEvents==='function')applyAttEvents(evf,evs,null);",
     mut: 'if(false)applyAttEvents(evf,evs,null);',
@@ -43,7 +43,7 @@ const MUTS = [
     expectFail: 'دبیر نباید دکمهٔ موجه‌سازی ببیند',
   },
   {
-    file: 'src/js/19-actions.js',
+    file: 'src/js/19-actions-core.js',
     name: 'M5 هستهٔ موجهِ یکپارچه (att-exempt-confirm) بی‌اثر شود',
     bad: "?attExcuseCore(rec.id,'record',reason)",
     mut: "?{ok:true,msg:'mutation: no-op'}",
