@@ -151,9 +151,12 @@ run_copy() {
 }
 
 # ── serial lane: port-holding suites (fixed 89xx/90xx — never in parallel) ─
+# R92: after each suite, kill any leaked server (crashed suites leave them holding
+# fixed ports → next suite dies before its expected check → env false-verdicts)
+lane_sweep() { pkill -f 'node server/index.js' 2>/dev/null; sleep 1; return 0; }
 port_lane() {
-  for f in $PORT_P1; do run_one "$f"; done
-  for f in $PORT_P2; do run_copy "$f"; done
+  for f in $PORT_P1; do run_one "$f"; lane_sweep; done
+  for f in $PORT_P2; do run_copy "$f"; lane_sweep; done
 }
 export -f run_one run_copy uses_port port_lane
 export OUT PORT_P1 PORT_P2
@@ -167,8 +170,11 @@ echo "=== LANES: A=$NA (main, $WORKERS workers) B=$NB (copies, $WORKERS workers)
 port_lane &
 PORT_PID=$!
 echo "$LANE_A" | sed '/^$/d' | xargs -d '\n' -P $WORKERS -I{} bash -c 'run_one "$@"' _ {}
-# mid-run sweep: server suites leak /tmp/payesh-*/store.json (5.6MB each)
-rm -rf /tmp/mut-* /tmp/payesh-* /tmp/authzchk-* 2>/dev/null || true
+# mid-run sweep: server suites leak /tmp/payesh-*/store.json (5.6MB each).
+# R92: only delete idle copy dirs (modified >2 min ago) — the port lane may be
+# inside /tmp/mut-* concurrently; -mmin +2 protects live suites, still cleans leaks
+find /tmp -maxdepth 1 -name 'mut-*' -mmin +2 -exec rm -rf {} + 2>/dev/null || true
+rm -rf /tmp/payesh-* /tmp/authzchk-* 2>/dev/null || true
 echo "$LANE_B" | sed '/^$/d' | xargs -d '\n' -P $WORKERS -I{} bash -c 'run_copy "$@"' _ {}
 wait $PORT_PID
 
