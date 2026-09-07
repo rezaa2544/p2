@@ -13,7 +13,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-let ok = 0, bad = 0;
+let ok = 0, bad = 0, envFails = 0;
 function chk(cond, msg) {
   if (cond) { ok++; console.log('  ✅ ' + msg); }
   else { bad++; console.log('  ❌ ' + msg); }
@@ -25,9 +25,21 @@ function mutate(file, from, to, killRe, tag) {
   const badSrc = orig.replace(from, to);
   if (badSrc === orig) { chk(false, tag + ': جهش اعمال نشد (نماد پیدا نشد)'); return; }
   fs.writeFileSync(f, badSrc, 'utf8');
+  const runOnce = () => spawnSync('node', [path.join(ROOT, 'tests/reporttpl2.js')], { cwd: ROOT, encoding: 'utf8' });
+  /* R92: مرگِ زودهنگامِ کشف‌کننده (پورت اشغال/حافظه — قبل از چاپِ چکِ موردِ انتظار و خطِ خلاصه) → retry یک‌بار، بعد env-failِ صریح. هرگز «زنده ماند»ِ کاذب. */
+  const completed = (o) => /بررسی — /.test(o || '');
   try {
     execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
-    const r = spawnSync('node', [path.join(ROOT, 'tests/reporttpl2.js')], { cwd: ROOT, encoding: 'utf8' });
+    let r = runOnce();
+    if (r.status !== 0 && !killRe.test(r.stdout) && !completed(r.stdout)) {
+      const r2 = runOnce();
+      if (r2.status === 0 || killRe.test(r2.stdout) || completed(r2.stdout)) r = r2;
+    }
+    if (r.status !== 0 && !killRe.test(r.stdout) && !completed(r.stdout)) {
+      envFails++;
+      chk(false, tag + ' — خطای محیطی: چکِ موردِ انتظار هرگز چاپ نشد (مرگِ زودهنگامِ تست — پورت/حافظه) — نه کشته و نه زنده شمرده شد');
+      return;
+    }
     chk(r.status !== 0 && killRe.test(r.stdout), tag + ' کشته شد (' + killRe + ')');
   } finally {
     fs.writeFileSync(f, orig, 'utf8');

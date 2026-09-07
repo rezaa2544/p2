@@ -12,7 +12,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-let pass = 0, fail = 0;
+let pass = 0, fail = 0, envFails = 0;
 function chk(c, m) { if (c) { pass++; console.log('  ✅ ' + m); } else { fail++; console.log('  ❌ ' + m); } }
 
 function restore(p) { /* backup handled inline per mutation */ }
@@ -26,8 +26,20 @@ function restore(p) { /* backup handled inline per mutation */ }
   if (bad !== orig) {
     fs.writeFileSync(f, bad, 'utf8');
     execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
-    const r = spawnSync('node', [path.join(ROOT, 'tests/preapp2.js')], { cwd: ROOT, encoding: 'utf8' });
+    const runOnce = () => spawnSync('node', [path.join(ROOT, 'tests/preapp2.js')], { cwd: ROOT, encoding: 'utf8' });
+  /* R92: مرگِ زودهنگامِ کشف‌کننده (پورت اشغال/حافظه — قبل از چاپِ چکِ موردِ انتظار و خطِ خلاصه) → retry یک‌بار، بعد env-failِ صریح. هرگز «زنده ماند»ِ کاذب. */
+    const completed = (o) => /بررسی — /.test(o || '');
+    let r = runOnce();
+    if (r.status !== 0 && !/❌ P2/.test(r.stdout) && !completed(r.stdout)) {
+      const r2 = runOnce();
+      if (r2.status === 0 || /❌ P2/.test(r2.stdout) || completed(r2.stdout)) r = r2;
+    }
     fs.writeFileSync(f, orig, 'utf8');
+    if (r.status !== 0 && !/❌ P2/.test(r.stdout) && !completed(r.stdout)) {
+      envFails++;
+      chk(false, 'M1 — خطای محیطی: چکِ موردِ انتظار هرگز چاپ نشد (مرگِ زودهنگامِ تست — پورت/حافظه) — نه کشته و نه زنده شمرده شد');
+      return;
+    }
     chk(r.status !== 0 && r.stdout.indexOf('P2') > -1 && /❌ P2/.test(r.stdout), 'M1 کشته شد (P2 شکست خورد)');
   }
 }
@@ -41,8 +53,20 @@ function restore(p) { /* backup handled inline per mutation */ }
   if (bad !== orig) {
     fs.writeFileSync(f, bad, 'utf8');
     execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
-    const r = spawnSync('node', [path.join(ROOT, 'tests/preapp2.js')], { cwd: ROOT, encoding: 'utf8' });
+    const runOnce = () => spawnSync('node', [path.join(ROOT, 'tests/preapp2.js')], { cwd: ROOT, encoding: 'utf8' });
+  /* R92: مرگِ زودهنگامِ کشف‌کننده (پورت اشغال/حافظه — قبل از چاپِ چکِ موردِ انتظار و خطِ خلاصه) → retry یک‌بار، بعد env-failِ صریح. هرگز «زنده ماند»ِ کاذب. */
+    const completed = (o) => /بررسی — /.test(o || '');
+    let r = runOnce();
+    if (r.status !== 0 && !/❌ P4/.test(r.stdout) && !completed(r.stdout)) {
+      const r2 = runOnce();
+      if (r2.status === 0 || /❌ P4/.test(r2.stdout) || completed(r2.stdout)) r = r2;
+    }
     fs.writeFileSync(f, orig, 'utf8');
+    if (r.status !== 0 && !/❌ P4/.test(r.stdout) && !completed(r.stdout)) {
+      envFails++;
+      chk(false, 'M2 — خطای محیطی: چکِ موردِ انتظار هرگز چاپ نشد (مرگِ زودهنگامِ تست — پورت/حافظه) — نه کشته و نه زنده شمرده شد');
+      return;
+    }
     chk(r.status !== 0 && /❌ P4/.test(r.stdout), 'M2 کشته شد (P4 شکست خورد)');
   }
 }
@@ -55,8 +79,20 @@ function restore(p) { /* backup handled inline per mutation */ }
   chk(bad !== orig, 'M3 جهشِ WRITE_PERMS سرور اعمال شد');
   if (bad !== orig) {
     fs.writeFileSync(f, bad, 'utf8');
-    const r = spawnSync('node', [path.join(ROOT, 'tests/preapp3.js')], { cwd: ROOT, encoding: 'utf8' });
+    const runOnce = () => spawnSync('node', [path.join(ROOT, 'tests/preapp3.js')], { cwd: ROOT, encoding: 'utf8' });
+  /* R92: مرگِ زودهنگامِ کشف‌کننده (پورت اشغال/حافظه — قبل از چاپِ چکِ موردِ انتظار و خطِ خلاصه) → retry یک‌بار، بعد env-failِ صریح. هرگز «زنده ماند»ِ کاذب. */
+    const completed = (o) => /بررسی — /.test(o || '');
+    let r = runOnce();
+    if (r.status !== 0 && !/❌ A1 مدیر/.test(r.stdout) && !completed(r.stdout)) {
+      const r2 = runOnce();
+      if (r2.status === 0 || /❌ A1 مدیر/.test(r2.stdout) || completed(r2.stdout)) r = r2;
+    }
     fs.writeFileSync(f, orig, 'utf8');
+    if (r.status !== 0 && !/❌ A1 مدیر/.test(r.stdout) && !completed(r.stdout)) {
+      envFails++;
+      chk(false, 'M3 — خطای محیطی: چکِ موردِ انتظار هرگز چاپ نشد (مرگِ زودهنگامِ تست — پورت/حافظه) — نه کشته و نه زنده شمرده شد');
+      return;
+    }
     chk(r.status !== 0 && /❌ A1 مدیر/.test(r.stdout), 'M3 کشته شد (A1 شکست خورد)');
   }
 }
