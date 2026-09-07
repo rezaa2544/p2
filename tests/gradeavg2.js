@@ -178,12 +178,13 @@ test('G6 گروهِ تک‌نفرهٔ مصنوعی: میانگین نمی‌سا
   const skey = W(`Object.keys(classScoreContext(${ctx.cid}))[0].split('|')[0]`);
   const kNew = skey + '|term-تست|exam';
   const before = W(`db.grades.length`);
-  W(`(function(){
-    db.grades.push({id:99999001,student_id:${ctx.st2},class_id:${ctx.cid},subject_id:Number(${JSON.stringify(skey)}),term:'term-تست',exam_type:'exam',score:15});
-  })()`);
+  /* insert()/remove() — از مسیرِ applyOp که نسخهٔ کشِ نمرات (_GRADE_CACHE_VERSION)
+     را تازه می‌کند؛ push/spliceِ مستقیم به db.grades، کشِ قدیمی برمی‌گرداند و
+     این آزمون (که آستانهٔ ۲ نفر را می‌سنجد) بی‌معنی می‌شود (جهش M2 زنده می‌ماند). */
+  W(`insert('grades',{student_id:${ctx.st2},class_id:${ctx.cid},subject_id:Number(${JSON.stringify(skey)}),teacher_id:0,term:'term-تست',exam_type:'exam',score:15,max_score:20})`);
   const hasNew = W(`!!classScoreContext(${ctx.cid})[${JSON.stringify(kNew)}]`);
   assert(!hasNew, 'گروهِ تک‌نفرهٔ مصنوعی میانگین ساخت — آستانهٔ ۲ نفر شکست');
-  W(`db.grades.splice(${before-1},1)`);
+  W(`remove('grades',db.grades[db.grades.length-1].id)`);
   assert(W(`db.grades.length`) === before, 'ردیفِ مصنوعی پاک نشد');
 });
 
