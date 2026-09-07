@@ -1759,6 +1759,10 @@ function saveLog(){
 /** آیا ذخیره‌سازی محلی دچار مشکل است؟ (برای نشانگر وضعیت) */
 function storageFull(){ return STORAGE_FULL; }
 function applyLog(){SYNC_MUTED=true;log.forEach(e=>applyOp(e,false));SYNC_MUTED=false;}
+/* نسخهٔ داده (فاز ۲ بند ۲): با هر عملیاتِ ثبت‌شده زیاد می‌شود تا کش‌های
+   هر-رندر (مثلِ classScoreContext) کهنه‌شدن را بفهمند. */
+var _GRADE_CACHE_VERSION=0;
+
 function applyOp(op,record=true){
   const arr=db[op.c];
   if(op.t==='ins'){
@@ -1805,6 +1809,7 @@ function applyOp(op,record=true){
        ثبت در دفترچه رخ می‌دهد، نه در مسیر خواندن. */
     if(op.t==='ins' && op.data) op = Object.assign({}, op, { data: Object.assign({}, op.data) });
     log.push(op);saveLog();
+    _GRADE_CACHE_VERSION++;
     /* هر تغییر واقعی کاربر وارد صف همگام‌سازی با سرور می‌شود */
     /* در حالت سروری، عملیاتی که کاربرِ احراز‌شده ندارد (مثل تولیدِ
        دنیای دمو پیش از ورود) وارد صفِ ارسال نمی‌شود: سرور نمی‌تواند آن
@@ -1869,10 +1874,18 @@ const classSubjectMembers=(cid,sid)=>{
  * داشته باشند مقدار تولید می‌شود — میانگینِ تک‌نفره بی‌معناست.
  * عضویتِ هر درس از classSubjectMembers (مدل چندپایه، بند ۲) می‌آید.
  */
+/* فاز ۲ (بند ۲): زمینه هر کلاس تا بعد از نخستین تغییرِ داده کش می‌شود.
+   پیش از این هر رندر کلِ db.grades را می‌گذشت — الگوی خطی در مسیرِ
+   رندر (نقضِ قاعدهٔ ۸). نسخهٔ _GRADE_CACHE_VERSION در applyOp بالا
+   می‌رود و کشِ کهنه را باطل می‌کند. */
+var _gradeCache=Object.create(null);
 function classScoreContext(classId){
+  var ver=(typeof _GRADE_CACHE_VERSION!=='undefined')?_GRADE_CACHE_VERSION:0;
+  var hit=_gradeCache[classId];
+  if(hit && hit.ver===ver) return hit.ctx;
   var cls=byId('classes',Number(classId));
   var out=Object.create(null);
-  if(!cls||!db.grades) return out;
+  if(!cls||!db.grades){ _gradeCache[classId]={ver:ver,ctx:out}; return out; }
   var groups=Object.create(null);
   db.grades.forEach(function(g){
     var k=g.subject_id+'|'+g.term+'|'+g.exam_type;
@@ -1897,6 +1910,7 @@ function classScoreContext(classId){
     if(cnt<2) return;
     out[k]={avg:n?sum/n:0, avgNorm:n?sumN/n:0, n:n, students:cnt};
   });
+  _gradeCache[classId]={ver:ver,ctx:out};
   return out;
 }
 /** تطبیق نقشهٔ درس↔دانش‌آموز (برای ماژول آتی؛ امروز فراخوانی نمی‌شود) */
