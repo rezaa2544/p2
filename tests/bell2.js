@@ -81,6 +81,12 @@ const REF = W(`(function(){
 const T_P2 = "new Date('" + REF + "T09:05:00')";
 const T_P3 = "new Date('" + REF + "T10:00:00')";
 const T_FRI = "new Date('2026-09-11T10:00:00')"; /* fixed Friday — always Friday */
+/* schedule day of REF (app: Sat=0..Fri=6) — the bell pattern is the same every school day, but the demo assigns different teachers per weekday */
+const REFDAY = W(`(function(){
+  var p='${REF}'.split('-');
+  var w=new Date(+p[0], +p[1]-1, +p[2]).getDay();
+  return (w+1)%7;
+})()`);
 const TODAY_OK_FOR_LIVE_TICK = W(`(function(){
   var w=new Date().getDay(); if(!(w===0||w===1||w===2||w===3||w===6)) return false;
   return !(db.attendance_modes||[]).some(function(m){return m.date===todayISO()&&m.school_id===1;});
@@ -92,7 +98,9 @@ test('B1 — کارتِ ولی: هر سه فرزند + اسم دبیرِ زنگ�
     var kids=db.parent_links.filter(p=>p.parent_id===par.id).map(p=>p.student_id);
     return {par:par.id, kids:kids,
       names:kids.map(k=>byId('users',k).full_name),
-      t6:(byId('users',6)||{}).full_name,
+      t6:(function(){var c=classOf(16);
+        var r=db.schedule.filter(function(x){return c&&x.class_id===c.id&&x.day===${REFDAY}&&Number(x.period)===2;})[0];
+        return r?(byId('users',r.teacher_id)||{}).full_name:null;})(),
       c16:(classOf(16)||{}).name};
   })()`);
   W(`S.user=byId('users',${who.par});S.persona=null;S.boss=null;`);
@@ -109,11 +117,11 @@ test('B1 — کارتِ ولی: هر سه فرزند + اسم دبیرِ زنگ�
 test('B2 — اسم دبیر با عوضِ زنگ عوض می‌شود', () => {
   const n2 = W(`(function(){
     var c=(classOf(16)||{}).id;
-    var r=db.schedule.filter(x=>x.class_id===c&&x.day===0&&Number(x.period)===2)[0];
+    var r=db.schedule.filter(x=>x.class_id===c&&x.day===${REFDAY}&&Number(x.period)===2)[0];
     return r?byId('users',r.teacher_id).full_name:null;})()`);
   const n3 = W(`(function(){
     var c=(classOf(16)||{}).id;
-    var r=db.schedule.filter(x=>x.class_id===c&&x.day===0&&Number(x.period)===3)[0];
+    var r=db.schedule.filter(x=>x.class_id===c&&x.day===${REFDAY}&&Number(x.period)===3)[0];
     return r?byId('users',r.teacher_id).full_name:null;})()`);
   assert(n2 && n3 && n2 !== n3, 'دبیرهای زنگ ۲ و ۳ در دادهٔ نمونه فرق دارند');
   const s2 = W(`childNowStatus(16,${T_P2})`);

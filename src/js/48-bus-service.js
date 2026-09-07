@@ -412,10 +412,10 @@ function generateBusDemo(){
     var vpr = busProjectOnRoute(pts, vpt[0], vpt[1]);
     add('bus_locations',{route_id:route.id, student_id:0, source:'driver',
       pos: Math.round(vpr.pos*10)/10, lat:vpt[0], lng:vpt[1], acc:12, speed:0, off:0,
-      recorded_at:todayISO()+'T07:40:00.000Z', by:drv.id});
+      recorded_at:_demoAt(80), by:drv.id});
     if(studs.length>1) add('bus_locations',{route_id:route.id, student_id:studs[1].id, source:'student',
       pos: Math.round(vpr.pos*10)/10, lat:vpt[0], lng:vpt[1], acc:15, speed:0, off:0,
-      recorded_at:todayISO()+'T07:42:00.000Z', by:studs[1].id});
+      recorded_at:_demoAt(78), by:studs[1].id});
   }
   /* بند ۱۴: پیگیریِ واقعیِ مغایرتِ دمو (باز، با یادداشت) */
   if(studs.length>1 && !db.bus_followups.length){
