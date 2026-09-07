@@ -43,10 +43,18 @@ const classSubjectMembers=(cid,sid)=>{
  * داشته باشند مقدار تولید می‌شود — میانگینِ تک‌نفره بی‌معناست.
  * عضویتِ هر درس از classSubjectMembers (مدل چندپایه، بند ۲) می‌آید.
  */
+/* فاز ۲ (بند ۲): زمینه هر کلاس تا بعد از نخستین تغییرِ داده کش می‌شود.
+   پیش از این هر رندر کلِ db.grades را می‌گذشت — الگوی خطی در مسیرِ
+   رندر (نقضِ قاعدهٔ ۸). نسخهٔ _GRADE_CACHE_VERSION در applyOp بالا
+   می‌رود و کشِ کهنه را باطل می‌کند. */
+var _gradeCache=Object.create(null);
 function classScoreContext(classId){
+  var ver=(typeof _GRADE_CACHE_VERSION!=='undefined')?_GRADE_CACHE_VERSION:0;
+  var hit=_gradeCache[classId];
+  if(hit && hit.ver===ver) return hit.ctx;
   var cls=byId('classes',Number(classId));
   var out=Object.create(null);
-  if(!cls||!db.grades) return out;
+  if(!cls||!db.grades){ _gradeCache[classId]={ver:ver,ctx:out}; return out; }
   var groups=Object.create(null);
   db.grades.forEach(function(g){
     var k=g.subject_id+'|'+g.term+'|'+g.exam_type;
@@ -71,6 +79,7 @@ function classScoreContext(classId){
     if(cnt<2) return;
     out[k]={avg:n?sum/n:0, avgNorm:n?sumN/n:0, n:n, students:cnt};
   });
+  _gradeCache[classId]={ver:ver,ctx:out};
   return out;
 }
 /** تطبیق نقشهٔ درس↔دانش‌آموز (برای ماژول آتی؛ امروز فراخوانی نمی‌شود) */

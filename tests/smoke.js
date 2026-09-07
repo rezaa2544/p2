@@ -2831,8 +2831,14 @@ test('یادآور: محصول رمز کاربری ندارد — ستون آر�
      رمز دوباره معرفی شود. این آزمون قفل می‌کند که ورود همچنان از
      ستونِ آرشیوی استفاده نکند. */
   const fs = require('fs'), path = require('path');
-  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'js', '19-actions.js'), 'utf8');
-  const loginBlock = src.slice(src.indexOf('login(){'), src.indexOf('logout(){'));
+  const srcJs = path.join(__dirname, '..', 'src', 'js');
+  /* فاز ۲: اکشن‌هایِ ورود در 19-actions-core.js است — فایلِ دارای login را پیدا کن */
+  let loginBlock = '';
+  for (const f of fs.readdirSync(srcJs).filter(f => /^19-actions-.+\.js$/.test(f))){
+    const src = fs.readFileSync(path.join(srcJs, f), 'utf8');
+    const i0 = src.indexOf('login(){');
+    if (i0 > -1){ loginBlock = src.slice(i0, src.indexOf('logout(){', i0)); break; }
+  }
   assert(loginBlock !== '' && loginBlock.indexOf('password') === -1,
     'تابعِ ورود به ستونِ آرشیویِ رمز دست زده — مدلِ بدونِ رمز شکسته شده');
   const formSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'js', '06-login.js'), 'utf8');
@@ -2853,17 +2859,19 @@ test('دیسپاتچِ A: هیچ اکشنی پارامترِ اعلام‌شده
      (A[a]()) — پارامترِ اعلام‌شدهٔ (el,id) آن‌ها را با undefined سای می‌کند
      و دکمه‌ها بی‌صدا می‌میرند (pre-confirm/pre-reject/pre-del/bus-follow-open).
      این اسکنِ استاتیک همهٔ اکشن‌هایِ A را نگه می‌دارد (کشف: با کلیکِ
-     واقعیِ DOM در tests/uiclick.js، نه با فراخوانیِ مستقیمِ تابع). */
+     واقعیِ DOM در tests/uiclick.js، نه با فراخوانیِ مستقیمِ تابع).
+     فاز ۲: A در ۹ فایلِ 19-actions-*.js است — همه اسکن می‌شوند. */
   const fs = require('fs'), path = require('path');
-  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'js', '19-actions.js'), 'utf8');
-  const a0 = src.indexOf('const A={');
-  const a1 = src.indexOf('if(A[a]){e.preventDefault();A[a]();}');
-  assert(a0 > -1 && a1 > a0, 'مرزِ آبجکتِ A در 19-actions پیدا نشد');
-  const body = src.slice(a0, a1);
-  const re = /(?:^|\n)\s*('[a-zA-Z0-9_-]+')\s*\(([^)]*)\)\s*\{/g;
+  const srcJs = path.join(__dirname, '..', 'src', 'js');
+  const files = fs.readdirSync(srcJs).filter(f => /^19-actions-.+\.js$/.test(f));
+  assert(files.length >= 9, 'فایل‌های 19-actions-* پیدا نشدند');
+  const re = /(?:^|\n) {3}('[a-zA-Z0-9_-]+')\s*\(([^)]*)\)\s*\{/g;
   const bad = [];
-  let m;
-  while ((m = re.exec(body))) if (m[2].trim()) bad.push(m[1].replace(/'/g, ''));
+  for (const f of files){
+    const src = fs.readFileSync(path.join(srcJs, f), 'utf8');
+    let m;
+    while ((m = re.exec(src))) if (m[2].trim()) bad.push(f + ':' + m[1].replace(/'/g, ''));
+  }
   assert(bad.length === 0,
     'اکشن‌هایِ A با پارامترِ اعلام‌شده (سایِ el/id): ' + bad.join(', '));
 });

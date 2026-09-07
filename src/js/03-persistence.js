@@ -62,6 +62,10 @@ function saveLog(){
 /** آیا ذخیره‌سازی محلی دچار مشکل است؟ (برای نشانگر وضعیت) */
 function storageFull(){ return STORAGE_FULL; }
 function applyLog(){SYNC_MUTED=true;log.forEach(e=>applyOp(e,false));SYNC_MUTED=false;}
+/* نسخهٔ داده (فاز ۲ بند ۲): با هر عملیاتِ ثبت‌شده زیاد می‌شود تا کش‌های
+   هر-رندر (مثلِ classScoreContext) کهنه‌شدن را بفهمند. */
+var _GRADE_CACHE_VERSION=0;
+
 function applyOp(op,record=true){
   const arr=db[op.c];
   if(op.t==='ins'){
@@ -108,6 +112,7 @@ function applyOp(op,record=true){
        ثبت در دفترچه رخ می‌دهد، نه در مسیر خواندن. */
     if(op.t==='ins' && op.data) op = Object.assign({}, op, { data: Object.assign({}, op.data) });
     log.push(op);saveLog();
+    _GRADE_CACHE_VERSION++;
     /* هر تغییر واقعی کاربر وارد صف همگام‌سازی با سرور می‌شود */
     /* در حالت سروری، عملیاتی که کاربرِ احراز‌شده ندارد (مثل تولیدِ
        دنیای دمو پیش از ورود) وارد صفِ ارسال نمی‌شود: سرور نمی‌تواند آن
