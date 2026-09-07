@@ -1083,7 +1083,7 @@ function coreActions(e, el, id, a, rawId){
       `sid` از `data-sid` می‌آید — یعنی ادعایِ DOM. اثباتِ زنده: ولیِ
       مدرسهٔ ۶ با دکمهٔ دست‌ساز، گواهیِ نمراتِ دانش‌آموزِ مدرسهٔ ۱ را گرفت
       **همراهِ نام و کدِ ملی**. از نشتِ ICS جدی‌تر است چون PII دارد.
-      نگهبان: `tests/certify.js` بخشِ C7 (جهش‌آزموده). */
+      نگهبان: `tests/certify.js` بخشِ C8 (جهش‌آزموده). */
    'cert-print'(){
      const sid=Number(el.dataset.sid)||(S.user&&S.user.role==='student'?S.user.id:0);
      const chk=certAllowedStudent(sid);
