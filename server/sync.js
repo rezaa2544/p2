@@ -157,24 +157,26 @@ function inScope(session, coll, recId, data){
   function store_get(c){ return (get_store() || {})[c] || []; }
 
   /* Round 89 — ownership that does not ride on student_id:
-     messages  : the sender (from_id) owns the record — chat for parent/teacher/student
-                 (fail-closed: a message op without from_id is refused for non-admins)
+     messages  : for record-scoped roles (student/parent/teacher) the sender (from_id)
+                 owns the record — chat (fail-closed without from_id).
+                 manager/edu_office keep the pre-existing school-level path (S20).
      notifications: the recipient (user_id) may update their own record (read badge) */
-  if(coll === 'messages'){
+  function msgOwnerOk(){
     const f = (data && data.from_id != null) ? Number(data.from_id)
              : (rec && rec.from_id != null) ? Number(rec.from_id) : null;
-    if(f == null) return false;
-    return f === u.id;
+    return f != null && f === u.id;
   }
   if(coll === 'notifications' && rec && Number(rec.user_id) === u.id) return true;
 
   if(u.role === 'student'){
+    if(coll === 'messages') return msgOwnerOk();
     if(coll === 'users' && rec && rec.id === u.id) return true;
     if(rec && rec.student_id != null) return rec.student_id === u.id;
     if(data && data.student_id != null) return Number(data.student_id) === u.id;
     return false;
   }
   if(u.role === 'parent'){
+    if(coll === 'messages') return msgOwnerOk();
     const kids = (get_store().parent_links || []).filter(l => l.parent_id === u.id).map(l => l.student_id);
     const sid = rec ? rec.student_id : (data && data.student_id);
     /* Round 89 — parent_links (kid-reject flow removes their own link):
@@ -184,6 +186,7 @@ function inScope(session, coll, recId, data){
     return kids.indexOf(Number(sid)) > -1;
   }
   if(u.role === 'teacher'){
+    if(coll === 'messages') return msgOwnerOk();
     /* Round 89 — class-level collections: a teacher is bound to classes they actually
        teach (homeroom or schedule) — fail-closed for any other class.
        meeting_slots: their own slots (created with parent_id/student_id null). */
