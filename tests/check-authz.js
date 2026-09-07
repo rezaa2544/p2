@@ -2,9 +2,9 @@
 /* ═══════════════════════════════════════════════════════════════════
    تستِ tools/check-authz.js (فاز ۲ بند ۳)
    ───────────────────────────────────────────────────────────────────
-   P1 خطاگیریِ واقعی: ۵۳ ناهماهنگیِ شناخته‌شده (تک‌به‌تک ثابت‌شده در
-      بازبینی) باید دقیقاً همان فهرست باشد — نه کمتر (چک‌کننده کار
-      می‌کند) و نه بیشتر (بی‌حقیقتی/خطایِ کاذب نیست).
+   P1 هماهنگیِ کامل (W4): درختِ فعلی باید صفر ناهماهنگی داشته باشد و
+      هیچ‌یک از ۵۳ ناهماهنگیِ شناخته‌شدهٔ قبل (فریز‌شده در این فایل —
+      همهٔشان واقعی بودند و در W4 رفع شدند) نباید بازگردد.
    P2 بدونِ خطایِ کاذب: درختِ مصنوعیِ هم‌آرا → خروجی ۰.
    P3 کشفِ انحرافِ تازه: هم‌آن درخت + یک نوشتهٔ بی‌مجوز → خروجی ۱
       با فهرستِ درست.
@@ -88,15 +88,13 @@ const strip = out => out.split('\n').filter(l => / — /.test(l) && l.includes('
 
 console.log('▸ فاز ۲ بند ۳ — چک‌کنندهٔ هماهنگی مجوزها');
 
-/* ── P1: فهرستِ شناخته‌شده ── */
+/* ── P1: هماهنگیِ کامل (W4) ── */
 const real = run({}, ROOT);
-check('P1a درختِ فعلی: خروجی ۱ (ناهماهنگی‌هایِ شناخته‌شده)', real.code === 1, 'code=' + real.code);
+check('P1a درختِ فعلی: خروجی ۰ و «تطبیق کامل»', real.code === 0 && /تطبیق کامل/.test(real.out), 'code=' + real.code);
 const realList = strip(real.out);
-check('P1b دقیقاً ۵۳ ناهماهنگی — نه کمتر', realList.length === FROZEN.length, 'got=' + realList.length);
-const missing = FROZEN.filter(f => !realList.includes(f));
-const extra = realList.filter(f => !FROZEN.includes(f));
-check('P1c همهٔ ۵۳ موردِ شناخته‌شده گزارش شد', missing.length === 0, 'گمشده: ' + missing.join(' | '));
-check('P1d موردِ بی‌ربط/کاذبی گزارش نشد (فریزِ فهرست)', extra.length === 0, 'اضافه: ' + extra.join(' | '));
+check('P1b صفر ناهماهنگی', realList.length === 0, 'got=' + JSON.stringify(realList));
+const back = realList.filter(f => FROZEN.includes(f));
+check('P1c هیچ‌کدام از ۵۳ موردِ شناخته‌شدهٔ قبل بازنگشته (لنگرِ پس‌رفت)', back.length === 0, 'بازگشته: ' + back.join(' | '));
 
 /* ── P2/P3: درختِ مصنوعی ── */
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'authzchk-'));
