@@ -956,6 +956,12 @@ function render(){
   }
 }
 setTimeout(()=>{
+  /* دفترچه را پیش از مولدِ دنیای دمو بخوان: مولد (generateExtras) op
+     ثبت می‌کند و saveLog، ledgerِ ذخیره‌شده را با وضعیتِ حافظه‌ایِ
+     تازه (تقریباً خالی) بازنویسی می‌کند و در هر بارِ راه‌اندازی،
+     تغییراتِ نشست‌های پیشین از دفترچه پاک می‌شد.
+     (کشفِ دورِ 85 بندِ W1 — آزمون: tests/compact.js) */
+  loadLog();
   generate(); generateExtras(); generateP8(); generateP9(); generateP10();
   if(typeof generateP11==='function') generateP11();
   if(typeof generateP12=== 'function') generateP12();
@@ -967,7 +973,8 @@ setTimeout(()=>{
   if(typeof generateAssetsDemo==='function') generateAssetsDemo();
   if(typeof generateSidaDemo==='function') generateSidaDemo();
   if(typeof generateSchoolModeDemo==='function') generateSchoolModeDemo();
-  loadLog(); applyLog(); initSync();
+  /* loadLog در ابتدای این بلاک اجرا شده — اینجا فقط بازپخش و همگام‌سازی */
+  applyLog(); initSync();
 
   /* اتصال به سرور (مرحلهٔ ۱): اگر برنامه از سرور سرو می‌شود، وضعیتِ نشست
      تصمیمِ سرور است: /api/auth/me با کوکی بررسی می‌شود. نشستِ معتبر →
