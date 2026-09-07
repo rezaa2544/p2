@@ -1719,6 +1719,15 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
   const id=e.target.id;
 
+  /* انتخابگرِ پوسته (۶۷): <select data-act="theme-pick"> — روی change
+     عمل می‌کند، نه click. `el` را محلی می‌سازیم چون این شنونده
+     مثلِ شنوندهٔ click متغیّرِ el ندارد. */
+  if(e.target.dataset && e.target.dataset.act==='theme-pick' &&
+     typeof THEME_ACTIONS!=='undefined' && THEME_ACTIONS['theme-pick']){
+    THEME_ACTIONS['theme-pick'](e.target);
+    return;
+  }
+
   /* زنگ‌ها: شروع روز ⇒ همهٔ بازه‌های همان روز جابه‌جا می‌شوند (دور ۶۳) */
   if(e.target.classList && e.target.classList.contains('bl-start') && window._edit){
     var bd0=Number(e.target.dataset.day);
