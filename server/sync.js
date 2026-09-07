@@ -332,6 +332,28 @@ function createSync(ctx){
       }
       store.__processed_uids[op.uid] = Date.now();
     }
+    /* PR#2 (دور ۸۸) — سمتِ سرور: درخواستِ مرخصیِ pending از نقشِ درخواست‌کننده
+       (parent/student/teacher) → اعلانِ مدیرِ همان مدرسه را خودِ سرور می‌سازد.
+       کلاینت نمی‌تواند: inScope، «notifications» از والد را به‌ساختار رد می‌کند
+       (رکوردِ اعلان student_id ندارد) — اثباتِ زنده: 403 out_of_scope. */
+    for(const op of apply){
+      if(op.c === 'leaves' && op.t === 'ins' && op.data && op.data.status === 'pending'
+         && s.role !== 'manager' && s.role !== 'superadmin'){
+        const d = op.data;
+        const mgr = (store.users || []).find(x => x.school_id === d.school_id && x.role === 'manager');
+        if(mgr){
+          const st = (store.users || []).find(x => x.id === d.student_id);
+          if(!Array.isArray(store.notifications)) store.notifications = [];
+          store.notifications.push({
+            id: nextId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'leave',
+            title: '📨 درخواست موجه (غیبت)',
+            body: 'برای ' + ((st && st.full_name) || '') + ' غیبتِ ' + d.from_date + ' موجه اعلام شد — در انتظارِ بررسی.',
+            link: 'leaves', read: 0, created_at: new Date().toISOString().slice(0, 10)
+          });
+          audit('leave_request_notified', { user_id: s.id, leave_id: d.id, school_id: d.school_id });
+        }
+      }
+    }
     if(apply.length) ctx.markDirty();
     audit('sync_ok', { user_id: s.id, ops: apply.length });
     sendJson(res, 200, { ok: true, results });

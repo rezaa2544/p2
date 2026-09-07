@@ -195,6 +195,40 @@ async function main() {
   const forgedIns = (finalSrc.leaves || []).filter(l => l.student_id === KID && l.reason === 'دور 85 P0-1' && l.status === 'approved' && !l.kind);
   chk('S12b رکوردِ جعلیِ S2 ساخته نشده است', forgedIns.length === 0);
 
+  /* ── PR#2 (دور ۸۸) — موجه‌سازیِ سریعِ ولی: مالکیت + اعلانِ مدیر ── */
+
+  /* S14 — والد: ins leave برای دانش‌آموزِ دیگر (همان مدرسه) → out_of_scope */
+  const r14 = await syncOps(cP, [{ t: 'ins', c: 'leaves', data: { school_id: 1, student_id: FOREIGN.student_id, from_date: '2026-09-12', to_date: '2026-09-12', reason: 'PR2-S14', status: 'pending', created_at: '2026-09-08' }, __by: P.id }]);
+  const s14 = r14.json && r14.json.results && r14.json.results[0];
+  chk('S14 والد: ins leave برای دانش‌آموزِ بی‌ربط → 403 out_of_scope', r14.status === 403 && s14 && !s14.ok && s14.code === 'out_of_scope', JSON.stringify(r14.json).slice(0, 140));
+
+  /* S15 — والد: ins اعلان برای مدیر → out_of_scope (مبنایِ هُکِ سروری) */
+  const r15 = await syncOps(cP, [{ t: 'ins', c: 'notifications', data: { user_id: M1.id, school_id: 1, type: 'leave', title: 'PR2-S15', body: 'x', link: 'leaves', read: 0, created_at: '2026-09-08' }, __by: P.id }]);
+  const s15 = r15.json && r15.json.results && r15.json.results[0];
+  chk('S15 والد: ins اعلان (student_id ندارد) → 403 out_of_scope', r15.status === 403 && s15 && !s15.ok && s15.code === 'out_of_scope', JSON.stringify(r15.json).slice(0, 140));
+
+  /* S16 — والد: ins leaveِ pending برای فرزندِ خودش → ok + اعلانِ مدیر از سمتِ سرور */
+  const notifsBefore = (JSON.parse(fs.readFileSync(storeFile, 'utf8')).notifications || []).length;
+  const r16 = await syncOps(cP, [{ t: 'ins', c: 'leaves', data: { school_id: 1, student_id: KID, from_date: '2026-09-13', to_date: '2026-09-13', reason: 'PR2-S16', status: 'pending', created_at: '2026-09-08' }, __by: P.id }]);
+  const s16 = r16.json && r16.json.results && r16.json.results[0];
+  chk('S16a والد: ins leaveِ pending برای فرزند → ok', r16.status === 200 && s16 && s16.ok, JSON.stringify(r16.json).slice(0, 140));
+  let srvNotif = null;
+  for (let i = 0; i < 10 && !srvNotif; i++) {
+    await sleep(1000);
+    const cand = (JSON.parse(fs.readFileSync(storeFile, 'utf8')).notifications || []);
+    srvNotif = cand.find(n => n.user_id === M1.id && n.type === 'leave' && n.link === 'leaves' && String(n.body || '').indexOf('2026-09-13') > -1);
+  }
+  chk('S16b اعلانِ مدیر روی disk نشست (ساخته‌شده از سمتِ سرور)', !!srvNotif);
+
+  /* S17 — مدیر: ins leaveِ pending (درخواستِ خودِ مدیر) → ok ولی بدونِ اعلان */
+  const notifsMid = (JSON.parse(fs.readFileSync(storeFile, 'utf8')).notifications || []).length;
+  const r17 = await syncOps(cM, [{ t: 'ins', c: 'leaves', data: { school_id: 1, student_id: KID, from_date: '2026-09-14', to_date: '2026-09-14', reason: 'PR2-S17', status: 'pending', created_at: '2026-09-08' }, __by: M1.id }]);
+  const s17 = r17.json && r17.json.results && r17.json.results[0];
+  chk('S17a مدیر: ins leaveِ pending → ok', r17.status === 200 && s17 && s17.ok, JSON.stringify(r17.json).slice(0, 140));
+  await sleep(2500);
+  const notifsAfter = (JSON.parse(fs.readFileSync(storeFile, 'utf8')).notifications || []).length;
+  chk('S17b اعلانِ تازه‌ای برایِ درخواستِ مدیر ساخته نشده', notifsAfter === notifsMid, notifsAfter + ' vs ' + notifsMid);
+
   /* S13 — آدیت */
   await sleep(2500);
   const audit = fs.existsSync(auditFile) ? fs.readFileSync(auditFile, 'utf8') : '';
