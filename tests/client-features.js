@@ -254,6 +254,59 @@ async function main() {
     W(`S.persona=null;`);
   });
 
+  /* ── F5: نشتِ دامنه در ICS (دورِ ۸۹) ──────────────────────────────
+     رگرسیونِ امنیتی. مهاجم = کاربرِ معتبر که با دستکاریِ DOM دکمه‌ای با
+     data-id بیگانه می‌سازد. پیش از رفع، اکشن همان شناسه را هدف می‌گرفت و
+     تقویمِ دانش‌آموزِ مدرسهٔ دیگر ساخته می‌شد. */
+  test('F5 — ICS: شناسهٔ جعلیِ data-id نادیده گرفته می‌شود (نشتِ بین‌مدرسه‌ای)', () => {
+    /* ولیِ چندفرزندی را بنشان و فرزندِ معتبرش را هدف کن */
+    const kid = W(`(function(){
+      var l=db.parent_links.filter(function(p){return p.parent_id===${par.id};});
+      return l.length?l[0].student_id:null;})()`);
+    assert(kid != null, 'فرزندی برای ولیِ آزمون نیست');
+    W(`S.user=byId('users',${par.id});S.persona='parent';S.child=${kid};S.route='record';`);
+
+    /* دانش‌آموزی از مدرسهٔ دیگر که فرزندِ این ولی نیست */
+    const alien = W(`(function(){
+      var mine=db.parent_links.filter(function(p){return p.parent_id===${par.id};})
+                 .map(function(p){return p.student_id;});
+      var myCls=classOf(${kid});
+      var s=db.users.find(function(u){
+        if(u.role!=='student'||mine.indexOf(u.id)>-1) return false;
+        var c=classOf(u.id);
+        return c && myCls && c.school_id!==myCls.school_id;
+      });
+      return s?s.id:null;})()`);
+    assert(alien != null, 'دانش‌آموزِ مدرسهٔ دیگر پیدا نشد');
+
+    /* محتوایِ مرجع: تقویمِ بیگانه و تقویمِ فرزندِ خودی */
+    const alienIcs = W(`icsForStudent(${alien})`);
+    const mineIcs  = W(`icsForStudent(${kid})`);
+
+    /* دانلود را قلاب بگیر تا محتوایِ واقعیِ فایل ثبت شود */
+    W(`window.__cap=null;
+       if(typeof Blob!=='undefined'){ window.__origBlob=window.Blob; }
+       URL.createObjectURL=function(b){ window.__cap=window.__capText; return 'blob:t'; };
+       URL.revokeObjectURL=function(){};
+       window.__icsOrig=icsForStudent;
+       icsForStudent=function(sid){ var t=window.__icsOrig(sid); window.__capText=t; window.__capSid=sid; return t; };`);
+
+    clickAct('ics-export', alien);          /* ← حملهٔ واقعی */
+
+    const usedSid = W(`window.__capSid`);
+    const captured = W(`window.__capText`);
+
+    W(`icsForStudent=window.__icsOrig;`);   /* پاک‌سازی */
+
+    assert(Number(usedSid) !== Number(alien),
+      'شناسهٔ بیگانه (' + alien + ') هدف قرار گرفت — نشتِ دامنه باز است');
+    assert(Number(usedSid) === Number(kid),
+      'هدف باید فرزندِ خودِ ولی (' + kid + ') باشد، ولی ' + usedSid + ' بود');
+    if (alienIcs !== mineIcs) {
+      assert(captured !== alienIcs, 'محتوایِ تولیدشده مالِ دانش‌آموزِ بیگانه است');
+    }
+  });
+
   await Promise.all(testQueue);
   const ok = pass;
   console.log('\n────────────────────────────────────────────────────');
