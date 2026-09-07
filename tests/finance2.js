@@ -341,6 +341,53 @@ test('FN-R1 — receipt-tuition با شناسهٔ بیگانه چاپ نمی‌�
   W(`window.open=window.__origOpen;`);
 });
 
+/* FN-R2 — رگرسیونِ امنیتی (دورِ ۸۹): رسیدِ قسط هم گاردِ مالکیت ندارد.
+   خواهرِ FN-R1؛ اینجا شناسه، شناسهٔ قسط است نه صورتحساب. */
+test('FN-R2 — receipt (رسیدِ قسط) با شناسهٔ بیگانه چاپ نمی‌کند', () => {
+  const fx = JSON.parse(W(`JSON.stringify((function(){
+    var c={};
+    db.parent_links.forEach(function(l){(c[l.parent_id]=c[l.parent_id]||[]).push(l.student_id);});
+    var pid=Object.keys(c)[0]; if(!pid) return null;
+    var kid=c[pid][0], mine=c[pid], myC=classOf(kid);
+    var alien=db.users.find(function(u){
+      if(u.role!=='student'||mine.indexOf(u.id)>-1) return false;
+      var x=classOf(u.id); return x&&myC&&x.school_id!==myC.school_id;});
+    if(!alien) return null;
+    function mkInst(sid){
+      var st=byId('users',sid)||{};
+      return insert('installments',{school_id:st.school_id,student_id:sid,seq:1,
+        amount:500000,paid_amount:500000,status:'paid',due_date:todayISO(),
+        ref_id:'RG89-'+sid}).id;
+    }
+    return {par:Number(pid), kid:kid, aInst:mkInst(alien.id), mInst:mkInst(kid)};
+  })())`));
+  assert(fx, 'فیکسچر: ولی + دانش‌آموزِ مدرسهٔ دیگر لازم است');
+
+  W(`window.__rc2=null; window.__origOpen2=window.open;
+     window.open=function(){ var b='';
+       return { document:{ write:function(h){ b+=h; window.__rc2=b; }, close:function(){} },
+                focus:function(){}, print:function(){}, close:function(){} }; };
+     S.user=byId('users',${fx.par}); S.persona='parent'; S.boss=null; S.child=${fx.kid};`);
+
+  const click = (iid) => W(`(function(){
+    window.__rc2=null;
+    var e=document.createElement('button');
+    e.setAttribute('data-act','receipt');
+    e.setAttribute('data-id','${iid}');
+    document.body.appendChild(e); e.click(); e.remove();
+  })()`);
+
+  click(fx.aInst);
+  assert(!W(`window.__rc2`), 'رسیدِ قسطِ دانش‌آموزِ بیرون از دامنه چاپ شد!');
+
+  click(fx.mInst);
+  const own = W(`window.__rc2`);
+  assert(own && String(own).length > 100,
+    'رسیدِ قسطِ فرزندِ خودی چاپ نشد — رفع، رفتارِ درست را شکسته');
+
+  W(`window.open=window.__origOpen2;`);
+});
+
 await Promise.all(testQueue);
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));
