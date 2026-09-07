@@ -235,6 +235,60 @@ async function cfFxTearDown(){
     assert(g.d === 'GNT-BHUNW5', 'golden transfer(999,3) نادرست: ' + g.d);
   });
 
+  await sec('C8 نشتِ دامنه: cert-print با data-sid جعلی چاپ نمی‌کند (دورِ ۸۹)', async () => {
+    /* رگرسیونِ امنیتی. `cert-print` تنها عضوِ خانواده بود که
+       certAllowedStudent را صدا نمی‌زد؛ ولیِ مدرسهٔ ۶ با دکمهٔ دست‌ساز
+       گواهیِ نمراتِ دانش‌آموزِ مدرسهٔ ۱ را می‌گرفت — همراهِ نام و کدِ ملی. */
+    const fx = await cfFx();
+    try{
+      /* دانش‌آموزی از مدرسهٔ دیگر (بیرون از دامنهٔ این ولی) */
+      const alien = JSON.parse(W(`JSON.stringify((function(){
+        var s=db.users.filter(function(x){return x.role==='student'&&x.school_id!==${fx.sc};})[0];
+        return s?s.id:0;
+      })())`));
+      assert(alien, 'فیکسچر: دانش‌آموزِ مدرسهٔ دیگر لازم است');
+
+      /* پنجرهٔ چاپ را قلاب بگیر تا محتوایِ واقعی سنجیده شود */
+      W(`window.__certPrinted=null;
+         window.__origOpen=window.open;
+         window.open=function(){ var b='';
+           return { document:{ write:function(h){ b+=h; window.__certPrinted=b; }, close:function(){} },
+                    focus:function(){}, print:function(){}, close:function(){} }; };`);
+
+      const clickCert = (sid) => W(`(function(){
+        window.__certPrinted=null;
+        var el=document.createElement('button');
+        el.setAttribute('data-act','cert-print');
+        el.setAttribute('data-sid','${sid}');
+        document.body.appendChild(el); el.click(); el.remove();
+      })()`);
+
+      /* ولیِ فیکسچر می‌نشیند و گواهیِ دانش‌آموزِ بیگانه را می‌خواهد */
+      W(`S.user=byId('users',${fx.parent});S.persona=null;S.boss=null;`);
+      clickCert(alien);
+      const leaked = W(`window.__certPrinted`);
+      assert(!leaked, 'گواهیِ دانش‌آموزِ بیرون از دامنه چاپ شد!');
+
+      /* کنترلِ مثبت: برای فرزندِ خودش باید کار کند (رفع نباید کار را بشکند).
+         ⚠️ transcriptCert بدونِ نمره «نمره‌ای ثبت نشده» می‌دهد و چاپ نمی‌کند،
+         پس ولیِ یک دانش‌آموزِ نمره‌دارِ واقعی را می‌نشانیم — وگرنه این کنترل
+         به‌دلیلِ نبودِ داده سبز/قرمز می‌شود، نه به‌دلیلِ مجوز. */
+      const real = JSON.parse(W(`JSON.stringify((function(){
+        var g=db.grades[0]; if(!g) return null;
+        var link=db.parent_links.filter(function(p){return p.student_id===g.student_id;})[0];
+        return link?{par:link.parent_id, kid:g.student_id}:null;
+      })())`));
+      assert(real, 'فیکسچر: دانش‌آموزِ نمره‌دار با ولی لازم است');
+      W(`S.user=byId('users',${real.par});S.persona='parent';S.boss=null;`);
+      clickCert(real.kid);
+      const own = W(`window.__certPrinted`);
+      assert(own && String(own).length > 100,
+        'گواهیِ فرزندِ خودی چاپ نشد — رفع، رفتارِ درست را شکسته');
+
+      W(`window.open=window.__origOpen;`);
+    } finally { await cfFxTearDown(); }
+  });
+
   const ok = results.filter((r) => r.ok).length;
   console.log('\n──────────────────────────────────────────');
   for (const r of results) {

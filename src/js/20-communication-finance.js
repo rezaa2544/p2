@@ -665,7 +665,19 @@ const F7_ACTIONS = {
     toast(r.made?`یادآوری برای ${fa(r.made)} قسط ساخته شد`:'قسطِ سررسیدِ گذشته‌ای بدون یادآوری نیست',r.made?'ok':'');
     render();
   },
+  /* 🔴 دورِ ۸۹ — نشتِ دامنه (هم‌خانوادهٔ ics-export و cert-print، §۰.۵.۲۰):
+     `id` شناسهٔ صورتحساب است و از DOM می‌آید، پس ادعایِ مرورگر است.
+     بدونِ گارد، ولی با دکمهٔ دست‌ساز رسیدِ شهریهٔ دانش‌آموزِ **مدرسهٔ دیگر**
+     را چاپ می‌کرد — همراهِ نامِ او (اثباتِ زنده: ولیِ ۲ رسیدِ ۱۶۳۲ نویسه‌ایِ
+     دانش‌آموزِ ۱۶ را گرفت). گاردِ مالکیت همان مرجعِ گواهی‌هاست تا رفتار در
+     کلِ محصول یکدست بماند. نگهبان: `tests/finance2.js` بخشِ FN-R1. */
   'receipt-tuition'(el,id){
+    const t=byId('tuitions',Number(id));
+    if(!t){toast('صورتحساب پیدا نشد','err');return;}
+    if(typeof certAllowedStudent==='function'){
+      const chk=certAllowedStudent(t.student_id);
+      if(!chk.ok){toast(chk.msg,'err');return;}
+    }
     printTuitionReceipt(Number(id));
   },
   'inst-cancel'(el,id){
