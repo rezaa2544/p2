@@ -86,14 +86,15 @@ const mkFile = (name, type) => W(`new File([new Uint8Array(48)], ${JSON.stringif
 
   await sec('H2 hwIsOpen: open / before / after / قفل مقدم / بدون فیلد = باز', async () => {
     const r = JSON.parse(W(`JSON.stringify((function(){
-      var now = new Date().toISOString();
-      var today = now.slice(0,11);
+      /* R92: زمانِ مرجعِ ثابت — تست هر ساعت از شبانه‌روز باید deterministic باشد (بمبِ زمانیِ UTC 23:00-23:59) */
+      var ref = '2026-06-15T12:00:00.000Z';
+      var day = ref.slice(0,11);
       return {
-        open:  hwIsOpen({locked:false, window_open:today+'00:00', window_close:today+'23:00'}),
-        nofield: hwIsOpen({locked:false, window_open:'', window_close:''}),
-        before: hwIsOpen({locked:false, window_open:today+'23:00', window_close:''}),
-        after: hwIsOpen({locked:false, window_open:'', window_close:today+'00:00'}),
-        lockWins: hwIsOpen({locked:true, window_open:today+'00:00', window_close:today+'23:00'})
+        open:  hwIsOpen({locked:false, window_open:day+'00:00', window_close:day+'23:00'}, ref),
+        nofield: hwIsOpen({locked:false, window_open:'', window_close:''}, ref),
+        before: hwIsOpen({locked:false, window_open:day+'23:00', window_close:''}, ref),
+        after: hwIsOpen({locked:false, window_open:'', window_close:day+'00:00'}, ref),
+        lockWins: hwIsOpen({locked:true, window_open:day+'00:00', window_close:day+'23:00'}, ref)
       };
     })())`));
     assert(r.open.open===true && r.open.reason==='open', 'بازهٔ باز درست نبود: ' + JSON.stringify(r.open));
@@ -143,7 +144,9 @@ const mkFile = (name, type) => W(`new File([new Uint8Array(48)], ${JSON.stringif
   await sec('H4 hwSubmit بسته: قفل/قبل/بعد رد؛ باز = قبول', async () => {
     const A2 = W(`insert('hw_assignments',{school_id:${fx.sc},class_id:${fx.cls},subject_id:0,title:'تکلیف تستی ارسال',description:'',due_date:'',locked:false,window_open:'',window_close:'',created_at:new Date().toISOString(),created_by:${fx.owner}}).id`);
     W(`vclassIdbSetBackend(makeIdbFake())`);
-    const today = new Date().toISOString().slice(0,11);
+    /* R92: بازه‌ها نسبت به «اکنون» — مستقل از ساعتِ شبانه‌روز (بمبِ زمانیِ UTC 23:00-23:59) */
+    const later = new Date(Date.now() + 3600e3).toISOString().slice(0,16);
+    const earlier = new Date(Date.now() - 3600e3).toISOString().slice(0,16);
     try{
       setU(fx.s1);
       /* قفل → رد */
@@ -152,15 +155,15 @@ const mkFile = (name, type) => W(`new File([new Uint8Array(48)], ${JSON.stringif
       r = JSON.parse(r);
       assert(r.ok===false, 'ارسال روی تکلیفِ قفل‌شده پذیرفته شد!');
       /* قبل از باز شدن → رد */
-      W(`update('hw_assignments',${A2},{locked:false, window_open:'${today}23:00', window_close:''})`);
+      W(`update('hw_assignments',${A2},{locked:false, window_open:'${later}', window_close:''})`);
       r = JSON.parse(await W(`(async()=>{var f=new File([new Uint8Array(32)],'b.png',{type:'image/png'}); var r=await hwSubmit(${A2}, f); return JSON.stringify(r);})()`));
       assert(r.ok===false, 'ارسال قبل از باز شدن پذیرفته شد!');
       /* بعد از بسته شدن → رد */
-      W(`update('hw_assignments',${A2},{window_open:'', window_close:'${today}00:00'})`);
+      W(`update('hw_assignments',${A2},{window_open:'', window_close:'${earlier}'})`);
       r = JSON.parse(await W(`(async()=>{var f=new File([new Uint8Array(32)],'c.png',{type:'image/png'}); var r=await hwSubmit(${A2}, f); return JSON.stringify(r);})()`));
       assert(r.ok===false, 'ارسال بعد از مهلت پذیرفته شد!');
       /* باز → قبول + کلید نهایی */
-      W(`update('hw_assignments',${A2},{window_open:'${today}00:00', window_close:'${today}23:00'})`);
+      W(`update('hw_assignments',${A2},{window_open:'${earlier}', window_close:'${later}'})`);
       r = JSON.parse(await W(`(async()=>{var f=new File([new Uint8Array(32)],'ok.png',{type:'image/png'}); var r=await hwSubmit(${A2}, f); return JSON.stringify(r);})()`));
       assert(r.ok===true, 'ارسالِ باز شکست: ' + (r.msg||''));
       assert(r.rec.file_key.indexOf('hw:')===0 && r.rec.file_key.indexOf('tmp:')<0, 'کلید نهایی نه: ' + r.rec.file_key);
