@@ -71,7 +71,12 @@ async function main() {
     const iso = tomorrow.getFullYear() + '-' + String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' + String(tomorrow.getDate()).padStart(2, '0');
     assert(tc.date === iso, 'تاریخِ فردا درست نیست: ' + tc.date);
     assert(tc.day === W(`cfAppDay('${iso}')`), 'روزِ هفتهٔ محاسبه‌شده نمی‌خواند');
-    assert(tc.school === (tc.day <= 4), 'علامتِ روزِ درسی درست نیست');
+    /* PR#2 (دور ۸۸): «روزِ درسی» بر پایهٔ work_daysِ خودِ مدرسه + روزهای جبرانی
+       (isWorkDay) — نه فقط ۰ تا ۴. با دو پیکربندیِ کنترل‌شده راستی‌آزمایی: */
+    W(`(function(){var sc=byId('schools',classOf(16).school_id);sc.__cfWdOld=sc.work_days;delete sc.work_days;sc.work_days=[0,1,2,3,4];var t1=tomorrowChecklistItems(16).school;sc.work_days=[5,6];var t2=tomorrowChecklistItems(16).school;sc.work_days=sc.__cfWdOld;if(sc.__cfWdOld==null)delete sc.work_days;delete sc.__cfWdOld;window.__cfWd={a:t1,b:t2,day:cfAppDay('${iso}')};})()`);
+    const wd = W(`__cfWd`);
+    assert(wd.a === (wd.day >= 0 && wd.day <= 4), 'پیکربندیِ ۰-۴: علامتِ روزِ درسی نمی‌خواند');
+    assert(wd.b === (wd.day >= 5), 'پیکربندیِ ۵-۶: روزهای کاریِ مدرسه اعمال نمی‌شوند');
     if (tc.school) {
       assert(Array.isArray(tc.rows) && Array.isArray(tc.exams), 'برنامه/امتحانِ فردا نیست');
       const first = tc.rows[0] || {};
@@ -120,13 +125,42 @@ async function main() {
     const vevents = (ics.match(/BEGIN:VEVENT/g) || []).length;
     assert(vevents >= examCount, 'تعدادِ رویداد کمتر از امتحاناتِ کلاس است: ' + vevents + ' < ' + examCount);
     assert(vevents === (ics.match(/END:VEVENT/g) || []).length, 'BEGIN/END رویداد متقارن نیست');
-    assert(/DTSTART;VALUE=DATE:\d{8}/.test(ics), 'فرمتِ DTSTART صحیح نیست');
+    /* PR#2: امتحانِ ساعت‌دار = DATE-TIMEِ شناور (بدون Z) · بدونِ ساعت = VALUE=DATE */
+    const dts = ics.match(/DTSTART[^\r\n]*/g) || [];
+    assert(dts.length > 0, 'هیچ DTSTART نیست');
+    /* تاریخِ خالص یا DATE-TIMEِ شناورِ محلیِ HHMMSS — هر دو مطابق RFC 5545 */
+    const badDt = dts.filter(l => !/^DTSTART(;VALUE=DATE)?:\d{8}(T\d{6})?$/.test(l));
+    assert(badDt.length === 0, 'DTSTART نامعتبر: ' + badDt.join(' | '));
     const examUids = (ics.match(/UID:payesh-exam-\d+@payesh/g) || []).length;
     assert(examUids === examCount, 'UID برای هر امتحان نیست: ' + examUids + ' vs ' + examCount);
     // دکمه: دانلود در jsdom خطا نمی‌دهد (مسیرِ data-URI)
     const before = W(`S.user=db.users.find(function(u){return u.id===${par.id};});S.persona=null;S.boss=null;S.child=16;S.route='record';S.tab='attendance';renderRoute()`);
     clickAct('ics-export', 16);
     assert(true, 'دکمهٔ ICS بدونِ کرش کار کرد');
+  });
+
+  /* ── F3-b: پالایش ICS (RFC 5545) — تزریقِ فیلدِ کاذب ممکن نباشد ── */
+  test('F3-b — دادهٔ بدخواه در نامِ درس/توضیح، فیلدِ ICS نمی‌سازد', () => {
+    W(`(function(){
+      var cls=classOf(16);
+      var crlf=String.fromCharCode(13,10);
+      var subj=insert('subjects',{school_id:cls.school_id,name:'X;X-PROP;BAD=1,Y'+crlf+'INJ:CT:1'});
+      var today=todayISO();
+      var d=new Date(+today.slice(0,4),+today.slice(5,7)-1,+today.slice(8,10)); d.setDate(d.getDate()+2);
+      var q=function(x){return String(x).padStart(2,'0');};
+      var iso=d.getFullYear()+'-'+q(d.getMonth()+1)+'-'+q(d.getDate());
+      insert('exams',{school_id:cls.school_id,class_id:cls.id,subject_id:subj.id,date:iso,start_time:'09:30',room:'R1;R2'+crlf+'LOC:ATION'});
+    })()`);
+    const ics = W(`icsForStudent(16)`);
+    const lines = ics.split('\r\n');
+    assert(lines.every(l => !l.startsWith('INJ') && !l.startsWith('X-PROP') && !l.startsWith('LOC:ATION') && !l.startsWith('R2')), 'فیلدِ تزریق‌شده در ICS ظاهر شد: ' + ics.slice(0, 400));
+    const injLine = lines.find(l => l.indexOf('INJ:CT:1') > -1);
+    const locLine = lines.find(l => l.indexOf('LOC:ATION') > -1);
+    assert(injLine && injLine.indexOf('SUMMARY:') === 0, 'INJ به خطِ مستقل نشت کرده: ' + JSON.stringify(injLine));
+    assert(locLine && locLine.indexOf('LOCATION:') === 0, 'LOC:ATION به خطِ مستقل نشت کرده: ' + JSON.stringify(locLine));
+    const expected = W(`icsEsc('X;X-PROP;BAD=1,Y'+String.fromCharCode(13,10)+'INJ:CT:1')`);
+    assert(ics.indexOf(expected) > -1, 'مقدارِ بدخواه پالایش (escaped) نشده: ' + ics.slice(0, 400));
+    assert(/DTSTART:\d{8}T093000/.test(ics), 'امتحانِ ساعت‌دار با DATE-TIME صادر نشده');
   });
 
   /* ── F4: موجه‌سازیِ سریع ── */
@@ -179,6 +213,45 @@ async function main() {
     W(`S.user=${JSON.stringify({ id: mgr.id, role: 'manager', school_id: mgr.school_id })};S.persona=null;S.boss=null;S.child=16;S.route='record';S.tab='attendance';`);
     const out = W(`renderRoute()`);
     assert(out.indexOf('فردا و امتحانات') === -1, 'کارتِ ولی به مدیر داده شده!');
+  });
+
+  /* ── F4-e: جعلِ S.__cfRid (تأییدِ Devin #3) — بررسیِ دوباره در لحظهٔ ذخیره ── */
+  test('F4-e — qe-save با S.__cfRidِ جعلی (رکوردِ فرزندِ دیگر) رد می‌شود', () => {
+    const forged = W(`(function(){
+      var kids=db.parent_links.filter(function(p){return p.parent_id===${par.id};}).map(function(p){return p.student_id;});
+      var a=db.attendance.filter(function(x){return x.status==='absent'&&!x.excused&&kids.indexOf(x.student_id)<0&&x.school_id===${par.school_id};})[0];
+      return a?a.id:null;
+    })()`);
+    assert(forged != null, 'رکوردِ غیبتِ بی‌ربط برایِ ساختِ جعل پیدا نشد');
+    const leavesBefore = W(`db.leaves.length`);
+    W(`S.user=db.users.find(function(u){return u.id===${par.id};});S.persona=null;S.boss=null;S.child=16;`);
+    W(`S.__cfRid=${forged};CF_ACTIONS['qe-save']();`);
+    assert(W(`db.leaves.length`) === leavesBefore, 'درخواستِ جعلی برای رکوردِ بی‌ربط ثبت شد!');
+    assert(W(`S.__cfRid`) === 0, 'S.__cfRid پاک نشده');
+  });
+
+  /* ── F4-f: حالتِ چندنقشی — persona فعال، نه فقط u.role ── */
+  test('F4-f — کاربرِ چندنقشی: persona (S.persona) تعیین‌کننده است، نه role', () => {
+    const rid = W(`(function(){
+      var a=db.attendance.filter(function(x){return x.student_id===16&&x.status==='absent'&&!x.excused;})
+        .sort(function(x,y){return y.date.localeCompare(x.date);});
+      return a.length?a[0].id:null;
+    })()`);
+    assert(rid != null, 'رکوردِ غیبتِ ۱۶ نیست');
+    /* کاربرِ دانش‌آموزِ ۱۷ (role=student) هم سرپرستِ ۱۶ شد → کاربرِ واقعاً چندنقشی */
+    const stu = W(`db.users.find(function(u){return u.role==='student'&&u.username==='student17';})`);
+    assert(stu && stu.id !== 16, 'کاربرِ دانش‌آموزِ ۱۷ پیدا نشد');
+    W(`insert('parent_links',{parent_id:${stu.id},student_id:16});`);
+    W(`S.user=db.users.find(function(u){return u.id===${stu.id};});S.persona=null;S.boss=null;S.child=16;`);
+    /* بدونِ سوییچ: نقشِ student روی رکوردِ ۱۶ → رد */
+    const leavesBefore = W(`db.leaves.length`);
+    W(`S.__cfRid=${rid};CF_ACTIONS['qe-save']();`);
+    assert(W(`db.leaves.length`)===leavesBefore, 'بدونِ سوییچِ persona نباید رد می‌شد');
+    /* با سوییچِ persona به ولی: گارد می‌گذرد (مکانیزمِ واقعیِ اپ) */
+    W(`S.persona='parent';`);
+    clickAct('quick-excuse', rid);
+    assert(W(`$('#qe_reason')!=null`), 'S.persona=\'parent\' در گاردِ بازکردن اعمال نمی‌شود');
+    W(`S.persona=null;`);
   });
 
   await Promise.all(testQueue);
