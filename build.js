@@ -5,6 +5,7 @@
  *
  *   node build.js            → dist/payesh.html
  *   node build.js --check    → فقط بررسی می‌گند خروجی با index.html یکسان است
+ *                              + هماهنگی مجوزها (tools/check-authz.js)
  */
 const fs = require('fs');
 const path = require('path');
@@ -59,7 +60,16 @@ function main() {
     if (same) {
       console.log('✅ خروجی build با index.html بیت‌به‌بیت یکسان است.');
       syncGuide(html, true);
-      process.exit(0);
+      /* هماهنگی مجوزها (فاز ۲ بند ۳): اکشن‌هایِ نویسندهٔ کلاینت ↔
+         WRITE_PERMS سرور. ناهماهنگی = عملیاتی که سرور رد می‌کند و
+         صفِ همگام‌سازی را گیر می‌اندازد. */
+      const { execFileSync } = require('child_process');
+      try {
+        execFileSync(process.execPath, [path.join(ROOT, 'tools/check-authz.js')], { stdio: 'inherit' });
+        process.exit(0);
+      } catch (e) {
+        process.exit(e.status || 1);
+      }
     } else {
       console.error('❌ خروجی build با index.html تفاوت دارد.');
       console.error(`   طول اصلی: ${original.length} | طول ساخته‌شده: ${html.length}`);

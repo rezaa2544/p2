@@ -1,4 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════════
+   کنترلگر مرکزی رویدادها (هستهٔ فاز ۲ — شکستنِ 19-actions.js)
+   همهٔ دکمه‌ها اینجا مدیریت می‌شوند (واگذاری رویداد با data-act). گارد مجوز در ابتدای شنونده اعمال می‌شود.
+   اکشن‌ها در ۸ فایلِ دامنه‌ایِ خواهر (19-actions-dorm.js و …) و ۱۷ اکشنِ
+   این فایل زندگی می‌کنند؛ آبجکتِ A در لحظهٔ کلیک از همهٔ آن‌ها ساخته می‌شود.
+   ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
    کنترلگر مرکزی رویدادها
    همهٔ دکمه‌ها اینجا مدیریت می‌شوند (واگذاری رویداد با data-act). گارد مجوز در ابتدای شنونده اعمال می‌شود.
    ═══════════════════════════════════════════════════════════════════ */
@@ -21,40 +27,32 @@ function schoolInactiveMsg(u){
   const sch=(u&&u.school_id)?byId('schools',u.school_id):null;
   return (sch&&!sch.active)?'این مدرسه غیرفعال است؛ برای پیگیری با پشتیبانی سامانه تماس بگیرید':null;
 }
-document.addEventListener('click',e=>{
-  const el=e.target.closest('[data-act]'); if(!el)return;
-  const a=el.dataset.act, rawId=el.dataset.id,
-       id=(rawId!=null && /^\d+$/.test(rawId))?Number(rawId):rawId; /* شناسهٔ عددی می‌ماند عدد؛ شناسهٔ متنی (مثل دکمه‌های تعمیرِ دیاگ) دست‌نخورده می‌ماند */
-  /* گارد مجوز اکشن: حتی اگر مهاجم دکمه را دستی بسازد، اکشن‌های تغییردهندهٔ
-     داده برای نقش‌های غیرمجاز اجرا نمی‌شوند. */
-  if(S.user && typeof canAction==='function' && !canAction(a)){
-    if(typeof toast==='function') toast('شما اجازهٔ انجام این عملیات را ندارید','err');
-    return;
-  }
-  /* ورودِ نهایی (مشترکِ حالت محلی و سرور) — تصمیمِ «آیا وارد شود یا نه»
-     جداست از «جایی که اعتبارسنجی شد». */
-  function finishLogin(u){
-     S.user=u;S.stack=[];S.persona=null;Store.remove(PERSONA_KEY);
-     linkAsParent(u);
-     S.showPicker=panelsOf(u).length>1;
-     /* روت خانهٔ هر نقش — مشاور به صف ارجاع می‌رود نه داشبورد */
-     S.route=(typeof homeRoute==='function'?homeRoute(u.role):(u.role==='edu_office'?'officedash':'dashboard'));
-     Store.set(SESSION_KEY,u.username);if(typeof trackVisit==='function')trackVisit(u.id);toast('خوش آمدید، '+u.full_name,'ok');render();
-  }
-  /* نگاشتِ خطاهای سرور به پیامِ فارسیِ هم‌شکل با خطاهای محلی
-     (سرور هیچ جزئیاتِ فنی به کاربر نمی‌دهد). */
-  function loginServerMsg(code){
-    const m={ no_account:'برای این شماره حسابی یافت نشد',
-      bad_code:'کد اشتباه است یا منقضی شده',
-      nid_mismatch:'کد ملی با این شماره مطابقت ندارد',
-      inactive:'حساب غیرفعال است',
-      school_inactive:'مدرسهٔ این حساب فعال نیست',
-      rate_limited:'تلاش‌های زیادی بود — کمی صبر کنید و دوباره امتحان کنید',
-      missing_fields:'شماره، کد و کد ملی را کامل وارد کنید',
-      no_session:'نشست منقضی شده است' };
-    return m[code]||'ورود انجام نشد — دوباره تلاش کنید';
-  }
-  const A={
+function finishLogin(u){
+   S.user=u;S.stack=[];S.persona=null;Store.remove(PERSONA_KEY);
+   linkAsParent(u);
+   S.showPicker=panelsOf(u).length>1;
+   /* روت خانهٔ هر نقش — مشاور به صف ارجاع می‌رود نه داشبورد */
+   S.route=(typeof homeRoute==='function'?homeRoute(u.role):(u.role==='edu_office'?'officedash':'dashboard'));
+   Store.set(SESSION_KEY,u.username);if(typeof trackVisit==='function')trackVisit(u.id);toast('خوش آمدید، '+u.full_name,'ok');render();
+}
+/* نگاشتِ خطاهای سرور به پیامِ فارسیِ هم‌شکل با خطاهای محلی
+   (سرور هیچ جزئیاتِ فنی به کاربر نمی‌دهد). */
+function loginServerMsg(code){
+  const m={ no_account:'برای این شماره حسابی یافت نشد',
+    bad_code:'کد اشتباه است یا منقضی شده',
+    nid_mismatch:'کد ملی با این شماره مطابقت ندارد',
+    inactive:'حساب غیرفعال است',
+    school_inactive:'مدرسهٔ این حساب فعال نیست',
+    rate_limited:'تلاش‌های زیادی بود — کمی صبر کنید و دوباره امتحان کنید',
+    missing_fields:'شماره، کد و کد ملی را کامل وارد کنید',
+    no_session:'نشست منقضی شده است' };
+  return m[code]||'ورود انجام نشد — دوباره تلاش کنید';
+}
+
+/* اکشن‌هایِ هسته: پایه (ورود/خروج/ناوبری) و اکشن‌هایِ بدونِ دامنهٔ
+   اختصاصی. پارامترها همان محلی‌هایِ شنوندهٔ کلیک هستند. */
+function coreActions(e, el, id, a, rawId){
+  return {
    pick(){
      /* دمو: فرم با شماره + کد ملیِ همان حساب پر می‌شود و کد ارسال (شبیه‌سازی)
         و در فیلد می‌نشیند — کاربر با «استعلام و ورود» کاملش می‌کند. */
@@ -159,28 +157,6 @@ document.addEventListener('click',e=>{
    child(){S.child=id;S.tab='grades';render();},
    'modal-close':closeModal,
    'modal-back'(){if(e.target.classList.contains('modal-back'))closeModal();},
-   // schools
-   'school-new'(){schoolModal(null);},
-
-   'school-edit'(){schoolModal(byId('schools',id));},
-   'school-toggle'(){const s=byId('schools',id);
-     const on=!!s.active;
-     askConfirm(on?`مدرسه «${s.name}» غیرفعال شود؟ کاربران این مدرسه تا زمان فعال‌سازی مجدد نمی‌توانند وارد سامانه شوند.`
-                  :`مدرسه «${s.name}» دوباره فعال شود؟`,
-       ()=>{update('schools',s.id,{active:on?0:1});toast(on?'مدرسه غیرفعال شد':'مدرسه فعال شد',on?'':'ok');render();},
-       {title:on?'غیرفعال کردن مدرسه':'فعال کردن مدرسه', ok:on?'غیرفعال کن':'فعال کن', danger:!!on,
-        note:on?'اطلاعات مدرسه حذف نمی‌شود و هر زمان می‌توانید دوباره فعالش کنید.':'کاربران این مدرسه دوباره می‌توانند وارد شوند.'});},
-   'school-enter'(){
-     const sc=byId('schools',id);
-     const mgr=db.users.find(u=>u.school_id===id&&u.role==='manager'&&u.active);
-     if(!mgr){toast('این مدرسه مدیر فعالی ندارد؛ ابتدا برای آن مدیر تعریف کنید','err');return;}
-     askConfirm(`به‌عنوان «${mgr.full_name}» وارد پنل مدرسه «${sc.name}» می‌شوید. هر زمان می‌توانید با نوار بالای صفحه به پنل سوپر ادمین برگردید.`,
-       ()=>{
-         S.boss=S.user; S.user=mgr; S.stack=[]; S.route='dashboard'; S.page=1; S.filters={}; S.tab='grades'; S.child=null;
-         Store.set(BOSS_KEY,S.boss.username); Store.set(SESSION_KEY,mgr.username);
-         toast('وارد پنل «'+sc.name+'» شدید','ok'); render();
-       },{title:'ورود به پنل مدرسه',ok:'ورود به پنل',danger:false,note:false});
-   },
    'stop-imp'(){
      const boss=S.boss||db.users.find(u=>u.username===Store.get(BOSS_KEY));
      if(!boss){toast('حساب سوپر ادمین یافت نشد','err');return;}
@@ -188,59 +164,6 @@ document.addEventListener('click',e=>{
      Store.remove(BOSS_KEY); Store.set(SESSION_KEY,boss.username);
      toast('به پنل سوپر ادمین بازگشتید','ok'); render();
    },
-   'school-del'(){confirmModal('حذف مدرسه و تمام کاربران، کلاس‌ها و اطلاعات آن؟','school-del-ok',id);},
-   'school-del-ok'(){const sid=window._delId;
-     db.users.filter(u=>u.school_id===sid).forEach(u=>remove('users',u.id));
-     db.classes.filter(c=>c.school_id===sid).forEach(c=>remove('classes',c.id));
-     remove('schools',sid);closeModal();toast('مدرسه حذف شد','ok');render();},
-   'school-save'(){const s=window._edit;
-     if(needAll([['m_name','نام و کد مدرسه الزامی است'],['m_code','نام و کد مدرسه الزامی است']]))return;
-     const pid=Number(V('m_prov'))||null, cid=Number(V('m_county'))||null, did=Number(V('m_district'))||null;
-     if(needAll([['m_prov','استان'],['m_county','شهرستان']]))return;
-     if(db.schools.some(x=>x.code===V('m_code')&&x.id!==s.id)){toast('کد مدرسه تکراری است','err');return;}
-     if(V('m_level')==='متوسطه دوم'&&!$$('.m-branch:checked').length){
-       toast('برای متوسطه دوم دست‌کم یک شاخه (نظری، فنی و حرفه‌ای یا کاردانش) انتخاب کنید','err');
-       const bx=$('#m_branch_box'); if(bx){bx.scrollIntoView({block:'center',behavior:'smooth'});}
-       return;}
-     const dist=did?byId('districts',did):null;
-     const data={name:V('m_name'),code:V('m_code'),
-       province_id:pid,county_id:cid,district_id:did,
-       city:(byId('counties',cid)||{}).name||'',
-       area_kind:dist?(dist.kind||'district'):'district',
-       phone:V('m_phone'),landline:V('m_landline'),
-       level:V('m_level'),type:V('m_type')||'عادی',gender:V('m_gender'),shift:V('m_shift')||'صبح',
-       capacity:Number(V('m_cap'))||300,
-       active:Number(V('m_active')),address:V('m_addr'),
-       /* دور ۶۵ بند روزهای کاری: روزهای روشن‌شده در مودال */
-       work_days:$$('.m-wd:checked').map(x=>Number(x.value)).sort((a,b)=>a-b),
-       /* Round 77: excuse window (minutes after bell end) */
-       excuse_window_minutes:(V('m_excuse_window')!==''?Number(V('m_excuse_window')):null),
-       /* شاخه و رشته فقط برای متوسطه دوم معنا دارد؛ در بقیهٔ مقاطع خالی می‌ماند */
-       branches:V('m_level')==='متوسطه دوم'?$$('.m-branch:checked').map(x=>x.value):[],
-       fields:V('m_level')==='متوسطه دوم'?$$('.m-field:checked').filter(x=>$$('.m-branch:checked').some(b=>b.value===x.dataset.branch)).map(x=>x.value):[],
-       /* پروفایل قابلیت (بند ۰.۱): هر کلید جداگانه خوانده می‌شود */
-       capabilities:(typeof CAP_DEFS!=='undefined')?Object.fromEntries(CAP_DEFS.map(k=>[k[0],$$('.m-cap[value="'+k[0]+'"]').some(c=>c.checked)?1:0])):(s.capabilities||null)};
-
-     const mgName=V('mg_name'), mgUser=V('mg_user'), mgNid=V('mg_nid'), mgPhone=V('mg_phone');
-     const existing=s.id?db.users.find(u=>u.school_id===s.id&&u.role==='manager'):null;
-     if(!s.id&&needAll([['mg_name','نام مدیر'],['mg_user','نام کاربری مدیر']]))return;
-     if(invalid('mg_nid',mgNid&&!validNid(mgNid),'کد ملی مدیر معتبر نیست'))return;
-     if(mgNid&&nidOwner(mgNid,existing?existing.id:0)){toast('این کد ملی قبلاً برای فرد دیگری ثبت شده است','err');return;}
-     if(mgUser&&db.users.some(u=>u.username===mgUser&&(!existing||u.id!==existing.id))){toast('نام کاربری مدیر تکراری است','err');return;}
-
-     let sid=s.id;
-     if(s.id)update('schools',s.id,data);
-     else sid=insert('schools',Object.assign({created_at:todayISO(),organization_id:null},data)).id;
-
-     if(existing){
-       const patch={full_name:mgName||existing.full_name,national_id:mgNid||existing.national_id,phone:mgPhone||existing.phone};
-       if(mgUser)patch.username=mgUser;
-       update('users',existing.id,patch);
-     } else if(mgName&&mgUser){
-       insert('users',{school_id:sid,role:'manager',full_name:mgName,username:mgUser,password:'123456', /* ستونِ آرشیوی — محصول رمز ندارد */
-         national_id:mgNid||makeNid(),phone:mgPhone||'',active:1,title:'مدیر مدرسه',created_at:todayISO()});
-     }
-     closeModal();toast(s.id?'تغییرات ذخیره شد':'مدرسه و حساب مدیر ثبت شد','ok');render();},
    // users
    'makeup-add'(){
      var d=V('m_mk_date');
@@ -306,118 +229,6 @@ document.addEventListener('click',e=>{
      }
      toast(r.msg,r.ok?'ok':'err');render();
    },
-   'user-new'(){userModal(null);},
-   'user-edit'(){userModal(byId('users',id));},
-   'user-toggle'(){const u=byId('users',id);update('users',id,{active:u.active?0:1});render();},
-   'user-del'(){confirmModal('حذف این کاربر؟ این عملیات قابل بازگشت نیست.','user-del-ok',id);},
-   'user-del-ok'(){remove('users',window._delId);closeModal();toast('کاربر حذف شد','ok');render();},
-   'user-save'(){const x=window._edit;
-     if(need('u_name','نام و نام خانوادگی الزامی است'))return;
-     if(!x.id&&need('u_user','نام کاربری الزامی است'))return;
-     const schoolId=$('#u_school')?Number(V('u_school')):(x.school_id||S.user.school_id);
-     /* کد ملی اختیاری است، ولی اگر وارد شد باید معتبر باشد */
-     if(invalid('u_nid',V('u_nid')&&!validNid(V('u_nid')),'کد ملی معتبر نیست'))return;
-     if(invalid('u_phone',V('u_phone')&&!/^09\d{9}$/.test(V('u_phone')),'شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم باشد'))return;
-     const data={full_name:V('u_name'),role:V('u_role'),national_id:V('u_nid'),phone:V('u_phone'),active:Number(V('u_active')),school_id:schoolId};
-     let uid=x.id;
-     if(uid)update('users',uid,data);
-     else{ if(db.users.some(u=>u.username===V('u_user'))){toast('نام کاربری تکراری است','err');return;}
-       uid=insert('users',Object.assign({username:V('u_user'),password:'123456',created_at:todayISO()},data)).id; } /* ستونِ آرشیوی */
-     const cls=$('#u_class')?V('u_class'):'';
-     if(data.role==='student'){db.enrollments.filter(en=>en.student_id===uid).forEach(en=>remove('enrollments',en.id));
-       if(cls)insert('enrollments',{school_id:schoolId,class_id:Number(cls),student_id:uid});}
-     closeModal();toast(x.id?'کاربر به‌روزرسانی شد':'کاربر ایجاد شد','ok');render();},
-   // classes
-   'class-new'(){classModal(null);},
-   'class-edit'(){classModal(byId('classes',id));},
-   'class-del'(){confirmModal('حذف این کلاس؟ ثبت‌نام‌های مرتبط نیز حذف می‌شوند.','class-del-ok',id);},
-   'class-del-ok'(){const cid=window._delId;db.enrollments.filter(e=>e.class_id===cid).forEach(e=>remove('enrollments',e.id));remove('classes',cid);closeModal();toast('کلاس حذف شد','ok');render();},
-   /* ── بند ۲.۱ — کلاسِ چندپایه: عضویتِ جداگانهٔ هر درس ── */
-   'class-membership'(){classMembershipModal(id);},
-   'class-membership-save'(){
-     const cid=window._memCid, cls=byId('classes',cid);
-     if(!cls){closeModal();return;}
-     const bySub=Object.create(null);
-     document.querySelectorAll('.mem-cb').forEach(function(cb){
-       bySub[cb.dataset.sub]=bySub[cb.dataset.sub]||[];
-       if(cb.checked)bySub[cb.dataset.sub].push(Number(cb.dataset.stu));
-     });
-     const allKids=studentsOfClass(cls.id);
-     Object.keys(bySub).forEach(function(subId){
-       const s=Number(subId);
-       (db.class_subject_members||[]).filter(function(x){return x.class_id===cls.id&&x.subject_id===s;})
-         .forEach(function(x){remove('class_subject_members',x.id);});
-       const chosen=bySub[subId];
-       /* همهٔ کلاس (یا خالی) ⇒ بدون ردیف = fallback = رفتارِ امروز */
-       if(chosen.length&&chosen.length<allKids.length)
-         chosen.forEach(function(k){insert('class_subject_members',{class_id:cls.id,subject_id:s,student_id:k});});
-     });
-     closeModal();toast('عضویتِ دروس ذخیره شد','ok');render();
-   },
-   'class-save'(){const c=window._edit;
-     if(need('c_name','نام کلاس الزامی است'))return;
-     /* نوع چیدمان: انتخاب مدیر، وگرنه حدس از روی پایه */
-     const _md=V('c_mode')||'';
-     const _gl=(typeof gradeFromName==='function')?gradeFromName(V('c_grade')||V('c_name')):null;
-     const _mode=_md||(_gl&&Number(_gl)>=10?'field':_gl?'class':'');
-     /* در کلاس‌محور رشته معنا ندارد؛ در رشته‌محور الزامی است */
-     if(invalid('c_field',_mode==='field'&&!V('c_field'),'در کلاس رشته‌محور، انتخاب رشته الزامی است'))return;
-     const data={name:V('c_name'),grade:V('c_grade'),field:_mode==='class'?null:(V('c_field')||null),class_mode:_mode||null,grade_level:_gl||null,room:V('c_room'),capacity:Number(V('c_cap'))||30,homeroom_teacher_id:V('c_ht')?Number(V('c_ht')):null};
-     if($('#c_multigrade'))data.multigrade=$('#c_multigrade').checked?1:0;
-     if($('#c_school'))data.school_id=Number(V('c_school'));else data.school_id=c.school_id;
-     /* رشتهٔ کلاس باید جزو شاخه‌های همان مدرسه باشد. رشتهٔ قبلی خودِ
-        کلاس استثناست تا ویرایش کلاس‌های قدیمی مسدود نشود. */
-     if(data.field&&typeof schoolFields==='function'){
-       const mine=schoolFields(data.school_id)||[];
-       if(mine.length&&mine.indexOf(data.field)<0&&data.field!==c.field){
-         toast('رشتهٔ «'+data.field+'» جزو شاخه‌های این مدرسه نیست','err');return;}
-     }
-     if(c.id)update('classes',c.id,data);else insert('classes',data);
-     closeModal();toast('ذخیره شد','ok');render();},
-   /* ── زمان‌بندی زنگ‌ها (نسخهٔ ۲ — به تفکیک روز، دور ۶۳) ──
-      مدیر ساعت شروع هر روز و ساعت پایان هر بازه را خودش تعیین
-      می‌کند؛ زنجیرهٔ بازه‌ها خودکار جابه‌جا می‌شود. */
-   'bell-edit'(){
-     if(['manager','superadmin'].indexOf(S.user.role)<0){toast('دسترسی ندارید','err');return;}
-     var sid=S.user.role==='superadmin'?(Number(S.filters.bschool)||db.schools[0].id):S.user.school_id;
-     bellModal(sid);
-   },
-   'bell-add'(){
-     var ed=window._edit; if(!ed||!ed.days)return;
-     var day=Number(e.target.dataset.day);
-     var kind=e.target.dataset.kind==='break'?'break':'lesson';
-     ed.days[day].slots.push({kind:kind,min:kind==='break'?10:45});
-     bellRenderDay(day);
-   },
-   'bell-del'(){
-     var ed=window._edit; if(!ed||!ed.days)return;
-     var day=Number(e.target.dataset.day);
-     var i=Number(e.target.dataset.i);
-     if(!Number.isFinite(i))return;
-     if(ed.days[day].slots.length<=1){toast('دست‌کم یک زنگ لازم است','err');return;}
-     ed.days[day].slots.splice(i,1);
-     bellRenderDay(day);
-   },
-   /* کپی ساعت روز قبل — روز شنبه «روز قبل» ندارد */
-   'bell-copy-prev'(){
-     var ed=window._edit; if(!ed||!ed.days)return;
-     var day=Number(e.target.dataset.day);
-     if(day<1)return;
-     ed.days[day]={start:ed.days[day-1].start,
-       slots:ed.days[day-1].slots.map(function(x){return {kind:x.kind,min:Number(x.min)||0};})};
-     bellRenderDay(day);
-     toast('ساعت '+DAYS[day-1]+' روی '+DAYS[day]+' کپی شد','ok');
-   },
-   'bell-save'(){
-     var ed=window._edit;
-     if(!ed||!ed.days){toast('فرم زمان‌بندی آماده نیست','err');return;}
-     var r=bellSaveDays(ed.school_id,ed.days);
-     toast(r.msg,r.ok?'ok':'err');
-     if(r.ok){closeModal();render();}
-   },
-   /* ── دیاگ سامانه ─────────────────────────────────────────────
-      عیب‌یابی و تعمیر خودکار. همهٔ کنش‌ها ویژهٔ سوپرادمین‌اند و
-      canAction آن را می‌سنجد. */
    'diag-run'(){
      if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
      /* data-cat روی دکمه: فقط همان خانواده اجرا شود */
@@ -502,70 +313,6 @@ document.addEventListener('click',e=>{
      else { diagAutoStart(); toast('پایش خودکار روشن شد — هر ۵ دقیقه بررسی می‌شود','ok'); }
      render();
    },
-   // subjects
-   'subject-new'(){subjectModal(null);},
-   'subject-edit'(){subjectModal(byId('subjects',id));},
-   'subject-del'(){confirmModal('حذف این درس؟','subject-del-ok',id);},
-   'subject-del-ok'(){remove('subjects',window._delId);closeModal();toast('درس حذف شد','ok');render();},
-   'subject-save'(){const s=window._edit;
-     if(need('s_name','نام درس الزامی است'))return;
-     const grade=V('s_grade')||'';
-     const lv=levelOfGrade(grade);
-     const field=needsField(lv)?(V('s_field')||''):'';
-     /* شناسهٔ درست فیلد رشته در فرم درس، s_field است نه c_field؛
-        پیش‌تر کادر قرمز روی فیلدی می‌رفت که در این فرم وجود ندارد. */
-     if(invalid('s_field',needsField(lv)&&!field,'برای پایه‌های متوسطه دوم، انتخاب رشته الزامی است'))return;
-     const sid_=$('#s_school')?Number(V('s_school')):s.school_id;
-     /* رشته باید جزو شاخه‌های اعلام‌شدهٔ همان مدرسه باشد */
-     if(field&&typeof schoolFields==='function'){
-       const mine=schoolFields(sid_)||[];
-       if(mine.length&&mine.indexOf(field)<0){
-         toast('رشتهٔ «'+field+'» جزو شاخه‌های این مدرسه نیست','err');return;}
-     }
-     const data={name:V('s_name'),code:V('s_code'),weekly_hours:Number(V('s_h'))||2,grade,field,
-       school_id:sid_};
-     if(s.id)update('subjects',s.id,data);else insert('subjects',data);
-     closeModal();toast('ذخیره شد','ok');render();},
-   /* افزودن دسته‌جمعی کتاب‌های استاندارد بر اساس پایه/رشته */
-   'subject-import'(){
-     const isSuper=S.user.role==='superadmin';
-     openModal(modalTpl('📥 افزودن کتاب‌های استاندارد',
-      `<div class="small muted" style="margin-bottom:10px">کتاب‌های مصوب پایه‌ی انتخابی به فهرست دروس اضافه می‌شوند. کتاب‌های تکراری نادیده گرفته می‌شوند.</div>
-       <div class="grid g2">
-         ${f('مقطع *',sel('im_level',[['','— انتخاب مقطع —'],...LEVELS.map(l=>[l,l])]))}
-         ${f('پایه *',sel('im_grade',[['','— ابتدا مقطع را انتخاب کنید —']]))}
-       </div>
-       <div id="im_fieldwrap" style="display:none"><div class="grid g2">
-         ${f('شاخه *',sel('im_branch',[['','— انتخاب شاخه —'],...schoolBranches(S.user.school_id).map(b=>[b,b])]))}
-         ${f('رشته *',sel('im_field',[['','— ابتدا شاخه را انتخاب کنید —']]))}
-       </div></div>
-       ${isSuper?`<div class="grid g2">${f('مدرسه',sel('im_school',db.schools.map(x=>[x.id,x.name])))}</div>`:''}
-       <div id="im_preview" class="small muted" style="margin-top:8px"></div>`,
-      'subject-import-save'));
-   },
-   'subject-import-save'(){
-     const grade=V('im_grade'), lv=V('im_level');
-     if(needAll([['s_level','مقطع'],['s_grade','پایه']]))return;
-     const field=needsField(lv)?V('im_field'):'';
-     if(invalid('s_field',needsField(lv)&&!field,'شاخه و رشته را انتخاب کنید'))return;
-     const sid=$('#im_school')?Number(V('im_school')):S.user.school_id;
-     const books=booksFor(grade,field);
-     if(!books.length){toast('برای این انتخاب کتابی تعریف نشده','err');return;}
-     let added=0,skipped=0;
-     books.forEach(([name,hours])=>{
-       const dup=db.subjects.some(x=>x.school_id===sid&&x.name===name&&(x.grade||'')===grade&&(x.field||'')===(field||''));
-       if(dup){skipped++;return;}
-       insert('subjects',{school_id:sid,name,code:'',weekly_hours:Number(String(hours).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))||2,grade,field});
-       added++;
-     });
-     closeModal();
-     toast(`${fa(added)} کتاب اضافه شد${skipped?` — ${fa(skipped)} مورد تکراری بود`:''}`,'ok');
-     render();
-   },
-   // ---- حضور و غیاب ----
-   /* ⚠️ تغییر رفتار دور ۴۲: تیک دیگر بی‌درنگ ذخیره نمی‌شود؛ به
-      پیش‌نویس می‌رود. ثبت واقعی فقط با att-commit انجام می‌شود.
-      دلیل: غیبت به خانواده پیامک می‌شود و تیک اشتباه هزینه دارد. */
    /* ─────────────── مهمان‌ها (بند ۷) ─────────────── */
    'vis-new'(){
      openModal(modalTpl('ثبت مهمان',
@@ -583,101 +330,6 @@ document.addEventListener('click',e=>{
      const r = visitorCheckout(Number(id));
      if(!r.ok){ toast(r.msg,'err'); return; }
      toast('خروج ثبت شد','ok');
-     render();
-   },
-   /* ─────────────── خوابگاه/اسکان (دور ۷۸ بند ۷) ─────────────── */
-   'dorm-room-new'(){
-     openModal(modalTpl('اتاق جدید',
-       f('نام اتاق *', inp('dorm_room_name',''))
-       + f('ظرفیت *', inp('dorm_room_cap','4','number')),
-       'dorm-room-save'));
-   },
-   'dorm-room-edit'(){
-     const r=byId('dorm_rooms',id)||{};
-     openModal(modalTpl('ویرایش اتاق',
-       `<input type="hidden" id="dorm_room_id" value="${escAttr(id)}" />`
-       + f('نام اتاق *', inp('dorm_room_name',r.name||''))
-       + f('ظرفیت *', inp('dorm_room_cap',r.capacity||1,'number')),
-       'dorm-room-save'));
-   },
-   'dorm-room-save'(){
-     const sid=S.user.school_id;
-     const name=V('dorm_room_name').trim(), cap=Number(V('dorm_room_cap'))||1;
-     if(!name){toast('نام اتاق را بنویسید','err');return;}
-     const rid=V('dorm_room_id');
-     if(rid) update('dorm_rooms',Number(rid),{name,capacity:cap});
-     else insert('dorm_rooms',{school_id:sid,name,capacity:cap,created_at:todayISO()});
-     closeModal(); toast('اتاق ذخیره شد','ok'); render();
-   },
-   'dorm-room-del'(){
-     const r=byId('dorm_rooms',id); if(!r)return;
-     if((db.dorm_assignments||[]).some(a=>a.room_id===id)){
-       toast('اول ساکنان این اتاق را بردارید','err');return;
-     }
-     askDelete(`اتاق «${r.name}» حذف شود؟`,()=>{remove('dorm_rooms',id);toast('حذف شد','');render();});
-   },
-   'dorm-assign'(){
-     const sid=S.user.school_id, roomId=Number(id);
-     const room=byId('dorm_rooms',roomId); if(!room)return;
-     const occ=(db.dorm_assignments||[]).filter(a=>a.room_id===roomId).length;
-     const assignedIds=(db.dorm_assignments||[]).filter(a=>a.school_id===sid).map(a=>a.student_id);
-     const free=db.users.filter(u=>u.role==='student'&&u.school_id===sid&&u.active&&assignedIds.indexOf(u.id)<0)
-       .sort((a,b)=>a.full_name.localeCompare(b.full_name,'fa'));
-     if(!free.length){toast('دانش‌آموزِ فعالِ بدونِ اتاقی نیست','err');return;}
-     openModal(modalTpl(`انتساب به اتاق ${room.name} (${occ}/${room.capacity})`,
-       free.map(u=>`<div class="row" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer" data-act="dorm-assign-pick" data-id="${escAttr(roomId)}" data-sid="${escAttr(u.id)}"><b>${esc(u.full_name)}</b><span class="small muted">${esc((classOf(u.id)||{}).name||'—')}</span></div>`).join('')));
-   },
-   'dorm-assign-pick'(){
-     const roomId=Number(id), studentId=Number(el.dataset.sid);
-     const room=byId('dorm_rooms',roomId); if(!room||!studentId)return;
-     const occ=(db.dorm_assignments||[]).filter(a=>a.room_id===roomId).length;
-     if(occ>=(Number(room.capacity)||0)){toast('اتاق پر است — ظرفیت را بیشتر کنید یا اتاق دیگری انتخاب کنید','err');render();return;}
-     const old=dormAssignOf(studentId);
-     if(old)remove('dorm_assignments',old.id);
-     insert('dorm_assignments',{school_id:S.user.school_id,room_id:roomId,student_id:studentId,since:todayISO()});
-     closeModal(); toast('انتساب شد','ok'); render();
-   },
-   'dorm-unassign'(){
-     const studentId=Number(el.dataset.sid);
-     const a=studentId?dormAssignOf(studentId):null;
-     if(!a){render();return;}
-     const st=byId('users',studentId)||{};
-     askDelete(`«${st.full_name||''}» از اتاق برشود؟`,()=>{remove('dorm_assignments',a.id);toast('برداشت شد','');render();});
-   },
-   'dorm-meal'(){
-     const day=Number(el.dataset.day), kind=el.dataset.kind;
-     const m=dormMealOf(S.user.school_id,day,kind);
-     const kindFa=(DORM_MEAL_KINDS.find(k=>k[0]===kind)||['','؟'])[1];
-     openModal(modalTpl(`منوی ${DORM_DAYS[day]} — ${kindFa}`,
-       `<input type="hidden" id="dorm_meal_day" value="${day}" /><input type="hidden" id="dorm_meal_kind" value="${escAttr(kind)}" />`
-       + f('منو (خالی = حذف)', `<textarea class="input" id="dorm_meal_menu" rows="3" placeholder="مثلاً برنج و خورشت قورمه + سالاد">`+(m&&m.menu?esc(m.menu):'')+`</textarea>`),
-       'dorm-meal-save'));
-   },
-   'dorm-meal-save'(){
-     const sid=S.user.school_id, day=Number(V('dorm_meal_day')), kind=V('dorm_meal_kind');
-     const menu=V('dorm_meal_menu').trim();
-     const old=dormMealOf(sid,day,kind);
-     if(!menu){ if(old)remove('dorm_meals',old.id); }
-     else if(old) update('dorm_meals',old.id,{menu});
-     else insert('dorm_meals',{school_id:sid,day,kind,menu,created_at:todayISO()});
-     closeModal(); toast('منو ذخیره شد','ok'); render();
-   },
-   /* مرخصیِ رفت‌وبرگشتِ آخر هفته: جدا از مرخصیِ آکادمیک — مستقیمِ
-      مدیر (بدونِ صفِ بررسی)، پنجشنبه→جمعهٔ پیشِ رو، بدونِ اثر روی
-      حضور (weekend اصلاً رکوردِ حضور ندارد). */
-   'dorm-leave'(){
-     const studentId=Number(el.dataset.sid);
-     const st=studentId?byId('users',studentId):null;
-     if(!st){render();return;}
-     const jsDay=new Date().getDay(); /* ۰=یکشنبه … ۵=پنجشنبه */
-     const dUntilFri=((5-jsDay)+7)%7; /* اگر امروز پنجشنبه باشد: ۰ */
-     const from=addDaysISO(todayISO(),dUntilFri), to=addDaysISO(from,1);
-     const l=insert('leaves',{school_id:st.school_id,student_id:st.id,from_date:from,to_date:to,
-       reason:'مرخصیِ رفت‌وبرگشتِ آخر هفته (خوابگاه)',kind:'dorm_weekend',status:'approved',created_at:todayISO()});
-     [st.id,...db.parent_links.filter(x=>x.student_id===st.id).map(x=>x.parent_id)].forEach(uid=>
-       insert('notifications',{user_id:uid,school_id:st.school_id,type:'leave',title:'🏠 مرخصیِ آخر هفتهٔ خوابگاه',
-         body:`${st.full_name} از ${faD(from)} تا ${faD(to)} مرخصیِ رفت‌وبرگشتِ آخر هفته دارد.`,link:'leaves',read:0,created_at:todayISO()}));
-     toast('مرخصیِ آخر هفته ثبت شد: '+faD(from)+' تا '+faD(to),'ok');
      render();
    },
    /* ─────────────── کتابخانه (بند ۸) ─────────────── */
@@ -1252,87 +904,6 @@ document.addEventListener('click',e=>{
        +(sms?' — '+fa(sms)+' پیامک ساخته شد':'')
        +(fix?' — '+fa(fix)+' اصلاحیه ساخته شد':''),'ok');
      render();},
-   /* ─────────── دور ۷۶ — ترک تحصیل (بدون حذف داده) ─────────── */
-   'drop-register'(){
-     const u=byId('users',id);
-     if(!u||u.role!=='student'){toast('فقط پروندهٔ دانش‌آموز','err');return;}
-     if((u.status||'active')!=='active'){toast('این دانش‌آموز در وضعیتِ فعال نیست','err');return;}
-     const reasons=(typeof DROP_REASONS==='object')?DROP_REASONS:{};
-     window._dropId=id;
-     openModal(modalTpl('ثبت ترک تحصیل — '+esc(u.full_name),
-       '<div class="callout red" style="margin-bottom:10px"><b>هیچ داده‌ای حذف نمی‌شود:</b> فقط وضعیتِ دانش‌آموز «ترک تحصیل» می‌شود؛ نمرات، حضور و سابقهٔ کاملِ پرونده دست‌نخورده می‌ماند.</div>'
-       +f('تاریخ ثبت (الزامی)',`<input class="input" id="drop_date" type="date" value="${escAttr(todayISO())}" />`)
-       +f('دلیل (الزامی)',`<select class="select" id="drop_reason"><option value="">— انتخاب کنید —</option>${Object.keys(reasons).map(k=>`<option value="${escAttr(k)}">${esc(reasons[k])}</option>`).join('')}</select>`)
-       +f('توضیحِ آزاد (اختیاری)','<textarea class="input" id="drop_note" rows="2" placeholder="جزئیاتِ بیشتر (برای «سایر» الزامی است)"></textarea>')
-       +'<div class="small muted" style="margin-top:8px">با ثبت، به آمارِ ترک تحصیلِ داشبوردِ اداره می‌پیوندد و برای پیگیریِ سلسله‌مراتب (در آینده: تا سطحِ رئیسِ کل) در دسترس است.</div>',
-       'drop-register-confirm',false,'ثبت'));
-   },
-   'drop-register-confirm'(){
-     const sid=window._dropId;
-     const u=byId('users',sid);
-     if(!u){closeModal();return;}
-     const date=V('drop_date'), reason=V('drop_reason'), note=V('drop_note');
-     if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('تاریخِ ثبت را درستی کنید','err');return;}
-     if(!reason){toast('دلیلِ ترک تحصیل الزامی است','err');return;}
-     if(reason==='other'&&!note){toast('برای «سایر»، توضیحِ آزاد الزامی است','err');return;}
-     const r=(typeof dropRegister==='function')?dropRegister(sid,date,reason,note):{ok:false,msg:'تابع موجود نیست'};
-     if(!r.ok){toast(r.msg,'err');return;}
-     closeModal();
-     toast('ترک تحصیل ثبت شد — پروندهٔ کامل دست‌نخورده باقی است','ok');
-     render();
-   },
-   'drop-return'(){
-     const u=byId('users',id);
-     if(!u||u.role!=='student'){toast('فقط پروندهٔ دانش‌آموز','err');return;}
-     if((u.status||'active')!=='dropped_out'){toast('این دانش‌آموز در وضعیتِ ترک تحصیل نیست','err');return;}
-     window._dropretId=id;
-     openModal(modalTpl('بازگشت به تحصیل — '+esc(u.full_name),
-       '<div class="callout green" style="margin-bottom:10px">وضعیت به «فعال» برمی‌گردد و تاریخِ بازگشت ثبت می‌شود. سابقهٔ ترک (دلیل و تاریخ) در پرونده می‌ماند.</div>'
-       +f('تاریخ بازگشت (الزامی)',`<input class="input" id="dropret_date" type="date" value="${escAttr(todayISO())}" />`),
-       'drop-return-confirm',false,'ثبت بازگشت'));
-   },
-   'drop-return-confirm'(){
-     const sid=window._dropretId;
-     const u=byId('users',sid);
-     if(!u){closeModal();return;}
-     const date=V('dropret_date');
-     if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('تاریخِ بازگشت را درستی کنید','err');return;}
-     const r=(typeof dropReturn==='function')?dropReturn(sid,date):{ok:false,msg:'تابع موجود نیست'};
-     if(!r.ok){toast(r.msg,'err');return;}
-     closeModal();
-     toast('بازگشت به تحصیل ثبت شد','ok');
-     render();
-   },
-   // ---- پلان فروش و پشتیبان‌گیری ----
-   'plan-settings'(){
-     const st=subSettings();
-     openModal(modalTpl('تنظیمات پلان و قیمت‌گذاری',
-       '<div class="grid g2">'
-       +f('قیمت ماهانه (ریال)',inp('pl_m',st.price_monthly||0,'number'))
-       +f('قیمت فصلی (ریال)',inp('pl_s',st.price_seasonal||0,'number'))
-       +f('قیمت سالانه (ریال)',inp('pl_y',st.price_yearly||0,'number'))
-       +f('سهم مدرسه (درصد)',inp('pl_share',st.school_share_percent||20,'number'))
-       +f('دورهٔ آزمایشی (روز)',inp('pl_trial',st.trial_days||0,'number'))
-       +f('دیوار پرداخت',sel('pl_wall',[['1','فعال'],['0','غیرفعال']],String(st.paywall_enabled?1:0)))
-       +'</div>'
-       +'<div class="small muted" style="line-height:2;margin-top:8px">'
-       +'تغییر قیمت روی اشتراک‌های فعال اثر ندارد؛ فقط خریدهای تازه.</div>','plan-save'));
-   },
-   'plan-save'(){
-     const patch={
-       price_monthly:Number(V('pl_m'))||0,
-       price_seasonal:Number(V('pl_s'))||0,
-       price_yearly:Number(V('pl_y'))||0,
-       school_share_percent:Number(V('pl_share'))||0,
-       trial_days:Number(V('pl_trial'))||0,
-       trial_enabled:Number(V('pl_trial'))>0?1:0,
-       paywall_enabled:Number(V('pl_wall'))?1:0
-     };
-     const errs=validatePlanSettings(patch);
-     if(errs.length){toast(errs[0],'err');return;}
-     saveSubSettings(patch);
-     closeModal(); toast('تنظیمات پلان ذخیره شد','ok'); render();
-   },
    'backup-make'(){
      try{
        const pkg=buildBackup();
@@ -1548,238 +1119,6 @@ document.addEventListener('click',e=>{
      const r=certVerify(V('cert_code'),sid);
      toast(r.msg,r.ok?'ok':'err');
    },
-   'sms-new'(){
-     openModal(modalTpl('ارسال پیامک گروهی',
-       f('گیرندگان',sel('sm_aud',[['parents','همه اولیا'],['teachers','همه دبیران'],
-         ['students','همه دانش‌آموزان'],['class','اولیای یک کلاس']]))
-       +f('کلاس (در صورت انتخاب)',sel('sm_class',visibleClasses().map(c=>[c.id,c.name])))
-       +f('متن پیام','<textarea class="input" id="sm_text" rows="4" placeholder="اولیای گرامی، جلسه اولیا و مربیان روز چهارشنبه ساعت ۱۶ برگزار می‌شود."></textarea>'),
-       'sms-send'));
-   },
-   'sms-send'(){
-     const sid=S.user.school_id, text=V('sm_text')||'';
-     if(invalid('sm_text',text.trim().length<4,'متن پیام باید دست‌کم چهار نویسه باشد'))return;
-     const targets=smsTargets(sid,V('sm_aud'),V('sm_class'));
-     if(!targets.length){toast('گیرنده‌ای با شماره معتبر یافت نشد','err');return;}
-     const parts=smsParts(text), need=targets.length*parts;
-     const wal=smsWalletOf(sid);
-     if(wal.balance<need){
-       toast('اعتبار پیامک کافی نیست. نیاز: '+fa(need)+' — موجودی: '+fa(wal.balance),'err');return;}
-     batchWrites(()=>{
-       targets.forEach(t=>insert('sms_log',{school_id:sid,user_id:t.id,phone:t.phone,body:text,
-         parts,status:'sent',created_at:todayISO()}));
-       update('sms_wallet',wal.w.id,{balance:wal.balance-need});
-     });
-     closeModal(); toast(fa(targets.length)+' پیامک ارسال شد ('+fa(need)+' اعتبار)','ok'); render();
-   },
-   'sms-topup'(){
-     const wal=smsWalletOf(S.user.school_id);
-     openModal(modalTpl('شارژ اعتبار پیامک',
-       f('تعداد پیامک',sel('sm_count',[500,1000,2000,5000].map(n=>[n,fa(n)+' پیامک — '+rial(n*wal.price)+' ریال'])))
-       +'<div class="small muted" style="line-height:2;margin-top:8px">پرداخت آزمایشی است و مبلغی کسر نمی‌شود.</div>',
-       'sms-topup-ok'));
-   },
-   // ---- اطلاع‌رسانی پیامکی به اولیا (دور ۴۲) ----
-   'notify-filter'(){ S.filters.nkind = el.dataset.k || ''; render(); },
-   'notify-pick-all'(){
-     const on = el.checked;
-     $$('.nq-pick').forEach(x => { x.checked = on; });
-   },
-   'notify-approve'(){ _notifyApprove([Number(el.dataset.id)]); },
-   'notify-reject'(){
-     const n = notifyReject([Number(el.dataset.id)]);
-     if(n) toast('پیام رد شد','ok');
-     render();
-   },
-   'notify-approve-sel'(){
-     const ids = notifyPicked();
-     if(!ids.length){ toast('هیچ پیامی انتخاب نشده است','err'); return; }
-     _notifyApprove(ids);
-   },
-   'notify-reject-sel'(){
-     const ids = notifyPicked();
-     if(!ids.length){ toast('هیچ پیامی انتخاب نشده است','err'); return; }
-     askConfirm(`${fa(ids.length)} پیام رد شود و برای اولیا ارسال نشود؟`, () => {
-       const n = notifyReject(ids);
-       toast(fa(n) + ' پیام رد شد','ok');
-       render();
-     }, { title:'رد پیام‌ها', ok:'رد کن' });
-   },
-   'notify-edit'(){
-     const q = byId('notify_queue', Number(el.dataset.id));
-     if(!q) return;
-     window._nqEdit = q.id;
-     openModal(modalTpl('ویرایش متن پیام',
-       f('متن پیامک','<textarea class="input" id="nq_text" rows="4">' + esc(q.body) + '</textarea>')
-       + '<div class="small muted" style="line-height:2">'
-       + 'گیرندگان: ' + fa((q.parent_ids||[]).length) + ' نفر · '
-       + 'هر ۷۰ نویسه یک قطعه پیامک حساب می‌شود.</div>',
-       'notify-save-edit'));
-   },
-   'notify-save-edit'(){
-     const id = window._nqEdit, txt = (V('nq_text')||'').trim();
-     if(invalid('nq_text', txt.length < 4, 'متن پیام باید دست‌کم چهار نویسه باشد')) return;
-     const q = byId('notify_queue', id);
-     if(!q){ closeModal(); return; }
-     /* ⚠️ ویرایش مدیر ممکن است پیام را دوقطعه‌ای کند ⇒ parts دوباره
-        حساب می‌شود، وگرنه هزینه کمتر از واقع کسر می‌شود. */
-     update('notify_queue', id, { body: txt, parts: smsParts(txt) });
-     closeModal();
-     toast('متن پیام ویرایش شد','ok');
-     render();
-   },
-   'notify-auto-off'(){
-     notifySaveSettings(S.user.school_id, { autoSend:false });
-     toast('حالت ارسال خودکار خاموش شد','ok');
-     render();
-   },
-   /* ─────── سرویس مدرسه — نسخهٔ بدون جی‌پی‌اس ─────── */
-   'bus-route-new'(){ busRouteModal(null); },
-   'bus-route-save'(){
-     const r0 = window._busRoute || {};
-     const name = V('br_name');
-     if(!name) return toast('نام مسیر را بنویسید','err');
-     const drv = V('br_driver') ? Number(V('br_driver')) : null;
-     if(r0.id){ update('bus_routes', r0.id, {name:name, driver_id:drv}); }
-     else { insert('bus_routes',{school_id:S.user.school_id, name:name, driver_id:drv, created_at:todayISO()}); }
-     closeModal(); toast('مسیر ذخیره شد','ok'); render();
-   },
-   'bus-route-del'(){
-     askConfirm('این مسیر حذف شود؟ رویدادهای ثبت‌شده حفظ می‌مانند ولی دانش‌آموزان از مسیر جدا می‌شوند.',
-       function(){
-         batchWrites(function(){
-           db.bus_students.slice().forEach(function(b){
-             if(b.route_id===id) remove('bus_students', b.id);
-           });
-           remove('bus_routes', id);
-         });
-         toast('مسیر حذف شد','ok'); render();
-       },
-       {title:'حذف مسیر', ok:'حذف کن', danger:true});
-   },
-   'bus-students'(){ busStudentsModal(Number(id)); },
-   'bus-students-save'(){
-     const rid = window._busRouteId;
-     if(!rid) return;
-     const checked = $$('.bs-chk:checked').map(function(c){ return Number(c.value); });
-     batchWrites(function(){
-       db.bus_students.slice().forEach(function(b){
-         if(b.route_id===rid && checked.indexOf(b.student_id)<0) remove('bus_students', b.id);
-       });
-       checked.forEach(function(sid2){
-         /* دانش‌آموز در مسیر دیگری باشد ⇒ رد می‌شود (قانون تک‌مسیر) */
-         if(busRouteOfStudent(sid2) && busRouteOfStudent(sid2).id!==rid) return;
-         if(!db.bus_students.some(function(b){ return b.route_id===rid && b.student_id===sid2; }))
-           insert('bus_students',{route_id:rid, student_id:sid2});
-       });
-     });
-     closeModal(); toast('دانش‌آموزان مسیر به‌روز شد','ok'); render();
-   },
-   /* ثبت رویداد سوار/پیاده — بررسی مالکیت مسیر در busEvent() روی داده */
-   'bus-event'(){
-     const t = el.dataset.t;
-     const r = busEvent(Number(id), t);
-     if(!r.ok) return toast(r.msg,'err');
-     toast(t==='on' ? '🚌 سوار شد — پیامک در صف است' : '🏫 پیاده شد — پیامک در صف است','ok');
-     render();
-   },
-   'bus-need-set'(){ busNeedModal(Number(id)); },
-   'bus-need-save'(){
-     const r = busNeedSet(window._busNeedStudent, (document.querySelector('input[name="bus_need_m"]:checked')||{}).value, V('bus_need_note'));
-     if(!r.ok){ toast(r.msg,'err'); return; }
-     closeModal(); toast('پاسخ سرویس ثبت شد','ok'); render();
-   },
-   'bus-need-parent-save'(){
-     const v = (document.querySelector('#bus_need_opts input[name="bus_need"]:checked')||{}).value;
-     if(!v){ toast('یکی از گزینه‌ها را انتخاب کنید','err'); return; }
-     const r = busNeedSet(Number(id), v, '');
-     if(!r.ok){ toast(r.msg,'err'); return; }
-     toast('پاسخ شما ثبت شد','ok'); render();
-   },
-   'bus-event-student'(){
-     const r = busEvent(Number(id), el.dataset.t, 'student');
-     if(!r.ok) return toast(r.msg,'err');
-     toast(el.dataset.t==='on' ? '🚌 ثبت شد — پیامک در صف است' : '🏫 ثبت شد — پیامک در صف است','ok');
-     render();
-   },
-   'bus-loc-driver'(){
-     busLocationReal('driver', 0).then(function(res){
-       if(!res.ok) return toast(res.msg,'err');
-       toast(res.real ? '📡 موقعیتِ واقعی ثبت شد' : '📍 موقعیت ثبت شد (دمو: نقطهٔ بعدیِ واقعیِ مسیر)','ok'); render();
-     });
-   },
-   'bus-loc-student'(){
-     busLocationReal('student', 0).then(function(res){
-       if(!res.ok) return toast(res.msg,'err');
-       toast('📍 موقعیت شما ثبت شد','ok'); render();
-     });
-   },
-   /* بند ۱۴: پیگیریِ واقعیِ مغایرت — el/id از محیّط (دور ۷۹: پارامترِ سای‌کننده برداشته شد) */
-   'bus-follow-open'(){
-     const st = byId('users', Number(id));
-     openModal(modalTpl('پیگیری مغایرت — ' + (st ? st.full_name : ''),
-       f('یادداشت پیگیری', inp('bf_note', '', 'مثلاً: با راننده تماس گرفتم…')),
-       'bus-follow-save'));
-     window._busFollow = {route: Number(el.dataset.r), student: Number(id)};
-   },
-   'bus-follow-save'(){
-     const fo = window._busFollow || {};
-     const r = busFollowStart(fo.route, fo.student, V('bf_note'));
-     if(!r.ok){ toast(r.msg,'err'); return; }
-     closeModal(); toast('🔎 پیگیری شروع شد','ok'); render();
-   },
-   'bus-follow-close'(){
-     const f = byId('bus_followups', Number(id));
-     if(!f) return;
-     const st = byId('users', f.student_id);
-     openModal(modalTpl('بستن پیگیری — ' + (st ? st.full_name : ''),
-       f('نتیجهٔ پیگیری', inp('bf_close', '', 'مثلاً: تأیید شد که دانش‌آموز پیاده شده است')),
-       'bus-follow-close-save'));
-     window._busFollowId = Number(id);
-   },
-   'bus-follow-close-save'(){
-     const r = busFollowClose(window._busFollowId, V('bf_close'));
-     if(!r.ok){ toast(r.msg,'err'); return; }
-     closeModal(); toast('✅ پیگیری بسته شد','ok'); render();
-   },
-   /* بند ۱۲: حضورِ خودکار کلاس مجازی */
-   /* بند ۱۵: لینک‌های اختصاصیِ کلاس مجازی */
-   'vclass-links'(){ vclassLinksModal(Number(id)); },
-   'vclass-link-copy'(){
-     const l = byId('vclass_links', Number(id));
-     if(!l) return;
-     const url = vclassLinkFullUrl(l);
-     if(navigator.clipboard && navigator.clipboard.writeText){
-       navigator.clipboard.writeText(url).then(function(){ toast('لینک کپی شد','ok'); },
-         function(){ window.prompt('لینک را کپی کنید:', url); });
-     } else { window.prompt('لینک را کپی کنید:', url); }
-   },
-   'vc-join'(){
-     const r = vclassJoin(Number(id));
-     if(!r.ok) return toast(r.msg,'err');
-     toast('🚪 وارد کلاس شدید — حضورِ شما ثبت شد','ok'); render();
-   },
-   'vc-leave'(){
-     const r = vclassLeave(Number(id));
-     if(!r.ok) return toast(r.msg,'err');
-     toast('خروج شما ثبت شد','ok'); render();
-   },
-   /* بند ۱۲: تکالیف — بازه/قفل + مشاهده */
-   'hw-window'(){ hwWindowModal(Number(id)); },
-   'hw-window-save'(){
-     const locked = !!(document.getElementById('hww_locked')||{}).checked;
-     const r = hwSetWindow(window._hwWindowId, locked, V('hww_open'), V('hww_close'));
-     if(!r.ok){ toast(r.msg,'err'); return; }
-     closeModal(); toast('بازهٔ ارسال به‌روز شد','ok'); render();
-   },
-   'hw-lock'(){
-     const a = byId('hw_assignments', Number(id));
-     if(!a) return;
-     const r = hwSetWindow(Number(id), !a.locked, a.window_open||'', a.window_close||'');
-     if(!r.ok){ toast(r.msg,'err'); return; }
-     toast(r.rec.locked ? 'تکلیف قفل شد' : 'تکلیف باز شد','ok'); render();
-   },
-   'hw-view'(){ hwViewModal(Number(id)); },
    /* بند ۱۳: حالت حضوری/غیرحضوری مدرسه */
    'smode-open'(){ smodeModal(Number(id)); },
    'smode-save'(){
@@ -1801,224 +1140,6 @@ document.addEventListener('click',e=>{
        ? fa(r.created)+' خلاصه در صف قرار گرفت'+(r.skipped?' ('+fa(r.skipped)+' تکراری یا بدون والد، رد شد)':'')
        : 'خلاصه‌ای ساخته نشد (همه تکراری یا بدون والد)', r.created?'ok':'err');
      render();
-   },
-   /* ─────────────── کلاس مجازی (نسخهٔ سبک) ─────────────── */
-   'vclass-new'(){ vclassNewModal(Number(id)); },
-   'vclass-save'(){
-     const clsId = window._vclassClass;
-     const title = V('vc_title');
-     if(!title) return toast('عنوان نشست را بنویسید','err');
-     const type = V('vc_type');
-     const fEl = $('#vc_file');
-     const file = (fEl && fEl.files && fEl.files[0]) ? fEl.files[0] : null;
-     if(type==='video' && !file) return toast('فایل ویدیو را انتخاب کنید','err');
-     closeModal();
-     vclassCreateSession({classId:clsId, type:type, title:title,
-       url:V('vc_url'), time:V('vc_time'), desc:V('vc_desc')}, file).then(function(r){
-       if(!r.ok){ toast(r.msg,'err'); return; }
-       toast('نشست در کلاس مجازی ثبت شد','ok');
-       render();
-     });
-   },
-   'vclass-del'(){
-     askConfirm('این نشست (و در صورت وجود، فایل آن از ذخیره‌گاه) حذف شود؟', function(){
-       const s = byId('vclass_sessions', id);
-       if(!s) return;
-       const u = S.user;
-       const role = (typeof activePersona==='function') ? activePersona() : u.role;
-       const isTeacher = role==='teacher' && teacherClasses(u.id).some(function(c){ return c.id===s.class_id; });
-       if(!(isTeacher || role==='manager' || role==='superadmin')){
-         toast('شما مجوز حذف این نشست را ندارید','err'); return;
-       }
-       vclassQuestionsOf(s.id).forEach(function(q){ remove('vclass_questions', q.id); });
-       remove('vclass_sessions', s.id);
-       /* فایل IDB ناهمگام است — پیام و رندر بعد از پاک‌شدن واقعی */
-       vclassIdbDel(VCLASS_STORE, s.file_key || '').then(function(){
-         toast('نشست حذف شد','ok'); render();
-       });
-     }, {title:'حذف نشست', ok:'حذف', danger:true});
-   },
-   'vclass-play'(){
-     const s = byId('vclass_sessions', id);
-     if(!s || !s.file_key){ toast('فایل این نشست در دسترس نیست','err'); return; }
-     toast('فایل در حال بارگذاری است…','');
-     vclassIdbGet(VCLASS_STORE, s.file_key).then(function(blob){
-       if(!blob){ toast('فایل دیگر در ذخیره‌گاه نیست','err'); return; }
-       const url = (typeof URL!=='undefined' && URL.createObjectURL) ? URL.createObjectURL(blob) : '';
-       openModal(modalTpl('🎬 ' + (s.title||''),
-         '<video controls style="width:100%;max-height:62vh;background:#000;border-radius:10px" data-vurl="'+escAttr(url)+'"></video>'
-         + (s.description ? '<div class="small muted" style="margin-top:10px">'+esc(s.description)+'</div>' : ''), ''));
-       setTimeout(function(){
-         const v = document.querySelector('#modal video');
-         if(v && v.getAttribute('data-vurl')) v.src = v.getAttribute('data-vurl');
-       }, 60);
-     });
-   },
-   'vclass-q-ask'(){
-     window._vcQSession = id;
-     openModal(modalTpl('❓ سؤال از دبیر',
-       '<textarea id="vc_qbody" class="input" rows="4" placeholder="سؤال خود را بنویسید"></textarea>',
-       'vclass-q-save'));
-   },
-   'vclass-q-save'(){
-     const s = byId('vclass_sessions', window._vcQSession);
-     if(!s) return;
-     const body = V('vc_qbody');
-     if(!body) return toast('متن سؤال را بنویسید','err');
-     const u = S.user;
-     const role = (typeof activePersona==='function') ? activePersona() : u.role;
-     /* 🔴 سؤال فقط به اسم خودِ دانش‌آموز و فقط در نشستِ کلاس خودش */
-     const sid2 = role==='student' ? u.id : S.child;
-     const cls2 = sid2 ? classOf(sid2) : null;
-     if(!cls2 || cls2.id !== s.class_id){ toast('این نشست مربوط به کلاس شما نیست','err'); return; }
-     insert('vclass_questions', {
-       session_id: s.id, student_id: sid2, body: body,
-       created_at: new Date().toISOString(), answer:'', answered_at:'', answered_by:0
-     });
-     closeModal(); toast('سؤال ثبت شد — پاسخ دبیر همین‌جا می‌آید','ok'); render();
-   },
-   'vclass-q-answer'(){
-     window._vcQId = id;
-     openModal(modalTpl('✍️ پاسخ به سؤال',
-       '<textarea id="vc_qans" class="input" rows="3" placeholder="پاسخ خود را بنویسید"></textarea>',
-       'vclass-q-answer-save'));
-   },
-   'vclass-q-answer-save'(){
-     const ans = V('vc_qans');
-     if(!ans) return toast('متن پاسخ را بنویسید','err');
-     update('vclass_questions', window._vcQId, {
-       answer: ans, answered_at: new Date().toISOString(), answered_by: S.user.id
-     });
-     closeModal(); toast('پاسخ ثبت شد','ok'); render();
-   },
-   /* ─────────────── تکالیف (بند ۴) ─────────────── */
-   'hw-new'(){
-     const cls = byId('classes', Number(id));
-     if(!cls) return;
-     window._hwClass = Number(id);
-     const subs = (typeof visibleSubjects==='function'?visibleSubjects():[]).filter(function(x){return x.school_id===cls.school_id;});
-     openModal(modalTpl('تکلیف جدید — ' + cls.name,
-       f('عنوان *', inp('hw_title',''))
-       + f('درس', sel('hw_subject', [['','—']] .concat(subs.map(function(x){return [x.id,x.name];})), ''))
-       + f('توضیح', inp('hw_desc',''))
-       + f('مهلت (اختیاری)', inp('hw_due','','date'))
-       , 'hw-save'));
-   },
-   'hw-save'(){
-     const r = hwCreateAssignment({
-       classId: window._hwClass,
-       title: V('hw_title'),
-       subjectId: Number(V('hw_subject')) || 0,
-       description: V('hw_desc'),
-       dueDate: V('hw_due')
-     });
-     if(!r.ok){ toast(r.msg,'err'); return; }
-     closeModal(); toast('تکلیف ثبت شد','ok'); render();
-   },
-   'hw-del'(){
-     askConfirm('این تکلیف و فهرست بارگذاری‌هایش حذف شود؟ (خود فایل‌ها در ذخیره‌گاه می‌مانند)', function(){
-       const a = byId('hw_assignments', id);
-       if(!a) return;
-       const cls = byId('classes', a.class_id);
-       const u = S.user;
-       const role = (typeof activePersona==='function') ? activePersona() : u.role;
-       const isTeacher = role==='teacher' && cls && teacherClasses(u.id).some(function(c){ return c.id===cls.id; });
-       if(!(isTeacher || role==='manager' || role==='superadmin')){
-         toast('شما مجوز حذف این تکلیف را ندارید','err'); return;
-       }
-       hwSubmissionsOf(a.id).forEach(function(s){ remove('hw_submissions', s.id); });
-       remove('hw_assignments', a.id);
-       toast('تکلیف حذف شد','ok'); render();
-     }, {title:'حذف تکلیف', ok:'حذف', danger:true});
-   },
-   'hw-list'(){ hwListModal(Number(id)); },
-   'hw-grade'(){ hwGradeModal(Number(id)); },
-   'hw-grade-save'(){
-     const raw = V('hw_score');
-     const score = raw==='' ? null : Number(raw);
-     if(raw!=='' && (isNaN(score) || score<0 || score>20)){ toast('نمره باید ۰ تا ۲۰ باشد','err'); return; }
-     hwSaveGrading(score).then(function(r){
-       if(!r.ok){ toast(r.msg,'err'); return; }
-       closeModal(); toast('تصحیح ثبت شد','ok'); render();
-     });
-   },
-   'hw-canvas-clear'(){ _hwStrokes = []; hwCanvasRedraw(); },
-   'hw-submit'(){
-     const inpEl = document.getElementById('hwfile_' + id);
-     const file = (inpEl && inpEl.files && inpEl.files[0]) ? inpEl.files[0] : null;
-     if(!file){ toast('تصویر تکلیف را انتخاب کنید','err'); return; }
-     toast('در حال بارگذاری…','');
-     hwSubmit(Number(id), file).then(function(r){
-       if(!r.ok){ toast(r.msg,'err'); return; }
-       toast('تکلیف بارگذاری شد — در انتظار تصحیح دبیر','ok');
-       render();
-     });
-   },
-   'notify-settings'(){
-     const c = notifySettings(S.user.school_id);
-     const row = (id,on,label,hint) =>
-       '<label class="row" style="gap:10px;align-items:flex-start;padding:10px 0;'
-       + 'border-bottom:1px solid var(--border)">'
-       + '<input type="checkbox" id="' + id + '"' + (on?' checked':'')
-       + ' style="margin-top:3px;flex:none" />'
-       + '<span style="min-width:0"><b class="small">' + label + '</b>'
-       + '<div class="small muted" style="margin-top:2px;line-height:1.9">' + hint + '</div>'
-       + '</span></label>';
-     openModal(modalTpl('تنظیمات اطلاع‌رسانی پیامکی',
-       row('nf_on', c.enabled, 'اطلاع‌رسانی پیامکی فعال باشد',
-           'با خاموش بودن، هیچ پیامی ساخته نمی‌شود.')
-       + row('nf_auto', c.autoSend, '⚠️ ارسال خودکار بدون تأیید مدیر',
-           'خطای دبیر مستقیم به خانواده اطلاع داده می‌شود. با احتیاط روشن کنید.')
-       + row('nf_abs', c.kinds.absence, 'پیامک غیبت', 'پرتکرارترین پیام.')
-       + row('nf_late', c.kinds.late, 'پیامک تأخیر', '')
-       + row('nf_exit', c.kinds.exit, 'پیامک خروج زودهنگام از کلاس',
-           'رویدادِ ایمنی است — پیش‌فرض روشن است؛ با هر خروجِ ثبت‌شده، خانواده همان لحظه خبر می‌گیرد.')
-       + row('nf_grade', c.kinds.grade, 'پیامک نمرهٔ پایین',
-           'عدد نمره در پیامک نمی‌آید؛ فقط اطلاع کلی.')
-       + row('nf_event', c.kinds.event, 'پیامک رویداد مدرسه', '')
-       + row('nf_daily', c.kinds.daily, 'پیامک خلاصهٔ روزانه',
-           'پس از ثبت حضور، یک پیام تجمیعی (زنگ‌ها + وضعیت حضور) به هر خانواده؛ با دکمهٔ «خلاصهٔ امروز» هم دستی ساخته می‌شود.')
-       + row('nf_bus', (c.kinds.bus_on!==false&&c.kinds.bus_off!==false), 'پیامک رویدادهای سرویس (سوار/پیاده)',
-           'با هر کلیک راننده، به خانوادهٔ دانش‌آموز پیامک می‌رود.')
-       + '<div class="grid g2" style="margin-top:10px">'
-       +   f('مهلت اصلاح دبیر (دقیقه)', inp('nf_grace', c.graceMinutes, 'number'))
-       +   f('سقف روزانه (قطعه)', inp('nf_cap', c.dailyCap, 'number'))
-       +   f('هشدار از این تعداد به بالا', inp('nf_bulk', c.bulkWarn, 'number'))
-       + '</div>',
-       'notify-save-settings'));
-   },
-   'notify-save-settings'(){
-     const sid = S.user.school_id;
-     const wasAuto = notifySettings(sid).autoSend;
-     const nowAuto = $('#nf_auto').checked;
-     const apply = () => {
-       notifySaveSettings(sid, {
-         enabled:  $('#nf_on').checked,
-         autoSend: nowAuto,
-         graceMinutes: Math.max(0, Number(V('nf_grace')) || 20),
-         dailyCap:     Math.max(1, Number(V('nf_cap'))   || 300),
-         bulkWarn:     Math.max(1, Number(V('nf_bulk'))  || 50),
-         kinds: { absence:$('#nf_abs').checked, late:$('#nf_late').checked,
-                  exit:$('#nf_exit').checked,
-                  grade:$('#nf_grade').checked, event:$('#nf_event').checked,
-                  daily:$('#nf_daily').checked,
-                  bus_on:$('#nf_bus').checked, bus_off:$('#nf_bus').checked }
-       });
-       closeModal(); toast('تنظیمات ذخیره شد','ok'); render();
-     };
-     /* ⚠️ روشن‌کردن خودکار تأیید صریح می‌خواهد — تصمیم پرریسکی است
-        و نباید با یک تیک بی‌توجه انجام شود. */
-     if(nowAuto && !wasAuto){
-       askConfirm('با روشن‌کردن ارسال خودکار، پیام‌ها بدون بازبینی شما به اولیا می‌روند.',
-         apply, { title:'تأیید ارسال خودکار', ok:'می‌پذیرم و روشن کن',
-                  note:'خطای دبیر در حضور و غیاب مستقیم به خانواده اطلاع داده می‌شود.' });
-     } else apply();
-   },
-   'sms-topup-ok'(){
-     const n=Number(V('sm_count'))||500;
-     const wal=smsWalletOf(S.user.school_id);
-     update('sms_wallet',wal.w.id,{balance:Number(wal.w.balance)+n});
-     closeModal(); toast(fa(n)+' پیامک شارژ شد','ok'); render();
    },
    // ---- افت تحصیلی / جلسات اولیا / رشد مدرسه ----
    'risk-notify'(){
@@ -2410,23 +1531,6 @@ document.addEventListener('click',e=>{
      closeModal();toast('دانش‌آموزان به‌روز شد','ok');render();},
    'summer-del'(){confirmModal('حذف این کلاسِ تابستانی؟','summer-del-ok',id);},
    'summer-del-ok'(){remove('summer_classes',Number(window._delId));closeModal();toast('حذف شد','ok');render();},
-   /* ─────────────── بند ۶.۵ (سبک): تداخل برنامه — پیشنهاد و جابه‌جایی ─────────────── */
-   'sched-conf-sug'(){
-     const key=el&&el.dataset.key?String(el.dataset.key):'';
-     const sid=el&&el.dataset.sid?String(el.dataset.sid):'';
-     const div=document.getElementById('conf-sug-'+key.replace(/[^a-z0-9]/gi,'')+'-'+sid);
-     if(!div)return;
-     div.style.display=(div.style.display==='none')?'flex':'none';
-   },
-   'sched-conf-move'(){
-     const id=Number(el.dataset.sid), day=Number(el.dataset.day), period=Number(el.dataset.period);
-     const r=byId('schedule',id);
-     if(!r){render();return;}
-     /* گاردِ لحظهٔ اجرا: کلاس و دبیر در مقصد واقعاً آزاد باشند */
-     if(db.schedule.some(x=>x.class_id===r.class_id&&x.day===day&&x.period===period&&x.id!==id)){toast('این جایِ کلاس دیگر پر شده است','err');render();return;}
-     if(r.teacher_id&&teacherBusyAt(r.teacher_id,day,period,id)){toast('این دبیر در آن ساعت مشغول است','err');render();return;}
-     update('schedule',id,{day,period});
-     toast('زنگ جابه‌جا شد: '+DAYS[day]+' زنگ '+fa(period),'ok');render();},
    'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk
@@ -2558,6 +1662,30 @@ document.addEventListener('click',e=>{
      if(res.ok)render();
    }
   };
+}
+
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]'); if(!el)return;
+  const a=el.dataset.act, rawId=el.dataset.id,
+       id=(rawId!=null && /^\d+$/.test(rawId))?Number(rawId):rawId; /* شناسهٔ عددی می‌ماند عدد؛ شناسهٔ متنی (مثل دکمه‌های تعمیرِ دیاگ) دست‌نخورده می‌ماند */
+  /* گارد مجوز اکشن: حتی اگر مهاجم دکمه را دستی بسازد، اکشن‌های تغییردهندهٔ
+     داده برای نقش‌های غیرمجاز اجرا نمی‌شوند. */
+  if(S.user && typeof canAction==='function' && !canAction(a)){
+    if(typeof toast==='function') toast('شما اجازهٔ انجام این عملیات را ندارید','err');
+    return;
+  }
+  /* فاز ۲: A از پارسیال‌هایِ ۹ ماژولِ 19-actions ساخته می‌شود —
+     ترکیبِ آن (نام‌ها، بدنه‌ها، ترتیبِ تعریف) با نسخهٔ تک‌فایلی یکسان است. */
+  const A=Object.assign({},
+    coreActions(e,el,id,a,rawId),
+    dormActions(e,el,id,a,rawId),
+    dropoutActions(e,el,id,a,rawId),
+    smsActions(e,el,id,a,rawId),
+    financeActions(e,el,id,a,rawId),
+    busActions(e,el,id,a,rawId),
+    vclassActions(e,el,id,a,rawId),
+    scheduleActions(e,el,id,a,rawId),
+    adminActions(e,el,id,a,rawId));
   if(A[a]){e.preventDefault();A[a]();}
   else if(typeof F7_ACTIONS!=='undefined'&&F7_ACTIONS[a]){e.preventDefault();F7_ACTIONS[a](el,id);}
   else if(typeof P8_ACTIONS!=='undefined'&&P8_ACTIONS[a]){e.preventDefault();P8_ACTIONS[a](el,id);}
@@ -2567,7 +1695,6 @@ document.addEventListener('click',e=>{
   else if(typeof FILTER_ACTIONS!=='undefined'&&FILTER_ACTIONS[a]){e.preventDefault();FILTER_ACTIONS[a](el,id);}
   else if(typeof SYNC_ACTIONS!=='undefined'&&SYNC_ACTIONS[a]){e.preventDefault();SYNC_ACTIONS[a](el,id);}
 });
-
 // live filters
 document.addEventListener('input',e=>{
   const el=e.target.closest('[data-f]');if(!el)return;
@@ -2828,37 +1955,3 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&!S.user&&$('#lnid'))document.querySelector('[data-act="login"]').click();});
 
 
-/**
- * تأیید و ارسال دستهٔ پیام، با هشدار پیش از ارسال حجم بالا.
- *
- * ⚠️ سه وضعیت جدا هشدار می‌گیرند: اعتبار ناکافی (بازدارنده)،
- * فراتر از سقف روزانه (هشدار)، حجم بالا (هشدار). سقف ترمز است
- * نه دیوار: مدیر می‌تواند آگاهانه رد شود.
- */
-function _notifyApprove(ids){
-  var e = notifyEstimate(ids);
-  if(!e.count){ toast('پیامی برای ارسال نیست','err'); return; }
-
-  var go = function(){
-    var r = notifySend(ids);
-    if(r.sent) toast(fa(r.sent) + ' پیام ارسال شد (' + fa(r.used) + ' قطعه)', 'ok');
-    if(r.reason === 'no-credit')
-      toast('اعتبار پیامک تمام شد — ' + fa(r.skipped) + ' پیام در صف ماند', 'err');
-    render();
-  };
-
-  if(!e.enough){
-    toast('اعتبار کافی نیست. نیاز: ' + fa(e.parts) +
-          ' قطعه — موجودی: ' + fa(e.balance) + ' قطعه', 'err');
-    return;
-  }
-  if(e.overBulk || e.overCap){
-    var note = e.overCap
-      ? 'این ارسال از سقف روزانهٔ مدرسه فراتر می‌رود.'
-      : 'موجودی پس از ارسال: ' + fa(e.after) + ' قطعه.';
-    askConfirm(fa(e.count) + ' پیام (' + fa(e.parts) + ' قطعه) برای اولیا ارسال شود؟',
-      go, { title:'تأیید ارسال گروهی', ok:'تأیید و ارسال', danger:false, note:note });
-    return;
-  }
-  go();
-}
