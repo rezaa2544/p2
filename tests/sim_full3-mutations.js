@@ -35,30 +35,48 @@ const MUTS = [
 ];
 
 function runSim() {
+  let r;
   try {
     const out = execSync('node tests/sim_full3.js', { cwd: ROOT, encoding: 'utf8', stdio: 'pipe' });
-    return { code: 0, out };
+    r = { code: 0, out };
   } catch (e) {
-    return { code: e.status || 1, out: String(e.stdout || '') + String(e.stderr || '') };
+    r = { code: e.status || 1, out: String(e.stdout || '') + String(e.stderr || '') };
   }
+  /* R90 — empty output = process killed (env/memory): retry once, and never
+     count that as a mutation kill (reverse false-positive of the 15 suites) */
+  if (String(r.out || '').trim() === '') {
+    try {
+      const out = execSync('node tests/sim_full3.js', { cwd: ROOT, encoding: 'utf8', stdio: 'pipe' });
+      r = { code: 0, out };
+    } catch (e2) {
+      r = { code: e2.status || 1, out: String(e2.stdout || '') + String(e2.stderr || '') };
+    }
+  }
+  return r;
 }
 
 let killed = 0;
+let envFails = 0;
 for (const m of MUTS) {
   if (ORIG.indexOf(m.bad) < 0) { console.log('  ❌ ' + m.name + ' — الگو پیدا نشد'); continue; }
   fs.writeFileSync(FILE, ORIG.replace(m.bad, m.mut));
   const r = runSim();
-  const dead = r.code !== 0;
-  console.log('  ' + (dead ? '✅' : '❌') + ' ' + m.name + ' — ' + (dead ? 'کشته شد (exit ' + r.code + ')' : 'زنده ماند!'));
+  const emptyOut = String(r.out || '').trim() === '';
+  const dead = !emptyOut && r.code !== 0;
+  if (emptyOut) envFails++;
+  console.log('  ' + (dead ? '✅' : '❌') + ' ' + m.name + ' — '
+    + (emptyOut ? '\u062e\u0637\u0627: \u0641\u0631\u0622\u06cc\u0646\u062f \u0628\u062f\u0648\u0646 \u062e\u0631\u0648\u062c\u06cc \u06a9\u0634\u062a\u0647 \u0634\u062f (\u0645\u062d\u06cc\u0637) \u2014 \u0645\u062d\u0634\u0648\u0628 \u0634\u062f'
+                : (dead ? 'کشته شد (exit ' + r.code + ')' : 'زنده ماند!')));
   if (dead) killed++;
   fs.writeFileSync(FILE, ORIG);
 }
 
 const final = runSim();
 const backGreen = final.code === 0 && final.out.includes('❌ 0');
-console.log('\nجهش: ' + killed + '/' + MUTS.length + ' کشته' + (killed === MUTS.length && backGreen ? ' ✅ (سبزِ پایانی)' : ' ⚠️'));
-if (killed !== MUTS.length || !backGreen) {
+if (String(final.out || '').trim() === '') console.log('\u062e\u0637\u0627: \u062e\u0631\u0648\u062c\u06ccِ \u067e\u0627\u06cc\u0627\u0646 \u062e\u0627\u0644\u06cc (\u0641\u0631\u0622\u06cc\u0646\u062f \u06a9\u0634\u062a\u0647 \u0634\u062f \u2014 \u0645\u062d\u06cc\u0637)');
+console.log('\nجهش: ' + killed + '/' + MUTS.length + ' کشته' + (killed === MUTS.length && backGreen && envFails === 0 ? ' ✅ (سبزِ پایانی)' : ' ⚠️'));
+if (killed !== MUTS.length || !backGreen || envFails > 0) {
   console.log('خروجیِ پایانی:');
-  console.log(final.out.split('\n').slice(-12).join('\n'));
+  console.log(String(final.out).split('\n').slice(-12).join('\n'));
 }
-process.exit(killed === MUTS.length && backGreen ? 0 : 1);
+process.exit(killed === MUTS.length && backGreen && envFails === 0 ? 0 : 1);

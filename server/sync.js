@@ -166,7 +166,13 @@ function inScope(session, coll, recId, data){
              : (rec && rec.from_id != null) ? Number(rec.from_id) : null;
     return f != null && f === u.id;
   }
-  if(coll === 'notifications' && rec && Number(rec.user_id) === u.id) return true;
+  /* R90 — scoped to parent/student (manager/teacher keep the school-level path):
+     own notification => read flag ONLY (title/body/etc. stay manager-domain) */
+  if(coll === 'notifications' && rec && Number(rec.user_id) === u.id
+     && (u.role === 'parent' || u.role === 'student')){
+    const nk = Object.keys(data || {});
+    return nk.length > 0 && nk.every(k => k === 'read');
+  }
 
   if(u.role === 'student'){
     if(coll === 'messages') return msgOwnerOk();
