@@ -32,9 +32,9 @@ function restore(p) { /* backup handled inline per mutation */ }
   }
 }
 
-/* M2 — نگهبانِ مرحلهٔ آخر در اکشن (19-actions.js) */
+/* M2 — نگهبانِ مرحلهٔ آخر در اکشن (19-actions-core.js) */
 {
-  const f = path.join(ROOT, 'src/js/19-actions.js');
+  const f = path.join(ROOT, 'src/js/19-actions-core.js');
   const orig = fs.readFileSync(f, 'utf8');
   const bad = orig.replace('if(i<0||i>=PREAPP_STAGES.length-1){toast','if(i<0){toast');
   chk(bad !== orig, 'M2 جهشِ نگهبانِ اکشنِ مرحلهٔ آخر اعمال شد');

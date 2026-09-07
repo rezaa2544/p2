@@ -35,7 +35,7 @@ mutate('src/js/04-queries.js',
   "const rows=[];",
   'tests/multigrade2.js', /❌ G4/, 'M1 نادیده‌گرفتنِ ردیف‌ها در classSubjectMembers');
 
-mutate('src/js/19-actions.js',
+mutate('src/js/19-actions-admin.js',
   "chosen.forEach(function(k){insert('class_subject_members',{class_id:cls.id,subject_id:s,student_id:k});});",
   "chosen.forEach(function(k){/* جهش: نوشته نمی‌شود */});",
   'tests/multigrade2.js', /❌ G4/, 'M2 ذخیرهٔ عضویت بدون نوشتنِ ردیف');

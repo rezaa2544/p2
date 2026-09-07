@@ -8,28 +8,28 @@ const fs = require('fs');
 
 const FILES = {
   'src/js/44-sms-notify.js': fs.readFileSync('src/js/44-sms-notify.js', 'utf8'),
-  'src/js/19-actions.js':    fs.readFileSync('src/js/19-actions.js', 'utf8'),
+  'src/js/19-actions-core.js':    fs.readFileSync('src/js/19-actions-core.js', 'utf8'),
   'src/js/12-attendance.js': fs.readFileSync('src/js/12-attendance.js', 'utf8'),
   'src/js/17-student-record.js': fs.readFileSync('src/js/17-student-record.js', 'utf8'),
 };
 
 const MUTS = [
   {
-    file: 'src/js/19-actions.js',
+    file: 'src/js/19-actions-core.js',
     name: 'M1 تبدیلِ خودکارِ حذف‌شده برگردد (تأخیر روی غایب، وضعیت علامت بخورد)',
     bad: "attDraftEvent(cid,date,id,'late',auto.fields);",
     mut: "attDraftSet(cid,date,id,'late',auto.fields);",
     expectFail: 'اتوماتِ تبدیل حذف شد',
   },
   {
-    file: 'src/js/19-actions.js',
+    file: 'src/js/19-actions-core.js',
     name: 'M2 گاردِ قفلِ تایمر (هنگامِ خروجِ فعال) خاموش شود',
     bad: "if(st!=='early_exit'&&_tmAll[id]){",
     mut: 'if(false&&_tmAll[id]){',
     expectFail: 'گاردِ قفلِ تایمر کار نکرد',
   },
   {
-    file: 'src/js/19-actions.js',
+    file: 'src/js/19-actions-core.js',
     name: 'M3 قاعدهٔ ۳۰٪ در ثبتِ رکوردِ تازه بی‌اثر شود',
     bad: "if(st!=='absent'&&typeof attOutRule==='function'){",
     mut: 'if(false){',

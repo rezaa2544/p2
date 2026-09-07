@@ -35,14 +35,14 @@ mutate('src/js/64-summer-classes.js',
   'function(s){return true;}',
   'tests/summer2.js', /❌ U1/, 'M1 برداشتنِ دامنهٔ مدرسه');
 
-mutate('src/js/19-actions.js',
+mutate('src/js/19-actions-core.js',
   "update('summer_classes',sc.id,{student_ids:sel,updated_at:todayISO()});",
   "update('summer_classes',sc.id,{updated_at:todayISO()});",
   'tests/summer2.js', /❌ U3/, 'M2 نذخیره‌شدنِ student_ids');
 
 mutate('server/sync.js',
-  "'assoc_minutes','summer_classes']",
-  "'assoc_minutes']",
+  "'assoc_minutes','summer_classes','dorm_rooms'",
+  "'assoc_minutes','dorm_rooms'",
   'tests/summer3.js', /❌ B1/, 'M3 برداشتنِ summer_classes از WRITE_PERMS');
 
 /* بازسازی + خطِّ پایه */

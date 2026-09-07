@@ -63,14 +63,14 @@ const MUTS = [
     expectFail: 'G1'
   },
   {
-    file: 'src/js/19-actions.js', suite: 'tests/server2.js', heap: 1500,
+    file: 'src/js/19-actions-core.js', suite: 'tests/server2.js', heap: 1500,
     bad: "if(r.status<400&&b&&b.ok&&b.user){",
     mut: "if(b&&b.user){",
     name: 'M6 ورود نادیده‌گیرِ ردِ بدنه',
     expectFail: 'H1'
   },
   {
-    file: 'src/js/19-actions.js', suite: 'tests/server2.js', heap: 1500,
+    file: 'src/js/19-actions-core.js', suite: 'tests/server2.js', heap: 1500,
     bad: "try{ Api.post('/api/auth/logout'); }catch(e){}",
     mut: "if(false){}",
     name: 'M7 خروج بدونِ خبرِ سرور',

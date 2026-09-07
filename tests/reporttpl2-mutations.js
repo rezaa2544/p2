@@ -44,7 +44,7 @@ mutate('src/js/33-forms-sms.js',
   "    + '<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:7px\">'\n    + [].map(function(r){",
   /❌ T2/, 'M2 لیستِ دروسِ compact خالی');
 
-mutate('src/js/19-actions.js',
+mutate('src/js/19-actions-core.js',
   "const d=reportCardCert(sid,V('cert_term'),V('cert_tpl')||'classic');",
   "const d=reportCardCert(sid,V('cert_term'));",
   /❌ T5/, 'M3 اکشنِ چاپ tpl را نمی‌فرستد');

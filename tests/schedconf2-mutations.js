@@ -40,7 +40,7 @@ mutate('src/js/15-schedule.js',
   'if(false){}',
   'tests/schedconf2.js', /❌ C4/, 'M2 نادیده‌گرفتنِ مشغولیتِ دبیر در پیشنهاد');
 
-mutate('src/js/19-actions.js',
+mutate('src/js/19-actions-schedule.js',
   "if(r.teacher_id&&teacherBusyAt(r.teacher_id,day,period,id)){toast('این دبیر در آن ساعت مشغول است','err');render();return;}",
   'if(false){}',
   'tests/schedconf2.js', /❌ C5/, 'M3 برداشتنِ گاردِ لحظهٔ اجرا');
