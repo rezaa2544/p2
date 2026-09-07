@@ -1075,9 +1075,19 @@ function coreActions(e, el, id, a, rawId){
      }
    },
    /* گواهی نمرات (بند ۱.۶): چاپ از تب کارنامهٔ پروندهٔ دانش‌آموز.
-      نسخهٔ PDF قفل‌شده است — اینجا فقط چاپِ اچ‌تی‌ام‌ال است. */
+      نسخهٔ PDF قفل‌شده است — اینجا فقط چاپِ اچ‌تی‌ام‌ال است.
+      🔴 دورِ ۸۹ — نشتِ دامنه (هم‌خانوادهٔ ics-export، §۰.۵.۲۰):
+      این اکشن تنها عضوِ خانوادهٔ گواهی‌ها بود که `certAllowedStudent` را
+      صدا نمی‌زد، درحالی‌که چهار خواهرش (`report-print`،
+      `cert-enroll-print`، `cert-transfer-print`، `cert-verify`) می‌زدند.
+      `sid` از `data-sid` می‌آید — یعنی ادعایِ DOM. اثباتِ زنده: ولیِ
+      مدرسهٔ ۶ با دکمهٔ دست‌ساز، گواهیِ نمراتِ دانش‌آموزِ مدرسهٔ ۱ را گرفت
+      **همراهِ نام و کدِ ملی**. از نشتِ ICS جدی‌تر است چون PII دارد.
+      نگهبان: `tests/certify.js` بخشِ C7 (جهش‌آزموده). */
    'cert-print'(){
      const sid=Number(el.dataset.sid)||(S.user&&S.user.role==='student'?S.user.id:0);
+     const chk=certAllowedStudent(sid);
+     if(!chk.ok){toast(chk.msg,'err');return;}
      const d=transcriptCert(sid,V('cert_term'));
      if(!d.ok){toast(d.msg,'err');return;}
      printableDoc(d);

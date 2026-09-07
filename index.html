@@ -10879,9 +10879,19 @@ function coreActions(e, el, id, a, rawId){
      }
    },
    /* گواهی نمرات (بند ۱.۶): چاپ از تب کارنامهٔ پروندهٔ دانش‌آموز.
-      نسخهٔ PDF قفل‌شده است — اینجا فقط چاپِ اچ‌تی‌ام‌ال است. */
+      نسخهٔ PDF قفل‌شده است — اینجا فقط چاپِ اچ‌تی‌ام‌ال است.
+      🔴 دورِ ۸۹ — نشتِ دامنه (هم‌خانوادهٔ ics-export، §۰.۵.۲۰):
+      این اکشن تنها عضوِ خانوادهٔ گواهی‌ها بود که `certAllowedStudent` را
+      صدا نمی‌زد، درحالی‌که چهار خواهرش (`report-print`،
+      `cert-enroll-print`، `cert-transfer-print`، `cert-verify`) می‌زدند.
+      `sid` از `data-sid` می‌آید — یعنی ادعایِ DOM. اثباتِ زنده: ولیِ
+      مدرسهٔ ۶ با دکمهٔ دست‌ساز، گواهیِ نمراتِ دانش‌آموزِ مدرسهٔ ۱ را گرفت
+      **همراهِ نام و کدِ ملی**. از نشتِ ICS جدی‌تر است چون PII دارد.
+      نگهبان: `tests/certify.js` بخشِ C7 (جهش‌آزموده). */
    'cert-print'(){
      const sid=Number(el.dataset.sid)||(S.user&&S.user.role==='student'?S.user.id:0);
+     const chk=certAllowedStudent(sid);
+     if(!chk.ok){toast(chk.msg,'err');return;}
      const d=transcriptCert(sid,V('cert_term'));
      if(!d.ok){toast(d.msg,'err');return;}
      printableDoc(d);
@@ -13455,7 +13465,19 @@ const F7_ACTIONS = {
     toast(r.made?`یادآوری برای ${fa(r.made)} قسط ساخته شد`:'قسطِ سررسیدِ گذشته‌ای بدون یادآوری نیست',r.made?'ok':'');
     render();
   },
+  /* 🔴 دورِ ۸۹ — نشتِ دامنه (هم‌خانوادهٔ ics-export و cert-print، §۰.۵.۲۰):
+     `id` شناسهٔ صورتحساب است و از DOM می‌آید، پس ادعایِ مرورگر است.
+     بدونِ گارد، ولی با دکمهٔ دست‌ساز رسیدِ شهریهٔ دانش‌آموزِ **مدرسهٔ دیگر**
+     را چاپ می‌کرد — همراهِ نامِ او (اثباتِ زنده: ولیِ ۲ رسیدِ ۱۶۳۲ نویسه‌ایِ
+     دانش‌آموزِ ۱۶ را گرفت). گاردِ مالکیت همان مرجعِ گواهی‌هاست تا رفتار در
+     کلِ محصول یکدست بماند. نگهبان: `tests/finance2.js` بخشِ FN-R1. */
   'receipt-tuition'(el,id){
+    const t=byId('tuitions',Number(id));
+    if(!t){toast('صورتحساب پیدا نشد','err');return;}
+    if(typeof certAllowedStudent==='function'){
+      const chk=certAllowedStudent(t.student_id);
+      if(!chk.ok){toast(chk.msg,'err');return;}
+    }
     printTuitionReceipt(Number(id));
   },
   'inst-cancel'(el,id){
