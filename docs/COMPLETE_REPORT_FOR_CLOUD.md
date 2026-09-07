@@ -101,7 +101,7 @@
 | `e0eadff` | docs: SCHOOL_INTRO phone-only contact | حذفِ `[ایمیل]` بر اساس قاعدهٔ «تماس فقط تلفنی» — فقط `[شماره تماس]` باقی است |
 | `7273280` | perf: self-healing parallel test runner (v۱) | پایه‌ها ۲-worker — ۱۰۵۰s → ۹۳۶s (۱۵٫۶ دقیقه) |
 | `981e268` | docs: HANDOFF speed-round entry + report fixes | دو حادثهٔ کاذب + بازیابی + رفعِ پادزهرِ summary + وضعیتِ placeholder |
-| (این کامیت) | perf: runner v۳ — isolated-copy lanes + serial port lane | ۳ لاین (۴۵/۴۱/۳۹) + اسکنرِ پورت + self-heal + گاردها — **۱۰۵۰s → ۴۲۸s (−۶۰٪)، 125/125** |
+| `3dee49a` | perf: runner v۳ — isolated-copy lanes + serial port lane | ۳ لاین (۴۵/۴۱/۳۹) + اسکنرِ پورت + self-heal + گاردها — **۱۰۵۰s → ۴۲۸s (−۶۰٪)، 125/125** |
 
 ---
 
