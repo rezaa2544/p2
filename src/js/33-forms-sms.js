@@ -352,7 +352,7 @@ function enrollmentCert(sid){
     title:'گواهی اشتغال به تحصیل',
     school: esc(school.name || '') + (school.code ? ' — کد ' + esc(school.code) : ''),
     subtitle:'دانش‌آموز: ' + esc(st.full_name) + ' · سال تحصیلی ' + esc(yr),
-    body: body,
+    body: bodyClassic,
     note:'این گواهی از سامانهٔ پایش چاپ شده است و با کد احرازِ درج‌شده قابل راستی‌آزمایی است؛ نسخهٔ الکترونیکی و بدون نیاز به مهر است.'};
 }
 
@@ -386,7 +386,7 @@ function transferCert(sid){
     title:'گواهی انتقالی',
     school: esc(school.name || '') + (school.code ? ' — کد ' + esc(school.code) : ''),
     subtitle:'دانش‌آموز: ' + esc(st.full_name) + ' · سال تحصیلی ' + esc(yr),
-    body: body,
+    body: bodyClassic,
     note:'این گواهی از سامانهٔ پایش چاپ شده است و با کد احرازِ درج‌شده قابل راستی‌آزمایی است؛ «وضعیت کلی» بر پایهٔ میانگین وزنی نمراتِ ثبت‌شده تا تاریخ صدور است.'};
 }
 
