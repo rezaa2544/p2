@@ -125,6 +125,7 @@ var ACTION_ROLES = {
   'vclass-save':      ['teacher','manager'],
   'vclass-del':       ['teacher','manager'],
   'vclass-play':      ['teacher','manager','student','parent'],
+  'tomorrow-check':   ['student','parent'], /* E.1 فرناز: فقط حافظهٔ محلی — چیزی برای WRITE_PERMS ندارد */
   'vclass-q-ask':     ['student'],
   'vclass-q-save':    ['student'],
   'vclass-q-answer':  ['teacher','manager'],

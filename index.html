@@ -4363,6 +4363,7 @@ var ACTION_ROLES = {
   'vclass-save':      ['teacher','manager'],
   'vclass-del':       ['teacher','manager'],
   'vclass-play':      ['teacher','manager','student','parent'],
+  'tomorrow-check':   ['student','parent'], /* E.1 فرناز: فقط حافظهٔ محلی — چیزی برای WRITE_PERMS ندارد */
   'vclass-q-ask':     ['student'],
   'vclass-q-save':    ['student'],
   'vclass-q-answer':  ['teacher','manager'],
@@ -5120,10 +5121,50 @@ function todayCard(sid,iso){
    </div></div>`;
 }
 
+/* ── E.1 فرناز: چک‌لیستِ «فردا چی لازم دارم» ──
+   درس‌های فردا از همان برنامهٔ هفتگی + وسیلهٔ خاصِ هر درس (کلیدواژه در نام).
+   تیک‌ها فقط لوکال (حافظهٔ محلی به‌کلیدِ دانش‌آموز+تاریخ، از طریق Store) — بدون سرور. */
+const TOMORROW_GEAR=[['ورزش','👕 لباس ورزش'],['تربیت بدنی','👕 لباس ورزش'],['هنر','🎨 وسایل نقاشی'],['آزمایشگاه','🥼 روپوش آزمایشگاه']];
+function tomorrowGearFor(subjName){
+  const n=String(subjName||'');
+  for(let i=0;i<TOMORROW_GEAR.length;i++)if(n.indexOf(TOMORROW_GEAR[i][0])>-1)return TOMORROW_GEAR[i][1];
+  return null;
+}
+function tomorrowCheckKey(sid,iso){ return 'payesh_tmr_'+sid+'_'+iso; }
+function tomorrowChecksGet(sid,iso){
+  try{ return JSON.parse(Store.get(tomorrowCheckKey(sid,iso),'{}'))||{}; }catch(e){ return {}; }
+}
+function tomorrowCard(sid,iso){
+  iso=iso||todayISO();
+  const tmr=addDaysISO(iso,1), dow=todayDow(tmr);
+  const cls=classOf(sid);
+  const periods=cls?db.schedule.filter(s=>s.class_id===cls.id&&s.day===dow).sort((a,b)=>a.period-b.period):[];
+  const subs=Object.create(null);
+  (db.substitutions||[]).forEach(x=>{ if(x.date===tmr)subs[x.schedule_id]=x; });
+  const checks=tomorrowChecksGet(sid,tmr);
+  return `<div class="card tomorrow-card"><div class="card-head"><h3>🎒 فردا چی لازم دارم</h3>
+    <span class="badge b-green">${jalali(tmr)} — ${DAYS_FULL[dow]}</span></div>
+   <div class="card-body" style="display:grid;gap:6px">
+    ${periods.length
+     ?periods.map(s=>{
+        const sub=(byId('subjects',s.subject_id)||{}).name||'—';
+        const gear=tomorrowGearFor(sub), sb=subs[s.id];
+        const on=checks['p'+s.period]?'checked':'';
+        return `<div class="row" style="padding:7px 10px;background:var(--surface-2);border-radius:8px;gap:8px">`
+          + `<input type="checkbox" data-act="tomorrow-check" data-sid="${escAttr(sid)}" data-iso="${escAttr(tmr)}" data-idx="p${s.period}" ${on} />`
+          + `<span class="badge b-green" style="flex:none">زنگ ${fa(s.period)}</span>`
+          + `<b>${esc(sub)}</b>`
+          + (sb?`<span class="badge b-amber">🔁 جابه‌جای: ${esc((byId('users',sb.sub_teacher_id)||{}).full_name||'—')}</span>`:'')
+          + (gear?`<span class="small">🎒 ${esc(gear)}</span>`:'')
+          + `</div>`;}).join('')
+     :empty('🎉','فردا کلاسی نیست','برنامهٔ هفتگی کلاس برای فردا خالی است.')}
+   </div></div>`;
+}
+
 function summaryBlock(sid){
   const d=studentSummary(sid), tot=d.att.length;
   const cnt=k=>d.att.filter(a=>a.status===k).length;
-  return `${todayCard(sid)}<div class="grid g4">
+  return `${todayCard(sid)}${tomorrowCard(sid)}<div class="grid g4">
    ${statCard('🎒',esc(d.st.full_name),d.cls?'کلاس '+d.cls.name:'بدون کلاس','blue')}
    ${statCard('📊',fa(d.avg.toFixed(2)),'معدل کل','green')}
    ${statCard('🏅',fa(d.rank)+' از '+fa(d.size),'رتبه در کلاس','amber')}
@@ -11149,6 +11190,17 @@ function loginServerMsg(code){
    اختصاصی. پارامترها همان محلی‌هایِ شنوندهٔ کلیک هستند. */
 function coreActions(e, el, id, a, rawId){
   return {
+   /* E.1 فرناز: تیکِ چک‌لیستِ فردا — فقط حافظهٔ محلی via Store (بدون سرور، بدون رندرِ مجدد) */
+   'tomorrow-check'(){
+     const sid=Number(el.dataset.sid), iso=el.dataset.iso, idx=el.dataset.idx;
+     if(!sid||!iso||!idx)return;
+     /* دیسپچر روی کلیک preventDefault می‌کند (تاگِلِ بومی لغو می‌شود) — پس دستی تاگِل می‌زنیم */
+     el.checked=!el.checked;
+     const k=tomorrowCheckKey(sid,iso);
+     let cur={}; try{cur=JSON.parse(Store.get(k,'{}'))||{};}catch(x){cur={};}
+     cur[idx]=el.checked?1:0;
+     Store.set(k,JSON.stringify(cur));
+   },
    pick(){
      /* دمو: فرم با شماره + کد ملیِ همان حساب پر می‌شود و کد ارسال (شبیه‌سازی)
         و در فیلد می‌نشیند — کاربر با «استعلام و ورود» کاملش می‌کند. */
