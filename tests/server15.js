@@ -135,7 +135,9 @@ async function main() {
     return null;
   }
   const gradeOf = (s, marker) => (s.grades || []).find(g => g.created_at === marker);
-  const M_G1 = 'R95-C1', M_G2 = 'R95-C5', M_ATT = 'R95-C9', M_S2 = 'R95-C10', M_AN = 'R95-C6';
+  /* مارکرهایِ created_at باید تاریخ‌شکل باشند (لایهٔ مقدار: created_at تاریخِ
+     واقعی می‌خواهد) — ۲۰۹۹ چون در seed نیست و یکتاست. M_AN در body است. */
+  const M_G1 = '2099-01-01', M_G2 = '2099-01-02', M_ATT = '2099-01-03', M_S2 = '2099-01-04', M_AN = 'R95-C6';
 
   /* C1 — ins نمره → version ۱ */
   let r = await syncOps(cT1, [{ t: 'ins', c: 'grades', __by: T1.id, data: {

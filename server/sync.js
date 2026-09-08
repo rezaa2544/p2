@@ -10,6 +10,8 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
+const { validate, validateSyncEnvelope, validateSyncData } = require('./validate');
+
 /* Core mirror of the client's ACTION_ROLES table for WRITE operations.
    The full table mirror is the next phase (AD.md §14) — unknown
    collection/role here FAILS CLOSED. */
@@ -543,6 +545,12 @@ function createSync(ctx){
     const s = sessionFrom(req);
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
 
+    /* لایهٔ مقدار (validate.js): بدنه فقط {ops} است — کلیدِ ناشناخته = ردِّ
+       400 (fail-closed؛ کلاینت فقط ops می‌فرستد). ترتیبِ بعدی (413 برایِ
+       دستهٔ بزرگ + 200 برایِ خالی) عینِ رفتارِ قفل‌شده می‌ماند. */
+    const bv = validate(body, { fields: { ops: { type: 'array' } }, required: ['ops'] });
+    if(!bv.ok && bv.kind === 'unknown_field')
+      return sendJson(res, 400, { ok: false, code: 'bad_payload' });
     const ops = (body && body.ops);
     if(!Array.isArray(ops)) return sendJson(res, 400, { ok: false, code: 'bad_payload' });
     if(ops.length > MAX_BATCH) return sendJson(res, 413, { ok: false, code: 'batch_too_large' });
@@ -557,7 +565,10 @@ function createSync(ctx){
     const results = [];
     const apply = [];
     for(const op of ops){
-      if(!op || !op.uid || op.t === undefined || !op.c) return all('malformed_op');
+      /* پاکتِ عملیات (validate.js): کلیدِ ناشناخته یا uid/c/id/atِ بدشکل =
+         malformed (کلِ دسته، مثلِ رفتارِ موجود). مقدارِ t این‌جا سنجیده
+         نمی‌شود — canOp در fieldGate هر tِ غیرِ ins/upd/del را رد می‌کند. */
+      if(!validateSyncEnvelope(op).ok) return all('malformed_op');
       /* #1 — `by` is an assertion from the browser; verify or poison batch */
       if(Number(op.by) !== s.id){
         audit('sync_forge_by', { user_id: s.id, claimed_by: op.by, uid: op.uid });
@@ -592,6 +603,23 @@ function createSync(ctx){
       if(fv){
         audit('sync_field_gate', { user_id: s.id, uid: op.uid, collection: op.c, code: fv.code });
         results.push({ uid: op.uid, ok: false, code: fv.code, message: fv.msg });
+        continue;
+      }
+      /* لایهٔ مقدار (validate.js): طولِ رشته / enum / عدد / تاریخ — ردِّ
+         عملیات‌محور (مثلِ field_denied) تا یک عملیاتِ خراب، دستهٔ سالم را
+         مسموم نکند. مقدارِ خام هرگز در پاسخ/آدیت نمی‌آید (قرارداد §4). */
+      const vv = validateSyncData(op.c, op.data, op.t);
+      if(vv){
+        audit('sync_validation_failed', { user_id: s.id, uid: op.uid, collection: op.c, field: vv.field, reason: vv.reason });
+        results.push({ uid: op.uid, ok: false, code: 'validation_failed', field: vv.field, message: 'مقدارِ «' + vv.field + '» معتبر نیست' });
+        continue;
+      }
+      /* base_versionِ بدشکل (غیرِ عددِ صحیحِ مثبت) = ردِّ عملیات — وگرنه در
+         مجموعهٔ نسخه‌دار، سطرِ تعارضِ بیهوده می‌ساخت. */
+      if(op.t === 'upd' && op.base_version != null &&
+         (typeof op.base_version !== 'number' || !Number.isInteger(op.base_version) || op.base_version < 1)){
+        audit('sync_validation_failed', { user_id: s.id, uid: op.uid, collection: op.c, field: 'base_version', reason: 'bad_base_version' });
+        results.push({ uid: op.uid, ok: false, code: 'validation_failed', field: 'base_version', message: 'مقدارِ «base_version» معتبر نیست' });
         continue;
       }
       /* §13.1 — non-in-person day: physical ops rejected per-op (rest continues) */

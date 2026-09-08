@@ -2646,7 +2646,10 @@ const SYNC_DEAD_CODES = {
   /* R95 (بند ۲.۵): ردِّ پایدارِ نسخه‌ای — دوباره‌ارسال بی‌فایده است
      (conflict_preserved → با مدیر داوری می‌شود؛ stale_base → نسخهٔ
      سرور تازه‌تر است). */
-  conflict_preserved: 1, stale_base: 1
+  conflict_preserved: 1, stale_base: 1,
+  /* لایهٔ مقدار (validate.js): مقدارِ نامعتبر با تکرار درست نمی‌شود —
+     dead-letter (وگرنه تا ابد failed → retry می‌ماند). */
+  validation_failed: 1
 };
 
 const SYNC = {

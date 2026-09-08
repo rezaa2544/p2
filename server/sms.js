@@ -13,6 +13,8 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
+const { validate } = require('./validate');
+
 const PHONE_RE = /^09\d{9}$/;
 
 function createSms(ctx){
@@ -68,19 +70,19 @@ function createSms(ctx){
     const s = sessionFrom(req);
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
     if(s.role !== 'superadmin') return sendJson(res, 403, { ok: false, code: 'forbidden' });
-    /* R96 P0-5 — validatorِ صریح: بدنه = فقطِ queue_ids؛ آرایهٔ عددِ مثبتِ صحیح،
-       حداکثر ۵۰؛ فیلدِ ناششناس = رد (fail closed). phone/بدنهٔ پیام از
-       notify_queue می‌آید — کلاینت هیچ‌کدام را تزریق نمی‌کند. */
-    if(!body || typeof body !== 'object' || Array.isArray(body))
+    /* R96 P0-5 — validatorِ صریح (حالا رویِ validate.js سوار است): بدنه =
+       فقطِ queue_ids؛ آرایهٔ عددِ مثبتِ صحیح، حداکثر ۵۰۰؛ فیلدِ ناشناس =
+       رد (fail-closed). phone/بدنهٔ پیام از notify_queue می‌آید — کلاینت
+       هیچ‌کدام را تزریق نمی‌کند. codeها عینِ رفتارِ قفل‌شده‌اند. */
+    const v = validate(body, { fields: {
+      queue_ids: { type: 'array', max: 500, of: { type: 'integer', min: 1 } }
+    }, required: ['queue_ids'] });
+    if(!v.ok){
+      if(v.kind === 'unknown_field')
+        return sendJson(res, 400, { ok: false, code: 'unknown_field', field: v.field });
       return sendJson(res, 400, { ok: false, code: 'bad_batch' });
-    for(const k of Object.keys(body)){
-      if(k !== 'queue_ids') return sendJson(res, 400, { ok: false, code: 'unknown_field', field: k });
     }
     const ids = body.queue_ids;
-    if(!Array.isArray(ids) || ids.length > 500)
-      return sendJson(res, 400, { ok: false, code: 'bad_batch' });
-    if(!ids.every(x => Number.isInteger(x) && x > 0))
-      return sendJson(res, 400, { ok: false, code: 'bad_batch' });
     if(!ids.length) return sendJson(res, 400, { ok: false, code: 'empty_batch' });
     if(!configured) return sendJson(res, 503, { ok: false, code: 'sms_not_configured' });
 
