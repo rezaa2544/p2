@@ -779,3 +779,12 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 
 ### بیزلاینِ قدم ۰ (روی `feat/farnaz-phase1`)
 - `node build.js --check` → exit 0 ✅ · `node tools/check-authz.js` → exit 0 ✅ · `node tests/smoke.js` → ‏۵۴۷/۵۴۷ ✅
+
+### S4 — فیلدِ معدلِ ورودی ✅ (پیاده شد)
+- مدل: `entry_gpa` به users در `authz/model.json` + بازتولیدِ `write-perms.json` (ژنراتور، +۱ خط).
+- سرور: `server/validate.js` — نگاشتِ `entry_gpa→score` (۰ تا ۲۰؛ خالی=null از isEmpty رد می‌شود؛ null سروری با Object.assign منتشر می‌شود).
+- کلاینت: فیلدِ `u_entry_gpa` در `userModal` (`18-modals.js`) + پارس/اعتبارسنجی در `user-save` (`19-actions-admin.js`: خالی=null، عددِ ۰–۲۰، ارقامِ فارسی با toLatinDigits، فقط role=student) + سطرِ «معدل ورودی» در `studentProfileCard` (`17-student-record.js`).
+- تست: `tests/entry-gpa.js` ‏۱۹/۱۹ ✅ (فرم، فارسی، ۳ رد، null، غیرِدانش‌آموز، نمایش، allowlist، نگاشت+قانونِ سرور، سینکِ زندهٔ قبول/رد) + `tests/entry-gpa-mutations.js` ‏۶/۶ کشته ✅.
+- گیت‌ها: build ✅ · check-authz ✅ · ‏smoke ‏۵۴۷/۵۴۷ ✅.
+- عارضهٔ مثبت: بازبیلد، مُهرِ کهنهٔ `USER_GUIDE.html` (یافتهٔ حسابرسیِ دور ۲) را هم تازه کرد.
+- مشاهده (خارج از اسکوپ، رفع نشد): `last_gpa` و رفقا در ایمپورتِ اکسل فقط لوکال (`rec[k]=`) نوشته می‌شوند و سینک نمی‌شوند — اگر سینکِ آن‌ها خواسته شد، تصمیمِ جدا می‌خواهد.
