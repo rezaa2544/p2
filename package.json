@@ -32,7 +32,7 @@
     "pg": "^8.23.0"
   },
   "devDependencies": {
-    "jsdom": "^25.0.0"
+    "jsdom": "^30.0.1"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"
