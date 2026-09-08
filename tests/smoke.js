@@ -912,7 +912,7 @@ test('تنظیمات پلان ذخیره و اعمال می‌شود', () => {
 test('بستهٔ پشتیبان ساختار درست دارد', () => {
   W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null");
   assert(W("buildBackup().format") === 'payesh-backup', 'قالب نادرست');
-  assert(W('buildBackup().version') === 2, 'نسخه نادرست');
+  assert(W('buildBackup().version') === 3, 'نسخه نادرست (دور ۱۰۰: نسخهٔ ۳ = دارایِ اسنپ‌شات)');
   assert(W('buildBackup().ops.length') === W('log.length'), 'شمار عملیات نادرست');
   assert(W('validateBackup(buildBackup()).ok') === true, 'پشتیبان خودمان نامعتبر شد');
 });
