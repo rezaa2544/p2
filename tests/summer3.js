@@ -75,7 +75,8 @@ try {
 
   /* B1: مدیرِ ۱ ins */
   const ins = await http('POST', '/api/sync', { ops: [opX({ by: mgr1.id, collection: 'summer_classes', type: 'ins', data: mk(1, {}) })] }, mgr1C);
-  T(ins.status === 200, 'B1 مدیرِ ۱: ins summer_classes → 200 (گرفت: ' + ins.status + ' ' + JSON.stringify(ins.json).slice(0, 120) + ')');
+  const b1s = ins.json && ins.json.results && ins.json.results[0];
+  T(ins.status === 200 && b1s && b1s.ok === true, 'B1 مدیرِ ۱: ins summer_classes → 200 + ok (R96 per-op) (گرفت: ' + ins.status + ' ' + JSON.stringify(ins.json).slice(0, 120) + ')');
 
   /* B2: مدیرِ ۲ روی مدرسهٔ ۱ → out_of_scope */
   const evil = await http('POST', '/api/sync', { ops: [opX({ by: mgr2.id, collection: 'summer_classes', type: 'ins', data: mk(1, { name: 'تجاوز' }) })] }, mgr2C);

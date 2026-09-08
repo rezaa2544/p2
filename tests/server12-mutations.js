@@ -41,7 +41,13 @@ for (const m of MUTS) {
   try { execSync(__r89cmd, { stdio: 'pipe' }); out = 'PASSED (no failure)'; }
   catch (e) {
     out = String(e.stdout || '') + String(e.stderr || '');
-    if (out.trim() === '') { /* R89: empty output = process killed (env/memory) — retry once */
+    /* R89/R96: empty output = process killed (env/memory/port) — retry with
+       delay (بارِ موازیِ رجیسیون) — هرگز «زنده ماند»ِ کاذب. */
+    let att = 0;
+    while (out.trim() === '' && att < 3) {
+      att++;
+      const w0 = Date.now() + 2500 * att;
+      while (Date.now() < w0) {}
       try { execSync(__r89cmd, { stdio: 'pipe' }); out = 'PASSED (no failure)'; }
       catch (e2) { out = String(e2.stdout || '') + String(e2.stderr || ''); }
     }

@@ -266,15 +266,15 @@ function filterFields(op, collection, role){
   if(fa){
     const d = (op && op.data) || {};
     const isMgr = role === 'manager' || role === 'superadmin';
+    /* R96 P0-1: دروازهٔ status (insِ مقدارِ اولیه + updِ نقش) تک‌منبع —
+       fieldGate. اینجا فقط نرمال‌سازیِ نبودِ status می‌ماند. */
     if(op.t === 'ins'){
-      const allowed = isMgr ? fa.ins.managerRoles : fa.ins.defaultRoles;
-      if(d.status != null && allowed.indexOf(d.status) === -1)
-        return { kind: 'reject_op', code: 'field_denied' };
       if(d.status == null) d.status = fa.ins.defaultRoles[0]; /* normalize */
       return null;
     }
     if(op.t === 'upd' && d.status != null){
-      if(!isMgr || fa.upd.statusValues.indexOf(d.status) === -1)
+      /* چکِ ارزش برایِ مدیر (R96ِ fieldGate نقش را می‌سنجد، ارزشِ مدیر را نه) */
+      if(isMgr && fa.upd.statusValues.indexOf(d.status) === -1)
         return { kind: 'reject_op', code: 'field_denied' };
       return null;
     }

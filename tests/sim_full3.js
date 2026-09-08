@@ -74,7 +74,9 @@ async function main() {
   fs.copyFileSync(seed, store);
   const store0 = JSON.parse(fs.readFileSync(store, 'utf8'));
   const child = spawn('node', [path.join(ROOT, 'server/index.js')], {
-    env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', PAYESH_STORE: store, PAYESH_AUDIT: path.join(dir, 'audit.jsonl'), PAYESH_JWT_SECRET: require('crypto').randomBytes(32).toString('hex'), PAYESH_DEMO_CODE: '1' },
+    env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', PAYESH_STORE: store, PAYESH_AUDIT: path.join(dir, 'audit.jsonl'), PAYESH_JWT_SECRET: require('crypto').randomBytes(32).toString('hex'), PAYESH_DEMO_CODE: '1',
+    /* R96: ۱۱ login از یک IP — سقف‌های OTP در server17 سنجیده می‌شوند */
+    PAYESH_SMS_COOLDOWN_S: '0', PAYESH_SMS_DAILY_CAP: '1000000', PAYESH_SMS_PHONE_LIMIT: '1000000', PAYESH_SMS_IP_LIMIT: '1000000', PAYESH_LOGIN_IP_LIMIT: '1000000', PAYESH_LOGIN_TRIES: '1000000' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let out = '';

@@ -53,10 +53,11 @@ mutate('src/js/19-actions-core.js',
   "update('summer_classes',sc.id,{updated_at:todayISO()});",
   'tests/summer2.js', /❌ U3/, 'M2 نذخیره‌شدنِ student_ids');
 
+/* R96 P0-1: WRITE_PERMSِ literal منسوخ — دروازه = canOp در fieldGate */
 mutate('server/sync.js',
-  "'assoc_minutes','summer_classes','dorm_rooms'",
-  "'assoc_minutes','dorm_rooms'",
-  'tests/summer3.js', /❌ B1/, 'M3 برداشتنِ summer_classes از WRITE_PERMS');
+  "if(!exc && !canOp(s.role, op.c, op.t)) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };",
+  "if(!exc && !canOp(s.role, op.c, op.t) || (op.c === 'summer_classes' && s.role === 'manager')) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };",
+  'tests/summer3.js', /❌ B1/, 'M3 برداشتنِ summer_classes از fieldGate (manager)');
 
 /* بازسازی + خطِّ پایه */
 execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
