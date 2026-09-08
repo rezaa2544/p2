@@ -76,6 +76,7 @@ const STATUS_ENUMS = {
   reexams              : ['scheduled', 'done'],
   scholarships         : ['requested', 'review', 'approved', 'rejected'],
   sms_log              : ['queued', 'sent', 'failed'],
+  staff_attendance     : ['present', 'absent', 'late'],
   teacher_sms          : ['queued', 'sent', 'failed'],
   transfer_requests    : ['pending', 'approved', 'rejected'],
   tuitions             : ['open', 'partial', 'settled'],

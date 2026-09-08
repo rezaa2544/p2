@@ -61,6 +61,7 @@
       "sedascores",
       "sms_log",
       "sms_wallet",
+      "staff_attendance",
       "student_archive",
       "student_transfers",
       "subjects",
@@ -1041,6 +1042,20 @@
       ]
     },
     "sms_wallet": {
+      "ins": [
+        "manager",
+        "superadmin"
+      ],
+      "upd": [
+        "manager",
+        "superadmin"
+      ],
+      "del": [
+        "manager",
+        "superadmin"
+      ]
+    },
+    "staff_attendance": {
       "ins": [
         "manager",
         "superadmin"
@@ -2071,6 +2086,17 @@
       "created_at",
       "id",
       "school_id",
+      "updated_at"
+    ],
+    "staff_attendance": [
+      "created_at",
+      "date",
+      "id",
+      "note",
+      "registered_by",
+      "school_id",
+      "staff_id",
+      "status",
       "updated_at"
     ],
     "student_archive": [
@@ -3434,6 +3460,14 @@
       ],
       "collections": [
         "sms_wallet"
+      ]
+    },
+    "staffatt-save": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "staff_attendance"
       ]
     },
     "sub-del": {

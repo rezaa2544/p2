@@ -1740,7 +1740,7 @@ document.addEventListener('click',e=>{
     if(typeof toast==='function') toast('شما اجازهٔ انجام این عملیات را ندارید','err');
     return;
   }
-  /* فاز ۲: A از پارسیال‌هایِ ۹ ماژولِ 19-actions ساخته می‌شود —
+  /* فاز ۲: A از پارسیال‌هایِ ۱۰ ماژولِ 19-actions ساخته می‌شود —
      ترکیبِ آن (نام‌ها، بدنه‌ها، ترتیبِ تعریف) با نسخهٔ تک‌فایلی یکسان است. */
   const A=Object.assign({},
     coreActions(e,el,id,a,rawId),
@@ -1751,7 +1751,8 @@ document.addEventListener('click',e=>{
     busActions(e,el,id,a,rawId),
     vclassActions(e,el,id,a,rawId),
     scheduleActions(e,el,id,a,rawId),
-    adminActions(e,el,id,a,rawId));
+    adminActions(e,el,id,a,rawId),
+    staffActions(e,el,id,a,rawId));
   if(A[a]){e.preventDefault();A[a]();}
   else if(typeof F7_ACTIONS!=='undefined'&&F7_ACTIONS[a]){e.preventDefault();F7_ACTIONS[a](el,id);}
   else if(typeof P8_ACTIONS!=='undefined'&&P8_ACTIONS[a]){e.preventDefault();P8_ACTIONS[a](el,id);}
