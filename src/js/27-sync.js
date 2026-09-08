@@ -24,7 +24,11 @@ const SYNC_META_KEY  = 'sms_syncmeta_v1';
    نیست — همان «failed» با backoff می‌ماند. */
 const SYNC_DEAD_CODES = {
   field_denied: 1, malformed_op: 1, role_denied: 1, out_of_scope: 1,
-  forged_by: 1, user_mismatch: 1, school_mismatch: 1
+  forged_by: 1, user_mismatch: 1, school_mismatch: 1,
+  /* R95 (بند ۲.۵): ردِّ پایدارِ نسخه‌ای — دوباره‌ارسال بی‌فایده است
+     (conflict_preserved → با مدیر داوری می‌شود؛ stale_base → نسخهٔ
+     سرور تازه‌تر است). */
+  conflict_preserved: 1, stale_base: 1
 };
 
 const SYNC = {
@@ -145,6 +149,14 @@ async function syncNow(manual){
         /* uid قبلاً اعمال شده (ارسال دوباره پس از قطعی) — روی سرور
            همان تغییری هست که ما می‌خواستیم؛ صف را نگیراند. */
         item.status = 'synced';
+      }else if(r.code === 'conflict_preserved' || r.code === 'stale_base'){
+        /* R95 (بند ۲.۵): ردِّ پایدارِ نسخه‌ای — تگ مناسب + پیامِ روشن:
+           تعارض «حفظ» شده و مدیر مدرسه باید داوری کند (conflict)، یا
+           نسخهٔ سرور تازه‌تر است (rejected). */
+        item.status = (r.code === 'conflict_preserved') ? 'conflict' : 'rejected';
+        item.error  = (r.code === 'conflict_preserved')
+          ? 'تغییر هم‌زمان روی سرور حفظ شد — مدیر مدرسه باید داوری کند'
+          : 'سرور نسخهٔ تازه‌تری از این رکورد دارد — تغییر اعمال نشد';
       }else if(SYNC_DEAD_CODES[r.code]){
         /* ردِّ پایدار — دوباره‌ارسال بی‌فایده است (P0-2) */
         item.status = 'rejected';
@@ -163,12 +175,20 @@ async function syncNow(manual){
     saveQueue();
 
     const okCount   = res.filter(r => r.ok).length;
-    const deadCount = res.filter(r => !r.ok && (r.code === 'duplicate_ignored' || SYNC_DEAD_CODES[r.code])).length;
-    const bad       = res.length - okCount - deadCount; /* فقط خطاهایِ قابلِ تلاشِ دوباره */
+    const conflictCount = res.filter(r => !r.ok && r.code === 'conflict_preserved').length; /* R95 */
+    const deadCount = res.filter(r => !r.ok && (r.code === 'duplicate_ignored' || SYNC_DEAD_CODES[r.code])).length - conflictCount;
+    const bad       = res.length - okCount - deadCount - conflictCount; /* فقط خطاهایِ قابلِ تلاشِ دوباره */
     if(okCount){
-      const extra = (deadCount ? ` — ${fa(deadCount)} رد شد` : '') + (bad ? ` — ${fa(bad)} ناموفق` : '');
-      if(manual || bad || deadCount) toast(`${fa(okCount)} تغییر ارسال شد${extra}`, (bad || deadCount) ? 'warn' : 'ok');
+      const extra = (deadCount ? ` — ${fa(deadCount)} رد شد` : '')
+        + (conflictCount ? ` — ${fa(conflictCount)} تعارض` : '')
+        + (bad ? ` — ${fa(bad)} ناموفق` : '');
+      if(manual || bad || deadCount || conflictCount) toast(`${fa(okCount)} تغییر ارسال شد${extra}`, (bad || deadCount || conflictCount) ? 'warn' : 'ok');
       else toast(`${fa(okCount)} تغییر همگام شد ✓`, 'ok');
+    }else if(manual && (conflictCount || deadCount)){
+      /* R95: کل دسته رد/تعارض شد (هیچ موردی همگام نشد) — کاربر باید بداند */
+      toast(`${fa(conflictCount || deadCount)} تغییر همگام نشد`
+        + (conflictCount ? ` — ${fa(conflictCount)} تعارض با نسخهٔ سرور؛ مدیر مدرسه باید داوری کند` : ''),
+        'err', { icon: 'warn', sticky: true });
     }
 
     SYNC.attempts = bad ? SYNC.attempts + 1 : 0;

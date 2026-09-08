@@ -7878,6 +7878,35 @@ test('دور ۷۸ بند ۷: ماژول اسکان/خوابگاه — اتاق،
   }
 });
 
+test('R95 بند ۲.۵: نسخه‌گذاریِ لایهٔ محلی (insert→۱، update→+۱) + base_version در صف + ماژول 67', () => {
+  const prev = W('JSON.stringify(S.user?S.user.id:null)');
+  let gid = 0, aid = 0;
+  try {
+    W(`S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;`);
+    /* insert روی مجموعهٔ نسخه‌دار → version 1 */
+    gid = W(`(function(){var g=insert('grades',{school_id:1,student_id:1,subject_id:1,class_id:1,term:'نوبت دوم',score:10,max_score:20});return g.id})()`);
+    assert(W(`byId('grades',${gid}).version`) === 1, 'insertِ نمره باید version 1 بگیرد');
+    /* update → version 2 + base_version=1 در عملیاتِ صف */
+    W(`update('grades',${gid},{score:12})`);
+    assert(W(`byId('grades',${gid}).version`) === 2, 'update باید نسخه را به 2 برساند');
+    const op = JSON.parse(W(`(function(){var arr=SYNC.queue.filter(function(x){return x.op&&x.op.t==='upd'&&x.op.c==='grades'&&Number(x.op.id)===${gid}});return JSON.stringify(arr.length?arr[arr.length-1].op:null)})()`));
+    assert(!!op && op.base_version === 1, 'عملیاتِ صفِ نمره باید base_version=1 داشته باشد');
+    /* LWW (announcements): base_version ندارد */
+    aid = W(`(function(){var a=insert('announcements',{school_id:1,title:'تست R95',body:'x',audience:'all'});return a.id})()`);
+    W(`update('announcements',${aid},{title:'تست R95 ب'})`);
+    const aop = JSON.parse(W(`(function(){var arr=SYNC.queue.filter(function(x){return x.op&&x.op.t==='upd'&&x.op.c==='announcements'&&Number(x.op.id)===${aid}});return JSON.stringify(arr.length?arr[arr.length-1].op:null)})()`));
+    assert(!!aop && aop.base_version === undefined, 'عملیاتِ LWW (announcements) نباید base_version داشته باشد');
+    /* ماژول 67 بارگذاری شده است */
+    assert(W(`typeof syncConflictsEnsure==='function' && typeof syncConflictsResolve==='function' && typeof syncConflictsInner==='function'`) === true, 'ماژول 67-sync-conflicts بارگذاری نشده');
+  } finally {
+    try {
+      if (gid) W(`remove('grades',${gid})`);
+      if (aid) W(`remove('announcements',${aid})`);
+    } catch (cle) {}
+    W(`S.user=${prev === 'null' ? 'null' : `byId('users',${prev})`};S.persona=null;`);
+  }
+});
+
 await Promise.all(testQueue);   // همهٔ آزمون‌های ناهمگام تا سرِ صف برسد
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));

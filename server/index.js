@@ -26,6 +26,7 @@ const { createIdor } = require('./idor');
 const { createBell } = require('./bell');
 const { createAdmin } = require('./admin');
 const { createSms } = require('./sms');
+const { createConflicts } = require('./conflicts');
 
 const ROOT = path.join(__dirname, '..');
 const DATA_DIR = path.join(__dirname, 'data');
@@ -192,6 +193,7 @@ const idor = createIdor({ store, ENUM_WINDOW_MS, ENUM_THRESHOLD, ENUM_SLOW_MS, a
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson });
 const admin = createAdmin({ store, audit, sessionFrom: auth.sessionFrom, sendJson, markDirty, dataDir: path.dirname(STORE_FILE) });
 const sms = createSms({ store, audit, sessionFrom: auth.sessionFrom, sendJson, markDirty });
+const conflicts = createConflicts({ store, audit, sessionFrom: auth.sessionFrom, sendJson, markDirty });
 
 /* ── static ────────────────────────────────────────────────────────── */
 const STATIC = {
@@ -233,6 +235,8 @@ const onRequest = async (req, res) => {
     if(p === '/api/auth/logout'    && req.method === 'POST') return await auth.apiLogout(req, res);
     if(p === '/api/auth/delete-account' && req.method === 'POST') return await auth.apiDeleteAccount(req, res);
     if(p === '/api/sync'           && req.method === 'POST') return await sync.apiSync(req, res, await readBody(req));
+    if(p === '/api/sync/conflicts' && req.method === 'GET')  return await conflicts.apiList(req, res);
+    if(p === '/api/sync/resolve-conflict' && req.method === 'POST') return await conflicts.apiResolve(req, res, await readBody(req));
     if(/^\/api\/students\/\d+$/.test(p) && req.method === 'GET') return await idor.apiStudent(req, res, p.split('/')[3]);
     if(p === '/api/bell/now' && req.method === 'GET') return bell.apiBellNow(req, res);
     if(p === '/api/admin/backup'  && req.method === 'POST') return await admin.apiBackup(req, res);
@@ -309,7 +313,7 @@ if(require.main === module){
     const proto = (TLS_CERT && TLS_KEY) ? 'https' : 'http';
     console.log('payesh-server (phase 1' + (TLS_CERT ? ' + TLS' : '') + ') on ' + proto + '://' + HOST + ':' + PORT);
     console.log('  static : ' + path.join(ROOT, 'index.html'));
-    console.log('  api    : /api/health /api/auth/* /api/sync /api/students/:id /api/bell/now /api/admin/{backup,restore} /api/sms/send');
+    console.log('  api    : /api/health /api/auth/* /api/sync /api/sync/conflicts /api/sync/resolve-conflict /api/students/:id /api/bell/now /api/admin/{backup,restore} /api/sms/send');
     console.log('  store  : ' + STORE_FILE + '  (' + (store.users || []).length + ' users)');
     if(BACKUP_EVERY_MS > 0){
       console.log('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');

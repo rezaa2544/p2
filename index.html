@@ -1809,6 +1809,9 @@ function idxReport(){
    ⚠️ دسترسی به حافظه فقط از راه `Store` (فایل 00-data-layer.js).
    ═══════════════════════════════════════════════════════════════════ */
 const LOG_KEY='sms_log_v1', SESSION_KEY='sms_session_v1', BOSS_KEY='sms_boss_v1', PERSONA_KEY='sms_persona_v1';
+/* R95 (بند ۲.۵): مجموعه‌هایِ دارایِ نسخه — باید با VERSION_TRACKED سرور
+   (server/sync.js) یکی باشد؛ server-authority و LWW این‌جا نیستند. */
+const _VERSIONED_C = { grades:1, attendance:1, discipline:1 };
 let log=[];
 /* هنگام بازپخش لاگ یا تولید داده نمونه، صف همگام‌سازی نباید پر شود */
 let SYNC_MUTED=false;
@@ -1945,6 +1948,7 @@ function applyOp(op,record=true){
     const im=(typeof idxById==='function')?idxById(op.c):null;
     const dup = im? im.has(Number(op.data.id)) : arr.some(x=>x.id===op.data.id);
     if(!dup){
+      if(_VERSIONED_C[op.c] && op.data.version == null) op.data.version = 1; /* R95 */
       arr.push(op.data);
       /* درج افزایشی به‌جای باطل‌سازی: ایندکس‌های ساخته‌شده زنده
          می‌مانند و درج بعدی مجبور به بازسازی کل مجموعه نیست.
@@ -1959,7 +1963,16 @@ function applyOp(op,record=true){
     const im=(typeof idxById==='function')?idxById(op.c):null;
     const it = im? im.get(Number(op.id)) : arr.find(x=>x.id===op.id);
     if(typeof idxInvalidate==='function') idxInvalidate(op.c);
-    if(it)Object.assign(it,op.data);
+    if(it){
+      /* R95 (بند ۲.۵): پیش از اعمال، نسخهٔ پایه را ثبت کن و نسخهٔ محلی
+         را بچرخان؛ سرور `base_version` را با نسخهٔ خود می‌سنجد و در
+         مجموعه‌هایِ نسخه‌دار، تعارض را «حفظ» می‌کند (sync_conflicts). */
+      if(_VERSIONED_C[op.c]){
+        op.base_version = it.version || 1;
+        it.version = (it.version || 1) + 1;
+      }
+      Object.assign(it,op.data);
+    }
   }
   else if(op.t==='del'){
     if(typeof idxInvalidate==='function') idxInvalidate(op.c);
@@ -2627,7 +2640,11 @@ const SYNC_META_KEY  = 'sms_syncmeta_v1';
    نیست — همان «failed» با backoff می‌ماند. */
 const SYNC_DEAD_CODES = {
   field_denied: 1, malformed_op: 1, role_denied: 1, out_of_scope: 1,
-  forged_by: 1, user_mismatch: 1, school_mismatch: 1
+  forged_by: 1, user_mismatch: 1, school_mismatch: 1,
+  /* R95 (بند ۲.۵): ردِّ پایدارِ نسخه‌ای — دوباره‌ارسال بی‌فایده است
+     (conflict_preserved → با مدیر داوری می‌شود؛ stale_base → نسخهٔ
+     سرور تازه‌تر است). */
+  conflict_preserved: 1, stale_base: 1
 };
 
 const SYNC = {
@@ -2748,6 +2765,14 @@ async function syncNow(manual){
         /* uid قبلاً اعمال شده (ارسال دوباره پس از قطعی) — روی سرور
            همان تغییری هست که ما می‌خواستیم؛ صف را نگیراند. */
         item.status = 'synced';
+      }else if(r.code === 'conflict_preserved' || r.code === 'stale_base'){
+        /* R95 (بند ۲.۵): ردِّ پایدارِ نسخه‌ای — تگ مناسب + پیامِ روشن:
+           تعارض «حفظ» شده و مدیر مدرسه باید داوری کند (conflict)، یا
+           نسخهٔ سرور تازه‌تر است (rejected). */
+        item.status = (r.code === 'conflict_preserved') ? 'conflict' : 'rejected';
+        item.error  = (r.code === 'conflict_preserved')
+          ? 'تغییر هم‌زمان روی سرور حفظ شد — مدیر مدرسه باید داوری کند'
+          : 'سرور نسخهٔ تازه‌تری از این رکورد دارد — تغییر اعمال نشد';
       }else if(SYNC_DEAD_CODES[r.code]){
         /* ردِّ پایدار — دوباره‌ارسال بی‌فایده است (P0-2) */
         item.status = 'rejected';
@@ -2766,12 +2791,20 @@ async function syncNow(manual){
     saveQueue();
 
     const okCount   = res.filter(r => r.ok).length;
-    const deadCount = res.filter(r => !r.ok && (r.code === 'duplicate_ignored' || SYNC_DEAD_CODES[r.code])).length;
-    const bad       = res.length - okCount - deadCount; /* فقط خطاهایِ قابلِ تلاشِ دوباره */
+    const conflictCount = res.filter(r => !r.ok && r.code === 'conflict_preserved').length; /* R95 */
+    const deadCount = res.filter(r => !r.ok && (r.code === 'duplicate_ignored' || SYNC_DEAD_CODES[r.code])).length - conflictCount;
+    const bad       = res.length - okCount - deadCount - conflictCount; /* فقط خطاهایِ قابلِ تلاشِ دوباره */
     if(okCount){
-      const extra = (deadCount ? ` — ${fa(deadCount)} رد شد` : '') + (bad ? ` — ${fa(bad)} ناموفق` : '');
-      if(manual || bad || deadCount) toast(`${fa(okCount)} تغییر ارسال شد${extra}`, (bad || deadCount) ? 'warn' : 'ok');
+      const extra = (deadCount ? ` — ${fa(deadCount)} رد شد` : '')
+        + (conflictCount ? ` — ${fa(conflictCount)} تعارض` : '')
+        + (bad ? ` — ${fa(bad)} ناموفق` : '');
+      if(manual || bad || deadCount || conflictCount) toast(`${fa(okCount)} تغییر ارسال شد${extra}`, (bad || deadCount || conflictCount) ? 'warn' : 'ok');
       else toast(`${fa(okCount)} تغییر همگام شد ✓`, 'ok');
+    }else if(manual && (conflictCount || deadCount)){
+      /* R95: کل دسته رد/تعارض شد (هیچ موردی همگام نشد) — کاربر باید بداند */
+      toast(`${fa(conflictCount || deadCount)} تغییر همگام نشد`
+        + (conflictCount ? ` — ${fa(conflictCount)} تعارض با نسخهٔ سرور؛ مدیر مدرسه باید داوری کند` : ''),
+        'err', { icon: 'warn', sticky: true });
     }
 
     SYNC.attempts = bad ? SYNC.attempts + 1 : 0;
@@ -3275,6 +3308,7 @@ var ACTION_ROLES = {
   'smode-open':      ['edu_office','manager','superadmin'],
   'smode-save':      ['edu_office','manager','superadmin'],
   'smode-mgr':       ['manager','superadmin'],
+  'conflict-resolve':['manager','superadmin'],
   'as-new':         ['manager'],
   'as-save':        ['manager'],
   'as-status':      ['manager'],
@@ -3759,6 +3793,7 @@ function adminDash(){
     <div class="spacer"></div>
     <button class="btn ghost sm" data-act="smode-mgr">${schoolModeOf(u.school_id,todayISO())==='virtual'?'🏫 حضوری کردن امروز':'🏠 غیرحضوری کردن امروز'}</button>
    </div>`:''}
+   ${((u.role==='manager'||u.role==='superadmin')&&typeof DATA_MODE!=='undefined'&&DATA_MODE==='server')?`<div class="card"><div class="card-head"><h3>⚖️ تعارض‌های همگام‌سازی</h3><span class="muted small">تغییرهای هم‌زمانِ در انتظارِ داوری (فقط حالت سروری)</span></div><div id="sync-conflicts-root"><div class="card-body" style="padding-top:12px"><div class="muted small">در حالِ خواندن…</div></div></div></div>`:''}
    <div class="grid g2">
     <div class="card"><div class="card-head"><h3>روند حضور روزهای اخیر</h3><span class="badge b-blue">درصد حضور</span></div>
      <div class="card-body">${trend.length?`<div class="chart">${trend.map(t=>`<div class="col" title="${escAttr(t.rate)}%"><i style="height:${t.rate}%"></i><span>${new Date(t.d).toLocaleDateString('fa-IR-u-ca-persian',{day:'numeric'})}</span></div>`).join('')}</div>`:empty('📈','داده‌ای نیست','')}</div></div>
@@ -10937,6 +10972,14 @@ function coreActions(e, el, id, a, rawId){
      if(!r.ok){ toast(r.msg,'err'); return; }
      toast(r.rec.mode==='virtual' ? 'مدرسه امروز غیرحضوری (مجازی) شد' : 'مدرسه امروز حضوری شد','ok'); render();
    },
+   /* R95 (بند ۲.۵): داوریِ تعارضِ همگام‌سازی — مجوز و دامنهٔ مدرسه را
+      سرور هم دوباره می‌سنجد (resolve-conflict). */
+   'conflict-resolve'(){
+     const cid = Number(el.dataset.cid);
+     const winner = el.dataset.winner;
+     if(!cid || (winner !== 'incoming' && winner !== 'server')){ toast('انتخابِ نامعتبر','err'); return; }
+     if(typeof syncConflictsResolve === 'function') syncConflictsResolve(cid, winner);
+   },
    /* خلاصهٔ روزانه (بند ۱.۷): برای همهٔ دانش‌آموزان فعال؛ تکراری رد می‌شود */
    'daily-summary'(){
      const r = notifyDailySummaryAll(S.user.school_id);
@@ -15399,6 +15442,8 @@ function render(){
   if(typeof bellLiveEnsure==='function') bellLiveEnsure();
   /* یادآوریِ دبیر (دور ۶۵): لایهٔ صفِ پیامک — با ۳۰ ثانیه محافظ */
   if(typeof nudgeTick==='function') nudgeTick();
+  /* تعارض‌های همگام‌سازی (R95, بند ۲.۵): فقط حالت سروری، مدیر/سوپرادمین */
+  if(typeof syncConflictsEnsure==='function') syncConflictsEnsure();
 
   /* بازگرداندن اسکرول منو */
   if(navTop){
@@ -26995,6 +27040,150 @@ const CF_ACTIONS = {
     closeModal(); toast('درخواستِ موجه ثبت شد — پس از تأییدِ مدیر اعمال می‌شود','ok'); render();
   }
 };
+
+/* ═══════════════════════════════════════════════════════════════════
+   R95 (بند ۲.۵) — تعارض‌هایِ همگام‌سازی (حالت سروری)
+   ═══════════════════════════════════════════════════════════════════
+   وقتی دو کاربر هم‌زمان یک رکوردِ نسخه‌دار (نمره/حضور/انضباط) را
+   عوض کنند، سرور تغییرِ دیرهنگام را اعمال نمی‌کند و در sync_conflicts
+   «حفظ» می‌کند (server/sync.js). این ماژول فهرستِ تعارض‌ها را از
+   /api/sync/conflicts می‌گیرد و مدیر/سوپرادمین هر دو نسخه (سرور در
+   برابرِ کلاینت) را روبه‌رو می‌بیند و داوری می‌کند:
+     «پذیرشِ تغییرِ کلاینت»  → incoming روی سرور اعمال + نسخه +۱
+     «نگه‌داشتنِ وضعیتِ سرور» → رکورد دست‌نخورده می‌ماند
+   داوری POST /api/sync/resolve-conflict است (نه عملیاتِ همگام‌سازی)؛
+   سرور دوباره مجوز و دامنهٔ مدرسه را می‌سنجد.
+   ═══════════════════════════════════════════════════════════════════ */
+
+var SC_REFRESH_MS = 30000;      /* پُلِ دوره‌ای — مثلِ بِل، فقط وقتی کارت هست */
+var _scTimer = null;
+var _scInFlight = false;
+
+function syncConflictsEligible(){
+  return (typeof DATA_MODE !== 'undefined' && DATA_MODE === 'server')
+    && (typeof S !== 'undefined' && S.user)
+    && (S.user.role === 'manager' || S.user.role === 'superadmin');
+}
+
+/* برچسب‌هایِ فارسیِ فیلدها برایِ نمایشِ روبه‌رویِ هم (سایر فیلدها به انگلیسی) */
+function _scLabel(k){
+  const m = {
+    student_id:'دانش‌آموز', subject_id:'درس', score:'نمره', status:'وضعیت',
+    kind:'نوع', points:'امتیاز', reason:'توضیح', day:'روز', date:'تاریخ',
+    school_id:'مدرسه', class_id:'کلاس', period:'زنگ'
+  };
+  return m[k] || k;
+}
+function _scCell(v){
+  if(v == null || v === '') return '—';
+  if(typeof v === 'number') return fa(v);
+  return esc(String(v));
+}
+function _scRows(d){
+  const skip = new Set(['id','version','base_version','created_at','updated_at','by','at','school_id']);
+  const keys = Object.keys(d || {}).filter(k => !skip.has(k));
+  if(!keys.length) return '<div class="muted small">—</div>';
+  return keys.map(k =>
+    `<div class="row" style="padding:3px 0;align-items:center"><span class="muted small">${esc(_scLabel(k))}</span><div class="spacer"></div><b>${_scCell(d[k])}</b></div>`
+  ).join('');
+}
+function _scStudentName(d){
+  const sid = d && d.student_id;
+  if(sid == null || typeof byId !== 'function') return null;
+  const u = byId('users', Number(sid));
+  return (u && u.full_name) ? u.full_name : null;
+}
+
+function syncConflictsInner(conflicts){
+  if(!conflicts.length)
+    return '<div class="card-body" style="padding-top:12px"><div class="muted small" style="padding:6px 0">تعارضی نیست — همهٔ تغییرات بی‌دردسر همگام شده‌اند.</div></div>';
+  const open = conflicts.filter(c => c.status === 'open');
+  const done = conflicts.filter(c => c.status !== 'open').slice(-5).reverse();
+  const cards = open.map(c => {
+    const inc = c.incoming || {};
+    const name = _scStudentName(inc.data);
+    return `<div style="background:var(--surface-2);border-radius:12px;padding:12px;margin-top:10px">
+      <div class="row" style="align-items:center">
+        <span class="badge b-red">در انتظار داوری</span>
+        <b>${esc(c.collection || 'رکورد')} · ${fa(c.record_id)}</b>
+        <span class="muted small">${name ? 'دانش‌آموز: ' + esc(name) : ''}</span>
+        <div class="spacer"></div>
+        <span class="muted small">${c.created_at ? jalali(c.created_at) : ''}</span>
+      </div>
+      <div class="grid g2" style="margin-top:10px;align-items:start">
+        <div style="background:var(--surface);border-radius:10px;padding:10px">
+          <div class="muted small" style="margin-bottom:4px">🖥️ وضعیتِ فعلیِ سرور${c.server_state ? ' (نسخهٔ ' + fa(c.server_version) + ')' : ''}</div>
+          ${c.server_state ? _scRows(c.server_state) : '<div class="muted small">رکورد روی سرور وجود ندارد (حذف شده)</div>'}
+        </div>
+        <div style="background:var(--surface);border-radius:10px;padding:10px">
+          <div class="muted small" style="margin-bottom:4px">📱 تغییری که همگام نشد</div>
+          ${inc.data ? _scRows(inc.data) : '<div class="muted small">—</div>'}
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px;align-items:center">
+        <span class="muted small">داوری:</span>
+        <button class="btn sm" data-act="conflict-resolve" data-cid="${c.id}" data-winner="incoming">پذیرشِ تغییرِ کلاینت</button>
+        <button class="btn ghost sm" data-act="conflict-resolve" data-cid="${c.id}" data-winner="server">نگه‌داشتنِ وضعیتِ سرور</button>
+      </div>
+    </div>`;
+  }).join('');
+  const doneHtml = done.length
+    ? `<details style="margin-top:12px"><summary class="muted small">داوری‌های اخیر (${fa(done.length)})</summary>
+        ${done.map(c => `<div class="row" style="padding:4px 0;align-items:center"><span class="muted small">${esc(c.collection || '')} · ${fa(c.record_id)}</span><div class="spacer"></div>
+          <span class="badge ${c.winner === 'incoming' ? 'b-green' : 'b-blue'}">${c.winner === 'incoming' ? 'تغییرِ کلاینت اعمال شد' : 'وضعیتِ سرور نگه داشته شد'}</span>
+          ${c.resolved_at ? '<span class="muted small">' + jalali(c.resolved_at) + '</span>' : ''}</div>`).join('')}
+      </details>`
+    : '';
+  return `<div class="card-body" style="padding-top:4px">${cards}${doneHtml}</div>`;
+}
+
+async function syncConflictsFetch(){
+  const j = await Api.get('/api/sync/conflicts');
+  if(!j || j.ok !== true || !Array.isArray(j.conflicts)) throw new Error('invalid_response');
+  return j.conflicts;
+}
+
+function syncConflictsRender(conflicts){
+  const root = document.getElementById('sync-conflicts-root');
+  if(root) root.innerHTML = syncConflictsInner(conflicts);
+}
+
+async function syncConflictsTick(){
+  if(!syncConflictsEligible()) return;
+  if(!document.getElementById('sync-conflicts-root')) return;
+  if(_scInFlight) return;
+  _scInFlight = true;
+  try{
+    syncConflictsRender(await syncConflictsFetch());
+  }catch(err){
+    const root = document.getElementById('sync-conflicts-root');
+    if(root) root.innerHTML = '<div class="card-body" style="padding-top:12px"><div class="muted small">خواندنِ تعارض‌ها ممکن نشد — با وصلِ سرور دوباره تلاش می‌شود.</div></div>';
+  }finally{
+    _scInFlight = false;
+  }
+}
+
+/** پُلِ دوره‌ای — آیدمپتان؛ از hookِ پس‌رندر (24-edu-office.js) صدا زده می‌شود */
+function syncConflictsEnsure(){
+  if(!syncConflictsEligible()){
+    if(_scTimer){ clearInterval(_scTimer); _scTimer = null; }
+    return;
+  }
+  syncConflictsTick();
+  if(!_scTimer) _scTimer = setInterval(syncConflictsTick, SC_REFRESH_MS);
+}
+
+/** داوری — POST /api/sync/resolve-conflict (مجوز و دامنه را سرور می‌سنجد) */
+async function syncConflictsResolve(cid, winner){
+  try{
+    const j = await Api.post('/api/sync/resolve-conflict', { conflict_id: Number(cid), winner });
+    if(!j || j.ok !== true) throw new Error((j && j.msg) || 'resolve_failed');
+    toast(winner === 'incoming' ? 'تغییرِ کلاینت روی سرور اعمال شد' : 'وضعیتِ سرور نگه داشته شد', 'ok');
+    syncConflictsTick();
+  }catch(err){
+    toast('داوریِ تعارض انجام نشد: ' + (err && err.message || err), 'err', { icon:'warn', sticky:true });
+  }
+}
 
 /* ========================================================== */
 /* بارگذاری و سوئیچ تم‌های پویا (بدون وابستگی به سایر ماژول‌ها) */

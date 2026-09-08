@@ -919,6 +919,8 @@ function render(){
   if(typeof bellLiveEnsure==='function') bellLiveEnsure();
   /* یادآوریِ دبیر (دور ۶۵): لایهٔ صفِ پیامک — با ۳۰ ثانیه محافظ */
   if(typeof nudgeTick==='function') nudgeTick();
+  /* تعارض‌های همگام‌سازی (R95, بند ۲.۵): فقط حالت سروری، مدیر/سوپرادمین */
+  if(typeof syncConflictsEnsure==='function') syncConflictsEnsure();
 
   /* بازگرداندن اسکرول منو */
   if(navTop){
