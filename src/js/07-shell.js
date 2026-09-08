@@ -3,6 +3,8 @@
    سایدبار، نوار بالا و renderRoute که صفحه را انتخاب می‌کند.
    ═══════════════════════════════════════════════════════════════════ */
 function renderShell(){
+  /* کنترلگرِ تم: اعمالِ نمایِ درست (سگمنت/پاپ‌اور) پس از نشستنِ DOM. */
+  setTimeout(function(){ try{ if(typeof themeSegApply==='function') themeSegApply(); }catch(e){} }, 0);
   const u=Object.assign({},S.user,{role:activePersona()}), school=u.school_id?byId('schools',u.school_id):(u.office_id?{name:(byId('offices',u.office_id)||{}).name}:null);
   const t=TITLES[S.route]||['سامانه','']; 
   return `${S.sidebar?'<div class="scrim" data-act="closenav"></div>':''}
@@ -28,6 +30,7 @@ function renderShell(){
       <div><h1>${t[0]}</h1><div class="sub">${t[1]}</div></div><div class="spacer"></div>
       <button class="icon-btn" data-act="go" data-r="notifications" title="اعلان‌ها" style="position:relative;font-size:17px">🔔${(()=>{const n=unreadCount();return n?`<span style="position:absolute;top:-4px;inset-inline-end:-4px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border:2px solid #fff">${n>99?'۹۹+':fa(n)}</span>`:''})()}</button>
       ${typeof syncBadge==='function'?syncBadge():''}
+      ${typeof themeSegHtml==='function'?themeSegHtml():''}
       <span class="badge b-blue">${ROLE_FA[u.role]}</span></header>
     <div class="content">${childSwitcherBar()}${typeof notifyAutoBanner==='function'?notifyAutoBanner():''}${renderRoute()}</div>
    </div>
@@ -204,3 +207,106 @@ function _renderRouteInner(){
     default:return viewDashboard();
   }
 }
+
+/* ── کنترلگرِ بصریِ تم در نوارِ بالا (الحاقِ 67 به topbar) ──────────
+   موتور دست‌نخورده (99-theme-loader تنها مرجعِ ذخیره/اعمال)؛ این‌جا فقط
+   «نما»ست: دسکتاپ = سگمنتِ سه‌تاییِ یک‌کلیکی، موبایل (عرض <640px) =
+   دکمهٔ 🎨 با منوی شناور. چرا این شکل؟
+   - data-tpick/data-tpop (نه data-act): اکشنِ محضِ UI است و نباید وارد
+     رجیستریِ اکشن‌ها/ابزارِ authz شود؛ شنوندهٔ کلیک همین‌جاست (تک‌فایل).
+   - ریسپانسیو با JS (نه مدیاکوئری): بدونِ دست‌زدن به فایل‌های CSS.
+   - خواندنِ تمِ فعلی فقط از currentPayeshTheme (لایهٔ Store) — نه
+     حافظهٔ مرورگر مستقیم (قاعدهٔ 00-data-layer). */
+var THEME_SEG_FA = { 'theme-1': 'کلاسیک', 'theme-2': 'مدرن', 'theme-3': 'استودیو' };
+function themeSegList(){
+  if(typeof PAYESH_THEMES !== 'undefined' && PAYESH_THEMES && PAYESH_THEMES.length) return PAYESH_THEMES;
+  return [['theme-1', 'کلاسیک'], ['theme-2', 'مدرن'], ['theme-3', 'استودیو']];
+}
+function themeSegName(id, fb){
+  if(THEME_SEG_FA[id]) return THEME_SEG_FA[id];
+  return fb || id;
+}
+function themeSegBtn(id, name, on, block){
+  var eid = (typeof escAttr === 'function') ? escAttr(id) : id;
+  var enm = (typeof esc === 'function') ? esc(name) : name;
+  var base = 'border:1px solid transparent;background:' + (on ? 'var(--primary)' : 'transparent') +
+    ';color:' + (on ? '#fff' : 'var(--muted)') + ';font:inherit;cursor:pointer;line-height:1.2;' +
+    (on ? 'box-shadow:0 1px 4px rgba(0,0,0,.18);' : '') +
+    (block ? 'display:flex;width:100%;align-items:center;gap:6px;padding:8px 10px;border-radius:8px;text-align:start;font-size:13px;'
+           : 'padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;');
+  return '<button type="button" data-tpick="' + eid + '" aria-pressed="' + (on ? 'true' : 'false') + '"' +
+    ' title="پوستهٔ ' + enm + '" style="' + base + '">' + enm + '</button>';
+}
+/** نمایِ سگمنت (دسکتاپ) + پاپ‌اور (موبایل) برایِ نوارِ بالا. */
+function themeSegHtml(){
+  var cur = 'theme-2';
+  try{ if(typeof currentPayeshTheme === 'function') cur = currentPayeshTheme() || cur; }catch(e){}
+  var list = themeSegList();
+  var seg = '<div data-tseg role="group" aria-label="پوستهٔ برنامه" ' +
+    'style="display:inline-flex;align-items:center;gap:2px;background:var(--surface-2);' +
+    'border:1px solid var(--border);border-radius:999px;padding:2px">' +
+    list.map(function(t){ return themeSegBtn(t[0], themeSegName(t[0], t[1]), t[0] === cur, false); }).join('') + '</div>';
+  var menu = '<div data-tpopmenu hidden role="menu" aria-label="پوستهٔ برنامه" ' +
+    'style="position:absolute;top:calc(100% + 6px);inset-inline-end:0;z-index:50;min-width:150px;' +
+    'background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:6px;' +
+    'box-shadow:0 12px 32px -8px rgba(0,0,0,.25)">' +
+    list.map(function(t){ return themeSegBtn(t[0], themeSegName(t[0], t[1]), t[0] === cur, true); }).join('') + '</div>';
+  var pop = '<div data-tpopwrap style="position:relative;display:none">' +
+    '<button type="button" data-tpop title="پوستهٔ برنامه" aria-label="پوستهٔ برنامه" aria-haspopup="true" ' +
+    'class="icon-btn" style="font-size:17px">🎨</button>' + menu + '</div>';
+  return seg + pop;
+}
+/** انتخابِ نما بر پایهٔ عرض (دسکتاپ/موبایل) — پس از هر رندر + resize. */
+function themeSegApply(){
+  try{
+    var mobile = (typeof window !== 'undefined' && typeof window.innerWidth === 'number') && window.innerWidth < 640;
+    var segs = document.querySelectorAll('[data-tseg]');
+    for(var i = 0; i < segs.length; i++) segs[i].style.display = mobile ? 'none' : 'inline-flex';
+    var pops = document.querySelectorAll('[data-tpopwrap]');
+    for(var j = 0; j < pops.length; j++) pops[j].style.display = mobile ? '' : 'none';
+  }catch(e){}
+}
+/** تازه‌سازیِ حالتِ فعالِ دکمه‌ها پس از سوئیچ (بدونِ رندرِ مجدد). */
+function themeSegPaint(){
+  try{
+    var cur = (typeof currentPayeshTheme === 'function') ? currentPayeshTheme() : 'theme-2';
+    var btns = document.querySelectorAll('[data-tpick]');
+    for(var i = 0; i < btns.length; i++){
+      var b = btns[i], on = b.getAttribute('data-tpick') === cur;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.style.background = on ? 'var(--primary)' : 'transparent';
+      b.style.color = on ? '#fff' : 'var(--muted)';
+      b.style.boxShadow = on ? '0 1px 4px rgba(0,0,0,.18)' : 'none';
+    }
+  }catch(e){}
+}
+function themeSegCloseMenus(){
+  try{
+    var ms = document.querySelectorAll('[data-tpopmenu]');
+    for(var i = 0; i < ms.length; i++) ms[i].hidden = true;
+  }catch(e){}
+}
+/* سیم‌کشیِ یک‌باره: کلیک (سگمنت/پاپ‌اور) + resize. */
+(function themeSegBind(){
+  if(typeof document === 'undefined' || typeof window === 'undefined') return;
+  if(window.__payeshThemeSegBound) return;
+  window.__payeshThemeSegBound = true;
+  document.addEventListener('click', function(ev){
+    var el = ev.target && ev.target.closest ? ev.target.closest('[data-tpick],[data-tpop]') : null;
+    if(!el){ themeSegCloseMenus(); return; }
+    if(el.hasAttribute('data-tpop')){
+      var wrap = el.parentElement;
+      var menu = wrap ? wrap.querySelector('[data-tpopmenu]') : null;
+      var willOpen = !!(menu && menu.hidden);
+      themeSegCloseMenus();
+      if(menu && willOpen) menu.hidden = false;
+      if(ev.stopPropagation) ev.stopPropagation();
+      return;
+    }
+    var id = el.getAttribute('data-tpick');
+    if(typeof switchPayeshTheme === 'function') switchPayeshTheme(id);
+    themeSegPaint();
+    themeSegCloseMenus();
+  });
+  if(typeof window.addEventListener === 'function') window.addEventListener('resize', themeSegApply);
+})();
