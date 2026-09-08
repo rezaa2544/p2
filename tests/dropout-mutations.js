@@ -175,9 +175,11 @@ async function serverMutated(mutName, mutateSync, probe) { /* mutateSync=null �
     if (f === 'data') continue;
     fs.copyFileSync(path.join(ROOT, 'server', f), path.join(srvDir, f));
   }
-  /* R96: authz/model.json در ریشهٔ مخزن است — بدون آن requireِ sync.js شکست می‌خورد */
+  /* R96: authz/model.json در ریشهٔ مخزن است — بدون آن requireِ sync.js شکست می‌خورد
+     R99: سرور از authz/write-perms.json (تولیدشده) می‌خواند — همان */
   fs.mkdirSync(path.join(tmp, 'authz'), { recursive: true });
   fs.copyFileSync(path.join(ROOT, 'authz', 'model.json'), path.join(tmp, 'authz', 'model.json'));
+  fs.copyFileSync(path.join(ROOT, 'authz', 'write-perms.json'), path.join(tmp, 'authz', 'write-perms.json'));
   const syncFile = path.join(srvDir, 'sync.js');
   if (mutateSync) fs.writeFileSync(syncFile, mutateSync(fs.readFileSync(syncFile, 'utf8')));
   const storeFile = path.join(tmp, 'payesh.json');
