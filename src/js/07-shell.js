@@ -205,6 +205,10 @@ function _renderRouteInner(){
     case 'cqueue':return viewCounselorQueue();
     case 'followup':return viewFollowup();
     case 'staff':return viewStaff();
+    case 'staffatt':return viewStaffAtt();
+    case 'training':return viewTraining();
+    case 'drills':return viewDrills();
+    case 'donations':return viewDonations();
     default:return viewDashboard();
   }
 }

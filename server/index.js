@@ -25,6 +25,7 @@ const { createOtpStore } = require('./otp-store');
 const { createSync, attach: syncAttach } = require('./sync');
 const { createIdor } = require('./idor');
 const { createBell } = require('./bell');
+const { createPublicReport } = require('./public-report');
 const { createAdmin } = require('./admin');
 const { createSms } = require('./sms');
 const { createConflicts } = require('./conflicts');
@@ -275,6 +276,7 @@ const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESS
 const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 const idor = createIdor({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
+const pubrep = createPublicReport({ store, sendJson: sendJsonCounting });
 const admin = createAdmin({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, dataDir: path.dirname(STORE_FILE) });
 const sms = createSms({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 const conflicts = createConflicts({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
@@ -346,6 +348,7 @@ const onRequest = async (req, res) => {
     if(p === '/api/sync/resolve-conflict' && req.method === 'POST') return await conflicts.apiResolve(req, res, await readBody(req, 4 * 1024));
     if(/^\/api\/students\/\d+$/.test(p) && req.method === 'GET') return await idor.apiStudent(req, res, p.split('/')[3]);
     if(p === '/api/bell/now' && req.method === 'GET') return bell.apiBellNow(req, res);
+    if(p === '/api/public-report' && req.method === 'GET') return await pubrep.apiPublicReport(req, res);
     if(p === '/api/admin/backup'  && req.method === 'POST') return await admin.apiBackup(req, res);
     /* restore فقط {file} می‌گیرد (نامِ حداکثر ۱۲۸ نویسه) — سقفِ 64MBِ پیشین
        بی‌دلیل بود؛ حالا 4KB مثلِ بقیهٔ بدنه‌هایِ کوچک (413 برایِ بیشتر). */
@@ -575,7 +578,7 @@ if(require.main === module){
     const proto = (TLS_CERT && TLS_KEY) ? 'https' : 'http';
     console.log('payesh-server (phase 1' + (TLS_CERT ? ' + TLS' : '') + ') on ' + proto + '://' + HOST + ':' + PORT);
     console.log('  static : ' + path.join(ROOT, 'index.html'));
-    console.log('  api    : /api/health /api/auth/* /api/sync /api/sync/conflicts /api/sync/resolve-conflict /api/students/:id /api/bell/now /api/admin/{backup,restore} /api/sms/send');
+    console.log('  api    : /api/health /api/auth/* /api/sync /api/sync/conflicts /api/sync/resolve-conflict /api/students/:id /api/bell/now /api/public-report /api/admin/{backup,restore} /api/sms/send');
     console.log('  store  : ' + STORE_FILE + '  (' + (store.users || []).length + ' users)');
     if(BACKUP_EVERY_MS > 0){
       console.log('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');

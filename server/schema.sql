@@ -272,7 +272,7 @@ CREATE TABLE IF NOT EXISTS certificates (
   "student_id" INTEGER,
   "type" VARCHAR(255),
   "updated_at" TIMESTAMPTZ,
-  "year" INTEGER,
+  "year" VARCHAR(50),
   CONSTRAINT fk_certificates_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
 );
 
@@ -419,6 +419,23 @@ CREATE TABLE IF NOT EXISTS districts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_districts_created_at ON districts (created_at DESC);
+
+-- Table: donations
+CREATE TABLE IF NOT EXISTS donations (
+  "amount" NUMERIC(14, 2),
+  "created_at" TIMESTAMPTZ,
+  "date" VARCHAR(50),
+  "description" TEXT,
+  "donor_name" VARCHAR(255),
+  "id" INTEGER PRIMARY KEY,
+  "registered_by" VARCHAR(255),
+  "school_id" INTEGER,
+  "updated_at" TIMESTAMPTZ,
+  CONSTRAINT fk_donations_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE INDEX IF NOT EXISTS idx_donations_school_id ON donations (school_id);
+CREATE INDEX IF NOT EXISTS idx_donations_created_at ON donations (created_at DESC);
 
 -- Table: dojo_types
 CREATE TABLE IF NOT EXISTS dojo_types (
@@ -996,6 +1013,23 @@ CREATE INDEX IF NOT EXISTS idx_reexams_school_id ON reexams (school_id);
 CREATE INDEX IF NOT EXISTS idx_reexams_school_student ON reexams (school_id, student_id);
 CREATE INDEX IF NOT EXISTS idx_reexams_created_at ON reexams (created_at DESC);
 
+-- Table: safety_drills
+CREATE TABLE IF NOT EXISTS safety_drills (
+  "created_at" TIMESTAMPTZ,
+  "date" VARCHAR(50),
+  "id" INTEGER PRIMARY KEY,
+  "notes" TEXT,
+  "participant_count_staff" INTEGER,
+  "participant_count_students" INTEGER,
+  "registered_by" VARCHAR(255),
+  "school_id" INTEGER,
+  "updated_at" TIMESTAMPTZ,
+  CONSTRAINT fk_safety_drills_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE INDEX IF NOT EXISTS idx_safety_drills_school_id ON safety_drills (school_id);
+CREATE INDEX IF NOT EXISTS idx_safety_drills_created_at ON safety_drills (created_at DESC);
+
 -- Table: schedule
 CREATE TABLE IF NOT EXISTS schedule (
   "class_id" INTEGER,
@@ -1119,6 +1153,23 @@ CREATE TABLE IF NOT EXISTS sms_wallet (
 
 CREATE INDEX IF NOT EXISTS idx_sms_wallet_school_id ON sms_wallet (school_id);
 CREATE INDEX IF NOT EXISTS idx_sms_wallet_created_at ON sms_wallet (created_at DESC);
+
+-- Table: staff_attendance
+CREATE TABLE IF NOT EXISTS staff_attendance (
+  "created_at" TIMESTAMPTZ,
+  "date" VARCHAR(50),
+  "id" INTEGER PRIMARY KEY,
+  "note" TEXT,
+  "registered_by" VARCHAR(255),
+  "school_id" INTEGER,
+  "staff_id" INTEGER,
+  "status" VARCHAR(255),
+  "updated_at" TIMESTAMPTZ,
+  CONSTRAINT fk_staff_attendance_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE INDEX IF NOT EXISTS idx_staff_attendance_school_id ON staff_attendance (school_id);
+CREATE INDEX IF NOT EXISTS idx_staff_attendance_created_at ON staff_attendance (created_at DESC);
 
 -- Table: student_archive
 CREATE TABLE IF NOT EXISTS student_archive (
@@ -1280,6 +1331,23 @@ CREATE TABLE IF NOT EXISTS teacher_sms (
 
 CREATE INDEX IF NOT EXISTS idx_teacher_sms_school_id ON teacher_sms (school_id);
 CREATE INDEX IF NOT EXISTS idx_teacher_sms_created_at ON teacher_sms (created_at DESC);
+
+-- Table: training_courses
+CREATE TABLE IF NOT EXISTS training_courses (
+  "created_at" TIMESTAMPTZ,
+  "date" VARCHAR(50),
+  "hours" INTEGER,
+  "id" INTEGER PRIMARY KEY,
+  "school_id" INTEGER,
+  "staff_id" INTEGER,
+  "status" VARCHAR(255),
+  "title" VARCHAR(255),
+  "updated_at" TIMESTAMPTZ,
+  CONSTRAINT fk_training_courses_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE INDEX IF NOT EXISTS idx_training_courses_school_id ON training_courses (school_id);
+CREATE INDEX IF NOT EXISTS idx_training_courses_created_at ON training_courses (created_at DESC);
 
 -- Table: transactions
 CREATE TABLE IF NOT EXISTS transactions (

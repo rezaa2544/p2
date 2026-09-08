@@ -255,14 +255,18 @@ function reportCardCert(sid, term, tpl){
  * همان گواهی همیشه همان کد را می‌دهد — پس دریافت‌کننده می‌تواند
  * بدون سرور، با همان داده‌های روی کاغذ، کد را بازسازی کند.
  */
-function certCodeCalc(type, sid, schoolId){
-  var s = type + ':' + sid + ':' + schoolId + ':' + (typeof yearCode==='function'?yearCode():'');
+/** هستهٔ هش کد احراز (بند B.2: استخراج بدون تغییر رفتار — هم دانش‌آموز هم کادر) */
+function certHash(s, prefix){
   var h = 5381;
   for(var i=0;i<s.length;i++){ h = ((h<<5)+h) ^ s.charCodeAt(i); }
   var A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   var x = Math.abs(h), out = '';
   for(var k=0;k<6;k++){ out += A[x % A.length]; x = Math.floor(x / A.length); }
-  return (type==='enrollment' ? 'GHT-' : 'GNT-') + out;
+  return prefix + out;
+}
+function certCodeCalc(type, sid, schoolId){
+  var s = type + ':' + sid + ':' + schoolId + ':' + (typeof yearCode==='function'?yearCode():'');
+  return certHash(s, (type==='enrollment' ? 'GHT-' : 'GNT-'));
 }
 
 /** مجوز داده‌ای: آیا این کاربر می‌تواند گواهیِ این دانش‌آموز را ببیند/بزند؟ */
