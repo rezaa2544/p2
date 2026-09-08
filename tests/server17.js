@@ -343,7 +343,7 @@ async function main() {
   const allCodes = [code1, code2, code2b].filter(Boolean);
   const leak = allCodes.filter(c => auditTxt.indexOf(c) > -1 || fs.readFileSync(otpStore, 'utf8').indexOf('"' + c + '"') > -1).length;
   chk('O7a هیچ کدی در audit یا store نیست', leak === 0);
-  chk('O7b audit: send_code فقط user_id/role', /"type":"send_code"/.test(auditTxt) && !/"code"\s*:\s*"\d{4}"/.test(auditTxt));
+  chk('O7b audit: send_code فقط user_id/role', /"type":"send_code"/.test(auditTxt) && !/"code"\s*:\s*"\d{4,6}"/.test(auditTxt)); /* R101: نگهبانِ نشت شامل ۶ رقمی */
   chk('O7c logِ سرور: نشتِ کد ندارد', !otp.log || !allCodes.some(c => otp.log.indexOf(c) > -1));
 
   /* O8: shape برابرِ تلفنِ موجود/ناموجود (بدونِ demo echo — سرورِ جدا) */
