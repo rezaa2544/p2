@@ -1133,6 +1133,14 @@ function coreActions(e, el, id, a, rawId){
      if(!r.ok){ toast(r.msg,'err'); return; }
      toast(r.rec.mode==='virtual' ? 'مدرسه امروز غیرحضوری (مجازی) شد' : 'مدرسه امروز حضوری شد','ok'); render();
    },
+   /* R95 (بند ۲.۵): داوریِ تعارضِ همگام‌سازی — مجوز و دامنهٔ مدرسه را
+      سرور هم دوباره می‌سنجد (resolve-conflict). */
+   'conflict-resolve'(){
+     const cid = Number(el.dataset.cid);
+     const winner = el.dataset.winner;
+     if(!cid || (winner !== 'incoming' && winner !== 'server')){ toast('انتخابِ نامعتبر','err'); return; }
+     if(typeof syncConflictsResolve === 'function') syncConflictsResolve(cid, winner);
+   },
    /* خلاصهٔ روزانه (بند ۱.۷): برای همهٔ دانش‌آموزان فعال؛ تکراری رد می‌شود */
    'daily-summary'(){
      const r = notifyDailySummaryAll(S.user.school_id);

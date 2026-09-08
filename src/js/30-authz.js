@@ -189,6 +189,7 @@ var ACTION_ROLES = {
   'smode-open':      ['edu_office','manager','superadmin'],
   'smode-save':      ['edu_office','manager','superadmin'],
   'smode-mgr':       ['manager','superadmin'],
+  'conflict-resolve':['manager','superadmin'],
   'as-new':         ['manager'],
   'as-save':        ['manager'],
   'as-status':      ['manager'],

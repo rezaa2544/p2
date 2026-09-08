@@ -9,6 +9,9 @@
    ⚠️ دسترسی به حافظه فقط از راه `Store` (فایل 00-data-layer.js).
    ═══════════════════════════════════════════════════════════════════ */
 const LOG_KEY='sms_log_v1', SESSION_KEY='sms_session_v1', BOSS_KEY='sms_boss_v1', PERSONA_KEY='sms_persona_v1';
+/* R95 (بند ۲.۵): مجموعه‌هایِ دارایِ نسخه — باید با VERSION_TRACKED سرور
+   (server/sync.js) یکی باشد؛ server-authority و LWW این‌جا نیستند. */
+const _VERSIONED_C = { grades:1, attendance:1, discipline:1 };
 let log=[];
 /* هنگام بازپخش لاگ یا تولید داده نمونه، صف همگام‌سازی نباید پر شود */
 let SYNC_MUTED=false;
@@ -145,6 +148,7 @@ function applyOp(op,record=true){
     const im=(typeof idxById==='function')?idxById(op.c):null;
     const dup = im? im.has(Number(op.data.id)) : arr.some(x=>x.id===op.data.id);
     if(!dup){
+      if(_VERSIONED_C[op.c] && op.data.version == null) op.data.version = 1; /* R95 */
       arr.push(op.data);
       /* درج افزایشی به‌جای باطل‌سازی: ایندکس‌های ساخته‌شده زنده
          می‌مانند و درج بعدی مجبور به بازسازی کل مجموعه نیست.
@@ -159,7 +163,16 @@ function applyOp(op,record=true){
     const im=(typeof idxById==='function')?idxById(op.c):null;
     const it = im? im.get(Number(op.id)) : arr.find(x=>x.id===op.id);
     if(typeof idxInvalidate==='function') idxInvalidate(op.c);
-    if(it)Object.assign(it,op.data);
+    if(it){
+      /* R95 (بند ۲.۵): پیش از اعمال، نسخهٔ پایه را ثبت کن و نسخهٔ محلی
+         را بچرخان؛ سرور `base_version` را با نسخهٔ خود می‌سنجد و در
+         مجموعه‌هایِ نسخه‌دار، تعارض را «حفظ» می‌کند (sync_conflicts). */
+      if(_VERSIONED_C[op.c]){
+        op.base_version = it.version || 1;
+        it.version = (it.version || 1) + 1;
+      }
+      Object.assign(it,op.data);
+    }
   }
   else if(op.t==='del'){
     if(typeof idxInvalidate==='function') idxInvalidate(op.c);

@@ -61,6 +61,7 @@ function adminDash(){
     <div class="spacer"></div>
     <button class="btn ghost sm" data-act="smode-mgr">${schoolModeOf(u.school_id,todayISO())==='virtual'?'🏫 حضوری کردن امروز':'🏠 غیرحضوری کردن امروز'}</button>
    </div>`:''}
+   ${((u.role==='manager'||u.role==='superadmin')&&typeof DATA_MODE!=='undefined'&&DATA_MODE==='server')?`<div class="card"><div class="card-head"><h3>⚖️ تعارض‌های همگام‌سازی</h3><span class="muted small">تغییرهای هم‌زمانِ در انتظارِ داوری (فقط حالت سروری)</span></div><div id="sync-conflicts-root"><div class="card-body" style="padding-top:12px"><div class="muted small">در حالِ خواندن…</div></div></div></div>`:''}
    <div class="grid g2">
     <div class="card"><div class="card-head"><h3>روند حضور روزهای اخیر</h3><span class="badge b-blue">درصد حضور</span></div>
      <div class="card-body">${trend.length?`<div class="chart">${trend.map(t=>`<div class="col" title="${escAttr(t.rate)}%"><i style="height:${t.rate}%"></i><span>${new Date(t.d).toLocaleDateString('fa-IR-u-ca-persian',{day:'numeric'})}</span></div>`).join('')}</div>`:empty('📈','داده‌ای نیست','')}</div></div>

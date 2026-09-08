@@ -76,6 +76,17 @@ function dropUsersUpdate(s, op){
   return keys.every(k => DROP_KEYS.indexOf(k) > -1);
 }
 
+/* ── R95 (بند ۲.۵) — base_version + سیاستِ ترکیبیِ تعارض ──
+   VERSIONED  (حفظِ تعارض): حضور/نمره/انضباطی — عملیاتِ کهنه (base_version
+     نادرست) اعمال نمی‌شود؛ تعارض در sync_conflicts حفظ می‌شود تا داوریِ انسانی.
+   STRUCTURAL (سرور مرجع): کلاس/درس/کاربر/... — عملیاتِ کهنه با stale_base رد
+     می‌شود (وضعیتِ سرور برنده است؛ کلاینت تازه‌سازی می‌کند).
+   بقیهٔ مجموعه‌ها LWW‌اند: base_version بی‌اثر (آخرین نوشتن بر پایهٔ زمانِ
+     دریافتِ سرور). عملیاتِ بی‌base_version (کلاینتِ کهنه) عینِ قبل اعمال می‌شود. */
+const VERSIONED = { grades: 1, attendance: 1, discipline: 1 };
+const STRUCTURAL = { schools: 1, classes: 1, subjects: 1, users: 1, enrollments: 1, schedule: 1 };
+const VERSION_TRACKED = Object.assign({}, VERSIONED, STRUCTURAL);
+
 /* ── FIELD_ALLOWLISTS — field-level rules per collection (arch review P0-1) ──
    The role/scope gates above answer "may this role write this collection,
    to this record?". FIELD_ALLOWLISTS answers the finer question:
@@ -344,6 +355,49 @@ function createSync(ctx){
         results.push({ uid: op.uid, ok: true, code: 'duplicate_ignored', serverTime: new Date().toISOString() });
         continue;
       }
+      /* R95 بند ۲.۵ — base_version: تعارضِ حفظ‌شده / سرورِ مرجع */
+      if(op.t === 'upd' && op.base_version != null){
+        const vid = Number(op.id != null ? op.id : (op.data && op.data.id));
+        const vrec = (store[op.c] || []).find(x => x.id === vid);
+        const cur = vrec ? (vrec.version || 1) : 0;
+        if(VERSIONED[op.c] && Number(op.base_version) !== cur){
+          const nowIso = new Date().toISOString();
+          if(!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
+          const cf = {
+            id: nextId('sync_conflicts'),
+            collection: op.c, record_id: vid,
+            school_id: (vrec && vrec.school_id != null ? vrec.school_id
+                       : (op.data && op.data.school_id != null ? op.data.school_id : s.school_id)),
+            base_version: Number(op.base_version),
+            server_version: vrec ? (vrec.version || 1) : null,
+            server_state: vrec ? Object.assign({}, vrec) : null,
+            incoming: { data: Object.assign({}, op.data), by: s.id, at: nowIso, op_uid: op.uid },
+            status: 'open', created_at: nowIso
+          };
+          store.sync_conflicts.push(cf);
+          audit('sync_conflict_preserved', { user_id: s.id, conflict_id: cf.id, collection: op.c, record_id: vid, school_id: cf.school_id });
+          /* هشدار به مدیرِ مدرسه (الگویِ hookهایِ R88/R89) */
+          const cmgr = (store.users || []).find(x => x.school_id === cf.school_id && x.role === 'manager');
+          if(cmgr){
+            if(!Array.isArray(store.notifications)) store.notifications = [];
+            store.notifications.push({
+              id: nextId('notifications'), user_id: cmgr.id, school_id: cf.school_id, type: 'announcement',
+              title: '⚠️ تعارض همگام‌سازی',
+              body: 'یک تغییرِ «' + op.c + '» با نسخهٔ کهنه رسید و به‌جای اعمال، برایِ داوری محفوظ شد.',
+              link: 'dashboard', read: 0, created_at: nowIso.slice(0, 10)
+            });
+          }
+          ctx.markDirty();
+          results.push({ uid: op.uid, ok: false, code: 'conflict_preserved', conflict_id: cf.id,
+                         message: 'تعارض محفوظ شد — برایِ داوری به بخشِ «تعارض‌های همگام‌سازی» مراجعه کنید' });
+          continue;
+        }
+        if(STRUCTURAL[op.c] && Number(op.base_version) !== cur){
+          results.push({ uid: op.uid, ok: false, code: 'stale_base',
+                         message: 'نسخهٔ رکورد کهنه است — سرور مرجع است؛ داده را تازه کنید و دوباره تلاش کنید' });
+          continue;
+        }
+      }
       /* §3.3 — clock skew: suspicious but not fatal — log, keep going */
       if(op.at){
         const drift = Math.abs(Date.now() - Date.parse(op.at));
@@ -358,12 +412,16 @@ function createSync(ctx){
       if(op.t === 'ins'){
         const data = Object.assign({}, op.data);
         if(data.id == null) data.id = nextId(op.c);
+        if(VERSION_TRACKED[op.c] && data.version == null) data.version = 1; /* R95 */
         const ex = store[op.c].find(x => x.id === data.id);
         if(ex) Object.assign(ex, data); else store[op.c].push(data);
         data.updated_at = new Date().toISOString();
       }else if(op.t === 'upd'){
         const rec = store[op.c].find(x => x.id === Number(op.id != null ? op.id : (op.data && op.data.id)));
-        if(rec) Object.assign(rec, op.data, { id: rec.id, updated_at: new Date().toISOString() });
+        if(rec){
+          Object.assign(rec, op.data, { id: rec.id, updated_at: new Date().toISOString() });
+          if(VERSION_TRACKED[op.c]) rec.version = (rec.version || 1) + 1; /* R95 */
+        }
       }else if(op.t === 'del'){
         store[op.c] = store[op.c].filter(x => x.id !== Number(op.id != null ? op.id : (op.data && op.data.id)));
       }
@@ -435,4 +493,4 @@ function createSync(ctx){
 
   return { apiSync, canWrite, inScope };
 }
-module.exports = { createSync, attach, canWrite, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS };
+module.exports = { createSync, attach, canWrite, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, VERSIONED, STRUCTURAL, VERSION_TRACKED };
