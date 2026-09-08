@@ -1,0 +1,934 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>گزارش‌های پایش — ۲۰۲۶-۰۹-۰۸</title>
+<style>
+  :root{
+    --ink:#12181f; --muted:#5b6875; --line:#dfe6ee; --bg:#f6f8fb;
+    --card:#ffffff; --accent:#1e3a8a; --soft:#eef3fb; --code:#0f172a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Vazirmatn","IRANSans","Tahoma","Segoe UI",system-ui,sans-serif;
+    font-size:15px;line-height:2}
+  .wrap{max-width:1000px;margin:0 auto;padding:28px 18px 80px}
+  .cover{background:linear-gradient(135deg,#1e3a8a,#3358b8);color:#fff;
+    border-radius:16px;padding:30px 28px;margin-bottom:26px}
+  .cover h1{margin:0 0 6px;font-size:27px;line-height:1.6}
+  .cover .sub{opacity:.9;font-size:14px;line-height:2}
+  .cover .meta{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+  .cover .meta span{background:rgba(255,255,255,.16);border-radius:999px;
+    padding:4px 12px;font-size:12.5px}
+  nav.toc{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:16px 20px;margin-bottom:26px}
+  nav.toc h2{margin:0 0 10px;font-size:17px}
+  nav.toc ul{list-style:none;margin:0;padding:0}
+  nav.toc li{border-bottom:1px dashed var(--line)}
+  nav.toc li:last-child{border-bottom:0}
+  nav.toc a{display:block;padding:9px 2px;text-decoration:none;color:var(--accent);font-weight:600}
+  nav.toc a:hover{background:var(--soft);border-radius:8px}
+  nav.toc .ico{margin-inline-end:6px}
+  nav.toc .p{display:block;font-size:12px;color:var(--muted);font-weight:400;direction:ltr;text-align:left}
+  section.doc{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:24px 26px;margin-bottom:26px;break-before:page}
+  .doc-head{display:flex;gap:14px;align-items:center;border-bottom:2px solid var(--soft);
+    padding-bottom:14px;margin-bottom:18px}
+  .doc-head .ico{font-size:30px}
+  .doc-title{margin:0;font-size:22px;color:var(--accent)}
+  .doc-path{margin-top:4px;font-size:12px;color:var(--muted);direction:ltr;text-align:left}
+  h1{font-size:23px} h2{font-size:19px;margin-top:34px;padding-bottom:6px;
+    border-bottom:1px solid var(--line);color:var(--accent)}
+  h3{font-size:16.5px;margin-top:26px} h4{font-size:15px;margin-top:20px}
+  p{margin:10px 0}
+  a{color:var(--accent)}
+  code{background:var(--soft);border-radius:5px;padding:1px 6px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;direction:ltr}
+  pre{background:var(--code);color:#e6edf7;border-radius:10px;padding:14px 16px;
+    overflow:auto;direction:ltr;text-align:left;line-height:1.7}
+  pre code{background:none;color:inherit;padding:0;font-size:12.8px}
+  .tw{overflow:auto;margin:14px 0}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;line-height:1.9}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:right;vertical-align:top}
+  thead th{background:var(--soft);color:var(--accent);font-weight:700}
+  tbody tr:nth-child(even){background:#fafbfd}
+  blockquote{margin:14px 0;padding:10px 16px;background:#fff8e6;
+    border-inline-start:4px solid #e2a93b;border-radius:8px}
+  hr{border:0;border-top:1px solid var(--line);margin:26px 0}
+  ul,ol{padding-inline-start:24px}
+  li{margin:4px 0}
+  footer{text-align:center;color:var(--muted);font-size:12.5px;margin-top:30px}
+  @media print{
+    body{background:#fff;font-size:11.5pt}
+    .wrap{max-width:none;padding:0}
+    section.doc{border:0;border-radius:0;padding:0;margin:0 0 18pt;break-before:page}
+    nav.toc{break-after:page}
+    .cover{background:#1e3a8a !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    pre,table,blockquote{break-inside:avoid}
+    h2,h3{break-after:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="cover">
+    <h1>پایش — بستهٔ گزارش‌ها</h1>
+    <div class="sub">سامانهٔ هوشمند مدیریت مدرسه · تحلیل و مستندسازیِ مخزن با خواندنِ مستقیمِ کد</div>
+    <div class="meta">
+      <span>📅 ۲۰۲۶-09-08</span>
+      <span>🌿 arena/01a08256-p2</span>
+      <span>🔖 4ca531c</span>
+      <span>🐙 github.com/rezaa2544/p2</span>
+      <span>📄 ۴ سند</span>
+    </div>
+  </div>
+  <nav class="toc">
+    <h2>فهرست</h2>
+    <ul><li><a href="#doc-0"><span class="ico">🧾</span> گزارشِ نشستِ عامل<span class="p">REPORT_2026-09-08_SESSION.md</span></a></li>
+<li><a href="#doc-1"><span class="ico">🚦</span> مواردِ باز با اولویت<span class="p">REPORT_2026-09-08_OPEN_ITEMS.md</span></a></li>
+<li><a href="#doc-2"><span class="ico">🧭</span> مرجعِ کاملِ سامانه (ریشه)<span class="p">AGENT_ONBOARDING.md</span></a></li>
+<li><a href="#doc-3"><span class="ico">📘</span> درکِ عمیقِ سامانه (پوشهٔ reza)<span class="p">reza/درک_عمیق_سامانه_پایش.md</span></a></li></ul>
+  </nav>
+  <section class="doc" id="doc-0">
+  <div class="doc-head"><span class="ico">🧾</span>
+    <div><h1 class="doc-title">گزارشِ نشستِ عامل</h1>
+    <div class="doc-path"><code>REPORT_2026-09-08_SESSION.md</code></div></div></div>
+  <h2 id="s-0-گزارش-نشست-عامل-پایش">گزارشِ نشستِ عامل — پایش</h2>
+<p><strong>تاریخ:</strong> ۲۰۲۶-۰۹-۰۸ · <strong>شاخه:</strong> <code>arena/01a08256-p2</code> · <strong>کامیتِ مبنا:</strong> <code>4ca531c</code> <strong>مخزن:</strong> https://github.com/rezaa2544/p2 <strong>دستور:</strong> اتصال به مخزن، خواندنِ تک‌تک فایل‌ها، کسبِ درکِ ۱۰۰٪ از سامانه، آوردنِ ضروری‌ها به ورک‌اسپیس، و اعمالِ فوریِ هر تغییر در گیت‌هاب.</p>
+<hr>
+<h3 id="s-3-۱-وضعیت-اتصال">۱. وضعیتِ اتصال</h3>
+<div class="tw"><table><thead><tr><th>مورد</th><th>مقدار</th><th>توضیح</th></tr></thead><tbody><tr><td>مسیرِ محلی</td><td><code>/home/user/p2</code></td><td>کلونِ آماده</td></tr><tr><td>شاخهٔ نشست</td><td><code>arena/01a08256-p2</code></td><td>منشعب از <code>main@4ca531c</code></td></tr><tr><td>remote</td><td><code>https://github.com/rezaa2544/p2.git</code></td><td>بدون توکن در <code>.git/config</code></td></tr><tr><td>عمقِ تاریخچه</td><td>۱ کامیت (shallow)</td><td>همهٔ فایل‌ها روی دیسک حاضرند</td></tr><tr><td>احراز</td><td>از پیش تنظیم شده</td><td><strong>توکنِ ارسالی استفاده نشد و ذخیره نشد</strong></td></tr><tr><td>پوش</td><td>✅ انجام شد</td><td><code>bcbb3c1</code>، <code>a965137</code> و این کامیت</td></tr></tbody></table></div>
+<blockquote><p>⚠️ <strong>اقدامِ امنیتیِ لازم از سوی شما:</strong> توکنی که در متنِ گفتگو فرستاده شد، باید از <code>Settings → Developer settings → Tokens</code> <strong>باطل</strong> شود. احرازِ محیط از پیش برقرار است و نیازی به توکن نیست.</p></blockquote>
+<hr>
+<h3 id="s-7-۲-آنچه-خوانده-شد-۵۳۵-فایل-">۲. آنچه خوانده شد (۵۳۵ فایل)</h3>
+<div class="tw"><table><thead><tr><th>حوزه</th><th>دامنه</th><th>سطحِ خواندن</th></tr></thead><tbody><tr><td><code>server/</code></td><td>۲۰ فایل + ۴ middleware + ۶ route</td><td>خط‌به‌خط</td></tr><tr><td><code>src/js/</code> هسته</td><td>داده، ماندگاری، ایندکس، مسیریاب، پوسته، بوت</td><td>خط‌به‌خط</td></tr><tr><td><code>src/js/</code> امنیت و همگامی</td><td><code>27-sync</code>، <code>29-pull</code>، <code>29-scope</code>، <code>30-authz</code>، <code>06-login</code>، <code>19-actions-core</code></td><td>خط‌به‌خط</td></tr><tr><td><code>src/js/</code> نمونه‌ها</td><td><code>02-demo-data</code>، <code>42-self-diagnostics</code>، <code>44-sms-notify</code>، <code>66-client-features</code>، <code>99-theme-loader</code></td><td>ساختار و سرخط‌ها</td></tr><tr><td>مجوز</td><td><code>authz/model.json</code> + <code>authz/write-perms.json</code></td><td>ساختار + بازشماریِ ماشینی</td></tr><tr><td>ابزار/ساخت/تست</td><td><code>build.js</code>، <code>tools/*</code>، <code>tests/run.js</code>، <code>scripts/run-all-tests.sh</code>، workflowها</td><td>خط‌به‌خط</td></tr><tr><td>راهنماهای متنی</td><td><code>reza/توضیح_کامل_برنامه.md</code>، <code>docs/راهنمای_برنامه_نویس.md</code>، <code>docs/README.md</code>، <code>README.md</code></td><td>کامل</td></tr><tr><td>وضعیت/گزارش</td><td><code>TODO_BEFORE_PRODUCTION</code>، <code>REMAINING_WORK_SUMMARY</code>، <code>PILOT_READY_SUMMARY</code>، <code>FINAL_VERIFICATION_REPORT</code>، <code>docs/ROADMAP_FINAL_SCAN_2026-09-08</code>، <code>PROJECT_NOTES</code> (فهرست)</td><td>کامل/فهرستی</td></tr></tbody></table></div>
+<p>فایل‌های حجیمِ غیرکد (<code>index.html</code> ۱.۹MB، <code>USER_GUIDE.html</code> ۲.۴MB، <code>reza/برنامه_نویس/index.html</code> ۱.۹MB، <code>server/schema.sql</code> ۴۰k خط، <code>docs/HANDOFF_ARCHIVE.md</code>، <code>docs/AI_PROMPT.md</code>) خروجی یا آرشیو حساب شدند — خودشان از <code>src/</code> و <code>server/</code> تولید می‌شوند و خواندنِ کامل‌شان چیزی به درک نمی‌افزود.</p>
+<hr>
+<h3 id="s-11-۳-خروجی-های-این-نشست">۳. خروجی‌های این نشست</h3>
+<div class="tw"><table><thead><tr><th>#</th><th>فایل</th><th>محل</th><th>وضعیت</th></tr></thead><tbody><tr><td>۱</td><td><code>AGENT_ONBOARDING.md</code></td><td>ریشهٔ مخزن</td><td>✅ کامیت <code>bcbb3c1</code></td></tr><tr><td>۲</td><td><code>reza/درک_عمیق_سامانه_پایش.md</code></td><td><code>reza/</code> — جایِ درخواستیِ اول</td><td>✅ کامیت <code>a965137</code></td></tr><tr><td>۳</td><td><code>reza/README.md</code></td><td>بلوکِ «نقطهٔ شروع» بالای فهرست</td><td>✅ کامیت <code>a965137</code></td></tr><tr><td>۴</td><td><code>README.md</code></td><td>بخشِ «🧭 اولین‌بار این‌جایید؟» + پرامپتِ آماده</td><td>✅ کامیت <code>a965137</code></td></tr><tr><td>۵</td><td><code>REPORT_2026-09-08_SESSION.md</code></td><td>این فایل</td><td>⏳ کامیتِ جاری</td></tr><tr><td>۶</td><td><code>REPORT_2026-09-08_OPEN_ITEMS.md</code></td><td>مواردِ باز با اولویت</td><td>⏳ کامیتِ جاری</td></tr><tr><td>۷</td><td><code>PAYESH_REPORTS_2026-09-08.html</code></td><td>بستهٔ تک‌فایلیِ قابلِ دانلود و چاپ</td><td>⏳ کامیتِ جاری</td></tr><tr><td>۸</td><td><code>payesh-reports-2026-09-08.zip</code></td><td>در پوشهٔ ورک‌اسپیس (بیرون از مخزن)</td><td>📥 فقط دانلود — طبق <code>.gitignore</code> (<code>*.zip</code>) وارد گیت نمی‌شود</td></tr></tbody></table></div>
+<hr>
+<h3 id="s-14-۴-یافته-های-کلیدی-خلاصه-فنی-">۴. یافته‌های کلیدی (خلاصهٔ فنی)</h3>
+<ol>
+<li><strong>لایهٔ داده واقعاً بسته است.</strong> <code>00-data-layer.js</code> تنها نقطهٔ تماس با</li>
+</ol>
+<p>   <code>localStorage</code>/<code>fetch</code> است و <code>tests/smoke.js</code> این را قفل کرده است. این یعنی    اتصال به پایگاهِ واقعی، بازنویسیِ بدنهٔ چند تابع است نه کلِ برنامه.</p>
+<ol>
+<li><strong>دفترچهٔ عملیات (event-log) زیربنای همه‌چیز است</strong> — بازپخشِ وضعیت،</li>
+</ol>
+<p>   سابقهٔ تغییرات و صفِ ارسال، هر سه از یک منبع تغذیه می‌شوند. فشردنِ    خودکار (۳۰k عمل / ۳MB → اسنپ‌شات + ۵۰۰ عمل) از رشدِ بی‌پایان جلو می‌کند.</p>
+<ol>
+<li><strong>امنیتِ سرور لایه‌لایه و fail-closed است</strong>: nonceِ هر درخواست، نگهبانِ</li>
+</ol>
+<p>   شمردنِ شناسه (۴ مرحله تا ابطالِ نشست)، JWT با الگوریتمِ سخت‌کد‌شده و    rotation، OTPِ فقط-هش با سقف‌هایِ پیش از بررسیِ وجودِ شماره، و دروازهٔ    فیلد که محافظت‌شده‌ها (<code>status</code>, <code>school_id</code>, <code>user_id</code>, <code>role</code>,    <code>national_id</code>, <code>phone</code>) را هرگز از payload عبور نمی‌دهد.</p>
+<ol>
+<li><strong>مجوز یک‌منبعی و ماشینی است</strong>: <code>ACTION_ROLES</code> + تحلیلِ استاتیک +</li>
+</ol>
+<p>   <code>authz/model.json</code> → <code>authz/write-perms.json</code> → <code>server/sync.js</code>، با    نگهبانِ <code>build.js --check</code>. جدولِ کهنه = build قرمز.</p>
+<ol>
+<li><strong>تست جدی و جهش‌کِش است</strong>: ۱۰۸ سوئیت + ۴۵ جهش، اجرای سه‌خطی (درجا /</li>
+</ol>
+<p>   کپیِ ایزوله / پورت‌سریال) با self-heal و گاردِ درختِ کثیف، حدود ۷ دقیقه.</p>
+<ol>
+<li><strong>«آماده» با یک قید</strong>: ۲۸/۲۸ بندِ نقشه‌راه پیاده شده و رگرسیون مؤثر</li>
+</ol>
+<p>   ۱۵۰/۱۵۰ است؛ اما سروینگِ درخواست‌ها روی فایلِ JSON است، پرداختِ والد تصمیمِ    محصول می‌خواهد، و درگاهِ پیامکِ واقعی هنوز وصل نیست.</p>
+<p>جزئیاتِ کامل با نشانیِ «فایل:خط» در <a href="AGENT_ONBOARDING.md"><code>AGENT_ONBOARDING.md</code></a> و <a href="reza/درک_عمیق_سامانه_پایش.md"><code>reza/درک_عمیق_سامانه_پایش.md</code></a>.</p>
+<hr>
+<h3 id="s-41-۵-ریسک-ها-و-موارد-باز">۵. ریسک‌ها و مواردِ باز</h3>
+<p>خلاصه در این جدول؛ شرحِ کامل با اولویت و پیشنهاد در <a href="REPORT_2026-09-08_OPEN_ITEMS.md"><code>REPORT_2026-09-08_OPEN_ITEMS.md</code></a>.</p>
+<div class="tw"><table><thead><tr><th>اولویت</th><th>مورد</th></tr></thead><tbody><tr><td>🔴 محصول</td><td>پرداختِ والد — تنها موردِ بازِ کلِ پروژه</td></tr><tr><td>🔴 محصول</td><td>تنشِ احتمالیِ paywall با بندِ ۰.۴ (دادهٔ پایه نباید پولی شود)</td></tr><tr><td>🟠 استقرار</td><td>ذخیره‌سازِ JSON؛ PG آماده است ولی مسیرِ زنده نیست</td></tr><tr><td>🟠 امنیت</td><td>سقفِ نرخِ ورودِ اکسل نیست؛ <code>cache.checkRateLimit</code> بی‌مصرف‌کننده</td></tr><tr><td>🟡 کیفیت</td><td><code>tests/api/*</code> در رگرسیون سیم‌کشی نشده</td></tr><tr><td>🟡 کیفیت</td><td>فلیک‌های زمانیِ ۴ سوئیت + ۱۵ سوئیتِ جهش با ارجاعِ کهنه</td></tr><tr><td>🟡 پیش از استقرار</td><td>حذفِ نرم (<code>deleted_at</code>) و تصمیمِ UUID</td></tr></tbody></table></div>
+<hr>
+<h3 id="s-45-۶-گام-های-پیشنهادی-بعدی-منتظر-تأیید-">۶. گام‌های پیشنهادیِ بعدی (منتظرِ تأیید)</h3>
+<ol>
+<li>بستنِ تصمیمِ <strong>پرداختِ والد</strong> (و هم‌زمان تعیینِ تکلیفِ بندِ ۰.۴).</li>
+<li>بردنِ سروینگِ درخواست‌ها به <strong>PostgreSQL</strong> (اسکیما و <code>db.js</code> آماده‌اند).</li>
+<li>سیم‌کشیِ <code>tests/api/*</code> در <code>run-all-tests.sh</code> + سقفِ نرخِ ورودِ اکسل.</li>
+<li>رفعِ فلیک‌های زمانی و ارجاع‌های کهنهٔ سوئیت‌های جهش.</li>
+<li>اتصالِ <strong>درگاهِ پیامکِ واقعی</strong> (گام‌های ۲ تا ۵ در <code>docs/PLAN_SMS_GATEWAY.md</code>).</li>
+</ol>
+<blockquote><p>طبقِ «اصلِ هشتم» (قابلِ استخراج از گزارش‌های دورهای ۸۰+) هیچ‌کدام بدون تأییدِ شما آغاز نمی‌شود.</p></blockquote>
+<hr>
+<h3 id="s-55-پیوست-دستورهای-پرتکرار">پیوست — دستورهای پرتکرار</h3>
+<pre class="lang-bash"><code>node build.js            # ساختِ index.html + dist/payesh.html
+node build.js --check    # انطباقِ بیت‌به‌بیت + مجوزها + مُهرِ راهنما
+npm test                 # tests/run.js + tests/smoke.js
+node server/seed.js      # ساختِ server/data/payesh.json (نیاز: jsdom)
+node server/index.js     # وب + API روی :3000
+bash scripts/run-all-tests.sh     # رگرسیونِ کامل (~۷ دقیقه)</code></pre>
+</section>
+<section class="doc" id="doc-1">
+  <div class="doc-head"><span class="ico">🚦</span>
+    <div><h1 class="doc-title">مواردِ باز با اولویت</h1>
+    <div class="doc-path"><code>REPORT_2026-09-08_OPEN_ITEMS.md</code></div></div></div>
+  <h2 id="s-0-موارد-باز-پایش-با-اولویت-شاهد-و-پیشنهاد">مواردِ بازِ پایش — با اولویت، شاهد و پیشنهاد</h2>
+<p><strong>تاریخ:</strong> ۲۰۲۶-۰۹-۰۸ · <strong>شاخه:</strong> <code>arena/01a08256-p2</code> · <strong>کامیتِ مبنا:</strong> <code>4ca531c</code> <strong>روش:</strong> هر ردیف از خواندنِ مستقیمِ کد/تست/مستندات استخراج شده؛ ستونِ «شاهد» نشانیِ فایل است. چیزی که دیده نشد، «دیده نشد» نوشته شده — بدون ادعایِ بی‌سند.</p>
+<hr>
+<h3 id="s-3-۰-خلاصه-یک-نمایی">۰. خلاصهٔ یک‌نمایی</h3>
+<div class="tw"><table><thead><tr><th>ردیف</th><th>اولویت</th><th>تعداد</th></tr></thead><tbody><tr><td>🔴 مسدودکنندهٔ محصول</td><td>تصمیمِ شما می‌خواهد، نه کد</td><td>۲</td></tr><tr><td>🟠 پیش از استقرارِ واقعی</td><td>معماری/امنیت</td><td>۴</td></tr><tr><td>🟡 کیفیت و بهداشتِ مخزن</td><td>تست/رفتار</td><td>۵</td></tr><tr><td>⚪ تصمیمِ راهبردیِ زودهنگام</td><td>مهاجرت بعدی سنگین است</td><td>۱</td></tr></tbody></table></div>
+<hr>
+<h3 id="s-6-۱-مسدودکننده-محصول-تصمیم-نه-کد-">۱. 🔴 مسدودکنندهٔ محصول (تصمیم، نه کد)</h3>
+<h4 id="s-7-۱-۱-پرداخت-والد">۱.۱ پرداختِ والد</h4>
+<ul>
+<li><strong>شاهد:</strong> <code>R88b</code> / <code>R90</code> در گزارش‌ها؛ نبودِ هرگونه درگاه در <code>server/</code>؛</li>
+</ul>
+<p>  <code>parent_subscriptions</code> و <code>subscription_payments</code> در مدل   (<code>authz/model.json</code>) و در <code>src/js/23-subscription.js</code>.</p>
+<ul>
+<li><strong>وضعیت:</strong> تنها موردِ بازِ کلِ پروژه (گزارشِ R96). اشتراک در کلاینت</li>
+</ul>
+<p>  شبیه‌سازی می‌شود و مدیر آن را دستی تغییر می‌دهد.</p>
+<ul>
+<li><strong>اثر:</strong> بدون آن، درآمدِ B2C عملاً صفر است و paywallِ ولی فقط نمایشی است.</li>
+<li><strong>پیشنهاد:</strong> تعیینِ مدل (درگاهِ داخلی / کیف پول / ثبتِ دستی توسط مدیر) و</li>
+</ul>
+<p>  سپس یک endpointِ ایدمپوتنت با ثبت در آدیت.</p>
+<h4 id="s-21-۱-۲-تنش-احتمالی-paywall-با-بند-۰-۴">۱.۲ تنشِ احتمالیِ paywall با بندِ ۰.۴</h4>
+<ul>
+<li><strong>شاهد:</strong> <code>docs/ROADMAP_FINAL_SCAN_2026-09-08.md</code> §۳؛</li>
+</ul>
+<p>  <code>PARENT_FREE_ROUTES</code> در <code>src/js/07-shell.js</code> (اشتراک/اعلان/اطلاعیه).</p>
+<ul>
+<li><strong>وضعیت:</strong> بندِ ۰.۴ می‌گوید «دادهٔ پایه (نمره/حضور/برنامه) هرگز پولی نشود»،</li>
+</ul>
+<p>  اما امروز <strong>نمره و حضور پشتِ قفلِ اشتراکِ ولی هستند</strong>.</p>
+<ul>
+<li><strong>اثر:</strong> یا نقضِ یک قفلِ محصولی است، یا تعریفِ «دادهٔ پایه» در AD ۶۵</li>
+</ul>
+<p>  محدودتر از متنِ تحقیق است.</p>
+<ul>
+<li><strong>پیشنهاد:</strong> یک جمله از شما کافی است: «کارتِ ولی رایگان شاملِ نمره و حضور</li>
+</ul>
+<p>  هست یا نه؟» بر اساس پاسخ، یا <code>PARENT_FREE_ROUTES</code> گسترش می‌یابد یا بندِ   ۰٫۴ بازنویسی می‌شود. کد تا پیش از پاسخ تغییر نکند.</p>
+<hr>
+<h3 id="s-39-۲-پیش-از-استقرار-واقعی">۲. 🟠 پیش از استقرارِ واقعی</h3>
+<h4 id="s-40-۲-۱-سروینگ-روی-فایل-JSON-نه-پایگاه-داده-">۲.۱ سروینگ روی فایلِ JSON (نه پایگاهِ داده)</h4>
+<ul>
+<li><strong>شاهد:</strong> <code>server/index.js</code> (store = <code>server/data/payesh.json</code>)؛</li>
+</ul>
+<p>  <code>server/db.js</code> آماده با <code>DATABASE_URL</code>، اما مسیرِ درخواست‌ها از آن نمی‌گذرد؛   <code>FINAL_VERIFICATION_REPORT.md</code> بند B1 آن را «sidecar» نامیده است.</p>
+<ul>
+<li><strong>اثر:</strong> برای پایلوت کافی است؛ برای چند نود یا چند هزار مدرسه نه —</li>
+</ul>
+<p>  هر نوشتن، کل فایل را بازنویسی می‌کند و نوشتنِ هم‌زمان امن نیست.</p>
+<ul>
+<li><strong>پیشنهاد:</strong> پیش از استقرار، خواندن/نوشتنِ مستقیم به PG با تراکنش</li>
+</ul>
+<p>  (<code>db.transaction</code>)؛ فایل فقط برای بکاپ بماند.</p>
+<h4 id="s-53-۲-۲-سقف-نرخ-ورود-اکسل">۲.۲ سقفِ نرخِ ورودِ اکسل</h4>
+<ul>
+<li><strong>شاهد:</strong> <code>TODO_BEFORE_PRODUCTION.md</code> §۲.۲ (سطرِ «⚠️ سقفِ نرخِ ورودِ اکسل</li>
+</ul>
+<p>  هنوز نیست»)؛ <code>src/js/34-excel-import.js</code>؛ سقف‌های موجود فقط در   <code>server/auth.js</code>.</p>
+<ul>
+<li><strong>اثر:</strong> یک کاربرِ معتبر می‌تواند با وارداتِ پیاپی، هزاران عملیات در صف</li>
+</ul>
+<p>  بسازد (سقفِ ۵۰۰ در هر دسته، اما تعدادِ دسته نامحدود).</p>
+<ul>
+<li><strong>پیشنهاد:</strong> پنجره‌ی لغزانِ «عملیاتِ پذیرفته‌شده به‌ازای نشست» در</li>
+</ul>
+<p>  <code>server/sync.js</code> (نه فقط در endpoint) + آدیت.</p>
+<h4 id="s-66-۲-۳-cache-checkRateLimit-بی-مصرف-کننده">۲.۳ <code>cache.checkRateLimit</code> بی‌مصرف‌کننده</h4>
+<ul>
+<li><strong>شاهد:</strong> <code>server/cache.js:128</code>؛ هیچ فراخوانی بیرون از این فایل</li>
+</ul>
+<p>  (<code>grep -rn checkRateLimit server/</code> = تعریف فقط).</p>
+<ul>
+<li><strong>اثر:</strong> نرخ‌محدودیتِ توزیع‌شده روی کاغذ است؛ آنچه هست همان سقف‌های</li>
+</ul>
+<p>  فایل‌محورِ <code>otp.json</code> است.</p>
+<ul>
+<li><strong>پیشنهاد:</strong> یا در روتر سیم‌کشی شود (با کلیدِ IP+مسیر)، یا با یادداشتِ</li>
+</ul>
+<p>  روشن حذف شود تا «ادعای بی‌پشتوانه» در مستندات نماند.</p>
+<h4 id="s-79-۲-۴-حذف-نرم-deleted-at-پیاده-نشده">۲.۴ حذفِ نرم (<code>deleted_at</code>) پیاده نشده</h4>
+<ul>
+<li><strong>شاهد:</strong> <code>TODO_BEFORE_PRODUCTION.md</code> §۲.۸ (تصمیم گرفته شده)؛</li>
+</ul>
+<p>  در عمل <code>applyOp</code> رکورد را از آرایه حذف می‌کند (<code>splice</code>) و   <code>server/sync.js</code> آن را در <code>__deleted_records</code> به‌عنوان سنگ‌قبر ثبت می‌کند.</p>
+<ul>
+<li><strong>اثر:</strong> حذفِ سخت برای سابقهٔ تحصیلی از نظر قانونی/ممیزی ریسک دارد.</li>
+<li><strong>پیشنهاد:</strong> افزودنِ <code>deleted_at</code> به مجموعه‌های سابقه‌ای + فیلتر در همهٔ</li>
+</ul>
+<p>  خوانش‌ها + یکتاییِ جزئی (<code>UNIQUE ... WHERE deleted_at IS NULL</code>).</p>
+<hr>
+<h3 id="s-90-۳-کیفیت-و-بهداشت-مخزن">۳. 🟡 کیفیت و بهداشتِ مخزن</h3>
+<div class="tw"><table><thead><tr><th>#</th><th>مورد</th><th>شاهد</th><th>پیشنهاد</th></tr></thead><tbody><tr><td>۳.۱</td><td><code>tests/api/*</code> در رگرسیون نیست</td><td><code>grep tests/api scripts/run-all-tests.sh</code> = ۰</td><td>افزودنِ ۷ سوئیت به خطِ A یا B</td></tr><tr><td>۳.۲</td><td>فلیکِ ساعتیِ <code>homework2</code></td><td><code>OPEN_ITEMS.md</code> §۵.۲ ردیف ۶ — بین ۲۳:۰۰ تا ۲۳:۵۹ UTC قرمز</td><td>ثابت‌کردنِ ساعت در تست (fake clock)</td></tr><tr><td>۳.۳</td><td>فلیکِ <code>bus2</code>/<code>bus3</code></td><td>§۵.۲ ردیف ۴ — پیش از ۰۷:۴۲Z قرمز</td><td>همان</td></tr><tr><td>۳.۴</td><td>فلیکِ <code>bell2</code></td><td>§۵.۲ ردیف ۳ — روی شنبه/پنجشنبه قرمز</td><td>همان</td></tr><tr><td>۳.۵</td><td>۱۵ سوئیتِ جهش فایلِ حذف‌شده را می‌خوانند</td><td>§۵.۲ ردیف ۱ — ارجاع به <code>19-actions.js</code></td><td>به‌روزرسانیِ مسیر به <code>19-actions-core.js</code></td></tr></tbody></table></div>
+<blockquote><p>هر پنج مورد <strong>ایرادِ تست‌اند، نه ایرادِ برنامه</strong> — و تا رفع نشوند، «قرمز» در گزارش‌ها معنایِ واقعی ندارد.</p></blockquote>
+<hr>
+<h3 id="s-94-۴-تصمیم-راهبردی-زودهنگام">۴. ⚪ تصمیمِ راهبردیِ زودهنگام</h3>
+<h4 id="s-95-۴-۱-UUID-در-برابر-شناسه-عددی-پیاپی">۴.۱ UUID در برابر شناسهٔ عددیِ پیاپی</h4>
+<ul>
+<li><strong>شاهد:</strong> <code>TODO_BEFORE_PRODUCTION.md</code> §۲.۷؛ <code>nextId()</code> در</li>
+</ul>
+<p>  <code>src/js/03-persistence.js</code> و <code>server/sync.js</code> (بیشینه + ۱).</p>
+<ul>
+<li><strong>وضعیت:</strong> نگهبانِ شمردنِ شناسه (R97) پیاده شده و مؤثر است، اما شناسه‌ها</li>
+</ul>
+<p>  همچنان قابلِ حدس‌اند.</p>
+<ul>
+<li><strong>اثر:</strong> مهاجرت پس از نخستین استقرارِ واقعی بسیار سنگین است.</li>
+<li><strong>پیشنهاد:</strong> تصمیمِ صریحِ «همین شناسه‌ها + نگهبان» در یک AD ثبت شود تا</li>
+</ul>
+<p>  بعداً دوباره بحث نشود.</p>
+<hr>
+<h3 id="s-110-۵-یادداشت-روشی">۵. یادداشتِ روشی</h3>
+<p>این فهرست <strong>همهٔ</strong> مواردِ باز را در بر نمی‌گیرد؛ فقط آن‌هایی را که در کد یا مستنداتِ زنده شاهد دارند. برای وضعیتِ کامل: <code>TODO_BEFORE_PRODUCTION.md</code> (بازبینیِ R96) · <code>docs/OPEN_ITEMS.md</code> · <code>FINAL_VERIFICATION_REPORT.md</code> §۷ · <code>docs/ROADMAP_FINAL_SCAN_2026-09-08.md</code>.</p>
+<p>هر مورد بالا پیش از اجرا نیازمندِ تأییدِ جداگانه است («اصلِ هشتم»).</p>
+</section>
+<section class="doc" id="doc-2">
+  <div class="doc-head"><span class="ico">🧭</span>
+    <div><h1 class="doc-title">مرجعِ کاملِ سامانه (ریشه)</h1>
+    <div class="doc-path"><code>AGENT_ONBOARDING.md</code></div></div></div>
+  <h2 id="s-0-پایش-سند-درک-عمیق-سامانه-مرجع-عامل-">پایش — سندِ درکِ عمیقِ سامانه (مرجعِ عامل)</h2>
+<p><strong>تاریخ:</strong> ۲۰۲۶-۰۹-۰۸ · <strong>شاخه:</strong> <code>arena/01a08256-p2</code> · <strong>کامیتِ مبنا:</strong> <code>4ca531c</code> <strong>هدف:</strong> این سند «حافظه‌ی بلندمدتِ» عامل است — هرچه از خواندنِ کاملِ مخزن به دست آمده، یک‌جا و با نشانیِ فایل. پیش از هر تغییر، این فایل را بخوان.</p>
+<blockquote><p>⚠️ این سند <strong>تحلیل</strong> است، نه مستندِ محصول. مستندِ کاربر/ناظر در <code>reza/</code> و <code>docs/</code> است (نقشه‌اش در §۸).</p></blockquote>
+<hr>
+<h3 id="s-4-۰-آنچه-برای-نوشتن-این-سند-خوانده-شد">۰. آنچه برای نوشتن این سند خوانده شد</h3>
+<div class="tw"><table><thead><tr><th>حوزه</th><th>فایل‌ها</th><th>وضعیت</th></tr></thead><tbody><tr><td>سرور (همه)</td><td><code>server/<em>.js</code> (۲۰ فایل) + <code>server/middleware/</em></code> (۴) + <code>server/routes/*</code> (۶)</td><td>خوانده‌شده خط‌به‌خط</td></tr><tr><td>کلاینت — هسته</td><td><code>src/js/00-data-layer.js</code>، <code>00-migration.js</code>، <code>01-helpers.js</code>، <code>03-persistence.js</code>، <code>03-idb-persistence.js</code>، <code>28-indexes.js</code>، <code>05-router.js</code>، <code>24-edu-office.js</code> (بوت و <code>render()</code>)</td><td>خط‌به‌خط</td></tr><tr><td>کلاینت — امنیت/همگامی</td><td><code>27-sync.js</code>، <code>29-pull.js</code>، <code>29-scope.js</code>، <code>30-authz.js</code>، <code>06-login.js</code>، <code>07-shell.js</code>، <code>19-actions-core.js</code></td><td>خط‌به‌خط</td></tr><tr><td>کلاینت — نمونه‌ها</td><td><code>02-demo-data.js</code>، <code>42-self-diagnostics.js</code>، <code>44-sms-notify.js</code>، <code>66-client-features.js</code>، <code>99-theme-loader.js</code>، <code>src/head.html</code>، <code>src/body.html</code></td><td>ساختار و سرخط‌ها</td></tr><tr><td>مجوز</td><td><code>authz/model.json</code> (۸۰ مجموعه) + <code>authz/write-perms.json</code> (تولیدی، ۱۷۰ اکشن)</td><td>ساختار + ماشین‌حسابی</td></tr><tr><td>ابزار/ساخت/تست</td><td><code>build.js</code>، <code>tools/check-authz.js</code>، <code>tools/generate-write-perms.js</code>، <code>tests/run.js</code>، <code>scripts/run-all-tests.sh</code>، <code>.github/workflows/*</code></td><td>خط‌به‌خط</td></tr><tr><td>راهنماهای متنی</td><td><code>reza/توضیح_کامل_برنامه.md</code>، <code>docs/راهنمای_برنامه_نویس.md</code>، <code>docs/README.md</code>، <code>README.md</code></td><td>کامل</td></tr><tr><td>وضعیت/گزارش</td><td><code>TODO_BEFORE_PRODUCTION.md</code>، <code>REMAINING_WORK_SUMMARY.md</code>، <code>PILOT_READY_SUMMARY.md</code>، <code>FINAL_VERIFICATION_REPORT.md</code>، <code>docs/ROADMAP_FINAL_SCAN_2026-09-08.md</code>، <code>PROJECT_NOTES.md</code> (فهرست)</td><td>کامل/فهرستی</td></tr></tbody></table></div>
+<p>مخزن ۵۳۵ فایل دارد. فایل‌های حجیمِ غیرکد (<code>index.html</code> ۱.۹MB، <code>USER_GUIDE.html</code> ۲.۴MB، <code>reza/برنامه_نویس/index.html</code> ۱.۹MB، <code>server/schema.sql</code> ۴۰k خط، <code>docs/HANDOFF_ARCHIVE.md</code>، <code>docs/AI_PROMPT.md</code>) خروجی/آرشیو حساب شده‌اند و نیازی به خواندنِ کامل ندارند — خودشان از <code>src/</code> و <code>server/</code> تولید می‌شوند.</p>
+<hr>
+<h3 id="s-8-۱-چیستی-محصول">۱. چیستیِ محصول</h3>
+<p><strong>پایش</strong> = سامانه‌ی مدیریت مدرسه، فارسی/RTL، تقویم شمسی، <strong>آفلاین-محور</strong>، <strong>تک‌فایلی</strong>، بدون هیچ وابستگی/CDN. خروجی نهایی یک فایل HTML است که در <code>file://</code> هم کامل کار می‌کند.</p>
+<p>سه ستونِ هویتیِ محصول (از <code>reza/توضیح_کامل_برنامه.md</code> و <code>PROJECT_NOTES.md</code>):</p>
+<ol>
+<li><strong>آفلاینِ مطلق</strong> — دبیر وسط زنگ با اینترنتِ قطع‌شده هم حضور ثبت می‌کند؛</li>
+</ol>
+<p>   تغییر در صف محلی می‌ماند و بعداً ارسال می‌شود.</p>
+<ol>
+<li><strong>بدون وابستگی</strong> — فونتِ Vazirmatn و لوگو به‌صورت base64 جاسازی شده‌اند.</li>
+<li><strong>ورود بی‌رمز</strong> — تلفن + کد پیامکی + کد ملی (ستونِ <code>password</code> آرشیوی است</li>
+</ol>
+<p>   و در ورود خوانده نمی‌شود؛ قفلِ smoke دارد).</p>
+<h4 id="s-20-نقش-ها-۸-نقش-واقعی-در-کد-مستندات-گاهی-می">نقش‌ها (۸ نقش واقعی در کد — مستندات گاهی می‌گویند ۶ یا ۷)</h4>
+<p><code>superadmin</code> · <code>edu_office</code> · <code>manager</code> · <code>teacher</code> · <code>counselor</code> · <code>driver</code> · <code>student</code> · <code>parent</code> (<code>src/js/01-helpers.js:ROLE_FA</code> — ۸ کلید). <code>counselor</code> و <code>driver</code> در <code>NAV</code> هم منوی مستقل دارند (<code>05-router.js:13-14</code>).</p>
+<h4 id="s-22-مقیاس-کد">مقیاسِ کد</h4>
+<div class="tw"><table><thead><tr><th>عدد</th><th>مقدار</th><th>منبع</th></tr></thead><tbody><tr><td>ماژولِ JS در باندل</td><td><strong>۸۱</strong></td><td><code>src/js/_order.json</code></td></tr><tr><td>مجموعه‌ی داده (<code>db.*</code>)</td><td><strong>۸۰</strong></td><td><code>src/js/02-demo-data.js:65</code></td></tr><tr><td>مسیر (route) در <code>renderRoute</code></td><td>~۵۰</td><td><code>src/js/07-shell.js</code></td></tr><tr><td>اکشنِ ثبت‌شده در <code>ACTION_ROLES</code></td><td>~۳۳۷–۳۴۰</td><td><code>src/js/30-authz.js</code></td></tr><tr><td>اکشنِ استخراج‌شده در جدولِ تولیدی</td><td><strong>۱۷۰</strong></td><td><code>authz/write-perms.json</code></td></tr><tr><td>سوئیتِ تست (غیرجهش)</td><td><strong>۱۰۸</strong> (+۴۵ جهش = ۱۵۳)</td><td><code>ls tests/*.js</code></td></tr><tr><td>حجم خروجی</td><td>~۱.۸ MB</td><td><code>dist/payesh.html</code></td></tr></tbody></table></div>
+<hr>
+<h3 id="s-25-۲-خط-ساخت-build-">۲. خطِ ساخت (build)</h3>
+<pre><code>src/styles/*.css  ─┐
+src/js/*.js (81)  ─┼─→ build.js ─→ dist/payesh.html  و  index.html
+src/head.html     ─┤
+src/body.html     ─┘</code></pre>
+<ul>
+<li><code>build.js</code> ترتیب را از <code>src/js/_order.json</code> می‌خواند (نه از الفبا) — ماژولِ</li>
+</ul>
+<p>  جدید <strong>حتماً</strong> باید آن‌جا ثبت شود.</p>
+<ul>
+<li><code>build.js --check</code> سه چک را هم‌زمان می‌زند: (۱) خروجی بیت‌به‌بیت با</li>
+</ul>
+<p>  <code>index.html</code> یکی باشد، (۲) <code>tools/generate-write-perms.js --check</code>   (جدولِ مجوزِ تولیدی کهنه نباشد)، (۳) <code>tools/check-authz.js</code>   (اکشن‌های نویسنده‌ی کلاینت ↔ <code>WRITE_PERMS</code> سرور).</p>
+<ul>
+<li>مُهرِ همگامی: <code>build.js</code> هشِ sha1ِ خروجی را در</li>
+</ul>
+<p>  <code>&lt;meta name="payesh-build"&gt;</code> داخل <code>USER_GUIDE.html</code> می‌نویسد؛   ناهماهنگی = build قرمز (<code>syncGuide()</code>).</p>
+<ul>
+<li><strong>nonceـِ CSP</strong>: بیلد جای‌نکهدار <code>__PAYESH_NONCE__</code> می‌گذارد و</li>
+</ul>
+<p>  <code>server/index.js</code> در هر درخواست آن را با مقدار تصادفی پر می‌کند   (بدون <code>unsafe-inline</code>).</p>
+<p>دستورها: <code>npm run build</code> · <code>npm run build:check</code> · <code>npm run dev</code> · <code>npm test</code> (<code>tests/run.js</code> + <code>tests/smoke.js</code>) · <code>npm start</code> (سرور).</p>
+<hr>
+<h3 id="s-45-۳-معماری-کلاینت">۳. معماریِ کلاینت</h3>
+<h4 id="s-46-۳-۱-لایه-ی-داده-تنها-دروازه-">۳.۱ لایه‌ی داده — «تنها دروازه»</h4>
+<p><code>src/js/00-data-layer.js</code>:</p>
+<ul>
+<li><code>Store</code> = کلید-مقدار روی <code>localStorage</code>، هر متد در برابر خطا مقاوم</li>
+</ul>
+<p>  (حالت ناشناس، حافظه‌ی پر) — خروجی همیشه مقدار دارد، هرگز استثنا نمی‌اندازد.</p>
+<ul>
+<li><code>Api.request()</code> = تنها نقطه‌ی <code>fetch</code> در کل برنامه (با <code>credentials:'include'</code>).</li>
+</ul>
+<p>  در حالت محلی مسیرهای نسبی رد می‌شوند تا تکیه‌ی زودهنگام به سرور بی‌صدا نماند.</p>
+<ul>
+<li><code>Data.{all,find,where,create,update,delete,batch}</code> = چهار عملِ داده؛</li>
+</ul>
+<p>  نما/منطق حقِ دستکاریِ مستقیمِ آرایه‌های <code>db</code> را ندارد.</p>
+<ul>
+<li><code>httpGetJson()</code> = تنها خوانشِ شبکه؛ <strong>هرگز reject نمی‌کند</strong> و همیشه</li>
+</ul>
+<p>  <code>{ok,status,code,serverTime,data,error,networkError,timedOut}</code> برمی‌گرداند.</p>
+<ul>
+<li><code>DATA_MODE</code> محلی/سروری · <code>detectServer()</code> با <code>GET /api/health</code> سرور را کشف</li>
+</ul>
+<p>  می‌کند و در صورت موفقیت <code>SYNC.demoMode=false</code> و <code>SYNC.serverUrl='/api/sync'</code>.</p>
+<p>قاعده‌ی طلایی (تست‌شده در smoke): <strong>هیچ فایلی جز این لایه <code>localStorage</code> یا <code>fetch</code> را مستقیم صدا نمی‌زند.</strong></p>
+<h4 id="s-69-۳-۲-ماندگاری-دفترچه-ی-عملیات-event-log-">۳.۲ ماندگاری — دفترچه‌ی عملیات (event log)</h4>
+<p><code>03-persistence.js</code> + <code>03-idb-persistence.js</code>:</p>
+<ul>
+<li>داده به‌شکل <strong>دفترچه‌ی عملیات</strong> (<code>log</code>) نگه داشته می‌شود نه عکسِ لحظه‌ای؛</li>
+</ul>
+<p>  وضعیتِ فعلی از بازپخش (<code>applyLog</code> → <code>applyOp</code>) می‌آید. این همان ساختاری است   که همگام‌سازی را ممکن می‌کند: همان سطرها به صفِ ارسال می‌روند.</p>
+<ul>
+<li><code>applyOp(op, record=true)</code> سه نوع دارد: <code>ins</code> / <code>upd</code> / <code>del</code>.</li>
+</ul>
+<p>  در <code>ins</code> یک <strong>رونوشتِ سطحی</strong> از <code>op.data</code> گرفته می‌شود — وگرنه ویرایشِ بعدی   روی شیءِ زنده، گذشته‌ی دفترچه را بازنویسی می‌کرد (دامِ دور ۴۲: سابقه‌ی   تغییرات دروغ می‌گفت).</p>
+<ul>
+<li><code>batchWrites(fn)</code> همه‌ی نوشتن‌های داخل <code>fn</code> را جمع می‌کند و <strong>یک بار</strong></li>
+</ul>
+<p>  ذخیره می‌کند (بدونش، فارغ‌التحصیل‌کردنِ ۵۰۰ دانش‌آموز درجه‌دوم می‌شد).</p>
+<ul>
+<li><strong>فشردنِ دفترچه</strong> (<code>compactLogIfNeeded</code>): روی آستانه‌ی ۳۰٬۰۰۰ عملیات یا</li>
+</ul>
+<p>  ۳MB، دفترچه به «اسنپ‌شات + ۵۰۰ عملِ آخر» تبدیل می‌شود؛ عمل‌های مانده   نشانِ <code>__a</code> (فقط‌سابقه) می‌گیرند و بازپخش نمی‌شوند. گارد: فقط وقتی فشردن   واقعاً کوچک می‌کند (cand &lt; ۹۰٪ قدیمی).</p>
+<ul>
+<li><strong>نسخه‌گذاری (R95)</strong>: در <code>upd</code> روی مجموعه‌های نسخه‌دار</li>
+</ul>
+<p>  (<code>grades</code>/<code>attendance</code>/<code>discipline</code>) پیش از اعمال، <code>op.base_version</code> ثبت و   <code>it.version</code> یکی زیاد می‌شود — مبنای تشخیصِ تعارض در سرور.</p>
+<ul>
+<li>لایه‌ی دوم = IndexedDB (<code>payesh_offline_db</code>) با ۳ استور</li>
+</ul>
+<p>  (<code>entities</code> / <code>sync_queue</code> / <code>metadata</code>) و مهاجرتِ یک‌باره از   localStorage (<code>00-migration.js</code>).</p>
+<h4 id="s-95-۳-۳-ایندکس">۳.۳ ایندکس</h4>
+<p><code>28-indexes.js</code>: هر ایندکس با شمارنده‌ی نسخه‌ی همان مجموعه (<code>IDX_VER</code>) اعتبارسنجی می‌شود؛ <code>idxInvalidate(coll)</code> از <code>applyOp</code> صدا زده می‌شود. <code>idxAppend()</code> درجِ افزایشی است — بدونش، ورودِ ۲۰۰۰ ردیف اکسل از ۱۰۰۰ms به ۱۴٬۲۵۷ms می‌رفت (insert کل ایندکس را باطل می‌کرد).</p>
+<h4 id="s-97-۳-۴-مسیریابی-و-پوسته">۳.۴ مسیریابی و پوسته</h4>
+<ul>
+<li><code>S</code> = وضعیتِ سراسری (<code>05-router.js:5</code>)؛ <code>NAV</code> = منوی هر نقش؛ <code>TITLES</code> =</li>
+</ul>
+<p>  عنوان+شرحِ هر مسیر.</p>
+<ul>
+<li><code>S.stack</code> + <code>history.pushState</code> + <code>goBack()</code> ⇒ <strong>دکمه‌ی Backِ گوشی</strong> درست</li>
+</ul>
+<p>  کار می‌کند (مودال → منوی کناری → صفحه‌ی قبل).</p>
+<ul>
+<li><code>renderRoute()</code> (<code>07-shell.js:117</code>) ابتدا سه گارد را می‌زند:</li>
+</ul>
+<p>  دیوارِ پرداختِ ولی (<code>parentLocked</code> + <code>PARENT_FREE_ROUTES</code>)، قفلِ فرزند‌به‌فرزند،   و <strong><code>canRoute()</code></strong>؛ بعد به <code>view*()</code> می‌رود.</p>
+<ul>
+<li><code>render()</code> (<code>24-edu-office.js:891</code>) کلِ <code>#root</code> را بازنویسی می‌کند و</li>
+</ul>
+<p>  <strong>موقعیت اسکرولِ منو و محتوا را پیش/پس از آن برمی‌دارد</strong> — با تفکیکِ   «تغییر مسیر ⇒ از بالا» / «همان صفحه ⇒ حفظِ جا».</p>
+<h4 id="s-114-۳-۵-کنترلگر-رویداد">۳.۵ کنترلگرِ رویداد</h4>
+<p><code>19-actions-core.js</code> — یک شنونده‌ی کلیک با واگذاری رویداد روی <code>[data-act]</code>:</p>
+<pre class="lang-js"><code>document.addEventListener('click', e =&gt; {
+  const el = e.target.closest('[data-act]'); if(!el) return;
+  if (S.user &amp;&amp; canAction(a) === false) { toast('شما اجازه…'); return; }   // گاردِ مجوز
+  const A = Object.assign({}, coreActions(), dormActions(), dropoutActions(),
+    smsActions(), financeActions(), busActions(), vclassActions(),
+    scheduleActions(), adminActions());
+  if (A[a]) A[a](); else if (F7_ACTIONS[a]) … /* P8/P9/P10/CF/JD/FILTER/SYNC */
+});</code></pre>
+<p>شنونده‌های جدا برای <code>input</code> (فیلترهای زنده با debounce ۲۸۰ms) و <code>change</code> (آبشاریِ مقطع→پایه→شاخه→رشته، انتخابگرِ پوسته، ویرایشگرِ زنگ‌ها).</p>
+<h4 id="s-118-۳-۶-مجوز-سمت-کلاینت-30-authz-js-">۳.۶ مجوزِ سمتِ کلاینت (<code>30-authz.js</code>)</h4>
+<ul>
+<li><code>allowedRoutes(role)</code> از خودِ <code>NAV</code> استخراج می‌شود + <code>EXTRA_ROUTES</code></li>
+</ul>
+<p>  (زیرصفحه‌های بی‌منو) + <code>COMMON_ROUTES</code>. ⇒ <strong>حذفِ یک آیتم از منو، دسترسیِ مسیر   را هم قطع می‌کند</strong> (دامِ مستندشده).</p>
+<ul>
+<li><code>canRoute()</code> · <code>homeRoute()</code> (مشاور → <code>cqueue</code>، اداره → <code>officedash</code>،</li>
+</ul>
+<p>  راننده → <code>myservice</code>).</p>
+<ul>
+<li><code>ACTION_ROLES</code> = اکشن → نقش‌های مجاز؛ <code>canAction()</code> در شنونده‌ی کلیک.</li>
+</ul>
+<p>  سوپرادمین عمداً اکشن‌های مدرسه‌ای (ورود اکسل، ثبت نمره/حضور) را <strong>ندارد</strong> —   وقتی با <code>school-enter</code> وارد پنل مدرسه می‌شود، <code>S.user</code> خودِ مدیر می‌شود.</p>
+<ul>
+<li>⚠️ متنِ خودِ ماژول تأکید می‌کند: <strong>این لایه سدِ نهایی نیست</strong>؛ سرور موظف است</li>
+</ul>
+<p>  همان قواعد را مستقل اعمال کند.</p>
+<h4 id="s-135-۳-۷-بوت">۳.۷ بوت</h4>
+<p><code>24-edu-office.js</code> در <code>setTimeout(...,50)</code>:</p>
+<ol>
+<li><code>loadLog()</code> <strong>پیش از</strong> مولدها (وگرنه <code>generate*</code> با وضعیتِ تقریباً خالی،</li>
+</ol>
+<p>   دفترچه‌ی نشست‌های پیشین را بازنویسی می‌کرد — دامِ دور ۸۵/W1)،</p>
+<ol>
+<li><code>generate()</code> / <code>generateExtras()</code> / <code>generateP8…P12()</code> / <code>generatePriorYear()</code></li>
+</ol>
+<p>   و مولدهای دامنه‌ای (سرویس، کلاس مجازی، تکلیف، مهمان‌ها، کتابخانه، اموال،    سیدا، حالتِ مدرسه)،</p>
+<ol>
+<li><code>applyLog(); initSync();</code></li>
+<li><code>detectServer()</code> → <code>GET /api/auth/me</code> → نشستِ معتبر = همان کاربرِ محلی،</li>
+</ol>
+<p>   کوکیِ نامعتبر = پاک‌شدنِ نشست محلی، نبودِ شبکه = تغییری نمی‌کند،</p>
+<ol>
+<li>بازگردانیِ نشست/شخصا/باسِ دمو (فقط دمو — علامت‌گذاری‌شده در کد)،</li>
+<li><code>render()</code>.</li>
+</ol>
+<hr>
+<h3 id="s-155-۴-همگام-سازی-Push-Pull-">۴. همگام‌سازی (Push + Pull)</h3>
+<h4 id="s-156-۴-۱-صف-ارسال-27-sync-js-">۴.۱ صفِ ارسال (<code>27-sync.js</code>)</h4>
+<ul>
+<li>وضعیتِ هر عمل: <code>pending → sending → synced | failed | conflict | rejected</code>.</li>
+<li><code>SYNC_DEAD_CODES</code> = ردهای پایدار (<code>field_denied</code>, <code>malformed_op</code>,</li>
+</ul>
+<p>  <code>role_denied</code>, <code>out_of_scope</code>, <code>forged_by</code>, <code>unknown_field</code>,   <code>unknown_collection</code>, <code>role_escalation</code>, <code>ownership_forge</code>,   <code>conflict_preserved</code>, <code>stale_base</code>, <code>validation_failed</code>, <code>oversized_op</code>) —   این‌ها به <code>rejected</code> می‌روند و از چرخه خارج می‌شوند تا صفِ سالم‌ها را نگیرند.   ردهای گذرا (<code>virtual_day</code>, ۴۰۱ نشست) همان <code>failed</code> با backoff می‌مانند.</p>
+<ul>
+<li><code>duplicate_ignored</code> موفق حساب می‌شود (ایدمپوتانسِ uid پس از قطعی).</li>
+<li>Backoff: ۲s → ۴ → ۸ … تا سقف ۵ دقیقه.</li>
+<li><code>enqueueOp()</code> کلیدهای محلیِ <code>id</code>/<code>by</code> را از <code>data</code> پاک می‌کند (سرور آن‌ها را</li>
+</ul>
+<p>  <code>unknown_field</code> می‌داند).</p>
+<ul>
+<li>ارسالِ تکه‌تکه (<code>sendChunked</code>) + پیشرفت (<code>SYNC.progress</code>)؛ تک‌عملیاتی که حتی</li>
+</ul>
+<p>  تنها هم ۴۱۳ می‌خورد ⇒ <code>oversized_op</code>.</p>
+<h4 id="s-172-۴-۲-کشش-دلتا-29-pull-js-A01-">۴.۲ کشش/دلتا (<code>29-pull.js</code> — A01)</h4>
+<p><code>GET /api/v1/pull?since=…&amp;collections=…</code> → <code>mergeServerDelta(payload)</code>:</p>
+<ul>
+<li>رکوردی که در صفِ محلی عملیاتِ ارسال‌نشده دارد را <strong>بازنویسی نمی‌کند</strong></li>
+</ul>
+<p>  (تغییرِ محلی از بین نمی‌رود)،</p>
+<ul>
+<li>آرایه‌ی <code>deleted</code> (tombstone) را از پایگاه محلی حذف می‌کند،</li>
+<li><code>payesh_last_pull_time</code> را جلو می‌برد، ایندکس‌های لمس‌شده را باطل می‌کند،</li>
+<li>IndexedDB را در پس‌زمینه به‌روز می‌کند.</li>
+</ul>
+<h4 id="s-183-۴-۳-محدوده-ی-داده-29-scope-js-">۴.۳ محدوده‌ی داده (<code>29-scope.js</code>)</h4>
+<p><code>SCOPE_LIMITS</code> = ۶۰٬۰۰۰ رکورد / ۸MB / پنجره‌ی ۴۵ روزه‌ی حضور / ۲ ترم / صفحه‌ی ۵۰. <code>scopeDescriptor(role)</code> برشِ هر نقش را توصیف می‌کند (اداره فقط تجمیع؛ مشاور فقط صفِ ارجاع + نام/کلاسِ ارجاع‌شده‌ها؛ سوپرادمین آمارِ ملی).</p>
+<hr>
+<h3 id="s-186-۵-سرور-server-فقط-Node-stdlib-pg-و-iored">۵. سرور (<code>server/</code> — فقط Node stdlib؛ <code>pg</code> و <code>ioredis</code> اختیاری)</h3>
+<h4 id="s-187-۵-۱-نقشه-ی-فایل">۵.۱ نقشه‌ی فایل</h4>
+<div class="tw"><table><thead><tr><th>فایل</th><th>نقش</th></tr></thead><tbody><tr><td><code>index.js</code></td><td>روتر، سرآیندهای امنیتی، CSP nonce، GC، persist، TLS، بکاپِ خودکار، نگهبانِ شمردنِ شناسه</td></tr><tr><td><code>auth.js</code></td><td>JWTِ HS256 دست‌ساز، OTP (CSPRNG + فقط هش)، سقف‌های نرخ، ورود/خروج/حذف حساب</td></tr><tr><td><code>otp-store.js</code></td><td>حالتِ OTP/نرخ در <code>server/data/otp.json</code> (مشترک بین instanceها)</td></tr><tr><td><code>sync.js</code></td><td><code>POST /api/sync</code> — ۴ سنجش + دروازه‌ی فیلد + نسخه/تعارض + اعلان‌های خودکار</td></tr><tr><td><code>validate.js</code></td><td>لایه‌ی مقدار (طول/enum/عدد/تاریخ)، پاکتِ عملیات، <code>STATUS_ENUMS</code> برای ۲۴ مجموعه</td></tr><tr><td><code>idor.js</code></td><td><code>GET /api/students/:id</code> — مرجعِ IDOR (خارج از محدوده = <strong>۴۰۴ نه ۴۰۳</strong>)</td></tr><tr><td><code>pull.js</code></td><td><code>GET /api/v1/pull</code> — دلتا + سنگ‌قبرها + پوششِ نقش</td></tr><tr><td><code>conflicts.js</code></td><td>فهرست و داوریِ تعارض (فقط manager/superadmin)</td></tr><tr><td><code>admin.js</code></td><td>بکاپ/بازیابی (فقط superadmin)، نگهداری ۱۰ نسخه، زمان‌بندی درون‌پروسه</td></tr><tr><td><code>sms.js</code></td><td>ارسالِ واقعی (فقط superadmin)، کیف پول، سقف روزانه، ایدمپوتانس</td></tr><tr><td><code>bell.js</code></td><td><code>GET /api/bell/now</code> — ساعتِ سرور + حضورِ امروزِ فرزندان (پُلِ زنده)</td></tr><tr><td><code>audit.js</code></td><td>لاگِ فقط‌افزودنی، پاک‌سازیِ phone/nid، چرخش (۱۰۰۰ رویداد/روزانه/۱۰MB)</td></tr><tr><td><code>db.js</code></td><td>دولایه: PostgreSQL (<code>DATABASE_URL</code>) با fallbackِ حافظه، تراکنش، ping</td></tr><tr><td><code>redis.js</code> / <code>cache.js</code></td><td>Redis با fallbackِ حافظه؛ کشِ bootstrap، نرخ، ایدمپوتانس، pub/subِ باطل‌سازی</td></tr><tr><td><code>tls-cert.js</code></td><td>تولید گواهیِ خودامضا برای توسعه</td></tr><tr><td><code>seed.js</code></td><td>ساختِ <code>server/data/payesh.json</code> از همان دنیای دمو (jsdom) — قطعی</td></tr><tr><td><code>schema.sql</code></td><td>اسکیمای PostgreSQL (۴۰k خط، ۱۸۹ ایندکس)</td></tr><tr><td><code>routes/*.js</code></td><td>فاز ۳: students / classes / attendance / grades / users / bootstrap (RESTِ <code>/api/v1/</code>)</td></tr><tr><td><code>middleware/*.js</code></td><td>auth (JWT/کوکی)، scope (مدرسه/نقش)، projection (ماسکِ PII)، pagination (keyset)</td></tr></tbody></table></div>
+<h4 id="s-189-۵-۲-endpointها-از-index-js-">۵.۲ endpointها (از <code>index.js</code>)</h4>
+<pre><code>GET    /api/health
+POST   /api/auth/send-code · /api/auth/login · /api/auth/me · /api/auth/logout · /api/auth/delete-account
+POST   /api/sync                       (سقف ۵۰۰ عمل در هر دسته)
+GET    /api/sync/conflicts             (manager/superadmin)
+POST   /api/sync/resolve-conflict      (manager/superadmin)
+GET    /api/students/:id               (مرجعِ IDOR)
+GET    /api/bell/now
+POST   /api/admin/backup · /api/admin/restore   (superadmin)
+POST   /api/sms/send                            (superadmin)
+GET    /api/v1/bootstrap · /api/v1/pull
+GET/POST/PATCH/DELETE /api/v1/{students,classes,attendance,grades,users}[/:id]
+static: / · /index.html · /USER_GUIDE.html · /privacy.html · /account-deletion.html</code></pre>
+<h4 id="s-191-۵-۳-زنجیره-ی-امنیت-به-ترتیب-اجرا-">۵.۳ زنجیره‌ی امنیت (به‌ترتیب اجرا)</h4>
+<ol>
+<li><strong>سرآیندها</strong> (<code>securityHeaders</code>): CSP با nonceِ تصادفیِ هر درخواست،</li>
+</ol>
+<p>   <code>X-Frame-Options: DENY</code>، <code>nosniff</code>، <code>Referrer-Policy: same-origin</code>،    <code>Permissions-Policy</code> و HSTS زیر HTTPS.</p>
+<ol>
+<li><strong>نگهبانِ شمردنِ شناسه (R97)</strong>: هر رد (۴۰۱/۴۰۳/۴۰۴) و هر خوانشِ</li>
+</ol>
+<p>   <code>/api/students/:id</code> به‌ازای هر نشست در پنجره‌ی ۱۰ دقیقه شمرده می‌شود:    <code>WARN=20</code> → آدیت؛ <code>SLOW1=100</code> → تأخیر ۵۰۰ms؛ <code>SLOW2=500</code> → تأخیر ۲s؛    <code>REVOKE=2000</code> → ابطالِ نشست (<code>__revoked_jti</code>). <code>/api/auth/*</code> مستثنی است.</p>
+<ol>
+<li><strong>نشست</strong>: کوکی <code>HttpOnly; SameSite=Lax</code> (+ <code>Secure</code> زیر HTTPS). JWT با</li>
+</ol>
+<p>   الگوریتمِ <strong>سخت‌کد‌شده‌ی HS256</strong> (کشتنِ <code>alg:none</code>)؛ بررسیِ <code>iss</code>/<code>aud</code>/    <code>exp</code>/تازگیِ <code>iat</code>/ابطالِ <code>jti</code>؛ امضای کلیدِ قبلی هم پذیرفته می‌شود    (rotation). کلیدِ کوتاه‌تر از ۲۵۶ بیت ⇒ استارت نمی‌کند.</p>
+<ol>
+<li><strong>OTP</strong>: <code>randomInt(100000,1000000)</code>؛ روی دیسک <strong>فقط هش</strong> می‌رود؛</li>
+</ol>
+<p>   سقف‌ها: cooldown ۶۰s، روزانه ۲۰، ارسال/پنجره برای هر شماره ۵، برای هر IP ۱۰،    ورود برای هر IP ۱۰، تلاشِ غلطِ کد ۵ (بعدش کد می‌میرد)؛ تأخیرِ تصاعدیِ    شکست‌ها (۱،۲،۴،۸… تا ۳۰s). <strong>همه‌ی سقف‌ها پیش از بررسیِ وجودِ شماره</strong>    اعمال می‌شوند و پاسخ برای شماره‌ی موجود/ناموجود یک‌شکل است (ضدِ شمردن).</p>
+<ol>
+<li><strong><code>POST /api/sync</code></strong> — ۴ سنجشِ قرارداد به‌علاوه‌ی دروازه‌ی فیلد:</li>
+</ol>
+<ul>
+<li>#1 <code>op.by === session.id</code> — جعل ⇒ <strong>کل دسته</strong> رد می‌شود،</li>
+<li>#2 مُهرهای <code>user_id</code>/<code>school_id</code> با توکن یکی باشند،</li>
+<li>#3 مجوزِ عمل (از مدل — ناشناخته = رد، حتی برای سوپرادمین)،</li>
+<li>#4 <code>inScope()</code> — محدوده‌ی واقعیِ رکورد (دانش‌آموز/ولی/دبیر/مدیر/اداره).</li>
+<li>دروازه‌ی فیلد (<code>fieldGate</code>): فیلدِ ناشناس = رد؛ «بدون ارتقاء» روی</li>
+</ul>
+<p>     <code>users.role</code>؛ <code>phone</code>/<code>national_id</code> فقط مدیریت؛ <code>school_id</code> مشتق از نشست؛      کلیدهای مالکیت (<code>from_id</code>/<code>author_id</code>/<code>graded_by</code>) = خودِ نشست؛      سیاستِ <code>status</code> (ins = مقدارِ اولیه، upd = مدیر یا نقش‌های صریحِ workflow)؛      فیلدهای محافظت‌شده (<code>status, school_id, user_id, role, national_id, phone</code>)      هرگز از کپیِ عمومیِ payload عبور نمی‌کنند.</p>
+<ul>
+<li>استثناهای حداقلی و محدوده‌دار: <strong>IEP</strong> (دبیر روی <code>users</code> فقط با کلیدهای</li>
+</ul>
+<p>     IEP) و <strong>ترک‌تحصیل</strong> (مدیر، فقط کلیدهای dropout + <code>status∈{active,dropped_out}</code>).</p>
+<ul>
+<li><code>validateSyncData</code> — ردِّ عملیات‌محور (یک عملِ خراب، دسته را مسموم نمی‌کند)؛</li>
+</ul>
+<p>     مقدارِ خام هرگز در پاسخ/آدیت نمی‌آید.</p>
+<ul>
+<li>ایدمپوتانس با <code>uid</code> (حافظه/Redis/PG)؛ انحرافِ ساعت فقط ثبت می‌شود (رد نه)؛</li>
+</ul>
+<p>     مسدودسازیِ عملیاتِ فیزیکی در <strong>روزِ غیرحضوری</strong> (<code>virtual_day</code>).</p>
+<ul>
+<li><code>server_version</code> و <code>__deleted_records</code> (سنگ‌قبر، سقف ۵۰۰۰).</li>
+</ul>
+<ol>
+<li><strong>پاسخ و آدیت</strong>: هیچ phone/nid کامل در پاسخ نیست؛ آدیت بیرون از store،</li>
+</ol>
+<p>   با دسترسی ۰۶۰۰، و پاک‌سازیِ خودکارِ شماره/کدملی.</p>
+<h4 id="s-238-۵-۴-پایگاه-کش">۵.۴ پایگاه/کش</h4>
+<ul>
+<li>مسیرِ زنده = <strong>فایلِ JSON</strong> (<code>server/data/payesh.json</code>)، ذخیره‌ی اتمی</li>
+</ul>
+<p>  (tmp + rename، mode ۰۶۰۰) هر ۲s در صورتِ کثیف‌بودن؛ GC برای   <code>__processed_uids</code> (۳۰ روز) و <code>__revoked_jti</code> (TTLِ نشست).</p>
+<ul>
+<li>در صورتِ <code>DATABASE_URL</code> + <code>pg</code>: هر عملِ اعمال‌شده با UPSERT به PG می‌رود</li>
+</ul>
+<p>  (<code>db.persistOp</code>)؛ در صورتِ <code>REDIS_URL</code> + <code>ioredis</code>: کش/نرخ/ایدمپوتانس/   pub/sub. هر دو با fallbackِ بی‌صدا به حافظه.</p>
+<ul>
+<li><code>PAYESH_ENV=production</code> بدون TLS یا اعلامِ پروکسی ⇒ <strong>exit(1)</strong>؛</li>
+</ul>
+<p>  گواهیِ خودامضا در production ⇒ exit(1).</p>
+<hr>
+<h3 id="s-252-۶-مدل-مجوز-یک-منبع-حقیقت">۶. مدلِ مجوز — یک منبعِ حقیقت</h3>
+<pre><code>src/js/30-authz.js (ACTION_ROLES)  ┐
+تحلیلِ استاتیکِ اکشن‌ها              ├─ tools/generate-write-perms.js ─→ authz/write-perms.json ─→ server/sync.js
+authz/model.json (۸۰ مجموعه×۳ عمل) ┘</code></pre>
+<ul>
+<li><code>authz/model.json</code> = منبعِ سرپرستی‌شده: برای هر مجموعه، <code>fields</code> +</li>
+</ul>
+<p>  <code>ins</code>/<code>upd</code>/<code>del</code> (فهرستِ نقش‌ها).</p>
+<ul>
+<li><code>authz/write-perms.json</code> = <strong>تولیدی</strong> (۱۷۰ اکشن، ۸۰ مجموعه). سرور این را</li>
+</ul>
+<p>  می‌خواند، نه جدولِ دستی.</p>
+<ul>
+<li>نگهبان‌ها: <code>node build.js --check</code> مولد را با <code>--check</code> اجرا و diff می‌کند</li>
+</ul>
+<p>  (جدولِ کهنه = build قرمز)؛ <code>tools/check-authz.js</code> نویسنده‌های کلاینت را با   <code>WRITE_PERMS</code> می‌سنجد؛ <code>tests/server16.js</code> ماتریسِ منفیِ role×collection×op؛   <code>tests/authz-model.js</code> مدل را بازتولید و با seed/کلاینت diff می‌کند.</p>
+<hr>
+<h3 id="s-267-۷-تست">۷. تست</h3>
+<ul>
+<li><code>tests/run.js</code> — ساختار، ماژول‌ها، استایل، امنیت، آفلاین (سوئیتِ دروازه).</li>
+<li><code>tests/smoke.js</code> — ۵۴۶/۵۴۷ مرحله در jsdom (جریان‌های هر نقش).</li>
+<li>۱۰۸ سوئیتِ تخصصی + ۴۵ سوئیتِ <strong>جهش</strong> (<code>*-mutations.js</code>: کد را عمداً خراب</li>
+</ul>
+<p>  می‌کند و می‌سنجد تست واقعاً می‌میرد یا نه).</p>
+<ul>
+<li><code>scripts/run-all-tests.sh</code> (v3): سه خط — A (فقط‌خواندنی، درجا، ۲ کارگر)،</li>
+</ul>
+<p>  B (تغییردهنده: جهش‌ها/سرورها/بازسازها ⇒ <strong>کپیِ ایزوله</strong> در <code>/tmp/mut-*</code>)،   و خطِ سریال برای سوئیت‌هایی که پورتِ ثابتِ 89xx/90xx می‌گیرند.   Self-heal برای jsdom / هویتِ گیت / remote / seed؛ گارد برای درختِ کثیف (exit 3)   و کمبودِ فضای <code>/tmp</code> (exit 4). زمانِ اندازه‌گیری‌شده: ~۷ دقیقه.</p>
+<ul>
+<li><code>tests/api/<em></code> (فاز ۳، ۷ سوئیت) با <code>tests/api/runner.js</code> — </em>*در</li>
+</ul>
+<p>  <code>run-all-tests.sh</code> سیم‌کشی نشده** (<code>grep tests/api scripts/run-all-tests.sh</code> = ۰).</p>
+<ul>
+<li><code>tests/performance/</code> — سناریوهای k6 (ورود، بوت‌استرپ، حضور، نمره، اعلان، سینک)،</li>
+</ul>
+<p>  سوئیت‌های saturation / soak-24h / spike-mehr / chaos-redis،   با <code>tests/performance/run-benchmarks.sh</code> (و <code>run-benchmarks.sh</code> در ریشه).</p>
+<ul>
+<li>CI: <code>.github/workflows/node.js.yml</code> (Node ۱۸/۲۰/۲۲: <code>npm ci</code> → <code>npm run build</code></li>
+</ul>
+<p>  → <code>npm test</code>) و <code>npm-publish-github-packages.yml</code> (انتشار هنگام release).</p>
+<hr>
+<h3 id="s-291-۸-نقشه-ی-مستندات-کدام-سند-مرجع-چیست-">۸. نقشه‌ی مستندات (کدام سند مرجعِ چیست)</h3>
+<div class="tw"><table><thead><tr><th>بخواهی…</th><th>برو به</th></tr></thead><tbody><tr><td>معماری/تصمیم‌های قفل‌شده</td><td><code>docs/ARCHITECTURE_DECISIONS.md</code> · <code>docs/ARCHITECTURE.md</code> · <code>docs/ARCHITECTURE_REVIEW.md</code></td></tr><tr><td>قراردادِ الزام‌آورِ سرور</td><td><code>docs/SERVER_SECURITY_CONTRACT.md</code> (۵۰KB)</td></tr><tr><td>استقرار و env</td><td><code>docs/DEPLOY.md</code> · <code>.env.example</code></td></tr><tr><td>چه مانده پیش از تولید</td><td><code>TODO_BEFORE_PRODUCTION.md</code> (بازبینیِ R96)</td></tr><tr><td>آمادگیِ پایلوت</td><td><code>PILOT_READY_SUMMARY.md</code> · <code>docs/PILOT_ONBOARDING.md</code> · <code>docs/PILOT_KICKOFF.md</code> · <code>docs/pilot/</code></td></tr><tr><td>راهنماهای نقش‌محور</td><td><code>reza/مدرسه/</code> · <code>reza/اداره/</code> · <code>reza/سازنده/</code> · <code>reza/برنامه_نویس/</code></td></tr><tr><td>توضیحِ محصول برای غیرفنی</td><td><code>reza/توضیح_کامل_برنامه.md</code> · <code>USER_GUIDE.html</code></td></tr><tr><td>وضعیتِ روزانه/دورها</td><td><code>docs/REPORT_*.md</code> + <code>docs/README.md</code> (فهرستِ زمانی)</td></tr><tr><td>تاریخچه‌ی طولانی</td><td><code>PROJECT_NOTES.md</code> · <code>HANDOFF.md</code> · <code>docs/HANDOFF_ARCHIVE.md</code></td></tr><tr><td>مهارت‌های عامل</td><td><code>SKILLS_MASTER.md</code> · <code>.claude/skills/*</code></td></tr></tbody></table></div>
+<blockquote><p><code>docs/README.md</code> جدولِ زمانیِ فایل‌های <code>docs/</code> را نگه می‌دارد (قاعده: با هر به‌روزرسانی، ردیفش در همان دور تازه شود).</p></blockquote>
+<hr>
+<h3 id="s-295-۹-وضعیت-امروز-چه-انجام-شده-چه-مانده">۹. وضعیتِ امروز: چه انجام شده، چه مانده</h3>
+<h4 id="s-296-۹-۱-انجام-شده-با-شاهد-">۹.۱ انجام‌شده (با شاهد)</h4>
+<div class="tw"><table><thead><tr><th>حوزه</th><th>وضعیت</th><th>شاهد</th></tr></thead><tbody><tr><td>۲۸/۲۸ بندِ نقشه‌راه (فاز ۰–۶)</td><td>✅</td><td><code>docs/ROADMAP_FINAL_SCAN_2026-09-08.md</code></td></tr><tr><td>سرورِ واقعی با صفر وابستگی</td><td>✅</td><td><code>server/README.md</code>، ۱۵۴ بررسی (server1..server10)</td></tr><tr><td>احرازِ سرور (JWT/OTP/نرخ/ضدِ‌شمردن)</td><td>✅</td><td><code>server/auth.js</code>, <code>server/otp-store.js</code>, server17 J/O</td></tr><tr><td>مجوزِ مرکزی + سطحِ فیلد + محدوده</td><td>✅</td><td><code>authz/*</code>, <code>server/sync.js:fieldGate</code>, server16 (۳۹)</td></tr><tr><td>تعارضِ همگام‌سازی + داوری</td><td>✅</td><td><code>server/conflicts.js</code>, server15 + جهش</td></tr><tr><td>بکاپ/بازیابی + خودکار</td><td>✅</td><td><code>server/admin.js</code>, server9 A2/A4</td></tr><tr><td>آدیتِ فقط‌افزودنی + چرخش + پاک‌سازی</td><td>✅</td><td><code>server/audit.js</code>, server17 T6</td></tr><tr><td>TLS در production (fail-fast) + CSP nonce</td><td>✅</td><td><code>server/index.js</code>, server17 T1–T4</td></tr><tr><td>Pull/Bootstrap و دلتا (A01)</td><td>✅</td><td><code>server/pull.js</code>, <code>src/js/29-pull.js</code>, <code>tests/pull-bootstrap.js</code></td></tr><tr><td>اندروید (TWA)</td><td>🟡 اسکلت</td><td><code>android/</code> + <code>tools/build-android.js</code> + <code>docs/PLAY_STORE_CHECKLIST.md</code></td></tr><tr><td>پایلوت</td><td>🟢 آماده با ۳ پیش‌نیازِ کارفرما</td><td><code>PILOT_READY_SUMMARY.md</code></td></tr></tbody></table></div>
+<h4 id="s-298-۹-۲-باز-فقط-مواردی-که-در-کد-مستندات-زنده">۹.۲ باز (فقط مواردی که در کد/مستندات زنده‌اند)</h4>
+<ol>
+<li><strong>پرداختِ والد</strong> — تنها موردِ بازِ کلِ پروژه (تصمیمِ محصول؛ R88b/R90).</li>
+<li><strong>بند ۰.۴ در برابر پی‌والِ فعلی</strong> — <code>PARENT_FREE_ROUTES</code> فقط</li>
+</ol>
+<p>   اشتراک/اعلان/اطلاعیه را رایگان می‌کند؛ نمره و حضور پشتِ قفلِ اشتراک‌اند.    ممکن است با «داده‌ی پایه هرگز پولی نشود» در تنش باشد ⇒ <strong>پرسشِ محصولی</strong>،    نه باگ (<code>docs/ROADMAP_FINAL_SCAN_2026-09-08.md</code> §۳).</p>
+<ol>
+<li><strong>ذخیره‌ساز</strong> — سرور روی فایلِ JSON است (برای پایلوت کافی)؛ PG/مقیاس =</li>
+</ol>
+<p>   تصمیمِ استقرار (<code>docs/STORAGE_OPTIONS_2026-09-06.md</code>).</p>
+<ol>
+<li><strong>پایگاهِ داده‌ی زنده نشده</strong> — <code>db.js</code> آماده ولی مسیرِ سروینگِ درخواست‌ها</li>
+</ol>
+<p>   همان فایل است (FINAL_VERIFICATION_REPORT بند B1 «sidecar»).</p>
+<ol>
+<li><strong><code>cache.checkRateLimit</code> مصرف‌کننده ندارد</strong> (نوشته‌شده، بیرون از <code>cache.js</code></li>
+</ol>
+<p>   سیم‌کشی نشده) — بند B4.</p>
+<ol>
+<li><strong>ورودِ اکسل سقفِ نرخ ندارد</strong> (بند ۲.۲).</li>
+<li>**<code>tests/api/<em></code> در رگرسیون سیم‌کشی نشده</em>*.</li>
+<li><strong>فلیک‌های زمانی</strong> — <code>homework2</code> (۲۳:۰۰–۲۳:۵۹ UTC)، <code>bus2</code>/<code>bus3</code></li>
+</ol>
+<p>   (پیش از ۰۷:۴۲Z)، <code>bell2</code> (شنبه/پنجشنبه) — ایرادِ تست، نه اپ؛    و ۱۵ سوئیتِ جهش که <code>19-actions.js</code> حذف‌شده را می‌خوانند (<code>OPEN_ITEMS.md</code> §۵.۲).</p>
+<ol>
+<li><strong>حذفِ نرم (<code>deleted_at</code>)</strong> — تصمیم گرفته شده، پیاده‌سازیِ کاملِ</li>
+</ol>
+<p>   «هر پرس‌وجو <code>WHERE deleted_at IS NULL</code>» مانده (بند ۲.۸).</p>
+<ol>
+<li><strong>UUID برای شناسه‌ها</strong> — تصمیم باید «پیش از نخستین استقرار واقعی» گرفته</li>
+</ol>
+<p>    شود (بند ۲.۷).</p>
+<ol>
+<li><strong>درگاهِ پیامکِ واقعی</strong> — فقط گامِ ۱ پیاده شده؛</li>
+</ol>
+<p>    <code>PAYESH_SMS_PROVIDER</code> تنظیم نشده ⇒ ۵۰۳ (<code>docs/PLAN_SMS_GATEWAY.md</code>).</p>
+<ol>
+<li><strong>انتخابگرِ تم در رابط</strong> — سه پوسته وجود دارد ولی آخرین کامیت</li>
+</ol>
+<p>    (<code>4ca531c</code>) آن را به نوارِ بالای سوپرادمین سنجاق کرده است.</p>
+<h4 id="s-338-۹-۳-عددهای-سلامت-از-گزارش-ها-">۹.۳ عددهای سلامت (از گزارش‌ها)</h4>
+<ul>
+<li>رگرسیونِ کاملِ آخر: ۱۴۸ سبز / ۲ قرمز (هر دو با اصلاحِ ۲ خطِ تست سبز شدند) ⇒</li>
+</ul>
+<p>  <strong>مؤثر ۱۵۰/۱۵۰</strong>؛ قبل‌تر ۱۲۴/۱۲۵ (فلیکِ <code>homework2</code>).</p>
+<ul>
+<li>ظرفیت: ۵۰۰ عمل در یک دسته = ۱۴ms؛ ۱۰۰۰ رکوردِ حضور &lt; 9s؛ رندر p90 ≈ 9ms؛</li>
+</ul>
+<p>  localStorage پس از ۳۰ روز = 568KB از ۵MB.</p>
+<hr>
+<h3 id="s-348-۱۰-قواعد-کار-از-CONTRIBUTING-md-SKILLS-M">۱۰. قواعدِ کار (از <code>CONTRIBUTING.md</code>، <code>SKILLS_MASTER.md</code> و متنِ کد)</h3>
+<ol>
+<li><strong>تک‌منبعِ حقیقت</strong> برای مجوز، داده و شبکه — کنترلِ پراکنده ممنوع</li>
+</ol>
+<p>   (درسِ R96 P0-1).</p>
+<ol>
+<li><strong>Fail-closed</strong>: ناشناخته = رد. مجموعه/فیلد/نقشِ نشناخته هرگز عبور نمی‌کند،</li>
+</ol>
+<p>   حتی برای سوپرادمین.</p>
+<ol>
+<li><strong>۴۰۴ نه ۴۰۳</strong> برای رکوردِ خارج از محدوده (۴۰۳ وجودِ رکورد را لو می‌دهد).</li>
+<li><strong>هیچ PII در پاسخ/آدیت</strong> — phone/nid همیشه ماسک یا حذف.</li>
+<li><strong>توضیحِ فارسی در کد</strong> برای هر تصمیمِ غیربدیهی؛ کامنت‌های «چرا» ارزشمندتر از</li>
+</ol>
+<p>   «چه».</p>
+<ol>
+<li><strong>Glyph-safety</strong>: متنِ UI/پیام فقط در کلاینت (فایل‌های سرور عمداً</li>
+</ol>
+<p>   رشته‌ی فارسی ندارند تا در صورتِ نشت، لاگ آلوده نشود).</p>
+<ol>
+<li><code>esc()</code> برای متن، <code>escAttr()</code> برای صفت — هیچ مقدارِ پویا بدون آن‌ها وارد</li>
+</ol>
+<p>   <code>innerHTML</code> نشود. خروجیِ CSV باید ضدِ تزریقِ فرمول باشد.</p>
+<ol>
+<li><strong>وابستگیِ تازه ممنوع</strong> مگر با اجازه؛ سرور فقط stdlib + دو درایورِ اختیاری.</li>
+<li><strong><code>node build.js</code></strong> بعد از هر تغییر در <code>src/</code>؛ و <code>--check</code> پیش از تحویل.</li>
+<li>ماژولِ جدید را در <code>src/js/_order.json</code> ثبت کن.</li>
+<li>هر ادعا باید <strong>شاهدِ کد/تست</strong> داشته باشد؛ چیزی که دیده نشد، «دیده نشد»</li>
+</ol>
+<p>    گزارش شود (روشِ <code>FINAL_VERIFICATION_REPORT.md</code>).</p>
+<hr>
+<h3 id="s-379-۱۱-دام-های-ثبت-شده-در-کد-قبل-از-دست-زدن-">۱۱. دام‌های ثبت‌شده در کد (قبل از دست‌زدن بخوان)</h3>
+<div class="tw"><table><thead><tr><th>دام</th><th>کجا</th><th>خلاصه</th></tr></thead><tbody><tr><td>ترتیبِ <code>loadLog</code> / <code>generate*</code></td><td><code>24-edu-office.js</code> بوت</td><td><code>loadLog</code> باید پیش از مولدها باشد</td></tr><tr><td>رونوشت در <code>ins</code></td><td><code>03-persistence.js:applyOp</code></td><td>بدونش سابقه‌ی تغییرات دروغ می‌گوید</td></tr><tr><td>درجِ افزایشیِ ایندکس</td><td><code>28-indexes.js:idxAppend</code></td><td>باطل‌سازی در حلقه ⇒ درجه‌دوم</td></tr><tr><td>حذف از <code>NAV</code> = قطعِ دسترسی</td><td><code>30-authz.js:allowedRoutes</code></td><td>مجوز از منو مشتق می‌شود</td></tr><tr><td><code>op.data.id/by</code> در صف</td><td><code>27-sync.js:enqueueOp</code></td><td>سرور آن‌ها را <code>unknown_field</code> می‌داند</td></tr><tr><td><code>__a</code> در فشردن</td><td><code>03-persistence.js:compactLogIfNeeded</code></td><td>عمل‌های مانده فقط‌سابقه‌اند</td></tr><tr><td>بازیابی، ابطالِ نشست را زنده نگه می‌دارد</td><td><code>server/admin.js:apiRestore</code></td><td>خروجِ پیش از restore پابرجاست</td></tr><tr><td>خودامضا در production</td><td><code>server/index.js</code></td><td>استارت نمی‌کند</td></tr><tr><td>اسکنِ کلیدواژه‌ی انگلیسی</td><td><code>docs/ROADMAP_FINAL_SCAN…</code> §۱</td><td>روی کدِ فارسی منفیِ کاذب می‌دهد</td></tr></tbody></table></div>
+<hr>
+<h3 id="s-382-۱۲-آماده-به-کار-دستورهای-پرتکرار">۱۲. آماده‌به‌کار: دستورهای پرتکرار</h3>
+<pre class="lang-bash"><code>node build.js            # ساختِ index.html + dist/payesh.html
+node build.js --check    # انطباقِ بیت‌به‌بیت + مجوزها + مُهرِ راهنما
+npm test                 # tests/run.js + tests/smoke.js
+node server/seed.js      # ساختِ server/data/payesh.json (نیاز: jsdom)
+node server/index.js     # وب + API روی :3000
+bash scripts/run-all-tests.sh     # رگرسیونِ کامل (~۷ دقیقه)
+node tools/check-authz.js         # اکشن‌ها ↔ WRITE_PERMS
+node tools/generate-write-perms.js --check</code></pre>
+<hr>
+<p><em>این سند توسط عامل (Arena Agent Mode) و با خواندنِ مستقیمِ مخزن نوشته شده؛ هر ادعایِ عددی در آن قابلِ بازتولید با دستورِ روبه‌رو است.</em></p>
+</section>
+<section class="doc" id="doc-3">
+  <div class="doc-head"><span class="ico">📘</span>
+    <div><h1 class="doc-title">درکِ عمیقِ سامانه (پوشهٔ reza)</h1>
+    <div class="doc-path"><code>reza/درک_عمیق_سامانه_پایش.md</code></div></div></div>
+  <h2 id="s-0--درک-عمیق-سامانه-پایش-پرامپت-و-مرجع-یکتا">🧭 درکِ عمیقِ سامانهٔ پایش — پرامپت و مرجعِ یکتا</h2>
+<p><strong>تاریخ:</strong> ۲۰۲۶-۰۹-۰۸ · <strong>کامیتِ مبنا:</strong> <code>4ca531c</code> · <strong>شاخه:</strong> <code>arena/01a08256-p2</code> <strong>مخاطب:</strong> هر کس (انسان یا عاملِ هوش‌مصنوعی) که برای <strong>نخستین بار</strong> با پایش روبه‌رو می‌شود و باید پیش از هر تغییر، تصویرِ کامل و وفادار به کد داشته باشد.</p>
+<blockquote><p>این فایل همان <a href="../AGENT_ONBOARDING.md"><code>AGENT_ONBOARDING.md</code></a> است که برای نشستن در پوشهٔ <code>reza/</code> بازنویسی شده (نسبت‌لینک‌ها از ریشهٔ مخزن حساب شده‌اند).</p></blockquote>
+<hr>
+<h3 id="s-4--پرامپت-آماده-کپی-کن-و-به-هر-عامل-همکار-">📌 پرامپتِ آماده (کپی کن و به هر عامل/همکار بده)</h3>
+<pre><code>مخزن https://github.com/rezaa2544/p2 را باز کن و پیش از هر تغییری، این دو فایل را
+کامل بخوان:
+  1) reza/درک_عمیق_سامانه_پایش.md    ← نقشهٔ کاملِ سامانه (همین فایل)
+  2) AGENT_ONBOARDING.md              ← همان سند در ریشه
+
+قواعدِ کار:
+  • هیچ کدی ننویس تا وقتی §۱ تا §۶ را نخوانده‌ای.
+  • هر ادعا باید شاهدِ «فایل:خط» یا تست داشته باشد؛ ندیدی = «دیده نشد» بگو.
+  • پیش از تحویل: node build.js --check  و  npm test
+  • هر تغییر بلافاصله روی شاخهٔ arena/01a08256-p2 کامیت و پوش شود.
+  • قواعدِ §۱۰ و دام‌های §۱۱ را پیش از دست‌زدن به کد بخوان.</code></pre>
+<hr>
+<h3 id="s-7-۱-چیستی-محصول">۱. چیستیِ محصول</h3>
+<p><strong>پایش</strong> = سامانهٔ مدیریت مدرسه، فارسی/RTL، تقویم شمسی، <strong>آفلاین-محور</strong>، <strong>تک‌فایلی</strong>، بدون هیچ وابستگی/CDN. خروجی نهایی یک فایل HTML است که در <code>file://</code> هم کامل کار می‌کند.</p>
+<p>سه ستونِ هویتی:</p>
+<ol>
+<li><strong>آفلاینِ مطلق</strong> — دبیر وسط زنگ با اینترنتِ قطع‌شده هم حضور ثبت می‌کند؛</li>
+</ol>
+<p>   تغییر در صفِ محلی می‌ماند و بعداً ارسال می‌شود.</p>
+<ol>
+<li><strong>بدون وابستگی</strong> — فونتِ Vazirmatn و لوگو به‌صورت base64 جاسازی شده‌اند.</li>
+<li><strong>ورود بی‌رمز</strong> — تلفن + کد پیامکی + کد ملی (ستونِ <code>password</code> آرشیوی است</li>
+</ol>
+<p>   و در ورود خوانده نمی‌شود؛ قفلِ smoke دارد).</p>
+<h4 id="s-19-نقش-ها-۸-نقش-واقعی-در-کد-">نقش‌ها (۸ نقشِ واقعی در کد)</h4>
+<p><code>superadmin</code> · <code>edu_office</code> · <code>manager</code> · <code>teacher</code> · <code>counselor</code> · <code>driver</code> · <code>student</code> · <code>parent</code> — مستندات گاهی می‌گویند ۶ یا ۷؛ مرجع، کلیدِ <code>ROLE_FA</code> در <code>src/js/01-helpers.js</code> است. <code>counselor</code> و <code>driver</code> در <code>NAV</code> هم منوی مستقل دارند.</p>
+<h4 id="s-21-مقیاس-کد">مقیاسِ کد</h4>
+<div class="tw"><table><thead><tr><th>عدد</th><th>مقدار</th><th>منبع</th></tr></thead><tbody><tr><td>ماژولِ JS در باندل</td><td><strong>۸۱</strong></td><td><code>src/js/_order.json</code></td></tr><tr><td>مجموعهٔ داده (<code>db.*</code>)</td><td><strong>۸۰</strong></td><td><code>src/js/02-demo-data.js:65</code></td></tr><tr><td>مسیر (route) در <code>renderRoute</code></td><td>~۵۰</td><td><code>src/js/07-shell.js</code></td></tr><tr><td>اکشنِ ثبت‌شده در <code>ACTION_ROLES</code></td><td>~۳۳۷</td><td><code>src/js/30-authz.js</code></td></tr><tr><td>اکشن در جدولِ تولیدیِ مجوز</td><td><strong>۱۷۰</strong></td><td><code>authz/write-perms.json</code></td></tr><tr><td>سوئیتِ تست (پایه + جهش)</td><td><strong>۱۰۸ + ۴۵</strong></td><td><code>tests/</code></td></tr><tr><td>حجم خروجی</td><td>~۱.۸ MB</td><td><code>dist/payesh.html</code></td></tr></tbody></table></div>
+<hr>
+<h3 id="s-24-۲-خط-ساخت-build-">۲. خطِ ساخت (build)</h3>
+<pre><code>src/styles/*.css  ─┐
+src/js/*.js (81)  ─┼─→ build.js ─→ dist/payesh.html  و  index.html
+src/head.html     ─┤
+src/body.html     ─┘</code></pre>
+<ul>
+<li>ترتیب از <code>src/js/_order.json</code> خوانده می‌شود (نه الفبا) — ماژولِ جدید</li>
+</ul>
+<p>  <strong>حتماً</strong> باید آن‌جا ثبت شود.</p>
+<ul>
+<li><code>build.js --check</code> سه چک هم‌زمان: (۱) انطباقِ بیت‌به‌بیت با <code>index.html</code>،</li>
+</ul>
+<p>  (۲) <code>tools/generate-write-perms.js --check</code>، (۳) <code>tools/check-authz.js</code>.</p>
+<ul>
+<li>مُهرِ همگامی: هشِ sha1 خروجی در <code>&lt;meta name="payesh-build"&gt;</code> داخل</li>
+</ul>
+<p>  <code>USER_GUIDE.html</code> نوشته می‌شود؛ ناهماهنگی = build قرمز.</p>
+<ul>
+<li><strong>nonceـِ CSP</strong>: بیلد <code>__PAYESH_NONCE__</code> می‌گذارد و سرور در هر درخواست پر</li>
+</ul>
+<p>  می‌کند (بدون <code>unsafe-inline</code>).</p>
+<p>دستورها: <code>npm run build</code> · <code>npm run build:check</code> · <code>npm run dev</code> · <code>npm test</code> · <code>npm start</code>.</p>
+<hr>
+<h3 id="s-44-۳-معماری-کلاینت">۳. معماریِ کلاینت</h3>
+<h4 id="s-45-۳-۱-لایه-داده-تنها-دروازه-src-js-00-data">۳.۱ لایهٔ داده — تنها دروازه (<code>src/js/00-data-layer.js</code>)</h4>
+<ul>
+<li><code>Store</code> = کلید-مقدار روی <code>localStorage</code>؛ هر متد در برابر خطا مقاوم است.</li>
+<li><code>Api.request()</code> = تنها نقطهٔ <code>fetch</code> در کل برنامه (<code>credentials:'include'</code>).</li>
+<li><code>Data.{all,find,where,create,update,delete,batch}</code> — نما/منطق حقِ دستکاریِ</li>
+</ul>
+<p>  مستقیمِ آرایه‌های <code>db</code> را ندارند.</p>
+<ul>
+<li><code>httpGetJson()</code> = تنها خوانشِ شبکه؛ <strong>هرگز reject نمی‌کند</strong>.</li>
+<li><code>detectServer()</code> با <code>GET /api/health</code> حالتِ سروری را فعال می‌کند.</li>
+</ul>
+<blockquote><p>قاعدهٔ طلایی (تست‌شده در smoke): <strong>هیچ فایلی جز این لایه <code>localStorage</code> یا <code>fetch</code> را مستقیم صدا نمی‌زند.</strong></p></blockquote>
+<h4 id="s-57-۳-۲-ماندگاری-دفترچه-عملیات-03-persistenc">۳.۲ ماندگاری — دفترچهٔ عملیات (<code>03-persistence.js</code> + <code>03-idb-persistence.js</code>)</h4>
+<ul>
+<li>داده به‌شکل <strong>دفترچهٔ عملیات</strong> (<code>log</code>) است نه عکسِ لحظه‌ای؛ وضعیت فعلی از</li>
+</ul>
+<p>  بازپخش (<code>applyLog</code> → <code>applyOp</code>) می‌آید — همان سطرها به صفِ ارسال می‌روند.</p>
+<ul>
+<li>در <code>ins</code> یک <strong>رونوشتِ سطحی</strong> از <code>op.data</code> گرفته می‌شود (وگرنه ویرایشِ بعدی</li>
+</ul>
+<p>  روی شیءِ زنده، گذشتهٔ دفترچه را بازنویسی می‌کرد — دامِ دور ۴۲).</p>
+<ul>
+<li><code>batchWrites(fn)</code> = یک بار ذخیره برای کلِ عملیاتِ انبوه.</li>
+<li><strong>فشردنِ دفترچه</strong>: روی ۳۰٬۰۰۰ عمل یا ۳MB → «اسنپ‌شات + ۵۰۰ عمل آخر»؛</li>
+</ul>
+<p>  عمل‌های مانده نشانِ <code>__a</code> می‌گیرند.</p>
+<ul>
+<li><strong>نسخه‌گذاری (R95)</strong>: در <code>upd</code> روی <code>grades</code>/<code>attendance</code>/<code>discipline</code>،</li>
+</ul>
+<p>  <code>op.base_version</code> ثبت و <code>version</code> یکی زیاد می‌شود.</p>
+<ul>
+<li>لایهٔ دوم = IndexedDB (<code>payesh_offline_db</code>) با ۳ استور و مهاجرتِ یک‌باره</li>
+</ul>
+<p>  (<code>00-migration.js</code>).</p>
+<h4 id="s-79-۳-۳-ایندکس-28-indexes-js-">۳.۳ ایندکس (<code>28-indexes.js</code>)</h4>
+<p>هر ایندکس با <code>IDX_VER[coll]</code> اعتبارسنجی می‌شود. <code>idxAppend()</code> درجِ افزایشی است — بدونش، ورودِ ۲۰۰۰ ردیف اکسل از ~۱s به ۱۴٬۲۵۷ms می‌رفت.</p>
+<h4 id="s-81-۳-۴-مسیریابی-و-پوسته">۳.۴ مسیریابی و پوسته</h4>
+<ul>
+<li><code>S</code> = وضعیتِ سراسری · <code>NAV</code> = منوی هر نقش · <code>TITLES</code> = عنوان/شرحِ مسیر.</li>
+<li><code>S.stack</code> + <code>pushState</code> + <code>goBack()</code> ⇒ <strong>دکمهٔ Backِ گوشی</strong> درست کار می‌کند.</li>
+<li><code>renderRoute()</code> سه گارد می‌زند: paywallِ ولی، قفلِ فرزند‌به‌فرزند،</li>
+</ul>
+<p>  <code>canRoute()</code>.</p>
+<ul>
+<li><code>render()</code> کلِ <code>#root</code> را بازنویسی می‌کند و <strong>موقعیتِ اسکرول</strong> را با تفکیکِ</li>
+</ul>
+<p>  «تغییر مسیر ⇒ از بالا» / «همان صفحه ⇒ حفظِ جا» برمی‌گرداند.</p>
+<h4 id="s-92-۳-۵-کنترلگر-رویداد-19-actions-core-js-">۳.۵ کنترلگرِ رویداد (<code>19-actions-core.js</code>)</h4>
+<p>یک شنوندهٔ کلیک با واگذاری روی <code>[data-act]</code>؛ گاردِ <code>canAction()</code> پیش از اجرا؛ اکشن‌ها از ۹ پارسیالِ <code>19-actions-<em>.js</code> و آبجکت‌های <code></em>_ACTIONS</code> ماژول‌ها جمع می‌شوند. شنونده‌های جدا برای <code>input</code> (فیلترِ زنده، debounce ۲۸۰ms) و <code>change</code> (آبشاریِ مقطع→پایه→شاخه→رشته، پوسته، ویرایشگرِ زنگ).</p>
+<h4 id="s-94-۳-۶-مجوز-کلاینت-30-authz-js-">۳.۶ مجوزِ کلاینت (<code>30-authz.js</code>)</h4>
+<ul>
+<li><code>allowedRoutes(role)</code> از خودِ <code>NAV</code> مشتق می‌شود + <code>EXTRA_ROUTES</code> +</li>
+</ul>
+<p>  <code>COMMON_ROUTES</code> ⇒ <strong>حذفِ آیتم از منو، دسترسیِ مسیر را هم قطع می‌کند</strong>.</p>
+<ul>
+<li><code>ACTION_ROLES</code> + <code>canAction()</code>. سوپرادمین عمداً اکشن‌های مدرسه‌ای ندارد؛</li>
+</ul>
+<p>  با <code>school-enter</code>، <code>S.user</code> خودِ مدیر می‌شود.</p>
+<ul>
+<li>⚠️ خودِ ماژول تأکید می‌کند: <strong>این لایه سدِ نهایی نیست</strong> — سرور مستقل می‌سنجد.</li>
+</ul>
+<h4 id="s-106-۳-۷-بوت-24-edu-office-js-">۳.۷ بوت (<code>24-edu-office.js</code>)</h4>
+<p><code>loadLog()</code> <strong>پیش از</strong> مولدها → <code>generate*</code> → <code>applyLog(); initSync();</code> → <code>detectServer()</code> + <code>/api/auth/me</code> → بازگردانیِ نشست/شخصا (فقط دمو) → <code>render()</code>.</p>
+<hr>
+<h3 id="s-109-۴-همگام-سازی-Push-Pull-">۴. همگام‌سازی (Push + Pull)</h3>
+<ul>
+<li><strong>صفِ ارسال</strong> (<code>27-sync.js</code>): `pending → sending → synced | failed |</li>
+</ul>
+<p>  conflict | rejected<code>. ردهای پایدار (</code>SYNC_DEAD_CODES<code>: </code>field_denied<code>،   </code>out_of_scope<code>، </code>role_escalation<code>، </code>stale_base<code>، </code>validation_failed<code>، …) به   </code>rejected<code> می‌روند تا صفِ سالم‌ها را نگیرند؛ ردهای گذرا با backoff   (۲→۴→۸s… سقف ۵ دقیقه) می‌مانند. </code>duplicate_ignored` موفق است (ایدمپوتانس).</p>
+<ul>
+<li><strong>کشش/دلتا</strong> (<code>29-pull.js</code>): <code>GET /api/v1/pull?since=…</code> → <code>mergeServerDelta</code></li>
+</ul>
+<p>  رکوردی را که در صف عملِ ارسال‌نشده دارد <strong>بازنویسی نمی‌کند</strong>، سنگ‌قبرها را   حذف می‌کند و ایندکس‌های لمس‌شده را باطل می‌کند.</p>
+<ul>
+<li><strong>محدودهٔ داده</strong> (<code>29-scope.js</code>): ۶۰٬۰۰۰ رکورد / ۸MB / پنجرهٔ ۴۵ روزه /</li>
+</ul>
+<p>  ۲ ترم / صفحهٔ ۵۰.</p>
+<hr>
+<h3 id="s-123-۵-سرور-server-فقط-Node-stdlib-pg-و-iored">۵. سرور (<code>server/</code> — فقط Node stdlib؛ <code>pg</code> و <code>ioredis</code> اختیاری)</h3>
+<h4 id="s-124-نقشه-فایل">نقشهٔ فایل</h4>
+<p><code>index.js</code> (روتر، سرآیندها، nonce، GC، TLS، نگهبانِ شمردن) · <code>auth.js</code> (JWT، OTP، سقف‌ها) · <code>otp-store.js</code> (<code>data/otp.json</code> مشترک) · <code>sync.js</code> (۴ سنجش + دروازهٔ فیلد) · <code>validate.js</code> (لایهٔ مقدار) · <code>idor.js</code> (مرجعِ IDOR) · <code>pull.js</code> · <code>conflicts.js</code> · <code>admin.js</code> (بکاپ/بازیابی) · <code>sms.js</code> · <code>bell.js</code> · <code>audit.js</code> · <code>db.js</code> (PG + fallback) · <code>redis.js</code>/<code>cache.js</code> · <code>tls-cert.js</code> · <code>seed.js</code> · <code>schema.sql</code> · <code>routes/<em>.js</code> (فاز ۳) · <code>middleware/</em>.js</code>.</p>
+<h4 id="s-126-endpointها">endpointها</h4>
+<pre><code>GET    /api/health
+POST   /api/auth/{send-code,login,me,logout,delete-account}
+POST   /api/sync                  (سقف ۵۰۰ عمل در هر دسته)
+GET    /api/sync/conflicts · POST /api/sync/resolve-conflict   (manager/superadmin)
+GET    /api/students/:id          (مرجعِ IDOR)
+GET    /api/bell/now
+POST   /api/admin/{backup,restore} · POST /api/sms/send        (superadmin)
+GET    /api/v1/bootstrap · /api/v1/pull
+GET/POST/PATCH/DELETE /api/v1/{students,classes,attendance,grades,users}[/:id]
+static: / · /USER_GUIDE.html · /privacy.html · /account-deletion.html</code></pre>
+<h4 id="s-128-زنجیره-امنیت-به-ترتیب-اجرا-">زنجیرهٔ امنیت (به‌ترتیب اجرا)</h4>
+<ol>
+<li><strong>سرآیندها</strong>: CSP با nonceِ هر درخواست، <code>DENY</code>، <code>nosniff</code>،</li>
+</ol>
+<p>   <code>Referrer-Policy</code>، <code>Permissions-Policy</code>، HSTS زیر HTTPS.</p>
+<ol>
+<li><strong>نگهبانِ شمردنِ شناسه (R97)</strong>: هر رد (۴۰۱/۴۰۳/۴۰۴) و هر خوانشِ</li>
+</ol>
+<p>   <code>/api/students/:id</code> در پنجرهٔ ۱۰ دقیقه — هشدار(۲۰) → ۵۰۰ms(۱۰۰) → ۲s(۵۰۰)    → ابطالِ نشست(۲۰۰۰).</p>
+<ol>
+<li><strong>نشست</strong>: کوکی <code>HttpOnly; SameSite=Lax</code> (+<code>Secure</code>)؛ HS256ِ سخت‌کد‌شده؛</li>
+</ol>
+<p>   <code>iss</code>/<code>aud</code>/<code>exp</code>/تازگیِ <code>iat</code>/ابطالِ <code>jti</code>؛ rotation با کلیدِ قبلی؛    کلیدِ &lt;۲۵۶ بیت ⇒ استارت نمی‌کند.</p>
+<ol>
+<li><strong>OTP</strong>: <code>randomInt(100000,1000000)</code>؛ روی دیسک <strong>فقط هش</strong>؛ cooldown ۶۰s،</li>
+</ol>
+<p>   روزانه ۲۰، هر شماره ۵/پنجره، هر IP ۱۰، ورود/IP ۱۰، تلاشِ غلط ۵؛ تأخیرِ    تصاعدی. <strong>همهٔ سقف‌ها پیش از بررسیِ وجودِ شماره</strong> و پاسخِ یک‌شکل.</p>
+<ol>
+<li><strong><code>POST /api/sync</code></strong>: #1 <code>op.by === session.id</code> (جعل ⇒ کل دسته رد) ·</li>
+</ol>
+<p>   #2 مُهرها با توکن · #3 مجوزِ عمل از مدل (ناشناخته = رد، حتی سوپرادمین) ·    #4 <code>inScope()</code>. دروازهٔ فیلد: فیلدِ ناشناس = رد؛ بدون ارتقای نقش؛    <code>phone</code>/<code>national_id</code> فقط مدیریت؛ <code>school_id</code> مشتق از نشست؛ مالکیت = خودِ    نشست؛ سیاستِ <code>status</code>. استثناهای محدوده‌دار: <strong>IEP</strong> (دبیر) و    <strong>ترک‌تحصیل</strong> (مدیر). اعتبارسنجیِ عملیات‌محور؛ ایدمپوتانسِ <code>uid</code>؛ مسدودیِ    عملیاتِ فیزیکی در <strong>روزِ غیرحضوری</strong>.</p>
+<ol>
+<li><strong>پاسخ/آدیت</strong>: بدون phone/nid کامل؛ آدیت بیرون از store با ۰۶۰۰ و</li>
+</ol>
+<p>   پاک‌سازیِ خودکار.</p>
+<h4 id="s-153-پایگاه-کش">پایگاه/کش</h4>
+<p>مسیرِ زنده = فایلِ JSON (<code>server/data/payesh.json</code>، ذخیرهٔ اتمی ۰۶۰۰ هر ۲s، GC). با <code>DATABASE_URL</code> → PG؛ با <code>REDIS_URL</code> → کش/نرخ/ایدمپوتانس/pub-sub. <code>PAYESH_ENV=production</code> بدون TLS/پروکسی ⇒ exit(1)؛ خودامضا در production ⇒ exit(1).</p>
+<hr>
+<h3 id="s-156-۶-مدل-مجوز-یک-منبع-حقیقت">۶. مدلِ مجوز — یک منبعِ حقیقت</h3>
+<pre><code>src/js/30-authz.js (ACTION_ROLES) ┐
+تحلیلِ استاتیکِ اکشن‌ها             ├─ tools/generate-write-perms.js ─→ authz/write-perms.json ─→ server/sync.js
+authz/model.json (۸۰ مجموعه×۳ عمل) ┘</code></pre>
+<p>نگهبان‌ها: <code>build.js --check</code> (جدول کهنه = build قرمز) · <code>tools/check-authz.js</code> · <code>tests/server16.js</code> (ماتریسِ منفی) · <code>tests/authz-model.js</code>.</p>
+<hr>
+<h3 id="s-160-۷-تست">۷. تست</h3>
+<p><code>tests/run.js</code> (دروازه) · <code>tests/smoke.js</code> (۵۴۶/۵۴۷ مرحله در jsdom) · ۱۰۸ سوئیتِ تخصصی + ۴۵ <strong>جهش</strong> · <code>scripts/run-all-tests.sh</code> (سه خط: درجا / کپیِ ایزوله / پورت‌سریال؛ ~۷ دقیقه؛ self-heal و گاردِ درختِ کثیف) · <code>tests/api/*</code> (۷ سوئیت — <strong>در رگرسیون سیم‌کشی نشده</strong>) · <code>tests/performance/</code> (k6: saturation / soak-24h / spike-mehr / chaos-redis) · CI روی Node ۱۸/۲۰/۲۲.</p>
+<hr>
+<h3 id="s-163-۸-نقشه-مستندات">۸. نقشهٔ مستندات</h3>
+<div class="tw"><table><thead><tr><th>بخواهی…</th><th>برو به</th></tr></thead><tbody><tr><td>معماری/تصمیم‌های قفل‌شده</td><td><a href="../docs/ARCHITECTURE_DECISIONS.md"><code>docs/ARCHITECTURE_DECISIONS.md</code></a> · <a href="../docs/ARCHITECTURE.md"><code>docs/ARCHITECTURE.md</code></a></td></tr><tr><td>قراردادِ الزام‌آورِ سرور</td><td><a href="../docs/SERVER_SECURITY_CONTRACT.md"><code>docs/SERVER_SECURITY_CONTRACT.md</code></a></td></tr><tr><td>استقرار و env</td><td><a href="../docs/DEPLOY.md"><code>docs/DEPLOY.md</code></a> · <code>.env.example</code></td></tr><tr><td>چه مانده پیش از تولید</td><td><a href="../TODO_BEFORE_PRODUCTION.md"><code>TODO_BEFORE_PRODUCTION.md</code></a></td></tr><tr><td>آمادگیِ پایلوت</td><td><a href="../PILOT_READY_SUMMARY.md"><code>PILOT_READY_SUMMARY.md</code></a> · <a href="../docs/PILOT_ONBOARDING.md"><code>docs/PILOT_ONBOARDING.md</code></a> · <code>docs/pilot/</code></td></tr><tr><td>راهنماهای نقش‌محور</td><td><code>مدرسه/</code> · <code>اداره/</code> · <code>سازنده/</code> · <code>برنامه_نویس/</code></td></tr><tr><td>توضیحِ غیرفنیِ محصول</td><td><a href="توضیح_کامل_برنامه.md"><code>توضیح_کامل_برنامه.md</code></a> · <a href="USER_GUIDE.html"><code>USER_GUIDE.html</code></a></td></tr></tbody></table></div>
+<hr>
+<h3 id="s-166-۹-وضعیت-امروز">۹. وضعیتِ امروز</h3>
+<p><strong>انجام‌شده:</strong> ۲۸/۲۸ بندِ نقشه‌راه (فاز ۰–۶) · سرورِ واقعیِ بی‌وابستگی · احراز و سقف‌های نرخ · مجوزِ مرکزیِ سطح‌فیلد · تعارض و داوری · بکاپ/بازیابی · آدیت · TLS و CSP nonce در production · Pull/Bootstrap (A01).</p>
+<p><strong>باز:</strong> پرداختِ والد (تصمیمِ محصول) · تنشِ احتمالیِ paywall با بندِ ۰.۴ · ذخیره‌سازِ JSON (PG آماده ولی سروینگ نیست) · <code>cache.checkRateLimit</code> بی‌مصرف‌کننده · سقفِ نرخِ ورودِ اکسل · <code>tests/api</code> خارج از رگرسیون · فلیک‌های زمانی (<code>homework2</code>، <code>bus2/3</code>، <code>bell2</code>) + ۱۵ سوئیتِ جهش با ارجاعِ کهنه · حذفِ نرم (<code>deleted_at</code>) · تصمیمِ UUID · درگاهِ پیامکِ واقعی.</p>
+<p><strong>سلامت:</strong> رگرسیونِ آخر ۱۵۰/۱۵۰ مؤثر؛ ۵۰۰ عمل در یک دسته = ۱۴ms؛ رندر p90 ≈ 9ms؛ localStorage پس از ۳۰ روز = 568KB از ۵MB.</p>
+<hr>
+<h3 id="s-171-۱۰-قواعد-کار">۱۰. قواعدِ کار</h3>
+<ol>
+<li><strong>تک‌منبعِ حقیقت</strong> برای مجوز، داده و شبکه.</li>
+<li><strong>Fail-closed</strong>: ناشناخته = رد (حتی برای سوپرادمین).</li>
+<li><strong>۴۰۴ نه ۴۰۳</strong> برای رکوردِ خارج از محدوده.</li>
+<li><strong>هیچ PII در پاسخ/آدیت</strong>.</li>
+<li><strong>توضیحِ فارسیِ «چرا»</strong> در کد.</li>
+<li><strong>Glyph-safety</strong>: متنِ UI فقط در کلاینت (فایل‌های سرور عمداً رشتهٔ فارسی</li>
+</ol>
+<p>   ندارند).</p>
+<ol>
+<li><code>esc()</code> برای متن، <code>escAttr()</code> برای صفت؛ خروجیِ CSV ضدِ تزریقِ فرمول.</li>
+<li><strong>وابستگیِ تازه ممنوع</strong> مگر با اجازه.</li>
+<li><code>node build.js</code> پس از هر تغییر در <code>src/</code>؛ <code>--check</code> پیش از تحویل.</li>
+<li>ماژولِ جدید را در <code>src/js/_order.json</code> ثبت کن.</li>
+<li>هر ادعا شاهدِ کد/تست داشته باشد؛ ندیدی = «دیده نشد».</li>
+</ol>
+<hr>
+<h3 id="s-189-۱۱-دام-های-ثبت-شده-در-کد">۱۱. دام‌های ثبت‌شده در کد</h3>
+<div class="tw"><table><thead><tr><th>دام</th><th>کجا</th><th>خلاصه</th></tr></thead><tbody><tr><td>ترتیبِ <code>loadLog</code>/<code>generate*</code></td><td>بوتِ <code>24-edu-office.js</code></td><td><code>loadLog</code> باید اول باشد</td></tr><tr><td>رونوشت در <code>ins</code></td><td><code>03-persistence.js:applyOp</code></td><td>بدونش سابقه دروغ می‌گوید</td></tr><tr><td>درجِ افزایشیِ ایندکس</td><td><code>28-indexes.js:idxAppend</code></td><td>باطل‌سازی در حلقه ⇒ درجه‌دوم</td></tr><tr><td>حذف از <code>NAV</code> = قطعِ دسترسی</td><td><code>30-authz.js</code></td><td>مجوز از منو مشتق می‌شود</td></tr><tr><td><code>op.data.id/by</code> در صف</td><td><code>27-sync.js:enqueueOp</code></td><td>سرور آن‌ها را <code>unknown_field</code> می‌داند</td></tr><tr><td><code>__a</code> در فشردن</td><td><code>compactLogIfNeeded</code></td><td>عمل‌های مانده فقط‌سابقه‌اند</td></tr><tr><td>بازیابی، ابطالِ نشست را زنده نگه می‌دارد</td><td><code>server/admin.js</code></td><td>خروجِ پیش از restore پابرجاست</td></tr><tr><td>خودامضا در production</td><td><code>server/index.js</code></td><td>استارت نمی‌کند</td></tr><tr><td>اسکنِ کلیدواژهٔ انگلیسی</td><td>اسکنِ نقشه‌راه</td><td>روی کدِ فارسی منفیِ کاذب می‌دهد</td></tr></tbody></table></div>
+<hr>
+<h3 id="s-192-۱۲-دستورهای-پرتکرار">۱۲. دستورهای پرتکرار</h3>
+<pre class="lang-bash"><code>node build.js            # ساختِ index.html + dist/payesh.html
+node build.js --check    # انطباق + مجوزها + مُهرِ راهنما
+npm test                 # tests/run.js + tests/smoke.js
+node server/seed.js      # ساختِ server/data/payesh.json (نیاز: jsdom)
+node server/index.js     # وب + API روی :3000
+bash scripts/run-all-tests.sh
+node tools/check-authz.js</code></pre>
+<hr>
+<p><em>این سند با خواندنِ مستقیمِ مخزن نوشته شده؛ هر عدد در آن با دستورِ بالا قابلِ بازتولید است.</em></p>
+</section>
+  <footer>این بسته با خواندنِ مستقیمِ مخزن تولید شده و هر ادعای آن قابلِ بازتولید است.<br>
+  منبعِ زنده: <code>https://github.com/rezaa2544/p2/tree/arena/01a08256-p2</code></footer>
+</div>
+</body>
+</html>
