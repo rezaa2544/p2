@@ -29,6 +29,8 @@ a{color:inherit;text-decoration:none}
 .login-art h1{font-size:40px;font-weight:800;letter-spacing:2px;margin:0;z-index:1}
 .login-tag{font-size:16px;font-weight:600;opacity:.95;z-index:1}
 .login-card{margin:auto;text-align:center}
+/* C.3 فرناز — گزارش عمومی زیر فرم ورود */
+.pub-report{max-width:980px;margin:0 auto;padding:8px 16px 40px}
 .login-card h2{font-size:22px;font-weight:800;margin:0 0 20px}
 .login-card .field{text-align:right}
 .login-card .field label{font-size:13px;font-weight:600;color:var(--text)}
@@ -4209,6 +4211,42 @@ function demoAccounts(){
   const s=db.users.find(u=>u.role==='student'), p=db.users.find(u=>u.role==='parent');
   return [db.users.find(u=>u.role==='superadmin'),db.users.find(u=>u.username==='edu_kurdistan'),db.users.find(u=>u.username==='manager1'),db.users.find(u=>u.username==='teacher1_1'),s,db.users.find(u=>u.username==='parent_multi')||p,db.users.find(u=>u.username==='counselor1')].filter(Boolean);
 }
+/* C.3 فرناز — گزارش عمومی مدرسه (بدون نیاز به ورود):
+   فقط آمار تجمیعی + اهداف منتشرشده؛ هیچ دادهٔ شخصی (نام/نمره/حضور) اینجا نیست. */
+function publicReportHTML(){
+  const schools=db.schools.filter(s=>s.active!==0);
+  if(!schools.length)return '';
+  let sid=Number(S.filters.pubschool)||null;
+  if(!schools.some(s=>s.id===sid))sid=schools[0].id;
+  const sc=byId('schools',sid)||{};
+  const us=db.users.filter(u=>u.school_id===sid);
+  const nS=us.filter(u=>u.role==='student').length,
+        nT=us.filter(u=>u.role==='teacher').length,
+        nC=db.classes.filter(c=>c.school_id===sid).length;
+  const mins=(typeof assocMinutes==='function'?assocMinutes(sid):[]).filter(m=>!m.archived);
+  const types=(typeof MIN_TYPES!=='undefined'?MIN_TYPES:[['assoc','انجمن اولیا و مربیان']]);
+  const perType=types.map(([k,label])=>{
+    const ms=mins.filter(m=>(typeof minTypeOf==='function'?minTypeOf(m):'assoc')===k);
+    const last=ms.map(m=>m.meeting_date).filter(Boolean).sort().slice(-1)[0];
+    return {label:label,n:ms.length,last:last?jalali(last):'—'};
+  });
+  const bg=(sc.boom_goals||'').trim();
+  return `<div class="pub-report" id="pub-report"><div class="card"><div class="card-head"><h3>📊 گزارش عمومی مدرسه</h3>
+    <select class="select" data-f="pubschool" style="width:220px">${schools.map(s=>`<option value="${s.id}" ${s.id===sid?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
+   <div class="card-body">
+    <h4 style="margin:0 0 4px">${esc(sc.name||'')}</h4>
+    <div class="small muted" style="margin-bottom:12px">${esc(sc.level||'')}${sc.level?' · ':''}${esc((byId('counties',sc.county_id)||{}).name||sc.city||'')}</div>
+    <div class="grid g3">
+      ${statCard('🎒',fa(nS),'دانش‌آموز','blue')}
+      ${statCard('👩‍🏫',fa(nT),'دبیر','green')}
+      ${statCard('🏛️',fa(nC),'کلاس','amber')}
+    </div>
+    <div class="sec-title">🤝 جلسه‌ها (به‌تفکیک نوع)</div>
+    <div class="grid g3">${perType.map(t=>`<div class="card stat"><div><b>${fa(t.n)}</b><span>${esc(t.label)}</span><div class="small muted">آخرین: ${esc(t.last)}</div></div></div>`).join('')}</div>
+    ${bg?`<div class="sec-title">🎯 برنامه ویژه (بوم)</div><div style="white-space:pre-wrap;line-height:2">${esc(bg)}</div>`:''}
+    <div class="small muted" style="margin-top:12px">🔑 برای جزئیات بیشتر، از فرم بالا وارد سامانه شوید.</div>
+   </div></div></div>`;
+}
 function renderLogin(){
   const accs=demoAccounts();
   return `<div class="login-wrap">
@@ -4234,7 +4272,8 @@ function renderLogin(){
         <b>${esc(a.full_name)}</b>
         <span class="small muted" style="direction:ltr;margin-inline-start:auto">${esc(a.phone||'—')}</span></div>`).join('')}
      <div class="small muted" style="margin-top:16px;text-align:center"><span data-act="privacy-open" style="text-decoration:underline;cursor:pointer">سیاست حریم خصوصی و امنیت داده</span></div>
-   </div></div></div>`;
+   </div></div></div>
+   ${publicReportHTML()}`;
 }
 
 /* ==================== لایه مجوزدهی (Authorization) ====================
@@ -4532,6 +4571,9 @@ var ACTION_ROLES = {
   'user-modal':    ['manager','superadmin'],
   'user-toggle':   ['manager','superadmin'],
   'school-save':   ['superadmin'],
+  /* C.2 فرناز — بوم: مدیر فقط مدرسهٔ خودش (گیت دوم در خود اکشن) */
+  'school-boom':      ['manager'],
+  'school-boom-save': ['manager'],
   'school-del':    ['superadmin'],
   'school-modal':  ['superadmin'],
   'school-toggle': ['superadmin'],
@@ -5029,6 +5071,8 @@ function adminDash(){
     <div class="spacer"></div>
     <button class="btn ghost sm" data-act="smode-mgr">${schoolModeOf(u.school_id,todayISO())==='virtual'?'🏫 حضوری کردن امروز':'🏠 غیرحضوری کردن امروز'}</button>
    </div>`:''}
+   ${u.role==='manager'?(()=>{const sc=byId('schools',sid)||{};const bg=(sc.boom_goals||'').trim();
+    return `<div class="card"><div class="card-head"><h3>🎯 برنامه ویژه مدرسه (بوم)</h3><button class="btn ghost sm" data-act="school-boom" data-id="${escAttr(sid)}">${bg?'✏️ ویرایش اهداف':'➕ ثبت اهداف سالانه'}</button></div><div class="card-body">${bg?`<div style="white-space:pre-wrap;line-height:2">${esc(bg)}</div>`:empty('🎯','هنوز برنامه‌ای ثبت نشده','اهداف سالانه مدرسه را بنویسید تا در یک نگاه دیده شود.')}</div></div>`;})():''}
    ${((u.role==='manager'||u.role==='superadmin')&&typeof DATA_MODE!=='undefined'&&DATA_MODE==='server')?`<div class="card"><div class="card-head"><h3>⚖️ تعارض‌های همگام‌سازی</h3><span class="muted small">تغییرهای هم‌زمانِ در انتظارِ داوری (فقط حالت سروری)</span></div><div id="sync-conflicts-root"><div class="card-body" style="padding-top:12px"><div class="muted small">در حالِ خواندن…</div></div></div></div>`:''}
    <div class="grid g2">
     <div class="card"><div class="card-head"><h3>روند حضور روزهای اخیر</h3><span class="badge b-blue">درصد حضور</span></div>
@@ -5317,7 +5361,8 @@ function viewSchools(){
        <select class="select" style="width:150px" data-f="sbranch">${opt(Object.keys(BRANCHES).map(b=>[b,b]),fbr,'همه شاخه‌ها')}</select>`):''}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>نام مدرسه</th><th>کد</th><th>مکان</th><th>مقطع</th><th>مدیر</th><th>تلفن ثابت</th><th>دانش‌آموز</th><th>دبیر</th><th>کلاس</th><th>آخرین فعالیت</th><th>وضعیت</th>${isAdmin?'<th></th>':''}</tr></thead><tbody>
     ${(()=>{const _ov=schoolsOverview();const _by={};_ov.forEach(function(r){_by[r.school.id]=r.st;});return rows.map(s=>{const st_=_by[s.id]||{};const us=db.users.filter(u=>u.school_id===s.id);const mg=us.find(u=>u.role==='manager');
-     return `<tr><td><b>${esc(s.name)}</b><div class="small muted">${esc(s.gender||'')}${s.shift&&s.shift!=='صبح'?' · '+esc(s.shift):''}</div></td><td class="muted">${esc(s.code)}</td>
+     const boom=s.boom_goals?String(s.boom_goals).replace(/\s+/g,' '):'';
+     return `<tr><td><b>${esc(s.name)}</b><div class="small muted">${esc(s.gender||'')}${s.shift&&s.shift!=='صبح'?' · '+esc(s.shift):''}</div>${boom?`<div class="small">🎯 ${esc(boom.slice(0,80))}${boom.length>80?'…':''}</div>`:''}</td><td class="muted">${esc(s.code)}</td>
       <td>${esc((byId('provinces',s.province_id)||{}).name||s.city||'—')}<div class="small muted">${esc((byId('counties',s.county_id)||{}).name||'')}${s.district_id?' › '+esc((byId('districts',s.district_id)||{}).name||''):''}</div></td>
       <td><span class="badge b-blue">${esc(s.level||'—')}</span>${s.type&&s.type!=='عادی'?`<div class="small muted" style="margin-top:4px">${esc(s.type)}</div>`:''}${(s.branches||[]).length?`<div class="small muted" style="margin-top:4px">${(s.branches||[]).map(b=>esc(b)).join('، ')}</div>`:''}</td><td class="muted">${esc(mg?mg.full_name:'—')}</td>
       <td class="small muted">${esc(s.landline||'—')}</td>
@@ -6627,6 +6672,7 @@ function schoolModal(s){
     ${typeof capPickerHTML==='function'?capPickerHTML(s):''}
     <div id="m_branch_box" style="display:${s.level==='متوسطه دوم'?'block':'none'}">${branchPicker(s)}</div>
     ${f('آدرس',`<textarea class="input" id="m_addr" rows="2">${esc(s.address||'')}</textarea>`)}
+    ${f('🎯 برنامه ویژه (بوم) — اهداف سالانه',`<textarea class="input" id="m_boom" rows="3">${esc(s.boom_goals||'')}</textarea>`)}
     <div class="sec-title">👤 مشخصات مدیر مدرسه ${mgr?'':'<span class="small muted">(حساب کاربری او ساخته می‌شود)</span>'}</div>
     <div class="grid g2">
       ${f('نام و نام خانوادگی'+(s.id?'':' *'),inp('mg_name',mgr?mgr.full_name:''))}
@@ -6635,6 +6681,15 @@ function schoolModal(s){
       ${f('نام کاربری'+(s.id?'':' *'),inp('mg_user',mgr?mgr.username:''))}</div>`,
    'school-save'));
   window._edit=s;
+}
+/* C.2 فرناز — مودالِ «برنامه ویژه مدرسه» (بوم): اهداف سالانه */
+function boomModal(sid){
+  const s=byId('schools',Number(sid))||{};
+  openModal(modalTpl('🎯 برنامه ویژه مدرسه (بوم) — '+esc(s.name||''),
+   `${f('اهداف سالانه (هر خط یک هدف)',`<textarea class="input" id="boom_goals" rows="6" placeholder="مثلاً:\nکسب رتبه اول منطقه در المپیاد ریاضی\nراه‌اندازی آزمایشگاه رباتیک" style="line-height:1.9">${esc(s.boom_goals||'')}</textarea>`)}
+    <div class="small muted">حداکثر ۲۰۰۰ نویسه. خالی گذاشتن = پاک شدن برنامه.</div>`
+   ,'school-boom-save'));
+  window._boomSid=Number(sid);
 }
 function userModal(x){
   const isSuper=S.user.role==='superadmin';
@@ -6874,6 +6929,7 @@ function assocMinModal(){
   openModal(modalTpl('صورت‌جلسهٔ جلسهٔ انجمن',
    `
    ${f('تاریخِ جلسه *',`<input class="input" id="am_date" type="date" value="${todayISO()}" /> <span class="badge b-gray">${jalali(todayISO())}</span>`)}
+   ${f('نوع جلسه',sel('am_type',MIN_TYPES,'assoc'))}
    ${f('حاضرین در جلسه * (هر خط یک مورد)',`<textarea class="input" id="am_att" rows="4" placeholder="مثلاً:\nآقای محمدی — رئیس انجمن\nسرکار خانم احمدی — نمایندهٔ اولیا\nآقای رضایی — مدیر مدرسه" style="line-height:1.9"></textarea>`)}
    ${f('مصوبات جلسه (هر خط یک مصوبه)',`<textarea class="input" id="am_res" rows="5" placeholder="مثلاً:\nتصویبِ کمکِ داوطلبانهٔ ۵ میلیونی برای کتابخانه\nتعیینِ اردوی پاییز در اواخرِ مهر" style="line-height:1.9"></textarea>`)}
    `,'assoc-min-save'));
@@ -11520,7 +11576,8 @@ function coreActions(e, el, id, a, rawId){
     const date=V('am_date');const att=V('am_att');const res=V('am_res');
     if(!date){toast('تاریخِ جلسه لازم است','err');return;}
     if(!att){toast('حاضرین را بنویسید','err');return;}
-    insert('assoc_minutes',{school_id:sid,meeting_date:date,attendees:att,resolutions:res,archived:false,created_at:todayISO(),updated_at:todayISO()});
+    const typ=V('am_type');const mt=(typeof MIN_TYPES!=='undefined'&&MIN_TYPES.some(function(t){return t[0]===typ;}))?typ:'assoc';
+    insert('assoc_minutes',{school_id:sid,meeting_date:date,meeting_type:mt,attendees:att,resolutions:res,archived:false,created_at:todayISO(),updated_at:todayISO()});
     closeModal();toast('صورت‌جلسه ثبت شد','ok');render();},
   'assoc-min-print'(){assocMinPrint(id);},
   'assoc-min-toggle'(){
@@ -14192,7 +14249,7 @@ function adminActions(e, el, id, a, rawId){
        phone:V('m_phone'),landline:V('m_landline'),
        level:V('m_level'),type:V('m_type')||'عادی',gender:V('m_gender'),shift:V('m_shift')||'صبح',
        capacity:Number(V('m_cap'))||300,
-       active:Number(V('m_active')),address:V('m_addr'),
+       active:Number(V('m_active')),address:V('m_addr'),boom_goals:V('m_boom'),
        /* دور ۶۵ بند روزهای کاری: روزهای روشن‌شده در مودال */
        work_days:$$('.m-wd:checked').map(x=>Number(x.value)).sort((a,b)=>a-b),
        /* Round 77: excuse window (minutes after bell end) */
@@ -14223,6 +14280,18 @@ function adminActions(e, el, id, a, rawId){
          national_id:mgNid||makeNid(),phone:mgPhone||'',active:1,title:'مدیر مدرسه',created_at:todayISO()});
      }
      closeModal();toast(s.id?'تغییرات ذخیره شد':'مدرسه و حساب مدیر ثبت شد','ok');render();},
+   /* C.2 فرناز — برنامه ویژه مدرسه (بوم): مدیر فقط مدرسهٔ خودش */
+   'school-boom'(){
+     const sid=Number(id)||S.user.school_id;
+     if(S.user.role!=='superadmin'&&sid!==S.user.school_id){toast('فقط مدرسهٔ خودتان','err');return;}
+     boomModal(sid);},
+   'school-boom-save'(){
+     const sid=Number(window._boomSid)||S.user.school_id;
+     if(S.user.role!=='superadmin'&&sid!==S.user.school_id){toast('فقط مدرسهٔ خودتان','err');return;}
+     const g=V('boom_goals')||'';
+     if(invalid('boom_goals',g.length>2000,'حداکثر ۲۰۰۰ نویسه'))return;
+     update('schools',sid,{boom_goals:g});
+     closeModal();toast('برنامه ویژه ذخیره شد','ok');render();},
    'user-new'(){userModal(null);},
    'user-edit'(){userModal(byId('users',id));},
    'user-toggle'(){const u=byId('users',id);update('users',id,{active:u.active?0:1});render();},
@@ -23811,6 +23880,10 @@ function assocMinutes(schoolId){
   return (db.assoc_minutes||[]).filter(function(m){return m.school_id===schoolId;})
     .slice().sort(function(a,b){return String(b.meeting_date).localeCompare(String(a.meeting_date));});
 }
+/* ─────────────── C.1 فرناز — نوعِ جلسه (همان جدول، بدونِ جدولِ تازه) ─────────────── */
+const MIN_TYPES=[['assoc','انجمن اولیا و مربیان'],['teachers','شورای معلمان'],['students','شورای دانش‌آموزان']];
+function minTypeOf(m){ return (m&&MIN_TYPES.some(function(t){return t[0]===m.meeting_type;}))?m.meeting_type:'assoc'; }
+function minTypeFa(m){ const t=MIN_TYPES.filter(function(x){return x[0]===minTypeOf(m);})[0]; return t?t[1]:MIN_TYPES[0][1]; }
 function assocMinPrint(mid){
   const m=byId('assoc_minutes',Number(mid));
   if(!m)return;
@@ -23828,7 +23901,7 @@ function assocMinPrint(mid){
     +'table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}'
     +'th,td{border:1px solid #cbd5e1;padding:8px;text-align:right}th{background:#eff6ff}'
     +'@media print{.np{display:none}}</style></head><body>'
-    +'<h1>صورت‌جلسهٔ جلسهٔ انجمن اولیا و مربیان</h1>'
+    +'<h1>صورت‌جلسهٔ جلسهٔ '+esc(minTypeFa(m))+'</h1>'
     +'<div class="meta">'+esc(sc)+' — تاریخِ جلسه: '+jalali(m.meeting_date)+(m.archived?' — <b>بایگانی‌شده</b>':'')+'</div>'
     +'<hr><h2>حاضرین در جلسه</h2><p class="body">'+(att.length?att.map(esc).join('\n'):'—')+'</p>'
     +'<h2>مصوبات جلسه</h2><p class="body">'+(res.length?res.map(esc).join('\n'):'—')+'</p>'
@@ -23837,14 +23910,20 @@ function assocMinPrint(mid){
   w.document.close();
 }
 function assocMinutesSection(sid){
-  const rows=assocMinutes(sid);
-  let h='<div class="card"><h3>📄 صورت‌جلسهٔ جلساتِ انجمن <span class="small" style="font-weight:normal">('+fa(rows.length)+')</span> '
+  const all=assocMinutes(sid);
+  const ft=(S.filters&&S.filters.mtype)||'';
+  const rows=ft?all.filter(function(m){return minTypeOf(m)===ft;}):all;
+  const opts=[['','همهٔ جلسات']].concat(MIN_TYPES).map(function(o){
+    return '<option value="'+o[0]+'"'+(ft===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';}).join('');
+  let h='<div class="card"><h3>📄 صورت‌جلسهٔ جلسات <span class="small" style="font-weight:normal">('+fa(rows.length)+')</span> '
+    +'<select class="input sm" data-f="mtype" style="max-width:200px;display:inline-block">'+opts+'</select> '
     +'<button class="btn btn-primary sm" data-act="assoc-min-new" style="float:left">➕ صورت‌جلسهٔ تازه</button></h3>';
   if(rows.length){
-    h+='<div class="table-wrap"><table><thead><tr><th>تاریخِ جلسه</th><th>مصوبات</th><th>وضعیت</th><th></th></tr></thead><tbody>';
+    h+='<div class="table-wrap"><table><thead><tr><th>تاریخِ جلسه</th><th>نوع جلسه</th><th>مصوبات</th><th>وضعیت</th><th></th></tr></thead><tbody>';
     rows.forEach(function(m){
       const res=String(m.resolutions||'').replace(/\s+/g,' ');
       h+='<tr><td>'+jalali(m.meeting_date)+'</td>'
+        +'<td><span class="badge b-blue">'+esc(minTypeFa(m))+'</span></td>'
         +'<td style="max-width:420px"><span class="small">'+esc(res.length>60?res.slice(0,60)+'…':(res||'—'))+'</span></td>'
         +'<td>'+(m.archived?'<span class="badge b-gray">بایگانی‌شده</span>':'<span class="badge b-green">فعال</span>')+'</td>'
         +'<td style="white-space:nowrap">'
