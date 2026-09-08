@@ -591,7 +591,11 @@ function coreActions(e, el, id, a, rawId){
        return;
      }
      attDraftSet(cid,date,id,st);
-     render();},
+     /* دور ۱۰۲ (کارایی): به‌جای بازسازیِ کاملِ پوسته، فقط ردیفِ همان
+        دانش‌آموز + شمارنده‌ها + نوارِ پیش‌نویس به‌روز می‌شود.
+        سوپاپِ اطمینان: با هر تردیدی (false) رندرِ کامل صدا زده می‌شود —
+        رفتار هرگز از وضعِ پیش از بهینه‌سازی بدتر نمی‌شود. */
+     if(!(typeof attPartialSync==='function'&&attPartialSync(id))) render();},
    /* ثبت ساعتِ انتخابیِ وضعیتِ زمان‌دار (بند 15.1) */
    'att-time-save'(){
      if(!attTimePending)return;
