@@ -8,6 +8,21 @@
    ═══════════════════════════════════════════════════════════════════ */
 function adminActions(e, el, id, a, rawId){
   return {
+   // support tickets (G.2 farnaz)
+   'ticket-new'(){ ticketModal(); },
+   'ticket-save'(){
+     const title=(V('tk_title')||'').trim(), pri=V('tk_pri'), desc=(V('tk_desc')||'').trim();
+     if(!title){toast('عنوان درخواست الزامی است','err');return;}
+     if(!TICKET_PRI[pri]){toast('اولویت معتبر نیست','err');return;}
+     insert('support_tickets',{school_id:S.user.school_id,title:title,description:desc,priority:pri,status:'open',created_at:todayISO(),updated_at:todayISO()});
+     closeModal(); toast('درخواست پشتیبانی ثبت شد','ok'); render();
+   },
+   'ticket-status'(){
+     const t=byId('support_tickets',id), s=el.dataset.s;
+     if(!t||!TICKET_ST[s]){toast('درخواست معتبر نیست','err');return;}
+     update('support_tickets',t.id,{status:s,updated_at:todayISO()});
+     toast('وضعیت تیکت: '+TICKET_ST[s][0],'ok'); render();
+   },
    // schools
    'school-new'(){schoolModal(null);},
    'school-edit'(){schoolModal(byId('schools',id));},

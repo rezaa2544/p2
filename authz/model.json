@@ -1798,6 +1798,26 @@
     "superadmin"
    ]
   },
+  "support_tickets": {
+   "fields": [
+    "created_at",
+    "description",
+    "id",
+    "priority",
+    "school_id",
+    "status",
+    "title",
+    "updated_at"
+   ],
+   "ins": [
+    "manager"
+   ],
+   "upd": [
+    "superadmin"
+   ],
+   "del": [],
+   "note": "G.2 farnaz: manager files, superadmin triages"
+  },
   "teacher_notes": {
    "fields": [
     "body",
