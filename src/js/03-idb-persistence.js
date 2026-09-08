@@ -144,6 +144,33 @@ OfflineStorage.prototype.putEntity = function(collection, record) {
 };
 
 /**
+ * دریافت یک موجودیت مشخص بر اساس شناسه
+ * @param {string} collection نام کالکشن
+ * @param {number|string} id شناسه موجودیت
+ * @returns {Promise<object|null>}
+ */
+OfflineStorage.prototype.getEntity = function(collection, id) {
+  var self = this;
+  return self.init().then(function(db) {
+    if (!db) return null;
+    return new Promise(function(resolve, reject) {
+      try {
+        var tx = db.transaction(['entities'], 'readonly');
+        var store = tx.objectStore('entities');
+        var req = store.get([collection, id]);
+        req.onsuccess = function(e) {
+          var res = e.target.result;
+          resolve(res ? (res.data || res) : null);
+        };
+        req.onerror = function(e) { reject(e.target.error); };
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
+
+/**
  * خواندن تمام رکوردهای متعلق به یک کالکشن
  * @param {string} collection نام کالکشن
  * @returns {Promise<Array<object>>}
@@ -303,6 +330,19 @@ OfflineStorage.prototype.getQueue = function() {
 };
 
 /**
+ * دریافت کلیه آیتم‌های معلق صف همگام‌سازی (pending یا failed)
+ * @returns {Promise<Array<object>>}
+ */
+OfflineStorage.prototype.getPendingQueue = function() {
+  var self = this;
+  return self.getQueue().then(function(all) {
+    return all.filter(function(item) {
+      return item.status === 'pending' || item.status === 'failed';
+    });
+  });
+};
+
+/**
  * فیلتر صف بر اساس وضعیت عملیات (pending / processing / failed)
  * @param {string} status وضعیت مورد نظر
  * @returns {Promise<Array<object>>}
@@ -357,6 +397,49 @@ OfflineStorage.prototype.removeFromQueue = function(uid) {
         var req = store.delete(uid);
         req.onsuccess = function() { resolve(true); };
         req.onerror = function(e) { reject(e.target.error); };
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
+
+/**
+ * به‌روزرسانی وضعیت یک عملیات در صف همگام‌سازی
+ * @param {string} uid شناسه یکتای عملیات
+ * @param {string} status وضعیت جدید ('pending' | 'processing' | 'failed' | 'synced')
+ * @param {string} [reason] دلیل خطا در صورت بروز مشکل
+ * @returns {Promise<boolean>}
+ */
+OfflineStorage.prototype.updateQueueStatus = function(uid, status, reason) {
+  var self = this;
+  return self.init().then(function(db) {
+    if (!db) return false;
+    return new Promise(function(resolve, reject) {
+      try {
+        var tx = db.transaction(['sync_queue'], 'readwrite');
+        var store = tx.objectStore('sync_queue');
+        var req = store.get(uid);
+        req.onsuccess = function(e) {
+          var item = e.target.result;
+          if (!item) {
+            resolve(false);
+            return;
+          }
+          item.status = status;
+          if (status === 'failed') {
+            item.attempts = (item.attempts || 0) + 1;
+            item.last_error = reason || 'Unknown error';
+            item.next_retry = Date.now() + Math.min(60000, Math.pow(2, item.attempts) * 1000);
+          } else if (status === 'synced' || status === 'completed') {
+            item.synced_at = new Date().toISOString();
+          }
+          item.updated_at = new Date().toISOString();
+          var putReq = store.put(item);
+          putReq.onsuccess = function() { resolve(true); };
+          putReq.onerror = function(errEvt) { reject(errEvt.target.error); };
+        };
+        req.onerror = function(errEvt) { reject(errEvt.target.error); };
       } catch (err) {
         reject(err);
       }

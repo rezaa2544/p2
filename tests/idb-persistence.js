@@ -6,16 +6,19 @@
  *  ۱. راه‌اندازی و ساخت ساختار جداول (entities, sync_queue, metadata)
  *  ۲. استورهای سه‌گانه و ایندکس‌ها
  *  ۳. درج موجودیت (putEntity) و واکشی مجموعه (getCollection)
- *  ۴. ویرایش و به‌روزرسانی موجودیت موجود در IndexedDB
- *  ۵. حذف موجودیت (removeEntity)
- *  ۶. ایندکس‌گذاری و واکشی بر اساس شناسه مدرسه (getEntitiesBySchool)
- *  ۷. افزودن به صف همگام‌سازی (addToQueue) و واکشی صف (getQueue)
- *  ۸. فیلتر صف همگام‌سازی بر اساس وضعیت (getQueueByStatus)
- *  ۹. حذف آیتم از صف همگام‌سازی پس از ارسال موفق (removeFromQueue)
- *  ۱۰. متادیتا: ذخیره و خواندن تنظیمات و لاگ (setMetadata / getMetadata)
- *  ۱۱. مهاجرت خودکار از Store به IndexedDB (00-migration.js)
- *  ۱۲. پاک‌سازی کامل تمام استورها (clearAll)
- *  ۱۳. سناریوی Fallback و رفتار امن در صورت عدم پشتیبانی IndexedDB
+ *  ۴. دریافت تکی موجودیت بر اساس شناسه (getEntity)
+ *  ۵. ویرایش و به‌روزرسانی موجودیت موجود در IndexedDB
+ *  ۶. حذف موجودیت (removeEntity)
+ *  ۷. ایندکس‌گذاری و واکشی بر اساس شناسه مدرسه (getEntitiesBySchool)
+ *  ۸. افزودن به صف همگام‌سازی (addToQueue) و واکشی صف (getQueue)
+ *  ۹. واکشی آیتم‌های معلق صف (getPendingQueue)
+ *  ۱۰. به‌روزرسانی وضعیت آیتم صف همراه با ثبت خطا و تلاش مجدد (updateQueueStatus)
+ *  ۱۱. فیلتر صف همگام‌سازی بر اساس وضعیت (getQueueByStatus)
+ *  ۱۲. حذف آیتم از صف همگام‌سازی پس از ارسال موفق (removeFromQueue)
+ *  ۱۳. متادیتا: ذخیره و خواندن تنظیمات و لاگ (setMetadata / getMetadata)
+ *  ۱۴. مهاجرت خودکار از Store به IndexedDB (00-migration.js)
+ *  ۱۵. پاک‌سازی کامل تمام استورها (clearAll)
+ *  ۱۶. سناریوی Fallback و رفتار امن در صورت عدم پشتیبانی IndexedDB
  *
  * اجرا: node tests/idb-persistence.js
  */
@@ -104,7 +107,13 @@ function group(title) {
     assert(students[0].name === 'علی رضایی' && students[0].id === 101, 'محتوای رکورد نادرست است');
   });
 
-  await test('۴. putEntity ویرایش رکورد را بدون ایجاد داده‌ی تکراری اعمال می‌کند', async () => {
+  await test('۴. getEntity یک رکورد منفرد را بر اساس collection و id بازمی‌گرداند', async () => {
+    const student = await W(`offlineStorage.getEntity('students', 101)`);
+    assert(student != null, 'رکورد منفرد یافت نشد');
+    assert(student.id === 101 && student.name === 'علی رضایی', 'مشخصات رکورد واکشی‌شده نامعتبر است');
+  });
+
+  await test('۵. putEntity ویرایش رکورد را بدون ایجاد داده‌ی تکراری اعمال می‌کند', async () => {
     await W(`
       offlineStorage.putEntity('students', { id: 101, school_id: 1, name: 'علی رضایی (ویرایش شده)', grade: 11 })
     `);
@@ -113,7 +122,7 @@ function group(title) {
     assert(students[0].name === 'علی رضایی (ویرایش شده)' && students[0].grade === 11, 'فیلدهای ویرایش‌شده اعمال نشدند');
   });
 
-  await test('۵. removeEntity موجودیت هدف را از کالکشن حذف می‌کند', async () => {
+  await test('۶. removeEntity موجودیت هدف را از کالکشن حذف می‌کند', async () => {
     await W(`
       offlineStorage.putEntity('students', { id: 102, school_id: 1, name: 'سارا محمدی', grade: 10 })
     `);
@@ -126,7 +135,7 @@ function group(title) {
     assert(students[0].id === 102, 'رکورد اشتباه حذف شده است');
   });
 
-  await test('۶. getEntitiesBySchool فیلتر ایندکس بر اساس مدرسه را انجام می‌دهد', async () => {
+  await test('۷. getEntitiesBySchool فیلتر ایندکس بر اساس مدرسه را انجام می‌دهد', async () => {
     await W(`
       Promise.all([
         offlineStorage.putEntity('classes', { id: 1, school_id: 1, title: 'کلاس ۱۰۱' }),
@@ -143,7 +152,7 @@ function group(title) {
 
   group('مدیریت صف همگام‌سازی آفلاین (sync_queue)');
 
-  await test('۷. addToQueue و getQueue آیتم‌های معلق را نگهداری و بازمی‌گردانند', async () => {
+  await test('۸. addToQueue و getQueue آیتم‌های معلق را نگهداری و بازمی‌گردانند', async () => {
     const uid1 = 'op-uuid-001';
     await W(`
       offlineStorage.addToQueue({
@@ -159,22 +168,48 @@ function group(title) {
     assert(item.op.c === 'grades' && item.status === 'pending', 'مشخصات عملیات صف نادرست است');
   });
 
-  await test('۸. getQueueByStatus فیلتر بر اساس وضعیت‌های pending / failed را به درستی برمی‌گرداند', async () => {
+  await test('۹. getPendingQueue کلیه آیتم‌های معلق و ناموفق را واکشی می‌کند', async () => {
+    await W(`
+      offlineStorage.addToQueue({
+        uid: 'op-uuid-failed',
+        op: { t: 'upd', c: 'grades', id: 999, data: { score: 19 } },
+        status: 'failed'
+      })
+    `);
+    const pendingItems = await W(`offlineStorage.getPendingQueue()`);
+    assert(Array.isArray(pendingItems), 'خروجی getPendingQueue آرایه نیست');
+    assert(pendingItems.some(q => q.uid === 'op-uuid-001'), 'آیتم pending در خروجی نیست');
+    assert(pendingItems.some(q => q.uid === 'op-uuid-failed'), 'آیتم failed در خروجی نیست');
+  });
+
+  await test('۱۰. updateQueueStatus وضعیت، تعداد تلاش‌ها و دلیل خطا را به‌روزرسانی می‌کند', async () => {
+    await W(`
+      offlineStorage.updateQueueStatus('op-uuid-001', 'failed', 'Timeout error from server')
+    `);
+    const queue = await W(`offlineStorage.getQueue()`);
+    const item = queue.find(q => q.uid === 'op-uuid-001');
+    assert(item != null, 'آیتم صف پیدا نشد');
+    assert(item.status === 'failed', 'وضعیت آیتم به failed تغییر نیافت');
+    assert(item.attempts >= 1, 'تعداد تلاش‌ها اضافه نشد');
+    assert(item.last_error === 'Timeout error from server', 'دلیل خطا ثبت نشد');
+  });
+
+  await test('۱۱. getQueueByStatus فیلتر بر اساس وضعیت‌های pending / failed را به درستی برمی‌گرداند', async () => {
     await W(`
       offlineStorage.addToQueue({
         uid: 'op-uuid-002',
         op: { t: 'upd', c: 'attendance', id: 5, data: { status: 'absent' } },
-        status: 'failed'
+        status: 'pending'
       })
     `);
     const pendingList = await W(`offlineStorage.getQueueByStatus('pending')`);
     const failedList = await W(`offlineStorage.getQueueByStatus('failed')`);
 
-    assert(pendingList.some(q => q.uid === 'op-uuid-001'), 'آیتم معلق در فهرست pending نیست');
-    assert(failedList.some(q => q.uid === 'op-uuid-002'), 'آیتم ناموفق در فهرست failed نیست');
+    assert(pendingList.some(q => q.uid === 'op-uuid-002'), 'آیتم معلق در فهرست pending نیست');
+    assert(failedList.some(q => q.uid === 'op-uuid-001'), 'آیتم ناموفق در فهرست failed نیست');
   });
 
-  await test('۹. removeFromQueue آیتم‌های همگام‌شده را از صف پاک می‌کند', async () => {
+  await test('۱۲. removeFromQueue آیتم‌های همگام‌شده را از صف پاک می‌کند', async () => {
     await W(`offlineStorage.removeFromQueue('op-uuid-001')`);
     const queue = await W(`offlineStorage.getQueue()`);
     const item = queue.find(q => q.uid === 'op-uuid-001');
@@ -183,7 +218,7 @@ function group(title) {
 
   group('مدیریت متادیتا و تنظیمات (metadata)');
 
-  await test('۱۰. setMetadata و getMetadata انواع اشیاء و آرایه‌ها را ذخیره و بازیابی می‌کنند', async () => {
+  await test('۱۳. setMetadata و getMetadata انواع اشیاء و آرایه‌ها را ذخیره و بازیابی می‌کنند', async () => {
     const metaObj = { theme: 'dark', last_sync_time: 1725790000000, offline_mode: true };
     await W(`offlineStorage.setMetadata('user_prefs', ${JSON.stringify(metaObj)})`);
     const retrieved = await W(`offlineStorage.getMetadata('user_prefs')`);
@@ -193,7 +228,7 @@ function group(title) {
 
   group('مهاجرت داده‌های محلی به IndexedDB (00-migration.js)');
 
-  await test('۱۱. migrateFromLocalStorageToIdb داده‌های پیشین را منتقل و پرچم مهاجرت را تنظیم می‌کند', async () => {
+  await test('۱۴. migrateFromLocalStorageToIdb داده‌های پیشین را منتقل و پرچم مهاجرت را تنظیم می‌کند', async () => {
     // مقداردهی داده‌های نمونه در Store
     W(`
       Store.set('payesh_idb_migrated_v2', '');
@@ -220,7 +255,7 @@ function group(title) {
 
   group('پاک‌سازی کامل و رفتار در نبود IndexedDB');
 
-  await test('۱۲. clearAll تمام داده‌های هر سه استور را پاک می‌کند', async () => {
+  await test('۱۵. clearAll تمام داده‌های هر سه استور را پاک می‌کند', async () => {
     await W(`offlineStorage.clearAll()`);
     const students = await W(`offlineStorage.getCollection('students')`);
     const queue = await W(`offlineStorage.getQueue()`);
@@ -231,7 +266,7 @@ function group(title) {
     assert(meta == null, 'استور metadata پاک نشد');
   });
 
-  await test('۱۳. Fallback: کلاس OfflineStorage در صورت نبود IndexedDB بدون پرتاب خطا رفتار امن دارد', async () => {
+  await test('۱۶. Fallback: کلاس OfflineStorage در صورت نبود IndexedDB بدون پرتاب خطا رفتار امن دارد', async () => {
     const res = await W(`
       (function(){
         var brokenStorage = new OfflineStorage('fallback_db', 1);
