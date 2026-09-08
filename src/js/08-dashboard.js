@@ -56,6 +56,12 @@ function adminDash(){
     ${statCard('🏛️',fa(counts.classes),'کلاس فعال','amber')}
     ${u.role==='manager'?statCard('👨‍👩‍👦',fa(counts.parents),'ولی ثبت‌شده','purple'):''}
    </div>
+   ${u.role==='manager'?`<div class="row" style="background:var(--surface-2);padding:10px 14px;border-radius:12px;align-items:center">
+    <b>📰 گزارش عمومی</b><span class="small muted">خلاصهٔ قابل انتشار برای بیرون (بدون دادهٔ حساس)</span>
+    <div class="spacer"></div>
+    <button class="btn ghost sm" data-act="pubrep-print">🖨️ چاپ</button>
+    <button class="btn ghost sm" data-act="pubrep-csv">⬇️ دانلود CSV</button>
+   </div>`:''}
    ${u.role==='manager'&&typeof schoolModeBadge==='function'?`<div class="row" style="background:var(--surface-2);padding:10px 14px;border-radius:12px;align-items:center">
     <b>حالت مدرسه امروز:</b> ${schoolModeBadge(u.school_id,todayISO())}
     <div class="spacer"></div>
@@ -277,4 +283,44 @@ function familyDash(){
   const live=(typeof familyBellCards==='function')?familyBellCards():'';
   if(!kids.length)return live+`<div class="card">${empty('👨‍👩‍👦','دانش‌آموزی متصل نیست','با مدیر مدرسه تماس بگیرید.')}</div>`;
   return live+kids.map(summaryBlock).join('');
+}
+
+/* ── C.3 فرناز: گزارش عمومی قابل انتشار (فقط تجمیعی، بدون داده حساس) ──
+   نرخ حضور + میانگین نمرات + تعداد رویدادها؛ بدون نام، بدون برترها، بدون انضباطی. */
+function publicStats(sid){
+  const att=(db.attendance||[]).filter(a=>a.school_id===sid);
+  const p=att.filter(a=>a.status==='present').length;
+  const gr=(db.grades||[]).filter(g=>g.school_id===sid);
+  const ev=(db.calendar||[]).filter(c=>c.school_id===sid);
+  return {
+    att:att.length?Math.round(p/att.length*1000)/10:0,
+    avg:gr.length?Math.round(gr.reduce((x,y)=>x+Number(y.score||0),0)/gr.length*100)/100:0,
+    events:ev.length
+  };
+}
+function publicReportRows(sid){
+  const st=publicStats(sid);
+  return {headers:['شاخص','مقدار'],rows:[['نرخ حضور (٪)',st.att],['میانگین نمرات (از ۲۰)',st.avg],['تعداد رویدادها',st.events]]};
+}
+function pubrepPrint(){
+  const u=S.user;
+  if(!u||u.role!=='manager'||!u.school_id)return;
+  const s=byId('schools',u.school_id)||{};
+  const st=publicStats(u.school_id);
+  const w=window.open('','_blank');
+  if(!w){toast('اجازهٔ باز کردنِ پنجره داده نشد','err');return;}
+  w.document.write('<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>گزارش عمومی مدرسه</title>'
+    +'<style>body{font-family:Vazirmatn,Tahoma;padding:28px;color:#0f172a;max-width:720px;margin:0 auto}'
+    +'h1{font-size:20px;text-align:center;margin:0 0 2px}.meta{text-align:center;font-size:13px;color:#475569;margin-bottom:16px}'
+    +'table{width:100%;border-collapse:collapse;font-size:14px}th,td{border:1px solid #cbd5e1;padding:10px;text-align:right}th{background:#eff6ff;width:40%}'
+    +'.foot{margin-top:14px;font-size:12px;color:#64748b;text-align:center}'
+    +'@media print{.np{display:none}}</style></head><body>'
+    +'<h1>📰 گزارش عمومی مدرسه</h1>'
+    +'<div class="meta">'+esc(s.name||'')+' — '+jalali(todayISO())+'</div>'
+    +'<table><tr><th>نرخ حضور</th><td>'+fa(st.att)+'٪</td></tr>'
+    +'<tr><th>میانگین نمرات (از ۲۰)</th><td>'+fa(st.avg)+'</td></tr>'
+    +'<tr><th>تعداد رویدادها</th><td>'+fa(st.events)+'</td></tr></table>'
+    +'<div class="foot">نسخهٔ عمومی — بدون دادهٔ حساس؛ مناسب انتشار برای بیرون مدرسه.</div>'
+    +'<div class="np" style="text-align:center;margin-top:14px"><button onclick="window.print()" style="padding:8px 22px;border:none;border-radius:8px;background:#1668f0;color:#fff;font-family:inherit;cursor:pointer">🖨️ چاپ</button></div></body></html>');
+  w.document.close();
 }

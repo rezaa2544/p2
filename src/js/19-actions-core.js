@@ -236,6 +236,15 @@ function coreActions(e, el, id, a, rawId){
     insert('assoc_minutes',{school_id:sid,meeting_date:date,meeting_type:mt,attendees:att,resolutions:res,archived:false,created_at:todayISO(),updated_at:todayISO()});
     closeModal();toast('صورت‌جلسه ثبت شد','ok');render();},
   'assoc-min-print'(){assocMinPrint(id);},
+  /* C.3 فرناز: گزارش عمومی — فقط مدیر، فقط مدرسهٔ خود */
+  'pubrep-print'(){
+    if(!S.user||S.user.role!=='manager'||!S.user.school_id){toast('فقط مدیر مدرسه','err');return;}
+    pubrepPrint();},
+  'pubrep-csv'(){
+    if(!S.user||S.user.role!=='manager'||!S.user.school_id){toast('فقط مدیر مدرسه','err');return;}
+    const d=publicReportRows(S.user.school_id);
+    const ok=downloadCSV('payesh-public-'+todayISO()+'.csv',d.headers,d.rows);
+    toast(ok?'خروجی عمومی دانلود شد':'دریافت خروجی ممکن نشد',ok?'ok':'err');},
   'assoc-min-toggle'(){
     const m=byId('assoc_minutes',Number(id));
     if(!m)return;
