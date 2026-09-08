@@ -335,6 +335,7 @@ function ruleFor(coll, key){
   /* ۴. شناسه‌ها و شمارنده‌ها */
   if(key === 'id' || /_id$/.test(key)) return { type: 'id' };
   if(key === 'version') return { type: 'integer', min: 1, max: LIMITS.ID_MAX };
+  if(key === 'participant_count_students' || key === 'participant_count_staff') return { type: 'integer', min: 0, max: 100000 }; /* B.4 فرناز: شمار شرکت‌کننده مانور */
   if(FLAG_FIELDS.indexOf(key) > -1) return { type: 'flag' };
   /* ۵. نمره‌ها */
   if(key === 'score' || key === 'original_score' || key === 'new_score') return { type: 'score' };

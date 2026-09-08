@@ -54,6 +54,7 @@
       "pre_enrollments",
       "preapps",
       "reexams",
+      "safety_drills",
       "schedule",
       "scholarships",
       "school_years",
@@ -945,6 +946,20 @@
       "del": []
     },
     "reexams": {
+      "ins": [
+        "manager",
+        "superadmin"
+      ],
+      "upd": [
+        "manager",
+        "superadmin"
+      ],
+      "del": [
+        "manager",
+        "superadmin"
+      ]
+    },
+    "safety_drills": {
       "ins": [
         "manager",
         "superadmin"
@@ -2021,6 +2036,17 @@
       "subject_id",
       "updated_at"
     ],
+    "safety_drills": [
+      "created_at",
+      "date",
+      "id",
+      "notes",
+      "participant_count_staff",
+      "participant_count_students",
+      "registered_by",
+      "school_id",
+      "updated_at"
+    ],
     "schedule": [
       "class_id",
       "created_at",
@@ -2766,6 +2792,22 @@
       ],
       "collections": [
         "dorm_assignments"
+      ]
+    },
+    "drill-del-ok": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "safety_drills"
+      ]
+    },
+    "drill-save": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "safety_drills"
       ]
     },
     "drop-register-confirm": {

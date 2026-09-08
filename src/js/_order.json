@@ -47,7 +47,8 @@
  "19-actions-schedule.js",
  "19-actions-admin.js",
  "19-actions-staff.js",
- "19-actions-training.js",
+  "19-actions-training.js",
+  "19-actions-drills.js",
  "20-communication-finance.js",
  "21-exams-teachers-family.js",
  "22-jalali-calendar.js",
@@ -82,6 +83,7 @@
  "67-theme-picker.js",
  "68-sync-conflicts.js",
  "69-staff-attendance.js",
- "70-training.js",
+  "70-training.js",
+  "71-safety-drills.js",
  "99-theme-loader.js"
 ]

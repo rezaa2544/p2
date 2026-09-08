@@ -274,13 +274,15 @@ function viewOfficeDash(){
          </div>
        </div></div></div>`;
    })()}
+   ${(()=>{ if(typeof drillStatsFor!=='function')return ''; const ds=drillStatsFor(schools.map(x=>x.id));
+     return `<div class="card" style="margin-top:14px"><div class="card-head"><h3>⛑️ مانور ایمنی سالانه (تجمیعی)</h3><span class="badge ${ds.schools&&ds.done===ds.schools?'b-green':'b-gray'}">${fa(ds.done)} از ${fa(ds.schools)} مدرسه</span></div><div class="card-body"><div class="grid g3">${statCard('⛑️',fa(ds.drills),'مانور در سال گذشته','blue')}${statCard('🎒',fa(ds.students),'دانش‌آموز شرکت‌کننده','green')}${statCard('👩‍🏫',fa(ds.staff),'کادر شرکت‌کننده','purple')}</div></div></div>`;})()}
    <div class="card" style="margin-top:14px"><div class="card-head"><h3>عملکرد مدارس محدوده</h3>
      <button class="btn ghost sm" data-act="office-print">🖨️ چاپ گزارش</button></div>
-    ${rows.length?`<div class="table-wrap"><table class="table"><thead><tr><th>#</th><th>مدرسه</th><th>شهرستان</th><th>مقطع</th><th>دانش‌آموز</th><th>دبیر</th><th>میانگین نمره</th><th>درصد حضور</th><th>اشغال ظرفیت</th></tr></thead><tbody>
+    ${rows.length?`<div class="table-wrap"><table class="table"><thead><tr><th>#</th><th>مدرسه</th><th>شهرستان</th><th>مقطع</th><th>دانش‌آموز</th><th>دبیر</th><th>میانگین نمره</th><th>درصد حضور</th><th>اشغال ظرفیت</th><th>مانور امسال</th></tr></thead><tbody>
       ${rows.map((r,i)=>`<tr><td>${fa(i+1)}</td><td><b>${esc(r.s.name)}</b><div class="small muted">${esc(r.s.code||'')}</div></td>
         <td class="small">${esc((byId('counties',r.s.county_id)||{}).name||'—')}</td><td class="small">${esc(r.s.level||'—')}</td>
         <td>${fa(r.students)}</td><td>${fa(r.teachers)}</td><td><b>${fa(r.avg)}</b></td>
-        <td>${fa(r.att)}٪</td><td>${fa(r.fill)}٪</td></tr>`).join('')}
+        <td>${fa(r.att)}٪</td><td>${fa(r.fill)}٪</td><td>${typeof drillAnnualStatus==='function'&&drillAnnualStatus(r.s.id).done?'🟢':'🔴'}</td></tr>`).join('')}
     </tbody></table></div>`:empty('🏫','مدرسه‌ای در این محدوده نیست','')}</div>`;
 }
 
@@ -476,10 +478,11 @@ const P9_ACTIONS = {
       +'th{background:#eff6ff}.sum{display:flex;gap:18px;margin-top:10px;font-size:13px}@media print{.np{display:none}}</style></head><body>'
       +'<h1>'+esc(o?o.name:'گزارش کل')+'</h1>'
       +'<div class="sum"><span>مدارس: <b>'+fa(st.schools)+'</b></span><span>دانش‌آموز: <b>'+fa(st.students)+'</b></span>'
-      +'<span>دبیر: <b>'+fa(st.teachers)+'</b></span><span>میانگین نمره: <b>'+fa(st.avg)+'</b></span><span>حضور: <b>'+fa(st.attendance)+'٪</b></span></div>'
-      +'<table><thead><tr><th>#</th><th>مدرسه</th><th>شهرستان</th><th>دانش‌آموز</th><th>دبیر</th><th>میانگین</th><th>حضور</th></tr></thead><tbody>'
+      +'<span>دبیر: <b>'+fa(st.teachers)+'</b></span><span>میانگین نمره: <b>'+fa(st.avg)+'</b></span><span>حضور: <b>'+fa(st.attendance)+'٪</b></span>'
+      +'<span>مانور امسال: <b>'+(typeof drillStatsFor==='function'?fa(drillStatsFor(schools.map(function(x){return x.id;})).done)+' از '+fa(schools.length):'—')+'</b></span></div>'
+      +'<table><thead><tr><th>#</th><th>مدرسه</th><th>شهرستان</th><th>دانش‌آموز</th><th>دبیر</th><th>میانگین</th><th>حضور</th><th>مانور</th></tr></thead><tbody>'
       +rows.map(function(r,i){return '<tr><td>'+fa(i+1)+'</td><td>'+esc(r.s.name)+'</td><td>'+esc((byId('counties',r.s.county_id)||{}).name||'—')
-        +'</td><td>'+fa(r.students)+'</td><td>'+fa(r.teachers)+'</td><td>'+fa(r.avg)+'</td><td>'+fa(r.att)+'٪</td></tr>';}).join('')
+        +'</td><td>'+fa(r.students)+'</td><td>'+fa(r.teachers)+'</td><td>'+fa(r.avg)+'</td><td>'+fa(r.att)+'٪</td><td>'+(typeof drillAnnualStatus==='function'&&drillAnnualStatus(r.s.id).done?'انجام شده':'انجام نشده')+'</td></tr>';}).join('')
       +'</tbody></table><div class="np" style="text-align:center;margin-top:14px"><button onclick="window.print()" style="padding:8px 20px;border:none;border-radius:8px;background:#1668f0;color:#fff;font-family:inherit;cursor:pointer">🖨️ چاپ</button></div></body></html>');
     w.document.close();
   },
