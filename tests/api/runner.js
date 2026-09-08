@@ -14,7 +14,8 @@ const API_TESTS = [
   'classes.test.js',
   'attendance.test.js',
   'grades.test.js',
-  'users.test.js'
+  'users.test.js',
+  'cache.test.js'
 ];
 
 console.log('═══════════════════════════════════════════════════════════════════');

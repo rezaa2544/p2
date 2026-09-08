@@ -11,6 +11,7 @@
 'use strict';
 
 const { validate, validateSyncEnvelope, validateSyncData } = require('./validate');
+const cache = require('./cache');
 
 /* Core mirror of the client's ACTION_ROLES table for WRITE operations.
    The full table mirror is the next phase (AD.md §14) — unknown
@@ -631,9 +632,9 @@ function createSync(ctx){
         continue;
       }
       /* §3.3 — idempotency: a repeated uid is already applied */
-      const isProcessed = (db && typeof db.isUidProcessed === 'function')
-        ? await db.isUidProcessed(op.uid)
-        : !!(store.__processed_uids && store.__processed_uids[op.uid]);
+      const isProcessed = (await cache.isProcessedUid(op.uid)) ||
+        ((db && typeof db.isUidProcessed === 'function') ? await db.isUidProcessed(op.uid) : false) ||
+        !!(store.__processed_uids && store.__processed_uids[op.uid]);
       if(isProcessed){
         results.push({ uid: op.uid, ok: true, code: 'duplicate_ignored', serverTime: new Date().toISOString() });
         continue;
@@ -723,6 +724,8 @@ function createSync(ctx){
         audit('record_deleted', { user_id: s.id, role: s.role, school_id: s.school_id, collection: op.c, record_id: delId, summary: 'حذف رکورد ' + delId + ' از ' + op.c });
       }
       store.__processed_uids[op.uid] = Date.now();
+      cache.markProcessedUid(op.uid).catch(() => {});
+      cache.invalidateCollection(op.c, op.data && op.data.school_id).catch(() => {});
       if(db && typeof db.persistOp === 'function'){
         db.persistOp(op).catch(() => {});
       }
