@@ -1598,6 +1598,7 @@
     "phone",
     "place_rules",
     "province_id",
+    "public_goals",
     "shift",
     "type",
     "updated_at",

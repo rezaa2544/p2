@@ -47,13 +47,13 @@ mutate('src/js/06-login.js',
   'tests/public2.js', /❌ P3/, 'MM1 وارونگی تفکیک نوع جلسه');
 
 mutate('src/js/06-login.js',
-  'const us=db.users.filter(u=>u.school_id===sid);',
-  'const us=db.users; /* MM2 */',
+  'const us=(db.users||[]).filter(u=>u.school_id===sid);',
+  'const us=(db.users||[]); /* MM2 */',
   'tests/public2.js', /❌ P1/, 'MM2 برداشتنِ فیلتر مدرسه از آمار');
 
 mutate('src/js/06-login.js',
-  "const bg=(sc.boom_goals||'').trim();",
-  "const bg=''; /* MM3 */",
+  "goals:((sc.public_goals===1||sc.public_goals===true)?(sc.boom_goals||'').trim():'')",
+  "goals:'' /* MM3 */",
   'tests/public2.js', /❌ P4/, 'MM3 برداشتنِ نمایش بوم');
 
 execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
