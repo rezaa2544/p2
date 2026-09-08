@@ -232,7 +232,8 @@ function coreActions(e, el, id, a, rawId){
     const date=V('am_date');const att=V('am_att');const res=V('am_res');
     if(!date){toast('تاریخِ جلسه لازم است','err');return;}
     if(!att){toast('حاضرین را بنویسید','err');return;}
-    insert('assoc_minutes',{school_id:sid,meeting_date:date,attendees:att,resolutions:res,archived:false,created_at:todayISO(),updated_at:todayISO()});
+    const typ=V('am_type');const mt=(typeof MIN_TYPES!=='undefined'&&MIN_TYPES.some(function(t){return t[0]===typ;}))?typ:'assoc';
+    insert('assoc_minutes',{school_id:sid,meeting_date:date,meeting_type:mt,attendees:att,resolutions:res,archived:false,created_at:todayISO(),updated_at:todayISO()});
     closeModal();toast('صورت‌جلسه ثبت شد','ok');render();},
   'assoc-min-print'(){assocMinPrint(id);},
   'assoc-min-toggle'(){

@@ -344,6 +344,7 @@ function assocMinModal(){
   openModal(modalTpl('صورت‌جلسهٔ جلسهٔ انجمن',
    `
    ${f('تاریخِ جلسه *',`<input class="input" id="am_date" type="date" value="${todayISO()}" /> <span class="badge b-gray">${jalali(todayISO())}</span>`)}
+   ${f('نوع جلسه',sel('am_type',MIN_TYPES,'assoc'))}
    ${f('حاضرین در جلسه * (هر خط یک مورد)',`<textarea class="input" id="am_att" rows="4" placeholder="مثلاً:\nآقای محمدی — رئیس انجمن\nسرکار خانم احمدی — نمایندهٔ اولیا\nآقای رضایی — مدیر مدرسه" style="line-height:1.9"></textarea>`)}
    ${f('مصوبات جلسه (هر خط یک مصوبه)',`<textarea class="input" id="am_res" rows="5" placeholder="مثلاً:\nتصویبِ کمکِ داوطلبانهٔ ۵ میلیونی برای کتابخانه\nتعیینِ اردوی پاییز در اواخرِ مهر" style="line-height:1.9"></textarea>`)}
    `,'assoc-min-save'));
