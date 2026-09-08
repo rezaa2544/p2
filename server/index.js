@@ -28,6 +28,7 @@ const { createAdmin } = require('./admin');
 const { createSms } = require('./sms');
 const { createConflicts } = require('./conflicts');
 const { createAudit, clientIp } = require('./audit');
+const db = require('./db');
 
 const ROOT = path.join(__dirname, '..');
 const DATA_DIR = path.join(__dirname, 'data');
@@ -66,6 +67,15 @@ function loadStore(){
 }
 const store = loadStore();
 syncAttach(store);
+
+/* ── database layer initialization (PostgreSQL with graceful JSON fallback) ── */
+db.init(store).then(info => {
+  if (info.driver === 'postgres') {
+    console.log('[DB] Connected to PostgreSQL relational engine');
+  }
+}).catch(err => {
+  console.warn('[DB] PostgreSQL init warning:', err.message);
+});
 
 /* ── R97 (TODO 2.7) — نگهبانِ شمردنِ شناسه، سطحِ روتر ──────────────
    هر رد (401/403/404) برایِ هر نشست در پنجرهٔ ۱۰ دقیقه شمرده می‌شود:
@@ -148,7 +158,9 @@ function persistStore(){
   }catch(e){ /* store file may be gone (tests) — never crash on exit */ }
 }
 setInterval(persistStore, 2000).unref();
-process.on('exit', persistStore);
+process.on('exit', () => { persistStore(); db.close(); });
+process.on('SIGTERM', () => { persistStore(); db.close(); process.exit(0); });
+process.on('SIGINT', () => { persistStore(); db.close(); process.exit(0); });
 
 /* ── JWT secret (env, or generated once; never committed) ──────────── */
 let JWT_SECRET = process.env.PAYESH_JWT_SECRET || null;
@@ -244,7 +256,7 @@ function securityHeaders(res, nonce, https){
 const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty });
 /* R97: همهٔ ماژول‌هایِ /api با sendJsonCounting می‌چرخند تا رد‌ها شمرده
    شوند؛ auth استثناست (سقفِ OTP سقفِ خودش را می‌سازد). */
-const sync = createSync({ store, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
+const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 const idor = createIdor({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const admin = createAdmin({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, dataDir: path.dirname(STORE_FILE) });
@@ -407,4 +419,4 @@ if(require.main === module){
     }
   });
 }
-module.exports = { server, store, audit, isHttps, persistStore };
+module.exports = { server, store, audit, isHttps, persistStore, db };
