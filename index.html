@@ -2649,7 +2649,10 @@ const SYNC_DEAD_CODES = {
   conflict_preserved: 1, stale_base: 1,
   /* لایهٔ مقدار (validate.js): مقدارِ نامعتبر با تکرار درست نمی‌شود —
      dead-letter (وگرنه تا ابد failed → retry می‌ماند). */
-  validation_failed: 1
+  validation_failed: 1,
+  /* دور ۱۰۰ (نقصِ ۱): تک‌عملیاتی که حتی تنها هم ۴۱۳ می‌خورد ذاتاً از
+     سقفِ سرور بزرگ‌تر است — تکرار بی‌فایده، dead-letter با پیامِ روشن */
+  oversized_op: 1
 };
 
 const SYNC = {
@@ -2663,6 +2666,7 @@ const SYNC = {
   serverUrl  : '',          /* مثلاً '/api/sync' */
   autoTimer  : null,
   conflicts  : [],
+  progress   : null,        /* دور ۱۰۰: پیشرفتِ ارسالِ تکه‌تکه {done,total} */
 };
 
 /* ---------- ذخیره‌سازی صف ---------- */
@@ -2766,7 +2770,7 @@ async function syncNow(manual){
   refreshSyncBadge();
 
   try{
-    const res = await sendBatch(batch);
+    const res = await sendChunked(batch);
 
     res.forEach(r => {
       const item = SYNC.queue.find(x => x.uid === r.uid);
@@ -2821,6 +2825,9 @@ async function syncNow(manual){
       toast(`${fa(conflictCount || deadCount)} تغییر همگام نشد`
         + (conflictCount ? ` — ${fa(conflictCount)} تعارض با نسخهٔ سرور؛ مدیر مدرسه باید داوری کند` : ''),
         'err', { icon: 'warn', sticky: true });
+    }else if(manual && bad){
+      /* دور ۱۰۰: شکستِ انتقالیِ همه (رفتارِ پیشینِ مسیرِ catch) */
+      toast('ارسال ناموفق — دوباره تلاش می‌شود', 'err');
     }
 
     SYNC.attempts = bad ? SYNC.attempts + 1 : 0;
@@ -2836,6 +2843,7 @@ async function syncNow(manual){
     scheduleSync(backoffDelay());
   }finally{
     SYNC.syncing = false;
+    SYNC.progress = null; /* دور ۱۰۰: پایانِ نمایشِ پیشرفت */
     refreshSyncBadge();
   }
 }
@@ -2852,6 +2860,72 @@ async function syncNow(manual){
    ⚠️ کد ملی هرگز در نشانی درخواست نیاید، فقط در بدنهٔ POST — نشانی
    در گزارش سرور و حافظهٔ نهان میانی می‌ماند.
    📄 docs/SERVER_SECURITY_CONTRACT.md بندهای ۲ تا ۴ */
+/* ---------- ارسالِ تکه‌تکه + تقسیمِ بازگشتیِ ۴۱۳ (دور ۱۰۰، نقصِ ۱) ----------
+   سرور بیش از ۵۰۰ op در یک درخواست را 413 می‌کند (batch_too_large) و
+   بدنهٔ بیش از ۱MB را هم 413 می‌کند (body_too_large). ارسالِ یک‌جایِ
+   صفِ بزرگ ⇒ حلقهٔ ابدیِ «۴۱۳ ← failed ← تلاشِ دوباره». راه‌حل:
+   ۱) تکه‌هایِ ۲۰۰تایی (حاشیهٔ امن زیرِ سقفِ ۵۰۰). ۲) اگر تکه‌ای ۴۱۳
+   خورد، نصفش کن و دوباره (بازگشتی تا ۱). ۳) تک‌opای که باز ۴۱۳ خورد
+   ذاتاً از سقف بزرگ‌تر است ⇒ dead-letter ‏(oversized_op) با پیامِ روشن. */
+const SYNC_CHUNK = 200;
+const SYNC_413_CODES = { batch_too_large: 1, body_too_large: 1, http_413: 1 };
+
+/* ارسالِ تکه‌تکهٔ یک دسته با تقسیمِ بازگشتیِ ۴۱۳.
+   خروجی: یک نتیجه برایِ هر قلمِ batch (به‌ترتیبِ پایان).
+   - برایِ ۴۱۳ هرگز throw نمی‌کند (تکه می‌شود یا dead-letter).
+   - خطایِ انتقالی (قطعیِ شبکه و…): نتیجهٔ مصنوعیِ failed برایِ قلم‌هایِ
+     ارسال‌نشده — رفتارِ امروزِ مسیرِ catch، ولی نتیجهٔ تکه‌هایِ موفق
+     از دست نمی‌رود. */
+async function sendChunked(batch){
+  const out = [];
+  const pend = [];
+  for(let i=0;i<batch.length;i+=SYNC_CHUNK) pend.push(batch.slice(i,i+SYNC_CHUNK));
+  const total = batch.length;
+  while(pend.length){
+    const chunk = pend.shift();
+    SYNC.progress = { done: out.length, total: total };
+    refreshSyncBadge();
+    let res;
+    try{
+      res = await sendBatch(chunk);
+    }catch(err){
+      if(is413Error(err) && chunk.length > 1){ splitPush(pend, chunk); continue; }
+      if(is413Error(err)){ out.push(oversizedResult(chunk[0])); continue; }
+      /* خطایِ انتقالی: این تکه + همهٔ تکه‌هایِ مانده ⇒ failed */
+      const rest = [chunk].concat(pend.splice(0));
+      rest.forEach(function(c){ c.forEach(function(x){
+        out.push({ uid:x.uid, ok:false, code:'send_failed', message:String((err&&err.message)||err) });
+      });});
+      break;
+    }
+    if(is413Results(res) && chunk.length > 1){ splitPush(pend, chunk); continue; }
+    if(is413Results(res)){ out.push(oversizedResult(chunk[0])); continue; }
+    for(let k=0;k<res.length;k++) out.push(res[k]);
+  }
+  SYNC.progress = { done: out.length, total: total };
+  refreshSyncBadge();
+  return out;
+}
+/* نصف‌کردنِ تکهٔ ۴۱۳خورده — اولِ صف (عمق‌اول: ترتیبِ opها حفظ می‌شود) */
+function splitPush(pend, chunk){
+  const half = Math.ceil(chunk.length/2);
+  pend.unshift(chunk.slice(0,half), chunk.slice(half));
+}
+/* ردِّ سطحِ دسته (نه سطحِ op): همهٔ نتایج ۴۱۳ — sendBatch برایِ ۴۱۳
+   به‌ازایِ هر op یک {ok:false, code:413...} می‌سازد */
+function is413Results(res){
+  return !!(res && res.length && res.every(function(r){ return r && !r.ok && SYNC_413_CODES[r.code]; }));
+}
+/* دفاعِ عمقی: ۴۱۳ای که به‌جایِ نتیجه، throw شده باشد (پراکسی و…) */
+function is413Error(err){
+  const m = String((err&&err.message)||err||'');
+  return /413|too[_ -]?large|payload/i.test(m);
+}
+function oversizedResult(item){
+  return { uid:item.uid, ok:false, code:'oversized_op',
+    message:'حجم این تغییر از سقفِ سرور بیشتر است و همگام نشد — رکوردِ محلی سالم است' };
+}
+
 async function sendBatch(batch){
   if(!SYNC.demoMode && SYNC.serverUrl){
     /* ارسال از راه لایهٔ داده انجام می‌شود، نه fetch مستقیم — تا روز
@@ -2894,8 +2968,11 @@ function syncBadge(){
       <span class="dot"></span><span>آفلاین</span>${n ? `<span class="badge b-amber sm">${fa(n)}</span>` : ''}</button>`;
   }
   if(SYNC.syncing){
+    /* دور ۱۰۰ (نقصِ ۱): نمایشِ پیشرفتِ ارسالِ تکه‌تکه */
+    const pg = (SYNC.progress && SYNC.progress.total)
+      ? `<span class="badge b-blue sm">${fa(SYNC.progress.done)}/${fa(SYNC.progress.total)}</span>` : '';
     return `<button class="sync-chip busy" data-act="sync-panel" title="در حال همگام‌سازی">
-      <span class="spin"></span><span>همگام‌سازی…</span></button>`;
+      <span class="spin"></span><span>همگام‌سازی…</span>${pg}</button>`;
   }
   if(cf || rd){
     const lab = (cf && rd) ? 'تعارض و رد' : (cf ? 'تعارض' : 'رد شده');
