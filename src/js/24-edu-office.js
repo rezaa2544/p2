@@ -967,6 +967,7 @@ setTimeout(()=>{
   generate(); generateExtras(); generateP8(); generateP9(); generateP10();
   if(typeof generateP11==='function') generateP11();
   if(typeof generateP12=== 'function') generateP12();
+  if(typeof generatePriorYear==='function') generatePriorYear();  /* دور ۱۰۰/نقص ۶ */
   if(typeof generateBusDemo==='function') generateBusDemo();
   if(typeof generateVclassDemo==='function') generateVclassDemo();
   if(typeof generateHomeworkDemo==='function') generateHomeworkDemo();
