@@ -757,3 +757,25 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 - [ ] PDF واقعیِ کارنامه/گواهی = قفلِ ۱.۶ — فقط خروجیِ تازه، ساختار
   داده دست‌نخورده.
 - [ ] گزارشِ تجمیعیِ دور ۷۱: docs/REPORT_۲۰۲۶-۰۹-۰۶_ROUND۷۱.md
+
+---
+
+## فاز فرناز — قدم ۰: راستی‌آزماییِ بندهایِ ازپیش‌موجود (S1–S3)
+
+شاخه: `feat/farnaz-phase1` از `4ca531c`. هر سه بند روی main موجود و سبز بودند — بدونِ تغییرِ کد، فقط راستی‌آزمایی + ثبت.
+
+### S1 — قالبِ دومِ کارنامه ✅ (موجود)
+- کد: `reportCardCert(sid,term,tpl)` در `src/js/33-forms-sms.js:128` — شاخهٔ `tpl==='compact'` (بند ۴.۳) + انتخاب‌گرِ `cert_tpl` در `src/js/17-student-record.js:86` (کلاسیک/فشردهٔ دوستونه) + سیم‌کشی در `19-actions-core.js:1101`.
+- تست: `tests/reporttpl2.js` ‏۷/۷ ✅ + `tests/report2.js` ‏۱۰/۱۰ ✅ (روی همین شاخه اجرا شد).
+- (توجه: `tests/compact.js` مربوط به فشرده‌سازیِ دفترچه است نه قالب — ‏۱۹/۰ ✅ ولی شاهدِ این بند نیست.)
+
+### S2 — گواهیِ اشتغال به تحصیل ✅ (موجود)
+- کد: `enrollmentCert(sid)` در `src/js/33-forms-sms.js:331` + اکشن در `19-actions-core.js:1111` + کدِ راستی‌آزمایی (`certCodeCalc`/`certVerify`).
+- تست: `tests/certify.js` ‏۸/۸ ✅ (C1 اشتغال) — روی همین شاخه اجرا شد.
+
+### S3 — گواهیِ انتقالی ✅ (موجود)
+- کد: `transferCert(sid)` در `src/js/33-forms-sms.js:360` + اکشن در `19-actions-core.js:1120` + `certOverall` (وضعیت کلی).
+- تست: `tests/certify.js` ‏۸/۸ ✅ (C2 انتقالی) — روی همین شاخه اجرا شد.
+
+### بیزلاینِ قدم ۰ (روی `feat/farnaz-phase1`)
+- `node build.js --check` → exit 0 ✅ · `node tools/check-authz.js` → exit 0 ✅ · `node tests/smoke.js` → ‏۵۴۷/۵۴۷ ✅
