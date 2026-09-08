@@ -93,6 +93,16 @@ function enumDelay(sess){
   if(e.n >= ENUM_SLOW1) return 500;
   return 0;
 }
+/* R97 — مراحلِ نگهبان (هشدار/تأخیر/ابطال)؛ در هر دو نقطهٔ شمارش: رد‌ها و خوانشِ ID */
+function enumStage(e, sess){
+  if(e.n === ENUM_WARN) audit('enum_warn', { user_id: sess.id, n: e.n });
+  else if(e.n === ENUM_SLOW1) audit('enum_slow', { user_id: sess.id, n: e.n, delay_ms: 500 });
+  else if(e.n === ENUM_SLOW2) audit('enum_slow2', { user_id: sess.id, n: e.n, delay_ms: 2000 });
+  else if(e.n === ENUM_REVOKE){
+    store.__revoked_jti[sess.jti] = { at: Date.now(), reason: 'enumeration' };
+    audit('enum_revoke', { user_id: sess.id, n: e.n });
+  }
+}
 
 let dirty = false;
 function markDirty(){ dirty = true; }
@@ -207,15 +217,9 @@ function sendJsonCounting(res, status, obj){
   /* R97 (TODO 2.7): شمارِ رد‌ها (401/403/404) به ازای هر نشست — مرحله‌بندی
      در enumStage/enumDelay. مسیرهایِ /api/auth/* سقفِ خودشان را دارند. */
   const r = REQ_STATE;
-  if(r && r.sess && (status === 401 || status === 403 || status === 404)){
-    const e = enumTouch(r.sess);
-    if(e.n === ENUM_WARN) audit('enum_warn', { user_id: r.sess.id, n: e.n });
-    else if(e.n === ENUM_SLOW1) audit('enum_slow', { user_id: r.sess.id, n: e.n, delay_ms: 500 });
-    else if(e.n === ENUM_SLOW2) audit('enum_slow2', { user_id: r.sess.id, n: e.n, delay_ms: 2000 });
-    else if(e.n === ENUM_REVOKE){
-      store.__revoked_jti[r.sess.jti] = { at: Date.now(), reason: 'enumeration' };
-      audit('enum_revoke', { user_id: r.sess.id, n: e.n });
-    }
+  const isIdorRead = r && /^\/api\/students\/\d+$/.test(r.p || '');
+  if(r && r.sess && (status === 401 || status === 403 || status === 404) && !isIdorRead){
+    enumStage(enumTouch(r.sess), r.sess);
   }
   return sendJson(res, status, obj);
 }
@@ -292,14 +296,16 @@ const onRequest = async (req, res) => {
   const https = isHttps(req);
   const nonce = crypto.randomBytes(16).toString('base64');
   securityHeaders(res, nonce, https);
-  /* R97 — نگهبانِ شمردنِ شناسه: نشست‌هایی که رد می‌خورند (404/403/401)
-     از مرحلهٔ SLOW1 به بعد، هر درخواستِ بعدیشان با تأخیر پاسخ داده می‌شود؛
-     در REVOKE نشست ابطال شده و ادامه 401 است (sendJsonCounting می‌شمارد). */
+  /* R97 — نگهبانِ شمردنِ شناسه: شمارِ رد‌ها (404/403/401) و شمارِ همهٔ
+     خوانش‌هایِ /api/students/:id (مسطحِ شمردنِ شناسهٔ §5.7) به ازای هر
+     نشست؛ از SLOW1 به بعد تأخیر، در REVOKE ابطال (sendJsonCounting). */
   REQ_STATE.sess = null;
+  REQ_STATE.p = p;
   if(p.indexOf('/api/') === 0 && p.indexOf('/api/auth/') !== 0){
     const gs = auth.sessionFrom(req);
     if(gs){
       REQ_STATE.sess = gs;
+      if(/^\/api\/students\/\d+$/.test(p)) enumStage(enumTouch(gs), gs); /* §5.7: هر خوانشِ این مسیر می‌شمارد */
       const dm = enumDelay(gs);
       if(dm) await new Promise(r => setTimeout(r, dm));
     }
