@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>داشبورد پشتیبانی، ترابل‌شوتینگ و دیاگ پایش (ویژه سازنده)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --primary: #38bdf8;
+      --accent: #a855f7;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Vazirmatn", Tahoma, sans-serif; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+    
+    .sidebar { width: 280px; background: #0b1120; border-left: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+    .brand { padding: 24px 20px; border-bottom: 1px solid var(--border); font-size: 1.2rem; font-weight: bold; color: var(--accent); display: flex; align-items: center; gap: 10px; }
+    .nav-list { list-style: none; padding: 16px 8px; flex: 1; overflow-y: auto; }
+    .nav-item { padding: 12px 16px; margin-bottom: 6px; border-radius: 8px; cursor: pointer; color: var(--text-muted); transition: all 0.2s; font-size: 0.95rem; }
+    .nav-item:hover, .nav-item.active { background: #1e293b; color: var(--accent); font-weight: bold; border-right: 3px solid var(--accent); }
+    
+    .main-content { flex: 1; padding: 32px; overflow-y: auto; height: 100vh; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.3s; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    .header-box { margin-bottom: 28px; }
+    .header-title { font-size: 1.8rem; font-weight: 800; color: #fff; margin-bottom: 8px; }
+    .header-desc { color: var(--text-muted); font-size: 1rem; }
+
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 24px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+    .card-title { font-size: 1.15rem; font-weight: bold; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+    .badge { padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; }
+    .badge-success { background: rgba(34, 197, 94, 0.15); color: var(--success); border: 1px solid var(--success); }
+    .badge-warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); border: 1px solid var(--warning); }
+    
+    .table-custom { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.9rem; }
+    .table-custom th, .table-custom td { padding: 12px; text-align: right; border-bottom: 1px solid var(--border); }
+    .table-custom th { color: var(--text-muted); font-weight: 600; background: #0f172a; }
+
+    .btn { padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; font-size: 0.9rem; transition: 0.2s; }
+    .btn-primary { background: var(--primary); color: #000; }
+    .btn-success { background: var(--success); color: #000; }
+    .btn-accent { background: var(--accent); color: #fff; }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      مرکز کنترل و دیاگ سازنده
+    </div>
+    <ul class="nav-list">
+      <li class="nav-item active" onclick="showTab('diag')">🔍 موتور دیاگ و سلامت دیتابیس</li>
+      <li class="nav-item" onclick="showTab('support')">💬 پایگاه دانش پاسخ به کاربران</li>
+      <li class="nav-item" onclick="showTab('conflicts')">⚖️ داوری تعارض‌های سینک</li>
+      <li class="nav-item" onclick="showTab('gauges')">⏱️ عقربه‌های آنالوگ سرور</li>
+    </ul>
+  </aside>
+
+  <main class="main-content">
+
+    <!-- تب ۱: موتور دیاگ -->
+    <section id="tab-diag" class="tab-content active">
+      <div class="header-box">
+        <h1 class="header-title">موتور دیاگ خودکار و سلامت پایگاه داده (Self-Diagnostics)</h1>
+        <p class="header-desc">ماژول 42-self-diagnostics.js شامل ۲۹ چک جامع، کشف رکوردهای یتیم و تعمیر امن</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title">نمره سلامت کلی (Health Score)</div>
+          <div style="font-size: 2.5rem; font-weight: 800; color: var(--success); margin: 10px 0;">۹۸ / ۱۰۰</div>
+          <span class="badge badge-success">وضعیت پایگاه داده: عالی</span>
+        </div>
+        <div class="card">
+          <div class="card-title">خطاهای بحرانی دیتابیس</div>
+          <div style="font-size: 2.5rem; font-weight: 800; color: var(--success); margin: 10px 0;">۰ مورد</div>
+          <span class="badge badge-success">بدون رکورد یتیم</span>
+        </div>
+        <div class="card">
+          <div class="card-title">ابزار تعمیر خودکار</div>
+          <p class="text-muted mb-3" style="font-size: 0.85rem;">با ایجاد اسنپ‌شات امن و امکان Rollback فوری</p>
+          <button class="btn btn-accent" onclick="alert('اسنپ‌شات ذخیره و دیتابیس با موفقیت بهینه‌سازی شد.')">⚡ اجرای تعمیر خودکار امن</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">گزارش آخرین وضعیت ۲۹ آزمون پایداری دیتابیس</div>
+        <table class="table-custom">
+          <thead>
+            <tr>
+              <th>عنوان آزمون</th>
+              <th>ماژول مربوطه</th>
+              <th>سطح اهمیت</th>
+              <th>وضعیت</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>بررسی یکپارچگی کلیدهای خارجی (Foreign Keys)</td>
+              <td>11-classes-subjects.js</td>
+              <td>بحرانی</td>
+              <td><span class="badge badge-success">تایید شد ✅</span></td>
+            </tr>
+            <tr>
+              <td>عدم وجود نمرات بدون دانش‌آموز (Orphan Grades)</td>
+              <td>13-grades.js</td>
+              <td>بحرانی</td>
+              <td><span class="badge badge-success">تایید شد ✅</span></td>
+            </tr>
+            <tr>
+              <td>انطباق پایه‌های ۱۰ تا ۱۲ با رشته‌های معتبر</td>
+              <td>26-curriculum.js</td>
+              <td>متوسط</td>
+              <td><span class="badge badge-success">تایید شد ✅</span></td>
+            </tr>
+            <tr>
+              <td>سلامت صف عملیات‌های معلق آفلاین (Sync Queue)</td>
+              <td>03-idb-persistence.js</td>
+              <td>بحرانی</td>
+              <td><span class="badge badge-success">تایید شد ✅</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- تب ۲: پایگاه دانش -->
+    <section id="tab-support" class="tab-content">
+      <div class="header-box">
+        <h1 class="header-title">پایگاه دانش و پاسخ‌های آماده پشتیبانی (Support Canned Answers)</h1>
+        <p class="header-desc">قالب‌های رسمی و فوری برای پاسخ به سوالات متداول کاربران</p>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">سناریو: همگام‌سازی نمرات در قطعی اینترنت</div>
+          <p class="text-muted mb-2">کاربر: نمرات رو ثبت کردم ولی مدیر میگه هنوز نیومده!</p>
+          <div style="background: #0f172a; padding: 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; line-height: 1.7; color: var(--text);">
+            «سلام همکار گرامی، با توجه به قابلیت آفلاین پایش، تمامی نمرات ثبت‌شده در حافظه امن گوشی شما ذخیره شده‌اند. به محض اتصال به اینترنت، نشانگر بالای صفحه سبز شده و نمرات فوراً در پنل مدیر نمایان می‌شوند.»
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">سناریو: سوییچ بین چند فرزند برای اولیا</div>
+          <p class="text-muted mb-2">ولی: من دو تا بچه تو این مدرسه دارم چطور پرونده دومی رو ببینم؟</p>
+          <div style="background: #0f172a; padding: 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; line-height: 1.7; color: var(--text);">
+            «ولی گرامی، نیازی به خروج از سامانه نیست. در بالای صفحه داشبورد دکمه‌های مربوط به نام هر دو فرزند شما قرار دارد که با کلیک روی نام هرکدام، کارنامه و برنامه همان فرزند نمایش داده می‌شود.»
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- تب ۳: تعارض‌های سینک -->
+    <section id="tab-conflicts" class="tab-content">
+      <div class="header-box">
+        <h1 class="header-title">داوری تعارض‌های همگام‌سازی (Sync Conflicts)</h1>
+        <p class="header-desc">ماژول 68-sync-conflicts.js جهت مقایسه سه‌طرفه و رفع تداخل نمرات و حضور</p>
+      </div>
+      <div class="card">
+        <div class="card-title">فهرست تعارض‌های نیازمند داوری</div>
+        <p class="text-muted">در حال حاضر تمامی داده‌های کلاینت‌ها با سرور مرکزی در وضعیت هماهنگ (In-Sync) قرار دارند و تعارض بازی وجود ندارد.</p>
+      </div>
+    </section>
+
+    <!-- تب ۴: عقربه‌های سرور -->
+    <section id="tab-gauges" class="tab-content">
+      <div class="header-box">
+        <h1 class="header-title">پایش لحظه‌ای زیرساخت و عقربه‌های سلامت (Health Gauges)</h1>
+        <p class="header-desc">پایش بلادرنگ بار سرور، مصرف حافظه، وضعیت صف‌ها و سلامت داده‌ها</p>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">بار سرور و زمان پاسخگویی (Latency)</div>
+          <div style="font-size: 2rem; font-weight: bold; color: var(--success);">18 ms</div>
+          <p class="text-muted">محدوده نرمال و پایدار</p>
+        </div>
+        <div class="card">
+          <div class="card-title">نرخ موفقیت همگام‌سازی صفوف</div>
+          <div style="font-size: 2rem; font-weight: bold; color: var(--success);">۹۹.۸٪</div>
+          <p class="text-muted">تلاش‌های موفق در دور اول</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      const target = document.getElementById('tab-' + tabId);
+      if (target) target.classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+  </script>
+</body>
+</html>
