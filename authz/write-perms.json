@@ -70,6 +70,7 @@
       "summer_classes",
       "support_tickets",
       "teacher_schools",
+      "training_courses",
       "transactions",
       "transfer_requests",
       "tuition_plans",
@@ -1210,6 +1211,20 @@
         "superadmin"
       ]
     },
+    "training_courses": {
+      "ins": [
+        "manager",
+        "superadmin"
+      ],
+      "upd": [
+        "manager",
+        "superadmin"
+      ],
+      "del": [
+        "manager",
+        "superadmin"
+      ]
+    },
     "transactions": {
       "ins": [
         "manager",
@@ -2210,6 +2225,17 @@
       "source_ref",
       "status",
       "teacher_id",
+      "updated_at"
+    ],
+    "training_courses": [
+      "created_at",
+      "date",
+      "hours",
+      "id",
+      "school_id",
+      "staff_id",
+      "status",
+      "title",
       "updated_at"
     ],
     "transactions": [
@@ -3620,6 +3646,24 @@
       "collections": [
         "notifications",
         "transfer_requests"
+      ]
+    },
+    "trn-complete": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "certificates",
+        "training_courses"
+      ]
+    },
+    "trn-save": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "certificates",
+        "training_courses"
       ]
     },
     "trx-edit-save": {

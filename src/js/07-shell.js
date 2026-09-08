@@ -206,6 +206,7 @@ function _renderRouteInner(){
     case 'followup':return viewFollowup();
     case 'staff':return viewStaff();
     case 'staffatt':return viewStaffAtt();
+    case 'training':return viewTraining();
     default:return viewDashboard();
   }
 }

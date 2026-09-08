@@ -386,7 +386,15 @@ var ACTION_ROLES = {
   'staffatt-prev':   ['manager'],
   'staffatt-next':   ['manager'],
   'staffatt-today':  ['manager'],
-  'staffatt-pick':   ['manager']
+  'staffatt-pick':   ['manager'],
+  /* دوره‌های آموزشی کادر (بند B.2 فرناز): هر ۷ اکشن فقط مدیر */
+  'trn-new':          ['manager'],
+  'trn-edit':         ['manager'],
+  'trn-save':         ['manager'],
+  'trn-complete':     ['manager'],
+  'trn-print':        ['manager'],
+  'trn-verify':       ['manager'],
+  'trn-verify-check': ['manager']
 };
 
 /* ✅ (R99 — تک‌منبعِ مجوزها) canAction/canRoute فقط رابط کاربری را مرتب

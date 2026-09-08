@@ -2128,7 +2128,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[],staff_attendance:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[],staff_attendance:[],training_courses:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -2444,6 +2444,22 @@ function generate(){
           if(hv>96)s='absent';else if(hv>90)s='late';
           add('staff_attendance',{school_id:mgr.school_id,staff_id:t.id,date:iso,status:s,note:s==='late'?'تأخیر در ورود به مدرسه':null,registered_by:mgr.id,created_at:daysAgoISO(2)});
         });
+      });
+    });
+  })();
+  /* بند B.2 (چت۱): سید دوره‌های آموزشی — ۲ دورهٔ در حال برگزاری برای
+     ۲ دبیر اول هر مدرسه. صفر مصرفِ rng (درس B.1)؛ بدون دورهٔ تکمیل‌شده
+     تا ناوردای «تکمیل‌شده ⟺ گواهی» در سید برقرار بماند. */
+  (function(){
+    var titles=['روش‌های نوین تدریس','مدیریت کلاس درس'];
+    var hours=[24,40];
+    var offs=[10,25];
+    var done={};
+    db.users.filter(function(u){return u.role==='manager';}).forEach(function(mgr){
+      if(done[mgr.school_id])return; done[mgr.school_id]=1;
+      var teachers=db.users.filter(function(u){return u.role==='teacher'&&u.school_id===mgr.school_id&&u.active;}).slice(0,2);
+      teachers.forEach(function(t,i){
+        add('training_courses',{school_id:mgr.school_id,staff_id:t.id,title:titles[i%titles.length],hours:hours[i%hours.length],date:daysAgoISO(offs[i%offs.length]),status:'ongoing',created_at:daysAgoISO(2)});
       });
     });
   })();
@@ -3086,7 +3102,7 @@ function scopeHealth(){
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
  superadmin:[['نظارت روزانه',[['dashboard','📊','داشبورد مدیریتی'],['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها']]],['مدارس و کاربران',[['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه'],['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]]],
- manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['assets','🧰','املاک'],['dorm','🏠','اسکان و خوابگاه'],['sidadiff','⚖️','سیدا'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک'],['preapps','📥','قیف پیش‌ثبت‌نام'],['scholarships','🎓','کمک‌هزینه و بورسیه']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات'],['reexams','🔁','امتحانات تجدیدی (شهریور)']]],['کلاس‌های تابستان',[['summerclasses','☀️','کلاس‌های تابستانی']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی'],['staffatt','🗓️','حضور کادر']]],['مالی',[['tuition','💰','شهریه و امور مالی'],['association','🤝','انجمن و کمک‌ها']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['assets','🧰','املاک'],['dorm','🏠','اسکان و خوابگاه'],['sidadiff','⚖️','سیدا'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک'],['preapps','📥','قیف پیش‌ثبت‌نام'],['scholarships','🎓','کمک‌هزینه و بورسیه']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات'],['reexams','🔁','امتحانات تجدیدی (شهریور)']]],['کلاس‌های تابستان',[['summerclasses','☀️','کلاس‌های تابستانی']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی'],['staffatt','🗓️','حضور کادر'],['training','📚','دوره‌های آموزشی']]],['مالی',[['tuition','💰','شهریه و امور مالی'],['association','🤝','انجمن و کمک‌ها']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  teacher:[['کار روزانه',[['dashboard','📊','داشبورد'],['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کار آموزشی',[['meetings','📅','جلسات اولیا'],['classes','🏛️','کلاس‌ها'],['vclass','🖥️','کلاس مجازی'],['exams','👁️','برنامه مراقبت من'],['homework','📓','تکالیف'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['calendar','🗓️','تقویم آموزشی']]],['پروندهٔ من',[['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['leaves','📨','مرخصی'],['homework','📓','تکالیف من']]],['امور مالی',[['mytuition','💰','شهریه من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['کار روزانه',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
@@ -3096,7 +3112,7 @@ const NAV={
 };
 const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','پروندهٔ کاملِ هر فرزند: کارنامه، حضور و انضباط — با دکمه‌های بالای صفحه بین فرزندان جابه‌جا شوید (برچسبِ منو به‌صورتِ «پروندهٔ N فرزند» نمایش داده می‌شود)'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],
 reexams:['امتحانات تجدیدی (شهریور)','دروسِ نیازمندِ امتحانِ مجدد + نمرهٔ نهایی پس از تجدیدی'],
-summerclasses:['کلاس‌های تابستانی','نام + دبیر + دانش‌آموزان + تاریخ‌ها — جدا از سالِ تحصیلیِ رسمی'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده و مدارس','همهٔ فرزندان و مدرسهٔ هرکدام — حتی وقتی در مدارس مختلف‌اند؛ اتصالِ فرزندان به کد ملی و تأییدِ آن‌ها (برای پروندهٔ کاملِ تک‌تک، «پرونده فرزندان» را باز کنید)'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],staffatt:['حضور کادر','ثبت روزانه و مرور ماهانهٔ حضور کادر'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],library:['کتابخانه','کتاب‌ها + امانت به دانش‌آموز + بازگشت — نسخهٔ سبک'],assets:['املاک و موجودی','تجهیزات با وضعیت + مکان — نسخهٔ سبک'],dorm:['اسکان و خوابگاه','اتاق‌ها + انتساب دانش‌آموز + وعده‌های هفتگی + مرخصیِ رفت‌وبرگشتِ آخر هفته — نسخهٔ سبک'],sidadiff:['اختلاف با سیدا','نمرهٔ سیدا دستی — مقایسه با پایش، فقط خواندنی برای بقیه'],preapps:['قیف پیش‌ثبت‌نام','تماس → بازدید → آزمون → ثبت‌نامِ قطعی — جدا از ثبت‌نامِ رسمی'],
+summerclasses:['کلاس‌های تابستانی','نام + دبیر + دانش‌آموزان + تاریخ‌ها — جدا از سالِ تحصیلیِ رسمی'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده و مدارس','همهٔ فرزندان و مدرسهٔ هرکدام — حتی وقتی در مدارس مختلف‌اند؛ اتصالِ فرزندان به کد ملی و تأییدِ آن‌ها (برای پروندهٔ کاملِ تک‌تک، «پرونده فرزندان» را باز کنید)'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],staffatt:['حضور کادر','ثبت روزانه و مرور ماهانهٔ حضور کادر'],training:['دوره‌های آموزشی','دوره‌های ضمن خدمت کادر و گواهی پایان دوره'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],library:['کتابخانه','کتاب‌ها + امانت به دانش‌آموز + بازگشت — نسخهٔ سبک'],assets:['املاک و موجودی','تجهیزات با وضعیت + مکان — نسخهٔ سبک'],dorm:['اسکان و خوابگاه','اتاق‌ها + انتساب دانش‌آموز + وعده‌های هفتگی + مرخصیِ رفت‌وبرگشتِ آخر هفته — نسخهٔ سبک'],sidadiff:['اختلاف با سیدا','نمرهٔ سیدا دستی — مقایسه با پایش، فقط خواندنی برای بقیه'],preapps:['قیف پیش‌ثبت‌نام','تماس → بازدید → آزمون → ثبت‌نامِ قطعی — جدا از ثبت‌نامِ رسمی'],
 scholarships:['کمک‌هزینه و بورسیه','علامت‌گذاری دانش‌آموزِ نیازمند + وضعیت (درخواست‌شده/بررسی/تأیید/رد) — فقط ثبت، بدون پرداخت'],visitors:['مهمان‌ها','ورود/خروج افراد غیردانش‌آموز و غیرکارکنان — نسخهٔ سبک'],homework:['تکالیف','بارگذاری تصویر تکلیف + تصحیح دیجیتال با خطِ خوددست و نمره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها'],association:['انجمن و کمک‌ها','در مدارس دولتی به‌جای شهریه: کمک‌های داوطلبانهٔ اولیا با ثبت شفاف']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
@@ -4636,7 +4652,15 @@ var ACTION_ROLES = {
   'staffatt-prev':   ['manager'],
   'staffatt-next':   ['manager'],
   'staffatt-today':  ['manager'],
-  'staffatt-pick':   ['manager']
+  'staffatt-pick':   ['manager'],
+  /* دوره‌های آموزشی کادر (بند B.2 فرناز): هر ۷ اکشن فقط مدیر */
+  'trn-new':          ['manager'],
+  'trn-edit':         ['manager'],
+  'trn-save':         ['manager'],
+  'trn-complete':     ['manager'],
+  'trn-print':        ['manager'],
+  'trn-verify':       ['manager'],
+  'trn-verify-check': ['manager']
 };
 
 /* ✅ (R99 — تک‌منبعِ مجوزها) canAction/canRoute فقط رابط کاربری را مرتب
@@ -4880,6 +4904,7 @@ function _renderRouteInner(){
     case 'followup':return viewFollowup();
     case 'staff':return viewStaff();
     case 'staffatt':return viewStaffAtt();
+    case 'training':return viewTraining();
     default:return viewDashboard();
   }
 }
@@ -7771,14 +7796,18 @@ function reportCardCert(sid, term, tpl){
  * همان گواهی همیشه همان کد را می‌دهد — پس دریافت‌کننده می‌تواند
  * بدون سرور، با همان داده‌های روی کاغذ، کد را بازسازی کند.
  */
-function certCodeCalc(type, sid, schoolId){
-  var s = type + ':' + sid + ':' + schoolId + ':' + (typeof yearCode==='function'?yearCode():'');
+/** هستهٔ هش کد احراز (بند B.2: استخراج بدون تغییر رفتار — هم دانش‌آموز هم کادر) */
+function certHash(s, prefix){
   var h = 5381;
   for(var i=0;i<s.length;i++){ h = ((h<<5)+h) ^ s.charCodeAt(i); }
   var A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   var x = Math.abs(h), out = '';
   for(var k=0;k<6;k++){ out += A[x % A.length]; x = Math.floor(x / A.length); }
-  return (type==='enrollment' ? 'GHT-' : 'GNT-') + out;
+  return prefix + out;
+}
+function certCodeCalc(type, sid, schoolId){
+  var s = type + ':' + sid + ':' + schoolId + ':' + (typeof yearCode==='function'?yearCode():'');
+  return certHash(s, (type==='enrollment' ? 'GHT-' : 'GNT-'));
 }
 
 /** مجوز داده‌ای: آیا این کاربر می‌تواند گواهیِ این دانش‌آموز را ببیند/بزند؟ */
@@ -12823,7 +12852,7 @@ document.addEventListener('click',e=>{
     if(typeof toast==='function') toast('شما اجازهٔ انجام این عملیات را ندارید','err');
     return;
   }
-  /* فاز ۲: A از پارسیال‌هایِ ۱۰ ماژولِ 19-actions ساخته می‌شود —
+  /* فاز ۲: A از پارسیال‌هایِ ۱۱ ماژولِ 19-actions ساخته می‌شود —
      ترکیبِ آن (نام‌ها، بدنه‌ها، ترتیبِ تعریف) با نسخهٔ تک‌فایلی یکسان است. */
   const A=Object.assign({},
     coreActions(e,el,id,a,rawId),
@@ -12835,7 +12864,8 @@ document.addEventListener('click',e=>{
     vclassActions(e,el,id,a,rawId),
     scheduleActions(e,el,id,a,rawId),
     adminActions(e,el,id,a,rawId),
-    staffActions(e,el,id,a,rawId));
+    staffActions(e,el,id,a,rawId),
+    trainingActions(e,el,id,a,rawId));
   if(A[a]){e.preventDefault();A[a]();}
   else if(typeof F7_ACTIONS!=='undefined'&&F7_ACTIONS[a]){e.preventDefault();F7_ACTIONS[a](el,id);}
   else if(typeof P8_ACTIONS!=='undefined'&&P8_ACTIONS[a]){e.preventDefault();P8_ACTIONS[a](el,id);}
@@ -14208,6 +14238,80 @@ function staffActions(e, el, id, a, rawId){
    'staffatt-pick'(){
      staffAttState().staffId = Number(id);
      render();
+   }
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   فاز ۲ بازبینیِ معماری — شکستنِ 19-actions.js به ماژول‌هایِ دامنه‌ای
+      اقدامات دوره‌های آموزشی کادر: trn-. (بند B.2 فرناز — چت۱)
+   پارسیالِ یازدهمِ A: ترکیب در شنوندهٔ کلیکِ 19-actions-core انجام می‌شود.
+   قراردادِ تحلیلِ استاتیک (tools/check-authz.js): ظرف دقیقاً
+   `  return {` تا `  };` و ورودی‌ها `'نام'(){` بدون پارامتر.
+   ═══════════════════════════════════════════════════════════════════ */
+function trainingActions(e, el, id, a, rawId){
+  return {
+   /* ─────────────── دوره‌های آموزشی کادر (بند B.2) ─────────────── */
+   'trn-new'(){
+     var staff = staffOfSchool(S.user.school_id);
+     if (!staff.length){ toast('در این مدرسه همکاری برای ثبت دوره وجود ندارد', 'err'); return; }
+     openModal(modalTpl('دورهٔ تازه',
+       f('همکار *', sel('trn_f_staff', staff.map(function(s){ return [s.id, s.full_name]; }), staff[0].id))
+       + f('عنوان دوره *', inp('trn_f_title', ''))
+       + f('ساعت دوره * (معمولاً ۲۰ تا ۶۰)', inp('trn_f_hours', '', 'number'))
+       + f('تاریخ برگزاری *', jdate('trn_f_date', todayISO()))
+       + f('وضعیت *', sel('trn_f_status', TRAINING_STATUS, 'ongoing')),
+       'trn-save'));
+   },
+   'trn-edit'(){
+     var c = byId('training_courses', Number(id)) || {};
+     var staff = staffOfSchool(S.user.school_id);
+     openModal(modalTpl('ویرایش دوره',
+       '<input type="hidden" id="trn_f_id" value="' + escAttr(id) + '" />'
+       + f('همکار *', sel('trn_f_staff', staff.map(function(s){ return [s.id, s.full_name]; }), c.staff_id))
+       + f('عنوان دوره *', inp('trn_f_title', c.title || ''))
+       + f('ساعت دوره * (معمولاً ۲۰ تا ۶۰)', inp('trn_f_hours', c.hours == null ? '' : c.hours, 'number'))
+       + f('تاریخ برگزاری *', jdate('trn_f_date', c.date || todayISO()))
+       + f('وضعیت *', sel('trn_f_status', TRAINING_STATUS, c.status || 'ongoing')),
+       'trn-save'));
+   },
+   'trn-save'(){
+     var res = saveTrainingCourse(V('trn_f_id') || null, {
+       staff_id: V('trn_f_staff'), title: V('trn_f_title'), hours: V('trn_f_hours'),
+       date: V('trn_f_date'), status: V('trn_f_status')
+     });
+     if (!res.ok){ toast(res.msg, 'err'); return; }
+     closeModal();
+     toast(res.cert ? 'دوره ذخیره و گواهی صادر شد — کد: ' + res.cert : 'دوره ذخیره شد', 'ok');
+     render();
+   },
+   'trn-complete'(){
+     var c = byId('training_courses', Number(id));
+     if (!c){ toast('دوره پیدا نشد', 'err'); return; }
+     var res = saveTrainingCourse(c.id, { staff_id: c.staff_id, title: c.title, hours: c.hours, date: c.date, status: 'completed' });
+     if (!res.ok){ toast(res.msg, 'err'); return; }
+     toast('دوره تکمیل و گواهی صادر شد — کد: ' + res.cert, 'ok');
+     render();
+   },
+   'trn-print'(){
+     var d = trainingCert(Number(id));
+     if (!d.ok){ toast(d.msg, 'err'); return; }
+     printableDoc(d);
+   },
+   'trn-verify'(){
+     var c = byId('training_courses', Number(id));
+     if (!c){ toast('دوره پیدا نشد', 'err'); return; }
+     var st = byId('users', c.staff_id) || {};
+     openModal(modalTpl('راستی‌آزمایی گواهی',
+       '<input type="hidden" id="trn_v_id" value="' + c.id + '" />'
+       + f('دوره', '<div><b>' + esc(c.title) + '</b> — ' + esc(st.full_name || '') + '</div>')
+       + f('کد احراز *', inp('trn_v_code', '')),
+       'trn-verify-check'));
+   },
+   'trn-verify-check'(){
+     var r = staffCertVerify(V('trn_v_code'), V('trn_v_id'));
+     closeModal();
+     toast(r.msg, r.ok ? 'ok' : 'err');
    }
   };
 }
@@ -28864,6 +28968,160 @@ function viewStaffAtt(){
     + '<h3 style="margin-top:0">خلاصهٔ ماه ' + STAFF_ATT_MONTHS[jm - 1] + '</h3>'
     + table
     + '<p style="color:#888;font-size:12px">این بخش مستقل از حضور و غیاب دانش‌آموزان است و فقط مدیر مدرسه امکان ثبت دارد.</p>'
+    + '</div></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بند B.2 فرناز (چت۱) — دوره‌های آموزش ضمن خدمت کادر + گواهی پایان دوره
+   ─────────────────────────────────────────────────────────────────
+   • مجموعهٔ تازه: training_courses (مدرسه/همکار/عنوان/ساعت/تاریخ/وضعیت).
+   • گواهی: همان الگوی گواهی دانش‌آموز — کد قطعی (certHash) + سطر در
+     مجموعهٔ certificates با type='staff_training' + چاپ با printableDoc.
+     کد به (دوره، همکار، مدرسه، سال) مقید است و بدون سرور بازسازی می‌شود.
+   • صدور در لحظهٔ «تکمیل‌شده» شدن رخ می‌دهد (idempotent: هر دوره یک
+     گواهی)؛ چاپ، چاپِ مجدد است. فقط مدیر می‌نویسد (سه‌لایه، مانند B.1).
+   ═══════════════════════════════════════════════════════════════════ */
+var TRAINING_STATUS = [['ongoing', 'در حال برگزاری'], ['completed', 'تکمیل‌شده']];
+
+/** برچسب فارسی وضعیت دوره */
+function trainingStatusFa(s){
+  for (var i = 0; i < TRAINING_STATUS.length; i++) if (TRAINING_STATUS[i][0] === s) return TRAINING_STATUS[i][1];
+  return '—';
+}
+
+/** دوره‌های یک مدرسه (تازه‌ترین اول) */
+function coursesOfSchool(schoolId){
+  return (db.training_courses || []).filter(function(c){
+    return c.school_id === schoolId;
+  }).sort(function(a, b){
+    if (a.date === b.date) return b.id - a.id;
+    return a.date < b.date ? 1 : -1;
+  });
+}
+
+/** کد احراز گواهی پایان دوره — همان الگوی certCodeCalc با پیشوند DOR- */
+function staffCertCode(courseId, staffId, schoolId){
+  var s = 'staff_training:' + courseId + ':' + staffId + ':' + schoolId + ':' + (typeof yearCode === 'function' ? yearCode() : '');
+  return certHash(s, 'DOR-');
+}
+
+/** راستی‌آزمایی کد گواهی (بازسازی قطعی از شناسه‌ها) */
+function staffCertVerify(code, courseId){
+  var c = byId('training_courses', Number(courseId));
+  if (!c) return { ok: false, msg: 'دوره پیدا نشد.' };
+  var want = staffCertCode(c.id, c.staff_id, c.school_id);
+  if (String(code || '').trim().toUpperCase() === want) return { ok: true, msg: 'کدِ گواهی پایان دوره معتبر است' };
+  return { ok: false, msg: 'کد معتبر نیست' };
+}
+
+/* ── نویسندهٔ واحد: ثبت/ویرایش دوره + صدور idempotent گواهی در تکمیل ── */
+function saveTrainingCourse(id, f){
+  var role = (typeof activePersona === 'function') ? activePersona() : (S.user && S.user.role);
+  if (role !== 'manager' && role !== 'superadmin') return { ok: false, msg: 'فقط مدیر مدرسه می‌تواند دوره ثبت کند' };
+  if (!S.user || !S.user.school_id) return { ok: false, msg: 'نشست معتبر نیست' };
+  var staffId = Number(f.staff_id);
+  var st = byId('users', staffId);
+  if (!st || !st.active) return { ok: false, msg: 'همکار معتبر نیست' };
+  if (STAFF_ATT_ROLES.indexOf(st.role) < 0) return { ok: false, msg: 'این کاربر عضو کادر نیست' };
+  if (st.school_id !== S.user.school_id) return { ok: false, msg: 'همکارِ مدرسهٔ دیگری است' };
+  var title = String(f.title == null ? '' : f.title).trim();
+  if (!title) return { ok: false, msg: 'عنوان دوره را بنویسید' };
+  if (title.length > 100) return { ok: false, msg: 'عنوان دوره حداکثر ۱۰۰ نویسه' };
+  var hours = Number(f.hours);
+  if (!isFinite(hours) || hours <= 0) return { ok: false, msg: 'ساعت دوره باید عدد مثبت باشد' };
+  if (!staffAttValidDate(f.date)) return { ok: false, msg: 'تاریخ معتبر نیست' };
+  if (f.status !== 'ongoing' && f.status !== 'completed') return { ok: false, msg: 'وضعیت معتبر نیست' };
+  var sid = S.user.school_id;
+  var rec = null;
+  if (id){
+    rec = byId('training_courses', Number(id));
+    if (!rec || rec.school_id !== sid) return { ok: false, msg: 'دوره پیدا نشد' };
+    update('training_courses', rec.id, { staff_id: staffId, title: title, hours: hours, date: f.date, status: f.status });
+    rec = byId('training_courses', rec.id);
+  } else {
+    rec = insert('training_courses', { school_id: sid, staff_id: staffId, title: title, hours: hours, date: f.date, status: f.status });
+  }
+  var certCode = null;
+  if (rec.status === 'completed'){
+    var code = staffCertCode(rec.id, rec.staff_id, rec.school_id);
+    var ex = (db.certificates || []).filter(function(x){ return x.type === 'staff_training' && x.code === code; })[0];
+    if (!ex){
+      ex = insert('certificates', { school_id: rec.school_id, type: 'staff_training',
+        year: (typeof yearCode === 'function' ? yearCode() : ''), code: code,
+        issued_at: new Date().toISOString(), issued_by: (S.user && S.user.id) || 0 });
+    }
+    certCode = ex.code;
+  }
+  return { ok: true, id: rec.id, cert: certCode };
+}
+
+/** سند چاپی گواهی پایان دوره (همان شکل enrollmentCert) */
+function trainingCert(courseId){
+  var c = byId('training_courses', Number(courseId));
+  if (!c) return { ok: false, msg: 'دوره پیدا نشد.' };
+  if (c.status !== 'completed') return { ok: false, msg: 'گواهی فقط برای دورهٔ تکمیل‌شده صادر می‌شود.' };
+  var st = byId('users', c.staff_id) || {};
+  var school = byId('schools', c.school_id) || {};
+  var code = staffCertCode(c.id, c.staff_id, c.school_id);
+  var roleFa = (st.role === 'counselor') ? 'مشاور' : 'دبیر';
+  var body =
+    '<div class="meta"><span>نام: <b>' + esc(st.full_name || '—') + '</b></span>'
+    + '<span>کد ملی: <b>' + esc(st.national_id || '—') + '</b></span>'
+    + '<span>سمت: <b>' + roleFa + '</b></span>'
+    + '</div>'
+    + '<div style="font-size:14px;line-height:2.5;background:#f6f9ff;border:1px solid #cdd9f2;border-radius:10px;padding:14px 16px;margin-top:8px">'
+    + 'گواهی می‌شود که همکار گرامی <b>' + esc(st.full_name || '—') + '</b>'
+    + ' دورهٔ آموزشی ضمن خدمت با عنوان <b>' + esc(c.title) + '</b>'
+    + ' به مدت <b>' + fa(c.hours) + ' ساعت</b>'
+    + ' (تاریخ برگزاری: ' + esc(jalaliLongFa(c.date)) + ')'
+    + ' را در <b>' + esc(school.name || '—') + '</b> با موفقیت به پایان رسانده است.'
+    + '</div>'
+    + '<div class="meta" style="margin-top:12px"><span>کد احراز: <b style="letter-spacing:2px;direction:ltr;display:inline-block">' + code + '</b></span></div>';
+  return { ok: true,
+    title: 'گواهی پایان دورهٔ آموزشی ضمن خدمت',
+    school: esc(school.name || '') + (school.code ? ' — کد ' + esc(school.code) : ''),
+    subtitle: 'همکار: ' + esc(st.full_name || '') + ' · ' + esc(c.title),
+    body: body,
+    note: 'این گواهی از سامانهٔ پایش چاپ شده است و با کد احرازِ درج‌شده قابل راستی‌آزمایی است؛ نسخهٔ الکترونیکی و بدون نیاز به مهر است.' };
+}
+
+/** سطر جدول یک دوره */
+function trainingRowInner(c){
+  var st = byId('users', c.staff_id) || {};
+  var done = c.status === 'completed';
+  var badge = done
+    ? '<span class="badge" style="background:#dafbe1;color:#1a7f37">تکمیل‌شده</span>'
+    : '<span class="badge" style="background:#ddf4ff;color:#0969da">در حال برگزاری</span>';
+  var code = done ? staffCertCode(c.id, c.staff_id, c.school_id) : null;
+  var ops = '<button class="btn ghost sm" data-act="trn-edit" data-id="' + c.id + '">ویرایش</button>';
+  if (!done) ops += ' <button class="btn ghost sm" data-act="trn-complete" data-id="' + c.id + '">تکمیل و صدور گواهی</button>';
+  else ops += ' <button class="btn ghost sm" data-act="trn-print" data-id="' + c.id + '">🖨️ چاپ گواهی</button>'
+    + ' <button class="btn ghost sm" data-act="trn-verify" data-id="' + c.id + '">راستی‌آزمایی</button>';
+  return '<td>' + esc(st.full_name || '—') + '</td>'
+    + '<td>' + esc(c.title) + '</td>'
+    + '<td>' + fa(c.hours) + ' ساعت</td>'
+    + '<td>' + esc(jalaliLongFa(c.date)) + '</td>'
+    + '<td>' + badge + '</td>'
+    + '<td>' + (code ? '<b style="letter-spacing:1px;direction:ltr;display:inline-block">' + code + '</b>' : '—') + '</td>'
+    + '<td style="white-space:nowrap">' + ops + '</td>';
+}
+
+/** نمای دوره‌های آموزشی کادر (روت training — فقط مدیر) */
+function viewTraining(){
+  var u = S.user;
+  var list = coursesOfSchool(u.school_id);
+  var rows = list.length ? list.map(function(c){
+    return '<tr id="trnrow_' + c.id + '">' + trainingRowInner(c) + '</tr>';
+  }).join('') : '<tr><td colspan="7" style="text-align:center;color:#888">هنوز دوره‌ای ثبت نشده است.</td></tr>';
+  return '<div class="card"><div class="card-body">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center">'
+    + '<h3 style="margin:0">📚 دوره‌های آموزش ضمن خدمت کادر</h3>'
+    + '<button class="btn" data-act="trn-new">+ دورهٔ تازه</button>'
+    + '</div>'
+    + '<table style="width:100%;border-collapse:collapse;margin-top:12px">'
+    + '<thead><tr><th>همکار</th><th>عنوان دوره</th><th>ساعت</th><th>تاریخ برگزاری</th><th>وضعیت</th><th>کد گواهی</th><th>عملیات</th></tr></thead>'
+    + '<tbody>' + rows + '</tbody></table>'
+    + '<p style="color:#888;font-size:12px">با «تکمیل و صدور گواهی»، گواهی پایان دوره با کد احراز صادر و در سوابق ثبت می‌شود.</p>'
     + '</div></div>';
 }
 
