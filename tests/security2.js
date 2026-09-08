@@ -75,7 +75,12 @@ async function main() {
       cwd: ROOT,
       env: Object.assign({}, process.env, {
         PORT: String(p), HOST: '127.0.0.1',
-        PAYESH_STORE: storeFile, PAYESH_AUDIT: auditFile, PAYESH_KEY: keyFile, PAYESH_DEMO_CODE: '1'
+        PAYESH_STORE: storeFile, PAYESH_AUDIT: auditFile, PAYESH_KEY: keyFile, PAYESH_DEMO_CODE: '1',
+        /* R96: S2/S1 سقفِ تلفن (۵/۱۰ دقیقه — پیش ازِ چکِ وجود) را می‌سنجد؛
+           cooldown و سقفِ IP برایِ آزادیِ بقیهٔ تست‌ها بالا */
+        PAYESH_SMS_COOLDOWN_S: '0', PAYESH_SMS_DAILY_CAP: '1000000',
+        PAYESH_SMS_PHONE_LIMIT: '5', PAYESH_SMS_IP_LIMIT: '1000000',
+        PAYESH_LOGIN_IP_LIMIT: '1000000', PAYESH_LOGIN_TRIES: '1000000'
       }),
       stdio: 'pipe'
     });

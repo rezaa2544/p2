@@ -28,6 +28,15 @@ process.env.PAYESH_STORE = T_STORE;
 process.env.PAYESH_AUDIT = T_AUDIT;
 process.env.PAYESH_KEY   = T_KEY;
 process.env.PAYESH_DEMO_CODE = '1';
+/* R96: این سوئیت ده‌ها loginِ تکراری با تلفن‌هایِ هم‌شماره دارد — سقف‌هایِ
+   OTP برایِ آزادیِ تست بالا (خودِ سقف‌ها در server17 سنجیده می‌شوند؛
+   کودکِ S6 سقفِ خودش را صریح می‌گذارد). */
+process.env.PAYESH_SMS_COOLDOWN_S = '0';
+process.env.PAYESH_SMS_DAILY_CAP = '1000000';
+process.env.PAYESH_SMS_PHONE_LIMIT = '1000000';
+process.env.PAYESH_SMS_IP_LIMIT = '1000000';
+process.env.PAYESH_LOGIN_IP_LIMIT = '1000000';
+process.env.PAYESH_LOGIN_TRIES = '1000000';
 
 const { server, store } = require(path.join(ROOT, 'server', 'index.js'));
 

@@ -62,6 +62,10 @@ async function main() {
   /* document.write فقط در ۶ نقطهٔ ممهورِ «چاپِ رسید» (window.open + esc)
      مجاز است — هر نقطهٔ جدید تست را می‌شکند تا مرور شود. */
   const DW_ALLOW = { '20-communication-finance.js': 2, '24-edu-office.js': 2, '33-forms-sms.js': 1, '60-association.js': 1 };
+  /* eval فقط برای resolveِ اسکوپِ lexical در خودتشخیصی: شناسه‌ها ثابتِ
+     سخت‌کد شده‌اند (نه ورودی کاربر) — دو نقطهٔ ممهور. */
+  const EVAL_ALLOW = { '42-self-diagnostics.js': 2 };
+  const evalUsed = {};
   let lintHits = [];
   const dwCount = {};
   for (const f of fs.readdirSync(path.join(ROOT, 'src', 'js')).filter(x => x.endsWith('.js'))) {
@@ -73,6 +77,10 @@ async function main() {
         const line = t.slice(0, m.index).split('\n').length;
         const lineTxt = (t.split('\n')[line - 1] || '').trim();
         if (lineTxt.startsWith('*') || lineTxt.startsWith('//')) continue; /* کامنت */
+        if (name === 'eval(' && EVAL_ALLOW[f] != null) {
+          evalUsed[f] = (evalUsed[f] || 0) + 1;
+          if (evalUsed[f] <= EVAL_ALLOW[f]) continue; /* نقطهٔ ممهور */
+        }
         lintHits.push(f + ':' + line + ' ' + name);
       }
     }

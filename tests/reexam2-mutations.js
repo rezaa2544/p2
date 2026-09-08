@@ -53,10 +53,11 @@ mutate('src/js/19-actions-core.js',
   "update('reexams',sid,{new_score:n,status:'scheduled',updated_at:todayISO()});",
   'tests/reexam2.js', /❌ R4/, 'M2 برداشتنِ وضعیتِ انجام‌شده');
 
+/* R96 P0-1: WRITE_PERMSِ literal منسوخ — دروازه = canOp در fieldGate */
 mutate('server/sync.js',
-  "'reexams','assoc_minutes'",
-  "'assoc_minutes'",
-  'tests/reexam3.js', /❌ B1/, 'M3 برداشتنِ reexams از WRITE_PERMS');
+  "if(!exc && !canOp(s.role, op.c, op.t)) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };",
+  "if(!exc && !canOp(s.role, op.c, op.t) || (op.c === 'reexams' && s.role === 'manager')) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };",
+  'tests/reexam3.js', /❌ B1/, 'M3 برداشتنِ reexams از fieldGate (manager)');
 
 /* بازسازی + خطِّ پایه */
 execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });

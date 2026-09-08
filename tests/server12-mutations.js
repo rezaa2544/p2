@@ -10,19 +10,22 @@
 const { execSync } = require('child_process');
 const fs = require('fs');
 
+/* R96 P0-1: لایهٔ قدیمیِ filterFields فقط نرمال‌سازی/چکِ ارزشِ مدیر را نگه
+   داشته — دروازهٔ status = fieldGate (تک‌منبع). جهش‌ها به همان خط نشانه
+   گرفته‌اند تا invariant واقعاً تک‌لایه سنجیده شود. */
 const MUTS = [
   {
     file: 'server/sync.js', suite: 'tests/server12.js',
-    bad: 'const allowed = isMgr ? fa.ins.managerRoles : fa.ins.defaultRoles;',
-    mut: 'const allowed = isMgr ? fa.ins.managerRoles : [\'pending\', \'approved\', \'rejected\'];',
-    name: 'M1 insِ والد با statusِ جعلی آزاد شد',
+    bad: "if(init.indexOf('*') < 0 && init.indexOf(d.status) < 0)\n          return { code: 'field_denied', msg: 'مقدارِ اولیهٔ status در این مجموعه فقط ' + init.join('/') + ' است' };",
+    mut: "if(false && init.indexOf('*') < 0 && init.indexOf(d.status) < 0)\n          return { code: 'field_denied', msg: 'مقدارِ اولیهٔ status در این مجموعه فقط ' + init.join('/') + ' است' };",
+    name: 'M1 insِ والد با statusِ جعلی آزاد شد (دروازهٔ fieldGate)',
     expectFail: 'S2'
   },
   {
     file: 'server/sync.js', suite: 'tests/server12.js',
-    bad: 'if(!isMgr || fa.upd.statusValues.indexOf(d.status) === -1)',
-    mut: 'if(false || fa.upd.statusValues.indexOf(d.status) === -1)',
-    name: 'M2 updِ statusِ والد آزاد شد',
+    bad: "const roles = STATUS_UPD_ROLE[op.c];\n        if(!roles || roles.indexOf(s.role) < 0)\n          return { code: 'field_denied', msg: 'تغییرِ status برای نقش شما مجاز نیست' };",
+    mut: "const roles = STATUS_UPD_ROLE[op.c];\n        if(false)\n          return { code: 'field_denied', msg: 'تغییرِ status برای نقش شما مجاز نیست' };",
+    name: 'M2 updِ statusِ والد آزاد شد (دروازهٔ fieldGate)',
     expectFail: 'S4'
   }
 ];

@@ -74,7 +74,7 @@ async function main() {
   fs.copyFileSync(seed, store);
   const store0 = JSON.parse(fs.readFileSync(store, 'utf8'));
   const child = spawn('node', [path.join(ROOT, 'server/index.js')], {
-    env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', PAYESH_STORE: store, PAYESH_AUDIT: path.join(dir, 'audit.jsonl'), PAYESH_JWT_SECRET: 'sim3-secret', PAYESH_DEMO_CODE: '1' },
+    env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', PAYESH_STORE: store, PAYESH_AUDIT: path.join(dir, 'audit.jsonl'), PAYESH_JWT_SECRET: require('crypto').randomBytes(32).toString('hex'), PAYESH_DEMO_CODE: '1' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let out = '';
@@ -152,12 +152,12 @@ async function main() {
   const r4c = await http('POST', '/api/sync', { ops: [opReal(tea1, { by: tea1.id, collection: 'attendance', type: 'ins', data: { school_id: 1, student_id: foreignStu.id, date: new Date().toISOString().slice(0, 10), status: 'present' } })] }, tok['teacher-1']);
   T(r4c.status === 403 && r4c.json.code === 'out_of_scope', 'T4c دبیر: حضور برای کلاسی که تدریس نمی‌کند → out_of_scope');
   const saU = store0.users.find((u) => u.role === 'superadmin');
-  const r4d = await http('POST', '/api/sync', { ops: [opReal(saU, { by: saU.id, collection: 'announcements', type: 'ins', data: { school_id: 1, title: 'اصل: سوپرادمین بدون محدودیت', body: 'sim3', role: 'manager' } })] }, tok.superadmin);
+  const r4d = await http('POST', '/api/sync', { ops: [opReal(saU, { by: saU.id, collection: 'announcements', type: 'ins', data: { school_id: 1, title: 'اصل: سوپرادمین بدون محدودیت', body: 'sim3' } })] }, tok.superadmin);
   T(r4d.status === 200, 'T4d سوپرادمین: همان رکورد در مدرسهٔ ۱ → 200 (اصلِ بدون‌محدودیت)');
 
   console.log('\n▸ T5 — batch مسموم (اتمیسی)');
   const annTitle = 'sim3-atomic-' + Date.now();
-  const goodOp = opReal(m2U, { by: m2U.id, collection: 'announcements', type: 'ins', data: { school_id: 2, title: annTitle, body: 'بخشِ معتبر', role: 'manager' } });
+  const goodOp = opReal(m2U, { by: m2U.id, collection: 'announcements', type: 'ins', data: { school_id: 2, title: annTitle, body: 'بخشِ معتبر' } });
   const badOp = opReal(m2U, { by: m2U.id, collection: 'grades', type: 'ins', data: { school_id: 1, student_id: stForeign.id, subject_id: 1, term: 'نوبت اول', exam_type: 'پایانی', score: 1, max_score: 20 } });
   const r5 = await http('POST', '/api/sync', { ops: [goodOp, badOp] }, tok['manager-2']);
   const diskAfter5 = JSON.parse(fs.readFileSync(store, 'utf8'));
@@ -165,7 +165,7 @@ async function main() {
   T(!((diskAfter5.announcements || []).some((a) => a.title === annTitle)), 'T5b opِ معتبرِ همان batch هم اعمال نشد (اتمی)');
 
   console.log('\n▸ T6 — ایدمپوتنس (uid تکراری)');
-  const dupOp = opReal(m2U, { by: m2U.id, collection: 'announcements', type: 'ins', uid: 'sim3-dup-' + Date.now(), data: { school_id: 2, title: 'sim3-dup', body: 'اول', role: 'manager' } });
+  const dupOp = opReal(m2U, { by: m2U.id, collection: 'announcements', type: 'ins', uid: 'sim3-dup-' + Date.now(), data: { school_id: 2, title: 'sim3-dup', body: 'اول' } });
   const r6a = await http('POST', '/api/sync', { ops: [dupOp] }, tok['manager-2']);
   const r6b = await http('POST', '/api/sync', { ops: [dupOp] }, tok['manager-2']);
   T(r6a.status === 200 && r6b.json.results && r6b.json.results[0] && r6b.json.results[0].code === 'duplicate_ignored', 'T6a تکرارِ uid → duplicate_ignored');
@@ -174,18 +174,18 @@ async function main() {
 
   console.log('\n▸ T7 — batch بزرگ');
   const bigOps = [];
-  for (let i = 0; i < 501; i++) bigOps.push(opReal(saU, { by: saU.id, collection: 'announcements', type: 'ins', data: { school_id: 1, title: 'sim3-big', body: String(i), role: 'manager' } }));
+  for (let i = 0; i < 501; i++) bigOps.push(opReal(saU, { by: saU.id, collection: 'announcements', type: 'ins', data: { school_id: 1, title: 'sim3-big', body: String(i) } }));
   const r7 = await http('POST', '/api/sync', { ops: bigOps }, tok.superadmin);
   T(r7.status === 413 && r7.json.code === 'batch_too_large', 'T7 ۵۰۱ op → 413 batch_too_large');
 
   console.log('\n▸ T8 — byِ جعلی');
-  const r8 = await http('POST', '/api/sync', { ops: [Object.assign(opReal(m2U, { by: m2U.id, collection: 'announcements', type: 'ins', data: { school_id: 2, title: 'sim3-forge', body: 'byِ جعلی', role: 'manager' } }), { by: saU.id })] }, tok['manager-2']);
+  const r8 = await http('POST', '/api/sync', { ops: [Object.assign(opReal(m2U, { by: m2U.id, collection: 'announcements', type: 'ins', data: { school_id: 2, title: 'sim3-forge', body: 'byِ جعلی' } }), { by: saU.id })] }, tok['manager-2']);
   T(r8.status === 403 && r8.json.code === 'forged_by', 'T8 op با byِ کاربرِ دیگر → forged_by');
 
   console.log('\n▸ T9 — مهرهایِ جعلی');
-  const r9a = await http('POST', '/api/sync', { ops: [Object.assign(opReal(m2U, { by: m2U.id, collection: 'announcements', type: 'ins', data: { school_id: 2, title: 'sim3-um', body: 'x', role: 'manager' } }), { user_id: saU.id })] }, tok['manager-2']);
+  const r9a = await http('POST', '/api/sync', { ops: [Object.assign(opReal(m2U, { by: m2U.id, collection: 'announcements', type: 'ins', data: { school_id: 2, title: 'sim3-um', body: 'x' } }), { user_id: saU.id })] }, tok['manager-2']);
   T(r9a.status === 403 && r9a.json.code === 'user_mismatch', 'T9a user_idِ جعلی → user_mismatch');
-  const r9b = await http('POST', '/api/sync', { ops: [Object.assign(opReal(m2U, { by: m2U.id, collection: 'announcements', type: 'ins', data: { school_id: 2, title: 'sim3-sm', body: 'x', role: 'manager' } }), { school_id: 1 })] }, tok['manager-2']);
+  const r9b = await http('POST', '/api/sync', { ops: [Object.assign(opReal(m2U, { by: m2U.id, collection: 'announcements', type: 'ins', data: { school_id: 2, title: 'sim3-sm', body: 'x' } }), { school_id: 1 })] }, tok['manager-2']);
   T(r9b.status === 403 && r9b.json.code === 'school_mismatch', 'T9b school_idِ جعلی → school_mismatch');
 
   console.log('\n▸ T10 — روزِ غیرحضوری (عملیاتِ فیزیکی مسدود)');
@@ -199,7 +199,7 @@ async function main() {
   const t2C = (await login(t2U)).cookie || '';
   const r10 = await http('POST', '/api/sync', { ops: [
     opReal(t2U, { by: t2U.id, collection: 'attendance', type: 'ins', data: { school_id: 2, student_id: st2U.id, date: vday, status: 'present' } }),
-    opReal(t2U, { by: t2U.id, collection: 'teacher_notes', type: 'ins', data: { school_id: 2, student_id: st2U.id, teacher_id: t2U.id, note: 'sim3 غیرفیزیکی' } }),
+    opReal(t2U, { by: t2U.id, collection: 'teacher_notes', type: 'ins', data: { school_id: 2, student_id: st2U.id, teacher_id: t2U.id, body: 'sim3 غیرفیزیکی' } }),
   ] }, t2C);
     console.log('       [dbg] status='+r10.status+' '+JSON.stringify(r10.json).slice(0,400));
     const codes10 = (r10.json.results || []).map((x) => x.code);
@@ -213,7 +213,7 @@ async function main() {
 
   console.log('\n▸ T11 — flush واقعی به disk + آدیت');
   const flushTitle = 'sim3-flush-' + Date.now();
-  await http('POST', '/api/sync', { ops: [opReal(m2U, { by: m2U.id, collection: 'announcements', type: 'ins', data: { school_id: 2, title: flushTitle, body: 'flush', role: 'manager' } })] }, tok['manager-2']);
+  await http('POST', '/api/sync', { ops: [opReal(m2U, { by: m2U.id, collection: 'announcements', type: 'ins', data: { school_id: 2, title: flushTitle, body: 'flush' } })] }, tok['manager-2']);
   await sleep(2500);
   const diskFlush = JSON.parse(fs.readFileSync(store, 'utf8'));
   T((diskFlush.announcements || []).some((a) => a.title === flushTitle), 'T11a رکورد روی disk سرور نشست (flush)');
@@ -222,7 +222,7 @@ async function main() {
   T(/sync/.test(auditTxt), 'T11c آدیتِ sync ثبت شد');
 
   console.log('\n▸ T12 — بدون کوکی');
-  const r12 = await http('POST', '/api/sync', { ops: [opReal(saU, { by: saU.id, collection: 'announcements', type: 'ins', data: { school_id: 1, title: 'x', body: 'y', role: 'manager' } })] }, null);
+  const r12 = await http('POST', '/api/sync', { ops: [opReal(saU, { by: saU.id, collection: 'announcements', type: 'ins', data: { school_id: 1, title: 'x', body: 'y' } })] }, null);
   T(r12.status === 401 && r12.json.code === 'no_session', 'T12 بدون نشست → 401 no_session');
 
   child.kill('SIGKILL');

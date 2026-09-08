@@ -53,10 +53,11 @@ mutate('src/js/19-actions-core.js',
   "if(!to){toast('این جابه‌جایی مجاز نیست','err');return;}",
   'tests/scholarship2.js', /❌ S4/, 'M2 برداشتنِ گاردِ جابه‌جاییِ نامجاز');
 
+/* R96 P0-1: WRITE_PERMSِ literal منسوخ — دروازه = canOp در fieldGate */
 mutate('server/sync.js',
-  "'scholarships','reexams'",
-  "'reexams'",
-  'tests/scholarship3.js', /❌ B1/, 'M3 برداشتنِ scholarships از WRITE_PERMS');
+  "if(!exc && !canOp(s.role, op.c, op.t)) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };",
+  "if(!exc && !canOp(s.role, op.c, op.t) || (op.c === 'scholarships' && s.role === 'manager')) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };",
+  'tests/scholarship3.js', /❌ B1/, 'M3 برداشتنِ scholarships از fieldGate (manager)');
 
 /* بازسازی + خطِّ پایه */
 execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });

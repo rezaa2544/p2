@@ -156,12 +156,14 @@ async function main() {
     chk('I3-b bellِ parent (HTTP واقعی + کوکی): فرزندِ 16 را می‌بیند', bell.status === 200 && bell.json && bell.json.family && bell.json.family.length === 1 && Number(bell.json.family[0].studentId) === 16, JSON.stringify(bell.json && bell.json.family));
 
     /* ── I4/I5: نوشتنِ واقعی از Data لایهٔ کلاینت → /api/sync → disk ── */
-    const noteId = await w.eval(`(function(){ var rec = Data.create('teacher_notes', { school_id: 1, teacher_id: 2, text: 'یادداشتِ یکپارچه‌سازیِ ' + Date.now(), date: new Date().toISOString().slice(0,10), by: ${SA.id} }); return rec && rec.id; })()`);
+    const noteId = await w.eval(`(function(){ var rec = Data.create('teacher_notes', { school_id: 1, teacher_id: 2, body: 'یادداشتِ یکپارچه‌سازیِ ' + Date.now(), created_at: new Date().toISOString(), by: ${SA.id} }); return rec && rec.id; })()`);
     let synced = false;
     for (let i = 0; i < 40; i++) { await sleep(500); try { if (w.eval('typeof SYNC !== "undefined" && pendingCount() === 0')) { synced = true; break; } } catch (e) {} }
     chk('I4 عملیات از Data لایهٔ کلاینت همگام شد (صف خالی)', synced === true, (() => { try { return 'pending=' + w.eval('pendingCount()'); } catch (e) { return 'n/a'; } })());
     let onDisk = false;
-    for (let i = 0; i < 12; i++) {
+    /* R96: پُلِ ۳۰ ثانیه‌ای — تحتِ بارِ موازیِ رجیسیون (دو لِین) persist ممکن
+       است دیرتر از ۱۲ ثانیه بیاید (کلاسِ server14-gc: sleep ثابت → verdict محیطی) */
+    for (let i = 0; i < 30; i++) {
       await sleep(1000);
       try {
         const disk = JSON.parse(fs.readFileSync(storeFile, 'utf8'));

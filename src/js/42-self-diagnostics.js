@@ -946,8 +946,11 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
       var need = ['render','renderRoute','insert','update','remove','byId',
                   'batchWrites','saveLog','applyOp','canRoute','canAction',
                   'idxById','idxReset','esc','fa','toast','openModal','closeModal'];
+      /* خودِ شناسه‌ها ثابتِ سخت‌کد شده‌اند (نه ورودی کاربر) — eval فقط برای
+         resolve کردنِ اسکوپِ lexical (بسته‌هایِ let/constِ تک‌فایلی روی
+         window نیستند). مجاز‌شده در lintِ xss-guard (X2a). */
       var miss = need.filter(function(n){
-        try{ return typeof window[n] !== 'function'; }catch(e){ return true; }
+        try{ return typeof eval(n) !== 'function'; }catch(e){ return true; }
       }).map(function(n){ return { تابع:n }; });
       return miss.length
         ? { ok:false, count:miss.length, items:miss,
@@ -973,8 +976,9 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
     check: function(){
       var need = ['BRANCHES','GRADES_OF_LEVEL','LEVELS','NAV','TITLES',
                   'ROLE_FA','DIAG_CHECKS','BELL_PRESETS','FIELD_ALIASES'];
+      /* همان استدلالِ بالایِ eval: شناسهٔ ثابتِ سخت‌کد شده (مجوزِ X2a) */
       var miss = need.filter(function(n){
-        try{ return window[n] === undefined; }catch(e){ return true; }
+        try{ return eval(n) === undefined; }catch(e){ return true; }
       }).map(function(n){ return { جدول:n }; });
       return miss.length
         ? { ok:false, count:miss.length, items:miss,

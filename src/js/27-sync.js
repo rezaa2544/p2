@@ -69,6 +69,17 @@ function saveSyncMeta(){
 /* ---------- افزودن عملیات به صف ---------- */
 /* هر تغییر داده‌ای که باید به سرور برود از اینجا رد می‌شود */
 function enqueueOp(op){
+  /* R96 P0-5: کلیدهایِ محلی (idِ ریکوردِ کلاینت + by که در سطحِ op هست)
+     جزوِ schema نیستند — دروازهٔ فیلدِ سرور آن‌ها را unknown_field می‌داند.
+     نسخهٔ پاک می‌رود (رکوردهایِ دمو دست‌نخورده می‌مانند). */
+  if(op && op.data && (op.data.id !== undefined || op.data.by !== undefined)){
+    const clean = {};
+    for(const k in op.data){
+      if(k === 'id' || k === 'by') continue;
+      clean[k] = op.data[k];
+    }
+    op = Object.assign({}, op, { data: clean });
+  }
   const item = {
     uid       : 'op_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8),
     op        : op,
