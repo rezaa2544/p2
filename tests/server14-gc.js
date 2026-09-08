@@ -5,7 +5,7 @@
    store را با ورودی‌های کهنه seed می‌کنیم:
      __processed_uids : 31 روز پیش + 1 روز پیش
      __revoked_jti    : 9 ساعت پیش + 1 ساعت پیش
-     __auth.codes     : 10 دقیقه پیش (منقضی) + 1 دقیقه پیش (زنده)
+     __auth.codes     : 10 دقیقه پیش (منقضی) + 1 دقیقه پیش (زنده) → مهاجرت به otp.json (R101)
    بعد از یک persist، باید فقط کهنه‌ها پاک شده باشند و:
      • uidِ زنده هنوز duplicate_ignored بدهد (کонтراکت ایدمپوتانس)
      • uidِ کهنه (پاک‌شده) قابلِ ری‌پلای باشد (سازگار با ایدمپوتانس)
@@ -140,8 +140,9 @@ async function main() {
   chk('G5b GC: uidِ زنده (1 روز) ماند', !!after.__processed_uids['gc-new-uid']);
   chk('G6 GC: jtiِ کهنه (9 ساعت) پاک شد', !after.__revoked_jti['gc-old-jti']);
   chk('G6b GC: jtiِ زنده (1 ساعت) ماند', !!after.__revoked_jti['gc-new-jti']);
-  chk('G7 GC: کدِ منقضی (10 دقیقه) پاک شد', !after.__auth.codes['+989900000001']);
-  chk('G7b GC: کدِ زنده (1 دقیقه) ماند', !!after.__auth.codes['+989900000002']);
+  const otpAfter = JSON.parse(fs.readFileSync(path.join(tmp, 'otp.json'), 'utf8')); /* R101: کدها در otp.json (مهاجرت از __auth) */
+  chk('G7 GC: کدِ منقضی (10 دقیقه) پاک شد', !(otpAfter.codes || {})['+989900000001']);
+  chk('G7b GC: کدِ زنده (1 دقیقه) ماند', !!((otpAfter.codes || {})['+989900000002']));
 
   const oldKeys = (st) => (st.__processed_uids['gc-old-uid'] ? 1 : 0)
                          + (st.__revoked_jti['gc-old-jti'] ? 1 : 0)
