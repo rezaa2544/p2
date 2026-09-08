@@ -12,6 +12,7 @@
  "25-filters.js",
  "26-curriculum.js",
  "27-sync.js",
+ "29-pull.js",
  "06-login.js",
  "30-authz.js",
  "07-shell.js",
