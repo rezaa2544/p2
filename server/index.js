@@ -21,6 +21,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 const { createAuth } = require('./auth');
+const { createOtpStore } = require('./otp-store');
 const { createSync, attach: syncAttach } = require('./sync');
 const { createIdor } = require('./idor');
 const { createBell } = require('./bell');
@@ -42,6 +43,7 @@ const { createBootstrapRoute } = require('./routes/bootstrap');
 const ROOT = path.join(__dirname, '..');
 const DATA_DIR = path.join(__dirname, 'data');
 const STORE_FILE = process.env.PAYESH_STORE || path.join(DATA_DIR, 'payesh.json');
+const OTP_FILE = process.env.PAYESH_OTP_FILE || path.join(path.dirname(STORE_FILE), 'otp.json');
 const AUDIT_FILE = process.env.PAYESH_AUDIT || path.join(DATA_DIR, 'audit.log');
 const KEY_FILE   = process.env.PAYESH_KEY   || path.join(DATA_DIR, 'jwt.key');
 
@@ -140,7 +142,7 @@ function markDirty(){ dirty = true; }
      یک uidِ کهنه پس از GC با قرارداد سازگار است (ایدمپوتانس در
      حدِ عمرِ صف برقرار است).
    __revoked_jti — فقط در حدِ TTLِ نشست (۸h، بند ۲.۱) معنا دارد.
-   __auth.codes — کدهایِ منقضی از قبل مرده‌اند (TTL ۵ دقیقه).
+   (R101: __auth.codes به otp.json رفت — جارویش با همان فایل است.)
    در حلقهٔ persist اجرا می‌شود: سه جارو O(n) ناچیز؛ payesh.json
    (و بکاپ‌هایش) دیگر بی‌پایان رشد نمی‌کنند. */
 const UID_GC_MS = 30 * 24 * 3600 * 1000;
@@ -153,10 +155,6 @@ function gcStore(){
   }
   for(const k in store.__revoked_jti){
     if(now - store.__revoked_jti[k] > JTI_GC_MS){ delete store.__revoked_jti[k]; n++; }
-  }
-  for(const k in store.__auth.codes){
-    const rec = store.__auth.codes[k];
-    if(!rec || now - (rec.at || 0) >= CODE_TTL_MS){ delete store.__auth.codes[k]; n++; }
   }
   return n;
 }
@@ -268,7 +266,9 @@ function securityHeaders(res, nonce, https){
 }
 
 /* ── compose modules ───────────────────────────────────────────────── */
-const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty });
+/* R101: OTP + rate limits live in otp.json (distributed across instances) */
+const otp = createOtpStore({ file: OTP_FILE, ttlMs: CODE_TTL_MS, store, markDirty });
+const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty, otp });
 /* R97: همهٔ ماژول‌هایِ /api با sendJsonCounting می‌چرخند تا رد‌ها شمرده
    شوند؛ auth استثناست (سقفِ OTP سقفِ خودش را می‌سازد). */
 const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });

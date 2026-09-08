@@ -156,7 +156,7 @@ async function main(){
     const phone = String(manager1.phone).replace(/[\s\-()]/g, '');
     const r = await req('POST', '/api/auth/send-code', { body: { phone } });
     assert(r.status === 200 && r.json.ok, r.status);
-    assert(/^\d{4}$/.test(r.json.demo_code || ''), 'demo_code missing');
+    assert(/^\d{6}$/.test(r.json.demo_code || ''), 'demo_code missing'); /* R101: 6-digit OTP */
   });
 
   /* ── S6 send-code rate limit (contract §5.5) ─────────────────────
