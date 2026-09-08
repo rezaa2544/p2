@@ -78,6 +78,7 @@ async function bootServer(port, extraEnv) {
   const env = Object.assign({}, process.env, {
     PORT: String(port), HOST: '127.0.0.1',
     PAYESH_STORE: path.join(tmp, 's' + port + '.json'),
+    PAYESH_OTP_FILE: path.join(tmp, 'otp-' + port + '.json'), /* R101: هر سرور فایلِ OTP خودش (ایزولاسیون) */
     PAYESH_AUDIT: path.join(tmp, 'a' + port + '.log'),
     PAYESH_KEY: path.join(tmp, 'k' + port + '.key'),
     PAYESH_DEMO_CODE: '1'
@@ -212,7 +213,7 @@ async function main() {
     /* T1: production بدونِ TLS */
     const t1 = spawnServer(Object.assign({}, process.env, {
       PORT: '9007', HOST: '127.0.0.1', PAYESH_ENV: 'production',
-      PAYESH_STORE: path.join(tmp, 't1.json'), PAYESH_AUDIT: path.join(tmp, 't1.log'),
+      PAYESH_STORE: path.join(tmp, 't1.json'), PAYESH_OTP_FILE: path.join(tmp, 'otp-t1.json'), PAYESH_AUDIT: path.join(tmp, 't1.log'),
       PAYESH_KEY: path.join(tmp, 't1.key')
     }), 9007);
     fs.copyFileSync(REAL_STORE, path.join(tmp, 't1.json'));
@@ -237,7 +238,7 @@ async function main() {
     const t3 = spawnServer(Object.assign({}, process.env, {
       PORT: '9009', HOST: '127.0.0.1', PAYESH_ENV: 'production',
       PAYESH_TLS_CERT: path.join(tmp, 'ss.crt'), PAYESH_TLS_KEY: path.join(tmp, 'ss.key'),
-      PAYESH_STORE: path.join(tmp, 't3.json'), PAYESH_AUDIT: path.join(tmp, 't3.log'),
+      PAYESH_STORE: path.join(tmp, 't3.json'), PAYESH_OTP_FILE: path.join(tmp, 'otp-t3.json'), PAYESH_AUDIT: path.join(tmp, 't3.log'),
       PAYESH_KEY: path.join(tmp, 't3.key')
     }), 9009);
     fs.copyFileSync(REAL_STORE, path.join(tmp, 't3.json'));
@@ -284,7 +285,10 @@ async function main() {
   const code1 = s1.json.demo_code;
   await sleep(2600); /* persist */
   const storeTxt = fs.readFileSync(otpStore, 'utf8');
-  chk('O1b کدِ plaintext در store نیست (فقط hash)', storeTxt.indexOf('"' + code1 + '"') < 0 && /\{[^{}]*"h":"[0-9a-f]{64}"/.test(storeTxt));
+  const otpTxt = fs.readFileSync(path.join(tmp, 'otp-' + OTP_PORT + '.json'), 'utf8'); /* R101 */
+  chk('O1b کدِ plaintext در store/otp نیست (فقط hash در otp.json)',
+    storeTxt.indexOf('"' + code1 + '"') < 0 && otpTxt.indexOf('"' + code1 + '"') < 0
+    && /\{[^{}]*"h":"[0-9a-f]{64}"/.test(otpTxt));
   chk('O1c پاسخِ send-code فقط sent/demo_code', s1.json.code === 'sent' && s1.json.demo_code === code1 && Object.keys(s1.json).length === 3, JSON.stringify(s1.json));
 
   const s1b = await req('POST', OTP_PORT, '/api/auth/send-code', { phone: phone1 });
@@ -348,7 +352,7 @@ async function main() {
   {
     const env = Object.assign({}, process.env, {
       PORT: '9007', HOST: '127.0.0.1',
-      PAYESH_STORE: path.join(tmp, 'o8.json'), PAYESH_AUDIT: path.join(tmp, 'o8.log'),
+      PAYESH_STORE: path.join(tmp, 'o8.json'), PAYESH_OTP_FILE: path.join(tmp, 'otp-o8.json'), PAYESH_AUDIT: path.join(tmp, 'o8.log'),
       PAYESH_KEY: path.join(tmp, 'o8.key')
     });
     fs.copyFileSync(REAL_STORE, env.PAYESH_STORE);
@@ -373,7 +377,7 @@ async function main() {
   {
     const env = Object.assign({}, process.env, {
       PORT: '9007', HOST: '127.0.0.1',
-      PAYESH_STORE: path.join(tmp, 's.json'), PAYESH_AUDIT: path.join(tmp, 's.log'),
+      PAYESH_STORE: path.join(tmp, 's.json'), PAYESH_OTP_FILE: path.join(tmp, 'otp-s.json'), PAYESH_AUDIT: path.join(tmp, 's.log'),
       PAYESH_KEY: path.join(tmp, 's.key'), PAYESH_DEMO_CODE: '1'
     });
     fs.copyFileSync(REAL_STORE, env.PAYESH_STORE);
@@ -413,7 +417,7 @@ async function main() {
   {
     const env = Object.assign({}, process.env, {
       PORT: '9007', HOST: '127.0.0.1',
-      PAYESH_STORE: path.join(tmp, 'e.json'), PAYESH_AUDIT: path.join(tmp, 'e.log'),
+      PAYESH_STORE: path.join(tmp, 'e.json'), PAYESH_OTP_FILE: path.join(tmp, 'otp-e.json'), PAYESH_AUDIT: path.join(tmp, 'e.log'),
       PAYESH_KEY: path.join(tmp, 'e.key'), PAYESH_DEMO_CODE: '1',
       PAYESH_SMS_COOLDOWN_S: '0',
       PAYESH_ENUM_WARN: '5', PAYESH_ENUM_SLOW1: '8',
@@ -458,7 +462,7 @@ async function main() {
   {
     const env = Object.assign({}, process.env, {
       PORT: '9010', HOST: '127.0.0.1',
-      PAYESH_STORE: path.join(tmp, 'f.json'), PAYESH_AUDIT: path.join(tmp, 'f.log'),
+      PAYESH_STORE: path.join(tmp, 'f.json'), PAYESH_OTP_FILE: path.join(tmp, 'otp-f.json'), PAYESH_AUDIT: path.join(tmp, 'f.log'),
       PAYESH_KEY: path.join(tmp, 'f.key'), PAYESH_DEMO_CODE: '1',
       PAYESH_SMS_COOLDOWN_S: '0'
     });

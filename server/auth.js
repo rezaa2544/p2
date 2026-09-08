@@ -30,6 +30,7 @@ function createAuth(ctx){
   const DEMO_CODE_ECHO = ctx.DEMO_CODE_ECHO;
   const audit = ctx.audit;
   const isHttps = ctx.isHttps;
+  const otp = ctx.otp; /* R101: otp.json (distributed) */
 
   /* ── JWT (hand-rolled HS256; alg is hard-coded, contract §2.2) ────
      R96 P0-3: aud/iss/iat validated; key >= 256 bit enforced at boot;
@@ -121,15 +122,18 @@ function createAuth(ctx){
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
   /* ── R96 P0-4 — OTP: CSPRNG + hash-only storage + distributed-style
-     limits (phone + IP + daily cap; persisted in the shared store file) ── */
+     limits (phone + IP + daily cap; persisted in the shared store file) ──
+     R101: state moved to server/data/otp.json (server/otp-store.js) —
+     one shared file across instances; 6-digit codes; 15-min windows. */
   /* سقف‌های پیش‌فرضِ سخت برایِ تولید؛ env فقط برایِ آزمایش (test-harness)
      موجود است — در production هرگز تغییر نده. */
   const _lim = (v, d) => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 0 ? n : d; };
-  const CODE_COOLDOWN_MS = _lim(process.env.PAYESH_SMS_COOLDOWN_S, 30) * 1000;
-  const CODE_DAILY_MAX = _lim(process.env.PAYESH_SMS_DAILY_CAP, 5);
-  const IP_SEND_MAX = _lim(process.env.PAYESH_SMS_IP_LIMIT, 10);   /* sends / 10 min per IP */
-  const PHONE_SEND_MAX = _lim(process.env.PAYESH_SMS_PHONE_LIMIT, 5); /* sends / 10 min per phone */
-  const IP_LOGIN_MAX = _lim(process.env.PAYESH_LOGIN_IP_LIMIT, 20); /* logins / 10 min per IP */
+  const WINDOW_MS = _lim(process.env.PAYESH_SMS_WINDOW_S, 900) * 1000; /* sliding window: sends + logins */
+  const CODE_COOLDOWN_MS = _lim(process.env.PAYESH_SMS_COOLDOWN_S, 60) * 1000;
+  const CODE_DAILY_MAX = _lim(process.env.PAYESH_SMS_DAILY_CAP, 20);
+  const IP_SEND_MAX = _lim(process.env.PAYESH_SMS_IP_LIMIT, 10);   /* sends / window per IP */
+  const PHONE_SEND_MAX = _lim(process.env.PAYESH_SMS_PHONE_LIMIT, 5); /* sends / window per phone */
+  const IP_LOGIN_MAX = _lim(process.env.PAYESH_LOGIN_IP_LIMIT, 10); /* logins / window per IP */
   const LOGIN_TRIES_MAX = _lim(process.env.PAYESH_LOGIN_TRIES, 5);  /* wrong codes before code dies */
   function clientIp(req){
     const xf = req.headers && req.headers['x-forwarded-for'];
@@ -162,35 +166,38 @@ function createAuth(ctx){
        phones must cost the same as known ones (equal-shape responses). */
     const now = Date.now();
     const ip = clientIp(req);
-    const cd = store.__auth.code_cd || (store.__auth.code_cd = {});
+    otp.reloadIfChanged(); /* R101: sibling instances' writes (shared otp.json) */
+    const cd = otp.data.cd;
     if(now - (cd[phone] || 0) < CODE_COOLDOWN_MS) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
-    const daily = store.__auth.code_daily || (store.__auth.code_daily = {});
+    const daily = otp.data.daily;
     const day = new Date(now).toISOString().slice(0, 10);
     if(daily[phone] && daily[phone].day === day && daily[phone].n >= CODE_DAILY_MAX)
       return sendJson(res, 429, { ok: false, code: 'rate_limited' });
-    const rli = store.__auth.code_rate_ip || (store.__auth.code_rate_ip = {});
-    pruneList(rli[ip] = rli[ip] || [], 10 * 60 * 1000, now);
+    const rli = otp.data.rate_ip;
+    pruneList(rli[ip] = rli[ip] || [], WINDOW_MS, now);
     if(rli[ip].length >= IP_SEND_MAX) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
-    const rl = (store.__auth.code_rate[phone] = store.__auth.code_rate[phone] || []);
-    pruneList(rl, 10 * 60 * 1000, now);
+    const rl = (otp.data.rate[phone] = otp.data.rate[phone] || []);
+    pruneList(rl, WINDOW_MS, now);
     if(rl.length >= PHONE_SEND_MAX) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
     rl.push(now); rli[ip].push(now);
     cd[phone] = now;
     if(!daily[phone] || daily[phone].day !== day) daily[phone] = { day, n: 0 };
     daily[phone].n += 1;
-    if(ctx.markDirty) ctx.markDirty(); /* R96: وضعیتِ سقف‌ها در store می‌ماند (multi-instance) */
+    otp.save(); /* R101: crash-safe + visible to sibling instances */
 
     const user = (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === phone.slice(-10));
     /* S-73-2: ONE response shape whether or not the phone is known —
        a 404 here would let an attacker enumerate registered phones.
        Equal-time probe (no timing oracle either way). */
-    checkCodeSafe('probe', String((store.__auth.codes[phone] || {}).h || '0000'));
+    checkCodeSafe('probe', String((otp.data.codes[phone] || {}).h || '000000'));
     if(!user) return sendJson(res, 200, { ok: true, code: 'sent' });
 
     /* R96: CSPRNG code; ONLY the hash is stored (plaintext never
-       touches disk, audit or responses — demo echo is test-mode only). */
-    const code = String(crypto.randomInt(1000, 10000));
-    store.__auth.codes[phone] = { h: hashCode(code, phone), at: now, user_id: user.id, tries: 0 };
+       touches disk, audit or responses — demo echo is test-mode only).
+       R101: 6 digits; stored in otp.json (distributed). */
+    const code = String(crypto.randomInt(100000, 1000000));
+    otp.data.codes[phone] = { h: hashCode(code, phone), at: now, user_id: user.id, tries: 0 };
+    otp.save();
     audit('send_code', { user_id: user.id, role: user.role, school_id: user.school_id, ip, summary: 'ارسال کد ورود برای کاربر ' + user.id });
     const out = { ok: true, code: 'sent' };
     if(DEMO_CODE_ECHO) out.demo_code = code; /* dev/preview — a real gateway never echoes */
@@ -215,37 +222,39 @@ function createAuth(ctx){
        so it survives restarts and is shared across instances of one store. */
     const now = Date.now();
     const ip = clientIp(req);
-    const lri = store.__auth.login_rate_ip || (store.__auth.login_rate_ip = {});
-    pruneList(lri[ip] = lri[ip] || [], 10 * 60 * 1000, now);
+    otp.reloadIfChanged();
+    const lri = otp.data.login_rate_ip;
+    pruneList(lri[ip] = lri[ip] || [], WINDOW_MS, now);
     if(lri[ip].length >= IP_LOGIN_MAX) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
     lri[ip].push(now);
+    otp.save();
 
     const user = (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === phone.slice(-10));
 
     /* progressive delay after consecutive failures — an attacker can
        NOT weaponize the lock (contract §5.5.2) */
-    const fl = (store.__auth.login_fail[phone] = store.__auth.login_fail[phone] || { n: 0, until: 0 });
+    const fl = (otp.data.login_fail[phone] = otp.data.login_fail[phone] || { n: 0, until: 0 });
     if(fl.until > Date.now()) await sleep(fl.until - Date.now());
 
     const fail = (msg) => {
       fl.n += 1;
       fl.until = Date.now() + Math.min(1000 * Math.pow(2, Math.max(0, fl.n - 3)), 30000);
       audit('login_fail', { reason: msg, user_id: user ? user.id : null, role: user ? user.role : null, school_id: user ? user.school_id : null, ip, summary: 'ورود ناموفق: ' + msg });
-      if(ctx.markDirty) ctx.markDirty();
+      otp.save();
       return sendJson(res, 401, { ok: false, code: msg });
     };
 
     /* 1) the code — equal timing whether or not the phone is known.
        R96: hash-only compare (plaintext code is never stored). */
-    const rec = store.__auth.codes[phone];
-    if(rec && (rec.tries || 0) >= LOGIN_TRIES_MAX) delete store.__auth.codes[phone]; /* exhausted — force re-send */
+    const rec = otp.data.codes[phone];
+    if(rec && (rec.tries || 0) >= LOGIN_TRIES_MAX) delete otp.data.codes[phone]; /* exhausted — force re-send */
     const okCode = codeRecOk(rec, code, phone, Date.now());
     if(!okCode){
       /* R96: تلاشِ نادرست هم شمارنده را بالا می‌برد — وگرنه کد
          هرگز «کِلی» نمی‌شد و brute-force فقط با سقفِ IP می‌خورد. */
       if(rec){
         rec.tries = (rec.tries || 0) + 1;
-        if(rec.tries >= LOGIN_TRIES_MAX) delete store.__auth.codes[phone];
+        if(rec.tries >= LOGIN_TRIES_MAX) delete otp.data.codes[phone];
       }
       checkCodeSafe('dummy', 'dummy');
       return fail('bad_code');
@@ -260,10 +269,10 @@ function createAuth(ctx){
     const school = (store.schools || []).find(s => s.id === user.school_id);
     if(school && !school.active) return fail('school_inactive');
 
-    delete store.__auth.codes[phone];
+    delete otp.data.codes[phone];
     fl.n = 0; fl.until = 0;
     audit('login_ok', { user_id: user.id, role: user.role, school_id: user.school_id, ip, summary: 'ورود موفق: ' + user.id + ' (' + user.role + ')' });
-    if(ctx.markDirty) ctx.markDirty();
+    otp.save();
     setSessionCookie(req, res, user);
     /* never echo nid / full phone back (contract §4) */
     sendJson(res, 200, { ok: true, user: { id: user.id, full_name: user.full_name, role: user.role, school_id: user.school_id || null, phone_masked: phone.slice(0, 4) + '****' + phone.slice(-2) } });

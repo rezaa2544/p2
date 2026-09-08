@@ -8,6 +8,7 @@ const fs = require('fs');
 
 const FILES = {
   'server/index.js': fs.readFileSync('server/index.js', 'utf8'),
+  'server/otp-store.js': fs.readFileSync('server/otp-store.js', 'utf8'), /* R101 */
 };
 
 const MUTS = [
@@ -26,10 +27,10 @@ const MUTS = [
     expectFail: 'GC: jtiِ کهنه (9 ساعت) پاک شد',
   },
   {
-    file: 'server/index.js',
+    file: 'server/otp-store.js', /* R101: جارویِ کدها به otp-store رفت */
     name: 'M3 GCِ کدهایِ منقضی بی‌اثر شود',
-    bad: 'if(!rec || now - (rec.at || 0) >= CODE_TTL_MS){ delete store.__auth.codes[k]; n++; }',
-    mut: 'if(false){ delete store.__auth.codes[k]; n++; }',
+    bad: 'if(!r || now - (r.at || 0) >= ttlMs) delete data.codes[p];',
+    mut: 'if(false) delete data.codes[p];',
     expectFail: 'GC: کدِ منقضی (10 دقیقه) پاک شد',
   },
   {
