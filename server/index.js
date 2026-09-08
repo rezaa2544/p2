@@ -30,6 +30,13 @@ const { createConflicts } = require('./conflicts');
 const { createAudit, clientIp } = require('./audit');
 const db = require('./db');
 
+const { createStudentRoutes } = require('./routes/students');
+const { createClassRoutes } = require('./routes/classes');
+const { createAttendanceRoutes } = require('./routes/attendance');
+const { createGradeRoutes } = require('./routes/grades');
+const { createUserRoutes } = require('./routes/users');
+const { createBootstrapRoute } = require('./routes/bootstrap');
+
 const ROOT = path.join(__dirname, '..');
 const DATA_DIR = path.join(__dirname, 'data');
 const STORE_FILE = process.env.PAYESH_STORE || path.join(DATA_DIR, 'payesh.json');
@@ -263,6 +270,14 @@ const admin = createAdmin({ store, audit, sessionFrom: auth.sessionFrom, sendJso
 const sms = createSms({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 const conflicts = createConflicts({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 
+/* ── Phase 3: RESTful Resource Routes ─────────────────────────────── */
+const studentRoutes = createStudentRoutes({ store, db, audit, markDirty });
+const classRoutes = createClassRoutes({ store, db, audit, markDirty });
+const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty });
+const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty });
+const userRoutes = createUserRoutes({ store, db, audit, markDirty });
+const bootstrapRoute = createBootstrapRoute({ store });
+
 /* ── static ────────────────────────────────────────────────────────── */
 const STATIC = {
   '/':              { file: 'index.html',      type: 'text/html; charset=utf-8' },
@@ -326,6 +341,139 @@ const onRequest = async (req, res) => {
        بی‌دلیل بود؛ حالا 4KB مثلِ بقیهٔ بدنه‌هایِ کوچک (413 برایِ بیشتر). */
     if(p === '/api/admin/restore' && req.method === 'POST') return await admin.apiRestore(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/sms/send' && req.method === 'POST') return await sms.apiSend(req, res, await readBody(req, 32 * 1024));
+
+    /* ── Phase 3: RESTful Resource Endpoints (/api/v1/*) ────────── */
+    if(p.indexOf('/api/v1/') === 0){
+      const s = auth.sessionFrom(req);
+      if(!s) return sendJson(res, 401, { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' });
+      req.user = s;
+      req.session = s;
+
+      // /api/v1/bootstrap
+      if(p === '/api/v1/bootstrap' && req.method === 'GET'){
+        const r = bootstrapRoute.getBootstrapData(req);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/students & /api/v1/students/:id
+      if(p === '/api/v1/students' && req.method === 'GET'){
+        const r = studentRoutes.getStudentsList(req, url.searchParams);
+        return sendJson(res, 200, r);
+      }
+      if(p === '/api/v1/students' && req.method === 'POST'){
+        const r = await studentRoutes.createStudent(req, await readBody(req, 64 * 1024));
+        return sendJson(res, r.status, r.body);
+      }
+      if(/^\/api\/v1\/students\/\d+$/.test(p)){
+        const id = p.split('/')[4];
+        if(req.method === 'GET'){
+          const r = studentRoutes.getStudentById(req, id);
+          return sendJson(res, r.status, r.body);
+        }
+        if(req.method === 'PATCH'){
+          const r = await studentRoutes.updateStudent(req, id, await readBody(req, 64 * 1024));
+          return sendJson(res, r.status, r.body);
+        }
+        if(req.method === 'DELETE'){
+          const r = await studentRoutes.deleteStudent(req, id);
+          return sendJson(res, r.status, r.body);
+        }
+      }
+
+      // /api/v1/classes & /api/v1/classes/:id
+      if(p === '/api/v1/classes' && req.method === 'GET'){
+        const r = classRoutes.getClassesList(req, url.searchParams);
+        return sendJson(res, 200, r);
+      }
+      if(p === '/api/v1/classes' && req.method === 'POST'){
+        const r = await classRoutes.createClass(req, await readBody(req, 64 * 1024));
+        return sendJson(res, r.status, r.body);
+      }
+      if(/^\/api\/v1\/classes\/\d+$/.test(p)){
+        const id = p.split('/')[4];
+        if(req.method === 'GET'){
+          const r = classRoutes.getClassById(req, id);
+          return sendJson(res, r.status, r.body);
+        }
+        if(req.method === 'PATCH'){
+          const r = await classRoutes.updateClass(req, id, await readBody(req, 64 * 1024));
+          return sendJson(res, r.status, r.body);
+        }
+        if(req.method === 'DELETE'){
+          const r = await classRoutes.deleteClass(req, id);
+          return sendJson(res, r.status, r.body);
+        }
+      }
+
+      // /api/v1/attendance & /api/v1/attendance/:id
+      if(p === '/api/v1/attendance' && req.method === 'GET'){
+        const r = attendanceRoutes.getAttendanceList(req, url.searchParams);
+        return sendJson(res, 200, r);
+      }
+      if(p === '/api/v1/attendance' && req.method === 'POST'){
+        const r = await attendanceRoutes.createAttendance(req, await readBody(req, 64 * 1024));
+        return sendJson(res, r.status, r.body);
+      }
+      if(/^\/api\/v1\/attendance\/\d+$/.test(p)){
+        const id = p.split('/')[4];
+        if(req.method === 'PATCH'){
+          const r = await attendanceRoutes.updateAttendance(req, id, await readBody(req, 64 * 1024));
+          return sendJson(res, r.status, r.body);
+        }
+        if(req.method === 'DELETE'){
+          const r = await attendanceRoutes.deleteAttendance(req, id);
+          return sendJson(res, r.status, r.body);
+        }
+      }
+
+      // /api/v1/grades & /api/v1/grades/:id
+      if(p === '/api/v1/grades' && req.method === 'GET'){
+        const r = gradeRoutes.getGradesList(req, url.searchParams);
+        return sendJson(res, 200, r);
+      }
+      if(p === '/api/v1/grades' && req.method === 'POST'){
+        const r = await gradeRoutes.createGrade(req, await readBody(req, 64 * 1024));
+        return sendJson(res, r.status, r.body);
+      }
+      if(/^\/api\/v1\/grades\/\d+$/.test(p)){
+        const id = p.split('/')[4];
+        if(req.method === 'PATCH'){
+          const r = await gradeRoutes.updateGrade(req, id, await readBody(req, 64 * 1024));
+          return sendJson(res, r.status, r.body);
+        }
+        if(req.method === 'DELETE'){
+          const r = await gradeRoutes.deleteGrade(req, id);
+          return sendJson(res, r.status, r.body);
+        }
+      }
+
+      // /api/v1/users & /api/v1/users/:id
+      if(p === '/api/v1/users' && req.method === 'GET'){
+        const r = userRoutes.getUsersList(req, url.searchParams);
+        return sendJson(res, 200, r);
+      }
+      if(p === '/api/v1/users' && req.method === 'POST'){
+        const r = await userRoutes.createUser(req, await readBody(req, 64 * 1024));
+        return sendJson(res, r.status, r.body);
+      }
+      if(/^\/api\/v1\/users\/\d+$/.test(p)){
+        const id = p.split('/')[4];
+        if(req.method === 'GET'){
+          const r = userRoutes.getUserById(req, id);
+          return sendJson(res, r.status, r.body);
+        }
+        if(req.method === 'PATCH'){
+          const r = await userRoutes.updateUser(req, id, await readBody(req, 64 * 1024));
+          return sendJson(res, r.status, r.body);
+        }
+        if(req.method === 'DELETE'){
+          const r = await userRoutes.deleteUser(req, id);
+          return sendJson(res, r.status, r.body);
+        }
+      }
+
+      return sendJson(res, 404, { ok: false, code: 'not_found' });
+    }
     if(p.indexOf('/api/') === 0) return sendJson(res, 404, { ok: false, code: 'not_found' });
     return serveStatic(res, p, nonce);
   }catch(err){
