@@ -8,6 +8,16 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const crypto = require('crypto');
+const { validate } = require('./validate');
+
+/* نرمال‌سازیِ سطحی برایِ اعتبارسنجی: trimِ رشته‌ها (کلاینت هم همین را
+   می‌فرستد) — کلیدها دست‌نخورده می‌مانند تا unknown_field سنجیده شود. */
+function shallowTrim(o){
+  if(!o || typeof o !== 'object' || Array.isArray(o)) return o;
+  const c = {};
+  for(const k of Object.keys(o)) c[k] = (typeof o[k] === 'string') ? o[k].trim() : o[k];
+  return c;
+}
 
 /* ctx: { store, JWT_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS,
           DEMO_CODE_ECHO, audit, isHttps(req) } */
@@ -140,8 +150,14 @@ function createAuth(ctx){
 
   /* ── endpoints ─────────────────────────────────────────────────── */
   async function apiSendCode(req, res, body){
-    const phone = String((body && body.phone) || '').replace(/[\s\-()]/g, '');
-    if(!/^\+?\d{10,15}$/.test(phone)) return sendJson(res, 400, { ok: false, code: 'bad_phone' });
+    /* لایهٔ مقدار (validate.js): فقط {phone} — کلیدِ ناشناخته = ردِّ 400.
+       قراردادِ فرمت (§2) و codeها دست‌نخورده‌اند. */
+    const v = validate(shallowTrim(body), { fields: { phone: { type: 'authphone' } }, required: ['phone'] });
+    if(!v.ok){
+      if(v.kind === 'unknown_field') return sendJson(res, 400, { ok: false, code: 'unknown_field', field: v.field });
+      return sendJson(res, 400, { ok: false, code: 'bad_phone' });
+    }
+    const phone = String(body.phone).replace(/[\s\-()]/g, '');
     /* R96: EVERY limit BEFORE the existence check — probing unknown
        phones must cost the same as known ones (equal-shape responses). */
     const now = Date.now();
@@ -182,12 +198,18 @@ function createAuth(ctx){
   }
 
   async function apiLogin(req, res, body){
-    const phone = String((body && body.phone) || '').replace(/[\s\-()]/g, '');
-    const code  = String((body && body.code) || '').trim();
-    const nid   = String((body && body.national_id) || '').trim();
-    if(!phone || !code || !nid) return sendJson(res, 400, { ok: false, code: 'missing_fields' });
-    if(!/^\+?\d{10,15}$/.test(phone) || !/^\d{4,6}$/.test(code) || !/^\d{10}$/.test(nid))
+    /* لایهٔ مقدار (validate.js): فقط {phone, code, national_id} — کلیدِ
+       ناشناخته = ردِّ 400. فرمت‌ها و codeها عینِ رفتارِ قفل‌شده‌اند. */
+    const v = validate(shallowTrim(body), { fields: {
+      phone: { type: 'authphone' }, code: { type: 'code' }, national_id: { type: 'nid' }
+    }, required: ['phone', 'code', 'national_id'] });
+    if(!v.ok){
+      if(v.kind === 'unknown_field') return sendJson(res, 400, { ok: false, code: 'unknown_field', field: v.field });
       return sendJson(res, 400, { ok: false, code: 'missing_fields' });
+    }
+    const phone = String(body.phone).replace(/[\s\-()]/g, '');
+    const code  = String(body.code).trim();
+    const nid   = String(body.national_id).trim();
 
     /* R96: IP-level login limit (brute-force across phones) — persisted,
        so it survives restarts and is shared across instances of one store. */

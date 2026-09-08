@@ -12,6 +12,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { validate } = require('./validate');
 
 const RETENTION = 10;
 const NAME_RE = /^payesh-\d{8}-\d{6}-\d{3}\.json$/;
@@ -80,12 +81,21 @@ function createAdmin(ctx){
   function apiRestore(req, res, body){
     const g = checkAdmin(req, res);
     if(g.done) return g.done;
+    /* لایهٔ مقدار (validate.js): فقط {file?} — کلیدِ ناشناخته = رد. */
+    const v = validate(body || {}, { fields: { file: { type: 'string', max: 128 } } });
+    if(!v.ok){
+      if(v.kind === 'unknown_field')
+        return sendJson(res, 400, { ok: false, code: 'unknown_field', field: v.field });
+      return sendJson(res, 400, { ok: false, code: 'bad_payload' });
+    }
     const all = listBackups();
     if(!all.length) return sendJson(res, 404, { ok: false, code: 'no_backup' });
-    const wanted = (body && typeof body.file === 'string') ? body.file : null;
-    const name = (wanted && NAME_RE.test(wanted) && all.indexOf(wanted) > -1)
-      ? wanted
-      : all[all.length - 1];
+    const wanted = (body && typeof body.file === 'string' && body.file !== '') ? body.file : null;
+    /* نامِ خواسته‌شده باید الگویِ پشتیبان باشد و در فهرست باشد؛ وگرنه ردِّ
+       صریح (رفتارِ پیشین: سکوت و بازگشت به آخرین نسخه — fail-open بود). */
+    if(wanted && (!NAME_RE.test(wanted) || all.indexOf(wanted) === -1))
+      return sendJson(res, 400, { ok: false, code: 'bad_payload' });
+    const name = wanted || all[all.length - 1];
     const fp = path.join(dir, name);
     let data = null;
     try{ data = JSON.parse(fs.readFileSync(fp, 'utf8')); }catch(e){}

@@ -37,8 +37,9 @@ const MUTS = [
   },
   {
     file: 'server/conflicts.js', suite: 'tests/server15.js',
-    bad: "if(s.role !== 'manager' && s.role !== 'superadmin')\n      return sendJson(res, 403, { ok: false, code: 'role_denied' });\n    const cid",
-    mut: "if(false && s.role !== 'manager' && s.role !== 'superadmin')\n      return sendJson(res, 403, { ok: false, code: 'role_denied' });\n    const cid",
+    /* ری‌تارگت (لایهٔ مقدار): پس از گاردِ نقش حالا بلوکِ validate می‌آید نه const cid */
+    bad: "if(s.role !== 'manager' && s.role !== 'superadmin')\n      return sendJson(res, 403, { ok: false, code: 'role_denied' });\n    /* لایهٔ مقدار",
+    mut: "if(false && s.role !== 'manager' && s.role !== 'superadmin')\n      return sendJson(res, 403, { ok: false, code: 'role_denied' });\n    /* لایهٔ مقدار",
     name: 'M4 گاردِ نقشِ resolve حذف شد (دبیر داوری می‌کند)',
     expectFail: 'C14'
   },
