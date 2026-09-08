@@ -732,7 +732,7 @@ const F7_ACTIONS = {
     if(used){toast(`این طرح برای ${fa(used)} دانش‌آموز صادر شده و حذف نمی‌شود`,'err');return;}
     askDelete(`طرح «${p.title}» حذف شود؟`,()=>{remove('tuition_plans',id);toast('طرح حذف شد','');render();});
   },
-  'plan-save'(){
+  'tuition-plan-save'(){
     const p=window._edit||{};
     const data={title:V('pl_title'),amount:Number(V('pl_amount'))||0,installments:Math.max(1,Number(V('pl_inst'))||1),
       interval_days:Math.max(7,Number(V('pl_int'))||30),first_due:V('pl_due')||todayISO(),active:1,school_id:S.user.school_id};
@@ -801,6 +801,6 @@ function planModal(p){
   openModal(modalTpl(p.id?'ویرایش طرح شهریه':'طرح شهریه جدید',
     `<div class="grid g2">${f('عنوان *',inp('pl_title',p.title))}${f('مبلغ کل (ریال)',inp('pl_amount',p.amount,'number'))}
       ${f('تعداد اقساط',inp('pl_inst',p.installments,'number'))}${f('فاصله اقساط (روز)',inp('pl_int',p.interval_days,'number'))}
-      ${f('اولین سررسید',jdate('pl_due',p.first_due))}</div>`,'plan-save'));
+      ${f('اولین سررسید',jdate('pl_due',p.first_due))}</div>`,'tuition-plan-save'));
   window._edit=p;
 }

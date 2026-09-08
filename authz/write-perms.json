@@ -3149,7 +3149,7 @@
         "superadmin"
       ],
       "collections": [
-        "tuition_plans"
+        "app_settings"
       ]
     },
     "pre-add": {
@@ -3558,6 +3558,15 @@
       "collections": [
         "installments",
         "tuitions"
+      ]
+    },
+    "tuition-plan-save": {
+      "roles": [
+        "manager",
+        "superadmin"
+      ],
+      "collections": [
+        "tuition_plans"
       ]
     },
     "user-del-ok": {
