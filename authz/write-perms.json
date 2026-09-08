@@ -28,6 +28,7 @@
       "counselor_refs",
       "discipline",
       "dojo_types",
+      "donations",
       "dorm_assignments",
       "dorm_meals",
       "dorm_rooms",
@@ -470,6 +471,20 @@
       "ins": [],
       "upd": [],
       "del": []
+    },
+    "donations": {
+      "ins": [
+        "manager",
+        "superadmin"
+      ],
+      "upd": [
+        "manager",
+        "superadmin"
+      ],
+      "del": [
+        "manager",
+        "superadmin"
+      ]
     },
     "dojo_types": {
       "ins": [
@@ -1656,6 +1671,17 @@
       "updated_at",
       "village"
     ],
+    "donations": [
+      "amount",
+      "created_at",
+      "date",
+      "description",
+      "donor_name",
+      "id",
+      "registered_by",
+      "school_id",
+      "updated_at"
+    ],
     "dojo_types": [
       "created_at",
       "delta",
@@ -2743,6 +2769,22 @@
       ],
       "collections": [
         "dojo_types"
+      ]
+    },
+    "don-del-ok": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "donations"
+      ]
+    },
+    "don-save": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "donations"
       ]
     },
     "dorm-assign-pick": {

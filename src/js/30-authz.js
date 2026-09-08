@@ -400,7 +400,14 @@ var ACTION_ROLES = {
   'drill-edit':   ['manager'],
   'drill-save':   ['manager'],
   'drill-del':    ['manager'],
-  'drill-del-ok': ['manager']
+  'drill-del-ok': ['manager'],
+  /* کمک‌های داوطلبانه (بند B.5 فرناز): هر ۶ اکشن فقط مدیر */
+  'don-new':    ['manager'],
+  'don-edit':   ['manager'],
+  'don-save':   ['manager'],
+  'don-del':    ['manager'],
+  'don-del-ok': ['manager'],
+  'don-print':  ['manager']
 };
 
 /* ✅ (R99 — تک‌منبعِ مجوزها) canAction/canRoute فقط رابط کاربری را مرتب

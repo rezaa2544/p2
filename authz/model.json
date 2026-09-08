@@ -583,6 +583,31 @@
    "upd": [],
    "del": []
   },
+  "donations": {
+   "fields": [
+    "amount",
+    "created_at",
+    "date",
+    "description",
+    "donor_name",
+    "id",
+    "registered_by",
+    "school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
   "dojo_types": {
    "fields": [
     "created_at",

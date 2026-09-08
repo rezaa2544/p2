@@ -208,6 +208,7 @@ function _renderRouteInner(){
     case 'staffatt':return viewStaffAtt();
     case 'training':return viewTraining();
     case 'drills':return viewDrills();
+    case 'donations':return viewDonations();
     default:return viewDashboard();
   }
 }

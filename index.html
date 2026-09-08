@@ -2128,7 +2128,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[],staff_attendance:[],training_courses:[],safety_drills:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[],staff_attendance:[],training_courses:[],safety_drills:[],donations:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -2473,6 +2473,17 @@ function generate(){
       add('safety_drills',{school_id:sid,date:daysAgoISO(recent?30:400),
         participant_count_students:120+((sid*37)%80),participant_count_staff:8+((sid*13)%6),
         notes:recent?'مانور زلزله':'مانور سال گذشته',registered_by:mgr.id,created_at:daysAgoISO(recent?29:399)});
+    });
+  })();
+  /* بند B.5 (چت۱): سید کمک‌های داوطلبانه — هر مدرسه ۲ رکورد (۱ نامدار + ۱ ناشناس).
+     ⚠️ صفر مصرفِ rng (هشِ قطعی از شناسهٔ مدرسه) — دلیل در سید B.1. */
+  (function(){
+    var done={};
+    db.users.filter(function(u){return u.role==='manager';}).forEach(function(mgr){
+      if(done[mgr.school_id])return; done[mgr.school_id]=1;
+      var sid=mgr.school_id;
+      add('donations',{school_id:sid,donor_name:'خیر مدرسه',amount:500000+((sid*7919)%7)*500000,date:daysAgoISO(20+sid),description:'کمک به تجهیز آزمایشگاه',registered_by:mgr.id,created_at:daysAgoISO(19+sid)});
+      add('donations',{school_id:sid,donor_name:null,amount:1000000+((sid*104729)%5)*1000000,date:daysAgoISO(60+sid),description:'نذر فرهنگی',registered_by:mgr.id,created_at:daysAgoISO(59+sid)});
     });
   })();
 }
@@ -3114,7 +3125,7 @@ function scopeHealth(){
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
  superadmin:[['نظارت روزانه',[['dashboard','📊','داشبورد مدیریتی'],['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها']]],['مدارس و کاربران',[['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه'],['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]]],
- manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['assets','🧰','املاک'],['dorm','🏠','اسکان و خوابگاه'],['sidadiff','⚖️','سیدا'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک'],['preapps','📥','قیف پیش‌ثبت‌نام'],['scholarships','🎓','کمک‌هزینه و بورسیه'],['drills','⛑️','مانور ایمنی']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات'],['reexams','🔁','امتحانات تجدیدی (شهریور)']]],['کلاس‌های تابستان',[['summerclasses','☀️','کلاس‌های تابستانی']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی'],['staffatt','🗓️','حضور کادر'],['training','📚','دوره‌های آموزشی']]],['مالی',[['tuition','💰','شهریه و امور مالی'],['association','🤝','انجمن و کمک‌ها']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['assets','🧰','املاک'],['dorm','🏠','اسکان و خوابگاه'],['sidadiff','⚖️','سیدا'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک'],['preapps','📥','قیف پیش‌ثبت‌نام'],['scholarships','🎓','کمک‌هزینه و بورسیه'],['drills','⛑️','مانور ایمنی']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات'],['reexams','🔁','امتحانات تجدیدی (شهریور)']]],['کلاس‌های تابستان',[['summerclasses','☀️','کلاس‌های تابستانی']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی'],['staffatt','🗓️','حضور کادر'],['training','📚','دوره‌های آموزشی']]],['مالی',[['tuition','💰','شهریه و امور مالی'],['association','🤝','انجمن و کمک‌ها'],['donations','🎁','کمک‌های داوطلبانه']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  teacher:[['کار روزانه',[['dashboard','📊','داشبورد'],['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کار آموزشی',[['meetings','📅','جلسات اولیا'],['classes','🏛️','کلاس‌ها'],['vclass','🖥️','کلاس مجازی'],['exams','👁️','برنامه مراقبت من'],['homework','📓','تکالیف'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['calendar','🗓️','تقویم آموزشی']]],['پروندهٔ من',[['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['leaves','📨','مرخصی'],['homework','📓','تکالیف من']]],['امور مالی',[['mytuition','💰','شهریه من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['کار روزانه',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
@@ -3125,7 +3136,7 @@ const NAV={
 const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','پروندهٔ کاملِ هر فرزند: کارنامه، حضور و انضباط — با دکمه‌های بالای صفحه بین فرزندان جابه‌جا شوید (برچسبِ منو به‌صورتِ «پروندهٔ N فرزند» نمایش داده می‌شود)'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],
 reexams:['امتحانات تجدیدی (شهریور)','دروسِ نیازمندِ امتحانِ مجدد + نمرهٔ نهایی پس از تجدیدی'],
 summerclasses:['کلاس‌های تابستانی','نام + دبیر + دانش‌آموزان + تاریخ‌ها — جدا از سالِ تحصیلیِ رسمی'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده و مدارس','همهٔ فرزندان و مدرسهٔ هرکدام — حتی وقتی در مدارس مختلف‌اند؛ اتصالِ فرزندان به کد ملی و تأییدِ آن‌ها (برای پروندهٔ کاملِ تک‌تک، «پرونده فرزندان» را باز کنید)'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],staffatt:['حضور کادر','ثبت روزانه و مرور ماهانهٔ حضور کادر'],training:['دوره‌های آموزشی','دوره‌های ضمن خدمت کادر و گواهی پایان دوره'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],library:['کتابخانه','کتاب‌ها + امانت به دانش‌آموز + بازگشت — نسخهٔ سبک'],assets:['املاک و موجودی','تجهیزات با وضعیت + مکان — نسخهٔ سبک'],dorm:['اسکان و خوابگاه','اتاق‌ها + انتساب دانش‌آموز + وعده‌های هفتگی + مرخصیِ رفت‌وبرگشتِ آخر هفته — نسخهٔ سبک'],sidadiff:['اختلاف با سیدا','نمرهٔ سیدا دستی — مقایسه با پایش، فقط خواندنی برای بقیه'],preapps:['قیف پیش‌ثبت‌نام','تماس → بازدید → آزمون → ثبت‌نامِ قطعی — جدا از ثبت‌نامِ رسمی'],
-scholarships:['کمک‌هزینه و بورسیه','علامت‌گذاری دانش‌آموزِ نیازمند + وضعیت (درخواست‌شده/بررسی/تأیید/رد) — فقط ثبت، بدون پرداخت'],visitors:['مهمان‌ها','ورود/خروج افراد غیردانش‌آموز و غیرکارکنان — نسخهٔ سبک'],homework:['تکالیف','بارگذاری تصویر تکلیف + تصحیح دیجیتال با خطِ خوددست و نمره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها'],association:['انجمن و کمک‌ها','در مدارس دولتی به‌جای شهریه: کمک‌های داوطلبانهٔ اولیا با ثبت شفاف'],drills:['مانور ایمنی','ثبت سالانهٔ مانور زلزله/ایمنی + شمار شرکت‌کنندگان']};
+scholarships:['کمک‌هزینه و بورسیه','علامت‌گذاری دانش‌آموزِ نیازمند + وضعیت (درخواست‌شده/بررسی/تأیید/رد) — فقط ثبت، بدون پرداخت'],visitors:['مهمان‌ها','ورود/خروج افراد غیردانش‌آموز و غیرکارکنان — نسخهٔ سبک'],homework:['تکالیف','بارگذاری تصویر تکلیف + تصحیح دیجیتال با خطِ خوددست و نمره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها'],association:['انجمن و کمک‌ها','در مدارس دولتی به‌جای شهریه: کمک‌های داوطلبانهٔ اولیا با ثبت شفاف'],drills:['مانور ایمنی','ثبت سالانهٔ مانور زلزله/ایمنی + شمار شرکت‌کنندگان'],donations:['کمک‌های داوطلبانه','ثبت کمک خیرین + رسید چاپی — جدا از شهریه']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
 S.stack=[];
@@ -4678,7 +4689,14 @@ var ACTION_ROLES = {
   'drill-edit':   ['manager'],
   'drill-save':   ['manager'],
   'drill-del':    ['manager'],
-  'drill-del-ok': ['manager']
+  'drill-del-ok': ['manager'],
+  /* کمک‌های داوطلبانه (بند B.5 فرناز): هر ۶ اکشن فقط مدیر */
+  'don-new':    ['manager'],
+  'don-edit':   ['manager'],
+  'don-save':   ['manager'],
+  'don-del':    ['manager'],
+  'don-del-ok': ['manager'],
+  'don-print':  ['manager']
 };
 
 /* ✅ (R99 — تک‌منبعِ مجوزها) canAction/canRoute فقط رابط کاربری را مرتب
@@ -4924,6 +4942,7 @@ function _renderRouteInner(){
     case 'staffatt':return viewStaffAtt();
     case 'training':return viewTraining();
     case 'drills':return viewDrills();
+    case 'donations':return viewDonations();
     default:return viewDashboard();
   }
 }
@@ -12873,7 +12892,7 @@ document.addEventListener('click',e=>{
     if(typeof toast==='function') toast('شما اجازهٔ انجام این عملیات را ندارید','err');
     return;
   }
-  /* فاز ۲: A از پارسیال‌هایِ ۱۲ ماژولِ 19-actions ساخته می‌شود —
+  /* فاز ۲: A از پارسیال‌هایِ ۱۳ ماژولِ 19-actions ساخته می‌شود —
      ترکیبِ آن (نام‌ها، بدنه‌ها، ترتیبِ تعریف) با نسخهٔ تک‌فایلی یکسان است. */
   const A=Object.assign({},
     coreActions(e,el,id,a,rawId),
@@ -12887,7 +12906,8 @@ document.addEventListener('click',e=>{
     adminActions(e,el,id,a,rawId),
     staffActions(e,el,id,a,rawId),
     trainingActions(e,el,id,a,rawId),
-    drillsActions(e,el,id,a,rawId));
+    drillsActions(e,el,id,a,rawId),
+    donationsActions(e,el,id,a,rawId));
   if(A[a]){e.preventDefault();A[a]();}
   else if(typeof F7_ACTIONS!=='undefined'&&F7_ACTIONS[a]){e.preventDefault();F7_ACTIONS[a](el,id);}
   else if(typeof P8_ACTIONS!=='undefined'&&P8_ACTIONS[a]){e.preventDefault();P8_ACTIONS[a](el,id);}
@@ -14379,6 +14399,51 @@ function drillsActions(e, el, id, a, rawId){
      if(!res.ok){ toast(res.msg, 'err'); return; }
      closeModal(); toast('مانور حذف شد', 'ok'); render();
    }
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   فاز ۲ بازبینیِ معماری — شکستنِ 19-actions.js به ماژول‌هایِ دامنه‌ای
+      اقدامات کمک‌های داوطلبانه: don-. (بند B.5 فرناز — چت۱)
+   پارسیالِ سیزدهمِ A: ترکیب در شنوندهٔ کلیکِ 19-actions-core انجام می‌شود.
+   قراردادِ تحلیلِ استاتیک (tools/check-authz.js): ظرف دقیقاً
+   `  return {` تا `  };` و ورودی‌ها `'نام'(){` بدون پارامتر.
+   ═══════════════════════════════════════════════════════════════════ */
+function donationsActions(e, el, id, a, rawId){
+  return {
+   /* ─────────────── کمک‌های داوطلبانه (بند B.5) ─────────────── */
+   'don-new'(){
+     openModal(modalTpl('ثبت کمک داوطلبانه',
+       '<input type="hidden" id="don_f_id" value="" />'
+       + f('نام کمک‌کننده (خالی = ناشناس)', inp('don_f_donor', ''))
+       + f('مبلغ به ریال *', inp('don_f_amount', '', 'number'))
+       + f('تاریخ *', inp('don_f_date', todayISO(), 'date'))
+       + f('شرح', '<textarea class="input" id="don_f_desc" rows="2"></textarea>'),
+       'don-save'));
+   },
+   'don-edit'(){
+     var d = byId('donations', Number(id));
+     if(!d) { toast('رکورد یافت نشد', 'err'); return; }
+     openModal(modalTpl('ویرایش کمک',
+       '<input type="hidden" id="don_f_id" value="' + escAttr(d.id) + '" />'
+       + f('نام کمک‌کننده (خالی = ناشناس)', inp('don_f_donor', d.donor_name || ''))
+       + f('مبلغ به ریال *', inp('don_f_amount', d.amount, 'number'))
+       + f('تاریخ *', inp('don_f_date', d.date, 'date'))
+       + f('شرح', '<textarea class="input" id="don_f_desc" rows="2">' + esc(d.description || '') + '</textarea>'),
+       'don-save'));
+   },
+   'don-save'(){
+     var res = saveDonation(V('don_f_id') || null, V('don_f_donor'), V('don_f_amount'), V('don_f_date'), V('don_f_desc'));
+     if(!res.ok){ toast(res.msg, 'err'); return; }
+     closeModal(); toast(res.updated ? 'کمک ویرایش شد' : 'کمک ثبت شد', 'ok'); render();
+   },
+   'don-del'(){ confirmModal('این کمک حذف شود؟', 'don-del-ok', id); },
+   'don-del-ok'(){
+     var res = deleteDonation(window._delId);
+     if(!res.ok){ toast(res.msg, 'err'); return; }
+     closeModal(); toast('کمک حذف شد', 'ok'); render();
+   },
+   'don-print'(){ donPrint(id); }
   };
 }
 
@@ -29315,6 +29380,131 @@ function viewDrills(){
     + (list.length
       ? '<div class="table-wrap"><table class="table"><thead><tr><th>تاریخ</th><th>دانش‌آموز</th><th>کادر</th><th>یادداشت</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>'
       : empty('⛑️', 'مانوری ثبت نشده', ''))
+    + '</div></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بند B.5 فرناز (چت۱) — ثبت کمک‌های داوطلبانه
+   ─────────────────────────────────────────────────────────────────
+   • مجموعهٔ جدا: donations — هیچ اشتراکی با ماژولِ شهریه ندارد: نه
+     رکورد (tuitions/installments/transactions)، نه تابع، نه اکشن،
+     نه روت. فقط rial() و jalali() که ابزارِ عمومی‌اند.
+   • school_id همیشه از نشست (S.user) می‌آید، هرگز از ورودی (R98).
+   • فقط مدیر می‌نویسد (گارد سه‌لایه: ACTION_ROLES ‏+ گاردِ canActionِ
+     دسپاتچ + گاردِ داخلِ saveDonation). سوپرادمین طبق اصلِ سراسریِ
+     «بدون محدودیت» مجاز است ولی عملاً از «ورود به پنل مدرسه» ثبت
+     می‌کند (الگوی B.1/B.4).
+   • نامِ کمک‌کننده اختیاری است؛ خالی = «ناشناس».
+   ═══════════════════════════════════════════════════════════════════ */
+var DON_MAX_AMOUNT = 10000000000;
+
+/** تاریخ ISO معتبر و واقعاً تقویمی؟ (fail-closed — مستقل) */
+function donValidDate(s){
+  if(typeof s !== 'string') return false;
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if(!m) return false;
+  var d = new Date(s + 'T00:00:00');
+  return !isNaN(d) && d.getFullYear() === +m[1] && d.getMonth() + 1 === +m[2] && d.getDate() === +m[3];
+}
+
+/** کمک‌های یک مدرسه — تازه‌ترین اول */
+function donationsOf(schoolId){
+  return (db.donations || []).filter(function(d){ return d.school_id === schoolId; })
+    .sort(function(a, b){ return String(a.date) < String(b.date) ? 1 : -1; });
+}
+
+/** جمع کمک‌های یک مدرسه */
+function donationsTotal(schoolId){
+  return donationsOf(schoolId).reduce(function(a, d){ return a + (Number(d.amount) || 0); }, 0);
+}
+
+/** نام نمایشی کمک‌کننده (خالی = ناشناس) */
+function donorFa(d){
+  var n = d ? String(d.donor_name || '').trim() : '';
+  return n || 'ناشناس';
+}
+
+/* ── نویسندهٔ واحد (ثبت/ویرایش) ────────────────
+   همهٔ ورودی‌ها از نو اعتبارسنجی می‌شوند؛ id ویرایش باید از همان
+   مدرسهٔ نشست باشد (ضد IDOR بین‌مدرسه‌ای). */
+function saveDonation(id, donorName, amount, dateISO, description){
+  var role = (typeof activePersona === 'function') ? activePersona() : (S.user && S.user.role);
+  if(role !== 'manager' && role !== 'superadmin') return { ok: false, msg: 'فقط مدیر مدرسه می‌تواند کمک ثبت کند' };
+  if(!S.user || !S.user.school_id) return { ok: false, msg: 'نشست معتبر نیست' };
+  if(!donValidDate(dateISO)) return { ok: false, msg: 'تاریخ معتبر نیست' };
+  if(dateISO > todayISO()) return { ok: false, msg: 'ثبت برای روزهای آینده مجاز نیست' };
+  amount = Number(amount);
+  if(!Number.isInteger(amount) || amount < 1 || amount > DON_MAX_AMOUNT) return { ok: false, msg: 'مبلغ معتبر نیست' };
+  donorName = String(donorName == null ? '' : donorName).trim().slice(0, 100);
+  description = String(description == null ? '' : description).slice(0, 2000);
+  var sid = S.user.school_id;
+  if(id){
+    var ex = byId('donations', Number(id));
+    if(!ex || ex.school_id !== sid) return { ok: false, msg: 'رکورد معتبر نیست' };
+    update('donations', ex.id, { donor_name: donorName || null, amount: amount, date: dateISO, description: description });
+    return { ok: true, id: ex.id, updated: true };
+  }
+  var r = insert('donations', { school_id: sid, donor_name: donorName || null, amount: amount, date: dateISO, description: description, registered_by: S.user.id });
+  return { ok: true, id: r.id, updated: false };
+}
+
+/** حذف یک کمک (فقط همان مدرسهٔ نشست) */
+function deleteDonation(id){
+  var role = (typeof activePersona === 'function') ? activePersona() : (S.user && S.user.role);
+  if(role !== 'manager' && role !== 'superadmin') return { ok: false, msg: 'فقط مدیر مدرسه می‌تواند حذف کند' };
+  if(!S.user || !S.user.school_id) return { ok: false, msg: 'نشست معتبر نیست' };
+  var ex = byId('donations', Number(id));
+  if(!ex || ex.school_id !== S.user.school_id) return { ok: false, msg: 'رکورد معتبر نیست' };
+  remove('donations', ex.id);
+  return { ok: true };
+}
+
+/** رسید چاپی سادهٔ یک کمک */
+function donPrint(id){
+  var d = byId('donations', Number(id));
+  if(!d) { toast('رکورد یافت نشد', 'err'); return; }
+  if(S.user && S.user.school_id && d.school_id !== S.user.school_id) { toast('رکوردِ مدرسهٔ دیگری است', 'err'); return; }
+  var w = window.open('', '_blank');
+  if(!w){ toast('اجازه باز کردن پنجره داده نشد', 'err'); return; }
+  var sc = byId('schools', d.school_id) || {};
+  w.document.write('<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>رسید کمک داوطلبانه</title>'
+    + '<style>body{font-family:Vazirmatn,Tahoma;padding:28px;color:#0f172a;max-width:520px;margin:auto}'
+    + 'h1{font-size:20px;color:#1668f0;margin:0 0 4px}table{width:100%;border-collapse:collapse;font-size:14px;margin-top:14px}'
+    + 'td{border:1px solid #cbd5e1;padding:8px}@media print{.np{display:none}}</style></head><body>'
+    + '<h1>🧾 رسید کمک داوطلبانه</h1>'
+    + '<div>' + esc(sc.name || '') + ' — شمارهٔ رسید: <b>' + fa(d.id) + '</b></div>'
+    + '<table><tbody>'
+    + '<tr><td>کمک‌کننده</td><td><b>' + esc(donorFa(d)) + '</b></td></tr>'
+    + '<tr><td>مبلغ</td><td><b>' + rial(d.amount) + ' ریال</b></td></tr>'
+    + '<tr><td>تاریخ</td><td>' + esc(jalali(d.date)) + '</td></tr>'
+    + '<tr><td>شرح</td><td>' + esc(d.description || '—') + '</td></tr>'
+    + '</tbody></table><div class="np" style="text-align:center;margin-top:14px"><button onclick="window.print()" style="padding:8px 20px;border:none;border-radius:8px;background:#1668f0;color:#fff;font-family:inherit;cursor:pointer">🖨️ چاپ</button></div></body></html>');
+  w.document.close();
+}
+
+/** نمای کمک‌های داوطلبانه (روت donations — فقط مدیر) */
+function viewDonations(){
+  var u = S.user;
+  var list = donationsOf(u.school_id);
+  var total = donationsTotal(u.school_id);
+  var rows = list.map(function(d){
+    return '<tr><td><b>' + esc(jalali(d.date)) + '</b></td>'
+      + '<td>' + esc(donorFa(d)) + '</td><td><b>' + rial(d.amount) + '</b> <span class="small muted">ریال</span></td>'
+      + '<td class="small">' + esc(d.description || '—') + '</td>'
+      + '<td><div class="row" style="gap:5px;flex-wrap:nowrap">'
+      + '<button class="icon-btn" title="رسید چاپی" data-act="don-print" data-id="' + escAttr(d.id) + '">🖨️</button>'
+      + '<button class="icon-btn" title="ویرایش" data-act="don-edit" data-id="' + escAttr(d.id) + '">✏️</button>'
+      + '<button class="icon-btn danger" title="حذف" data-act="don-del" data-id="' + escAttr(d.id) + '">🗑️</button>'
+      + '</div></td></tr>';
+  }).join('');
+  return '<div class="card"><div class="card-head"><h3>🎁 کمک‌های داوطلبانه</h3>'
+    + '<span class="badge b-green">جمع: ' + rial(total) + ' ریال</span>'
+    + '<button class="btn" data-act="don-new">➕ ثبت کمک</button></div>'
+    + '<div class="card-body">'
+    + (list.length
+      ? '<div class="table-wrap"><table class="table"><thead><tr><th>تاریخ</th><th>کمک‌کننده</th><th>مبلغ</th><th>شرح</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      : empty('🎁', 'کمکی ثبت نشده', ''))
+    + '<p class="small muted">این بخش کاملاً جدا از شهریه است و روی حساب‌های شهریه اثری ندارد.</p>'
     + '</div></div>';
 }
 
