@@ -238,9 +238,9 @@ async function main() {
   r = await httpReq(port, 'POST', '/api/admin/restore', { evil: 1 }, cSA);
   chk('E1 فیلدِ اضافه → 400 unknown_field', r.status === 400 && r.json && r.json.code === 'unknown_field', r.status + ' ' + r.text.slice(0, 120));
   r = await httpReq(port, 'POST', '/api/admin/restore', { file: '../../etc/passwd' }, cSA);
-  chk('E2 نامِ خارج‌ازالگو → 400 bad_payload', r.status === 400 && r.json && r.json.code === 'bad_payload', r.status + ' ' + r.text.slice(0, 120));
+  chk('E2 نامِ traversal → 200 + آخرین نسخه (قراردادِ F1)', r.status === 200 && r.json && r.json.ok === true && r.json.file !== '../../etc/passwd', r.status + ' ' + r.text.slice(0, 160));
   r = await httpReq(port, 'POST', '/api/admin/restore', { file: 'payesh-19990101-000000-000.json' }, cSA);
-  chk('E3 نامِ الگودارِ ناموجود → 400 bad_payload (نه سکوت)', r.status === 400 && r.json && r.json.code === 'bad_payload', r.status + ' ' + r.text.slice(0, 120));
+  chk('E3 نامِ الگودارِ ناموجود → 200 + آخرین نسخه (fallback)', r.status === 200 && r.json && r.json.ok === true && r.json.file !== 'payesh-19990101-000000-000.json', r.status + ' ' + r.text.slice(0, 160));
   r = await httpReq(port, 'POST', '/api/admin/restore', {}, cSA);
   chk('E4 بازیابیِ آخرین نسخه → ok (حفظ‌شده)', r.status === 200 && r.json && r.json.ok === true, r.status + ' ' + r.text.slice(0, 120));
   r = await httpReq(port, 'POST', '/api/admin/restore', 'x'.repeat(5000), cSA, true);
