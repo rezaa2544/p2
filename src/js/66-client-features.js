@@ -199,6 +199,9 @@ const CF_ACTIONS = {
     /* بررسیِ دوبارهٔ مالکیت در لحظهٔ ذخیره — S.__cfRid ادعای کلاینت است؛
        باورِ کور آن = درخواستِ جعلی برای رکوردِ دیگران (تأییدِ Devin) */
     if(!rec||!u||!cfCanExcuse(u,rec)){ S.__cfRid=0; closeModal(); toast('این دسترسی را ندارید','err'); return; }
+    /* E.5: ضدتکرار — اگر برای همین روز درخواستِ بررسی‌نشده هست، دوباره نساز */
+    var dup=(db.leaves||[]).some(function(l){return l.student_id===rec.student_id&&l.status==='pending'&&l.from_date<=rec.date&&l.to_date>=rec.date;});
+    if(dup){ S.__cfRid=0; closeModal(); toast('برای این غیبت قبلاً درخواست ثبت شده — در انتظار بررسی مدیر','err'); return; }
     var reason=V('qe_reason');
     var st=byId('users',rec.student_id)||{};
     insert('leaves',{school_id:rec.school_id,student_id:rec.student_id,from_date:rec.date,to_date:rec.date,
