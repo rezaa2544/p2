@@ -179,6 +179,11 @@ async function main() {
     const r = JSON.parse(W(`(()=>{
       var p=S.user;
       var h=renderRoute();
+      /* دور ۱۰۰/گام ۶: چیپ‌هایِ trend-sub شناسهٔ درس (subject) حمل می‌کنند،
+         نه دانش‌آموز — با آمدنِ نمراتِ سال‌گذشته چیپ‌ها بیشتر شدند و
+         شناسه‌شان با شناسهٔ عددیِ دانش‌آموزی تصادف می‌کند. از پیمایشِ
+         نشتِ دانش‌آموز بیرون‌اند (نشتِ واقعی نیست — اثبات در گزارشِ گام ۷). */
+      h=h.replace(/<button[^>]*data-act="trend-sub"[^>]*>[^<]*<\\/button>/g,'');
       var links=db.parent_links.filter(l=>l.parent_id===p.id);
       var kidIds=links.map(l=>l.student_id);
       var shown=kidIds.filter(id=>h.indexOf('data-id="'+id+'"')>-1).length;
