@@ -454,6 +454,73 @@ async function main() {
       await sleep(300);
     }
   }
+  console.log('\n— F: field-level authorization (R98) —');
+  {
+    const env = Object.assign({}, process.env, {
+      PORT: '9010', HOST: '127.0.0.1',
+      PAYESH_STORE: path.join(tmp, 'f.json'), PAYESH_AUDIT: path.join(tmp, 'f.log'),
+      PAYESH_KEY: path.join(tmp, 'f.key'), PAYESH_DEMO_CODE: '1',
+      PAYESH_SMS_COOLDOWN_S: '0'
+    });
+    fs.copyFileSync(REAL_STORE, env.PAYESH_STORE);
+    const f10 = spawnServer(env, 9010);
+    let up = false;
+    for (let i = 0; i < 40; i++) {
+      const h = await req('GET', 9010, '/api/health');
+      if (h.status === 200) { up = true; break; }
+      await sleep(300);
+    }
+    chk('F0 سرورِ 9010 (fields) بالا آمد', up);
+    if (up) {
+      const T1 = seed.users.find(u => u.id === 4);  /* teacher، مدرسهٔ 1 */
+      const M1 = seed.users.find(u => u.id === 2);  /* manager، مدرسهٔ 1 */
+      const mt = {}, mm = {};
+      await login(9010, String(T1.phone).replace(/[\s\-()]/g, ''), T1.national_id, mt);
+      await login(9010, String(M1.phone).replace(/[\s\-()]/g, ''), M1.national_id, mm);
+      let fSeq = 0;
+      const opX = (over) => Object.assign({ uid: 'f' + (++fSeq) + Math.random().toString(36).slice(2, 6), at: new Date().toISOString() }, over);
+      const sync = (ck, ops) => req('POST', 9010, '/api/sync', { ops }, ck);
+
+      /* F1 — مدیر نوتیفیکاسیون برایِ دبیر می‌سازد (user_id مالِ مدیریت) */
+      const r1 = await sync(mm.ck, [opX({ by: 2, c: 'notifications', t: 'ins', data: { user_id: 4, school_id: 1, type: 'announcement', title: 'F-notice', body: 'b' } })]);
+      const res1 = r1.json && r1.json.results && r1.json.results[0];
+      chk('F1 manager ins notifications (user_id) → ok', r1.status === 200 && res1 && res1.ok === true, JSON.stringify(r1.json));
+      await sleep(2600); /* persist تا store رویِ فایِل بنشیند */
+      const fs1 = JSON.parse(fs.readFileSync(env.PAYESH_STORE, 'utf8'));
+      const nt = (fs1.notifications || []).find(x => x.title === 'F-notice');
+
+      /* F2 — دبیر همان رکورد را با user_id می‌فرستد → field_denied (per-op) */
+      if (nt) {
+        const r2 = await sync(mt.ck, [opX({ id: nt.id, by: 4, c: 'notifications', t: 'upd', data: { read: 1, user_id: 16 } })]);
+        const res2 = r2.json && r2.json.results && r2.json.results[0];
+        chk('F2 teacher upd notifications (user_id) → field_denied', r2.status === 200 && res2 && res2.ok === false && res2.code === 'field_denied', JSON.stringify(r2.json));
+        await sleep(2600); /* persist */
+        const fs2 = JSON.parse(fs.readFileSync(env.PAYESH_STORE, 'utf8'));
+        const nt2 = (fs2.notifications || []).find(x => x.id === nt.id);
+        chk('F3 store دست‌نخورده: user_id=4 و read اعمال نشد (inject نشد)', nt2 && nt2.user_id === 4 && nt2.read !== 1, JSON.stringify(nt2));
+
+        /* F4 — مسیرِ مشروع: teacher فقط read → ok */
+        const r4 = await sync(mt.ck, [opX({ id: nt.id, by: 4, c: 'notifications', t: 'upd', data: { read: 1 } })]);
+        const res4 = r4.json && r4.json.results && r4.json.results[0];
+        chk('F4 teacher upd notifications (read) → ok', r4.status === 200 && res4 && res4.ok === true, JSON.stringify(r4.json));
+      }
+
+      /* F5 — roleِ دامنه‌ای (exam_duties) برایِ مدیر → ok */
+      const r5 = await sync(mm.ck, [opX({ by: 2, c: 'exam_duties', t: 'ins', data: { exam_id: 1, teacher_id: 4, role: 'proctor', school_id: 1 } })]);
+      const res5 = r5.json && r5.json.results && r5.json.results[0];
+      chk('F5 manager ins exam_duties (role دامنه‌ای) → ok', r5.status === 200 && res5 && res5.ok === true, JSON.stringify(r5.json));
+
+      /* F6 — roleِ دامنه‌ای برایِ دبیر → field_denied (با idِ رکوردِ F1) */
+      const r6b = nt ? await sync(mt.ck, [opX({ id: nt.id, by: 4, c: 'notifications', t: 'upd', data: { read: 1, role: 'student' } })]) : { json: null };
+      const res6b = r6b.json && r6b.json.results && r6b.json.results[0];
+      chk('F6 teacher upd notifications (role) → field_denied', r6b.status === 200 && res6b && res6b.ok === false && res6b.code === 'field_denied', JSON.stringify(r6b.json));
+
+      const audF = fs.readFileSync(env.PAYESH_AUDIT, 'utf8');
+      chk('F7 آدیت: sync_field_gate با field_denied ثبت شد', audF.indexOf('sync_field_gate') > -1 && audF.indexOf('field_denied') > -1);
+      f10.kill('SIGKILL');
+      await sleep(300);
+    }
+  }
   console.log('\n' + '─'.repeat(52));
   console.log(`server17: ${pass} سبز / ${fail} قرمز` + (fail ? ' ❌' : ' ✅'));
   errors.slice(0, 10).forEach(e => console.log('   ' + e));
