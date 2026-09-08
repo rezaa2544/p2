@@ -313,11 +313,13 @@ function ruleFor(coll, key){
   }
   /* ۲. enumهایِ تک‌فیلدی */
   if(key === 'stage' && coll === 'preapps') return { type: 'enum', values: STAGE_ENUM };
+  if(key === 'meeting_type' && coll === 'assoc_minutes') return { type: 'enum', values: ['assoc','teachers','students'] }; /* C.1 فرناز */
   if(key === 'role'){
     if(coll === 'users') return { type: 'enum', values: USER_ROLES };
     return { type: 'string', max: LIMITS.STR_MID };
   }
   if(key === 'author_role') return { type: 'string', max: LIMITS.STR_MID };
+  if(key === 'boom_goals') return { type: 'string', max: LIMITS.STR_LONG }; /* C.2 فرناز: اهداف سالانه (بوم) */
   if(key === 'gender'){
     if(coll === 'schools') return { type: 'enum', values: SCHOOL_GENDERS };
     return { type: 'string', max: 40 };
