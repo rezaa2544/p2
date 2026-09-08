@@ -1,0 +1,39 @@
+{
+  "name": "پایش — سامانه هوشمند مدیریت مدرسه",
+  "short_name": "پایش",
+  "description": "سامانه مدیریت هوشمند مدرسه، نمرات، حضور و غیاب و کارنامه (تک‌فایلی، آفلاین‌محور، فارسی)",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F8FAFC",
+  "theme_color": "#1E3A8A",
+  "dir": "rtl",
+  "lang": "fa-IR",
+  "icons": [
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "shortcuts": [
+    {
+      "name": "حضور و غیاب",
+      "url": "/#attendance",
+      "description": "ثبت سریع حضور و غیاب امروز"
+    },
+    {
+      "name": "ثبت نمرات",
+      "url": "/#grades",
+      "description": "ورود نمرات کلاسی و امتحانی"
+    }
+  ]
+}
