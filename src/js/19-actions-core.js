@@ -53,6 +53,17 @@ function loginServerMsg(code){
    اختصاصی. پارامترها همان محلی‌هایِ شنوندهٔ کلیک هستند. */
 function coreActions(e, el, id, a, rawId){
   return {
+   /* E.1 فرناز: تیکِ چک‌لیستِ فردا — فقط حافظهٔ محلی via Store (بدون سرور، بدون رندرِ مجدد) */
+   'tomorrow-check'(){
+     const sid=Number(el.dataset.sid), iso=el.dataset.iso, idx=el.dataset.idx;
+     if(!sid||!iso||!idx)return;
+     /* دیسپچر روی کلیک preventDefault می‌کند (تاگِلِ بومی لغو می‌شود) — پس دستی تاگِل می‌زنیم */
+     el.checked=!el.checked;
+     const k=tomorrowCheckKey(sid,iso);
+     let cur={}; try{cur=JSON.parse(Store.get(k,'{}'))||{};}catch(x){cur={};}
+     cur[idx]=el.checked?1:0;
+     Store.set(k,JSON.stringify(cur));
+   },
    pick(){
      /* دمو: فرم با شماره + کد ملیِ همان حساب پر می‌شود و کد ارسال (شبیه‌سازی)
         و در فیلد می‌نشیند — کاربر با «استعلام و ورود» کاملش می‌کند. */
