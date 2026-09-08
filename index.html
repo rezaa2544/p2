@@ -2141,7 +2141,7 @@ function generate(){
     const sFields=(branches||[]).reduce((a,b)=>a.concat(fieldsOfBranch(b)),[]);
     const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:demoPhone(),level,type:type||'عادی',gender,branches:branches||[],fields:sFields,
       /* si===3 (MM-104) «هر دو»: روز + شاخهٔ شبانهٔ بزرگسالان (دور ۷۸) */
-      shift: si===4 ? 'بعدازظهر' : (si===1||si===3 ? 'هر دو' : 'صبح'),capacity:400+ri(200),active:si===5?0:1,
+      shift: si===4 ? 'بعدازظهر' : (si===1||si===3 ? 'هر دو' : 'صبح'),capacity:400+ri(200),active:si===5?0:1,public_goals:0,
       /* پروفایل قابلیت: هر مدرسه کلیدهای مستقل روشن/خاموش دارد؛
          در نبود مقدار، پیش‌فرض‌های CAP_DEFAULTS اعمال می‌شود. */
       capabilities: caps||null,
@@ -4273,38 +4273,98 @@ function demoAccounts(){
 }
 /* C.3 فرناز — گزارش عمومی مدرسه (بدون نیاز به ورود):
    فقط آمار تجمیعی + اهداف منتشرشده؛ هیچ دادهٔ شخصی (نام/نمره/حضور) اینجا نیست. */
-function publicReportHTML(){
-  const schools=db.schools.filter(s=>s.active!==0);
-  if(!schools.length)return '';
-  let sid=Number(S.filters.pubschool)||null;
+/* SEC1 — پروجکشن عمومی: تنها داده‌ای که گزارشِ بدون ورود حق دیدن دارد.
+   خروجی فقط تجمیعی است (نام/شهر مدرسه، شمارش‌ها، تعداد+آخرین تاریخ جلسه،
+   اهداف منتشرشده) — هیچ رکورد کاربر یا جزئیاتی از db بیرون نمی‌آید و
+   رندر فقط از همین آبجکت می‌خواند (پدافند در عمق در برابر نشت آینده). */
+function publicSchools(){
+  return (db.schools||[]).filter(s=>s.active===1||s.active===true);
+}
+function publicReportData(sid){
+  const schools=publicSchools();
+  if(!schools.length)return null;
   if(!schools.some(s=>s.id===sid))sid=schools[0].id;
   const sc=byId('schools',sid)||{};
-  const us=db.users.filter(u=>u.school_id===sid);
-  const nS=us.filter(u=>u.role==='student').length,
-        nT=us.filter(u=>u.role==='teacher').length,
-        nC=db.classes.filter(c=>c.school_id===sid).length;
+  const us=(db.users||[]).filter(u=>u.school_id===sid);
   const mins=(typeof assocMinutes==='function'?assocMinutes(sid):[]).filter(m=>!m.archived);
   const types=(typeof MIN_TYPES!=='undefined'?MIN_TYPES:[['assoc','انجمن اولیا و مربیان']]);
-  const perType=types.map(([k,label])=>{
-    const ms=mins.filter(m=>(typeof minTypeOf==='function'?minTypeOf(m):'assoc')===k);
-    const last=ms.map(m=>m.meeting_date).filter(Boolean).sort().slice(-1)[0];
-    return {label:label,n:ms.length,last:last?jalali(last):'—'};
-  });
-  const bg=(sc.boom_goals||'').trim();
-  return `<div class="pub-report" id="pub-report"><div class="card"><div class="card-head"><h3>📊 گزارش عمومی مدرسه</h3>
-    <select class="select" data-f="pubschool" style="width:220px">${schools.map(s=>`<option value="${s.id}" ${s.id===sid?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
-   <div class="card-body">
-    <h4 style="margin:0 0 4px">${esc(sc.name||'')}</h4>
-    <div class="small muted" style="margin-bottom:12px">${esc(sc.level||'')}${sc.level?' · ':''}${esc((byId('counties',sc.county_id)||{}).name||sc.city||'')}</div>
+  return {
+    sid:sid,
+    name:sc.name||'',
+    level:sc.level||'',
+    city:(byId('counties',sc.county_id)||{}).name||sc.city||'',
+    students:us.filter(u=>u.role==='student').length,
+    teachers:us.filter(u=>u.role==='teacher').length,
+    classes:(db.classes||[]).filter(c=>c.school_id===sid).length,
+    meetings:types.map(([k,label])=>{
+      const ms=mins.filter(m=>(typeof minTypeOf==='function'?minTypeOf(m):'assoc')===k);
+      const last=ms.map(m=>m.meeting_date).filter(Boolean).sort().slice(-1)[0];
+      return {key:k,label:label,n:ms.length,last:last||''};
+    }),
+    /* SEC2: انتشار اهداف فقط با رضایت صریح مدیر (public_goals=1)؛ پیش‌فرض ۰=مخفی */
+    goals:((sc.public_goals===1||sc.public_goals===true)?(sc.boom_goals||'').trim():'')
+  };
+}
+/* بدنهٔ گزارش از پروجکشن (مشترک مسیر محلی و سروری — یک منبع حقیقت برای نما) */
+function publicReportBodyHTML(d){
+  return `
+    <h4 style="margin:0 0 4px">${esc(d.name)}</h4>
+    <div class="small muted" style="margin-bottom:12px">${esc(d.level)}${d.level?' · ':''}${esc(d.city)}</div>
     <div class="grid g3">
-      ${statCard('🎒',fa(nS),'دانش‌آموز','blue')}
-      ${statCard('👩‍🏫',fa(nT),'دبیر','green')}
-      ${statCard('🏛️',fa(nC),'کلاس','amber')}
+      ${statCard('🎒',fa(d.students),'دانش‌آموز','blue')}
+      ${statCard('👩‍🏫',fa(d.teachers),'دبیر','green')}
+      ${statCard('🏛️',fa(d.classes),'کلاس','amber')}
     </div>
     <div class="sec-title">🤝 جلسه‌ها (به‌تفکیک نوع)</div>
-    <div class="grid g3">${perType.map(t=>`<div class="card stat"><div><b>${fa(t.n)}</b><span>${esc(t.label)}</span><div class="small muted">آخرین: ${esc(t.last)}</div></div></div>`).join('')}</div>
-    ${bg?`<div class="sec-title">🎯 برنامه ویژه (بوم)</div><div style="white-space:pre-wrap;line-height:2">${esc(bg)}</div>`:''}
-    <div class="small muted" style="margin-top:12px">🔑 برای جزئیات بیشتر، از فرم بالا وارد سامانه شوید.</div>
+    <div class="grid g3">${d.meetings.map(t=>`<div class="card stat"><div><b>${fa(t.n)}</b><span>${esc(t.label)}</span><div class="small muted">آخرین: ${esc(t.last?jalali(t.last):'—')}</div></div></div>`).join('')}</div>
+    ${d.goals?`<div class="sec-title">🎯 برنامه ویژه (بوم)</div><div style="white-space:pre-wrap;line-height:2">${esc(d.goals)}</div>`:''}
+    <div class="small muted" style="margin-top:12px">🔑 برای جزئیات بیشتر، از فرم بالا وارد سامانه شوید.</div>`;
+}
+/* SEC3 — حالت سروری: دادهٔ واقعیِ سرور جایگزین محلی می‌شود.
+   آفلاین-اول: اگر سرور نرسید، همان محلی می‌ماند + یادداشت «دادهٔ محلی». */
+let _pubInFlight=false;
+function pubReportEligible(){
+  if(S.user)return false;
+  if(typeof isServerMode==='function'?!isServerMode():DATA_MODE!=='server')return false;
+  return !!document.getElementById('pub-report-body');
+}
+async function pubReportTick(){
+  if(!pubReportEligible())return;
+  if(!document.getElementById('pub-report-body'))return;
+  if(_pubInFlight)return;
+  _pubInFlight=true;
+  try{
+    const sid=Number((S.filters||{}).pubschool)||null;
+    const j=await Api.get('/api/public-report'+(sid?'?school_id='+sid:''));
+    if(!j||j.ok!==true||!j.report)throw new Error('invalid_response');
+    pubReportRenderServer(j.report);
+  }catch(err){
+    const b=document.getElementById('pub-report-body');
+    if(b&&!document.getElementById('pub-local-note'))
+      b.insertAdjacentHTML('beforeend','<div class="small muted" id="pub-local-note" style="margin-top:8px">📡 سرور در دسترس نیست — نمایش دادهٔ محلی.</div>');
+  }finally{_pubInFlight=false;}
+}
+/** پُلِ پس‌رندر — آیدمپتان؛ از render فراخوانی می‌شود (هم‌ردیف syncConflictsEnsure) */
+function pubReportEnsure(){ pubReportTick(); }
+function pubReportRenderServer(r){
+  const b=document.getElementById('pub-report-body');
+  if(!b)return;
+  const types=(typeof MIN_TYPES!=='undefined'?MIN_TYPES:[['assoc','انجمن اولیا و مربیان']]);
+  const byKey={}; (r.meetings||[]).forEach(m=>{byKey[m.key]=m;});
+  b.innerHTML=publicReportBodyHTML({
+    sid:r.sid,name:r.name||'',level:r.level||'',city:r.city||'',
+    students:r.students||0,teachers:r.teachers||0,classes:r.classes||0,
+    meetings:types.map(([k,label])=>{const m=byKey[k]||{};return {key:k,label:label,n:m.n||0,last:m.last||''};}),
+    goals:r.goals||''
+  });
+}
+function publicReportHTML(){
+  const schools=publicSchools();
+  if(!schools.length)return '<div class="pub-report" id="pub-report"><div class="card"><div class="card-body">'+empty('🏫','داده‌ای برای نمایش وجود ندارد','')+'</div></div></div>';
+  const d=publicReportData(Number((S.filters||{}).pubschool)||null);
+  return `<div class="pub-report" id="pub-report"><div class="card"><div class="card-head"><h3>📊 گزارش عمومی مدرسه</h3>
+    <select class="select" data-f="pubschool" style="width:220px">${schools.map(s=>`<option value="${s.id}" ${s.id===d.sid?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
+   <div class="card-body" id="pub-report-body">${publicReportBodyHTML(d)}
    </div></div></div>`;
 }
 function renderLogin(){
@@ -6767,6 +6827,7 @@ function schoolModal(s){
     <div id="m_branch_box" style="display:${s.level==='متوسطه دوم'?'block':'none'}">${branchPicker(s)}</div>
     ${f('آدرس',`<textarea class="input" id="m_addr" rows="2">${esc(s.address||'')}</textarea>`)}
     ${f('🎯 برنامه ویژه (بوم) — اهداف سالانه',`<textarea class="input" id="m_boom" rows="3">${esc(s.boom_goals||'')}</textarea>`)}
+    <label class="row" style="gap:6px;cursor:pointer;margin:-4px 0 10px"><input type="checkbox" id="m_boom_pub" ${s.public_goals?'checked':''}/> نمایش اهداف در گزارش عمومی (بدون ورود)</label>
     <div class="sec-title">👤 مشخصات مدیر مدرسه ${mgr?'':'<span class="small muted">(حساب کاربری او ساخته می‌شود)</span>'}</div>
     <div class="grid g2">
       ${f('نام و نام خانوادگی'+(s.id?'':' *'),inp('mg_name',mgr?mgr.full_name:''))}
@@ -6781,7 +6842,8 @@ function boomModal(sid){
   const s=byId('schools',Number(sid))||{};
   openModal(modalTpl('🎯 برنامه ویژه مدرسه (بوم) — '+esc(s.name||''),
    `${f('اهداف سالانه (هر خط یک هدف)',`<textarea class="input" id="boom_goals" rows="6" placeholder="مثلاً:\nکسب رتبه اول منطقه در المپیاد ریاضی\nراه‌اندازی آزمایشگاه رباتیک" style="line-height:1.9">${esc(s.boom_goals||'')}</textarea>`)}
-    <div class="small muted">حداکثر ۲۰۰۰ نویسه. خالی گذاشتن = پاک شدن برنامه.</div>`
+    <div class="small muted">حداکثر ۲۰۰۰ نویسه. خالی گذاشتن = پاک شدن برنامه.</div>
+    <label class="row" style="gap:6px;cursor:pointer;margin-top:8px"><input type="checkbox" id="boom_pub" ${s.public_goals?'checked':''}/> نمایش اهداف در گزارش عمومی (بدون ورود)</label>`
    ,'school-boom-save'));
   window._boomSid=Number(sid);
 }
@@ -14352,6 +14414,7 @@ function adminActions(e, el, id, a, rawId){
        level:V('m_level'),type:V('m_type')||'عادی',gender:V('m_gender'),shift:V('m_shift')||'صبح',
        capacity:Number(V('m_cap'))||300,
        active:Number(V('m_active')),address:V('m_addr'),boom_goals:V('m_boom'),
+       public_goals:($('#m_boom_pub')&&$('#m_boom_pub').checked)?1:0,
        /* دور ۶۵ بند روزهای کاری: روزهای روشن‌شده در مودال */
        work_days:$$('.m-wd:checked').map(x=>Number(x.value)).sort((a,b)=>a-b),
        /* Round 77: excuse window (minutes after bell end) */
@@ -14392,7 +14455,7 @@ function adminActions(e, el, id, a, rawId){
      if(S.user.role!=='superadmin'&&sid!==S.user.school_id){toast('فقط مدرسهٔ خودتان','err');return;}
      const g=V('boom_goals')||'';
      if(invalid('boom_goals',g.length>2000,'حداکثر ۲۰۰۰ نویسه'))return;
-     update('schools',sid,{boom_goals:g});
+     update('schools',sid,{boom_goals:g,public_goals:($('#boom_pub')&&$('#boom_pub').checked)?1:0});
      closeModal();toast('برنامه ویژه ذخیره شد','ok');render();},
    'user-new'(){userModal(null);},
    'user-edit'(){userModal(byId('users',id));},
@@ -17538,6 +17601,8 @@ function render(){
   if(typeof bellLiveEnsure==='function') bellLiveEnsure();
   /* یادآوریِ دبیر (دور ۶۵): لایهٔ صفِ پیامک — با ۳۰ ثانیه محافظ */
   if(typeof nudgeTick==='function') nudgeTick();
+  /* گزارش عمومی (امنیت C.3): در حالت سروری، دادهٔ واقعی جایگزین محلی می‌شود */
+  if(typeof pubReportEnsure==='function') pubReportEnsure();
   /* تعارض‌های همگام‌سازی (R95, بند ۲.۵): فقط حالت سروری، مدیر/سوپرادمین */
   if(typeof syncConflictsEnsure==='function') syncConflictsEnsure();
 

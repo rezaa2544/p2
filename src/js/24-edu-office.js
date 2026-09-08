@@ -922,6 +922,8 @@ function render(){
   if(typeof bellLiveEnsure==='function') bellLiveEnsure();
   /* یادآوریِ دبیر (دور ۶۵): لایهٔ صفِ پیامک — با ۳۰ ثانیه محافظ */
   if(typeof nudgeTick==='function') nudgeTick();
+  /* گزارش عمومی (امنیت C.3): در حالت سروری، دادهٔ واقعی جایگزین محلی می‌شود */
+  if(typeof pubReportEnsure==='function') pubReportEnsure();
   /* تعارض‌های همگام‌سازی (R95, بند ۲.۵): فقط حالت سروری، مدیر/سوپرادمین */
   if(typeof syncConflictsEnsure==='function') syncConflictsEnsure();
 
