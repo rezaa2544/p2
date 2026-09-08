@@ -62,7 +62,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[],support_tickets:[],staff_attendance:[],training_courses:[],safety_drills:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[],support_tickets:[],staff_attendance:[],training_courses:[],safety_drills:[],donations:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -407,6 +407,17 @@ function generate(){
       add('safety_drills',{school_id:sid,date:daysAgoISO(recent?30:400),
         participant_count_students:120+((sid*37)%80),participant_count_staff:8+((sid*13)%6),
         notes:recent?'مانور زلزله':'مانور سال گذشته',registered_by:mgr.id,created_at:daysAgoISO(recent?29:399)});
+    });
+  })();
+  /* بند B.5 (چت۱): سید کمک‌های داوطلبانه — هر مدرسه ۲ رکورد (۱ نامدار + ۱ ناشناس).
+     ⚠️ صفر مصرفِ rng (هشِ قطعی از شناسهٔ مدرسه) — دلیل در سید B.1. */
+  (function(){
+    var done={};
+    db.users.filter(function(u){return u.role==='manager';}).forEach(function(mgr){
+      if(done[mgr.school_id])return; done[mgr.school_id]=1;
+      var sid=mgr.school_id;
+      add('donations',{school_id:sid,donor_name:'خیر مدرسه',amount:500000+((sid*7919)%7)*500000,date:daysAgoISO(20+sid),description:'کمک به تجهیز آزمایشگاه',registered_by:mgr.id,created_at:daysAgoISO(19+sid)});
+      add('donations',{school_id:sid,donor_name:null,amount:1000000+((sid*104729)%5)*1000000,date:daysAgoISO(60+sid),description:'نذر فرهنگی',registered_by:mgr.id,created_at:daysAgoISO(59+sid)});
     });
   })();
 }

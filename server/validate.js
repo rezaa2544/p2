@@ -94,7 +94,7 @@ const SCHOOL_GENDERS  = ['پسرانه', 'دخترانه', 'مختلط'];       
    (protPolicy/canOp/manager-only) سرِ جایِ خودش است؛ این‌جا فقط سقفِ طول. */
 
 /* نام‌فیلدهایِ کوتاه (≤۱۰۰) و میانی (≤۲۰۰) */
-const SHORT_FIELDS = ['full_name', 'name', 'title', 'username', 'subject',
+const SHORT_FIELDS = ['full_name', 'name', 'title', 'username', 'subject', 'donor_name', /* B.5 */
   'job', 'degree', 'field', 'code', 'first_name', 'last_name'];
 const MID_FIELDS = ['type', 'link', 'kind', 'token', 'file_key', 'file_name',
   'mime', 'color', 'day', 'month', 'source', 'provider', 'method', 'plan',
@@ -336,6 +336,7 @@ function ruleFor(coll, key){
   if(key === 'id' || /_id$/.test(key)) return { type: 'id' };
   if(key === 'version') return { type: 'integer', min: 1, max: LIMITS.ID_MAX };
   if(key === 'participant_count_students' || key === 'participant_count_staff') return { type: 'integer', min: 0, max: 100000 }; /* B.4 فرناز: شمار شرکت‌کننده مانور */
+  if(key === 'amount' && coll === 'donations') return { type: 'integer', min: 1, max: 10000000000 }; /* B.5 فرناز: مبلغ کمک (تومانِ صحیحِ مثبت) */
   if(FLAG_FIELDS.indexOf(key) > -1) return { type: 'flag' };
   /* ۵. نمره‌ها */
   if(key === 'score' || key === 'original_score' || key === 'new_score') return { type: 'score' };
