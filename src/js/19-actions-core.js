@@ -236,6 +236,15 @@ function coreActions(e, el, id, a, rawId){
     insert('assoc_minutes',{school_id:sid,meeting_date:date,meeting_type:mt,attendees:att,resolutions:res,archived:false,created_at:todayISO(),updated_at:todayISO()});
     closeModal();toast('صورت‌جلسه ثبت شد','ok');render();},
   'assoc-min-print'(){assocMinPrint(id);},
+  /* C.3 فرناز: گزارش عمومی — فقط مدیر، فقط مدرسهٔ خود */
+  'pubrep-print'(){
+    if(!S.user||S.user.role!=='manager'||!S.user.school_id){toast('فقط مدیر مدرسه','err');return;}
+    pubrepPrint();},
+  'pubrep-csv'(){
+    if(!S.user||S.user.role!=='manager'||!S.user.school_id){toast('فقط مدیر مدرسه','err');return;}
+    const d=publicReportRows(S.user.school_id);
+    const ok=downloadCSV('payesh-public-'+todayISO()+'.csv',d.headers,d.rows);
+    toast(ok?'خروجی عمومی دانلود شد':'دریافت خروجی ممکن نشد',ok?'ok':'err');},
   'assoc-min-toggle'(){
     const m=byId('assoc_minutes',Number(id));
     if(!m)return;
@@ -582,7 +591,11 @@ function coreActions(e, el, id, a, rawId){
        return;
      }
      attDraftSet(cid,date,id,st);
-     render();},
+     /* دور ۱۰۲ (کارایی): به‌جای بازسازیِ کاملِ پوسته، فقط ردیفِ همان
+        دانش‌آموز + شمارنده‌ها + نوارِ پیش‌نویس به‌روز می‌شود.
+        سوپاپِ اطمینان: با هر تردیدی (false) رندرِ کامل صدا زده می‌شود —
+        رفتار هرگز از وضعِ پیش از بهینه‌سازی بدتر نمی‌شود. */
+     if(!(typeof attPartialSync==='function'&&attPartialSync(id))) render();},
    /* ثبت ساعتِ انتخابیِ وضعیتِ زمان‌دار (بند 15.1) */
    'att-time-save'(){
      if(!attTimePending)return;
