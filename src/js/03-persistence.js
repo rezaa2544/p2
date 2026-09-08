@@ -1,12 +1,14 @@
 /* ═══════════════════════════════════════════════════════════════════
-   ماندگاری — دفترچهٔ تغییرات
+   ماندگاری — دفترچهٔ تغییرات و هماهنگی با IndexedDB (فاز ۴)
    ═══════════════════════════════════════════════════════════════════
    داده به‌صورت «دفترچهٔ عملیات» نگه داشته می‌شود نه عکس لحظه‌ای:
    هر درج/ویرایش/حذف یک سطر است و وضعیت فعلی از بازپخش آن‌ها می‌آید.
    همین ساختار است که همگام‌سازی با سرور را ممکن می‌کند — همان سطرها
    به صف 27-sync.js می‌روند.
 
-   ⚠️ دسترسی به حافظه فقط از راه `Store` (فایل 00-data-layer.js).
+   معماری هیبریدی (فاز ۴ بند ۱۶ تا ۲۰):
+   ۱. لایهٔ اصلی و بلندمدت: IndexedDB (ماژول 03-idb-persistence.js)
+   ۲. لایهٔ پایداری فوری و همگام: RAM db + پایداری با Store
    ═══════════════════════════════════════════════════════════════════ */
 const LOG_KEY='sms_log_v1', SESSION_KEY='sms_session_v1', BOSS_KEY='sms_boss_v1', PERSONA_KEY='sms_persona_v1';
 /* R95 (بند ۲.۵): مجموعه‌هایِ دارایِ نسخه — باید با VERSION_TRACKED سرور
@@ -45,7 +47,15 @@ function batchWrites(fn){
 function saveLog(){
   if(_BATCH_DEPTH > 0){ _BATCH_DIRTY = true; return; }
   var payload = JSON.stringify(log);
-  /* Store.set خودش استثنا را می‌گیرد و false برمی‌گرداند */
+  
+  // همگام‌سازی ناهمگام با IndexedDB در پس‌زمینه (در صورت پشتیبانی مرورگر)
+  if(typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()){
+    try{
+      offlineStorage.setMetadata(LOG_KEY, log).catch(function(){});
+    }catch(e){}
+  }
+
+  /* Store.set خودش استثنا را می‌گیرد و false برمی‌گرداند (Fallback امن) */
   if(Store.set(LOG_KEY, payload)){
     STORAGE_FULL=false;
     /* هشدار پیش از پرشدن: در ۸۰٪ سقف تقریبی ۵ مگابایت */
@@ -56,10 +66,15 @@ function saveLog(){
         toast('حافظهٔ دستگاه رو به پر شدن است. لطفاً به اینترنت وصل شوید تا داده‌ها ارسال شود.','err');
     }
   }else{
-    /* حافظه پر شد — کاربر باید بداند، وگرنه بی‌صدا داده از دست می‌رود */
-    STORAGE_FULL=true;
-    if(typeof toast==='function')
-      toast('⚠️ حافظهٔ دستگاه پر است! تغییرات جدید ذخیره نشد. برای جلوگیری از از دست رفتن داده، به اینترنت وصل شوید.','err');
+    /* اگر IndexedDB در دسترس باشد، پر شدن Store مانع کار کلاینت نمی‌شود */
+    if(typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()){
+      STORAGE_FULL=false;
+    } else {
+      /* حافظه پر شد — کاربر باید بداند، وگرنه بی‌صدا داده از دست می‌رود */
+      STORAGE_FULL=true;
+      if(typeof toast==='function')
+        toast('⚠️ حافظهٔ دستگاه پر است! تغییرات جدید ذخیره نشد. برای جلوگیری از از دست رفتن داده، به اینترنت وصل شوید.','err');
+    }
   }
 }
 /** آیا ذخیره‌سازی محلی دچار مشکل است؟ (برای نشانگر وضعیت) */
@@ -205,6 +220,22 @@ function applyOp(op,record=true){
     compactLogIfNeeded(); /* اگر فشرد، saveLog همان شکلِ تازه را می‌نویسد */
     saveLog();
     _GRADE_CACHE_VERSION++;
+
+    // همگام‌سازی مستقیم موجودیت در IndexedDB
+    if(typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()){
+      try{
+        if(op.t==='ins' || op.t==='upd'){
+          if(op.data && op.data.id != null){
+            offlineStorage.putEntity(op.c, op.data).catch(function(){});
+          }
+        }else if(op.t==='del'){
+          if(op.id != null){
+            offlineStorage.removeEntity(op.c, op.id).catch(function(){});
+          }
+        }
+      }catch(e){}
+    }
+
     /* هر تغییر واقعی کاربر وارد صف همگام‌سازی با سرور می‌شود */
     /* در حالت سروری، عملیاتی که کاربرِ احراز‌شده ندارد (مثل تولیدِ
        دنیای دمو پیش از ورود) وارد صفِ ارسال نمی‌شود: سرور نمی‌تواند آن
@@ -221,5 +252,8 @@ function resetAll(){
   Store.remove(LOG_KEY);
   Store.remove(SYNC_QUEUE_KEY);
   Store.remove(SYNC_META_KEY);
+  if(typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()){
+    try{ offlineStorage.clearAll(); }catch(e){}
+  }
   location.reload();
 }

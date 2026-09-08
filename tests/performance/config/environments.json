@@ -1,0 +1,29 @@
+{
+  "default": "local",
+  "environments": {
+    "local": {
+      "name": "محیط محلی تست (Local Instance)",
+      "baseUrl": "http://127.0.0.1:3000",
+      "description": "سرور تک‌نود محلی برای اعتبارسنجی بنچ‌مارک و تست‌های سریع",
+      "insecureSkipTLSVerify": true
+    },
+    "staging": {
+      "name": "محیط پیش‌تولید (Staging)",
+      "baseUrl": "https://staging.payesh.ir",
+      "description": "کلاستر پیش‌تولید با کلاستر ردیس و دیتابیس همگام",
+      "insecureSkipTLSVerify": false
+    },
+    "production": {
+      "name": "محیط عملیاتی کشوری (Production)",
+      "baseUrl": "https://api.payesh.ir",
+      "description": "محیط عملیاتی برای پایش بلادرنگ و سناریوهای بار بدون جهش مخرب",
+      "insecureSkipTLSVerify": false
+    },
+    "cluster": {
+      "name": "کلاستر اختصاصی تست بار (K8s Load Test Cluster)",
+      "baseUrl": "http://load-test-cluster.payesh.internal:8080",
+      "description": "کلاستر کوبرنتیز اختصاصی با ۱۰ پاد مقیاس‌پذیر جهت آزمون‌های حداکثر اشباع",
+      "insecureSkipTLSVerify": true
+    }
+  }
+}

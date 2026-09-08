@@ -1,0 +1,56 @@
+{
+  "global": {
+    "http_req_failed": ["rate<0.01"],
+    "http_req_duration": ["p(95)<250", "p(99)<500"]
+  },
+  "scenarios": {
+    "login": {
+      "login_duration_ms": ["p(95)<150", "p(99)<300"],
+      "login_failure_rate": ["rate<0.01"],
+      "http_req_duration": ["p(95)<200"]
+    },
+    "bootstrap": {
+      "bootstrap_duration_ms": ["p(95)<180", "p(99)<350"],
+      "bootstrap_failure_rate": ["rate<0.005"],
+      "http_req_duration": ["p(95)<180"]
+    },
+    "attendance": {
+      "attendance_duration_ms": ["p(95)<250", "p(99)<500"],
+      "attendance_failure_rate": ["rate<0.01"],
+      "http_req_duration": ["p(95)<250"]
+    },
+    "grades": {
+      "grades_duration_ms": ["p(95)<200", "p(99)<450"],
+      "grades_failure_rate": ["rate<0.01"],
+      "http_req_duration": ["p(95)<200"]
+    },
+    "notifications": {
+      "notification_duration_ms": ["p(95)<300", "p(99)<600"],
+      "notification_failure_rate": ["rate<0.01"],
+      "http_req_duration": ["p(95)<300"]
+    },
+    "sync_batch": {
+      "sync_duration_ms": ["p(95)<500", "p(99)<1000"],
+      "sync_failure_rate": ["rate<0.01"],
+      "http_req_duration": ["p(95)<600"]
+    }
+  },
+  "suites": {
+    "saturation": {
+      "http_req_failed": ["rate<0.05"],
+      "http_req_duration": ["p(95)<1200"]
+    },
+    "chaos_redis": {
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration": ["p(95)<400"]
+    },
+    "soak_24h": {
+      "http_req_failed": ["rate<0.001"],
+      "http_req_duration": ["p(95)<200"]
+    },
+    "spike_mehr": {
+      "http_req_failed": ["rate<0.001"],
+      "http_req_duration": ["p(95)<500"]
+    }
+  }
+}
