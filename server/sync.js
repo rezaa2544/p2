@@ -20,20 +20,152 @@
    این‌جا حقِ نوشتن داشته باشند.
    استثنایِ users روی teacher محدودیتِ فیلدیِ سمتِ سرور است
    (IEP_KEYS/DROP_KEYS — بند ۲.۲). */
-const WRITE_PERMS = {
-  superadmin : ['*'],
-  edu_office : ['announcements','notifications','attendance_modes','notify_queue'],
-  manager    : ['attendance','attendance_modes','notify_queue','grades','discipline','leaves','announcements','notifications','messages','installments','transactions','tuitions','tuition_plans','schedule','classes','subjects','users','corrections','assets','visitors','lib_books','lib_loans','certificates','meeting_slots','bus_routes','bus_students','bus_events','bus_needs','bus_followups','counselor_refs','pre_enrollments','enrollments','student_transfers','transfer_requests','vclass_sessions','vclass_attendance','internships','preapps','scholarships','reexams','assoc_minutes','summer_classes','dorm_rooms','dorm_assignments','dorm_meals','class_subject_members','schools','sedascores','nid_conflicts','parent_links','sms_log','sms_wallet','school_years','student_archive','dojo_types','substitutions','vclass_links','vclass_questions','hw_assignments','hw_submissions','parent_subscriptions'],
-  teacher    : ['attendance','notify_queue','grades','discipline','messages','corrections','hw_assignments','hw_submissions','vclass_sessions','vclass_attendance','vclass_questions','vclass_links','substitutions','teacher_notes','nudges','teacher_sms','internships','notifications','meeting_slots'],
-  counselor  : ['counselor_refs','messages','counselor_msgs'],
-  student    : ['messages','hw_submissions','vclass_questions','counselor_msgs','bus_events','notify_queue','bus_locations','vclass_attendance','notifications'],
-  parent     : ['leaves','messages','parent_verifications','counselor_msgs','meeting_slots','notifications','bus_needs','corrections','parent_links'],
-  driver     : ['bus_events','notify_queue','bus_locations'],
-};
+/* R96 P0-1 — مدلِ مرکزیِ مجوز (single source of truth):
+   authz/model.json — سرور این فایل را می‌خواند؛ tests/authz-model.js
+   آن را بازتولید و با seed + کلاینت diff می‌کند (گیتِ build)؛
+   tests/server16.js ماتریسِ منفیِ role×collection×op را اجرا می‌کند.
+   ناآگاه بودن از یک collection = fail-closed (رد). */
+const AUTHZ = require('../authz/model.json').collections || {};
+
+/* WRITE_PERMS — حالا از مدل تولید می‌شود (سازگاری با گیت‌هایِ قدیمی).
+   superadmin = همه (همان معنایِ پیشین '*'). */
+const WRITE_PERMS = (function(){
+  const out = { superadmin: ['*'] };
+  for (const c of Object.keys(AUTHZ)){
+    const def = AUTHZ[c];
+    const roles = new Set([...(def.ins || []), ...(def.upd || []), ...(def.del || [])]);
+    for (const r of roles) if (r !== 'superadmin') (out[r] = out[r] || []).push(c);
+  }
+  return out;
+})();
 function canWrite(role, coll){
   const list = WRITE_PERMS[role];
   if(!list) return false;
   return list.indexOf('*') > -1 || list.indexOf(coll) > -1;
+}
+
+
+/* R96 P0-2 — مجوزِ عملیاتی از مدل (per-op) + دروازهٔ فیلد */
+function canOp(role, coll, t){
+  const def = AUTHZ[coll];
+  if(!def) return false;               /* مجموعهٔ ناشناخته = رد (fail-closed) — حتی superadmin */
+  if(role === 'superadmin') return t === 'ins' || t === 'upd' || t === 'del';
+  return (def[t] || []).indexOf(role) > -1;
+}
+
+/* P0-2: سطحِ نقش‌ها — قاعدهٔ «بدونِ ارتقاء»: نویسنده نمی‌تواند رکوردی
+   با نقشِ بالاترِ خود بسازد (superadmin آزاد است). */
+const ROLE_LEVEL = { student: 0, parent: 1, driver: 1, counselor: 3, teacher: 3, edu_office: 3, manager: 4, superadmin: 5 };
+/* کلیدهایِ مالکیت: مقدرشان همیشه خودِ نشست است (inject نمی‌شوند) */
+const OWNERSHIP_KEYS = { messages: 'from_id', counselor_msgs: 'author_id', hw_submissions: 'graded_by' };
+/* مجموعه‌هایی که نویسندهٔ اصلی (نه فقط مدیر) می‌تواند status را عوض کند */
+const STATUS_WRITER_COLL = { attendance: 1 };
+/* مقادیرِ اولیهِٔ مجاز در ins (نقش‌هایِ غیر-مدیر) */
+const STATUS_INITIAL_MAP = {
+  meeting_slots: ['open'],
+  counselor_msgs: ['open'],
+  counselor_refs: ['open'],
+  parent_verifications: ['pending'],
+  corrections: ['open', 'pending'],
+  parent_subscriptions: ['trial', 'none', 'active', 'expired', 'pending'],
+  internships: ['pending'],
+  nudges: ['pending'],
+  teacher_sms: ['queued'],
+  notify_queue: ['pending'],
+  reexams: ['scheduled'],
+  pre_enrollments: ['registered'],
+  exam_terms: ['draft', 'published'],
+  bus_followups: ['open'],
+  assets: ['available', 'in_use', 'repair'],
+  leaves: ['pending'],
+};
+/* نقش‌هایی که در کارکردِ کلاینت انتقالِ status را انجام می‌دهند (upd) */
+const STATUS_UPD_ROLE = {
+  meeting_slots: ['teacher', 'parent'],      /* رزرو/لغو نوبت */
+  notify_queue: ['teacher', 'edu_office', 'counselor'], /* ارسال/لغو از صف */
+  corrections: ['edu_office'],               /* بررسیِ درخواستِ اصلاح */
+  parent_verifications: ['edu_office'],      /* تأیید/ردِ اعتبارسنجی */
+  counselor_refs: ['counselor'],             /* handling */
+  internships: ['teacher'],                  /* تأییدِ ساعتِ کارآموزی */
+  nudges: ['teacher'],                       /* پاسخِ دبیر */
+  parent_subscriptions: ['parent'],          /* وضعیتِ اشتراکِ خود */
+};
+
+/**
+ * R96 P0-2 — دروازهٔ فیلدِ عمومی (عمومی‌سازیِ الگوی IEP/DROP):
+ *   ۱. فیلدِ ناشناخته → رد (fail-closed؛ fields = seed ∪ کلاینت ∪ managed)
+ *   ۲. users.role → بدونِ ارتقاء (سقف = سطحِ نویسنده)
+ *   ۳. users.phone/national_id → فقط manager/edu_office/superadmin
+ *   ۴. school_id → مشتق از نشست (نقش‌هایِ scoped)
+ *   ۵. کلیدهایِ مالکیت (from_id/author_id/graded_by) → خودِ نشست
+ *   ۶. status → ins فقط مقدارِ اولیه (pending) برایِ غیرمدیر؛
+ *      upd فقط manager+ (استثنا: attendance — نویسندهٔ حضور؛
+ *      leaves — FIELD_ALLOWLISTSِ موجود)
+ * خروجی: null = عبور (و مشتق‌ها روی op.data اعمال شده) یا {code,msg}.
+ * `exc` = استثنایِ IEP/DROP (users) که پیش‌تر اعطا شده است.
+ */
+function fieldGate(op, s, exc){
+  const def = AUTHZ[op.c];
+  if(!def) return { code: 'unknown_collection', msg: 'این مجموعه در مدلِ مجوز نیست' };
+  if(op.t === 'del'){
+    /* del هم تحتِ مجوزِ مدل است (مثلِ legacy) — نه صرفاً scope */
+    if(!canOp(s.role, op.c, 'del')) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };
+    return null;
+  }
+  const d = op.data;
+  if(!d || typeof d !== 'object' || Array.isArray(d)) return { code: 'malformed_op', msg: 'data باید یک شیء باشد' };
+  if(!exc && !canOp(s.role, op.c, op.t)) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };
+  for(const k of Object.keys(d)){
+    /* R96: رمز اولیه فقط هنگامِ ساختِ کاربر، توسطِ مدیر */
+    if(k === 'password' && op.c === 'users' && op.t === 'ins' && (s.role === 'manager' || s.role === 'superadmin')) continue;
+    if(!def.fields || def.fields.indexOf(k) === -1) return { code: 'unknown_field', msg: 'فیلدِ «' + k + '» در این مجموعه تعریف نشده است' };
+  }
+  if(op.c === 'users'){
+    if(d.role != null){
+      const lvl = ROLE_LEVEL[d.role];
+      if(lvl == null) return { code: 'unknown_field', msg: 'نقشِ ناشناخته' };
+      if(s.role !== 'superadmin' && lvl > ROLE_LEVEL[s.role]) return { code: 'role_escalation', msg: 'نقشِ بالاتر از سطحِ خود مجاز نیست' };
+    }
+    if(!exc && (d.phone != null || d.national_id != null) && s.role !== 'manager' && s.role !== 'superadmin' && s.role !== 'edu_office'){
+      return { code: 'field_denied', msg: 'تلفن/کد ملی فقط توسطِ مدیریتِ کاربران قابلِ ثبت است' };
+    }
+  }
+  if(s.school_id != null && (d.school_id != null || (def.fields || []).indexOf('school_id') > -1)){
+    if(d.school_id != null && Number(d.school_id) !== Number(s.school_id))
+      return { code: 'school_mismatch', msg: 'school_id باید همان مدرسهٔ شما باشد' };
+    d.school_id = s.school_id;
+  }
+  const ok = OWNERSHIP_KEYS[op.c];
+  if(ok){
+    if(d[ok] != null && Number(d[ok]) !== s.id) return { code: 'ownership_forge', msg: 'شناسهٔ مالکیت قابلِ تغییر نیست' };
+    d[ok] = s.id;
+  }
+  if(op.c === 'counselor_msgs' && d.author_role != null && d.author_role !== s.role)
+    return { code: 'ownership_forge', msg: 'author_role قابلِ تغییر نیست' };
+  if(d.status != null){
+    /* R96 P0-2 — سیاستِ status (مشتق از اسکِنِ کلاینت + تحلیلِ کارکرد):
+       • ins: مقدارِ اولیهٔ workflow (به‌ازایِ هر مجموعه) — مدیر/superadmin/
+         edu_office (کارتِ اعتبارسنجی) و نویسندهٔ اصلی (attendance) آزادند.
+       • upd: انتقالِ workflow فقط برایِ نقش‌هایی که در کارکردِ کلاینت
+         آن انتقال را انجام می‌دهند (لیستِ صریح) — بقیه فقط مدیر. */
+    const freeIns = s.role === 'manager' || s.role === 'superadmin' || s.role === 'edu_office';
+    if(op.t === 'ins'){
+      if(STATUS_WRITER_COLL[op.c]){/* نویسندهٔ اصلی — status خودِ داده است */}
+      else if(!freeIns){
+        const init = STATUS_INITIAL_MAP[op.c] || ['pending'];
+        if(init.indexOf('*') < 0 && init.indexOf(d.status) < 0)
+          return { code: 'field_denied', msg: 'مقدارِ اولیهٔ status در این مجموعه فقط ' + init.join('/') + ' است' };
+      }
+    }else{
+      if(STATUS_WRITER_COLL[op.c] || s.role === 'manager' || s.role === 'superadmin'){/* آزاد */}
+      else{
+        const roles = STATUS_UPD_ROLE[op.c];
+        if(!roles || roles.indexOf(s.role) < 0)
+          return { code: 'field_denied', msg: 'تغییرِ status برای نقش شما مجاز نیست' };
+      }
+    }
+  }
+  return null;
 }
 
 /* بند ۲.۲ — IEP: دبیر می‌تواند رکوردِ دانش‌آموز (users) را بروزرسانی کند،
@@ -195,6 +327,13 @@ function inScope(session, coll, recId, data){
   if(u.role === 'parent'){
     if(coll === 'messages') return msgOwnerOk();
     const kids = (get_store().parent_links || []).filter(l => l.parent_id === u.id).map(l => l.student_id);
+    /* R96: رزرو نوبت — رکوردِ نوبتِ آزاد student_id ندارد، پس مالکیت
+       از data.student_id (فرزندِ خود) می‌آید؛ وگرنه مجوزِ مدل برای
+       parent×meeting_slots×upd با inScope قابلِ اجرا نبود. */
+    if(coll === 'meeting_slots' && !rec && data && data.student_id != null)
+      return kids.indexOf(Number(data.student_id)) > -1;
+    if(coll === 'meeting_slots' && data && data.student_id != null && rec && rec.student_id == null)
+      return kids.indexOf(Number(data.student_id)) > -1;
     const sid = rec ? rec.student_id : (data && data.student_id);
     /* Round 89 — parent_links (kid-reject flow removes their own link):
        a NEW link must belong to the parent themselves (no forging links for others) */
@@ -231,8 +370,20 @@ function inScope(session, coll, recId, data){
     return false;
   }
   /* manager / edu_office: school-level */
+  if(u.role === 'edu_office') return true; /* اداره = مرجعِ بین‌مدرسه (مثلِ مدل) */
   const s = rec ? rec.school_id : (data && data.school_id);
-  if(s == null) return u.role === 'edu_office';
+  if(s == null){
+    /* R96: مجموعه‌هایِ بدونِ school_id (مثلِ hw_submissions) — scope از
+       رشتهٔ student → enrollment → class → school حل می‌شود (fail-closed). */
+    const sid2 = (rec && rec.student_id != null) ? rec.student_id
+             : (data && data.student_id != null ? data.student_id : null);
+    if(sid2 != null){
+      const enr = (get_store().enrollments || []).find(e => e.student_id === Number(sid2));
+      const cls = enr && (get_store().classes || []).find(c => c.id === enr.class_id);
+      if(cls) return Number(cls.school_id) === Number(u.school_id);
+    }
+    return false;
+  }
   return s === u.school_id;
 }
 
@@ -312,7 +463,11 @@ function createSync(ctx){
     if(ops.length > MAX_BATCH) return sendJson(res, 413, { ok: false, code: 'batch_too_large' });
     if(ops.length === 0) return sendJson(res, 200, { ok: true, results: [] });
 
-    const all = (code) => sendJson(res, 403, { ok: false, code, results: ops.map(o => ({ uid: o && o.uid, ok: false, code })) });
+    const all = (code) => {
+      /* R96 P1-8: authorization failure باید ردِّ پای داشته باشد (بدونِ PII) */
+      audit('sync_authz_fail', { user_id: s.id, code, ops: ops.length });
+      return sendJson(res, 403, { ok: false, code, results: ops.map(o => ({ uid: o && o.uid, ok: false, code })) });
+    };
 
     const results = [];
     const apply = [];
@@ -337,12 +492,23 @@ function createSync(ctx){
         results.push({ uid: op.uid, ok: false, code: ff.code, message: 'تغییر این فیلد برای نقش شما مجاز نیست' });
         continue;
       }
-      if(!canWrite(s.role, op.c) && !(ff && ff.kind === 'allow') && !iepUsersUpdate(s, op)) return all('role_denied');
+      /* R96 P0-1: دروازهٔ نقشِ جداگانهٔ قدیمی (canWrite) حذف شد —
+         canOp داخلِ fieldGate همان ماتریسِ مدل را با تفکیکِ عمل
+         اعمال می‌کند (IEP/DROP با exc می‌گذرند). یک منبعِ حقیقت: مدل. */
       /* Round 76 — dropout whitelist double guard (semantics unchanged) */
       if(dropTouchesDropout(op) && s.role !== 'superadmin' && !dropUsersUpdate(s, op)) return all('role_denied');
       /* #4 — target record inside scope */
       const recId = op.id != null ? op.id : (op.data && op.data.id);
       if(!inScope(s, op.c, recId, op.data)) return all('out_of_scope');
+      /* R96 P0-2 — دروازهٔ فیلد: فیلدِ ناشناخته / ارتقاءِ نقش / مالکیت /
+         status. استثنایِ IEP/DROP (users) که در گِیتِ قبلی اعطا شده،
+         از canOp/phone-nid معاف است ولی فیلدِ ناشناخته را نمی‌شود. */
+      const fv = fieldGate(op, s, iepUsersUpdate(s, op) || dropUsersUpdate(s, op));
+      if(fv){
+        audit('sync_field_gate', { user_id: s.id, uid: op.uid, collection: op.c, code: fv.code });
+        results.push({ uid: op.uid, ok: false, code: fv.code, message: fv.msg });
+        continue;
+      }
       /* §13.1 — non-in-person day: physical ops rejected per-op (rest continues) */
       const vd = virtualDayViolation(op, store);
       if(vd){
@@ -493,4 +659,4 @@ function createSync(ctx){
 
   return { apiSync, canWrite, inScope };
 }
-module.exports = { createSync, attach, canWrite, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, VERSIONED, STRUCTURAL, VERSION_TRACKED };
+module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, VERSIONED, STRUCTURAL, VERSION_TRACKED };

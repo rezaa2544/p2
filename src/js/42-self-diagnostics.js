@@ -947,7 +947,7 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
                   'batchWrites','saveLog','applyOp','canRoute','canAction',
                   'idxById','idxReset','esc','fa','toast','openModal','closeModal'];
       var miss = need.filter(function(n){
-        try{ return typeof eval(n) !== 'function'; }catch(e){ return true; }
+        try{ return typeof window[n] !== 'function'; }catch(e){ return true; }
       }).map(function(n){ return { تابع:n }; });
       return miss.length
         ? { ok:false, count:miss.length, items:miss,
@@ -974,7 +974,7 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
       var need = ['BRANCHES','GRADES_OF_LEVEL','LEVELS','NAV','TITLES',
                   'ROLE_FA','DIAG_CHECKS','BELL_PRESETS','FIELD_ALIASES'];
       var miss = need.filter(function(n){
-        try{ return typeof eval(n) === 'undefined'; }catch(e){ return true; }
+        try{ return window[n] === undefined; }catch(e){ return true; }
       }).map(function(n){ return { جدول:n }; });
       return miss.length
         ? { ok:false, count:miss.length, items:miss,

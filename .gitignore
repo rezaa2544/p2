@@ -26,3 +26,10 @@ _guide_shots/
 
 # server runtime data (store + JWT secret + audit log) — never commit
 server/data/
+
+# R96 — secrets: هرگز وارد repository نشود
+.env*
+*.pem
+*.key
+*.crt
+server/data/jwt.key

@@ -42,11 +42,13 @@ const MUTS = [
     expectFail: 'S17'
   },
   {
-    file: 'server/sync.js', suite: 'tests/server1.js', heap: 1500,
-    bad: "if(!canWrite(s.role, op.c) && !(ff && ff.kind === 'allow') && !iepUsersUpdate(s, op)) return all('role_denied');",
-    mut: "if(!canWrite('superadmin', op.c) && !(ff && ff.kind === 'allow') && !iepUsersUpdate(s, op)) return all('role_denied');",
-    name: 'M3 نقشِ همه‌گیر (canWrite)',
-    expectFail: 'S20'
+    file: 'server/sync.js', suite: 'tests/server12.js', heap: 1500,
+    /* R96 P0-1: دروازهٔ نقشِ واحد = canOp درون fieldGate (canWrite منسوخ شد).
+       target: S8 — teacher ins leaves؛ اگر دروازه خاموش شود عملیات PASS می‌کند. */
+    bad: "if(!canOp(role, coll, op.t)) return { kind: 'reject_op', code: 'role_denied' };",
+    mut: "if(false && !canOp(role, coll, op.t)) return { kind: 'reject_op', code: 'role_denied' };",
+    name: 'M3 نقشِ همه‌گیر (canOp در fieldGate)',
+    expectFail: 'S8'
   },
   {
     file: 'src/js/00-data-layer.js', suite: 'tests/server2.js', heap: 1500,
