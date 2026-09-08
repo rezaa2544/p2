@@ -3540,6 +3540,7 @@ function renderShell(){
       <div class="user-chip"><div class="avatar">${esc(u.full_name[0])}</div><div><b>${esc(u.full_name)}</b><span>${ROLE_FA[u.role]}</span></div></div>
       ${isMultiRole()?`<button class="btn ghost" style="width:100%;justify-content:center;margin-top:6px" data-act="open-picker">🔄 تعویض پنل</button>`:''}
       <button class="btn ghost" style="width:100%;justify-content:center;margin-top:6px" data-act="logout">خروج از حساب</button>
+      ${typeof themePickerHtml==='function'?themePickerHtml():''}
       <button class="btn ghost sm" style="width:100%;justify-content:center;margin-top:6px" data-act="reset">بازنشانی داده‌های نمونه</button>
     </div>
    </aside>
@@ -10914,9 +10915,19 @@ function coreActions(e, el, id, a, rawId){
      }
    },
    /* گواهی نمرات (بند ۱.۶): چاپ از تب کارنامهٔ پروندهٔ دانش‌آموز.
-      نسخهٔ PDF قفل‌شده است — اینجا فقط چاپِ اچ‌تی‌ام‌ال است. */
+      نسخهٔ PDF قفل‌شده است — اینجا فقط چاپِ اچ‌تی‌ام‌ال است.
+      🔴 دورِ ۸۹ — نشتِ دامنه (هم‌خانوادهٔ ics-export، §۰.۵.۲۰):
+      این اکشن تنها عضوِ خانوادهٔ گواهی‌ها بود که `certAllowedStudent` را
+      صدا نمی‌زد، درحالی‌که چهار خواهرش (`report-print`،
+      `cert-enroll-print`، `cert-transfer-print`، `cert-verify`) می‌زدند.
+      `sid` از `data-sid` می‌آید — یعنی ادعایِ DOM. اثباتِ زنده: ولیِ
+      مدرسهٔ ۶ با دکمهٔ دست‌ساز، گواهیِ نمراتِ دانش‌آموزِ مدرسهٔ ۱ را گرفت
+      **همراهِ نام و کدِ ملی**. از نشتِ ICS جدی‌تر است چون PII دارد.
+      نگهبان: `tests/certify.js` بخشِ C8 (جهش‌آزموده). */
    'cert-print'(){
      const sid=Number(el.dataset.sid)||(S.user&&S.user.role==='student'?S.user.id:0);
+     const chk=certAllowedStudent(sid);
+     if(!chk.ok){toast(chk.msg,'err');return;}
      const d=transcriptCert(sid,V('cert_term'));
      if(!d.ok){toast(d.msg,'err');return;}
      printableDoc(d);
@@ -11555,6 +11566,15 @@ document.addEventListener('input',e=>{
 /* آبشاری: مقطع → پایه → شاخه → رشته (فرم درس و فرم افزودن کتاب) */
 document.addEventListener('change',e=>{
   const id=e.target.id;
+
+  /* انتخابگرِ پوسته (۶۷): <select data-act="theme-pick"> — روی change
+     عمل می‌کند، نه click. `el` را محلی می‌سازیم چون این شنونده
+     مثلِ شنوندهٔ click متغیّرِ el ندارد. */
+  if(e.target.dataset && e.target.dataset.act==='theme-pick' &&
+     typeof THEME_ACTIONS!=='undefined' && THEME_ACTIONS['theme-pick']){
+    THEME_ACTIONS['theme-pick'](e.target);
+    return;
+  }
 
   /* زنگ‌ها: شروع روز ⇒ همهٔ بازه‌های همان روز جابه‌جا می‌شوند (دور ۶۳) */
   if(e.target.classList && e.target.classList.contains('bl-start') && window._edit){
@@ -13498,7 +13518,19 @@ const F7_ACTIONS = {
     toast(r.made?`یادآوری برای ${fa(r.made)} قسط ساخته شد`:'قسطِ سررسیدِ گذشته‌ای بدون یادآوری نیست',r.made?'ok':'');
     render();
   },
+  /* 🔴 دورِ ۸۹ — نشتِ دامنه (هم‌خانوادهٔ ics-export و cert-print، §۰.۵.۲۰):
+     `id` شناسهٔ صورتحساب است و از DOM می‌آید، پس ادعایِ مرورگر است.
+     بدونِ گارد، ولی با دکمهٔ دست‌ساز رسیدِ شهریهٔ دانش‌آموزِ **مدرسهٔ دیگر**
+     را چاپ می‌کرد — همراهِ نامِ او (اثباتِ زنده: ولیِ ۲ رسیدِ ۱۶۳۲ نویسه‌ایِ
+     دانش‌آموزِ ۱۶ را گرفت). گاردِ مالکیت همان مرجعِ گواهی‌هاست تا رفتار در
+     کلِ محصول یکدست بماند. نگهبان: `tests/finance2.js` بخشِ FN-R1. */
   'receipt-tuition'(el,id){
+    const t=byId('tuitions',Number(id));
+    if(!t){toast('صورتحساب پیدا نشد','err');return;}
+    if(typeof certAllowedStudent==='function'){
+      const chk=certAllowedStudent(t.student_id);
+      if(!chk.ok){toast(chk.msg,'err');return;}
+    }
     printTuitionReceipt(Number(id));
   },
   'inst-cancel'(el,id){
@@ -13532,7 +13564,19 @@ const F7_ACTIONS = {
       insert('notifications',{user_id:uid,school_id:i.school_id,type:'tuition_paid',title:'✅ رسید پرداخت شهریه',body:`مبلغ ${rial(amount)} ریال بابت قسط ${i.seq} دریافت شد. کد رهگیری ${ref}`,link:'mytuition',read:0,created_at:todayISO()}));
     closeModal(); toast(`پرداخت ثبت شد — کد رهگیری ${ref}`,'ok'); render();
   },
-  'receipt'(el,id){ printReceipt(id); },
+  /* 🔴 دورِ ۸۹ — چهارمین نشتِ همان خانواده (§۰.۵.۲۰-ب): `id` شناسهٔ قسط
+     است و از DOM می‌آید. بدونِ گارد، رسیدِ پرداختِ دانش‌آموزِ مدرسهٔ دیگر
+     با نامِ او چاپ می‌شد (اثباتِ زنده: ۲۱۹۵ نویسه). نگهبان: `finance2.js`
+     بخشِ FN-R2. */
+  'receipt'(el,id){
+    const i=byId('installments',Number(id));
+    if(!i){toast('قسط پیدا نشد','err');return;}
+    if(typeof certAllowedStudent==='function'){
+      const chk=certAllowedStudent(i.student_id);
+      if(!chk.ok){toast(chk.msg,'err');return;}
+    }
+    printReceipt(id);
+  },
   'plan-new'(){ planModal(null); },
   'plan-edit'(el,id){ planModal(byId('tuition_plans',id)); },
   'plan-del'(el,id){
@@ -26964,7 +27008,9 @@ function clientFeaturesCard(sid){
   var tc=tomorrowChecklistItems(sid);
   var ne=nextExamOf(sid);
   var h='<div class="card" style="margin-bottom:12px"><div class="card-head"><h3>🗓️ فردا و امتحانات</h3><div class="spacer"></div>'
-    + '<button class="btn ghost sm" data-act="ics-export" data-sid="'+escAttr(sid)+'" title="دانلودِ تقویمِ امتحانات و رویدادهای مدرسه (فایل ICS — با هر تقویمی باز می‌شود)">📥 تقویم (ICS)</button></div>'
+    /* بدونِ data-sid/data-id عمدی — هدف در خودِ اکشن از recordTargetId()
+       گرفته می‌شود تا شناسهٔ آمده از DOM نتواند دامنه را بشکند (دورِ ۸۹). */
+    + '<button class="btn ghost sm" data-act="ics-export" title="دانلودِ تقویمِ امتحانات و رویدادهای مدرسه (فایل ICS — با هر تقویمی باز می‌شود)">📥 تقویم (ICS)</button></div>'
     + '<div class="card-body" style="display:grid;gap:10px">';
   if(tc.school){
     h+='<div><b>فردا — '+jalali(tc.date)+'</b>';
@@ -27002,9 +27048,24 @@ function cfCanExcuse(u,rec){
 
 /* اکشن‌ها */
 const CF_ACTIONS = {
-  /* ویژگی ۳: خروجی ICS */
-  'ics-export'(el,id){
-    var sid=id?Number(id):((typeof recordTargetId==='function')?recordTargetId():null);
+  /* ویژگی ۳: خروجی ICS
+     🔴 دورِ ۸۹ — نشتِ دامنه (کشف با پروبِ زنده، بازبینیِ خودکار ندیده بود):
+     نسخهٔ پیشین اگر `data-id` می‌آمد همان را بی‌چون‌وچرا هدف می‌گرفت:
+        var sid = id ? Number(id) : recordTargetId();
+     دکمهٔ واقعی `data-sid` دارد و دیسپچر فقط `data-id` را می‌خواند، پس در
+     استفادهٔ عادی همیشه شاخهٔ امن اجرا می‌شد و کسی متوجه نمی‌شد. ولی مهاجم
+     (کاربرِ معتبرِ سامانه) با ساختنِ دستیِ یک دکمه:
+        <button data-act="ics-export" data-id="<شناسهٔ بیگانه>">
+     تقویمِ دانش‌آموزِ **مدرسهٔ دیگر** را دانلود می‌کرد (اثباتِ زنده: مدرسهٔ ۶
+     فایلِ مدرسهٔ ۱ را گرفت). `canAction` جلویش را نمی‌گیرد چون این اکشن
+     بی‌برچسب است، و `server/idor.js` هم نه — این خواندنِ حافظهٔ محلی است،
+     نه درخواستِ شبکه.
+     رفع: هدف **همیشه** از `recordTargetId()` می‌آید که ولی را به
+     `parent_links` خودش و دانش‌آموز را به خودش محدود می‌کند. ورودیِ
+     `id` عمداً نادیده گرفته می‌شود (اصلِ نهم: دادهٔ بیرون از دامنه اصلاً
+     نباید ساخته شود). نگهبان: `tests/client-features.js` بخشِ F5. */
+  'ics-export'(){
+    var sid=(typeof recordTargetId==='function')?recordTargetId():null;
     if(sid) icsDownload(sid);
   },
   /* ویژگی ۴: موجه‌سازیِ سریع — بازکردنِ فرم */
@@ -27039,6 +27100,61 @@ const CF_ACTIONS = {
     S.__cfRid=0;
     closeModal(); toast('درخواستِ موجه ثبت شد — پس از تأییدِ مدیر اعمال می‌شود','ok'); render();
   }
+};
+
+/* ==========================================================
+   انتخابگرِ پوسته (تم) در رابطِ کاربری — دور ۹۰
+   ----------------------------------------------------------
+   موتورِ تم از پیش در `99-theme-loader.js` وجود داشت و درست کار
+   می‌کرد، ولی هیچ راهی در رابط برایِ استفاده از آن نبود — کاربر
+   فقط از کنسولِ مرورگر می‌توانست پوسته را عوض کند.
+
+   این ماژول همان موتور را به یک <select> در پاورقیِ نوارِ کناری
+   وصل می‌کند. منطقِ ذخیره/اعمال تکرار نمی‌شود؛ فقط
+   `switchPayeshTheme` صدا زده می‌شود (تک‌منبعِ حقیقت).
+
+   نگهبان: `tests/theme-picker.js` (جهش‌آزموده).
+   ========================================================== */
+
+/** نامِ فارسیِ پوسته‌ها — همان سه شناسه‌ای که موتور معتبر می‌داند. */
+const PAYESH_THEMES = [
+  ['theme-1', 'کلاسیک'],
+  ['theme-2', 'روشن (پیش‌فرض)'],
+  ['theme-3', 'شب'],
+];
+
+/** پوستهٔ فعلی از حافظهٔ دستگاه — با همان پیش‌فرضِ موتور. */
+function currentPayeshTheme(){
+  try{
+    if(typeof Store!=='undefined' && Store && typeof Store.get==='function'){
+      return Store.get('payesh_ui_theme','theme-2');
+    }
+  }catch(e){}
+  return 'theme-2';
+}
+
+/** <select>ِ انتخابِ پوسته برایِ پاورقیِ نوارِ کناری. */
+function themePickerHtml(){
+  const cur = currentPayeshTheme();
+  const opts = PAYESH_THEMES.map(function(t){
+    return '<option value="'+t[0]+'"'+(t[0]===cur?' selected':'')+'>'+t[1]+'</option>';
+  }).join('');
+  return '<select class="select sm" data-act="theme-pick" title="پوستهٔ برنامه" '+
+         'aria-label="پوستهٔ برنامه" '+
+         'style="width:100%;margin-top:6px">'+opts+'</select>';
+}
+
+/* اکشنِ تغییرِ پوسته.
+
+   استثنا بر قاعدهٔ دور ۷۹: آن قاعده دربارهٔ آبجکتِ `A` و شنوندهٔ
+   `click` است که `el` را در محیّطِ خود دارد. این اکشن از شنوندهٔ
+   `change` صدا زده می‌شود که چنین متغیّری ندارد، پس عنصر صراحتاً
+   پاس داده می‌شود. */
+const THEME_ACTIONS = {
+  'theme-pick'(elm){
+    const v = elm && elm.value;
+    if(typeof switchPayeshTheme === 'function') switchPayeshTheme(v);
+  },
 };
 
 /* ═══════════════════════════════════════════════════════════════════
