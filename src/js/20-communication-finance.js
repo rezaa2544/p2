@@ -665,7 +665,19 @@ const F7_ACTIONS = {
     toast(r.made?`یادآوری برای ${fa(r.made)} قسط ساخته شد`:'قسطِ سررسیدِ گذشته‌ای بدون یادآوری نیست',r.made?'ok':'');
     render();
   },
+  /* 🔴 دورِ ۸۹ — نشتِ دامنه (هم‌خانوادهٔ ics-export و cert-print، §۰.۵.۲۰):
+     `id` شناسهٔ صورتحساب است و از DOM می‌آید، پس ادعایِ مرورگر است.
+     بدونِ گارد، ولی با دکمهٔ دست‌ساز رسیدِ شهریهٔ دانش‌آموزِ **مدرسهٔ دیگر**
+     را چاپ می‌کرد — همراهِ نامِ او (اثباتِ زنده: ولیِ ۲ رسیدِ ۱۶۳۲ نویسه‌ایِ
+     دانش‌آموزِ ۱۶ را گرفت). گاردِ مالکیت همان مرجعِ گواهی‌هاست تا رفتار در
+     کلِ محصول یکدست بماند. نگهبان: `tests/finance2.js` بخشِ FN-R1. */
   'receipt-tuition'(el,id){
+    const t=byId('tuitions',Number(id));
+    if(!t){toast('صورتحساب پیدا نشد','err');return;}
+    if(typeof certAllowedStudent==='function'){
+      const chk=certAllowedStudent(t.student_id);
+      if(!chk.ok){toast(chk.msg,'err');return;}
+    }
     printTuitionReceipt(Number(id));
   },
   'inst-cancel'(el,id){
@@ -699,7 +711,19 @@ const F7_ACTIONS = {
       insert('notifications',{user_id:uid,school_id:i.school_id,type:'tuition_paid',title:'✅ رسید پرداخت شهریه',body:`مبلغ ${rial(amount)} ریال بابت قسط ${i.seq} دریافت شد. کد رهگیری ${ref}`,link:'mytuition',read:0,created_at:todayISO()}));
     closeModal(); toast(`پرداخت ثبت شد — کد رهگیری ${ref}`,'ok'); render();
   },
-  'receipt'(el,id){ printReceipt(id); },
+  /* 🔴 دورِ ۸۹ — چهارمین نشتِ همان خانواده (§۰.۵.۲۰-ب): `id` شناسهٔ قسط
+     است و از DOM می‌آید. بدونِ گارد، رسیدِ پرداختِ دانش‌آموزِ مدرسهٔ دیگر
+     با نامِ او چاپ می‌شد (اثباتِ زنده: ۲۱۹۵ نویسه). نگهبان: `finance2.js`
+     بخشِ FN-R2. */
+  'receipt'(el,id){
+    const i=byId('installments',Number(id));
+    if(!i){toast('قسط پیدا نشد','err');return;}
+    if(typeof certAllowedStudent==='function'){
+      const chk=certAllowedStudent(i.student_id);
+      if(!chk.ok){toast(chk.msg,'err');return;}
+    }
+    printReceipt(id);
+  },
   'plan-new'(){ planModal(null); },
   'plan-edit'(el,id){ planModal(byId('tuition_plans',id)); },
   'plan-del'(el,id){

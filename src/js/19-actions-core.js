@@ -1075,9 +1075,19 @@ function coreActions(e, el, id, a, rawId){
      }
    },
    /* گواهی نمرات (بند ۱.۶): چاپ از تب کارنامهٔ پروندهٔ دانش‌آموز.
-      نسخهٔ PDF قفل‌شده است — اینجا فقط چاپِ اچ‌تی‌ام‌ال است. */
+      نسخهٔ PDF قفل‌شده است — اینجا فقط چاپِ اچ‌تی‌ام‌ال است.
+      🔴 دورِ ۸۹ — نشتِ دامنه (هم‌خانوادهٔ ics-export، §۰.۵.۲۰):
+      این اکشن تنها عضوِ خانوادهٔ گواهی‌ها بود که `certAllowedStudent` را
+      صدا نمی‌زد، درحالی‌که چهار خواهرش (`report-print`،
+      `cert-enroll-print`، `cert-transfer-print`، `cert-verify`) می‌زدند.
+      `sid` از `data-sid` می‌آید — یعنی ادعایِ DOM. اثباتِ زنده: ولیِ
+      مدرسهٔ ۶ با دکمهٔ دست‌ساز، گواهیِ نمراتِ دانش‌آموزِ مدرسهٔ ۱ را گرفت
+      **همراهِ نام و کدِ ملی**. از نشتِ ICS جدی‌تر است چون PII دارد.
+      نگهبان: `tests/certify.js` بخشِ C8 (جهش‌آزموده). */
    'cert-print'(){
      const sid=Number(el.dataset.sid)||(S.user&&S.user.role==='student'?S.user.id:0);
+     const chk=certAllowedStudent(sid);
+     if(!chk.ok){toast(chk.msg,'err');return;}
      const d=transcriptCert(sid,V('cert_term'));
      if(!d.ok){toast(d.msg,'err');return;}
      printableDoc(d);
@@ -1708,6 +1718,15 @@ document.addEventListener('input',e=>{
 /* آبشاری: مقطع → پایه → شاخه → رشته (فرم درس و فرم افزودن کتاب) */
 document.addEventListener('change',e=>{
   const id=e.target.id;
+
+  /* انتخابگرِ پوسته (۶۷): <select data-act="theme-pick"> — روی change
+     عمل می‌کند، نه click. `el` را محلی می‌سازیم چون این شنونده
+     مثلِ شنوندهٔ click متغیّرِ el ندارد. */
+  if(e.target.dataset && e.target.dataset.act==='theme-pick' &&
+     typeof THEME_ACTIONS!=='undefined' && THEME_ACTIONS['theme-pick']){
+    THEME_ACTIONS['theme-pick'](e.target);
+    return;
+  }
 
   /* زنگ‌ها: شروع روز ⇒ همهٔ بازه‌های همان روز جابه‌جا می‌شوند (دور ۶۳) */
   if(e.target.classList && e.target.classList.contains('bl-start') && window._edit){
