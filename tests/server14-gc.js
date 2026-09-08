@@ -121,9 +121,19 @@ async function main() {
   chk('G3 opِ تازه: اولین پخش → ok (و store را dirty می‌کند)', a1 && a1.ok, JSON.stringify(a1));
   const a2 = await syncOps('gc-ctrl', 'GC test A');
   chk('G4 ری‌پلای: duplicate_ignored (کنترکت ایدمپوتانس)', a2 && a2.ok && a2.code === 'duplicate_ignored', JSON.stringify(a2));
-  await sleep(3000); /* حلقهٔ persist (هر ۲ ثانیه) + GC */
-
-  const after = JSON.parse(fs.readFileSync(storeFile, 'utf8'));
+  /* R95 — سخت‌سازی (کلاسِ R92/R93: sleepِ ثابت → رأیِ محیطیِ کاذب):
+     پنجرهٔ ۳ ثانیهٔ ثابت تحتِ بارِ موازیِ رجیسیون (دوِ لِین + لِینِ پورت)
+     گاه کوتاه‌تر از یک دورِ persist+GC (هر ۲ ثانیه) می‌شد و G5–G9 کاذب
+     قرمز می‌شدند (خودِ GC سالم — تکرارِ تکی سبز). حالا تا ۱۵ ثانیه فایل را
+     تا نشستنِ GC پُل می‌کنیم؛ اگر GC مرده باشد (جهش M4 / باگ) پُل وقتش را
+     می‌گیرد و چک‌ها همان‌طور که باید شکست می‌خورند. */
+  let after = null;
+  for (let i = 0; i < 15; i++) {
+    await sleep(1000);
+    after = JSON.parse(fs.readFileSync(storeFile, 'utf8'));
+    if (!after.__processed_uids['gc-old-uid'] && !after.__revoked_jti['gc-old-jti']
+        && !((after.__auth || {}).codes || {})['+989900000001']) break;
+  }
   chk('G5 GC: uidِ کهنه (31 روز) پاک شد', !after.__processed_uids['gc-old-uid']);
   chk('G5b GC: uidِ زنده (1 روز) ماند', !!after.__processed_uids['gc-new-uid']);
   chk('G6 GC: jtiِ کهنه (9 ساعت) پاک شد', !after.__revoked_jti['gc-old-jti']);
