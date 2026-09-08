@@ -379,7 +379,14 @@ var ACTION_ROLES = {
      «پیگیری الگوها» پیام را در صف اولیا می‌گذارد. مشاور عمداً
      بی‌خیال این اختیار است (تفکیک: پیگیری با مشاور، اطلاع‌رسانی
      رسمی با مدیر). */
-  'pattern-notify':  ['manager']
+  'pattern-notify':  ['manager'],
+  /* حضور کادر (بند B.1 فرناز): هر ۶ اکشن فقط مدیر */
+  'staffatt-day':    ['manager'],
+  'staffatt-save':   ['manager'],
+  'staffatt-prev':   ['manager'],
+  'staffatt-next':   ['manager'],
+  'staffatt-today':  ['manager'],
+  'staffatt-pick':   ['manager']
 };
 
 /* ✅ (R99 — تک‌منبعِ مجوزها) canAction/canRoute فقط رابط کاربری را مرتب

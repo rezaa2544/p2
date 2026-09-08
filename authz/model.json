@@ -1637,6 +1637,31 @@
     "superadmin"
    ]
   },
+  "staff_attendance": {
+   "fields": [
+    "created_at",
+    "date",
+    "id",
+    "note",
+    "registered_by",
+    "school_id",
+    "staff_id",
+    "status",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
   "student_archive": {
    "fields": [
     "archived_at",

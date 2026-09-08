@@ -46,6 +46,7 @@
  "19-actions-vclass.js",
  "19-actions-schedule.js",
  "19-actions-admin.js",
+ "19-actions-staff.js",
  "20-communication-finance.js",
  "21-exams-teachers-family.js",
  "22-jalali-calendar.js",
@@ -79,5 +80,6 @@
  "66-client-features.js",
  "67-theme-picker.js",
  "68-sync-conflicts.js",
+ "69-staff-attendance.js",
  "99-theme-loader.js"
 ]
