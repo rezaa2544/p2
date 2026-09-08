@@ -4366,6 +4366,7 @@ var ACTION_ROLES = {
   'vclass-play':      ['teacher','manager','student','parent'],
   'tomorrow-check':   ['student','parent'], /* E.1 فرناز: فقط حافظهٔ محلی — چیزی برای WRITE_PERMS ندارد */
   'goal-save':        ['student','parent'], /* E.3 فرناز: فقط Store — مالکیت در خود اکشن (goalViewerOk) */
+  'pnote-save':       ['parent'], /* E.6 فرناز: فقط Store — ولیِ لینک‌شده در خود اکشن */
   'vclass-q-ask':     ['student'],
   'vclass-q-save':    ['student'],
   'vclass-q-answer':  ['teacher','manager'],
@@ -6197,13 +6198,38 @@ function certsCard(sid){
     + '</div></div>';
 }
 
+/* ── E.6 فرناز: یادداشت شخصی ولی (هر فرزند یکی) ──
+   کاملاً خصوصی: کلید شامل شناسهٔ خودِ ولی است و رندر/ذخیره فقط برای ولیِ لینک‌شده.
+   فقط Store (حافظهٔ محلی) — هیچ‌چیز به سرور نمی‌رود، نه مدرسه نه والد دیگر نه دانش‌آموز. */
+function noteKey(pid,sid){ return 'payesh_note_'+pid+'_'+sid; }
+function noteGet(pid,sid){
+  try{ var o=JSON.parse(Store.get(noteKey(pid,sid),'null'));
+    if(o&&typeof o.t==='string')return {text:o.t,updated:o.u||null}; }catch(e){}
+  return null;
+}
+function noteLinkedParent(pid,sid){
+  return (db.parent_links||[]).some(function(l){return l.parent_id===pid&&l.student_id===sid;});
+}
+function parentNoteCard(sid){
+  var u=(typeof S!=='undefined')?S.user:null;
+  if(!u||u.role!=='parent'||!noteLinkedParent(u.id,sid))return '';
+  var n=noteGet(u.id,sid);
+  return '<div class="card"><div class="card-head"><h3>📝 یادداشت شخصی من</h3>'
+    +'<span class="badge b-gray">🔒 فقط شما می‌بینید</span></div>'
+    +'<div class="card-body">'
+    +'<textarea class="input" id="note_text" rows="3" maxlength="500" placeholder="یادآوری شخصی برای خودتان (حداکثر ۵۰۰ نویسه)…">'+esc(n?n.text:'')+'</textarea>'
+    +'<div class="row" style="margin-top:8px;gap:8px;align-items:center">'
+    +'<button class="btn sm" data-act="pnote-save" data-id="'+escAttr(sid)+'">💾 ذخیره یادداشت</button>'
+    +'<span class="small muted">'+(n&&n.updated?'آخرین به‌روزرسانی: '+jalali(n.updated):'هنوز یادداشتی ثبت نشده')+'</span>'
+    +'</div></div></div>';
+}
 function viewChildren(){
   const kids=db.parent_links.filter(p=>p.parent_id===S.user.id).map(p=>byId('users',p.student_id)).filter(Boolean);
   if(!kids.length)return `<div class="card">${empty('👨‍👩‍👦','دانش‌آموزی متصل نیست','با مدیر مدرسه تماس بگیرید.')}</div>`;
   const active=S.child||kids[0].id;
   return `<div class="card"><div class="card-body row">
    ${kids.map(k=>`<button class="btn ${active===k.id?'':'ghost'}" data-act="child" data-id="${escAttr(k.id)}">🎒 ${esc(k.full_name)} <span class="small">(${esc((classOf(k.id)||{}).name||'—')})</span></button>`).join('')}
-   </div></div>${summaryBlock(active)}${viewRecord(active)}`;
+   </div></div>${parentNoteCard(active)}${summaryBlock(active)}${viewRecord(active)}`;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -11278,6 +11304,16 @@ function loginServerMsg(code){
 function coreActions(e, el, id, a, rawId){
   return {
    /* E.1 فرناز: تیکِ چک‌لیستِ فردا — فقط حافظهٔ محلی via Store (بدون سرور، بدون رندرِ مجدد) */
+   /* E.6 فرناز: یادداشت شخصی ولی — فقط Store؛ فقط ولیِ لینک‌شده؛ سقف ۵۰۰ نویسه */
+   'pnote-save'(){
+     const sid=Number(id), u=S.user;
+     if(!u||u.role!=='parent'||typeof noteLinkedParent!=='function'||!noteLinkedParent(u.id,sid)){toast('فقط ولیِ دانش‌آموز می‌تواند یادداشت ثبت کند','err');return;}
+     const t=(V('note_text')||'').trim();
+     if(t.length>500){toast('یادداشت حداکثر ۵۰۰ نویسه می‌تواند باشد','err');return;}
+     if(!t){Store.remove(noteKey(u.id,sid));}
+     else if(!Store.set(noteKey(u.id,sid),JSON.stringify({t:t,u:todayISO()}))){toast('ذخیره نشد — حافظهٔ محلی در دسترس نیست','err');return;}
+     toast('یادداشت ذخیره شد','ok'); render();
+   },
    /* E.3 فرناز: ثبت هدف نمره — فقط Store؛ گارد دوم: فقط خود/ولی (canAction نقش را چک می‌کند، این مالکیت را) */
    'goal-save'(){
      const sid=Number(id), sub=Number(el.dataset.sub);

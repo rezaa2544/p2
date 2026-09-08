@@ -54,6 +54,16 @@ function loginServerMsg(code){
 function coreActions(e, el, id, a, rawId){
   return {
    /* E.1 فرناز: تیکِ چک‌لیستِ فردا — فقط حافظهٔ محلی via Store (بدون سرور، بدون رندرِ مجدد) */
+   /* E.6 فرناز: یادداشت شخصی ولی — فقط Store؛ فقط ولیِ لینک‌شده؛ سقف ۵۰۰ نویسه */
+   'pnote-save'(){
+     const sid=Number(id), u=S.user;
+     if(!u||u.role!=='parent'||typeof noteLinkedParent!=='function'||!noteLinkedParent(u.id,sid)){toast('فقط ولیِ دانش‌آموز می‌تواند یادداشت ثبت کند','err');return;}
+     const t=(V('note_text')||'').trim();
+     if(t.length>500){toast('یادداشت حداکثر ۵۰۰ نویسه می‌تواند باشد','err');return;}
+     if(!t){Store.remove(noteKey(u.id,sid));}
+     else if(!Store.set(noteKey(u.id,sid),JSON.stringify({t:t,u:todayISO()}))){toast('ذخیره نشد — حافظهٔ محلی در دسترس نیست','err');return;}
+     toast('یادداشت ذخیره شد','ok'); render();
+   },
    /* E.3 فرناز: ثبت هدف نمره — فقط Store؛ گارد دوم: فقط خود/ولی (canAction نقش را چک می‌کند، این مالکیت را) */
    'goal-save'(){
      const sid=Number(id), sub=Number(el.dataset.sub);

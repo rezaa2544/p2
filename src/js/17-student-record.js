@@ -228,13 +228,38 @@ function certsCard(sid){
     + '</div></div>';
 }
 
+/* ── E.6 فرناز: یادداشت شخصی ولی (هر فرزند یکی) ──
+   کاملاً خصوصی: کلید شامل شناسهٔ خودِ ولی است و رندر/ذخیره فقط برای ولیِ لینک‌شده.
+   فقط Store (حافظهٔ محلی) — هیچ‌چیز به سرور نمی‌رود، نه مدرسه نه والد دیگر نه دانش‌آموز. */
+function noteKey(pid,sid){ return 'payesh_note_'+pid+'_'+sid; }
+function noteGet(pid,sid){
+  try{ var o=JSON.parse(Store.get(noteKey(pid,sid),'null'));
+    if(o&&typeof o.t==='string')return {text:o.t,updated:o.u||null}; }catch(e){}
+  return null;
+}
+function noteLinkedParent(pid,sid){
+  return (db.parent_links||[]).some(function(l){return l.parent_id===pid&&l.student_id===sid;});
+}
+function parentNoteCard(sid){
+  var u=(typeof S!=='undefined')?S.user:null;
+  if(!u||u.role!=='parent'||!noteLinkedParent(u.id,sid))return '';
+  var n=noteGet(u.id,sid);
+  return '<div class="card"><div class="card-head"><h3>📝 یادداشت شخصی من</h3>'
+    +'<span class="badge b-gray">🔒 فقط شما می‌بینید</span></div>'
+    +'<div class="card-body">'
+    +'<textarea class="input" id="note_text" rows="3" maxlength="500" placeholder="یادآوری شخصی برای خودتان (حداکثر ۵۰۰ نویسه)…">'+esc(n?n.text:'')+'</textarea>'
+    +'<div class="row" style="margin-top:8px;gap:8px;align-items:center">'
+    +'<button class="btn sm" data-act="pnote-save" data-id="'+escAttr(sid)+'">💾 ذخیره یادداشت</button>'
+    +'<span class="small muted">'+(n&&n.updated?'آخرین به‌روزرسانی: '+jalali(n.updated):'هنوز یادداشتی ثبت نشده')+'</span>'
+    +'</div></div></div>';
+}
 function viewChildren(){
   const kids=db.parent_links.filter(p=>p.parent_id===S.user.id).map(p=>byId('users',p.student_id)).filter(Boolean);
   if(!kids.length)return `<div class="card">${empty('👨‍👩‍👦','دانش‌آموزی متصل نیست','با مدیر مدرسه تماس بگیرید.')}</div>`;
   const active=S.child||kids[0].id;
   return `<div class="card"><div class="card-body row">
    ${kids.map(k=>`<button class="btn ${active===k.id?'':'ghost'}" data-act="child" data-id="${escAttr(k.id)}">🎒 ${esc(k.full_name)} <span class="small">(${esc((classOf(k.id)||{}).name||'—')})</span></button>`).join('')}
-   </div></div>${summaryBlock(active)}${viewRecord(active)}`;
+   </div></div>${parentNoteCard(active)}${summaryBlock(active)}${viewRecord(active)}`;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
