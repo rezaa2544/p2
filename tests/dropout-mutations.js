@@ -171,10 +171,19 @@ async function serverMutated(mutName, mutateSync, probe) { /* mutateSync=null �
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-mut-'));
   const srvDir = path.join(tmp, 'server');
   fs.mkdirSync(srvDir, { recursive: true });
-  for (const f of fs.readdirSync(path.join(ROOT, 'server'))) {
-    if (f === 'data') continue;
-    fs.copyFileSync(path.join(ROOT, 'server', f), path.join(srvDir, f));
-  }
+  /* R100/گام ۷: کپیِ بازگشتی — از فاز ۳، server/ زیرپوشه (middleware/ و
+     routes/) هم دارد و copyFileSyncِ تخت روی دایرکتوری EISDIR می‌داد و
+     M5/M6 هرگز واقعاً اجرا نمی‌شدند. data/ طبقِ طراحی رد می‌شود. */
+  const copyTree = (srcDir, dstDir) => {
+    fs.mkdirSync(dstDir, { recursive: true });
+    for (const f of fs.readdirSync(srcDir)) {
+      if (srcDir === path.join(ROOT, 'server') && f === 'data') continue;
+      const s = path.join(srcDir, f), d = path.join(dstDir, f);
+      if (fs.statSync(s).isDirectory()) copyTree(s, d);
+      else fs.copyFileSync(s, d);
+    }
+  };
+  copyTree(path.join(ROOT, 'server'), srvDir);
   /* R96: authz/model.json در ریشهٔ مخزن است — بدون آن requireِ sync.js شکست می‌خورد
      R99: سرور از authz/write-perms.json (تولیدشده) می‌خواند — همان */
   fs.mkdirSync(path.join(tmp, 'authz'), { recursive: true });

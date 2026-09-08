@@ -136,8 +136,8 @@ const MUTS = [
   },
   {
     file: 'server/admin.js', suite: 'tests/server8.js', heap: 1500,
-    bad: "    if(s.role !== 'superadmin') return { done: sendJson(res, 403, { ok: false, code: 'forbidden' }) };",
-    mut: "    if(false) return { done: sendJson(res, 403, { ok: false, code: 'forbidden' }) };",
+    bad: "    if(s.role !== 'superadmin') {",
+    mut: "    if(false) {",
     name: 'M16 گاردِ superadmin در پشتیبان/بازیابی خاموش شد',
     expectFail: 'B1'
   },
