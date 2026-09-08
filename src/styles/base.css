@@ -18,6 +18,8 @@ a{color:inherit;text-decoration:none}
 .login-art h1{font-size:40px;font-weight:800;letter-spacing:2px;margin:0;z-index:1}
 .login-tag{font-size:16px;font-weight:600;opacity:.95;z-index:1}
 .login-card{margin:auto;text-align:center}
+/* C.3 فرناز — گزارش عمومی زیر فرم ورود */
+.pub-report{max-width:980px;margin:0 auto;padding:8px 16px 40px}
 .login-card h2{font-size:22px;font-weight:800;margin:0 0 20px}
 .login-card .field{text-align:right}
 .login-card .field label{font-size:13px;font-weight:600;color:var(--text)}
