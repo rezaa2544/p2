@@ -921,6 +921,14 @@ function coreActions(e, el, id, a, rawId){
          fix=r.created;
        }
      }
+     /* E.5 فرناز: اعلان داخل‌برنامه‌ای غیبت برای والدین (با ref به رکورد).
+        ضدتکرار داخل absenceNotifFor است؛ فقط برای رکوردهای غایب. */
+     if(typeof absenceNotifFor==='function'){
+       made.forEach(function(m){
+         var rec=(typeof byId==='function')?byId('attendance',m.recId):null;
+         if(rec&&rec.status==='absent')absenceNotifFor(rec);
+       });
+     }
      attDraftClearKeepTimers(cid,date);
      closeModal();
      toast(fa(d.changes.length)+' تغییر ثبت شد'

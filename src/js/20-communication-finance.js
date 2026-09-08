@@ -106,7 +106,7 @@ function generateExtras(){
     db.attendance.filter(a=>a.school_id===school.id&&a.status==='absent').slice(0,12).forEach(a=>{
       const st=byId('users',a.student_id); if(!st)return;
       db.parent_links.filter(l=>l.student_id===st.id).forEach(l=>add('notifications',{user_id:l.parent_id,school_id:school.id,type:'absence',
-        title:'🚫 غیبت دانش‌آموز',body:`${st.full_name} در تاریخ ${jalali(a.date)} در مدرسه حاضر نبود.`,link:'children',read:0,created_at:a.date}));
+        title:'🚫 غیبت دانش‌آموز',body:`${st.full_name} در تاریخ ${jalali(a.date)} در مدرسه حاضر نبود.`,link:'children',ref:'att_'+a.id,read:0,created_at:a.date}));
     });
     db.installments.filter(i=>i.school_id===school.id&&i.status!=='paid'&&i.due_date<todayISO()).slice(0,10).forEach(i=>{
       const st=byId('users',i.student_id); if(!st)return;
@@ -277,6 +277,41 @@ function waiveInstallment(instId){
 }
 
 /* ---------------- اعلان‌ها ---------------- */
+/* ── E.5 فرناز: دکمهٔ «موجه اعلام کنم» کنار اعلان غیبت ──
+   زنجیرهٔ درخواست/تأیید از قبل بود (quick-excuse → leaves pending → decideLeave)؛
+   افزودهٔ E.5: (۱) اعلان غیبت با ref به رکورد حضور، (۲) دکمه کنار همان اعلان،
+   (۳) ضدتکرار درخواست. خودِ دکمه همان quick-excuse موجود است (اکشن جدید ندارد). */
+function absenceNotifFor(rec){
+  var st=byId('users',rec.student_id)||{};
+  (db.parent_links||[]).filter(function(l){return l.student_id===rec.student_id;}).forEach(function(l){
+    var dup=(db.notifications||[]).some(function(n){return n.user_id===l.parent_id&&n.type==='absence'&&n.ref==='att_'+rec.id;});
+    if(dup)return;
+    insert('notifications',{user_id:l.parent_id,school_id:rec.school_id,type:'absence',
+      title:'🚫 غیبت دانش‌آموز',body:(st.full_name||'')+' در تاریخ '+jalali(rec.date)+' در مدرسه حاضر نبود.',
+      link:'children',ref:'att_'+rec.id,read:0,created_at:rec.date});
+  });
+}
+function absenceAttOf(n){
+  if(n.ref&&String(n.ref).indexOf('att_')===0){
+    var r=byId('attendance',Number(String(n.ref).slice(4))); if(r)return r;
+  }
+  /* دادهٔ قدیمیِ بدون ref: تطبیق ولی↔فرزند↔تاریخِ اعلان */
+  var kids={};
+  (db.parent_links||[]).forEach(function(l){ if(l.parent_id===n.user_id)kids[l.student_id]=1; });
+  return (db.attendance||[]).find(function(a){return kids[a.student_id]&&a.date===n.created_at&&a.status==='absent';})||null;
+}
+function absencePendingFor(rec){
+  return (db.leaves||[]).some(function(l){return l.student_id===rec.student_id&&l.status==='pending'&&l.from_date<=rec.date&&l.to_date>=rec.date;});
+}
+function absenceExcuseBtn(n){
+  if(!n||n.type!=='absence')return '';
+  var u=(typeof S!=='undefined')?S.user:null;
+  if(!u||u.role!=='parent')return '';
+  var rec=absenceAttOf(n);
+  if(!rec||rec.status!=='absent'||rec.excused)return '';
+  if(absencePendingFor(rec))return '<div class="spacer"></div><span class="badge b-amber">⏳ در انتظار بررسی مدیر</span>';
+  return '<div class="spacer"></div><button class="btn ghost sm" data-act="quick-excuse" data-id="'+escAttr(rec.id)+'" title="ثبتِ درخواستِ موجه برای این غیبت (پس از تأییدِ مدیر)">🕊️ موجه اعلام کنم</button>';
+}
 function viewNotifications(){
   const items=myNotifs();
   return `<div class="card"><div class="card-head"><h3>🔔 اعلان‌های من</h3>
@@ -284,7 +319,7 @@ function viewNotifications(){
     ${items.length?items.map(n=>`<div class="row" style="padding:12px 16px;border-bottom:1px solid var(--border);background:${n.read?'#fff':'var(--primary-soft)'};cursor:pointer" data-act="notif-open" data-id="${escAttr(n.id)}">
       <span style="font-size:19px">${NOTIF_ICON[n.type]||'🔔'}</span>
       <div style="min-width:0"><b>${esc(n.title)}</b><div class="small muted" style="line-height:1.9">${esc(n.body||'')}</div>
-      <div class="small muted" style="opacity:.7">${jalali(n.created_at)}</div></div></div>`).join('')
+      <div class="small muted" style="opacity:.7">${jalali(n.created_at)}</div></div>${absenceExcuseBtn(n)}</div>`).join('')
     :empty('🔕','اعلانی ندارید','رویدادهای مهم مدرسه اینجا نمایش داده می‌شود.')}</div>`;
 }
 

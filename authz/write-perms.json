@@ -2396,6 +2396,7 @@
       ],
       "collections": [
         "attendance",
+        "notifications",
         "notify_queue"
       ]
     },
