@@ -36,7 +36,7 @@
 | ۲.۴ پشتیبان | ✅ خودکار/دستی + اعتبارسنجیِ بازیابی + GC — نگهداریِ خارجِ سرور = عملیات | server9 A2/A4 · server14-gc |
 | ۲.۵ تعارض (base_version + داوری) | ✅ پیاده (نسخه‌گذاری + حفظِ تعارض + صفحهٔ داوریِ مدیر) | `server/conflicts.js` · server15 + جهش |
 | ۲.۶ سرآیندها + CSP nonce | ✅ nonce در build.js + سرور (هماهنگ، چکِ e2e) + HSTS/Frame/nosniff/Referrer/Permissions + XSS: صفرِ eval/Function، document.write فقط ۶ نقطهٔ مجاز | `server/index.js` · `xss-guard` (23) |
-| ۲.۷ هشدارِ شمردنِ شناسه | 🟡 guardِ enum (رابطهٔ موجود/ناموجود) ✅ — تأخیر/ابطال + تصمیمِ UUID باز | `server/auth.js` O8 |
+| ۲.۷ هشدارِ شمردنِ شناسه | ✅ پیاده (R97): شمارِ رد‌ها (404/403/401) به ازای نشست در روتر — هشدار → تأخیر 500ms → 2s → ابطال نشست (env: PAYESH_ENUM_*) — enum-guard + آدیتِ عدمِ نشتِ تلفن؛ تصمیمِ UUID باز | `server/index.js` enum-guard · server17 E0–E6 |
 | ۱.۶ ورودِ خودکارِ دمو | 🟡 آگاهانه (فقط حالتِ دمو/پایلوت؛ فیلترِ F-3) — در حالتِ سرور نشست = کوکی | F-3 |
 | رازها (P1-9) | ✅ .gitignore (.env*/توکن/کلید/داده) + اسکینِ راز در رجیسیون — ⚠️ Revokeٔ توکن‌هایِ نشت‌کرده = اقدامِ کاربر | `tests/secret-scan.js` (11) |
 | TLS (P1-10) | ✅ production بی‌گواهی/پروکسی → exit(1)؛ self-signed در production رد؛ Secure+HSTS زیر HTTPS — گواهیِ واقعی = استقرار | `server/index.js` · server17 T1–T4 |
