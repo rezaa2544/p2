@@ -1,5 +1,7 @@
 [
  "00-data-layer.js",
+ "03-idb-persistence.js",
+ "00-migration.js",
  "01-helpers.js",
  "02-demo-data.js",
  "28-indexes.js",
