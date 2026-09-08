@@ -35,13 +35,19 @@ function createAdmin(ctx){
   }
   function checkAdmin(req, res){
     const s = sessionFrom(req);
-    if(!s) return { done: sendJson(res, 401, { ok: false, code: 'no_session' }) };
-    if(s.role !== 'superadmin') return { done: sendJson(res, 403, { ok: false, code: 'forbidden' }) };
+    if(!s) {
+      audit('authz_failure', { summary: 'عدم احراز نشست در بخش مدیریت', reason: 'no_session' });
+      return { done: sendJson(res, 401, { ok: false, code: 'no_session' }) };
+    }
+    if(s.role !== 'superadmin') {
+      audit('authz_failure', { user_id: s.id, role: s.role, school_id: s.school_id, summary: 'عدم دسترسی به بخش مدیریت با نقش ' + s.role, reason: 'forbidden' });
+      return { done: sendJson(res, 403, { ok: false, code: 'forbidden' }) };
+    }
     return { user: s };
   }
 
   /* هستهٔ پشتیبان‌گیری — مشترک بین endpoint و زمان‌بندیِ خودکار */
-  function backupNow(source, userId){
+  function backupNow(source, userId, ip){
     ensureDir();
     const now = new Date();
     const p = n => String(n).padStart(2, '0');
@@ -66,7 +72,7 @@ function createAdmin(ctx){
     }
     let size = 0;
     try{ size = fs.statSync(final).size; }catch(e){}
-    audit('backup_created', { user_id: (userId == null ? null : userId), file: name, size, source: source || 'manual' });
+    audit('backup_created', { user_id: (userId == null ? null : userId), role: 'superadmin', file: name, size, source: source || 'manual', ip: ip || null, summary: 'تهیه نسخه پشتیبان (export): ' + name + ' (' + size + ' بایت)' });
     return { name: name, size: size, count: listBackups().length };
   }
 
@@ -98,7 +104,7 @@ function createAdmin(ctx){
     let data = null;
     try{ data = JSON.parse(fs.readFileSync(fp, 'utf8')); }catch(e){}
     if(!data || typeof data !== 'object' || !Array.isArray(data.users)){
-      audit('restore_failed', { user_id: g.user.id, file: name, reason: 'corrupt' });
+      audit('restore_failed', { user_id: g.user.id, role: g.user.role, school_id: g.user.school_id, file: name, reason: 'corrupt', summary: 'خطا در بازیابی پشتیبان: فایل خراب ' + name });
       return sendJson(res, 409, { ok: false, code: 'corrupt_backup' });
     }
     /* S-73-1: in-place swap — the live object is kept (modules hold its
@@ -117,7 +123,7 @@ function createAdmin(ctx){
     store.__processed_uids = kept_uids || {};
     store.__revoked_jti = kept_rev || {};
     if(markDirty) markDirty();
-    audit('restore_completed', { user_id: g.user.id, file: name });
+    audit('restore_completed', { user_id: g.user.id, role: g.user.role, school_id: g.user.school_id, file: name, summary: 'بازیابی موفق پشتیبان از فایل: ' + name });
     return sendJson(res, 200, { ok: true, file: name });
   }
 
