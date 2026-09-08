@@ -532,9 +532,10 @@ function stripProtected(d){
   return prot;
 }
 
-/* ctx: { store, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom, sendJson } */
+/* ctx: { store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom, sendJson } */
 function createSync(ctx){
   const store = ctx.store;
+  const db = ctx.db;
   const MAX_BATCH = ctx.MAX_BATCH;
   const AT_DRIFT_MS = ctx.AT_DRIFT_MS;
   const audit = ctx.audit;
@@ -719,6 +720,9 @@ function createSync(ctx){
         audit('record_deleted', { user_id: s.id, role: s.role, school_id: s.school_id, collection: op.c, record_id: delId, summary: 'حذف رکورد ' + delId + ' از ' + op.c });
       }
       store.__processed_uids[op.uid] = Date.now();
+      if(db && typeof db.persistOp === 'function'){
+        db.persistOp(op).catch(() => {});
+      }
     }
     /* Round 88 + Round 89 — server side: the client cannot create notifications
        (inScope structurally rejects ins notifications for every non-manager role);
