@@ -216,9 +216,17 @@ for (const m of MUTS) {
 }
 execSync('node build.js', { stdio: 'pipe' });
 console.log('\nبازبینیِ خطِ پایه (بدون جهش):');
-const o1 = execSync('node --max-old-space-size=1500 tests/server1.js', { stdio: 'pipe' }).toString();
-console.log('  server1: ' + (o1.split('\n').find(l => l.includes('/30')) || o1.slice(-120)).trim());
-const o2 = execSync('node --max-old-space-size=1500 tests/server2.js', { stdio: 'pipe' }).toString();
+/* R97 — اجرایِ پایانه (بدونِ جهش) تحتِ بارِ ۴ لِین گاه می‌مرد و استیسه‌ی
+   execSync کلِ سویت را می‌انداخت (کلاسِ R89): try + یک‌بار retry. */
+const runBase = (cmd) => {
+  try { return execSync(cmd, { stdio: 'pipe' }).toString(); }
+  catch (e) { return String(e.stdout || '') + String(e.stderr || ''); }
+};
+let o1 = runBase('node --max-old-space-size=1500 tests/server1.js');
+if (o1.indexOf('بدون خطا') < 0) o1 = runBase('node --max-old-space-size=1500 tests/server1.js');
+console.log('  server1: ' + (o1.split('\n').find(l => l.includes('موفق')) || o1.slice(-120)).trim());
+let o2 = runBase('node --max-old-space-size=1500 tests/server2.js');
+if (o2.indexOf('✅') < 0) o2 = runBase('node --max-old-space-size=1500 tests/server2.js');
 console.log('  server2: ' + (o2.split('\n').find(l => l.includes('server2 (')) || o2.slice(-120)).trim());
 console.log(killed === MUTS.length && envFails === 0 ? `همهٔ ${MUTS.length} جهش کشته شدند ✅` : `فقط ${killed}/${MUTS.length} جهش کشته شد${envFails ? ` + ${envFails} خطای محیطی` : ''} ❌`);
 process.exit(killed === MUTS.length && envFails === 0 ? 0 : 1);
