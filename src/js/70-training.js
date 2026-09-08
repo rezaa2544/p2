@@ -63,6 +63,11 @@ function saveTrainingCourse(id, f){
   if (id){
     rec = byId('training_courses', Number(id));
     if (!rec || rec.school_id !== sid) return { ok: false, msg: 'دوره پیدا نشد' };
+    /* Devin-R1: دورهٔ تکمیل‌شده قفل است — هر تغییری کد گواهیِ صادرشده را باطل می‌کند.
+       فقط بازذخیرهٔ عینیِ همان داده (تکمیلِ دوباره، T4) مجاز است. */
+    if (rec.status === 'completed' && (staffId !== rec.staff_id || title !== rec.title ||
+        hours !== rec.hours || f.date !== rec.date || f.status !== rec.status))
+      return { ok: false, msg: 'دوره تکمیل شده قابل ویرایش نیست' };
     update('training_courses', rec.id, { staff_id: staffId, title: title, hours: hours, date: f.date, status: f.status });
     rec = byId('training_courses', rec.id);
   } else {
