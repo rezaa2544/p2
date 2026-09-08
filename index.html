@@ -9189,7 +9189,7 @@ function viewPlans(){
 function buildBackup(){
   return {
     format: 'payesh-backup',
-    version: 2,
+    version: 3, /* دور ۱۰۰ (نقصِ ۵): نسخهٔ ۳ = دفترچهٔ دارایِ اسنپ‌شات (t:'snap') */
     created_at: new Date().toISOString(),
     created_by: S.user ? S.user.username : null,
     seed: (typeof SEED !== 'undefined') ? SEED : null,
@@ -9200,6 +9200,18 @@ function buildBackup(){
        دفترچه می‌نشیند (برای بازیابی لازم است) ولی فایل پشتیبانِ قابل
        دانلود هرگز نباید آن را حمل کند. */
     ops: (typeof log !== 'undefined') ? log.map(function(op){
+      /* دور ۱۰۰ (نقصِ ۵): اسنپ‌شات هم رکوردِ کاملِ کاربر (با رمزِ متن‌ساده)
+         دارد — همان قاعدهٔ امنیتِ پنتست: رمز هرگز در فایلِ قابلِ دانلود. */
+      if(op && op.t==='snap' && op.db && Array.isArray(op.db.users)){
+        var db2={};
+        Object.keys(op.db).forEach(function(c){
+          db2[c]=(c==='users')?op.db[c].map(function(u){
+            if(!u||!Object.prototype.hasOwnProperty.call(u,'password'))return u;
+            var r={};Object.keys(u).forEach(function(k){r[k]=(k==='password')?'[redacted]':u[k];});return r;
+          }):op.db[c];
+        });
+        var s={};Object.keys(op).forEach(function(k){s[k]=(k==='db')?db2:op[k];});return s;
+      }
       if(op && op.c==='users' && op.data && Object.prototype.hasOwnProperty.call(op.data,'password')){
         var d={};
         Object.keys(op.data).forEach(function(k){ d[k]=(k==='password')?'[redacted]':op.data[k]; });
@@ -9217,10 +9229,18 @@ function validateBackup(obj){
   if(!obj || typeof obj !== 'object') return { ok:false, error:'فایل خوانا نیست' };
   if(obj.format !== 'payesh-backup') return { ok:false, error:'این فایل پشتیبان پایش نیست' };
   if(!Array.isArray(obj.ops)) return { ok:false, error:'فهرست عملیات در فایل نیست' };
-  if(obj.version > 2) return { ok:false, error:'نسخهٔ فایل جدیدتر از این برنامه است' };
+  if(obj.version > 3) return { ok:false, error:'نسخهٔ فایل جدیدتر از این برنامه است' };
   /* هر عملیات باید ساختار درست داشته باشد */
   for(var i = 0; i < obj.ops.length; i++){
     var o = obj.ops[i];
+    /* دور ۱۰۰ (نقصِ ۵): اسنپ‌شاتِ فشرده‌سازی (c ندارد — db/ids دارد) */
+    if(o && o.t==='snap'){
+      if(!o.db || typeof o.db !== 'object')
+        return { ok:false, error:'اسنپ‌شاتِ ردیف ' + (i+1) + ' ناقص است' };
+      if(o.ids !== undefined && (typeof o.ids !== 'object' || o.ids === null))
+        return { ok:false, error:'اسنپ‌شاتِ ردیف ' + (i+1) + ' ناقص است' };
+      continue;
+    }
     if(!o || !o.t || !o.c) return { ok:false, error:'عملیات شمارهٔ ' + (i+1) + ' ناقص است' };
     if(['ins','upd','del'].indexOf(o.t) < 0)
       return { ok:false, error:'نوع عملیات ناشناخته در ردیف ' + (i+1) };
@@ -9261,9 +9281,10 @@ function restoreBackup(obj){
     log.length = 0;
     obj.ops.forEach(function(o){ log.push(o); });
     if(typeof idxReset === 'function') idxReset();
-    SYNC_MUTED = true;
-    log.forEach(function(o){ applyOp(o, false); });
-    SYNC_MUTED = false;
+    /* دور ۱۰۰ (نقصِ ۵): بازپخش با همان applyLogِ بوت (اسنپ‌شات + دمِ __aدار
+       + شمارنده‌هایِ تازه) — به‌جایِ applyOpِ خام که اسنپ‌شات را نادیده
+       می‌گرفت و وضعیت را ناقص برمی‌گرداند. */
+    applyLog();
     if(typeof idxReset === 'function') idxReset();
     saveLog();
     return { ok:true, ops: obj.ops.length };
