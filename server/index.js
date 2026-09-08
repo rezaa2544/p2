@@ -27,6 +27,7 @@ const { createBell } = require('./bell');
 const { createAdmin } = require('./admin');
 const { createSms } = require('./sms');
 const { createConflicts } = require('./conflicts');
+const { createAudit, clientIp } = require('./audit');
 
 const ROOT = path.join(__dirname, '..');
 const DATA_DIR = path.join(__dirname, 'data');
@@ -170,30 +171,15 @@ if(Buffer.byteLength(JWT_SECRET, 'utf8') < 32){
 const JWT_PREV_SECRET = (process.env.PAYESH_JWT_SECRET_PREV || '').trim() || null;
 
 /* ── audit log (append-only, sanitized: no phone / nid / password) ───
-   R96 P1-8: size-based rotation (10MB → .1 → .2) so the log grows
-   without bound no more; it lives OUTSIDE the store file by design. */
+   R96 P1-8 + Audit Hardening: outside store, 0600 mode, rotation on 1000 events / daily / 10MB */
 const AUDIT_MAX_BYTES = 10 * 1024 * 1024;
-function auditRotate(){
-  try{
-    if(!fs.existsSync(AUDIT_FILE) || fs.statSync(AUDIT_FILE).size < AUDIT_MAX_BYTES) return;
-    try{ fs.renameSync(AUDIT_FILE + '.1', AUDIT_FILE + '.2'); }catch(e){}
-    try{ fs.renameSync(AUDIT_FILE, AUDIT_FILE + '.1'); }catch(e){}
-  }catch(e){}
-}
-let auditInit = false;
-function audit(type, detail){
-  try{
-    /* S-73-3: audit log is 0600 — created owner-only, and an existing
-       file (created by an older version) is fixed up once. */
-    if(!auditInit){
-      auditInit = true;
-      try{ fs.openSync(AUDIT_FILE, 'a', 0o600); }catch(e){}
-      try{ fs.chmodSync(AUDIT_FILE, 0o600); }catch(e){}
-    }
-    auditRotate();
-    fs.appendFileSync(AUDIT_FILE, JSON.stringify({ ts: new Date().toISOString(), type, detail: detail || {} }) + '\n', 'utf8');
-  }catch(e){ /* never break the request path on logging */ }
-}
+const auditLogger = createAudit({
+  auditFile: AUDIT_FILE,
+  auditDir: path.join(path.dirname(AUDIT_FILE), 'audit'),
+  maxEvents: parseInt(process.env.PAYESH_AUDIT_MAX_EVENTS || '1000', 10),
+  maxBytes: AUDIT_MAX_BYTES
+});
+const audit = auditLogger.audit;
 
 /* ── shared helpers ────────────────────────────────────────────────── */
 function isHttps(req){

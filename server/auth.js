@@ -191,7 +191,7 @@ function createAuth(ctx){
        touches disk, audit or responses — demo echo is test-mode only). */
     const code = String(crypto.randomInt(1000, 10000));
     store.__auth.codes[phone] = { h: hashCode(code, phone), at: now, user_id: user.id, tries: 0 };
-    audit('send_code', { user_id: user.id, role: user.role });
+    audit('send_code', { user_id: user.id, role: user.role, school_id: user.school_id, ip, summary: 'ارسال کد ورود برای کاربر ' + user.id });
     const out = { ok: true, code: 'sent' };
     if(DEMO_CODE_ECHO) out.demo_code = code; /* dev/preview — a real gateway never echoes */
     sendJson(res, 200, out);
@@ -230,7 +230,7 @@ function createAuth(ctx){
     const fail = (msg) => {
       fl.n += 1;
       fl.until = Date.now() + Math.min(1000 * Math.pow(2, Math.max(0, fl.n - 3)), 30000);
-      audit('login_fail', { reason: msg, user_id: user ? user.id : null });
+      audit('login_fail', { reason: msg, user_id: user ? user.id : null, role: user ? user.role : null, school_id: user ? user.school_id : null, ip, summary: 'ورود ناموفق: ' + msg });
       if(ctx.markDirty) ctx.markDirty();
       return sendJson(res, 401, { ok: false, code: msg });
     };
@@ -262,7 +262,7 @@ function createAuth(ctx){
 
     delete store.__auth.codes[phone];
     fl.n = 0; fl.until = 0;
-    audit('login_ok', { user_id: user.id, role: user.role });
+    audit('login_ok', { user_id: user.id, role: user.role, school_id: user.school_id, ip, summary: 'ورود موفق: ' + user.id + ' (' + user.role + ')' });
     if(ctx.markDirty) ctx.markDirty();
     setSessionCookie(req, res, user);
     /* never echo nid / full phone back (contract §4) */
@@ -279,7 +279,7 @@ function createAuth(ctx){
     const tok = parseCookies(req)[SESSION_NAME];
     if(tok){
       const v = jwtVerify(tok);
-      if(!v.err){ store.__revoked_jti[v.payload.jti] = Date.now(); audit('logout', { user_id: v.payload.sub }); if(ctx.markDirty) ctx.markDirty(); }
+      if(!v.err){ store.__revoked_jti[v.payload.jti] = Date.now(); audit('logout', { user_id: v.payload.sub, role: v.payload.role, school_id: v.payload.school_id, ip: clientIp(req), summary: 'خروج کاربر: ' + v.payload.sub }); if(ctx.markDirty) ctx.markDirty(); }
     }
     res.setHeader('Set-Cookie', SESSION_NAME + '=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
     sendJson(res, 200, { ok: true });
@@ -306,7 +306,7 @@ function createAuth(ctx){
     purge('parent_subscriptions', r => Number(r.user_id) === uid);
     purge('messages', r => Number(r.from_id) === uid);
     purge('users', r => Number(r.id) === uid);
-    audit('account_deleted', { user_id: uid, role: s.role, purged: purged });
+    audit('account_deleted', { user_id: uid, role: s.role, school_id: s.school_id, purged: purged, ip: clientIp(req), summary: 'حذف کامل حساب کاربری: ' + uid + ' (' + s.role + ')' });
     if(ctx.markDirty) ctx.markDirty();
     /* نشستِ فعلی هم همین حالا می‌میرد (cookie پاک) */
     res.setHeader('Set-Cookie', SESSION_NAME + '=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');

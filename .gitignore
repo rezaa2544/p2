@@ -12,6 +12,7 @@ Thumbs.db
 .vscode/
 coverage/
 tmp/
+.npm/
 
 # فایل مرجع (فقط برای استخراج قابلیت‌ها، جزو سورس نیست)
 reference/

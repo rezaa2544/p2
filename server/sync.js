@@ -697,17 +697,26 @@ function createSync(ctx){
         if(ex){ Object.assign(ex, data); Object.assign(ex, prot); }
         else store[op.c].push(Object.assign(data, prot));
         data.updated_at = new Date().toISOString();
+        if(op.c === 'users' && (data.role || (prot && prot.role))){
+          const r = data.role || prot.role;
+          audit('role_change', { user_id: s.id, role: s.role, school_id: s.school_id, target_user_id: data.id, new_role: r, summary: 'ثبت کاربر با نقش ' + r + ' (شناسه ' + data.id + ')' });
+        }
       }else if(op.t === 'upd'){
         const rec = store[op.c].find(x => x.id === Number(op.id != null ? op.id : (op.data && op.data.id)));
         if(rec){
           const clean = Object.assign({}, op.data); /* R98 — op.data برایِ hookها دست‌نخورده */
           const prot = stripProtected(clean);
+          if(op.c === 'users' && clean.role && rec.role !== clean.role){
+            audit('role_change', { user_id: s.id, role: s.role, school_id: s.school_id, target_user_id: rec.id, old_role: rec.role, new_role: clean.role, summary: 'تغییر نقش کاربر ' + rec.id + ' به ' + clean.role });
+          }
           Object.assign(rec, clean, { id: rec.id, updated_at: new Date().toISOString() });
           Object.assign(rec, prot); /* مقادیرِ اعتبارسنجی‌شده — صریح، نه inject */
           if(VERSION_TRACKED[op.c]) rec.version = (rec.version || 1) + 1; /* R95 */
         }
       }else if(op.t === 'del'){
-        store[op.c] = store[op.c].filter(x => x.id !== Number(op.id != null ? op.id : (op.data && op.data.id)));
+        const delId = Number(op.id != null ? op.id : (op.data && op.data.id));
+        store[op.c] = store[op.c].filter(x => x.id !== delId);
+        audit('record_deleted', { user_id: s.id, role: s.role, school_id: s.school_id, collection: op.c, record_id: delId, summary: 'حذف رکورد ' + delId + ' از ' + op.c });
       }
       store.__processed_uids[op.uid] = Date.now();
     }
