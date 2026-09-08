@@ -1919,6 +1919,31 @@
     "superadmin"
    ]
   },
+  "training_courses": {
+   "fields": [
+    "created_at",
+    "date",
+    "hours",
+    "id",
+    "school_id",
+    "staff_id",
+    "status",
+    "title",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
   "transactions": {
    "fields": [
     "amount",

@@ -78,6 +78,7 @@ const STATUS_ENUMS = {
   sms_log              : ['queued', 'sent', 'failed'],
   staff_attendance     : ['present', 'absent', 'late'],
   teacher_sms          : ['queued', 'sent', 'failed'],
+  training_courses     : ['ongoing', 'completed'],
   transfer_requests    : ['pending', 'approved', 'rejected'],
   tuitions             : ['open', 'partial', 'settled'],
   users                : ['active', 'dropped_out', 'graduated', 'awaiting_transfer'],
