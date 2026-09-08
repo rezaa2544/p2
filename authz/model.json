@@ -1,5 +1,5 @@
 {
- "$comment": "R96 — central authorization model (single source of truth). Server (server/sync.js) loads this; tests/authz-model.js regenerates and diffs (build gate); tests/server16.js runs the negative matrix. roles per op: fail-closed (unknown collection = deny). fields: seed ∪ client scan ∪ managed; unknown field in a write op = reject (unknown_field). GRANTS(R96): exams/exam_terms/exam_duties/calendar/makeup_classes→manager; teacher_schools→manager+edu_office; subscription_payments→manager; offices→edu_office.",
+ "$comment": "R96 — central authorization model (curated source). R99: the SERVER (server/sync.js) loads the GENERATED authz/write-perms.json (tools/generate-write-perms.js: ACTION_ROLES + static action analysis + this file); node build.js --check regenerates and diffs (stale table = red build); tests/authz-model.js regenerates and diffs this file against seed + client (build gate); tests/server16.js runs the negative matrix. roles per op: fail-closed (unknown collection = deny). fields: seed ∪ client scan ∪ managed; unknown field in a write op = reject (unknown_field). GRANTS(R96): exams/exam_terms/exam_duties/calendar/makeup_classes→manager; teacher_schools→manager+edu_office; subscription_payments→manager; offices→edu_office.",
  "collections": {
   "announcements": {
    "fields": [
