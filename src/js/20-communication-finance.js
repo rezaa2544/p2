@@ -14,7 +14,7 @@ function rialShort(n){
   return f(n,0);
 }
 const addDaysISO = (iso,n)=>{const d=new Date(iso);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
-const NOTIF_ICON={absence:'🚫',late:'⏰',discipline:'⚖️',discipline_positive:'👍',low_grade:'⚠️',announcement:'📢',leave:'📨',tuition:'🧾',tuition_paid:'✅',tuition_due:'⏳',chat:'💬'};
+const NOTIF_ICON={absence:'🚫',late:'⏰',discipline:'⚖️',discipline_positive:'👍',low_grade:'⚠️',announcement:'📢',leave:'📨',tuition:'🧾',tuition_paid:'✅',tuition_due:'⏳',chat:'💬',exam_remind:'⏳'};
 const LEAVE_FA={pending:['در انتظار بررسی','b-amber'],approved:['تأیید شده','b-green'],rejected:['رد شده','b-red']};
 const INST_FA={pending:['در انتظار','b-amber'],partial:['جزئی','b-blue'],paid:['پرداخت شده','b-green'],canceled:['بخشوده','b-gray']};
 const PAY_FA={cash:'نقدی',card:'کارت‌خوان',online:'آنلاین',cheque:'چک'};
@@ -106,7 +106,7 @@ function generateExtras(){
     db.attendance.filter(a=>a.school_id===school.id&&a.status==='absent').slice(0,12).forEach(a=>{
       const st=byId('users',a.student_id); if(!st)return;
       db.parent_links.filter(l=>l.student_id===st.id).forEach(l=>add('notifications',{user_id:l.parent_id,school_id:school.id,type:'absence',
-        title:'🚫 غیبت دانش‌آموز',body:`${st.full_name} در تاریخ ${jalali(a.date)} در مدرسه حاضر نبود.`,link:'children',read:0,created_at:a.date}));
+        title:'🚫 غیبت دانش‌آموز',body:`${st.full_name} در تاریخ ${jalali(a.date)} در مدرسه حاضر نبود.`,link:'children',ref:'att_'+a.id,read:0,created_at:a.date}));
     });
     db.installments.filter(i=>i.school_id===school.id&&i.status!=='paid'&&i.due_date<todayISO()).slice(0,10).forEach(i=>{
       const st=byId('users',i.student_id); if(!st)return;
@@ -277,6 +277,41 @@ function waiveInstallment(instId){
 }
 
 /* ---------------- اعلان‌ها ---------------- */
+/* ── E.5 فرناز: دکمهٔ «موجه اعلام کنم» کنار اعلان غیبت ──
+   زنجیرهٔ درخواست/تأیید از قبل بود (quick-excuse → leaves pending → decideLeave)؛
+   افزودهٔ E.5: (۱) اعلان غیبت با ref به رکورد حضور، (۲) دکمه کنار همان اعلان،
+   (۳) ضدتکرار درخواست. خودِ دکمه همان quick-excuse موجود است (اکشن جدید ندارد). */
+function absenceNotifFor(rec){
+  var st=byId('users',rec.student_id)||{};
+  (db.parent_links||[]).filter(function(l){return l.student_id===rec.student_id;}).forEach(function(l){
+    var dup=(db.notifications||[]).some(function(n){return n.user_id===l.parent_id&&n.type==='absence'&&n.ref==='att_'+rec.id;});
+    if(dup)return;
+    insert('notifications',{user_id:l.parent_id,school_id:rec.school_id,type:'absence',
+      title:'🚫 غیبت دانش‌آموز',body:(st.full_name||'')+' در تاریخ '+jalali(rec.date)+' در مدرسه حاضر نبود.',
+      link:'children',ref:'att_'+rec.id,read:0,created_at:rec.date});
+  });
+}
+function absenceAttOf(n){
+  if(n.ref&&String(n.ref).indexOf('att_')===0){
+    var r=byId('attendance',Number(String(n.ref).slice(4))); if(r)return r;
+  }
+  /* دادهٔ قدیمیِ بدون ref: تطبیق ولی↔فرزند↔تاریخِ اعلان */
+  var kids={};
+  (db.parent_links||[]).forEach(function(l){ if(l.parent_id===n.user_id)kids[l.student_id]=1; });
+  return (db.attendance||[]).find(function(a){return kids[a.student_id]&&a.date===n.created_at&&a.status==='absent';})||null;
+}
+function absencePendingFor(rec){
+  return (db.leaves||[]).some(function(l){return l.student_id===rec.student_id&&l.status==='pending'&&l.from_date<=rec.date&&l.to_date>=rec.date;});
+}
+function absenceExcuseBtn(n){
+  if(!n||n.type!=='absence')return '';
+  var u=(typeof S!=='undefined')?S.user:null;
+  if(!u||u.role!=='parent')return '';
+  var rec=absenceAttOf(n);
+  if(!rec||rec.status!=='absent'||rec.excused)return '';
+  if(absencePendingFor(rec))return '<div class="spacer"></div><span class="badge b-amber">⏳ در انتظار بررسی مدیر</span>';
+  return '<div class="spacer"></div><button class="btn ghost sm" data-act="quick-excuse" data-id="'+escAttr(rec.id)+'" title="ثبتِ درخواستِ موجه برای این غیبت (پس از تأییدِ مدیر)">🕊️ موجه اعلام کنم</button>';
+}
 function viewNotifications(){
   const items=myNotifs();
   return `<div class="card"><div class="card-head"><h3>🔔 اعلان‌های من</h3>
@@ -284,7 +319,7 @@ function viewNotifications(){
     ${items.length?items.map(n=>`<div class="row" style="padding:12px 16px;border-bottom:1px solid var(--border);background:${n.read?'#fff':'var(--primary-soft)'};cursor:pointer" data-act="notif-open" data-id="${escAttr(n.id)}">
       <span style="font-size:19px">${NOTIF_ICON[n.type]||'🔔'}</span>
       <div style="min-width:0"><b>${esc(n.title)}</b><div class="small muted" style="line-height:1.9">${esc(n.body||'')}</div>
-      <div class="small muted" style="opacity:.7">${jalali(n.created_at)}</div></div></div>`).join('')
+      <div class="small muted" style="opacity:.7">${jalali(n.created_at)}</div></div>${absenceExcuseBtn(n)}</div>`).join('')
     :empty('🔕','اعلانی ندارید','رویدادهای مهم مدرسه اینجا نمایش داده می‌شود.')}</div>`;
 }
 
@@ -317,6 +352,104 @@ function viewLeaves(){
 }
 
 /* ---------------- تقویم آموزشی ---------------- */
+/* ── E.4 فرناز: خروجی ICS (RFC 5545) — کاملاً سمت‌کلاینت، بدون وابستگی ──
+   امتحاناتِ پیش‌رو (بازهٔ بیننده) + رویدادهای تقویم مدرسه. UID پایدار (ایمپورتِ
+   مجدد = به‌روزرسانی، نه تکرار). بدون BOM (بعضی پارسرهای سخت‌گیر خراب می‌شوند).
+   از icsEsc موجود (66-client-features) استفاده می‌شود — تکثیر نشده است. */
+function icsFold(line){
+  /* تاشدن در ۷۵ اکتت (RFC 5545 §3.1) بدون شکستن کاراکتر چندبایتی */
+  var parts=[],cur='',len=0;
+  Array.from(String(line)).forEach(function(ch){
+    var cp=ch.codePointAt(0), bl=cp<128?1:(cp<2048?2:(cp<65536?3:4));
+    if(len+bl>75&&cur!==''){parts.push(cur);cur=' ';len=1;}
+    cur+=ch;len+=bl;
+  });
+  parts.push(cur);
+  return parts.join('\r\n');
+}
+function icsStamp(d){
+  d=d||new Date();
+  function p(n){return (n<10?'0':'')+n;}
+  return d.getUTCFullYear()+p(d.getUTCMonth()+1)+p(d.getUTCDate())+'T'+p(d.getUTCHours())+p(d.getUTCMinutes())+p(d.getUTCSeconds())+'Z';
+}
+function icsLocal(iso,time){
+  var t=String(time||'').slice(0,5).split(':');
+  return String(iso).slice(0,4)+String(iso).slice(5,7)+String(iso).slice(8,10)+'T'+(t[0]||'00')+(t[1]||'00')+'00';
+}
+function icsLocalEnd(iso,time,durMin){
+  var dt=new Date(Date.parse(String(iso)+'T'+String(time||'00:00').slice(0,5)+':00'));
+  if(isNaN(dt))return null;
+  dt=new Date(dt.getTime()+(Number(durMin)||90)*60000);
+  function p(n){return (n<10?'0':'')+n;}
+  return dt.getFullYear()+p(dt.getMonth()+1)+p(dt.getDate())+'T'+p(dt.getHours())+p(dt.getMinutes())+'00';
+}
+function icsExamEvent(ex,stamp){
+  var subj=(byId('subjects',ex.subject_id)||{}).name||'—';
+  var cls=(byId('classes',ex.class_id)||{}).name||'';
+  var L=['BEGIN:VEVENT','UID:payesh-exam-'+ex.id+'@payesh','DTSTAMP:'+stamp,
+    'DTSTART:'+icsLocal(ex.date,ex.start_time||'08:00')];
+  var end=icsLocalEnd(ex.date,ex.start_time||'08:00',ex.duration);
+  if(end)L.push('DTEND:'+end);
+  L.push('SUMMARY:'+icsEsc('امتحان '+subj));
+  if(ex.room)L.push('LOCATION:'+icsEsc('اتاق '+ex.room));
+  L.push('DESCRIPTION:'+icsEsc('کلاس '+cls+' — بارم '+(ex.max_score||20)+' — '+jalali(ex.date)));
+  L.push('CATEGORIES:'+icsEsc('امتحان'),'END:VEVENT');
+  return {key:ex.date+' '+(ex.start_time||''), text:L.map(icsFold).join('\r\n')};
+}
+function icsCalEvent(r,stamp){
+  var KIND={event:'رویداد',exam:'امتحان',holiday:'تعطیلی'};
+  var d=String(r.date).replace(/-/g,'');
+  var L=['BEGIN:VEVENT','UID:payesh-cal-'+r.id+'@payesh','DTSTAMP:'+stamp,
+    'DTSTART;VALUE=DATE:'+d,
+    'DTEND;VALUE=DATE:'+String(addDaysISO(r.date,1)).replace(/-/g,''),
+    'SUMMARY:'+icsEsc(r.title),
+    'DESCRIPTION:'+icsEsc((KIND[r.kind]||'رویداد')+' — '+jalali(r.date)),
+    'CATEGORIES:'+icsEsc(KIND[r.kind]||'رویداد'),'END:VEVENT'];
+  return {key:r.date+' ', text:L.map(icsFold).join('\r\n')};
+}
+function icsScopeExams(){
+  var u=S.user; if(!u)return [];
+  var list=(db.exams||[]).filter(function(e){return e.school_id===u.school_id&&e.date&&e.date>=todayISO();});
+  if(u.role==='student'){var c=(typeof classOf==='function')?classOf(u.id):null;return c?list.filter(function(e){return e.class_id===c.id;}):[];}
+  if(u.role==='parent'){
+    var kids={};
+    (db.parent_links||[]).forEach(function(l){ if(l.parent_id!==u.id)return;
+      var c=(typeof classOf==='function')?classOf(l.student_id):null; if(c)kids[c.id]=1; });
+    return list.filter(function(e){return kids[e.class_id];});
+  }
+  /* کمینه‌سازی داده: برنامهٔ امتحانات فقط برای خانواده و کادر آموزشی؛
+     بقیه فقط همان رویدادهایی را می‌گیرند که در صفحه هم می‌بینند. */
+  if(u.role==='teacher'||u.role==='manager'||u.role==='superadmin')return list;
+  return [];
+}
+function icsBuild(){
+  var u=S.user, stamp=icsStamp(), today=todayISO();
+  var rows=schoolScope('calendar').filter(function(r){return r.date&&r.date>=today;});
+  var evs=rows.map(function(r){return icsCalEvent(r,stamp);})
+    .concat(icsScopeExams().map(function(e){return icsExamEvent(e,stamp);}));
+  evs.sort(function(a,b){return a.key<b.key?-1:(a.key>b.key?1:0);});
+  var head=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Payesh//School Calendar//FA','CALSCALE:GREGORIAN','METHOD:PUBLISH'];
+  var text=head.concat(evs.map(function(e){return e.text;}),['END:VCALENDAR']).join('\r\n')+'\r\n';
+  return {filename:'payesh_calendar_'+(u.school_id||'all')+'_'+today+'.ics', text:text, count:evs.length};
+}
+function icsDownloadAll(){
+  /* گیت: فقط بینندگانِ روت calendar (بدون هاردکد نقش — تک‌منبع: جدول روت).
+     ورودی ACTION_ROLES ندارد چون آن جدول معنای WRITE دارد و این اکشن فقط می‌خواند. */
+  if(typeof canRoute==='function'&&!canRoute('calendar')){toast('شما اجازهٔ دریافت خروجی تقویم را ندارید','err');return null;}
+  var pack=icsBuild();
+  if(!pack.count){toast('رویداد پیشِ‌رویی برای خروجی نیست','err');return null;}
+  try{
+    var blob=new Blob([pack.text],{type:'text/calendar;charset=utf-8'});
+    var a=document.createElement('a');
+    a.href=(typeof URL!=='undefined'&&URL.createObjectURL)?URL.createObjectURL(blob):'';
+    if(!a.href){toast('دانلود در این مرورگر پشتیبانی نمی‌شود','err');return null;}
+    a.download=pack.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+    toast('فایل تقویم ('+fa(pack.count)+' رویداد) دانلود شد','ok');
+    return pack;
+  }catch(e){ toast('دانلود فایل ممکن نشد','err'); return null; }
+}
 function viewCalendar(){
   const rows=schoolScope('calendar').sort((a,b)=>a.date.localeCompare(b.date));
   const KIND={event:['رویداد','b-blue'],exam:['امتحان','b-amber'],holiday:['تعطیلی','b-red']};
@@ -330,7 +463,7 @@ function viewCalendar(){
       <span class="small muted">${jalali(r.date)}</span>
       ${canEdit?`<button class="icon-btn" title="ویرایش" data-act="cal-edit" data-id="${escAttr(r.id)}">✏️</button>
         <button class="icon-btn danger" title="حذف" data-act="cal-del" data-id="${escAttr(r.id)}">🗑️</button>`:''}</div>`).join('')}</div>`:empty('📅','موردی ثبت نشده','')}</div>`;
-  return `<div class="grid g2">${card('🗓️ رویدادهای پیش‌رو',upcoming)}${card('🕘 رویدادهای گذشته',past.reverse())}</div>`;
+  return `<div class="row" style="margin-bottom:12px;gap:8px"><button class="btn" data-act="ics-download">📲 افزودن به تقویم گوشی (دانلود همه)</button><span class="small muted">امتحانات + رویدادهای پیش‌رو — فایل استاندارد ics.</span></div><div class="grid g2">${card('🗓️ رویدادهای پیش‌رو',upcoming)}${card('🕘 رویدادهای گذشته',past.reverse())}</div>`;
 }
 
 /* ---------------- گفتگو ---------------- */
@@ -345,6 +478,8 @@ function viewChat(){
     <div class="card"><div class="card-head"><h3>مخاطبان</h3></div>
       ${list.length?list.map(p=>`<div class="row" style="padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:${active&&active.id===p.id?'var(--primary-soft)':'#fff'}" data-act="chat-open" data-id="${escAttr(p.id)}">
         <div class="avatar">${esc(p.full_name[0])}</div><div style="min-width:0"><b style="font-size:13px">${esc(p.full_name)}</b><div class="small muted">${ROLE_FA[p.role]}</div></div></div>`).join(''):empty('💬','مخاطبی نیست','')}
+    </div>
+    <div class="card">)}
     </div>
     <div class="card"><div class="card-head"><h3>${active?esc(active.full_name):'گفتگو'}</h3></div>
       <div class="card-body vscroll" style="display:grid;gap:8px;max-height:420px;overflow:auto">
@@ -611,6 +746,7 @@ const F7_ACTIONS = {
     }
     closeModal(); toast('رویداد ذخیره شد'+(ev?' — '+fa(ev)+' پیامک ساخته شد':''),'ok'); render();
   },
+  'ics-download'(){ icsDownloadAll(); }, /* E.4 فرناز: فقط خواندن + Blob — بدون سرور */
   'cal-del'(el,id){ const c=byId('calendar',id);
     askDelete(`رویداد «${c.title}» حذف شود؟`,()=>{remove('calendar',id);toast('حذف شد','');render();}); },
   'notif-readall'(){ myNotifs().forEach(n=>{ if(!n.read) update('notifications',n.id,{read:1}); }); toast('همه اعلان‌ها خوانده شد','ok'); render(); },

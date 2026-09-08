@@ -160,10 +160,103 @@ function todayCard(sid,iso){
    </div></div>`;
 }
 
+/* ── E.1 فرناز: چک‌لیستِ «فردا چی لازم دارم» ──
+   درس‌های فردا از همان برنامهٔ هفتگی + وسیلهٔ خاصِ هر درس (کلیدواژه در نام).
+   تیک‌ها فقط لوکال (حافظهٔ محلی به‌کلیدِ دانش‌آموز+تاریخ، از طریق Store) — بدون سرور. */
+const TOMORROW_GEAR=[['ورزش','👕 لباس ورزش'],['تربیت بدنی','👕 لباس ورزش'],['هنر','🎨 وسایل نقاشی'],['آزمایشگاه','🥼 روپوش آزمایشگاه']];
+function tomorrowGearFor(subjName){
+  const n=String(subjName||'');
+  for(let i=0;i<TOMORROW_GEAR.length;i++)if(n.indexOf(TOMORROW_GEAR[i][0])>-1)return TOMORROW_GEAR[i][1];
+  return null;
+}
+function tomorrowCheckKey(sid,iso){ return 'payesh_tmr_'+sid+'_'+iso; }
+function tomorrowChecksGet(sid,iso){
+  try{ return JSON.parse(Store.get(tomorrowCheckKey(sid,iso),'{}'))||{}; }catch(e){ return {}; }
+}
+function tomorrowCard(sid,iso){
+  iso=iso||todayISO();
+  const tmr=addDaysISO(iso,1), dow=todayDow(tmr);
+  const cls=classOf(sid);
+  const periods=cls?db.schedule.filter(s=>s.class_id===cls.id&&s.day===dow).sort((a,b)=>a.period-b.period):[];
+  const subs=Object.create(null);
+  (db.substitutions||[]).forEach(x=>{ if(x.date===tmr)subs[x.schedule_id]=x; });
+  const checks=tomorrowChecksGet(sid,tmr);
+  return `<div class="card tomorrow-card"><div class="card-head"><h3>🎒 فردا چی لازم دارم</h3>
+    <span class="badge b-green">${jalali(tmr)} — ${DAYS_FULL[dow]}</span></div>
+   <div class="card-body" style="display:grid;gap:6px">
+    ${periods.length
+     ?periods.map(s=>{
+        const sub=(byId('subjects',s.subject_id)||{}).name||'—';
+        const gear=tomorrowGearFor(sub), sb=subs[s.id];
+        const on=checks['p'+s.period]?'checked':'';
+        return `<div class="row" style="padding:7px 10px;background:var(--surface-2);border-radius:8px;gap:8px">`
+          + `<input type="checkbox" data-act="tomorrow-check" data-sid="${escAttr(sid)}" data-iso="${escAttr(tmr)}" data-idx="p${s.period}" ${on} />`
+          + `<span class="badge b-green" style="flex:none">زنگ ${fa(s.period)}</span>`
+          + `<b>${esc(sub)}</b>`
+          + (sb?`<span class="badge b-amber">🔁 جابه‌جای: ${esc((byId('users',sb.sub_teacher_id)||{}).full_name||'—')}</span>`:'')
+          + (gear?`<span class="small">🎒 ${esc(gear)}</span>`:'')
+          + `</div>`;}).join('')
+     :empty('🎉','فردا کلاسی نیست','برنامهٔ هفتگی کلاس برای فردا خالی است.')}
+   </div></div>`;
+}
+
+/* ── E.2 فرناز: شمارش‌معکوس امتحان + یادآوری ──
+   نزدیک‌ترین امتحانِ کلاس از همان کالکشن exams؛ یادآوری با زیرساخت موجود:
+   اعلان داخل‌برنامه (notifications) + صف پیامک (notify_queue via notifyRequest).
+   فراخوانی از مسیر رندر کارت است پس هر دو مسیر ضدتکرارند: پیامک با source_ref
+   روی دیتابیس، اعلان داخل‌برنامه با نشانِ حافظهٔ محلی (از طریق Store). */
+function examDaysLeft(examDate,iso){
+  return Math.round((Date.parse(examDate)-Date.parse(iso||todayISO()))/86400000);
+}
+function nextExamFor(sid,iso){
+  iso=iso||todayISO();
+  const cls=classOf(sid); if(!cls)return null;
+  let best=null;
+  (db.exams||[]).forEach(x=>{
+    if(x.class_id!==cls.id||!x.date||x.date<iso)return;
+    if(!best||x.date<best.date||(x.date===best.date&&(x.start_time||'')<(best.start_time||'')))best=x;
+  });
+  return best?{exam:best,days:examDaysLeft(best.date,iso)}:null;
+}
+function examRemindKey(id){ return 'payesh_exrem_'+id; }
+function examReminderSend(sid,info){
+  const ex=info.exam, st=byId('users',sid)||{};
+  const subj=(byId('subjects',ex.subject_id)||{}).name||'—';
+  const when=`${jalali(ex.date)} ساعت ${ex.start_time||'—'}`;
+  /* ۱) صف پیامک موجود (kind=event): ضدتکرار دیتابیسی */
+  const ref='examrem:'+ex.id;
+  const dup=(db.notify_queue||[]).some(q=>q.kind==='event'&&q.source_ref===ref&&q.status!=='rejected'&&q.status!=='cancelled');
+  if(!dup&&typeof notifyRequest==='function'){
+    notifyRequest({school_id:ex.school_id,kind:'event',student_id:sid,student_name:st.full_name||'',
+      body:`یادآوری امتحان ${subj} برای ${st.full_name||''} — ${when}، کلاس ${(byId('classes',ex.class_id)||{}).name||''}. ${typeof notifySchoolName==='function'?notifySchoolName(ex.school_id):''}`,
+      source_ref:ref});
+  }
+  /* ۲) اعلان داخل‌برنامه برای دانش‌آموز + همهٔ والدین لینک‌شده */
+  if(!Store.get(examRemindKey(ex.id))){
+    const recips=[sid];
+    (db.parent_links||[]).forEach(l=>{ if(l.student_id===sid&&recips.indexOf(l.parent_id)===-1)recips.push(l.parent_id); });
+    recips.forEach(uid=>insert('notifications',{user_id:uid,school_id:ex.school_id,type:'exam_remind',
+      title:'⏳ یادآوری امتحان',body:`امتحان ${subj} — ${when}`,link:'exams',read:0,created_at:todayISO()}));
+    Store.set(examRemindKey(ex.id),'1');
+  }
+}
+function examCountdownCard(sid,iso){
+  iso=iso||todayISO();
+  const nx=nextExamFor(sid,iso);
+  if(!nx)return '';
+  /* پنجرهٔ یادآوری: ۱-۲ روز قبل + روز امتحان (اگر داشبورد دیر باز شد) */
+  if(nx.days<=2)examReminderSend(sid,nx);
+  const subj=(byId('subjects',nx.exam.subject_id)||{}).name||'—';
+  const head=nx.days===0?`امروز امتحان ${esc(subj)}`:nx.days===1?`فردا امتحان ${esc(subj)}`:`${fa(nx.days)} روز تا امتحان ${esc(subj)}`;
+  return `<div class="card exam-card"><div class="card-head"><h3>⏳ ${head}</h3>
+    <span class="badge b-amber">${jalali(nx.exam.date)} — ساعت ${esc(nx.exam.start_time||'—')}</span></div>
+   <div class="card-body"><div class="small">🏫 کلاس ${esc((byId('classes',nx.exam.class_id)||{}).name||'—')}${nx.exam.room?` — اتاق ${esc(nx.exam.room)}`:''} — بارم ${fa(nx.exam.max_score||20)}</div></div></div>`;
+}
+
 function summaryBlock(sid){
   const d=studentSummary(sid), tot=d.att.length;
   const cnt=k=>d.att.filter(a=>a.status===k).length;
-  return `${todayCard(sid)}<div class="grid g4">
+  return `${todayCard(sid)}${tomorrowCard(sid)}${examCountdownCard(sid)}<div class="grid g4">
    ${statCard('🎒',esc(d.st.full_name),d.cls?'کلاس '+d.cls.name:'بدون کلاس','blue')}
    ${statCard('📊',fa(d.avg.toFixed(2)),'معدل کل','green')}
    ${statCard('🏅',fa(d.rank)+' از '+fa(d.size),'رتبه در کلاس','amber')}
