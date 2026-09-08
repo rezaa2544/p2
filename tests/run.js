@@ -184,6 +184,50 @@ test('نام کلاس و کاربر در جدول‌های نمره گارد د�
     'دسترسی بی‌گارد در جدول نمرات: ' + risky.join(' · '));
 });
 
+// ───────────────────────────── نگهبان ماندگاری (دور ۱۰۰، نقصِ ۲)
+group('نگهبان add/insert');
+
+test('فراخوانی سراسری add( فقط در مولدهای دادهٔ پایه مجاز است', () => {
+  /* add() رکورد را فقط در حافظه می‌نشیند (بی دفترچه و بی صف) و پس از
+     بوتِ تازه گم می‌شود؛ مسیرِ کاربر باید insert() باشد (۷ نقطه در
+     دورِ ۱۰۰: مهمان/کتاب/امانت/تجهیز/سیدا/دوجو/گواهی). این نگهبان هر
+     addِ تازهٔ بیرون از دادهٔ پایه را قرمز می‌کند. */
+  const SEED_FN = /(demo|Demo)|^(generateExtras|generateP\d+|generatePriorYear)$/;
+  const violations = [];
+  order.forEach((f) => {
+    if (f === '02-demo-data.js') return; /* تعریف add + دنیای دمو */
+    const lines = read(path.join(SRC, 'js', f)).split('\n');
+    const scopes = []; /* تابع‌های سطحِ بالا + constهای سطحِ بالا */
+    lines.forEach((ln, i) => {
+      let m = ln.match(/^function ([A-Za-z_$][\w$]*)/) || ln.match(/^(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/);
+      if (m) scopes.push({ line: i + 1, name: m[1] });
+    });
+    const enclosing = (lineNo) => {
+      let name = '(سطح فایل)';
+      for (const s of scopes) { if (s.line <= lineNo) name = s.name; }
+      return name;
+    };
+    /* addِ محلیِ سایه‌انداز (مثل const add در 12-attendance.js): فقط
+       همان حوزه از شمول بیرون است، نه کل فایل */
+    const localAddScope = (() => {
+      for (let i = 0; i < lines.length; i++) {
+        if (/(^|[^A-Za-z0-9_$])(const|let|var|function)\s+add\b/.test(lines[i])) return enclosing(i + 1);
+      }
+      return null;
+    })();
+    lines.forEach((ln, i) => {
+      const code = ln.replace(/\/\/[^'"]*$/, ''); /* نظرِ خطیِ ساده */
+      if (!/(^|[^A-Za-z0-9_$.])add\(\s*['"]/.test(code)) return;
+      const scope = enclosing(i + 1);
+      if (localAddScope && scope === localAddScope) return;
+      if (SEED_FN.test(scope)) return;
+      violations.push(`${f}:${i + 1} در ${scope} :: ${ln.trim().slice(0, 70)}`);
+    });
+  });
+  assert(violations.length === 0,
+    'فراخوانی add( در مسیر کاربر (باید insert شود):\n     ' + violations.join('\n     '));
+});
+
 // ───────────────────────────── نحو JavaScript
 group('صحت نحوی');
 

@@ -88,7 +88,7 @@ function sedasUpsert(studentId, subjectId, term, score, note){
     created_at: now,
     note: String(note||'').trim()
   };
-  return {ok:true, rec: add('sedascores', rec), updated:false};
+  return {ok:true, rec: insert('sedascores', rec), updated:false};
 }
 function sedasDel(rowId){
   var u = S.user;

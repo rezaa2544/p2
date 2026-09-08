@@ -6564,7 +6564,7 @@ function certRecord(type, sid){
   if(!st || st.role !== 'student') return {ok:false, msg:'دانش‌آموز پیدا نشد.'};
   var sch = byId('schools', st.school_id) || {};
   var code = certCodeCalc(type, sid, sch.id || 0);
-  var rec = add('certificates', {
+  var rec = insert('certificates', {
     school_id: sch.id || null, student_id: sid, type: type,
     year: (typeof yearCode==='function') ? yearCode() : '',
     code: code, issued_at: new Date().toISOString(),
@@ -25593,7 +25593,7 @@ function dojoSaveModel(){
       kept[t.id] = 1;
       update('dojo_types', t.id, {label:t.label, icon:t.icon, delta:t.delta, order:idx});
     } else {
-      add('dojo_types', {school_id:u.school_id, label:t.label, icon:t.icon, delta:t.delta, order:idx});
+      insert('dojo_types', {school_id:u.school_id, label:t.label, icon:t.icon, delta:t.delta, order:idx});
     }
   });
   existing.forEach(function(t){
@@ -25652,7 +25652,7 @@ function visitorRegister(name, purpose){
     registered_by: u.id,
     created_at: new Date().toISOString()
   };
-  return {ok:true, rec: add('visitors', rec)};
+  return {ok:true, rec: insert('visitors', rec)};
 }
 
 /* ─────────────── خروج مهمان (مدیر) ─────────────── */
@@ -25799,7 +25799,7 @@ function libAddBook(title, author, code, serial){
     serial: serial,
     created_at: new Date().toISOString()
   };
-  return {ok:true, rec: add('lib_books', rec)};
+  return {ok:true, rec: insert('lib_books', rec)};
 }
 function libSetSerial(bookId, serial){
   var u = S.user;
@@ -25862,7 +25862,7 @@ function libLend(bookId, studentId, dueDate){
     registered_by: u.id,
     created_at: now
   };
-  return {ok:true, rec: add('lib_loans', rec)};
+  return {ok:true, rec: insert('lib_loans', rec)};
 }
 function libReturn(loanId){
   var u = S.user;
@@ -26025,7 +26025,7 @@ function assetAdd(name, category, location, status, note){
     note: String(note || '').trim(),
     created_at: new Date().toISOString()
   };
-  return {ok:true, rec: add('assets', rec)};
+  return {ok:true, rec: insert('assets', rec)};
 }
 function assetSetStatus(assetId, status, location){
   var u = S.user;
@@ -26196,7 +26196,7 @@ function sedasUpsert(studentId, subjectId, term, score, note){
     created_at: now,
     note: String(note||'').trim()
   };
-  return {ok:true, rec: add('sedascores', rec), updated:false};
+  return {ok:true, rec: insert('sedascores', rec), updated:false};
 }
 function sedasDel(rowId){
   var u = S.user;
