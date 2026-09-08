@@ -244,6 +244,21 @@ async function main() {
     assert(ok === true, 'رفتار گواهی دانش‌آموز عوض شد!');
   });
 
+  test('T12 دورهٔ تکمیل‌شده قفل است (Devin-R1: ویرایش رد، گواهی معتبر می‌ماند)', () => {
+    mgrLogin();
+    const r = JSON.parse(W(`(function(){
+      var t=staffOfSchool(S.user.school_id)[1];
+      var mk=saveTrainingCourse(null,{staff_id:t.id,title:'قفل گواهی',hours:12,date:todayISO(),status:'ongoing'});
+      var done=saveTrainingCourse(mk.id,{staff_id:t.id,title:'قفل گواهی',hours:12,date:todayISO(),status:'completed'});
+      var bad=saveTrainingCourse(mk.id,{staff_id:t.id,title:'قفل گواهی!',hours:12,date:todayISO(),status:'completed'});
+      var v=staffCertVerify(done.cert,mk.id);
+      return JSON.stringify({cert:done.cert,ok:bad.ok,msg:bad.msg,verify:v.ok});
+    })()`));
+    assert(r.cert && /^DOR-/.test(r.cert), 'گواهی صادر نشد');
+    assert(r.ok === false && r.msg === 'دوره تکمیل شده قابل ویرایش نیست', 'ویرایش دورهٔ تکمیل‌شده باید رد شود');
+    assert(r.verify === true, 'گواهی پس از تلاش ویرایش باید معتبر بماند');
+  });
+
   const total = pass + fail;
   console.log(`تست دوره‌های آموزشی: ${pass}/${total} موفق` + (fail ? `  —  ${fail} ناموفق` : '  —  بدون خطا ✅'));
   if (consoleErrors.length){

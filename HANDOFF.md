@@ -1002,3 +1002,14 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
   (شکست → دادهٔ محلی + یادداشت «دادهٔ محلی»)؛ برچسب نوع جلسه سمت کاربر (glyph-safety).
 - تست: سوئیت جدید `tests/public-security.js` ‏10/10‏؛ P4 و نمادهای MM2/MM3 به کد نو به‌روز شد.
 - گیت‌ها: smoke ‏547/547‏، authz ‏0‏، build ‏0‏، هر ۷ سوئیت جهش ‏3/3‏ ✅
+
+## Devin-R1R2R3 فرناز — رفع ۳ مشکل Devin Review در PR #8 (چت ۱) — ✅
+- R1 (بحرانی): قفل ویرایش دورهٔ تکمیل‌شده در `saveTrainingCourse` (هر تغییر واقعی رد با
+  «دوره تکمیل شده قابل ویرایش نیست»؛ فقط بازذخیرهٔ عینی مجاز تا idempotency صدور T4 بماند) + تست T12.
+- R2: `certificates.year` از INTEGER به VARCHAR(50) در `server/schema.sql` + اصلاح ریشه‌ای
+  مولد `tools/migrate-to-pg.js` (استثنای هدفمند با colName؛ `enrollments.year` دست‌نخورده).
+- R3 (بحرانی): ۴ جدول `donations`/`safety_drills`/`staff_attendance`/`training_courses` در
+  `server/schema.sql` (بلوک‌ها بایت‌به‌بایت خروجی مولد پس از استثناهای INTEGER/NUMERIC(14,2)؛
+  ۸۳→۸۷ جدول). شکاف کشف‌شدهٔ خارج از scope: جدول `support_tickets` هم نیست.
+- گیت‌ها: smoke ‏547/547‏، authz ‏۰‏، build ‏۰‏، training2 ‏12/12‏ (+T12)، drills/donations/staffatt ‏10/10‏،
+  public2 ‏8/8‏، public-security ‏10/10‏، minutes2/boom2 ‏8/8‏، assocmin2/3 ‏8/8‏، جهش training ‏3/3‏ ✅
