@@ -14,6 +14,7 @@ function renderShell(){
       <div class="user-chip"><div class="avatar">${esc(u.full_name[0])}</div><div><b>${esc(u.full_name)}</b><span>${ROLE_FA[u.role]}</span></div></div>
       ${isMultiRole()?`<button class="btn ghost" style="width:100%;justify-content:center;margin-top:6px" data-act="open-picker">🔄 تعویض پنل</button>`:''}
       <button class="btn ghost" style="width:100%;justify-content:center;margin-top:6px" data-act="logout">خروج از حساب</button>
+      ${typeof themePickerHtml==='function'?themePickerHtml():''}
       <button class="btn ghost sm" style="width:100%;justify-content:center;margin-top:6px" data-act="reset">بازنشانی داده‌های نمونه</button>
     </div>
    </aside>

@@ -287,6 +287,107 @@ test('دادهٔ نمونه — اعلان‌های یادآوریِ شهری (r
   assert(n >= 1, 'در بوت یادآوری ساخته نشده');
 });
 
+/* FN-R1 — رگرسیونِ امنیتی (دورِ ۸۹): رسیدِ شهریه گاردِ مالکیت ندارد.
+   پیش از رفع، ولی با دکمهٔ دست‌سازِ `receipt-tuition` رسیدِ دانش‌آموزِ
+   مدرسهٔ دیگر را چاپ می‌کرد — همراهِ نامِ او. */
+test('FN-R1 — receipt-tuition با شناسهٔ بیگانه چاپ نمی‌کند (نشتِ دامنه)', () => {
+  const fx = JSON.parse(W(`JSON.stringify((function(){
+    var c={};
+    db.parent_links.forEach(function(l){(c[l.parent_id]=c[l.parent_id]||[]).push(l.student_id);});
+    var pid=Object.keys(c)[0]; if(!pid) return null;
+    var kid=c[pid][0], mine=c[pid], myC=classOf(kid);
+    var alien=db.users.find(function(u){
+      if(u.role!=='student'||mine.indexOf(u.id)>-1) return false;
+      var x=classOf(u.id); return x&&myC&&x.school_id!==myC.school_id;});
+    if(!alien) return null;
+    /* اگر صورتحسابِ آماده نبود، برایِ هر دو یکی می‌سازیم تا آزمون قطعی باشد */
+    function tuiOf(sid){
+      var t=(db.tuitions||[]).find(function(x){return x.student_id===sid;});
+      if(t) return t.id;
+      var st=byId('users',sid)||{};
+      return insert('tuitions',{school_id:st.school_id,student_id:sid,plan_id:0,
+        total:1000000,paid:0,status:'open',created_at:todayISO()}).id;
+    }
+    return {par:Number(pid), kid:kid, alien:alien.id,
+            aT:tuiOf(alien.id), mT:tuiOf(kid), aName:(byId('users',alien.id)||{}).full_name||''};
+  })())`));
+  assert(fx, 'فیکسچر: ولی + دانش‌آموزِ مدرسهٔ دیگر لازم است');
+
+  /* پنجرهٔ چاپ را قلاب بگیر */
+  W(`window.__rc=null; window.__origOpen=window.open;
+     window.open=function(){ var b='';
+       return { document:{ write:function(h){ b+=h; window.__rc=b; }, close:function(){} },
+                focus:function(){}, print:function(){}, close:function(){} }; };
+     S.user=byId('users',${fx.par}); S.persona='parent'; S.boss=null; S.child=${fx.kid};`);
+
+  const click = (tid) => W(`(function(){
+    window.__rc=null;
+    var e=document.createElement('button');
+    e.setAttribute('data-act','receipt-tuition');
+    e.setAttribute('data-id','${tid}');
+    document.body.appendChild(e); e.click(); e.remove();
+  })()`);
+
+  click(fx.aT);
+  const leaked = W(`window.__rc`);
+  assert(!leaked, 'رسیدِ شهریهٔ دانش‌آموزِ بیرون از دامنه چاپ شد!');
+
+  /* کنترلِ مثبت: رسیدِ فرزندِ خودی باید همچنان کار کند */
+  click(fx.mT);
+  const own = W(`window.__rc`);
+  assert(own && String(own).length > 100,
+    'رسیدِ فرزندِ خودی چاپ نشد — رفع، رفتارِ درست را شکسته');
+
+  W(`window.open=window.__origOpen;`);
+});
+
+/* FN-R2 — رگرسیونِ امنیتی (دورِ ۸۹): رسیدِ قسط هم گاردِ مالکیت ندارد.
+   خواهرِ FN-R1؛ اینجا شناسه، شناسهٔ قسط است نه صورتحساب. */
+test('FN-R2 — receipt (رسیدِ قسط) با شناسهٔ بیگانه چاپ نمی‌کند', () => {
+  const fx = JSON.parse(W(`JSON.stringify((function(){
+    var c={};
+    db.parent_links.forEach(function(l){(c[l.parent_id]=c[l.parent_id]||[]).push(l.student_id);});
+    var pid=Object.keys(c)[0]; if(!pid) return null;
+    var kid=c[pid][0], mine=c[pid], myC=classOf(kid);
+    var alien=db.users.find(function(u){
+      if(u.role!=='student'||mine.indexOf(u.id)>-1) return false;
+      var x=classOf(u.id); return x&&myC&&x.school_id!==myC.school_id;});
+    if(!alien) return null;
+    function mkInst(sid){
+      var st=byId('users',sid)||{};
+      return insert('installments',{school_id:st.school_id,student_id:sid,seq:1,
+        amount:500000,paid_amount:500000,status:'paid',due_date:todayISO(),
+        ref_id:'RG89-'+sid}).id;
+    }
+    return {par:Number(pid), kid:kid, aInst:mkInst(alien.id), mInst:mkInst(kid)};
+  })())`));
+  assert(fx, 'فیکسچر: ولی + دانش‌آموزِ مدرسهٔ دیگر لازم است');
+
+  W(`window.__rc2=null; window.__origOpen2=window.open;
+     window.open=function(){ var b='';
+       return { document:{ write:function(h){ b+=h; window.__rc2=b; }, close:function(){} },
+                focus:function(){}, print:function(){}, close:function(){} }; };
+     S.user=byId('users',${fx.par}); S.persona='parent'; S.boss=null; S.child=${fx.kid};`);
+
+  const click = (iid) => W(`(function(){
+    window.__rc2=null;
+    var e=document.createElement('button');
+    e.setAttribute('data-act','receipt');
+    e.setAttribute('data-id','${iid}');
+    document.body.appendChild(e); e.click(); e.remove();
+  })()`);
+
+  click(fx.aInst);
+  assert(!W(`window.__rc2`), 'رسیدِ قسطِ دانش‌آموزِ بیرون از دامنه چاپ شد!');
+
+  click(fx.mInst);
+  const own = W(`window.__rc2`);
+  assert(own && String(own).length > 100,
+    'رسیدِ قسطِ فرزندِ خودی چاپ نشد — رفع، رفتارِ درست را شکسته');
+
+  W(`window.open=window.__origOpen2;`);
+});
+
 await Promise.all(testQueue);
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));
