@@ -29,6 +29,8 @@ const { createSms } = require('./sms');
 const { createConflicts } = require('./conflicts');
 const { createAudit, clientIp } = require('./audit');
 const db = require('./db');
+const redis = require('./redis');
+const cache = require('./cache');
 
 const { createStudentRoutes } = require('./routes/students');
 const { createClassRoutes } = require('./routes/classes');
@@ -75,7 +77,7 @@ function loadStore(){
 const store = loadStore();
 syncAttach(store);
 
-/* ── database layer initialization (PostgreSQL with graceful JSON fallback) ── */
+/* ── database and caching layers initialization ── */
 db.init(store).then(info => {
   if (info.driver === 'postgres') {
     console.log('[DB] Connected to PostgreSQL relational engine');
@@ -83,6 +85,12 @@ db.init(store).then(info => {
 }).catch(err => {
   console.warn('[DB] PostgreSQL init warning:', err.message);
 });
+
+cache.init().then(() => {
+  if (redis.isRedis()) {
+    console.log('[Cache] Redis distributed caching and pub/sub active');
+  }
+}).catch(() => {});
 
 /* ── R97 (TODO 2.7) — نگهبانِ شمردنِ شناسه، سطحِ روتر ──────────────
    هر رد (401/403/404) برایِ هر نشست در پنجرهٔ ۱۰ دقیقه شمرده می‌شود:
@@ -165,9 +173,9 @@ function persistStore(){
   }catch(e){ /* store file may be gone (tests) — never crash on exit */ }
 }
 setInterval(persistStore, 2000).unref();
-process.on('exit', () => { persistStore(); db.close(); });
-process.on('SIGTERM', () => { persistStore(); db.close(); process.exit(0); });
-process.on('SIGINT', () => { persistStore(); db.close(); process.exit(0); });
+process.on('exit', () => { persistStore(); db.close(); redis.close(); });
+process.on('SIGTERM', () => { persistStore(); db.close(); redis.close(); process.exit(0); });
+process.on('SIGINT', () => { persistStore(); db.close(); redis.close(); process.exit(0); });
 
 /* ── JWT secret (env, or generated once; never committed) ──────────── */
 let JWT_SECRET = process.env.PAYESH_JWT_SECRET || null;
@@ -351,7 +359,7 @@ const onRequest = async (req, res) => {
 
       // /api/v1/bootstrap
       if(p === '/api/v1/bootstrap' && req.method === 'GET'){
-        const r = bootstrapRoute.getBootstrapData(req);
+        const r = await bootstrapRoute.getBootstrapData(req);
         return sendJson(res, r.status, r.body);
       }
 
@@ -567,4 +575,4 @@ if(require.main === module){
     }
   });
 }
-module.exports = { server, store, audit, isHttps, persistStore, db };
+module.exports = { server, store, audit, isHttps, persistStore, db, redis, cache };
