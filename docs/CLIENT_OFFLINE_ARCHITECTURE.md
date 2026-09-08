@@ -29,9 +29,9 @@
 
 ---
 
-### ۱.۲. ساختار پایگاه داده و جداول شیء (Object Stores Schema)
+### ۱.۲. ساختار پایگاه‌داده و جداول شیء (Object Stores Schema)
 
-پایگاه داده IndexedDB با نام `payesh_offline_db` و نسخه `2` دارای ۳ جدول ذخیره شیء (Object Store) تفکیک‌شده خواهد بود:
+پایگاه‌داده IndexedDB با نام `payesh_offline_db` و نسخه `2` دارای ۳ جدول ذخیره شیء (Object Store) تفکیک‌شده خواهد بود:
 
 ```
                                ┌────────────────────────────────┐
@@ -262,7 +262,7 @@ async function processSyncQueue(storage, apiClient) {
 
 ## ۶. راهبرد اسنپ‌شات و فشرده‌سازی گزارش تغییرات (Snapshot & Compaction Strategy - بند ۲۰)
 
-با گذشت زمان، تعداد جهش‌های آفلاین انباشته شده و حجم دیتابیس را بالا می‌برد. الگوی فشرده‌سازی دو‌مرحله‌ای حجم را همواره زیر ۵ مگابایت نگه می‌دارد:
+با گذشت زمان، تعداد جهش‌های آفلاین انباشته‌شده و حجم دیتابیس را بالا می‌برد. الگوی فشرده‌سازی دو‌مرحله‌ای حجم را همواره زیر ۵ مگابایت نگه می‌دارد:
 
 ```
 [انباشت ۱۰۰۰ جهش آفلاین] ──► [تولید Snapshot کامل وضعیت] ──► [حذف ۵۰۰ جهش قدیمی‌تر] ──► [آزادسازی فضا]
@@ -297,7 +297,7 @@ async function compactDatabaseIfNeeded(storage) {
 /* src/js/00-migration.js — اسکریپت مهاجرت بدون قطعی */
 async function migrateFromLocalStorageToIdb(storage) {
   const MIGRATED_FLAG = 'payesh_idb_migrated_v2';
-  if (localStorage.getItem(MIGRATED_FLAG)) return; // قبلاً مهاجرت شده
+  if (localStorage.getItem(MIGRATED_FLAG)) return; // قبلاً مهاجرت‌شده
 
   console.log('🔄 شروع مهاجرت داده‌ها از localStorage به IndexedDB...');
   

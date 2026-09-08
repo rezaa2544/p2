@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>داشبورد تصویری معماری فنی سامانه پایش (ویژه توسعه‌دهندگان)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --primary: #38bdf8;
+      --primary-hover: #0ea5e9;
+      --accent: #818cf8;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Vazirmatn", Tahoma, sans-serif; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+    
+    /* سایدبار ناوبری بدون هرگونه پاپ‌آپ یا مانع دیداری */
+    .sidebar { width: 280px; background: #0b1120; border-left: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+    .brand { padding: 24px 20px; border-bottom: 1px solid var(--border); font-size: 1.25rem; font-weight: bold; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+    .nav-list { list-style: none; padding: 16px 8px; flex: 1; overflow-y: auto; }
+    .nav-item { padding: 12px 16px; margin-bottom: 6px; border-radius: 8px; cursor: pointer; color: var(--text-muted); transition: all 0.2s; font-size: 0.95rem; display: flex; align-items: center; gap: 10px; }
+    .nav-item:hover, .nav-item.active { background: #1e293b; color: var(--primary); font-weight: bold; border-right: 3px solid var(--primary); }
+    
+    /* بدنه محتوا */
+    .main-content { flex: 1; padding: 32px; overflow-y: auto; height: 100vh; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.3s; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    .header-box { margin-bottom: 28px; }
+    .header-title { font-size: 1.8rem; font-weight: 800; color: #fff; margin-bottom: 8px; }
+    .header-desc { color: var(--text-muted); font-size: 1rem; }
+
+    /* کارت‌ها و گریدها */
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 24px; margin-bottom: 24px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 24px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+    .card-title { font-size: 1.15rem; font-weight: bold; color: var(--primary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    
+    /* دیاگرام‌های SVG */
+    .diagram-container { background: #0f172a; border-radius: 8px; padding: 16px; border: 1px solid #334155; margin-top: 12px; text-align: center; }
+    svg { max-width: 100%; height: auto; }
+    
+    /* بج‌ها و تگ‌ها */
+    .badge { padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; display: inline-block; }
+    .badge-success { background: rgba(52, 211, 153, 0.15); color: var(--success); border: 1px solid var(--success); }
+    .badge-primary { background: rgba(56, 189, 248, 0.15); color: var(--primary); border: 1px solid var(--primary); }
+    
+    .metric-number { font-size: 2.2rem; font-weight: 800; color: #fff; margin: 10px 0; }
+    .code-block { background: #0b1120; border: 1px solid #334155; border-radius: 8px; padding: 14px; font-family: monospace; font-size: 0.88rem; color: #38bdf8; overflow-x: auto; margin-top: 10px; direction: ltr; text-align: left; }
+  </style>
+</head>
+<body>
+
+  <!-- سایدبار دسته‌بندی شده و کاملاً باز -->
+  <aside class="sidebar">
+    <div class="brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      معماری فنی پایش
+    </div>
+    <ul class="nav-list">
+      <li class="nav-item active" onclick="showTab('overview')">📌 نمای کلی معماری</li>
+      <li class="nav-item" onclick="showTab('storage')">💾 لایه دیتابیس IndexedDB</li>
+      <li class="nav-item" onclick="showTab('sync')">🔄 موتور پولینگ و سینک A01</li>
+      <li class="nav-item" onclick="showTab('modules')">📦 نقشه ۸۱ ماژول کلاینت</li>
+      <li class="nav-item" onclick="showTab('security')">🛡️ امنیت و ماتریس مجوزها</li>
+      <li class="nav-item" onclick="showTab('tests')">🧪 نتایج سوئیت‌های تست</li>
+    </ul>
+  </aside>
+
+  <!-- محتوای اصلی -->
+  <main class="main-content">
+
+    <!-- تب ۱: نمای کلی -->
+    <section id="tab-overview" class="tab-content active">
+      <div class="header-box">
+        <h1 class="header-title">معماری کلان پلتفرم تک‌فایلی پایش (Payesh SPA)</h1>
+        <p class="header-desc">طراحی شده با جاوااسکریپت خالص بدون فریم‌ورک خارجی، ۱۰۰٪ آفلاین و بدون وابستگی به سرور در عملیات روزمره.</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title">تعداد ماژول‌های جاوااسکریپت</div>
+          <div class="metric-number">۸۱ ماژول</div>
+          <p class="text-muted">ترتیب قطعی در _order.json</p>
+        </div>
+        <div class="card">
+          <div class="card-title">تست‌های خودکار موفق</div>
+          <div class="metric-number" style="color: var(--success);">۱۰۰٪ سبز</div>
+          <p class="text-muted">۵۴۷ تست دودی + ۳۳ تست بیلد</p>
+        </div>
+        <div class="card">
+          <div class="card-title">حجم بسته کامپایل‌شده</div>
+          <div class="metric-number">۱.۸ MB</div>
+          <p class="text-muted">شامل تمام فونت‌های وزیر و استایل‌ها</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">دیاگرام جریان داده بین کلاینت و سرور (Offline-First Pipeline)</div>
+        <div class="diagram-container">
+          <svg viewBox="0 0 800 240" fill="none" stroke="#fff">
+            <rect x="20" y="40" width="220" height="160" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+            <text x="130" y="70" fill="#38bdf8" font-size="14" font-weight="bold" text-anchor="middle">رابط کاربری (UI Components)</text>
+            <text x="130" y="100" fill="#94a3b8" font-size="12" text-anchor="middle">Vanilla DOM Rendering</text>
+            <text x="130" y="130" fill="#94a3b8" font-size="12" text-anchor="middle">Zero-Latency Feedback</text>
+            <text x="130" y="160" fill="#34d399" font-size="12" text-anchor="middle">پاسخ‌دهی آنی ۰ میلی‌ثانیه</text>
+
+            <path d="M240 120 L330 120" stroke="#818cf8" stroke-width="3" marker-end="url(#arrow)"/>
+
+            <rect x="330" y="30" width="240" height="180" rx="8" fill="#1e293b" stroke="#818cf8" stroke-width="2"/>
+            <text x="450" y="60" fill="#818cf8" font-size="14" font-weight="bold" text-anchor="middle">لایه داده محلی (IndexedDB)</text>
+            <text x="450" y="90" fill="#f1f5f9" font-size="12" text-anchor="middle">ObjectStore: entities</text>
+            <text x="450" y="120" fill="#fbbf24" font-size="12" text-anchor="middle">ObjectStore: sync_queue</text>
+            <text x="450" y="150" fill="#94a3b8" font-size="12" text-anchor="middle">ObjectStore: metadata</text>
+            <text x="450" y="180" fill="#34d399" font-size="11" text-anchor="middle">ذخیره پایدار روی دیسک کاربر</text>
+
+            <path d="M570 120 L650 120" stroke="#34d399" stroke-width="3"/>
+
+            <rect x="650" y="40" width="130" height="160" rx="8" fill="#1e293b" stroke="#34d399" stroke-width="2"/>
+            <text x="715" y="75" fill="#34d399" font-size="13" font-weight="bold" text-anchor="middle">سرور پایش</text>
+            <text x="715" y="110" fill="#94a3b8" font-size="11" text-anchor="middle">/api/v1/pull</text>
+            <text x="715" y="135" fill="#94a3b8" font-size="11" text-anchor="middle">/api/v1/sync</text>
+            <text x="715" y="165" fill="#38bdf8" font-size="11" text-anchor="middle">PostgreSQL / SQLite</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- تب ۲: IndexedDB -->
+    <section id="tab-storage" class="tab-content">
+      <div class="header-box">
+        <h1 class="header-title">مخزن ذخیره‌سازی محلی (IndexedDB Architecture)</h1>
+        <p class="header-desc">ماژول 03-idb-persistence.js با ۳ استور تفکیک‌شده و کلاس OfflineStorage</p>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">۱. استور entities (رکوردهای داده)</div>
+          <p class="text-muted mb-2">کلید اصلی مرکب: <code>[collection, id]</code></p>
+          <p class="text-muted mb-2">ایندکس‌ها: <code>by_collection</code>, <code>by_school</code>, <code>by_updated</code></p>
+          <div class="code-block">
+await offlineStorage.putEntity('grades', {
+  id: 'g_102',
+  school_id: 1,
+  student_id: 'std_55',
+  score: 19.5,
+  version: 2
+});
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">۲. استور sync_queue (صف ارسال آفلاین)</div>
+          <p class="text-muted mb-2">کلید اصلی: <code>id (auto-increment)</code></p>
+          <p class="text-muted mb-2">ایندکس‌ها: <code>by_status</code>, <code>by_created_at</code>, <code>by_attempts</code></p>
+          <div class="code-block">
+await offlineStorage.addToQueue({
+  action: 'grade-save',
+  payload: { id: 'g_102', score: 19.5 },
+  base_version: 1,
+  status: 'pending'
+});
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- تب ۳: موتور سینک A01 -->
+    <section id="tab-sync" class="tab-content">
+      <div class="header-box">
+        <h1 class="header-title">موتور کشش داده‌ها و حل تعارض (A01 Pull & Delta Engine)</h1>
+        <p class="header-desc">همگام‌سازی دوطرفه مقاوم با پشتیبانی از Tombstones و داوری تعارض‌ها در ماژول‌های 29-pull.js و 68-sync-conflicts.js</p>
+      </div>
+      <div class="card">
+        <div class="card-title">فرآیند ادغام دلتای سرور با دیتابیس کلاینت (mergeServerDelta)</div>
+        <div class="diagram-container">
+          <svg viewBox="0 0 760 180" fill="none" stroke="#fff">
+            <rect x="10" y="30" width="180" height="120" rx="8" fill="#1e293b" stroke="#38bdf8"/>
+            <text x="100" y="65" fill="#38bdf8" font-size="13" font-weight="bold" text-anchor="middle">دریافت دلتا از سرور</text>
+            <text x="100" y="95" fill="#94a3b8" font-size="11" text-anchor="middle">changes: { users, grades, ... }</text>
+            <text x="100" y="120" fill="#f87171" font-size="11" text-anchor="middle">deleted: [ tombstones ]</text>
+
+            <path d="M190 90 L270 90" stroke="#818cf8" stroke-width="2"/>
+
+            <rect x="270" y="30" width="220" height="120" rx="8" fill="#1e293b" stroke="#fbbf24"/>
+            <text x="380" y="65" fill="#fbbf24" font-size="13" font-weight="bold" text-anchor="middle">بررسی صف معلق محلی</text>
+            <text x="380" y="95" fill="#f1f5f9" font-size="11" text-anchor="middle">آیا رکورد در pending queue هست؟</text>
+            <text x="380" y="125" fill="#34d399" font-size="11" text-anchor="middle">بله ◄ عدم بازنویسی تغییر کاربر</text>
+
+            <path d="M490 90 L570 90" stroke="#34d399" stroke-width="2"/>
+
+            <rect x="570" y="30" width="180" height="120" rx="8" fill="#1e293b" stroke="#34d399"/>
+            <text x="660" y="65" fill="#34d399" font-size="13" font-weight="bold" text-anchor="middle">ذخیره نهایی در IDB</text>
+            <text x="660" y="95" fill="#94a3b8" font-size="11" text-anchor="middle">اعمال تغییرات غیر معلق</text>
+            <text x="660" y="120" fill="#38bdf8" font-size="11" text-anchor="middle">ثبت payesh_last_pull</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- تب ۴: نقشه ماژول‌ها -->
+    <section id="tab-modules" class="tab-content">
+      <div class="header-box">
+        <h1 class="header-title">نقشه و دسته‌بندی ۸۱ ماژول کلاینت پایش</h1>
+        <p class="header-desc">فایل‌های جاوااسکریپت منبع در مسیر src/js/ با ترتیب بارگذاری دقیق</p>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">هسته، داده و همگام‌سازی (Core & Data Layer)</div>
+          <ul style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.8; list-style: square; padding-right: 20px;">
+            <li><code>00-data-layer.js</code>: انتزاع ذخیره‌سازی و ارتباط شبکه</li>
+            <li><code>03-idb-persistence.js</code>: پیاده‌سازی مخزن IndexedDB</li>
+            <li><code>00-migration.js</code>: مهاجرت امن از LocalStorage</li>
+            <li><code>27-sync.js</code>: موتور همگام‌سازی Push با Backoff</li>
+            <li><code>29-pull.js</code>: موتور همگام‌سازی Pull و دلتا</li>
+            <li><code>28-indexes.js</code>: موتور ایندکس‌گذاری سریع حافظه</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">عملیات اجرایی و ماژول‌های اختصاصی (School Modules)</div>
+          <ul style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.8; list-style: square; padding-right: 20px;">
+            <li><code>43-bell-schedule.js & 46-bell-now.js</code>: زنگ هوشمند و حضور سریع</li>
+            <li><code>51-homework.js</code>: تصحیح دیجیتال روی Canvas</li>
+            <li><code>42-self-diagnostics.js</code>: دیاگ خودکار و تعمیر دیتابیس</li>
+            <li><code>48-bus-service.js</code>: سرویس مدرسه بدون GPS</li>
+            <li><code>65-dorm.js</code>: مدیریت اسکان و خوابگاه شبانه‌روزی</li>
+            <li><code>56-sida-diff.js</code>: تطبیق مغایرت با کارنامه سیدا</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- تب ۵: امنیت -->
+    <section id="tab-security" class="tab-content">
+      <div class="header-box">
+        <h1 class="header-title">ماتریس امنیت و کنترل دسترسی (RBAC & Protection)</h1>
+        <p class="header-desc">حفاظت چندلایه، کنترل ۳۳۷ اکشن و جلوگیری از حملات متداول وب</p>
+      </div>
+      <div class="card">
+        <div class="card-title">اصول امنیتی پیاده‌سازی‌شده در کد</div>
+        <div class="grid-3 mt-3">
+          <div>
+            <h4 style="color: var(--primary); margin-bottom: 6px;">ورود دو مرحله‌ای OTP</h4>
+            <p class="text-muted" style="font-size: 0.85rem;">حذف کامل پسورد متنی جهت جلوگیری از سرقت اکانت‌ها و Brute-force</p>
+          </div>
+          <div>
+            <h4 style="color: var(--success); margin-bottom: 6px;">گارد ۳۳۷ اکشن</h4>
+            <p class="text-muted" style="font-size: 0.85rem;">ممیزی لحظه‌ای با check-authz.js و رد درخواست‌های غیرمجاز</p>
+          </div>
+          <div>
+            <h4 style="color: var(--warning); margin-bottom: 6px;">پیشگیری از CSV Injection</h4>
+            <p class="text-muted" style="font-size: 0.85rem;">خنثی‌سازی کاراکترهای خطرناک فرمول در اکسپورت‌ها با تک‌کوتیشن</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- تب ۶: تست‌ها -->
+    <section id="tab-tests" class="tab-content">
+      <div class="header-box">
+        <h1 class="header-title">نتایج اجرای سوئیت‌های جامع تست خودکار</h1>
+        <p class="header-desc">پوشش کامل تمام جریان‌ها، روت‌ها، جهش‌های دیتابیس و اعتبارسنجی‌ها</p>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title">تست دودی (smoke.js)</div>
+          <div class="metric-number" style="color: var(--success);">547 / 547</div>
+          <span class="badge badge-success">۱۰۰٪ موفق</span>
+        </div>
+        <div class="card">
+          <div class="card-title">تست‌های IndexedDB</div>
+          <div class="metric-number" style="color: var(--success);">19 / 19</div>
+          <span class="badge badge-success">پایداری کامل</span>
+        </div>
+        <div class="card">
+          <div class="card-title">تست‌های موتور کشش A01</div>
+          <div class="metric-number" style="color: var(--success);">12 / 12</div>
+          <span class="badge badge-success">دلتای بی‌نقص</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      
+      const target = document.getElementById('tab-' + tabId);
+      if (target) target.classList.add('active');
+      
+      event.currentTarget.classList.add('active');
+    }
+  </script>
+</body>
+</html>

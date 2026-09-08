@@ -39,6 +39,7 @@ const { createAttendanceRoutes } = require('./routes/attendance');
 const { createGradeRoutes } = require('./routes/grades');
 const { createUserRoutes } = require('./routes/users');
 const { createBootstrapRoute } = require('./routes/bootstrap');
+const { createPull } = require('./pull');
 
 const ROOT = path.join(__dirname, '..');
 const DATA_DIR = path.join(__dirname, 'data');
@@ -285,6 +286,7 @@ const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty })
 const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty });
 const userRoutes = createUserRoutes({ store, db, audit, markDirty });
 const bootstrapRoute = createBootstrapRoute({ store });
+const pullRoute = createPull({ store, sessionFrom: auth.sessionFrom, sendJson });
 
 /* ── static ────────────────────────────────────────────────────────── */
 const STATIC = {
@@ -361,6 +363,11 @@ const onRequest = async (req, res) => {
       if(p === '/api/v1/bootstrap' && req.method === 'GET'){
         const r = await bootstrapRoute.getBootstrapData(req);
         return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/pull (A01: General Pull & Delta Sync)
+      if(p === '/api/v1/pull' && req.method === 'GET'){
+        return await pullRoute.apiPull(req, res);
       }
 
       // /api/v1/students & /api/v1/students/:id
