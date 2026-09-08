@@ -4,7 +4,7 @@
 **سند مرجع:** `docs/ANDROID_BUILD_PLAN.md` و `docs/PLAY_STORE_CHECKLIST.md`  
 **تاریخ گزارش:** ۱۸ شهریور ۱۴۰۵ (2026-09-08)  
 **شناسه بسته (Application ID):** `ir.payesh.app`  
-**وضعیت بیلد:** ۱۰۰٪ تکمیل شده و بسته‌بندی نهایی در `dist/android/` (Verified & Committed)  
+**وضعیت بیلد:** ۱۰۰٪ تکمیل‌شده و بسته‌بندی نهایی در `dist/android/` (Verified & Committed)  
 **نسخه خروجی:** ۱.۰.۰ (Build Code: 100)  
 
 ---
@@ -63,7 +63,7 @@
 
 ## ۳. بررسی چک‌لیست و الزامات گوگل‌پلی (Play Store Compliance)
 
-- **AAB Format:** خروجی در قالب رسمی Android App Bundle (`.aab`) تولید شده است.
+- **AAB Format:** خروجی در قالب رسمی Android App Bundle (`.aab`) تولید‌شده است.
 - **Target API ≥ 35:** در فایل مانیفست و گریدل مقدار `targetSdk = 35` اعمال شد.
 - **Data Safety:** هیچ SDK تبلیغاتی، تحلیل‌گر شخص سوم یا دسترسی به لاگ تماس/پیامک وجود ندارد.
 - **Account Deletion:** پیوند درون‌برنامه‌ای و صفحه مستقل `/account-deletion` فعال است.
