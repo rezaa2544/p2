@@ -1,0 +1,33 @@
+{
+  "packageId": "ir.payesh.app",
+  "host": "payesh.ir",
+  "name": "پایش — سامانه هوشمند مدیریت مدرسه",
+  "launcherName": "پایش",
+  "themeColor": "#1E3A8A",
+  "navigationColor": "#0F172A",
+  "backgroundColor": "#F8FAFC",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://payesh.ir/assets/icon-512.png",
+  "maskableIconUrl": "https://payesh.ir/assets/icon-512.png",
+  "appVersionName": "1.0.0",
+  "appVersionCode": 100,
+  "signingKey": {
+    "path": "release.keystore",
+    "alias": "payesh_release"
+  },
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://payesh.ir/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": false
+    },
+    "playBilling": {
+      "enabled": false
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  }
+}
