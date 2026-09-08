@@ -119,6 +119,18 @@ function fieldGate(op, s, exc){
     /* R96: رمز اولیه فقط هنگامِ ساختِ کاربر، توسطِ مدیر */
     if(k === 'password' && op.c === 'users' && op.t === 'ins' && (s.role === 'manager' || s.role === 'superadmin')) continue;
     if(!def.fields || def.fields.indexOf(k) === -1) return { code: 'unknown_field', msg: 'فیلدِ «' + k + '» در این مجموعه تعریف نشده است' };
+    if(PROTECTED_FIELDS.indexOf(k) > -1){
+      /* R98 — فیلدِ ممنوع: هرگز از allowlistِ عمومی عبور نمی‌کند؛
+         فقط سیاستِ صریح (protPolicy) + بلوک‌هایِ اختصاصیِ پایین
+         (مشتق‌سازیِ school_id / سیاستِ status / بدونِ ارتقاء / PII مدیری). */
+      const pv = protPolicy(op, s, k);
+      if(pv) return pv;
+      continue;
+    }
+    /* R98 — allowlistِ عمومیِ collection×op (فیلدهایِ غیرممنوعِ شناخته‌شده) */
+    const fa = FIELD_ALLOWLISTS[op.c];
+    const allow = fa && fa[op.t] ? fa[op.t].fields : null;
+    if(allow && allow.indexOf(k) === -1) return { code: 'field_denied', msg: 'فیلدِ «' + k + '» در ' + op.t + ' مجموعهٔ ' + op.c + ' قابلِ تغییر نیست' };
   }
   if(op.c === 'users'){
     if(d.role != null){
@@ -219,32 +231,82 @@ const VERSIONED = { grades: 1, attendance: 1, discipline: 1 };
 const STRUCTURAL = { schools: 1, classes: 1, subjects: 1, users: 1, enrollments: 1, schedule: 1 };
 const VERSION_TRACKED = Object.assign({}, VERSIONED, STRUCTURAL);
 
-/* ── FIELD_ALLOWLISTS — field-level rules per collection (arch review P0-1) ──
+/* ── R98 — field-level authorization: generic FIELD_ALLOWLISTS for all
+   collections + explicit policy for the forbidden set.
    The role/scope gates above answer "may this role write this collection,
    to this record?". FIELD_ALLOWLISTS answers the finer question:
-   "may this role write THIS FIELD?".
-   Today: `leaves`.
-     • ins — the requester creates a REQUEST: initial status is 'pending'
-       only. Exception: manager/superadmin may create directly with a
-       decision status — locked flow AD 78.3 (dorm manager creates the
-       weekend leave already approved).
-     • upd — only manager/superadmin may touch `status`, and only to a
-       decision ('approved' | 'rejected'). Other fields (reason, dates…)
-       stay writable for any role holding the collection permission.
-   Without this, a parent could forge an approved leave for their child
-   (ins/upd with status:'approved') — see docs/ARCHITECTURE_REVIEW.md §2.2. */
-const FIELD_ALLOWLISTS = {
-  leaves: {
+   "may this role write THIS FIELD, on THIS op (ins/upd)?"
+   PROTECTED_FIELDS are NEVER part of the generic allowlist — they can only
+   reach the store through the explicit policy below (or session derivation),
+   never through a raw Object.assign of the body payload:
+     • status        — workflow: ins = initial value (per collection),
+                       upd = manager or the explicit workflow roles (fieldGate)
+     • school_id     — derived from the session for scoped roles (fieldGate);
+                       superadmin has no school in its session, so the target
+                       school rides on the op (cross-school authority)
+     • user_id       — owner/recipient identity: management only (protPolicy)
+     • role          — users: no-escalation (fieldGate); domain 'role'
+                       (exam_duties/notifications): management only
+     • national_id   — users: management (fieldGate); elsewhere: management
+     • phone         — users: management (fieldGate); elsewhere: management,
+                       except teacher_sms.phone (recipient phone = the teacher's
+                       own SMS data)
+   Without this, a low-privilege writer could reassign a record's
+   user_id/role or inject PII — see docs/ARCHITECTURE_REVIEW.md §2.2.
+   The leaves status policy (arch review P0-1) is preserved below, unchanged. */
+const PROTECTED_FIELDS = ['status', 'school_id', 'user_id', 'role', 'national_id', 'phone'];
+
+/* R98 — explicit policy for the protected set (the ONLY door into these
+   fields). Returns null = defer to the dedicated value block in fieldGate
+   (school_id derivation / status workflow) or grant; {code,msg} = reject. */
+function protPolicy(op, s, k){
+  const admin = s.role === 'manager' || s.role === 'superadmin' || s.role === 'edu_office';
+  if(k === 'user_id'){
+    if(admin) return null;
+    return { code: 'field_denied', msg: 'user_id فیلدِ هویتی است و برای نقش شما قابلِ نوشتن نیست' };
+  }
+  if(k === 'role'){
+    if(op.c === 'users') return null;      /* no-escalation block in fieldGate */
+    if(admin) return null;                 /* domain role (exam_duties/notifications) */
+    return { code: 'field_denied', msg: 'role در این مجموعه فقط برای مدیریت قابلِ نوشتن است' };
+  }
+  if(k === 'national_id' || k === 'phone'){
+    if(op.c === 'users') return null;      /* admin block in fieldGate */
+    if(admin) return null;
+    if(op.c === 'teacher_sms' && s.role === 'teacher') return null;
+    return { code: 'field_denied', msg: 'فیلدِ «' + k + '» فقط توسطِ مدیریت قابلِ ثبت است' };
+  }
+  return null; /* school_id, status */
+}
+
+const FIELD_ALLOWLISTS = (function(){
+  /* R98 — generated for EVERY collection: the generic writable set per op =
+     the model's known fields MINUS the protected set (those ride on explicit
+     policy only). Unknown field = reject stays fail-closed as before. */
+  const out = {};
+  for(const c of Object.keys(AUTHZ)){
+    const f = AUTHZ[c].fields || [];
+    const allow = f.filter(x => PROTECTED_FIELDS.indexOf(x) === -1);
+    out[c] = { ins: { fields: allow.slice() }, upd: { fields: allow.slice() } };
+  }
+  /* leaves — the pre-existing status policy (arch review P0-1) is preserved
+     on top of the generated allowlist: ins normalizes status to 'pending'
+     (manager may create with a decision status); upd status = decision,
+     manager/superadmin only. */
+  out.leaves = {
     ins: {
+      fields     : out.leaves.ins.fields,
       defaultRoles : ['pending'],
       managerRoles : ['pending', 'approved', 'rejected']
     },
     upd: {
+      fields     : out.leaves.upd.fields,
       statusRoles  : ['manager', 'superadmin'],
       statusValues : ['approved', 'rejected']
     }
-  }
-};
+  };
+  return out;
+})();
 
 /**
  * Shared field-level exception gate (arch review P0-1). Passes all three
@@ -267,14 +329,16 @@ function filterFields(op, collection, role){
     const d = (op && op.data) || {};
     const isMgr = role === 'manager' || role === 'superadmin';
     /* R96 P0-1: دروازهٔ status (insِ مقدارِ اولیه + updِ نقش) تک‌منبع —
-       fieldGate. اینجا فقط نرمال‌سازیِ نبودِ status می‌ماند. */
+       fieldGate. اینجا فقط نرمال‌سازیِ نبودِ status می‌ماند.
+       R98: defaultRoles/statusValues فقط برایِ leaves تعریف‌اند (entryهایِ
+       تولیدشدهٔ بقیهٔ مجموعه‌ها فقط fields دارند). */
     if(op.t === 'ins'){
-      if(d.status == null) d.status = fa.ins.defaultRoles[0]; /* normalize */
+      if(fa.ins.defaultRoles && d.status == null) d.status = fa.ins.defaultRoles[0]; /* normalize (leaves) */
       return null;
     }
     if(op.t === 'upd' && d.status != null){
       /* چکِ ارزش برایِ مدیر (R96ِ fieldGate نقش را می‌سنجد، ارزشِ مدیر را نه) */
-      if(isMgr && fa.upd.statusValues.indexOf(d.status) === -1)
+      if(fa.upd.statusValues && isMgr && fa.upd.statusValues.indexOf(d.status) === -1)
         return { kind: 'reject_op', code: 'field_denied' };
       return null;
     }
@@ -445,6 +509,20 @@ function nextId(c){
   return m + 1;
 }
 
+/* R98 — فیلدهایِ ممنوع هرگز از Object.assignِ عمومیِ payload عبور نمی‌کنند:
+   از یک کپیِ جدا جدا می‌شوند و مقادیرِ اعتبارسنجی‌شده/مشتق‌شدهٔ سرور
+   بعداً صریحاً نوشته می‌شوند. روی کپی کار می‌کند تا op.data برایِ
+   hookهایِ بعد از apply (notifications) دست‌نخورده بماند. */
+function stripProtected(d){
+  const prot = {};
+  if(d && typeof d === 'object'){
+    for(const k of PROTECTED_FIELDS){
+      if(d[k] !== undefined){ prot[k] = d[k]; delete d[k]; }
+    }
+  }
+  return prot;
+}
+
 /* ctx: { store, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom, sendJson } */
 function createSync(ctx){
   const store = ctx.store;
@@ -577,15 +655,20 @@ function createSync(ctx){
       if(!Array.isArray(store[op.c])) store[op.c] = [];
       if(op.t === 'ins'){
         const data = Object.assign({}, op.data);
+        const prot = stripProtected(data); /* R98 — ممنوع‌ها جدا؛ بعداً صریح */
         if(data.id == null) data.id = nextId(op.c);
         if(VERSION_TRACKED[op.c] && data.version == null) data.version = 1; /* R95 */
         const ex = store[op.c].find(x => x.id === data.id);
-        if(ex) Object.assign(ex, data); else store[op.c].push(data);
+        if(ex){ Object.assign(ex, data); Object.assign(ex, prot); }
+        else store[op.c].push(Object.assign(data, prot));
         data.updated_at = new Date().toISOString();
       }else if(op.t === 'upd'){
         const rec = store[op.c].find(x => x.id === Number(op.id != null ? op.id : (op.data && op.data.id)));
         if(rec){
-          Object.assign(rec, op.data, { id: rec.id, updated_at: new Date().toISOString() });
+          const clean = Object.assign({}, op.data); /* R98 — op.data برایِ hookها دست‌نخورده */
+          const prot = stripProtected(clean);
+          Object.assign(rec, clean, { id: rec.id, updated_at: new Date().toISOString() });
+          Object.assign(rec, prot); /* مقادیرِ اعتبارسنجی‌شده — صریح، نه inject */
           if(VERSION_TRACKED[op.c]) rec.version = (rec.version || 1) + 1; /* R95 */
         }
       }else if(op.t === 'del'){
@@ -659,4 +742,4 @@ function createSync(ctx){
 
   return { apiSync, canWrite, inScope };
 }
-module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, VERSIONED, STRUCTURAL, VERSION_TRACKED };
+module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED };
