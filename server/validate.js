@@ -319,6 +319,7 @@ function ruleFor(coll, key){
     return { type: 'string', max: LIMITS.STR_MID };
   }
   if(key === 'author_role') return { type: 'string', max: LIMITS.STR_MID };
+  if(key === 'boom_goals') return { type: 'string', max: LIMITS.STR_LONG }; /* C.2 فرناز: اهداف سالانه (بوم) */
   if(key === 'gender'){
     if(coll === 'schools') return { type: 'enum', values: SCHOOL_GENDERS };
     return { type: 'string', max: 40 };

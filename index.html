@@ -4532,6 +4532,9 @@ var ACTION_ROLES = {
   'user-modal':    ['manager','superadmin'],
   'user-toggle':   ['manager','superadmin'],
   'school-save':   ['superadmin'],
+  /* C.2 فرناز — بوم: مدیر فقط مدرسهٔ خودش (گیت دوم در خود اکشن) */
+  'school-boom':      ['manager'],
+  'school-boom-save': ['manager'],
   'school-del':    ['superadmin'],
   'school-modal':  ['superadmin'],
   'school-toggle': ['superadmin'],
@@ -5029,6 +5032,8 @@ function adminDash(){
     <div class="spacer"></div>
     <button class="btn ghost sm" data-act="smode-mgr">${schoolModeOf(u.school_id,todayISO())==='virtual'?'🏫 حضوری کردن امروز':'🏠 غیرحضوری کردن امروز'}</button>
    </div>`:''}
+   ${u.role==='manager'?(()=>{const sc=byId('schools',sid)||{};const bg=(sc.boom_goals||'').trim();
+    return `<div class="card"><div class="card-head"><h3>🎯 برنامه ویژه مدرسه (بوم)</h3><button class="btn ghost sm" data-act="school-boom" data-id="${escAttr(sid)}">${bg?'✏️ ویرایش اهداف':'➕ ثبت اهداف سالانه'}</button></div><div class="card-body">${bg?`<div style="white-space:pre-wrap;line-height:2">${esc(bg)}</div>`:empty('🎯','هنوز برنامه‌ای ثبت نشده','اهداف سالانه مدرسه را بنویسید تا در یک نگاه دیده شود.')}</div></div>`;})():''}
    ${((u.role==='manager'||u.role==='superadmin')&&typeof DATA_MODE!=='undefined'&&DATA_MODE==='server')?`<div class="card"><div class="card-head"><h3>⚖️ تعارض‌های همگام‌سازی</h3><span class="muted small">تغییرهای هم‌زمانِ در انتظارِ داوری (فقط حالت سروری)</span></div><div id="sync-conflicts-root"><div class="card-body" style="padding-top:12px"><div class="muted small">در حالِ خواندن…</div></div></div></div>`:''}
    <div class="grid g2">
     <div class="card"><div class="card-head"><h3>روند حضور روزهای اخیر</h3><span class="badge b-blue">درصد حضور</span></div>
@@ -5317,7 +5322,8 @@ function viewSchools(){
        <select class="select" style="width:150px" data-f="sbranch">${opt(Object.keys(BRANCHES).map(b=>[b,b]),fbr,'همه شاخه‌ها')}</select>`):''}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>نام مدرسه</th><th>کد</th><th>مکان</th><th>مقطع</th><th>مدیر</th><th>تلفن ثابت</th><th>دانش‌آموز</th><th>دبیر</th><th>کلاس</th><th>آخرین فعالیت</th><th>وضعیت</th>${isAdmin?'<th></th>':''}</tr></thead><tbody>
     ${(()=>{const _ov=schoolsOverview();const _by={};_ov.forEach(function(r){_by[r.school.id]=r.st;});return rows.map(s=>{const st_=_by[s.id]||{};const us=db.users.filter(u=>u.school_id===s.id);const mg=us.find(u=>u.role==='manager');
-     return `<tr><td><b>${esc(s.name)}</b><div class="small muted">${esc(s.gender||'')}${s.shift&&s.shift!=='صبح'?' · '+esc(s.shift):''}</div></td><td class="muted">${esc(s.code)}</td>
+     const boom=s.boom_goals?String(s.boom_goals).replace(/\s+/g,' '):'';
+     return `<tr><td><b>${esc(s.name)}</b><div class="small muted">${esc(s.gender||'')}${s.shift&&s.shift!=='صبح'?' · '+esc(s.shift):''}</div>${boom?`<div class="small">🎯 ${esc(boom.slice(0,80))}${boom.length>80?'…':''}</div>`:''}</td><td class="muted">${esc(s.code)}</td>
       <td>${esc((byId('provinces',s.province_id)||{}).name||s.city||'—')}<div class="small muted">${esc((byId('counties',s.county_id)||{}).name||'')}${s.district_id?' › '+esc((byId('districts',s.district_id)||{}).name||''):''}</div></td>
       <td><span class="badge b-blue">${esc(s.level||'—')}</span>${s.type&&s.type!=='عادی'?`<div class="small muted" style="margin-top:4px">${esc(s.type)}</div>`:''}${(s.branches||[]).length?`<div class="small muted" style="margin-top:4px">${(s.branches||[]).map(b=>esc(b)).join('، ')}</div>`:''}</td><td class="muted">${esc(mg?mg.full_name:'—')}</td>
       <td class="small muted">${esc(s.landline||'—')}</td>
@@ -6627,6 +6633,7 @@ function schoolModal(s){
     ${typeof capPickerHTML==='function'?capPickerHTML(s):''}
     <div id="m_branch_box" style="display:${s.level==='متوسطه دوم'?'block':'none'}">${branchPicker(s)}</div>
     ${f('آدرس',`<textarea class="input" id="m_addr" rows="2">${esc(s.address||'')}</textarea>`)}
+    ${f('🎯 برنامه ویژه (بوم) — اهداف سالانه',`<textarea class="input" id="m_boom" rows="3">${esc(s.boom_goals||'')}</textarea>`)}
     <div class="sec-title">👤 مشخصات مدیر مدرسه ${mgr?'':'<span class="small muted">(حساب کاربری او ساخته می‌شود)</span>'}</div>
     <div class="grid g2">
       ${f('نام و نام خانوادگی'+(s.id?'':' *'),inp('mg_name',mgr?mgr.full_name:''))}
@@ -6635,6 +6642,15 @@ function schoolModal(s){
       ${f('نام کاربری'+(s.id?'':' *'),inp('mg_user',mgr?mgr.username:''))}</div>`,
    'school-save'));
   window._edit=s;
+}
+/* C.2 فرناز — مودالِ «برنامه ویژه مدرسه» (بوم): اهداف سالانه */
+function boomModal(sid){
+  const s=byId('schools',Number(sid))||{};
+  openModal(modalTpl('🎯 برنامه ویژه مدرسه (بوم) — '+esc(s.name||''),
+   `${f('اهداف سالانه (هر خط یک هدف)',`<textarea class="input" id="boom_goals" rows="6" placeholder="مثلاً:\nکسب رتبه اول منطقه در المپیاد ریاضی\nراه‌اندازی آزمایشگاه رباتیک" style="line-height:1.9">${esc(s.boom_goals||'')}</textarea>`)}
+    <div class="small muted">حداکثر ۲۰۰۰ نویسه. خالی گذاشتن = پاک شدن برنامه.</div>`
+   ,'school-boom-save'));
+  window._boomSid=Number(sid);
 }
 function userModal(x){
   const isSuper=S.user.role==='superadmin';
@@ -14194,7 +14210,7 @@ function adminActions(e, el, id, a, rawId){
        phone:V('m_phone'),landline:V('m_landline'),
        level:V('m_level'),type:V('m_type')||'عادی',gender:V('m_gender'),shift:V('m_shift')||'صبح',
        capacity:Number(V('m_cap'))||300,
-       active:Number(V('m_active')),address:V('m_addr'),
+       active:Number(V('m_active')),address:V('m_addr'),boom_goals:V('m_boom'),
        /* دور ۶۵ بند روزهای کاری: روزهای روشن‌شده در مودال */
        work_days:$$('.m-wd:checked').map(x=>Number(x.value)).sort((a,b)=>a-b),
        /* Round 77: excuse window (minutes after bell end) */
@@ -14225,6 +14241,18 @@ function adminActions(e, el, id, a, rawId){
          national_id:mgNid||makeNid(),phone:mgPhone||'',active:1,title:'مدیر مدرسه',created_at:todayISO()});
      }
      closeModal();toast(s.id?'تغییرات ذخیره شد':'مدرسه و حساب مدیر ثبت شد','ok');render();},
+   /* C.2 فرناز — برنامه ویژه مدرسه (بوم): مدیر فقط مدرسهٔ خودش */
+   'school-boom'(){
+     const sid=Number(id)||S.user.school_id;
+     if(S.user.role!=='superadmin'&&sid!==S.user.school_id){toast('فقط مدرسهٔ خودتان','err');return;}
+     boomModal(sid);},
+   'school-boom-save'(){
+     const sid=Number(window._boomSid)||S.user.school_id;
+     if(S.user.role!=='superadmin'&&sid!==S.user.school_id){toast('فقط مدرسهٔ خودتان','err');return;}
+     const g=V('boom_goals')||'';
+     if(invalid('boom_goals',g.length>2000,'حداکثر ۲۰۰۰ نویسه'))return;
+     update('schools',sid,{boom_goals:g});
+     closeModal();toast('برنامه ویژه ذخیره شد','ok');render();},
    'user-new'(){userModal(null);},
    'user-edit'(){userModal(byId('users',id));},
    'user-toggle'(){const u=byId('users',id);update('users',id,{active:u.active?0:1});render();},

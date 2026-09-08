@@ -2019,6 +2019,7 @@
       "active",
       "address",
       "area_kind",
+      "boom_goals",
       "branches",
       "capabilities",
       "capacity",
@@ -3329,6 +3330,14 @@
       ],
       "collections": [
         "scholarships"
+      ]
+    },
+    "school-boom-save": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "schools"
       ]
     },
     "school-del-ok": {
