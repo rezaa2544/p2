@@ -148,6 +148,7 @@ function _renderRouteInner(){
     case 'meetings':return viewMeetings();
     case 'growth':return viewGrowth();
     case 'notifyqueue':return viewNotifyQueue();
+    case 'tickets':return viewTickets();
     case 'formssms':return viewFormsSms();
     case 'import':return viewImport();
     case 'finance':return viewFinance();
