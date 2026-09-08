@@ -1389,6 +1389,7 @@
       "created_at",
       "id",
       "meeting_date",
+      "meeting_type",
       "resolutions",
       "school_id",
       "updated_at"

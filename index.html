@@ -6874,6 +6874,7 @@ function assocMinModal(){
   openModal(modalTpl('صورت‌جلسهٔ جلسهٔ انجمن',
    `
    ${f('تاریخِ جلسه *',`<input class="input" id="am_date" type="date" value="${todayISO()}" /> <span class="badge b-gray">${jalali(todayISO())}</span>`)}
+   ${f('نوع جلسه',sel('am_type',MIN_TYPES,'assoc'))}
    ${f('حاضرین در جلسه * (هر خط یک مورد)',`<textarea class="input" id="am_att" rows="4" placeholder="مثلاً:\nآقای محمدی — رئیس انجمن\nسرکار خانم احمدی — نمایندهٔ اولیا\nآقای رضایی — مدیر مدرسه" style="line-height:1.9"></textarea>`)}
    ${f('مصوبات جلسه (هر خط یک مصوبه)',`<textarea class="input" id="am_res" rows="5" placeholder="مثلاً:\nتصویبِ کمکِ داوطلبانهٔ ۵ میلیونی برای کتابخانه\nتعیینِ اردوی پاییز در اواخرِ مهر" style="line-height:1.9"></textarea>`)}
    `,'assoc-min-save'));
@@ -11520,7 +11521,8 @@ function coreActions(e, el, id, a, rawId){
     const date=V('am_date');const att=V('am_att');const res=V('am_res');
     if(!date){toast('تاریخِ جلسه لازم است','err');return;}
     if(!att){toast('حاضرین را بنویسید','err');return;}
-    insert('assoc_minutes',{school_id:sid,meeting_date:date,attendees:att,resolutions:res,archived:false,created_at:todayISO(),updated_at:todayISO()});
+    const typ=V('am_type');const mt=(typeof MIN_TYPES!=='undefined'&&MIN_TYPES.some(function(t){return t[0]===typ;}))?typ:'assoc';
+    insert('assoc_minutes',{school_id:sid,meeting_date:date,meeting_type:mt,attendees:att,resolutions:res,archived:false,created_at:todayISO(),updated_at:todayISO()});
     closeModal();toast('صورت‌جلسه ثبت شد','ok');render();},
   'assoc-min-print'(){assocMinPrint(id);},
   'assoc-min-toggle'(){
@@ -23811,6 +23813,10 @@ function assocMinutes(schoolId){
   return (db.assoc_minutes||[]).filter(function(m){return m.school_id===schoolId;})
     .slice().sort(function(a,b){return String(b.meeting_date).localeCompare(String(a.meeting_date));});
 }
+/* ─────────────── C.1 فرناز — نوعِ جلسه (همان جدول، بدونِ جدولِ تازه) ─────────────── */
+const MIN_TYPES=[['assoc','انجمن اولیا و مربیان'],['teachers','شورای معلمان'],['students','شورای دانش‌آموزان']];
+function minTypeOf(m){ return (m&&MIN_TYPES.some(function(t){return t[0]===m.meeting_type;}))?m.meeting_type:'assoc'; }
+function minTypeFa(m){ const t=MIN_TYPES.filter(function(x){return x[0]===minTypeOf(m);})[0]; return t?t[1]:MIN_TYPES[0][1]; }
 function assocMinPrint(mid){
   const m=byId('assoc_minutes',Number(mid));
   if(!m)return;
@@ -23828,7 +23834,7 @@ function assocMinPrint(mid){
     +'table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}'
     +'th,td{border:1px solid #cbd5e1;padding:8px;text-align:right}th{background:#eff6ff}'
     +'@media print{.np{display:none}}</style></head><body>'
-    +'<h1>صورت‌جلسهٔ جلسهٔ انجمن اولیا و مربیان</h1>'
+    +'<h1>صورت‌جلسهٔ جلسهٔ '+esc(minTypeFa(m))+'</h1>'
     +'<div class="meta">'+esc(sc)+' — تاریخِ جلسه: '+jalali(m.meeting_date)+(m.archived?' — <b>بایگانی‌شده</b>':'')+'</div>'
     +'<hr><h2>حاضرین در جلسه</h2><p class="body">'+(att.length?att.map(esc).join('\n'):'—')+'</p>'
     +'<h2>مصوبات جلسه</h2><p class="body">'+(res.length?res.map(esc).join('\n'):'—')+'</p>'
@@ -23837,14 +23843,20 @@ function assocMinPrint(mid){
   w.document.close();
 }
 function assocMinutesSection(sid){
-  const rows=assocMinutes(sid);
-  let h='<div class="card"><h3>📄 صورت‌جلسهٔ جلساتِ انجمن <span class="small" style="font-weight:normal">('+fa(rows.length)+')</span> '
+  const all=assocMinutes(sid);
+  const ft=(S.filters&&S.filters.mtype)||'';
+  const rows=ft?all.filter(function(m){return minTypeOf(m)===ft;}):all;
+  const opts=[['','همهٔ جلسات']].concat(MIN_TYPES).map(function(o){
+    return '<option value="'+o[0]+'"'+(ft===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';}).join('');
+  let h='<div class="card"><h3>📄 صورت‌جلسهٔ جلسات <span class="small" style="font-weight:normal">('+fa(rows.length)+')</span> '
+    +'<select class="input sm" data-f="mtype" style="max-width:200px;display:inline-block">'+opts+'</select> '
     +'<button class="btn btn-primary sm" data-act="assoc-min-new" style="float:left">➕ صورت‌جلسهٔ تازه</button></h3>';
   if(rows.length){
-    h+='<div class="table-wrap"><table><thead><tr><th>تاریخِ جلسه</th><th>مصوبات</th><th>وضعیت</th><th></th></tr></thead><tbody>';
+    h+='<div class="table-wrap"><table><thead><tr><th>تاریخِ جلسه</th><th>نوع جلسه</th><th>مصوبات</th><th>وضعیت</th><th></th></tr></thead><tbody>';
     rows.forEach(function(m){
       const res=String(m.resolutions||'').replace(/\s+/g,' ');
       h+='<tr><td>'+jalali(m.meeting_date)+'</td>'
+        +'<td><span class="badge b-blue">'+esc(minTypeFa(m))+'</span></td>'
         +'<td style="max-width:420px"><span class="small">'+esc(res.length>60?res.slice(0,60)+'…':(res||'—'))+'</span></td>'
         +'<td>'+(m.archived?'<span class="badge b-gray">بایگانی‌شده</span>':'<span class="badge b-green">فعال</span>')+'</td>'
         +'<td style="white-space:nowrap">'

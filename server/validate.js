@@ -313,6 +313,7 @@ function ruleFor(coll, key){
   }
   /* ۲. enumهایِ تک‌فیلدی */
   if(key === 'stage' && coll === 'preapps') return { type: 'enum', values: STAGE_ENUM };
+  if(key === 'meeting_type' && coll === 'assoc_minutes') return { type: 'enum', values: ['assoc','teachers','students'] }; /* C.1 فرناز */
   if(key === 'role'){
     if(coll === 'users') return { type: 'enum', values: USER_ROLES };
     return { type: 'string', max: LIMITS.STR_MID };
