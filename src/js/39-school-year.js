@@ -155,10 +155,14 @@ function placementScore(studentId){
  * نتیجه: میانگین کلاس‌ها به هم نزدیک می‌ماند و کلاس ضعیف شکل نمی‌گیرد.
  */
 function autoPlacement(students, classes){
-  if(!classes.length) return [];
+  /* دور ۱۰۰ (نقصِ ۴): خروجی {buckets, unplaced} — سرریزِ پیشین به کلاسِ
+     اول (فراتر از ظرفیت!) حذف شد؛ جا‌نشده‌ها برمی‌گردند تا پیش‌نمایش
+     نشانشان دهد و مدیر کلاسِ موازی بسازد. */
+  if(!classes.length) return { buckets: [], unplaced: students.slice() };
   var ranked = students.slice().sort(function(a,b){
     return placementScore(b.user.id) - placementScore(a.user.id); });
   var buckets = classes.map(function(c){ return { cls: c, list: [] }; });
+  var unplaced = [];
   var i = 0, dir = 1;
   ranked.forEach(function(s){
     /* رعایت ظرفیت: اگر کلاس پر بود، به بعدی می‌رود */
@@ -172,12 +176,12 @@ function autoPlacement(students, classes){
       else if(i < 0){ i = 0; dir = 1; }
       tries++;
     }
-    if(tries >= buckets.length) buckets[0].list.push(s);  /* همه پر: اولی */
+    if(tries >= buckets.length) unplaced.push(s);  /* همه پر: جا نشد */
     i += dir;
     if(i >= buckets.length){ i = buckets.length - 1; dir = -1; }
     else if(i < 0){ i = 0; dir = 1; }
   });
-  return buckets;
+  return { buckets: buckets, unplaced: unplaced };
 }
 
 /** اعمال چیدمان: ثبت‌نام دانش‌آموزان در کلاس‌های تعیین‌شده.
@@ -409,12 +413,15 @@ function viewSchoolYear(){
       + (keys.length ? keys.map(function(k){
           var g = groups[k];
           var cls = targetClasses(sid, g.grade, g.field);
+          /* دور ۱۰۰ (نقصِ ۴): پیش‌نمایشِ جا‌نشده‌ها — دکمهٔ «کلاس موازی» کنارش هست */
+          var prevUn = cls.length ? autoPlacement(g.list, cls).unplaced.length : g.list.length;
           var levelName = g.grade <= 6 ? 'ابتدایی' : g.grade <= 9 ? 'متوسطه اول' : 'متوسطه دوم';
           return '<div class="card" style="margin-bottom:12px"><div class="card-head">'
             + '<h3>پایهٔ ' + fa(g.grade) + (g.field ? ' — ' + esc(g.field) : '')
             + ' <span class="badge b-gray">' + fa(g.list.length) + ' دانش‌آموز</span></h3>'
             + '<div class="row" style="gap:6px">'
             + '<span class="small muted">' + levelName + ' · ' + fa(cls.length) + ' کلاس مقصد</span>'
+            + (prevUn ? '<span class="badge b-red">⚠️ ' + fa(prevUn) + ' نفر جا نمی‌شوند</span>' : '')
             + '<button class="btn ghost sm" data-act="cls-parallel" data-g="' + g.grade
             + '" data-fl="' + esc(g.field || '') + '">➕ کلاس موازی</button>'
             + (cls.length ? '<button class="btn sm" data-act="place-auto" data-g="' + g.grade
