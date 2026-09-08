@@ -72,6 +72,7 @@
     "created_at",
     "id",
     "meeting_date",
+    "meeting_type",
     "resolutions",
     "school_id",
     "updated_at"
@@ -1527,6 +1528,7 @@
     "active",
     "address",
     "area_kind",
+    "boom_goals",
     "branches",
     "capabilities",
     "capacity",
