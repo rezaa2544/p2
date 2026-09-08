@@ -127,8 +127,10 @@ async function main() {
      قرمز می‌شدند (خودِ GC سالم — تکرارِ تکی سبز). حالا تا ۱۵ ثانیه فایل را
      تا نشستنِ GC پُل می‌کنیم؛ اگر GC مرده باشد (جهش M4 / باگ) پُل وقتش را
      می‌گیرد و چک‌ها همان‌طور که باید شکست می‌خورند. */
+  /* R97 — پنجره ۱۵s (R95) دوباره تحتِ بارِ ۴ لِینِ رجیسیون کوتاه بود
+     (server14-gc-mutations دو بار کاذبِ قرمز، تکرارِ تکی سبز): ۳۰s. */
   let after = null;
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 30; i++) {
     await sleep(1000);
     after = JSON.parse(fs.readFileSync(storeFile, 'utf8'));
     if (!after.__processed_uids['gc-old-uid'] && !after.__revoked_jti['gc-old-jti']
