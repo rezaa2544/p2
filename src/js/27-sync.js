@@ -25,6 +25,8 @@ const SYNC_META_KEY  = 'sms_syncmeta_v1';
 const SYNC_DEAD_CODES = {
   field_denied: 1, malformed_op: 1, role_denied: 1, out_of_scope: 1,
   forged_by: 1, user_mismatch: 1, school_mismatch: 1,
+  /* R96 — ردِّ پایدارِ دروازهٔ فیلد/مدلِ مجوز */
+  unknown_field: 1, unknown_collection: 1, role_escalation: 1, ownership_forge: 1,
   /* R95 (بند ۲.۵): ردِّ پایدارِ نسخه‌ای — دوباره‌ارسال بی‌فایده است
      (conflict_preserved → با مدیر داوری می‌شود؛ stale_base → نسخهٔ
      سرور تازه‌تر است). */

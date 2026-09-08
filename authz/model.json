@@ -1,0 +1,2178 @@
+{
+ "$comment": "R96 — central authorization model (single source of truth). Server (server/sync.js) loads this; tests/authz-model.js regenerates and diffs (build gate); tests/server16.js runs the negative matrix. roles per op: fail-closed (unknown collection = deny). fields: seed ∪ client scan ∪ managed; unknown field in a write op = reject (unknown_field). GRANTS(R96): exams/exam_terms/exam_duties/calendar/makeup_classes→manager; teacher_schools→manager+edu_office; subscription_payments→manager; offices→edu_office.",
+ "collections": {
+  "announcements": {
+   "fields": [
+    "audience",
+    "author_id",
+    "body",
+    "created_at",
+    "created_by",
+    "date",
+    "id",
+    "pinned",
+    "school_id",
+    "title",
+    "updated_at"
+   ],
+   "ins": [
+    "edu_office",
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "edu_office",
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "edu_office",
+    "manager",
+    "superadmin"
+   ]
+  },
+  "app_settings": {
+   "fields": [
+    "created_at",
+    "updated_at"
+   ],
+   "ins": [],
+   "upd": [],
+   "del": []
+  },
+  "assets": {
+   "fields": [
+    "category",
+    "created_at",
+    "id",
+    "location",
+    "name",
+    "note",
+    "school_id",
+    "status",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "assoc_minutes": {
+   "fields": [
+    "archived",
+    "attendees",
+    "created_at",
+    "id",
+    "meeting_date",
+    "resolutions",
+    "school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "attendance": {
+   "fields": [
+    "class_id",
+    "created_at",
+    "date",
+    "exit_at",
+    "exit_minutes",
+    "id",
+    "late_at",
+    "late_minutes",
+    "note",
+    "school_id",
+    "source",
+    "status",
+    "student_id",
+    "taken_at",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ]
+  },
+  "attendance_modes": {
+   "fields": [
+    "created_at",
+    "date",
+    "id",
+    "mode",
+    "school_id",
+    "set_at",
+    "set_by",
+    "updated_at"
+   ],
+   "ins": [
+    "edu_office",
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "edu_office",
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "edu_office",
+    "manager",
+    "superadmin"
+   ]
+  },
+  "bell_schedules": {
+   "fields": [
+    "created_at",
+    "days",
+    "id",
+    "school_id",
+    "updated_at"
+   ],
+   "ins": [],
+   "upd": [],
+   "del": []
+  },
+  "bus_events": {
+   "fields": [
+    "at",
+    "by",
+    "created_at",
+    "id",
+    "route_id",
+    "school_id",
+    "source",
+    "student_id",
+    "type",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "student",
+    "driver",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "student",
+    "driver",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "student",
+    "driver",
+    "superadmin"
+   ]
+  },
+  "bus_followups": {
+   "fields": [
+    "close_note",
+    "closed_at",
+    "closed_by",
+    "created_at",
+    "created_by",
+    "date",
+    "id",
+    "note",
+    "route_id",
+    "school_id",
+    "status",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "bus_locations": {
+   "fields": [
+    "acc",
+    "by",
+    "created_at",
+    "id",
+    "lat",
+    "lng",
+    "off",
+    "pos",
+    "recorded_at",
+    "route_id",
+    "source",
+    "speed",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "student",
+    "driver",
+    "superadmin"
+   ],
+   "upd": [
+    "student",
+    "driver",
+    "superadmin"
+   ],
+   "del": [
+    "student",
+    "driver",
+    "superadmin"
+   ]
+  },
+  "bus_needs": {
+   "fields": [
+    "answer",
+    "created_at",
+    "id",
+    "note",
+    "school_id",
+    "set_at",
+    "set_by",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "parent",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "parent",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "parent",
+    "superadmin"
+   ]
+  },
+  "bus_routes": {
+   "fields": [
+    "created_at",
+    "driver_id",
+    "id",
+    "name",
+    "points",
+    "school_id",
+    "stops",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "bus_students": {
+   "fields": [
+    "created_at",
+    "id",
+    "route_id",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "calendar": {
+   "fields": [
+    "created_at",
+    "date",
+    "id",
+    "kind",
+    "school_id",
+    "title",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ],
+   "note": "R96: granted — client UI flow (calendar)"
+  },
+  "certificates": {
+   "fields": [
+    "code",
+    "created_at",
+    "issued_at",
+    "issued_by",
+    "school_id",
+    "student_id",
+    "type",
+    "updated_at",
+    "year"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "class_subject_members": {
+   "fields": [
+    "class_id",
+    "created_at",
+    "student_id",
+    "subject_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "classes": {
+   "fields": [
+    "capacity",
+    "class_mode",
+    "created_at",
+    "field",
+    "grade",
+    "grade_level",
+    "homeroom_teacher_id",
+    "id",
+    "mode",
+    "name",
+    "room",
+    "school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "corrections": {
+   "fields": [
+    "created_at",
+    "message",
+    "parent_id",
+    "parent_nid",
+    "resolved_at",
+    "response",
+    "school_id",
+    "status",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "teacher",
+    "parent",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "teacher",
+    "parent",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "teacher",
+    "parent",
+    "superadmin"
+   ]
+  },
+  "counselor_msgs": {
+   "fields": [
+    "author_id",
+    "author_role",
+    "body",
+    "created_at",
+    "id",
+    "school_id",
+    "status",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "counselor",
+    "student",
+    "parent",
+    "superadmin"
+   ],
+   "upd": [
+    "counselor",
+    "student",
+    "parent",
+    "superadmin"
+   ],
+   "del": [
+    "counselor",
+    "student",
+    "parent",
+    "superadmin"
+   ]
+  },
+  "counselor_refs": {
+   "fields": [
+    "breach_key",
+    "created_at",
+    "handled_at",
+    "handled_by",
+    "id",
+    "note",
+    "pattern",
+    "reason",
+    "referred_at",
+    "referred_by",
+    "school_id",
+    "status",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "counselor",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "counselor",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "counselor",
+    "superadmin"
+   ]
+  },
+  "counties": {
+   "fields": [
+    "code",
+    "created_at",
+    "id",
+    "name",
+    "province_id",
+    "updated_at"
+   ],
+   "ins": [],
+   "upd": [],
+   "del": []
+  },
+  "discipline": {
+   "fields": [
+    "created_at",
+    "created_by",
+    "date",
+    "description",
+    "id",
+    "kind",
+    "points",
+    "school_id",
+    "student_id",
+    "title",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ]
+  },
+  "districts": {
+   "fields": [
+    "county_id",
+    "created_at",
+    "id",
+    "kind",
+    "name",
+    "province_id",
+    "updated_at",
+    "village"
+   ],
+   "ins": [],
+   "upd": [],
+   "del": []
+  },
+  "dojo_types": {
+   "fields": [
+    "created_at",
+    "delta",
+    "icon",
+    "label",
+    "order",
+    "school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "dorm_assignments": {
+   "fields": [
+    "created_at",
+    "id",
+    "room_id",
+    "school_id",
+    "since",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "dorm_meals": {
+   "fields": [
+    "created_at",
+    "day",
+    "id",
+    "kind",
+    "menu",
+    "school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "dorm_rooms": {
+   "fields": [
+    "capacity",
+    "created_at",
+    "id",
+    "name",
+    "school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "enrollments": {
+   "fields": [
+    "class_id",
+    "created_at",
+    "id",
+    "school_id",
+    "student_id",
+    "updated_at",
+    "year"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "exam_duties": {
+   "fields": [
+    "created_at",
+    "exam_id",
+    "id",
+    "role",
+    "school_id",
+    "teacher_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ],
+   "note": "R96: granted — client UI flow (exam_duties)"
+  },
+  "exam_terms": {
+   "fields": [
+    "created_at",
+    "end_date",
+    "id",
+    "note",
+    "school_id",
+    "start_date",
+    "status",
+    "term",
+    "title",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ],
+   "note": "R96: granted — client UI flow (exam_terms)"
+  },
+  "exams": {
+   "fields": [
+    "class_id",
+    "created_at",
+    "date",
+    "duration",
+    "id",
+    "max_score",
+    "room",
+    "school_id",
+    "source",
+    "start_time",
+    "subject_id",
+    "term_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ],
+   "note": "R96: granted — client UI flow (exams)"
+  },
+  "grades": {
+   "fields": [
+    "class_id",
+    "created_at",
+    "date",
+    "exam_type",
+    "id",
+    "kind",
+    "max_score",
+    "school_id",
+    "score",
+    "source",
+    "student_id",
+    "subject_id",
+    "teacher_id",
+    "term",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ]
+  },
+  "hw_assignments": {
+   "fields": [
+    "class_id",
+    "created_at",
+    "created_by",
+    "description",
+    "due_date",
+    "id",
+    "locked",
+    "school_id",
+    "subject_id",
+    "title",
+    "updated_at",
+    "window_close",
+    "window_open"
+   ],
+   "ins": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ]
+  },
+  "hw_submissions": {
+   "fields": [
+    "annotated_key",
+    "assignment_id",
+    "created_at",
+    "file_key",
+    "file_name",
+    "graded_at",
+    "graded_by",
+    "id",
+    "mime",
+    "score",
+    "size",
+    "student_id",
+    "submitted_at",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "teacher",
+    "student",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "teacher",
+    "student",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "teacher",
+    "student",
+    "superadmin"
+   ]
+  },
+  "installments": {
+   "fields": [
+    "amount",
+    "created_at",
+    "due",
+    "due_date",
+    "id",
+    "method",
+    "paid",
+    "paid_amount",
+    "paid_at",
+    "ref_id",
+    "reminded_at",
+    "school_id",
+    "seq",
+    "status",
+    "student_id",
+    "tuition_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "internships": {
+   "fields": [
+    "approved_at",
+    "approved_by",
+    "created_at",
+    "created_by",
+    "date",
+    "hours",
+    "id",
+    "location",
+    "note",
+    "school_id",
+    "status",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ]
+  },
+  "leaves": {
+   "fields": [
+    "created_at",
+    "from_date",
+    "id",
+    "kind",
+    "reason",
+    "school_id",
+    "status",
+    "student_id",
+    "to_date",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "parent",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "parent",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "parent",
+    "superadmin"
+   ],
+   "note": "status: existing FIELD_ALLOWLISTS (parent=pending only)"
+  },
+  "lib_books": {
+   "fields": [
+    "author",
+    "code",
+    "created_at",
+    "id",
+    "school_id",
+    "serial",
+    "title",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "lib_loans": {
+   "fields": [
+    "book_id",
+    "created_at",
+    "due_at",
+    "id",
+    "loan_at",
+    "registered_by",
+    "returned_at",
+    "school_id",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "makeup_classes": {
+   "fields": [
+    "created_at",
+    "date",
+    "id",
+    "note",
+    "school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ],
+   "note": "R96: granted — client UI flow (makeup_classes)"
+  },
+  "meeting_slots": {
+   "fields": [
+    "booked_at",
+    "created_at",
+    "date",
+    "duration",
+    "id",
+    "location",
+    "note",
+    "parent_id",
+    "school_id",
+    "start_time",
+    "status",
+    "student_id",
+    "teacher_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "teacher",
+    "parent",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "teacher",
+    "parent",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "teacher",
+    "parent",
+    "superadmin"
+   ]
+  },
+  "messages": {
+   "fields": [
+    "body",
+    "created_at",
+    "from_id",
+    "id",
+    "school_id",
+    "to_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "teacher",
+    "counselor",
+    "student",
+    "parent",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "teacher",
+    "counselor",
+    "student",
+    "parent",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "teacher",
+    "counselor",
+    "student",
+    "parent",
+    "superadmin"
+   ]
+  },
+  "nid_conflicts": {
+   "fields": [
+    "created_at",
+    "full_name",
+    "national_id",
+    "other_school_id",
+    "other_student_id",
+    "school_id",
+    "source",
+    "status",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "notifications": {
+   "fields": [
+    "body",
+    "created_at",
+    "date",
+    "id",
+    "link",
+    "read",
+    "ref",
+    "role",
+    "school_id",
+    "title",
+    "type",
+    "updated_at",
+    "user_id"
+   ],
+   "ins": [
+    "edu_office",
+    "manager",
+    "teacher",
+    "student",
+    "parent",
+    "superadmin"
+   ],
+   "upd": [
+    "edu_office",
+    "manager",
+    "teacher",
+    "student",
+    "parent",
+    "superadmin"
+   ],
+   "del": [
+    "edu_office",
+    "manager",
+    "teacher",
+    "student",
+    "parent",
+    "superadmin"
+   ]
+  },
+  "notify_queue": {
+   "fields": [
+    "auto",
+    "body",
+    "class_id",
+    "correction_of",
+    "created_at",
+    "created_by",
+    "decided_at",
+    "decided_by",
+    "id",
+    "kind",
+    "parent_ids",
+    "parts",
+    "school_id",
+    "source_hash",
+    "source_ref",
+    "status",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "edu_office",
+    "manager",
+    "teacher",
+    "student",
+    "driver",
+    "superadmin"
+   ],
+   "upd": [
+    "edu_office",
+    "manager",
+    "teacher",
+    "student",
+    "driver",
+    "superadmin"
+   ],
+   "del": [
+    "edu_office",
+    "manager",
+    "teacher",
+    "student",
+    "driver",
+    "superadmin"
+   ]
+  },
+  "nudges": {
+   "fields": [
+    "class_id",
+    "created_at",
+    "created_by",
+    "date",
+    "period",
+    "replied_at",
+    "reply",
+    "school_id",
+    "sms_sent",
+    "status",
+    "teacher_id",
+    "updated_at"
+   ],
+   "ins": [
+    "teacher",
+    "superadmin"
+   ],
+   "upd": [
+    "teacher",
+    "superadmin"
+   ],
+   "del": [
+    "teacher",
+    "superadmin"
+   ]
+  },
+  "offices": {
+   "fields": [
+    "active",
+    "county_id",
+    "created_at",
+    "district_id",
+    "id",
+    "level",
+    "name",
+    "province_id",
+    "updated_at",
+    "user_id"
+   ],
+   "ins": [
+    "edu_office",
+    "superadmin"
+   ],
+   "upd": [
+    "edu_office",
+    "superadmin"
+   ],
+   "del": [
+    "edu_office",
+    "superadmin"
+   ],
+   "note": "R96: granted — client UI flow (offices)"
+  },
+  "parent_links": {
+   "fields": [
+    "created_at",
+    "id",
+    "parent_id",
+    "relation",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "parent",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "parent",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "parent",
+    "superadmin"
+   ]
+  },
+  "parent_subscriptions": {
+   "fields": [
+    "amount",
+    "created_at",
+    "end_date",
+    "id",
+    "paid_at",
+    "plan",
+    "ref_id",
+    "start_date",
+    "status",
+    "student_id",
+    "updated_at",
+    "user_id"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "parent_verifications": {
+   "fields": [
+    "confirmed",
+    "created_at",
+    "id",
+    "note",
+    "parent_id",
+    "status",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "parent",
+    "superadmin"
+   ],
+   "upd": [
+    "parent",
+    "superadmin"
+   ],
+   "del": [
+    "parent",
+    "superadmin"
+   ]
+  },
+  "pre_enrollments": {
+   "fields": [
+    "created_at",
+    "field",
+    "full_name",
+    "grade",
+    "id",
+    "name",
+    "national_id",
+    "note",
+    "phone",
+    "school_id",
+    "source",
+    "status",
+    "student_id",
+    "updated_at",
+    "year_code"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "preapps": {
+   "fields": [
+    "created_at",
+    "id",
+    "name",
+    "note",
+    "phone",
+    "school_id",
+    "stage",
+    "stage_at",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "provinces": {
+   "fields": [
+    "code",
+    "created_at",
+    "id",
+    "name",
+    "updated_at"
+   ],
+   "ins": [],
+   "upd": [],
+   "del": []
+  },
+  "reexams": {
+   "fields": [
+    "created_at",
+    "exam_date",
+    "id",
+    "new_score",
+    "original_score",
+    "school_id",
+    "status",
+    "student_id",
+    "subject_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "schedule": {
+   "fields": [
+    "class_id",
+    "created_at",
+    "day",
+    "id",
+    "period",
+    "school_id",
+    "subject_id",
+    "teacher_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "scholarships": {
+   "fields": [
+    "created_at",
+    "id",
+    "note",
+    "school_id",
+    "status",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "school_years": {
+   "fields": [
+    "created_at",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "schools": {
+   "fields": [
+    "active",
+    "address",
+    "area_kind",
+    "branches",
+    "capabilities",
+    "capacity",
+    "city",
+    "code",
+    "county_id",
+    "created_at",
+    "district_id",
+    "fields",
+    "gender",
+    "id",
+    "landline",
+    "level",
+    "name",
+    "notify_rules",
+    "organization_id",
+    "phone",
+    "place_rules",
+    "province_id",
+    "shift",
+    "type",
+    "updated_at",
+    "work_days"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "sedascores": {
+   "fields": [
+    "created_at",
+    "entered_by",
+    "id",
+    "note",
+    "school_id",
+    "score",
+    "student_id",
+    "subject_id",
+    "term",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "sms_log": {
+   "fields": [
+    "body",
+    "created_at",
+    "parts",
+    "phone",
+    "school_id",
+    "status",
+    "updated_at",
+    "user_id"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "sms_wallet": {
+   "fields": [
+    "balance",
+    "created_at",
+    "id",
+    "school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "student_archive": {
+   "fields": [
+    "archived_at",
+    "attendance_rate",
+    "avg_score",
+    "class_name",
+    "created_at",
+    "discipline_points",
+    "field",
+    "full_name",
+    "grade_level",
+    "name",
+    "national_id",
+    "school_id",
+    "student_id",
+    "updated_at",
+    "year_code"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "student_transfers": {
+   "fields": [
+    "created_at",
+    "from_grade",
+    "from_school_id",
+    "moved_attendance",
+    "moved_discipline",
+    "moved_grades",
+    "reason",
+    "student_id",
+    "to_grade",
+    "to_school_id",
+    "updated_at",
+    "year_code"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "subjects": {
+   "fields": [
+    "code",
+    "created_at",
+    "field",
+    "grade",
+    "id",
+    "name",
+    "school_id",
+    "updated_at",
+    "weekly_hours"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "subscription_payments": {
+   "fields": [
+    "amount",
+    "created_at",
+    "method",
+    "months",
+    "paid_at",
+    "plan",
+    "ref_id",
+    "student_id",
+    "updated_at",
+    "user_id"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ],
+   "note": "R96: granted — client UI flow (subscription_payments)"
+  },
+  "substitutions": {
+   "fields": [
+    "created_at",
+    "date",
+    "id",
+    "schedule_id",
+    "school_id",
+    "sub_teacher_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ]
+  },
+  "summer_classes": {
+   "fields": [
+    "created_at",
+    "end_date",
+    "id",
+    "name",
+    "note",
+    "school_id",
+    "start_date",
+    "student_ids",
+    "teacher_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "teacher_notes": {
+   "fields": [
+    "body",
+    "created_at",
+    "school_id",
+    "student_id",
+    "teacher_id",
+    "updated_at"
+   ],
+   "ins": [
+    "teacher",
+    "superadmin"
+   ],
+   "upd": [
+    "teacher",
+    "superadmin"
+   ],
+   "del": [
+    "teacher",
+    "superadmin"
+   ]
+  },
+  "teacher_schools": {
+   "fields": [
+    "active",
+    "created_at",
+    "employment",
+    "id",
+    "school_id",
+    "teacher_id",
+    "updated_at",
+    "weekly_quota"
+   ],
+   "ins": [
+    "edu_office",
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "edu_office",
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "edu_office",
+    "manager",
+    "superadmin"
+   ],
+   "note": "R96: granted — client UI flow (teacher_schools)"
+  },
+  "teacher_sms": {
+   "fields": [
+    "body",
+    "created_at",
+    "phone",
+    "school_id",
+    "source_ref",
+    "status",
+    "teacher_id",
+    "updated_at"
+   ],
+   "ins": [
+    "teacher",
+    "superadmin"
+   ],
+   "upd": [
+    "teacher",
+    "superadmin"
+   ],
+   "del": [
+    "teacher",
+    "superadmin"
+   ]
+  },
+  "transactions": {
+   "fields": [
+    "amount",
+    "by",
+    "category",
+    "created_at",
+    "date",
+    "description",
+    "id",
+    "installment_id",
+    "kind",
+    "school_id",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "transfer_requests": {
+   "fields": [
+    "class_id",
+    "created_at",
+    "from_school_id",
+    "national_id",
+    "note",
+    "requested_by",
+    "status",
+    "student_id",
+    "to_school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "tuition_plans": {
+   "fields": [
+    "active",
+    "amount",
+    "created_at",
+    "first_due",
+    "id",
+    "installments",
+    "interval_days",
+    "school_id",
+    "title",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "tuitions": {
+   "fields": [
+    "class_id",
+    "created_at",
+    "discount",
+    "id",
+    "paid",
+    "payable",
+    "plan_id",
+    "school_id",
+    "status",
+    "student_id",
+    "total",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "users": {
+   "fields": [
+    "active",
+    "birth_date",
+    "created_at",
+    "degree",
+    "dropped_out_at",
+    "dropped_out_by",
+    "dropped_out_note",
+    "dropped_out_reason",
+    "father_nid",
+    "field",
+    "full_name",
+    "gender",
+    "grade_level",
+    "graduated_year",
+    "id",
+    "iep_notes",
+    "iep_staff",
+    "iep_updated",
+    "job",
+    "mother_nid",
+    "national_id",
+    "office_id",
+    "phone",
+    "returned_at",
+    "returned_by",
+    "role",
+    "school_id",
+    "status",
+    "subject",
+    "subject_id",
+    "title",
+    "updated_at",
+    "username"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ],
+   "note": "R96: password فقط در ins توسط manager/superadmin (ساختِ کاربر)؛ role بدون ارتقاء؛ phone/national_id فقط manager/edu_office/superadmin"
+  },
+  "vclass_attendance": {
+   "fields": [
+    "by",
+    "created_at",
+    "id",
+    "joined_at",
+    "left_at",
+    "session_id",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "teacher",
+    "student",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "teacher",
+    "student",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "teacher",
+    "student",
+    "superadmin"
+   ]
+  },
+  "vclass_links": {
+   "fields": [
+    "created_at",
+    "session_id",
+    "student_id",
+    "token",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ]
+  },
+  "vclass_questions": {
+   "fields": [
+    "answer",
+    "answered_at",
+    "answered_by",
+    "body",
+    "created_at",
+    "id",
+    "session_id",
+    "student_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "teacher",
+    "student",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "teacher",
+    "student",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "teacher",
+    "student",
+    "superadmin"
+   ]
+  },
+  "vclass_sessions": {
+   "fields": [
+    "class_id",
+    "created_at",
+    "created_by",
+    "description",
+    "file_key",
+    "file_name",
+    "id",
+    "mime",
+    "school_id",
+    "shad_time",
+    "shad_url",
+    "size",
+    "title",
+    "type",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "teacher",
+    "superadmin"
+   ]
+  },
+  "visitors": {
+   "fields": [
+    "created_at",
+    "id",
+    "in_at",
+    "name",
+    "out_at",
+    "purpose",
+    "registered_by",
+    "school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  }
+ }
+}

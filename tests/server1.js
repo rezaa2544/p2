@@ -150,12 +150,48 @@ async function main(){
     assert(/^\d{4}$/.test(r.json.demo_code || ''), 'demo_code missing');
   });
 
-  /* ── S6 send-code rate limit (contract §5.5) ───────────────────── */
+  /* ── S6 send-code rate limit (contract §5.5) ─────────────────────
+     R96: سرورِ فرزندی با سقف‌هایِ صریحِ پایین — نتیجه مستقل از
+     envِ test-harness (که برایِ بقیهٔ تست‌ها سقف‌ها را بالا برده). */
   test('S6 send-code 6th within window → 429', async () => {
-    const phone = String(manager2.phone).replace(/[\s\-()]/g, '');
-    let last = null;
-    for(let i = 0; i < 6; i++) last = await req('POST', '/api/auth/send-code', { body: { phone } });
-    assert(last.status === 429 && last.json.code === 'rate_limited', 'got ' + last.status);
+    const { spawn } = require('child_process');
+    const cTMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-s6-'));
+    const cStore = path.join(cTMP, 'store.json');
+    fs.copyFileSync(REAL_STORE, cStore);
+    let port = null, proc = null;
+    for (const p of [8989, 8988, 8985, 8984]) { /* همانِ استخرِ S31 — S6 قبلش تمام می‌شود */
+      const env = Object.assign({}, process.env, {
+        PORT: String(p), HOST: '127.0.0.1',
+        PAYESH_STORE: cStore, PAYESH_AUDIT: path.join(cTMP, 'audit.log'), PAYESH_KEY: path.join(cTMP, 'jwt.key'),
+        PAYESH_SMS_COOLDOWN_S: '0', PAYESH_SMS_DAILY_CAP: '5',
+        PAYESH_SMS_PHONE_LIMIT: '5', PAYESH_SMS_IP_LIMIT: '100'
+      });
+      proc = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env, stdio: 'pipe' });
+      let booted = false;
+      for (let i = 0; i < 50; i++) {
+        const h = await fetch('http://127.0.0.1:' + p + '/api/health').then(r => r.json()).catch(() => null);
+        if (h && h.ok && h.pid === proc.pid) { booted = true; break; }
+        if (h && h.ok) break;
+        await sleep(300);
+      }
+      if (booted) { port = p; break; }
+      proc.kill('SIGKILL');
+    }
+    assert(port !== null, 'child server did not boot');
+    try {
+      const phone = String(manager2.phone).replace(/[\s\-()]/g, '');
+      let last = null;
+      for (let i = 0; i < 6; i++) {
+        const res = await fetch('http://127.0.0.1:' + port + '/api/auth/send-code', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone })
+        });
+        last = { status: res.status, json: await res.json() };
+      }
+      assert(last.status === 429 && last.json.code === 'rate_limited', 'got ' + last.status);
+      try { fs.rmSync(cTMP, { recursive: true, force: true }); } catch (e) {}
+    } finally {
+      proc.kill('SIGKILL');
+    }
   });
 
   /* ── S7 login wrong code → 401 ─────────────────────────────────── */
@@ -290,7 +326,12 @@ async function main(){
     const rt = await loginAs(teacher1);
     const ck = cookieOf(rt);
     const r2 = await req('POST', '/api/sync', { cookie: ck, body: { ops: [opX({ uid: 't20b', by: teacher1.id, collection: 'users', type: 'ins', user_id: teacher1.id, school_id: 1, data: { school_id: 1, role: 'student' } })] } });
-    assert(r2.status === 403 && r2.json.code === 'role_denied', r2.status + ' ' + JSON.stringify(r2.json));
+    /* R96: رد per-op از دروازهٔ فیلد (role_denied) یا ردِ دامنه‌ای (out_of_scope)
+       — هر دو fail-closed؛ legacy 403ِ دسته‌ای role_denied منسوخ. */
+    const s2 = r2.json && r2.json.results && r2.json.results[0];
+    const denied = (r2.status === 200 && s2 && !s2.ok && (s2.code === 'role_denied' || s2.code === 'out_of_scope'))
+      || (r2.status === 403 && (r2.json.code === 'out_of_scope' || r2.json.code === 'role_denied'));
+    assert(denied, r2.status + ' ' + JSON.stringify(r2.json));
   });
 
   /* ── S21 batch > 500 → 413 ─────────────────────────────────────── */
@@ -363,12 +404,13 @@ async function main(){
   test('S27 upd own-school grade ok / other-school 403', async () => {
     const gOwn = store.grades.find(g => g.student_id === stOwn.id && g.school_id === 1) || store.grades.find(g => g.school_id === 1);
     const gAway = store.grades.find(g => g.school_id === 2);
-    const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [opX({ uid: 't27a', by: manager1.id, collection: 'grades', type: 'upd', id: gOwn.id, user_id: manager1.id, school_id: 1, data: { value: 20 } })] } });
+    /* R96: «value» فیلدِ واقعیِ grades نیست (دروازهٔ فیلد آن را می‌کُشد) — score */
+    const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [opX({ uid: 't27a', by: manager1.id, collection: 'grades', type: 'upd', id: gOwn.id, user_id: manager1.id, school_id: 1, data: { score: 20 } })] } });
     assert(r.status === 200, 'own upd: ' + r.status + ' ' + JSON.stringify(r.json));
-    assert(store.grades.find(g => g.id === gOwn.id).value === 20, 'not applied');
-    const r2 = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [opX({ uid: 't27b', by: manager1.id, collection: 'grades', type: 'upd', id: gAway.id, user_id: manager1.id, school_id: 1, data: { value: 21 } })] } });
+    assert(store.grades.find(g => g.id === gOwn.id).score === 20, 'not applied');
+    const r2 = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [opX({ uid: 't27b', by: manager1.id, collection: 'grades', type: 'upd', id: gAway.id, user_id: manager1.id, school_id: 1, data: { score: 21 } })] } });
     assert(r2.status === 403 && r2.json.code === 'out_of_scope', 'away upd: ' + r2.status + ' ' + JSON.stringify(r2.json));
-    assert(store.grades.find(g => g.id === gAway.id).value !== 21, 'away record was changed');
+    assert(store.grades.find(g => g.id === gAway.id).score !== 21, 'away record was changed');
   });
 
   /* ── S28 del in scope ──────────────────────────────────────────── */
@@ -388,9 +430,13 @@ async function main(){
   });
 
   /* ── S30 unknown collection → fail closed ──────────────────────── */
-  test('S30 unknown collection → 403 role_denied (fail closed)', async () => {
+  test('S30 unknown collection → fail closed', async () => {
     const r = await req('POST', '/api/sync', { cookie: cookies.manager1, body: { ops: [opX({ uid: 't30', by: manager1.id, collection: 'totally_unknown_coll', type: 'ins', data: { school_id: 1 } })] } });
-    assert(r.status === 403 && r.json.code === 'role_denied', r.status + ' ' + JSON.stringify(r.json));
+    /* R96: رد per-op با کدِ مشخص (unknown_collection) — هنوز fail-closed؛
+       legacy 403 role_denied منسوخ. */
+    const s = r.json && r.json.results && r.json.results[0];
+    const denied = (r.status === 403 && r.json.code === 'role_denied') || (r.status === 200 && s && !s.ok && s.code === 'unknown_collection');
+    assert(denied, r.status + ' ' + JSON.stringify(r.json));
   });
 
   /* ── S31 PAYESH_DEMO_CODE default OFF (round 85, P0-4) ──────────────

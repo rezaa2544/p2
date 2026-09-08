@@ -21,12 +21,21 @@ function createAuth(ctx){
   const audit = ctx.audit;
   const isHttps = ctx.isHttps;
 
-  /* ── JWT (hand-rolled HS256; alg is hard-coded, contract §2.2) ──── */
+  /* ── JWT (hand-rolled HS256; alg is hard-coded, contract §2.2) ────
+     R96 P0-3: aud/iss/iat validated; key >= 256 bit enforced at boot;
+     PAYESH_JWT_SECRET_PREV allows rolling rotation (old tokens stay
+     valid until they expire naturally). */
   const b64u = (buf) => Buffer.from(buf).toString('base64url');
+  const JWT_PREV_SECRET = ctx.JWT_PREV_SECRET || null;
+  const ISS = 'payesh';
+  const AUD = 'payesh-web';
+  function sigOf(secret, h, b){
+    return crypto.createHmac('sha256', secret).update(h + '.' + b).digest();
+  }
   function jwtSign(payload){
     const header = b64u(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-    const body   = b64u(JSON.stringify(payload));
-    const sig    = b64u(crypto.createHmac('sha256', JWT_SECRET).update(header + '.' + body).digest());
+    const body   = b64u(JSON.stringify(Object.assign({ iss: ISS, aud: AUD }, payload)));
+    const sig    = b64u(sigOf(JWT_SECRET, header, body));
     return header + '.' + body + '.' + sig;
   }
   function jwtVerify(token){
@@ -40,10 +49,26 @@ function createAuth(ctx){
     }catch(e){ return { err: 'malformed' }; }
     /* NEVER trust the alg field — hard-coded HS256 (kills alg:none) */
     if(!header || header.alg !== 'HS256' || header.typ !== 'JWT') return { err: 'bad_alg' };
-    const expect = b64u(crypto.createHmac('sha256', JWT_SECRET).update(parts[0] + '.' + parts[1]).digest());
-    const a = Buffer.from(parts[2]); const b = Buffer.from(expect);
-    if(a.length !== b.length || !crypto.timingSafeEqual(a, b)) return { err: 'bad_sig' };
+    /* sig: current key first, then previous (rotation) — constant-time */
+    const got = Buffer.from(parts[2]);
+    let sigOk = false;
+    const trySig = (secret) => {
+      /* مقایسه با همان شکلِ base64url (مثلِ کدِ پیشین) */
+      const exp = Buffer.from(b64u(sigOf(secret, parts[0], parts[1])));
+      if(exp.length === got.length && crypto.timingSafeEqual(exp, got)) sigOk = true;
+    };
+    trySig(JWT_SECRET);
+    if(!sigOk && JWT_PREV_SECRET) trySig(JWT_PREV_SECRET);
+    if(!sigOk) return { err: 'bad_sig' };
     if(typeof payload.exp !== 'number' || payload.exp * 1000 < Date.now()) return { err: 'expired' };
+    /* R96: issuer / audience must match exactly (no other service token
+       is accepted by this server) */
+    if(payload.iss !== ISS) return { err: 'bad_iss' };
+    if(payload.aud !== AUD) return { err: 'bad_aud' };
+    /* R96: iat freshness — a token older than one TTL cannot be replayed
+       (defense in depth alongside exp + jti revocation) */
+    if(typeof payload.iat !== 'number' || payload.iat * 1000 > Date.now() + 5 * 60 * 1000
+       || Date.now() - payload.iat * 1000 > SESSION_TTL_S * 1000) return { err: 'bad_iat' };
     if(typeof payload.jti !== 'string' || store.__revoked_jti[payload.jti]) return { err: 'revoked' };
     return { payload };
   }
@@ -85,27 +110,71 @@ function createAuth(ctx){
   }
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+  /* ── R96 P0-4 — OTP: CSPRNG + hash-only storage + distributed-style
+     limits (phone + IP + daily cap; persisted in the shared store file) ── */
+  /* سقف‌های پیش‌فرضِ سخت برایِ تولید؛ env فقط برایِ آزمایش (test-harness)
+     موجود است — در production هرگز تغییر نده. */
+  const _lim = (v, d) => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 0 ? n : d; };
+  const CODE_COOLDOWN_MS = _lim(process.env.PAYESH_SMS_COOLDOWN_S, 30) * 1000;
+  const CODE_DAILY_MAX = _lim(process.env.PAYESH_SMS_DAILY_CAP, 5);
+  const IP_SEND_MAX = _lim(process.env.PAYESH_SMS_IP_LIMIT, 10);   /* sends / 10 min per IP */
+  const PHONE_SEND_MAX = _lim(process.env.PAYESH_SMS_PHONE_LIMIT, 5); /* sends / 10 min per phone */
+  const IP_LOGIN_MAX = _lim(process.env.PAYESH_LOGIN_IP_LIMIT, 20); /* logins / 10 min per IP */
+  const LOGIN_TRIES_MAX = _lim(process.env.PAYESH_LOGIN_TRIES, 5);  /* wrong codes before code dies */
+  function clientIp(req){
+    const xf = req.headers && req.headers['x-forwarded-for'];
+    if(typeof xf === 'string' && xf) return xf.split(',')[0].trim().slice(0, 64);
+    return (req.socket && req.socket.remoteAddress) || 'local';
+  }
+  function hashCode(code, phone){
+    return crypto.createHash('sha256').update(code + '|' + phone).digest('hex');
+  }
+  function codeRecOk(rec, code, phone, now){
+    if(!rec || now - rec.at >= CODE_TTL_MS) return false;
+    if((rec.tries || 0) >= LOGIN_TRIES_MAX) return false;
+    const a = Buffer.from(hashCode(code, phone));
+    const b = Buffer.from(rec.h || '0000000000000000000000000000000000000000000000000000000000000000');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  }
+  function pruneList(list, windowMs, now){ while(list.length && list[0] < now - windowMs) list.shift(); }
+
   /* ── endpoints ─────────────────────────────────────────────────── */
   async function apiSendCode(req, res, body){
     const phone = String((body && body.phone) || '').replace(/[\s\-()]/g, '');
     if(!/^\+?\d{10,15}$/.test(phone)) return sendJson(res, 400, { ok: false, code: 'bad_phone' });
-    /* S-73-2: rate limit BEFORE the existence check — probing unknown
-       phones must cost the same as known ones (5 / 10 min). */
+    /* R96: EVERY limit BEFORE the existence check — probing unknown
+       phones must cost the same as known ones (equal-shape responses). */
     const now = Date.now();
+    const ip = clientIp(req);
+    const cd = store.__auth.code_cd || (store.__auth.code_cd = {});
+    if(now - (cd[phone] || 0) < CODE_COOLDOWN_MS) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
+    const daily = store.__auth.code_daily || (store.__auth.code_daily = {});
+    const day = new Date(now).toISOString().slice(0, 10);
+    if(daily[phone] && daily[phone].day === day && daily[phone].n >= CODE_DAILY_MAX)
+      return sendJson(res, 429, { ok: false, code: 'rate_limited' });
+    const rli = store.__auth.code_rate_ip || (store.__auth.code_rate_ip = {});
+    pruneList(rli[ip] = rli[ip] || [], 10 * 60 * 1000, now);
+    if(rli[ip].length >= IP_SEND_MAX) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
     const rl = (store.__auth.code_rate[phone] = store.__auth.code_rate[phone] || []);
-    while(rl.length && rl[0] < now - 10 * 60 * 1000) rl.shift();
-    if(rl.length >= 5) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
-    rl.push(now);
+    pruneList(rl, 10 * 60 * 1000, now);
+    if(rl.length >= PHONE_SEND_MAX) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
+    rl.push(now); rli[ip].push(now);
+    cd[phone] = now;
+    if(!daily[phone] || daily[phone].day !== day) daily[phone] = { day, n: 0 };
+    daily[phone].n += 1;
+    if(ctx.markDirty) ctx.markDirty(); /* R96: وضعیتِ سقف‌ها در store می‌ماند (multi-instance) */
 
     const user = (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === phone.slice(-10));
     /* S-73-2: ONE response shape whether or not the phone is known —
        a 404 here would let an attacker enumerate registered phones.
        Equal-time probe (no timing oracle either way). */
-    checkCodeSafe('probe', String((store.__auth.codes[phone] || {}).code || '0000'));
+    checkCodeSafe('probe', String((store.__auth.codes[phone] || {}).h || '0000'));
     if(!user) return sendJson(res, 200, { ok: true, code: 'sent' });
 
-    const code = String(1000 + Math.floor(Math.random() * 9000));
-    store.__auth.codes[phone] = { code, at: now, user_id: user.id, tries: 0 };
+    /* R96: CSPRNG code; ONLY the hash is stored (plaintext never
+       touches disk, audit or responses — demo echo is test-mode only). */
+    const code = String(crypto.randomInt(1000, 10000));
+    store.__auth.codes[phone] = { h: hashCode(code, phone), at: now, user_id: user.id, tries: 0 };
     audit('send_code', { user_id: user.id, role: user.role });
     const out = { ok: true, code: 'sent' };
     if(DEMO_CODE_ECHO) out.demo_code = code; /* dev/preview — a real gateway never echoes */
@@ -117,6 +186,17 @@ function createAuth(ctx){
     const code  = String((body && body.code) || '').trim();
     const nid   = String((body && body.national_id) || '').trim();
     if(!phone || !code || !nid) return sendJson(res, 400, { ok: false, code: 'missing_fields' });
+    if(!/^\+?\d{10,15}$/.test(phone) || !/^\d{4,6}$/.test(code) || !/^\d{10}$/.test(nid))
+      return sendJson(res, 400, { ok: false, code: 'missing_fields' });
+
+    /* R96: IP-level login limit (brute-force across phones) — persisted,
+       so it survives restarts and is shared across instances of one store. */
+    const now = Date.now();
+    const ip = clientIp(req);
+    const lri = store.__auth.login_rate_ip || (store.__auth.login_rate_ip = {});
+    pruneList(lri[ip] = lri[ip] || [], 10 * 60 * 1000, now);
+    if(lri[ip].length >= IP_LOGIN_MAX) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
+    lri[ip].push(now);
 
     const user = (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === phone.slice(-10));
 
@@ -129,13 +209,25 @@ function createAuth(ctx){
       fl.n += 1;
       fl.until = Date.now() + Math.min(1000 * Math.pow(2, Math.max(0, fl.n - 3)), 30000);
       audit('login_fail', { reason: msg, user_id: user ? user.id : null });
+      if(ctx.markDirty) ctx.markDirty();
       return sendJson(res, 401, { ok: false, code: msg });
     };
 
-    /* 1) the code — equal timing whether or not the phone is known */
+    /* 1) the code — equal timing whether or not the phone is known.
+       R96: hash-only compare (plaintext code is never stored). */
     const rec = store.__auth.codes[phone];
-    const okCode = rec && (Date.now() - rec.at < CODE_TTL_MS) && (rec.tries || 0) < 5 && checkCodeSafe(rec.code, code);
-    if(!okCode){ checkCodeSafe('dummy', 'dummy'); return fail('bad_code'); }
+    if(rec && (rec.tries || 0) >= LOGIN_TRIES_MAX) delete store.__auth.codes[phone]; /* exhausted — force re-send */
+    const okCode = codeRecOk(rec, code, phone, Date.now());
+    if(!okCode){
+      /* R96: تلاشِ نادرست هم شمارنده را بالا می‌برد — وگرنه کد
+         هرگز «کِلی» نمی‌شد و brute-force فقط با سقفِ IP می‌خورد. */
+      if(rec){
+        rec.tries = (rec.tries || 0) + 1;
+        if(rec.tries >= LOGIN_TRIES_MAX) delete store.__auth.codes[phone];
+      }
+      checkCodeSafe('dummy', 'dummy');
+      return fail('bad_code');
+    }
     rec.tries = (rec.tries || 0) + 1;
     if(!user || rec.user_id !== user.id) return fail('bad_code');
 
@@ -149,6 +241,7 @@ function createAuth(ctx){
     delete store.__auth.codes[phone];
     fl.n = 0; fl.until = 0;
     audit('login_ok', { user_id: user.id, role: user.role });
+    if(ctx.markDirty) ctx.markDirty();
     setSessionCookie(req, res, user);
     /* never echo nid / full phone back (contract §4) */
     sendJson(res, 200, { ok: true, user: { id: user.id, full_name: user.full_name, role: user.role, school_id: user.school_id || null, phone_masked: phone.slice(0, 4) + '****' + phone.slice(-2) } });
@@ -164,7 +257,7 @@ function createAuth(ctx){
     const tok = parseCookies(req)[SESSION_NAME];
     if(tok){
       const v = jwtVerify(tok);
-      if(!v.err){ store.__revoked_jti[v.payload.jti] = Date.now(); audit('logout', { user_id: v.payload.sub }); }
+      if(!v.err){ store.__revoked_jti[v.payload.jti] = Date.now(); audit('logout', { user_id: v.payload.sub }); if(ctx.markDirty) ctx.markDirty(); }
     }
     res.setHeader('Set-Cookie', SESSION_NAME + '=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
     sendJson(res, 200, { ok: true });

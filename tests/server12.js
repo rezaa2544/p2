@@ -168,7 +168,9 @@ async function main() {
   /* S8 — دبیر: role_denied (نقش، دست‌نخورده) */
   const r9 = await syncOps(cT, [{ t: 'ins', c: 'leaves', data: leaf('pending'), __by: T1.id }]);
   const s9 = r9.json && r9.json.results && r9.json.results[0];
-  chk('S8 دبیر: ins leaves → 403 role_denied', r9.status === 403 && s9 && !s9.ok && s9.code === 'role_denied', JSON.stringify(r9.json).slice(0, 140));
+  /* R96: ردِّ نقش به دروازهٔ فیلد پیوست — per-op (200 + ok:false) تا بقیهٔ
+     دسته زنده بماند؛ legacy 403ِ دسته‌ای دیگر معیار نیست. */
+  chk('S8 دبیر: ins leaves → role_denied (per-op)', r9.status === 200 && s9 && !s9.ok && s9.code === 'role_denied', JSON.stringify(r9.json).slice(0, 140));
 
   /* S9 — مدیر: upd status 'pending' (مقدارِ مجاز نیست) */
   const r10 = await syncOps(cM, [{ t: 'upd', c: 'leaves', id: recId, data: { status: 'pending' }, __by: M1.id }]);

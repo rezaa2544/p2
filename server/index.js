@@ -123,8 +123,26 @@ if(!JWT_SECRET){
     console.log('generated JWT secret -> ' + KEY_FILE);
   }
 }
+/* R96 P0-3: کلیدِ HS256 باید حداقل 256 بیت باشد — کلیدِ ضعیف، استارت را
+   می‌کُشد تا مجبور به rotation شود (خارج از repository). */
+if(Buffer.byteLength(JWT_SECRET, 'utf8') < 32){
+  console.error('Error: JWT key shorter than 256 bits — rotate it (set PAYESH_JWT_SECRET or regenerate ' + KEY_FILE + ')');
+  process.exit(1);
+}
+/* R96 P0-3: rotation — کلیدِ قبلی برایِ مدتِ عمرِ نشست‌ها معتبر می‌ماند */
+const JWT_PREV_SECRET = (process.env.PAYESH_JWT_SECRET_PREV || '').trim() || null;
 
-/* ── audit log (append-only, sanitized: no phone / nid / password) ─── */
+/* ── audit log (append-only, sanitized: no phone / nid / password) ───
+   R96 P1-8: size-based rotation (10MB → .1 → .2) so the log grows
+   without bound no more; it lives OUTSIDE the store file by design. */
+const AUDIT_MAX_BYTES = 10 * 1024 * 1024;
+function auditRotate(){
+  try{
+    if(!fs.existsSync(AUDIT_FILE) || fs.statSync(AUDIT_FILE).size < AUDIT_MAX_BYTES) return;
+    try{ fs.renameSync(AUDIT_FILE + '.1', AUDIT_FILE + '.2'); }catch(e){}
+    try{ fs.renameSync(AUDIT_FILE, AUDIT_FILE + '.1'); }catch(e){}
+  }catch(e){}
+}
 let auditInit = false;
 function audit(type, detail){
   try{
@@ -135,6 +153,7 @@ function audit(type, detail){
       try{ fs.openSync(AUDIT_FILE, 'a', 0o600); }catch(e){}
       try{ fs.chmodSync(AUDIT_FILE, 0o600); }catch(e){}
     }
+    auditRotate();
     fs.appendFileSync(AUDIT_FILE, JSON.stringify({ ts: new Date().toISOString(), type, detail: detail || {} }) + '\n', 'utf8');
   }catch(e){ /* never break the request path on logging */ }
 }
@@ -159,13 +178,15 @@ function sendJson(res, status, obj){
 }
 function readBody(req, limit){
   return new Promise((resolve, reject) => {
-    let size = 0; const chunks = [];
+    let size = 0; const chunks = []; let over = false;
     req.on('data', c => {
       size += c.length;
-      if(size > (limit || 2 * 1024 * 1024)){ reject(new Error('too_large')); req.destroy(); return; }
+      if(over) return; /* drain — سوکت زنده بماند تا 413 برسد (R96) */
+      if(size > (limit || 2 * 1024 * 1024)){ over = true; reject(new Error('too_large')); return; }
       chunks.push(c);
     });
     req.on('end', () => {
+      if(over) return;
       if(!chunks.length) return resolve({});
       try{ resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
       catch(e){ reject(new Error('bad_json')); }
@@ -187,7 +208,7 @@ function securityHeaders(res, nonce, https){
 }
 
 /* ── compose modules ───────────────────────────────────────────────── */
-const auth = createAuth({ store, JWT_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty });
+const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty });
 const sync = createSync({ store, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson, markDirty });
 const idor = createIdor({ store, ENUM_WINDOW_MS, ENUM_THRESHOLD, ENUM_SLOW_MS, audit, sessionFrom: auth.sessionFrom, sendJson });
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson });
@@ -229,22 +250,30 @@ const onRequest = async (req, res) => {
   try{
     if(p === '/api/health' && (req.method === 'GET' || req.method === 'HEAD'))
       return sendJson(res, 200, { ok: true, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid });
-    if(p === '/api/auth/send-code' && req.method === 'POST') return await auth.apiSendCode(req, res, await readBody(req));
-    if(p === '/api/auth/login'     && req.method === 'POST') return await auth.apiLogin(req, res, await readBody(req));
+    if(p === '/api/auth/send-code' && req.method === 'POST') return await auth.apiSendCode(req, res, await readBody(req, 4 * 1024));
+    if(p === '/api/auth/login'     && req.method === 'POST') return await auth.apiLogin(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/auth/me'        && req.method === 'GET')  return await auth.apiMe(req, res);
     if(p === '/api/auth/logout'    && req.method === 'POST') return await auth.apiLogout(req, res);
     if(p === '/api/auth/delete-account' && req.method === 'POST') return await auth.apiDeleteAccount(req, res);
-    if(p === '/api/sync'           && req.method === 'POST') return await sync.apiSync(req, res, await readBody(req));
+    if(p === '/api/sync'           && req.method === 'POST') return await sync.apiSync(req, res, await readBody(req, 1024 * 1024));
     if(p === '/api/sync/conflicts' && req.method === 'GET')  return await conflicts.apiList(req, res);
-    if(p === '/api/sync/resolve-conflict' && req.method === 'POST') return await conflicts.apiResolve(req, res, await readBody(req));
+    if(p === '/api/sync/resolve-conflict' && req.method === 'POST') return await conflicts.apiResolve(req, res, await readBody(req, 4 * 1024));
     if(/^\/api\/students\/\d+$/.test(p) && req.method === 'GET') return await idor.apiStudent(req, res, p.split('/')[3]);
     if(p === '/api/bell/now' && req.method === 'GET') return bell.apiBellNow(req, res);
     if(p === '/api/admin/backup'  && req.method === 'POST') return await admin.apiBackup(req, res);
-    if(p === '/api/admin/restore' && req.method === 'POST') return await admin.apiRestore(req, res, await readBody(req));
-    if(p === '/api/sms/send' && req.method === 'POST') return await sms.apiSend(req, res, await readBody(req));
+    if(p === '/api/admin/restore' && req.method === 'POST') return await admin.apiRestore(req, res, await readBody(req, 64 * 1024 * 1024));
+    if(p === '/api/sms/send' && req.method === 'POST') return await sms.apiSend(req, res, await readBody(req, 32 * 1024));
     if(p.indexOf('/api/') === 0) return sendJson(res, 404, { ok: false, code: 'not_found' });
     return serveStatic(res, p, nonce);
   }catch(err){
+    /* R96 P0-5: حجمِ بیش‌ازحدِ body → 413 (نه 500) — و خطا را لاگ نکن که
+       محتوای بدنه در audit نیاید. */
+    if(err && err.message === 'too_large'){
+      audit('body_too_large', { path: p });
+      if(!res.headersSent) sendJson(res, 413, { ok: false, code: 'body_too_large' });
+      else res.end();
+      return;
+    }
     audit('error', { path: p, msg: String(err.message || err).slice(0, 120) });
     if(!res.headersSent) sendJson(res, 500, { ok: false, code: 'server_error' });
     else res.end();
@@ -293,6 +322,13 @@ if(TLS_CERT || TLS_KEY){
 }
 /* S-73-6: connection/request timeouts — a stalled client must not hold a
    socket forever (slowloris surface). 65s covers the slowest legit op. */
+/* R96 P1-10: production باید TLS داشته باشد — یا مستقیم (گواهیِ CA) یا
+   پشتِ reverse-proxyِ اعلام‌شده. وگرنه استارت نمی‌کند (fail-fast). */
+if(process.env.PAYESH_ENV === 'production' && !TLS_CERT && !TLS_KEY
+   && process.env.PAYESH_BEHIND_PROXY !== '1' && process.env.PAYESH_HTTPS !== '1'){
+  console.error('Error: production requires TLS — set PAYESH_TLS_CERT/PAYESH_TLS_KEY (CA-issued cert) or PAYESH_BEHIND_PROXY=1 behind a TLS reverse proxy');
+  process.exit(1);
+}
 try{
   if('requestTimeout' in server) server.requestTimeout = 65000;
   if('headersTimeout' in server) server.headersTimeout = 65000;

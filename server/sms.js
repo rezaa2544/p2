@@ -68,9 +68,21 @@ function createSms(ctx){
     const s = sessionFrom(req);
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
     if(s.role !== 'superadmin') return sendJson(res, 403, { ok: false, code: 'forbidden' });
-    if(!configured) return sendJson(res, 503, { ok: false, code: 'sms_not_configured' });
-    const ids = (body && Array.isArray(body.queue_ids)) ? body.queue_ids : [];
+    /* R96 P0-5 — validatorِ صریح: بدنه = فقطِ queue_ids؛ آرایهٔ عددِ مثبتِ صحیح،
+       حداکثر ۵۰؛ فیلدِ ناششناس = رد (fail closed). phone/بدنهٔ پیام از
+       notify_queue می‌آید — کلاینت هیچ‌کدام را تزریق نمی‌کند. */
+    if(!body || typeof body !== 'object' || Array.isArray(body))
+      return sendJson(res, 400, { ok: false, code: 'bad_batch' });
+    for(const k of Object.keys(body)){
+      if(k !== 'queue_ids') return sendJson(res, 400, { ok: false, code: 'unknown_field', field: k });
+    }
+    const ids = body.queue_ids;
+    if(!Array.isArray(ids) || ids.length > 500)
+      return sendJson(res, 400, { ok: false, code: 'bad_batch' });
+    if(!ids.every(x => Number.isInteger(x) && x > 0))
+      return sendJson(res, 400, { ok: false, code: 'bad_batch' });
     if(!ids.length) return sendJson(res, 400, { ok: false, code: 'empty_batch' });
+    if(!configured) return sendJson(res, 503, { ok: false, code: 'sms_not_configured' });
 
     const users = store.users || [];
     const out = { sent: 0, skipped_already: 0, skipped_credit: 0, failed: 0, credits_used: 0, dry_run: DRY_RUN };
