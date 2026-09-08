@@ -5,7 +5,10 @@
  *
  *   node build.js            → dist/payesh.html
  *   node build.js --check    → فقط بررسی می‌گند خروجی با index.html یکسان است
- *                              + هماهنگی مجوزها (tools/check-authz.js)
+ *                              + هماهنگی مجوزها:
+ *                              tools/generate-write-perms.js --check (R99:
+ *                              جدولِ تولیدشدهٔ سرور با تک‌منبع یکسان باشد)
+ *                              + tools/check-authz.js (اکشن‌ها ↔ WRITE_PERMS)
  */
 const fs = require('fs');
 const path = require('path');
@@ -60,11 +63,16 @@ function main() {
     if (same) {
       console.log('✅ خروجی build با index.html بیت‌به‌بیت یکسان است.');
       syncGuide(html, true);
-      /* هماهنگی مجوزها (فاز ۲ بند ۳): اکشن‌هایِ نویسندهٔ کلاینت ↔
-         WRITE_PERMS سرور. ناهماهنگی = عملیاتی که سرور رد می‌کند و
-         صفِ همگام‌سازی را گیر می‌اندازد. */
+      /* هماهنگی مجوزها:
+         ۱. (R99) جدولِ تولیدشدهٔ سرور با تک‌منبع یکسان باشد: مولد را
+            اجرا کن و با authz/write-perms.json مقایسه + سازگاریِ
+            ACTION_ROLES ↔ مدل (fail-closed).
+         ۲. (فاز ۲ بند ۳) اکشن‌هایِ نویسندهٔ کلاینت ↔ WRITE_PERMS سرور.
+            ناهماهنگی = عملیاتی که سرور رد می‌کند و صفِ همگام‌سازی را
+            گیر می‌اندازد. */
       const { execFileSync } = require('child_process');
       try {
+        execFileSync(process.execPath, [path.join(ROOT, 'tools/generate-write-perms.js'), '--check'], { stdio: 'inherit' });
         execFileSync(process.execPath, [path.join(ROOT, 'tools/check-authz.js')], { stdio: 'inherit' });
         process.exit(0);
       } catch (e) {

@@ -21,23 +21,30 @@
    استثنایِ users روی teacher محدودیتِ فیلدیِ سمتِ سرور است
    (IEP_KEYS/DROP_KEYS — بند ۲.۲). */
 /* R96 P0-1 — مدلِ مرکزیِ مجوز (single source of truth):
-   authz/model.json — سرور این فایل را می‌خواند؛ tests/authz-model.js
-   آن را بازتولید و با seed + کلاینت diff می‌کند (گیتِ build)؛
-   tests/server16.js ماتریسِ منفیِ role×collection×op را اجرا می‌کند.
-   ناآگاه بودن از یک collection = fail-closed (رد). */
-const AUTHZ = require('../authz/model.json').collections || {};
-
-/* WRITE_PERMS — حالا از مدل تولید می‌شود (سازگاری با گیت‌هایِ قدیمی).
-   superadmin = همه (همان معنایِ پیشین '*'). */
-const WRITE_PERMS = (function(){
-  const out = { superadmin: ['*'] };
-  for (const c of Object.keys(AUTHZ)){
-    const def = AUTHZ[c];
-    const roles = new Set([...(def.ins || []), ...(def.upd || []), ...(def.del || [])]);
-    for (const r of roles) if (r !== 'superadmin') (out[r] = out[r] || []).push(c);
+   authz/model.json — tests/authz-model.js آن را بازتولید و با seed + کلاینت
+   diff می‌کند (گیتِ build)؛ tests/server16.js ماتریسِ منفیِ
+   role×collection×op را اجرا می‌کند. ناآگاه بودن از یک collection =
+   fail-closed (رد).
+   R99 — تک‌منبعِ مجوزها (دستورِ «centralized authorization source»):
+   سرور حالا جدولِ **تولیدشده** را می‌خواند، نه جدولِ دستی:
+   authz/write-perms.json — خروجیِ tools/generate-write-perms.js که از
+   (۱) ACTION_ROLES در src/js/30-authz.js، (۲) تحلیلِ استاتیکِ اکشن‌ها
+   (مجموعه‌هایِ نوشتاریِ هر اکشن) و (۳) authz/model.json (fields + نقش‌های
+   هر عمل) ساخته می‌شود. `node build.js --check` مولد را با --check اجرا
+   و diff می‌کند — جدولِ کهنه = build قرمز. بخشِ `actions` همان نقشهٔ
+   صریحِ «اکشن ← نقش‌ها + مجموعه‌هایِ قابلِ نوشتن» است. */
+const WR = require('../authz/write-perms.json');
+const AUTHZ = (function(){
+  const out = {};
+  for (const c of Object.keys(WR.ops)){
+    out[c] = { fields: WR.fields[c] || [], ins: WR.ops[c].ins, upd: WR.ops[c].upd, del: WR.ops[c].del };
   }
   return out;
 })();
+
+/* WRITE_PERMS — از فایلِ تولیدشده (R99). superadmin = '*' (همان معنایِ
+   پیشین). مشتقِ دستیِ قدیمی حذف شد — یک منبع: مولد. */
+const WRITE_PERMS = WR.perms;
 function canWrite(role, coll){
   const list = WRITE_PERMS[role];
   if(!list) return false;
