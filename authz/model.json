@@ -609,6 +609,7 @@
    "fields": [
     "created_at",
     "id",
+    "kind",
     "room_id",
     "school_id",
     "since",
