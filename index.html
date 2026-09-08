@@ -9269,6 +9269,7 @@ function restoreBackup(obj){
     if(typeof generateP10 === 'function') generateP10();
     if(typeof generateP11 === 'function') generateP11();
     if(typeof generateP12 === 'function') generateP12();
+    if(typeof generatePriorYear === 'function') generatePriorYear();  /* دور ۱۰۰/نقص ۶ */
     if(typeof generateBusDemo==='function') generateBusDemo();
     if(typeof generateVclassDemo==='function') generateVclassDemo();
     if(typeof generateHomeworkDemo==='function') generateHomeworkDemo();
@@ -15663,6 +15664,7 @@ setTimeout(()=>{
   generate(); generateExtras(); generateP8(); generateP9(); generateP10();
   if(typeof generateP11==='function') generateP11();
   if(typeof generateP12=== 'function') generateP12();
+  if(typeof generatePriorYear==='function') generatePriorYear();  /* دور ۱۰۰/نقص ۶ */
   if(typeof generateBusDemo==='function') generateBusDemo();
   if(typeof generateVclassDemo==='function') generateVclassDemo();
   if(typeof generateHomeworkDemo==='function') generateHomeworkDemo();
@@ -21352,7 +21354,7 @@ function _yearAgoISO(daysBack){
  * ⚠️ عمداً موارد انضباطی ساخته نمی‌شود — دبیر حق دیدنشان را
  * ندارد، پس دادهٔ نمونه‌اش هم بی‌فایده است.
  */
-function generateP12(){
+function generatePriorYear(){  /* دور ۱۰۰/نقص ۶: نامِ پیشین generateP12 با فاز ۱۲ مشاور تداخل داشت و سایه می‌خورد */
   if(typeof db === 'undefined' || !db.users) return 0;
   if(typeof add !== 'function') return 0;      /* فقط در بوت دادهٔ نمونه */
   /* اگر از قبل ساخته شده، دوباره نساز */
@@ -22908,6 +22910,7 @@ function counselorDash(){
 
 /**
  * مشاوران + دانش‌آموزانِ دارای الگو + صف ارجاع اولیه.
+ * (دور ۱۰۰/نقص ۶: دادهٔ سال‌گذشتهٔ دبیر از این تابع جدا و generatePriorYear شد؛ هر دو در بوت/بازیابی صدا زده می‌شوند.)
  * ⚠️ قطعی است (rng با SEED ثابت) و با add() نوشته می‌شود،
  * نه insert() — دادهٔ پایه در دفترچهٔ عملیات ثبت نمی‌شود
  * (وگرنه «تولید داده نمونه صف را پر نکرده» آزمون را می‌شکست).
