@@ -125,6 +125,12 @@ var ACTION_ROLES = {
   'vclass-save':      ['teacher','manager'],
   'vclass-del':       ['teacher','manager'],
   'vclass-play':      ['teacher','manager','student','parent'],
+  'tomorrow-check':   ['student','parent'], /* E.1 فرناز: فقط حافظهٔ محلی — چیزی برای WRITE_PERMS ندارد */
+  'goal-save':        ['student','parent'], /* E.3 فرناز: فقط Store — مالکیت در خود اکشن (goalViewerOk) */
+  'pnote-save':       ['parent'], /* E.6 فرناز: فقط Store — ولیِ لینک‌شده در خود اکشن */
+  'ticket-new':       ['manager'], /* G.2 فرناز: بازکردن فرم (بدون نوشتن) */
+  'ticket-save':      ['manager'], /* G.2 فرناز: ثبت تیکت (ins در مدل) */
+  'ticket-status':    ['superadmin'], /* G.2 فرناز: تغییر وضعیت (upd در مدل) */
   'vclass-q-ask':     ['student'],
   'vclass-q-save':    ['student'],
   'vclass-q-answer':  ['teacher','manager'],
