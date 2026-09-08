@@ -17,6 +17,15 @@
 const DORM_MEAL_KINDS=[['breakfast','صبحانه'],['lunch','ناهار'],['dinner','شام']];
 /* روزهای هفته: ۰=شنبه … ۶=جمعه (همان قراردادِ بقیهٔ برنامه) */
 const DORM_DAYS=(typeof DAYS_FULL!=='undefined')?DAYS_FULL:['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه'];
+/* S5 فرناز: نوعِ اسکان — اقامتِ کامل (شبانه‌روزی) یا پانسیونِ روزانه.
+   رکوردهایِ قدیمیِ بی‌kind همان اقامتِ کامل‌اند (سازگاریِ پس‌رو). */
+const DORM_KINDS=[['full','🏠 اقامت کامل'],['pansion','🌤️ پانسیون روزانه']];
+function dormKindOf(a){ return (a && a.kind) || 'full'; }
+function dormKindLabel(a){
+  const k=dormKindOf(a);
+  const f=DORM_KINDS.filter(function(x){ return x[0]===k; })[0];
+  return f ? f[1] : DORM_KINDS[0][1];
+}
 
 /** اتاق‌های یک مدرسه با شمارِ ساکنان */
 function dormRoomList(sid){
@@ -55,15 +64,16 @@ function viewDorm(){
    <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
     ${rooms.length?rooms.map(r=>{
       const list=(db.dorm_assignments||[]).filter(a=>a.room_id===r.id)
-        .map(a=>byId('users',a.student_id)).filter(Boolean);
+        .map(a=>({a:a,st:byId('users',a.student_id)})).filter(x=>x.st);
       return `<div style="border:1px solid var(--border);border-radius:12px;padding:12px">
         <div class="row"><b>${esc(r.name)}</b><span class="badge b-gray">${fa(r.occ)}/${fa(r.capacity)}</span>
         <div class="spacer"></div>
         <button class="icon-btn" title="ویرایش" data-act="dorm-room-edit" data-id="${escAttr(r.id)}">✏️</button>
         <button class="icon-btn danger" title="حذف" data-act="dorm-room-del" data-id="${escAttr(r.id)}">🗑️</button></div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
-        ${list.length?list.map(st=>`<span class="badge b-blue" style="display:inline-flex;gap:5px;align-items:center">${esc(st.full_name)}
-           <span role="button" style="cursor:pointer" title="برداشتن از اتاق" data-act="dorm-unassign" data-sid="${escAttr(st.id)}">✕</span></span>`).join(''):'<span class="small muted">خالی</span>'}
+        ${list.length?list.map(x=>`<span class="badge b-blue" style="display:inline-flex;gap:5px;align-items:center">${esc(x.st.full_name)}
+           <span class="small">${esc(dormKindLabel(x.a))}</span>
+           <span role="button" style="cursor:pointer" title="برداشتن از اتاق" data-act="dorm-unassign" data-sid="${escAttr(x.st.id)}">✕</span></span>`).join(''):'<span class="small muted">خالی</span>'}
         </div>
         <button class="btn ghost sm" style="margin-top:8px;width:100%" data-act="dorm-assign" data-id="${escAttr(r.id)}">➕ انتساب دانش‌آموز</button>
       </div>`;}).join(''):`${empty('🛏️','اتاقی تعریف نشده','اولین اتاق را بسازید.')}`}
