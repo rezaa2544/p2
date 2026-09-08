@@ -14,6 +14,17 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## دورِ ۱۰۱ — OTPِ ۶رقمی + rate-limitِ توزیع‌شده (otp.json) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
+
+**وضعیت:** برنچِ `feat/otp-ratelimit` از `fix/behavior-findings` در `d6118dd`؛ گزارش: `R100_OTP_RATELIMIT_FINAL_REPORT.md` (ریشه — ارائه شد). (از چتِ ۱ چیزی در ورک‌اسپیس نبود — از صفر پیاده شد.)
+
+- **سرور:** `server/otp-store.js` (تازه: حالتِ OTP در `server/data/otp.json` — ذخیرهٔ اتمیکِ sync، ‏`reloadIfChanged` برایِ توزیع، مهاجرتِ یک‌باره از `__auth`) · ‏`auth.js`: کدِ ۶رقمیِ `randomInt` + سقف‌هایِ تازه (ارسال ‎۵/۱۵min در phone‎، ‎۲۰/روز‎، ‎۱۰/۱۵min در IP‎؛ ورود ‎۱۰/۱۵min در IP‎ + مرگِ کد با ۵ غلط؛ cooldown ‏۶۰s) + ‏`PAYESH_SMS_WINDOW_S`/`PAYESH_OTP_FILE` · ‏`index.js`: سیم‌کشی + حذفِ جارویِ `__auth.codes`.
+- **کلاینت (حداقلی):** «کد ۶ رقمی» در فرمِ ورود + راهنما.
+- **آزمونِ تازه:** `tests/otp-ratelimit.js` ‏**۴۹/۴۹** (شکل/CSPRNG، هر ۴ سقف با مقدارِ پیش‌فرض، tries، brute-force، جفتِ توزیع‌شده، تولیدِ بی‌echo، مهاجرت، رازداری) + جهش‌ها **۷/۷**، ۰ محیطی.
+- **ریشه‌یابی‌ها:** R8 (rebindِ `data` در `load()` — اصلاحِ درجا) · M7 زنده ماند (سئوت پاسخِ غلط‌ها را نمی‌سنجید — R6a2 اضافه شد) · پیامدهایِ دستوری در `server1`/`server17`/`server14-gc(-mutations)` (فقط-تست).
+- **دروازه:** ‏`build --check` ✅ · ‏smoke ‏**547/547** ✅ · ‏`check-authz` (خروجِ ۰) ✅ · همهٔ سوئیت‌هایِ سروریِ لمس‌شده سبز (۱–۱۰، ۱۲–۱۸، security2، sim_full3، integration، dropout2، شش *3، سه جهشِ سروری).
+- **باقی‌ماندهٔ کلِ پروژه (بدونِ تغییر):** تصمیمِ محصولِ پرداختِ والد · ۲.۷ (throttle + UUID) · ۲.۱(a) نرخِ اکسل · ۲.۱(b) قواعدِ عمیق · Lax→Strict · pull/bootstrapِ خواندن (جدا).
+
 ## دورِ ۱۰۰ — رفعِ هر ۶ یافتهٔ رفتاری (P0–P2) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
 
 **وضعیت:** برنچِ `fix/behavior-findings` از `main` (`078c6bc`)؛ طرح: `docs/FIXES_ACTION_PLAN.md`؛ ۸ کامیت (`7ae96a4` + ‏`c2a9fd1` + ‏`9558707` + ‏`a7a918f` + ‏`da4611b` + ‏`411fc5b` + ‏`f8f3e21` + کامیتِ نهاییِ R100)؛ پوش به `origin/fix/behavior-findings`. گزارش‌ها: `R100_STEP0..7_*_REPORT.md` + ‏`R100_FINAL_REPORT.md` (ریشه — ارائه شد).
