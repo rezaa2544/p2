@@ -394,7 +394,13 @@ var ACTION_ROLES = {
   'trn-complete':     ['manager'],
   'trn-print':        ['manager'],
   'trn-verify':       ['manager'],
-  'trn-verify-check': ['manager']
+  'trn-verify-check': ['manager'],
+  /* مانور ایمنی (بند B.4 فرناز): هر ۵ اکشن فقط مدیر */
+  'drill-new':    ['manager'],
+  'drill-edit':   ['manager'],
+  'drill-save':   ['manager'],
+  'drill-del':    ['manager'],
+  'drill-del-ok': ['manager']
 };
 
 /* ✅ (R99 — تک‌منبعِ مجوزها) canAction/canRoute فقط رابط کاربری را مرتب

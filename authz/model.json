@@ -1457,6 +1457,31 @@
     "superadmin"
    ]
   },
+  "safety_drills": {
+   "fields": [
+    "created_at",
+    "date",
+    "id",
+    "notes",
+    "participant_count_staff",
+    "participant_count_students",
+    "registered_by",
+    "school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
   "schedule": {
    "fields": [
     "class_id",

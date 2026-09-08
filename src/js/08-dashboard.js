@@ -63,6 +63,8 @@ function adminDash(){
    </div>`:''}
    ${u.role==='manager'?(()=>{const sc=byId('schools',sid)||{};const bg=(sc.boom_goals||'').trim();
     return `<div class="card"><div class="card-head"><h3>🎯 برنامه ویژه مدرسه (بوم)</h3><button class="btn ghost sm" data-act="school-boom" data-id="${escAttr(sid)}">${bg?'✏️ ویرایش اهداف':'➕ ثبت اهداف سالانه'}</button></div><div class="card-body">${bg?`<div style="white-space:pre-wrap;line-height:2">${esc(bg)}</div>`:empty('🎯','هنوز برنامه‌ای ثبت نشده','اهداف سالانه مدرسه را بنویسید تا در یک نگاه دیده شود.')}</div></div>`;})():''}
+   ${u.role==='manager'&&typeof drillAnnualStatus==='function'?(()=>{const dst=drillAnnualStatus(u.school_id);
+    return `<div class="row" style="background:${dst.done?'var(--green-soft,#dff5e1)':'var(--red-soft,#fde8e8)'};padding:10px 14px;border-radius:12px;align-items:center"><b>⛑️ مانور ایمنی امسال:</b> ${dst.done?`🟢 انجام شده <span class="small muted">(${esc(jalali(dst.last))})</span>`:'🔴 انجام نشده'}<div class="spacer"></div><button class="btn ghost sm" data-act="go" data-r="drills">${dst.done?'مشاهده':'ثبت مانور'}</button></div>`;})():''}
    ${((u.role==='manager'||u.role==='superadmin')&&typeof DATA_MODE!=='undefined'&&DATA_MODE==='server')?`<div class="card"><div class="card-head"><h3>⚖️ تعارض‌های همگام‌سازی</h3><span class="muted small">تغییرهای هم‌زمانِ در انتظارِ داوری (فقط حالت سروری)</span></div><div id="sync-conflicts-root"><div class="card-body" style="padding-top:12px"><div class="muted small">در حالِ خواندن…</div></div></div></div>`:''}
    <div class="grid g2">
     <div class="card"><div class="card-head"><h3>روند حضور روزهای اخیر</h3><span class="badge b-blue">درصد حضور</span></div>
