@@ -54,6 +54,18 @@ function loginServerMsg(code){
 function coreActions(e, el, id, a, rawId){
   return {
    /* E.1 فرناز: تیکِ چک‌لیستِ فردا — فقط حافظهٔ محلی via Store (بدون سرور، بدون رندرِ مجدد) */
+   /* E.3 فرناز: ثبت هدف نمره — فقط Store؛ گارد دوم: فقط خود/ولی (canAction نقش را چک می‌کند، این مالکیت را) */
+   'goal-save'(){
+     const sid=Number(id), sub=Number(el.dataset.sub);
+     if(!sid||!sub)return;
+     if(typeof goalViewerOk!=='function'||!goalViewerOk(sid)){toast('فقط خود دانش‌آموز یا ولیِ او می‌تواند هدف ثبت کند','err');return;}
+     const raw=(V('goal_val')||'').trim();
+     const v=Number(raw.replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(',','.'));
+     if(raw===''||isNaN(v)){toast('عدد هدف معتبر نیست','err');return;}
+     if(v<0||v>20){toast('هدف باید بین ۰ تا ۲۰ باشد','err');return;}
+     Store.set(goalKey(sid,sub),String(v));
+     toast('🎯 هدف ثبت شد','ok'); render();
+   },
    'tomorrow-check'(){
      const sid=Number(el.dataset.sid), iso=el.dataset.iso, idx=el.dataset.idx;
      if(!sid||!iso||!idx)return;
