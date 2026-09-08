@@ -143,7 +143,7 @@ process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }
     document.querySelector('[data-act="login-code"]').click();
   })()`);
   await sleep(900);
-  const demoCode = (W(`document.getElementById('ldemo').textContent`) || '').match(/(\d{4})/);
+  const demoCode = (W(`document.getElementById('ldemo').textContent`) || '').match(/(\d{4,6})/); /* R101: کد ۶ رقمی شد */
   chk('S3a — کدِ دمو از سرور واقعی بازتاب شد', !!demoCode, W(`(document.getElementById('ldemo')||{}).textContent||''`));
   if (demoCode) {
     W(`document.getElementById('lcode').value=${JSON.stringify(demoCode[1])}`);
