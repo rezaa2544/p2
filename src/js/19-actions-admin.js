@@ -94,7 +94,13 @@ function adminActions(e, el, id, a, rawId){
      /* کد ملی اختیاری است، ولی اگر وارد شد باید معتبر باشد */
      if(invalid('u_nid',V('u_nid')&&!validNid(V('u_nid')),'کد ملی معتبر نیست'))return;
      if(invalid('u_phone',V('u_phone')&&!/^09\d{9}$/.test(V('u_phone')),'شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم باشد'))return;
+     /* S4 فرناز: معدل ورودی — خالی=null، عددِ ۰ تا ۲۰ (ارقام فارسی هم پذیرفته) */
+     const _egRaw=(V('u_entry_gpa')||'').trim();
+     const _egNum=Number(typeof toLatinDigits==='function'?toLatinDigits(_egRaw):_egRaw);
+     const _eg=_egRaw===''?null:_egNum;
+     if(invalid('u_entry_gpa',_eg!==null&&(isNaN(_eg)||_eg<0||_eg>20),'معدل ورودی باید عددی بین ۰ تا ۲۰ باشد'))return;
      const data={full_name:V('u_name'),role:V('u_role'),national_id:V('u_nid'),phone:V('u_phone'),active:Number(V('u_active')),school_id:schoolId};
+     if(V('u_role')==='student')data.entry_gpa=_eg;
      let uid=x.id;
      if(uid)update('users',uid,data);
      else{ if(db.users.some(u=>u.username===V('u_user'))){toast('نام کاربری تکراری است','err');return;}

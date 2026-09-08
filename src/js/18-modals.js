@@ -118,6 +118,7 @@ function userModal(x){
     ${isSuper?f('مدرسه',sel('u_school',db.schools.map(s=>[s.id,s.name]),x.school_id)):''}
     ${f('کد ملی',inp('u_nid',x.national_id))}${f('تلفن همراه',inp('u_phone',x.phone))}
     ${f('کلاس (برای دانش‌آموز)',sel('u_class',[['','— بدون کلاس —']].concat(clsList.map(c=>[c.id,c.name])),cur))}
+    ${f('معدل ورودی (دانش‌آموز، از ۲۰)',inp('u_entry_gpa',x.entry_gpa==null?'':x.entry_gpa))}
     ${f('وضعیت',sel('u_active',[[1,'فعال'],[0,'غیرفعال']],x.active?1:0))}</div>`,'user-save'));
   window._edit=x;
 }
