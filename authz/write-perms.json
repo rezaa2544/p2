@@ -2345,6 +2345,14 @@
         "assets"
       ]
     },
+    "as-save": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "assets"
+      ]
+    },
     "as-status-save": {
       "roles": [
         "manager"
@@ -2513,6 +2521,18 @@
       "collections": [
         "calendar",
         "notify_queue"
+      ]
+    },
+    "cert-enroll-print": {
+      "roles": null,
+      "collections": [
+        "certificates"
+      ]
+    },
+    "cert-transfer-print": {
+      "roles": null,
+      "collections": [
+        "certificates"
       ]
     },
     "class-del-ok": {
@@ -2890,12 +2910,28 @@
         "lib_loans"
       ]
     },
+    "lib-lend-save": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "lib_loans"
+      ]
+    },
     "lib-return": {
       "roles": [
         "manager"
       ],
       "collections": [
         "lib_loans"
+      ]
+    },
+    "lib-save": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "lib_books"
       ]
     },
     "lib-serial-save": {
@@ -3612,6 +3648,14 @@
       ]
     },
     "vis-out": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "visitors"
+      ]
+    },
+    "vis-save": {
       "roles": [
         "manager"
       ],

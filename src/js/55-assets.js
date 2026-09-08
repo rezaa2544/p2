@@ -52,7 +52,7 @@ function assetAdd(name, category, location, status, note){
     note: String(note || '').trim(),
     created_at: new Date().toISOString()
   };
-  return {ok:true, rec: add('assets', rec)};
+  return {ok:true, rec: insert('assets', rec)};
 }
 function assetSetStatus(assetId, status, location){
   var u = S.user;
