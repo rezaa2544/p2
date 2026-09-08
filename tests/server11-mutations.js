@@ -61,8 +61,12 @@ function runSuite(){
   return { code: r.status, out: (r.stdout || '') + (r.stderr || '') };
 }
 
+/* مرگِ محیطی: خروجیِ خالی/کرش = حافظه — هرگز «کشته شد»ِ کاذب (R93) */
+const crashed = (x) => x.out.trim() === '' || /JavaScript heap out of memory|FATAL|aborting/.test(x.out);
 /* سبزِ پیش از جهش */
-const base = runSuite();
+let base = runSuite();
+if(crashed(base)){ const b2 = runSuite(); if(!crashed(b2)) base = b2; }
+if(crashed(base)){ console.error('پایه: خطای محیطی — فرآیند بدون خروجی/با کرش (حافظه) — تست اجرا نشد'); process.exit(2); }
 if(base.code !== 0){ console.error('پایه سبز نیست:\n' + base.out.split('\n').slice(-6).join('\n')); process.exit(2); }
 console.log('پایه: ' + (base.out.match(/(\d+) بررسی/) || [])[1] + ' بررسی سبز');
 
@@ -73,9 +77,11 @@ for(const m of MUTS){
   const n = orig.split(m.bad).length - 1;
   if(n !== 1){ console.log('  FAIL ' + m.name + ' :: anchor count ' + n); process.exit(1); }
   fs.writeFileSync(fp, orig.replace(m.bad, m.mut), 'utf8');
-  const r = runSuite();
-  const killed = r.code !== 0;
+  let r = runSuite();
+  if(crashed(r)){ const r2 = runSuite(); if(!crashed(r2)) r = r2; }
   fs.writeFileSync(fp, orig, 'utf8');
+  if(crashed(r)){ console.log('  FAIL ' + m.name + ' — خطای محیطی: فرآیند بدون خروجی/با کرش (حافظه) — نه کشته و نه زنده شمرده شد'); process.exit(1); }
+  const killed = r.code !== 0;
   if(killed){ ok++; console.log('  PASS ' + m.name + ' — کشته شد (' + m.expect + ')'); }
   else { console.log('  FAIL ' + m.name + ' — زنده ماند!'); process.exit(1); }
 }
