@@ -229,7 +229,7 @@ function readBody(req, limit){
     req.on('data', c => {
       size += c.length;
       if(over) return; /* drain — سوکت زنده بماند تا 413 برسد (R96) */
-      if(size > (limit || 2 * 1024 * 1024)){ over = true; reject(new Error('too_large')); return; }
+      if(size > (limit || 1024 * 1024)){ over = true; reject(new Error('too_large')); return; }
       chunks.push(c);
     });
     req.on('end', () => {
@@ -324,7 +324,9 @@ const onRequest = async (req, res) => {
     if(/^\/api\/students\/\d+$/.test(p) && req.method === 'GET') return await idor.apiStudent(req, res, p.split('/')[3]);
     if(p === '/api/bell/now' && req.method === 'GET') return bell.apiBellNow(req, res);
     if(p === '/api/admin/backup'  && req.method === 'POST') return await admin.apiBackup(req, res);
-    if(p === '/api/admin/restore' && req.method === 'POST') return await admin.apiRestore(req, res, await readBody(req, 64 * 1024 * 1024));
+    /* restore فقط {file} می‌گیرد (نامِ حداکثر ۱۲۸ نویسه) — سقفِ 64MBِ پیشین
+       بی‌دلیل بود؛ حالا 4KB مثلِ بقیهٔ بدنه‌هایِ کوچک (413 برایِ بیشتر). */
+    if(p === '/api/admin/restore' && req.method === 'POST') return await admin.apiRestore(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/sms/send' && req.method === 'POST') return await sms.apiSend(req, res, await readBody(req, 32 * 1024));
     if(p.indexOf('/api/') === 0) return sendJson(res, 404, { ok: false, code: 'not_found' });
     return serveStatic(res, p, nonce);
