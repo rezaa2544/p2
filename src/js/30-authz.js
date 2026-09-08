@@ -306,7 +306,7 @@ var ACTION_ROLES = {
   'ann-save':      ['manager','superadmin','edu_office'],
   'ann-del':       ['manager','superadmin','edu_office'],
   /* مالی */
-  'plan-save':     ['manager','superadmin'],
+  'tuition-plan-save': ['manager','superadmin'],
   'plan-del':      ['manager','superadmin'],
   'ins-pay':       ['manager'],
   /* اداره */

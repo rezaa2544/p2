@@ -1288,13 +1288,18 @@ function coreActions(e, el, id, a, rawId){
      const list=needPlacement(sid).filter(p=>p.grade===g&&
        (!isFieldBased(g)||normHdr(p.field||'')===normHdr(fl||'')||(!fl&&!p.field)));
      if(!list.length){toast('دانش‌آموزی برای چیدمان نیست','err');return;}
+     /* دور ۱۰۰ (نقصِ ۴): پیش‌محاسبه برایِ اعلامِ جا‌نشده‌ها در تأییدیه */
+     const prev=autoPlacement(list,cls);
+     const unTxt=prev.unplaced.length?(' ⚠️ '+fa(prev.unplaced.length)+' نفر در ظرفیت نمی‌گنجند و چیده نمی‌شوند'
+       +' (پس از ساخت کلاس موازی دوباره اجرا کنید).'):'';
      askConfirm(fa(list.length)+' دانش‌آموز بر پایهٔ کارنامه و انضباط میان '+fa(cls.length)
-       +' کلاس توزیع شوند؟ توزیع طوری انجام می‌شود که میانگین کلاس‌ها به هم نزدیک بماند.',()=>{
-       const buckets=autoPlacement(list,cls);
+       +' کلاس توزیع شوند؟ توزیع طوری انجام می‌شود که میانگین کلاس‌ها به هم نزدیک بماند.'+unTxt,()=>{
        const pairs=[];
-       buckets.forEach(b=>b.list.forEach(s=>pairs.push({studentId:s.user.id,classId:b.cls.id})));
+       prev.buckets.forEach(b=>b.list.forEach(s=>pairs.push({studentId:s.user.id,classId:b.cls.id})));
        const n=applyPlacement(pairs, sid);
-       toast(fa(n)+' دانش‌آموز در کلاس‌ها چیده شدند','ok'); render();
+       if(prev.unplaced.length)toast(fa(n)+' چیده شدند · ⚠️ '+fa(prev.unplaced.length)+' نفر جا نشدند — کلاس موازی بسازید','warn');
+       else toast(fa(n)+' دانش‌آموز در کلاس‌ها چیده شدند','ok');
+       render();
      },{title:'چیدمان خودکار',ok:'انجام بده'});
    },
    'cls-parallel'(){
@@ -1335,12 +1340,13 @@ function coreActions(e, el, id, a, rawId){
          const g=Number(k.split('|')[0]), fl=k.split('|')[1]||null;
          const cls=targetClasses(sid,g,fl);
          if(!cls.length){skipped+=byGroup[k].length;return;}
-         const buckets=autoPlacement(byGroup[k],cls);
+         const r=autoPlacement(byGroup[k],cls);
          const pairs=[];
-         buckets.forEach(b=>b.list.forEach(s=>pairs.push({studentId:s.user.id,classId:b.cls.id})));
+         r.buckets.forEach(b=>b.list.forEach(s=>pairs.push({studentId:s.user.id,classId:b.cls.id})));
          total+=applyPlacement(pairs, sid);
+         skipped+=r.unplaced.length; /* دور ۱۰۰ (نقصِ ۴): جا‌نشده‌ها هم «چیده‌نشده»‌اند */
        });
-       toast(fa(total)+' ثبت‌نام شد'+(skipped?' · '+fa(skipped)+' بدون کلاس مقصد':''),'ok');
+       toast(fa(total)+' ثبت‌نام شد'+(skipped?' · '+fa(skipped)+' نفر چیده نشدند (ظرفیت/کلاس مقصد)':''),'ok');
        render();
      },{title:'ثبت‌نام خودکار',ok:'انجام بده'});
    },

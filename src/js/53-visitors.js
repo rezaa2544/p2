@@ -43,7 +43,7 @@ function visitorRegister(name, purpose){
     registered_by: u.id,
     created_at: new Date().toISOString()
   };
-  return {ok:true, rec: add('visitors', rec)};
+  return {ok:true, rec: insert('visitors', rec)};
 }
 
 /* ─────────────── خروج مهمان (مدیر) ─────────────── */

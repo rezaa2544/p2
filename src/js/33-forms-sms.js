@@ -286,7 +286,7 @@ function certRecord(type, sid){
   if(!st || st.role !== 'student') return {ok:false, msg:'دانش‌آموز پیدا نشد.'};
   var sch = byId('schools', st.school_id) || {};
   var code = certCodeCalc(type, sid, sch.id || 0);
-  var rec = add('certificates', {
+  var rec = insert('certificates', {
     school_id: sch.id || null, student_id: sid, type: type,
     year: (typeof yearCode==='function') ? yearCode() : '',
     code: code, issued_at: new Date().toISOString(),

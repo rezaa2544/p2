@@ -3484,7 +3484,10 @@ const SYNC_DEAD_CODES = {
   conflict_preserved: 1, stale_base: 1,
   /* لایهٔ مقدار (validate.js): مقدارِ نامعتبر با تکرار درست نمی‌شود —
      dead-letter (وگرنه تا ابد failed → retry می‌ماند). */
-  validation_failed: 1
+  validation_failed: 1,
+  /* دور ۱۰۰ (نقصِ ۱): تک‌عملیاتی که حتی تنها هم ۴۱۳ می‌خورد ذاتاً از
+     سقفِ سرور بزرگ‌تر است — تکرار بی‌فایده، dead-letter با پیامِ روشن */
+  oversized_op: 1
 };
 
 const SYNC = {
@@ -3498,6 +3501,7 @@ const SYNC = {
   serverUrl  : '',          /* مثلاً '/api/sync' */
   autoTimer  : null,
   conflicts  : [],
+  progress   : null,        /* دور ۱۰۰: پیشرفتِ ارسالِ تکه‌تکه {done,total} */
 };
 
 /* ---------- ذخیره‌سازی صف ---------- */
@@ -3601,7 +3605,7 @@ async function syncNow(manual){
   refreshSyncBadge();
 
   try{
-    const res = await sendBatch(batch);
+    const res = await sendChunked(batch);
 
     res.forEach(r => {
       const item = SYNC.queue.find(x => x.uid === r.uid);
@@ -3656,6 +3660,9 @@ async function syncNow(manual){
       toast(`${fa(conflictCount || deadCount)} تغییر همگام نشد`
         + (conflictCount ? ` — ${fa(conflictCount)} تعارض با نسخهٔ سرور؛ مدیر مدرسه باید داوری کند` : ''),
         'err', { icon: 'warn', sticky: true });
+    }else if(manual && bad){
+      /* دور ۱۰۰: شکستِ انتقالیِ همه (رفتارِ پیشینِ مسیرِ catch) */
+      toast('ارسال ناموفق — دوباره تلاش می‌شود', 'err');
     }
 
     SYNC.attempts = bad ? SYNC.attempts + 1 : 0;
@@ -3671,6 +3678,7 @@ async function syncNow(manual){
     scheduleSync(backoffDelay());
   }finally{
     SYNC.syncing = false;
+    SYNC.progress = null; /* دور ۱۰۰: پایانِ نمایشِ پیشرفت */
     refreshSyncBadge();
   }
 }
@@ -3687,6 +3695,72 @@ async function syncNow(manual){
    ⚠️ کد ملی هرگز در نشانی درخواست نیاید، فقط در بدنهٔ POST — نشانی
    در گزارش سرور و حافظهٔ نهان میانی می‌ماند.
    📄 docs/SERVER_SECURITY_CONTRACT.md بندهای ۲ تا ۴ */
+/* ---------- ارسالِ تکه‌تکه + تقسیمِ بازگشتیِ ۴۱۳ (دور ۱۰۰، نقصِ ۱) ----------
+   سرور بیش از ۵۰۰ op در یک درخواست را 413 می‌کند (batch_too_large) و
+   بدنهٔ بیش از ۱MB را هم 413 می‌کند (body_too_large). ارسالِ یک‌جایِ
+   صفِ بزرگ ⇒ حلقهٔ ابدیِ «۴۱۳ ← failed ← تلاشِ دوباره». راه‌حل:
+   ۱) تکه‌هایِ ۲۰۰تایی (حاشیهٔ امن زیرِ سقفِ ۵۰۰). ۲) اگر تکه‌ای ۴۱۳
+   خورد، نصفش کن و دوباره (بازگشتی تا ۱). ۳) تک‌opای که باز ۴۱۳ خورد
+   ذاتاً از سقف بزرگ‌تر است ⇒ dead-letter ‏(oversized_op) با پیامِ روشن. */
+const SYNC_CHUNK = 200;
+const SYNC_413_CODES = { batch_too_large: 1, body_too_large: 1, http_413: 1 };
+
+/* ارسالِ تکه‌تکهٔ یک دسته با تقسیمِ بازگشتیِ ۴۱۳.
+   خروجی: یک نتیجه برایِ هر قلمِ batch (به‌ترتیبِ پایان).
+   - برایِ ۴۱۳ هرگز throw نمی‌کند (تکه می‌شود یا dead-letter).
+   - خطایِ انتقالی (قطعیِ شبکه و…): نتیجهٔ مصنوعیِ failed برایِ قلم‌هایِ
+     ارسال‌نشده — رفتارِ امروزِ مسیرِ catch، ولی نتیجهٔ تکه‌هایِ موفق
+     از دست نمی‌رود. */
+async function sendChunked(batch){
+  const out = [];
+  const pend = [];
+  for(let i=0;i<batch.length;i+=SYNC_CHUNK) pend.push(batch.slice(i,i+SYNC_CHUNK));
+  const total = batch.length;
+  while(pend.length){
+    const chunk = pend.shift();
+    SYNC.progress = { done: out.length, total: total };
+    refreshSyncBadge();
+    let res;
+    try{
+      res = await sendBatch(chunk);
+    }catch(err){
+      if(is413Error(err) && chunk.length > 1){ splitPush(pend, chunk); continue; }
+      if(is413Error(err)){ out.push(oversizedResult(chunk[0])); continue; }
+      /* خطایِ انتقالی: این تکه + همهٔ تکه‌هایِ مانده ⇒ failed */
+      const rest = [chunk].concat(pend.splice(0));
+      rest.forEach(function(c){ c.forEach(function(x){
+        out.push({ uid:x.uid, ok:false, code:'send_failed', message:String((err&&err.message)||err) });
+      });});
+      break;
+    }
+    if(is413Results(res) && chunk.length > 1){ splitPush(pend, chunk); continue; }
+    if(is413Results(res)){ out.push(oversizedResult(chunk[0])); continue; }
+    for(let k=0;k<res.length;k++) out.push(res[k]);
+  }
+  SYNC.progress = { done: out.length, total: total };
+  refreshSyncBadge();
+  return out;
+}
+/* نصف‌کردنِ تکهٔ ۴۱۳خورده — اولِ صف (عمق‌اول: ترتیبِ opها حفظ می‌شود) */
+function splitPush(pend, chunk){
+  const half = Math.ceil(chunk.length/2);
+  pend.unshift(chunk.slice(0,half), chunk.slice(half));
+}
+/* ردِّ سطحِ دسته (نه سطحِ op): همهٔ نتایج ۴۱۳ — sendBatch برایِ ۴۱۳
+   به‌ازایِ هر op یک {ok:false, code:413...} می‌سازد */
+function is413Results(res){
+  return !!(res && res.length && res.every(function(r){ return r && !r.ok && SYNC_413_CODES[r.code]; }));
+}
+/* دفاعِ عمقی: ۴۱۳ای که به‌جایِ نتیجه، throw شده باشد (پراکسی و…) */
+function is413Error(err){
+  const m = String((err&&err.message)||err||'');
+  return /413|too[_ -]?large|payload/i.test(m);
+}
+function oversizedResult(item){
+  return { uid:item.uid, ok:false, code:'oversized_op',
+    message:'حجم این تغییر از سقفِ سرور بیشتر است و همگام نشد — رکوردِ محلی سالم است' };
+}
+
 async function sendBatch(batch){
   if(!SYNC.demoMode && SYNC.serverUrl){
     /* ارسال از راه لایهٔ داده انجام می‌شود، نه fetch مستقیم — تا روز
@@ -3729,8 +3803,11 @@ function syncBadge(){
       <span class="dot"></span><span>آفلاین</span>${n ? `<span class="badge b-amber sm">${fa(n)}</span>` : ''}</button>`;
   }
   if(SYNC.syncing){
+    /* دور ۱۰۰ (نقصِ ۱): نمایشِ پیشرفتِ ارسالِ تکه‌تکه */
+    const pg = (SYNC.progress && SYNC.progress.total)
+      ? `<span class="badge b-blue sm">${fa(SYNC.progress.done)}/${fa(SYNC.progress.total)}</span>` : '';
     return `<button class="sync-chip busy" data-act="sync-panel" title="در حال همگام‌سازی">
-      <span class="spin"></span><span>همگام‌سازی…</span></button>`;
+      <span class="spin"></span><span>همگام‌سازی…</span>${pg}</button>`;
   }
   if(cf || rd){
     const lab = (cf && rd) ? 'تعارض و رد' : (cf ? 'تعارض' : 'رد شده');
@@ -4467,7 +4544,7 @@ var ACTION_ROLES = {
   'ann-save':      ['manager','superadmin','edu_office'],
   'ann-del':       ['manager','superadmin','edu_office'],
   /* مالی */
-  'plan-save':     ['manager','superadmin'],
+  'tuition-plan-save': ['manager','superadmin'],
   'plan-del':      ['manager','superadmin'],
   'ins-pay':       ['manager'],
   /* اداره */
@@ -7590,7 +7667,7 @@ function certRecord(type, sid){
   if(!st || st.role !== 'student') return {ok:false, msg:'دانش‌آموز پیدا نشد.'};
   var sch = byId('schools', st.school_id) || {};
   var code = certCodeCalc(type, sid, sch.id || 0);
-  var rec = add('certificates', {
+  var rec = insert('certificates', {
     school_id: sch.id || null, student_id: sid, type: type,
     year: (typeof yearCode==='function') ? yearCode() : '',
     code: code, issued_at: new Date().toISOString(),
@@ -10138,7 +10215,7 @@ function viewPlans(){
 function buildBackup(){
   return {
     format: 'payesh-backup',
-    version: 2,
+    version: 3, /* دور ۱۰۰ (نقصِ ۵): نسخهٔ ۳ = دفترچهٔ دارایِ اسنپ‌شات (t:'snap') */
     created_at: new Date().toISOString(),
     created_by: S.user ? S.user.username : null,
     seed: (typeof SEED !== 'undefined') ? SEED : null,
@@ -10149,6 +10226,18 @@ function buildBackup(){
        دفترچه می‌نشیند (برای بازیابی لازم است) ولی فایل پشتیبانِ قابل
        دانلود هرگز نباید آن را حمل کند. */
     ops: (typeof log !== 'undefined') ? log.map(function(op){
+      /* دور ۱۰۰ (نقصِ ۵): اسنپ‌شات هم رکوردِ کاملِ کاربر (با رمزِ متن‌ساده)
+         دارد — همان قاعدهٔ امنیتِ پنتست: رمز هرگز در فایلِ قابلِ دانلود. */
+      if(op && op.t==='snap' && op.db && Array.isArray(op.db.users)){
+        var db2={};
+        Object.keys(op.db).forEach(function(c){
+          db2[c]=(c==='users')?op.db[c].map(function(u){
+            if(!u||!Object.prototype.hasOwnProperty.call(u,'password'))return u;
+            var r={};Object.keys(u).forEach(function(k){r[k]=(k==='password')?'[redacted]':u[k];});return r;
+          }):op.db[c];
+        });
+        var s={};Object.keys(op).forEach(function(k){s[k]=(k==='db')?db2:op[k];});return s;
+      }
       if(op && op.c==='users' && op.data && Object.prototype.hasOwnProperty.call(op.data,'password')){
         var d={};
         Object.keys(op.data).forEach(function(k){ d[k]=(k==='password')?'[redacted]':op.data[k]; });
@@ -10166,10 +10255,18 @@ function validateBackup(obj){
   if(!obj || typeof obj !== 'object') return { ok:false, error:'فایل خوانا نیست' };
   if(obj.format !== 'payesh-backup') return { ok:false, error:'این فایل پشتیبان پایش نیست' };
   if(!Array.isArray(obj.ops)) return { ok:false, error:'فهرست عملیات در فایل نیست' };
-  if(obj.version > 2) return { ok:false, error:'نسخهٔ فایل جدیدتر از این برنامه است' };
+  if(obj.version > 3) return { ok:false, error:'نسخهٔ فایل جدیدتر از این برنامه است' };
   /* هر عملیات باید ساختار درست داشته باشد */
   for(var i = 0; i < obj.ops.length; i++){
     var o = obj.ops[i];
+    /* دور ۱۰۰ (نقصِ ۵): اسنپ‌شاتِ فشرده‌سازی (c ندارد — db/ids دارد) */
+    if(o && o.t==='snap'){
+      if(!o.db || typeof o.db !== 'object')
+        return { ok:false, error:'اسنپ‌شاتِ ردیف ' + (i+1) + ' ناقص است' };
+      if(o.ids !== undefined && (typeof o.ids !== 'object' || o.ids === null))
+        return { ok:false, error:'اسنپ‌شاتِ ردیف ' + (i+1) + ' ناقص است' };
+      continue;
+    }
     if(!o || !o.t || !o.c) return { ok:false, error:'عملیات شمارهٔ ' + (i+1) + ' ناقص است' };
     if(['ins','upd','del'].indexOf(o.t) < 0)
       return { ok:false, error:'نوع عملیات ناشناخته در ردیف ' + (i+1) };
@@ -10198,6 +10295,7 @@ function restoreBackup(obj){
     if(typeof generateP10 === 'function') generateP10();
     if(typeof generateP11 === 'function') generateP11();
     if(typeof generateP12 === 'function') generateP12();
+    if(typeof generatePriorYear === 'function') generatePriorYear();  /* دور ۱۰۰/نقص ۶ */
     if(typeof generateBusDemo==='function') generateBusDemo();
     if(typeof generateVclassDemo==='function') generateVclassDemo();
     if(typeof generateHomeworkDemo==='function') generateHomeworkDemo();
@@ -10210,9 +10308,10 @@ function restoreBackup(obj){
     log.length = 0;
     obj.ops.forEach(function(o){ log.push(o); });
     if(typeof idxReset === 'function') idxReset();
-    SYNC_MUTED = true;
-    log.forEach(function(o){ applyOp(o, false); });
-    SYNC_MUTED = false;
+    /* دور ۱۰۰ (نقصِ ۵): بازپخش با همان applyLogِ بوت (اسنپ‌شات + دمِ __aدار
+       + شمارنده‌هایِ تازه) — به‌جایِ applyOpِ خام که اسنپ‌شات را نادیده
+       می‌گرفت و وضعیت را ناقص برمی‌گرداند. */
+    applyLog();
     if(typeof idxReset === 'function') idxReset();
     saveLog();
     return { ok:true, ops: obj.ops.length };
@@ -10378,10 +10477,14 @@ function placementScore(studentId){
  * نتیجه: میانگین کلاس‌ها به هم نزدیک می‌ماند و کلاس ضعیف شکل نمی‌گیرد.
  */
 function autoPlacement(students, classes){
-  if(!classes.length) return [];
+  /* دور ۱۰۰ (نقصِ ۴): خروجی {buckets, unplaced} — سرریزِ پیشین به کلاسِ
+     اول (فراتر از ظرفیت!) حذف شد؛ جا‌نشده‌ها برمی‌گردند تا پیش‌نمایش
+     نشانشان دهد و مدیر کلاسِ موازی بسازد. */
+  if(!classes.length) return { buckets: [], unplaced: students.slice() };
   var ranked = students.slice().sort(function(a,b){
     return placementScore(b.user.id) - placementScore(a.user.id); });
   var buckets = classes.map(function(c){ return { cls: c, list: [] }; });
+  var unplaced = [];
   var i = 0, dir = 1;
   ranked.forEach(function(s){
     /* رعایت ظرفیت: اگر کلاس پر بود، به بعدی می‌رود */
@@ -10395,12 +10498,12 @@ function autoPlacement(students, classes){
       else if(i < 0){ i = 0; dir = 1; }
       tries++;
     }
-    if(tries >= buckets.length) buckets[0].list.push(s);  /* همه پر: اولی */
+    if(tries >= buckets.length) unplaced.push(s);  /* همه پر: جا نشد */
     i += dir;
     if(i >= buckets.length){ i = buckets.length - 1; dir = -1; }
     else if(i < 0){ i = 0; dir = 1; }
   });
-  return buckets;
+  return { buckets: buckets, unplaced: unplaced };
 }
 
 /** اعمال چیدمان: ثبت‌نام دانش‌آموزان در کلاس‌های تعیین‌شده.
@@ -10632,12 +10735,15 @@ function viewSchoolYear(){
       + (keys.length ? keys.map(function(k){
           var g = groups[k];
           var cls = targetClasses(sid, g.grade, g.field);
+          /* دور ۱۰۰ (نقصِ ۴): پیش‌نمایشِ جا‌نشده‌ها — دکمهٔ «کلاس موازی» کنارش هست */
+          var prevUn = cls.length ? autoPlacement(g.list, cls).unplaced.length : g.list.length;
           var levelName = g.grade <= 6 ? 'ابتدایی' : g.grade <= 9 ? 'متوسطه اول' : 'متوسطه دوم';
           return '<div class="card" style="margin-bottom:12px"><div class="card-head">'
             + '<h3>پایهٔ ' + fa(g.grade) + (g.field ? ' — ' + esc(g.field) : '')
             + ' <span class="badge b-gray">' + fa(g.list.length) + ' دانش‌آموز</span></h3>'
             + '<div class="row" style="gap:6px">'
             + '<span class="small muted">' + levelName + ' · ' + fa(cls.length) + ' کلاس مقصد</span>'
+            + (prevUn ? '<span class="badge b-red">⚠️ ' + fa(prevUn) + ' نفر جا نمی‌شوند</span>' : '')
             + '<button class="btn ghost sm" data-act="cls-parallel" data-g="' + g.grade
             + '" data-fl="' + esc(g.field || '') + '">➕ کلاس موازی</button>'
             + (cls.length ? '<button class="btn sm" data-act="place-auto" data-g="' + g.grade
@@ -12172,13 +12278,18 @@ function coreActions(e, el, id, a, rawId){
      const list=needPlacement(sid).filter(p=>p.grade===g&&
        (!isFieldBased(g)||normHdr(p.field||'')===normHdr(fl||'')||(!fl&&!p.field)));
      if(!list.length){toast('دانش‌آموزی برای چیدمان نیست','err');return;}
+     /* دور ۱۰۰ (نقصِ ۴): پیش‌محاسبه برایِ اعلامِ جا‌نشده‌ها در تأییدیه */
+     const prev=autoPlacement(list,cls);
+     const unTxt=prev.unplaced.length?(' ⚠️ '+fa(prev.unplaced.length)+' نفر در ظرفیت نمی‌گنجند و چیده نمی‌شوند'
+       +' (پس از ساخت کلاس موازی دوباره اجرا کنید).'):'';
      askConfirm(fa(list.length)+' دانش‌آموز بر پایهٔ کارنامه و انضباط میان '+fa(cls.length)
-       +' کلاس توزیع شوند؟ توزیع طوری انجام می‌شود که میانگین کلاس‌ها به هم نزدیک بماند.',()=>{
-       const buckets=autoPlacement(list,cls);
+       +' کلاس توزیع شوند؟ توزیع طوری انجام می‌شود که میانگین کلاس‌ها به هم نزدیک بماند.'+unTxt,()=>{
        const pairs=[];
-       buckets.forEach(b=>b.list.forEach(s=>pairs.push({studentId:s.user.id,classId:b.cls.id})));
+       prev.buckets.forEach(b=>b.list.forEach(s=>pairs.push({studentId:s.user.id,classId:b.cls.id})));
        const n=applyPlacement(pairs, sid);
-       toast(fa(n)+' دانش‌آموز در کلاس‌ها چیده شدند','ok'); render();
+       if(prev.unplaced.length)toast(fa(n)+' چیده شدند · ⚠️ '+fa(prev.unplaced.length)+' نفر جا نشدند — کلاس موازی بسازید','warn');
+       else toast(fa(n)+' دانش‌آموز در کلاس‌ها چیده شدند','ok');
+       render();
      },{title:'چیدمان خودکار',ok:'انجام بده'});
    },
    'cls-parallel'(){
@@ -12219,12 +12330,13 @@ function coreActions(e, el, id, a, rawId){
          const g=Number(k.split('|')[0]), fl=k.split('|')[1]||null;
          const cls=targetClasses(sid,g,fl);
          if(!cls.length){skipped+=byGroup[k].length;return;}
-         const buckets=autoPlacement(byGroup[k],cls);
+         const r=autoPlacement(byGroup[k],cls);
          const pairs=[];
-         buckets.forEach(b=>b.list.forEach(s=>pairs.push({studentId:s.user.id,classId:b.cls.id})));
+         r.buckets.forEach(b=>b.list.forEach(s=>pairs.push({studentId:s.user.id,classId:b.cls.id})));
          total+=applyPlacement(pairs, sid);
+         skipped+=r.unplaced.length; /* دور ۱۰۰ (نقصِ ۴): جا‌نشده‌ها هم «چیده‌نشده»‌اند */
        });
-       toast(fa(total)+' ثبت‌نام شد'+(skipped?' · '+fa(skipped)+' بدون کلاس مقصد':''),'ok');
+       toast(fa(total)+' ثبت‌نام شد'+(skipped?' · '+fa(skipped)+' نفر چیده نشدند (ظرفیت/کلاس مقصد)':''),'ok');
        render();
      },{title:'ثبت‌نام خودکار',ok:'انجام بده'});
    },
@@ -14629,7 +14741,7 @@ const F7_ACTIONS = {
     if(used){toast(`این طرح برای ${fa(used)} دانش‌آموز صادر شده و حذف نمی‌شود`,'err');return;}
     askDelete(`طرح «${p.title}» حذف شود؟`,()=>{remove('tuition_plans',id);toast('طرح حذف شد','');render();});
   },
-  'plan-save'(){
+  'tuition-plan-save'(){
     const p=window._edit||{};
     const data={title:V('pl_title'),amount:Number(V('pl_amount'))||0,installments:Math.max(1,Number(V('pl_inst'))||1),
       interval_days:Math.max(7,Number(V('pl_int'))||30),first_due:V('pl_due')||todayISO(),active:1,school_id:S.user.school_id};
@@ -14698,7 +14810,7 @@ function planModal(p){
   openModal(modalTpl(p.id?'ویرایش طرح شهریه':'طرح شهریه جدید',
     `<div class="grid g2">${f('عنوان *',inp('pl_title',p.title))}${f('مبلغ کل (ریال)',inp('pl_amount',p.amount,'number'))}
       ${f('تعداد اقساط',inp('pl_inst',p.installments,'number'))}${f('فاصله اقساط (روز)',inp('pl_int',p.interval_days,'number'))}
-      ${f('اولین سررسید',jdate('pl_due',p.first_due))}</div>`,'plan-save'));
+      ${f('اولین سررسید',jdate('pl_due',p.first_due))}</div>`,'tuition-plan-save'));
   window._edit=p;
 }
 
@@ -16578,6 +16690,7 @@ setTimeout(()=>{
   generate(); generateExtras(); generateP8(); generateP9(); generateP10();
   if(typeof generateP11==='function') generateP11();
   if(typeof generateP12=== 'function') generateP12();
+  if(typeof generatePriorYear==='function') generatePriorYear();  /* دور ۱۰۰/نقص ۶ */
   if(typeof generateBusDemo==='function') generateBusDemo();
   if(typeof generateVclassDemo==='function') generateVclassDemo();
   if(typeof generateHomeworkDemo==='function') generateHomeworkDemo();
@@ -22267,7 +22380,7 @@ function _yearAgoISO(daysBack){
  * ⚠️ عمداً موارد انضباطی ساخته نمی‌شود — دبیر حق دیدنشان را
  * ندارد، پس دادهٔ نمونه‌اش هم بی‌فایده است.
  */
-function generateP12(){
+function generatePriorYear(){  /* دور ۱۰۰/نقص ۶: نامِ پیشین generateP12 با فاز ۱۲ مشاور تداخل داشت و سایه می‌خورد */
   if(typeof db === 'undefined' || !db.users) return 0;
   if(typeof add !== 'function') return 0;      /* فقط در بوت دادهٔ نمونه */
   /* اگر از قبل ساخته شده، دوباره نساز */
@@ -23823,6 +23936,7 @@ function counselorDash(){
 
 /**
  * مشاوران + دانش‌آموزانِ دارای الگو + صف ارجاع اولیه.
+ * (دور ۱۰۰/نقص ۶: دادهٔ سال‌گذشتهٔ دبیر از این تابع جدا و generatePriorYear شد؛ هر دو در بوت/بازیابی صدا زده می‌شوند.)
  * ⚠️ قطعی است (rng با SEED ثابت) و با add() نوشته می‌شود،
  * نه insert() — دادهٔ پایه در دفترچهٔ عملیات ثبت نمی‌شود
  * (وگرنه «تولید داده نمونه صف را پر نکرده» آزمون را می‌شکست).
@@ -26619,7 +26733,7 @@ function dojoSaveModel(){
       kept[t.id] = 1;
       update('dojo_types', t.id, {label:t.label, icon:t.icon, delta:t.delta, order:idx});
     } else {
-      add('dojo_types', {school_id:u.school_id, label:t.label, icon:t.icon, delta:t.delta, order:idx});
+      insert('dojo_types', {school_id:u.school_id, label:t.label, icon:t.icon, delta:t.delta, order:idx});
     }
   });
   existing.forEach(function(t){
@@ -26678,7 +26792,7 @@ function visitorRegister(name, purpose){
     registered_by: u.id,
     created_at: new Date().toISOString()
   };
-  return {ok:true, rec: add('visitors', rec)};
+  return {ok:true, rec: insert('visitors', rec)};
 }
 
 /* ─────────────── خروج مهمان (مدیر) ─────────────── */
@@ -26825,7 +26939,7 @@ function libAddBook(title, author, code, serial){
     serial: serial,
     created_at: new Date().toISOString()
   };
-  return {ok:true, rec: add('lib_books', rec)};
+  return {ok:true, rec: insert('lib_books', rec)};
 }
 function libSetSerial(bookId, serial){
   var u = S.user;
@@ -26888,7 +27002,7 @@ function libLend(bookId, studentId, dueDate){
     registered_by: u.id,
     created_at: now
   };
-  return {ok:true, rec: add('lib_loans', rec)};
+  return {ok:true, rec: insert('lib_loans', rec)};
 }
 function libReturn(loanId){
   var u = S.user;
@@ -27051,7 +27165,7 @@ function assetAdd(name, category, location, status, note){
     note: String(note || '').trim(),
     created_at: new Date().toISOString()
   };
-  return {ok:true, rec: add('assets', rec)};
+  return {ok:true, rec: insert('assets', rec)};
 }
 function assetSetStatus(assetId, status, location){
   var u = S.user;
@@ -27222,7 +27336,7 @@ function sedasUpsert(studentId, subjectId, term, score, note){
     created_at: now,
     note: String(note||'').trim()
   };
-  return {ok:true, rec: add('sedascores', rec), updated:false};
+  return {ok:true, rec: insert('sedascores', rec), updated:false};
 }
 function sedasDel(rowId){
   var u = S.user;

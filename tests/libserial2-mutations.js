@@ -48,8 +48,8 @@ mutate('src/js/54-library.js',
   'tests/libserial2.js', /❌ L2/, 'M1 برداشتنِ گاردِ یکتاییِ libAddBook');
 
 mutate('src/js/54-library.js',
-  '    serial: serial,\n    created_at: new Date().toISOString()\n  };\n  return {ok:true, rec: add(\'lib_books\', rec)};',
-  '    created_at: new Date().toISOString()\n  };\n  return {ok:true, rec: add(\'lib_books\', rec)};',
+  '    serial: serial,\n    created_at: new Date().toISOString()\n  };\n  return {ok:true, rec: insert(\'lib_books\', rec)};',
+  '    created_at: new Date().toISOString()\n  };\n  return {ok:true, rec: insert(\'lib_books\', rec)};',
   'tests/libserial2.js', /❌ L1/, 'M2 نذخیره‌شدنِ سریال');
 
 mutate('src/js/54-library.js',
