@@ -20,7 +20,7 @@
 
 | # | یافته | خطرات | رفع | تست |
 |---|---|---|---|---|
-| S-۷۳-۱ (server/admin.js) | `restore`، `__revoked_jti` و stateِ rate-limit را از نو می‌ساخت | نشستِ log-out شده پس از restore **دوباره زنده می‌شد** (تا ۸ ساعت) و brute-force از نو شروع می‌شد | stateِ داخلیِ احراز هویت (`__auth`, `__revoked_jti`, `__processed_uids`) **پیش از** swap گرفته و **پس از** swap برمی‌گردد؛ فقط داده‌های بکاپ جایگزین می‌شوند | security2: S1-A…S1-D (۴ بررسی) |
+| S-۷۳-۱ (server/admin.js) | `restore`، `__revoked_jti` و stateِ rate-limit را از نو می‌ساخت | نشستِ log-out‌شده پس از restore **دوباره زنده می‌شد** (تا ۸ ساعت) و brute-force از نو شروع می‌شد | stateِ داخلیِ احراز هویت (`__auth`, `__revoked_jti`, `__processed_uids`) **پیش از** swap گرفته و **پس از** swap برمی‌گردد؛ فقط داده‌های بکاپ جایگزین می‌شوند | security2: S1-A…S1-D (۴ بررسی) |
 | S-۷۳-۲ (server/auth.js) | `send-code` برای شمارهٔ ناشناخته ۴۰۴ no_account می‌داد + rate-limit **بعد از** بررسیِ وجود | **phone-enumeration**: مهاجم فهرستِ شماره‌هایِ ثبت‌شده را می‌ساخت؛ شماره‌هایِ ناشناخته حدی هم نداشتند | پاسخ برای همهٔ شماره‌ها یک‌شکل (۲۰۰ sent)؛ rate-limit (۵/۱۰ دقیقه) **پیش از** بررسیِ وجود | security2: S2-A…S2-D (۴ بررسی) |
 | S-۷۳-۳ (server/index.js + admin.js) | فایل‌های store/backup/audit با 0644 روی دیسک | کلِ PII (نام، کد ملی، شماره) + کدهایِ ورودِ فعال برای هر کاربرِ هاست **خوانا** | همهٔ سه فایل 0600 (ساخت + chmod؛ audit حتی فایلِ قدیمی را هم یک‌بار اصلاح می‌کند) | security2: S3-A…S3-C (stat واقعی) |
 | S-۷۳-۴ (server/index.js) | `isHttps`، سرآیند `x-forwarded-proto` کلاینتِ مستقیم را بی‌قیدوشرط قبول می‌کرد | اسپُفِ سرآیند ⇒ HSTS/Secure جابه‌جا می‌شد؛ در حالتِ http، مهاجم می‌توانست loginِ کاربر را خراب کند (کوکیِ Secure روی http = نشستِ شکسته) | XFP فقط در `PAYESH_HTTPS=۱` (حالتِ proxyِ اعلام‌شده) معتبر است | security2: S4-A…S4-B |
@@ -41,11 +41,11 @@
 | reDoS | سبز: هیچ رگکس با کمیتِ تودرتو پیدا نشد.
 | localStorage | سبز: توکن **نبود** (توکن در کوکیِ HttpOnly سرور است) — فقط username/تنظیمات/صفِ همگامی.
 | کانالِ خارج‌کردنِ داده | سبز: هیچ URLِ شبکهٔ خارجی در کدِ کلاینت نیست (فقط same-origin `/api/*`).
-| `server/helpers/opx.js` | وجود ندارد (یادداشتِ قدیمی — عملیات‌های sync در `sync.js` که پایش شده است).
+| `server/helpers/opx.js` | وجود ندارد (یادداشتِ قدیمی — عملیات‌های sync در `sync.js` که پایش‌شده است).
 
 ## ۴. ماتریسِ «سبزِ تأییدشده» (پایش شد و بدونِ نقص است)
 
-- **JWT:** الگوریتم HS256 در کد سخت‌کُد شده (algnone/RS forge بی‌اثر)، امضا با `timingSafeEqual`، `exp`/`jti`، بازخوردِ jti در log-out، role از store خوانده می‌شود (نه از توکن).
+- **JWT:** الگوریتم HS256 در کد سخت‌کُد‌شده (algnone/RS forge بی‌اثر)، امضا با `timingSafeEqual`، `exp`/`jti`، بازخوردِ jti در log-out، role از store خوانده می‌شود (نه از توکن).
 - **کوکی:** `HttpOnly` + `SameSite=Lax` + `Secure` فقط وقتی HTTPS واقعی است.
 - **IDOR** (`idor.js`): scope رکوردبه‌رکورد و fail-closed؛ ۴۰۴ به‌جای ۴۰۳ (enumerationِ id نمی‌دهد)؛ throttle روی ۱۰۰+ درخواست/دقیقه.
 - **sync** (`sync.js`): `by`ِ جعلی کلِ batch را مسموم می‌کند (atomic)؛ مهرهای `user_id`/`school_id` با سشن چک می‌شود؛ `WRITE_PERMS` نقش‌به‌نقش (سوپرادمین `*`)؛ `inScope` مجموعه‌به‌مجموعه؛ idempotency با uid؛ سقف ۵۰۰ op و بدنهٔ 2MB (بعد از آن socket خُرد می‌شود).

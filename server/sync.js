@@ -720,9 +720,15 @@ function createSync(ctx){
         }
       }else if(op.t === 'del'){
         const delId = Number(op.id != null ? op.id : (op.data && op.data.id));
+        const delRec = (store[op.c] || []).find(x => x.id === delId);
+        const delSchoolId = delRec ? delRec.school_id : (op.data && op.data.school_id ? op.data.school_id : s.school_id);
         store[op.c] = store[op.c].filter(x => x.id !== delId);
+        if(!Array.isArray(store.__deleted_records)) store.__deleted_records = [];
+        store.__deleted_records.push({ c: op.c, id: delId, school_id: delSchoolId, at: new Date().toISOString() });
+        if(store.__deleted_records.length > 5000) store.__deleted_records = store.__deleted_records.slice(-5000);
         audit('record_deleted', { user_id: s.id, role: s.role, school_id: s.school_id, collection: op.c, record_id: delId, summary: 'حذف رکورد ' + delId + ' از ' + op.c });
       }
+      store.__server_version = (store.__server_version || 0) + 1;
       store.__processed_uids[op.uid] = Date.now();
       cache.markProcessedUid(op.uid).catch(() => {});
       cache.invalidateCollection(op.c, op.data && op.data.school_id).catch(() => {});

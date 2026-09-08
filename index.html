@@ -1221,6 +1221,807 @@ function httpGetJson(url, timeoutMs){
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   src/js/03-idb-persistence.js — معماری ذخیره‌سازی آفلاین IndexedDB
+   فاز ۴: بندهای ۱۶ تا ۲۰ (Client Offline IndexedDB Architecture)
+   ═══════════════════════════════════════════════════════════════════ */
+
+var OFFLINE_DB_NAME = 'payesh_offline_v2';
+var OFFLINE_DB_VERSION = 2;
+
+/**
+ * کلاس مدیریت ذخیره‌سازی آفلاین با استفاده از IndexedDB
+ * دارای سه Object Store مجزا:
+ *  ۱. entities: نگهداری موجودیت‌ها به همراه ایندکس کالکشن و شناسه مدرسه
+ *  ۲. sync_queue: صف عملیات معلق جهت همگام‌سازی با سرور با ایندکس وضعیت و زمان
+ *  ۳. metadata: ذخیره کلید/مقدارهای تنظیمات، لاگ، و وضعیت همگام‌سازی
+ *
+ * @constructor
+ * @param {string} [dbName] نام دیتابیس (پیش‌فرض: payesh_offline_v2)
+ * @param {number} [dbVersion] نسخه دیتابیس (پیش‌فرض: 2)
+ */
+function OfflineStorage(dbName, dbVersion) {
+  this.name = dbName || OFFLINE_DB_NAME;
+  this.dbName = this.name;
+  this.version = dbVersion || OFFLINE_DB_VERSION;
+  this.db = null;
+  this.backend = null;
+}
+
+/**
+ * تعیین یا تغییر بک‌اند IndexedDB (برای تست‌ها یا محیط‌های بدون window.indexedDB)
+ * @param {IDBFactory|object|null} customIdb
+ */
+OfflineStorage.prototype.setBackend = function(customIdb) {
+  this.backend = customIdb;
+  this.db = null;
+};
+
+/**
+ * دریافت موتور IndexedDB فعال
+ * @returns {IDBFactory|object|null}
+ */
+OfflineStorage.prototype.getIdb = function() {
+  if (this.backend !== null) return this.backend;
+  if (typeof window !== 'undefined') {
+    return window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB || null;
+  }
+  if (typeof indexedDB !== 'undefined') return indexedDB;
+  return null;
+};
+
+/**
+ * آیا محیط جاری از IndexedDB پشتیبانی می‌کند؟
+ * @returns {boolean}
+ */
+OfflineStorage.prototype.isSupported = function() {
+  return this.getIdb() !== null && typeof this.getIdb().open === 'function';
+};
+
+/**
+ * راه‌اندازی و باز کردن پایگاه داده IndexedDB و ساخت جداول و ایندکس‌ها
+ * @returns {Promise<IDBDatabase|null>}
+ */
+OfflineStorage.prototype.init = function() {
+  var self = this;
+  if (!self.isSupported()) {
+    return Promise.resolve(null);
+  }
+  if (self.db) {
+    return Promise.resolve(self.db);
+  }
+
+  return new Promise(function(resolve, reject) {
+    try {
+      var idb = self.getIdb();
+      var req = idb.open(self.name, self.version);
+
+      req.onupgradeneeded = function(e) {
+        var db = e.target.result;
+
+        // ۱. استور موجودیت‌ها (entities)
+        if (!db.objectStoreNames.contains('entities')) {
+          var entStore = db.createObjectStore('entities', { keyPath: ['c', 'id'] });
+          entStore.createIndex('by_coll', 'c', { unique: false });
+          entStore.createIndex('by_school', 'school_id', { unique: false });
+        }
+
+        // ۲. استور صف همگام‌سازی (sync_queue)
+        if (!db.objectStoreNames.contains('sync_queue')) {
+          var queueStore = db.createObjectStore('sync_queue', { keyPath: 'uid' });
+          queueStore.createIndex('by_status', 'status', { unique: false });
+          queueStore.createIndex('by_time', 'created_at', { unique: false });
+        }
+
+        // ۳. استور متادیتا و تنظیمات (metadata)
+        if (!db.objectStoreNames.contains('metadata')) {
+          db.createObjectStore('metadata', { keyPath: 'key' });
+        }
+      };
+
+      req.onsuccess = function(e) {
+        self.db = e.target.result;
+        resolve(self.db);
+      };
+
+      req.onerror = function(e) {
+        reject(e.target.error || new Error('خطا در باز کردن IndexedDB'));
+      };
+    } catch (err) {
+      reject(err);
+    }
+  });
+};
+
+/**
+ * ذخیره یا به‌روزرسانی یک رکورد در استور entities
+ * @param {string} collection نام کالکشن (مثلاً 'students')
+ * @param {object} record رکورد حاوی فیلد id
+ * @returns {Promise<boolean>}
+ */
+OfflineStorage.prototype.putEntity = function(collection, record) {
+  var self = this;
+  if (!record || record.id == null) return Promise.reject(new Error('شناسه رکورد نامعتبر است'));
+
+  return self.init().then(function(db) {
+    if (!db) return false;
+    return new Promise(function(resolve, reject) {
+      try {
+        var tx = db.transaction(['entities'], 'readwrite');
+        var store = tx.objectStore('entities');
+        var item = {
+          c: collection,
+          id: record.id,
+          school_id: record.school_id != null ? record.school_id : (record.schoolId != null ? record.schoolId : 0),
+          data: record,
+          updated_at: new Date().toISOString()
+        };
+        var req = store.put(item);
+        req.onsuccess = function() { resolve(true); };
+        req.onerror = function(e) { reject(e.target.error); };
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
+
+/**
+ * دریافت یک موجودیت مشخص بر اساس شناسه
+ * @param {string} collection نام کالکشن
+ * @param {number|string} id شناسه موجودیت
+ * @returns {Promise<object|null>}
+ */
+OfflineStorage.prototype.getEntity = function(collection, id) {
+  var self = this;
+  return self.init().then(function(db) {
+    if (!db) return null;
+    return new Promise(function(resolve, reject) {
+      try {
+        var tx = db.transaction(['entities'], 'readonly');
+        var store = tx.objectStore('entities');
+        var req = store.get([collection, id]);
+        req.onsuccess = function(e) {
+          var res = e.target.result;
+          resolve(res ? (res.data || res) : null);
+        };
+        req.onerror = function(e) { reject(e.target.error); };
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
+
+/**
+ * خواندن تمام رکوردهای متعلق به یک کالکشن
+ * @param {string} collection نام کالکشن
+ * @returns {Promise<Array<object>>}
+ */
+OfflineStorage.prototype.getCollection = function(collection) {
+  var self = this;
+  return self.init().then(function(db) {
+    if (!db) return [];
+    return new Promise(function(resolve, reject) {
+      try {
+        var tx = db.transaction(['entities'], 'readonly');
+        var store = tx.objectStore('entities');
+        var req;
+        if (store.index && store.indexNames && store.indexNames.contains('by_coll')) {
+          var idx = store.index('by_coll');
+          req = (typeof idx.getAll === 'function') ? idx.getAll(collection) : store.getAll();
+        } else {
+          req = store.getAll();
+        }
+
+        req.onsuccess = function(e) {
+          var list = e.target.result || [];
+          var res = [];
+          for (var i = 0; i < list.length; i++) {
+            if (list[i].c === collection) {
+              res.push(list[i].data || list[i]);
+            }
+          }
+          resolve(res);
+        };
+        req.onerror = function(e) { reject(e.target.error); };
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
+
+/**
+ * واکشی رکوردهای یک مدرسه بر اساس ایندکس by_school
+ * @param {number|string} schoolId
+ * @returns {Promise<Array<object>>}
+ */
+OfflineStorage.prototype.getEntitiesBySchool = function(schoolId) {
+  var self = this;
+  var sid = Number(schoolId);
+  return self.init().then(function(db) {
+    if (!db) return [];
+    return new Promise(function(resolve, reject) {
+      try {
+        var tx = db.transaction(['entities'], 'readonly');
+        var store = tx.objectStore('entities');
+        var req;
+        if (store.index && store.indexNames && store.indexNames.contains('by_school')) {
+          var idx = store.index('by_school');
+          req = (typeof idx.getAll === 'function') ? idx.getAll(sid) : store.getAll();
+        } else {
+          req = store.getAll();
+        }
+
+        req.onsuccess = function(e) {
+          var list = e.target.result || [];
+          var res = [];
+          for (var i = 0; i < list.length; i++) {
+            if (Number(list[i].school_id) === sid) {
+              res.push(list[i].data || list[i]);
+            }
+          }
+          resolve(res);
+        };
+        req.onerror = function(e) { reject(e.target.error); };
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
+
+/**
+ * حذف یک موجودیت مشخص از IndexedDB
+ * @param {string} collection نام کالکشن
+ * @param {number|string} id شناسه موجودیت
+ * @returns {Promise<boolean>}
+ */
+OfflineStorage.prototype.removeEntity = function(collection, id) {
+  var self = this;
+  return self.init().then(function(db) {
+    if (!db) return false;
+    return new Promise(function(resolve, reject) {
+      try {
+        var tx = db.transaction(['entities'], 'readwrite');
+        var store = tx.objectStore('entities');
+        var req = store.delete([collection, id]);
+        req.onsuccess = function() { resolve(true); };
+        req.onerror = function(e) { reject(e.target.error); };
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
+
+/**
+ * افزودن عملیات تغییر به صف همگام‌سازی آفلاین
+ * @param {object} op شیء عملیات
+ * @returns {Promise<string>} شناسه یکتای عملیات (uid)
+ */
+OfflineStorage.prototype.addToQueue = function(op) {
+  var self = this;
+  var uid = op.uid || ('q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6));
+  var actualOp = (op.op && typeof op.op === 'object') ? op.op : op;
+  var item = {
+    uid: uid,
+    op: actualOp,
+    status: op.status || 'pending',
+    attempts: op.attempts != null ? op.attempts : 0,
+    created_at: op.created_at || new Date().toISOString(),
+    next_retry: op.next_retry || 0
+  };
+
+  return self.init().then(function(db) {
+    if (!db) return uid;
+    return new Promise(function(resolve, reject) {
+      try {
+        var tx = db.transaction(['sync_queue'], 'readwrite');
+        var store = tx.objectStore('sync_queue');
+        var req = store.put(item);
+        req.onsuccess = function() { resolve(uid); };
+        req.onerror = function(e) { reject(e.target.error); };
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
+
+/**
+ * خواندن تمام آیتم‌های صف همگام‌سازی
+ * @returns {Promise<Array<object>>}
+ */
+OfflineStorage.prototype.getQueue = function() {
+  var self = this;
+  return self.init().then(function(db) {
+    if (!db) return [];
+    return new Promise(function(resolve, reject) {
+      try {
+        var tx = db.transaction(['sync_queue'], 'readonly');
+        var store = tx.objectStore('sync_queue');
+        var req = store.getAll();
+        req.onsuccess = function(e) { resolve(e.target.result || []); };
+        req.onerror = function(e) { reject(e.target.error); };
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
+
+/**
+ * دریافت کلیه آیتم‌های معلق صف همگام‌سازی (pending یا failed)
+ * @returns {Promise<Array<object>>}
+ */
+OfflineStorage.prototype.getPendingQueue = function() {
+  var self = this;
+  return self.getQueue().then(function(all) {
+    return all.filter(function(item) {
+      return item.status === 'pending' || item.status === 'failed';
+    });
+  });
+};
+
+/**
+ * فیلتر صف بر اساس وضعیت عملیات (pending / processing / failed)
+ * @param {string} status وضعیت مورد نظر
+ * @returns {Promise<Array<object>>}
+ */
+OfflineStorage.prototype.getQueueByStatus = function(status) {
+  var self = this;
+  return self.init().then(function(db) {
+    if (!db) return [];
+    return new Promise(function(resolve, reject) {
+      try {
+        var tx = db.transaction(['sync_queue'], 'readonly');
+        var store = tx.objectStore('sync_queue');
+        var req;
+        if (store.index && store.indexNames && store.indexNames.contains('by_status')) {
+          var idx = store.index('by_status');
+          req = (typeof idx.getAll === 'function') ? idx.getAll(status) : store.getAll();
+        } else {
+          req = store.getAll();
+        }
+
+        req.onsuccess = function(e) {
+          var list = e.target.result || [];
+          var res = [];
+          for (var i = 0; i < list.length; i++) {
+            if (list[i].status === status) {
+              res.push(list[i]);
+            }
+          }
+          resolve(res);
+        };
+        req.onerror = function(e) { reject(e.target.error); };
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
+
+/**
+ * حذف یک عملیات از صف همگام‌سازی پس از پردازش یا انصراف
+ * @param {string} uid شناسه عملیات
+ * @returns {Promise<boolean>}
+ */
+OfflineStorage.prototype.removeFromQueue = function(uid) {
+  var self = this;
+  return self.init().then(function(db) {
+    if (!db) return false;
+    return new Promise(function(resolve, reject) {
+      try {
+        var tx = db.transaction(['sync_queue'], 'readwrite');
+        var store = tx.objectStore('sync_queue');
+        var req = store.delete(uid);
+        req.onsuccess = function() { resolve(true); };
+        req.onerror = function(e) { reject(e.target.error); };
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
+
+/**
+ * به‌روزرسانی وضعیت یک عملیات در صف همگام‌سازی
+ * @param {string} uid شناسه یکتای عملیات
+ * @param {string} status وضعیت جدید ('pending' | 'processing' | 'failed' | 'synced')
+ * @param {string} [reason] دلیل خطا در صورت بروز مشکل
+ * @returns {Promise<boolean>}
+ */
+OfflineStorage.prototype.updateQueueStatus = function(uid, status, reason) {
+  var self = this;
+  return self.init().then(function(db) {
+    if (!db) return false;
+    return new Promise(function(resolve, reject) {
+      try {
+        var tx = db.transaction(['sync_queue'], 'readwrite');
+        var store = tx.objectStore('sync_queue');
+        var req = store.get(uid);
+        req.onsuccess = function(e) {
+          var item = e.target.result;
+          if (!item) {
+            resolve(false);
+            return;
+          }
+          item.status = status;
+          if (status === 'failed') {
+            item.attempts = (item.attempts || 0) + 1;
+            item.last_error = reason || 'Unknown error';
+            item.next_retry = Date.now() + Math.min(60000, Math.pow(2, item.attempts) * 1000);
+          } else if (status === 'synced' || status === 'completed') {
+            item.synced_at = new Date().toISOString();
+          }
+          item.updated_at = new Date().toISOString();
+          var putReq = store.put(item);
+          putReq.onsuccess = function() { resolve(true); };
+          putReq.onerror = function(errEvt) { reject(errEvt.target.error); };
+        };
+        req.onerror = function(errEvt) { reject(errEvt.target.error); };
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
+
+/**
+ * ذخیره متادیتا با کلید مشخص
+ * @param {string} key کلید متادیتا
+ * @param {*} value مقدار (شیء، رشته، آرایه و ...)
+ * @returns {Promise<boolean>}
+ */
+OfflineStorage.prototype.setMetadata = function(key, value) {
+  var self = this;
+  return self.init().then(function(db) {
+    if (!db) return false;
+    return new Promise(function(resolve, reject) {
+      try {
+        var tx = db.transaction(['metadata'], 'readwrite');
+        var store = tx.objectStore('metadata');
+        var req = store.put({ key: key, value: value, updated_at: new Date().toISOString() });
+        req.onsuccess = function() { resolve(true); };
+        req.onerror = function(e) { reject(e.target.error); };
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
+
+/**
+ * خواندن مقدار متادیتا بر اساس کلید
+ * @param {string} key کلید مورد نظر
+ * @returns {Promise<*>} مقدار ذخیره‌شده یا null
+ */
+OfflineStorage.prototype.getMetadata = function(key) {
+  var self = this;
+  return self.init().then(function(db) {
+    if (!db) return null;
+    return new Promise(function(resolve, reject) {
+      try {
+        var tx = db.transaction(['metadata'], 'readonly');
+        var store = tx.objectStore('metadata');
+        var req = store.get(key);
+        req.onsuccess = function(e) {
+          var item = e.target.result;
+          resolve(item ? item.value : null);
+        };
+        req.onerror = function(e) { reject(e.target.error); };
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
+
+/**
+ * پاک‌سازی تمام استورها و داده‌های ذخیره‌شده در IndexedDB
+ * @returns {Promise<boolean>}
+ */
+OfflineStorage.prototype.clearAll = function() {
+  var self = this;
+  return self.init().then(function(db) {
+    if (!db) return false;
+    return new Promise(function(resolve, reject) {
+      try {
+        var tx = db.transaction(['entities', 'sync_queue', 'metadata'], 'readwrite');
+        var c1 = tx.objectStore('entities').clear();
+        var c2 = tx.objectStore('sync_queue').clear();
+        var c3 = tx.objectStore('metadata').clear();
+
+        var completed = 0;
+        function checkDone() {
+          completed++;
+          if (completed >= 3) resolve(true);
+        }
+        if (c1) c1.onsuccess = checkDone; else checkDone();
+        if (c2) c2.onsuccess = checkDone; else checkDone();
+        if (c3) c3.onsuccess = checkDone; else checkDone();
+
+        tx.onerror = function(e) { reject(e.target.error); };
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   شبیه‌ساز حافظه‌ای استاندارد W3C IndexedDB برای محیط‌های تست (Node/jsdom)
+   ═══════════════════════════════════════════════════════════════════ */
+function makeOfflineIdbFake() {
+  var dbs = {};
+
+  return {
+    open: function(name, version) {
+      var req = { onsuccess: null, onerror: null, onupgradeneeded: null, result: null, error: null };
+      setTimeout(function() {
+        var isNew = !dbs[name];
+        if (isNew) {
+          dbs[name] = {
+            name: name,
+            version: 0,
+            stores: {},
+            objectStoreNames: {
+              _list: [],
+              contains: function(s) { return this._list.indexOf(s) >= 0; },
+              includes: function(s) { return this._list.indexOf(s) >= 0; },
+              item: function(i) { return this._list[i]; },
+              get length() { return this._list.length; }
+            }
+          };
+        }
+        var targetDb = dbs[name];
+        var dbHandle = {
+          name: targetDb.name,
+          version: version || 1,
+          objectStoreNames: targetDb.objectStoreNames,
+          createObjectStore: function(sname, opts) {
+            if (!targetDb.objectStoreNames.contains(sname)) {
+              targetDb.objectStoreNames._list.push(sname);
+            }
+            targetDb.stores[sname] = targetDb.stores[sname] || {
+              name: sname,
+              keyPath: opts ? opts.keyPath : null,
+              data: {},
+              indices: {}
+            };
+            return {
+              createIndex: function(iname, keyPath, iopts) {
+                targetDb.stores[sname].indices[iname] = { keyPath: keyPath, unique: !!(iopts && iopts.unique) };
+              }
+            };
+          },
+          transaction: function(storeNames, mode) {
+            var txObj = {
+              oncomplete: null,
+              onerror: null,
+              onabort: null,
+              objectStore: function(sname) {
+                var s = targetDb.stores[sname];
+                if (!s) throw new Error('ObjectStore not found: ' + sname);
+                return {
+                  name: sname,
+                  indexNames: {
+                    contains: function(n) { return !!s.indices[n]; }
+                  },
+                  index: function(iname) {
+                    var idxDef = s.indices[iname];
+                    return {
+                      getAll: function(query) {
+                        var req2 = { onsuccess: null, onerror: null, result: null };
+                        setTimeout(function() {
+                          var res = [];
+                          for (var k in s.data) {
+                            var item = s.data[k];
+                            var val = idxDef ? item[idxDef.keyPath] : null;
+                            if (query === undefined || val === query || String(val) === String(query)) {
+                              res.push(JSON.parse(JSON.stringify(item)));
+                            }
+                          }
+                          req2.result = res;
+                          if (req2.onsuccess) req2.onsuccess({ target: req2 });
+                        }, 0);
+                        return req2;
+                      }
+                    };
+                  },
+                  put: function(val) {
+                    var req2 = { onsuccess: null, onerror: null, result: null };
+                    setTimeout(function() {
+                      var key;
+                      if (Array.isArray(s.keyPath)) {
+                        key = s.keyPath.map(function(kp) { return val[kp]; }).join('::');
+                      } else if (typeof s.keyPath === 'string') {
+                        key = val[s.keyPath];
+                      } else {
+                        key = JSON.stringify(val);
+                      }
+                      s.data[key] = JSON.parse(JSON.stringify(val));
+                      req2.result = key;
+                      if (req2.onsuccess) req2.onsuccess({ target: req2 });
+                    }, 0);
+                    return req2;
+                  },
+                  get: function(key) {
+                    var req2 = { onsuccess: null, onerror: null, result: null };
+                    setTimeout(function() {
+                      var k = Array.isArray(key) ? key.join('::') : key;
+                      req2.result = s.data[k] ? JSON.parse(JSON.stringify(s.data[k])) : undefined;
+                      if (req2.onsuccess) req2.onsuccess({ target: req2 });
+                    }, 0);
+                    return req2;
+                  },
+                  getAll: function() {
+                    var req2 = { onsuccess: null, onerror: null, result: null };
+                    setTimeout(function() {
+                      var res = [];
+                      for (var k in s.data) res.push(JSON.parse(JSON.stringify(s.data[k])));
+                      req2.result = res;
+                      if (req2.onsuccess) req2.onsuccess({ target: req2 });
+                    }, 0);
+                    return req2;
+                  },
+                  delete: function(key) {
+                    var req2 = { onsuccess: null, onerror: null, result: null };
+                    setTimeout(function() {
+                      var k = Array.isArray(key) ? key.join('::') : key;
+                      delete s.data[k];
+                      req2.result = undefined;
+                      if (req2.onsuccess) req2.onsuccess({ target: req2 });
+                    }, 0);
+                    return req2;
+                  },
+                  clear: function() {
+                    var req2 = { onsuccess: null, onerror: null, result: null };
+                    setTimeout(function() {
+                      s.data = {};
+                      req2.result = undefined;
+                      if (req2.onsuccess) req2.onsuccess({ target: req2 });
+                    }, 0);
+                    return req2;
+                  }
+                };
+              }
+            };
+            setTimeout(function() {
+              if (txObj.oncomplete) txObj.oncomplete({ target: txObj });
+            }, 0);
+            return txObj;
+          }
+        };
+
+        if (targetDb.version < (version || 1)) {
+          targetDb.version = version || 1;
+          if (req.onupgradeneeded) {
+            req.onupgradeneeded({ target: { result: dbHandle } });
+          }
+        }
+        req.result = dbHandle;
+        if (req.onsuccess) req.onsuccess({ target: req });
+      }, 0);
+      return req;
+    }
+  };
+}
+
+// ایجاد نمونه پیش‌فرض سراسری
+var offlineStorage = new OfflineStorage();
+
+/* ═══════════════════════════════════════════════════════════════════
+   src/js/00-migration.js — مهاجرت خودکار داده‌ها به IndexedDB
+   فاز ۴: بندهای ۱۶ تا ۲۰ — انتقال بدون قطعی به IndexedDB
+   ═══════════════════════════════════════════════════════════════════ */
+
+var IDB_MIGRATION_FLAG = 'payesh_idb_migrated_v2';
+
+/**
+ * مهاجرت خودکار داده‌های محلی به IndexedDB در اولین اجرا
+ * @param {OfflineStorage} [customStorage] شیء ذخیره‌سازی آفلاین اختیاری (برای تست‌ها)
+ * @returns {Promise<boolean>} وضعیت اتمام مهاجرت
+ */
+function migrateFromLocalStorageToIdb(customStorage) {
+  var storage = customStorage || (typeof offlineStorage !== 'undefined' ? offlineStorage : null);
+  if (!storage || !storage.isSupported()) {
+    return Promise.resolve(false);
+  }
+
+  // اگر قبلاً مهاجرت انجام شده باشد
+  try {
+    if (typeof Store !== 'undefined' && Store.get(IDB_MIGRATION_FLAG) === 'true') {
+      return Promise.resolve(true);
+    }
+  } catch (e) {
+    return Promise.resolve(false);
+  }
+
+  return storage.init().then(function() {
+    var promises = [];
+
+    // ۱. انتقال لاگ و سابقه تغییرات
+    try {
+      if (typeof Store !== 'undefined') {
+        var rawLog = Store.get('sms_log_v1') || Store.get('payesh_log');
+        if (rawLog) {
+          var logEntries = JSON.parse(rawLog);
+          if (Array.isArray(logEntries) && logEntries.length > 0) {
+            promises.push(storage.setMetadata('legacy_log', logEntries));
+          }
+        }
+      }
+    } catch (errLog) {
+      console.warn('هشدار در خواندن لاگ قدیمی جهت مهاجرت:', errLog);
+    }
+
+    // ۲. انتقال صف همگام‌سازی معلق
+    try {
+      if (typeof Store !== 'undefined') {
+        var rawQueue = Store.get('sms_queue_v1') || Store.get('payesh_sync_queue');
+        if (rawQueue) {
+          var queueEntries = JSON.parse(rawQueue);
+          if (Array.isArray(queueEntries)) {
+            for (var i = 0; i < queueEntries.length; i++) {
+              var op = queueEntries[i];
+              if (op && (op.uid || op.id)) {
+                if (!op.uid) op.uid = op.id;
+                promises.push(storage.addToQueue(op));
+              }
+            }
+          }
+        }
+      }
+    } catch (errQ) {
+      console.warn('هشدار در انتقال صف همگام‌سازی جهت مهاجرت:', errQ);
+    }
+
+    // ۳. انتقال تنظیمات برنامه
+    try {
+      if (typeof Store !== 'undefined') {
+        var rawSettings = Store.get('sms_app_settings') || Store.get('payesh_app_settings');
+        if (rawSettings) {
+          var settings = JSON.parse(rawSettings);
+          promises.push(storage.setMetadata('app_settings', settings));
+        }
+      }
+    } catch (errSet) {
+      console.warn('هشدار در انتقال تنظیمات جهت مهاجرت:', errSet);
+    }
+
+    return Promise.all(promises).then(function() {
+      try {
+        if (typeof Store !== 'undefined') Store.set(IDB_MIGRATION_FLAG, 'true');
+      } catch (e) {}
+      return true;
+    }).catch(function(err) {
+      console.error('خطا در فرآیند مهاجرت داده‌ها به IndexedDB:', err);
+      return false;
+    });
+  }).catch(function() {
+    return false;
+  });
+}
+
+// تلاش برای اجرای مهاجرت در پس‌زمینه هنگام بوت در صورت آمادگی محیط
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  try {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() {
+        try { migrateFromLocalStorageToIdb(); } catch (e) {}
+      });
+    } else {
+      setTimeout(function() {
+        try { migrateFromLocalStorageToIdb(); } catch (e) {}
+      }, 0);
+    }
+  } catch (e) {}
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    توابع کمکی پایه
    همهٔ ابزارهای عمومی اینجاست: esc, fa, faD, rial, toast, $ و…
    ═══════════════════════════════════════════════════════════════════ */
@@ -1799,14 +2600,16 @@ function idxReport(){
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   ماندگاری — دفترچهٔ تغییرات
+   ماندگاری — دفترچهٔ تغییرات و هماهنگی با IndexedDB (فاز ۴)
    ═══════════════════════════════════════════════════════════════════
    داده به‌صورت «دفترچهٔ عملیات» نگه داشته می‌شود نه عکس لحظه‌ای:
    هر درج/ویرایش/حذف یک سطر است و وضعیت فعلی از بازپخش آن‌ها می‌آید.
    همین ساختار است که همگام‌سازی با سرور را ممکن می‌کند — همان سطرها
    به صف 27-sync.js می‌روند.
 
-   ⚠️ دسترسی به حافظه فقط از راه `Store` (فایل 00-data-layer.js).
+   معماری هیبریدی (فاز ۴ بند ۱۶ تا ۲۰):
+   ۱. لایهٔ اصلی و بلندمدت: IndexedDB (ماژول 03-idb-persistence.js)
+   ۲. لایهٔ پایداری فوری و همگام: RAM db + پایداری با Store
    ═══════════════════════════════════════════════════════════════════ */
 const LOG_KEY='sms_log_v1', SESSION_KEY='sms_session_v1', BOSS_KEY='sms_boss_v1', PERSONA_KEY='sms_persona_v1';
 /* R95 (بند ۲.۵): مجموعه‌هایِ دارایِ نسخه — باید با VERSION_TRACKED سرور
@@ -1845,7 +2648,15 @@ function batchWrites(fn){
 function saveLog(){
   if(_BATCH_DEPTH > 0){ _BATCH_DIRTY = true; return; }
   var payload = JSON.stringify(log);
-  /* Store.set خودش استثنا را می‌گیرد و false برمی‌گرداند */
+  
+  // همگام‌سازی ناهمگام با IndexedDB در پس‌زمینه (در صورت پشتیبانی مرورگر)
+  if(typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()){
+    try{
+      offlineStorage.setMetadata(LOG_KEY, log).catch(function(){});
+    }catch(e){}
+  }
+
+  /* Store.set خودش استثنا را می‌گیرد و false برمی‌گرداند (Fallback امن) */
   if(Store.set(LOG_KEY, payload)){
     STORAGE_FULL=false;
     /* هشدار پیش از پرشدن: در ۸۰٪ سقف تقریبی ۵ مگابایت */
@@ -1856,10 +2667,15 @@ function saveLog(){
         toast('حافظهٔ دستگاه رو به پر شدن است. لطفاً به اینترنت وصل شوید تا داده‌ها ارسال شود.','err');
     }
   }else{
-    /* حافظه پر شد — کاربر باید بداند، وگرنه بی‌صدا داده از دست می‌رود */
-    STORAGE_FULL=true;
-    if(typeof toast==='function')
-      toast('⚠️ حافظهٔ دستگاه پر است! تغییرات جدید ذخیره نشد. برای جلوگیری از از دست رفتن داده، به اینترنت وصل شوید.','err');
+    /* اگر IndexedDB در دسترس باشد، پر شدن Store مانع کار کلاینت نمی‌شود */
+    if(typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()){
+      STORAGE_FULL=false;
+    } else {
+      /* حافظه پر شد — کاربر باید بداند، وگرنه بی‌صدا داده از دست می‌رود */
+      STORAGE_FULL=true;
+      if(typeof toast==='function')
+        toast('⚠️ حافظهٔ دستگاه پر است! تغییرات جدید ذخیره نشد. برای جلوگیری از از دست رفتن داده، به اینترنت وصل شوید.','err');
+    }
   }
 }
 /** آیا ذخیره‌سازی محلی دچار مشکل است؟ (برای نشانگر وضعیت) */
@@ -2005,6 +2821,22 @@ function applyOp(op,record=true){
     compactLogIfNeeded(); /* اگر فشرد، saveLog همان شکلِ تازه را می‌نویسد */
     saveLog();
     _GRADE_CACHE_VERSION++;
+
+    // همگام‌سازی مستقیم موجودیت در IndexedDB
+    if(typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()){
+      try{
+        if(op.t==='ins' || op.t==='upd'){
+          if(op.data && op.data.id != null){
+            offlineStorage.putEntity(op.c, op.data).catch(function(){});
+          }
+        }else if(op.t==='del'){
+          if(op.id != null){
+            offlineStorage.removeEntity(op.c, op.id).catch(function(){});
+          }
+        }
+      }catch(e){}
+    }
+
     /* هر تغییر واقعی کاربر وارد صف همگام‌سازی با سرور می‌شود */
     /* در حالت سروری، عملیاتی که کاربرِ احراز‌شده ندارد (مثل تولیدِ
        دنیای دمو پیش از ورود) وارد صفِ ارسال نمی‌شود: سرور نمی‌تواند آن
@@ -2021,6 +2853,9 @@ function resetAll(){
   Store.remove(LOG_KEY);
   Store.remove(SYNC_QUEUE_KEY);
   Store.remove(SYNC_META_KEY);
+  if(typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()){
+    try{ offlineStorage.clearAll(); }catch(e){}
+  }
   location.reload();
 }
 
@@ -3105,6 +3940,197 @@ function initSync(){
   }
   /* اگر چیزی از جلسه‌ی قبل در صف مانده، تلاش کن بفرستی */
   if(pendingCount() && SYNC.online) scheduleSync(1500);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   src/js/29-pull.js — دریافت داده‌ها و دلتاهای سرور (Pull & Delta Sync)
+   A01: پیاده‌سازی Pull/Bootstrap عمومی و همگام‌سازی دوطرفه کلاینت
+   ═══════════════════════════════════════════════════════════════════ */
+
+var PULL_MIGRATION_FLAG = 'payesh_pull_migrated';
+var PULL_SYNC_CURSOR_KEY = 'payesh_last_pull_time';
+var PULL_IS_SYNCING = false;
+
+/**
+ * دریافت اسنپ‌شات یا دلتای تغییرات از سرور و ادغام در پایگاه داده کلاینت
+ * @param {object} [options] تنظیمات دلتا یا اسنپ‌شات کامل
+ * @returns {Promise<object>}
+ */
+function pullFromServer(options) {
+  options = options || {};
+  if (PULL_IS_SYNCING && !options.force) {
+    return Promise.resolve({ ok: false, busy: true });
+  }
+
+  // در صورتی که سرور در دسترس نباشد یا حالت صرفاً محلی فعال باشد
+  if (!isServerMode() && !options.forceOnline && !options.customApi) {
+    return Promise.resolve({ ok: false, fallback: true, message: 'حالت محلی فعال است' });
+  }
+
+  PULL_IS_SYNCING = true;
+
+  var since = null;
+  if (!options.forceSnapshot) {
+    since = options.since || (typeof Store !== 'undefined' ? Store.get(PULL_SYNC_CURSOR_KEY) : null);
+  }
+
+  var queryParts = [];
+  if (since) {
+    queryParts.push('since=' + encodeURIComponent(since));
+  }
+  if (options.collections && Array.isArray(options.collections) && options.collections.length > 0) {
+    queryParts.push('collections=' + encodeURIComponent(options.collections.join(',')));
+  }
+
+  var endpoint = '/api/v1/pull' + (queryParts.length > 0 ? ('?' + queryParts.join('&')) : '');
+  var apiCaller = options.customApi || (typeof Api !== 'undefined' ? Api : null);
+
+  if (!apiCaller || typeof apiCaller.get !== 'function') {
+    PULL_IS_SYNCING = false;
+    return Promise.resolve({ ok: false, fallback: true });
+  }
+
+  return apiCaller.get(endpoint).then(function(payload) {
+    PULL_IS_SYNCING = false;
+    if (!payload || !payload.ok) {
+      return { ok: false, payload: payload };
+    }
+
+    // ادغام تغییرات در پایگاه داده کلاینت
+    mergeServerDelta(payload);
+
+    // ثبت زمان آخرین همگام‌سازی موفق
+    if (payload.server_time && typeof Store !== 'undefined') {
+      Store.set(PULL_SYNC_CURSOR_KEY, payload.server_time);
+      Store.set(PULL_MIGRATION_FLAG, 'true');
+    }
+
+    if (typeof offlineStorage !== 'undefined' && offlineStorage.isSupported() && payload.server_time) {
+      try {
+        offlineStorage.setMetadata(PULL_SYNC_CURSOR_KEY, payload.server_time).catch(function(){});
+        if (payload.server_version != null) {
+          offlineStorage.setMetadata('server_version', payload.server_version).catch(function(){});
+        }
+      } catch (e) {}
+    }
+
+    return { ok: true, payload: payload };
+  }).catch(function(err) {
+    PULL_IS_SYNCING = false;
+    // Fallback: خطای ارتباط نباید برنامه را متوقف کند
+    return { ok: false, fallback: true, error: err ? err.message : 'network_error' };
+  });
+}
+
+/**
+ * ادغام ایمن داده‌های دریافتی از سرور در حافظه محلی و IndexedDB
+ * محافظت در برابر بازنویسی تغییرات ارسال‌نشده در صف محلی (sync_queue)
+ * @param {object} payload بدنه پاسخ دریافتی از GET /api/v1/pull
+ * @returns {boolean}
+ */
+function mergeServerDelta(payload) {
+  if (!payload || typeof payload !== 'object' || !payload.collections) {
+    return false;
+  }
+
+  // استخراج شناسه‌های رکوردهایی که در صف آفلاین منتظر ارسال هستند تا بازنویسی نشوند
+  var pendingSet = {};
+  if (typeof SYNC !== 'undefined' && Array.isArray(SYNC.queue)) {
+    for (var qi = 0; qi < SYNC.queue.length; qi++) {
+      var qItem = SYNC.queue[qi];
+      if (qItem && qItem.c) {
+        var opId = qItem.id != null ? qItem.id : (qItem.data ? qItem.data.id : null);
+        if (opId != null) {
+          pendingSet[qItem.c + '::' + opId] = true;
+        }
+      }
+    }
+  }
+
+  var cols = payload.collections;
+  var touchedCols = {};
+
+  for (var c in cols) {
+    if (!Object.prototype.hasOwnProperty.call(cols, c)) continue;
+    var records = cols[c];
+    if (!Array.isArray(records)) continue;
+
+    if (!Array.isArray(db[c])) {
+      db[c] = [];
+    }
+
+    touchedCols[c] = true;
+
+    for (var i = 0; i < records.length; i++) {
+      var rec = records[i];
+      if (!rec || rec.id == null) continue;
+
+      var key = c + '::' + rec.id;
+      // اگر در صف محلی عملیات ثبت‌نشده برای این رکورد باشد، دست نزن
+      if (pendingSet[key]) {
+        continue;
+      }
+
+      var existingIdx = db[c].findIndex(function(x) { return x.id === rec.id; });
+      if (existingIdx > -1) {
+        Object.assign(db[c][existingIdx], rec);
+      } else {
+        db[c].push(rec);
+      }
+
+      var numId = Number(rec.id);
+      if (numId > (ids[c] || 0)) {
+        ids[c] = numId;
+      }
+
+      // همگام‌سازی پس‌زمینه با IndexedDB
+      if (typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()) {
+        try { offlineStorage.putEntity(c, rec).catch(function(){}); } catch (e) {}
+      }
+    }
+  }
+
+  // پردازش رکوردهای حذف‌شده در سرور (Tombstones)
+  if (Array.isArray(payload.deleted)) {
+    for (var di = 0; di < payload.deleted.length; di++) {
+      var del = payload.deleted[di];
+      if (!del || !del.c || del.id == null) continue;
+
+      var delKey = del.c + '::' + del.id;
+      if (pendingSet[delKey]) {
+        continue; // اگر کاربر به صورت محلی ویرایش کرده، حذف سرور را نگه دار
+      }
+
+      if (Array.isArray(db[del.c])) {
+        var dIdx = db[del.c].findIndex(function(x) { return x.id === del.id; });
+        if (dIdx > -1) {
+          db[del.c].splice(dIdx, 1);
+          touchedCols[del.c] = true;
+        }
+      }
+
+      if (typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()) {
+        try { offlineStorage.removeEntity(del.c, del.id).catch(function(){}); } catch (e) {}
+      }
+    }
+  }
+
+  // باطل‌سازی ایندکس‌های کش‌شده برای رندرهای بعدی
+  for (var tc in touchedCols) {
+    if (typeof idxInvalidate === 'function') {
+      try { idxInvalidate(tc); } catch (e) {}
+    }
+  }
+
+  return true;
+}
+
+/**
+ * راه‌اندازی اولیه و بارگذاری کلی داده‌ها از سرور در اولین اجرای برنامه
+ * @returns {Promise<object>}
+ */
+function bootstrapFromServer() {
+  return pullFromServer({ forceSnapshot: true });
 }
 
 /* ═══════════════════════════════════════════════════════════════════

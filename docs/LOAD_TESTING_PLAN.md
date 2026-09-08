@@ -299,7 +299,7 @@ export default function () {
 │ لایه ماشین (Runtime)      │ Node.js V8 Heap Used, Garbage Collection Pauses,   │
 │                           │ CPU Utilization per Core, Open File Descriptors    │
 ├───────────────────────────┼────────────────────────────────────────────────────┤
-│ لایه پایگاه داده (Store)  │ Lock Wait Time, Write IOPS, B-Tree Index Latency,  │
+│ لایه پایگاه‌داده (Store)  │ Lock Wait Time, Write IOPS, B-Tree Index Latency,  │
 │                           │ WAL (Write-Ahead Log) Sync Times                   │
 ├───────────────────────────┼────────────────────────────────────────────────────┤
 │ لایه شبکه (Network)       │ Connection Pool Saturation, Inbound/Outbound Bw,   │
