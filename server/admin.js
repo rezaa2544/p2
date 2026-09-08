@@ -12,6 +12,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { validate } = require('./validate');
 
 const RETENTION = 10;
 const NAME_RE = /^payesh-\d{8}-\d{6}-\d{3}\.json$/;
@@ -80,9 +81,16 @@ function createAdmin(ctx){
   function apiRestore(req, res, body){
     const g = checkAdmin(req, res);
     if(g.done) return g.done;
+    /* لایهٔ مقدار (validate.js): فقط {file?} — کلیدِ ناشناخته = ردِّ 400.
+       نامِ نامعتبر/ناموجود مثلِ گذشته به آخرین نسخهٔ معتبر برمی‌گردد
+       (قراردادِ قفل‌شده در security2:F1 — امنیت با الگو + فهرست است نه
+       با رد؛ traversal هرگز به دیسک نمی‌رسد). */
+    const v = validate(body || {}, { fields: { file: { type: 'string', max: 128 } } });
+    if(!v.ok && v.kind === 'unknown_field')
+      return sendJson(res, 400, { ok: false, code: 'unknown_field', field: v.field });
     const all = listBackups();
     if(!all.length) return sendJson(res, 404, { ok: false, code: 'no_backup' });
-    const wanted = (body && typeof body.file === 'string') ? body.file : null;
+    const wanted = (body && typeof body.file === 'string' && body.file !== '') ? body.file : null;
     const name = (wanted && NAME_RE.test(wanted) && all.indexOf(wanted) > -1)
       ? wanted
       : all[all.length - 1];

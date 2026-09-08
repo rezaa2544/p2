@@ -1,4 +1,5 @@
 'use strict';
+const { validate } = require('./validate');
 /* ── R95 (بند ۲.۵) — sync_conflicts: فهرست + داوریِ انسانی ─────────────────
    سیاست (docs/TODO_BEFORE_PRODUCTION.md بند ۲.۵):
      • حضور/نمره/انضباطی  → تعارض «حفظ» می‌شود (sync_conflicts) — اینجا داوری
@@ -35,10 +36,21 @@ function createConflicts(ctx){
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
     if(s.role !== 'manager' && s.role !== 'superadmin')
       return sendJson(res, 403, { ok: false, code: 'role_denied' });
-    const cid = Number(body && body.conflict_id);
-    const winner = body && body.winner;
-    if(!cid || (winner !== 'incoming' && winner !== 'server'))
+    /* لایهٔ مقدار (validate.js): فقط {conflict_id, winner, reason?} —
+       کلیدِ ناشناخته = رد؛ conflict_id عددِ صحیحِ مثبت؛ winner از enum؛
+       reason حداکثر ۲۰۰ نویسه (به‌جایِ برشِ خاموش، ردِّ صریح). */
+    const v = validate(body, { fields: {
+      conflict_id: { type: 'integer', min: 1 },
+      winner: { type: 'string', enum: ['incoming', 'server'] },
+      reason: { type: 'string', max: 200 }
+    }, required: ['conflict_id', 'winner'] });
+    if(!v.ok){
+      if(v.kind === 'unknown_field')
+        return sendJson(res, 400, { ok: false, code: 'unknown_field', field: v.field });
       return sendJson(res, 400, { ok: false, code: 'bad_payload' });
+    }
+    const cid = body.conflict_id;
+    const winner = body.winner;
     const c = (store.sync_conflicts || []).find(x => x.id === cid);
     if(!c) return sendJson(res, 404, { ok: false, code: 'not_found' });
     if(s.role === 'manager' && c.school_id != null && Number(c.school_id) !== Number(s.school_id))
