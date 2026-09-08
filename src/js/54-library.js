@@ -75,7 +75,7 @@ function libAddBook(title, author, code, serial){
     serial: serial,
     created_at: new Date().toISOString()
   };
-  return {ok:true, rec: add('lib_books', rec)};
+  return {ok:true, rec: insert('lib_books', rec)};
 }
 function libSetSerial(bookId, serial){
   var u = S.user;
@@ -138,7 +138,7 @@ function libLend(bookId, studentId, dueDate){
     registered_by: u.id,
     created_at: now
   };
-  return {ok:true, rec: add('lib_loans', rec)};
+  return {ok:true, rec: insert('lib_loans', rec)};
 }
 function libReturn(loanId){
   var u = S.user;

@@ -329,7 +329,7 @@ function _yearAgoISO(daysBack){
  * ⚠️ عمداً موارد انضباطی ساخته نمی‌شود — دبیر حق دیدنشان را
  * ندارد، پس دادهٔ نمونه‌اش هم بی‌فایده است.
  */
-function generateP12(){
+function generatePriorYear(){  /* دور ۱۰۰/نقص ۶: نامِ پیشین generateP12 با فاز ۱۲ مشاور تداخل داشت و سایه می‌خورد */
   if(typeof db === 'undefined' || !db.users) return 0;
   if(typeof add !== 'function') return 0;      /* فقط در بوت دادهٔ نمونه */
   /* اگر از قبل ساخته شده، دوباره نساز */

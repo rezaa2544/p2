@@ -178,7 +178,7 @@ function dojoSaveModel(){
       kept[t.id] = 1;
       update('dojo_types', t.id, {label:t.label, icon:t.icon, delta:t.delta, order:idx});
     } else {
-      add('dojo_types', {school_id:u.school_id, label:t.label, icon:t.icon, delta:t.delta, order:idx});
+      insert('dojo_types', {school_id:u.school_id, label:t.label, icon:t.icon, delta:t.delta, order:idx});
     }
   });
   existing.forEach(function(t){
