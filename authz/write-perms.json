@@ -28,6 +28,7 @@
       "counselor_refs",
       "discipline",
       "dojo_types",
+      "donations",
       "dorm_assignments",
       "dorm_meals",
       "dorm_rooms",
@@ -54,6 +55,7 @@
       "pre_enrollments",
       "preapps",
       "reexams",
+      "safety_drills",
       "schedule",
       "scholarships",
       "school_years",
@@ -61,6 +63,7 @@
       "sedascores",
       "sms_log",
       "sms_wallet",
+      "staff_attendance",
       "student_archive",
       "student_transfers",
       "subjects",
@@ -69,6 +72,7 @@
       "summer_classes",
       "support_tickets",
       "teacher_schools",
+      "training_courses",
       "transactions",
       "transfer_requests",
       "tuition_plans",
@@ -467,6 +471,20 @@
       "ins": [],
       "upd": [],
       "del": []
+    },
+    "donations": {
+      "ins": [
+        "manager",
+        "superadmin"
+      ],
+      "upd": [
+        "manager",
+        "superadmin"
+      ],
+      "del": [
+        "manager",
+        "superadmin"
+      ]
     },
     "dojo_types": {
       "ins": [
@@ -956,6 +974,20 @@
         "superadmin"
       ]
     },
+    "safety_drills": {
+      "ins": [
+        "manager",
+        "superadmin"
+      ],
+      "upd": [
+        "manager",
+        "superadmin"
+      ],
+      "del": [
+        "manager",
+        "superadmin"
+      ]
+    },
     "schedule": {
       "ins": [
         "manager",
@@ -1041,6 +1073,20 @@
       ]
     },
     "sms_wallet": {
+      "ins": [
+        "manager",
+        "superadmin"
+      ],
+      "upd": [
+        "manager",
+        "superadmin"
+      ],
+      "del": [
+        "manager",
+        "superadmin"
+      ]
+    },
+    "staff_attendance": {
       "ins": [
         "manager",
         "superadmin"
@@ -1192,6 +1238,20 @@
       ],
       "del": [
         "teacher",
+        "superadmin"
+      ]
+    },
+    "training_courses": {
+      "ins": [
+        "manager",
+        "superadmin"
+      ],
+      "upd": [
+        "manager",
+        "superadmin"
+      ],
+      "del": [
+        "manager",
         "superadmin"
       ]
     },
@@ -1611,6 +1671,17 @@
       "updated_at",
       "village"
     ],
+    "donations": [
+      "amount",
+      "created_at",
+      "date",
+      "description",
+      "donor_name",
+      "id",
+      "registered_by",
+      "school_id",
+      "updated_at"
+    ],
     "dojo_types": [
       "created_at",
       "delta",
@@ -1991,6 +2062,17 @@
       "subject_id",
       "updated_at"
     ],
+    "safety_drills": [
+      "created_at",
+      "date",
+      "id",
+      "notes",
+      "participant_count_staff",
+      "participant_count_students",
+      "registered_by",
+      "school_id",
+      "updated_at"
+    ],
     "schedule": [
       "class_id",
       "created_at",
@@ -2039,6 +2121,7 @@
       "phone",
       "place_rules",
       "province_id",
+      "public_goals",
       "shift",
       "type",
       "updated_at",
@@ -2071,6 +2154,17 @@
       "created_at",
       "id",
       "school_id",
+      "updated_at"
+    ],
+    "staff_attendance": [
+      "created_at",
+      "date",
+      "id",
+      "note",
+      "registered_by",
+      "school_id",
+      "staff_id",
+      "status",
       "updated_at"
     ],
     "student_archive": [
@@ -2184,6 +2278,17 @@
       "source_ref",
       "status",
       "teacher_id",
+      "updated_at"
+    ],
+    "training_courses": [
+      "created_at",
+      "date",
+      "hours",
+      "id",
+      "school_id",
+      "staff_id",
+      "status",
+      "title",
       "updated_at"
     ],
     "transactions": [
@@ -2667,6 +2772,22 @@
         "dojo_types"
       ]
     },
+    "don-del-ok": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "donations"
+      ]
+    },
+    "don-save": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "donations"
+      ]
+    },
     "dorm-assign-pick": {
       "roles": [
         "manager"
@@ -2714,6 +2835,22 @@
       ],
       "collections": [
         "dorm_assignments"
+      ]
+    },
+    "drill-del-ok": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "safety_drills"
+      ]
+    },
+    "drill-save": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "safety_drills"
       ]
     },
     "drop-register-confirm": {
@@ -3436,6 +3573,14 @@
         "sms_wallet"
       ]
     },
+    "staffatt-save": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "staff_attendance"
+      ]
+    },
     "sub-del": {
       "roles": [
         "manager",
@@ -3586,6 +3731,24 @@
       "collections": [
         "notifications",
         "transfer_requests"
+      ]
+    },
+    "trn-complete": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "certificates",
+        "training_courses"
+      ]
+    },
+    "trn-save": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "certificates",
+        "training_courses"
       ]
     },
     "trx-edit-save": {

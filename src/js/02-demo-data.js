@@ -62,7 +62,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[],support_tickets:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[],support_tickets:[],staff_attendance:[],training_courses:[],safety_drills:[],donations:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -72,7 +72,7 @@ function generate(){
     const sFields=(branches||[]).reduce((a,b)=>a.concat(fieldsOfBranch(b)),[]);
     const school=add('schools',{name,code,city,address:city+'، خیابان '+pick(['آزادی','ولیعصر','معلم','شریعتی','امام خمینی'])+'، پلاک '+(10+ri(200)),phone:demoPhone(),level,type:type||'عادی',gender,branches:branches||[],fields:sFields,
       /* si===3 (MM-104) «هر دو»: روز + شاخهٔ شبانهٔ بزرگسالان (دور ۷۸) */
-      shift: si===4 ? 'بعدازظهر' : (si===1||si===3 ? 'هر دو' : 'صبح'),capacity:400+ri(200),active:si===5?0:1,
+      shift: si===4 ? 'بعدازظهر' : (si===1||si===3 ? 'هر دو' : 'صبح'),capacity:400+ri(200),active:si===5?0:1,public_goals:0,
       /* پروفایل قابلیت: هر مدرسه کلیدهای مستقل روشن/خاموش دارد؛
          در نبود مقدار، پیش‌فرض‌های CAP_DEFAULTS اعمال می‌شود. */
       capabilities: caps||null,
@@ -360,4 +360,64 @@ function generate(){
     });
   })();
   add('announcements',{school_id:null,title:'به‌روزرسانی سامانه',body:'نسخه جدید سامانه مدیریت مدارس با قابلیت گزارش‌گیری پیشرفته و پنل اولیا منتشر شد.',audience:'all',created_by:1,created_at:daysAgoISO(1)});
+  /* بند B.1 (چت۱): سید حضور کادر — ۵ روزِ کاریِ اخیر × دبیرانِ هر مدرسه.
+     ⚠️ صفر مصرفِ rng (هشِ قطعی): فازهای سیدِ پس‌از generate (اداره،
+     مشاور، راننده) از همان جریان تغذیه می‌کنند و هر مصرفی تلفنِ
+     حساب‌های نمونه را جابه‌جا می‌کند. امروز خالی می‌ماند تا مدیر زنده ثبت کند. */
+  (function(){
+    var days=schoolDays(5);
+    var done={};
+    db.users.filter(function(u){return u.role==='manager';}).forEach(function(mgr){
+      if(done[mgr.school_id])return; done[mgr.school_id]=1;
+      db.users.filter(function(u){return u.role==='teacher'&&u.school_id===mgr.school_id&&u.active;}).forEach(function(t){
+        days.forEach(function(iso,di){
+          if(iso===todayISO())return;
+          /* ⚠️ صفر مصرفِ rng: پس‌از generate فازهای سید دیگری (اداره/مشاور/راننده)
+             از همان جریان تغذیه می‌کنند — وضعیت از هشِ قطعی می‌آید. */
+          var hv=(t.id*31+di*17+iso.charCodeAt(9)*7)%100,s='present';
+          if(hv>96)s='absent';else if(hv>90)s='late';
+          add('staff_attendance',{school_id:mgr.school_id,staff_id:t.id,date:iso,status:s,note:s==='late'?'تأخیر در ورود به مدرسه':null,registered_by:mgr.id,created_at:daysAgoISO(2)});
+        });
+      });
+    });
+  })();
+  /* بند B.2 (چت۱): سید دوره‌های آموزشی — ۲ دورهٔ در حال برگزاری برای
+     ۲ دبیر اول هر مدرسه. صفر مصرفِ rng (درس B.1)؛ بدون دورهٔ تکمیل‌شده
+     تا ناوردای «تکمیل‌شده ⟺ گواهی» در سید برقرار بماند. */
+  (function(){
+    var titles=['روش‌های نوین تدریس','مدیریت کلاس درس'];
+    var hours=[24,40];
+    var offs=[10,25];
+    var done={};
+    db.users.filter(function(u){return u.role==='manager';}).forEach(function(mgr){
+      if(done[mgr.school_id])return; done[mgr.school_id]=1;
+      var teachers=db.users.filter(function(u){return u.role==='teacher'&&u.school_id===mgr.school_id&&u.active;}).slice(0,2);
+      teachers.forEach(function(t,i){
+        add('training_courses',{school_id:mgr.school_id,staff_id:t.id,title:titles[i%titles.length],hours:hours[i%hours.length],date:daysAgoISO(offs[i%offs.length]),status:'ongoing',created_at:daysAgoISO(2)});
+      });
+    });
+  })();
+  /* بند B.4 (چت۱): سید مانور ایمنی — هر مدرسه ۱ رکورد؛ فردها سبز (۳۰ روز پیش)، زوج‌ها قرمز (۴۰۰ روز پیش).
+     ⚠️ صفر مصرفِ rng (هشِ قطعی از شناسهٔ مدرسه) — دلیل در سید B.1. */
+  (function(){
+    var done={};
+    db.users.filter(function(u){return u.role==='manager';}).forEach(function(mgr){
+      if(done[mgr.school_id])return; done[mgr.school_id]=1;
+      var sid=mgr.school_id, recent=sid%2===1;
+      add('safety_drills',{school_id:sid,date:daysAgoISO(recent?30:400),
+        participant_count_students:120+((sid*37)%80),participant_count_staff:8+((sid*13)%6),
+        notes:recent?'مانور زلزله':'مانور سال گذشته',registered_by:mgr.id,created_at:daysAgoISO(recent?29:399)});
+    });
+  })();
+  /* بند B.5 (چت۱): سید کمک‌های داوطلبانه — هر مدرسه ۲ رکورد (۱ نامدار + ۱ ناشناس).
+     ⚠️ صفر مصرفِ rng (هشِ قطعی از شناسهٔ مدرسه) — دلیل در سید B.1. */
+  (function(){
+    var done={};
+    db.users.filter(function(u){return u.role==='manager';}).forEach(function(mgr){
+      if(done[mgr.school_id])return; done[mgr.school_id]=1;
+      var sid=mgr.school_id;
+      add('donations',{school_id:sid,donor_name:'خیر مدرسه',amount:500000+((sid*7919)%7)*500000,date:daysAgoISO(20+sid),description:'کمک به تجهیز آزمایشگاه',registered_by:mgr.id,created_at:daysAgoISO(19+sid)});
+      add('donations',{school_id:sid,donor_name:null,amount:1000000+((sid*104729)%5)*1000000,date:daysAgoISO(60+sid),description:'نذر فرهنگی',registered_by:mgr.id,created_at:daysAgoISO(59+sid)});
+    });
+  })();
 }
