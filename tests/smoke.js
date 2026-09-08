@@ -743,16 +743,17 @@ test('چیدمان خودکار متوازن است و ظرفیت را رعای�
   if(!n) return;
   W("window.__bk=autoPlacement(needPlacement(" + sid + ").filter(function(x){return x.grade===11;}),"
     + "targetClasses(" + sid + ",11,'علوم تجربی'))");
-  const sizes = W('JSON.stringify(window.__bk.map(function(b){return b.list.length;}))');
+  const sizes = W('JSON.stringify(window.__bk.buckets.map(function(b){return b.list.length;}))');
   const arr = JSON.parse(sizes);
   assert(arr.length >= 2, 'کمتر از دو کلاس مقصد');
   assert(Math.abs(arr[0] - arr[1]) <= 1, 'کلاس‌ها هم‌اندازه نیستند: ' + sizes);
+  assert(W('window.__bk.unplaced.length') === 0, 'جا‌نشده هست (دور ۱۰۰)');
 });
 
 test('اعمال چیدمان ناسازگاری را رفع می‌کند', () => {
   W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
   const sid = W('S.user.school_id');
-  W("(function(){var out=[];window.__bk.forEach(function(b){b.list.forEach(function(s){"
+  W("(function(){var out=[];window.__bk.buckets.forEach(function(b){b.list.forEach(function(s){"
     + "out.push({studentId:s.user.id,classId:b.cls.id});});});window.__pp=out;})()");
   W('applyPlacement(window.__pp)');
   const bad = W("db.users.filter(function(u){return u.role==='student'&&u.school_id===" + sid
