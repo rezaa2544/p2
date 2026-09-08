@@ -81,21 +81,19 @@ function createAdmin(ctx){
   function apiRestore(req, res, body){
     const g = checkAdmin(req, res);
     if(g.done) return g.done;
-    /* لایهٔ مقدار (validate.js): فقط {file?} — کلیدِ ناشناخته = رد. */
+    /* لایهٔ مقدار (validate.js): فقط {file?} — کلیدِ ناشناخته = ردِّ 400.
+       نامِ نامعتبر/ناموجود مثلِ گذشته به آخرین نسخهٔ معتبر برمی‌گردد
+       (قراردادِ قفل‌شده در security2:F1 — امنیت با الگو + فهرست است نه
+       با رد؛ traversal هرگز به دیسک نمی‌رسد). */
     const v = validate(body || {}, { fields: { file: { type: 'string', max: 128 } } });
-    if(!v.ok){
-      if(v.kind === 'unknown_field')
-        return sendJson(res, 400, { ok: false, code: 'unknown_field', field: v.field });
-      return sendJson(res, 400, { ok: false, code: 'bad_payload' });
-    }
+    if(!v.ok && v.kind === 'unknown_field')
+      return sendJson(res, 400, { ok: false, code: 'unknown_field', field: v.field });
     const all = listBackups();
     if(!all.length) return sendJson(res, 404, { ok: false, code: 'no_backup' });
     const wanted = (body && typeof body.file === 'string' && body.file !== '') ? body.file : null;
-    /* نامِ خواسته‌شده باید الگویِ پشتیبان باشد و در فهرست باشد؛ وگرنه ردِّ
-       صریح (رفتارِ پیشین: سکوت و بازگشت به آخرین نسخه — fail-open بود). */
-    if(wanted && (!NAME_RE.test(wanted) || all.indexOf(wanted) === -1))
-      return sendJson(res, 400, { ok: false, code: 'bad_payload' });
-    const name = wanted || all[all.length - 1];
+    const name = (wanted && NAME_RE.test(wanted) && all.indexOf(wanted) > -1)
+      ? wanted
+      : all[all.length - 1];
     const fp = path.join(dir, name);
     let data = null;
     try{ data = JSON.parse(fs.readFileSync(fp, 'utf8')); }catch(e){}
