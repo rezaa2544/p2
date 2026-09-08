@@ -631,7 +631,10 @@ function createSync(ctx){
         continue;
       }
       /* §3.3 — idempotency: a repeated uid is already applied */
-      if(store.__processed_uids[op.uid]){
+      const isProcessed = (db && typeof db.isUidProcessed === 'function')
+        ? await db.isUidProcessed(op.uid)
+        : !!(store.__processed_uids && store.__processed_uids[op.uid]);
+      if(isProcessed){
         results.push({ uid: op.uid, ok: true, code: 'duplicate_ignored', serverTime: new Date().toISOString() });
         continue;
       }

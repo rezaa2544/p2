@@ -30,6 +30,7 @@ server/data/
 
 # R96 — secrets: هرگز وارد repository نشود
 .env*
+!.env.example
 *.pem
 *.key
 *.crt

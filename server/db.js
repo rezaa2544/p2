@@ -5,6 +5,8 @@
    - Full ACID transaction management with connection pooling.
    - Dual-mode operation: Native PostgreSQL when DATABASE_URL is set,
      or zero-dependency in-memory JSON fallback when unset.
+   - Methods: query(sql, params), transaction(callback), ping(),
+     persistOp(op), healthCheck(), close().
    - Supports: PG_POOL_MIN, PG_POOL_MAX, PG_TIMEOUT_MS, DATABASE_URL.
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
@@ -22,7 +24,9 @@ try {
 let pool = null;
 let isPgActive = false;
 let memoryStore = null;
-let config = {
+let reconnectTimer = null;
+
+const config = {
   connectionString: process.env.DATABASE_URL || null,
   min: parseInt(process.env.PG_POOL_MIN || '2', 10),
   max: parseInt(process.env.PG_POOL_MAX || '20', 10),
@@ -31,11 +35,14 @@ let config = {
 };
 
 /**
- * Initialize Database Layer
+ * Initialize Database Layer & Pool Lifecycle
  * @param {Object} fallbackStore - In-memory store object loaded from payesh.json
  */
 async function init(fallbackStore) {
-  memoryStore = fallbackStore || {};
+  if (fallbackStore) {
+    memoryStore = fallbackStore;
+  }
+  config.connectionString = process.env.DATABASE_URL || null;
 
   if (!config.connectionString || !pg) {
     isPgActive = false;
@@ -43,6 +50,10 @@ async function init(fallbackStore) {
   }
 
   try {
+    if (pool) {
+      try { await pool.end(); } catch (e) {}
+    }
+
     pool = new pg.Pool({
       connectionString: config.connectionString,
       min: config.min,
@@ -52,14 +63,20 @@ async function init(fallbackStore) {
     });
 
     pool.on('error', (err) => {
-      console.error('[DB] Unexpected error on idle PostgreSQL client:', err.message);
+      console.error('[DB] PostgreSQL pool background error:', err.message);
+      // Attempt reconnect if pool died
+      scheduleReconnect();
     });
 
-    // Test connection
+    // Test connection & verify ping
     const client = await pool.connect();
     try {
       const res = await client.query('SELECT NOW() as server_time');
       isPgActive = true;
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
       return { ok: true, driver: 'postgres', serverTime: res.rows[0].server_time };
     } finally {
       client.release();
@@ -67,12 +84,25 @@ async function init(fallbackStore) {
   } catch (err) {
     console.warn('[DB] PostgreSQL connection failed. Falling back to JSON in-memory store:', err.message);
     isPgActive = false;
-    if (pool) {
-      try { await pool.end(); } catch (e) {}
-      pool = null;
-    }
+    scheduleReconnect();
     return { ok: true, driver: 'memory', fallback: true, warning: err.message };
   }
+}
+
+/**
+ * Schedule background reconnection when PG goes down
+ */
+function scheduleReconnect() {
+  if (!config.connectionString || reconnectTimer) return;
+  reconnectTimer = setTimeout(async () => {
+    reconnectTimer = null;
+    try {
+      await init(memoryStore);
+      if (isPgActive) {
+        console.log('[DB] Successfully reconnected to PostgreSQL database');
+      }
+    } catch (e) {}
+  }, 10000).unref();
 }
 
 /**
@@ -97,9 +127,28 @@ async function query(text, params) {
     return { rows: [], rowCount: 0 };
   }
   const start = Date.now();
-  const res = await pool.query(text, params);
-  const duration = Date.now() - start;
-  return res;
+  try {
+    const res = await pool.query(text, params);
+    return res;
+  } catch (err) {
+    console.error('[DB] Query execution error:', err.message);
+    throw err;
+  }
+}
+
+/**
+ * Quick ping for health probes & readiness checks
+ */
+async function ping() {
+  if (!isPostgres()) {
+    return { ok: true, driver: 'memory', alive: true };
+  }
+  try {
+    const res = await pool.query('SELECT 1 AS ping');
+    return { ok: true, driver: 'postgres', alive: res.rows && res.rows[0] && res.rows[0].ping === 1 };
+  } catch (err) {
+    return { ok: false, driver: 'postgres', alive: false, error: err.message };
+  }
 }
 
 /**
@@ -163,13 +212,37 @@ async function persistOp(op) {
         await pool.query(`DELETE FROM ${col} WHERE id = $1;`, [delId]);
       }
     }
+
+    // Also persist processed UID into server_processed_uids
+    if (op.uid) {
+      await pool.query(
+        `INSERT INTO server_processed_uids (uid, processed_at) VALUES ($1, NOW()) ON CONFLICT (uid) DO NOTHING;`,
+        [op.uid]
+      ).catch(() => {});
+    }
   } catch (err) {
     console.error(`[DB] Error persisting sync op to PostgreSQL (${col}.${t}):`, err.message);
   }
 }
 
 /**
- * Health check status
+ * Check if a UID has been processed (PostgreSQL or memory store)
+ */
+async function isUidProcessed(uid) {
+  if (isPostgres()) {
+    try {
+      const res = await pool.query('SELECT 1 FROM server_processed_uids WHERE uid = $1', [uid]);
+      if (res.rowCount > 0) return true;
+    } catch (e) {}
+  }
+  if (memoryStore && memoryStore.__processed_uids) {
+    return !!memoryStore.__processed_uids[uid];
+  }
+  return false;
+}
+
+/**
+ * Detailed Health check status
  */
 async function healthCheck() {
   if (!isPostgres()) {
@@ -197,6 +270,10 @@ async function healthCheck() {
  * Graceful shutdown
  */
 async function close() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
   if (pool) {
     try {
       await pool.end();
@@ -211,8 +288,10 @@ module.exports = {
   isPostgres,
   getPool,
   query,
+  ping,
   transaction,
   persistOp,
+  isUidProcessed,
   healthCheck,
   close
 };
