@@ -9,31 +9,19 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-/* ctx: { store, ENUM_WINDOW_MS, ENUM_THRESHOLD, ENUM_SLOW_MS, audit,
-          sessionFrom, sendJson } */
+/* ctx: { store, audit, sessionFrom, sendJson }
+   (R97: ENUM_* و نگهبانِ درونِ این ماژول به روتر منتقل شد.) */
 function createIdor(ctx){
   const store = ctx.store;
-  const ENUM_WINDOW_MS = ctx.ENUM_WINDOW_MS;
-  const ENUM_THRESHOLD = ctx.ENUM_THRESHOLD;
-  const ENUM_SLOW_MS = ctx.ENUM_SLOW_MS;
-  const audit = ctx.audit;
   const sessionFrom = ctx.sessionFrom;
   const sendJson = ctx.sendJson;
-  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
   async function apiStudent(req, res, id){
     const s = sessionFrom(req);
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
 
-    /* enumeration guard — slow down and warn, never hard-cut (§5.7.2) */
-    const now = Date.now();
-    const e = (store.__auth.enum[s.jti] = store.__auth.enum[s.jti] || { t: now, n: 0 });
-    if(now - e.t > ENUM_WINDOW_MS){ e.t = now; e.n = 0; }
-    e.n += 1;
-    if(e.n > ENUM_THRESHOLD){
-      if(e.n === ENUM_THRESHOLD + 1) audit('enum_warn', { user_id: s.id, rate: e.n + '/60s' });
-      await sleep(ENUM_SLOW_MS * Math.ceil((e.n - ENUM_THRESHOLD) / 10));
-    }
+    /* R97: نگهبانِ شمردنِ شناسه به سطحِ روتر منتقل شد (یک منبعِ حقیقت؛
+       این endpoint 404 برمی‌گرداند و روتر آن را می‌شمارد). */
 
     const sid = Number(id);
     if(!Number.isInteger(sid) || sid <= 0) return sendJson(res, 404, { ok: false, code: 'not_found' });

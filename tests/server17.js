@@ -408,6 +408,52 @@ async function main() {
       await sleep(300);
     }
   }
+  /* ── E: R97 (TODO 2.7) — نگهبانِ شمردنِ شناسه (سطحِ روتر) ───────── */
+  console.log('\n— E: enumeration guard —');
+  {
+    const env = Object.assign({}, process.env, {
+      PORT: '9007', HOST: '127.0.0.1',
+      PAYESH_STORE: path.join(tmp, 'e.json'), PAYESH_AUDIT: path.join(tmp, 'e.log'),
+      PAYESH_KEY: path.join(tmp, 'e.key'), PAYESH_DEMO_CODE: '1',
+      PAYESH_SMS_COOLDOWN_S: '0',
+      PAYESH_ENUM_WARN: '5', PAYESH_ENUM_SLOW1: '8',
+      PAYESH_ENUM_SLOW2: '12', PAYESH_ENUM_REVOKE: '15'
+    });
+    fs.copyFileSync(REAL_STORE, env.PAYESH_STORE);
+    const e7 = spawnServer(env, 9007);
+    let up = false;
+    for (let i = 0; i < 40; i++) {
+      const h = await req('GET', 9007, '/api/health');
+      if (h.status === 200) { up = true; break; }
+      await sleep(300);
+    }
+    chk('E0 سرورِ 9007 (enum) بالا آمد', up);
+    if (up) {
+      const em = {};
+      const lgE = await login(9007, phone2, M2.national_id, em);
+      const tick = async (p) => { const a = Date.now(); await req('GET', 9007, p, null, em.ck); return Date.now() - a; };
+      for (let i = 0; i < 3; i++) await tick('/api/students/9990' + i);
+      const aud0 = fs.readFileSync(env.PAYESH_AUDIT, 'utf8');
+      chk('E1 رد‌هایِ کم (3) → هنوز هشدارِ enum ندارد', aud0.indexOf('enum_warn') === -1, aud0.split('\n').filter(l => l.indexOf('enum') > -1).length);
+      for (let i = 0; i < 2; i++) await tick('/api/students/9981' + i); /* n=5 = WARN */
+      const aud1 = fs.readFileSync(env.PAYESH_AUDIT, 'utf8');
+      chk('E2 n=5 → آدیتِ enum_warn', aud1.indexOf('enum_warn') > -1);
+      for (let i = 0; i < 3; i++) await tick('/api/students/9972' + i); /* n=8 = SLOW1 */
+      const d1 = await tick('/api/bell/now');
+      chk('E3 n=8 (SLOW1) → درخواستِ بعدی ≥500ms', d1 >= 480, d1 + 'ms');
+      for (let i = 0; i < 4; i++) await tick('/api/students/9963' + i); /* n=12 = SLOW2 */
+      const d2 = await tick('/api/bell/now');
+      chk('E4 n=12 (SLOW2) → درخواستِ بعدی ≥2s', d2 >= 1900, d2 + 'ms');
+      for (let i = 0; i < 3; i++) await tick('/api/students/9954' + i); /* n=15 = REVOKE */
+      const me = await req('GET', 9007, '/api/auth/me', null, em.ck);
+      chk('E5 n=15 (REVOKE) → نشست ابطال شد (/me = 401)', me.status === 401, me.status + ' ' + JSON.stringify(me.json));
+      const audF = fs.readFileSync(env.PAYESH_AUDIT, 'utf8');
+      chk('E6 آدیت: enum_slow + enum_slow2 + enum_revoke ثبت شد',
+        audF.indexOf('enum_slow') > -1 && audF.indexOf('enum_slow2') > -1 && audF.indexOf('enum_revoke') > -1);
+      e7.kill('SIGKILL');
+      await sleep(300);
+    }
+  }
   console.log('\n' + '─'.repeat(52));
   console.log(`server17: ${pass} سبز / ${fail} قرمز` + (fail ? ' ❌' : ' ✅'));
   errors.slice(0, 10).forEach(e => console.log('   ' + e));

@@ -41,9 +41,8 @@ const SESSION_TTL_S = 28800;           /* 8h — one school day (contract §2.1)
 const CODE_TTL_MS = 5 * 60 * 1000;     /* 5 minutes */
 const MAX_BATCH = 500;                 /* contract §3.3 */
 const AT_DRIFT_MS = 24 * 3600 * 1000;  /* §3.3: do not reject, log */
-const ENUM_WINDOW_MS = 60 * 1000;
-const ENUM_THRESHOLD = 100;            /* §5.7 — >100 reads / minute */
-const ENUM_SLOW_MS = 50;               /* per 10 requests above threshold */
+/* (R97: نگهبانِ شمردنِ شناسه به سطحِ روتر منتقل شد — ثابت‌هایِ تازه
+   کنارِ store تعریف شده‌اند.) */
 /* Round 85 (P0-4): DEMO_CODE defaults to OFF. Echoing the login code in
    the HTTP response is a test-only convenience; in production the code
    comes from the real SMS gateway, so the echo must require an explicit
@@ -66,6 +65,34 @@ function loadStore(){
 }
 const store = loadStore();
 syncAttach(store);
+
+/* ── R97 (TODO 2.7) — نگهبانِ شمردنِ شناسه، سطحِ روتر ──────────────
+   هر رد (401/403/404) برایِ هر نشست در پنجرهٔ ۱۰ دقیقه شمرده می‌شود:
+     ≥ WARN   → auditِ هشدار
+     ≥ SLOW1  → تأخیرِ ۵۰۰ms روی درخواست‌هایِ بعدیِ همان نشست
+     ≥ SLOW2  → تأخیرِ ۲s
+     ≥ REVOKE → ابطالِ نشست (jti) — ادامه = 401
+   /api/auth/* مستثنی است (cooldown/سقف‌هایِ OTP سقفِ خودشان را دارند). */
+const ENUM_WINDOW_MS = 10 * 60 * 1000;
+const _num = (v, d) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : d; };
+const ENUM_WARN   = _num(process.env.PAYESH_ENUM_WARN, 20);
+const ENUM_SLOW1  = _num(process.env.PAYESH_ENUM_SLOW1, 100);
+const ENUM_SLOW2  = _num(process.env.PAYESH_ENUM_SLOW2, 500);
+const ENUM_REVOKE = _num(process.env.PAYESH_ENUM_REVOKE, 2000);
+const REQ_STATE = { sess: null };
+function enumTouch(sess){
+  const e = (store.__auth.enum[sess.jti] = store.__auth.enum[sess.jti] || { t: Date.now(), n: 0 });
+  if(Date.now() - e.t > ENUM_WINDOW_MS){ e.t = Date.now(); e.n = 0; }
+  e.n += 1;
+  return e;
+}
+function enumDelay(sess){
+  const e = store.__auth.enum && store.__auth.enum[sess.jti];
+  if(!e) return 0;
+  if(e.n >= ENUM_SLOW2) return 2000;
+  if(e.n >= ENUM_SLOW1) return 500;
+  return 0;
+}
 
 let dirty = false;
 function markDirty(){ dirty = true; }
@@ -176,6 +203,22 @@ function sendJson(res, status, obj){
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(obj));
 }
+function sendJsonCounting(res, status, obj){
+  /* R97 (TODO 2.7): شمارِ رد‌ها (401/403/404) به ازای هر نشست — مرحله‌بندی
+     در enumStage/enumDelay. مسیرهایِ /api/auth/* سقفِ خودشان را دارند. */
+  const r = REQ_STATE;
+  if(r && r.sess && (status === 401 || status === 403 || status === 404)){
+    const e = enumTouch(r.sess);
+    if(e.n === ENUM_WARN) audit('enum_warn', { user_id: r.sess.id, n: e.n });
+    else if(e.n === ENUM_SLOW1) audit('enum_slow', { user_id: r.sess.id, n: e.n, delay_ms: 500 });
+    else if(e.n === ENUM_SLOW2) audit('enum_slow2', { user_id: r.sess.id, n: e.n, delay_ms: 2000 });
+    else if(e.n === ENUM_REVOKE){
+      store.__revoked_jti[r.sess.jti] = { at: Date.now(), reason: 'enumeration' };
+      audit('enum_revoke', { user_id: r.sess.id, n: e.n });
+    }
+  }
+  return sendJson(res, status, obj);
+}
 function readBody(req, limit){
   return new Promise((resolve, reject) => {
     let size = 0; const chunks = []; let over = false;
@@ -209,12 +252,14 @@ function securityHeaders(res, nonce, https){
 
 /* ── compose modules ───────────────────────────────────────────────── */
 const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty });
-const sync = createSync({ store, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson, markDirty });
-const idor = createIdor({ store, ENUM_WINDOW_MS, ENUM_THRESHOLD, ENUM_SLOW_MS, audit, sessionFrom: auth.sessionFrom, sendJson });
-const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson });
-const admin = createAdmin({ store, audit, sessionFrom: auth.sessionFrom, sendJson, markDirty, dataDir: path.dirname(STORE_FILE) });
-const sms = createSms({ store, audit, sessionFrom: auth.sessionFrom, sendJson, markDirty });
-const conflicts = createConflicts({ store, audit, sessionFrom: auth.sessionFrom, sendJson, markDirty });
+/* R97: همهٔ ماژول‌هایِ /api با sendJsonCounting می‌چرخند تا رد‌ها شمرده
+   شوند؛ auth استثناست (سقفِ OTP سقفِ خودش را می‌سازد). */
+const sync = createSync({ store, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
+const idor = createIdor({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
+const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
+const admin = createAdmin({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, dataDir: path.dirname(STORE_FILE) });
+const sms = createSms({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
+const conflicts = createConflicts({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 
 /* ── static ────────────────────────────────────────────────────────── */
 const STATIC = {
@@ -247,6 +292,18 @@ const onRequest = async (req, res) => {
   const https = isHttps(req);
   const nonce = crypto.randomBytes(16).toString('base64');
   securityHeaders(res, nonce, https);
+  /* R97 — نگهبانِ شمردنِ شناسه: نشست‌هایی که رد می‌خورند (404/403/401)
+     از مرحلهٔ SLOW1 به بعد، هر درخواستِ بعدیشان با تأخیر پاسخ داده می‌شود؛
+     در REVOKE نشست ابطال شده و ادامه 401 است (sendJsonCounting می‌شمارد). */
+  REQ_STATE.sess = null;
+  if(p.indexOf('/api/') === 0 && p.indexOf('/api/auth/') !== 0){
+    const gs = auth.sessionFrom(req);
+    if(gs){
+      REQ_STATE.sess = gs;
+      const dm = enumDelay(gs);
+      if(dm) await new Promise(r => setTimeout(r, dm));
+    }
+  }
   try{
     if(p === '/api/health' && (req.method === 'GET' || req.method === 'HEAD'))
       return sendJson(res, 200, { ok: true, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid });

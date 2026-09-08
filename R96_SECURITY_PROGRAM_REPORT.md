@@ -171,6 +171,7 @@ national_id/phone/ownership غیرممکن · (۳) سخت‌سازیِ JWT · (�
 - **P1-10 (استقرار):** گواهی/پروکسیِ واقعی؛ HSTS بعد از HTTPSِ جهانی.
 - فنی: SameSite Lax→Strict · سقفِ نرخِ import · read-sync pull/bootstrap ·
   ایندکسِ id (سنجشِ محدوده در حلقه) · قیدِ مالکیت در `del` · UUID (بند ۲.۷).
+  (بندِ ۲.۷ — نگهبانِ شمردنِ شناسه — در **R97** بسته شد: `R97_ENUM_GUARD_REPORT.md`.)
 - محصول: تصمیمِ پرداختِ والد (پارک ×۳).
 
 **نتیجهٔ رجیسیونِ کامل:** **134/134 سبز، 0 قرمز (1260s)** — شاملِ همهٔ سوئیت‌هایِ R96 (server16 · server17 · server16-mutations 6/6 · xss-guard · authz-model 230 · secret-scan 11) + 128 سوئیتِ پیشین.
