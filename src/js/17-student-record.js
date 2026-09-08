@@ -372,6 +372,20 @@ function gradeTrendData(sid, subjectId){
   });
 }
 
+/* ── E.3 فرناز: هدف‌گذاری شخصی نمره (هر درس یک عدد ۰ تا ۲۰) ──
+   ذخیره فقط از طریق Store (حافظهٔ محلی، کلید دانش‌آموز+درس) — بدون سرور.
+   دیدن/ویرایش فقط برای خودِ دانش‌آموز یا ولیِ لینک‌شده (goalViewerOk). */
+function goalKey(sid,subId){ return 'payesh_goal_'+sid+'_'+subId; }
+function goalGet(sid,subId){
+  var v=Store.get(goalKey(sid,subId),null);
+  if(v===null||v==='')return null;
+  v=Number(v); return isNaN(v)?null:v;
+}
+function goalViewerOk(sid){
+  var u=(typeof S!=='undefined')?S.user:null; if(!u)return false;
+  if(u.id===sid)return true;
+  return (db.parent_links||[]).some(function(l){ return l.student_id===sid&&l.parent_id===u.id; });
+}
 /** جهت روند: مقایسهٔ میانگین نیمهٔ اول با نیمهٔ دوم */
 function gradeTrendDirection(pts){
   if(pts.length < 4) return null;            /* داده کم است، حکم ندهیم */
@@ -421,6 +435,11 @@ function gradeTrendCard(sid){
       + '</span>';
   }
 
+  /* E.3: هدف فقط وقتی تک‌درس انتخاب شده و بیننده خود/ولی است */
+  var goalSub = pick || null;
+  var goalVal = (goalSub && goalViewerOk(sid)) ? goalGet(sid, goalSub) : null;
+  var goalShow = (goalVal !== null && isFinite(goalVal));
+  var goalEdit = !!goalSub && goalViewerOk(sid);
   var avgAll = pts.reduce(function(s, p){ return s + p.norm; }, 0) / pts.length;
   /* بند ۴.۹ (دور ۷۹): پوشِ میانگینِ کلاس روی نمودارِ روند.
      منبع: classScoreContext (ناشناس؛ فقط عدد؛ حداقل ۲ دانش‌آموزِ عضو).
@@ -441,8 +460,10 @@ function gradeTrendCard(sid){
       tip += ' • میانگین کلاس: ' + fa(cAvg.toFixed(2));
       tick = '<b class="avg-tick" style="bottom:' + ((cAvg / 20) * 100).toFixed(1) + '%"></b>';
     }
+    var gtick = goalShow
+      ? '<b class="goal-tick" style="bottom:' + ((goalVal / 20) * 100).toFixed(1) + '%"></b>' : '';
     return '<div class="col" title="' + escAttr(tip) + '">'
-      + '<div class="plot">' + tick
+      + '<div class="plot">' + tick + gtick
       + '<i style="height:' + h + '%;background:' + color + '"></i></div>'
       + '<span>' + esc(faD(String(p.score))) + '</span></div>';
   }).join('');
@@ -456,9 +477,20 @@ function gradeTrendCard(sid){
     + '<div class="card-body">'
     + '<div class="chart trend-chart">' + cols + '</div>'
     + '<div class="row small muted" style="margin-top:10px;line-height:2">'
-    +   '<span>میانگین: <b>' + fa(avgAll.toFixed(2)) + '</b> از ۲۰</span>'
+    + '<span>میانگین: <b>' + fa(avgAll.toFixed(2)) + '</b> از ۲۰</span>'
     +   tickLegend
+    +   (goalShow ? '<span>🎯 هدف: <b>' + fa(goalVal) + '</b> از ۲۰</span>' : '')
     +   '<span>تعداد نمره: <b>' + fa(pts.length) + '</b></span>'
     +   '<span>ترتیب بر پایهٔ تاریخ ثبت</span>'
-    + '</div></div></div>';
+    + '</div>'
+    + (goalEdit
+      ? '<div class="row" style="margin-top:8px;gap:8px;align-items:center">'
+        + '<span>🎯 هدف این درس:</span>'
+        + (goalShow ? '' : '<span class="small muted">هنوز هدفی تعیین نشده</span>')
+        + '<input id="goal_val" type="text" inputmode="decimal" placeholder="مثلاً ۱۸" value="'
+        + (goalShow ? escAttr(String(goalVal)) : '') + '" style="width:70px" />'
+        + '<button class="btn small" data-act="goal-save" data-id="' + escAttr(sid)
+        + '" data-sub="' + escAttr(goalSub) + '">ثبت هدف</button></div>'
+      : '')
+    + '</div></div>';
 }
