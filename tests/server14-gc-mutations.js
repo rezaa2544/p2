@@ -70,6 +70,17 @@ try {
 } catch (e) {
   finalOut = String(e.stdout || '');
 }
+/* R97 — تحتِ بارِ موازیِ رجیسیون (۴ لِین) سرورِ پایه گاه در میانیِ اجرا می‌میرد
+   (G9=null / oldKeys پاک نمی‌شوند؛ تکرارِ تکی همواره سبز — کلاسِ R89):
+   یک‌بار retry. باگِ واقعیِ GC هر دو بار می‌شکست. */
+if (!backGreen) {
+  try {
+    finalOut = execSync('node tests/server14-gc.js', { stdio: 'pipe' }).toString();
+    backGreen = finalOut.includes('همه سبز');
+  } catch (e) {
+    finalOut = String(e.stdout || '');
+  }
+}
 console.log(`\nجهش: ${killed}/${MUTS.length} کشته` + (killed === MUTS.length && backGreen ? ' ✅ (سبزِ پایانی)' : ' ⚠️'));
 if (killed !== MUTS.length || !backGreen) {
   console.log('خروجیِ اجرای پایانی:');
