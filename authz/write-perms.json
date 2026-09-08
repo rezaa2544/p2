@@ -2813,6 +2813,12 @@
         "hw_assignments"
       ]
     },
+    "ics-download": {
+      "roles": null,
+      "collections": [
+        "calendar"
+      ]
+    },
     "iep-save": {
       "roles": [
         "teacher",
