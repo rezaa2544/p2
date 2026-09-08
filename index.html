@@ -29,6 +29,8 @@ a{color:inherit;text-decoration:none}
 .login-art h1{font-size:40px;font-weight:800;letter-spacing:2px;margin:0;z-index:1}
 .login-tag{font-size:16px;font-weight:600;opacity:.95;z-index:1}
 .login-card{margin:auto;text-align:center}
+/* C.3 فرناز — گزارش عمومی زیر فرم ورود */
+.pub-report{max-width:980px;margin:0 auto;padding:8px 16px 40px}
 .login-card h2{font-size:22px;font-weight:800;margin:0 0 20px}
 .login-card .field{text-align:right}
 .login-card .field label{font-size:13px;font-weight:600;color:var(--text)}
@@ -476,6 +478,7 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
    share the same zero line, so their % heights are directly comparable. */
 .trend-chart .col .plot{position:relative;width:100%;flex:1;min-height:0;display:flex;align-items:flex-end;justify-content:center}
 .trend-chart .avg-tick{position:absolute;left:0;right:0;height:0;border-top:2px dashed var(--amber);opacity:.9;pointer-events:none;z-index:2}
+.trend-chart .goal-tick{position:absolute;left:0;right:0;height:0;border-top:2px solid var(--green);opacity:.85;pointer-events:none;z-index:2}
 .chips{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px 0}
 
 /* ───────── ابزارهای دبیر (دور ۴۴) ───────── */
@@ -2128,7 +2131,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[],staff_attendance:[],training_courses:[],safety_drills:[],donations:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[],support_tickets:[],staff_attendance:[],training_courses:[],safety_drills:[],donations:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -3124,8 +3127,8 @@ function scopeHealth(){
    ═══════════════════════════════════════════════════════════════════ */
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
- superadmin:[['نظارت روزانه',[['dashboard','📊','داشبورد مدیریتی'],['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها']]],['مدارس و کاربران',[['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه'],['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]]],
- manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['assets','🧰','املاک'],['dorm','🏠','اسکان و خوابگاه'],['sidadiff','⚖️','سیدا'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک'],['preapps','📥','قیف پیش‌ثبت‌نام'],['scholarships','🎓','کمک‌هزینه و بورسیه'],['drills','⛑️','مانور ایمنی']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات'],['reexams','🔁','امتحانات تجدیدی (شهریور)']]],['کلاس‌های تابستان',[['summerclasses','☀️','کلاس‌های تابستانی']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی'],['staffatt','🗓️','حضور کادر'],['training','📚','دوره‌های آموزشی']]],['مالی',[['tuition','💰','شهریه و امور مالی'],['association','🤝','انجمن و کمک‌ها'],['donations','🎁','کمک‌های داوطلبانه']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
+ superadmin:[['نظارت روزانه',[['dashboard','📊','داشبورد مدیریتی'],['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها'],['tickets','🎫','تیکت‌های پشتیبانی']]],['مدارس و کاربران',[['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه'],['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]]],
+ manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['assets','🧰','املاک'],['dorm','🏠','اسکان و خوابگاه'],['sidadiff','⚖️','سیدا'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک'],['preapps','📥','قیف پیش‌ثبت‌نام'],['scholarships','🎓','کمک‌هزینه و بورسیه'],['drills','⛑️','مانور ایمنی']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات'],['reexams','🔁','امتحانات تجدیدی (شهریور)']]],['کلاس‌های تابستان',[['summerclasses','☀️','کلاس‌های تابستانی']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی'],['staffatt','🗓️','حضور کادر'],['training','📚','دوره‌های آموزشی']]],['مالی',[['tuition','💰','شهریه و امور مالی'],['association','🤝','انجمن و کمک‌ها'],['donations','🎁','کمک‌های داوطلبانه']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو'],['tickets','🎫','پشتیبانی']]]],
  teacher:[['کار روزانه',[['dashboard','📊','داشبورد'],['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کار آموزشی',[['meetings','📅','جلسات اولیا'],['classes','🏛️','کلاس‌ها'],['vclass','🖥️','کلاس مجازی'],['exams','👁️','برنامه مراقبت من'],['homework','📓','تکالیف'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  student:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['calendar','🗓️','تقویم آموزشی']]],['پروندهٔ من',[['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['leaves','📨','مرخصی'],['homework','📓','تکالیف من']]],['امور مالی',[['mytuition','💰','شهریه من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
  edu_office:[['کار روزانه',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
@@ -3133,7 +3136,7 @@ const NAV={
  counselor:[['کار من',[['cqueue','📨','صف ارجاع'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  driver:[['سرویس من',[['myservice','🚌','مسیر من'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]]
 };
-const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','پروندهٔ کاملِ هر فرزند: کارنامه، حضور و انضباط — با دکمه‌های بالای صفحه بین فرزندان جابه‌جا شوید (برچسبِ منو به‌صورتِ «پروندهٔ N فرزند» نمایش داده می‌شود)'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],
+const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','پروندهٔ کاملِ هر فرزند: کارنامه، حضور و انضباط — با دکمه‌های بالای صفحه بین فرزندان جابه‌جا شوید (برچسبِ منو به‌صورتِ «پروندهٔ N فرزند» نمایش داده می‌شود)'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],tickets:['تیکت‌های پشتیبانی','ثبت و پیگیری درخواست پشتیبانی مدرسه'],
 reexams:['امتحانات تجدیدی (شهریور)','دروسِ نیازمندِ امتحانِ مجدد + نمرهٔ نهایی پس از تجدیدی'],
 summerclasses:['کلاس‌های تابستانی','نام + دبیر + دانش‌آموزان + تاریخ‌ها — جدا از سالِ تحصیلیِ رسمی'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده و مدارس','همهٔ فرزندان و مدرسهٔ هرکدام — حتی وقتی در مدارس مختلف‌اند؛ اتصالِ فرزندان به کد ملی و تأییدِ آن‌ها (برای پروندهٔ کاملِ تک‌تک، «پرونده فرزندان» را باز کنید)'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],staffatt:['حضور کادر','ثبت روزانه و مرور ماهانهٔ حضور کادر'],training:['دوره‌های آموزشی','دوره‌های ضمن خدمت کادر و گواهی پایان دوره'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],library:['کتابخانه','کتاب‌ها + امانت به دانش‌آموز + بازگشت — نسخهٔ سبک'],assets:['املاک و موجودی','تجهیزات با وضعیت + مکان — نسخهٔ سبک'],dorm:['اسکان و خوابگاه','اتاق‌ها + انتساب دانش‌آموز + وعده‌های هفتگی + مرخصیِ رفت‌وبرگشتِ آخر هفته — نسخهٔ سبک'],sidadiff:['اختلاف با سیدا','نمرهٔ سیدا دستی — مقایسه با پایش، فقط خواندنی برای بقیه'],preapps:['قیف پیش‌ثبت‌نام','تماس → بازدید → آزمون → ثبت‌نامِ قطعی — جدا از ثبت‌نامِ رسمی'],
 scholarships:['کمک‌هزینه و بورسیه','علامت‌گذاری دانش‌آموزِ نیازمند + وضعیت (درخواست‌شده/بررسی/تأیید/رد) — فقط ثبت، بدون پرداخت'],visitors:['مهمان‌ها','ورود/خروج افراد غیردانش‌آموز و غیرکارکنان — نسخهٔ سبک'],homework:['تکالیف','بارگذاری تصویر تکلیف + تصحیح دیجیتال با خطِ خوددست و نمره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها'],association:['انجمن و کمک‌ها','در مدارس دولتی به‌جای شهریه: کمک‌های داوطلبانهٔ اولیا با ثبت شفاف'],drills:['مانور ایمنی','ثبت سالانهٔ مانور زلزله/ایمنی + شمار شرکت‌کنندگان'],donations:['کمک‌های داوطلبانه','ثبت کمک خیرین + رسید چاپی — جدا از شهریه']};
@@ -4268,6 +4271,42 @@ function demoAccounts(){
   const s=db.users.find(u=>u.role==='student'), p=db.users.find(u=>u.role==='parent');
   return [db.users.find(u=>u.role==='superadmin'),db.users.find(u=>u.username==='edu_kurdistan'),db.users.find(u=>u.username==='manager1'),db.users.find(u=>u.username==='teacher1_1'),s,db.users.find(u=>u.username==='parent_multi')||p,db.users.find(u=>u.username==='counselor1')].filter(Boolean);
 }
+/* C.3 فرناز — گزارش عمومی مدرسه (بدون نیاز به ورود):
+   فقط آمار تجمیعی + اهداف منتشرشده؛ هیچ دادهٔ شخصی (نام/نمره/حضور) اینجا نیست. */
+function publicReportHTML(){
+  const schools=db.schools.filter(s=>s.active!==0);
+  if(!schools.length)return '';
+  let sid=Number(S.filters.pubschool)||null;
+  if(!schools.some(s=>s.id===sid))sid=schools[0].id;
+  const sc=byId('schools',sid)||{};
+  const us=db.users.filter(u=>u.school_id===sid);
+  const nS=us.filter(u=>u.role==='student').length,
+        nT=us.filter(u=>u.role==='teacher').length,
+        nC=db.classes.filter(c=>c.school_id===sid).length;
+  const mins=(typeof assocMinutes==='function'?assocMinutes(sid):[]).filter(m=>!m.archived);
+  const types=(typeof MIN_TYPES!=='undefined'?MIN_TYPES:[['assoc','انجمن اولیا و مربیان']]);
+  const perType=types.map(([k,label])=>{
+    const ms=mins.filter(m=>(typeof minTypeOf==='function'?minTypeOf(m):'assoc')===k);
+    const last=ms.map(m=>m.meeting_date).filter(Boolean).sort().slice(-1)[0];
+    return {label:label,n:ms.length,last:last?jalali(last):'—'};
+  });
+  const bg=(sc.boom_goals||'').trim();
+  return `<div class="pub-report" id="pub-report"><div class="card"><div class="card-head"><h3>📊 گزارش عمومی مدرسه</h3>
+    <select class="select" data-f="pubschool" style="width:220px">${schools.map(s=>`<option value="${s.id}" ${s.id===sid?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
+   <div class="card-body">
+    <h4 style="margin:0 0 4px">${esc(sc.name||'')}</h4>
+    <div class="small muted" style="margin-bottom:12px">${esc(sc.level||'')}${sc.level?' · ':''}${esc((byId('counties',sc.county_id)||{}).name||sc.city||'')}</div>
+    <div class="grid g3">
+      ${statCard('🎒',fa(nS),'دانش‌آموز','blue')}
+      ${statCard('👩‍🏫',fa(nT),'دبیر','green')}
+      ${statCard('🏛️',fa(nC),'کلاس','amber')}
+    </div>
+    <div class="sec-title">🤝 جلسه‌ها (به‌تفکیک نوع)</div>
+    <div class="grid g3">${perType.map(t=>`<div class="card stat"><div><b>${fa(t.n)}</b><span>${esc(t.label)}</span><div class="small muted">آخرین: ${esc(t.last)}</div></div></div>`).join('')}</div>
+    ${bg?`<div class="sec-title">🎯 برنامه ویژه (بوم)</div><div style="white-space:pre-wrap;line-height:2">${esc(bg)}</div>`:''}
+    <div class="small muted" style="margin-top:12px">🔑 برای جزئیات بیشتر، از فرم بالا وارد سامانه شوید.</div>
+   </div></div></div>`;
+}
 function renderLogin(){
   const accs=demoAccounts();
   return `<div class="login-wrap">
@@ -4293,7 +4332,8 @@ function renderLogin(){
         <b>${esc(a.full_name)}</b>
         <span class="small muted" style="direction:ltr;margin-inline-start:auto">${esc(a.phone||'—')}</span></div>`).join('')}
      <div class="small muted" style="margin-top:16px;text-align:center"><span data-act="privacy-open" style="text-decoration:underline;cursor:pointer">سیاست حریم خصوصی و امنیت داده</span></div>
-   </div></div></div>`;
+   </div></div></div>
+   ${publicReportHTML()}`;
 }
 
 /* ==================== لایه مجوزدهی (Authorization) ====================
@@ -4423,6 +4463,12 @@ var ACTION_ROLES = {
   'vclass-save':      ['teacher','manager'],
   'vclass-del':       ['teacher','manager'],
   'vclass-play':      ['teacher','manager','student','parent'],
+  'tomorrow-check':   ['student','parent'], /* E.1 فرناز: فقط حافظهٔ محلی — چیزی برای WRITE_PERMS ندارد */
+  'goal-save':        ['student','parent'], /* E.3 فرناز: فقط Store — مالکیت در خود اکشن (goalViewerOk) */
+  'pnote-save':       ['parent'], /* E.6 فرناز: فقط Store — ولیِ لینک‌شده در خود اکشن */
+  'ticket-new':       ['manager'], /* G.2 فرناز: بازکردن فرم (بدون نوشتن) */
+  'ticket-save':      ['manager'], /* G.2 فرناز: ثبت تیکت (ins در مدل) */
+  'ticket-status':    ['superadmin'], /* G.2 فرناز: تغییر وضعیت (upd در مدل) */
   'vclass-q-ask':     ['student'],
   'vclass-q-save':    ['student'],
   'vclass-q-answer':  ['teacher','manager'],
@@ -4585,6 +4631,9 @@ var ACTION_ROLES = {
   'user-modal':    ['manager','superadmin'],
   'user-toggle':   ['manager','superadmin'],
   'school-save':   ['superadmin'],
+  /* C.2 فرناز — بوم: مدیر فقط مدرسهٔ خودش (گیت دوم در خود اکشن) */
+  'school-boom':      ['manager'],
+  'school-boom-save': ['manager'],
   'school-del':    ['superadmin'],
   'school-modal':  ['superadmin'],
   'school-toggle': ['superadmin'],
@@ -4883,6 +4932,7 @@ function _renderRouteInner(){
     case 'meetings':return viewMeetings();
     case 'growth':return viewGrowth();
     case 'notifyqueue':return viewNotifyQueue();
+    case 'tickets':return viewTickets();
     case 'formssms':return viewFormsSms();
     case 'import':return viewImport();
     case 'finance':return viewFinance();
@@ -5113,6 +5163,8 @@ function adminDash(){
     <div class="spacer"></div>
     <button class="btn ghost sm" data-act="smode-mgr">${schoolModeOf(u.school_id,todayISO())==='virtual'?'🏫 حضوری کردن امروز':'🏠 غیرحضوری کردن امروز'}</button>
    </div>`:''}
+   ${u.role==='manager'?(()=>{const sc=byId('schools',sid)||{};const bg=(sc.boom_goals||'').trim();
+    return `<div class="card"><div class="card-head"><h3>🎯 برنامه ویژه مدرسه (بوم)</h3><button class="btn ghost sm" data-act="school-boom" data-id="${escAttr(sid)}">${bg?'✏️ ویرایش اهداف':'➕ ثبت اهداف سالانه'}</button></div><div class="card-body">${bg?`<div style="white-space:pre-wrap;line-height:2">${esc(bg)}</div>`:empty('🎯','هنوز برنامه‌ای ثبت نشده','اهداف سالانه مدرسه را بنویسید تا در یک نگاه دیده شود.')}</div></div>`;})():''}
    ${u.role==='manager'&&typeof drillAnnualStatus==='function'?(()=>{const dst=drillAnnualStatus(u.school_id);
     return `<div class="row" style="background:${dst.done?'var(--green-soft,#dff5e1)':'var(--red-soft,#fde8e8)'};padding:10px 14px;border-radius:12px;align-items:center"><b>⛑️ مانور ایمنی امسال:</b> ${dst.done?`🟢 انجام شده <span class="small muted">(${esc(jalali(dst.last))})</span>`:'🔴 انجام نشده'}<div class="spacer"></div><button class="btn ghost sm" data-act="go" data-r="drills">${dst.done?'مشاهده':'ثبت مانور'}</button></div>`;})():''}
    ${((u.role==='manager'||u.role==='superadmin')&&typeof DATA_MODE!=='undefined'&&DATA_MODE==='server')?`<div class="card"><div class="card-head"><h3>⚖️ تعارض‌های همگام‌سازی</h3><span class="muted small">تغییرهای هم‌زمانِ در انتظارِ داوری (فقط حالت سروری)</span></div><div id="sync-conflicts-root"><div class="card-body" style="padding-top:12px"><div class="muted small">در حالِ خواندن…</div></div></div></div>`:''}
@@ -5214,10 +5266,103 @@ function todayCard(sid,iso){
    </div></div>`;
 }
 
+/* ── E.1 فرناز: چک‌لیستِ «فردا چی لازم دارم» ──
+   درس‌های فردا از همان برنامهٔ هفتگی + وسیلهٔ خاصِ هر درس (کلیدواژه در نام).
+   تیک‌ها فقط لوکال (حافظهٔ محلی به‌کلیدِ دانش‌آموز+تاریخ، از طریق Store) — بدون سرور. */
+const TOMORROW_GEAR=[['ورزش','👕 لباس ورزش'],['تربیت بدنی','👕 لباس ورزش'],['هنر','🎨 وسایل نقاشی'],['آزمایشگاه','🥼 روپوش آزمایشگاه']];
+function tomorrowGearFor(subjName){
+  const n=String(subjName||'');
+  for(let i=0;i<TOMORROW_GEAR.length;i++)if(n.indexOf(TOMORROW_GEAR[i][0])>-1)return TOMORROW_GEAR[i][1];
+  return null;
+}
+function tomorrowCheckKey(sid,iso){ return 'payesh_tmr_'+sid+'_'+iso; }
+function tomorrowChecksGet(sid,iso){
+  try{ return JSON.parse(Store.get(tomorrowCheckKey(sid,iso),'{}'))||{}; }catch(e){ return {}; }
+}
+function tomorrowCard(sid,iso){
+  iso=iso||todayISO();
+  const tmr=addDaysISO(iso,1), dow=todayDow(tmr);
+  const cls=classOf(sid);
+  const periods=cls?db.schedule.filter(s=>s.class_id===cls.id&&s.day===dow).sort((a,b)=>a.period-b.period):[];
+  const subs=Object.create(null);
+  (db.substitutions||[]).forEach(x=>{ if(x.date===tmr)subs[x.schedule_id]=x; });
+  const checks=tomorrowChecksGet(sid,tmr);
+  return `<div class="card tomorrow-card"><div class="card-head"><h3>🎒 فردا چی لازم دارم</h3>
+    <span class="badge b-green">${jalali(tmr)} — ${DAYS_FULL[dow]}</span></div>
+   <div class="card-body" style="display:grid;gap:6px">
+    ${periods.length
+     ?periods.map(s=>{
+        const sub=(byId('subjects',s.subject_id)||{}).name||'—';
+        const gear=tomorrowGearFor(sub), sb=subs[s.id];
+        const on=checks['p'+s.period]?'checked':'';
+        return `<div class="row" style="padding:7px 10px;background:var(--surface-2);border-radius:8px;gap:8px">`
+          + `<input type="checkbox" data-act="tomorrow-check" data-sid="${escAttr(sid)}" data-iso="${escAttr(tmr)}" data-idx="p${s.period}" ${on} />`
+          + `<span class="badge b-green" style="flex:none">زنگ ${fa(s.period)}</span>`
+          + `<b>${esc(sub)}</b>`
+          + (sb?`<span class="badge b-amber">🔁 جابه‌جای: ${esc((byId('users',sb.sub_teacher_id)||{}).full_name||'—')}</span>`:'')
+          + (gear?`<span class="small">🎒 ${esc(gear)}</span>`:'')
+          + `</div>`;}).join('')
+     :empty('🎉','فردا کلاسی نیست','برنامهٔ هفتگی کلاس برای فردا خالی است.')}
+   </div></div>`;
+}
+
+/* ── E.2 فرناز: شمارش‌معکوس امتحان + یادآوری ──
+   نزدیک‌ترین امتحانِ کلاس از همان کالکشن exams؛ یادآوری با زیرساخت موجود:
+   اعلان داخل‌برنامه (notifications) + صف پیامک (notify_queue via notifyRequest).
+   فراخوانی از مسیر رندر کارت است پس هر دو مسیر ضدتکرارند: پیامک با source_ref
+   روی دیتابیس، اعلان داخل‌برنامه با نشانِ حافظهٔ محلی (از طریق Store). */
+function examDaysLeft(examDate,iso){
+  return Math.round((Date.parse(examDate)-Date.parse(iso||todayISO()))/86400000);
+}
+function nextExamFor(sid,iso){
+  iso=iso||todayISO();
+  const cls=classOf(sid); if(!cls)return null;
+  let best=null;
+  (db.exams||[]).forEach(x=>{
+    if(x.class_id!==cls.id||!x.date||x.date<iso)return;
+    if(!best||x.date<best.date||(x.date===best.date&&(x.start_time||'')<(best.start_time||'')))best=x;
+  });
+  return best?{exam:best,days:examDaysLeft(best.date,iso)}:null;
+}
+function examRemindKey(id){ return 'payesh_exrem_'+id; }
+function examReminderSend(sid,info){
+  const ex=info.exam, st=byId('users',sid)||{};
+  const subj=(byId('subjects',ex.subject_id)||{}).name||'—';
+  const when=`${jalali(ex.date)} ساعت ${ex.start_time||'—'}`;
+  /* ۱) صف پیامک موجود (kind=event): ضدتکرار دیتابیسی */
+  const ref='examrem:'+ex.id;
+  const dup=(db.notify_queue||[]).some(q=>q.kind==='event'&&q.source_ref===ref&&q.status!=='rejected'&&q.status!=='cancelled');
+  if(!dup&&typeof notifyRequest==='function'){
+    notifyRequest({school_id:ex.school_id,kind:'event',student_id:sid,student_name:st.full_name||'',
+      body:`یادآوری امتحان ${subj} برای ${st.full_name||''} — ${when}، کلاس ${(byId('classes',ex.class_id)||{}).name||''}. ${typeof notifySchoolName==='function'?notifySchoolName(ex.school_id):''}`,
+      source_ref:ref});
+  }
+  /* ۲) اعلان داخل‌برنامه برای دانش‌آموز + همهٔ والدین لینک‌شده */
+  if(!Store.get(examRemindKey(ex.id))){
+    const recips=[sid];
+    (db.parent_links||[]).forEach(l=>{ if(l.student_id===sid&&recips.indexOf(l.parent_id)===-1)recips.push(l.parent_id); });
+    recips.forEach(uid=>insert('notifications',{user_id:uid,school_id:ex.school_id,type:'exam_remind',
+      title:'⏳ یادآوری امتحان',body:`امتحان ${subj} — ${when}`,link:'exams',read:0,created_at:todayISO()}));
+    Store.set(examRemindKey(ex.id),'1');
+  }
+}
+function examCountdownCard(sid,iso){
+  iso=iso||todayISO();
+  const nx=nextExamFor(sid,iso);
+  if(!nx)return '';
+  /* پنجرهٔ یادآوری: ۱-۲ روز قبل + روز امتحان (اگر داشبورد دیر باز شد) */
+  if(nx.days<=2)examReminderSend(sid,nx);
+  const subj=(byId('subjects',nx.exam.subject_id)||{}).name||'—';
+  const head=nx.days===0?`امروز امتحان ${esc(subj)}`:nx.days===1?`فردا امتحان ${esc(subj)}`:`${fa(nx.days)} روز تا امتحان ${esc(subj)}`;
+  return `<div class="card exam-card"><div class="card-head"><h3>⏳ ${head}</h3>
+    <span class="badge b-amber">${jalali(nx.exam.date)} — ساعت ${esc(nx.exam.start_time||'—')}</span></div>
+   <div class="card-body"><div class="small">🏫 کلاس ${esc((byId('classes',nx.exam.class_id)||{}).name||'—')}${nx.exam.room?` — اتاق ${esc(nx.exam.room)}`:''} — بارم ${fa(nx.exam.max_score||20)}</div></div></div>`;
+}
+
 function summaryBlock(sid){
   const d=studentSummary(sid), tot=d.att.length;
   const cnt=k=>d.att.filter(a=>a.status===k).length;
-  return `${todayCard(sid)}<div class="grid g4">
+  return `${todayCard(sid)}${tomorrowCard(sid)}${examCountdownCard(sid)}<div class="grid g4">
    ${statCard('🎒',esc(d.st.full_name),d.cls?'کلاس '+d.cls.name:'بدون کلاس','blue')}
    ${statCard('📊',fa(d.avg.toFixed(2)),'معدل کل','green')}
    ${statCard('🏅',fa(d.rank)+' از '+fa(d.size),'رتبه در کلاس','amber')}
@@ -5310,7 +5455,8 @@ function viewSchools(){
        <select class="select" style="width:150px" data-f="sbranch">${opt(Object.keys(BRANCHES).map(b=>[b,b]),fbr,'همه شاخه‌ها')}</select>`):''}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>نام مدرسه</th><th>کد</th><th>مکان</th><th>مقطع</th><th>مدیر</th><th>تلفن ثابت</th><th>دانش‌آموز</th><th>دبیر</th><th>کلاس</th><th>آخرین فعالیت</th><th>وضعیت</th>${isAdmin?'<th></th>':''}</tr></thead><tbody>
     ${(()=>{const _ov=schoolsOverview();const _by={};_ov.forEach(function(r){_by[r.school.id]=r.st;});return rows.map(s=>{const st_=_by[s.id]||{};const us=db.users.filter(u=>u.school_id===s.id);const mg=us.find(u=>u.role==='manager');
-     return `<tr><td><b>${esc(s.name)}</b><div class="small muted">${esc(s.gender||'')}${s.shift&&s.shift!=='صبح'?' · '+esc(s.shift):''}</div></td><td class="muted">${esc(s.code)}</td>
+     const boom=s.boom_goals?String(s.boom_goals).replace(/\s+/g,' '):'';
+     return `<tr><td><b>${esc(s.name)}</b><div class="small muted">${esc(s.gender||'')}${s.shift&&s.shift!=='صبح'?' · '+esc(s.shift):''}</div>${boom?`<div class="small">🎯 ${esc(boom.slice(0,80))}${boom.length>80?'…':''}</div>`:''}</td><td class="muted">${esc(s.code)}</td>
       <td>${esc((byId('provinces',s.province_id)||{}).name||s.city||'—')}<div class="small muted">${esc((byId('counties',s.county_id)||{}).name||'')}${s.district_id?' › '+esc((byId('districts',s.district_id)||{}).name||''):''}</div></td>
       <td><span class="badge b-blue">${esc(s.level||'—')}</span>${s.type&&s.type!=='عادی'?`<div class="small muted" style="margin-top:4px">${esc(s.type)}</div>`:''}${(s.branches||[]).length?`<div class="small muted" style="margin-top:4px">${(s.branches||[]).map(b=>esc(b)).join('، ')}</div>`:''}</td><td class="muted">${esc(mg?mg.full_name:'—')}</td>
       <td class="small muted">${esc(s.landline||'—')}</td>
@@ -5322,6 +5468,40 @@ function viewSchools(){
         <button class="icon-btn danger" title="حذف" data-act="school-del" data-id="${escAttr(s.id)}">🗑️</button></div></td>`:''}</tr>`;}).join('');})()}
     </tbody></table></div>`:empty('🏫','مدرسه‌ای یافت نشد',q?'نتیجه‌ای برای جستجو نبود.':'اولین مدرسه را تعریف کنید.',isAdmin?'<button class="btn" data-act="school-new">تعریف مدرسه</button>':'')}
    </div>`;
+}
+
+/* ── G.2 فرناز: تیکت پشتیبانی (نسخهٔ سبک) ──
+   مدیر: ثبت + دیدن تیکت‌های مدرسهٔ خود. سوپرادمین: همه + تغییر وضعیت. */
+const TICKET_PRI={low:['کم','b-gray'],med:['متوسط','b-blue'],high:['بالا','b-red']};
+const TICKET_ST={open:['باز','b-amber'],review:['در حال بررسی','b-blue'],closed:['بسته','b-green']};
+function viewTickets(){
+  const u=S.user;
+  if(!u||(u.role!=='manager'&&u.role!=='superadmin'))return `<div class="card">${empty('🎫','دسترسی ندارید','این صفحه فقط برای مدیر مدرسه و سوپرادمین است.')}</div>`;
+  const isSuper=u.role==='superadmin';
+  const rows=(db.support_tickets||[]).filter(t=>isSuper||t.school_id===u.school_id)
+    .sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||'')||b.id-a.id);
+  const stBtns=t=>['open','review','closed'].filter(s=>s!==t.status)
+    .map(s=>`<button class="btn ghost sm" data-act="ticket-status" data-id="${escAttr(t.id)}" data-s="${s}">${TICKET_ST[s][0]}</button>`).join('');
+  return `<div class="card"><div class="card-head"><h3>🎫 تیکت‌های پشتیبانی</h3>
+    <div class="row" style="gap:8px"><span class="badge b-gray">${fa(rows.length)} مورد</span>
+    ${!isSuper?'<button class="btn sm" data-act="ticket-new">➕ درخواست جدید</button>':''}</div></div>
+   ${rows.length?`<div class="table-wrap"><table class="table"><thead><tr>${isSuper?'<th>مدرسه</th>':''}<th>عنوان</th><th>اولویت</th><th>وضعیت</th><th>به‌روزرسانی</th>${isSuper?'<th>تغییر وضعیت</th>':''}</tr></thead><tbody>`
+    +rows.map(t=>{const p=TICKET_PRI[t.priority]||TICKET_PRI.med, s=TICKET_ST[t.status]||TICKET_ST.open;
+      return `<tr>${isSuper?`<td>${esc((byId('schools',t.school_id)||{}).name||'—')}</td>`:''}`
+      +`<td><b>${esc(t.title||'—')}</b>${t.description?`<div class="small muted">${esc(t.description)}</div>`:''}</td>`
+      +`<td><span class="badge ${p[1]}">${p[0]}</span></td><td><span class="badge ${s[1]}">${s[0]}</span></td>`
+      +`<td class="small muted">${jalali(t.updated_at||t.created_at)}</td>`
+      +`${isSuper?`<td><div class="row" style="gap:5px;flex-wrap:nowrap">${stBtns(t)}</div></td>`:''}</tr>`;}).join('')
+    +`</tbody></table></div>`
+   :empty('🎫','تیکتی ثبت نشده',isSuper?'هنوز مدرسه‌ای درخواست پشتیبانی ثبت نکرده است.':'<button class="btn" data-act="ticket-new">ثبت اولین درخواست</button>')}
+  </div>`;
+}
+function ticketModal(){
+  openModal(modalTpl('درخواست پشتیبانی جدید',
+    `${f('عنوان *',inp('tk_title',''))}`
+    +`${f('اولویت',sel('tk_pri',[['low','کم'],['med','متوسط'],['high','بالا']],'med'))}`
+    +`${f('توضیح','<textarea class="input" id="tk_desc" rows="3" placeholder="مشکل را کوتاه شرح دهید…"></textarea>')}`,
+    'ticket-save'));
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -6195,13 +6375,38 @@ function certsCard(sid){
     + '</div></div>';
 }
 
+/* ── E.6 فرناز: یادداشت شخصی ولی (هر فرزند یکی) ──
+   کاملاً خصوصی: کلید شامل شناسهٔ خودِ ولی است و رندر/ذخیره فقط برای ولیِ لینک‌شده.
+   فقط Store (حافظهٔ محلی) — هیچ‌چیز به سرور نمی‌رود، نه مدرسه نه والد دیگر نه دانش‌آموز. */
+function noteKey(pid,sid){ return 'payesh_note_'+pid+'_'+sid; }
+function noteGet(pid,sid){
+  try{ var o=JSON.parse(Store.get(noteKey(pid,sid),'null'));
+    if(o&&typeof o.t==='string')return {text:o.t,updated:o.u||null}; }catch(e){}
+  return null;
+}
+function noteLinkedParent(pid,sid){
+  return (db.parent_links||[]).some(function(l){return l.parent_id===pid&&l.student_id===sid;});
+}
+function parentNoteCard(sid){
+  var u=(typeof S!=='undefined')?S.user:null;
+  if(!u||u.role!=='parent'||!noteLinkedParent(u.id,sid))return '';
+  var n=noteGet(u.id,sid);
+  return '<div class="card"><div class="card-head"><h3>📝 یادداشت شخصی من</h3>'
+    +'<span class="badge b-gray">🔒 فقط شما می‌بینید</span></div>'
+    +'<div class="card-body">'
+    +'<textarea class="input" id="note_text" rows="3" maxlength="500" placeholder="یادآوری شخصی برای خودتان (حداکثر ۵۰۰ نویسه)…">'+esc(n?n.text:'')+'</textarea>'
+    +'<div class="row" style="margin-top:8px;gap:8px;align-items:center">'
+    +'<button class="btn sm" data-act="pnote-save" data-id="'+escAttr(sid)+'">💾 ذخیره یادداشت</button>'
+    +'<span class="small muted">'+(n&&n.updated?'آخرین به‌روزرسانی: '+jalali(n.updated):'هنوز یادداشتی ثبت نشده')+'</span>'
+    +'</div></div></div>';
+}
 function viewChildren(){
   const kids=db.parent_links.filter(p=>p.parent_id===S.user.id).map(p=>byId('users',p.student_id)).filter(Boolean);
   if(!kids.length)return `<div class="card">${empty('👨‍👩‍👦','دانش‌آموزی متصل نیست','با مدیر مدرسه تماس بگیرید.')}</div>`;
   const active=S.child||kids[0].id;
   return `<div class="card"><div class="card-body row">
    ${kids.map(k=>`<button class="btn ${active===k.id?'':'ghost'}" data-act="child" data-id="${escAttr(k.id)}">🎒 ${esc(k.full_name)} <span class="small">(${esc((classOf(k.id)||{}).name||'—')})</span></button>`).join('')}
-   </div></div>${summaryBlock(active)}${viewRecord(active)}`;
+   </div></div>${parentNoteCard(active)}${summaryBlock(active)}${viewRecord(active)}`;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -6339,6 +6544,20 @@ function gradeTrendData(sid, subjectId){
   });
 }
 
+/* ── E.3 فرناز: هدف‌گذاری شخصی نمره (هر درس یک عدد ۰ تا ۲۰) ──
+   ذخیره فقط از طریق Store (حافظهٔ محلی، کلید دانش‌آموز+درس) — بدون سرور.
+   دیدن/ویرایش فقط برای خودِ دانش‌آموز یا ولیِ لینک‌شده (goalViewerOk). */
+function goalKey(sid,subId){ return 'payesh_goal_'+sid+'_'+subId; }
+function goalGet(sid,subId){
+  var v=Store.get(goalKey(sid,subId),null);
+  if(v===null||v==='')return null;
+  v=Number(v); return isNaN(v)?null:v;
+}
+function goalViewerOk(sid){
+  var u=(typeof S!=='undefined')?S.user:null; if(!u)return false;
+  if(u.id===sid)return true;
+  return (db.parent_links||[]).some(function(l){ return l.student_id===sid&&l.parent_id===u.id; });
+}
 /** جهت روند: مقایسهٔ میانگین نیمهٔ اول با نیمهٔ دوم */
 function gradeTrendDirection(pts){
   if(pts.length < 4) return null;            /* داده کم است، حکم ندهیم */
@@ -6388,6 +6607,11 @@ function gradeTrendCard(sid){
       + '</span>';
   }
 
+  /* E.3: هدف فقط وقتی تک‌درس انتخاب شده و بیننده خود/ولی است */
+  var goalSub = pick || null;
+  var goalVal = (goalSub && goalViewerOk(sid)) ? goalGet(sid, goalSub) : null;
+  var goalShow = (goalVal !== null && isFinite(goalVal));
+  var goalEdit = !!goalSub && goalViewerOk(sid);
   var avgAll = pts.reduce(function(s, p){ return s + p.norm; }, 0) / pts.length;
   /* بند ۴.۹ (دور ۷۹): پوشِ میانگینِ کلاس روی نمودارِ روند.
      منبع: classScoreContext (ناشناس؛ فقط عدد؛ حداقل ۲ دانش‌آموزِ عضو).
@@ -6408,8 +6632,10 @@ function gradeTrendCard(sid){
       tip += ' • میانگین کلاس: ' + fa(cAvg.toFixed(2));
       tick = '<b class="avg-tick" style="bottom:' + ((cAvg / 20) * 100).toFixed(1) + '%"></b>';
     }
+    var gtick = goalShow
+      ? '<b class="goal-tick" style="bottom:' + ((goalVal / 20) * 100).toFixed(1) + '%"></b>' : '';
     return '<div class="col" title="' + escAttr(tip) + '">'
-      + '<div class="plot">' + tick
+      + '<div class="plot">' + tick + gtick
       + '<i style="height:' + h + '%;background:' + color + '"></i></div>'
       + '<span>' + esc(faD(String(p.score))) + '</span></div>';
   }).join('');
@@ -6423,11 +6649,22 @@ function gradeTrendCard(sid){
     + '<div class="card-body">'
     + '<div class="chart trend-chart">' + cols + '</div>'
     + '<div class="row small muted" style="margin-top:10px;line-height:2">'
-    +   '<span>میانگین: <b>' + fa(avgAll.toFixed(2)) + '</b> از ۲۰</span>'
+    + '<span>میانگین: <b>' + fa(avgAll.toFixed(2)) + '</b> از ۲۰</span>'
     +   tickLegend
+    +   (goalShow ? '<span>🎯 هدف: <b>' + fa(goalVal) + '</b> از ۲۰</span>' : '')
     +   '<span>تعداد نمره: <b>' + fa(pts.length) + '</b></span>'
     +   '<span>ترتیب بر پایهٔ تاریخ ثبت</span>'
-    + '</div></div></div>';
+    + '</div>'
+    + (goalEdit
+      ? '<div class="row" style="margin-top:8px;gap:8px;align-items:center">'
+        + '<span>🎯 هدف این درس:</span>'
+        + (goalShow ? '' : '<span class="small muted">هنوز هدفی تعیین نشده</span>')
+        + '<input id="goal_val" type="text" inputmode="decimal" placeholder="مثلاً ۱۸" value="'
+        + (goalShow ? escAttr(String(goalVal)) : '') + '" style="width:70px" />'
+        + '<button class="btn small" data-act="goal-save" data-id="' + escAttr(sid)
+        + '" data-sub="' + escAttr(goalSub) + '">ثبت هدف</button></div>'
+      : '')
+    + '</div></div>';
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -6529,6 +6766,7 @@ function schoolModal(s){
     ${typeof capPickerHTML==='function'?capPickerHTML(s):''}
     <div id="m_branch_box" style="display:${s.level==='متوسطه دوم'?'block':'none'}">${branchPicker(s)}</div>
     ${f('آدرس',`<textarea class="input" id="m_addr" rows="2">${esc(s.address||'')}</textarea>`)}
+    ${f('🎯 برنامه ویژه (بوم) — اهداف سالانه',`<textarea class="input" id="m_boom" rows="3">${esc(s.boom_goals||'')}</textarea>`)}
     <div class="sec-title">👤 مشخصات مدیر مدرسه ${mgr?'':'<span class="small muted">(حساب کاربری او ساخته می‌شود)</span>'}</div>
     <div class="grid g2">
       ${f('نام و نام خانوادگی'+(s.id?'':' *'),inp('mg_name',mgr?mgr.full_name:''))}
@@ -6537,6 +6775,15 @@ function schoolModal(s){
       ${f('نام کاربری'+(s.id?'':' *'),inp('mg_user',mgr?mgr.username:''))}</div>`,
    'school-save'));
   window._edit=s;
+}
+/* C.2 فرناز — مودالِ «برنامه ویژه مدرسه» (بوم): اهداف سالانه */
+function boomModal(sid){
+  const s=byId('schools',Number(sid))||{};
+  openModal(modalTpl('🎯 برنامه ویژه مدرسه (بوم) — '+esc(s.name||''),
+   `${f('اهداف سالانه (هر خط یک هدف)',`<textarea class="input" id="boom_goals" rows="6" placeholder="مثلاً:\nکسب رتبه اول منطقه در المپیاد ریاضی\nراه‌اندازی آزمایشگاه رباتیک" style="line-height:1.9">${esc(s.boom_goals||'')}</textarea>`)}
+    <div class="small muted">حداکثر ۲۰۰۰ نویسه. خالی گذاشتن = پاک شدن برنامه.</div>`
+   ,'school-boom-save'));
+  window._boomSid=Number(sid);
 }
 function userModal(x){
   const isSuper=S.user.role==='superadmin';
@@ -6776,6 +7023,7 @@ function assocMinModal(){
   openModal(modalTpl('صورت‌جلسهٔ جلسهٔ انجمن',
    `
    ${f('تاریخِ جلسه *',`<input class="input" id="am_date" type="date" value="${todayISO()}" /> <span class="badge b-gray">${jalali(todayISO())}</span>`)}
+   ${f('نوع جلسه',sel('am_type',MIN_TYPES,'assoc'))}
    ${f('حاضرین در جلسه * (هر خط یک مورد)',`<textarea class="input" id="am_att" rows="4" placeholder="مثلاً:\nآقای محمدی — رئیس انجمن\nسرکار خانم احمدی — نمایندهٔ اولیا\nآقای رضایی — مدیر مدرسه" style="line-height:1.9"></textarea>`)}
    ${f('مصوبات جلسه (هر خط یک مصوبه)',`<textarea class="input" id="am_res" rows="5" placeholder="مثلاً:\nتصویبِ کمکِ داوطلبانهٔ ۵ میلیونی برای کتابخانه\nتعیینِ اردوی پاییز در اواخرِ مهر" style="line-height:1.9"></textarea>`)}
    `,'assoc-min-save'));
@@ -11247,6 +11495,39 @@ function loginServerMsg(code){
    اختصاصی. پارامترها همان محلی‌هایِ شنوندهٔ کلیک هستند. */
 function coreActions(e, el, id, a, rawId){
   return {
+   /* E.1 فرناز: تیکِ چک‌لیستِ فردا — فقط حافظهٔ محلی via Store (بدون سرور، بدون رندرِ مجدد) */
+   /* E.6 فرناز: یادداشت شخصی ولی — فقط Store؛ فقط ولیِ لینک‌شده؛ سقف ۵۰۰ نویسه */
+   'pnote-save'(){
+     const sid=Number(id), u=S.user;
+     if(!u||u.role!=='parent'||typeof noteLinkedParent!=='function'||!noteLinkedParent(u.id,sid)){toast('فقط ولیِ دانش‌آموز می‌تواند یادداشت ثبت کند','err');return;}
+     const t=(V('note_text')||'').trim();
+     if(t.length>500){toast('یادداشت حداکثر ۵۰۰ نویسه می‌تواند باشد','err');return;}
+     if(!t){Store.remove(noteKey(u.id,sid));}
+     else if(!Store.set(noteKey(u.id,sid),JSON.stringify({t:t,u:todayISO()}))){toast('ذخیره نشد — حافظهٔ محلی در دسترس نیست','err');return;}
+     toast('یادداشت ذخیره شد','ok'); render();
+   },
+   /* E.3 فرناز: ثبت هدف نمره — فقط Store؛ گارد دوم: فقط خود/ولی (canAction نقش را چک می‌کند، این مالکیت را) */
+   'goal-save'(){
+     const sid=Number(id), sub=Number(el.dataset.sub);
+     if(!sid||!sub)return;
+     if(typeof goalViewerOk!=='function'||!goalViewerOk(sid)){toast('فقط خود دانش‌آموز یا ولیِ او می‌تواند هدف ثبت کند','err');return;}
+     const raw=(V('goal_val')||'').trim();
+     const v=Number(raw.replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(',','.'));
+     if(raw===''||isNaN(v)){toast('عدد هدف معتبر نیست','err');return;}
+     if(v<0||v>20){toast('هدف باید بین ۰ تا ۲۰ باشد','err');return;}
+     Store.set(goalKey(sid,sub),String(v));
+     toast('🎯 هدف ثبت شد','ok'); render();
+   },
+   'tomorrow-check'(){
+     const sid=Number(el.dataset.sid), iso=el.dataset.iso, idx=el.dataset.idx;
+     if(!sid||!iso||!idx)return;
+     /* دیسپچر روی کلیک preventDefault می‌کند (تاگِلِ بومی لغو می‌شود) — پس دستی تاگِل می‌زنیم */
+     el.checked=!el.checked;
+     const k=tomorrowCheckKey(sid,iso);
+     let cur={}; try{cur=JSON.parse(Store.get(k,'{}'))||{};}catch(x){cur={};}
+     cur[idx]=el.checked?1:0;
+     Store.set(k,JSON.stringify(cur));
+   },
    pick(){
      /* دمو: فرم با شماره + کد ملیِ همان حساب پر می‌شود و کد ارسال (شبیه‌سازی)
         و در فیلد می‌نشیند — کاربر با «استعلام و ورود» کاملش می‌کند. */
@@ -11393,7 +11674,8 @@ function coreActions(e, el, id, a, rawId){
     const date=V('am_date');const att=V('am_att');const res=V('am_res');
     if(!date){toast('تاریخِ جلسه لازم است','err');return;}
     if(!att){toast('حاضرین را بنویسید','err');return;}
-    insert('assoc_minutes',{school_id:sid,meeting_date:date,attendees:att,resolutions:res,archived:false,created_at:todayISO(),updated_at:todayISO()});
+    const typ=V('am_type');const mt=(typeof MIN_TYPES!=='undefined'&&MIN_TYPES.some(function(t){return t[0]===typ;}))?typ:'assoc';
+    insert('assoc_minutes',{school_id:sid,meeting_date:date,meeting_type:mt,attendees:att,resolutions:res,archived:false,created_at:todayISO(),updated_at:todayISO()});
     closeModal();toast('صورت‌جلسه ثبت شد','ok');render();},
   'assoc-min-print'(){assocMinPrint(id);},
   'assoc-min-toggle'(){
@@ -12091,6 +12373,14 @@ function coreActions(e, el, id, a, rawId){
          const r=notifyReconcileMany(made.map(m=>m.recId));
          fix=r.created;
        }
+     }
+     /* E.5 فرناز: اعلان داخل‌برنامه‌ای غیبت برای والدین (با ref به رکورد).
+        ضدتکرار داخل absenceNotifFor است؛ فقط برای رکوردهای غایب. */
+     if(typeof absenceNotifFor==='function'){
+       made.forEach(function(m){
+         var rec=(typeof byId==='function')?byId('attendance',m.recId):null;
+         if(rec&&rec.status==='absent')absenceNotifFor(rec);
+       });
      }
      attDraftClearKeepTimers(cid,date);
      closeModal();
@@ -14003,6 +14293,21 @@ function scheduleActions(e, el, id, a, rawId){
    ═══════════════════════════════════════════════════════════════════ */
 function adminActions(e, el, id, a, rawId){
   return {
+   // support tickets (G.2 farnaz)
+   'ticket-new'(){ ticketModal(); },
+   'ticket-save'(){
+     const title=(V('tk_title')||'').trim(), pri=V('tk_pri'), desc=(V('tk_desc')||'').trim();
+     if(!title){toast('عنوان درخواست الزامی است','err');return;}
+     if(!TICKET_PRI[pri]){toast('اولویت معتبر نیست','err');return;}
+     insert('support_tickets',{school_id:S.user.school_id,title:title,description:desc,priority:pri,status:'open',created_at:todayISO(),updated_at:todayISO()});
+     closeModal(); toast('درخواست پشتیبانی ثبت شد','ok'); render();
+   },
+   'ticket-status'(){
+     const t=byId('support_tickets',id), s=el.dataset.s;
+     if(!t||!TICKET_ST[s]){toast('درخواست معتبر نیست','err');return;}
+     update('support_tickets',t.id,{status:s,updated_at:todayISO()});
+     toast('وضعیت تیکت: '+TICKET_ST[s][0],'ok'); render();
+   },
    // schools
    'school-new'(){schoolModal(null);},
    'school-edit'(){schoolModal(byId('schools',id));},
@@ -14046,7 +14351,7 @@ function adminActions(e, el, id, a, rawId){
        phone:V('m_phone'),landline:V('m_landline'),
        level:V('m_level'),type:V('m_type')||'عادی',gender:V('m_gender'),shift:V('m_shift')||'صبح',
        capacity:Number(V('m_cap'))||300,
-       active:Number(V('m_active')),address:V('m_addr'),
+       active:Number(V('m_active')),address:V('m_addr'),boom_goals:V('m_boom'),
        /* دور ۶۵ بند روزهای کاری: روزهای روشن‌شده در مودال */
        work_days:$$('.m-wd:checked').map(x=>Number(x.value)).sort((a,b)=>a-b),
        /* Round 77: excuse window (minutes after bell end) */
@@ -14077,6 +14382,18 @@ function adminActions(e, el, id, a, rawId){
          national_id:mgNid||makeNid(),phone:mgPhone||'',active:1,title:'مدیر مدرسه',created_at:todayISO()});
      }
      closeModal();toast(s.id?'تغییرات ذخیره شد':'مدرسه و حساب مدیر ثبت شد','ok');render();},
+   /* C.2 فرناز — برنامه ویژه مدرسه (بوم): مدیر فقط مدرسهٔ خودش */
+   'school-boom'(){
+     const sid=Number(id)||S.user.school_id;
+     if(S.user.role!=='superadmin'&&sid!==S.user.school_id){toast('فقط مدرسهٔ خودتان','err');return;}
+     boomModal(sid);},
+   'school-boom-save'(){
+     const sid=Number(window._boomSid)||S.user.school_id;
+     if(S.user.role!=='superadmin'&&sid!==S.user.school_id){toast('فقط مدرسهٔ خودتان','err');return;}
+     const g=V('boom_goals')||'';
+     if(invalid('boom_goals',g.length>2000,'حداکثر ۲۰۰۰ نویسه'))return;
+     update('schools',sid,{boom_goals:g});
+     closeModal();toast('برنامه ویژه ذخیره شد','ok');render();},
    'user-new'(){userModal(null);},
    'user-edit'(){userModal(byId('users',id));},
    'user-toggle'(){const u=byId('users',id);update('users',id,{active:u.active?0:1});render();},
@@ -14463,7 +14780,7 @@ function rialShort(n){
   return f(n,0);
 }
 const addDaysISO = (iso,n)=>{const d=new Date(iso);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
-const NOTIF_ICON={absence:'🚫',late:'⏰',discipline:'⚖️',discipline_positive:'👍',low_grade:'⚠️',announcement:'📢',leave:'📨',tuition:'🧾',tuition_paid:'✅',tuition_due:'⏳',chat:'💬'};
+const NOTIF_ICON={absence:'🚫',late:'⏰',discipline:'⚖️',discipline_positive:'👍',low_grade:'⚠️',announcement:'📢',leave:'📨',tuition:'🧾',tuition_paid:'✅',tuition_due:'⏳',chat:'💬',exam_remind:'⏳'};
 const LEAVE_FA={pending:['در انتظار بررسی','b-amber'],approved:['تأیید شده','b-green'],rejected:['رد شده','b-red']};
 const INST_FA={pending:['در انتظار','b-amber'],partial:['جزئی','b-blue'],paid:['پرداخت شده','b-green'],canceled:['بخشوده','b-gray']};
 const PAY_FA={cash:'نقدی',card:'کارت‌خوان',online:'آنلاین',cheque:'چک'};
@@ -14555,7 +14872,7 @@ function generateExtras(){
     db.attendance.filter(a=>a.school_id===school.id&&a.status==='absent').slice(0,12).forEach(a=>{
       const st=byId('users',a.student_id); if(!st)return;
       db.parent_links.filter(l=>l.student_id===st.id).forEach(l=>add('notifications',{user_id:l.parent_id,school_id:school.id,type:'absence',
-        title:'🚫 غیبت دانش‌آموز',body:`${st.full_name} در تاریخ ${jalali(a.date)} در مدرسه حاضر نبود.`,link:'children',read:0,created_at:a.date}));
+        title:'🚫 غیبت دانش‌آموز',body:`${st.full_name} در تاریخ ${jalali(a.date)} در مدرسه حاضر نبود.`,link:'children',ref:'att_'+a.id,read:0,created_at:a.date}));
     });
     db.installments.filter(i=>i.school_id===school.id&&i.status!=='paid'&&i.due_date<todayISO()).slice(0,10).forEach(i=>{
       const st=byId('users',i.student_id); if(!st)return;
@@ -14726,6 +15043,41 @@ function waiveInstallment(instId){
 }
 
 /* ---------------- اعلان‌ها ---------------- */
+/* ── E.5 فرناز: دکمهٔ «موجه اعلام کنم» کنار اعلان غیبت ──
+   زنجیرهٔ درخواست/تأیید از قبل بود (quick-excuse → leaves pending → decideLeave)؛
+   افزودهٔ E.5: (۱) اعلان غیبت با ref به رکورد حضور، (۲) دکمه کنار همان اعلان،
+   (۳) ضدتکرار درخواست. خودِ دکمه همان quick-excuse موجود است (اکشن جدید ندارد). */
+function absenceNotifFor(rec){
+  var st=byId('users',rec.student_id)||{};
+  (db.parent_links||[]).filter(function(l){return l.student_id===rec.student_id;}).forEach(function(l){
+    var dup=(db.notifications||[]).some(function(n){return n.user_id===l.parent_id&&n.type==='absence'&&n.ref==='att_'+rec.id;});
+    if(dup)return;
+    insert('notifications',{user_id:l.parent_id,school_id:rec.school_id,type:'absence',
+      title:'🚫 غیبت دانش‌آموز',body:(st.full_name||'')+' در تاریخ '+jalali(rec.date)+' در مدرسه حاضر نبود.',
+      link:'children',ref:'att_'+rec.id,read:0,created_at:rec.date});
+  });
+}
+function absenceAttOf(n){
+  if(n.ref&&String(n.ref).indexOf('att_')===0){
+    var r=byId('attendance',Number(String(n.ref).slice(4))); if(r)return r;
+  }
+  /* دادهٔ قدیمیِ بدون ref: تطبیق ولی↔فرزند↔تاریخِ اعلان */
+  var kids={};
+  (db.parent_links||[]).forEach(function(l){ if(l.parent_id===n.user_id)kids[l.student_id]=1; });
+  return (db.attendance||[]).find(function(a){return kids[a.student_id]&&a.date===n.created_at&&a.status==='absent';})||null;
+}
+function absencePendingFor(rec){
+  return (db.leaves||[]).some(function(l){return l.student_id===rec.student_id&&l.status==='pending'&&l.from_date<=rec.date&&l.to_date>=rec.date;});
+}
+function absenceExcuseBtn(n){
+  if(!n||n.type!=='absence')return '';
+  var u=(typeof S!=='undefined')?S.user:null;
+  if(!u||u.role!=='parent')return '';
+  var rec=absenceAttOf(n);
+  if(!rec||rec.status!=='absent'||rec.excused)return '';
+  if(absencePendingFor(rec))return '<div class="spacer"></div><span class="badge b-amber">⏳ در انتظار بررسی مدیر</span>';
+  return '<div class="spacer"></div><button class="btn ghost sm" data-act="quick-excuse" data-id="'+escAttr(rec.id)+'" title="ثبتِ درخواستِ موجه برای این غیبت (پس از تأییدِ مدیر)">🕊️ موجه اعلام کنم</button>';
+}
 function viewNotifications(){
   const items=myNotifs();
   return `<div class="card"><div class="card-head"><h3>🔔 اعلان‌های من</h3>
@@ -14733,7 +15085,7 @@ function viewNotifications(){
     ${items.length?items.map(n=>`<div class="row" style="padding:12px 16px;border-bottom:1px solid var(--border);background:${n.read?'#fff':'var(--primary-soft)'};cursor:pointer" data-act="notif-open" data-id="${escAttr(n.id)}">
       <span style="font-size:19px">${NOTIF_ICON[n.type]||'🔔'}</span>
       <div style="min-width:0"><b>${esc(n.title)}</b><div class="small muted" style="line-height:1.9">${esc(n.body||'')}</div>
-      <div class="small muted" style="opacity:.7">${jalali(n.created_at)}</div></div></div>`).join('')
+      <div class="small muted" style="opacity:.7">${jalali(n.created_at)}</div></div>${absenceExcuseBtn(n)}</div>`).join('')
     :empty('🔕','اعلانی ندارید','رویدادهای مهم مدرسه اینجا نمایش داده می‌شود.')}</div>`;
 }
 
@@ -14766,6 +15118,104 @@ function viewLeaves(){
 }
 
 /* ---------------- تقویم آموزشی ---------------- */
+/* ── E.4 فرناز: خروجی ICS (RFC 5545) — کاملاً سمت‌کلاینت، بدون وابستگی ──
+   امتحاناتِ پیش‌رو (بازهٔ بیننده) + رویدادهای تقویم مدرسه. UID پایدار (ایمپورتِ
+   مجدد = به‌روزرسانی، نه تکرار). بدون BOM (بعضی پارسرهای سخت‌گیر خراب می‌شوند).
+   از icsEsc موجود (66-client-features) استفاده می‌شود — تکثیر نشده است. */
+function icsFold(line){
+  /* تاشدن در ۷۵ اکتت (RFC 5545 §3.1) بدون شکستن کاراکتر چندبایتی */
+  var parts=[],cur='',len=0;
+  Array.from(String(line)).forEach(function(ch){
+    var cp=ch.codePointAt(0), bl=cp<128?1:(cp<2048?2:(cp<65536?3:4));
+    if(len+bl>75&&cur!==''){parts.push(cur);cur=' ';len=1;}
+    cur+=ch;len+=bl;
+  });
+  parts.push(cur);
+  return parts.join('\r\n');
+}
+function icsStamp(d){
+  d=d||new Date();
+  function p(n){return (n<10?'0':'')+n;}
+  return d.getUTCFullYear()+p(d.getUTCMonth()+1)+p(d.getUTCDate())+'T'+p(d.getUTCHours())+p(d.getUTCMinutes())+p(d.getUTCSeconds())+'Z';
+}
+function icsLocal(iso,time){
+  var t=String(time||'').slice(0,5).split(':');
+  return String(iso).slice(0,4)+String(iso).slice(5,7)+String(iso).slice(8,10)+'T'+(t[0]||'00')+(t[1]||'00')+'00';
+}
+function icsLocalEnd(iso,time,durMin){
+  var dt=new Date(Date.parse(String(iso)+'T'+String(time||'00:00').slice(0,5)+':00'));
+  if(isNaN(dt))return null;
+  dt=new Date(dt.getTime()+(Number(durMin)||90)*60000);
+  function p(n){return (n<10?'0':'')+n;}
+  return dt.getFullYear()+p(dt.getMonth()+1)+p(dt.getDate())+'T'+p(dt.getHours())+p(dt.getMinutes())+'00';
+}
+function icsExamEvent(ex,stamp){
+  var subj=(byId('subjects',ex.subject_id)||{}).name||'—';
+  var cls=(byId('classes',ex.class_id)||{}).name||'';
+  var L=['BEGIN:VEVENT','UID:payesh-exam-'+ex.id+'@payesh','DTSTAMP:'+stamp,
+    'DTSTART:'+icsLocal(ex.date,ex.start_time||'08:00')];
+  var end=icsLocalEnd(ex.date,ex.start_time||'08:00',ex.duration);
+  if(end)L.push('DTEND:'+end);
+  L.push('SUMMARY:'+icsEsc('امتحان '+subj));
+  if(ex.room)L.push('LOCATION:'+icsEsc('اتاق '+ex.room));
+  L.push('DESCRIPTION:'+icsEsc('کلاس '+cls+' — بارم '+(ex.max_score||20)+' — '+jalali(ex.date)));
+  L.push('CATEGORIES:'+icsEsc('امتحان'),'END:VEVENT');
+  return {key:ex.date+' '+(ex.start_time||''), text:L.map(icsFold).join('\r\n')};
+}
+function icsCalEvent(r,stamp){
+  var KIND={event:'رویداد',exam:'امتحان',holiday:'تعطیلی'};
+  var d=String(r.date).replace(/-/g,'');
+  var L=['BEGIN:VEVENT','UID:payesh-cal-'+r.id+'@payesh','DTSTAMP:'+stamp,
+    'DTSTART;VALUE=DATE:'+d,
+    'DTEND;VALUE=DATE:'+String(addDaysISO(r.date,1)).replace(/-/g,''),
+    'SUMMARY:'+icsEsc(r.title),
+    'DESCRIPTION:'+icsEsc((KIND[r.kind]||'رویداد')+' — '+jalali(r.date)),
+    'CATEGORIES:'+icsEsc(KIND[r.kind]||'رویداد'),'END:VEVENT'];
+  return {key:r.date+' ', text:L.map(icsFold).join('\r\n')};
+}
+function icsScopeExams(){
+  var u=S.user; if(!u)return [];
+  var list=(db.exams||[]).filter(function(e){return e.school_id===u.school_id&&e.date&&e.date>=todayISO();});
+  if(u.role==='student'){var c=(typeof classOf==='function')?classOf(u.id):null;return c?list.filter(function(e){return e.class_id===c.id;}):[];}
+  if(u.role==='parent'){
+    var kids={};
+    (db.parent_links||[]).forEach(function(l){ if(l.parent_id!==u.id)return;
+      var c=(typeof classOf==='function')?classOf(l.student_id):null; if(c)kids[c.id]=1; });
+    return list.filter(function(e){return kids[e.class_id];});
+  }
+  /* کمینه‌سازی داده: برنامهٔ امتحانات فقط برای خانواده و کادر آموزشی؛
+     بقیه فقط همان رویدادهایی را می‌گیرند که در صفحه هم می‌بینند. */
+  if(u.role==='teacher'||u.role==='manager'||u.role==='superadmin')return list;
+  return [];
+}
+function icsBuild(){
+  var u=S.user, stamp=icsStamp(), today=todayISO();
+  var rows=schoolScope('calendar').filter(function(r){return r.date&&r.date>=today;});
+  var evs=rows.map(function(r){return icsCalEvent(r,stamp);})
+    .concat(icsScopeExams().map(function(e){return icsExamEvent(e,stamp);}));
+  evs.sort(function(a,b){return a.key<b.key?-1:(a.key>b.key?1:0);});
+  var head=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Payesh//School Calendar//FA','CALSCALE:GREGORIAN','METHOD:PUBLISH'];
+  var text=head.concat(evs.map(function(e){return e.text;}),['END:VCALENDAR']).join('\r\n')+'\r\n';
+  return {filename:'payesh_calendar_'+(u.school_id||'all')+'_'+today+'.ics', text:text, count:evs.length};
+}
+function icsDownloadAll(){
+  /* گیت: فقط بینندگانِ روت calendar (بدون هاردکد نقش — تک‌منبع: جدول روت).
+     ورودی ACTION_ROLES ندارد چون آن جدول معنای WRITE دارد و این اکشن فقط می‌خواند. */
+  if(typeof canRoute==='function'&&!canRoute('calendar')){toast('شما اجازهٔ دریافت خروجی تقویم را ندارید','err');return null;}
+  var pack=icsBuild();
+  if(!pack.count){toast('رویداد پیشِ‌رویی برای خروجی نیست','err');return null;}
+  try{
+    var blob=new Blob([pack.text],{type:'text/calendar;charset=utf-8'});
+    var a=document.createElement('a');
+    a.href=(typeof URL!=='undefined'&&URL.createObjectURL)?URL.createObjectURL(blob):'';
+    if(!a.href){toast('دانلود در این مرورگر پشتیبانی نمی‌شود','err');return null;}
+    a.download=pack.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+    toast('فایل تقویم ('+fa(pack.count)+' رویداد) دانلود شد','ok');
+    return pack;
+  }catch(e){ toast('دانلود فایل ممکن نشد','err'); return null; }
+}
 function viewCalendar(){
   const rows=schoolScope('calendar').sort((a,b)=>a.date.localeCompare(b.date));
   const KIND={event:['رویداد','b-blue'],exam:['امتحان','b-amber'],holiday:['تعطیلی','b-red']};
@@ -14779,7 +15229,7 @@ function viewCalendar(){
       <span class="small muted">${jalali(r.date)}</span>
       ${canEdit?`<button class="icon-btn" title="ویرایش" data-act="cal-edit" data-id="${escAttr(r.id)}">✏️</button>
         <button class="icon-btn danger" title="حذف" data-act="cal-del" data-id="${escAttr(r.id)}">🗑️</button>`:''}</div>`).join('')}</div>`:empty('📅','موردی ثبت نشده','')}</div>`;
-  return `<div class="grid g2">${card('🗓️ رویدادهای پیش‌رو',upcoming)}${card('🕘 رویدادهای گذشته',past.reverse())}</div>`;
+  return `<div class="row" style="margin-bottom:12px;gap:8px"><button class="btn" data-act="ics-download">📲 افزودن به تقویم گوشی (دانلود همه)</button><span class="small muted">امتحانات + رویدادهای پیش‌رو — فایل استاندارد ics.</span></div><div class="grid g2">${card('🗓️ رویدادهای پیش‌رو',upcoming)}${card('🕘 رویدادهای گذشته',past.reverse())}</div>`;
 }
 
 /* ---------------- گفتگو ---------------- */
@@ -14794,6 +15244,8 @@ function viewChat(){
     <div class="card"><div class="card-head"><h3>مخاطبان</h3></div>
       ${list.length?list.map(p=>`<div class="row" style="padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:${active&&active.id===p.id?'var(--primary-soft)':'#fff'}" data-act="chat-open" data-id="${escAttr(p.id)}">
         <div class="avatar">${esc(p.full_name[0])}</div><div style="min-width:0"><b style="font-size:13px">${esc(p.full_name)}</b><div class="small muted">${ROLE_FA[p.role]}</div></div></div>`).join(''):empty('💬','مخاطبی نیست','')}
+    </div>
+    <div class="card">)}
     </div>
     <div class="card"><div class="card-head"><h3>${active?esc(active.full_name):'گفتگو'}</h3></div>
       <div class="card-body vscroll" style="display:grid;gap:8px;max-height:420px;overflow:auto">
@@ -15060,6 +15512,7 @@ const F7_ACTIONS = {
     }
     closeModal(); toast('رویداد ذخیره شد'+(ev?' — '+fa(ev)+' پیامک ساخته شد':''),'ok'); render();
   },
+  'ics-download'(){ icsDownloadAll(); }, /* E.4 فرناز: فقط خواندن + Blob — بدون سرور */
   'cal-del'(el,id){ const c=byId('calendar',id);
     askDelete(`رویداد «${c.title}» حذف شود؟`,()=>{remove('calendar',id);toast('حذف شد','');render();}); },
   'notif-readall'(){ myNotifs().forEach(n=>{ if(!n.read) update('notifications',n.id,{read:1}); }); toast('همه اعلان‌ها خوانده شد','ok'); render(); },
@@ -23764,6 +24217,10 @@ function assocMinutes(schoolId){
   return (db.assoc_minutes||[]).filter(function(m){return m.school_id===schoolId;})
     .slice().sort(function(a,b){return String(b.meeting_date).localeCompare(String(a.meeting_date));});
 }
+/* ─────────────── C.1 فرناز — نوعِ جلسه (همان جدول، بدونِ جدولِ تازه) ─────────────── */
+const MIN_TYPES=[['assoc','انجمن اولیا و مربیان'],['teachers','شورای معلمان'],['students','شورای دانش‌آموزان']];
+function minTypeOf(m){ return (m&&MIN_TYPES.some(function(t){return t[0]===m.meeting_type;}))?m.meeting_type:'assoc'; }
+function minTypeFa(m){ const t=MIN_TYPES.filter(function(x){return x[0]===minTypeOf(m);})[0]; return t?t[1]:MIN_TYPES[0][1]; }
 function assocMinPrint(mid){
   const m=byId('assoc_minutes',Number(mid));
   if(!m)return;
@@ -23781,7 +24238,7 @@ function assocMinPrint(mid){
     +'table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}'
     +'th,td{border:1px solid #cbd5e1;padding:8px;text-align:right}th{background:#eff6ff}'
     +'@media print{.np{display:none}}</style></head><body>'
-    +'<h1>صورت‌جلسهٔ جلسهٔ انجمن اولیا و مربیان</h1>'
+    +'<h1>صورت‌جلسهٔ جلسهٔ '+esc(minTypeFa(m))+'</h1>'
     +'<div class="meta">'+esc(sc)+' — تاریخِ جلسه: '+jalali(m.meeting_date)+(m.archived?' — <b>بایگانی‌شده</b>':'')+'</div>'
     +'<hr><h2>حاضرین در جلسه</h2><p class="body">'+(att.length?att.map(esc).join('\n'):'—')+'</p>'
     +'<h2>مصوبات جلسه</h2><p class="body">'+(res.length?res.map(esc).join('\n'):'—')+'</p>'
@@ -23790,14 +24247,20 @@ function assocMinPrint(mid){
   w.document.close();
 }
 function assocMinutesSection(sid){
-  const rows=assocMinutes(sid);
-  let h='<div class="card"><h3>📄 صورت‌جلسهٔ جلساتِ انجمن <span class="small" style="font-weight:normal">('+fa(rows.length)+')</span> '
+  const all=assocMinutes(sid);
+  const ft=(S.filters&&S.filters.mtype)||'';
+  const rows=ft?all.filter(function(m){return minTypeOf(m)===ft;}):all;
+  const opts=[['','همهٔ جلسات']].concat(MIN_TYPES).map(function(o){
+    return '<option value="'+o[0]+'"'+(ft===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';}).join('');
+  let h='<div class="card"><h3>📄 صورت‌جلسهٔ جلسات <span class="small" style="font-weight:normal">('+fa(rows.length)+')</span> '
+    +'<select class="input sm" data-f="mtype" style="max-width:200px;display:inline-block">'+opts+'</select> '
     +'<button class="btn btn-primary sm" data-act="assoc-min-new" style="float:left">➕ صورت‌جلسهٔ تازه</button></h3>';
   if(rows.length){
-    h+='<div class="table-wrap"><table><thead><tr><th>تاریخِ جلسه</th><th>مصوبات</th><th>وضعیت</th><th></th></tr></thead><tbody>';
+    h+='<div class="table-wrap"><table><thead><tr><th>تاریخِ جلسه</th><th>نوع جلسه</th><th>مصوبات</th><th>وضعیت</th><th></th></tr></thead><tbody>';
     rows.forEach(function(m){
       const res=String(m.resolutions||'').replace(/\s+/g,' ');
       h+='<tr><td>'+jalali(m.meeting_date)+'</td>'
+        +'<td><span class="badge b-blue">'+esc(minTypeFa(m))+'</span></td>'
         +'<td style="max-width:420px"><span class="small">'+esc(res.length>60?res.slice(0,60)+'…':(res||'—'))+'</span></td>'
         +'<td>'+(m.archived?'<span class="badge b-gray">بایگانی‌شده</span>':'<span class="badge b-green">فعال</span>')+'</td>'
         +'<td style="white-space:nowrap">'
@@ -28693,6 +29156,9 @@ const CF_ACTIONS = {
     /* بررسیِ دوبارهٔ مالکیت در لحظهٔ ذخیره — S.__cfRid ادعای کلاینت است؛
        باورِ کور آن = درخواستِ جعلی برای رکوردِ دیگران (تأییدِ Devin) */
     if(!rec||!u||!cfCanExcuse(u,rec)){ S.__cfRid=0; closeModal(); toast('این دسترسی را ندارید','err'); return; }
+    /* E.5: ضدتکرار — اگر برای همین روز درخواستِ بررسی‌نشده هست، دوباره نساز */
+    var dup=(db.leaves||[]).some(function(l){return l.student_id===rec.student_id&&l.status==='pending'&&l.from_date<=rec.date&&l.to_date>=rec.date;});
+    if(dup){ S.__cfRid=0; closeModal(); toast('برای این غیبت قبلاً درخواست ثبت شده — در انتظار بررسی مدیر','err'); return; }
     var reason=V('qe_reason');
     var st=byId('users',rec.student_id)||{};
     insert('leaves',{school_id:rec.school_id,student_id:rec.student_id,from_date:rec.date,to_date:rec.date,
