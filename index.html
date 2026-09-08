@@ -29,6 +29,8 @@ a{color:inherit;text-decoration:none}
 .login-art h1{font-size:40px;font-weight:800;letter-spacing:2px;margin:0;z-index:1}
 .login-tag{font-size:16px;font-weight:600;opacity:.95;z-index:1}
 .login-card{margin:auto;text-align:center}
+/* C.3 فرناز — گزارش عمومی زیر فرم ورود */
+.pub-report{max-width:980px;margin:0 auto;padding:8px 16px 40px}
 .login-card h2{font-size:22px;font-weight:800;margin:0 0 20px}
 .login-card .field{text-align:right}
 .login-card .field label{font-size:13px;font-weight:600;color:var(--text)}
@@ -4209,6 +4211,42 @@ function demoAccounts(){
   const s=db.users.find(u=>u.role==='student'), p=db.users.find(u=>u.role==='parent');
   return [db.users.find(u=>u.role==='superadmin'),db.users.find(u=>u.username==='edu_kurdistan'),db.users.find(u=>u.username==='manager1'),db.users.find(u=>u.username==='teacher1_1'),s,db.users.find(u=>u.username==='parent_multi')||p,db.users.find(u=>u.username==='counselor1')].filter(Boolean);
 }
+/* C.3 فرناز — گزارش عمومی مدرسه (بدون نیاز به ورود):
+   فقط آمار تجمیعی + اهداف منتشرشده؛ هیچ دادهٔ شخصی (نام/نمره/حضور) اینجا نیست. */
+function publicReportHTML(){
+  const schools=db.schools.filter(s=>s.active!==0);
+  if(!schools.length)return '';
+  let sid=Number(S.filters.pubschool)||null;
+  if(!schools.some(s=>s.id===sid))sid=schools[0].id;
+  const sc=byId('schools',sid)||{};
+  const us=db.users.filter(u=>u.school_id===sid);
+  const nS=us.filter(u=>u.role==='student').length,
+        nT=us.filter(u=>u.role==='teacher').length,
+        nC=db.classes.filter(c=>c.school_id===sid).length;
+  const mins=(typeof assocMinutes==='function'?assocMinutes(sid):[]).filter(m=>!m.archived);
+  const types=(typeof MIN_TYPES!=='undefined'?MIN_TYPES:[['assoc','انجمن اولیا و مربیان']]);
+  const perType=types.map(([k,label])=>{
+    const ms=mins.filter(m=>(typeof minTypeOf==='function'?minTypeOf(m):'assoc')===k);
+    const last=ms.map(m=>m.meeting_date).filter(Boolean).sort().slice(-1)[0];
+    return {label:label,n:ms.length,last:last?jalali(last):'—'};
+  });
+  const bg=(sc.boom_goals||'').trim();
+  return `<div class="pub-report" id="pub-report"><div class="card"><div class="card-head"><h3>📊 گزارش عمومی مدرسه</h3>
+    <select class="select" data-f="pubschool" style="width:220px">${schools.map(s=>`<option value="${s.id}" ${s.id===sid?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
+   <div class="card-body">
+    <h4 style="margin:0 0 4px">${esc(sc.name||'')}</h4>
+    <div class="small muted" style="margin-bottom:12px">${esc(sc.level||'')}${sc.level?' · ':''}${esc((byId('counties',sc.county_id)||{}).name||sc.city||'')}</div>
+    <div class="grid g3">
+      ${statCard('🎒',fa(nS),'دانش‌آموز','blue')}
+      ${statCard('👩‍🏫',fa(nT),'دبیر','green')}
+      ${statCard('🏛️',fa(nC),'کلاس','amber')}
+    </div>
+    <div class="sec-title">🤝 جلسه‌ها (به‌تفکیک نوع)</div>
+    <div class="grid g3">${perType.map(t=>`<div class="card stat"><div><b>${fa(t.n)}</b><span>${esc(t.label)}</span><div class="small muted">آخرین: ${esc(t.last)}</div></div></div>`).join('')}</div>
+    ${bg?`<div class="sec-title">🎯 برنامه ویژه (بوم)</div><div style="white-space:pre-wrap;line-height:2">${esc(bg)}</div>`:''}
+    <div class="small muted" style="margin-top:12px">🔑 برای جزئیات بیشتر، از فرم بالا وارد سامانه شوید.</div>
+   </div></div></div>`;
+}
 function renderLogin(){
   const accs=demoAccounts();
   return `<div class="login-wrap">
@@ -4234,7 +4272,8 @@ function renderLogin(){
         <b>${esc(a.full_name)}</b>
         <span class="small muted" style="direction:ltr;margin-inline-start:auto">${esc(a.phone||'—')}</span></div>`).join('')}
      <div class="small muted" style="margin-top:16px;text-align:center"><span data-act="privacy-open" style="text-decoration:underline;cursor:pointer">سیاست حریم خصوصی و امنیت داده</span></div>
-   </div></div></div>`;
+   </div></div></div>
+   ${publicReportHTML()}`;
 }
 
 /* ==================== لایه مجوزدهی (Authorization) ====================
