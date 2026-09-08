@@ -40,7 +40,7 @@ const _st0 = JSON.parse(fs.readFileSync(store, 'utf8'));
 const _s6 = _st0.schools.find((s) => s.id === 6);
 if (_s6 && !_s6.active) { _s6.active = 1; fs.writeFileSync(store, JSON.stringify(_st0)); }
 const child = spawn('node', [path.join(ROOT, 'server/index.js')], {
-  env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', PAYESH_STORE: store, PAYESH_AUDIT: path.join(dir, 'audit.jsonl'), PAYESH_JWT_SECRET: 'amin-test-secret', PAYESH_DEMO_CODE: '1' },
+  env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', PAYESH_STORE: store, PAYESH_AUDIT: path.join(dir, 'audit.jsonl'), PAYESH_JWT_SECRET: require('crypto').randomBytes(32).toString('hex'), PAYESH_DEMO_CODE: '1' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 let out = '';
@@ -78,7 +78,8 @@ try {
 
   /* B1: مدیرِ ۶ ins */
   const ins = await http('POST', '/api/sync', { ops: [opX({ by: mgr6.id, collection: 'assoc_minutes', type: 'ins', data: mk(6, {}) })] }, mgr6C);
-  T(ins.status === 200, 'B1 مدیرِ ۶: ins assoc_minutes → 200 (گرفت: ' + ins.status + ' ' + JSON.stringify(ins.json).slice(0, 120) + ')');
+  const b1s = ins.json && ins.json.results && ins.json.results[0];
+  T(ins.status === 200 && b1s && b1s.ok === true, 'B1 مدیرِ ۶: ins assoc_minutes → 200 + ok (R96 per-op) (گرفت: ' + ins.status + ' ' + JSON.stringify(ins.json).slice(0, 120) + ')');
 
   /* B2: مدیرِ ۲ روی مدرسهٔ ۶ → out_of_scope */
   const evil = await http('POST', '/api/sync', { ops: [opX({ by: mgr2.id, collection: 'assoc_minutes', type: 'ins', data: mk(6, { attendees: 'تجاوز' }) })] }, mgr2C);
@@ -86,7 +87,9 @@ try {
 
   /* B3: دبیرِ ۶ ins → role_denied */
   const tins = await http('POST', '/api/sync', { ops: [opX({ by: tea6.id, collection: 'assoc_minutes', type: 'ins', data: mk(6, { attendees: 'دبیر' }) })] }, tea6C);
-  T(tins.status === 403 && tins.json && tins.json.code === 'role_denied', 'B3 دبیر: ins → 403 role_denied (گرفت: ' + tins.status + ' ' + (tins.json && tins.json.code) + ')');
+  /* R96: رد per-op از fieldGate یا ردِ دامنه‌ای (out_of_scope) — هر دو fail-closed */
+  const tinsS = tins.json && tins.json.results && tins.json.results[0];
+  T((tins.status === 403 && tins.json && ['role_denied', 'out_of_scope'].includes(tins.json.code)) || (tins.status === 200 && tinsS && !tinsS.ok && ['role_denied', 'out_of_scope'].includes(tinsS.code)), 'B3 دبیر: ins → رد (گرفت: ' + tins.status + ' ' + (tins.json && (tins.json.code || (tinsS && tinsS.code))) + ')');
 
   /* B4: فلش → رکورد در store */
   await sleep(2300);

@@ -45,8 +45,8 @@ const MUTS = [
     file: 'server/sync.js', suite: 'tests/server12.js', heap: 1500,
     /* R96 P0-1: دروازهٔ نقشِ واحد = canOp درون fieldGate (canWrite منسوخ شد).
        target: S8 — teacher ins leaves؛ اگر دروازه خاموش شود عملیات PASS می‌کند. */
-    bad: "if(!canOp(role, coll, op.t)) return { kind: 'reject_op', code: 'role_denied' };",
-    mut: "if(false && !canOp(role, coll, op.t)) return { kind: 'reject_op', code: 'role_denied' };",
+    bad: "if(!exc && !canOp(s.role, op.c, op.t)) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };",
+    mut: "if(false && !canOp(s.role, op.c, op.t)) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };",
     name: 'M3 نقشِ همه‌گیر (canOp در fieldGate)',
     expectFail: 'S8'
   },

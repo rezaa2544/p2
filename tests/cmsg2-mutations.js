@@ -59,10 +59,12 @@ mutate('src/js/47-counselor.js',
   "if(false)return {ok:false,msg:'فقط در رشته‌های مدرسهٔ خودتان پاسخ می‌دهید'};",
   'tests/cmsg2.js', /❌ K4/, 'M3 برداشتنِ گاردِ بین‌مدرسه‌ایِ مشاور');
 
+/* R96 P0-1: WRITE_PERMSِ literal دیگر نیست — دروازهٔ نقش = canOp در fieldGate.
+   جهش = مسدودکردنِ مشاور روی counselor_msgs → S5 (پاسخِ مشاور ۲۰) باید بپارَد. */
 mutate('server/sync.js',
-  "counselor  : ['counselor_refs','messages','counselor_msgs'],",
-  "counselor  : ['counselor_refs','messages'],",
-  'tests/cmsg3.js', /❌ S5/, 'M4 حذفِ مجوزِ مشاور از WRITE_PERMS (سرور)', true);
+  "if(!exc && !canOp(s.role, op.c, op.t)) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };",
+  "if(!exc && !canOp(s.role, op.c, op.t) || (op.c === 'counselor_msgs' && s.role === 'counselor')) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };",
+  'tests/cmsg3.js', /❌ S5/, 'M4 حذفِ مجوزِ مشاور از fieldGate (سرور)', true);
 
 /* بازسازی + خطِّ پایه */
 execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });

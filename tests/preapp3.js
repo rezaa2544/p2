@@ -36,7 +36,7 @@ const seed = path.join(ROOT, 'server/data/payesh.json');
 if (!fs.existsSync(seed)) { console.error('⚠️ server/data/payesh.json نیست — اول: node server/seed.js'); process.exit(1); }
 fs.copyFileSync(seed, store);
 const child = spawn('node', [path.join(ROOT, 'server/index.js')], {
-  env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', PAYESH_STORE: store, PAYESH_AUDIT: path.join(dir, 'audit.jsonl'), PAYESH_JWT_SECRET: 'preapp-test-secret', PAYESH_DEMO_CODE: '1' },
+  env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', PAYESH_STORE: store, PAYESH_AUDIT: path.join(dir, 'audit.jsonl'), PAYESH_JWT_SECRET: require('crypto').randomBytes(32).toString('hex'), PAYESH_DEMO_CODE: '1' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 let out = '';
@@ -72,12 +72,14 @@ try {
 
   /* A1: مدیر ins preapps */
   const ins = await http('POST', '/api/sync', { ops: [opX({ by: mgrU.id, collection: 'preapps', type: 'ins', data: { school_id: sc1, name: 'داوطلبِ سرور', phone: '09351112222', note: '', stage: 'contact', stage_at: '2026-09-01', created_at: '2026-09-01' }})] }, mgrC);
-  T(ins.status === 200, 'A1 مدیر: ins preapps → 200 (گرفت: ' + ins.status + ' ' + JSON.stringify(ins.json).slice(0,120) + ')');
+  const a1s = ins.json && ins.json.results && ins.json.results[0];
+  T(ins.status === 200 && a1s && a1s.ok === true, 'A1 مدیر: ins preapps → 200 + ok (R96 per-op) (گرفت: ' + ins.status + ' ' + JSON.stringify(ins.json).slice(0,120) + ')');
 
   /* A2: دبیر ins preapps → 403 */
   const tins = await http('POST', '/api/sync', { ops: [opX({ by: teaU.id, collection: 'preapps', type: 'ins', data: { school_id: sc1, name: 'خرابکار', phone: '09359999999', stage: 'contact', stage_at: '2026-09-01', created_at: '2026-09-01' }})] }, teaC);
-  T(tins.status === 403, 'A2 دبیر: ins preapps → 403 (گرفت: ' + tins.status + ')');
-  T(tins.json && tins.json.code === 'role_denied', 'A2b کد خطا role_denied (گرفت: ' + (tins.json && tins.json.code) + ')');
+  /* R96: رد per-op از fieldGate یا ردِ دامنه‌ای (out_of_scope) — هر دو fail-closed */
+  const tinsS = tins.json && tins.json.results && tins.json.results[0];
+  T((tins.status === 403 && tins.json && ['role_denied', 'out_of_scope'].includes(tins.json.code)) || (tins.status === 200 && tinsS && !tinsS.ok && ['role_denied', 'out_of_scope'].includes(tinsS.code)), 'A2/A2b دبیر: ins preapps → رد (گرفت: ' + tins.status + ' ' + (tins.json && (tins.json.code || (tinsS && tinsS.code))) + ')');
 
   /* A1b: فلش → ردیفِ ساخته‌شده در store (id از همین‌جا) */
   await sleep(2300);

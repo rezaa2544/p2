@@ -331,8 +331,10 @@ async function main() {
   /* S13 — آدیت */
   await sleep(2500);
   const audit = fs.existsSync(auditFile) ? fs.readFileSync(auditFile, 'utf8') : '';
-  const evLines = audit.split('\n').filter(l => l.indexOf('sync_field_denied') > -1);
-  chk('S13 آدیت: sync_field_denied ثبت شده (بدونِ شمارهٔ تلفن)', evLines.length >= 2 && evLines.every(l => l.indexOf('0999') === -1), 'lines=' + evLines.length);
+  /* R96: ردِ فیلدی در هر دو لایهٔ مجاز (fieldGate + filterFields) باید آدیت
+     شود — هر دو رویداد بدونِ تلفن/کد ملی. */
+  const evLines = audit.split('\n').filter(l => l.indexOf('sync_field_denied') > -1 || l.indexOf('sync_field_gate') > -1);
+  chk('S13 آدیت: ردِ فیلدی (field_gate/field_denied) ثبت شده (بدونِ شمارهٔ تلفن)', evLines.length >= 2 && evLines.every(l => l.indexOf('0999') === -1), 'lines=' + evLines.length);
 
   srv.kill('SIGKILL');
   console.log('\nserver12: ' + pass + '/' + (pass + fail) + ' سبز' + (fail ? ' — شکست: ' + errors.join(' | ') : '  ✅'));

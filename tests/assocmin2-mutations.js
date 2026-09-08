@@ -53,10 +53,12 @@ mutate('src/js/19-actions-core.js',
   "update('assoc_minutes',m.id,{archived:true,updated_at:todayISO()});",
   'tests/assocmin2.js', /❌ A4/, 'M2 ثابت‌کردنِ archived:true');
 
+/* R96 P0-1: WRITE_PERMSِ literal دیگر نیست — دروازهٔ نقش = canOp در fieldGate.
+   جهش = خاموش‌کردنِ دروازه برایِ assoc_minutes → B3 (دبیر → رد) باید بپارَد. */
 mutate('server/sync.js',
-  "'reexams','assoc_minutes','summer_classes'",
-  "'reexams','summer_classes'",
-  'tests/assocmin3.js', /❌ B1/, 'M3 برداشتنِ assoc_minutes از WRITE_PERMS');
+  "if(!exc && !canOp(s.role, op.c, op.t)) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };",
+  "if(!exc && !canOp(s.role, op.c, op.t) || (op.c === 'assoc_minutes' && s.role === 'manager')) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };",
+  'tests/assocmin3.js', /❌ B1/, 'M3 برداشتنِ مجوزِ assoc_minutes از fieldGate (manager)');
 
 /* بازسازی + خطِّ پایه */
 execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });

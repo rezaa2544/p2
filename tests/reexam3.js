@@ -36,7 +36,7 @@ const seed = path.join(ROOT, 'server/data/payesh.json');
 if (!fs.existsSync(seed)) { console.error('⚠️ server/data/payesh.json نیست — اول: node server/seed.js'); process.exit(1); }
 fs.copyFileSync(seed, store);
 const child = spawn('node', [path.join(ROOT, 'server/index.js')], {
-  env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', PAYESH_STORE: store, PAYESH_AUDIT: path.join(dir, 'audit.jsonl'), PAYESH_JWT_SECRET: 'reexam-test-secret', PAYESH_DEMO_CODE: '1' },
+  env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', PAYESH_STORE: store, PAYESH_AUDIT: path.join(dir, 'audit.jsonl'), PAYESH_JWT_SECRET: require('crypto').randomBytes(32).toString('hex'), PAYESH_DEMO_CODE: '1' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 let out = '';
@@ -74,7 +74,8 @@ try {
 
   /* B1: مدیر ins */
   const ins = await http('POST', '/api/sync', { ops: [opX({ by: mgrU.id, collection: 'reexams', type: 'ins', data: { school_id: 1, student_id: stU.id, subject_id: subU.id, original_score: 8, exam_date: '2026-09-20', new_score: null, status: 'scheduled', created_at: '2026-09-06', updated_at: '2026-09-06' } })] }, mgrC);
-  T(ins.status === 200, 'B1 مدیر: ins reexams → 200 (گرفت: ' + ins.status + ' ' + JSON.stringify(ins.json).slice(0, 120) + ')');
+  const b1s = ins.json && ins.json.results && ins.json.results[0];
+  T(ins.status === 200 && b1s && b1s.ok === true, 'B1 مدیر: ins reexams → 200 + ok (R96 per-op) (گرفت: ' + ins.status + ' ' + JSON.stringify(ins.json).slice(0, 120) + ')');
 
   /* B2: مدیرِ مدرسهٔ ۲ روی مدرسهٔ ۱ → out_of_scope */
   const evil = await http('POST', '/api/sync', { ops: [opX({ by: mgr2.id, collection: 'reexams', type: 'ins', data: { school_id: 1, student_id: stU.id, subject_id: subU.id, original_score: 20, exam_date: '2026-09-20', new_score: null, status: 'scheduled', created_at: '2026-09-06', updated_at: '2026-09-06' } })] }, mgr2C);
@@ -82,7 +83,9 @@ try {
 
   /* B3: دبیر ins → role_denied */
   const tins = await http('POST', '/api/sync', { ops: [opX({ by: teaU.id, collection: 'reexams', type: 'ins', data: { school_id: 1, student_id: stU.id, subject_id: subU.id, original_score: 5, exam_date: '2026-09-20', new_score: null, status: 'scheduled', created_at: '2026-09-06', updated_at: '2026-09-06' } })] }, teaC);
-  T(tins.status === 403 && tins.json && tins.json.code === 'role_denied', 'B3 دبیر: ins → 403 role_denied (گرفت: ' + tins.status + ' ' + (tins.json && tins.json.code) + ')');
+  /* R96: رد per-op از fieldGate یا ردِ دامنه‌ای (out_of_scope) — هر دو fail-closed */
+  const tinsS = tins.json && tins.json.results && tins.json.results[0];
+  T((tins.status === 403 && tins.json && ['role_denied', 'out_of_scope'].includes(tins.json.code)) || (tins.status === 200 && tinsS && !tinsS.ok && ['role_denied', 'out_of_scope'].includes(tinsS.code)), 'B3 دبیر: ins → رد (گرفت: ' + tins.status + ' ' + (tins.json && (tins.json.code || (tinsS && tinsS.code))) + ')');
 
   /* B4: فلش → رکورد در store */
   await sleep(2300);

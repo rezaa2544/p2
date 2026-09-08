@@ -71,12 +71,15 @@ function restore(p) { /* backup handled inline per mutation */ }
   }
 }
 
-/* M3 — WRITE_PERMS سرور: preapps از مدیر */
+/* M3 — مجوزِ preappsِ مدیر (R96 P0-1: WRITE_PERMSِ literal منسوخ شد؛
+   دروازه = canOp در fieldGate) — مسدودکردنِ مدیر → A1 باید بپارَد */
 {
   const f = path.join(ROOT, 'server/sync.js');
   const orig = fs.readFileSync(f, 'utf8');
-  const bad = orig.replace("'preapps','scholarships'", "'scholarships'");
-  chk(bad !== orig, 'M3 جهشِ WRITE_PERMS سرور اعمال شد');
+  const bad = orig.replace(
+    "if(!exc && !canOp(s.role, op.c, op.t)) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };",
+    "if(!exc && !canOp(s.role, op.c, op.t) || (op.c === 'preapps' && s.role === 'manager')) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };");
+  chk(bad !== orig, 'M3 جهشِ fieldGate سرور اعمال شد (preapps/manager)');
   if (bad !== orig) {
     fs.writeFileSync(f, bad, 'utf8');
     const runOnce = () => spawnSync('node', [path.join(ROOT, 'tests/preapp3.js')], { cwd: ROOT, encoding: 'utf8' });

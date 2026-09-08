@@ -84,7 +84,11 @@ process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }
       cwd: ROOT,
       env: Object.assign({}, process.env, {
         PORT: String(p), HOST: '127.0.0.1',
-        PAYESH_STORE: storeFile, PAYESH_AUDIT: auditFile, PAYESH_KEY: keyFile, PAYESH_DEMO_CODE: '1'
+        PAYESH_STORE: storeFile, PAYESH_AUDIT: auditFile, PAYESH_KEY: keyFile, PAYESH_DEMO_CODE: '1',
+        /* R96: D4 دوباره send-code با همان تلفن — سقف‌ها در server17 سنجیده می‌شوند */
+        PAYESH_SMS_COOLDOWN_S: '0', PAYESH_SMS_DAILY_CAP: '1000000',
+        PAYESH_SMS_PHONE_LIMIT: '1000000', PAYESH_SMS_IP_LIMIT: '1000000',
+        PAYESH_LOGIN_IP_LIMIT: '1000000', PAYESH_LOGIN_TRIES: '1000000'
       }),
       stdio: 'pipe'
     });

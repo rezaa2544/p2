@@ -38,7 +38,7 @@ const seed = path.join(ROOT, 'server/data/payesh.json');
 if (!fs.existsSync(seed)) { console.error('⚠️ server/data/payesh.json نیست — اول: node server/seed.js'); process.exit(1); }
 fs.copyFileSync(seed, store);
 const child = spawn('node', [path.join(ROOT, 'server/index.js')], {
-  env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', PAYESH_STORE: store, PAYESH_AUDIT: path.join(dir, 'audit.jsonl'), PAYESH_JWT_SECRET: 'cmsg-test-secret', PAYESH_DEMO_CODE: '1' },
+  env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', PAYESH_STORE: store, PAYESH_AUDIT: path.join(dir, 'audit.jsonl'), PAYESH_JWT_SECRET: require('crypto').randomBytes(32).toString('hex'), PAYESH_DEMO_CODE: '1' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 let out = '';
@@ -103,7 +103,8 @@ try {
 
   /* S5: مشاورِ مدرسهٔ خودش پاسخ */
   const s5 = await http('POST', '/api/sync', { ops: [opX({ by: cou1.id, collection: 'counselor_msgs', type: 'ins', data: msg({ author_id: cou1.id, author_role: 'counselor', body: 'پاسخِ مشاور' }) })] }, cou1C);
-  T(s5.status === 200, 'S5 مشاور: پاسخ → 200 (گرفت: ' + s5.status + ' ' + JSON.stringify(s5.json).slice(0, 120) + ')');
+  const s5r = s5.json && s5.json.results && s5.json.results[0];
+  T(s5.status === 200 && s5r && s5r.ok === true, 'S5 مشاور: پاسخ → 200 + ok (R96 per-op) (گرفت: ' + s5.status + ' ' + JSON.stringify(s5.json).slice(0, 120) + ')');
 
   /* S6: مشاورِ مدرسهٔ دیگر */
   const s6 = await http('POST', '/api/sync', { ops: [opX({ by: cou2.id, collection: 'counselor_msgs', type: 'ins', data: msg({ author_id: cou2.id, author_role: 'counselor', body: 'تجاوز بین‌مدرسه‌ای' }) })] }, cou2C);
@@ -111,11 +112,15 @@ try {
 
   /* S7: دبیر */
   const s7 = await http('POST', '/api/sync', { ops: [opX({ by: teaU.id, collection: 'counselor_msgs', type: 'ins', data: msg({ author_id: teaU.id, author_role: 'teacher', body: 'دبیر' }) })] }, teaC);
-  T(s7.status === 403 && s7.json.code === 'role_denied', 'S7 دبیر → role_denied (گرفت: ' + s7.status + ' ' + s7.json.code + ')');
+  /* R96: رد per-op یا ردِ دامنه‌ای — هر دو fail-closed */
+  const s7r = s7.json && s7.json.results && s7.json.results[0];
+  T((s7.status === 403 && ['role_denied', 'out_of_scope'].includes(s7.json.code)) || (s7.status === 200 && s7r && !s7r.ok && ['role_denied', 'out_of_scope'].includes(s7r.code)), 'S7 دبیر → رد (گرفت: ' + s7.status + ' ' + (s7.json.code || (s7r && s7r.code)) + ')');
 
   /* S8: مدیر (مسیرِ نوشتن برای مدیر نیست) */
   const s8 = await http('POST', '/api/sync', { ops: [opX({ by: mgrU.id, collection: 'counselor_msgs', type: 'ins', data: msg({ author_id: mgrU.id, author_role: 'manager', body: 'مدیر' }) })] }, mgrC);
-  T(s8.status === 403 && s8.json.code === 'role_denied', 'S8 مدیر → role_denied (گرفت: ' + s8.status + ' ' + s8.json.code + ')');
+  /* R96: ردِ نقش per-op از fieldGate (مدیر در مدلِ counselor_msgs نیست) */
+  const s8r = s8.json && s8.json.results && s8.json.results[0];
+  T((s8.status === 403 && ['role_denied', 'out_of_scope'].includes(s8.json.code)) || (s8.status === 200 && s8r && !s8r.ok && s8r.code === 'role_denied'), 'S8 مدیر → رد (گرفت: ' + s8.status + ' ' + (s8.json.code || (s8r && s8r.code)) + ')');
 
   /* S9: فلش — فقط رکوردهای مجاز در store */
   await sleep(2300);

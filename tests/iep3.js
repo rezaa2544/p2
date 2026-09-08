@@ -101,12 +101,16 @@ async function main() {
   /* B3 — آپدیت با فیلدِ غیر-IEP: role_denied */
   const op2 = { uid: 'iep3-' + Date.now() + '-2', by: t.id, at: NOW, c: 'users', t: 'upd', id: st.id, data: { full_name: 'هکر' } };
   const r2 = await httpReq(8998, 'POST', '/api/sync', { ops: [op2] }, cookie);
-  chk('B3 آپدیتِ full_name توسطِ دبیر = role_denied', r2.status === 403 && r2.json && r2.json.code === 'role_denied', r2.raw.slice(0, 120));
+  /* R96: ردِّ نقش per-op از fieldGate (200 + ok:false) — legacy 403 دسته‌ای منسوخ */
+  const s2b3 = r2.json && r2.json.results && r2.json.results[0];
+  chk('B3 آپدیتِ full_name توسطِ دبیر = role_denied', (r2.status === 403 && r2.json && r2.json.code === 'role_denied') || (r2.status === 200 && s2b3 && !s2b3.ok && s2b3.code === 'role_denied'), r2.raw.slice(0, 120));
 
   /* B4 — insert روی users: role_denied */
   const op3 = { uid: 'iep3-' + Date.now() + '-3', by: t.id, at: NOW, c: 'users', t: 'ins', id: null, data: { full_name: 'کاربرِ کاذب', role: 'manager', school_id: 1, active: 1 } };
   const r3 = await httpReq(8998, 'POST', '/api/sync', { ops: [op3] }, cookie);
-  chk('B4 insert روی users توسطِ دبیر = role_denied', r3.status === 403 && r3.json && r3.json.code === 'role_denied', r3.raw.slice(0, 120));
+  /* R96: دروازهٔ درون‌دوزی (inScope) پیش از fieldGate شلیک می‌کند → out_of_scope */
+  const s3b4 = r3.json && r3.json.results && r3.json.results[0];
+  chk('B4 insert روی users توسطِ دبیر = رد', (r3.status === 403 && r3.json && ['role_denied', 'out_of_scope'].includes(r3.json.code)) || (r3.status === 200 && s3b4 && !s3b4.ok), r3.raw.slice(0, 120));
 
   /* B5 — store: IEP اعمال شد، full_name دست‌نخورده
      (سرور هر ۲ ثانیه flush می‌کند — صبر تا flush) */
