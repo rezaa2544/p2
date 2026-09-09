@@ -41963,4 +41963,20 @@ CREATE INDEX IF NOT EXISTS idx_grades_school_student_id ON grades (school_id, st
 -- classes: school scope + grade filter + keyset ORDER BY id ASC
 CREATE INDEX IF NOT EXISTS idx_classes_school_grade_id ON classes (school_id, grade, id);
 
+-- ── Wave 4 (chat2): tombstone table for DB-native delta pull ──────────
+-- PREPARED. Not populated by the current write side yet (sync.js push /
+-- delete-service record deletions in the in-memory store). Populating + reading
+-- this table is PENDING on the PostgreSQL-native write path (docs/SYNC_PROTOCOL.md).
+CREATE TABLE IF NOT EXISTS server_tombstones (
+  id BIGSERIAL PRIMARY KEY,
+  "collection" VARCHAR(64) NOT NULL,
+  record_id INTEGER NOT NULL,
+  school_id INTEGER,
+  deleted_by INTEGER,
+  deleted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  reason VARCHAR(255)
+);
+CREATE INDEX IF NOT EXISTS idx_server_tombstones_deleted_at ON server_tombstones (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_server_tombstones_school_deleted_at ON server_tombstones (school_id, deleted_at);
+
 COMMIT;
