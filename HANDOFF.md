@@ -14,6 +14,31 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## Wave 3 (چت ۲): Query و Performance · Part 1 — students/attendance → DB-native — ۲۰۲۶-۰۹-۰۹ — انجام، با یک قید ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` (رویِ Wave 1 همان شاخه) — لایهٔ
+DB-native کوئری/پجینگ (`server/dbquery.js`) + سیم‌کشیِ `students` و
+`attendance` GET-list به آن (فقط وقتی PG زنده) + ۴ Index در
+`server/schema.sql` + Inventory در `docs/WAVE3_QUERY_PERFORMANCE.md` +
+سئوتِ تازهٔ `tests/wave3-query.js` (۱۳/۱۳).
+
+- **الگویِ قبلی:** همهٔ GET-list ها «همه را از store بار → فیلتر → sort →
+  slice» در JS می‌کردند (Keyset-pagination از قبل بود اما روی آرایهٔ کامل).
+- **تغییرها:** `server/dbquery.js` (builders خالص: school-scope + role-scope با
+  `EXISTS` برای teacher/student/parent + keyset `id > $cursor` + `LIMIT limit+1`
+  برای `has_more` + `COUNT` برای total؛ همهٔ مقادیرِ کاربری فقط پارامتر، شناسه‌ها
+  فقط allowlist) · `server/routes/students.js` و `attendance.js` (هر دو async؛
+  مسیرِ DB-native فقط وقتی `db.isPostgres()`؛ وگرنه JS قبلی دست‌نخورده) ·
+  `server/index.js` (await دو GET-list) · ۴ Index در `schema.sql`.
+- **حفظِ رفتار:** وقتی PG خاموش است مسیرِ قبلی اجرا می‌شود → byte-identical.
+- **دروازه‌ها:** smoke **۵۴۷/۵۴۷** · run.js **۳۵/۳۵** · wave3-query **۱۳/۱۳** ·
+  wave1-reads **۱۸/۱۸** · check-authz **۰** · secret-scan **۱۱/۱۱** ·
+  `build --check` ✅.
+- **🔴 قیدِ صداقت:** شاخهٔ PostgreSQL تعریف/سیم‌کشی/unit-test شده ولی اجرایِ
+  واقعی + `EXPLAIN ANALYZE` + گیتِ برابری/مجوز بر PGِ واقعی هنوز pending است
+  (هیچ PG/درایور در سندباکس نبود) — الزامی پیش از تولید. کارهایِ باز در
+  `docs/WAVE3_QUERY_PERFORMANCE.md` §۴.
+
 ## Wave 1 (چت ۲): PostgreSQL Source of Truth · Part 1 (Reads inventory + seam) — ۲۰۲۶-۰۹-۰۹ — انجام، با یک قید ✅
 
 **وضعیت:** روی `arena/01a085ca-p2` (نوکِ این سشن = مرجِ PR #37) — درِ
