@@ -9,6 +9,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
+const crypto = require('crypto');
 const redis = require('./redis');
 
 const INVAL_CHANNEL = 'payesh:pubsub:inval';
@@ -18,7 +19,10 @@ const localUserBootstrapCache = new Map(); // L1 memory cache for microsecond re
  * Initialize Cache layer and Pub/Sub invalidation listeners
  */
 async function init() {
-  await redis.init();
+  const r = await redis.init();
+  /* P0-13: نتیجهٔ ریدی را به بالا منتشر کن — شکستِ ردیس در تولید یعنی
+     سرور نباید سرویس بدهد (بوتر در index.js تصمیم می‌گیرد). */
+  if (!r || r.ok === false) return { ok: false, driver: (r && r.driver) || 'none', error: (r && r.error) || 'redis init failed' };
 
   // Listen for invalidation events from other instances
   await redis.subscribe(INVAL_CHANNEL, (msg) => {
@@ -172,24 +176,29 @@ async function markProcessedUid(uid, ttlSeconds = 86400) {
 }
 
 /**
- * Distributed Mutex Lock (Singleflight)
- * @param {string} lockKey 
- * @param {number} [ttlSeconds=5] 
- * @returns {Promise<boolean>} true if lock acquired
+ * Distributed Mutex Lock — P0-14: atomic acquire (SET NX EX) and
+ * token-verified release (compare-and-delete). An expired lock can never
+ * be deleted by a previous holder, and concurrent acquirers resolve to
+ * exactly one winner.
+ * @param {string} lockKey
+ * @param {number} [ttlSeconds=5]
+ * @returns {Promise<string|null>} owner token, or null if the lock is held
  */
 async function acquireLock(lockKey, ttlSeconds = 5) {
-  const key = `payesh:lock:${lockKey}`;
-  const res = await redis.set(key, 'LOCKED', 'EX', ttlSeconds);
-  return res === 'OK';
+  const token = `t-${crypto.randomUUID()}`;
+  const won = await redis.setNX(`payesh:lock:${lockKey}`, token, ttlSeconds);
+  return won ? token : null;
 }
 
 /**
- * Release Distributed Lock
- * @param {string} lockKey 
+ * Release the lock only if we still own it.
+ * @param {string} lockKey
+ * @param {string} token — token returned by acquireLock
+ * @returns {Promise<boolean>} true if we released it
  */
-async function releaseLock(lockKey) {
-  const key = `payesh:lock:${lockKey}`;
-  await redis.del(key);
+async function releaseLock(lockKey, token) {
+  if (!token) return false;
+  return redis.compareAndDelete(`payesh:lock:${lockKey}`, token);
 }
 
 module.exports = {

@@ -16,6 +16,30 @@
 
 const SYNC_QUEUE_KEY = 'sms_syncq_v1';
 const SYNC_META_KEY  = 'sms_syncmeta_v1';
+const SYNC_DLQ_KEY   = 'sms_syncdlq_v1';   /* P1-10: صفِ مردهٔ ماندگار (پس از ۵ تلاش یا خروج از سقف) */
+
+/* P1-10 (مقیاس ملی): سقف و نگهداشتِ صفِ ارسال.
+   - maxOperations: بیشینهٔ قلم‌هایِ صف (تخلیه از قدیمی‌ترینِ ترمینال‌ها؛ pending آخر)
+   - maxBytes: سقفِ حجمیِ JSON صف (≈ سهمِ امن از حافظهٔ مرورگر)
+   - ageLimitMs: قلم‌هایِ ترمینال (rejected/failed/conflict) قدیمی‌تر از این هرس می‌شوند؛
+     دادهٔ کاربر (pending/sending) هرگز با قدمت حذف نمی‌شود
+   - maxTries: پس از این تعداد تلاشِ ناموفق، قلم به DLQ می‌رود (دیگر ارسال نمی‌شود)
+   - warnRatio/warnResetRatio: آستانهٔ هشدارِ «نزدیک سقف» با هیسترزیس (ضد نوسانِ پیام)
+   - dlqMax: سقفِ DLQ (قدیمی‌ترین‌ها دور ریخته می‌شوند؛ شمارش در dlqDropped) */
+const SYNC_QUEUE_CAPS = {
+  maxOperations : 1000,
+  maxBytes      : 5 * 1024 * 1024,
+  ageLimitMs    : 30 * 24 * 60 * 60 * 1000,
+  maxTries      : 5,
+  warnRatio     : 0.8,
+  warnResetRatio: 0.7,
+  dlqMax        : 200,
+};
+const SYNC_DLQ_REASON_FA = {
+  queue_overflow : 'خروج از سقفِ صف',
+  expired        : 'انقضایِ نگهداشت',
+  retry_exhausted: 'پایانِ ۵ تلاشِ ناموفق',
+};
 
 /* کدهایِ ردِّ پایدارِ سرور — عملیاتِ «مسموم»: دوباره‌ارسال بی‌فایده است.
    (دور ۸۵, P0-2) op به وضعیت rejected می‌رود و از چرخهٔ ارسال خارج
@@ -51,12 +75,17 @@ const SYNC = {
   autoTimer  : null,
   conflicts  : [],
   progress   : null,        /* دور ۱۰۰: پیشرفتِ ارسالِ تکه‌تکه {done,total} */
+  dlq        : [],          /* P1-10: صفِ مرده (پس از ۵ تلاش / خروج از سقف) */
+  capWarned  : false,       /* P1-10: هشدارِ «نزدیک سقف» داده شده؟ (هیسترزیس) */
+  dlqDropped : 0,           /* P1-10: قلم‌هایِ دورریخته‌شده از DLQیِ پر */
 };
 
 /* ---------- ذخیره‌سازی صف ---------- */
 function loadQueue(){
   try{ SYNC.queue = Store.getJSON(SYNC_QUEUE_KEY, []) || []; }
   catch(e){ SYNC.queue = []; }
+  try{ SYNC.dlq = Store.getJSON(SYNC_DLQ_KEY, []) || []; }   /* P1-10 */
+  catch(e){ SYNC.dlq = []; }
   try{
     const m = Store.getJSON(SYNC_META_KEY, {}) || {};
     SYNC.lastSync = m.lastSync || null;
@@ -66,11 +95,122 @@ function saveQueue(){
   /* در عملیات انبوه (batchWrites) ذخیره‌سازی به پایان دسته موکول می‌شود؛
      وگرنه هر عملیات کل صف را دوباره JSON.stringify می‌کند و هزینه
      درجه‌دوم می‌شود. پرچم در 03-persistence.js مدیریت می‌شود. */
-  if(typeof _BATCH_DEPTH !== 'undefined' && _BATCH_DEPTH > 0){ _BATCH_QUEUE_DIRTY = true; return; }
-  Store.setJSON(SYNC_QUEUE_KEY, SYNC.queue);
+  if(typeof _BATCH_DEPTH !== 'undefined' && _BATCH_DEPTH > 0){ _BATCH_QUEUE_DIRTY = true; return true; }
+  return Store.setJSON(SYNC_QUEUE_KEY, SYNC.queue);   /* P1-10: خروجی false یعنی حافظهٔ مرورگر پر است */
 }
 function saveSyncMeta(){
   Store.setJSON(SYNC_META_KEY, { lastSync: SYNC.lastSync });
+}
+
+/* ---------- P1-10: سقف، نگهداشت و صفِ مرده ---------- */
+function saveDlq(){
+  Store.setJSON(SYNC_DLQ_KEY, SYNC.dlq);
+}
+function queueBytes(){
+  try{ return JSON.stringify(SYNC.queue).length; }catch(e){ return 0; }
+}
+/* نسبتِ اشغالِ صف نسبت به سقف (بزرگ‌ترینِ نسبتِ تعدادی و حجمی) */
+function queueRatio(){
+  return Math.max(
+    SYNC.queue.length / SYNC_QUEUE_CAPS.maxOperations,
+    queueBytes() / SYNC_QUEUE_CAPS.maxBytes);
+}
+/* انتقالِ قلم به صفِ مرده (دیگر ارسال نمی‌شود؛ در پنل دیده و حذف می‌شود) */
+function moveToDlq(item, reason){
+  SYNC.queue = SYNC.queue.filter(function(x){ return x.uid !== item.uid; });
+  item.dead_at     = new Date().toISOString();
+  item.dead_reason = reason;
+  item.status      = 'rejected';
+  if(!item.error) item.error = SYNC_DLQ_REASON_FA[reason] || reason;
+  SYNC.dlq.push(item);
+  while(SYNC.dlq.length > SYNC_QUEUE_CAPS.dlqMax){ SYNC.dlq.shift(); SYNC.dlqDropped++; }
+  saveDlq();
+}
+/* انتخابِ قربانیِ تخلیه: اول rejected، بعد failed، بعد conflict، بعد sending، آخر pending؛
+   در هر گروه قدیمی‌ترین. فقط وقتی ۱- می‌دهد که صف خالی باشد. */
+function pickEvictIndex(){
+  var rank = { rejected: 0, failed: 1, conflict: 2, sending: 3, pending: 4 };
+  var best = -1, bestRank = 99, bestTime = Infinity;
+  for(var i=0;i<SYNC.queue.length;i++){
+    var x = SYNC.queue[i];
+    var r = (rank[x.status] !== undefined) ? rank[x.status] : 5;
+    var t = Date.parse(x.created_at); if(isNaN(t)) t = Infinity;
+    if(r < bestRank || (r === bestRank && t < bestTime)){ bestRank = r; bestTime = t; best = i; }
+  }
+  return best;
+}
+/* هرسِ قلم‌هایِ ترمینالِ قدیمی (rejected/failed/conflict). دادهٔ کاربر
+   (pending/sending) و قلم‌هایِ بی‌زمان هرگز هرس نمی‌شوند. خروجی: تعدادِ هرس‌شده. */
+function pruneAgedOps(){
+  var cutoff = Date.now() - SYNC_QUEUE_CAPS.ageLimitMs;
+  var before = SYNC.queue.length;
+  SYNC.queue = SYNC.queue.filter(function(x){
+    if(x.status === 'pending' || x.status === 'sending') return true;
+    var t = Date.parse(x.created_at);
+    if(isNaN(t)) return true;
+    return t >= cutoff;
+  });
+  return before - SYNC.queue.length;
+}
+/* اعمالِ سقفِ تعدادی و حجمی؛ قلم‌هایِ بیرون‌رانده به DLQ می‌روند. خروجی: تعدادِ منتقل‌شده. */
+function enforceQueueCaps(){
+  pruneAgedOps();
+  var moved = 0, guard = 0, idx;
+  while(SYNC.queue.length > SYNC_QUEUE_CAPS.maxOperations && guard++ < 1200){
+    idx = pickEvictIndex();
+    if(idx < 0) break;
+    moveToDlq(SYNC.queue[idx], 'queue_overflow'); moved++;
+  }
+  guard = 0;
+  while(SYNC.queue.length && queueBytes() > SYNC_QUEUE_CAPS.maxBytes && guard++ < 1200){
+    idx = pickEvictIndex();
+    if(idx < 0) break;
+    moveToDlq(SYNC.queue[idx], 'queue_overflow'); moved++;
+  }
+  if(moved){ saveQueue(); refreshSyncBadge(); }
+  return moved;
+}
+/* ثبتِ یک تلاشِ ناموفق؛ پس از maxTries قلم به DLQ می‌رود. خروجی: 'dead' یا 'failed'. */
+function noteOpFailed(item, msg){
+  item.tries += 1;
+  item.error = msg;
+  if(item.tries >= SYNC_QUEUE_CAPS.maxTries){
+    moveToDlq(item, 'retry_exhausted');
+    return 'dead';
+  }
+  item.status = 'failed';
+  return 'failed';
+}
+/* هشدارِ «نزدیک سقف» با هیسترزیس: یک‌بار در عبور از warnRatio، ریست زیرِ warnResetRatio */
+function checkCapWarning(){
+  var r = queueRatio();
+  if(r >= SYNC_QUEUE_CAPS.warnRatio && !SYNC.capWarned){
+    SYNC.capWarned = true;
+    toast('صفِ ارسال نزدیکِ سقف است — آنلاین شوید و همگام کنید تا چیزی از دست نرود', 'warn');
+    refreshSyncBadge();
+  }else if(r < SYNC_QUEUE_CAPS.warnResetRatio && SYNC.capWarned){
+    SYNC.capWarned = false;
+    refreshSyncBadge();
+  }
+}
+/* ذخیره‌سازیِ مقاوم در برابرِ پرشدنِ حافظهٔ مرورگر: اول قلم‌هایِ ترمینالِ
+   قدیمی حذف می‌شوند (نه دادهٔ کاربر) و یک‌بار دیگر تلاش می‌شود. */
+function saveQueueChecked(){
+  if(saveQueue()) return true;
+  var weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  SYNC.queue = SYNC.queue.filter(function(x){
+    if(x.status === 'pending' || x.status === 'sending') return true;
+    if(x.status === 'rejected') return false;
+    var t = Date.parse(x.created_at);
+    return isNaN(t) || t >= weekAgo;
+  });
+  if(saveQueue()){
+    toast('حافظهٔ مرورگر پر بود — مواردِ قدیمیِ ردشده پاک شدند؛ داده‌هایِ شما سالم است', 'warn');
+    refreshSyncBadge();
+    return true;
+  }
+  toast('حافظهٔ مرورگر پر است — تغییراتِ جدید ذخیره نشد؛ صف را خلوت کنید', 'err', { sticky: true });
+  return false;
 }
 
 /* ---------- افزودن عملیات به صف ---------- */
@@ -98,7 +238,9 @@ function enqueueOp(op){
     school_id : (S.user && S.user.school_id) || null,
   };
   SYNC.queue.push(item);
-  saveQueue();
+  enforceQueueCaps();         /* P1-10: سقفِ تعدادی/حجمی + هرسِ قدمت */
+  saveQueueChecked();         /* P1-10: مقاوم در برابرِ پرشدنِ حافظه */
+  checkCapWarning();          /* P1-10: هشدارِ «نزدیک سقف» */
   refreshSyncBadge();         /* نشانگر بدون رندر کامل به‌روز شود */
   scheduleSync(400);          /* اگر آنلاین بود، خیلی زود ارسال شود */
   return item;
@@ -107,7 +249,7 @@ function enqueueOp(op){
 /* ---------- شمارنده‌ها ---------- */
 const pendingCount  = () => SYNC.queue.filter(x => x.status === 'pending' || x.status === 'failed').length;
 const conflictCount = () => SYNC.queue.filter(x => x.status === 'conflict').length;
-const rejectedCount = () => SYNC.queue.filter(x => x.status === 'rejected').length;
+const rejectedCount = () => SYNC.queue.filter(x => x.status === 'rejected').length + SYNC.dlq.length;   /* P1-10: مرده‌ها همه‌شان (صف + DLQ) */
 
 /* ---------- تشخیص آنلاین/آفلاین ---------- */
 function setOnline(v){
@@ -182,9 +324,7 @@ async function syncNow(manual){
         item.status = 'rejected';
         item.error  = r.message || 'رد سرور';
       }else{
-        item.status = 'failed';
-        item.tries += 1;
-        item.error  = r.message || 'خطای نامشخص';
+        noteOpFailed(item, r.message || 'خطای نامشخص');   /* P1-10: پس از ۵ تلاش ← DLQ */
       }
     });
 
@@ -218,8 +358,8 @@ async function syncNow(manual){
     if(bad) scheduleSync(backoffDelay());
 
   }catch(err){
-    /* شکست کل دسته — همه به pending برمی‌گردند تا دوباره تلاش شود */
-    batch.forEach(x => { if(x.status === 'sending'){ x.status = 'failed'; x.tries += 1; x.error = err.message; } });
+    /* شکست کل دسته — همه failed می‌شوند (پس از ۵ تلاش: DLQ) تا دوباره تلاش شود */
+    batch.forEach(x => { if(x.status === 'sending') noteOpFailed(x, err.message); });   /* P1-10 */
     SYNC.lastError = err.message;
     SYNC.attempts += 1;
     saveQueue();
@@ -346,10 +486,11 @@ function syncBadge(){
   const n  = pendingCount();
   const cf = conflictCount();
   const rd = rejectedCount();
+  const nearCap = queueRatio() >= SYNC_QUEUE_CAPS.warnRatio;   /* P1-10 */
 
   if(!SYNC.online){
-    return `<button class="sync-chip off" data-act="sync-panel" title="آفلاین — تغییرات ذخیره می‌شوند">
-      <span class="dot"></span><span>آفلاین</span>${n ? `<span class="badge b-amber sm">${fa(n)}</span>` : ''}</button>`;
+    return `<button class="sync-chip off" data-act="sync-panel" title="آفلاین — تغییرات ذخیره می‌شوند${nearCap?' — ⚠️ صف نزدیک سقف است':''}">
+      <span class="dot"></span><span>آفلاین</span>${n ? `<span class="badge b-amber sm">${fa(n)}</span>` : ''}${nearCap?'<span class="badge b-red sm">⚠️</span>':''}</button>`;
   }
   if(SYNC.syncing){
     /* دور ۱۰۰ (نقصِ ۱): نمایشِ پیشرفتِ ارسالِ تکه‌تکه */
@@ -364,8 +505,8 @@ function syncBadge(){
       <span class="dot"></span><span>${lab}</span>${cf ? `<span class="badge b-red sm">${fa(cf)}</span>` : ''}${rd ? `<span class="badge b-red sm">${fa(rd)}</span>` : ''}</button>`;
   }
   if(n){
-    return `<button class="sync-chip pend" data-act="sync-panel" title="${escAttr(fa(n))} تغییر در صف ارسال">
-      <span class="dot"></span><span>در صف</span><span class="badge b-amber sm">${fa(n)}</span></button>`;
+    return `<button class="sync-chip pend" data-act="sync-panel" title="${escAttr(fa(n))} تغییر در صف ارسال${nearCap?' — ⚠️ نزدیک سقف':''}">
+      <span class="dot"></span><span>در صف</span><span class="badge b-amber sm">${fa(n)}</span>${nearCap?'<span class="badge b-red sm">⚠️</span>':''}</button>`;
   }
   return `<button class="sync-chip ok" data-act="sync-panel" title="همه‌چیز همگام است">
     <span class="dot"></span><span>همگام</span></button>`;
@@ -387,6 +528,7 @@ function syncPanelModal(){
   const n  = pendingCount();
   const cf = conflictCount();
   const rd = rejectedCount();
+  const nearCap = queueRatio() >= SYNC_QUEUE_CAPS.warnRatio;   /* P1-10 */
 
   const label = {
     ins: 'ثبت جدید', upd: 'ویرایش', del: 'حذف',
@@ -410,6 +552,7 @@ function syncPanelModal(){
       ${n ?`<span class="badge b-amber">${fa(n)} تغییر در صف</span>`:'<span class="badge b-green">همه‌چیز همگام است</span>'}
       ${cf?`<span class="badge b-red">${fa(cf)} تعارض</span>`:''}
       ${rd?`<span class="badge b-red" title="عملیات‌هایی که سرور آن‌ها را به‌صورتِ پایدار رد کرده است — دوباره ارسال نمی‌شوند">${fa(rd)} رد شده</span>`:''}
+      ${nearCap?'<span class="badge b-red">⚠️ نزدیکِ سقفِ صف</span>':''}
       <div class="spacer"></div>
       <span class="small muted">آخرین همگام‌سازی: ${SYNC.lastSync?jalaliDateTime(SYNC.lastSync):'—'}</span>
     </div>
@@ -435,6 +578,19 @@ function syncPanelModal(){
       </tbody></table></div>`
     :`<div class="empty" style="padding:24px"><span class="emoji">✅</span>
        <h4>صف ارسال خالی است</h4><div class="small">همه‌ی تغییرات با سرور همگام شده‌اند.</div></div>`}
+
+    ${SYNC.dlq.length?`<div class="table-wrap vscroll" style="max-height:160px;overflow:auto;margin-top:10px"><table>
+      <thead><tr><th>عملیاتِ مرده (دیگر ارسال نمی‌شود)</th><th>علت</th><th></th></tr></thead><tbody>
+      ${SYNC.dlq.slice().reverse().slice(0,50).map(x=>{const xo=x.op||{};
+        return `<tr>
+          <td><b>${label[xo.t]||xo.t||'—'}</b> — ${esc(collFa[xo.c]||xo.c||'—')}
+            <div class="small muted">${jalaliDateTime(x.dead_at)}${x.tries>1?` — ${fa(x.tries)} تلاش`:''}</div>
+            ${x.error?`<div class="small muted">${esc(x.error)}</div>`:''}</td>
+          <td class="small">${esc(SYNC_DLQ_REASON_FA[x.dead_reason]||x.dead_reason||'—')}</td>
+          <td><button class="btn ghost sm" data-act="sync-del" data-uid="${escAttr(x.uid)}">حذف</button></td>
+        </tr>`;}).join('')}
+      </tbody></table></div>
+      ${SYNC.dlqDropped?`<div class="small muted" style="margin-top:6px">⚠️ ${fa(SYNC.dlqDropped)} موردِ قدیمیِ صفِ مرده به‌خاطرِ سقف دور ریخته شد.</div>`:''}`:''}
 
     <div class="small muted" style="margin-top:12px">
       ${SYNC.demoMode?'⚙️ حالت دمو: سرور واقعی متصل نیست و ارسال شبیه‌سازی می‌شود.':''}
@@ -470,10 +626,11 @@ const SYNC_ACTIONS = {
   'sync-del'(el){
     const uid = (el && el.dataset) ? el.dataset.uid : null;
     if(!uid) return;
-    const before = SYNC.queue.length;
+    const before = SYNC.queue.length + SYNC.dlq.length;
     SYNC.queue = SYNC.queue.filter(x => x.uid !== uid);
-    if(SYNC.queue.length === before) return;
-    saveQueue();
+    SYNC.dlq   = SYNC.dlq.filter(x => x.uid !== uid);   /* P1-10: حذف از صفِ مرده هم */
+    if(SYNC.queue.length + SYNC.dlq.length === before) return;
+    saveQueue(); saveDlq();
     refreshSyncBadge();
     toast('عملیاتِ ردشده از صف حذف شد', 'ok');
     syncPanelModal();
@@ -483,6 +640,7 @@ const SYNC_ACTIONS = {
 /* ---------- راه‌اندازی ---------- */
 function initSync(){
   loadQueue();
+  if(pruneAgedOps()) saveQueue();   /* P1-10: هرسِ قلم‌هایِ ترمینالِ قدیمیِ جلسه‌هایِ پیش */
   if(typeof window !== 'undefined'){
     window.addEventListener('online',  () => setOnline(true));
     window.addEventListener('offline', () => setOnline(false));

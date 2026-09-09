@@ -1,0 +1,33 @@
+# WAF & DDoS Protection — اعتبارسنجیِ امنیتی (P-WAF)
+# - نحویِ nginx + تستِ واحدِ WAF + نشتِ راز
+# - نسخهٔ کاملِ tests/waf-ddos.js (بوتِ سرور) به استورِ سیدشده نیاز دارد و
+#   فقط محلی اجرا می‌شود؛ در CI همان --unit-only کافی است.
+name: Security (WAF)
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  waf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci
+      - name: Syntax check (waf)
+        run: node --check server/waf.js && node --check tests/waf-ddos.js && node --check tests/waf-mutations.js
+      - name: WAF unit tests (no boot)
+        run: node tests/waf-ddos.js --unit-only
+      - name: Install nginx (for config test)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq nginx > /dev/null
+      - name: Validate nginx.conf
+        run: nginx -t -c $PWD/nginx/nginx.conf -p $PWD/nginx/
+      - name: Secret scan
+        run: node tests/secret-scan.js
