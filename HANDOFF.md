@@ -14,6 +14,16 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۱ جدید: جایگزینی نقشه راه با National Scale Master Roadmap + Progress Tracker — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** `docs/ROADMAP.md` با متن کامل «نقشه راه جامع مهندسی پایش تا آمادگی مقیاس ملی» جایگزین شد و فایل پیگیری `docs/NATIONAL_ROADMAP_PROGRESS.md` با Waveهای ۰ تا ۲۰ ساخته شد؛ کپی هر دو فایل نیز در `reza/` قرار گرفت.
+
+- **تغییرات:** حذف محتوای نقشه‌راه قبلی و ثبت نقشه ملی ۳۳ بخشی؛ ساخت جدول پیشرفت با وضعیت اولیه `⏳` برای همه Waveها؛ به‌روزرسانی فهرست مستندات.
+- **اثر معماری:** فقط مستنداتی؛ جهت پروژه از roadmap محلی/پایلوت به مسیر National Scale با PostgreSQL source-of-truth، Redis distributed state، API stateless، workers، observability و DR رسمی منتقل شد.
+- **اثر دیتابیس/امنیت/کارایی:** بدون تغییر کد/اسکیما؛ اثر راهبردی در roadmap ثبت شد (DB-native paths، tenant isolation، ASVS/CI security، load/chaos/soak).
+- **تست‌ها:** `node tools/check-authz.js` سبز با تطبیق کامل؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+- **محدودیت:** Waveها فقط برنامه‌ریزی/پیگیری‌اند؛ هیچ Wave اجرایی شروع نشده و همه در progress با وضعیت «در انتظار شروع» ثبت شده‌اند.
+
 ## چت ۱ (جانشین): انتقال فاز ۰.۱/۰.۲ از شاخهٔ چت ۱ قبلی به شاخهٔ فعال — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **وضعیت:** ۱۲ کامیتِ فاز ۰.۱ و ۰.۲ از `origin/arena/01a0827b-p2` با
