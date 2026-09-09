@@ -82,12 +82,13 @@ const STATUS_ENUMS = {
   transfer_requests    : ['pending', 'approved', 'rejected'],
   tuitions             : ['open', 'partial', 'settled'],
   users                : ['active', 'dropped_out', 'graduated', 'awaiting_transfer'],
+  visitors             : ['in', 'out'],
 };
 
 /* enumهایِ تک‌فیلدیِ دیگر (شواهد در src/js + seed) */
 const STAGE_ENUM      = ['contact', 'visit', 'exam', 'enrolled'];           /* preapps.stage */
 const USER_ROLES      = ['student', 'parent', 'driver', 'counselor',
-                         'teacher', 'edu_office', 'manager', 'superadmin']; /* users.role */
+                         'teacher', 'edu_office', 'manager', 'superadmin', 'guard']; /* users.role */
 const SCHOOL_GENDERS  = ['پسرانه', 'دخترانه', 'مختلط'];                     /* schools.gender */
 const SCHOOL_TYPE_IDS = ['governmental', 'exemplary', 'non_profit', 'sampad',
                          'shahed', 'exceptional', 'rural', 'boarding',
