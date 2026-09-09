@@ -1779,6 +1779,7 @@ document.addEventListener('click',e=>{
   else if(typeof FILTER_ACTIONS!=='undefined'&&FILTER_ACTIONS[a]){e.preventDefault();FILTER_ACTIONS[a](el,id);}
   else if(typeof SYNC_ACTIONS!=='undefined'&&SYNC_ACTIONS[a]){e.preventDefault();SYNC_ACTIONS[a](el,id);}
   else if(typeof TEVAL_ACTIONS!=='undefined'&&TEVAL_ACTIONS[a]){e.preventDefault();TEVAL_ACTIONS[a](el,id);} /* 73-teacher-eval */
+  else if(typeof REGION_ACTIONS!=='undefined'&&REGION_ACTIONS[a]){e.preventDefault();REGION_ACTIONS[a](el,id);} /* 74-region-tools */
 });
 // live filters
 document.addEventListener('input',e=>{
