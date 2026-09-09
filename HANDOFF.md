@@ -14,6 +14,23 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۱ — سخت‌سازیِ سرآیندهایِ امنیتی (P5، جایگزینِ چت ۳) — ۱۹/۰۶/۱۴۰۵ (2026-09-09) — ✅
+
+**وضعیت:** رویِ `arena/01a0827b-p2`؛ کد + تست + سند (تک‌کامیتِ `feat(security)`)؛ بدونِ نیاز به بیلد.
+- **کد:** `buildCsp(nonce, isProd)` خالص + مصرف در `securityHeaders` (`server/index.js`)؛
+  HSTS با `preload`؛ `Permissions-Policy` هم‌ترازِ تمپلیت؛ `unsafe-eval` فقط در غیرِ production.
+- **انحراف‌هایِ آگاهانه (سخت‌سازی، نه تضعیف):** نگه‌داشتنِ `Referrer-Policy: same-origin`
+  (پین‌شده در S3)، نگه‌داشتنِ `style-src` با nonce، نگه‌داشتنِ `font-src`/`base-uri`/
+  `form-action`، و عدمِ افزودنِ `api.payesh.ir` بی‌استفاده به `connect-src` — هر ۴ در
+  `docs/SECURITY_HEADERS.md` §۴ با دلیل ثبت شد.
+- **تستِ جدید:** `tests/security-headers.js` ‏6/6‏ (CSP/dev/HSTS با `PAYESH_HTTPS=1` + واحدِ
+  `buildCsp`)؛ `tests/csp-nonce.js` ‏4/4‏ (تطابق/تازگی/شکلِ nonce).
+- **رگرسیون:** server1 ‏31/31‏، server4 ‏16/16‏، security2 ‏25/0‏ سبز؛ هیچ تستی رشتهٔ
+  دقیقِ CSP/HSTS را پین نکرده بود.
+- **گیت‌ها:** smoke ‏۵۴۷/۵۴۷‏، `tools/check-authz` خروجیِ ۰، secret-scan ‏۱۱/۱۱‏،
+  lintِ فایل‌هایِ لمس‌شده تمیز ✅
+
+
 ## چت ۱ — چک‌لیستِ نهاییِ Go-Live ملی — ۱۹/۰۶/۱۴۰۵ (2026-09-09) — ✅
 
 **وضعیت:** رویِ `arena/01a0827b-p2`؛ کاملاً مستنداتی (تک‌فایلِ تازه + ورودیِ HANDOFF) — صفر تغییر در کد.

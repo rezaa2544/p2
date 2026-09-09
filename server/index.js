@@ -258,16 +258,22 @@ function readBody(req, limit){
   });
 }
 
-/* ── security headers (contract §5.6.1; CSP nonce per request §5.6.2) */
+/* ── security headers (contract §5.6.1; CSP nonce per request §5.6.2) ──
+   P5: HSTS با preload؛ CSP با nonceِ هر-درخواست؛ در development (هر چه
+   PAYESH_ENV=production نیست) «unsafe-eval» برایِ دیباگ اضافه می‌شود. */
+function buildCsp(nonce, isProd){
+  return "default-src 'self'; script-src 'self' 'nonce-" + nonce + "'" + (isProd ? "" : " 'unsafe-eval'") +
+    "; style-src 'self' 'nonce-" + nonce +
+    "'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+}
 function securityHeaders(res, nonce, https){
-  res.setHeader('Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'nonce-" + nonce + "'; style-src 'self' 'nonce-" + nonce +
-    "'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+  const isProd = process.env.PAYESH_ENV === 'production';
+  res.setHeader('Content-Security-Policy', buildCsp(nonce, isProd));
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
-  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
-  if(https) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  if(https) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
 }
 
 /* ── compose modules ───────────────────────────────────────────────── */
@@ -606,4 +612,4 @@ if(require.main === module){
     }
   });
 }
-module.exports = { server, store, audit, isHttps, persistStore, db, redis, cache };
+module.exports = { server, store, audit, isHttps, persistStore, db, redis, cache, buildCsp };
