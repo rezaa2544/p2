@@ -103,7 +103,7 @@ jobs:
     steps:
       - name: OWASP ZAP baseline scan
         if: ${{ secrets.SECURITY_TARGET_URL != '' }}
-        uses: zaproxy/actions-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.12.0
         with:
           target: ${{ secrets.SECURITY_TARGET_URL }}
           # advisory (continue-on-error) until a stable staging URL is provided.
