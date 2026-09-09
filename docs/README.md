@@ -6,12 +6,14 @@
 
 | # | فایل | آخرین به‌روزرسانی | چه چیزی است |
 |---|---|---|---|
-| 1 | [NATIONAL_BASELINE_PART3.md](/rezaa2544/p2/blob/main/docs/NATIONAL_BASELINE_PART3.md) | 2026-09-09 | Wave 0 / Part 3 — baseline دیتابیس/کش، queryهای دمو، cache hit/miss و sync throughput |
-| 2 | [NATIONAL_BASELINE_PART2.md](/rezaa2544/p2/blob/main/docs/NATIONAL_BASELINE_PART2.md) | 2026-09-09 | Wave 0 / Part 2 — baseline عملکرد سرور/API، CPU/RAM/event-loop و latency endpointهای اصلی |
-| 3 | [BOTTLENECK_MAP.md](/rezaa2544/p2/blob/main/docs/BOTTLENECK_MAP.md) | 2026-09-09 | Wave -1 بخش دوم — نقشه گلوگاه‌های معماری/داده/کارایی و اولویت رفع |
-| 4 | [THREAT_MODEL.md](/rezaa2544/p2/blob/main/docs/THREAT_MODEL.md) | 2026-09-09 | Wave -1 بخش دوم — مدل تهدید STRIDE با ریسک و mitigation |
-| 5 | [SYNC_FLOW.md](/rezaa2544/p2/blob/main/docs/SYNC_FLOW.md) | 2026-09-09 | Wave -1 بخش اول — جریان همگام‌سازی آفلاین/Push/Pull/Conflict |
-| 6 | [AUTH_FLOW.md](/rezaa2544/p2/blob/main/docs/AUTH_FLOW.md) | 2026-09-09 | Wave -1 بخش اول — جریان احراز هویت OTP/JWT/session |
+| 1 | [WAVE9_PERFORMANCE.md](/rezaa2544/p2/blob/main/docs/WAVE9_PERFORMANCE.md) | 2026-09-09 | Wave 9 — کاراییِ برنامه: رشتهٔ کارِ عملیاتِ سنگین (persist/backup/report)، ممیزیِ پس‌زمینه، L1 محدود، کشِ استاتیک + اعدادِ قبل/بعد |
+| 2 | [NATIONAL_BASELINE_PART4.md](/rezaa2544/p2/blob/main/docs/NATIONAL_BASELINE_PART4.md) | 2026-09-09 | Wave 0 / Part 4 — dependency و deployment inventory (بازسازی؛ commit اولیه هرگز push نشده بود) — Wave 0 کامل شد |
+| 3 | [NATIONAL_BASELINE_PART3.md](/rezaa2544/p2/blob/main/docs/NATIONAL_BASELINE_PART3.md) | 2026-09-09 | Wave 0 / Part 3 — baseline دیتابیس/کش، queryهای دمو، cache hit/miss و sync throughput |
+| 4 | [NATIONAL_BASELINE_PART2.md](/rezaa2544/p2/blob/main/docs/NATIONAL_BASELINE_PART2.md) | 2026-09-09 | Wave 0 / Part 2 — baseline عملکرد سرور/API، CPU/RAM/event-loop و latency endpointهای اصلی |
+| 5 | [BOTTLENECK_MAP.md](/rezaa2544/p2/blob/main/docs/BOTTLENECK_MAP.md) | 2026-09-09 | Wave -1 بخش دوم — نقشه گلوگاه‌های معماری/داده/کارایی و اولویت رفع |
+| 6 | [THREAT_MODEL.md](/rezaa2544/p2/blob/main/docs/THREAT_MODEL.md) | 2026-09-09 | Wave -1 بخش دوم — مدل تهدید STRIDE با ریسک و mitigation |
+| 7 | [SYNC_FLOW.md](/rezaa2544/p2/blob/main/docs/SYNC_FLOW.md) | 2026-09-09 | Wave -1 بخش اول — جریان همگام‌سازی آفلاین/Push/Pull/Conflict |
+| 8 | [AUTH_FLOW.md](/rezaa2544/p2/blob/main/docs/AUTH_FLOW.md) | 2026-09-09 | Wave -1 بخش اول — جریان احراز هویت OTP/JWT/session |
 | 7 | [DATA_FLOW.md](/rezaa2544/p2/blob/main/docs/DATA_FLOW.md) | 2026-09-09 | Wave -1 بخش اول — مسیر داده از UI/API تا Store/PostgreSQL/Redis |
 | 8 | [DEPENDENCY_GRAPH.md](/rezaa2544/p2/blob/main/docs/DEPENDENCY_GRAPH.md) | 2026-09-09 | Wave -1 بخش اول — نمودار وابستگی کلاینت/سرور/Build |
 | 9 | [NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md](/rezaa2544/p2/blob/main/docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md) | 2026-09-09 | مکمل الزام‌آور نقشه راه ملی — Wave -1، Arena 5، governance و شروط معماری |
