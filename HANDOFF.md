@@ -13,6 +13,18 @@
 > — خودِ فایلِ گزارش، نه فقط اشارهٔ متنی در چت. این اصل در انتهایِ
 > همهٔ کارها اعمال می‌شود.
 
+## چت ۴ جدید: بررسی وضعیت PR قبلی + PgBouncer Connection Pooling — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**شاخهٔ اجرایی این سشن:** `arena/01a08527-p2` (طبق قید Arena؛ شاخه‌های `feat/*` فقط بررسی شدند و روی آن‌ها checkout/push انجام نشد).
+- **بررسی وضعیت چت ۴ قبلی:** `feat/b3-d234-chat4` و `feat/redis-cluster-chat4` روی ریموت وجود دارند؛ `feat/pgbouncer-chat4` در `ls-remote` دیده نشد. PR #35 (`feat/b3-d234-chat4`) باز و `CONFLICTING/DIRTY` است؛ PR #36 (`feat/redis-cluster-chat4`) باز است. Resolve مستقیم PR #35 نیازمند کار روی شاخهٔ `feat/b3-d234-chat4` است، اما این سشن اجازهٔ تغییر شاخه ندارد.
+- **PgBouncer فاز ۲.۳:** `docs/PGBOUNCER_SETUP.md` اضافه شد: معماری `Application Nodes → PgBouncer → PostgreSQL Primary`، نمونهٔ کامل `pgbouncer.ini` با `pool_mode=transaction`، userlist امن، env تولید، مانیتورینگ، runbook و سناریوهای شکست.
+- **یکپارچه‌سازی `server/db.js`:** پشتیبانی پیکربندی‌محور برای `PGBOUNCER`، تشخیص URL پورت `6432`، `PGBOUNCER_POOL_MODE`، `PG_IDLE_TIMEOUT_MS`، پیش‌فرض `PG_POOL_MIN=0` در حالت PgBouncer، گزارش metadata در `healthCheck`، و seam تست `__getConfigForTests`.
+- **تست:** `tests/pgbouncer-pooling.js` اضافه شد (۱۲/۱۲): قفل قرارداد مستندات، تنظیمات PgBouncer، اتصال `DATABASE_URL :6432`، `pg.Pool`، override env و health metadata.
+- **مستندات:** `.env.example`، `docs/ROADMAP.md` و `docs/README.md` به‌روز شدند؛ ردیف `PgBouncer Connection Pooling` در ROADMAP با ✅ ثبت شد.
+- **گیت‌ها:** `node build.js --check` ✅، `node tools/check-authz.js` ✅، `node tests/secret-scan.js` ۱۱/۱۱ ✅، `node tests/pgbouncer-pooling.js` ۱۲/۱۲ ✅، `node --expose-gc --max-old-space-size=2048 tests/smoke.js` ۵۴۷/۵۴۷ ✅.
+- **کامیت/پوش:** `3fd983e feat(db): add PgBouncer pooling contract` روی `origin/arena/01a08527-p2` پوش شد.
+
+
 
 ## چت ۳ (E.6 زمان‌بند): تولید خودکار برنامهٔ هفتگی — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
 
