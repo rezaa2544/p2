@@ -114,7 +114,8 @@
       "messages",
       "notifications",
       "parent_links",
-      "parent_verifications"
+      "parent_verifications",
+      "teacher_evaluations"
     ],
     "student": [
       "bus_events",
@@ -124,6 +125,7 @@
       "messages",
       "notifications",
       "notify_queue",
+      "teacher_evaluations",
       "vclass_attendance",
       "vclass_questions"
     ],
@@ -1196,6 +1198,14 @@
       ],
       "del": []
     },
+    "teacher_evaluations": {
+      "ins": [
+        "student",
+        "parent"
+      ],
+      "upd": [],
+      "del": []
+    },
     "teacher_notes": {
       "ins": [
         "teacher",
@@ -2253,6 +2263,14 @@
       "title",
       "updated_at"
     ],
+    "teacher_evaluations": [
+      "created_at",
+      "criteria",
+      "feedback",
+      "id",
+      "school_id",
+      "teacher_id"
+    ],
     "teacher_notes": [
       "body",
       "created_at",
@@ -2879,6 +2897,15 @@
         "enrollments",
         "pre_enrollments",
         "users"
+      ]
+    },
+    "eval-save": {
+      "roles": [
+        "student",
+        "parent"
+      ],
+      "collections": [
+        "teacher_evaluations"
       ]
     },
     "exam-save": {
