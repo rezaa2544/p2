@@ -3,13 +3,12 @@
    (R101: server/data/otp.json) — distributed across instances.
    ───────────────────────────────────────────────────────────────────
    Layout: { v:1,
-     codes:         { phone: { h, at, user_id, tries } },  // h = sha256 hex, NEVER plaintext
-     cd:            { phone: lastSendTs },                 // send cooldown
-     daily:         { phone: { day, n } },                 // sends per UTC day
-     rate:          { phone: [ts...] },                    // sliding-window sends
-     rate_ip:       { ip: [ts...] },
-     login_rate_ip: { ip: [ts...] },                       // sliding-window logins
-     login_fail:    { phone: { n, until } } }              // progressive delay
+     codes:      { phone: { h, at, user_id, tries } },  // h = sha256 hex, NEVER plaintext
+     cd:         { phone: lastSendTs },                 // send cooldown
+     login_fail: { phone: { n, until } } }              // progressive delay
+   (R dist: window counters moved to Redis (server/rate-limit.js) — fixed-window
+   atomic; this file keeps code lifecycle + cooldown + delay only. Old files
+   with counter keys still load: sane() drops unknown keys.)
    - EVERY mutation is written back synchronously (tmp + rename): crash-safe,
      and brute-force counters survive restarts (no reset window for attackers).
    - reloadIfChanged() at request entry picks up sibling instances' writes
@@ -24,8 +23,7 @@ const fs = require('fs');
 const path = require('path');
 
 function blank(){
-  return { v: 1, codes: {}, cd: {}, daily: {}, rate: {}, rate_ip: {},
-           login_rate_ip: {}, login_fail: {} };
+  return { v: 1, codes: {}, cd: {}, login_fail: {} };
 }
 function sane(o){
   const b = blank();
@@ -54,16 +52,6 @@ function createOtpStore(opts){
       if(!r || now - (r.at || 0) >= ttlMs) delete data.codes[p];
     }
     for(const p in data.cd){ if(now - data.cd[p] > H) delete data.cd[p]; }
-    const day = new Date(now).toISOString().slice(0, 10);
-    for(const p in data.daily){ if(!data.daily[p] || data.daily[p].day !== day) delete data.daily[p]; }
-    for(const m of [data.rate, data.rate_ip, data.login_rate_ip]){
-      for(const k in m){
-        const l = m[k];
-        if(!Array.isArray(l)){ delete m[k]; continue; }
-        while(l.length && l[0] < now - H) l.shift();
-        if(!l.length) delete m[k];
-      }
-    }
     for(const p in data.login_fail){
       const f = data.login_fail[p];
       if(!f || (f.until || 0) < now - H) delete data.login_fail[p];
@@ -114,10 +102,10 @@ function createOtpStore(opts){
     mv('codes', 'codes');
     mv('login_fail', 'login_fail');
     mv('cd', 'code_cd');
-    mv('daily', 'code_daily');
-    mv('rate', 'code_rate');
-    mv('rate_ip', 'code_rate_ip');
-    mv('login_rate_ip', 'login_rate_ip');
+    /* R dist: legacy counters (code_daily/code_rate/...) are NOT migrated —
+       Redis owns windows now; stale keys are dropped below with the rest. */
+    delete a.code_daily; delete a.code_rate; delete a.code_rate_ip;
+    delete a.login_rate_ip;
     if(moved){ save(); if(markDirty) markDirty(); }
   }
 
