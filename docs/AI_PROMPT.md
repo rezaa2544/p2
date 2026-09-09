@@ -1200,6 +1200,34 @@ schema/sync بود؛ این نسخه لایه‌های تازه را زد.
   ساندباکس فقط طراحی + تولیدِ داده + اعتبارسنجی (وضعیتِ «در انتظارِ
   زیرساخت» در طرح ثبت شده). `data/national/` در .gitignore است.
 
+### ۰/۵/۳۵ دور ۱۱۰ — Wave 19: تست آشوب و شکست (5 سناریو + ابزار) — ۲۰-۰۹-۹
+
+شاخه `arena/01a08545-p2`. طرحِ کامل در `docs/WAVE19_CHAOS_PLAN.md`.
+
+- **۵ سناریو** (هرکدام با فرضیهٔ از-معماری، نه حدس): `kill-api` (SIGKILL —
+  crash consistency) · `redis-down` · `pg-down` · `net-latency` (tc netem) ·
+  `disk-full` (fallocate با سقفِ ایمنی).
+- **نقشهٔ رفتارِ شکست (از کد):** store = اصلی (atomik tmp+rename ⇒ هرگز
+  خراب نمی‌شود؛ persist هر 2s) · PG = آینه (sync: mirror شکست ⇒ audit
+  `sync_mirror_failed` + کلاینت بی‌خبر 200؛ فقط DELETE-REST ⇒ 500 + audit،
+  tombstone می‌ماند، retry ایدمپوتان) · Redis = کش/state گذرا (rate-limit
+  **fail-open**؛ خوانش‌ها فال‌بکِ حافظه؛ OTP state در حافظه؛ **صفر data
+  loss**) · Wave 15: readiness حینِ fault/drain ⇒ 503، liveness ⇒ 200.
+- **یافتهٔ صادقانه (مستند):** بعد از قطعِ طولانیِ Redis، retryStrategyِ
+  ioredis تمام شده ⇒ **restart فرایند برایِ بازپس‌گیری لازم** (پیشنهادِ
+  بهبود: retryStrategy پایدار).
+- **`tools/chaos-test.sh`:** DRY_RUN پیش‌فرض (ایمن) / `--live` با envهایِ
+  الزامی؛ هر سناریو: snapshot before/after (3 پروب) + timeline.csv (هر 5s)
+  + summary.txt با **PASS/FAIL خودکار** روی فرضیه‌ها؛ خروجی
+  `tests/chaos-output/` (gitignore). ترافیکِ هم‌زمان: k6
+  `suites/chaos-redis-test.js` (فاز ۵: بدون 500 + p95<400).
+- **تست:** `tests/wave19-chaos.js` **28/28** (syntax/help/DRY_RUN همهٔ 5
+  سناریو + 20 فایل، سند، سازگاریِ فرضیه‌ها با قوانینِ پروژه، gitignore،
+  اتصالِ k6).
+- **pending (صادقانه):** اجرایِ LIVE نیازمندِ محیطِ چند-نمونهٔ زنده
+  (API+Redis+PG+root برای tc/fallocate) — در ساندباکس طراحی + ابزار +
+  DRY_RUN کامل است.
+
 ### ۰.۵.۱۹ دور ۷۹ — رفعِ دو باگِ واقعی + تکمیلِ ششِ باقی‌مانده (2026-09-06)
 
 **بند ۱ — قیفِ پیش‌ثبت‌نام (۰.۲) از رابطِ واقعی می‌مرد — رفع شد:** سه اکشنِ `pre-confirm`/`pre-reject`/`pre-del` پارامترِ اعلام‌شدهٔ `(el,id)` داشتند، درحالی‌که دسپاتچ `A[a]()` است (**بدونِ هیچ پارامتر**)؛ پارامترها `el`/`id` از محیّطِ کلِک‌لیسنر را با `undefined` سای می‌کردند: تأیید «ردیف یافت نشد» می‌گفت، رد و حذف بی‌اثر بودند. باگ **پنهان** بود چون همهٔ سئوت‌ها `preConfirm` را مستقیم صدا می‌زدند. رفع: برداشتنِ پارامترها.
