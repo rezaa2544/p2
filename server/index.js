@@ -315,8 +315,8 @@ const classRoutes = createClassRoutes({ store, db, audit, markDirty, ids, delete
 const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, ids, deleter });
 const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty, ids, deleter });
 const userRoutes = createUserRoutes({ store, db, audit, markDirty, ids, deleter });
-const bootstrapRoute = createBootstrapRoute({ store });
-const pullRoute = createPull({ store, sessionFrom: auth.sessionFrom, sendJson });
+const bootstrapRoute = createBootstrapRoute({ store, db });
+const pullRoute = createPull({ store, db, sessionFrom: auth.sessionFrom, sendJson });
 
 /* ── static ────────────────────────────────────────────────────────── */
 const STATIC = {
