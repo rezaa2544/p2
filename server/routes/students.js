@@ -17,6 +17,7 @@ const { projectUserByRole } = require('../middleware/projection');
 function createStudentRoutes(ctx) {
   const store = ctx.store;
   const db = ctx.db;
+  const ids = ctx.ids; /* P0-16 */
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
@@ -104,10 +105,8 @@ function createStudentRoutes(ctx) {
     }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
-    let nextId = 1;
-    for (const u of (store.users || [])) {
-      if (u.id >= nextId) nextId = u.id + 1;
-    }
+    /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
+    const nextId = await ids.nextId('users', store.users);
 
     const newStudent = {
       id: nextId,

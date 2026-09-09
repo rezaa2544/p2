@@ -16,6 +16,7 @@ const { paginateArray, parsePaginationParams } = require('../middleware/paginati
 function createClassRoutes(ctx) {
   const store = ctx.store;
   const db = ctx.db;
+  const ids = ctx.ids; /* P0-16 */
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
@@ -85,10 +86,8 @@ function createClassRoutes(ctx) {
     }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
-    let nextId = 1;
-    for (const c of (store.classes || [])) {
-      if (c.id >= nextId) nextId = c.id + 1;
-    }
+    /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
+    const nextId = await ids.nextId('classes', store.classes);
 
     const newClass = {
       id: nextId,
