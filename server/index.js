@@ -90,11 +90,25 @@ db.init(store).then(info => {
   console.warn('[DB] PostgreSQL init warning:', err.message);
 });
 
-cache.init().then(() => {
+cache.init().then((r) => {
+  if (r && r.ok === false) {
+    /* P0-13: در تولید بدونِ ردیسِ زنده سرویس نمی‌دهیم — فال‌بک به حافظهٔ
+       محلی بین نمونه‌ها واگرا می‌شود. خروجی غیرصفر = شکستِ ریدی. */
+    console.error('[FATAL] Cache readiness failed:', r.error || r.warning || 'unknown');
+    if (process.env.NODE_ENV === 'production') {
+      try { persistStore(); } catch (e) {}
+      try { db.close(); } catch (e) {}
+      process.exit(1);
+    }
+    return;
+  }
   if (redis.isRedis()) {
     console.log('[Cache] Redis distributed caching and pub/sub active');
   }
-}).catch(() => {});
+}).catch((err) => {
+  console.error('[FATAL] Cache init crashed:', (err && err.message) || err);
+  if (process.env.NODE_ENV === 'production') process.exit(1);
+});
 
 /* ── R97 (TODO 2.7) — نگهبانِ شمردنِ شناسه، سطحِ روتر ──────────────
    هر رد (401/403/404) برایِ هر نشست در پنجرهٔ ۱۰ دقیقه شمرده می‌شود:
@@ -336,8 +350,11 @@ const onRequest = async (req, res) => {
     }
   }
   try{
-    if(p === '/api/health' && (req.method === 'GET' || req.method === 'HEAD'))
-      return sendJson(res, 200, { ok: true, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid });
+    if(p === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')){
+      /* P0-13: ریدی = در تولید، کشِ توزیع‌شده زنده است؛ وگرنه 503. */
+      const rdy = redis.ready();
+      return sendJson(res, rdy ? 200 : 503, { ok: rdy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid, cache: redis.isRedis() ? 'redis' : (rdy ? 'memory-dev' : 'unavailable') });
+    }
     if(p === '/api/auth/send-code' && req.method === 'POST') return await auth.apiSendCode(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/auth/login'     && req.method === 'POST') return await auth.apiLogin(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/auth/me'        && req.method === 'GET')  return await auth.apiMe(req, res);
