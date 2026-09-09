@@ -1007,9 +1007,12 @@
     "code",
     "created_at",
     "id",
+    "isbn",
+    "location",
     "school_id",
     "serial",
     "title",
+    "total_copies",
     "updated_at"
    ],
    "ins": [
@@ -1040,10 +1043,12 @@
    ],
    "ins": [
     "manager",
+    "teacher",
     "superadmin"
    ],
    "upd": [
     "manager",
+    "teacher",
     "superadmin"
    ],
    "del": [
@@ -2126,6 +2131,7 @@
     "iep_staff",
     "iep_updated",
     "job",
+    "lib_staff",
     "mother_nid",
     "national_id",
     "office_id",

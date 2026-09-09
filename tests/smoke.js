@@ -6200,7 +6200,7 @@ const NAV_EXPECT = {
      به منوی مدیر اضافه شدند ولی این فهرست به‌روز نشد و تا کرشِ قدیمیِ smoke پنهان ماند */
   manager: ['dashboard','atrisk','growth','calendar','visitors','library','assets','dorm','sidadiff','formssms','preapps','scholarships','drills','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','followup','leaves','exams','reexams','teachers','corrections','staff','staffatt','training','tuition','association','donations','meetings','notifyqueue','announcements','notifications','chat','busservice','summerclasses','tickets'], /* G.2 فرناز: روت تیکت */
   teacher: ['meetings','dashboard','classes','schedule','calendar','attendance','grades','discipline','leaves','exams','vclass','homework','announcements','notifications','chat'],
-  student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','homework','announcements','notifications','chat'],
+  student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','homework','announcements','notifications','chat','library'],
   edu_office: ['officedash','officeschools','announcements','notifications'],
   parent: ['meetings','dashboard','family','children','exams','calendar','mytuition','leaves','announcements','notifications','chat'],
   /* دور ۶۳: نقش تازهٔ مشاور — فقط صف ارجاع + صفحه‌های عمومی */
