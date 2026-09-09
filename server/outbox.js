@@ -40,11 +40,24 @@ function createOutbox({ store, db }) {
   }
 
   const isPg = () => db && typeof db.isPostgres === 'function' && db.isPostgres();
-
+  /** INSERT پستگرسِ رویداد — جدا تا در تراکنشِ فراخوان هم قابل‌استفاده باشد */
+  const outboxInsertSql =
+    `INSERT INTO server_outbox (id, type, collection, record_id, actor_id, version, payload, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+     ON CONFLICT (id) DO NOTHING;`;
+  const outboxParams = (evt) => [
+    evt.id, String(evt.type || ''), String(evt.collection || ''),
+    evt.record_id != null ? Number(evt.record_id) : null,
+    evt.actor_id != null ? Number(evt.actor_id) : null,
+    evt.version != null ? Number(evt.version) : null,
+    evt.payload ? JSON.stringify(evt.payload) : null
+  ];
   /**
    * @param {object} event — { type, collection, record_id, actor_id, version, payload? }
+   * @param {object} [client] — Wave1-W: اگر داده شود، INSERT روی همان client
+   *   (داخل تراکنشِ فراخوان) اجرا می‌شود و خطا می‌پردازد تا رول‌بک شود.
    */
-  async function append(event) {
+  async function append(event, client) {
     const pgSeq = isPg() && db && typeof db.query === 'function';
     const evt = Object.assign({
       id: pgSeq ? await nextPgId() : nextId(),
@@ -60,18 +73,13 @@ function createOutbox({ store, db }) {
     if (store.outbox.length > OUTBOX_CAP) {
       store.outbox.splice(0, store.outbox.length - OUTBOX_CAP);
     }
+    if (client) {
+      await client.query(outboxInsertSql, outboxParams(evt)); /* Wave1-W: داخل تراکنش */
+      return evt;
+    }
     if (isPg()) {
       try {
-        await db.query(
-          `INSERT INTO server_outbox (id, type, collection, record_id, actor_id, version, payload, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-           ON CONFLICT (id) DO NOTHING;`,
-          [evt.id, String(evt.type || ''), String(evt.collection || ''),
-           evt.record_id != null ? Number(evt.record_id) : null,
-           evt.actor_id != null ? Number(evt.actor_id) : null,
-           evt.version != null ? Number(evt.version) : null,
-           evt.payload ? JSON.stringify(evt.payload) : null]
-        );
+        await db.query(outboxInsertSql, outboxParams(evt));
       } catch (e) { /* جدول در دسترس نیست — منبع حقیقت اسنپ‌شات است */ }
     }
     return evt;

@@ -1058,6 +1058,34 @@ schema/sync بود؛ این نسخه لایه‌های تازه را زد.
 - **نکته:** بازتولیدِ `schema.sql` در هر seed، created_at‌هایِ کاملِ
   دادهٔ نمونه را با ساعتِ seed بازنویسی می‌کند (driftِ ذاتی) — تفاوتِ
   بزرگِ diff عادی است؛ تغییرِ واقعی فقط DDLِ visitors + ۳ رکورد.
+### ۰.۵.۳۰ دور ۱۰۵ — Wave 1 (بخش دوم): انتقال Writes و Transactions به PG — ۲۰-۰۹-۹
+
+شاخه `arena/01a08545-p2` (session-pin — پیشنهادِ `feat/wave1-writes-chat3`
+قابلِ اجرا نبود؛ انحراف در گزارشِ سشن ثبت شد). طرح:
+`docs/POSTGRESQL_MIGRATION_PLAN.md` — بخش دوم «منبعِ حقیقتِ نوشت‌ها».
+
+- **اسنکواری کامل:** `docs/WAVE1_WRITES_INVENTORY.md` — هر نوشتِ سمتِ سرور
+  با وضعیتش: PG اتمیک / PG best-effort / فقط-JSONِ سازِ‌عملکرد.
+- **sms (`server/sms.js`):** نوشت‌هایِ هر آیتم (sms_log + sms_wallet +
+  notify_queue در موفقیت؛ رکوردِ `failed` در شکست) حالا با
+  `persistOpsBatch` در **یک تراکنش** (`mirrorItem`). شکستِ آینه برای
+  کلاینت نامرئی (audit `sms_mirror_failed`) — الگویِ P1-14.
+- **sync (`server/sync.js`):** نوتیفیکیشن‌هایِ مشتقِ چهار hook
+  (conflict/leaves/chat/corrections) به آرایهٔ `derived` می‌روند و
+  `mirror.concat(derived)` در **همان تراکنشِ mirror** می‌نشیند.
+- **delete-service + outbox:** حذفِ نرم در PG حالا `db.transaction` است —
+  `DELETE` + رویدادِ `server_outbox` در یک تراکنش (all-or-nothing).
+  `outbox.append(event, client)` با client اختیاری: داخل تراکنشِ فراخوان
+  (خطا می‌پردازد تا ROLLBACK)، بدون client اتصالِ جدا (رفتارِ پیشین).
+- **تصمیمِ شناختی:** idهایِ sms همچنان max+1 محلی است — `NAMESPACES` در
+  `ids.js` فقط `{attendance,classes,grades,users}` دارد؛ `ON CONFLICT (id)`
+  در PG از برخورد جلوگیری می‌کند. عملیات‌هایِ چندمرحله‌ای از batchِ sync
+  می‌روند (اتمی‌ک در سطحِ batch)؛ REST routes تک‌رکوردی‌اند (best-effort).
+- **تست‌ها:** `tests/wave1-writes.js` (W1…W7، ۱۴ بررسی — تراکنش/فراخوانیِ
+  آینه با pool/clientِ جعلی) + `tests/wave1-writes-mutations.js`
+  (MW1…MW5 — همه کشته). دروازه‌ها: دودی ۵۴/۵۴۷ + check-authz +
+  secret-scan + `build.js --check` + رگرسیونِ کاملِ سوئیت‌هایِ سرور.
+
 ### ۰.۵.۱۹ دور ۷۹ — رفعِ دو باگِ واقعی + تکمیلِ ششِ باقی‌مانده (2026-09-06)
 
 **بند ۱ — قیفِ پیش‌ثبت‌نام (۰.۲) از رابطِ واقعی می‌مرد — رفع شد:** سه اکشنِ `pre-confirm`/`pre-reject`/`pre-del` پارامترِ اعلام‌شدهٔ `(el,id)` داشتند، درحالی‌که دسپاتچ `A[a]()` است (**بدونِ هیچ پارامتر**)؛ پارامترها `el`/`id` از محیّطِ کلِک‌لیسنر را با `undefined` سای می‌کردند: تأیید «ردیف یافت نشد» می‌گفت، رد و حذف بی‌اثر بودند. باگ **پنهان** بود چون همهٔ سئوت‌ها `preConfirm` را مستقیم صدا می‌زدند. رفع: برداشتنِ پارامترها.
