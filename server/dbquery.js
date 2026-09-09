@@ -260,14 +260,20 @@ function buildUsersList({ user, role, search, limit, cursor }) {
  * pagination{limit,has_more,next_cursor,prev_cursor,count,total}).
  */
 async function executePagedList(db, built, { limit, cursor }) {
-  const res = await db.query(built.page.sql, built.page.params);
+  /* Wave 10 — heavy GET-list reads route to the read replica when one is live
+     (db.queryRead). When db only exposes query (memory/fallback/fake dbs) it is
+     used unchanged — identical behaviour. db.queryRead itself falls back to the
+     primary when no replica is configured/active. */
+  const read = (db && typeof db.queryRead === 'function') ? db.queryRead.bind(db) : db.query.bind(db);
+
+  const res = await read(built.page.sql, built.page.params);
   const got = (res && Array.isArray(res.rows)) ? res.rows : [];
   const hasMore = got.length > limit;
   const data = hasMore ? got.slice(0, limit) : got;
 
   let total = null;
   try {
-    const c = await db.query(built.count.sql, built.count.params);
+    const c = await read(built.count.sql, built.count.params);
     const n = c && c.rows && c.rows[0] && c.rows[0].n;
     if (n != null) total = Number(n);
   } catch (e) { /* total best-effort */ }
