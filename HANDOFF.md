@@ -502,6 +502,17 @@ academic-years **۹/۹** + جهش **۵/۵** · exam-types **۲۷/۲۷** + جهش
   `git merge-tree 430c7c8 origin/main origin/feat/b3-d234-chat4` سنجیده و در
   `docs/PR_MERGE_PLAN.md` §۶ ثبت شد. دامِ روش هم ثبت شد: بلوک‌های
   `added in both` را باید جدا شمرد، وگرنه `docs/ROADMAP.md` از قلم می‌افتد.
+## چت ۳ جدید — Wave 6: Redis و Distributed State (Audit و تکمیل) — ۲۰/۰۶/۱۴ (2026-09-09)
+
+**وضعیت:** شاخهٔ `arena/01a08545-p2` (بعد از دور ۱۰۵). سه کامیت: هسته + تست‌ها / اسنکواری و مستندات / گزارش.
+- **Audit:** `docs/WAVE6_REDIS_AUDIT.md` — همهٔ stateهایِ حیاتی (OTP، rate-limit، revocation، idempotency، cache، lock) روی Redis با TTL؛ **تولید بدونِ فال‌بکِ حافظه** (P0-13: بدونِ ردیسِ زنده استارت نمی‌شود + `/api/health` 503)؛ `otp.json` فقط حالتِ توسعهٔ بدونِ ردیس.
+- **دو شکافِ رفع‌شده:** (۱) rate-limitِ WAF (`cache.checkRateLimit`) غیراتومِ GET+SET ⇒ حالا `incrWithTtl` (burstِ ۱۲ ⇒ دقیقاً ۵ مجاز). (۲) نگهبانِ شمارشِ شناسهٔ R97 درون‌فروشگاهی + `__auth.enum` بدونِ GC در payesh.json ⇒ شمارنده روی `payesh:enum:<jti>` (TTL=پنجره) + REVOKEٔ توزیع‌شده در denylist؛ `sendJsonCounting` (callbackِ syncِ ۷ ماژول) قراردادش دست‌نخورده.
+- **تست‌ها:** `tests/wave6-redis.js` (R1…R8 = ۲۲ بررسی؛ fake clientِ قراردادسازگار با TTL/اسکرپت/ثبتِ دستورات؛ readiness با کودفرزند و `REDIS_URL`ِ نالایق) + `redis.__setClientForTests`.
+- **رفعِ پیشینه:** الگوهایِ M3–M6 در `otp-ratelimit-mutations.js` (پایین‌دستیِ کدِ پیشینِ R-dist) ⇒ به خطِ اجرایِ فعلیِ auth.js: 7/7.
+- **گیت‌ها سبز:** smoke ۵۴/۵۴۷، check-authz ۰، secret-scan ۱۱/۱۱، build --check. رگرسیون: server1 31 (S25) · s17 70 · s11-sms 9 · otp-ratelimit 49 + جهش‌ها 7/7 · otp-redis 16 · redis-fallback 10 · redis-key-audit 17 · rate-limit-distributed 9 · session-revocation 16 + جهش‌ها 3/3 · lock-atomic 12 · waf-mutations 4/4 · sync-atomic-batch 22 · wave1-writes 14 · id-collision 11 · occ 18 · tombstone 25 — همه سبز. پیشینه‌هایِ ثبت‌شده (بدونِ تغییر): server-mutations 17/20.
+- **pending:** ردیسِ زنده در ساندباکس نیست (اثبات با fakeِ قراردادسازگار؛ CI pending — در سند ثبت شد).
+- **مستندات:** AI_PROMPT ۰/۵/۳۱، ROADMAP B.4 ✅.
+
 ## چت ۳ جدید — Wave 1 (بخش دوم): انتقال Writes و Transactions به PG — ۲۰/۰۶/۱۴ (2026-09-09)
 
 **وضعیت:** شاخهٔ `arena/01a08545-p2` (بعد از E.9). پیشنهادِ ناظر برایِ `feat/wave1-writes-chat3` به‌دلیلِ session-pin قابلِ اجرا نبود — انحراف در گزارشِ دور ثبت شد. سه کامیت: هسته + تست‌ها / اسنکواری و مستندات / گزارش.
