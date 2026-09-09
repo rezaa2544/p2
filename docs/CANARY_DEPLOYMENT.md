@@ -150,7 +150,7 @@ npm run rollback            # = bash scripts/rollback.sh
    scale-outِ واقعیِ چندباکسی پیش‌نیازش مسیرِ PG است (همان تصمیمِ `MIGRATION_SETUP.md` §۳).
 
 > اگر روزی به k8s مهاجرت شد، آستانه‌هایِ بالا مستقیم به HPA تبدیل می‌شوند
-> (`targetCPUUtilizationPercentage: 70` و مشابه) — ولی امروز ادعایِ HPA نداریم.
+> (`targetCPUUtilizationPercentage: 70` و مشابه) — POC آماده است (`k8s/` + `docs/AUTO_SCALING_SETUP.md`) ولی استقرارِ تولید همچنان تک‌باکس است.
 
 ## ۱-۶. مراحلِ اجرایی (گام‌به‌گام)
 

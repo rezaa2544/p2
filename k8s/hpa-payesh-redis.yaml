@@ -1,0 +1,27 @@
+# Redis is STATEFUL: replica count must NOT autoscale via HPA.
+# This manifest pins replicas at 1 so the autoscaling story stays explicit:
+#   - vertical right-sizing  -> VPA (see docs/AUTO_SCALING_SETUP.md §1.4)
+#   - horizontal data growth -> Redis Cluster sharding / read replicas (manual runbook, §1.4)
+# Do NOT raise maxReplicas here: extra primaries would split-brain the cache,
+# idempotency keys and pub/sub channels.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: payesh-redis-hpa
+  labels:
+    app: payesh-redis
+    tier: national-scale-poc
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: payesh-redis
+  minReplicas: 1
+  maxReplicas: 1
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

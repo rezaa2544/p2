@@ -166,6 +166,7 @@ PAYESH_STORE=/tmp/restore.json node server/admin.js --restore /path/to/backup.js
 ۱) اسکیما: `npm run migrate:status` و بعد `npm run migrate:up` (جزئیات: `docs/MIGRATION_SETUP.md`)؛
 ۲) بارِ داده: `node tools/migrate-to-pg.js --execute` با همانِ `DATABASE_URL`.
 پیش از هر `migrate:down` در تولید، بکاپ (§۶) اجباری است.
+برایِ اسکیلِ خودکارِ افقی رویِ همین مسیر، `docs/AUTO_SCALING_SETUP.md` (§۰ پیش‌نیازها اجباری است).
 
 ---
 
@@ -211,6 +212,7 @@ curl -fsS https://payesh.example/api/health
 
 - **سرور/VPS + دامنه** — انتخابِ کاربر (اروپا/ایران + هزینه).
 - **حسابِ آروان‌کلاود** (برایِ سطلِ بیرونی) — فقط وقتی کپیِ بیرونی لازم شد (پیش از کاربرانِ واقعی).
+- **کلاسترِ Kubernetes** — فقط برایِ مقیاسِ ملی (POC آماده: `k8s/` + `docs/AUTO_SCALING_SETUP.md`)؛ استقرارِ پیش‌فرضِ این سند بدونِ k8s است.
 - **درگاهِ پیامک + استعلامِ کد ملی** — تا آن‌وقت، ورودِ تولید بدونِ درگاهِ واقعی معنادار نیست (`PAYESH_DEMO_CODE=0` یعنی کد از کجا بیاید؟ ← درگاه). **این، پیش‌نیازِ واقعیِ go-live است**، نه TLS.
 
 > ترتیبِ منطقی: ۱) درگاهِ پیامک ← ۲) سرور + دامنه + این سند ← ۳) go-live.

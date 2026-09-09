@@ -1,0 +1,27 @@
+# PostgreSQL is STATEFUL: replica count must NOT autoscale via HPA.
+# This manifest pins replicas at 1 so the autoscaling story stays explicit:
+#   - vertical right-sizing  -> VPA (see docs/AUTO_SCALING_SETUP.md §1.4)
+#   - horizontal read growth -> managed read replicas / PgBouncer pooling (manual runbook, §1.4)
+# Do NOT raise maxReplicas here: extra primaries would corrupt the single-writer
+# store (same C1 rule as docs/CANARY_DEPLOYMENT.md, now at the PG layer).
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: payesh-postgres-hpa
+  labels:
+    app: payesh-postgres
+    tier: national-scale-poc
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: payesh-postgres
+  minReplicas: 1
+  maxReplicas: 1
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
