@@ -147,6 +147,25 @@ CREATE TABLE IF NOT EXISTS server_auth_codes (
 );
 `);
 
+  /* ویو ۸ — صندوق رویدادهای برون‌مرزی (آینهٔ پستگرس؛ منبع حقیقت اسنپ‌شات است) */
+  ddl.push(`-- Transactional outbox (wave 8)
+CREATE TABLE IF NOT EXISTS server_outbox (
+  id BIGINT PRIMARY KEY,
+  type VARCHAR(64) NOT NULL,
+  collection VARCHAR(64),
+  record_id BIGINT,
+  actor_id BIGINT,
+  version INTEGER,
+  payload JSONB,
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  retry_count INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  processed_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_server_outbox_status ON server_outbox (status);
+`);
+
   const colNames = Object.keys(collections);
   for (const col of colNames) {
     const def = collections[col];
