@@ -14,6 +14,28 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## Wave 10 (چت ۲): Database Scale — Read Replica + Pool Observability + طراحی Partition — ۲۰۲۶-۰۹-۰۹ — انجام، با قیدِ PG ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` — طبقِ دامنهٔ تأییدشده (کدِ DB-layer با
+fake-DB؛ پارتیشن‌بندی فقط طراحی؛ بدون DDLِ پرریسکِ بی‌PG).
+
+- `server/db.js`: poolِ رپلیکایِ فقط‌خواندنیِ اختیاری (`READ_DATABASE_URL`) +
+  `queryRead()` (fallbackِ امن به primary) + `isReplicaActive()`/`getReadPool()`/
+  `poolStats()`/بخشِ `read_replica` در `healthCheck()`/بستنِ هر دو pool در `close()`.
+- `server/dbquery.js`: `executePagedList` (خوانشِ سنگینِ GET-listِ موج ۳) وقتی
+  `db.queryRead` موجود باشد از آن استفاده می‌کند → GET-list ها به رپلیکا، بقیه
+  روی primary. نوشتن (persistOp/transaction) همیشه primary.
+- `server/index.js`: `/api/health` در حالتِ PG، میدانِ `db_pools` (= poolStats).
+- **امنیت/درستی:** خوانش‌هایِ صحتِ همگام/پول (readCollection/readOne/دلتا) عمداً
+  روی primary می‌مانند؛ رپلیکا فقط برایِ GET-list هایِ سنگین — رپلیکا هرگز
+  نوشتهٔ تازهٔ خودِ کلاینت را عقب نمی‌اندازد.
+- **تست:** `tests/wave10-db-scale.js` **۲۶/۲۶** (fake pool). دروازه‌ها: smoke
+  **۵۴۷/۵۴۷** · check-authz **۰** · secret-scan **۱۱/۱۱** · build --check ✅ ·
+  wave1/wave3(×۲)/wave4 سبز.
+- **🔴 قیدِ صداقت:** اجرایِ واقعیِ read-replica بر PG و **پارتیشن‌بندی** =
+  pending (بدونِ PGِ زنده). طراحیِ پارتیشن (RANGE بر `created_at`) در
+  `docs/WAVE10_DB_SCALE.md` §۳ ثبت شد.
+
 ## Wave 7 (چت ۲): Offline-first — سخت‌سازی صف آفلاین — ۲۰۲۶-۰۹-۰۹ — انجام (راستی‌آزمایی + مستند) ✅
 
 **وضعیت:** روی `arena/01a085ca-p2` — سازوکارِ سقف/نگهداشت/صفِ‌مرده که موج ۷
