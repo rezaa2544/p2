@@ -78,6 +78,11 @@ function isPreSeason(){
   var j = toJalali(p[0], p[1], p[2]);
   return j[1] === 12 || j[1] <= 6;
 }
+/** عنوان فارسی یک کد سال («۱۴۰۴-۱۴۰۵» ⇒ «۱۴۰۴-۱۴۰۵» فارسی) */
+function yearCodeTitle(c){
+  var p = String(c || '').split('-');
+  return faD(p[0]) + '-' + faD(p[1] || '');
+}
 
 /** سالِ مقصدِ چیدمان/ثبت‌نام برای یک مدرسه:
     سالِ بسته‌شده، چیدمان برای «سال بعد» است (مورد ثبت‌نام شهریور). */
@@ -522,6 +527,10 @@ function viewSchoolYear(){
       + '<div class="card-body row"><div style="font-size:30px">📝</div>'
       + '<div style="flex:1"><b style="font-size:15px">پیش‌ثبت‌نام سال تحصیلی ' + nextYearTitle() + '</b>'
       + '<div class="small muted" style="line-height:2">دانش‌آموزان تازه‌واردها و بازگشتی‌ها را از همین‌جا برای سال آینده ثبت کنید. با «تأیید»، حساب دانش‌آموز ساخته یا وصل می‌شود و در مرحلهٔ بعدی در کلاس چیده می‌شود.</div></div></div></div>'
+      + ((typeof isPreSeason === 'function' && !isPreSeason())
+        ? '<div class="card" style="margin-bottom:14px;border-inline-start:4px solid var(--amber)">'
+          + '<div class="card-body small" style="line-height:2">⚠️ <b>فصل پیش‌ثبت‌نام نیست</b> '
+          + '(اسفند تا شهریور). ثبت دستی همچنان ممکن است؛ ردیف‌ها به سالِ بعدِ سالِ عملیاتی تعلق می‌گیرند.</div></div>' : '')
       + '<div class="grid g4" style="margin-bottom:14px">'
       + statCard('📋', fa(cnt.registered), 'ثبت‌شده', 'blue')
       + statCard('✅', fa(cnt.confirmed), 'تأییدشده', 'amber')

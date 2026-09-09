@@ -128,7 +128,7 @@ function viewSchools(){
       <td><span class="badge b-blue">${esc(s.level||'—')}</span>${s.type&&s.type!=='عادی'?`<div class="small muted" style="margin-top:4px">${esc(s.type)}</div>`:''}${(s.branches||[]).length?`<div class="small muted" style="margin-top:4px">${(s.branches||[]).map(b=>esc(b)).join('، ')}</div>`:''}</td><td class="muted">${esc(mg?mg.full_name:'—')}</td>
       <td class="small muted">${esc(s.landline||'—')}</td>
       <td>${fa(us.filter(u=>u.role==='student').length)}</td><td>${fa(us.filter(u=>u.role==='teacher').length)}</td><td>${fa(db.classes.filter(c=>c.school_id===s.id).length)}</td>
-      <td><span class="badge ${s.active?'b-green':'b-gray'}${isAdmin?' tgl':''}" ${isAdmin?`data-act="school-toggle" data-id="${escAttr(s.id)}" title="برای تغییر وضعیت کلیک کنید"`:''}>${s.active?'فعال':'غیرفعال'}</span></td>
+      <td><span class="badge ${s.active?'b-green':'b-gray'}${isAdmin?' tgl':''}" ${isAdmin?`data-act="school-toggle" data-id="${escAttr(s.id)}" title="برای تغییر وضعیت کلیک کنید"`:''}>${s.active?'فعال':'غیرفعال'}</span>${(()=>{try{if(typeof activeYearOf!=='function')return '';var yc=activeYearOf(s.id);if(!yc)return '';var t=(typeof yearCodeTitle==='function')?yearCodeTitle(yc):yc;var st=(typeof yearState==='function')?yearState(s.id):null;return `<div class="small muted" style="margin-top:4px">📅 ${esc(t)}${st&&st.closed?' · 🔒 بسته':''}</div>`;}catch(e){return '';}})()}</td>
       ${isAdmin?`<td><div class="row" style="gap:5px;flex-wrap:nowrap">
         <button class="btn sm" data-act="school-enter" data-id="${escAttr(s.id)}" title="ورود به پنل این مدرسه به‌عنوان مدیر">🔑 ورود به پنل</button>
         <button class="icon-btn" title="ویرایش" data-act="school-edit" data-id="${escAttr(s.id)}">✏️</button>
