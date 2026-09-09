@@ -440,7 +440,7 @@ const onRequest = async (req, res) => {
 
       // /api/v1/classes & /api/v1/classes/:id
       if(p === '/api/v1/classes' && req.method === 'GET'){
-        const r = classRoutes.getClassesList(req, url.searchParams);
+        const r = await classRoutes.getClassesList(req, url.searchParams);
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/classes' && req.method === 'POST'){
@@ -486,7 +486,7 @@ const onRequest = async (req, res) => {
 
       // /api/v1/grades & /api/v1/grades/:id
       if(p === '/api/v1/grades' && req.method === 'GET'){
-        const r = gradeRoutes.getGradesList(req, url.searchParams);
+        const r = await gradeRoutes.getGradesList(req, url.searchParams);
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/grades' && req.method === 'POST'){
@@ -507,7 +507,7 @@ const onRequest = async (req, res) => {
 
       // /api/v1/users & /api/v1/users/:id
       if(p === '/api/v1/users' && req.method === 'GET'){
-        const r = userRoutes.getUsersList(req, url.searchParams);
+        const r = await userRoutes.getUsersList(req, url.searchParams);
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/users' && req.method === 'POST'){
