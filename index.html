@@ -4843,6 +4843,7 @@ var ACTION_ROLES = {
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],
   'disc-modal':    ['teacher','manager'],
+  'disc-quick':    ['teacher','manager'],
   /* کاربران و مدارس */
   'user-save':     ['manager','superadmin'],
   'user-del':      ['manager','superadmin'],
@@ -5594,6 +5595,7 @@ function summaryBlock(sid){
    ${statCard('📊',fa(d.avg.toFixed(2)),'معدل کل','green')}
    ${statCard('🏅',fa(d.rank)+' از '+fa(d.size),'رتبه در کلاس','amber')}
    ${statCard('⚖️',fa(d.points),'امتیاز انضباطی ('+fa(d.disc.length)+' مورد)',d.points>=0?'purple':'red')}</div>
+   ${(typeof dojoRecentHtml==='function')?dojoRecentHtml(sid):''}
    <div class="grid g2">
     <div class="card"><div class="card-head"><h3>وضعیت حضور</h3><span class="badge b-green">${fa(tot?Math.round(cnt('present')/tot*100):0)}٪ حضور</span></div>
      <div class="card-body" style="display:grid;gap:12px">${['present','absent','late','excused','early_exit'].map(k=>`<div><div class="row"><span>${ATT_FA[k]}</span><div class="spacer"></div><b>${fa(cnt(k))} روز</b></div>${bar(cnt(k),tot,ATT_COLOR[k])}</div>`).join('')}</div></div>
@@ -6047,6 +6049,7 @@ function attRowHTML(s, i, ctx){
        </span>
        <span class="att-sep" aria-hidden="true"></span>
        <button class="att-btn att-btn-exit${_tmRun?' att-btn-running':''}" data-act="att-set" data-id="${escAttr(s.id)}" data-s="early_exit">${_tmRun?'⏱ توقف خروج':'🚪 خروج از کلاس'}</button>
+       ${(typeof dojoCanQuickAward==='function'&&dojoCanQuickAward(s.id))?`<button class="att-btn" data-act="disc-quick" data-id="${escAttr(s.id)}" title="امتیازِ سریع ‎+۱">⭐</button>`:''}
      </td>
      <td class="att-status-cell">${v?`<span class="badge ${ATT_BADGE[v]}">${ATT_FA[v]}</span>`:'<span class="badge b-gray">ثبت نشده</span>'}
        ${e.late?`<div class="att-sub">${e.late.late_excused?'<span class="badge b-purple">⏰ تاخیر — موجه‌شده</span>':`<span class="badge b-amber">⏰ تاخیر</span> <span class="small muted">${_lateTxt}</span>`}</div>`:''}
@@ -6343,7 +6346,7 @@ function viewDiscipline(){
     rows=db.discipline.filter(d=>ids.has(d.student_id));}
   if(kind)rows=rows.filter(d=>d.kind===kind);
   rows=rows.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,150);
-  const _isMgr=(u.role==='manager');
+  const _isMgr=(u.role==='manager'||u.role==='superadmin');
   const _dojoBadge=(u.role==='student'&&typeof dojoBadge==='function')?dojoBadge(u.id):'';
   return `<div class="card"><div class="card-head"><div class="row" style="flex-wrap:wrap;gap:6px">
     <span class="badge b-gray">${fa(rows.length)} مورد</span>${_dojoBadge}</div>
@@ -6355,7 +6358,7 @@ function viewDiscipline(){
      <td><span class="badge ${d.kind==='positive'?'b-green':'b-red'}">${d.kind==='positive'?'👍 مثبت':'👎 منفی'}</span></td><td>${esc(d.title)}</td>
      <td class="muted small" style="white-space:normal;max-width:240px">${esc(d.description||'—')}</td>
      <td><b style="color:${d.points>=0?'var(--green)':'var(--red)'}">${fa(d.points)}</b></td><td class="muted small">${jalali(d.date)}</td>
-     ${canEdit?`<td><button class="icon-btn" data-act="disc-edit" data-id="${escAttr(d.id)}">✏️</button> <button class="icon-btn danger" data-act="disc-del" data-id="${escAttr(d.id)}">🗑️</button></td>`:''}</tr>`;}).join('')}
+     ${canEdit?`<td><button class="icon-btn" data-act="disc-edit" data-id="${escAttr(d.id)}">✏️</button>${_isMgr?` <button class="icon-btn danger" data-act="disc-del" data-id="${escAttr(d.id)}">🗑️</button>`:''}</td>`:''}</tr>`;}).join('')}
    </tbody></table></div>`:empty('⚖️','پرونده انضباطی خالی است',u.role==='student'?'خوشبختانه موردی برای شما ثبت نشده است.':'موردی مطابق فیلتر یافت نشد.')}</div>`;
 }
 
@@ -13449,6 +13452,7 @@ function coreActions(e, el, id, a, rawId){
    'disc-edit'(){discModal(byId('discipline',id));},
    'disc-del'(){confirmModal('حذف این مورد انضباطی؟','disc-del-ok',id);},
    'disc-del-ok'(){remove('discipline',window._delId);closeModal();toast('حذف شد','ok');render();},
+   'disc-quick'(){const r=dojoQuickAward(id);toast(r.msg,r.ok?'ok':'err');if(r.ok)render();},
    'disc-save'(){const d=window._edit;
      const data={kind:V('d_kind'),title:V('d_title'),description:V('d_desc'),points:Number(V('d_points'))||0,date:V('d_date')};
      if(d.id)update('discipline',d.id,data);
@@ -27939,6 +27943,64 @@ function dojoBadge(sid){
   var t = dojoTotal(sid);
   var cls = t > 0 ? 'b-green' : (t < 0 ? 'b-red' : 'b-gray');
   return '<span class="badge ' + cls + '" title="مجموع امتیازها از روی موارد انضباطی">⭐ مجموع امتیاز: ' + fa(t) + '</span>';
+}
+/** آیا کاربرِ فعلی می‌تواند به این دانش‌آموز امتیازِ سریع بدهد؟
+    مدیر/سوپرادمین: آری (همان مدرسه) — دبیر: فقط کلاسِ خودش. */
+function dojoCanQuickAward(sid){
+  if(!dojoAvailableForStudent(sid)) return false;
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  if(role === 'superadmin') return true;
+  var st = byId('users', sid);
+  if(!st || st.school_id !== u.school_id) return false;
+  if(role === 'manager') return true;
+  if(role !== 'teacher') return false;
+  var c = (typeof classOf === 'function') ? classOf(sid) : null;
+  if(!c) return false;
+  return (typeof visibleClasses === 'function')
+    ? visibleClasses().some(function(x){ return x.id === c.id; })
+    : false;
+}
+/** امتیازِ سریعِ +۱ از صفحهٔ حضور: اولین نوعِ مثبتِ مدل، وگرنه «تشویق» */
+function dojoQuickAward(sid){
+  if(!dojoCanQuickAward(sid)) return {ok:false, msg:'مجاز نیستید'};
+  var st = byId('users', sid);
+  var sch = dojoSchoolOfStudent(sid);
+  var types = sch ? dojoTypes(sch.id) : [];
+  var pos = null;
+  for(var i = 0; i < types.length; i++){
+    if(Number(types[i].delta) > 0){ pos = types[i]; break; }
+  }
+  var title = pos ? (pos.icon + ' ' + pos.label) : '⭐ تشویق';
+  var pts = pos ? Number(pos.delta) : 1;
+  insert('discipline', {
+    school_id: st.school_id, student_id: sid, created_by: S.user.id,
+    kind: 'positive', title: title, description: 'امتیازِ سریع از صفحهٔ حضور',
+    points: pts, date: todayISO()
+  });
+  return {ok:true, msg:'⭐ ' + pts + ' امتیاز برای ' + (st.full_name || '') + ' ثبت شد'};
+}
+/** پنج امتیازِ اخیرِ دانش‌آموز برای کارتِ داشبورد (تازه‌ترین اول) */
+function dojoRecent(sid, n){
+  n = n || 5;
+  return db.discipline
+    .filter(function(d){ return d.student_id === sid; })
+    .slice().sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); })
+    .slice(0, n);
+}
+/** نوارِ «آخرین امتیازها» — فقط وقتی گیمیفیکیشن فعال است */
+function dojoRecentHtml(sid){
+  if(!dojoAvailableForStudent(sid)) return '';
+  var rows = dojoRecent(sid, 5);
+  if(!rows.length) return '';
+  return '<div class="card"><div class="card-head"><h3>⭐ آخرین امتیازها</h3>' + dojoBadge(sid) + '</div>'
+    + '<div class="card-body" style="display:grid;gap:8px">'
+    + rows.map(function(d){
+        return '<div class="row" style="gap:8px"><span class="badge ' + (d.points >= 0 ? 'b-green' : 'b-red') + '">'
+          + (d.points >= 0 ? '+' : '') + fa(d.points) + '</span><b>' + esc(d.title || '—') + '</b>'
+          + '<div class="spacer"></div><span class="muted small">' + jalali(d.date) + '</span></div>';
+      }).join('')
+    + '</div></div>';
 }
 /** چیپ‌های مدل برای فرمِ ثبت مورد انضباطی (دبیر) */
 function dojoChipsHtml(schId){
