@@ -41,6 +41,9 @@ const { createAttendanceRoutes } = require('./routes/attendance');
 const { createGradeRoutes } = require('./routes/grades');
 const { createUserRoutes } = require('./routes/users');
 const { createBootstrapRoute } = require('./routes/bootstrap');
+const { createIds } = require('./ids'); /* P0-16 */
+const { createOutbox } = require('./outbox'); /* P0-17 */
+const { createDeleteService } = require('./delete-service'); /* P0-17 */
 const { createPull } = require('./pull');
 
 const ROOT = path.join(__dirname, '..');
@@ -91,11 +94,25 @@ db.init(store).then(info => {
   console.warn('[DB] PostgreSQL init warning:', err.message);
 });
 
-cache.init().then(() => {
+cache.init().then((r) => {
+  if (r && r.ok === false) {
+    /* P0-13: در تولید بدونِ ردیسِ زنده سرویس نمی‌دهیم — فال‌بک به حافظهٔ
+       محلی بین نمونه‌ها واگرا می‌شود. خروجی غیرصفر = شکستِ ریدی. */
+    console.error('[FATAL] Cache readiness failed:', r.error || r.warning || 'unknown');
+    if (process.env.NODE_ENV === 'production') {
+      try { persistStore(); } catch (e) {}
+      try { db.close(); } catch (e) {}
+      process.exit(1);
+    }
+    return;
+  }
   if (redis.isRedis()) {
     console.log('[Cache] Redis distributed caching and pub/sub active');
   }
-}).catch(() => {});
+}).catch((err) => {
+  console.error('[FATAL] Cache init crashed:', (err && err.message) || err);
+  if (process.env.NODE_ENV === 'production') process.exit(1);
+});
 
 /* ── R97 (TODO 2.7) — نگهبانِ شمردنِ شناسه، سطحِ روتر ──────────────
    هر رد (401/403/404) برایِ هر نشست در پنجرهٔ ۱۰ دقیقه شمرده می‌شود:
@@ -269,8 +286,10 @@ function securityHeaders(res, nonce, https){
 }
 
 /* ── compose modules ───────────────────────────────────────────────── */
-/* R101: OTP + rate limits live in otp.json (distributed across instances) */
-const otp = createOtpStore({ file: OTP_FILE, ttlMs: CODE_TTL_MS, store, markDirty });
+/* R101: OTP + rate limits live in otp.json (distributed across instances)
+   P0-15: وقتی ردیس فعال است، همان کلیدِ مشترکِ ردیس منبع حقیقت می‌شود
+   و فایل فقط فال‌بکِ توسعهٔ بدون ردیس است. */
+const otp = createOtpStore({ file: OTP_FILE, ttlMs: CODE_TTL_MS, store, markDirty, redis, cache });
 const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty, otp });
 /* R97: همهٔ ماژول‌هایِ /api با sendJsonCounting می‌چرخند تا رد‌ها شمرده
    شوند؛ auth استثناست (سقفِ OTP سقفِ خودش را می‌سازد). */
@@ -283,11 +302,16 @@ const sms = createSms({ store, audit, sessionFrom: auth.sessionFrom, sendJson: s
 const conflicts = createConflicts({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 
 /* ── Phase 3: RESTful Resource Routes ─────────────────────────────── */
-const studentRoutes = createStudentRoutes({ store, db, audit, markDirty });
-const classRoutes = createClassRoutes({ store, db, audit, markDirty });
-const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty });
-const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty });
-const userRoutes = createUserRoutes({ store, db, audit, markDirty });
+/* P0-16: شناسه‌های بدون‌برخورد — دنبالهٔ پستگرس یا مکس+۱ قفل‌دار */
+const ids = createIds({ db, cache });
+/* P0-17: صندوق برون‌مرزی + سرویس حذف واحد (سنگ‌قبر به‌جای اسپلایسِ خام) */
+const outbox = createOutbox({ store, db });
+const deleter = createDeleteService({ store, db, markDirty, outbox });
+const studentRoutes = createStudentRoutes({ store, db, audit, markDirty, ids, deleter });
+const classRoutes = createClassRoutes({ store, db, audit, markDirty, ids, deleter });
+const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, ids, deleter });
+const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty, ids, deleter });
+const userRoutes = createUserRoutes({ store, db, audit, markDirty, ids, deleter });
 const bootstrapRoute = createBootstrapRoute({ store });
 const pullRoute = createPull({ store, sessionFrom: auth.sessionFrom, sendJson });
 
@@ -339,8 +363,11 @@ const onRequest = async (req, res) => {
     }
   }
   try{
-    if(p === '/api/health' && (req.method === 'GET' || req.method === 'HEAD'))
-      return sendJson(res, 200, { ok: true, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid });
+    if(p === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')){
+      /* P0-13: ریدی = در تولید، کشِ توزیع‌شده زنده است؛ وگرنه 503. */
+      const rdy = redis.ready();
+      return sendJson(res, rdy ? 200 : 503, { ok: rdy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid, cache: redis.isRedis() ? 'redis' : (rdy ? 'memory-dev' : 'unavailable') });
+    }
     if(p === '/api/auth/send-code' && req.method === 'POST') return await auth.apiSendCode(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/auth/login'     && req.method === 'POST') return await auth.apiLogin(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/auth/me'        && req.method === 'GET')  return await auth.apiMe(req, res);
