@@ -13,6 +13,17 @@
 > — خودِ فایلِ گزارش، نه فقط اشارهٔ متنی در چت. این اصل در انتهایِ
 > همهٔ کارها اعمال می‌شود.
 
+## چت ۴: Weighted Partitioning برای مدارس شلوغ — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**شاخهٔ اجرایی این سشن:** `arena/01a08527-p2` (درخواست شاخهٔ `feat/weighted-partitioning-chat4` به‌دلیل قفل Arena قابل انجام نبود؛ پوش روی شاخهٔ مجاز انجام شد).
+- **تحلیل:** جدول‌های پرترافیک مدرسه‌محور در `server/schema.sql` ستون/FK/ایندکس `school_id` دارند؛ مدارس شلوغ با شمارش دانش‌آموز یکتا از `enrollments` و آستانهٔ پیش‌فرض ۱۰۰۰ شناسایی می‌شوند.
+- **هسته (`server/partitioning.js`):** ماژول pure برای `enrollmentCountsBySchool`، `largeSchools`، `buildRoutingPlan`، `routeForSchool`، `metricsForPlan` و `analyzeSchema`؛ پشتیبانی CSV/JSON برای shardهای وزنی و read replicaها؛ مدرسه ناشناخته fail-closed به primary می‌رود.
+- **یکپارچه‌سازی (`server/db.js`):** `query(text, params, opts)` سازگار با امضای قبلی؛ اگر `PAYESH_WEIGHTED_PARTITIONING=1` و `{schoolId, readOnly:true}` برای مدرسهٔ heavy باشد، read به replica pool می‌رود؛ write همیشه primary می‌ماند؛ متریک‌ها در `partitioningHealth/healthCheck`.
+- **مستندات/env:** `docs/WEIGHTED_PARTITIONING.md`، `.env.example`، `docs/ROADMAP.md` و `docs/README.md` به‌روز شدند؛ ردیف فاز ۲.۴ با ✅ ثبت شد.
+- **تست:** `tests/weighted-partitioning.js` ۱۲/۱۲؛ رگرسیون PgBouncer ۱۲/۱۲؛ `build --check` ✅؛ `check-authz` ✅؛ `secret-scan` ۱۱/۱۱ ✅؛ smoke ۵۴۷/۵۴۷ ✅.
+- **کامیت/پوش:** `5ea62a3 feat(db): add weighted partitioning routing` روی `origin/arena/01a08527-p2` پوش شد؛ گزارش نهایی در `CHAT4_WEIGHTED_PARTITIONING_REPORT.md`.
+
+
 ## چت ۴ جدید: بررسی وضعیت PR قبلی + PgBouncer Connection Pooling — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **شاخهٔ اجرایی این سشن:** `arena/01a08527-p2` (طبق قید Arena؛ شاخه‌های `feat/*` فقط بررسی شدند و روی آن‌ها checkout/push انجام نشد).
