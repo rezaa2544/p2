@@ -12,6 +12,7 @@
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
+const { buildAttendanceList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
 
 function createAttendanceRoutes(ctx) {
   const store = ctx.store;
@@ -21,8 +22,28 @@ function createAttendanceRoutes(ctx) {
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
-  function getAttendanceList(req, urlParams) {
+  async function getAttendanceList(req, urlParams) {
     const user = req.user;
+    const paginationOpts = parsePaginationParams(urlParams);
+
+    /* Wave 3: DB-native path — runs ONLY when a live PostgreSQL is wired.
+       Pushes role-scope + filters + order + keyset pagination to SQL instead
+       of load-all→filter→sort→slice in JS. Marked UNVERIFIED against a real
+       PG in this sandbox (see docs/WAVE3_QUERY_PERFORMANCE.md). */
+    if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
+      const built = buildAttendanceList({
+        user,
+        date: urlParams.get('date'),
+        classId: urlParams.get('class_id'),
+        studentId: urlParams.get('student_id'),
+        limit: paginationOpts.limit,
+        cursor: paginationOpts.cursor
+      });
+      const res = await executePagedList(db, built, paginationOpts);
+      return { ok: true, ...res };
+    }
+
+    /* Memory/JS pipeline (runtime in this sandbox — byte-identical to before). */
     let list = (store.attendance || []);
     list = filterByScope(user, list);
 
@@ -50,7 +71,6 @@ function createAttendanceRoutes(ctx) {
     }
 
     list.sort((a, b) => (b.date || '').localeCompare(a.date || '') || a.id - b.id);
-    const paginationOpts = parsePaginationParams(urlParams);
     const paginated = paginateArray(list, paginationOpts);
 
     return { ok: true, ...paginated };
