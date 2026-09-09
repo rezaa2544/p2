@@ -65,6 +65,8 @@ function adminActions(e, el, id, a, rawId){
        area_kind:dist?(dist.kind||'district'):'district',
        phone:V('m_phone'),landline:V('m_landline'),
        level:V('m_level'),type:V('m_type')||'عادی',gender:V('m_gender'),shift:V('m_shift')||'صبح',
+       /* فاز ۰.۱ — نوع ساختاری؛ مقدارِ نامعتبر/خالی = governmental (fail-closed) */
+       school_type:(typeof SCHOOL_TYPE_IDS!=='undefined'&&SCHOOL_TYPE_IDS.indexOf(V('m_school_type'))>-1)?V('m_school_type'):'governmental',
        capacity:Number(V('m_cap'))||300,
        active:Number(V('m_active')),address:V('m_addr'),boom_goals:V('m_boom'),
        /* دور ۶۵ بند روزهای کاری: روزهای روشن‌شده در مودال */
