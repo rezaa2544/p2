@@ -1140,6 +1140,36 @@ schema/sync بود؛ این نسخه لایه‌های تازه را زد.
 - **توسعهٔ redis.js:** `sAdd`/`sMembers`/`sRem` با فال‌بکِ حافظه.
 - **pending:** ردیسِ زنده در ساندباکس نیست (fake قراردادسازگار؛ CI pending).
 
+### ۰/۵/۳۳ دور ۱۰۸ — Wave 15: Health / Deployment (Liveness/Readiness/Health + Graceful Shutdown) — ۲۰-۰۹-۹
+
+شاخه `arena/01a08545-p2`. راهنمایِ کامل در `docs/DEPLOYMENT_GUIDE.md` (مکملِ DEPLOY.md).
+
+- **سه endpoint، سه رفتارِ عمدی:** `/api/liveness` (همیشه 200 — فرایند زنده؛
+  عمداً وابستگی نمی‌بیند تا طوفانِ ری‌استارت نشود) · `/api/readiness`
+  (200 فقط وقتی store+DB+Redis آماده‌اند؛ **`PAYESH_ENV=production` یا
+  `NODE_ENV=production` + Redis قطع ⇒ 503**؛ در حینِ drain فوراً 503 تا
+  LB ترافیکِ تازه نفرستد) · `/api/health` (کدِ وضعیت روی درگاهِ
+  **P0-13 قدیمی می‌ماند** — قراردادِ server13/T2b دست نمی‌خورد — و بدنه
+  گزارشِ کامل می‌گیرد: `db{driver,alive,pool{total,idle,pending}}`،
+  `redis`، `queue{outbox,notify_pending,in_flight}`، `cache_l1`،
+  `uptime_s`، `memory`).
+- **Graceful Shutdown (SIGTERM/SIGINT):** draining ⇒ closeIdleConnections +
+  server.close (اتصالِ تازه = ECONNREFUSED) ⇒ در انتظارِ in-flight (poll
+  50ms؛ مهلت `PAYESH_SHUTDOWN_TIMEOUT_MS` پیش‌فرض 10s) ⇒ persistStore +
+  db.close + redis.close ⇒ **exit 0**. نگهبانِ زور: drain فراتر از مهلت
+  +2s ⇒ exit **1**. در‌حالت‌پرواز **کامل می‌شود، نه abort**. شمارشِ
+  in-flight با `res 'close'` (پس از flush کامل، حتی keep-alive).
+- **حساسیتِ جهش (M18):** خط `if(BACKUP_EVERY_MS > 0)
+  admin.startAutoBackup(BACKUP_EVERY_MS);` باید **verbatim** بماند — جهشِ
+  M18 روی همین الگو است (تایمر unref است؛ خروج را نگه نمی‌دارد).
+- **تست:** `tests/wave15-health.js` (10 بررسی: H1–H7 درون‌فرایند + S1–S3
+  فرایندِ فرزند با سیگنالِ واقعی — الگویِ server11-child) + hookِ
+  فقط-تست `/api/__slow` (env-gated: `PAYESH_TEST_SLOW_MS` — در production
+  هرگز تنظیم نشود).
+- **سازگاری:** `server-mutations` روی بازهٔ پیشین (17/20 — M1/M14/M15
+  پیشین). smoke 547/547، check-authz 0، secret-scan 11/11، server13 9/9
+  (قراردادِ health در production).
+
 ### ۰.۵.۱۹ دور ۷۹ — رفعِ دو باگِ واقعی + تکمیلِ ششِ باقی‌مانده (2026-09-06)
 
 **بند ۱ — قیفِ پیش‌ثبت‌نام (۰.۲) از رابطِ واقعی می‌مرد — رفع شد:** سه اکشنِ `pre-confirm`/`pre-reject`/`pre-del` پارامترِ اعلام‌شدهٔ `(el,id)` داشتند، درحالی‌که دسپاتچ `A[a]()` است (**بدونِ هیچ پارامتر**)؛ پارامترها `el`/`id` از محیّطِ کلِک‌لیسنر را با `undefined` سای می‌کردند: تأیید «ردیف یافت نشد» می‌گفت، رد و حذف بی‌اثر بودند. باگ **پنهان** بود چون همهٔ سئوت‌ها `preConfirm` را مستقیم صدا می‌زدند. رفع: برداشتنِ پارامترها.

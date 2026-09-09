@@ -263,22 +263,10 @@ process.on('exit', () => {
   try { worker.stop(); } catch (e) {}
   persistStoreSync();
   try{ if(typeof auditLogger.flushSync === 'function') auditLogger.flushSync(); }catch(e){}
-  db.close(); redis.close(); workers.terminate();
 });
-process.on('SIGTERM', () => {
-  try { worker.stop(); } catch (e) {}
-  persistStoreSync();
-  try{ if(typeof auditLogger.flushSync === 'function') auditLogger.flushSync(); }catch(e){}
-  db.close(); redis.close(); workers.terminate();
-  process.exit(0);
-});
-process.on('SIGINT', () => {
-  try { worker.stop(); } catch (e) {}
-  persistStoreSync();
-  try{ if(typeof auditLogger.flushSync === 'function') auditLogger.flushSync(); }catch(e){}
-  db.close(); redis.close(); workers.terminate();
-  process.exit(0);
-});
+/* Wave 15: SIGTERM/SIGINT → handleShutdown (drain + close ناهمگام) —
+   ثبتِ آن در پایینی فایل است؛ رویدادِ exit فقط کارِ همگام انجام می‌دهد
+   (در رویدادِ exit promise‌ها هرگز به‌جا نمی‌رسند). */
 
 /* ── JWT secret (env, or generated once; never committed) ──────────── */
 let JWT_SECRET = process.env.PAYESH_JWT_SECRET || null;
@@ -496,14 +484,69 @@ const onRequest = async (req, res) => {
       res.end(text);
       return;
     }
+    if(p === '/api/liveness' && (req.method === 'GET' || req.method === 'HEAD')){
+      /* Wave 15: liveness = فرایند زنده است و event-loop پاسخ می‌دهد.
+         عمداً هیچ وابستگی (DB/Redis) چک نمی‌کند — خرابیِ وابستگی نباید
+         ارکستراتور را وادار به restart کند (طوفانِ ری‌استارت)؛ برایِ آن
+         readiness هست. حتی در حالِ drain همیشه 200. */
+      return sendJson(res, 200, { ok: true, status: 'live', name: 'payesh-server', pid: process.pid, uptime_s: Math.round(process.uptime()), draining });
+    }
+    if(p === '/api/readiness' && (req.method === 'GET' || req.method === 'HEAD')){
+      /* Wave 15: readiness = آیا می‌توانم ترافیک بپذیرم؟
+         - DB: store در استارت لود شده (وگرنه فرایند اصلاً بالا نمی‌آمد) +
+           pingِ موتور (memory همیشه ok؛ postgres = SELECT 1).
+         - Redis: در تولید (PAYESH_ENV=production یا NODE_ENV=production)
+           ردیسِ زنده لازم است (P0-13)؛ در توسعه فال‌بکِ حافظه قابل‌قبول است.
+           ⇒ PAYESH_ENV=production + قطعِ ردیس = 503 (سپکِ Wave 15).
+         - draining: بلافاصله پس از SIGTERM ⇒ 503 تا LB ترافیکِ تازه نفرستد. */
+      const prod = process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production';
+      let dbp = { ok: true, driver: 'memory', alive: true };
+      try { dbp = await db.ping(); } catch (e) { dbp = { ok: false, driver: 'memory', alive: false, error: String(e.message || e).slice(0, 120) }; }
+      let rdp = { ok: true, driver: 'memory', alive: true };
+      try { rdp = await redis.ping(); } catch (e) { rdp = { ok: false, driver: 'memory', alive: false, error: String(e.message || e).slice(0, 120) }; }
+      const dbOk = !!(dbp && dbp.ok);
+      const redisOk = !!(rdp && rdp.ok);
+      const redisLive = redis.isRedis();
+      const ready = !draining && dbOk && redisOk && (!prod || redisLive);
+      return sendJson(res, ready ? 200 : 503, {
+        ok: ready, status: ready ? 'ready' : 'not_ready', name: 'payesh-server',
+        db: { driver: dbp.driver, alive: dbOk },
+        redis: { driver: rdp.driver, alive: redisOk, live: redisLive, required: prod },
+        draining, time: new Date().toISOString()
+      });
+    }
     if(p === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')){
-      /* P0-13: ریدی = در تولید، کشِ توزیع‌شده زنده است؛ وگرنه 503. */
+      /* P0-13: ریدی = در تولید، کشِ توزیع‌شده زنده است؛ وگرنه 503.
+         Wave 15: کدِ وضعیت روی همان درگاهِ P0-13 می‌ماند (قراردادِ
+         server13/S1 — تغییر نمی‌کند) و بدنه گسترش یافت: گزارشِ کاملِ
+         db/redis/queue + آمارِ pool و حافظه. */
       const rdy = redis.ready();
-      const body = { ok: rdy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid, cache: redis.isRedis() ? 'redis' : (rdy ? 'memory-dev' : 'unavailable') };
+      let dbp = { ok: false, driver: 'unknown', alive: false };
+      try { dbp = await db.ping(); } catch (e) {}
+      let rdp = { ok: false, driver: 'unknown', alive: false };
+      try { rdp = await redis.ping(); } catch (e) {}
+      const pool = db.getPool();
+      const body = {
+        ok: rdy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid,
+        cache: redis.isRedis() ? 'redis' : (rdy ? 'memory-dev' : 'unavailable'),
+        db: { driver: dbp.driver, alive: !!(dbp && dbp.ok), pool: pool ? { total: pool.totalCount, idle: pool.idleCount, pending: pool.pendingCount } : null },
+        redis: { driver: rdp.driver, alive: !!(rdp && rdp.ok) },
+        queue: { outbox: (store.outbox || []).length, notify_pending: (store.notify_queue || []).filter(q => q.status === 'pending').length, in_flight: inFlight },
+        cache_l1: cache.stats().l1,
+        uptime_s: Math.round(process.uptime()),
+        memory: { heap_used_kb: Math.round(process.memoryUsage().heapUsed / 1024) }
+      };
       /* Wave 10 — pool observability (primary + optional read replica) when PG live */
       try { if (db.isPostgres && db.isPostgres() && typeof db.poolStats === 'function') body.db_pools = db.poolStats(); }
       catch (e) {}
       return sendJson(res, rdy ? 200 : 503, body);
+    }
+    /* Wave 15: hookِ فقط-تست (env-gated، پیش‌فرض خاموش) — مسیرِ آهسته برای
+       اثباتِ قطعیِ drain در Graceful Shutdown (tests/wave15-health.js). */
+    if(p === '/api/__slow' && req.method === 'GET' && process.env.PAYESH_TEST_SLOW_MS){
+      const ms = Math.min(30000, Math.max(1, Number(process.env.PAYESH_TEST_SLOW_MS) || 1));
+      await new Promise(r => setTimeout(r, ms));
+      return sendJson(res, 200, { ok: true, slow_ms: ms });
     }
     if(p === '/api/auth/send-code' && req.method === 'POST') return await auth.apiSendCode(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/auth/login'     && req.method === 'POST') return await auth.apiLogin(req, res, await readBody(req, 4 * 1024));
@@ -676,6 +719,18 @@ const onRequest = async (req, res) => {
   }
 };
 
+/* ── Wave 15: شمارشِ درخواست‌هایِ درحالت‌پرواز برایِ Graceful Shutdown ──
+   هر درخواست در ورود شمار می‌شود و در 'close' پاسخ (پس از flush کامل،
+   حتی روی اتصالِ keep-alive) کم می‌شود. drain = صفرِ این شمارنده. */
+let draining = false;
+let inFlight = 0;
+const SHUTDOWN_TIMEOUT_MS = Math.max(500, Number(process.env.PAYESH_SHUTDOWN_TIMEOUT_MS) || 10000);
+const wrappedRequest = async (req, res) => {
+  inFlight++;
+  res.on('close', () => { inFlight = Math.max(0, inFlight - 1); });
+  await onRequest(req, res);
+};
+
 /* ── TLS (stage 2): real https when PAYESH_TLS_CERT / PAYESH_TLS_KEY
      point at PEM files (self-signed: `node server/tls-cert.js`).
      PAYESH_HTTPS=1 still means "behind a TLS reverse proxy". ──────── */
@@ -712,9 +767,9 @@ if(TLS_CERT || TLS_KEY){
     }
   }
   const https = require('https');
-  server = https.createServer({ key: keyPem, cert: certPem }, onRequest);
+  server = https.createServer({ key: keyPem, cert: certPem }, wrappedRequest);
 }else{
-  server = http.createServer(onRequest);
+  server = http.createServer(wrappedRequest);
 }
 /* Wave 14 — تاپِ زمان‌سنجی پاسخ (هر دو حالت HTTP/HTTPS) — fail-safe؛ هرگز
    بوتِ سرویس را نمی‌شکند. */
@@ -734,6 +789,61 @@ try{
   server.keepAliveTimeout = 65000;
 }catch(e){}
 
+/* ── Wave 15: Graceful Shutdown (SIGTERM / SIGINT) ───────────────────
+   توالی:
+     1) draining = true — /api/readiness فوراً 503 (بالانس بار از ما می‌رود)
+     2) closeIdleConnections + server.close — پذیرشِ اتصالِ تازه متوقف
+        (اتصالاتِ keep-aliveٔ خالی فوراً بسته می‌شوند؛ Node ≥ 18.2)
+     3) انتظارِ پایانِ درخواست‌هایِ درحالت‌پرواز (poll 50ms؛ مهلت
+        PAYESH_SHUTDOWN_TIMEOUT_MS، پیش‌فرض 10s)
+     4) seamِ worker: اگر در آینده workerی بیاید همین‌جا ایستاده
+        شود (این شاخه worker ندارد؛ تایمرِ بکاپِ خودکار unref است و
+        خروج را نگه نمی‌دارد — persistStoreٔ بعدی dirty را می‌پوشاند)
+     5) persistStore (همگام) + db.close() + redis.close() (ناهمگام)
+     6) process.exit(0)
+   نگهبانِ زور: اگر drain از مهلت بگذرد، خروج اجباری با کد ۱
+   (غیرصفر = قابلِ مشاهده در مانیتورینگ؛ کد ۰ فقط برایِ ختمِ تمیز).
+   اگر listener اصلاً شروع نشده باشد (تستِ درون‌فرایند)، server.close()
+   بی‌اثر است و توالی به‌همان‌ترتیب انجام می‌شود. */
+let shutdownRunning = false;
+function handleShutdown(signal) {
+  if (draining || shutdownRunning) return;
+  shutdownRunning = true;
+  draining = true;
+  const t0 = Date.now();
+  const started = inFlight;
+  console.log('[shutdown] ' + signal + ' received — draining ' + started + ' in-flight request(s), budget ' + SHUTDOWN_TIMEOUT_MS + 'ms');
+  try { if (server.closeIdleConnections) server.closeIdleConnections(); } catch (e) {}
+  try { server.close(() => {}); } catch (e) {} /* ERR_SERVER_NOT_RUNNING — context تست */
+  let done = false;
+  const killer = setTimeout(() => {
+    console.error('[shutdown] drain budget exceeded — forcing exit');
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS + 2000);
+  const poll = setInterval(() => {
+    if (inFlight > 0) return;
+    finish();
+  }, 50);
+  function finish() {
+    if (done) return;
+    done = true;
+    clearTimeout(killer);
+    clearInterval(poll);
+    try { persistStore(); } catch (e) {}
+    (async () => {
+      try { await db.close(); } catch (e) {}
+      try { await redis.close(); } catch (e) {}
+      console.log('[shutdown] clean — dependencies closed in ' + (Date.now() - t0) + 'ms; exit 0');
+      process.exit(0);
+    })();
+  }
+  /* بدونِ listenerِ فعال، close() هرگز کامل نمی‌شود — اگر الان هم درحالت
+    پروازی نباشد، خودمان را پیش می‌بریم (poll ۵۰ms هم پادزهرِ دوم است). */
+  if (inFlight === 0) setTimeout(() => { if (inFlight === 0) finish(); }, 50);
+}
+process.on('SIGTERM', () => { handleShutdown('SIGTERM'); });
+process.on('SIGINT', () => { handleShutdown('SIGINT'); });
+
 /* ── بکاپِ دوره‌ایِ خودکار (باقی‌ماندهٔ 2.4) — درون‌پروسه ─────────
    PAYESH_BACKUP_EVERY_HOURS (production، مثلاً 24) یا
    PAYESH_BACKUP_EVERY_MS (تست). بی‌ارزش/صفر = خاموش. */
@@ -743,12 +853,15 @@ const BACKUP_EVERY_MS = (Number(process.env.PAYESH_BACKUP_EVERY_MS) > 0)
       ? Number(process.env.PAYESH_BACKUP_EVERY_HOURS) * 3600000 : 0);
 
 if(require.main === module){
+  /* Wave 15: این خطِ verbatim باید بماند (جهشِ M18 روی همین الگو است).
+     تایمرِ بکاپِ خودکار unref است — خروجِ shutdown را هرگز نگه نمی‌دارد؛
+     persistStoreٔ نهاییِ handleShutdown وضعیتِ dirty را می‌پوشاند. */
   if(BACKUP_EVERY_MS > 0) admin.startAutoBackup(BACKUP_EVERY_MS);
   server.listen(PORT, HOST, () => {
     const proto = (TLS_CERT && TLS_KEY) ? 'https' : 'http';
     console.log('payesh-server (phase 1' + (TLS_CERT ? ' + TLS' : '') + ') on ' + proto + '://' + HOST + ':' + PORT);
     console.log('  static : ' + path.join(ROOT, 'index.html'));
-    console.log('  api    : /api/health /api/auth/* /api/sync /api/sync/conflicts /api/sync/resolve-conflict /api/students/:id /api/bell/now /api/public-report /api/admin/{backup,restore} /api/sms/send');
+    console.log('  api    : /api/health /api/readiness /api/liveness /api/auth/* /api/sync /api/sync/conflicts /api/sync/resolve-conflict /api/students/:id /api/bell/now /api/public-report /api/admin/{backup,restore} /api/sms/send');
     console.log('  store  : ' + STORE_FILE + '  (' + (store.users || []).length + ' users)');
     if(BACKUP_EVERY_MS > 0){
       console.log('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');
@@ -758,5 +871,7 @@ if(require.main === module){
 module.exports = {
   server, store, audit, isHttps, persistStore, persistStoreSync, db, redis, cache, workers, staticCache,
   /* Wave 6: برای تستِ مستقیمِ نگهبانِ شمارش (state روی Redis) */
-  __enumForTests: { enumTouch, enumRead, enumDelayMs, enumStage, enumKey }
+  __enumForTests: { enumTouch, enumRead, enumDelayMs, enumStage, enumKey },
+  /* Wave 15: برای تستِ Graceful Shutdown (وضعیتِ drain) */
+  __drainForTests: () => ({ draining, inFlight })
 };
