@@ -562,6 +562,40 @@ async function ping() {
 }
 
 /**
+ * Raw INFO output (Redis) or a synthetic equivalent (memory mode) —
+ * consumed by the monitoring collector (tools/redis-metrics.js).
+ * @returns {Promise<string>}
+ */
+async function info() {
+  if (isRedis()) {
+    try {
+      return await client.info();
+    } catch (err) {
+      return '';
+    }
+  }
+  /* حالت حافظه: معادل‌های مصنوعی برای پایشِ توسعه/تست */
+  cleanExpiredMem();
+  let bytes = 0;
+  for (const [k, v] of memCache.entries()) bytes += k.length + String(v).length;
+  return [
+    '# Synthetic INFO (in-memory driver)',
+    'redis_mode:memory',
+    'redis_version:memory',
+    'uptime_in_seconds:' + Math.round(process.uptime()),
+    'connected_clients:1',
+    'blocked_clients:0',
+    'used_memory:' + bytes,
+    'used_memory_peak:' + bytes,
+    'instantaneous_ops_per_sec:0',
+    'keyspace_hits:0',
+    'keyspace_misses:0',
+    'role:master',
+    ''
+  ].join('\r\n');
+}
+
+/**
  * Close Redis clients
  */
 async function close() {
@@ -597,6 +631,7 @@ module.exports = {
   publish,
   subscribe,
   ping,
+  info,
   setNX,
   compareAndDelete,
   close
