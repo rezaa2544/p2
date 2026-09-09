@@ -2039,6 +2039,7 @@
       "phone",
       "place_rules",
       "province_id",
+      "school_type",
       "shift",
       "type",
       "updated_at",
