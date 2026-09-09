@@ -13,6 +13,19 @@
 > — خودِ فایلِ گزارش، نه فقط اشارهٔ متنی در چت. این اصل در انتهایِ
 > همهٔ کارها اعمال می‌شود.
 
+
+## چت ۴: Version Vectors برای Offline-First Conflicts — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**شاخهٔ اجرایی این سشن:** `arena/01a08527-p2` (طبق قید Arena؛ پوش روی همین شاخهٔ مجاز انجام شد).
+- **تحلیل:** مسیر فعلی همگام‌سازی در `server/sync.js` فقط `base_version` عددی داشت؛ مجموعه‌های حساس (`grades`/`attendance`/`discipline`) conflict را در `sync_conflicts` حفظ می‌کردند و ساختاری‌ها (`schools`/`classes`/`subjects`/`users`/`enrollments`/`schedule`) با `stale_base` رد می‌شدند.
+- **هستهٔ Version Vector:** `server/version-vector.js` اضافه شد: اعتبارسنجی fail-closed، نرمال‌سازی، `mergeVectors`، `isAncestor`، `compareVectors`، `bumpVector`، `vectorOfRecord` و `resolveConflict`. شناسهٔ نود سرور با `PAYESH_NODE_ID` و پیش‌فرض `server` کنترل می‌شود.
+- **سرور:** `op.base_vector` در پاکت sync مجاز و اعتبارسنجی شد؛ وقتی حاضر باشد مرجع تشخیص تعارض است و اگر با `version_vector` سرور برابر نباشد، مسیر حساس conflict را با `base_vector/server_vector/vector_relation` حفظ می‌کند؛ ساختاری‌ها همچنان fail-closed با `stale_base` رد می‌شوند؛ نبود vector مسیر سازگار قدیمی `base_version` را نگه می‌دارد. `version_vector` خام داخل `data` قابل اعتماد نیست و توسط field gate رد می‌شود.
+- **کلاینت:** `src/js/03-persistence.js` برای رکوردهایی که vector معتبر دارند `base_vector` را کنار `base_version` در صف می‌گذارد و node id محلی پایدار می‌سازد؛ `src/js/27-sync.js` فیلدهای مدیریت‌شدهٔ `version`/`version_vector` را از `op.data` حذف می‌کند ولی `base_vector` سطح بالای op را نگه می‌دارد.
+- **PostgreSQL/مهاجرت:** `tools/migrate-to-pg.js` ستون‌های مدیریت‌شدهٔ `version` و `version_vector JSONB` را برای مجموعه‌های version-tracked تولید می‌کند؛ `server/schema.sql` نیز ALTERهای idempotent برای همین ستون‌ها دارد.
+- **مستندات:** `docs/VERSION_VECTORS.md` اضافه شد و `docs/README.md`/`docs/ROADMAP.md` به‌روز شدند.
+- **تست/گیت‌ها:** `version-vector` ۸/۸؛ `version-vector-sync` ۶/۶؛ `server15` ۴۰/۴۰؛ `server18` ۵۵/۵۵؛ `weighted-partitioning` ۱۲/۱۲؛ `pgbouncer-pooling` ۱۲/۱۲؛ `build --check` ✅؛ `check-authz` ✅؛ `secret-scan` ۱۱/۱۱ ✅؛ smoke ۵۴۷/۵۴۷ ✅ (فقط هشدار شناخته‌شدهٔ jsdom برای `scrollTo`).
+- **کامیت/پوش:** پس از کامیت، روی `origin/arena/01a08527-p2` پوش می‌شود؛ گزارش نهایی در `CHAT4_VERSION_VECTORS_REPORT.md`.
+
 ## چت ۴: Weighted Partitioning برای مدارس شلوغ — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **شاخهٔ اجرایی این سشن:** `arena/01a08527-p2` (درخواست شاخهٔ `feat/weighted-partitioning-chat4` به‌دلیل قفل Arena قابل انجام نبود؛ پوش روی شاخهٔ مجاز انجام شد).
