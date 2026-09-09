@@ -1263,3 +1263,11 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 - تست: `tests/school-type.js` ‏8/8‏ (ST0–ST7) + `tests/school-type-mutations.js` ‏5/5‏ کشته (SM1–SM5)؛ سند: `docs/SCHOOL_TYPE_GUIDE.md`.
 - سازگاری: مدارس قدیمی (بی‌نوع) رفتار قبلی‌شان را نگه می‌دارند (قابلیت صریح/پیش‌فرض)؛ نمایشی governmental.
 - گیت‌ها: smoke ‏547/547‏، authz ‏0‏، secret-scan ‏11/11‏، build --check سبز، authz-model ‏232/232‏، رگرسیون کامل 185 سبز (از جمله ۲ سوئیت تازه)؛ ۱۲ قرمز عیناً در c22d354 هم قرمزند (A/B با worktree — پیشینه، نامرتبط) ✅
+
+## فاز ۰.۲ — هم‌زمانی دو سال تحصیلی (سال عملیاتی) — ✅
+- تحلیل: هم‌زمانی جاری+پیش‌ثبت‌نام ساختاری از قبل بود (بند ۰.۲)؛ ۵ شکاف واقعی پیدا و رفع شد.
+- مدل: `school_years.fields` ‏۲ ← ۱۰‏ (رفع DLQ بستن سال: `unknown_field` → dead-letter، گم‌شدن داده) + `schools.active_year_code` + بازتولید write-perms.
+- منطق (`39-school-year.js`): ‏`activeYearOf` (override معتبر وگرنه تقویمی)، ‏`prevYearCode`، ‏`isPreSeason` (اسفند-شهریور)، ‏`yearCodeTitle`؛ سیم‌کشی state/funnel به سال عملیاتی. سرور: pattern فرمت `NNNN-NNNN`.
+- UI: بج سال در هدر + سلکت سال عملیاتی در مودال (خودکار/پارسال/جاری/بعد) + بج+قفل در جدول مدارس + فیلتر سال در کارت سابقه + بنر نرم فصل؛ بدون اکشن/روت تازه.
+- تست: `tests/academic-years.js` ‏9/9‏ (AY0–AY8) + `tests/academic-years-mutations.js` ‏5/5‏ کشته (YM1–YM5)؛ سند: `docs/ACADEMIC_YEARS_GUIDE.md`.
+- گیت‌ها: smoke ‏547/547‏، authz ‏0‏، secret-scan ‏11/11‏، build --check سبز، authz-model ‏232/232‏؛ رگرسیون دامنه: uiclick ‏4/4‏ + جهش ‏5/5‏، boom2 ‏8/8‏، simulation ‏48/48‏ ✅
