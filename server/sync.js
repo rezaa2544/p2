@@ -417,6 +417,14 @@ function inScope(session, coll, recId, data){
   }
   if(u.role === 'teacher'){
     if(coll === 'messages') return msgOwnerOk();
+    /* E.4 — کتابدار: امانت/بازگشت در سطحِ مدرسه است نه کلاس (کتابدار به
+       همهٔ دانش‌آموزانِ مدرسه امانت می‌دهد)؛ پرچمِ تفویضی لازم است. */
+    if(coll === 'lib_loans'){
+      const me = (get_store().users || []).find(x => x.id === u.id);
+      if(!me || me.lib_staff !== 1) return false;
+      const t3 = rec || data || {};
+      return t3.school_id != null && Number(t3.school_id) === Number(u.school_id);
+    }
     /* Round 89 — class-level collections: a teacher is bound to classes they actually
        teach (homeroom or schedule) — fail-closed for any other class.
        meeting_slots: their own slots (created with parent_id/student_id null). */

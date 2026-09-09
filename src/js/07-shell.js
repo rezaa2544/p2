@@ -53,6 +53,11 @@ function navFor(u){
   let nav=(NAV[u.role]||[]).map(function(g){
     return [g[0],(g[1]||[]).filter(function(it){ return dis.indexOf(it[0])<0&&capHidden.indexOf(it[0])<0; })];
   }).filter(function(g){ return g[1].length>0; });
+  /* کتابدار: دبیرِ دارای پرچمِ تفویضی، کتابخانه را در منو می‌بیند
+     (فقط نمایش؛ مجوزِ مسیر با canRoute و مجوزِ عمل با libStaffCan است). */
+  if(u.role==='teacher' && u.lib_staff===1){
+    nav = nav.concat([[ 'کتابخانه', [['library','📚','کتابخانه']] ]]);
+  }
   if(u.role==='parent'){
     nav=nav.concat([['حساب من',[['subscription','💳','اشتراک پنل اولیا']]]]);
     /* بند ۴ دور ۷۸ (بماندهٔ DISCOVERABILITY_R43، مورد ۲): برچسب پویای
