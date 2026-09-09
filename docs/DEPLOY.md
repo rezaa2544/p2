@@ -98,6 +98,8 @@ sudo certbot renew --webroot -w /var/www/le --deploy-hook "cp -f /etc/letsencryp
 `0` کنید و پروکسی را به `127.0.0.1:3000` وصل کنید — API و وب هر دو از همان
 پورت می‌آیند؛ فقط `X-Forwarded-Proto` را به سرور بفرستید (کوکیِ Secure).
 
+**ج) پشتِ CDN (اختیاری، مقیاسِ ملی):** کاربر ← Cloudflare (ورکرِ `cloudflare/worker.js`: کشِ ۵دقیقه‌ایِ `/`، passthrough کاملِ `/api/*`) ← همین origin (TLS داخلی یا Full strict). origin دست نمی‌خورد؛ purge پس از هر بیلد با `cdn-manifest.json` راستی‌آزمایی می‌شود. جزئیات: `docs/CDN_INTEGRATION_SETUP.md`.
+
 ---
 
 ## ۵. سرویسِ systemd (`/etc/systemd/system/payesh.service`)
@@ -213,6 +215,7 @@ curl -fsS https://payesh.example/api/health
 - **سرور/VPS + دامنه** — انتخابِ کاربر (اروپا/ایران + هزینه).
 - **حسابِ آروان‌کلاود** (برایِ سطلِ بیرونی) — فقط وقتی کپیِ بیرونی لازم شد (پیش از کاربرانِ واقعی).
 - **کلاسترِ Kubernetes** — فقط برایِ مقیاسِ ملی (POC آماده: `k8s/` + `docs/AUTO_SCALING_SETUP.md`)؛ استقرارِ پیش‌فرضِ این سند بدونِ k8s است.
+- **CDN (اختیاری، مقیاسِ ملی)** — حسابِ Cloudflare (یا آروان) + ورکرِ `cloudflare/worker.js`؛ POC و TTLها در `docs/CDN_INTEGRATION_SETUP.md`.
 - **درگاهِ پیامک + استعلامِ کد ملی** — تا آن‌وقت، ورودِ تولید بدونِ درگاهِ واقعی معنادار نیست (`PAYESH_DEMO_CODE=0` یعنی کد از کجا بیاید؟ ← درگاه). **این، پیش‌نیازِ واقعیِ go-live است**، نه TLS.
 
 > ترتیبِ منطقی: ۱) درگاهِ پیامک ← ۲) سرور + دامنه + این سند ← ۳) go-live.
