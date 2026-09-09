@@ -1254,3 +1254,12 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
   جدایی کامل از حضور دانش‌آموز؛ روت `staffatt` + منوی «کادر مدرسه» (`05-router.js:8`)؛ ثبت در `_order.json`.
 - بازاجرای امروز روی main تمیز: `staffatt2` **10/10** ✅ + `staffatt-mutations` **3/3** ✅؛ smoke ‏547/547‏، authz ‏۰‏، secret-scan ‏۱۱/۱۱‏ ✅
 - `docs/ROADMAP.md` ردیف B.1: 🔴 ← ✅ (طبق قانون ۱ نقشه‌راه).
+
+## راستی‌آزمایی B.2 — دوره‌های آموزش ضمن خدمت + گواهی (چت ۱، ۲۰/۰۶) — ✅ از قبل کامل
+- یافته: B.2 در فاز ۱ پیاده و در main مرج شده بود (`26a748c`، PR #8) — کد تازه لازم نشد.
+- تطبیق با spec دستور: جدول `training_courses` با هر ۷ فیلد + `created/updated_at` (ساعت = عدد مثبت؛ «۲۰ تا ۶۰»
+  در spec جنبهٔ راهنما داشت)؛ مجوز فقط manager/superadmin؛ enum سروری `ongoing/completed`
+  (`server/validate.js:81`)؛ گواهی idempotent با کد صحت‌سنجی `certHash` (`DOR-…`) در لحظهٔ تکمیل + دکمهٔ
+  راستی‌آزمایی؛ روت `training` + منوی «کادر مدرسه»؛ ثبت در `_order.json`.
+- بازاجرای امروز روی main تمیز: `training2` **12/12** ✅ + `training-mutations` **3/3** ✅؛ smoke ‏547/547‏، authz ‏۰‏، secret-scan ‏۱۱/۱۱‏ ✅
+- `docs/ROADMAP.md` ردیف B.2: 🔴 ← ✅ (طبق قانون ۱ نقشه‌راه).
