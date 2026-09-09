@@ -156,7 +156,7 @@ function viewGrades(){
     <select class="select" style="width:125px" data-f="term"><option value="">همه نوبت‌ها</option>${TERMS.map(t=>`<option ${term===t?'selected':''}>${t}</option>`).join('')}</select>`)}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>درس</th><th>کلاس</th><th>نوبت</th><th>نوع آزمون</th><th>نمره</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
     ${rows.map(g=>`<tr><td><b>${esc((byId('users',g.student_id)||{}).full_name||'—')}</b></td><td>${esc((byId('subjects',g.subject_id)||{}).name||'—')}</td>
-      <td class="muted">${esc((byId('classes',g.class_id)||{}).name||'—')}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td class="muted">${esc(g.exam_type)}${g.kind==='practical'?' <span class="badge b-purple" title="نمرهٔ عملی/کارگاهی (بند ۴.۲)">عملی</span>':''}</td>
+      <td class="muted">${esc((byId('classes',g.class_id)||{}).name||'—')}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td class="muted">${esc(g.exam_type)}${g.kind==='practical'?' <span class="badge b-purple" title="نمرهٔ عملی/کارگاهی (بند ۴.۲)">عملی</span>':''}${gradeSourceBadge(g)}</td>
       <td><span class="badge ${g.score>=17?'b-green':g.score>=12?'b-blue':'b-red'}">${fa(g.score)} / ${fa(g.max_score)}</span></td>
       ${canEdit?`<td><button class="icon-btn" data-act="grade-edit" data-id="${escAttr(g.id)}">✏️</button> <button class="icon-btn danger" data-act="grade-del" data-id="${escAttr(g.id)}">🗑️</button></td>`:''}</tr>`).join('')}
    </tbody></table></div>`:empty('📝','نمره‌ای ثبت نشده',canEdit?'با دکمه «ثبت نمره» شروع کنید.':'هنوز نمره‌ای برای شما ثبت نشده است.')}</div>`+_inOv;

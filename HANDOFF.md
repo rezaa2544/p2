@@ -21,6 +21,167 @@
 - **تازه‌ها:** ساعتِ لازم (۲۰۰ + سقفِ مدرسه)، بج/نوارِ پیشرفت، گواهیِ `internship` (ضدِتکرار، فقط-تکمیل‌شده)، نمای کلیِ مدیر در نمرات، نوارِ داشبوردِ دانش‌آموز/ولی، دکمهٔ ثبت برای دبیر.
 - **سرور:** دبیر از `internships.del` بیرون رفت (`model.json` + بازتولیدِ `write-perms.json`)؛ `STATUS_UPD_ROLE` از قبل دبیر را برای تأیید داشت.
 - **برای سوپروایزر:** چاپِ کاغذیِ گواهی از مسیرِ موجودِ `printableDoc` ممکن است — اگر قالبِ چاپ خواسته شود، کارِ بعدی است.
+## چت ۴: ویو ۸ — معماری ناهم‌زمان (Outbox + Worker) — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
+
+**وضعیت:** شاخهٔ تازهٔ `feat/wave8-chat4` (بر پایهٔ `origin/main` @ `781a471`). پنج کامیت:
+- `7e7ba19` **چرخهٔ عمر اوت‌باکس + کارگر:** رویدادها با `status='pending'/retry_count/processed_at/last_error` ثبت می‌شوند؛ `server/worker.js` پیمایش، اعزام به هندلر، تلاش مجدد و `failed` پس از سقف تلاش — رویداد در شکست **هرگز حذف نمی‌شود**؛ نگهبان ورود دوباره + `tick()` قطعی برای تست؛ اولین هندلر واقعی: باطل‌کردن کش مدرسه پس از حذف نرم (خارج از مسیر درخواست)؛ اتصال به چرخهٔ حیات سرور.
+- `6c19d8c` **جدول `server_outbox`** در مهاجرت پستگرس (ستون‌های وضعیت/تلاش/خطا + ایندکس وضعیت) — آینه؛ منبع حقیقت همان اسنپ‌شات.
+- `6c4a76b` **آزمون‌ها:** `wave8-outbox.js` ‏۱۴/۱۴ + `wave8-outbox-mutations.js` ‏۵/۵ (حذف سقف تلاش/پردازش دوباره/حذف رویداد در شکست — همه کشته شدند).
+- `3edaa06` **مستندات:** `docs/ASYNC_ARCHITECTURE.md` — الگو، چرخهٔ عمر، قواعد هندلر (ایدمپوتانس)، راهنمای افزودن هندلر، و **دلیل صادقانهٔ** در‌مسیر‌ماندنِ پیامک (قرارداد قفل‌شدهٔ قفل ۸۱.۱ — ناهم‌زمان‌سازی آن کار جدا با تأیید ناظر است).
+**پیکربندی:** `PAYESH_WORKER_INTERVAL_MS` (پیش‌فرض ۱۰۰۰) · `PAYESH_WORKER_MAX_RETRIES` (پیش‌فرض ۵).
+**گیت‌ها:** ‏smoke ۵۴۷/۵۴۷ · check-authz=0 · secret-scan ۱۱/۱۱ · server16 ‏۳۹/۳۹ · wave8 ‏۱۴/۱۴ · جهش‌ها ۵/۵.
+**بعدی:** ادغام به `main` با تأیید ناظر ارشد (اصل هشتم)؛ هندلرهای بعدی (گزارش/اعلان) طبق راهنمای سند.
+
+## چت ۱: Wave 0 / Part 3 — Baseline دیتابیس و کش — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** اندازه‌گیری baseline دیتابیس/کش بدون تغییر کد پروژه انجام شد و در `docs/NATIONAL_BASELINE_PART3.md` ثبت شد؛ کپی همگام در `reza/` قرار گرفت. Progress Tracker برای Wave 0 به‌روز شد: Partهای ۱، ۲ و ۳ کامل‌اند و Part 4 باقی است.
+
+- **اندازه‌گیری DB:** `server/db.js` در sandbox با `DATABASE_URL` خالی روی driver حافظه‌ای بالا آمد؛ queryهای مهم به‌صورت SQL-shape simulation روی JSON demo store اندازه‌گیری و محدودیت نبود PostgreSQL واقعی صریح ثبت شد.
+- **اندازه‌گیری Cache:** `REDIS_URL` تنظیم نبود و Redis واقعی فعال نشد؛ hit/miss فقط برای fallback حافظه‌ای و L1 bootstrap cache ثبت شد و محدودیت distributed Redis مستند شد.
+- **Sync throughput:** route واقعی `POST /api/sync` با server واقعی و temp store اندازه‌گیری شد؛ batchهای ۱/۵۰/۲۵۰/۵۰۰ همگی `200` بودند؛ batch ۵۰۰ حدود `9706.5 records/sec` در sandbox ثبت شد.
+- **تست‌ها:** `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+
+## چت ۱: Wave 0 / Part 2 — Baseline عملکرد سرور و API — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** اندازه‌گیری baseline عملکرد سرور/API بدون تغییر کد پروژه انجام شد و در `docs/NATIONAL_BASELINE_PART2.md` ثبت شد؛ کپی در `reza/` قرار گرفت. Progress Tracker برای Wave 0 به‌روز شد: Partهای ۱ و ۲ کامل‌اند و Partهای ۳ و ۴ هنوز باقی‌اند.
+
+- **اندازه‌گیری:** سرور واقعی `server/index.js` با store موقت دمو و probe موقت خارج repo اجرا شد؛ `process.memoryUsage()`، RSS/CPU از `/proc`، و `monitorEventLoopDelay` ثبت شد. endpoint واقعی sync در کد `POST /api/sync` است (نه `/api/v1/sync`) و همان اندازه‌گیری شد.
+- **نتایج نمونه:** event-loop p95≈10.846ms؛ RSS بعد benchmark≈108.17MB؛ endpoint p95ها: login≈7.358ms، bootstrap≈2.347ms، attendance≈3.752ms، grades≈3.184ms، sync≈4.735ms.
+- **محدودیت:** sandbox/localhost، JSON temp store، دیتاست دمو و اجرای sequential؛ نتیجه ظرفیت ملی نیست و باید در Wave 18 تکرار شود.
+- **تست‌ها:** `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+
+## چت ۱: Wave -1 / Architecture Discovery بخش دوم — Threat Model + Bottleneck Map — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** بخش دوم Wave -1 فقط با مستندات انجام شد؛ `docs/THREAT_MODEL.md` با چارچوب STRIDE و `docs/BOTTLENECK_MAP.md` ساخته شدند و کپی هر دو در `reza/` قرار گرفت. Progress Tracker برای Wave -1 به `✅` تغییر کرد چون بخش اول و دوم کامل شدند.
+
+- **اثر معماری:** ریسک‌های اصلی ملی (چند source of truth، drift بین REST/Sync، IDOR/BOLA، state توزیع‌نشده، full scan، نبود load/chaos واقعی) و گلوگاه‌های مسیرهای REST/Pull/Sync/Storage با اولویت Waveهای بعدی مستند شد.
+- **اثر کد/دیتابیس/امنیت/کارایی:** فقط مستنداتی؛ هیچ تغییر runtime/schema/test.
+- **تست‌ها:** `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+
+## چت ۱: Wave -1 / Architecture Discovery بخش اول — Dependency/Data/Auth/Sync Flow — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** بخش اول Wave -1 فقط با مستندات انجام شد؛ هیچ فایل کد/runtime تغییر نکرد. چهار سند کشف معماری ساخته شد: `docs/DEPENDENCY_GRAPH.md`، `docs/DATA_FLOW.md`، `docs/AUTH_FLOW.md`، `docs/SYNC_FLOW.md` و کپی همه در `reza/` قرار گرفت. Progress Tracker برای Wave -1 به `🟡` تغییر کرد و Evidence به همین چهار سند اشاره می‌کند.
+
+- **اثر معماری:** وابستگی‌های اصلی کلاینت/سرور/Build، مسیر داده UI/API تا Store/PostgreSQL/Redis، جریان OTP/JWT/session و مسیر Push/Pull/Conflict مستند شد؛ مبنای تصمیم‌گیری Waves بعدی.
+- **اثر کد/دیتابیس/امنیت/کارایی:** فقط مستنداتی؛ هیچ تغییر runtime/schema/test.
+- **تست‌ها:** `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+
+## چت ۱: اعمال Addendum معماری نقشه راه ملی — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** متن کامل Addendum طبق پرامپت در `docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md` ذخیره شد؛ خط الزام‌آور مکمل معماری پس از عنوان `docs/ROADMAP.md` اضافه شد؛ Progress Tracker طبق Addendum از جدول صرفاً status به ستون‌های `Owner/Risk/Dependency/Evidence` ارتقا یافت؛ Wave -1 و Arena 5 ثبت شدند؛ کپی‌های `reza/` همگام شدند.
+
+- **فایل‌ها:** `docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md`، `docs/ROADMAP.md`, `docs/NATIONAL_ROADMAP_PROGRESS.md`، کپی‌های `reza/`، `docs/README.md`، `HANDOFF.md`.
+- **اثر معماری:** اجرای همه Waves اکنون مشروط به Architecture Discovery، QA/Reliability مستقل، Modular Monolith قبل از Microservice، Multi-tenant governance و شواهد پیشرفت شده است.
+- **اثر کد/دیتابیس/امنیت/کارایی:** فقط مستنداتی؛ runtime/schema تغییر نکرد.
+- **تست‌ها:** `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+
+## چت ۱: Wave 2 — Database Engineering (Migrations/Constraints/IDs/Transactions/OCC) — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** Wave 2 روی شاخهٔ ثابت `arena/01a085da-p2` پیاده شد. پوشهٔ `migrations/` با ۳ migration forward و ۳ rollback ساخته شد؛ `server/schema.sql` و مولد `tools/migrate-to-pg.js` به PostgreSQL Identity برای `id` هم‌راستا شدند؛ مسیر PostgreSQL در `server/ids.js` از sequence وابسته به identity column استفاده می‌کند؛ سه مسیر حیاتی REST (`students`, `attendance`, `grades`) از `db.persistOpsBatch()`/transaction عبور می‌کنند؛ `server/db.js` برای updateهای دارای `base_version` SQL-OCC با `WHERE id AND version` و خطای 409 دارد.
+
+- **فایل‌های مهم:** `migrations/001_initial.sql`، `002_indexes.sql`، `003_constraints.sql` (+ downها)؛ `server/db.js`؛ `server/ids.js`؛ `server/routes/{students,attendance,grades}.js`؛ `tools/migrate-to-pg.js`؛ `tests/db-engineering*.js`؛ `docs/DATABASE_ARCHITECTURE.md` و کپی `reza/`.
+- **تست‌های اختصاصی:** `node tests/db-engineering.js` = **۱۲/۱۲**؛ `node tests/db-engineering-mutations.js` = **۶/۶ جهش کشته شد**.
+- **محدودیت:** اجرای migration روی PG واقعی در این محیط انجام نشد؛ PostgreSQL-only شدن production همچنان Wave 1 است. مسیر JSON/memory برای سازگاری دمو باقی ماند.
+
+## چت ۱: Wave 0 / Part 1 — Tag + تست‌های فعلی + سند کلی Baseline ملی — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** tag مبنا `national-baseline-start` روی commit `0be0bb5c6e7640cdf6a5ab0503a6c8948206492c` ساخته و push شد؛ `docs/NATIONAL_BASELINE.md` به‌عنوان سند بخش ۱ ساخته شد؛ کپی آن و progress tracker در `reza/` به‌روز شد؛ Wave 0 در progress از `⏳` به `🟡` تغییر کرد چون بخش‌های ۲ تا ۴ هنوز باید تجمیع شوند.
+
+- **تست‌ها:** `node tests/run.js` = **۳۵/۳۵**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**؛ `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**.
+- **اثر معماری/دیتابیس/امنیت/کارایی:** فقط مستنداتی و baseline؛ runtime/schema/test تغییر نکرد. latency endpointها و DB/cache/sync throughput عمداً به Partهای ۲ و ۳ واگذار شد.
+- **قید Arena:** این سشن به شاخهٔ `arena/01a085da-p2` قفل است؛ بنابراین برخلاف متن تقسیم کار، شاخهٔ `feat/baseline-chat1` ساخته نشد و کار روی شاخهٔ ثابت همین سشن انجام شد.
+
+## چت ۱ جدید: جایگزینی نقشه راه با National Scale Master Roadmap + Progress Tracker — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** `docs/ROADMAP.md` با متن کامل «نقشه راه جامع مهندسی پایش تا آمادگی مقیاس ملی» جایگزین شد و فایل پیگیری `docs/NATIONAL_ROADMAP_PROGRESS.md` با Waveهای ۰ تا ۲۰ ساخته شد؛ کپی هر دو فایل نیز در `reza/` قرار گرفت.
+
+- **تغییرات:** حذف محتوای نقشه‌راه قبلی و ثبت نقشه ملی ۳۳ بخشی؛ ساخت جدول پیشرفت با وضعیت اولیه `⏳` برای همه Waveها؛ به‌روزرسانی فهرست مستندات.
+- **اثر معماری:** فقط مستنداتی؛ جهت پروژه از roadmap محلی/پایلوت به مسیر National Scale با PostgreSQL source-of-truth، Redis distributed state، API stateless، workers، observability و DR رسمی منتقل شد.
+- **اثر دیتابیس/امنیت/کارایی:** بدون تغییر کد/اسکیما؛ اثر راهبردی در roadmap ثبت شد (DB-native paths، tenant isolation، ASVS/CI security، load/chaos/soak).
+- **تست‌ها:** `node tools/check-authz.js` سبز با تطبیق کامل؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+- **محدودیت:** Waveها فقط برنامه‌ریزی/پیگیری‌اند؛ هیچ Wave اجرایی شروع نشده و همه در progress با وضعیت «در انتظار شروع» ثبت شده‌اند.
+
+## چت ۱ (جانشین): انتقال فاز ۰.۱/۰.۲ از شاخهٔ چت ۱ قبلی به شاخهٔ فعال — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** ۱۲ کامیتِ فاز ۰.۱ و ۰.۲ از `origin/arena/01a0827b-p2` با
+`git cherry-pick ce34c82^..ccd0dc1` روی `arena/01a08543-p2` نشست (+ یک
+کامیتِ بازسازیِ مُهر راهنما). دروازه‌ها روی درخت ترکیبی (۰.۱+۰.۲+۰.۳):
+smoke **۵۴۷/۵۴۷** · run.js **۳۵/۳۵** · check-authz **۰** · secret-scan
+**۱۱/۱۱** · `build --check` بیت‌به‌بیت · school-type **۸/۸** + جهش **۵/۵** ·
+academic-years **۹/۹** + جهش **۵/۵** · exam-types **۲۷/۲۷** + جهش **۵/۵**.
+
+- **🔴 چرا merge مستقیمِ شاخه نشد (با مدرکِ راه‌دور):**
+  `gh api repos/rezaa2544/p2/compare/main...arena/01a0827b-p2` →
+  `status: diverged` · **۵۱ کامیت جلو** · **۷۷ کامیت عقب** ·
+  merge-base = `54b1820` (Merge PR #14) · ۱۳۴ فایل.
+  یعنی آن شاخه فقط ۰.۱/۰.۲ نیست: ۳۹ کامیتِ دیگر هم دارد
+  (P0-03..P0-07 یکپارچگی REST/Sync و tenancy · ابزار مهاجرت نسخه‌دار PG ·
+  CI: eslint + secret-scan · Kubernetes auto-scaling · CDN · سخت‌سازی
+  سرآیندها · ~۲۰ سند گزارش). مرجِ کل شاخه = آوردن همهٔ این‌ها، نه فقط
+  دو فاز. **تصمیمش با ناظر است** — در همین ورودی باز ماند.
+- **چری‌پیک تمیز نبود؛ سه نوع تعارض مکانیکی داشت (همه حل شد):**
+  (۱) `cdn-manifest.json` — modify/delete در هر کامیت (آن فایل از کارِ CDN
+  همان شاخه می‌آید که در main نیست) ⇒ `git rm`؛
+  (۲) `USER_GUIDE.html` — فقط مُهر بیلد ⇒ `--ours` + بازسازی با `build.js`؛
+  (۳) `authz/model.json` — main فیلد `public_goals` را اضافه کرده بود،
+  شاخه `school_type` را ⇒ **هر دو** (ترتیب الفبایی) + بازتولید
+  `write-perms.json` با مولد؛ (۴) `HANDOFF.md` — union (هر دو ورودی).
+- **دامِ روش:** این ۱۲ کامیت خودبسنده نیستند — روی کارِ CDNِ همان شاخه
+  نشسته‌اند، پس `cdn-manifest.json` در تک‌تکشان ظاهر می‌شود. اگر روزی
+  خواستید کل شاخه را مرج کنید، این تعارض نیست (هر دو طرف فایل را دارند).
+- **نتیجهٔ حجمی:** ۲۰ فایل، ۱۳۴۷+ / ۳۸− . هیچ زیرساخت/CI/CDN وارد نشد.
+- **پی‌آر ۳۷** اکنون هر سه فاز را دارد (۰.۱ + ۰.۲ + ۰.۳) — عنوان و شرحش
+  به‌روز شد. 🔴 اگر تفکیک می‌خواهید بگویید تا ۱۲ کامیت را از شاخه برگردانم
+  (هنوز مرج نشده، پس برگشت تمیز است).
+
+## چت ۱ (جانشین): فاز ۰.۳ — تفکیک امتحان نهایی کشوری از داخلی — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** شاخهٔ `arena/01a08543-p2` از `main` (`2a2b74f`) — ۴ کامیت
+(`feat(exams)` هسته · `feat(grades)` قاعدهٔ ورود · `feat(ui)` تفکیک نما ·
+`test(exams)` سئوت‌ها) + همین ورودی.
+دروازه‌ها: smoke **۵۴۷/۵۴۷** · run.js **۳۵/۳۵** · check-authz **۰ ناهمخوانی**
+(۳۷۶ اکشن) · `build --check` بیت‌به‌بیت · سئوت تازه **۲۷/۲۷** + جهش‌ها **۵/۵** کشته.
+
+- **هسته (`26-curriculum.js`):** تک‌منبع حقیقت همان `exams.source`
+  (internal/national_final/makeup، از دور ۶۳) ماند و `examTypeOf` نمای
+  دوحالتیِ خواسته‌شده را از آن مشتق می‌کند. نمره منشأ می‌گیرد:
+  `grades.source ∈ {internal, national}` با `gradeSource/gradeSourceLabel/
+  gradeSourceBadge/nationalGradesOf/nationalGpa`.
+- **انحراف مستند از پرامپت (ثبت‌شده در `docs/EXAM_TYPES_GUIDE.md` §۳):**
+  ستون `exams.exam_type` ساخته نشد — `exams.source` از پیش همان سه حالت را
+  دارد (دو منبع حقیقت = نشت) و نام `exam_type` روی **grades** از پیش معنای
+  دیگری دارد (`EXAM_TYPES` = کلاسی/میان‌ترم/پایان‌ترم/عملی/امتحان نهایی).
+- **قاعدهٔ ورود:** نمرهٔ «امتحان نهایی» را فقط مدیر/سوپرادمین می‌نویسد؛
+  دبیر نه می‌سازد نه ویرایش می‌کند (گارد **روی داده** در `grade-save`،
+  پنهان‌کردن گزینه در `gradeModal` فقط کشف‌پذیری است). منشأ روی رکورد مُهر
+  می‌خورد.
+- **نما:** کارت جداگانهٔ «🏛️ نمرات امتحان نهایی کشوری» با معدل خودش در
+  کارنامه · برچسب روی چیپ نمره · نشان قرمز در جدول نمرات · بخش جداگانه در
+  گواهی چاپی (`transcriptCert`).
+- **تصمیم باز کارفرما:** معدل وزنی گواهی عمداً روی همهٔ نمرات ماند
+  (گواهی‌های صادرشده + قفل smoke بند ۱.۶)؛ «معدل نهایی کشوری» کنارش
+  نمایش داده می‌شود نه به‌جایش. سه نقطهٔ تغییر در سند §۶ آمده.
+- **بدهی باز (فاز سرور):** enum سمت سرور برای `grades.source` هنوز قفل
+  نشده — فقط سقف طول (`MID_FIELDS`). `authz/model.json` بدون تغییر ماند
+  چون `source` از پیش در فیلدهای هر دو مجموعه بود.
+- **دو نکته برای ناظر (دست نخورد):** (۱) ردیف‌های ۰.۱/۰.۲ در
+  `docs/ROADMAP.md` هنوز ❌ هستند درحالی‌که `main` هم `SCHOOL_TYPES` دارد و
+  هم `preapps` — کار «نوع مدرسه» و «سال فعال» روی شاخهٔ
+  `arena/01a0827b-p2` مانده و مرج نشده. (۲) این سشن به شاخهٔ
+  `arena/01a08543-p2` قفل است؛ کانفلیکت پی‌آر ۳۵ (`feat/b3-d234-chat4`) از
+  اینجا قابل resolve نیست — `mergeable: CONFLICTING` با راه‌دور راستی‌آزمایی شد
+  و **سطح دقیق تعارض** (۱۲ فایل / ۷۴ نشانگر + استراتژی هر فایل) با
+  `git merge-tree 430c7c8 origin/main origin/feat/b3-d234-chat4` سنجیده و در
+  `docs/PR_MERGE_PLAN.md` §۶ ثبت شد. دامِ روش هم ثبت شد: بلوک‌های
+  `added in both` را باید جدا شمرد، وگرنه `docs/ROADMAP.md` از قلم می‌افتد.
+
+## چت ۳ (E.6 زمان‌بند): تولید خودکار برنامهٔ هفتگی — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
+
+**وضعیت:** کامیت `feat(schedgen): add e.6 automatic timetable generator` روی `feat/schedule-gen-chat3`. گیت‌ها سبز: ‏smoke ۵۴۷/۵۴۷‏، ‏check-authz=0‏، ‏secret-scan ۱۱/۱۱‏، ‏build --check‏ تمیز، سوئیت تازه ‏۶/۶‏ + جهش‌ها ‏۵/۵‏، رگرسیونِ schedconf2 سبز.
+- **هسته (`74-schedgen.js`):** `schedGenerate` خالص و قطعی — تخصص‌اول، حریصانه با پراکندگیِ روزانه، پس‌گردِ تک‌سطحی، تداخلِ دبیرِ سراسری؛ تعیین‌نشده‌ها با دلیل؛ پوششِ فعلی از تقاضا کم می‌شود (اجرایِ دوباره دوبرابر نمی‌کند).
+- **رابط:** دکمهٔ مدیر + پیش‌نمایشِ به‌تفکیکِ کلاس + ثبتِ فقط-در-خانهٔخالی (بدونِ رونویسی)؛ بدونِ تغییرِ مدل (schedule از قبل فقط-مدیر).
+- **جهش M3** یک حفرهٔ واقعیِ تست را گرفت (نبودِ وارسیِ متخصصِ درسِ دوم) و تست سفت شد.
+- **برای سوپروایزر:** سقفِ بارِ دبیر (حداکثر ساعتِ هفتگی) فعلاً نیست — اگر خواسته شود، ورودیِ `max_load` به هسته اضافه می‌شود.
 
 
 ## چت ۴: رفع کانفلیکت پی‌آر۲۲ (تریسینگ + WAF) — ۲۰/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
@@ -1278,3 +1439,27 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
   راستی‌آزمایی؛ روت `training` + منوی «کادر مدرسه»؛ ثبت در `_order.json`.
 - بازاجرای امروز روی main تمیز: `training2` **12/12** ✅ + `training-mutations` **3/3** ✅؛ smoke ‏547/547‏، authz ‏۰‏، secret-scan ‏۱۱/۱۱‏ ✅
 - `docs/ROADMAP.md` ردیف B.2: 🔴 ← ✅ (طبق قانون ۱ نقشه‌راه).
+## CI — اصلاح jsdom 30 روی شاخه arena (معادل پچ PR #11) — ✅
+- `tests/smoke.js`: ۱۱ سلکتور unquoted (`data-day/data-i/data-act/...`) با escape دولایه (`\\"`) نقل‌قول شد؛
+  `tests/simulation.js`: ۳ مورد مشابه. نکته: در رشتهٔ evalشده (کوتیشن‌دبل) باید `\\"` در فایل باشد وگرنه
+  «missing ) after argument list»؛ در template-literal با querySelector تکی‌کوتیشن، `"` ساده کافی است.
+- `package.json`: jsdom ‏^25‏ → ‏^30.0.1‏ (هم‌تراز main) + engines ‏>=22‏؛ ورک‌فلو: ماتریس → ‏[22.x]‏.
+- سورس اپ تمیز بود (تک‌مورد `[type=date]` فقط کامنت)؛ سلکتور داینامیک unquoted هم پیدا نشد.
+- گیت‌ها با jsdom 30.0.1: smoke ‏547/547‏، simulation ‏48/48‏، bell2 ‏8/8‏، client-features ‏12/12‏،
+  uiclick ‏4/4‏، attpartial ‏10/10‏، xss ‏23/23‏، server2، API ‏7/7‏، policy ‏10/10‏، edu ‏7/7‏، authz ‏0‏ ✅
+
+## فاز ۰.۱ — نوع ساختاری مدرسه (school_type) با پیامد واقعی — ✅
+- مدل: `school_type` به `schools.fields` در `authz/model.json` + بازتولید `write-perms.json` (هرکدام +۱ خط)؛ مُهر راهنما و cdn-manifest که در HEAD کهنه بودند، قطعی تازه شدند.
+- منطق (`src/js/09-schools.js`): `SCHOOL_TYPE_DEFS` (۹ نوع × ۶ پیامد) + `schoolTypeOf/schoolTypeFeatures/schoolTypeCaps`؛ fallback در `schoolCaps`: صریح > نوعی > CAP_DEFAULTS. سرور (`server/validate.js`): enum نه‌تایی (`bad_enum` برای ناشناخته).
+- UI: سلکت `m_school_type` در مودال مدرسه + flip خودکار چک‌باکس‌ها با تغییر نوع (override دستی ممکن)؛ `school-save` مقدار را ضدعفونی می‌کند (نامعتبر ← governmental)؛ بدون اکشن جدید.
+- تست: `tests/school-type.js` ‏8/8‏ (ST0–ST7) + `tests/school-type-mutations.js` ‏5/5‏ کشته (SM1–SM5)؛ سند: `docs/SCHOOL_TYPE_GUIDE.md`.
+- سازگاری: مدارس قدیمی (بی‌نوع) رفتار قبلی‌شان را نگه می‌دارند (قابلیت صریح/پیش‌فرض)؛ نمایشی governmental.
+- گیت‌ها: smoke ‏547/547‏، authz ‏0‏، secret-scan ‏11/11‏، build --check سبز، authz-model ‏232/232‏، رگرسیون کامل 185 سبز (از جمله ۲ سوئیت تازه)؛ ۱۲ قرمز عیناً در c22d354 هم قرمزند (A/B با worktree — پیشینه، نامرتبط) ✅
+
+## فاز ۰.۲ — هم‌زمانی دو سال تحصیلی (سال عملیاتی) — ✅
+- تحلیل: هم‌زمانی جاری+پیش‌ثبت‌نام ساختاری از قبل بود (بند ۰.۲)؛ ۵ شکاف واقعی پیدا و رفع شد.
+- مدل: `school_years.fields` ‏۲ ← ۱۰‏ (رفع DLQ بستن سال: `unknown_field` → dead-letter، گم‌شدن داده) + `schools.active_year_code` + بازتولید write-perms.
+- منطق (`39-school-year.js`): ‏`activeYearOf` (override معتبر وگرنه تقویمی)، ‏`prevYearCode`، ‏`isPreSeason` (اسفند-شهریور)، ‏`yearCodeTitle`؛ سیم‌کشی state/funnel به سال عملیاتی. سرور: pattern فرمت `NNNN-NNNN`.
+- UI: بج سال در هدر + سلکت سال عملیاتی در مودال (خودکار/پارسال/جاری/بعد) + بج+قفل در جدول مدارس + فیلتر سال در کارت سابقه + بنر نرم فصل؛ بدون اکشن/روت تازه.
+- تست: `tests/academic-years.js` ‏9/9‏ (AY0–AY8) + `tests/academic-years-mutations.js` ‏5/5‏ کشته (YM1–YM5)؛ سند: `docs/ACADEMIC_YEARS_GUIDE.md`.
+- گیت‌ها: smoke ‏547/547‏، authz ‏0‏، secret-scan ‏11/11‏، build --check سبز، authz-model ‏232/232‏؛ رگرسیون دامنه: uiclick ‏4/4‏ + جهش ‏5/5‏، boom2 ‏8/8‏، simulation ‏48/48‏ ✅
