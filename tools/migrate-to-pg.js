@@ -53,7 +53,10 @@ function getColumnType(colName, fieldName, sampleVal) {
       fieldName === 'class_id' || fieldName === 'subject_id' || fieldName === 'office_id') {
     return 'INTEGER';
   }
-  if (fieldName === 'version_vector' || fieldName === 'base_vector' || fieldName === 'server_vector') return 'JSONB';
+  if (fieldName === 'version_vector' || fieldName === 'base_vector' || fieldName === 'server_vector' ||
+      (colName === 'summer_classes' && fieldName === 'schedule') ||
+      (colName === 'summer_enrollments' && fieldName === 'attendance') ||
+      (colName === 'summer_classes' && fieldName === 'student_ids')) return 'JSONB';
   if (fieldName === 'version' || fieldName === 'base_version' || fieldName === 'server_version' || 
       fieldName === 'grade' || fieldName === 'capacity' || fieldName === 'units' || 
       fieldName === 'year' || fieldName === 'read' || fieldName === 'late' || fieldName === 'count') {

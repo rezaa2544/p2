@@ -2131,7 +2131,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[],support_tickets:[],staff_attendance:[],training_courses:[],safety_drills:[],donations:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],summer_enrollments:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[],support_tickets:[],staff_attendance:[],training_courses:[],safety_drills:[],donations:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -2343,8 +2343,10 @@ function generate(){
     var t=db.users.filter(function(u){return u.role==='teacher'&&u.school_id===1&&u.active;});
     var studs=db.users.filter(function(u){return u.role==='student'&&u.school_id===1&&u.active;});
     if(t.length<2||studs.length<4) return;
-    add('summer_classes',{school_id:1,name:'تکمیلی ریاضی تابستان',teacher_id:t[0].id,student_ids:[studs[0].id,studs[1].id,studs[2].id],start_date:'2026-06-14',end_date:'2026-07-15',note:'ساعت ۹ تا ۱۱ — سه‌شنبه‌ها',created_at:'2026-06-01',updated_at:'2026-06-10'});
-    add('summer_classes',{school_id:1,name:'کارگاه انگلیسی تابستان',teacher_id:t[1].id,student_ids:[studs[3].id,studs[4].id],start_date:'2026-06-20',end_date:'',note:'',created_at:'2026-06-05',updated_at:'2026-06-05'});
+    const su1=add('summer_classes',{school_id:1,name:'تکمیلی ریاضی تابستان',title:'تکمیلی ریاضی تابستان',subject:'ریاضی',teacher_id:t[0].id,student_ids:[studs[0].id,studs[1].id,studs[2].id],start_date:'2026-06-14',end_date:'2026-07-15',schedule:{tuesday:'09:00-11:00'},capacity:15,status:'active',note:'ساعت ۹ تا ۱۱ — سه‌شنبه‌ها',created_at:'2026-06-01',updated_at:'2026-06-10'});
+    const su2=add('summer_classes',{school_id:1,name:'کارگاه انگلیسی تابستان',title:'کارگاه انگلیسی تابستان',subject:'انگلیسی',teacher_id:t[1].id,student_ids:[studs[3].id,studs[4].id],start_date:'2026-06-20',end_date:'',schedule:{saturday:'08:00-10:00'},capacity:12,status:'planned',note:'',created_at:'2026-06-05',updated_at:'2026-06-05'});
+    [studs[0].id,studs[1].id,studs[2].id].forEach(function(sid,i){add('summer_enrollments',{school_id:1,summer_class_id:su1.id,student_id:sid,enrolled_at:'2026-06-10',status:'enrolled',attendance:i===0?{'2026-06-14':'present'}:{},created_at:'2026-06-10',updated_at:'2026-06-10'});});
+    [studs[3].id,studs[4].id].forEach(function(sid){add('summer_enrollments',{school_id:1,summer_class_id:su2.id,student_id:sid,enrolled_at:'2026-06-12',status:'enrolled',attendance:{},created_at:'2026-06-12',updated_at:'2026-06-12'});});
   })();
 
   (function(){
@@ -3154,7 +3156,7 @@ const NAV={
 };
 const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','پروندهٔ کاملِ هر فرزند: کارنامه، حضور و انضباط — با دکمه‌های بالای صفحه بین فرزندان جابه‌جا شوید (برچسبِ منو به‌صورتِ «پروندهٔ N فرزند» نمایش داده می‌شود)'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],tickets:['تیکت‌های پشتیبانی','ثبت و پیگیری درخواست پشتیبانی مدرسه'],
 reexams:['امتحانات تجدیدی (شهریور)','دروسِ نیازمندِ امتحانِ مجدد + نمرهٔ نهایی پس از تجدیدی'],
-summerclasses:['کلاس‌های تابستانی','نام + دبیر + دانش‌آموزان + تاریخ‌ها — جدا از سالِ تحصیلیِ رسمی'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده و مدارس','همهٔ فرزندان و مدرسهٔ هرکدام — حتی وقتی در مدارس مختلف‌اند؛ اتصالِ فرزندان به کد ملی و تأییدِ آن‌ها (برای پروندهٔ کاملِ تک‌تک، «پرونده فرزندان» را باز کنید)'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],staffatt:['حضور کادر','ثبت روزانه و مرور ماهانهٔ حضور کادر'],training:['دوره‌های آموزشی','دوره‌های ضمن خدمت کادر و گواهی پایان دوره'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],library:['کتابخانه','کتاب‌ها + امانت به دانش‌آموز + بازگشت — نسخهٔ سبک'],assets:['املاک و موجودی','تجهیزات با وضعیت + مکان — نسخهٔ سبک'],dorm:['اسکان و خوابگاه','اتاق‌ها + انتساب دانش‌آموز + وعده‌های هفتگی + مرخصیِ رفت‌وبرگشتِ آخر هفته — نسخهٔ سبک'],sidadiff:['اختلاف با سیدا','نمرهٔ سیدا دستی — مقایسه با پایش، فقط خواندنی برای بقیه'],preapps:['قیف پیش‌ثبت‌نام','تماس → بازدید → آزمون → ثبت‌نامِ قطعی — جدا از ثبت‌نامِ رسمی'],
+summerclasses:['کلاس‌های تابستانی','دوره‌های جبرانی، تقویتی، هنری و ورزشی تابستان؛ ثبت‌نام و حضور جدا از سال رسمی'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده و مدارس','همهٔ فرزندان و مدرسهٔ هرکدام — حتی وقتی در مدارس مختلف‌اند؛ اتصالِ فرزندان به کد ملی و تأییدِ آن‌ها (برای پروندهٔ کاملِ تک‌تک، «پرونده فرزندان» را باز کنید)'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],staffatt:['حضور کادر','ثبت روزانه و مرور ماهانهٔ حضور کادر'],training:['دوره‌های آموزشی','دوره‌های ضمن خدمت کادر و گواهی پایان دوره'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],library:['کتابخانه','کتاب‌ها + امانت به دانش‌آموز + بازگشت — نسخهٔ سبک'],assets:['املاک و موجودی','تجهیزات با وضعیت + مکان — نسخهٔ سبک'],dorm:['اسکان و خوابگاه','اتاق‌ها + انتساب دانش‌آموز + وعده‌های هفتگی + مرخصیِ رفت‌وبرگشتِ آخر هفته — نسخهٔ سبک'],sidadiff:['اختلاف با سیدا','نمرهٔ سیدا دستی — مقایسه با پایش، فقط خواندنی برای بقیه'],preapps:['قیف پیش‌ثبت‌نام','تماس → بازدید → آزمون → ثبت‌نامِ قطعی — جدا از ثبت‌نامِ رسمی'],
 scholarships:['کمک‌هزینه و بورسیه','علامت‌گذاری دانش‌آموزِ نیازمند + وضعیت (درخواست‌شده/بررسی/تأیید/رد) — فقط ثبت، بدون پرداخت'],visitors:['مهمان‌ها','ورود/خروج افراد غیردانش‌آموز و غیرکارکنان — نسخهٔ سبک'],homework:['تکالیف','بارگذاری تصویر تکلیف + تصحیح دیجیتال با خطِ خوددست و نمره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها'],association:['انجمن و کمک‌ها','در مدارس دولتی به‌جای شهریه: کمک‌های داوطلبانهٔ اولیا با ثبت شفاف'],drills:['مانور ایمنی','ثبت سالانهٔ مانور زلزله/ایمنی + شمار شرکت‌کنندگان'],donations:['کمک‌های داوطلبانه','ثبت کمک خیرین + رسید چاپی — جدا از شهریه'],teacheval:['ارزشیابی ناشناس معلم','دانش‌آموز و ولی ناشناس نظر می‌دهند؛ مدیر و اداره فقط نتیجهٔ تجمیعی را می‌بینند']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
@@ -4841,11 +4843,14 @@ var ACTION_ROLES = {
   'assoc-min-print': ['manager'],
   'assoc-min-toggle': ['manager'],
   'assoc-min-del': ['manager'],
-  /* بند ۶.۴ — کلاس‌های تابستانی: فقط مدیر */
+  /* E.8 — کلاس‌های تابستانی: مدیریت با مدیر؛ حضور با دبیر همان کلاس */
   'summer-new': ['manager'],
+  'summer-edit': ['manager'],
   'summer-save': ['manager'],
   'summer-students': ['manager'],
   'summer-students-save': ['manager'],
+  'summer-att': ['manager','teacher'],
+  'summer-att-save': ['manager','teacher'],
   'summer-del': ['manager'],
   /* بند ۶.۵ (سبک) — جابه‌جاییِ زنگِ متداخل: فقط مدیر */
   'sched-conf-move': ['manager','superadmin'],
@@ -5358,7 +5363,7 @@ function viewDashboard(){
     return adminDash()
       + (typeof notifyDailyCard==='function'?notifyDailyCard():'')
       + annCard();
-  if(u.role==='teacher')return teacherDash()+annCard();
+  if(u.role==='teacher')return teacherDash()+(typeof summerTeacherDashboardPanel==='function'?summerTeacherDashboardPanel():'')+annCard();
   /* مشاور: نه داشبورد مدیر (دادهٔ سراسری مدرسه) نه داشبورد ولی —
      داشبورد خودش، مبتنی بر صف ارجاع */
   if(u.role==='counselor')return counselorDash()+annCard();
@@ -5607,7 +5612,7 @@ function examCountdownCard(sid,iso){
 function summaryBlock(sid){
   const d=studentSummary(sid), tot=d.att.length;
   const cnt=k=>d.att.filter(a=>a.status===k).length;
-  return `${todayCard(sid)}${tomorrowCard(sid)}${examCountdownCard(sid)}<div class="grid g4">
+  return `${todayCard(sid)}${tomorrowCard(sid)}${examCountdownCard(sid)}${typeof summerDashboardCard==='function'?summerDashboardCard(sid):''}<div class="grid g4">
    ${statCard('🎒',esc(d.st.full_name),d.cls?'کلاس '+d.cls.name:'بدون کلاس','blue')}
    ${statCard('📊',fa(d.avg.toFixed(2)),'معدل کل','green')}
    ${statCard('🏅',fa(d.rank)+' از '+fa(d.size),'رتبه در کلاس','amber')}
@@ -7415,37 +7420,61 @@ function assocMinModal(){
    ${f('مصوبات جلسه (هر خط یک مصوبه)',`<textarea class="input" id="am_res" rows="5" placeholder="مثلاً:\nتصویبِ کمکِ داوطلبانهٔ ۵ میلیونی برای کتابخانه\nتعیینِ اردوی پاییز در اواخرِ مهر" style="line-height:1.9"></textarea>`)}
    `,'assoc-min-save'));
 }
-/* بند ۶.۴ — مودال‌های کلاس‌های تابستانی */
-function summerModal(){
+/* E.8 — مودال‌های کلاس‌های تابستانی */
+function summerModal(sc){
+  sc=sc||{};
   var ts=db.users.filter(function(u){return u.role==='teacher'&&u.school_id===S.user.school_id&&u.active;})
     .sort(function(a,b){return a.full_name.localeCompare(b.full_name,'fa');});
-  var topts=ts.map(function(u){return '<option value="'+u.id+'">'+esc(u.full_name)+'</option>';}).join('');
-  openModal(modalTpl('کلاسِ تابستانیِ تازه',
+  var topts='<option value="">بدون دبیر</option>'+ts.map(function(u){return '<option value="'+u.id+'" '+(Number(sc.teacher_id)===u.id?'selected':'')+'>'+esc(u.full_name)+'</option>';}).join('');
+  var sched=JSON.stringify(summerScheduleObj(sc));
+  if(sched==='{}') sched='{"saturday":"08:00-10:00"}';
+  openModal(modalTpl(sc.id?'ویرایش کلاس تابستانی':'کلاس تابستانی تازه',
    `
-   ${f('نام کلاس *',`<input class="input" id="su_name" value="" placeholder="مثلاً تکمیلی ریاضی تابستان" />`)}
-   ${f('دبیر *',`<select class="input" id="su_teacher">${topts}</select>`)}
+   ${sc.id?`<input type="hidden" id="su_id" value="${escAttr(sc.id)}" />`:''}
+   ${f('عنوان کلاس *',`<input class="input" id="su_title" value="${escAttr(summerTitle(sc)==='—'?'':summerTitle(sc))}" placeholder="مثلاً ریاضی تقویتی پایه هشتم" />`)}
+   ${f('درس/محور *',`<input class="input" id="su_subject" value="${escAttr(sc.subject||'')}" placeholder="ریاضی، هنر، ورزش..." />`)}
+   ${f('دبیر (اختیاری)',`<select class="input" id="su_teacher">${topts}</select>`)}
    <div class="grid g2">
-   ${f('تاریخِ شروع *',`<input class="input" id="su_start" type="date" value="${todayISO()}" /> <span class="badge b-gray">${jalali(todayISO())}</span>`)}
-   ${f('تاریخِ پایان',`<input class="input" id="su_end" type="date" value="" />`)}
+   ${f('تاریخ شروع *',`<input class="input" id="su_start" type="date" value="${escAttr(sc.start_date||todayISO())}" /> <span class="badge b-gray">${jalali(sc.start_date||todayISO())}</span>`)}
+   ${f('تاریخ پایان',`<input class="input" id="su_end" type="date" value="${escAttr(sc.end_date||'')}" />`)}
+   ${f('ظرفیت *',`<input class="input" id="su_cap" type="number" min="1" max="200" value="${escAttr(sc.capacity||15)}" />`)}
+   ${f('وضعیت',sel('su_status',SUMMER_STATUS,sc.status||'planned'))}
    </div>
-   ${f('یادداشت (اختیاری)',`<input class="input" id="su_note" value="" placeholder="مثلاً ساعت و روزهای برگزاری" />`)}
+   ${f('برنامه هفتگی JSON *',`<textarea class="input" id="su_schedule" rows="3" dir="ltr" placeholder='{"saturday":"08:00-10:00"}'>${esc(sched)}</textarea>`)}
+   ${f('یادداشت (اختیاری)',`<input class="input" id="su_note" value="${escAttr(sc.note||'')}" placeholder="توضیح کوتاه" />`)}
    `,'summer-save'));
 }
 function summerStudentsModal(){
   var sc=byId('summer_classes',window._suId);
   if(!sc)return;
-  var have=sc.student_ids||[];
-  var studs=db.users.filter(function(u){return u.role==='student'&&u.school_id===S.user.school_id&&u.active;})
+  var have=summerStudentIds(sc);
+  var cap=Number(sc.capacity)||15;
+  var studs=db.users.filter(function(u){return u.role==='student'&&u.school_id===sc.school_id&&u.active;})
     .sort(function(a,b){return a.full_name.localeCompare(b.full_name,'fa');});
   var rows=studs.map(function(u){
     var on=have.indexOf(u.id)>-1;
     return '<label style="display:flex;gap:8px;align-items:center;padding:4px 0;cursor:pointer">'
       +'<input type="checkbox" class="su-chk" value="'+u.id+'" '+(on?'checked':'')+' /> '+esc(u.full_name)+'</label>';
   }).join('');
-  openModal(modalTpl('دانش‌آموزان — ' + sc.name,
-   `<div class="small muted" style="margin-bottom:6px">دانش‌آموزانِ این کلاس را انتخاب کنید (هر کلاس تا ${fa(15)} نفر).</div>
+  openModal(modalTpl('ثبت‌نام دانش‌آموزان — ' + summerTitle(sc),
+   `<div class="small muted" style="margin-bottom:6px">دانش‌آموزان این کلاس را انتخاب کنید (ظرفیت: ${fa(cap)} نفر). حذف تیک یعنی انصراف.</div>
    <div class="vscroll" style="max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px">${rows}</div>
    `,'summer-students-save'));
+}
+function summerAttendanceModal(){
+  var sc=byId('summer_classes',window._suId);
+  if(!sc)return;
+  var rows=summerActiveEnrollments(sc.id).map(function(e){
+    var st=byId('users',e.student_id)||{};
+    return '<div class="row" style="gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+      +'<span style="min-width:160px">'+esc(st.full_name||'؟')+'</span><div class="spacer"></div>'
+      +sel('su_att_'+e.id,SUMMER_ATT_STATUS,(e.attendance||{})[todayISO()]||'present')+'</div>';
+  }).join('');
+  openModal(modalTpl('ثبت حضور — ' + summerTitle(sc),
+   `${f('تاریخ جلسه',`<input class="input" id="su_att_date" type="date" value="${todayISO()}" />`)}
+    <div class="small muted" style="margin:6px 0">حضور فقط برای دانش‌آموزان ثبت‌نام‌شدهٔ فعال ذخیره می‌شود.</div>
+    <div class="vscroll" style="max-height:330px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px">${rows||'<div class="muted small">ثبت‌نام فعالی نیست.</div>'}</div>`,
+   'summer-att-save'));
 }
 const PRESETS={positive:POS.map(p=>p[0]),negative:NEG.map(p=>p[0])};
 function discModal(d){
@@ -13419,27 +13448,62 @@ function coreActions(e, el, id, a, rawId){
      closeModal();toast('نمرهٔ نهایی: '+fa(n),'ok');render();},
    'reexam-del'(){confirmModal('حذف رکوردِ تجدیدی؟','reexam-del-ok',id);},
    'reexam-del-ok'(){remove('reexams',window._delId);closeModal();toast('حذف شد','ok');render();},
-   /* ─────────────── بند ۶.۴: کلاس‌های تابستانی (فقط مدیر) ─────────────── */
+   /* ─────────────── E.8: کلاس‌های تابستانی ─────────────── */
    'summer-new'(){summerModal();},
+   'summer-edit'(){summerModal(byId('summer_classes',Number(id)));},
    'summer-save'(){
-     const name=V('su_name');
-     const tid=Number(V('su_teacher'));
+     const sid=Number(V('su_id')||0);
+     const title=V('su_title').trim();
+     const subject=V('su_subject').trim();
+     const tid=Number(V('su_teacher')||0)||null;
      const start=V('su_start');
-     if(!name){toast('نام کلاس لازم است','err');return;}
-     if(!tid){toast('دبیر را انتخاب کنید','err');return;}
-     if(!start){toast('تاریخِ شروع لازم است','err');return;}
-     insert('summer_classes',{school_id:S.user.school_id,name:name,teacher_id:tid,student_ids:[],start_date:start,end_date:V('su_end'),note:V('su_note'),created_at:todayISO(),updated_at:todayISO()});
-     closeModal();toast('کلاسِ تابستانی ثبت شد','ok');render();},
+     const cap=Number(V('su_cap'))||0;
+     let schedule={};
+     try{ schedule=JSON.parse(V('su_schedule')||'{}'); }catch(e){ toast('برنامه هفتگی باید JSON معتبر باشد','err'); return; }
+     if(!schedule||typeof schedule!=='object'||Array.isArray(schedule)){toast('برنامه هفتگی باید یک شیء JSON باشد','err');return;}
+     if(!title){toast('عنوان کلاس لازم است','err');return;}
+     if(!subject){toast('درس/محور لازم است','err');return;}
+     if(!start){toast('تاریخ شروع لازم است','err');return;}
+     if(cap<1||cap>200){toast('ظرفیت باید بین ۱ و ۲۰۰ باشد','err');return;}
+     const data={school_id:S.user.school_id,title:title,name:title,subject:subject,teacher_id:tid,start_date:start,end_date:V('su_end'),schedule:schedule,capacity:cap,status:V('su_status')||'planned',note:V('su_note'),updated_at:todayISO()};
+     if(sid) update('summer_classes',sid,data);
+     else insert('summer_classes',Object.assign(data,{student_ids:[],created_at:todayISO()}));
+     closeModal();toast(sid?'کلاس تابستانی به‌روز شد':'کلاس تابستانی ثبت شد','ok');render();},
    'summer-students'(){window._suId=Number(id);summerStudentsModal();},
    'summer-students-save'(){
      const sc=byId('summer_classes',window._suId);
      if(!sc){closeModal();return;}
      const sel=Array.from(document.querySelectorAll('.su-chk:checked')).map(c=>Number(c.value));
-     if(sel.length>15){toast('هر کلاسِ تابستانی حداکثر ۱۵ نفر است','err');return;}
+     const cap=Number(sc.capacity)||15;
+     if(sel.length>cap){toast('تعداد دانش‌آموزان از ظرفیت کلاس بیشتر است','err');return;}
+     const cur=summerStudentIds(sc);
+     sel.forEach(sid=>summerEnsureEnrollment(sc,sid,'enrolled'));
+     cur.forEach(sid=>{ if(sel.indexOf(sid)===-1){ const e=(db.summer_enrollments||[]).find(x=>Number(x.summer_class_id)===Number(sc.id)&&Number(x.student_id)===Number(sid)); if(e) update('summer_enrollments',e.id,{status:'withdrawn',updated_at:todayISO()}); }});
      update('summer_classes',sc.id,{student_ids:sel,updated_at:todayISO()});
-     closeModal();toast('دانش‌آموزان به‌روز شد','ok');render();},
-   'summer-del'(){confirmModal('حذف این کلاسِ تابستانی؟','summer-del-ok',id);},
-   'summer-del-ok'(){remove('summer_classes',Number(window._delId));closeModal();toast('حذف شد','ok');render();},
+     closeModal();toast('ثبت‌نام‌ها به‌روز شد','ok');render();},
+   'summer-att'(){
+     const sc=byId('summer_classes',Number(id));
+     if(!sc){toast('کلاس پیدا نشد','err');return;}
+     if(S.user.role==='teacher'&&Number(sc.teacher_id)!==Number(S.user.id)){toast('فقط دبیر همین کلاس مجاز است','err');return;}
+     window._suId=Number(id);summerAttendanceModal();},
+   'summer-att-save'(){
+     const sc=byId('summer_classes',window._suId);
+     if(!sc){closeModal();return;}
+     if(S.user.role==='teacher'&&Number(sc.teacher_id)!==Number(S.user.id)){toast('فقط دبیر همین کلاس مجاز است','err');return;}
+     const date=V('su_att_date');
+     if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('تاریخ جلسه معتبر نیست','err');return;}
+     summerActiveEnrollments(sc.id).forEach(e=>{
+       const v=V('su_att_'+e.id)||'present';
+       if(!SUMMER_ATT_STATUS.some(x=>x[0]===v)) return;
+       const att=Object.assign({},e.attendance||{}); att[date]=v;
+       update('summer_enrollments',e.id,{attendance:att,updated_at:todayISO()});
+     });
+     closeModal();toast('حضور کلاس تابستانی ثبت شد','ok');render();},
+   'summer-del'(){confirmModal('حذف این کلاس تابستانی و ثبت‌نام‌های آن؟','summer-del-ok',id);},
+   'summer-del-ok'(){
+     const cid=Number(window._delId);
+     (db.summer_enrollments||[]).filter(e=>Number(e.summer_class_id)===cid).slice().forEach(e=>remove('summer_enrollments',e.id));
+     remove('summer_classes',cid);closeModal();toast('حذف شد','ok');render();},
    'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk
@@ -29257,54 +29321,132 @@ function reexamCard(sid){
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   بند ۶.۴ — کلاس‌های تابستانی (نسخهٔ سبک)
-   نام + دبیر + دانش‌آموزان + تاریخ‌ها؛ کاملاً جدا از سالِ
-   تحصیلیِ رسمی (تأثیر روی کارنامه/حضور ندارد). فقط مدیر.
-
-   داده:
-     summer_classes {school_id, name, teacher_id, student_ids:[],
-                     start_date, end_date, note,
-                     created_at, updated_at}
+   E.8 — کلاس‌های تابستانی
+   ------------------------------------------------------------------
+   دوره‌های جبرانی/تقویتی/هنری/ورزشی تابستان، جدا از سال تحصیلی رسمی.
+   مدل تازه:
+     summer_classes      {school_id,title,subject,teacher_id,start_date,end_date,
+                          schedule,capacity,status,created_at,updated_at}
+     summer_enrollments  {school_id,summer_class_id,student_id,enrolled_at,status,
+                          attendance:{date:status},created_at,updated_at}
+   سازگاری: رکوردهای قدیمیِ دور ۶.۴ با name/student_ids همچنان خوانده می‌شوند.
    ═══════════════════════════════════════════════════════════════════ */
 
-function summerOf(schoolId){
-  return (db.summer_classes||[]).filter(function(s){return s.school_id===schoolId;})
-    .slice().sort(function(a,b){return String(b.updated_at||'').localeCompare(String(a.updated_at||''));});
+const SUMMER_STATUS = [['planned','برنامه‌ریزی‌شده'],['active','در حال برگزاری'],['done','تمام‌شده']];
+const SUMMER_ENROLL_STATUS = [['enrolled','ثبت‌نام‌شده'],['withdrawn','انصراف داده']];
+const SUMMER_ATT_STATUS = [['present','حاضر'],['absent','غایب'],['late','تاخیر'],['excused','موجه']];
+const SUMMER_DAY_FA = {saturday:'شنبه',sunday:'یکشنبه',monday:'دوشنبه',tuesday:'سه‌شنبه',wednesday:'چهارشنبه',thursday:'پنجشنبه',friday:'جمعه'};
+function summerTitle(c){ return (c && (c.title || c.name)) || '—'; }
+function summerStatusLabel(v){ const x=SUMMER_STATUS.find(s=>s[0]===v); return x?x[1]:'برنامه‌ریزی‌شده'; }
+function summerEnrollLabel(v){ const x=SUMMER_ENROLL_STATUS.find(s=>s[0]===v); return x?x[1]:'ثبت‌نام‌شده'; }
+function summerAttLabel(v){ const x=SUMMER_ATT_STATUS.find(s=>s[0]===v); return x?x[1]:'—'; }
+function summerScheduleObj(c){
+  const raw=c&&c.schedule;
+  if(raw&&typeof raw==='object'&&!Array.isArray(raw)) return raw;
+  if(typeof raw==='string'&&raw.trim()){
+    try{ const o=JSON.parse(raw); if(o&&typeof o==='object'&&!Array.isArray(o)) return o; }catch(e){}
+  }
+  return {};
+}
+function summerScheduleText(c){
+  const o=summerScheduleObj(c), keys=Object.keys(o);
+  if(keys.length) return keys.map(k=>`${SUMMER_DAY_FA[k]||k}: ${o[k]}`).join('، ');
+  return c&&c.note?String(c.note):'—';
+}
+function summerEnrollmentRows(classId){
+  return (db.summer_enrollments||[]).filter(e=>Number(e.summer_class_id)===Number(classId));
+}
+function summerActiveEnrollments(classId){
+  return summerEnrollmentRows(classId).filter(e=>(e.status||'enrolled')==='enrolled');
+}
+function summerStudentIds(c){
+  const ids=[];
+  summerActiveEnrollments(c.id).forEach(e=>{ if(ids.indexOf(e.student_id)===-1)ids.push(e.student_id); });
+  (c.student_ids||[]).forEach(sid=>{ if(ids.indexOf(sid)===-1)ids.push(sid); });
+  return ids;
+}
+function summerClassesForRole(u){
+  const all=(db.summer_classes||[]).slice().sort((a,b)=>String(b.updated_at||b.created_at||'').localeCompare(String(a.updated_at||a.created_at||'')));
+  if(!u) return [];
+  if(u.role==='superadmin') return all;
+  if(u.role==='manager') return all.filter(c=>Number(c.school_id)===Number(u.school_id));
+  if(u.role==='teacher') return all.filter(c=>Number(c.teacher_id)===Number(u.id));
+  if(u.role==='student') return all.filter(c=>summerStudentIds(c).indexOf(u.id)>-1);
+  if(u.role==='parent'){
+    const kids=(db.parent_links||[]).filter(l=>l.parent_id===u.id).map(l=>l.student_id);
+    return all.filter(c=>summerStudentIds(c).some(sid=>kids.indexOf(sid)>-1));
+  }
+  return [];
+}
+function summerEnsureEnrollment(c, sid, status){
+  let e=(db.summer_enrollments||[]).find(x=>Number(x.summer_class_id)===Number(c.id)&&Number(x.student_id)===Number(sid));
+  if(e){ update('summer_enrollments',e.id,{status:status||'enrolled',updated_at:todayISO()}); return e.id; }
+  const rec={school_id:c.school_id,summer_class_id:c.id,student_id:sid,enrolled_at:todayISO(),status:status||'enrolled',attendance:{},created_at:todayISO(),updated_at:todayISO()};
+  const ne=insert('summer_enrollments',rec);
+  return ne&&ne.id;
+}
+function summerClassesForStudent(sid){ return (db.summer_classes||[]).filter(c=>summerStudentIds(c).indexOf(Number(sid))>-1); }
+function summerDashboardCard(sid){
+  const rows=summerClassesForStudent(sid).filter(c=>(c.status||'planned')!=='done');
+  if(!rows.length) return '';
+  return `<div class="card summer-card"><div class="card-head"><h3>☀️ کلاس‌های تابستانی من</h3><span class="badge b-amber">${fa(rows.length)} کلاس</span></div>
+    <div class="card-body" style="display:grid;gap:8px">${rows.map(c=>{
+      const t=byId('users',c.teacher_id)||{};
+      return `<div style="border:1px solid var(--border);border-radius:10px;padding:8px 10px">
+        <b>${esc(summerTitle(c))}</b> <span class="badge b-gray">${esc(c.subject||'عمومی')}</span>
+        <div class="small muted">دبیر: ${esc(t.full_name||'—')} · ${summerStatusLabel(c.status)} · ${summerScheduleText(c)}</div>
+      </div>`;
+    }).join('')}</div></div>`;
+}
+
+function summerTeacherDashboardPanel(){
+  if(!S.user||S.user.role!=='teacher') return '';
+  const rows=summerClassesForRole(S.user).filter(c=>(c.status||'planned')!=='done');
+  if(!rows.length) return '';
+  return `<div class="card summer-teacher-card"><div class="card-head"><h3>☀️ کلاس‌های تابستانی من</h3><span class="badge b-amber">${fa(rows.length)} کلاس</span></div>
+    <div class="card-body" style="display:grid;gap:8px">${rows.map(c=>`<div class="row" style="gap:8px;border:1px solid var(--border);border-radius:10px;padding:8px 10px;flex-wrap:wrap"><b>${esc(summerTitle(c))}</b><span class="badge b-gray">${esc(c.subject||'عمومی')}</span><span class="small muted">${summerScheduleText(c)}</span><div class="spacer"></div><button class="btn ghost sm" data-act="summer-att" data-id="${c.id}">✅ ثبت حضور</button></div>`).join('')}</div></div>`;
 }
 
 function viewSummerClasses(){
   var u=S.user;
-  var rows=summerOf(u.school_id);
-  var enrolls=rows.reduce(function(a,s){return a+((s.student_ids||[]).length);},0);
+  var rows=summerClassesForRole(u);
+  var canManage=u.role==='manager'||u.role==='superadmin';
+  var canAttend=u.role==='teacher'||canManage;
+  var enrolls=rows.reduce(function(a,s){return a+summerActiveEnrollments(s.id).length;},0);
   var h='<div class="card">';
   h+='<div class="card-body" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">';
   h+='<div style="border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">'
     +'<div class="small muted">کلاس‌های تابستانی</div>'
     +'<div style="font-size:26px;font-weight:800;color:var(--primary)">'+fa(rows.length)+'</div></div>';
   h+='<div style="border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">'
-    +'<div class="small muted">دانش‌آموزِ ثبت‌نام‌شده</div>'
+    +'<div class="small muted">ثبت‌نام فعال</div>'
     +'<div style="font-size:26px;font-weight:800;color:var(--primary)">'+fa(enrolls)+'</div></div>';
   h+='</div>';
   h+='<div class="card-head" style="border-bottom:1px solid var(--border)"><div class="row" style="flex-wrap:wrap;gap:8px">'
-    +'<span class="small muted">مجموعهٔ کلاس‌های تابستان — جدا از سالِ تحصیلیِ رسمی؛ روی کارنامه و حضور اثر ندارد.</span><div class="spacer"></div>'
-    +'<button class="btn sm" data-act="summer-new">➕ کلاسِ تابستانیِ تازه</button></div></div>';
+    +'<span class="small muted">دوره‌های تابستانی مستقل از کارنامه و حضور رسمی هستند.</span><div class="spacer"></div>'
+    +(canManage?'<button class="btn sm" data-act="summer-new">➕ کلاس تابستانی تازه</button>':'')+'</div></div>';
   if(rows.length){
     h+='<div style="display:grid;gap:10px;padding:12px">';
     rows.forEach(function(s){
       var t=byId('users',s.teacher_id)||{};
-      var studs=(s.student_ids||[]).map(function(sid){var x=byId('users',sid);return x?x.full_name:'؟';});
+      var studs=summerStudentIds(s).map(function(sid){var x=byId('users',sid);return x?x.full_name:'؟';});
+      var cap=Number(s.capacity)||15;
       h+='<div style="border:1px solid var(--border);border-radius:10px;padding:10px 14px">'
         +'<div class="row" style="flex-wrap:wrap;gap:8px">'
-        +'<b>'+esc(s.name)+'</b>'
+        +'<b>'+esc(summerTitle(s))+'</b>'
+        +'<span class="badge b-cyan">'+esc(s.subject||'عمومی')+'</span>'
         +'<span class="muted small">دبیر: '+esc(t.full_name||'—')+'</span>'
         +'<span class="badge b-gray">شروع: '+(s.start_date?jalali(s.start_date):'—')+'</span>'
         +(s.end_date?'<span class="badge b-gray">پایان: '+jalali(s.end_date)+'</span>':'')
-        +'<span class="badge b-cyan">دانش‌آموز: '+fa(studs.length)+'</span>'
+        +'<span class="badge b-amber">'+summerStatusLabel(s.status)+'</span>'
+        +'<span class="badge b-blue">دانش‌آموز: '+fa(studs.length)+'/'+fa(cap)+'</span>'
         +'<div class="spacer"></div>'
-        +'<button class="btn ghost sm" data-act="summer-students" data-id="'+s.id+'">👥 دانش‌آموزان</button> '
-        +'<button class="icon-btn danger" data-act="summer-del" data-id="'+s.id+'" title="حذف">🗑️</button>'
+        +(canManage?'<button class="btn ghost sm" data-act="summer-edit" data-id="'+s.id+'">✏️ ویرایش</button> ':'')
+        +(canManage?'<button class="btn ghost sm" data-act="summer-students" data-id="'+s.id+'">👥 ثبت‌نام</button> ':'')
+        +(canAttend?'<button class="btn ghost sm" data-act="summer-att" data-id="'+s.id+'">✅ حضور</button> ':'')
+        +(canManage?'<button class="icon-btn danger" data-act="summer-del" data-id="'+s.id+'" title="حذف">🗑️</button>':'')
         +'</div>'
-        +(s.note?'<div class="small muted" style="margin-top:6px">'+esc(s.note)+'</div>':'')
+        +'<div class="small muted" style="margin-top:6px">برنامه: '+esc(summerScheduleText(s))+'</div>'
         +(studs.length?'<div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px">'
           +studs.map(function(n){return '<span class="badge b-blue small">'+esc(n)+'</span>';}).join('')
           +'</div>':'')
@@ -29312,7 +29454,7 @@ function viewSummerClasses(){
     });
     h+='</div>';
   } else {
-    h+='<div class="card-body">'+empty('☀️','کلاسِ تابستانی ثبت نشده','نام، دبیر و تاریخ‌ها را ثبت کنید و بعد دانش‌آموزان را اضافه کنید.')+'</div>';
+    h+='<div class="card-body">'+empty('☀️','کلاس تابستانی مرتبطی نیست','مدیر مدرسه می‌تواند دوره تعریف کند؛ دبیر فقط کلاس‌های خودش را می‌بیند.')+'</div>';
   }
   return h+'</div>';
 }

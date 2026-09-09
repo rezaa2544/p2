@@ -269,11 +269,14 @@ var ACTION_ROLES = {
   'assoc-min-print': ['manager'],
   'assoc-min-toggle': ['manager'],
   'assoc-min-del': ['manager'],
-  /* بند ۶.۴ — کلاس‌های تابستانی: فقط مدیر */
+  /* E.8 — کلاس‌های تابستانی: مدیریت با مدیر؛ حضور با دبیر همان کلاس */
   'summer-new': ['manager'],
+  'summer-edit': ['manager'],
   'summer-save': ['manager'],
   'summer-students': ['manager'],
   'summer-students-save': ['manager'],
+  'summer-att': ['manager','teacher'],
+  'summer-att-save': ['manager','teacher'],
   'summer-del': ['manager'],
   /* بند ۶.۵ (سبک) — جابه‌جاییِ زنگِ متداخل: فقط مدیر */
   'sched-conf-move': ['manager','superadmin'],

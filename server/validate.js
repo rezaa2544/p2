@@ -77,6 +77,8 @@ const STATUS_ENUMS = {
   scholarships         : ['requested', 'review', 'approved', 'rejected'],
   sms_log              : ['queued', 'sent', 'failed'],
   staff_attendance     : ['present', 'absent', 'late'],
+  summer_classes       : ['planned', 'active', 'done'],
+  summer_enrollments   : ['enrolled', 'withdrawn'],
   teacher_sms          : ['queued', 'sent', 'failed'],
   training_courses     : ['ongoing', 'completed'],
   transfer_requests    : ['pending', 'approved', 'rejected'],
@@ -323,6 +325,7 @@ function ruleFor(coll, key){
   }
   if(key === 'author_role') return { type: 'string', max: LIMITS.STR_MID };
   if(key === 'boom_goals') return { type: 'string', max: LIMITS.STR_LONG }; /* C.2 فرناز: اهداف سالانه (بوم) */
+  if((key === 'schedule' && coll === 'summer_classes') || (key === 'attendance' && coll === 'summer_enrollments')) return { type: 'object' }; /* E.8 */
   if(key === 'gender'){
     if(coll === 'schools') return { type: 'enum', values: SCHOOL_GENDERS };
     return { type: 'string', max: 40 };
@@ -336,6 +339,7 @@ function ruleFor(coll, key){
   /* ۴. شناسه‌ها و شمارنده‌ها */
   if(key === 'id' || /_id$/.test(key)) return { type: 'id' };
   if(key === 'version') return { type: 'integer', min: 1, max: LIMITS.ID_MAX };
+  if(key === 'capacity') return { type: 'integer', min: 1, max: 100000 };
   if(key === 'participant_count_students' || key === 'participant_count_staff') return { type: 'integer', min: 0, max: 100000 }; /* B.4 فرناز: شمار شرکت‌کننده مانور */
   if(key === 'amount' && coll === 'donations') return { type: 'integer', min: 1, max: 10000000000 }; /* B.5 فرناز: مبلغ کمک (تومانِ صحیحِ مثبت) */
   if(FLAG_FIELDS.indexOf(key) > -1) return { type: 'flag' };

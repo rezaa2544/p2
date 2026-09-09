@@ -17,7 +17,7 @@ function viewDashboard(){
     return adminDash()
       + (typeof notifyDailyCard==='function'?notifyDailyCard():'')
       + annCard();
-  if(u.role==='teacher')return teacherDash()+annCard();
+  if(u.role==='teacher')return teacherDash()+(typeof summerTeacherDashboardPanel==='function'?summerTeacherDashboardPanel():'')+annCard();
   /* مشاور: نه داشبورد مدیر (دادهٔ سراسری مدرسه) نه داشبورد ولی —
      داشبورد خودش، مبتنی بر صف ارجاع */
   if(u.role==='counselor')return counselorDash()+annCard();
@@ -266,7 +266,7 @@ function examCountdownCard(sid,iso){
 function summaryBlock(sid){
   const d=studentSummary(sid), tot=d.att.length;
   const cnt=k=>d.att.filter(a=>a.status===k).length;
-  return `${todayCard(sid)}${tomorrowCard(sid)}${examCountdownCard(sid)}<div class="grid g4">
+  return `${todayCard(sid)}${tomorrowCard(sid)}${examCountdownCard(sid)}${typeof summerDashboardCard==='function'?summerDashboardCard(sid):''}<div class="grid g4">
    ${statCard('🎒',esc(d.st.full_name),d.cls?'کلاس '+d.cls.name:'بدون کلاس','blue')}
    ${statCard('📊',fa(d.avg.toFixed(2)),'معدل کل','green')}
    ${statCard('🏅',fa(d.rank)+' از '+fa(d.size),'رتبه در کلاس','amber')}

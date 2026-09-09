@@ -1589,27 +1589,62 @@ function coreActions(e, el, id, a, rawId){
      closeModal();toast('نمرهٔ نهایی: '+fa(n),'ok');render();},
    'reexam-del'(){confirmModal('حذف رکوردِ تجدیدی؟','reexam-del-ok',id);},
    'reexam-del-ok'(){remove('reexams',window._delId);closeModal();toast('حذف شد','ok');render();},
-   /* ─────────────── بند ۶.۴: کلاس‌های تابستانی (فقط مدیر) ─────────────── */
+   /* ─────────────── E.8: کلاس‌های تابستانی ─────────────── */
    'summer-new'(){summerModal();},
+   'summer-edit'(){summerModal(byId('summer_classes',Number(id)));},
    'summer-save'(){
-     const name=V('su_name');
-     const tid=Number(V('su_teacher'));
+     const sid=Number(V('su_id')||0);
+     const title=V('su_title').trim();
+     const subject=V('su_subject').trim();
+     const tid=Number(V('su_teacher')||0)||null;
      const start=V('su_start');
-     if(!name){toast('نام کلاس لازم است','err');return;}
-     if(!tid){toast('دبیر را انتخاب کنید','err');return;}
-     if(!start){toast('تاریخِ شروع لازم است','err');return;}
-     insert('summer_classes',{school_id:S.user.school_id,name:name,teacher_id:tid,student_ids:[],start_date:start,end_date:V('su_end'),note:V('su_note'),created_at:todayISO(),updated_at:todayISO()});
-     closeModal();toast('کلاسِ تابستانی ثبت شد','ok');render();},
+     const cap=Number(V('su_cap'))||0;
+     let schedule={};
+     try{ schedule=JSON.parse(V('su_schedule')||'{}'); }catch(e){ toast('برنامه هفتگی باید JSON معتبر باشد','err'); return; }
+     if(!schedule||typeof schedule!=='object'||Array.isArray(schedule)){toast('برنامه هفتگی باید یک شیء JSON باشد','err');return;}
+     if(!title){toast('عنوان کلاس لازم است','err');return;}
+     if(!subject){toast('درس/محور لازم است','err');return;}
+     if(!start){toast('تاریخ شروع لازم است','err');return;}
+     if(cap<1||cap>200){toast('ظرفیت باید بین ۱ و ۲۰۰ باشد','err');return;}
+     const data={school_id:S.user.school_id,title:title,name:title,subject:subject,teacher_id:tid,start_date:start,end_date:V('su_end'),schedule:schedule,capacity:cap,status:V('su_status')||'planned',note:V('su_note'),updated_at:todayISO()};
+     if(sid) update('summer_classes',sid,data);
+     else insert('summer_classes',Object.assign(data,{student_ids:[],created_at:todayISO()}));
+     closeModal();toast(sid?'کلاس تابستانی به‌روز شد':'کلاس تابستانی ثبت شد','ok');render();},
    'summer-students'(){window._suId=Number(id);summerStudentsModal();},
    'summer-students-save'(){
      const sc=byId('summer_classes',window._suId);
      if(!sc){closeModal();return;}
      const sel=Array.from(document.querySelectorAll('.su-chk:checked')).map(c=>Number(c.value));
-     if(sel.length>15){toast('هر کلاسِ تابستانی حداکثر ۱۵ نفر است','err');return;}
+     const cap=Number(sc.capacity)||15;
+     if(sel.length>cap){toast('تعداد دانش‌آموزان از ظرفیت کلاس بیشتر است','err');return;}
+     const cur=summerStudentIds(sc);
+     sel.forEach(sid=>summerEnsureEnrollment(sc,sid,'enrolled'));
+     cur.forEach(sid=>{ if(sel.indexOf(sid)===-1){ const e=(db.summer_enrollments||[]).find(x=>Number(x.summer_class_id)===Number(sc.id)&&Number(x.student_id)===Number(sid)); if(e) update('summer_enrollments',e.id,{status:'withdrawn',updated_at:todayISO()}); }});
      update('summer_classes',sc.id,{student_ids:sel,updated_at:todayISO()});
-     closeModal();toast('دانش‌آموزان به‌روز شد','ok');render();},
-   'summer-del'(){confirmModal('حذف این کلاسِ تابستانی؟','summer-del-ok',id);},
-   'summer-del-ok'(){remove('summer_classes',Number(window._delId));closeModal();toast('حذف شد','ok');render();},
+     closeModal();toast('ثبت‌نام‌ها به‌روز شد','ok');render();},
+   'summer-att'(){
+     const sc=byId('summer_classes',Number(id));
+     if(!sc){toast('کلاس پیدا نشد','err');return;}
+     if(S.user.role==='teacher'&&Number(sc.teacher_id)!==Number(S.user.id)){toast('فقط دبیر همین کلاس مجاز است','err');return;}
+     window._suId=Number(id);summerAttendanceModal();},
+   'summer-att-save'(){
+     const sc=byId('summer_classes',window._suId);
+     if(!sc){closeModal();return;}
+     if(S.user.role==='teacher'&&Number(sc.teacher_id)!==Number(S.user.id)){toast('فقط دبیر همین کلاس مجاز است','err');return;}
+     const date=V('su_att_date');
+     if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('تاریخ جلسه معتبر نیست','err');return;}
+     summerActiveEnrollments(sc.id).forEach(e=>{
+       const v=V('su_att_'+e.id)||'present';
+       if(!SUMMER_ATT_STATUS.some(x=>x[0]===v)) return;
+       const att=Object.assign({},e.attendance||{}); att[date]=v;
+       update('summer_enrollments',e.id,{attendance:att,updated_at:todayISO()});
+     });
+     closeModal();toast('حضور کلاس تابستانی ثبت شد','ok');render();},
+   'summer-del'(){confirmModal('حذف این کلاس تابستانی و ثبت‌نام‌های آن؟','summer-del-ok',id);},
+   'summer-del-ok'(){
+     const cid=Number(window._delId);
+     (db.summer_enrollments||[]).filter(e=>Number(e.summer_class_id)===cid).slice().forEach(e=>remove('summer_enrollments',e.id));
+     remove('summer_classes',cid);closeModal();toast('حذف شد','ok');render();},
    'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk

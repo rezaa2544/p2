@@ -340,6 +340,12 @@ function filterFields(op, collection, role){
   if(fa){
     const d = (op && op.data) || {};
     const isMgr = role === 'manager' || role === 'superadmin';
+    /* E.8: دبیر فقط حضور کلاس تابستانیِ خودش را ثبت می‌کند؛
+       ثبت‌نام/انصراف/تغییر دانش‌آموز با مدیر است. */
+    if(collection === 'summer_enrollments' && op.t === 'upd' && role === 'teacher'){
+      const ok = Object.keys(d).length > 0 && Object.keys(d).every(k => k === 'attendance' || k === 'updated_at');
+      if(!ok) return { kind: 'reject_op', code: 'field_denied' };
+    }
     /* R96 P0-1: دروازهٔ status (insِ مقدارِ اولیه + updِ نقش) تک‌منبع —
        fieldGate. اینجا فقط نرمال‌سازیِ نبودِ status می‌ماند.
        R98: defaultRoles/statusValues فقط برایِ leaves تعریف‌اند (entryهایِ
@@ -399,6 +405,23 @@ function inScope(session, coll, recId, data){
      - ولی: فقط مدرسهٔ فرزندانش (از parent_links)
      - بقیهٔ نقش‌ها: رد (درج/ویرایش/حذف) — نقش‌های مجازِ مدل هم فقط
        دانش‌آموز و ولی‌اند و دروازهٔ نقش جداگانه نگهبانی می‌کند. */
+  if(coll === 'summer_enrollments'){
+    const clsId = (data && data.summer_class_id != null) ? Number(data.summer_class_id)
+                 : (rec && rec.summer_class_id != null ? Number(rec.summer_class_id) : null);
+    const cls = clsId != null ? (get_store().summer_classes || []).find(c => Number(c.id) === clsId) : null;
+    if(!cls) return false;
+    const studentId = (data && data.student_id != null) ? Number(data.student_id)
+                    : (rec && rec.student_id != null ? Number(rec.student_id) : null);
+    if(studentId != null){
+      const st = (get_store().users || []).find(x => Number(x.id) === studentId && x.role === 'student');
+      if(!st || Number(st.school_id) !== Number(cls.school_id)) return false;
+    }
+    if(u.role === 'teacher') return Number(cls.teacher_id) === Number(u.id);
+    if(u.role === 'manager') return Number(cls.school_id) === Number(u.school_id);
+    if(u.role === 'superadmin') return true;
+    return false;
+  }
+
   if(coll === 'teacher_evaluations'){
     if(u.role === 'student'){
       return !!(data && Number(data.school_id) === Number(u.school_id));

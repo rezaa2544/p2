@@ -41968,3 +41968,30 @@ ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS "version" INTEGER;
 ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS "version_vector" JSONB;
 ALTER TABLE schedule ADD COLUMN IF NOT EXISTS "version" INTEGER;
 ALTER TABLE schedule ADD COLUMN IF NOT EXISTS "version_vector" JSONB;
+
+-- E.8 — Summer classes module
+ALTER TABLE summer_classes ADD COLUMN IF NOT EXISTS "title" VARCHAR(255);
+ALTER TABLE summer_classes ADD COLUMN IF NOT EXISTS "subject" VARCHAR(255);
+ALTER TABLE summer_classes ADD COLUMN IF NOT EXISTS "schedule" JSONB;
+ALTER TABLE summer_classes ADD COLUMN IF NOT EXISTS "capacity" INTEGER;
+ALTER TABLE summer_classes ADD COLUMN IF NOT EXISTS "status" VARCHAR(255);
+
+CREATE TABLE IF NOT EXISTS summer_enrollments (
+  "attendance" JSONB,
+  "created_at" TIMESTAMPTZ,
+  "enrolled_at" TIMESTAMPTZ,
+  "id" INTEGER PRIMARY KEY,
+  "school_id" INTEGER,
+  "status" VARCHAR(255),
+  "student_id" INTEGER,
+  "summer_class_id" INTEGER,
+  "updated_at" TIMESTAMPTZ,
+  CONSTRAINT fk_summer_enrollments_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  CONSTRAINT fk_summer_enrollments_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+  CONSTRAINT fk_summer_enrollments_summer_class FOREIGN KEY (summer_class_id) REFERENCES summer_classes(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE INDEX IF NOT EXISTS idx_summer_enrollments_school_id ON summer_enrollments (school_id);
+CREATE INDEX IF NOT EXISTS idx_summer_enrollments_student_id ON summer_enrollments (student_id);
+CREATE INDEX IF NOT EXISTS idx_summer_enrollments_summer_class_id ON summer_enrollments (summer_class_id);
+CREATE INDEX IF NOT EXISTS idx_summer_enrollments_created_at ON summer_enrollments (created_at DESC);

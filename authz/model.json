@@ -1862,7 +1862,12 @@
     "start_date",
     "student_ids",
     "teacher_id",
-    "updated_at"
+    "updated_at",
+    "title",
+    "subject",
+    "schedule",
+    "capacity",
+    "status"
    ],
    "ins": [
     "manager",
@@ -2308,6 +2313,32 @@
    ],
    "upd": [
     "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "summer_enrollments": {
+   "fields": [
+    "attendance",
+    "created_at",
+    "enrolled_at",
+    "id",
+    "school_id",
+    "status",
+    "student_id",
+    "summer_class_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "teacher",
     "superadmin"
    ],
    "del": [
