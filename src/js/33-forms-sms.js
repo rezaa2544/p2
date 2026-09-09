@@ -102,12 +102,28 @@ function transcriptCert(sid, term){
     + '</tbody></table>'
     + '<div class="meta" style="margin-top:10px"><span>معدل وزنی: <b style="font-size:13px">'
     + fa(gpa) + '</b> از ۲۰</span></div>';
+  /* ── فاز ۰.۳: بخشِ جداگانهٔ امتحانات نهایی کشوری (فقط اگر باشد) ──
+     جدول و معدلِ وزنیِ بالای این گواهی عمداً روی همهٔ نمرات می‌ماند تا
+     گواهی‌های صادرشدهٔ پیشین و آزمونِ smoke (بند ۱.۶) عوض نشوند؛
+     تفکیکِ معدل، تصمیمِ کارفرماست (docs/EXAM_TYPES_GUIDE.md). */
+  const nat = list.filter(g=>gradeSource(g)==='national');
+  const natBlock = nat.length
+    ? '<div class="meta" style="margin-top:12px"><span><b>🏛️ امتحانات نهایی کشوری</b> — جدا از نمرات داخلی:</span></div>'
+      + '<table><thead><tr><th>درس</th><th class="c" style="width:110px">نوبت</th>'
+      + '<th class="c" style="width:100px">نمره</th></tr></thead><tbody>'
+      + nat.map(g=>'<tr><td>' + esc((byId('subjects',g.subject_id)||{}).name||'—') + '</td>'
+        + '<td class="c">' + esc(g.term||'—') + '</td>'
+        + '<td class="c"><b>' + fa(g.score) + '</b></td></tr>').join('')
+      + '</tbody></table>'
+      + '<div class="meta" style="margin-top:6px"><span>معدل نهایی کشوری: <b>'
+      + fa(nationalGpa(sid)) + '</b> از ۲۰</span></div>'
+    : '';
   return {ok:true,
     title:'گواهی نمرات',
     school: esc(school.name || '') + (school.code ? ' — کد ' + esc(school.code) : ''),
     subtitle: 'دانش‌آموز: ' + esc(st.full_name) + ' · ' + (term || 'همهٔ نوبت‌ها') + ' · سال تحصیلی ' + yearTitle(),
-    body: body,
-    note:'نمرهٔ هر درس میانگین برگه‌های ثبت‌شدهٔ همان نوبت است و معدل با وزنی بر پایهٔ ساعت هفتگی محاسبه می‌شود. این گواهی از سامانهٔ پایش چاپ شده است.'};
+    body: body + natBlock,
+    note:'نمرهٔ هر درس میانگین برگه‌های ثبت‌شدهٔ همان نوبت است و معدل با وزنی بر پایهٔ ساعت هفتگی محاسبه می‌شود. نمرات «امتحان نهایی کشوری» از بیرون وارد می‌شوند و در بخش جداگانهٔ پایین گواهی می‌آیند. این گواهی از سامانهٔ پایش چاپ شده است.'};
 }
 
 /* ═══════════════════════════════════════════════════════════════════

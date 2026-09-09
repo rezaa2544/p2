@@ -21,19 +21,71 @@ const CAP_DEFS=[
   ['has_evening','نوبت دوم / کلاس شبانه','برنامهٔ فشردهٔ بزرگسالان — کلاس‌های شبانه با تراکمِ هفتگیِ بالاتر']
 ];
 const CAP_DEFAULTS={has_tuition:1,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1,has_evening:0};
-/** پروفایل قابلیت یک مدرسه با اعمال پیش‌فرض‌ها */
+/* ─────────── نوع ساختاری مدرسه (فاز ۰.۱): school_type ───────────
+   شناسهٔ لاتینِ نوع مدرسه (۹ مقدار — راهنما: docs/SCHOOL_TYPE_GUIDE.md).
+   هر نوع یک «سطر پیامد» دارد که تعیین می‌کند کدام ماژول‌ها برای
+   مدرسه فعال‌اند؛ سیم‌کشی از طریق همان کلیدهای capability است
+   (navFor در 07-shell.js و گیت‌های hasCap) — هیچ شرطِ تازه‌ای در
+   ماژول‌ها ساخته نشده است.
+   زنجیرهٔ تقدم در schoolCaps (سازگار با گذشته):
+     ۱) قابلیتِ صریحِ ذخیره‌شده روی مدرسه (چک‌باکس‌های مودال)
+     ۲) سطرِ school_type — فقط اگر روی رکورد صریح و معتبر باشد
+     ۳) CAP_DEFAULTS (رفتارِ قدیمی برای مدارسِ بدون school_type)
+   کلیدهایِ خارج از جدولِ فاز ۰.۱ (has_second_term_exam و has_evening)
+   نگاشت نوعی ندارند و همیشه از همان زنجیرهٔ ۱→۳ می‌آیند.
+   ستونِ entrance_exam ماژولِ مستقلی ندارد (فاز ۰.۱) و فقط در
+   schoolTypeFeatures برای مصرفِ آینده افشا می‌شود.
+   fail-closed: مقدارِ نامعتبر/خالی = governmental (همه‌چیز خاموش). */
+const SCHOOL_TYPE_DEFS=[
+  ['governmental','دولتی معمولی',{tuition:0,dorm:0,iep:0,multigrade:0,workshop:0,entrance_exam:0}],
+  ['exemplary','نمونه دولتی (هیئت امنایی)',{tuition:1,dorm:0,iep:0,multigrade:0,workshop:0,entrance_exam:1}],
+  ['non_profit','غیردولتی / غیرانتفاعی',{tuition:1,dorm:1,iep:0,multigrade:0,workshop:0,entrance_exam:1}],
+  ['sampad','تیزهوشان (سمپاد)',{tuition:0,dorm:0,iep:0,multigrade:0,workshop:0,entrance_exam:1}],
+  ['shahed','شاهد',{tuition:1,dorm:0,iep:0,multigrade:0,workshop:0,entrance_exam:0}],
+  ['exceptional','استثنایی',{tuition:0,dorm:0,iep:1,multigrade:0,workshop:0,entrance_exam:0}],
+  ['rural','روستایی / عشایری',{tuition:0,dorm:0,iep:0,multigrade:1,workshop:0,entrance_exam:0}],
+  ['boarding','شبانه‌روزی',{tuition:1,dorm:1,iep:0,multigrade:0,workshop:0,entrance_exam:0}],
+  ['vocational','هنرستان',{tuition:1,dorm:0,iep:0,multigrade:0,workshop:1,entrance_exam:0}]
+];
+const SCHOOL_TYPE_IDS=SCHOOL_TYPE_DEFS.map(d=>d[0]);
+const SCHOOL_TYPE_CAPKEYS={tuition:'has_tuition',dorm:'has_dorm',iep:'has_iep',multigrade:'has_multigrade',workshop:'has_workshop'};
+/** نوع ساختاری یک مدرسه — نامعتبر/خالی = governmental (fail-closed) */
+function schoolTypeOf(s){
+  var t=s?s.school_type:null;
+  return SCHOOL_TYPE_IDS.indexOf(t)>-1?t:'governmental';
+}
+/** سطر پیامد یک نوع (کپی) — ورودی نامعتبر = سطر governmental */
+function schoolTypeFeatures(type){
+  for(var i=0;i<SCHOOL_TYPE_DEFS.length;i++)
+    if(SCHOOL_TYPE_DEFS[i][0]===type) return Object.assign({},SCHOOL_TYPE_DEFS[i][2]);
+  return Object.assign({},SCHOOL_TYPE_DEFS[0][2]);
+}
+/** نگاشت سطر پیامد به کلیدهای capability (فقط کلیدهای نگاشت‌شده) */
+function schoolTypeCaps(type){
+  var f=schoolTypeFeatures(type), out={};
+  for(var k in SCHOOL_TYPE_CAPKEYS) out[SCHOOL_TYPE_CAPKEYS[k]]=f[k]?1:0;
+  return out;
+}
+/** پروفایل قابلیت یک مدرسه با اعمال پیش‌فرض‌ها (فاز ۰.۱: fallback نوعی) */
 function schoolCaps(sid){
   const s=(typeof byId==='function')?byId('schools',sid):null;
   const c=(s&&s.capabilities)?s.capabilities:{};
   const out={};
-  CAP_DEFS.forEach(function(k){ out[k[0]]=c[k[0]]==null?CAP_DEFAULTS[k[0]]:Number(c[k[0]]); });
+  const row=(s&&typeof s.school_type==='string'&&SCHOOL_TYPE_IDS.indexOf(s.school_type)>-1)?schoolTypeCaps(s.school_type):null;
+  CAP_DEFS.forEach(function(k){ out[k[0]]=c[k[0]]==null?(row&&row[k[0]]!=null?row[k[0]]:CAP_DEFAULTS[k[0]]):Number(c[k[0]]); });
   return out;
 }
 /** آیا مدرسه صاحب این قابلیت است؟ */
 function hasCap(sid,key){ return !!schoolCaps(sid)[key]; }
 /** چیکنک‌های پروفایل قابلیت برای فرم مدرسه */
 function capPickerHTML(s){
-  const caps=schoolCaps(s&&s.id);
+  /* ویرایش = وضعیتِ مؤثرِ فعلی (صادقانه)؛ مدرسهٔ تازه = سطرِ نوعِ انتخاب‌شده
+     روی CAP_DEFAULTS (دقیقاً همان چیزی که schoolCaps برای مدرسهٔ نوع‌دارِ
+     بی‌قابلیت حساب می‌کند) — فاز ۰.۱ */
+  var caps;
+  if(s&&s.id) caps=schoolCaps(s.id);
+  else if(typeof schoolTypeCaps==='function') caps=Object.assign({},CAP_DEFAULTS,schoolTypeCaps((typeof schoolTypeOf==='function')?schoolTypeOf(s):'governmental'));
+  else caps=schoolCaps(s&&s.id);
   return CAP_DEFS.map(function(k){
     return `<label style="display:flex;gap:8px;align-items:center;padding:7px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer"><input type="checkbox" class="m-cap" value="${k[0]}" ${caps[k[0]]?'checked':''} /><span><b class="small">${k[1]}</b><div class="small muted" style="font-size:11px">${k[2]}</div></span></label>`;
   }).join('');
@@ -76,7 +128,7 @@ function viewSchools(){
       <td><span class="badge b-blue">${esc(s.level||'—')}</span>${s.type&&s.type!=='عادی'?`<div class="small muted" style="margin-top:4px">${esc(s.type)}</div>`:''}${(s.branches||[]).length?`<div class="small muted" style="margin-top:4px">${(s.branches||[]).map(b=>esc(b)).join('، ')}</div>`:''}</td><td class="muted">${esc(mg?mg.full_name:'—')}</td>
       <td class="small muted">${esc(s.landline||'—')}</td>
       <td>${fa(us.filter(u=>u.role==='student').length)}</td><td>${fa(us.filter(u=>u.role==='teacher').length)}</td><td>${fa(db.classes.filter(c=>c.school_id===s.id).length)}</td>
-      <td><span class="badge ${s.active?'b-green':'b-gray'}${isAdmin?' tgl':''}" ${isAdmin?`data-act="school-toggle" data-id="${escAttr(s.id)}" title="برای تغییر وضعیت کلیک کنید"`:''}>${s.active?'فعال':'غیرفعال'}</span></td>
+      <td><span class="badge ${s.active?'b-green':'b-gray'}${isAdmin?' tgl':''}" ${isAdmin?`data-act="school-toggle" data-id="${escAttr(s.id)}" title="برای تغییر وضعیت کلیک کنید"`:''}>${s.active?'فعال':'غیرفعال'}</span>${(()=>{try{if(typeof activeYearOf!=='function')return '';var yc=activeYearOf(s.id);if(!yc)return '';var t=(typeof yearCodeTitle==='function')?yearCodeTitle(yc):yc;var st=(typeof yearState==='function')?yearState(s.id):null;return `<div class="small muted" style="margin-top:4px">📅 ${esc(t)}${st&&st.closed?' · 🔒 بسته':''}</div>`;}catch(e){return '';}})()}</td>
       ${isAdmin?`<td><div class="row" style="gap:5px;flex-wrap:nowrap">
         <button class="btn sm" data-act="school-enter" data-id="${escAttr(s.id)}" title="ورود به پنل این مدرسه به‌عنوان مدیر">🔑 ورود به پنل</button>
         <button class="icon-btn" title="ویرایش" data-act="school-edit" data-id="${escAttr(s.id)}">✏️</button>
