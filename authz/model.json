@@ -1600,6 +1600,7 @@
     "place_rules",
     "province_id",
     "public_goals",
+    "school_type",
     "shift",
     "type",
     "updated_at",
