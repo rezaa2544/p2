@@ -35,7 +35,7 @@ function createUserRoutes(ctx) {
     const pa = policy.authorize(user, 'read', { coll: COLL });
     if(!pa.ok) return denied(pa);
     let list = (store.users || []);
-    list = filterByScope(user, list);
+    list = filterByScope(user, list, store);
 
     const role = urlParams.get('role');
     if (role) {
@@ -66,7 +66,7 @@ function createUserRoutes(ctx) {
     const pa0 = policy.authorize(user, 'read', { coll: COLL, id: Number(id) });
     if(!pa0.ok) return denied(pa0);
     const target = (store.users || []).find(u => u.id === Number(id));
-    if (!target || !checkSchoolScope(user, target.school_id)) {
+    if (!target || !checkSchoolScope(user, target.school_id, store)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
 

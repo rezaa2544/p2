@@ -11,6 +11,7 @@
 'use strict';
 
 const { validate, validateSyncEnvelope, validateSyncData } = require('./validate');
+const tenancy = require('./tenancy');
 const cache = require('./cache');
 
 /* Core mirror of the client's ACTION_ROLES table for WRITE operations.
@@ -465,7 +466,14 @@ function inScope(session, coll, recId, data){
     return false;
   }
   /* manager / edu_office: school-level */
-  if(u.role === 'edu_office') return true; /* اداره = مرجعِ بین‌مدرسه (مثلِ مدل) */
+  /* P0-07: پایانِ global-pass اداره در sync — قلمرو از tenancy
+     (استان/شهرستان/ناحیه). school_idِ غیرقابل‌حل = fail-closed. */
+  if(u.role === 'edu_office'){
+    const st = get_store();
+    const sid = tenancy.resolveSchoolId(st, coll, recId, data);
+    if(sid == null) return false;
+    return tenancy.inOfficeScope(st, u, sid);
+  }
   const s = rec ? rec.school_id : (data && data.school_id);
   if(s == null){
     /* R96: مجموعه‌هایِ بدونِ school_id (مثلِ hw_submissions) — scope از

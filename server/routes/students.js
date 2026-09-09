@@ -33,7 +33,7 @@ function createStudentRoutes(ctx) {
     const pa = policy.authorize(user, 'read', { coll: COLL });
     if(!pa.ok) return denied(pa);
     let students = (store.users || []).filter(u => u.role === 'student');
-    students = filterByScope(user, students);
+    students = filterByScope(user, students, store);
 
     // Filter by class
     const classId = urlParams.get('class_id');
@@ -90,7 +90,7 @@ function createStudentRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
 
-    if (!checkSchoolScope(user, student.school_id)) {
+    if (!checkSchoolScope(user, student.school_id, store)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
 

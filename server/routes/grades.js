@@ -31,7 +31,7 @@ function createGradeRoutes(ctx) {
     const pa = policy.authorize(user, 'read', { coll: COLL });
     if(!pa.ok) return denied(pa);
     let list = (store.grades || []);
-    list = filterByScope(user, list);
+    list = filterByScope(user, list, store);
 
     const studentId = urlParams.get('student_id');
     if (studentId) {

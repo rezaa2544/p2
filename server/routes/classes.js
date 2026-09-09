@@ -32,7 +32,7 @@ function createClassRoutes(ctx) {
     const pa = policy.authorize(user, 'read', { coll: COLL });
     if(!pa.ok) return denied(pa);
     let classes = (store.classes || []);
-    classes = filterByScope(user, classes);
+    classes = filterByScope(user, classes, store);
 
     const grade = urlParams.get('grade');
     if (grade) {
@@ -63,7 +63,7 @@ function createClassRoutes(ctx) {
     const pa0 = policy.authorize(user, 'read', { coll: COLL, id: Number(id) });
     if(!pa0.ok) return denied(pa0);
     const cls = (store.classes || []).find(c => c.id === Number(id));
-    if (!cls || !checkSchoolScope(user, cls.school_id)) {
+    if (!cls || !checkSchoolScope(user, cls.school_id, store)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
     }
 

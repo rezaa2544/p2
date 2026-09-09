@@ -1011,3 +1011,14 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 - sync دست‌نخورده: self در sync هم‌چنان role_denied (رفتارِ M3d پین شد).
 - تستِ جدید: `tests/user-self-update.js` ‏8/8‏.
 - گیت‌ها: API ‏7/7‏، server1..18 سبز، policy ‏10/10‏، authz ‏0‏، smoke ‏547/547‏ ✅
+
+## P0-07 پرامپت ۱ — tenancy رسمیِ اداره (پایانِ global-pass) — ✅
+- `server/middleware/scope.js`: `filterByScope`/`checkSchoolScope` با پارامترِ `store` ده‌دار شدند —
+  اداره فقط مدرسه‌هایِ tenancy خودش (استان/شهرستان/ناحیه)؛ هر ۵ روتِ لیست + ۳ روتِ تکی store می‌دهند.
+- `server/sync.js`: شاخهٔ `edu_office` در inScope از `return true` به tenancy
+  (`resolveSchoolId` + `inOfficeScope`؛ غیرقابل‌حل = fail-closed). policy از P0-03 ده‌دار بود.
+- bootstrap بی‌نیاز از تغییر (اداره فقط base خودش را می‌گیرد).
+- تستِ جدید: `tests/edu-scope.js` ‏7/7‏ (خوانشِ هر ۳ سطح + سینکِ announcements).
+- نکتهٔ محیطی: server15-mutations یک‌بار با S0b قرمز شد — علت سرورهایِ یتیم رویِ 9001/9002 بود
+  (پس از kill: هر ۶ جهش کشته + بیس‌لاین 40/40 ✅)؛ ربطی به کد نداشت.
+- گیت‌ها: API ‏7/7‏، server1..18 + همهٔ mutations سبز، policy/atts/grds/usu/edu سبز، authz ‏0‏، smoke ‏547/547‏ ✅

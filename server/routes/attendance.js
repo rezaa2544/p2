@@ -31,7 +31,7 @@ function createAttendanceRoutes(ctx) {
     const pa = policy.authorize(user, 'read', { coll: COLL });
     if(!pa.ok) return denied(pa);
     let list = (store.attendance || []);
-    list = filterByScope(user, list);
+    list = filterByScope(user, list, store);
 
     const date = urlParams.get('date');
     if (date) {
