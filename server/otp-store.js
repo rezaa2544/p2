@@ -1,14 +1,14 @@
 /* ═══════════════════════════════════════════════════════════════════
-   server/otp-store.js — OTP + rate-limit state (R101)
+   server/otp-store.js — OTP state (R101) — codes + cooldown + delay
    ───────────────────────────────────────────────────────────────────
    Layout: { v:1,
-     codes:         { phone: { h, at, user_id, tries } },  // h = sha256 hex, NEVER plaintext
-     cd:            { phone: lastSendTs },                 // send cooldown
-     daily:         { phone: { day, n } },                 // sends per UTC day
-     rate:          { phone: [ts...] },                    // sliding-window sends
-     rate_ip:       { ip: [ts...] },
-     login_rate_ip: { ip: [ts...] },                       // sliding-window logins
-     login_fail:    { phone: { n, until } } }              // progressive delay
+     codes:      { phone: { h, at, user_id, tries } },  // h = sha256 hex, NEVER plaintext
+     cd:         { phone: lastSendTs },                 // send cooldown
+     login_fail: { phone: { n, until } },               // progressive delay
+     tomb:       { phone: ts } }                        // P0-15 tombstones (consumed codes stay dead)
+   (R dist: window counters live in Redis via server/rate-limit.js —
+   fixed-window atomic; this store keeps code lifecycle + cooldown + delay.
+   Old files with counter keys still load: sane() drops unknown keys.)
 
    P0-15 — دو حالت:
    ● ردیس فعال: ردیس تنها منبع حقیقت است (کلید `payesh:otp:state`).
@@ -17,8 +17,8 @@
        فلاش‌ها هم‌جوشی می‌شوند تا انبوه تغییرات، یک نوشتِ ردیسی بسازد.
      - reloadIfChanged() = خواندن از ردیس در ورودِ درخواست — نمونهٔ خواهر
        کدها و محدودیت‌های نمونهٔ دیگر را پیش از تصمیم می‌بیند.
-     - ادغامِ حالت دورتر زیرِ قفل: اتحادِ کلیدبه‌کلید (پنجره‌های لغزان
-       اجتماعی‌اند؛ شمارنده‌ها تازه‌ترین‌برد) → هیچ رویداد حدی گم نمی‌شود.
+     - ادغامِ حالت دورتر زیرِ قفل: کلیدبه‌کلید تازه‌ترین‌برد + سنگ‌قبرها
+       → کدِ مصرف‌شده در هیچ نمونه‌ای زنده نمی‌ماند.
    ● بدون ردیس (توسعه): همان فایلِ `otp.json` با نوشتِ اتمیک (tmp+rename)
      و reload بر پایهٔ mtime — رفتار پیشین، دست‌نخورده.
    - یک‌بار مهاجرت از جای کهنهٔ درون‌فروشگاهی (R96 __auth).
@@ -33,8 +33,7 @@ const LOCK_NAME = 'otp-state';
 const LOCK_TTL_S = 10;
 
 function blank(){
-  return { v: 1, codes: {}, cd: {}, daily: {}, rate: {}, rate_ip: {},
-           login_rate_ip: {}, login_fail: {}, tomb: {} };
+  return { v: 1, codes: {}, cd: {}, login_fail: {}, tomb: {} };
 }
 function sane(o){
   const b = blank();
@@ -70,16 +69,6 @@ function createOtpStore(opts){
       if(!r || now - (r.at || 0) >= ttlMs) delete data.codes[p];
     }
     for(const p in data.cd){ if(now - data.cd[p] > H) delete data.cd[p]; }
-    const day = new Date(now).toISOString().slice(0, 10);
-    for(const p in data.daily){ if(!data.daily[p] || data.daily[p].day !== day) delete data.daily[p]; }
-    for(const m of [data.rate, data.rate_ip, data.login_rate_ip]){
-      for(const k in m){
-        const l = m[k];
-        if(!Array.isArray(l)){ delete m[k]; continue; }
-        while(l.length && l[0] < now - H) l.shift();
-        if(!l.length) delete m[k];
-      }
-    }
     for(const p in data.login_fail){
       const f = data.login_fail[p];
       if(!f || (f.until || 0) < now - H) delete data.login_fail[p];
@@ -95,13 +84,11 @@ function createOtpStore(opts){
     data.tomb[phone] = Date.now();
   };
 
-  /* ── ادغامِ حالت دورتر: اتحادِ کلیدبه‌کلید ────────────────────────
-     پنجره‌های لغزان: اجتماع + مرتب‌سازی (هیچ رویدادی گم نمی‌شود).
-     بقیهٔ نقشه‌ها: برای هر کلید تازه‌ترین رکورد برد است.             */
+  /* ── ادغامِ حالت دورتر: کلیدبه‌کلید تازه‌ترین‌برد ─────────────────
+     (پنجره‌های لغزان به rate-limit.js رفته‌اند؛ اینجا آرایه نداریم.) */
   const entryTs = (sec, key, v) => {
     if(sec === 'codes') return (v && v.at) || 0;
     if(sec === 'cd') return typeof v === 'number' ? v : 0;
-    if(sec === 'daily') return (v && v.day) || '';
     if(sec === 'login_fail') return (v && v.until) || 0;
     return 0;
   };
@@ -112,17 +99,11 @@ function createOtpStore(opts){
       const local = data[sec], far = r[sec];
       for(const key of Object.keys(far)){
         const fv = far[key], lv = local[key];
-        if(sec === 'rate' || sec === 'rate_ip' || sec === 'login_rate_ip'){
-          const a = Array.isArray(lv) ? lv : [];
-          const b = Array.isArray(fv) ? fv : [];
-          local[key] = Array.from(new Set(a.concat(b))).sort((x, y) => x - y);
-        }else if(sec === 'tomb'){
+        if(sec === 'tomb'){
           local[key] = Math.max(lv || 0, fv || 0);
         }else if(lv === undefined){
           local[key] = fv;
         }else if(entryTs(sec, key, fv) > entryTs(sec, key, lv)){
-          local[key] = fv;
-        }else if(sec === 'daily' && lv && fv && lv.day === fv.day && (fv.n || 0) > (lv.n || 0)){
           local[key] = fv;
         }
       }
@@ -258,10 +239,10 @@ function createOtpStore(opts){
       mv('codes', 'codes');
       mv('login_fail', 'login_fail');
       mv('cd', 'code_cd');
-      mv('daily', 'code_daily');
-      mv('rate', 'code_rate');
-      mv('rate_ip', 'code_rate_ip');
-      mv('login_rate_ip', 'login_rate_ip');
+      /* R dist: legacy counters (code_daily/code_rate/...) are NOT migrated —
+         Redis owns windows now; stale keys are dropped below with the rest. */
+      delete a.code_daily; delete a.code_rate; delete a.code_rate_ip;
+      delete a.login_rate_ip;
       if(moved){ saveFile(); if(markDirty) markDirty(); }
     }
   }

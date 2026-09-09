@@ -4,7 +4,7 @@
    ۱) ذخیره‌سازی: فلاشِ حالت روی کلیدِ ردیس می‌نشیند
    ۲) دو نمونه: نمونهٔ ب کدِ صادرشدهٔ نمونهٔ الف را می‌بیند
    ۳) پنجاه نوشتِ موازی روی پنجاه تلفن → هیچ‌کدام گم نمی‌شود
-   ۴) پنجرهٔ لغزانِ مشترک: اجتماعِ رویدادها حفظ می‌شود
+   ۴) تغییرهای همزمان روی کلیدهای مختلف → هیچ‌کدام گم نمی‌شود
    ۵) محافظ دنباله: نویسندهٔ کهنه حالتِ جدیدتر را نمی‌کُشد
    ۶) کارایی: ۱۰۰۰ عملیات همزمانِ دوجانبه در سقف زمانی
    ۷) بدون ردیس (توسعه): فال‌بک فایل دست‌نخورده کار می‌کند
@@ -87,17 +87,16 @@ async function main() {
     chk('۵۰ نوشتِ موازی → ۵۰ رکورد زنده', present === 50, `موجود=${present}`);
   }
 
-  // ۴) پنجرهٔ لغزانِ مشترک — اجتماعِ رویدادها
+  // ۴) تغییرهای همزمان روی کلیدهای مختلف — هیچ‌کدام گم نمی‌شود
   {
     await A.reloadIfChanged(); await B.reloadIfChanged();
     const phone = '09129999999';
-    const base = Date.now();
-    A.data.rate[phone] = [base - 3000, base - 2000];
-    B.data.rate[phone] = [base - 1000];
+    A.data.cd[phone] = Date.now() - 5000;
+    B.data.login_fail[phone] = { n: 2, until: Date.now() + 4000 };
     await Promise.all([A.save(), B.save()]);
-    const doc = JSON.parse(await red.get('payesh:otp:state'));
-    const win = doc.rate[phone] || [];
-    chk('اجتماعِ پنجرهٔ لغزان حفظ می‌شود', win.length === 3, `len=${win.length}`);
+    await A.reloadIfChanged(); await B.reloadIfChanged();
+    chk('کلیدهای جداگانهٔ دو طرف هر دو می‌نشینند',
+      !!(A.data.cd[phone] && A.data.login_fail[phone] && B.data.cd[phone] && B.data.login_fail[phone]));
   }
 
   // ۵) محافظ دنباله — نویسندهٔ کهنه نمی‌کُشد
@@ -144,8 +143,7 @@ async function main() {
       jobs.push((async () => {
         await st.reloadIfChanged();
         const phone = '0935' + String(i).padStart(7, '0');
-        st.data.rate_ip['10.0.0.1'] = st.data.rate_ip['10.0.0.1'] || [];
-        st.data.rate_ip['10.0.0.1'].push(Date.now());
+        st.data.cd[phone] = Date.now();
         st.data.codes[phone] = { h: 'p' + i, at: Date.now(), user_id: i, tries: 0 };
         await st.save();
       })());
