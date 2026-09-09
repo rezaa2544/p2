@@ -14,6 +14,18 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۴: فاز ۲.۱ — ردیس: سنیتنل/کلاستر + پایداری کامل — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
+
+**وضعیت:** شاخهٔ تازهٔ `feat/redis-cluster-chat4` (بر پایهٔ `origin/main`). پنج کامیت، یک کامیت به‌ازای هر کار:
+- `22a7bad` پشتیبانی کلاینتی سنیتنل + کلاستر در `server/redis.js` — اولویت: `REDIS_CLUSTER_NODES` > `REDIS_SENTINELS`+`REDIS_SENTINEL_NAME` > `REDIS_URL` > فال‌بک حافظه؛ `buildRedisConfig(env)` خالص و تست‌پذیر؛ رمز فقط از محیط. آزمون `tests/redis-cluster.js`: ۷/۷ پیکربندی همیشه سبز؛ بخش زنده (اتصال + کشف مستر از سنیتنل‌ها) بدون ردیس واقعی خودکار رد می‌شود.
+- `65925d9` الگوهای پایداری در `ops/redis/` — ۳ نود داده (مستر + ۲ تکثیر) با `save 900 1 / 300 10 / 60 10000` + `appendonly yes / everysec` + بازنویسی خودکار ۱۰۰٪/۶۴مگ + `stop-writes-on-bgsave-error yes`؛ ۳ سنیتنل با `quorum=2`.
+- `0d44bd8` `tools/redis-backup.sh` (SAVE→RDB + BGREWRITEAOF→AOF، اختیاری S3، نگهداری ۷ روز، قفل اجرا، کرون هر ۶ ساعت) + `tests/redis-backup.js` با ردیس جعلی: ۸/۸.
+- `96e7887` `docs/REDIS_RESTORE_PROCEDURE.md` — بازیابی AOF/RDB، توپولوژی سنیتنل، تمرین در محیط جدا، چک‌لیست پس از بازیابی.
+- `376d21c` `docs/REDIS_CLUSTER_SETUP.md` — راهنمای کامل استقرار + نقشهٔ ارتقا به کلاستر ۶ نودی.
+**گیت‌ها:** ‏smoke ۵۴۷/۵۴۷ · check-authz=0 · secret-scan ۱۱/۱۱ · redis-cluster ۷/۷ · redis-backup ۸/۸.
+**درس‌ها:** در سنبوکس باینری `redis-server`/`redis-cli` نیست — بخش زندهٔ تست‌ها خودکار رد می‌شود؛ اسکریپت پشتیبان با `redis-cli` جعلی آزموده شد. رازها فقط جای‌دار `{{…}}`.
+**بعدی:** ادغام به `main` با تأیید ناظر ارشد (اصل هشتم)؛ در صورت استقرار واقعی، تمرین بازیابی بخش ۴ `REDIS_RESTORE_PROCEDURE.md` پیش از مهاجرت.
+
 ## چت ۳: سبز شدن CI پی‌آر ۱۱ (رفع ۳ تست زنگ + ماتریس صادقانهٔ Node 22) — ۱۹/۰۶/۱۴۰۵
 
 **وضعیت:** کامیت `fix(ci)` روی `feat/farnaz-phase1` (پی‌آر ۱۱). گیت‌های محلی سبز (Node ‏22.23.2‏ + ‏jsdom 30.0.1‏): ‏run.js ۳۵/۳۵‏، ‏smoke ۵۴۷/۵۴۷‏، ‏check-authz=0‏، ‏entry-gpa/dorm-kind‏ کامل + جهش‌ها ‏۶/۶‏ و ‏۵/۵‏.
