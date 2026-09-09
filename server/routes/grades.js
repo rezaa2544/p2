@@ -10,11 +10,14 @@
 'use strict';
 
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
+const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 
 function createGradeRoutes(ctx) {
   const store = ctx.store;
   const db = ctx.db;
+  const ids = ctx.ids; /* P0-16 */
+  const deleter = ctx.deleter; /* P0-17 */
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
@@ -84,10 +87,8 @@ function createGradeRoutes(ctx) {
     }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
-    let nextId = 1;
-    for (const g of (store.grades || [])) {
-      if (g.id >= nextId) nextId = g.id + 1;
-    }
+    /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
+    const nextId = await ids.nextId('grades', store.grades);
 
     const newGrade = {
       id: nextId,
@@ -127,18 +128,9 @@ function createGradeRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
 
-    // Optimistic Concurrency Control (OCC)
-    if (body.base_version != null && Number(body.base_version) !== (grade.version || 1)) {
-      return {
-        status: 409,
-        body: {
-          ok: false,
-          code: 'conflict',
-          message: 'نمره توسط کاربر دیگری تغییر یافته است. صفحه را تازه کنید.',
-          server_version: grade.version || 1
-        }
-      };
-    }
+    /* P0-18: OCC از هِلپر مشترک — پایه از base_version یا version */
+    const conflict = checkOcc(grade, body, 'نمره');
+    if (conflict) return conflict;
 
     if (body.score != null) {
       const s = Number(body.score);
@@ -150,8 +142,7 @@ function createGradeRoutes(ctx) {
 
     if (body.type !== undefined) grade.type = body.type;
     if (body.term !== undefined) grade.term = body.term;
-    grade.version = (grade.version || 1) + 1;
-    grade.updated_at = new Date().toISOString();
+    bump(grade); /* P0-18 */
 
     markDirty();
     if (db) await db.persistOp({ c: 'grades', t: 'upd', data: grade });
@@ -176,11 +167,14 @@ function createGradeRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
 
-    store.grades.splice(gradeIdx, 1);
-    markDirty();
-
-    if (db) await db.persistOp({ c: 'grades', t: 'del', id: Number(id) });
-    audit('grade_deleted', { user_id: user.id, grade_id: Number(id) });
+    /* P0-17: حذف امن با سرویس واحد — سنگ‌قبر + نسخه + رویداد برون‌مرزی */
+    const del = await deleter.softDelete('grades', { id: Number(id) }, {
+      actor: user,
+      audit: () => audit('grade_deleted', { user_id: user.id, grade_id: Number(id) })
+    });
+    if (!del.ok) {
+      return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
+    }
     return { status: 200, body: { ok: true, message: 'نمره با موفقیت حذف شد' } };
   }
 
