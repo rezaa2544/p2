@@ -1686,8 +1686,20 @@ function coreActions(e, el, id, a, rawId){
    'ann-del'(){const a=byId('announcements',id);askDelete(`اطلاعیه «${a.title}» حذف شود؟`,()=>{remove('announcements',id);toast('اطلاعیه حذف شد','ok');render();});},
    'ann-save'(){ if(needAll([['a_title','عنوان و متن الزامی است'],['a_body','عنوان و متن الزامی است']]))return;
      const data={title:V('a_title'),body:V('a_body'),audience:V('a_aud')};
+     /* د.۳ — سطح اهمیت: فقط مقدارهای معتبر؛ نبودِ فیلد (ناشرانِ بدون انتخابگر) = عادی */
+     const sevEl=$('#a_sev');
+     const sev=sevEl?sevEl.value:'normal';
+     if(['normal','urgent','critical'].indexOf(sev)<0){toast('سطح اهمیت معتبر نیست','err');return;}
+     data.severity=sev;
      if(window._annEdit)update('announcements',window._annEdit,data);
-     else insert('announcements',Object.assign({school_id:S.user.school_id||null,created_by:S.user.id,created_at:todayISO()},data));
+     else{
+       /* اطلاعیهٔ اداره: در محدودهٔ ادارهٔ خود (school_id خالی + office_id خود)؛
+          بقیهٔ نقش‌ها مثل پیش (مدرسه‌ای یا سراسری) — د.۳ */
+       const base=S.user.role==='edu_office'
+         ?{school_id:null,office_id:S.user.office_id||null,created_by:S.user.id,created_at:todayISO()}
+         :{school_id:S.user.school_id||null,office_id:null,created_by:S.user.id,created_at:todayISO()};
+       insert('announcements',Object.assign(base,data));
+     }
      closeModal();toast(window._annEdit?'اطلاعیه ویرایش شد':'اطلاعیه منتشر شد','ok');window._annEdit=0;render();},
    /* ── مشاور مدرسه و پیگیری الگوها (دور ۶۳) ── */
    'fu-days'(){S.filters.fu_days=Number(el.dataset.d);render();},

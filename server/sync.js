@@ -464,6 +464,17 @@ function inScope(session, coll, recId, data){
     if(rec && rec.school_id != null) return rec.school_id === u.school_id;
     return false;
   }
+  /* د.۳ — اطلاعیهٔ فوری/بحرانی اداره: کارشناس فقط می‌تواند اطلاعیه‌ای
+     با office_id ادارهٔ خودش بنویسد/ویرایش/حذف کند؛ اطلاعیهٔ ادارهٔ
+     دیگر ⇒ رد (بستنِ شکافِ انتشار بین‌اداره‌ای). */
+  if(coll === 'announcements' && u.role === 'edu_office'){
+    if(!rec){
+      const oid = data && data.office_id;
+      if(oid != null && Number(oid) !== Number(u.office_id)) return false;
+    } else if(rec.office_id != null && Number(rec.office_id) !== Number(u.office_id)){
+      return false;
+    }
+  }
   /* manager / edu_office: school-level */
   if(u.role === 'edu_office') return true; /* اداره = مرجعِ بین‌مدرسه (مثلِ مدل) */
   const s = rec ? rec.school_id : (data && data.school_id);
