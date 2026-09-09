@@ -24,6 +24,10 @@ let memExpiry = new Map();
 let subscriptions = new Map(); // channel -> Set of callbacks
 
 const REDIS_URL = process.env.REDIS_URL || null;
+/* P0-13: در تولید، فال‌بک به حافظهٔ محلی ممنوع است — هر نمونه باید به
+   همان کشِ توزیع‌شده وصل باشد؛ وگرنه حالت بین نمونه‌ها واگرا می‌شود
+   (قفل/نرخ/کش هرکدام یک‌جا). بنابراین نبودِ ردیس در تولید = شکستِ ریدی. */
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 /**
  * Clean expired keys from in-memory fallback
@@ -45,7 +49,16 @@ setInterval(cleanExpiredMem, 10000).unref();
 async function init() {
   if (!REDIS_URL || !Redis) {
     isRedisActive = false;
-    return { ok: true, driver: 'memory', message: 'In-memory cache fallback active' };
+    if (IS_PRODUCTION) {
+      /* P0-13: شکستِ ریدی به‌جای فال‌بک — سرور نباید بدونِ کشِ مشترک بالا بیاید */
+      return {
+        ok: false, driver: 'none',
+        error: !REDIS_URL
+          ? 'REDIS_URL is required when NODE_ENV=production (in-memory fallback is dev-only)'
+          : 'ioredis driver is not installed (required when NODE_ENV=production)'
+      };
+    }
+    return { ok: true, driver: 'memory', message: 'In-memory cache fallback active (dev only)' };
   }
 
   try {
@@ -102,7 +115,7 @@ async function init() {
     isRedisActive = true;
     return { ok: true, driver: 'redis', message: 'Connected to Redis server' };
   } catch (err) {
-    console.warn('[Redis] Connection failed. Using in-memory fallback:', err.message);
+    console.warn('[Redis] Connection failed.', IS_PRODUCTION ? 'Production refuses fallback (readiness fails):' : 'Using in-memory fallback (dev only):', err.message);
     isRedisActive = false;
     if (client) {
       try { client.disconnect(); } catch (e) {}
@@ -111,6 +124,10 @@ async function init() {
     if (subClient) {
       try { subClient.disconnect(); } catch (e) {}
       subClient = null;
+    }
+    if (IS_PRODUCTION) {
+      /* P0-13: در تولید، قطعِ ردیس = شکستِ اتصال؛ فال‌بک به حافظه ممنوع */
+      return { ok: false, driver: 'none', error: 'Redis unreachable in production: ' + err.message };
     }
     return { ok: true, driver: 'memory', fallback: true, warning: err.message };
   }
@@ -121,6 +138,14 @@ async function init() {
  */
 function isRedis() {
   return isRedisActive && client !== null;
+}
+
+/**
+ * P0-13: Readiness gate — در تولید فقط با ردیسِ زنده «آماده» است؛
+ * در توسعه حافظهٔ محلی قابل‌قبول است.
+ */
+function ready() {
+  return IS_PRODUCTION ? isRedis() : true;
 }
 
 /**
@@ -279,6 +304,7 @@ async function close() {
 module.exports = {
   init,
   isRedis,
+  ready,
   get,
   set,
   del,

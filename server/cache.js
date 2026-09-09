@@ -18,7 +18,10 @@ const localUserBootstrapCache = new Map(); // L1 memory cache for microsecond re
  * Initialize Cache layer and Pub/Sub invalidation listeners
  */
 async function init() {
-  await redis.init();
+  const r = await redis.init();
+  /* P0-13: نتیجهٔ ریدی را به بالا منتشر کن — شکستِ ردیس در تولید یعنی
+     سرور نباید سرویس بدهد (بوتر در index.js تصمیم می‌گیرد). */
+  if (!r || r.ok === false) return { ok: false, driver: (r && r.driver) || 'none', error: (r && r.error) || 'redis init failed' };
 
   // Listen for invalidation events from other instances
   await redis.subscribe(INVAL_CHANNEL, (msg) => {
