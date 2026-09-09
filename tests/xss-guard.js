@@ -144,9 +144,11 @@ async function main() {
   /* payload شاملِ تلاشِ خروج از <title> هم هست (RCDATA شکافتن) */
   const EVIL = '</title><img src=x onerror="window.__px=1"><svg onload="window.__py=1">';
   const evilIds = W(`(function(){
-    var sch = insert('schools', { name: ${JSON.stringify(EVIL)}, level: 'ابتدایی', county: ${JSON.stringify(EVIL)},
-      office_id: null, active: 1 });
-    var sub = insert('subjects', { school_id: sch.id, name: ${JSON.stringify(EVIL)}, active: 1 });
+    /* فقط فیلدهایی که در authz/model.json هستند — tests/authz-model.js
+       درج‌هایِ تست‌ها را هم با مدل می‌سنجد (یادگرفتیم: county غلط است،
+       county_id درست؛ schools اصلاً office_id ندارد — آن مالِ users است). */
+    var sch = insert('schools', { name: ${JSON.stringify(EVIL)}, level: 'ابتدایی', active: 1 });
+    var sub = insert('subjects', { school_id: sch.id, name: ${JSON.stringify(EVIL)} });
     var n = insert('staff_needs', { school_id: sch.id, subject_id: sub.id,
       count: 1, note: ${JSON.stringify(EVIL)}, status: 'open' });
     return { sch: sch.id, need: n.id, sub: sub.id };
