@@ -316,6 +316,7 @@ function ruleFor(coll, key){
   /* ۲. enumهایِ تک‌فیلدی */
   if(key === 'stage' && coll === 'preapps') return { type: 'enum', values: STAGE_ENUM };
   if(key === 'meeting_type' && coll === 'assoc_minutes') return { type: 'enum', values: ['assoc','teachers','students'] }; /* C.1 فرناز */
+  if(key === 'kind' && coll === 'dorm_assignments') return { type: 'enum', values: ['full', 'pansion'] }; /* S5 فرناز */
   if(key === 'role'){
     if(coll === 'users') return { type: 'enum', values: USER_ROLES };
     return { type: 'string', max: LIMITS.STR_MID };
@@ -340,6 +341,7 @@ function ruleFor(coll, key){
   if(FLAG_FIELDS.indexOf(key) > -1) return { type: 'flag' };
   /* ۵. نمره‌ها */
   if(key === 'score' || key === 'original_score' || key === 'new_score') return { type: 'score' };
+  if(key === 'entry_gpa') return { type: 'score' }; /* S4 فرناز: معدل ورودی ۰ تا ۲۰ (خالی=null از isEmpty رد می‌شود) */
   if(key === 'max_score') return { type: 'number', min: 0, max: 100 };
   /* ۶. تاریخ و ساعت */
   if(key === 'date' || /(_at|_date|_deadline)$/.test(key)) return { type: 'date' };

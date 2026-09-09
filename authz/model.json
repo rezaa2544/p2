@@ -635,6 +635,7 @@
    "fields": [
     "created_at",
     "id",
+    "kind",
     "room_id",
     "school_id",
     "since",
@@ -2113,6 +2114,7 @@
     "dropped_out_by",
     "dropped_out_note",
     "dropped_out_reason",
+    "entry_gpa",
     "father_nid",
     "field",
     "full_name",
