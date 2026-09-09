@@ -18,6 +18,9 @@
 /* Tracing اول از همه: باید پیش از http و ماژول‌هایِ instrumentشده بالا بیاید (OTel) */
 const tracing = require('./tracing');
 tracing.initTracing();
+/* ویو ۱۴ (Observability) — سیگنالِ metrics. بدون وابستگیِ بیرونی و بدون
+   side-effect در require: زمان‌بندِ نمونه‌برداری فقط در بوتِ سرور روشن می‌شود. */
+const metrics = require('./metrics');
 const waf = require('./waf'); /* P-WAF: فقط-تشخیص (detect-only) */
 const http = require('http');
 const fs = require('fs');
@@ -306,7 +309,15 @@ function sendJsonCounting(res, status, obj){
   const r = REQ_STATE;
   const isIdorRead = r && /^\/api\/students\/\d+$/.test(r.p || '');
   if(r && r.sess && (status === 401 || status === 403 || status === 404) && !isIdorRead){
-    enumStage(enumTouch(r.sess), r.sess);
+    const e = enumTouch(r.sess);
+    enumStage(e, r.sess);
+    /* ویو ۱۴: همان شمارِ R97 به‌صورت metric. برچسبِ stage از آستانه‌هایِ بستهٔ
+       ENUM_* مشتق می‌شود (۵ مقدارِ ممکن) — بدون PII و بدون cardinality بی‌کران. */
+    const stage = e.n >= ENUM_REVOKE ? 'revoke'
+      : e.n >= ENUM_SLOW2 ? 'slow2'
+      : e.n >= ENUM_SLOW1 ? 'slow1'
+      : e.n >= ENUM_WARN ? 'warn' : 'count';
+    metrics.observeAuth('rejection', stage);
   }
   return sendJson(res, status, obj);
 }
@@ -419,6 +430,29 @@ const onRequest = async (req, res) => {
   const https = isHttps(req);
   const nonce = crypto.randomBytes(16).toString('base64');
   securityHeaders(res, nonce, https);
+  /* ویو ۱۴ (Observability) — شمارشِ هر درخواست: شمار/تأخیر/بایت با برچسبِ
+     «قالبِ مسیر» (نه خودِ URL) تا هم cardinality کران‌دار بماند و هم هیچ
+     شناسه/PII وارد label نشود (metrics.js R3). هیچ‌گاه در مسیرِ پاسخ خطا
+     نمی‌دهد (R1). */
+  const __mStart = process.hrtime.bigint();
+  let __mBytes = 0;
+  const __mEnd = res.end;
+  res.end = function(chunk, enc, cb){
+    try{
+      if(chunk) __mBytes += Buffer.isBuffer(chunk) ? chunk.length
+        : Buffer.byteLength(String(chunk), typeof enc === 'string' ? enc : 'utf8');
+    }catch(e){}
+    return __mEnd.call(this, chunk, enc, cb);
+  };
+  res.on('finish', () => {
+    metrics.observeHttpRequest({
+      route: p,
+      method: req.method,
+      status: res.statusCode,
+      durationSeconds: metrics.elapsedSeconds(__mStart),
+      bytes: __mBytes
+    });
+  });
   /* Tracing (P-Trace): شناسهٔ ردیابی در کانتکست و سرآیندِ پاسخ برای هم‌بستگی —
      پیش از WAF تا رویدادهای ممیزیِ آن شناسهٔ ردیابی داشته باشند. */
   req.context = req.context || {};
@@ -443,6 +477,33 @@ const onRequest = async (req, res) => {
     }
   }
   try{
+    /* ویو ۱۴ — Prometheus scrape. Fail-closed (metrics.js R4):
+         PAYESH_METRICS=0                → 404
+         production و بدون توکن          → 404 (endpoint اصولاً وجود ندارد)
+         PAYESH_METRICS_TOKEN            → Bearer token (مقایسهٔ زمان‌ثابت)
+         توسعه و بدون توکن               → فقط loopback
+       /metrics هرگز زیر /api/ نیست و هرگز در فهرستِ static نمی‌آید. */
+    if(p === '/metrics' && (req.method === 'GET' || req.method === 'HEAD')){
+      const g = metrics.scrapeGate(req);
+      if(!g.ok){
+        audit('metrics_denied', { path: p, status: g.status, reason: g.code, ip: clientIp(req) });
+        return sendJson(res, g.status, { ok: false, code: g.code });
+      }
+      /* گاژهایِ تازه پیش از render: poolها + صفِ outbox (تنها در زمانِ scrape
+         خوانده می‌شوند تا هر درخواست هزینهٔ I/O ندهد). */
+      try{
+        if(db.isPostgres && db.isPostgres() && typeof db.poolStats === 'function') metrics.publishDbPools(db.poolStats());
+      }catch(e){}
+      try{
+        if(typeof outbox.depth === 'function') metrics.publishOutboxDepth(outbox.depth());
+      }catch(e){}
+      const body = metrics.render();
+      res.writeHead(200, {
+        'Content-Type': 'text/plain; version=0.0.4; charset=utf-8',
+        'Cache-Control': 'no-store'
+      });
+      return res.end(req.method === 'HEAD' ? undefined : body);
+    }
     if(p === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')){
       /* P0-13: ریدی = در تولید، کشِ توزیع‌شده زنده است؛ وگرنه 503. */
       const rdy = redis.ready();
@@ -452,12 +513,31 @@ const onRequest = async (req, res) => {
       catch (e) {}
       return sendJson(res, rdy ? 200 : 503, body);
     }
-    if(p === '/api/auth/send-code' && req.method === 'POST') return await auth.apiSendCode(req, res, await readBody(req, 4 * 1024));
-    if(p === '/api/auth/login'     && req.method === 'POST') return await auth.apiLogin(req, res, await readBody(req, 4 * 1024));
+    /* ویو ۱۴ — سوءاستفادهٔ OTP/ورود به‌صورت metric (برچسبِ outcome از
+       مجموعهٔ بستهٔ کدهایِ HTTP مشتق می‌شود؛ شماره/کد ملی هرگز label نیست). */
+    if(p === '/api/auth/send-code' && req.method === 'POST'){
+      const b = await readBody(req, 4 * 1024);
+      const r = await auth.apiSendCode(req, res, b);
+      metrics.observeAuth('otp', res.statusCode === 200 ? 'sent' : res.statusCode === 429 ? 'rate_limited' : 'rejected');
+      return r;
+    }
+    if(p === '/api/auth/login'     && req.method === 'POST'){
+      const b = await readBody(req, 4 * 1024);
+      const r = await auth.apiLogin(req, res, b);
+      metrics.observeAuth('login', res.statusCode === 200 ? 'ok' : res.statusCode === 429 ? 'rate_limited' : res.statusCode === 401 ? 'failed' : 'rejected');
+      return r;
+    }
     if(p === '/api/auth/me'        && req.method === 'GET')  return await auth.apiMe(req, res);
     if(p === '/api/auth/logout'    && req.method === 'POST') return await auth.apiLogout(req, res);
     if(p === '/api/auth/delete-account' && req.method === 'POST') return await auth.apiDeleteAccount(req, res);
-    if(p === '/api/sync'           && req.method === 'POST') return await sync.apiSync(req, res, await readBody(req, 1024 * 1024));
+    if(p === '/api/sync'           && req.method === 'POST'){
+      const b = await readBody(req, 1024 * 1024);
+      /* ویو ۱۴: اندازهٔ دستهٔ جهش‌ها = عمقِ صفِ آفلاینِ کلاینت در لحظهٔ drain. */
+      metrics.observeSyncBatch(b && Array.isArray(b.ops) ? b.ops.length : 0);
+      const r = await sync.apiSync(req, res, b);
+      metrics.inc('payesh_sync_requests_total', { code: String(res.statusCode).slice(0, 3) });
+      return r;
+    }
     if(p === '/api/sync/conflicts' && req.method === 'GET')  return await conflicts.apiList(req, res);
     if(p === '/api/sync/resolve-conflict' && req.method === 'POST') return await conflicts.apiResolve(req, res, await readBody(req, 4 * 1024));
     if(/^\/api\/students\/\d+$/.test(p) && req.method === 'GET') return await idor.apiStudent(req, res, p.split('/')[3]);
@@ -688,15 +768,22 @@ const BACKUP_EVERY_MS = (Number(process.env.PAYESH_BACKUP_EVERY_MS) > 0)
 
 if(require.main === module){
   if(BACKUP_EVERY_MS > 0) admin.startAutoBackup(BACKUP_EVERY_MS);
+  /* ویو ۱۴ — نمونه‌برداریِ runtime (heap/rss/cpu/event-loop lag). تایمرها
+     unref هستند: هرگز فرآیند را زنده نگه نمی‌دارند. */
+  metrics.startRuntimeCollector();
+  metrics.set('payesh_build_info', { version: '1.0', phase: '1' }, 1);
   server.listen(PORT, HOST, () => {
     const proto = (TLS_CERT && TLS_KEY) ? 'https' : 'http';
     console.log('payesh-server (phase 1' + (TLS_CERT ? ' + TLS' : '') + ') on ' + proto + '://' + HOST + ':' + PORT);
     console.log('  static : ' + path.join(ROOT, 'index.html'));
     console.log('  api    : /api/health /api/auth/* /api/sync /api/sync/conflicts /api/sync/resolve-conflict /api/students/:id /api/bell/now /api/public-report /api/admin/{backup,restore} /api/sms/send');
+    console.log('  metrics: /metrics (' + (process.env.PAYESH_METRICS_TOKEN ? 'bearer token' : process.env.PAYESH_ENV === 'production' ? 'DISABLED — set PAYESH_METRICS_TOKEN' : 'loopback only') + ')');
     console.log('  store  : ' + STORE_FILE + '  (' + (store.users || []).length + ' users)');
     if(BACKUP_EVERY_MS > 0){
       console.log('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');
     }
   });
 }
-module.exports = { server, store, audit, isHttps, persistStore, persistStoreSync, db, redis, cache, workers, staticCache };
+/* rebase: union of both sides — main added persistStoreSync/workers/staticCache,
+   Wave 14 adds metrics. */
+module.exports = { server, store, audit, isHttps, persistStore, persistStoreSync, db, redis, cache, workers, staticCache, metrics };
