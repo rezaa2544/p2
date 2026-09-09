@@ -47,7 +47,8 @@ function dormActions(e, el, id, a, rawId){
        .sort((a,b)=>a.full_name.localeCompare(b.full_name,'fa'));
      if(!free.length){toast('دانش‌آموزِ فعالِ بدونِ اتاقی نیست','err');return;}
      openModal(modalTpl(`انتساب به اتاق ${room.name} (${occ}/${room.capacity})`,
-       free.map(u=>`<div class="row" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer" data-act="dorm-assign-pick" data-id="${escAttr(roomId)}" data-sid="${escAttr(u.id)}"><b>${esc(u.full_name)}</b><span class="small muted">${esc((classOf(u.id)||{}).name||'—')}</span></div>`).join('')));
+       f('نوع اسکان',sel('dorm_kind',DORM_KINDS,'full'))
+       + free.map(u=>`<div class="row" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer" data-act="dorm-assign-pick" data-id="${escAttr(roomId)}" data-sid="${escAttr(u.id)}"><b>${esc(u.full_name)}</b><span class="small muted">${esc((classOf(u.id)||{}).name||'—')}</span></div>`).join('')));
    },
    'dorm-assign-pick'(){
      const roomId=Number(id), studentId=Number(el.dataset.sid);
@@ -56,7 +57,10 @@ function dormActions(e, el, id, a, rawId){
      if(occ>=(Number(room.capacity)||0)){toast('اتاق پر است — ظرفیت را بیشتر کنید یا اتاق دیگری انتخاب کنید','err');render();return;}
      const old=dormAssignOf(studentId);
      if(old)remove('dorm_assignments',old.id);
-     insert('dorm_assignments',{school_id:S.user.school_id,room_id:roomId,student_id:studentId,since:todayISO()});
+     /* S5 فرناز: نوعِ اسکان فقط full/pansion (پیش‌فرض: اقامت کامل) */
+     const kind=V('dorm_kind')||'full';
+     if(kind!=='full'&&kind!=='pansion'){toast('نوع اسکان نامعتبر است','err');return;}
+     insert('dorm_assignments',{school_id:S.user.school_id,room_id:roomId,student_id:studentId,kind:kind,since:todayISO()});
      closeModal(); toast('انتساب شد','ok'); render();
    },
    'dorm-unassign'(){

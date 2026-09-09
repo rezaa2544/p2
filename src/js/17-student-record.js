@@ -306,6 +306,7 @@ function studentProfileCard(sid){
       infoRow('رشته', u.field || (cls || {}).field),
       infoRow('پایه', num(u.grade_level)),
       infoRow('معدل سال گذشته', num(u.last_gpa)),
+      infoRow('معدل ورودی', num(u.entry_gpa)),
       infoRow('تعداد درس افتاده', num(u.failed_count)),
       infoRow('استعدادیابی', u.talent)
     ]),
