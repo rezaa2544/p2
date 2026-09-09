@@ -14,6 +14,49 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۲ (ج): سبزِ کاملِ CI روی GitHub — ریشهٔ دومِ zero-job کشف شد — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**شاخه:** `arena/01a08648-p2` (ادامهٔ همان نشست؛ HEAD = `da13943`)
+
+**وضعیت:** هر دو ورک‌فلو روی GitHub سبز شدند — **`Security Program` ران ۶۸ با هر ۶ job سبز** (SAST، Secret scan، SCA، SBOM، DAST، WAF) و `Node.js CI` build (22.x) سبز (ران ۱۸۰). بلاکِ سه‌روزهٔ CI بسته شد.
+
+- **کشفِ کلیدیِ این دور — ریشهٔ دومِ zero-job:** فیکسِ zaproxy لازم بود ولی به‌تنهایی کافی نبود. علتِ واقعیِ باقی‌مانده با **bisect تجربی روی شاخهٔ موقتی `wftest-branch`** (ران‌های ۶۱–۶۶) پیدا شد: **ارجاعِ مستقیمِ `secrets.*` در `if:` سطحِ step** این ریپو را با «workflow file issue» و صفر job می‌شکند. توالیِ آزمون‌ها: حداقلی سبز (۶۱) → job dast با secrets-if قرمزِ صفر-job (۶۲/۶۳ حتی بدونِ ZAP) → بدونِ if سبز (۶۴) → if بدونِ secrets سبز (۶۵) → **الگویِ جایگزینِ env سبز (۶۶)**. فیکس: پاسِ `SECURITY_TARGET_URL` از طریقِ `env:` و شرط روی `env.SECURITY_TARGET_URL` (کامیت `f9d53ec`؛ نکتهٔ NOTE داخلِ خودِ فایل). ارجاعِ `secrets.*` در `with:`/`env:` مجاز است.
+- **ریشهٔ سوم (SBOM):** `npm sbom --sbom-format=spdxjson` با npm 10.9 → `EUSAGE` (مقادیرِ مجاز `cyclonedx|spdx`)؛ `spdx` همان SPDX-2.3 JSON می‌دهد. بازتولیدِ محلی + فیکس (کامیت `da13943`).
+- **بهبودِ ماتریس هم اثر کرد:** اولین رانِ CIِ تاریخِ PR #44 (پیش از این دور فقط صفر-ران/CONFLICTING بود): build (22.x) سبز روی `3673107`.
+- **پاک‌سازی:** شاخهٔ آزمایشیِ bisect (`wftest-branch`) پس از کار از local و remote حذف شد؛ sandbox بینِ دو نوبت re-clone شده بود که با fetch+reset بازیابی شد.
+- **مستندات:** §۵ `docs/RELEASE_GATE_EVIDENCE.md` با ریشه‌یابیِ کاملِ سه‌علته بازنویسی شد + به‌روزرسانیِ §۱ (وضعیتِ CI) + کپیِ `reza/`.
+
+## چت ۲ (ب): آماده‌سازی دروازهٔ انتشار (Release Gate) — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**شاخه:** `arena/01a08648-p2` (ادامهٔ همان نشست، پس از ادغامِ main بازنویسی‌شده)
+
+**وضعیت:** دروازهٔ انتشار «آماده» شد: CI سه‌روزه‌ی قرمزِ `security.yml` ریشه‌یابی و اصلاح شد، ماتریس Node صادقانه شد، ابزارِ راستی‌آزماییِ ۲۸ ردیفِ چک‌لیست ساخته شد و سندِ شواهد/ران‌بوک ثبت شد.
+
+- **اتصال تاریخچه (پیش‌نیازِ همه‌چیز):** main از `781a471` جدا شده بود (بازنویسی) ⇒ PR #44 با `CONFLICTING` و **صفر رانِ CI** مانده بود. ادغام با `--allow-unrelated-histories` (۲۷ فایل add/add؛ فقط `server/index.js` معنایی: ورکرِ سنگینِ Wave 9 + کارگرِ Outbox ویو ۸ + خوانشِ DB ویو ۱ + pool stats ویو ۱۰؛ انکرِ جهشِ GC داخل `persistStore` حفظ شد). symlinkِ شکستهٔ `node_modules` (آلودگیِ sandbox روی main) از ایندکس حذف شد.
+- **ریشهٔ CI قرمز:** `security.yml` به `zaproxy/actions-baseline@v0.12.0` اشاره داشت — مخزنِ ناموجود (اکشنِ واقعی: `zaproxy/action-baseline`). گیت‌هاب `uses:`ها را در استارتاپ resolve می‌کند ⇒ شکستِ کلِ ران با **صفر job** — علامتِ ران‌های ۴۸+ روی همهٔ شاخه‌ها. اصلاح + ماتریس `node.js.yml` به `[22.x]` (لِین‌های 18/20 با jsdom 30 سبزِ کاذب می‌دادند — پیش‌تر در HANDOFF چت ۳ مستند بود) + `npm-publish` از 20 به 22.
+- **ابزارِ دروازه:** `tools/release-gate.js` — هر ردیفِ `docs/RELEASE_GATE_CHECKLIST.md` را با شاهدِ قابل‌اجرا می‌سنجد (ایستا + بوتِ واقعیِ سرور؛ سبزِ کاذب/skip را قرمز می‌کند؛ `--skip-boot`/`--json`). نتیجهٔ فعلی: **۱۹ ✅ · ۱۴ ⏳ (کارفرما/زیرساخت) · ۱ ⚠️ · ۰ ❌**.
+- **شکافِ صادقانه:** 4.4 — `/api/liveness` و `/api/readiness` در کد نیست (فقط `/api/health`)؛ دو مسیر پیشنهادی در سندِ شواهد (نگاشتِ Probe یا افزودنِ اندپوینت‌ها) — تصمیم با استقرارِ K8s.
+- **سند:** `docs/RELEASE_GATE_EVIDENCE.md` (ران‌بوک + جدولِ شواهد + فهرستِ ۱۴ قلمِ کارفرما: پنتست، WAL/PITR، مهاجرتِ ۵۰GB، k6/SLO، مانیتورینگ، placeholderهای پایلوت) + ارجاع از خود چک‌لیست + کپیِ `reza/`.
+- **گیت‌ها پس از ادغام:** release-gate کامل = ۱۹/۱۹ِ قابل‌راستی‌آزمایی سبز (security2 ‏۲۵/۲۵، server1 ‏۳۱/۳۱، server8 ‏۹/۹، server15 ‏۴۰/۴۰، audit ‏۴۷/۴۷، secret-scan ‏۱۱/۱۱، authz ‏۰) · smoke ‏**۵۴۷/۵۴۷** · wave9 ‏**۳۹/۳۹** · wave1/3/4/5/8/10/13 + redis-cluster همه سبز.
+
+## چت ۲: Wave 9 شروع + Wave 0 / Part 4 (بازسازی) — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**شاخه:** `arena/01a08648-p2` (از `main` @ `781a471` — ادغامِ PR #40)
+
+**وضعیت:** بخشِ اولِ Wave 9 (Application Performance) روی سرور اعمال شد: `JSON.stringify(store)` و نوشتنِ سنکرونِ فایل از مسیرِ درخواست/تیکر حذف و به رشتهٔ کارِ پس‌زمینه منتقل شد؛ بکاپ و گزارشِ عمومی هم به همان ورکر رفت؛ ممیزیِ پس‌زمینه (opt-in) و L1 کشِ محدود اضافه شد. Wave 0 / Part 4 (dependency & deployment inventory) **بازسازی** و Wave 0 کامل شد.
+
+- **⚠️ یافتهٔ انتقالِ کار (مهم برایِ کارفرما):** دستورِ «push کامیتِ محلیِ `arena/01a085da-p2` / بهروزرسانی PR #40 با commit ‏`0245515`» اجرا‌پذیر نبود: آن commit هرگز push نشده بود و در sandbox نشستِ قبل گم شده است (`gh api .../commits/0245515` → 404؛ شاخهٔ راه‌دور روی `b7f670e` است و PR #40 **MERGED**). خودِ شاخهٔ این نشست به `arena/01a08648-p2` قفل است؛ Part 4 در همین شاخه بازسازی شد (`docs/NATIONAL_BASELINE_PART4.md` + یادداشتِ شفافیت در همان سند).
+- **معماری (Wave 9):** `server/worker-service.js` + `server/workers/heavy.js` — ورکرِ دیرزیادِ unref با اسنپ‌شاتِ نسخه‌دار (structured clone؛ `markDirty` → bump). ops: `persist` (نوشتنِ اتمی tmp+rename، 0600) / `backup` (فقط‌داده + نگه‌داریِ ۱۰) / `report` (گزارشِ عمومی). حالتِ پایدار: بکاپ/گزارش بدونِ هیچ هزینه‌ای روی رشتهٔ اصلی. شکستِ ورکر → فال‌بکِ مسیرِ قدیمی؛ خروجِ فرآیند → `persistStoreSync` + `flushSync`.
+- **تازگیِ داده:** تضمینِ سخت با نسخه‌ها — نوشتنِ تازه همیشه پیش از op بعدی به ورکر می‌رسد (آزمون‌های W9-5/W9-6d: نوشتنِ نشانگر → بکاپِ فوری شاملِ نشانگر؛ ساختِ کلاس با REST → شمارشِ گزارش همان لحظه +۱).
+- **اعداد (سندباکس، store دمو ۵٫۶MB):** بلاکِ رشتهٔ اصلی در تیکِ persist: ‏~۴۶ms → max ‏۱۶٫۸ms (فقط clone)؛ در `POST /api/admin/backup`: ‏~۴۶ms هر درخواست → **max ‏۰٫۶ms** در ۸ درخواستِ پشت‌هم. استاتیک: ‏`readFileSync` ‏~۲MB در هر درخواست → خواندنِ async + کشِ mtime با سقفِ بایت. مستندات: `docs/WAVE9_PERFORMANCE.md` (+ کپیِ `reza/`).
+- **فایل‌ها:** جدید: `server/worker-service.js`، `server/workers/heavy.js`، `server/static-cache.js`، `server/public-report-core.js` (هستهٔ مشترکِ endpoint/ورکر)، `tests/wave9-performance.js` (۳۹/۳۹)، `docs/WAVE9_PERFORMANCE.md`، `docs/NATIONAL_BASELINE_PART4.md`. تغییر: `server/index.js` (persist/استاتیک/سیم‌کشی)، `server/admin.js` (بکاپ از ورکر؛ فال‌بکِ `backupNowInline`)، `server/public-report.js` (ورکر + فال‌بک)، `server/audit.js` (`PAYESH_AUDIT_ASYNC=1` — نویسندهٔ پس‌زمینه؛ پیش‌فرض sync برایِ سازگاریِ آزمون‌ها)، `server/cache.js` (L1 محدود: سقف/LRU/TTL + `l1Stats`)، `docs/DEPLOY.md` (۳ متغیرِ تازه)، Progress Tracker (Wave 0 ✅ / Wave 9 🟡).
+- **گیت‌ها:** `tests/wave9-performance.js` **39/39** ✅؛ `smoke` ‏**۵۴۷/۵۴۷** ✅؛ `check-authz` ‏**۰** ✅؛ `secret-scan` ‏**۱۱/۱۱** ✅؛ رگرسیونِ هدفمند: server1 (31/31)، server6/7/8/9، server14-gc (+جهش‌های GC ‏4/4 کشته)، server18 (55)، security2 (25)، public-security (10/10)، audit (47/47)، api/runner (7/7) — همه سبز.
+- **رگرسیونِ کامل** (`scripts/run-all-tests.sh`): ‏**۲۲۳ سبز / ۷ قرمز** (۳۲ دقیقه در این سندباکس). هر ۷ قرمز با A/B روی خطِ پایهٔ دست‌نخوردهٔ `781a471` (worktree) راستی‌آزمایی شد — **همگی پیش‌موجود/محیطی، صفر رگرسیون از این دور**: sync-atomic-batch (+جهش‌هایش: نیاز به PostgreSQL واقعی؛ جهش‌ها خودشان ۵/۵ کشته)؛ xss-guard (‏X2b اسکنِ document.write سمتِ کلاینت)؛ rate-limit-mutations (لنگرِ کهنهٔ M2)؛ otp-ratelimit-mutations (لنگرهای کهنهٔ M3–M6)؛ server-mutations (M1/M14/M15)؛ tracing-performance (فقط زیرِ بارِ موازی قرمز — تکی ۷/۷ سبز).
+- **وضعیتِ شناخته‌شدهٔ پیش‌موجود (بی‌ربط به این دور):** در `tests/server-mutations.js` جهش‌های M1/M14/M15 روی خطِ پایهٔ `781a471` هم زنده‌مانده/الگوشان گم‌اند (۱۷/۲۰ قبل و بعدِ Wave 9 یکسان — با `git stash` راستی‌آزمایی شد)؛ M16–M20 (فایل‌هایِ لمس‌شده) همگی کشته می‌شوند. نیازمند مرورِ جداگانه در دورِ بعد.
+- **انکرهای جهشِ حفظ‌شده:** خطوطِ هدفِ جهش در `index.js`/`admin.js` (M16/M17/M18 و `const gc = gcStore();` — ترتیبِ تعریفِ `persistStore` قبل از `persistStoreSync` عمدی است تا M4ِ جهشِ GC همچنان کشته شود) دست‌نخورده ماندند.
+
+
+
 ## چت ۴: رفع مجدد کانفلیکت پی‌آر ۳۶ با main جدید — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **وضعیت:** پس از مرجِ پی‌آرهای ۳۹ و ۴۱، `feat/redis-cluster-chat4` دوباره با main ادغام شد؛ تنها کانفلیکت `HANDOFF.md` بود (هر دو طرف حفظ شد) — `server/redis.js` (کلاستر/سنیتنل + گیتِ ریدیِ ‏P0-13)، `schema.sql` و کد سرور خودکار ادغام شدند. گیت‌ها: ‏smoke ۵۴۷/۵۴۷ · check-authz=0 · نشت‌یاب ۱۱/۱۱ · بیلد‌چک ✅ · کلاستر/سنیتنل ۷/۷ · پشتیبان ۸/۸. کامیتِ `5a86ccb` پوش و با `ls-remote` تأیید شد.
@@ -215,7 +258,6 @@ DB-native کوئری/پجینگ (`server/dbquery.js`) + سیم‌کشیِ `stude
 **پیکربندی:** `PAYESH_WORKER_INTERVAL_MS` (پیش‌فرض ۱۰۰۰) · `PAYESH_WORKER_MAX_RETRIES` (پیش‌فرض ۵).
 **گیت‌ها:** ‏smoke ۵۴۷/۵۴۷ · check-authz=0 · secret-scan ۱۱/۱۱ · server16 ‏۳۹/۳۹ · wave8 ‏۱۴/۱۴ · جهش‌ها ۵/۵.
 **بعدی:** ادغام به `main` با تأیید ناظر ارشد (اصل هشتم)؛ هندلرهای بعدی (گزارش/اعلان) طبق راهنمای سند.
-
 ## چت ۱: Wave 0 / Part 3 — Baseline دیتابیس و کش — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **وضعیت:** اندازه‌گیری baseline دیتابیس/کش بدون تغییر کد پروژه انجام شد و در `docs/NATIONAL_BASELINE_PART3.md` ثبت شد؛ کپی همگام در `reza/` قرار گرفت. Progress Tracker برای Wave 0 به‌روز شد: Partهای ۱، ۲ و ۳ کامل‌اند و Part 4 باقی است.
@@ -414,7 +456,6 @@ academic-years **۹/۹** + جهش **۵/۵** · exam-types **۲۷/۲۷** + جهش
 **گیت‌ها:** ‏smoke ۵۴۷/۵۴۷ · check-authz=0 · secret-scan ۱۱/۱۱ · server16 ‏۳۹/۳۹ · authz-model ۲۴۸/۲۴۸ · wave5 ‏۲۰/۲۰ · جهش‌ها ۵/۵.
 **بعدی:** ادغام به `main` با تأیید ناظر ارشد (اصل هشتم).
 
-## چت ۳: سبز شدن CI پی‌آر ۱۱ (رفع ۳ تست زنگ + ماتریس صادقانهٔ Node 22) — ۱۹/۰۶/۱۴۰۵
 
 **وضعیت:** کامیت `fix(ci)` روی `feat/farnaz-phase1` (پی‌آر ۱۱). گیت‌های محلی سبز (Node ‏22.23.2‏ + ‏jsdom 30.0.1‏): ‏run.js ۳۵/۳۵‏، ‏smoke ۵۴۷/۵۴۷‏، ‏check-authz=0‏، ‏entry-gpa/dorm-kind‏ کامل + جهش‌ها ‏۶/۶‏ و ‏۵/۵‏.
 
