@@ -583,6 +583,31 @@
    "upd": [],
    "del": []
   },
+  "donations": {
+   "fields": [
+    "amount",
+    "created_at",
+    "date",
+    "description",
+    "donor_name",
+    "id",
+    "registered_by",
+    "school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
   "dojo_types": {
    "fields": [
     "created_at",
@@ -1457,6 +1482,31 @@
     "superadmin"
    ]
   },
+  "safety_drills": {
+   "fields": [
+    "created_at",
+    "date",
+    "id",
+    "notes",
+    "participant_count_staff",
+    "participant_count_students",
+    "registered_by",
+    "school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
   "schedule": {
    "fields": [
     "class_id",
@@ -1548,6 +1598,7 @@
     "phone",
     "place_rules",
     "province_id",
+    "public_goals",
     "shift",
     "type",
     "updated_at",
@@ -1622,6 +1673,31 @@
     "created_at",
     "id",
     "school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "staff_attendance": {
+   "fields": [
+    "created_at",
+    "date",
+    "id",
+    "note",
+    "registered_by",
+    "school_id",
+    "staff_id",
+    "status",
     "updated_at"
    ],
    "ins": [
@@ -1891,6 +1967,31 @@
    ],
    "del": [
     "teacher",
+    "superadmin"
+   ]
+  },
+  "training_courses": {
+   "fields": [
+    "created_at",
+    "date",
+    "hours",
+    "id",
+    "school_id",
+    "staff_id",
+    "status",
+    "title",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
     "superadmin"
    ]
   },

@@ -104,7 +104,7 @@ test('P3 جلسه‌ها به‌تفکیک نوع + آخرین تاریخ (با�
 
 test('P4 بومِ مدرسه نمایش داده می‌شود (و مدرسهٔ بی‌بوم، بخش ندارد)', () => {
   asOut();
-  W(`update('schools',2,{boom_goals:'هدف عمومی نمایشی'})`);
+  W(`update('schools',2,{boom_goals:'هدف عمومی نمایشی',public_goals:1})`);
   W(`S.filters.pubschool='2';render()`);
   assert(pubText().includes('هدف عمومی نمایشی'), 'بوم مدرسهٔ ۲ نمایش داده نشد');
   W(`S.filters.pubschool='1';render()`);

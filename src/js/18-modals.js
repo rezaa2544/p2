@@ -98,6 +98,7 @@ function schoolModal(s){
     <div id="m_branch_box" style="display:${s.level==='متوسطه دوم'?'block':'none'}">${branchPicker(s)}</div>
     ${f('آدرس',`<textarea class="input" id="m_addr" rows="2">${esc(s.address||'')}</textarea>`)}
     ${f('🎯 برنامه ویژه (بوم) — اهداف سالانه',`<textarea class="input" id="m_boom" rows="3">${esc(s.boom_goals||'')}</textarea>`)}
+    <label class="row" style="gap:6px;cursor:pointer;margin:-4px 0 10px"><input type="checkbox" id="m_boom_pub" ${s.public_goals?'checked':''}/> نمایش اهداف در گزارش عمومی (بدون ورود)</label>
     <div class="sec-title">👤 مشخصات مدیر مدرسه ${mgr?'':'<span class="small muted">(حساب کاربری او ساخته می‌شود)</span>'}</div>
     <div class="grid g2">
       ${f('نام و نام خانوادگی'+(s.id?'':' *'),inp('mg_name',mgr?mgr.full_name:''))}
@@ -112,7 +113,8 @@ function boomModal(sid){
   const s=byId('schools',Number(sid))||{};
   openModal(modalTpl('🎯 برنامه ویژه مدرسه (بوم) — '+esc(s.name||''),
    `${f('اهداف سالانه (هر خط یک هدف)',`<textarea class="input" id="boom_goals" rows="6" placeholder="مثلاً:\nکسب رتبه اول منطقه در المپیاد ریاضی\nراه‌اندازی آزمایشگاه رباتیک" style="line-height:1.9">${esc(s.boom_goals||'')}</textarea>`)}
-    <div class="small muted">حداکثر ۲۰۰۰ نویسه. خالی گذاشتن = پاک شدن برنامه.</div>`
+    <div class="small muted">حداکثر ۲۰۰۰ نویسه. خالی گذاشتن = پاک شدن برنامه.</div>
+    <label class="row" style="gap:6px;cursor:pointer;margin-top:8px"><input type="checkbox" id="boom_pub" ${s.public_goals?'checked':''}/> نمایش اهداف در گزارش عمومی (بدون ورود)</label>`
    ,'school-boom-save'));
   window._boomSid=Number(sid);
 }

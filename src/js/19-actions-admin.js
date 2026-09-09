@@ -67,6 +67,7 @@ function adminActions(e, el, id, a, rawId){
        level:V('m_level'),type:V('m_type')||'عادی',gender:V('m_gender'),shift:V('m_shift')||'صبح',
        capacity:Number(V('m_cap'))||300,
        active:Number(V('m_active')),address:V('m_addr'),boom_goals:V('m_boom'),
+       public_goals:($('#m_boom_pub')&&$('#m_boom_pub').checked)?1:0,
        /* دور ۶۵ بند روزهای کاری: روزهای روشن‌شده در مودال */
        work_days:$$('.m-wd:checked').map(x=>Number(x.value)).sort((a,b)=>a-b),
        /* Round 77: excuse window (minutes after bell end) */
@@ -107,7 +108,7 @@ function adminActions(e, el, id, a, rawId){
      if(S.user.role!=='superadmin'&&sid!==S.user.school_id){toast('فقط مدرسهٔ خودتان','err');return;}
      const g=V('boom_goals')||'';
      if(invalid('boom_goals',g.length>2000,'حداکثر ۲۰۰۰ نویسه'))return;
-     update('schools',sid,{boom_goals:g});
+     update('schools',sid,{boom_goals:g,public_goals:($('#boom_pub')&&$('#boom_pub').checked)?1:0});
      closeModal();toast('برنامه ویژه ذخیره شد','ok');render();},
    'user-new'(){userModal(null);},
    'user-edit'(){userModal(byId('users',id));},
