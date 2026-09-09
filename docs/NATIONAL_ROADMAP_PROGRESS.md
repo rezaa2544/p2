@@ -8,7 +8,7 @@
 |---:|---|---|---|
 | 0 | Baseline و Freeze | 🟡 | شروع شد — بخش ۱ انجام شد: tag، تست‌های فعلی و سند کلی baseline؛ منتظر Partهای ۲ تا ۴ |
 | 1 | PostgreSQL Source of Truth [P0] | ⏳ | در انتظار شروع — انتقال مسیرهای production به PostgreSQL و حذف store از منبع حقیقت |
-| 2 | Database Engineering | ⏳ | در انتظار شروع — migrations نسخه‌دار، constraints، ID صحیح، transaction و OCC |
+| 2 | Database Engineering | ✅ | کامل شد — migrations نسخه‌دار، rollback، Identity IDs، constraints، transaction در سه مسیر حیاتی و OCC SQL با 409 |
 | 3 | Query و Performance [P0] | ⏳ | در انتظار شروع — DB-native کردن endpointهای پرترافیک، pagination و index بر اساس plan |
 | 4 | Sync / A01 | ⏳ | در انتظار شروع — database-native کردن Pull/Push، tombstone، cursor و OCC/transaction |
 | 5 | Authorization و Tenant Isolation [P0] | ⏳ | در انتظار شروع — یکپارچه‌سازی policy برای REST/Sync و scope چندسطحی |

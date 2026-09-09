@@ -109,7 +109,10 @@ function createGradeRoutes(ctx) {
     store.grades.push(newGrade);
     markDirty();
 
-    if (db && typeof db.persistOp === 'function') {
+    if (db && typeof db.persistOpsBatch === 'function') {
+      /* Wave 2: مسیر حیاتی ثبت نمره از transaction مشترک db.persistOpsBatch عبور می‌کند. */
+      await db.persistOpsBatch([{ c: 'grades', t: 'ins', data: newGrade }]);
+    } else if (db && typeof db.persistOp === 'function') {
       await db.persistOp({ c: 'grades', t: 'ins', data: newGrade });
     }
 
@@ -145,7 +148,16 @@ function createGradeRoutes(ctx) {
     bump(grade); /* P0-18 */
 
     markDirty();
-    if (db) await db.persistOp({ c: 'grades', t: 'upd', data: grade });
+    try {
+      if (db && typeof db.persistOpsBatch === 'function') {
+        await db.persistOpsBatch([{ c: 'grades', t: 'upd', id: grade.id, data: grade, base_version: body.base_version !== undefined ? body.base_version : body.version }]);
+      } else if (db) {
+        await db.persistOp({ c: 'grades', t: 'upd', data: grade });
+      }
+    } catch (e) {
+      if (e && e.status === 409) return { status: 409, body: { ok: false, code: 'conflict', message: 'نمره هم‌زمان تغییر کرده است' } };
+      throw e;
+    }
 
     audit('grade_updated', { user_id: user.id, grade_id: grade.id, score: grade.score, version: grade.version });
     return { status: 200, body: { ok: true, data: grade } };
