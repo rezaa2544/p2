@@ -14,6 +14,15 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۱: Wave 0 / Part 3 — Baseline دیتابیس و کش — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** اندازه‌گیری baseline دیتابیس/کش بدون تغییر کد پروژه انجام شد و در `docs/NATIONAL_BASELINE_PART3.md` ثبت شد؛ کپی همگام در `reza/` قرار گرفت. Progress Tracker برای Wave 0 به‌روز شد: Partهای ۱، ۲ و ۳ کامل‌اند و Part 4 باقی است.
+
+- **اندازه‌گیری DB:** `server/db.js` در sandbox با `DATABASE_URL` خالی روی driver حافظه‌ای بالا آمد؛ queryهای مهم به‌صورت SQL-shape simulation روی JSON demo store اندازه‌گیری و محدودیت نبود PostgreSQL واقعی صریح ثبت شد.
+- **اندازه‌گیری Cache:** `REDIS_URL` تنظیم نبود و Redis واقعی فعال نشد؛ hit/miss فقط برای fallback حافظه‌ای و L1 bootstrap cache ثبت شد و محدودیت distributed Redis مستند شد.
+- **Sync throughput:** route واقعی `POST /api/sync` با server واقعی و temp store اندازه‌گیری شد؛ batchهای ۱/۵۰/۲۵۰/۵۰۰ همگی `200` بودند؛ batch ۵۰۰ حدود `9706.5 records/sec` در sandbox ثبت شد.
+- **تست‌ها:** `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+
 ## چت ۱: Wave 0 / Part 2 — Baseline عملکرد سرور و API — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **وضعیت:** اندازه‌گیری baseline عملکرد سرور/API بدون تغییر کد پروژه انجام شد و در `docs/NATIONAL_BASELINE_PART2.md` ثبت شد؛ کپی در `reza/` قرار گرفت. Progress Tracker برای Wave 0 به‌روز شد: Partهای ۱ و ۲ کامل‌اند و Partهای ۳ و ۴ هنوز باقی‌اند.
