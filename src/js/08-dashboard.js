@@ -16,7 +16,11 @@ function viewDashboard(){
   if(u.role==='superadmin'||u.role==='manager')
     return adminDash()
       + (typeof notifyDailyCard==='function'?notifyDailyCard():'')
+      + (typeof visitorDashCard==='function'?visitorDashCard():'') /* E.9 */
       + annCard();
+  /* نگهبان (E.9): داشبوردش میزِ پذیرش است */
+  if(u.role==='guard')
+    return (typeof visitorDashCard==='function'?visitorDashCard():'') + annCard();
   if(u.role==='teacher')return teacherDash()+annCard();
   /* مشاور: نه داشبورد مدیر (دادهٔ سراسری مدرسه) نه داشبورد ولی —
      داشبورد خودش، مبتنی بر صف ارجاع */

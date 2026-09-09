@@ -150,8 +150,11 @@ function generate(){
          باشد. تاریخِ امروز روی همان روز هفتهٔ زنگ است. */
       if(school.id===1){
         const dow0=(new Date(todayISO()+'T12:00:00').getDay()+1)%7;
-        const dow=dow0<=5?dow0:0;
-        const dt=dow0<=5?todayISO():addDaysISO(todayISO(),1);
+        /* هفتهٔ مدرسه پنج‌روزه است (شنبه..چهارشنبه = 0..4)؛ روی پنجشنبه (۵) و
+           جمعه (۶) زنگ روزِ جاری در جدول نیست و `slot` undefined می‌شد →
+           اولین روز هفته (شنبه) انتخاب می‌شود. (رفع خطای دمو در پنجشنبه) */
+        const dow=dow0<=4?dow0:0;
+        const dt=dow0<=4?todayISO():addDaysISO(todayISO(),dow0===5?2:1);
         const slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.day===dow&&x.period===2);
         const sub=teachers.find(t=>t.id!==slot.teacher_id)||teachers[0];
         add('substitutions',{school_id:school.id,schedule_id:slot.id,sub_teacher_id:sub.id,date:dt,created_at:todayISO()});

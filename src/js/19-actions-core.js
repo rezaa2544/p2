@@ -358,17 +358,22 @@ function coreActions(e, el, id, a, rawId){
    },
    /* ─────────────── مهمان‌ها (بند ۷) ─────────────── */
    'vis-new'(){
-     openModal(modalTpl('ثبت مهمان',
+     openModal(modalTpl('ثبت مراجع',
        f('نام *', inp('vis_name',''))
-       + f('هدف مراجعه', inp('vis_purpose','')),
+       + f('هدف مراجعه', inp('vis_purpose',''))
+       + f('فردِ ملاقات‌شونده (اختیاری)', inp('vis_person',''))
+       + f('شمارهٔ تماس (اختیاری)', inp('vis_phone',''))
+       + f('کد ملی (اختیاری)', inp('vis_nid','')),
        'vis-save'));
    },
    'vis-save'(){
-     const r = visitorRegister(V('vis_name'), V('vis_purpose'));
+     const r = visitorRegister(V('vis_name'), V('vis_purpose'),
+       {visiting_person:V('vis_person'), phone:V('vis_phone'), national_id:V('vis_nid')});
      if(!r.ok){ toast(r.msg,'err'); return; }
      closeModal(); toast('مهمان ثبت شد — ساعت ورود: ' + faD(new Date().toTimeString().slice(0,5)),'ok');
      render();
    },
+   'vis-clear'(){ S.filters.visQ=''; S.filters.visDate=''; S.page=1; render(); },
    'vis-out'(){
      const r = visitorCheckout(Number(id));
      if(!r.ok){ toast(r.msg,'err'); return; }
@@ -1880,6 +1885,11 @@ document.addEventListener('change',e=>{
      یا قسمت‌هایِ تئوری/عملی (gradeKindToggle در 18-modals). */
   if(id==='g_kind'){
     if(typeof gradeKindToggle==='function')gradeKindToggle(e.target.value);
+    return;
+  }
+  /* E.9 — فیلترِ تاریخِ ورود در صفحهٔ مراجعین (input date) */
+  if(id==='vis_date'){
+    S.filters.visDate=e.target.value; S.page=1; render();
     return;
   }
   /* فرم مدرسه: تیک شاخه ⇒ باز یا بستهٔ شدن فهرست رشته‌های همان شاخه.
