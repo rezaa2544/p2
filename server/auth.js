@@ -11,7 +11,8 @@ const crypto = require('crypto');
 const { validate } = require('./validate');
 const rateLimit = require('./rate-limit'); /* R dist: شمارنده‌های Redis (اتمیک) */
 const revocation = require('./revocation'); /* ابطالِ توزیع‌شدهٔ نشست */
-const gdpr = require('./gdpr'); /* حقِ فراموشی */ /* R dist: شمارنده‌های Redis (اتمیک) */
+const gdpr = require('./gdpr'); /* حقِ فراموشی */
+const { getClientIp } = require('./client-ip'); /* F-AUTH-01: IP با آگاهی از پراکسیِ مورداعتماد */
 
 /* نرمال‌سازیِ سطحی برایِ اعتبارسنجی: trimِ رشته‌ها (کلاینت هم همین را
    می‌فرستد) — کلیدها دست‌نخورده می‌مانند تا unknown_field سنجیده شود. */
@@ -23,7 +24,7 @@ function shallowTrim(o){
 }
 
 /* ctx: { store, JWT_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS,
-          DEMO_CODE_ECHO, audit, isHttps(req) } */
+          DEMO_CODE_ECHO, audit, isHttps(req), trustedProxies } */
 function createAuth(ctx){
   const store = ctx.store;
   const JWT_SECRET = ctx.JWT_SECRET;
@@ -34,6 +35,9 @@ function createAuth(ctx){
   const audit = ctx.audit;
   const isHttps = ctx.isHttps;
   const otp = ctx.otp; /* R101: otp.json (distributed) */
+  /* F-AUTH-01: مجموعهٔ پراکسی‌های مورداعتماد؛ undefined یعنی پیش‌فرضِ loopback */
+  const TRUSTED = (ctx && ctx.trustedProxies instanceof Set) ? ctx.trustedProxies : undefined;
+  const CSRF_COOKIE = 'csrf_token'; /* F-CSRF-01: نام کوکیِ قابل‌خواندنِ توکن */
 
   /* ── JWT (hand-rolled HS256; alg is hard-coded, contract §2.2) ────
      R96 P0-3: aud/iss/iat validated; key >= 256 bit enforced at boot;
@@ -111,15 +115,42 @@ function createAuth(ctx){
     if(sv > 0 && (p.sv || 0) < sv) return null;
     const user = (store.users || []).find(u => u.id === p.sub);
     if(!user || !user.active) return null;
-    return Object.assign({ jti: p.jti, token: tok }, user);
+    const sess = Object.assign({ jti: p.jti, token: tok }, user);
+    sess.csrf = (typeof p.csrf === 'string') ? p.csrf : null; /* F-CSRF-01 */
+    return sess;
   }
   async function setSessionCookie(req, res, user){
     const jti = 'jt_' + crypto.randomBytes(12).toString('hex');
+    /* F-CSRF-01: توکنِ ضدّ-CSRF — هم claim داخلِ JWT، هم کوکیِ قابل‌خواندن */
+    const csrf = crypto.randomBytes(32).toString('hex');
     const now = Math.floor(Date.now() / 1000);
+    /* ادغام: sv (ابطالِ توزیع‌شدهٔ نشست — main) + csrf (F-CSRF-01 — شاخه) */
     const sv = await revocation.getSessionVersion(user.id);
-    const tok = jwtSign({ sub: user.id, role: user.role, school_id: user.school_id || null, iat: now, exp: now + SESSION_TTL_S, jti, sv });
+    const tok = jwtSign({ sub: user.id, role: user.role, school_id: user.school_id || null, iat: now, exp: now + SESSION_TTL_S, jti, sv, csrf });
     const secure = isHttps(req) ? 'Secure; ' : '';
-    res.setHeader('Set-Cookie', SESSION_NAME + '=' + tok + '; ' + secure + 'HttpOnly; SameSite=Lax; Path=/; Max-Age=' + SESSION_TTL_S);
+    res.setHeader('Set-Cookie', [
+      SESSION_NAME + '=' + tok + '; ' + secure + 'HttpOnly; SameSite=Lax; Path=/; Max-Age=' + SESSION_TTL_S,
+      CSRF_COOKIE + '=' + csrf + '; ' + secure + 'SameSite=Lax; Path=/; Max-Age=' + SESSION_TTL_S
+    ]);
+  }
+  /* پاک‌سازیِ هر دو کوکی (نشست + ضدّ-CSRF) */
+  function clearSessionCookies(res){
+    res.setHeader('Set-Cookie', [
+      SESSION_NAME + '=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0',
+      CSRF_COOKIE + '=; SameSite=Lax; Path=/; Max-Age=0'
+    ]);
+  }
+  /* F-CSRF-01: X-CSRF-Token باید دقیقاً برابرِ claim نشست باشد.
+     خروجی: 'ok' | 'required' (سرآیند نیست) | 'mismatch' (نادرست/نشستِ قدیمیِ بی‌claim). */
+  function verifyCsrf(req, sess){
+    const want = (sess && typeof sess.csrf === 'string') ? sess.csrf : '';
+    const hdr = req && req.headers ? req.headers['x-csrf-token'] : '';
+    const got = (typeof hdr === 'string') ? hdr.trim() : '';
+    if(!got) return 'required';
+    const a = Buffer.from(got, 'utf8');
+    const b = Buffer.from(want, 'utf8');
+    if(!want || a.length !== b.length) return 'mismatch';
+    return crypto.timingSafeEqual(a, b) ? 'ok' : 'mismatch';
   }
 
   /* equal-time code check (contract §5.5.3: no timing oracle) */
@@ -145,9 +176,7 @@ function createAuth(ctx){
   const IP_LOGIN_MAX = _lim(process.env.PAYESH_LOGIN_IP_LIMIT, 10); /* logins / window per IP */
   const LOGIN_TRIES_MAX = _lim(process.env.PAYESH_LOGIN_TRIES, 5);  /* wrong codes before code dies */
   function clientIp(req){
-    const xf = req.headers && req.headers['x-forwarded-for'];
-    if(typeof xf === 'string' && xf) return xf.split(',')[0].trim().slice(0, 64);
-    return (req.socket && req.socket.remoteAddress) || 'local';
+    return getClientIp(req, TRUSTED) || 'local';
   }
   function hashCode(code, phone){
     return crypto.createHash('sha256').update(code + '|' + phone).digest('hex');
@@ -292,7 +321,7 @@ function createAuth(ctx){
       const v = jwtVerify(tok);
       if(!v.err){ store.__revoked_jti[v.payload.jti] = Date.now(); await revocation.revokeSession(v.payload.jti, Math.max(1, v.payload.exp - Math.floor(Date.now() / 1000))); audit('logout', { user_id: v.payload.sub, role: v.payload.role, school_id: v.payload.school_id, ip: clientIp(req), summary: 'خروج کاربر: ' + v.payload.sub }); if(ctx.markDirty) ctx.markDirty(); }
     }
-    res.setHeader('Set-Cookie', SESSION_NAME + '=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
+    clearSessionCookies(res);
     sendJson(res, 200, { ok: true });
   }
 
@@ -301,17 +330,53 @@ function createAuth(ctx){
      داده‌های نهادی (حضور/نمرات/انضباط) متعلق به مدرسه/دانش‌آموز است و می‌ماند.
      نشست‌های باز خودبه‌خود باطل می‌شوند: sessionFrom کاربر را پیدا نمی‌کند.
      آدیت فقط user_id/role — هرگز phone/nid (قفلِ قرارداد). */
-  async function apiDeleteAccount(req, res){
+  /* ادغام: بدنهٔ {code} برای احرازِ مجدّد (شاخه) + نشستِ ناهمگام با
+     ابطالِ توزیع‌شده (main) */
+  async function apiDeleteAccount(req, res, body){
     const s = await sessionFrom(req);
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
+    /* F-CSRF-01: احرازِ مجدّد با رمزِ یک‌بارمصرف — بدنه فقط {code}؛ کد باید
+       با همان شماره‌ای گرفته شده باشد که در نشست است؛ پس از مصرف می‌سوزد. */
+    const v = validate(shallowTrim(body), { fields: { code: { type: 'code' } }, required: ['code'] });
+    if(!v.ok){
+      if(v.kind === 'unknown_field') return sendJson(res, 400, { ok: false, code: 'unknown_field', field: v.field });
+      return sendJson(res, 400, { ok: false, code: 'missing_fields' });
+    }
+    const code = String(body.code).trim();
     const uid = s.id;
-    /* حقِ فراموشی (gdpr.js): همان پاک‌سازی + ابطالِ همهٔ نشست‌ها. */
+    const me = (store.users || []).find(u => Number(u.id) === Number(uid));
+    const myPhone = me ? String(me.phone || '').replace(/[\s\-()]/g, '') : '';
+    const deny = (msg) => {
+      audit('account_delete_denied', { reason: msg, user_id: uid, role: s.role, school_id: s.school_id, ip: clientIp(req), summary: 'ردِّ حذف حساب: ' + msg });
+      return sendJson(res, 401, { ok: false, code: msg });
+    };
+    if(!myPhone) return deny('bad_code');
+    otp.reloadIfChanged();
+    const rec = otp.data.codes[myPhone];
+    if(rec && (rec.tries || 0) >= LOGIN_TRIES_MAX) delete otp.data.codes[myPhone];
+    const okCode = codeRecOk(otp.data.codes[myPhone], code, myPhone, Date.now());
+    if(!okCode){
+      const r2 = otp.data.codes[myPhone];
+      if(r2){
+        r2.tries = (r2.tries || 0) + 1;
+        if(r2.tries >= LOGIN_TRIES_MAX) delete otp.data.codes[myPhone];
+      }
+      checkCodeSafe('dummy', 'dummy');
+      otp.save();
+      return deny('bad_code');
+    }
+    const recOk = otp.data.codes[myPhone];
+    if(!recOk || recOk.user_id !== me.id){ otp.save(); return deny('bad_code'); }
+    delete otp.data.codes[myPhone]; /* مصرفِ یک‌بار — بازپخشِ کد ناممکن */
+    otp.save();
+    /* حقِ فراموشی (gdpr.js — main): پاک‌سازی کامل‌تر + ابطالِ همهٔ نشست‌ها.
+       جایگزینِ purge دستیِ شاخه شد تا یک منبعِ حقیقت برایِ پاک‌سازی بماند. */
     const purged = gdpr.eraseUserData(store, uid);
     await gdpr.eraseUserSessions(uid, s.jti, SESSION_TTL_S);
     audit('account_deleted', { user_id: uid, role: s.role, school_id: s.school_id, purged: purged, ip: clientIp(req), summary: 'حذف کامل حساب کاربری: ' + uid + ' (' + s.role + ')' });
     if(ctx.markDirty) ctx.markDirty();
-    /* نشستِ فعلی هم همین حالا می‌میرد (cookie پاک) */
-    res.setHeader('Set-Cookie', SESSION_NAME + '=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
+    /* نشستِ فعلی هم همین حالا می‌میرد (هر دو کوکی پاک) */
+    clearSessionCookies(res);
     sendJson(res, 200, { ok: true, deleted: true });
   }
 
@@ -320,6 +385,6 @@ function createAuth(ctx){
     res.end(JSON.stringify(obj));
   }
 
-  return { jwtSign, jwtVerify, sessionFrom, setSessionCookie, checkCodeSafe, apiSendCode, apiLogin, apiMe, apiLogout, apiDeleteAccount };
+  return { jwtSign, jwtVerify, sessionFrom, setSessionCookie, verifyCsrf, checkCodeSafe, apiSendCode, apiLogin, apiMe, apiLogout, apiDeleteAccount };
 }
 module.exports = { createAuth };

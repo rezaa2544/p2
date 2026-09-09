@@ -18,10 +18,17 @@ const ROOT = path.join(__dirname, '..');
 const PORT = 8998;
 const BASE = `http://127.0.0.1:${PORT}`;
 
+/* F-CSRF-01: نگهبانِ مرکزیِ CSRF سرور، جهش‌های احراز‌شده را بدونِ
+   X-CSRF-Token رد می‌کند. تست هم مثلِ مرورگر عمل می‌کند: کوکیِ csrf_token
+   را از شیشهٔ کوکی می‌خواند و در سرآیند بازمی‌گرداند (double-submit). */
+const csrfHdr = (c) => { const m = /(?:^|;\s*)csrf_token=([^;]+)/.exec(String(c || '')); return m ? { 'X-CSRF-Token': m[1] } : {}; };
+const jarOf = (h) => (Array.isArray(h) ? h.join(', ') : String(h || ''))
+  .split(/,(?=\s*[A-Za-z0-9_!#$%&'*+\-.^`|~]+=)/)
+  .map((c) => c.split(';')[0].trim()).filter(Boolean).join('; ');
 function http(method, url, body, cookie) {
   return fetch(BASE + url, {
     method,
-    headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) },
+    headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}), ...csrfHdr(cookie) },
     body: body ? JSON.stringify(body) : undefined,
   }).then(async (r) => ({ status: r.status, json: await r.json().catch(() => ({})), hdr: r.headers.get('set-cookie') || '' }));
 }
@@ -66,7 +73,7 @@ try {
     const sc = await http('POST', '/api/auth/send-code', { phone: u.phone });
     const code = sc.json.demo_code || sc.json.code || '000000';
     const lg = await http('POST', '/api/auth/login', { phone: u.phone, code, national_id: u.national_id });
-    return lg.hdr.split(';')[0];
+    return jarOf(lg.hdr);
   };
   const mgrC = await login(mgrU);
   const mgr2C = await login(mgr2);

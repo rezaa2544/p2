@@ -35,10 +35,12 @@ delete process.env.PAYESH_SMS_MOCK_FAIL;
 const { server, store } = require(path.join(ROOT, 'server', 'index.js'));
 let BASE = null;
 
+const CSRF_JAR = {}; /* F-CSRF-01: نگاشتِ نشست ← توکن (تزریقِ خودکار) */
 async function req(p, m = 'GET', body = null, cookie = null){
   const h = {};
   if(body !== null) h['Content-Type'] = 'application/json';
   if(cookie) h['Cookie'] = cookie;
+  if(cookie && CSRF_JAR[cookie]) h['X-CSRF-Token'] = CSRF_JAR[cookie];
   const r = await fetch(BASE + p, { method: m, headers: h, body: body === null ? null : JSON.stringify(body) });
   const t = await r.text();
   let j = null; try { j = JSON.parse(t); } catch (e) {}
@@ -47,6 +49,8 @@ async function req(p, m = 'GET', body = null, cookie = null){
 function cookieOf(r){
   const c = r.headers.get('set-cookie') || '';
   const m = c.match(/payesh_session=[^;]+/);
+  const cm = c.match(/csrf_token=([^;]+)/);
+  if(m && cm) CSRF_JAR[m[0]] = cm[1];
   return m ? m[0] : null;
 }
 async function loginAs(user){

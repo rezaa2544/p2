@@ -12,6 +12,7 @@
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
+const { createPolicy } = require('../policy');
 
 function createGradeRoutes(ctx) {
   const store = ctx.store;
@@ -20,11 +21,20 @@ function createGradeRoutes(ctx) {
   const deleter = ctx.deleter; /* P0-17 */
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
+  const policy = createPolicy({ store });
+  const COLL = 'grades';
+
+  function denied(pa){
+    return { status: pa.status, body: { ok: false, code: pa.code, message: pa.message } };
+  }
 
   function getGradesList(req, urlParams) {
     const user = req.user;
+    /* P0-03: هر endpoint از authorize می‌گذرد (خوانش: نقشِ شناخته‌شده) */
+    const pa = policy.authorize(user, 'read', { coll: COLL });
+    if(!pa.ok) return denied(pa);
     let list = (store.grades || []);
-    list = filterByScope(user, list);
+    list = filterByScope(user, list, store);
 
     const studentId = urlParams.get('student_id');
     if (studentId) {
@@ -73,10 +83,6 @@ function createGradeRoutes(ctx) {
 
   async function createGrade(req, body) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'teacher' && user.role !== 'superadmin') {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'شما مجاز به ثبت نمره نیستید' } };
-    }
-
     if (!body || body.student_id == null || body.subject_id == null || body.score == null) {
       return { status: 400, body: { ok: false, code: 'bad_request', message: 'شناسه دانش‌آموز، درس و نمره الزامی است' } };
     }
@@ -87,6 +93,14 @@ function createGradeRoutes(ctx) {
     }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
+    /* P0-03: نقش + قلمرو از policy مرکزی (همان هستهٔ sync) */
+    const pa = policy.authorize(user, 'ins', { coll: COLL }, {
+      student_id: Number(body.student_id), subject_id: Number(body.subject_id),
+      class_id: body.class_id != null ? Number(body.class_id) : null, school_id: schoolId,
+    });
+    if(!pa.ok) return denied(pa);
+    const pv = policy.validate('ins', COLL, body);
+    if(!pv.ok) return denied(pv);
     /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
     const nextId = await ids.nextId('grades', store.grades);
 
@@ -119,12 +133,14 @@ function createGradeRoutes(ctx) {
 
   async function updateGrade(req, id, body) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'teacher' && user.role !== 'superadmin') {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
-    }
+    /* P0-03: نقش + قلمرو از policy مرکزی (404-not-403 برایِ بیرونِ قلمرو) */
+    const pa = policy.authorize(user, 'upd', { coll: COLL, id: Number(id) }, body || {});
+    if(!pa.ok) return denied(pa);
+    const pv = policy.validate('upd', COLL, body || {});
+    if(!pv.ok) return denied(pv);
 
     const grade = (store.grades || []).find(g => g.id === Number(id));
-    if (!grade || !checkSchoolScope(user, grade.school_id)) {
+    if (!grade) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
 
@@ -153,9 +169,9 @@ function createGradeRoutes(ctx) {
 
   async function deleteGrade(req, id) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'teacher' && user.role !== 'superadmin') {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
-    }
+    /* P0-03: حذف هم تحتِ مجوزِ مدل است (مثلِ sync) — نه فقط نقشِ دستی */
+    const pa = policy.authorize(user, 'del', { coll: COLL, id: Number(id) });
+    if(!pa.ok) return denied(pa);
 
     const gradeIdx = (store.grades || []).findIndex(g => g.id === Number(id));
     if (gradeIdx === -1) {

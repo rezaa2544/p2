@@ -1090,6 +1090,18 @@ var Api = {
     };
     if(opts.body !== undefined) init.body = JSON.stringify(opts.body);
 
+    /* F-CSRF-01: روی جهش‌ها، توکنِ کوکیِ csrf_token در سرآیند می‌نشیند */
+    var cm = (init.method || 'GET').toUpperCase();
+    if(cm !== 'GET' && cm !== 'HEAD' && cm !== 'OPTIONS' && typeof document !== 'undefined'){
+      try{
+        var cparts = ('; ' + document.cookie).split('; csrf_token=');
+        if(cparts.length > 1){
+          var cval = decodeURIComponent(cparts[1].split(';')[0] || '');
+          if(cval) init.headers['X-CSRF-Token'] = cval;
+        }
+      }catch(e){}
+    }
+
     return fetch((absolute ? '' : API_BASE) + path, init).then(function(res){
       /* opts.raw: پاسخِ خام (status + body) — برای مسیرهای احراز که
          در خطا هم بدنهٔ معنادار دارند (مثل {code:'no_account'}) */
@@ -11199,7 +11211,7 @@ function viewPlans(){
 function buildBackup(){
   return {
     format: 'payesh-backup',
-    version: 3, /* دور ۱۰۰ (نقصِ ۵): نسخهٔ ۳ = دفترچهٔ دارایِ اسنپ‌شات (t:'snap') */
+    version: 2, /* دور ۱۰۰ (نقصِ ۵): نسخهٔ ۳ = دفترچهٔ دارایِ اسنپ‌شات (t:'snap') */
     created_at: new Date().toISOString(),
     created_by: S.user ? S.user.username : null,
     seed: (typeof SEED !== 'undefined') ? SEED : null,
@@ -19928,6 +19940,7 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
          resolve کردنِ اسکوپِ lexical (بسته‌هایِ let/constِ تک‌فایلی روی
          window نیستند). مجاز‌شده در lintِ xss-guard (X2a). */
       var miss = need.filter(function(n){
+        // eslint-disable-next-line security/detect-eval-with-expression -- شناسه‌های ثابتِ سخت‌کدشده (نه ورودی کاربر) برای resolve کردنِ اسکوپِ lexical؛ مجوزِ X2a
         try{ return typeof eval(n) !== 'function'; }catch(e){ return true; }
       }).map(function(n){ return { تابع:n }; });
       return miss.length
@@ -19956,6 +19969,7 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
                   'ROLE_FA','DIAG_CHECKS','BELL_PRESETS','FIELD_ALIASES'];
       /* همان استدلالِ بالایِ eval: شناسهٔ ثابتِ سخت‌کد شده (مجوزِ X2a) */
       var miss = need.filter(function(n){
+        // eslint-disable-next-line security/detect-eval-with-expression -- همان مجوزِ X2a: شناسهٔ ثابتِ سخت‌کدشده، فقط resolve اسکوپ
         try{ return eval(n) === undefined; }catch(e){ return true; }
       }).map(function(n){ return { جدول:n }; });
       return miss.length
@@ -29280,12 +29294,54 @@ function doDeleteAccount(){
   };
   if(!isSrv){ finish(); return; }
   if(typeof Api === 'undefined' || typeof Api.request !== 'function'){ finish(); return; }
-  Api.request('/api/auth/delete-account', { method: 'POST', raw: true }).then(function(r){
-    if(r && r.status === 200 && r.body && r.body.ok === true){ finish(); return; }
-    if(typeof toast === 'function')
-      toast('حذف از سرور ناموفق بود: ' + ((r && r.body && r.body.message) || 'خطای ناشناخته'), 'err');
-  }).catch(function(e){
-    if(typeof toast === 'function') toast('حذف از سرور ناموفق بود: ' + (e && e.message || 'خطا'), 'err');
+  /* F-CSRF-01: احرازِ مجدّد — کدِ پیامکی به شمارهٔ نشست، سپس حذف با همان کد */
+  var myPhone = (typeof S !== 'undefined' && S.user && S.user.phone) ? String(S.user.phone) : '';
+  if(!myPhone){
+    if(typeof toast === 'function') toast('برای حذف حساب، ابتدا دوباره وارد شوید', 'err');
+    return;
+  }
+  Api.request('/api/auth/send-code', { method: 'POST', body: { phone: myPhone }, raw: true }).then(function(r0){
+    if(!(r0 && r0.status === 200)){
+      if(typeof toast === 'function') toast('ارسال کد تأیید ناموفق بود', 'err');
+      return;
+    }
+    askDeleteCode(function(code){
+      Api.request('/api/auth/delete-account', { method: 'POST', body: { code: code }, raw: true }).then(function(r){
+        if(r && r.status === 200 && r.body && r.body.ok === true){ finish(); return; }
+        if(typeof toast === 'function')
+          toast('حذف از سرور ناموفق بود: ' + ((r && r.body && r.body.message) || 'خطای ناشناخته'), 'err');
+      }).catch(function(e){
+        if(typeof toast === 'function') toast('حذف از سرور ناموفق بود: ' + (e && e.message || 'خطا'), 'err');
+      });
+    });
+  }).catch(function(){
+    if(typeof toast === 'function') toast('ارسال کد تأیید ناموفق بود', 'err');
+  });
+}
+/* مودالِ ورودِ کدِ حذفِ حساب — عمداً بدونِ data-act (سیم‌کشی با id) تا
+   نقشهٔ مجوزهایِ اکشن‌ها دست‌نخورده بماند. */
+function askDeleteCode(fn){
+  if(typeof openModal !== 'function') return;
+  openModal('<div class="card-head"><h3>تأیید نهایی حذف حساب</h3><button class="icon-btn" id="delacc_x">✕</button></div>'
+    + '<div class="card-body"><p style="margin:0 0 10px;line-height:2">کد تأییدی که هم‌اکنون پیامک شد را وارد کنید تا حساب برای همیشه حذف شود.</p>'
+    + '<input class="input" id="delacc_code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="کد ۶ رقمی" style="text-align:center;letter-spacing:6px" /></div>'
+    + '<div class="card-head" style="border-bottom:none;border-top:1px solid var(--border);justify-content:flex-end">'
+    + '<button class="btn ghost" id="delacc_cancel">انصراف</button> '
+    + '<button class="btn danger" id="delacc_ok">حذف برای همیشه</button></div>');
+  var done = false;
+  var close = function(){ if(typeof closeModal === 'function') closeModal(); };
+  var cancel = function(){ if(done) return; done = true; close(); };
+  document.getElementById('delacc_x').addEventListener('click', cancel);
+  document.getElementById('delacc_cancel').addEventListener('click', cancel);
+  document.getElementById('delacc_ok').addEventListener('click', function(){
+    if(done) return;
+    var el = document.getElementById('delacc_code');
+    var code = el ? (el.value || '').trim() : '';
+    if(!/^\d{4,8}$/.test(code)){
+      if(typeof toast === 'function') toast('کد تأیید معتبر نیست', 'err');
+      return;
+    }
+    done = true; close(); fn(code);
   });
 }
 

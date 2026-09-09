@@ -27,6 +27,7 @@ function httpReq(port, method, p, body, cookie) {
     const data = body ? JSON.stringify(body) : null;
     const headers = { 'Content-Type': 'application/json' };
     if (cookie) headers['Cookie'] = cookie;
+    if (cookie && CSRF_JAR[cookie]) headers['X-CSRF-Token'] = CSRF_JAR[cookie];
     const req = http.request({ hostname: '127.0.0.1', port, path: p, method, headers }, (res) => {
       let b = '';
       res.on('data', (d) => (b += d));
@@ -37,11 +38,21 @@ function httpReq(port, method, p, body, cookie) {
     req.end();
   });
 }
+const CSRF_JAR = {}; /* F-CSRF-01: نگاشتِ نشست ← توکن (تزریقِ خودکار) */
 function cookieOf(h) {
   const sc = h['set-cookie'];
   if (!sc) return '';
-  const pair = sc[0].split(';')[0];
-  return pair;
+  let ck = '', csrf = '';
+  for (const c of sc) {
+    const kv = String(c).split(';')[0];
+    const i = kv.indexOf('=');
+    if (i > 0) {
+      if (!ck) ck = kv;
+      if (kv.slice(0, i) === 'csrf_token') csrf = kv.slice(i + 1);
+    }
+  }
+  if (ck && csrf) CSRF_JAR[ck] = csrf;
+  return ck;
 }
 
 async function bootServer(p, env) {

@@ -561,8 +561,8 @@ async function main() {
       W('window._edit.days[0]={start:"06:00",slots:[{kind:"lesson",min:25}]}');
       W('bellRenderDay(0)');
       const r = JSON.parse(W(`(()=>{
-        var copy0=document.querySelectorAll('.bell-day[data-day="0"] [data-act=bell-copy-prev]').length;
-        var b1=document.querySelector('.bell-day[data-day="1"] [data-act=bell-copy-prev]');
+        var copy0=document.querySelectorAll('.bell-day[data-day="0"] [data-act="bell-copy-prev"]').length;
+        var b1=document.querySelector('.bell-day[data-day="1"] [data-act="bell-copy-prev"]');
         if(!b1)return JSON.stringify({copy0:copy0,done:false});
         b1.click();
         var d1=window._edit.days[1];
@@ -583,7 +583,7 @@ async function main() {
       const r = JSON.parse(W(`(()=>{
         var rows=document.querySelectorAll('.bell-day[data-day="0"] .bell-edit-row');
         if(rows.length<3)return JSON.stringify({skip:true});
-        var btn=rows[2].querySelector('[data-act=bell-del]');
+        var btn=rows[2].querySelector('[data-act="bell-del"]');
         btn.click();
         return JSON.stringify(window._edit.days[0].slots.map(s=>s.kind));})()`));
       assert(!r.skip, 'سه ردیف زنگ در فرم نبود');

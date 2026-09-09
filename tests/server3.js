@@ -117,7 +117,8 @@ process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }
               const i = pair.indexOf('=');
               const k = pair.slice(0, i).trim();
               const v = pair.slice(i + 1).trim();
-              if (v === '' || /Max-Age=0/.test(c)) jar.delete(k); else jar.set(k, v);
+              if (v === '' || /Max-Age=0/.test(c)) { jar.delete(k); if (k === 'csrf_token') { try { w.document.cookie = 'csrf_token=; Max-Age=0'; } catch (e) {} } }
+              else { jar.set(k, v); if (k === 'csrf_token') { try { w.document.cookie = 'csrf_token=' + v; } catch (e) {} } }
             });
           } catch (e) {}
           return res;

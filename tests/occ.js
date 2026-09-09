@@ -61,10 +61,17 @@ async function main() {
     let log = '';
     child.stdout.on('data', d => (log += d)); child.stderr.on('data', d => (log += d));
 
+    /* F-CSRF-01: نگهبانِ مرکزیِ CSRF سرور، جهش‌های احراز‌شده را بدونِ
+       X-CSRF-Token رد می‌کند. تست هم مثلِ مرورگر عمل می‌کند: کوکیِ csrf_token
+       را از شیشهٔ کوکی می‌خواند و در سرآیند بازمی‌گرداند (double-submit). */
+    const csrfHdr = (c) => { const m = /(?:^|;\s*)csrf_token=([^;]+)/.exec(String(c || '')); return m ? { 'X-CSRF-Token': m[1] } : {}; };
+    const jarOf = (h) => (Array.isArray(h) ? h.join(', ') : String(h || ''))
+      .split(/,(?=\s*[A-Za-z0-9_!#$%&'*+\-.^`|~]+=)/)
+      .map((c) => c.split(';')[0].trim()).filter(Boolean).join('; ');
     const req = (method, p, body, cookie) => new Promise((resolve) => {
       const data = body ? JSON.stringify(body) : null;
       const r = http.request({ host: '127.0.0.1', port: PORT, path: p, method,
-        headers: Object.assign({ 'content-type': 'application/json' }, data ? { 'content-length': Buffer.byteLength(data) } : {}, cookie ? { cookie } : {}) },
+        headers: Object.assign({ 'content-type': 'application/json' }, data ? { 'content-length': Buffer.byteLength(data) } : {}, cookie ? Object.assign({ cookie }, csrfHdr(cookie)) : {}) },
         (res) => { let b = ''; res.on('data', d => (b += d)); res.on('end', () => {
           let j = null; try { j = JSON.parse(b); } catch (e) {}
           resolve({ status: res.statusCode, json: j, body: b, headers: res.headers });

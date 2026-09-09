@@ -87,13 +87,15 @@ async function main() {
 
   /* ── جارِ کوکی (کوکیِ نشست فقط در مرورگر/کلاینت می‌ماند) ── */
   const jar = { cookie: '' };
+  const jarMap = {};
   function parseCookies(h) {
     const sc = h.getSetCookie ? h.getSetCookie() : (h['set-cookie'] || []);
     for (const c of Array.isArray(sc) ? sc : [sc]) {
       const kv = String(c).split(';')[0];
       const i = kv.indexOf('=');
-      if (i > 0) jar.cookie = kv.slice(0, i) + '=' + kv.slice(i + 1);
+      if (i > 0) jarMap[kv.slice(0, i)] = kv.slice(i + 1);
     }
+    jar.cookie = Object.keys(jarMap).map((k) => k + '=' + jarMap[k]).join('; ');
   }
   const origin = 'http://127.0.0.1:' + port;
 
@@ -116,7 +118,7 @@ async function main() {
         for (const k of Object.keys(src)) headers[k.toLowerCase()] = src[k];
         if (jar.cookie && !headers['cookie'] && init.credentials !== 'omit') headers['cookie'] = jar.cookie;
         return nodeFetch(u, Object.assign({}, init, { headers, redirect: 'manual' }))
-          .then((res) => { parseCookies(res.headers); return res; });
+          .then((res) => { parseCookies(res.headers); try { if (jarMap['csrf_token']) window.document.cookie = 'csrf_token=' + jarMap['csrf_token']; } catch (e) {} return res; });
       };
       const ce = window.console.error.bind(window.console);
       window.console.error = (...a) => { consoleErrs.push(a.map(String).join(' ')); ce(...a); };

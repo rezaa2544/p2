@@ -12,6 +12,7 @@
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
+const { createPolicy } = require('../policy');
 
 function createAttendanceRoutes(ctx) {
   const store = ctx.store;
@@ -20,11 +21,20 @@ function createAttendanceRoutes(ctx) {
   const deleter = ctx.deleter; /* P0-17 */
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
+  const policy = createPolicy({ store });
+  const COLL = 'attendance';
+
+  function denied(pa){
+    return { status: pa.status, body: { ok: false, code: pa.code, message: pa.message } };
+  }
 
   function getAttendanceList(req, urlParams) {
     const user = req.user;
+    /* P0-03: هر endpoint از authorize می‌گذرد (خوانش: نقشِ شناخته‌شده) */
+    const pa = policy.authorize(user, 'read', { coll: COLL });
+    if(!pa.ok) return denied(pa);
     let list = (store.attendance || []);
-    list = filterByScope(user, list);
+    list = filterByScope(user, list, store);
 
     const date = urlParams.get('date');
     if (date) {
@@ -47,6 +57,12 @@ function createAttendanceRoutes(ctx) {
     } else if (user.role === 'parent') {
       const kids = (store.parent_links || []).filter(l => l.parent_id === user.id).map(l => l.student_id);
       list = list.filter(a => kids.includes(a.student_id));
+    } else if (user.role === 'teacher') {
+      /* P0-04: دبیر فقط حضورِ کلاس‌هایی که خودش درس می‌دهد (homeroom/schedule) */
+      const teacherClassIds = new Set();
+      (store.classes || []).filter(c => c.homeroom_teacher_id === user.id).forEach(c => teacherClassIds.add(c.id));
+      (store.schedule || []).filter(s => s.teacher_id === user.id).forEach(s => teacherClassIds.add(s.class_id));
+      list = list.filter(a => teacherClassIds.has(a.class_id));
     }
 
     list.sort((a, b) => (b.date || '').localeCompare(a.date || '') || a.id - b.id);
@@ -58,15 +74,18 @@ function createAttendanceRoutes(ctx) {
 
   async function createAttendance(req, body) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'teacher' && user.role !== 'superadmin') {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'شما مجاز به ثبت حضور و غیاب نیستید' } };
-    }
-
     if (!body || !body.student_id || !body.class_id || !body.date || !body.status) {
       return { status: 400, body: { ok: false, code: 'bad_request', message: 'اطلاعات کامل حضور و غیاب الزامی است' } };
     }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
+    /* P0-03: نقش + قلمرو از policy مرکزی (همان هستهٔ sync) */
+    const pa = policy.authorize(user, 'ins', { coll: COLL }, {
+      student_id: Number(body.student_id), class_id: Number(body.class_id), school_id: schoolId,
+    });
+    if(!pa.ok) return denied(pa);
+    const pv = policy.validate('ins', COLL, body);
+    if(!pv.ok) return denied(pv);
     /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
     const nextId = await ids.nextId('attendance', store.attendance);
 
@@ -97,12 +116,14 @@ function createAttendanceRoutes(ctx) {
 
   async function updateAttendance(req, id, body) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'teacher' && user.role !== 'superadmin') {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
-    }
+    /* P0-03: نقش + قلمرو از policy مرکزی (404-not-403 برایِ بیرونِ قلمرو) */
+    const pa = policy.authorize(user, 'upd', { coll: COLL, id: Number(id) }, body || {});
+    if(!pa.ok) return denied(pa);
+    const pv = policy.validate('upd', COLL, body || {});
+    if(!pv.ok) return denied(pv);
 
     const rec = (store.attendance || []).find(a => a.id === Number(id));
-    if (!rec || !checkSchoolScope(user, rec.school_id)) {
+    if (!rec) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'رکورد حضور و غیاب یافت نشد' } };
     }
 
@@ -124,9 +145,10 @@ function createAttendanceRoutes(ctx) {
 
   async function deleteAttendance(req, id) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'superadmin') {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط مدیر مجاز به حذف است' } };
-    }
+    /* P0-03: حذف هم تحتِ مجوزِ مدل است (مثلِ sync) — نه فقط نقشِ دستی.
+       توجه: مدل، delِ حضور را به manager/teacher/superadmin می‌دهد. */
+    const pa = policy.authorize(user, 'del', { coll: COLL, id: Number(id) });
+    if(!pa.ok) return denied(pa);
 
     const recIdx = (store.attendance || []).findIndex(a => a.id === Number(id));
     if (recIdx === -1) {

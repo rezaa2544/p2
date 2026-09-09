@@ -1,0 +1,35 @@
+# Ingress in front of the Payesh origin (POC — see docs/CDN_INTEGRATION_SETUP.md).
+# Traffic: users -> Cloudflare (worker.js edge cache) -> this ingress -> Service/payesh-api.
+# PREREQS (same P5 as docs/AUTO_SCALING_SETUP.md): Deployment/payesh-api,
+# Service/payesh-api:3000, and a real TLS secret. The secretName below is a
+# placeholder: replace with cert-manager / Cloudflare origin cert before apply.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: payesh-cdn-origin
+  labels:
+    app: payesh-api
+    tier: national-scale-poc
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffering: "on"
+    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
+    # NOTE: edge caching lives in cloudflare/worker.js, NOT here — this ingress
+    # only terminates TLS and routes to the origin. Do not add cache rules here
+    # (two cache layers with different TTLs = stale-content bugs).
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - payesh.example
+      secretName: payesh-origin-tls
+  rules:
+    - host: payesh.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: payesh-api
+                port:
+                  number: 3000

@@ -59,9 +59,12 @@ async function main() {
   chk('X1c esc round-trip (فارسی سالم می‌ماند)', W(`esc('پایشِ مدرسه')`) === 'پایشِ مدرسه');
 
   console.log('\n— X2: لینتِ کلاینت —');
-  /* document.write فقط در ۶ نقطهٔ ممهورِ «چاپِ رسید» (window.open + esc)
-     مجاز است — هر نقطهٔ جدید تست را می‌شکند تا مرور شود. */
-  const DW_ALLOW = { '20-communication-finance.js': 2, '24-edu-office.js': 2, '33-forms-sms.js': 1, '60-association.js': 1 };
+  /* document.write فقط در ۷ نقطهٔ ممهورِ «چاپِ رسید/گزارش» (window.open + esc)
+     مجاز است — هر نقطهٔ جدید تست را می‌شکند تا مرور شود.
+     نقطهٔ ۷ (ممهور ۱۴۰۵/۰۶/۱۸، سشن آرنا): pubrepPrint در 08-dashboard.js
+     (گزارش عمومی C.3 چت ۳) — داینامیک‌ها فقط esc(s.name) + اعداد fa()؛
+     بدون اسکریپت/URL/صفتِ کاربری؛ هم‌الگوی ۶ نقطهٔ قبلی. */
+  const DW_ALLOW = { '08-dashboard.js': 1, '20-communication-finance.js': 2, '24-edu-office.js': 2, '33-forms-sms.js': 1, '60-association.js': 1 };
   /* eval فقط برای resolveِ اسکوپِ lexical در خودتشخیصی: شناسه‌ها ثابتِ
      سخت‌کد شده‌اند (نه ورودی کاربر) — دو نقطهٔ ممهور. */
   const EVAL_ALLOW = { '42-self-diagnostics.js': 2 };

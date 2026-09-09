@@ -34,6 +34,7 @@ const { createAdmin } = require('./admin');
 const { createSms } = require('./sms');
 const { createConflicts } = require('./conflicts');
 const { createAudit, clientIp } = require('./audit');
+const { parseTrustedProxies } = require('./client-ip');
 const db = require('./db');
 const redis = require('./redis');
 const cache = require('./cache');
@@ -221,11 +222,14 @@ const JWT_PREV_SECRET = (process.env.PAYESH_JWT_SECRET_PREV || '').trim() || nul
 /* ── audit log (append-only, sanitized: no phone / nid / password) ───
    R96 P1-8 + Audit Hardening: outside store, 0600 mode, rotation on 1000 events / daily / 10MB */
 const AUDIT_MAX_BYTES = 10 * 1024 * 1024;
+/* F-AUTH-01: پراکسی‌های مورداعتماد (پیش‌فرض: loopback) — یک‌بار در بوت */
+const TRUSTED_PROXIES = parseTrustedProxies(process.env.PAYESH_TRUSTED_PROXIES);
 const auditLogger = createAudit({
   auditFile: AUDIT_FILE,
   auditDir: path.join(path.dirname(AUDIT_FILE), 'audit'),
   maxEvents: parseInt(process.env.PAYESH_AUDIT_MAX_EVENTS || '1000', 10),
-  maxBytes: AUDIT_MAX_BYTES
+  maxBytes: AUDIT_MAX_BYTES,
+  trustedProxies: TRUSTED_PROXIES
 });
 const audit = auditLogger.audit;
 
@@ -276,24 +280,31 @@ function readBody(req, limit){
   });
 }
 
-/* ── security headers (contract §5.6.1; CSP nonce per request §5.6.2) */
+/* ── security headers (contract §5.6.1; CSP nonce per request §5.6.2) ──
+   P5: HSTS با preload؛ CSP با nonceِ هر-درخواست؛ در development (هر چه
+   PAYESH_ENV=production نیست) «unsafe-eval» برایِ دیباگ اضافه می‌شود. */
+function buildCsp(nonce, isProd){
+  return "default-src 'self'; script-src 'self' 'nonce-" + nonce + "'" + (isProd ? "" : " 'unsafe-eval'") +
+    "; style-src 'self' 'nonce-" + nonce +
+    "'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+}
 function securityHeaders(res, nonce, https){
-  res.setHeader('Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'nonce-" + nonce + "'; style-src 'self' 'nonce-" + nonce +
-    "'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+  const isProd = process.env.PAYESH_ENV === 'production';
+  res.setHeader('Content-Security-Policy', buildCsp(nonce, isProd));
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
-  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
-  if(https) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  if(https) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
 }
 
 /* ── compose modules ───────────────────────────────────────────────── */
 /* R101: OTP + rate limits live in otp.json (distributed across instances)
    P0-15: وقتی ردیس فعال است، همان کلیدِ مشترکِ ردیس منبع حقیقت می‌شود
-   و فایل فقط فال‌بکِ توسعهٔ بدون ردیس است. */
+   و فایل فقط فال‌بکِ توسعهٔ بدون ردیس است.
+   ادغام: redis/cache از main + trustedProxies از شاخه (F-AUTH-01). */
 const otp = createOtpStore({ file: OTP_FILE, ttlMs: CODE_TTL_MS, store, markDirty, redis, cache });
-const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty, otp });
+const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty, otp, trustedProxies: TRUSTED_PROXIES });
 /* R97: همهٔ ماژول‌هایِ /api با sendJsonCounting می‌چرخند تا رد‌ها شمرده
    شوند؛ auth استثناست (سقفِ OTP سقفِ خودش را می‌سازد). */
 const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
@@ -378,11 +389,28 @@ const onRequest = async (req, res) => {
       const rdy = redis.ready();
       return sendJson(res, rdy ? 200 : 503, { ok: rdy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid, cache: redis.isRedis() ? 'redis' : (rdy ? 'memory-dev' : 'unavailable') });
     }
+    /* F-CSRF-01: نگهبانِ مرکزی — هر جهشِ /api (به‌جز send-code/login که
+       پیش‌احراز‌اند) با نشستِ معتبر باید X-CSRF-Token برابرِ claim نشست
+       داشته باشد وگرنه 403. بدونِ نشست، تصمیم با روتِ مقصد است (401 خودش). */
+    if(p.indexOf('/api/') === 0 && req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS'
+       && !(p === '/api/auth/send-code' && req.method === 'POST')
+       && !(p === '/api/auth/login' && req.method === 'POST')){
+      /* sessionFrom در main ناهمگام است (P0-xx) — بدونِ await همیشه
+         Promise صادق برمی‌گشت و نگهبان هرگز رد نمی‌کرد. */
+      const gs0 = await auth.sessionFrom(req);
+      if(gs0){
+        const csr = auth.verifyCsrf(req, gs0);
+        if(csr !== 'ok'){
+          audit('csrf_denied', { reason: csr, user_id: gs0.id, role: gs0.role, school_id: gs0.school_id, path: p, summary: 'ردِّ CSRF در ' + p });
+          return sendJson(res, 403, { ok: false, code: csr === 'required' ? 'csrf_required' : 'csrf_mismatch' });
+        }
+      }
+    }
     if(p === '/api/auth/send-code' && req.method === 'POST') return await auth.apiSendCode(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/auth/login'     && req.method === 'POST') return await auth.apiLogin(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/auth/me'        && req.method === 'GET')  return await auth.apiMe(req, res);
     if(p === '/api/auth/logout'    && req.method === 'POST') return await auth.apiLogout(req, res);
-    if(p === '/api/auth/delete-account' && req.method === 'POST') return await auth.apiDeleteAccount(req, res);
+    if(p === '/api/auth/delete-account' && req.method === 'POST') return await auth.apiDeleteAccount(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/sync'           && req.method === 'POST') return await sync.apiSync(req, res, await readBody(req, 1024 * 1024));
     if(p === '/api/sync/conflicts' && req.method === 'GET')  return await conflicts.apiList(req, res);
     if(p === '/api/sync/resolve-conflict' && req.method === 'POST') return await conflicts.apiResolve(req, res, await readBody(req, 4 * 1024));
@@ -416,6 +444,7 @@ const onRequest = async (req, res) => {
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = studentRoutes.getStudentsList(req, url.searchParams);
+        if(r && r.body !== undefined) return sendJson(res, r.status || 200, r.body); /* P0-03: authorize-read */
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/students' && req.method === 'POST'){
@@ -441,6 +470,7 @@ const onRequest = async (req, res) => {
       // /api/v1/classes & /api/v1/classes/:id
       if(p === '/api/v1/classes' && req.method === 'GET'){
         const r = classRoutes.getClassesList(req, url.searchParams);
+        if(r && r.body !== undefined) return sendJson(res, r.status || 200, r.body); /* P0-03: authorize-read */
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/classes' && req.method === 'POST'){
@@ -466,6 +496,7 @@ const onRequest = async (req, res) => {
       // /api/v1/attendance & /api/v1/attendance/:id
       if(p === '/api/v1/attendance' && req.method === 'GET'){
         const r = attendanceRoutes.getAttendanceList(req, url.searchParams);
+        if(r && r.body !== undefined) return sendJson(res, r.status || 200, r.body); /* P0-03: authorize-read */
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/attendance' && req.method === 'POST'){
@@ -487,6 +518,7 @@ const onRequest = async (req, res) => {
       // /api/v1/grades & /api/v1/grades/:id
       if(p === '/api/v1/grades' && req.method === 'GET'){
         const r = gradeRoutes.getGradesList(req, url.searchParams);
+        if(r && r.body !== undefined) return sendJson(res, r.status || 200, r.body); /* P0-03: authorize-read */
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/grades' && req.method === 'POST'){
@@ -508,6 +540,7 @@ const onRequest = async (req, res) => {
       // /api/v1/users & /api/v1/users/:id
       if(p === '/api/v1/users' && req.method === 'GET'){
         const r = userRoutes.getUsersList(req, url.searchParams);
+        if(r && r.body !== undefined) return sendJson(res, r.status || 200, r.body); /* P0-03: authorize-read */
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/users' && req.method === 'POST'){
@@ -625,4 +658,4 @@ if(require.main === module){
     }
   });
 }
-module.exports = { server, store, audit, isHttps, persistStore, db, redis, cache };
+module.exports = { server, store, audit, isHttps, persistStore, db, redis, cache, buildCsp };

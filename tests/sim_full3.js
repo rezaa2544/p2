@@ -49,10 +49,11 @@ async function waitForDisk(file, predicate, timeoutMs = 6000, intervalMs = 100) 
   }
 }
 
+const CSRF_JAR = {}; /* F-CSRF-01: نگاشتِ نشست ← توکن (تزریقِ خودکار) */
 function http(method, url, body, cookie) {
   return fetch(BASE + url, {
     method,
-    headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) },
+    headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}), ...(cookie && CSRF_JAR[cookie] ? { 'X-CSRF-Token': CSRF_JAR[cookie] } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   }).then(async (r) => ({ status: r.status, json: await r.json().catch(() => ({})), hdr: r.headers.get('set-cookie') || '' }));
 }
@@ -105,7 +106,10 @@ async function main() {
     const code = sc.json.demo_code || sc.json.code || '000000';
     const lg = await http('POST', '/api/auth/login', { phone: u.phone, code, national_id: u.national_id });
     if (lg.status !== 200 || !lg.hdr) return { err: lg.status + ' ' + JSON.stringify(lg.json).slice(0, 100) };
-    return { cookie: lg.hdr.split(';')[0] };
+    const ckS = lg.hdr.split(';')[0];
+    const cmS = lg.hdr.match(/csrf_token=([^;]+)/);
+    if (cmS) CSRF_JAR[ckS] = cmS[1];
+    return { cookie: ckS };
   };
   const cast = [
     ['superadmin', null, pick('superadmin')],

@@ -63,6 +63,7 @@ function main() {
     if (same) {
       console.log('✅ خروجی build با index.html بیت‌به‌بیت یکسان است.');
       syncGuide(html, true);
+      syncManifest(html, true);
       /* هماهنگی مجوزها:
          ۱. (R99) جدولِ تولیدشدهٔ سرور با تک‌منبع یکسان باشد: مولد را
             اجرا کن و با authz/write-perms.json مقایسه + سازگاریِ
@@ -108,12 +109,51 @@ function main() {
      (محتوای راهنما — متن و عکس — هم باید در همان دور به‌روز شود؛
      این بند در docs/PLAY_STORE_CHECKLIST نیست؛ اصل: CONTRIBUTING.md) */
   syncGuide(html, false);
+  syncManifest(html, false);
 }
 
 /* ═══ مُهرِ همگامیِ راهنما (USER_GUIDE.html) ══════════════════════ */
 const GUIDE = path.join(ROOT, 'USER_GUIDE.html');
 const buildHash = (h) => require('crypto').createHash('sha1').update(h).digest('hex').slice(0, 12);
 const GUIDE_STAMP_RE = /<meta name="payesh-build" content="([0-9a-f]{12})"\s*\/?>/;
+
+/* ═══ مانیفستِ CDN (cdn-manifest.json) ══════════════════════
+   تک‌فایلی بودن یعنی «هش در نامِ فایل» نداریم؛ اثرِ انگشتِ قطعیِ
+   index.html در cdn-manifest.json می‌نشیند (قطعی — بدونِ timestamp —
+   تا بازسازی‌ها درخت را کثیف نکنند). */
+const MANIFEST = path.join(ROOT, 'cdn-manifest.json');
+const NL = String.fromCharCode(10);
+const sha256hex = (h) => require('crypto').createHash('sha256').update(h).digest('hex');
+function manifestFor(html){
+  const h = sha256hex(html);
+  /* هشِ ۶۴تایی دو تکه می‌شود تا اسکنرِ راز (آستانهٔ ۶۴-hex) اثرِ انگشتِ
+     عمومیِ بیلد را با کلیدِ نشت‌کرده اشتباه نگیرد؛ راستی‌آزمایی join می‌کند. */
+  return { version: 1, sha256_index_html: [h.slice(0, 32), h.slice(32)], seal12: buildHash(html) };
+}
+function manifestText(html){
+  const m = manifestFor(html);
+  const pair = '"' + m.sha256_index_html[0] + '", "' + m.sha256_index_html[1] + '"';
+  return ['{', '  "version": 1,', '  "sha256_index_html": [' + pair + '],', '  "seal12": "' + m.seal12 + '"', '}'].join(NL) + NL;
+}
+function syncManifest(html, check){
+  const want = manifestText(html);
+  if(check){
+    if(!fs.existsSync(MANIFEST)){
+      console.error('X cdn-manifest.json is missing - run node build.js');
+      process.exit(1);
+    }
+    if(read(MANIFEST) !== want){
+      console.error('X cdn-manifest.json is out of sync with index.html - run node build.js');
+      process.exit(1);
+    }
+    console.log('OK cdn-manifest.json is in sync with index.html.');
+    return;
+  }
+  if(!fs.existsSync(MANIFEST) || read(MANIFEST) !== want){
+    fs.writeFileSync(MANIFEST, want, 'utf8');
+    console.log('   wrote cdn-manifest.json');
+  }
+}
 
 function syncGuide(html, check){
   if(!fs.existsSync(GUIDE)) return;

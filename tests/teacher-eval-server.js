@@ -32,6 +32,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let tmp = null, server = null;
 process.on('exit', () => { try { if (server) server.kill('SIGKILL'); } catch (e) {} try { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} });
 
+/* F-CSRF-01: نگهبانِ مرکزیِ CSRF سرور، جهش‌های احراز‌شده را بدونِ
+   X-CSRF-Token رد می‌کند. تست هم مثلِ مرورگر عمل می‌کند: کوکیِ csrf_token
+   را از شیشهٔ کوکی می‌خواند و در سرآیند بازمی‌گرداند (double-submit). */
+const csrfHdr = (c) => { const m = /(?:^|;\s*)csrf_token=([^;]+)/.exec(String(c || '')); return m ? { 'X-CSRF-Token': m[1] } : {}; };
+const jarOf = (h) => (Array.isArray(h) ? h.join(', ') : String(h || ''))
+  .split(/,(?=\s*[A-Za-z0-9_!#$%&'*+\-.^`|~]+=)/)
+  .map((c) => c.split(';')[0].trim()).filter(Boolean).join('; ');
 function httpReq(method, p, body, cookie) {
   return new Promise((resolve) => {
     const data = body ? JSON.stringify(body) : null;
@@ -39,7 +46,7 @@ function httpReq(method, p, body, cookie) {
       hostname: '127.0.0.1', port: PORT, path: p, method,
       headers: Object.assign(
         data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {},
-        cookie ? { Cookie: cookie } : {}
+        cookie ? Object.assign({ Cookie: cookie }, csrfHdr(cookie)) : {}
       )
     }, (res) => {
       let b = '';
@@ -98,7 +105,7 @@ async function main() {
     const lg = await httpReq('POST', '/api/auth/login', { phone, code, national_id: u.national_id });
     if (!(lg.json && lg.json.ok)) return null;
     const sc2 = lg.headers['set-cookie'];
-    return Array.isArray(sc2) ? sc2[0].split(';')[0] : (sc2 || '').split(';')[0];
+    return jarOf(sc2);
   }
   const C = { st: await login(st), pa: await login(pa), te: await login(te), mg: await login(mg) };
   chk('S0b نشست‌ها (دانش‌آموز/ولی/معلم/مدیر)', Object.values(C).every(Boolean));

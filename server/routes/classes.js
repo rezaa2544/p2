@@ -13,6 +13,7 @@
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
+const { createPolicy } = require('../policy');
 
 function createClassRoutes(ctx) {
   const store = ctx.store;
@@ -21,11 +22,20 @@ function createClassRoutes(ctx) {
   const deleter = ctx.deleter; /* P0-17 */
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
+  const policy = createPolicy({ store });
+  const COLL = 'classes';
+
+  function denied(pa){
+    return { status: pa.status, body: { ok: false, code: pa.code, message: pa.message } };
+  }
 
   function getClassesList(req, urlParams) {
     const user = req.user;
+    /* P0-03: هر endpoint از authorize می‌گذرد (خوانش: نقشِ شناخته‌شده) */
+    const pa = policy.authorize(user, 'read', { coll: COLL });
+    if(!pa.ok) return denied(pa);
     let classes = (store.classes || []);
-    classes = filterByScope(user, classes);
+    classes = filterByScope(user, classes, store);
 
     const grade = urlParams.get('grade');
     if (grade) {
@@ -52,8 +62,11 @@ function createClassRoutes(ctx) {
 
   function getClassById(req, id) {
     const user = req.user;
+    /* P0-03: هر endpoint از authorize می‌گذرد (خوانش: نقشِ شناخته‌شده) */
+    const pa0 = policy.authorize(user, 'read', { coll: COLL, id: Number(id) });
+    if(!pa0.ok) return denied(pa0);
     const cls = (store.classes || []).find(c => c.id === Number(id));
-    if (!cls || !checkSchoolScope(user, cls.school_id)) {
+    if (!cls || !checkSchoolScope(user, cls.school_id, store)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
     }
 
@@ -79,15 +92,16 @@ function createClassRoutes(ctx) {
 
   async function createClass(req, body) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'superadmin') {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط مدیر مدرسه مجاز به ایجاد کلاس است' } };
-    }
-
     if (!body || !body.name || body.grade == null) {
       return { status: 400, body: { ok: false, code: 'bad_request', message: 'نام کلاس و پایه الزامی است' } };
     }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
+    /* P0-03: نقش + قلمرو از policy مرکزی (همان هستهٔ sync) */
+    const pa = policy.authorize(user, 'ins', { coll: COLL }, { school_id: schoolId });
+    if(!pa.ok) return denied(pa);
+    const pv = policy.validate('ins', COLL, body);
+    if(!pv.ok) return denied(pv);
     /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
     const nextId = await ids.nextId('classes', store.classes);
 
@@ -117,12 +131,14 @@ function createClassRoutes(ctx) {
 
   async function updateClass(req, id, body) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'superadmin') {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط مدیر مدرسه مجاز به ویرایش کلاس است' } };
-    }
+    /* P0-03: نقش + قلمرو از policy مرکزی (404-not-403 برایِ بیرونِ قلمرو) */
+    const pa = policy.authorize(user, 'upd', { coll: COLL, id: Number(id) }, body || {});
+    if(!pa.ok) return denied(pa);
+    const pv = policy.validate('upd', COLL, body || {});
+    if(!pv.ok) return denied(pv);
 
     const cls = (store.classes || []).find(c => c.id === Number(id));
-    if (!cls || !checkSchoolScope(user, cls.school_id)) {
+    if (!cls) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
     }
 
@@ -146,9 +162,9 @@ function createClassRoutes(ctx) {
 
   async function deleteClass(req, id) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'superadmin') {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط مدیر مدرسه مجاز به حذف کلاس است' } };
-    }
+    /* P0-03: حذف هم تحتِ مجوزِ مدل است (مثلِ sync) — نه فقط نقشِ دستی */
+    const pa = policy.authorize(user, 'del', { coll: COLL, id: Number(id) });
+    if(!pa.ok) return denied(pa);
 
     const clsIdx = (store.classes || []).findIndex(c => c.id === Number(id));
     if (clsIdx === -1) {

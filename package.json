@@ -12,7 +12,17 @@
     "test": "node tests/run.js && node --expose-gc --max-old-space-size=2048 tests/smoke.js",
     "clean": "rm -rf dist",
     "build:android": "node tools/build-android.js",
-    "test:smoke": "node tests/smoke.js"
+    "test:smoke": "node tests/smoke.js",
+    "migrate:up": "node scripts/migrate.js up",
+    "migrate:down": "node scripts/migrate.js down",
+    "migrate:status": "node scripts/migrate.js status",
+    "migrate:create": "node scripts/migrate.js create",
+    "scan:secrets": "node tools/secret-scan.js",
+    "lint": "eslint .",
+    "rollback": "bash scripts/rollback.sh",
+    "perf:login": "bash tests/performance/run-benchmarks.sh --scenario 01-login",
+    "perf:attendance": "bash tests/performance/run-benchmarks.sh --scenario 03-attendance",
+    "perf:full": "bash tests/performance/run-benchmarks.sh --scenario all"
   },
   "keywords": [
     "school-management",
@@ -39,7 +49,14 @@
     "pg": "^8.23.0"
   },
   "devDependencies": {
-    "jsdom": "^30.0.1"
+    "@electric-sql/pglite": "^0.5.8",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.10.0",
+    "eslint-plugin-n": "^18.3.0",
+    "eslint-plugin-security": "^4.0.1",
+    "globals": "^17.12.0",
+    "jsdom": "^30.0.1",
+    "node-pg-migrate": "^9.0.0"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"

@@ -11,6 +11,7 @@
 'use strict';
 
 const { validate, validateSyncEnvelope, validateSyncData } = require('./validate');
+const tenancy = require('./tenancy');
 const cache = require('./cache');
 
 /* Core mirror of the client's ACTION_ROLES table for WRITE operations.
@@ -421,6 +422,10 @@ function inScope(session, coll, recId, data){
   }
   if(u.role === 'parent'){
     if(coll === 'messages') return msgOwnerOk();
+    /* P0-03 (هم‌ترازیِ REST): ولی رویِ رکوردِ خودش (self-update) داخلِ
+       قلمرو است — در sync بی‌اثر است چون canOp برایِ parent×users×upd
+       همیشه false است؛ فقط مسیرِ authorize با exc=self را کامل می‌کند. */
+    if(coll === 'users' && rec && rec.id === u.id) return true;
     const kids = (get_store().parent_links || []).filter(l => l.parent_id === u.id).map(l => l.student_id);
     /* R96: رزرو نوبت — رکوردِ نوبتِ آزاد student_id ندارد، پس مالکیت
        از data.student_id (فرزندِ خود) می‌آید؛ وگرنه مجوزِ مدل برای
@@ -451,6 +456,23 @@ function inScope(session, coll, recId, data){
       if(cls2.homeroom_teacher_id === u.id) return true;
       return (get_store().schedule || []).some(x => x.class_id === cls2.id && x.teacher_id === u.id);
     }
+    /* P0-04/P0-05: دبیر فقط حضور/نمرهٔ کلاس‌هایی که خودش درس می‌دهد
+       (homeroom/schedule). مسیرِ sid به‌تنهایی class_id را نادیده می‌گرفت
+       (سوراخ: دانش‌آموزِ خودی با class_idِ بیگانه پذیرفته می‌شد). حالا
+       class_id — اگر هست — هم باید تدریسی باشد؛ وگرنه fail-closed.
+       عمداً subject چک نمی‌شود: تست‌هایِ committed (server15: C5a با
+       subject=2 و C10a با subject=1 برایِ T2) صراحتاً leniency رویِ
+       درس را رفتارِ پذیرفته می‌دانند؛ قلمروِ درس فقط در خوانش است. */
+    if(coll === 'attendance' || coll === 'grades'){
+      const cid = (rec && rec.class_id != null) ? rec.class_id
+                : (data && data.class_id != null ? data.class_id : null);
+      if(cid != null){
+        const cx = (get_store().classes || []).find(c => c.id === Number(cid));
+        const taught = !!cx && (cx.homeroom_teacher_id === u.id ||
+          (get_store().schedule || []).some(s => s.class_id === cx.id && s.teacher_id === u.id));
+        if(!taught) return false;
+      }
+    }
     const sid = rec ? rec.student_id : (data && data.student_id);
     if(sid != null){
       const enr = (get_store().enrollments || []).find(e => e.student_id === Number(sid));
@@ -465,7 +487,14 @@ function inScope(session, coll, recId, data){
     return false;
   }
   /* manager / edu_office: school-level */
-  if(u.role === 'edu_office') return true; /* اداره = مرجعِ بین‌مدرسه (مثلِ مدل) */
+  /* P0-07: پایانِ global-pass اداره در sync — قلمرو از tenancy
+     (استان/شهرستان/ناحیه). school_idِ غیرقابل‌حل = fail-closed. */
+  if(u.role === 'edu_office'){
+    const st = get_store();
+    const sid = tenancy.resolveSchoolId(st, coll, recId, data);
+    if(sid == null) return false;
+    return tenancy.inOfficeScope(st, u, sid);
+  }
   const s = rec ? rec.school_id : (data && data.school_id);
   if(s == null){
     /* R96: مجموعه‌هایِ بدونِ school_id (مثلِ hw_submissions) — scope از

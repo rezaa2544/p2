@@ -355,19 +355,3 @@ module.exports = {
   scrubUrlAttributes,
   __resetForTests
 };
-
-async function shutdownTracing() {
-  if(state && typeof state.shutdown === 'function'){
-    try{ await state.shutdown(); }catch(e){}
-  }
-}
-
-/* Test seam: fully reset module state (also unregisters the global provider). */
-async function __resetForTests() {
-  try{ await shutdownTracing(); }catch(e){}
-  try{
-    const api = require('@opentelemetry/api');
-    if(api && api.trace && typeof api.trace.disable === 'function') api.trace.disable();
-  }catch(e){}
-  state = null;
-}

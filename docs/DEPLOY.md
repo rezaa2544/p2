@@ -67,6 +67,7 @@ mkdir -p /home/payesh/data /home/payesh/backups
 | `PAYESH_TLS_CERT` | `/home/payesh/tls/fullchain.pem` | فقط با `PAYESH_HTTPS=1` |
 | `PAYESH_TLS_KEY` | `/home/payesh/tls/privkey.pem` | فقط با `PAYESH_HTTPS=1` |
 | `PAYESH_BACKUP_EVERY_HOURS` | `24` | بکاپِ خودکارِ درون‌پروسه (۱۰ نسخه نگه می‌ماند) |
+| `PAYESH_TRUSTED_PROXIES` | *(تنظیم‌نشده)* | F-AUTH-01: IPهای پراکسیِ مورداعتماد (ویرگولی) برای X-Forwarded-For؛ پیش‌فرض فقط loopback — برای تک‌میزبانه با پروکسیِ همان‌ماشین کافی است |
 
 ساختنِ سرّ:
 ```bash
@@ -97,6 +98,11 @@ sudo certbot renew --webroot -w /var/www/le --deploy-hook "cp -f /etc/letsencryp
 **ب) پروکسی معکوس (nginx/caddy):** اگر بعداً پروکسی لازم شد، `PAYESH_HTTPS` را
 `0` کنید و پروکسی را به `127.0.0.1:3000` وصل کنید — API و وب هر دو از همان
 پورت می‌آیند؛ فقط `X-Forwarded-Proto` را به سرور بفرستید (کوکیِ Secure).
+پروکسیِ همان‌ماشین با پیش‌فرضِ `PAYESH_TRUSTED_PROXIES` (loopback) کار می‌کند؛
+اگر پراکسی رویِ میزبانِ دیگری است، IP آن را در `PAYESH_TRUSTED_PROXIES` بگذارید
+وگرنه `X-Forwarded-For` نادیده گرفته می‌شود (F-AUTH-01).
+
+**ج) پشتِ CDN (اختیاری، مقیاسِ ملی):** کاربر ← Cloudflare (ورکرِ `cloudflare/worker.js`: کشِ ۵دقیقه‌ایِ `/`، passthrough کاملِ `/api/*`) ← همین origin (TLS داخلی یا Full strict). origin دست نمی‌خورد؛ purge پس از هر بیلد با `cdn-manifest.json` راستی‌آزمایی می‌شود. جزئیات: `docs/CDN_INTEGRATION_SETUP.md`.
 
 ---
 
@@ -160,6 +166,16 @@ PAYESH_STORE=/tmp/restore.json node server/admin.js --restore /path/to/backup.js
 
 ---
 
+## ۶-ب. مسیرِ PostgreSQL (مقیاسِ ملی — اختیاری)
+
+استقرارِ پیش‌فرض همین JSON-استور است؛ وقتی مدرسه‌ها زیاد شدند، دو مرحله:
+۱) اسکیما: `npm run migrate:status` و بعد `npm run migrate:up` (جزئیات: `docs/MIGRATION_SETUP.md`)؛
+۲) بارِ داده: `node tools/migrate-to-pg.js --execute` با همانِ `DATABASE_URL`.
+پیش از هر `migrate:down` در تولید، بکاپ (§۶) اجباری است.
+برایِ اسکیلِ خودکارِ افقی رویِ همین مسیر، `docs/AUTO_SCALING_SETUP.md` (§۰ پیش‌نیازها اجباری است).
+
+---
+
 ## ۷. بروزرسانی (هر بار که کد جدید می‌آید)
 
 ```bash
@@ -173,6 +189,10 @@ curl -fsS https://payesh.example/api/health
 بروزرسانی **پایه‌داده را دست نمی‌زند** (استور جداست)؛ اگر قراردادِ رکورد
 تغییر کرده، `server/sync.js` + `server/seed.js` را بخوانید و در **کپیِ
 بکاپ** تست کنید (هرگز مستقیم روی استورِ اصلی).
+
+> **مقیاسِ ملی:** برایِ استقرارِ مرحله‌ای (Blue-Green/Canary) با Rollbackِ
+> سریع، به‌جایِ ری‌استارتِ مستقیم از `docs/CANARY_DEPLOYMENT.md`
+> (§۱-۶: `scripts/canary-deploy.sh` و `npm run rollback`) استفاده کنید.
 
 ---
 
@@ -191,6 +211,7 @@ curl -fsS https://payesh.example/api/health
 | ۹ | حسابِ بررسی‌گرِ گوگل (برای اپ) آماده است | بخشِ «دسترسیِ بررسی‌گر» در `PLAY_STORE_CHECKLIST.md` |
 | ۱۰ | مانیتورینگِ حداقلی: `Restart=always` + یک پینگِ خارجیِ ساعتی به `/api/health` (upptime یا همان curl در cron + پیام به اپراتور) | یک خطایِ شبانه بدونِ بیدارشدنِ اپراتور نمی‌ماند |
 | ۱۱ | لبهٔ امنیتی (WAF/ضدِDDoS) فعال: DNS پشتِ Cloudflare یا nginx با `nginx -t` سبز + `node tests/waf-ddos.js` سبز | §۱۰ همین سند + `docs/WAF_DDOS_SETUP.md` |
+| ۱۲ | (فقط مسیرِ PG) `migrate:status` سبز + شمارشِ جدول‌هایِ PG برابرِ استور | `node tests/migration.js` سبز در ایستگاهِ استقرار |
 
 ---
 
@@ -198,6 +219,8 @@ curl -fsS https://payesh.example/api/health
 
 - **سرور/VPS + دامنه** — انتخابِ کاربر (اروپا/ایران + هزینه).
 - **حسابِ آروان‌کلاود** (برایِ سطلِ بیرونی) — فقط وقتی کپیِ بیرونی لازم شد (پیش از کاربرانِ واقعی).
+- **کلاسترِ Kubernetes** — فقط برایِ مقیاسِ ملی (POC آماده: `k8s/` + `docs/AUTO_SCALING_SETUP.md`)؛ استقرارِ پیش‌فرضِ این سند بدونِ k8s است.
+- **CDN (اختیاری، مقیاسِ ملی)** — حسابِ Cloudflare (یا آروان) + ورکرِ `cloudflare/worker.js`؛ POC و TTLها در `docs/CDN_INTEGRATION_SETUP.md`.
 - **درگاهِ پیامک + استعلامِ کد ملی** — تا آن‌وقت، ورودِ تولید بدونِ درگاهِ واقعی معنادار نیست (`PAYESH_DEMO_CODE=0` یعنی کد از کجا بیاید؟ ← درگاه). **این، پیش‌نیازِ واقعیِ go-live است**، نه TLS.
 
 > ترتیبِ منطقی: ۱) درگاهِ پیامک ← ۲) سرور + دامنه + این سند ← ۳) go-live.

@@ -116,12 +116,19 @@ async function modGroup() {
 }
 
 /* ── HTTP ─────────────────────────────────────────────── */
+/* F-CSRF-01: نگهبانِ مرکزیِ CSRF سرور، جهش‌های احراز‌شده را بدونِ
+   X-CSRF-Token رد می‌کند. تست هم مثلِ مرورگر عمل می‌کند: کوکیِ csrf_token
+   را از شیشهٔ کوکی می‌خواند و در سرآیند بازمی‌گرداند (double-submit). */
+const csrfHdr = (c) => { const m = /(?:^|;\s*)csrf_token=([^;]+)/.exec(String(c || '')); return m ? { 'X-CSRF-Token': m[1] } : {}; };
+const jarOf = (h) => (Array.isArray(h) ? h.join(', ') : String(h || ''))
+  .split(/,(?=\s*[A-Za-z0-9_!#$%&'*+\-.^`|~]+=)/)
+  .map((c) => c.split(';')[0].trim()).filter(Boolean).join('; ');
 function apiRequest(port, method, urlPath, body, cookie) {
   return new Promise((resolve, reject) => {
     const data = body ? JSON.stringify(body) : null;
     const headers = {};
     if (data) { headers['content-type'] = 'application/json'; headers['content-length'] = Buffer.byteLength(data); }
-    if (cookie) headers.cookie = cookie;
+    if (cookie) { headers.cookie = cookie; Object.assign(headers, csrfHdr(cookie)); }
     const req = http.request({ host: '127.0.0.1', port, method, path: urlPath, headers }, (res) => {
       let b = '';
       res.on('data', (c) => { b += c; });
@@ -180,7 +187,7 @@ async function loginAs(port, u) {
   const lg = await apiRequest(port, 'POST', '/api/auth/login',
     { phone: u.phone, code, national_id: u.national_id });
   if (lg.status !== 200 || !lg.setCookie) return null;
-  return String(lg.setCookie[0]).split(';')[0];
+  return jarOf(lg.setCookie);
 }
 async function httpGroup() {
   grp('HTTP — چرخهٔ واقعی (همیشه)');
@@ -205,7 +212,13 @@ async function httpGroup() {
       'logout=' + lo.status + ' me=' + meDead.status);
     /* حذفِ حساب ← نشست می‌میرد (کاربرِ دوم، چون اولی هنوز لازم است) */
     const c2 = await loginAs(port, users[1]);
-    const del = c2 ? await apiRequest(port, 'POST', '/api/auth/delete-account', {}, c2) : null;
+    /* حذفِ حساب حالا احرازِ مجدّد می‌خواهد (F-CSRF-01): رمزِ یک‌بارمصرفِ تازه */
+    let del = null;
+    if (c2) {
+      const sc2 = await apiRequest(port, 'POST', '/api/auth/send-code', { phone: users[1].phone });
+      const code2 = sc2.json && sc2.json.demo_code;
+      del = await apiRequest(port, 'POST', '/api/auth/delete-account', { code: code2 }, c2);
+    }
     const meDel = c2 ? await apiRequest(port, 'GET', '/api/auth/me', null, c2) : null;
     chk('H-d حذفِ حساب ← نشست می‌میرد', !!c2 && del.status === 200 && meDel.status === 401,
       'del=' + (del && del.status) + ' me=' + (meDel && meDel.status));

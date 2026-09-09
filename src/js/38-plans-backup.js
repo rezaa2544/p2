@@ -130,7 +130,7 @@ function viewPlans(){
 function buildBackup(){
   return {
     format: 'payesh-backup',
-    version: 3, /* دور ۱۰۰ (نقصِ ۵): نسخهٔ ۳ = دفترچهٔ دارایِ اسنپ‌شات (t:'snap') */
+    version: 2, /* دور ۱۰۰ (نقصِ ۵): نسخهٔ ۳ = دفترچهٔ دارایِ اسنپ‌شات (t:'snap') */
     created_at: new Date().toISOString(),
     created_by: S.user ? S.user.username : null,
     seed: (typeof SEED !== 'undefined') ? SEED : null,
