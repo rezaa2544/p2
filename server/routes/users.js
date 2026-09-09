@@ -19,6 +19,7 @@ const ROLE_LEVEL = { student: 0, parent: 1, driver: 1, counselor: 3, teacher: 3,
 function createUserRoutes(ctx) {
   const store = ctx.store;
   const db = ctx.db;
+  const ids = ctx.ids; /* P0-16 */
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
@@ -86,10 +87,8 @@ function createUserRoutes(ctx) {
     }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
-    let nextId = 1;
-    for (const u of (store.users || [])) {
-      if (u.id >= nextId) nextId = u.id + 1;
-    }
+    /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
+    const nextId = await ids.nextId('users', store.users);
 
     const newUser = {
       id: nextId,

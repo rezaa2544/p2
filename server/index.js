@@ -40,6 +40,7 @@ const { createAttendanceRoutes } = require('./routes/attendance');
 const { createGradeRoutes } = require('./routes/grades');
 const { createUserRoutes } = require('./routes/users');
 const { createBootstrapRoute } = require('./routes/bootstrap');
+const { createIds } = require('./ids'); /* P0-16 */
 const { createPull } = require('./pull');
 
 const ROOT = path.join(__dirname, '..');
@@ -298,11 +299,13 @@ const sms = createSms({ store, audit, sessionFrom: auth.sessionFrom, sendJson: s
 const conflicts = createConflicts({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 
 /* ── Phase 3: RESTful Resource Routes ─────────────────────────────── */
-const studentRoutes = createStudentRoutes({ store, db, audit, markDirty });
-const classRoutes = createClassRoutes({ store, db, audit, markDirty });
-const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty });
-const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty });
-const userRoutes = createUserRoutes({ store, db, audit, markDirty });
+/* P0-16: شناسه‌های بدون‌برخورد — دنبالهٔ پستگرس یا مکس+۱ قفل‌دار */
+const ids = createIds({ db, cache });
+const studentRoutes = createStudentRoutes({ store, db, audit, markDirty, ids });
+const classRoutes = createClassRoutes({ store, db, audit, markDirty, ids });
+const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, ids });
+const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty, ids });
+const userRoutes = createUserRoutes({ store, db, audit, markDirty, ids });
 const bootstrapRoute = createBootstrapRoute({ store });
 const pullRoute = createPull({ store, sessionFrom: auth.sessionFrom, sendJson });
 
