@@ -1792,6 +1792,7 @@ document.addEventListener('click',e=>{
   else if(typeof SYNC_ACTIONS!=='undefined'&&SYNC_ACTIONS[a]){e.preventDefault();SYNC_ACTIONS[a](el,id);}
   else if(typeof TEVAL_ACTIONS!=='undefined'&&TEVAL_ACTIONS[a]){e.preventDefault();TEVAL_ACTIONS[a](el,id);} /* 73-teacher-eval */
   else if(typeof REGION_ACTIONS!=='undefined'&&REGION_ACTIONS[a]){e.preventDefault();REGION_ACTIONS[a](el,id);} /* 74-region-tools */
+  else if(typeof STAFFGAP_ACTIONS!=='undefined'&&STAFFGAP_ACTIONS[a]){e.preventDefault();STAFFGAP_ACTIONS[a](el,id);} /* 75-staff-gap */
 });
 // live filters
 document.addEventListener('input',e=>{

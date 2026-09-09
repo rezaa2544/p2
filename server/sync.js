@@ -475,6 +475,20 @@ function inScope(session, coll, recId, data){
       return false;
     }
   }
+  /* د.۴ — هنجار نیروی انسانی: کارشناس فقط برای مدارس محدودهٔ ادارهٔ خودش
+     (استان/شهرستان/منطقهٔ دفتر). مدرسهٔ بیرون محدوده ⇒ رد. */
+  if(coll === 'staff_posts' && u.role === 'edu_office'){
+    const sid = (data && data.school_id != null) ? data.school_id
+              : (rec && rec.school_id != null) ? rec.school_id : null;
+    if(sid != null){
+      const school = store_get('schools').find(s => s.id === Number(sid));
+      const office = store_get('offices').find(o => o.id === Number(u.office_id));
+      if(!school || !office) return false; /* fail-closed */
+      if(office.province_id && school.province_id !== office.province_id) return false;
+      if(office.county_id && school.county_id !== office.county_id) return false;
+      if(office.district_id && school.district_id !== office.district_id) return false;
+    }
+  }
   /* manager / edu_office: school-level */
   if(u.role === 'edu_office') return true; /* اداره = مرجعِ بین‌مدرسه (مثلِ مدل) */
   const s = rec ? rec.school_id : (data && data.school_id);

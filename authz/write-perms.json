@@ -145,6 +145,7 @@
       "notifications",
       "notify_queue",
       "offices",
+      "staff_posts",
       "teacher_schools"
     ]
   },
@@ -1422,6 +1423,20 @@
         "manager",
         "superadmin"
       ]
+    },
+    "staff_posts": {
+      "ins": [
+        "superadmin",
+        "edu_office"
+      ],
+      "upd": [
+        "superadmin",
+        "edu_office"
+      ],
+      "del": [
+        "superadmin",
+        "edu_office"
+      ]
     }
   },
   "fields": {
@@ -2454,6 +2469,14 @@
       "purpose",
       "registered_by",
       "school_id",
+      "updated_at"
+    ],
+    "staff_posts": [
+      "created_at",
+      "id",
+      "required",
+      "school_id",
+      "subject_id",
       "updated_at"
     ]
   },
@@ -3610,6 +3633,15 @@
       ],
       "collections": [
         "staff_attendance"
+      ]
+    },
+    "staffpost-save": {
+      "roles": [
+        "superadmin",
+        "edu_office"
+      ],
+      "collections": [
+        "staff_posts"
       ]
     },
     "sub-del": {

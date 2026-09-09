@@ -2316,6 +2316,28 @@
     "manager",
     "superadmin"
    ]
+  },
+  "staff_posts": {
+   "fields": [
+    "created_at",
+    "id",
+    "required",
+    "school_id",
+    "subject_id",
+    "updated_at"
+   ],
+   "ins": [
+    "superadmin",
+    "edu_office"
+   ],
+   "upd": [
+    "superadmin",
+    "edu_office"
+   ],
+   "del": [
+    "superadmin",
+    "edu_office"
+   ]
   }
  }
 }
