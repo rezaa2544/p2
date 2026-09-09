@@ -25,14 +25,14 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "dependencies": {
     "ioredis": "^6.0.0",
     "pg": "^8.23.0"
   },
   "devDependencies": {
-    "jsdom": "^25.0.0"
+    "jsdom": "^30.0.1"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"

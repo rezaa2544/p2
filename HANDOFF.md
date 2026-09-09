@@ -14,6 +14,13 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۳: سبز شدن CI پی‌آر ۱۱ (رفع ۳ تست زنگ + ماتریس صادقانهٔ Node 22) — ۱۹/۰۶/۱۴۰۵
+
+**وضعیت:** کامیت `fix(ci)` روی `feat/farnaz-phase1` (پی‌آر ۱۱). گیت‌های محلی سبز (Node ‏22.23.2‏ + ‏jsdom 30.0.1‏): ‏run.js ۳۵/۳۵‏، ‏smoke ۵۴۷/۵۴۷‏، ‏check-authz=0‏، ‏entry-gpa/dorm-kind‏ کامل + جهش‌ها ‏۶/۶‏ و ‏۵/۵‏.
+
+- **ریشهٔ ۳ تست قرمز (فقط 22.x):** سلکتور نامعتبر CSS در `tests/smoke.js` (مقدار عددی بدون کوتیشن: `[data-day=0]`)؛ ‏jsdom 25‏ سهل‌گیرانه می‌پذیرفت ولی ‏jsdom 30‏ مثل مرورگر واقعی `Invalid selector` می‌دهد. رفع: کوتیشن‌دار شدن هر ۶ مورد — فقط تست، صفر تغییر اپ/منطق (کد اپ قبلاً کوتیشن داشت).
+- **سبز پوچ ۱۸/۲۰ (فعلاً باقی، Status-quo):** ‏jsdom 30‏ رسماً Node ‏≥۲۲‏ می‌خواهد (`engines: ^22.22.2`)؛ روی ۱۸/۲۰ ‏require‏ می‌میرد (`markAsUncloneable`) و ‏smoke‏ با `exit 0` رد می‌شود (۵۴۷ تست اجراشده = صفر). رفع کامل (ماتریس ‏[22.x]‏ + ورک‌فلوئی publish ‏20←22‏) آماده است ولی پوش نشد: توکن چت ۳ اسکوپ ‏workflow‏ ندارد و گیت‌هاب پوش تغییر ورک‌فلو را رد کرد. ⚠️ حذف 22.x از ماتریس (پیشنهاد موقت) وارونه است: تنها جابی که واقعاً تست می‌دوند همان 22.x است — اقدام لازم: پوش همان دو فایل ورک‌فلو با توکن دارای اسکوپ.
+- **برای سوپروایزر:** همین قرمزی روی `main` هم هست (ران‌های ‏3c5ebff‏ و ‏15ae1bd‏) — باگ از PR #16 (بامپ jsdom روی مین) آمده نه از پی‌آر ۱۱؛ این رفع با مرج پی‌آر ۱۱ به مین هم می‌رسد.
 ## فرناز فاز ۱ — چت ۴: وارسی موج ادغام نهایی — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
 
 **وضعیت:** مین @ `7ee0814` پس از مرج پی‌آرهای ۱۳/۱۴/۸ + رفع امنیتی `7cbba90` + کامیت بیرونی `513333e`. گزارش: `CHAT4_POST_MERGE_REPORT_3.md`.
@@ -929,6 +936,42 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 
 ---
 
+## فاز فرناز — قدم ۰: راستی‌آزماییِ بندهایِ ازپیش‌موجود (S1–S3)
+
+شاخه: `feat/farnaz-phase1` از `4ca531c`. هر سه بند روی main موجود و سبز بودند — بدونِ تغییرِ کد، فقط راستی‌آزمایی + ثبت.
+
+### S1 — قالبِ دومِ کارنامه ✅ (موجود)
+- کد: `reportCardCert(sid,term,tpl)` در `src/js/33-forms-sms.js:128` — شاخهٔ `tpl==='compact'` (بند ۴.۳) + انتخاب‌گرِ `cert_tpl` در `src/js/17-student-record.js:86` (کلاسیک/فشردهٔ دوستونه) + سیم‌کشی در `19-actions-core.js:1101`.
+- تست: `tests/reporttpl2.js` ‏۷/۷ ✅ + `tests/report2.js` ‏۱۰/۱۰ ✅ (روی همین شاخه اجرا شد).
+- (توجه: `tests/compact.js` مربوط به فشرده‌سازیِ دفترچه است نه قالب — ‏۱۹/۰ ✅ ولی شاهدِ این بند نیست.)
+
+### S2 — گواهیِ اشتغال به تحصیل ✅ (موجود)
+- کد: `enrollmentCert(sid)` در `src/js/33-forms-sms.js:331` + اکشن در `19-actions-core.js:1111` + کدِ راستی‌آزمایی (`certCodeCalc`/`certVerify`).
+- تست: `tests/certify.js` ‏۸/۸ ✅ (C1 اشتغال) — روی همین شاخه اجرا شد.
+
+### S3 — گواهیِ انتقالی ✅ (موجود)
+- کد: `transferCert(sid)` در `src/js/33-forms-sms.js:360` + اکشن در `19-actions-core.js:1120` + `certOverall` (وضعیت کلی).
+- تست: `tests/certify.js` ‏۸/۸ ✅ (C2 انتقالی) — روی همین شاخه اجرا شد.
+
+### بیزلاینِ قدم ۰ (روی `feat/farnaz-phase1`)
+- `node build.js --check` → exit 0 ✅ · `node tools/check-authz.js` → exit 0 ✅ · `node tests/smoke.js` → ‏۵۴۷/۵۴۷ ✅
+
+### S4 — فیلدِ معدلِ ورودی ✅ (پیاده شد)
+- مدل: `entry_gpa` به users در `authz/model.json` + بازتولیدِ `write-perms.json` (ژنراتور، +۱ خط).
+- سرور: `server/validate.js` — نگاشتِ `entry_gpa→score` (۰ تا ۲۰؛ خالی=null از isEmpty رد می‌شود؛ null سروری با Object.assign منتشر می‌شود).
+- کلاینت: فیلدِ `u_entry_gpa` در `userModal` (`18-modals.js`) + پارس/اعتبارسنجی در `user-save` (`19-actions-admin.js`: خالی=null، عددِ ۰–۲۰، ارقامِ فارسی با toLatinDigits، فقط role=student) + سطرِ «معدل ورودی» در `studentProfileCard` (`17-student-record.js`).
+- تست: `tests/entry-gpa.js` ‏۱۹/۱۹ ✅ (فرم، فارسی، ۳ رد، null، غیرِدانش‌آموز، نمایش، allowlist، نگاشت+قانونِ سرور، سینکِ زندهٔ قبول/رد) + `tests/entry-gpa-mutations.js` ‏۶/۶ کشته ✅.
+- گیت‌ها: build ✅ · check-authz ✅ · ‏smoke ‏۵۴۷/۵۴۷ ✅.
+- عارضهٔ مثبت: بازبیلد، مُهرِ کهنهٔ `USER_GUIDE.html` (یافتهٔ حسابرسیِ دور ۲) را هم تازه کرد.
+- مشاهده (خارج از اسکوپ، رفع نشد): `last_gpa` و رفقا در ایمپورتِ اکسل فقط لوکال (`rec[k]=`) نوشته می‌شوند و سینک نمی‌شوند — اگر سینکِ آن‌ها خواسته شد، تصمیمِ جدا می‌خواهد.
+
+### S5 — تمایزِ پانسیون از اقامتِ کامل ✅ (پیاده شد)
+- مدل: `kind∈{full,pansion}` روی `dorm_assignments` در `authz/model.json` + بازتولیدِ `write-perms.json`.
+- سرور: `server/validate.js` — ‏`kind→enum[full,pansion]` فقط برایِ `dorm_assignments` (kind در کالکشن‌های دیگر معنای جداگانه دارد).
+- کلاینت: سلکتِ `dorm_kind` در مودالِ انتساب + اعتبارسنجی در `dorm-assign-pick` (`19-actions-dorm.js`) + هلپرِ `dormKindOf/dormKindLabel` با پیش‌فرضِ `full` برایِ رکوردهایِ قدیمی + چیپِ نوع روی بجِ ساکن (`65-dorm.js`).
+- تصمیمِ ثبت‌شده: شمارشِ ظرفیت (occ/پرشدگی) همهٔ انتساب‌ها را می‌شمارد (پانسیون هم اتاق دارد — رفتارِ ظرفیت عوض نشد؛ اگر مدرسه خواست پانسیون از ظرفیت کم شود، یک‌خطی و برگشت‌پذیر است).
+- تست: `tests/dorm-kind.js` ‏۱۷/۱۷ ✅ (سلکت، ثبتِ هر دو نوع، ردِ نامعتبر، سازگاریِ قدیمی، برچسب‌ها، رندرِ صفحه، allowlist، قانونِ سرور، سینکِ زنده) + `tests/dorm-kind-mutations.js` ‏۵/۵ کشته ✅.
+- گیت‌ها: build ✅ · check-authz ✅ · ‏smoke ‏۵۴۷/۵۴۷ ✅.
 ## فاز فرناز — چت ۳: دسته‌های E.1–E.6، G.1، G.2
 
 شاخه: `feat/farnaz-phase1-chat3` از `4ca531c` (origin/main). اصول `SKILLS_MASTER.md` خوانده و رعایت می‌شود.
@@ -1077,26 +1120,58 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
   (تغییر گاید چت ۴ فقط همان مُهر بود). حل با مرج (نه ریبیس — شاخهٔ فعال مشترک، بدون force) + بازتولید با `node build.js`.
 - گیت‌ها: build ‏0‏، authz ‏0‏، smoke ‏547/547‏، minutes2/boom2/public2 ‏8/8‏، pubrep ‏9/9‏؛ بدون اکشن تکراری ✅
 
+​
+ |  | 
+1072
+ 
+
+## تعمیر G.2 — جدول support_tickets در schema.sql (چت ۳، ۱۹/۰۶) — ✅
+
+- گزارش چت ۱ درست بود (جدول غایب). ولی SQL پیشنهادی پرامپت ۲ باگ enum داشت (`medium` به‌جای `med`،
+  `reviewing` به‌جای `review`) + خلاف قرارداد فایل بود (SERIAL/بدون کوتیشن/CHECK دستی) — به‌جای
+  دست‌نویسی، مولد رسمی `node tools/migrate-to-pg.js` اجرا شد (بدون `--execute`، بدون تماس با دیتابیس).
+
+- خروجی مولد + ستون‌های جاماندهٔ C چت ۱ (`meeting_type`، `boom_goals`)؛ چرن تایم‌استمپ مولد
+  (غیرقطعی) برگردانده شد: دیف ۱۲۶ ← ۴۰ خط، ۵ هانک معنایی، صفر churn.
+
+- گیت‌ها: write-perms بدون تغییر، build `0`، authz `0`، smoke `547/547`، tickets `20/20` ✅
+
 ## C.3-security فرناز — سه اصلاح امنیتی گزارش عمومی (چت ۱) — ✅
+
 - اصلاح ۱ (پروجکشن): تفکیک `publicReportHTML` به `publicReportData` (فقط تجمیعی:
   نام/سطح/شهر، شمارش‌ها، جلسه‌ها `{تعداد،آخرین}`، اهداف) + رندر خالص بدون دسترسی به db؛
   `publicSchools` فقط `active=1`؛ پیام تهی «داده‌ای برای نمایش وجود ندارد».
+
 - اصلاح ۲ (پرچم): `public_goals` در `schools` (مدل + `FLAG_FIELDS` سرور + بذر `0`)؛ گیت انتشار
   در پروجکشن؛ چک‌باکس مدیریتی در مودال مدرسه (`m_boom_pub`) و مودال بوم (`boom_pub`)؛
   `write-perms.json` بازتولید (۸۵ مجموعه، ۱۸۱ اکشن).
+
 - اصلاح ۳ (دادهٔ واقعی): اندپوینت عمومی `GET /api/public-report` (فقط تجمیعی، بدون PII،
   گیت پرچم سمت سرور) + پل ناهمگام `pubReportEnsure` در حالت سروری؛ آفلاین-اول
   (شکست → دادهٔ محلی + یادداشت «دادهٔ محلی»)؛ برچسب نوع جلسه سمت کاربر (glyph-safety).
-- تست: سوئیت جدید `tests/public-security.js` ‏10/10‏؛ P4 و نمادهای MM2/MM3 به کد نو به‌روز شد.
-- گیت‌ها: smoke ‏547/547‏، authz ‏0‏، build ‏0‏، هر ۷ سوئیت جهش ‏3/3‏ ✅
+
+- تست: سوئیت جدید `tests/public-security.js` `10/10`؛ P4 و نمادهای MM2/MM3 به کد نو به‌روز شد.
+
+- گیت‌ها: smoke `547/547`، authz `0`، build `0`، هر ۷ سوئیت جهش `3/3` ✅
 
 ## Devin-R1R2R3 فرناز — رفع ۳ مشکل Devin Review در PR #8 (چت ۱) — ✅
+
 - R1 (بحرانی): قفل ویرایش دورهٔ تکمیل‌شده در `saveTrainingCourse` (هر تغییر واقعی رد با
   «دوره تکمیل شده قابل ویرایش نیست»؛ فقط بازذخیرهٔ عینی مجاز تا idempotency صدور T4 بماند) + تست T12.
+
 - R2: `certificates.year` از INTEGER به VARCHAR(50) در `server/schema.sql` + اصلاح ریشه‌ای
   مولد `tools/migrate-to-pg.js` (استثنای هدفمند با colName؛ `enrollments.year` دست‌نخورده).
+
 - R3 (بحرانی): ۴ جدول `donations`/`safety_drills`/`staff_attendance`/`training_courses` در
   `server/schema.sql` (بلوک‌ها بایت‌به‌بایت خروجی مولد پس از استثناهای INTEGER/NUMERIC(14,2)؛
   ۸۳→۸۷ جدول). شکاف کشف‌شدهٔ خارج از scope: جدول `support_tickets` هم نیست.
-- گیت‌ها: smoke ‏547/547‏، authz ‏۰‏، build ‏۰‏، training2 ‏12/12‏ (+T12)، drills/donations/staffatt ‏10/10‏،
-  public2 ‏8/8‏، public-security ‏10/10‏، minutes2/boom2 ‏8/8‏، assocmin2/3 ‏8/8‏، جهش training ‏3/3‏ ✅
+
+- گیت‌ها: smoke `547/547`، authz `۰`، build `۰`، training2 `12/12` (+T12)، drills/donations/staffatt `10/10`،
+  public2 `8/8`، public-security `10/10`، minutes2/boom2 `8/8`، assocmin2/3 `8/8`، جهش training `3/3` ✅
+## ریزولوشن PR #11 — مرج main در feat/farnaz-phase1 (توسط چت ۳، ۱۹/۰۶) — ✅
+- ۳ کانفلیکت واقعی: HANDOFF (هر دو، زمانی — S0–S5 شاخه + تاریخچه مین)، USER_GUIDE (فقط مُهر بیلد؛
+  کال‌اوت فرناز سالم ادغام + بازتولید با build)، ‏server/validate.js‏ (هر دو قانون نگه داشته شد:
+  ‏meeting_type‏ مین + ‏kind‏ مش S5؛ قانون S4 ‏entry_gpa‏ تمیز ادغام شده بود).
+- مرج امن (نه ریبیس — شاخه مشترک، بدون force). یافته محیطی: jsdom@30 در این سندباکس require
+  نمی‌شود (undici/webidl skew) — گیت‌ها با jsdom@25 اجرا شدند (فقط محیط تست، بدون تغییر ریپو).
+- گیت‌ها: build ‏0‏، authz ‏0‏، smoke ‏547/547‏، entry-gpa ‏19/19‏، dorm-kind ‏17/17‏ ✅
