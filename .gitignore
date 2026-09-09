@@ -38,3 +38,5 @@ tests/.cache-jaeger/
 *.key
 *.crt
 server/data/jwt.key
+.claude/memory.db
+.claude-flow/
