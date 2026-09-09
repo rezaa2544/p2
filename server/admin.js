@@ -33,8 +33,8 @@ function createAdmin(ctx){
       return fs.readdirSync(dir).filter(f => NAME_RE.test(f)).sort();
     }catch(e){ return []; }
   }
-  function checkAdmin(req, res){
-    const s = sessionFrom(req);
+  async function checkAdmin(req, res){
+    const s = await sessionFrom(req);
     if(!s) {
       audit('authz_failure', { summary: 'عدم احراز نشست در بخش مدیریت', reason: 'no_session' });
       return { done: sendJson(res, 401, { ok: false, code: 'no_session' }) };
@@ -76,16 +76,16 @@ function createAdmin(ctx){
     return { name: name, size: size, count: listBackups().length };
   }
 
-  function apiBackup(req, res){
-    const g = checkAdmin(req, res);
+  async function apiBackup(req, res){
+    const g = await checkAdmin(req, res);
     if(g.done) return g.done;
     const r = backupNow('manual', g.user.id);
     if(!r) return sendJson(res, 500, { ok: false, code: 'backup_failed' });
     return sendJson(res, 200, { ok: true, file: r.name, size: r.size, count: r.count });
   }
 
-  function apiRestore(req, res, body){
-    const g = checkAdmin(req, res);
+  async function apiRestore(req, res, body){
+    const g = await checkAdmin(req, res);
     if(g.done) return g.done;
     /* لایهٔ مقدار (validate.js): فقط {file?} — کلیدِ ناشناخته = ردِّ 400.
        نامِ نامعتبر/ناموجود مثلِ گذشته به آخرین نسخهٔ معتبر برمی‌گردد
