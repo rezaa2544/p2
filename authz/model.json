@@ -10,8 +10,10 @@
     "created_by",
     "date",
     "id",
+    "office_id",
     "pinned",
     "school_id",
+    "severity",
     "title",
     "updated_at"
    ],

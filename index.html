@@ -3022,7 +3022,36 @@ function setClassSubjectMembers(cid,sid,studentIds){
 const avgOf=list=>list.length?list.reduce((a,b)=>a+b.score,0)/list.length:0;
 function visibleClasses(){const u=S.user;if(u.role==='superadmin')return db.classes;if(u.role==='manager')return db.classes.filter(c=>c.school_id===u.school_id);if(u.role==='teacher')return teacherClasses(u.id);const c=classOf(u.id);return c?[c]:[];}
 function visibleSubjects(){const u=S.user;return u.role==='superadmin'?db.subjects:db.subjects.filter(s=>s.school_id===u.school_id);}
-function myAnnouncements(){const u=S.user;return db.announcements.filter(a=>(a.school_id===null||u.role==='superadmin'||a.school_id===u.school_id)&&(a.audience==='all'||a.audience===u.role)).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));}
+/* د.۳ — ادارهٔ صاحب‌محدودهٔ یک مدرسه (برای اطلاعیه‌های اداره‌ای):
+   همهٔ فیلدهای جغرافیاییِ غیرخالیِ اداره باید با مدرسه بخواند. */
+function officeForSchool(s){
+  if(!s) return null;
+  const cands=(db.offices||[]).filter(function(o){
+    return (o.province_id||o.county_id||o.district_id)
+      &&(!o.province_id||o.province_id===s.province_id)
+      &&(!o.county_id||o.county_id===s.county_id)
+      &&(!o.district_id||o.district_id===s.district_id);
+  });
+  if(!cands.length) return null;
+  /* خاص‌ترین اداره می‌برد: منطقه > شهرستان > استان */
+  const spec=(o)=>(o.province_id?1:0)+(o.county_id?1:0)+(o.district_id?1:0);
+  cands.sort(function(a,b){ return spec(b)-spec(a); });
+  return cands[0];
+}
+const ANN_SEV_RANK={critical:2,urgent:1,normal:0};
+function myAnnouncements(){const u=S.user;
+  const mySchool=u.school_id!=null?byId('schools',u.school_id):null;
+  const myOffice=mySchool?officeForSchool(mySchool):null;
+  const visible=(a)=>{
+    if(a.office_id!=null){
+      if(u.role==='superadmin')return true;
+      if(u.role==='edu_office')return Number(a.office_id)===Number(u.office_id);
+      return !!myOffice&&Number(a.office_id)===myOffice.id;
+    }
+    return a.school_id===null||u.role==='superadmin'||a.school_id===u.school_id;
+  };
+  return db.announcements.filter(a=>visible(a)&&(a.audience==='all'||a.audience===u.role))
+    .sort((a,b)=>((ANN_SEV_RANK[b.severity]||0)-(ANN_SEV_RANK[a.severity]||0))||(b.created_at||'').localeCompare(a.created_at||''));}
 
 /* ==================== لایه محدودهٔ داده (Data Scope) ====================
    مسئله: در مقیاس ملی (۱۰ میلیون دانش‌آموز) هیچ مرورگری نمی‌تواند و
@@ -6497,18 +6526,54 @@ function viewSchedule(){
 /* ═══════════════════════════════════════════════════════════════════
    اطلاعیه‌ها
    اطلاعیهٔ مدرسه یا سراسری (با شناسهٔ مدرسهٔ خالی).
+   د.۳ — اطلاعیهٔ فوری/بحرانی اداره:
+   - `severity` ∈ normal/urgent/critical (رکوردهای قدیمی بدون فیلد = عادی)
+   - `office_id` = ادارهٔ منتشرکننده؛ مدارس فقط اطلاعیهٔ ادارهٔ
+     محدودهٔ خود را می‌بینند (فیلتر در myAnnouncements).
+   - نمایش: بحرانی بنر قرمز، فوری نوار کهربایی، بج «اطلاعیهٔ اداره».
+   - مرتب‌سازی: بحرانی، فوری، سپس تازه‌ترین.
    ═══════════════════════════════════════════════════════════════════ */
+const ANN_SEVERITY = { normal: ['عادی', 'b-gray'], urgent: ['فوری', 'b-amber'], critical: ['بحرانی', 'b-red'] };
+
 function viewAnnouncements(){
-  const canEdit=['superadmin','manager','teacher'].includes(S.user.role);
+  const canEdit=['superadmin','manager','teacher'].includes(S.user.role)||S.user.role==='edu_office';
   const rows=myAnnouncements();
   const AUD={all:'همه',teacher:'دبیران',student:'دانش‌آموزان',parent:'اولیا',manager:'مدیران'};
+  /* د.۳: فقط اطلاعیه‌های خودِ اداره قابل ویرایش/حذفِ کارشناس است */
+  const editable=(a)=>{
+    if(S.user.role==='superadmin')return true;
+    if(S.user.role==='edu_office')return a.office_id!=null&&Number(a.office_id)===Number(S.user.office_id);
+    return canEdit&&(a.school_id===S.user.school_id||a.school_id===null);
+  };
   return `<div class="card"><div class="card-head"><h3>اطلاعیه‌ها</h3>${S.user.role==='superadmin'?`<button class="btn ghost" data-act="ann-broadcast">📢 اطلاعیه سراسری</button> `:''}${canEdit?`<button class="btn" data-act="ann-new">➕ اطلاعیه جدید</button>`:''}</div>
    ${rows.length?`<div class="card-body" style="display:grid;gap:12px">${rows.map(a=>{const au=a.created_by?byId('users',a.created_by):null;
-    return `<div class="card" style="padding:15px;box-shadow:none;background:var(--surface-2)">
-     <div class="row"><b style="font-size:15px">${esc(a.title)}</b><span class="badge b-blue">${AUD[a.audience]||'همه'}</span><div class="spacer"></div>
-      <span class="small muted">${jalali(a.created_at)}</span>${canEdit?`<button class="icon-btn" title="ویرایش" data-act="ann-edit" data-id="${escAttr(a.id)}">✏️</button> <button class="icon-btn danger" title="حذف" data-act="ann-del" data-id="${escAttr(a.id)}">🗑️</button>`:''}</div>
+    const sev=a.severity&&ANN_SEVERITY[a.severity]?a.severity:'normal';
+    const border=sev==='critical'?'3px solid var(--red)':sev==='urgent'?'3px solid var(--amber)':'1px solid var(--border)';
+    const bg=sev==='critical'?'var(--red-soft)':sev==='urgent'?'var(--amber-soft)':'var(--surface-2)';
+    const office=a.office_id?byId('offices',a.office_id):null;
+    return `<div class="card" style="padding:15px;box-shadow:none;background:${bg};border:${border}">
+     ${sev!=='normal'?`<div class="row" style="margin-bottom:8px"><span class="badge ${ANN_SEVERITY[sev][1]}" style="font-size:12px">${sev==='critical'?'🚨':'⚠️'} اطلاعیهٔ ${ANN_SEVERITY[sev][0]}</span>${office?`<span class="badge b-purple">🏛️ ${esc(office.name)}</span>`:''}</div>`:''}
+     <div class="row"><b style="font-size:15px">${esc(a.title)}</b><span class="badge b-blue">${AUD[a.audience]||'همه'}</span>${office&&sev==='normal'?`<span class="badge b-purple">🏛️ ${esc(office.name)}</span>`:''}<div class="spacer"></div>
+      <span class="small muted">${jalali(a.created_at)}</span>${editable(a)?`<button class="icon-btn" title="ویرایش" data-act="ann-edit" data-id="${escAttr(a.id)}">✏️</button> <button class="icon-btn danger" title="حذف" data-act="ann-del" data-id="${escAttr(a.id)}">🗑️</button>`:''}</div>
      <p style="margin:10px 0 0;line-height:2">${esc(a.body)}</p>${au?`<div class="small muted" style="margin-top:6px">✍️ ${esc(au.full_name)}</div>`:''}</div>`;}).join('')}</div>`
    :empty('📢','اطلاعیه‌ای وجود ندارد',canEdit?'اولین اطلاعیه را منتشر کنید.':'به محض انتشار، اینجا نمایش داده می‌شود.')}</div>`;
+}
+
+/* ─────────────── د.۳: دادهٔ نمونهٔ اطلاعیه‌های فوری/بحرانی ───────────────
+   فقط افزودنیِ محلی (add) — وارد صف همگام‌سازی نمی‌رود.
+   رکوردهای قدیمی عمداً بدون severity می‌مانند تا سازگاریِ گذشته آزموده شود. */
+function generateUrgentAnnDemo(){
+  if(!db.offices || !db.offices.length) return;
+  if(db.announcements.some(a=>a.severity==='critical'||a.severity==='urgent')) return;
+  const o = db.offices.find(x=>x.county_id) || db.offices[0];
+  add('announcements',{school_id:null,office_id:o.id,audience:'all',severity:'critical',pinned:1,
+    title:'بحرانی: فردا مدارس محدوده به‌دلیل برودت هوا تعطیل است',
+    body:'به اطلاع مدیران می‌رساند فردا تمامی مدارس محدوده تعطیل است. کلاس‌های جبرانی متعاقباً برنامه‌ریزی می‌شود.',
+    created_by:(db.users.find(u=>u.office_id===o.id)||{}).id||null,created_at:todayISO(),date:todayISO()});
+  add('announcements',{school_id:null,office_id:o.id,audience:'manager',severity:'urgent',pinned:0,
+    title:'فوری: ارسال گزارش ایمنی تا پایان هفته',
+    body:'مدیران محترم، گزارش مانور ایمنی سالانه را تا پایان هفته در سامانه ثبت کنید.',
+    created_by:(db.users.find(u=>u.office_id===o.id)||{}).id||null,created_at:todayISO(),date:todayISO()});
 }
 
 /**
@@ -7450,9 +7515,16 @@ function discModal(d){
 }
 function annModal(a){
   a=a||{title:'',body:'',audience:'all'};
+  /* د.۳ — سطح اهمیت برای ناشران؛ اطلاعیهٔ اداره در محدودهٔ خود اداره منتشر می‌شود */
+  const isOffice=S.user.role==='edu_office';
+  const canSeverity=['manager','superadmin','edu_office'].includes(S.user.role);
+  const officeName=isOffice&&S.user.office_id?((byId('offices',S.user.office_id)||{}).name||''):'';
   openModal(modalTpl(a.id?'ویرایش اطلاعیه':'انتشار اطلاعیه',
    `${f('عنوان *',inp('a_title',a.title))}
     ${f('مخاطب',sel('a_aud',[['all','همه'],['teacher','دبیران'],['student','دانش‌آموزان'],['parent','اولیا'],['manager','مدیران']],a.audience))}
+    ${canSeverity?`${f('سطح اهمیت',sel('a_sev',[['normal','عادی'],['urgent','🟠 فوری'],['critical','🔴 بحرانی']],a.severity||'normal'))}
+      <div class="small muted" style="margin:-6px 0 10px">بحرانی با بنر قرمز و فوری با نوار کهربایی اولِ فهرست مخاطبان نمایش داده می‌شود.</div>`:''}
+    ${isOffice?`<div class="small" style="background:var(--purple-soft);padding:8px 12px;border-radius:10px;margin-bottom:10px">🏛️ این اطلاعیه به‌نام «${esc(officeName)}» برای همهٔ مدارس محدودهٔ همان اداره منتشر می‌شود.</div>`:''}
     ${f('متن *',`<textarea class="input" id="a_body" rows="5">${esc(a.body||'')}</textarea>`)}`,'ann-save'));
   window._annEdit=a.id||0;
 }
@@ -13499,8 +13571,20 @@ function coreActions(e, el, id, a, rawId){
    'ann-del'(){const a=byId('announcements',id);askDelete(`اطلاعیه «${a.title}» حذف شود؟`,()=>{remove('announcements',id);toast('اطلاعیه حذف شد','ok');render();});},
    'ann-save'(){ if(needAll([['a_title','عنوان و متن الزامی است'],['a_body','عنوان و متن الزامی است']]))return;
      const data={title:V('a_title'),body:V('a_body'),audience:V('a_aud')};
+     /* د.۳ — سطح اهمیت: فقط مقدارهای معتبر؛ نبودِ فیلد (ناشرانِ بدون انتخابگر) = عادی */
+     const sevEl=$('#a_sev');
+     const sev=sevEl?sevEl.value:'normal';
+     if(['normal','urgent','critical'].indexOf(sev)<0){toast('سطح اهمیت معتبر نیست','err');return;}
+     data.severity=sev;
      if(window._annEdit)update('announcements',window._annEdit,data);
-     else insert('announcements',Object.assign({school_id:S.user.school_id||null,created_by:S.user.id,created_at:todayISO()},data));
+     else{
+       /* اطلاعیهٔ اداره: در محدودهٔ ادارهٔ خود (school_id خالی + office_id خود)؛
+          بقیهٔ نقش‌ها مثل پیش (مدرسه‌ای یا سراسری) — د.۳ */
+       const base=S.user.role==='edu_office'
+         ?{school_id:null,office_id:S.user.office_id||null,created_by:S.user.id,created_at:todayISO()}
+         :{school_id:S.user.school_id||null,office_id:null,created_by:S.user.id,created_at:todayISO()};
+       insert('announcements',Object.assign(base,data));
+     }
      closeModal();toast(window._annEdit?'اطلاعیه ویرایش شد':'اطلاعیه منتشر شد','ok');window._annEdit=0;render();},
    /* ── مشاور مدرسه و پیگیری الگوها (دور ۶۳) ── */
    'fu-days'(){S.filters.fu_days=Number(el.dataset.d);render();},
@@ -17995,6 +18079,7 @@ setTimeout(()=>{
   if(typeof generateSidaDemo==='function') generateSidaDemo();
   if(typeof generateSchoolModeDemo==='function') generateSchoolModeDemo();
   if(typeof generateTeacherEvalDemo==='function') generateTeacherEvalDemo(); /* ب.۳ */
+  if(typeof generateUrgentAnnDemo==='function') generateUrgentAnnDemo();     /* د.۳ */
   /* loadLog در ابتدای این بلاک اجرا شده — اینجا فقط بازپخش و همگام‌سازی */
   applyLog(); initSync();
 
