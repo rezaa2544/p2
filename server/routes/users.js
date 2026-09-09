@@ -13,6 +13,7 @@
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { projectUserByRole } = require('../middleware/projection');
+const { createPolicy } = require('../policy');
 
 const ROLE_LEVEL = { student: 0, parent: 1, driver: 1, counselor: 3, teacher: 3, edu_office: 3, manager: 4, superadmin: 5 };
 
@@ -21,9 +22,18 @@ function createUserRoutes(ctx) {
   const db = ctx.db;
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
+  const policy = createPolicy({ store });
+  const COLL = 'users';
+
+  function denied(pa){
+    return { status: pa.status, body: { ok: false, code: pa.code, message: pa.message } };
+  }
 
   function getUsersList(req, urlParams) {
     const user = req.user;
+    /* P0-03: هر endpoint از authorize می‌گذرد (خوانش: نقشِ شناخته‌شده) */
+    const pa = policy.authorize(user, 'read', { coll: COLL });
+    if(!pa.ok) return denied(pa);
     let list = (store.users || []);
     list = filterByScope(user, list);
 
@@ -35,7 +45,7 @@ function createUserRoutes(ctx) {
     const search = urlParams.get('q');
     if (search) {
       const q = search.trim().toLowerCase();
-      list = list.filter(u => 
+      list = list.filter(u =>
         (u.full_name && u.full_name.toLowerCase().includes(q)) ||
         (u.national_id && u.national_id.includes(q)) ||
         (u.phone && u.phone.includes(q))
@@ -52,6 +62,9 @@ function createUserRoutes(ctx) {
 
   function getUserById(req, id) {
     const user = req.user;
+    /* P0-03: هر endpoint از authorize می‌گذرد (خوانش: نقشِ شناخته‌شده) */
+    const pa0 = policy.authorize(user, 'read', { coll: COLL, id: Number(id) });
+    if(!pa0.ok) return denied(pa0);
     const target = (store.users || []).find(u => u.id === Number(id));
     if (!target || !checkSchoolScope(user, target.school_id)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
@@ -68,10 +81,6 @@ function createUserRoutes(ctx) {
 
   async function createUser(req, body) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'superadmin' && user.role !== 'edu_office') {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'شما مجاز به ایجاد کاربر نیستید' } };
-    }
-
     if (!body || !body.full_name || !body.role) {
       return { status: 400, body: { ok: false, code: 'bad_request', message: 'نام کامل و نقش الزامی است' } };
     }
@@ -84,6 +93,13 @@ function createUserRoutes(ctx) {
     if (user.role !== 'superadmin' && targetLvl > ROLE_LEVEL[user.role]) {
       return { status: 403, body: { ok: false, code: 'role_escalation', message: 'ثبت کاربر با نقش بالاتر از سطح خود مجاز نیست' } };
     }
+
+    /* P0-03: نقش + قلمرو از policy مرکزی (manager/superadmin — هم‌ترازِ sync).
+       توجه: edu_office دیگر کاربر نمی‌سازد (در sync هم نمی‌توانست). */
+    const pa = policy.authorize(user, 'ins', { coll: COLL }, { role: body.role, school_id: user.school_id });
+    if(!pa.ok) return denied(pa);
+    const pv = policy.validate('ins', COLL, body);
+    if(!pv.ok) return denied(pv);
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
     let nextId = 1;
@@ -118,17 +134,22 @@ function createUserRoutes(ctx) {
 
   async function updateUser(req, id, body) {
     const user = req.user;
+    /* P0-03: نقش + قلمرو از policy مرکزی. exc=self جایِ isSelf، و
+       exc=iep از این مسیر پذیرفته نیست (IEP فقط از /students). */
+    const pa = policy.authorize(user, 'upd', { coll: COLL, id: Number(id) }, body || {});
+    if(!pa.ok) return denied(pa);
+    if(pa.exc === 'iep')
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'به‌روزرسانی IEP فقط از مسیر دانش‌آموزان مجاز است' } };
+    const pv = policy.validate('upd', COLL, body || {});
+    if(!pv.ok) return denied(pv);
+
     const target = (store.users || []).find(u => u.id === Number(id));
-    if (!target || !checkSchoolScope(user, target.school_id)) {
+    if (!target) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
 
     const isSelf = user.id === target.id;
     const isManager = user.role === 'manager' || user.role === 'superadmin';
-
-    if (!isSelf && !isManager) {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
-    }
 
     // Role change rules
     if (body.role && body.role !== target.role) {
@@ -157,17 +178,12 @@ function createUserRoutes(ctx) {
 
   async function deleteUser(req, id) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'superadmin') {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط مدیریت مجاز به حذف حساب کاربری است' } };
-    }
+    /* P0-03: حذف هم تحتِ مجوزِ مدل است (مثلِ sync) — نه فقط نقشِ دستی */
+    const pa = policy.authorize(user, 'del', { coll: COLL, id: Number(id) });
+    if(!pa.ok) return denied(pa);
 
     const uIdx = (store.users || []).findIndex(u => u.id === Number(id));
     if (uIdx === -1) {
-      return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
-    }
-
-    const target = store.users[uIdx];
-    if (!checkSchoolScope(user, target.school_id)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
 

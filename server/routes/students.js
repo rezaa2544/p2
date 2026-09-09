@@ -13,15 +13,25 @@
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { projectUserByRole } = require('../middleware/projection');
+const { createPolicy } = require('../policy');
 
 function createStudentRoutes(ctx) {
   const store = ctx.store;
   const db = ctx.db;
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
+  const policy = createPolicy({ store });
+  const COLL = 'users'; /* دانش‌آموز، رکوردِ users است */
+
+  function denied(pa){
+    return { status: pa.status, body: { ok: false, code: pa.code, message: pa.message } };
+  }
 
   function getStudentsList(req, urlParams) {
     const user = req.user;
+    /* P0-03: هر endpoint از authorize می‌گذرد (خوانش: نقشِ شناخته‌شده) */
+    const pa = policy.authorize(user, 'read', { coll: COLL });
+    if(!pa.ok) return denied(pa);
     let students = (store.users || []).filter(u => u.role === 'student');
     students = filterByScope(user, students);
 
@@ -43,7 +53,7 @@ function createStudentRoutes(ctx) {
     const search = urlParams.get('q');
     if (search) {
       const q = search.trim().toLowerCase();
-      students = students.filter(s => 
+      students = students.filter(s =>
         (s.full_name && s.full_name.toLowerCase().includes(q)) ||
         (s.national_id && s.national_id.includes(q))
       );
@@ -72,6 +82,9 @@ function createStudentRoutes(ctx) {
 
   function getStudentById(req, id) {
     const user = req.user;
+    /* P0-03: هر endpoint از authorize می‌گذرد (خوانش: نقشِ شناخته‌شده) */
+    const pa0 = policy.authorize(user, 'read', { coll: COLL, id: Number(id) });
+    if(!pa0.ok) return denied(pa0);
     const student = (store.users || []).find(u => u.id === Number(id) && u.role === 'student');
     if (!student) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
@@ -95,15 +108,16 @@ function createStudentRoutes(ctx) {
 
   async function createStudent(req, body) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'superadmin') {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط مدیر مدرسه مجاز به ثبت دانش‌آموز است' } };
-    }
-
     if (!body || !body.full_name || !body.national_id) {
       return { status: 400, body: { ok: false, code: 'bad_request', message: 'نام و کد ملی الزامی است' } };
     }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
+    /* P0-03: نقش + قلمرو از policy مرکزی (همان هستهٔ sync) */
+    const pa = policy.authorize(user, 'ins', { coll: COLL }, { role: 'student', school_id: schoolId });
+    if(!pa.ok) return denied(pa);
+    const pv = policy.validate('ins', COLL, body);
+    if(!pv.ok) return denied(pv);
     let nextId = 1;
     for (const u of (store.users || [])) {
       if (u.id >= nextId) nextId = u.id + 1;
@@ -137,8 +151,14 @@ function createStudentRoutes(ctx) {
 
   async function updateStudent(req, id, body) {
     const user = req.user;
+    /* P0-03: نقش + قلمرو از policy مرکزی؛ دبیر فقط با exc=iep (IEP رویِ دانش‌آموز) */
+    const pa = policy.authorize(user, 'upd', { coll: COLL, id: Number(id) }, body || {});
+    if(!pa.ok) return denied(pa);
+    const pv = policy.validate('upd', COLL, body || {});
+    if(!pv.ok) return denied(pv);
+
     const student = (store.users || []).find(u => u.id === Number(id) && u.role === 'student');
-    if (!student || !checkSchoolScope(user, student.school_id)) {
+    if (!student) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
 
@@ -172,17 +192,12 @@ function createStudentRoutes(ctx) {
 
   async function deleteStudent(req, id) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'superadmin') {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط مدیریت مجاز به حذف دانش‌آموز است' } };
-    }
+    /* P0-03: حذف هم تحتِ مجوزِ مدل است (مثلِ sync) — نه فقط نقشِ دستی */
+    const pa = policy.authorize(user, 'del', { coll: COLL, id: Number(id) });
+    if(!pa.ok) return denied(pa);
 
     const studentIdx = (store.users || []).findIndex(u => u.id === Number(id) && u.role === 'student');
     if (studentIdx === -1) {
-      return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
-    }
-
-    const student = store.users[studentIdx];
-    if (!checkSchoolScope(user, student.school_id)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
 

@@ -373,6 +373,7 @@ const onRequest = async (req, res) => {
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = studentRoutes.getStudentsList(req, url.searchParams);
+        if(r && r.body !== undefined) return sendJson(res, r.status || 200, r.body); /* P0-03: authorize-read */
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/students' && req.method === 'POST'){
@@ -398,6 +399,7 @@ const onRequest = async (req, res) => {
       // /api/v1/classes & /api/v1/classes/:id
       if(p === '/api/v1/classes' && req.method === 'GET'){
         const r = classRoutes.getClassesList(req, url.searchParams);
+        if(r && r.body !== undefined) return sendJson(res, r.status || 200, r.body); /* P0-03: authorize-read */
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/classes' && req.method === 'POST'){
@@ -423,6 +425,7 @@ const onRequest = async (req, res) => {
       // /api/v1/attendance & /api/v1/attendance/:id
       if(p === '/api/v1/attendance' && req.method === 'GET'){
         const r = attendanceRoutes.getAttendanceList(req, url.searchParams);
+        if(r && r.body !== undefined) return sendJson(res, r.status || 200, r.body); /* P0-03: authorize-read */
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/attendance' && req.method === 'POST'){
@@ -444,6 +447,7 @@ const onRequest = async (req, res) => {
       // /api/v1/grades & /api/v1/grades/:id
       if(p === '/api/v1/grades' && req.method === 'GET'){
         const r = gradeRoutes.getGradesList(req, url.searchParams);
+        if(r && r.body !== undefined) return sendJson(res, r.status || 200, r.body); /* P0-03: authorize-read */
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/grades' && req.method === 'POST'){
@@ -465,6 +469,7 @@ const onRequest = async (req, res) => {
       // /api/v1/users & /api/v1/users/:id
       if(p === '/api/v1/users' && req.method === 'GET'){
         const r = userRoutes.getUsersList(req, url.searchParams);
+        if(r && r.body !== undefined) return sendJson(res, r.status || 200, r.body); /* P0-03: authorize-read */
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/users' && req.method === 'POST'){

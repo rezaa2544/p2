@@ -421,7 +421,7 @@ function validateSyncData(coll, data, type){
 module.exports = {
   LIMITS, STATUS_ENUMS, STAGE_ENUM, USER_ROLES,
   SCHOOL_GENDERS, OP_KEYS,
-  validate, checkRule, ruleFor, validateSyncEnvelope, validateSyncData,
+  validate, checkRule, ruleFor, checkGeneric, validateSyncEnvelope, validateSyncData,
   validPhone, validLandline, validAuthPhone, validNid, validOtpCode, validId,
   validYMD, validDatetime,
 };

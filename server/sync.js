@@ -400,6 +400,10 @@ function inScope(session, coll, recId, data){
   }
   if(u.role === 'parent'){
     if(coll === 'messages') return msgOwnerOk();
+    /* P0-03 (هم‌ترازیِ REST): ولی رویِ رکوردِ خودش (self-update) داخلِ
+       قلمرو است — در sync بی‌اثر است چون canOp برایِ parent×users×upd
+       همیشه false است؛ فقط مسیرِ authorize با exc=self را کامل می‌کند. */
+    if(coll === 'users' && rec && rec.id === u.id) return true;
     const kids = (get_store().parent_links || []).filter(l => l.parent_id === u.id).map(l => l.student_id);
     /* R96: رزرو نوبت — رکوردِ نوبتِ آزاد student_id ندارد، پس مالکیت
        از data.student_id (فرزندِ خود) می‌آید؛ وگرنه مجوزِ مدل برای

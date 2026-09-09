@@ -977,3 +977,14 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 - تنها کانفلیکت: ۱ خط مُهر بیلد (`payesh-build`) در `USER_GUIDE.html` — بدون هیچ واگرایی محتوایی
   (تغییر گاید چت ۴ فقط همان مُهر بود). حل با مرج (نه ریبیس — شاخهٔ فعال مشترک، بدون force) + بازتولید با `node build.js`.
 - گیت‌ها: build ‏0‏، authz ‏0‏، smoke ‏547/547‏، minutes2/boom2/public2 ‏8/8‏، pubrep ‏9/9‏؛ بدون اکشن تکراری ✅
+
+## P0-03 پرامپت ۱ — یکپارچه‌سازی مجوز REST با Sync (policy واحد) — ✅
+- `server/policy.js` جدید: `authorize(user,op,{coll,id},payload)` (نقش از AUTHZ + قلمرو از inScope/tenancy؛
+  404-not-403) + `validate(op,coll,payload)` (شکلِ بدنه با ruleFor + aliasهای REST) + `scope` + `SELF_ALLOWED_FIELDS`.
+- `server/tenancy.js` جدید: `officeLevel/officeSchoolIds/inOfficeScope/resolveSchoolId` (استان→شهرستان→ناحیه→مدرسه).
+- هر ۵ ماژول `server/routes/*.js` (۲۳ هندلر) از `authorize()` می‌گذرد؛ `server/index.js` پنج GET-list را
+  status-aware کرد؛ `checkGeneric` از validate اکسپورت شد؛ self ولی در inScope هم‌تراز شد (در sync بی‌اثر).
+- تغییراتِ رفتاریِ عمدیِ هم‌ترازِ sync: حذفِ attendance/grades برای دبیرِ داخل‌قلمرو (مدل del)؛ edu_office
+  دیگر کاربر نمی‌سازد؛ IEP دبیر فقط از `/students` (از `/users` → ۴۰۳)؛ بیرونِ قلمرو همیشه ۴۰۴.
+- تست‌های جدید: `tests/policy.js` ‏10/10‏ + `tests/policy-mutations.js` ‏5/5‏ (هر ۵ جهش کشته شدند).
+- گیت‌ها: API ‏7/7‏ سوئیت، server1..18 + همهٔ mutations سبز، policy ‏10/10‏، authz ‏0‏، smoke ‏547/547‏ ✅
