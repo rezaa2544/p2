@@ -286,16 +286,27 @@ async function serverPart() {
     test('W4 کارشناس: ویرایش/حذف رکورد بیرون محدوده رد شد', async () => {
       let foreign = seed.staff_posts.find(p => p.school_id === outSchool.id);
       if (!foreign) {
-        /* رکورد بیرون محدوده در دمو نیست — با سوپرادمین می‌سازیم */
-        const mk = await syncOps(csa, [{ t: 'ins', c: 'staff_posts', by: sa.id,
-          data: { school_id: outSchool.id, subject_id: outSubj.id, required: 1, created_at: new Date().toISOString().slice(0, 10) } }]);
+        /* رکورد بیرون محدوده در دمو نیست — با سوپرادمین می‌سازیم
+           (شناسه در data: معیارِ سرور برایِ ذخیره‌سازیِ ins) */
+        const fid = ++iid;
+        const mk = await syncOps(csa, [{ t: 'ins', c: 'staff_posts', id: fid, by: sa.id,
+          data: { id: fid, school_id: outSchool.id, subject_id: outSubj.id, required: 1, created_at: new Date().toISOString().slice(0, 10) } }]);
         assert(res0(mk).ok === true, 'ساخت رکورد بیرونی شکست: ' + JSON.stringify(res0(mk)));
-        foreign = { id: iid };
+        foreign = { id: fid };
       }
       const r1 = await syncOps(ceo, [{ t: 'upd', c: 'staff_posts', id: foreign.id, by: eo.id, data: { required: 9 } }]);
       assert(res0(r1).ok !== true && res0(r1).code === 'out_of_scope', 'upd: ' + JSON.stringify(res0(r1)));
       const r2 = await syncOps(ceo, [{ t: 'del', c: 'staff_posts', id: foreign.id, by: eo.id }]);
       assert(res0(r2).ok !== true && res0(r2).code === 'out_of_scope', 'del: ' + JSON.stringify(res0(r2)));
+    });
+
+    test('W6 کارشناس: انتقال هنجار به مدرسهٔ بیرون محدوده رد شد', async () => {
+      const w6id = ++iid;
+      const mk = await syncOps(ceo, [{ t: 'ins', c: 'staff_posts', id: w6id, by: eo.id,
+        data: { id: w6id, school_id: inSchool.id, subject_id: inSubj.id, required: 1, created_at: new Date().toISOString().slice(0, 10) } }]);
+      assert(res0(mk).ok === true, 'ساخت هنجار داخل محدوده شکست: ' + JSON.stringify(res0(mk)));
+      const mv = await syncOps(ceo, [{ t: 'upd', c: 'staff_posts', id: w6id, by: eo.id, data: { school_id: outSchool.id } }]);
+      assert(res0(mv).ok !== true && res0(mv).code === 'out_of_scope', 'انتقال پذیرفته شد: ' + JSON.stringify(res0(mv)));
     });
 
     test('W5 سوپرادمین: هر مدرسه پذیرفته شد', async () => {

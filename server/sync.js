@@ -477,6 +477,8 @@ function inScope(session, coll, recId, data){
   }
   /* د.۴ — هنجار نیروی انسانی: کارشناس فقط برای مدارس محدودهٔ ادارهٔ خودش
      (استان/شهرستان/منطقهٔ دفتر). مدرسهٔ بیرون محدوده ⇒ رد. */
+    /* د.۴ — هنجار نیروی انسانی: کارشناس فقط برای مدارس محدودهٔ ادارهٔ خودش
+     (استان/شهرستان/منطقهٔ دفتر). مدرسهٔ بیرون محدوده ⇒ رد. */
   if(coll === 'staff_posts' && u.role === 'edu_office'){
     const sid = (data && data.school_id != null) ? data.school_id
               : (rec && rec.school_id != null) ? rec.school_id : null;
@@ -489,8 +491,44 @@ function inScope(session, coll, recId, data){
       if(office.district_id && school.district_id !== office.district_id) return false;
     }
   }
-  /* manager / edu_office: school-level */
-  if(u.role === 'edu_office') return true; /* اداره = مرجعِ بین‌مدرسه (مثلِ مدل) */
+  /* ویو ۵ — ایزولاسیون مستأجر برای اداره (Tenant Isolation):
+     کارشناس اداره فقط روی مدارسی می‌نویسد که در محدودهٔ جغرافیاییِ
+     اداره‌اش است (استان/شهرستان/منطقه). مجموعه‌هایِ دارای مهارِ مدرسه
+     (مستقیم یا از طریق گیرنده) دروازه دارند؛ رکورد/دادهٔ بدونِ مهارِ
+     قابلِ حل ⇒ رد (fail-closed). `offices` ساختاری است و اصلاً از
+     اختیار اداره بیرون است (دفاعِ دوم — مجوزش هم در مدل گرفته شده). */
+  if(u.role === 'edu_office'){
+    if(coll === 'offices') return false;
+    const EO_SCOPE_GATED = ['announcements','teacher_schools','attendance_modes','notifications','notify_queue','staff_posts'];
+    if(EO_SCOPE_GATED.indexOf(coll) > -1){
+      function schoolInOfficeScope(schoolId){
+        if(schoolId == null) return false;
+        const school = store_get('schools').find(s => s.id === Number(schoolId));
+        const office = store_get('offices').find(o => o.id === Number(u.office_id));
+        if(!school || !office) return false; /* fail-closed */
+        if(office.province_id && school.province_id !== office.province_id) return false;
+        if(office.county_id && school.county_id !== office.county_id) return false;
+        if(office.district_id && school.district_id !== office.district_id) return false;
+        return true;
+      }
+      const t = rec || data || {};
+      let sid = t.school_id != null ? t.school_id : null;
+      /* اعلان/صف پیام: اگر مهارِ مدرسه نبود، از مدرسهٔ گیرنده حل می‌شود */
+      if(sid == null && t.user_id != null){
+        const rcp = store_get('users').find(x => x.id === Number(t.user_id));
+        sid = rcp ? rcp.school_id : null;
+      }
+      /* د.۳ — اطلاعیهٔ سطحِ اداره: بدونِ مهارِ مدرسه/گیرنده ولی با
+         office_id خودِ ادارهٔ کاربر ⇒ در محدودهٔ همان اداره است؛
+         office_id ادارهٔ دیگر یا نبودِ آن ⇒ رد (فیل‌کلوزد) */
+      if(sid == null && t.office_id != null){
+        return Number(t.office_id) === Number(u.office_id);
+      }
+      return schoolInOfficeScope(sid);
+    }
+    return true; /* بقیه: اختیار بین‌مدرسه‌ای که مدل داده است */
+  }
+  /* manager: school-level */
   const s = rec ? rec.school_id : (data && data.school_id);
   if(s == null){
     /* R96: مجموعه‌هایِ بدونِ school_id (مثلِ hw_submissions) — scope از

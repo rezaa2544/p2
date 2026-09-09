@@ -272,6 +272,19 @@ async function serverPart() {
       assert(res0(r).ok !== true && res0(r).code === 'out_of_scope', JSON.stringify(res0(r)));
     });
 
+    test('V6 مدرسهٔ داخل محدوده ولی office_id ادارهٔ دیگر رد شد', async () => {
+      if (!eo2) return;
+      const office1 = seed.offices.find(o => o.id === eo1.office_id);
+      const inSchool = seed.schools.find(s =>
+        (!office1.province_id || s.province_id === office1.province_id) &&
+        (!office1.county_id || s.county_id === office1.county_id) &&
+        (!office1.district_id || s.district_id === office1.district_id));
+      if (!inSchool) return;
+      const r = await syncOps(c1, [{ t: 'ins', c: 'announcements', by: eo1.id,
+        data: { title: 'جعل هویت اداره', body: 'متن', audience: 'all', severity: 'urgent', school_id: inSchool.id, office_id: eo2.office_id, created_at: new Date().toISOString().slice(0, 10) } }]);
+      assert(res0(r).ok !== true && res0(r).code === 'out_of_scope', JSON.stringify(res0(r)));
+    });
+
     test('V5 اطلاعیهٔ مدرسه‌ای مدیر بی‌تأثیر ماند', async () => {
       const r = await syncOps(cm, [{ t: 'ins', c: 'announcements', by: mg.id,
         data: { title: 'مدرسه‌ای', body: 'متن مدرسه', audience: 'all', severity: 'normal', school_id: mg.school_id, created_at: new Date().toISOString().slice(0, 10) } }]);
