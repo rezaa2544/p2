@@ -14,6 +14,14 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۱: Wave -1 / Architecture Discovery بخش دوم — Threat Model + Bottleneck Map — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** بخش دوم Wave -1 فقط با مستندات انجام شد؛ `docs/THREAT_MODEL.md` با چارچوب STRIDE و `docs/BOTTLENECK_MAP.md` ساخته شدند و کپی هر دو در `reza/` قرار گرفت. Progress Tracker برای Wave -1 به `✅` تغییر کرد چون بخش اول و دوم کامل شدند.
+
+- **اثر معماری:** ریسک‌های اصلی ملی (چند source of truth، drift بین REST/Sync، IDOR/BOLA، state توزیع‌نشده، full scan، نبود load/chaos واقعی) و گلوگاه‌های مسیرهای REST/Pull/Sync/Storage با اولویت Waveهای بعدی مستند شد.
+- **اثر کد/دیتابیس/امنیت/کارایی:** فقط مستنداتی؛ هیچ تغییر runtime/schema/test.
+- **تست‌ها:** `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+
 ## چت ۱: Wave -1 / Architecture Discovery بخش اول — Dependency/Data/Auth/Sync Flow — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **وضعیت:** بخش اول Wave -1 فقط با مستندات انجام شد؛ هیچ فایل کد/runtime تغییر نکرد. چهار سند کشف معماری ساخته شد: `docs/DEPENDENCY_GRAPH.md`، `docs/DATA_FLOW.md`، `docs/AUTH_FLOW.md`، `docs/SYNC_FLOW.md` و کپی همه در `reza/` قرار گرفت. Progress Tracker برای Wave -1 به `🟡` تغییر کرد و Evidence به همین چهار سند اشاره می‌کند.
