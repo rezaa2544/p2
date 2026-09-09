@@ -14,6 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const partitioning = require('./partitioning');
 
 let pg = null;
 try {
@@ -26,6 +27,9 @@ let pool = null;
 let isPgActive = false;
 let memoryStore = null;
 let reconnectTimer = null;
+let replicaPools = [];
+let partitionPlan = partitioning.buildRoutingPlan({}, { enabled: false });
+const partitionMetrics = { queries: Object.create(null), replica_reads: 0, primary_reads: 0, writes: 0 };
 
 const config = {
   connectionString: null,
@@ -35,7 +39,8 @@ const config = {
   idleTimeoutMillis: 30000,
   pgbouncer: false,
   poolMode: null,
-  applicationName: 'payesh-server'
+  applicationName: 'payesh-server',
+  replicaUrls: []
 };
 
 function envInt(name, fallback) {
@@ -64,6 +69,7 @@ function refreshConfig() {
   config.connectionTimeoutMillis = envInt('PG_TIMEOUT_MS', envInt('PG_TIMEOUT', 3000));
   config.idleTimeoutMillis = envInt('PG_IDLE_TIMEOUT_MS', pgb ? 10000 : 30000);
   config.applicationName = process.env.PGAPPNAME || 'payesh-server';
+  config.replicaUrls = partitioning.parseReplicaUrls(process.env.DATABASE_READ_REPLICA_URLS || process.env.PAYESH_READ_REPLICA_URLS);
   return Object.assign({}, config);
 }
 refreshConfig();
@@ -77,6 +83,7 @@ async function init(fallbackStore) {
     memoryStore = fallbackStore;
   }
   refreshConfig();
+  refreshPartitionPlan();
 
   if (!config.connectionString || !pg) {
     isPgActive = false;
@@ -96,6 +103,7 @@ async function init(fallbackStore) {
       idleTimeoutMillis: config.idleTimeoutMillis,
       application_name: config.applicationName
     });
+    await rebuildReplicaPools();
 
     pool.on('error', (err) => {
       console.error('[DB] PostgreSQL pool background error:', err.message);
@@ -154,16 +162,77 @@ function getPool() {
   return pool;
 }
 
+
+async function closeReplicaPools() {
+  const pools = replicaPools;
+  replicaPools = [];
+  await Promise.all(pools.map(async (p) => {
+    try { if (p && typeof p.end === 'function') await p.end(); } catch (e) {}
+  }));
+}
+
+async function rebuildReplicaPools() {
+  await closeReplicaPools();
+  if (!pg || !config.replicaUrls || !config.replicaUrls.length) return;
+  const max = envInt('PG_REPLICA_POOL_MAX', Math.max(2, Math.floor(config.max / 2) || 2));
+  replicaPools = config.replicaUrls.map((url, i) => new pg.Pool({
+    connectionString: url,
+    min: 0,
+    max,
+    connectionTimeoutMillis: config.connectionTimeoutMillis,
+    idleTimeoutMillis: config.idleTimeoutMillis,
+    application_name: config.applicationName + '-replica-' + i
+  }));
+}
+
+function refreshPartitionPlan(store, opts) {
+  const cfg = partitioning.configFromEnv();
+  partitionPlan = partitioning.buildRoutingPlan(store || memoryStore || {}, Object.assign(cfg, opts || {}));
+  partitionPlan.defaultShardId = cfg.defaultShardId;
+  return partitionPlan;
+}
+
+function routeQuery(opts) {
+  opts = opts || {};
+  const operation = opts.operation || (opts.readOnly ? 'read' : 'write');
+  const decision = partitioning.routeForSchool(partitionPlan, opts.schoolId || opts.school_id, operation);
+  if (partitionPlan.enabled && decision.target === 'read-replica' && decision.read_replica_index >= 0 && replicaPools[decision.read_replica_index]) {
+    return Object.assign({}, decision, { pool: replicaPools[decision.read_replica_index], operation });
+  }
+  return Object.assign({}, decision, { pool, operation });
+}
+
+function notePartitionQuery(decision) {
+  const shard = (decision && decision.shard_id) || 'primary-a';
+  partitionMetrics.queries[shard] = (partitionMetrics.queries[shard] || 0) + 1;
+  if (decision && decision.target === 'read-replica') partitionMetrics.replica_reads += 1;
+  else if (decision && decision.operation === 'write') partitionMetrics.writes += 1;
+  else partitionMetrics.primary_reads += 1;
+}
+
+function partitioningHealth() {
+  const m = partitioning.metricsForPlan(partitionPlan);
+  return Object.assign({}, m, {
+    replica_pools: replicaPools.length,
+    query_counts: Object.assign({}, partitionMetrics.queries),
+    replica_reads: partitionMetrics.replica_reads,
+    primary_reads: partitionMetrics.primary_reads,
+    writes: partitionMetrics.writes
+  });
+}
+
 /**
  * Execute parameterized query with automatic client lease
  */
-async function query(text, params) {
+async function query(text, params, opts) {
   if (!isPostgres()) {
     return { rows: [], rowCount: 0 };
   }
-  const start = Date.now();
+  const routed = routeQuery(opts || {});
+  const targetPool = routed.pool || pool;
   try {
-    const res = await pool.query(text, params);
+    const res = await targetPool.query(text, params);
+    notePartitionQuery(routed);
     return res;
   } catch (err) {
     console.error('[DB] Query execution error:', err.message);
@@ -340,7 +409,8 @@ async function healthCheck() {
       idle_count: pool.idleCount,
       waiting_count: pool.waitingCount,
       pgbouncer: config.pgbouncer,
-      pool_mode: config.poolMode
+      pool_mode: config.poolMode,
+      partitioning: partitioningHealth()
     };
   } catch (err) {
     return { ok: false, driver: 'postgres', error: err.message };
@@ -362,11 +432,15 @@ async function close() {
     pool = null;
     isPgActive = false;
   }
+  await closeReplicaPools();
 }
 
 /* P1-14: seam تزریقِ pool برای تستِ اتمی‌بودن بدون PG واقعی (pg-mem).
    فقط تست از آن استفاده می‌کند؛ کدِ اجرایی همیشه از init می‌آید. */
 function __getConfigForTests() { return Object.assign({}, refreshConfig()); }
+function __getPartitionPlanForTests() { return partitionPlan; }
+function __refreshPartitionPlanForTests(store, opts) { return refreshPartitionPlan(store, opts); }
+function __setReplicaPoolsForTests(pools) { replicaPools = pools || []; }
 
 function __setPoolForTests(p) {
   if (p) { pool = p; isPgActive = true; }
@@ -386,6 +460,11 @@ module.exports = {
   persistOpsBatch,
   __setPoolForTests,
   __getConfigForTests,
+  __getPartitionPlanForTests,
+  __refreshPartitionPlanForTests,
+  __setReplicaPoolsForTests,
+  routeQuery,
+  partitioningHealth,
   isUidProcessed,
   healthCheck,
   close

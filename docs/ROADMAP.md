@@ -51,11 +51,12 @@
 
 ---
 
-## 🟣 فاز ۲.۳ زیرساخت تولید — اتصال PostgreSQL
+## 🟣 فاز ۲.۳/۲.۴ زیرساخت تولید — اتصال PostgreSQL و پارتیشن‌بندی
 
 | # | کار | وضعیت | مسئول | سند/تست |
 |---|-----|--------|-------|---------|
 | Infra.1 | PgBouncer Connection Pooling | ✅ کامل | چت ۴ جدید | `docs/PGBOUNCER_SETUP.md` + `tests/pgbouncer-pooling.js` |
+| Infra.2 | Weighted Partitioning برای مدارس شلوغ | ✅ کامل | چت ۴ | `docs/WEIGHTED_PARTITIONING.md` + `tests/weighted-partitioning.js` |
 
 ---
 
