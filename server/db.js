@@ -24,6 +24,21 @@
 
 const fs = require('fs');
 const path = require('path');
+/* ویو ۱۴ (Observability) — سیگنالِ metrics برای لایهٔ دیتابیس. بدون
+   وابستگیِ بیرونی؛ metrics.js فقط crypto را require می‌کند (بدون چرخه). */
+const metrics = require('./metrics');
+
+/* آستانهٔ «کوئریِ کند» — فقط برای شمارش، نه برای تغییرِ رفتار. */
+const DB_SLOW_MS = (Number(process.env.PAYESH_DB_SLOW_MS) > 0)
+  ? Number(process.env.PAYESH_DB_SLOW_MS) : 250;
+function dbSeconds(startNs) {
+  try { return Number(process.hrtime.bigint() - startNs) / 1e9; }
+  catch (e) { return 0; }
+}
+function dbSlow(startNs) {
+  try { return Number(process.hrtime.bigint() - startNs) / 1e6 >= DB_SLOW_MS; }
+  catch (e) { return false; }
+}
 
 let pg = null;
 try {
@@ -189,11 +204,13 @@ async function query(text, params) {
   if (!isPostgres()) {
     return { rows: [], rowCount: 0 };
   }
-  const start = Date.now();
+  const start = process.hrtime.bigint();
   try {
     const res = await pool.query(text, params);
+    metrics.observeDb('query', 'primary', dbSeconds(start), false, dbSlow(start));
     return res;
   } catch (err) {
+    metrics.observeDb('query', 'primary', dbSeconds(start), true, false);
     console.error('[DB] Query execution error:', err.message);
     throw err;
   }
@@ -208,9 +225,13 @@ async function query(text, params) {
  */
 async function queryRead(text, params) {
   if (isReplicaActive()) {
+    const start = process.hrtime.bigint();
     try {
-      return await readPool.query(text, params);
+      const res = await readPool.query(text, params);
+      metrics.observeDb('query_read', 'replica', dbSeconds(start), false, dbSlow(start));
+      return res;
     } catch (err) {
+      metrics.observeDb('query_read', 'replica', dbSeconds(start), true, false);
       readPoolActive = false;   /* dead replica → stop routing, fall back to primary */
       console.warn('[DB] Read replica query failed; falling back to primary:', err.message);
     }
@@ -299,13 +320,16 @@ async function transaction(callback) {
     return await callback(null);
   }
 
+  const start = process.hrtime.bigint();
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const result = await callback(client);
     await client.query('COMMIT');
+    metrics.observeDb('transaction', 'primary', dbSeconds(start), false, dbSlow(start));
     return result;
   } catch (err) {
+    metrics.observeDb('transaction', 'primary', dbSeconds(start), true, false);
     try { await client.query('ROLLBACK'); }
     catch (rbErr) { console.error('[DB] ROLLBACK failed:', rbErr.message); }   /* P1-14: خطایِ rollback نباید خطایِ اصلی را بپوشاند */
     throw err;

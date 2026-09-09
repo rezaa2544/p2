@@ -11,6 +11,8 @@
 
 const crypto = require('crypto');
 const redis = require('./redis');
+/* ویو ۱۴ (Observability) — نرخِ برخوردِ کش، ابطال‌ها و تصمیم‌هایِ rate-limit. */
+const metrics = require('./metrics');
 
 const INVAL_CHANNEL = 'payesh:pubsub:inval';
 const localUserBootstrapCache = new Map(); // L1 memory cache for microsecond reads
@@ -93,7 +95,11 @@ async function getBootstrapCache(userId) {
   // L1 Check
   const local = l1Get(Number(userId));
   if (local && Date.now() < local.exp) {
+    /* rebase: هر دو طرف — شمارندهٔ داخلیِ main (l1Hits که در stats() برگردانده
+       می‌شود) به‌علاوهٔ متریکِ ویو ۱۴ برای Prometheus. */
     l1Hits++;
+    /* ویو ۱۴ — نرخِ برخوردِ کش (لایهٔ حافظهٔ محلی) */
+    metrics.inc('payesh_cache_lookups_total', { layer: 'l1_memory', outcome: 'hit' });
     return local.data;
   }
   l1Misses++;
@@ -104,10 +110,14 @@ async function getBootstrapCache(userId) {
   if (raw) {
     try {
       const data = JSON.parse(raw);
+      /* rebase: l1Set() رَهیارِ main است و سقف l1MaxEntries را رعایت می‌کند؛
+         نوشتنِ مستقیم روی Map آن سقف را دور می‌زد. متریکِ ویو ۱۴ می‌ماند. */
       l1Set(Number(userId), { data, exp: Date.now() + 60000, school_id: data.school ? data.school.id : null });
+      metrics.inc('payesh_cache_lookups_total', { layer: 'l2_redis', outcome: 'hit' });
       return data;
     } catch (e) {}
   }
+  metrics.inc('payesh_cache_lookups_total', { layer: 'l2_redis', outcome: 'miss' });
   return null;
 }
 
@@ -155,6 +165,9 @@ async function invalidateSchool(schoolId) {
  * @param {number} [schoolId] 
  */
 async function invalidateCollection(collection, schoolId) {
+  /* ویو ۱۴ — برچسبِ scope از مجموعهٔ بسته (school/global) می‌آید؛ نامِ
+     collection وارد label نمی‌شود تا cardinality کران‌دار بماند. */
+  metrics.inc('payesh_cache_invalidations_total', { scope: schoolId ? 'school' : 'global' });
   if (schoolId) {
     await invalidateSchool(schoolId);
   } else {
@@ -177,6 +190,9 @@ async function checkRateLimit(identifier, action, limit = 10, windowSeconds = 60
   let count = countStr ? parseInt(countStr, 10) : 0;
 
   if (count >= limit) {
+    /* ویو ۱۴ — برچسبِ action نامِ اقدام است (send_code/login/api)، نه
+       شناسهٔ کاربر؛ تصمیم‌هایِ رد‌شده یعنی فشارِ سوءاستفاده. */
+    metrics.inc('payesh_rate_limit_decisions_total', { action: String(action || 'unknown').slice(0, 32), decision: 'denied' });
     return {
       allowed: false,
       remaining: 0,
@@ -186,6 +202,7 @@ async function checkRateLimit(identifier, action, limit = 10, windowSeconds = 60
 
   count += 1;
   await redis.set(key, String(count), 'EX', windowSeconds);
+  metrics.inc('payesh_rate_limit_decisions_total', { action: String(action || 'unknown').slice(0, 32), decision: 'allowed' });
 
   return {
     allowed: true,
