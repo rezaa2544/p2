@@ -41999,4 +41999,36 @@ ON CONFLICT (id) DO UPDATE SET
   "school_id" = EXCLUDED."school_id",
   "updated_at" = EXCLUDED."updated_at";
 
+
+-- ── Wave 3 (chat2): composite keyset indexes for DB-native LIST queries ──
+-- students list: role + school scope + grade/keyset ORDER BY id
+CREATE INDEX IF NOT EXISTS idx_users_school_role_id ON users (school_id, role, id);
+CREATE INDEX IF NOT EXISTS idx_users_role_school_id ON users (role, school_id, id);
+-- attendance list: manager/class/date ordering (date DESC, id ASC) + student scope
+CREATE INDEX IF NOT EXISTS idx_attendance_school_date_id ON attendance (school_id, date DESC, id);
+CREATE INDEX IF NOT EXISTS idx_attendance_student_date_id ON attendance (student_id, date DESC, id);
+
+-- ── Wave 3 part 2 (chat2): keyset indexes for grades/classes lists ──
+-- grades: manager scope + ORDER BY id DESC (keyset); student/parent scope
+CREATE INDEX IF NOT EXISTS idx_grades_school_id_id ON grades (school_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_grades_school_student_id ON grades (school_id, student_id, id DESC);
+-- classes: school scope + grade filter + keyset ORDER BY id ASC
+CREATE INDEX IF NOT EXISTS idx_classes_school_grade_id ON classes (school_id, grade, id);
+
+-- ── Wave 4 (chat2): tombstone table for DB-native delta pull ──────────
+-- PREPARED. Not populated by the current write side yet (sync.js push /
+-- delete-service record deletions in the in-memory store). Populating + reading
+-- this table is PENDING on the PostgreSQL-native write path (docs/SYNC_PROTOCOL.md).
+CREATE TABLE IF NOT EXISTS server_tombstones (
+  id BIGSERIAL PRIMARY KEY,
+  "collection" VARCHAR(64) NOT NULL,
+  record_id INTEGER NOT NULL,
+  school_id INTEGER,
+  deleted_by INTEGER,
+  deleted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  reason VARCHAR(255)
+);
+CREATE INDEX IF NOT EXISTS idx_server_tombstones_deleted_at ON server_tombstones (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_server_tombstones_school_deleted_at ON server_tombstones (school_id, deleted_at);
+
 COMMIT;
