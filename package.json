@@ -12,7 +12,11 @@
     "test": "node tests/run.js && node --expose-gc --max-old-space-size=2048 tests/smoke.js",
     "clean": "rm -rf dist",
     "build:android": "node tools/build-android.js",
-    "test:smoke": "node tests/smoke.js"
+    "test:smoke": "node tests/smoke.js",
+    "migrate:up": "node scripts/migrate.js up",
+    "migrate:down": "node scripts/migrate.js down",
+    "migrate:status": "node scripts/migrate.js status",
+    "migrate:create": "node scripts/migrate.js create"
   },
   "keywords": [
     "school-management",
@@ -32,7 +36,9 @@
     "pg": "^8.23.0"
   },
   "devDependencies": {
-    "jsdom": "^30.0.1"
+    "@electric-sql/pglite": "^0.5.8",
+    "jsdom": "^30.0.1",
+    "node-pg-migrate": "^9.0.0"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"

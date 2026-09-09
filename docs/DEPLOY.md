@@ -160,6 +160,15 @@ PAYESH_STORE=/tmp/restore.json node server/admin.js --restore /path/to/backup.js
 
 ---
 
+## ۶-ب. مسیرِ PostgreSQL (مقیاسِ ملی — اختیاری)
+
+استقرارِ پیش‌فرض همین JSON-استور است؛ وقتی مدرسه‌ها زیاد شدند، دو مرحله:
+۱) اسکیما: `npm run migrate:status` و بعد `npm run migrate:up` (جزئیات: `docs/MIGRATION_SETUP.md`)؛
+۲) بارِ داده: `node tools/migrate-to-pg.js --execute` با همانِ `DATABASE_URL`.
+پیش از هر `migrate:down` در تولید، بکاپ (§۶) اجباری است.
+
+---
+
 ## ۷. بروزرسانی (هر بار که کد جدید می‌آید)
 
 ```bash
@@ -190,6 +199,7 @@ curl -fsS https://payesh.example/api/health
 | ۸ | شمارهٔ تماسِ سیاستِ حریم خصوصی (بخشِ ۹) رسمی‌شده | `docs/PRIVACY_POLICY.md` + صفحهٔ وب |
 | ۹ | حسابِ بررسی‌گرِ گوگل (برای اپ) آماده است | بخشِ «دسترسیِ بررسی‌گر» در `PLAY_STORE_CHECKLIST.md` |
 | ۱۰ | مانیتورینگِ حداقلی: `Restart=always` + یک پینگِ خارجیِ ساعتی به `/api/health` (upptime یا همان curl در cron + پیام به اپراتور) | یک خطایِ شبانه بدونِ بیدارشدنِ اپراتور نمی‌ماند |
+| ۱۱ | (فقط مسیرِ PG) `migrate:status` سبز + شمارشِ جدول‌هایِ PG برابرِ استور | `node tests/migration.js` سبز در ایستگاهِ استقرار |
 
 ---
 

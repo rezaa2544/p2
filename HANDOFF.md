@@ -14,6 +14,16 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۱ — وظیفهٔ ۱: ابزارِ migration نسخه‌دار (node-pg-migrate + SQL) — ۱۹/۰۶/۱۴۰۵ (2026-09-09) — ✅
+
+**وضعیت:** رویِ `arena/01a0827b-p2`؛ رانتایمِ سرور دست‌نخورده (ابزار فقط devDep است؛ migration از ایستگاهِ استقرار اجرا می‌شود).
+- **انتخابِ ابزار:** `node-pg-migrate@9` (تأیید شد: فایلِ تکیِ `.sql` با مارکرهایِ `-- Up/Down Migration` از v4 پشتیبانی می‌شود — قراردادِ `migrate:down` + نسخه‌دارِ `.sql` بدونِ رانرِ سفارشی) + `@electric-sql/pglite` برایِ تستِ بدونِ سرورِ PG.
+- **فایل‌ها:** `migrations/001_initial.sql` (اکستنشن‌ها + ۳ جدولِ internal + هر ۸۱ جدولِ `model.json`، فریز) + `migrations/002_indexes.sql` (۱۹۰ ایندکس، فریز)؛ `scripts/migrate.js` (لفافِ fail-closed: گاردِ DATABASE_URL، ماسکِ `***` برایِ رمز در لاگ، قفلِ `down` در production با `--force`، هشدارِ بازنویسیِ تاریخچه) + ۴ اسکریپتِ `migrate:*` در package.json.
+- **دو باگِ نهفتهٔ ابزارِ قدیمی پیدا و در migration رفع شد:** (۱) جدولِ `schools` پنجاه‌وهفتم بود و FKهایِ inline رویِ PG واقعی می‌شکستند → schools-first؛ (۲) ایندکسِ `idx_sync_conflicts_school_status` به جدولی اشاره می‌کرد که در `model.json` نیست → حذف با NOTE (رسمی‌سازیِ `sync_conflicts` = follow-up با migration تازه).
+- **تست:** `tests/migration.js` ‏8/8‏ (مارکر/پوششِ مدل + up/down واقعی رویِ PGlite: ۸۴ جدول، ۲۷۴ ایندکس، ۶۱ FK، برگشتِ کامل به صفر) + `tests/migration-mutations.js` ‏3/3‏ کشته (گاردِ URL، ماسکِ رمز، مارکرِ Down). اکستنشن‌ها فقط در PG واقعی اعمال می‌شوند (محدودیتِ مستندشدهٔ PGlite).
+- **مستندات:** `docs/MIGRATION_SETUP.md` (تازه: دستورها + استقرارِ دومرحله‌ایِ schema-بعد-data) + `docs/DEPLOY.md` §۶-ب و ردیفِ ۱۱ چک‌لیست.
+- **گیت‌ها:** smoke ‏547/547‏، authz ‏0‏ (تطبیقِ کامل)، build:check سبز، secret-scan ‏11/11‏ ✅
+
 ## سشن آرنا — اجرای هر ۳ دستور (رگرسیون + چت ۲ + کارایی att-set) — ۱۹/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **وضعیت:** شاخهٔ `arena/01a0827b-p2` فوروارد به `origin/main` (`54b1820`) + ۲ کامیت (رفع + گزارش) — همه پوش شد. گزارش کامل: `ARENA_SESSION_REPORT_2026-09-09.md` (ریشه — ارائه شد).
