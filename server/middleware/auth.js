@@ -8,17 +8,18 @@
    - Attaches authenticated user object (req.user / req.session).
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const revocation = require('../revocation');
 
 /**
  * Creates JWT authentication middleware
  * @param {Object} auth - auth module instance or session provider
  */
 function createAuthMiddleware(auth) {
-  return function authMiddleware(req, res, next) {
+  return async function authMiddleware(req, res, next) {
     let session = null;
     
     if (auth && typeof auth.sessionFrom === 'function') {
-      session = auth.sessionFrom(req);
+      session = await auth.sessionFrom(req);
     }
 
     // Support Authorization: Bearer <token> header as fallback
@@ -30,7 +31,12 @@ function createAuthMiddleware(auth) {
           const store = auth.getStore ? auth.getStore() : (auth.store || {});
           const user = (store.users || []).find(u => u.id === v.payload.sub);
           if (user && user.active) {
-            session = Object.assign({ jti: v.payload.jti, token }, user);
+            /* denylist + نسخهٔ نشست (revoke-all) — مثلِ sessionFrom */
+            const denied = await revocation.isRevoked(v.payload.jti);
+            const vers = await revocation.getSessionVersion(v.payload.sub);
+            if (!denied && !(vers > 0 && (v.payload.sv || 0) < vers)) {
+              session = Object.assign({ jti: v.payload.jti, token }, user);
+            }
           }
         }
       }
