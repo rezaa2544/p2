@@ -5728,12 +5728,58 @@ const CAP_DEFS=[
   ['has_evening','نوبت دوم / کلاس شبانه','برنامهٔ فشردهٔ بزرگسالان — کلاس‌های شبانه با تراکمِ هفتگیِ بالاتر']
 ];
 const CAP_DEFAULTS={has_tuition:1,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1,has_evening:0};
-/** پروفایل قابلیت یک مدرسه با اعمال پیش‌فرض‌ها */
+/* ─────────── نوع ساختاری مدرسه (فاز ۰.۱): school_type ───────────
+   شناسهٔ لاتینِ نوع مدرسه (۹ مقدار — راهنما: docs/SCHOOL_TYPE_GUIDE.md).
+   هر نوع یک «سطر پیامد» دارد که تعیین می‌کند کدام ماژول‌ها برای
+   مدرسه فعال‌اند؛ سیم‌کشی از طریق همان کلیدهای capability است
+   (navFor در 07-shell.js و گیت‌های hasCap) — هیچ شرطِ تازه‌ای در
+   ماژول‌ها ساخته نشده است.
+   زنجیرهٔ تقدم در schoolCaps (سازگار با گذشته):
+     ۱) قابلیتِ صریحِ ذخیره‌شده روی مدرسه (چک‌باکس‌های مودال)
+     ۲) سطرِ school_type — فقط اگر روی رکورد صریح و معتبر باشد
+     ۳) CAP_DEFAULTS (رفتارِ قدیمی برای مدارسِ بدون school_type)
+   کلیدهایِ خارج از جدولِ فاز ۰.۱ (has_second_term_exam و has_evening)
+   نگاشت نوعی ندارند و همیشه از همان زنجیرهٔ ۱→۳ می‌آیند.
+   ستونِ entrance_exam ماژولِ مستقلی ندارد (فاز ۰.۱) و فقط در
+   schoolTypeFeatures برای مصرفِ آینده افشا می‌شود.
+   fail-closed: مقدارِ نامعتبر/خالی = governmental (همه‌چیز خاموش). */
+const SCHOOL_TYPE_DEFS=[
+  ['governmental','دولتی معمولی',{tuition:0,dorm:0,iep:0,multigrade:0,workshop:0,entrance_exam:0}],
+  ['exemplary','نمونه دولتی (هیئت امنایی)',{tuition:1,dorm:0,iep:0,multigrade:0,workshop:0,entrance_exam:1}],
+  ['non_profit','غیردولتی / غیرانتفاعی',{tuition:1,dorm:1,iep:0,multigrade:0,workshop:0,entrance_exam:1}],
+  ['sampad','تیزهوشان (سمپاد)',{tuition:0,dorm:0,iep:0,multigrade:0,workshop:0,entrance_exam:1}],
+  ['shahed','شاهد',{tuition:1,dorm:0,iep:0,multigrade:0,workshop:0,entrance_exam:0}],
+  ['exceptional','استثنایی',{tuition:0,dorm:0,iep:1,multigrade:0,workshop:0,entrance_exam:0}],
+  ['rural','روستایی / عشایری',{tuition:0,dorm:0,iep:0,multigrade:1,workshop:0,entrance_exam:0}],
+  ['boarding','شبانه‌روزی',{tuition:1,dorm:1,iep:0,multigrade:0,workshop:0,entrance_exam:0}],
+  ['vocational','هنرستان',{tuition:1,dorm:0,iep:0,multigrade:0,workshop:1,entrance_exam:0}]
+];
+const SCHOOL_TYPE_IDS=SCHOOL_TYPE_DEFS.map(d=>d[0]);
+const SCHOOL_TYPE_CAPKEYS={tuition:'has_tuition',dorm:'has_dorm',iep:'has_iep',multigrade:'has_multigrade',workshop:'has_workshop'};
+/** نوع ساختاری یک مدرسه — نامعتبر/خالی = governmental (fail-closed) */
+function schoolTypeOf(s){
+  var t=s?s.school_type:null;
+  return SCHOOL_TYPE_IDS.indexOf(t)>-1?t:'governmental';
+}
+/** سطر پیامد یک نوع (کپی) — ورودی نامعتبر = سطر governmental */
+function schoolTypeFeatures(type){
+  for(var i=0;i<SCHOOL_TYPE_DEFS.length;i++)
+    if(SCHOOL_TYPE_DEFS[i][0]===type) return Object.assign({},SCHOOL_TYPE_DEFS[i][2]);
+  return Object.assign({},SCHOOL_TYPE_DEFS[0][2]);
+}
+/** نگاشت سطر پیامد به کلیدهای capability (فقط کلیدهای نگاشت‌شده) */
+function schoolTypeCaps(type){
+  var f=schoolTypeFeatures(type), out={};
+  for(var k in SCHOOL_TYPE_CAPKEYS) out[SCHOOL_TYPE_CAPKEYS[k]]=f[k]?1:0;
+  return out;
+}
+/** پروفایل قابلیت یک مدرسه با اعمال پیش‌فرض‌ها (فاز ۰.۱: fallback نوعی) */
 function schoolCaps(sid){
   const s=(typeof byId==='function')?byId('schools',sid):null;
   const c=(s&&s.capabilities)?s.capabilities:{};
   const out={};
-  CAP_DEFS.forEach(function(k){ out[k[0]]=c[k[0]]==null?CAP_DEFAULTS[k[0]]:Number(c[k[0]]); });
+  const row=(s&&typeof s.school_type==='string'&&SCHOOL_TYPE_IDS.indexOf(s.school_type)>-1)?schoolTypeCaps(s.school_type):null;
+  CAP_DEFS.forEach(function(k){ out[k[0]]=c[k[0]]==null?(row&&row[k[0]]!=null?row[k[0]]:CAP_DEFAULTS[k[0]]):Number(c[k[0]]); });
   return out;
 }
 /** آیا مدرسه صاحب این قابلیت است؟ */
