@@ -183,6 +183,10 @@ curl -fsS https://payesh.example/api/health
 تغییر کرده، `server/sync.js` + `server/seed.js` را بخوانید و در **کپیِ
 بکاپ** تست کنید (هرگز مستقیم روی استورِ اصلی).
 
+> **مقیاسِ ملی:** برایِ استقرارِ مرحله‌ای (Blue-Green/Canary) با Rollbackِ
+> سریع، به‌جایِ ری‌استارتِ مستقیم از `docs/CANARY_DEPLOYMENT.md`
+> (§۱-۶: `scripts/canary-deploy.sh` و `npm run rollback`) استفاده کنید.
+
 ---
 
 ## ۸. چک‌لیستِ go-live (همه باید سبز باشند)

@@ -17,7 +17,8 @@
     "migrate:down": "node scripts/migrate.js down",
     "migrate:status": "node scripts/migrate.js status",
     "migrate:create": "node scripts/migrate.js create",
-    "scan:secrets": "node tools/secret-scan.js"
+    "scan:secrets": "node tools/secret-scan.js",
+    "rollback": "bash scripts/rollback.sh"
   },
   "keywords": [
     "school-management",
