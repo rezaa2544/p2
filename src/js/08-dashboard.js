@@ -271,6 +271,7 @@ function summaryBlock(sid){
    ${statCard('📊',fa(d.avg.toFixed(2)),'معدل کل','green')}
    ${statCard('🏅',fa(d.rank)+' از '+fa(d.size),'رتبه در کلاس','amber')}
    ${statCard('⚖️',fa(d.points),'امتیاز انضباطی ('+fa(d.disc.length)+' مورد)',d.points>=0?'purple':'red')}</div>
+   ${(typeof internshipProgressHtml==='function')?internshipProgressHtml(sid):''}
    <div class="grid g2">
     <div class="card"><div class="card-head"><h3>وضعیت حضور</h3><span class="badge b-green">${fa(tot?Math.round(cnt('present')/tot*100):0)}٪ حضور</span></div>
      <div class="card-body" style="display:grid;gap:12px">${['present','absent','late','excused','early_exit'].map(k=>`<div><div class="row"><span>${ATT_FA[k]}</span><div class="spacer"></div><b>${fa(cnt(k))} روز</b></div>${bar(cnt(k),tot,ATT_COLOR[k])}</div>`).join('')}</div></div>

@@ -681,7 +681,6 @@
       ],
       "del": [
         "manager",
-        "teacher",
         "superadmin"
       ]
     },
@@ -3052,6 +3051,15 @@
       ],
       "collections": [
         "internships"
+      ]
+    },
+    "internship-cert": {
+      "roles": [
+        "manager",
+        "superadmin"
+      ],
+      "collections": [
+        "certificates"
       ]
     },
     "internship-del-ok": {
