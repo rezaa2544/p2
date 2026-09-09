@@ -19107,6 +19107,7 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
          resolve کردنِ اسکوپِ lexical (بسته‌هایِ let/constِ تک‌فایلی روی
          window نیستند). مجاز‌شده در lintِ xss-guard (X2a). */
       var miss = need.filter(function(n){
+        // eslint-disable-next-line security/detect-eval-with-expression -- شناسه‌های ثابتِ سخت‌کدشده (نه ورودی کاربر) برای resolve کردنِ اسکوپِ lexical؛ مجوزِ X2a
         try{ return typeof eval(n) !== 'function'; }catch(e){ return true; }
       }).map(function(n){ return { تابع:n }; });
       return miss.length
@@ -19135,6 +19136,7 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
                   'ROLE_FA','DIAG_CHECKS','BELL_PRESETS','FIELD_ALIASES'];
       /* همان استدلالِ بالایِ eval: شناسهٔ ثابتِ سخت‌کد شده (مجوزِ X2a) */
       var miss = need.filter(function(n){
+        // eslint-disable-next-line security/detect-eval-with-expression -- همان مجوزِ X2a: شناسهٔ ثابتِ سخت‌کدشده، فقط resolve اسکوپ
         try{ return eval(n) === undefined; }catch(e){ return true; }
       }).map(function(n){ return { جدول:n }; });
       return miss.length
