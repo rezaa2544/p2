@@ -1299,15 +1299,12 @@
     "user_id"
    ],
    "ins": [
-    "edu_office",
     "superadmin"
    ],
    "upd": [
-    "edu_office",
     "superadmin"
    ],
    "del": [
-    "edu_office",
     "superadmin"
    ],
    "note": "R96: granted — client UI flow (offices)"
