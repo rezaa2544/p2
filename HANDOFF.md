@@ -25,7 +25,7 @@
 - **تست:** `tests/summer2.js` بازنویسی شد (۷/۷)، `tests/summer3.js` سروری شد (۹/۹)، `tests/summer-mutations.js` اضافه شد (۶/۶) و `tests/summer2-mutations.js` به نام جدید وصل شد.
 - **مستندات:** `docs/SUMMER_CLASSES_MODULE.md` اضافه و `docs/README.md`/`docs/ROADMAP.md` به‌روز شدند.
 - **گیت‌ها:** `build --check` ✅؛ `check-authz` ✅؛ `secret-scan` ۱۱/۱۱ ✅؛ smoke ۵۴۷/۵۴۷ ✅؛ رگرسیون Version Vectors/Weighted/PgBouncer هم سبز ماند.
-- **کامیت/پوش:** پس از کامیت، روی `origin/arena/01a08527-p2` پوش می‌شود؛ گزارش نهایی در `CHAT4_SUMMER_CLASSES_REPORT.md`.
+- **کامیت/پوش:** با کامیت‌های `468ecce` و `b15f60d` روی `origin/arena/01a08527-p2` پوش شد؛ گزارش نهایی در `CHAT4_SUMMER_CLASSES_REPORT.md`.
 
 ## چت ۴: Version Vectors برای Offline-First Conflicts — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
