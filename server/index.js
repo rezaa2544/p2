@@ -41,6 +41,8 @@ const { createGradeRoutes } = require('./routes/grades');
 const { createUserRoutes } = require('./routes/users');
 const { createBootstrapRoute } = require('./routes/bootstrap');
 const { createIds } = require('./ids'); /* P0-16 */
+const { createOutbox } = require('./outbox'); /* P0-17 */
+const { createDeleteService } = require('./delete-service'); /* P0-17 */
 const { createPull } = require('./pull');
 
 const ROOT = path.join(__dirname, '..');
@@ -301,11 +303,14 @@ const conflicts = createConflicts({ store, audit, sessionFrom: auth.sessionFrom,
 /* ── Phase 3: RESTful Resource Routes ─────────────────────────────── */
 /* P0-16: شناسه‌های بدون‌برخورد — دنبالهٔ پستگرس یا مکس+۱ قفل‌دار */
 const ids = createIds({ db, cache });
-const studentRoutes = createStudentRoutes({ store, db, audit, markDirty, ids });
-const classRoutes = createClassRoutes({ store, db, audit, markDirty, ids });
-const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, ids });
-const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty, ids });
-const userRoutes = createUserRoutes({ store, db, audit, markDirty, ids });
+/* P0-17: صندوق برون‌مرزی + سرویس حذف واحد (سنگ‌قبر به‌جای اسپلایسِ خام) */
+const outbox = createOutbox({ store, db });
+const deleter = createDeleteService({ store, db, markDirty, outbox });
+const studentRoutes = createStudentRoutes({ store, db, audit, markDirty, ids, deleter });
+const classRoutes = createClassRoutes({ store, db, audit, markDirty, ids, deleter });
+const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, ids, deleter });
+const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty, ids, deleter });
+const userRoutes = createUserRoutes({ store, db, audit, markDirty, ids, deleter });
 const bootstrapRoute = createBootstrapRoute({ store });
 const pullRoute = createPull({ store, sessionFrom: auth.sessionFrom, sendJson });
 

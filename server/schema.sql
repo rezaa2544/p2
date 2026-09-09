@@ -25,6 +25,20 @@ CREATE TABLE IF NOT EXISTS server_auth_codes (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- P0-17: Transactional outbox — replication/audit trail of mutations
+CREATE TABLE IF NOT EXISTS server_outbox (
+  id BIGINT PRIMARY KEY,
+  type TEXT NOT NULL,
+  collection TEXT NOT NULL,
+  record_id BIGINT,
+  actor_id BIGINT,
+  version INTEGER,
+  payload JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_server_outbox_created ON server_outbox (created_at);
+CREATE INDEX IF NOT EXISTS idx_server_outbox_col ON server_outbox (collection, record_id);
+
 -- Table: announcements
 CREATE TABLE IF NOT EXISTS announcements (
   "audience" VARCHAR(255),

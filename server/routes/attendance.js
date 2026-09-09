@@ -16,6 +16,7 @@ function createAttendanceRoutes(ctx) {
   const store = ctx.store;
   const db = ctx.db;
   const ids = ctx.ids; /* P0-16 */
+  const deleter = ctx.deleter; /* P0-17 */
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
@@ -133,11 +134,14 @@ function createAttendanceRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'رکورد یافت نشد' } };
     }
 
-    store.attendance.splice(recIdx, 1);
-    markDirty();
-
-    if (db) await db.persistOp({ c: 'attendance', t: 'del', id: Number(id) });
-    audit('attendance_deleted', { user_id: user.id, record_id: Number(id) });
+    /* P0-17: حذف امن با سرویس واحد — سنگ‌قبر + نسخه + رویداد برون‌مرزی */
+    const del = await deleter.softDelete('attendance', { id: Number(id) }, {
+      actor: user,
+      audit: () => audit('attendance_deleted', { user_id: user.id, record_id: Number(id) })
+    });
+    if (!del.ok) {
+      return { status: 404, body: { ok: false, code: 'not_found', message: 'رکورد یافت نشد' } };
+    }
     return { status: 200, body: { ok: true, message: 'رکورد حضور با موفقیت حذف شد' } };
   }
 
