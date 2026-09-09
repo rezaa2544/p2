@@ -15,6 +15,9 @@
    `node server/seed.js` from the deterministic demo world.
    ───────────────────────────────────────────────────────────────── */
 'use strict';
+/* Tracing اول از همه: باید پیش از http و ماژول‌هایِ instrumentشده بالا بیاید (OTel) */
+const tracing = require('./tracing');
+tracing.initTracing();
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -321,6 +324,12 @@ const onRequest = async (req, res) => {
   const https = isHttps(req);
   const nonce = crypto.randomBytes(16).toString('base64');
   securityHeaders(res, nonce, https);
+  /* Tracing (P-Trace): شناسهٔ ردیابی در کانتکست و سرآیندِ پاسخ برای هم‌بستگی */
+  req.context = req.context || {};
+  try{
+    const __tid = tracing.getTraceId();
+    if(__tid){ req.context.trace_id = __tid; res.setHeader('X-Trace-Id', __tid); }
+  }catch(e){}
   /* R97 — نگهبانِ شمردنِ شناسه: شمارِ رد‌ها (404/403/401) و شمارِ همهٔ
      خوانش‌هایِ /api/students/:id (مسطحِ شمردنِ شناسهٔ §5.7) به ازای هر
      نشست؛ از SLOW1 به بعد تأخیر، در REVOKE ابطال (sendJsonCounting). */
