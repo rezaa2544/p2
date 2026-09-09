@@ -59,9 +59,17 @@ async function main() {
   chk('X1c esc round-trip (فارسی سالم می‌ماند)', W(`esc('پایشِ مدرسه')`) === 'پایشِ مدرسه');
 
   console.log('\n— X2: لینتِ کلاینت —');
-  /* document.write فقط در ۶ نقطهٔ ممهورِ «چاپِ رسید» (window.open + esc)
-     مجاز است — هر نقطهٔ جدید تست را می‌شکند تا مرور شود. */
-  const DW_ALLOW = { '20-communication-finance.js': 2, '24-edu-office.js': 2, '33-forms-sms.js': 1, '60-association.js': 1 };
+  /* document.write فقط در نقاطِ ممهورِ «چاپِ رسید» (window.open + esc)
+     مجاز است — هر نقطهٔ جدید تست را می‌شکند تا مرور شود.
+     بازبینیِ ۱۴۰۵/۰۶/۱۷ (دسته‌ی D): دو نقطهٔ تازه افزوده شد —
+       • 69-office-scorecard.js:۱ — چاپِ کارتِ امتیازیِ محدوده (D.2)
+       • 71-staff-needs.js:۱      — چاپِ کمبودِ نیروی انسانی (D.4)
+     هر دو همان الگویِ ممهور: `window.open('','_blank')` و نوشتنِ یک رشتهٔ
+     کامل که تک‌تکِ مقادیرش از esc() گذشته است (هیچ ورودیِ کاربری خام
+     واردِ document.write نمی‌شود). */
+  const DW_ALLOW = { '20-communication-finance.js': 2, '24-edu-office.js': 2,
+                     '33-forms-sms.js': 1, '60-association.js': 1,
+                     '69-office-scorecard.js': 1, '71-staff-needs.js': 1 };
   /* eval فقط برای resolveِ اسکوپِ lexical در خودتشخیصی: شناسه‌ها ثابتِ
      سخت‌کد شده‌اند (نه ورودی کاربر) — دو نقطهٔ ممهور. */
   const EVAL_ALLOW = { '42-self-diagnostics.js': 2 };
@@ -128,6 +136,51 @@ async function main() {
   await sleep(300);
   chk('X4a چت: payloadِ بدنه اجرا نشد', W('window.__xss3') === undefined);
   chk('X4b چت: عنصرِ b#xss3 ساخته نشده (متن است)', W(`document.getElementById('xss3')`) === null);
+
+  /* ─── X6: خروجیِ چاپِ دسته‌ی D (کارتِ امتیازی / کمبودِ نیرو) ──────────
+     دو نقطهٔ document.write جدید فقط با این شرط در فهرستِ مجاز ماندند که
+     خروجی‌شان در برابر payload واقعاً بی‌اثر باشد؛ این سنجه همان شرط است. */
+  console.log('\n— X6: چاپِ D.2/D.4 در برابر payload —');
+  /* payload شاملِ تلاشِ خروج از <title> هم هست (RCDATA شکافتن) */
+  const EVIL = '</title><img src=x onerror="window.__px=1"><svg onload="window.__py=1">';
+  const evilIds = W(`(function(){
+    var sch = insert('schools', { name: ${JSON.stringify(EVIL)}, level: 'ابتدایی', county: ${JSON.stringify(EVIL)},
+      office_id: null, active: 1 });
+    var sub = insert('subjects', { school_id: sch.id, name: ${JSON.stringify(EVIL)}, active: 1 });
+    var n = insert('staff_needs', { school_id: sch.id, subject_id: sub.id,
+      count: 1, note: ${JSON.stringify(EVIL)}, status: 'open' });
+    return { sch: sch.id, need: n.id, sub: sub.id };
+  })()`);
+  chk('X6a مدرسه/درس/نیازِ بدخواه ساخته شد', !!evilIds.sch && !!evilIds.need && !!evilIds.sub);
+
+  /* D.2 — کارتِ امتیازیِ محدوده: نامِ مدرسه/شهرستان باید escape شود */
+  const scHtml = W(`(function(){
+    var schs = [byId('schools', ${evilIds.sch})];
+    return officeScorecardPrintHTML(officeScorecard({ id: 0, name: ${JSON.stringify(EVIL)}, level: 'district' }, schs));
+  })()`);
+  /* معیارِ درست: خروجی را واقعاً پارس می‌کنیم — نباید هیچ عنصرِ img/svg
+     و هیچ ویژگیِ رویدادی ساخته شود (onerror درونِ «متنِ escaped» بی‌ضرر است). */
+  const parseInert = (h) => { const d = new JSDOM(h, { runScripts: 'dangerously' }); return d.window; };
+  const scWin = parseInert(scHtml);
+  chk('X6b D.2 کارتِ امتیازی: پارسِ خروجی هیچ عنصرِ img/svg نساخت و payload اجرا نشد',
+      scWin.document.querySelector('img,svg') === null && scWin.__px === undefined && scWin.__py === undefined,
+      String(scWin.document.querySelectorAll('img,svg').length));
+  chk('X6c D.2 کارتِ امتیازی: payload به‌صورت متنِ escaped نشسته',
+      scHtml.indexOf('&lt;img') > -1, scHtml.indexOf('&lt;img'));
+
+  /* D.4 — کمبودِ نیرو: درس، یادداشت و نامِ ادارهٔ بدخواه */
+  const ndHtml = W(`(function(){
+    var schs = [byId('schools', ${evilIds.sch})];
+    return staffNeedsPrintHTML(officeNeedsRows(schs), ${JSON.stringify(EVIL)});
+  })()`);
+  chk('X6d D.4 کمبودِ نیرو: payload در خروجی هست (واردِ جدول شده)',
+      ndHtml.indexOf('&lt;img') > -1, ndHtml.indexOf('&lt;img'));
+  const ndWin = parseInert(ndHtml);
+  chk('X6e D.4 کمبودِ نیرو: پارسِ خروجی هیچ عنصرِ img/svg نساخت و payload اجرا نشد',
+      ndWin.document.querySelector('img,svg') === null && ndWin.__px === undefined && ndWin.__py === undefined,
+      String(ndWin.document.querySelectorAll('img,svg').length));
+  chk('X6f هیچ <script>‌ای در خروجی‌های چاپ نیست',
+      !/<script/i.test(scHtml) && !/<script/i.test(ndHtml));
 
   console.log('\n— X5: CSP (سرور) —');
   const { spawn } = require('child_process');
