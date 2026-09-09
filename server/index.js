@@ -32,6 +32,7 @@ const { createAudit, clientIp } = require('./audit');
 const db = require('./db');
 const redis = require('./redis');
 const cache = require('./cache');
+const { createRevocation } = require('./revocation');
 
 const { createStudentRoutes } = require('./routes/students');
 const { createClassRoutes } = require('./routes/classes');
@@ -89,11 +90,12 @@ db.init(store).then(info => {
   console.warn('[DB] PostgreSQL init warning:', err.message);
 });
 
-cache.init().then(() => {
+const cacheReady = cache.init().then(() => {
   if (redis.isRedis()) {
     console.log('[Cache] Redis distributed caching and pub/sub active');
   }
-}).catch(() => {});
+});
+cacheReady.catch(() => {});
 
 /* ── R97 (TODO 2.7) — نگهبانِ شمردنِ شناسه، سطحِ روتر ──────────────
    هر رد (401/403/404) برایِ هر نشست در پنجرهٔ ۱۰ دقیقه شمرده می‌شود:
@@ -128,7 +130,11 @@ function enumStage(e, sess){
   else if(e.n === ENUM_SLOW1) audit('enum_slow', { user_id: sess.id, n: e.n, delay_ms: 500 });
   else if(e.n === ENUM_SLOW2) audit('enum_slow2', { user_id: sess.id, n: e.n, delay_ms: 2000 });
   else if(e.n === ENUM_REVOKE){
-    store.__revoked_jti[sess.jti] = { at: Date.now(), reason: 'enumeration' };
+    /* P4: از مسیرِ ماژول برو تا توزیع هم بشود. و **عدد** بنویس (مثلِ
+       logout) — مقدارِ آبجکتی ({at}) باعث می‌شد `now - value` برابر NaN
+       شود و این کلیدها هرگز در gcStore پاک نشوند (رشدِ بی‌پایانِ
+       store). دلیل در آدیتِ enum_revoke هست، نه لازم نیست اینجا بماند. */
+    revocation.revokeSession(sess.jti, 'enumeration');
     audit('enum_revoke', { user_id: sess.id, n: e.n });
   }
 }
@@ -155,7 +161,9 @@ function gcStore(){
     if(now - store.__processed_uids[k] > UID_GC_MS){ delete store.__processed_uids[k]; n++; }
   }
   for(const k in store.__revoked_jti){
-    if(now - store.__revoked_jti[k] > JTI_GC_MS){ delete store.__revoked_jti[k]; n++; }
+    const v = store.__revoked_jti[k];
+    const at = (v && typeof v === 'object') ? (v.at || 0) : v; /* شکلِ قدیمیِ آبجکتی هم پاک شود */
+    if(typeof at === 'number' && now - at > JTI_GC_MS){ delete store.__revoked_jti[k]; n++; }
   }
   return n;
 }
@@ -269,7 +277,18 @@ function securityHeaders(res, nonce, https){
 /* ── compose modules ───────────────────────────────────────────────── */
 /* R101: OTP + rate limits live in otp.json (distributed across instances) */
 const otp = createOtpStore({ file: OTP_FILE, ttlMs: CODE_TTL_MS, store, markDirty });
-const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty, otp });
+/* ── P4: ابطالِ توزیع‌شده‌ی نشست ────────────────────────────────
+   L1 (store.__revoked_jti) همزمان است و همان لحظه اثر می‌گذارد؛
+   L2/L3 (Redis + Pub/Sub) بعد از init می‌آیند. ترتیبِ ساخت مهم است:
+   auth باید revocation را داشته باشد تا هنگامِ صدور توکن، jti را در
+   دفترِ کاربر ثبت کند (وگرنه «ابطالِ همه» بی‌هدف می‌ماند). */
+const revocation = createRevocation({ store, redis, ttlS: SESSION_TTL_S, markDirty, audit });
+/* روی همان زنجیره سوار می‌شویم (یک اشتراک)، نه یک init تازه */
+cacheReady.then(() => revocation.init()).then((info) => {
+  if(info && info.driver === 'redis') console.log('[Revocation] ابطالِ توزیع‌شدهٔ نشست فعال (Redis)');
+}).catch(() => {});
+
+const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty, otp, revocation });
 /* R97: همهٔ ماژول‌هایِ /api با sendJsonCounting می‌چرخند تا رد‌ها شمرده
    شوند؛ auth استثناست (سقفِ OTP سقفِ خودش را می‌سازد). */
 const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
@@ -324,9 +343,18 @@ const onRequest = async (req, res) => {
      نشست؛ از SLOW1 به بعد تأخیر، در REVOKE ابطال (sendJsonCounting). */
   REQ_STATE.sess = null;
   REQ_STATE.p = p;
-  if(p.indexOf('/api/') === 0 && p.indexOf('/api/auth/') !== 0){
+  /* P4 — دروازه‌ی ابطال: پیش از رسیدن به هر مسیرِ احراز‌شده.
+     استثناها: send-code / login / logout باید همیشه در دسترس باشند،
+     حتی با کلوچه‌یِ مرده — وگرنه کاربری که نشستش باطل شده دیگر نمی‌تواند
+     دوباره وارد شود (کلوچه را هم نمی‌تواند پاک کند) ⇒ قفلِ ابدی. */
+  const REVOKE_FREE = (p === '/api/auth/send-code' || p === '/api/auth/login' || p === '/api/auth/logout');
+  if(p.indexOf('/api/') === 0 && !REVOKE_FREE){
     const gs = auth.sessionFrom(req);
     if(gs){
+      if(await revocation.isRevokedAsync(gs.jti)){
+        sendJson(res, 401, { ok: false, code: 'revoked', message: 'نشست باطل شده است' });
+        return;
+      }
       REQ_STATE.sess = gs;
       if(/^\/api\/students\/\d+$/.test(p)) enumStage(enumTouch(gs), gs); /* §5.7: هر خوانشِ این مسیر می‌شمارد */
       const dm = enumDelay(gs);
@@ -582,4 +610,4 @@ if(require.main === module){
     }
   });
 }
-module.exports = { server, store, audit, isHttps, persistStore, db, redis, cache };
+module.exports = { server, store, audit, isHttps, persistStore, db, redis, cache, revocation };

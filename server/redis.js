@@ -147,6 +147,28 @@ async function get(key) {
 }
 
 /**
+ * Get value — STRICT: برخلافِ get، خطا را نمی‌بلعد.
+ * چرا لازم شد؟ get برای «پایداری» خطا را می‌گیرد و بی‌سروصدا به حافظه
+ * برمی‌گردد. برای تصمیم‌هایِ امنیتی (ابطالِ نشست — server/revocation.js)
+ * این رفتار کشنده است: نبودِ پاسخ و «نشد تشخیص داد» یکی می‌شوند و سیاستِ
+ * fail-closed نمی‌تواند اجرا شود. این تابع فقط خطا را بالا می‌دهد؛
+ * رفتارِ get برای بقیه‌ی صدا‌زننده‌ها دست‌نخورده است.
+ */
+async function getStrict(key) {
+  if (isRedis()) {
+    return await client.get(key); /* بدون try/catch — خطا باید دیده شود */
+  }
+  cleanExpiredMem();
+  const exp = memExpiry.get(key);
+  if (exp && Date.now() >= exp) {
+    memCache.delete(key);
+    memExpiry.delete(key);
+    return null;
+  }
+  return memCache.has(key) ? String(memCache.get(key)) : null;
+}
+
+/**
  * Set value with optional TTL or mode
  * @param {string} key 
  * @param {string} value 
@@ -280,6 +302,7 @@ module.exports = {
   init,
   isRedis,
   get,
+  getStrict,
   set,
   del,
   publish,

@@ -31,6 +31,9 @@ function createAuth(ctx){
   const audit = ctx.audit;
   const isHttps = ctx.isHttps;
   const otp = ctx.otp; /* R101: otp.json (distributed) */
+  /* P4: ابطالِ نشست (server/revocation.js) — اگر تزریق نشده باشد (مثلِ
+     آزمون‌هایِ واحدِ قدیمی‌تر)، رفتار همانِ قبل است: فقط L1 محلی. */
+  const rev = ctx.revocation || null;
 
   /* ── JWT (hand-rolled HS256; alg is hard-coded, contract §2.2) ────
      R96 P0-3: aud/iss/iat validated; key >= 256 bit enforced at boot;
@@ -111,6 +114,10 @@ function createAuth(ctx){
     const tok = jwtSign({ sub: user.id, role: user.role, school_id: user.school_id || null, iat: now, exp: now + SESSION_TTL_S, jti });
     const secure = isHttps(req) ? 'Secure; ' : '';
     res.setHeader('Set-Cookie', SESSION_NAME + '=' + tok + '; ' + secure + 'HttpOnly; SameSite=Lax; Path=/; Max-Age=' + SESSION_TTL_S);
+    /* P4: ثبتِ نشست در دفترِ کاربر — بی‌این ثبت، «ابطالِ همه‌ی نشست‌هایِ
+       یک کاربر» (حذفِ حساب / تغییرِ امنیتی) اصلاً ممکن نیست. */
+    if(rev) try { rev.trackSession(user.id, jti); } catch(e){}
+    return jti;
   }
 
   /* equal-time code check (contract §5.5.3: no timing oracle) */
@@ -273,6 +280,14 @@ function createAuth(ctx){
     fl.n = 0; fl.until = 0;
     audit('login_ok', { user_id: user.id, role: user.role, school_id: user.school_id, ip, summary: 'ورود موفق: ' + user.id + ' (' + user.role + ')' });
     otp.save();
+    /* درخواست گفته بود «پیش از صدور توکن، نشست‌های قبلی را باطل کن
+       (اختیاری)». پیش‌فرض **خاموش** است: با روشن‌بودن، هر ورود دستگاهِ
+       دیگرِ کاربر را بیرون می‌اندازد — برایِ مدرسه‌ای که یک حساب روی
+       چند دستگاه دارد، رفتارِ غافلگیرکننده‌ای است. با این env روشن شود:
+       PAYESH_REVOKE_ALL_ON_LOGIN=1 */
+    if(rev && process.env.PAYESH_REVOKE_ALL_ON_LOGIN === '1'){
+      try{ await rev.revokeAllUserSessions(user.id, 'new_login'); }catch(e){}
+    }
     setSessionCookie(req, res, user);
     /* never echo nid / full phone back (contract §4) */
     sendJson(res, 200, { ok: true, user: { id: user.id, full_name: user.full_name, role: user.role, school_id: user.school_id || null, phone_masked: phone.slice(0, 4) + '****' + phone.slice(-2) } });
@@ -288,7 +303,15 @@ function createAuth(ctx){
     const tok = parseCookies(req)[SESSION_NAME];
     if(tok){
       const v = jwtVerify(tok);
-      if(!v.err){ store.__revoked_jti[v.payload.jti] = Date.now(); audit('logout', { user_id: v.payload.sub, role: v.payload.role, school_id: v.payload.school_id, ip: clientIp(req), summary: 'خروج کاربر: ' + v.payload.sub }); if(ctx.markDirty) ctx.markDirty(); }
+      if(!v.err){
+        /* P4: ابطالِ توزیع‌شده — L1 (محلی، همزمان) + L2/L3 (Redis/Pub-Sub).
+           ترتیب مهم است: ابتدا محلی (تا حتماً همین لحظه بمیرد)، بعدِ آن
+           پخش. خطایِ Redis نباید خروج را خراب کند (نشست که محلی مرد). */
+        if(rev) await rev.revokeSession(v.payload.jti, 'logout');
+        else store.__revoked_jti[v.payload.jti] = Date.now(); /* همان رفتارِ قدیم */
+        audit('logout', { user_id: v.payload.sub, role: v.payload.role, school_id: v.payload.school_id, ip: clientIp(req), summary: 'خروج کاربر: ' + v.payload.sub });
+        if(ctx.markDirty) ctx.markDirty();
+      }
     }
     res.setHeader('Set-Cookie', SESSION_NAME + '=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
     sendJson(res, 200, { ok: true });
@@ -316,6 +339,17 @@ function createAuth(ctx){
     purge('messages', r => Number(r.from_id) === uid);
     purge('users', r => Number(r.id) === uid);
     audit('account_deleted', { user_id: uid, role: s.role, school_id: s.school_id, purged: purged, ip: clientIp(req), summary: 'حذف کامل حساب کاربری: ' + uid + ' (' + s.role + ')' });
+    /* P4 (درخواستِ بند ۳): با حذفِ حساب، همه‌ی نشست‌هایِ بازِ این کاربر
+       باطل می‌شوند — نه فقط این یکی. (حذفِ ردیفِ users خودبه‌خود هم
+       sessionFrom را می‌کشد؛ این لایه برایِ دستگاه‌هایِ دیگر و برایِ
+       حالتی است که نمونه‌ای دیرتر متوجه شود.) */
+    if(rev){
+      try{
+        const n = await rev.revokeAllUserSessions(uid, 'account_deleted');
+        if(s.jti) await rev.revokeSession(s.jti, 'account_deleted');
+        audit('sessions_revoked', { user_id: uid, role: s.role, school_id: s.school_id, count: n + (s.jti ? 1 : 0), reason: 'account_deleted', ip: clientIp(req), summary: 'ابطالِ همهٔ نشست‌ها پس از حذفِ حساب: ' + uid });
+      }catch(e){ /* ابطال نباید مانعِ پاسخِ موفقِ حذف شود */ }
+    }
     if(ctx.markDirty) ctx.markDirty();
     /* نشستِ فعلی هم همین حالا می‌میرد (cookie پاک) */
     res.setHeader('Set-Cookie', SESSION_NAME + '=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
