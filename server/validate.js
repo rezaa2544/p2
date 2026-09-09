@@ -352,6 +352,8 @@ function ruleFor(coll, key){
   if(FLAG_FIELDS.indexOf(key) > -1) return { type: 'flag' };
   /* ۵. نمره‌ها */
   if(key === 'score' || key === 'original_score' || key === 'new_score') return { type: 'score' };
+  if(key === 'theoretical_score' || key === 'practical_score') return { type: 'score' }; /* E.1 — قسمت‌های نمرهٔ هنرستان، ۰ تا ۲۰ */
+  if(key === 'is_vocational') return { type: 'boolean' }; /* E.1 — نمرهٔ ترکیبی تئوری/عملی */
   if(key === 'entry_gpa') return { type: 'score' }; /* S4 فرناز: معدل ورودی ۰ تا ۲۰ (خالی=null از isEmpty رد می‌شود) */
   if(key === 'max_score') return { type: 'number', min: 0, max: 100 };
   /* ۶. تاریخ و ساعت */

@@ -811,8 +811,10 @@
     "date",
     "exam_type",
     "id",
+    "is_vocational",
     "kind",
     "max_score",
+    "practical_score",
     "school_id",
     "score",
     "source",
@@ -820,6 +822,7 @@
     "subject_id",
     "teacher_id",
     "term",
+    "theoretical_score",
     "updated_at"
    ],
    "ins": [
