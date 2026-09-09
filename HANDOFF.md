@@ -1069,26 +1069,51 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
   (تغییر گاید چت ۴ فقط همان مُهر بود). حل با مرج (نه ریبیس — شاخهٔ فعال مشترک، بدون force) + بازتولید با `node build.js`.
 - گیت‌ها: build ‏0‏، authz ‏0‏، smoke ‏547/547‏، minutes2/boom2/public2 ‏8/8‏، pubrep ‏9/9‏؛ بدون اکشن تکراری ✅
 
+​
+ |  | 
+1072
+ 
+
+## تعمیر G.2 — جدول support_tickets در schema.sql (چت ۳، ۱۹/۰۶) — ✅
+
+- گزارش چت ۱ درست بود (جدول غایب). ولی SQL پیشنهادی پرامپت ۲ باگ enum داشت (`medium` به‌جای `med`،
+  `reviewing` به‌جای `review`) + خلاف قرارداد فایل بود (SERIAL/بدون کوتیشن/CHECK دستی) — به‌جای
+  دست‌نویسی، مولد رسمی `node tools/migrate-to-pg.js` اجرا شد (بدون `--execute`، بدون تماس با دیتابیس).
+
+- خروجی مولد + ستون‌های جاماندهٔ C چت ۱ (`meeting_type`، `boom_goals`)؛ چرن تایم‌استمپ مولد
+  (غیرقطعی) برگردانده شد: دیف ۱۲۶ ← ۴۰ خط، ۵ هانک معنایی، صفر churn.
+
+- گیت‌ها: write-perms بدون تغییر، build `0`، authz `0`، smoke `547/547`، tickets `20/20` ✅
+
 ## C.3-security فرناز — سه اصلاح امنیتی گزارش عمومی (چت ۱) — ✅
+
 - اصلاح ۱ (پروجکشن): تفکیک `publicReportHTML` به `publicReportData` (فقط تجمیعی:
   نام/سطح/شهر، شمارش‌ها، جلسه‌ها `{تعداد،آخرین}`، اهداف) + رندر خالص بدون دسترسی به db؛
   `publicSchools` فقط `active=1`؛ پیام تهی «داده‌ای برای نمایش وجود ندارد».
+
 - اصلاح ۲ (پرچم): `public_goals` در `schools` (مدل + `FLAG_FIELDS` سرور + بذر `0`)؛ گیت انتشار
   در پروجکشن؛ چک‌باکس مدیریتی در مودال مدرسه (`m_boom_pub`) و مودال بوم (`boom_pub`)؛
   `write-perms.json` بازتولید (۸۵ مجموعه، ۱۸۱ اکشن).
+
 - اصلاح ۳ (دادهٔ واقعی): اندپوینت عمومی `GET /api/public-report` (فقط تجمیعی، بدون PII،
   گیت پرچم سمت سرور) + پل ناهمگام `pubReportEnsure` در حالت سروری؛ آفلاین-اول
   (شکست → دادهٔ محلی + یادداشت «دادهٔ محلی»)؛ برچسب نوع جلسه سمت کاربر (glyph-safety).
-- تست: سوئیت جدید `tests/public-security.js` ‏10/10‏؛ P4 و نمادهای MM2/MM3 به کد نو به‌روز شد.
-- گیت‌ها: smoke ‏547/547‏، authz ‏0‏، build ‏0‏، هر ۷ سوئیت جهش ‏3/3‏ ✅
+
+- تست: سوئیت جدید `tests/public-security.js` `10/10`؛ P4 و نمادهای MM2/MM3 به کد نو به‌روز شد.
+
+- گیت‌ها: smoke `547/547`، authz `0`، build `0`، هر ۷ سوئیت جهش `3/3` ✅
 
 ## Devin-R1R2R3 فرناز — رفع ۳ مشکل Devin Review در PR #8 (چت ۱) — ✅
+
 - R1 (بحرانی): قفل ویرایش دورهٔ تکمیل‌شده در `saveTrainingCourse` (هر تغییر واقعی رد با
   «دوره تکمیل شده قابل ویرایش نیست»؛ فقط بازذخیرهٔ عینی مجاز تا idempotency صدور T4 بماند) + تست T12.
+
 - R2: `certificates.year` از INTEGER به VARCHAR(50) در `server/schema.sql` + اصلاح ریشه‌ای
   مولد `tools/migrate-to-pg.js` (استثنای هدفمند با colName؛ `enrollments.year` دست‌نخورده).
+
 - R3 (بحرانی): ۴ جدول `donations`/`safety_drills`/`staff_attendance`/`training_courses` در
   `server/schema.sql` (بلوک‌ها بایت‌به‌بایت خروجی مولد پس از استثناهای INTEGER/NUMERIC(14,2)؛
   ۸۳→۸۷ جدول). شکاف کشف‌شدهٔ خارج از scope: جدول `support_tickets` هم نیست.
-- گیت‌ها: smoke ‏547/547‏، authz ‏۰‏، build ‏۰‏، training2 ‏12/12‏ (+T12)، drills/donations/staffatt ‏10/10‏،
-  public2 ‏8/8‏، public-security ‏10/10‏، minutes2/boom2 ‏8/8‏، assocmin2/3 ‏8/8‏، جهش training ‏3/3‏ ✅
+
+- گیت‌ها: smoke `547/547`، authz `۰`، build `۰`، training2 `12/12` (+T12)، drills/donations/staffatt `10/10`،
+  public2 `8/8`، public-security `10/10`، minutes2/boom2 `8/8`، assocmin2/3 `8/8`، جهش training `3/3` ✅
