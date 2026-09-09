@@ -14,6 +14,18 @@ const LOG_KEY='sms_log_v1', SESSION_KEY='sms_session_v1', BOSS_KEY='sms_boss_v1'
 /* R95 (بند ۲.۵): مجموعه‌هایِ دارایِ نسخه — باید با VERSION_TRACKED سرور
    (server/sync.js) یکی باشد؛ server-authority و LWW این‌جا نیستند. */
 const _VERSIONED_C = { grades:1, attendance:1, discipline:1 };
+const VECTOR_NODE_KEY='payesh_client_node_id_v1';
+function vvPlain(x){ return x && typeof x==='object' && !Array.isArray(x); }
+function vvClone(x){ var o={}; if(vvPlain(x)) for(var k in x){ var n=Number(x[k]); if(Number.isInteger(n) && n>=0) o[k]=n; } return o; }
+function clientNodeId(){
+  var id = Store.get(VECTOR_NODE_KEY, '');
+  if(!/^[A-Za-z0-9_.:-]{1,64}$/.test(id||'')){
+    id = 'client_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+    Store.set(VECTOR_NODE_KEY, id);
+  }
+  return id;
+}
+function vvBumpLocal(vec, version){ var o=vvClone(vec); o[clientNodeId()] = Math.max(o[clientNodeId()]||0, version||1); return o; }
 let log=[];
 /* هنگام بازپخش لاگ یا تولید داده نمونه، صف همگام‌سازی نباید پر شود */
 let SYNC_MUTED=false;
@@ -184,7 +196,11 @@ function applyOp(op,record=true){
          مجموعه‌هایِ نسخه‌دار، تعارض را «حفظ» می‌کند (sync_conflicts). */
       if(_VERSIONED_C[op.c]){
         op.base_version = it.version || 1;
+        if(vvPlain(it.version_vector)) op.base_vector = vvClone(it.version_vector);
         it.version = (it.version || 1) + 1;
+        /* version_vector محلی فقط اگر از سرور/پول آمده باشد نگه داشته می‌شود؛
+           برای رکوردهای seed/آفلاینِ بدون vector، مسیر سازگارِ base_version می‌ماند. */
+        if(op.base_vector) it.version_vector = vvBumpLocal(op.base_vector, it.version);
       }
       Object.assign(it,op.data);
     }

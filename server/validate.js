@@ -388,7 +388,7 @@ function checkGeneric(v){
    رفتارِ موجود). مقدارِ t این‌جا سنجیده نمی‌شود — canOp در fieldGate
    هر tِ غیرِ ins/upd/del را fail-closed رد می‌کند (رفتارِ قفل‌شده). */
 const OP_KEYS = ['uid', 't', 'c', 'id', 'data', 'by', 'at',
-  'user_id', 'school_id', 'base_version'];
+  'user_id', 'school_id', 'base_version', 'base_vector'];
 function validateSyncEnvelope(op){
   if(!isPlainObject(op)) return { ok: false, code: 'malformed_op' };
   for(const k of Object.keys(op)){

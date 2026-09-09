@@ -41948,3 +41948,23 @@ ON CONFLICT (id) DO UPDATE SET
   "updated_at" = EXCLUDED."updated_at";
 
 COMMIT;
+
+-- Version vectors for offline-first conflict detection (managed server-side)
+ALTER TABLE grades ADD COLUMN IF NOT EXISTS "version" INTEGER;
+ALTER TABLE grades ADD COLUMN IF NOT EXISTS "version_vector" JSONB;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS "version" INTEGER;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS "version_vector" JSONB;
+ALTER TABLE discipline ADD COLUMN IF NOT EXISTS "version" INTEGER;
+ALTER TABLE discipline ADD COLUMN IF NOT EXISTS "version_vector" JSONB;
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS "version" INTEGER;
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS "version_vector" JSONB;
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS "version" INTEGER;
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS "version_vector" JSONB;
+ALTER TABLE subjects ADD COLUMN IF NOT EXISTS "version" INTEGER;
+ALTER TABLE subjects ADD COLUMN IF NOT EXISTS "version_vector" JSONB;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS "version" INTEGER;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS "version_vector" JSONB;
+ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS "version" INTEGER;
+ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS "version_vector" JSONB;
+ALTER TABLE schedule ADD COLUMN IF NOT EXISTS "version" INTEGER;
+ALTER TABLE schedule ADD COLUMN IF NOT EXISTS "version_vector" JSONB;

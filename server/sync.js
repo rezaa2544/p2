@@ -12,6 +12,7 @@
 
 const { validate, validateSyncEnvelope, validateSyncData } = require('./validate');
 const cache = require('./cache');
+const vvec = require('./version-vector');
 
 /* Core mirror of the client's ACTION_ROLES table for WRITE operations.
    The full table mirror is the next phase (AD.md §14) — unknown
@@ -240,6 +241,7 @@ function dropUsersUpdate(s, op){
 const VERSIONED = { grades: 1, attendance: 1, discipline: 1 };
 const STRUCTURAL = { schools: 1, classes: 1, subjects: 1, users: 1, enrollments: 1, schedule: 1 };
 const VERSION_TRACKED = Object.assign({}, VERSIONED, STRUCTURAL);
+const SERVER_NODE_ID = vvec.cleanNodeId(process.env.PAYESH_NODE_ID || 'server');
 
 /* ── R98 — field-level authorization: generic FIELD_ALLOWLISTS for all
    collections + explicit policy for the forbidden set.
@@ -645,6 +647,17 @@ function createSync(ctx){
         results.push({ uid: op.uid, ok: false, code: 'validation_failed', field: 'base_version', message: 'مقدارِ «base_version» معتبر نیست' });
         continue;
       }
+      /* Version Vectors: base_vector must be a small {node: integer} map.
+         If present, it is authoritative for conflict detection; malformed
+         vectors are rejected per-op to avoid poisoning the whole batch. */
+      if(op.t === 'upd' && op.base_vector != null){
+        const bv2 = vvec.validateVector(op.base_vector);
+        if(!bv2.ok){
+          audit('sync_validation_failed', { user_id: s.id, uid: op.uid, collection: op.c, field: 'base_vector', reason: bv2.reason });
+          results.push({ uid: op.uid, ok: false, code: 'validation_failed', field: 'base_vector', message: 'مقدارِ «base_vector» معتبر نیست' });
+          continue;
+        }
+      }
       /* §13.1 — non-in-person day: physical ops rejected per-op (rest continues) */
       const vd = virtualDayViolation(op, store);
       if(vd){
@@ -660,12 +673,17 @@ function createSync(ctx){
         results.push({ uid: op.uid, ok: true, code: 'duplicate_ignored', serverTime: new Date().toISOString() });
         continue;
       }
-      /* R95 بند ۲.۵ — base_version: تعارضِ حفظ‌شده / سرورِ مرجع */
-      if(op.t === 'upd' && op.base_version != null){
+      /* R95/RVV — base_version/base_vector: تعارضِ حفظ‌شده / سرورِ مرجع.
+         base_vector (اگر باشد) نسبت به base_version دقیق‌تر است و اختلاف
+         multi-device را حتی وقتی عدد ساده هم‌زمان جلو رفته باشد می‌گیرد. */
+      if(op.t === 'upd' && (op.base_version != null || op.base_vector != null)){
         const vid = Number(op.id != null ? op.id : (op.data && op.data.id));
         const vrec = (store[op.c] || []).find(x => x.id === vid);
         const cur = vrec ? (vrec.version || 1) : 0;
-        if(VERSIONED[op.c] && Number(op.base_version) !== cur){
+        const serverVector = vrec ? vvec.vectorOfRecord(vrec, SERVER_NODE_ID) : vvec.bumpVector({}, SERVER_NODE_ID, 0);
+        const vectorMismatch = op.base_vector != null ? vvec.needsConflict(op.base_vector, serverVector) : false;
+        const versionMismatch = op.base_version != null ? Number(op.base_version) !== cur : false;
+        if(VERSIONED[op.c] && (vectorMismatch || (op.base_vector == null && versionMismatch))){
           const nowIso = new Date().toISOString();
           if(!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
           const cf = {
@@ -673,14 +691,18 @@ function createSync(ctx){
             collection: op.c, record_id: vid,
             school_id: (vrec && vrec.school_id != null ? vrec.school_id
                        : (op.data && op.data.school_id != null ? op.data.school_id : s.school_id)),
-            base_version: Number(op.base_version),
+            base_version: op.base_version != null ? Number(op.base_version) : null,
             server_version: vrec ? (vrec.version || 1) : null,
+            base_vector: op.base_vector ? vvec.normalizeVector(op.base_vector) : null,
+            server_vector: serverVector,
+            vector_relation: op.base_vector ? vvec.compareVectors(op.base_vector, serverVector) : null,
             server_state: vrec ? Object.assign({}, vrec) : null,
-            incoming: { data: Object.assign({}, op.data), by: s.id, at: nowIso, op_uid: op.uid },
+            incoming: { data: Object.assign({}, op.data), by: s.id, at: nowIso, op_uid: op.uid,
+                        base_vector: op.base_vector ? vvec.normalizeVector(op.base_vector) : null },
             status: 'open', created_at: nowIso
           };
           store.sync_conflicts.push(cf);
-          audit('sync_conflict_preserved', { user_id: s.id, conflict_id: cf.id, collection: op.c, record_id: vid, school_id: cf.school_id });
+          audit('sync_conflict_preserved', { user_id: s.id, conflict_id: cf.id, collection: op.c, record_id: vid, school_id: cf.school_id, vector: !!op.base_vector });
           /* هشدار به مدیرِ مدرسه (الگویِ hookهایِ R88/R89) */
           const cmgr = (store.users || []).find(x => x.school_id === cf.school_id && x.role === 'manager');
           if(cmgr){
@@ -688,17 +710,19 @@ function createSync(ctx){
             store.notifications.push({
               id: nextId('notifications'), user_id: cmgr.id, school_id: cf.school_id, type: 'announcement',
               title: '⚠️ تعارض همگام‌سازی',
-              body: 'یک تغییرِ «' + op.c + '» با نسخهٔ کهنه رسید و به‌جای اعمال، برایِ داوری محفوظ شد.',
+              body: 'یک تغییرِ «' + op.c + '» با نسخه/بردار کهنه رسید و به‌جای اعمال، برایِ داوری محفوظ شد.',
               link: 'dashboard', read: 0, created_at: nowIso.slice(0, 10)
             });
           }
           ctx.markDirty();
           results.push({ uid: op.uid, ok: false, code: 'conflict_preserved', conflict_id: cf.id,
+                         vector_conflict: !!op.base_vector, server_vector: serverVector,
                          message: 'تعارض محفوظ شد — برایِ داوری به بخشِ «تعارض‌های همگام‌سازی» مراجعه کنید' });
           continue;
         }
-        if(STRUCTURAL[op.c] && Number(op.base_version) !== cur){
+        if(STRUCTURAL[op.c] && (vectorMismatch || (op.base_vector == null && versionMismatch))){
           results.push({ uid: op.uid, ok: false, code: 'stale_base',
+                         vector_conflict: !!op.base_vector, server_vector: serverVector,
                          message: 'نسخهٔ رکورد کهنه است — سرور مرجع است؛ داده را تازه کنید و دوباره تلاش کنید' });
           continue;
         }
@@ -719,7 +743,10 @@ function createSync(ctx){
         const data = Object.assign({}, op.data);
         const prot = stripProtected(data); /* R98 — ممنوع‌ها جدا؛ بعداً صریح */
         if(data.id == null) data.id = nextId(op.c);
-        if(VERSION_TRACKED[op.c] && data.version == null) data.version = 1; /* R95 */
+        if(VERSION_TRACKED[op.c]){
+          if(data.version == null) data.version = 1; /* R95 */
+          if(!data.version_vector) data.version_vector = vvec.bumpVector({}, SERVER_NODE_ID, data.version);
+        }
         const ex = store[op.c].find(x => x.id === data.id);
         if(ex){ Object.assign(ex, data); Object.assign(ex, prot); }
         else store[op.c].push(Object.assign(data, prot));
@@ -739,7 +766,10 @@ function createSync(ctx){
           }
           Object.assign(rec, clean, { id: rec.id, updated_at: new Date().toISOString() });
           Object.assign(rec, prot); /* مقادیرِ اعتبارسنجی‌شده — صریح، نه inject */
-          if(VERSION_TRACKED[op.c]) rec.version = (rec.version || 1) + 1; /* R95 */
+          if(VERSION_TRACKED[op.c]){
+            rec.version = (rec.version || 1) + 1; /* R95 */
+            rec.version_vector = vvec.bumpVector(vvec.mergeVectors(vvec.vectorOfRecord(rec, SERVER_NODE_ID), op.base_vector || {}), SERVER_NODE_ID, rec.version);
+          }
           mirror.push({ uid: op.uid, c: op.c, t: 'upd', data: rec });   /* P1-14 */
         }
       }else if(op.t === 'del'){
@@ -835,4 +865,4 @@ function createSync(ctx){
 
   return { apiSync, canWrite, inScope };
 }
-module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED };
+module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED, SERVER_NODE_ID };

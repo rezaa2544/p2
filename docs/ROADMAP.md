@@ -60,6 +60,14 @@
 
 ---
 
+## 🟣 فاز Sync ملی — تعارض‌های Offline-First
+
+| # | کار | وضعیت | مسئول | سند/تست |
+|---|-----|--------|-------|---------|
+| Sync.1 | Version Vectors برای Offline-First Conflicts | ✅ کامل | چت ۴ | `docs/VERSION_VECTORS.md` + `tests/version-vector*.js` |
+
+---
+
 ## 🟡 فاز ۳ (C) – تکمیل نیازهای دانش‌آموز و اولیا
 
 ✅ **همه موارد کامل شده‌اند** (E.1 تا E.6، F.1، F.2)
