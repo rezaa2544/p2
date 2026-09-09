@@ -502,6 +502,15 @@ academic-years **۹/۹** + جهش **۵/۵** · exam-types **۲۷/۲۷** + جهش
   `git merge-tree 430c7c8 origin/main origin/feat/b3-d234-chat4` سنجیده و در
   `docs/PR_MERGE_PLAN.md` §۶ ثبت شد. دامِ روش هم ثبت شد: بلوک‌های
   `added in both` را باید جدا شمرد، وگرنه `docs/ROADMAP.md` از قلم می‌افتد.
+## چت ۳ — Wave 19: تست آشوب و شکست (5 سناریو + ابزار chaos) — ۲۰/۰۶/۱۴ (2026-09-09)
+
+**وضعیت:** شاخهٔ `arena/01a08545-p2`. سه کامیت: ابزار + طرح + تست‌ها / مستندات / گزارش.
+- **5 سناریو با فرضیهٔ از-معماری:** `kill-api` (SIGKILL — crash consistency: ack‌شده‌ها mirror شده‌اند ⇒ با PG صفر loss؛ store خراب نمی‌شود — tmp+rename) · `redis-down` (readiness 503 + liveness 200 + **صفر 500** + rate-limit fail-open + OTP state در حافظه ⇒ صفر data loss) · `pg-down` (خوانش‌ها از store ⇒ دست‌نخورده؛ sync ⇒ 200 + audit `sync_mirror_failed`؛ فقط DELETE-REST ⇒ 500 + retry ایدمپوتان) · `net-latency` (p95 خطی + سقف 65s) · `disk-full` (persistStore crash-free + سقفِ ایمنی).
+- **`tools/chaos-test.sh`:** DRY_RUN پیش‌فرض (ایمن) / `--live`؛ هر سناریو snapshot before/after + timeline.csv + summary با **PASS/FAIL خودکار**؛ خروجی `tests/chaos-output/` (gitignore). ترافیکِ هم‌زمان: k6 `chaos-redis-test.js` (فاز ۵).
+- **یافتهٔ صادقانه (مستند در طرح):** بعد از قطعِ طولانیِ Redis، retryStrategyِ ioredis تمام می‌شود ⇒ restart فرایند برایِ بازپس‌گیری لازم (پیشنهادِ بهبود: retryStrategy پایدار).
+- **تست:** `tests/wave19-chaos.js` **28/28** (DRY_RUN همهٔ 5 سناریو + 20 فایل، سند، سازگاریِ فرضیه‌ها با قوانین، gitignore، اتصالِ k6). گیت‌ها: smoke 547/547، check-authz 0، secret-scan 11/11، build --check.
+- **pending (ثبت‌شده):** اجرایِ LIVE نیازمندِ محیطِ چند-نمونهٔ زنده (API+Redis+PG+root) — در ساندباکس طراحی + ابزار + DRY_RUN کامل است.
+
 ## چت ۳ — Wave 18: تست بار ملی (دادهٔ 10M کاربر + چهار سناریو) — ۲۰/۰۶/۱۴ (2026-09-09)
 
 **وضعیت:** شاخهٔ `arena/01a08545-p2`. سه کامیت: ابزار + تست‌ها + طرح / مستندات / گزارش.

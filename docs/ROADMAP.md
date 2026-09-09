@@ -152,7 +152,6 @@ GET /students?cursor=...
 
 ## Index
 Index فقط بر اساس workload و query plan واقعی ایجاد شود.
-
 ---
 
 # 7. Wave 4 — Sync / A01
@@ -671,3 +670,4 @@ Capacity
 | B.5 | کشینگ: Wave 11 — TTL، invalidation، stampede protection (Cache Hierarchy) | چت ۳ | ✅ کامل (`docs/WAVE11_CACHE_STRATEGY.md`) |
 | B.6 | Health/Deployment: Wave 15 — Liveness/Readiness/Health + Graceful Shutdown + راهنمای Rolling Deployment/Rollback | چت ۳ | ✅ کامل (`docs/DEPLOYMENT_GUIDE.md`) |
 | B.7 | تست بار ملی: Wave 18 — دادهٔ آزمایشیِ 10M کاربر + چهار سناریو (عادی/اوج/فشار/چند روزه) | چت ۳ | ✅ کامل — اجرا روی زیرساختِ زنده pending (`docs/WAVE18_LOAD_TEST_PLAN.md`) |
+| B.8 | تست آشوب و شکست: Wave 19 — 5 سناریو (kill/redis/pg/latency/disk) + ابزار chaos-test.sh | چت ۳ | ✅ کامل — اجرای LIVE روی محیطِ چند-نمونه pending (`docs/WAVE19_CHAOS_PLAN.md`) |
