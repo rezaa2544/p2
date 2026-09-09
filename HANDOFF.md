@@ -996,3 +996,10 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 - خوانش (`server/routes/attendance.js`): فیلترِ GET برای دبیر — فقط رکوردهایِ کلاس‌هایِ تدریسی.
 - تستِ جدید: `tests/attendance-scope.js` ‏6/6‏ (خوانش/نوشت/سینک + رگرسیونِ مدیر).
 - گیت‌ها: API ‏7/7‏، server1..18 سبز، policy ‏10/10‏ + جهش ‏5/5‏، authz ‏0‏، smoke ‏547/547‏ ✅
+
+## P0-05 پرامپت ۱ — قلمروِ دبیر برای نمرات — ✅
+- مدل (`server/sync.js`): همان گاردِ P0-04 به `grades` گسترش یافت — class_idِ بیگانه fail-closed.
+- عمداً subject چک نشد: server15 (C5a با subject=2، C10a با subject=1 برای T2) صراحتاً
+  leniency رویِ درس را رفتارِ پذیرفته می‌داند؛ قلمروِ درس فقط در خوانش (فیلترِ موجودِ GET).
+- تستِ جدید: `tests/grades-scope.js` ‏6/6‏ (خوانش/نوشت/سینک + رگرسیونِ مدیر).
+- گیت‌ها: API ‏7/7‏، server1..18 سبز، policy ‏10/10‏، authz ‏0‏، smoke ‏547/547‏ ✅

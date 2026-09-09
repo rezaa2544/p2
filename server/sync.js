@@ -434,11 +434,14 @@ function inScope(session, coll, recId, data){
       if(cls2.homeroom_teacher_id === u.id) return true;
       return (get_store().schedule || []).some(x => x.class_id === cls2.id && x.teacher_id === u.id);
     }
-    /* P0-04: دبیر فقط حضورِ کلاس‌هایی که خودش درس می‌دهد (homeroom/schedule).
-       مسیرِ sid به‌تنهایی class_id را نادیده می‌گرفت (سوراخ: دانش‌آموزِ خودی
-       با class_idِ بیگانه پذیرفته می‌شد). حالا class_id — اگر هست — هم باید
-       تدریسی باشد؛ وگرنه fail-closed. (نمره در P0-05 همین‌طور می‌شود.) */
-    if(coll === 'attendance'){
+    /* P0-04/P0-05: دبیر فقط حضور/نمرهٔ کلاس‌هایی که خودش درس می‌دهد
+       (homeroom/schedule). مسیرِ sid به‌تنهایی class_id را نادیده می‌گرفت
+       (سوراخ: دانش‌آموزِ خودی با class_idِ بیگانه پذیرفته می‌شد). حالا
+       class_id — اگر هست — هم باید تدریسی باشد؛ وگرنه fail-closed.
+       عمداً subject چک نمی‌شود: تست‌هایِ committed (server15: C5a با
+       subject=2 و C10a با subject=1 برایِ T2) صراحتاً leniency رویِ
+       درس را رفتارِ پذیرفته می‌دانند؛ قلمروِ درس فقط در خوانش است. */
+    if(coll === 'attendance' || coll === 'grades'){
       const cid = (rec && rec.class_id != null) ? rec.class_id
                 : (data && data.class_id != null ? data.class_id : null);
       if(cid != null){
