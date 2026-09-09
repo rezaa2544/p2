@@ -41947,4 +41947,13 @@ ON CONFLICT (id) DO UPDATE SET
   "school_id" = EXCLUDED."school_id",
   "updated_at" = EXCLUDED."updated_at";
 
+
+-- ── Wave 3 (chat2): composite keyset indexes for DB-native LIST queries ──
+-- students list: role + school scope + grade/keyset ORDER BY id
+CREATE INDEX IF NOT EXISTS idx_users_school_role_id ON users (school_id, role, id);
+CREATE INDEX IF NOT EXISTS idx_users_role_school_id ON users (role, school_id, id);
+-- attendance list: manager/class/date ordering (date DESC, id ASC) + student scope
+CREATE INDEX IF NOT EXISTS idx_attendance_school_date_id ON attendance (school_id, date DESC, id);
+CREATE INDEX IF NOT EXISTS idx_attendance_student_date_id ON attendance (student_id, date DESC, id);
+
 COMMIT;
