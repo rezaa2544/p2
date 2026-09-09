@@ -6195,14 +6195,14 @@ test('اسکرول: منوی کناری هم جای خود را حفظ می‌ک
    ۵. هر روت کمکی (EXTRA_ROUTES) مجاز و دارای نما باشد */
 
 const NAV_EXPECT = {
-  superadmin: ['dashboard','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications','tickets'], /* G.2 فرناز: روت تیکت */
+  superadmin: ['dashboard','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications','tickets','teacheval'], /* G.2 فرناز: روت تیکت */
   /* دور ۷۷: چهار ماژولِ مدیری (preapps/scholarships دور ۶۱-۶۲، reexams/summerclasses دور ۷۰)
      به منوی مدیر اضافه شدند ولی این فهرست به‌روز نشد و تا کرشِ قدیمیِ smoke پنهان ماند */
-  manager: ['dashboard','atrisk','growth','calendar','visitors','library','assets','dorm','sidadiff','formssms','preapps','scholarships','drills','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','followup','leaves','exams','reexams','teachers','corrections','staff','staffatt','training','tuition','association','donations','meetings','notifyqueue','announcements','notifications','chat','busservice','summerclasses','tickets'], /* G.2 فرناز: روت تیکت */
+  manager: ['dashboard','atrisk','growth','calendar','visitors','library','assets','dorm','sidadiff','formssms','preapps','scholarships','drills','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','followup','leaves','exams','reexams','teachers','corrections','staff','staffatt','training','tuition','association','donations','meetings','notifyqueue','announcements','notifications','chat','busservice','summerclasses','tickets','teacheval'], /* G.2 فرناز: روت تیکت */
   teacher: ['meetings','dashboard','classes','schedule','calendar','attendance','grades','discipline','leaves','exams','vclass','homework','announcements','notifications','chat'],
-  student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','homework','announcements','notifications','chat'],
-  edu_office: ['officedash','officeschools','announcements','notifications'],
-  parent: ['meetings','dashboard','family','children','exams','calendar','mytuition','leaves','announcements','notifications','chat'],
+  student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','homework','announcements','notifications','chat','teacheval'],
+  edu_office: ['officedash','officeschools','announcements','notifications','teacheval'],
+  parent: ['meetings','dashboard','family','children','exams','calendar','mytuition','leaves','announcements','notifications','chat','teacheval'],
   /* دور ۶۳: نقش تازهٔ مشاور — فقط صف ارجاع + صفحه‌های عمومی */
   counselor: ['cqueue','dashboard','announcements','notifications'],
   /* سرویس مدرسه (بدون جی‌پی‌اس): راننده فقط مسیر خودش + صفحه‌های عمومی */
