@@ -22,7 +22,7 @@
 - **تست:** `tests/pgbouncer-pooling.js` اضافه شد (۱۲/۱۲): قفل قرارداد مستندات، تنظیمات PgBouncer، اتصال `DATABASE_URL :6432`، `pg.Pool`، override env و health metadata.
 - **مستندات:** `.env.example`، `docs/ROADMAP.md` و `docs/README.md` به‌روز شدند؛ ردیف `PgBouncer Connection Pooling` در ROADMAP با ✅ ثبت شد.
 - **گیت‌ها:** `node build.js --check` ✅، `node tools/check-authz.js` ✅، `node tests/secret-scan.js` ۱۱/۱۱ ✅، `node tests/pgbouncer-pooling.js` ۱۲/۱۲ ✅، `node --expose-gc --max-old-space-size=2048 tests/smoke.js` ۵۴۷/۵۴۷ ✅.
-- **کامیت/پوش:** `3fd983e feat(db): add PgBouncer pooling contract` روی `origin/arena/01a08527-p2` پوش شد.
+- **کامیت/پوش:** `3fd983e feat(db): add PgBouncer pooling contract` و `76dc606 docs: update HANDOFF and PgBouncer final report` روی `origin/arena/01a08527-p2` پوش شدند.
 
 
 

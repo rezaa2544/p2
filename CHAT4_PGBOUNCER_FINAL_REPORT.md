@@ -52,7 +52,7 @@
 | کامیت | پیام | وضعیت Push |
 |---|---|---|
 | `3fd983e` | `feat(db): add PgBouncer pooling contract` | ✅ Push شده به `origin/arena/01a08527-p2` |
-| `در همین گزارش تکمیل می‌شود` | `docs: update HANDOFF and PgBouncer final report` | ✅ پس از ساخت این گزارش Push می‌شود |
+| `76dc606` | `docs: update HANDOFF and PgBouncer final report` | ✅ Push شده به `origin/arena/01a08527-p2` |
 
 ---
 
