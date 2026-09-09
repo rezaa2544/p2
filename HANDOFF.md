@@ -14,6 +14,80 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۱ (جانشین): انتقال فاز ۰.۱/۰.۲ از شاخهٔ چت ۱ قبلی به شاخهٔ فعال — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** ۱۲ کامیتِ فاز ۰.۱ و ۰.۲ از `origin/arena/01a0827b-p2` با
+`git cherry-pick ce34c82^..ccd0dc1` روی `arena/01a08543-p2` نشست (+ یک
+کامیتِ بازسازیِ مُهر راهنما). دروازه‌ها روی درخت ترکیبی (۰.۱+۰.۲+۰.۳):
+smoke **۵۴۷/۵۴۷** · run.js **۳۵/۳۵** · check-authz **۰** · secret-scan
+**۱۱/۱۱** · `build --check` بیت‌به‌بیت · school-type **۸/۸** + جهش **۵/۵** ·
+academic-years **۹/۹** + جهش **۵/۵** · exam-types **۲۷/۲۷** + جهش **۵/۵**.
+
+- **🔴 چرا merge مستقیمِ شاخه نشد (با مدرکِ راه‌دور):**
+  `gh api repos/rezaa2544/p2/compare/main...arena/01a0827b-p2` →
+  `status: diverged` · **۵۱ کامیت جلو** · **۷۷ کامیت عقب** ·
+  merge-base = `54b1820` (Merge PR #14) · ۱۳۴ فایل.
+  یعنی آن شاخه فقط ۰.۱/۰.۲ نیست: ۳۹ کامیتِ دیگر هم دارد
+  (P0-03..P0-07 یکپارچگی REST/Sync و tenancy · ابزار مهاجرت نسخه‌دار PG ·
+  CI: eslint + secret-scan · Kubernetes auto-scaling · CDN · سخت‌سازی
+  سرآیندها · ~۲۰ سند گزارش). مرجِ کل شاخه = آوردن همهٔ این‌ها، نه فقط
+  دو فاز. **تصمیمش با ناظر است** — در همین ورودی باز ماند.
+- **چری‌پیک تمیز نبود؛ سه نوع تعارض مکانیکی داشت (همه حل شد):**
+  (۱) `cdn-manifest.json` — modify/delete در هر کامیت (آن فایل از کارِ CDN
+  همان شاخه می‌آید که در main نیست) ⇒ `git rm`؛
+  (۲) `USER_GUIDE.html` — فقط مُهر بیلد ⇒ `--ours` + بازسازی با `build.js`؛
+  (۳) `authz/model.json` — main فیلد `public_goals` را اضافه کرده بود،
+  شاخه `school_type` را ⇒ **هر دو** (ترتیب الفبایی) + بازتولید
+  `write-perms.json` با مولد؛ (۴) `HANDOFF.md` — union (هر دو ورودی).
+- **دامِ روش:** این ۱۲ کامیت خودبسنده نیستند — روی کارِ CDNِ همان شاخه
+  نشسته‌اند، پس `cdn-manifest.json` در تک‌تکشان ظاهر می‌شود. اگر روزی
+  خواستید کل شاخه را مرج کنید، این تعارض نیست (هر دو طرف فایل را دارند).
+- **نتیجهٔ حجمی:** ۲۰ فایل، ۱۳۴۷+ / ۳۸− . هیچ زیرساخت/CI/CDN وارد نشد.
+- **پی‌آر ۳۷** اکنون هر سه فاز را دارد (۰.۱ + ۰.۲ + ۰.۳) — عنوان و شرحش
+  به‌روز شد. 🔴 اگر تفکیک می‌خواهید بگویید تا ۱۲ کامیت را از شاخه برگردانم
+  (هنوز مرج نشده، پس برگشت تمیز است).
+
+## چت ۱ (جانشین): فاز ۰.۳ — تفکیک امتحان نهایی کشوری از داخلی — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** شاخهٔ `arena/01a08543-p2` از `main` (`2a2b74f`) — ۴ کامیت
+(`feat(exams)` هسته · `feat(grades)` قاعدهٔ ورود · `feat(ui)` تفکیک نما ·
+`test(exams)` سئوت‌ها) + همین ورودی.
+دروازه‌ها: smoke **۵۴۷/۵۴۷** · run.js **۳۵/۳۵** · check-authz **۰ ناهمخوانی**
+(۳۷۶ اکشن) · `build --check` بیت‌به‌بیت · سئوت تازه **۲۷/۲۷** + جهش‌ها **۵/۵** کشته.
+
+- **هسته (`26-curriculum.js`):** تک‌منبع حقیقت همان `exams.source`
+  (internal/national_final/makeup، از دور ۶۳) ماند و `examTypeOf` نمای
+  دوحالتیِ خواسته‌شده را از آن مشتق می‌کند. نمره منشأ می‌گیرد:
+  `grades.source ∈ {internal, national}` با `gradeSource/gradeSourceLabel/
+  gradeSourceBadge/nationalGradesOf/nationalGpa`.
+- **انحراف مستند از پرامپت (ثبت‌شده در `docs/EXAM_TYPES_GUIDE.md` §۳):**
+  ستون `exams.exam_type` ساخته نشد — `exams.source` از پیش همان سه حالت را
+  دارد (دو منبع حقیقت = نشت) و نام `exam_type` روی **grades** از پیش معنای
+  دیگری دارد (`EXAM_TYPES` = کلاسی/میان‌ترم/پایان‌ترم/عملی/امتحان نهایی).
+- **قاعدهٔ ورود:** نمرهٔ «امتحان نهایی» را فقط مدیر/سوپرادمین می‌نویسد؛
+  دبیر نه می‌سازد نه ویرایش می‌کند (گارد **روی داده** در `grade-save`،
+  پنهان‌کردن گزینه در `gradeModal` فقط کشف‌پذیری است). منشأ روی رکورد مُهر
+  می‌خورد.
+- **نما:** کارت جداگانهٔ «🏛️ نمرات امتحان نهایی کشوری» با معدل خودش در
+  کارنامه · برچسب روی چیپ نمره · نشان قرمز در جدول نمرات · بخش جداگانه در
+  گواهی چاپی (`transcriptCert`).
+- **تصمیم باز کارفرما:** معدل وزنی گواهی عمداً روی همهٔ نمرات ماند
+  (گواهی‌های صادرشده + قفل smoke بند ۱.۶)؛ «معدل نهایی کشوری» کنارش
+  نمایش داده می‌شود نه به‌جایش. سه نقطهٔ تغییر در سند §۶ آمده.
+- **بدهی باز (فاز سرور):** enum سمت سرور برای `grades.source` هنوز قفل
+  نشده — فقط سقف طول (`MID_FIELDS`). `authz/model.json` بدون تغییر ماند
+  چون `source` از پیش در فیلدهای هر دو مجموعه بود.
+- **دو نکته برای ناظر (دست نخورد):** (۱) ردیف‌های ۰.۱/۰.۲ در
+  `docs/ROADMAP.md` هنوز ❌ هستند درحالی‌که `main` هم `SCHOOL_TYPES` دارد و
+  هم `preapps` — کار «نوع مدرسه» و «سال فعال» روی شاخهٔ
+  `arena/01a0827b-p2` مانده و مرج نشده. (۲) این سشن به شاخهٔ
+  `arena/01a08543-p2` قفل است؛ کانفلیکت پی‌آر ۳۵ (`feat/b3-d234-chat4`) از
+  اینجا قابل resolve نیست — `mergeable: CONFLICTING` با راه‌دور راستی‌آزمایی شد
+  و **سطح دقیق تعارض** (۱۲ فایل / ۷۴ نشانگر + استراتژی هر فایل) با
+  `git merge-tree 430c7c8 origin/main origin/feat/b3-d234-chat4` سنجیده و در
+  `docs/PR_MERGE_PLAN.md` §۶ ثبت شد. دامِ روش هم ثبت شد: بلوک‌های
+  `added in both` را باید جدا شمرد، وگرنه `docs/ROADMAP.md` از قلم می‌افتد.
+
 ## چت ۳ (E.6 زمان‌بند): تولید خودکار برنامهٔ هفتگی — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
 
 **وضعیت:** کامیت `feat(schedgen): add e.6 automatic timetable generator` روی `feat/schedule-gen-chat3`. گیت‌ها سبز: ‏smoke ۵۴۷/۵۴۷‏، ‏check-authz=0‏، ‏secret-scan ۱۱/۱۱‏، ‏build --check‏ تمیز، سوئیت تازه ‏۶/۶‏ + جهش‌ها ‏۵/۵‏، رگرسیونِ schedconf2 سبز.
@@ -1278,3 +1352,27 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
   راستی‌آزمایی؛ روت `training` + منوی «کادر مدرسه»؛ ثبت در `_order.json`.
 - بازاجرای امروز روی main تمیز: `training2` **12/12** ✅ + `training-mutations` **3/3** ✅؛ smoke ‏547/547‏، authz ‏۰‏، secret-scan ‏۱۱/۱۱‏ ✅
 - `docs/ROADMAP.md` ردیف B.2: 🔴 ← ✅ (طبق قانون ۱ نقشه‌راه).
+## CI — اصلاح jsdom 30 روی شاخه arena (معادل پچ PR #11) — ✅
+- `tests/smoke.js`: ۱۱ سلکتور unquoted (`data-day/data-i/data-act/...`) با escape دولایه (`\\"`) نقل‌قول شد؛
+  `tests/simulation.js`: ۳ مورد مشابه. نکته: در رشتهٔ evalشده (کوتیشن‌دبل) باید `\\"` در فایل باشد وگرنه
+  «missing ) after argument list»؛ در template-literal با querySelector تکی‌کوتیشن، `"` ساده کافی است.
+- `package.json`: jsdom ‏^25‏ → ‏^30.0.1‏ (هم‌تراز main) + engines ‏>=22‏؛ ورک‌فلو: ماتریس → ‏[22.x]‏.
+- سورس اپ تمیز بود (تک‌مورد `[type=date]` فقط کامنت)؛ سلکتور داینامیک unquoted هم پیدا نشد.
+- گیت‌ها با jsdom 30.0.1: smoke ‏547/547‏، simulation ‏48/48‏، bell2 ‏8/8‏، client-features ‏12/12‏،
+  uiclick ‏4/4‏، attpartial ‏10/10‏، xss ‏23/23‏، server2، API ‏7/7‏، policy ‏10/10‏، edu ‏7/7‏، authz ‏0‏ ✅
+
+## فاز ۰.۱ — نوع ساختاری مدرسه (school_type) با پیامد واقعی — ✅
+- مدل: `school_type` به `schools.fields` در `authz/model.json` + بازتولید `write-perms.json` (هرکدام +۱ خط)؛ مُهر راهنما و cdn-manifest که در HEAD کهنه بودند، قطعی تازه شدند.
+- منطق (`src/js/09-schools.js`): `SCHOOL_TYPE_DEFS` (۹ نوع × ۶ پیامد) + `schoolTypeOf/schoolTypeFeatures/schoolTypeCaps`؛ fallback در `schoolCaps`: صریح > نوعی > CAP_DEFAULTS. سرور (`server/validate.js`): enum نه‌تایی (`bad_enum` برای ناشناخته).
+- UI: سلکت `m_school_type` در مودال مدرسه + flip خودکار چک‌باکس‌ها با تغییر نوع (override دستی ممکن)؛ `school-save` مقدار را ضدعفونی می‌کند (نامعتبر ← governmental)؛ بدون اکشن جدید.
+- تست: `tests/school-type.js` ‏8/8‏ (ST0–ST7) + `tests/school-type-mutations.js` ‏5/5‏ کشته (SM1–SM5)؛ سند: `docs/SCHOOL_TYPE_GUIDE.md`.
+- سازگاری: مدارس قدیمی (بی‌نوع) رفتار قبلی‌شان را نگه می‌دارند (قابلیت صریح/پیش‌فرض)؛ نمایشی governmental.
+- گیت‌ها: smoke ‏547/547‏، authz ‏0‏، secret-scan ‏11/11‏، build --check سبز، authz-model ‏232/232‏، رگرسیون کامل 185 سبز (از جمله ۲ سوئیت تازه)؛ ۱۲ قرمز عیناً در c22d354 هم قرمزند (A/B با worktree — پیشینه، نامرتبط) ✅
+
+## فاز ۰.۲ — هم‌زمانی دو سال تحصیلی (سال عملیاتی) — ✅
+- تحلیل: هم‌زمانی جاری+پیش‌ثبت‌نام ساختاری از قبل بود (بند ۰.۲)؛ ۵ شکاف واقعی پیدا و رفع شد.
+- مدل: `school_years.fields` ‏۲ ← ۱۰‏ (رفع DLQ بستن سال: `unknown_field` → dead-letter، گم‌شدن داده) + `schools.active_year_code` + بازتولید write-perms.
+- منطق (`39-school-year.js`): ‏`activeYearOf` (override معتبر وگرنه تقویمی)، ‏`prevYearCode`، ‏`isPreSeason` (اسفند-شهریور)، ‏`yearCodeTitle`؛ سیم‌کشی state/funnel به سال عملیاتی. سرور: pattern فرمت `NNNN-NNNN`.
+- UI: بج سال در هدر + سلکت سال عملیاتی در مودال (خودکار/پارسال/جاری/بعد) + بج+قفل در جدول مدارس + فیلتر سال در کارت سابقه + بنر نرم فصل؛ بدون اکشن/روت تازه.
+- تست: `tests/academic-years.js` ‏9/9‏ (AY0–AY8) + `tests/academic-years-mutations.js` ‏5/5‏ کشته (YM1–YM5)؛ سند: `docs/ACADEMIC_YEARS_GUIDE.md`.
+- گیت‌ها: smoke ‏547/547‏، authz ‏0‏، secret-scan ‏11/11‏، build --check سبز، authz-model ‏232/232‏؛ رگرسیون دامنه: uiclick ‏4/4‏ + جهش ‏5/5‏، boom2 ‏8/8‏، simulation ‏48/48‏ ✅
