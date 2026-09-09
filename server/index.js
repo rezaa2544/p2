@@ -48,6 +48,8 @@ const { createIds } = require('./ids'); /* P0-16 */
 const { createOutbox } = require('./outbox'); /* P0-17 */
 const { createDeleteService } = require('./delete-service'); /* P0-17 */
 const { createPull } = require('./pull');
+const { createHeavyWorker } = require('./worker-service'); /* Wave 9 */
+const { createStaticCache } = require('./static-cache');   /* Wave 9 */
 
 const ROOT = path.join(__dirname, '..');
 const DATA_DIR = path.join(__dirname, 'data');
@@ -87,6 +89,14 @@ function loadStore(){
 }
 const store = loadStore();
 syncAttach(store);
+
+/* ── Wave 9 — رشتهٔ کارِ عملیاتِ سنگین ─────────────────────────────
+   JSON.stringify(store) و نوشتنِ سنکرونِ فایل از رشتهٔ اصلی به ورکر
+   می‌روند (persist هر ۲ ثانیه، بکاپ، گزارشِ عمومی). ورکر دیرزیاد و
+   unref است؛ شکستش به مسیرِ سنکرونِ قدیمی برمی‌گردد (فال‌بک). */
+const workers = createHeavyWorker({ getStore: () => store });
+/* Wave 9 — کشِ استاتیک: خواندنِ async + اعتبارسنجیِ mtime (نه readFileSync در هر درخواست) */
+const staticCache = createStaticCache();
 
 /* ── database and caching layers initialization ── */
 db.init(store).then(info => {
@@ -156,7 +166,7 @@ function enumStage(e, sess){
 }
 
 let dirty = false;
-function markDirty(){ dirty = true; }
+function markDirty(){ dirty = true; workers.bump(); }
 
 /* ── GC of internal state (دور ۸۵ P1-3 — AD ۸۵.۲) ─────────────
    سه نقشهٔ فقط-رشد:
@@ -181,9 +191,34 @@ function gcStore(){
   }
   return n;
 }
+/* ── Wave 9 — persist بیرون از رشتهٔ اصلی ──────────────────────────
+   مسیرِ عادی (تیکرِ ۲ ثانیه): اسنپ‌شات با structured clone به ورکر
+   می‌رود؛ JSON.stringify و نوشتنِ فایل در رشتهٔ پس‌زمینه انجام می‌شود.
+   تازگیِ داده با نسخه‌ها تضمین می‌شود (workers.bump در markDirty):
+   هر جهشِ حینِ پرواز دوباره dirty می‌کند و چرخهٔ بعدی می‌نویسد.
+   هم‌جوشی: اگر نوشتنِ قبلی هنوز در جریان است، فقط پرچم می‌خورد. */
+let persistBusy = false;    /* نوشتنِ ورکر در جریان است */
+let persistQueued = false;  /* حینِ پرواز دوباره کثیف شد */
 function persistStore(){
   if(!dirty) return;
-  dirty = false;
+  if(persistBusy){ persistQueued = true; return; }
+  dirty = false; /* نقطهٔ اسنپ‌شات — جهشِ بعدی دوباره کثیف می‌کند */
+  const gc = gcStore();
+  if(gc) try { audit('store_gc', { removed: gc }); } catch(e){}
+  persistBusy = true;
+  workers.runPersist(STORE_FILE).then(() => {
+    persistBusy = false;
+    if(persistQueued || dirty){ persistQueued = false; persistStore(); }
+  }).catch(() => {
+    persistBusy = false;
+    persistStoreSync(); /* ورکر در دسترس نیست → مسیرِ سنکرونِ قدیمی */
+  });
+}
+/* مسیرِ سنکرون — فقط خاموشی (exit/SIGTERM/SIGINT) و فال‌بکِ خطای ورکر؛
+   هرگز در مسیرِ درخواست یا تیکرِ دوره‌ای صدا نمی‌شود. */
+function persistStoreSync(){
+  if(!dirty && !persistBusy && !persistQueued) return;
+  dirty = false; persistQueued = false;
   const gc = gcStore();
   if(gc) try { audit('store_gc', { removed: gc }); } catch(e){}
   try{
@@ -194,9 +229,23 @@ function persistStore(){
   }catch(e){ /* store file may be gone (tests) — never crash on exit */ }
 }
 setInterval(persistStore, 2000).unref();
-process.on('exit', () => { persistStore(); db.close(); redis.close(); });
-process.on('SIGTERM', () => { persistStore(); db.close(); redis.close(); process.exit(0); });
-process.on('SIGINT', () => { persistStore(); db.close(); redis.close(); process.exit(0); });
+process.on('exit', () => {
+  persistStoreSync();
+  try{ if(typeof auditLogger.flushSync === 'function') auditLogger.flushSync(); }catch(e){}
+  db.close(); redis.close(); workers.terminate();
+});
+process.on('SIGTERM', () => {
+  persistStoreSync();
+  try{ if(typeof auditLogger.flushSync === 'function') auditLogger.flushSync(); }catch(e){}
+  db.close(); redis.close(); workers.terminate();
+  process.exit(0);
+});
+process.on('SIGINT', () => {
+  persistStoreSync();
+  try{ if(typeof auditLogger.flushSync === 'function') auditLogger.flushSync(); }catch(e){}
+  db.close(); redis.close(); workers.terminate();
+  process.exit(0);
+});
 
 /* ── JWT secret (env, or generated once; never committed) ──────────── */
 let JWT_SECRET = process.env.PAYESH_JWT_SECRET || null;
@@ -299,8 +348,8 @@ const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESS
 const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 const idor = createIdor({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
-const pubrep = createPublicReport({ store, sendJson: sendJsonCounting });
-const admin = createAdmin({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, dataDir: path.dirname(STORE_FILE) });
+const pubrep = createPublicReport({ store, sendJson: sendJsonCounting, workers });
+const admin = createAdmin({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, dataDir: path.dirname(STORE_FILE), workers });
 const sms = createSms({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 const conflicts = createConflicts({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 
@@ -330,12 +379,13 @@ const STATIC = {
   '/privacy.html': { file: 'privacy.html', type: 'text/html; charset=utf-8' },
   '/privacy':      { file: 'privacy.html', type: 'text/html; charset=utf-8' },
 };
-function serveStatic(res, urlPath, nonce){
+async function serveStatic(res, urlPath, nonce){
   const entry = STATIC[urlPath];
   if(!entry) return sendJson(res, 404, { ok: false, code: 'not_found' });
   const fp = path.join(ROOT, entry.file);
-  if(!fs.existsSync(fp)) return sendJson(res, 500, { ok: false, code: 'missing_build' });
-  let html = fs.readFileSync(fp, 'utf8');
+  /* Wave 9 — خواندنِ async + کشِ mtime: نه readFileSyncِ سنکرون در هر درخواست */
+  let html = await staticCache.read(fp);
+  if(html === null) return sendJson(res, 500, { ok: false, code: 'missing_build' });
   /* per-request CSP nonce (contract §5.6.2) — build.js placeholder */
   if(nonce) html = html.split('__PAYESH_NONCE__').join(nonce);
   res.writeHead(200, { 'Content-Type': entry.type, 'Cache-Control': 'no-cache' });
@@ -533,7 +583,7 @@ const onRequest = async (req, res) => {
       return sendJson(res, 404, { ok: false, code: 'not_found' });
     }
     if(p.indexOf('/api/') === 0) return sendJson(res, 404, { ok: false, code: 'not_found' });
-    return serveStatic(res, p, nonce);
+    return await serveStatic(res, p, nonce);
   }catch(err){
     /* R96 P0-5: حجمِ بیش‌ازحدِ body → 413 (نه 500) — و خطا را لاگ نکن که
        محتوای بدنه در audit نیاید. */
@@ -625,4 +675,4 @@ if(require.main === module){
     }
   });
 }
-module.exports = { server, store, audit, isHttps, persistStore, db, redis, cache };
+module.exports = { server, store, audit, isHttps, persistStore, persistStoreSync, db, redis, cache, workers, staticCache };
