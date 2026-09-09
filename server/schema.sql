@@ -1215,6 +1215,22 @@ CREATE TABLE IF NOT EXISTS substitutions (
 CREATE INDEX IF NOT EXISTS idx_substitutions_school_id ON substitutions (school_id);
 CREATE INDEX IF NOT EXISTS idx_substitutions_created_at ON substitutions (created_at DESC);
 
+CREATE TABLE IF NOT EXISTS staff_needs (
+  "count" SMALLINT NOT NULL DEFAULT 1,
+  "created_at" TIMESTAMPTZ,
+  "created_by" INTEGER,
+  "id" INTEGER PRIMARY KEY,
+  "note" TEXT,
+  "school_id" INTEGER,
+  "status" VARCHAR(50) NOT NULL DEFAULT 'open',
+  "subject_id" INTEGER,
+  "updated_at" TIMESTAMPTZ,
+  CONSTRAINT fk_staff_needs_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE INDEX IF NOT EXISTS idx_staff_needs_school_id ON staff_needs (school_id);
+CREATE INDEX IF NOT EXISTS idx_staff_needs_status ON staff_needs (status);
+
 -- Table: summer_classes
 CREATE TABLE IF NOT EXISTS summer_classes (
   "created_at" TIMESTAMPTZ,

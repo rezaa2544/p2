@@ -2150,6 +2150,13 @@
     "superadmin"
    ]
   },
+  "staff_needs": {
+    "fields": ["id", "school_id", "subject_id", "count", "note", "status", "created_by", "created_at", "updated_at"],
+    "ins": ["manager", "superadmin"],
+    "upd": ["manager", "superadmin"],
+    "del": ["manager", "superadmin"],
+    "note": "D.4: اعلامِ کمبودِ نیروی انسانی به تفکیکِ درس — مدیر می‌نویسد، اداره فقط می‌خواند"
+  },
   "visitors": {
    "fields": [
     "created_at",

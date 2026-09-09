@@ -75,6 +75,7 @@ const STATUS_ENUMS = {
   pre_enrollments      : ['registered', 'confirmed', 'placed', 'rejected'],
   reexams              : ['scheduled', 'done'],
   scholarships         : ['requested', 'review', 'approved', 'rejected'],
+  staff_needs          : ['open', 'filled'],
   sms_log              : ['queued', 'sent', 'failed'],
   teacher_sms          : ['queued', 'sent', 'failed'],
   transfer_requests    : ['pending', 'approved', 'rejected'],

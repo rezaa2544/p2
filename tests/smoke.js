@@ -6196,10 +6196,10 @@ const NAV_EXPECT = {
   superadmin: ['dashboard','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications'],
   /* دور ۷۷: چهار ماژولِ مدیری (preapps/scholarships دور ۶۱-۶۲، reexams/summerclasses دور ۷۰)
      به منوی مدیر اضافه شدند ولی این فهرست به‌روز نشد و تا کرشِ قدیمیِ smoke پنهان ماند */
-  manager: ['dashboard','atrisk','growth','calendar','visitors','library','assets','dorm','sidadiff','formssms','preapps','scholarships','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','followup','leaves','exams','reexams','teachers','corrections','staff','tuition','association','meetings','notifyqueue','announcements','notifications','chat','busservice','summerclasses'],
+  manager: ['dashboard','atrisk','growth','calendar','visitors','library','assets','dorm','sidadiff','formssms','preapps','scholarships','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','followup','leaves','exams','reexams','teachers','corrections','staffneeds','staff','tuition','association','meetings','notifyqueue','announcements','notifications','chat','busservice','summerclasses'],
   teacher: ['meetings','dashboard','classes','schedule','calendar','attendance','grades','discipline','leaves','exams','vclass','homework','announcements','notifications','chat'],
   student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','homework','announcements','notifications','chat'],
-  edu_office: ['officedash','officescore','officeschools','announcements','notifications'],
+  edu_office: ['officedash','officescore','officeschools','staffneeds','announcements','notifications'],
   parent: ['meetings','dashboard','family','children','exams','calendar','mytuition','leaves','announcements','notifications','chat'],
   /* دور ۶۳: نقش تازهٔ مشاور — فقط صف ارجاع + صفحه‌های عمومی */
   counselor: ['cqueue','dashboard','announcements','notifications'],

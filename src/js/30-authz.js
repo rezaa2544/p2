@@ -16,7 +16,7 @@
 
 /** روت‌هایی که در NAV نیستند ولی برای نقش مجازند (زیرصفحه یا مقصد پیمایش) */
 var EXTRA_ROUTES = {
-  superadmin: ['dashboard','adminsubs','officedash','officescore','officeschools','record','geo','offices','lifecycle'],
+  superadmin: ['dashboard','adminsubs','officedash','officescore','officeschools','staffneeds','record','geo','offices','lifecycle'],
   manager:    ['record','corrections','teachers','exams','tuition','association','lifecycle','atrisk','meetings','growth','formssms','import','schoolyear'],
   teacher:    ['record','exams','meetings'],
   student:    ['record','mytuition','notifications','announcements','subscription'],
@@ -100,6 +100,14 @@ var ACTION_ROLES = {
   /* اطلاع‌رسانی پیامکی: تأیید و ارسال فقط مدیر.
      ⚠️ دبیر پیام می‌سازد ولی حق تأییدش را ندارد — همان تفکیکی که
      کل مکانیزم بازبینی بر آن بنا شده است. */
+  /* D.4 — کمبودِ نیروی انسانی: مدیر می‌نویسد، اداره فقط می‌خواند */
+  'need-new':           ['manager','superadmin'],
+  'need-edit':          ['manager','superadmin'],
+  'need-save':          ['manager','superadmin'],
+  'need-fill':          ['manager','superadmin'],
+  'need-reopen':        ['manager','superadmin'],
+  'need-del':           ['manager','superadmin'],
+  'staff-needs-print':  ['edu_office','manager','superadmin'],
   'notify-approve':     ['manager'],
   'notify-approve-sel': ['manager'],
   'notify-reject':      ['manager'],

@@ -61,6 +61,7 @@
       "sedascores",
       "sms_log",
       "sms_wallet",
+      "staff_needs",
       "student_archive",
       "student_transfers",
       "subjects",
@@ -1329,6 +1330,20 @@
         "superadmin"
       ]
     },
+    "staff_needs": {
+      "ins": [
+        "manager",
+        "superadmin"
+      ],
+      "upd": [
+        "manager",
+        "superadmin"
+      ],
+      "del": [
+        "manager",
+        "superadmin"
+      ]
+    },
     "visitors": {
       "ins": [
         "manager",
@@ -2295,6 +2310,17 @@
       "size",
       "title",
       "type",
+      "updated_at"
+    ],
+    "staff_needs": [
+      "id",
+      "school_id",
+      "subject_id",
+      "count",
+      "note",
+      "status",
+      "created_by",
+      "created_at",
       "updated_at"
     ],
     "visitors": [

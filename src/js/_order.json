@@ -81,5 +81,6 @@
  "68-sync-conflicts.js",
  "69-office-scorecard.js",
  "70-urgent-notice.js",
+ "71-staff-needs.js",
  "99-theme-loader.js"
 ]

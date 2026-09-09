@@ -205,6 +205,7 @@ function _renderRouteInner(){
     case 'cqueue':return viewCounselorQueue();
     case 'followup':return viewFollowup();
     case 'staff':return viewStaff();
+    case 'staffneeds':return viewStaffNeeds();
     default:return viewDashboard();
   }
 }
