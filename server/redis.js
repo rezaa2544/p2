@@ -226,6 +226,70 @@ async function del(...keys) {
 }
 
 /**
+ * Set only if key does not exist, with expiry (atomic).
+ * Returns true when this caller created the key.
+ * Used for distributed locks (SET NX EX) and idempotency keys.
+ * @param {string} key
+ * @param {string} value
+ * @param {number} ttlSeconds
+ */
+async function setNX(key, value, ttlSeconds) {
+  if (isRedis()) {
+    try {
+      const reply = await client.set(key, value, 'EX', ttlSeconds, 'NX');
+      return reply === 'OK';
+    } catch (err) {
+      // Redis down — treat as not-set (fail-closed for callers)
+      return false;
+    }
+  }
+
+  // Memory mode is single-process, so check+set is atomic inside one tick
+  cleanExpiredMem();
+  if (memCache.has(key)) return false;
+  memCache.set(key, value);
+  if (ttlSeconds > 0) {
+    memExpiry.set(key, Date.now() + (ttlSeconds * 1000));
+  }
+  return true;
+}
+
+// Lua compare-and-delete: release a lock ONLY if we still own the token.
+const CAS_DEL_SCRIPT = `
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("del", KEYS[1])
+else
+  return 0
+end
+`;
+
+/**
+ * Delete the key only if its current value equals `expectedValue` (atomic CAS).
+ * Prevents a lock holder from deleting a lock that expired and was re-taken
+ * by another instance.
+ * @param {string} key
+ * @param {string} expectedValue
+ */
+async function compareAndDelete(key, expectedValue) {
+  if (isRedis()) {
+    try {
+      const reply = await client.eval(CAS_DEL_SCRIPT, 1, key, expectedValue);
+      return Number(reply) === 1;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  cleanExpiredMem();
+  if (memCache.has(key) && memCache.get(key) === expectedValue) {
+    memCache.delete(key);
+    memExpiry.delete(key);
+    return true;
+  }
+  return false;
+}
+
+/**
  * Publish message to a channel
  * @param {string} channel 
  * @param {string|Object} message 
@@ -311,5 +375,7 @@ module.exports = {
   publish,
   subscribe,
   ping,
+  setNX,
+  compareAndDelete,
   close
 };
