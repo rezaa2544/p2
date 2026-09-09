@@ -144,7 +144,6 @@
       "attendance_modes",
       "notifications",
       "notify_queue",
-      "offices",
       "teacher_schools"
     ]
   },
@@ -872,15 +871,12 @@
     },
     "offices": {
       "ins": [
-        "edu_office",
         "superadmin"
       ],
       "upd": [
-        "edu_office",
         "superadmin"
       ],
       "del": [
-        "edu_office",
         "superadmin"
       ]
     },
