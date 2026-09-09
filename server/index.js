@@ -15,6 +15,7 @@
    `node server/seed.js` from the deterministic demo world.
    ───────────────────────────────────────────────────────────────── */
 'use strict';
+const waf = require('./waf'); /* P-WAF: فقط-تشخیص (detect-only) */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -321,6 +322,8 @@ const onRequest = async (req, res) => {
   const https = isHttps(req);
   const nonce = crypto.randomBytes(16).toString('base64');
   securityHeaders(res, nonce, https);
+  /* WAF (P-WAF): فقط-تشخیص (detect-only)؛ هرگز مسدود نمی‌کند — اِعمال با لبه است */
+  try{ await waf.wafMiddleware(req, res); }catch(e){}
   /* R97 — نگهبانِ شمردنِ شناسه: شمارِ رد‌ها (404/403/401) و شمارِ همهٔ
      خوانش‌هایِ /api/students/:id (مسطحِ شمردنِ شناسهٔ §5.7) به ازای هر
      نشست؛ از SLOW1 به بعد تأخیر، در REVOKE ابطال (sendJsonCounting). */
