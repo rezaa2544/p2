@@ -85,7 +85,26 @@ function createOutbox({ store, db }) {
     return evt;
   }
 
-  return { append, mark, cap: OUTBOX_CAP };
+  /**
+   * ویو ۱۴ — عمقِ صفِ ناهم‌زمان (queue depth) برای Observability.
+   * برچسب‌ها از یک مجموعهٔ بسته می‌آیند (pending/processed/failed/legacy)
+   * تا cardinality هرگز بی‌کران نشود. O(n) روی صفِ سقف‌دارِ ۱۰۰۰ —
+   * فقط هنگامِ scrape فراخوانی می‌شود، نه در مسیرِ درخواست.
+   * @returns {{ total: number, pending: number, processed: number, failed: number, legacy: number }}
+   */
+  function depth() {
+    const d = { total: store.outbox.length, pending: 0, processed: 0, failed: 0, legacy: 0 };
+    for (const e of store.outbox) {
+      const s = e && e.status;
+      if (s === 'pending') d.pending++;
+      else if (s === 'processed') d.processed++;
+      else if (s === 'failed') d.failed++;
+      else d.legacy++;
+    }
+    return d;
+  }
+
+  return { append, mark, depth, cap: OUTBOX_CAP };
 }
 
 module.exports = { createOutbox };

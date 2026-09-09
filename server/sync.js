@@ -12,6 +12,8 @@
 
 const { validate, validateSyncEnvelope, validateSyncData } = require('./validate');
 const cache = require('./cache');
+/* ویو ۱۴ (Observability) — شمارِ تعارض‌هایِ همگام‌سازی (سیگنالِ OCC). */
+const metrics = require('./metrics');
 
 /* Core mirror of the client's ACTION_ROLES table for WRITE operations.
    The full table mirror is the next phase (AD.md §14) — unknown
@@ -710,6 +712,9 @@ function createSync(ctx){
             status: 'open', created_at: nowIso
           };
           store.sync_conflicts.push(cf);
+          /* ویو ۱۴: برچسبِ collection نامِ جدول است (مجموعهٔ بستهٔ VERSIONED)،
+             نه شناسهٔ رکورد — بدون PII و با cardinality کران‌دار. */
+          metrics.inc('payesh_sync_conflicts_total', { collection: String(op.c || 'unknown').slice(0, 32) });
           audit('sync_conflict_preserved', { user_id: s.id, conflict_id: cf.id, collection: op.c, record_id: vid, school_id: cf.school_id });
           /* هشدار به مدیرِ مدرسه (الگویِ hookهایِ R88/R89) */
           const cmgr = (store.users || []).find(x => x.school_id === cf.school_id && x.role === 'manager');
