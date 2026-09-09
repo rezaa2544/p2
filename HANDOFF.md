@@ -14,6 +14,15 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۱: Wave 0 / Part 2 — Baseline عملکرد سرور و API — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** اندازه‌گیری baseline عملکرد سرور/API بدون تغییر کد پروژه انجام شد و در `docs/NATIONAL_BASELINE_PART2.md` ثبت شد؛ کپی در `reza/` قرار گرفت. Progress Tracker برای Wave 0 به‌روز شد: Partهای ۱ و ۲ کامل‌اند و Partهای ۳ و ۴ هنوز باقی‌اند.
+
+- **اندازه‌گیری:** سرور واقعی `server/index.js` با store موقت دمو و probe موقت خارج repo اجرا شد؛ `process.memoryUsage()`، RSS/CPU از `/proc`، و `monitorEventLoopDelay` ثبت شد. endpoint واقعی sync در کد `POST /api/sync` است (نه `/api/v1/sync`) و همان اندازه‌گیری شد.
+- **نتایج نمونه:** event-loop p95≈10.846ms؛ RSS بعد benchmark≈108.17MB؛ endpoint p95ها: login≈7.358ms، bootstrap≈2.347ms، attendance≈3.752ms، grades≈3.184ms، sync≈4.735ms.
+- **محدودیت:** sandbox/localhost، JSON temp store، دیتاست دمو و اجرای sequential؛ نتیجه ظرفیت ملی نیست و باید در Wave 18 تکرار شود.
+- **تست‌ها:** `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+
 ## چت ۱: Wave -1 / Architecture Discovery بخش دوم — Threat Model + Bottleneck Map — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **وضعیت:** بخش دوم Wave -1 فقط با مستندات انجام شد؛ `docs/THREAT_MODEL.md` با چارچوب STRIDE و `docs/BOTTLENECK_MAP.md` ساخته شدند و کپی هر دو در `reza/` قرار گرفت. Progress Tracker برای Wave -1 به `✅` تغییر کرد چون بخش اول و دوم کامل شدند.

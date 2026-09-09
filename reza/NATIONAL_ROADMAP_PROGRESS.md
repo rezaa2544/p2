@@ -9,7 +9,7 @@
 | Wave | عنوان | Owner | Status | Risk | Dependency | Evidence |
 |---:|---|---|---|---|---|---|
 | -1 | Architecture Discovery | Arena 5 / همه Arenaها | ✅ | High | پیش‌نیاز همه Waves | کامل شد: Dependency/Data/Auth/Sync Flow + docs/THREAT_MODEL.md + docs/BOTTLENECK_MAP.md |
-| 0 | Baseline و Freeze | Arena 1 + Arena 5 | 🟡 | Medium | Wave -1 + تقسیم بخش‌های ۲ تا ۴ | docs/NATIONAL_BASELINE.md؛ tag national-baseline-start؛ Part 1 کامل |
+| 0 | Baseline و Freeze | Arena 1 + Arena 5 | 🟡 | Medium | Wave -1 کامل؛ منتظر Partهای ۳ و ۴ | Part 1: docs/NATIONAL_BASELINE.md؛ Part 2: docs/NATIONAL_BASELINE_PART2.md؛ tag national-baseline-start |
 | 1 | PostgreSQL Source of Truth [P0] | Arena 1 | ⏳ | Critical | Wave -1 و Wave 2؛ هماهنگی با چت ۲/۳ | در انتظار شروع/ادغام خروجی چت‌های Wave 1 |
 | 2 | Database Engineering | Arena 1 | ✅ | High | Wave -1 برای کشف کامل؛ Wave 1 برای PG-only شدن تولید | docs/DATABASE_ARCHITECTURE.md؛ migrations/؛ tests/db-engineering.js |
 | 3 | Query و Performance [P0] | Arena 1 + Arena 4 | ⏳ | High | Wave 1/2 | در انتظار شروع |
