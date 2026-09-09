@@ -46,8 +46,25 @@ function createAdmin(ctx){
     return { user: s };
   }
 
-  /* هستهٔ پشتیبان‌گیری — مشترک بین endpoint و زمان‌بندیِ خودکار */
-  function backupNow(source, userId, ip){
+  /* هستهٔ پشتیبان‌گیری — مشترک بین endpoint و زمان‌بندیِ خودکار.
+     Wave 9: مسیرِ عادی از رشتهٔ اصلی خارج شد — JSON.stringify(کلِ store)
+     و نوشتنِ فایل در رشتهٔ کارِ پس‌زمینه انجام می‌شود (ورکرِ عملیاتِ
+     سنگین). پاسخِ HTTP فقط بعد از نشستنِ فایل روی disk می‌آید تا
+     قراردادِ «فایلِ پاسخ موجود است» دست‌نخورده بماند. شکستِ ورکر →
+     همان مسیرِ درون‌پروسه‌ایِ قدیمی (فال‌بک). */
+  async function backupNow(source, userId, ip){
+    if(ctx.workers && typeof ctx.workers.runBackup === 'function'){
+      try{
+        const r = await ctx.workers.runBackup(dir, RETENTION);
+        audit('backup_created', { user_id: (userId == null ? null : userId), role: 'superadmin', file: r.name, size: r.size, source: source || 'manual', ip: ip || null, summary: 'تهیه نسخه پشتیبان (export): ' + r.name + ' (' + r.size + ' بایت)' });
+        return { name: r.name, size: r.size, count: r.count };
+      }catch(e){ /* فال‌بک به مسیرِ درون‌پروسه‌ای */ }
+    }
+    return backupNowInline(source, userId, ip);
+  }
+
+  /* مسیرِ درون‌پروسه‌ای — فال‌بکِ ورکر (و ابزارِ مستقیمِ تست‌ها) */
+  function backupNowInline(source, userId, ip){
     ensureDir();
     const now = new Date();
     const p = n => String(n).padStart(2, '0');
@@ -79,7 +96,7 @@ function createAdmin(ctx){
   async function apiBackup(req, res){
     const g = await checkAdmin(req, res);
     if(g.done) return g.done;
-    const r = backupNow('manual', g.user.id);
+    const r = await backupNow('manual', g.user.id);
     if(!r) return sendJson(res, 500, { ok: false, code: 'backup_failed' });
     return sendJson(res, 200, { ok: true, file: r.name, size: r.size, count: r.count });
   }
@@ -134,14 +151,15 @@ function createAdmin(ctx){
   function startAutoBackup(ms){
     if(!ms || ms <= 0) return null;
     const t = setInterval(() => {
-      const r = backupNow('auto', null);
-      if(r) console.log('auto-backup: ' + r.name + ' (count ' + r.count + ')');
+      Promise.resolve(backupNow('auto', null)).then((r) => {
+        if(r) console.log('auto-backup: ' + r.name + ' (count ' + r.count + ')');
+      }).catch(() => {});
     }, ms);
     if(t.unref) t.unref();
     return t;
   }
 
-  return { apiBackup, apiRestore, listBackups, backupNow, startAutoBackup };
+  return { apiBackup, apiRestore, listBackups, backupNow, backupNowInline, startAutoBackup };
 
 }
 module.exports = { createAdmin, RETENTION };
