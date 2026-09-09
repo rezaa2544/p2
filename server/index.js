@@ -282,8 +282,10 @@ function securityHeaders(res, nonce, https){
 }
 
 /* ── compose modules ───────────────────────────────────────────────── */
-/* R101: OTP + rate limits live in otp.json (distributed across instances) */
-const otp = createOtpStore({ file: OTP_FILE, ttlMs: CODE_TTL_MS, store, markDirty });
+/* R101: OTP + rate limits live in otp.json (distributed across instances)
+   P0-15: وقتی ردیس فعال است، همان کلیدِ مشترکِ ردیس منبع حقیقت می‌شود
+   و فایل فقط فال‌بکِ توسعهٔ بدون ردیس است. */
+const otp = createOtpStore({ file: OTP_FILE, ttlMs: CODE_TTL_MS, store, markDirty, redis, cache });
 const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty, otp });
 /* R97: همهٔ ماژول‌هایِ /api با sendJsonCounting می‌چرخند تا رد‌ها شمرده
    شوند؛ auth استثناست (سقفِ OTP سقفِ خودش را می‌سازد). */
