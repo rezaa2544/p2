@@ -263,6 +263,70 @@ else
 end
 `;
 
+/* P0-TTL: شمارش اتمیک با تضمینِ انقضا — اگر کلید بی‌TTL ماند (مثلاً پس از
+   کرش میانِ اینکِرِمِنت و اکسپایر)، همان لحظه انقضا می‌گیرد؛ هیچ کلیدِ
+   یتیمی دائمی نمی‌ماند. یک رفت‌وبرگشت، اتمیک. */
+const INCR_WITH_TTL_SCRIPT = `
+local v = redis.call("INCR", KEYS[1])
+if redis.call("TTL", KEYS[1]) < 0 then
+  redis.call("EXPIRE", KEYS[1], ARGV[1])
+end
+return v
+`;
+
+/**
+ * Atomic increment that GUARANTEES a TTL on the key.
+ * Self-heals orphaned keys (created by INCR but never expired, e.g. after a
+ * crash between INCR and EXPIRE).
+ * @param {string} key
+ * @param {number} ttlSeconds
+ * @returns {Promise<number>} new counter value
+ */
+async function incrWithTtl(key, ttlSeconds) {
+  if (isRedis()) {
+    try {
+      const reply = await client.eval(INCR_WITH_TTL_SCRIPT, 1, key, ttlSeconds);
+      return Number(reply);
+    } catch (err) {
+      // Fallback to memory
+    }
+  }
+  /* مسیر حافظه از درگاه‌های صادرشده می‌گذرد تا هم‌قراردادِ تست‌ها
+     (مثلاً شبیه‌سازی خرابی با وصله روی incr) باقی بماند. */
+  const v = await module.exports.incr(key);
+  const t = await module.exports.ttl(key);
+  if (t === -1 && ttlSeconds > 0) await module.exports.expire(key, ttlSeconds);
+  return v;
+}
+
+/**
+ * Enumerate keys (SCAN on Redis — never KEYS *; Map walk in memory mode).
+ * @param {string} [match] — glob pattern, e.g. `payesh:*`
+ * @returns {Promise<string[]>}
+ */
+async function scan(match) {
+  if (isRedis()) {
+    const out = [];
+    try {
+      let cursor = '0';
+      const args = match ? ['MATCH', match] : [];
+      do {
+        const reply = await client.scan(cursor, ...args, 'COUNT', 200);
+        cursor = reply[0];
+        for (const k of reply[1]) out.push(k);
+      } while (cursor !== '0');
+      return out;
+    } catch (err) {
+      return out;
+    }
+  }
+  cleanExpiredMem();
+  const keys = Array.from(memCache.keys());
+  if (!match) return keys;
+  const rx = new RegExp('^' + match.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
+  return keys.filter(k => rx.test(k));
+}
+
 /**
  * Delete the key only if its current value equals `expectedValue` (atomic CAS).
  * Prevents a lock holder from deleting a lock that expired and was re-taken
@@ -461,8 +525,10 @@ module.exports = {
   set,
   del,
   incr,
+  incrWithTtl,
   expire,
   ttl,
+  scan,
   publish,
   subscribe,
   ping,
