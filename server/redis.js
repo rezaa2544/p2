@@ -5,7 +5,7 @@
    - Connects to standalone or clustered Redis instances via ioredis.
    - Dual-mode architecture: Native Redis with automated reconnect,
      or zero-dependency in-memory Fallback if REDIS_URL is absent or unreachable.
-   - Methods: get, set, del, publish, subscribe, ping, isRedis, close.
+   - Methods: get, set, del, incr, expire, ttl, publish, subscribe, ping, isRedis, close.
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
@@ -244,6 +244,94 @@ async function subscribe(channel, callback) {
 }
 
 /**
+ * Atomically increment an integer key (fixed-window counters).
+ * Missing key starts at 1 (no TTL — call expire explicitly, like Redis).
+ * @param {string} key
+ * @returns {Promise<number>} new value
+ */
+async function incr(key) {
+  if (isRedis()) {
+    try {
+      return await client.incr(key);
+    } catch (err) {
+      // Fallback to memory
+    }
+  }
+  cleanExpiredMem();
+  const exp = memExpiry.get(key);
+  if (exp && Date.now() >= exp) {
+    memCache.delete(key);
+    memExpiry.delete(key);
+  }
+  const cur = memCache.has(key) ? memCache.get(key) : null;
+  if (cur === null || cur === undefined) {
+    memCache.set(key, '1');
+    return 1;
+  }
+  const n = parseInt(cur, 10);
+  if (!Number.isFinite(n) || String(n) !== String(cur).trim()) {
+    throw new Error('ERR value is not an integer or out of range');
+  }
+  memCache.set(key, String(n + 1));
+  return n + 1;
+}
+
+/**
+ * Set TTL in seconds. expire(key, 0) deletes (like Redis).
+ * @param {string} key
+ * @param {number} seconds
+ * @returns {Promise<number>} 1 if set/deleted, 0 if missing
+ */
+async function expire(key, seconds) {
+  if (isRedis()) {
+    try {
+      return await client.expire(key, seconds);
+    } catch (err) {
+      // Fallback to memory
+    }
+  }
+  cleanExpiredMem();
+  const exp = memExpiry.get(key);
+  if (exp && Date.now() >= exp) {
+    memCache.delete(key);
+    memExpiry.delete(key);
+  }
+  if (!memCache.has(key)) return 0;
+  if (!(seconds > 0)) {
+    memCache.delete(key);
+    memExpiry.delete(key);
+    return 1;
+  }
+  memExpiry.set(key, Date.now() + seconds * 1000);
+  return 1;
+}
+
+/**
+ * TTL in seconds: -2 missing, -1 no expiry (like Redis).
+ * @param {string} key
+ * @returns {Promise<number>}
+ */
+async function ttl(key) {
+  if (isRedis()) {
+    try {
+      return await client.ttl(key);
+    } catch (err) {
+      // Fallback to memory
+    }
+  }
+  cleanExpiredMem();
+  const exp = memExpiry.get(key);
+  if (exp && Date.now() >= exp) {
+    memCache.delete(key);
+    memExpiry.delete(key);
+    return -2;
+  }
+  if (!memCache.has(key)) return -2;
+  if (!exp) return -1;
+  return Math.max(0, Math.ceil((exp - Date.now()) / 1000));
+}
+
+/**
  * Ping Redis / Memory for liveness
  */
 async function ping() {
@@ -282,6 +370,9 @@ module.exports = {
   get,
   set,
   del,
+  incr,
+  expire,
+  ttl,
   publish,
   subscribe,
   ping,

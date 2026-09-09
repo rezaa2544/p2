@@ -9,6 +9,7 @@
 'use strict';
 const crypto = require('crypto');
 const { validate } = require('./validate');
+const rateLimit = require('./rate-limit'); /* R dist: شمارنده‌های Redis (اتمیک) */
 
 /* نرمال‌سازیِ سطحی برایِ اعتبارسنجی: trimِ رشته‌ها (کلاینت هم همین را
    می‌فرستد) — کلیدها دست‌نخورده می‌مانند تا unknown_field سنجیده شود. */
@@ -150,7 +151,6 @@ function createAuth(ctx){
     const b = Buffer.from(rec.h || '0000000000000000000000000000000000000000000000000000000000000000');
     return a.length === b.length && crypto.timingSafeEqual(a, b);
   }
-  function pruneList(list, windowMs, now){ while(list.length && list[0] < now - windowMs) list.shift(); }
 
   /* ── endpoints ─────────────────────────────────────────────────── */
   async function apiSendCode(req, res, body){
@@ -169,21 +169,17 @@ function createAuth(ctx){
     otp.reloadIfChanged(); /* R101: sibling instances' writes (shared otp.json) */
     const cd = otp.data.cd;
     if(now - (cd[phone] || 0) < CODE_COOLDOWN_MS) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
-    const daily = otp.data.daily;
-    const day = new Date(now).toISOString().slice(0, 10);
-    if(daily[phone] && daily[phone].day === day && daily[phone].n >= CODE_DAILY_MAX)
-      return sendJson(res, 429, { ok: false, code: 'rate_limited' });
-    const rli = otp.data.rate_ip;
-    pruneList(rli[ip] = rli[ip] || [], WINDOW_MS, now);
-    if(rli[ip].length >= IP_SEND_MAX) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
-    const rl = (otp.data.rate[phone] = otp.data.rate[phone] || []);
-    pruneList(rl, WINDOW_MS, now);
-    if(rl.length >= PHONE_SEND_MAX) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
-    rl.push(now); rli[ip].push(now);
+    /* R dist: شمارنده‌ها در Redis (fixed-window اتمیک)؛ cooldown/codes در otp.json می‌مانند.
+       ترتیب و codeها عینِ قراردادِ قفل‌شده؛ روزانه = غلتانِ ۲۴ساعته (نه مرزِ UTC). */
+    const rlw = Math.max(1, Math.round(WINDOW_MS / 1000));
+    const rDaily = await rateLimit.checkRateLimit({ prefix: 'otp:send:phone:day', identifier: phone, limit: CODE_DAILY_MAX, windowSeconds: 86400 });
+    if(!rDaily.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
+    const rIp = await rateLimit.checkRateLimit({ prefix: 'otp:send:ip', identifier: ip, limit: IP_SEND_MAX, windowSeconds: rlw });
+    if(!rIp.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
+    const rPh = await rateLimit.checkRateLimit({ prefix: 'otp:send:phone', identifier: phone, limit: PHONE_SEND_MAX, windowSeconds: rlw });
+    if(!rPh.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
     cd[phone] = now;
-    if(!daily[phone] || daily[phone].day !== day) daily[phone] = { day, n: 0 };
-    daily[phone].n += 1;
-    otp.save(); /* R101: crash-safe + visible to sibling instances */
+    otp.save(); /* cooldown (+codes پایین‌تر) در otp.json */
 
     const user = (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === phone.slice(-10));
     /* S-73-2: ONE response shape whether or not the phone is known —
@@ -223,11 +219,9 @@ function createAuth(ctx){
     const now = Date.now();
     const ip = clientIp(req);
     otp.reloadIfChanged();
-    const lri = otp.data.login_rate_ip;
-    pruneList(lri[ip] = lri[ip] || [], WINDOW_MS, now);
-    if(lri[ip].length >= IP_LOGIN_MAX) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
-    lri[ip].push(now);
-    otp.save();
+    /* R dist: شمارندهٔ login در Redis (اتمیک)؛ login_fail (تأخیرِ تصاعدی) در otp.json می‌ماند. */
+    const rLi = await rateLimit.checkRateLimit({ prefix: 'otp:login:ip', identifier: ip, limit: IP_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });
+    if(!rLi.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
 
     const user = (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === phone.slice(-10));
 
