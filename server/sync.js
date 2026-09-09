@@ -434,6 +434,20 @@ function inScope(session, coll, recId, data){
       if(cls2.homeroom_teacher_id === u.id) return true;
       return (get_store().schedule || []).some(x => x.class_id === cls2.id && x.teacher_id === u.id);
     }
+    /* P0-04: دبیر فقط حضورِ کلاس‌هایی که خودش درس می‌دهد (homeroom/schedule).
+       مسیرِ sid به‌تنهایی class_id را نادیده می‌گرفت (سوراخ: دانش‌آموزِ خودی
+       با class_idِ بیگانه پذیرفته می‌شد). حالا class_id — اگر هست — هم باید
+       تدریسی باشد؛ وگرنه fail-closed. (نمره در P0-05 همین‌طور می‌شود.) */
+    if(coll === 'attendance'){
+      const cid = (rec && rec.class_id != null) ? rec.class_id
+                : (data && data.class_id != null ? data.class_id : null);
+      if(cid != null){
+        const cx = (get_store().classes || []).find(c => c.id === Number(cid));
+        const taught = !!cx && (cx.homeroom_teacher_id === u.id ||
+          (get_store().schedule || []).some(s => s.class_id === cx.id && s.teacher_id === u.id));
+        if(!taught) return false;
+      }
+    }
     const sid = rec ? rec.student_id : (data && data.student_id);
     if(sid != null){
       const enr = (get_store().enrollments || []).find(e => e.student_id === Number(sid));

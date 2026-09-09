@@ -54,6 +54,12 @@ function createAttendanceRoutes(ctx) {
     } else if (user.role === 'parent') {
       const kids = (store.parent_links || []).filter(l => l.parent_id === user.id).map(l => l.student_id);
       list = list.filter(a => kids.includes(a.student_id));
+    } else if (user.role === 'teacher') {
+      /* P0-04: دبیر فقط حضورِ کلاس‌هایی که خودش درس می‌دهد (homeroom/schedule) */
+      const teacherClassIds = new Set();
+      (store.classes || []).filter(c => c.homeroom_teacher_id === user.id).forEach(c => teacherClassIds.add(c.id));
+      (store.schedule || []).filter(s => s.teacher_id === user.id).forEach(s => teacherClassIds.add(s.class_id));
+      list = list.filter(a => teacherClassIds.has(a.class_id));
     }
 
     list.sort((a, b) => (b.date || '').localeCompare(a.date || '') || a.id - b.id);

@@ -988,3 +988,11 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
   دیگر کاربر نمی‌سازد؛ IEP دبیر فقط از `/students` (از `/users` → ۴۰۳)؛ بیرونِ قلمرو همیشه ۴۰۴.
 - تست‌های جدید: `tests/policy.js` ‏10/10‏ + `tests/policy-mutations.js` ‏5/5‏ (هر ۵ جهش کشته شدند).
 - گیت‌ها: API ‏7/7‏ سوئیت، server1..18 + همهٔ mutations سبز، policy ‏10/10‏، authz ‏0‏، smoke ‏547/547‏ ✅
+
+## P0-04 پرامپت ۱ — قلمروِ کلاسیِ دبیر برای حضور — ✅
+- مدل (`server/sync.js`، شاخهٔ teacher): در `attendance` اگر class_id هست، باید تدریسی باشد
+  (homeroom/schedule) وگرنه fail-closed — سوراخِ مسیرِ sid (دانش‌آموزِ خودی + کلاسِ بیگانه) بسته شد؛
+  هم‌زمان رویِ REST (از طریق authorize) و sync اعمال می‌شود.
+- خوانش (`server/routes/attendance.js`): فیلترِ GET برای دبیر — فقط رکوردهایِ کلاس‌هایِ تدریسی.
+- تستِ جدید: `tests/attendance-scope.js` ‏6/6‏ (خوانش/نوشت/سینک + رگرسیونِ مدیر).
+- گیت‌ها: API ‏7/7‏، server1..18 سبز، policy ‏10/10‏ + جهش ‏5/5‏، authz ‏0‏، smoke ‏547/547‏ ✅
