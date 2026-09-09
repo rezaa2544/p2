@@ -1569,11 +1569,12 @@ console.log('\n▸ نوشتن دسته‌ای (batchWrites)');
 test('batchWrites تعریف شده و هیچ عملیاتی گم نمی‌کند', () => {
   W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
   assert(W("typeof batchWrites==='function'"), 'batchWrites موجود نیست');
-  const l0 = W('log.length'), q0 = W('SYNC.queue.length');
+  const l0 = W('log.length'), q0 = W('SYNC.queue.length'), d0 = W('SYNC.dlq.length + SYNC.dlqDropped');
   W("batchWrites(function(){for(var i=0;i<40;i++)insert('student_archive',"
     + "{school_id:1,student_id:i,full_name:'bt'+i,year_code:'1404-1405'});})");
   assert(W('log.length') - l0 === 40, 'همه عملیات در لاگ ثبت نشد');
-  assert(W('SYNC.queue.length') - q0 === 40, 'همه عملیات وارد صف نشد');
+  /* P1-10: سقفِ صف ممکن است سرریز را به DLQ ببرد — قانونِ بقا: صف + مرده = ۴۰، هیچ عملیاتی گم نمی‌شود */
+  assert(W('SYNC.queue.length') - q0 + (W('SYNC.dlq.length + SYNC.dlqDropped') - d0) === 40, 'همه عملیات وارد صف/DLQ نشد');
 });
 
 test('پس از batch، localStorage با حافظه همگام است', () => {
@@ -2758,12 +2759,13 @@ test('مرز ⚠️: نوشتن مستقیم وارد صف می‌شود و مر
      که بگذاریم از همان کنسول قابل بازنویسی است. سرور باید عملیات
      را رد کند، نه مرورگر. */
   const before = W('S.user ? S.user.id : null');
-  const n0 = W('SYNC.queue.length');
+  const n0 = W('SYNC.queue.length'), d0 = W('SYNC.dlq.length + SYNC.dlqDropped');
   let id = null;
   try{
     W('S.user = db.users.find(function(u){return u.role==="teacher"})');
     id = W('insert("announcements",{title:"آزمون مرز",body:"م",school_id:1,date:todayISO()}).id');
-    assert(W('SYNC.queue.length') === n0 + 1,
+    /* P1-10: قانونِ بقا — سرریزِ سقف به DLQ می‌رود، ولی عملیات گم نمی‌شود */
+    assert(W('SYNC.queue.length') + W('SYNC.dlq.length + SYNC.dlqDropped') === n0 + d0 + 1,
       'عملیات باید وارد صف شود — مرورگر مرجع تصمیم نیست');
   } finally {
     if(id !== null) W('remove("announcements",' + id + ')');
@@ -6193,14 +6195,14 @@ test('اسکرول: منوی کناری هم جای خود را حفظ می‌ک
    ۵. هر روت کمکی (EXTRA_ROUTES) مجاز و دارای نما باشد */
 
 const NAV_EXPECT = {
-  superadmin: ['dashboard','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications','tickets'], /* G.2 فرناز: روت تیکت */
+  superadmin: ['dashboard','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications','tickets','teacheval'], /* G.2 فرناز: روت تیکت */
   /* دور ۷۷: چهار ماژولِ مدیری (preapps/scholarships دور ۶۱-۶۲، reexams/summerclasses دور ۷۰)
      به منوی مدیر اضافه شدند ولی این فهرست به‌روز نشد و تا کرشِ قدیمیِ smoke پنهان ماند */
-  manager: ['dashboard','atrisk','growth','calendar','visitors','library','assets','dorm','sidadiff','formssms','preapps','scholarships','drills','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','followup','leaves','exams','reexams','teachers','corrections','staff','staffatt','training','tuition','association','donations','meetings','notifyqueue','announcements','notifications','chat','busservice','summerclasses','tickets'], /* G.2 فرناز: روت تیکت */
+  manager: ['dashboard','atrisk','growth','calendar','visitors','library','assets','dorm','sidadiff','formssms','preapps','scholarships','drills','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','followup','leaves','exams','reexams','teachers','corrections','staff','staffatt','training','tuition','association','donations','meetings','notifyqueue','announcements','notifications','chat','busservice','summerclasses','tickets','teacheval'], /* G.2 فرناز: روت تیکت */
   teacher: ['meetings','dashboard','classes','schedule','calendar','attendance','grades','discipline','leaves','exams','vclass','homework','announcements','notifications','chat'],
-  student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','homework','announcements','notifications','chat'],
-  edu_office: ['officedash','officeschools','announcements','notifications'],
-  parent: ['meetings','dashboard','family','children','exams','calendar','mytuition','leaves','announcements','notifications','chat'],
+  student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','homework','announcements','notifications','chat','teacheval'],
+  edu_office: ['officedash','officeschools','announcements','notifications','teacheval'],
+  parent: ['meetings','dashboard','family','children','exams','calendar','mytuition','leaves','announcements','notifications','chat','teacheval'],
   /* دور ۶۳: نقش تازهٔ مشاور — فقط صف ارجاع + صفحه‌های عمومی */
   counselor: ['cqueue','dashboard','announcements','notifications'],
   /* سرویس مدرسه (بدون جی‌پی‌اس): راننده فقط مسیر خودش + صفحه‌های عمومی */

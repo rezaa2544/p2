@@ -1050,6 +1050,35 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
     when: 'admin',
     fixDesc: 'undefined',
     owner: 'undefined'
+  },
+
+  {
+    id: 'sync-queue-health', cat: 'engine',
+    title: 'سلامتِ صفِ ارسال',
+    desc: 'اشغالِ صفِ ارسال نسبت به سقف (تعداد/حجم) و انباشتِ صفِ مرده (P1-10)',
+    severity: 'warning',
+    safe: true,
+    check: function(){
+      if(typeof SYNC === 'undefined' || !SYNC.queue) return { ok:true };
+      var r = (typeof queueRatio === 'function') ? queueRatio() : 0;
+      var dlq = (SYNC.dlq || []).length;
+      var warnAt = (typeof SYNC_QUEUE_CAPS !== 'undefined') ? SYNC_QUEUE_CAPS.warnRatio : 0.8;
+      if(r >= 1) return { ok:false, count: SYNC.queue.length,
+        msg: 'صفِ ارسال به سقف رسیده (' + SYNC.queue.length + ' قلم) — مواردِ قدیمی به صفِ مرده منتقل می‌شوند' };
+      if(r >= warnAt) return { ok:false, count: SYNC.queue.length,
+        msg: 'صفِ ارسال نزدیکِ سقف است — آنلاین شوید و همگام کنید' };
+      if(dlq > 50) return { ok:false, count: dlq,
+        msg: dlq + ' عملیاتِ مرده در صفِ مرده انباشته شده — در پنلِ همگام‌سازی بررسی کنید' };
+      return { ok:true };
+    },
+    fix: function(){
+      var n = (typeof pruneAgedOps === 'function') ? pruneAgedOps() : 0;
+      var m = (typeof enforceQueueCaps === 'function') ? enforceQueueCaps() : 0;
+      if(typeof saveQueue === 'function') saveQueue();
+      if(typeof refreshSyncBadge === 'function') refreshSyncBadge();
+      return (n + m) + ' قلمِ قدیمی هرس/منتقل شد';
+    },
+    fixDesc: 'هرسِ قلم‌هایِ ترمینالِ قدیمی و اعمالِ سقف (دادهٔ کاربر دست نمی‌خورد)',
   }
 ]);
 

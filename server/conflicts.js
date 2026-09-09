@@ -15,8 +15,8 @@ function createConflicts(ctx){
   const markDirty = ctx.markDirty;
 
   /* فهرستِ تعارض‌ها (بازها اول، تازه‌ترها اول — حداکثر ۵۰) */
-  function apiList(req, res){
-    const s = sessionFrom(req);
+  async function apiList(req, res){
+    const s = await sessionFrom(req);
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
     if(s.role !== 'manager' && s.role !== 'superadmin')
       return sendJson(res, 403, { ok: false, code: 'role_denied' });
@@ -32,7 +32,7 @@ function createConflicts(ctx){
 
   /* { conflict_id, winner: 'incoming' | 'server', reason? } → اعمالِ اتمیک */
   async function apiResolve(req, res, body){
-    const s = sessionFrom(req);
+    const s = await sessionFrom(req);
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
     if(s.role !== 'manager' && s.role !== 'superadmin')
       return sendJson(res, 403, { ok: false, code: 'role_denied' });

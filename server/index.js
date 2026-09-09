@@ -15,6 +15,9 @@
    `node server/seed.js` from the deterministic demo world.
    ───────────────────────────────────────────────────────────────── */
 'use strict';
+/* Tracing اول از همه: باید پیش از http و ماژول‌هایِ instrumentشده بالا بیاید (OTel) */
+const tracing = require('./tracing');
+tracing.initTracing();
 const waf = require('./waf'); /* P-WAF: فقط-تشخیص (detect-only) */
 const http = require('http');
 const fs = require('fs');
@@ -41,6 +44,10 @@ const { createAttendanceRoutes } = require('./routes/attendance');
 const { createGradeRoutes } = require('./routes/grades');
 const { createUserRoutes } = require('./routes/users');
 const { createBootstrapRoute } = require('./routes/bootstrap');
+const { createIds } = require('./ids'); /* P0-16 */
+const { createOutbox } = require('./outbox'); /* P0-17 */
+const { createWorker } = require('./worker'); /* ویو ۸ */
+const { createDeleteService } = require('./delete-service'); /* P0-17 */
 const { createPull } = require('./pull');
 
 const ROOT = path.join(__dirname, '..');
@@ -91,11 +98,25 @@ db.init(store).then(info => {
   console.warn('[DB] PostgreSQL init warning:', err.message);
 });
 
-cache.init().then(() => {
+cache.init().then((r) => {
+  if (r && r.ok === false) {
+    /* P0-13: در تولید بدونِ ردیسِ زنده سرویس نمی‌دهیم — فال‌بک به حافظهٔ
+       محلی بین نمونه‌ها واگرا می‌شود. خروجی غیرصفر = شکستِ ریدی. */
+    console.error('[FATAL] Cache readiness failed:', r.error || r.warning || 'unknown');
+    if (process.env.NODE_ENV === 'production') {
+      try { persistStore(); } catch (e) {}
+      try { db.close(); } catch (e) {}
+      process.exit(1);
+    }
+    return;
+  }
   if (redis.isRedis()) {
     console.log('[Cache] Redis distributed caching and pub/sub active');
   }
-}).catch(() => {});
+}).catch((err) => {
+  console.error('[FATAL] Cache init crashed:', (err && err.message) || err);
+  if (process.env.NODE_ENV === 'production') process.exit(1);
+});
 
 /* ── R97 (TODO 2.7) — نگهبانِ شمردنِ شناسه، سطحِ روتر ──────────────
    هر رد (401/403/404) برایِ هر نشست در پنجرهٔ ۱۰ دقیقه شمرده می‌شود:
@@ -174,9 +195,9 @@ function persistStore(){
   }catch(e){ /* store file may be gone (tests) — never crash on exit */ }
 }
 setInterval(persistStore, 2000).unref();
-process.on('exit', () => { persistStore(); db.close(); redis.close(); });
-process.on('SIGTERM', () => { persistStore(); db.close(); redis.close(); process.exit(0); });
-process.on('SIGINT', () => { persistStore(); db.close(); redis.close(); process.exit(0); });
+process.on('exit', () => { try { worker.stop(); } catch (e) {} persistStore(); db.close(); redis.close(); });
+process.on('SIGTERM', () => { try { worker.stop(); } catch (e) {} persistStore(); db.close(); redis.close(); process.exit(0); });
+process.on('SIGINT', () => { try { worker.stop(); } catch (e) {} persistStore(); db.close(); redis.close(); process.exit(0); });
 
 /* ── JWT secret (env, or generated once; never committed) ──────────── */
 let JWT_SECRET = process.env.PAYESH_JWT_SECRET || null;
@@ -269,8 +290,10 @@ function securityHeaders(res, nonce, https){
 }
 
 /* ── compose modules ───────────────────────────────────────────────── */
-/* R101: OTP + rate limits live in otp.json (distributed across instances) */
-const otp = createOtpStore({ file: OTP_FILE, ttlMs: CODE_TTL_MS, store, markDirty });
+/* R101: OTP + rate limits live in otp.json (distributed across instances)
+   P0-15: وقتی ردیس فعال است، همان کلیدِ مشترکِ ردیس منبع حقیقت می‌شود
+   و فایل فقط فال‌بکِ توسعهٔ بدون ردیس است. */
+const otp = createOtpStore({ file: OTP_FILE, ttlMs: CODE_TTL_MS, store, markDirty, redis, cache });
 const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty, otp });
 /* R97: همهٔ ماژول‌هایِ /api با sendJsonCounting می‌چرخند تا رد‌ها شمرده
    شوند؛ auth استثناست (سقفِ OTP سقفِ خودش را می‌سازد). */
@@ -283,11 +306,32 @@ const sms = createSms({ store, audit, sessionFrom: auth.sessionFrom, sendJson: s
 const conflicts = createConflicts({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 
 /* ── Phase 3: RESTful Resource Routes ─────────────────────────────── */
-const studentRoutes = createStudentRoutes({ store, db, audit, markDirty });
-const classRoutes = createClassRoutes({ store, db, audit, markDirty });
-const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty });
-const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty });
-const userRoutes = createUserRoutes({ store, db, audit, markDirty });
+/* P0-16: شناسه‌های بدون‌برخورد — دنبالهٔ پستگرس یا مکس+۱ قفل‌دار */
+const ids = createIds({ db, cache });
+/* P0-17: صندوق برون‌مرزی + سرویس حذف واحد (سنگ‌قبر به‌جای اسپلایسِ خام) */
+const outbox = createOutbox({ store, db });
+const deleter = createDeleteService({ store, db, markDirty, outbox });
+/* ویو ۸ — کارگرِ صندوق رویدادها: کارهای پس از حذف (مثل باطل‌کردن کش)
+   از مسیر درخواست بیرون می‌افتد و به‌صورت ناهم‌زمان با تلاشِ مجدد اجرا می‌شود. */
+const worker = createWorker({
+  store, outbox,
+  handlers: {
+    '*.deleted': async (evt) => {
+      const sid = evt.payload && evt.payload.school_id;
+      if (sid != null && typeof cache.invalidateCollection === 'function') {
+        await cache.invalidateCollection(evt.collection, sid);
+      }
+    }
+  },
+  intervalMs: Number(process.env.PAYESH_WORKER_INTERVAL_MS || 1000),
+  maxRetries: Number(process.env.PAYESH_WORKER_MAX_RETRIES || 5)
+});
+worker.start();
+const studentRoutes = createStudentRoutes({ store, db, audit, markDirty, ids, deleter });
+const classRoutes = createClassRoutes({ store, db, audit, markDirty, ids, deleter });
+const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, ids, deleter });
+const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty, ids, deleter });
+const userRoutes = createUserRoutes({ store, db, audit, markDirty, ids, deleter });
 const bootstrapRoute = createBootstrapRoute({ store });
 const pullRoute = createPull({ store, sessionFrom: auth.sessionFrom, sendJson });
 
@@ -322,6 +366,13 @@ const onRequest = async (req, res) => {
   const https = isHttps(req);
   const nonce = crypto.randomBytes(16).toString('base64');
   securityHeaders(res, nonce, https);
+  /* Tracing (P-Trace): شناسهٔ ردیابی در کانتکست و سرآیندِ پاسخ برای هم‌بستگی —
+     پیش از WAF تا رویدادهای ممیزیِ آن شناسهٔ ردیابی داشته باشند. */
+  req.context = req.context || {};
+  try{
+    const __tid = tracing.getTraceId();
+    if(__tid){ req.context.trace_id = __tid; res.setHeader('X-Trace-Id', __tid); }
+  }catch(e){}
   /* WAF (P-WAF): فقط-تشخیص (detect-only)؛ هرگز مسدود نمی‌کند — اِعمال با لبه است */
   try{ await waf.wafMiddleware(req, res); }catch(e){}
   /* R97 — نگهبانِ شمردنِ شناسه: شمارِ رد‌ها (404/403/401) و شمارِ همهٔ
@@ -330,7 +381,7 @@ const onRequest = async (req, res) => {
   REQ_STATE.sess = null;
   REQ_STATE.p = p;
   if(p.indexOf('/api/') === 0 && p.indexOf('/api/auth/') !== 0){
-    const gs = auth.sessionFrom(req);
+    const gs = await auth.sessionFrom(req);
     if(gs){
       REQ_STATE.sess = gs;
       if(/^\/api\/students\/\d+$/.test(p)) enumStage(enumTouch(gs), gs); /* §5.7: هر خوانشِ این مسیر می‌شمارد */
@@ -339,8 +390,11 @@ const onRequest = async (req, res) => {
     }
   }
   try{
-    if(p === '/api/health' && (req.method === 'GET' || req.method === 'HEAD'))
-      return sendJson(res, 200, { ok: true, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid });
+    if(p === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')){
+      /* P0-13: ریدی = در تولید، کشِ توزیع‌شده زنده است؛ وگرنه 503. */
+      const rdy = redis.ready();
+      return sendJson(res, rdy ? 200 : 503, { ok: rdy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid, cache: redis.isRedis() ? 'redis' : (rdy ? 'memory-dev' : 'unavailable') });
+    }
     if(p === '/api/auth/send-code' && req.method === 'POST') return await auth.apiSendCode(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/auth/login'     && req.method === 'POST') return await auth.apiLogin(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/auth/me'        && req.method === 'GET')  return await auth.apiMe(req, res);
@@ -350,7 +404,7 @@ const onRequest = async (req, res) => {
     if(p === '/api/sync/conflicts' && req.method === 'GET')  return await conflicts.apiList(req, res);
     if(p === '/api/sync/resolve-conflict' && req.method === 'POST') return await conflicts.apiResolve(req, res, await readBody(req, 4 * 1024));
     if(/^\/api\/students\/\d+$/.test(p) && req.method === 'GET') return await idor.apiStudent(req, res, p.split('/')[3]);
-    if(p === '/api/bell/now' && req.method === 'GET') return bell.apiBellNow(req, res);
+    if(p === '/api/bell/now' && req.method === 'GET') return await bell.apiBellNow(req, res);
     if(p === '/api/public-report' && req.method === 'GET') return await pubrep.apiPublicReport(req, res);
     if(p === '/api/admin/backup'  && req.method === 'POST') return await admin.apiBackup(req, res);
     /* restore فقط {file} می‌گیرد (نامِ حداکثر ۱۲۸ نویسه) — سقفِ 64MBِ پیشین
@@ -360,7 +414,7 @@ const onRequest = async (req, res) => {
 
     /* ── Phase 3: RESTful Resource Endpoints (/api/v1/*) ────────── */
     if(p.indexOf('/api/v1/') === 0){
-      const s = auth.sessionFrom(req);
+      const s = await auth.sessionFrom(req);
       if(!s) return sendJson(res, 401, { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' });
       req.user = s;
       req.session = s;

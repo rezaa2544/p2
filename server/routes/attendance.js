@@ -10,11 +10,14 @@
 'use strict';
 
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
+const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 
 function createAttendanceRoutes(ctx) {
   const store = ctx.store;
   const db = ctx.db;
+  const ids = ctx.ids; /* P0-16 */
+  const deleter = ctx.deleter; /* P0-17 */
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
@@ -64,10 +67,8 @@ function createAttendanceRoutes(ctx) {
     }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
-    let nextId = 1;
-    for (const a of (store.attendance || [])) {
-      if (a.id >= nextId) nextId = a.id + 1;
-    }
+    /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
+    const nextId = await ids.nextId('attendance', store.attendance);
 
     const newRecord = {
       id: nextId,
@@ -86,7 +87,11 @@ function createAttendanceRoutes(ctx) {
     store.attendance.push(newRecord);
     markDirty();
 
-    if (db && typeof db.persistOp === 'function') {
+    if (db && typeof db.persistOpsBatch === 'function') {
+      /* Wave 2: مسیر حیاتی ثبت حضور (قابل استفاده برای ثبت گروهی با چند op)
+         از transaction مشترک db.persistOpsBatch عبور می‌کند. */
+      await db.persistOpsBatch([{ c: 'attendance', t: 'ins', data: newRecord }]);
+    } else if (db && typeof db.persistOp === 'function') {
       await db.persistOp({ c: 'attendance', t: 'ins', data: newRecord });
     }
 
@@ -105,14 +110,26 @@ function createAttendanceRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'رکورد حضور و غیاب یافت نشد' } };
     }
 
+    /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ (پیش‌تر نسخه بی‌بررسی بالا می‌رفت) */
+    const conflict = checkOcc(rec, body, 'رکورد حضور و غیاب');
+    if (conflict) return conflict;
+
     if (body.status !== undefined) rec.status = String(body.status).trim();
     if (body.late !== undefined) rec.late = Number(body.late);
     if (body.note !== undefined) rec.note = String(body.note).trim();
-    rec.version = (rec.version || 1) + 1;
-    rec.updated_at = new Date().toISOString();
+    bump(rec);
 
     markDirty();
-    if (db) await db.persistOp({ c: 'attendance', t: 'upd', data: rec });
+    try {
+      if (db && typeof db.persistOpsBatch === 'function') {
+        await db.persistOpsBatch([{ c: 'attendance', t: 'upd', id: rec.id, data: rec, base_version: body.base_version !== undefined ? body.base_version : body.version }]);
+      } else if (db) {
+        await db.persistOp({ c: 'attendance', t: 'upd', data: rec });
+      }
+    } catch (e) {
+      if (e && e.status === 409) return { status: 409, body: { ok: false, code: 'conflict', message: 'رکورد حضور و غیاب هم‌زمان تغییر کرده است' } };
+      throw e;
+    }
 
     audit('attendance_updated', { user_id: user.id, record_id: rec.id });
     return { status: 200, body: { ok: true, data: rec } };
@@ -134,11 +151,14 @@ function createAttendanceRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'رکورد یافت نشد' } };
     }
 
-    store.attendance.splice(recIdx, 1);
-    markDirty();
-
-    if (db) await db.persistOp({ c: 'attendance', t: 'del', id: Number(id) });
-    audit('attendance_deleted', { user_id: user.id, record_id: Number(id) });
+    /* P0-17: حذف امن با سرویس واحد — سنگ‌قبر + نسخه + رویداد برون‌مرزی */
+    const del = await deleter.softDelete('attendance', { id: Number(id) }, {
+      actor: user,
+      audit: () => audit('attendance_deleted', { user_id: user.id, record_id: Number(id) })
+    });
+    if (!del.ok) {
+      return { status: 404, body: { ok: false, code: 'not_found', message: 'رکورد یافت نشد' } };
+    }
     return { status: 200, body: { ok: true, message: 'رکورد حضور با موفقیت حذف شد' } };
   }
 

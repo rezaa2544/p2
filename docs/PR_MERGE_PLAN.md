@@ -1,0 +1,143 @@
+# برنامهٔ ادغام نهایی PRها برای Go-Live ملی
+
+**تاریخ وارسی:** ۲۰ شهریور ۱۴۰۵ (۲۰۲۶-۰۹-۱۰) · **وارسی‌کننده:** چت ۱
+**مبنا:** GitHub API (زنده) + `main @ 0e83114` · **قاعده:** هیچ ادعایی بدون مدرک (SKILLS_MASTER §۵/§۶)
+
+---
+
+## ۱. خلاصهٔ وضعیت PRها
+
+- **فقط یک PR باز وجود دارد: #22** (ردیابی توزیع‌شده Jaeger، شاخهٔ `feat/tracing-chat3`).
+- **خبر خوب:** تعارض #22 که دیروز (`mergeable: False/disty`) بود، **امروز حل شده** (`mergeable: True/clean` در رأس `18af4a9`) و هر ۴ چک CI سبزند.
+- **مانع واقعی امروز:** ۶ یافتهٔ Devin Review (۳ باگ + ۳ امنیتی) روی #22 — نه تعارض، نه CI.
+- **اصلاح یک تصور کهنه:** جدول دستوری، PRهای #20/#21/#23 را «آمادهٔ مرج» فرض کرده بود، اما هر سه **دیروز مرج شده‌اند** (مدرک زیر) — هیچ اقدامی لازم ندارند.
+
+| PR | عنوان | وضعیت زنده | مدرک |
+|---|---|---|---|
+| #22 | ردیابی توزیع‌شده با Jaeger | 🟡 باز، بدون تعارض، CI سبز، ۶ یافتهٔ Devin | API (مرج‌پذیری/چک‌ها/کامنت‌ها، ۱۰ سپتامبر) |
+| #20 | محدودسازی نرخ توزیع‌شده | ✅ مرج‌شده `7a193ba` | `merged_at: 2026-09-09` |
+| #21 | دیوار آتش و محافظت DDoS | ✅ مرج‌شده `9b10f66` | `merged_at: 2026-09-09` |
+| #23 | معماری Zero-Trust | ✅ مرج‌شده `56bbedf` | `merged_at: 2026-09-09` |
+| Session Revocation | (کار چت ۴) | 🟡 بدون PR/شاخه روی راه‌دور | `git branch -r` (۱۰ سپتامبر) — هنوز پوش نشده |
+
+---
+
+## ۲. جدول موانع ادغام (#22 — تنها PR باز)
+
+| بُعد | وضعیت | جزئیات |
+|---|---|---|
+| Conflict | ✅ ندارد | `mergeable: True` · `mergeable_state: clean` · رأس `18af4a9` (۳ کامیت، ۱۹ فایل، +۱۸۳۱/−۱) |
+| CI | ✅ سبز | `build (18.x/20.x/22.x)` + `waf` — هر ۴ `completed/success` روی رأس فعلی |
+| Draft | ✅ نیست | `draft: False` |
+| Approval | ⚪ لازم نیست | روی `main` هیچ Branch Protection نیست (HTTP 404) — ناظر مستقیماً می‌تواند مرج کند |
+| **بازبینی Devin** | 🔴 **۶ یافتهٔ باز** | ۳ 🟡 باگ + ۳ 🟨 امنیتی (جزئیات §۳) — طبق SKILLS §۶ (PR Merge Gate) باید پیش از مرج تعیین تکلیف شوند |
+
+### یافته‌های Devin روی #22 (متن کامل از کامنت‌های PR)
+
+| # | شدت | فایل:خط | شرح | اقدام لازم |
+|---|---|---|---|---|
+| ۱ | 🟡 باگ | `server/tracing.js:95` | نمونه‌بردار فقط `NODE_ENV` را می‌خواند ولی تشخیص تولید سرور با `PAYESH_ENV` است ⇒ در تولید ۱۰۰٪ نمونه‌برداری به‌جای ۱۰٪ | شرط `PAYESH_ENV==='production'` اضافه شود (پیشنهاد آماده در کامنت) |
+| ۲ | 🟡 باگ | `server/tracing.js:245` | `BatchSpanProcessor` در خاموشی (SIGTERM/SIGINT) `shutdown` نمی‌شود ⇒ آخرین دستهٔ ردها در هر بازراه‌اندازی گم می‌شود | توقف ناهمگام یک‌باره + فراخوانی `shutdownTracing` پیش از `process.exit` در `server/index.js` |
+| ۳ | 🟡 باگ | `infra/tracing/jaeger-prod.compose.yaml:33` | کالکتور OTLP و Jaeger روی پورت‌های 4317/4318 میزبان برخورد می‌کنند و کالکتور در شبکهٔ تولید نیست ⇒ مسیر tail-sampling تولید بالا نمی‌آید | OTLP فقط داخل شبکه (نام سرویس داخلی)؛ انتشار پورت میزبان فقط از کالکتور |
+| ۴ | 🟨 امنیتی | `infra/tracing/jaeger-prod.compose.yaml:33` | رابط Jaeger (بدون احراز هویت) و شنونده‌های OTLP روی همهٔ اینترفیس‌های میزبان منتشر شده ⇒ مشاهده/تزریق تله‌متری توسط همسایه‌ها | بستن به `127.0.0.1`/شبکهٔ داخلی یا گذاشتن پشت احراز هویت |
+| ۵ | 🟨 امنیتی | `server/tracing.js:179` | `redactUrl` کلیدها را decode نکرده تطبیق می‌دهد ⇒ کلید حساسِ کدشده (percent-encoded) از فیلتر می‌گریزد و مقدارش در trace می‌نشیند | `decodeURIComponent` کلید پیش از تطبیق (با try/catch برای ورودی بدشکل) |
+| ۶ | 🟨 امنیتی | `package.json:37` | ۷ وابستگی ران‌تایم تازه؛ مخزن ران‌تایم npm را ممنوع کرده (سطح حملهٔ زنجیرهٔ تأمین) | تصمیم ناظر: استثنای مستند (AD) با پین نسخه + اسکن، یا حذف/جایگزینی |
+
+---
+
+## ۳. برنامهٔ ادغام پیشنهادی (به‌ترتیب)
+
+| اولویت | اقدام | مسئول پیشنهادی | خروجی |
+|---|---|---|---|
+| ۱ | رفع ۶ یافتهٔ Devin روی #22 (کد + تست جهش برای ۱/۲/۵، اصلاح compose برای ۳/۴، تصمیم AD برای ۶) | چت ۳ (مالک PR) | پوش + CI سبز مجدد |
+| ۲ | دروازه‌های محلی روی رأس تازهٔ #22: `smoke` ۵۴۷/۵۴۷ + `check-authz` ۰ + `secret-scan` + `tracing-integration/mutations` | چت ۳ | گزارش سبز |
+| ۳ | **مرج #22** (تعارض ندارد، حفاظتی نیست — مرج مستقیم ناظر) | ناظر | `main` + حذف شاخه (SKILLS §۶) |
+| ۴ | پوش Session Revocation + PR تازه + بازبینی | چت ۴ (در حال اجرا) | PR نو |
+| ۵ | مرج PR سشن + رگرسیون نهایی کامل (`scripts/run-all-tests.sh`) | ناظر + چت ۴ | Go-Live |
+
+> اگر یافتهٔ ۶ (وابستگی‌ها) نیاز به بحث طولانی داشت، پیشنهاد می‌شود ۵ یافتهٔ دیگر در PR #22 بسته و بحث سیاست وابستگی در Issue جدا با ضرب‌الاجل پیش از Go-Live دنبال شود — نه اینکه کل Tracing بلوکه بماند.
+
+---
+
+## ۴. چک‌لیست پیش از ادغام (هر PR، بدون استثنا — SKILLS_MASTER §۵/§۶)
+
+- [ ] `mergeable: True` و `mergeable_state: clean` (تعارض صفر)
+- [ ] CI سبز روی رأس دقیق (`build` هر سه نسخه + چک‌های امنیتی)
+- [ ] `node tests/smoke.js` → **۵۴۷/۵۴۷** (روی درخت مرج‌شده، نه فقط شاخه)
+- [ ] `node tools/check-authz.js` → **۰**
+- [ ] `node build.js --check` → exit 0 (شامل مُهر راهنما)
+- [ ] `node tests/secret-scan.js` → سبز
+- [ ] هر رفع باگ/ویژگی: سوئیت تازه + تست جهش کشته‌شده
+- [ ] یافته‌های Devin: بسته یا با تصمیم مستند ناظر پذیرفته‌شده (risk-accept)
+- [ ] `index.html` و `write-perms.json` بازتولیدشده با مولد رسمی (نه مرج دستی)
+- [ ] پس از مرج: حذف شاخهٔ فیچر + وارسی `sync 0/0`
+
+---
+
+## ۵. وضعیت دروازه‌های main در لحظهٔ وارسی (۱۰ سپتامبر، `0e83114`)
+
+| دروازه | نتیجه |
+|---|---|
+| `smoke` | ۵۴۷/۵۴۷ ✅ (با شیم فقط-حافظهٔ `markAsUncloneable` — همان یافتهٔ §۵ گزارش نهایی) |
+| `check-authz` | ۰ ✅ |
+| `secret-scan` | ۱۱/۱۱ ✅ |
+
+---
+
+## ۶. سطح تعارض پی‌آر ۳۵ (`feat/b3-d234-chat4`) — سنجیده‌شده ۲۰۲۶-۰۹-۰۹
+
+**روش (بدون checkout، بدون آلوده‌کردن درخت):**
+```bash
+git merge-tree 430c7c8 origin/main origin/feat/b3-d234-chat4
+```
+`430c7c8` = مرجِ واقعیِ شاخه (Merge PR #19). راستی‌آزماییِ راه‌دور:
+`gh pr view 35 --json mergeable,mergeStateStatus` → `CONFLICTING` / `DIRTY`.
+
+### ۶.۱ فایل‌هایی که **واقعاً** تعارض متنی دارند (۱۲ فایل، ۷۴ نشانگر)
+
+| فایل | هانک | محتوای تعارض (سنجیده‌شده) | استراتژی |
+|---|---|---|---|
+| `server/schema.sql` | ۵۵ | جدول‌های تازهٔ دو طرف | **بازتولید با مولد** — `node tools/migrate-to-pg.js` (دستی مرج نکنید) |
+| `index.html` | ۷ | باندل | **بازتولید** — `node build.js` |
+| `USER_GUIDE.html` | ۱ | مُهر بیلد | `node build.js` (کال‌اوت‌های هر دو طرف بماند) |
+| `src/js/_order.json` | ۱ | main: `74-schedgen.js` · چت۴: `74-region-tools.js` + `75-staff-gap.js` | 🔴 **هر سه** ماژول بمانند — سمتِ چت۴ `74-schedgen.js` را ندارد |
+| `src/js/05-router.js` | ۲ | `NAV` سوپرادمین و اداره: افزودن `regionscore`/`staffgap` | سمتِ چت۴ — فهرستش دقیقاً همان main به‌علاوهٔ دو روت تازه است (superset) |
+| `src/js/07-shell.js` | ۱ | دو `case` تازه در `renderRoute` | هر دو |
+| `src/js/30-authz.js` | ۱ | سه اکشن `staffgap-norm`/`staffpost-save`/`staffpost-del` | هر دو |
+| `src/js/19-actions-core.js` | ۱ | **زنجیرهٔ دسپاتچ** (`REGION_ACTIONS`/`STAFFGAP_ACTIONS` پس از `TEVAL_ACTIONS`) | هر دو `else if` بمانند. ⚠️ گارد فاز ۰.۳ در `grade-save` (سمتِ main) در این هانک **نیست** و خودکار ادغام می‌شود — پس از مرج راستی‌آزمایی شود |
+| `src/js/24-edu-office.js` | ۱ | دو قلابِ دادهٔ نمونه (`generateUrgentAnnDemo`/`generateStaffPostDemo`) | هر دو |
+| `tests/smoke.js` | ۲ | `NAV_EXPECT` سوپرادمین و اداره | سمتِ چت۴ (فهرست بلندتر، شامل `regionscore`/`staffgap`) |
+| `docs/ROADMAP.md` | ۱ | **added in both** — هر دو طرف فایل را ساخته‌اند | هر دو محتوا: جدول main (فاز ۰/۱/…) + وضعیت A.1–A.4 چت۴ |
+| `HANDOFF.md` | ۱ | ورودی‌های دو طرف در بالای فایل | هر دو ورودی، جدیدتر بالا |
+
+### ۶.۲ خودکار ادغام می‌شوند (تعارض ندارند)
+
+از ۱۴ فایلی که هر دو طرف تغییر داده‌اند، سه تا بدون تعارض ادغام می‌شوند:
+`server/sync.js` · `authz/model.json` · `authz/write-perms.json`
+— ولی `write-perms.json` پس از ادغام **باید بازتولید شود**
+(`node build.js --check` کهنه بودنش را قرمز می‌کند).
+
+### ۶.۳ نکتهٔ روش
+
+`git merge-tree` بلوک‌های `added in both` را جدا از `changed in both`
+گزارش می‌کند. اگر فقط بلوک‌های `changed in both` را بشمارید،
+`docs/ROADMAP.md` را از دست می‌دهید (هر دو طرف مستقل ساخته‌اندش).
+شمارش درست، بر پایهٔ خودِ نشانگرها:
+```bash
+awk '/^  (our|their|base|result) +100644/{f=$NF} /^\+<<<<<<</{c[f]++}
+     END{for(k in c) print c[k], k}' | sort -rn
+```
+
+### ۶.۴ ترتیب پیشنهادی پس از حل
+
+```bash
+node tools/migrate-to-pg.js   # schema.sql از مولد
+node build.js                 # index.html + USER_GUIDE + write-perms
+node build.js --check && node tools/check-authz.js && node tests/secret-scan.js
+node --expose-gc --max-old-space-size=2048 tests/smoke.js   # ۵۴۷/۵۴۷
+node tests/region-scorecard.js && node tests/staff-gap.js && node tests/urgent-ann.js
+node tests/exam-types.js      # فاز ۰.۳ (main) — نباید بشکند
+```
+
+*این بخش را چت ۱ (جانشین) افزود — ۲۰۲۶-۰۹-۰۹.*
+

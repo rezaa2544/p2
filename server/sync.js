@@ -391,6 +391,27 @@ function inScope(session, coll, recId, data){
     return nk.length > 0 && nk.every(k => k === 'read');
   }
 
+  /* ب.۳ — ارزشیابی ناشناس معلم: رکورد عمداً هیچ فیلد هویتی ندارد، پس
+     مالکیت به «مدرسهٔ پاسخ‌دهنده» گره می‌خورد:
+     - دانش‌آموز: فقط مدرسهٔ خودش
+     - ولی: فقط مدرسهٔ فرزندانش (از parent_links)
+     - بقیهٔ نقش‌ها: رد (درج/ویرایش/حذف) — نقش‌های مجازِ مدل هم فقط
+       دانش‌آموز و ولی‌اند و دروازهٔ نقش جداگانه نگهبانی می‌کند. */
+  if(coll === 'teacher_evaluations'){
+    if(u.role === 'student'){
+      return !!(data && Number(data.school_id) === Number(u.school_id));
+    }
+    if(u.role === 'parent'){
+      const kids = (get_store().parent_links || []).filter(l => l.parent_id === u.id).map(l => Number(l.student_id));
+      const kidSchools = kids.map(kid => {
+        const k = (get_store().users || []).find(x => x.id === kid);
+        return k && Number(k.school_id);
+      }).filter(x => x != null);
+      return !!(data && kidSchools.indexOf(Number(data.school_id)) > -1);
+    }
+    return false;
+  }
+
   if(u.role === 'student'){
     if(coll === 'messages') return msgOwnerOk();
     if(coll === 'users' && rec && rec.id === u.id) return true;
@@ -544,7 +565,7 @@ function createSync(ctx){
   const sendJson = ctx.sendJson;
 
   async function apiSync(req, res, body){
-    const s = sessionFrom(req);
+    const s = await sessionFrom(req);
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
 
     /* لایهٔ مقدار (validate.js): بدنه فقط {ops} است — کلیدِ ناشناخته = ردِّ
@@ -691,6 +712,7 @@ function createSync(ctx){
       apply.push(op);
     }
 
+    const mirror = [];   /* P1-14: opsِ آینه با شناسه‌هایِ اعمال‌شدهٔ سرور */
     for(const op of apply){
       if(!Array.isArray(store[op.c])) store[op.c] = [];
       if(op.t === 'ins'){
@@ -706,6 +728,7 @@ function createSync(ctx){
           const r = data.role || prot.role;
           audit('role_change', { user_id: s.id, role: s.role, school_id: s.school_id, target_user_id: data.id, new_role: r, summary: 'ثبت کاربر با نقش ' + r + ' (شناسه ' + data.id + ')' });
         }
+        mirror.push({ uid: op.uid, c: op.c, t: 'ins', data: (ex || data) });   /* P1-14: رکوردِ اعمال‌شده با شناسهٔ سرور */
       }else if(op.t === 'upd'){
         const rec = store[op.c].find(x => x.id === Number(op.id != null ? op.id : (op.data && op.data.id)));
         if(rec){
@@ -717,6 +740,7 @@ function createSync(ctx){
           Object.assign(rec, clean, { id: rec.id, updated_at: new Date().toISOString() });
           Object.assign(rec, prot); /* مقادیرِ اعتبارسنجی‌شده — صریح، نه inject */
           if(VERSION_TRACKED[op.c]) rec.version = (rec.version || 1) + 1; /* R95 */
+          mirror.push({ uid: op.uid, c: op.c, t: 'upd', data: rec });   /* P1-14 */
         }
       }else if(op.t === 'del'){
         const delId = Number(op.id != null ? op.id : (op.data && op.data.id));
@@ -727,14 +751,13 @@ function createSync(ctx){
         store.__deleted_records.push({ c: op.c, id: delId, school_id: delSchoolId, at: new Date().toISOString() });
         if(store.__deleted_records.length > 5000) store.__deleted_records = store.__deleted_records.slice(-5000);
         audit('record_deleted', { user_id: s.id, role: s.role, school_id: s.school_id, collection: op.c, record_id: delId, summary: 'حذف رکورد ' + delId + ' از ' + op.c });
+        mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId });   /* P1-14 */
       }
       store.__server_version = (store.__server_version || 0) + 1;
       store.__processed_uids[op.uid] = Date.now();
       cache.markProcessedUid(op.uid).catch(() => {});
       cache.invalidateCollection(op.c, op.data && op.data.school_id).catch(() => {});
-      if(db && typeof db.persistOp === 'function'){
-        db.persistOp(op).catch(() => {});
-      }
+      /* P1-14: آینه این‌جا نیست — پس از حلقه، یک‌جا و اتمیک (persistOpsBatch) */
     }
     /* Round 88 + Round 89 — server side: the client cannot create notifications
        (inScope structurally rejects ins notifications for every non-manager role);
@@ -793,6 +816,16 @@ function createSync(ctx){
           });
           audit('correction_notified', { user_id: s.id, correction_id: d.id, school_id: d.school_id });
         }
+      }
+    }
+    /* P1-14: آینهٔ اتمیکِ چندرکوردی — همه در یک تراکنش (all-or-nothing).
+       شکست → rollback + audit؛ پاسخِ کلاینت عوض نمی‌شود (مثلِ قبل بی‌خبر). */
+    if(mirror.length && db && typeof db.persistOpsBatch === 'function'){
+      try{
+        await db.persistOpsBatch(mirror);
+      }catch(mirrorErr){
+        audit('sync_mirror_failed', { user_id: s.id, ops: mirror.length,
+          error: String((mirrorErr && mirrorErr.message) || mirrorErr) });
       }
     }
     if(apply.length) ctx.markDirty();

@@ -89,6 +89,10 @@ const STAGE_ENUM      = ['contact', 'visit', 'exam', 'enrolled'];           /* p
 const USER_ROLES      = ['student', 'parent', 'driver', 'counselor',
                          'teacher', 'edu_office', 'manager', 'superadmin']; /* users.role */
 const SCHOOL_GENDERS  = ['پسرانه', 'دخترانه', 'مختلط'];                     /* schools.gender */
+const SCHOOL_TYPE_IDS = ['governmental', 'exemplary', 'non_profit', 'sampad',
+                         'shahed', 'exceptional', 'rural', 'boarding',
+                         'vocational'];                                    /* schools.school_type (فاز ۰.۱) */
+const YEAR_CODE_PATTERN = /^\d{4}-\d{4}$/;    /* year_code/active_year_code: «۱۴۰۴-۱۴۰۵» (فاز ۰.۲) */
 /* نکته: exam_duties.role و counselor_msgs.author_role عمداً enum ندارند —
    واژگان‌شان باز است (مثلاً 'proctor' در تستِ F5 سرور۱۷) و گاردِ «چه کسی»
    (protPolicy/canOp/manager-only) سرِ جایِ خودش است؛ این‌جا فقط سقفِ طول. */
@@ -326,6 +330,13 @@ function ruleFor(coll, key){
   if(key === 'gender'){
     if(coll === 'schools') return { type: 'enum', values: SCHOOL_GENDERS };
     return { type: 'string', max: 40 };
+  }
+  if(key === 'school_type'){                                                    /* فاز ۰.۱ */
+    if(coll === 'schools') return { type: 'enum', values: SCHOOL_TYPE_IDS };
+    return { type: 'string', max: LIMITS.STR_MID };
+  }
+  if(key === 'year_code' || key === 'active_year_code'){                     /* فاز ۰.۲ */
+    return { type: 'string', pattern: YEAR_CODE_PATTERN, min: 9, max: 9 };
   }
   /* ۳. هویت و تماس */
   if(key === 'phone') return { type: 'phone' };

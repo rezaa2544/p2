@@ -11,6 +11,7 @@
 'use strict';
 
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
+const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { projectUserByRole } = require('../middleware/projection');
 
@@ -19,6 +20,8 @@ const ROLE_LEVEL = { student: 0, parent: 1, driver: 1, counselor: 3, teacher: 3,
 function createUserRoutes(ctx) {
   const store = ctx.store;
   const db = ctx.db;
+  const ids = ctx.ids; /* P0-16 */
+  const deleter = ctx.deleter; /* P0-17 */
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
@@ -86,10 +89,8 @@ function createUserRoutes(ctx) {
     }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
-    let nextId = 1;
-    for (const u of (store.users || [])) {
-      if (u.id >= nextId) nextId = u.id + 1;
-    }
+    /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
+    const nextId = await ids.nextId('users', store.users);
 
     const newUser = {
       id: nextId,
@@ -100,6 +101,7 @@ function createUserRoutes(ctx) {
       school_id: schoolId,
       active: body.active !== undefined ? Boolean(body.active) : true,
       status: 'active',
+      version: 1, /* P0-18 */
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -122,6 +124,10 @@ function createUserRoutes(ctx) {
     if (!target || !checkSchoolScope(user, target.school_id)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
+
+    /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
+    const conflict = checkOcc(target, body, 'کاربر');
+    if (conflict) return conflict;
 
     const isSelf = user.id === target.id;
     const isManager = user.role === 'manager' || user.role === 'superadmin';
@@ -146,7 +152,7 @@ function createUserRoutes(ctx) {
     for (const key of allowed) {
       if (body[key] !== undefined) target[key] = body[key];
     }
-    target.updated_at = new Date().toISOString();
+    bump(target); /* P0-18 */
 
     markDirty();
     if (db) await db.persistOp({ c: 'users', t: 'upd', data: target });
@@ -171,11 +177,14 @@ function createUserRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
 
-    store.users.splice(uIdx, 1);
-    markDirty();
-
-    if (db) await db.persistOp({ c: 'users', t: 'del', id: Number(id) });
-    audit('user_deleted', { user_id: user.id, target_user_id: Number(id) });
+    /* P0-17: حذف امن با سرویس واحد — سنگ‌قبر + نسخه + رویداد برون‌مرزی */
+    const del = await deleter.softDelete('users', { id: Number(id) }, {
+      actor: user,
+      audit: () => audit('user_deleted', { user_id: user.id, target_user_id: Number(id) })
+    });
+    if (!del.ok) {
+      return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
+    }
     return { status: 200, body: { ok: true, message: 'کاربر با موفقیت حذف شد' } };
   }
 

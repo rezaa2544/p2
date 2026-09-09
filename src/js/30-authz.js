@@ -277,6 +277,8 @@ var ACTION_ROLES = {
   'summer-del': ['manager'],
   /* بند ۶.۵ (سبک) — جابه‌جاییِ زنگِ متداخل: فقط مدیر */
   'sched-conf-move': ['manager','superadmin'],
+  'schedgen-open':   ['manager','superadmin'],
+  'schedgen-apply':  ['manager','superadmin'],
   /* بند ۲.۱ — کلاسِ چندپایه: عضویتِ دروس فقط مدیر (و سوپرادمین) */
   'class-membership-save': ['manager','superadmin'],
   /* بند ۵.۲ — مسیرِ دوازدهم↔مشاور: دانش‌آموز/ولی می‌نویسند، مشاور پاسخ می‌دهد
@@ -314,6 +316,8 @@ var ACTION_ROLES = {
   /* اطلاعیه */
   'ann-save':      ['manager','superadmin','edu_office'],
   'ann-del':       ['manager','superadmin','edu_office'],
+  /* ب.۳ — ارزشیابی ناشناس معلم: فقط دانش‌آموز و ولی پاسخ می‌دهند */
+  'eval-save':     ['student','parent'],
   /* مالی */
   'tuition-plan-save': ['manager','superadmin'],
   'plan-del':      ['manager','superadmin'],

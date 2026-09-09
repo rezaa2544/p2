@@ -17,7 +17,7 @@ function createIdor(ctx){
   const sendJson = ctx.sendJson;
 
   async function apiStudent(req, res, id){
-    const s = sessionFrom(req);
+    const s = await sessionFrom(req);
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
 
     /* R97: نگهبانِ شمردنِ شناسه به سطحِ روتر منتقل شد (یک منبعِ حقیقت؛

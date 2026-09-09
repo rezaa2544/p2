@@ -11,12 +11,15 @@
 'use strict';
 
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
+const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { projectUserByRole } = require('../middleware/projection');
 
 function createStudentRoutes(ctx) {
   const store = ctx.store;
   const db = ctx.db;
+  const ids = ctx.ids; /* P0-16 */
+  const deleter = ctx.deleter; /* P0-17 */
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
@@ -104,10 +107,8 @@ function createStudentRoutes(ctx) {
     }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
-    let nextId = 1;
-    for (const u of (store.users || [])) {
-      if (u.id >= nextId) nextId = u.id + 1;
-    }
+    /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
+    const nextId = await ids.nextId('users', store.users);
 
     const newStudent = {
       id: nextId,
@@ -120,6 +121,7 @@ function createStudentRoutes(ctx) {
       field: body.field || '',
       active: true,
       status: 'active',
+      version: 1, /* P0-18 */
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -127,7 +129,11 @@ function createStudentRoutes(ctx) {
     store.users.push(newStudent);
     markDirty();
 
-    if (db && typeof db.persistOp === 'function') {
+    if (db && typeof db.persistOpsBatch === 'function') {
+      /* Wave 2: مسیر حیاتی ثبت دانش‌آموز در آینهٔ PostgreSQL اتمیک است
+         (transaction در db.persistOpsBatch)؛ در حالت JSON memory همان رفتار قبلی حفظ می‌شود. */
+      await db.persistOpsBatch([{ c: 'users', t: 'ins', data: newStudent }]);
+    } else if (db && typeof db.persistOp === 'function') {
       await db.persistOp({ c: 'users', t: 'ins', data: newStudent });
     }
 
@@ -142,12 +148,16 @@ function createStudentRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
 
+    /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
+    const conflict = checkOcc(student, body, 'دانش‌آموز');
+    if (conflict) return conflict;
+
     // Teacher is allowed to update IEP fields only
     if (user.role === 'teacher') {
       if (body.iep_notes !== undefined) student.iep_notes = body.iep_notes;
       if (body.iep_staff !== undefined) student.iep_staff = body.iep_staff;
       student.iep_updated = new Date().toISOString();
-      student.updated_at = new Date().toISOString();
+      bump(student); /* P0-18 */
       markDirty();
       if (db) await db.persistOp({ c: 'users', t: 'upd', data: student });
       audit('student_iep_updated', { user_id: user.id, student_id: student.id });
@@ -162,7 +172,7 @@ function createStudentRoutes(ctx) {
     for (const key of allowed) {
       if (body[key] !== undefined) student[key] = body[key];
     }
-    student.updated_at = new Date().toISOString();
+    bump(student); /* P0-18 */
     markDirty();
 
     if (db) await db.persistOp({ c: 'users', t: 'upd', data: student });
@@ -186,11 +196,14 @@ function createStudentRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
 
-    store.users.splice(studentIdx, 1);
-    markDirty();
-
-    if (db) await db.persistOp({ c: 'users', t: 'del', id: Number(id) });
-    audit('student_deleted', { user_id: user.id, student_id: Number(id) });
+    /* P0-17: حذف امن با سرویس واحد — سنگ‌قبر + نسخه + رویداد برون‌مرزی */
+    const del = await deleter.softDelete('users', { id: Number(id), role: 'student' }, {
+      actor: user,
+      audit: () => audit('student_deleted', { user_id: user.id, student_id: Number(id) })
+    });
+    if (!del.ok) {
+      return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
+    }
     return { status: 200, body: { ok: true, message: 'دانش‌آموز با موفقیت حذف شد' } };
   }
 
