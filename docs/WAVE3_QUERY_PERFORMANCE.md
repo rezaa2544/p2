@@ -3,8 +3,9 @@
 - **برنچ:** `arena/01a085ca-p2` (همان PR #39)
 - **تاریخ:** ۲۰۲۶-۰۹-۰۹ (تهران)
 - **چت:** چت ۲
-- **دامنه (تصویب‌شده):** تبدیل `students` و `attendance` (پرترافیک‌ترین) به مسیرِ
-  DB-native + افزودن Index + Inventory؛ بقیهٔ endpointها مستند.
+- **دامنه (تصویب‌شده):** بخش اول: تبدیل `students` و `attendance` به مسیرِ
+  DB-native + Index + Inventory. **بخش دوم (این‌جا):** تبدیل `grades`، `classes`
+  و `users` GET-list به همان الگو.
 
 > ⚠️ **وضعیتِ صداقت (مهم):** هیچ PostgreSQL زنده/درایور در سندباکس نبود؛
 > «سازندهٔ SQL» به‌صورت خالص تستِ واحد شد (ساختار/بایندِ پارامتر/allowlist) و
@@ -24,9 +25,9 @@
 |---|---|---|---|---|
 | `GET /api/v1/students` | `routes/students.js` | `users`(کلِ school) | role scope · class_id (joins) · grade · search · teacher-scope (joins) · sort id · slice | ✅ DB-native (وقتی PG زنده) |
 | `GET /api/v1/attendance` | `routes/attendance.js` | `attendance`(کلِ school) | school scope · date · class_id · student_id · role(student/parent) · sort date DESC,id · slice | ✅ DB-native (وقتی PG زنده) |
-| `GET /api/v1/classes` | `routes/classes.js` | classes + enrollments/users (enrich) | school scope · grade · enrich(student_count/teacher) · sort · slice | 🔲 بعدی |
-| `GET /api/v1/grades` | `routes/grades.js` | grades + joins | school scope · filters · sort · slice | 🔲 بعدی |
-| `GET /api/v1/users` | `routes/users.js` | users | school scope · role · search · sort · slice | 🔲 بعدی |
+| `GET /api/v1/classes` | `routes/classes.js` | classes + enrollments/users (enrich) | school scope · grade · enrich(student_count/teacher) · sort · slice | ✅ **بخش دوم: DB-native** |
+| `GET /api/v1/grades` | `routes/grades.js` | grades + joins | school scope · filters · sort · slice | ✅ **بخش دوم: DB-native** |
+| `GET /api/v1/users` | `routes/users.js` | users | school scope · role · search · sort · slice | ✅ **بخش دوم: DB-native** |
 
 ---
 
@@ -79,15 +80,53 @@ if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
 
 ---
 
+## ۲.ب. بخش دوم — grades / classes / users
+
+### `server/dbquery.js` — سه builder تازه
+
+- `buildGradesList({user, studentId, subjectId, classId, limit, cursor})`
+  - `FROM "grades" g`؛ scope؛ فیلترهای student/subject/class (بایند)
+  - محدودهٔ نقش با `EXISTS`: student → `g.student_id=id` ·
+    parent → `parent_links` · teacher → `g.teacher_id=id OR schedule.subject_id`
+  - **Enrichment در خود SQL:** `LEFT JOIN subjects` و `users` →
+    `subject_name` / `student_name` (COUNT فقط روی `grades` — پیوست‌ها many-to-one)
+  - `ORDER BY g.id DESC` + keyset
+- `buildClassesList({user, grade, limit, cursor})`
+  - scope + فیلتر grade · **`student_count`** با scalar-subquery روی `enrollments`
+    و **`homeroom_teacher_name`** با `LEFT JOIN users`؛ COUNT روی `classes`
+- `buildUsersList({user, role, search, limit, cursor})`
+  - scope + فیلتر role + جستجویِ آزادِ `ILIKE` روی full_name/national_id/phone
+    — **national_id فقط پارامترِ بایند، هرگز در WHERE تعبیه نمی‌شود**
+
+`_finalize` برای این‌ها تعمیم یافت تا `selectList`/`pageFrom` (با JOIN) و یک
+`countFrom` (بدون JOIN) بپذیرد — صفحه از source غنی، COUNT از جدولِ پایه.
+
+### سیم‌کشی route ها
+`grades.js`/`classes.js`/`users.js` — `getXList` حالا `async` و در صورت
+`db.isPostgres()` از builder + `executePagedList` می‌روند (users پس از پجینگ
+projection می‌زند)؛ وگرنه همان JS قبلی، دست‌نخورده. `index.js` سه GET-list را
+`await` می‌کند.
+
+### Index (schema.sql — بخش دوم، idempotent)
+`grades(school_id, id DESC)` · `grades(school_id, student_id, id DESC)` ·
+`classes(school_id, grade, id)` (ایندکسِ users(school_id,role,id) از بخش اول
+فیلتر role را پوشش می‌دهد.)
+
+### آزمایشِ این بخش
+`tests/wave3-query2.js` — **۱۳/۱۳**: ساختار/allowlist/bayندِ سه builder +
+injection-safe بودنِ national_id/search · شکلِ `executePagedList` + عبورِ
+enrichment · parity مسیرِ memory برایِ هر سه route · PG گاردشده (skip).
+
 ## ۳. آزمایش و Benchmark
 
 ### انجام‌شده در این سندباکس (بدون PG)
-- `tests/wave3-query.js` — **۱۳/۱۳**:
-  - A. ساختار/بایندِ SQL + injection-safe بودن (مقدارِ search فقط در params)
-  - B. شکلِ `executePagedList` با dbِ جعلی: `has_more` از LIMIT+1، `next_cursor`،
-    `total` از COUNT
-  - C. parity مسیرِ memory (رفتارِ قبلی دست‌نخورده)
-  - D. اجرایِ PG گاردشده → skip (بدون DB زنده)
+- `tests/wave3-query.js` (بخش اول) — **۱۳/۱۳** · `tests/wave3-query2.js` (بخش دوم) — **۱۳/۱۳**
+  - ساختار/بایندِ SQL + injection-safe بودن (search/national_id فقط در params) ·
+    allowlistِ جدول/اتصال‌ها
+  - شکلِ `executePagedList` با dbِ جعلی: `has_more` از LIMIT+1، `next_cursor`،
+    `total` از COUNT · عبورِ enrichment (subject/student name · student_count/teacher name)
+  - parity مسیرِ memory برایِ هر پنج route (students/attendance/grades/classes/users)
+  - اجرایِ PG گاردشده → skip (بدون DB زنده)
 
 ### `EXPLAIN ANALYZE` — ثبت‌نشده (pending) 🔴
 هیچ PG زنده نبود تا `EXPLAIN ANALYZE` اجرا شود. دستورِ کاریِ مدل:
@@ -99,15 +138,16 @@ ORDER BY u.id ASC LIMIT 51;
 این گام به‌همراهِ گیتِ برابری/مجوز بر PG واقعی، در محیطِ دارای PG (موج بعد) اجرا
 می‌شود و نتیجه این‌جا به‌روز خواهد شد.
 
-### دروازه‌ها (این دور)
+### دروازه‌ها (این دور — بخش دوم)
 smoke **۵۴۷/۵۴۷** · tests/run.js **۳۵/۳۵** · wave3-query **۱۳/۱۳** ·
-wave1-reads **۱۸/۱۸** · check-authz **۰** · secret-scan **۱۱/۱۱** ·
-`build --check` ✅
+wave3-query2 **۱۳/۱۳** · wave1-reads **۱۸/۱۸** · check-authz **۰** ·
+secret-scan **۱۱/۱۱** · `build --check` ✅
 
 ---
 
 ## ۴. اقداماتِ باقی‌مانده (به صراحت این‌جا انجام نشد)
 - اجرایِ واقعی بر PG زنده + `EXPLAIN ANALYZE` + گیتِ برابریِ بایت‌به‌بایت و
-  امنیتِ دامنه بر PG (الزامی پیش از تولید).
-- مهاجرتِ classes/grades/users GET-list به همان الگوی DB-native.
+  امنیتِ دامنه بر PG (الزامی پیش از تولید). اکنون **هر پنج** GET-listِ
+  پرترافیک (students/attendance/grades/classes/users) به DB-native مجهزند؛
+  تأییدِ runtime بر PGِ واقعی در محیطِ موج بعد انجام می‌شود.
 - (اختیاری) افزودنِ COUNTهایِ مجزا برایِ گریدهایِ کوچک به‌جای full-list.
