@@ -354,7 +354,7 @@ const onRequest = async (req, res) => {
   REQ_STATE.sess = null;
   REQ_STATE.p = p;
   if(p.indexOf('/api/') === 0 && p.indexOf('/api/auth/') !== 0){
-    const gs = auth.sessionFrom(req);
+    const gs = await auth.sessionFrom(req);
     if(gs){
       REQ_STATE.sess = gs;
       if(/^\/api\/students\/\d+$/.test(p)) enumStage(enumTouch(gs), gs); /* §5.7: هر خوانشِ این مسیر می‌شمارد */
@@ -377,7 +377,7 @@ const onRequest = async (req, res) => {
     if(p === '/api/sync/conflicts' && req.method === 'GET')  return await conflicts.apiList(req, res);
     if(p === '/api/sync/resolve-conflict' && req.method === 'POST') return await conflicts.apiResolve(req, res, await readBody(req, 4 * 1024));
     if(/^\/api\/students\/\d+$/.test(p) && req.method === 'GET') return await idor.apiStudent(req, res, p.split('/')[3]);
-    if(p === '/api/bell/now' && req.method === 'GET') return bell.apiBellNow(req, res);
+    if(p === '/api/bell/now' && req.method === 'GET') return await bell.apiBellNow(req, res);
     if(p === '/api/public-report' && req.method === 'GET') return await pubrep.apiPublicReport(req, res);
     if(p === '/api/admin/backup'  && req.method === 'POST') return await admin.apiBackup(req, res);
     /* restore فقط {file} می‌گیرد (نامِ حداکثر ۱۲۸ نویسه) — سقفِ 64MBِ پیشین
@@ -387,7 +387,7 @@ const onRequest = async (req, res) => {
 
     /* ── Phase 3: RESTful Resource Endpoints (/api/v1/*) ────────── */
     if(p.indexOf('/api/v1/') === 0){
-      const s = auth.sessionFrom(req);
+      const s = await auth.sessionFrom(req);
       if(!s) return sendJson(res, 401, { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' });
       req.user = s;
       req.session = s;
