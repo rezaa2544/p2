@@ -5090,6 +5090,7 @@ function renderShell(){
       <button class="icon-btn" data-act="go" data-r="notifications" title="اعلان‌ها" style="position:relative;font-size:17px">🔔${(()=>{const n=unreadCount();return n?`<span style="position:absolute;top:-4px;inset-inline-end:-4px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border:2px solid #fff">${n>99?'۹۹+':fa(n)}</span>`:''})()}</button>
       ${typeof syncBadge==='function'?syncBadge():''}
       ${typeof themeSegHtml==='function'?themeSegHtml():''}
+      ${(()=>{try{if(typeof activeYearOf!=='function')return '';var yc=activeYearOf(u.school_id||null);if(!yc)return '';var t=(typeof yearCodeTitle==='function')?yearCodeTitle(yc):yc;return `<span class="badge b-gray" title="سال تحصیلی عملیاتی">📅 ${esc(t)}</span>`;}catch(e){return '';}})()}
       <span class="badge b-blue">${ROLE_FA[u.role]}</span></header>
     <div class="content">${childSwitcherBar()}${typeof notifyAutoBanner==='function'?notifyAutoBanner():''}${renderRoute()}</div>
    </div>
@@ -5835,7 +5836,7 @@ function viewSchools(){
       <td><span class="badge b-blue">${esc(s.level||'—')}</span>${s.type&&s.type!=='عادی'?`<div class="small muted" style="margin-top:4px">${esc(s.type)}</div>`:''}${(s.branches||[]).length?`<div class="small muted" style="margin-top:4px">${(s.branches||[]).map(b=>esc(b)).join('، ')}</div>`:''}</td><td class="muted">${esc(mg?mg.full_name:'—')}</td>
       <td class="small muted">${esc(s.landline||'—')}</td>
       <td>${fa(us.filter(u=>u.role==='student').length)}</td><td>${fa(us.filter(u=>u.role==='teacher').length)}</td><td>${fa(db.classes.filter(c=>c.school_id===s.id).length)}</td>
-      <td><span class="badge ${s.active?'b-green':'b-gray'}${isAdmin?' tgl':''}" ${isAdmin?`data-act="school-toggle" data-id="${escAttr(s.id)}" title="برای تغییر وضعیت کلیک کنید"`:''}>${s.active?'فعال':'غیرفعال'}</span></td>
+      <td><span class="badge ${s.active?'b-green':'b-gray'}${isAdmin?' tgl':''}" ${isAdmin?`data-act="school-toggle" data-id="${escAttr(s.id)}" title="برای تغییر وضعیت کلیک کنید"`:''}>${s.active?'فعال':'غیرفعال'}</span>${(()=>{try{if(typeof activeYearOf!=='function')return '';var yc=activeYearOf(s.id);if(!yc)return '';var t=(typeof yearCodeTitle==='function')?yearCodeTitle(yc):yc;var st=(typeof yearState==='function')?yearState(s.id):null;return `<div class="small muted" style="margin-top:4px">📅 ${esc(t)}${st&&st.closed?' · 🔒 بسته':''}</div>`;}catch(e){return '';}})()}</td>
       ${isAdmin?`<td><div class="row" style="gap:5px;flex-wrap:nowrap">
         <button class="btn sm" data-act="school-enter" data-id="${escAttr(s.id)}" title="ورود به پنل این مدرسه به‌عنوان مدیر">🔑 ورود به پنل</button>
         <button class="icon-btn" title="ویرایش" data-act="school-edit" data-id="${escAttr(s.id)}">✏️</button>
@@ -7244,6 +7245,7 @@ function schoolModal(s){
       ${f('مقطع',sel('m_level',[['ابتدایی','ابتدایی'],['متوسطه اول','متوسطه اول'],['متوسطه دوم','متوسطه دوم']],s.level))}
       ${f('نوع',sel('m_type',SCHOOL_TYPES.map(x=>[x,x]),s.type||'عادی'))}
       ${f('نوع مدرسه (تعیین‌کنندهٔ ماژول‌ها)',sel('m_school_type',(typeof SCHOOL_TYPE_DEFS!=='undefined'?SCHOOL_TYPE_DEFS.map(d=>[d[0],d[1]]):[['governmental','دولتی معمولی']]),(typeof schoolTypeOf==='function'?schoolTypeOf(s):'governmental')))}
+      ${(function(){var cur=(typeof yearCode==='function')?yearCode():'';var pv=(typeof prevYearCode==='function'&&cur)?prevYearCode(cur):'';var nx=(typeof nextYearCode==='function'&&cur)?nextYearCode(cur):'';var L=(typeof yearCodeTitle==='function')?function(c,tag){return 'سال '+yearCodeTitle(c)+(tag||'')}:function(c){return c};var o=[['','📅 دنبال تقویم (خودکار)']];if(pv)o.push([pv,L(pv)]);if(cur)o.push([cur,L(cur,' (جاری)')]);if(nx)o.push([nx,L(nx)]);return f('سال تحصیلی عملیاتی',sel('m_active_year',o,s.active_year_code||''));})()}
       ${f('جنسیت',sel('m_gender',[['پسرانه','پسرانه'],['دخترانه','دخترانه']],s.gender))}
       ${f('تلفن ثابت مدرسه',inp('m_landline',s.landline||''))}
       ${f('تلفن همراه رابط',inp('m_phone',s.phone||''))}
@@ -11382,6 +11384,11 @@ function isPreSeason(){
   var j = toJalali(p[0], p[1], p[2]);
   return j[1] === 12 || j[1] <= 6;
 }
+/** عنوان فارسی یک کد سال («۱۴۰۴-۱۴۰۵» ⇒ «۱۴۰۴-۱۴۰۵» فارسی) */
+function yearCodeTitle(c){
+  var p = String(c || '').split('-');
+  return faD(p[0]) + '-' + faD(p[1] || '');
+}
 
 /** سالِ مقصدِ چیدمان/ثبت‌نام برای یک مدرسه:
     سالِ بسته‌شده، چیدمان برای «سال بعد» است (مورد ثبت‌نام شهریور). */
@@ -11826,6 +11833,10 @@ function viewSchoolYear(){
       + '<div class="card-body row"><div style="font-size:30px">📝</div>'
       + '<div style="flex:1"><b style="font-size:15px">پیش‌ثبت‌نام سال تحصیلی ' + nextYearTitle() + '</b>'
       + '<div class="small muted" style="line-height:2">دانش‌آموزان تازه‌واردها و بازگشتی‌ها را از همین‌جا برای سال آینده ثبت کنید. با «تأیید»، حساب دانش‌آموز ساخته یا وصل می‌شود و در مرحلهٔ بعدی در کلاس چیده می‌شود.</div></div></div></div>'
+      + ((typeof isPreSeason === 'function' && !isPreSeason())
+        ? '<div class="card" style="margin-bottom:14px;border-inline-start:4px solid var(--amber)">'
+          + '<div class="card-body small" style="line-height:2">⚠️ <b>فصل پیش‌ثبت‌نام نیست</b> '
+          + '(اسفند تا شهریور). ثبت دستی همچنان ممکن است؛ ردیف‌ها به سالِ بعدِ سالِ عملیاتی تعلق می‌گیرند.</div></div>' : '')
       + '<div class="grid g4" style="margin-bottom:14px">'
       + statCard('📋', fa(cnt.registered), 'ثبت‌شده', 'blue')
       + statCard('✅', fa(cnt.confirmed), 'تأییدشده', 'amber')
@@ -14968,6 +14979,8 @@ function adminActions(e, el, id, a, rawId){
        level:V('m_level'),type:V('m_type')||'عادی',gender:V('m_gender'),shift:V('m_shift')||'صبح',
        /* فاز ۰.۱ — نوع ساختاری؛ مقدارِ نامعتبر/خالی = governmental (fail-closed) */
        school_type:(typeof SCHOOL_TYPE_IDS!=='undefined'&&SCHOOL_TYPE_IDS.indexOf(V('m_school_type'))>-1)?V('m_school_type'):'governmental',
+       /* فاز ۰.۲ — سال عملیاتی؛ خالی/نامعتبر = دنبال تقویم (null، fail-closed به رفتار قبلی) */
+       active_year_code:((typeof YEAR_CODE_RE!=='undefined'&&YEAR_CODE_RE.test(V('m_active_year')))?V('m_active_year'):null),
        capacity:Number(V('m_cap'))||300,
        active:Number(V('m_active')),address:V('m_addr'),boom_goals:V('m_boom'),
        public_goals:($('#m_boom_pub')&&$('#m_boom_pub').checked)?1:0,
@@ -23752,8 +23765,11 @@ function yearHistoryCard(studentId){
   if(!teacherMaySeeHistory(studentId)) return '';
   var rows = studentYearHistory(studentId);
   if(rows.length < 2) return '';        /* یک سال = سابقه نیست */
+  /* فاز ۰.۲ — فیلتر سال (پیش‌فرض: همه؛ رفتار قبلی) */
+  var fy = (typeof S !== 'undefined' && S.filters) ? (S.filters.yhyear || '') : '';
+  var shown = fy ? rows.filter(function(r){ return r.year === fy; }) : rows;
 
-  var body = rows.map(function(r){
+  var body = shown.map(function(r){
     var g = r.grades.avg === null ? '—' : fa(r.grades.avg.toFixed(2));
     var a = r.attendance.rate === null ? '—' : fa(r.attendance.rate) + '٪';
     var tone = r.grades.avg === null ? 'b-gray'
@@ -23769,7 +23785,11 @@ function yearHistoryCard(studentId){
   }).join('');
 
   return '<div class="card"><div class="card-head"><h3>📚 سابقهٔ سال‌به‌سال</h3>'
-    + '<span class="badge b-gray">' + fa(rows.length) + ' سال</span></div>'
+    + '<span class="badge b-gray">' + fa(rows.length) + ' سال</span>'
+    + '<select class="select" data-f="yhyear" style="max-width:150px">'
+    + '<option value="">همهٔ سال‌ها</option>'
+    + rows.map(function(r){ return '<option value="' + escAttr(r.year) + '"' + (fy === r.year ? ' selected' : '') + '>' + esc(faD(r.year)) + '</option>'; }).join('')
+    + '</select></div>'
     + '<div class="table-wrap"><table class="table"><thead><tr>'
     + '<th>سال تحصیلی</th><th>میانگین نمرات</th><th>درصد حضور</th>'
     + '</tr></thead><tbody>' + body + '</tbody></table></div>'
