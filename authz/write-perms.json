@@ -3476,6 +3476,15 @@
         "schedule"
       ]
     },
+    "schedgen-apply": {
+      "roles": [
+        "manager",
+        "superadmin"
+      ],
+      "collections": [
+        "schedule"
+      ]
+    },
     "scholar-del-ok": {
       "roles": null,
       "collections": [
