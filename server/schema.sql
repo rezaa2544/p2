@@ -561,8 +561,10 @@ CREATE TABLE IF NOT EXISTS grades (
   "date" VARCHAR(50),
   "exam_type" VARCHAR(255),
   "id" INTEGER PRIMARY KEY,
+  "is_retake" BOOLEAN,              /* بند ۶.۵: این ردیف نمرهٔ تجدیدی است */
   "kind" VARCHAR(255),
   "max_score" VARCHAR(255),
+  "retake_of_grade_id" INTEGER,     /* بند ۶.۵: اشاره به نمرهٔ مردودِ اصلی */
   "school_id" INTEGER,
   "score" NUMERIC(12, 2),
   "source" VARCHAR(255),
@@ -982,6 +984,7 @@ CREATE INDEX IF NOT EXISTS idx_provinces_created_at ON provinces (created_at DES
 CREATE TABLE IF NOT EXISTS reexams (
   "created_at" TIMESTAMPTZ,
   "exam_date" VARCHAR(50),
+  "grade_id" INTEGER,               /* بند ۶.۵: نمرهٔ مردودی که این تجدیدی برای آن است */
   "id" INTEGER PRIMARY KEY,
   "new_score" VARCHAR(255),
   "original_score" VARCHAR(255),

@@ -266,6 +266,11 @@ var ACTION_ROLES = {
   'reexam-score': ['manager'],
   'reexam-score-save': ['manager'],
   'reexam-del': ['manager'],
+  /* بند ۶.۵ — تجدیدی: ثبت با مدیر، نمرهٔ مجدد با مدیر + دبیرِ همان کلاس */
+  'rt-register': ['manager'],
+  'rt-score': ['manager','teacher'],
+  'rt-score-save': ['manager','teacher'],
+  'rt-print': ['manager','teacher'],
   /* بند ۶.۲ — صورت‌جلسهٔ انجمن: فقط مدیر */
   'assoc-min-new': ['manager'],
   'assoc-min-save': ['manager'],

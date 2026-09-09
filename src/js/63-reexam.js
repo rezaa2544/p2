@@ -41,13 +41,18 @@ function viewReexams(){
         +'<td><b>'+(reexamFinalScore(r)!=null?fa(reexamFinalScore(r)):'—')+'</b></td>'
         +'<td><span class="badge '+(REEXAM_BADGE[r.status]||'b-gray')+'">'+esc(st)+'</span></td>'
         +'<td style="white-space:nowrap">'
-        +'<button class="btn ghost sm" data-act="reexam-score" data-id="'+escAttr(r.id)+'">✍️ '+(r.status==='done'?'تغییرِ نمرهٔ مجدد':'ثبتِ نمرهٔ مجدد')+'</button> '
+        /* بند ۶.۵: ردیفِ پیوندخورده به دفترِ نمرات از جریانِ جدید می‌رود
+           (نمرهٔ مجدد با برچسبِ «تجدیدی» در grades ثبت می‌شود)؛ رکوردِ
+           دستیِ قدیمی همان جریانِ ۶.۱ را نگه می‌دارد. */
+        +'<button class="btn ghost sm" data-act="'+(r.grade_id?'rt-score':'reexam-score')+'" data-id="'+escAttr(r.id)+'">✍️ '+(r.status==='done'?'تغییرِ نمرهٔ مجدد':'ثبتِ نمرهٔ مجدد')+'</button> '
         +'<button class="icon-btn danger" data-act="reexam-del" data-id="'+escAttr(r.id)+'" title="حذف">🗑️</button></td></tr>';
     });
     h+='</tbody></table></div>';
   } else {
     h+='<div class="card-body">'+empty('📝','درسی برای تجدیدی ثبت نشده','دانش‌آموز و درسِ نیازمندِ امتحانِ مجدد را ثبت کنید.')+'</div>';
   }
+  /* بند ۶.۵: نامزدهایِ کشف‌شده از دفترِ نمرات (ثبتِ یک‌کلیکی) */
+  if(typeof retakeCandidatesCard==='function') h+=retakeCandidatesCard();
   return h+'</div>';
 }
 

@@ -93,6 +93,7 @@
       "notifications",
       "notify_queue",
       "nudges",
+      "reexams",
       "substitutions",
       "teacher_notes",
       "teacher_sms",
@@ -949,7 +950,8 @@
       ],
       "upd": [
         "manager",
-        "superadmin"
+        "superadmin",
+        "teacher"
       ],
       "del": [
         "manager",
@@ -1702,8 +1704,10 @@
       "date",
       "exam_type",
       "id",
+      "is_retake",
       "kind",
       "max_score",
+      "retake_of_grade_id",
       "school_id",
       "score",
       "source",
@@ -1987,6 +1991,7 @@
     "reexams": [
       "created_at",
       "exam_date",
+      "grade_id",
       "id",
       "new_score",
       "original_score",
@@ -3298,6 +3303,24 @@
       ],
       "collections": [
         "notifications"
+      ]
+    },
+    "rt-register": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "reexams"
+      ]
+    },
+    "rt-score-save": {
+      "roles": [
+        "manager",
+        "teacher"
+      ],
+      "collections": [
+        "grades",
+        "reexams"
       ]
     },
     "sched-conf-move": {

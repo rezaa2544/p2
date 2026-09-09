@@ -785,8 +785,10 @@
     "date",
     "exam_type",
     "id",
+    "is_retake",
     "kind",
     "max_score",
+    "retake_of_grade_id",
     "school_id",
     "score",
     "source",
@@ -1435,6 +1437,7 @@
    "fields": [
     "created_at",
     "exam_date",
+    "grade_id",
     "id",
     "new_score",
     "original_score",
@@ -1450,7 +1453,8 @@
    ],
    "upd": [
     "manager",
-    "superadmin"
+    "superadmin",
+    "teacher"
    ],
    "del": [
     "manager",

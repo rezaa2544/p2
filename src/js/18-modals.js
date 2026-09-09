@@ -330,6 +330,27 @@ function reexamModal(){
     </div>
    `,'reexam-save'));
 }
+/* بند ۶.۵ — ثبتِ نمرهٔ مجددِ تجدیدی با برچسبِ واضح (مدیر + دبیرِ همان کلاس) */
+function retakeScoreModal(id){
+  var r=byId('reexams',id);
+  if(!r)return;
+  var orig=r.grade_id?byId('grades',r.grade_id):null;
+  var mx=(orig&&orig.max_score)||20, pass=retakePassMark(mx);
+  openModal(modalTpl('نمرهٔ مجددِ تجدیدی — '+esc((byId('users',r.student_id)||{}).full_name||''),
+   `
+   <div class="small muted" style="margin-bottom:8px">
+     دانش‌آموز: <b>${esc((byId('users',r.student_id)||{}).full_name||'—')}</b> ·
+     درس: <b>${esc((byId('subjects',r.subject_id)||{}).name||'—')}</b> ·
+     نمرهٔ اصلی: <b>${fa(r.original_score)}</b> از ${fa(mx)}
+     <span class="badge b-purple" title="برچسبِ نمرهٔ تجدیدی در دفترِ نمرات">${esc(RETAKE_EXAM_TYPE)}</span>
+   </div>
+   ${f('نمرهٔ مجدد (۰ تا '+fa(mx)+') *',`<input class="input" id="rt_new" type="number" min="0" max="${escAttr(mx)}" step="0.5" value="${r.new_score!=null?escAttr(r.new_score):''}" />`)}
+   <div class="small muted">حدّ نصابِ قبولی: <b>${fa(pass)}</b>. با ثبت، یک ردیف با برچسبِ «${esc(RETAKE_EXAM_TYPE)}»
+   در دفترِ نمرات ساخته می‌شود و <b>نمرهٔ اصلی دست‌نخورده می‌ماند</b>.</div>
+   `,'rt-score-save'));
+  window._rtId=Number(id);
+}
+
 function reexamScoreModal(sid){
   var r=byId('reexams',sid);
   openModal(modalTpl('نمرهٔ مجدد — '+(r?esc((byId('users',r.student_id)||{}).full_name||''):''),

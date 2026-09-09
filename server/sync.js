@@ -97,6 +97,7 @@ const STATUS_UPD_ROLE = {
   parent_verifications: ['edu_office'],      /* تأیید/ردِ اعتبارسنجی */
   counselor_refs: ['counselor'],             /* handling */
   internships: ['teacher'],                  /* تأییدِ ساعتِ کارآموزی */
+  reexams: ['teacher'],                      /* بند ۶.۵: ثبتِ نمرهٔ مجددِ تجدیدی */
   nudges: ['teacher'],                       /* پاسخِ دبیر */
   parent_subscriptions: ['parent'],          /* وضعیتِ اشتراکِ خود */
 };
@@ -185,6 +186,12 @@ function fieldGate(op, s, exc){
         if(!roles || roles.indexOf(s.role) < 0)
           return { code: 'field_denied', msg: 'تغییرِ status برای نقش شما مجاز نیست' };
       }
+      /* بند ۶.۵ — تجدیدی: «انجام‌شده» فقط با نمرهٔ مجدد معتبر است؛
+         وگرنه دبیر می‌توانست امتحانی را که برگزار نشده انجام‌شده بزند
+         (نمرهٔ نهایی در کارنامه به نمرهٔ اصلیِ مردود برمی‌گشت). */
+      if(op.c === 'reexams' && s.role === 'teacher' && String(d.status) === 'done'
+         && (d.new_score == null || d.new_score === ''))
+        return { code: 'field_denied', msg: 'انجام‌شده کردنِ تجدیدی بدونِ نمرهٔ مجدد مجاز نیست' };
     }
   }
   return null;

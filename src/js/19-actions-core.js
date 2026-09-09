@@ -1534,6 +1534,18 @@ function coreActions(e, el, id, a, rawId){
      closeModal();toast('نمرهٔ نهایی: '+fa(n),'ok');render();},
    'reexam-del'(){confirmModal('حذف رکوردِ تجدیدی؟','reexam-del-ok',id);},
    'reexam-del-ok'(){remove('reexams',window._delId);closeModal();toast('حذف شد','ok');render();},
+   /* ─────────────── بند ۶.۵: گردشِ کارِ کاملِ تجدیدی (فاز ۵) ─────────────── */
+   'rt-register'(){
+     var res=retakeRegister(id);
+     if(!res.ok){toast(res.err||'ثبت ممکن نیست','err');return;}
+     toast('برای امتحانِ شهریور ثبت شد','ok');render();},
+   'rt-score'(){retakeScoreModal(id);},
+   'rt-score-save'(){
+     var v=V('rt_new');
+     var res=retakeApplyScore(window._rtId,v);
+     if(!res.ok){toast(res.err||'ثبتِ نمره ممکن نیست','err');return;}
+     closeModal();toast('نمرهٔ مجددِ تجدیدی ثبت شد: '+fa(res.score),'ok');render();},
+   'rt-print'(){retakePrint();},
    /* ─────────────── بند ۶.۴: کلاس‌های تابستانی (فقط مدیر) ─────────────── */
    'summer-new'(){summerModal();},
    'summer-save'(){
