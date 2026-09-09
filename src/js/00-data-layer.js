@@ -186,6 +186,18 @@ var Api = {
     };
     if(opts.body !== undefined) init.body = JSON.stringify(opts.body);
 
+    /* F-CSRF-01: روی جهش‌ها، توکنِ کوکیِ csrf_token در سرآیند می‌نشیند */
+    var cm = (init.method || 'GET').toUpperCase();
+    if(cm !== 'GET' && cm !== 'HEAD' && cm !== 'OPTIONS' && typeof document !== 'undefined'){
+      try{
+        var cparts = ('; ' + document.cookie).split('; csrf_token=');
+        if(cparts.length > 1){
+          var cval = decodeURIComponent(cparts[1].split(';')[0] || '');
+          if(cval) init.headers['X-CSRF-Token'] = cval;
+        }
+      }catch(e){}
+    }
+
     return fetch((absolute ? '' : API_BASE) + path, init).then(function(res){
       /* opts.raw: پاسخِ خام (status + body) — برای مسیرهای احراز که
          در خطا هم بدنهٔ معنادار دارند (مثل {code:'no_account'}) */

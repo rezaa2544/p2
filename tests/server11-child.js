@@ -37,7 +37,10 @@ server.listen(0, async () => {
     let r = await fetch(BASE + '/api/auth/send-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: String(SA.phone).replace(/\D/g, '') }) });
     let j = await r.json();
     r = await fetch(BASE + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: String(SA.phone).replace(/\D/g, ''), code: j.demo_code, national_id: String(SA.national_id) }) });
-    const ck = ((r.headers.get('set-cookie') || '').match(/payesh_session=[^;]+/) || [])[0];
+    const sch = r.headers.get('set-cookie') || '';
+    const ck = (sch.match(/payesh_session=[^;]+/) || [])[0];
+    const csrfm = sch.match(/csrf_token=([^;]+)/);
+    const csrfh = csrfm ? { 'X-CSRF-Token': csrfm[1] } : {};
     if(!ck) { console.log('STATUS:0'); console.log('RESP:{"err":"no cookie"}'); return finish(); }
 
     /* آیتمِ صف: ۲ ولیِ موجودِ seed (17, 1025)، ۱ قطعه → هزینه ۲ */
@@ -52,7 +55,7 @@ server.listen(0, async () => {
     else w.balance = 100;
 
     r = await fetch(BASE + '/api/sms/send', { method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: ck },
+      headers: Object.assign({ 'Content-Type': 'application/json', Cookie: ck }, csrfh),
       body: JSON.stringify({ queue_ids: [item.id] }) });
     j = await r.json();
     console.log('STATUS:' + r.status);

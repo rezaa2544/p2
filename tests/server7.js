@@ -39,6 +39,7 @@ function httpReq(port, method, p, body, jar) {
     const data = body ? JSON.stringify(body) : null;
     const headers = { 'Content-Type': 'application/json' };
     if (jar) headers['Cookie'] = jar.headers().join('; ');
+    if (jar && jar.get('csrf_token')) headers['X-CSRF-Token'] = jar.get('csrf_token');
     const req = http.request({ hostname: '127.0.0.1', port, path: p, method, headers }, (res) => {
       let b = '';
       res.on('data', (d) => (b += d));
@@ -57,6 +58,7 @@ function makeJar() {
   const jar = {};
   return {
     headers() { return Object.keys(jar).map((k) => k + '=' + jar[k]); },
+    get(k) { return jar[k]; },
     absorb(h) {
       const sc = h['set-cookie'];
       if (!sc) return;
@@ -118,7 +120,9 @@ process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }
   await httpReq(port, 'POST', '/api/auth/login',
     { phone: par.phone, code: origCode, national_id: par.national_id }, jar);
 
-  const del = await httpReq(port, 'POST', '/api/auth/delete-account', {}, jar);
+  const sendDel = await httpReq(port, 'POST', '/api/auth/send-code', { phone: par.phone }, jar);
+  const delCode = String((sendDel.json && sendDel.json.demo_code) || '');
+  const del = await httpReq(port, 'POST', '/api/auth/delete-account', { code: delCode }, jar);
   chk('D2a حذف: 200 + deleted:true', del.status === 200 && del.json && del.json.ok === true && del.json.deleted === true, del.raw);
 
   await sleep(2500); /* persistStore هر ۲ ثانیه */

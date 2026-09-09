@@ -67,6 +67,7 @@ mkdir -p /home/payesh/data /home/payesh/backups
 | `PAYESH_TLS_CERT` | `/home/payesh/tls/fullchain.pem` | فقط با `PAYESH_HTTPS=1` |
 | `PAYESH_TLS_KEY` | `/home/payesh/tls/privkey.pem` | فقط با `PAYESH_HTTPS=1` |
 | `PAYESH_BACKUP_EVERY_HOURS` | `24` | بکاپِ خودکارِ درون‌پروسه (۱۰ نسخه نگه می‌ماند) |
+| `PAYESH_TRUSTED_PROXIES` | *(تنظیم‌نشده)* | F-AUTH-01: IPهای پراکسیِ مورداعتماد (ویرگولی) برای X-Forwarded-For؛ پیش‌فرض فقط loopback — برای تک‌میزبانه با پروکسیِ همان‌ماشین کافی است |
 
 ساختنِ سرّ:
 ```bash
@@ -97,6 +98,9 @@ sudo certbot renew --webroot -w /var/www/le --deploy-hook "cp -f /etc/letsencryp
 **ب) پروکسی معکوس (nginx/caddy):** اگر بعداً پروکسی لازم شد، `PAYESH_HTTPS` را
 `0` کنید و پروکسی را به `127.0.0.1:3000` وصل کنید — API و وب هر دو از همان
 پورت می‌آیند؛ فقط `X-Forwarded-Proto` را به سرور بفرستید (کوکیِ Secure).
+پروکسیِ همان‌ماشین با پیش‌فرضِ `PAYESH_TRUSTED_PROXIES` (loopback) کار می‌کند؛
+اگر پراکسی رویِ میزبانِ دیگری است، IP آن را در `PAYESH_TRUSTED_PROXIES` بگذارید
+وگرنه `X-Forwarded-For` نادیده گرفته می‌شود (F-AUTH-01).
 
 **ج) پشتِ CDN (اختیاری، مقیاسِ ملی):** کاربر ← Cloudflare (ورکرِ `cloudflare/worker.js`: کشِ ۵دقیقه‌ایِ `/`، passthrough کاملِ `/api/*`) ← همین origin (TLS داخلی یا Full strict). origin دست نمی‌خورد؛ purge پس از هر بیلد با `cdn-manifest.json` راستی‌آزمایی می‌شود. جزئیات: `docs/CDN_INTEGRATION_SETUP.md`.
 

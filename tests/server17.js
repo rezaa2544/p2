@@ -49,6 +49,7 @@ process.on('exit', () => {
   try { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
 });
 
+const CSRF_JAR = {}; /* F-CSRF-01: نگاشتِ نشست ← توکن (تزریقِ خودکار) */
 function req(method, port, p, body, cookie, mod) {
   const m = mod || http;
   return new Promise((resolve) => {
@@ -57,7 +58,8 @@ function req(method, port, p, body, cookie, mod) {
       hostname: '127.0.0.1', port, path: p, method,
       headers: Object.assign(
         data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {},
-        cookie ? { Cookie: cookie } : {}
+        cookie ? { Cookie: cookie } : {},
+        cookie && CSRF_JAR[cookie] ? { 'X-CSRF-Token': CSRF_JAR[cookie] } : {}
       ),
       rejectUnauthorized: false
     }, (res) => {
@@ -118,6 +120,8 @@ async function login(port, phone, nid, cookieStore) {
   const setc = lg.headers['set-cookie'];
   const ck = Array.isArray(setc) ? setc[0] : setc;
   cookieStore.ck = ck ? ck.split(';')[0] : null;
+  const cm = String(Array.isArray(setc) ? setc.join(';') : (setc || '')).match(/csrf_token=([^;]+)/);
+  if (cookieStore.ck && cm) CSRF_JAR[cookieStore.ck] = cm[1];
   return lg;
 }
 

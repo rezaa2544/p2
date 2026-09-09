@@ -32,12 +32,15 @@ const { server, store } = require(path.join(ROOT, 'server', 'index.js'));
 let BASE = '';
 let pass = 0, fail = 0;
 
-async function req(method, p, { body, cookie } = {}) {
+const CSRF_JAR = {}; /* F-CSRF-01: نگاشتِ نشست ← توکن (تزریقِ خودکار در req) */
+async function req(method, p, { body, cookie, csrf } = {}) {
+  const jar = csrf || (cookie ? CSRF_JAR[cookie] : null);
   const res = await fetch(BASE + p, {
     method,
     headers: Object.assign(
       body ? { 'Content-Type': 'application/json' } : {},
-      cookie ? { Cookie: cookie } : {}
+      cookie ? { Cookie: cookie } : {},
+      jar ? { 'X-CSRF-Token': jar } : {}
     ),
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -56,6 +59,8 @@ async function loginAs(user) {
   assert.strictEqual(r.status, 200);
   const sc = r.headers.get('set-cookie') || '';
   const m = sc.match(/payesh_session=[^;]+/);
+  const c = sc.match(/csrf_token=([^;]+)/);
+  if(m && c) CSRF_JAR[m[0]] = c[1];
   return m ? m[0] : null;
 }
 

@@ -19,10 +19,11 @@ const ROOT = path.join(__dirname, '..');
 const PORT = 8999;
 const BASE = `http://127.0.0.1:${PORT}`;
 
+const CSRF_JAR = {}; /* F-CSRF-01: نگاشتِ نشست ← توکن (تزریقِ خودکار) */
 function http(method, url, body, cookie) {
   return fetch(BASE + url, {
     method,
-    headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) },
+    headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}), ...(cookie && CSRF_JAR[cookie] ? { 'X-CSRF-Token': CSRF_JAR[cookie] } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   }).then(async (r) => ({ status: r.status, json: await r.json().catch(() => ({})), hdr: r.headers.get('set-cookie') || '' }));
 }
@@ -74,7 +75,10 @@ try {
     const sc = await http('POST', '/api/auth/send-code', { phone: u.phone });
     const code = sc.json.demo_code || sc.json.code || '000000';
     const lg = await http('POST', '/api/auth/login', { phone: u.phone, code, national_id: u.national_id });
-    return lg.hdr.split(';')[0];
+    const ck = lg.hdr.split(';')[0];
+    const cm = lg.hdr.match(/csrf_token=([^;]+)/);
+    if (cm) CSRF_JAR[ck] = cm[1];
+    return ck;
   };
   const stC = await login(stU);
   const parC = await login(parU);

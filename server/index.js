@@ -29,6 +29,7 @@ const { createAdmin } = require('./admin');
 const { createSms } = require('./sms');
 const { createConflicts } = require('./conflicts');
 const { createAudit, clientIp } = require('./audit');
+const { parseTrustedProxies } = require('./client-ip');
 const db = require('./db');
 const redis = require('./redis');
 const cache = require('./cache');
@@ -199,11 +200,14 @@ const JWT_PREV_SECRET = (process.env.PAYESH_JWT_SECRET_PREV || '').trim() || nul
 /* ── audit log (append-only, sanitized: no phone / nid / password) ───
    R96 P1-8 + Audit Hardening: outside store, 0600 mode, rotation on 1000 events / daily / 10MB */
 const AUDIT_MAX_BYTES = 10 * 1024 * 1024;
+/* F-AUTH-01: پراکسی‌های مورداعتماد (پیش‌فرض: loopback) — یک‌بار در بوت */
+const TRUSTED_PROXIES = parseTrustedProxies(process.env.PAYESH_TRUSTED_PROXIES);
 const auditLogger = createAudit({
   auditFile: AUDIT_FILE,
   auditDir: path.join(path.dirname(AUDIT_FILE), 'audit'),
   maxEvents: parseInt(process.env.PAYESH_AUDIT_MAX_EVENTS || '1000', 10),
-  maxBytes: AUDIT_MAX_BYTES
+  maxBytes: AUDIT_MAX_BYTES,
+  trustedProxies: TRUSTED_PROXIES
 });
 const audit = auditLogger.audit;
 
@@ -269,7 +273,7 @@ function securityHeaders(res, nonce, https){
 /* ── compose modules ───────────────────────────────────────────────── */
 /* R101: OTP + rate limits live in otp.json (distributed across instances) */
 const otp = createOtpStore({ file: OTP_FILE, ttlMs: CODE_TTL_MS, store, markDirty });
-const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty, otp });
+const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty, otp, trustedProxies: TRUSTED_PROXIES });
 /* R97: همهٔ ماژول‌هایِ /api با sendJsonCounting می‌چرخند تا رد‌ها شمرده
    شوند؛ auth استثناست (سقفِ OTP سقفِ خودش را می‌سازد). */
 const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
@@ -336,11 +340,26 @@ const onRequest = async (req, res) => {
   try{
     if(p === '/api/health' && (req.method === 'GET' || req.method === 'HEAD'))
       return sendJson(res, 200, { ok: true, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid });
+    /* F-CSRF-01: نگهبانِ مرکزی — هر جهشِ /api (به‌جز send-code/login که
+       پیش‌احراز‌اند) با نشستِ معتبر باید X-CSRF-Token برابرِ claim نشست
+       داشته باشد وگرنه 403. بدونِ نشست، تصمیم با روتِ مقصد است (401 خودش). */
+    if(p.indexOf('/api/') === 0 && req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS'
+       && !(p === '/api/auth/send-code' && req.method === 'POST')
+       && !(p === '/api/auth/login' && req.method === 'POST')){
+      const gs0 = auth.sessionFrom(req);
+      if(gs0){
+        const csr = auth.verifyCsrf(req, gs0);
+        if(csr !== 'ok'){
+          audit('csrf_denied', { reason: csr, user_id: gs0.id, role: gs0.role, school_id: gs0.school_id, path: p, summary: 'ردِّ CSRF در ' + p });
+          return sendJson(res, 403, { ok: false, code: csr === 'required' ? 'csrf_required' : 'csrf_mismatch' });
+        }
+      }
+    }
     if(p === '/api/auth/send-code' && req.method === 'POST') return await auth.apiSendCode(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/auth/login'     && req.method === 'POST') return await auth.apiLogin(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/auth/me'        && req.method === 'GET')  return await auth.apiMe(req, res);
     if(p === '/api/auth/logout'    && req.method === 'POST') return await auth.apiLogout(req, res);
-    if(p === '/api/auth/delete-account' && req.method === 'POST') return await auth.apiDeleteAccount(req, res);
+    if(p === '/api/auth/delete-account' && req.method === 'POST') return await auth.apiDeleteAccount(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/sync'           && req.method === 'POST') return await sync.apiSync(req, res, await readBody(req, 1024 * 1024));
     if(p === '/api/sync/conflicts' && req.method === 'GET')  return await conflicts.apiList(req, res);
     if(p === '/api/sync/resolve-conflict' && req.method === 'POST') return await conflicts.apiResolve(req, res, await readBody(req, 4 * 1024));

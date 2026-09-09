@@ -38,9 +38,11 @@ function chk(name, cond, extra) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+const CSRF_JAR = {}; /* F-CSRF-01: نگاشتِ نشست ← توکن (تزریقِ خودکار) */
 function httpReq(port, method, p, body, cookie) {
   const headers = { 'Content-Type': 'application/json' };
   if (cookie) headers['Cookie'] = cookie;
+  if (cookie && CSRF_JAR[cookie]) headers['X-CSRF-Token'] = CSRF_JAR[cookie];
   return new Promise((resolve) => {
     const data = body ? JSON.stringify(body) : null;
     const req = http.request({ hostname: '127.0.0.1', port, path: p, method, headers }, (res) => {
@@ -55,12 +57,17 @@ function httpReq(port, method, p, body, cookie) {
 }
 function cookieFrom(r) {
   const sc = r.setCookie || [];
+  let ck = '', csrf = '';
   for (const c of Array.isArray(sc) ? sc : [sc]) {
     const kv = String(c).split(';')[0];
     const i = kv.indexOf('=');
-    if (i > 0) return kv.slice(0, i) + '=' + kv.slice(i + 1);
+    if (i > 0) {
+      if (!ck) ck = kv.slice(0, i) + '=' + kv.slice(i + 1);
+      if (kv.slice(0, i) === 'csrf_token') csrf = kv.slice(i + 1);
+    }
   }
-  return '';
+  if (ck && csrf) CSRF_JAR[ck] = csrf;
+  return ck;
 }
 let tmp = null;
 process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} });

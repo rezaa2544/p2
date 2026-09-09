@@ -79,11 +79,23 @@ input:focus{outline:2px solid var(--blue);border-color:transparent}
   /* آیا اصلاً روی سرورِ سامانه‌ایم؟ (file:// و آدرس‌های دیگر = این صفحه بی‌فایده است) */
   var isApp = /^https?:$/.test(location.protocol) && !/^file:/.test(location.protocol);
 
+  /* F-CSRF-01: توکنِ ضدّ-CSRF از کوکیِ csrf_token (پس از ورود موجود است) */
+  function csrfToken(){
+    try{
+      var parts = ('; ' + document.cookie).split('; csrf_token=');
+      if(parts.length > 1) return decodeURIComponent(parts[1].split(';')[0] || '');
+    }catch(e){}
+    return '';
+  }
+
   function api(path, body){
+    var headers = { 'Content-Type': 'application/json' };
+    var t = csrfToken();
+    if(t) headers['X-CSRF-Token'] = t;
     return fetch(path, {
       method: body ? 'POST' : 'GET',
       credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: body ? JSON.stringify(body) : undefined
     }).then(function(r){
       return r.json().catch(function(){ return null; }).then(function(j){
@@ -128,7 +140,7 @@ input:focus{outline:2px solid var(--blue);border-color:transparent}
     if(!code){ err('کد تأیید را وارد کنید'); return; }
     $('b-del').disabled = true;
     api('/api/auth/login', { phone: phone, code: code, national_id: nid })
-      .then(function(){ return api('/api/auth/delete-account', {}); })
+      .then(function(){ return api('/api/auth/delete-account', { code: code }); })
       .then(function(){
         hide('pane-form');
         hide('step-head');

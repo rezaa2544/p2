@@ -30,6 +30,7 @@ function httpReq(port, method, p, body, jar) {
     const data = body ? JSON.stringify(body) : null;
     const headers = { 'Content-Type': 'application/json' };
     if (jar) headers['Cookie'] = jar.headers().join('; ');
+    if (jar && jar.get('csrf_token')) headers['X-CSRF-Token'] = jar.get('csrf_token');
     const req = http.request({ hostname: '127.0.0.1', port, path: p, method, headers }, (res) => {
       let b = '';
       res.on('data', (d) => (b += d));
@@ -48,6 +49,7 @@ function makeJar() {
   const jar = {};
   return {
     headers() { return Object.keys(jar).map((k) => k + '=' + jar[k]); },
+    get(k) { return jar[k]; },
     absorb(h) {
       const sc = h['set-cookie'];
       if (!sc) return;

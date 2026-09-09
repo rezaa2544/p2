@@ -14,6 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { getClientIp } = require('./client-ip');
 
 // الگوهای تشخیص داده‌های حساس
 const PHONE_PATTERN = /(?:(?:\+|00)98|0)?9\d{9}\b/g;
@@ -104,17 +105,15 @@ function sanitizeData(val, seen = new WeakSet()) {
 /**
  * دریافت آی‌پی کلاینت از درخواست HTTP
  */
+/* F-AUTH-01: مجموعهٔ پراکسی‌های مورداعتماد (نمونه‌ها via createAudit)؛
+   undefined یعنی پیش‌فرضِ loopback در client-ip.js */
+let TRUSTED_PROXIES;
+function setTrustedProxies(set) {
+  if (set instanceof Set) TRUSTED_PROXIES = set;
+}
 function clientIp(req) {
   if (!req) return null;
-  const xff = req.headers && req.headers['x-forwarded-for'];
-  if (xff && typeof xff === 'string') {
-    const ip = xff.split(',')[0].trim();
-    if (ip) return ip.replace(/^::ffff:/, '');
-  }
-  if (req.socket && req.socket.remoteAddress) {
-    return req.socket.remoteAddress.replace(/^::ffff:/, '');
-  }
-  return null;
+  return getClientIp(req, TRUSTED_PROXIES);
 }
 
 /**
@@ -125,6 +124,7 @@ function createAudit(opts = {}) {
   const auditDir = opts.auditDir || path.join(path.dirname(auditFile), 'audit');
   const maxEvents = opts.maxEvents != null ? opts.maxEvents : (parseInt(process.env.PAYESH_AUDIT_MAX_EVENTS || '1000', 10) || 1000);
   const maxBytes = opts.maxBytes != null ? opts.maxBytes : (parseInt(process.env.PAYESH_AUDIT_MAX_BYTES || String(10 * 1024 * 1024), 10) || 10 * 1024 * 1024);
+  if(opts.trustedProxies instanceof Set) TRUSTED_PROXIES = opts.trustedProxies;
 
   let initialized = false;
   let currentDay = new Date().toISOString().slice(0, 10);
@@ -340,5 +340,6 @@ module.exports = {
   maskNationalId,
   sanitizeData,
   sanitizeString,
-  clientIp
+  clientIp,
+  setTrustedProxies
 };

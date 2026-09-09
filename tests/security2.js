@@ -31,6 +31,7 @@ function httpReq(port, method, p, body, cookie, extraHeaders) {
     const data = body ? JSON.stringify(body) : null;
     const headers = Object.assign({ 'Content-Type': 'application/json' }, extraHeaders || {});
     if (cookie) headers['Cookie'] = cookie;
+    if (cookie && CSRF_JAR[cookie] && !headers['X-CSRF-Token']) headers['X-CSRF-Token'] = CSRF_JAR[cookie];
     const req = http.request({ hostname: '127.0.0.1', port, path: p, method, headers }, (res) => {
       let b = '';
       res.on('data', (d) => (b += d));
@@ -44,7 +45,8 @@ function httpReq(port, method, p, body, cookie, extraHeaders) {
     req.end();
   });
 }
-function cookieOf(r){ const sc = r.setCookie; if(!sc) return null; const m = String(Array.isArray(sc) ? sc[0] : sc).match(/payesh_session=[^;]*/); return m ? m[0] : null; }
+const CSRF_JAR = {}; /* F-CSRF-01: نگاشتِ نشست ← توکن (تزریقِ خودکار) */
+function cookieOf(r){ const sc = r.setCookie; if(!sc) return null; const m = String(Array.isArray(sc) ? sc[0] : sc).match(/payesh_session=[^;]*/); const ck = m ? m[0] : null; const cm = String(Array.isArray(sc) ? sc.join(';') : sc).match(/csrf_token=([^;]+)/); if(ck && cm) CSRF_JAR[ck] = cm[1]; return ck; }
 
 async function login(port, phone, nid, wrongNid) {
   const sc = await httpReq(port, 'POST', '/api/auth/send-code', { phone });
@@ -165,7 +167,8 @@ async function main() {
   /* ── S-73-7: delete-account student → لینک‌های parent پاک ── */
   const bellB = await httpReq(port, 'GET', '/api/bell/now', null, P2.cookie);
   chk('G0 قبل از حذف: bellِ parent کودکِ 16 را می‌بیند', bellB.status === 200 && bellB.json && bellB.json.family && bellB.json.family.length === 1 && Number(bellB.json.family[0].studentId) === 16, bellB.raw);
-  const del = await httpReq(port, 'POST', '/api/auth/delete-account', null, ST2.cookie);
+  const scDel = await httpReq(port, 'POST', '/api/auth/send-code', { phone: ST.phone });
+  const del = await httpReq(port, 'POST', '/api/auth/delete-account', { code: scDel.json && scDel.json.demo_code }, ST2.cookie);
   chk('G1 delete-accountِ student: 200', del.status === 200 && del.json && del.json.deleted === true, del.raw);
   const st404 = await httpReq(port, 'GET', '/api/students/16', null, SA2.cookie);
   chk('G2 studentِ حذف‌شده: 404 (superadmin هم نمی‌بیند)', st404.status === 404, st404.raw);

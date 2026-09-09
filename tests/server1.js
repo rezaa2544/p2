@@ -57,12 +57,15 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 let BASE = '';
 const cookies = {}; /* phone -> cookie header */
 
-async function req(method, p, { body, cookie } = {}){
+const CSRF_JAR = {}; /* F-CSRF-01: نگاشتِ نشست ← توکن (تزریقِ خودکار) */
+async function req(method, p, { body, cookie, csrf } = {}){
+  const jar = csrf || (cookie ? CSRF_JAR[cookie] : null);
   const res = await fetch(BASE + p, {
     method,
     headers: Object.assign(
       body ? { 'Content-Type': 'application/json' } : {},
-      cookie ? { Cookie: cookie } : {}
+      cookie ? { Cookie: cookie } : {},
+      jar ? { 'X-CSRF-Token': jar } : {}
     ),
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -73,6 +76,8 @@ async function req(method, p, { body, cookie } = {}){
 function cookieOf(res){
   const sc = res.headers.get('set-cookie') || '';
   const m = sc.match(/payesh_session=[^;]+/);
+  const c = sc.match(/csrf_token=([^;]+)/);
+  if(m && c) CSRF_JAR[m[0]] = c[1];
   return m ? m[0] : null;
 }
 async function loginAs(user, { badCode, badNid } = {}){
