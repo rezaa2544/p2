@@ -379,7 +379,35 @@ var ACTION_ROLES = {
      «پیگیری الگوها» پیام را در صف اولیا می‌گذارد. مشاور عمداً
      بی‌خیال این اختیار است (تفکیک: پیگیری با مشاور، اطلاع‌رسانی
      رسمی با مدیر). */
-  'pattern-notify':  ['manager']
+  'pattern-notify':  ['manager'],
+  /* حضور کادر (بند B.1 فرناز): هر ۶ اکشن فقط مدیر */
+  'staffatt-day':    ['manager'],
+  'staffatt-save':   ['manager'],
+  'staffatt-prev':   ['manager'],
+  'staffatt-next':   ['manager'],
+  'staffatt-today':  ['manager'],
+  'staffatt-pick':   ['manager'],
+  /* دوره‌های آموزشی کادر (بند B.2 فرناز): هر ۷ اکشن فقط مدیر */
+  'trn-new':          ['manager'],
+  'trn-edit':         ['manager'],
+  'trn-save':         ['manager'],
+  'trn-complete':     ['manager'],
+  'trn-print':        ['manager'],
+  'trn-verify':       ['manager'],
+  'trn-verify-check': ['manager'],
+  /* مانور ایمنی (بند B.4 فرناز): هر ۵ اکشن فقط مدیر */
+  'drill-new':    ['manager'],
+  'drill-edit':   ['manager'],
+  'drill-save':   ['manager'],
+  'drill-del':    ['manager'],
+  'drill-del-ok': ['manager'],
+  /* کمک‌های داوطلبانه (بند B.5 فرناز): هر ۶ اکشن فقط مدیر */
+  'don-new':    ['manager'],
+  'don-edit':   ['manager'],
+  'don-save':   ['manager'],
+  'don-del':    ['manager'],
+  'don-del-ok': ['manager'],
+  'don-print':  ['manager']
 };
 
 /* ✅ (R99 — تک‌منبعِ مجوزها) canAction/canRoute فقط رابط کاربری را مرتب

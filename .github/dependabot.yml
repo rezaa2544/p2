@@ -1,0 +1,9 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"          # چون پروژه Node.js است
+    directory: "/"                    # محل فایل package.json
+    schedule:
+      interval: "weekly"              # بررسی هفتگی
+    open-pull-requests-limit: 10     # حداکثر ۱۰ PR همزمان
+    reviewers:
+      - "rezaa2544"                  # خودت را به عنوان بازبین تعیین کن

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * تست‌های جهشی C.3 فرناز — گزارش عمومی مدرسه
- *  MM1 — وارونگی تفکیک نوع جلسه → P3
- *  MM2 — برداشتنِ فیلتر مدرسه از آمار کاربران → P1
- *  MM3 — برداشتنِ نمایش بوم → P4
+ * تست‌های جهشی بند B.5 فرناز — کمک‌های داوطلبانه
+ *  MM1 — برداشتنِ fallback ناشناس → N3
+ *  MM2 — برداشتنِ گیت مدرسه در ویرایش (IDOR) → N6
+ *  MM3 — برداشتنِ قاعدهٔ سرور مبلغ → N9
  *
- * اجرا:  node tests/public2-mutations.js
+ * اجرا:  node tests/donations-mutations.js
  */
 const fs = require('fs');
 const path = require('path');
@@ -23,7 +23,7 @@ function mutate(file, from, to, suite, killRe, tag) {
   fs.writeFileSync(f, bad, 'utf8');
   try {
     const runOnce = () => spawnSync('node', [path.join(ROOT, suite)], { cwd: ROOT, encoding: 'utf8' });
-    const completed = (o) => /گزارش عمومی: /.test(o || '');
+    const completed = (o) => /تست کمک‌های داوطلبانه: /.test(o || '');
     execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
     let r = runOnce();
     if (r.status !== 0 && !killRe.test(r.stdout) && !completed(r.stdout)) {
@@ -41,21 +41,21 @@ function mutate(file, from, to, suite, killRe, tag) {
   }
 }
 
-mutate('src/js/06-login.js',
-  "(typeof minTypeOf==='function'?minTypeOf(m):'assoc')===k",
-  "(typeof minTypeOf==='function'?minTypeOf(m):'assoc')!==k /* MM1 */",
-  'tests/public2.js', /❌ P3/, 'MM1 وارونگی تفکیک نوع جلسه');
+mutate('src/js/72-donations.js',
+  "return n || 'ناشناس';",
+  "return n || ''; /* MM1 */",
+  'tests/donations2.js', /❌ N3/, 'MM1 برداشتنِ fallback ناشناس');
 
-mutate('src/js/06-login.js',
-  'const us=(db.users||[]).filter(u=>u.school_id===sid);',
-  'const us=(db.users||[]); /* MM2 */',
-  'tests/public2.js', /❌ P1/, 'MM2 برداشتنِ فیلتر مدرسه از آمار');
+mutate('src/js/72-donations.js',
+  'if(!ex || ex.school_id !== sid) return { ok: false, msg: \'رکورد معتبر نیست\' };',
+  'if(!ex) return { ok: false, msg: \'رکورد معتبر نیست\' }; /* MM2 */',
+  'tests/donations2.js', /❌ N6/, 'MM2 برداشتنِ گیت مدرسه در ویرایش');
 
-mutate('src/js/06-login.js',
-  "goals:((sc.public_goals===1||sc.public_goals===true)?(sc.boom_goals||'').trim():'')",
-  "goals:'' /* MM3 */",
-  'tests/public2.js', /❌ P4/, 'MM3 برداشتنِ نمایش بوم');
+mutate('server/validate.js',
+  "if(key === 'amount' && coll === 'donations') return { type: 'integer', min: 1, max: 10000000000 }; /* B.5 فرناز: مبلغ کمک (تومانِ صحیحِ مثبت) */",
+  "if(false) return { type: 'integer', min: 1, max: 1 }; /* MM3 */",
+  'tests/donations2.js', /❌ N9/, 'MM3 برداشتنِ قاعدهٔ سرور');
 
 execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
-console.log(`جهش‌های گزارش عمومی: ${pass}/${pass + fail} کشته` + (envFails ? ` (${envFails} خطای محیطی)` : ''));
+console.log(`جهش‌های کمک‌های داوطلبانه: ${pass}/${pass + fail} کشته` + (envFails ? ` (${envFails} خطای محیطی)` : ''));
 process.exit(fail || envFails ? 1 : 0);
