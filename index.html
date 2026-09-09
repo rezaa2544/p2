@@ -3289,6 +3289,59 @@ function examSourceBadge(e){
   return '';
 }
 
+/* ─────────── فاز ۰.۳: تفکیک امتحان نهایی کشوری از امتحان داخلی ───────────
+   تک‌منبع حقیقت، همان فیلد `source` روی جلسهٔ امتحان است که از دور ۶۳
+   وجود دارد و در authz/model.json و سرور ثبت شده:
+     internal       → امتحان داخلی مدرسه (پیش‌فرض)
+     national_final → امتحان نهایی کشوری
+     makeup         → جبرانی
+
+   ⚠️ چرا فیلد تازهٔ `exams.exam_type` ساخته نشد (انحرافِ مستند از پرامپت):
+   ۱) `exams.source` از پیش همین سه حالت را دارد و رکوردِ قدیمی با
+      `is_final` هم خوانده می‌شود؛ ستون دوم = دو منبع حقیقت و نشت.
+   ۲) نام `exam_type` روی **grades** از پیش معنای دیگری دارد
+      (EXAM_TYPES = کلاسی/میان‌ترم/پایان‌ترم/عملی/امتحان نهایی).
+      هم‌نام‌کردن دو مفهوم در دو مجموعه، خطای انسانی می‌سازد.
+   پس `examTypeOf` همان نمای دوحالتیِ خواسته‌شده (internal|national) را
+   از منشأ جلسه می‌سازد، بدون ستون تازه.
+
+   روی **نمره** (grades.source) فقط دو مقدار می‌نشیند:
+     internal (پیش‌فرض) | national
+   رکوردهای قدیمی که `source` ندارند «داخلی» خوانده می‌شوند و هرگز
+   خودکار «نهایی» نمی‌شوند (خواستهٔ صریح: پیش‌فرض internal). */
+const GRADE_SOURCES=[['internal','داخلی'],['national','نهایی کشوری']];
+/** مقدارِ EXAM_TYPES که نشان‌دهندهٔ امتحان نهایی کشوری است */
+const NATIONAL_EXAM_TYPE='امتحان نهایی';
+
+/** نمای دوحالتی منشأ جلسهٔ امتحان: 'internal' | 'national' */
+function examTypeOf(e){
+  return examSource(e)==='national_final' ? 'national' : 'internal';
+}
+/** منشأ یک نمره (سازگاری رو به عقب: رکوردِ بدون source = internal) */
+function gradeSource(g){
+  return (g && g.source==='national') ? 'national' : 'internal';
+}
+/** برچسب فارسی منشأ نمره */
+function gradeSourceLabel(g){
+  return gradeSource(g)==='national' ? 'نهایی کشوری' : 'داخلی';
+}
+/** نشان رنگی منشأ برای نمره (فقط نهایی برچسب می‌گیرد تا نما شلوغ نشود) */
+function gradeSourceBadge(g){
+  return gradeSource(g)==='national' ? ' <span class="badge b-red">نهایی کشوری</span>' : '';
+}
+/** نمره‌های نهایی کشوری یک دانش‌آموز (برای کارنامهٔ جدا) */
+function nationalGradesOf(sid){
+  return (db.grades||[]).filter(function(g){
+    return g.student_id===Number(sid) && gradeSource(g)==='national';
+  });
+}
+/** معدل سادهٔ نمرات نهایی کشوری (بدون وزن) — صفر اگر نمره‌ای نیست */
+function nationalGpa(sid){
+  const l=nationalGradesOf(sid);
+  if(!l.length) return 0;
+  return Math.round(l.reduce(function(a,g){return a+(Number(g.score)||0);},0)/l.length*100)/100;
+}
+
 /* شاخه‌ها و رشته‌های متوسطه دوم */
 const BRANCHES = {
   'نظری': ['ریاضی فیزیک', 'علوم تجربی', 'ادبیات و علوم انسانی', 'علوم و معارف اسلامی'],
