@@ -53,6 +53,39 @@ function loginServerMsg(code){
    اختصاصی. پارامترها همان محلی‌هایِ شنوندهٔ کلیک هستند. */
 function coreActions(e, el, id, a, rawId){
   return {
+   /* E.1 فرناز: تیکِ چک‌لیستِ فردا — فقط حافظهٔ محلی via Store (بدون سرور، بدون رندرِ مجدد) */
+   /* E.6 فرناز: یادداشت شخصی ولی — فقط Store؛ فقط ولیِ لینک‌شده؛ سقف ۵۰۰ نویسه */
+   'pnote-save'(){
+     const sid=Number(id), u=S.user;
+     if(!u||u.role!=='parent'||typeof noteLinkedParent!=='function'||!noteLinkedParent(u.id,sid)){toast('فقط ولیِ دانش‌آموز می‌تواند یادداشت ثبت کند','err');return;}
+     const t=(V('note_text')||'').trim();
+     if(t.length>500){toast('یادداشت حداکثر ۵۰۰ نویسه می‌تواند باشد','err');return;}
+     if(!t){Store.remove(noteKey(u.id,sid));}
+     else if(!Store.set(noteKey(u.id,sid),JSON.stringify({t:t,u:todayISO()}))){toast('ذخیره نشد — حافظهٔ محلی در دسترس نیست','err');return;}
+     toast('یادداشت ذخیره شد','ok'); render();
+   },
+   /* E.3 فرناز: ثبت هدف نمره — فقط Store؛ گارد دوم: فقط خود/ولی (canAction نقش را چک می‌کند، این مالکیت را) */
+   'goal-save'(){
+     const sid=Number(id), sub=Number(el.dataset.sub);
+     if(!sid||!sub)return;
+     if(typeof goalViewerOk!=='function'||!goalViewerOk(sid)){toast('فقط خود دانش‌آموز یا ولیِ او می‌تواند هدف ثبت کند','err');return;}
+     const raw=(V('goal_val')||'').trim();
+     const v=Number(raw.replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(',','.'));
+     if(raw===''||isNaN(v)){toast('عدد هدف معتبر نیست','err');return;}
+     if(v<0||v>20){toast('هدف باید بین ۰ تا ۲۰ باشد','err');return;}
+     Store.set(goalKey(sid,sub),String(v));
+     toast('🎯 هدف ثبت شد','ok'); render();
+   },
+   'tomorrow-check'(){
+     const sid=Number(el.dataset.sid), iso=el.dataset.iso, idx=el.dataset.idx;
+     if(!sid||!iso||!idx)return;
+     /* دیسپچر روی کلیک preventDefault می‌کند (تاگِلِ بومی لغو می‌شود) — پس دستی تاگِل می‌زنیم */
+     el.checked=!el.checked;
+     const k=tomorrowCheckKey(sid,iso);
+     let cur={}; try{cur=JSON.parse(Store.get(k,'{}'))||{};}catch(x){cur={};}
+     cur[idx]=el.checked?1:0;
+     Store.set(k,JSON.stringify(cur));
+   },
    pick(){
      /* دمو: فرم با شماره + کد ملیِ همان حساب پر می‌شود و کد ارسال (شبیه‌سازی)
         و در فیلد می‌نشیند — کاربر با «استعلام و ورود» کاملش می‌کند. */
@@ -199,9 +232,19 @@ function coreActions(e, el, id, a, rawId){
     const date=V('am_date');const att=V('am_att');const res=V('am_res');
     if(!date){toast('تاریخِ جلسه لازم است','err');return;}
     if(!att){toast('حاضرین را بنویسید','err');return;}
-    insert('assoc_minutes',{school_id:sid,meeting_date:date,attendees:att,resolutions:res,archived:false,created_at:todayISO(),updated_at:todayISO()});
+    const typ=V('am_type');const mt=(typeof MIN_TYPES!=='undefined'&&MIN_TYPES.some(function(t){return t[0]===typ;}))?typ:'assoc';
+    insert('assoc_minutes',{school_id:sid,meeting_date:date,meeting_type:mt,attendees:att,resolutions:res,archived:false,created_at:todayISO(),updated_at:todayISO()});
     closeModal();toast('صورت‌جلسه ثبت شد','ok');render();},
   'assoc-min-print'(){assocMinPrint(id);},
+  /* C.3 فرناز: گزارش عمومی — فقط مدیر، فقط مدرسهٔ خود */
+  'pubrep-print'(){
+    if(!S.user||S.user.role!=='manager'||!S.user.school_id){toast('فقط مدیر مدرسه','err');return;}
+    pubrepPrint();},
+  'pubrep-csv'(){
+    if(!S.user||S.user.role!=='manager'||!S.user.school_id){toast('فقط مدیر مدرسه','err');return;}
+    const d=publicReportRows(S.user.school_id);
+    const ok=downloadCSV('payesh-public-'+todayISO()+'.csv',d.headers,d.rows);
+    toast(ok?'خروجی عمومی دانلود شد':'دریافت خروجی ممکن نشد',ok?'ok':'err');},
   'assoc-min-toggle'(){
     const m=byId('assoc_minutes',Number(id));
     if(!m)return;
@@ -548,7 +591,11 @@ function coreActions(e, el, id, a, rawId){
        return;
      }
      attDraftSet(cid,date,id,st);
-     render();},
+     /* دور ۱۰۲ (کارایی): به‌جای بازسازیِ کاملِ پوسته، فقط ردیفِ همان
+        دانش‌آموز + شمارنده‌ها + نوارِ پیش‌نویس به‌روز می‌شود.
+        سوپاپِ اطمینان: با هر تردیدی (false) رندرِ کامل صدا زده می‌شود —
+        رفتار هرگز از وضعِ پیش از بهینه‌سازی بدتر نمی‌شود. */
+     if(!(typeof attPartialSync==='function'&&attPartialSync(id))) render();},
    /* ثبت ساعتِ انتخابیِ وضعیتِ زمان‌دار (بند 15.1) */
    'att-time-save'(){
      if(!attTimePending)return;
@@ -897,6 +944,14 @@ function coreActions(e, el, id, a, rawId){
          const r=notifyReconcileMany(made.map(m=>m.recId));
          fix=r.created;
        }
+     }
+     /* E.5 فرناز: اعلان داخل‌برنامه‌ای غیبت برای والدین (با ref به رکورد).
+        ضدتکرار داخل absenceNotifFor است؛ فقط برای رکوردهای غایب. */
+     if(typeof absenceNotifFor==='function'){
+       made.forEach(function(m){
+         var rec=(typeof byId==='function')?byId('attendance',m.recId):null;
+         if(rec&&rec.status==='absent')absenceNotifFor(rec);
+       });
      }
      attDraftClearKeepTimers(cid,date);
      closeModal();
@@ -1698,7 +1753,7 @@ document.addEventListener('click',e=>{
     if(typeof toast==='function') toast('شما اجازهٔ انجام این عملیات را ندارید','err');
     return;
   }
-  /* فاز ۲: A از پارسیال‌هایِ ۹ ماژولِ 19-actions ساخته می‌شود —
+  /* فاز ۲: A از پارسیال‌هایِ ۱۳ ماژولِ 19-actions ساخته می‌شود —
      ترکیبِ آن (نام‌ها، بدنه‌ها، ترتیبِ تعریف) با نسخهٔ تک‌فایلی یکسان است. */
   const A=Object.assign({},
     coreActions(e,el,id,a,rawId),
@@ -1709,7 +1764,11 @@ document.addEventListener('click',e=>{
     busActions(e,el,id,a,rawId),
     vclassActions(e,el,id,a,rawId),
     scheduleActions(e,el,id,a,rawId),
-    adminActions(e,el,id,a,rawId));
+    adminActions(e,el,id,a,rawId),
+    staffActions(e,el,id,a,rawId),
+    trainingActions(e,el,id,a,rawId),
+    drillsActions(e,el,id,a,rawId),
+    donationsActions(e,el,id,a,rawId));
   if(A[a]){e.preventDefault();A[a]();}
   else if(typeof F7_ACTIONS!=='undefined'&&F7_ACTIONS[a]){e.preventDefault();F7_ACTIONS[a](el,id);}
   else if(typeof P8_ACTIONS!=='undefined'&&P8_ACTIONS[a]){e.preventDefault();P8_ACTIONS[a](el,id);}

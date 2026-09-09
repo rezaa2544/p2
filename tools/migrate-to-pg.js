@@ -29,6 +29,13 @@ const collections = model.collections || {};
 /* Infer optimal column types for PostgreSQL */
 function getColumnType(colName, fieldName, sampleVal) {
   if (fieldName === 'id') return 'INTEGER PRIMARY KEY';
+  /* Devin-R2/R3: استثناهای مدل داده (پارامتر colName تا امروز استفاده نمی‌شد) —
+     yearCode رشتهٔ «۱۴۰۴-۱۴۰۵» می‌سازد پس year گواهی VARCHAR است؛
+     سقف اعتبارسنجی مبلغ کمک (۱۰^۱۰) در NUMERIC(12,2) جا نمی‌شود. */
+  if (colName === 'certificates' && fieldName === 'year') return 'VARCHAR(50)';
+  if (colName === 'donations' && fieldName === 'amount') return 'NUMERIC(14, 2)';
+  if (colName === 'training_courses' && fieldName === 'hours') return 'INTEGER';
+  if (colName === 'safety_drills' && (fieldName === 'participant_count_staff' || fieldName === 'participant_count_students')) return 'INTEGER';
   if (fieldName === 'national_id' || fieldName === 'father_nid' || fieldName === 'mother_nid') return 'VARCHAR(10)';
   if (fieldName === 'phone' || fieldName === 'mobile' || fieldName === 'tel') return 'VARCHAR(20)';
   if (fieldName === 'postal_code') return 'VARCHAR(10)';

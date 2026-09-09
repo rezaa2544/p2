@@ -125,6 +125,12 @@ var ACTION_ROLES = {
   'vclass-save':      ['teacher','manager'],
   'vclass-del':       ['teacher','manager'],
   'vclass-play':      ['teacher','manager','student','parent'],
+  'tomorrow-check':   ['student','parent'], /* E.1 فرناز: فقط حافظهٔ محلی — چیزی برای WRITE_PERMS ندارد */
+  'goal-save':        ['student','parent'], /* E.3 فرناز: فقط Store — مالکیت در خود اکشن (goalViewerOk) */
+  'pnote-save':       ['parent'], /* E.6 فرناز: فقط Store — ولیِ لینک‌شده در خود اکشن */
+  'ticket-new':       ['manager'], /* G.2 فرناز: بازکردن فرم (بدون نوشتن) */
+  'ticket-save':      ['manager'], /* G.2 فرناز: ثبت تیکت (ins در مدل) */
+  'ticket-status':    ['superadmin'], /* G.2 فرناز: تغییر وضعیت (upd در مدل) */
   'vclass-q-ask':     ['student'],
   'vclass-q-save':    ['student'],
   'vclass-q-answer':  ['teacher','manager'],
@@ -287,6 +293,9 @@ var ACTION_ROLES = {
   'user-modal':    ['manager','superadmin'],
   'user-toggle':   ['manager','superadmin'],
   'school-save':   ['superadmin'],
+  /* C.2 فرناز — بوم: مدیر فقط مدرسهٔ خودش (گیت دوم در خود اکشن) */
+  'school-boom':      ['manager'],
+  'school-boom-save': ['manager'],
   'school-del':    ['superadmin'],
   'school-modal':  ['superadmin'],
   'school-toggle': ['superadmin'],
@@ -370,7 +379,35 @@ var ACTION_ROLES = {
      «پیگیری الگوها» پیام را در صف اولیا می‌گذارد. مشاور عمداً
      بی‌خیال این اختیار است (تفکیک: پیگیری با مشاور، اطلاع‌رسانی
      رسمی با مدیر). */
-  'pattern-notify':  ['manager']
+  'pattern-notify':  ['manager'],
+  /* حضور کادر (بند B.1 فرناز): هر ۶ اکشن فقط مدیر */
+  'staffatt-day':    ['manager'],
+  'staffatt-save':   ['manager'],
+  'staffatt-prev':   ['manager'],
+  'staffatt-next':   ['manager'],
+  'staffatt-today':  ['manager'],
+  'staffatt-pick':   ['manager'],
+  /* دوره‌های آموزشی کادر (بند B.2 فرناز): هر ۷ اکشن فقط مدیر */
+  'trn-new':          ['manager'],
+  'trn-edit':         ['manager'],
+  'trn-save':         ['manager'],
+  'trn-complete':     ['manager'],
+  'trn-print':        ['manager'],
+  'trn-verify':       ['manager'],
+  'trn-verify-check': ['manager'],
+  /* مانور ایمنی (بند B.4 فرناز): هر ۵ اکشن فقط مدیر */
+  'drill-new':    ['manager'],
+  'drill-edit':   ['manager'],
+  'drill-save':   ['manager'],
+  'drill-del':    ['manager'],
+  'drill-del-ok': ['manager'],
+  /* کمک‌های داوطلبانه (بند B.5 فرناز): هر ۶ اکشن فقط مدیر */
+  'don-new':    ['manager'],
+  'don-edit':   ['manager'],
+  'don-save':   ['manager'],
+  'don-del':    ['manager'],
+  'don-del-ok': ['manager'],
+  'don-print':  ['manager']
 };
 
 /* ✅ (R99 — تک‌منبعِ مجوزها) canAction/canRoute فقط رابط کاربری را مرتب

@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS assoc_minutes (
   "created_at" TIMESTAMPTZ,
   "id" INTEGER PRIMARY KEY,
   "meeting_date" VARCHAR(50),
+  "meeting_type" VARCHAR(255),
   "resolutions" VARCHAR(255),
   "school_id" INTEGER,
   "updated_at" TIMESTAMPTZ,
@@ -272,7 +273,7 @@ CREATE TABLE IF NOT EXISTS certificates (
   "student_id" INTEGER,
   "type" VARCHAR(255),
   "updated_at" TIMESTAMPTZ,
-  "year" INTEGER,
+  "year" VARCHAR(50),
   CONSTRAINT fk_certificates_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
 );
 
@@ -419,6 +420,23 @@ CREATE TABLE IF NOT EXISTS districts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_districts_created_at ON districts (created_at DESC);
+
+-- Table: donations
+CREATE TABLE IF NOT EXISTS donations (
+  "amount" NUMERIC(14, 2),
+  "created_at" TIMESTAMPTZ,
+  "date" VARCHAR(50),
+  "description" TEXT,
+  "donor_name" VARCHAR(255),
+  "id" INTEGER PRIMARY KEY,
+  "registered_by" VARCHAR(255),
+  "school_id" INTEGER,
+  "updated_at" TIMESTAMPTZ,
+  CONSTRAINT fk_donations_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE INDEX IF NOT EXISTS idx_donations_school_id ON donations (school_id);
+CREATE INDEX IF NOT EXISTS idx_donations_created_at ON donations (created_at DESC);
 
 -- Table: dojo_types
 CREATE TABLE IF NOT EXISTS dojo_types (
@@ -996,6 +1014,23 @@ CREATE INDEX IF NOT EXISTS idx_reexams_school_id ON reexams (school_id);
 CREATE INDEX IF NOT EXISTS idx_reexams_school_student ON reexams (school_id, student_id);
 CREATE INDEX IF NOT EXISTS idx_reexams_created_at ON reexams (created_at DESC);
 
+-- Table: safety_drills
+CREATE TABLE IF NOT EXISTS safety_drills (
+  "created_at" TIMESTAMPTZ,
+  "date" VARCHAR(50),
+  "id" INTEGER PRIMARY KEY,
+  "notes" TEXT,
+  "participant_count_staff" INTEGER,
+  "participant_count_students" INTEGER,
+  "registered_by" VARCHAR(255),
+  "school_id" INTEGER,
+  "updated_at" TIMESTAMPTZ,
+  CONSTRAINT fk_safety_drills_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE INDEX IF NOT EXISTS idx_safety_drills_school_id ON safety_drills (school_id);
+CREATE INDEX IF NOT EXISTS idx_safety_drills_created_at ON safety_drills (created_at DESC);
+
 -- Table: schedule
 CREATE TABLE IF NOT EXISTS schedule (
   "class_id" INTEGER,
@@ -1044,6 +1079,7 @@ CREATE TABLE IF NOT EXISTS schools (
   "active" BOOLEAN,
   "address" VARCHAR(255),
   "area_kind" VARCHAR(255),
+  "boom_goals" VARCHAR(255),
   "branches" VARCHAR(255),
   "capabilities" JSONB,
   "capacity" INTEGER,
@@ -1119,6 +1155,23 @@ CREATE TABLE IF NOT EXISTS sms_wallet (
 
 CREATE INDEX IF NOT EXISTS idx_sms_wallet_school_id ON sms_wallet (school_id);
 CREATE INDEX IF NOT EXISTS idx_sms_wallet_created_at ON sms_wallet (created_at DESC);
+
+-- Table: staff_attendance
+CREATE TABLE IF NOT EXISTS staff_attendance (
+  "created_at" TIMESTAMPTZ,
+  "date" VARCHAR(50),
+  "id" INTEGER PRIMARY KEY,
+  "note" TEXT,
+  "registered_by" VARCHAR(255),
+  "school_id" INTEGER,
+  "staff_id" INTEGER,
+  "status" VARCHAR(255),
+  "updated_at" TIMESTAMPTZ,
+  CONSTRAINT fk_staff_attendance_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE INDEX IF NOT EXISTS idx_staff_attendance_school_id ON staff_attendance (school_id);
+CREATE INDEX IF NOT EXISTS idx_staff_attendance_created_at ON staff_attendance (created_at DESC);
 
 -- Table: student_archive
 CREATE TABLE IF NOT EXISTS student_archive (
@@ -1232,6 +1285,22 @@ CREATE TABLE IF NOT EXISTS summer_classes (
 CREATE INDEX IF NOT EXISTS idx_summer_classes_school_id ON summer_classes (school_id);
 CREATE INDEX IF NOT EXISTS idx_summer_classes_created_at ON summer_classes (created_at DESC);
 
+-- Table: support_tickets
+CREATE TABLE IF NOT EXISTS support_tickets (
+  "created_at" TIMESTAMPTZ,
+  "description" TEXT,
+  "id" INTEGER PRIMARY KEY,
+  "priority" VARCHAR(255),
+  "school_id" INTEGER,
+  "status" VARCHAR(255),
+  "title" VARCHAR(255),
+  "updated_at" TIMESTAMPTZ,
+  CONSTRAINT fk_support_tickets_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE INDEX IF NOT EXISTS idx_support_tickets_school_id ON support_tickets (school_id);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_created_at ON support_tickets (created_at DESC);
+
 -- Table: teacher_notes
 CREATE TABLE IF NOT EXISTS teacher_notes (
   "id" INTEGER PRIMARY KEY,
@@ -1280,6 +1349,23 @@ CREATE TABLE IF NOT EXISTS teacher_sms (
 
 CREATE INDEX IF NOT EXISTS idx_teacher_sms_school_id ON teacher_sms (school_id);
 CREATE INDEX IF NOT EXISTS idx_teacher_sms_created_at ON teacher_sms (created_at DESC);
+
+-- Table: training_courses
+CREATE TABLE IF NOT EXISTS training_courses (
+  "created_at" TIMESTAMPTZ,
+  "date" VARCHAR(50),
+  "hours" INTEGER,
+  "id" INTEGER PRIMARY KEY,
+  "school_id" INTEGER,
+  "staff_id" INTEGER,
+  "status" VARCHAR(255),
+  "title" VARCHAR(255),
+  "updated_at" TIMESTAMPTZ,
+  CONSTRAINT fk_training_courses_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE INDEX IF NOT EXISTS idx_training_courses_school_id ON training_courses (school_id);
+CREATE INDEX IF NOT EXISTS idx_training_courses_created_at ON training_courses (created_at DESC);
 
 -- Table: transactions
 CREATE TABLE IF NOT EXISTS transactions (
@@ -1497,18 +1583,19 @@ CREATE INDEX IF NOT EXISTS idx_schools_capabilities ON schools USING GIN (capabi
 BEGIN;
 
 -- Inserting 6 rows into schools
-INSERT INTO schools ("active", "address", "area_kind", "branches", "capabilities", "capacity", "city", "code", "county_id", "created_at", "district_id", "fields", "gender", "id", "landline", "level", "name", "notify_rules", "organization_id", "phone", "place_rules", "province_id", "shift", "type", "updated_at", "work_days")
+INSERT INTO schools ("active", "address", "area_kind", "boom_goals", "branches", "capabilities", "capacity", "city", "code", "county_id", "created_at", "district_id", "fields", "gender", "id", "landline", "level", "name", "notify_rules", "organization_id", "phone", "place_rules", "province_id", "shift", "type", "updated_at", "work_days")
 VALUES
-  (TRUE, 'تهران، خیابان آزادی، پلاک 102', 'district', '["نظری"]'::jsonb, '{"has_tuition":1,"has_dorm":1,"has_iep":1,"has_workshop":1,"has_multigrade":1,"has_second_term_exam":1}'::jsonb, 447, 'سنندج', 'SH-101', 1, '2025-04-26'::timestamptz, 1, '["ریاضی فیزیک","علوم تجربی","ادبیات و علوم انسانی","علوم و معارف اسلامی"]'::jsonb, 'پسرانه', '1', '066-42410552', 'متوسطه دوم', 'دبیرستان شهید بهشتی', '{"enabled":true,"autoSend":false}'::jsonb, NULL, '09998399845', NULL, 1, 'صبح', 'علوم تجربی', NULL, '[0,1,2,3,4,5]'::jsonb),
-  (TRUE, 'مشهد، خیابان معلم، پلاک 202', 'district', '["نظری"]'::jsonb, '{"has_tuition":1,"has_dorm":1,"has_iep":1,"has_workshop":1,"has_multigrade":0,"has_second_term_exam":1}'::jsonb, 415, 'سقز', 'FZ-102', 3, '2025-05-16'::timestamptz, 6, '["ریاضی فیزیک","علوم تجربی","ادبیات و علوم انسانی","علوم و معارف اسلامی"]'::jsonb, 'دخترانه', '2', '046-38525967', 'متوسطه دوم', 'دبیرستان فرزانگان', NULL, NULL, '09993506643', NULL, 1, 'هر دو', 'ریاضی', NULL, '[0,1,2,3,4]'::jsonb),
-  (TRUE, 'اصفهان، خیابان معلم، پلاک 175', 'district', '[]'::jsonb, '{"has_tuition":1,"has_dorm":1,"has_iep":1,"has_workshop":0,"has_multigrade":0,"has_second_term_exam":1}'::jsonb, 554, 'شهریار', 'AH-103', 5, '2025-06-05'::timestamptz, 11, '[]'::jsonb, 'پسرانه', '3', '044-36254974', 'متوسطه اول', 'مدرسه نمونه علامه حلی', NULL, NULL, '09991487287', NULL, 2, 'صبح', 'عادی', NULL, '[0,1,2,3,4]'::jsonb),
-  (TRUE, 'شیراز، خیابان معلم، پلاک 175', 'district', '[]'::jsonb, '{"has_tuition":1,"has_dorm":0,"has_iep":0,"has_workshop":0,"has_multigrade":0,"has_second_term_exam":1,"has_evening":1}'::jsonb, 440, 'نیشابور', 'MM-104', 7, '2025-06-25'::timestamptz, 16, '[]'::jsonb, 'دخترانه', '4', '085-33139365', 'متوسطه اول', 'دبیرستان مریم مقدس', NULL, NULL, '09997249160', NULL, 3, 'هر دو', 'عادی', NULL, '[0,1,2,3,4]'::jsonb),
-  (TRUE, 'تبریز، خیابان آزادی، پلاک 132', 'district', '["فنی و حرفه‌ای","کاردانش"]'::jsonb, '{"has_tuition":1,"has_dorm":1,"has_iep":0,"has_workshop":1,"has_multigrade":1,"has_second_term_exam":1}'::jsonb, 437, 'بانه', 'IZ-105', 2, '2025-07-15'::timestamptz, 4, '["الکتروتکنیک","الکترونیک","مکانیک خودرو","کامپیوتر","حسابداری","ساختمان","گرافیک","تعمیر لوازم خانگی","طراحی دوخت","تأسیسات","صنایع غذایی"]'::jsonb, 'پسرانه', '5', '081-39677471', 'متوسطه دوم', 'مجتمع آموزشی ایران‌زمین', NULL, NULL, '09992271502', NULL, 1, 'بعدازظهر', 'فنی و حرفه‌ای', NULL, '[0,1,2,3,4]'::jsonb),
-  (FALSE, 'کرج، خیابان ولیعصر، پلاک 194', 'district', '[]'::jsonb, '{"has_tuition":0,"has_dorm":0,"has_iep":0,"has_workshop":0,"has_multigrade":0,"has_second_term_exam":1}'::jsonb, 557, 'تهران', 'AN-106', 4, '2025-08-04'::timestamptz, 9, '[]'::jsonb, 'دخترانه', '6', '032-37329947', 'متوسطه اول', 'دبستان و متوسطه اندیشه', NULL, NULL, '09996199383', NULL, 2, 'صبح', 'عادی', NULL, '[0,1,2,3,4]'::jsonb)
+  (TRUE, 'تهران، خیابان آزادی، پلاک 102', 'district', NULL, '["نظری"]'::jsonb, '{"has_tuition":1,"has_dorm":1,"has_iep":1,"has_workshop":1,"has_multigrade":1,"has_second_term_exam":1}'::jsonb, 447, 'سنندج', 'SH-101', 1, '2025-04-26'::timestamptz, 1, '["ریاضی فیزیک","علوم تجربی","ادبیات و علوم انسانی","علوم و معارف اسلامی"]'::jsonb, 'پسرانه', '1', '066-42410552', 'متوسطه دوم', 'دبیرستان شهید بهشتی', '{"enabled":true,"autoSend":false}'::jsonb, NULL, '09998399845', NULL, 1, 'صبح', 'علوم تجربی', NULL, '[0,1,2,3,4,5]'::jsonb),
+  (TRUE, 'مشهد، خیابان معلم، پلاک 202', 'district', NULL, '["نظری"]'::jsonb, '{"has_tuition":1,"has_dorm":1,"has_iep":1,"has_workshop":1,"has_multigrade":0,"has_second_term_exam":1}'::jsonb, 415, 'سقز', 'FZ-102', 3, '2025-05-16'::timestamptz, 6, '["ریاضی فیزیک","علوم تجربی","ادبیات و علوم انسانی","علوم و معارف اسلامی"]'::jsonb, 'دخترانه', '2', '046-38525967', 'متوسطه دوم', 'دبیرستان فرزانگان', NULL, NULL, '09993506643', NULL, 1, 'هر دو', 'ریاضی', NULL, '[0,1,2,3,4]'::jsonb),
+  (TRUE, 'اصفهان، خیابان معلم، پلاک 175', 'district', NULL, '[]'::jsonb, '{"has_tuition":1,"has_dorm":1,"has_iep":1,"has_workshop":0,"has_multigrade":0,"has_second_term_exam":1}'::jsonb, 554, 'شهریار', 'AH-103', 5, '2025-06-05'::timestamptz, 11, '[]'::jsonb, 'پسرانه', '3', '044-36254974', 'متوسطه اول', 'مدرسه نمونه علامه حلی', NULL, NULL, '09991487287', NULL, 2, 'صبح', 'عادی', NULL, '[0,1,2,3,4]'::jsonb),
+  (TRUE, 'شیراز، خیابان معلم، پلاک 175', 'district', NULL, '[]'::jsonb, '{"has_tuition":1,"has_dorm":0,"has_iep":0,"has_workshop":0,"has_multigrade":0,"has_second_term_exam":1,"has_evening":1}'::jsonb, 440, 'نیشابور', 'MM-104', 7, '2025-06-25'::timestamptz, 16, '[]'::jsonb, 'دخترانه', '4', '085-33139365', 'متوسطه اول', 'دبیرستان مریم مقدس', NULL, NULL, '09997249160', NULL, 3, 'هر دو', 'عادی', NULL, '[0,1,2,3,4]'::jsonb),
+  (TRUE, 'تبریز، خیابان آزادی، پلاک 132', 'district', NULL, '["فنی و حرفه‌ای","کاردانش"]'::jsonb, '{"has_tuition":1,"has_dorm":1,"has_iep":0,"has_workshop":1,"has_multigrade":1,"has_second_term_exam":1}'::jsonb, 437, 'بانه', 'IZ-105', 2, '2025-07-15'::timestamptz, 4, '["الکتروتکنیک","الکترونیک","مکانیک خودرو","کامپیوتر","حسابداری","ساختمان","گرافیک","تعمیر لوازم خانگی","طراحی دوخت","تأسیسات","صنایع غذایی"]'::jsonb, 'پسرانه', '5', '081-39677471', 'متوسطه دوم', 'مجتمع آموزشی ایران‌زمین', NULL, NULL, '09992271502', NULL, 1, 'بعدازظهر', 'فنی و حرفه‌ای', NULL, '[0,1,2,3,4]'::jsonb),
+  (FALSE, 'کرج، خیابان ولیعصر، پلاک 194', 'district', NULL, '[]'::jsonb, '{"has_tuition":0,"has_dorm":0,"has_iep":0,"has_workshop":0,"has_multigrade":0,"has_second_term_exam":1}'::jsonb, 557, 'تهران', 'AN-106', 4, '2025-08-04'::timestamptz, 9, '[]'::jsonb, 'دخترانه', '6', '032-37329947', 'متوسطه اول', 'دبستان و متوسطه اندیشه', NULL, NULL, '09996199383', NULL, 2, 'صبح', 'عادی', NULL, '[0,1,2,3,4]'::jsonb)
 ON CONFLICT (id) DO UPDATE SET
   "active" = EXCLUDED."active",
   "address" = EXCLUDED."address",
   "area_kind" = EXCLUDED."area_kind",
+  "boom_goals" = EXCLUDED."boom_goals",
   "branches" = EXCLUDED."branches",
   "capabilities" = EXCLUDED."capabilities",
   "capacity" = EXCLUDED."capacity",
@@ -3006,21 +3093,22 @@ ON CONFLICT (id) DO UPDATE SET
   "updated_at" = EXCLUDED."updated_at";
 
 -- Inserting 2 rows into assoc_minutes
-INSERT INTO assoc_minutes ("archived", "attendees", "created_at", "id", "meeting_date", "resolutions", "school_id", "updated_at")
+INSERT INTO assoc_minutes ("archived", "attendees", "created_at", "id", "meeting_date", "meeting_type", "resolutions", "school_id", "updated_at")
 VALUES
   (TRUE, 'آقای کریمی — رئیس انجمن
 سرکار خانم موسوی — نمایندهٔ اولیا
-آقای نجفی — مدیر مدرسه', '2026-07-30'::timestamptz, '1', '2026-07-30', 'تصویبِ کمکِ داوطلبانهٔ ۱۰ میلیونی برای کتابخانه
+آقای نجفی — مدیر مدرسه', '2026-07-30'::timestamptz, '1', '2026-07-30', NULL, 'تصویبِ کمکِ داوطلبانهٔ ۱۰ میلیونی برای کتابخانه
 تعیینِ اردوی پاییزی در اواخرِ مهر', 6, '2026-08-01'::timestamptz),
   (FALSE, 'آقای کریمی — رئیس انجمن
 سرکار خانم موسوی — نمایندهٔ اولیا
-آقای نجفی — مدیر مدرسه', '2026-09-03'::timestamptz, '2', '2026-09-03', 'تصویبِ برگزاریِ جلسهٔ اطلاع‌رسانیِ ثبت‌نام
+آقای نجفی — مدیر مدرسه', '2026-09-03'::timestamptz, '2', '2026-09-03', NULL, 'تصویبِ برگزاریِ جلسهٔ اطلاع‌رسانیِ ثبت‌نام
 انتخابِ سرپرستِ تازه برای انجمن', 6, '2026-09-03'::timestamptz)
 ON CONFLICT (id) DO UPDATE SET
   "archived" = EXCLUDED."archived",
   "attendees" = EXCLUDED."attendees",
   "created_at" = EXCLUDED."created_at",
   "meeting_date" = EXCLUDED."meeting_date",
+  "meeting_type" = EXCLUDED."meeting_type",
   "resolutions" = EXCLUDED."resolutions",
   "school_id" = EXCLUDED."school_id",
   "updated_at" = EXCLUDED."updated_at";
