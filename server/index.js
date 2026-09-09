@@ -15,6 +15,9 @@
    `node server/seed.js` from the deterministic demo world.
    ───────────────────────────────────────────────────────────────── */
 'use strict';
+/* Tracing اول از همه: باید پیش از http و ماژول‌هایِ instrumentشده بالا بیاید (OTel) */
+const tracing = require('./tracing');
+tracing.initTracing();
 const waf = require('./waf'); /* P-WAF: فقط-تشخیص (detect-only) */
 const http = require('http');
 const fs = require('fs');
@@ -346,6 +349,13 @@ const onRequest = async (req, res) => {
   const https = isHttps(req);
   const nonce = crypto.randomBytes(16).toString('base64');
   securityHeaders(res, nonce, https);
+  /* Tracing (P-Trace): شناسهٔ ردیابی در کانتکست و سرآیندِ پاسخ برای هم‌بستگی —
+     پیش از WAF تا رویدادهای ممیزیِ آن شناسهٔ ردیابی داشته باشند. */
+  req.context = req.context || {};
+  try{
+    const __tid = tracing.getTraceId();
+    if(__tid){ req.context.trace_id = __tid; res.setHeader('X-Trace-Id', __tid); }
+  }catch(e){}
   /* WAF (P-WAF): فقط-تشخیص (detect-only)؛ هرگز مسدود نمی‌کند — اِعمال با لبه است */
   try{ await waf.wafMiddleware(req, res); }catch(e){}
   /* R97 — نگهبانِ شمردنِ شناسه: شمارِ رد‌ها (404/403/401) و شمارِ همهٔ

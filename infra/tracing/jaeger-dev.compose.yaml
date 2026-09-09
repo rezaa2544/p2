@@ -1,0 +1,13 @@
+# Jaeger all-in-one برای توسعه: حافظه، بدون نیاز به ES.
+# اجرا:  docker compose -f infra/tracing/jaeger-dev.compose.yaml up -d
+# رابط:   http://127.0.0.1:16686   (service = payesh-api)
+services:
+  jaeger:
+    image: jaegertracing/jaeger:2.20.0
+    command: ["--config", "/etc/jaeger/jaeger-dev.yaml"]
+    ports:
+      - "16686:16686" # UI + query API
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP (مورداستفادهٔ سرور پایش)
+    volumes:
+      - ./jaeger-dev.yaml:/etc/jaeger/jaeger-dev.yaml:ro
