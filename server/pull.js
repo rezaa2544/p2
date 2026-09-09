@@ -17,8 +17,29 @@ const { projectUserByRole } = require('./middleware/projection');
  */
 function createPull(ctx) {
   const store = ctx.store;
+  const db = ctx.db; /* Wave 1 (chat2): unified read seam — PG when active, JSON store otherwise */
   const sessionFrom = ctx.sessionFrom;
   const sendJson = ctx.sendJson;
+
+  /**
+   * Wave 1: single read seam for pulling a collection's raw rows. When the
+   * unified db layer is wired (index.js passes db) rows come through
+   * db.readCollection (PostgreSQL when active; the JSON store in fallback —
+   * identical rows). When db is absent (isolated tests, e.g. pull-bootstrap.js)
+   * it reads the store directly. Internal store keys (__deleted_records,
+   * __server_version, …) and the cross-collection lookups inside
+   * filterCollectionForSession (store.users / schedule / enrollments used to
+   * compute a session's scope) are intentionally still served from `store` in
+   * this Wave-1 part — they are real-store metadata / scope aids, not the
+   * requested data payload. See docs/WAVE1_READS_INVENTORY.md.
+   */
+  async function readCol(c) {
+    if (db && typeof db.readCollection === 'function') {
+      const rows = await db.readCollection(c);
+      return Array.isArray(rows) ? rows : [];
+    }
+    return (store && Array.isArray(store[c])) ? store[c] : [];
+  }
 
   /**
    * فیلتر کردن رکوردهای یک مجموعه بر اساس نقش و محدوده کاربر
@@ -148,7 +169,7 @@ function createPull(ctx) {
 
     const resultCollections = {};
     for (const c of targetCols) {
-      const rawList = store[c] || [];
+      const rawList = await readCol(c);
       const scopedList = filterCollectionForSession(c, rawList, session);
 
       if (isDelta) {

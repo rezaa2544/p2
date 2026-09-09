@@ -136,6 +136,63 @@ async function query(text, params) {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   Wave 1 (chat2) — Read-path seam.
+   -------------------------------------------------------------------
+   A single entry point for server READS so that, once PostgreSQL is the
+   configured source of truth, every read route serves from the DB instead
+   of reaching into the in-memory JSON `store`.
+
+   Dual mode (identical to the rest of this file):
+   - PG active (DATABASE_URL + pg driver):  SELECT * FROM "<table>"
+   - memory fallback / offline:              (memoryStore[name] || [])
+     In this mode memoryStore === the JSON store that `server/index.js`
+     loaded, so the returned rows are byte-for-byte what the caller would
+     have read from `store[name]` before. Behavior is therefore preserved.
+
+   ⚠️ Verification note (recorded honestly): the PostgreSQL branch of
+   these helpers is defined and wired, but was NOT executed against a live
+   PostgreSQL in the CI sandbox for this part (no DATABASE_URL / driver /
+   seeded DB). It is exercised only when a real PG is present. See
+   docs/WAVE1_READS_INVENTORY.md. Only real data tables may be read here;
+   internal store keys (__deleted_records, __server_version, …) are NOT
+   relational tables and are intentionally NOT routable through PG.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const PG_READABLE_TABLE = /^[a-z][a-z0-9_]*$/;
+
+function isPgReadableTable(name) {
+  return typeof name === 'string'
+    && PG_READABLE_TABLE.test(name)
+    && name.indexOf('__') !== 0;
+}
+
+/**
+ * Read one full collection via the unified layer.
+ * @param {string} name - collection / table name (real data table only)
+ * @returns {Promise<Array>} array of row objects
+ */
+async function readCollection(name) {
+  if (typeof name !== 'string' || !name) return [];
+  if (isPostgres() && isPgReadableTable(name)) {
+    const res = await pool.query(`SELECT * FROM "${name}"`);
+    return Array.isArray(res.rows) ? res.rows : [];
+  }
+  return (memoryStore && Array.isArray(memoryStore[name])) ? memoryStore[name] : [];
+}
+
+/**
+ * Read a single row by numeric id (via readCollection).
+ * @param {string} name - collection / table name
+ * @param {number|string} id
+ * @returns {Promise<Object|null>}
+ */
+async function readOne(name, id) {
+  const rows = await readCollection(name);
+  const n = Number(id);
+  return rows.find((r) => r && Number(r.id) === n) || null;
+}
+
 /**
  * Quick ping for health probes & readiness checks
  */
@@ -339,6 +396,8 @@ module.exports = {
   isPostgres,
   getPool,
   query,
+  readCollection,
+  readOne,
   ping,
   transaction,
   persistOp,
