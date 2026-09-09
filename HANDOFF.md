@@ -14,6 +14,29 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## Wave 3 (چت ۲) — بخش دوم: GET-list های grades/classes/users → DB-native — ۲۰۲۶-۰۹-۰۹ — انجام، با یک قید ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` (ادامهٔ بخش اول) — سه builder تازه در
+`server/dbquery.js` (`buildGradesList`/`buildClassesList`/`buildUsersList`) +
+سیم‌کشیِ سه route به آن (فقط وقتی PG زنده) + Index در `server/schema.sql` +
+سئوتِ تازهٔ `tests/wave3-query2.js` (۱۳/۱۳).
+
+- **grades:** scope/filter + محدودهٔ نقشِ student/parent/teacher (EXISTS) ·
+  enrichment (subject_name/student_name) با LEFT JOIN در خود SQL · `ORDER BY id DESC`.
+- **classes:** scope + grade · `student_count` (scalar-subquery روی enrollments) +
+  `homeroom_teacher_name` (LEFT JOIN users).
+- **users:** scope + role + جستجویِ آزادِ ILIKE روی name/nid/phone؛ national_id
+  فقط پارامترِ بایند.
+- `_finalize` تعمیم یافت (selectList/pageFrom/countFrom) تا COUNT روی جدولِ پایه
+  بماند و صفحه از sourceِ غنی (JOIN) بیاید. هر سه route async شدند؛ index.js آن‌ها
+  را await می‌کند. وقتی PG خاموش است JS قبلی byte-identical اجرا می‌شود.
+- **دروازه‌ها:** smoke **۵۴۷/۵۴۷** · run.js **۳۵/۳۵** · wave3 **۱۳/۱۳** ·
+  wave3-query2 **۱۳/۱۳** · wave1 **۱۸/۱۸** · check-authz **۰** ·
+  secret-scan **۱۱/۱۱** · `build --check` ✅.
+- **🔴 قیدِ صداقت:** اجرایِ واقعی + `EXPLAIN ANALYZE` + گیتِ برابری/مجوز بر
+  PGِ زنده هنوز pending است (سندباکس PG نداشت) — الزامی پیش از تولید. کارهایِ باز
+  در `docs/WAVE3_QUERY_PERFORMANCE.md` §۴.
+
 ## Wave 3 (چت ۲): Query و Performance · Part 1 — students/attendance → DB-native — ۲۰۲۶-۰۹-۰۹ — انجام، با یک قید ✅
 
 **وضعیت:** روی `arena/01a085ca-p2` (رویِ Wave 1 همان شاخه) — لایهٔ
