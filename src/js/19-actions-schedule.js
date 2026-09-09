@@ -66,5 +66,17 @@ function scheduleActions(e, el, id, a, rawId){
      if(r.teacher_id&&teacherBusyAt(r.teacher_id,day,period,id)){toast('این دبیر در آن ساعت مشغول است','err');render();return;}
      update('schedule',id,{day,period});
      toast('زنگ جابه‌جا شد: '+DAYS[day]+' زنگ '+fa(period),'ok');render();},
+   /* ── E.6: تولید خودکار برنامه ── */
+   'schedgen-open'(){
+     const cid=Number(S.filters.class||(S.user.role==='student'?(classOf(S.user.id)||{}).id:(visibleClasses()[0]||{}).id));
+     const c=byId('classes',cid);
+     if(!c){toast('کلاسی انتخاب نشده است','err');return;}
+     schedgenPreviewModal(c.school_id);
+   },
+   'schedgen-apply'(){
+     const r=schedgenApply();
+     toast(r.msg,r.ok?'ok':'err');
+     if(r.ok){closeModal();render();}
+   },
   };
 }

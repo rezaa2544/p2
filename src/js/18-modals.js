@@ -75,6 +75,8 @@ function schoolModal(s){
     <div class="grid g2">
       ${f('مقطع',sel('m_level',[['ابتدایی','ابتدایی'],['متوسطه اول','متوسطه اول'],['متوسطه دوم','متوسطه دوم']],s.level))}
       ${f('نوع',sel('m_type',SCHOOL_TYPES.map(x=>[x,x]),s.type||'عادی'))}
+      ${f('نوع مدرسه (تعیین‌کنندهٔ ماژول‌ها)',sel('m_school_type',(typeof SCHOOL_TYPE_DEFS!=='undefined'?SCHOOL_TYPE_DEFS.map(d=>[d[0],d[1]]):[['governmental','دولتی معمولی']]),(typeof schoolTypeOf==='function'?schoolTypeOf(s):'governmental')))}
+      ${(function(){var cur=(typeof yearCode==='function')?yearCode():'';var pv=(typeof prevYearCode==='function'&&cur)?prevYearCode(cur):'';var nx=(typeof nextYearCode==='function'&&cur)?nextYearCode(cur):'';var L=(typeof yearCodeTitle==='function')?function(c,tag){return 'سال '+yearCodeTitle(c)+(tag||'')}:function(c){return c};var o=[['','📅 دنبال تقویم (خودکار)']];if(pv)o.push([pv,L(pv)]);if(cur)o.push([cur,L(cur,' (جاری)')]);if(nx)o.push([nx,L(nx)]);return f('سال تحصیلی عملیاتی',sel('m_active_year',o,s.active_year_code||''));})()}
       ${f('جنسیت',sel('m_gender',[['پسرانه','پسرانه'],['دخترانه','دخترانه']],s.gender))}
       ${f('تلفن ثابت مدرسه',inp('m_landline',s.landline||''))}
       ${f('تلفن همراه رابط',inp('m_phone',s.phone||''))}
@@ -84,6 +86,7 @@ function schoolModal(s){
     <div class="small muted" style="margin:-4px 0 10px">
       شیفت بر ساعت شروع زنگ‌ها اثر می‌گذارد. زمان‌بندی دقیق زنگ‌ها را
       مدیر مدرسه در صفحهٔ «زمان‌بندی زنگ‌ها» تعیین می‌کند.</div>
+    <div class="small muted" style="margin:-4px 0 10px">نوع مدرسه تعیین می‌کند کدام ماژول‌ها (شهریه، خوابگاه، IEP، چندپایه، کارگاه) فعال باشند؛ با تغییر آن، چک‌باکس‌های «پروفایل قابلیت» خودکار تنظیم می‌شوند ولی دستی هم قابل اصلاح‌اند.</div>
     <div class="sec-title">🗓️ روزهای کاری</div>
     <div class="row" style="gap:12px;flex-wrap:wrap;padding:4px 0">
       ${(typeof DAYS_FULL!=='undefined'?DAYS_FULL:['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه']).map((d,i)=>`<label class="row" style="gap:5px;cursor:pointer"><input type="checkbox" class="m-wd" value="${i}" ${((s.work_days&&s.work_days.length?s.work_days:(typeof DEFAULT_WORK_DAYS!=='undefined'?DEFAULT_WORK_DAYS:[0,1,2,3])).indexOf(i)>-1)?'checked':''}/> ${d}</label>`).join('')}
@@ -258,6 +261,14 @@ function gradeModal(g){
   const studs=studentsOfClass(cid);
   if(!studs.length){toast('این کلاس دانش‌آموزی ندارد','err');return;}
   g=g||{student_id:studs[0].id,subject_id:(_autoOk?_auto.subjectId:subs[0].id),term:TERMS[0],exam_type:EXAM_TYPES[0],score:20,kind:'theory'};
+  /* ── فاز ۰.۳: نمرهٔ نهایی کشوری از بیرون می‌آید ──
+     دبیر نوع «امتحان نهایی» را در فرم نمی‌بیند و اگر به رکوردِ کشوری
+     رسید، نمره برایش فقط‌خواندنی است. گارد اصلی روی داده در
+     19-actions-core.js → grade-save است؛ اینجا فقط کشف‌پذیری. */
+  const _gRole=(typeof activePersona==='function')?activePersona():(S.user&&S.user.role);
+  const _gTypes=(_gRole==='teacher')?EXAM_TYPES.filter(t=>t!==NATIONAL_EXAM_TYPE):EXAM_TYPES;
+  const _gNat=(typeof gradeSource==='function')&&gradeSource(g)==='national';
+  const _gLocked=!!(_gNat&&_gRole==='teacher');
   /* بند ۴.۲: در مدارسِ فنی‌وحرفه‌ای/کاردانش، نوعِ نمره (تئوری/عملی) انتخاب می‌شود */
   const _gsc=byId('schools',(byId('classes',cid)||{}).school_id);
   const _gkindOpts=(typeof workshopSchool==='function'&&workshopSchool(_gsc&&_gsc.id))?
@@ -266,9 +277,10 @@ function gradeModal(g){
    `<div class="grid g2">
     ${f('دانش‌آموز',`<select class="select" id="g_st" ${g.id?'disabled':''}>${studs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
     ${f('درس',`<select class="select" id="g_sub" ${g.id?'disabled':''}>${subs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.subject_id?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`)}
-    ${f('نوبت',sel('g_term',TERMS.map(t=>[t,t]),g.term))}${f('نوع آزمون',sel('g_type',EXAM_TYPES.map(t=>[t,t]),g.exam_type))}
+    ${f('نوبت',sel('g_term',TERMS.map(t=>[t,t]),g.term))}${f('نوع آزمون',sel('g_type',_gTypes.map(t=>[t,t]),g.exam_type))}
     ${_gkindOpts}
-    ${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${escAttr(g.score)}" />`)}</div>`,'grade-save'));
+    ${_gNat?`<div class="small" style="grid-column:1/-1">${_gLocked?'🔒':'🏛️'} <b>نتیجهٔ امتحان نهایی کشوری</b> — ${_gLocked?'فقط مدیر مدرسه می‌تواند آن را وارد یا اصلاح کند.':'از بیرون (اعلام اداره) وارد می‌شود و در کارنامه جدا نشان داده می‌شود.'}</div>`:''}
+    ${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${escAttr(g.score)}" ${_gLocked?'disabled':''} />`)}</div>`,'grade-save'));
   window._edit=g;window._gclass=cid;
 }
 

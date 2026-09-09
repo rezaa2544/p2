@@ -123,7 +123,7 @@ function createPull(ctx) {
    * پردازش درخواست GET /api/v1/pull
    */
   async function apiPull(req, res) {
-    const session = sessionFrom(req);
+    const session = await sessionFrom(req);
     if (!session) {
       return sendJson(res, 401, { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' });
     }

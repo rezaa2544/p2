@@ -82,4 +82,62 @@
 | `check-authz` | ۰ ✅ |
 | `secret-scan` | ۱۱/۱۱ ✅ |
 
-*پایان سند. گردآوری: چت ۱.*
+---
+
+## ۶. سطح تعارض پی‌آر ۳۵ (`feat/b3-d234-chat4`) — سنجیده‌شده ۲۰۲۶-۰۹-۰۹
+
+**روش (بدون checkout، بدون آلوده‌کردن درخت):**
+```bash
+git merge-tree 430c7c8 origin/main origin/feat/b3-d234-chat4
+```
+`430c7c8` = مرجِ واقعیِ شاخه (Merge PR #19). راستی‌آزماییِ راه‌دور:
+`gh pr view 35 --json mergeable,mergeStateStatus` → `CONFLICTING` / `DIRTY`.
+
+### ۶.۱ فایل‌هایی که **واقعاً** تعارض متنی دارند (۱۲ فایل، ۷۴ نشانگر)
+
+| فایل | هانک | محتوای تعارض (سنجیده‌شده) | استراتژی |
+|---|---|---|---|
+| `server/schema.sql` | ۵۵ | جدول‌های تازهٔ دو طرف | **بازتولید با مولد** — `node tools/migrate-to-pg.js` (دستی مرج نکنید) |
+| `index.html` | ۷ | باندل | **بازتولید** — `node build.js` |
+| `USER_GUIDE.html` | ۱ | مُهر بیلد | `node build.js` (کال‌اوت‌های هر دو طرف بماند) |
+| `src/js/_order.json` | ۱ | main: `74-schedgen.js` · چت۴: `74-region-tools.js` + `75-staff-gap.js` | 🔴 **هر سه** ماژول بمانند — سمتِ چت۴ `74-schedgen.js` را ندارد |
+| `src/js/05-router.js` | ۲ | `NAV` سوپرادمین و اداره: افزودن `regionscore`/`staffgap` | سمتِ چت۴ — فهرستش دقیقاً همان main به‌علاوهٔ دو روت تازه است (superset) |
+| `src/js/07-shell.js` | ۱ | دو `case` تازه در `renderRoute` | هر دو |
+| `src/js/30-authz.js` | ۱ | سه اکشن `staffgap-norm`/`staffpost-save`/`staffpost-del` | هر دو |
+| `src/js/19-actions-core.js` | ۱ | **زنجیرهٔ دسپاتچ** (`REGION_ACTIONS`/`STAFFGAP_ACTIONS` پس از `TEVAL_ACTIONS`) | هر دو `else if` بمانند. ⚠️ گارد فاز ۰.۳ در `grade-save` (سمتِ main) در این هانک **نیست** و خودکار ادغام می‌شود — پس از مرج راستی‌آزمایی شود |
+| `src/js/24-edu-office.js` | ۱ | دو قلابِ دادهٔ نمونه (`generateUrgentAnnDemo`/`generateStaffPostDemo`) | هر دو |
+| `tests/smoke.js` | ۲ | `NAV_EXPECT` سوپرادمین و اداره | سمتِ چت۴ (فهرست بلندتر، شامل `regionscore`/`staffgap`) |
+| `docs/ROADMAP.md` | ۱ | **added in both** — هر دو طرف فایل را ساخته‌اند | هر دو محتوا: جدول main (فاز ۰/۱/…) + وضعیت A.1–A.4 چت۴ |
+| `HANDOFF.md` | ۱ | ورودی‌های دو طرف در بالای فایل | هر دو ورودی، جدیدتر بالا |
+
+### ۶.۲ خودکار ادغام می‌شوند (تعارض ندارند)
+
+از ۱۴ فایلی که هر دو طرف تغییر داده‌اند، سه تا بدون تعارض ادغام می‌شوند:
+`server/sync.js` · `authz/model.json` · `authz/write-perms.json`
+— ولی `write-perms.json` پس از ادغام **باید بازتولید شود**
+(`node build.js --check` کهنه بودنش را قرمز می‌کند).
+
+### ۶.۳ نکتهٔ روش
+
+`git merge-tree` بلوک‌های `added in both` را جدا از `changed in both`
+گزارش می‌کند. اگر فقط بلوک‌های `changed in both` را بشمارید،
+`docs/ROADMAP.md` را از دست می‌دهید (هر دو طرف مستقل ساخته‌اندش).
+شمارش درست، بر پایهٔ خودِ نشانگرها:
+```bash
+awk '/^  (our|their|base|result) +100644/{f=$NF} /^\+<<<<<<</{c[f]++}
+     END{for(k in c) print c[k], k}' | sort -rn
+```
+
+### ۶.۴ ترتیب پیشنهادی پس از حل
+
+```bash
+node tools/migrate-to-pg.js   # schema.sql از مولد
+node build.js                 # index.html + USER_GUIDE + write-perms
+node build.js --check && node tools/check-authz.js && node tests/secret-scan.js
+node --expose-gc --max-old-space-size=2048 tests/smoke.js   # ۵۴۷/۵۴۷
+node tests/region-scorecard.js && node tests/staff-gap.js && node tests/urgent-ann.js
+node tests/exam-types.js      # فاز ۰.۳ (main) — نباید بشکند
+```
+
+*این بخش را چت ۱ (جانشین) افزود — ۲۰۲۶-۰۹-۰۹.*
+
