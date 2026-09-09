@@ -502,6 +502,16 @@ academic-years **۹/۹** + جهش **۵/۵** · exam-types **۲۷/۲۷** + جهش
   `git merge-tree 430c7c8 origin/main origin/feat/b3-d234-chat4` سنجیده و در
   `docs/PR_MERGE_PLAN.md` §۶ ثبت شد. دامِ روش هم ثبت شد: بلوک‌های
   `added in both` را باید جدا شمرد، وگرنه `docs/ROADMAP.md` از قلم می‌افتد.
+## چت ۳ جدید — Wave 11: Cache (TTL، invalidation، stampede protection) — ۲۰/۰۶/۱۴ (2026-09-09)
+
+**وضعیت:** شاخهٔ `arena/01a08545-p2` (بعد از دور ۱۰). سه کامیت: هسته + تست‌ها / اسنکواری و مستندات / گزارش.
+- **Audit + ۴ شکافِ رفع‌شده:** (۱) L1 بی‌سقف بود ⇒ **LRU با سقف** (`PAYESH_CACHE_L1_MAX` پیش‌فرض ۱۰٬۰۰۰) + TTL 60s. (۲) انقضایِ ناقصِ L2: `invalidateSchool` فقط L1-resident‌ها را پاک می‌کرد و رویدادِ `user` L2 را نمی‌زد ⇒ ایندکسِ مشترکِ `payesh:cache:school:<sid>` + `purgeSchoolL2` (در انقضایِ school و شنوندهٔ pub/sub) + انقضایِ L2 در رویدادِ user. (۳) REST routes (۵ فایل، ۱۶ نقطهٔ نوشت) کش نمی‌زدند ⇒ همه با `invalidateCollection`. (۴) stampede ⇒ `cache.withSingleFlight` + پوشاندنِ مسیرِ bootstrap (N هم‌زمانِ miss = یک build).
+- **توسعهٔ redis.js:** `sAdd`/`sMembers`/`sRem` با فال‌بکِ حافظه.
+- **تست‌ها:** `tests/wave11-cache.js` (C1…C6 = ۲۰ بررسی؛ fake clientِ قراردادسازگار با Set/TTL؛ C6 = stampede روی route واقعی).
+- **گیت‌ها سبز:** smoke ۵۴/۵۴۷، check-authz ۰، secret-scan ۱۱/۱۱، build --check. رگرسیون: server1 31 · s12 43 · s13 9 · s14 13 · s15 40 · s17 70 · s18 55 · pull-bootstrap 12 · wave1-writes 14 · wave6-redis 22 · sync-atomic-batch 22 · waf-mutations 4/4 — همه سبز.
+- **مستندات:** `docs/WAVE11_CACHE_STRATEGY.md`، AI_PROMPT ۰/۵/۳۲، ROADMAP B.5 ✅.
+- **pending:** ردیسِ زنده در ساندباکس نیست (fake قراردادسازگار؛ CI pending — در سند ثبت شد).
+
 ## چت ۳ جدید — Wave 6: Redis و Distributed State (Audit و تکمیل) — ۲۰/۰۶/۱۴ (2026-09-09)
 
 **وضعیت:** شاخهٔ `arena/01a08545-p2` (بعد از دور ۱۰۵). سه کامیت: هسته + تست‌ها / اسنکواری و مستندات / گزارش.

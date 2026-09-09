@@ -14,7 +14,7 @@ const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز 
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { projectUserByRole } = require('../middleware/projection');
-const { buildStudentsList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
+const { buildStudentsList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */const cache = require('../cache'); /* Wave 11 */
 
 function createStudentRoutes(ctx) {
   const store = ctx.store;
@@ -169,6 +169,7 @@ function createStudentRoutes(ctx) {
     store.users.push(newStudent);
     markDirty();
 
+      cache.invalidateCollection('users', newStudent.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
     audit('student_created', { user_id: user.id, student_id: newStudent.id, school_id: schoolId });
     return { status: 201, body: { ok: true, data: projectUserByRole(newStudent, user.role) } };
   }
@@ -213,6 +214,7 @@ function createStudentRoutes(ctx) {
       const cachedT = (store.users || []).find(u => u.id === Number(id));
       if (cachedT) Object.assign(cachedT, next);
       markDirty();
+      cache.invalidateCollection('users', student.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
       audit('student_iep_updated', { user_id: user.id, student_id: student.id });
       return { status: 200, body: { ok: true, data: projectUserByRole(cachedT || next, user.role) } };
     }
@@ -243,6 +245,7 @@ function createStudentRoutes(ctx) {
     if (cached) Object.assign(cached, next);
     markDirty();
 
+    cache.invalidateCollection('users', student.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
     audit('student_updated', { user_id: user.id, student_id: student.id });
     return { status: 200, body: { ok: true, data: projectUserByRole(cached || next, user.role) } };
   }
@@ -272,6 +275,7 @@ function createStudentRoutes(ctx) {
       if (del.status === 503) return pgDown();
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
+    cache.invalidateCollection('users', student.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
     return { status: 200, body: { ok: true, message: 'دانش‌آموز با موفقیت حذف شد' } };
   }
 
