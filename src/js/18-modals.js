@@ -258,6 +258,14 @@ function gradeModal(g){
   const studs=studentsOfClass(cid);
   if(!studs.length){toast('این کلاس دانش‌آموزی ندارد','err');return;}
   g=g||{student_id:studs[0].id,subject_id:(_autoOk?_auto.subjectId:subs[0].id),term:TERMS[0],exam_type:EXAM_TYPES[0],score:20,kind:'theory'};
+  /* ── فاز ۰.۳: نمرهٔ نهایی کشوری از بیرون می‌آید ──
+     دبیر نوع «امتحان نهایی» را در فرم نمی‌بیند و اگر به رکوردِ کشوری
+     رسید، نمره برایش فقط‌خواندنی است. گارد اصلی روی داده در
+     19-actions-core.js → grade-save است؛ اینجا فقط کشف‌پذیری. */
+  const _gRole=(typeof activePersona==='function')?activePersona():(S.user&&S.user.role);
+  const _gTypes=(_gRole==='teacher')?EXAM_TYPES.filter(t=>t!==NATIONAL_EXAM_TYPE):EXAM_TYPES;
+  const _gNat=(typeof gradeSource==='function')&&gradeSource(g)==='national';
+  const _gLocked=!!(_gNat&&_gRole==='teacher');
   /* بند ۴.۲: در مدارسِ فنی‌وحرفه‌ای/کاردانش، نوعِ نمره (تئوری/عملی) انتخاب می‌شود */
   const _gsc=byId('schools',(byId('classes',cid)||{}).school_id);
   const _gkindOpts=(typeof workshopSchool==='function'&&workshopSchool(_gsc&&_gsc.id))?
@@ -266,9 +274,10 @@ function gradeModal(g){
    `<div class="grid g2">
     ${f('دانش‌آموز',`<select class="select" id="g_st" ${g.id?'disabled':''}>${studs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
     ${f('درس',`<select class="select" id="g_sub" ${g.id?'disabled':''}>${subs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.subject_id?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`)}
-    ${f('نوبت',sel('g_term',TERMS.map(t=>[t,t]),g.term))}${f('نوع آزمون',sel('g_type',EXAM_TYPES.map(t=>[t,t]),g.exam_type))}
+    ${f('نوبت',sel('g_term',TERMS.map(t=>[t,t]),g.term))}${f('نوع آزمون',sel('g_type',_gTypes.map(t=>[t,t]),g.exam_type))}
     ${_gkindOpts}
-    ${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${escAttr(g.score)}" />`)}</div>`,'grade-save'));
+    ${_gNat?`<div class="small" style="grid-column:1/-1">${_gLocked?'🔒':'🏛️'} <b>نتیجهٔ امتحان نهایی کشوری</b> — ${_gLocked?'فقط مدیر مدرسه می‌تواند آن را وارد یا اصلاح کند.':'از بیرون (اعلام اداره) وارد می‌شود و در کارنامه جدا نشان داده می‌شود.'}</div>`:''}
+    ${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${escAttr(g.score)}" ${_gLocked?'disabled':''} />`)}</div>`,'grade-save'));
   window._edit=g;window._gclass=cid;
 }
 
