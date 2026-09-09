@@ -166,7 +166,7 @@ function createAuth(ctx){
        phones must cost the same as known ones (equal-shape responses). */
     const now = Date.now();
     const ip = clientIp(req);
-    otp.reloadIfChanged(); /* R101: sibling instances' writes (shared otp.json) */
+    await otp.reloadIfChanged(); /* R101: sibling instances' writes (shared otp.json) */
     const cd = otp.data.cd;
     if(now - (cd[phone] || 0) < CODE_COOLDOWN_MS) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
     const daily = otp.data.daily;
@@ -183,7 +183,7 @@ function createAuth(ctx){
     cd[phone] = now;
     if(!daily[phone] || daily[phone].day !== day) daily[phone] = { day, n: 0 };
     daily[phone].n += 1;
-    otp.save(); /* R101: crash-safe + visible to sibling instances */
+    await otp.save(); /* R101: crash-safe + visible to sibling instances */
 
     const user = (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === phone.slice(-10));
     /* S-73-2: ONE response shape whether or not the phone is known —
@@ -197,7 +197,7 @@ function createAuth(ctx){
        R101: 6 digits; stored in otp.json (distributed). */
     const code = String(crypto.randomInt(100000, 1000000));
     otp.data.codes[phone] = { h: hashCode(code, phone), at: now, user_id: user.id, tries: 0 };
-    otp.save();
+    await otp.save();
     audit('send_code', { user_id: user.id, role: user.role, school_id: user.school_id, ip, summary: 'ارسال کد ورود برای کاربر ' + user.id });
     const out = { ok: true, code: 'sent' };
     if(DEMO_CODE_ECHO) out.demo_code = code; /* dev/preview — a real gateway never echoes */
@@ -222,12 +222,12 @@ function createAuth(ctx){
        so it survives restarts and is shared across instances of one store. */
     const now = Date.now();
     const ip = clientIp(req);
-    otp.reloadIfChanged();
+    await otp.reloadIfChanged();
     const lri = otp.data.login_rate_ip;
     pruneList(lri[ip] = lri[ip] || [], WINDOW_MS, now);
     if(lri[ip].length >= IP_LOGIN_MAX) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
     lri[ip].push(now);
-    otp.save();
+    await otp.save();
 
     const user = (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === phone.slice(-10));
 
@@ -236,25 +236,25 @@ function createAuth(ctx){
     const fl = (otp.data.login_fail[phone] = otp.data.login_fail[phone] || { n: 0, until: 0 });
     if(fl.until > Date.now()) await sleep(fl.until - Date.now());
 
-    const fail = (msg) => {
+    const fail = async (msg) => {
       fl.n += 1;
       fl.until = Date.now() + Math.min(1000 * Math.pow(2, Math.max(0, fl.n - 3)), 30000);
       audit('login_fail', { reason: msg, user_id: user ? user.id : null, role: user ? user.role : null, school_id: user ? user.school_id : null, ip, summary: 'ورود ناموفق: ' + msg });
-      otp.save();
+      await otp.save();
       return sendJson(res, 401, { ok: false, code: msg });
     };
 
     /* 1) the code — equal timing whether or not the phone is known.
        R96: hash-only compare (plaintext code is never stored). */
     const rec = otp.data.codes[phone];
-    if(rec && (rec.tries || 0) >= LOGIN_TRIES_MAX) delete otp.data.codes[phone]; /* exhausted — force re-send */
+    if(rec && (rec.tries || 0) >= LOGIN_TRIES_MAX) otp.deleteCode(phone); /* exhausted — force re-send (P0-15: tombstone) */
     const okCode = codeRecOk(rec, code, phone, Date.now());
     if(!okCode){
       /* R96: تلاشِ نادرست هم شمارنده را بالا می‌برد — وگرنه کد
          هرگز «کِلی» نمی‌شد و brute-force فقط با سقفِ IP می‌خورد. */
       if(rec){
         rec.tries = (rec.tries || 0) + 1;
-        if(rec.tries >= LOGIN_TRIES_MAX) delete otp.data.codes[phone];
+        if(rec.tries >= LOGIN_TRIES_MAX) otp.deleteCode(phone); /* P0-15: tombstone */
       }
       checkCodeSafe('dummy', 'dummy');
       return fail('bad_code');
@@ -269,10 +269,10 @@ function createAuth(ctx){
     const school = (store.schools || []).find(s => s.id === user.school_id);
     if(school && !school.active) return fail('school_inactive');
 
-    delete otp.data.codes[phone];
+    otp.deleteCode(phone); /* P0-15: tombstone — مرگِ کد باید به همهٔ نمونه‌ها برسد */
     fl.n = 0; fl.until = 0;
     audit('login_ok', { user_id: user.id, role: user.role, school_id: user.school_id, ip, summary: 'ورود موفق: ' + user.id + ' (' + user.role + ')' });
-    otp.save();
+    await otp.save();
     setSessionCookie(req, res, user);
     /* never echo nid / full phone back (contract §4) */
     sendJson(res, 200, { ok: true, user: { id: user.id, full_name: user.full_name, role: user.role, school_id: user.school_id || null, phone_masked: phone.slice(0, 4) + '****' + phone.slice(-2) } });
