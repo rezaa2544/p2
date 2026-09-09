@@ -391,6 +391,27 @@ function inScope(session, coll, recId, data){
     return nk.length > 0 && nk.every(k => k === 'read');
   }
 
+  /* ب.۳ — ارزشیابی ناشناس معلم: رکورد عمداً هیچ فیلد هویتی ندارد، پس
+     مالکیت به «مدرسهٔ پاسخ‌دهنده» گره می‌خورد:
+     - دانش‌آموز: فقط مدرسهٔ خودش
+     - ولی: فقط مدرسهٔ فرزندانش (از parent_links)
+     - بقیهٔ نقش‌ها: رد (درج/ویرایش/حذف) — نقش‌های مجازِ مدل هم فقط
+       دانش‌آموز و ولی‌اند و دروازهٔ نقش جداگانه نگهبانی می‌کند. */
+  if(coll === 'teacher_evaluations'){
+    if(u.role === 'student'){
+      return !!(data && Number(data.school_id) === Number(u.school_id));
+    }
+    if(u.role === 'parent'){
+      const kids = (get_store().parent_links || []).filter(l => l.parent_id === u.id).map(l => Number(l.student_id));
+      const kidSchools = kids.map(kid => {
+        const k = (get_store().users || []).find(x => x.id === kid);
+        return k && Number(k.school_id);
+      }).filter(x => x != null);
+      return !!(data && kidSchools.indexOf(Number(data.school_id)) > -1);
+    }
+    return false;
+  }
+
   if(u.role === 'student'){
     if(coll === 'messages') return msgOwnerOk();
     if(coll === 'users' && rec && rec.id === u.id) return true;

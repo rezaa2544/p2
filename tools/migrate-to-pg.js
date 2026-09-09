@@ -65,12 +65,13 @@ function getColumnType(colName, fieldName, sampleVal) {
   }
   if (fieldName === 'capabilities' || fieldName === 'data' || fieldName === 'meta' || 
       fieldName === 'settings' || fieldName === 'incoming' || fieldName === 'server_state' || 
-      fieldName === 'items' || fieldName === 'options' || fieldName === 'extra') {
+      fieldName === 'items' || fieldName === 'options' || fieldName === 'extra' ||
+      fieldName === 'criteria') {
     return 'JSONB';
   }
   if (fieldName === 'body' || fieldName === 'text' || fieldName === 'note' || 
       fieldName === 'notes' || fieldName === 'description' || fieldName === 'summary' || 
-      fieldName === 'details' || fieldName === 'iep_notes') {
+      fieldName === 'details' || fieldName === 'iep_notes' || fieldName === 'feedback') {
     return 'TEXT';
   }
 

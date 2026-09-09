@@ -1897,6 +1897,22 @@
    "del": [],
    "note": "G.2 farnaz: manager files, superadmin triages"
   },
+  "teacher_evaluations": {
+   "fields": [
+    "created_at",
+    "criteria",
+    "feedback",
+    "id",
+    "school_id",
+    "teacher_id"
+   ],
+   "ins": [
+    "student",
+    "parent"
+   ],
+   "upd": [],
+   "del": []
+  },
   "teacher_notes": {
    "fields": [
     "body",
