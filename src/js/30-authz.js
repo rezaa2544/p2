@@ -314,6 +314,8 @@ var ACTION_ROLES = {
   /* اطلاعیه */
   'ann-save':      ['manager','superadmin','edu_office'],
   'ann-del':       ['manager','superadmin','edu_office'],
+  /* ب.۳ — ارزشیابی ناشناس معلم: فقط دانش‌آموز و ولی پاسخ می‌دهند */
+  'eval-save':     ['student','parent'],
   /* مالی */
   'tuition-plan-save': ['manager','superadmin'],
   'plan-del':      ['manager','superadmin'],

@@ -86,6 +86,7 @@
  "69-staff-attendance.js",
   "70-training.js",
   "71-safety-drills.js",
-  "72-donations.js",
- "99-theme-loader.js"
+    "72-donations.js",
+    "73-teacher-eval.js",
+    "99-theme-loader.js"
 ]

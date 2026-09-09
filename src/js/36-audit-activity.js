@@ -38,6 +38,7 @@ var COLL_FA = {
   meeting_slots:'نوبت جلسه', sms_wallet:'کیف پیامک', sms_log:'پیامک',
   notify_queue:'صف پیام اولیا',
   teacher_notes:'یادداشت دبیر',
+  teacher_evaluations:'ارزشیابی (ناشناس)',
   app_settings:'تنظیمات'
 };
 
