@@ -14,6 +14,28 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## Wave 4 (چت ۲): Sync / A01 — Pull DB-native + Tombstone prep + پروتکل — ۲۰۲۶-۰۹-۰۹ — انجام، با یک قید ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` — دلتای Pull در حالتِ PG-زنده DB-native شد
+(بدون اسکنِ کل جدول)، تای-بریکر/کلیدِ (updated_at,id) و خوانشِ سنگ‌قبر آماده شد، و
+پروتکل در `docs/SYNC_PROTOCOL.md` ثبت شد.
+
+- `server/syncdelta.js` (جدید): سازندهٔ SQL خالص — `deltaRowsSql` (pushِ محمولِ
+  زمانی + `ORDER BY updated_at,id` = مدیریتِ clock-skew)، `deltaKeysetSql`
+  (کلیدِ cursor با LIMIT+1)، `tombstonesSql` (جدولِ آمادهٔ `server_tombstones`).
+- `server/pull.js`: در دلتایِ PG-زنده، ردیف‌هایِ هر کالکشن از `deltaRowsSql`
+  می‌آیند؛ scope در JS روی همان ردیف‌هایِ محدود (scope فقط حذف می‌کند)؛
+  **fallback امن** وقتی جدول ستونِ زمانی نداشته باشد → fetch کامل + فیلترِ JS
+  (رفتارِ قبلی). Tombstone همچنان از store (تا فعال‌شدنِ write به PG، تا حذف گم نشود).
+- `server/schema.sql`: جدولِ `server_tombstones` (آماده، idempotent).
+- **قراردادِ پاسخِ pull ثابت ماند** → کلاینت `29-pull.js` بی‌تغییر.
+- **دروازه‌ها:** smoke **۵۴۷/۵۴۷** · run.js **۳۵/۳۵** · wave4-sync **۱۱/۱۱** ·
+  pull-bootstrap **۱۲/۱۲** · wave1 **۱۸/۱۸** · wave3 **۱۳/۱۳** + **۱۳/۱۳** ·
+  check-authz **۰** · secret-scan **۱۱/۱۱** · `build --check` ✅.
+- **🔴 قیدِ صداقت:** اجرایِ واقعی بر PG + **push در یک تراکنشِ PG** = pending
+  (بازنویسیِ ~۸۴۰ خطِ sync بدون PGِ زنده قابلِ تأیید نیست؛ ۳۱ فایلِ تستِ sync
+  را لمس می‌کند). جزئیات در `docs/SYNC_PROTOCOL.md`.
+
 ## Wave 3 (چت ۲) — بخش دوم: GET-list های grades/classes/users → DB-native — ۲۰۲۶-۰۹-۰۹ — انجام، با یک قید ✅
 
 **وضعیت:** روی `arena/01a085ca-p2` (ادامهٔ بخش اول) — سه builder تازه در
