@@ -14,6 +14,26 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## Wave 7 (چت ۲): Offline-first — سخت‌سازی صف آفلاین — ۲۰۲۶-۰۹-۰۹ — انجام (راستی‌آزمایی + مستند) ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` — سازوکارِ سقف/نگهداشت/صفِ‌مرده که موج ۷
+می‌خواست، از پیش در `src/js/27-sync.js` (کارِ ملیِ P1-10) پیاده و توسط
+`sync-queue-caps.js`/mutations پوشیده شده بود؛ موج ۷ راستی‌آزمایی و سندِ رفتاریِ
+مفقود را افزود.
+
+- محدودیت‌ها در `SYNC_QUEUE_CAPS` تأیید شد: `maxOperations:1000` ·
+  `maxBytes:5MB` · `ageLimitMs:30 روز` · `maxTries:5` · `warnRatio:0.8/0.7` ·
+  `dlqMax:200`.
+- تخلیه: قربانی اول rejected→failed→conflict→sending→**آخر pending**؛ هرسِ
+  قدمت هرگز دادهٔ کاربر (pending/sending) را نمی‌زند؛ پنجمینِ شکست ← DLQ با علت؛
+  قلمِ مسموم (`SYNC_DEAD_CODES`) مستقیم dead-letter؛ ذخیره‌سازیِ مقاوم در برابرِ
+  پرشدنِ حافظه؛ هشدارِ نزدیکِ سقف با هیسترزیس؛ خودتشخیصیِ `sync-queue-health`
+  با تعمیرِ بی‌خطر.
+- **تست:** `sync-queue-caps.js` **۳۶/۳۶** · `sync-queue-caps-mutations.js`
+  **۵/۵ killed** (baseline سبز). smoke ۵۴۷/۵۴۷ · check-authz ۰ · secret-scan ۱۱/۱۱.
+- **تصمیمِ کاربر:** فایلِ تستِ تکراریِ `wave7-offline-queue.js` ساخته نشد (رفتار
+  پوشیده بود)؛ فقط سند افزوده شد: `docs/WAVE7_OFFLINE_QUEUE.md`.
+
 ## Wave 4 (چت ۲): Sync / A01 — Pull DB-native + Tombstone prep + پروتکل — ۲۰۲۶-۰۹-۰۹ — انجام، با یک قید ✅
 
 **وضعیت:** روی `arena/01a085ca-p2` — دلتای Pull در حالتِ PG-زنده DB-native شد
