@@ -14,6 +14,34 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## Wave 1 (چت ۲): PostgreSQL Source of Truth · Part 1 (Reads inventory + seam) — ۲۰۲۶-۰۹-۰۹ — انجام، با یک قید ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` (نوکِ این سشن = مرجِ PR #37) — درِ
+خوانشِ یکپارچه در `server/db.js` (`readCollection`/`readOne`) + اتصالِ دو
+مسیرِ پرارزشِ `bootstrap` و `pull` به آن + Inventory در
+`docs/WAVE1_READS_INVENTORY.md` + سئوتِ تازهٔ `tests/wave1-reads.js`.
+
+- **پیش‌زمینه:** سامانه دو-حالته است؛ پیش از این دور حتی با PGِ وصل، همهٔ
+  خوانش‌هایِ سرور از JSON استورِ درون‌حافظه می‌آمد (PG فقط آینهٔ **نوشتن**
+  بود). این بخش «منبعِ حقیقتِ خوانش» را با یک درِ واحد در `db` آغاز می‌کند.
+- **تغییرها:** `server/db.js` (+`readCollection`,`readOne`,`isPgReadableTable`
+  — سفیدفهرستِ جدول، کلیدهایِ داخلی `__*` از PG نمی‌روند) ·
+  `server/routes/bootstrap.js` (همهٔ خوانش‌ها از `readCol(db)`؛ صفر `store.X`
+  مستقیم باقی مانده) · `server/pull.js` (ردیفِ هر کالکشن از `readCol(db)`؛
+  scope/دلتا/تومب‌استون **عمداً** روی `store` ماند و در Inventory ثبت شد) ·
+  `server/index.js` (پاسِ `db` به هر دو کنترلر).
+- **رفتارِ حفظ‌شده:** در fallbackِ حافظه‌ای `memoryStore === store`، پس
+  `readCollection(c)` دقیقاً همان `store[c]` را می‌دهد. سئوتِ جدید ۱۸/۱۸
+  (برابریِ بایت‌به‌بایتِ bootstrap/pull در هر دو مسیر برایِ همهٔ نقش‌ها +
+  ثابت‌کردنِ اینکه درِ seam واقعاً طی می‌شود).
+- **دروازه‌ها:** smoke **۵۴۷/۵۴۷** · pull-bootstrap **۱۲/۱۲** ·
+  check-authz **۰** · secret-scan **۱۱/۱۱** · `build --check` سبز (تغییر فقط
+  سمتِ server).
+- **🔴 قیدِ صداقت:** هیچ PG زنده/درایور در سندباکس نبود؛ شاخهٔ PostgreSQLِ
+  `readCollection` تعریف و سیم‌کشی شده ولی **اجرا نشده**. اجرایِ واقعی بر
+  PG + مهاجرتِ بقیهٔ REST routes و scope در بخشِ بعدیِ موج (فهرستِ کارهایِ
+  باز در `docs/WAVE1_READS_INVENTORY.md` §۳).
+
 ## چت ۱ (جانشین): انتقال فاز ۰.۱/۰.۲ از شاخهٔ چت ۱ قبلی به شاخهٔ فعال — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **وضعیت:** ۱۲ کامیتِ فاز ۰.۱ و ۰.۲ از `origin/arena/01a0827b-p2` با
