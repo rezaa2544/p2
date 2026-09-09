@@ -88,7 +88,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Generate SBOM (SPDX JSON)
-        run: npm sbom --sbom-format=spdxjson > sbom.spdx.json
+        run: npm sbom --sbom-format=spdx > sbom.spdx.json
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@v4
         with:
