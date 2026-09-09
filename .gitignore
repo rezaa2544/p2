@@ -28,6 +28,9 @@ _guide_shots/
 # server runtime data (store + JWT secret + audit log) — never commit
 server/data/
 
+# tracing: باینریِ Jaegerِ آزمون (خودکار دانلود می‌شود؛ کامیت نشود)
+tests/.cache-jaeger/
+
 # R96 — secrets: هرگز وارد repository نشود
 .env*
 !.env.example
