@@ -65,6 +65,10 @@ function adminActions(e, el, id, a, rawId){
        area_kind:dist?(dist.kind||'district'):'district',
        phone:V('m_phone'),landline:V('m_landline'),
        level:V('m_level'),type:V('m_type')||'عادی',gender:V('m_gender'),shift:V('m_shift')||'صبح',
+       /* فاز ۰.۱ — نوع ساختاری؛ مقدارِ نامعتبر/خالی = governmental (fail-closed) */
+       school_type:(typeof SCHOOL_TYPE_IDS!=='undefined'&&SCHOOL_TYPE_IDS.indexOf(V('m_school_type'))>-1)?V('m_school_type'):'governmental',
+       /* فاز ۰.۲ — سال عملیاتی؛ خالی/نامعتبر = دنبال تقویم (null، fail-closed به رفتار قبلی) */
+       active_year_code:((typeof YEAR_CODE_RE!=='undefined'&&YEAR_CODE_RE.test(V('m_active_year')))?V('m_active_year'):null),
        capacity:Number(V('m_cap'))||300,
        active:Number(V('m_active')),address:V('m_addr'),boom_goals:V('m_boom'),
        public_goals:($('#m_boom_pub')&&$('#m_boom_pub').checked)?1:0,
