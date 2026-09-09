@@ -2109,11 +2109,20 @@
       "updated_at"
     ],
     "school_years": [
+      "closed",
+      "closed_at",
       "created_at",
-      "updated_at"
+      "placement",
+      "placement_year",
+      "promoted",
+      "reminded_at",
+      "school_id",
+      "updated_at",
+      "year_code"
     ],
     "schools": [
       "active",
+      "active_year_code",
       "address",
       "area_kind",
       "boom_goals",
@@ -2137,6 +2146,7 @@
       "place_rules",
       "province_id",
       "public_goals",
+      "school_type",
       "shift",
       "type",
       "updated_at",
@@ -3482,6 +3492,15 @@
       ]
     },
     "sched-conf-move": {
+      "roles": [
+        "manager",
+        "superadmin"
+      ],
+      "collections": [
+        "schedule"
+      ]
+    },
+    "schedgen-apply": {
       "roles": [
         "manager",
         "superadmin"
