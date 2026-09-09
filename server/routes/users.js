@@ -14,6 +14,7 @@ const { filterByScope, checkSchoolScope } = require('../middleware/scope');
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { projectUserByRole } = require('../middleware/projection');
+const { buildUsersList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
 
 const ROLE_LEVEL = { student: 0, parent: 1, driver: 1, counselor: 3, teacher: 3, edu_office: 3, manager: 4, superadmin: 5 };
 
@@ -25,8 +26,28 @@ function createUserRoutes(ctx) {
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
-  function getUsersList(req, urlParams) {
+  async function getUsersList(req, urlParams) {
     const user = req.user;
+    const paginationOpts = parsePaginationParams(urlParams);
+
+    /* Wave 3: DB-native path — runs ONLY when a live PostgreSQL is wired.
+       Pushes school scope + role + free-text search (national_id only ever a
+       bound ILIKE param) + order + keyset pagination down to SQL. Unverified
+       against a real PG in this sandbox (see WAVE3_QUERY_PERFORMANCE.md). */
+    if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
+      const built = buildUsersList({
+        user,
+        role: urlParams.get('role'),
+        search: urlParams.get('q'),
+        limit: paginationOpts.limit,
+        cursor: paginationOpts.cursor
+      });
+      const res = await executePagedList(db, built, paginationOpts);
+      res.data = res.data.map(u => projectUserByRole(u, user.role, u.id === user.id));
+      return { ok: true, ...res };
+    }
+
+    /* Memory/JS pipeline (runtime in this sandbox — byte-identical to before). */
     let list = (store.users || []);
     list = filterByScope(user, list);
 
@@ -46,7 +67,6 @@ function createUserRoutes(ctx) {
     }
 
     list.sort((a, b) => a.id - b.id);
-    const paginationOpts = parsePaginationParams(urlParams);
     const paginated = paginateArray(list, paginationOpts);
 
     paginated.data = paginated.data.map(u => projectUserByRole(u, user.role, u.id === user.id));

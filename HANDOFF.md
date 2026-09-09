@@ -41,6 +41,181 @@
 
 **بعدی:** ادغام `feat/b3-d234-chat4` به main با تأیید صریح سوپروایزر (اصل هشتم).
 
+## ادغام با origin/main (PR #39) + رفعِ شکستِ wave10 — ۲۰۲۶-۰۹-۰۹ ✅
+
+**وضعیت:** `git merge origin/main` (۱۷ کامیتِ main: db-engineering نقلِ-قولِ
+شناسه‌ها، baseline/roadmap docs، `migrations/001..003`+down، `reza/` کپی‌ها) →
+یک تعارضِ محتوا فقط در همین `HANDOFF.md` → به‌صورت union (هر دو سمت) رفع شد.
+کلیدِ `8c1f64c` (مرج‌کامیت) + کامیتِ `1aa9a52` برای رفعِ پس از مرج.
+
+- پس از مرج، `wave10-db-scale` از ۲۶/۲۶ به ۲۵/۲۶ (یک شکست) افتاد. علتِ ریشه:
+  تغییرِ db-engineering در main شناسه‌ها را نقل‌قول می‌کند (`INSERT INTO "grades"`)؛
+  مسیرِ داده به‌درستی روی primary ماند ولی رشتهٔ سنجشِ D4a دیگر تطبیق نداشت.
+  D4a به regex پذیرای هر دو شکل (نقل‌قول‌شده/نشدنی) شل شد → **۲۶/۲۶**.
+- دروازه‌هایِ درختِ مرج‌شده: smoke **۵۴۷/۵۴۷** · check-authz **۰** · secret-scan
+  **۱۱/۱۱** · build --check ✅ · wave10 **۲۶/۲۶** · wave13-security **۱۷/۱۷** ·
+  wave1/wave3-query/wave3-query2/wave4-sync همه سبز.
+
+## Wave 13 (چت ۲): Security Program — SAST/SCA/SBOM/DAST/Secret + آمادگی پنتست — ۲۰۲۶-۰۹-۰۹ — انجام، با قیدِ اجرایِ زنده ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` — `security.yml` از «فقط WAF» به برنامهٔ
+امنیتیِ چند-جاوبی ارتقا یافت (طبقِ گزینهٔ تأییدشده: repo-native، بدون اختراعِ ESLint).
+
+- `.github/workflows/security.yml` → jobs: `sast` (repo-native: `tests/run.js` +
+  `tools/check-authz.js` + syntax)، `secret` (`secret-scan.js`)، `sca` (`npm audit
+  --audit-level=high`، best-effort)، `sbom` (`npm sbom` SPDX + آپلود، best-effort)،
+  `dast` (OWASP ZAP baseline، best-effort + نیازِ `SECURITY_TARGET_URL`)، `waf`
+  (حفظ‌شده: `waf-ddos --unit-only` + `nginx -t`).
+- `docs/PEN_TEST_CHECKLIST.md` — سناریوهای پنتست (auth/IDOR/XSS/SQLi/CSRF/SSRF)،
+  ابزار (Burp/ZAP)، دستورالعمل اجرا.
+- `docs/SECURITY_MODEL.md` — مدلِ امنیتیِ نهایی + جدولِ جایگاهِ هر stage در CI.
+- `tests/wave13-security.js` → **۱۷/۱۷** (وجودِ هر stage در workflow + وجودِ مستندات).
+- **نکتهٔ صداقت:** سئوت‌هایِ jsdomِ وابسته به بوتِ سرور (xss-guard/security/waf-full)
+  به استورِ سیدشده نیاز دارند → نه در گیتِ merge؛ در جریانِ محلی/شبانه. اجرایِ
+  واقعیِ SCA/SBOM/DAST و پنتستِ زنده = best-effort/pending (نیازِ registry/URL زنده).
+- **دروازه‌ها:** smoke **۵۴۷/۵۴۷** · check-authz **۰** · secret-scan **۱۱/۱۱** ·
+  build --check ✅ · wave10 سبز · wave13 **۱۷/۱۷**.
+
+## Wave 10 (چت ۲): Database Scale — Read Replica + Pool Observability + طراحی Partition — ۲۰۲۶-۰۹-۰۹ — انجام، با قیدِ PG ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` — طبقِ دامنهٔ تأییدشده (کدِ DB-layer با
+fake-DB؛ پارتیشن‌بندی فقط طراحی؛ بدون DDLِ پرریسکِ بی‌PG).
+
+- `server/db.js`: poolِ رپلیکایِ فقط‌خواندنیِ اختیاری (`READ_DATABASE_URL`) +
+  `queryRead()` (fallbackِ امن به primary) + `isReplicaActive()`/`getReadPool()`/
+  `poolStats()`/بخشِ `read_replica` در `healthCheck()`/بستنِ هر دو pool در `close()`.
+- `server/dbquery.js`: `executePagedList` (خوانشِ سنگینِ GET-listِ موج ۳) وقتی
+  `db.queryRead` موجود باشد از آن استفاده می‌کند → GET-list ها به رپلیکا، بقیه
+  روی primary. نوشتن (persistOp/transaction) همیشه primary.
+- `server/index.js`: `/api/health` در حالتِ PG، میدانِ `db_pools` (= poolStats).
+- **امنیت/درستی:** خوانش‌هایِ صحتِ همگام/پول (readCollection/readOne/دلتا) عمداً
+  روی primary می‌مانند؛ رپلیکا فقط برایِ GET-list هایِ سنگین — رپلیکا هرگز
+  نوشتهٔ تازهٔ خودِ کلاینت را عقب نمی‌اندازد.
+- **تست:** `tests/wave10-db-scale.js` **۲۶/۲۶** (fake pool). دروازه‌ها: smoke
+  **۵۴۷/۵۴۷** · check-authz **۰** · secret-scan **۱۱/۱۱** · build --check ✅ ·
+  wave1/wave3(×۲)/wave4 سبز.
+- **🔴 قیدِ صداقت:** اجرایِ واقعیِ read-replica بر PG و **پارتیشن‌بندی** =
+  pending (بدونِ PGِ زنده). طراحیِ پارتیشن (RANGE بر `created_at`) در
+  `docs/WAVE10_DB_SCALE.md` §۳ ثبت شد.
+
+## Wave 7 (چت ۲): Offline-first — سخت‌سازی صف آفلاین — ۲۰۲۶-۰۹-۰۹ — انجام (راستی‌آزمایی + مستند) ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` — سازوکارِ سقف/نگهداشت/صفِ‌مرده که موج ۷
+می‌خواست، از پیش در `src/js/27-sync.js` (کارِ ملیِ P1-10) پیاده و توسط
+`sync-queue-caps.js`/mutations پوشیده شده بود؛ موج ۷ راستی‌آزمایی و سندِ رفتاریِ
+مفقود را افزود.
+
+- محدودیت‌ها در `SYNC_QUEUE_CAPS` تأیید شد: `maxOperations:1000` ·
+  `maxBytes:5MB` · `ageLimitMs:30 روز` · `maxTries:5` · `warnRatio:0.8/0.7` ·
+  `dlqMax:200`.
+- تخلیه: قربانی اول rejected→failed→conflict→sending→**آخر pending**؛ هرسِ
+  قدمت هرگز دادهٔ کاربر (pending/sending) را نمی‌زند؛ پنجمینِ شکست ← DLQ با علت؛
+  قلمِ مسموم (`SYNC_DEAD_CODES`) مستقیم dead-letter؛ ذخیره‌سازیِ مقاوم در برابرِ
+  پرشدنِ حافظه؛ هشدارِ نزدیکِ سقف با هیسترزیس؛ خودتشخیصیِ `sync-queue-health`
+  با تعمیرِ بی‌خطر.
+- **تست:** `sync-queue-caps.js` **۳۶/۳۶** · `sync-queue-caps-mutations.js`
+  **۵/۵ killed** (baseline سبز). smoke ۵۴۷/۵۴۷ · check-authz ۰ · secret-scan ۱۱/۱۱.
+- **تصمیمِ کاربر:** فایلِ تستِ تکراریِ `wave7-offline-queue.js` ساخته نشد (رفتار
+  پوشیده بود)؛ فقط سند افزوده شد: `docs/WAVE7_OFFLINE_QUEUE.md`.
+
+## Wave 4 (چت ۲): Sync / A01 — Pull DB-native + Tombstone prep + پروتکل — ۲۰۲۶-۰۹-۰۹ — انجام، با یک قید ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` — دلتای Pull در حالتِ PG-زنده DB-native شد
+(بدون اسکنِ کل جدول)، تای-بریکر/کلیدِ (updated_at,id) و خوانشِ سنگ‌قبر آماده شد، و
+پروتکل در `docs/SYNC_PROTOCOL.md` ثبت شد.
+
+- `server/syncdelta.js` (جدید): سازندهٔ SQL خالص — `deltaRowsSql` (pushِ محمولِ
+  زمانی + `ORDER BY updated_at,id` = مدیریتِ clock-skew)، `deltaKeysetSql`
+  (کلیدِ cursor با LIMIT+1)، `tombstonesSql` (جدولِ آمادهٔ `server_tombstones`).
+- `server/pull.js`: در دلتایِ PG-زنده، ردیف‌هایِ هر کالکشن از `deltaRowsSql`
+  می‌آیند؛ scope در JS روی همان ردیف‌هایِ محدود (scope فقط حذف می‌کند)؛
+  **fallback امن** وقتی جدول ستونِ زمانی نداشته باشد → fetch کامل + فیلترِ JS
+  (رفتارِ قبلی). Tombstone همچنان از store (تا فعال‌شدنِ write به PG، تا حذف گم نشود).
+- `server/schema.sql`: جدولِ `server_tombstones` (آماده، idempotent).
+- **قراردادِ پاسخِ pull ثابت ماند** → کلاینت `29-pull.js` بی‌تغییر.
+- **دروازه‌ها:** smoke **۵۴۷/۵۴۷** · run.js **۳۵/۳۵** · wave4-sync **۱۱/۱۱** ·
+  pull-bootstrap **۱۲/۱۲** · wave1 **۱۸/۱۸** · wave3 **۱۳/۱۳** + **۱۳/۱۳** ·
+  check-authz **۰** · secret-scan **۱۱/۱۱** · `build --check` ✅.
+- **🔴 قیدِ صداقت:** اجرایِ واقعی بر PG + **push در یک تراکنشِ PG** = pending
+  (بازنویسیِ ~۸۴۰ خطِ sync بدون PGِ زنده قابلِ تأیید نیست؛ ۳۱ فایلِ تستِ sync
+  را لمس می‌کند). جزئیات در `docs/SYNC_PROTOCOL.md`.
+
+## Wave 3 (چت ۲) — بخش دوم: GET-list های grades/classes/users → DB-native — ۲۰۲۶-۰۹-۰۹ — انجام، با یک قید ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` (ادامهٔ بخش اول) — سه builder تازه در
+`server/dbquery.js` (`buildGradesList`/`buildClassesList`/`buildUsersList`) +
+سیم‌کشیِ سه route به آن (فقط وقتی PG زنده) + Index در `server/schema.sql` +
+سئوتِ تازهٔ `tests/wave3-query2.js` (۱۳/۱۳).
+
+- **grades:** scope/filter + محدودهٔ نقشِ student/parent/teacher (EXISTS) ·
+  enrichment (subject_name/student_name) با LEFT JOIN در خود SQL · `ORDER BY id DESC`.
+- **classes:** scope + grade · `student_count` (scalar-subquery روی enrollments) +
+  `homeroom_teacher_name` (LEFT JOIN users).
+- **users:** scope + role + جستجویِ آزادِ ILIKE روی name/nid/phone؛ national_id
+  فقط پارامترِ بایند.
+- `_finalize` تعمیم یافت (selectList/pageFrom/countFrom) تا COUNT روی جدولِ پایه
+  بماند و صفحه از sourceِ غنی (JOIN) بیاید. هر سه route async شدند؛ index.js آن‌ها
+  را await می‌کند. وقتی PG خاموش است JS قبلی byte-identical اجرا می‌شود.
+- **دروازه‌ها:** smoke **۵۴۷/۵۴۷** · run.js **۳۵/۳۵** · wave3 **۱۳/۱۳** ·
+  wave3-query2 **۱۳/۱۳** · wave1 **۱۸/۱۸** · check-authz **۰** ·
+  secret-scan **۱۱/۱۱** · `build --check` ✅.
+- **🔴 قیدِ صداقت:** اجرایِ واقعی + `EXPLAIN ANALYZE` + گیتِ برابری/مجوز بر
+  PGِ زنده هنوز pending است (سندباکس PG نداشت) — الزامی پیش از تولید. کارهایِ باز
+  در `docs/WAVE3_QUERY_PERFORMANCE.md` §۴.
+
+## Wave 3 (چت ۲): Query و Performance · Part 1 — students/attendance → DB-native — ۲۰۲۶-۰۹-۰۹ — انجام، با یک قید ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` (رویِ Wave 1 همان شاخه) — لایهٔ
+DB-native کوئری/پجینگ (`server/dbquery.js`) + سیم‌کشیِ `students` و
+`attendance` GET-list به آن (فقط وقتی PG زنده) + ۴ Index در
+`server/schema.sql` + Inventory در `docs/WAVE3_QUERY_PERFORMANCE.md` +
+سئوتِ تازهٔ `tests/wave3-query.js` (۱۳/۱۳).
+
+- **الگویِ قبلی:** همهٔ GET-list ها «همه را از store بار → فیلتر → sort →
+  slice» در JS می‌کردند (Keyset-pagination از قبل بود اما روی آرایهٔ کامل).
+- **تغییرها:** `server/dbquery.js` (builders خالص: school-scope + role-scope با
+  `EXISTS` برای teacher/student/parent + keyset `id > $cursor` + `LIMIT limit+1`
+  برای `has_more` + `COUNT` برای total؛ همهٔ مقادیرِ کاربری فقط پارامتر، شناسه‌ها
+  فقط allowlist) · `server/routes/students.js` و `attendance.js` (هر دو async؛
+  مسیرِ DB-native فقط وقتی `db.isPostgres()`؛ وگرنه JS قبلی دست‌نخورده) ·
+  `server/index.js` (await دو GET-list) · ۴ Index در `schema.sql`.
+- **حفظِ رفتار:** وقتی PG خاموش است مسیرِ قبلی اجرا می‌شود → byte-identical.
+- **دروازه‌ها:** smoke **۵۴۷/۵۴۷** · run.js **۳۵/۳۵** · wave3-query **۱۳/۱۳** ·
+  wave1-reads **۱۸/۱۸** · check-authz **۰** · secret-scan **۱۱/۱۱** ·
+  `build --check` ✅.
+- **🔴 قیدِ صداقت:** شاخهٔ PostgreSQL تعریف/سیم‌کشی/unit-test شده ولی اجرایِ
+  واقعی + `EXPLAIN ANALYZE` + گیتِ برابری/مجوز بر PGِ واقعی هنوز pending است
+  (هیچ PG/درایور در سندباکس نبود) — الزامی پیش از تولید. کارهایِ باز در
+  `docs/WAVE3_QUERY_PERFORMANCE.md` §۴.
+
+## Wave 1 (چت ۲): PostgreSQL Source of Truth · Part 1 (Reads inventory + seam) — ۲۰۲۶-۰۹-۰۹ — انجام، با یک قید ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` (نوکِ این سشن = مرجِ PR #37) — درِ
+خوانشِ یکپارچه در `server/db.js` (`readCollection`/`readOne`) + اتصالِ دو
+مسیرِ پرارزشِ `bootstrap` و `pull` به آن + Inventory در
+`docs/WAVE1_READS_INVENTORY.md` + سئوتِ تازهٔ `tests/wave1-reads.js`.
+
+- **پیش‌زمینه:** سامانه دو-حالته است؛ پیش از این دور حتی با PGِ وصل، همهٔ
+  خوانش‌هایِ سرور از JSON استورِ درون‌حافظه می‌آمد (PG فقط آینهٔ **نوشتن**
+  بود). این بخش «منبعِ حقیقتِ خوانش» را با یک درِ واحد در `db` آغاز می‌کند.
+- **تغییرها:** `server/db.js` (+`readCollection`,`readOne`,`isPgReadableTable`
+  — سفیدفهرستِ جدول، کلیدهایِ داخلی `__*` از PG نمی‌روند) ·
+  `server/routes/bootstrap.js` (همهٔ خوانش‌ها از `readCol(db)`؛ صفر `store.X`
+  مستقیم باقی مانده) · `server/pull.js` (ردیفِ هر کالکشن از `readCol(db)`؛
+  scope/دلتا/تومب‌استون **عمداً** روی `store` ماند و در Inventory ثبت شد) ·
+  `server/index.js` (پاسِ `db` به هر دو کنترلر).
+- **رفتارِ حفظ‌شده:** در fallbackِ حافظه‌ای `memoryStore === store`، پس
+  `readCollection(c)` دقیقاً همان `store[c]` را می‌دهد. سئوتِ جدید ۱۸/۱۸
+  (برابریِ بایت‌به‌بایتِ bootstrap/pull در هر دو مسیر برایِ همهٔ نقش‌ها +
+  ثابت‌کردنِ اینکه درِ seam واقعاً طی می‌شود).
+- **دروازه‌ها:** smoke **۵۴۷/۵۴۷** · pull-bootstrap **۱۲/۱۲** ·
+  check-authz **۰** · secret-scan **۱۱/۱۱** · `build --check` سبز (تغییر فقط
+  سمتِ server).
+- **🔴 قیدِ صداقت:** هیچ PG زنده/درایور در سندباکس نبود؛ شاخهٔ PostgreSQLِ
+  `readCollection` تعریف و سیم‌کشی شده ولی **اجرا نشده**. اجرایِ واقعی بر
+  PG + مهاجرتِ بقیهٔ REST routes و scope در بخشِ بعدیِ موج (فهرستِ کارهایِ
+  باز در `docs/WAVE1_READS_INVENTORY.md` §۳).
+
 ## چت ۴: ویو ۸ — معماری ناهم‌زمان (Outbox + Worker) — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
 
 **وضعیت:** شاخهٔ تازهٔ `feat/wave8-chat4` (بر پایهٔ `origin/main` @ `781a471`). پنج کامیت:
@@ -237,6 +412,18 @@ academic-years **۹/۹** + جهش **۵/۵** · exam-types **۲۷/۲۷** + جهش
 - **تست‌ها:** `tests/sync-queue-caps.js` (۳۶ چک) + `tests/sync-queue-caps-mutations.js` (۵/۵ کشته). دو تست دودی (batchWrites و مرز) به «قانونِ بقا» (صف+DLQ) به‌روز شدند چون سقفِ واقعی در دودی می‌بندد (صف به ۱۰۰۰ می‌رسد) — هیچ عملیاتی گم نمی‌شود.
 - **درس‌ها:** ویرایش‌های موازیِ یک فایل مسابقه می‌دهند (رفع: پچ اتمیِ پایتونی)؛ تست امنیت localStorage واژگانی است (حتی واژه در کامنت قرمزش می‌کند).
 - **بعدی:** P1-13 (اینوارینت‌های دیتابیس) بعد P1-14 (اتمی‌بودن) روی همین شاخه، هرکدام یک کامیت.
+
+## چت ۴: ویو ۵ — مجوزها و ایزولاسیون مستأجر — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
+
+**وضعیت:** شاخهٔ تازهٔ `feat/wave5-authz-chat4` (بر پایهٔ `origin/main` @ `f92f9c2`). چهار کامیت محتوایی + مستندات:
+- `5c5f6be` **دروازهٔ ایزولاسیون مستأجر اداره** در `inScope` (server/sync.js): نوشتن‌های `edu_office` روی مجموعه‌های `announcements / teacher_schools / attendance_modes / notifications / notify_queue` فقط برای مدارس داخل محدودهٔ جغرافیایی دفتر (استان/شهرستان/منطقه)؛ مهار از `school_id` یا مدرسهٔ گیرنده (`user_id`) حل می‌شود؛ رکورد بی‌مهار ⇒ رد (fail-closed).
+- `b05abaf` **کمترین مجوز:** مجموعهٔ ساختاری `offices` از `edu_office` گرفته شد (فقط سوپرادمین) + بازتولید `write-perms` + سیدِ تازهٔ فروشگاه برای رفع ناسازگاری‌های پیشین (`authz-model` ۲۴۷→۲۴۸/۲۴۸).
+- `002903d` **آزمون‌ها:** `tests/wave5-authz.js` ‏۲۰/۲۰ (نوشتن بین‌مستأجری اداره، سراسریِ جعلی، پیوند دبیر–مدرسه، حالت حضور، اعلان با مهار گیرنده، نوشتن بین‌مدرسه‌ای مدیر/دبیر/ولی/دانش‌آموز، خوانش IDOR ‏`/api/students/:id` = ۴۰۴ بیرون محدوده، سنجاق‌های واحدِ `inScope`، فراپوشش مدل) + `tests/wave5-authz-mutations.js` ‏۵/۵.
+- `105de19` **مستندات:** `docs/AUTHORIZATION_MODEL.md` — سطوح چندمستأجری، شش لایهٔ اجرا، ماتریس محدودهٔ نقش‌ها، قرارداد ضدشمارش، چک‌لیست مجموعهٔ تازه.
+**بازبینی خواسته‌شده:** `server/policy.js` و `server/middleware/scope.js` در مخزن وجود ندارند — مدل واقعی همان است که در سند بالا مستند شد (دروازه‌ها در `server/sync.js` + `authz/model.json` + `write-perms.json` + `server/idor.js`).
+**رفتارهای جدیدِ قابل‌توجه:** اطلاعیهٔ سراسریِ بدون مهار توسط کارشناس اداره اکنون رد می‌شود (حفرهٔ قدیمی بسته شد)؛ ساخت دفتر فقط سوپرادمین.
+**گیت‌ها:** ‏smoke ۵۴۷/۵۴۷ · check-authz=0 · secret-scan ۱۱/۱۱ · server16 ‏۳۹/۳۹ · authz-model ۲۴۸/۲۴۸ · wave5 ‏۲۰/۲۰ · جهش‌ها ۵/۵.
+**بعدی:** ادغام به `main` با تأیید ناظر ارشد (اصل هشتم).
 
 ## چت ۳: سبز شدن CI پی‌آر ۱۱ (رفع ۳ تست زنگ + ماتریس صادقانهٔ Node 22) — ۱۹/۰۶/۱۴۰۵
 

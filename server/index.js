@@ -332,8 +332,8 @@ const classRoutes = createClassRoutes({ store, db, audit, markDirty, ids, delete
 const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, ids, deleter });
 const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty, ids, deleter });
 const userRoutes = createUserRoutes({ store, db, audit, markDirty, ids, deleter });
-const bootstrapRoute = createBootstrapRoute({ store });
-const pullRoute = createPull({ store, sessionFrom: auth.sessionFrom, sendJson });
+const bootstrapRoute = createBootstrapRoute({ store, db });
+const pullRoute = createPull({ store, db, sessionFrom: auth.sessionFrom, sendJson });
 
 /* ── static ────────────────────────────────────────────────────────── */
 const STATIC = {
@@ -393,7 +393,11 @@ const onRequest = async (req, res) => {
     if(p === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')){
       /* P0-13: ریدی = در تولید، کشِ توزیع‌شده زنده است؛ وگرنه 503. */
       const rdy = redis.ready();
-      return sendJson(res, rdy ? 200 : 503, { ok: rdy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid, cache: redis.isRedis() ? 'redis' : (rdy ? 'memory-dev' : 'unavailable') });
+      const body = { ok: rdy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid, cache: redis.isRedis() ? 'redis' : (rdy ? 'memory-dev' : 'unavailable') };
+      /* Wave 10 — pool observability (primary + optional read replica) when PG live */
+      try { if (db.isPostgres && db.isPostgres() && typeof db.poolStats === 'function') body.db_pools = db.poolStats(); }
+      catch (e) {}
+      return sendJson(res, rdy ? 200 : 503, body);
     }
     if(p === '/api/auth/send-code' && req.method === 'POST') return await auth.apiSendCode(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/auth/login'     && req.method === 'POST') return await auth.apiLogin(req, res, await readBody(req, 4 * 1024));
@@ -432,7 +436,7 @@ const onRequest = async (req, res) => {
 
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
-        const r = studentRoutes.getStudentsList(req, url.searchParams);
+        const r = await studentRoutes.getStudentsList(req, url.searchParams);
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/students' && req.method === 'POST'){
@@ -457,7 +461,7 @@ const onRequest = async (req, res) => {
 
       // /api/v1/classes & /api/v1/classes/:id
       if(p === '/api/v1/classes' && req.method === 'GET'){
-        const r = classRoutes.getClassesList(req, url.searchParams);
+        const r = await classRoutes.getClassesList(req, url.searchParams);
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/classes' && req.method === 'POST'){
@@ -482,7 +486,7 @@ const onRequest = async (req, res) => {
 
       // /api/v1/attendance & /api/v1/attendance/:id
       if(p === '/api/v1/attendance' && req.method === 'GET'){
-        const r = attendanceRoutes.getAttendanceList(req, url.searchParams);
+        const r = await attendanceRoutes.getAttendanceList(req, url.searchParams);
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/attendance' && req.method === 'POST'){
@@ -503,7 +507,7 @@ const onRequest = async (req, res) => {
 
       // /api/v1/grades & /api/v1/grades/:id
       if(p === '/api/v1/grades' && req.method === 'GET'){
-        const r = gradeRoutes.getGradesList(req, url.searchParams);
+        const r = await gradeRoutes.getGradesList(req, url.searchParams);
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/grades' && req.method === 'POST'){
@@ -524,7 +528,7 @@ const onRequest = async (req, res) => {
 
       // /api/v1/users & /api/v1/users/:id
       if(p === '/api/v1/users' && req.method === 'GET'){
-        const r = userRoutes.getUsersList(req, url.searchParams);
+        const r = await userRoutes.getUsersList(req, url.searchParams);
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/users' && req.method === 'POST'){
