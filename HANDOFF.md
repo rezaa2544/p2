@@ -14,6 +14,19 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+
+## چت ۴: E.8 کلاس‌های تابستانی — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**شاخهٔ اجرایی این سشن:** `arena/01a08527-p2` (به‌دلیل قفل Arena، شاخهٔ جدا ساخته نشد؛ پوش روی شاخهٔ مجاز انجام می‌شود).
+- **مدل داده:** `summer_classes` از نسخه سبک قبلی به فیلدهای کامل E.8 ارتقا یافت (`title/subject/teacher_id/start_date/end_date/schedule/capacity/status`) و جدول مستقل `summer_enrollments` برای ثبت‌نام، انصراف و حضور JSON اضافه شد؛ سازگاری عقب‌رو با `name/student_ids` حفظ شد.
+- **رابط:** مدیر در مسیر «کلاس‌های تابستانی» کلاس را ایجاد/ویرایش/حذف می‌کند، ثبت‌نام دانش‌آموزان را با کنترل ظرفیت انجام می‌دهد و حضور می‌زند. دبیر بدون افزایش روت smoke، کارت «کلاس‌های تابستانی من» را در داشبورد می‌بیند و فقط حضور کلاس خودش را ثبت می‌کند. دانش‌آموز/ولی کارت «کلاس‌های تابستانی من» را در داشبورد می‌بینند.
+- **امنیت/مجوز:** `authz/model.json` و `write-perms` به‌روز شد؛ سمت سرور `summer_enrollments` از روی کلاس، مدرسه، دانش‌آموز و دبیر scope می‌شود؛ دبیر فقط `attendance/updated_at` همان ثبت‌نام کلاس خودش را می‌نویسد و تغییر ثبت‌نام/انصراف fail-closed است.
+- **PostgreSQL:** `server/schema.sql` شامل ALTERهای idempotent برای ستون‌های جدید `summer_classes` و جدول/ایندکس/FKهای `summer_enrollments` شد؛ `tools/migrate-to-pg.js` برای `schedule` و `attendance` نوع `JSONB` تولید می‌کند.
+- **تست:** `tests/summer2.js` بازنویسی شد (۷/۷)، `tests/summer3.js` سروری شد (۹/۹)، `tests/summer-mutations.js` اضافه شد (۶/۶) و `tests/summer2-mutations.js` به نام جدید وصل شد.
+- **مستندات:** `docs/SUMMER_CLASSES_MODULE.md` اضافه و `docs/README.md`/`docs/ROADMAP.md` به‌روز شدند.
+- **گیت‌ها:** `build --check` ✅؛ `check-authz` ✅؛ `secret-scan` ۱۱/۱۱ ✅؛ smoke ۵۴۷/۵۴۷ ✅؛ رگرسیون Version Vectors/Weighted/PgBouncer هم سبز ماند.
+- **کامیت/پوش:** پس از کامیت، روی `origin/arena/01a08527-p2` پوش می‌شود؛ گزارش نهایی در `CHAT4_SUMMER_CLASSES_REPORT.md`.
+
 ## چت ۴: Version Vectors برای Offline-First Conflicts — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **شاخهٔ اجرایی این سشن:** `arena/01a08527-p2` (طبق قید Arena؛ پوش روی همین شاخهٔ مجاز انجام شد).
