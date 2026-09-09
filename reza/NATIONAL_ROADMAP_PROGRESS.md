@@ -8,7 +8,7 @@
 
 | Wave | عنوان | Owner | Status | Risk | Dependency | Evidence |
 |---:|---|---|---|---|---|---|
-| -1 | Architecture Discovery | Arena 5 / همه Arenaها | ⏳ | High | پیش‌نیاز همه Waves | docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md |
+| -1 | Architecture Discovery | Arena 5 / همه Arenaها | 🟡 | High | پیش‌نیاز همه Waves | بخش اول کامل شد: docs/DEPENDENCY_GRAPH.md، docs/DATA_FLOW.md، docs/AUTH_FLOW.md، docs/SYNC_FLOW.md |
 | 0 | Baseline و Freeze | Arena 1 + Arena 5 | 🟡 | Medium | Wave -1 + تقسیم بخش‌های ۲ تا ۴ | docs/NATIONAL_BASELINE.md؛ tag national-baseline-start؛ Part 1 کامل |
 | 1 | PostgreSQL Source of Truth [P0] | Arena 1 | ⏳ | Critical | Wave -1 و Wave 2؛ هماهنگی با چت ۲/۳ | در انتظار شروع/ادغام خروجی چت‌های Wave 1 |
 | 2 | Database Engineering | Arena 1 | ✅ | High | Wave -1 برای کشف کامل؛ Wave 1 برای PG-only شدن تولید | docs/DATABASE_ARCHITECTURE.md؛ migrations/؛ tests/db-engineering.js |

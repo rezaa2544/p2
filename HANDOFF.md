@@ -14,6 +14,14 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۱: Wave -1 / Architecture Discovery بخش اول — Dependency/Data/Auth/Sync Flow — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** بخش اول Wave -1 فقط با مستندات انجام شد؛ هیچ فایل کد/runtime تغییر نکرد. چهار سند کشف معماری ساخته شد: `docs/DEPENDENCY_GRAPH.md`، `docs/DATA_FLOW.md`، `docs/AUTH_FLOW.md`، `docs/SYNC_FLOW.md` و کپی همه در `reza/` قرار گرفت. Progress Tracker برای Wave -1 به `🟡` تغییر کرد و Evidence به همین چهار سند اشاره می‌کند.
+
+- **اثر معماری:** وابستگی‌های اصلی کلاینت/سرور/Build، مسیر داده UI/API تا Store/PostgreSQL/Redis، جریان OTP/JWT/session و مسیر Push/Pull/Conflict مستند شد؛ مبنای تصمیم‌گیری Waves بعدی.
+- **اثر کد/دیتابیس/امنیت/کارایی:** فقط مستنداتی؛ هیچ تغییر runtime/schema/test.
+- **تست‌ها:** `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+
 ## چت ۱: اعمال Addendum معماری نقشه راه ملی — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **وضعیت:** متن کامل Addendum طبق پرامپت در `docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md` ذخیره شد؛ خط الزام‌آور مکمل معماری پس از عنوان `docs/ROADMAP.md` اضافه شد؛ Progress Tracker طبق Addendum از جدول صرفاً status به ستون‌های `Owner/Risk/Dependency/Evidence` ارتقا یافت؛ Wave -1 و Arena 5 ثبت شدند؛ کپی‌های `reza/` همگام شدند.
