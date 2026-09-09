@@ -116,7 +116,6 @@ WHERE id = $id AND version = $base_version
 ```
 
 صفر row → `409 Conflict`.
-
 ---
 
 # 6. Wave 3 — Query و Performance [P0]
@@ -669,4 +668,6 @@ Capacity
 | E.12 | صفحه‌ی وضعیت عمومی سرویس | چت ۲ | ⏳ |
 | B.3 | PG منبعِ حقیقت — Wave 1 بخش ۲ (انتقالِ Writes + تراکنش‌ها) | چت ۳ | ✅ کامل (دور ۱۰۵ — اسنکواری در `docs/WAVE1_WRITES_INVENTORY.md`) |
 | B.4 | PG/Redis: Wave 6 — Audit و تکمیلِ Distributed State (OTP/rate-limit/revocation/idempotency/cache/lock) | چت ۳ | ✅ کامل (`docs/WAVE6_REDIS_AUDIT.md`) |
-| B.5 | کشینگ: Wave 11 — TTL، invalidation، stampede protection (Cache Hierarchy) | چت ۳ | ✅ کامل (دور ۱۱۱ — `docs/WAVE11_CACHE_STRATEGY.md`) |
+| B.5 | کشینگ: Wave 11 — TTL، invalidation، stampede protection (Cache Hierarchy) | چت ۳ | ✅ کامل (`docs/WAVE11_CACHE_STRATEGY.md`) |
+| B.6 | Health/Deployment: Wave 15 — Liveness/Readiness/Health + Graceful Shutdown + راهنمای Rolling Deployment/Rollback | چت ۳ | ✅ کامل (`docs/DEPLOYMENT_GUIDE.md`) |
+| B.7 | تست بار ملی: Wave 18 — دادهٔ آزمایشیِ 10M کاربر + چهار سناریو (عادی/اوج/فشار/چند روزه) | چت ۳ | ✅ کامل — اجرا روی زیرساختِ زنده pending (`docs/WAVE18_LOAD_TEST_PLAN.md`) |
