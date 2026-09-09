@@ -11,11 +11,14 @@
 'use strict';
 
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
+const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 
 function createClassRoutes(ctx) {
   const store = ctx.store;
   const db = ctx.db;
+  const ids = ctx.ids; /* P0-16 */
+  const deleter = ctx.deleter; /* P0-17 */
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
@@ -85,10 +88,8 @@ function createClassRoutes(ctx) {
     }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
-    let nextId = 1;
-    for (const c of (store.classes || [])) {
-      if (c.id >= nextId) nextId = c.id + 1;
-    }
+    /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
+    const nextId = await ids.nextId('classes', store.classes);
 
     const newClass = {
       id: nextId,
@@ -98,6 +99,7 @@ function createClassRoutes(ctx) {
       capacity: Number(body.capacity || 30),
       homeroom_teacher_id: body.homeroom_teacher_id ? Number(body.homeroom_teacher_id) : null,
       class_mode: body.class_mode || 'general',
+      version: 1, /* P0-18 */
       created_at: new Date().toISOString()
     };
 
@@ -124,11 +126,16 @@ function createClassRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
     }
 
+    /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
+    const conflict = checkOcc(cls, body, 'کلاس');
+    if (conflict) return conflict;
+
     if (body.name !== undefined) cls.name = String(body.name).trim();
     if (body.grade !== undefined) cls.grade = Number(body.grade);
     if (body.capacity !== undefined) cls.capacity = Number(body.capacity);
     if (body.homeroom_teacher_id !== undefined) cls.homeroom_teacher_id = body.homeroom_teacher_id ? Number(body.homeroom_teacher_id) : null;
     if (body.class_mode !== undefined) cls.class_mode = body.class_mode;
+    bump(cls); /* P0-18 */
 
     markDirty();
     if (db) await db.persistOp({ c: 'classes', t: 'upd', data: cls });
@@ -153,11 +160,14 @@ function createClassRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
     }
 
-    store.classes.splice(clsIdx, 1);
-    markDirty();
-
-    if (db) await db.persistOp({ c: 'classes', t: 'del', id: Number(id) });
-    audit('class_deleted', { user_id: user.id, class_id: Number(id) });
+    /* P0-17: حذف امن با سرویس واحد — سنگ‌قبر + نسخه + رویداد برون‌مرزی */
+    const del = await deleter.softDelete('classes', { id: Number(id) }, {
+      actor: user,
+      audit: () => audit('class_deleted', { user_id: user.id, class_id: Number(id) })
+    });
+    if (!del.ok) {
+      return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
+    }
     return { status: 200, body: { ok: true, message: 'کلاس با موفقیت حذف شد' } };
   }
 
