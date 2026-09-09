@@ -191,6 +191,7 @@ function _renderRouteInner(){
     case 'geo':return viewGeo();
     case 'offices':return viewOffices();
     case 'officedash':return viewOfficeDash();
+    case 'officescore':return viewOfficeScore();
     case 'officeschools':return viewOfficeSchools();
     case 'busservice':return viewBusService();
     case 'myservice':return viewMyService();

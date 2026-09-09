@@ -79,5 +79,6 @@
  "66-client-features.js",
  "67-theme-picker.js",
  "68-sync-conflicts.js",
+ "69-office-scorecard.js",
  "99-theme-loader.js"
 ]

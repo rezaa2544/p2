@@ -16,7 +16,7 @@
 
 /** روت‌هایی که در NAV نیستند ولی برای نقش مجازند (زیرصفحه یا مقصد پیمایش) */
 var EXTRA_ROUTES = {
-  superadmin: ['dashboard','adminsubs','officedash','officeschools','record','geo','offices','lifecycle'],
+  superadmin: ['dashboard','adminsubs','officedash','officescore','officeschools','record','geo','offices','lifecycle'],
   manager:    ['record','corrections','teachers','exams','tuition','association','lifecycle','atrisk','meetings','growth','formssms','import','schoolyear'],
   teacher:    ['record','exams','meetings'],
   student:    ['record','mytuition','notifications','announcements','subscription'],
@@ -217,6 +217,7 @@ var ACTION_ROLES = {
   /* فقط فیلتر نمایشی است؛ دسترسی به خود پرونده جداگانه سنجیده می‌شود */
   'trend-sub':     ['teacher','manager','superadmin','student','parent','edu_office'],
   /* پیام گروهی اداره: فقط رئیس اداره و مدیر کل سامانه */
+  'office-score-print': ['edu_office','superadmin'],
   'office-msg':      ['edu_office','superadmin'],
   'office-msg-send': ['edu_office','superadmin'],
   /* یادداشت خصوصی: فقط دبیر می‌نویسد و پاک می‌کند.

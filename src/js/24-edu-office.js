@@ -212,7 +212,7 @@ function viewOfficeDash(){
       <div><b style="font-size:15px">${esc(o?o.name:'نمای کل کشور')}</b>
         <div class="small muted">${o?OFFICE_LEVEL[o.level]:'سوپر ادمین — همه مدارس'} · گزارش‌ها تجمیعی است و اطلاعات فردی دانش‌آموزان نمایش داده نمی‌شود.</div></div>
       <div class="spacer"></div>
-      ${(u.role==='edu_office'||isSuper)?`<button class="btn sm" data-act="office-msg">📢 پیام به مدیران</button>`:''}
+      ${(u.role==='edu_office'||isSuper)?`<button class="btn sm" data-act="go" data-r="officescore">📊 کارت امتیازی</button> <button class="btn sm" data-act="office-msg">📢 پیام به مدیران</button>`:''}
       </div>
       ${filterPanel('officedash',`
         <select class="select" style="width:150px" data-f="province"><option value="">همه استان‌ها</option>

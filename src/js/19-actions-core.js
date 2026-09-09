@@ -1719,6 +1719,7 @@ document.addEventListener('click',e=>{
   else if(typeof JD_ACTIONS!=='undefined'&&JD_ACTIONS[a]){e.preventDefault();JD_ACTIONS[a](el,id);}
   else if(typeof FILTER_ACTIONS!=='undefined'&&FILTER_ACTIONS[a]){e.preventDefault();FILTER_ACTIONS[a](el,id);}
   else if(typeof SYNC_ACTIONS!=='undefined'&&SYNC_ACTIONS[a]){e.preventDefault();SYNC_ACTIONS[a](el,id);}
+  else if(typeof SC_ACTIONS!=='undefined'&&SC_ACTIONS[a]){e.preventDefault();SC_ACTIONS[a](el,id);} /* 69-office-scorecard */
 });
 // live filters
 document.addEventListener('input',e=>{
