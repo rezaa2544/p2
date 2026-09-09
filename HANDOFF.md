@@ -14,6 +14,26 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## Wave 13 (چت ۲): Security Program — SAST/SCA/SBOM/DAST/Secret + آمادگی پنتست — ۲۰۲۶-۰۹-۰۹ — انجام، با قیدِ اجرایِ زنده ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` — `security.yml` از «فقط WAF» به برنامهٔ
+امنیتیِ چند-جاوبی ارتقا یافت (طبقِ گزینهٔ تأییدشده: repo-native، بدون اختراعِ ESLint).
+
+- `.github/workflows/security.yml` → jobs: `sast` (repo-native: `tests/run.js` +
+  `tools/check-authz.js` + syntax)، `secret` (`secret-scan.js`)، `sca` (`npm audit
+  --audit-level=high`، best-effort)، `sbom` (`npm sbom` SPDX + آپلود، best-effort)،
+  `dast` (OWASP ZAP baseline، best-effort + نیازِ `SECURITY_TARGET_URL`)، `waf`
+  (حفظ‌شده: `waf-ddos --unit-only` + `nginx -t`).
+- `docs/PEN_TEST_CHECKLIST.md` — سناریوهای پنتست (auth/IDOR/XSS/SQLi/CSRF/SSRF)،
+  ابزار (Burp/ZAP)، دستورالعمل اجرا.
+- `docs/SECURITY_MODEL.md` — مدلِ امنیتیِ نهایی + جدولِ جایگاهِ هر stage در CI.
+- `tests/wave13-security.js` → **۱۷/۱۷** (وجودِ هر stage در workflow + وجودِ مستندات).
+- **نکتهٔ صداقت:** سئوت‌هایِ jsdomِ وابسته به بوتِ سرور (xss-guard/security/waf-full)
+  به استورِ سیدشده نیاز دارند → نه در گیتِ merge؛ در جریانِ محلی/شبانه. اجرایِ
+  واقعیِ SCA/SBOM/DAST و پنتستِ زنده = best-effort/pending (نیازِ registry/URL زنده).
+- **دروازه‌ها:** smoke **۵۴۷/۵۴۷** · check-authz **۰** · secret-scan **۱۱/۱۱** ·
+  build --check ✅ · wave10 سبز · wave13 **۱۷/۱۷**.
+
 ## Wave 10 (چت ۲): Database Scale — Read Replica + Pool Observability + طراحی Partition — ۲۰۲۶-۰۹-۰۹ — انجام، با قیدِ PG ✅
 
 **وضعیت:** روی `arena/01a085ca-p2` — طبقِ دامنهٔ تأییدشده (کدِ DB-layer با
