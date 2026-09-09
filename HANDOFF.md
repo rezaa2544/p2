@@ -14,6 +14,21 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## ادغام با origin/main (PR #39) + رفعِ شکستِ wave10 — ۲۰۲۶-۰۹-۰۹ ✅
+
+**وضعیت:** `git merge origin/main` (۱۷ کامیتِ main: db-engineering نقلِ-قولِ
+شناسه‌ها، baseline/roadmap docs، `migrations/001..003`+down، `reza/` کپی‌ها) →
+یک تعارضِ محتوا فقط در همین `HANDOFF.md` → به‌صورت union (هر دو سمت) رفع شد.
+کلیدِ `8c1f64c` (مرج‌کامیت) + کامیتِ `1aa9a52` برای رفعِ پس از مرج.
+
+- پس از مرج، `wave10-db-scale` از ۲۶/۲۶ به ۲۵/۲۶ (یک شکست) افتاد. علتِ ریشه:
+  تغییرِ db-engineering در main شناسه‌ها را نقل‌قول می‌کند (`INSERT INTO "grades"`)؛
+  مسیرِ داده به‌درستی روی primary ماند ولی رشتهٔ سنجشِ D4a دیگر تطبیق نداشت.
+  D4a به regex پذیرای هر دو شکل (نقل‌قول‌شده/نشدنی) شل شد → **۲۶/۲۶**.
+- دروازه‌هایِ درختِ مرج‌شده: smoke **۵۴۷/۵۴۷** · check-authz **۰** · secret-scan
+  **۱۱/۱۱** · build --check ✅ · wave10 **۲۶/۲۶** · wave13-security **۱۷/۱۷** ·
+  wave1/wave3-query/wave3-query2/wave4-sync همه سبز.
+
 ## Wave 13 (چت ۲): Security Program — SAST/SCA/SBOM/DAST/Secret + آمادگی پنتست — ۲۰۲۶-۰۹-۰۹ — انجام، با قیدِ اجرایِ زنده ✅
 
 **وضعیت:** روی `arena/01a085ca-p2` — `security.yml` از «فقط WAF» به برنامهٔ
