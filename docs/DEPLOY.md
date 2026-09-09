@@ -190,6 +190,7 @@ curl -fsS https://payesh.example/api/health
 | ۸ | شمارهٔ تماسِ سیاستِ حریم خصوصی (بخشِ ۹) رسمی‌شده | `docs/PRIVACY_POLICY.md` + صفحهٔ وب |
 | ۹ | حسابِ بررسی‌گرِ گوگل (برای اپ) آماده است | بخشِ «دسترسیِ بررسی‌گر» در `PLAY_STORE_CHECKLIST.md` |
 | ۱۰ | مانیتورینگِ حداقلی: `Restart=always` + یک پینگِ خارجیِ ساعتی به `/api/health` (upptime یا همان curl در cron + پیام به اپراتور) | یک خطایِ شبانه بدونِ بیدارشدنِ اپراتور نمی‌ماند |
+| ۱۱ | لبهٔ امنیتی (WAF/ضدِDDoS) فعال: DNS پشتِ Cloudflare یا nginx با `nginx -t` سبز + `node tests/waf-ddos.js` سبز | §۱۰ همین سند + `docs/WAF_DDOS_SETUP.md` |
 
 ---
 
@@ -200,3 +201,19 @@ curl -fsS https://payesh.example/api/health
 - **درگاهِ پیامک + استعلامِ کد ملی** — تا آن‌وقت، ورودِ تولید بدونِ درگاهِ واقعی معنادار نیست (`PAYESH_DEMO_CODE=0` یعنی کد از کجا بیاید؟ ← درگاه). **این، پیش‌نیازِ واقعیِ go-live است**، نه TLS.
 
 > ترتیبِ منطقی: ۱) درگاهِ پیامک ← ۲) سرور + دامنه + این سند ← ۳) go-live.
+
+---
+
+## ۱۰. لبهٔ امنیتی (WAF و ضدِ DDoS) — P-WAF
+
+> جزئیاتِ کامل: `docs/WAF_DDOS_SETUP.md` (انتخابِ راهکار، قوانین، تست‌ها).
+
+۱. **DNS** را پشتِ Cloudflare ببرید (orange-cloud) و `Always Use HTTPS` را روشن کنید.
+۲. **Managed Ruleset** (OWASP + Cloudflare) + یک قانونِ نرخِ `100r/m` رویِ `/api/*` بسازید.
+۳. **فایروالِ origin**: فقط IPهای رسمیِ Cloudflare به `۸۰/۴۴۳` برسند (لیست را دوره‌ای به‌روز کنید).
+۴. اگر Cloudflare ندارید: `nginx/nginx.conf` همین ریپو را جلوی Node بگذارید
+   (`nginx -t -c $PWD/nginx/nginx.conf -p $PWD/nginx/` باید سبز باشد).
+۵. **راستی‌آزمایی**: `node tests/waf-ddos.js` سبز + سرآیندِ `X-WAF-Verdict` روی پاسخ‌ها +
+   رشدِ غیرعادیِ `waf_detect` در ممیزی را هشدار کنید (SIEM یا cron).
+۶. تشخیصِ درون‌برنامه (`server/waf.js`) **فقط-تشخیص** است و چیزی را بلاک نمی‌کند؛
+   اِعمالِ واقعی همیشه در لبه است.
