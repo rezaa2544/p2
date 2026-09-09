@@ -164,7 +164,11 @@ async function invalidateCollection(collection, schoolId) {
 }
 
 /**
- * Distributed Rate Limiting
+ * Distributed Rate Limiting (fixed-window)
+ * Wave 6: اتمیک — شمارش با `incrWithTtl` (INCR+EXPIRE در یک اسکرپت)؛
+ * نسخهٔ پیشین GET+SET غیراتوم بود و زیر burstِ همزمان سقف را رد می‌کرد.
+ * خطا = fail-open (allowed:true) — مثلِ server/rate-limit.js؛ لبهٔ سخت
+ * (nginx/Cloudflare) کنترلِ سختِ نرخ می‌ماند.
  * @param {string} identifier - e.g., IP address or Phone
  * @param {string} action - e.g., 'send_code', 'login', 'api'
  * @param {number} limit - max allowed attempts
@@ -173,25 +177,16 @@ async function invalidateCollection(collection, schoolId) {
  */
 async function checkRateLimit(identifier, action, limit = 10, windowSeconds = 60) {
   const key = `payesh:rl:${action}:${identifier}`;
-  const countStr = await redis.get(key);
-  let count = countStr ? parseInt(countStr, 10) : 0;
-
-  if (count >= limit) {
+  try {
+    const count = await redis.incrWithTtl(key, windowSeconds);
     return {
-      allowed: false,
-      remaining: 0,
-      resetSeconds: windowSeconds
+      allowed: count <= limit,
+      remaining: Math.max(0, limit - count),
+      resetSeconds: await redis.ttl(key)
     };
+  } catch (e) {
+    return { allowed: true, remaining: limit, resetSeconds: windowSeconds };
   }
-
-  count += 1;
-  await redis.set(key, String(count), 'EX', windowSeconds);
-
-  return {
-    allowed: true,
-    remaining: Math.max(0, limit - count),
-    resetSeconds: windowSeconds
-  };
 }
 
 /**

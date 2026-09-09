@@ -256,6 +256,24 @@ function getStatus() {
 }
 
 /**
+ * Wave 6: test hook — inject a contract-compatible fake client
+ * (records commands; behaves like Redis for get/set/del/incr/eval/...).
+ * `__setClientForTests(null)` restores the real state (inactive).
+ */
+let _realClient = null;
+let _realActive = false;
+function __setClientForTests(c) {
+  if (c) {
+    _realClient = client;
+    _realActive = isRedisActive;
+    client = c;
+    isRedisActive = true;
+  } else {
+    client = _realClient;
+    isRedisActive = _realActive;
+  }}
+
+/**
  * P0-13: Readiness gate — در تولید فقط با ردیسِ زنده «آماده» است؛
  * در توسعه حافظهٔ محلی قابل‌قبول است.
  */
@@ -652,5 +670,6 @@ module.exports = {
   ping,
   setNX,
   compareAndDelete,
-  close
+  close,
+  __setClientForTests
 };

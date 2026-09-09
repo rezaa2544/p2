@@ -38,6 +38,7 @@ const { createAudit, clientIp } = require('./audit');
 const db = require('./db');
 const redis = require('./redis');
 const cache = require('./cache');
+const revocation = require('./revocation'); /* Wave 6: ابطالِ توزیع‌شدهٔ مرحلهٔ REVOKE */
 
 const { createStudentRoutes } = require('./routes/students');
 const { createClassRoutes } = require('./routes/classes');
@@ -92,7 +93,10 @@ function loadStore(){
   const s = JSON.parse(fs.readFileSync(STORE_FILE, 'utf8'));
   s.__processed_uids = s.__processed_uids || {};
   s.__revoked_jti    = s.__revoked_jti || {};
-  s.__auth = s.__auth || { codes: {}, login_fail: {}, code_rate: {}, enum: {} };
+  s.__auth = s.__auth || { codes: {}, login_fail: {}, code_rate: {} };
+  /* Wave 6: شمارندهٔ نگهبان به Redis رفت — نگه‌داشتنِ نسخهٔ قدیمی
+     (فقط‌رشد و بدونِ GC در payesh.json) معنا ندارد. */
+  if(s.__auth && s.__auth.enum) delete s.__auth.enum;
   return s;
 }
 const store = loadStore();
@@ -156,27 +160,38 @@ const ENUM_SLOW1  = _num(process.env.PAYESH_ENUM_SLOW1, 100);
 const ENUM_SLOW2  = _num(process.env.PAYESH_ENUM_SLOW2, 500);
 const ENUM_REVOKE = _num(process.env.PAYESH_ENUM_REVOKE, 2000);
 const REQ_STATE = { sess: null };
-function enumTouch(sess){
-  const e = (store.__auth.enum[sess.jti] = store.__auth.enum[sess.jti] || { t: Date.now(), n: 0 });
-  if(Date.now() - e.t > ENUM_WINDOW_MS){ e.t = Date.now(); e.n = 0; }
-  e.n += 1;
-  return e;
+/* Wave 6: شمارندهٔ نگهبان روی Redis — پنجرهٔ ۱۰ دقیقه با TTL؛ بین نمونه‌ها
+   مشترک (پیش‌تر درون‌فروشگاهی بود و چرخشِ حمله بین نمونه‌ها آن را صفر
+   می‌کرد؛ هم‌چنین در payesh.json بدونِ GC رشدِ بی‌پایان داشت). */
+const ENUM_TTL_S = ENUM_WINDOW_MS / 1000;
+function enumKey(sess){ return 'payesh:enum:' + sess.jti; }
+async function enumTouch(sess){
+  try{
+    return await redis.incrWithTtl(enumKey(sess), ENUM_TTL_S);
+  }catch(e){ return 0; } /* خطای ردیس = شمارِ این درخواست گم می‌شود (سکوت) — پنجرهٔ بعدی از نو می‌شمارد */
 }
-function enumDelay(sess){
-  const e = store.__auth.enum && store.__auth.enum[sess.jti];
-  if(!e) return 0;
-  if(e.n >= ENUM_SLOW2) return 2000;
-  if(e.n >= ENUM_SLOW1) return 500;
+async function enumRead(sess){
+  try{
+    const v = await redis.get(enumKey(sess));
+    const n = v == null ? 0 : parseInt(v, 10);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  }catch(e){ return 0; }
+}
+function enumDelayMs(n){
+  if(n >= ENUM_SLOW2) return 2000;
+  if(n >= ENUM_SLOW1) return 500;
   return 0;
 }
-/* R97 — مراحلِ نگهبان (هشدار/تأخیر/ابطال)؛ در هر دو نقطهٔ شمارش: رد‌ها و خوانشِ ID */
-function enumStage(e, sess){
-  if(e.n === ENUM_WARN) audit('enum_warn', { user_id: sess.id, n: e.n });
-  else if(e.n === ENUM_SLOW1) audit('enum_slow', { user_id: sess.id, n: e.n, delay_ms: 500 });
-  else if(e.n === ENUM_SLOW2) audit('enum_slow2', { user_id: sess.id, n: e.n, delay_ms: 2000 });
-  else if(e.n === ENUM_REVOKE){
+/* R97 — مراحلِ نگهبان (هشدار/تأخیر/ابطال)؛ Wave 6: ورودی = nِ شمارندهٔ ردیس.
+   ابطال در REVOKE هم توزیع‌شده می‌شود (denylistِ Redis) — پیش‌تر فقط محلی بود. */
+function enumStage(n, sess){
+  if(n === ENUM_WARN) audit('enum_warn', { user_id: sess.id, n });
+  else if(n === ENUM_SLOW1) audit('enum_slow', { user_id: sess.id, n, delay_ms: 500 });
+  else if(n === ENUM_SLOW2) audit('enum_slow2', { user_id: sess.id, n, delay_ms: 2000 });
+  else if(n === ENUM_REVOKE){
     store.__revoked_jti[sess.jti] = { at: Date.now(), reason: 'enumeration' };
-    audit('enum_revoke', { user_id: sess.id, n: e.n });
+    revocation.revokeSession(sess.jti, SESSION_TTL_S).catch(() => {});
+    audit('enum_revoke', { user_id: sess.id, n });
   }
 }
 
@@ -316,11 +331,13 @@ function sendJson(res, status, obj){
 }
 function sendJsonCounting(res, status, obj){
   /* R97 (TODO 2.7): شمارِ رد‌ها (401/403/404) به ازای هر نشست — مرحله‌بندی
-     در enumStage/enumDelay. مسیرهایِ /api/auth/* سقفِ خودشان را دارند. */
+     در enumStage. Wave 6: شمارنده روی Redis است (پنجرهٔ ۱۰ دقیقه، TTL) —
+     شمارش async و بدونِ مسدودکردنِ پاسخ (فنا = سکوت؛ پنجرهٔ بعدی می‌بیند).
+     مسیرهایِ /api/auth/* سقفِ خودشان را دارند. */
   const r = REQ_STATE;
   const isIdorRead = r && /^\/api\/students\/\d+$/.test(r.p || '');
   if(r && r.sess && (status === 401 || status === 403 || status === 404) && !isIdorRead){
-    enumStage(enumTouch(r.sess), r.sess);
+    enumTouch(r.sess).then(n => { if(n) enumStage(n, r.sess); }).catch(() => {});
   }
   return sendJson(res, status, obj);
 }
@@ -452,8 +469,14 @@ const onRequest = async (req, res) => {
     const gs = await auth.sessionFrom(req);
     if(gs){
       REQ_STATE.sess = gs;
-      if(/^\/api\/students\/\d+$/.test(p)) enumStage(enumTouch(gs), gs); /* §5.7: هر خوانشِ این مسیر می‌شمارد */
-      const dm = enumDelay(gs);
+      let enumN = 0;
+      if(/^\/api\/students\/\d+$/.test(p)){
+        enumN = await enumTouch(gs); /* §5.7: هر خوانشِ این مسیر می‌شمارد (Wave 6: ردیس) */
+        if(enumN) enumStage(enumN, gs);
+      } else {
+        enumN = await enumRead(gs);
+      }
+      const dm = enumDelayMs(enumN);
       if(dm) await new Promise(r => setTimeout(r, dm));
     }
   }
@@ -732,4 +755,8 @@ if(require.main === module){
     }
   });
 }
-module.exports = { server, store, audit, isHttps, persistStore, persistStoreSync, db, redis, cache, workers, staticCache };
+module.exports = {
+  server, store, audit, isHttps, persistStore, persistStoreSync, db, redis, cache, workers, staticCache,
+  /* Wave 6: برای تستِ مستقیمِ نگهبانِ شمارش (state روی Redis) */
+  __enumForTests: { enumTouch, enumRead, enumDelayMs, enumStage, enumKey }
+};
