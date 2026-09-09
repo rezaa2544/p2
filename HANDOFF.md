@@ -14,6 +14,86 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۴: ویو ۸ — معماری ناهم‌زمان (Outbox + Worker) — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
+
+**وضعیت:** شاخهٔ تازهٔ `feat/wave8-chat4` (بر پایهٔ `origin/main` @ `781a471`). پنج کامیت:
+- `7e7ba19` **چرخهٔ عمر اوت‌باکس + کارگر:** رویدادها با `status='pending'/retry_count/processed_at/last_error` ثبت می‌شوند؛ `server/worker.js` پیمایش، اعزام به هندلر، تلاش مجدد و `failed` پس از سقف تلاش — رویداد در شکست **هرگز حذف نمی‌شود**؛ نگهبان ورود دوباره + `tick()` قطعی برای تست؛ اولین هندلر واقعی: باطل‌کردن کش مدرسه پس از حذف نرم (خارج از مسیر درخواست)؛ اتصال به چرخهٔ حیات سرور.
+- `6c19d8c` **جدول `server_outbox`** در مهاجرت پستگرس (ستون‌های وضعیت/تلاش/خطا + ایندکس وضعیت) — آینه؛ منبع حقیقت همان اسنپ‌شات.
+- `6c4a76b` **آزمون‌ها:** `wave8-outbox.js` ‏۱۴/۱۴ + `wave8-outbox-mutations.js` ‏۵/۵ (حذف سقف تلاش/پردازش دوباره/حذف رویداد در شکست — همه کشته شدند).
+- `3edaa06` **مستندات:** `docs/ASYNC_ARCHITECTURE.md` — الگو، چرخهٔ عمر، قواعد هندلر (ایدمپوتانس)، راهنمای افزودن هندلر، و **دلیل صادقانهٔ** در‌مسیر‌ماندنِ پیامک (قرارداد قفل‌شدهٔ قفل ۸۱.۱ — ناهم‌زمان‌سازی آن کار جدا با تأیید ناظر است).
+**پیکربندی:** `PAYESH_WORKER_INTERVAL_MS` (پیش‌فرض ۱۰۰۰) · `PAYESH_WORKER_MAX_RETRIES` (پیش‌فرض ۵).
+**گیت‌ها:** ‏smoke ۵۴۷/۵۴۷ · check-authz=0 · secret-scan ۱۱/۱۱ · server16 ‏۳۹/۳۹ · wave8 ‏۱۴/۱۴ · جهش‌ها ۵/۵.
+**بعدی:** ادغام به `main` با تأیید ناظر ارشد (اصل هشتم)؛ هندلرهای بعدی (گزارش/اعلان) طبق راهنمای سند.
+
+## چت ۱: Wave 0 / Part 3 — Baseline دیتابیس و کش — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** اندازه‌گیری baseline دیتابیس/کش بدون تغییر کد پروژه انجام شد و در `docs/NATIONAL_BASELINE_PART3.md` ثبت شد؛ کپی همگام در `reza/` قرار گرفت. Progress Tracker برای Wave 0 به‌روز شد: Partهای ۱، ۲ و ۳ کامل‌اند و Part 4 باقی است.
+
+- **اندازه‌گیری DB:** `server/db.js` در sandbox با `DATABASE_URL` خالی روی driver حافظه‌ای بالا آمد؛ queryهای مهم به‌صورت SQL-shape simulation روی JSON demo store اندازه‌گیری و محدودیت نبود PostgreSQL واقعی صریح ثبت شد.
+- **اندازه‌گیری Cache:** `REDIS_URL` تنظیم نبود و Redis واقعی فعال نشد؛ hit/miss فقط برای fallback حافظه‌ای و L1 bootstrap cache ثبت شد و محدودیت distributed Redis مستند شد.
+- **Sync throughput:** route واقعی `POST /api/sync` با server واقعی و temp store اندازه‌گیری شد؛ batchهای ۱/۵۰/۲۵۰/۵۰۰ همگی `200` بودند؛ batch ۵۰۰ حدود `9706.5 records/sec` در sandbox ثبت شد.
+- **تست‌ها:** `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+
+## چت ۱: Wave 0 / Part 2 — Baseline عملکرد سرور و API — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** اندازه‌گیری baseline عملکرد سرور/API بدون تغییر کد پروژه انجام شد و در `docs/NATIONAL_BASELINE_PART2.md` ثبت شد؛ کپی در `reza/` قرار گرفت. Progress Tracker برای Wave 0 به‌روز شد: Partهای ۱ و ۲ کامل‌اند و Partهای ۳ و ۴ هنوز باقی‌اند.
+
+- **اندازه‌گیری:** سرور واقعی `server/index.js` با store موقت دمو و probe موقت خارج repo اجرا شد؛ `process.memoryUsage()`، RSS/CPU از `/proc`، و `monitorEventLoopDelay` ثبت شد. endpoint واقعی sync در کد `POST /api/sync` است (نه `/api/v1/sync`) و همان اندازه‌گیری شد.
+- **نتایج نمونه:** event-loop p95≈10.846ms؛ RSS بعد benchmark≈108.17MB؛ endpoint p95ها: login≈7.358ms، bootstrap≈2.347ms، attendance≈3.752ms، grades≈3.184ms، sync≈4.735ms.
+- **محدودیت:** sandbox/localhost، JSON temp store، دیتاست دمو و اجرای sequential؛ نتیجه ظرفیت ملی نیست و باید در Wave 18 تکرار شود.
+- **تست‌ها:** `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+
+## چت ۱: Wave -1 / Architecture Discovery بخش دوم — Threat Model + Bottleneck Map — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** بخش دوم Wave -1 فقط با مستندات انجام شد؛ `docs/THREAT_MODEL.md` با چارچوب STRIDE و `docs/BOTTLENECK_MAP.md` ساخته شدند و کپی هر دو در `reza/` قرار گرفت. Progress Tracker برای Wave -1 به `✅` تغییر کرد چون بخش اول و دوم کامل شدند.
+
+- **اثر معماری:** ریسک‌های اصلی ملی (چند source of truth، drift بین REST/Sync، IDOR/BOLA، state توزیع‌نشده، full scan، نبود load/chaos واقعی) و گلوگاه‌های مسیرهای REST/Pull/Sync/Storage با اولویت Waveهای بعدی مستند شد.
+- **اثر کد/دیتابیس/امنیت/کارایی:** فقط مستنداتی؛ هیچ تغییر runtime/schema/test.
+- **تست‌ها:** `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+
+## چت ۱: Wave -1 / Architecture Discovery بخش اول — Dependency/Data/Auth/Sync Flow — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** بخش اول Wave -1 فقط با مستندات انجام شد؛ هیچ فایل کد/runtime تغییر نکرد. چهار سند کشف معماری ساخته شد: `docs/DEPENDENCY_GRAPH.md`، `docs/DATA_FLOW.md`، `docs/AUTH_FLOW.md`، `docs/SYNC_FLOW.md` و کپی همه در `reza/` قرار گرفت. Progress Tracker برای Wave -1 به `🟡` تغییر کرد و Evidence به همین چهار سند اشاره می‌کند.
+
+- **اثر معماری:** وابستگی‌های اصلی کلاینت/سرور/Build، مسیر داده UI/API تا Store/PostgreSQL/Redis، جریان OTP/JWT/session و مسیر Push/Pull/Conflict مستند شد؛ مبنای تصمیم‌گیری Waves بعدی.
+- **اثر کد/دیتابیس/امنیت/کارایی:** فقط مستنداتی؛ هیچ تغییر runtime/schema/test.
+- **تست‌ها:** `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+
+## چت ۱: اعمال Addendum معماری نقشه راه ملی — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** متن کامل Addendum طبق پرامپت در `docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md` ذخیره شد؛ خط الزام‌آور مکمل معماری پس از عنوان `docs/ROADMAP.md` اضافه شد؛ Progress Tracker طبق Addendum از جدول صرفاً status به ستون‌های `Owner/Risk/Dependency/Evidence` ارتقا یافت؛ Wave -1 و Arena 5 ثبت شدند؛ کپی‌های `reza/` همگام شدند.
+
+- **فایل‌ها:** `docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md`، `docs/ROADMAP.md`, `docs/NATIONAL_ROADMAP_PROGRESS.md`، کپی‌های `reza/`، `docs/README.md`، `HANDOFF.md`.
+- **اثر معماری:** اجرای همه Waves اکنون مشروط به Architecture Discovery، QA/Reliability مستقل، Modular Monolith قبل از Microservice، Multi-tenant governance و شواهد پیشرفت شده است.
+- **اثر کد/دیتابیس/امنیت/کارایی:** فقط مستنداتی؛ runtime/schema تغییر نکرد.
+- **تست‌ها:** `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+
+## چت ۱: Wave 2 — Database Engineering (Migrations/Constraints/IDs/Transactions/OCC) — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** Wave 2 روی شاخهٔ ثابت `arena/01a085da-p2` پیاده شد. پوشهٔ `migrations/` با ۳ migration forward و ۳ rollback ساخته شد؛ `server/schema.sql` و مولد `tools/migrate-to-pg.js` به PostgreSQL Identity برای `id` هم‌راستا شدند؛ مسیر PostgreSQL در `server/ids.js` از sequence وابسته به identity column استفاده می‌کند؛ سه مسیر حیاتی REST (`students`, `attendance`, `grades`) از `db.persistOpsBatch()`/transaction عبور می‌کنند؛ `server/db.js` برای updateهای دارای `base_version` SQL-OCC با `WHERE id AND version` و خطای 409 دارد.
+
+- **فایل‌های مهم:** `migrations/001_initial.sql`، `002_indexes.sql`، `003_constraints.sql` (+ downها)؛ `server/db.js`؛ `server/ids.js`؛ `server/routes/{students,attendance,grades}.js`؛ `tools/migrate-to-pg.js`؛ `tests/db-engineering*.js`؛ `docs/DATABASE_ARCHITECTURE.md` و کپی `reza/`.
+- **تست‌های اختصاصی:** `node tests/db-engineering.js` = **۱۲/۱۲**؛ `node tests/db-engineering-mutations.js` = **۶/۶ جهش کشته شد**.
+- **محدودیت:** اجرای migration روی PG واقعی در این محیط انجام نشد؛ PostgreSQL-only شدن production همچنان Wave 1 است. مسیر JSON/memory برای سازگاری دمو باقی ماند.
+
+## چت ۱: Wave 0 / Part 1 — Tag + تست‌های فعلی + سند کلی Baseline ملی — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** tag مبنا `national-baseline-start` روی commit `0be0bb5c6e7640cdf6a5ab0503a6c8948206492c` ساخته و push شد؛ `docs/NATIONAL_BASELINE.md` به‌عنوان سند بخش ۱ ساخته شد؛ کپی آن و progress tracker در `reza/` به‌روز شد؛ Wave 0 در progress از `⏳` به `🟡` تغییر کرد چون بخش‌های ۲ تا ۴ هنوز باید تجمیع شوند.
+
+- **تست‌ها:** `node tests/run.js` = **۳۵/۳۵**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**؛ `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**.
+- **اثر معماری/دیتابیس/امنیت/کارایی:** فقط مستنداتی و baseline؛ runtime/schema/test تغییر نکرد. latency endpointها و DB/cache/sync throughput عمداً به Partهای ۲ و ۳ واگذار شد.
+- **قید Arena:** این سشن به شاخهٔ `arena/01a085da-p2` قفل است؛ بنابراین برخلاف متن تقسیم کار، شاخهٔ `feat/baseline-chat1` ساخته نشد و کار روی شاخهٔ ثابت همین سشن انجام شد.
+
+## چت ۱ جدید: جایگزینی نقشه راه با National Scale Master Roadmap + Progress Tracker — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** `docs/ROADMAP.md` با متن کامل «نقشه راه جامع مهندسی پایش تا آمادگی مقیاس ملی» جایگزین شد و فایل پیگیری `docs/NATIONAL_ROADMAP_PROGRESS.md` با Waveهای ۰ تا ۲۰ ساخته شد؛ کپی هر دو فایل نیز در `reza/` قرار گرفت.
+
+- **تغییرات:** حذف محتوای نقشه‌راه قبلی و ثبت نقشه ملی ۳۳ بخشی؛ ساخت جدول پیشرفت با وضعیت اولیه `⏳` برای همه Waveها؛ به‌روزرسانی فهرست مستندات.
+- **اثر معماری:** فقط مستنداتی؛ جهت پروژه از roadmap محلی/پایلوت به مسیر National Scale با PostgreSQL source-of-truth، Redis distributed state، API stateless، workers، observability و DR رسمی منتقل شد.
+- **اثر دیتابیس/امنیت/کارایی:** بدون تغییر کد/اسکیما؛ اثر راهبردی در roadmap ثبت شد (DB-native paths، tenant isolation، ASVS/CI security، load/chaos/soak).
+- **تست‌ها:** `node tools/check-authz.js` سبز با تطبیق کامل؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+- **محدودیت:** Waveها فقط برنامه‌ریزی/پیگیری‌اند؛ هیچ Wave اجرایی شروع نشده و همه در progress با وضعیت «در انتظار شروع» ثبت شده‌اند.
+
 ## چت ۱ (جانشین): انتقال فاز ۰.۱/۰.۲ از شاخهٔ چت ۱ قبلی به شاخهٔ فعال — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **وضعیت:** ۱۲ کامیتِ فاز ۰.۱ و ۰.۲ از `origin/arena/01a0827b-p2` با
