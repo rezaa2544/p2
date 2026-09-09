@@ -6,7 +6,7 @@
    - Dual-mode operation: Native PostgreSQL when DATABASE_URL is set,
      or zero-dependency in-memory JSON fallback when unset.
    - Methods: query(sql, params), transaction(callback), ping(),
-     persistOp(op), healthCheck(), close().
+     persistOp(op), persistOpsBatch(ops), healthCheck(), close().
    - Supports: PG_POOL_MIN, PG_POOL_MAX, PG_TIMEOUT_MS, DATABASE_URL.
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
@@ -167,7 +167,8 @@ async function transaction(callback) {
     await client.query('COMMIT');
     return result;
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); }
+    catch (rbErr) { console.error('[DB] ROLLBACK failed:', rbErr.message); }   /* P1-14: خطایِ rollback نباید خطایِ اصلی را بپوشاند */
     throw err;
   } finally {
     client.release();
@@ -175,16 +176,15 @@ async function transaction(callback) {
 }
 
 /**
- * Persist an applied sync operation to PostgreSQL
+ * P1-14: persist ONE op on a given client — THROWS on error (for use inside transactions).
+ * Semantics mirror the old persistOp: empty-data ins/upd is a no-op; uid tracking is
+ * best-effort (silent); del with no id skips the DELETE but still tracks the uid.
  */
-async function persistOp(op) {
-  if (!isPostgres() || !op || !op.c) return;
-
+async function persistOpWithClient(client, op) {
   const col = op.c;
   const t = op.t;
   const data = op.data || {};
 
-  try {
     if (t === 'ins' || t === 'upd') {
       const fields = Object.keys(data);
       if (fields.length === 0) return;
@@ -205,24 +205,68 @@ async function persistOp(op) {
         .join(', ');
 
       const sql = `INSERT INTO ${col} (${cols}) VALUES (${placeholders}) ON CONFLICT (id) DO UPDATE SET ${updateSet};`;
-      await pool.query(sql, values);
+      await client.query(sql, values);
     } else if (t === 'del') {
       const delId = Number(op.id != null ? op.id : (data && data.id));
       if (delId) {
-        await pool.query(`DELETE FROM ${col} WHERE id = $1;`, [delId]);
+        await client.query(`DELETE FROM ${col} WHERE id = $1;`, [delId]);
       }
     }
 
-    // Also persist processed UID into server_processed_uids
+    // Also persist processed UID into server_processed_uids (best-effort, as before)
     if (op.uid) {
-      await pool.query(
+      await client.query(
         `INSERT INTO server_processed_uids (uid, processed_at) VALUES ($1, NOW()) ON CONFLICT (uid) DO NOTHING;`,
         [op.uid]
       ).catch(() => {});
     }
+}
+
+/**
+ * Persist an applied sync operation to PostgreSQL (single-op; failures are logged, never thrown)
+ */
+async function persistOp(op) {
+  if (!isPostgres() || !op || !op.c) return;
+
+  const col = op.c;
+  const t = op.t;
+
+  try {
+    await persistOpWithClient({ query: (text, params) => pool.query(text, params) }, op);
   } catch (err) {
     console.error(`[DB] Error persisting sync op to PostgreSQL (${col}.${t}):`, err.message);
   }
+}
+
+/**
+ * P1-14: persist applied ops on a given client, in order — THROWS on the first
+ * failure so the caller's transaction rolls everything back.
+ */
+async function persistOpsBatchWithClient(client, ops) {
+  let n = 0;
+  for (const op of (ops || [])) {
+    if (!op || !op.c) continue;
+    await persistOpWithClient(client, op);
+    n++;
+  }
+  return { ok: true, count: n };
+}
+
+/**
+ * P1-14: atomic multi-record mirror — all ops in ONE transaction (all-or-nothing).
+ * Memory fallback: PG mirror is skipped (the JSON store is the source of truth there).
+ * THROWS on failure (after ROLLBACK) so the caller can audit / mark for retry.
+ */
+async function persistOpsBatch(ops) {
+  const list = ops || [];
+  if (!isPostgres()) {
+    return { ok: true, driver: 'memory', count: list.length };
+  }
+  return await transaction(async (client) => {
+    const r = await persistOpsBatchWithClient(client, list);
+    r.driver = 'postgres';
+    return r;
+  });
 }
 
 /**
@@ -283,6 +327,13 @@ async function close() {
   }
 }
 
+/* P1-14: seam تزریقِ pool برای تستِ اتمی‌بودن بدون PG واقعی (pg-mem).
+   فقط تست از آن استفاده می‌کند؛ کدِ اجرایی همیشه از init می‌آید. */
+function __setPoolForTests(p) {
+  if (p) { pool = p; isPgActive = true; }
+  else { pool = null; isPgActive = false; }
+}
+
 module.exports = {
   init,
   isPostgres,
@@ -291,6 +342,10 @@ module.exports = {
   ping,
   transaction,
   persistOp,
+  persistOpWithClient,
+  persistOpsBatchWithClient,
+  persistOpsBatch,
+  __setPoolForTests,
   isUidProcessed,
   healthCheck,
   close
