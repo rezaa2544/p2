@@ -18,6 +18,7 @@ function createStudentRoutes(ctx) {
   const store = ctx.store;
   const db = ctx.db;
   const ids = ctx.ids; /* P0-16 */
+  const deleter = ctx.deleter; /* P0-17 */
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
@@ -185,11 +186,14 @@ function createStudentRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
 
-    store.users.splice(studentIdx, 1);
-    markDirty();
-
-    if (db) await db.persistOp({ c: 'users', t: 'del', id: Number(id) });
-    audit('student_deleted', { user_id: user.id, student_id: Number(id) });
+    /* P0-17: حذف امن با سرویس واحد — سنگ‌قبر + نسخه + رویداد برون‌مرزی */
+    const del = await deleter.softDelete('users', { id: Number(id), role: 'student' }, {
+      actor: user,
+      audit: () => audit('student_deleted', { user_id: user.id, student_id: Number(id) })
+    });
+    if (!del.ok) {
+      return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
+    }
     return { status: 200, body: { ok: true, message: 'دانش‌آموز با موفقیت حذف شد' } };
   }
 

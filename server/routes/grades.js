@@ -16,6 +16,7 @@ function createGradeRoutes(ctx) {
   const store = ctx.store;
   const db = ctx.db;
   const ids = ctx.ids; /* P0-16 */
+  const deleter = ctx.deleter; /* P0-17 */
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
@@ -175,11 +176,14 @@ function createGradeRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
 
-    store.grades.splice(gradeIdx, 1);
-    markDirty();
-
-    if (db) await db.persistOp({ c: 'grades', t: 'del', id: Number(id) });
-    audit('grade_deleted', { user_id: user.id, grade_id: Number(id) });
+    /* P0-17: حذف امن با سرویس واحد — سنگ‌قبر + نسخه + رویداد برون‌مرزی */
+    const del = await deleter.softDelete('grades', { id: Number(id) }, {
+      actor: user,
+      audit: () => audit('grade_deleted', { user_id: user.id, grade_id: Number(id) })
+    });
+    if (!del.ok) {
+      return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
+    }
     return { status: 200, body: { ok: true, message: 'نمره با موفقیت حذف شد' } };
   }
 

@@ -17,6 +17,7 @@ function createClassRoutes(ctx) {
   const store = ctx.store;
   const db = ctx.db;
   const ids = ctx.ids; /* P0-16 */
+  const deleter = ctx.deleter; /* P0-17 */
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
@@ -152,11 +153,14 @@ function createClassRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
     }
 
-    store.classes.splice(clsIdx, 1);
-    markDirty();
-
-    if (db) await db.persistOp({ c: 'classes', t: 'del', id: Number(id) });
-    audit('class_deleted', { user_id: user.id, class_id: Number(id) });
+    /* P0-17: حذف امن با سرویس واحد — سنگ‌قبر + نسخه + رویداد برون‌مرزی */
+    const del = await deleter.softDelete('classes', { id: Number(id) }, {
+      actor: user,
+      audit: () => audit('class_deleted', { user_id: user.id, class_id: Number(id) })
+    });
+    if (!del.ok) {
+      return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
+    }
     return { status: 200, body: { ok: true, message: 'کلاس با موفقیت حذف شد' } };
   }
 
