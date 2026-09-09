@@ -450,11 +450,15 @@ function coreActions(e, el, id, a, rawId){
        f('نام *', inp('as_name',''))
        + f('دسته', inp('as_category',''))
        + f('مکان', inp('as_location',''))
-       + f('وضعیت', sel('as_status',[['available','در دسترس'],['in_use','در حال استفاده'],['repair','در تعمیرات']],'available')),
+       + f('وضعیت', sel('as_status',[['available','در دسترس'],['in_use','در حال استفاده'],['repair','در تعمیرات']],'available'))
+       + f('یادداشت', inp('as_note',''))
+       + f('تعداد کل', inp('as_total','1','number'))
+       + f('قابل‌استفاده (خالی = خودکار)', inp('as_usable','','number')),
        'as-save'));
    },
    'as-save'(){
-     const r = assetAdd(V('as_name'), V('as_category'), V('as_location'), V('as_status'));
+     const r = assetAdd(V('as_name'), V('as_category'), V('as_location'), V('as_status'), V('as_note'),
+       {total_count: Number(V('as_total')) || 1, usable_count: (V('as_usable') === '' ? undefined : Number(V('as_usable')))});
      if(!r.ok){ toast(r.msg,'err'); return; }
      closeModal(); toast('تجهیز ثبت شد','ok');
      render();
@@ -465,11 +469,14 @@ function coreActions(e, el, id, a, rawId){
      window._asEditId = a.id;
      openModal(modalTpl('وضعیت — ' + a.name,
        f('وضعیت', sel('as_status',[['available','در دسترس'],['in_use','در حال استفاده'],['repair','در تعمیرات']], a.status))
-       + f('مکان', inp('as_location', a.location||'')),
+       + f('مکان', inp('as_location', a.location||''))
+       + f('تعداد کل', inp('as_total', String(assetTotal(a)), 'number'))
+       + f('قابل‌استفاده', inp('as_usable', String(assetUsable(a)), 'number')),
        'as-status-save'));
    },
    'as-status-save'(){
-     const r = assetSetStatus(window._asEditId, V('as_status'), V('as_location'));
+     const r = assetSetStatus(window._asEditId, V('as_status'), V('as_location'),
+       {total_count: Number(V('as_total')), usable_count: Number(V('as_usable'))});
      if(!r.ok){ toast(r.msg,'err'); return; }
      closeModal(); toast('وضعیت به‌روز شد','ok');
      render();
@@ -480,6 +487,19 @@ function coreActions(e, el, id, a, rawId){
        if(!r.ok){ toast(r.msg,'err'); return; }
        toast('تجهیز حذف شد','ok'); render();
      }, {title:'حذف تجهیز', ok:'حذف', danger:true});
+   },
+   'as-search'(){
+     try{ window._asQ = V('as_q') || ''; }catch(e){ window._asQ = ''; }
+     render();
+   },
+   'as-cust-toggle'(){
+     const t = byId('users', Number(id));
+     if(!t) return;
+     const was = (t.asset_staff === 1);
+     const r = assetSetCustodian(t.id, !was);
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     toast(was ? 'مجوزِ تحویلداری لغو شد' : 'مجوزِ تحویلداری اعطا شد','ok');
+     render();
    },
    'sd-new'(){
      const u = S.user;

@@ -99,6 +99,7 @@ const STATUS_UPD_ROLE = {
   internships: ['teacher'],                  /* تأییدِ ساعتِ کارآموزی */
   nudges: ['teacher'],                       /* پاسخِ دبیر */
   parent_subscriptions: ['parent'],          /* وضعیتِ اشتراکِ خود */
+  assets: ['teacher'],                       /* E.5 — تحویلدار (پرچم+مدرسه در inScope) */
 };
 
 /**
@@ -438,6 +439,14 @@ function inScope(session, coll, recId, data){
   }
   if(u.role === 'teacher'){
     if(coll === 'messages') return msgOwnerOk();
+    /* E.5 — تحویلدار: به‌روزرسانیِ اموال در سطحِ مدرسه است نه کلاس؛
+       پرچمِ تفویضیِ مدیر (users.asset_staff=1) لازم است. */
+    if(coll === 'assets'){
+      const me = (get_store().users || []).find(x => x.id === u.id);
+      if(!me || me.asset_staff !== 1) return false;
+      const t3 = rec || data || {};
+      return t3.school_id != null && Number(t3.school_id) === Number(u.school_id);
+    }
     /* Round 89 — class-level collections: a teacher is bound to classes they actually
        teach (homeroom or schedule) — fail-closed for any other class.
        meeting_slots: their own slots (created with parent_id/student_id null). */

@@ -50,7 +50,9 @@
     "note",
     "school_id",
     "status",
-    "updated_at"
+    "total_count",
+    "updated_at",
+    "usable_count"
    ],
    "ins": [
     "manager",
@@ -58,6 +60,7 @@
    ],
    "upd": [
     "manager",
+    "teacher",
     "superadmin"
    ],
    "del": [
@@ -2141,6 +2144,7 @@
     "iep_notes",
     "iep_staff",
     "iep_updated",
+    "asset_staff",
     "job",
     "mother_nid",
     "national_id",
