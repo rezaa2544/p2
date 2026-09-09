@@ -204,6 +204,11 @@ async function withSingleFlight(key, fn) {
   return p;
 }
 
+/* Wave 15: آمارِ کش برایِ /api/health (L1 + در‌حالت‌پروازِ single-flight) */
+function stats() {
+  return { l1: localUserBootstrapCache.size, inflight: inflight.size };
+}
+
 /* Wave 11: دسترسی‌هایِ آزمون — L1 و single-flight را قابلِ مشاهده می‌کنند */
 function __l1ForTests() {
   return {
@@ -325,5 +330,6 @@ module.exports = {
   l1Stats,
   setL1MaxEntries,
   withSingleFlight,
+  stats,
   __l1ForTests,
   __inflightForTests};

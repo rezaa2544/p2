@@ -502,6 +502,16 @@ academic-years **۹/۹** + جهش **۵/۵** · exam-types **۲۷/۲۷** + جهش
   `git merge-tree 430c7c8 origin/main origin/feat/b3-d234-chat4` سنجیده و در
   `docs/PR_MERGE_PLAN.md` §۶ ثبت شد. دامِ روش هم ثبت شد: بلوک‌های
   `added in both` را باید جدا شمرد، وگرنه `docs/ROADMAP.md` از قلم می‌افتد.
+## چت ۳ — Wave 15: Health / Deployment (Liveness/Readiness/Health + Graceful Shutdown) — ۲۰/۰۶/۱۴ (2026-09-09)
+
+**وضعیت:** شاخهٔ `arena/01a08545-p2`. سه کامیت: هسته + تست‌ها / مستندات / گزارش.
+- **سه endpoint، سه رفتارِ عمدی:** `/api/liveness` (همیشه 200 — عمداً وابستگی نمی‌بیند تا قطعِ Redis طوفانِ ری‌استارت نکند) · `/api/readiness` (store+DB+Redis؛ **PAYESH_ENV=production یا NODE_ENV=production + Redis قطع ⇒ 503**؛ در حینِ drain فوراً 503) · `/api/health` (کدِ وضعیت روی درگاهِ P0-13 قدیمی — قراردادِ server13/T2b دست نمی‌خورد — بدنهٔ کامل: db+pool stats، redis، queue، cache_l1، memory).
+- **Graceful Shutdown (SIGTERM/SIGINT):** draining ⇒ closeIdleConnections + server.close ⇒ drainِ in-flight (poll 50ms؛ مهلت `PAYESH_SHUTDOWN_TIMEOUT_MS`=10s پیش‌فرض) ⇒ persistStore + db.close + redis.close ⇒ **exit 0**؛ فراتر از مهلت+2s ⇒ exit 1 (نگهبانِ زور). در‌حالت‌پرواز کامل می‌شود، نه abort.
+- **تست:** `tests/wave15-health.js` **10/10** (H1–H7 درون‌فرایند + S1–S3 فرایندِ فرزند با سیگنالِ واقعی؛ S2 = SIGTERM در حینِ درخواستِ 1.5s: کامل شد + اتصالِ تازه reject + exit 0) + hookِ فقط-تست `/api/__slow` (env-gated).
+- **گیت‌ها:** smoke 547/547، check-authz 0، secret-scan 11/11، build --check؛ رگرسیون: server1 31، server13 9 (production)، server17 70، wave6 22، wave11 20، redis-fallback 10، otp-redis 16، lock-atomic 12، pull-bootstrap 12، server-mutations 17/20 = بازهٔ پیشین (M18 یک‌بار با پیشوندِ `backupTimer =` شکست — خطِ verbatim برگشت).
+- **مستندات:** `docs/DEPLOYMENT_GUIDE.md` (پروب‌های k8s، preStop، rolling با maxSurge=1/maxUnavailable=0، rollback، جدولِ env، چک‌لیست) + AI_PROMPT §0.5.33 + ROADMAP B.6.
+- **ملاحظه:** این شاخه worker ندارد (outbox/worker در main) — seamِ توقفِ worker در توالیِ shutdown آماده است؛ بعد از merge به main باید بازبینی شود که worker جدید هم در همان seam ایستاده شود.
+
 ## چت ۳ جدید — Wave 11: Cache (TTL، invalidation، stampede protection) — ۲۰/۰۶/۱۴ (2026-09-09)
 
 **وضعیت:** شاخهٔ `arena/01a08545-p2` (بعد از دور ۱۰). سه کامیت: هسته + تست‌ها / اسنکواری و مستندات / گزارش.

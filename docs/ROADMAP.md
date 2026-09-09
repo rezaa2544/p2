@@ -65,7 +65,6 @@ Browser
    `write A → read B → update B → read A`
 
 **Acceptance:** همه instanceها state واحد را از DB ببینند.
-
 ---
 
 # 5. Wave 2 — Database Engineering
