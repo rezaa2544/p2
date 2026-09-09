@@ -14,6 +14,15 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۱: اعمال Addendum معماری نقشه راه ملی — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** متن کامل Addendum طبق پرامپت در `docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md` ذخیره شد؛ خط الزام‌آور مکمل معماری پس از عنوان `docs/ROADMAP.md` اضافه شد؛ Progress Tracker طبق Addendum از جدول صرفاً status به ستون‌های `Owner/Risk/Dependency/Evidence` ارتقا یافت؛ Wave -1 و Arena 5 ثبت شدند؛ کپی‌های `reza/` همگام شدند.
+
+- **فایل‌ها:** `docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md`، `docs/ROADMAP.md`, `docs/NATIONAL_ROADMAP_PROGRESS.md`، کپی‌های `reza/`، `docs/README.md`، `HANDOFF.md`.
+- **اثر معماری:** اجرای همه Waves اکنون مشروط به Architecture Discovery، QA/Reliability مستقل، Modular Monolith قبل از Microservice، Multi-tenant governance و شواهد پیشرفت شده است.
+- **اثر کد/دیتابیس/امنیت/کارایی:** فقط مستنداتی؛ runtime/schema تغییر نکرد.
+- **تست‌ها:** `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**.
+
 ## چت ۱: Wave 2 — Database Engineering (Migrations/Constraints/IDs/Transactions/OCC) — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **وضعیت:** Wave 2 روی شاخهٔ ثابت `arena/01a085da-p2` پیاده شد. پوشهٔ `migrations/` با ۳ migration forward و ۳ rollback ساخته شد؛ `server/schema.sql` و مولد `tools/migrate-to-pg.js` به PostgreSQL Identity برای `id` هم‌راستا شدند؛ مسیر PostgreSQL در `server/ids.js` از sequence وابسته به identity column استفاده می‌کند؛ سه مسیر حیاتی REST (`students`, `attendance`, `grades`) از `db.persistOpsBatch()`/transaction عبور می‌کنند؛ `server/db.js` برای updateهای دارای `base_version` SQL-OCC با `WHERE id AND version` و خطای 409 دارد.
