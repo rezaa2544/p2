@@ -6,7 +6,7 @@
 
 | Wave | عنوان | وضعیت | توضیح کوتاه |
 |---:|---|---|---|
-| 0 | Baseline و Freeze | ⏳ | در انتظار شروع — ثبت مبنا، تست‌ها، متریک‌های اولیه و inventory |
+| 0 | Baseline و Freeze | 🟡 | شروع شد — بخش ۱ انجام شد: tag، تست‌های فعلی و سند کلی baseline؛ منتظر Partهای ۲ تا ۴ |
 | 1 | PostgreSQL Source of Truth [P0] | ⏳ | در انتظار شروع — انتقال مسیرهای production به PostgreSQL و حذف store از منبع حقیقت |
 | 2 | Database Engineering | ⏳ | در انتظار شروع — migrations نسخه‌دار، constraints، ID صحیح، transaction و OCC |
 | 3 | Query و Performance [P0] | ⏳ | در انتظار شروع — DB-native کردن endpointهای پرترافیک، pagination و index بر اساس plan |

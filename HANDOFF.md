@@ -14,6 +14,14 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۱: Wave 0 / Part 1 — Tag + تست‌های فعلی + سند کلی Baseline ملی — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** tag مبنا `national-baseline-start` روی commit `0be0bb5c6e7640cdf6a5ab0503a6c8948206492c` ساخته و push شد؛ `docs/NATIONAL_BASELINE.md` به‌عنوان سند بخش ۱ ساخته شد؛ کپی آن و progress tracker در `reza/` به‌روز شد؛ Wave 0 در progress از `⏳` به `🟡` تغییر کرد چون بخش‌های ۲ تا ۴ هنوز باید تجمیع شوند.
+
+- **تست‌ها:** `node tests/run.js` = **۳۵/۳۵**؛ `node --expose-gc --max-old-space-size=2048 tests/smoke.js` = **۵۴۷/۵۴۷**؛ `node tools/check-authz.js` = تطبیق کامل/۰ ناهمخوانی؛ `node tests/secret-scan.js` = **۱۱/۱۱**.
+- **اثر معماری/دیتابیس/امنیت/کارایی:** فقط مستنداتی و baseline؛ runtime/schema/test تغییر نکرد. latency endpointها و DB/cache/sync throughput عمداً به Partهای ۲ و ۳ واگذار شد.
+- **قید Arena:** این سشن به شاخهٔ `arena/01a085da-p2` قفل است؛ بنابراین برخلاف متن تقسیم کار، شاخهٔ `feat/baseline-chat1` ساخته نشد و کار روی شاخهٔ ثابت همین سشن انجام شد.
+
 ## چت ۱ جدید: جایگزینی نقشه راه با National Scale Master Roadmap + Progress Tracker — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **وضعیت:** `docs/ROADMAP.md` با متن کامل «نقشه راه جامع مهندسی پایش تا آمادگی مقیاس ملی» جایگزین شد و فایل پیگیری `docs/NATIONAL_ROADMAP_PROGRESS.md` با Waveهای ۰ تا ۲۰ ساخته شد؛ کپی هر دو فایل نیز در `reza/` قرار گرفت.
