@@ -79,7 +79,13 @@ function schoolCaps(sid){
 function hasCap(sid,key){ return !!schoolCaps(sid)[key]; }
 /** چیکنک‌های پروفایل قابلیت برای فرم مدرسه */
 function capPickerHTML(s){
-  const caps=schoolCaps(s&&s.id);
+  /* ویرایش = وضعیتِ مؤثرِ فعلی (صادقانه)؛ مدرسهٔ تازه = سطرِ نوعِ انتخاب‌شده
+     روی CAP_DEFAULTS (دقیقاً همان چیزی که schoolCaps برای مدرسهٔ نوع‌دارِ
+     بی‌قابلیت حساب می‌کند) — فاز ۰.۱ */
+  var caps;
+  if(s&&s.id) caps=schoolCaps(s.id);
+  else if(typeof schoolTypeCaps==='function') caps=Object.assign({},CAP_DEFAULTS,schoolTypeCaps((typeof schoolTypeOf==='function')?schoolTypeOf(s):'governmental'));
+  else caps=schoolCaps(s&&s.id);
   return CAP_DEFS.map(function(k){
     return `<label style="display:flex;gap:8px;align-items:center;padding:7px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer"><input type="checkbox" class="m-cap" value="${k[0]}" ${caps[k[0]]?'checked':''} /><span><b class="small">${k[1]}</b><div class="small muted" style="font-size:11px">${k[2]}</div></span></label>`;
   }).join('');
