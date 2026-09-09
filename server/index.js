@@ -46,6 +46,7 @@ const { createUserRoutes } = require('./routes/users');
 const { createBootstrapRoute } = require('./routes/bootstrap');
 const { createIds } = require('./ids'); /* P0-16 */
 const { createOutbox } = require('./outbox'); /* P0-17 */
+const { createWorker } = require('./worker'); /* ویو ۸ */
 const { createDeleteService } = require('./delete-service'); /* P0-17 */
 const { createPull } = require('./pull');
 
@@ -194,9 +195,9 @@ function persistStore(){
   }catch(e){ /* store file may be gone (tests) — never crash on exit */ }
 }
 setInterval(persistStore, 2000).unref();
-process.on('exit', () => { persistStore(); db.close(); redis.close(); });
-process.on('SIGTERM', () => { persistStore(); db.close(); redis.close(); process.exit(0); });
-process.on('SIGINT', () => { persistStore(); db.close(); redis.close(); process.exit(0); });
+process.on('exit', () => { try { worker.stop(); } catch (e) {} persistStore(); db.close(); redis.close(); });
+process.on('SIGTERM', () => { try { worker.stop(); } catch (e) {} persistStore(); db.close(); redis.close(); process.exit(0); });
+process.on('SIGINT', () => { try { worker.stop(); } catch (e) {} persistStore(); db.close(); redis.close(); process.exit(0); });
 
 /* ── JWT secret (env, or generated once; never committed) ──────────── */
 let JWT_SECRET = process.env.PAYESH_JWT_SECRET || null;
@@ -310,6 +311,22 @@ const ids = createIds({ db, cache });
 /* P0-17: صندوق برون‌مرزی + سرویس حذف واحد (سنگ‌قبر به‌جای اسپلایسِ خام) */
 const outbox = createOutbox({ store, db });
 const deleter = createDeleteService({ store, db, markDirty, outbox });
+/* ویو ۸ — کارگرِ صندوق رویدادها: کارهای پس از حذف (مثل باطل‌کردن کش)
+   از مسیر درخواست بیرون می‌افتد و به‌صورت ناهم‌زمان با تلاشِ مجدد اجرا می‌شود. */
+const worker = createWorker({
+  store, outbox,
+  handlers: {
+    '*.deleted': async (evt) => {
+      const sid = evt.payload && evt.payload.school_id;
+      if (sid != null && typeof cache.invalidateCollection === 'function') {
+        await cache.invalidateCollection(evt.collection, sid);
+      }
+    }
+  },
+  intervalMs: Number(process.env.PAYESH_WORKER_INTERVAL_MS || 1000),
+  maxRetries: Number(process.env.PAYESH_WORKER_MAX_RETRIES || 5)
+});
+worker.start();
 const studentRoutes = createStudentRoutes({ store, db, audit, markDirty, ids, deleter });
 const classRoutes = createClassRoutes({ store, db, audit, markDirty, ids, deleter });
 const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, ids, deleter });

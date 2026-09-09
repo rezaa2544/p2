@@ -323,42 +323,72 @@ async function persistOpWithClient(client, op) {
   const col = op.c;
   const t = op.t;
   const data = op.data || {};
+  const ident = (name) => {
+    if(!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(String(name || ''))) throw new Error('unsafe SQL identifier: ' + name);
+    return '"' + name + '"';
+  };
+  const table = ident(col);
+  const valOf = (v) => (v !== null && typeof v === 'object') ? JSON.stringify(v) : v;
 
-    if (t === 'ins' || t === 'upd') {
-      const fields = Object.keys(data);
-      if (fields.length === 0) return;
+  if (t === 'ins') {
+    const fields = Object.keys(data);
+    if (fields.length === 0) return;
 
-      const cols = fields.map(f => `"${f}"`).join(', ');
-      const placeholders = fields.map((_, i) => `$${i + 1}`).join(', ');
-      const values = fields.map(f => {
-        const val = data[f];
-        if (val !== null && typeof val === 'object') {
-          return JSON.stringify(val);
-        }
-        return val;
-      });
+    const cols = fields.map(ident).join(', ');
+    const placeholders = fields.map((_, i) => `$${i + 1}`).join(', ');
+    const values = fields.map(f => valOf(data[f]));
+    const updateSet = fields
+      .filter(f => f !== 'id')
+      .map(f => `${ident(f)} = EXCLUDED.${ident(f)}`)
+      .join(', ');
 
-      const updateSet = fields
-        .filter(f => f !== 'id')
-        .map((f, i) => `"${f}" = EXCLUDED."${f}"`)
-        .join(', ');
+    const sql = `INSERT INTO ${table} (${cols}) VALUES (${placeholders}) ON CONFLICT (id) DO UPDATE SET ${updateSet};`;
+    await client.query(sql, values);
+  } else if (t === 'upd') {
+    const fields = Object.keys(data).filter(f => f !== 'id');
+    if (fields.length === 0) return;
+    const id = Number(op.id != null ? op.id : data.id);
+    if (!Number.isFinite(id) || id <= 0) throw new Error('missing id for update op');
 
-      const sql = `INSERT INTO ${col} (${cols}) VALUES (${placeholders}) ON CONFLICT (id) DO UPDATE SET ${updateSet};`;
-      await client.query(sql, values);
-    } else if (t === 'del') {
-      const delId = Number(op.id != null ? op.id : (data && data.id));
-      if (delId) {
-        await client.query(`DELETE FROM ${col} WHERE id = $1;`, [delId]);
+    const values = fields.map(f => valOf(data[f]));
+    const setSql = fields.map((f, i) => `${ident(f)} = $${i + 1}`).join(', ');
+
+    if (op.base_version != null) {
+      /* Wave 2 — OCC در سطح SQL: معادل
+         UPDATE ... WHERE id=$id AND version=$base_version؛ صفر row ⇒ 409. */
+      const base = Number(op.base_version);
+      if (!Number.isInteger(base) || base < 1) {
+        const e = new Error('bad base_version');
+        e.code = 'bad_base_version';
+        throw e;
       }
+      const res = await client.query(
+        `UPDATE ${table} SET ${setSql} WHERE id = $${fields.length + 1} AND version = $${fields.length + 2};`,
+        values.concat([id, base])
+      );
+      if (res && res.rowCount === 0) {
+        const e = new Error('optimistic concurrency conflict');
+        e.code = 'occ_conflict';
+        e.status = 409;
+        throw e;
+      }
+    } else {
+      await client.query(`UPDATE ${table} SET ${setSql} WHERE id = $${fields.length + 1};`, values.concat([id]));
     }
+  } else if (t === 'del') {
+    const delId = Number(op.id != null ? op.id : (data && data.id));
+    if (delId) {
+      await client.query(`DELETE FROM ${table} WHERE id = $1;`, [delId]);
+    }
+  }
 
-    // Also persist processed UID into server_processed_uids (best-effort, as before)
-    if (op.uid) {
-      await client.query(
-        `INSERT INTO server_processed_uids (uid, processed_at) VALUES ($1, NOW()) ON CONFLICT (uid) DO NOTHING;`,
-        [op.uid]
-      ).catch(() => {});
-    }
+  // Also persist processed UID into server_processed_uids (best-effort, as before)
+  if (op.uid) {
+    await client.query(
+      `INSERT INTO server_processed_uids (uid, processed_at) VALUES ($1, NOW()) ON CONFLICT (uid) DO NOTHING;`,
+      [op.uid]
+    ).catch(() => {});
+  }
 }
 
 /**

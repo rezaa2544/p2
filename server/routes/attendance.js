@@ -107,7 +107,11 @@ function createAttendanceRoutes(ctx) {
     store.attendance.push(newRecord);
     markDirty();
 
-    if (db && typeof db.persistOp === 'function') {
+    if (db && typeof db.persistOpsBatch === 'function') {
+      /* Wave 2: مسیر حیاتی ثبت حضور (قابل استفاده برای ثبت گروهی با چند op)
+         از transaction مشترک db.persistOpsBatch عبور می‌کند. */
+      await db.persistOpsBatch([{ c: 'attendance', t: 'ins', data: newRecord }]);
+    } else if (db && typeof db.persistOp === 'function') {
       await db.persistOp({ c: 'attendance', t: 'ins', data: newRecord });
     }
 
@@ -136,7 +140,16 @@ function createAttendanceRoutes(ctx) {
     bump(rec);
 
     markDirty();
-    if (db) await db.persistOp({ c: 'attendance', t: 'upd', data: rec });
+    try {
+      if (db && typeof db.persistOpsBatch === 'function') {
+        await db.persistOpsBatch([{ c: 'attendance', t: 'upd', id: rec.id, data: rec, base_version: body.base_version !== undefined ? body.base_version : body.version }]);
+      } else if (db) {
+        await db.persistOp({ c: 'attendance', t: 'upd', data: rec });
+      }
+    } catch (e) {
+      if (e && e.status === 409) return { status: 409, body: { ok: false, code: 'conflict', message: 'رکورد حضور و غیاب هم‌زمان تغییر کرده است' } };
+      throw e;
+    }
 
     audit('attendance_updated', { user_id: user.id, record_id: rec.id });
     return { status: 200, body: { ok: true, data: rec } };
