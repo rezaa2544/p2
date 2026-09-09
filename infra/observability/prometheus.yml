@@ -1,0 +1,54 @@
+# ═══════════════════════════════════════════════════════════════════
+# Wave 14 (Observability) — Prometheus scrape configuration for payesh
+# -------------------------------------------------------------------
+# /metrics is FAIL-CLOSED (server/metrics.js R4). Scrape credentials are
+# therefore mandatory outside loopback:
+#
+#   server side : PAYESH_METRICS_TOKEN=<32+ random bytes>
+#                 (generate: openssl rand -hex 32)
+#   client side : bearer_token_file below, mode 0600, NOT in git.
+#
+# Production with no token ⇒ /metrics returns 404 (the endpoint does not
+# exist). That is deliberate: an unauthenticated metrics endpoint leaks
+# traffic shape, tenant activity and internal error rates.
+# ═══════════════════════════════════════════════════════════════════
+
+global:
+  scrape_interval: 15s        # 15s keeps rate() windows honest at 5m
+  evaluation_interval: 15s
+  external_labels:
+    service: payesh
+    tier: api
+
+rule_files:
+  - alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  - job_name: payesh-api
+    metrics_path: /metrics
+    scheme: https
+    # The API is stateless behind the LB; scrape every replica so that
+    # per-instance event-loop lag / heap growth stays visible.
+    static_configs:
+      - targets:
+          - 'payesh-api-1.internal:3000'
+          - 'payesh-api-2.internal:3000'
+        labels:
+          env: production
+          region: tehran
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/payesh-metrics.token   # 0600, never committed
+    # A scrape that takes longer than the interval hides saturation.
+    scrape_timeout: 10s
+    sample_limit: 20000        # hard ceiling — mirrors PAYESH_METRICS_MAX_SERIES
+
+  # Prometheus watches itself: an absent() alert needs its own series.
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
