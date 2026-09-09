@@ -78,7 +78,7 @@ PG_REPLICA_POOL_MAX=10
 | کامیت | پیام | وضعیت Push |
 |---|---|---|
 | `5ea62a3` | `feat(db): add weighted partitioning routing` | ✅ Push شده به `origin/arena/01a08527-p2` |
-| `در همین گزارش تکمیل می‌شود` | `docs: update weighted partitioning handoff report` | ✅ پس از ساخت این گزارش Push می‌شود |
+| `b37907b` | `docs: update weighted partitioning handoff report` | ✅ Push شده به `origin/arena/01a08527-p2` |
 
 ---
 

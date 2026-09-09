@@ -21,7 +21,7 @@
 - **یکپارچه‌سازی (`server/db.js`):** `query(text, params, opts)` سازگار با امضای قبلی؛ اگر `PAYESH_WEIGHTED_PARTITIONING=1` و `{schoolId, readOnly:true}` برای مدرسهٔ heavy باشد، read به replica pool می‌رود؛ write همیشه primary می‌ماند؛ متریک‌ها در `partitioningHealth/healthCheck`.
 - **مستندات/env:** `docs/WEIGHTED_PARTITIONING.md`، `.env.example`، `docs/ROADMAP.md` و `docs/README.md` به‌روز شدند؛ ردیف فاز ۲.۴ با ✅ ثبت شد.
 - **تست:** `tests/weighted-partitioning.js` ۱۲/۱۲؛ رگرسیون PgBouncer ۱۲/۱۲؛ `build --check` ✅؛ `check-authz` ✅؛ `secret-scan` ۱۱/۱۱ ✅؛ smoke ۵۴۷/۵۴۷ ✅.
-- **کامیت/پوش:** `5ea62a3 feat(db): add weighted partitioning routing` روی `origin/arena/01a08527-p2` پوش شد؛ گزارش نهایی در `CHAT4_WEIGHTED_PARTITIONING_REPORT.md`.
+- **کامیت/پوش:** `5ea62a3 feat(db): add weighted partitioning routing` و `b37907b docs: update weighted partitioning handoff report` روی `origin/arena/01a08527-p2` پوش شدند؛ گزارش نهایی در `CHAT4_WEIGHTED_PARTITIONING_REPORT.md`.
 
 
 ## چت ۴ جدید: بررسی وضعیت PR قبلی + PgBouncer Connection Pooling — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
