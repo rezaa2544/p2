@@ -14,7 +14,7 @@ const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز 
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { projectUserByRole } = require('../middleware/projection');
-const { buildUsersList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
+const { buildUsersList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */const cache = require('../cache'); /* Wave 11 */
 
 const ROLE_LEVEL = { student: 0, parent: 1, driver: 1, counselor: 3, teacher: 3, edu_office: 3, manager: 4, superadmin: 5 };
 
@@ -159,6 +159,7 @@ function createUserRoutes(ctx) {
     store.users.push(newUser);
     markDirty();
 
+      cache.invalidateCollection('users', newUser.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
     audit('user_created', { user_id: user.id, target_user_id: newUser.id, role: newUser.role, school_id: schoolId });
     return { status: 201, body: { ok: true, data: projectUserByRole(newUser, user.role) } };
   }
@@ -239,6 +240,7 @@ function createUserRoutes(ctx) {
     if (cached) Object.assign(cached, next);
     else { if (!Array.isArray(store.users)) store.users = []; store.users.push(next); }
     markDirty();
+    cache.invalidateCollection('users', target.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
 
     audit('user_updated', { user_id: user.id, target_user_id: target.id });
     return { status: 200, body: { ok: true, data: projectUserByRole(cached || next, user.role, isSelf) } };
@@ -270,6 +272,7 @@ function createUserRoutes(ctx) {
       if (del.status === 503) return pgDown();
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
+    cache.invalidateCollection('users', target.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
     return { status: 200, body: { ok: true, message: 'کاربر با موفقیت حذف شد' } };
   }
 

@@ -669,3 +669,5 @@ Capacity
 | E.11 | پایگاه دانش برای کاربر نهایی (USER_GUIDE) | چت ۳ | ⏳ |
 | E.12 | صفحه‌ی وضعیت عمومی سرویس | چت ۲ | ⏳ |
 | B.3 | PG منبعِ حقیقت — Wave 1 بخش ۲ (انتقالِ Writes + تراکنش‌ها) | چت ۳ | ✅ کامل (دور ۱۰۵ — اسنکواری در `docs/WAVE1_WRITES_INVENTORY.md`) |
+| B.4 | PG/Redis: Wave 6 — Audit و تکمیلِ Distributed State (OTP/rate-limit/revocation/idempotency/cache/lock) | چت ۳ | ✅ کامل (`docs/WAVE6_REDIS_AUDIT.md`) |
+| B.5 | کشینگ: Wave 11 — TTL، invalidation، stampede protection (Cache Hierarchy) | چت ۳ | ✅ کامل (دور ۱۱۱ — `docs/WAVE11_CACHE_STRATEGY.md`) |
