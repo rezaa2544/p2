@@ -168,6 +168,31 @@ CREATE TABLE IF NOT EXISTS server_auth_codes (
       colDefs.push(`  CONSTRAINT fk_${col}_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED`);
     }
 
+    /* P1-13 (تمامیت داده، مقیاس ملی): اینوارینت‌های کسب‌وکار در سطح دیتابیس.
+       هر قید فقط وقتی صادر می‌شود که ستون‌هایش در مدل باشند (محافظت در برابر رانش مدل). */
+    if (col === 'classes' && allFields.includes('capacity')) {
+      colDefs.push('  CONSTRAINT chk_classes_capacity CHECK (capacity > 0)');
+    }
+    if (col === 'enrollments' && allFields.includes('student_id') && allFields.includes('year')) {
+      /* یک دانش‌آموز، یک ثبت‌نام در هر سال. نکته: NULLها در UNIQUE پستگرس تداخل ندارند
+         (فعلاً year خالی است پس قید روی دادهٔ امروز خنثی است)؛ انتقالِ هم‌سال با دو سطرِ
+         باز باید در سطح اپ بسته شود (سطرِ پیشین بسته/حذف شود). */
+      colDefs.push('  CONSTRAINT uq_enrollments_student_year UNIQUE (student_id, year)');
+    }
+    if (col === 'schedule' && allFields.includes('teacher_id') && allFields.includes('day') && allFields.includes('period')) {
+      colDefs.push('  CONSTRAINT uq_schedule_teacher_slot UNIQUE (teacher_id, day, period)');
+    }
+    if (col === 'users' && allFields.includes('status')) {
+      /* enum دقیقاً از server/validate.js (STATUS_ENUMS.users) — مقدار چهارم awaiting_transfer است نه transferred */
+      colDefs.push("  CONSTRAINT chk_users_status CHECK (status IN ('active', 'dropped_out', 'graduated', 'awaiting_transfer'))");
+    }
+    if (col === 'grades') {
+      if (allFields.includes('student_id')) colDefs.push('  CONSTRAINT fk_grades_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED');
+      if (allFields.includes('class_id')) colDefs.push('  CONSTRAINT fk_grades_class FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED');
+      if (allFields.includes('subject_id')) colDefs.push('  CONSTRAINT fk_grades_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED');
+      if (allFields.includes('teacher_id')) colDefs.push('  CONSTRAINT fk_grades_teacher FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED');
+    }
+
     ddl.push(colDefs.join(',\n'));
     ddl.push(');\n');
 
