@@ -61,9 +61,9 @@ function createBell(ctx){
   const audit = ctx.audit;
 
   return {
-    apiBellNow(req, res){
+    async apiBellNow(req, res){
       /* sessionFrom already resolves the JWT to the (active) user */
-      const user = ctx.sessionFrom(req);
+      const user = await ctx.sessionFrom(req);
       if(!user || user.id == null){
         return ctx.sendJson(res, 401, { ok: false, code: 'no_session' });
       }

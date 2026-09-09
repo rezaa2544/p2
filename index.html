@@ -3127,19 +3127,19 @@ function scopeHealth(){
    ═══════════════════════════════════════════════════════════════════ */
 const S={user:null,boss:null,persona:null,showPicker:false,route:'dashboard',sidebar:false,filters:{},page:1,modal:null,tab:'grades',child:null,busy:false};
 const NAV={
- superadmin:[['نظارت روزانه',[['dashboard','📊','داشبورد مدیریتی'],['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها'],['tickets','🎫','تیکت‌های پشتیبانی']]],['مدارس و کاربران',[['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه'],['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]]],
- manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['assets','🧰','املاک'],['dorm','🏠','اسکان و خوابگاه'],['sidadiff','⚖️','سیدا'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک'],['preapps','📥','قیف پیش‌ثبت‌نام'],['scholarships','🎓','کمک‌هزینه و بورسیه'],['drills','⛑️','مانور ایمنی']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات'],['reexams','🔁','امتحانات تجدیدی (شهریور)']]],['کلاس‌های تابستان',[['summerclasses','☀️','کلاس‌های تابستانی']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی'],['staffatt','🗓️','حضور کادر'],['training','📚','دوره‌های آموزشی']]],['مالی',[['tuition','💰','شهریه و امور مالی'],['association','🤝','انجمن و کمک‌ها'],['donations','🎁','کمک‌های داوطلبانه']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو'],['tickets','🎫','پشتیبانی']]]],
+ superadmin:[['نظارت روزانه',[['dashboard','📊','داشبورد مدیریتی'],['activity','📡','بازدید و بار'],['audit','📜','سابقه تغییرات'],['health','🩺','سلامت سامانه'],['diag','🔧','دیاگ سامانه'],['notifications','🔔','اعلان‌ها'],['tickets','🎫','تیکت‌های پشتیبانی']]],['مدارس و کاربران',[['schools','🏫','مدیریت مدارس'],['users','👥','کاربران سامانه'],['geo','🗺️','تقسیمات کشوری'],['offices','🏛️','تعریف ادارات'],['officedash','📈','داشبورد منطقه‌ای'],['regions','📊','آمار مناطق'],['teacheval','🌟','ارزشیابی ناشناس معلم']]],['محتوا',[['subjects','📚','دروس'],['bells','🔔','زمان‌بندی زنگ‌ها'],['announcements','📢','اطلاعیه‌ها'],['calendar','🗓️','تقویم آموزشی']]],['کسب‌وکار',[['plans','💳','پلان‌های فروش'],['finance','💰','مالی سراسری'],['adminsubs','👨‍👩‍👦','اشتراک اولیا']]]],
+ manager:[['کار روزانه',[['dashboard','📊','داشبورد مدرسه'],['atrisk','📉','افت تحصیلی'],['growth','📈','رشد مدرسه'],['calendar','🗓️','تقویم آموزشی'],['visitors','🚪','مهمان‌ها'],['library','📚','کتابخانه'],['assets','🧰','املاک'],['dorm','🏠','اسکان و خوابگاه'],['sidadiff','⚖️','سیدا'],['busservice','🚌','سرویس مدرسه'],['formssms','🖨️','فرم‌ها و پیامک'],['preapps','📥','قیف پیش‌ثبت‌نام'],['scholarships','🎓','کمک‌هزینه و بورسیه'],['drills','⛑️','مانور ایمنی']]],['راه‌اندازی مدرسه',[['schoolyear','📅','چرخه سال تحصیلی'],['lifecycle','🎓','چرخه تحصیلی'],['import','📥','ورود اطلاعات'],['classes','🏛️','کلاس‌ها'],['subjects','📚','دروس'],['schedule','🗓️','برنامه هفتگی'],['bells','🔔','زمان‌بندی زنگ‌ها']]],['کاربران',[['users','👥','دبیران و دانش‌آموزان']]],['آموزش و انضباط',[['attendance','✅','حضور و غیاب'],['grades','📝','نمرات'],['discipline','⚖️','پرونده انضباطی'],['followup','📈','پیگیری الگوها'],['leaves','📨','درخواست‌های مرخصی'],['teacheval','🌟','ارزشیابی ناشناس معلم']]],['امتحانات',[['exams','📝','فصل و برنامه امتحانات'],['reexams','🔁','امتحانات تجدیدی (شهریور)']]],['کلاس‌های تابستان',[['summerclasses','☀️','کلاس‌های تابستانی']]],['کادر مدرسه',[['teachers','👨‍🏫','دبیران و مدارس'],['corrections','📮','درخواست‌های اصلاح'],['staff','📇','عوامل اجرایی'],['staffatt','🗓️','حضور کادر'],['training','📚','دوره‌های آموزشی']]],['مالی',[['tuition','💰','شهریه و امور مالی'],['association','🤝','انجمن و کمک‌ها'],['donations','🎁','کمک‌های داوطلبانه']]],['ارتباطات',[['meetings','📅','نوبت ملاقات اولیا'],['notifyqueue','📨','صف پیام اولیا'],['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو'],['tickets','🎫','پشتیبانی']]]],
  teacher:[['کار روزانه',[['dashboard','📊','داشبورد'],['attendance','✅','حضور و غیاب'],['grades','📝','ثبت نمره'],['schedule','🗓️','برنامه هفتگی'],['calendar','🗓️','تقویم آموزشی']]],['کار آموزشی',[['meetings','📅','جلسات اولیا'],['classes','🏛️','کلاس‌ها'],['vclass','🖥️','کلاس مجازی'],['exams','👁️','برنامه مراقبت من'],['homework','📓','تکالیف'],['discipline','⚖️','گزارش انضباطی'],['leaves','📨','مرخصی دانش‌آموزان']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
- student:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['calendar','🗓️','تقویم آموزشی']]],['پروندهٔ من',[['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['leaves','📨','مرخصی'],['homework','📓','تکالیف من'],['library','📚','کتابخانه']]],['امور مالی',[['mytuition','💰','شهریه من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو']]]],
- edu_office:[['کار روزانه',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
- parent:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['children','👨‍👩‍👦','پرونده فرزندان'],['exams','📝','برنامه امتحانات'],['calendar','🗓️','تقویم آموزشی']]],['نوبت و درخواست‌ها',[['meetings','📅','جلسات اولیا'],['leaves','📨','درخواست مرخصی']]],['خانواده و مالی',[['family','🏠','خانواده و مدارس'],['mytuition','💰','شهریه و اقساط']]],['ارتباطات',[['announcements','📢','اطلاعیه‌های مدرسه'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو با مدرسه']]]],
+ student:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['schedule','🗓️','برنامه درسی'],['calendar','🗓️','تقویم آموزشی']]],['پروندهٔ من',[['exams','📝','برنامه امتحانات'],['record','📁','کارنامه و انضباط'],['leaves','📨','مرخصی'],['homework','📓','تکالیف من'],['library','📚','کتابخانه']]],['امور مالی',[['mytuition','💰','شهریه من']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو'],['teacheval','🌟','ارزشیابی ناشناس معلم']]]],
+ edu_office:[['کار روزانه',[['officedash','📈','داشبورد آماری منطقه'],['officeschools','🏫','مدارس تحت پوشش']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]],['کیفیت آموزشی',[['teacheval','🌟','ارزشیابی ناشناس معلم']]]],
+ parent:[['روزمرهٔ من',[['dashboard','📊','خلاصه وضعیت'],['children','👨‍👩‍👦','پرونده فرزندان'],['exams','📝','برنامه امتحانات'],['calendar','🗓️','تقویم آموزشی']]],['نوبت و درخواست‌ها',[['meetings','📅','جلسات اولیا'],['leaves','📨','درخواست مرخصی']]],['خانواده و مالی',[['family','🏠','خانواده و مدارس'],['mytuition','💰','شهریه و اقساط']]],['ارتباطات',[['announcements','📢','اطلاعیه‌های مدرسه'],['notifications','🔔','اعلان‌ها'],['chat','💬','گفتگو با مدرسه'],['teacheval','🌟','ارزشیابی ناشناس معلم']]]],
  counselor:[['کار من',[['cqueue','📨','صف ارجاع'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]],
  driver:[['سرویس من',[['myservice','🚌','مسیر من'],['dashboard','📊','داشبورد']]],['ارتباطات',[['announcements','📢','اطلاعیه‌ها'],['notifications','🔔','اعلان‌ها']]]]
 };
 const TITLES={schoolyear:['چرخه سال تحصیلی','بستن سال، ارتقای پایه، چیدمان کلاس و ثبت‌نام'],plans:['پلان‌های فروش','قیمت‌گذاری، دورهٔ آزمایشی و سهم مدرسه'],audit:['سابقه تغییرات','چه کسی، کِی، چه چیزی را تغییر داد'],activity:['بازدید و بار سامانه','کاربران برخط، روند بازدید و فشار روی برنامه و سرور'],finance:['مالی سراسری','درآمد اشتراک، شهریه و عملکرد مالی مدارس'],health:['سلامت سامانه','حافظه، ایندکس، صف همگام‌سازی و حجم داده'],diag:['دیاگ سامانه','عیب‌یابی خودکار و تعمیر بدون نیاز به برنامه‌نویس'],bells:['زمان‌بندی زنگ‌ها','ساعت شروع، طول زنگ درس و زنگ تفریح'],import:['ورود اطلاعات','ورود دانش‌آموزان و دبیران از فایل اکسل'],formssms:['فرم‌ها و پیامک','چاپ فرم‌های رسمی و ارسال پیامک گروهی'],notifyqueue:['صف پیام اولیا','بازبینی و تأیید پیامک‌های خودکار پیش از ارسال به خانواده‌ها'],atrisk:['افت تحصیلی','شناسایی زودهنگام دانش‌آموزان در معرض افت'],meetings:['جلسات اولیا','نوبت‌دهی و رزرو جلسه اولیا و مربیان'],growth:['رشد مدرسه','کد معرف، نرخ تبدیل و سهم مدرسه'],lifecycle:['چرخه تحصیلی','ارتقای پایه، انتقال، فارغ‌التحصیلی و پرونده‌های ناقص'],dashboard:['داشبورد','نمای کلی از وضعیت'],schools:['مدیریت مدارس','تعریف، ویرایش و نظارت بر مدارس'],users:['کاربران','مدیریت دبیران، دانش‌آموزان و اولیا'],classes:['کلاس‌ها','مدیریت کلاس‌ها و ظرفیت'],subjects:['دروس','تعریف دروس و ساعات هفتگی'],attendance:['حضور و غیاب','ثبت و مشاهده وضعیت حضور'],grades:['نمرات','ثبت و بررسی نمرات درسی'],discipline:['پرونده انضباطی','موارد مثبت و منفی انضباطی'],schedule:['برنامه هفتگی','جدول ساعات درسی'],announcements:['اطلاعیه‌ها','اخبار و اطلاعیه‌های مدرسه'],record:['پرونده تحصیلی من','کارنامه، حضور و غیاب و انضباط'],children:['پرونده فرزندان','پروندهٔ کاملِ هر فرزند: کارنامه، حضور و انضباط — با دکمه‌های بالای صفحه بین فرزندان جابه‌جا شوید (برچسبِ منو به‌صورتِ «پروندهٔ N فرزند» نمایش داده می‌شود)'],notifications:['اعلان‌ها','رویدادهای مهم مربوط به شما'],leaves:['مرخصی','ثبت و بررسی درخواست‌های مرخصی'],calendar:['تقویم آموزشی','رویدادها، امتحانات و تعطیلات'],chat:['گفتگو','ارتباط مستقیم با مدرسه'],tuition:['شهریه و امور مالی','صورتحساب‌ها، اقساط، درآمد و هزینه'],mytuition:['شهریه و اقساط','وضعیت پرداخت و رسیدها'],regions:['آمار مناطق','مقایسه عملکرد مدارس به تفکیک منطقه'],exams:['امتحانات','فصل امتحانات، برنامه جلسات و مراقبت دبیران'],tickets:['تیکت‌های پشتیبانی','ثبت و پیگیری درخواست پشتیبانی مدرسه'],
 reexams:['امتحانات تجدیدی (شهریور)','دروسِ نیازمندِ امتحانِ مجدد + نمرهٔ نهایی پس از تجدیدی'],
 summerclasses:['کلاس‌های تابستانی','نام + دبیر + دانش‌آموزان + تاریخ‌ها — جدا از سالِ تحصیلیِ رسمی'],teachers:['دبیران و مدارس','دبیران مشترک، بار کاری و کنترل تداخل'],corrections:['درخواست‌های اصلاح','گزارش اولیا درباره اطلاعات نادرست'],family:['خانواده و مدارس','همهٔ فرزندان و مدرسهٔ هرکدام — حتی وقتی در مدارس مختلف‌اند؛ اتصالِ فرزندان به کد ملی و تأییدِ آن‌ها (برای پروندهٔ کاملِ تک‌تک، «پرونده فرزندان» را باز کنید)'],geo:['تقسیمات کشوری','تعریف استان، شهرستان و منطقه'],offices:['ادارات آموزش و پرورش','تعریف اداره کل استان، شهرستان و منطقه به همراه حساب کارشناس'],officedash:['داشبورد اداره','آمار تجمیعی مدارس محدوده'],officeschools:['مدارس تحت پوشش','فهرست و عملکرد مدارس محدوده اداره'],cqueue:['صف ارجاع','دانش‌آموزان ارجاع‌شده به مشاور برای پیگیری الگوی رفتاری'],followup:['پیگیری الگوها','تأخیر مکرر، غیبت مکرر و الگوهای نیازمند ارجاع به مشاور'],staff:['عوامل اجرایی','مشاور مدرسه و معاونت‌های رزرو‌شده'],staffatt:['حضور کادر','ثبت روزانه و مرور ماهانهٔ حضور کادر'],training:['دوره‌های آموزشی','دوره‌های ضمن خدمت کادر و گواهی پایان دوره'],busservice:['سرویس مدرسه','مسیرها، راننده‌ها و رویدادهای سوار/پیاده شدن — نسخهٔ بدون جی‌پی‌اس'],myservice:['مسیر من','دانش‌آموزان مسیر شما و رویدادهای امروز'],vclass:['کلاس مجازی','نشست شاد یا فایل ضبط‌شده + سؤالات — نسخهٔ سبک'],library:['کتابخانه','کتاب‌ها + امانت به دانش‌آموز + بازگشت — نسخهٔ سبک'],assets:['املاک و موجودی','تجهیزات با وضعیت + مکان — نسخهٔ سبک'],dorm:['اسکان و خوابگاه','اتاق‌ها + انتساب دانش‌آموز + وعده‌های هفتگی + مرخصیِ رفت‌وبرگشتِ آخر هفته — نسخهٔ سبک'],sidadiff:['اختلاف با سیدا','نمرهٔ سیدا دستی — مقایسه با پایش، فقط خواندنی برای بقیه'],preapps:['قیف پیش‌ثبت‌نام','تماس → بازدید → آزمون → ثبت‌نامِ قطعی — جدا از ثبت‌نامِ رسمی'],
-scholarships:['کمک‌هزینه و بورسیه','علامت‌گذاری دانش‌آموزِ نیازمند + وضعیت (درخواست‌شده/بررسی/تأیید/رد) — فقط ثبت، بدون پرداخت'],visitors:['مهمان‌ها','ورود/خروج افراد غیردانش‌آموز و غیرکارکنان — نسخهٔ سبک'],homework:['تکالیف','بارگذاری تصویر تکلیف + تصحیح دیجیتال با خطِ خوددست و نمره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها'],association:['انجمن و کمک‌ها','در مدارس دولتی به‌جای شهریه: کمک‌های داوطلبانهٔ اولیا با ثبت شفاف'],drills:['مانور ایمنی','ثبت سالانهٔ مانور زلزله/ایمنی + شمار شرکت‌کنندگان'],donations:['کمک‌های داوطلبانه','ثبت کمک خیرین + رسید چاپی — جدا از شهریه']};
+scholarships:['کمک‌هزینه و بورسیه','علامت‌گذاری دانش‌آموزِ نیازمند + وضعیت (درخواست‌شده/بررسی/تأیید/رد) — فقط ثبت، بدون پرداخت'],visitors:['مهمان‌ها','ورود/خروج افراد غیردانش‌آموز و غیرکارکنان — نسخهٔ سبک'],homework:['تکالیف','بارگذاری تصویر تکلیف + تصحیح دیجیتال با خطِ خوددست و نمره'],subscription:['اشتراک پنل اولیا','فعال‌سازی و تمدید دسترسی به پرونده فرزندان'],adminsubs:['اشتراک اولیا','تنظیم مهلت تست رایگان، قیمت طرح‌ها و مدیریت اشتراک‌ها'],association:['انجمن و کمک‌ها','در مدارس دولتی به‌جای شهریه: کمک‌های داوطلبانهٔ اولیا با ثبت شفاف'],drills:['مانور ایمنی','ثبت سالانهٔ مانور زلزله/ایمنی + شمار شرکت‌کنندگان'],donations:['کمک‌های داوطلبانه','ثبت کمک خیرین + رسید چاپی — جدا از شهریه'],teacheval:['ارزشیابی ناشناس معلم','دانش‌آموز و ولی ناشناس نظر می‌دهند؛ مدیر و اداره فقط نتیجهٔ تجمیعی را می‌بینند']};
 
 /* ---------- پیمایش و دکمه بازگشت (سازگار با دکمه Back گوشی) ---------- */
 S.stack=[];
@@ -3287,6 +3287,59 @@ function examSourceBadge(e){
   if(s==='national_final') return ' <span class="badge b-red">نهایی</span>';
   if(s==='makeup') return ' <span class="badge b-amber">جبرانی</span>';
   return '';
+}
+
+/* ─────────── فاز ۰.۳: تفکیک امتحان نهایی کشوری از امتحان داخلی ───────────
+   تک‌منبع حقیقت، همان فیلد `source` روی جلسهٔ امتحان است که از دور ۶۳
+   وجود دارد و در authz/model.json و سرور ثبت شده:
+     internal       → امتحان داخلی مدرسه (پیش‌فرض)
+     national_final → امتحان نهایی کشوری
+     makeup         → جبرانی
+
+   ⚠️ چرا فیلد تازهٔ `exams.exam_type` ساخته نشد (انحرافِ مستند از پرامپت):
+   ۱) `exams.source` از پیش همین سه حالت را دارد و رکوردِ قدیمی با
+      `is_final` هم خوانده می‌شود؛ ستون دوم = دو منبع حقیقت و نشت.
+   ۲) نام `exam_type` روی **grades** از پیش معنای دیگری دارد
+      (EXAM_TYPES = کلاسی/میان‌ترم/پایان‌ترم/عملی/امتحان نهایی).
+      هم‌نام‌کردن دو مفهوم در دو مجموعه، خطای انسانی می‌سازد.
+   پس `examTypeOf` همان نمای دوحالتیِ خواسته‌شده (internal|national) را
+   از منشأ جلسه می‌سازد، بدون ستون تازه.
+
+   روی **نمره** (grades.source) فقط دو مقدار می‌نشیند:
+     internal (پیش‌فرض) | national
+   رکوردهای قدیمی که `source` ندارند «داخلی» خوانده می‌شوند و هرگز
+   خودکار «نهایی» نمی‌شوند (خواستهٔ صریح: پیش‌فرض internal). */
+const GRADE_SOURCES=[['internal','داخلی'],['national','نهایی کشوری']];
+/** مقدارِ EXAM_TYPES که نشان‌دهندهٔ امتحان نهایی کشوری است */
+const NATIONAL_EXAM_TYPE='امتحان نهایی';
+
+/** نمای دوحالتی منشأ جلسهٔ امتحان: 'internal' | 'national' */
+function examTypeOf(e){
+  return examSource(e)==='national_final' ? 'national' : 'internal';
+}
+/** منشأ یک نمره (سازگاری رو به عقب: رکوردِ بدون source = internal) */
+function gradeSource(g){
+  return (g && g.source==='national') ? 'national' : 'internal';
+}
+/** برچسب فارسی منشأ نمره */
+function gradeSourceLabel(g){
+  return gradeSource(g)==='national' ? 'نهایی کشوری' : 'داخلی';
+}
+/** نشان رنگی منشأ برای نمره (فقط نهایی برچسب می‌گیرد تا نما شلوغ نشود) */
+function gradeSourceBadge(g){
+  return gradeSource(g)==='national' ? ' <span class="badge b-red">نهایی کشوری</span>' : '';
+}
+/** نمره‌های نهایی کشوری یک دانش‌آموز (برای کارنامهٔ جدا) */
+function nationalGradesOf(sid){
+  return (db.grades||[]).filter(function(g){
+    return g.student_id===Number(sid) && gradeSource(g)==='national';
+  });
+}
+/** معدل سادهٔ نمرات نهایی کشوری (بدون وزن) — صفر اگر نمره‌ای نیست */
+function nationalGpa(sid){
+  const l=nationalGradesOf(sid);
+  if(!l.length) return 0;
+  return Math.round(l.reduce(function(a,g){return a+(Number(g.score)||0);},0)/l.length*100)/100;
 }
 
 /* شاخه‌ها و رشته‌های متوسطه دوم */
@@ -4844,6 +4897,8 @@ var ACTION_ROLES = {
   'summer-del': ['manager'],
   /* بند ۶.۵ (سبک) — جابه‌جاییِ زنگِ متداخل: فقط مدیر */
   'sched-conf-move': ['manager','superadmin'],
+  'schedgen-open':   ['manager','superadmin'],
+  'schedgen-apply':  ['manager','superadmin'],
   /* بند ۲.۱ — کلاسِ چندپایه: عضویتِ دروس فقط مدیر (و سوپرادمین) */
   'class-membership-save': ['manager','superadmin'],
   /* بند ۵.۲ — مسیرِ دوازدهم↔مشاور: دانش‌آموز/ولی می‌نویسند، مشاور پاسخ می‌دهد
@@ -4881,6 +4936,8 @@ var ACTION_ROLES = {
   /* اطلاعیه */
   'ann-save':      ['manager','superadmin','edu_office'],
   'ann-del':       ['manager','superadmin','edu_office'],
+  /* ب.۳ — ارزشیابی ناشناس معلم: فقط دانش‌آموز و ولی پاسخ می‌دهند */
+  'eval-save':     ['student','parent'],
   /* مالی */
   'tuition-plan-save': ['manager','superadmin'],
   'plan-del':      ['manager','superadmin'],
@@ -5044,6 +5101,7 @@ function renderShell(){
       <button class="icon-btn" data-act="go" data-r="notifications" title="اعلان‌ها" style="position:relative;font-size:17px">🔔${(()=>{const n=unreadCount();return n?`<span style="position:absolute;top:-4px;inset-inline-end:-4px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border:2px solid #fff">${n>99?'۹۹+':fa(n)}</span>`:''})()}</button>
       ${typeof syncBadge==='function'?syncBadge():''}
       ${typeof themeSegHtml==='function'?themeSegHtml():''}
+      ${(()=>{try{if(typeof activeYearOf!=='function')return '';var yc=activeYearOf(u.school_id||null);if(!yc)return '';var t=(typeof yearCodeTitle==='function')?yearCodeTitle(yc):yc;return `<span class="badge b-gray" title="سال تحصیلی عملیاتی">📅 ${esc(t)}</span>`;}catch(e){return '';}})()}
       <span class="badge b-blue">${ROLE_FA[u.role]}</span></header>
     <div class="content">${childSwitcherBar()}${typeof notifyAutoBanner==='function'?notifyAutoBanner():''}${renderRoute()}</div>
    </div>
@@ -5211,6 +5269,7 @@ function _renderRouteInner(){
     case 'offices':return viewOffices();
     case 'officedash':return viewOfficeDash();
     case 'officeschools':return viewOfficeSchools();
+    case 'teacheval':return viewTeachEval();
     case 'busservice':return viewBusService();
     case 'myservice':return viewMyService();
     case 'vclass':return viewVclass();
@@ -5686,19 +5745,71 @@ const CAP_DEFS=[
   ['has_evening','نوبت دوم / کلاس شبانه','برنامهٔ فشردهٔ بزرگسالان — کلاس‌های شبانه با تراکمِ هفتگیِ بالاتر']
 ];
 const CAP_DEFAULTS={has_tuition:1,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1,has_evening:0};
-/** پروفایل قابلیت یک مدرسه با اعمال پیش‌فرض‌ها */
+/* ─────────── نوع ساختاری مدرسه (فاز ۰.۱): school_type ───────────
+   شناسهٔ لاتینِ نوع مدرسه (۹ مقدار — راهنما: docs/SCHOOL_TYPE_GUIDE.md).
+   هر نوع یک «سطر پیامد» دارد که تعیین می‌کند کدام ماژول‌ها برای
+   مدرسه فعال‌اند؛ سیم‌کشی از طریق همان کلیدهای capability است
+   (navFor در 07-shell.js و گیت‌های hasCap) — هیچ شرطِ تازه‌ای در
+   ماژول‌ها ساخته نشده است.
+   زنجیرهٔ تقدم در schoolCaps (سازگار با گذشته):
+     ۱) قابلیتِ صریحِ ذخیره‌شده روی مدرسه (چک‌باکس‌های مودال)
+     ۲) سطرِ school_type — فقط اگر روی رکورد صریح و معتبر باشد
+     ۳) CAP_DEFAULTS (رفتارِ قدیمی برای مدارسِ بدون school_type)
+   کلیدهایِ خارج از جدولِ فاز ۰.۱ (has_second_term_exam و has_evening)
+   نگاشت نوعی ندارند و همیشه از همان زنجیرهٔ ۱→۳ می‌آیند.
+   ستونِ entrance_exam ماژولِ مستقلی ندارد (فاز ۰.۱) و فقط در
+   schoolTypeFeatures برای مصرفِ آینده افشا می‌شود.
+   fail-closed: مقدارِ نامعتبر/خالی = governmental (همه‌چیز خاموش). */
+const SCHOOL_TYPE_DEFS=[
+  ['governmental','دولتی معمولی',{tuition:0,dorm:0,iep:0,multigrade:0,workshop:0,entrance_exam:0}],
+  ['exemplary','نمونه دولتی (هیئت امنایی)',{tuition:1,dorm:0,iep:0,multigrade:0,workshop:0,entrance_exam:1}],
+  ['non_profit','غیردولتی / غیرانتفاعی',{tuition:1,dorm:1,iep:0,multigrade:0,workshop:0,entrance_exam:1}],
+  ['sampad','تیزهوشان (سمپاد)',{tuition:0,dorm:0,iep:0,multigrade:0,workshop:0,entrance_exam:1}],
+  ['shahed','شاهد',{tuition:1,dorm:0,iep:0,multigrade:0,workshop:0,entrance_exam:0}],
+  ['exceptional','استثنایی',{tuition:0,dorm:0,iep:1,multigrade:0,workshop:0,entrance_exam:0}],
+  ['rural','روستایی / عشایری',{tuition:0,dorm:0,iep:0,multigrade:1,workshop:0,entrance_exam:0}],
+  ['boarding','شبانه‌روزی',{tuition:1,dorm:1,iep:0,multigrade:0,workshop:0,entrance_exam:0}],
+  ['vocational','هنرستان',{tuition:1,dorm:0,iep:0,multigrade:0,workshop:1,entrance_exam:0}]
+];
+const SCHOOL_TYPE_IDS=SCHOOL_TYPE_DEFS.map(d=>d[0]);
+const SCHOOL_TYPE_CAPKEYS={tuition:'has_tuition',dorm:'has_dorm',iep:'has_iep',multigrade:'has_multigrade',workshop:'has_workshop'};
+/** نوع ساختاری یک مدرسه — نامعتبر/خالی = governmental (fail-closed) */
+function schoolTypeOf(s){
+  var t=s?s.school_type:null;
+  return SCHOOL_TYPE_IDS.indexOf(t)>-1?t:'governmental';
+}
+/** سطر پیامد یک نوع (کپی) — ورودی نامعتبر = سطر governmental */
+function schoolTypeFeatures(type){
+  for(var i=0;i<SCHOOL_TYPE_DEFS.length;i++)
+    if(SCHOOL_TYPE_DEFS[i][0]===type) return Object.assign({},SCHOOL_TYPE_DEFS[i][2]);
+  return Object.assign({},SCHOOL_TYPE_DEFS[0][2]);
+}
+/** نگاشت سطر پیامد به کلیدهای capability (فقط کلیدهای نگاشت‌شده) */
+function schoolTypeCaps(type){
+  var f=schoolTypeFeatures(type), out={};
+  for(var k in SCHOOL_TYPE_CAPKEYS) out[SCHOOL_TYPE_CAPKEYS[k]]=f[k]?1:0;
+  return out;
+}
+/** پروفایل قابلیت یک مدرسه با اعمال پیش‌فرض‌ها (فاز ۰.۱: fallback نوعی) */
 function schoolCaps(sid){
   const s=(typeof byId==='function')?byId('schools',sid):null;
   const c=(s&&s.capabilities)?s.capabilities:{};
   const out={};
-  CAP_DEFS.forEach(function(k){ out[k[0]]=c[k[0]]==null?CAP_DEFAULTS[k[0]]:Number(c[k[0]]); });
+  const row=(s&&typeof s.school_type==='string'&&SCHOOL_TYPE_IDS.indexOf(s.school_type)>-1)?schoolTypeCaps(s.school_type):null;
+  CAP_DEFS.forEach(function(k){ out[k[0]]=c[k[0]]==null?(row&&row[k[0]]!=null?row[k[0]]:CAP_DEFAULTS[k[0]]):Number(c[k[0]]); });
   return out;
 }
 /** آیا مدرسه صاحب این قابلیت است؟ */
 function hasCap(sid,key){ return !!schoolCaps(sid)[key]; }
 /** چیکنک‌های پروفایل قابلیت برای فرم مدرسه */
 function capPickerHTML(s){
-  const caps=schoolCaps(s&&s.id);
+  /* ویرایش = وضعیتِ مؤثرِ فعلی (صادقانه)؛ مدرسهٔ تازه = سطرِ نوعِ انتخاب‌شده
+     روی CAP_DEFAULTS (دقیقاً همان چیزی که schoolCaps برای مدرسهٔ نوع‌دارِ
+     بی‌قابلیت حساب می‌کند) — فاز ۰.۱ */
+  var caps;
+  if(s&&s.id) caps=schoolCaps(s.id);
+  else if(typeof schoolTypeCaps==='function') caps=Object.assign({},CAP_DEFAULTS,schoolTypeCaps((typeof schoolTypeOf==='function')?schoolTypeOf(s):'governmental'));
+  else caps=schoolCaps(s&&s.id);
   return CAP_DEFS.map(function(k){
     return `<label style="display:flex;gap:8px;align-items:center;padding:7px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer"><input type="checkbox" class="m-cap" value="${k[0]}" ${caps[k[0]]?'checked':''} /><span><b class="small">${k[1]}</b><div class="small muted" style="font-size:11px">${k[2]}</div></span></label>`;
   }).join('');
@@ -5741,7 +5852,7 @@ function viewSchools(){
       <td><span class="badge b-blue">${esc(s.level||'—')}</span>${s.type&&s.type!=='عادی'?`<div class="small muted" style="margin-top:4px">${esc(s.type)}</div>`:''}${(s.branches||[]).length?`<div class="small muted" style="margin-top:4px">${(s.branches||[]).map(b=>esc(b)).join('، ')}</div>`:''}</td><td class="muted">${esc(mg?mg.full_name:'—')}</td>
       <td class="small muted">${esc(s.landline||'—')}</td>
       <td>${fa(us.filter(u=>u.role==='student').length)}</td><td>${fa(us.filter(u=>u.role==='teacher').length)}</td><td>${fa(db.classes.filter(c=>c.school_id===s.id).length)}</td>
-      <td><span class="badge ${s.active?'b-green':'b-gray'}${isAdmin?' tgl':''}" ${isAdmin?`data-act="school-toggle" data-id="${escAttr(s.id)}" title="برای تغییر وضعیت کلیک کنید"`:''}>${s.active?'فعال':'غیرفعال'}</span></td>
+      <td><span class="badge ${s.active?'b-green':'b-gray'}${isAdmin?' tgl':''}" ${isAdmin?`data-act="school-toggle" data-id="${escAttr(s.id)}" title="برای تغییر وضعیت کلیک کنید"`:''}>${s.active?'فعال':'غیرفعال'}</span>${(()=>{try{if(typeof activeYearOf!=='function')return '';var yc=activeYearOf(s.id);if(!yc)return '';var t=(typeof yearCodeTitle==='function')?yearCodeTitle(yc):yc;var st=(typeof yearState==='function')?yearState(s.id):null;return `<div class="small muted" style="margin-top:4px">📅 ${esc(t)}${st&&st.closed?' · 🔒 بسته':''}</div>`;}catch(e){return '';}})()}</td>
       ${isAdmin?`<td><div class="row" style="gap:5px;flex-wrap:nowrap">
         <button class="btn sm" data-act="school-enter" data-id="${escAttr(s.id)}" title="ورود به پنل این مدرسه به‌عنوان مدیر">🔑 ورود به پنل</button>
         <button class="icon-btn" title="ویرایش" data-act="school-edit" data-id="${escAttr(s.id)}">✏️</button>
@@ -6337,7 +6448,7 @@ function viewGrades(){
     <select class="select" style="width:125px" data-f="term"><option value="">همه نوبت‌ها</option>${TERMS.map(t=>`<option ${term===t?'selected':''}>${t}</option>`).join('')}</select>`)}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>درس</th><th>کلاس</th><th>نوبت</th><th>نوع آزمون</th><th>نمره</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
     ${rows.map(g=>`<tr><td><b>${esc((byId('users',g.student_id)||{}).full_name||'—')}</b></td><td>${esc((byId('subjects',g.subject_id)||{}).name||'—')}</td>
-      <td class="muted">${esc((byId('classes',g.class_id)||{}).name||'—')}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td class="muted">${esc(g.exam_type)}${g.kind==='practical'?' <span class="badge b-purple" title="نمرهٔ عملی/کارگاهی (بند ۴.۲)">عملی</span>':''}</td>
+      <td class="muted">${esc((byId('classes',g.class_id)||{}).name||'—')}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td class="muted">${esc(g.exam_type)}${g.kind==='practical'?' <span class="badge b-purple" title="نمرهٔ عملی/کارگاهی (بند ۴.۲)">عملی</span>':''}${gradeSourceBadge(g)}</td>
       <td><span class="badge ${g.score>=17?'b-green':g.score>=12?'b-blue':'b-red'}">${fa(g.score)} / ${fa(g.max_score)}</span></td>
       ${canEdit?`<td><button class="icon-btn" data-act="grade-edit" data-id="${escAttr(g.id)}">✏️</button> <button class="icon-btn danger" data-act="grade-del" data-id="${escAttr(g.id)}">🗑️</button></td>`:''}</tr>`).join('')}
    </tbody></table></div>`:empty('📝','نمره‌ای ثبت نشده',canEdit?'با دکمه «ثبت نمره» شروع کنید.':'هنوز نمره‌ای برای شما ثبت نشده است.')}</div>`;
@@ -6490,7 +6601,7 @@ function viewSchedule(){
   return confBlock+`<div class="card"><div class="card-head"><h3>${title}</h3>
    ${!byTeacher&&u.role!=='student'?`<select class="select" style="width:190px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`:''}
    ${byTeacher&&homeCls.length?`<select class="select" style="width:210px" data-f="homepick"><option value="">تدریس من</option>${homeCls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===homePick?'selected':''}>سرپرستی: ${esc(c.name)}</option>`).join('')}</select>`:''}
-   ${cObj?`<span class="badge b-gray" style="margin-inline-start:8px">پایه: ${esc(cObj.grade||'—')}</span><span class="badge b-purple" style="margin-inline-start:6px">دبیر پایه: ${ht?esc(ht.full_name):'بدون دبیر پایه'}</span>`:''}</div>
+   ${cObj?`<span class="badge b-gray" style="margin-inline-start:8px">پایه: ${esc(cObj.grade||'—')}</span><span class="badge b-purple" style="margin-inline-start:6px">دبیر پایه: ${ht?esc(ht.full_name):'بدون دبیر پایه'}</span>`:''}${canEditSched?`<button class="btn ghost sm" data-act="schedgen-open" style="margin-inline-start:8px">⚙️ تولید خودکار</button>`:''}</div>
    ${(rows.length||canEditSched)?`<div class="card-body table-wrap"><div class="timetable"><div></div>${DAYS.map(d=>`<div class="tt-head"><b>${d}</b></div>`).join('')}
     ${[1,2,3,4,5,6].map(p=>`<div class="tt-head" style="display:grid;place-items:center"><span class="badge b-blue">زنگ ${fa(p)}</span></div>
      ${DAYS.map((_,d)=>{const c=cell(d,p);
@@ -6619,8 +6730,10 @@ function viewRecord(sid){
      <span class="badge ${a>=17?'b-green':a>=12?'b-blue':'b-red'}">میانگین ${fa(a.toFixed(2))}</span></div>
      <div style="margin:8px 0 12px">${bar(a,20,a>=17?'var(--green)':a>=12?'var(--primary)':'var(--red)')}</div>
      <div class="row">${l.map(g=>{const c=(typeof classScoreContext!=='undefined'&&S.__clsCtx)?S.__clsCtx[Number(id)+'|'+g.term+'|'+g.exam_type]:null;
-     return `<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}${g.kind==='practical'?' • عملی':''}: <b>${fa(g.score)}</b>${c?' <span class="muted" style="font-weight:400">· کلاس: '+fa(c.avg.toFixed(2))+'</span>':''}</span>`;}).join('')}</div></div>`;}).join('')}</div>`
+     return `<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}${g.kind==='practical'?' • عملی':''}: <b>${fa(g.score)}</b>${c?' <span class="muted" style="font-weight:400">· کلاس: '+fa(c.avg.toFixed(2))+'</span>':''}${gradeSource(g)==='national'?' · 🏛️ نهایی کشوری':''}</span>`;}).join('')}</div></div>`;}).join('')}</div>`
     :empty('📝','نمره‌ای ثبت نشده','به محض ثبت نمره، کارنامه اینجا نمایش داده می‌شود.');
+  /* فاز ۰.۳: نمرات نهایی کشوری، جدا از کارنامهٔ داخلی */
+  if(S.tab==='grades') body += nationalGradesCard(sid);
   /* بند ۴.۲: کارتِ کارآموزی زیرِ کارنامه (فقط سالِ آخرِ رشته‌های فنی) */
   if(S.tab==='grades') body += (typeof internshipCard==='function')?internshipCard(sid):'';
   if(S.tab==='grades') body += (typeof reexamCard==='function')?reexamCard(sid):'';
@@ -6756,6 +6869,30 @@ function certsCard(sid){
 /* ── E.6 فرناز: یادداشت شخصی ولی (هر فرزند یکی) ──
    کاملاً خصوصی: کلید شامل شناسهٔ خودِ ولی است و رندر/ذخیره فقط برای ولیِ لینک‌شده.
    فقط Store (حافظهٔ محلی) — هیچ‌چیز به سرور نمی‌رود، نه مدرسه نه والد دیگر نه دانش‌آموز. */
+/* ═══════════════════════════════════════════════════════════════════
+   فاز ۰.۳ — نمرات امتحان نهایی کشوری، جدا از نمرات داخلی مدرسه
+   نتیجهٔ نهایی کشوری را اداره اعلام می‌کند، نه دبیر؛ پس در کارنامه هم
+   جدا می‌نشیند: جدولِ خودش، معدلِ خودش و برچسبِ خودش. کارت فقط وقتی
+   ساخته می‌شود که دستِ‌کم یک نمره با grades.source==='national' باشد.
+   ⚠️ معدلِ وزنیِ گواهیِ نمرات (transcriptCert) عمداً دست‌نخورده ماند:
+   تفکیکِ «معدلِ داخلی» از «معدلِ نهایی» یک قاعدهٔ رسمی است و باید با
+   تصمیمِ کارفرما قفل شود — در docs/EXAM_TYPES_GUIDE.md ثبت شده.
+   ═══════════════════════════════════════════════════════════════════ */
+function nationalGradesCard(sid){
+  const l=nationalGradesOf(sid);
+  if(!l.length) return '';
+  const bySub={};
+  l.forEach(g=>{(bySub[g.subject_id]=bySub[g.subject_id]||[]).push(g);});
+  return `<div class="card-body" style="border-top:1px solid var(--border)">
+    <div class="row"><b>🏛️ نمرات امتحان نهایی کشوری</b><div class="spacer"></div>
+      <span class="badge b-red">${fa(l.length)} برگه</span>
+      <span class="badge b-blue">معدل نهایی: ${fa(nationalGpa(sid).toFixed(2))}</span></div>
+    <div class="small muted" style="margin:6px 0 10px">این نمرات از بیرون (اعلام اداره) وارد می‌شوند و با نمرات داخلی مدرسه قاطی نمی‌شوند.</div>
+    <div class="table-wrap"><table><thead><tr><th>درس</th><th>نوبت</th><th>نمره</th></tr></thead><tbody>
+    ${Object.keys(bySub).map(id=>bySub[id].map(g=>`<tr><td>${esc((byId('subjects',Number(id))||{}).name||'—')}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td><span class="badge b-red">${fa(g.score)}</span></td></tr>`).join('')).join('')}
+    </tbody></table></div></div>`;
+}
+
 function noteKey(pid,sid){ return 'payesh_note_'+pid+'_'+sid; }
 function noteGet(pid,sid){
   try{ var o=JSON.parse(Store.get(noteKey(pid,sid),'null'));
@@ -7123,6 +7260,8 @@ function schoolModal(s){
     <div class="grid g2">
       ${f('مقطع',sel('m_level',[['ابتدایی','ابتدایی'],['متوسطه اول','متوسطه اول'],['متوسطه دوم','متوسطه دوم']],s.level))}
       ${f('نوع',sel('m_type',SCHOOL_TYPES.map(x=>[x,x]),s.type||'عادی'))}
+      ${f('نوع مدرسه (تعیین‌کنندهٔ ماژول‌ها)',sel('m_school_type',(typeof SCHOOL_TYPE_DEFS!=='undefined'?SCHOOL_TYPE_DEFS.map(d=>[d[0],d[1]]):[['governmental','دولتی معمولی']]),(typeof schoolTypeOf==='function'?schoolTypeOf(s):'governmental')))}
+      ${(function(){var cur=(typeof yearCode==='function')?yearCode():'';var pv=(typeof prevYearCode==='function'&&cur)?prevYearCode(cur):'';var nx=(typeof nextYearCode==='function'&&cur)?nextYearCode(cur):'';var L=(typeof yearCodeTitle==='function')?function(c,tag){return 'سال '+yearCodeTitle(c)+(tag||'')}:function(c){return c};var o=[['','📅 دنبال تقویم (خودکار)']];if(pv)o.push([pv,L(pv)]);if(cur)o.push([cur,L(cur,' (جاری)')]);if(nx)o.push([nx,L(nx)]);return f('سال تحصیلی عملیاتی',sel('m_active_year',o,s.active_year_code||''));})()}
       ${f('جنسیت',sel('m_gender',[['پسرانه','پسرانه'],['دخترانه','دخترانه']],s.gender))}
       ${f('تلفن ثابت مدرسه',inp('m_landline',s.landline||''))}
       ${f('تلفن همراه رابط',inp('m_phone',s.phone||''))}
@@ -7132,6 +7271,7 @@ function schoolModal(s){
     <div class="small muted" style="margin:-4px 0 10px">
       شیفت بر ساعت شروع زنگ‌ها اثر می‌گذارد. زمان‌بندی دقیق زنگ‌ها را
       مدیر مدرسه در صفحهٔ «زمان‌بندی زنگ‌ها» تعیین می‌کند.</div>
+    <div class="small muted" style="margin:-4px 0 10px">نوع مدرسه تعیین می‌کند کدام ماژول‌ها (شهریه، خوابگاه، IEP، چندپایه، کارگاه) فعال باشند؛ با تغییر آن، چک‌باکس‌های «پروفایل قابلیت» خودکار تنظیم می‌شوند ولی دستی هم قابل اصلاح‌اند.</div>
     <div class="sec-title">🗓️ روزهای کاری</div>
     <div class="row" style="gap:12px;flex-wrap:wrap;padding:4px 0">
       ${(typeof DAYS_FULL!=='undefined'?DAYS_FULL:['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه']).map((d,i)=>`<label class="row" style="gap:5px;cursor:pointer"><input type="checkbox" class="m-wd" value="${i}" ${((s.work_days&&s.work_days.length?s.work_days:(typeof DEFAULT_WORK_DAYS!=='undefined'?DEFAULT_WORK_DAYS:[0,1,2,3])).indexOf(i)>-1)?'checked':''}/> ${d}</label>`).join('')}
@@ -7306,6 +7446,14 @@ function gradeModal(g){
   const studs=studentsOfClass(cid);
   if(!studs.length){toast('این کلاس دانش‌آموزی ندارد','err');return;}
   g=g||{student_id:studs[0].id,subject_id:(_autoOk?_auto.subjectId:subs[0].id),term:TERMS[0],exam_type:EXAM_TYPES[0],score:20,kind:'theory'};
+  /* ── فاز ۰.۳: نمرهٔ نهایی کشوری از بیرون می‌آید ──
+     دبیر نوع «امتحان نهایی» را در فرم نمی‌بیند و اگر به رکوردِ کشوری
+     رسید، نمره برایش فقط‌خواندنی است. گارد اصلی روی داده در
+     19-actions-core.js → grade-save است؛ اینجا فقط کشف‌پذیری. */
+  const _gRole=(typeof activePersona==='function')?activePersona():(S.user&&S.user.role);
+  const _gTypes=(_gRole==='teacher')?EXAM_TYPES.filter(t=>t!==NATIONAL_EXAM_TYPE):EXAM_TYPES;
+  const _gNat=(typeof gradeSource==='function')&&gradeSource(g)==='national';
+  const _gLocked=!!(_gNat&&_gRole==='teacher');
   /* بند ۴.۲: در مدارسِ فنی‌وحرفه‌ای/کاردانش، نوعِ نمره (تئوری/عملی) انتخاب می‌شود */
   const _gsc=byId('schools',(byId('classes',cid)||{}).school_id);
   const _gkindOpts=(typeof workshopSchool==='function'&&workshopSchool(_gsc&&_gsc.id))?
@@ -7314,9 +7462,10 @@ function gradeModal(g){
    `<div class="grid g2">
     ${f('دانش‌آموز',`<select class="select" id="g_st" ${g.id?'disabled':''}>${studs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
     ${f('درس',`<select class="select" id="g_sub" ${g.id?'disabled':''}>${subs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.subject_id?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`)}
-    ${f('نوبت',sel('g_term',TERMS.map(t=>[t,t]),g.term))}${f('نوع آزمون',sel('g_type',EXAM_TYPES.map(t=>[t,t]),g.exam_type))}
+    ${f('نوبت',sel('g_term',TERMS.map(t=>[t,t]),g.term))}${f('نوع آزمون',sel('g_type',_gTypes.map(t=>[t,t]),g.exam_type))}
     ${_gkindOpts}
-    ${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${escAttr(g.score)}" />`)}</div>`,'grade-save'));
+    ${_gNat?`<div class="small" style="grid-column:1/-1">${_gLocked?'🔒':'🏛️'} <b>نتیجهٔ امتحان نهایی کشوری</b> — ${_gLocked?'فقط مدیر مدرسه می‌تواند آن را وارد یا اصلاح کند.':'از بیرون (اعلام اداره) وارد می‌شود و در کارنامه جدا نشان داده می‌شود.'}</div>`:''}
+    ${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${escAttr(g.score)}" ${_gLocked?'disabled':''} />`)}</div>`,'grade-save'));
   window._edit=g;window._gclass=cid;
 }
 
@@ -8313,12 +8462,28 @@ function transcriptCert(sid, term){
     + '</tbody></table>'
     + '<div class="meta" style="margin-top:10px"><span>معدل وزنی: <b style="font-size:13px">'
     + fa(gpa) + '</b> از ۲۰</span></div>';
+  /* ── فاز ۰.۳: بخشِ جداگانهٔ امتحانات نهایی کشوری (فقط اگر باشد) ──
+     جدول و معدلِ وزنیِ بالای این گواهی عمداً روی همهٔ نمرات می‌ماند تا
+     گواهی‌های صادرشدهٔ پیشین و آزمونِ smoke (بند ۱.۶) عوض نشوند؛
+     تفکیکِ معدل، تصمیمِ کارفرماست (docs/EXAM_TYPES_GUIDE.md). */
+  const nat = list.filter(g=>gradeSource(g)==='national');
+  const natBlock = nat.length
+    ? '<div class="meta" style="margin-top:12px"><span><b>🏛️ امتحانات نهایی کشوری</b> — جدا از نمرات داخلی:</span></div>'
+      + '<table><thead><tr><th>درس</th><th class="c" style="width:110px">نوبت</th>'
+      + '<th class="c" style="width:100px">نمره</th></tr></thead><tbody>'
+      + nat.map(g=>'<tr><td>' + esc((byId('subjects',g.subject_id)||{}).name||'—') + '</td>'
+        + '<td class="c">' + esc(g.term||'—') + '</td>'
+        + '<td class="c"><b>' + fa(g.score) + '</b></td></tr>').join('')
+      + '</tbody></table>'
+      + '<div class="meta" style="margin-top:6px"><span>معدل نهایی کشوری: <b>'
+      + fa(nationalGpa(sid)) + '</b> از ۲۰</span></div>'
+    : '';
   return {ok:true,
     title:'گواهی نمرات',
     school: esc(school.name || '') + (school.code ? ' — کد ' + esc(school.code) : ''),
     subtitle: 'دانش‌آموز: ' + esc(st.full_name) + ' · ' + (term || 'همهٔ نوبت‌ها') + ' · سال تحصیلی ' + yearTitle(),
-    body: body,
-    note:'نمرهٔ هر درس میانگین برگه‌های ثبت‌شدهٔ همان نوبت است و معدل با وزنی بر پایهٔ ساعت هفتگی محاسبه می‌شود. این گواهی از سامانهٔ پایش چاپ شده است.'};
+    body: body + natBlock,
+    note:'نمرهٔ هر درس میانگین برگه‌های ثبت‌شدهٔ همان نوبت است و معدل با وزنی بر پایهٔ ساعت هفتگی محاسبه می‌شود. نمرات «امتحان نهایی کشوری» از بیرون وارد می‌شوند و در بخش جداگانهٔ پایین گواهی می‌آیند. این گواهی از سامانهٔ پایش چاپ شده است.'};
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -10415,6 +10580,7 @@ var COLL_FA = {
   meeting_slots:'نوبت جلسه', sms_wallet:'کیف پیامک', sms_log:'پیامک',
   notify_queue:'صف پیام اولیا',
   teacher_notes:'یادداشت دبیر',
+  teacher_evaluations:'ارزشیابی (ناشناس)',
   app_settings:'تنظیمات'
 };
 
@@ -11174,23 +11340,25 @@ function restoreBackup(obj){
 
 /* ─────────── بخش ۱: وضعیت سال تحصیلی ─────────── */
 
-/** خواندن وضعیت سال تحصیلی یک مدرسه */
+/** خواندن وضعیت سال تحصیلی یک مدرسه (فاز ۰.۲: سال عملیاتی) */
 function yearState(sid){
   sid = sid || (S.user && S.user.school_id);
+  var yc = activeYearOf(sid);
   var row = (db.school_years || []).filter(function(y){
-    return y.school_id === sid && y.year_code === yearCode(); })[0];
-  return row || { school_id: sid, year_code: yearCode(),
+    return y.school_id === sid && y.year_code === yc; })[0];
+  return row || { school_id: sid, year_code: yc,
     closed: 0, closed_at: null, promoted: 0, placement: null };
 }
 
-/** ذخیرهٔ وضعیت سال تحصیلی */
+/** ذخیرهٔ وضعیت سال تحصیلی (فاز ۰.۲: سال عملیاتی) */
 function saveYearState(sid, patch){
   db.school_years = db.school_years || [];
+  var yc = activeYearOf(sid);
   var row = (db.school_years).filter(function(y){
-    return y.school_id === sid && y.year_code === yearCode(); })[0];
+    return y.school_id === sid && y.year_code === yc; })[0];
   if(row) update('school_years', row.id, patch);
   else insert('school_years', Object.assign(
-    { school_id: sid, year_code: yearCode(), closed: 0, promoted: 0, placement: null }, patch));
+    { school_id: sid, year_code: yc, closed: 0, promoted: 0, placement: null }, patch));
 }
 
 /* ─────────── سال تحصیلی به‌عنوان موجودیت مستقل (بند ۰.۲) ───────────
@@ -11205,6 +11373,39 @@ function nextYearCode(c){
   return (a + 1) + '-' + (a + 2);
 }
 
+/** سال تحصیلی قبل از یک سال (پیش‌فرض: سال جاری) — «۱۴۰۴-۱۴۰۵» ⇒ «۱۴۰۳-۱۴۰۴» */
+function prevYearCode(c){
+  var a = Number(String(c || yearCode()).split('-')[0]);
+  return (a - 1) + '-' + a;
+}
+
+/* ─────────── سال عملیاتی مدرسه (فاز ۰.۲) ───────────
+   هر مدرسه می‌تواند سالِ عملیاتی‌اش را از تقویم جدا کند
+   (مثلاً در مهر، هنوز روی سالِ گذشته کار کند). override روی
+   رکورد مدرسه (active_year_code، nullable) ذخیره می‌شود؛ بدون
+   overrideِ معتبر، دقیقاً رفتار قبلی (سال تقویمی) حاکم است.
+   مصرف‌کننده‌ها فقط دامنهٔ schoolyear + هدر + مودال‌اند؛
+   yearCode() سراسری دست نخورده است. */
+var YEAR_CODE_RE = /^\d{4}-\d{4}$/;
+/** سال عملیاتی یک مدرسه: override معتبر وگرنه سال تقویمی */
+function activeYearOf(sid){
+  var s = (typeof byId === 'function' && sid != null) ? byId('schools', sid) : null;
+  var t = s ? s.active_year_code : null;
+  if(typeof t === 'string' && YEAR_CODE_RE.test(t)) return t;
+  return (typeof yearCode === 'function') ? yearCode() : null;
+}
+/** آیا فصل پیش‌ثبت‌نام است؟ اسفند تا شهریور (ماه ۱۲ و ۱ تا ۶ شمسی) */
+function isPreSeason(){
+  var p = todayISO().split('-').map(Number);
+  var j = toJalali(p[0], p[1], p[2]);
+  return j[1] === 12 || j[1] <= 6;
+}
+/** عنوان فارسی یک کد سال («۱۴۰۴-۱۴۰۵» ⇒ «۱۴۰۴-۱۴۰۵» فارسی) */
+function yearCodeTitle(c){
+  var p = String(c || '').split('-');
+  return faD(p[0]) + '-' + faD(p[1] || '');
+}
+
 /** سالِ مقصدِ چیدمان/ثبت‌نام برای یک مدرسه:
     سالِ بسته‌شده، چیدمان برای «سال بعد» است (مورد ثبت‌نام شهریور). */
 function targetYearOf(sid){
@@ -11213,8 +11414,12 @@ function targetYearOf(sid){
   return st.closed ? nextYearCode(st.year_code) : st.year_code;
 }
 
-/** عنوان سال بعد، برای نمایش در قیف پیش‌ثبت‌نام */
-function nextYearTitle(){ var c = nextYearCode().split('-'); return faD(c[0]) + '-' + faD(c[1]); }
+/** عنوان سال بعدِ سالِ عملیاتی، برای نمایش در قیف پیش‌ثبت‌نام */
+function nextYearTitle(sid){
+  if(sid == null) sid = S.user && S.user.school_id;
+  var c = nextYearCode(activeYearOf(sid)).split('-');
+  return faD(c[0]) + '-' + faD(c[1]);
+}
 
 /**
  * آیا اکنون فصل پایان سال است؟
@@ -11414,17 +11619,17 @@ function enrollmentList(sid){
 const PRE_STATUS=[['registered','ثبت‌شده','b-blue'],['confirmed','تأییدشده','b-amber'],
                   ['placed','چیده شد','b-green'],['rejected','رد شد','b-gray']];
 
-/** فهرست پیش‌ثبت‌نام‌های سال آیندهٔ یک مدرسه */
+/** فهرست پیش‌ثبت‌نام‌های سال آیندهٔ سالِ عملیاتیِ یک مدرسه (فاز ۰.۲) */
 function preEnrollFor(sid){
   return (db.pre_enrollments || []).filter(function(p){
-    return p.school_id === sid && p.year_code === nextYearCode(); });
+    return p.school_id === sid && p.year_code === nextYearCode(activeYearOf(sid)); });
 }
 
-/** ساخت ردیف پیش‌ثبت‌نام (بازگشتی یا تازه‌وارد) */
+/** ساخت ردیف پیش‌ثبت‌نام (بازگشتی یا تازه‌وارد) — سالِ بعدِ سالِ عملیاتی */
 function preAddRow(sid, data){
   db.pre_enrollments = db.pre_enrollments || [];
   return insert('pre_enrollments', Object.assign({
-    school_id: sid, year_code: nextYearCode(), student_id: null,
+    school_id: sid, year_code: nextYearCode(activeYearOf(sid)), student_id: null,
     source: 'new', status: 'registered', created_at: todayISO() }, data));
 }
 
@@ -11644,6 +11849,10 @@ function viewSchoolYear(){
       + '<div class="card-body row"><div style="font-size:30px">📝</div>'
       + '<div style="flex:1"><b style="font-size:15px">پیش‌ثبت‌نام سال تحصیلی ' + nextYearTitle() + '</b>'
       + '<div class="small muted" style="line-height:2">دانش‌آموزان تازه‌واردها و بازگشتی‌ها را از همین‌جا برای سال آینده ثبت کنید. با «تأیید»، حساب دانش‌آموز ساخته یا وصل می‌شود و در مرحلهٔ بعدی در کلاس چیده می‌شود.</div></div></div></div>'
+      + ((typeof isPreSeason === 'function' && !isPreSeason())
+        ? '<div class="card" style="margin-bottom:14px;border-inline-start:4px solid var(--amber)">'
+          + '<div class="card-body small" style="line-height:2">⚠️ <b>فصل پیش‌ثبت‌نام نیست</b> '
+          + '(اسفند تا شهریور). ثبت دستی همچنان ممکن است؛ ردیف‌ها به سالِ بعدِ سالِ عملیاتی تعلق می‌گیرند.</div></div>' : '')
       + '<div class="grid g4" style="margin-bottom:14px">'
       + statCard('📋', fa(cnt.registered), 'ثبت‌شده', 'blue')
       + statCard('✅', fa(cnt.confirmed), 'تأییدشده', 'amber')
@@ -13463,18 +13672,32 @@ function coreActions(e, el, id, a, rawId){
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk
         (26-curriculum) که در exam-save اعمال می‌شود */
-     if(V('g_type')==='امتحان نهایی'){
+     const gType=V('g_type');
+     if(gType===NATIONAL_EXAM_TYPE){
        const gcls=byId('classes',window._gclass);
        if(!(typeof finalGradeOk==='function'&&finalGradeOk(gcls&&gcls.grade))){
          toast('نمرهٔ امتحان نهایی فقط برای پایه‌های پایانی (نهم و دوازدهم) ثبت می‌شود','err');return;
        }
      }
+     /* ── فاز ۰.۳: نمرهٔ امتحان نهایی کشوری فقط از بیرون وارد می‌شود ──
+        نتیجهٔ نهایی کشوری را اداره اعلام می‌کند، نه دبیر؛ پس دبیر نه
+        می‌سازد و نه ویرایش می‌کند. مدیر/سوپرادمین نتیجهٔ اعلامی را ثبت
+        می‌کنند. منشأ روی خودِ نمره مُهر می‌خورد (grades.source) تا
+        کارنامه بتواند داخلی و کشوری را جدا نشان دهد.
+        🔴 گارد روی داده است، نه فقط روی نما — نما در 18-modals.js فقط
+        گزینه را از دبیر پنهان می‌کند. */
+     const gRole=(typeof activePersona==='function')?activePersona():(S.user&&S.user.role);
+     const gNational=(gType===NATIONAL_EXAM_TYPE)||(gradeSource(g)==='national');
+     if(gNational&&gRole==='teacher'){
+       toast('نمرهٔ امتحان نهایی کشوری فقط از بیرون و توسط مدیر مدرسه وارد می‌شود','err');return;
+     }
+     const gSource=gNational?'national':'internal';
     let gid=g.id;
     /* بند ۴.۲: نوعِ نمره — در مدرسهٔ غیرکارگاهی فیلد نیست و همیشه تئوری */
     const gkind=V('g_kind')==='practical'?'practical':'theory';
-    if(g.id)update('grades',g.id,{score,term:V('g_term'),exam_type:V('g_type'),kind:gkind});
+    if(g.id)update('grades',g.id,{score,term:V('g_term'),exam_type:gType,kind:gkind,source:gSource});
     else{const sid=Number(V('g_st')),cid=window._gclass;
-      const r=insert('grades',{school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,term:V('g_term'),exam_type:V('g_type'),kind:gkind,score,max_score:20,created_at:todayISO()});
+      const r=insert('grades',{school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,term:V('g_term'),exam_type:gType,kind:gkind,source:gSource,score,max_score:20,created_at:todayISO()});
       gid=r.id;}
      /* گام ۷: نمرهٔ زیر آستانه برای اولیا پیامک می‌سازد (بعد از نوشتن
         تا source_ref شناسهٔ واقعی باشد) */
@@ -13627,6 +13850,7 @@ document.addEventListener('click',e=>{
   else if(typeof JD_ACTIONS!=='undefined'&&JD_ACTIONS[a]){e.preventDefault();JD_ACTIONS[a](el,id);}
   else if(typeof FILTER_ACTIONS!=='undefined'&&FILTER_ACTIONS[a]){e.preventDefault();FILTER_ACTIONS[a](el,id);}
   else if(typeof SYNC_ACTIONS!=='undefined'&&SYNC_ACTIONS[a]){e.preventDefault();SYNC_ACTIONS[a](el,id);}
+  else if(typeof TEVAL_ACTIONS!=='undefined'&&TEVAL_ACTIONS[a]){e.preventDefault();TEVAL_ACTIONS[a](el,id);} /* 73-teacher-eval */
 });
 // live filters
 document.addEventListener('input',e=>{
@@ -13833,6 +14057,14 @@ document.addEventListener('change',e=>{
          تا دادهٔ بی‌معنا (مثلاً دبستانِ دارای رشتهٔ حسابداری) ذخیره نشود */
       if(!on) $$('.m-branch,.m-field').forEach(c=>{c.checked=false;});
     }
+    return;
+  }
+
+  /* فرم مدرسه: تغییر نوع مدرسه ⇒ تنظیم خودکار چک‌باکس‌های پروفایل
+     قابلیت از سطر پیامد (فاز ۰.۱)؛ کاربر همچنان می‌تواند دستی اصلاح کند */
+  if(id==='m_school_type'){
+    const row=(typeof schoolTypeCaps==='function')?schoolTypeCaps(e.target.value):null;
+    if(row)$$('.m-cap').forEach(c=>{ if(row[c.value]!=null)c.checked=!!row[c.value]; });
     return;
   }
 
@@ -14704,6 +14936,18 @@ function scheduleActions(e, el, id, a, rawId){
      if(r.teacher_id&&teacherBusyAt(r.teacher_id,day,period,id)){toast('این دبیر در آن ساعت مشغول است','err');render();return;}
      update('schedule',id,{day,period});
      toast('زنگ جابه‌جا شد: '+DAYS[day]+' زنگ '+fa(period),'ok');render();},
+   /* ── E.6: تولید خودکار برنامه ── */
+   'schedgen-open'(){
+     const cid=Number(S.filters.class||(S.user.role==='student'?(classOf(S.user.id)||{}).id:(visibleClasses()[0]||{}).id));
+     const c=byId('classes',cid);
+     if(!c){toast('کلاسی انتخاب نشده است','err');return;}
+     schedgenPreviewModal(c.school_id);
+   },
+   'schedgen-apply'(){
+     const r=schedgenApply();
+     toast(r.msg,r.ok?'ok':'err');
+     if(r.ok){closeModal();render();}
+   },
   };
 }
 
@@ -14774,6 +15018,10 @@ function adminActions(e, el, id, a, rawId){
        area_kind:dist?(dist.kind||'district'):'district',
        phone:V('m_phone'),landline:V('m_landline'),
        level:V('m_level'),type:V('m_type')||'عادی',gender:V('m_gender'),shift:V('m_shift')||'صبح',
+       /* فاز ۰.۱ — نوع ساختاری؛ مقدارِ نامعتبر/خالی = governmental (fail-closed) */
+       school_type:(typeof SCHOOL_TYPE_IDS!=='undefined'&&SCHOOL_TYPE_IDS.indexOf(V('m_school_type'))>-1)?V('m_school_type'):'governmental',
+       /* فاز ۰.۲ — سال عملیاتی؛ خالی/نامعتبر = دنبال تقویم (null، fail-closed به رفتار قبلی) */
+       active_year_code:((typeof YEAR_CODE_RE!=='undefined'&&YEAR_CODE_RE.test(V('m_active_year')))?V('m_active_year'):null),
        capacity:Number(V('m_cap'))||300,
        active:Number(V('m_active')),address:V('m_addr'),boom_goals:V('m_boom'),
        public_goals:($('#m_boom_pub')&&$('#m_boom_pub').checked)?1:0,
@@ -18028,6 +18276,7 @@ setTimeout(()=>{
   if(typeof generateAssetsDemo==='function') generateAssetsDemo();
   if(typeof generateSidaDemo==='function') generateSidaDemo();
   if(typeof generateSchoolModeDemo==='function') generateSchoolModeDemo();
+  if(typeof generateTeacherEvalDemo==='function') generateTeacherEvalDemo(); /* ب.۳ */
   /* loadLog در ابتدای این بلاک اجرا شده — اینجا فقط بازپخش و همگام‌سازی */
   applyLog(); initSync();
 
@@ -23557,8 +23806,11 @@ function yearHistoryCard(studentId){
   if(!teacherMaySeeHistory(studentId)) return '';
   var rows = studentYearHistory(studentId);
   if(rows.length < 2) return '';        /* یک سال = سابقه نیست */
+  /* فاز ۰.۲ — فیلتر سال (پیش‌فرض: همه؛ رفتار قبلی) */
+  var fy = (typeof S !== 'undefined' && S.filters) ? (S.filters.yhyear || '') : '';
+  var shown = fy ? rows.filter(function(r){ return r.year === fy; }) : rows;
 
-  var body = rows.map(function(r){
+  var body = shown.map(function(r){
     var g = r.grades.avg === null ? '—' : fa(r.grades.avg.toFixed(2));
     var a = r.attendance.rate === null ? '—' : fa(r.attendance.rate) + '٪';
     var tone = r.grades.avg === null ? 'b-gray'
@@ -23574,7 +23826,11 @@ function yearHistoryCard(studentId){
   }).join('');
 
   return '<div class="card"><div class="card-head"><h3>📚 سابقهٔ سال‌به‌سال</h3>'
-    + '<span class="badge b-gray">' + fa(rows.length) + ' سال</span></div>'
+    + '<span class="badge b-gray">' + fa(rows.length) + ' سال</span>'
+    + '<select class="select" data-f="yhyear" style="max-width:150px">'
+    + '<option value="">همهٔ سال‌ها</option>'
+    + rows.map(function(r){ return '<option value="' + escAttr(r.year) + '"' + (fy === r.year ? ' selected' : '') + '>' + esc(faD(r.year)) + '</option>'; }).join('')
+    + '</select></div>'
     + '<div class="table-wrap"><table class="table"><thead><tr>'
     + '<th>سال تحصیلی</th><th>میانگین نمرات</th><th>درصد حضور</th>'
     + '</tr></thead><tbody>' + body + '</tbody></table></div>'
@@ -30600,6 +30856,538 @@ function viewDonations(){
       : empty('🎁', 'کمکی ثبت نشده', ''))
     + '<p class="small muted">این بخش کاملاً جدا از شهریه است و روی حساب‌های شهریه اثری ندارد.</p>'
     + '</div></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   بند ب.۳ — ارزشیابی ناشناس معلم (P1 کیفیت آموزشی)
+   ───────────────────────────────────────────────────────────────────
+   دانش‌آموز و ولی، معلم‌های مدرسهٔ خود را با ۵ معیار ثابت + متن آزاد
+   ارزشیابی می‌کنند؛ مدیر و اداره نتیجهٔ **تجمیعی** را می‌بینند.
+
+   🔒 قرارداد ناشناسی (غیرقابل چشم‌پوشی):
+   ۱. رکورد فقط مدرسه، معلم، معیارها، متن و تاریخ دارد — هیچ فیلد
+      هویتی (created_by/author/…) در مدل تعریف نشده و این ماژول هرگز
+      چنین فیلدی نمی‌نویسد؛ دروازهٔ فیلد سرور هم هر فیلد ناشناخته را
+      رد می‌کند ⇒ حتی کلاینت دستکاری‌شده نمی‌تواند هویت ذخیره کند.
+   ۲. سرور در مسیر موفقِ همگام‌سازی هیچ ممیزی‌ای از نویسنده ثبت
+      نمی‌کند و رکورد را همان‌گونه که آمده ذخیره می‌کند.
+   ۳. دفترچهٔ محلیِ همگام‌سازی فقط روی دستگاه خودِ پاسخ‌دهنده است و
+      پس از اعمال پاک می‌شود — برای هیچ کاربر دیگری قابل مشاهده نیست.
+   ۴. نتایج فقط تجمیعی نمایش می‌شود (تعداد + میانگین + متن آزاد)؛
+      هیچ نما و لاگی نام پاسخ‌دهنده را نشان نمی‌دهد.
+
+   ⚠️ محدودیت ذاتی: چون هویت ذخیره نمی‌شود، جلوگیری فنی از ثبتِ
+   چندبارهٔ همان پاسخ بدون شکستن ناشناسی ممکن نیست؛ این در متن نما
+   به کاربر گفته می‌شود و در آمار با «تعداد پاسخ» شفاف است.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** معیارهای پنج‌گانه — کلید ثابت (معیارِ ذخیره‌شده) + برچسب فارسی */
+const TEVAL_CRITERIA = [
+  ['mastery',  'تسلط بر محتوای درس'],
+  ['behavior', 'برختر محترمانه با دانش‌آموز'],
+  ['discipline','نظم و وقت‌شناسی'],
+  ['feedback', 'تکالیف و بازخورد'],
+  ['fairness', 'عدالت در نمره‌دهی']
+];
+const TEVAL_MAX_FEEDBACK = 500;
+const TEVAL_LABEL = 'ارزشیابی ناشناس';
+
+/** مدارسِ پاسخ‌دهنده: دانش‌آموز → مدرسهٔ خودش؛ ولی → مدرسهٔ فرزندان */
+function tevalSchoolIdsFor(u){
+  if(!u) return [];
+  if(u.role === 'student') return u.school_id != null ? [u.school_id] : [];
+  if(u.role === 'parent'){
+    const kids = (db.parent_links || []).filter(function(l){ return l.parent_id === u.id; })
+      .map(function(l){ return (byId('users', l.student_id) || {}).school_id; })
+      .filter(function(x){ return x != null; });
+    return [...new Set(kids)];
+  }
+  return [];
+}
+
+/** دبیرانِ مدارسِ پاسخ‌دهنده (اصلی + چندمدرسه‌ای از طریق teacher_schools) */
+function tevalTeachersFor(u){
+  const sids = new Set(tevalSchoolIdsFor(u));
+  if(!sids.size) return [];
+  const out = [];
+  (db.users || []).forEach(function(t){
+    if(t.role !== 'teacher') return;
+    const main = sids.has(t.school_id);
+    const linked = (db.teacher_schools || []).some(function(x){
+      return x.teacher_id === t.id && sids.has(x.school_id) && x.active;
+    });
+    if(main || linked) out.push(t);
+  });
+  return out.sort(function(a, b){ return (a.full_name || '').localeCompare(b.full_name || '', 'fa'); });
+}
+
+/** آیا معلمِ داده‌شده واقعاً در مدرسهٔ کاربر پاسخ‌دهنده تدریس می‌کند؟ */
+function tevalTeacherAllowed(u, teacherId){
+  return tevalTeachersFor(u).some(function(t){ return t.id === teacherId; });
+}
+
+/* ─────────────── تجمیع (خالص — بدون دسترسی به نقش) ───────────────
+   ورودی: فهرست شناسهٔ مدارس (یا null = همه) و شناسهٔ دبیر (اختیاری)
+   خروجی: نگاشت teacher_id → {teacher, school_id, n, sums, avgs, overall, feedbacks} */
+function evalAggregate(schoolIds, teacherId){
+  const scope = schoolIds ? new Set(schoolIds) : null;
+  const out = {};
+  (db.teacher_evaluations || []).forEach(function(ev){
+    if(scope && !scope.has(ev.school_id)) return;
+    if(teacherId != null && ev.teacher_id !== teacherId) return;
+    const t = byId('users', ev.teacher_id);
+    if(!t) return;
+    let row = out[ev.teacher_id];
+    if(!row){
+      row = { teacher: t, school_id: ev.school_id, n: 0, sums: {}, feedbacks: [] };
+      TEVAL_CRITERIA.forEach(function(c){ row.sums[c[0]] = 0; });
+      out[ev.teacher_id] = row;
+    }
+    row.n++;
+    const cr = ev.criteria || {};
+    TEVAL_CRITERIA.forEach(function(c){
+      const v = Number(cr[c[0]]);
+      if(v >= 1 && v <= 5) row.sums[c[0]] += v;
+    });
+    if(ev.feedback && String(ev.feedback).trim())
+      row.feedbacks.push({ text: String(ev.feedback).trim(), date: (ev.created_at || '').slice(0, 10) });
+  });
+  Object.keys(out).forEach(function(k){
+    const r = out[k];
+    r.avgs = {};
+    let tot = 0, have = 0;
+    TEVAL_CRITERIA.forEach(function(c){
+      r.avgs[c[0]] = r.n ? Math.round(r.sums[c[0]] / r.n * 100) / 100 : 0;
+      if(r.n){ tot += r.avgs[c[0]]; have++; }
+    });
+    r.overall = have ? Math.round(tot / have * 100) / 100 : 0;
+    r.feedbacks.sort(function(a, b){ return (b.date || '').localeCompare(a.date || ''); });
+  });
+  return out;
+}
+
+/** وضعیتِ فرمِ پاسخِ فعلی در فیلترها (بين رندرها حفظ می‌شود) */
+function tevalState(){
+  if(!S.filters._teval) S.filters._teval = { tid: 0, rates: {} };
+  return S.filters._teval;
+}
+
+/* ─────────────── نما: فرم پاسخ (دانش‌آموز / ولی) ─────────────── */
+function viewTeachEvalForm(u){
+  const teachers = tevalTeachersFor(u);
+  const st = tevalState();
+  const done = Object.keys(st.rates).filter(function(k){ return st.rates[k] > 0; }).length;
+  return `<div class="card"><div class="card-head"><h3>🌟 ${TEVAL_LABEL} معلم</h3>
+    <span class="badge b-green">🔒 کاملاً ناشناس</span></div>
+  <div class="card-body">
+    <div class="small" style="background:var(--green-soft);padding:10px 12px;border-radius:10px;line-height:2;margin-bottom:12px">
+      🔒 پاسخ شما <b>بدون نام و نشان</b> ثبت می‌شود؛ هیچ‌جا (نه در پایگاه داده، نه در
+      گزارش‌ها) نام پاسخ‌دهنده ذخیره یا نمایش داده نمی‌شود. چون هویتی ذخیره نمی‌شود،
+      امکان ثبت دوبارهٔ یک نظر وجود دارد — لطفاً هر معلم را فقط یک بار ارزشیابی کنید.</div>
+    ${teachers.length ? `
+    ${f('دبیر موردنظر *', sel('ev_teacher', teachers.map(function(t){ return [t.id, t.full_name]; }), st.tid || ''))}
+    <div style="display:grid;gap:10px;margin-top:10px">
+      ${TEVAL_CRITERIA.map(function(c){
+        const v = st.rates[c[0]] || 0;
+        return `<div class="row" style="justify-content:space-between;background:var(--surface-2);padding:10px 12px;border-radius:10px">
+          <span class="small"><b>${esc(c[1])}</b></span>
+          <span class="row" style="gap:4px">${[1,2,3,4,5].map(function(i){
+            return `<button class="icon-btn" title="${fa(i)} از ۵" data-act="eval-rate" data-c="${escAttr(c[0])}" data-v="${i}"
+              style="font-size:18px;${i <= v ? '' : 'opacity:.35;filter:grayscale(1)'}">⭐</button>`;
+          }).join('')}</span></div>`;
+      }).join('')}
+    </div>
+    ${f('توضیح آزاد (اختیاری — بدون نام)', `<textarea class="input" id="ev_feedback" rows="3" maxlength="${TEVAL_MAX_FEEDBACK}" placeholder="هر نکته‌ای که به بهبود آموزش کمک می‌کند…">${esc(st.fb || '')}</textarea>`)}
+    <div class="row" style="margin-top:12px">
+      <button class="btn" data-act="eval-save">✅ ثبت ارزشیابی ناشناس</button>
+      <span class="small muted">${fa(done)} از ${fa(TEVAL_CRITERIA.length)} معیار امتیاز گرفته</span>
+    </div>` : empty('👨‍🏫', 'دبیری برای ارزشیابی نیست', 'مدرسهٔ شما هنوز دبیر ثبت‌شده ندارد.')}
+  </div></div>`;
+}
+
+/* ─────────────── نما: نتایج تجمیعی (مدیر / اداره / سوپرادمین) ─────────────── */
+function viewTeachEvalResults(u){
+  const isOffice = u.role === 'edu_office';
+  const o = isOffice ? officeOf(u) : null;
+  const schools = isOffice ? officeScopeSchools(o, S.filters)
+    : (u.role === 'superadmin' ? db.schools : db.schools.filter(function(s){ return s.id === u.school_id; }));
+  const rows = Object.values(evalAggregate(schools.map(function(s){ return s.id; })))
+    .sort(function(a, b){ return b.n - a.n || a.teacher.full_name.localeCompare(b.teacher.full_name, 'fa'); });
+  const total = rows.reduce(function(s, r){ return s + r.n; }, 0);
+  return `<div class="grid g3" style="margin-bottom:14px">
+    ${statCard('🌟', fa(total), 'پاسخ دریافتی', 'blue')}
+    ${statCard('👨‍🏫', fa(rows.length), 'دبیر ارزشیابی‌شده', 'green')}
+    ${statCard('🏫', fa(schools.length), 'مدرسه در محدوده', 'purple')}</div>
+  <div class="card"><div class="card-head"><h3>نتیجهٔ تجمیعی ارزشیابی — بدون نام پاسخ‌دهنده</h3>
+    <span class="badge b-green">🔒 ناشناس</span></div>
+  ${rows.length ? `<div class="table-wrap"><table class="table"><thead><tr>
+    <th>دبیر</th>${isOffice ? '<th>مدرسه</th>' : ''}<th>پاسخ‌ها</th>
+    ${TEVAL_CRITERIA.map(function(c){ return `<th class="small">${esc(c[1])}</th>`; }).join('')}
+    <th>میانگین کل</th></tr></thead><tbody>
+    ${rows.map(function(r){
+      return `<tr><td><b>${esc(r.teacher.full_name)}</b></td>
+        ${isOffice ? `<td class="small">${esc((byId('schools', r.school_id) || {}).name || '—')}</td>` : ''}
+        <td><span class="badge ${r.n >= 5 ? 'b-green' : 'b-amber'}">${fa(r.n)}</span></td>
+        ${TEVAL_CRITERIA.map(function(c){ const v = r.avgs[c[0]];
+          return `<td>${bar(v, 5, v >= 4 ? 'var(--green)' : (v >= 3 ? 'var(--amber)' : 'var(--red)'))}<span class="small">${fa(v)}</span></td>`; }).join('')}
+        <td><b style="font-size:15px">${fa(r.overall)}</b> <span class="small muted">از ۵</span></td></tr>`;
+    }).join('')}
+  </tbody></table></div>` : empty('🌟', 'هنوز پاسخی ثبت نشده', 'نتایج به‌صورت تجمیعی و ناشناس اینجا نمایش داده می‌شود.')}
+  ${rows.some(function(r){ return r.feedbacks.length; }) ? `
+  <div class="card-head" style="border-top:1px solid var(--border)"><h3>💬 بازخوردهای آزاد (بدون نام)</h3></div>
+  <div class="card-body" style="display:grid;gap:8px">
+    ${rows.map(function(r){ return r.feedbacks.slice(0, 5).map(function(fb){
+      return `<div style="background:var(--surface-2);padding:10px 12px;border-radius:10px">
+        <span class="small">${esc(fb.text)}</span>
+        <div class="small muted" style="margin-top:4px">👨‍🏫 ${esc(r.teacher.full_name)} · 📅 ${fb.date ? jalali(fb.date) : '—'} · ناشناس</div></div>`;
+    }).join(''); }).join('')}
+  </div>` : ''}
+  </div>`;
+}
+
+/** روت ب.۳ — بر اساس نقش، فرم یا نتیجه */
+function viewTeachEval(){
+  const u = S.user;
+  if(u.role === 'student' || u.role === 'parent') return viewTeachEvalForm(u);
+  if(u.role === 'manager' || u.role === 'edu_office' || u.role === 'superadmin') return viewTeachEvalResults(u);
+  return viewForbidden();
+}
+
+/* ─────────────── اکشن‌ها ─────────────── */
+const TEVAL_ACTIONS = {
+  'eval-rate'(el){
+    const st = tevalState();
+    st.rates[el.dataset.c] = Number(el.dataset.v) || 0;
+    const fb = $('#ev_feedback'); if(fb) st.fb = fb.value;
+    render();
+  },
+  'eval-save'(){
+    const u = S.user;
+    if(u.role !== 'student' && u.role !== 'parent'){ toast('فقط دانش‌آموز و ولی می‌توانند ارزشیابی ثبت کنند', 'err'); return; }
+    const st = tevalState();
+    /* معلم از سلکت؛ اگر مقدار نداشت (سلکت بدون گزینه) حالتِ ذخیره */
+    const selEl = $('#ev_teacher');
+    const tid = Number(selEl && selEl.value ? selEl.value : (st.tid || 0));
+    if(!tid){ toast('دبیر را انتخاب کنید', 'err'); return; }
+    /* گارد دامنه: فقط دبیرانِ مدرسهٔ خودِ پاسخ‌دهنده */
+    if(!tevalTeacherAllowed(u, tid)){ toast('این دبیر در مدرسهٔ شما نیست', 'err'); return; }
+    const rates = {};
+    let missing = 0;
+    TEVAL_CRITERIA.forEach(function(c){
+      const v = Number(st.rates[c[0]]) || 0;
+      if(!(v >= 1 && v <= 5)) missing++;
+      rates[c[0]] = v;
+    });
+    if(missing){ toast(`به همهٔ ${fa(TEVAL_CRITERIA.length)} معیار امتیاز دهید (${fa(TEVAL_CRITERIA.length - missing)} ثبت شده)`, 'err'); return; }
+    const fbEl = $('#ev_feedback');
+    const fb = fbEl ? String(fbEl.value || '').trim().slice(0, TEVAL_MAX_FEEDBACK) : '';
+    /* مدرسهٔ ثبت = مدرسه‌ای که این دبیر برای این پاسخ‌دهنده در آن تدریس می‌کند */
+    const t = byId('users', tid);
+    const sids = tevalSchoolIdsFor(u);
+    const scId = sids.indexOf(t.school_id) > -1 ? t.school_id
+      : ((db.teacher_schools || []).find(function(x){ return x.teacher_id === tid && sids.indexOf(x.school_id) > -1 && x.active; }) || {}).school_id;
+    if(!scId){ toast('مدرسهٔ این دبیر برای شما مشخص نیست', 'err'); return; }
+    /* 🔒 تنها فیلدهای مدل — هیچ فیلد هویتی نوشته نمی‌شود */
+    insert('teacher_evaluations', {
+      school_id: scId, teacher_id: tid,
+      criteria: rates, feedback: fb, created_at: todayISO()
+    });
+    S.filters._teval = { tid: 0, rates: {} };
+    toast('ارزشیابی شما به‌صورت ناشناس ثبت شد — سپاسگزاریم 🌟', 'ok');
+    render();
+  }
+};
+
+/* ─────────────── دادهٔ نمونه (فقط افزودنیِ محلی — وارد صف نمی‌رود) ─────────────── */
+function generateTeacherEvalDemo(){
+  db.teacher_evaluations = db.teacher_evaluations || [];
+  if(db.teacher_evaluations.length) return;
+  const FEEDS = [
+    'درس را خیلی روشن توضیح می‌دهد.',
+    'کاش تکالیف را زودتر بررسی کنند.',
+    'با دانش‌آموزان با احترام برخورد می‌کنند.',
+    'امتحان‌ها عادلانه است.',
+    'سر وقت می‌آیند و کلاس منظم است.',
+    ''
+  ];
+  db.schools.slice(0, 6).forEach(function(sc){
+    const ts = db.users.filter(function(u){ return u.role === 'teacher' && u.school_id === sc.id; }).slice(0, 2);
+    ts.forEach(function(t){
+      const n = 3 + ri(6);
+      for(let i = 0; i < n; i++){
+        const cr = {};
+        TEVAL_CRITERIA.forEach(function(c){ cr[c[0]] = 2 + ri(4); });
+        add('teacher_evaluations', {
+          school_id: sc.id, teacher_id: t.id, criteria: cr,
+          feedback: pick(FEEDS), created_at: daysAgoISO(ri(60))
+        });
+      }
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   تولید خودکار برنامهٔ هفتگی (E.6)
+   - schedGenerate(plan): هستهٔ خالص و قطعی (بدون db) — ورودی/خروجیِ دادهٔ ساده
+   - ترتیب: تخصص‌دارها اول، بعد حریصانه با پراکندگیِ روزانه + پس‌گردِ تک‌سطحی
+   - تداخلِ دبیر سراسری است (existing همهٔ رکوردهای schedule)؛ تداخلِ کلاس درونی
+   - درسِ بدونِ متخصص: teacher_id=null («بدون دبیر») + گزارش — نه دبیرِ تصادفی
+   - ثبت فقط در خانه‌های خالی است (رونویسی نمی‌کند) و با پیش‌نمایش + تأییدِ مدیر
+   ═══════════════════════════════════════════════════════════════════ */
+
+/**
+ * plan = {
+ *   classes:  [{id, grade, field}],
+ *   subjects: [{id, grade, field, weekly_hours}],
+ *   teachers: [{id, subject_id}],
+ *   existing: [{class_id, teacher_id, day, period}],  // همهٔ رکوردها (تداخلِ دبیر سراسری)
+ *   days: [0..5], periodsPerDay: 6
+ * }
+ * خروجی: { placements: [{class_id, subject_id, teacher_id, day, period}],
+ *           unplaced:   [{class_id, subject_id, teacher_id, reason}],
+ *           stats: {demands, placed, unplaced, noSpecialist} }
+ */
+function schedGenerate(plan){
+  plan = plan || {};
+  var classes = plan.classes || [];
+  var subjects = plan.subjects || [];
+  var teachers = plan.teachers || [];
+  var existing = plan.existing || [];
+  var days = (plan.days && plan.days.length) ? plan.days.slice() : [0, 1, 2, 3, 4, 5];
+  var PPD = plan.periodsPerDay || 6;
+
+  function subjMatch(sub, cls){
+    if(sub.grade && cls.grade && sub.grade !== cls.grade) return false;
+    if(sub.field && cls.field && sub.field !== cls.field) return false;
+    return true;
+  }
+  var specOf = {}; /* subject_id -> [teacher_id...] */
+  subjects.forEach(function(s){
+    specOf[s.id] = teachers
+      .filter(function(t){ return t.subject_id === s.id; })
+      .map(function(t){ return t.id; })
+      .sort(function(a, b){ return a - b; });
+  });
+  var load = {}; /* teacher_id -> شمارِ تخصیص */
+  teachers.forEach(function(t){ load[t.id] = 0; });
+  existing.forEach(function(r){
+    if(r.teacher_id != null) load[r.teacher_id] = (load[r.teacher_id] || 0) + 1;
+  });
+
+  /* اشغال‌ها */
+  var classBusy = {};   /* class_id|day|period */
+  var teacherBusy = {}; /* teacher_id|day|period */
+  existing.forEach(function(r){
+    classBusy[r.class_id + '|' + r.day + '|' + r.period] = 1;
+    if(r.teacher_id != null) teacherBusy[r.teacher_id + '|' + r.day + '|' + r.period] = 1;
+  });
+
+  /* پوششِ فعلی: هر کلاس × درس چند زنگ دارد؟ (اجرایِ دوباره نباید دوبرابر کند) */
+  var covered = {}; /* class_id|subject_id -> n */
+  existing.forEach(function(r){
+    if(r.subject_id == null) return;
+    var k = r.class_id + '|' + r.subject_id;
+    covered[k] = (covered[k] || 0) + 1;
+  });
+  /* تقاضاها: هر کلاس × درس‌های هم‌خوان × (weekly_hours − پوششِ فعلی) */
+  var demands = [];
+  classes.forEach(function(cls){
+    subjects.forEach(function(sub){
+      if(!subjMatch(sub, cls)) return;
+      var h = Math.max(0, Math.floor(Number(sub.weekly_hours) || 0));
+      h = Math.max(0, h - (covered[cls.id + '|' + sub.id] || 0));
+      for(var i = 0; i < h; i++) demands.push({ class_id: cls.id, subject_id: sub.id });
+    });
+  });
+  /* تخصص‌دارها اول؛ بعد ساعتِ بیشتر؛ بعد id (قطعی) */
+  demands.sort(function(a, b){
+    var sa = (specOf[a.subject_id] || []).length ? 0 : 1;
+    var sb = (specOf[b.subject_id] || []).length ? 0 : 1;
+    if(sa !== sb) return sa - sb;
+    var ha = 0, hb = 0;
+    for(var i = 0; i < subjects.length; i++){
+      if(subjects[i].id === a.subject_id) ha = subjects[i].weekly_hours || 0;
+      if(subjects[i].id === b.subject_id) hb = subjects[i].weekly_hours || 0;
+    }
+    if(ha !== hb) return hb - ha;
+    if(a.class_id !== b.class_id) return a.class_id - b.class_id;
+    return a.subject_id - b.subject_id;
+  });
+
+  function pickTeacher(subId){
+    var cands = (specOf[subId] || []).slice().sort(function(a, b){
+      return ((load[a] || 0) - (load[b] || 0)) || (a - b);
+    });
+    return cands.length ? cands[0] : null;
+  }
+  /* روزهایِ دارایِ این درس برای این کلاس (پراکندگی) */
+  var classSubjDays = {}; /* class_id|subject_id -> {day:1} */
+  existing.forEach(function(r){
+    if(r.subject_id == null) return;
+    var k = r.class_id + '|' + r.subject_id;
+    (classSubjDays[k] = classSubjDays[k] || {})[r.day] = 1;
+  });
+  function slotFree(classId, teacherId, d, p){
+    if(classBusy[classId + '|' + d + '|' + p]) return false;
+    if(teacherId != null && teacherBusy[teacherId + '|' + d + '|' + p]) return false;
+    return true;
+  }
+  function findSlot(classId, teacherId, subId){
+    var k = classId + '|' + subId;
+    var used = classSubjDays[k] || {};
+    var pass, d, p;
+    for(pass = 0; pass < 2; pass++){
+      for(var di = 0; di < days.length; di++){
+        d = days[di];
+        if(pass === 0 && used[d]) continue; /* گذرِ اول: روزی که این درس را ندارد */
+        for(p = 1; p <= PPD; p++){
+          if(slotFree(classId, teacherId, d, p)) return { day: d, period: p };
+        }
+      }
+    }
+    return null;
+  }
+
+  var placements = [];
+  var unplaced = [];
+  var noSpecialist = 0;
+
+  function commit(pl){
+    placements.push(pl);
+    classBusy[pl.class_id + '|' + pl.day + '|' + pl.period] = 1;
+    if(pl.teacher_id != null){
+      teacherBusy[pl.teacher_id + '|' + pl.day + '|' + pl.period] = 1;
+      load[pl.teacher_id] = (load[pl.teacher_id] || 0) + 1;
+    }
+    var k = pl.class_id + '|' + pl.subject_id;
+    (classSubjDays[k] = classSubjDays[k] || {})[pl.day] = 1;
+  }
+  function uncommit(pl){
+    var i = placements.indexOf(pl);
+    if(i >= 0) placements.splice(i, 1);
+    delete classBusy[pl.class_id + '|' + pl.day + '|' + pl.period];
+    if(pl.teacher_id != null){
+      delete teacherBusy[pl.teacher_id + '|' + pl.day + '|' + pl.period];
+      load[pl.teacher_id] = Math.max(0, (load[pl.teacher_id] || 1) - 1);
+    }
+    /* classSubjDays را نگه می‌داریم (محافظه‌کارانه — فقط پراکندگی است) */
+  }
+  /* پس‌گردِ تک‌سطحی: جابه‌جاییِ یکی از زنگ‌هایِ همین کلاس برای بازکردنِ جا */
+  function displace(classId, teacherId, subId){
+    for(var i = 0; i < placements.length; i++){
+      var victim = placements[i];
+      if(victim.class_id !== classId) continue;
+      uncommit(victim);
+      var alt = findSlot(victim.class_id, victim.teacher_id, victim.subject_id);
+      if(alt && (alt.day !== victim.day || alt.period !== victim.period)){
+        var mine = findSlot(classId, teacherId, subId);
+        if(mine){
+          victim.day = alt.day; victim.period = alt.period;
+          commit(victim);
+          return mine;
+        }
+      }
+      commit(victim); /* برگردان — قربانیِ بعدی */
+    }
+    return null;
+  }
+
+  demands.forEach(function(dm){
+    var tid = pickTeacher(dm.subject_id);
+    if(tid == null) noSpecialist++;
+    var slot = findSlot(dm.class_id, tid, dm.subject_id);
+    if(!slot) slot = displace(dm.class_id, tid, dm.subject_id);
+    if(slot){
+      commit({ class_id: dm.class_id, subject_id: dm.subject_id, teacher_id: tid, day: slot.day, period: slot.period });
+    }else{
+      unplaced.push({
+        class_id: dm.class_id, subject_id: dm.subject_id, teacher_id: tid,
+        reason: tid == null ? 'جایِ خالی برای کلاس نیست' : 'جایِ خالیِ مشترک برای کلاس و دبیر نیست'
+      });
+    }
+  });
+
+  return {
+    placements: placements, unplaced: unplaced,
+    stats: { demands: demands.length, placed: placements.length, unplaced: unplaced.length, noSpecialist: noSpecialist }
+  };
+}
+
+/* ── پوششِ db + پیش‌نمایش + ثبت ─────────────────────────────────── */
+
+function schedgenPlanForSchool(schoolId){
+  var days = (typeof workDaysOf === 'function' ? workDaysOf(schoolId) : [0, 1, 2, 3, 4, 5])
+    .filter(function(d){ return (typeof isSchoolDay === 'function' ? isSchoolDay(d) : (d >= 0 && d <= 4)); });
+  if(!days.length) days = [0, 1, 2, 3, 4];
+  return {
+    classes: db.classes.filter(function(c){ return c.school_id === schoolId; })
+      .map(function(c){ return { id: c.id, grade: c.grade, field: c.field }; }),
+    subjects: (db.subjects || []).filter(function(s){ return s.school_id === schoolId; })
+      .map(function(s){ return { id: s.id, grade: s.grade, field: s.field, weekly_hours: s.weekly_hours }; }),
+    teachers: db.users.filter(function(u){ return u.role === 'teacher' && u.school_id === schoolId && (u.active == null || u.active === 1); })
+      .map(function(t){ return { id: t.id, subject_id: t.subject_id }; }),
+    existing: (db.schedule || []).map(function(r){
+      return { class_id: r.class_id, teacher_id: r.teacher_id, subject_id: r.subject_id, day: r.day, period: r.period };
+    }),
+    days: days, periodsPerDay: 6
+  };
+}
+
+function schedgenPreviewModal(schoolId){
+  var plan = schedgenPlanForSchool(schoolId);
+  var res = schedGenerate(plan);
+  window._schedgen = { school_id: schoolId, res: res };
+  var byClass = {};
+  res.placements.forEach(function(p){
+    (byClass[p.class_id] = byClass[p.class_id] || { n: 0, un: [] }).n++;
+  });
+  res.unplaced.forEach(function(p){
+    var b = (byClass[p.class_id] = byClass[p.class_id] || { n: 0, un: [] });
+    b.un.push(p);
+  });
+  var clsIds = Object.keys(byClass).map(Number).sort(function(a, b){ return a - b; });
+  var body = '<div class="small muted" style="margin-bottom:10px">'
+    + 'تقاضا: ' + fa(res.stats.demands) + ' زنگ · قابلِ ثبت: ' + fa(res.stats.placed)
+    + ' · تعیین‌نشده: ' + fa(res.stats.unplaced)
+    + (res.stats.noSpecialist ? ' · بدونِ دبیرِ متخصص: ' + fa(res.stats.noSpecialist) + ' (با «بدون دبیر» ثبت می‌شود)' : '')
+    + '<br>ثبت فقط در خانه‌های خالی انجام می‌شود؛ برنامهٔ فعلی دست‌نخورده می‌ماند.</div>'
+    + (clsIds.length ? '<div style="display:grid;gap:8px;max-height:50vh;overflow:auto">' + clsIds.map(function(cid){
+        var b = byClass[cid];
+        var c = byId('classes', cid) || {};
+        return '<div style="border:1px solid var(--border);border-radius:8px;padding:8px 10px">'
+          + '<div class="row" style="gap:8px"><b>' + esc(c.name || ('کلاس ' + cid)) + '</b>'
+          + '<span class="badge b-green">' + fa(b.n) + ' زنگ</span>'
+          + (b.un.length ? '<span class="badge b-red">' + fa(b.un.length) + ' تعیین‌نشده</span>' : '') + '</div>'
+          + (b.un.length ? '<div class="small" style="margin-top:6px;line-height:2">' + b.un.map(function(u){
+              var s = byId('subjects', u.subject_id) || {};
+              return '<div>⚠️ ' + esc(s.name || ('درس ' + u.subject_id)) + ' — ' + esc(u.reason) + '</div>';
+            }).join('') + '</div>' : '')
+          + '</div>';
+      }).join('') + '</div>' : '<div class="small muted">تقاضایی نیست (درسِ هم‌خوانی با کلاس‌ها پیدا نشد).</div>');
+  openModal(modalTpl('⚙️ پیش‌نمایشِ تولید خودکار — ' + esc((byId('schools', schoolId) || {}).name || ''), body, 'schedgen-apply'));
+}
+
+/** ثبتِ پیش‌نمایش: فقط خانه‌هایِ هنوز-خالی + دبیرِ هنوز-آزاد */
+function schedgenApply(){
+  var g = window._schedgen;
+  if(!g || !g.res) return { ok: false, msg: 'پیش‌نمایشی نیست' };
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  if(role !== 'manager' && role !== 'superadmin') return { ok: false, msg: 'فقط مدیر می‌تواند ثبت کند' };
+  var n = 0, skip = 0;
+  g.res.placements.forEach(function(p){
+    if(db.schedule.some(function(x){ return x.class_id === p.class_id && x.day === p.day && x.period === p.period; })){ skip++; return; }
+    if(p.teacher_id != null && (typeof teacherBusyAt === 'function') && teacherBusyAt(p.teacher_id, p.day, p.period, 0)){ skip++; return; }
+    insert('schedule', {
+      school_id: g.school_id, class_id: p.class_id, subject_id: p.subject_id,
+      teacher_id: p.teacher_id, day: p.day, period: p.period
+    });
+    n++;
+  });
+  window._schedgen = null;
+  var msg = fa(n) + ' زنگ ثبت شد' + (skip ? ' (' + fa(skip) + ' پرشده بود و رد شد)' : '')
+    + (g.res.unplaced.length ? '؛ ' + fa(g.res.unplaced.length) + ' زنگ تعیین‌نشده ماند' : '');
+  return { ok: true, msg: msg };
 }
 
 /* ========================================================== */

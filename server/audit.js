@@ -224,6 +224,14 @@ function createAudit(opts = {}) {
   /**
    * ثبت رویداد ممیزی (Append-Only)
    */
+  /* هم‌بستگیِ ردیابی (P-Trace): خوانشِ تنبل (بدونِ چرخهٔ require — tracing در لود audit را می‌خواهد) */
+  function currentTraceId(){
+    try{
+      const t = require('./tracing');
+      if(t && typeof t.getTraceId === 'function') return t.getTraceId();
+    }catch(e){}
+    return null;
+  }
   function record(eventOrType, detailObj) {
     try {
       ensureInit();
@@ -293,6 +301,9 @@ function createAudit(opts = {}) {
         ...sanitizedExtra
       };
 
+      /* trace_id به خطِ JSON می‌چسبد تا Loki همان را ship کند (فقط وقتی ردیابی فعال است) */
+      const __tid = currentTraceId();
+      if(__tid) entry.trace_id = __tid;
       const line = JSON.stringify(entry) + '\n';
       fs.appendFileSync(auditFile, line, { encoding: 'utf8', mode: 0o600 });
       eventCounter++;

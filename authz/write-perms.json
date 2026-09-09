@@ -115,7 +115,8 @@
       "messages",
       "notifications",
       "parent_links",
-      "parent_verifications"
+      "parent_verifications",
+      "teacher_evaluations"
     ],
     "student": [
       "bus_events",
@@ -125,6 +126,7 @@
       "messages",
       "notifications",
       "notify_queue",
+      "teacher_evaluations",
       "vclass_attendance",
       "vclass_questions"
     ],
@@ -1199,6 +1201,14 @@
       ],
       "del": []
     },
+    "teacher_evaluations": {
+      "ins": [
+        "student",
+        "parent"
+      ],
+      "upd": [],
+      "del": []
+    },
     "teacher_notes": {
       "ins": [
         "teacher",
@@ -2101,11 +2111,20 @@
       "updated_at"
     ],
     "school_years": [
+      "closed",
+      "closed_at",
       "created_at",
-      "updated_at"
+      "placement",
+      "placement_year",
+      "promoted",
+      "reminded_at",
+      "school_id",
+      "updated_at",
+      "year_code"
     ],
     "schools": [
       "active",
+      "active_year_code",
       "address",
       "area_kind",
       "boom_goals",
@@ -2129,6 +2148,7 @@
       "place_rules",
       "province_id",
       "public_goals",
+      "school_type",
       "shift",
       "type",
       "updated_at",
@@ -2258,6 +2278,14 @@
       "status",
       "title",
       "updated_at"
+    ],
+    "teacher_evaluations": [
+      "created_at",
+      "criteria",
+      "feedback",
+      "id",
+      "school_id",
+      "teacher_id"
     ],
     "teacher_notes": [
       "body",
@@ -2888,6 +2916,15 @@
         "users"
       ]
     },
+    "eval-save": {
+      "roles": [
+        "student",
+        "parent"
+      ],
+      "collections": [
+        "teacher_evaluations"
+      ]
+    },
     "exam-save": {
       "roles": null,
       "collections": [
@@ -3460,6 +3497,15 @@
       ]
     },
     "sched-conf-move": {
+      "roles": [
+        "manager",
+        "superadmin"
+      ],
+      "collections": [
+        "schedule"
+      ]
+    },
+    "schedgen-apply": {
       "roles": [
         "manager",
         "superadmin"

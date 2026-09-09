@@ -1639,18 +1639,32 @@ function coreActions(e, el, id, a, rawId){
      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk
         (26-curriculum) که در exam-save اعمال می‌شود */
-     if(V('g_type')==='امتحان نهایی'){
+     const gType=V('g_type');
+     if(gType===NATIONAL_EXAM_TYPE){
        const gcls=byId('classes',window._gclass);
        if(!(typeof finalGradeOk==='function'&&finalGradeOk(gcls&&gcls.grade))){
          toast('نمرهٔ امتحان نهایی فقط برای پایه‌های پایانی (نهم و دوازدهم) ثبت می‌شود','err');return;
        }
      }
+     /* ── فاز ۰.۳: نمرهٔ امتحان نهایی کشوری فقط از بیرون وارد می‌شود ──
+        نتیجهٔ نهایی کشوری را اداره اعلام می‌کند، نه دبیر؛ پس دبیر نه
+        می‌سازد و نه ویرایش می‌کند. مدیر/سوپرادمین نتیجهٔ اعلامی را ثبت
+        می‌کنند. منشأ روی خودِ نمره مُهر می‌خورد (grades.source) تا
+        کارنامه بتواند داخلی و کشوری را جدا نشان دهد.
+        🔴 گارد روی داده است، نه فقط روی نما — نما در 18-modals.js فقط
+        گزینه را از دبیر پنهان می‌کند. */
+     const gRole=(typeof activePersona==='function')?activePersona():(S.user&&S.user.role);
+     const gNational=(gType===NATIONAL_EXAM_TYPE)||(gradeSource(g)==='national');
+     if(gNational&&gRole==='teacher'){
+       toast('نمرهٔ امتحان نهایی کشوری فقط از بیرون و توسط مدیر مدرسه وارد می‌شود','err');return;
+     }
+     const gSource=gNational?'national':'internal';
     let gid=g.id;
     /* بند ۴.۲: نوعِ نمره — در مدرسهٔ غیرکارگاهی فیلد نیست و همیشه تئوری */
     const gkind=V('g_kind')==='practical'?'practical':'theory';
-    if(g.id)update('grades',g.id,{score,term:V('g_term'),exam_type:V('g_type'),kind:gkind});
+    if(g.id)update('grades',g.id,{score,term:V('g_term'),exam_type:gType,kind:gkind,source:gSource});
     else{const sid=Number(V('g_st')),cid=window._gclass;
-      const r=insert('grades',{school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,term:V('g_term'),exam_type:V('g_type'),kind:gkind,score,max_score:20,created_at:todayISO()});
+      const r=insert('grades',{school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,term:V('g_term'),exam_type:gType,kind:gkind,source:gSource,score,max_score:20,created_at:todayISO()});
       gid=r.id;}
      /* گام ۷: نمرهٔ زیر آستانه برای اولیا پیامک می‌سازد (بعد از نوشتن
         تا source_ref شناسهٔ واقعی باشد) */
@@ -1803,6 +1817,7 @@ document.addEventListener('click',e=>{
   else if(typeof JD_ACTIONS!=='undefined'&&JD_ACTIONS[a]){e.preventDefault();JD_ACTIONS[a](el,id);}
   else if(typeof FILTER_ACTIONS!=='undefined'&&FILTER_ACTIONS[a]){e.preventDefault();FILTER_ACTIONS[a](el,id);}
   else if(typeof SYNC_ACTIONS!=='undefined'&&SYNC_ACTIONS[a]){e.preventDefault();SYNC_ACTIONS[a](el,id);}
+  else if(typeof TEVAL_ACTIONS!=='undefined'&&TEVAL_ACTIONS[a]){e.preventDefault();TEVAL_ACTIONS[a](el,id);} /* 73-teacher-eval */
 });
 // live filters
 document.addEventListener('input',e=>{
@@ -2009,6 +2024,14 @@ document.addEventListener('change',e=>{
          تا دادهٔ بی‌معنا (مثلاً دبستانِ دارای رشتهٔ حسابداری) ذخیره نشود */
       if(!on) $$('.m-branch,.m-field').forEach(c=>{c.checked=false;});
     }
+    return;
+  }
+
+  /* فرم مدرسه: تغییر نوع مدرسه ⇒ تنظیم خودکار چک‌باکس‌های پروفایل
+     قابلیت از سطر پیامد (فاز ۰.۱)؛ کاربر همچنان می‌تواند دستی اصلاح کند */
+  if(id==='m_school_type'){
+    const row=(typeof schoolTypeCaps==='function')?schoolTypeCaps(e.target.value):null;
+    if(row)$$('.m-cap').forEach(c=>{ if(row[c.value]!=null)c.checked=!!row[c.value]; });
     return;
   }
 
