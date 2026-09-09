@@ -13,6 +13,7 @@
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
+const { buildClassesList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
 
 function createClassRoutes(ctx) {
   const store = ctx.store;
@@ -22,8 +23,26 @@ function createClassRoutes(ctx) {
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
-  function getClassesList(req, urlParams) {
+  async function getClassesList(req, urlParams) {
     const user = req.user;
+    const paginationOpts = parsePaginationParams(urlParams);
+
+    /* Wave 3: DB-native path — runs ONLY when a live PostgreSQL is wired.
+       Pushes role-scope + filters + order + keyset pagination (with enrollment
+       count + teacher name enrichment) down to SQL. Unverified against a real
+       PG in this sandbox (see docs/WAVE3_QUERY_PERFORMANCE.md). */
+    if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
+      const built = buildClassesList({
+        user,
+        grade: urlParams.get('grade'),
+        limit: paginationOpts.limit,
+        cursor: paginationOpts.cursor
+      });
+      const res = await executePagedList(db, built, paginationOpts);
+      return { ok: true, ...res };
+    }
+
+    /* Memory/JS pipeline (runtime in this sandbox — byte-identical to before). */
     let classes = (store.classes || []);
     classes = filterByScope(user, classes);
 
@@ -44,7 +63,6 @@ function createClassRoutes(ctx) {
     });
 
     enriched.sort((a, b) => a.id - b.id);
-    const paginationOpts = parsePaginationParams(urlParams);
     const paginated = paginateArray(enriched, paginationOpts);
 
     return { ok: true, ...paginated };
