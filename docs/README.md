@@ -6,98 +6,100 @@
 
 | # | فایل | آخرین به‌روزرسانی | چه چیزی است |
 |---|---|---|---|
-| 1 | [SYNC_FLOW.md](/rezaa2544/p2/blob/main/docs/SYNC_FLOW.md) | 2026-09-09 | Wave -1 بخش اول — جریان همگام‌سازی آفلاین/Push/Pull/Conflict |
-| 2 | [AUTH_FLOW.md](/rezaa2544/p2/blob/main/docs/AUTH_FLOW.md) | 2026-09-09 | Wave -1 بخش اول — جریان احراز هویت OTP/JWT/session |
-| 3 | [DATA_FLOW.md](/rezaa2544/p2/blob/main/docs/DATA_FLOW.md) | 2026-09-09 | Wave -1 بخش اول — مسیر داده از UI/API تا Store/PostgreSQL/Redis |
-| 4 | [DEPENDENCY_GRAPH.md](/rezaa2544/p2/blob/main/docs/DEPENDENCY_GRAPH.md) | 2026-09-09 | Wave -1 بخش اول — نمودار وابستگی کلاینت/سرور/Build |
-| 5 | [NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md](/rezaa2544/p2/blob/main/docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md) | 2026-09-09 | مکمل الزام‌آور نقشه راه ملی — Wave -1، Arena 5، governance و شروط معماری |
-| 6 | [DATABASE_ARCHITECTURE.md](/rezaa2544/p2/blob/main/docs/DATABASE_ARCHITECTURE.md) | 2026-09-09 | Wave 2 — معماری دیتابیس: migrations، constraints، Identity IDs، transactions و OCC |
-| 7 | [NATIONAL_BASELINE.md](/rezaa2544/p2/blob/main/docs/NATIONAL_BASELINE.md) | 2026-09-09 | Wave 0 / Part 1 — tag مبنا، نتایج تست‌های فعلی و سند کلی baseline ملی |
-| 8 | [NATIONAL_ROADMAP_PROGRESS.md](/rezaa2544/p2/blob/main/docs/NATIONAL_ROADMAP_PROGRESS.md) | 2026-09-09 | پیگیری پیشرفت نقشه راه ملی — Waveهای ۰ تا ۲۰ با وضعیت اولیه در انتظار شروع |
-| 9 | [ROADMAP.md](/rezaa2544/p2/blob/main/docs/ROADMAP.md) | 2026-09-09 | نقشه راه جامع مهندسی پایش تا آمادگی مقیاس ملی — National Scale Master Roadmap |
-| 10 | [ARCHITECTURE_REVIEW.md](/rezaa2544/p2/blob/main/docs/ARCHITECTURE_REVIEW.md) | 2026-09-07 | بازبینی معماری (دور 84) — قوت‌ها/ضعف‌ها/پیشنهاد‌های اولویت‌بندی/امنیت/تست/مسیر پیشرفت؛ فقط‌خوان با شواهدِ فایل:خط |
-| 11 | [HANDOFF_ARCHIVE.md](/rezaa2544/p2/blob/main/docs/HANDOFF_ARCHIVE.md) | 2026-09-07 | آرشیوِ ورودی‌های کهنهٔ HANDOFF (سقفِ 20) |
-| 12 | [REPORT_2026-09-07_ROUND83.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-07_ROUND83.md) | 2026-09-07 | دور 83 — درگاهِ پیامک: گامِ 1 (server/sms.js + 9 تست + 6 جهش) |
-| 13 | [AI_PROMPT.md](/rezaa2544/p2/blob/main/docs/AI_PROMPT.md) | 2026-09-07 | سندِ واحدِ مرجع — پرامپت + راهنمای برنامه‌نویس + مستندات (قاعده: همیشه هم‌دور به‌روز) |
-| 14 | [ARCHITECTURE_DECISIONS.md](/rezaa2544/p2/blob/main/docs/ARCHITECTURE_DECISIONS.md) | 2026-09-07 | تصمیمات معماریِ قفل‌شده (AD) + معیارهای خروجِ فازها |
-| 15 | [PLAN_SMS_GATEWAY.md](/rezaa2544/p2/blob/main/docs/PLAN_SMS_GATEWAY.md) | 2026-09-07 | قراردادِ درگاهِ پیامک — گامِ 1 پیاده شد؛ گام‌های 2–5 با قرارداد |
-| 16 | [REPORT_2026-09-06_ROUND82.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND82.md) | 2026-09-07 | دور 82 — آدیتِ یکپارچگیِ مستندات + صفحهٔ آماده‌بودن |
-| 17 | [READY_STATE_2026-09-06.md](/rezaa2544/p2/blob/main/docs/READY_STATE_2026-09-06.md) | 2026-09-07 | صفحهٔ واحدِ آماده‌بودن — «آماده، با یک قید: پیامکِ واقعی» |
-| 18 | [PLAN_ATTENDANCE_STATES.md](/rezaa2544/p2/blob/main/docs/PLAN_ATTENDANCE_STATES.md) | 2026-09-07 | طرحِ حالت‌های حضور (پیاده شد، دور 77) |
-| 19 | [PLAN_BELL_AUTOCLASS.md](/rezaa2544/p2/blob/main/docs/PLAN_BELL_AUTOCLASS.md) | 2026-09-07 | طرحِ کلاسِ خودکارِ زنگ (پیاده شد) |
-| 20 | [PLAN_CALENDAR_TIME.md](/rezaa2544/p2/blob/main/docs/PLAN_CALENDAR_TIME.md) | 2026-09-07 | طرحِ تقویمِ آموزشی + روزهای جبرانی (پیاده شد) |
-| 21 | [PLAN_LIVE_SCHEDULE.md](/rezaa2544/p2/blob/main/docs/PLAN_LIVE_SCHEDULE.md) | 2026-09-07 | طرحِ زمان‌بندیِ زنده (پیاده شد) |
-| 22 | [PLAN_MULTICHILD.md](/rezaa2544/p2/blob/main/docs/PLAN_MULTICHILD.md) | 2026-09-07 | طرحِ چندفرزند (پیاده شد) |
-| 23 | [PLAN_VIRTUAL_CLASS.md](/rezaa2544/p2/blob/main/docs/PLAN_VIRTUAL_CLASS.md) | 2026-09-07 | طرحِ کلاس مجازی (لینکِ دستیِ شاد + حضورِ درون‌برنامه‌ای) |
-| 24 | [REPORT_UI_REVIEW_2026-09-05.md](/rezaa2544/p2/blob/main/docs/REPORT_UI_REVIEW_2026-09-05.md) | 2026-09-07 | بازبینیِ رابط کاربری (گرافیک) — merge: 74ec094 |
-| 25 | [SMS_NOTIFY_PLAN.md](/rezaa2544/p2/blob/main/docs/SMS_NOTIFY_PLAN.md) | 2026-09-07 | طرحِ صفِ پیامِ اولیا (بازبینی پیش از ارسال) |
-| 26 | [REPORT_2026-09-06_ROUND81.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND81.md) | 2026-09-07 | دور 81 — نمونه‌های پایلوت + DEPLOY + قراردادِ درگاه |
-| 27 | [DEPLOY.md](/rezaa2544/p2/blob/main/docs/DEPLOY.md) | 2026-09-07 | دستورِ کارِ استقرارِ تولید (env دقیق از کد + چک‌لیستِ go-live) |
-| 28 | [PILOT_ONBOARDING.md](/rezaa2544/p2/blob/main/docs/PILOT_ONBOARDING.md) | 2026-09-07 | راهنمای پایلوت برای مدیرِ غیرفنی |
-| 29 | [samples/students_sample.csv](/rezaa2544/p2/blob/main/docs/samples/students_sample.csv) | 2026-09-07 | نمونهٔ دادهٔ ورودِ دانش‌آموزان (ویرایشِ اکسل) |
-| 30 | [samples/teachers_sample.csv](/rezaa2544/p2/blob/main/docs/samples/teachers_sample.csv) | 2026-09-07 | نمونهٔ دادهٔ ورودِ دبیران (ویرایشِ اکسل) |
-| 31 | [REPORT_2026-09-06_ROUND80.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND80.md) | 2026-09-06 | دور 80 — یکپارچگیِ مستندات + بستهٔ پایلوت + رفعِ املأ |
-| 32 | [PILOT_KICKOFF.md](/rezaa2544/p2/blob/main/docs/PILOT_KICKOFF.md) | 2026-09-06 | بستهٔ عملیاتیِ پایلوتِ 14 روزه (T-7 تا روز 14 + go/no-go) |
-| 33 | [OPEN_WORK.md](/rezaa2544/p2/blob/main/docs/OPEN_WORK.md) | 2026-09-06 | کارهای باز (شش طرح — همه پیاده) |
-| 34 | [OPEN_ITEMS.md](/rezaa2544/p2/blob/main/docs/OPEN_ITEMS.md) | 2026-09-06 | مواردِ باز با شواهدِ کد |
-| 35 | [REPORT_2026-09-06_ROUND79.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND79.md) | 2026-09-06 | دور 79 — سیزده بند (رفعِ دسپاتچ، قفلِ آروان‌کلاود، 79.1/79.2) |
-| 36 | [REPORT_2026-09-06_FINAL.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_FINAL.md) | 2026-09-06 | گزارشِ پایانیِ دور 78 — 4 تصمیمِ واقعیِ باز |
-| 37 | [REPORT_2026-09-06_ROADMAP_AUDIT.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROADMAP_AUDIT.md) | 2026-09-06 | آدیتِ نقشهٔ راه |
-| 38 | [STORAGE_OPTIONS_2026-09-06.md](/rezaa2544/p2/blob/main/docs/STORAGE_OPTIONS_2026-09-06.md) | 2026-09-06 | مقایسهٔ ذخیره‌گاهِ آبجکت (آروان‌کلاود/لیارا/MinIO) |
-| 39 | [ARCHITECTURE.md](/rezaa2544/p2/blob/main/docs/ARCHITECTURE.md) | 2026-09-06 | معماری پایش (نمای کلی) |
-| 40 | [SCALE_10M.md](/rezaa2544/p2/blob/main/docs/SCALE_10M.md) | 2026-09-06 | معماری مقیاس ملی — 10 میلیون دانش‌آموز، 5 میلیون کاربر همزمان |
-| 41 | [SERVER_SECURITY_CONTRACT.md](/rezaa2544/p2/blob/main/docs/SERVER_SECURITY_CONTRACT.md) | 2026-09-06 | قراردادِ امنیتیِ سرور (مستندِ مرجعِ الزام‌آور) |
-| 42 | [REPORT_2026-09-06_ROUND77-2_SMOKE_CRASH.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND77-2_SMOKE_CRASH.md) | 2026-09-06 | دور 77-2 — رفعِ کرشِ smoke + 4 اشکالِ کهنهٔ پنهان |
-| 43 | [REPORT_2026-09-06_ROUND77_ATTENDANCE_EVENTS.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND77_ATTENDANCE_EVENTS.md) | 2026-09-06 | دور 77 — بازطراحیِ حضور (رویداد + 30٪ + موجهِ یکپارچه) |
-| 44 | [REPORT_2026-09-06_ROUND76_DROPOUT_READINESS.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND76_DROPOUT_READINESS.md) | 2026-09-06 | دور 76 — ترک تحصیل (حذفِ نرم) + دامنهٔ سرور + آماده‌بودن |
-| 45 | [REPORT_2026-09-06_ROUND75_EXIT_TIMER_LATE.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND75_EXIT_TIMER_LATE.md) | 2026-09-06 | دور 75 — تایمرِ «خروج از کلاس» + تأخیرِ خودکار |
-| 46 | [REPORT_2026-09-06_ROUND74_INTEGRATION_PRIVACY.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND74_INTEGRATION_PRIVACY.md) | 2026-09-06 | دور 74 — یکپارچگیِ واقعیِ کلاینت/سرور + صفحاتِ حریم خصوصی |
-| 47 | [PRIVACY_POLICY.md](/rezaa2544/p2/blob/main/docs/PRIVACY_POLICY.md) | 2026-09-06 | سیاستِ حریم خصوصیِ رسمی (منبعِ مودالِ درون‌اپ + وب + فروشگاه) |
-| 48 | [REPORT_2026-09-06_ROUND73_SECURITY.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND73_SECURITY.md) | 2026-09-06 | دور 73 — پایشِ امنیتیِ جامع (8 راهِ نفوذ رفع شد) |
-| 49 | [REPORT_2026-09-06_ROUND72_SIMULATION.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND72_SIMULATION.md) | 2026-09-06 | دور 72 — شبیه‌سازیِ جامع (چندمدرسه/چندنقش + 2 باگِ کشته‌شده) |
-| 50 | [REPORT_2026-09-06_ROUND71.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND71.md) | 2026-09-06 | دور 71 — پنج بندِ باقی‌ماندهٔ نقشه راه (42/42 سبز) |
-| 51 | [REPORT_2026-09-06_ROUND70.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND70.md) | 2026-09-06 | دور 70 — ده بند (کارآموزی، بورسیه، تجدیدی، صورت‌جلسه، سریال، تابستانی) |
-| 52 | [REPORT_2026-09-06_ROUND69.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND69.md) | 2026-09-06 | دور 69 — هنرستان + IEP + قیفِ پیش‌ثبت‌نام + معیارهای خروج |
-| 53 | [DEVELOPMENT.md](/rezaa2544/p2/blob/main/docs/DEVELOPMENT.md) | 2026-09-06 | راهنمای توسعه (جزئیات در AI_PROMPT بخش 9) |
-| 54 | [REPORT_2026-09-06_PLAY_PRIVACY.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_PLAY_PRIVACY.md) | 2026-09-06 | سیاستِ حریم خصوصیِ Play + دارایی‌های فروشگاه |
-| 55 | [REPORT_2026-09-06_AUTO_BACKUP.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_AUTO_BACKUP.md) | 2026-09-06 | بکاپِ دوره‌ایِ خودکار (درون‌پروسه، بدون cron) |
-| 56 | [REPORT_2026-09-06_TIME_BASED_ABSENCE.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_TIME_BASED_ABSENCE.md) | 2026-09-06 | حالت‌های زمان‌دارِ غیاب (طرح 1 — تأخیر/خروج + 30٪) |
-| 57 | [REPORT_2026-09-05_ROUND65.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_ROUND65.md) | 2026-09-06 | گزارش دور 65 |
-| 58 | [REPORT_2026-09-06_BACKUP_RESTORE.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_BACKUP_RESTORE.md) | 2026-09-06 | پشتیبان‌گیری/بازیابی (فقط سوپرادمین) |
-| 59 | [PLAY_STORE_CHECKLIST.md](/rezaa2544/p2/blob/main/docs/PLAY_STORE_CHECKLIST.md) | 2026-09-06 | چک‌لیستِ آمادگیِ گوگل‌پلی (سندِ زنده) |
-| 60 | [REPORT_2026-09-06_ACCOUNT_DELETION.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ACCOUNT_DELETION.md) | 2026-09-06 | حذفِ حساب (ملاکِ گوگل‌پلی — پیاده شد) |
-| 61 | [REPORT_2026-09-06_VIRTUAL_DAY_SERVER.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_VIRTUAL_DAY_SERVER.md) | 2026-09-06 | روزِ غیرحضوری: گاردهای سمت سرور (virtual_day) |
-| 62 | [REPORT_2026-09-06_STAGE2_TLS_BELL.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_STAGE2_TLS_BELL.md) | 2026-09-06 | مرحلهٔ 2 سرور — TLS واقعی + پُلِ زنگ |
-| 63 | [REPORT_2026-09-06_SERVER1.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_SERVER1.md) | 2026-09-06 | مرحلهٔ 1 سرور — احرازِ تلفنی + sync + IDOR |
-| 64 | [REPORT_2026-09-05_LOGIN.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_LOGIN.md) | 2026-09-05 | ورودِ بدونِ رمز — اصلِ سوپرادمین + merge |
-| 65 | [PLAN_PHONE_AUTH.md](/rezaa2544/p2/blob/main/docs/PLAN_PHONE_AUTH.md) | 2026-09-05 | طرح: ورود با موبایل (شماره + کد + کد ملی) — بدون رمز |
-| 66 | [REPORT_FULL_PERIOD_2026-09-05.md](/rezaa2544/p2/blob/main/docs/REPORT_FULL_PERIOD_2026-09-05.md) | 2026-09-05 | گزارشِ کلِ دوره (تا آن روز) |
-| 67 | [DATA_SAFETY.md](/rezaa2544/p2/blob/main/docs/DATA_SAFETY.md) | 2026-09-05 | فرمِ Data Safety — آمادهٔ ثبت در کنسولِ Play |
-| 68 | [REPORT_2026-09-05_DIAG_GUIDE.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_DIAG_GUIDE.md) | 2026-09-05 | دیاگِ تعمیر‌شده + راهنمای کاربرِ کامل |
-| 69 | [REPORT_SCROLL_FIX_2026-09-05.md](/rezaa2544/p2/blob/main/docs/REPORT_SCROLL_FIX_2026-09-05.md) | 2026-09-05 | رفعِ جهتِ اسکرولِ RTL |
-| 70 | [REPORT_OPEN_2026-09-05.md](/rezaa2544/p2/blob/main/docs/REPORT_OPEN_2026-09-05.md) | 2026-09-05 | گزارشِ مواردِ باز |
-| 71 | [REPORT_BATCH11-13.md](/rezaa2544/p2/blob/main/docs/REPORT_BATCH11-13.md) | 2026-09-05 | گزارشِ بازهٔ 11–13 (سرویس/کلاس مجازی/روزِ غیرحضوری) |
-| 72 | [REPORT_BATCH8-10.md](/rezaa2544/p2/blob/main/docs/REPORT_BATCH8-10.md) | 2026-09-05 | گزارشِ بازهٔ 8–10 |
-| 73 | [REPORT_2026-09-05_ROUND2.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_ROUND2.md) | 2026-09-05 | گزارش دور 2 |
-| 74 | [REPORT_2026-09-05_STRATEGIC_BATCH.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_STRATEGIC_BATCH.md) | 2026-09-05 | گزارشِ بازهٔ استراتژیک (B2B پیش از B2G) |
-| 75 | [REPORT_2026-09-05.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05.md) | 2026-09-05 | گزارش روزانه |
-| 76 | [REPORT_2026-09-05_CONSOLIDATED.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_CONSOLIDATED.md) | 2026-09-05 | گزارشِ تجمیعی |
-| 77 | [OPINION_2026-09-05_ROADMAP_REVIEW.md](/rezaa2544/p2/blob/main/docs/OPINION_2026-09-05_ROADMAP_REVIEW.md) | 2026-09-05 | نظر بر سندِ جامعِ تحقیقات |
-| 78 | [RESEARCH_2026-09-05_UNIFIED_EDU_ROADMAP.md](/rezaa2544/p2/blob/main/docs/RESEARCH_2026-09-05_UNIFIED_EDU_ROADMAP.md) | 2026-09-05 | سندِ جامعِ پایش (نقشهٔ راهِ یکپارچه) |
-| 79 | [REPORT_2026-09-05_HEALTH_GAUGES_V2.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_HEALTH_GAUGES_V2.md) | 2026-09-05 | نمای‌های سلامت — V2 (آنالوگ/میله‌ای) |
-| 80 | [REPORT_2026-09-05_HEALTH_GAUGES.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_HEALTH_GAUGES.md) | 2026-09-05 | نمای‌های سلامت — V1 |
-| 81 | [REPORT_2026-09-05_DIAG2.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_DIAG2.md) | 2026-09-05 | دیاگِ سامانه — بازهٔ 2 |
-| 82 | [REPORT_2026-09-05_SECURITY.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_SECURITY.md) | 2026-09-05 | اولین پایشِ امنیتی |
-| 83 | [REPORT_2026-09-05_SIMULATION.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_SIMULATION.md) | 2026-09-05 | گزارش شبیه‌سازی |
-| 84 | [REPORT_2026-09-05_SKILLS.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_SKILLS.md) | 2026-09-05 | Agent Skills + دو اسکِل اختصاصی |
-| 85 | [GAP_ANALYSIS_R43.md](/rezaa2544/p2/blob/main/docs/GAP_ANALYSIS_R43.md) | 2026-09-04 | تحلیل شکاف — 11 نیازِ شبیه‌سازیِ روزِ واقعی |
-| 86 | [DISCOVERABILITY_R43.md](/rezaa2544/p2/blob/main/docs/DISCOVERABILITY_R43.md) | 2026-09-04 | کشف‌پذیری — چرا 3 قابلیتِ موجود پیدا نشدند |
-| 87 | [CAPACITY_SIM.md](/rezaa2544/p2/blob/main/docs/CAPACITY_SIM.md) | 2026-09-03 | شبیه‌سازیِ ظرفیت — چند کاربر همزمان؟ |
-| 88 | [PLACEMENT_PLAN.md](/rezaa2544/p2/blob/main/docs/PLACEMENT_PLAN.md) | 2026-09-03 | طرحِ توزیعِ خودکارِ کلاس‌بندی |
-| 89 | [SUPERADMIN_GAPS.md](/rezaa2544/p2/blob/main/docs/SUPERADMIN_GAPS.md) | 2026-09-03 | خلأهای پنلِ سوپرادمین |
-| 90 | [SERVER_TIMING.md](/rezaa2544/p2/blob/main/docs/SERVER_TIMING.md) | 2026-09-03 | چه زمانی سرور را بسازیم؟ |
-| 91 | [GITHUB_COMPARISON.md](/rezaa2544/p2/blob/main/docs/GITHUB_COMPARISON.md) | 2026-09-02 | مقایسهٔ ورک‌اسپیس با مخزنِ گیت‌هاب |
-| 92 | [CLIENT_CAPACITY.md](/rezaa2544/p2/blob/main/docs/CLIENT_CAPACITY.md) | 2026-09-02 | کششِ واقعیِ خودِ برنامه (سمت کلاینت) |
-| 93 | [CAPACITY.md](/rezaa2544/p2/blob/main/docs/CAPACITY.md) | 2026-09-02 | گزارشِ ظرفیت و مقیاس‌پذیری |
+| 1 | [BOTTLENECK_MAP.md](/rezaa2544/p2/blob/main/docs/BOTTLENECK_MAP.md) | 2026-09-09 | Wave -1 بخش دوم — نقشه گلوگاه‌های معماری/داده/کارایی و اولویت رفع |
+| 2 | [THREAT_MODEL.md](/rezaa2544/p2/blob/main/docs/THREAT_MODEL.md) | 2026-09-09 | Wave -1 بخش دوم — مدل تهدید STRIDE با ریسک و mitigation |
+| 3 | [SYNC_FLOW.md](/rezaa2544/p2/blob/main/docs/SYNC_FLOW.md) | 2026-09-09 | Wave -1 بخش اول — جریان همگام‌سازی آفلاین/Push/Pull/Conflict |
+| 4 | [AUTH_FLOW.md](/rezaa2544/p2/blob/main/docs/AUTH_FLOW.md) | 2026-09-09 | Wave -1 بخش اول — جریان احراز هویت OTP/JWT/session |
+| 5 | [DATA_FLOW.md](/rezaa2544/p2/blob/main/docs/DATA_FLOW.md) | 2026-09-09 | Wave -1 بخش اول — مسیر داده از UI/API تا Store/PostgreSQL/Redis |
+| 6 | [DEPENDENCY_GRAPH.md](/rezaa2544/p2/blob/main/docs/DEPENDENCY_GRAPH.md) | 2026-09-09 | Wave -1 بخش اول — نمودار وابستگی کلاینت/سرور/Build |
+| 7 | [NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md](/rezaa2544/p2/blob/main/docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md) | 2026-09-09 | مکمل الزام‌آور نقشه راه ملی — Wave -1، Arena 5، governance و شروط معماری |
+| 8 | [DATABASE_ARCHITECTURE.md](/rezaa2544/p2/blob/main/docs/DATABASE_ARCHITECTURE.md) | 2026-09-09 | Wave 2 — معماری دیتابیس: migrations، constraints، Identity IDs، transactions و OCC |
+| 9 | [NATIONAL_BASELINE.md](/rezaa2544/p2/blob/main/docs/NATIONAL_BASELINE.md) | 2026-09-09 | Wave 0 / Part 1 — tag مبنا، نتایج تست‌های فعلی و سند کلی baseline ملی |
+| 10 | [NATIONAL_ROADMAP_PROGRESS.md](/rezaa2544/p2/blob/main/docs/NATIONAL_ROADMAP_PROGRESS.md) | 2026-09-09 | پیگیری پیشرفت نقشه راه ملی — Waveهای ۰ تا ۲۰ با وضعیت اولیه در انتظار شروع |
+| 11 | [ROADMAP.md](/rezaa2544/p2/blob/main/docs/ROADMAP.md) | 2026-09-09 | نقشه راه جامع مهندسی پایش تا آمادگی مقیاس ملی — National Scale Master Roadmap |
+| 12 | [ARCHITECTURE_REVIEW.md](/rezaa2544/p2/blob/main/docs/ARCHITECTURE_REVIEW.md) | 2026-09-07 | بازبینی معماری (دور 84) — قوت‌ها/ضعف‌ها/پیشنهاد‌های اولویت‌بندی/امنیت/تست/مسیر پیشرفت؛ فقط‌خوان با شواهدِ فایل:خط |
+| 13 | [HANDOFF_ARCHIVE.md](/rezaa2544/p2/blob/main/docs/HANDOFF_ARCHIVE.md) | 2026-09-07 | آرشیوِ ورودی‌های کهنهٔ HANDOFF (سقفِ 20) |
+| 14 | [REPORT_2026-09-07_ROUND83.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-07_ROUND83.md) | 2026-09-07 | دور 83 — درگاهِ پیامک: گامِ 1 (server/sms.js + 9 تست + 6 جهش) |
+| 15 | [AI_PROMPT.md](/rezaa2544/p2/blob/main/docs/AI_PROMPT.md) | 2026-09-07 | سندِ واحدِ مرجع — پرامپت + راهنمای برنامه‌نویس + مستندات (قاعده: همیشه هم‌دور به‌روز) |
+| 16 | [ARCHITECTURE_DECISIONS.md](/rezaa2544/p2/blob/main/docs/ARCHITECTURE_DECISIONS.md) | 2026-09-07 | تصمیمات معماریِ قفل‌شده (AD) + معیارهای خروجِ فازها |
+| 17 | [PLAN_SMS_GATEWAY.md](/rezaa2544/p2/blob/main/docs/PLAN_SMS_GATEWAY.md) | 2026-09-07 | قراردادِ درگاهِ پیامک — گامِ 1 پیاده شد؛ گام‌های 2–5 با قرارداد |
+| 18 | [REPORT_2026-09-06_ROUND82.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND82.md) | 2026-09-07 | دور 82 — آدیتِ یکپارچگیِ مستندات + صفحهٔ آماده‌بودن |
+| 19 | [READY_STATE_2026-09-06.md](/rezaa2544/p2/blob/main/docs/READY_STATE_2026-09-06.md) | 2026-09-07 | صفحهٔ واحدِ آماده‌بودن — «آماده، با یک قید: پیامکِ واقعی» |
+| 20 | [PLAN_ATTENDANCE_STATES.md](/rezaa2544/p2/blob/main/docs/PLAN_ATTENDANCE_STATES.md) | 2026-09-07 | طرحِ حالت‌های حضور (پیاده شد، دور 77) |
+| 21 | [PLAN_BELL_AUTOCLASS.md](/rezaa2544/p2/blob/main/docs/PLAN_BELL_AUTOCLASS.md) | 2026-09-07 | طرحِ کلاسِ خودکارِ زنگ (پیاده شد) |
+| 22 | [PLAN_CALENDAR_TIME.md](/rezaa2544/p2/blob/main/docs/PLAN_CALENDAR_TIME.md) | 2026-09-07 | طرحِ تقویمِ آموزشی + روزهای جبرانی (پیاده شد) |
+| 23 | [PLAN_LIVE_SCHEDULE.md](/rezaa2544/p2/blob/main/docs/PLAN_LIVE_SCHEDULE.md) | 2026-09-07 | طرحِ زمان‌بندیِ زنده (پیاده شد) |
+| 24 | [PLAN_MULTICHILD.md](/rezaa2544/p2/blob/main/docs/PLAN_MULTICHILD.md) | 2026-09-07 | طرحِ چندفرزند (پیاده شد) |
+| 25 | [PLAN_VIRTUAL_CLASS.md](/rezaa2544/p2/blob/main/docs/PLAN_VIRTUAL_CLASS.md) | 2026-09-07 | طرحِ کلاس مجازی (لینکِ دستیِ شاد + حضورِ درون‌برنامه‌ای) |
+| 26 | [REPORT_UI_REVIEW_2026-09-05.md](/rezaa2544/p2/blob/main/docs/REPORT_UI_REVIEW_2026-09-05.md) | 2026-09-07 | بازبینیِ رابط کاربری (گرافیک) — merge: 74ec094 |
+| 27 | [SMS_NOTIFY_PLAN.md](/rezaa2544/p2/blob/main/docs/SMS_NOTIFY_PLAN.md) | 2026-09-07 | طرحِ صفِ پیامِ اولیا (بازبینی پیش از ارسال) |
+| 28 | [REPORT_2026-09-06_ROUND81.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND81.md) | 2026-09-07 | دور 81 — نمونه‌های پایلوت + DEPLOY + قراردادِ درگاه |
+| 29 | [DEPLOY.md](/rezaa2544/p2/blob/main/docs/DEPLOY.md) | 2026-09-07 | دستورِ کارِ استقرارِ تولید (env دقیق از کد + چک‌لیستِ go-live) |
+| 30 | [PILOT_ONBOARDING.md](/rezaa2544/p2/blob/main/docs/PILOT_ONBOARDING.md) | 2026-09-07 | راهنمای پایلوت برای مدیرِ غیرفنی |
+| 31 | [samples/students_sample.csv](/rezaa2544/p2/blob/main/docs/samples/students_sample.csv) | 2026-09-07 | نمونهٔ دادهٔ ورودِ دانش‌آموزان (ویرایشِ اکسل) |
+| 32 | [samples/teachers_sample.csv](/rezaa2544/p2/blob/main/docs/samples/teachers_sample.csv) | 2026-09-07 | نمونهٔ دادهٔ ورودِ دبیران (ویرایشِ اکسل) |
+| 33 | [REPORT_2026-09-06_ROUND80.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND80.md) | 2026-09-06 | دور 80 — یکپارچگیِ مستندات + بستهٔ پایلوت + رفعِ املأ |
+| 34 | [PILOT_KICKOFF.md](/rezaa2544/p2/blob/main/docs/PILOT_KICKOFF.md) | 2026-09-06 | بستهٔ عملیاتیِ پایلوتِ 14 روزه (T-7 تا روز 14 + go/no-go) |
+| 35 | [OPEN_WORK.md](/rezaa2544/p2/blob/main/docs/OPEN_WORK.md) | 2026-09-06 | کارهای باز (شش طرح — همه پیاده) |
+| 36 | [OPEN_ITEMS.md](/rezaa2544/p2/blob/main/docs/OPEN_ITEMS.md) | 2026-09-06 | مواردِ باز با شواهدِ کد |
+| 37 | [REPORT_2026-09-06_ROUND79.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND79.md) | 2026-09-06 | دور 79 — سیزده بند (رفعِ دسپاتچ، قفلِ آروان‌کلاود، 79.1/79.2) |
+| 38 | [REPORT_2026-09-06_FINAL.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_FINAL.md) | 2026-09-06 | گزارشِ پایانیِ دور 78 — 4 تصمیمِ واقعیِ باز |
+| 39 | [REPORT_2026-09-06_ROADMAP_AUDIT.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROADMAP_AUDIT.md) | 2026-09-06 | آدیتِ نقشهٔ راه |
+| 40 | [STORAGE_OPTIONS_2026-09-06.md](/rezaa2544/p2/blob/main/docs/STORAGE_OPTIONS_2026-09-06.md) | 2026-09-06 | مقایسهٔ ذخیره‌گاهِ آبجکت (آروان‌کلاود/لیارا/MinIO) |
+| 41 | [ARCHITECTURE.md](/rezaa2544/p2/blob/main/docs/ARCHITECTURE.md) | 2026-09-06 | معماری پایش (نمای کلی) |
+| 42 | [SCALE_10M.md](/rezaa2544/p2/blob/main/docs/SCALE_10M.md) | 2026-09-06 | معماری مقیاس ملی — 10 میلیون دانش‌آموز، 5 میلیون کاربر همزمان |
+| 43 | [SERVER_SECURITY_CONTRACT.md](/rezaa2544/p2/blob/main/docs/SERVER_SECURITY_CONTRACT.md) | 2026-09-06 | قراردادِ امنیتیِ سرور (مستندِ مرجعِ الزام‌آور) |
+| 44 | [REPORT_2026-09-06_ROUND77-2_SMOKE_CRASH.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND77-2_SMOKE_CRASH.md) | 2026-09-06 | دور 77-2 — رفعِ کرشِ smoke + 4 اشکالِ کهنهٔ پنهان |
+| 45 | [REPORT_2026-09-06_ROUND77_ATTENDANCE_EVENTS.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND77_ATTENDANCE_EVENTS.md) | 2026-09-06 | دور 77 — بازطراحیِ حضور (رویداد + 30٪ + موجهِ یکپارچه) |
+| 46 | [REPORT_2026-09-06_ROUND76_DROPOUT_READINESS.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND76_DROPOUT_READINESS.md) | 2026-09-06 | دور 76 — ترک تحصیل (حذفِ نرم) + دامنهٔ سرور + آماده‌بودن |
+| 47 | [REPORT_2026-09-06_ROUND75_EXIT_TIMER_LATE.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND75_EXIT_TIMER_LATE.md) | 2026-09-06 | دور 75 — تایمرِ «خروج از کلاس» + تأخیرِ خودکار |
+| 48 | [REPORT_2026-09-06_ROUND74_INTEGRATION_PRIVACY.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND74_INTEGRATION_PRIVACY.md) | 2026-09-06 | دور 74 — یکپارچگیِ واقعیِ کلاینت/سرور + صفحاتِ حریم خصوصی |
+| 49 | [PRIVACY_POLICY.md](/rezaa2544/p2/blob/main/docs/PRIVACY_POLICY.md) | 2026-09-06 | سیاستِ حریم خصوصیِ رسمی (منبعِ مودالِ درون‌اپ + وب + فروشگاه) |
+| 50 | [REPORT_2026-09-06_ROUND73_SECURITY.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND73_SECURITY.md) | 2026-09-06 | دور 73 — پایشِ امنیتیِ جامع (8 راهِ نفوذ رفع شد) |
+| 51 | [REPORT_2026-09-06_ROUND72_SIMULATION.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND72_SIMULATION.md) | 2026-09-06 | دور 72 — شبیه‌سازیِ جامع (چندمدرسه/چندنقش + 2 باگِ کشته‌شده) |
+| 52 | [REPORT_2026-09-06_ROUND71.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND71.md) | 2026-09-06 | دور 71 — پنج بندِ باقی‌ماندهٔ نقشه راه (42/42 سبز) |
+| 53 | [REPORT_2026-09-06_ROUND70.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND70.md) | 2026-09-06 | دور 70 — ده بند (کارآموزی، بورسیه، تجدیدی، صورت‌جلسه، سریال، تابستانی) |
+| 54 | [REPORT_2026-09-06_ROUND69.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ROUND69.md) | 2026-09-06 | دور 69 — هنرستان + IEP + قیفِ پیش‌ثبت‌نام + معیارهای خروج |
+| 55 | [DEVELOPMENT.md](/rezaa2544/p2/blob/main/docs/DEVELOPMENT.md) | 2026-09-06 | راهنمای توسعه (جزئیات در AI_PROMPT بخش 9) |
+| 56 | [REPORT_2026-09-06_PLAY_PRIVACY.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_PLAY_PRIVACY.md) | 2026-09-06 | سیاستِ حریم خصوصیِ Play + دارایی‌های فروشگاه |
+| 57 | [REPORT_2026-09-06_AUTO_BACKUP.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_AUTO_BACKUP.md) | 2026-09-06 | بکاپِ دوره‌ایِ خودکار (درون‌پروسه، بدون cron) |
+| 58 | [REPORT_2026-09-06_TIME_BASED_ABSENCE.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_TIME_BASED_ABSENCE.md) | 2026-09-06 | حالت‌های زمان‌دارِ غیاب (طرح 1 — تأخیر/خروج + 30٪) |
+| 59 | [REPORT_2026-09-05_ROUND65.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_ROUND65.md) | 2026-09-06 | گزارش دور 65 |
+| 60 | [REPORT_2026-09-06_BACKUP_RESTORE.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_BACKUP_RESTORE.md) | 2026-09-06 | پشتیبان‌گیری/بازیابی (فقط سوپرادمین) |
+| 61 | [PLAY_STORE_CHECKLIST.md](/rezaa2544/p2/blob/main/docs/PLAY_STORE_CHECKLIST.md) | 2026-09-06 | چک‌لیستِ آمادگیِ گوگل‌پلی (سندِ زنده) |
+| 62 | [REPORT_2026-09-06_ACCOUNT_DELETION.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_ACCOUNT_DELETION.md) | 2026-09-06 | حذفِ حساب (ملاکِ گوگل‌پلی — پیاده شد) |
+| 63 | [REPORT_2026-09-06_VIRTUAL_DAY_SERVER.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_VIRTUAL_DAY_SERVER.md) | 2026-09-06 | روزِ غیرحضوری: گاردهای سمت سرور (virtual_day) |
+| 64 | [REPORT_2026-09-06_STAGE2_TLS_BELL.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_STAGE2_TLS_BELL.md) | 2026-09-06 | مرحلهٔ 2 سرور — TLS واقعی + پُلِ زنگ |
+| 65 | [REPORT_2026-09-06_SERVER1.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-06_SERVER1.md) | 2026-09-06 | مرحلهٔ 1 سرور — احرازِ تلفنی + sync + IDOR |
+| 66 | [REPORT_2026-09-05_LOGIN.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_LOGIN.md) | 2026-09-05 | ورودِ بدونِ رمز — اصلِ سوپرادمین + merge |
+| 67 | [PLAN_PHONE_AUTH.md](/rezaa2544/p2/blob/main/docs/PLAN_PHONE_AUTH.md) | 2026-09-05 | طرح: ورود با موبایل (شماره + کد + کد ملی) — بدون رمز |
+| 68 | [REPORT_FULL_PERIOD_2026-09-05.md](/rezaa2544/p2/blob/main/docs/REPORT_FULL_PERIOD_2026-09-05.md) | 2026-09-05 | گزارشِ کلِ دوره (تا آن روز) |
+| 69 | [DATA_SAFETY.md](/rezaa2544/p2/blob/main/docs/DATA_SAFETY.md) | 2026-09-05 | فرمِ Data Safety — آمادهٔ ثبت در کنسولِ Play |
+| 70 | [REPORT_2026-09-05_DIAG_GUIDE.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_DIAG_GUIDE.md) | 2026-09-05 | دیاگِ تعمیر‌شده + راهنمای کاربرِ کامل |
+| 71 | [REPORT_SCROLL_FIX_2026-09-05.md](/rezaa2544/p2/blob/main/docs/REPORT_SCROLL_FIX_2026-09-05.md) | 2026-09-05 | رفعِ جهتِ اسکرولِ RTL |
+| 72 | [REPORT_OPEN_2026-09-05.md](/rezaa2544/p2/blob/main/docs/REPORT_OPEN_2026-09-05.md) | 2026-09-05 | گزارشِ مواردِ باز |
+| 73 | [REPORT_BATCH11-13.md](/rezaa2544/p2/blob/main/docs/REPORT_BATCH11-13.md) | 2026-09-05 | گزارشِ بازهٔ 11–13 (سرویس/کلاس مجازی/روزِ غیرحضوری) |
+| 74 | [REPORT_BATCH8-10.md](/rezaa2544/p2/blob/main/docs/REPORT_BATCH8-10.md) | 2026-09-05 | گزارشِ بازهٔ 8–10 |
+| 75 | [REPORT_2026-09-05_ROUND2.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_ROUND2.md) | 2026-09-05 | گزارش دور 2 |
+| 76 | [REPORT_2026-09-05_STRATEGIC_BATCH.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_STRATEGIC_BATCH.md) | 2026-09-05 | گزارشِ بازهٔ استراتژیک (B2B پیش از B2G) |
+| 77 | [REPORT_2026-09-05.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05.md) | 2026-09-05 | گزارش روزانه |
+| 78 | [REPORT_2026-09-05_CONSOLIDATED.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_CONSOLIDATED.md) | 2026-09-05 | گزارشِ تجمیعی |
+| 79 | [OPINION_2026-09-05_ROADMAP_REVIEW.md](/rezaa2544/p2/blob/main/docs/OPINION_2026-09-05_ROADMAP_REVIEW.md) | 2026-09-05 | نظر بر سندِ جامعِ تحقیقات |
+| 80 | [RESEARCH_2026-09-05_UNIFIED_EDU_ROADMAP.md](/rezaa2544/p2/blob/main/docs/RESEARCH_2026-09-05_UNIFIED_EDU_ROADMAP.md) | 2026-09-05 | سندِ جامعِ پایش (نقشهٔ راهِ یکپارچه) |
+| 81 | [REPORT_2026-09-05_HEALTH_GAUGES_V2.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_HEALTH_GAUGES_V2.md) | 2026-09-05 | نمای‌های سلامت — V2 (آنالوگ/میله‌ای) |
+| 82 | [REPORT_2026-09-05_HEALTH_GAUGES.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_HEALTH_GAUGES.md) | 2026-09-05 | نمای‌های سلامت — V1 |
+| 83 | [REPORT_2026-09-05_DIAG2.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_DIAG2.md) | 2026-09-05 | دیاگِ سامانه — بازهٔ 2 |
+| 84 | [REPORT_2026-09-05_SECURITY.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_SECURITY.md) | 2026-09-05 | اولین پایشِ امنیتی |
+| 85 | [REPORT_2026-09-05_SIMULATION.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_SIMULATION.md) | 2026-09-05 | گزارش شبیه‌سازی |
+| 86 | [REPORT_2026-09-05_SKILLS.md](/rezaa2544/p2/blob/main/docs/REPORT_2026-09-05_SKILLS.md) | 2026-09-05 | Agent Skills + دو اسکِل اختصاصی |
+| 87 | [GAP_ANALYSIS_R43.md](/rezaa2544/p2/blob/main/docs/GAP_ANALYSIS_R43.md) | 2026-09-04 | تحلیل شکاف — 11 نیازِ شبیه‌سازیِ روزِ واقعی |
+| 88 | [DISCOVERABILITY_R43.md](/rezaa2544/p2/blob/main/docs/DISCOVERABILITY_R43.md) | 2026-09-04 | کشف‌پذیری — چرا 3 قابلیتِ موجود پیدا نشدند |
+| 89 | [CAPACITY_SIM.md](/rezaa2544/p2/blob/main/docs/CAPACITY_SIM.md) | 2026-09-03 | شبیه‌سازیِ ظرفیت — چند کاربر همزمان؟ |
+| 90 | [PLACEMENT_PLAN.md](/rezaa2544/p2/blob/main/docs/PLACEMENT_PLAN.md) | 2026-09-03 | طرحِ توزیعِ خودکارِ کلاس‌بندی |
+| 91 | [SUPERADMIN_GAPS.md](/rezaa2544/p2/blob/main/docs/SUPERADMIN_GAPS.md) | 2026-09-03 | خلأهای پنلِ سوپرادمین |
+| 92 | [SERVER_TIMING.md](/rezaa2544/p2/blob/main/docs/SERVER_TIMING.md) | 2026-09-03 | چه زمانی سرور را بسازیم؟ |
+| 93 | [GITHUB_COMPARISON.md](/rezaa2544/p2/blob/main/docs/GITHUB_COMPARISON.md) | 2026-09-02 | مقایسهٔ ورک‌اسپیس با مخزنِ گیت‌هاب |
+| 94 | [CLIENT_CAPACITY.md](/rezaa2544/p2/blob/main/docs/CLIENT_CAPACITY.md) | 2026-09-02 | کششِ واقعیِ خودِ برنامه (سمت کلاینت) |
+| 95 | [CAPACITY.md](/rezaa2544/p2/blob/main/docs/CAPACITY.md) | 2026-09-02 | گزارشِ ظرفیت و مقیاس‌پذیری |
 **قاعدهٔ نگهداری:** هر بار که فایلِ تازه‌ای در `docs/` ساخته یا به‌روزرسانی
 می‌شود، ردیفش در همین جدول (بالا = تازه‌تر) افزوده/تازه می‌شود — در همان دور.
