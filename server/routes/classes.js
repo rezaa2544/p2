@@ -11,6 +11,7 @@
 'use strict';
 
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
+const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 
 function createClassRoutes(ctx) {
@@ -98,6 +99,7 @@ function createClassRoutes(ctx) {
       capacity: Number(body.capacity || 30),
       homeroom_teacher_id: body.homeroom_teacher_id ? Number(body.homeroom_teacher_id) : null,
       class_mode: body.class_mode || 'general',
+      version: 1, /* P0-18 */
       created_at: new Date().toISOString()
     };
 
@@ -124,11 +126,16 @@ function createClassRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
     }
 
+    /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
+    const conflict = checkOcc(cls, body, 'کلاس');
+    if (conflict) return conflict;
+
     if (body.name !== undefined) cls.name = String(body.name).trim();
     if (body.grade !== undefined) cls.grade = Number(body.grade);
     if (body.capacity !== undefined) cls.capacity = Number(body.capacity);
     if (body.homeroom_teacher_id !== undefined) cls.homeroom_teacher_id = body.homeroom_teacher_id ? Number(body.homeroom_teacher_id) : null;
     if (body.class_mode !== undefined) cls.class_mode = body.class_mode;
+    bump(cls); /* P0-18 */
 
     markDirty();
     if (db) await db.persistOp({ c: 'classes', t: 'upd', data: cls });

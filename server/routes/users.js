@@ -11,6 +11,7 @@
 'use strict';
 
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
+const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { projectUserByRole } = require('../middleware/projection');
 
@@ -100,6 +101,7 @@ function createUserRoutes(ctx) {
       school_id: schoolId,
       active: body.active !== undefined ? Boolean(body.active) : true,
       status: 'active',
+      version: 1, /* P0-18 */
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -122,6 +124,10 @@ function createUserRoutes(ctx) {
     if (!target || !checkSchoolScope(user, target.school_id)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
+
+    /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
+    const conflict = checkOcc(target, body, 'کاربر');
+    if (conflict) return conflict;
 
     const isSelf = user.id === target.id;
     const isManager = user.role === 'manager' || user.role === 'superadmin';
@@ -146,7 +152,7 @@ function createUserRoutes(ctx) {
     for (const key of allowed) {
       if (body[key] !== undefined) target[key] = body[key];
     }
-    target.updated_at = new Date().toISOString();
+    bump(target); /* P0-18 */
 
     markDirty();
     if (db) await db.persistOp({ c: 'users', t: 'upd', data: target });

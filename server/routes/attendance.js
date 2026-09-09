@@ -10,6 +10,7 @@
 'use strict';
 
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
+const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 
 function createAttendanceRoutes(ctx) {
@@ -105,11 +106,14 @@ function createAttendanceRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'رکورد حضور و غیاب یافت نشد' } };
     }
 
+    /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ (پیش‌تر نسخه بی‌بررسی بالا می‌رفت) */
+    const conflict = checkOcc(rec, body, 'رکورد حضور و غیاب');
+    if (conflict) return conflict;
+
     if (body.status !== undefined) rec.status = String(body.status).trim();
     if (body.late !== undefined) rec.late = Number(body.late);
     if (body.note !== undefined) rec.note = String(body.note).trim();
-    rec.version = (rec.version || 1) + 1;
-    rec.updated_at = new Date().toISOString();
+    bump(rec);
 
     markDirty();
     if (db) await db.persistOp({ c: 'attendance', t: 'upd', data: rec });

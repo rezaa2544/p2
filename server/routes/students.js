@@ -11,6 +11,7 @@
 'use strict';
 
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
+const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { projectUserByRole } = require('../middleware/projection');
 
@@ -120,6 +121,7 @@ function createStudentRoutes(ctx) {
       field: body.field || '',
       active: true,
       status: 'active',
+      version: 1, /* P0-18 */
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -142,12 +144,16 @@ function createStudentRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
 
+    /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
+    const conflict = checkOcc(student, body, 'دانش‌آموز');
+    if (conflict) return conflict;
+
     // Teacher is allowed to update IEP fields only
     if (user.role === 'teacher') {
       if (body.iep_notes !== undefined) student.iep_notes = body.iep_notes;
       if (body.iep_staff !== undefined) student.iep_staff = body.iep_staff;
       student.iep_updated = new Date().toISOString();
-      student.updated_at = new Date().toISOString();
+      bump(student); /* P0-18 */
       markDirty();
       if (db) await db.persistOp({ c: 'users', t: 'upd', data: student });
       audit('student_iep_updated', { user_id: user.id, student_id: student.id });
@@ -162,7 +168,7 @@ function createStudentRoutes(ctx) {
     for (const key of allowed) {
       if (body[key] !== undefined) student[key] = body[key];
     }
-    student.updated_at = new Date().toISOString();
+    bump(student); /* P0-18 */
     markDirty();
 
     if (db) await db.persistOp({ c: 'users', t: 'upd', data: student });
