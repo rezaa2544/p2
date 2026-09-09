@@ -129,7 +129,11 @@ function createStudentRoutes(ctx) {
     store.users.push(newStudent);
     markDirty();
 
-    if (db && typeof db.persistOp === 'function') {
+    if (db && typeof db.persistOpsBatch === 'function') {
+      /* Wave 2: مسیر حیاتی ثبت دانش‌آموز در آینهٔ PostgreSQL اتمیک است
+         (transaction در db.persistOpsBatch)؛ در حالت JSON memory همان رفتار قبلی حفظ می‌شود. */
+      await db.persistOpsBatch([{ c: 'users', t: 'ins', data: newStudent }]);
+    } else if (db && typeof db.persistOp === 'function') {
       await db.persistOp({ c: 'users', t: 'ins', data: newStudent });
     }
 

@@ -14,6 +14,14 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۱: Wave 2 — Database Engineering (Migrations/Constraints/IDs/Transactions/OCC) — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** Wave 2 روی شاخهٔ ثابت `arena/01a085da-p2` پیاده شد. پوشهٔ `migrations/` با ۳ migration forward و ۳ rollback ساخته شد؛ `server/schema.sql` و مولد `tools/migrate-to-pg.js` به PostgreSQL Identity برای `id` هم‌راستا شدند؛ مسیر PostgreSQL در `server/ids.js` از sequence وابسته به identity column استفاده می‌کند؛ سه مسیر حیاتی REST (`students`, `attendance`, `grades`) از `db.persistOpsBatch()`/transaction عبور می‌کنند؛ `server/db.js` برای updateهای دارای `base_version` SQL-OCC با `WHERE id AND version` و خطای 409 دارد.
+
+- **فایل‌های مهم:** `migrations/001_initial.sql`، `002_indexes.sql`، `003_constraints.sql` (+ downها)؛ `server/db.js`؛ `server/ids.js`؛ `server/routes/{students,attendance,grades}.js`؛ `tools/migrate-to-pg.js`؛ `tests/db-engineering*.js`؛ `docs/DATABASE_ARCHITECTURE.md` و کپی `reza/`.
+- **تست‌های اختصاصی:** `node tests/db-engineering.js` = **۱۲/۱۲**؛ `node tests/db-engineering-mutations.js` = **۶/۶ جهش کشته شد**.
+- **محدودیت:** اجرای migration روی PG واقعی در این محیط انجام نشد؛ PostgreSQL-only شدن production همچنان Wave 1 است. مسیر JSON/memory برای سازگاری دمو باقی ماند.
+
 ## چت ۱: Wave 0 / Part 1 — Tag + تست‌های فعلی + سند کلی Baseline ملی — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **وضعیت:** tag مبنا `national-baseline-start` روی commit `0be0bb5c6e7640cdf6a5ab0503a6c8948206492c` ساخته و push شد؛ `docs/NATIONAL_BASELINE.md` به‌عنوان سند بخش ۱ ساخته شد؛ کپی آن و progress tracker در `reza/` به‌روز شد؛ Wave 0 در progress از `⏳` به `🟡` تغییر کرد چون بخش‌های ۲ تا ۴ هنوز باید تجمیع شوند.
