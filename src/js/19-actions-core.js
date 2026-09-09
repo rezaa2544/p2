@@ -2002,6 +2002,14 @@ document.addEventListener('change',e=>{
     return;
   }
 
+  /* فرم مدرسه: تغییر نوع مدرسه ⇒ تنظیم خودکار چک‌باکس‌های پروفایل
+     قابلیت از سطر پیامد (فاز ۰.۱)؛ کاربر همچنان می‌تواند دستی اصلاح کند */
+  if(id==='m_school_type'){
+    const row=(typeof schoolTypeCaps==='function')?schoolTypeCaps(e.target.value):null;
+    if(row)$$('.m-cap').forEach(c=>{ if(row[c.value]!=null)c.checked=!!row[c.value]; });
+    return;
+  }
+
   /* فرم افزودن کتاب استاندارد */
   if(id==='im_level'){
     const lv=e.target.value;

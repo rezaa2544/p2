@@ -5786,7 +5786,13 @@ function schoolCaps(sid){
 function hasCap(sid,key){ return !!schoolCaps(sid)[key]; }
 /** چیکنک‌های پروفایل قابلیت برای فرم مدرسه */
 function capPickerHTML(s){
-  const caps=schoolCaps(s&&s.id);
+  /* ویرایش = وضعیتِ مؤثرِ فعلی (صادقانه)؛ مدرسهٔ تازه = سطرِ نوعِ انتخاب‌شده
+     روی CAP_DEFAULTS (دقیقاً همان چیزی که schoolCaps برای مدرسهٔ نوع‌دارِ
+     بی‌قابلیت حساب می‌کند) — فاز ۰.۱ */
+  var caps;
+  if(s&&s.id) caps=schoolCaps(s.id);
+  else if(typeof schoolTypeCaps==='function') caps=Object.assign({},CAP_DEFAULTS,schoolTypeCaps((typeof schoolTypeOf==='function')?schoolTypeOf(s):'governmental'));
+  else caps=schoolCaps(s&&s.id);
   return CAP_DEFS.map(function(k){
     return `<label style="display:flex;gap:8px;align-items:center;padding:7px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer"><input type="checkbox" class="m-cap" value="${k[0]}" ${caps[k[0]]?'checked':''} /><span><b class="small">${k[1]}</b><div class="small muted" style="font-size:11px">${k[2]}</div></span></label>`;
   }).join('');
@@ -7237,6 +7243,7 @@ function schoolModal(s){
     <div class="grid g2">
       ${f('مقطع',sel('m_level',[['ابتدایی','ابتدایی'],['متوسطه اول','متوسطه اول'],['متوسطه دوم','متوسطه دوم']],s.level))}
       ${f('نوع',sel('m_type',SCHOOL_TYPES.map(x=>[x,x]),s.type||'عادی'))}
+      ${f('نوع مدرسه (تعیین‌کنندهٔ ماژول‌ها)',sel('m_school_type',(typeof SCHOOL_TYPE_DEFS!=='undefined'?SCHOOL_TYPE_DEFS.map(d=>[d[0],d[1]]):[['governmental','دولتی معمولی']]),(typeof schoolTypeOf==='function'?schoolTypeOf(s):'governmental')))}
       ${f('جنسیت',sel('m_gender',[['پسرانه','پسرانه'],['دخترانه','دخترانه']],s.gender))}
       ${f('تلفن ثابت مدرسه',inp('m_landline',s.landline||''))}
       ${f('تلفن همراه رابط',inp('m_phone',s.phone||''))}
@@ -7246,6 +7253,7 @@ function schoolModal(s){
     <div class="small muted" style="margin:-4px 0 10px">
       شیفت بر ساعت شروع زنگ‌ها اثر می‌گذارد. زمان‌بندی دقیق زنگ‌ها را
       مدیر مدرسه در صفحهٔ «زمان‌بندی زنگ‌ها» تعیین می‌کند.</div>
+    <div class="small muted" style="margin:-4px 0 10px">نوع مدرسه تعیین می‌کند کدام ماژول‌ها (شهریه، خوابگاه، IEP، چندپایه، کارگاه) فعال باشند؛ با تغییر آن، چک‌باکس‌های «پروفایل قابلیت» خودکار تنظیم می‌شوند ولی دستی هم قابل اصلاح‌اند.</div>
     <div class="sec-title">🗓️ روزهای کاری</div>
     <div class="row" style="gap:12px;flex-wrap:wrap;padding:4px 0">
       ${(typeof DAYS_FULL!=='undefined'?DAYS_FULL:['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه']).map((d,i)=>`<label class="row" style="gap:5px;cursor:pointer"><input type="checkbox" class="m-wd" value="${i}" ${((s.work_days&&s.work_days.length?s.work_days:(typeof DEFAULT_WORK_DAYS!=='undefined'?DEFAULT_WORK_DAYS:[0,1,2,3])).indexOf(i)>-1)?'checked':''}/> ${d}</label>`).join('')}
@@ -13966,6 +13974,14 @@ document.addEventListener('change',e=>{
     return;
   }
 
+  /* فرم مدرسه: تغییر نوع مدرسه ⇒ تنظیم خودکار چک‌باکس‌های پروفایل
+     قابلیت از سطر پیامد (فاز ۰.۱)؛ کاربر همچنان می‌تواند دستی اصلاح کند */
+  if(id==='m_school_type'){
+    const row=(typeof schoolTypeCaps==='function')?schoolTypeCaps(e.target.value):null;
+    if(row)$$('.m-cap').forEach(c=>{ if(row[c.value]!=null)c.checked=!!row[c.value]; });
+    return;
+  }
+
   /* فرم افزودن کتاب استاندارد */
   if(id==='im_level'){
     const lv=e.target.value;
@@ -14916,6 +14932,8 @@ function adminActions(e, el, id, a, rawId){
        area_kind:dist?(dist.kind||'district'):'district',
        phone:V('m_phone'),landline:V('m_landline'),
        level:V('m_level'),type:V('m_type')||'عادی',gender:V('m_gender'),shift:V('m_shift')||'صبح',
+       /* فاز ۰.۱ — نوع ساختاری؛ مقدارِ نامعتبر/خالی = governmental (fail-closed) */
+       school_type:(typeof SCHOOL_TYPE_IDS!=='undefined'&&SCHOOL_TYPE_IDS.indexOf(V('m_school_type'))>-1)?V('m_school_type'):'governmental',
        capacity:Number(V('m_cap'))||300,
        active:Number(V('m_active')),address:V('m_addr'),boom_goals:V('m_boom'),
        public_goals:($('#m_boom_pub')&&$('#m_boom_pub').checked)?1:0,
