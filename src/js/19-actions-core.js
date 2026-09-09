@@ -1610,8 +1610,7 @@ function coreActions(e, el, id, a, rawId){
      closeModal();toast('دانش‌آموزان به‌روز شد','ok');render();},
    'summer-del'(){confirmModal('حذف این کلاسِ تابستانی؟','summer-del-ok',id);},
    'summer-del-ok'(){remove('summer_classes',Number(window._delId));closeModal();toast('حذف شد','ok');render();},
-   'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
-     if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
+   'grade-save'(){const g=window._edit;
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk
         (26-curriculum) که در exam-save اعمال می‌شود */
      const gType=V('g_type');
@@ -1634,12 +1633,36 @@ function coreActions(e, el, id, a, rawId){
        toast('نمرهٔ امتحان نهایی کشوری فقط از بیرون و توسط مدیر مدرسه وارد می‌شود','err');return;
      }
      const gSource=gNational?'national':'internal';
-    let gid=g.id;
-    /* بند ۴.۲: نوعِ نمره — در مدرسهٔ غیرکارگاهی فیلد نیست و همیشه تئوری */
+    /* E.1 + بند ۴.۲ — هنرستان: سه حالت
+       الف) نوع «عملی/کارگاهی» → رکوردِ واحد (score = practical_score)
+       ب) نوع «تئوری» در مدرسهٔ کارگاهی → قسمت‌های تئوری/عملی؛
+          نمرهٔ نهایی (score) = میانگینِ قسمت‌هایِ پرشده
+       ج) مدرسهٔ غیرکارگاهی → نمرهٔ واحد (رفتارِ پیشین، بدون فیلدهای تازه)
+       ریبیس دور ۱۱۲: source:gSource از فاز ۰.۳ main روی هر سه شخ‌ص افزوده شد. */
+    const _gcls=byId('classes',window._gclass);
+    const _gws=(typeof workshopSchool==='function'&&_gcls)?workshopSchool(_gcls.school_id):false;
     const gkind=V('g_kind')==='practical'?'practical':'theory';
-    if(g.id)update('grades',g.id,{score,term:V('g_term'),exam_type:gType,kind:gkind,source:gSource});
+    let data;
+    if(_gws&&gkind==='practical'){
+      const score=Number(V('g_score'));
+      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۰ باشد','err');return;}
+      data={score:score,term:V('g_term'),exam_type:V('g_type'),kind:'practical',theoretical_score:null,practical_score:score,is_vocational:true,source:gSource};
+    }else if(_gws){
+      const rt=V('g_theory'),rp=V('g_practical');
+      const t=rt===''?null:Number(rt),p=rp===''?null:Number(rp);
+      if(t==null&&p==null){toast('حداقل یکی از نمرهٔ تئوری یا عملی لازم است','err');return;}
+      if((t!=null&&(isNaN(t)||t<0||t>20))||(p!=null&&(isNaN(p)||p<0||p>20))){toast('نمرات باید بین ۰ تا ۲۰ باشند','err');return;}
+      const score=Math.round(((t!=null&&p!=null)?(t+p)/2:(t!=null?t:p))*100)/100;
+      data={score:score,term:V('g_term'),exam_type:V('g_type'),kind:'theory',theoretical_score:t,practical_score:p,is_vocational:true,source:gSource};
+    }else{
+      const score=Number(V('g_score'));
+      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
+      data={score:score,term:V('g_term'),exam_type:V('g_type'),kind:'theory',source:gSource};
+    }
+    let gid=g.id;
+    if(g.id)update('grades',g.id,data);
     else{const sid=Number(V('g_st')),cid=window._gclass;
-      const r=insert('grades',{school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,term:V('g_term'),exam_type:gType,kind:gkind,source:gSource,score,max_score:20,created_at:todayISO()});
+      const r=insert('grades',Object.assign({school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,max_score:20,created_at:todayISO()},data));
       gid=r.id;}
      /* گام ۷: نمرهٔ زیر آستانه برای اولیا پیامک می‌سازد (بعد از نوشتن
         تا source_ref شناسهٔ واقعی باشد) */
@@ -1853,6 +1876,12 @@ document.addEventListener('change',e=>{
     return;
   }
 
+  /* E.1 — فرمِ نمره (هنرستان): تغییرِ نوع ⇒ پنهان/نمایشِ فیلدِ «نمره»
+     یا قسمت‌هایِ تئوری/عملی (gradeKindToggle در 18-modals). */
+  if(id==='g_kind'){
+    if(typeof gradeKindToggle==='function')gradeKindToggle(e.target.value);
+    return;
+  }
   /* فرم مدرسه: تیک شاخه ⇒ باز یا بستهٔ شدن فهرست رشته‌های همان شاخه.
      این‌ها شناسه ندارند و با کلاس تشخیص داده می‌شوند، پس پیش از
      بررسی‌های مبتنی بر شناسه می‌آیند. */

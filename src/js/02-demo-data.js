@@ -240,6 +240,11 @@ function generate(){
           if(idx<2&&wsubs[0]&&wteach){
             add('grades',{school_id:school.id,student_id:st.id,class_id:w12.id,subject_id:wsubs[0].id,teacher_id:wteach.id,term:'نوبت اول',exam_type:'کارگاهی',kind:'practical',score:16+idx*2,max_score:20,created_at:daysAgoISO(30-idx)});
           }
+          /* E.1 — نمرهٔ ترکیبی تئوری/عملی (قطعی، بدون rng): دانش‌آموزِ
+             نخست، درسِ دوم — تئوری ۱۵ + عملی ۱۷ ⇒ نهایی ۱۶ (میانگین). */
+          if(idx===0&&wsubs[1]&&wteach){
+            add('grades',{school_id:school.id,student_id:st.id,class_id:w12.id,subject_id:wsubs[1].id,teacher_id:wteach.id,term:'نوبت اول',exam_type:'میان‌ترم',kind:'theory',theoretical_score:15,practical_score:17,score:16,is_vocational:true,max_score:20,created_at:daysAgoISO(28)});
+          }
           /* دو جلسهٔ کارآموزی: جلسهٔ اول تأییدشده، جلسهٔ دوم در انتظار (برای idx زوج) */
           add('internships',{school_id:school.id,student_id:st.id,date:daysAgoISO(21-idx*7),hours:16,location:idx%2?'کارگاهِ صنعتیِ شهر':'معاونتِ فنیِ منطقه',status:'approved',approved_by:wteach?wteach.id:null,approved_at:daysAgoISO(18-idx*7),note:'حضورِ کامل',created_by:manager.id,created_at:daysAgoISO(21-idx*7)});
           if(idx%2===0){

@@ -2309,6 +2309,11 @@ function generate(){
           if(idx<2&&wsubs[0]&&wteach){
             add('grades',{school_id:school.id,student_id:st.id,class_id:w12.id,subject_id:wsubs[0].id,teacher_id:wteach.id,term:'نوبت اول',exam_type:'کارگاهی',kind:'practical',score:16+idx*2,max_score:20,created_at:daysAgoISO(30-idx)});
           }
+          /* E.1 — نمرهٔ ترکیبی تئوری/عملی (قطعی، بدون rng): دانش‌آموزِ
+             نخست، درسِ دوم — تئوری ۱۵ + عملی ۱۷ ⇒ نهایی ۱۶ (میانگین). */
+          if(idx===0&&wsubs[1]&&wteach){
+            add('grades',{school_id:school.id,student_id:st.id,class_id:w12.id,subject_id:wsubs[1].id,teacher_id:wteach.id,term:'نوبت اول',exam_type:'میان‌ترم',kind:'theory',theoretical_score:15,practical_score:17,score:16,is_vocational:true,max_score:20,created_at:daysAgoISO(28)});
+          }
           /* دو جلسهٔ کارآموزی: جلسهٔ اول تأییدشده، جلسهٔ دوم در انتظار (برای idx زوج) */
           add('internships',{school_id:school.id,student_id:st.id,date:daysAgoISO(21-idx*7),hours:16,location:idx%2?'کارگاهِ صنعتیِ شهر':'معاونتِ فنیِ منطقه',status:'approved',approved_by:wteach?wteach.id:null,approved_at:daysAgoISO(18-idx*7),note:'حضورِ کامل',created_by:manager.id,created_at:daysAgoISO(21-idx*7)});
           if(idx%2===0){
@@ -6378,6 +6383,17 @@ function workshopStudent(sid){
   var u=byId('users',sid);
   return !!(u&&workshopSchool(u.school_id));
 }
+/* E.1 — قسمت‌های تئوری/عملی یک نمرهٔ هنرستان (فیلدهای جدید).
+   سازگاریِ عقب: رکوردهایِ کهنهٔ kind=practical نمرهٔ عملی را در
+   score دارند — همین‌جا به‌عنوانِ قسمتِ عملی تفسیر می‌شوند.
+   خروجی: null = هر دو قسمت ندارد؛ وگرنه {theory, practice} (هرکدام null). */
+function vocationalParts(g){
+  if(!g)return null;
+  var t=g.theoretical_score!=null?g.theoretical_score:null;
+  var p=g.practical_score!=null?g.practical_score:(g.kind==='practical'?g.score:null);
+  if(t==null&&p==null)return null;
+  return {theory:t,practice:p};
+}
 function isFinalYearStudent(sid){
   var cls=(typeof classOf==='function')?classOf(sid):null;
   return !!(cls&&cls.grade==='دوازدهم');
@@ -6428,6 +6444,10 @@ function viewGrades(){
   if(term)rows=rows.filter(g=>g.term===term);
   rows=rows.slice().sort((a,b)=>b.id-a.id).slice(0,200);
   const avg=rows.length?avgOf(rows).toFixed(2):null;
+  /* E.1 — هنرستان: برای کلاسِ کارگاهی (یا دانش‌آموزِ کارگاهی) دو ستونِ
+     «تئوری»/«عملی» کنارِ مجموع نمایش داده می‌شود (فیلدهای جدید grades). */
+  const _ws=u.role==='student'?workshopStudent(u.id):workshopSchool((byId('classes',cid)||{}).school_id);
+  const _vpCell=(vp,k)=>vp&&vp[k]!=null?fa(vp[k]):'—';
   return `<div class="card"><div class="card-head"><div class="row">
     ${u.role!=='student'?`<select class="select" style="width:170px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>${_autoShown?`<span class="badge b-blue" title="بر اساس زنگ جاری و برنامهٔ هفتگی شما — انتخاب دستی بر این مقدم است">🔔 انتخاب خودکار بر اساس زنگ</span><button class="btn ghost sm" data-act="grade-reset-auto">همهٔ کلاس و درس</button>`:''}`:''}
     ${avg?`<span class="badge b-blue">میانگین: ${fa(avg)}</span>`:''}</div>
@@ -6435,9 +6455,10 @@ function viewGrades(){
    ${filterPanel('grades',`
     <select class="select" style="width:150px" data-f="subject"><option value="">همه دروس</option>${subs.map(s=>`<option value="${escAttr(s.id)}" ${sub==String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>
     <select class="select" style="width:125px" data-f="term"><option value="">همه نوبت‌ها</option>${TERMS.map(t=>`<option ${term===t?'selected':''}>${t}</option>`).join('')}</select>`)}
-   ${rows.length?`<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>درس</th><th>کلاس</th><th>نوبت</th><th>نوع آزمون</th><th>نمره</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
+   ${rows.length?`<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>درس</th><th>کلاس</th><th>نوبت</th><th>نوع آزمون</th>${_ws?'<th>تئوری</th><th>عملی</th>':''}<th>نمره</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
     ${rows.map(g=>`<tr><td><b>${esc((byId('users',g.student_id)||{}).full_name||'—')}</b></td><td>${esc((byId('subjects',g.subject_id)||{}).name||'—')}</td>
       <td class="muted">${esc((byId('classes',g.class_id)||{}).name||'—')}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td class="muted">${esc(g.exam_type)}${g.kind==='practical'?' <span class="badge b-purple" title="نمرهٔ عملی/کارگاهی (بند ۴.۲)">عملی</span>':''}${gradeSourceBadge(g)}</td>
+      ${_ws?`<td>${_vpCell(vocationalParts(g),'theory')}</td><td>${_vpCell(vocationalParts(g),'practice')}</td>`:''}
       <td><span class="badge ${g.score>=17?'b-green':g.score>=12?'b-blue':'b-red'}">${fa(g.score)} / ${fa(g.max_score)}</span></td>
       ${canEdit?`<td><button class="icon-btn" data-act="grade-edit" data-id="${escAttr(g.id)}">✏️</button> <button class="icon-btn danger" data-act="grade-del" data-id="${escAttr(g.id)}">🗑️</button></td>`:''}</tr>`).join('')}
    </tbody></table></div>`:empty('📝','نمره‌ای ثبت نشده',canEdit?'با دکمه «ثبت نمره» شروع کنید.':'هنوز نمره‌ای برای شما ثبت نشده است.')}</div>`;
@@ -6719,7 +6740,10 @@ function viewRecord(sid){
      <span class="badge ${a>=17?'b-green':a>=12?'b-blue':'b-red'}">میانگین ${fa(a.toFixed(2))}</span></div>
      <div style="margin:8px 0 12px">${bar(a,20,a>=17?'var(--green)':a>=12?'var(--primary)':'var(--red)')}</div>
      <div class="row">${l.map(g=>{const c=(typeof classScoreContext!=='undefined'&&S.__clsCtx)?S.__clsCtx[Number(id)+'|'+g.term+'|'+g.exam_type]:null;
-     return `<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}${g.kind==='practical'?' • عملی':''}: <b>${fa(g.score)}</b>${c?' <span class="muted" style="font-weight:400">· کلاس: '+fa(c.avg.toFixed(2))+'</span>':''}${gradeSource(g)==='national'?' · 🏛️ نهایی کشوری':''}</span>`;}).join('')}</div></div>`;}).join('')}</div>`
+     const vp=(typeof vocationalParts==='function')?vocationalParts(g):null;
+     let _pp='';
+     if(vp){if(vp.theory!=null)_pp+=' • تئوری '+fa(vp.theory);if(vp.practice!=null)_pp+=' • عملی '+fa(vp.practice);}
+     return `<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}${g.kind==='practical'?' • عملی':''}${_pp}: <b>${fa(g.score)}</b>${c?' <span class="muted" style="font-weight:400">· کلاس: '+fa(c.avg.toFixed(2))+'</span>':''}${gradeSource(g)==='national'?' · 🏛️ نهایی کشوری':''}</span>`;}).join('')}</div></div>`;}).join('')}</div>`
     :empty('📝','نمره‌ای ثبت نشده','به محض ثبت نمره، کارنامه اینجا نمایش داده می‌شود.');
   /* فاز ۰.۳: نمرات نهایی کشوری، جدا از کارنامهٔ داخلی */
   if(S.tab==='grades') body += nationalGradesCard(sid);
@@ -7445,17 +7469,39 @@ function gradeModal(g){
   const _gLocked=!!(_gNat&&_gRole==='teacher');
   /* بند ۴.۲: در مدارسِ فنی‌وحرفه‌ای/کاردانش، نوعِ نمره (تئوری/عملی) انتخاب می‌شود */
   const _gsc=byId('schools',(byId('classes',cid)||{}).school_id);
-  const _gkindOpts=(typeof workshopSchool==='function'&&workshopSchool(_gsc&&_gsc.id))?
+  const _gws=(typeof workshopSchool==='function'&&_gsc)?workshopSchool(_gsc.id):false;
+  const _gkindOpts=_gws?
     `${f('نوع نمره',sel('g_kind',[['theory','تئوری'],['practical','عملی/کارگاهی']],g.kind||'theory'))}`:'';
+  /* E.1 — هنرستان: نوع «تئوری» ⇒ قسمت‌های تئوری/عملی (نمرهٔ نهایی =
+     میانگینِ پرشده‌ها)؛ نوع «عملی/کارگاهی» ⇒ رکوردِ واحد که فقط فیلدِ
+     «نمره» شمده می‌شود (رفتارِ پیشینِ بند ۴.۲). فیلدهایِ نامرتبط با
+     نوع، gradeKindToggle (شنوندهٔ change روی g_kind) پنهان می‌کند. */
+  const _isPrac=(g.kind==='practical');
+  const _gparts=_gws?`<div id="g_parts_wrap" style="display:${_isPrac?'none':'contents'}">`
+    +`${f('نمرهٔ تئوری (از ۲۰)',`<input class="input" id="g_theory" type="number" step="0.25" min="0" max="20" value="${escAttr(g.theoretical_score!=null?g.theoretical_score:'')}" />`)}`
+    +`${f('نمرهٔ عملی (از ۲۰)',`<input class="input" id="g_practical" type="number" step="0.25" min="0" max="20" value="${escAttr(g.practical_score!=null?g.practical_score:(g.kind==='practical'&&g.score!=null?g.score:''))}" />`)}`
+    +`<div class="small muted" style="margin-top:-4px">نمرهٔ نهایی = میانگینِ قسمت‌هایِ پرشده است.</div></div>`:'';
   openModal(modalTpl(g.id?'ویرایش نمره':'ثبت نمره جدید',
    `<div class="grid g2">
     ${f('دانش‌آموز',`<select class="select" id="g_st" ${g.id?'disabled':''}>${studs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
     ${f('درس',`<select class="select" id="g_sub" ${g.id?'disabled':''}>${subs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.subject_id?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`)}
     ${f('نوبت',sel('g_term',TERMS.map(t=>[t,t]),g.term))}${f('نوع آزمون',sel('g_type',_gTypes.map(t=>[t,t]),g.exam_type))}
     ${_gkindOpts}
-    ${_gNat?`<div class="small" style="grid-column:1/-1">${_gLocked?'🔒':'🏛️'} <b>نتیجهٔ امتحان نهایی کشوری</b> — ${_gLocked?'فقط مدیر مدرسه می‌تواند آن را وارد یا اصلاح کند.':'از بیرون (اعلام اداره) وارد می‌شود و در کارنامه جدا نشان داده می‌شود.'}</div>`:''}
-    ${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${escAttr(g.score)}" ${_gLocked?'disabled':''} />`)}</div>`,'grade-save'));
+    ${_gNat?`<div class="small" style="grid-column:1/-1">${_gLocked?'🔒':'️'} <b>نتیجهٔ امتحان نهایی کشوری</b> — ${_gLocked?'فقط مدیر مدرسه می‌تواند آن را وارد یا اصلاح کند.':'از بیرون (اعلام اداره) وارد می‌شود و در کارنامه جدا نشان داده می‌شود.'}</div>`:''}
+    <div id="g_score_field" style="display:${_gws&&!_isPrac?'none':'contents'}">${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${escAttr(g.score)}" ${_gLocked?'disabled':''} />`)}</div>
+    ${_gparts}</div>`,'grade-save'));
   window._edit=g;window._gclass=cid;
+}
+
+/* E.1 — جابه‌جاییِ فیلدهایِ فرمِ نمره هنگامِ تغییرِ نوع (g_kind):
+   «عملی/کارگاهی» ⇒ فقط فیلدِ «نمره»؛ «تئوری» ⇒ قسمت‌های تئوری/عملی.
+   در مدرسهٔ غیرکارگاهی هیچ‌کدام وجود ندارد (no-op). */
+function gradeKindToggle(kind){
+  const pf=$('#g_score_field'),pw=$('#g_parts_wrap');
+  if(!pf&&!pw)return;
+  const prac=(kind==='practical');
+  if(pf)pf.style.display=prac?'contents':'none';
+  if(pw)pw.style.display=prac?'none':'contents';
 }
 
 /* بند ۴.۲ — مودالِ ثبت/ویرایشِ ساعتِ کارآموزی.
@@ -8497,6 +8543,8 @@ function reportCardCert(sid, term, tpl){
   var school = byId('schools', st.school_id) || {};
   var list = db.grades.filter(function(g){ return g.student_id===sid && (!term || g.term===term); });
   if(!list.length) return {ok:false, msg:'برای این نوبت نمره‌ای ثبت نشده است.'};
+  /* E.1 — هنرستان: ستون‌های تئوری/عملی فقط برای دانش‌آموزِ کارگاهی */
+  var isVoc=(typeof workshopStudent==='function')?workshopStudent(sid):false;
   var bySub = Object.create(null);
   list.forEach(function(g){ (bySub[g.subject_id] = bySub[g.subject_id] || []).push(g); });
   /* میانگینِ کلاس برای هر درس — یک پیمایش (الگوی ایندکسِ این فایل) */
@@ -8519,7 +8567,16 @@ function reportCardCert(sid, term, tpl){
     var w = Number(sub.weekly_hours) || 1;
     tw += w; ts += av*w;
     var ca = clsAvg[id] ? Math.round(clsAvg[id].reduce(function(a,b){ return a+b; },0)/clsAvg[id].length*100)/100 : null;
-    return {name: sub.name || '—', w: w, av: av, ca: ca};
+    /* E.1 — میانگینِ قسمت‌های تئوری/عملی (رکوردهای کهنهٔ kind=practical
+       نمرهٔ عملی را در score دارند — همان تفسیرِ vocationalParts). */
+    var tS=0,tN=0,pS=0,pN=0;
+    arr.forEach(function(g){
+      if(g.theoretical_score!=null){tS+=Number(g.theoretical_score);tN++;}
+      var pv=g.practical_score!=null?Number(g.practical_score):(g.kind==='practical'?g.score:null);
+      if(pv!=null){pS+=pv;pN++;}
+    });
+    return {name: sub.name || '—', w: w, av: av, ca: ca,
+      avT: tN?Math.round(tS/tN*100)/100:null, avP: pN?Math.round(pS/pN*100)/100:null};
   }).sort(function(a,b){ return a.name < b.name ? -1 : 1; });
   var gpa = tw ? Math.round(ts/tw*100)/100 : 0;
   /* رتبهٔ کلاس: معدلِ وزنیِ هم‌کلاسی‌ها برای همان نوبت — یک پیمایش */
@@ -8565,11 +8622,13 @@ function reportCardCert(sid, term, tpl){
     + '<table><thead><tr><th class="c" style="width:34px">#</th><th>درس</th>'
     + '<th class="c" style="width:86px">ساعت هفتگی</th>'
     + '<th class="c" style="width:104px">نمرهٔ دانش‌آموز (از ۲۰)</th>'
+    + (isVoc ? '<th class="c" style="width:84px">نمرهٔ تئوری</th><th class="c" style="width:84px">نمرهٔ عملی</th>' : '')
     + '<th class="c" style="width:96px">میانگین کلاس (از ۲۰)</th></tr></thead><tbody>'
     + rows.map(function(r,i){
         return '<tr><td class="c">' + fa(i+1) + '</td><td>' + esc(r.name) + '</td>'
           + '<td class="c">' + fa(r.w) + '</td>'
           + '<td class="c"><b>' + fa(r.av) + '</b></td>'
+          + (isVoc ? '<td class="c">' + (r.avT == null ? '—' : fa(r.avT)) + '</td><td class="c">' + (r.avP == null ? '—' : fa(r.avP)) + '</td>' : '')
           + '<td class="c">' + (r.ca == null ? '—' : fa(r.ca)) + '</td></tr>';
       }).join('')
     + '</tbody></table>'
@@ -8591,6 +8650,7 @@ function reportCardCert(sid, term, tpl){
         return '<div style="border:1px solid #b9c4da;border-radius:8px;padding:5px 9px;display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:12px">'
           + '<b>' + esc(r.name) + '</b>'
           + '<span>نمره: <b>' + fa(r.av) + '</b></span>'
+          + (isVoc ? (r.avT != null ? '<span>تئوری: ' + fa(r.avT) + '</span>' : '') + (r.avP != null ? '<span>عملی: ' + fa(r.avP) + '</span>' : '') : '')
           + '<span>میانگین کلاس: ' + (r.ca == null ? '—' : fa(r.ca)) + '</span>'
           + '<span>ساعت: ' + fa(r.w) + '</span></div>';
       }).join('')
@@ -13632,8 +13692,7 @@ function coreActions(e, el, id, a, rawId){
      closeModal();toast('دانش‌آموزان به‌روز شد','ok');render();},
    'summer-del'(){confirmModal('حذف این کلاسِ تابستانی؟','summer-del-ok',id);},
    'summer-del-ok'(){remove('summer_classes',Number(window._delId));closeModal();toast('حذف شد','ok');render();},
-   'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
-     if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
+   'grade-save'(){const g=window._edit;
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk
         (26-curriculum) که در exam-save اعمال می‌شود */
      const gType=V('g_type');
@@ -13656,12 +13715,36 @@ function coreActions(e, el, id, a, rawId){
        toast('نمرهٔ امتحان نهایی کشوری فقط از بیرون و توسط مدیر مدرسه وارد می‌شود','err');return;
      }
      const gSource=gNational?'national':'internal';
-    let gid=g.id;
-    /* بند ۴.۲: نوعِ نمره — در مدرسهٔ غیرکارگاهی فیلد نیست و همیشه تئوری */
+    /* E.1 + بند ۴.۲ — هنرستان: سه حالت
+       الف) نوع «عملی/کارگاهی» → رکوردِ واحد (score = practical_score)
+       ب) نوع «تئوری» در مدرسهٔ کارگاهی → قسمت‌های تئوری/عملی؛
+          نمرهٔ نهایی (score) = میانگینِ قسمت‌هایِ پرشده
+       ج) مدرسهٔ غیرکارگاهی → نمرهٔ واحد (رفتارِ پیشین، بدون فیلدهای تازه)
+       ریبیس دور ۱۱۲: source:gSource از فاز ۰.۳ main روی هر سه شخ‌ص افزوده شد. */
+    const _gcls=byId('classes',window._gclass);
+    const _gws=(typeof workshopSchool==='function'&&_gcls)?workshopSchool(_gcls.school_id):false;
     const gkind=V('g_kind')==='practical'?'practical':'theory';
-    if(g.id)update('grades',g.id,{score,term:V('g_term'),exam_type:gType,kind:gkind,source:gSource});
+    let data;
+    if(_gws&&gkind==='practical'){
+      const score=Number(V('g_score'));
+      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۰ باشد','err');return;}
+      data={score:score,term:V('g_term'),exam_type:V('g_type'),kind:'practical',theoretical_score:null,practical_score:score,is_vocational:true,source:gSource};
+    }else if(_gws){
+      const rt=V('g_theory'),rp=V('g_practical');
+      const t=rt===''?null:Number(rt),p=rp===''?null:Number(rp);
+      if(t==null&&p==null){toast('حداقل یکی از نمرهٔ تئوری یا عملی لازم است','err');return;}
+      if((t!=null&&(isNaN(t)||t<0||t>20))||(p!=null&&(isNaN(p)||p<0||p>20))){toast('نمرات باید بین ۰ تا ۲۰ باشند','err');return;}
+      const score=Math.round(((t!=null&&p!=null)?(t+p)/2:(t!=null?t:p))*100)/100;
+      data={score:score,term:V('g_term'),exam_type:V('g_type'),kind:'theory',theoretical_score:t,practical_score:p,is_vocational:true,source:gSource};
+    }else{
+      const score=Number(V('g_score'));
+      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
+      data={score:score,term:V('g_term'),exam_type:V('g_type'),kind:'theory',source:gSource};
+    }
+    let gid=g.id;
+    if(g.id)update('grades',g.id,data);
     else{const sid=Number(V('g_st')),cid=window._gclass;
-      const r=insert('grades',{school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,term:V('g_term'),exam_type:gType,kind:gkind,source:gSource,score,max_score:20,created_at:todayISO()});
+      const r=insert('grades',Object.assign({school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,max_score:20,created_at:todayISO()},data));
       gid=r.id;}
      /* گام ۷: نمرهٔ زیر آستانه برای اولیا پیامک می‌سازد (بعد از نوشتن
         تا source_ref شناسهٔ واقعی باشد) */
@@ -13875,6 +13958,12 @@ document.addEventListener('change',e=>{
     return;
   }
 
+  /* E.1 — فرمِ نمره (هنرستان): تغییرِ نوع ⇒ پنهان/نمایشِ فیلدِ «نمره»
+     یا قسمت‌هایِ تئوری/عملی (gradeKindToggle در 18-modals). */
+  if(id==='g_kind'){
+    if(typeof gradeKindToggle==='function')gradeKindToggle(e.target.value);
+    return;
+  }
   /* فرم مدرسه: تیک شاخه ⇒ باز یا بستهٔ شدن فهرست رشته‌های همان شاخه.
      این‌ها شناسه ندارند و با کلاس تشخیص داده می‌شوند، پس پیش از
      بررسی‌های مبتنی بر شناسه می‌آیند. */
