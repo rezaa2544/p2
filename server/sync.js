@@ -590,7 +590,7 @@ function createSync(ctx){
   const sendJson = ctx.sendJson;
 
   async function apiSync(req, res, body){
-    const s = sessionFrom(req);
+    const s = await sessionFrom(req);
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
 
     /* لایهٔ مقدار (validate.js): بدنه فقط {ops} است — کلیدِ ناشناخته = ردِّ
