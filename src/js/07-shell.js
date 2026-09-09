@@ -53,6 +53,11 @@ function navFor(u){
   let nav=(NAV[u.role]||[]).map(function(g){
     return [g[0],(g[1]||[]).filter(function(it){ return dis.indexOf(it[0])<0&&capHidden.indexOf(it[0])<0; })];
   }).filter(function(g){ return g[1].length>0; });
+  /* تحویلدار: دبیرِ دارای پرچم، اموال را در منو می‌بیند
+     (فقط نمایش؛ مجوزِ مسیر با canRoute و مجوزِ عمل با assetStaffCan است). */
+  if(u.role==='teacher' && u.asset_staff===1){
+    nav = nav.concat([[ 'اموال', [['assets','🧰','املاک و موجودی']] ]]);
+  }
   if(u.role==='parent'){
     nav=nav.concat([['حساب من',[['subscription','💳','اشتراک پنل اولیا']]]]);
     /* بند ۴ دور ۷۸ (بماندهٔ DISCOVERABILITY_R43، مورد ۲): برچسب پویای
