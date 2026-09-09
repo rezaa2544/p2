@@ -38,3 +38,6 @@ tests/.cache-jaeger/
 *.key
 *.crt
 server/data/jwt.key
+
+# Wave 18 — دادهٔ آزمایشیِ مقیاسِ ملی (حجم‌دار؛ هرگز commit نشود)
+data/national/
