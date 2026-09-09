@@ -7,7 +7,8 @@
      or zero-dependency in-memory JSON fallback when unset.
    - Methods: query(sql, params), transaction(callback), ping(),
      persistOp(op), persistOpsBatch(ops), healthCheck(), close().
-   - Supports: PG_POOL_MIN, PG_POOL_MAX, PG_TIMEOUT_MS, DATABASE_URL.
+   - Supports: PG_POOL_MIN, PG_POOL_MAX, PG_TIMEOUT_MS, PG_IDLE_TIMEOUT_MS,
+     PGBOUNCER, PGBOUNCER_POOL_MODE, DATABASE_URL.
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
@@ -27,12 +28,45 @@ let memoryStore = null;
 let reconnectTimer = null;
 
 const config = {
-  connectionString: process.env.DATABASE_URL || null,
-  min: parseInt(process.env.PG_POOL_MIN || '2', 10),
-  max: parseInt(process.env.PG_POOL_MAX || '20', 10),
-  connectionTimeoutMillis: parseInt(process.env.PG_TIMEOUT_MS || process.env.PG_TIMEOUT || '3000', 10),
-  idleTimeoutMillis: 30000
+  connectionString: null,
+  min: 2,
+  max: 20,
+  connectionTimeoutMillis: 3000,
+  idleTimeoutMillis: 30000,
+  pgbouncer: false,
+  poolMode: null,
+  applicationName: 'payesh-server'
 };
+
+function envInt(name, fallback) {
+  const n = parseInt(process.env[name] || '', 10);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
+function truthyEnv(name) {
+  return /^(1|true|yes|on)$/i.test(String(process.env[name] || '').trim());
+}
+
+function looksLikePgbouncerUrl(url) {
+  return /:6432(?:\/|\?|$)/.test(String(url || ''));
+}
+
+/* PgBouncer integration is intentionally configuration-driven: the app keeps
+   using pg.Pool and DATABASE_URL; production points DATABASE_URL at :6432. */
+function refreshConfig() {
+  const url = process.env.DATABASE_URL || null;
+  const pgb = truthyEnv('PGBOUNCER') || looksLikePgbouncerUrl(url);
+  config.connectionString = url;
+  config.pgbouncer = pgb;
+  config.poolMode = process.env.PGBOUNCER_POOL_MODE || (pgb ? 'transaction' : null);
+  config.min = envInt('PG_POOL_MIN', pgb ? 0 : 2);
+  config.max = envInt('PG_POOL_MAX', 20);
+  config.connectionTimeoutMillis = envInt('PG_TIMEOUT_MS', envInt('PG_TIMEOUT', 3000));
+  config.idleTimeoutMillis = envInt('PG_IDLE_TIMEOUT_MS', pgb ? 10000 : 30000);
+  config.applicationName = process.env.PGAPPNAME || 'payesh-server';
+  return Object.assign({}, config);
+}
+refreshConfig();
 
 /**
  * Initialize Database Layer & Pool Lifecycle
@@ -42,7 +76,7 @@ async function init(fallbackStore) {
   if (fallbackStore) {
     memoryStore = fallbackStore;
   }
-  config.connectionString = process.env.DATABASE_URL || null;
+  refreshConfig();
 
   if (!config.connectionString || !pg) {
     isPgActive = false;
@@ -59,7 +93,8 @@ async function init(fallbackStore) {
       min: config.min,
       max: config.max,
       connectionTimeoutMillis: config.connectionTimeoutMillis,
-      idleTimeoutMillis: config.idleTimeoutMillis
+      idleTimeoutMillis: config.idleTimeoutMillis,
+      application_name: config.applicationName
     });
 
     pool.on('error', (err) => {
@@ -77,7 +112,7 @@ async function init(fallbackStore) {
         clearTimeout(reconnectTimer);
         reconnectTimer = null;
       }
-      return { ok: true, driver: 'postgres', serverTime: res.rows[0].server_time };
+      return { ok: true, driver: 'postgres', serverTime: res.rows[0].server_time, pgbouncer: config.pgbouncer, poolMode: config.poolMode };
     } finally {
       client.release();
     }
@@ -303,7 +338,9 @@ async function healthCheck() {
       latency_ms: latency,
       total_count: pool.totalCount,
       idle_count: pool.idleCount,
-      waiting_count: pool.waitingCount
+      waiting_count: pool.waitingCount,
+      pgbouncer: config.pgbouncer,
+      pool_mode: config.poolMode
     };
   } catch (err) {
     return { ok: false, driver: 'postgres', error: err.message };
@@ -329,6 +366,8 @@ async function close() {
 
 /* P1-14: seam تزریقِ pool برای تستِ اتمی‌بودن بدون PG واقعی (pg-mem).
    فقط تست از آن استفاده می‌کند؛ کدِ اجرایی همیشه از init می‌آید. */
+function __getConfigForTests() { return Object.assign({}, refreshConfig()); }
+
 function __setPoolForTests(p) {
   if (p) { pool = p; isPgActive = true; }
   else { pool = null; isPgActive = false; }
@@ -346,6 +385,7 @@ module.exports = {
   persistOpsBatchWithClient,
   persistOpsBatch,
   __setPoolForTests,
+  __getConfigForTests,
   isUidProcessed,
   healthCheck,
   close
