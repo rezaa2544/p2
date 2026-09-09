@@ -24,6 +24,47 @@ let memExpiry = new Map();
 let subscriptions = new Map(); // channel -> Set of callbacks
 
 const REDIS_URL = process.env.REDIS_URL || null;
+/* P0-HA: حالتِ سنتینل — به‌جای یک گره، به نگهبان‌ها وصل می‌شود و مسترِ زنده
+   را خودش پیدا می‌کند. مثال:
+   REDIS_SENTINELS="10.0.0.1:26379,10.0.0.2:26379,10.0.0.3:26379"
+   REDIS_MASTER_NAME="mymaster"                                            */
+const REDIS_SENTINELS = process.env.REDIS_SENTINELS || null;
+const REDIS_MASTER_NAME = process.env.REDIS_MASTER_NAME || 'mymaster';
+
+/**
+ * Parse a comma-separated `host:port` list into ioredis sentinel config.
+ * Pure function — unit-testable without any connection.
+ * @param {string} sentinelsCsv
+ * @param {string} [masterName]
+ */
+function buildSentinelConfig(sentinelsCsv, masterName) {
+  const sentinels = String(sentinelsCsv || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(hp => {
+      const i = hp.lastIndexOf(':');
+      if (i <= 0) return { host: hp, port: 26379 };
+      return { host: hp.slice(0, i), port: Number(hp.slice(i + 1)) || 26379 };
+    });
+  return { name: masterName || 'mymaster', sentinels };
+}
+
+/**
+ * Deployment mode decided by env: sentinel | standalone | memory
+ */
+function resolveMode() {
+  if (REDIS_SENTINELS) return 'sentinel';
+  if (REDIS_URL) return 'standalone';
+  return 'memory';
+}
+
+/** Current driver mode (for /api/health and tests) */
+function getMode() {
+  if (isRedisActive) return resolveMode();
+  return 'memory';
+}
+
 /* P0-13: در تولید، فال‌بک به حافظهٔ محلی ممنوع است — هر نمونه باید به
    همان کشِ توزیع‌شده وصل باشد؛ وگرنه حالت بین نمونه‌ها واگرا می‌شود
    (قفل/نرخ/کش هرکدام یک‌جا). بنابراین نبودِ ردیس در تولید = شکستِ ریدی. */
@@ -46,15 +87,22 @@ setInterval(cleanExpiredMem, 10000).unref();
 /**
  * Initialize Redis connection
  */
+const CONNECT_DEADLINE_MS = 8000;
+const withDeadline = (p, ms, label) => new Promise((resolve, reject) => {
+  const t = setTimeout(() => reject(new Error(label + ' timed out after ' + ms + 'ms')), ms);
+  p.then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+});
+
 async function init() {
-  if (!REDIS_URL || !Redis) {
+  const hasTarget = !!(REDIS_URL || REDIS_SENTINELS);
+  if (!hasTarget || !Redis) {
     isRedisActive = false;
     if (IS_PRODUCTION) {
       /* P0-13: شکستِ ریدی به‌جای فال‌بک — سرور نباید بدونِ کشِ مشترک بالا بیاید */
       return {
         ok: false, driver: 'none',
-        error: !REDIS_URL
-          ? 'REDIS_URL is required when NODE_ENV=production (in-memory fallback is dev-only)'
+        error: !hasTarget
+          ? 'REDIS_URL (or REDIS_SENTINELS) is required when NODE_ENV=production (in-memory fallback is dev-only)'
           : 'ioredis driver is not installed (required when NODE_ENV=production)'
       };
     }
@@ -69,7 +117,21 @@ async function init() {
       try { subClient.disconnect(); } catch (e) {}
     }
 
-    client = new Redis(REDIS_URL, {
+    /* P0-HA: ساختِ کلاینت — مستقل یا پشتِ سنتینل. در حالتِ سنتینل،
+       آیورِدیس مسترِ زنده را از نگهبان‌ها می‌پرسد و پس از فِیل‌اُوور خودش
+       اتصال را بازسازی می‌کند (فاصلهٔ بازکشف: ۲ ثانیه). */
+    const makeClient = (extraOpts) => {
+      if (resolveMode() === 'sentinel') {
+        const sc = buildSentinelConfig(REDIS_SENTINELS, REDIS_MASTER_NAME);
+        return new Redis(Object.assign({}, sc, extraOpts, {
+          sentinelReconnectInterval: 2000,
+          failoverDetector: 1000
+        }));
+      }
+      return new Redis(REDIS_URL, extraOpts);
+    };
+
+    client = makeClient({
       maxRetriesPerRequest: 2,
       connectTimeout: 3000,
       retryStrategy: (times) => {
@@ -92,16 +154,16 @@ async function init() {
       isRedisActive = true;
     });
 
-    await client.connect();
+    await withDeadline(client.connect(), CONNECT_DEADLINE_MS, 'redis connect');
 
     // Create dedicated subscriber client
-    subClient = new Redis(REDIS_URL, {
+    subClient = makeClient({
       maxRetriesPerRequest: 2,
       connectTimeout: 3000,
       lazyConnect: true
     });
     subClient.on('error', () => {});
-    await subClient.connect();
+    await withDeadline(subClient.connect(), CONNECT_DEADLINE_MS, 'redis subscribe connect');
 
     subClient.on('message', (channel, message) => {
       const cbs = subscriptions.get(channel);
@@ -113,7 +175,7 @@ async function init() {
     });
 
     isRedisActive = true;
-    return { ok: true, driver: 'redis', message: 'Connected to Redis server' };
+    return { ok: true, driver: 'redis', mode: resolveMode(), message: resolveMode() === 'sentinel' ? ('Connected to Redis master "' + REDIS_MASTER_NAME + '" via Sentinel') : 'Connected to Redis server' };
   } catch (err) {
     console.warn('[Redis] Connection failed.', IS_PRODUCTION ? 'Production refuses fallback (readiness fails):' : 'Using in-memory fallback (dev only):', err.message);
     isRedisActive = false;
@@ -521,6 +583,9 @@ module.exports = {
   init,
   isRedis,
   ready,
+  getMode,
+  resolveMode,
+  buildSentinelConfig,
   get,
   set,
   del,
