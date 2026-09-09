@@ -10,6 +10,7 @@
 'use strict';
 
 const { filterByScope, checkSchoolScope } = require('../middleware/scope');
+const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 
 function createGradeRoutes(ctx) {
@@ -127,18 +128,9 @@ function createGradeRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
 
-    // Optimistic Concurrency Control (OCC)
-    if (body.base_version != null && Number(body.base_version) !== (grade.version || 1)) {
-      return {
-        status: 409,
-        body: {
-          ok: false,
-          code: 'conflict',
-          message: 'نمره توسط کاربر دیگری تغییر یافته است. صفحه را تازه کنید.',
-          server_version: grade.version || 1
-        }
-      };
-    }
+    /* P0-18: OCC از هِلپر مشترک — پایه از base_version یا version */
+    const conflict = checkOcc(grade, body, 'نمره');
+    if (conflict) return conflict;
 
     if (body.score != null) {
       const s = Number(body.score);
@@ -150,8 +142,7 @@ function createGradeRoutes(ctx) {
 
     if (body.type !== undefined) grade.type = body.type;
     if (body.term !== undefined) grade.term = body.term;
-    grade.version = (grade.version || 1) + 1;
-    grade.updated_at = new Date().toISOString();
+    bump(grade); /* P0-18 */
 
     markDirty();
     if (db) await db.persistOp({ c: 'grades', t: 'upd', data: grade });
