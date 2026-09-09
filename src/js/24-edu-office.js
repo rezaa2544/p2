@@ -983,6 +983,7 @@ setTimeout(()=>{
   if(typeof generateSchoolModeDemo==='function') generateSchoolModeDemo();
   if(typeof generateTeacherEvalDemo==='function') generateTeacherEvalDemo(); /* ب.۳ */
   if(typeof generateUrgentAnnDemo==='function') generateUrgentAnnDemo();     /* د.۳ */
+  if(typeof generateStaffPostDemo==='function') generateStaffPostDemo();     /* د.۴ */
   /* loadLog در ابتدای این بلاک اجرا شده — اینجا فقط بازپخش و همگام‌سازی */
   applyLog(); initSync();
 

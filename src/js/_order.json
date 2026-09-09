@@ -89,5 +89,6 @@
     "72-donations.js",
     "73-teacher-eval.js",
     "74-region-tools.js",
+    "75-staff-gap.js",
     "99-theme-loader.js"
 ]
