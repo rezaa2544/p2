@@ -24,7 +24,7 @@
 - **PostgreSQL/مهاجرت:** `tools/migrate-to-pg.js` ستون‌های مدیریت‌شدهٔ `version` و `version_vector JSONB` را برای مجموعه‌های version-tracked تولید می‌کند؛ `server/schema.sql` نیز ALTERهای idempotent برای همین ستون‌ها دارد.
 - **مستندات:** `docs/VERSION_VECTORS.md` اضافه شد و `docs/README.md`/`docs/ROADMAP.md` به‌روز شدند.
 - **تست/گیت‌ها:** `version-vector` ۸/۸؛ `version-vector-sync` ۶/۶؛ `server15` ۴۰/۴۰؛ `server18` ۵۵/۵۵؛ `weighted-partitioning` ۱۲/۱۲؛ `pgbouncer-pooling` ۱۲/۱۲؛ `build --check` ✅؛ `check-authz` ✅؛ `secret-scan` ۱۱/۱۱ ✅؛ smoke ۵۴۷/۵۴۷ ✅ (فقط هشدار شناخته‌شدهٔ jsdom برای `scrollTo`).
-- **کامیت/پوش:** پس از کامیت، روی `origin/arena/01a08527-p2` پوش می‌شود؛ گزارش نهایی در `CHAT4_VERSION_VECTORS_REPORT.md`.
+- **کامیت/پوش:** با کامیت‌های `d00dffc` و `0207de5` روی `origin/arena/01a08527-p2` پوش شد؛ گزارش نهایی در `CHAT4_VERSION_VECTORS_REPORT.md`.
 
 ## چت ۴: Weighted Partitioning برای مدارس شلوغ — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
