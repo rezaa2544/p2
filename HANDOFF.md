@@ -502,6 +502,15 @@ academic-years **۹/۹** + جهش **۵/۵** · exam-types **۲۷/۲۷** + جهش
   `git merge-tree 430c7c8 origin/main origin/feat/b3-d234-chat4` سنجیده و در
   `docs/PR_MERGE_PLAN.md` §۶ ثبت شد. دامِ روش هم ثبت شد: بلوک‌های
   `added in both` را باید جدا شمرد، وگرنه `docs/ROADMAP.md` از قلم می‌افتد.
+## چت ۳ جدید — Wave 1 (بخش دوم): انتقال Writes و Transactions به PG — ۲۰/۰۶/۱۴ (2026-09-09)
+
+**وضعیت:** شاخهٔ `arena/01a08545-p2` (بعد از E.9). پیشنهادِ ناظر برایِ `feat/wave1-writes-chat3` به‌دلیلِ session-pin قابلِ اجرا نبود — انحراف در گزارشِ دور ثبت شد. سه کامیت: هسته + تست‌ها / اسنکواری و مستندات / گزارش.
+- **کد:** sms — نوشت‌هایِ هر آیتم (sms_log+sms_wallet+notify_queue یا رکوردِ failed) در **یک تراکنش** (`mirrorItem` با `persistOpsBatch`؛ شکستِ آینه نامرئی + audit). sync — نوتیفیکیشن‌هایِ مشتقِ ۴ hook (conflict/leaves/chat/corrections) به `derived` → `mirror.concat(derived)` در **همان تراکنش**. delete-service — `db.transaction`: DELETE + رویدادِ `server_outbox` (all-or-nothing؛ شکست در PG ⇒ 500 از handlerِ سراسری = fail-closed). outbox — `append(event, client)` اختیاری (داخل تراکنشِ فراخوان / اتصالِ جدا).
+- **اسنکواری:** `docs/WAVE1_WRITES_INVENTORY.md` — PG اتمیک / best-effort (REST routes تک‌رکوردی) / فقط-JSONِ سازِ‌عملکرد (جلسات، OTP، گورناخن‌ها، sync_conflicts، صفِ outbox، فایل‌ها) + تصمیمِ max+1 محلیِ idهایِ sms (NAMESPACESِ ids.js فقط ۴ کلکسیون دارد).
+- **تست‌ها:** `tests/wave1-writes.js` (W1…W7 = ۱۴ بررسی؛ pool/clientِ جعلی — BEGIN/COMMIT/ROLLBACK و توالیِ نوشت‌ها) + `tests/wave1-writes-mutations.js` (MW1…MW5 همه کشته).
+- **گیت‌ها سبز:** smoke ۵۴/۵۴۷، check-authz ۰ (۶/۶ بررسی)، secret-scan ۱۱/۱۱، build --check. رگرسیون: server1 31، s10 7، s11-sms 9، s11-mut 6، s12 43، s13 9، s14 13، s15 40، s16 39، s17 70، s18 55، s4 16، s5 14، s6 9، s7 15، s8 9، s9 10، tombstone 25، occ 18، id-collision 11، lock-atomic 12، sync-atomic-batch 22 — همه سبز. **موجودِ پیشین (نه رگرسیون):** server-mutations 17/20 (M1/M14/M15 روی in-tree) و کرشِ server11-child به‌تنهایی (فایلِ helper است).
+- **مستندات:** AI_PROMPT ۰/۵/۳۰، ROADMAP B.3 ✅.
+
 ## چت ۳ جدید — E.9: مدیریت مراجعین (visitors) — ۱۸/۰۶/۱۴ (2026-09-09)
 
 **وضعیت:** شاخهٔ `arena/01a08545-p2` (بعد از E.1). دو کامیت: هسته‌ی E.9 + مستندات. گیت‌ها سبز: smoke ۵۴/۵۴۷، check-authz=0، secret-scan ۱۱/۱۱، build --check، authz-model ۲۴/۲۴۸، سوئیت‌های تازه ۱۳/۱۳ + جهش‌ها ۵/۵.

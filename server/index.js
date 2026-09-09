@@ -369,8 +369,9 @@ const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom:
 const idor = createIdor({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const pubrep = createPublicReport({ store, sendJson: sendJsonCounting, workers });
+/* هر سه ماژول با db می‌چرخند: admin/conflicts (Wave 1 main) + sms (W1p2 تراکنسی) */
 const admin = createAdmin({ store, db, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, dataDir: path.dirname(STORE_FILE), workers });
-const sms = createSms({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
+const sms = createSms({ store, db, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 const conflicts = createConflicts({ store, db, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 
 /* ── Phase 3: RESTful Resource Routes ─────────────────────────────── */
