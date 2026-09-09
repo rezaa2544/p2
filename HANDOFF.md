@@ -14,6 +14,24 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۲: Wave 9 شروع + Wave 0 / Part 4 (بازسازی) — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**شاخه:** `arena/01a08648-p2` (از `main` @ `781a471` — ادغامِ PR #40)
+
+**وضعیت:** بخشِ اولِ Wave 9 (Application Performance) روی سرور اعمال شد: `JSON.stringify(store)` و نوشتنِ سنکرونِ فایل از مسیرِ درخواست/تیکر حذف و به رشتهٔ کارِ پس‌زمینه منتقل شد؛ بکاپ و گزارشِ عمومی هم به همان ورکر رفت؛ ممیزیِ پس‌زمینه (opt-in) و L1 کشِ محدود اضافه شد. Wave 0 / Part 4 (dependency & deployment inventory) **بازسازی** و Wave 0 کامل شد.
+
+- **⚠️ یافتهٔ انتقالِ کار (مهم برایِ کارفرما):** دستورِ «push کامیتِ محلیِ `arena/01a085da-p2` / بهروزرسانی PR #40 با commit ‏`0245515`» اجرا‌پذیر نبود: آن commit هرگز push نشده بود و در sandbox نشستِ قبل گم شده است (`gh api .../commits/0245515` → 404؛ شاخهٔ راه‌دور روی `b7f670e` است و PR #40 **MERGED**). خودِ شاخهٔ این نشست به `arena/01a08648-p2` قفل است؛ Part 4 در همین شاخه بازسازی شد (`docs/NATIONAL_BASELINE_PART4.md` + یادداشتِ شفافیت در همان سند).
+- **معماری (Wave 9):** `server/worker-service.js` + `server/workers/heavy.js` — ورکرِ دیرزیادِ unref با اسنپ‌شاتِ نسخه‌دار (structured clone؛ `markDirty` → bump). ops: `persist` (نوشتنِ اتمی tmp+rename، 0600) / `backup` (فقط‌داده + نگه‌داریِ ۱۰) / `report` (گزارشِ عمومی). حالتِ پایدار: بکاپ/گزارش بدونِ هیچ هزینه‌ای روی رشتهٔ اصلی. شکستِ ورکر → فال‌بکِ مسیرِ قدیمی؛ خروجِ فرآیند → `persistStoreSync` + `flushSync`.
+- **تازگیِ داده:** تضمینِ سخت با نسخه‌ها — نوشتنِ تازه همیشه پیش از op بعدی به ورکر می‌رسد (آزمون‌های W9-5/W9-6d: نوشتنِ نشانگر → بکاپِ فوری شاملِ نشانگر؛ ساختِ کلاس با REST → شمارشِ گزارش همان لحظه +۱).
+- **اعداد (سندباکس، store دمو ۵٫۶MB):** بلاکِ رشتهٔ اصلی در تیکِ persist: ‏~۴۶ms → max ‏۱۶٫۸ms (فقط clone)؛ در `POST /api/admin/backup`: ‏~۴۶ms هر درخواست → **max ‏۰٫۶ms** در ۸ درخواستِ پشت‌هم. استاتیک: ‏`readFileSync` ‏~۲MB در هر درخواست → خواندنِ async + کشِ mtime با سقفِ بایت. مستندات: `docs/WAVE9_PERFORMANCE.md` (+ کپیِ `reza/`).
+- **فایل‌ها:** جدید: `server/worker-service.js`، `server/workers/heavy.js`، `server/static-cache.js`، `server/public-report-core.js` (هستهٔ مشترکِ endpoint/ورکر)، `tests/wave9-performance.js` (۳۹/۳۹)، `docs/WAVE9_PERFORMANCE.md`، `docs/NATIONAL_BASELINE_PART4.md`. تغییر: `server/index.js` (persist/استاتیک/سیم‌کشی)، `server/admin.js` (بکاپ از ورکر؛ فال‌بکِ `backupNowInline`)، `server/public-report.js` (ورکر + فال‌بک)، `server/audit.js` (`PAYESH_AUDIT_ASYNC=1` — نویسندهٔ پس‌زمینه؛ پیش‌فرض sync برایِ سازگاریِ آزمون‌ها)، `server/cache.js` (L1 محدود: سقف/LRU/TTL + `l1Stats`)، `docs/DEPLOY.md` (۳ متغیرِ تازه)، Progress Tracker (Wave 0 ✅ / Wave 9 🟡).
+- **گیت‌ها:** `tests/wave9-performance.js` **39/39** ✅؛ `smoke` ‏**۵۴۷/۵۴۷** ✅؛ `check-authz` ‏**۰** ✅؛ `secret-scan` ‏**۱۱/۱۱** ✅؛ رگرسیونِ هدفمند: server1 (31/31)، server6/7/8/9، server14-gc (+جهش‌های GC ‏4/4 کشته)، server18 (55)، security2 (25)، public-security (10/10)، audit (47/47)، api/runner (7/7) — همه سبز.
+- **رگرسیونِ کامل** (`scripts/run-all-tests.sh`): ‏**۲۲۳ سبز / ۷ قرمز** (۳۲ دقیقه در این سندباکس). هر ۷ قرمز با A/B روی خطِ پایهٔ دست‌نخوردهٔ `781a471` (worktree) راستی‌آزمایی شد — **همگی پیش‌موجود/محیطی، صفر رگرسیون از این دور**: sync-atomic-batch (+جهش‌هایش: نیاز به PostgreSQL واقعی؛ جهش‌ها خودشان ۵/۵ کشته)؛ xss-guard (‏X2b اسکنِ document.write سمتِ کلاینت)؛ rate-limit-mutations (لنگرِ کهنهٔ M2)؛ otp-ratelimit-mutations (لنگرهای کهنهٔ M3–M6)؛ server-mutations (M1/M14/M15)؛ tracing-performance (فقط زیرِ بارِ موازی قرمز — تکی ۷/۷ سبز).
+- **وضعیتِ شناخته‌شدهٔ پیش‌موجود (بی‌ربط به این دور):** در `tests/server-mutations.js` جهش‌های M1/M14/M15 روی خطِ پایهٔ `781a471` هم زنده‌مانده/الگوشان گم‌اند (۱۷/۲۰ قبل و بعدِ Wave 9 یکسان — با `git stash` راستی‌آزمایی شد)؛ M16–M20 (فایل‌هایِ لمس‌شده) همگی کشته می‌شوند. نیازمند مرورِ جداگانه در دورِ بعد.
+- **انکرهای جهشِ حفظ‌شده:** خطوطِ هدفِ جهش در `index.js`/`admin.js` (M16/M17/M18 و `const gc = gcStore();` — ترتیبِ تعریفِ `persistStore` قبل از `persistStoreSync` عمدی است تا M4ِ جهشِ GC همچنان کشته شود) دست‌نخورده ماندند.
+
+
+
 ## چت ۱: Wave 0 / Part 3 — Baseline دیتابیس و کش — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **وضعیت:** اندازه‌گیری baseline دیتابیس/کش بدون تغییر کد پروژه انجام شد و در `docs/NATIONAL_BASELINE_PART3.md` ثبت شد؛ کپی همگام در `reza/` قرار گرفت. Progress Tracker برای Wave 0 به‌روز شد: Partهای ۱، ۲ و ۳ کامل‌اند و Part 4 باقی است.
