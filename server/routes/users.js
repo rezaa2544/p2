@@ -140,6 +140,14 @@ function createUserRoutes(ctx) {
     if(!pa.ok) return denied(pa);
     if(pa.exc === 'iep')
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'به‌روزرسانی IEP فقط از مسیر دانش‌آموزان مجاز است' } };
+    /* P0-06: خودبه‌روزرسانیِ غیر-مدیر فقط فیلدهایِ SELF_ALLOWED_FIELDS.
+       مدیر رویِ خودش/دیگران با اختیاراتِ مدیریتی کار می‌کند (نامحدود). */
+    if(pa.exc === 'self' && user.role !== 'manager' && user.role !== 'superadmin'){
+      const deniedKeys = policy.selfFieldDenied(body || {});
+      if(deniedKeys.length)
+        return { status: 403, body: { ok: false, code: 'field_denied',
+          message: 'تغییرِ «' + deniedKeys.join('، ') + '» در خودبه‌روزرسانی مجاز نیست' } };
+    }
     const pv = policy.validate('upd', COLL, body || {});
     if(!pv.ok) return denied(pv);
 
@@ -163,7 +171,8 @@ function createUserRoutes(ctx) {
       target.role = body.role;
     }
 
-    const allowed = ['full_name', 'phone', 'national_id', 'active', 'status', 'grade_level', 'field'];
+    /* P0-06: email/profile_picture هم اعمال می‌شوند (عضوِ SELF_ALLOWED_FIELDS‌اند) */
+    const allowed = ['full_name', 'phone', 'national_id', 'active', 'status', 'grade_level', 'field', 'email', 'profile_picture'];
     for (const key of allowed) {
       if (body[key] !== undefined) target[key] = body[key];
     }

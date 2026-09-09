@@ -1003,3 +1003,11 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
   leniency رویِ درس را رفتارِ پذیرفته می‌داند؛ قلمروِ درس فقط در خوانش (فیلترِ موجودِ GET).
 - تستِ جدید: `tests/grades-scope.js` ‏6/6‏ (خوانش/نوشت/سینک + رگرسیونِ مدیر).
 - گیت‌ها: API ‏7/7‏، server1..18 سبز، policy ‏10/10‏، authz ‏0‏، smoke ‏547/547‏ ✅
+
+## P0-06 پرامپت ۱ — allowlist خودبه‌روزرسانی — ✅
+- `server/routes/users.js`: خودبه‌روزرسانیِ غیر-مدیر (exc=self) فقط
+  `SELF_ALLOWED_FIELDS=['full_name','profile_picture','email']`؛ بقیه → 403 field_denied.
+  مدیر (رویِ خودش/دیگران) معاف؛ email/profile_picture به allowlistِ اعمالِ روت اضافه شد.
+- sync دست‌نخورده: self در sync هم‌چنان role_denied (رفتارِ M3d پین شد).
+- تستِ جدید: `tests/user-self-update.js` ‏8/8‏.
+- گیت‌ها: API ‏7/7‏، server1..18 سبز، policy ‏10/10‏، authz ‏0‏، smoke ‏547/547‏ ✅
