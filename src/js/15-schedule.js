@@ -116,7 +116,7 @@ function viewSchedule(){
   return confBlock+`<div class="card"><div class="card-head"><h3>${title}</h3>
    ${!byTeacher&&u.role!=='student'?`<select class="select" style="width:190px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`:''}
    ${byTeacher&&homeCls.length?`<select class="select" style="width:210px" data-f="homepick"><option value="">تدریس من</option>${homeCls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===homePick?'selected':''}>سرپرستی: ${esc(c.name)}</option>`).join('')}</select>`:''}
-   ${cObj?`<span class="badge b-gray" style="margin-inline-start:8px">پایه: ${esc(cObj.grade||'—')}</span><span class="badge b-purple" style="margin-inline-start:6px">دبیر پایه: ${ht?esc(ht.full_name):'بدون دبیر پایه'}</span>`:''}</div>
+   ${cObj?`<span class="badge b-gray" style="margin-inline-start:8px">پایه: ${esc(cObj.grade||'—')}</span><span class="badge b-purple" style="margin-inline-start:6px">دبیر پایه: ${ht?esc(ht.full_name):'بدون دبیر پایه'}</span>`:''}${canEditSched?`<button class="btn ghost sm" data-act="schedgen-open" style="margin-inline-start:8px">⚙️ تولید خودکار</button>`:''}</div>
    ${(rows.length||canEditSched)?`<div class="card-body table-wrap"><div class="timetable"><div></div>${DAYS.map(d=>`<div class="tt-head"><b>${d}</b></div>`).join('')}
     ${[1,2,3,4,5,6].map(p=>`<div class="tt-head" style="display:grid;place-items:center"><span class="badge b-blue">زنگ ${fa(p)}</span></div>
      ${DAYS.map((_,d)=>{const c=cell(d,p);

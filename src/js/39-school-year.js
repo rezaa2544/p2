@@ -18,23 +18,25 @@
 
 /* ─────────── بخش ۱: وضعیت سال تحصیلی ─────────── */
 
-/** خواندن وضعیت سال تحصیلی یک مدرسه */
+/** خواندن وضعیت سال تحصیلی یک مدرسه (فاز ۰.۲: سال عملیاتی) */
 function yearState(sid){
   sid = sid || (S.user && S.user.school_id);
+  var yc = activeYearOf(sid);
   var row = (db.school_years || []).filter(function(y){
-    return y.school_id === sid && y.year_code === yearCode(); })[0];
-  return row || { school_id: sid, year_code: yearCode(),
+    return y.school_id === sid && y.year_code === yc; })[0];
+  return row || { school_id: sid, year_code: yc,
     closed: 0, closed_at: null, promoted: 0, placement: null };
 }
 
-/** ذخیرهٔ وضعیت سال تحصیلی */
+/** ذخیرهٔ وضعیت سال تحصیلی (فاز ۰.۲: سال عملیاتی) */
 function saveYearState(sid, patch){
   db.school_years = db.school_years || [];
+  var yc = activeYearOf(sid);
   var row = (db.school_years).filter(function(y){
-    return y.school_id === sid && y.year_code === yearCode(); })[0];
+    return y.school_id === sid && y.year_code === yc; })[0];
   if(row) update('school_years', row.id, patch);
   else insert('school_years', Object.assign(
-    { school_id: sid, year_code: yearCode(), closed: 0, promoted: 0, placement: null }, patch));
+    { school_id: sid, year_code: yc, closed: 0, promoted: 0, placement: null }, patch));
 }
 
 /* ─────────── سال تحصیلی به‌عنوان موجودیت مستقل (بند ۰.۲) ───────────
@@ -49,6 +51,39 @@ function nextYearCode(c){
   return (a + 1) + '-' + (a + 2);
 }
 
+/** سال تحصیلی قبل از یک سال (پیش‌فرض: سال جاری) — «۱۴۰۴-۱۴۰۵» ⇒ «۱۴۰۳-۱۴۰۴» */
+function prevYearCode(c){
+  var a = Number(String(c || yearCode()).split('-')[0]);
+  return (a - 1) + '-' + a;
+}
+
+/* ─────────── سال عملیاتی مدرسه (فاز ۰.۲) ───────────
+   هر مدرسه می‌تواند سالِ عملیاتی‌اش را از تقویم جدا کند
+   (مثلاً در مهر، هنوز روی سالِ گذشته کار کند). override روی
+   رکورد مدرسه (active_year_code، nullable) ذخیره می‌شود؛ بدون
+   overrideِ معتبر، دقیقاً رفتار قبلی (سال تقویمی) حاکم است.
+   مصرف‌کننده‌ها فقط دامنهٔ schoolyear + هدر + مودال‌اند؛
+   yearCode() سراسری دست نخورده است. */
+var YEAR_CODE_RE = /^\d{4}-\d{4}$/;
+/** سال عملیاتی یک مدرسه: override معتبر وگرنه سال تقویمی */
+function activeYearOf(sid){
+  var s = (typeof byId === 'function' && sid != null) ? byId('schools', sid) : null;
+  var t = s ? s.active_year_code : null;
+  if(typeof t === 'string' && YEAR_CODE_RE.test(t)) return t;
+  return (typeof yearCode === 'function') ? yearCode() : null;
+}
+/** آیا فصل پیش‌ثبت‌نام است؟ اسفند تا شهریور (ماه ۱۲ و ۱ تا ۶ شمسی) */
+function isPreSeason(){
+  var p = todayISO().split('-').map(Number);
+  var j = toJalali(p[0], p[1], p[2]);
+  return j[1] === 12 || j[1] <= 6;
+}
+/** عنوان فارسی یک کد سال («۱۴۰۴-۱۴۰۵» ⇒ «۱۴۰۴-۱۴۰۵» فارسی) */
+function yearCodeTitle(c){
+  var p = String(c || '').split('-');
+  return faD(p[0]) + '-' + faD(p[1] || '');
+}
+
 /** سالِ مقصدِ چیدمان/ثبت‌نام برای یک مدرسه:
     سالِ بسته‌شده، چیدمان برای «سال بعد» است (مورد ثبت‌نام شهریور). */
 function targetYearOf(sid){
@@ -57,8 +92,12 @@ function targetYearOf(sid){
   return st.closed ? nextYearCode(st.year_code) : st.year_code;
 }
 
-/** عنوان سال بعد، برای نمایش در قیف پیش‌ثبت‌نام */
-function nextYearTitle(){ var c = nextYearCode().split('-'); return faD(c[0]) + '-' + faD(c[1]); }
+/** عنوان سال بعدِ سالِ عملیاتی، برای نمایش در قیف پیش‌ثبت‌نام */
+function nextYearTitle(sid){
+  if(sid == null) sid = S.user && S.user.school_id;
+  var c = nextYearCode(activeYearOf(sid)).split('-');
+  return faD(c[0]) + '-' + faD(c[1]);
+}
 
 /**
  * آیا اکنون فصل پایان سال است؟
@@ -258,17 +297,17 @@ function enrollmentList(sid){
 const PRE_STATUS=[['registered','ثبت‌شده','b-blue'],['confirmed','تأییدشده','b-amber'],
                   ['placed','چیده شد','b-green'],['rejected','رد شد','b-gray']];
 
-/** فهرست پیش‌ثبت‌نام‌های سال آیندهٔ یک مدرسه */
+/** فهرست پیش‌ثبت‌نام‌های سال آیندهٔ سالِ عملیاتیِ یک مدرسه (فاز ۰.۲) */
 function preEnrollFor(sid){
   return (db.pre_enrollments || []).filter(function(p){
-    return p.school_id === sid && p.year_code === nextYearCode(); });
+    return p.school_id === sid && p.year_code === nextYearCode(activeYearOf(sid)); });
 }
 
-/** ساخت ردیف پیش‌ثبت‌نام (بازگشتی یا تازه‌وارد) */
+/** ساخت ردیف پیش‌ثبت‌نام (بازگشتی یا تازه‌وارد) — سالِ بعدِ سالِ عملیاتی */
 function preAddRow(sid, data){
   db.pre_enrollments = db.pre_enrollments || [];
   return insert('pre_enrollments', Object.assign({
-    school_id: sid, year_code: nextYearCode(), student_id: null,
+    school_id: sid, year_code: nextYearCode(activeYearOf(sid)), student_id: null,
     source: 'new', status: 'registered', created_at: todayISO() }, data));
 }
 
@@ -488,6 +527,10 @@ function viewSchoolYear(){
       + '<div class="card-body row"><div style="font-size:30px">📝</div>'
       + '<div style="flex:1"><b style="font-size:15px">پیش‌ثبت‌نام سال تحصیلی ' + nextYearTitle() + '</b>'
       + '<div class="small muted" style="line-height:2">دانش‌آموزان تازه‌واردها و بازگشتی‌ها را از همین‌جا برای سال آینده ثبت کنید. با «تأیید»، حساب دانش‌آموز ساخته یا وصل می‌شود و در مرحلهٔ بعدی در کلاس چیده می‌شود.</div></div></div></div>'
+      + ((typeof isPreSeason === 'function' && !isPreSeason())
+        ? '<div class="card" style="margin-bottom:14px;border-inline-start:4px solid var(--amber)">'
+          + '<div class="card-body small" style="line-height:2">⚠️ <b>فصل پیش‌ثبت‌نام نیست</b> '
+          + '(اسفند تا شهریور). ثبت دستی همچنان ممکن است؛ ردیف‌ها به سالِ بعدِ سالِ عملیاتی تعلق می‌گیرند.</div></div>' : '')
       + '<div class="grid g4" style="margin-bottom:14px">'
       + statCard('📋', fa(cnt.registered), 'ثبت‌شده', 'blue')
       + statCard('✅', fa(cnt.confirmed), 'تأییدشده', 'amber')
