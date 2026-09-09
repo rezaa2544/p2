@@ -415,7 +415,7 @@ const onRequest = async (req, res) => {
 
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
-        const r = studentRoutes.getStudentsList(req, url.searchParams);
+        const r = await studentRoutes.getStudentsList(req, url.searchParams);
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/students' && req.method === 'POST'){
@@ -465,7 +465,7 @@ const onRequest = async (req, res) => {
 
       // /api/v1/attendance & /api/v1/attendance/:id
       if(p === '/api/v1/attendance' && req.method === 'GET'){
-        const r = attendanceRoutes.getAttendanceList(req, url.searchParams);
+        const r = await attendanceRoutes.getAttendanceList(req, url.searchParams);
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/attendance' && req.method === 'POST'){

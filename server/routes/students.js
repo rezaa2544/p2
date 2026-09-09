@@ -14,6 +14,7 @@ const { filterByScope, checkSchoolScope } = require('../middleware/scope');
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { projectUserByRole } = require('../middleware/projection');
+const { buildStudentsList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
 
 function createStudentRoutes(ctx) {
   const store = ctx.store;
@@ -23,8 +24,29 @@ function createStudentRoutes(ctx) {
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
-  function getStudentsList(req, urlParams) {
+  async function getStudentsList(req, urlParams) {
     const user = req.user;
+    const paginationOpts = parsePaginationParams(urlParams);
+
+    /* Wave 3: DB-native path — runs ONLY when a live PostgreSQL is wired.
+       Pushes role-scope + filters + order + keyset pagination to SQL instead
+       of load-all→filter→sort→slice in JS. Marked UNVERIFIED against a real
+       PG in this sandbox (see docs/WAVE3_QUERY_PERFORMANCE.md). */
+    if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
+      const built = buildStudentsList({
+        user,
+        classId: urlParams.get('class_id'),
+        grade: urlParams.get('grade'),
+        search: urlParams.get('q'),
+        limit: paginationOpts.limit,
+        cursor: paginationOpts.cursor
+      });
+      const res = await executePagedList(db, built, paginationOpts);
+      res.data = res.data.map(s => projectUserByRole(s, user.role));
+      return { ok: true, ...res };
+    }
+
+    /* Memory/JS pipeline (runtime in this sandbox — byte-identical to before). */
     let students = (store.users || []).filter(u => u.role === 'student');
     students = filterByScope(user, students);
 
@@ -66,7 +88,6 @@ function createStudentRoutes(ctx) {
     // Sort by id ascending
     students.sort((a, b) => a.id - b.id);
 
-    const paginationOpts = parsePaginationParams(urlParams);
     const paginated = paginateArray(students, paginationOpts);
 
     paginated.data = paginated.data.map(s => projectUserByRole(s, user.role));
