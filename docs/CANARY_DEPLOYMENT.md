@@ -12,7 +12,7 @@
 | C1 | استورِ JSON **تک‌نویسنده** است (دو پروسهٔ هم‌زمان رویِ یک فایل = گم‌شدنِ نوشته‌ها) | شکافِ درصدیِ ترافیک (۱٪/۱۰٪/۵۰٪) **فقط در مسیرِ PG** مجاز است؛ رویِ JSON فقط Blue-Green با cutover ‏(§۱-۶-ب)‏ |
 | C2 | سروِ پیش‌فرض مستقیم رویِ پورت است (`DEPLOY.md` §۴-الف) | پیش‌نیازِ هر دو الگو: پروکسیِ معکوسِ nginx (§۴-ب همان سند) با دو upstream |
 | C3 | هلث‌چکِ واقعی فقط `GET /api/health` است (`{ok:true,…}` در `server/index.js`) | معنایِ liveness/readiness/startup رویِ همین اندپوینت نگاشت می‌شود (§۱-۲)؛ مسیرهایِ جدا وجود ندارند |
-| C4 | در این معماری **Redis نیست** و Object Storage (آروان) در مسیرِ درخواست نیست | گیتِ آمادگی، اتصالِ Redis/آروان را چک نمی‌کند (علتش در §۱-۲) |
+| C4 | Redis واقعی است (`server/redis.js` + ‏`server/cache.js`‏ — با `REDIS_URL` وگرنه fallback حافظه؛ کش در مسیرِ bootstrap/sync)؛ آروان در مسیرِ درخواست نیست | گیتِ آمادگی: اگر `REDIS_URL` ست است، ping آن (§۱-۲)؛ آروان فقط هشدار، نه گیت |
 | C5 | migration برگشتی (`down`) در تولید خطرناک است | Rollbackِ ترافیک **هرگز** `migrate:down` نمی‌زند (§۱-۴) |
 
 ## ۱-۱. استراتژیِ استقرار
@@ -74,10 +74,14 @@ curl -fsS http://127.0.0.1:3002/api/health | grep -q '"ok":true'
 test -r /home/payesh/data/payesh.json -a -w /home/payesh/data/payesh.json
 # readinessِ داده — مسیرِ PG
 pg_isready -h HOST -p 5432 >/dev/null && npm run migrate:status --prefix /home/payesh/p2-green
+# readinessِ کش — فقط وقتی REDIS_URL ست است (وگرنه fallback حافظه، نه خطا)
+[ -z "$REDIS_URL" ] || redis-cli -u "$REDIS_URL" ping | grep -q PONG
 ```
 
-**چرا Redis/آروان در گیت نیستند (C4):** در این معماری Redis وجود ندارد که چک شود؛
-کپیِ آروان هم ناهمگام و هفتگی است — خرابی‌اش نباید ترافیک را بخواباند (هشدار جدا می‌گیرد، نه گیت).
+**Redis و آروان در گیت (C4 — اصلاحیه):** نسخهٔ اولِ این سند اشتباه می‌گفت Redis نداریم؛ Redis واقعی است
+(کشِ bootstrap/idempotency در مسیرِ درخواست). پس: اگر `REDIS_URL` ست است، `ping`اش جزوِ readiness است
+(قطعی = Green ترافیک نمی‌گیرد)؛ اگر ست نیست، حالتِ fallback حافظه اعلام می‌شود و مانع نیست.
+کپیِ آروان ناهمگام و هفتگی است — خرابی‌اش ترافیک را نمی‌خواباند (هشدار جدا، نه گیت).
 
 ## ۱-۳. معیارهایِ موفقیت (SLO) برایِ هر مرحله
 
@@ -230,6 +234,6 @@ DRY_RUN=1 bash scripts/rollback.sh                  # همین برایِ rollba
 ## ۴. آنچه این سند ادعا **نمی‌کند**
 
 - k8s/Helm/Argo، HPA، Service Mesh نداریم و سند وانمود نمی‌کند که داریم.
-- Redis نداریم؛ «چکِ Redis» در هیچ گیتی نیست.
+- «چکِ Redis» فقط وقتی در گیت است که `REDIS_URL` ست باشد (وگرنه fallback حافظه — §۱-۲)؛ آروان هیچ‌وقت گیت نیست.
 - p95/error-rate از لاگِ nginx حساب می‌شود، نه از APM — دقتش به فرمتِ لاگ (§۱-۳) وابسته است.
 - Blue-Green جایِ بکاپ را نمی‌گیرد (§۶ ‏DEPLOY‏ همچنان اجباری است).
