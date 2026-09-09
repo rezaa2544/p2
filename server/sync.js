@@ -536,6 +536,9 @@ function stripProtected(d){
 /* ctx: { store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom, sendJson } */
 function createSync(ctx){
   const store = ctx.store;
+  /* فاز ۲.۴: نمایهٔ تفکیک‌شده باید پس از هر نوشتن بی‌اعتبار شود —
+     وگرنه خوانش، ردیفِ تازه را نمی‌بیند (یعنی دادهٔ کهنه). */
+  const partitioning = ctx.partitioning || null;
   const db = ctx.db;
   const MAX_BATCH = ctx.MAX_BATCH;
   const AT_DRIFT_MS = ctx.AT_DRIFT_MS;
@@ -734,6 +737,14 @@ function createSync(ctx){
       cache.invalidateCollection(op.c, op.data && op.data.school_id).catch(() => {});
       if(db && typeof db.persistOp === 'function'){
         db.persistOp(op).catch(() => {});
+      }
+    }
+
+    /* فاز ۲.۴: هر op که واقعاً اِعمال شد، نمایهٔ مجموعه‌اش را باطل می‌کند
+       (یک‌بار برای هر مجموعه، نه به‌ازای هر ردیف) */
+    if(partitioning){
+      for(const c of Object.keys(apply.reduce(function(m, op){ m[op.c] = 1; return m; }, {}))){
+        try { partitioning.invalidate(c); } catch(e){}
       }
     }
     /* Round 88 + Round 89 — server side: the client cannot create notifications

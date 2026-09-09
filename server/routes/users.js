@@ -24,8 +24,8 @@ function createUserRoutes(ctx) {
 
   function getUsersList(req, urlParams) {
     const user = req.user;
-    let list = (store.users || []);
-    list = filterByScope(user, list);
+    /* فاز ۲.۴: نامِ مجموعه ⇒ خوانش از نمایهٔ تفکیک‌شده */
+    let list = filterByScope(user, 'users');
 
     const role = urlParams.get('role');
     if (role) {

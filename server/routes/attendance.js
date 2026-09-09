@@ -20,8 +20,8 @@ function createAttendanceRoutes(ctx) {
 
   function getAttendanceList(req, urlParams) {
     const user = req.user;
-    let list = (store.attendance || []);
-    list = filterByScope(user, list);
+    /* فاز ۲.۴: نامِ مجموعه ⇒ خوانش از نمایهٔ تفکیک‌شده (نه پویشِ کل) */
+    let list = filterByScope(user, 'attendance');
 
     const date = urlParams.get('date');
     if (date) {

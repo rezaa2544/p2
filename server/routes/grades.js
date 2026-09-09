@@ -20,8 +20,8 @@ function createGradeRoutes(ctx) {
 
   function getGradesList(req, urlParams) {
     const user = req.user;
-    let list = (store.grades || []);
-    list = filterByScope(user, list);
+    /* فاز ۲.۴: نامِ مجموعه ⇒ خوانش از نمایهٔ تفکیک‌شده */
+    let list = filterByScope(user, 'grades');
 
     const studentId = urlParams.get('student_id');
     if (studentId) {

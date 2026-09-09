@@ -49,12 +49,36 @@ function checkSchoolScope(user, targetSchoolId) {
   return Number(user.school_id) === Number(targetSchoolId);
 }
 
+/* ── فاز ۲.۴: مسیرِ خواندنِ تفکیک‌شده ──────────────────────────────
+   partitioning (server/partitioning.js) نمایهٔ «ردیف‌های هر مدرسه» را
+   نگه می‌دارد تا خوانشِ محدودشده، کلِ مجموعه را پویش نکند. اینجا فقط
+   یک نگهدارنده است (تزریق از index.js) تا این میان‌افزار به چیزی
+   وابسته نشود. */
+let _part = null;   /* { partitioning, store } */
+
+function setPartitioning(partitioning, store) {
+  _part = (partitioning && store) ? { partitioning: partitioning, store: store } : null;
+}
+
 /**
  * Filter an array of records by the user's school scope
  * @param {Object} user - Authenticated session
- * @param {Array} records - List of records with school_id
+ * @param {Array|string} records - آرایهٔ ردیف‌ها **یا نامِ مجموعه**
+ *
+ * اگر **نامِ مجموعه** بدهید (مسیرِ تازه)، خوانش از نمایهٔ تفکیک‌شده
+ * انجام می‌شود (O(ردیف‌های همان مدرسه) به‌جای O(کل)). اگر **آرایه**
+ * بدهید (مسیرِ قدیمی)، همان رفتارِ همیشگی. و اگر نمایه‌ای در کار نباشد،
+ * به همان پویشِ قدیمی برمی‌گردیم — هرگز به‌خاطرِ یک بهینه‌سازی، داده‌ای
+ * را پنهان نمی‌کنیم (fail-closed برعکس: اینجا «بی‌داده نماندن» اصل است).
  */
 function filterByScope(user, records) {
+  if (typeof records === 'string') {
+    if (_part) return _part.partitioning.scoped(user, records);
+    const rows = (_part && _part.store) ? _part.store[records] : null;
+    if (!Array.isArray(rows)) return [];
+    if (!user || user.role === 'superadmin' || user.role === 'edu_office') return rows;
+    return rows.filter(r => r.school_id == null || Number(r.school_id) === Number(user.school_id));
+  }
   if (!Array.isArray(records)) return [];
   if (!user || user.role === 'superadmin' || user.role === 'edu_office') {
     return records;
@@ -65,5 +89,6 @@ function filterByScope(user, records) {
 module.exports = {
   requireRoles,
   checkSchoolScope,
-  filterByScope
+  filterByScope,
+  setPartitioning
 };

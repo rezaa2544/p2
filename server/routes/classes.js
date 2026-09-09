@@ -21,8 +21,8 @@ function createClassRoutes(ctx) {
 
   function getClassesList(req, urlParams) {
     const user = req.user;
-    let classes = (store.classes || []);
-    classes = filterByScope(user, classes);
+    /* فاز ۲.۴: نامِ مجموعه ⇒ خوانش از نمایهٔ تفکیک‌شده */
+    let classes = filterByScope(user, 'classes');
 
     const grade = urlParams.get('grade');
     if (grade) {

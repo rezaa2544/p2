@@ -23,6 +23,7 @@ const crypto = require('crypto');
 const { createAuth } = require('./auth');
 const { createOtpStore } = require('./otp-store');
 const { createSync, attach: syncAttach } = require('./sync');
+const { setPartitioning } = require('./middleware/scope');
 const { createIdor } = require('./idor');
 const { createBell } = require('./bell');
 const { createAdmin } = require('./admin');
@@ -33,6 +34,7 @@ const db = require('./db');
 const redis = require('./redis');
 const cache = require('./cache');
 const { createRevocation } = require('./revocation');
+const { createPartitioning } = require('./partitioning');
 
 const { createStudentRoutes } = require('./routes/students');
 const { createClassRoutes } = require('./routes/classes');
@@ -283,6 +285,13 @@ const otp = createOtpStore({ file: OTP_FILE, ttlMs: CODE_TTL_MS, store, markDirt
    auth باید revocation را داشته باشد تا هنگامِ صدور توکن، jti را در
    دفترِ کاربر ثبت کند (وگرنه «ابطالِ همه» بی‌هدف می‌ماند). */
 const revocation = createRevocation({ store, redis, ttlS: SESSION_TTL_S, markDirty, audit });
+
+/* ── فاز ۲.۴: پارتیشن‌بندیِ وزن‌دار + مسیرِ خواندنِ تفکیک‌شده ─────────
+   دو بخش دارد: (۱) نقشهٔ مسیریابی (شارد/رده/رپلیکا) که امروز تصمیم
+   می‌سازد و پایش می‌شود؛ (۲) نمایهٔ «ردیف‌های هر مدرسه» که همان امروز
+   خوانشِ محدودشده را از O(کل) به O(همان مدرسه) می‌آورد. */
+const partitioning = createPartitioning({ store });
+setPartitioning(partitioning, store); /* میان‌افزارِ scope از این مسیر می‌خواند */
 /* روی همان زنجیره سوار می‌شویم (یک اشتراک)، نه یک init تازه */
 cacheReady.then(() => revocation.init()).then((info) => {
   if(info && info.driver === 'redis') console.log('[Revocation] ابطالِ توزیع‌شدهٔ نشست فعال (Redis)');
@@ -291,10 +300,10 @@ cacheReady.then(() => revocation.init()).then((info) => {
 const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty, otp, revocation });
 /* R97: همهٔ ماژول‌هایِ /api با sendJsonCounting می‌چرخند تا رد‌ها شمرده
    شوند؛ auth استثناست (سقفِ OTP سقفِ خودش را می‌سازد). */
-const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
+const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, partitioning });
 const idor = createIdor({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
-const admin = createAdmin({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, dataDir: path.dirname(STORE_FILE) });
+const admin = createAdmin({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, partitioning, dataDir: path.dirname(STORE_FILE) });
 const sms = createSms({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 const conflicts = createConflicts({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 
@@ -381,6 +390,8 @@ const onRequest = async (req, res) => {
     /* restore فقط {file} می‌گیرد (نامِ حداکثر ۱۲۸ نویسه) — سقفِ 64MBِ پیشین
        بی‌دلیل بود؛ حالا 4KB مثلِ بقیهٔ بدنه‌هایِ کوچک (413 برایِ بیشتر). */
     if(p === '/api/admin/restore' && req.method === 'POST') return await admin.apiRestore(req, res, await readBody(req, 4 * 1024));
+    /* فاز ۲.۴: پایشِ پارتیشن‌بندی (فقط مدیرِ کل، فقط دادهٔ تجمیعی) */
+    if(p === '/api/admin/partition-report' && req.method === 'GET') return admin.apiPartitionReport(req, res);
     if(p === '/api/sms/send' && req.method === 'POST') return await sms.apiSend(req, res, await readBody(req, 32 * 1024));
 
     /* ── Phase 3: RESTful Resource Endpoints (/api/v1/*) ────────── */
@@ -613,4 +624,4 @@ if(require.main === module){
     }
   });
 }
-module.exports = { server, store, audit, isHttps, persistStore, db, redis, cache, revocation };
+module.exports = { server, store, audit, isHttps, persistStore, db, redis, cache, revocation, partitioning };

@@ -23,6 +23,7 @@ function createAdmin(ctx){
   const sessionFrom = ctx.sessionFrom;
   const sendJson = ctx.sendJson;
   const markDirty = ctx.markDirty;
+  const partitioning = ctx.partitioning || null; /* فاز ۲.۴ */
   const dir = path.join(ctx.dataDir, 'backups');
 
   function ensureDir(){
@@ -141,7 +142,29 @@ function createAdmin(ctx){
     return t;
   }
 
-  return { apiBackup, apiRestore, listBackups, backupNow, startAutoBackup };
+  /* ── فاز ۲.۴: گزارشِ پارتیشن‌بندی (پایش) ──────────────────────────
+     فقط مدیرِ کل (همان checkAdminِ بقیهٔ بخش مدیریت) و فقط **دادهٔ
+     تجمیعی**: وزن/شارد/ردهٔ مدرسه و متریک‌های نمایه — هیچ ردیفِ شخصی،
+     هیچ نام یا شماره‌ای. */
+  function apiPartitionReport(req, res){
+    const g = checkAdmin(req, res);
+    if(g.done) return g.done;
+    if(!partitioning) return sendJson(res, 200, { ok: true, enabled: false });
+    const r = partitioning.report(true);
+    return sendJson(res, 200, {
+      ok: true,
+      enabled: true,
+      thresholds: r.thresholds,
+      schools: r.schools,
+      hotCount: r.hotCount,
+      hot: r.hot,
+      balance: r.balance,
+      shards: r.shards,
+      index: r.index,
+    });
+  }
+
+  return { apiBackup, apiRestore, listBackups, backupNow, startAutoBackup, apiPartitionReport };
 
 }
 module.exports = { createAdmin, RETENTION };
