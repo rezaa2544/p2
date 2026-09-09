@@ -1255,3 +1255,11 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 - سورس اپ تمیز بود (تک‌مورد `[type=date]` فقط کامنت)؛ سلکتور داینامیک unquoted هم پیدا نشد.
 - گیت‌ها با jsdom 30.0.1: smoke ‏547/547‏، simulation ‏48/48‏، bell2 ‏8/8‏، client-features ‏12/12‏،
   uiclick ‏4/4‏، attpartial ‏10/10‏، xss ‏23/23‏، server2، API ‏7/7‏، policy ‏10/10‏، edu ‏7/7‏، authz ‏0‏ ✅
+
+## فاز ۰.۱ — نوع ساختاری مدرسه (school_type) با پیامد واقعی — ✅
+- مدل: `school_type` به `schools.fields` در `authz/model.json` + بازتولید `write-perms.json` (هرکدام +۱ خط)؛ مُهر راهنما و cdn-manifest که در HEAD کهنه بودند، قطعی تازه شدند.
+- منطق (`src/js/09-schools.js`): `SCHOOL_TYPE_DEFS` (۹ نوع × ۶ پیامد) + `schoolTypeOf/schoolTypeFeatures/schoolTypeCaps`؛ fallback در `schoolCaps`: صریح > نوعی > CAP_DEFAULTS. سرور (`server/validate.js`): enum نه‌تایی (`bad_enum` برای ناشناخته).
+- UI: سلکت `m_school_type` در مودال مدرسه + flip خودکار چک‌باکس‌ها با تغییر نوع (override دستی ممکن)؛ `school-save` مقدار را ضدعفونی می‌کند (نامعتبر ← governmental)؛ بدون اکشن جدید.
+- تست: `tests/school-type.js` ‏8/8‏ (ST0–ST7) + `tests/school-type-mutations.js` ‏5/5‏ کشته (SM1–SM5)؛ سند: `docs/SCHOOL_TYPE_GUIDE.md`.
+- سازگاری: مدارس قدیمی (بی‌نوع) رفتار قبلی‌شان را نگه می‌دارند (قابلیت صریح/پیش‌فرض)؛ نمایشی governmental.
+- گیت‌ها: smoke ‏547/547‏، authz ‏0‏، secret-scan ‏11/11‏، build --check سبز، authz-model ‏232/232‏، رگرسیون کامل 185 سبز (از جمله ۲ سوئیت تازه)؛ ۱۲ قرمز عیناً در c22d354 هم قرمزند (A/B با worktree — پیشینه، نامرتبط) ✅
