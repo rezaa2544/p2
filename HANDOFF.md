@@ -1246,3 +1246,20 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 - مرج امن (نه ریبیس — شاخه مشترک، بدون force). یافته محیطی: jsdom@30 در این سندباکس require
   نمی‌شود (undici/webidl skew) — گیت‌ها با jsdom@25 اجرا شدند (فقط محیط تست، بدون تغییر ریپو).
 - گیت‌ها: build ‏0‏، authz ‏0‏، smoke ‏547/547‏، entry-gpa ‏19/19‏، dorm-kind ‏17/17‏ ✅
+
+## راستی‌آزمایی B.1 — حضور و غیاب کارکنان (چت ۱، ۲۰/۰۶) — ✅ از قبل کامل
+- یافته: B.1 در فاز ۱ پیاده و در main مرج شده بود (`af48dac`، PR #8) — کد تازه لازم نشد.
+- تطبیق با spec دستور: جدول `staff_attendance` با هر ۷ فیلد + `created/updated_at`؛ مجوز `ins/upd/del` فقط manager/superadmin
+  (`authz/model.json`)؛ enum سروری `present/absent/late` (`server/validate.js:79`)؛ نمای ماهانه (`staffAttMonth`)؛
+  جدایی کامل از حضور دانش‌آموز؛ روت `staffatt` + منوی «کادر مدرسه» (`05-router.js:8`)؛ ثبت در `_order.json`.
+- بازاجرای امروز روی main تمیز: `staffatt2` **10/10** ✅ + `staffatt-mutations` **3/3** ✅؛ smoke ‏547/547‏، authz ‏۰‏، secret-scan ‏۱۱/۱۱‏ ✅
+- `docs/ROADMAP.md` ردیف B.1: 🔴 ← ✅ (طبق قانون ۱ نقشه‌راه).
+
+## راستی‌آزمایی B.2 — دوره‌های آموزش ضمن خدمت + گواهی (چت ۱، ۲۰/۰۶) — ✅ از قبل کامل
+- یافته: B.2 در فاز ۱ پیاده و در main مرج شده بود (`26a748c`، PR #8) — کد تازه لازم نشد.
+- تطبیق با spec دستور: جدول `training_courses` با هر ۷ فیلد + `created/updated_at` (ساعت = عدد مثبت؛ «۲۰ تا ۶۰»
+  در spec جنبهٔ راهنما داشت)؛ مجوز فقط manager/superadmin؛ enum سروری `ongoing/completed`
+  (`server/validate.js:81`)؛ گواهی idempotent با کد صحت‌سنجی `certHash` (`DOR-…`) در لحظهٔ تکمیل + دکمهٔ
+  راستی‌آزمایی؛ روت `training` + منوی «کادر مدرسه»؛ ثبت در `_order.json`.
+- بازاجرای امروز روی main تمیز: `training2` **12/12** ✅ + `training-mutations` **3/3** ✅؛ smoke ‏547/547‏، authz ‏۰‏، secret-scan ‏۱۱/۱۱‏ ✅
+- `docs/ROADMAP.md` ردیف B.2: 🔴 ← ✅ (طبق قانون ۱ نقشه‌راه).
