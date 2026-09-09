@@ -32,7 +32,7 @@ const MUTS = [
     bad: "if(typeof payload.jti !== 'string' || store.__revoked_jti[payload.jti]) return { err: 'revoked' };",
     mut: "if(typeof payload.jti !== 'string' || false) return { err: 'revoked' };",
     name: 'M1 لغوِ جراینِ نشست (jti)',
-    expectFail: 'S11'
+    expectFail: 'S11b'
   },
   {
     file: 'server/sync.js', suite: 'tests/server1.js', heap: 1500,

@@ -245,6 +245,24 @@ async function main(){
     assert(m.status === 401, 'me after logout: ' + m.status);
   });
 
+  /* ── S11b محلِ اِعمالِ ابطال (قرارداد §2.2 بند ۳) ─────────────────
+     ابطال باید در **خودِ بررسیِ توکن** (jwtVerify) رخ دهد، نه اینکه
+     نشست تا لایه‌ی روتر بیاید و آنجا رد شود. تفاوت در کدِ پاسخ دیده
+     می‌شود: بررسیِ توکن ⇒ no_session؛ دروازه‌ی روتر ⇒ revoked.
+     این سنجه محلِ اِعمال را قفل می‌کند؛ جهشِ M1 در
+     tests/server-mutations.js دقیقاً به همین وابسته است (با آمدنِ
+     دروازه‌ی ابطال، برداشتنِ یکی از دو نقطه دیگر در وضعیتِ پاسخ
+     دیده نمی‌شد ⇒ جهش زنده می‌ماند). */
+  test('S11b پس از خروج، کدِ پاسخ همان no_session است (ابطال در بررسیِ توکن)', async () => {
+    const r = await loginAs(superad);
+    const ck = cookieOf(r);
+    await req('POST', '/api/auth/logout', { cookie: ck });
+    const m = await req('GET', '/api/auth/me', { cookie: ck });
+    assert(m.status === 401, 'me after logout: ' + m.status);
+    assert(m.json && m.json.code === 'no_session',
+      'ابطالِ محلی باید no_session بدهد (نه revoked — آن مخصوصِ ابطالِ بین‌نمونه‌ای است): ' + JSON.stringify(m.json));
+  });
+
   /* ── S12 alg:none rejected (contract §2.2) ─────────────────────── */
   test('S12 alg:none token → 401', async () => {
     const b64u = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
