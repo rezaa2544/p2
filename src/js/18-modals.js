@@ -399,11 +399,19 @@ function discModal(d){
   window._edit=d;
 }
 function annModal(a){
-  a=a||{title:'',body:'',audience:'all'};
+  a=a||{title:'',body:'',audience:'all',urgent:0};
+  /* بند D.3: نوعِ پیام — «فوری / بحرانی» فقط برای ناشرانی که اختیارِ
+     ابلاغ دارند (مدیر، اداره، سوپرادمین)؛ دانش‌آموز/دبیر این گزینه را
+     نمی‌بینند تا مفهومِ فوری بی‌ارزش نشود. */
+  const _canUrg=['manager','edu_office','superadmin'].indexOf(S.user.role)>-1;
+  const _urgSel=_canUrg?f('نوع پیام',sel('a_urg',[['0','عادی'],['1','🚨 فوری / بحرانی']],String(a.urgent?1:0)))
+    +'<div class="small muted" style="line-height:2;margin-top:4px">فوری قرمز و 🚨 نشان می‌خورد، '
+    +'در فهرست بالا می‌ماند و اگر پیامکِ مدرسه روشن باشد، بی‌درنگ و پیش از بقیه برای اولیا می‌رود.</div>':'';
   openModal(modalTpl(a.id?'ویرایش اطلاعیه':'انتشار اطلاعیه',
    `${f('عنوان *',inp('a_title',a.title))}
     ${f('مخاطب',sel('a_aud',[['all','همه'],['teacher','دبیران'],['student','دانش‌آموزان'],['parent','اولیا'],['manager','مدیران']],a.audience))}
-    ${f('متن *',`<textarea class="input" id="a_body" rows="5">${esc(a.body||'')}</textarea>`)}`,'ann-save'));
+    ${f('متن *',`<textarea class="input" id="a_body" rows="5">${esc(a.body||'')}</textarea>`)}
+    ${_urgSel}`,'ann-save'));
   window._annEdit=a.id||0;
 }
 function confirmModal(text,act,id){openModal(modalTpl('تأیید حذف',`<p style="margin:0;font-size:15px;font-weight:600;line-height:2.1">${esc(text)}</p>`,act,true));window._delId=id;}

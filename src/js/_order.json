@@ -80,5 +80,6 @@
  "67-theme-picker.js",
  "68-sync-conflicts.js",
  "69-office-scorecard.js",
+ "70-urgent-notice.js",
  "99-theme-loader.js"
 ]

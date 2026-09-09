@@ -1631,9 +1631,24 @@ function coreActions(e, el, id, a, rawId){
    'ann-del'(){const a=byId('announcements',id);askDelete(`اطلاعیه «${a.title}» حذف شود؟`,()=>{remove('announcements',id);toast('اطلاعیه حذف شد','ok');render();});},
    'ann-save'(){ if(needAll([['a_title','عنوان و متن الزامی است'],['a_body','عنوان و متن الزامی است']]))return;
      const data={title:V('a_title'),body:V('a_body'),audience:V('a_aud')};
+     /* بند D.3: نوعِ فوری — فقط ناشرِ مجاز (مدیر/اداره/سوپرادمین) می‌تواند
+        بگذارد؛ اگر انتخابگر نبود (نقشِ دیگر)، مقدار همیشه ۰ می‌ماند. */
+     const _canUrg=['manager','edu_office','superadmin'].indexOf(S.user.role)>-1;
+     data.urgent=(_canUrg&&V('a_urg')==='1')?1:0;
      if(window._annEdit)update('announcements',window._annEdit,data);
      else insert('announcements',Object.assign({school_id:S.user.school_id||null,created_by:S.user.id,created_at:todayISO()},data));
-     closeModal();toast(window._annEdit?'اطلاعیه ویرایش شد':'اطلاعیه منتشر شد','ok');window._annEdit=0;render();},
+     /* فوری با مخاطبِ اولیا/همه ⇒ یک رکوردِ «فوری» در صفِ پیامک (اگر پیامکِ
+        مدرسه روشن باشد؛ وگرنه فقط درون‌سامانه‌ای می‌ماند). */
+     let _q=null;
+     if(data.urgent&&!window._annEdit&&(data.audience==='parent'||data.audience==='all')&&S.user.school_id
+        &&typeof notifyUrgentToSchool==='function'){
+       _q=notifyUrgentToSchool(S.user.school_id, urgentSmsBody(data.title+' — '+data.body),
+                               {source_ref:'ann:'+Date.now()});
+     }
+     closeModal();
+     toast(window._annEdit?'اطلاعیه ویرایش شد':(_q&&_q.created?('اطلاعیهٔ فوری منتشر شد — '+fa(_q.parents)+' ولی در صفِ پیامک')
+       :'اطلاعیه منتشر شد'),'ok');
+     window._annEdit=0;render();},
    /* ── مشاور مدرسه و پیگیری الگوها (دور ۶۳) ── */
    'fu-days'(){S.filters.fu_days=Number(el.dataset.d);render();},
    'counselor-ref'(){

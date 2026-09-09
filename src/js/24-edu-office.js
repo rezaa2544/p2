@@ -1061,8 +1061,11 @@ function officeManagers(office){
  * ارسال اعلان گروهی به مدیران محدوده.
  * برمی‌گرداند: {sent, schools}
  */
-function officeBroadcast(office, title, body){
-  var out = { sent: 0, schools: 0 };
+function officeBroadcast(office, title, body, opts){
+  opts = opts || {};
+  /* D.3: نوعِ فوری/بحرانی در `type` نشان داده می‌شود — فیلدِ تازه‌ای روی
+     مجموعهٔ اعلان‌ها نمی‌آوریم تا مهاجرت لازم نباشد. */
+  var out = { sent: 0, schools: 0, urgent: opts.urgent ? 1 : 0 };
   var mgrs = officeManagers(office);
   if(!mgrs.length) return out;
   var seen = Object.create(null);
@@ -1072,7 +1075,7 @@ function officeBroadcast(office, title, body){
         user_id: m.id,
         school_id: m.school_id,
         /* هم‌شکل با بقیهٔ اعلان‌های سامانه (20-communication-finance.js) */
-        type: 'office',
+        type: opts.urgent ? 'urgent' : 'office',
         title: title,
         body: body,
         link: 'announcements',

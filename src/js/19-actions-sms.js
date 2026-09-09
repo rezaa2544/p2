@@ -107,6 +107,9 @@ function smsActions(e, el, id, a, rawId){
            'با خاموش بودن، هیچ پیامی ساخته نمی‌شود.')
        + row('nf_auto', c.autoSend, '⚠️ ارسال خودکار بدون تأیید مدیر',
            'خطای دبیر مستقیم به خانواده اطلاع داده می‌شود. با احتیاط روشن کنید.')
+       + row('nf_urgauto', (c.urgentAutoSend !== false), '🚨 پیام‌هایِ فوری/بحرانی بی‌درنگ ارسال شوند',
+           'فوری‌ها منتظرِ تأییدِ شما نمی‌مانند و پیش از بقیهٔ صف می‌روند (سقفِ روزانه همچنان پابرجاست). '
+           + 'اگر خاموش شود، فوری فقط قرمز و بالایِ صف است و مانند بقیه تأیید می‌خواهد.')
        + row('nf_abs', c.kinds.absence, 'پیامک غیبت', 'پرتکرارترین پیام.')
        + row('nf_late', c.kinds.late, 'پیامک تأخیر', '')
        + row('nf_exit', c.kinds.exit, 'پیامک خروج زودهنگام از کلاس',
@@ -133,6 +136,8 @@ function smsActions(e, el, id, a, rawId){
        notifySaveSettings(sid, {
          enabled:  $('#nf_on').checked,
          autoSend: nowAuto,
+         /* D.3: ارسالِ بی‌درنگِ فوری‌ها — جدا از autoSendِ عادی */
+         urgentAutoSend: !!$('#nf_urgauto').checked,
          graceMinutes: Math.max(0, Number(V('nf_grace')) || 20),
          dailyCap:     Math.max(1, Number(V('nf_cap'))   || 300),
          bulkWarn:     Math.max(1, Number(V('nf_bulk'))  || 50),

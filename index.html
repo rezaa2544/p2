@@ -5862,12 +5862,13 @@ function viewSchedule(){
    ═══════════════════════════════════════════════════════════════════ */
 function viewAnnouncements(){
   const canEdit=['superadmin','manager','teacher'].includes(S.user.role);
-  const rows=myAnnouncements();
+  /* D.3: فوری‌ها همیشه بالای فهرست — حتی از اطلاعیهٔ سنجاق‌شدهٔ تازه‌تر */
+  const rows=myAnnouncements().slice().sort((a,b)=>(isUrgent(b)?1:0)-(isUrgent(a)?1:0));
   const AUD={all:'همه',teacher:'دبیران',student:'دانش‌آموزان',parent:'اولیا',manager:'مدیران'};
   return `<div class="card"><div class="card-head"><h3>اطلاعیه‌ها</h3>${S.user.role==='superadmin'?`<button class="btn ghost" data-act="ann-broadcast">📢 اطلاعیه سراسری</button> `:''}${canEdit?`<button class="btn" data-act="ann-new">➕ اطلاعیه جدید</button>`:''}</div>
    ${rows.length?`<div class="card-body" style="display:grid;gap:12px">${rows.map(a=>{const au=a.created_by?byId('users',a.created_by):null;
-    return `<div class="card" style="padding:15px;box-shadow:none;background:var(--surface-2)">
-     <div class="row"><b style="font-size:15px">${esc(a.title)}</b><span class="badge b-blue">${AUD[a.audience]||'همه'}</span><div class="spacer"></div>
+    return `<div class="card" style="padding:15px;box-shadow:none;background:${isUrgent(a)?'var(--red-soft)':'var(--surface-2)'};${isUrgent(a)?'border:1px solid var(--red)':''}">
+     <div class="row"><b style="font-size:15px">${esc(a.title)}</b>${isUrgent(a)?urgentBadge():''}<span class="badge b-blue">${AUD[a.audience]||'همه'}</span><div class="spacer"></div>
       <span class="small muted">${jalali(a.created_at)}</span>${canEdit?`<button class="icon-btn" title="ویرایش" data-act="ann-edit" data-id="${escAttr(a.id)}">✏️</button> <button class="icon-btn danger" title="حذف" data-act="ann-del" data-id="${escAttr(a.id)}">🗑️</button>`:''}</div>
      <p style="margin:10px 0 0;line-height:2">${esc(a.body)}</p>${au?`<div class="small muted" style="margin-top:6px">✍️ ${esc(au.full_name)}</div>`:''}</div>`;}).join('')}</div>`
    :empty('📢','اطلاعیه‌ای وجود ندارد',canEdit?'اولین اطلاعیه را منتشر کنید.':'به محض انتشار، اینجا نمایش داده می‌شود.')}</div>`;
@@ -6739,11 +6740,19 @@ function discModal(d){
   window._edit=d;
 }
 function annModal(a){
-  a=a||{title:'',body:'',audience:'all'};
+  a=a||{title:'',body:'',audience:'all',urgent:0};
+  /* بند D.3: نوعِ پیام — «فوری / بحرانی» فقط برای ناشرانی که اختیارِ
+     ابلاغ دارند (مدیر، اداره، سوپرادمین)؛ دانش‌آموز/دبیر این گزینه را
+     نمی‌بینند تا مفهومِ فوری بی‌ارزش نشود. */
+  const _canUrg=['manager','edu_office','superadmin'].indexOf(S.user.role)>-1;
+  const _urgSel=_canUrg?f('نوع پیام',sel('a_urg',[['0','عادی'],['1','🚨 فوری / بحرانی']],String(a.urgent?1:0)))
+    +'<div class="small muted" style="line-height:2;margin-top:4px">فوری قرمز و 🚨 نشان می‌خورد، '
+    +'در فهرست بالا می‌ماند و اگر پیامکِ مدرسه روشن باشد، بی‌درنگ و پیش از بقیه برای اولیا می‌رود.</div>':'';
   openModal(modalTpl(a.id?'ویرایش اطلاعیه':'انتشار اطلاعیه',
    `${f('عنوان *',inp('a_title',a.title))}
     ${f('مخاطب',sel('a_aud',[['all','همه'],['teacher','دبیران'],['student','دانش‌آموزان'],['parent','اولیا'],['manager','مدیران']],a.audience))}
-    ${f('متن *',`<textarea class="input" id="a_body" rows="5">${esc(a.body||'')}</textarea>`)}`,'ann-save'));
+    ${f('متن *',`<textarea class="input" id="a_body" rows="5">${esc(a.body||'')}</textarea>`)}
+    ${_urgSel}`,'ann-save'));
   window._annEdit=a.id||0;
 }
 function confirmModal(text,act,id){openModal(modalTpl('تأیید حذف',`<p style="margin:0;font-size:15px;font-weight:600;line-height:2.1">${esc(text)}</p>`,act,true));window._delId=id;}
@@ -12729,9 +12738,24 @@ function coreActions(e, el, id, a, rawId){
    'ann-del'(){const a=byId('announcements',id);askDelete(`اطلاعیه «${a.title}» حذف شود؟`,()=>{remove('announcements',id);toast('اطلاعیه حذف شد','ok');render();});},
    'ann-save'(){ if(needAll([['a_title','عنوان و متن الزامی است'],['a_body','عنوان و متن الزامی است']]))return;
      const data={title:V('a_title'),body:V('a_body'),audience:V('a_aud')};
+     /* بند D.3: نوعِ فوری — فقط ناشرِ مجاز (مدیر/اداره/سوپرادمین) می‌تواند
+        بگذارد؛ اگر انتخابگر نبود (نقشِ دیگر)، مقدار همیشه ۰ می‌ماند. */
+     const _canUrg=['manager','edu_office','superadmin'].indexOf(S.user.role)>-1;
+     data.urgent=(_canUrg&&V('a_urg')==='1')?1:0;
      if(window._annEdit)update('announcements',window._annEdit,data);
      else insert('announcements',Object.assign({school_id:S.user.school_id||null,created_by:S.user.id,created_at:todayISO()},data));
-     closeModal();toast(window._annEdit?'اطلاعیه ویرایش شد':'اطلاعیه منتشر شد','ok');window._annEdit=0;render();},
+     /* فوری با مخاطبِ اولیا/همه ⇒ یک رکوردِ «فوری» در صفِ پیامک (اگر پیامکِ
+        مدرسه روشن باشد؛ وگرنه فقط درون‌سامانه‌ای می‌ماند). */
+     let _q=null;
+     if(data.urgent&&!window._annEdit&&(data.audience==='parent'||data.audience==='all')&&S.user.school_id
+        &&typeof notifyUrgentToSchool==='function'){
+       _q=notifyUrgentToSchool(S.user.school_id, urgentSmsBody(data.title+' — '+data.body),
+                               {source_ref:'ann:'+Date.now()});
+     }
+     closeModal();
+     toast(window._annEdit?'اطلاعیه ویرایش شد':(_q&&_q.created?('اطلاعیهٔ فوری منتشر شد — '+fa(_q.parents)+' ولی در صفِ پیامک')
+       :'اطلاعیه منتشر شد'),'ok');
+     window._annEdit=0;render();},
    /* ── مشاور مدرسه و پیگیری الگوها (دور ۶۳) ── */
    'fu-days'(){S.filters.fu_days=Number(el.dataset.d);render();},
    'counselor-ref'(){
@@ -13368,6 +13392,9 @@ function smsActions(e, el, id, a, rawId){
            'با خاموش بودن، هیچ پیامی ساخته نمی‌شود.')
        + row('nf_auto', c.autoSend, '⚠️ ارسال خودکار بدون تأیید مدیر',
            'خطای دبیر مستقیم به خانواده اطلاع داده می‌شود. با احتیاط روشن کنید.')
+       + row('nf_urgauto', (c.urgentAutoSend !== false), '🚨 پیام‌هایِ فوری/بحرانی بی‌درنگ ارسال شوند',
+           'فوری‌ها منتظرِ تأییدِ شما نمی‌مانند و پیش از بقیهٔ صف می‌روند (سقفِ روزانه همچنان پابرجاست). '
+           + 'اگر خاموش شود، فوری فقط قرمز و بالایِ صف است و مانند بقیه تأیید می‌خواهد.')
        + row('nf_abs', c.kinds.absence, 'پیامک غیبت', 'پرتکرارترین پیام.')
        + row('nf_late', c.kinds.late, 'پیامک تأخیر', '')
        + row('nf_exit', c.kinds.exit, 'پیامک خروج زودهنگام از کلاس',
@@ -13394,6 +13421,8 @@ function smsActions(e, el, id, a, rawId){
        notifySaveSettings(sid, {
          enabled:  $('#nf_on').checked,
          autoSend: nowAuto,
+         /* D.3: ارسالِ بی‌درنگِ فوری‌ها — جدا از autoSendِ عادی */
+         urgentAutoSend: !!$('#nf_urgauto').checked,
          graceMinutes: Math.max(0, Number(V('nf_grace')) || 20),
          dailyCap:     Math.max(1, Number(V('nf_cap'))   || 300),
          bulkWarn:     Math.max(1, Number(V('nf_bulk'))  || 50),
@@ -14132,7 +14161,7 @@ function rialShort(n){
   return f(n,0);
 }
 const addDaysISO = (iso,n)=>{const d=new Date(iso);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
-const NOTIF_ICON={absence:'🚫',late:'⏰',discipline:'⚖️',discipline_positive:'👍',low_grade:'⚠️',announcement:'📢',leave:'📨',tuition:'🧾',tuition_paid:'✅',tuition_due:'⏳',chat:'💬'};
+const NOTIF_ICON={absence:'🚫',late:'⏰',discipline:'⚖️',discipline_positive:'👍',low_grade:'⚠️',announcement:'📢',leave:'📨',tuition:'🧾',tuition_paid:'✅',tuition_due:'⏳',chat:'💬',urgent:'🚨',office:'📢'};
 const LEAVE_FA={pending:['در انتظار بررسی','b-amber'],approved:['تأیید شده','b-green'],rejected:['رد شده','b-red']};
 const INST_FA={pending:['در انتظار','b-amber'],partial:['جزئی','b-blue'],paid:['پرداخت شده','b-green'],canceled:['بخشوده','b-gray']};
 const PAY_FA={cash:'نقدی',card:'کارت‌خوان',online:'آنلاین',cheque:'چک'};
@@ -14244,7 +14273,8 @@ function generateExtras(){
 }
 
 /* ---------------- کوئری‌های کمکی ---------------- */
-const myNotifs = ()=>db.notifications.filter(n=>n.user_id===S.user.id).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')||b.id-a.id);
+/* D.3: فوری/بحرانی همیشه بالای فهرست است (بعد، تاریخ) */
+const myNotifs = ()=>db.notifications.filter(n=>n.user_id===S.user.id).sort((a,b)=>((isUrgent(b)?1:0)-(isUrgent(a)?1:0))||(b.created_at||'').localeCompare(a.created_at||'')||b.id-a.id);
 const unreadCount = ()=>myNotifs().filter(n=>!n.read).length;
 const myChildren = ()=>db.parent_links.filter(l=>l.parent_id===S.user.id).map(l=>byId('users',l.student_id)).filter(Boolean);
 const schoolScope = c=>{const u=S.user;return u.role==='superadmin'?db[c]:db[c].filter(x=>x.school_id===u.school_id);};
@@ -14399,8 +14429,9 @@ function viewNotifications(){
   const items=myNotifs();
   return `<div class="card"><div class="card-head"><h3>🔔 اعلان‌های من</h3>
     ${items.some(n=>!n.read)?'<button class="btn ghost sm" data-act="notif-readall">خواندن همه</button>':''}</div>
-    ${items.length?items.map(n=>`<div class="row" style="padding:12px 16px;border-bottom:1px solid var(--border);background:${n.read?'#fff':'var(--primary-soft)'};cursor:pointer" data-act="notif-open" data-id="${escAttr(n.id)}">
+    ${items.length?items.map(n=>`<div class="row" style="padding:12px 16px;border-bottom:1px solid var(--border);background:${n.read?(isUrgent(n)?'var(--red-soft)':'#fff'):(isUrgent(n)?'var(--red-soft)':'var(--primary-soft)')};${isUrgent(n)?'border-right:4px solid var(--red)':''};cursor:pointer" data-act="notif-open" data-id="${escAttr(n.id)}">
       <span style="font-size:19px">${NOTIF_ICON[n.type]||'🔔'}</span>
+      ${isUrgent(n)?urgentBadge():''}
       <div style="min-width:0"><b>${esc(n.title)}</b><div class="small muted" style="line-height:1.9">${esc(n.body||'')}</div>
       <div class="small muted" style="opacity:.7">${jalali(n.created_at)}</div></div></div>`).join('')
     :empty('🔕','اعلانی ندارید','رویدادهای مهم مدرسه اینجا نمایش داده می‌شود.')}</div>`;
@@ -14699,6 +14730,8 @@ const F7_ACTIONS = {
     openModal(modalTpl('پیام گروهی به مدیران منطقه',
       f('عنوان',inp('om_title','','text'))
       +f('متن پیام','<textarea class="input" id="om_body" rows="4" placeholder="بخشنامهٔ شمارهٔ … به اطلاع می‌رساند…"></textarea>')
+      +f('نوع پیام',sel('om_urg',[['0','عادی'],['1','🚨 فوری / بحرانی']],'0'))
+      +'<div class="small muted" style="line-height:2;margin-top:4px">فوری در صندوقِ اعلانِ مدیران قرمز و 🚨 نشان می‌خورد و همیشه بالای فهرست می‌ماند.</div>'
       +'<div class="small muted" style="line-height:2">این پیام به‌صورت اعلان درون‌سامانه‌ای برای <b>'
       +fa(n)+' مدیر</b> ارسال می‌شود و اعتبار پیامک مدارس مصرف نمی‌گردد.</div>',
       'office-msg-send'));
@@ -14709,7 +14742,7 @@ const F7_ACTIONS = {
     if(invalid('om_body',b.length<5,'متن پیام باید دست‌کم پنج نویسه باشد'))return;
     const o=(typeof officeOf==='function')?officeOf(S.user):null;
     if(!o){ toast('ادارهٔ شما شناسایی نشد','err'); return; }
-    const r=officeBroadcast(o,t,b);
+    const r=officeBroadcast(o,t,b,{urgent:V('om_urg')==='1'});
     closeModal();
     toast(r.sent?fa(r.sent)+' مدیر از '+fa(r.schools)+' مدرسه اعلان گرفتند':'پیامی ارسال نشد',r.sent?'ok':'err');
     render();
@@ -16893,8 +16926,11 @@ function officeManagers(office){
  * ارسال اعلان گروهی به مدیران محدوده.
  * برمی‌گرداند: {sent, schools}
  */
-function officeBroadcast(office, title, body){
-  var out = { sent: 0, schools: 0 };
+function officeBroadcast(office, title, body, opts){
+  opts = opts || {};
+  /* D.3: نوعِ فوری/بحرانی در `type` نشان داده می‌شود — فیلدِ تازه‌ای روی
+     مجموعهٔ اعلان‌ها نمی‌آوریم تا مهاجرت لازم نباشد. */
+  var out = { sent: 0, schools: 0, urgent: opts.urgent ? 1 : 0 };
   var mgrs = officeManagers(office);
   if(!mgrs.length) return out;
   var seen = Object.create(null);
@@ -16904,7 +16940,7 @@ function officeBroadcast(office, title, body){
         user_id: m.id,
         school_id: m.school_id,
         /* هم‌شکل با بقیهٔ اعلان‌های سامانه (20-communication-finance.js) */
-        type: 'office',
+        type: opts.urgent ? 'urgent' : 'office',
         title: title,
         body: body,
         link: 'announcements',
@@ -20045,7 +20081,12 @@ var NOTIFY_DEFAULTS = {
   /* daily (بند ۱.۷): خلاصهٔ روزانه پیش‌فرض خاموش است — مدیر خودش
      برای هر مدرسه روشن می‌کند؛ با دکمهٔ «خلاصهٔ امروز» هم دستی ساخته
      می‌شود. bus_on/bus_off: رویدادهای سرویس مدرسه (پیش‌فرض روشن). */
-  kinds:        { absence: true, late: true, exit: true, grade: false, event: true, pattern: true, daily: false, bus_on: true, bus_off: true },
+  kinds:        { absence: true, late: true, exit: true, grade: false, event: true, pattern: true, daily: false, bus_on: true, bus_off: true, urgent: true },
+  /* D.3: پیام‌هایِ «فوری/بحرانی» بی‌درنگ و پیش از بقیه بروند (حتی وقتی
+     ارسالِ خودکارِ عادی خاموش است)؟ پیش‌فرض بله — ولی فقط وقتی اصلِ
+     پیامک (`enabled`) روشن باشد؛ در غیر این صورت اصلاً پیامی ساخته
+     نمی‌شود. مدیر می‌تواند از تنظیمات ببندد. */
+  urgentAutoSend: true,
   gradeThreshold: 10
 };
 
@@ -20375,7 +20416,10 @@ function notifyCancelIfFresh(kind, sourceRef, byUserId, opts){
       if(q.school_id !== ((typeof S !== 'undefined' && S.user) ? S.user.school_id : q.school_id)) return;
     } else {
       if(q.created_by !== who) return;                            /* شرط ۳ */
-      if(minutesSince(q.created_at) > cfg.graceMinutes) return;   /* شرط ۲ */
+      /* D.3: مهلتِ فوری فقط وقتی کوتاه است که پیام واقعاً خودکار برود؛
+         اگر قرار است دستی تأیید شود، همان مهلتِ همیشگی برای اصلاحِ
+         اشتباهِ دبیر باقی می‌ماند. */
+      if(minutesSince(q.created_at) > notifyUrgentWindow(cfg, q)) return;   /* شرط ۲ */
     }
     var patch = {
       status: 'cancelled',
@@ -20541,11 +20585,8 @@ function notifyPending(schoolId){
   var out = (db.notify_queue || []).filter(function(q){
     return q.school_id === schoolId && q.status === 'pending';
   });
-  out.sort(function(a, b){
-    var ca = a.correction_of ? 1 : 0, cb = b.correction_of ? 1 : 0;
-    if(ca !== cb) return cb - ca;               /* اصلاحیه اول */
-    return String(b.created_at).localeCompare(String(a.created_at));
-  });
+  /* D.3: فوری ⟵ اصلاحیه ⟵ بقیه (notifyQueueCmp در 70-urgent-notice) */
+  out.sort(notifyQueueCmp);
   return out;
 }
 
@@ -20563,11 +20604,14 @@ var NOTIFY_KIND_FA = {
   correction: ['اصلاحیه', 'b-red'],
   daily:      ['خلاصهٔ روزانه', 'b-green'],
   bus_on:     ['سرویس: سوار', 'b-blue'],
-  bus_off:    ['سرویس: پیاده', 'b-blue']
+  bus_off:    ['سرویس: پیاده', 'b-blue'],
+  urgent:     ['فوری / بحرانی', 'b-red']
 };
 
 /** برچسب یک رکورد صف؛ اصلاحیه بر نوع اصلی مقدم است */
 function notifyKindTag(q){
+  /* D.3: فوری/بحرانی از اصلاحیه هم مقدم‌تر است — بالاترین اولویتِ صف */
+  if(q && q.kind === 'urgent' && !q.correction_of) return urgentBadge();
   var k = q.correction_of ? 'correction' : q.kind;
   var m = NOTIFY_KIND_FA[k] || [k, 'b-gray'];
   return '<span class="badge ' + m[1] + '">' +
@@ -20670,7 +20714,7 @@ function viewNotifyQueue(){
   }) : all;
 
   /* شمار هر دسته برای دکمه‌های فیلتر */
-  var cnt = { absence:0, late:0, grade:0, event:0, pattern:0, daily:0, bus_on:0, bus_off:0, correction:0 };
+  var cnt = { urgent:0, absence:0, late:0, grade:0, event:0, pattern:0, daily:0, bus_on:0, bus_off:0, correction:0 };
   all.forEach(function(q){
     if(q.correction_of) cnt.correction++;
     else if(cnt[q.kind] !== undefined) cnt[q.kind]++;
@@ -20704,7 +20748,8 @@ function viewNotifyQueue(){
   var rows = pend.map(function(q){
     var st = q.student_id ? byId('users', q.student_id) : null;
     var cl = q.class_id ? byId('classes', q.class_id) : null;
-    return '<tr>'
+    var _urg = q.kind === 'urgent';
+    return '<tr' + (_urg ? ' style="background:var(--red-soft)"' : '') + '>'
       + '<td><input type="checkbox" class="nq-pick" value="' + q.id + '"></td>'
       + '<td>' + notifyKindTag(q) + '</td>'
       + '<td>' + esc(st ? st.full_name : '—') + '</td>'
@@ -20719,8 +20764,16 @@ function viewNotifyQueue(){
       + '</td></tr>';
   }).join('');
 
+  /* D.3: شفافیت — مدیر باید بداند فوری‌ها منتظرِ تأییدِ او نمی‌مانند */
+  var urgentBar = (notifyUrgentAutoOn(cfg) && all.some(function(q){ return q.kind === 'urgent' && q.status === 'pending'; }))
+    ? '<div class="notify-auto-bar" style="background:var(--red-soft);color:var(--red)">🚨 پیام‌هایِ فوری/بحرانی '
+      + 'بدون تأییدِ شما و پیش از بقیه ارسال می‌شوند'
+      + '<button class="btn sm ghost" data-act="notify-settings">تغییرِ تنظیم</button></div>'
+    : '';
+
   return head
     + notifyAutoBanner()
+    + urgentBar
     + notifyCapBanner(sid)
     + notifyCostCard(sid, all)
     + '<div class="chips">' + chips.join('') + '</div>'
@@ -22003,11 +22056,16 @@ function notifyEvent(schoolId, text, opts){
  */
 function notifyAutoDue(schoolId){
   var cfg = notifySettings(schoolId);
-  if(!cfg.enabled || !cfg.autoSend) return [];
+  if(!cfg.enabled) return [];
   var out = [];
   (db.notify_queue || []).forEach(function(q){
     if(q.school_id !== schoolId) return;
     if(q.status !== 'pending') return;
+    /* D.3: فوری/بحرانی منتظرِ مهلت و حتی منتظرِ autoSend نمی‌ماند —
+       همان «بدون تأییدِ دستی» (بشرطِ تنظیمِ urgentAutoSend و روشن‌بودنِ
+       اصلِ پیامک؛ سقفِ روزانه در notifyAutoFlush همچنان دیوار است). */
+    if(q.kind === 'urgent' && notifyUrgentAutoOn(cfg)){ out.push(q.id); return; }
+    if(!cfg.autoSend) return;
     if(!q.auto) return;                       /* پیش از روشن‌شدن ساخته شده */
     if(minutesSince(q.created_at) < cfg.graceMinutes) return;
     out.push(q.id);
@@ -22043,7 +22101,8 @@ function notifyAutoFlush(schoolId){
   var pick = [], used = 0;
   ids.sort(function(a, b){
     var qa = byId('notify_queue', a), qb = byId('notify_queue', b);
-    return String(qa && qa.created_at).localeCompare(String(qb && qb.created_at));
+    /* D.3: فوری پیش از بقیه (notifyQueueCmp)، بعد قدیمی‌تر اول */
+    return notifyQueueCmp(qa || {}, qb || {});
   });
   for(var i = 0; i < ids.length; i++){
     var q = byId('notify_queue', ids[i]);
@@ -28969,6 +29028,125 @@ var SC_ACTIONS = {
     w.document.close();
   }
 };
+
+/* ═══════════════════════════════════════════════════════════════════
+   پیامِ «فوری / بحرانی» (بند D.3 از دستورِ جامعِ فرناز)
+   ───────────────────────────────────────────────────────────────────
+   یک نوعِ تازه روی همان مسیرهایِ موجود (نه مسیرِ تازه):
+
+     • اطلاعیه/بخشنامه:  announcements.urgent = ۱  (فیلدِ تازه در مدل)
+     • ابلاغِ گروهیِ اداره: notifications.type = 'urgent'  (بدون فیلدِ تازه)
+     • صفِ پیامکِ اولیا:   notify_queue.kind  = 'urgent'   (بدون فیلدِ تازه)
+
+   🔴 سه قاعدهٔ ثابتِ این ماژول:
+     ۱. **فوری یعنی جلوِ صف، نه دور زدنِ اختیارِ مدیرِ مدرسه به‌طورِ
+        پنهان:** ارسالِ بی‌درنگ فقط وقتی است که خودِ مدرسه پیامک را
+        روشن کرده باشد (`enabled`) و تنظیمِ `urgentAutoSend` را نبسته
+        باشد (پیش‌فرض: روشن). در غیر این صورت فوری فقط «جلوِ صف و
+        قرمز» است و همان تأییدِ همیشگی را می‌خواهد.
+     ۲. **سقفِ روزانه همچنان دیوار است:** فوری هم نمی‌تواند از سقف رد
+        شود — در `notifyAutoFlush` سنجیده می‌شود.
+     ۳. **پنجرهٔ اصلاح فقط وقتی کوتاه می‌شود که پیام واقعاً خودکار
+        برود:** اگر قرار است دستی تأیید شود، همان مهلتِ همیشگی برای
+        اصلاحِ اشتباهِ دبیر باقی می‌ماند.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** بیشینهٔ مهلتِ اصلاح برای پیامِ فوری وقتی خودکار می‌رود (دقیقه) */
+var URGENT_GRACE_MIN = 2;
+/** نامِ نوع در صفِ پیامک و در اعلانِ درون‌سامانه‌ای */
+var URGENT_KIND = 'urgent';
+/** برچسب و رنگِ یکسان در همه‌جا (اطلاعیه، اعلان، صف) */
+var URGENT_BADGE = ['فوری / بحرانی', 'b-red'];
+
+/** آیا این رکورد فوری است؟ (اطلاعیه یا اعلان یا صف) */
+function isUrgent(x){ return !!(x && (x.urgent === 1 || x.urgent === true || x.type === URGENT_KIND || x.kind === URGENT_KIND)); }
+
+/** نشانِ htmlِ فوری — یک شکل در همهٔ صفحه‌ها */
+function urgentBadge(extra){
+  return '<span class="badge ' + URGENT_BADGE[1] + '"' + (extra ? ' ' + extra : '')
+    + '>🚨 ' + URGENT_BADGE[0] + '</span>';
+}
+
+/* ─────────────── اولویت در صف (۰ = فوری، ۱ = اصلاحیه، ۲ = بقیه) ─────────────── */
+function notifyPriority(q){
+  if(!q) return 2;
+  if(q.kind === URGENT_KIND && !q.correction_of) return 0;
+  if(q.correction_of) return 1;
+  return 2;
+}
+/** مقایسه‌کنندهٔ صف: فوری ← اصلاحیه ← بقیه (درون هر دسته: قدیمی‌تر اول) */
+function notifyQueueCmp(a, b){
+  var pa = notifyPriority(a), pb = notifyPriority(b);
+  if(pa !== pb) return pa - pb;
+  return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+}
+
+/* ─────────────── تنظیم: ارسالِ بی‌درنگِ فوری‌ها ─────────────── */
+/**
+ * آیا پیام‌هایِ فوریِ این مدرسه بدون تأییدِ دستی می‌روند؟
+ * پیش‌نیاز: خودِ پیامک روشن باشد (`enabled`) — وگرنه هیچ پیامی ساخته
+ * نمی‌شود و این تنظیم بی‌اثر است.
+ */
+function notifyUrgentAutoOn(cfg){
+  cfg = cfg || {};
+  return !!cfg.enabled && cfg.urgentAutoSend !== false;
+}
+/** مهلتِ مؤثرِ اصلاح برای یک رکوردِ صف */
+function notifyUrgentWindow(cfg, q){
+  var grace = Number(cfg && cfg.graceMinutes);
+  if(isNaN(grace)) grace = 20;
+  if(q && q.kind === URGENT_KIND && notifyUrgentAutoOn(cfg)) return Math.min(grace, URGENT_GRACE_MIN);
+  return grace;
+}
+
+/* ─────────────── تولید: ابلاغِ فوری به اولیای یک مدرسه ─────────────── */
+/**
+ * یک رکوردِ «فوری» در صفِ پیامک برای همهٔ اولیایِ مدرسه می‌سازد.
+ * برمی‌گرداند: {created, parents, reason}
+ *   reason: 'disabled' | 'kind-off' | 'duplicate' | 'no-parent' | …
+ * ⚠️ این تابع پیام نمی‌فرستد — فقط در صف می‌گذارد (هم‌قراردادِ بقیه).
+ */
+function notifyUrgentToSchool(schoolId, body, opts){
+  opts = opts || {};
+  var cfg = notifySettings(schoolId);
+  if(!cfg.enabled) return { created: 0, parents: 0, reason: 'disabled' };
+  if(cfg.kinds[URGENT_KIND] === false) return { created: 0, parents: 0, reason: 'kind-off' };
+  if(!body || String(body).length < 5) return { created: 0, parents: 0, reason: 'short-body' };
+
+  var ref = 'urgent:' + schoolId + ':' + String(opts.source_ref || (todayISO() + ':' + Date.now()));
+  var dup = (db.notify_queue || []).some(function(q){
+    return q.kind === URGENT_KIND && q.source_ref === ref &&
+           q.status !== 'rejected' && q.status !== 'cancelled';
+  });
+  if(dup) return { created: 0, parents: 0, reason: 'duplicate' };
+
+  var ids = [];
+  db.users.filter(function(u){
+    return u.role === 'student' && u.school_id === schoolId && (u.status || 'active') === 'active';
+  }).forEach(function(s){
+    notifyParentsOf(s.id).forEach(function(pid){ if(ids.indexOf(pid) < 0) ids.push(pid); });
+  });
+  if(!ids.length) return { created: 0, parents: 0, reason: 'no-parent' };
+
+  var rec = notifyRequest({
+    school_id: schoolId,
+    kind: URGENT_KIND,
+    parent_ids: ids,
+    body: String(body).slice(0, 300),
+    source_ref: ref
+  });
+  if(!rec) return { created: 0, parents: 0, reason: (notifyRequest && notifyRequest.lastSkip) || 'rejected' };
+  /* فوری مجوزِ ارسالِ خودکار می‌گیرد — حتی اگر autoSend خاموش باشد.
+     بشرطِ همان تنظیمی که مدیر می‌تواند ببندد. */
+  if(notifyUrgentAutoOn(cfg) && !rec.auto) update('notify_queue', rec.id, { auto: 1 });
+  return { created: 1, parents: ids.length, reason: null, id: rec.id };
+}
+
+/** متنِ پیامکِ فوری با نشانِ «فوری» در ابتدا (زیر ۷۰ نویسه می‌ماند) */
+function urgentSmsBody(text){
+  var t = String(text || '').trim();
+  return ('🚨 ' + t).slice(0, 300);
+}
 
 /* ========================================================== */
 /* بارگذاری و سوئیچ تم‌های پویا (بدون وابستگی به سایر ماژول‌ها) */

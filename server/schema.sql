@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS announcements (
   "school_id" INTEGER,
   "title" VARCHAR(255),
   "updated_at" TIMESTAMPTZ,
+  "urgent" SMALLINT NOT NULL DEFAULT 0,
   CONSTRAINT fk_announcements_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
 );
 

@@ -14,7 +14,7 @@ function rialShort(n){
   return f(n,0);
 }
 const addDaysISO = (iso,n)=>{const d=new Date(iso);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
-const NOTIF_ICON={absence:'🚫',late:'⏰',discipline:'⚖️',discipline_positive:'👍',low_grade:'⚠️',announcement:'📢',leave:'📨',tuition:'🧾',tuition_paid:'✅',tuition_due:'⏳',chat:'💬'};
+const NOTIF_ICON={absence:'🚫',late:'⏰',discipline:'⚖️',discipline_positive:'👍',low_grade:'⚠️',announcement:'📢',leave:'📨',tuition:'🧾',tuition_paid:'✅',tuition_due:'⏳',chat:'💬',urgent:'🚨',office:'📢'};
 const LEAVE_FA={pending:['در انتظار بررسی','b-amber'],approved:['تأیید شده','b-green'],rejected:['رد شده','b-red']};
 const INST_FA={pending:['در انتظار','b-amber'],partial:['جزئی','b-blue'],paid:['پرداخت شده','b-green'],canceled:['بخشوده','b-gray']};
 const PAY_FA={cash:'نقدی',card:'کارت‌خوان',online:'آنلاین',cheque:'چک'};
@@ -126,7 +126,8 @@ function generateExtras(){
 }
 
 /* ---------------- کوئری‌های کمکی ---------------- */
-const myNotifs = ()=>db.notifications.filter(n=>n.user_id===S.user.id).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')||b.id-a.id);
+/* D.3: فوری/بحرانی همیشه بالای فهرست است (بعد، تاریخ) */
+const myNotifs = ()=>db.notifications.filter(n=>n.user_id===S.user.id).sort((a,b)=>((isUrgent(b)?1:0)-(isUrgent(a)?1:0))||(b.created_at||'').localeCompare(a.created_at||'')||b.id-a.id);
 const unreadCount = ()=>myNotifs().filter(n=>!n.read).length;
 const myChildren = ()=>db.parent_links.filter(l=>l.parent_id===S.user.id).map(l=>byId('users',l.student_id)).filter(Boolean);
 const schoolScope = c=>{const u=S.user;return u.role==='superadmin'?db[c]:db[c].filter(x=>x.school_id===u.school_id);};
@@ -281,8 +282,9 @@ function viewNotifications(){
   const items=myNotifs();
   return `<div class="card"><div class="card-head"><h3>🔔 اعلان‌های من</h3>
     ${items.some(n=>!n.read)?'<button class="btn ghost sm" data-act="notif-readall">خواندن همه</button>':''}</div>
-    ${items.length?items.map(n=>`<div class="row" style="padding:12px 16px;border-bottom:1px solid var(--border);background:${n.read?'#fff':'var(--primary-soft)'};cursor:pointer" data-act="notif-open" data-id="${escAttr(n.id)}">
+    ${items.length?items.map(n=>`<div class="row" style="padding:12px 16px;border-bottom:1px solid var(--border);background:${n.read?(isUrgent(n)?'var(--red-soft)':'#fff'):(isUrgent(n)?'var(--red-soft)':'var(--primary-soft)')};${isUrgent(n)?'border-right:4px solid var(--red)':''};cursor:pointer" data-act="notif-open" data-id="${escAttr(n.id)}">
       <span style="font-size:19px">${NOTIF_ICON[n.type]||'🔔'}</span>
+      ${isUrgent(n)?urgentBadge():''}
       <div style="min-width:0"><b>${esc(n.title)}</b><div class="small muted" style="line-height:1.9">${esc(n.body||'')}</div>
       <div class="small muted" style="opacity:.7">${jalali(n.created_at)}</div></div></div>`).join('')
     :empty('🔕','اعلانی ندارید','رویدادهای مهم مدرسه اینجا نمایش داده می‌شود.')}</div>`;
@@ -581,6 +583,8 @@ const F7_ACTIONS = {
     openModal(modalTpl('پیام گروهی به مدیران منطقه',
       f('عنوان',inp('om_title','','text'))
       +f('متن پیام','<textarea class="input" id="om_body" rows="4" placeholder="بخشنامهٔ شمارهٔ … به اطلاع می‌رساند…"></textarea>')
+      +f('نوع پیام',sel('om_urg',[['0','عادی'],['1','🚨 فوری / بحرانی']],'0'))
+      +'<div class="small muted" style="line-height:2;margin-top:4px">فوری در صندوقِ اعلانِ مدیران قرمز و 🚨 نشان می‌خورد و همیشه بالای فهرست می‌ماند.</div>'
       +'<div class="small muted" style="line-height:2">این پیام به‌صورت اعلان درون‌سامانه‌ای برای <b>'
       +fa(n)+' مدیر</b> ارسال می‌شود و اعتبار پیامک مدارس مصرف نمی‌گردد.</div>',
       'office-msg-send'));
@@ -591,7 +595,7 @@ const F7_ACTIONS = {
     if(invalid('om_body',b.length<5,'متن پیام باید دست‌کم پنج نویسه باشد'))return;
     const o=(typeof officeOf==='function')?officeOf(S.user):null;
     if(!o){ toast('ادارهٔ شما شناسایی نشد','err'); return; }
-    const r=officeBroadcast(o,t,b);
+    const r=officeBroadcast(o,t,b,{urgent:V('om_urg')==='1'});
     closeModal();
     toast(r.sent?fa(r.sent)+' مدیر از '+fa(r.schools)+' مدرسه اعلان گرفتند':'پیامی ارسال نشد',r.sent?'ok':'err');
     render();
