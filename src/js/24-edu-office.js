@@ -981,6 +981,7 @@ setTimeout(()=>{
   if(typeof generateAssetsDemo==='function') generateAssetsDemo();
   if(typeof generateSidaDemo==='function') generateSidaDemo();
   if(typeof generateSchoolModeDemo==='function') generateSchoolModeDemo();
+  if(typeof generateTeacherEvalDemo==='function') generateTeacherEvalDemo(); /* ب.۳ */
   /* loadLog در ابتدای این بلاک اجرا شده — اینجا فقط بازپخش و همگام‌سازی */
   applyLog(); initSync();
 

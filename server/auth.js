@@ -10,6 +10,8 @@
 const crypto = require('crypto');
 const { validate } = require('./validate');
 const rateLimit = require('./rate-limit'); /* R dist: شمارنده‌های Redis (اتمیک) */
+const revocation = require('./revocation'); /* ابطالِ توزیع‌شدهٔ نشست */
+const gdpr = require('./gdpr'); /* حقِ فراموشی */ /* R dist: شمارنده‌های Redis (اتمیک) */
 
 /* نرمال‌سازیِ سطحی برایِ اعتبارسنجی: trimِ رشته‌ها (کلاینت هم همین را
    می‌فرستد) — کلیدها دست‌نخورده می‌مانند تا unknown_field سنجیده شود. */
@@ -96,20 +98,26 @@ function createAuth(ctx){
     });
     return out;
   }
-  function sessionFrom(req){
+  async function sessionFrom(req){
     const tok = parseCookies(req)[SESSION_NAME];
     if(!tok) return null;
     const v = jwtVerify(tok);
     if(v.err) return null;
     const p = v.payload;
+    /* ابطالِ توزیع‌شده: denylist (logout در نمونهٔ دیگر) + نسخهٔ نشست (revoke-all).
+       بررسیِ محلی (store.__revoked_jti) در jwtVerify دست‌نخورده مانده است. */
+    if(await revocation.isRevoked(p.jti)) return null;
+    const sv = await revocation.getSessionVersion(p.sub);
+    if(sv > 0 && (p.sv || 0) < sv) return null;
     const user = (store.users || []).find(u => u.id === p.sub);
     if(!user || !user.active) return null;
     return Object.assign({ jti: p.jti, token: tok }, user);
   }
-  function setSessionCookie(req, res, user){
+  async function setSessionCookie(req, res, user){
     const jti = 'jt_' + crypto.randomBytes(12).toString('hex');
     const now = Math.floor(Date.now() / 1000);
-    const tok = jwtSign({ sub: user.id, role: user.role, school_id: user.school_id || null, iat: now, exp: now + SESSION_TTL_S, jti });
+    const sv = await revocation.getSessionVersion(user.id);
+    const tok = jwtSign({ sub: user.id, role: user.role, school_id: user.school_id || null, iat: now, exp: now + SESSION_TTL_S, jti, sv });
     const secure = isHttps(req) ? 'Secure; ' : '';
     res.setHeader('Set-Cookie', SESSION_NAME + '=' + tok + '; ' + secure + 'HttpOnly; SameSite=Lax; Path=/; Max-Age=' + SESSION_TTL_S);
   }
@@ -166,7 +174,7 @@ function createAuth(ctx){
        phones must cost the same as known ones (equal-shape responses). */
     const now = Date.now();
     const ip = clientIp(req);
-    otp.reloadIfChanged(); /* R101: sibling instances' writes (shared otp.json) */
+    await otp.reloadIfChanged(); /* R101: sibling instances' writes (shared otp.json) */
     const cd = otp.data.cd;
     if(now - (cd[phone] || 0) < CODE_COOLDOWN_MS) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
     /* R dist: شمارنده‌ها در Redis (fixed-window اتمیک)؛ cooldown/codes در otp.json می‌مانند.
@@ -179,7 +187,7 @@ function createAuth(ctx){
     const rPh = await rateLimit.checkRateLimit({ prefix: 'otp:send:phone', identifier: phone, limit: PHONE_SEND_MAX, windowSeconds: rlw });
     if(!rPh.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
     cd[phone] = now;
-    otp.save(); /* cooldown (+codes پایین‌تر) در otp.json */
+    await otp.save(); /* cooldown (+codes پایین‌تر) — در حالت ردیس فلاش می‌شود */
 
     const user = (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === phone.slice(-10));
     /* S-73-2: ONE response shape whether or not the phone is known —
@@ -193,7 +201,7 @@ function createAuth(ctx){
        R101: 6 digits; stored in otp.json (distributed). */
     const code = String(crypto.randomInt(100000, 1000000));
     otp.data.codes[phone] = { h: hashCode(code, phone), at: now, user_id: user.id, tries: 0 };
-    otp.save();
+    await otp.save();
     audit('send_code', { user_id: user.id, role: user.role, school_id: user.school_id, ip, summary: 'ارسال کد ورود برای کاربر ' + user.id });
     const out = { ok: true, code: 'sent' };
     if(DEMO_CODE_ECHO) out.demo_code = code; /* dev/preview — a real gateway never echoes */
@@ -218,8 +226,8 @@ function createAuth(ctx){
        so it survives restarts and is shared across instances of one store. */
     const now = Date.now();
     const ip = clientIp(req);
-    otp.reloadIfChanged();
-    /* R dist: شمارندهٔ login در Redis (اتمیک)؛ login_fail (تأخیرِ تصاعدی) در otp.json می‌ماند. */
+    await otp.reloadIfChanged();
+    /* R dist: شمارندهٔ login در Redis (اتمیک)؛ login_fail (تأخیرِ تصاعدی) در حالتِ فروشگاه می‌ماند. */
     const rLi = await rateLimit.checkRateLimit({ prefix: 'otp:login:ip', identifier: ip, limit: IP_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });
     if(!rLi.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
 
@@ -230,25 +238,25 @@ function createAuth(ctx){
     const fl = (otp.data.login_fail[phone] = otp.data.login_fail[phone] || { n: 0, until: 0 });
     if(fl.until > Date.now()) await sleep(fl.until - Date.now());
 
-    const fail = (msg) => {
+    const fail = async (msg) => {
       fl.n += 1;
       fl.until = Date.now() + Math.min(1000 * Math.pow(2, Math.max(0, fl.n - 3)), 30000);
       audit('login_fail', { reason: msg, user_id: user ? user.id : null, role: user ? user.role : null, school_id: user ? user.school_id : null, ip, summary: 'ورود ناموفق: ' + msg });
-      otp.save();
+      await otp.save();
       return sendJson(res, 401, { ok: false, code: msg });
     };
 
     /* 1) the code — equal timing whether or not the phone is known.
        R96: hash-only compare (plaintext code is never stored). */
     const rec = otp.data.codes[phone];
-    if(rec && (rec.tries || 0) >= LOGIN_TRIES_MAX) delete otp.data.codes[phone]; /* exhausted — force re-send */
+    if(rec && (rec.tries || 0) >= LOGIN_TRIES_MAX) otp.deleteCode(phone); /* exhausted — force re-send (P0-15: tombstone) */
     const okCode = codeRecOk(rec, code, phone, Date.now());
     if(!okCode){
       /* R96: تلاشِ نادرست هم شمارنده را بالا می‌برد — وگرنه کد
          هرگز «کِلی» نمی‌شد و brute-force فقط با سقفِ IP می‌خورد. */
       if(rec){
         rec.tries = (rec.tries || 0) + 1;
-        if(rec.tries >= LOGIN_TRIES_MAX) delete otp.data.codes[phone];
+        if(rec.tries >= LOGIN_TRIES_MAX) otp.deleteCode(phone); /* P0-15: tombstone */
       }
       checkCodeSafe('dummy', 'dummy');
       return fail('bad_code');
@@ -263,17 +271,17 @@ function createAuth(ctx){
     const school = (store.schools || []).find(s => s.id === user.school_id);
     if(school && !school.active) return fail('school_inactive');
 
-    delete otp.data.codes[phone];
+    otp.deleteCode(phone); /* P0-15: tombstone — مرگِ کد باید به همهٔ نمونه‌ها برسد */
     fl.n = 0; fl.until = 0;
     audit('login_ok', { user_id: user.id, role: user.role, school_id: user.school_id, ip, summary: 'ورود موفق: ' + user.id + ' (' + user.role + ')' });
-    otp.save();
-    setSessionCookie(req, res, user);
+    await otp.save();
+    await setSessionCookie(req, res, user);
     /* never echo nid / full phone back (contract §4) */
     sendJson(res, 200, { ok: true, user: { id: user.id, full_name: user.full_name, role: user.role, school_id: user.school_id || null, phone_masked: phone.slice(0, 4) + '****' + phone.slice(-2) } });
   }
 
   async function apiMe(req, res){
-    const s = sessionFrom(req);
+    const s = await sessionFrom(req);
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
     sendJson(res, 200, { ok: true, user: { id: s.id, full_name: s.full_name, role: s.role, school_id: s.school_id || null } });
   }
@@ -282,7 +290,7 @@ function createAuth(ctx){
     const tok = parseCookies(req)[SESSION_NAME];
     if(tok){
       const v = jwtVerify(tok);
-      if(!v.err){ store.__revoked_jti[v.payload.jti] = Date.now(); audit('logout', { user_id: v.payload.sub, role: v.payload.role, school_id: v.payload.school_id, ip: clientIp(req), summary: 'خروج کاربر: ' + v.payload.sub }); if(ctx.markDirty) ctx.markDirty(); }
+      if(!v.err){ store.__revoked_jti[v.payload.jti] = Date.now(); await revocation.revokeSession(v.payload.jti, Math.max(1, v.payload.exp - Math.floor(Date.now() / 1000))); audit('logout', { user_id: v.payload.sub, role: v.payload.role, school_id: v.payload.school_id, ip: clientIp(req), summary: 'خروج کاربر: ' + v.payload.sub }); if(ctx.markDirty) ctx.markDirty(); }
     }
     res.setHeader('Set-Cookie', SESSION_NAME + '=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
     sendJson(res, 200, { ok: true });
@@ -294,21 +302,12 @@ function createAuth(ctx){
      نشست‌های باز خودبه‌خود باطل می‌شوند: sessionFrom کاربر را پیدا نمی‌کند.
      آدیت فقط user_id/role — هرگز phone/nid (قفلِ قرارداد). */
   async function apiDeleteAccount(req, res){
-    const s = sessionFrom(req);
+    const s = await sessionFrom(req);
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
     const uid = s.id;
-    const purged = {};
-    function purge(coll, pred){
-      const rows = store[coll];
-      if(!Array.isArray(rows)) return;
-      const keep = rows.filter(r => !pred(r));
-      if(keep.length !== rows.length){ purged[coll] = rows.length - keep.length; store[coll] = keep; }
-    }
-    purge('parent_links', r => Number(r.parent_id) === uid || Number(r.student_id) === uid);
-    purge('parent_verifications', r => Number(r.parent_id) === uid);
-    purge('parent_subscriptions', r => Number(r.user_id) === uid);
-    purge('messages', r => Number(r.from_id) === uid);
-    purge('users', r => Number(r.id) === uid);
+    /* حقِ فراموشی (gdpr.js): همان پاک‌سازی + ابطالِ همهٔ نشست‌ها. */
+    const purged = gdpr.eraseUserData(store, uid);
+    await gdpr.eraseUserSessions(uid, s.jti, SESSION_TTL_S);
     audit('account_deleted', { user_id: uid, role: s.role, school_id: s.school_id, purged: purged, ip: clientIp(req), summary: 'حذف کامل حساب کاربری: ' + uid + ' (' + s.role + ')' });
     if(ctx.markDirty) ctx.markDirty();
     /* نشستِ فعلی هم همین حالا می‌میرد (cookie پاک) */

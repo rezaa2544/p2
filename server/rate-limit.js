@@ -18,10 +18,9 @@ function getKey(prefix, identifier) {
 async function checkRateLimit({ prefix, identifier, limit, windowSeconds }) {
   const key = getKey(prefix, identifier);
   try {
-    const current = await redis.incr(key);
-    if (current === 1) {
-      await redis.expire(key, windowSeconds);
-    }
+    /* P0-TTL: اینکریمِنتِ اتمیک با تضمینِ انقضا — کلیدِ یتیمِ بی‌TTL
+       (بازمانده از کرش) همین‌جا خوددرمانی می‌شود؛ نشت حافظه بسته شد. */
+    const current = await redis.incrWithTtl(key, windowSeconds);
     return {
       allowed: current <= limit,
       remaining: Math.max(0, limit - current),

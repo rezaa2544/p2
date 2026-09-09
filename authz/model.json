@@ -1558,8 +1558,16 @@
   },
   "school_years": {
    "fields": [
+    "closed",
+    "closed_at",
     "created_at",
-    "updated_at"
+    "placement",
+    "placement_year",
+    "promoted",
+    "reminded_at",
+    "school_id",
+    "updated_at",
+    "year_code"
    ],
    "ins": [
     "manager",
@@ -1577,6 +1585,7 @@
   "schools": {
    "fields": [
     "active",
+    "active_year_code",
     "address",
     "area_kind",
     "boom_goals",
@@ -1600,6 +1609,7 @@
     "place_rules",
     "province_id",
     "public_goals",
+    "school_type",
     "shift",
     "type",
     "updated_at",
@@ -1896,6 +1906,22 @@
    ],
    "del": [],
    "note": "G.2 farnaz: manager files, superadmin triages"
+  },
+  "teacher_evaluations": {
+   "fields": [
+    "created_at",
+    "criteria",
+    "feedback",
+    "id",
+    "school_id",
+    "teacher_id"
+   ],
+   "ins": [
+    "student",
+    "parent"
+   ],
+   "upd": [],
+   "del": []
   },
   "teacher_notes": {
    "fields": [

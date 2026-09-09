@@ -32,6 +32,12 @@ let memCache = new Map();
 let memExpiry = new Map();
 let subscriptions = new Map(); // channel -> Set of callbacks
 
+const REDIS_URL = process.env.REDIS_URL || null;
+/* P0-13: در تولید، فال‌بک به حافظهٔ محلی ممنوع است — هر نمونه باید به
+   همان کشِ توزیع‌شده وصل باشد؛ وگرنه حالت بین نمونه‌ها واگرا می‌شود
+   (قفل/نرخ/کش هرکدام یک‌جا). بنابراین نبودِ ردیس در تولید = شکستِ ریدی. */
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
 /**
  * Clean expired keys from in-memory fallback
  */
@@ -139,6 +145,15 @@ async function init() {
   activeMode = cfg.mode;
   if (cfg.mode === 'memory' || !Redis) {
     isRedisActive = false;
+    if (IS_PRODUCTION) {
+      /* P0-13: شکستِ ریدی به‌جای فال‌بک — سرور نباید بدونِ کشِ مشترک بالا بیاید */
+      return {
+        ok: false, driver: 'none',
+        error: !REDIS_URL
+          ? 'REDIS_URL is required when NODE_ENV=production (in-memory fallback is dev-only)'
+          : 'ioredis driver is not installed (required when NODE_ENV=production)'
+      };
+    }
     return { ok: true, driver: 'memory', message: 'In-memory cache fallback active (dev only)' };
   }
 
@@ -204,7 +219,7 @@ async function init() {
     isRedisActive = true;
     return { ok: true, driver: 'redis', mode: cfg.mode, message: 'Connected to Redis (' + cfg.mode + ')' };
   } catch (err) {
-    console.warn('[Redis] Connection failed. Using in-memory fallback:', err.message);
+    console.warn('[Redis] Connection failed.', IS_PRODUCTION ? 'Production refuses fallback (readiness fails):' : 'Using in-memory fallback (dev only):', err.message);
     isRedisActive = false;
     if (client) {
       try { client.disconnect(); } catch (e) {}
@@ -213,6 +228,10 @@ async function init() {
     if (subClient) {
       try { subClient.disconnect(); } catch (e) {}
       subClient = null;
+    }
+    if (IS_PRODUCTION) {
+      /* P0-13: در تولید، قطعِ ردیس = شکستِ اتصال؛ فال‌بک به حافظه ممنوع */
+      return { ok: false, driver: 'none', error: 'Redis unreachable in production: ' + err.message };
     }
     return { ok: true, driver: 'memory', mode: 'memory', fallback: true, warning: err.message };
   }
@@ -234,6 +253,14 @@ function getStatus() {
     mode: isRedis() ? activeMode : 'memory',
     ioredisAvailable: !!Redis
   };
+}
+
+/**
+ * P0-13: Readiness gate — در تولید فقط با ردیسِ زنده «آماده» است؛
+ * در توسعه حافظهٔ محلی قابل‌قبول است.
+ */
+function ready() {
+  return IS_PRODUCTION ? isRedis() : true;
 }
 
 /**
@@ -311,6 +338,134 @@ async function del(...keys) {
     memExpiry.delete(k);
   }
   return count;
+}
+
+/**
+ * Set only if key does not exist, with expiry (atomic).
+ * Returns true when this caller created the key.
+ * Used for distributed locks (SET NX EX) and idempotency keys.
+ * @param {string} key
+ * @param {string} value
+ * @param {number} ttlSeconds
+ */
+async function setNX(key, value, ttlSeconds) {
+  if (isRedis()) {
+    try {
+      const reply = await client.set(key, value, 'EX', ttlSeconds, 'NX');
+      return reply === 'OK';
+    } catch (err) {
+      // Redis down — treat as not-set (fail-closed for callers)
+      return false;
+    }
+  }
+
+  // Memory mode is single-process, so check+set is atomic inside one tick
+  cleanExpiredMem();
+  if (memCache.has(key)) return false;
+  memCache.set(key, value);
+  if (ttlSeconds > 0) {
+    memExpiry.set(key, Date.now() + (ttlSeconds * 1000));
+  }
+  return true;
+}
+
+// Lua compare-and-delete: release a lock ONLY if we still own the token.
+const CAS_DEL_SCRIPT = `
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("del", KEYS[1])
+else
+  return 0
+end
+`;
+
+/* P0-TTL: شمارش اتمیک با تضمینِ انقضا — اگر کلید بی‌TTL ماند (مثلاً پس از
+   کرش میانِ اینکِرِمِنت و اکسپایر)، همان لحظه انقضا می‌گیرد؛ هیچ کلیدِ
+   یتیمی دائمی نمی‌ماند. یک رفت‌وبرگشت، اتمیک. */
+const INCR_WITH_TTL_SCRIPT = `
+local v = redis.call("INCR", KEYS[1])
+if redis.call("TTL", KEYS[1]) < 0 then
+  redis.call("EXPIRE", KEYS[1], ARGV[1])
+end
+return v
+`;
+
+/**
+ * Atomic increment that GUARANTEES a TTL on the key.
+ * Self-heals orphaned keys (created by INCR but never expired, e.g. after a
+ * crash between INCR and EXPIRE).
+ * @param {string} key
+ * @param {number} ttlSeconds
+ * @returns {Promise<number>} new counter value
+ */
+async function incrWithTtl(key, ttlSeconds) {
+  if (isRedis()) {
+    try {
+      const reply = await client.eval(INCR_WITH_TTL_SCRIPT, 1, key, ttlSeconds);
+      return Number(reply);
+    } catch (err) {
+      // Fallback to memory
+    }
+  }
+  /* مسیر حافظه از درگاه‌های صادرشده می‌گذرد تا هم‌قراردادِ تست‌ها
+     (مثلاً شبیه‌سازی خرابی با وصله روی incr) باقی بماند. */
+  const v = await module.exports.incr(key);
+  const t = await module.exports.ttl(key);
+  if (t === -1 && ttlSeconds > 0) await module.exports.expire(key, ttlSeconds);
+  return v;
+}
+
+/**
+ * Enumerate keys (SCAN on Redis — never KEYS *; Map walk in memory mode).
+ * @param {string} [match] — glob pattern, e.g. `payesh:*`
+ * @returns {Promise<string[]>}
+ */
+async function scan(match) {
+  if (isRedis()) {
+    const out = [];
+    try {
+      let cursor = '0';
+      const args = match ? ['MATCH', match] : [];
+      do {
+        const reply = await client.scan(cursor, ...args, 'COUNT', 200);
+        cursor = reply[0];
+        for (const k of reply[1]) out.push(k);
+      } while (cursor !== '0');
+      return out;
+    } catch (err) {
+      return out;
+    }
+  }
+  cleanExpiredMem();
+  const keys = Array.from(memCache.keys());
+  if (!match) return keys;
+  const rx = new RegExp('^' + match.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
+  return keys.filter(k => rx.test(k));
+}
+
+/**
+ * Delete the key only if its current value equals `expectedValue` (atomic CAS).
+ * Prevents a lock holder from deleting a lock that expired and was re-taken
+ * by another instance.
+ * @param {string} key
+ * @param {string} expectedValue
+ */
+async function compareAndDelete(key, expectedValue) {
+  if (isRedis()) {
+    try {
+      const reply = await client.eval(CAS_DEL_SCRIPT, 1, key, expectedValue);
+      return Number(reply) === 1;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  cleanExpiredMem();
+  if (memCache.has(key) && memCache.get(key) === expectedValue) {
+    memCache.delete(key);
+    memExpiry.delete(key);
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -483,14 +638,19 @@ module.exports = {
   isRedis,
   getStatus,
   buildRedisConfig,
+  ready,
   get,
   set,
   del,
   incr,
+  incrWithTtl,
   expire,
   ttl,
+  scan,
   publish,
   subscribe,
   ping,
+  setNX,
+  compareAndDelete,
   close
 };

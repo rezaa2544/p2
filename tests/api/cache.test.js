@@ -133,12 +133,26 @@ async function main() {
     assert.strictEqual(after, true);
   });
 
-  await test('CCH6: Distributed Mutex Lock (Singleflight)', async () => {
+  await test('CCH6: Distributed Mutex Lock (atomic acquire, token release)', async () => {
     const lockKey = 'school:sync:1';
-    const acquired = await cache.acquireLock(lockKey, 5);
-    assert.strictEqual(acquired, true);
+    const token = await cache.acquireLock(lockKey, 5);
+    assert.ok(typeof token === 'string' && token.length > 0, 'acquire returns owner token');
 
-    await cache.releaseLock(lockKey);
+    // second acquirer must lose while held
+    const second = await cache.acquireLock(lockKey, 5);
+    assert.strictEqual(second, null);
+
+    // release with wrong token must not free the lock
+    const wrongRelease = await cache.releaseLock(lockKey, 'wrong-token');
+    assert.strictEqual(wrongRelease, false);
+    assert.strictEqual(await cache.acquireLock(lockKey, 5), null, 'lock still held after wrong-token release');
+
+    // owner release succeeds
+    const released = await cache.releaseLock(lockKey, token);
+    assert.strictEqual(released, true);
+    const reAcquire = await cache.acquireLock(lockKey, 5);
+    assert.ok(reAcquire, 'lock free after owner release');
+    await cache.releaseLock(lockKey, reAcquire);
   });
 
   await test('CCH7: Pub/Sub Event Delivery', async () => {

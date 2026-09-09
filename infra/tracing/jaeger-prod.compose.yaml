@@ -1,0 +1,41 @@
+# Jaeger + Elasticsearch برای پروداکشنِ کوچک/متوسط.
+# اجرا:
+#   ELASTIC_PASSWORD='<گذرواژهٔ قوی>' docker compose -f infra/tracing/jaeger-prod.compose.yaml up -d
+# توجه: ترافیکِ داخلِ شبکهٔ compose بدون TLS است (auth دارد)؛ در استقرارِ واقعی
+# پشتِ ingress با TLS بگذارید و UI (۱۶۶۸۶) را بدون احراز باز نکنید.
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.21
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:?ELASTIC_PASSWORD را تعیین کنید}
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    ports:
+      - "127.0.0.1:9200:9200" # فقط لوکال؛ در سرور واقعی همین را هم نبندید
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -u elastic:$${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health?wait_for_status=yellow || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+
+  jaeger:
+    image: jaegertracing/jaeger:2.20.0
+    command: ["--config", "/etc/jaeger/jaeger-prod.yaml"]
+    environment:
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:?ELASTIC_PASSWORD را تعیین کنید}
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./jaeger-prod.yaml:/etc/jaeger/jaeger-prod.yaml:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+volumes:
+  esdata:
