@@ -18,7 +18,10 @@
     "migrate:status": "node scripts/migrate.js status",
     "migrate:create": "node scripts/migrate.js create",
     "scan:secrets": "node tools/secret-scan.js",
-    "rollback": "bash scripts/rollback.sh"
+    "rollback": "bash scripts/rollback.sh",
+    "perf:login": "bash tests/performance/run-benchmarks.sh --scenario 01-login",
+    "perf:attendance": "bash tests/performance/run-benchmarks.sh --scenario 03-attendance",
+    "perf:full": "bash tests/performance/run-benchmarks.sh --scenario all"
   },
   "keywords": [
     "school-management",
