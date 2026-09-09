@@ -41956,4 +41956,11 @@ CREATE INDEX IF NOT EXISTS idx_users_role_school_id ON users (role, school_id, i
 CREATE INDEX IF NOT EXISTS idx_attendance_school_date_id ON attendance (school_id, date DESC, id);
 CREATE INDEX IF NOT EXISTS idx_attendance_student_date_id ON attendance (student_id, date DESC, id);
 
+-- ── Wave 3 part 2 (chat2): keyset indexes for grades/classes lists ──
+-- grades: manager scope + ORDER BY id DESC (keyset); student/parent scope
+CREATE INDEX IF NOT EXISTS idx_grades_school_id_id ON grades (school_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_grades_school_student_id ON grades (school_id, student_id, id DESC);
+-- classes: school scope + grade filter + keyset ORDER BY id ASC
+CREATE INDEX IF NOT EXISTS idx_classes_school_grade_id ON classes (school_id, grade, id);
+
 COMMIT;
