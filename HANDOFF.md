@@ -1022,3 +1022,12 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 - نکتهٔ محیطی: server15-mutations یک‌بار با S0b قرمز شد — علت سرورهایِ یتیم رویِ 9001/9002 بود
   (پس از kill: هر ۶ جهش کشته + بیس‌لاین 40/40 ✅)؛ ربطی به کد نداشت.
 - گیت‌ها: API ‏7/7‏، server1..18 + همهٔ mutations سبز، policy/atts/grds/usu/edu سبز، authz ‏0‏، smoke ‏547/547‏ ✅
+
+## CI — اصلاح jsdom 30 روی شاخه arena (معادل پچ PR #11) — ✅
+- `tests/smoke.js`: ۱۱ سلکتور unquoted (`data-day/data-i/data-act/...`) با escape دولایه (`\\"`) نقل‌قول شد؛
+  `tests/simulation.js`: ۳ مورد مشابه. نکته: در رشتهٔ evalشده (کوتیشن‌دبل) باید `\\"` در فایل باشد وگرنه
+  «missing ) after argument list»؛ در template-literal با querySelector تکی‌کوتیشن، `"` ساده کافی است.
+- `package.json`: jsdom ‏^25‏ → ‏^30.0.1‏ (هم‌تراز main) + engines ‏>=22‏؛ ورک‌فلو: ماتریس → ‏[22.x]‏.
+- سورس اپ تمیز بود (تک‌مورد `[type=date]` فقط کامنت)؛ سلکتور داینامیک unquoted هم پیدا نشد.
+- گیت‌ها با jsdom 30.0.1: smoke ‏547/547‏، simulation ‏48/48‏، bell2 ‏8/8‏، client-features ‏12/12‏،
+  uiclick ‏4/4‏، attpartial ‏10/10‏، xss ‏23/23‏، server2، API ‏7/7‏، policy ‏10/10‏، edu ‏7/7‏، authz ‏0‏ ✅

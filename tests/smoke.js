@@ -2413,12 +2413,12 @@ test('فرم زنگ: هر بازه با ساعت شروع و پایان مشخص
   try {
     const r = JSON.parse(W('(()=>{'
       + 'var days=document.querySelectorAll(".bell-day");'
-      + 'var row0=document.querySelector(".bell-day[data-day=0] .bell-edit-row");'
+      + 'var row0=document.querySelector(".bell-day[data-day=\\"0\\"] .bell-edit-row");'
       + 'var from=row0.querySelector(".bl-from").textContent;'
       + 'var to=row0.querySelector(".bl-to").value;'
-      + 'var copy1=document.querySelectorAll("[data-act=bell-copy-prev][data-day=1]").length;'
-      + 'var copy0=document.querySelectorAll("[data-act=bell-copy-prev][data-day=0]").length;'
-      + 'var startInp=document.querySelectorAll(".bl-start[data-day=0]").length;'
+      + 'var copy1=document.querySelectorAll("[data-act=\\"bell-copy-prev\\"][data-day=\\"1\\"]").length;'
+      + 'var copy0=document.querySelectorAll("[data-act=\\"bell-copy-prev\\"][data-day=\\"0\\"]").length;'
+      + 'var startInp=document.querySelectorAll(".bl-start[data-day=\\"0\\"]").length;'
       + 'return JSON.stringify({days:days.length,from:from,to:to,copy1:copy1,copy0:copy0,startInp:startInp});})()'));
     assert(r.days === 5, 'پنج روز در فرم نیست: ' + r.days);
     assert(/\d{2}:\d{2}/.test(r.from) && /\d{2}:\d{2}/.test(r.to), 'ساعت از/تا روی بازه نیست: ' + JSON.stringify(r));
@@ -2436,7 +2436,7 @@ test('کپی از روز قبل: کلیک واقعی ساعت روز پیش را
   try {
     W('window._edit.days[0]={start:"06:00",slots:[{kind:"lesson",min:25}]}');
     W('bellRenderDay(0)');
-    const clicked = W('(()=>{var b=document.querySelector("[data-act=bell-copy-prev][data-day=1]");'
+    const clicked = W('(()=>{var b=document.querySelector("[data-act=\\"bell-copy-prev\\"][data-day=\\"1\\"]");'
       + 'if(!b)return false;b.click();return true;})()');
     assert(clicked, 'کلیک روی دکمهٔ کپی نشد');
     const d1 = JSON.parse(W('JSON.stringify(window._edit.days[1])'));
@@ -2456,7 +2456,7 @@ test('تغییر ساعت پایان یک بازه، زنجیرهٔ بعدی ر�
   try {
     W('window._edit.days[0]={start:"07:00",slots:[{kind:"lesson",min:45},{kind:"break",min:10},{kind:"lesson",min:45}]}');
     W('bellRenderDay(0)');
-    W('(()=>{var inp=document.querySelector("[data-day=0][data-i=0].bl-to");'
+    W('(()=>{var inp=document.querySelector("[data-day=\\"0\\"][data-i=\\"0\\"].bl-to");'
       + 'inp.value="07:30";inp.dispatchEvent(new Event("change",{bubbles:true}));})()');
     const d0 = JSON.parse(W('JSON.stringify(window._edit.days[0])'));
     assert(d0.slots[0].min === 30, 'مدت زنگ اول اعمال نشد: ' + JSON.stringify(d0.slots));
@@ -2673,7 +2673,7 @@ test('امنیت: نام مخرب در صفت data تگ نمی‌شکند', () =
   try{
     const n = W('(function(){var d=document.createElement("div");' +
       'd.innerHTML=viewAnnouncements();' +
-      'return d.querySelectorAll("[data-act=logout]").length;})()');
+      'return d.querySelectorAll("[data-act=\\"logout\\"]").length;})()');
     assert(n === 0, 'صفت جعلی ساخته شد! تعداد: ' + n);
   } finally { W('Data.delete("announcements",' + aid + ')'); }
 });
