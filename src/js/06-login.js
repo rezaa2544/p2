@@ -73,6 +73,102 @@ function demoAccounts(){
   const s=db.users.find(u=>u.role==='student'), p=db.users.find(u=>u.role==='parent');
   return [db.users.find(u=>u.role==='superadmin'),db.users.find(u=>u.username==='edu_kurdistan'),db.users.find(u=>u.username==='manager1'),db.users.find(u=>u.username==='teacher1_1'),s,db.users.find(u=>u.username==='parent_multi')||p,db.users.find(u=>u.username==='counselor1')].filter(Boolean);
 }
+/* C.3 فرناز — گزارش عمومی مدرسه (بدون نیاز به ورود):
+   فقط آمار تجمیعی + اهداف منتشرشده؛ هیچ دادهٔ شخصی (نام/نمره/حضور) اینجا نیست. */
+/* SEC1 — پروجکشن عمومی: تنها داده‌ای که گزارشِ بدون ورود حق دیدن دارد.
+   خروجی فقط تجمیعی است (نام/شهر مدرسه، شمارش‌ها، تعداد+آخرین تاریخ جلسه،
+   اهداف منتشرشده) — هیچ رکورد کاربر یا جزئیاتی از db بیرون نمی‌آید و
+   رندر فقط از همین آبجکت می‌خواند (پدافند در عمق در برابر نشت آینده). */
+function publicSchools(){
+  return (db.schools||[]).filter(s=>s.active===1||s.active===true);
+}
+function publicReportData(sid){
+  const schools=publicSchools();
+  if(!schools.length)return null;
+  if(!schools.some(s=>s.id===sid))sid=schools[0].id;
+  const sc=byId('schools',sid)||{};
+  const us=(db.users||[]).filter(u=>u.school_id===sid);
+  const mins=(typeof assocMinutes==='function'?assocMinutes(sid):[]).filter(m=>!m.archived);
+  const types=(typeof MIN_TYPES!=='undefined'?MIN_TYPES:[['assoc','انجمن اولیا و مربیان']]);
+  return {
+    sid:sid,
+    name:sc.name||'',
+    level:sc.level||'',
+    city:(byId('counties',sc.county_id)||{}).name||sc.city||'',
+    students:us.filter(u=>u.role==='student').length,
+    teachers:us.filter(u=>u.role==='teacher').length,
+    classes:(db.classes||[]).filter(c=>c.school_id===sid).length,
+    meetings:types.map(([k,label])=>{
+      const ms=mins.filter(m=>(typeof minTypeOf==='function'?minTypeOf(m):'assoc')===k);
+      const last=ms.map(m=>m.meeting_date).filter(Boolean).sort().slice(-1)[0];
+      return {key:k,label:label,n:ms.length,last:last||''};
+    }),
+    /* SEC2: انتشار اهداف فقط با رضایت صریح مدیر (public_goals=1)؛ پیش‌فرض ۰=مخفی */
+    goals:((sc.public_goals===1||sc.public_goals===true)?(sc.boom_goals||'').trim():'')
+  };
+}
+/* بدنهٔ گزارش از پروجکشن (مشترک مسیر محلی و سروری — یک منبع حقیقت برای نما) */
+function publicReportBodyHTML(d){
+  return `
+    <h4 style="margin:0 0 4px">${esc(d.name)}</h4>
+    <div class="small muted" style="margin-bottom:12px">${esc(d.level)}${d.level?' · ':''}${esc(d.city)}</div>
+    <div class="grid g3">
+      ${statCard('🎒',fa(d.students),'دانش‌آموز','blue')}
+      ${statCard('👩‍🏫',fa(d.teachers),'دبیر','green')}
+      ${statCard('🏛️',fa(d.classes),'کلاس','amber')}
+    </div>
+    <div class="sec-title">🤝 جلسه‌ها (به‌تفکیک نوع)</div>
+    <div class="grid g3">${d.meetings.map(t=>`<div class="card stat"><div><b>${fa(t.n)}</b><span>${esc(t.label)}</span><div class="small muted">آخرین: ${esc(t.last?jalali(t.last):'—')}</div></div></div>`).join('')}</div>
+    ${d.goals?`<div class="sec-title">🎯 برنامه ویژه (بوم)</div><div style="white-space:pre-wrap;line-height:2">${esc(d.goals)}</div>`:''}
+    <div class="small muted" style="margin-top:12px">🔑 برای جزئیات بیشتر، از فرم بالا وارد سامانه شوید.</div>`;
+}
+/* SEC3 — حالت سروری: دادهٔ واقعیِ سرور جایگزین محلی می‌شود.
+   آفلاین-اول: اگر سرور نرسید، همان محلی می‌ماند + یادداشت «دادهٔ محلی». */
+let _pubInFlight=false;
+function pubReportEligible(){
+  if(S.user)return false;
+  if(typeof isServerMode==='function'?!isServerMode():DATA_MODE!=='server')return false;
+  return !!document.getElementById('pub-report-body');
+}
+async function pubReportTick(){
+  if(!pubReportEligible())return;
+  if(!document.getElementById('pub-report-body'))return;
+  if(_pubInFlight)return;
+  _pubInFlight=true;
+  try{
+    const sid=Number((S.filters||{}).pubschool)||null;
+    const j=await Api.get('/api/public-report'+(sid?'?school_id='+sid:''));
+    if(!j||j.ok!==true||!j.report)throw new Error('invalid_response');
+    pubReportRenderServer(j.report);
+  }catch(err){
+    const b=document.getElementById('pub-report-body');
+    if(b&&!document.getElementById('pub-local-note'))
+      b.insertAdjacentHTML('beforeend','<div class="small muted" id="pub-local-note" style="margin-top:8px">📡 سرور در دسترس نیست — نمایش دادهٔ محلی.</div>');
+  }finally{_pubInFlight=false;}
+}
+/** پُلِ پس‌رندر — آیدمپتان؛ از render فراخوانی می‌شود (هم‌ردیف syncConflictsEnsure) */
+function pubReportEnsure(){ pubReportTick(); }
+function pubReportRenderServer(r){
+  const b=document.getElementById('pub-report-body');
+  if(!b)return;
+  const types=(typeof MIN_TYPES!=='undefined'?MIN_TYPES:[['assoc','انجمن اولیا و مربیان']]);
+  const byKey={}; (r.meetings||[]).forEach(m=>{byKey[m.key]=m;});
+  b.innerHTML=publicReportBodyHTML({
+    sid:r.sid,name:r.name||'',level:r.level||'',city:r.city||'',
+    students:r.students||0,teachers:r.teachers||0,classes:r.classes||0,
+    meetings:types.map(([k,label])=>{const m=byKey[k]||{};return {key:k,label:label,n:m.n||0,last:m.last||''};}),
+    goals:r.goals||''
+  });
+}
+function publicReportHTML(){
+  const schools=publicSchools();
+  if(!schools.length)return '<div class="pub-report" id="pub-report"><div class="card"><div class="card-body">'+empty('🏫','داده‌ای برای نمایش وجود ندارد','')+'</div></div></div>';
+  const d=publicReportData(Number((S.filters||{}).pubschool)||null);
+  return `<div class="pub-report" id="pub-report"><div class="card"><div class="card-head"><h3>📊 گزارش عمومی مدرسه</h3>
+    <select class="select" data-f="pubschool" style="width:220px">${schools.map(s=>`<option value="${s.id}" ${s.id===d.sid?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
+   <div class="card-body" id="pub-report-body">${publicReportBodyHTML(d)}
+   </div></div></div>`;
+}
 function renderLogin(){
   const accs=demoAccounts();
   return `<div class="login-wrap">
@@ -98,5 +194,6 @@ function renderLogin(){
         <b>${esc(a.full_name)}</b>
         <span class="small muted" style="direction:ltr;margin-inline-start:auto">${esc(a.phone||'—')}</span></div>`).join('')}
      <div class="small muted" style="margin-top:16px;text-align:center"><span data-act="privacy-open" style="text-decoration:underline;cursor:pointer">سیاست حریم خصوصی و امنیت داده</span></div>
-   </div></div></div>`;
+   </div></div></div>
+   ${publicReportHTML()}`;
 }

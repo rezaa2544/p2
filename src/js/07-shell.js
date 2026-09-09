@@ -148,6 +148,7 @@ function _renderRouteInner(){
     case 'meetings':return viewMeetings();
     case 'growth':return viewGrowth();
     case 'notifyqueue':return viewNotifyQueue();
+    case 'tickets':return viewTickets();
     case 'formssms':return viewFormsSms();
     case 'import':return viewImport();
     case 'finance':return viewFinance();
@@ -204,6 +205,10 @@ function _renderRouteInner(){
     case 'cqueue':return viewCounselorQueue();
     case 'followup':return viewFollowup();
     case 'staff':return viewStaff();
+    case 'staffatt':return viewStaffAtt();
+    case 'training':return viewTraining();
+    case 'drills':return viewDrills();
+    case 'donations':return viewDonations();
     default:return viewDashboard();
   }
 }

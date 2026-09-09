@@ -8,6 +8,21 @@
    ═══════════════════════════════════════════════════════════════════ */
 function adminActions(e, el, id, a, rawId){
   return {
+   // support tickets (G.2 farnaz)
+   'ticket-new'(){ ticketModal(); },
+   'ticket-save'(){
+     const title=(V('tk_title')||'').trim(), pri=V('tk_pri'), desc=(V('tk_desc')||'').trim();
+     if(!title){toast('عنوان درخواست الزامی است','err');return;}
+     if(!TICKET_PRI[pri]){toast('اولویت معتبر نیست','err');return;}
+     insert('support_tickets',{school_id:S.user.school_id,title:title,description:desc,priority:pri,status:'open',created_at:todayISO(),updated_at:todayISO()});
+     closeModal(); toast('درخواست پشتیبانی ثبت شد','ok'); render();
+   },
+   'ticket-status'(){
+     const t=byId('support_tickets',id), s=el.dataset.s;
+     if(!t||!TICKET_ST[s]){toast('درخواست معتبر نیست','err');return;}
+     update('support_tickets',t.id,{status:s,updated_at:todayISO()});
+     toast('وضعیت تیکت: '+TICKET_ST[s][0],'ok'); render();
+   },
    // schools
    'school-new'(){schoolModal(null);},
    'school-edit'(){schoolModal(byId('schools',id));},
@@ -51,7 +66,8 @@ function adminActions(e, el, id, a, rawId){
        phone:V('m_phone'),landline:V('m_landline'),
        level:V('m_level'),type:V('m_type')||'عادی',gender:V('m_gender'),shift:V('m_shift')||'صبح',
        capacity:Number(V('m_cap'))||300,
-       active:Number(V('m_active')),address:V('m_addr'),
+       active:Number(V('m_active')),address:V('m_addr'),boom_goals:V('m_boom'),
+       public_goals:($('#m_boom_pub')&&$('#m_boom_pub').checked)?1:0,
        /* دور ۶۵ بند روزهای کاری: روزهای روشن‌شده در مودال */
        work_days:$$('.m-wd:checked').map(x=>Number(x.value)).sort((a,b)=>a-b),
        /* Round 77: excuse window (minutes after bell end) */
@@ -82,6 +98,18 @@ function adminActions(e, el, id, a, rawId){
          national_id:mgNid||makeNid(),phone:mgPhone||'',active:1,title:'مدیر مدرسه',created_at:todayISO()});
      }
      closeModal();toast(s.id?'تغییرات ذخیره شد':'مدرسه و حساب مدیر ثبت شد','ok');render();},
+   /* C.2 فرناز — برنامه ویژه مدرسه (بوم): مدیر فقط مدرسهٔ خودش */
+   'school-boom'(){
+     const sid=Number(id)||S.user.school_id;
+     if(S.user.role!=='superadmin'&&sid!==S.user.school_id){toast('فقط مدرسهٔ خودتان','err');return;}
+     boomModal(sid);},
+   'school-boom-save'(){
+     const sid=Number(window._boomSid)||S.user.school_id;
+     if(S.user.role!=='superadmin'&&sid!==S.user.school_id){toast('فقط مدرسهٔ خودتان','err');return;}
+     const g=V('boom_goals')||'';
+     if(invalid('boom_goals',g.length>2000,'حداکثر ۲۰۰۰ نویسه'))return;
+     update('schools',sid,{boom_goals:g,public_goals:($('#boom_pub')&&$('#boom_pub').checked)?1:0});
+     closeModal();toast('برنامه ویژه ذخیره شد','ok');render();},
    'user-new'(){userModal(null);},
    'user-edit'(){userModal(byId('users',id));},
    'user-toggle'(){const u=byId('users',id);update('users',id,{active:u.active?0:1});render();},

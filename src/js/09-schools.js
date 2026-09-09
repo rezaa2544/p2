@@ -70,7 +70,8 @@ function viewSchools(){
        <select class="select" style="width:150px" data-f="sbranch">${opt(Object.keys(BRANCHES).map(b=>[b,b]),fbr,'همه شاخه‌ها')}</select>`):''}
    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>نام مدرسه</th><th>کد</th><th>مکان</th><th>مقطع</th><th>مدیر</th><th>تلفن ثابت</th><th>دانش‌آموز</th><th>دبیر</th><th>کلاس</th><th>آخرین فعالیت</th><th>وضعیت</th>${isAdmin?'<th></th>':''}</tr></thead><tbody>
     ${(()=>{const _ov=schoolsOverview();const _by={};_ov.forEach(function(r){_by[r.school.id]=r.st;});return rows.map(s=>{const st_=_by[s.id]||{};const us=db.users.filter(u=>u.school_id===s.id);const mg=us.find(u=>u.role==='manager');
-     return `<tr><td><b>${esc(s.name)}</b><div class="small muted">${esc(s.gender||'')}${s.shift&&s.shift!=='صبح'?' · '+esc(s.shift):''}</div></td><td class="muted">${esc(s.code)}</td>
+     const boom=s.boom_goals?String(s.boom_goals).replace(/\s+/g,' '):'';
+     return `<tr><td><b>${esc(s.name)}</b><div class="small muted">${esc(s.gender||'')}${s.shift&&s.shift!=='صبح'?' · '+esc(s.shift):''}</div>${boom?`<div class="small">🎯 ${esc(boom.slice(0,80))}${boom.length>80?'…':''}</div>`:''}</td><td class="muted">${esc(s.code)}</td>
       <td>${esc((byId('provinces',s.province_id)||{}).name||s.city||'—')}<div class="small muted">${esc((byId('counties',s.county_id)||{}).name||'')}${s.district_id?' › '+esc((byId('districts',s.district_id)||{}).name||''):''}</div></td>
       <td><span class="badge b-blue">${esc(s.level||'—')}</span>${s.type&&s.type!=='عادی'?`<div class="small muted" style="margin-top:4px">${esc(s.type)}</div>`:''}${(s.branches||[]).length?`<div class="small muted" style="margin-top:4px">${(s.branches||[]).map(b=>esc(b)).join('، ')}</div>`:''}</td><td class="muted">${esc(mg?mg.full_name:'—')}</td>
       <td class="small muted">${esc(s.landline||'—')}</td>
@@ -82,4 +83,38 @@ function viewSchools(){
         <button class="icon-btn danger" title="حذف" data-act="school-del" data-id="${escAttr(s.id)}">🗑️</button></div></td>`:''}</tr>`;}).join('');})()}
     </tbody></table></div>`:empty('🏫','مدرسه‌ای یافت نشد',q?'نتیجه‌ای برای جستجو نبود.':'اولین مدرسه را تعریف کنید.',isAdmin?'<button class="btn" data-act="school-new">تعریف مدرسه</button>':'')}
    </div>`;
+}
+
+/* ── G.2 فرناز: تیکت پشتیبانی (نسخهٔ سبک) ──
+   مدیر: ثبت + دیدن تیکت‌های مدرسهٔ خود. سوپرادمین: همه + تغییر وضعیت. */
+const TICKET_PRI={low:['کم','b-gray'],med:['متوسط','b-blue'],high:['بالا','b-red']};
+const TICKET_ST={open:['باز','b-amber'],review:['در حال بررسی','b-blue'],closed:['بسته','b-green']};
+function viewTickets(){
+  const u=S.user;
+  if(!u||(u.role!=='manager'&&u.role!=='superadmin'))return `<div class="card">${empty('🎫','دسترسی ندارید','این صفحه فقط برای مدیر مدرسه و سوپرادمین است.')}</div>`;
+  const isSuper=u.role==='superadmin';
+  const rows=(db.support_tickets||[]).filter(t=>isSuper||t.school_id===u.school_id)
+    .sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||'')||b.id-a.id);
+  const stBtns=t=>['open','review','closed'].filter(s=>s!==t.status)
+    .map(s=>`<button class="btn ghost sm" data-act="ticket-status" data-id="${escAttr(t.id)}" data-s="${s}">${TICKET_ST[s][0]}</button>`).join('');
+  return `<div class="card"><div class="card-head"><h3>🎫 تیکت‌های پشتیبانی</h3>
+    <div class="row" style="gap:8px"><span class="badge b-gray">${fa(rows.length)} مورد</span>
+    ${!isSuper?'<button class="btn sm" data-act="ticket-new">➕ درخواست جدید</button>':''}</div></div>
+   ${rows.length?`<div class="table-wrap"><table class="table"><thead><tr>${isSuper?'<th>مدرسه</th>':''}<th>عنوان</th><th>اولویت</th><th>وضعیت</th><th>به‌روزرسانی</th>${isSuper?'<th>تغییر وضعیت</th>':''}</tr></thead><tbody>`
+    +rows.map(t=>{const p=TICKET_PRI[t.priority]||TICKET_PRI.med, s=TICKET_ST[t.status]||TICKET_ST.open;
+      return `<tr>${isSuper?`<td>${esc((byId('schools',t.school_id)||{}).name||'—')}</td>`:''}`
+      +`<td><b>${esc(t.title||'—')}</b>${t.description?`<div class="small muted">${esc(t.description)}</div>`:''}</td>`
+      +`<td><span class="badge ${p[1]}">${p[0]}</span></td><td><span class="badge ${s[1]}">${s[0]}</span></td>`
+      +`<td class="small muted">${jalali(t.updated_at||t.created_at)}</td>`
+      +`${isSuper?`<td><div class="row" style="gap:5px;flex-wrap:nowrap">${stBtns(t)}</div></td>`:''}</tr>`;}).join('')
+    +`</tbody></table></div>`
+   :empty('🎫','تیکتی ثبت نشده',isSuper?'هنوز مدرسه‌ای درخواست پشتیبانی ثبت نکرده است.':'<button class="btn" data-act="ticket-new">ثبت اولین درخواست</button>')}
+  </div>`;
+}
+function ticketModal(){
+  openModal(modalTpl('درخواست پشتیبانی جدید',
+    `${f('عنوان *',inp('tk_title',''))}`
+    +`${f('اولویت',sel('tk_pri',[['low','کم'],['med','متوسط'],['high','بالا']],'med'))}`
+    +`${f('توضیح','<textarea class="input" id="tk_desc" rows="3" placeholder="مشکل را کوتاه شرح دهید…"></textarea>')}`,
+    'ticket-save'));
 }

@@ -72,6 +72,7 @@
     "created_at",
     "id",
     "meeting_date",
+    "meeting_type",
     "resolutions",
     "school_id",
     "updated_at"
@@ -581,6 +582,31 @@
    "ins": [],
    "upd": [],
    "del": []
+  },
+  "donations": {
+   "fields": [
+    "amount",
+    "created_at",
+    "date",
+    "description",
+    "donor_name",
+    "id",
+    "registered_by",
+    "school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
   },
   "dojo_types": {
    "fields": [
@@ -1457,6 +1483,31 @@
     "superadmin"
    ]
   },
+  "safety_drills": {
+   "fields": [
+    "created_at",
+    "date",
+    "id",
+    "notes",
+    "participant_count_staff",
+    "participant_count_students",
+    "registered_by",
+    "school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
   "schedule": {
    "fields": [
     "class_id",
@@ -1528,6 +1579,7 @@
     "active",
     "address",
     "area_kind",
+    "boom_goals",
     "branches",
     "capabilities",
     "capacity",
@@ -1547,6 +1599,7 @@
     "phone",
     "place_rules",
     "province_id",
+    "public_goals",
     "shift",
     "type",
     "updated_at",
@@ -1621,6 +1674,31 @@
     "created_at",
     "id",
     "school_id",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
+  "staff_attendance": {
+   "fields": [
+    "created_at",
+    "date",
+    "id",
+    "note",
+    "registered_by",
+    "school_id",
+    "staff_id",
+    "status",
     "updated_at"
    ],
    "ins": [
@@ -1799,6 +1877,26 @@
     "superadmin"
    ]
   },
+  "support_tickets": {
+   "fields": [
+    "created_at",
+    "description",
+    "id",
+    "priority",
+    "school_id",
+    "status",
+    "title",
+    "updated_at"
+   ],
+   "ins": [
+    "manager"
+   ],
+   "upd": [
+    "superadmin"
+   ],
+   "del": [],
+   "note": "G.2 farnaz: manager files, superadmin triages"
+  },
   "teacher_notes": {
    "fields": [
     "body",
@@ -1870,6 +1968,31 @@
    ],
    "del": [
     "teacher",
+    "superadmin"
+   ]
+  },
+  "training_courses": {
+   "fields": [
+    "created_at",
+    "date",
+    "hours",
+    "id",
+    "school_id",
+    "staff_id",
+    "status",
+    "title",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
     "superadmin"
    ]
   },

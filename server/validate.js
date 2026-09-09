@@ -76,7 +76,9 @@ const STATUS_ENUMS = {
   reexams              : ['scheduled', 'done'],
   scholarships         : ['requested', 'review', 'approved', 'rejected'],
   sms_log              : ['queued', 'sent', 'failed'],
+  staff_attendance     : ['present', 'absent', 'late'],
   teacher_sms          : ['queued', 'sent', 'failed'],
+  training_courses     : ['ongoing', 'completed'],
   transfer_requests    : ['pending', 'approved', 'rejected'],
   tuitions             : ['open', 'partial', 'settled'],
   users                : ['active', 'dropped_out', 'graduated', 'awaiting_transfer'],
@@ -92,7 +94,7 @@ const SCHOOL_GENDERS  = ['پسرانه', 'دخترانه', 'مختلط'];       
    (protPolicy/canOp/manager-only) سرِ جایِ خودش است؛ این‌جا فقط سقفِ طول. */
 
 /* نام‌فیلدهایِ کوتاه (≤۱۰۰) و میانی (≤۲۰۰) */
-const SHORT_FIELDS = ['full_name', 'name', 'title', 'username', 'subject',
+const SHORT_FIELDS = ['full_name', 'name', 'title', 'username', 'subject', 'donor_name', /* B.5 */
   'job', 'degree', 'field', 'code', 'first_name', 'last_name'];
 const MID_FIELDS = ['type', 'link', 'kind', 'token', 'file_key', 'file_name',
   'mime', 'color', 'day', 'month', 'source', 'provider', 'method', 'plan',
@@ -313,12 +315,14 @@ function ruleFor(coll, key){
   }
   /* ۲. enumهایِ تک‌فیلدی */
   if(key === 'stage' && coll === 'preapps') return { type: 'enum', values: STAGE_ENUM };
+  if(key === 'meeting_type' && coll === 'assoc_minutes') return { type: 'enum', values: ['assoc','teachers','students'] }; /* C.1 فرناز */
   if(key === 'kind' && coll === 'dorm_assignments') return { type: 'enum', values: ['full', 'pansion'] }; /* S5 فرناز */
   if(key === 'role'){
     if(coll === 'users') return { type: 'enum', values: USER_ROLES };
     return { type: 'string', max: LIMITS.STR_MID };
   }
   if(key === 'author_role') return { type: 'string', max: LIMITS.STR_MID };
+  if(key === 'boom_goals') return { type: 'string', max: LIMITS.STR_LONG }; /* C.2 فرناز: اهداف سالانه (بوم) */
   if(key === 'gender'){
     if(coll === 'schools') return { type: 'enum', values: SCHOOL_GENDERS };
     return { type: 'string', max: 40 };
@@ -332,6 +336,8 @@ function ruleFor(coll, key){
   /* ۴. شناسه‌ها و شمارنده‌ها */
   if(key === 'id' || /_id$/.test(key)) return { type: 'id' };
   if(key === 'version') return { type: 'integer', min: 1, max: LIMITS.ID_MAX };
+  if(key === 'participant_count_students' || key === 'participant_count_staff') return { type: 'integer', min: 0, max: 100000 }; /* B.4 فرناز: شمار شرکت‌کننده مانور */
+  if(key === 'amount' && coll === 'donations') return { type: 'integer', min: 1, max: 10000000000 }; /* B.5 فرناز: مبلغ کمک (تومانِ صحیحِ مثبت) */
   if(FLAG_FIELDS.indexOf(key) > -1) return { type: 'flag' };
   /* ۵. نمره‌ها */
   if(key === 'score' || key === 'original_score' || key === 'new_score') return { type: 'score' };
