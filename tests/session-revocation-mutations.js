@@ -96,6 +96,13 @@ const MUTS = [
     expectFail: 'R17 با PAYESH_REVOKE_REQUIRE_REDIS=1',
   },
   {
+    file: 'server/index.js', suite: 'tests/session-revocation.js',
+    name: 'M13 /api/health هم تابعِ نشست شود (پایش با کلوچه‌ی مرده ۴۰۱ بگیرد)',
+    bad: "  const REVOKE_FREE = (p === '/api/health' || p === '/api/auth/send-code'",
+    mut: "  const REVOKE_FREE = (false || p === '/api/auth/send-code'",
+    expectFail: 'R18 /api/health با نشستِ باطل‌شده هم ۲۰۰ است',
+  },
+  {
     file: 'server/revocation.js', suite: 'tests/session-revocation.js',
     name: 'M12 خرابیِ Redis هنگامِ ابطال، ابطالِ محلی را هم لغو کند',
     bad: "    const fresh = markLocal(jti, at);",

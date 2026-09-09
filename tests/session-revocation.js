@@ -300,6 +300,14 @@ async function main(){
   chk('R1c دروازه با تکیه بر لایه‌ی دوم هم جلوی نشستِ مرده را می‌گیرد',
       hadLocal && me.status === 401, JSON.stringify({ hadLocal: hadLocal, status: me.status }));
   chk('R1d در این حالت کدِ خطا دقیقاً «revoked» است', (me.json && me.json.code) === 'revoked', JSON.stringify(me.json));
+  /* R18 — پایشِ سلامت نباید تابعِ نشست باشد. برای اینکه این سنجه واقعی
+     باشد باید دقیقاً در همان لحظه‌ای اندازه بگیریم که **فقط لایه‌ی دوم**
+     ابطال را می‌داند: نخستین برخوردِ دروازه، لایه‌ی اول را دوباره علامت
+     می‌زند (خودترمیمی) و از آن پس sessionFrom خودش رد می‌کند. */
+  delete store.__revoked_jti[deadJti];
+  const hc = await req('GET', '/api/health', { cookie: L1.cookie });
+  chk('R18 /api/health با نشستِ باطل‌شده هم ۲۰۰ است (پایش، سامانه را خراب نمی‌بیند)',
+      hc.status === 200, hc.status);
   store.__revoked_jti[deadJti] = Date.now(); /* بازگردانی به حالتِ ابطال‌شده */
 
   /* R12: مسیرهایِ نجات با کلوچه‌ی مرده هم بازند */

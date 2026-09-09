@@ -347,7 +347,10 @@ const onRequest = async (req, res) => {
      استثناها: send-code / login / logout باید همیشه در دسترس باشند،
      حتی با کلوچه‌یِ مرده — وگرنه کاربری که نشستش باطل شده دیگر نمی‌تواند
      دوباره وارد شود (کلوچه را هم نمی‌تواند پاک کند) ⇒ قفلِ ابدی. */
-  const REVOKE_FREE = (p === '/api/auth/send-code' || p === '/api/auth/login' || p === '/api/auth/logout');
+  /* /api/health هم مستثناست: پایشِ سلامت نباید تابعِ وضعیتِ نشست باشد
+     (یک پایش‌گر که کلوچه‌یِ کهنه‌ای بفرستد نباید سامانه را «خراب» ببیند). */
+  const REVOKE_FREE = (p === '/api/health' || p === '/api/auth/send-code'
+                    || p === '/api/auth/login' || p === '/api/auth/logout');
   if(p.indexOf('/api/') === 0 && !REVOKE_FREE){
     const gs = auth.sessionFrom(req);
     if(gs){
