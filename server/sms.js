@@ -67,7 +67,7 @@ function createSms(ctx){
   }
 
   async function apiSend(req, res, body){
-    const s = sessionFrom(req);
+    const s = await sessionFrom(req);
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
     if(s.role !== 'superadmin') return sendJson(res, 403, { ok: false, code: 'forbidden' });
     /* R96 P0-5 — validatorِ صریح (حالا رویِ validate.js سوار است): بدنه =
