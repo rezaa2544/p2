@@ -76,6 +76,7 @@ function schoolModal(s){
       ${f('مقطع',sel('m_level',[['ابتدایی','ابتدایی'],['متوسطه اول','متوسطه اول'],['متوسطه دوم','متوسطه دوم']],s.level))}
       ${f('نوع',sel('m_type',SCHOOL_TYPES.map(x=>[x,x]),s.type||'عادی'))}
       ${f('نوع مدرسه (تعیین‌کنندهٔ ماژول‌ها)',sel('m_school_type',(typeof SCHOOL_TYPE_DEFS!=='undefined'?SCHOOL_TYPE_DEFS.map(d=>[d[0],d[1]]):[['governmental','دولتی معمولی']]),(typeof schoolTypeOf==='function'?schoolTypeOf(s):'governmental')))}
+      ${(function(){var cur=(typeof yearCode==='function')?yearCode():'';var pv=(typeof prevYearCode==='function'&&cur)?prevYearCode(cur):'';var nx=(typeof nextYearCode==='function'&&cur)?nextYearCode(cur):'';var L=(typeof yearCodeTitle==='function')?function(c,tag){return 'سال '+yearCodeTitle(c)+(tag||'')}:function(c){return c};var o=[['','📅 دنبال تقویم (خودکار)']];if(pv)o.push([pv,L(pv)]);if(cur)o.push([cur,L(cur,' (جاری)')]);if(nx)o.push([nx,L(nx)]);return f('سال تحصیلی عملیاتی',sel('m_active_year',o,s.active_year_code||''));})()}
       ${f('جنسیت',sel('m_gender',[['پسرانه','پسرانه'],['دخترانه','دخترانه']],s.gender))}
       ${f('تلفن ثابت مدرسه',inp('m_landline',s.landline||''))}
       ${f('تلفن همراه رابط',inp('m_phone',s.phone||''))}
