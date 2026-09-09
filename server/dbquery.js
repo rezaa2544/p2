@@ -24,7 +24,7 @@
 
 /* Identifier allowlist — the only table/column identifiers this module will
    ever place into SQL. Anything else must be a bound parameter. */
-const ALLOWED_TABLES = new Set(['users', 'attendance', 'enrollments', 'classes', 'schedule', 'parent_links']);
+const ALLOWED_TABLES = new Set(['users', 'attendance', 'enrollments', 'classes', 'schedule', 'parent_links', 'grades', 'subjects']);
 
 function tableName(t) {
   if (!ALLOWED_TABLES.has(t)) throw new Error(`dbquery: table not allowlisted: ${String(t)}`);
@@ -37,7 +37,9 @@ const SUPER_SCOPED = new Set(['superadmin', 'edu_office']);
 /**
  * Compose the final page + count statements from a set of WHERE parts.
  * @param {Object} o
- * @param {string} o.from       e.g. '"users" u'
+ * @param {string} o.from         base table+alias, e.g. '"grades" g' (count source)
+ * @param {string} [o.pageFrom]   page source (base + JOINs) — defaults to `from`
+ * @param {string} [o.selectList] SELECT list for the page — defaults to `*`
  * @param {Array<string>} o.parts
  * @param {Array<*>} o.params
  * @param {string} o.orderBy
@@ -48,9 +50,10 @@ const SUPER_SCOPED = new Set(['superadmin', 'edu_office']);
  */
 function _finalize(o) {
   const whereSql = o.parts.length ? `WHERE ${o.parts.join(' AND ')}` : '';
+  const countFrom = o.countFrom || o.from;
 
-  // COUNT uses only the filter parts (no cursor, no limit)
-  const countSql = `SELECT COUNT(*)::int AS n FROM ${o.from} ${whereSql}`;
+  // COUNT uses only the filter parts, over the base table (no JOINs, no cursor, no limit)
+  const countSql = `SELECT COUNT(*)::int AS n FROM ${countFrom} ${whereSql}`;
   const countParams = o.params.slice();
 
   // Page: add keyset cursor, then LIMIT limit+1 (detect has_more, no OFFSET)
@@ -62,7 +65,9 @@ function _finalize(o) {
   }
   const pageWhere = pageParts.length ? `WHERE ${pageParts.join(' AND ')}` : '';
   pageParams.push(Number(o.limit) + 1);
-  const pageSql = `SELECT * FROM ${o.from} ${pageWhere} ORDER BY ${o.orderBy} LIMIT $${pageParams.length}`;
+  const selectList = o.selectList || '*';
+  const pageFrom = o.pageFrom || o.from;
+  const pageSql = `SELECT ${selectList} FROM ${pageFrom} ${pageWhere} ORDER BY ${o.orderBy} LIMIT $${pageParams.length}`;
 
   return { page: { sql: pageSql, params: pageParams }, count: { sql: countSql, params: countParams } };
 }
@@ -141,6 +146,115 @@ function buildAttendanceList({ user, date, classId, studentId, limit, cursor }) 
 }
 
 /**
+ * grades list — mirrors server/routes/grades.js getGradesList.
+ * Enrichment (subject_name/student_name) is done via allowlisted LEFT JOINs in
+ * the page query; the COUNT stays over the base table (joins are many-to-one).
+ */
+function buildGradesList({ user, studentId, subjectId, classId, limit, cursor }) {
+  const from = '"grades" g';
+  const parts = [];
+  const params = [];
+  const push = (v) => { params.push(v); return params.length; };
+
+  if (user && !SUPER_SCOPED.has(user.role)) {
+    const i = push(Number(user.school_id));
+    parts.push(`(g.school_id IS NULL OR g.school_id = $${i})`);
+  }
+  if (studentId) {
+    const s = push(Number(studentId));
+    parts.push(`g.student_id = $${s}`);
+  }
+  if (subjectId) {
+    const s = push(Number(subjectId));
+    parts.push(`g.subject_id = $${s}`);
+  }
+  if (classId) {
+    const c = push(Number(classId));
+    parts.push(`g.class_id = $${c}`);
+  }
+  if (user && user.role === 'student') {
+    const sid = push(Number(user.id));
+    parts.push(`g.student_id = $${sid}`);
+  } else if (user && user.role === 'parent') {
+    const pid = push(Number(user.id));
+    parts.push(`EXISTS (SELECT 1 FROM "${tableName('parent_links')}" pl WHERE pl.parent_id = $${pid} AND pl.student_id = g.student_id)`);
+  } else if (user && user.role === 'teacher') {
+    const tid = push(Number(user.id));
+    parts.push(
+      `(g.teacher_id = $${tid} OR EXISTS (SELECT 1 FROM "${tableName('schedule')}" s3 WHERE s3.teacher_id = $${tid} AND s3.subject_id = g.subject_id))`
+    );
+  }
+
+  const pageFrom = `"grades" g LEFT JOIN "${tableName('subjects')}" sb ON sb.id = g.subject_id ` +
+    `LEFT JOIN "${tableName('users')}" st ON st.id = g.student_id`;
+  const selectList = 'g.*, sb.name AS subject_name, st.full_name AS student_name';
+
+  return _finalize({
+    from, pageFrom, selectList, parts, params,
+    orderBy: 'g.id DESC', cursorRef: 'g.id', limit, cursor
+  });
+}
+
+/**
+ * classes list — mirrors server/routes/classes.js getClassesList.
+ * student_count via a scalar subquery over enrollments; homeroom teacher name
+ * via a LEFT JOIN on users (the count stays over the base classes table).
+ */
+function buildClassesList({ user, grade, limit, cursor }) {
+  const from = '"classes" c';
+  const parts = [];
+  const params = [];
+  const push = (v) => { params.push(v); return params.length; };
+
+  if (user && !SUPER_SCOPED.has(user.role)) {
+    const i = push(Number(user.school_id));
+    parts.push(`(c.school_id IS NULL OR c.school_id = $${i})`);
+  }
+  if (grade != null && grade !== '') {
+    const g = push(Number(grade));
+    parts.push(`c.grade = $${g}`);
+  }
+
+  const enr = `"${tableName('enrollments')}"`;
+  const pageFrom = `"classes" c LEFT JOIN "${tableName('users')}" tu ON tu.id = c.homeroom_teacher_id`;
+  const selectList = `c.*, (SELECT COUNT(*)::int FROM ${enr} e WHERE e.class_id = c.id) AS student_count, tu.full_name AS homeroom_teacher_name`;
+
+  return _finalize({
+    from, pageFrom, selectList, parts, params,
+    orderBy: 'c.id ASC', cursorRef: 'c.id', limit, cursor
+  });
+}
+
+/**
+ * users list — mirrors server/routes/users.js getUsersList (school scope +
+ * role + free-text search over full_name/national_id/phone). national_id is
+ * only ever a bound ILIKE parameter — never interpolated.
+ */
+function buildUsersList({ user, role, search, limit, cursor }) {
+  const from = '"users" u';
+  const parts = [];
+  const params = [];
+  const push = (v) => { params.push(v); return params.length; };
+
+  if (user && !SUPER_SCOPED.has(user.role)) {
+    const i = push(Number(user.school_id));
+    parts.push(`(u.school_id IS NULL OR u.school_id = $${i})`);
+  }
+  if (role) {
+    const r = push(String(role));
+    parts.push(`u.role = $${r}`);
+  }
+  if (search) {
+    const q = push('%' + String(search).trim() + '%');
+    parts.push(
+      `(CAST(u.full_name AS TEXT) ILIKE $${q} OR CAST(u.national_id AS TEXT) ILIKE $${q} OR CAST(u.phone AS TEXT) ILIKE $${q})`
+    );
+  }
+
+  return _finalize({ from, parts, params, orderBy: 'u.id ASC', cursorRef: 'u.id', limit, cursor });
+}
+
+/**
  * Execute the paged + count statements against a live db and shape the result
  * exactly like server/middleware/pagination.js `paginateArray` (data +
  * pagination{limit,has_more,next_cursor,prev_cursor,count,total}).
@@ -177,6 +291,9 @@ module.exports = {
   buildPagedSql: _finalize,
   buildStudentsList,
   buildAttendanceList,
+  buildGradesList,
+  buildClassesList,
+  buildUsersList,
   executePagedList,
   tableName
 };
