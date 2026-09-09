@@ -148,8 +148,11 @@ function yearHistoryCard(studentId){
   if(!teacherMaySeeHistory(studentId)) return '';
   var rows = studentYearHistory(studentId);
   if(rows.length < 2) return '';        /* یک سال = سابقه نیست */
+  /* فاز ۰.۲ — فیلتر سال (پیش‌فرض: همه؛ رفتار قبلی) */
+  var fy = (typeof S !== 'undefined' && S.filters) ? (S.filters.yhyear || '') : '';
+  var shown = fy ? rows.filter(function(r){ return r.year === fy; }) : rows;
 
-  var body = rows.map(function(r){
+  var body = shown.map(function(r){
     var g = r.grades.avg === null ? '—' : fa(r.grades.avg.toFixed(2));
     var a = r.attendance.rate === null ? '—' : fa(r.attendance.rate) + '٪';
     var tone = r.grades.avg === null ? 'b-gray'
@@ -165,7 +168,11 @@ function yearHistoryCard(studentId){
   }).join('');
 
   return '<div class="card"><div class="card-head"><h3>📚 سابقهٔ سال‌به‌سال</h3>'
-    + '<span class="badge b-gray">' + fa(rows.length) + ' سال</span></div>'
+    + '<span class="badge b-gray">' + fa(rows.length) + ' سال</span>'
+    + '<select class="select" data-f="yhyear" style="max-width:150px">'
+    + '<option value="">همهٔ سال‌ها</option>'
+    + rows.map(function(r){ return '<option value="' + escAttr(r.year) + '"' + (fy === r.year ? ' selected' : '') + '>' + esc(faD(r.year)) + '</option>'; }).join('')
+    + '</select></div>'
     + '<div class="table-wrap"><table class="table"><thead><tr>'
     + '<th>سال تحصیلی</th><th>میانگین نمرات</th><th>درصد حضور</th>'
     + '</tr></thead><tbody>' + body + '</tbody></table></div>'
