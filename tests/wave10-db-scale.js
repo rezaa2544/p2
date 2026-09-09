@@ -106,7 +106,9 @@ const rowsCount = () => [{ n: 100 }];
   db.__setReadPoolForTests(repl);
   prim.calls.length = 0; repl.calls.length = 0;
   await db.persistOp({ uid: 'u1', c: 'grades', t: 'ins', data: { id: 99, score: 19 } });
-  chk('D4a persistOp روی پرماری است (INSERT grades)', prim.calls.some(q => q.indexOf('INSERT INTO grades') === 0), JSON.stringify(prim.calls));
+  /* main's Wave-2 db-engineering quotes identifiers (INSERT INTO "grades"); accept both */
+  const wroteGrades = prim.calls.some(q => /INSERT\s+INTO\s+"?grades"?\s*\(/.test(q));
+  chk('D4a persistOp روی پرماری است (INSERT grades)', wroteGrades, JSON.stringify(prim.calls));
   chk('D4b رپلیکا هیچ نوشتنی نگرفت', repl.calls.length === 0, JSON.stringify(repl.calls));
   /* persistOpsBatch → transaction → pool.connect روی پرماری */
   const r4 = await db.persistOpsBatch([{ uid: 'u2', c: 'grades', t: 'upd', data: { id: 99, score: 20 } }]);
