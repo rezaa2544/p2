@@ -1,0 +1,66 @@
+{
+  "chat": "chat4",
+  "exported_at": "2026-09-10",
+  "branch": "feat/wave20-chat4",
+  "tip_pushed": "8a64e5e",
+  "base": "origin/main @ 84875b4 (PR #36 merged)",
+  "mission": "آرنا ۵ — تضمین کیفیت و قابلیت اطمینان: دروازهٔ انتشار ده‌بندی (ARENA5_QA_RELIABILITY.md §6)",
+  "status": "release-gate executed; code complete and pushed; docs finalization interrupted",
+  "completed": {
+    "wave20": [
+      "0edac5a: پوشش کامل رگرسیون — سابت‌های REST (tests/api/runner.js) به کشفِ run-all-tests.sh اضافه شد",
+      "4c76d71: سند آرنا ۵ (docs/ARENA5_QA_RELIABILITY.md) — هرم تست، نقشهٔ CI، دروازهٔ انتشار ده‌بندی",
+      "1106464: قرارداد تست tests/wave20-arena5.js — 22/22",
+      "PR #45 روی این شاخه باز است"
+    ],
+    "release_gate_fixes_pushed_this_session": [
+      "bc0eba6 merge origin/main (84875b4)",
+      "e0c1a79 fix(deps): jsdom 30→25.0.1 — undici@8 روی Node <22.19 می‌شکند؛ تست دودی بی‌سرصدا رد می‌شد (سبز تهی در پاهای 18/20 ماتریس)",
+      "cbbcca8 fix(qa): الحاق دوندهٔ tests/api با خطِ تازه (نه فاصله)",
+      "fd4611f fix(qa): xss-guard — ممهورکردن ۲ نقطهٔ چاپ رسید (08/72) → 23/23",
+      "92ad500 fix(qa): sync-atomic-batch — شناسه‌های گیومه‌دارِ موج ۲ → 22/22 + جهش‌ها 5/5",
+      "e171e56 fix(qa): server-mutations M1/M14/M15 → 20/20",
+      "295afd5 fix(qa): otp-ratelimit-mutations M3–M6 → 7/7",
+      "66a1101 fix(qa): rate-limit-mutations M2 → 4/4",
+      "70820ba fix(qa): ics — مسابقهٔ ثانیه‌ایِ DTSTAMP",
+      "9bddaa2 ci(pending): پچِ اصلاحِ security.yml (بند ۶)",
+      "1fd377a fix(backup): redis-backup — مسابقهٔ واقعیِ محصول: SIGPIPE میانِ pipefail و grep -q",
+      "16b74cc fix(qa): tracing-performance — انتظارِ فعالِ بوت",
+      "66cb6cf + 2852938 + 6134a63 fix(qa): tracing-integration — مهلت ۴۵ث + تلاشِ دوم + جلوگیری از افتِ اسپن (OTEL_BSP_*)",
+      "8a64e5e fix(qa): run-all-tests — کشفِ سوئیت‌های پورتی با ارجاعِ path.join"
+    ],
+    "gate_results_best_round": {
+      "smoke": "547/547",
+      "check_authz": "exit 0",
+      "build_check": "تطبیق کامل",
+      "secret_scan": "11/11",
+      "full_regression_round6": "green=243 red=0 RUN_ALL_EXIT=0"
+    },
+    "gate_status_summary": "بندهای 1،2،3،4،5،8،9،10 سبز؛ بند 6 مشروط (گردش امنیتی مِین بی‌شغل — پچ آماده در ci/pending)؛ بند 7 معوق (باینری k6 در ساندباکس نیست)"
+  },
+  "pending": [
+    "ادغامِ پچِ ci/pending/security-yml-secrets-if-fix.patch توسط ناظر (نیازمندِ اسکوپِ workflow)",
+    "اجرای واقعیِ سناریوهای k6 روی استیجینگ (بند ۷)",
+    "کامیتِ نهاییِ اسناد: گزارش کامل در پیش‌نویس بود (docs/RELEASE_GATE_STATUS.md) — نتیجه: خیرِ مشروط به دو موردِ بالا؛ هیچ نقصِ کدیِ بازی در محصول نیست",
+    "بازسازیِ استور پیش از هر اجرای تست: اگر تست دودی کمتر از 547 شد → ابتدا `node server/seed.js` و سپس `node build.js` (استور با اجرای تست‌ها تغییر می‌کند و بیلد ممکن است کهنه باشد)"
+  ],
+  "hard_rules": [
+    "smoke 547/547 و check-authz=0 همیشه",
+    "هر تغییر روی شاخهٔ خودش + پوشِ فوری به origin (هیچ تغییرِ محلیِ نمانده)",
+    "هر تغییر یک کامیتِ جدا؛ ادغام فقط با تأیید ناظر",
+    "تست جهش برای هر اصلاحِ منطقِ حساس",
+    "هرگز ویرایشِ مستقیمِ index.html؛ فقط src/",
+    "توکن فقط در ~/.payesh_gh_token"
+  ],
+  "environment_gotchas": [
+    "اسنپ‌شاتِ سندباکس بینِ نوبت‌ها حالتِ گیت را برمی‌گرداند: شاخه/آی‌دنتیتی/اشیای لوکالِ پوش‌نشده پاک می‌شوند → بلافاصله پس از هر گروه کامیت، پوش کن",
+    "هرگز اسکریپتِ در حالِ اجرا (مثل run-all-tests.sh) را ادیت نکن — باش از روی دیسک بازخوانی می‌کند و با خطای نحو می‌میرد",
+    "گره‌ها در ساندباکس: Node 20.20.2؛ jsdom باید 25.0.1 بماند (30 → سقوطِ وندایسی)",
+    "فایلِ تست/استورِ آلوده نتیجه را خراب می‌کند: درختِ تمیز + استورِ تازه (seed) پیش از رگرسیون",
+    "پچ‌های گردشِ کاری (.github/workflows/*) به‌دلیلِ نداشتنِ اسکوپِ workflow قابلِ پوش نیستند → مسیرِ ci/pending/",
+    "security.yml روی مِین از 95677e9 به بعد بی‌شغل رد می‌شود (ارجاعِ secrets.* در if:) — ریشه در پچِ بندِ ۶ توضیح داده شده"
+  ],
+  "supervisor_directive_log": [
+    "اجرای دروازهٔ انتشار کامل شد؛ در میانهٔ نهایی‌سازیِ اسناد، دستورِ توقف و صدورِ همین فایلِ حافظه صادر شد"
+  ]
+}
