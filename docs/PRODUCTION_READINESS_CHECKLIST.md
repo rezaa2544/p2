@@ -59,6 +59,8 @@
 
 ## Observability (رصدپذیری)
 
+> **مرجع معماری یکپارچه:** `docs/OBSERVABILITY.md` (سند اجباری §30 — چت ۶، ۲۰۲۶-۰۹-۱۰): مدل سه سیگنال، جدول متریک‌ها، سیاست آلارم، داشبوردها، اس‌ال‌او و نگهداری.
+
 | معیار §27 | وضعیت | شاهد |
 |---|---|---|
 | metrics | ✅ | `server/metrics.js` (اکسپوزیشنِ صفرِوابستگی، دروازهٔ `METRICS_TOKEN`) — مرجِ ویو ۱۴ در PR #49؛ صحت‌سنجی زنده در سندباکس؛ پایش مستمر: `docs/PRODUCTION_RUNBOOK.md` §۳ |
@@ -118,7 +120,7 @@
 | SECURITY_MODEL.md | ✅ | + چک‌لیست pen-test |
 | NATIONAL_ARCHITECTURE.md | ❌ | نزدیک‌ترین معادل: `ARCHITECTURE.md` / `ARCHITECTURE_DECISIONS.md` (نیازمند هم‌نام‌سازی یا نگاشت رسمی) |
 | DISASTER_RECOVERY.md | ❌ | نزدیک‌ترین معادل: `RELIABILITY_DR_PLAN.md` |
-| OBSERVABILITY.md | ❌ | پراکنده در `TRACING_SETUP.md` و WAF/rate-limit docs |
+| OBSERVABILITY.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — سند یکپارچهٔ معماری رصدپذیری + تست پوشش `tests/observability-doc-coverage.js` |
 | CAPACITY_MODEL.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — مدل رسمی برای طراحی/تست؛ اعداد در انتظار اثبات در Wave 18 |
 | LOAD_TEST_PLAN.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — ورودی رسمی Wave 18؛ جایگزین اعداد اسناد قدیمی (`LOAD_TESTING_PLAN.md`/`PERFORMANCE_TESTING_PLAN.md`) |
 | LOAD_TEST_RESULTS.md | ❌ | اجرا نشده — ذاتاً مسدود به P0-5 |
@@ -126,4 +128,4 @@
 | INCIDENT_RESPONSE.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — ۴ سطح شدت + ۱۰ پلی‌بوک + پوشش‌سنج `tests/incident-playbooks.js` (86/86) |
 | MIGRATION_GUIDE.md | ❌ | پراکنده در `DATABASE_ARCHITECTURE.md`؛ راهنمای مستقل نیست |
 
-**جمع §30:** موجود ۹ از ۱۴ — تکمیل/هم‌نام‌سازی ۵ سند باقی‌مانده (NATIONAL_ARCHITECTURE، DISASTER_RECOVERY، OBSERVABILITY، LOAD_TEST_RESULTS، MIGRATION_GUIDE) پیش‌نیاز نرم Go-Live است.
+**جمع §30:** موجود ۱۰ از ۱۴ — تکمیل/هم‌نام‌سازی ۴ سند باقی‌مانده (NATIONAL_ARCHITECTURE، DISASTER_RECOVERY، LOAD_TEST_RESULTS، MIGRATION_GUIDE) پیش‌نیاز نرم Go-Live است.
