@@ -26,6 +26,7 @@
 - باگِ یافته‌شده در ریویو و رفع‌شده: hydrate روی کلیدهای store می‌چرخید و بوتِ اسکلتی را خالی می‌گذاشت (`9019b90` + تست T0b).
 **گیت‌ها:** wave1-gate ‏35/35‏ · smoke ‏۵۴۷/۵۴۷‏ (در متن گیت) · occ ‏18/18‏ · tombstone ‏25/25‏ · sync-atomic-batch ‏22/22‏ (شاخهٔ legacyِ B8 حفظ شد).
 **push:** تا `aa7fdc9` روی origin است؛ `9019b90` + `c3bf3a1` (+ همین ورودی) فعلاً محلی‌اند — پوش با خطای احراز GitHub شکست خورد (نیازمند reconnect در Arena). به‌همین دلیل `wave1_status` در ruflo هنوز چرخانده نشده (ممنوع تا تکمیلِ push).
+**تکمیل (ادامهٔ سشن):** پس از reconnect، هر ۳ کامیت پوش شد (`aa7fdc9..dd14330`)؛ `wave1_status=completed` در ruflo ثبت شد (رکورد ۱۲، با evidence)؛ PR شمارهٔ ‏48‏ به main باز شد.
 **نکات Wave 2:** سطرهای `sync_conflicts` عمداً cache-side؛ ردیف‌های یتیمِ cross-instance در GDPR؛ پنجرهٔ درخواستِ زودهنگامِ بوت؛ شکلِ NUMERIC از PG رشته برمی‌گردد (فراخوان‌ها Number می‌کنند)؛ `tools/reseed-from-pg.js` برای بازگشتِ اضطراری PG→JSON.
 **بعدی:** reconnect گیت‌هاب → push → چرخاندنِ `wave1_status=completed` در ruflo → PR به main.
 
