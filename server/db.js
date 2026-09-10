@@ -243,6 +243,45 @@ async function queryRead(text, params) {
 
 const PG_READABLE_TABLE = /^[a-z][a-z0-9_]*$/;
 
+/* Wave 1 — relational tables mirrored from server/schema.sql (domain
+   collections only; server_* infra tables are PG-internal and have no store
+   counterpart). Used by hydrateStoreFromPg: ONLY these collections are ever
+   replaced from PG, so a collection without a PG table keeps its store copy. */
+const SCHEMA_TABLES = new Set(('announcements app_settings assets assoc_minutes attendance attendance_modes ' +
+  'bell_schedules bus_events bus_followups bus_locations bus_needs bus_routes bus_students calendar certificates ' +
+  'class_subject_members classes corrections counselor_msgs counselor_refs counties discipline districts donations ' +
+  'dojo_types dorm_assignments dorm_meals dorm_rooms enrollments exam_duties exam_terms exams grades hw_assignments ' +
+  'hw_submissions installments internships leaves lib_books lib_loans makeup_classes meeting_slots messages ' +
+  'nid_conflicts notifications notify_queue nudges offices parent_links parent_subscriptions parent_verifications ' +
+  'pre_enrollments preapps provinces reexams safety_drills schedule scholarships school_years schools sedascores ' +
+  'sms_log sms_wallet staff_attendance student_archive student_transfers subjects subscription_payments substitutions ' +
+  'summer_classes support_tickets teacher_evaluations teacher_notes teacher_schools teacher_sms training_courses ' +
+  'transactions transfer_requests tuition_plans tuitions users vclass_attendance vclass_links vclass_questions ' +
+  'vclass_sessions visitors sync_conflicts').split(' '));
+
+/* Wave 1 — shape parity: persistOp JSON-stringifies object values and the pg
+   driver returns TIMESTAMPTZ as Date, while the store holds ISO strings and
+   live objects. Revive PG rows so PG-reads are byte-shape-identical to the
+   store shape callers already handle. Conservative: only {/[-led strings are
+   parse-attempted (with fallback), Dates become ISO strings. Memory mode is
+   untouched (it returns store references directly, never through here). */
+function reviveValue(v) {
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v.toISOString();
+  if (typeof v === 'string' && (v.charAt(0) === '{' || v.charAt(0) === '[')) {
+    try { return JSON.parse(v); } catch (e) { return v; }
+  }
+  return v;
+}
+function reviveRows(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((r) => {
+    if (!r || typeof r !== 'object') return r;
+    const o = {};
+    for (const k of Object.keys(r)) o[k] = reviveValue(r[k]);
+    return o;
+  });
+}
+
 function isPgReadableTable(name) {
   return typeof name === 'string'
     && PG_READABLE_TABLE.test(name)
@@ -258,7 +297,7 @@ async function readCollection(name) {
   if (typeof name !== 'string' || !name) return [];
   if (isPostgres() && isPgReadableTable(name)) {
     const res = await pool.query(`SELECT * FROM "${name}"`);
-    return Array.isArray(res.rows) ? res.rows : [];
+    return reviveRows(res.rows);
   }
   return (memoryStore && Array.isArray(memoryStore[name])) ? memoryStore[name] : [];
 }
@@ -270,9 +309,42 @@ async function readCollection(name) {
  * @returns {Promise<Object|null>}
  */
 async function readOne(name, id) {
+  /* Wave 1 — indexed single-row read when PG is live (PK lookup instead of
+     full-table scan); memory mode keeps the exact legacy find semantics. */
+  if (isPostgres() && isPgReadableTable(name)) {
+    const n = Number(id);
+    if (!Number.isFinite(n)) return null;
+    const res = await pool.query(`SELECT * FROM "${name}" WHERE id = $1 LIMIT 1`, [n]);
+    const rows = reviveRows(res.rows);
+    return rows.length ? rows[0] : null;
+  }
   const rows = await readCollection(name);
   const n = Number(id);
   return rows.find((r) => r && Number(r.id) === n) || null;
+}
+
+/**
+ * Wave 1 — boot hydration: replace store domain collections with PG truth.
+ * Only SCHEMA_TABLES members are ever touched, so a collection without a PG
+ * table keeps its store copy. Per-table try/catch: one bad table warns and
+ * keeps going (single reads still route to PG when live, so boot stays safe).
+ * @param {Object} store - live in-memory store object (mutated in place)
+ * @returns {Promise<{ok:boolean, hydrated:number, skipped:Array}>}
+ */
+async function hydrateStoreFromPg(store) {
+  const out = { ok: true, hydrated: 0, skipped: [] };
+  if (!store || typeof store !== 'object') return out;
+  for (const key of Object.keys(store)) {
+    if (!isPgReadableTable(key) || !SCHEMA_TABLES.has(key)) continue;
+    try {
+      store[key] = await readCollection(key);
+      out.hydrated++;
+    } catch (e) {
+      out.skipped.push(key);
+      console.warn('[DB] Hydration skipped for ' + key + ':', e.message);
+    }
+  }
+  return out;
 }
 
 /**
@@ -563,6 +635,7 @@ module.exports = {
   queryRead,
   readCollection,
   readOne,
+  hydrateStoreFromPg,
   ping,
   transaction,
   persistOp,
