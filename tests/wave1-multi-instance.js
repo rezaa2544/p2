@@ -110,6 +110,17 @@ async function apiSyncOf(inst, ops) {
   db.__setPoolForTests(pool);
   chk('T0 تزریقِ pool: حالتِ PG فعال است', db.isPostgres() === true);
 
+  /* T0b: بوتِ اسکلتی — store بدونِ کلیدِ دامین از PG پر می‌شود (نه خالی می‌ماند).
+     روی جدولِ خالی: کلید ساخته + آرایهٔ خالی؛ سپس یک ردیف می‌کاریم و دوباره. */
+  const skel = { __processed_uids: {} };
+  await pool.query(`INSERT INTO "announcements" (id, school_id, title, version) VALUES (900, 1, 'skel', 1)`);
+  const h0 = await db.hydrateStoreFromPg(skel);
+  chk('T0b بوتِ اسکلتی: کلیدِ دامین از PG ساخته شد',
+    Array.isArray(skel.announcements) && skel.announcements.some(r => r.id === 900)
+    && !('outbox' in skel) && h0.skipped.indexOf('announcements') === -1,
+    'hydrated=' + h0.hydrated);
+  await pool.query(`DELETE FROM "announcements" WHERE id = 900`);
+
   const A = makeInstance('A');
   const B = makeInstance('B');
   const pgRows = async (t) => (await pool.query(`SELECT * FROM "${t}"`)).rows;
