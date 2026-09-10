@@ -1,9 +1,19 @@
 {
   "schema": "ruflo-memory-export/v1",
-  "exportedAt": "2026-09-10T08:14:52.632Z",
+  "exportedAt": "2026-09-10T08:21:44.435Z",
   "namespace": null,
-  "count": 10,
+  "count": 11,
   "entries": [
+    {
+      "key": "production_readiness_status",
+      "namespace": "default",
+      "value": "checklist-created",
+      "createdAt": 1789028503558,
+      "updatedAt": 1789028503558,
+      "accessCount": 0,
+      "hasEmbedding": true,
+      "size": 17
+    },
     {
       "key": "wave13_status",
       "namespace": "default",
