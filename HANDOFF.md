@@ -14,7 +14,61 @@
 > همهٔ کارها اعمال می‌شود.
 
 
-## چت ۴: ویو ۲۰ — آرنا ۵ (تضمین کیفیت و قابلیت اطمینان) — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
+## چت ۲: Wave 3 — راستی‌آزماییِ زنده روی PostgreSQL واقعی + سه باگ — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — انجام ✅
+
+**شاخه:** `arena/01a0867f-p2` (ریبیس‌شده روی `origin/main` @ `351bd10`؛ PR #46)
+
+**چه شد:** ویو ۳ از قبل پیاده بود (چت ۲، PR #39) و تنها قیدِ بازِ سندش
+`EXPLAIN ANALYZE` روی PG زنده بود. سندباکس PostgreSQL نداشت و `apt` به مخزن
+نرسید، پس یک کلاسترِ **واقعیِ** PostgreSQL ۱۸.۴ از راهِ `embedded-postgres`
+بیرون از ریپو بالا آورده شد، `migrations/` رویش اعمال شد و ۲.۱۹M ردیف
+(۶۰k دانش‌آموز · ۷۲۰k نمره · ۱.۲M حضور) بارگذاری گردید. هر ۱۳ کوئری از
+خودِ builderهای `server/dbquery.js` ساخته و `EXPLAIN (ANALYZE, BUFFERS)`
+اجرا شد. نتیجه در `docs/WAVE3_QUERY_PERFORMANCE.md`.
+
+**چهار یافته:**
+1. **🔴 cursor جدولِ `attendance` ترکیبی نبود** — `ORDER BY date DESC, id ASC`
+   با cursorِ `id > $n`. روی ۱۲۰٬۰۰۰ ردیفِ در محدوده، پیمایشِ `next_cursor`
+   بعد از ۱۳ صفحه می‌ایستاد و **۹۵٪ داده هرگز برنمی‌گشت** (۶٬۰۰۰ از ۱۲۰٬۰۰۰).
+   **اصلاح شد:** `compositeCursorKey()` با cursorِ `"<date>|<id>"` و
+   `((date < $1) OR (date = $2 AND id > $3))`. بعد از اصلاح: ۲۴۰ صفحه،
+   ۱۲۰٬۰۰۰ ردیف، **۰ گم‌شده**. cursor عددیِ قدیمی سازگار می‌ماند.
+2. **🔴 `migrations/001_initial.sql` روی دیتابیسِ خالی اصلاً اجرا نمی‌شد** —
+   ۴۹ ارجاعِ FK به `schools` پیش از `CREATE TABLE schools` (خطِ ۱۰۸۹)، و چون
+   کلِ فایل یک تراکنش است: `relation "schools" does not exist`. همین برای
+   `subjects` و `users`. **یعنی migration هرگز روی PG واقعی اجرا نشده بود.**
+   سه جدول به ابتدا منتقل شدند؛ اکنون ۰ ارجاعِ جلو و هر ۹۰ جدول ساخته می‌شود.
+3. **🟡 هفت Index ویو ۳ در `schema.sql` بود ولی در `migrations/` نبود** —
+   در `migrations/004_wave3_query_indexes.sql` (+ down) افزوده شد.
+   **ولی A/B صادقانه: ۱.۰–۱.۴ برابر، یعنی نویز.** با `ORDER BY id` و
+   `LIMIT 51` برنامه‌ریز `*_pkey` را ترجیح می‌دهد. ادعای بهبودِ عملکرد
+   نمی‌کنیم؛ drift از بین رفت و وقتی مدرسه‌ها زیاد شوند ضروری می‌شود.
+4. **🔴 `grades` با محدودهٔ مدیر ۱۰۵ms است و هیچ Index نجاتش نمی‌دهد** —
+   `(school_id IS NULL OR school_id = $1)` باعث می‌شود `school_id` فقط
+   Filter باشد: `Rows Removed by Filter: 648000`. با `school_id = $1` خالی:
+   **۰.۲۸۵ms (~۳۷۰ برابر)**. **عمداً اصلاح نشد**، چون
+   `server/middleware/scope.js:47` (`if (targetSchoolId == null) return true`)
+   همان معنا را در مسیرِ JS دارد و حذفِ یک‌طرفه برابری را می‌شکند. این یک
+   **تصمیمِ tenancy** است: یا `school_id NOT NULL` شود (در این دیتاست ردیفِ
+   `school_id IS NULL` = **۰** بود) یا هر دو مسیر هم‌زمان عوض شوند.
+
+**تستِ تازه:** `tests/wave3-query3.js` — بخشِ A (۱۸ چک، بدونِ DB: جبرِ
+cursor، بایندِ پارامتر، جهتِ DESC/ASC، سازگاریِ عقب‌رو) و بخشِ B (۷ چک، با
+`DATABASE_URL`، وگرنه self-skip: اجرای همهٔ builderها، **پیمایشِ کاملِ
+صفحه‌ها**، بدونِ تکرار، عدمِ نشتِ مدرسهٔ دیگر، خنثی‌بودنِ injection، نبودِ
+Seq Scan). **هیچ‌کدام از `wave3-query.js`/`wave3-query2.js` باگِ cursor را
+نگرفتند** چون شکلِ cursor را روی dbِ جعلی می‌سنجیدند نه پیمایشِ واقعی را.
+
+**گیت‌ها:** smoke **۵۴۷/۵۴۷** · check-authz ✅ · secret-scan **۱۱/۱۱** ·
+build --check ✅ · wave3-query ۱۳/۱۳ · wave3-query2 ۱۳/۱۳ ·
+wave3-query3 **۱۸/۱۸** (و **۲۵/۲۵** با PG زنده) · wave17 ۷۳/۷۳ ·
+wave18 ۶۲/۶۲ · seed-integrity ۱۴/۱۴.
+
+**بعدی:** تصمیمِ tenancy دربارهٔ `school_id IS NULL` (بندِ ۴)؛ اجرای
+`wave3-query3.js` بخشِ B در CI با یک سرویسِ PostgreSQL؛ `CONCURRENTLY`
+برای Indexهای ۰۰۴ روی دیتابیسِ تولیدی.
+
+
 
 **وضعیت:** شاخهٔ تازهٔ `feat/wave20-chat4` (بر پایهٔ `origin/main` @ `fd9f404`). سه کامیت (+ هندآف):
 - `0edac5a` **پوششِ کاملِ رگرسیون:** سابت‌های ‏REST فاز ۳ (`tests/api/runner.js` — ۷ سوئیت، محلی ۷/۷ سبز) به کشفِ `scripts/run-all-tests.sh` اضافه شدند؛ تا پیش از این گلابِ `tests/*.js` کلِ زیرپوشهٔ ‏`tests/api` را جا می‌انداخت. کنارگذاشته‌های طراحی (اسکریپتِ کارگر، کمکی‌ها، لایهٔ بارِ ‏k6) در سربرگ مستند شد.
