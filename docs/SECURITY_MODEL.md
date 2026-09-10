@@ -127,7 +127,7 @@ ESLint). سئوت‌هایِ jsdomِ وابسته به بوتِ سرور (xss-gu
   خطایِ خودِ enforce = fail-open. پیش‌فرض `report` — تغییرِ رفتار فقط با
   تنظیمِ صریحِ deploy.
 - دروازه: `tests/waf-enforce.js` (33 چک: بلاک/allowlist/report/بدونه-echo +
-  سوءاستفاده) در CI (lane waf). لبهٔ nginx جدا و مستقل aِمال می‌کند
+  سوءاستفاده) در CI (lane waf). لبهٔ nginx جدا و مستقل اٌعمال می‌کند
   (403/444/429 — markers `wave12-edge-rules`).
 
 ### ۵.۴ حفاظتِ سوءاستفاده (سقف‌هایِ سخت)
