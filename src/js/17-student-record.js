@@ -94,7 +94,10 @@ function viewRecord(sid){
      <span class="badge ${a>=17?'b-green':a>=12?'b-blue':'b-red'}">میانگین ${fa(a.toFixed(2))}</span></div>
      <div style="margin:8px 0 12px">${bar(a,20,a>=17?'var(--green)':a>=12?'var(--primary)':'var(--red)')}</div>
      <div class="row">${l.map(g=>{const c=(typeof classScoreContext!=='undefined'&&S.__clsCtx)?S.__clsCtx[Number(id)+'|'+g.term+'|'+g.exam_type]:null;
-     return `<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}${g.kind==='practical'?' • عملی':''}: <b>${fa(g.score)}</b>${c?' <span class="muted" style="font-weight:400">· کلاس: '+fa(c.avg.toFixed(2))+'</span>':''}${gradeSource(g)==='national'?' · 🏛️ نهایی کشوری':''}</span>`;}).join('')}</div></div>`;}).join('')}</div>`
+     const vp=(typeof vocationalParts==='function')?vocationalParts(g):null;
+     let _pp='';
+     if(vp){if(vp.theory!=null)_pp+=' • تئوری '+fa(vp.theory);if(vp.practice!=null)_pp+=' • عملی '+fa(vp.practice);}
+     return `<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}${g.kind==='practical'?' • عملی':''}${_pp}: <b>${fa(g.score)}</b>${c?' <span class="muted" style="font-weight:400">· کلاس: '+fa(c.avg.toFixed(2))+'</span>':''}${gradeSource(g)==='national'?' · 🏛️ نهایی کشوری':''}</span>`;}).join('')}</div></div>`;}).join('')}</div>`
     :empty('📝','نمره‌ای ثبت نشده','به محض ثبت نمره، کارنامه اینجا نمایش داده می‌شود.');
   /* فاز ۰.۳: نمرات نهایی کشوری، جدا از کارنامهٔ داخلی */
   if(S.tab==='grades') body += nationalGradesCard(sid);

@@ -16,6 +16,17 @@ function workshopStudent(sid){
   var u=byId('users',sid);
   return !!(u&&workshopSchool(u.school_id));
 }
+/* E.1 — قسمت‌های تئوری/عملی یک نمرهٔ هنرستان (فیلدهای جدید).
+   سازگاریِ عقب: رکوردهایِ کهنهٔ kind=practical نمرهٔ عملی را در
+   score دارند — همین‌جا به‌عنوانِ قسمتِ عملی تفسیر می‌شوند.
+   خروجی: null = هر دو قسمت ندارد؛ وگرنه {theory, practice} (هرکدام null). */
+function vocationalParts(g){
+  if(!g)return null;
+  var t=g.theoretical_score!=null?g.theoretical_score:null;
+  var p=g.practical_score!=null?g.practical_score:(g.kind==='practical'?g.score:null);
+  if(t==null&&p==null)return null;
+  return {theory:t,practice:p};
+}
 function isFinalYearStudent(sid){
   var cls=(typeof classOf==='function')?classOf(sid):null;
   return !!(cls&&cls.grade==='دوازدهم');
@@ -147,6 +158,10 @@ function viewGrades(){
   if(term)rows=rows.filter(g=>g.term===term);
   rows=rows.slice().sort((a,b)=>b.id-a.id).slice(0,200);
   const avg=rows.length?avgOf(rows).toFixed(2):null;
+  /* E.1 — هنرستان: برای کلاسِ کارگاهی (یا دانش‌آموزِ کارگاهی) دو ستونِ
+     «تئوری»/«عملی» کنارِ مجموع نمایش داده می‌شود (فیلدهای جدید grades). */
+  const _ws=u.role==='student'?workshopStudent(u.id):workshopSchool((byId('classes',cid)||{}).school_id);
+  const _vpCell=(vp,k)=>vp&&vp[k]!=null?fa(vp[k]):'—';
   return `<div class="card"><div class="card-head"><div class="row">
     ${u.role!=='student'?`<select class="select" style="width:170px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>${_autoShown?`<span class="badge b-blue" title="بر اساس زنگ جاری و برنامهٔ هفتگی شما — انتخاب دستی بر این مقدم است">🔔 انتخاب خودکار بر اساس زنگ</span><button class="btn ghost sm" data-act="grade-reset-auto">همهٔ کلاس و درس</button>`:''}`:''}
     ${avg?`<span class="badge b-blue">میانگین: ${fa(avg)}</span>`:''}</div>
@@ -154,9 +169,10 @@ function viewGrades(){
    ${filterPanel('grades',`
     <select class="select" style="width:150px" data-f="subject"><option value="">همه دروس</option>${subs.map(s=>`<option value="${escAttr(s.id)}" ${sub==String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>
     <select class="select" style="width:125px" data-f="term"><option value="">همه نوبت‌ها</option>${TERMS.map(t=>`<option ${term===t?'selected':''}>${t}</option>`).join('')}</select>`)}
-   ${rows.length?`<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>درس</th><th>کلاس</th><th>نوبت</th><th>نوع آزمون</th><th>نمره</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
+   ${rows.length?`<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>درس</th><th>کلاس</th><th>نوبت</th><th>نوع آزمون</th>${_ws?'<th>تئوری</th><th>عملی</th>':''}<th>نمره</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
     ${rows.map(g=>`<tr><td><b>${esc((byId('users',g.student_id)||{}).full_name||'—')}</b></td><td>${esc((byId('subjects',g.subject_id)||{}).name||'—')}</td>
       <td class="muted">${esc((byId('classes',g.class_id)||{}).name||'—')}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td class="muted">${esc(g.exam_type)}${g.kind==='practical'?' <span class="badge b-purple" title="نمرهٔ عملی/کارگاهی (بند ۴.۲)">عملی</span>':''}${gradeSourceBadge(g)}</td>
+      ${_ws?`<td>${_vpCell(vocationalParts(g),'theory')}</td><td>${_vpCell(vocationalParts(g),'practice')}</td>`:''}
       <td><span class="badge ${g.score>=17?'b-green':g.score>=12?'b-blue':'b-red'}">${fa(g.score)} / ${fa(g.max_score)}</span></td>
       ${canEdit?`<td><button class="icon-btn" data-act="grade-edit" data-id="${escAttr(g.id)}">✏️</button> <button class="icon-btn danger" data-act="grade-del" data-id="${escAttr(g.id)}">🗑️</button></td>`:''}</tr>`).join('')}
    </tbody></table></div>`:empty('📝','نمره‌ای ثبت نشده',canEdit?'با دکمه «ثبت نمره» شروع کنید.':'هنوز نمره‌ای برای شما ثبت نشده است.')}</div>`+_inOv;

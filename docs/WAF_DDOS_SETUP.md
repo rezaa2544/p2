@@ -21,10 +21,16 @@
 | قانون | توضیح | اقدام (لبه) | اقدام (برنامه) |
 |---|---|---|---|
 | Rate Limiting | بیش از ۱۰۰ درخواست/دقیقه از یک IP | بلاکِ ۴۲۹ (nginx `limit_req`) | سرآیندِ advisory + شمارش (Redis) |
-| SQL Injection | payload مخرب (`UNION SELECT`، `OR 1=1`، …) | Log + Block (Cloudflare Rule) | `X-WAF-Verdict: sqli` + ممیزی |
-| XSS | `<script>`، `javascript:`، `on*=*`، … | Log + Block | `X-WAF-Verdict: xss` + ممیزی |
-| Path Traversal | `../`، `%2e`، `/etc/passwd`، … | Log + Block | `X-WAF-Verdict: traversal` + ممیزی |
-| Bad Bot | sqlmap/nikto/masscan/… در UA | Challenge + Block | `X-WAF-Verdict: badbot` + ممیزی |
+| SQL Injection | payload مخرب (`UNION SELECT`، `OR 1=1`، …) | بلاکِ ۴۰۳ (ویو۱۲: `map $edge_attack` در `nginx.conf`) + Cloudflare Rule | `X-WAF-Verdict: sqli` + ممیزی |
+| XSS | `<script>`، `javascript:`، `on*=*`، … | بلاکِ ۴۰۳ (ویو۱۲: همان مَپ) + Cloudflare Rule | `X-WAF-Verdict: xss` + ممیزی |
+| Path Traversal | `../`، `%2e`، `/etc/passwd`، … | بلاکِ ۴۰۳ (`map $traversal`) | `X-WAF-Verdict: traversal` + ممیزی |
+| Bad Bot | sqlmap/nikto/masscan/… در UA | بستنِ ۴۴۴ + Challenge (Cloudflare) | `X-WAF-Verdict: badbot` + ممیزی |
+
+قوانینِ لبهٔ ویو ۱۲ بینِ نشانگرهایِ `wave12-edge-rules:start/end` در
+`nginx/nginx.conf` است؛ `tests/wave12-network.js` همان رگکس‌ها را استخراج و
+روی فهرستِ مثبت/منفی تست می‌کند (پس هر تغییرِ قانون = اجرای آن تست).
+قوانینِ نگینکس محافظه‌کارانه‌اند (خطای مثبت در لبه = ۴۰۳ کاربرِ واقعی)؛
+شک‌ها را به تشخیصِ درون‌برنامه بسپارید.
 
 قوانینِ Cloudflare (پیشنهادِ شروع): Managed Ruleset (OWASP + Cloudflare Managed)
 روشن + قانونِ نرخِ سفارشیِ ۱۰۰r/m روی `/api/*` + قانونِ UA (کلماتِ بالا → Managed Challenge).
