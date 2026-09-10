@@ -16,7 +16,12 @@ const { createSync, attach } = require('../server/sync.js');
 const { opX } = require('./helpers/opx');
 
 const TODAY = new Date().toISOString().slice(0, 10);
-const BACKDATED = new Date(Date.now() - 14 * 3600 * 1000).toISOString(); /* دیروز، درونِ ۲۴h */
+/* «دیروزِ» قطعی: ظهرِ UTCِ دیروز — برخلافِ `now - 14h` که بسته به ساعتِ اجرا
+   ممکن است هنوز «امروز» باشد و تست را وابسته به زمان می‌کرد (flake). */
+const BACKDATED = (() => {
+  const n = new Date();
+  return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() - 1, 12, 0, 0)).toISOString();
+})();
 
 let okc = 0, failc = 0;
 const fails = [];
