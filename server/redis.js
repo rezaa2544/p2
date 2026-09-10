@@ -1,11 +1,19 @@
 /* ═══════════════════════════════════════════════════════════════════
    server/redis.js — High-Performance Distributed Redis Client & Fallback
    -------------------------------------------------------------------
-   Phase 4: Redis Caching & Multi-Instance Layer
-   - Connects to standalone or clustered Redis instances via ioredis.
-   - Dual-mode architecture: Native Redis with automated reconnect,
-     or zero-dependency in-memory Fallback if REDIS_URL is absent or unreachable.
-   - Methods: get, set, del, incr, expire, ttl, publish, subscribe, ping, isRedis, close.
+   Phase 4 + فاز ۲.۱: Redis Caching, Sentinel & Cluster Layer
+   - حالت‌های اتصال (اولویت از بالا):
+       ۱. `REDIS_CLUSTER_NODES=host:port,...`  ⇒ Redis Cluster (ioredis.Cluster)
+       ۲. `REDIS_SENTINELS=host:port,... + REDIS_SENTINEL_NAME`  ⇒ Sentinel
+       ۳. `REDIS_URL`                          ⇒ Standalone
+       ۴. هیچ‌کدام                             ⇒ Fallback درون‌حافظه‌ای (بدون وابستگی)
+   - رمز فقط از `REDIS_PASSWORD` یا داخل خودِ `REDIS_URL` خوانده می‌شود؛
+     هیچ مقدار سخت‌کده‌شده‌ای وجود ندارد (اصلِ «بدون راز در کد»).
+   - `buildRedisConfig(env)` خالص و بدون اتصال است — برای تست و
+     ابزارهای تشخیصی صادر می‌شود.
+   - همهٔ متدها از طریق `module.exports` صدا زده می‌شوند تا تست‌های
+     دیگر (مثل درزِ میمون‌وارِ `redis.incr`) همیشه مسیر واحد را ببینند.
+   - روش‌ها: get, set, del, incr, expire, ttl, publish, subscribe, ping, isRedis, getStatus, close.
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
@@ -19,8 +27,10 @@ try {
 let client = null;
 let subClient = null;
 let isRedisActive = false;
+let activeMode = 'memory'; // 'memory' | 'standalone' | 'sentinel' | 'cluster'
 let memCache = new Map();
 let memExpiry = new Map();
+let memSets = new Map(); // key -> Set<string> (SADD/SMEMBERS fallback)
 let subscriptions = new Map(); // channel -> Set of callbacks
 
 const REDIS_URL = process.env.REDIS_URL || null;
@@ -43,11 +53,98 @@ function cleanExpiredMem() {
 }
 setInterval(cleanExpiredMem, 10000).unref();
 
+/* ─────────────────────────────────────────────────────────────────
+   پیکربندی از محیط — خالص، بدون اتصال (تست‌پذیر)
+   ───────────────────────────────────────────────────────────────── */
+function parseHostPorts(str) {
+  const out = [];
+  for (const part of String(str || '').split(',')) {
+    const t = part.trim();
+    if (!t) continue;
+    const idx = t.lastIndexOf(':');
+    if (idx <= 0) return null; /* قالب نامعتبر ⇒ رد کل پیکربندی */
+    const host = t.slice(0, idx);
+    const port = Number(t.slice(idx + 1));
+    if (!host || !Number.isInteger(port) || port < 1 || port > 65535) return null;
+    out.push({ host, port });
+  }
+  return out.length ? out : null;
+}
+
+function buildRedisConfig(env) {
+  env = env || process.env;
+  const password = env.REDIS_PASSWORD || null;
+  const base = {
+    maxRetriesPerRequest: 2,
+    connectTimeout: 3000,
+    lazyConnect: true,
+    enableOfflineQueue: false,
+    retryStrategy: (times) => {
+      if (times > 3) return null; // Fallback after 3 attempts
+      return Math.min(times * 200, 1000);
+    }
+  };
+
+  /* ۱ — Cluster */
+  const clusterNodes = parseHostPorts(env.REDIS_CLUSTER_NODES);
+  if (clusterNodes) {
+    return {
+      mode: 'cluster',
+      nodes: clusterNodes,
+      password,
+      options: base,
+      clusterOptions: {
+        redisOptions: Object.assign({}, base, password ? { password } : {}),
+        scaleReads: 'master', /* سازگاری خواندن؛ شمارنده‌ها نباید کهنه خوانده شوند */
+        clusterRetryStrategy: (times) => {
+          if (times > 3) return null;
+          return Math.min(times * 300, 2000);
+        }
+      }
+    };
+  }
+
+  /* ۲ — Sentinel */
+  const sentinels = parseHostPorts(env.REDIS_SENTINELS);
+  if (sentinels) {
+    const name = (env.REDIS_SENTINEL_NAME || 'mymaster').trim();
+    return {
+      mode: 'sentinel',
+      sentinels,
+      name,
+      password,
+      options: Object.assign({}, base, password ? { password } : {}),
+      sentinelOptions: {
+        connectTimeout: 2000,
+        retryStrategy: (times) => {
+          if (times > 5) return null;
+          return Math.min(times * 250, 1500);
+        }
+      }
+    };
+  }
+
+  /* ۳ — Standalone */
+  if (env.REDIS_URL) {
+    return {
+      mode: 'standalone',
+      url: String(env.REDIS_URL),
+      password,
+      options: Object.assign({}, base, password ? { password } : {})
+    };
+  }
+
+  /* ۴ — Memory */
+  return { mode: 'memory' };
+}
+
 /**
  * Initialize Redis connection
  */
 async function init() {
-  if (!REDIS_URL || !Redis) {
+  const cfg = buildRedisConfig(process.env);
+  activeMode = cfg.mode;
+  if (cfg.mode === 'memory' || !Redis) {
     isRedisActive = false;
     if (IS_PRODUCTION) {
       /* P0-13: شکستِ ریدی به‌جای فال‌بک — سرور نباید بدونِ کشِ مشترک بالا بیاید */
@@ -69,16 +166,18 @@ async function init() {
       try { subClient.disconnect(); } catch (e) {}
     }
 
-    client = new Redis(REDIS_URL, {
-      maxRetriesPerRequest: 2,
-      connectTimeout: 3000,
-      retryStrategy: (times) => {
-        if (times > 3) return null; // Fallback after 3 attempts
-        return Math.min(times * 200, 1000);
-      },
-      lazyConnect: true,
-      enableOfflineQueue: false
-    });
+    if (cfg.mode === 'cluster') {
+      client = new Redis.Cluster(cfg.nodes, cfg.clusterOptions);
+    } else if (cfg.mode === 'sentinel') {
+      client = new Redis(Object.assign({}, cfg.options, {
+        sentinels: cfg.sentinels,
+        name: cfg.name,
+        sentinelRetryStrategy: cfg.sentinelOptions.retryStrategy,
+        enableReadyCheck: true
+      }));
+    } else {
+      client = new Redis(cfg.url, cfg.options);
+    }
 
     client.on('error', (err) => {
       // Avoid logging spam on expected disconnects
@@ -94,12 +193,18 @@ async function init() {
 
     await client.connect();
 
-    // Create dedicated subscriber client
-    subClient = new Redis(REDIS_URL, {
-      maxRetriesPerRequest: 2,
-      connectTimeout: 3000,
-      lazyConnect: true
-    });
+    /* کلاینت اختصاصیِ Pub/Sub — هم‌حالت با کلاینت اصلی */
+    if (cfg.mode === 'cluster') {
+      subClient = new Redis.Cluster(cfg.nodes, cfg.clusterOptions);
+    } else if (cfg.mode === 'sentinel') {
+      subClient = new Redis(Object.assign({}, cfg.options, {
+        sentinels: cfg.sentinels,
+        name: cfg.name,
+        sentinelRetryStrategy: cfg.sentinelOptions.retryStrategy
+      }));
+    } else {
+      subClient = new Redis(cfg.url, Object.assign({}, cfg.options, { enableOfflineQueue: true }));
+    }
     subClient.on('error', () => {});
     await subClient.connect();
 
@@ -113,7 +218,7 @@ async function init() {
     });
 
     isRedisActive = true;
-    return { ok: true, driver: 'redis', message: 'Connected to Redis server' };
+    return { ok: true, driver: 'redis', mode: cfg.mode, message: 'Connected to Redis (' + cfg.mode + ')' };
   } catch (err) {
     console.warn('[Redis] Connection failed.', IS_PRODUCTION ? 'Production refuses fallback (readiness fails):' : 'Using in-memory fallback (dev only):', err.message);
     isRedisActive = false;
@@ -129,7 +234,7 @@ async function init() {
       /* P0-13: در تولید، قطعِ ردیس = شکستِ اتصال؛ فال‌بک به حافظه ممنوع */
       return { ok: false, driver: 'none', error: 'Redis unreachable in production: ' + err.message };
     }
-    return { ok: true, driver: 'memory', fallback: true, warning: err.message };
+    return { ok: true, driver: 'memory', mode: 'memory', fallback: true, warning: err.message };
   }
 }
 
@@ -141,11 +246,55 @@ function isRedis() {
 }
 
 /**
+ * وضعیت فعلی برای داشبورد/سلامت — بدون افشای رمز
+ */
+function getStatus() {
+  return {
+    active: isRedis(),
+    mode: isRedis() ? activeMode : 'memory',
+    ioredisAvailable: !!Redis
+  };
+}
+
+/**
+ * Wave 6: test hook — inject a contract-compatible fake client
+ * (records commands; behaves like Redis for get/set/del/incr/eval/...).
+ * `__setClientForTests(null)` restores the real state (inactive).
+ */
+let _realClient = null;
+let _realActive = false;
+function __setClientForTests(c) {
+  if (c) {
+    _realClient = client;
+    _realActive = isRedisActive;
+    client = c;
+    isRedisActive = true;
+  } else {
+    client = _realClient;
+    isRedisActive = _realActive;
+  }}
+
+/**
  * P0-13: Readiness gate — در تولید فقط با ردیسِ زنده «آماده» است؛
  * در توسعه حافظهٔ محلی قابل‌قبول است.
  */
 function ready() {
   return IS_PRODUCTION ? isRedis() : true;
+}
+
+/* BUG-2 (باگ‌هانت چت ۵): fail-closedِ زمانِ اجرا در تولید.
+   P0-13 فقط بوت را نگهبانی می‌کرد؛ ولی اگر ردیس وسطِ کار خطا می‌داد
+   (catch) یا رویدادِ error پرچمِ اتصال را می‌انداخت، همهٔ عملیات‌ها
+   بی‌صدا به حافظهٔ محلی می‌افتادند و state حیاتی (ریت‌لیمیت،
+   idempotency، OTP، قفل‌ها، کش) بین نمونه‌ها واگرا می‌شد. در تولید
+   حالا خطا بالا می‌رود (→ ۵۰۰ + readiness ـ ۵۰۳)؛ توسعه بی‌تغییر.
+   setNX/compareAndDelete از پیش روی خطا false می‌دادند (fail-closed)
+   و دست‌نخورده می‌مانند؛ ping/ready/status/close هم مشاهده‌اند. */
+function prodNoRedis(op){
+  if(IS_PRODUCTION && !isRedis()) throw new Error('Redis unavailable in production (fail-closed): ' + op);
+}
+function prodRethrow(err){
+  if(IS_PRODUCTION) throw err;
 }
 
 /**
@@ -157,10 +306,11 @@ async function get(key) {
     try {
       return await client.get(key);
     } catch (err) {
-      // Fallback to memory
+      prodRethrow(err); // BUG-2: تولید می‌پراند؛ توسعه به حافظه می‌افتد
     }
   }
 
+  prodNoRedis('get'); // BUG-2: تولیدِ بدونِ ردیسِ زنده به حافظه نمی‌افتد
   cleanExpiredMem();
   const exp = memExpiry.get(key);
   if (exp && Date.now() >= exp) {
@@ -188,17 +338,80 @@ async function set(key, value, mode, duration) {
       }
       return await client.set(key, strVal);
     } catch (err) {
-      // Fallback to memory
+      prodRethrow(err); // BUG-2: تولید می‌پراند؛ توسعه به حافظه می‌افتد
     }
   }
 
+  prodNoRedis('set'); // BUG-2: تولیدِ بدونِ ردیسِ زنده به حافظه نمی‌افتد
   memCache.set(key, strVal);
-  if (mode === 'EX' && typeof duration === 'number') {
-    memExpiry.set(key, Date.now() + duration * 1000);
-  } else if (mode === 'PX' && typeof duration === 'number') {
-    memExpiry.set(key, Date.now() + duration);
+  /* W11-3 (موج ۱۱): وفاداری به معنایِ ردیس. (۱) بازنویسیِ بی‌TTL انقضایِ
+     قبلی را پاک می‌کند (SET بی‌EX = ماندگار) — پیش‌تر انقضایِ کهنه
+     می‌ماند و کلید زود ناپدید می‌شد. (۲) مدتِ رشته‌ایِ عددی ('60')
+     مثلِ ioredis پذیرفته می‌شود. */
+  const durNum = Number(duration);
+  if ((mode === 'EX' || mode === 'PX') && Number.isFinite(durNum) && duration !== '' && duration != null) {
+    memExpiry.set(key, Date.now() + (mode === 'EX' ? durNum * 1000 : durNum));
+  } else {
+    memExpiry.delete(key);
   }
   return 'OK';
+}
+
+/**
+ * Add members to a set (returns number of NEW members).
+ * Wave 11: indexِ «مدرسه ⇒ کاربرانِ کش‌شده» برای انقضای کاملِ L2.
+ */
+async function sAdd(key, ...members) {
+  if (isRedis()) {
+    try {
+      return await client.sadd(key, ...members.map(String));
+    } catch (err) {
+      // Fallback to memory
+    }
+  }
+  if (!memSets.has(key)) memSets.set(key, new Set());
+  const s = memSets.get(key);
+  let n = 0;
+  for (const m of members) {
+    if (!s.has(String(m))) { s.add(String(m)); n++; }
+  }
+  return n;
+}
+
+/**
+ * All members of a set (empty array when missing).
+ */
+async function sMembers(key) {
+  if (isRedis()) {
+    try {
+      return await client.smembers(key);
+    } catch (err) {
+      // Fallback to memory
+    }
+  }
+  const s = memSets.get(key);
+  return s ? Array.from(s) : [];
+}
+
+/**
+ * Remove members from a set (returns number removed).
+ */
+async function sRem(key, ...members) {
+  if (isRedis()) {
+    try {
+      return await client.srem(key, ...members.map(String));
+    } catch (err) {
+      // Fallback to memory
+    }
+  }
+  const s = memSets.get(key);
+  if (!s) return 0;
+  let n = 0;
+  for (const m of members) {
+    if (s.delete(String(m))) n++;
+  }
+  if (s.size === 0) memSets.delete(key);
+  return n;
 }
 
 /**
@@ -213,10 +426,11 @@ async function del(...keys) {
     try {
       return await client.del(...flatKeys);
     } catch (err) {
-      // Fallback
+      prodRethrow(err); // BUG-2: تولید می‌پراند؛ توسعه به حافظه می‌افتد
     }
   }
 
+  prodNoRedis('del'); // BUG-2: تولیدِ بدونِ ردیسِ زنده به حافظه نمی‌افتد
   let count = 0;
   for (const k of flatKeys) {
     if (memCache.delete(k)) count++;
@@ -244,6 +458,7 @@ async function setNX(key, value, ttlSeconds) {
     }
   }
 
+  prodNoRedis('setNX'); // BUG-2: قفلِ حافظه‌ای در تولید = شکستِ انحصارِ متقابل
   // Memory mode is single-process, so check+set is atomic inside one tick
   cleanExpiredMem();
   if (memCache.has(key)) return false;
@@ -288,9 +503,10 @@ async function incrWithTtl(key, ttlSeconds) {
       const reply = await client.eval(INCR_WITH_TTL_SCRIPT, 1, key, ttlSeconds);
       return Number(reply);
     } catch (err) {
-      // Fallback to memory
+      prodRethrow(err); // BUG-2: تولید می‌پراند؛ توسعه به حافظه می‌افتد
     }
   }
+  prodNoRedis('incrWithTtl'); // BUG-2
   /* مسیر حافظه از درگاه‌های صادرشده می‌گذرد تا هم‌قراردادِ تست‌ها
      (مثلاً شبیه‌سازی خرابی با وصله روی incr) باقی بماند. */
   const v = await module.exports.incr(key);
@@ -317,9 +533,11 @@ async function scan(match) {
       } while (cursor !== '0');
       return out;
     } catch (err) {
+      prodRethrow(err); // BUG-2: تولید می‌پراند (فهرستِ ناقص گمراه‌کننده است)
       return out;
     }
   }
+  prodNoRedis('scan'); // BUG-2
   cleanExpiredMem();
   const keys = Array.from(memCache.keys());
   if (!match) return keys;
@@ -344,6 +562,7 @@ async function compareAndDelete(key, expectedValue) {
     }
   }
 
+  prodNoRedis('compareAndDelete'); // BUG-2: قفلِ حافظه‌ای در تولید ممنوع
   cleanExpiredMem();
   if (memCache.has(key) && memCache.get(key) === expectedValue) {
     memCache.delete(key);
@@ -364,9 +583,10 @@ async function publish(channel, message) {
   if (isRedis()) {
     try {
       return await client.publish(channel, payload);
-    } catch (err) {}
+    } catch (err) { prodRethrow(err); } // BUG-2: تولید می‌پراند
   }
 
+  prodNoRedis('publish'); // BUG-2: تحویلِ فقط-محلی در تولید گمراه‌کننده است
   // In-memory Pub/Sub delivery
   const cbs = subscriptions.get(channel);
   if (cbs) {
@@ -383,6 +603,7 @@ async function publish(channel, message) {
  * @param {Function} callback (message, channel) => void
  */
 async function subscribe(channel, callback) {
+  prodNoRedis('subscribe'); // BUG-2: اشتراکِ فقط-محلی در تولید گمراه‌کننده است
   if (!subscriptions.has(channel)) {
     subscriptions.set(channel, new Set());
   }
@@ -391,7 +612,7 @@ async function subscribe(channel, callback) {
   if (isRedis() && subClient) {
     try {
       await subClient.subscribe(channel);
-    } catch (err) {}
+    } catch (err) { prodRethrow(err); } // BUG-2: تولید می‌پراند
   }
   return true;
 }
@@ -407,9 +628,10 @@ async function incr(key) {
     try {
       return await client.incr(key);
     } catch (err) {
-      // Fallback to memory
+      prodRethrow(err); // BUG-2: تولید می‌پراند؛ توسعه به حافظه می‌افتد
     }
   }
+  prodNoRedis('incr'); // BUG-2: تولیدِ بدونِ ردیسِ زنده به حافظه نمی‌افتد
   cleanExpiredMem();
   const exp = memExpiry.get(key);
   if (exp && Date.now() >= exp) {
@@ -440,9 +662,10 @@ async function expire(key, seconds) {
     try {
       return await client.expire(key, seconds);
     } catch (err) {
-      // Fallback to memory
+      prodRethrow(err); // BUG-2: تولید می‌پراند؛ توسعه به حافظه می‌افتد
     }
   }
+  prodNoRedis('expire'); // BUG-2: تولیدِ بدونِ ردیسِ زنده به حافظه نمی‌افتد
   cleanExpiredMem();
   const exp = memExpiry.get(key);
   if (exp && Date.now() >= exp) {
@@ -469,9 +692,10 @@ async function ttl(key) {
     try {
       return await client.ttl(key);
     } catch (err) {
-      // Fallback to memory
+      prodRethrow(err); // BUG-2: تولید می‌پراند؛ توسعه به حافظه می‌افتد
     }
   }
+  prodNoRedis('ttl'); // BUG-2: تولیدِ بدونِ ردیسِ زنده به حافظه نمی‌افتد
   cleanExpiredMem();
   const exp = memExpiry.get(key);
   if (exp && Date.now() >= exp) {
@@ -491,9 +715,9 @@ async function ping() {
   if (isRedis()) {
     try {
       const res = await client.ping();
-      return { ok: true, driver: 'redis', ping: res === 'PONG' };
+      return { ok: true, driver: 'redis', mode: activeMode, ping: res === 'PONG' };
     } catch (err) {
-      return { ok: false, driver: 'redis', error: err.message };
+      return { ok: false, driver: 'redis', mode: activeMode, error: err.message };
     }
   }
   return { ok: true, driver: 'memory', alive: true };
@@ -512,14 +736,18 @@ async function close() {
     client = null;
   }
   isRedisActive = false;
+  activeMode = 'memory';
   memCache.clear();
   memExpiry.clear();
+  memSets.clear();
   subscriptions.clear();
 }
 
 module.exports = {
   init,
   isRedis,
+  getStatus,
+  buildRedisConfig,
   ready,
   get,
   set,
@@ -534,5 +762,9 @@ module.exports = {
   ping,
   setNX,
   compareAndDelete,
-  close
+  sAdd,
+  sMembers,
+  sRem,
+  close,
+  __setClientForTests
 };

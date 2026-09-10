@@ -63,7 +63,7 @@
 - ذخیرهٔ صفِ آفلاین محدود و مقاوم در برابرِ پرشدنِ حافظه.
 
 ### ۲.۶ عملیات و زیرساخت
-- WAF فقط-تشخیص (P-WAF) + nginx در لبه؛ هدرهایِ امنیتی؛ rate-limit دو لایه؛
+- WAF دو-حالت (P-WAF): `report` (پیش‌فرض، فقط-تشخیص) / `enforce` (P0 #6: 403 با fail-safe allowlist) + nginx در لبه (اِعمال URI/rate/conn)؛ هدرهایِ امنیتی؛ rate-limit چند لایه (لبه + Redis per-phone/per-IP)؛
   audit لاگِ ضمیمه‌شونده/پاک‌سازی‌شده (بدون PII حساس)؛ بکاپ، OTP خارج از store،
   GC نقشه‌هایِ فقط-رشد.
 
@@ -77,10 +77,10 @@
 |---|---|---|---|
 | `sast` | SAST | `node tests/run.js` + `tools/check-authz.js` + syntax | سخت (گیت) |
 | `secret` | Secret | `node tests/secret-scan.js` | سخت (گیت) |
-| `waf` | WAF | `waf-ddos.js --unit-only` + `nginx -t` | سخت (گیت) |
+| `waf` | WAF | `waf-ddos.js --unit-only` + `waf-enforce.js` (P0 #6) + `nginx -t` | سخت (گیت) |
 | `sca` | SCA | `npm audit --audit-level=high` | best-effort |
 | `sbom` | SBOM | `npm sbom` (SPDX) + آپلود | best-effort |
-| `dast` | DAST | OWASP ZAP baseline | best-effort؛ نیاز به `SECURITY_TARGET_URL` |
+| `dast` | DAST | OWASP ZAP baseline (staging با `SECURITY_TARGET_URL`؛ local-boot fallback) + `tools/dast-live.sh` (P0 #6) | best-effort؛ artifact: `zap-baseline-reports` |
 
 **نکتهٔ صداقت:** برای SAST از گیت‌هایِ ایستایِ خودِ ریپو استفاده شد (بدون اختراعِ
 ESLint). سئوت‌هایِ jsdomِ وابسته به بوتِ سرور (xss-guard/security/waf-full) به
@@ -99,7 +99,57 @@ ESLint). سئوت‌هایِ jsdomِ وابسته به بوتِ سرور (xss-gu
 
 ---
 
-## ۵) قید و کارهایِ باقی‌مانده (pending)
-- اجرایِ زندهٔ پنتست علیه محیطِ استیجینگ.
+## ۵) لایهٔ اجرایی (P0 #6 — امنیتِ اجرایی)
+
+تا Wave 13 مدل «آماده» بود؛ از P0 #6 بخش‌هایِ زیر **اجرایِ واقعی** دارند:
+
+### ۵.۱ DAST زنده (staging)
+- `tools/dast-live.sh`: استیجینگِ سبک (API + Redis + store با production +
+  fail-closed — guardهایِ JWT اشتراکی و TLS-behind-proxy رعایت می‌شوند) +
+  ZAP baseline/full (docker `ghcr.io/zaproxy/zaproxy:stable` یا `ZAP_BIN`) +
+  artifact (HTML/JSON/summary). پیش‌فرض `--dry-run` (فقط طرح + پیش‌نیاز؛ در
+  سندباکس سبز است). خروجی: 0 بدون FAIL · 2 فقط-WARN · 1 FAIL · 3 خطای اسکن.
+- CI: lane `dast` با secret `SECURITY_TARGET_URL` مستقیماً staging را اسکن
+  می‌کند و artifact آپلود می‌کند؛ بدون secret ⇒ local-boot (best-effort).
+
+### ۵.۲ آمادگیِ پنتست (8 سناریو)
+- `docs/PEN_TEST_CHECKLIST.md`: Auth Bypass · IDOR/BOLA · XSS · SQLi · CSRF ·
+  Session Fixation · Rate Limit Bypass · Tenant Escape — هرکدام با
+  **دستورالعملِ گام‌به‌گام** (curl/sqlmap/nuclei) و **معیارِ پذیرش**.
+- اجرایِ زندهٔ sqlmap/nuclei/Burp علیه استیجینگِ دائمی = pending (نیازمندِ
+  محیطِ واقعی)؛ اسکریپت‌ها آماده‌اند.
+
+### ۵.۳ WAF حالتِ ENFORCE (in-app)
+- `PAYESH_WAF_MODE=enforce`: هر verdict (sqli/xss/traversal/badbot) ⇒
+  403 `waf_blocked` + `X-WAF-Action: block` + ممیزیِ throttled (`waf_block`).
+- **fail-safe allowlist:** پروب‌هایِ زیرساخت (`/api/health|liveness|readiness`)
+  هرگز مسدود نمی‌شوند؛ گسترشِ اپراتوری با `PAYESH_WAF_ALLOW` (پیشوندها).
+  خطایِ خودِ enforce = fail-open. پیش‌فرض `report` — تغییرِ رفتار فقط با
+  تنظیمِ صریحِ deploy.
+- دروازه: `tests/waf-enforce.js` (33 چک: بلاک/allowlist/report/بدونه-echo +
+  سوءاستفاده) در CI (lane waf). لبهٔ nginx جدا و مستقل اٌعمال می‌کند
+  (403/444/429 — markers `wave12-edge-rules`).
+
+### ۵.۴ حفاظتِ سوءاستفاده (سقف‌هایِ سخت)
+| endpoint | سقف‌ها (Redis، توزیع‌شده) |
+|---|---|
+| `send-code` | cooldown ۶۰s (phone) + **روزانه ۲۰** (phone) + ۵/پنجره (phone) + ۱۰/پنجره (IP) — همه پیش از وجود‌سنجی (equal-shape) |
+| `login` | ۱۰/پنجره (IP) + **per-phone** (`PAYESH_LOGIN_PHONE_LIMIT`، پیش‌فرض ۵) + ۵ تلاشِ کد (tombstone) + تأخیرِ تصاعدی (تا ۳۰s) |
+| `register` | **وجود ندارد** — ایجادِ کاربر فقط نقشِ مدیر + scope (سطرِ public-self-signup در مدل نیست) |
+- لبه: `limit_req 100r/m burst=20` (429) + `limit_conn 10` (429) + bad-bot 444.
+- دروازه: `tests/waf-enforce.js` بخش D + `otp-ratelimit-mutations` (11 جهش).
+
+### ۵.۵ چک‌لیستِ Go-Live (امنیتِ اجرایی)
+1. `PAYESH_WAF_MODE=enforce` در envِ همهٔ نمونه‌ها.
+2. secret `SECURITY_TARGET_URL` در GitHub ⇒ lane DAST روی staging + artifact.
+3. `tools/dast-live.sh --live --scan full` پیش از هر release.
+4. `PAYESH_LOGIN_PHONE_LIMIT` متناسبِ بارِ واقعی (پیش‌فرض ۵۰).
+
+---
+
+## ۶) قید و کارهایِ باقی‌مانده (pending)
+- اجرایِ زندهٔ پنتستِ کامل (sqlmap/nuclei/Burp) علیه استیجینگِ دائمی
+  (ابزارِ اسکن در سندباکس نیست؛ اسکریپت‌ها و سناریوها آماده‌اند — §۵).
 - فعال‌سازیِ کاملِ tombstone از سمتِ write به PG و push در یک تراکنشِ PG.
-- اجرایِ واقعیِ SCA/SBOM/DAST در CI با registry/URL زنده.
+- اجرایِ واقعیِ SCA/SBOM/DAST در CI با registry/URL زنده (DAST از P0 #6 با
+  `SECURITY_TARGET_URL` فعال می‌شود).

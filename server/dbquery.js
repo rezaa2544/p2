@@ -24,15 +24,67 @@
 
 /* Identifier allowlist — the only table/column identifiers this module will
    ever place into SQL. Anything else must be a bound parameter. */
-const ALLOWED_TABLES = new Set(['users', 'attendance', 'enrollments', 'classes', 'schedule', 'parent_links', 'grades', 'subjects']);
+const ALLOWED_TABLES = new Set(['users', 'attendance', 'enrollments', 'classes', 'schedule', 'parent_links', 'grades', 'subjects', 'schools', 'offices']);
 
 function tableName(t) {
   if (!ALLOWED_TABLES.has(t)) throw new Error(`dbquery: table not allowlisted: ${String(t)}`);
   return t;
 }
 
-/** Roles that see across schools (no school_id predicate). */
-const SUPER_SCOPED = new Set(['superadmin', 'edu_office']);
+/** Roles that see across schools (no school_id predicate).
+ *  Wave 5 — single authorization model: this set is RE-EXPORTED from
+ *  server/policy.js (superadmin only). edu_office is NOT school-blind: its
+ *  REST reads now carry the office-geometry predicate (province/county/
+ *  district over the schools table) — exactly the rule sync's write gate
+ *  (policy.inScope) enforces. */
+const policy = require('./policy');
+const SUPER_SCOPED = policy.SUPER_SCOPED;
+
+/** Office-geometry school predicate (edu_office) — bound params only;
+ *  unresolvable office ⇒ deny-all (fail-closed, SQL-side). */
+
+function _officeGeoClause(alias, user, office, parts, push) {
+  const col = (alias ? alias + '.' : '') + 'school_id';
+  if (!user || user.role !== 'edu_office') return;
+  if (!office) { parts.push('1 = 0'); return; } /* fail-closed: no office anchor */
+  const terms = [];
+  for (const field of ['province_id', 'county_id', 'district_id']) {
+    if (office[field] != null && office[field] !== '') {
+      const i = push(Number(office[field]));
+      terms.push(`sc.${field} = $${i}`);
+    }
+  }
+  const inner = terms.length ? ` WHERE ${terms.join(' AND ')}` : '';
+  parts.push(`${col} IN (SELECT sc.id FROM "${tableName('schools')}" sc${inner})`);
+}
+
+/** Ownership clauses mirroring policy.readOk/filterReadable exactly. */
+function _roleScopeParts(alias, coll, user, parts, push) {
+  const a = alias ? alias + '.' : '';
+  if (!user || SUPER_SCOPED.has(user.role)) return;
+  if (coll === 'users-directory') {
+    if (user.role === 'student') { const i = push(Number(user.id)); parts.push(`${a}id = $${i}`); return; }
+    if (user.role === 'parent') {
+      const i = push(Number(user.id));
+      parts.push(`(${a}id = $${i} OR EXISTS (SELECT 1 FROM "${tableName('parent_links')}" pl WHERE pl.parent_id = $${i} AND pl.student_id = ${a}id))`);
+      return;
+    }
+  }
+  if (coll === 'students') {
+    if (user.role === 'student') { const i = push(Number(user.id)); parts.push(`${a}id = $${i}`); return; }
+    if (user.role === 'parent') { const i = push(Number(user.id)); parts.push(`EXISTS (SELECT 1 FROM "${tableName('parent_links')}" pl WHERE pl.parent_id = $${i} AND pl.student_id = ${a}id)`); return; }
+    if (user.role === 'teacher') {
+      const t = push(Number(user.id));
+      parts.push(`EXISTS (SELECT 1 FROM "${tableName('enrollments')}" e3 WHERE e3.student_id = ${a}id AND e3.class_id IN (SELECT c3.id FROM "${tableName('classes')}" c3 WHERE c3.homeroom_teacher_id = $${t} OR c3.id IN (SELECT s3.class_id FROM "${tableName('schedule')}" s3 WHERE s3.teacher_id = $${t})))`);
+      return;
+    }
+  }
+  if (coll === 'classes') {
+    if (user.role === 'student') { const i = push(Number(user.id)); parts.push(`${a}id IN (SELECT e.class_id FROM "${tableName('enrollments')}" e WHERE e.student_id = $${i})`); return; }
+    if (user.role === 'parent') { const i = push(Number(user.id)); parts.push(`${a}id IN (SELECT e.class_id FROM "${tableName('enrollments')}" e WHERE e.student_id IN (SELECT pl.student_id FROM "${tableName('parent_links')}" pl WHERE pl.parent_id = $${i}))`); return; }
+    if (user.role === 'teacher') { const t = push(Number(user.id)); parts.push(`(${a}homeroom_teacher_id = $${t} OR ${a}id IN (SELECT s.class_id FROM "${tableName('schedule')}" s WHERE s.teacher_id = $${t}))`); return; }
+  }
+}
 
 /**
  * Compose the final page + count statements from a set of WHERE parts.
@@ -59,9 +111,18 @@ function _finalize(o) {
   // Page: add keyset cursor, then LIMIT limit+1 (detect has_more, no OFFSET)
   const pageParams = o.params.slice();
   const pageParts = o.parts.slice();
-  if (o.cursor != null && !isNaN(Number(o.cursor))) {
-    pageParams.push(Number(o.cursor));
-    pageParts.push(`${o.cursorRef} > $${pageParams.length}`);
+  if (o.cursor != null) {
+    if (typeof o.cursorKeyset === 'function') {
+      /* composite keyset (e.g. "date|id"): custom predicate — params pushed inside */
+      const frag = o.cursorKeyset(String(o.cursor), (v) => { pageParams.push(v); return pageParams.length; });
+      if (frag) pageParts.push(frag);
+    } else if (!isNaN(Number(o.cursor))) {
+      pageParams.push(Number(o.cursor));
+      /* W3-1: a DESC ordering must walk keys backwards (<) or the page repeats
+         itself (id > cursor over id DESC returns rows already seen). */
+      const op = o.orderDir === 'DESC' ? '<' : '>';
+      pageParts.push(`${o.cursorRef} ${op} $${pageParams.length}`);
+    }
   }
   const pageWhere = pageParts.length ? `WHERE ${pageParts.join(' AND ')}` : '';
   pageParams.push(Number(o.limit) + 1);
@@ -75,16 +136,24 @@ function _finalize(o) {
 /**
  * students list — mirrors server/routes/students.js getStudentsList.
  */
-function buildStudentsList({ user, classId, grade, search, limit, cursor }) {
+function buildStudentsList({ user, office, classId, grade, search, limit, cursor }) {
   const from = '"users" u';
   const parts = [`u.role = 'student'`];
   const params = [];
   const push = (v) => { params.push(v); return params.length; };
 
   if (user && !SUPER_SCOPED.has(user.role)) {
-    const i = push(Number(user.school_id));
-    parts.push(`(u.school_id IS NULL OR u.school_id = $${i})`);
+    if (user.role === 'edu_office') {
+      /* قراردادِ رکوردِ دانش‌آموز (policy.studentRecordOk): اداره — و هر نقشِ
+         دیگر — دیدنِ فهرستِ دانش‌آموزان را ندارد ⇒ fail-closed. دایرکتوریِ
+         کاربران (/api/users) هندسهٔ دفتر را می‌بیند؛ فهرستِ دانش‌آموزان نه. */
+      parts.push('1 = 0');
+    } else {
+      const i = push(Number(user.school_id));
+      parts.push(`u.school_id = $${i}`); /* Wave 5 — strict anchor, no NULL escape */
+    }
   }
+  _roleScopeParts('u', 'students', user, parts, push);
   if (classId) {
     const c = push(Number(classId));
     parts.push(`EXISTS (SELECT 1 FROM "${tableName('enrollments')}" e WHERE e.student_id = u.id AND e.class_id = $${c})`);
@@ -97,14 +166,7 @@ function buildStudentsList({ user, classId, grade, search, limit, cursor }) {
     const q = push('%' + String(search).trim() + '%');
     parts.push(`(CAST(u.full_name AS TEXT) ILIKE $${q} OR CAST(u.national_id AS TEXT) ILIKE $${q})`);
   }
-  if (user && user.role === 'teacher') {
-    const tid = push(Number(user.id));
-    parts.push(
-      `EXISTS (SELECT 1 FROM "${tableName('enrollments')}" e2 WHERE e2.student_id = u.id AND e2.class_id IN (` +
-      `SELECT c2.id FROM "${tableName('classes')}" c2 WHERE c2.homeroom_teacher_id = $${tid} ` +
-      `OR c2.id IN (SELECT s2.class_id FROM "${tableName('schedule')}" s2 WHERE s2.teacher_id = $${tid})))`
-    );
-  }
+  /* teacher scope now unified in _roleScopeParts above (single model with policy.readOk) */
 
   return _finalize({ from, parts, params, orderBy: 'u.id ASC', cursorRef: 'u.id', limit, cursor });
 }
@@ -112,15 +174,26 @@ function buildStudentsList({ user, classId, grade, search, limit, cursor }) {
 /**
  * attendance list — mirrors server/routes/attendance.js getAttendanceList.
  */
-function buildAttendanceList({ user, date, classId, studentId, limit, cursor }) {
+function buildAttendanceList({ user, office, date, classId, studentId, limit, cursor }) {
   const from = '"attendance"';
   const parts = [];
   const params = [];
   const push = (v) => { params.push(v); return params.length; };
 
   if (user && !SUPER_SCOPED.has(user.role)) {
-    const i = push(Number(user.school_id));
-    parts.push(`(school_id IS NULL OR school_id = $${i})`);
+    if (user.role !== 'edu_office') {
+      const i = push(Number(user.school_id));
+      parts.push(`school_id = $${i}`); /* Wave 5 — strict anchor, no NULL escape */
+    }
+    _officeGeoClause('', user, office, parts, push);
+  }
+  if (user && user.role === 'teacher') {
+    /* Wave 5 — teacher sees attendance of classes they actually teach
+       (policy.readOk teacher arm; attendance rows carry no teacher/subject
+       columns, so the JS ∪-arms are no-ops here — class arms are enough). */
+    const t = push(Number(user.id));
+    parts.push(`(class_id IN (SELECT s.class_id FROM "${tableName('schedule')}" s WHERE s.teacher_id = $${t})` +
+      ` OR class_id IN (SELECT c.id FROM "${tableName('classes')}" c WHERE c.homeroom_teacher_id = $${t}))`);
   }
   if (date) {
     const d = push(String(date).trim());
@@ -142,7 +215,31 @@ function buildAttendanceList({ user, date, classId, studentId, limit, cursor }) 
     parts.push(`EXISTS (SELECT 1 FROM "${tableName('parent_links')}" pl WHERE pl.parent_id = $${pid} AND pl.student_id = attendance.student_id)`);
   }
 
-  return _finalize({ from, parts, params, orderBy: 'date DESC, id ASC', cursorRef: 'id', limit, cursor });
+  /* W3-2: ORDER BY date DESC, id ASC is a *composite* sort — a single
+     `id > cursor` predicate would skip every older date. The cursor therefore
+     encodes "date|id" and the keyset predicate is
+     `date < $d OR (date = $d AND id > $i)`. A bare numeric cursor still works
+     (legacy) as id-only. */
+  const cursorKeyset = (cursorStr, push) => {
+    const s = String(cursorStr || '');
+    const pipe = s.indexOf('|');
+    if (pipe === -1) {
+      const n = Number(s);
+      if (isNaN(n)) return null;
+      const i = push(n);
+      return `id > $${i}`;
+    }
+    const date = s.slice(0, pipe);
+    const id = Number(s.slice(pipe + 1));
+    if (isNaN(id)) return null;
+    const d = push(date);
+    const i = push(id);
+    return `(date < $${d} OR (date = $${d} AND id > $${i}))`;
+  };
+
+  const built = _finalize({ from, parts, params, orderBy: 'date DESC, id ASC', cursorRef: 'id', cursorKeyset, limit, cursor });
+  built.cursorKey = (row) => (row && row.date != null ? String(row.date) : '') + '|' + String(row && row.id);
+  return built;
 }
 
 /**
@@ -150,15 +247,18 @@ function buildAttendanceList({ user, date, classId, studentId, limit, cursor }) 
  * Enrichment (subject_name/student_name) is done via allowlisted LEFT JOINs in
  * the page query; the COUNT stays over the base table (joins are many-to-one).
  */
-function buildGradesList({ user, studentId, subjectId, classId, limit, cursor }) {
+function buildGradesList({ user, office, studentId, subjectId, classId, limit, cursor }) {
   const from = '"grades" g';
   const parts = [];
   const params = [];
   const push = (v) => { params.push(v); return params.length; };
 
   if (user && !SUPER_SCOPED.has(user.role)) {
-    const i = push(Number(user.school_id));
-    parts.push(`(g.school_id IS NULL OR g.school_id = $${i})`);
+    if (user.role !== 'edu_office') {
+      const i = push(Number(user.school_id));
+      parts.push(`g.school_id = $${i}`); /* Wave 5 — strict anchor, no NULL escape */
+    }
+    _officeGeoClause('g', user, office, parts, push);
   }
   if (studentId) {
     const s = push(Number(studentId));
@@ -179,9 +279,12 @@ function buildGradesList({ user, studentId, subjectId, classId, limit, cursor })
     const pid = push(Number(user.id));
     parts.push(`EXISTS (SELECT 1 FROM "${tableName('parent_links')}" pl WHERE pl.parent_id = $${pid} AND pl.student_id = g.student_id)`);
   } else if (user && user.role === 'teacher') {
+    /* Wave 5 — same union as policy.readOk: own-written ∪ taught-subject ∪ taught-class */
     const tid = push(Number(user.id));
     parts.push(
-      `(g.teacher_id = $${tid} OR EXISTS (SELECT 1 FROM "${tableName('schedule')}" s3 WHERE s3.teacher_id = $${tid} AND s3.subject_id = g.subject_id))`
+      `(g.teacher_id = $${tid} OR EXISTS (SELECT 1 FROM "${tableName('schedule')}" s3 WHERE s3.teacher_id = $${tid} AND s3.subject_id = g.subject_id)` +
+      ` OR g.class_id IN (SELECT s4.class_id FROM "${tableName('schedule')}" s4 WHERE s4.teacher_id = $${tid})` +
+      ` OR g.class_id IN (SELECT c4.id FROM "${tableName('classes')}" c4 WHERE c4.homeroom_teacher_id = $${tid}))`
     );
   }
 
@@ -191,7 +294,7 @@ function buildGradesList({ user, studentId, subjectId, classId, limit, cursor })
 
   return _finalize({
     from, pageFrom, selectList, parts, params,
-    orderBy: 'g.id DESC', cursorRef: 'g.id', limit, cursor
+    orderBy: 'g.id DESC', cursorRef: 'g.id', orderDir: 'DESC', limit, cursor
   });
 }
 
@@ -200,16 +303,20 @@ function buildGradesList({ user, studentId, subjectId, classId, limit, cursor })
  * student_count via a scalar subquery over enrollments; homeroom teacher name
  * via a LEFT JOIN on users (the count stays over the base classes table).
  */
-function buildClassesList({ user, grade, limit, cursor }) {
+function buildClassesList({ user, office, grade, limit, cursor }) {
   const from = '"classes" c';
   const parts = [];
   const params = [];
   const push = (v) => { params.push(v); return params.length; };
 
   if (user && !SUPER_SCOPED.has(user.role)) {
-    const i = push(Number(user.school_id));
-    parts.push(`(c.school_id IS NULL OR c.school_id = $${i})`);
+    if (user.role !== 'edu_office') {
+      const i = push(Number(user.school_id));
+      parts.push(`c.school_id = $${i}`); /* Wave 5 — strict anchor, no NULL escape */
+    }
+    _officeGeoClause('c', user, office, parts, push);
   }
+  _roleScopeParts('c', 'classes', user, parts, push);
   if (grade != null && grade !== '') {
     const g = push(Number(grade));
     parts.push(`c.grade = $${g}`);
@@ -230,16 +337,20 @@ function buildClassesList({ user, grade, limit, cursor }) {
  * role + free-text search over full_name/national_id/phone). national_id is
  * only ever a bound ILIKE parameter — never interpolated.
  */
-function buildUsersList({ user, role, search, limit, cursor }) {
+function buildUsersList({ user, office, role, search, limit, cursor }) {
   const from = '"users" u';
   const parts = [];
   const params = [];
   const push = (v) => { params.push(v); return params.length; };
 
   if (user && !SUPER_SCOPED.has(user.role)) {
-    const i = push(Number(user.school_id));
-    parts.push(`(u.school_id IS NULL OR u.school_id = $${i})`);
+    if (user.role !== 'edu_office') {
+      const i = push(Number(user.school_id));
+      parts.push(`u.school_id = $${i}`); /* Wave 5 — national accounts (school NULL) never leak */
+    }
+    _officeGeoClause('u', user, office, parts, push);
   }
+  _roleScopeParts('u', 'users-directory', user, parts, push);
   if (role) {
     const r = push(String(role));
     parts.push(`u.role = $${r}`);
@@ -280,13 +391,16 @@ async function executePagedList(db, built, { limit, cursor }) {
 
   const first = data[0];
   const last = data[data.length - 1];
+  /* W3-2: composite-ordered lists (attendance) return a "date|id" cursor; every
+     other list returns the bare id. */
+  const cursorKey = built.cursorKey || ((r) => (r == null ? null : String(r.id)));
   return {
     data,
     pagination: {
       limit,
       has_more: hasMore,
-      next_cursor: hasMore && last ? String(last.id) : null,
-      prev_cursor: cursor ? (first ? String(first.id) : null) : null,
+      next_cursor: hasMore && last ? cursorKey(last) : null,
+      prev_cursor: cursor ? (first ? cursorKey(first) : null) : null,
       count: data.length,
       total
     }

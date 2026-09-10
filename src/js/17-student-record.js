@@ -94,7 +94,10 @@ function viewRecord(sid){
      <span class="badge ${a>=17?'b-green':a>=12?'b-blue':'b-red'}">میانگین ${fa(a.toFixed(2))}</span></div>
      <div style="margin:8px 0 12px">${bar(a,20,a>=17?'var(--green)':a>=12?'var(--primary)':'var(--red)')}</div>
      <div class="row">${l.map(g=>{const c=(typeof classScoreContext!=='undefined'&&S.__clsCtx)?S.__clsCtx[Number(id)+'|'+g.term+'|'+g.exam_type]:null;
-     return `<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}${g.kind==='practical'?' • عملی':''}: <b>${fa(g.score)}</b>${c?' <span class="muted" style="font-weight:400">· کلاس: '+fa(c.avg.toFixed(2))+'</span>':''}${gradeSource(g)==='national'?' · 🏛️ نهایی کشوری':''}</span>`;}).join('')}</div></div>`;}).join('')}</div>`
+     const vp=(typeof vocationalParts==='function')?vocationalParts(g):null;
+     let _pp='';
+     if(vp){if(vp.theory!=null)_pp+=' • تئوری '+fa(vp.theory);if(vp.practice!=null)_pp+=' • عملی '+fa(vp.practice);}
+     return `<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}${g.kind==='practical'?' • عملی':''}${_pp}: <b>${fa(g.score)}</b>${c?' <span class="muted" style="font-weight:400">· کلاس: '+fa(c.avg.toFixed(2))+'</span>':''}${gradeSource(g)==='national'?' · 🏛️ نهایی کشوری':''}</span>`;}).join('')}</div></div>`;}).join('')}</div>`
     :empty('📝','نمره‌ای ثبت نشده','به محض ثبت نمره، کارنامه اینجا نمایش داده می‌شود.');
   /* فاز ۰.۳: نمرات نهایی کشوری، جدا از کارنامهٔ داخلی */
   if(S.tab==='grades') body += nationalGradesCard(sid);
@@ -158,16 +161,23 @@ function internshipCard(sid){
   if(!isFinalYearStudent(sid))return '';
   var rows=internshipSessions(sid);
   var tot=internshipTotals(sid);
+  var pr=(typeof internshipProgress==='function')?internshipProgress(sid):{required:200,approved:tot.approved,pct:0,done:false};
+  var cert=(typeof internshipCert==='function')?internshipCert(sid):null;
   var persona=(typeof activePersona==='function')?activePersona():(S.user&&S.user.role);
   var canManage=persona==='manager'||persona==='superadmin';
+  var canRegister=canManage||persona==='teacher';
   var canApprove=canManage||persona==='teacher';
   var h='<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:14px">'
    +'<div class="row" style="align-items:center;gap:10px;flex-wrap:wrap"><b>🏭 ساعتِ کارآموزی</b>'
    +'<span class="badge b-green">مجموع: '+fa(tot.total)+' ساعت</span>'
    +'<span class="badge b-blue">تأییدشده: '+fa(tot.approved)+' ساعت</span>'
+   +'<span class="badge b-purple">پیشرفت: '+fa(pr.approved)+' از '+fa(pr.required)+'</span>'
+   +(cert?'<span class="badge b-green">🎓 '+esc(cert.code||'')+'</span>':'')
    +'<div class="spacer"></div>'
-   +(canManage?'<button class="btn sm" data-act="internship-new" data-id="'+escAttr(sid)+'">➕ ثبتِ ساعت</button>':'')
-   +'</div>';
+   +(canRegister?'<button class="btn sm" data-act="internship-new" data-id="'+escAttr(sid)+'">➕ ثبتِ ساعت</button>':'')
+   +(canManage&&pr.done&&!cert?'<button class="btn ghost sm" data-act="internship-cert" data-id="'+escAttr(sid)+'">🎓 صدور گواهی</button>':'')
+   +'</div>'
+   +'<div style="margin-top:8px">'+bar(pr.approved,pr.required,pr.done?'var(--green)':'var(--primary)')+'</div>';
   if(rows.length){
     h+='<div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>تاریخ</th><th>ساعت</th><th>محل</th><th>وضعیت</th><th>تأییدکننده</th><th></th></tr></thead><tbody>';
     rows.forEach(function(r){
