@@ -681,6 +681,15 @@ function createSync(ctx){
       if(dropTouchesDropout(op) && s.role !== 'superadmin' && !dropUsersUpdate(s, op)) return all('role_denied');
       /* #4 — target record inside scope */
       const recId = op.id != null ? op.id : (op.data && op.data.id);
+      /* Wave 1: cross-instance scope — the authority knows the record's school.
+         Hydrate store-misses from PG before the scope check so a valid
+         cross-instance op is judged on truth, not on cache absence (inScope
+         keeps enforcing school/ownership on the hydrated row; unknown ids still
+         fail closed). Memory mode: no-op, legacy fail-closed preserved. */
+      if((op.t === 'upd' || op.t === 'del') && recId != null
+          && !(store[op.c] || []).some(x => x && x.id === Number(recId))){
+        await findForApply(op.c, recId);
+      }
       if(!inScope(s, op.c, recId, op.data)) return all('out_of_scope');
       /* R96 P0-2 — دروازهٔ فیلد: فیلدِ ناشناخته / ارتقاءِ نقش / مالکیت /
          status. استثنایِ IEP/DROP (users) که در گِیتِ قبلی اعطا شده،
