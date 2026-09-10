@@ -24,6 +24,7 @@
   - `server/index.js` (61524e7 WAF ENFORCE) — خطِ require: `metrics` (main) + کامنتِ WAFِ report/enforce (ما) ⇒ هر دو.
 - **سازگاری:** `/metrics` به allowlistِ fail-safeٔ WAF enforce اضافه شد (مسیرِ زیرساختی — هرگز بلاک نمی‌شود؛ `fix(waf)`).
 - **دروازه‌ها (بعد از ریبیس، روی کدِ ادغام‌شده):** smoke **547/547** · check-authz **0** · secret-scan **11/11** · wave13 **23/23** · wave12 **24/24** · **waf-enforce 33/33** · waf-ddos **19/19** · otp-ratelimit-mutations **11/11** · multi-instance **17/17** · wave1-multi-instance **33/33** · build --check **بیت‌به‌بیت** · **ویو ۱۴: observability-config 55/55 · dashboards 30/30** · **HA: ha-config 92/92 · dr-runbook 38/38**.
+- **یادداشتِ CI:** رانِ نخستِ Security Program بعد از force-push: 6 job سبز، lane WAF در ۱۱ ثانیه failed (مرحلۀ اولیه — پیش از هر اجرایِ کد؛ ران‌هایِ هم‌زمانِ workflowهایِ دیگر سبز؛ لاگ از سندباکس خوانا نبود ⇒ اختلالِ گذرایِ رانر در npm ci). رانِ تازه (ترگر با همین کامیت) مرجع است.
 ## چت ۳ — P0 #6 امنیتِ اجرایی (DAST زنده + PENT-TEST + WAF ENFORCE + Abuse) — ۱۹/۰۶/۱۴۵ (2026-09-10) — کامل ✅
 
 **وضعیت:** هر ۸ گامِ P0 #6 انجام و push شد. دروازه‌ها: smoke **547/547** · check-authz **0** · secret-scan **11/11** · wave13-security **23/23** · **waf-enforce (جدید) 33/33** · waf-ddos unit **19/19** · waf-mutations **4/4** · otp-ratelimit-mutations **11/11** · wave12-network **24/24** · wave1-multi-instance **33/33** · multi-instance **17/17** · arena5-recovery **32/32**.
