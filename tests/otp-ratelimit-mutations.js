@@ -4,7 +4,7 @@
    ─────────────────────────────────────────────────────────────
    M1 کد برگردد به ۴ رقم ← R1
    M2 cooldown خاموش ← R8 (cooldownِ مشترک دیده نمی‌شود)
-   M3 سقفِ روزانه خاموش ← R3
+   M3 سقفِ روزانه خاموش ← R3 (R dist: خطِ اجرایِ rate-limit.js در auth.js)
    M4 سقفِ phone خاموش ← R2
    M5 سقفِ IP در ارسال خاموش ← R4
    M6 سقفِ IP در login خاموش ← R5
@@ -37,6 +37,17 @@ const MUTS = [
   { bad: "const rLi = await rateLimit.checkRateLimit({ prefix: 'otp:login:ip', identifier: ip, limit: IP_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });",
     mut: 'const rLi = { allowed: true };',
     name: 'M6 سقفِ IP در login خاموش شد', expectFail: 'R5' },
+  { bad: "if(!rDaily.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
+    mut: "if(false) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
+    name: 'M3 سقفِ روزانه خاموش شد', expectFail: 'R3' },
+  { bad: "if(!rPh.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
+    mut: "if(false) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
+    name: 'M4 سقفِ phone خاموش شد', expectFail: 'R2' },
+  { bad: "if(!rIp.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
+    mut: "if(false) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
+    name: 'M5 سقفِ IP در ارسال خاموش شد', expectFail: 'R4' },
+  { bad: "if(!rLi.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
+    mut: "if(false) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",    name: 'M6 سقفِ IP در login خاموش شد', expectFail: 'R5' },
   { bad: 'const a = Buffer.from(hashCode(code, phone));',
     mut: "const a = Buffer.from(rec.h || '0000000000000000000000000000000000000000000000000000000000000000');",
     name: 'M7 مقایسهٔ hash همیشه-درست شد', expectFail: 'R6' },
