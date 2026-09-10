@@ -14,6 +14,17 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۶: اتصال + ممیزی اسناد §30 + ساخت `docs/CAPACITY_MODEL.md` — ✅ (2026-09-10)
+- **نقش:** چت ۶ = مستندات و انتشار (Documentarian & Release Engineer)؛ اولین مأموریت طبق §30 نقشه راه.
+- **اتصال:** تأیید `git ls-remote` → HEAD `a30fb20`؛ `ruflo@3.39.2` نصب؛ حافظهٔ سندباکس خالی بود (یافتهٔ مشابه چت ۴) ⇒ کلید `p2/roadmap-status` از `docs/NATIONAL_ROADMAP_PROGRESS.md` بازسازی + `chat6_connected` و `p2/chat6-mission-1` ذخیره شد (۳ ورودی، بازیابی معنایی سالم).
+- **ممیزی §30 (گام ۴):** موجود ۵ از ۱۴ — `NATIONAL_BASELINE` (۴ پارت) · `DATABASE_ARCHITECTURE` · `AUTHORIZATION_MODEL` · `SYNC_PROTOCOL` · `SECURITY_MODEL`. **غایب ۹:** `NATIONAL_ARCHITECTURE` · `DISASTER_RECOVERY` · `OBSERVABILITY` · `CAPACITY_MODEL` · `LOAD_TEST_PLAN` · `LOAD_TEST_RESULTS` · `PRODUCTION_RUNBOOK` · `INCIDENT_RESPONSE` · `MIGRATION_GUIDE`.
+- **مأموریت ۱:** `docs/CAPACITY_MODEL.md` v1.0.0 — پروفایل بار ۱۰ میلیون‌کاربری (DAU ۶M · پیک همزمان ۲.۵M · ‏RPS پیک ۲۰هزار · نوشتن ۲٬۵۰۰/ث · ورود ۸۳۳/ث · ۶M همگام‌سازی/روز · حضور ۵۰M + نمره ۲۸۸M رکورد/سال)؛ سایزینگ: ‏PG ‏۲×(۳۲ هسته/۱۲۸گیگ/۴ترابایت NVMe) با پولر ۱۰۰ و ≤۸۰ اتصال فعال (قانون لیتل؛ بار ≈۱۲.۳k qps؛ مجموعهٔ داغ ≈۸۰گیگ)، ‏Redis ≈۲۰گیگ و ≈۴۵k ops/s، ‏۱۲ نود اپ (۴ هسته/۸گیگ؛ فرض ۲٬۰۰۰ RPS بر نود — منوط به اثبات در Wave 18)، شبکه ۲×۱گیگ + ‏CDN؛ ۶ نقطهٔ اشباع به‌ترتیب + ‏SLOها مطابق §29.
+- **گیت‌ها:** smoke **547/547** · check-authz **0** · secret-scan **11/11** — تغییر فقط مستندات (صفر تغییر کد).
+- **کامیت‌ها:** `f6d735c` (سند ظرفیت) · `6c9ba39` (پیوست §30 چک‌لیست: ۵→۶) · `b9391ec` (وابستگی Wave 18) · handoff.
+- **قیدها:** شاخهٔ نشست `arena/01a08b24-p2` (الزام پلتفرم آرنّا — ساخت شاخهٔ جدا ممکن نیست)؛ ‏PR به `main`. **هشدار امنیتی:** توکن‌های پیست‌شده در چت استفاده/ذخیره نشد و باید توسط کارفرما **ریووک و جایگزین** شوند.
+- **بعدی:** به‌ترتیب اولویت: ‏`LOAD_TEST_PLAN.md` (ورودی Wave 18) ← `PRODUCTION_RUNBOOK.md` + `INCIDENT_RESPONSE.md` (پیش‌نیاز نرمِ Go-Live) ← باقی اسناد §30.
+
+
 ## ویو ۱۴ — استقرارِ زندهٔ Observability (Prometheus/Grafana/Loki/Jaeger) — ✅ (2026-09-10)
 - **فاز۲ِ این سشن:** اسکراپ‌تارگتِ واقعی اضافه شد — `server/metrics.js` (text-expositionِ صفرِوابستگی: http histogram/counters با tapِ finish + guardهایِ کاردینالیتی + self-scrape-excluded، lag/GC/heap از stdlib، pullsِ زمانِ اسکرپ guardشده ⇒ سرویسِ مرده = `*_up=0`)؛ وایرینگ `index.js` با دروازهٔ اختیاریِ `METRICS_TOKEN` (چهل‌وی‌وان) — edge هرگز `/metrics` را روت نمی‌کند. **تأییدِ زنده در سندباکس:** بوتِ سرویس، سری‌ها، شمارنده‌ها، گیتِ توکن.
 - **استک compose:** `infra/observability/` — prometheus v2.54.1 + alertmanager v0.27.0 + grafana 11.2.0 (datasource/dashboard provisioningِ خودکار؛ uidهای payesh-prom/loki/jaeger + لینکِ exemplar→Jaeger) + loki/promtail 3.1.1 (structured_metadataِ trace_id برایِ audit-log) + otelcol-contrib 0.100.0 + jaeger 1.59؛ bind‌ها همه 127.0.0.1؛ رازها env-file.
