@@ -1,0 +1,5 @@
+dast-live DRY_RUN — 2026-09-10T11:00:48Z
+target=<script-staging:8090>
+scan=baseline
+zap=ghcr.io/zaproxy/zaproxy:stable
+plan: boot(api,8090) -> wait(health) -> zap(baseline) -> report(/home/user/p2/out/dast-live) -> cleanup

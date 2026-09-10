@@ -152,10 +152,13 @@ var ACTION_ROLES = {
   'dojo-row-del':   ['manager'],
   'dojo-pick':      ['teacher','manager'],
   /* حضور و غیاب: فقط دبیر و مدیر */
-  /* مهمان‌ها (بند ۷): فقط مدیر؛ مالکیت مدرسه در visitorRegister/visitorCheckout روی داده */
-  'vis-new':        ['manager'],
-  'vis-save':       ['manager'],
-  'vis-out':        ['manager'],
+  /* مهمان‌ها (E.9): مدیر + نگهبان (نقشِ تفویضی — سوپرادمین کاربرِ
+     role=guard می‌سازد). معاون (مدیرِ سطحی با عنوانِ معاون) فقط‌خوان است:
+     گاردِ عنوان در visitorWriteOk روی داده. مالکیت مدرسه در
+     visitorRegister/visitorCheckout روی داده تکرار می‌شود. */
+  'vis-new':        ['manager','guard'],
+  'vis-save':       ['manager','guard'],
+  'vis-out':        ['manager','guard'],
   /* کتابخانه (بند ۸): فقط مدیر؛ مالکیت مدرسه در توابع دامنه روی داده */
   'lib-new':        ['manager'],
   'lib-save':       ['manager'],

@@ -1,0 +1,25 @@
+# loki-config.yml — Loki 3 تک‌نفره (single-binary)
+auth_enabled: false
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore: { store: inmemory }
+memberlist:
+  bind_addr: ["127.0.0.1"]
+  bind_port: 9095
+  join_members: []
+limits_config:
+  retention_period: 720h
+  allow_structured_metadata: true
+  volume_enabled: true
+compactor:
+  delete_request_store: filesystem
+retention_enabled: true
