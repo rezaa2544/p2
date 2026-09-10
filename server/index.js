@@ -52,6 +52,15 @@ const { createDeleteService } = require('./delete-service'); /* P0-17 */
 const { createPull } = require('./pull');
 const { createHeavyWorker } = require('./worker-service'); /* Wave 9 — رشتهٔ کارِ عملیاتِ سنگین */
 const { createStaticCache } = require('./static-cache');   /* Wave 9 — کشِ استاتیک */
+const { checkEnvFlags, mismatchWarning } = require('./env-flags'); /* SUSPECT-B */
+
+/* SUSPECT-B (نشست ۲): ناهماهنگیِ پرچم‌هایِ تولید را بلند کن — رفتارِ بوت
+   عوض نمی‌شود (T2 و redis-fallback §۶ همان رفتار را پین کرده‌اند)؛ فقط
+   اپراتور می‌فهمد. قانونِ متعارف («هر دو production») در DEPLOY.md §۳. */
+try {
+  const __envf = checkEnvFlags(process.env);
+  if(__envf.mismatch) console.warn(mismatchWarning(__envf));
+}catch(e){}
 
 const ROOT = path.join(__dirname, '..');
 const DATA_DIR = path.join(__dirname, 'data');

@@ -47,6 +47,13 @@ const MUTS = [
     expectFail: 'A1 مسیر',
   },
   {
+    file: 'server/tracing.js', cmd: SAMPLING,
+    name: 'M6 تشخیص تولید با PAYESH_ENV حذف شود (BUG-5)',
+    bad: "if(env.PAYESH_ENV === 'production') return { name: 'parentbased_ratio', arg: 0.1 };",
+    mut: "/* MUT: PAYESH_ENV production check removed */",
+    expectFail: 'SMP-sel پروداکشنِ PAYESH_ENV',
+  },
+  {
     file: 'server/tracing.js', cmd: INTEGRATION,
     name: 'M5 حالتِ خاموش (TRACING_ENABLED=false) نادیده گرفته شود',
     bad: 'if(!cfg.enabled){ state = disabled; return state; }',
@@ -60,7 +67,7 @@ function restore() {
 }
 
 let killed = 0;
-console.log('\n▸ جهش‌های ردیابی (M1–M5)');
+console.log('\n▸ جهش‌های ردیابی (M1–M6)');
 MUTS.forEach((m, i) => {
   const src = fs.readFileSync(m.file, 'utf8');
   if (src.indexOf(m.bad) < 0) {

@@ -183,8 +183,14 @@ function createUserRoutes(ctx) {
     /* Wave 5 — IEP دبیر (استثنای صریحِ مدل، آینهٔ sync) */
     const isIep = policy.isTeacherIepUpdate(user, 'users', 'upd', Object.keys(body || {}));
 
-    if (!isSelf && !isManager && !isIep) {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
+    /* BUG-3 (باگ‌هانت چت ۵): مدلِ مجوز (authz/model.json: users.upd) فقط
+       manager/superadmin است و sync خودبه‌روزرسانیِ غیرمدیر را role_denied
+       می‌کند (phone/national_id/status/active فقط-مدیریتی‌اند)؛ ولی مسیرِ
+       قبلی به هر نقشی اجازه می‌داد رکوردِ خودش را — شاملِ همان فیلدهایِ
+       حساس — تغییر دهد. برایِ یکپارچگی با sync، users.upd در REST هم
+       فقط-مدیر است (کلاینتِ آفلاین‌محور اصلاً این endpoint را صدا نمی‌زند). */
+    if (!isManager) {
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'ویرایش کاربر فقط توسط مدیریت مجاز است' } };
     }
     /* محدودهٔ IEP: دبیر فقط روی کاربرانی که در کلاس‌هایش‌اند یا هم‌مدرسه‌ایِ
        مستقیم — همان inScope که در بالا رد کرد؛ اینجا فقط کلیدها سنجیده می‌شوند. */

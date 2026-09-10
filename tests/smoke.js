@@ -7851,9 +7851,13 @@ test('دور ۷۸ بند ۷: ماژول اسکان/خوابگاه — اتاق،
     const lrec = JSON.parse(lv);
     assert(lrec, 'رکوردِ مرخصیِ خوابگاه ساخته نشد');
     made.leave = lrec.id;
-    const exp = W(`(function(){var f=addDaysISO(todayISO(),((5-new Date().getDay())+7)%7);return JSON.stringify({f:f,t:addDaysISO(f,1)});})()`);
+    /* BUG-1 (باگ‌هانت چت ۵): انتظارِ قبلی همان فرمولِ غلطِ جمعه‌محور را آینه
+       می‌کرد و سبزِ کاذب می‌داد؛ حالا پنجشنبه‌محور + weekday صریح. */
+    const exp = W(`(function(){var f=addDaysISO(todayISO(),((4-new Date().getDay())+7)%7);return JSON.stringify({f:f,t:addDaysISO(f,1)});})()`);
     const expd = JSON.parse(exp);
     assert(lrec.from_date === expd.f && lrec.to_date === expd.t, 'بازهٔ پنجشنبه→جمعه نادرست بود');
+    assert(new Date(lrec.from_date+'T12:00:00').getDay() === 4, 'شروعِ مرخصیِ خوابگاه باید پنجشنبه باشد');
+    assert(new Date(lrec.to_date+'T12:00:00').getDay() === 5, 'پایانِ مرخصیِ خوابگاه باید جمعه باشد');
     assert(lrec.status === 'approved', 'مرخصیِ خوابگاه باید مستقیم تأییدشده باشد');
     assert(lrec.kind === 'dorm_weekend', 'نوعِ رکورد dorm_weekend نیست');
     assert(W(`db.notifications.length`) > nBefore, 'اعلان برای دانش‌آموز/ولی ساخته نشد');
