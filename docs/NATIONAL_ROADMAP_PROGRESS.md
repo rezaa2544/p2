@@ -23,7 +23,7 @@
 | 11 | Cache | Arena 4 | ⏳ | Medium | Wave 3/6 و benchmark | در انتظار شروع |
 | 12 | Network / Edge | Arena 4 | ✅ | Medium | استقرار production و TLS/CDN/WAF | PR #43 مرج شد (463233c): بلاک‌های لبه nginx + اسناد CDN/WAF + ci/pending CodeQL + wave12 24/24 و جهش 5/5؛ رفعِ braceِ رگکس‌های map در nginx -t رانر؛ باقی‌مانده: اِعمال پچ CodeQL با توکن workflow |
 | 13 | Security Program | Arena 2 + Arena 5 | ⏳ | Critical | Wave 5 و threat model | در انتظار شروع |
-| 14 | Observability | Arena 4 + Arena 5 | ⏳ | High | Wave -1 و deployment model | در انتظار شروع |
+| 14 | Observability | Arena 4 + Arena 5 | 🟡 | High | Wave -1 و deployment model | فاز۱ tracing مرج (PR #22) + فاز۲ استقرارِ زنده: metrics.js (exporter بدونِ وابستگی، ۵۵/۵۵ config + ۳۰/۳۰ dashboards + جهش ۶/۶)، استک compose (Prometheus/Grafana/Alertmanager/Loki/Promtail/OTel/Jaeger)، ۷ قانونِ بحرانی + داشبوردها — اجرایِ واقعیِ compose/تستِ webhook روی میزبان باقی |
 | 15 | Health / Deployment | Arena 4 | ⏳ | High | Wave 14 و stateless API | در انتظار شروع |
 | 16 | Disaster Recovery | Arena 4 + Arena 5 | 🟡 | Critical | Wave 10/15 و RPO/RTO | P0#3 زیرساخت-as-Code+Runbook آماده (infra/postgres HA، infra/redis sentinel، tools/pitr-*/failover-*، docs/DR_RUNBOOK.md با RPO/RTO مصوب RELIABILITY_DR_PLAN؛ تست 92/92 + 38/38 + جهش 7/7) — اجرای مانور روی استیجینگ باقی |
 | 17 | Testing Pyramid | Arena 5 | ⏳ | High | همه Waveها | در انتظار شروع |
