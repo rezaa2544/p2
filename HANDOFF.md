@@ -14,6 +14,22 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۳ — ریبیسِ سومِ `arena/01a08545-p2` روی `origin/main` (`ac590be`، PR #48) — ۱۹/۰۶/۱۴۵ (2026-09-10) — کامل ✅
+
+**وضعیت:** `main` با ادغامِ PR #48 (چت ۱: **موج ۱ P0 — PG transaction-first writes** + ویو ۱۲ شبکه + ویو ۱۳ امنیت + `pg-mem`) جابه‌جا شد و PR #47 `CONFLICTING` شد. ریبیسِ سوم با قاعدهٔ همیشگی «هر دو سمت — ادغام معنایی، نه اتصالِ خُرد» کامل شد؛ شاخه بازنویسی و force-push (lease با sha) شد و PR #47 دوباره `MERGEABLE` است.
+
+- **تداخل‌ها (۸ کامیتِ ما روی ۱۲ فایلِ متاثر):**
+  - `server/outbox.js` — هر دو: `client` تراکنسیِ Wave1-W (آی‌دی‌گیری از sequenceٔ PG + INSERT داخل تراکنشِ فراخوان) و `nextId`ِ Redis-INCR ما (P0#2) ⇒ زنجیرهٔ نهایی: **PG sequence → Redis INCR مشترک → شمارندهٔ محلی**.
+  - `server/delete-service.js` — دو طراحیِ مستقلِ حذف: orderingِ PG-first + hydrate-on-miss (T8) و 503-gate (شان) + تراکنشِ اتمیکِ DELETE+outbox ما (W5/W7: ROLLBACK+throw) ⇒ هر دو زنده: hydrate → تراکنش (PG) → سنگ‌قبر/اسپلایس → mirror حافظه.
+  - `server/sync.js` — 6 خُرد: نوتیفیکیشن‌هایِ مشتق با `serverId()` (PG-aware) در ساختارِ `derived` ما (لنگرِ MW2: `batchAll = mirror.concat(derived)`) + فازِ ۲ِ شان (rollbackِ اسنپ‌شات + 503 + retry — T3).
+  - `server/index.js` — `db` در هر سه کامپوز (admin/conflicts شان + sms ما).
+  - ۵ روت — 11 خُرد: orderingِ PG-first شان + انقضایِ کشِ Wave-11 ما (همهٔ مسیرهایِ create/update/delete)؛ خطِ تکراریِ mirror حذف شد.
+  - `docs/WAVE1_WRITES_INVENTORY.md` (add/add) — هر دو سند + یادداشتِ ادغام.
+  - `HANDOFF.md` — ورودی‌هایِ هر دو سشن (چت ۱ موج ۱ + ورودی‌های ما).
+- **تست‌هایِ سازگار‌سازی‌شده:** `tests/wave1-writes.js` — لنگرهایِ SQL با فرمتِ db.jsِ main (شناسه‌هایِ با-نقل‌قول؛ `upd` = UPDATE نه upsert) — W1c حالا «۳ نوشتِ اتمیک در یک تراکنش» را ثابت می‌کند (14/14 + جهش 5/5).
+- **دروازه‌ها (همان روز، بعد از ریبیس):** smoke **547/547** · check-authz **0** · secret-scan **11/11** · build --check ✅ · **wave1-writes 14/14** · **wave1-writes-mutations 5/5** · **wave1-multi-instance (شان، pg-mem) 33/33** · **db-engineering 13/13** · **wave12-network 24/24 + جهش 5/5** · **wave13-security 23/23** · sync-atomic-batch **22/22** · tombstone **25/25** · occ **18/18** · multi-instance **17/17** · wave6 **22/22** · wave11 **20/20** · wave15 **10/10** · wave18 **38/38** · wave19 **28/28** · wave20-arena5 **22/22** · demo-guard **4/4** · arena5-recovery **32/32** · **multinode-live 10/10 (دوباره روی کدِ ریبیس‌شده — Redis واقعی)**.
+- **push:** `--force-with-lease=arena/01a08545-p2:251a772` ⇒ `ee3ed97` — `ls-remote` تأیید کرد؛ PR #47 = `MERGEABLE` (base = همین main).
+
 ## چت ۳ — اجرایِ زندهٔ W18/W19 روی زیرساختِ چندنمونه‌ای (unblocked by P0 #2) — ۱۹/۰۶/۱۴۵ (2026-09-10) — کامل ✅
 
 **وضعیت:** «live W18/W19 — pending multi-node infra» در دستورِ ناظر انجام شد: زیرساختِ چندنمونه‌ایِ زنده **داخلِ همین ساندباکس** ساخته و اجرا شد (Redis واقعی + ۲ فرایندِ production واقعی) و هر ۱۰ فرضیه سبز شد.
