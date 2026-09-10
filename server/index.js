@@ -32,6 +32,7 @@ const { createIdor } = require('./idor');
 const { createBell } = require('./bell');
 const { createPublicReport } = require('./public-report');
 const { createAdmin } = require('./admin');
+const { createHealthIndex } = require('./health-index'); /* G.1 */
 const { createSms } = require('./sms');
 const { createConflicts } = require('./conflicts');
 const { createAudit, clientIp } = require('./audit');
@@ -397,6 +398,7 @@ const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson:
 const pubrep = createPublicReport({ store, sendJson: sendJsonCounting, workers });
 /* هر سه ماژول با db می‌چرخند: admin/conflicts (Wave 1 main) + sms (W1p2 تراکنسی) */
 const admin = createAdmin({ store, db, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, dataDir: path.dirname(STORE_FILE), workers });
+const healthIdx = createHealthIndex({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting }); /* G.1 */
 const sms = createSms({ store, db, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 const conflicts = createConflicts({ store, db, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 
@@ -588,6 +590,7 @@ const onRequest = async (req, res) => {
        بی‌دلیل بود؛ حالا 4KB مثلِ بقیهٔ بدنه‌هایِ کوچک (413 برایِ بیشتر). */
     if(p === '/api/admin/restore' && req.method === 'POST') return await admin.apiRestore(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/sms/send' && req.method === 'POST') return await sms.apiSend(req, res, await readBody(req, 32 * 1024));
+    if(p === '/api/health-index' && req.method === 'GET') return await healthIdx.apiHealthIndex(req, res, url.searchParams); /* G.1 */
 
     /* ── Phase 3: RESTful Resource Endpoints (/api/v1/*) ────────── */
     if(p.indexOf('/api/v1/') === 0){

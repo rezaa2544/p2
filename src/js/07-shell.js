@@ -200,6 +200,8 @@ function _renderRouteInner(){
     case 'officedash':return viewOfficeDash();
     case 'officeschools':return viewOfficeSchools();
     case 'teacheval':return viewTeachEval();
+    case 'regionscore':return viewRegionScore();
+    case 'staffgap':return viewStaffGap();
     case 'busservice':return viewBusService();
     case 'myservice':return viewMyService();
     case 'vclass':return viewVclass();
