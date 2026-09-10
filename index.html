@@ -3952,7 +3952,17 @@ async function syncNow(manual){
     }
 
     SYNC.attempts = bad ? SYNC.attempts + 1 : 0;
-    if(bad) scheduleSync(backoffDelay());
+    /* W7-6 (موج ۷، نشست ۴): backoffِ خودکار باید قلم‌هایِ failedِ باقی‌مانده در
+       صف را هم ببیند. پیش‌تر فقط `bad` (که از نتایجِ res حساب می‌شد) شرطِ
+       زمان‌بندی بود؛ قلم‌هایی که جارویِ W7-1 (پاسخِ ناقصِ سرور) failed
+       می‌کند در res نیستند، پس `bad` صفر می‌ماند، شمارندهٔ attempts ریست
+       می‌شد و هیچ تلاشِ خودکاری زمان‌بندی نمی‌شد — قلمِ failed تا یک محرکِ
+       بیرونی (آنلاین‌شدن/کلیکِ دستی/opِ تازه) زمین‌گیر می‌ماند. حالا هر
+       قلمِ failedِ باقی در صف (قابلِ تلاشِ دوباره؛ قلم‌هایِ DLQ از صف
+       جدا شده‌اند) هم زمان‌بندی را فعال می‌کند. */
+    const retryable = SYNC.queue.some(x => x.status === 'failed');
+    SYNC.attempts = (bad || retryable) ? SYNC.attempts + 1 : 0;
+    if(bad || retryable) scheduleSync(backoffDelay());
 
   }catch(err){
     /* شکست کل دسته — همه failed می‌شوند (پس از ۵ تلاش: DLQ) تا دوباره تلاش شود */
