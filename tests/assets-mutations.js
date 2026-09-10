@@ -43,8 +43,8 @@ mutate('src/js/55-assets.js',
   '    if(!(total >= 1)) return {ok:false, msg:\'تعدادِ کل باید دست‌کم ۱ باشد\'};\n    if(false){}',
   /❌ B2/, 'M2 برداشتنِ اعتبارسنجیِ شمار');
 
-mutate('server/sync.js',
-  '      if(!me || me.asset_staff !== 1) return false;',
+mutate('server/policy.js',
+  '      if (!me || me.asset_staff !== 1) return false;',
   '      if(false){}',
   /❌ S1/, 'M3 برداشتنِ گاردِ پرچم در inScope');
 

@@ -119,16 +119,32 @@ function clientIp(req) {
 
 /**
  * ساخت نمونه کنترل‌کننده ممیزی
+ *
+ * حالتِ نوشتن (Wave 9 — Application Performance):
+ *  - پیش‌فرض (sync): عیناً رفتارِ پیشین — appendFileSync در همان لحظه.
+ *    آزمون‌ها و ابزارها فایل را بلافاصله پس از رویداد می‌خوانند؛ این
+ *    حالتِ پیش‌فرض باید همان‌بماند تا قراردادِ خواندنِ هم‌زمان برقرار بماند.
+ *  - async (تولید، PAYESH_AUDIT_ASYNC=1 یا opts.asyncMode): رویدادها به
+ *    صفِ درون‌حافظه می‌روند و در پس‌زمینه (setImmediate) با یک
+ *    fs.appendFile به‌صورتِ دسته‌ای و مرتب نوشته می‌شوند — دیگر هیچ
+ *    I/O سنکرونی در مسیرِ درخواست نیست. خروجِ فرآیند با flushSync
+ *    باقی‌مانده را همان لحظه می‌نویسد (wired در server/index.js).
  */
 function createAudit(opts = {}) {
   const auditFile = opts.auditFile || process.env.PAYESH_AUDIT || path.join(__dirname, 'data', 'audit.log');
   const auditDir = opts.auditDir || path.join(path.dirname(auditFile), 'audit');
   const maxEvents = opts.maxEvents != null ? opts.maxEvents : (parseInt(process.env.PAYESH_AUDIT_MAX_EVENTS || '1000', 10) || 1000);
   const maxBytes = opts.maxBytes != null ? opts.maxBytes : (parseInt(process.env.PAYESH_AUDIT_MAX_BYTES || String(10 * 1024 * 1024), 10) || 10 * 1024 * 1024);
+  const asyncMode = opts.asyncMode === true || process.env.PAYESH_AUDIT_ASYNC === '1';
 
   let initialized = false;
   let currentDay = new Date().toISOString().slice(0, 10);
   let eventCounter = 0;
+
+  /* ── صفِ پس‌زمینه (فقط حالتِ async) ───────────────────────────── */
+  let flushQueue = [];
+  let flushScheduled = false;
+  let flushRunning = false;
 
   function ensureInit() {
     if (initialized) return;
@@ -140,12 +156,20 @@ function createAudit(opts = {}) {
 
       if (fs.existsSync(auditFile)) {
         try { fs.chmodSync(auditFile, 0o600); } catch (e) {}
-        // شمارش رویدادهای موجود در فایل
-        const content = fs.readFileSync(auditFile, 'utf8');
-        eventCounter = content.split('\n').filter(Boolean).length;
-        // خواندن تاریخ ایجاد یا اولین رویداد
-        const mtime = fs.statSync(auditFile).mtime;
-        currentDay = new Date(mtime).toISOString().slice(0, 10);
+        if (asyncMode) {
+          /* حالتِ async: شمارشِ خطوط با خواندنِ کلِ فایلِ (تا ۱۰MB)
+             سنکرون در مسیرِ نخستِ رویداد نمی‌ارزد — سقفِ حجم در flush
+             نگهبان است و شمارنده از صفرِ همین فرآیند می‌شمارد. */
+          const mtime = fs.statSync(auditFile).mtime;
+          currentDay = new Date(mtime).toISOString().slice(0, 10);
+        } else {
+          // شمارش رویدادهای موجود در فایل
+          const content = fs.readFileSync(auditFile, 'utf8');
+          eventCounter = content.split('\n').filter(Boolean).length;
+          // خواندن تاریخ ایجاد یا اولین رویداد
+          const mtime = fs.statSync(auditFile).mtime;
+          currentDay = new Date(mtime).toISOString().slice(0, 10);
+        }
       } else {
         const fd = fs.openSync(auditFile, 'a', 0o600);
         fs.closeSync(fd);
@@ -221,6 +245,69 @@ function createAudit(opts = {}) {
     } catch (e) {}
   }
 
+  /* چرخشِ سبک (حالتِ async): فقط تصمیم‌های درون‌حافظه — روز و شمارِ
+     رویداد. سقفِ حجم در فلشِ پس‌زمینه با statِ async چک می‌شود تا
+     statSync در مسیرِ رویداد نیفتد. */
+  function checkRotationLight() {
+    const today = new Date().toISOString().slice(0, 10);
+    if (today !== currentDay) {
+      rotate('daily');
+      return;
+    }
+    if (eventCounter >= maxEvents) {
+      rotate('count');
+    }
+  }
+
+  /**
+   * نوشتنِ پس‌زمینه (حالتِ async — Wave 9):
+   * صف → یک appendFileِ دسته‌ای در setImmediate. ترتیبِ رویدادها با
+   * صفِ FIFO و زنجیرهٔ تک‌نفرهٔ فلش حفظ می‌شود. شکستِ دیسک رویداد را در
+   * صف نگه می‌دارد و فلشِ بعدی دوباره می‌کوشد (رویداد ممیزی هرگز
+   * مسیرِ اصلی را نمی‌شکند — همان قراردادِ قبلی).
+   */
+  function enqueueLine(line) {
+    flushQueue.push(line);
+    if (!flushScheduled && !flushRunning) {
+      flushScheduled = true;
+      setImmediate(flush);
+    }
+  }
+
+  async function flush() {
+    flushScheduled = false;
+    if (flushRunning) return;
+    flushRunning = true;
+    try {
+      while (flushQueue.length) {
+        const batch = flushQueue;
+        flushQueue = [];
+        try { checkRotationLight(); } catch (e) {}
+        try {
+          const st = await fs.promises.stat(auditFile).catch(() => null);
+          if (st && st.size >= maxBytes) { try { rotate('size'); } catch (e) {} }
+        } catch (e) {}
+        const chunk = batch.join('');
+        await new Promise((resolve) => {
+          fs.appendFile(auditFile, chunk, { encoding: 'utf8', mode: 0o600 }, () => resolve());
+        });
+      }
+    } finally {
+      flushRunning = false;
+    }
+  }
+
+  /**
+   * تخلیهٔ سنکرونِ صف — برای خروجِ فرآیند (exit/SIGTERM/SIGINT).
+   * خارج از حالتِ async هیچ کاری نمی‌کند (صف همیشه خالی است).
+   */
+  function flushSync() {
+    if (!asyncMode || !flushQueue.length) return;
+    const chunk = flushQueue.join('');
+    flushQueue = [];
+    try { fs.appendFileSync(auditFile, chunk, { encoding: 'utf8', mode: 0o600 }); } catch (e) {}
+  }
+
   /**
    * ثبت رویداد ممیزی (Append-Only)
    */
@@ -235,7 +322,10 @@ function createAudit(opts = {}) {
   function record(eventOrType, detailObj) {
     try {
       ensureInit();
-      checkRotation();
+      /* Wave 9: در حالتِ async تصمیمِ چرخش به فلشِ پس‌زمینه می‌رود
+         (checkRotationLight + سنجشِ حجم با statِ async) — دیگر هیچ
+         statSync/rotate ای در مسیرِ خودِ رویداد نیست. */
+      if (!asyncMode) checkRotation();
 
       let eventName = 'unknown';
       let userId = null;
@@ -305,8 +395,14 @@ function createAudit(opts = {}) {
       const __tid = currentTraceId();
       if(__tid) entry.trace_id = __tid;
       const line = JSON.stringify(entry) + '\n';
-      fs.appendFileSync(auditFile, line, { encoding: 'utf8', mode: 0o600 });
-      eventCounter++;
+      if (asyncMode) {
+        /* Wave 9: صفِ پس‌زمینه — بدونِ appendFileSync در مسیرِ رویداد */
+        eventCounter++;
+        enqueueLine(line);
+      } else {
+        fs.appendFileSync(auditFile, line, { encoding: 'utf8', mode: 0o600 });
+        eventCounter++;
+      }
 
       return entry;
     } catch (e) {
@@ -325,6 +421,9 @@ function createAudit(opts = {}) {
   audit.getAuditFile = () => auditFile;
   audit.getAuditDir = () => auditDir;
   audit.getEventCounter = () => eventCounter;
+  audit.isAsync = () => asyncMode;
+  audit.flush = asyncMode ? flush : async () => {};
+  audit.flushSync = flushSync;
 
   return {
     audit,
@@ -337,7 +436,10 @@ function createAudit(opts = {}) {
     clientIp,
     getAuditFile: () => auditFile,
     getAuditDir: () => auditDir,
-    getEventCounter: () => eventCounter
+    getEventCounter: () => eventCounter,
+    isAsync: () => asyncMode,
+    flush: asyncMode ? flush : (async () => {}),
+    flushSync
   };
 }
 

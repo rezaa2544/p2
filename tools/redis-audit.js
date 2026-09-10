@@ -15,6 +15,7 @@ const path = require('path');
    اگر کلید تازه‌ای به پروژه اضافه شد، همین‌جا ثبتش کنید. */
 const KEY_SPECS = [
   { pattern: /^payesh:cache:bootstrap:/, owner: 'server/cache.js',          expectTtl: true,  note: 'بوت‌استرپ کاربر — پیش‌فرض ۳۰۰ ثانیه' },
+  { pattern: /^payesh:cache:epoch:/,      owner: 'server/cache.js (W11-2)',   expectTtl: true,  note: 'epoch ابطالِ L2 (مدرسه/سراسری) — ۳۶۰۰ ثانیه' },
   { pattern: /^payesh:rl:/,              owner: 'server/cache.js + waf.js', expectTtl: true,  note: 'محدودسازی نرخ — به‌اندازهٔ پنجره' },
   { pattern: /^payesh:idempotency:/,     owner: 'server/cache.js (sync)',   expectTtl: true,  note: 'ایدِمپوتِنسی — پیش‌فرض ۲۴ ساعت' },
   { pattern: /^payesh:lock:/,            owner: 'server/cache.js (P0-14)',  expectTtl: true,  note: 'قفل توزیع‌شده — تا پایان بحرانی' },

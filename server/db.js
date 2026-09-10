@@ -5,9 +5,20 @@
    - Full ACID transaction management with connection pooling.
    - Dual-mode operation: Native PostgreSQL when DATABASE_URL is set,
      or zero-dependency in-memory JSON fallback when unset.
-   - Methods: query(sql, params), transaction(callback), ping(),
-     persistOp(op), persistOpsBatch(ops), healthCheck(), close().
-   - Supports: PG_POOL_MIN, PG_POOL_MAX, PG_TIMEOUT_MS, DATABASE_URL.
+   - Methods: query(sql, params), queryRead(sql, params), transaction(callback),
+     ping(), persistOp(op), persistOpsBatch(ops), healthCheck(), close().
+   - Supports: PG_POOL_MIN, PG_POOL_MAX, PG_TIMEOUT_MS, DATABASE_URL,
+     READ_DATABASE_URL (+ READ_POOL_MIN, READ_POOL_MAX).
+
+   Wave 10 (chat2) — Database Scale: READ REPLICA (additive, safe-by-default).
+   An optional read-only connection pool is created when READ_DATABASE_URL is
+   set. Heavy GET-list reads (the DB-native paged lists) are routed to it via
+   queryRead(); if the replica is not configured or hiccups, queryRead() falls
+   back to the primary pool (behaviour identical to before). Writes and sync /
+   pull correctness reads (readCollection/readOne/delta) intentionally stay on
+   the PRIMARY pool so a replica can never lag a client's own recent writes.
+   Partitioning of large tables is DESIGN-ONLY here (pending a live PG run);
+   see docs/WAVE10_DB_SCALE.md.
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
@@ -22,6 +33,10 @@ try {
 }
 
 let pool = null;
+let readPool = null;          /* Wave 10: optional read-replica pool (READ_DATABASE_URL) */
+let readPoolActive = false;   /* Wave 10: true only after the replica answers a ping */
+let replicaReprobeTimer = null; /* S3-1: کاوشِ خودکارِ بازگشتِ رپلیکا */
+let REPLICA_REPROBE_MS = 10000;
 let isPgActive = false;
 let memoryStore = null;
 let reconnectTimer = null;
@@ -31,7 +46,12 @@ const config = {
   min: parseInt(process.env.PG_POOL_MIN || '2', 10),
   max: parseInt(process.env.PG_POOL_MAX || '20', 10),
   connectionTimeoutMillis: parseInt(process.env.PG_TIMEOUT_MS || process.env.PG_TIMEOUT || '3000', 10),
-  idleTimeoutMillis: 30000
+  idleTimeoutMillis: 30000,
+  /* Wave 10 — read replica (optional). When READ_DATABASE_URL is present a
+     second read-only pool is opened and heavy GET-list reads route to it. */
+  readConnectionString: process.env.READ_DATABASE_URL || null,
+  readMin: parseInt(process.env.READ_POOL_MIN || '2', 10),
+  readMax: parseInt(process.env.READ_POOL_MAX || '10', 10)
 };
 
 /**
@@ -46,7 +66,9 @@ async function init(fallbackStore) {
 
   if (!config.connectionString || !pg) {
     isPgActive = false;
-    return { ok: true, driver: 'memory', poolSize: 0 };
+    readPoolActive = false;
+    if (readPool) { try { readPool.end().catch(() => {}); } catch (e) {} readPool = null; }
+    return { ok: true, driver: 'memory', poolSize: 0, read_replica: false };
   }
 
   try {
@@ -70,20 +92,57 @@ async function init(fallbackStore) {
 
     // Test connection & verify ping
     const client = await pool.connect();
+    let serverTime = null;
     try {
       const res = await client.query('SELECT NOW() as server_time');
+      serverTime = res.rows && res.rows[0] ? res.rows[0].server_time : null;
       isPgActive = true;
       if (reconnectTimer) {
         clearTimeout(reconnectTimer);
         reconnectTimer = null;
       }
-      return { ok: true, driver: 'postgres', serverTime: res.rows[0].server_time };
     } finally {
       client.release();
     }
+
+    /* Wave 10 — best-effort read-replica pool. Never fatal: if the replica is
+       not configured or cannot answer a ping, readPoolActive stays false and
+       queryRead() transparently uses the primary pool (identical behaviour). */
+    try {
+      if (config.readConnectionString && pg) {
+        if (readPool) { try { await readPool.end(); } catch (e) {} }
+        readPool = new pg.Pool({
+          connectionString: config.readConnectionString,
+          min: config.readMin,
+          max: config.readMax,
+          connectionTimeoutMillis: config.connectionTimeoutMillis,
+          idleTimeoutMillis: config.idleTimeoutMillis
+        });
+        readPool.on('error', (err) => {
+          console.error('[DB] Read-replica pool background error:', err.message);
+          readPoolActive = false;   /* stop routing to a dead replica */
+          scheduleReplicaReprobe(); /* S3-1: ولی برایِ بازگشتش کاوش کن */
+        });
+        const rc = await readPool.connect();
+        try { await rc.query('SELECT 1 AS ping'); readPoolActive = true; }
+        finally { rc.release(); }
+      } else {
+        /* READ_DATABASE_URL no longer set → drop any lingering replica pool */
+        readPoolActive = false;
+        if (readPool) { try { await readPool.end(); } catch (e) {} readPool = null; }
+      }
+    } catch (e) {
+      readPoolActive = false;
+      console.warn('[DB] Read replica unavailable; reads will use primary pool:', e.message);
+      scheduleReplicaReprobe(); /* S3-1: اگر pool هست، بعداً دوباره بچش */
+    }
+
+    return { ok: true, driver: 'postgres', serverTime, read_replica: readPoolActive };
   } catch (err) {
     console.warn('[DB] PostgreSQL connection failed. Falling back to JSON in-memory store:', err.message);
     isPgActive = false;
+    readPoolActive = false;
+    if (readPool) { try { readPool.end().catch(() => {}); } catch (e) {} readPool = null; }
     scheduleReconnect();
     return { ok: true, driver: 'memory', fallback: true, warning: err.message };
   }
@@ -105,6 +164,38 @@ function scheduleReconnect() {
   }, 10000).unref();
 }
 
+/* S3-1 (موج ۱۰): خطایِ خودِ کوئری (گناهِ statement) در برابرِ خطایِ اتصال.
+   کلاس‌هایِ SQLSTATE ‏22 (داده) / 23 (جامعیت) / 42 (نحو/دسترسی/ناشناخته)
+   قطعاً گناهِ statement است و ربطی به سلامتِ رپلیکا ندارد — مسیریابی نباید
+   بخوابد. هر چیزِ دیگر (از جمله خطایِ بی‌کد — پینِ D3c) ابهامِ اتصال است. */
+function isReplicaQueryError(err) {
+  const code = String((err && err.code) || '');
+  return code.length >= 2 && (code.indexOf('22') === 0 || code.indexOf('23') === 0 || code.indexOf('42') === 0);
+}
+
+/**
+ * S3-1: کاوشِ خودکارِ بازگشتِ رپلیکا (آینهٔ scheduleReconnect برایِ پرماری).
+ * پیش‌تر رپلیکایِ خوابیده هیچ مسیرِ بازگشتی نداشت — تا ری‌استارت، همهٔ
+ * خوانش‌ها رویِ پرماری می‌ماند. شکستِ کاوش ساکت است (شکستِ اول همان‌جا که
+ * رخ داد لاگ شد)؛ فقط بهبودی لاگ می‌شود تا در قطعیِ طولانی لاگ هرز نرود.
+ */
+function scheduleReplicaReprobe() {
+  if (!readPool || readPoolActive || replicaReprobeTimer) return;
+  replicaReprobeTimer = setTimeout(async () => {
+    replicaReprobeTimer = null;
+    if (!readPool || readPoolActive) return;
+    try {
+      const rc = await readPool.connect();
+      try { await rc.query('SELECT 1 AS ping'); }
+      finally { try { rc.release(); } catch (e) {} }
+      readPoolActive = true;
+      console.log('[DB] Read replica recovered; routing reads back to replica');
+    } catch (e) {
+      scheduleReplicaReprobe();   /* هنوز خواب است — بعداً دوباره */
+    }
+  }, REPLICA_REPROBE_MS).unref();
+}
+
 /**
  * Check if PostgreSQL is active
  */
@@ -113,10 +204,18 @@ function isPostgres() {
 }
 
 /**
- * Get active connection pool
+ * Get active connection pool (primary/write)
  */
 function getPool() {
   return pool;
+}
+
+/* Wave 10 — read-replica accessors (optional; active only when configured+live) */
+function isReplicaActive() {
+  return readPoolActive && readPool !== null;
+}
+function getReadPool() {
+  return readPool;
 }
 
 /**
@@ -134,6 +233,163 @@ async function query(text, params) {
     console.error('[DB] Query execution error:', err.message);
     throw err;
   }
+}
+
+/**
+ * Wave 10 — READ-ONLY query routed to the read replica when one is live.
+ * Used by the heavy GET-list read seam (dbquery.executePagedList). Falls back
+ * to the primary pool when the replica is absent or errors — so behaviour is
+ * identical to query() in every non-replica configuration. Callers MUST only
+ * pass read-only SQL here (no writes); replicas reject/ignore writes anyway.
+ */
+async function queryRead(text, params) {
+  if (isReplicaActive()) {
+    try {
+      return await readPool.query(text, params);
+    } catch (err) {
+      /* S3-1: فقط خطایِ اتصال مسیریابی را می‌خواباند (+ کاوشِ بازگشت)؛
+         خطایِ خودِ کوئری (SQL بد) سلامتِ رپلیکا را زیرِ سؤال نمی‌برد.
+         fallback به پرماری در هر دو حالت سرِ جاست. */
+      if (!isReplicaQueryError(err)) {
+        readPoolActive = false;   /* dead replica → stop routing, fall back to primary */
+        scheduleReplicaReprobe();
+      }
+      console.warn('[DB] Read replica query failed; falling back to primary:', err.message);
+    }
+  }
+  return query(text, params);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Wave 1 (chat2) — Read-path seam.
+   -------------------------------------------------------------------
+   A single entry point for server READS so that, once PostgreSQL is the
+   configured source of truth, every read route serves from the DB instead
+   of reaching into the in-memory JSON `store`.
+
+   Dual mode (identical to the rest of this file):
+   - PG active (DATABASE_URL + pg driver):  SELECT * FROM "<table>"
+   - memory fallback / offline:              (memoryStore[name] || [])
+     In this mode memoryStore === the JSON store that `server/index.js`
+     loaded, so the returned rows are byte-for-byte what the caller would
+     have read from `store[name]` before. Behavior is therefore preserved.
+
+   ⚠️ Verification note (recorded honestly): the PostgreSQL branch of
+   these helpers is defined and wired, but was NOT executed against a live
+   PostgreSQL in the CI sandbox for this part (no DATABASE_URL / driver /
+   seeded DB). It is exercised only when a real PG is present. See
+   docs/WAVE1_READS_INVENTORY.md. Only real data tables may be read here;
+   internal store keys (__deleted_records, __server_version, …) are NOT
+   relational tables and are intentionally NOT routable through PG.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const PG_READABLE_TABLE = /^[a-z][a-z0-9_]*$/;
+
+/* Wave 1 — relational tables mirrored from server/schema.sql (domain
+   collections only; server_* infra tables are PG-internal and have no store
+   counterpart). Used by hydrateStoreFromPg: ONLY these collections are ever
+   replaced from PG, so a collection without a PG table keeps its store copy. */
+const SCHEMA_TABLES = new Set(('announcements app_settings assets assoc_minutes attendance attendance_modes ' +
+  'bell_schedules bus_events bus_followups bus_locations bus_needs bus_routes bus_students calendar certificates ' +
+  'class_subject_members classes corrections counselor_msgs counselor_refs counties discipline districts donations ' +
+  'dojo_types dorm_assignments dorm_meals dorm_rooms enrollments exam_duties exam_terms exams grades hw_assignments ' +
+  'hw_submissions installments internships leaves lib_books lib_loans makeup_classes meeting_slots messages ' +
+  'nid_conflicts notifications notify_queue nudges offices parent_links parent_subscriptions parent_verifications ' +
+  'pre_enrollments preapps provinces reexams safety_drills schedule scholarships school_years schools sedascores ' +
+  'sms_log sms_wallet staff_attendance student_archive student_transfers subjects subscription_payments substitutions ' +
+  'summer_classes support_tickets teacher_evaluations teacher_notes teacher_schools teacher_sms training_courses ' +
+  'transactions transfer_requests tuition_plans tuitions users vclass_attendance vclass_links vclass_questions ' +
+  'vclass_sessions visitors sync_conflicts').split(' '));
+
+/* Wave 1 — shape parity: persistOp JSON-stringifies object values and the pg
+   driver returns TIMESTAMPTZ as Date, while the store holds ISO strings and
+   live objects. Revive PG rows so PG-reads are byte-shape-identical to the
+   store shape callers already handle. Conservative: only {/[-led strings are
+   parse-attempted (with fallback), Dates become ISO strings. Memory mode is
+   untouched (it returns store references directly, never through here). */
+function reviveValue(v) {
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v.toISOString();
+  if (typeof v === 'string' && (v.charAt(0) === '{' || v.charAt(0) === '[')) {
+    try { return JSON.parse(v); } catch (e) { return v; }
+  }
+  return v;
+}
+function reviveRows(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((r) => {
+    if (!r || typeof r !== 'object') return r;
+    const o = {};
+    for (const k of Object.keys(r)) o[k] = reviveValue(r[k]);
+    return o;
+  });
+}
+
+function isPgReadableTable(name) {
+  return typeof name === 'string'
+    && PG_READABLE_TABLE.test(name)
+    && name.indexOf('__') !== 0;
+}
+
+/**
+ * Read one full collection via the unified layer.
+ * @param {string} name - collection / table name (real data table only)
+ * @returns {Promise<Array>} array of row objects
+ */
+async function readCollection(name) {
+  if (typeof name !== 'string' || !name) return [];
+  if (isPostgres() && isPgReadableTable(name)) {
+    const res = await pool.query(`SELECT * FROM "${name}"`);
+    return reviveRows(res.rows);
+  }
+  return (memoryStore && Array.isArray(memoryStore[name])) ? memoryStore[name] : [];
+}
+
+/**
+ * Read a single row by numeric id (via readCollection).
+ * @param {string} name - collection / table name
+ * @param {number|string} id
+ * @returns {Promise<Object|null>}
+ */
+async function readOne(name, id) {
+  /* Wave 1 — indexed single-row read when PG is live (PK lookup instead of
+     full-table scan); memory mode keeps the exact legacy find semantics. */
+  if (isPostgres() && isPgReadableTable(name)) {
+    const n = Number(id);
+    if (!Number.isFinite(n)) return null;
+    const res = await pool.query(`SELECT * FROM "${name}" WHERE id = $1 LIMIT 1`, [n]);
+    const rows = reviveRows(res.rows);
+    return rows.length ? rows[0] : null;
+  }
+  const rows = await readCollection(name);
+  const n = Number(id);
+  return rows.find((r) => r && Number(r.id) === n) || null;
+}
+
+/**
+ * Wave 1 — boot hydration: replace store domain collections with PG truth.
+ * Iterates SCHEMA_TABLES (not store keys) so a skeleton boot — whose store has
+ * no domain keys yet — is POPULATED from PG, not left empty. Only SCHEMA_TABLES
+ * members are ever touched, so cache-only collections (outbox, tombstones,
+ * __deleted_records, __* internals) keep their store copies. Per-table
+ * try/catch: one bad table warns and keeps going (single reads still route to
+ * PG when live, so boot stays safe).
+ * @param {Object} store - live in-memory store object (mutated in place)
+ * @returns {Promise<{ok:boolean, hydrated:number, skipped:Array}>}
+ */
+async function hydrateStoreFromPg(store) {
+  const out = { ok: true, hydrated: 0, skipped: [] };
+  if (!store || typeof store !== 'object') return out;
+  for (const key of SCHEMA_TABLES) {
+    if (!isPgReadableTable(key)) continue;
+    try {
+      store[key] = await readCollection(key);
+      out.hydrated++;
+    } catch (e) {
+      out.skipped.push(key);
+      console.warn('[DB] Hydration skipped for ' + key + ':', e.message);
+    }
+  }
+  return out;
 }
 
 /**
@@ -327,7 +583,7 @@ async function healthCheck() {
   try {
     await pool.query('SELECT 1');
     const latency = Date.now() - start;
-    return {
+    const out = {
       ok: true,
       driver: 'postgres',
       latency_ms: latency,
@@ -335,9 +591,45 @@ async function healthCheck() {
       idle_count: pool.idleCount,
       waiting_count: pool.waitingCount
     };
+    /* Wave 10 — read-replica observability (present only when configured+live) */
+    out.read_replica = isReplicaActive() ? {
+      active: true,
+      total_count: readPool.totalCount,
+      idle_count: readPool.idleCount,
+      waiting_count: readPool.waitingCount
+    } : { active: false };
+    return out;
   } catch (err) {
     return { ok: false, driver: 'postgres', error: err.message };
   }
+}
+
+/**
+ * Wave 10 — concise pool-summary for /health-style introspection: primary +
+ * (optional) read replica, their current lease counts, and replica routing flag.
+ */
+function poolStats() {
+  const stats = {
+    driver: isPostgres() ? 'postgres' : 'memory',
+    primary: {
+      active: isPostgres(),
+      min: config.min,
+      max: config.max,
+      total_count: pool ? pool.totalCount : 0,
+      idle_count: pool ? pool.idleCount : 0,
+      waiting_count: pool ? pool.waitingCount : 0
+    },
+    read_replica: isReplicaActive() ? {
+      active: true,
+      min: config.readMin,
+      max: config.readMax,
+      total_count: readPool.totalCount,
+      idle_count: readPool.idleCount,
+      waiting_count: readPool.waitingCount
+    } : { active: false }
+  };
+  stats.routing_reads_to_replica = isReplicaActive();   /* queryRead() target */
+  return stats;
 }
 
 /**
@@ -348,12 +640,24 @@ async function close() {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
   }
+  if (replicaReprobeTimer) {
+    clearTimeout(replicaReprobeTimer);
+    replicaReprobeTimer = null;
+  }
   if (pool) {
     try {
       await pool.end();
     } catch (e) {}
     pool = null;
     isPgActive = false;
+  }
+  /* Wave 10 — tear down the read replica too */
+  if (readPool) {
+    try {
+      await readPool.end();
+    } catch (e) {}
+    readPool = null;
+    readPoolActive = false;
   }
 }
 
@@ -364,11 +668,30 @@ function __setPoolForTests(p) {
   else { pool = null; isPgActive = false; }
 }
 
+/* Wave 10 — same injection seam for the read-replica pool (fake-db tests only) */
+function __setReadPoolForTests(p) {
+  if (p) { readPool = p; readPoolActive = true; }
+  else { readPool = null; readPoolActive = false; }
+}
+
+/* S3-1: درزِ تأخیرِ کاوش برایِ تست (پیش‌فرضِ اجرایی ۱۰۰۰۰ms دست‌نخورده) */
+function __setReprobeDelayForTests(ms) {
+  const v = Number(ms);
+  if (Number.isFinite(v) && v >= 0) REPLICA_REPROBE_MS = v;
+  return REPLICA_REPROBE_MS;
+}
+
 module.exports = {
   init,
   isPostgres,
   getPool,
+  isReplicaActive,
+  getReadPool,
   query,
+  queryRead,
+  readCollection,
+  readOne,
+  hydrateStoreFromPg,
   ping,
   transaction,
   persistOp,
@@ -376,7 +699,10 @@ module.exports = {
   persistOpsBatchWithClient,
   persistOpsBatch,
   __setPoolForTests,
+  __setReadPoolForTests,
+  __setReprobeDelayForTests,
   isUidProcessed,
   healthCheck,
+  poolStats,
   close
 };
