@@ -52,6 +52,26 @@ function mutate(file, find, replace, killRe, tag) {
   }
 }
 
+/* جهشِ چندجایگاهی — وقتی دفاع لایه‌ای است (مثلِ ایدمپوتانسِ پیش-اعمال + sweep)،
+   برداشتنِ یک لایه به‌تنهایی چیزی را ضعیف نمی‌کند؛ همهٔ لایه‌ها با هم برداشته
+   می‌شوند تا تستِ کشتن صادق بماند. */
+function mutateMulti(file, pairs, killRe, tag) {
+  const orig = fs.readFileSync(file, 'utf8');
+  try {
+    let mutated = orig;
+    for (const [find, replace] of pairs) {
+      if (!mutated.includes(find)) { chk(tag + ' (جهش پیدا نشد)', false, 'anchor missing: ' + find.slice(0, 60)); return; }
+      mutated = mutated.replace(find, replace);
+    }
+    fs.writeFileSync(file, mutated, 'utf8');
+    const r = runSuite();
+    const out = (r.stdout || '') + (r.stderr || '');
+    chk(tag + ' کشته شد', r.status !== 0 && killRe.test(out), out.slice(-300).replace(/\n/g, ' '));
+  } finally {
+    fs.writeFileSync(file, orig, 'utf8');
+  }
+}
+
 console.log('\n▸ جهش‌ها');
 
 /* Z1 — the documented batch ceiling must actually be enforced */
@@ -66,14 +86,21 @@ mutate(INDEX,
   `      const b = await readBody(req, 512 * 1024 * 1024); /* جهش: سقفِ بدنه برداشته شد */`,
   /❌ ST2/, 'Z2 برداشتنِ سقفِ حجمِ بدنه (index.js)');
 
-/* Z3 — idempotency is what makes an offline retry safe */
-mutate(SYNC,
-  `      const isProcessed = (await cache.isProcessedUid(op.uid)) ||
+/* Z3 — idempotency is what makes an offline retry safe. main (چت ۵، W7) لایهٔ
+   دوم دارد: ادعای اتمیکِ پیش از اعمال در حلقهٔ sweep — جهشِ تک‌خطی دیگر
+   کافی نیست؛ هر دو لایه جدا جهش می‌شوند و هر کدام باید کشته شوند. */
+/* Z3 — idempotency is what makes an offline retry safe. main (چت ۵، W7) دفاعِ
+   لایه‌ای دارد: بررسیِ پیش-اعمال (cache/db/store) + ادعای اتمیک در حلقهٔ sweep.
+   جهشِ تک‌خطی لایهٔ دیگر را زنده می‌گذارد و تست بی‌معنا سبز می‌ماند؛ پس هر دو
+   با هم برداشته می‌شوند (mutateMulti). */
+mutateMulti(SYNC, [
+  [`      if(store.__processed_uids && store.__processed_uids[op.uid]){`,
+   `      if(false){ /* جهش: لایهٔ sweep ایدمپوتانس برداشته شد */`],
+  [`      const isProcessed = (await cache.isProcessedUid(op.uid)) ||
         ((db && typeof db.isUidProcessed === 'function') ? await db.isUidProcessed(op.uid) : false) ||
         !!(store.__processed_uids && store.__processed_uids[op.uid]);`,
-  `      const isProcessed = false; /* جهش: ایدمپوتانس غیرفعال شد */`,
-  /❌ (IN5|CC4)/, 'Z3 غیرفعال‌کردنِ ایدمپوتانس (sync.js)');
-
+   `      const isProcessed = false; /* جهش: ایدمپوتانس پیش-اعمال غیرفعال شد */`]
+], /❌ (IN5|CC4)/, 'Z3 غیرفعال‌کردنِ هر دو لایهٔ ایدمپوتانس (sync.js)');
 /* Z4 — without the version gate a concurrent write silently clobbers */
 mutate(SYNC,
   `        if(VERSIONED[op.c] && Number(op.base_version) !== cur){`,

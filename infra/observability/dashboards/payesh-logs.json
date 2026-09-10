@@ -1,0 +1,66 @@
+{
+ "uid": "payesh-logs",
+ "title": "Payesh — Logs by trace_id (Loki)",
+ "tags": [
+  "payesh",
+  "wave14",
+  "loki"
+ ],
+ "timezone": "Asia/Tehran",
+ "schemaVersion": 39,
+ "version": 1,
+ "editable": true,
+ "time": {
+  "from": "now-1h",
+  "to": "now"
+ },
+ "templating": {
+  "list": [
+   {
+    "name": "trace_id",
+    "type": "textbox",
+    "label": "Trace ID",
+    "query": ""
+   }
+  ]
+ },
+ "panels": [
+  {
+   "id": 1,
+   "type": "logs",
+   "title": "audit + app lines با trace_id",
+   "datasource": {
+    "type": "loki",
+    "uid": "payesh-loki"
+   },
+   "gridPos": {
+    "h": 16,
+    "w": 24,
+    "x": 0,
+    "y": 0
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "loki",
+      "uid": "payesh-loki"
+     },
+     "queryType": "range",
+     "editorMode": "code",
+     "expr": "{service=\"payesh\", log_source=\"audit-log\"} | json | trace_id=~\"$trace_id\""
+    },
+    {
+     "refId": "B",
+     "datasource": {
+      "type": "loki",
+      "uid": "payesh-loki"
+     },
+     "queryType": "range",
+     "editorMode": "code",
+     "expr": "{service=\"payesh\", log_source=\"server-log\"} |~ \"$trace_id\""
+    }
+   ]
+  }
+ ]
+}

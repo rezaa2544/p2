@@ -347,6 +347,9 @@ const ROUTE_EXACT = new Set([
   '/api/bell/now', '/api/public-report',
   '/api/admin/backup', '/api/admin/restore',
   '/api/sms/send',
+  '/api/health-index', /* G.1 (main — PR #31) */
+  /* Wave 15 (main) — Health/Deployment endpoints */
+  '/api/liveness', '/api/readiness', '/api/__slow',
   '/api/v1/bootstrap', '/api/v1/pull',
   '/api/v1/students', '/api/v1/classes', '/api/v1/attendance',
   '/api/v1/grades', '/api/v1/users',
@@ -423,6 +426,27 @@ function declareAll(r) {
   r.gauge('payesh_node_cpu_seconds_total', 'Process CPU time in seconds (absolute, sampled).', ['mode']);
   r.gauge('payesh_node_uptime_seconds', 'Process uptime.', []);
   r.gauge('payesh_build_info', 'Build/deploy identity (always 1).', ['version', 'phase']);
+  /* قراردادِ exposition (فرمتِ Prometheus): هیستوگرام‌ها علاوه بر خودِ نام،
+     سری‌هایِ payesh_http_request_duration_seconds_bucket و _sum و _count را
+     می‌سازند (رندررِ پایین، خطِ m.name + '_bucket'). */
+  /* ── main-stack compatibility series (چت ۵ live-deploy: alert-rules.yml و
+        dashboards/payesh-main.json این نام‌ها را می‌خوانند). مقادیر در
+        زمانِ scrape توسط publishRuntimeProbes() تازه می‌شوند. نام‌ها عمداً
+        همان‌هایِ استکِ زندهٔ main هستند تا زنجیرهٔ alert/dashboard نشکند. ── */
+  r.gauge('payesh_redis_up', 'Redis reachable (scrape-time probe).', []);
+  r.gauge('payesh_redis_ping_latency_ms', 'Redis PING round-trip in ms (scrape-time probe).', []);
+  r.gauge('payesh_db_up', 'Database engine reachable (scrape-time probe).', []);
+  r.gauge('payesh_db_query_latency_ms', 'DB health-check latency in ms (scrape-time probe).', []);
+  r.gauge('payesh_db_pool_total', 'Pool connections (total) by pool.', ['pool']);
+  r.gauge('payesh_db_pool_idle', 'Pool connections (idle) by pool.', ['pool']);
+  r.gauge('payesh_sync_queue_depth', 'Pending outbox rows (sync queue depth).', []);
+  r.gauge('payesh_cache_hits_total', 'L1 cache hits (compat alias of l1Stats).', []);
+  r.gauge('payesh_cache_misses_total', 'L1 cache misses (compat alias of l1Stats).', []);
+  r.gauge('payesh_eventloop_lag_ms', 'Event-loop lag in ms (compat alias of the sampled seconds gauge).', []);
+  r.gauge('payesh_process_heap_bytes', 'Process heap used (compat alias).', []);
+  r.gauge('payesh_process_rss_bytes', 'Process RSS (compat alias).', []);
+  r.gauge('payesh_process_uptime_seconds', 'Process uptime (compat alias).', []);
+  r.gauge('payesh_process_gc_total', 'GC cycles since collector start (best-effort).', []);
 }
 
 declareAll(registry);
@@ -433,7 +457,88 @@ declareAll(registry);
    ═══════════════════════════════════════════════════════════════════ */
 let runtimeTimers = null;
 
+
+/* ═══════════════════════════════════════════════════════════════════
+   publishRuntimeProbes — کشفِ لحظهٔ scrape برای سری‌های سازگاریِ استکِ main
+   (منتقل از metrics.js قدیمیِ main — چت ۵؛ هر بلوک مستقل fail-safe است).
+   ═══════════════════════════════════════════════════════════════════ */
+async function _safe(fn, fallback) { try { return await fn(); } catch (e) { return fallback; } }
+
+async function publishRuntimeProbes() {
+  /* Redis */
+  try {
+    const redisMod = await _safe(() => require('./redis'), null);
+    let up = 0, pingMs = 0;
+    if (redisMod && typeof redisMod.isRedis === 'function' && redisMod.isRedis()) {
+      up = 1;
+      if (typeof redisMod.ping === 'function') {
+        const t0 = process.hrtime.bigint();
+        const ok = await _safe(() => redisMod.ping(), false);
+        pingMs = Number(process.hrtime.bigint() - t0) / 1e6;
+        if (!ok) up = 0;
+      }
+    }
+    registry.set('payesh_redis_up', [], up);
+    registry.set('payesh_redis_ping_latency_ms', [], pingMs);
+  } catch (e) {}
+  /* DB (engine up + health latency + pools + outbox depth) */
+  try {
+    const dbMod = await _safe(() => require('./db'), null);
+    if (dbMod && typeof dbMod.isPostgres === 'function' && dbMod.isPostgres()) {
+      registry.set('payesh_db_up', [], 1);
+      const h = await _safe(() => dbMod.healthCheck(), null);
+      registry.set('payesh_db_query_latency_ms', [], (h && Number(h.latency_ms)) || 0);
+      const s = await _safe(() => dbMod.poolStats(), null);
+      if (s) {
+        const pools = [];
+        if (s.primary) pools.push(['primary', s.primary]);
+        if (s.read_replica && s.read_replica.active) pools.push(['read_replica', s.read_replica]);
+        for (const [nm, ps] of pools) {
+          registry.set('payesh_db_pool_total', [nm], Number(ps.total_count) || 0);
+          registry.set('payesh_db_pool_idle', [nm], Number(ps.idle_count) || 0);
+        }
+      }
+      const r = await _safe(() => dbMod.query("SELECT count(*)::int AS n FROM server_outbox WHERE status = 'pending'"), null);
+      registry.set('payesh_sync_queue_depth', [], r && r.rows && r.rows[0] ? Number(r.rows[0].n) : 0);
+    } else {
+      registry.set('payesh_db_up', [], 1); /* memory mode: process-local, inline flush */
+      registry.set('payesh_sync_queue_depth', [], 0);
+    }
+  } catch (e) { try { registry.set('payesh_db_up', [], 0); } catch (e2) {} }
+  /* Cache L1 (compat aliases) */
+  try {
+    const cacheMod = await _safe(() => require('./cache'), null);
+    if (cacheMod && typeof cacheMod.l1Stats === 'function') {
+      const s = cacheMod.l1Stats() || {};
+      registry.set('payesh_cache_hits_total', [], s.hits | 0);
+      registry.set('payesh_cache_misses_total', [], s.misses | 0);
+    }
+  } catch (e) {}
+  /* Process compat aliases */
+  try {
+    const mu = process.memoryUsage();
+    registry.set('payesh_process_heap_bytes', [], mu.heapUsed || 0);
+    registry.set('payesh_process_rss_bytes', [], mu.rss || 0);
+    registry.set('payesh_process_uptime_seconds', [], process.uptime() || 0);
+    const lagS = Number(registry.value('payesh_node_eventloop_lag_seconds', []) || 0);
+    registry.set('payesh_eventloop_lag_ms', [], lagS * 1000);
+    if (typeof gcCounter === 'number') registry.set('payesh_process_gc_total', [], gcCounter);
+  } catch (e) {}
+}
+
+/* شمارشِ GC فقط با اجرایِ کلکتور (بدون side-effect در require) */
+let gcCounter = 0;
+let gcObserverInstalled = false;
+function installGcObserver() {
+  if (gcObserverInstalled) return;
+  gcObserverInstalled = true;
+  try {
+    const { PerformanceObserver } = require('perf_hooks');
+    new PerformanceObserver((list) => { gcCounter += list.getEntries().length; }).observe({ entryTypes: ['gc'] });
+  } catch (e) {}
+}
 function startRuntimeCollector(intervalMs) {
+  installGcObserver();
   if (runtimeTimers) return runtimeTimers;
   const ms = clampInt(intervalMs || process.env.PAYESH_METRICS_INTERVAL_MS, 5000, 250, 600000);
 
@@ -517,6 +622,9 @@ function scrapeGate(req) {
    Convenience recorders used by server/index.js
    ═══════════════════════════════════════════════════════════════════ */
 function observeHttpRequest(o) {
+  /* خوداسکرپ حذف شده (ضدفیدبک‌لوپ — قراردادِ استکِ زندهٔ main): شمردنِ
+     خودِ /metrics یعنی هر scrape سریِ http را بزرگ‌تر می‌کند؛ هرگز شمرده نمی‌شود. */
+  if (o && o.route === '/metrics') return;
   try {
     const route = routeTemplate(o && o.route);
     const method = String((o && o.method) || 'GET').toUpperCase().slice(0, 8);
@@ -605,6 +713,7 @@ module.exports = {
   observeDb,
   publishDbPools,
   publishOutboxDepth,
+  publishRuntimeProbes,
   scrapeGate,
   startRuntimeCollector,
   stopRuntimeCollector,

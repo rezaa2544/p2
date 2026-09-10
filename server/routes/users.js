@@ -10,11 +10,11 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const { filterByScope, checkSchoolScope } = require('../middleware/scope');
+const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز */
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { projectUserByRole } = require('../middleware/projection');
-const { buildUsersList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
+const { buildUsersList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */const cache = require('../cache'); /* Wave 11 */
 
 const ROLE_LEVEL = { student: 0, parent: 1, driver: 1, counselor: 3, teacher: 3, edu_office: 3, manager: 4, superadmin: 5 };
 
@@ -25,6 +25,17 @@ function createUserRoutes(ctx) {
   const deleter = ctx.deleter; /* P0-17 */
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
+
+  /* Wave 1: PG-live read helper — single records come from PostgreSQL when it
+     is the authority (fresh cross-instance reads); memory mode keeps the exact
+     legacy store-direct find. PG copies are detached; callers commit to the
+     store cache explicitly after a successful PG write. */
+  const pgLive = () => db && typeof db.isPostgres === 'function' && db.isPostgres();
+  async function findLive(collection, id) {
+    if (pgLive() && typeof db.readOne === 'function') return await db.readOne(collection, id);
+    return (store[collection] || []).find(r => r && r.id === Number(id)) || null;
+  }
+  const pgDown = () => ({ status: 503, body: { ok: false, code: 'pg_unavailable', message: 'پایگاه داده در دسترس نیست؛ دوباره تلاش کنید' } });
 
   async function getUsersList(req, urlParams) {
     const user = req.user;
@@ -37,6 +48,7 @@ function createUserRoutes(ctx) {
     if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
       const built = buildUsersList({
         user,
+        office: policy.userOffice(store, user), /* Wave 5 — هندسهٔ اداره جای bypass */
         role: urlParams.get('role'),
         search: urlParams.get('q'),
         limit: paginationOpts.limit,
@@ -47,9 +59,10 @@ function createUserRoutes(ctx) {
       return { ok: true, ...res };
     }
 
-    /* Memory/JS pipeline (runtime in this sandbox — byte-identical to before). */
+    /* Memory/JS pipeline — Wave 5: همان مدلِ یکتا (دایرکتوریِ کاربرانِ مدرسه؛
+       حساب‌های ملیِ بی‌مهار فقط سوپرامین؛ والد/دانش‌آموز فقط خود+فرزندان). */
     let list = (store.users || []);
-    list = filterByScope(user, list);
+    list = policy.filterReadable(store, user, 'users', list);
 
     const role = urlParams.get('role');
     if (role) {
@@ -73,10 +86,13 @@ function createUserRoutes(ctx) {
     return { ok: true, ...paginated };
   }
 
-  function getUserById(req, id) {
+  async function getUserById(req, id) {
     const user = req.user;
-    const target = (store.users || []).find(u => u.id === Number(id));
-    if (!target || !checkSchoolScope(user, target.school_id)) {
+    const target = await findLive('users', id);
+    /* Wave 5 — دروازهٔ خواند‌نِ یکتا (بیرون محدوده ⇒ ۴۰۴ ضدشمارش)؛
+       findLive = هیدریشنِ PG-first پیش از سنجشِ محدوده (ویو ۱) */
+    const gate = policy.restReadGate(store, user, 'users', target);
+    if (!target || !gate.ok) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
 
@@ -91,7 +107,9 @@ function createUserRoutes(ctx) {
 
   async function createUser(req, body) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'superadmin' && user.role !== 'edu_office') {
+    /* Wave 5 — نقش از مدلِ واحد (authz/write-perms: users.ins = manager/superadmin).
+       edu_office که پیش‌تر از این در بازکردنِ موازی رد می‌شد دیگر کاربر نمی‌سازد. */
+    if (!policy.restWriteRoleOk(user, 'users', 'ins')) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'شما مجاز به ایجاد کاربر نیستید' } };
     }
 
@@ -127,21 +145,33 @@ function createUserRoutes(ctx) {
     };
 
     if (!Array.isArray(store.users)) store.users = [];
+    /* Wave 1: PG-first — the insert commits before the cache is touched, so a
+       PG failure returns here with the store still clean (memory mode: no-op). */
+    try {
+      if (db && typeof db.persistOpsBatch === 'function') {
+        await db.persistOpsBatch([{ c: 'users', t: 'ins', data: newUser }]);
+      } else if (db && typeof db.persistOp === 'function') {
+        await db.persistOp({ c: 'users', t: 'ins', data: newUser });
+      }
+    } catch (e) {
+      return pgDown();
+    }
     store.users.push(newUser);
     markDirty();
 
-    if (db && typeof db.persistOp === 'function') {
-      await db.persistOp({ c: 'users', t: 'ins', data: newUser });
-    }
-
+      cache.invalidateCollection('users', newUser.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
     audit('user_created', { user_id: user.id, target_user_id: newUser.id, role: newUser.role, school_id: schoolId });
     return { status: 201, body: { ok: true, data: projectUserByRole(newUser, user.role) } };
   }
 
   async function updateUser(req, id, body) {
     const user = req.user;
-    const target = (store.users || []).find(u => u.id === Number(id));
-    if (!target || !checkSchoolScope(user, target.school_id)) {
+    const target = await findLive('users', id);
+    /* Wave 5 — دروازهٔ نوشتنِ یکتا: نقش از مدل + محدوده از policy.inScope
+       (بیرون محدوده ۴۰۴؛ findLive مطمئن می‌شود رکورد در store هست تا
+       inScopeِ رکورد-محور حلِ صحیح کند — ویو ۱). */
+    const scopeOk = !!target && policy.inScope(user, store, 'users', target.id, target);
+    if (!target || !scopeOk) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
 
@@ -151,11 +181,26 @@ function createUserRoutes(ctx) {
 
     const isSelf = user.id === target.id;
     const isManager = user.role === 'manager' || user.role === 'superadmin';
+    /* Wave 5 — IEP دبیر (استثنای صریحِ مدل، آینهٔ sync) */
+    const isIep = policy.isTeacherIepUpdate(user, 'users', 'upd', Object.keys(body || {}));
 
-    if (!isSelf && !isManager) {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
+    /* BUG-3 (باگ‌هانت چت ۵): مدلِ مجوز (authz/model.json: users.upd) فقط
+       manager/superadmin است و sync خودبه‌روزرسانیِ غیرمدیر را role_denied
+       می‌کند (phone/national_id/status/active فقط-مدیریتی‌اند)؛ ولی مسیرِ
+       قبلی به هر نقشی اجازه می‌داد رکوردِ خودش را — شاملِ همان فیلدهایِ
+       حساس — تغییر دهد. برایِ یکپارچگی با sync، users.upd در REST هم
+       فقط-مدیر است (کلاینتِ آفلاین‌محور اصلاً این endpoint را صدا نمی‌زند). */
+    if (!isManager) {
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'ویرایش کاربر فقط توسط مدیریت مجاز است' } };
+    }
+    /* محدودهٔ IEP: دبیر فقط روی کاربرانی که در کلاس‌هایش‌اند یا هم‌مدرسه‌ایِ
+       مستقیم — همان inScope که در بالا رد کرد؛ اینجا فقط کلیدها سنجیده می‌شوند. */
+    if (isIep && !isSelf && !isManager && user.school_id != null && Number(target.school_id) !== Number(user.school_id)) {
+      return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
 
+    /* Wave 1: patch روی کپی محاسبه می‌شود؛ store فقط پس از کامیت PG لمس می‌شود. */
+    const next = Object.assign({}, target);
     // Role change rules
     if (body.role && body.role !== target.role) {
       if (!isManager) {
@@ -165,35 +210,62 @@ function createUserRoutes(ctx) {
       if (user.role !== 'superadmin' && (targetLvl == null || targetLvl > ROLE_LEVEL[user.role])) {
         return { status: 403, body: { ok: false, code: 'role_escalation', message: 'ارتقای نقش به سطحی بالاتر از خود مجاز نیست' } };
       }
-      target.role = body.role;
+      next.role = body.role;
     }
 
-    const allowed = ['full_name', 'phone', 'national_id', 'active', 'status', 'grade_level', 'field'];
+    /* Wave 5 — allowlistِ تفکیکی: خودِ کاربر فقط full_name؛ مدیریت مجموعهٔ
+       مدیریتی؛ IEP فقط کلیدهای iep_* — فیلدِ ناشناخته/ممنوع = field_denied. */
+    const bodyKeys = Object.keys(body || {}).filter(k => k !== 'id' && k !== 'base_version' && k !== 'version');
+    const allowed = isManager ? ['full_name', 'phone', 'national_id', 'active', 'status', 'grade_level', 'field']
+                  : isIep   ? policy.IEP_KEYS
+                  :           policy.SELF_EDIT_FIELDS.users;
+    const denied = bodyKeys.filter(k => allowed.indexOf(k) === -1);
+    if (denied.length) {
+      return { status: 403, body: { ok: false, code: 'field_denied', message: 'فیلد(‌های) «' + denied.join('، ') + '» برای این مسیر قابلِ ویرایش نیستند' } };
+    }
     for (const key of allowed) {
-      if (body[key] !== undefined) target[key] = body[key];
+      if (body[key] !== undefined) next[key] = body[key];
     }
-    bump(target); /* P0-18 */
+    if (isIep) next.iep_updated = new Date().toISOString();
+    bump(next); /* P0-18 */
 
+    const base = body.base_version !== undefined ? body.base_version : body.version;
+    try {
+      if (db && typeof db.persistOpsBatch === 'function') {
+        await db.persistOpsBatch([{ c: 'users', t: 'upd', id: target.id, data: next, base_version: base }]);
+      } else if (db) {
+        await db.persistOp({ c: 'users', t: 'upd', data: next });
+      }
+    } catch (e) {
+      if (e && e.status === 409) return { status: 409, body: { ok: false, code: 'conflict', message: 'کاربر هم‌زمان تغییر کرده است' } };
+      return pgDown();
+    }
+
+    /* کامیت به کش: به‌روزرسانی کپی store (یا seed اگر رکوردِ نمونهٔ دیگر است). */
+    const cached = (store.users || []).find(u => u.id === Number(id));
+    if (cached) Object.assign(cached, next);
+    else { if (!Array.isArray(store.users)) store.users = []; store.users.push(next); }
     markDirty();
-    if (db) await db.persistOp({ c: 'users', t: 'upd', data: target });
+    cache.invalidateCollection('users', target.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
 
     audit('user_updated', { user_id: user.id, target_user_id: target.id });
-    return { status: 200, body: { ok: true, data: projectUserByRole(target, user.role, isSelf) } };
+    return { status: 200, body: { ok: true, data: projectUserByRole(cached || next, user.role, isSelf) } };
   }
 
   async function deleteUser(req, id) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'superadmin') {
+    if (!policy.restWriteRoleOk(user, 'users', 'del')) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط مدیریت مجاز به حذف حساب کاربری است' } };
     }
 
-    const uIdx = (store.users || []).findIndex(u => u.id === Number(id));
-    if (uIdx === -1) {
+    const target = await findLive('users', id);
+    if (!target) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
 
-    const target = store.users[uIdx];
-    if (!checkSchoolScope(user, target.school_id)) {
+    /* Wave 5 — حذفِ بین‌مدرسه‌ای و حساب‌هایِ ملیِ بی‌مهار برایِ مدیر رد
+       (fail-closed؛ دروازهٔ inScope همان دروازهٔ sync است؛ target از findLive) */
+    if (!policy.inScope(user, store, 'users', target.id, target)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
 
@@ -203,8 +275,10 @@ function createUserRoutes(ctx) {
       audit: () => audit('user_deleted', { user_id: user.id, target_user_id: Number(id) })
     });
     if (!del.ok) {
+      if (del.status === 503) return pgDown();
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
+    cache.invalidateCollection('users', target.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
     return { status: 200, body: { ok: true, message: 'کاربر با موفقیت حذف شد' } };
   }
 

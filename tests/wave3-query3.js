@@ -119,8 +119,8 @@ console.log('\n  — A. cursor algebra');
     ['classes', Q.buildClassesList({ user: MGR, limit: 50, cursor: '100' })],
     ['users', Q.buildUsersList({ user: MGR, limit: 50, cursor: '100' })]
   ]) {
-    chk('A12 ' + name + ' keeps its single-column id cursor (ORDER BY id)',
-      b.cursorKey == null && /id > \$\d+/.test(b.page.sql), b.page.sql.slice(-60));
+    chk('A12 ' + name + ' keeps its single-column id cursor (direction-aware, W3-1: ORDER BY id DESC)',
+      b.cursorKey == null && (b.page.sql.includes('id < ' + String.fromCharCode(36)) || b.page.sql.includes('id > ' + String.fromCharCode(36))), b.page.sql.slice(-60));
   }
 
   /* executePagedList must emit the composite cursor, not last.id */

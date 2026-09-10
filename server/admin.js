@@ -52,7 +52,19 @@ function createAdmin(ctx){
      سنگین). پاسخِ HTTP فقط بعد از نشستنِ فایل روی disk می‌آید تا
      قراردادِ «فایلِ پاسخ موجود است» دست‌نخورده بماند. شکستِ ورکر →
      همان مسیرِ درون‌پروسه‌ایِ قدیمی (فال‌بک). */
+  /* Wave 1: PG is the authority — a JSON snapshot of this instance's cache would
+     be a partial backup presented as full (other instances' writes are invisible
+     here), and a JSON restore would rewind the cache behind PG. Both endpoints
+     fail closed in PG mode; operators use pg_dump/pg_restore (see HANDOFF). */
+  function pgLive(){
+    const db = ctx.db || null;
+    return !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+  }
   async function backupNow(source, userId, ip){
+    if(pgLive()){
+      if(source !== 'auto') console.warn('[admin] backup refused: PG authoritative — use pg_dump');
+      return null;
+    }
     if(ctx.workers && typeof ctx.workers.runBackup === 'function'){
       try{
         const r = await ctx.workers.runBackup(dir, RETENTION);
@@ -96,6 +108,8 @@ function createAdmin(ctx){
   async function apiBackup(req, res){
     const g = await checkAdmin(req, res);
     if(g.done) return g.done;
+    if(pgLive()) return sendJson(res, 501, { ok: false, code: 'pg_authoritative',
+      message: 'در حالتِ پستگرس، پشتیبان‌گیری با pg_dump انجام می‌شود ( JSON ناقص است)' });
     const r = await backupNow('manual', g.user.id);
     if(!r) return sendJson(res, 500, { ok: false, code: 'backup_failed' });
     return sendJson(res, 200, { ok: true, file: r.name, size: r.size, count: r.count });
@@ -104,6 +118,8 @@ function createAdmin(ctx){
   async function apiRestore(req, res, body){
     const g = await checkAdmin(req, res);
     if(g.done) return g.done;
+    if(pgLive()) return sendJson(res, 501, { ok: false, code: 'pg_authoritative',
+      message: 'در حالتِ پستگرس، بازیابی با pg_restore + راه‌اندازیِ دوباره انجام می‌شود' });
     /* لایهٔ مقدار (validate.js): فقط {file?} — کلیدِ ناشناخته = ردِّ 400.
        نامِ نامعتبر/ناموجود مثلِ گذشته به آخرین نسخهٔ معتبر برمی‌گردد
        (قراردادِ قفل‌شده در security2:F1 — امنیت با الگو + فهرست است نه

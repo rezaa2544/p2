@@ -33,22 +33,56 @@ function createDeleteService({ store, db, markDirty, outbox }) {
   async function softDelete(collection, match, meta) {
     meta = meta || {};
     if (!COLLECTIONS.has(collection)) return { ok: false, status: 500 };
-    const arr = Array.isArray(store[collection]) ? store[collection] : null;
-    if (!arr) return { ok: false, status: 404 };
+    if (!Array.isArray(store[collection])) store[collection] = [];
+    const arr = store[collection];
 
-    const idx = arr.findIndex(r => matches(r, match));
+    /* Wave 1: cross-instance delete — a row created on another instance is not in
+       this cache; when PG is live, hydrate the miss from the authority before
+       answering 404. Memory mode: identical 404 semantics. */
+    const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+    let idx = arr.findIndex(r => matches(r, match));
+    if (idx === -1 && pgLive && Number.isFinite(Number(match.id))
+        && typeof db.readOne === 'function') {
+      try{
+        const row = await db.readOne(collection, match.id);
+        if(row && matches(row, match)) { arr.push(row); idx = arr.length - 1; }
+      }catch(e){ /* genuinely missing */ }
+    }
     if (idx === -1) return { ok: false, status: 404 };
 
     const rec = arr[idx];
+    const delId = Number(match.id);
+    /* رویدادِ برون‌مرزی — ویو ۸: مهارِ مدرسه در payload تا کارگر بتواند
+       بدون رکورد (که حذف شده) محدوده را حل کند */
+    const evt = {
+      type: collection + '.deleted',
+      collection,
+      record_id: Number.isFinite(delId) ? delId : null,
+      actor_id: meta.actor ? meta.actor.id : null,
+      version: (Number(rec.version) || 0) + 1,
+      payload: { school_id: rec.school_id != null ? rec.school_id : null }
+    };
+    /* Wave 1 (PG-first) + W1p2 (atomik): در حالتِ PG-live، DELETE و آینهٔ
+       outbox در یک تراکنشِ واقعی (all-or-nothing) — ابتدا از اعتبارِ PG
+       اطمینان می‌گیرد، سپس کش تغییر می‌کند. در شکست، store دست‌نخورده می‌ماند
+       و خطا به فراخواننده انتشار می‌یابد (W7: رول‌بک + throw). */
+    if(pgLive && Number.isFinite(delId)
+        && typeof db.transaction === 'function' && typeof db.persistOpWithClient === 'function'){
+      await db.transaction(async (client) => {
+        await db.persistOpWithClient(client, { c: collection, t: 'del', id: delId });
+        if (outbox) await outbox.append(evt, client);
+      });
+    }
     /* ۱) نسخه — پیش از بایگانی بالا می‌رود */
-    rec.version = (Number(rec.version) || 0) + 1;
+    rec.version = evt.version;
 
     /* ۲) سنگ‌قبر: نسخهٔ کامل + متادیتای حذف */
+    const deletedAt = new Date().toISOString();
     store.tombstones.push({
       collection,
       record: rec,
       deleted_by: meta.actor ? meta.actor.id : null,
-      deleted_at: new Date().toISOString(),
+      deleted_at: deletedAt,
       reason: meta.reason || null
     });
     /* سنگ‌قبرها بی‌نهایت نمی‌مانند — اما سقف‌شان بسیار بالاتر از صفِ رویداد است */
@@ -60,23 +94,31 @@ function createDeleteService({ store, db, markDirty, outbox }) {
     arr.splice(idx, 1);
     if (typeof markDirty === 'function') markDirty();
 
-    /* حذف در پستگرس (رفتار پیشین، بدون تغییر) */
-    const delId = Number(match.id);
-    if (db && typeof db.persistOp === 'function' && Number.isFinite(delId)) {
+    /* S2-3a (باگ‌هانت چت ۵، موج ۴): پلِ سنگ‌قبرِ دلتا. pull فقط
+       `__deleted_records` را می‌خواند و حذفِ REST هیچ‌جا آن را نمی‌گذاشت —
+       کلاینت‌ها (دلتا و حتی بوت‌استرپِ ادغامی) حذف را هیچ‌وقت نمی‌دیدند و
+       رکوردِ شبح برایِ همیشه می‌ماند. حالا همان مهرِ زمانیِ بایگانی،
+       سنگ‌قبرِ سبکِ دلتا هم می‌شود؛ سقفِ ۵۰۰۰ (مثلِ مسیرِ sync) و
+       اسکوپِ مدرسه سرِ جایش. */
+    if (!Array.isArray(store.__deleted_records)) store.__deleted_records = [];
+    if (Number.isFinite(delId)) {
+      store.__deleted_records.push({
+        c: collection, id: delId,
+        school_id: rec.school_id != null ? rec.school_id : null, at: deletedAt
+      });
+      if (store.__deleted_records.length > 5000) store.__deleted_records = store.__deleted_records.slice(-5000);
+    }
+
+    /* حذف در پستگرس — memory mode (رفتار پیشین، بدون تغییر)؛ در حالتِ PG-live
+       حذفِ معتبر already above committed و این آینه تکرار نمی‌شود. */
+    if (!pgLive && db && typeof db.persistOp === 'function' && Number.isFinite(delId)) {
       await db.persistOp({ c: collection, t: 'del', id: delId });
     }
 
-    /* ۳) رویداد برون‌مرزی — ویو ۸: مهارِ مدرسه در payload تا کارگر
-       بتواند بدون رکورد (که حذف شده) محدوده را حل کند */
-    if (outbox) {
-      await outbox.append({
-        type: collection + '.deleted',
-        collection,
-        record_id: Number.isFinite(delId) ? delId : null,
-        actor_id: meta.actor ? meta.actor.id : null,
-        version: rec.version,
-        payload: { school_id: rec.school_id != null ? rec.school_id : null }
-      });
+    /* ۳) رویداد برون‌مرزی — حالتِ حافظه/legacy: خارج از تراکنش (در PG-live
+       رویداد درونِ تراکنشِ بالاتر نشسته است) */
+    if (!pgLive && outbox) {
+      await outbox.append(evt);
     }
 
     if (typeof meta.audit === 'function') {

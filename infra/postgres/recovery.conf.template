@@ -1,0 +1,39 @@
+# ═══════════════════════════════════════════════════════════════════
+# recovery.conf.template — الگویِ بازیابیِ standby (میزبانِ دستی/K8s)
+# ───────────────────────────────────────────────────────────────────
+# ⚠️ PostgreSQL ≥ 12 فایل recovery.conf را حذف کرده است. این template
+# دو مصرف دارد:
+#   ۱) کانتینرهای infra/postgres: standby-entrypoint.sh همین مقادیر را
+#      داخل postgresql.auto.conf می‌نویسد + standby.signal را touch می‌کند
+#      (معادلِ دقیقِ خطوطِ زیر).
+#   ۲) میزبانِ دستی (pitr/DR در مستندات): placeholderهای __UNDERSCORE__ را
+#      sed کن و مقادیر را به $PGDATA/postgresql.auto.conf اضافه کن؛ برای
+#      standby یک `touch $PGDATA/standby.signal` کافی است؛ برایِ PITRِ
+#      نقطه‌ای recovery_target_* + `touch $PGDATA/recovery.signal` — که
+#      tools/pitr-restore.sh همین الگو را خودکار می‌کند.
+#
+# معادل‌ها (PG12+):
+#   standby_mode = 'on'            ⇒ touch $PGDATA/standby.signal
+#   recovery_target_time = ...     ⇒ recovery_target_time در auto.conf (PITR)
+#   recovery_target_action='promote' ⇒ recovery_target_action = 'promote'
+#
+# placeholderها:
+#   __PRIMARY_HOST__ __PRIMARY_PORT__ __REPL_PASSWORD__ __REPL_USER__
+#   __TARGET_TIME__ (برایِ PITR؛ در standbyِ عادی خطِ target را بردار)
+# ═══════════════════════════════════════════════════════════════════
+
+# ── دنبال‌کردنِ primary (streaming) ──
+primary_conninfo      = 'user=__REPL_USER__ password=__REPL_PASSWORD__ host=__PRIMARY_HOST__ port=__PRIMARY_PORT__ application_name=payesh-standby sslmode=prefer'
+primary_slot_name     = ''
+
+# ── شکاف‌های شبکه/راه‌دور از archive (S3) ──
+restore_command       = 'pgbackrest --stanza=payesh archive-get %f %p'
+recovery_target_timeline = 'latest'
+
+# ── حالتِ standby (خواند‌نِ زنده رویِ replay) ──
+hot_standby = on
+
+# ── فقط برایِ PITR: خطِّ زیر را از کامنت دربیاور ──
+#recovery_target_time = '__TARGET_TIME__'
+#recovery_target_action = 'promote'
+#pause_at_recovery_target = 'off'

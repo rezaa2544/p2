@@ -14,7 +14,9 @@ const { spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const SUITE = path.join(ROOT, 'tests', 'wave5-authz.js');
-const F = path.join(ROOT, 'server', 'sync.js');
+/* ویو ۵ بخش دوم — دروازهٔ محدوده به مدلِ یکتای policy.js منتقل شده؛
+   جهش‌ها حالا همان‌جا می‌خورند (قرارداد کشتار و الگوهای قرمزی بدون تغییر). */
+const F = path.join(ROOT, 'server', 'policy.js');
 
 let pass = 0, fail = 0;
 function chk(name, cond, extra) {
@@ -42,21 +44,19 @@ function mutate(find, replace, killRe, tag) {
 
 console.log('\n▸ جهش‌ها');
 mutate(
-  `return schoolInOfficeScope(sid);`,
+  `return schoolInOfficeScope(store, u, sid);`,
   `return true; /* دروازهٔ دامنه حذف شد */`,
   /❌ T2|❌ T4|❌ T6|❌ T7/, 'M1 حذف دروازهٔ دامنه');
 
 mutate(
-  `if(coll === 'offices') return false;`,
+  `if (coll === 'offices') return false;`,
   `if(coll === 'offices') return true; /* ساخت دفتر آزاد شد */`,
   /❌ T5b/, 'M2 ساخت دفتر برای اداره');
 
 mutate(
-  `if(sid == null && t.user_id != null){
-        const rcp = store_get('users').find(x => x.id === Number(t.user_id));
-        sid = rcp ? rcp.school_id : null;
-      }`,
-  `/* حلِّ مهار از گیرنده حذف شد */`,
+  `const sid = t.school_id != null ? t.school_id
+        : (t.user_id != null ? (((store.users) || []).find((x) => Number(x.id) === Number(t.user_id)) || {}).school_id : null);`,
+  `const sid = t.school_id != null ? t.school_id : null; /* حلِّ مهار از گیرنده حذف شد */`,
   /❌ T7/, 'M3 حذف مهار گیرنده');
 
 const fin = spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8', timeout: 240000 });

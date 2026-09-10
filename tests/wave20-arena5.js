@@ -85,20 +85,11 @@ function cinGroup() {
   try { sec = fs.readFileSync(CI_SEC, 'utf8'); } catch (e) {}
   chk('CIN-0 npm test = run.js + دودی',
     /tests\/run\.js/.test(pkg.scripts.test || '') && /smoke/.test(pkg.scripts.test || ''));
-  /* ماتریسِ CI عمداً به [22.x] کاهش یافته: engines برابرِ >=22 است و روی
-     نودِ ۱۸/۲۰ سوئیتِ دودی بی‌صدا skip می‌شد و exit 0 می‌داد — یعنی همان
-     «سبزِ جعلی» که release-gate پیدا کرد. پس assert کردنِ 18.x/20.x در این‌جا
-     درخواستِ ماتریسی است که پروژه با دلیلِ مکتوب حذف کرده، و خودِ همین چکِ
-     قدیمی چیزی بود که سبزِ جعلی را پنهان می‌کرد. آنچه باید برقرار بماند قوی‌تر
-     است: ماتریس خالی نباشد و هر نسخه‌اش engines را ارضا کند — چون خطرِ واقعی
-     نسخه‌ای است که پایین‌تر از engines باشد و بی‌صدا skip کند. */
-  const ciMatrix = (ci.match(/node-version:\s*\[([^\]]*)\]/) || [])[1] || '';
-  const ciVersions = ciMatrix.split(',').map((v) => v.trim().replace(/\.x$/, '')).filter(Boolean);
-  const enginesMin = parseInt(String((pkg.engines && pkg.engines.node) || '').replace(/[^\d]/g, ''), 10);
-  chk('CIN-1 ماتریسِ نودِ CI خالی نیست و هیچ نسخه‌اش زیرِ engines نیست',
-    ciVersions.length > 0 && Number.isFinite(enginesMin)
-    && ciVersions.every((v) => Number(v) >= enginesMin),
-    'matrix=' + JSON.stringify(ciVersions) + ' engines=' + (pkg.engines && pkg.engines.node));
+  /* ماتریسِ صادق (19ea463، PR #45 / BUG-6، باگ‌هانت چت ۵): engines >=22 و
+     jsdom 30 نیازمندِ >=22 است؛ لِین‌های 18/20 دودی را خاموش-اسکیپ می‌کردند
+     (exit 0) = سبزِ دروغ. قراردادِ «سه نسخه» کهنه بود. گیت: فقط 22.x. */
+  chk('CIN-1 CI اصلی روی نسخهٔ صادقِ نود (honest matrix: 22.x فقط)',
+    /22\.x/.test(ci) && !/18\.x/.test(ci) && !/20\.x/.test(ci));
   chk('CIN-2 CI اصلی بیلد و تست را اجرا می‌کند', /npm run build/.test(ci) && /npm test/.test(ci));
   chk('CIN-3 CI امنیتی: نشت‌یاب + نحوی نگینکس + واحدِ WAF',
     /secret-scan\.js/.test(sec) && /nginx -t/.test(sec) && /waf-ddos\.js --unit-only/.test(sec));
