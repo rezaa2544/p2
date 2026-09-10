@@ -7469,9 +7469,14 @@ test('بند ۱.۷: کارت امروز تاریخ، حضور و زنگ‌های
   let schedId, attId;
   try{
     const t = JSON.parse(W(`(()=>{
-      var cls=db.classes[0];
-      var st=db.users.filter(function(x){return x.role==='student'&&x.school_id===cls.school_id;})[0];
-      return JSON.stringify({sid:st.id, cls:cls.id, dow:todayDow()});
+      var st=db.users.filter(function(x){return x.role==='student'&&x.school_id===db.classes[0].school_id;})[0];
+      /* todayCard() زنگ‌ها را از کلاسِ ثبت‌نامِ دانش‌آموز می‌خواند (classOf)، نه از
+         db.classes[0]. اگر فیکسچر جای دیگری ساخته شود کارت به‌درستی خالی است و این
+         تست رد می‌شود. در روزهای درس، برنامهٔ تولیدشده برای کلاسِ واقعی هم زنگ دارد
+         و این اشکال پنهان می‌ماند؛ در پنجشنبه (dow=۵) که برنامه‌ای تولید نمی‌شود
+         آشکار می‌شود. پس فیکسچر دقیقاً در همان کلاسی ساخته می‌شود که کارت می‌خواند. */
+      var c=(typeof classOf==='function'&&classOf(st.id))||db.classes[0];
+      return JSON.stringify({sid:st.id, cls:c.id, dow:todayDow()});
     })()`));
     schedId = W(`(insert('schedule',{school_id:byId('classes',${t.cls}).school_id,class_id:${t.cls},subject_id:db.subjects[0].id,teacher_id:null,day:${t.dow},period:1,id:null}).id)`);
     attId = W(`(insert('attendance',{school_id:byId('classes',${t.cls}).school_id,class_id:${t.cls},student_id:${t.sid},date:todayISO(),status:'present',note:null}).id)`);
