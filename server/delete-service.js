@@ -52,25 +52,29 @@ function createDeleteService({ store, db, markDirty, outbox }) {
 
     const rec = arr[idx];
     const delId = Number(match.id);
-    /* Wave 1: PG-first — the authority commits before the cache mutates. On PG
-       failure the store is untouched and the caller gets 503 (retryable). */
-    /* NOTE: persistOp swallows errors by design (log-only), so the committing call
-       MUST be persistOpsBatch (throws after rollback) — otherwise the 503 gate
-       below would be dead code. persistOp stays only as a legacy fallback for db
-       fakes that predate the batch API. */
-    if(pgLive && Number.isFinite(delId)){
-      if(typeof db.persistOpsBatch === 'function'){
-        try{
-          await db.persistOpsBatch([{ c: collection, t: 'del', id: delId }]);
-        }catch(pgErr){
-          return { ok: false, status: 503, code: 'pg_unavailable' };
-        }
-      }else if(typeof db.persistOp === 'function'){
-        await db.persistOp({ c: collection, t: 'del', id: delId });
-      }
+    /* رویدادِ برون‌مرزی — ویو ۸: مهارِ مدرسه در payload تا کارگر بتواند
+       بدون رکورد (که حذف شده) محدوده را حل کند */
+    const evt = {
+      type: collection + '.deleted',
+      collection,
+      record_id: Number.isFinite(delId) ? delId : null,
+      actor_id: meta.actor ? meta.actor.id : null,
+      version: (Number(rec.version) || 0) + 1,
+      payload: { school_id: rec.school_id != null ? rec.school_id : null }
+    };
+    /* Wave 1 (PG-first) + W1p2 (atomik): در حالتِ PG-live، DELETE و آینهٔ
+       outbox در یک تراکنشِ واقعی (all-or-nothing) — ابتدا از اعتبارِ PG
+       اطمینان می‌گیرد، سپس کش تغییر می‌کند. در شکست، store دست‌نخورده می‌ماند
+       و خطا به فراخواننده انتشار می‌یابد (W7: رول‌بک + throw). */
+    if(pgLive && Number.isFinite(delId)
+        && typeof db.transaction === 'function' && typeof db.persistOpWithClient === 'function'){
+      await db.transaction(async (client) => {
+        await db.persistOpWithClient(client, { c: collection, t: 'del', id: delId });
+        if (outbox) await outbox.append(evt, client);
+      });
     }
     /* ۱) نسخه — پیش از بایگانی بالا می‌رود */
-    rec.version = (Number(rec.version) || 0) + 1;
+    rec.version = evt.version;
 
     /* ۲) سنگ‌قبر: نسخهٔ کامل + متادیتای حذف */
     store.tombstones.push({
@@ -95,17 +99,10 @@ function createDeleteService({ store, db, markDirty, outbox }) {
       await db.persistOp({ c: collection, t: 'del', id: delId });
     }
 
-    /* ۳) رویداد برون‌مرزی — ویو ۸: مهارِ مدرسه در payload تا کارگر
-       بتواند بدون رکورد (که حذف شده) محدوده را حل کند */
-    if (outbox) {
-      await outbox.append({
-        type: collection + '.deleted',
-        collection,
-        record_id: Number.isFinite(delId) ? delId : null,
-        actor_id: meta.actor ? meta.actor.id : null,
-        version: rec.version,
-        payload: { school_id: rec.school_id != null ? rec.school_id : null }
-      });
+    /* ۳) رویداد برون‌مرزی — حالتِ حافظه/legacy: خارج از تراکنش (در PG-live
+       رویداد درونِ تراکنشِ بالاتر نشسته است) */
+    if (!pgLive && outbox) {
+      await outbox.append(evt);
     }
 
     if (typeof meta.audit === 'function') {

@@ -20,10 +20,24 @@ const OUTBOX_CAP = 1000;
 function createOutbox({ store, db }) {
   if (!Array.isArray(store.outbox)) store.outbox = [];
 
-  const nextId = () => {
+  /* P0#2 (چندنمونه‌ای): id باید **سراسری** باشد — شمارندهٔ فرایندی، دو
+     instance با PG مشترک را به idهایِ تکراری می‌رساند و INSERTِ
+     `ON CONFLICT (id) DO NOTHING` رویداد را ساکت می‌ریزد. وقتی Redis زنده
+     است (در production الزامی — P0-13) دنباله از `INCR` مشترک می‌آید
+     (monotonic، بدون TTL — شمارندهٔ دنباله انقضا نمی‌خواهد). حالتِ بدون
+     Redis (توسعهٔ تک‌نمونه‌ای) همان شمارندهٔ محلیِ پیشین است. */
+  const redis = require('./redis');
+  const OUTBOX_SEQ_KEY = 'payesh:outbox:seq';
+  async function nextId() {
+    try {
+      if (typeof redis.isRedis === 'function' && redis.isRedis()) {
+        const n = Number(await redis.incr(OUTBOX_SEQ_KEY));
+        if (Number.isFinite(n) && n > 0) return n;
+      }
+    } catch (e) { /* Redis رفت: شمارندهٔ محلی (سازگاریِ توسعه) */ }
     store.__outbox_seq = (Number(store.__outbox_seq) || 0) + 1;
     return store.__outbox_seq;
-  };
+  }
 
   /* Wave 1: PG-live ids come from payesh_outbox_id_seq (migration 004) so two
      instances never collide; the local counter stays for memory mode and as the
@@ -40,14 +54,28 @@ function createOutbox({ store, db }) {
   }
 
   const isPg = () => db && typeof db.isPostgres === 'function' && db.isPostgres();
-
+  /** INSERT پستگرسِ رویداد — جدا تا در تراکنشِ فراخوان هم قابل‌استفاده باشد */
+  const outboxInsertSql =
+    `INSERT INTO server_outbox (id, type, collection, record_id, actor_id, version, payload, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+     ON CONFLICT (id) DO NOTHING;`;
+  const outboxParams = (evt) => [
+    evt.id, String(evt.type || ''), String(evt.collection || ''),
+    evt.record_id != null ? Number(evt.record_id) : null,
+    evt.actor_id != null ? Number(evt.actor_id) : null,
+    evt.version != null ? Number(evt.version) : null,
+    evt.payload ? JSON.stringify(evt.payload) : null
+  ];
   /**
    * @param {object} event — { type, collection, record_id, actor_id, version, payload? }
+   * @param {object} [client] — Wave1-W: اگر داده شود، INSERT روی همان client
+   *   (داخل تراکنشِ فراخوان) اجرا می‌شود و خطا می‌پردازد تا رول‌بک شود.
    */
-  async function append(event) {
+  async function append(event, client) {
     const pgSeq = isPg() && db && typeof db.query === 'function';
     const evt = Object.assign({
-      id: pgSeq ? await nextPgId() : nextId(),
+      /* PG-live: sequenceٔ پستگرس؛ وگرنه دنبالهٔ Redis مشترک (P0#2) یا محلی */
+      id: pgSeq ? await nextPgId() : await nextId(),
       at: new Date().toISOString(),
       /* ویو ۸ — چرخهٔ عمر (سازگار با گذشته: رویدادهای قدیمی بدون وضعیت
          از دید کارگر حکمِ 'pending' دارند) */
@@ -60,18 +88,13 @@ function createOutbox({ store, db }) {
     if (store.outbox.length > OUTBOX_CAP) {
       store.outbox.splice(0, store.outbox.length - OUTBOX_CAP);
     }
+    if (client) {
+      await client.query(outboxInsertSql, outboxParams(evt)); /* Wave1-W: داخل تراکنش */
+      return evt;
+    }
     if (isPg()) {
       try {
-        await db.query(
-          `INSERT INTO server_outbox (id, type, collection, record_id, actor_id, version, payload, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-           ON CONFLICT (id) DO NOTHING;`,
-          [evt.id, String(evt.type || ''), String(evt.collection || ''),
-           evt.record_id != null ? Number(evt.record_id) : null,
-           evt.actor_id != null ? Number(evt.actor_id) : null,
-           evt.version != null ? Number(evt.version) : null,
-           evt.payload ? JSON.stringify(evt.payload) : null]
-        );
+        await db.query(outboxInsertSql, outboxParams(evt));
       } catch (e) { /* جدول در دسترس نیست — منبع حقیقت اسنپ‌شات است */ }
     }
     return evt;
