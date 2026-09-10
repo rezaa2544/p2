@@ -40,6 +40,17 @@ function createDeleteService({ store, db, markDirty, outbox }) {
     if (idx === -1) return { ok: false, status: 404 };
 
     const rec = arr[idx];
+    const delId = Number(match.id);
+    /* Wave 1: PG-first — the authority commits before the cache mutates. On PG
+       failure the store is untouched and the caller gets 503 (retryable). */
+    const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+    if(pgLive && typeof db.persistOp === 'function' && Number.isFinite(delId)){
+      try{
+        await db.persistOp({ c: collection, t: 'del', id: delId });
+      }catch(pgErr){
+        return { ok: false, status: 503, code: 'pg_unavailable' };
+      }
+    }
     /* ۱) نسخه — پیش از بایگانی بالا می‌رود */
     rec.version = (Number(rec.version) || 0) + 1;
 
@@ -60,9 +71,9 @@ function createDeleteService({ store, db, markDirty, outbox }) {
     arr.splice(idx, 1);
     if (typeof markDirty === 'function') markDirty();
 
-    /* حذف در پستگرس (رفتار پیشین، بدون تغییر) */
-    const delId = Number(match.id);
-    if (db && typeof db.persistOp === 'function' && Number.isFinite(delId)) {
+    /* حذف در پستگرس — memory mode (رفتار پیشین، بدون تغییر)؛ در حالتِ PG-live
+       حذفِ معتبر already above committed و این آینه تکرار نمی‌شود. */
+    if (!pgLive && db && typeof db.persistOp === 'function' && Number.isFinite(delId)) {
       await db.persistOp({ c: collection, t: 'del', id: delId });
     }
 
