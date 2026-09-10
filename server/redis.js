@@ -325,10 +325,15 @@ async function set(key, value, mode, duration) {
 
   prodNoRedis('set'); // BUG-2: تولیدِ بدونِ ردیسِ زنده به حافظه نمی‌افتد
   memCache.set(key, strVal);
-  if (mode === 'EX' && typeof duration === 'number') {
-    memExpiry.set(key, Date.now() + duration * 1000);
-  } else if (mode === 'PX' && typeof duration === 'number') {
-    memExpiry.set(key, Date.now() + duration);
+  /* W11-3 (موج ۱۱): وفاداری به معنایِ ردیس. (۱) بازنویسیِ بی‌TTL انقضایِ
+     قبلی را پاک می‌کند (SET بی‌EX = ماندگار) — پیش‌تر انقضایِ کهنه
+     می‌ماند و کلید زود ناپدید می‌شد. (۲) مدتِ رشته‌ایِ عددی ('60')
+     مثلِ ioredis پذیرفته می‌شود. */
+  const durNum = Number(duration);
+  if ((mode === 'EX' || mode === 'PX') && Number.isFinite(durNum) && duration !== '' && duration != null) {
+    memExpiry.set(key, Date.now() + (mode === 'EX' ? durNum * 1000 : durNum));
+  } else {
+    memExpiry.delete(key);
   }
   return 'OK';
 }
