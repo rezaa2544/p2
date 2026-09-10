@@ -70,14 +70,17 @@ log "RDB ذخیره شد: ${BACKUP_DIR}/dump-${TS}.rdb"
 # ── ۲) AOF ──
 log "BGREWRITEAOF…"
 rcli BGREWRITEAOF >/dev/null || die "redis-cli BGREWRITEAOF شکست خورد"
+# نکته: «| grep -q» با pipefail ناپایدار است — به‌محضِ توافق، لوله را می‌بندد
+# و نویسنده ممکن است با SIGPIPE بمیرد و خطا به‌اشتباه به این سمت بیفتد.
+# پس خروجی را کامل می‌خوانیم و روی متنِ گرفته‌شده می‌سنجیم.
+aof_done() { case "$(rcli INFO persistence)" in *$'\naof_rewrite_in_progress:0'*) return 0;; *) return 1;; esac; }
 for _ in $(seq 1 60); do
-  if rcli INFO persistence | grep -q '^aof_rewrite_in_progress:0'; then
+  if aof_done; then
     break
   fi
   sleep 2
 done
-rcli INFO persistence | grep -q '^aof_rewrite_in_progress:0' \
-  || die "بازنویسی AOF در مهلت مقرر تمام نشد"
+aof_done || die "بازنویسی AOF در مهلت مقرر تمام نشد"
 if [ -f "${REDIS_DIR}/appendonly.aof" ]; then
   cp -f "${REDIS_DIR}/appendonly.aof" "${BACKUP_DIR}/appendonly-${TS}.aof"
   log "AOF ذخیره شد: ${BACKUP_DIR}/appendonly-${TS}.aof"
