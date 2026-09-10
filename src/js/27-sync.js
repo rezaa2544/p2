@@ -309,11 +309,15 @@ async function syncNow(manual){
   try{
     const res = await sendChunked(batch);
 
+    /* W7-2 (موج ۷): «آخرین همگام‌سازی موفق» فقط وقتی جلو می‌رود که دست‌کم
+       یک قلم واقعاً همگام شده باشد (ok یا duplicate_ignored) — پیش‌تر پس
+       از هر اجرا جلو می‌رفت، حتی با صفرِ همگام (تازگیِ دروغین در پنل). */
+    let syncedN = 0;
     res.forEach(r => {
       const item = SYNC.queue.find(x => x.uid === r.uid);
       if(!item) return;
       if(r.ok){
-        item.status = 'synced';
+        item.status = 'synced'; syncedN++;
       }else if(r.conflict){
         item.status = 'conflict';
         item.error  = r.message || 'تعارض با نسخه سرور';
@@ -349,8 +353,7 @@ async function syncNow(manual){
 
     /* موارد موفق (و duplicates) از صف حذف می‌شوند */
     SYNC.queue = SYNC.queue.filter(x => x.status !== 'synced');
-    SYNC.lastSync = new Date().toISOString();
-    saveSyncMeta();
+    if(syncedN > 0){ SYNC.lastSync = new Date().toISOString(); saveSyncMeta(); }   /* W7-2 */
     saveQueue();
 
     const okCount   = res.filter(r => r.ok).length;
