@@ -105,6 +105,17 @@
 **گیت‌ها:** smoke ‏۵۴۷/۵۴۷‏ · check-authz=0 · secret-scan ‏۱۱/۱۱‏ · wave13 ‏۲۳/۲۳‏ · YAML معتبر (js-yaml) · (هشدار benign ‏window.scrollTo‏ در jsdom).
 **یافتهٔ محیطی:** کلون shallow بود (`origin/main` تک‌کامیت) و مرج را «unrelated» می‌زد — با `fetch --unshallow` حل شد؛ ‎/tmp‎ بین نوبت‌ها پاک می‌شود (نصب مجدد ruflo + بازسازی استور از `docs/unified-memory.json` لازم شد).
 **بعدی:** مرج این شاخه با تأیید ناظر؛ enforce روی یافته‌های High؛ DAST واقعی staging؛ ریبیس/مرج شاخه‌های چت ۲ و ۳.
+## چت ۳ — P0 #2: معماری چندنمونه‌ای امن (Production Readiness Checklist §۲۷) — ۱۹/۰۶/۱۴۵ (2026-09-10) — کامل ✅
+
+**وضعیت:** همهٔ stateهایِ حیاتی هماهنگ‌سازی حالا در Redis مشترک است؛ production بدونِ زیرساختِ مشترک استارت نمی‌دهد؛ دو فرایندِ واقعی + Redis مشترک «write A → read B → update B → read A» را اثبات می‌کنند. پنج کامیت روی `arena/01a08545-p2` (بعد از ریبیسِ دوم `149ba1f`):
+
+- **ممیزی** (`b82c1ef`، `docs/MULTI_INSTANCE_AUDIT.md`): تمام stateهایِ حیاتی: OTP (P0-15)، rate limit (اتمیکی P0-11)، revoke (`revoked:<jti>`+`sessver` — W6)، idempotency (24h+PG)، L2 cache+Pub/Sub، locks، WAF، enum-guard = **Redis مشترک، بدونِ تغییر**؛ stateهایِ per-instanceِ باقی (L1، audit، outbox queue، store seed) = **مجاز و مستند**؛ سه شکافِ واقعی: **A** کلیدِ JWT (جلسهٔ نمونهٔ B در A معتبر نبود)، **B** counterِ outbox (id در PG مشترک تکراری می‌شد)، **C** plane datastore (ادامهٔ W1/W3).
+- **A+B** (`5081248`): ① `server/index.js` — production + بک‌اندِ مشترک (Redis/PG) بدونِ `PAYESH_JWT_SECRET` ⇒ **fail-fast exit 1** (کلیدِ تولیدشدهٔ per-instance جلساتِ چندنمونه‌ای را ساکت می‌شکست). ② `server/outbox.js` — id رویدادها از `INCR payesh:outbox:seq` در Redis مشترک (atomic ⇒ صفرِ تلاش‌تلاقی در PG مشترک)؛ `nextId` async شد (فقط outbox). ③ env تستیِ `arena5-recovery` (R3/R3h production+fake-Redis) با کلیدِ مشترکِ ثابت.
+- **آزمون** (`628726e`، `tests/multi-instance.js` **17/17**): دو فرایندِ واقعی `node server/index.js` (production، store جدا، Redis مشترک = fake-RESP روی TCP با معنایِ واقعیِ کلیدها + seq + pub/sub) + کلیدِ نشستِ مشترک: write A (send-code) → read B (login 200) → read A (/me 200 با کوکیِ B)؛ update B (logout) → read A (401 — denylist مشترک)؛ مرگِ کد در B ⇒ replay در A = bad_code (tombstone مشترک) + cooldown مشترک؛ rate limitِ IP مشترک (8 در A ⇒ 429 در B)؛ fail-closed (production+ردیسِ مرده ⇒ exit 1 `[FATAL]`)؛ fail-fastِ کلیدِ نشست (exit 1)؛ outbox (30 append متناوب از دو outbox ⇒ 30 id منحصر‌به‌فرد)؛ idempotency (mark در «A» ⇒ read در «B»). plane datastore = صادقانه «در انتظارِ PG» (W1/W3).
+- **معماری** (`9d28d3a`، `docs/MULTI_INSTANCE_ARCHITECTURE.md`): نقشهٔ کلیدهایِ Redis + TTL + owner؛ جدولِ fail-closed/fail-fast؛ وضعیتِ دقیقِ plane datastore (کدام مسیر PG است/نیست)؛ چک‌لیستِ deployment (store/audit/key جدا، JWT/REDIS/PG مشترک، readiness=probe، backup=PG)؛ محدودیت‌هایِ صادقانه (ادامهٔ W1/W3، claimِ outbox، `REQ_STATE`).
+- **رفعِ نقصِ آشکارشده** (`a48627c`): `tests/wave15-child.js` (S3) — fail-fastِ کلیدِ مشترک جدید بر fail-fastِ P0-13 سبقت می‌گرفت؛ env سناریو با کلیدِ productionِ معتبر کامل شد تا P0-13 جدا بسنجده شود (wave15 **10/10**).
+- **دروازه‌ها (همان روز):** smoke **547/547** · check-authz **0** · secret-scan **11/11** · **multi-instance 17/17** · wave6 **22/22** · wave15 **10/10** · arena5-recovery **32/32** · build --check ✅.
+- **push:** (با کامیتِ هندآف) `ls-remote` تأیید می‌شود؛ PR #47 به‌روز می‌شود.
 
 ## چت ۳ — ریبیسِ دومِ `arena/01a08545-p2` روی `origin/main` (`351bd10`، PR #45) — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
 
