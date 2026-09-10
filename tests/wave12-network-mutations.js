@@ -11,7 +11,8 @@ const fs = require('fs');
 const FILES = {
   'nginx/nginx.conf': fs.readFileSync('nginx/nginx.conf', 'utf8'),
   'server/index.js': fs.readFileSync('server/index.js', 'utf8'),
-  'ci/pending/security-sast-sca.patch': fs.readFileSync('ci/pending/security-sast-sca.patch', 'utf8')
+  'ci/pending/security-sast-sca.patch': fs.readFileSync('ci/pending/security-sast-sca.patch', 'utf8'),
+  '.github/workflows/security.yml': fs.readFileSync('.github/workflows/security.yml', 'utf8')
 };
 
 const SUITE = 'node tests/wave12-network.js';
@@ -33,10 +34,13 @@ const MUTS = [
     expectFail: 'HDR-2'
   },
   {
-    file: 'ci/pending/security-sast-sca.patch',
-    name: 'M3 ممیزیِ وابستگی (SCA) از پچِ در انتظار حذف شود',
-    bad: 'npm audit --omit=dev --audit-level=high',
-    mut: 'REDACTED # MUT',
+    /* ویو ۱۲ پس از ادغامِ main: SCA دیگر در پچ نیست — در خودِ workflow اعمال
+       شده؛ جهشِ M3 حالا همینِ سطرِ اعمال‌شده را هدف می‌گیرد (سنگ‌قوی‌تر:
+       اگر روزی کسی ممیزی را از workflow بردارد، CIN-2 قرمز می‌شود). */
+    file: '.github/workflows/security.yml',
+    name: 'M3 ممیزیِ وابستگی (SCA) از خودِ workflow حذف شود',
+    bad: 'run: npm audit --audit-level=high',
+    mut: 'run: echo "REDACTED # MUT"',
     replaceAll: true,
     expectFail: 'CIN-2'
   },
