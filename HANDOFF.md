@@ -502,6 +502,15 @@ academic-years **۹/۹** + جهش **۵/۵** · exam-types **۲۷/۲۷** + جهش
   `git merge-tree 430c7c8 origin/main origin/feat/b3-d234-chat4` سنجیده و در
   `docs/PR_MERGE_PLAN.md` §۶ ثبت شد. دامِ روش هم ثبت شد: بلوک‌های
   `added in both` را باید جدا شمرد، وگرنه `docs/ROADMAP.md` از قلم می‌افتد.
+## چت ۳ — Wave 20: نهایی‌سازی Arena 5 (QA/Reliability) + دو نقصِ date-bound — ۲۱/۰۶/۱۴ (2026-09-10)
+
+**وضعیت:** شاخهٔ `arena/01a08545-p2`. سه کامیت: fix اپ (03f6840) / fix تست smoke (ef79216) / مستندات+آزمون Arena 5.
+- **`docs/ARENA5_QA_RELIABILITY.md`:** سندِ مرجعِ QA/Reliability — استراتژی، ابزارها، وضعیتِ ۹ مسئولیت با شواهد، **Release Gate** (گیت‌های خودکار + G1–G8 پیشِ Go-Live) + نقش‌ها.
+- **`tests/arena5-recovery.js` — 32/32:** تکمیلِ «Recovery Validation» + شروطِ Production (Restore Drill + Failover Test): R1 crash consistency (SIGKILL واقعی) · R2 restore drill (backup→فساد→restore+audit) · R3 Redis failover/failback با **ioredis واقعی** (failback بدونِ restart در پنجرهٔ retry؛ قطعِ طولانی ⇒ restart لازم) · R4 قراردادِ PG-failback (استاتیک).
+- **دو نقصِ date-bound (چهارشنبهٔ 2026-09-10 خودبه‌خود ظاهر شد — dow پنجشنبه=5 خارج ازِ دامنهٔ ۵روزه):** (1) crash بوتِ دمو در `02-demo-data.js` (slot undefined) ⇒ فِلبک + نگهبانِ قطعی `tests/arena5-demo-guard.js` (4/4)؛ (2) تستِ smoke ۱.۷ کلاسِ اشتباه (driftِ ثبت‌نام از آزمون‌های پیشین) ⇒ `classOf(sid)`. فرعی: badge `DAYS[dow]` undefined در پنجشنبه/جمعه ⇒ `DAYS_FULL`.
+- **گیت‌ها (در چهارشنبه!):** smoke **547/547**، check-authz 0، secret-scan 11/11، build --check، arena5-recovery 32/32، demo-guard 4/4.
+- **pending:** اجرایِ L3 واقعی (G1–G3/G6–G8) رویِ زیرساختِ چند-نمونه — «در انتظارِ زیرساخت» (جزئیات در سند).
+
 ## چت ۳ — Wave 19: تست آشوب و شکست (5 سناریو + ابزار chaos) — ۲۰/۰۶/۱۴ (2026-09-09)
 
 **وضعیت:** شاخهٔ `arena/01a08545-p2`. سه کامیت: ابزار + طرح + تست‌ها / مستندات / گزارش.

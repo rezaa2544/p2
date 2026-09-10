@@ -1228,6 +1228,38 @@ schema/sync بود؛ این نسخه لایه‌های تازه را زد.
   (API+Redis+PG+root برای tc/fallocate) — در ساندباکس طراحی + ابزار +
   DRY_RUN کامل است.
 
+### ۰/۵/۳۶ دور ۱۱۱ — Wave 20: نهایی‌سازی Arena 5 (QA/Reliability) + دو نقصِ date-bound — ۱۰-۰۹-۱۰
+
+شاخه `arena/01a08545-p2`. سندِ مرجع: `docs/ARENA5_QA_RELIABILITY.md`.
+
+- **Arena 5 (ADDENDUM):** استراتژی تست + ۹ مسئولیت (Test Strategy/Regression/
+  Load/Stress/Spike/Soak/Chaos/Recovery/Release Gate) در یک سندِ واحد با
+  معیارِ پذیرش و **Release Gate** (گیت‌هایِ خودکار + G1–G8 پیشِ Go-Live).
+- **Recovery Validation تکمیل شد:** `tests/arena5-recovery.js` **32/32** —
+  R1 crash consistency (SIGKILL واقعی: store سالم + داده ماندگار + restart
+  + نوشتنِ زنده + session از crash عبور) · R2 restore drill (backup→فساد→
+  restore + audit) · R3 **Redis failover/failback با ioredis واقعی** (503
+  حینِ مرگ؛ **failback بدونِ restart در پنجرهٔ retry**؛ قطعِ طولانی ⇒ 503
+  ماندگار ⇒ restart) · R4 قراردادِ PG-failback (استاتیک).
+- **یافتهٔ R3 (مهم برایِ fake/سبک‌وزنِ RESP):** ioredis 6 handshake =
+  `HELLO 3` + `CLIENT SETINFO` + ready-check با `INFO` (loading:0)؛ خطای
+  `unknown command 'HELLO'` ⇒ down خودکار به RESP2.
+- **دو نقصِ date-bound که در چهارشنبه ۱۴۰۵/۰۶/۲۰ خودبه‌خود ظاهر شدند**
+  (dow پنجشنبه=5 خارج ازِ دامنهٔ جدولِ ۵روزهٔ دمو):
+  1. `02-demo-data.js`: `slot.teacher_id` روی undefined ⇒ crash بوتِ دمو
+     (smoke 405/547). رفع: فِلبکِ period + نگهبانِ قطعی
+     `tests/arena5-demo-guard.js` (4/4، وابسته بهِ روزِ هفته نیست).
+  2. تستِ smoke ۱.۷ (today-card): زنگ را به `db.classes[0]` می‌زد در حالی
+     که آزمون‌های پیشین ثبت‌نامِ دانش‌آموز را به کلاس ۲ برده بودند ⇒ روی
+     روزِ غیرمدرسه (بدونِ ردیفِ دمو) شکستِ دروغین. رفع: `classOf(sid)`.
+     (بُرنگِ واقعیِ دوگانه: `DAYS[dow]` در پنجشنبه/جمعه undefined بود ⇒
+     badge با `DAYS_FULL`.)
+- **نکتهٔ فرآیندی:** نقص‌هایِ date-bound با گذرِ یک روز خودشان را نشان
+  می‌دهند؛ گیتِ smoke باید در **هر روزِ هفته** قابلِ اجرا بماند (نگهبانِ
+  demo-guard همین کار را به‌صورتِ قطعی می‌کند).
+- گیت‌ها: smoke **547/547** (در چهارشنبه!)، check-authz 0، secret-scan
+  11/11، build --check، arena5-recovery 32/32، arena5-demo-guard 4/4.
+
 ### ۰.۵.۱۹ دور ۷۹ — رفعِ دو باگِ واقعی + تکمیلِ ششِ باقی‌مانده (2026-09-06)
 
 **بند ۱ — قیفِ پیش‌ثبت‌نام (۰.۲) از رابطِ واقعی می‌مرد — رفع شد:** سه اکشنِ `pre-confirm`/`pre-reject`/`pre-del` پارامترِ اعلام‌شدهٔ `(el,id)` داشتند، درحالی‌که دسپاتچ `A[a]()` است (**بدونِ هیچ پارامتر**)؛ پارامترها `el`/`id` از محیّطِ کلِک‌لیسنر را با `undefined` سای می‌کردند: تأیید «ردیف یافت نشد» می‌گفت، رد و حذف بی‌اثر بودند. باگ **پنهان** بود چون همهٔ سئوت‌ها `preConfirm` را مستقیم صدا می‌زدند. رفع: برداشتنِ پارامترها.

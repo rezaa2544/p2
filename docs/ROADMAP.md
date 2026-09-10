@@ -212,7 +212,6 @@ Runbook
 ```
 
 Backup داشتن بدون restore drill کافی نیست.
-
 ---
 
 # 20. Wave 17 — Testing Pyramid
@@ -671,3 +670,4 @@ Capacity
 | B.6 | Health/Deployment: Wave 15 — Liveness/Readiness/Health + Graceful Shutdown + راهنمای Rolling Deployment/Rollback | چت ۳ | ✅ کامل (`docs/DEPLOYMENT_GUIDE.md`) |
 | B.7 | تست بار ملی: Wave 18 — دادهٔ آزمایشیِ 10M کاربر + چهار سناریو (عادی/اوج/فشار/چند روزه) | چت ۳ | ✅ کامل — اجرا روی زیرساختِ زنده pending (`docs/WAVE18_LOAD_TEST_PLAN.md`) |
 | B.8 | تست آشوب و شکست: Wave 19 — 5 سناریو (kill/redis/pg/latency/disk) + ابزار chaos-test.sh | چت ۳ | ✅ کامل — اجرای LIVE روی محیطِ چند-نمونه pending (`docs/WAVE19_CHAOS_PLAN.md`) |
+| B.9 | نهایی‌سازی Arena 5: Wave 20 — سندِ QA/Reliability + Recovery Validation (32/32) + Release Gate + رفع دو نقصِ date-bound | چت ۳ | ✅ کامل — اجرای L3 واقعی (G1–G8) pending زیرساخت (`docs/ARENA5_QA_RELIABILITY.md`) |
