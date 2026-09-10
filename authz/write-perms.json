@@ -145,6 +145,7 @@
       "attendance_modes",
       "notifications",
       "notify_queue",
+      "staff_posts",
       "teacher_schools"
     ],
     "guard": [
@@ -1424,6 +1425,20 @@
         "manager",
         "superadmin"
       ]
+    },
+    "staff_posts": {
+      "ins": [
+        "superadmin",
+        "edu_office"
+      ],
+      "upd": [
+        "superadmin",
+        "edu_office"
+      ],
+      "del": [
+        "superadmin",
+        "edu_office"
+      ]
     }
   },
   "fields": {
@@ -1435,8 +1450,10 @@
       "created_by",
       "date",
       "id",
+      "office_id",
       "pinned",
       "school_id",
+      "severity",
       "title",
       "updated_at"
     ],
@@ -2476,6 +2493,14 @@
       "status",
       "updated_at",
       "visiting_person"
+    ],
+    "staff_posts": [
+      "created_at",
+      "id",
+      "required",
+      "school_id",
+      "subject_id",
+      "updated_at"
     ]
   },
   "actions": {
@@ -3670,6 +3695,15 @@
       ],
       "collections": [
         "staff_attendance"
+      ]
+    },
+    "staffpost-save": {
+      "roles": [
+        "superadmin",
+        "edu_office"
+      ],
+      "collections": [
+        "staff_posts"
       ]
     },
     "sub-del": {

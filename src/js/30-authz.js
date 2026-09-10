@@ -334,6 +334,11 @@ var ACTION_ROLES = {
   'ann-del':       ['manager','superadmin','edu_office'],
   /* ب.۳ — ارزشیابی ناشناس معلم: فقط دانش‌آموز و ولی پاسخ می‌دهند */
   'eval-save':     ['student','parent'],
+  /* د.۴ — کمبود نیروی انسانی: تعیین/حذف هنجار فقط سوپرادمین و کارشناس اداره
+     (دروازهٔ سمت سرور هم در server/sync.js بر محدودهٔ اداره) */
+  'staffgap-norm':   ['superadmin','edu_office'],
+  'staffpost-save':  ['superadmin','edu_office'],
+  'staffpost-del':   ['superadmin','edu_office'],
   /* مالی */
   'tuition-plan-save': ['manager','superadmin'],
   'plan-del':      ['manager','superadmin'],
