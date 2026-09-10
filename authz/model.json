@@ -969,7 +969,6 @@
    ],
    "del": [
     "manager",
-    "teacher",
     "superadmin"
    ]
   },
