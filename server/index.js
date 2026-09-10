@@ -18,6 +18,7 @@
 /* Tracing اول از همه: باید پیش از http و ماژول‌هایِ instrumentشده بالا بیاید (OTel) */
 const tracing = require('./tracing');
 tracing.initTracing();
+const metrics = require('./metrics'); /* Wave 14 — Prometheus text endpoint (zero-dep) */
 const waf = require('./waf'); /* P-WAF: فقط-تشخیص (detect-only) */
 const http = require('http');
 const fs = require('fs');
@@ -456,6 +457,21 @@ const onRequest = async (req, res) => {
     }
   }
   try{
+    if(p === '/metrics' && req.method === 'GET'){
+      /* Wave 14 — endpointِ اسکرپ Prometheus (text exposition). لبه هرگز این
+         مسیر را روت نمی‌کند (nginx فقط /api/ و فایل استاتیک)؛ با METRICS_TOKEN
+         تنظیم‌شده، بدون هدرِ مطابق ⇒ ۴۰۱. */
+      const mtok = process.env.METRICS_TOKEN || '';
+      if (mtok && String(req.headers['x-metrics-token'] || '') !== mtok) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, code: 'unauthorized' }));
+        return;
+      }
+      const text = await metrics.renderText();
+      res.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4' });
+      res.end(text);
+      return;
+    }
     if(p === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')){
       /* P0-13: ریدی = در تولید، کشِ توزیع‌شده زنده است؛ وگرنه 503. */
       const rdy = redis.ready();
@@ -676,6 +692,9 @@ if(TLS_CERT || TLS_KEY){
 }else{
   server = http.createServer(onRequest);
 }
+/* Wave 14 — تاپِ زمان‌سنجی پاسخ (هر دو حالت HTTP/HTTPS) — fail-safe؛ هرگز
+   بوتِ سرویس را نمی‌شکند. */
+try { if (server) metrics.attach(server); } catch (e) {}
 /* S-73-6: connection/request timeouts — a stalled client must not hold a
    socket forever (slowloris surface). 65s covers the slowest legit op. */
 /* R96 P1-10: production باید TLS داشته باشد — یا مستقیم (گواهیِ CA) یا
