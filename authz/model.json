@@ -10,8 +10,10 @@
     "created_by",
     "date",
     "id",
+    "office_id",
     "pinned",
     "school_id",
+    "severity",
     "title",
     "updated_at"
    ],
@@ -2333,6 +2335,28 @@
    "del": [
     "manager",
     "superadmin"
+   ]
+  },
+  "staff_posts": {
+   "fields": [
+    "created_at",
+    "id",
+    "required",
+    "school_id",
+    "subject_id",
+    "updated_at"
+   ],
+   "ins": [
+    "superadmin",
+    "edu_office"
+   ],
+   "upd": [
+    "superadmin",
+    "edu_office"
+   ],
+   "del": [
+    "superadmin",
+    "edu_office"
    ]
   }
  }
