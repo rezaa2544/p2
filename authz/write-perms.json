@@ -468,7 +468,6 @@
       ],
       "del": [
         "manager",
-        "teacher",
         "superadmin"
       ]
     },
@@ -2813,6 +2812,15 @@
     },
     "disc-del-ok": {
       "roles": null,
+      "collections": [
+        "discipline"
+      ]
+    },
+    "disc-quick": {
+      "roles": [
+        "teacher",
+        "manager"
+      ],
       "collections": [
         "discipline"
       ]
