@@ -150,13 +150,25 @@ jobs:
         # The action runs ZAP inside docker, where 127.0.0.1 is the container
         # itself — so the local target uses host networking to reach the API
         # booted above on the runner.
+        # zap-baseline exit codes: 1 = FAIL findings, 2 = WARN-only (advisory),
+        # 3+ = scan error. WARN-only must not fail the gate (triage + enforcement
+        # is a Wave 13 follow-up, same as the staging action's fail-on-FAIL
+        # semantics); FAILs and errors still fail loudly — never false-green.
         run: |
+          set +e
           docker run --rm --network=host \
             -v "${{ github.workspace }}:/zap/wrk/:rw" \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py -t http://127.0.0.1:3000 \
               -r /zap/wrk/zap-local-report.html \
               -J /zap/wrk/zap-local-report.json
+          code=$?
+          echo "zap-baseline exit code: $code (1=FAIL findings, 2=WARN-only, 3+=error)"
+          if [ "$code" -eq 2 ]; then
+            echo "WARN-only verdict — advisory, not failing the gate."
+            exit 0
+          fi
+          exit "$code"
       - name: Upload ZAP reports
         if: always()
         uses: actions/upload-artifact@v4
