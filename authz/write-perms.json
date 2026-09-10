@@ -85,6 +85,7 @@
       "visitors"
     ],
     "teacher": [
+      "assets",
       "attendance",
       "corrections",
       "discipline",
@@ -181,6 +182,7 @@
       ],
       "upd": [
         "manager",
+        "teacher",
         "superadmin"
       ],
       "del": [
@@ -1467,7 +1469,9 @@
       "note",
       "school_id",
       "status",
-      "updated_at"
+      "total_count",
+      "updated_at",
+      "usable_count"
     ],
     "assoc_minutes": [
       "archived",
@@ -2411,6 +2415,7 @@
       "iep_notes",
       "iep_staff",
       "iep_updated",
+      "asset_staff",
       "job",
       "mother_nid",
       "national_id",
@@ -2525,6 +2530,14 @@
         "announcements"
       ]
     },
+    "as-cust-toggle": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "users"
+      ]
+    },
     "as-del": {
       "roles": [
         "manager"
@@ -2543,7 +2556,8 @@
     },
     "as-status-save": {
       "roles": [
-        "manager"
+        "manager",
+        "teacher"
       ],
       "collections": [
         "assets"

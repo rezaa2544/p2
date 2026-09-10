@@ -102,6 +102,7 @@ const STATUS_UPD_ROLE = {
   internships: ['teacher'],                  /* تأییدِ ساعتِ کارآموزی */
   nudges: ['teacher'],                       /* پاسخِ دبیر */
   parent_subscriptions: ['parent'],          /* وضعیتِ اشتراکِ خود */
+  assets: ['teacher'],                       /* E.5 — تحویلدار (پرچم+مدرسه در inScope) */
 };
 
 /**
