@@ -152,8 +152,14 @@ function createUserRoutes(ctx) {
     const isSelf = user.id === target.id;
     const isManager = user.role === 'manager' || user.role === 'superadmin';
 
-    if (!isSelf && !isManager) {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
+    /* BUG-3 (باگ‌هانت چت ۵): مدلِ مجوز (authz/model.json: users.upd) فقط
+       manager/superadmin است و sync خودبه‌روزرسانیِ غیرمدیر را role_denied
+       می‌کند (phone/national_id/status/active فقط-مدیریتی‌اند)؛ ولی این
+       مسیر به هر نقشی اجازه می‌داد رکوردِ خودش را — شاملِ همان فیلدهایِ
+       حساس — تغییر دهد. برایِ یکپارچگی با sync، users.upd در REST هم
+       فقط-مدیر است (کلاینتِ آفلاین‌محور اصلاً این endpoint را صدا نمی‌زند). */
+    if (!isManager) {
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'ویرایش کاربر فقط توسط مدیریت مجاز است' } };
     }
 
     // Role change rules
