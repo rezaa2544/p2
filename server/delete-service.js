@@ -33,13 +33,42 @@ function createDeleteService({ store, db, markDirty, outbox }) {
   async function softDelete(collection, match, meta) {
     meta = meta || {};
     if (!COLLECTIONS.has(collection)) return { ok: false, status: 500 };
-    const arr = Array.isArray(store[collection]) ? store[collection] : null;
-    if (!arr) return { ok: false, status: 404 };
+    if (!Array.isArray(store[collection])) store[collection] = [];
+    const arr = store[collection];
 
-    const idx = arr.findIndex(r => matches(r, match));
+    /* Wave 1: cross-instance delete — a row created on another instance is not in
+       this cache; when PG is live, hydrate the miss from the authority before
+       answering 404. Memory mode: identical 404 semantics. */
+    const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+    let idx = arr.findIndex(r => matches(r, match));
+    if (idx === -1 && pgLive && Number.isFinite(Number(match.id))
+        && typeof db.readOne === 'function') {
+      try{
+        const row = await db.readOne(collection, match.id);
+        if(row && matches(row, match)) { arr.push(row); idx = arr.length - 1; }
+      }catch(e){ /* genuinely missing */ }
+    }
     if (idx === -1) return { ok: false, status: 404 };
 
     const rec = arr[idx];
+    const delId = Number(match.id);
+    /* Wave 1: PG-first — the authority commits before the cache mutates. On PG
+       failure the store is untouched and the caller gets 503 (retryable). */
+    /* NOTE: persistOp swallows errors by design (log-only), so the committing call
+       MUST be persistOpsBatch (throws after rollback) — otherwise the 503 gate
+       below would be dead code. persistOp stays only as a legacy fallback for db
+       fakes that predate the batch API. */
+    if(pgLive && Number.isFinite(delId)){
+      if(typeof db.persistOpsBatch === 'function'){
+        try{
+          await db.persistOpsBatch([{ c: collection, t: 'del', id: delId }]);
+        }catch(pgErr){
+          return { ok: false, status: 503, code: 'pg_unavailable' };
+        }
+      }else if(typeof db.persistOp === 'function'){
+        await db.persistOp({ c: collection, t: 'del', id: delId });
+      }
+    }
     /* ۱) نسخه — پیش از بایگانی بالا می‌رود */
     rec.version = (Number(rec.version) || 0) + 1;
 
@@ -60,9 +89,9 @@ function createDeleteService({ store, db, markDirty, outbox }) {
     arr.splice(idx, 1);
     if (typeof markDirty === 'function') markDirty();
 
-    /* حذف در پستگرس (رفتار پیشین، بدون تغییر) */
-    const delId = Number(match.id);
-    if (db && typeof db.persistOp === 'function' && Number.isFinite(delId)) {
+    /* حذف در پستگرس — memory mode (رفتار پیشین، بدون تغییر)؛ در حالتِ PG-live
+       حذفِ معتبر already above committed و این آینه تکرار نمی‌شود. */
+    if (!pgLive && db && typeof db.persistOp === 'function' && Number.isFinite(delId)) {
       await db.persistOp({ c: collection, t: 'del', id: delId });
     }
 

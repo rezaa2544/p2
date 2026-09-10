@@ -22,6 +22,17 @@ function createGradeRoutes(ctx) {
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
+  /* Wave 1: PG-live read helper — single records come from PostgreSQL when it
+     is the authority (fresh cross-instance reads); memory mode keeps the exact
+     legacy store-direct find. PG copies are detached; callers commit to the
+     store cache explicitly after a successful PG write. */
+  const pgLive = () => db && typeof db.isPostgres === 'function' && db.isPostgres();
+  async function findLive(collection, id) {
+    if (pgLive() && typeof db.readOne === 'function') return await db.readOne(collection, id);
+    return (store[collection] || []).find(r => r && r.id === Number(id)) || null;
+  }
+  const pgDown = () => ({ status: 503, body: { ok: false, code: 'pg_unavailable', message: 'پایگاه داده در دسترس نیست؛ دوباره تلاش کنید' } });
+
   async function getGradesList(req, urlParams) {
     const user = req.user;
     const paginationOpts = parsePaginationParams(urlParams);
@@ -126,15 +137,20 @@ function createGradeRoutes(ctx) {
     };
 
     if (!Array.isArray(store.grades)) store.grades = [];
+    /* Wave 1: PG-first — the insert commits before the cache is touched, so a
+       PG failure returns here with the store still clean (memory mode: no-op). */
+    try {
+      if (db && typeof db.persistOpsBatch === 'function') {
+        /* Wave 2: مسیر حیاتی ثبت نمره از transaction مشترک db.persistOpsBatch عبور می‌کند. */
+        await db.persistOpsBatch([{ c: 'grades', t: 'ins', data: newGrade }]);
+      } else if (db && typeof db.persistOp === 'function') {
+        await db.persistOp({ c: 'grades', t: 'ins', data: newGrade });
+      }
+    } catch (e) {
+      return pgDown();
+    }
     store.grades.push(newGrade);
     markDirty();
-
-    if (db && typeof db.persistOpsBatch === 'function') {
-      /* Wave 2: مسیر حیاتی ثبت نمره از transaction مشترک db.persistOpsBatch عبور می‌کند. */
-      await db.persistOpsBatch([{ c: 'grades', t: 'ins', data: newGrade }]);
-    } else if (db && typeof db.persistOp === 'function') {
-      await db.persistOp({ c: 'grades', t: 'ins', data: newGrade });
-    }
 
     audit('grade_created', { user_id: user.id, student_id: newGrade.student_id, subject_id: newGrade.subject_id, score: newGrade.score });
     return { status: 201, body: { ok: true, data: newGrade } };
@@ -146,7 +162,7 @@ function createGradeRoutes(ctx) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
     }
 
-    const grade = (store.grades || []).find(g => g.id === Number(id));
+    const grade = await findLive('grades', id);
     if (!grade || !checkSchoolScope(user, grade.school_id)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
@@ -155,32 +171,40 @@ function createGradeRoutes(ctx) {
     const conflict = checkOcc(grade, body, 'نمره');
     if (conflict) return conflict;
 
+    /* Wave 1: patch روی کپی محاسبه می‌شود؛ store فقط پس از کامیت PG لمس می‌شود. */
+    const next = Object.assign({}, grade);
     if (body.score != null) {
       const s = Number(body.score);
       if (isNaN(s) || s < 0 || s > 20) {
         return { status: 400, body: { ok: false, code: 'bad_score', message: 'نمره نامعتبر است' } };
       }
-      grade.score = s;
+      next.score = s;
     }
 
-    if (body.type !== undefined) grade.type = body.type;
-    if (body.term !== undefined) grade.term = body.term;
-    bump(grade); /* P0-18 */
+    if (body.type !== undefined) next.type = body.type;
+    if (body.term !== undefined) next.term = body.term;
+    bump(next); /* P0-18 */
 
-    markDirty();
+    const base = body.base_version !== undefined ? body.base_version : body.version;
     try {
       if (db && typeof db.persistOpsBatch === 'function') {
-        await db.persistOpsBatch([{ c: 'grades', t: 'upd', id: grade.id, data: grade, base_version: body.base_version !== undefined ? body.base_version : body.version }]);
+        await db.persistOpsBatch([{ c: 'grades', t: 'upd', id: grade.id, data: next, base_version: base }]);
       } else if (db) {
-        await db.persistOp({ c: 'grades', t: 'upd', data: grade });
+        await db.persistOp({ c: 'grades', t: 'upd', data: next });
       }
     } catch (e) {
       if (e && e.status === 409) return { status: 409, body: { ok: false, code: 'conflict', message: 'نمره هم‌زمان تغییر کرده است' } };
-      throw e;
+      return pgDown();
     }
 
-    audit('grade_updated', { user_id: user.id, grade_id: grade.id, score: grade.score, version: grade.version });
-    return { status: 200, body: { ok: true, data: grade } };
+    /* کامیت به کش: به‌روزرسانی کپی store (یا seed اگر رکوردِ نمونهٔ دیگر است). */
+    const cached = (store.grades || []).find(g => g.id === Number(id));
+    if (cached) Object.assign(cached, next);
+    else { if (!Array.isArray(store.grades)) store.grades = []; store.grades.push(next); }
+    markDirty();
+
+    audit('grade_updated', { user_id: user.id, grade_id: grade.id, score: next.score, version: next.version });
+    return { status: 200, body: { ok: true, data: cached || next } };
   }
 
   async function deleteGrade(req, id) {
@@ -189,12 +213,11 @@ function createGradeRoutes(ctx) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
     }
 
-    const gradeIdx = (store.grades || []).findIndex(g => g.id === Number(id));
-    if (gradeIdx === -1) {
+    const grade = await findLive('grades', id);
+    if (!grade) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
 
-    const grade = store.grades[gradeIdx];
     if (!checkSchoolScope(user, grade.school_id)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
@@ -205,6 +228,7 @@ function createGradeRoutes(ctx) {
       audit: () => audit('grade_deleted', { user_id: user.id, grade_id: Number(id) })
     });
     if (!del.ok) {
+      if (del.status === 503) return pgDown();
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
     return { status: 200, body: { ok: true, message: 'نمره با موفقیت حذف شد' } };
