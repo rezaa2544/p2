@@ -21,7 +21,7 @@
 | 9 | Application Performance | Arena 4 | 🟡 | High | Wave 3 و baseline عملکرد (Part 2/3 ✅) | شروع شد: heavy worker برایِ persist/backup/report + ممیزیِ پس‌زمینه + L1 محدود + کشِ استاتیک (docs/WAVE9_PERFORMANCE.md؛ tests/wave9-performance.js ‏39/39؛ بلاکِ event-loop بکاپ ~۴۶ms→۰٫۶ms). باقی‌مانده: ایندکسِ مسیرهای فیلترِ O(n) (وابسته به Wave 1) |
 | 10 | Database Scale | Arena 1 + Arena 4 | ⏳ | High | Wave 1/2/3 و benchmark | در انتظار شروع |
 | 11 | Cache | Arena 4 | ⏳ | Medium | Wave 3/6 و benchmark | در انتظار شروع |
-| 12 | Network / Edge | Arena 4 | ⏳ | Medium | استقرار production و TLS/CDN/WAF | در انتظار شروع |
+| 12 | Network / Edge | Arena 4 | ✅ | Medium | استقرار production و TLS/CDN/WAF | PR #43 مرج شد (463233c): بلاک‌های لبه nginx + اسناد CDN/WAF + ci/pending CodeQL + wave12 24/24 و جهش 5/5؛ رفعِ braceِ رگکس‌های map در nginx -t رانر؛ باقی‌مانده: اِعمال پچ CodeQL با توکن workflow |
 | 13 | Security Program | Arena 2 + Arena 5 | ⏳ | Critical | Wave 5 و threat model | در انتظار شروع |
 | 14 | Observability | Arena 4 + Arena 5 | ⏳ | High | Wave -1 و deployment model | در انتظار شروع |
 | 15 | Health / Deployment | Arena 4 | ⏳ | High | Wave 14 و stateless API | در انتظار شروع |
