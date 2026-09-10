@@ -152,9 +152,24 @@ function generate(){
         const dow0=(new Date(todayISO()+'T12:00:00').getDay()+1)%7;
         const dow=dow0<=5?dow0:0;
         const dt=dow0<=5?todayISO():addDaysISO(todayISO(),1);
-        const slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.day===dow&&x.period===2);
-        const sub=teachers.find(t=>t.id!==slot.teacher_id)||teachers[0];
-        add('substitutions',{school_id:school.id,schedule_id:slot.id,sub_teacher_id:sub.id,date:dt,created_at:todayISO()});
+        /* ⚠️ لایهٔ دومِ محافظت در برابر باگِ پنجشنبه. اصلاحِ اصلی (ویو ۲۰)
+           حلقهٔ بالا را به work_days خودِ مدرسه وابسته کرد، پس برای مدرسهٔ دمو
+           روزِ ۵ هم زنگ ساخته می‌شود. اما dow از تاریخِ امروز می‌آید و اگر
+           work_days مدرسه‌ای شاملِ امروز نباشد، slot دوباره تعریف‌نشده است و
+           `slot.teacher_id` همان خطای قبلی را می‌دهد — و چون این کد داخلِ حلقهٔ
+           مدرسه‌هاست، کلِ تولیدِ دنیای دمو ناتمام می‌ماند و store ناقص نوشته
+           می‌شود (۱۵ کاربر، ۰ دانش‌آموز، ۰ نمره) در حالی که seed.js همان exit 0
+           را برمی‌گرداند. پس: ابتدا روزِ خواسته‌شده، بعد اولین روزِ موجود، و
+           اگر هیچ نبود هیچ. نبودِ یک جابه‌جایِ دمو زیبایی را کم می‌کند؛ store
+           ناقص همه‌چیز را. */
+        let slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.day===dow&&x.period===2);
+        for(let dd=0;dd<7&&!slot;dd++){
+          slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.day===dd&&x.period===2);
+        }
+        if(slot){
+          const sub=teachers.find(t=>t.id!==slot.teacher_id)||teachers[0];
+          add('substitutions',{school_id:school.id,schedule_id:slot.id,sub_teacher_id:sub.id,date:dt,created_at:todayISO()});
+        }
       }
       const per=13+ri(4);
       for(let k=0;k<per;k++){
