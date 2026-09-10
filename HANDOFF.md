@@ -14,6 +14,23 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۳ — اجرایِ زندهٔ W18/W19 روی زیرساختِ چندنمونه‌ای (unblocked by P0 #2) — ۱۹/۰۶/۱۴۵ (2026-09-10) — کامل ✅
+
+**وضعیت:** «live W18/W19 — pending multi-node infra» در دستورِ ناظر انجام شد: زیرساختِ چندنمونه‌ایِ زنده **داخلِ همین ساندباکس** ساخته و اجرا شد (Redis واقعی + ۲ فرایندِ production واقعی) و هر ۱۰ فرضیه سبز شد.
+
+- **زیرساختِ زنده (ساخته‌شده در ساندباکس، sudo+egress):** Redis **7.4.2 واقعی** (build از سورس GitHub، `appendonly yes`) + ۲ × `node server/index.js` در **production** با store جدا و `REDIS_URL`/`PAYESH_JWT_SECRET` مشترک. صادقانه: **PG در انتظار** (هیچ منبعِ نصبِ PG در egressِ ساندباکس نیست — plane داده = دامنهٔ W1/W3)، **k6** (egress به objects.githubusercontent.com بسته — harness Node با همان پروفایلِ mixِ W18)، **tc/netem** (ماژولِ کرنل در کانتینر نیست — به‌جای latency، chaosِ قوی‌ترِ واقعی: SIGKILL instance + `SHUTDOWN NOSAVE`).
+- **آزمون** (`75203f9`، `tests/wave18w19-multinode-live.js` — پیش‌فرض **DRY_RUN**، `--live` با envهایِ الزامی، الگوی ایمنیِ W19): **10/10 سبز** (دو بارِ متوالی — قطعی):
+  - H1 استارتِ ۲ نمونهٔ production با Redis زنده + کلیدِ مشترک
+  - H2/H3 فازِ بار (75s): **1662 درخواست، فراوری 100.00٪، صفر 5xx** در state-plane (16 کاربرِ واقعیِ seed، login flow متناوب A/B، mix: me/list/probe/re-login)
+  - H4 cross-instance: /me از نمونهٔ متضاد برایِ 12 کاربر ⇒ 200 · H5: logout در B ⇒ 401 فوری در A (denylist مشترک)
+  - H6 **SIGKILLِ B در حینِ بار**: A 100٪ (12s) + نشستِ صادرشده در B در A معتبر (state در Redis، نه حافظهٔ B)
+  - H7 restartِ B: نشستِ پیشینِ B برگشته (200)
+  - H8 **redis `SHUTDOWN NOSAVE` واقعی در حینِ بار**: liveness 16/16 = 200 · readiness 16/16 = **503** (P0-13 runtime) · صفر 5xx خوانش · هیچ کرشی نبود
+  - H9 بازیابی: restartِ redis (AOF — seq مارکر 7 نگهداری شد) + restartِ instanceها (قراردادِ بازیابیِ fail-closed: کلاینت عمداً بعد از ~4 تلاش تسلیم می‌شود — `retryStrategy`) ⇒ readiness 2/2؛ نشستِ خارج‌شده پیشِ kill **هنوز 401** (denylist در AOF ماند)؛ نشستِ سالم 200 دو-نمونه‌ای
+  - H10 صفر `[FATAL]`/uncaught در لاگِ هر دو نمونه
+- **درخواستِ کلیدیِ ناظر** «write A → read B → update B → read A» حالا در **زیرساختِ زنده** (نه فقط fake-RESP) اثبات شد: کد/جلسهٔ صادرشده در A در B مصرف/خوانده می‌شود؛ logout در B در A فوراً 401 است.
+- **دروازه‌ها (همان روز):** multinode-live **10/10** (×۲) · smoke **547/547** · check-authz **0** · secret-scan **11/11** · DRY_RUN پیش‌فرض ✅.
+- **push:** (با کامیتِ هندآف) `ls-remote` تأیید می‌شود؛ PR #47 به‌روز می‌شود.
 ## ویو ۱۴ — استقرارِ زندهٔ Observability (Prometheus/Grafana/Loki/Jaeger) — ✅ (2026-09-10)
 - **فاز۲ِ این سشن:** اسکراپ‌تارگتِ واقعی اضافه شد — `server/metrics.js` (text-expositionِ صفرِوابستگی: http histogram/counters با tapِ finish + guardهایِ کاردینالیتی + self-scrape-excluded، lag/GC/heap از stdlib، pullsِ زمانِ اسکرپ guardشده ⇒ سرویسِ مرده = `*_up=0`)؛ وایرینگ `index.js` با دروازهٔ اختیاریِ `METRICS_TOKEN` (چهل‌وی‌وان) — edge هرگز `/metrics` را روت نمی‌کند. **تأییدِ زنده در سندباکس:** بوتِ سرویس، سری‌ها، شمارنده‌ها، گیتِ توکن.
 - **استک compose:** `infra/observability/` — prometheus v2.54.1 + alertmanager v0.27.0 + grafana 11.2.0 (datasource/dashboard provisioningِ خودکار؛ uidهای payesh-prom/loki/jaeger + لینکِ exemplar→Jaeger) + loki/promtail 3.1.1 (structured_metadataِ trace_id برایِ audit-log) + otelcol-contrib 0.100.0 + jaeger 1.59؛ bind‌ها همه 127.0.0.1؛ رازها env-file.
