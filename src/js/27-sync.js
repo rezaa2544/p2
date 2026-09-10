@@ -84,6 +84,17 @@ const SYNC = {
 function loadQueue(){
   try{ SYNC.queue = Store.getJSON(SYNC_QUEUE_KEY, []) || []; }
   catch(e){ SYNC.queue = []; }
+  /* W7-1 (موج ۷): احیایِ sendingِ بی‌پاسخ. اگر مرورگر وسطِ ارسال کرش کرده
+     (یا تب بسته شده)، قلم‌ها با وضعیتِ sending ذخیره مانده‌اند و syncNow
+     فقط pending/failed را برمی‌دارد — بدونِ این احیا، برایِ همیشه می‌ماندند
+     و نشانگر هم «همگام»ِ دروغین نشان می‌داد. قلمِ sending هرگز پاسخی نگرفته
+     پس pending شدنش امن است؛ اگر رویِ سرور اعمال شده بود، تکراریِ uid با
+     duplicate_ignored همگام می‌شود (S2-1). */
+  var revived = 0;
+  for(var i = 0; i < SYNC.queue.length; i++){
+    if(SYNC.queue[i] && SYNC.queue[i].status === 'sending'){ SYNC.queue[i].status = 'pending'; revived++; }
+  }
+  if(revived) saveQueue();
   try{ SYNC.dlq = Store.getJSON(SYNC_DLQ_KEY, []) || []; }   /* P1-10 */
   catch(e){ SYNC.dlq = []; }
   try{
@@ -326,6 +337,14 @@ async function syncNow(manual){
       }else{
         noteOpFailed(item, r.message || 'خطای نامشخص');   /* P1-10: پس از ۵ تلاش ← DLQ */
       }
+    });
+
+    /* W7-1 (موج ۷): جارویِ پس‌ازدسته. اگر پاسخِ سرور برایِ بعضی قلم‌ها نتیجه
+       نداشت (results ناقص/خالی)، آن‌ها sending می‌ماندند و درونِ همین جلسه
+       می‌چسبیدند — حالا failedِ گذرا می‌شوند تا دوباره تلاش شود (پس از ۵ بار:
+       DLQِ مرئی، نه چسبندگیِ نامرئی). */
+    batch.forEach(x => {
+      if(x.status === 'sending') noteOpFailed(x, 'پاسخِ سرور برایِ این تغییر ناقص بود');
     });
 
     /* موارد موفق (و duplicates) از صف حذف می‌شوند */
