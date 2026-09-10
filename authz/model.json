@@ -566,7 +566,6 @@
    ],
    "del": [
     "manager",
-    "teacher",
     "superadmin"
    ]
   },

@@ -293,6 +293,7 @@ var ACTION_ROLES = {
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],
   'disc-modal':    ['teacher','manager'],
+  'disc-quick':    ['teacher','manager'],
   /* کاربران و مدارس */
   'user-save':     ['manager','superadmin'],
   'user-del':      ['manager','superadmin'],
