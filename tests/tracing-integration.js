@@ -322,7 +322,11 @@ async function partB() {
 
   const bB = await bootServer(tmp, { store: 'store-B.json', audit: 'audit-B.log', key: 'jwt-B.key' },
     { TRACING_ENABLED: 'true', OTEL_EXPORTER_OTLP_ENDPOINT: 'http://127.0.0.1:4318',
-      OTEL_TRACES_SAMPLER: 'always_on' }, 18791, 'app-B');
+      OTEL_TRACES_SAMPLER: 'always_on',
+      /* زیرِ بارِ موازی، صفِ پیش‌فرضِ پردازندهٔ دسته‌ای (۲۰۴۸) پر می‌شود و
+         اسپن‌ها بی‌صدا می‌افتند → چک‌ها تصادفی قرمز. صفِ بزرگ‌تر + فلاشِ سریع. */
+      OTEL_BSP_MAX_QUEUE_SIZE: '8192', OTEL_BSP_SCHEDULE_DELAY: '200',
+      OTEL_BSP_EXPORT_TIMEOUT: '30000' }, 18791, 'app-B');
   if (!bB) {
     chk('B0 بوتِ اپ با OTLP زنده', false, 'دو تلاش ناموفق');
     try { jg.kill('SIGKILL'); } catch (e) {}
