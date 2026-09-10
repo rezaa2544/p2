@@ -1,9 +1,29 @@
 {
   "schema": "ruflo-memory-export/v1",
-  "exportedAt": "2026-09-10T07:23:05.529Z",
+  "exportedAt": "2026-09-10T07:27:15.956Z",
   "namespace": null,
-  "count": 7,
+  "count": 9,
   "entries": [
+    {
+      "key": "p2/roadmap-status",
+      "namespace": "default",
+      "value": "Reconciled 2026-09-10 vs docs/NATIONAL_ROADMAP_PROGRESS.md (main@40c5f96). TRACKER: done=-1,0,2; in-progress=9; rest pending (STALE — violates its own update contract, ignores branch work). REALITY done-on-branch: w17+w14+w16 chat2@arena/01a0867f-p2; w1p2+w6+w11+w15+w18+w19 chat3@arena/01a08545-p2; w20 chat4@feat/wave20-chat4 (PR#45 open). ON MAIN: w10 suite 26/26 GREEN (tracker wrong); w13 suite 16/17 — gap S6a OWASP ZAP stage missing from security.yml. DIVERGENCE vs main: chat4 ahead21/behind0 CLEAN; chat2 ahead16/behind25; chat3 ahead25/behind105 SEVERE (base 2a2b74f). UNTOUCHED: w3,w4,w5,w7,w8,w12. ASSIGN: chat3->w1+CLOSE rebase; chat2->w3+w13-gap(ZAP)+w10-guard; chat4->w5(then w12)+release-gate; chat1->merge traffic + PROGRESS updates + memory refresh. w4/w7 queued post-w1 (no sync specialist yet).",
+      "createdAt": 1789025232347,
+      "updatedAt": 1789025232347,
+      "accessCount": 0,
+      "hasEmbedding": true,
+      "size": 814
+    },
+    {
+      "key": "next_wave",
+      "namespace": "default",
+      "value": "NEXT: Wave 1 PostgreSQL Source of Truth [Critical] — proposed owner chat3 (owns wave1-part2 + wave6-redis already; must rebase: branch 105 behind main). PARALLEL: Wave 5 Authorization/Tenant Isolation [Critical, independent] — proposed owner chat4. Correction: Wave 17/18/20 are DONE on branches (unmerged), NOT remaining. Priority-0 is landing completed work: PR #45 (chat4, behind 0, mergeable now) -> chat2 branch (ahead16/behind25) -> chat3 branch (ahead25/behind105, highest risk). See p2/roadmap-status.",
+      "createdAt": 1789025231564,
+      "updatedAt": 1789025231564,
+      "accessCount": 0,
+      "hasEmbedding": true,
+      "size": 509
+    },
     {
       "key": "p2/chat4-export",
       "namespace": "default",
