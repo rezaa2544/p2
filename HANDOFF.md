@@ -14,6 +14,20 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۵: PR نهایی Bug Hunt — انتقال ۴ نشست به main (PR #52) — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — آمادهٔ مرج ✅
+
+**شاخه:** `arena/01a08b3d-p2` · **PR:** https://github.com/rezaa2544/p2/pull/52 · **گزارش کامل:** `docs/BUG_HUNT_REPORT.md` § نشست ۴ (§۶)
+
+**وضعیت:** `origin/main` دو بار حین کار جلو رفته بود (چت ۳/۴ با ۴۵ کامیت، سپس چت ۶ با ۱۴ کامیت)؛ هر دو با `--no-ff` و «حفظ هر دو طرف» روی شاخهٔ باگ‌هانت ادغام شدند. نتیجه: ۳۶ کامیت جلوی main، صفر کامیت عقب؛ PR `MERGEABLE`/`CLEAN` با ۷/۷ چک CI سبز.
+
+- **مرجِ اول (`43ccaa4`، کار چت ۳/۴):** ۸ تعارض keep-both — `server/cache.js` (LRU/schoolSetKey/single-flight/rate-limit اتمیکِ main + epoch ابطال W11-2) · `server/sync.js` (نوشت‌های مشتق `derived` + پرچم `mirror_failed` SUSPECT-A) · `attendance/grades` (انقضای کش + بایندِ BUG-4) · `wave11-cache` (هر دو سوئیت: ۳۵ چک) · `wave20-arena5` · `HANDOFF` · `USER_GUIDE`. index.html با `node build.js` بازبیلد شد.
+- **مرجِ دوم (`4199971`، کار چت ۶):** فقط `HANDOFF.md` (ورودی‌های باگ‌هانت بالای مأموریت‌های چت ۶) — اسناد §30 (CAPACITY_MODEL/LOAD_TEST_PLAN/PRODUCTION_RUNBOOK/INCIDENT_RESPONSE) + سوئیت‌های `runbook-coverage` (72/72) و `incident-playbooks` (86/86).
+- **`855c729`:** تستِ `sync-virtualday-audit` قطعی شد — `now-14h` وابسته به ساعت بود (پس از 14:00 UTC هنوز «امروز» میشد)؛ حالا «ظهرِ UTCِ دیروز» صریح ساخته میشود.
+- **گیت‌ها (روی head نهایی):** دودی ۵۴۷/۵۴۷ · مجوزها ۰ · نشت‌یاب ۱۱/۱۱ · بیلد‌چک ✅ · رانر API ۷/۷ · موج ۳ (keyset ۱۳/۱۳) · موج ۷ (offline-queue ۷/۷) · همسایه‌های ادغام‌شده (wave11-cache ۳۵/۳۵ · cache-l2-epoch ۸/۸ · sync-mirror-visible ۶/۶ · wave1-writes ۱۴/۱۴ · waf-enforce ۳۳/۳۳ · wave12 ۲۴/۲۴ · env-flags ۱۱/۱۱ · tracing ۳۲/۳۲ و …) همگی سبز.
+- **CI (PR #52):** build 22.x · SAST · Secret scan · SCA · SBOM · DAST · WAF&nginx — همه SUCCESS؛ `mergeStateStatus: CLEAN`.
+- **Ruflo:** `bug_hunt_pr_status` = `"ready-for-merge"` ✅ · `bug_hunt_session4` = `"completed"` ✅ (اثر جانبی: آشغال untracked روflo به `/tmp/ruflo-state-backup/` منتقل شد؛ `.claude/skills/` ترک‌شده دست‌نخورده).
+- **Push:** ✅ `git ls-remote origin arena/01a08b3d-p2` = `4199971dadfb561d9c41330c49822cea544dee52` = HEAD.
+
 ## چت ۵: باگ‌هانت نشست ۴ (ادغام + آدیت موج ۳ و ۷) — ۴ باگ رفع شد — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
 
 **شاخه:** `arena/01a08b3d-p2` (مهندسِ ادغام، چت ۵) · **گزارش کامل:** `docs/BUG_HUNT_REPORT.md` § نشست ۴

@@ -294,12 +294,16 @@
 - موج ۳: `wave3-query` **۱۳/۱۳** · `wave3-query2` **۱۳/۱۳** · `wave3-keyset` **۱۳/۱۳**.
 - موج ۷: `wave7-offline-queue` **۷/۷** · `idb-migration-queue` **۵/۵** · همسایه‌ها: `sync-sending-revive` **۷/۷** · `sync-lastsync` **۸/۸** · `sync-dlq-retry` **۷/۷** · `sync-queue-caps` **۳۶/۳۶** · `idb-persistence` **۱۶/۱۶** · `idb-persistence-mutations` **۳/۳**.
 
-## ۶. Push
+## ۶. Push و PR نهایی
 
 - شاخه: `arena/01a08b3d-p2` · ۳ کامیت نشست ۴ (به‌علاوهٔ مرج `0801b40`).
+- دو مرجِ تازهٔ `origin/main` روی این شاخه (keep-both): `43ccaa4` (کار چت ۳/۴ — Wave 1 writes/WAF/observability؛ تعارض‌ها: cache.js، sync.js، attendance/grades، wave11-cache، wave20-arena5، HANDOFF، USER_GUIDE) و `4199971` (کار چت ۶ — اسناد §30؛ تعارض: فقط HANDOFF). به‌همراهِ `855c729` (تستِ virtualday-audit قطعی‌سازی شد — flakeِ وابسته به ساعت).
+- **PR:** `fix(bug-hunt): 4 sessions of bug fixes (waves 3, 4, 7, 10, 11)` → **https://github.com/rezaa2544/p2/pull/52**
+- وضعیت PR: `OPEN` · `MERGEABLE` · `CLEAN` — هر ۷ چک CI سبز (build 22.x · SAST · Secret scan · SCA · SBOM · DAST · WAF & nginx).
 - تأییدیهٔ `git ls-remote origin arena/01a08b3d-p2`:
-  `ed013a90ce959d18878a8c74785e7cf5c3f1c5d8` = HEAD ✅
+  `4199971dadfb561d9c41330c49822cea544dee52` = HEAD ✅
 
 ## ۷. Ruflo
 
 - `bug_hunt_session4` = `"completed"` ✅ (ثبت با `CLAUDE_FLOW_MEMORY_PATH=/tmp/ruflo-unified CLAUDE_FLOW_DISABLE_BRIDGE=1`).
+- `bug_hunt_pr_status` = `"ready-for-merge"` ✅ (همان env؛ تأیید با `memory get`).
