@@ -1,0 +1,23 @@
+# otelcol-config.yml — دريافتِ OTLP از server/tracing.js و فن‌اوت به Jaeger
+# نکته: server/tracing.js پیش‌فرض http://localhost:4318/v1/traces است — همین
+# پورت روی میزبان توسط این collector published می‌شود؛ یعنی صفر تنظیم اضافه
+# برای اتصال. برای tail-samplingِ پیشرفته، configِ infra/tracing/otelcol-tail.yaml
+# (ویو ۱۳) را جایش بگذارید (exporterهایش به همین مقاصد است).
+receivers:
+  otlp:
+    protocols:
+      grpc: { endpoint: 0.0.0.0:4317 }
+      http: { endpoint: 0.0.0.0:4318 }
+processors:
+  memory_limiter: { check_interval: 2s, limit_mib: 300, spike_limit_mib: 80 }
+  batch: { timeout: 5s, send_batch_size: 2048 }
+exporters:
+  otlphttp/jaeger: { endpoint: http://jaeger:4318 }
+  debug: { verbosity: basic }
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/jaeger]
+      # debug برایِ چشم‌بندیِ محیطِ تست؛ در پروداکشن بردارید

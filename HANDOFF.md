@@ -14,6 +14,539 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۵: PR نهایی Bug Hunt — انتقال ۴ نشست به main (PR #52) — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — آمادهٔ مرج ✅
+
+**شاخه:** `arena/01a08b3d-p2` · **PR:** https://github.com/rezaa2544/p2/pull/52 · **گزارش کامل:** `docs/BUG_HUNT_REPORT.md` § نشست ۴ (§۶)
+
+**وضعیت:** `origin/main` دو بار حین کار جلو رفته بود (چت ۳/۴ با ۴۵ کامیت، سپس چت ۶ با ۱۴ کامیت)؛ هر دو با `--no-ff` و «حفظ هر دو طرف» روی شاخهٔ باگ‌هانت ادغام شدند. نتیجه: ۳۶ کامیت جلوی main، صفر کامیت عقب؛ PR `MERGEABLE`/`CLEAN` با ۷/۷ چک CI سبز.
+
+- **مرجِ اول (`43ccaa4`، کار چت ۳/۴):** ۸ تعارض keep-both — `server/cache.js` (LRU/schoolSetKey/single-flight/rate-limit اتمیکِ main + epoch ابطال W11-2) · `server/sync.js` (نوشت‌های مشتق `derived` + پرچم `mirror_failed` SUSPECT-A) · `attendance/grades` (انقضای کش + بایندِ BUG-4) · `wave11-cache` (هر دو سوئیت: ۳۵ چک) · `wave20-arena5` · `HANDOFF` · `USER_GUIDE`. index.html با `node build.js` بازبیلد شد.
+- **مرجِ دوم (`4199971`، کار چت ۶):** فقط `HANDOFF.md` (ورودی‌های باگ‌هانت بالای مأموریت‌های چت ۶) — اسناد §30 (CAPACITY_MODEL/LOAD_TEST_PLAN/PRODUCTION_RUNBOOK/INCIDENT_RESPONSE) + سوئیت‌های `runbook-coverage` (72/72) و `incident-playbooks` (86/86).
+- **`855c729`:** تستِ `sync-virtualday-audit` قطعی شد — `now-14h` وابسته به ساعت بود (پس از 14:00 UTC هنوز «امروز» میشد)؛ حالا «ظهرِ UTCِ دیروز» صریح ساخته میشود.
+- **گیت‌ها (روی head نهایی):** دودی ۵۴۷/۵۴۷ · مجوزها ۰ · نشت‌یاب ۱۱/۱۱ · بیلد‌چک ✅ · رانر API ۷/۷ · موج ۳ (keyset ۱۳/۱۳) · موج ۷ (offline-queue ۷/۷) · همسایه‌های ادغام‌شده (wave11-cache ۳۵/۳۵ · cache-l2-epoch ۸/۸ · sync-mirror-visible ۶/۶ · wave1-writes ۱۴/۱۴ · waf-enforce ۳۳/۳۳ · wave12 ۲۴/۲۴ · env-flags ۱۱/۱۱ · tracing ۳۲/۳۲ و …) همگی سبز.
+- **CI (PR #52):** build 22.x · SAST · Secret scan · SCA · SBOM · DAST · WAF&nginx — همه SUCCESS؛ `mergeStateStatus: CLEAN`.
+- **Ruflo:** `bug_hunt_pr_status` = `"ready-for-merge"` ✅ · `bug_hunt_session4` = `"completed"` ✅ (اثر جانبی: آشغال untracked روflo به `/tmp/ruflo-state-backup/` منتقل شد؛ `.claude/skills/` ترک‌شده دست‌نخورده).
+- **Push:** ✅ `git ls-remote origin arena/01a08b3d-p2` = `4199971dadfb561d9c41330c49822cea544dee52` = HEAD.
+
+## چت ۵: باگ‌هانت نشست ۴ (ادغام + آدیت موج ۳ و ۷) — ۴ باگ رفع شد — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
+
+**شاخه:** `arena/01a08b3d-p2` (مهندسِ ادغام، چت ۵) · **گزارش کامل:** `docs/BUG_HUNT_REPORT.md` § نشست ۴
+
+**وضعیت:** ادغامِ `arena/01a08a9c-p2` (نشست‌های ۱–۳) به‌صورت merge `--no-ff` با حفظ هر دو طرف (`0801b40`) + آدیت موج ۳ (`server/dbquery.js`/مسیرهای v1) و موج ۷ (`27-sync.js`/IDB) با ۴ باگ تأییدشده؛ هر رفع = تست-اول-قرمز + یک کامیت (۳ کامیت).
+
+- **W3-1 (P1):** صفحه‌بندی keyset نمرات روی `ORDER BY g.id DESC` همچنان `g.id > $n` می‌زد → تکرار ردیف؛ `_finalize` جهت‌آگاه شد (`<` برای DESC).
+- **W3-2 (P1):** کرسر حضوروغیاب `id` تنها بود ولی مرتب‌سازی مرکب است → رد شدنِ تاریخ‌های قدیمی؛ کرسر مرکب `date|id` + گزارهٔ مرکب end-to-end.
+- **W7-5 (P2):** مهاجرت IDB کلیدِ کهنهٔ صف را می‌خواند (`sms_queue_v1` به‌جای `sms_syncq_v1`) → صفِ واقعی هرگز مهاجرت نمی‌کرد ولی پرچم سبز می‌شد.
+- **W7-6 (P2):** قلم‌های `failed`ِ جارویِ «پاسخِ ناقص» (W7-1) بیرون از شمارش `bad` → بدون backoffِ خودکار؛ حالا هر `failed`ِ باقی در صف زمان‌بندی می‌شود.
+- **سالم (باگ نیست):** سقف‌های صف (P1-10) بسته‌اند و نشتی نیست · skew دلتا ساعت-سرور است و سرور `sync_clock_skew` را آدیت می‌کند · بلع خطای نوشتن IDB درست است (بهترین-تلاش) · `noteOpFailed` با قلمِ بدون `tries` سخت‌سازیِ اختیاری ثبت شد (مسیر تکرارپذیر ندارد).
+- **گیت‌های پایانی:** دودی ۵۴۷/۵۴۷ · مجوزها ۰ · نشت‌یاب ۱۱/۱۱ · بیلد‌چک ✅ · رانر API ۷/۷ سوئیت · موج ۳ (query ۱۳/۱۳ · query2 ۱۳/۱۳ · keyset ۱۳/۱۳) · موج ۷ (offline-queue ۷/۷ · migration-queue ۵/۵) + همسایه‌های موج ۷ (revive ۷/۷ · lastsync ۸/۸ · dlq-retry ۷/۷ · queue-caps ۳۶/۳۶ · idb ۱۶/۱۶ · idb-mut ۳/۳).
+- **کامیت‌ها:** `5a2d69e` (W3-1/2) · `30dffb0` (W7-5) · `ed013a9` (W7-6).
+- **Ruflo:** `bug_hunt_session4` = `"completed"` (ثبت پس از پوش).
+- **Push:** ✅ `git push origin arena/01a08b3d-p2` و تأیید `git ls-remote` = HEAD (ثبت پس از پوش).
+
+## چت ۵: باگ‌هانت نشست ۳ (آدیت موج ۱۰ و ۱۱) — ۳ باگ رفع شد + سوئیت موج ۱۱ — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
+
+**شاخه:** `arena/01a08a9c-p2` (ادامهٔ نشست ۲) · **گزارش کامل:** `docs/BUG_HUNT_REPORT.md` § نشست ۳
+
+**وضعیت:** پوش ۱۲ کامیت نشست ۲ پس از اتصال دوبارهٔ GitHub (`f595ffc` = HEAD ✅) + آدیت موج ۱۰ (`server/db.js`) و موج ۱۱ (`server/cache.js`/`redis.js`) با ۳ باگ تأییدشده؛ هر رفع = تست-اول-قرمز + یک کامیت (۴ کامیت با سوئیت موج ۱۱).
+
+- **S3-1 (P2):** هر خطای queryRead مسیریابی رپلیکا را برای همیشه می‌خواباند، بی‌بازگشت → طبقه‌بندی خطای کوئری/اتصال + کاوش خودکار بازگشت (`6b04479`؛ ‏۱۱/۱۱؛ D3c حفظ شد).
+- **W11-2 (P2):** ابطال مدرسه/سراسری ورودی خالص-L2 را کهنه می‌گذاشت (تا ۵ دقیقه، از جمله تنزل‌یافته) → epoch ابطال + پاکت L2 + اعتبارسنجی خوانش + ثبت کلید در ممیزی (`56b1124`؛ ‏۸/۸).
+- **W11-3 (P3):** فال‌بک حافظه TTL-clearing و مدت رشته‌ای را مثل ردیس نمی‌فهمید → وفادارسازی (`f29f957`؛ ‏۵/۵).
+- **سوئیت موج ۱۱** (`tests/wave11-cache.js`، ‏۱۵/۱۵) ساخته شد — در گیت‌های مأموریت بود ولی فایل نبود (`9f59ae0`).
+- **سالم (باگ نیست):** لاگ رپلیکا روی نوشتن (طراحی) · متریک‌های pool · page+count بی‌تراکنش (یکسان هر دو مسیر) · سقف L1 · Pub/Sub · `checkRateLimit` قدیمی (مرده) · stampede (غایبِ خنثی) · جاروگر حافظه.
+- **گیت‌های پایانی:** دودی ۵۴۷/۵۴۷ · مجوزها ۰ · نشت‌یاب ۱۱/۱۱ · بیلد‌چک ✅ · موج ۱۰ ‏۲۶/۲۶ · موج ۱۱ ‏۱۵/۱۵ · رانر API ‏۷/۷ · ‏integration ‏۱۲/۱۲ · رگرسیون کامل ۲۶۱ سبز/۱ false-red تحت بار (env-flags E10؛ اجرای تمیز ۱۱/۱۱ + سختی تایم‌اوت) · هر ۴ سوئیت تازه ۳۹/۳۹.
+- **درس‌آموخته:** `.claude/skills/` (از جمله `SKILLS_MASTER.md`) ترَک‌شده است — هرگز کل `.claude/` را جابه‌جا/حذف نکن؛ فقط فایل‌های untracked دستورِ ruflo (مثل `proven-config.json` — این نشست به `/tmp/ruflo-state-backup/` رفتند) آشغال‌اند.
+- **Ruflo:** ثبت نشد — `ruflo memory` همچنان با خطای memory-allocation کرش می‌کند (تکرار نشست ۲)؛ سوابق این‌جاست.
+- **Push:** ✅ `523c2df` پوش شد و `git ls-remote` برابر HEAD تأیید شد (۶ کامیت نشست ۳ + ۱۲ کامیت نشست ۲ همگی روی origin).
+
+## چت ۵: باگ‌هانت نشست ۲ (مظنون‌ها + آدیت موج ۴ و ۷) — ۱۱ باگ رفع شد — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
+
+**شاخه:** `arena/01a08a9c-p2` (ادامهٔ نشست ۱ @ `b287628`) · **گزارش کامل:** `docs/BUG_HUNT_REPORT.md` § نشست ۲
+
+**وضعیت:** هر ۳ مظنون نشست ۱ رفع شد + آدیت تازهٔ موج ۴ (`server/sync.js`/`pull.js`؛ ‏`version-vector.js` در ریپو نیست) و موج ۷ (`27-sync.js`/`03-persistence.js`/IDB) با ۸ باگ تازه؛ هر رفع = تست-اول-قرمز + یک کامیت (۱۱ کامیت). رفتارهای پین‌شده (B8/T2/M13/Q4/P0-13) همه حفظ شدند.
+
+- **SUSPECT-C (P2):** بلع خطای mark/invalidate کش در apply → حالا audit (`4da4cab`؛ ‏۷/۷).
+- **SUSPECT-A (P1):** شکست آینهٔ PG بی‌خبر بود → پرچم افزایشی `mirror_failed` در پاسخ، شکل موفق بایت‌به‌بایت (`b4858ae`؛ ‏۶/۶؛ برش تراکنشی همچنان Wave 1).
+- **SUSPECT-B (P1):** دو پرچم تولید ناهماهنگ → هشدار بلند بوت + قانون «هر دو production» در DEPLOY؛ رفتار بوت بی‌تغییر، یکپارچه‌سازی همچنان Wave 15 (`dc08f99`؛ ‏۱۱/۱۱ با بوت زندهٔ PORT=0).
+- **S2-1 (P2):** uid تکراری درون‌دسته دو بار اعمال می‌شد + مسابقهٔ بین‌دسته‌ای → ادعای اتمیک در حلقهٔ بی-await (`5f904b8`؛ ‏۷/۷؛ توزیع‌شده = Wave 6). نکته: ادعا حتماً باید صدر حلقه باشد (پس از اعمال بی‌اثر است — در همین نشست گرفته شد).
+- **S2-2 (P2):** جعل `op.at` گارد روز مجازی را نامرئی دور می‌زد → ردِّ `sync_virtual_day_offline_allow` وقتی واگرایی در تصمیم مؤثر است؛ آفلاین مشروع و لنگر M13 حفظ (`7a15afa`؛ ‏۷/۷).
+- **S2-3a/b (P2):** حذف REST و فراموشی GDPR سنگ‌قبر دلتا نمی‌گذاشتند → رکورد شبح ابدی روی کلاینت‌ها (حتی بوت‌استرپ ادغامی) → پل سنگ‌قبر در هر دو گلوگاه (`d431182` ‏۶/۶ · `9eba338` ‏۴/۴).
+- **W7-1 (P1):** قلم `sending` پس از کرش برای همیشه می‌چسبید + «همگام» دروغین → احیا در `loadQueue` + جاروی پس‌ازدسته (`9cee4bd`؛ ‏۷/۷).
+- **W7-2 (P3):** `lastSync` با صفر همگام جلو می‌رفت → پیشروی فقط با ≥۱ همگام (`dd4dcd9`؛ ‏۸/۸).
+- **W7-3 (P2):** DLQ فقط حذف داشت → دکمه/اکشن «تلاش دوباره» برای دفن گذرا (`a5efbaa`؛ ‏۷/۷).
+- **W7-4 (P2):** سرکوب هشدار «حافظه پر» وقتی IDB بود — با فرض تور نجاتی که فقط-نوشتنی است → شکست Store همیشه بلند (`19419fa`؛ ‏۷/۷).
+- **ثبت‌شده (رفع نشد):** سقف ۵۰۰۰ سنگ‌قبر بدون سیگنال full-resync (S2-R1، طرح ثبت شد) · IDB عملاً فقط-نوشتنی (W7-R1، Wave) · بستن کامل جعل op.at (تصمیم محصول) · idempotency توزیع‌شده (Wave 6).
+- **سالم (باگ نیست):** پوشش OCC کلاینت/سرور یکسان · کرسر دلتا ساعت-سرور است (بی‌نیاز از skew) · `bump` REST دلتا-مرئی است · بلع خطای نوشتن IDB درست است (بهترین-تلاش) · `version-vector.js` ناموجود (بردارساعت نداریم).
+- **گیت‌های پایانی:** دودی ۵۴۷/۵۴۷ · مجوزها ۰ · نشت‌یاب ۱۱/۱۱ · بیلد‌چک ✅ · رانر API ‏۷/۷ · integration ✅ · رگرسیون کامل (نتیجه در گزارش §۲) · هر ۱۱ سوئیت تازه ۷۷/۷۷.
+- **Ruflo:** ثبت نشد — ابزار `ruflo memory` در سندباکس کرش می‌کند (`memory allocation of 4158883080 bytes failed` در هر دو دستور list/store)؛ سوابق در همین HANDOFF + گزارش + کامیت‌هاست.
+- **Push:** در انتظار — توکن GitHub سندباکس منقضی شده (`GH_TOKEN is no longer valid`)؛ هر ۱۲ کامیت روی `arena/01a08a9c-p2` محلی آماده است. پس از اتصال دوبارهٔ GitHub در Arena: ‏`git push origin arena/01a08a9c-p2` سپس `git ls-remote` و ثبت در §۶ گزارش.
+
+## چت ۵: باگ‌هانت نشست ۱ روی main — ۶ باگ واقعی رفع شد — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
+
+**شاخه:** `arena/01a08a9c-p2` (از `main` @ `351bd10`) · **گزارش کامل:** `docs/BUG_HUNT_REPORT.md` (ارائه شد)
+
+**وضعیت:** ممیزیِ مبنا (گیت‌ها سبز: دودی ۵۴۷/۵۴۷ · مجوزها ۰ · نشت‌یاب ۱۱/۱۱ · بیلد‌چک) + رگرسیون کامل (۲۴۲ سبز / ۳ قرمزِ پیش‌موجود)؛ سپس شکار در ۷ دستهٔ مأموریت و رفعِ ۶ باگِ تأییدشده با تستِ رگرسیونِ اول-قرمز، هر رفع = یک کامیت (۸ کامیت روی هم).
+
+- **BUG-1 (P1):** مرخصی آخر هفتهٔ خوابگاه جمعه→شنبه می‌ساخت نه پنجشنبه→جمعه — در هر ۷ روز هفته (پروب زنده). دودی همان فرمول غلط را آینه می‌کرد (سبز کاذب). رفع + تقویت دودی با weekday صریح + `tests/dorm-leave-dates.js` ‏۲۱/۲۱ + بازبیلد (`23206c7`).
+- **BUG-5 (P2):** نمونه‌بردار tracing فقط NODE_ENV می‌خواند (پیش‌تر در PR_MERGE_PLAN triage شده، رفع‌نشده)؛ حالا PAYESH_ENV هم (`582ced6`؛ جهش M6 تازه، ۶/۶ کشته).
+- **BUG-3 (P1):** خودبه‌روزرسانی کاربر در REST سیاست فقط-مدیر مدل را دور می‌زد (تغییر phone/national_id/active/status خود). حالا 403 مثل sync (`78da091`؛ USR6/USR7).
+- **BUG-4 (P1):** نوشتن حضور/نمره در REST بایند دبیر→کلاس نداشت. با همان `inScope` سینک یکپارچه شد — بدون سیاست موازی (`4895f51`؛ ATT6/GRD6).
+- **BUG-2 (P1):** عملیات‌های ردیس در تولید روی خطای زمان اجرا بی‌صدا به حافظه می‌افتادند (واگرایی بین نمونه‌ها). حالا fail-closed با گارد (`4f57c77`؛ `tests/redis-prodfail.js` ‏۵۰/۵۰ با درایور جعلی، بدون شبکه).
+- **BUG-6 (P2):** هر ۳ قرمز پیش‌موجود main رفع شد: ‏W2 تاریخ-وابسته (پنجشنبه/جمعه قرمز بود) · لنگر کهنهٔ ZAP · قرارداد کهنهٔ ماتریس سه‌نسخه (۳ کامیت جدا).
+- **مشکوک/در انتظار (رفع نشد):** آینهٔ PG بی‌خبر (Wave 1) · دو پرچم تولید ناهماهنگ (Wave 15) · بلع خطای idempotency-mark در apply (Wave 1/2) — جزئیات در گزارش.
+- **گیت‌های پایانی:** دودی ۵۴۷/۵۴۷ · مجوزها ۰ · نشت‌یاب ۱۱/۱۱ · بیلد‌چک ✅ · رانر API ‏۷/۷ · همهٔ سوئیت‌های لمس‌شده/همسایه سبز (از جمله otp-ratelimit ‏۴۹/۴۹ در اجرای تمیز — یک اجرای میانی ۴۱/۴۹ فقط تداخل پورت با رگرسیون پس‌زمینه بود).
+- **Ruflo:** ‏`bug_hunt_session1 = completed` ثبت شد.
+## چت ۶ مأموریت ۳: ساخت `docs/PRODUCTION_RUNBOOK.md` + `docs/INCIDENT_RESPONSE.md` — ✅ (2026-09-10)
+- **ران‌بوک تولید (سند اجباری §30):** هشت بخش — معماری (دیاگرام + چهار مسیر حیاتی + تفکیک منابع مشترک/محلی + هشدار صادقانهٔ تک‌نمونه‌ای تا ادغام موج ۱) · بوت/خاموشی (پیش‌پرواز ۷بندی + ترتیب بوت پستگرس→ردیس→اپی‌آی→لبه و خاموشی برعکس + راستی‌آزمایی؛ پس از مرجِ موج ۱۵ در `main`: درین + `/api/liveness`/`/api/readiness` زنده‌اند و سند با آن هم‌راستا شد) · پایش (وضعیت واقعی `/api/health` و `/metrics`؛ هفت آلارم با آستانه و پلی‌بوک مقصد؛ ماتریس ارجاع) · عملیات روتین (بکاپ/دریل ماهانه، چرخش لاگ، حافظهٔ ردیس، تورم/وکیوم، گواهی) · مقیاس (افقی/عمودی/ردیس/رپلیکا) · پیکربندی (جدول متغیرها + چرخش رمز نشست با `PAYESH_JWT_SECRET_PREV`) · بازگشت (ارجاع به `DEPLOY.md`/`DR_RUNBOOK`) · تماس‌های اضطراری.
+- **پاسخ حادثه (سند اجباری §30):** چهار سطح شدت با جدول زمان‌بندی (‏P0: تأیید ۵د/مهار ۳۰د/حل ۴س) · فرایند شش‌مرحله‌ای · **۱۰ پلی‌بوک** (دیتابیس، ردیس، خطای بالا، تأخیر، نشتی حافظه، دیسک، گواهی، نفوذ، دی‌دی‌اس، صف همگام‌سازی — هرکدام تشخیص/مهار/بازیابی/بازگشت/چک‌لیست پست‌مورتم) · اطلاع‌رسانی داخلی/بیرونی/صفحهٔ وضعیت · قالب پست‌مورتم بی‌سرزنش.
+- **تست‌های تازه (سند را قابل راستی‌آزمایی می‌کنند):** `tests/runbook-coverage.js` **72/72** (پوشش ۸ بخش + ترتیب بوت/خاموشی + آلارم‌های هفت‌گانه + زنده‌بودن همهٔ ارجاع‌های فایلی) · `tests/incident-playbooks.js` **86/86** (سطوح/فرایند/ده پلی‌بوک/ارتباطات/قالب). نکتهٔ فنی: برشِ بخش‌ها نسبت به بلوک کد مقاوم شد.
+- **چک‌لیست آمادگی:** ردیف‌های بازیابی/فیلاور به رویه‌های مستند وصل شد؛ سه ردیف رصدپذیری که پیش از مرجِ ویو ۱۴ (‏PR #49) کهنه بودند راستی‌آزمایی و اصلاح شد (متریک ✅، داشبورد ✅، آلارم ⏳) — جمع‌بندی جدید: ✅۱۲/⏳۱۵/❌۱۳؛ پیوست §30: **۹ از ۱۴**.
+- **گیت‌ها:** هر دو تست تازه + smoke **547/547** · check-authz **0** · secret-scan **11/11** · build --check **0** — صفر تغییر کد سرویس.
+- **بعدی (۵ سند باقی‌ماندهٔ §30):** ‏`OBSERVABILITY.md` (تجمیع پراکنده‌ها) ← `DISASTER_RECOVERY.md` (هم‌نام‌سازی `RELIABILITY_DR_PLAN`) ← `MIGRATION_GUIDE.md` ← `NATIONAL_ARCHITECTURE.md` ← `LOAD_TEST_RESULTS.md` (مسدود به اجرای موج ۱۸). سپس بستهٔ انتشار Go-Live.
+
+
+## چت ۶ مأموریت ۲: ساخت `docs/LOAD_TEST_PLAN.md` — ورودی رسمی Wave 18 — ✅ (2026-09-10)
+- **یافتهٔ پیش‌نیاز:** `docs/WAVE18_LOAD_TESTING.md` · `tools/seed-national.js` · `tests/wave18-load.js` روی این شاخه **نیستند** (شاخهٔ مرج‌نشدهٔ چت ۳) — در سند به‌صراحت ثبت شد؛ ولی زیرساخت k6 روی main موجود است: `tests/performance/` (۶ سناریو + ۴ سوئیت + کمکی‌ها + `run-benchmarks.sh`).
+- **سند:** هفت بخش — اهداف (‏SLOهای §۲۹ + پیک ۲۰هزار/نوشتن ۲۵۰۰ + نقطهٔ شکست ≥۳۰هزار) · دیتاست ۱۰ میلیونی (۱۰۰هزار مدرسه/۲۱۴هزار کلاس/حضور ۵۰ میلیون/نمره ۲۸۸ میلیون + توزیع واقع‌گرا و نقاط داغ + قراردادِ `COPY`-محورِ `seed-national.js`) · پنج سناریو با هدف/پروفایل/مدت/خیز/قبولی/شکست (‏Load ۵هزار×۳۰د · ‏Peak ۲۰هزار×۱۵د · ‏Stress تا ۵۰هزار · ‏Spike ۵→۲۵هزار در ۳۰ث · ‏Soak ۱۰هزار×۷۲س) · ابزارها (‏k6 اصلی + هارنس داخلی فقط برای سندباکس + ‏Prometheus/Grafana با سنجه‌های اجباری؛ اقدام: هم‌ترازسازی `config/thresholds.json`) · محیط استیجینگ آینهٔ تولید مطابق مدل ظرفیت · چک‌لیست ‏GO/NO-GO + برنامهٔ اقدام شکست (حداکثر ۳ دور) · **محدودیت‌های صادقانه** (سندباکس ۲هسته/۴گیگ: سقف ≈۱هزار ریت؛ اعداد سندباکس برای امضای موج معتبر نیست).
+- **سلسله‌مراتب اسناد:** این سند جایگزین رسمی اعداد اسناد قدیمی `LOAD_TESTING_PLAN.md`/`PERFORMANCE_TESTING_PLAN.md` (۶۵۰هزار RPS آرمانی) شد؛ مرجع عددی = `CAPACITY_MODEL.md`.
+- **گیت‌ها:** smoke **547/547** · check-authz **0** · secret-scan **11/11** · build --check **0** — صفر تغییر کد.
+- **چت ۵ (Bug Hunt):** هنگام ادغام، وابستگی‌های اجرایی موج ۱۸ به شاخهٔ چت ۳ (`seed-national.js`، `tests/wave18-load.js`) را در نظر بگیر؛ سند، قرارداد پذیرش آن ابزارها را تعریف می‌کند.
+- **بعدی:** `PRODUCTION_RUNBOOK.md` + `INCIDENT_RESPONSE.md` (پیش‌نیاز نرمِ Go-Live)، سپس باقی اسناد §30.
+
+
+## چت ۶: اتصال + ممیزی اسناد §30 + ساخت `docs/CAPACITY_MODEL.md` — ✅ (2026-09-10)
+- **نقش:** چت ۶ = مستندات و انتشار (Documentarian & Release Engineer)؛ اولین مأموریت طبق §30 نقشه راه.
+- **اتصال:** تأیید `git ls-remote` → HEAD `a30fb20`؛ `ruflo@3.39.2` نصب؛ حافظهٔ سندباکس خالی بود (یافتهٔ مشابه چت ۴) ⇒ کلید `p2/roadmap-status` از `docs/NATIONAL_ROADMAP_PROGRESS.md` بازسازی + `chat6_connected` و `p2/chat6-mission-1` ذخیره شد (۳ ورودی، بازیابی معنایی سالم).
+- **ممیزی §30 (گام ۴):** موجود ۵ از ۱۴ — `NATIONAL_BASELINE` (۴ پارت) · `DATABASE_ARCHITECTURE` · `AUTHORIZATION_MODEL` · `SYNC_PROTOCOL` · `SECURITY_MODEL`. **غایب ۹:** `NATIONAL_ARCHITECTURE` · `DISASTER_RECOVERY` · `OBSERVABILITY` · `CAPACITY_MODEL` · `LOAD_TEST_PLAN` · `LOAD_TEST_RESULTS` · `PRODUCTION_RUNBOOK` · `INCIDENT_RESPONSE` · `MIGRATION_GUIDE`.
+- **مأموریت ۱:** `docs/CAPACITY_MODEL.md` v1.0.0 — پروفایل بار ۱۰ میلیون‌کاربری (DAU ۶M · پیک همزمان ۲.۵M · ‏RPS پیک ۲۰هزار · نوشتن ۲٬۵۰۰/ث · ورود ۸۳۳/ث · ۶M همگام‌سازی/روز · حضور ۵۰M + نمره ۲۸۸M رکورد/سال)؛ سایزینگ: ‏PG ‏۲×(۳۲ هسته/۱۲۸گیگ/۴ترابایت NVMe) با پولر ۱۰۰ و ≤۸۰ اتصال فعال (قانون لیتل؛ بار ≈۱۲.۳k qps؛ مجموعهٔ داغ ≈۸۰گیگ)، ‏Redis ≈۲۰گیگ و ≈۴۵k ops/s، ‏۱۲ نود اپ (۴ هسته/۸گیگ؛ فرض ۲٬۰۰۰ RPS بر نود — منوط به اثبات در Wave 18)، شبکه ۲×۱گیگ + ‏CDN؛ ۶ نقطهٔ اشباع به‌ترتیب + ‏SLOها مطابق §29.
+- **گیت‌ها:** smoke **547/547** · check-authz **0** · secret-scan **11/11** — تغییر فقط مستندات (صفر تغییر کد).
+- **کامیت‌ها:** `f6d735c` (سند ظرفیت) · `6c9ba39` (پیوست §30 چک‌لیست: ۵→۶) · `b9391ec` (وابستگی Wave 18) · handoff.
+- **قیدها:** شاخهٔ نشست `arena/01a08b24-p2` (الزام پلتفرم آرنّا — ساخت شاخهٔ جدا ممکن نیست)؛ ‏PR به `main`. **هشدار امنیتی:** توکن‌های پیست‌شده در چت استفاده/ذخیره نشد و باید توسط کارفرما **ریووک و جایگزین** شوند.
+- **بعدی:** به‌ترتیب اولویت: ‏`LOAD_TEST_PLAN.md` (ورودی Wave 18) ← `PRODUCTION_RUNBOOK.md` + `INCIDENT_RESPONSE.md` (پیش‌نیاز نرمِ Go-Live) ← باقی اسناد §30.
+
+
+## چت ۳ — ریبیسِ چهارمِ `arena/01a08545-p2` روی `origin/main` (`a30fb20`، PR #49 ویو ۱۴) — ۱۹/۰۶/۱۴ (2026-09-10) — کامل ✅
+
+**وضعیت:** `main` با ادغامِ PR #49 (چت ۴: **ویو ۱۴ Observability** — `server/metrics.js` + `/metrics` + استک compose + HA/PITR) جابه‌جا شد و PR #47 `CONFLICTING` شد. ریبیسِ چهارم (39 کامیت) با قاعدهٔ همیشگی «هر دو سمت» کامل شد؛ force-push (lease با sha) انجام می‌شود و PR #47 دوباره `MERGEABLE` خواهد شد.
+
+- **تداخل‌ها (3 توقف):**
+  - `HANDOFF.md` (×۳) — ورودی‌هایِ هر دو سمت: حفظِ دوطرف (ورودی‌های ما بالایِ ورودی‌هایِ main: ویو ۱۴ + HA/PITR + چت ۴).
+  - `server/index.js` (a02f6c6 wave15) — بلوکِ `/metrics`ِ Wave 14 و بلوکِ liveness/readinessِ wave15 ما هر دو در همان نقطهٔ روتینگ ⇒ هر دو زنده (metrics + liveness + readiness + health).
+  - `server/index.js` (61524e7 WAF ENFORCE) — خطِ require: `metrics` (main) + کامنتِ WAFِ report/enforce (ما) ⇒ هر دو.
+- **سازگاری:** `/metrics` به allowlistِ fail-safeٔ WAF enforce اضافه شد (مسیرِ زیرساختی — هرگز بلاک نمی‌شود؛ `fix(waf)`).
+- **دروازه‌ها (بعد از ریبیس، روی کدِ ادغام‌شده):** smoke **547/547** · check-authz **0** · secret-scan **11/11** · wave13 **23/23** · wave12 **24/24** · **waf-enforce 33/33** · waf-ddos **19/19** · otp-ratelimit-mutations **11/11** · multi-instance **17/17** · wave1-multi-instance **33/33** · build --check **بیت‌به‌بیت** · **ویو ۱۴: observability-config 55/55 · dashboards 30/30** · **HA: ha-config 92/92 · dr-runbook 38/38**.
+- **یادداشتِ CI + باگِ واقعی:** lane WAF قرمز شد — ابتدا «گذرا» به‌نظر رسید (رانِ گذرایِ PR #50 سبز بود، اشتباهِ قرائت)، ولی با رانِ بعدی **تکرار** شد: ریشهٔ واقعی = `tests/waf-enforce.js` بخش D با `readFileSync`ِ seed بدونِ try/catch — در CI `server/data/payesh.json` (gitignored) نیست ⇒ FATAL. فیکس `ae70796`: seed اختیاری + fallback (شمارنده‌ها پیش ازِ وجود‌سنجی ⇒ رفتارِ test با شمارهٔ نامشخص یکسان). **CI نهایی: 7/7 سبز، PR #47 `CLEAN`/MERGEABLE @ `ae70796`.**
+## چت ۳ — P0 #6 امنیتِ اجرایی (DAST زنده + PENT-TEST + WAF ENFORCE + Abuse) — ۱۹/۰۶/۱۴۵ (2026-09-10) — کامل ✅
+
+**وضعیت:** هر ۸ گامِ P0 #6 انجام و push شد. دروازه‌ها: smoke **547/547** · check-authz **0** · secret-scan **11/11** · wave13-security **23/23** · **waf-enforce (جدید) 33/33** · waf-ddos unit **19/19** · waf-mutations **4/4** · otp-ratelimit-mutations **11/11** · wave12-network **24/24** · wave1-multi-instance **33/33** · multi-instance **17/17** · arena5-recovery **32/32**.
+
+- **DAST زنده:** `tools/dast-live.sh` — استیجینگِ سبک (API+Redis+store، production + fail-closed) + ZAP baseline/full + artifact. پیش‌فرض DRY_RUN (در سندباکس سبز)؛ `--live` در سندباکس تا بوتِ production (Redis واقعی + guardهایِ JWT اشتراکی/TLS) سبز است و بخشِ ZAP به‌درستی exit 3 (ابزار در سندباکس نیست — محیطِ واقعی). CI: lane `dast` با secret `SECURITY_TARGET_URL` مستقیم staging + mode در step summary + ارجاع به dast-live.
+- **WAF ENFORCE (in-app):** `PAYESH_WAF_MODE=enforce` ⇒ هر verdict (sqli/xss/traversal/badbot) = 403 `waf_blocked` + `X-WAF-Action: block` + ممیزیِ `waf_block`. fail-safe allowlist: پروب‌هایِ زیرساخت هرگز مسدود نمی‌شوند (+ `PAYESH_WAF_ALLOW` اپراتوری). خطایِ خودِ enforce = fail-open. پیش‌فرض report — رفتارِ پیشین دست‌نخورده. لبهٔ nginx جدا و اٌعمال‌گر است (markers `wave12-edge-rules` دست‌نخورده).
+- **حفاظتِ سوءاستفاده:** سقفِ سختِ per-phoneِ login (`PAYESH_LOGIN_PHONE_LIMIT`، پیش‌فرض ۵۰ — مصلحتِ تست‌هایِ موجود؛ تولید: تنگ‌تر) + Redis (توزیع‌شده). پلکانِ send-code کامل بود (روزانه ۲۰ + ۵/پنجره + IP ۱۰ + cooldown). **register عمومی وجود ندارد** (ایجادِ کاربر = نقشِ مدیر + scope).
+- **سند:** `docs/PEN_TEST_CHECKLIST.md` گسترش یافت — ۸ سناریو (Session Fixation / Rate Limit Bypass / Tenant Escape اضافه) + §۳ گام‌به‌گام (curl/sqlmap/nuclei) + معیارِ پذیرشِ هر سناریو. `docs/SECURITY_MODEL.md` §۵ «لایهٔ اجرایی» (DAST زنده/پنتست/WAF enforce/جدولِ سقف‌ها/چک‌لیستِ Go-Live) + pending به‌روز.
+- **دروازهٔ جدید در CI:** lane `waf` حالا `tests/waf-enforce.js` را اجرا می‌کند.
+- **pending (صداقت):** اجرایِ زندهٔ sqlmap/nuclei/Burp علیه استیجینگِ دائمی (ابزارِ اسکن در سندباکس نیست؛ اسکریپت‌ها + سناریوها + معیارها آماده‌اند). Go-Live: `PAYESH_WAF_MODE=enforce` + secret `SECURITY_TARGET_URL` + `dast-live.sh --live --scan full` پیش از release.
+## چت ۳ — ریبیسِ سومِ `arena/01a08545-p2` روی `origin/main` (`ac590be`، PR #48) — ۱۹/۰۶/۱۴۵ (2026-09-10) — کامل ✅
+
+**وضعیت:** `main` با ادغامِ PR #48 (چت ۱: **موج ۱ P0 — PG transaction-first writes** + ویو ۱۲ شبکه + ویو ۱۳ امنیت + `pg-mem`) جابه‌جا شد و PR #47 `CONFLICTING` شد. ریبیسِ سوم با قاعدهٔ همیشگی «هر دو سمت — ادغام معنایی، نه اتصالِ خُرد» کامل شد؛ شاخه بازنویسی و force-push (lease با sha) شد و PR #47 دوباره `MERGEABLE` است.
+
+- **تداخل‌ها (۸ کامیتِ ما روی ۱۲ فایلِ متاثر):**
+  - `server/outbox.js` — هر دو: `client` تراکنسیِ Wave1-W (آی‌دی‌گیری از sequenceٔ PG + INSERT داخل تراکنشِ فراخوان) و `nextId`ِ Redis-INCR ما (P0#2) ⇒ زنجیرهٔ نهایی: **PG sequence → Redis INCR مشترک → شمارندهٔ محلی**.
+  - `server/delete-service.js` — دو طراحیِ مستقلِ حذف: orderingِ PG-first + hydrate-on-miss (T8) و 503-gate (شان) + تراکنشِ اتمیکِ DELETE+outbox ما (W5/W7: ROLLBACK+throw) ⇒ هر دو زنده: hydrate → تراکنش (PG) → سنگ‌قبر/اسپلایس → mirror حافظه.
+  - `server/sync.js` — 6 خُرد: نوتیفیکیشن‌هایِ مشتق با `serverId()` (PG-aware) در ساختارِ `derived` ما (لنگرِ MW2: `batchAll = mirror.concat(derived)`) + فازِ ۲ِ شان (rollbackِ اسنپ‌شات + 503 + retry — T3).
+  - `server/index.js` — `db` در هر سه کامپوز (admin/conflicts شان + sms ما).
+  - ۵ روت — 11 خُرد: orderingِ PG-first شان + انقضایِ کشِ Wave-11 ما (همهٔ مسیرهایِ create/update/delete)؛ خطِ تکراریِ mirror حذف شد.
+  - `docs/WAVE1_WRITES_INVENTORY.md` (add/add) — هر دو سند + یادداشتِ ادغام.
+  - `HANDOFF.md` — ورودی‌هایِ هر دو سشن (چت ۱ موج ۱ + ورودی‌های ما).
+- **تست‌هایِ سازگار‌سازی‌شده:** `tests/wave1-writes.js` — لنگرهایِ SQL با فرمتِ db.jsِ main (شناسه‌هایِ با-نقل‌قول؛ `upd` = UPDATE نه upsert) — W1c حالا «۳ نوشتِ اتمیک در یک تراکنش» را ثابت می‌کند (14/14 + جهش 5/5).
+- **دروازه‌ها (همان روز، بعد از ریبیس):** smoke **547/547** · check-authz **0** · secret-scan **11/11** · build --check ✅ · **wave1-writes 14/14** · **wave1-writes-mutations 5/5** · **wave1-multi-instance (شان، pg-mem) 33/33** · **db-engineering 13/13** · **wave12-network 24/24 + جهش 5/5** · **wave13-security 23/23** · sync-atomic-batch **22/22** · tombstone **25/25** · occ **18/18** · multi-instance **17/17** · wave6 **22/22** · wave11 **20/20** · wave15 **10/10** · wave18 **38/38** · wave19 **28/28** · wave20-arena5 **22/22** · demo-guard **4/4** · arena5-recovery **32/32** · **multinode-live 10/10 (دوباره روی کدِ ریبیس‌شده — Redis واقعی)**.
+- **push:** `--force-with-lease=arena/01a08545-p2:251a772` ⇒ `ee3ed97` — `ls-remote` تأیید کرد؛ PR #47 = `MERGEABLE` (base = همین main).
+
+## چت ۳ — اجرایِ زندهٔ W18/W19 روی زیرساختِ چندنمونه‌ای (unblocked by P0 #2) — ۱۹/۰۶/۱۴۵ (2026-09-10) — کامل ✅
+
+**وضعیت:** «live W18/W19 — pending multi-node infra» در دستورِ ناظر انجام شد: زیرساختِ چندنمونه‌ایِ زنده **داخلِ همین ساندباکس** ساخته و اجرا شد (Redis واقعی + ۲ فرایندِ production واقعی) و هر ۱۰ فرضیه سبز شد.
+
+- **زیرساختِ زنده (ساخته‌شده در ساندباکس، sudo+egress):** Redis **7.4.2 واقعی** (build از سورس GitHub، `appendonly yes`) + ۲ × `node server/index.js` در **production** با store جدا و `REDIS_URL`/`PAYESH_JWT_SECRET` مشترک. صادقانه: **PG در انتظار** (هیچ منبعِ نصبِ PG در egressِ ساندباکس نیست — plane داده = دامنهٔ W1/W3)، **k6** (egress به objects.githubusercontent.com بسته — harness Node با همان پروفایلِ mixِ W18)، **tc/netem** (ماژولِ کرنل در کانتینر نیست — به‌جای latency، chaosِ قوی‌ترِ واقعی: SIGKILL instance + `SHUTDOWN NOSAVE`).
+- **آزمون** (`75203f9`، `tests/wave18w19-multinode-live.js` — پیش‌فرض **DRY_RUN**، `--live` با envهایِ الزامی، الگوی ایمنیِ W19): **10/10 سبز** (دو بارِ متوالی — قطعی):
+  - H1 استارتِ ۲ نمونهٔ production با Redis زنده + کلیدِ مشترک
+  - H2/H3 فازِ بار (75s): **1662 درخواست، فراوری 100.00٪، صفر 5xx** در state-plane (16 کاربرِ واقعیِ seed، login flow متناوب A/B، mix: me/list/probe/re-login)
+  - H4 cross-instance: /me از نمونهٔ متضاد برایِ 12 کاربر ⇒ 200 · H5: logout در B ⇒ 401 فوری در A (denylist مشترک)
+  - H6 **SIGKILLِ B در حینِ بار**: A 100٪ (12s) + نشستِ صادرشده در B در A معتبر (state در Redis، نه حافظهٔ B)
+  - H7 restartِ B: نشستِ پیشینِ B برگشته (200)
+  - H8 **redis `SHUTDOWN NOSAVE` واقعی در حینِ بار**: liveness 16/16 = 200 · readiness 16/16 = **503** (P0-13 runtime) · صفر 5xx خوانش · هیچ کرشی نبود
+  - H9 بازیابی: restartِ redis (AOF — seq مارکر 7 نگهداری شد) + restartِ instanceها (قراردادِ بازیابیِ fail-closed: کلاینت عمداً بعد از ~4 تلاش تسلیم می‌شود — `retryStrategy`) ⇒ readiness 2/2؛ نشستِ خارج‌شده پیشِ kill **هنوز 401** (denylist در AOF ماند)؛ نشستِ سالم 200 دو-نمونه‌ای
+  - H10 صفر `[FATAL]`/uncaught در لاگِ هر دو نمونه
+- **درخواستِ کلیدیِ ناظر** «write A → read B → update B → read A» حالا در **زیرساختِ زنده** (نه فقط fake-RESP) اثبات شد: کد/جلسهٔ صادرشده در A در B مصرف/خوانده می‌شود؛ logout در B در A فوراً 401 است.
+- **push:** (با کامیتِ هندآف) `ls-remote` تأیید می‌شود؛ PR #47 به‌روز می‌شود.
+
+## ویو ۱۴ — استقرارِ زندهٔ Observability (Prometheus/Grafana/Loki/Jaeger) — ✅ (2026-09-10)
+- **فاز۲ِ این سشن:** اسکراپ‌تارگتِ واقعی اضافه شد — `server/metrics.js` (text-expositionِ صفرِوابستگی: http histogram/counters با tapِ finish + guardهایِ کاردینالیتی + self-scrape-excluded، lag/GC/heap از stdlib، pullsِ زمانِ اسکرپ guardشده ⇒ سرویسِ مرده = `*_up=0`)؛ وایرینگ `index.js` با دروازهٔ اختیاریِ `METRICS_TOKEN` (چهل‌وی‌وان) — edge هرگز `/metrics` را روت نمی‌کند. **تأییدِ زنده در سندباکس:** بوتِ سرویس، سری‌ها، شمارنده‌ها، گیتِ توکن.
+- **استک compose:** `infra/observability/` — prometheus v2.54.1 + alertmanager v0.27.0 + grafana 11.2.0 (datasource/dashboard provisioningِ خودکار؛ uidهای payesh-prom/loki/jaeger + لینکِ exemplar→Jaeger) + loki/promtail 3.1.1 (structured_metadataِ trace_id برایِ audit-log) + otelcol-contrib 0.100.0 + jaeger 1.59؛ bind‌ها همه 127.0.0.1؛ رازها env-file.
+- **قوانین هفت‌گانه:** HighErrorRate 5xx>0.1٪ · HighLatency p95>300ms · RedisDown · DBLatencyHigh>50ms · SyncQueueDepth>1000 · EventLoopLagHigh p99>100ms · MemoryHigh heap>80٪ — نام‌ها با metrics.js قفلِ متقابل.
+- **داشبوردها:** `payesh-main.json` ۱۰پنل (RPS/p50-95-99/4xx5xx/DB latency+pool wait/Redis/cache-hit/queue/lag+heap+GC) + `payesh-logs.json` جست‌وجو با trace_id.
+- **تست‌ها:** `observability-config` **55/55** · `observability-dashboards` **30/30** · `observability-config-mutations` **6/6** — ضدرانشِ سه‌جانبه (متریک↔قانون↔داشبورد↔پورت OTLP) با جهش اثبات‌شده. گیت‌ها: smoke **547/547** · api 7/7 · check-authz **0** · secret-scan **11/11** · build --check 0 · run.js 35/35.
+- **اسناد:** `docs/OBSERVABILITY_DEPLOYMENT.md` (استقرارِ واقعی + صحت‌سنجیِ ۵دقیقه + retention) + `docs/WAVE14_OBSERVABILITY.md` (فاز۱ PR#22 + فاز۲) + ردیفِ ۱۴ نقشهٔ راه 🟡.
+- **کامیت‌ها:** 6039000 (exporter) · 66b2918 (استک) · 45f9f67 (provisioning+داشبورد) · 080900f (تست) · 9231690 (اسناد).
+- **باقی:** اجرای compose روی میزبان (/targets سبز)، __WEBHOOK_URL__ واقعی، توکنِ اسکرپ در prometheus.yml میزبان (رازِ gitignored)، drillِ کوریِ مانیتورینگ.
+
+## زیرساختِ HA + PITR + Failover — رفعِ مانعِ P0#3 (Production Readiness / Reliability) — ✅ (2026-09-10)
+- **PG HA:** `infra/postgres/` — compose با Primary(wal_level=replica + archive هم‌زمان pgbackrest→S3/MinIO) + hot-standby (basebackup -R یا STANDBY_BOOTSTRAP=repo) + PgBouncer (txn pooling، مسیرهای payesh/payesh-readonly دقیقاً منطبق بر DATABASE_URL/READ_DATABASE_URL در server/db.js) + بازویِ pg-backup + post-checks.sh (gate دهیِ PASS/FAIL). ایمیج سفارشیِ pgbackrest-دار (پین‌شده)؛ هیچ رمزی در فایل‌ها — env-file با ${VAR:?}؛ env.ha.example بیرونِ ignore با نامِ env* (قانونِ .env* فایل‌های دات را می‌بلعد).
+- **Redis HA:** `infra/redis/` — ۱ master + ۲ replica + ۳ sentinel؛ قراردادِ اتصالِ آماده در server/redis.js فعال می‌شود (REDIS_SENTINELS + REDIS_SENTINEL_NAME=mymaster)؛ quorum=2/down-after=5s/failover≤30s طبق RELIABILITY_DR_PLAN؛ redis-checks.sh.
+- **PITR:** tools/pitr-restore.sh (pgbackrest --type=time/xid/name/latest، محیطِ ایزوله با fsync=off و پورتِ غیراستاندارد، promote خودکار، verify خودکار) + tools/pitr-verify.sh (promoted/جداولِ حیاتی non-empty/target رعایت/checksumِ ۲۰۰ردیفی برایِ drill ماهانه).
+- **Failover:** tools/failover-postgres.sh (گاردِ split-brain + سه‌بار نمونه‌گیریِ مرگ + آستانهٔ lag + pg_promote(wait) + چک‌لیستِ fence/rebuild) و tools/failover-redis.sh (SENTINEL FAILOVER با poll و تأییدِ INFO؛ REDISCLI_AUTH فقط).
+- **Runbook:** docs/DR_RUNBOOK.md — چهار سناریو (PG primary، Redis master، DC منطقه‌ای (طرحِ دوم‌منطقه‌ای تهران⇄تبریز با bucket replication)، فسادِ داده/PITR) × RPO/RTOهایِ مصوبِ RELIABILITY_DR_PLAN + گیت‌هایِ مشترکِ پسازاقدام + drill-log + on-call.
+- **تست:** `node tests/ha-config.js` **92/92** · `node tests/dr-runbook.js` **38/38** · `node tests/ha-config-mutations.js` **7/7 کشته** (M1..M6 + پایه) — و گیت‌های همیشگی: smoke **547/547** · check-authz **0** · secret-scan **11/11** · build --check **0** · tests/run.js 35/35 (SASTِ CI).
+- **کامیت‌ها:** 7aca4c9 (PG infra) · 4e4ab8b (HA_POSTGRES) · 7ce584a (Redis) · 4b7fd52 (HA_REDIS) · 2f5c2f1 (PITR) · f1f05fa (failover) · 24d281a (DR_RUNBOOK+نقشهٔ راه) · test+handoff — push به arena/01a08a4e-p2.
+- **باقی‌مانده (خارج از sandbox):** اجرایِ واقعیِ compose روی میزبانِ Docker (config-check عمیق)، مانورهایِ فصلی و ثبتِ drill-log، slot فیزیکی + max_slot_wal_keep_size، تفکیکِ رازهایِ replicator/pgbouncer، ACL ردیس.
+
+## چت ۴: مرج PR #43 (ویو ۱۲ — شبکه/لبه) + هم‌سازی سشن با main — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
+- **PR #43:** کانفلیکت HANDOFF با حفظ دوطرف حل؛ پچ ci/pending بازتولید شد (SCA حالا در Security Program اصلی است؛ فقط CodeQL در انتظار توکن workflow)؛ جهش M3 به خودِ workflow تغییر هدف یافت (5/5)؛ **باگِ واقعیِ CI:** آکولادِ بدون‌نقل‌قول در کلیدهای regex نگینکس (`on\w{2,}` → `on\w\w+`) — `nginx -t` رانر را می‌شکست. merge-commit `463233c` با ۷/۷ چک سبز؛ شاخه feat حذف شد.
+- **سشنِ ویو ۵ (این شاخه):** ۱۱ کامیت روی mainِ رفته‌پیش (۷۵۰+)؛ ادغامِ تازهٔ origin/main → تنها کانفلیت HANDOFF (union)؛ درختِ ادغامی کاملِ سبز: smoke 547 · api 7/7 · wave5 37+5 · wave12 24+5 · authz-model 248 · server16 · occ 18 · pull-bootstrap 12 · wave1/3/4 · build-check 0 · check-authz 0 · secret-scan 11.
+- **وضعیت:** PR از `arena/01a08a4e-p2` → `main` باز شد؛ منتظر Review/تأیید ناظر (مرجع‌های ویو ۵ هنوز در main نیستند — تا پیش از آن، `server/policy.js` و هم‌سازیهایی در خط اصلی اجرا نمی‌شوند).
+
+## چت ۴: اتصال نشست جدید + پایشِ کامل (بدون کد) + کشفِ «باگ پنجشنبه» — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
+
+**شاخه:** `arena/01a08a4e-p2` (بر پایهٔ `main` @ `40c5f96` — مرج PR #44)
+
+**وضعیت:** گام‌های اتصال/پایش/Ruflo طبق دستور کارفرما اجرا شد؛ **هیچ کدی تغییر نکرد**.
+
+- **گیت‌های پایه:** check-authz 0 · secret-scan 11/11 · `build --check` بیت‌به‌بیت ✅ — همه سبز.
+- **⭐ کشفِ کلیدی:** smoke در سندباکس 405/530 قرمز شد؛ ریشه = **باگ پنجشنبهٔ** `src/js/02-demo-data.js` (حلقهٔ روزهای سخت‌کدِ ۰..۴ در برابرِ `work_days=[0..5]` → `slot` تعریف‌نشده → `teacher_id` در زمانِ بارگذاری؛ خطای زنجیره‌ای روی ۱۲۵ بررسی). CI راه‌دور سبز بود چون ران چهارشنبهٔ UTC اجرا شده بود. **رفعش دقیقاً داخل PR #45 است** (`tests/demo-thursday.js` + فیکس + تنظیم بند ۱.۵ smoke؛ وضعیت: CLEAN/MERGEABLE) — صفر رگرسیون از این نشست.
+- **Ruflo:** سندباکس تازه ⇒ `/tmp/ruflo-unified` صفرورودی و هر سه کلیدِ تیمی گم. `ruflo@3.39.2` نصب؛ کلیدهای `p2/roadmap-status` · `p2/memory-branch-map` · `next_wave` از ریپو+gh بازسازی و `p2/chat4-new-session` ذخیره شد (۴ ورودی، بازیابی معنایی سالم؛ اجرا از بیرونِ ریپو با envهای الزامی).
+- **Wave 13 (شکافِ ZAP):** صحت‌سنجی شد — فیکس‌های `env.SECURITY_TARGET_URL` و `spdx` روی main مرج هستند؛ شکافِ باقی‌مانده عملیاتی است (staging URL تنظیم نشده ⇒ DAST skip). قرمزی job «WAF & nginx» در ران ۱۴ ساعت پیش = `Install nginx` (اختلال گذرای رانر).
+- **مستندات:** گزارش تجمیعی `CHAT4_ONBOARDING_REPORT_2026-09-10.md` (مطابق اصل کارفرما به‌صورت فایل ارائه شد).
+- **بعدی (منتظر دستور):** مرج PR #45 با تأیید ناظر ⇒ پنجشنبه‌های سبز روی main؛ سپس تکمیل Wave 1 با PG زنده.
+
+
+## چت ۱: موج ۱ P0 — PG transaction-first writes — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅ (روی شاخه؛ push نهایی + PR باقی)
+
+**شاخه:** `arena/01a08a2e-p2` (بیس `origin/main` @ `40c5f96`) — ۱۳ کامیت موج ۱: `c16b178` (inventory) → `2d610e9` (migration 004) → `87c0ee5` (boot/hydrate) → `ea95508` (۵ روت + dispatch) → `f3b4dc0` (sync دوفازی) → `61b2681`/`49e0e03` (سرویس‌ها) → `050e6f3`/`0fbd3fe` (فیکس‌های cross-instance) → `c66cfc7` (تست چندنمونه‌ای) → `aa7fdc9` (گیت) → `9019b90`/`c3bf3a1` (فیکس hydrate + تست 004).
+
+**وضعیت:** همهٔ مسیرهای نوشت (۱۴ مسیرِ `docs/WAVE1_WRITES_INVENTORY.md`) PG-first شدند: کامیتِ authority پیش از هر جهشِ کش؛ شکستِ PG = ‎503‎ + rollback + retry تمیز (uidها post-commit علامت می‌خورند). بوتِ PG-authoritative (اسکلت + hydrate)، persist دوره‌ایِ JSON در حالت PG خاموش، حذفِ GDPR به‌صورت anonymize (به‌خاطر FK با CASCADE)، بکاپ/ریستورِ JSON در حالت PG fail-closed (‎501‎ + ران‌بوک pg_dump)، شناسه‌های outbox از سکانس مشترک.
+**شواهد:**
+- `tests/wave1-multi-instance.js` ‏33/33‏ (دو نمونه + یک PG روی pg-mem: دیده‌شدن، عدم برخورد id، ‎503‎+replay، OCC در sync و REST، حذف، outbox، hydrate اسکلتی).
+- `tools/wave1-gate.js` ‏35/35‏ سبز (۲۱ ایستا + ۱۴ سوئیت شامل smoke ‏47s‏ و REST روی HTTP واقعی).
+- رگرسیون کامل حافظه: ‏243/247‏؛ ۴ قرمز با تعیین‌تکلیف: `db-engineering` (انتظارِ لیست مهاجرت — اصلاح و سبز ‏13/13‏) + ۳ پیش‌موجود/محیطیِ نامرتبط: `server11-child` (هلپرِ آرگومانی، سوئیت نیست)، `wave20-arena5` (تستِ کهنهٔ ماتریس CI در برابر تصمیمِ ثبت‌شدهٔ `[22.x]`)، `workdays` (فرضِ «امروز شنبه است» — فقط شنبه‌ها سبز می‌شود).
+- باگِ یافته‌شده در ریویو و رفع‌شده: hydrate روی کلیدهای store می‌چرخید و بوتِ اسکلتی را خالی می‌گذاشت (`9019b90` + تست T0b).
+**گیت‌ها:** wave1-gate ‏35/35‏ · smoke ‏۵۴۷/۵۴۷‏ (در متن گیت) · occ ‏18/18‏ · tombstone ‏25/25‏ · sync-atomic-batch ‏22/22‏ (شاخهٔ legacyِ B8 حفظ شد).
+**push:** تا `aa7fdc9` روی origin است؛ `9019b90` + `c3bf3a1` (+ همین ورودی) فعلاً محلی‌اند — پوش با خطای احراز GitHub شکست خورد (نیازمند reconnect در Arena). به‌همین دلیل `wave1_status` در ruflo هنوز چرخانده نشده (ممنوع تا تکمیلِ push).
+**تکمیل (ادامهٔ سشن):** پس از reconnect، هر ۳ کامیت پوش شد (`aa7fdc9..dd14330`)؛ `wave1_status=completed` در ruflo ثبت شد (رکورد ۱۲، با evidence)؛ PR شمارهٔ ‏48‏ به main باز شد.
+**پس از PR:** چک DAST قرمز شد — ریشه‌یابی: اسکن واقعی ۱۰۶ ثانیه‌ای با exit code ‏2‏ یعنی WARN-only بدون هیچ FAIL (شواهد: annotations + تایمینگ stepها؛ لاگ CI از سندباکس unreachable است)؛ رفتار صفر/یک ZAP با سیاست advisory خود ورک‌فلو هم‌خوان شد (exit ‏2‏ سبز، ‏1‏ و ‏3+‏ همچنان قرمز — بدون false-green).
+**نکات Wave 2:** سطرهای `sync_conflicts` عمداً cache-side؛ ردیف‌های یتیمِ cross-instance در GDPR؛ پنجرهٔ درخواستِ زودهنگامِ بوت؛ شکلِ NUMERIC از PG رشته برمی‌گردد (فراخوان‌ها Number می‌کنند)؛ `tools/reseed-from-pg.js` برای بازگشتِ اضطراری PG→JSON.
+**بعدی:** reconnect گیت‌هاب → push → چرخاندنِ `wave1_status=completed` در ruflo → PR به main.
+## چت ۴: ویو ۱۲ — شبکه / لبه (Network / Edge) — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
+
+**وضعیت:** شاخهٔ تازهٔ `feat/wave12-chat4` (بر پایهٔ `origin/main` @ `781a471`). شش کامیت:
+- `7126311` + `8a85452` **بلاکِ لبه برایِ تزریق و اسکریپت** — مَپِ `$edge_attack` در `nginx/nginx.conf` بینِ نشانگرهایِ `wave12-edge-rules:*` (پیش‌تر فقط در برنامه تشخیص داده می‌شد؛ حالا لایهٔ دومِ ۴۰۳ در لبه)؛ محافظه‌کارانه با ۰ مثبتِ کاذب رویِ ۱۶ نشانیِ سالمِ برنامه؛ نقل‌قول‌ها با `%27/%22/\x27/\x22` چون پارسرِ نگینکس «'» و «"» را می‌بلعد.
+- `38be855` **سندِ ‏CDN** (`docs/CDN_INTEGRATION_SETUP.md`) — قیدِ حیاتی: چون هر پاسخِ ‏HTML ننسِ یک‌بارمصرفِ ‏CSP دارد، لبه هرگز نباید ‏HTML را کش کند؛ ارزشِ ‏CDN = ‏DDoS + ‏TLS + لبهٔ امنیتی؛ چک‌لیستِ ‏Cloudflare با «راکت‌لودر خاموش».
+- `229344a` **پچِ در انتظار برایِ CI امنیتی:** شغل‌هایِ ‏SAST (CodeQL) + ‏SCA (npm audit) آماده شدند ولی گیت‌هاب پوشِ `.github/workflows/*` را با توکنِ فعلی (فاقدِ اسکوپِ `workflow`) رد کرد ⇒ تغییر به‌صورتِ `ci/pending/security-sast-sca.patch` ثبت شد؛ **اقدامِ لازم:** اِعمال با توکنِ دارایِ اسکوپ (`git am`) و سپس حذفِ پچ. شاخهٔ محلیِ پشتیبان با زنجیرهٔ کامل: `feat/wave12-chat4-with-ci`.
+- `fef20cd` **تست‌ها:** `tests/wave12-network.js` ‏۲۴/۲۴ (سرآیندهایِ زنده شاملِ ‏HSTS/یکتاییِ ننس، رگکس‌هایِ استخراج‌شده از خودِ ‏nginx با ۱۲ حمله/۱۶ نشانیِ سالم، قراردادِ ‏CI/پچ، اسناد) + جهش‌ها ۵/۵.
+- `3b88afb` **مستندات:** `docs/WAVE12_NETWORK_EDGE.md` — ممیزی (چه چیزهایی از پیش کامل بودند: سرآیندها، ‏TLS، سندِ ‏WAF)، تغییرات، چک‌لیستِ عملیاتی.
+**گیت‌ها:** ‏smoke ۵۴۷/۵۴۷ · check-authz=0 · secret-scan ۱۱/۱۱ · wave12 ‏۲۴/۲۴ · جهش‌ها ۵/۵ · waf-ddos واحد ۱۹/۱۹.
+**بعدی:** ادغام با تأیید ناظر ارشد (اصل هشتم)؛ اِعمالِ پچِ ‏CI؛ ‏DAST خودکار در فهرستِ سند.
+
+
+## چت ۱: Production Readiness Gate (§۲۷) — چک‌لیست شواهدمحور — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
+
+**شاخه:** `arena/01a08a2e-p2` (بیس `origin/main` @ `351bd10`)
+
+**وضعیت:**
+- **چک‌لیست (`docs/PRODUCTION_READINESS_CHECKLIST.md`):** هر ۴۰ معیار §27 در ۷ محور، با راستی‌آزمایی زنده (خواندن کد + اجرای تست هدفمند + وضعیت واقعی PRها): ✅ ۱۰ · ⏳ ۱۴ · ❌ ۱۶.
+- **حکم:** سیستم برای Go-Live آماده **نیست** — ۶ مانع P0 (تکمیل Wave 1/SoT، معماری چندنمونه‌ای امن، ‏HA+PITR+دریل‌ها، متریک/داشبورد/آلارم، آزمون‌های مقیاس زنده، امنیت اجرایی) + موارد P1؛ نقاط قوت (authz متمرکز، tenant isolation، مدیریت secret، ‏OCC/tombstone، tracing/logs، رگرسیون سبز) ثبت شد.
+- **پیوست §30:** اسناد اجباری موجود ۵ از ۱۴ (با نگاشت معادل‌های نزدیک مثل `RELIABILITY_DR_PLAN` و `ARCHITECTURE.md`).
+- **شواهد اجرایی تازه:** `occ` ‏18/18‏، ‏`tombstone` ‏25/25‏، ‏`lock-atomic` ‏12/12‏ (پس از seed تازه — استور در اسنپ‌شات نبود و با `node server/seed.js` بازسازی شد؛ خروجی seed در `server/data/` ایگنور است).
+**گیت‌ها:** smoke ‏۵۴۷/۵۴۷‏ · check-authz=0 · secret-scan ‏۱۱/۱۱‏.
+**بعدی:** تصمیم ناظر روی P0ها؛ مرج شاخه‌های چت ۲/۳ (پیش‌نیاز آزمون‌های مقیاس و تکمیل Wave 1).
+
+## چت ۱: ترکر ملی + Wave 13 (رفع شکاف ZAP) — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
+
+**شاخه:** `arena/01a08a2e-p2` (پس از مرج main @ `351bd10` = PR #45 مرج‌شده)
+
+**وضعیت:**
+- **ترکر (`docs/NATIONAL_ROADMAP_PROGRESS.md`):** ردیف Wave 20 ← ✅ (شواهد: PR #45 ← `351bd10`؛ ARENA4 + ARENA5 + wave20 ‏۲۲/۲۲‏ + دروازهٔ انتشار)؛ وضعیت واقعی شاخه‌های مرج‌نشده ثبت شد (چت ۲: ۱۴/۱۶/۱۷ ← 🟡؛ چت ۳: 1p2/6/11/15/18/19 ← 🟡؛ چت ۴: ۲۰ ✅)؛ ردیف ۱۰ و ۱۳ ← 🟡 با شواهد اجرایی (wave10 ‏۲۶/۲۶‏ روی main؛ wave13 ‏۲۳/۲۳‏ روی این شاخه)؛ ردیف Arena 5 ← 🟡.
+- **ریشهٔ شکاف ZAP (دوگانه):** ۱) تست S6a دنبال نام اشتباه `zaproxy/actions-baseline` می‌گشت (نام درست `action-baseline` است — همان فیکسی که در `ci/pending` مستند و روی main اعمال شده)؛ ۲) استپ ZAP پشت گیت `SECURITY_TARGET_URL` بود و بدون سکرت همیشه skip می‌شد.
+- **فیکس DAST (`.github/workflows/security.yml`):** دومسیره — staging: اکشن رسمی با سکرت؛ local: بوت API (`seed` + انتظار محدود ۳۰ثانیه‌ای روی `/api/health` با پذیرش هر کد HTTP چون بدون Redis ‏503‏ می‌دهد) + `docker --network=host zap-baseline.py` (چون داخل کانتینر اکشن، 127.0.0.1 خودِ کانتینر است) + آپلود آرتIFکت گزارش + استپ توقف API؛ استپ skip حذف شد؛ best-effort و ممنوعیت `secrets.*` در `if:` (zero-job guard) حفظ شد.
+- **تست (`tests/wave13-security.js`):** ‏۲۳‏ چک (S6 هشت‌تایی: وجود + اجرای محلی + بدون-skip + best-effort + zero-job-guard + آرتIFکت)؛ اعتبارسنجی جهشی: تست جدید روی ورک‌فلوی قدیمی دقیقاً روی ۴ چک شکاف قرمز می‌شود (۱۹/۲۳) و S6a روی قدیمی سبز است (اثبات تایپی‌بودن باگ قبلی).
+**گیت‌ها:** smoke ‏۵۴۷/۵۴۷‏ · check-authz=0 · secret-scan ‏۱۱/۱۱‏ · wave13 ‏۲۳/۲۳‏ · YAML معتبر (js-yaml) · (هشدار benign ‏window.scrollTo‏ در jsdom).
+**یافتهٔ محیطی:** کلون shallow بود (`origin/main` تک‌کامیت) و مرج را «unrelated» می‌زد — با `fetch --unshallow` حل شد؛ ‎/tmp‎ بین نوبت‌ها پاک می‌شود (نصب مجدد ruflo + بازسازی استور از `docs/unified-memory.json` لازم شد).
+**بعدی:** مرج این شاخه با تأیید ناظر؛ enforce روی یافته‌های High؛ DAST واقعی staging؛ ریبیس/مرج شاخه‌های چت ۲ و ۳.
+## چت ۳ — P0 #2: معماری چندنمونه‌ای امن (Production Readiness Checklist §۲۷) — ۱۹/۰۶/۱۴۵ (2026-09-10) — کامل ✅
+
+**وضعیت:** همهٔ stateهایِ حیاتی هماهنگ‌سازی حالا در Redis مشترک است؛ production بدونِ زیرساختِ مشترک استارت نمی‌دهد؛ دو فرایندِ واقعی + Redis مشترک «write A → read B → update B → read A» را اثبات می‌کنند. پنج کامیت روی `arena/01a08545-p2` (بعد از ریبیسِ دوم `149ba1f`):
+
+- **ممیزی** (`b82c1ef`، `docs/MULTI_INSTANCE_AUDIT.md`): تمام stateهایِ حیاتی: OTP (P0-15)، rate limit (اتمیکی P0-11)، revoke (`revoked:<jti>`+`sessver` — W6)، idempotency (24h+PG)، L2 cache+Pub/Sub، locks، WAF، enum-guard = **Redis مشترک، بدونِ تغییر**؛ stateهایِ per-instanceِ باقی (L1، audit، outbox queue، store seed) = **مجاز و مستند**؛ سه شکافِ واقعی: **A** کلیدِ JWT (جلسهٔ نمونهٔ B در A معتبر نبود)، **B** counterِ outbox (id در PG مشترک تکراری می‌شد)، **C** plane datastore (ادامهٔ W1/W3).
+- **A+B** (`5081248`): ① `server/index.js` — production + بک‌اندِ مشترک (Redis/PG) بدونِ `PAYESH_JWT_SECRET` ⇒ **fail-fast exit 1** (کلیدِ تولیدشدهٔ per-instance جلساتِ چندنمونه‌ای را ساکت می‌شکست). ② `server/outbox.js` — id رویدادها از `INCR payesh:outbox:seq` در Redis مشترک (atomic ⇒ صفرِ تلاش‌تلاقی در PG مشترک)؛ `nextId` async شد (فقط outbox). ③ env تستیِ `arena5-recovery` (R3/R3h production+fake-Redis) با کلیدِ مشترکِ ثابت.
+- **آزمون** (`628726e`، `tests/multi-instance.js` **17/17**): دو فرایندِ واقعی `node server/index.js` (production، store جدا، Redis مشترک = fake-RESP روی TCP با معنایِ واقعیِ کلیدها + seq + pub/sub) + کلیدِ نشستِ مشترک: write A (send-code) → read B (login 200) → read A (/me 200 با کوکیِ B)؛ update B (logout) → read A (401 — denylist مشترک)؛ مرگِ کد در B ⇒ replay در A = bad_code (tombstone مشترک) + cooldown مشترک؛ rate limitِ IP مشترک (8 در A ⇒ 429 در B)؛ fail-closed (production+ردیسِ مرده ⇒ exit 1 `[FATAL]`)؛ fail-fastِ کلیدِ نشست (exit 1)؛ outbox (30 append متناوب از دو outbox ⇒ 30 id منحصر‌به‌فرد)؛ idempotency (mark در «A» ⇒ read در «B»). plane datastore = صادقانه «در انتظارِ PG» (W1/W3).
+- **معماری** (`9d28d3a`، `docs/MULTI_INSTANCE_ARCHITECTURE.md`): نقشهٔ کلیدهایِ Redis + TTL + owner؛ جدولِ fail-closed/fail-fast؛ وضعیتِ دقیقِ plane datastore (کدام مسیر PG است/نیست)؛ چک‌لیستِ deployment (store/audit/key جدا، JWT/REDIS/PG مشترک، readiness=probe، backup=PG)؛ محدودیت‌هایِ صادقانه (ادامهٔ W1/W3، claimِ outbox، `REQ_STATE`).
+- **رفعِ نقصِ آشکارشده** (`a48627c`): `tests/wave15-child.js` (S3) — fail-fastِ کلیدِ مشترک جدید بر fail-fastِ P0-13 سبقت می‌گرفت؛ env سناریو با کلیدِ productionِ معتبر کامل شد تا P0-13 جدا بسنجده شود (wave15 **10/10**).
+- **دروازه‌ها (همان روز):** smoke **547/547** · check-authz **0** · secret-scan **11/11** · **multi-instance 17/17** · wave6 **22/22** · wave15 **10/10** · arena5-recovery **32/32** · build --check ✅.
+- **push:** (با کامیتِ هندآف) `ls-remote` تأیید می‌شود؛ PR #47 به‌روز می‌شود.
+
+## چت ۳ — ریبیسِ دومِ `arena/01a08545-p2` روی `origin/main` (`351bd10`، PR #45) — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
+
+**وضعیت:** بعد از ریبیسِ نخست (`d554eea` روی `40c5f96` + PR #47 ساخته شد)، `main` با ادغامِ PR #45 (چت ۴: رفعِ کرشِ پنجشنبه + دموِ شش‌روزه + سندِ آرنا ۵ + `tests/wave20-arena5.js` + `tests/demo-thursday.js`) جابه‌جا شد → PR #47 `CONFLICTING`. ریبیسِ دوم روی `351bd10` با همان قاعدهٔ «هر دو سمت» کامل شد؛ شاخه بازنویسی و push شد و PR #47 دوباره `MERGEABLE` است.
+
+- **رفعِ تداخل‌ها (هر دو سمت):** `HANDOFF.md` (ورودیِ چت ۴ + ورودی‌هایِ ما)، `USER_GUIDE.html` (مُهرِ بیلد — هر بار `node build.js` + `--check`)، `tests/otp-ratelimit-mutations.js` (M3–M6: لنگرهایِ دو فرمِ `checkRateLimit(...)` و `if(!rX.allowed)` — هر دو در `server/auth.js`ِ ادغام‌شده موجودند ⇒ 8 entry هر دو سمت؛ جهش **11/11 کشته**)، `docs/ARENA5_QA_RELIABILITY.md` (add/add: سندِ فارسیِ چت ۴ + سندِ «نهایی‌شده»ِ چت ۳ — در **یک فایل** نگه داشته شد: متنِ اصلیِ چت ۴ + پیوستِ کاملِ سندِ ما با سطحِ سرعنوان‌ها یک‌جور پایین‌تر؛ ارجاع‌هایِ داخلیِ §4.3/§5 سالم ماندند).
+- **سه‌تا نقصِ واقعی که ریبیس آشکار کرد (هر دو سمت درست بود، ترکیب ناسازگار):** (۱) PR #45 جفتِ خودتضادی مرج کرده بود — `node.js.yml` ماتریسِ صادقِ فقط-`22.x` (لن‌های 18/20 با jsdom 30 سبزِ کاذب بودند) ولی `CIN-1` در `tests/wave20-arena5.js` هنوز 18/20/22 را می‌خواست ⇒ `main` با گیتِ خودش می‌افتاد؛ `CIN-1` به ماتریسِ صادق هم‌راستا شد (فقط 22.x + ممنوعیتِ بازگشتِ 18/20). (۲) `G3` در `tests/arena5-demo-guard.js` پیش‌فرضِ قدیم (مدرسهٔ دمو 5روزه ⇒ دمایِ خامِ d=5 **نمی‌بایست** باشد) را assert می‌کرد؛ با دموِ شش‌روزهٔ PR #45 برعکس شد ⇒ `G3` حالا وجودِ دمایِ d=5 را ثابت می‌کند؛ فِلبکِ period به‌عنوانِ دفاعِ دوم می‌ماند (G2 + بندِ 1.5ِ smoke). (۳) آلودگیِ مارکر در `USER_GUIDE.html`ِ یک کامیتِ میانیِ ریبیسِ نخست (موروث) — با ریبیسِ تعاملی + rebuild برطرف شد؛ **همهٔ 16 کامیتِ شاخه حالا مارکر-فرید**.
+- **فرمِ نهاییِ بندِ 1.5 (`src/js/02-demo-data.js`):** `dow=dow0<=4?dow0:0` + قراردادِ تاریخِ W20 `dt=dow0<=5?todayISO():addDaysISO(todayISO(),1)` + فِلبکِ دفاعیِ `period` — دمو در پنجشنبه با `dt=today` (بند 1.5ِ smoke) و با دمایِ شش‌روزهٔ PR #45 سازگار است.
+- **دروازه‌ها (پنجشنبه — همان روزِ پرخطر):** smoke **547/547** · check-authz **0** · secret-scan **11/11** · build --check ✅ · wave6 **22/22** · wave11 **20/20** · wave15 **10/10** · wave18 **38/38** · wave19 **28/28** · arena5-recovery **32/32** · arena5-demo-guard **4/4** · **wave20-arena5 (تازه از main) 22/22** · **demo-thursday (تازه از main) سبز**.
+- **push:** `--force-with-lease` با shaِ صریحِ راه‌دور (`d554eea` → `302886a`) — `ls-remote` تأیید کرد؛ PR #47 = `MERGEABLE` (base main).
+## چت ۴: ویو ۲۰ — آرنا ۵ (تضمین کیفیت و قابلیت اطمینان) — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
+
+**وضعیت:** شاخهٔ تازهٔ `feat/wave20-chat4` (بر پایهٔ `origin/main` @ `fd9f404`). سه کامیت (+ هندآف):
+- `0edac5a` **پوششِ کاملِ رگرسیون:** سابت‌های ‏REST فاز ۳ (`tests/api/runner.js` — ۷ سوئیت، محلی ۷/۷ سبز) به کشفِ `scripts/run-all-tests.sh` اضافه شدند؛ تا پیش از این گلابِ `tests/*.js` کلِ زیرپوشهٔ ‏`tests/api` را جا می‌انداخت. کنارگذاشته‌های طراحی (اسکریپتِ کارگر، کمکی‌ها، لایهٔ بارِ ‏k6) در سربرگ مستند شد.
+- `4c76d71` **سندِ آرنا ۵** (`docs/ARENA5_QA_RELIABILITY.md`): مسئولیت‌ها، هرمِ تست (ساختار/دودی ۵۴۷/مجوزها/امنیت/یکپارچگی/جهش/بار/آشوب)، نقشهٔ ‏CI، قوانینِ نگهداشت (کشفِ زنده، قانونِ جهش، قانونِ درختِ کامیت‌شده)، سناریوهای آشوب/بازیابی، و **دروازهٔ انتشارِ ده‌بندی**.
+- `1106464` **قراردادِ تست:** `tests/wave20-arena5.js` ‏۲۲/۲۲ (سند + اسکریپت + گیت‌های ‏CI).
+**گیت‌ها:** ‏smoke ۵۴۷/۵۴۷ · check-authz=0 · نشت‌یاب ۱۱/۱۱ · بیلد‌چک ✅.
+**یافتهٔ ممیزی:** ‏`npm test` فقط ‏`tests/run.js` + دودی را در ‏CI اجرا می‌کند و بقیهٔ ~۲۴۰ سوئیت قرارداداً در رگرسیونِ کاملِ محلی اجرا می‌شوند — این تقسیم‌کار در سندِ آرنا ۵ صریح ثبت شد (به‌همراهِ پچِ در انتظارِ ‏SAST/SCA).
+**بعدی:** ادغام با تأیید ناظر ارشد (اصل هشتم)؛ اجرای نخستین دروازهٔ انتشار پیش از ‏Go-Live.
+
+## چت ۳ — ریبیسِ `arena/01a08545-p2` روی `origin/main` + رفعِ تداخل‌ها — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
+
+**وضعیت:** ریبیسِ ۱۲ کامیتِ فشرده‌شده (۲۹ کامیتِ اصلی → ۱۲ واحد منطقی) روی `origin/main` (`40c5f96`، PR #44) کامل شد؛ همهٔ تداخل‌ها با حفظِ هر دو سمت رفع شدند و درختِ نهایی سبز است.
+
+- **رفعِ تداخل‌ها (قاعدهٔ «هر دو سمت»):** `server/delete-service.js` (ساختارِ تراکنشیِ W1p2 + `payload.school_id` ویوِ ۸)، `server/outbox.js` (isPg + INSERTِ تراکنشی)، `server/cache.js` (L1ِ W11 + سقفِ قابل‌تنظیمِ W9 — `setL1MaxEntries`/`setMax`/هرس همه روی `l1MaxEntries`)، `server/routes/bootstrap.js` (read-seamِ W1 داخلِ single-flight و کشِ W11 + `db_pools`ِ W10)، `server/redis.js` (`getStatus` + هوکِ تست)، `server/index.js` (بستریِ services: workers + db + exportsِ یکپارچه؛ health: بدنهٔ W15 + `db_pools`؛ exit-handler فقط همگام + `handleShutdown`).
+- **رفعِ دو باگِ واقعی که ریبیس آشکار کرد:** (۱) کرشِ بوتِ دمو در پنجشنبه — جدولِ برنامه ۵ روز دارد ولی نگاشتِ «امروز» پنجشنبه را d=5 می‌داد (کدِ main)؛ نگاشت به `dow<=4` + فِلبکِ دفاعیِ دور ۱۱۱ + قراردادِ تاریخِ پیشین (بند ۱.۵ smoke «جابه‌جایِ امروز»). (۲) نقص‌هایِ ریبیسِ دورِ قبل در `docs/AI_PROMPT.md` (۱۲۲۵ خطِ گمشده) و `USER_GUIDE.html` (مارکرهای باقی‌مانده) — هر دو با بازسازیِ سه‌طرفه (`merge-file` روی نسخه‌هایِ دست‌نخورده) برچیده شدند؛ بخشِ ۰.۵.۱۹ و همهٔ خطوطِ `2a2b74f` در فایلِ نهایی هست (تطبیقِ خط‌به‌خط: ۰ خطِ گمشده).
+- **سایر:** `server/schema.sql` بازتولید شد از `migrate-to-pg.js` (مدلِ ادغام‌شده + seedِ تازه: ۸۶ جدول/۳۴٬۵۰۸ رکورد) + بلوک‌هایِ دستیِ main (ایندکس‌هایِ keysetِ Wave 3 + tombstonesِ Wave 4)؛ جدولِ وضعیتِ B.3–B.9 به پیوستِ ROADMAP منتقل شد؛ `USER_GUIDE.html` با `merge-file` + مُهرِ بیلدِ تازه.
+- **دروازه‌ها (پنجشنبه — روزِ پرخطرِ باگِ dow):** smoke **۵۴۷/۵۴۷** · check-authz **۰** · secret-scan **۱۱/۱۱** · wave6 **۲۲/۲۲** · wave11 **۲۰/۲۰** · wave15 **۱۰/۱۰** · wave18 **۳۸/۳۸** · wave19 **۲۸/۲۸** · arena5-recovery **۳۲/۳۲** · arena5-demo-guard **۴/۴** · build --check ✅.
+- **توجه:** کامیت‌هایِ میانیِ ریبیس (به‌ویژهٔ `3b83ce8`) ممکن است نقص‌هایِ انتقالیِ بالا را داشته باشند — درختِ HEAD درست است و همهٔ دروازه‌ها روی HEAD سبز.
+
+## چت ۲ (ج): سبزِ کاملِ CI روی GitHub — ریشهٔ دومِ zero-job کشف شد — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**شاخه:** `arena/01a08648-p2` (ادامهٔ همان نشست؛ HEAD = `da13943`)
+
+**وضعیت:** هر دو ورک‌فلو روی GitHub سبز شدند — **`Security Program` ران ۶۸ با هر ۶ job سبز** (SAST، Secret scan، SCA، SBOM، DAST، WAF) و `Node.js CI` build (22.x) سبز (ران ۱۸۰). بلاکِ سه‌روزهٔ CI بسته شد.
+
+- **کشفِ کلیدیِ این دور — ریشهٔ دومِ zero-job:** فیکسِ zaproxy لازم بود ولی به‌تنهایی کافی نبود. علتِ واقعیِ باقی‌مانده با **bisect تجربی روی شاخهٔ موقتی `wftest-branch`** (ران‌های ۶۱–۶۶) پیدا شد: **ارجاعِ مستقیمِ `secrets.*` در `if:` سطحِ step** این ریپو را با «workflow file issue» و صفر job می‌شکند. توالیِ آزمون‌ها: حداقلی سبز (۶۱) → job dast با secrets-if قرمزِ صفر-job (۶۲/۶۳ حتی بدونِ ZAP) → بدونِ if سبز (۶۴) → if بدونِ secrets سبز (۶۵) → **الگویِ جایگزینِ env سبز (۶۶)**. فیکس: پاسِ `SECURITY_TARGET_URL` از طریقِ `env:` و شرط روی `env.SECURITY_TARGET_URL` (کامیت `f9d53ec`؛ نکتهٔ NOTE داخلِ خودِ فایل). ارجاعِ `secrets.*` در `with:`/`env:` مجاز است.
+- **ریشهٔ سوم (SBOM):** `npm sbom --sbom-format=spdxjson` با npm 10.9 → `EUSAGE` (مقادیرِ مجاز `cyclonedx|spdx`)؛ `spdx` همان SPDX-2.3 JSON می‌دهد. بازتولیدِ محلی + فیکس (کامیت `da13943`).
+- **بهبودِ ماتریس هم اثر کرد:** اولین رانِ CIِ تاریخِ PR #44 (پیش از این دور فقط صفر-ران/CONFLICTING بود): build (22.x) سبز روی `3673107`.
+- **پاک‌سازی:** شاخهٔ آزمایشیِ bisect (`wftest-branch`) پس از کار از local و remote حذف شد؛ sandbox بینِ دو نوبت re-clone شده بود که با fetch+reset بازیابی شد.
+- **مستندات:** §۵ `docs/RELEASE_GATE_EVIDENCE.md` با ریشه‌یابیِ کاملِ سه‌علته بازنویسی شد + به‌روزرسانیِ §۱ (وضعیتِ CI) + کپیِ `reza/`.
+
+## چت ۲ (ب): آماده‌سازی دروازهٔ انتشار (Release Gate) — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**شاخه:** `arena/01a08648-p2` (ادامهٔ همان نشست، پس از ادغامِ main بازنویسی‌شده)
+
+**وضعیت:** دروازهٔ انتشار «آماده» شد: CI سه‌روزه‌ی قرمزِ `security.yml` ریشه‌یابی و اصلاح شد، ماتریس Node صادقانه شد، ابزارِ راستی‌آزماییِ ۲۸ ردیفِ چک‌لیست ساخته شد و سندِ شواهد/ران‌بوک ثبت شد.
+
+- **اتصال تاریخچه (پیش‌نیازِ همه‌چیز):** main از `781a471` جدا شده بود (بازنویسی) ⇒ PR #44 با `CONFLICTING` و **صفر رانِ CI** مانده بود. ادغام با `--allow-unrelated-histories` (۲۷ فایل add/add؛ فقط `server/index.js` معنایی: ورکرِ سنگینِ Wave 9 + کارگرِ Outbox ویو ۸ + خوانشِ DB ویو ۱ + pool stats ویو ۱۰؛ انکرِ جهشِ GC داخل `persistStore` حفظ شد). symlinkِ شکستهٔ `node_modules` (آلودگیِ sandbox روی main) از ایندکس حذف شد.
+- **ریشهٔ CI قرمز:** `security.yml` به `zaproxy/actions-baseline@v0.12.0` اشاره داشت — مخزنِ ناموجود (اکشنِ واقعی: `zaproxy/action-baseline`). گیت‌هاب `uses:`ها را در استارتاپ resolve می‌کند ⇒ شکستِ کلِ ران با **صفر job** — علامتِ ران‌های ۴۸+ روی همهٔ شاخه‌ها. اصلاح + ماتریس `node.js.yml` به `[22.x]` (لِین‌های 18/20 با jsdom 30 سبزِ کاذب می‌دادند — پیش‌تر در HANDOFF چت ۳ مستند بود) + `npm-publish` از 20 به 22.
+- **ابزارِ دروازه:** `tools/release-gate.js` — هر ردیفِ `docs/RELEASE_GATE_CHECKLIST.md` را با شاهدِ قابل‌اجرا می‌سنجد (ایستا + بوتِ واقعیِ سرور؛ سبزِ کاذب/skip را قرمز می‌کند؛ `--skip-boot`/`--json`). نتیجهٔ فعلی: **۱۹ ✅ · ۱۴ ⏳ (کارفرما/زیرساخت) · ۱ ⚠️ · ۰ ❌**.
+- **شکافِ صادقانه:** 4.4 — `/api/liveness` و `/api/readiness` در کد نیست (فقط `/api/health`)؛ دو مسیر پیشنهادی در سندِ شواهد (نگاشتِ Probe یا افزودنِ اندپوینت‌ها) — تصمیم با استقرارِ K8s.
+- **سند:** `docs/RELEASE_GATE_EVIDENCE.md` (ران‌بوک + جدولِ شواهد + فهرستِ ۱۴ قلمِ کارفرما: پنتست، WAL/PITR، مهاجرتِ ۵۰GB، k6/SLO، مانیتورینگ، placeholderهای پایلوت) + ارجاع از خود چک‌لیست + کپیِ `reza/`.
+- **گیت‌ها پس از ادغام:** release-gate کامل = ۱۹/۱۹ِ قابل‌راستی‌آزمایی سبز (security2 ‏۲۵/۲۵، server1 ‏۳۱/۳۱، server8 ‏۹/۹، server15 ‏۴۰/۴۰، audit ‏۴۷/۴۷، secret-scan ‏۱۱/۱۱، authz ‏۰) · smoke ‏**۵۴۷/۵۴۷** · wave9 ‏**۳۹/۳۹** · wave1/3/4/5/8/10/13 + redis-cluster همه سبز.
+
+## چت ۲: Wave 9 شروع + Wave 0 / Part 4 (بازسازی) — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**شاخه:** `arena/01a08648-p2` (از `main` @ `781a471` — ادغامِ PR #40)
+
+**وضعیت:** بخشِ اولِ Wave 9 (Application Performance) روی سرور اعمال شد: `JSON.stringify(store)` و نوشتنِ سنکرونِ فایل از مسیرِ درخواست/تیکر حذف و به رشتهٔ کارِ پس‌زمینه منتقل شد؛ بکاپ و گزارشِ عمومی هم به همان ورکر رفت؛ ممیزیِ پس‌زمینه (opt-in) و L1 کشِ محدود اضافه شد. Wave 0 / Part 4 (dependency & deployment inventory) **بازسازی** و Wave 0 کامل شد.
+
+- **⚠️ یافتهٔ انتقالِ کار (مهم برایِ کارفرما):** دستورِ «push کامیتِ محلیِ `arena/01a085da-p2` / بهروزرسانی PR #40 با commit ‏`0245515`» اجرا‌پذیر نبود: آن commit هرگز push نشده بود و در sandbox نشستِ قبل گم شده است (`gh api .../commits/0245515` → 404؛ شاخهٔ راه‌دور روی `b7f670e` است و PR #40 **MERGED**). خودِ شاخهٔ این نشست به `arena/01a08648-p2` قفل است؛ Part 4 در همین شاخه بازسازی شد (`docs/NATIONAL_BASELINE_PART4.md` + یادداشتِ شفافیت در همان سند).
+- **معماری (Wave 9):** `server/worker-service.js` + `server/workers/heavy.js` — ورکرِ دیرزیادِ unref با اسنپ‌شاتِ نسخه‌دار (structured clone؛ `markDirty` → bump). ops: `persist` (نوشتنِ اتمی tmp+rename، 0600) / `backup` (فقط‌داده + نگه‌داریِ ۱۰) / `report` (گزارشِ عمومی). حالتِ پایدار: بکاپ/گزارش بدونِ هیچ هزینه‌ای روی رشتهٔ اصلی. شکستِ ورکر → فال‌بکِ مسیرِ قدیمی؛ خروجِ فرآیند → `persistStoreSync` + `flushSync`.
+- **تازگیِ داده:** تضمینِ سخت با نسخه‌ها — نوشتنِ تازه همیشه پیش از op بعدی به ورکر می‌رسد (آزمون‌های W9-5/W9-6d: نوشتنِ نشانگر → بکاپِ فوری شاملِ نشانگر؛ ساختِ کلاس با REST → شمارشِ گزارش همان لحظه +۱).
+- **اعداد (سندباکس، store دمو ۵٫۶MB):** بلاکِ رشتهٔ اصلی در تیکِ persist: ‏~۴۶ms → max ‏۱۶٫۸ms (فقط clone)؛ در `POST /api/admin/backup`: ‏~۴۶ms هر درخواست → **max ‏۰٫۶ms** در ۸ درخواستِ پشت‌هم. استاتیک: ‏`readFileSync` ‏~۲MB در هر درخواست → خواندنِ async + کشِ mtime با سقفِ بایت. مستندات: `docs/WAVE9_PERFORMANCE.md` (+ کپیِ `reza/`).
+- **فایل‌ها:** جدید: `server/worker-service.js`، `server/workers/heavy.js`، `server/static-cache.js`، `server/public-report-core.js` (هستهٔ مشترکِ endpoint/ورکر)، `tests/wave9-performance.js` (۳۹/۳۹)، `docs/WAVE9_PERFORMANCE.md`، `docs/NATIONAL_BASELINE_PART4.md`. تغییر: `server/index.js` (persist/استاتیک/سیم‌کشی)، `server/admin.js` (بکاپ از ورکر؛ فال‌بکِ `backupNowInline`)، `server/public-report.js` (ورکر + فال‌بک)، `server/audit.js` (`PAYESH_AUDIT_ASYNC=1` — نویسندهٔ پس‌زمینه؛ پیش‌فرض sync برایِ سازگاریِ آزمون‌ها)، `server/cache.js` (L1 محدود: سقف/LRU/TTL + `l1Stats`)، `docs/DEPLOY.md` (۳ متغیرِ تازه)، Progress Tracker (Wave 0 ✅ / Wave 9 🟡).
+- **گیت‌ها:** `tests/wave9-performance.js` **39/39** ✅؛ `smoke` ‏**۵۴۷/۵۴۷** ✅؛ `check-authz` ‏**۰** ✅؛ `secret-scan` ‏**۱۱/۱۱** ✅؛ رگرسیونِ هدفمند: server1 (31/31)، server6/7/8/9، server14-gc (+جهش‌های GC ‏4/4 کشته)، server18 (55)، security2 (25)، public-security (10/10)، audit (47/47)، api/runner (7/7) — همه سبز.
+- **رگرسیونِ کامل** (`scripts/run-all-tests.sh`): ‏**۲۲۳ سبز / ۷ قرمز** (۳۲ دقیقه در این سندباکس). هر ۷ قرمز با A/B روی خطِ پایهٔ دست‌نخوردهٔ `781a471` (worktree) راستی‌آزمایی شد — **همگی پیش‌موجود/محیطی، صفر رگرسیون از این دور**: sync-atomic-batch (+جهش‌هایش: نیاز به PostgreSQL واقعی؛ جهش‌ها خودشان ۵/۵ کشته)؛ xss-guard (‏X2b اسکنِ document.write سمتِ کلاینت)؛ rate-limit-mutations (لنگرِ کهنهٔ M2)؛ otp-ratelimit-mutations (لنگرهای کهنهٔ M3–M6)؛ server-mutations (M1/M14/M15)؛ tracing-performance (فقط زیرِ بارِ موازی قرمز — تکی ۷/۷ سبز).
+- **وضعیتِ شناخته‌شدهٔ پیش‌موجود (بی‌ربط به این دور):** در `tests/server-mutations.js` جهش‌های M1/M14/M15 روی خطِ پایهٔ `781a471` هم زنده‌مانده/الگوشان گم‌اند (۱۷/۲۰ قبل و بعدِ Wave 9 یکسان — با `git stash` راستی‌آزمایی شد)؛ M16–M20 (فایل‌هایِ لمس‌شده) همگی کشته می‌شوند. نیازمند مرورِ جداگانه در دورِ بعد.
+- **انکرهای جهشِ حفظ‌شده:** خطوطِ هدفِ جهش در `index.js`/`admin.js` (M16/M17/M18 و `const gc = gcStore();` — ترتیبِ تعریفِ `persistStore` قبل از `persistStoreSync` عمدی است تا M4ِ جهشِ GC همچنان کشته شود) دست‌نخورده ماندند.
+
+
+
+## چت ۴: رفع مجدد کانفلیکت پی‌آر ۳۶ با main جدید — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**وضعیت:** پس از مرجِ پی‌آرهای ۳۹ و ۴۱، `feat/redis-cluster-chat4` دوباره با main ادغام شد؛ تنها کانفلیکت `HANDOFF.md` بود (هر دو طرف حفظ شد) — `server/redis.js` (کلاستر/سنیتنل + گیتِ ریدیِ ‏P0-13)، `schema.sql` و کد سرور خودکار ادغام شدند. گیت‌ها: ‏smoke ۵۴۷/۵۴۷ · check-authz=0 · نشت‌یاب ۱۱/۱۱ · بیلد‌چک ✅ · کلاستر/سنیتنل ۷/۷ · پشتیبان ۸/۸. کامیتِ `5a86ccb` پوش و با `ls-remote` تأیید شد.
+
+## چت ۴: فاز ۲.۱ — ردیس: سنیتنل/کلاستر + پایداری کامل — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
+
+**وضعیت:** شاخهٔ تازهٔ `feat/redis-cluster-chat4` (بر پایهٔ `origin/main`). پنج کامیت، یک کامیت به‌ازای هر کار:
+- `22a7bad` پشتیبانی کلاینتی سنیتنل + کلاستر در `server/redis.js` — اولویت: `REDIS_CLUSTER_NODES` > `REDIS_SENTINELS`+`REDIS_SENTINEL_NAME` > `REDIS_URL` > فال‌بک حافظه؛ `buildRedisConfig(env)` خالص و تست‌پذیر؛ رمز فقط از محیط. آزمون `tests/redis-cluster.js`: ۷/۷ پیکربندی همیشه سبز؛ بخش زنده (اتصال + کشف مستر از سنیتنل‌ها) بدون ردیس واقعی خودکار رد می‌شود.
+- `65925d9` الگوهای پایداری در `ops/redis/` — ۳ نود داده (مستر + ۲ تکثیر) با `save 900 1 / 300 10 / 60 10000` + `appendonly yes / everysec` + بازنویسی خودکار ۱۰۰٪/۶۴مگ + `stop-writes-on-bgsave-error yes`؛ ۳ سنیتنل با `quorum=2`.
+- `0d44bd8` `tools/redis-backup.sh` (SAVE→RDB + BGREWRITEAOF→AOF، اختیاری S3، نگهداری ۷ روز، قفل اجرا، کرون هر ۶ ساعت) + `tests/redis-backup.js` با ردیس جعلی: ۸/۸.
+- `96e7887` `docs/REDIS_RESTORE_PROCEDURE.md` — بازیابی AOF/RDB، توپولوژی سنیتنل، تمرین در محیط جدا، چک‌لیست پس از بازیابی.
+- `376d21c` `docs/REDIS_CLUSTER_SETUP.md` — راهنمای کامل استقرار + نقشهٔ ارتقا به کلاستر ۶ نودی.
+**گیت‌ها:** ‏smoke ۵۴۷/۵۴۷ · check-authz=0 · secret-scan ۱۱/۱۱ · redis-cluster ۷/۷ · redis-backup ۸/۸.
+**درس‌ها:** در سنبوکس باینری `redis-server`/`redis-cli` نیست — بخش زندهٔ تست‌ها خودکار رد می‌شود؛ اسکریپت پشتیبان با `redis-cli` جعلی آزموده شد. رازها فقط جای‌دار `{{…}}`.
+**بعدی:** ادغام به `main` با تأیید ناظر ارشد (اصل هشتم)؛ در صورت استقرار واقعی، تمرین بازیابی بخش ۴ `REDIS_RESTORE_PROCEDURE.md` پیش از مهاجرت.
+
+## ادغام با origin/main (PR #39) + رفعِ شکستِ wave10 — ۲۰۲۶-۰۹-۰۹ ✅
+
+**وضعیت:** `git merge origin/main` (۱۷ کامیتِ main: db-engineering نقلِ-قولِ
+شناسه‌ها، baseline/roadmap docs، `migrations/001..003`+down، `reza/` کپی‌ها) →
+یک تعارضِ محتوا فقط در همین `HANDOFF.md` → به‌صورت union (هر دو سمت) رفع شد.
+کلیدِ `8c1f64c` (مرج‌کامیت) + کامیتِ `1aa9a52` برای رفعِ پس از مرج.
+
+- پس از مرج، `wave10-db-scale` از ۲۶/۲۶ به ۲۵/۲۶ (یک شکست) افتاد. علتِ ریشه:
+  تغییرِ db-engineering در main شناسه‌ها را نقل‌قول می‌کند (`INSERT INTO "grades"`)؛
+  مسیرِ داده به‌درستی روی primary ماند ولی رشتهٔ سنجشِ D4a دیگر تطبیق نداشت.
+  D4a به regex پذیرای هر دو شکل (نقل‌قول‌شده/نشدنی) شل شد → **۲۶/۲۶**.
+- دروازه‌هایِ درختِ مرج‌شده: smoke **۵۴۷/۵۴۷** · check-authz **۰** · secret-scan
+  **۱۱/۱۱** · build --check ✅ · wave10 **۲۶/۲۶** · wave13-security **۱۷/۱۷** ·
+  wave1/wave3-query/wave3-query2/wave4-sync همه سبز.
+
+## Wave 13 (چت ۲): Security Program — SAST/SCA/SBOM/DAST/Secret + آمادگی پنتست — ۲۰۲۶-۰۹-۰۹ — انجام، با قیدِ اجرایِ زنده ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` — `security.yml` از «فقط WAF» به برنامهٔ
+امنیتیِ چند-جاوبی ارتقا یافت (طبقِ گزینهٔ تأییدشده: repo-native، بدون اختراعِ ESLint).
+
+- `.github/workflows/security.yml` → jobs: `sast` (repo-native: `tests/run.js` +
+  `tools/check-authz.js` + syntax)، `secret` (`secret-scan.js`)، `sca` (`npm audit
+  --audit-level=high`، best-effort)، `sbom` (`npm sbom` SPDX + آپلود، best-effort)،
+  `dast` (OWASP ZAP baseline، best-effort + نیازِ `SECURITY_TARGET_URL`)، `waf`
+  (حفظ‌شده: `waf-ddos --unit-only` + `nginx -t`).
+- `docs/PEN_TEST_CHECKLIST.md` — سناریوهای پنتست (auth/IDOR/XSS/SQLi/CSRF/SSRF)،
+  ابزار (Burp/ZAP)، دستورالعمل اجرا.
+- `docs/SECURITY_MODEL.md` — مدلِ امنیتیِ نهایی + جدولِ جایگاهِ هر stage در CI.
+- `tests/wave13-security.js` → **۱۷/۱۷** (وجودِ هر stage در workflow + وجودِ مستندات).
+- **نکتهٔ صداقت:** سئوت‌هایِ jsdomِ وابسته به بوتِ سرور (xss-guard/security/waf-full)
+  به استورِ سیدشده نیاز دارند → نه در گیتِ merge؛ در جریانِ محلی/شبانه. اجرایِ
+  واقعیِ SCA/SBOM/DAST و پنتستِ زنده = best-effort/pending (نیازِ registry/URL زنده).
+- **دروازه‌ها:** smoke **۵۴۷/۵۴۷** · check-authz **۰** · secret-scan **۱۱/۱۱** ·
+  build --check ✅ · wave10 سبز · wave13 **۱۷/۱۷**.
+
+## Wave 10 (چت ۲): Database Scale — Read Replica + Pool Observability + طراحی Partition — ۲۰۲۶-۰۹-۰۹ — انجام، با قیدِ PG ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` — طبقِ دامنهٔ تأییدشده (کدِ DB-layer با
+fake-DB؛ پارتیشن‌بندی فقط طراحی؛ بدون DDLِ پرریسکِ بی‌PG).
+
+- `server/db.js`: poolِ رپلیکایِ فقط‌خواندنیِ اختیاری (`READ_DATABASE_URL`) +
+  `queryRead()` (fallbackِ امن به primary) + `isReplicaActive()`/`getReadPool()`/
+  `poolStats()`/بخشِ `read_replica` در `healthCheck()`/بستنِ هر دو pool در `close()`.
+- `server/dbquery.js`: `executePagedList` (خوانشِ سنگینِ GET-listِ موج ۳) وقتی
+  `db.queryRead` موجود باشد از آن استفاده می‌کند → GET-list ها به رپلیکا، بقیه
+  روی primary. نوشتن (persistOp/transaction) همیشه primary.
+- `server/index.js`: `/api/health` در حالتِ PG، میدانِ `db_pools` (= poolStats).
+- **امنیت/درستی:** خوانش‌هایِ صحتِ همگام/پول (readCollection/readOne/دلتا) عمداً
+  روی primary می‌مانند؛ رپلیکا فقط برایِ GET-list هایِ سنگین — رپلیکا هرگز
+  نوشتهٔ تازهٔ خودِ کلاینت را عقب نمی‌اندازد.
+- **تست:** `tests/wave10-db-scale.js` **۲۶/۲۶** (fake pool). دروازه‌ها: smoke
+  **۵۴۷/۵۴۷** · check-authz **۰** · secret-scan **۱۱/۱۱** · build --check ✅ ·
+  wave1/wave3(×۲)/wave4 سبز.
+- **🔴 قیدِ صداقت:** اجرایِ واقعیِ read-replica بر PG و **پارتیشن‌بندی** =
+  pending (بدونِ PGِ زنده). طراحیِ پارتیشن (RANGE بر `created_at`) در
+  `docs/WAVE10_DB_SCALE.md` §۳ ثبت شد.
+
+## Wave 7 (چت ۲): Offline-first — سخت‌سازی صف آفلاین — ۲۰۲۶-۰۹-۰۹ — انجام (راستی‌آزمایی + مستند) ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` — سازوکارِ سقف/نگهداشت/صفِ‌مرده که موج ۷
+می‌خواست، از پیش در `src/js/27-sync.js` (کارِ ملیِ P1-10) پیاده و توسط
+`sync-queue-caps.js`/mutations پوشیده شده بود؛ موج ۷ راستی‌آزمایی و سندِ رفتاریِ
+مفقود را افزود.
+
+- محدودیت‌ها در `SYNC_QUEUE_CAPS` تأیید شد: `maxOperations:1000` ·
+  `maxBytes:5MB` · `ageLimitMs:30 روز` · `maxTries:5` · `warnRatio:0.8/0.7` ·
+  `dlqMax:200`.
+- تخلیه: قربانی اول rejected→failed→conflict→sending→**آخر pending**؛ هرسِ
+  قدمت هرگز دادهٔ کاربر (pending/sending) را نمی‌زند؛ پنجمینِ شکست ← DLQ با علت؛
+  قلمِ مسموم (`SYNC_DEAD_CODES`) مستقیم dead-letter؛ ذخیره‌سازیِ مقاوم در برابرِ
+  پرشدنِ حافظه؛ هشدارِ نزدیکِ سقف با هیسترزیس؛ خودتشخیصیِ `sync-queue-health`
+  با تعمیرِ بی‌خطر.
+- **تست:** `sync-queue-caps.js` **۳۶/۳۶** · `sync-queue-caps-mutations.js`
+  **۵/۵ killed** (baseline سبز). smoke ۵۴۷/۵۴۷ · check-authz ۰ · secret-scan ۱۱/۱۱.
+- **تصمیمِ کاربر:** فایلِ تستِ تکراریِ `wave7-offline-queue.js` ساخته نشد (رفتار
+  پوشیده بود)؛ فقط سند افزوده شد: `docs/WAVE7_OFFLINE_QUEUE.md`.
+
+## Wave 4 (چت ۲): Sync / A01 — Pull DB-native + Tombstone prep + پروتکل — ۲۰۲۶-۰۹-۰۹ — انجام، با یک قید ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` — دلتای Pull در حالتِ PG-زنده DB-native شد
+(بدون اسکنِ کل جدول)، تای-بریکر/کلیدِ (updated_at,id) و خوانشِ سنگ‌قبر آماده شد، و
+پروتکل در `docs/SYNC_PROTOCOL.md` ثبت شد.
+
+- `server/syncdelta.js` (جدید): سازندهٔ SQL خالص — `deltaRowsSql` (pushِ محمولِ
+  زمانی + `ORDER BY updated_at,id` = مدیریتِ clock-skew)، `deltaKeysetSql`
+  (کلیدِ cursor با LIMIT+1)، `tombstonesSql` (جدولِ آمادهٔ `server_tombstones`).
+- `server/pull.js`: در دلتایِ PG-زنده، ردیف‌هایِ هر کالکشن از `deltaRowsSql`
+  می‌آیند؛ scope در JS روی همان ردیف‌هایِ محدود (scope فقط حذف می‌کند)؛
+  **fallback امن** وقتی جدول ستونِ زمانی نداشته باشد → fetch کامل + فیلترِ JS
+  (رفتارِ قبلی). Tombstone همچنان از store (تا فعال‌شدنِ write به PG، تا حذف گم نشود).
+- `server/schema.sql`: جدولِ `server_tombstones` (آماده، idempotent).
+- **قراردادِ پاسخِ pull ثابت ماند** → کلاینت `29-pull.js` بی‌تغییر.
+- **دروازه‌ها:** smoke **۵۴۷/۵۴۷** · run.js **۳۵/۳۵** · wave4-sync **۱۱/۱۱** ·
+  pull-bootstrap **۱۲/۱۲** · wave1 **۱۸/۱۸** · wave3 **۱۳/۱۳** + **۱۳/۱۳** ·
+  check-authz **۰** · secret-scan **۱۱/۱۱** · `build --check` ✅.
+- **🔴 قیدِ صداقت:** اجرایِ واقعی بر PG + **push در یک تراکنشِ PG** = pending
+  (بازنویسیِ ~۸۴۰ خطِ sync بدون PGِ زنده قابلِ تأیید نیست؛ ۳۱ فایلِ تستِ sync
+  را لمس می‌کند). جزئیات در `docs/SYNC_PROTOCOL.md`.
+
+## Wave 3 (چت ۲) — بخش دوم: GET-list های grades/classes/users → DB-native — ۲۰۲۶-۰۹-۰۹ — انجام، با یک قید ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` (ادامهٔ بخش اول) — سه builder تازه در
+`server/dbquery.js` (`buildGradesList`/`buildClassesList`/`buildUsersList`) +
+سیم‌کشیِ سه route به آن (فقط وقتی PG زنده) + Index در `server/schema.sql` +
+سئوتِ تازهٔ `tests/wave3-query2.js` (۱۳/۱۳).
+
+- **grades:** scope/filter + محدودهٔ نقشِ student/parent/teacher (EXISTS) ·
+  enrichment (subject_name/student_name) با LEFT JOIN در خود SQL · `ORDER BY id DESC`.
+- **classes:** scope + grade · `student_count` (scalar-subquery روی enrollments) +
+  `homeroom_teacher_name` (LEFT JOIN users).
+- **users:** scope + role + جستجویِ آزادِ ILIKE روی name/nid/phone؛ national_id
+  فقط پارامترِ بایند.
+- `_finalize` تعمیم یافت (selectList/pageFrom/countFrom) تا COUNT روی جدولِ پایه
+  بماند و صفحه از sourceِ غنی (JOIN) بیاید. هر سه route async شدند؛ index.js آن‌ها
+  را await می‌کند. وقتی PG خاموش است JS قبلی byte-identical اجرا می‌شود.
+- **دروازه‌ها:** smoke **۵۴۷/۵۴۷** · run.js **۳۵/۳۵** · wave3 **۱۳/۱۳** ·
+  wave3-query2 **۱۳/۱۳** · wave1 **۱۸/۱۸** · check-authz **۰** ·
+  secret-scan **۱۱/۱۱** · `build --check` ✅.
+- **🔴 قیدِ صداقت:** اجرایِ واقعی + `EXPLAIN ANALYZE` + گیتِ برابری/مجوز بر
+  PGِ زنده هنوز pending است (سندباکس PG نداشت) — الزامی پیش از تولید. کارهایِ باز
+  در `docs/WAVE3_QUERY_PERFORMANCE.md` §۴.
+
+## Wave 3 (چت ۲): Query و Performance · Part 1 — students/attendance → DB-native — ۲۰۲۶-۰۹-۰۹ — انجام، با یک قید ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` (رویِ Wave 1 همان شاخه) — لایهٔ
+DB-native کوئری/پجینگ (`server/dbquery.js`) + سیم‌کشیِ `students` و
+`attendance` GET-list به آن (فقط وقتی PG زنده) + ۴ Index در
+`server/schema.sql` + Inventory در `docs/WAVE3_QUERY_PERFORMANCE.md` +
+سئوتِ تازهٔ `tests/wave3-query.js` (۱۳/۱۳).
+
+- **الگویِ قبلی:** همهٔ GET-list ها «همه را از store بار → فیلتر → sort →
+  slice» در JS می‌کردند (Keyset-pagination از قبل بود اما روی آرایهٔ کامل).
+- **تغییرها:** `server/dbquery.js` (builders خالص: school-scope + role-scope با
+  `EXISTS` برای teacher/student/parent + keyset `id > $cursor` + `LIMIT limit+1`
+  برای `has_more` + `COUNT` برای total؛ همهٔ مقادیرِ کاربری فقط پارامتر، شناسه‌ها
+  فقط allowlist) · `server/routes/students.js` و `attendance.js` (هر دو async؛
+  مسیرِ DB-native فقط وقتی `db.isPostgres()`؛ وگرنه JS قبلی دست‌نخورده) ·
+  `server/index.js` (await دو GET-list) · ۴ Index در `schema.sql`.
+- **حفظِ رفتار:** وقتی PG خاموش است مسیرِ قبلی اجرا می‌شود → byte-identical.
+- **دروازه‌ها:** smoke **۵۴۷/۵۴۷** · run.js **۳۵/۳۵** · wave3-query **۱۳/۱۳** ·
+  wave1-reads **۱۸/۱۸** · check-authz **۰** · secret-scan **۱۱/۱۱** ·
+  `build --check` ✅.
+- **🔴 قیدِ صداقت:** شاخهٔ PostgreSQL تعریف/سیم‌کشی/unit-test شده ولی اجرایِ
+  واقعی + `EXPLAIN ANALYZE` + گیتِ برابری/مجوز بر PGِ واقعی هنوز pending است
+  (هیچ PG/درایور در سندباکس نبود) — الزامی پیش از تولید. کارهایِ باز در
+  `docs/WAVE3_QUERY_PERFORMANCE.md` §۴.
+
+## Wave 1 (چت ۲): PostgreSQL Source of Truth · Part 1 (Reads inventory + seam) — ۲۰۲۶-۰۹-۰۹ — انجام، با یک قید ✅
+
+**وضعیت:** روی `arena/01a085ca-p2` (نوکِ این سشن = مرجِ PR #37) — درِ
+خوانشِ یکپارچه در `server/db.js` (`readCollection`/`readOne`) + اتصالِ دو
+مسیرِ پرارزشِ `bootstrap` و `pull` به آن + Inventory در
+`docs/WAVE1_READS_INVENTORY.md` + سئوتِ تازهٔ `tests/wave1-reads.js`.
+
+- **پیش‌زمینه:** سامانه دو-حالته است؛ پیش از این دور حتی با PGِ وصل، همهٔ
+  خوانش‌هایِ سرور از JSON استورِ درون‌حافظه می‌آمد (PG فقط آینهٔ **نوشتن**
+  بود). این بخش «منبعِ حقیقتِ خوانش» را با یک درِ واحد در `db` آغاز می‌کند.
+- **تغییرها:** `server/db.js` (+`readCollection`,`readOne`,`isPgReadableTable`
+  — سفیدفهرستِ جدول، کلیدهایِ داخلی `__*` از PG نمی‌روند) ·
+  `server/routes/bootstrap.js` (همهٔ خوانش‌ها از `readCol(db)`؛ صفر `store.X`
+  مستقیم باقی مانده) · `server/pull.js` (ردیفِ هر کالکشن از `readCol(db)`؛
+  scope/دلتا/تومب‌استون **عمداً** روی `store` ماند و در Inventory ثبت شد) ·
+  `server/index.js` (پاسِ `db` به هر دو کنترلر).
+- **رفتارِ حفظ‌شده:** در fallbackِ حافظه‌ای `memoryStore === store`، پس
+  `readCollection(c)` دقیقاً همان `store[c]` را می‌دهد. سئوتِ جدید ۱۸/۱۸
+  (برابریِ بایت‌به‌بایتِ bootstrap/pull در هر دو مسیر برایِ همهٔ نقش‌ها +
+  ثابت‌کردنِ اینکه درِ seam واقعاً طی می‌شود).
+- **دروازه‌ها:** smoke **۵۴۷/۵۴۷** · pull-bootstrap **۱۲/۱۲** ·
+  check-authz **۰** · secret-scan **۱۱/۱۱** · `build --check` سبز (تغییر فقط
+  سمتِ server).
+- **🔴 قیدِ صداقت:** هیچ PG زنده/درایور در سندباکس نبود؛ شاخهٔ PostgreSQLِ
+  `readCollection` تعریف و سیم‌کشی شده ولی **اجرا نشده**. اجرایِ واقعی بر
+  PG + مهاجرتِ بقیهٔ REST routes و scope در بخشِ بعدیِ موج (فهرستِ کارهایِ
+  باز در `docs/WAVE1_READS_INVENTORY.md` §۳).
+
+
 ## چت ۳ (G.1 سلامت): شاخصِ سلامتِ مدرسه — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
 
 **وضعیت:** کامیت `feat(health): add g.1 school health index` روی `feat/health-index-chat3`. گیت‌ها سبز: ‏smoke ۵۴۷/۵۴۷‏، ‏check-authz=0‏، ‏secret-scan ۱۱/۱۱‏، سوئیت تازه ‏۳۲/۳۲‏ + جهش‌ها ‏۵/۵‏.
@@ -31,7 +564,6 @@
 **پیکربندی:** `PAYESH_WORKER_INTERVAL_MS` (پیش‌فرض ۱۰۰۰) · `PAYESH_WORKER_MAX_RETRIES` (پیش‌فرض ۵).
 **گیت‌ها:** ‏smoke ۵۴۷/۵۴۷ · check-authz=0 · secret-scan ۱۱/۱۱ · server16 ‏۳۹/۳۹ · wave8 ‏۱۴/۱۴ · جهش‌ها ۵/۵.
 **بعدی:** ادغام به `main` با تأیید ناظر ارشد (اصل هشتم)؛ هندلرهای بعدی (گزارش/اعلان) طبق راهنمای سند.
-
 ## چت ۱: Wave 0 / Part 3 — Baseline دیتابیس و کش — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **وضعیت:** اندازه‌گیری baseline دیتابیس/کش بدون تغییر کد پروژه انجام شد و در `docs/NATIONAL_BASELINE_PART3.md` ثبت شد؛ کپی همگام در `reza/` قرار گرفت. Progress Tracker برای Wave 0 به‌روز شد: Partهای ۱، ۲ و ۳ کامل‌اند و Part 4 باقی است.
@@ -174,291 +706,92 @@ academic-years **۹/۹** + جهش **۵/۵** · exam-types **۲۷/۲۷** + جهش
   `git merge-tree 430c7c8 origin/main origin/feat/b3-d234-chat4` سنجیده و در
   `docs/PR_MERGE_PLAN.md` §۶ ثبت شد. دامِ روش هم ثبت شد: بلوک‌های
   `added in both` را باید جدا شمرد، وگرنه `docs/ROADMAP.md` از قلم می‌افتد.
-
-## چت ۳ (E.6 زمان‌بند): تولید خودکار برنامهٔ هفتگی — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
-
-**وضعیت:** کامیت `feat(schedgen): add e.6 automatic timetable generator` روی `feat/schedule-gen-chat3`. گیت‌ها سبز: ‏smoke ۵۴۷/۵۴۷‏، ‏check-authz=0‏، ‏secret-scan ۱۱/۱۱‏، ‏build --check‏ تمیز، سوئیت تازه ‏۶/۶‏ + جهش‌ها ‏۵/۵‏، رگرسیونِ schedconf2 سبز.
-- **هسته (`74-schedgen.js`):** `schedGenerate` خالص و قطعی — تخصص‌اول، حریصانه با پراکندگیِ روزانه، پس‌گردِ تک‌سطحی، تداخلِ دبیرِ سراسری؛ تعیین‌نشده‌ها با دلیل؛ پوششِ فعلی از تقاضا کم می‌شود (اجرایِ دوباره دوبرابر نمی‌کند).
-- **رابط:** دکمهٔ مدیر + پیش‌نمایشِ به‌تفکیکِ کلاس + ثبتِ فقط-در-خانهٔخالی (بدونِ رونویسی)؛ بدونِ تغییرِ مدل (schedule از قبل فقط-مدیر).
-- **جهش M3** یک حفرهٔ واقعیِ تست را گرفت (نبودِ وارسیِ متخصصِ درسِ دوم) و تست سفت شد.
-- **برای سوپروایزر:** سقفِ بارِ دبیر (حداکثر ساعتِ هفتگی) فعلاً نیست — اگر خواسته شود، ورودیِ `max_load` به هسته اضافه می‌شود.
-
-
-## چت ۴: رفع کانفلیکت پی‌آر۲۲ (تریسینگ + WAF) — ۲۰/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
-
-**وضعیت:** ادغام `origin/main` (430c7c8) در `feat/tracing-chat3`؛ تنها کانفلیکت در `server/index.js` (دو هانک: بارگذاری ماژول‌ها + میان‌افزار درخواست) با نگه‌داشتن هر دو طرف حل شد — ترتیب: تریسینگ اول (پیش از ماژول‌های سازنده و پیش از ممیزیِ WAF تا رویدادها شناسهٔ ردیابی داشته باشند)، سپس WAF. کامیت `71d6221` پوش شد.
-- **تست‌ها:** تریسینگ (یکپارچه ۱۴/۱۴ · جهش‌ها ۵/۵ · کارایی ۷/۷ · نمونه‌برداری ۳۱/۳۱) · دودی ۵۴۷/۵۴۷ · مجوزها ۰ · `build --check` ۰ · `waf-ddos` ۲۹/۲۹ (آزمون INT-b که روی مین قرمز بود با این ادغام سبز شد — تأیید همزیستی تریسینگ و WAF).
-- **نکتهٔ محیطی:** وابستگی‌های `@opentelemetry/*` در `package.json` هست؛ در هر محیط تازه باید `npm i` شوند وگرنه سوئیت‌های تریسینگ با نبود ماژول می‌میرند.
-
-## چت ۳ (P1 تمامیت داده): آینهٔ اتمیکِ چندرکوردی P1-14 — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
-
-**وضعیت:** کامیت `feat(p1-14)` روی `feat/p1-data-integrity-chat3`. گیت‌ها سبز: ‏smoke ۵۴۷/۵۴۷‏، ‏check-authz=0‏، ‏build --check‏ تمیز، ‏migrate‏ معتبر، سوئیت تازه ‏۲۲/۲۲‏ + جهش‌ها ‏۵/۵‏، رگرسیونِ سرور (server1/2/3/4/5/12/14-gc/16 + persist-roundtrip) همه سبز.
-- **هسته (`server/db.js`):** جداسازیِ پرتاب‌گرِ درونی `persistOpWithClient` (معنایِ قدیم حفظ شده) + `persistOpsBatch` (یک تراکنش برایِ همه) + سخت‌سازیِ ROLLBACK (خطایِ rollback خطایِ اصلی را نمی‌پوشاند) + سیمِ تستِ `__setPoolForTests`. تک‌opها (`persistOp`) دست‌نخورده.
-- **سیم‌کشی (`server/sync.js`):** حذفِ N آینهٔ بی‌انتظارِ داخلِ حلقه؛ جمع‌آوریِ `mirror` با شناسه‌هایِ اعمال‌شدهٔ سرور (رفعِ سوراخِ id-less) + یک `persistOpsBatch`یِ منتظر پس از حلقه؛ شکست → rollback + ‏audit‏ (`sync_mirror_failed`)، پاسخِ کلاینت عوض نمی‌شود. روت‌ها تک‌op و اتمیک بودند — بدونِ تغییر (راستی‌آزمایی شد).
-- **تست (`tests/sync-atomic-batch.js`):** بدونِ PG واقعی — شکلِ SQL، انضباطِ تراکنش (BEGIN…COMMIT/ROLLBACK + آزادسازی) با pool جعلی، سیم‌کشیِ createSync با ctx جعلی.
-- **برای سوپروایزر:** آینه-دوباره در ری‌ترای (پس از شکستِ نامرئی، PG عقب می‌ماند) نیازمندِ طراحیِ retry است — بیرونِ اسکوپ. ‏pg-mem‏ برای تست کنار گذاشته شد (ROLLBACK پس از خطا را واقعاً برنمی‌گرداند — واگرا از PG).
-- **بعدی:** PR از همین شاخه به main + گزارشِ تجمیعی.
-
-## چت ۳ (P1 تمامیت داده): اینوارینت‌های دیتابیس P1-13 — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
-
-**وضعیت:** کامیت `feat(p1-13)` روی `feat/p1-data-integrity-chat3`. گیت‌ها سبز: ‏smoke ۵۴۷/۵۴۷‏، ‏check-authz=0‏، ‏build --check‏ تمیز، سوئیت تازه ‏۱۴/۱۴‏ + جهش‌ها ‏۵/۵‏، بازتولیدِ schema.sql بایت‌به‌بایت یکسان (صفر ویرایش دستی).
-- **قیدهای تازه در `tools/migrate-to-pg.js` (هرکدام محافظت‌شده با وجودِ ستون):** ‏`chk_classes_capacity` (ظرفیت > ۰)‏، ‏`uq_enrollments_student_year`‏، ‏`uq_schedule_teacher_slot` (دقیقاً همان فرم پرامپت — داده تداخلِ سراسری ندارد)‏، ‏`chk_users_status`‏، ۴ ‏FK‏ نمره (معوق، CASCADE).
-- **تصحیح enum:** مقدار چهارمِ وضعیت از `server/validate.js` یعنی ‏`awaiting_transfer`‏ است نه ‏`transferred`‏ پرامپت — پرامپت اشتباه بود، کدِ مرجع درست. (۲۶ مجموعه status دارند با enumهای متفاوت؛ اسکوپ فقط users.)
-- **هشدار انتقال:** ‏UNIQUE(student,year)‏ روی دادهٔ امروز خنثی است (year خالی؛ NULLها در UNIQUE تداخل ندارند)؛ انتقالِ هم‌سال با دو سطرِ باز باید در سطح اپ بسته شود — بیرون از اسکوپ، برای سوپروایزر.
-- **بازتولید از بذرِ کانونیکال:** ‏`node server/seed.js`‏ بعد migrate؛ جدول‌ها یکسان (۸۸=۸۵+۳)، سطرها فقط رشد (۳۲۶۲۷←۳۳۸۴۵، بدون حذف/کوچک‌شدن)؛ نسخهٔ کامیت‌شدهٔ قبلی از دنیایِ کهنه بود.
-- **یافتهٔ جنبی (رفع نشد، برای سوپروایزر):** ابزار طولِ رشته (chars) را ‏bytes‏ گزارش می‌کند — اصلاح یک‌کلمه‌ای، بیرون از اسکوپ P1-13.
-- **بعدی:** P1-14 (اتمی‌بودن) روی همین شاخه، بعد PR.
-
-## چت ۳ (P1 تمامیت داده): سقف و نگهداشتِ صفِ ارسال P1-10 — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
-
-**وضعیت:** کامیت `feat(p1-10)` روی `feat/p1-data-integrity-chat3` (از `fadeae6`). گیت‌ها سبز (Node ‏22.23.2‏ + ‏jsdom 30.0.1‏): ‏run.js + ‏smoke ۵۴۷/۵۴۷‏، ‏check-authz=0‏، ‏build --check‏ تمیز، ‏migrate-to-pg‏ معتبر، ‏deadletter ۱۸/۱۸‏، ‏sync-chunk ۲۸/۲۸‏، سوئیت تازه ‏۳۶/۳۶‏ + جهش‌ها ‏۵/۵‏.
-- **قابلیت:** سقفِ ۱۰۰۰ عملیات / ۵MB / نگهداشتِ ۳۰روزهٔ ترمینال‌ها + صفِ مردهٔ ماندگار (`sms_syncdlq_v1`، سقف ۲۰۰) + انتقال به DLQ پس از ۵ تلاشِ ناموفق + هشدارِ «نزدیک سقف» (۸۰٪ با هیسترزیس ۷۰٪) + بخشِ «عملیاتِ مرده» در پنل + آزمونِ خودتشخیصیِ `sync-queue-health` (ردهٔ engine). دادهٔ کاربر (pending/sending) هرگز با قدمت یا سقف حذف نمی‌شود.
-- **تخلیهٔ هوشمند:** اول rejected بعد failed بعد conflict (قدیمی‌ترین اول، pending آخر)؛ ذخیره‌سازی مقاوم در برابر پرشدن حافظه (`saveQueue` حالا boolean برمی‌گرداند؛ فراخوان‌ها دست‌نخورده).
-- **تست‌ها:** `tests/sync-queue-caps.js` (۳۶ چک) + `tests/sync-queue-caps-mutations.js` (۵/۵ کشته). دو تست دودی (batchWrites و مرز) به «قانونِ بقا» (صف+DLQ) به‌روز شدند چون سقفِ واقعی در دودی می‌بندد (صف به ۱۰۰۰ می‌رسد) — هیچ عملیاتی گم نمی‌شود.
-- **درس‌ها:** ویرایش‌های موازیِ یک فایل مسابقه می‌دهند (رفع: پچ اتمیِ پایتونی)؛ تست امنیت localStorage واژگانی است (حتی واژه در کامنت قرمزش می‌کند).
-- **بعدی:** P1-13 (اینوارینت‌های دیتابیس) بعد P1-14 (اتمی‌بودن) روی همین شاخه، هرکدام یک کامیت.
-
-## چت ۳: سبز شدن CI پی‌آر ۱۱ (رفع ۳ تست زنگ + ماتریس صادقانهٔ Node 22) — ۱۹/۰۶/۱۴۰۵
-
-**وضعیت:** کامیت `fix(ci)` روی `feat/farnaz-phase1` (پی‌آر ۱۱). گیت‌های محلی سبز (Node ‏22.23.2‏ + ‏jsdom 30.0.1‏): ‏run.js ۳۵/۳۵‏، ‏smoke ۵۴۷/۵۴۷‏، ‏check-authz=0‏، ‏entry-gpa/dorm-kind‏ کامل + جهش‌ها ‏۶/۶‏ و ‏۵/۵‏.
-
-- **ریشهٔ ۳ تست قرمز (فقط 22.x):** سلکتور نامعتبر CSS در `tests/smoke.js` (مقدار عددی بدون کوتیشن: `[data-day=0]`)؛ ‏jsdom 25‏ سهل‌گیرانه می‌پذیرفت ولی ‏jsdom 30‏ مثل مرورگر واقعی `Invalid selector` می‌دهد. رفع: کوتیشن‌دار شدن هر ۶ مورد — فقط تست، صفر تغییر اپ/منطق (کد اپ قبلاً کوتیشن داشت).
-- **سبز پوچ ۱۸/۲۰ (فعلاً باقی، Status-quo):** ‏jsdom 30‏ رسماً Node ‏≥۲۲‏ می‌خواهد (`engines: ^22.22.2`)؛ روی ۱۸/۲۰ ‏require‏ می‌میرد (`markAsUncloneable`) و ‏smoke‏ با `exit 0` رد می‌شود (۵۴۷ تست اجراشده = صفر). رفع کامل (ماتریس ‏[22.x]‏ + ورک‌فلوئی publish ‏20←22‏) آماده است ولی پوش نشد: توکن چت ۳ اسکوپ ‏workflow‏ ندارد و گیت‌هاب پوش تغییر ورک‌فلو را رد کرد. ⚠️ حذف 22.x از ماتریس (پیشنهاد موقت) وارونه است: تنها جابی که واقعاً تست می‌دوند همان 22.x است — اقدام لازم: پوش همان دو فایل ورک‌فلو با توکن دارای اسکوپ.
-- **برای سوپروایزر:** همین قرمزی روی `main` هم هست (ران‌های ‏3c5ebff‏ و ‏15ae1bd‏) — باگ از PR #16 (بامپ jsdom روی مین) آمده نه از پی‌آر ۱۱؛ این رفع با مرج پی‌آر ۱۱ به مین هم می‌رسد.
-## فاز ۲ — چت ۴: ممیزی و بهینه‌سازی کلیدهای Redis و TTL — ۱۹/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
-
-**وضعیت:** موجودی کامل کلیدها در `docs/REDIS_KEY_OPTIMIZATION.md`. رفع نشت: الگوی `INCR` سپس `EXPIRE` در `rate-limit.js` با `redis.incrWithTtl` (لوآ اتمیک + خوددرمانی کلیدهای یتیم) جایگزین شد — هیچ کلید بی‌TTL ناشی از کرش باقی نمی‌ماند. `redis.scan` (SCAN امن، بدون `KEYS *`) افزوده شد. `payesh:otp:state` عامدانه دائمی ماند (انقضای آن = صفرشدن تأخیر بروت‌فورس)؛ اندازه‌اش با هرس درون‌سندی کراندار است. ابزار `tools/redis-audit.js`: اسکن + گزارش TTL/مالک + پرچم بی‌انقضای غیرمجاز و ناشناخته‌ها (خروجی ۲ در صورت مشکل). ادغام `origin/main` (56bbedf) نیز در همین شاخه حل شد: شمارنده‌های پنجره‌ای ردیسِ چت۳ + توزیع ردیسی پی۰-۱۵ برای کدها/کول‌داون/تأخیرها.
-- **تست:** `tests/redis-key-audit.js` ۱۷/۱۷ · `rate-limit-distributed` ۹/۹ · `otp-ratelimit` ۴۹/۴۹.
-- **دروازه‌ها:** دودی ۵۴۷/۵۴۷ · مجوزها ۰ · `secret-scan` ۱۱/۱۱.
-- **یافتهٔ پیش‌موجود (از پیش از این تغییر):** `waf-ddos` INT-b روی مین هم قرمز است (همزیستی سرآیند با tracing) — متعلق به کار چت۳، دست نخورد.
-
-## فاز ۲ — چت ۴: پی۰-۱۸ همزمانی خوش‌بینانه (OCC) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** `server/occ.js` (checkOcc/bump) در هر پنج مسیر: کلاس‌ها، نمره‌ها (بلاک دستی به هِلپر رفت)، دانش‌آموزان (هر دو شاخهٔ معلم/مدیر)، کاربران و حضور و غیاب — که پیش‌تر نسخه را بدون بررسی پایه بالا می‌برد. نوشت با نسخهٔ کهنه ⇒ ۴۰۹ با `server_version`؛ رکوردهای تازه `version: 1` دارند؛ کلاینت بدون نسخه برای سازگاری می‌گذرد و بامپ می‌شود.
-- **تست:** `tests/occ.js` ۱۸/۱۸ (رفتار هِلپر؛ چرخهٔ کامل ۲۰۰→۴۰۹→۲۰۰ روی کلاس؛ دو نوشت همزمان با پایهٔ یکسان → دقیقاً یکی ۲۰۰ و یکی ۴۰۹؛ حضور و غیاب کهنه ۴۰۹ می‌شود).
-- **دروازه‌ها:** هفت سوئیت مسیر/کش سبز · چهار سوئیت فاز ۲ سبز · دودی ۵۴۷/۵۴۷ · مجوزها ۰.
-
-## فاز ۲ — چت ۴: پی۰-۱۷ حذف امن با سنگ‌قبر — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** اسپلایسِ خام از هر پنج مسیر (حضورغیاب، کلاس، نمره، دانش‌آموز، کاربر) حذف شد. `server/delete-service.js` تنها درگاه حذف است: بالابردن نسخهٔ رکورد → بایگانی کامل در `store.tombstones` با متادیتا (حذف‌کننده/زمان/دلیل) → رویداد `<col>.deleted` در صندوق برون‌مرزی → خروج از مجموعهٔ زنده + `persistOp` + ممیزی. `server/outbox.js` + جدول `server_outbox` در اسکیمای پستگرس؛ سقف صف ۱۰۰۰.
-- **تست:** `tests/tombstone.js` ۲۵/۲۵ (رفتار سرویس، برابری چندقسمتی نقش دانش‌آموز، سقف صندوق، و e2e واقعی: ساخت کلاس با نشست سوپرادمین → حذف ۲۰۰ → ۴۰۴ → سنگ‌قبر و رویداد در اسنپ‌شات).
-- **دروازه‌ها:** شش سوئیت مسیرها سبز · دودی ۵۴۷/۵۴۷ · مجوزها ۰.
-
-## فاز ۲ — چت ۴: پی۰-۱۶ شناسهٔ بدون‌برخورد — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** ماژول تازهٔ `server/ids.js`: در پستگرسِ فعال، `nextval` روی دنبالهٔ `payesh_<col>_id_seq` با بوت‌استرپِ زیرِ قفل مشاوره‌ای و `setval` رو به جلو؛ بدون پستگرس، مکس+۱ زیر میوتکس فرایندی + قفل توزیع‌شده. هر پنج مسیر (attendance, classes, grades, students, users) به `await ids.nextId(...)` رفتند؛ دانش‌آموز و کاربر فضای نام مشترک `users` دارند.
-- **تست:** `tests/id-collision.js` ۱۱/۱۱ (۱۰۰ همزمان یکتا؛ فضای مشترک؛ لرزش ورود؛ مسیر پستگرس شبیه‌سازی‌شده با بوت‌استرپ و ستوال؛ نمونهٔ دوم عدد تکراری نمی‌گیرد).
-- **دروازه‌ها:** سوئیت‌های مسیرها (کلاس‌ها ۵، نمره‌ها ۵، دانش‌آموزان ۷، کاربران ۵، حضورغیاب ۵، بوت‌استرپ ۵) همه سبز · دودی ۵۴۷/۵۴۷ · مجوزها ۰.
-
-## فاز ۲ — چت ۴: پی۰-۱۵ حالت OTP و حدّ‌نرخ‌ها در ردیس — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** `server/otp-store.js` دوراسته شد: با ردیسِ فعال، کلید `payesh:otp:state` منبع حقیقت است — فلاشِ سریالی‌شده زیر قفلِ پی۰-۱۴ با شمارهٔ دنباله (نویسندهٔ کهنه بازنویسی نمی‌کند؛ فلاش‌ها هم‌جوشی می‌شوند)، خواندنِ دورتر در ورود هر درخواست (`await reloadIfChanged()` در auth)، ادغامِ اتحادی کلیدبه‌کلید، و **سنگ‌قبر** برای حذف کدها تا کدِ مصرف‌شده در هیچ نمونه‌ای زنده نماند (ضد بازپخش). فایل `otp.json` فقط فال‌بک توسعهٔ بدون ردیس است (رفتار پیشین دست‌نخورده). `auth.js`: فراخوانی‌ها `await` شدند و سه حذفِ کد به `otp.deleteCode` رفت.
-- **تست:** `tests/otp-redis.js` ۱۶/۱۶ (ذخیره روی ردیس؛ دید دوطرفهٔ دو نمونه؛ ۵۰ نوشت موازی بدون تلفات؛ اجتماع پنجره‌ها؛ محافظ دنباله؛ سنگ‌قبر؛ ۱۰۰۰ همزمان در ~۷۰ میلی‌ثانیه؛ فال‌بک فایل).
-- **دروازه‌ها:** دودی ۵۴۷/۵۴۷ · مجوزها ۰ · `otp-ratelimit` ۴۹/۴۹ · `lock-atomic` ۱۲/۱۲.
-
-## فاز ۲ — چت ۴: پی۰-۱۴ قفل توزیع‌شدهٔ اتمیک — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** `redis.setNX` (SET NX EX در ردیس / درج شرطی در حافظه) و `redis.compareAndDelete` (اسکریپت لوآ در ردیس) افزوده شد. `cache.acquireLock` توکن یکتا برمی‌گرداند یا تهی؛ `cache.releaseLock(key, token)` فقط با تطبیق توکن آزاد می‌کند — قفل منقضی‌شده هرگز توسط صاحب سابق کشته نمی‌شود. فراخوان بیرونی نداشت (تست کشِ موجود با امضای جدید به‌روز شد).
-- **تست:** `tests/lock-atomic.js` ۱۲/۱۲ (دو همزمان → یک برنده؛ توکن اشتباه/منقضی بی‌اثر؛ انبوه ۵۰تایی؛ انحصار متقابل دو نمونه).
-- **دروازه‌ها:** دودی ۵۴۷/۵۴۷ · مجوزها ۰.
-
-## فاز ۲ — چت ۴: پی۰-۱۳ فال‌بک ردیس در تولید ممنوع — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** `server/redis.js` در `NODE_ENV=production` بدون `REDIS_URL` یا با ردیسِ غیرقابل‌اتصال `{ok:false}` برمی‌گرداند (فال‌بک حافظه فقط برای توسعه). `server/cache.js` نتیجهٔ ریدی را منتشر می‌کند؛ بوترِ `server/index.js` در تولید با شکستِ ریدی `exit(1)` می‌کند؛ `/api/health` نردیسِ زنده را با `redis.ready()` می‌سنجد (در تولید بدون ردیس: ۵۰۳ + `cache:unavailable`).
-- **تست:** `tests/redis-fallback.js` ۱۰/۱۰ (شامل بوتِ واقعی: تولید بدون ردیس با خروجی غیرصفر می‌میرد؛ توسعه بالا می‌آید).
-- **دروازه‌ها:** دودی ۵۴۷/۵۴۷ · مجوزها ۰ · `otp-ratelimit` ۴۹/۴۹.
-
-## فرناز فاز ۱ — چت ۴: وارسی موج ادغام نهایی — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** مین @ `7ee0814` پس از مرج پی‌آرهای ۱۳/۱۴/۸ + رفع امنیتی `7cbba90` + کامیت بیرونی `513333e`. گزارش: `CHAT4_POST_MERGE_REPORT_3.md`.
-- **رگرسیون کامل:** ۱۸۷/۱۸۹ سبز (۱۸۰۸ ثانیه). دو قرمز، هر دو ریشه‌یابی‌شده و غیررجعتی: فلیک `ics` (سبز در اجرای جدا) و `xss-guard X2b` (دو نقطهٔ تازهٔ `document.write` از ب.۵/ج.۳ در `DW_ALLOW` نیستند — هر دو سالم با `esc()`؛ رفع یک‌خطی با تأیید ناظر).
-- **کارایی:** میانهٔ **۴۲۷ مس** در محیط پاک (زیر هدف ۶۰۰)؛ عدد ۶۹۰ حین رانر مصنوعیِ تداخل بود.
-- **امنیت:** رفع نشت دیتابیس گزارش عمومی (اندپوینت تجمیعی سروری) ارزیابی و سالم — `public2`/`pubrep` سبز.
-- **باقی:** مرج پی‌آر ۱۱ · اجازهٔ `DW_ALLOW` · تعیین تکلیف ب.۳ · پی‌آر ۱۶ (jsdom ۳۰) فقط با رگرسیون پس از مرج.
-
-## فرناز فاز ۱ — چت ۴: رفع تعارض پی‌آر ۱۴ (USER_GUIDE) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** کامیت مرج `85f8ced` روی `feat/farnaz-phase1-chat4` (پی‌آر ۱۴). پس از مرج پی‌آر ۱۳ به مین (`daefb69`)، تنها تعارض `USER_GUIDE.html` بود — نسخهٔ جدیدتر + بازتولید بیلد. دروازه‌ها روی درخت ترکیبی: دودی ۵۴۷/۵۴۷ · مجوزها ۰ · ساخت ۰ · `attpartial` ۱۰/۱۰ · سئوت‌های ج چت ۳ سبز · کارایی میانهٔ **۳۴۹ مس** (زیر هدف). پی‌آر ۱۴ اکنون `mergeable: True`. گزارش: `CHAT4_PR14_CONFLICT_RESOLVED.md`.
-
-## فرناز فاز ۱ — چت ۴: بهینه‌سازی ثبت حضور (دور ۱۰۲) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** شاخهٔ `feat/farnaz-phase1-chat4` (پی‌آر ۱۴) · با تأیید صریح ناظر اجرا شد · گزارش: همین ورودی + `docs/AI_PROMPT.md` §۰.۵.۲۶.
-
-- **هدف:** ثبت حضور کلاس ۱۳ نفره زیر ۶۰۰ مس. **نتیجه: میانهٔ ۳۶۴ مس** (۳۱۵–۴۲۷؛ پیش از تغییر ۷۰۶). فاز کلیک‌ها ۵۱۴ → ۱۳۷ مس.
-- **روش:** به‌روزرسانیِ جزئی در مسیر داغ `att-set` — `attPartialSync` فقط ردیف همان دانش‌آموز + شمارنده‌ها + نوار پیش‌نویس/پابرگ را با قالب‌های مشترک (`attCtx/attRowHTML/attSummaryInner/attDraftBarHTML/attCardFootHTML` — منبع واحد حقیقت با رندر کامل) بازسازی می‌کند. **سوپاپ اطمینان:** با هر تردیدی `false` ⇒ `render()` کامل.
-- **تست‌ها:** `tests/attpartial.js` ۱۰/۱۰ + `tests/attpartial-mutations.js` ۴/۴ کشته · دروازه‌ها: دودی ۵۴۷/۵۴۷ · `att2/3/4`/`excuse`/`pnote`/`tomorrow`/`examcount`/`goals` سبز · ساخت/مجوز/اسکن‌راز ۰/۰/۱۱ · `ics` هم فلیک ثانیه‌ای شناخته‌شده را داشت و ۳ اجرای جدا ۲۲/۲۲ سبز (مرتبط با این تغییر نیست).
-- **نکتهٔ فنی مهم برای آینده:** صفت روی `#root` نشانهٔ رندرِ کامل نیست (`innerHTML` خودِ ریشه را نگه می‌دارد) — نشانه‌گذاری باید روی **عناصر فرزند** باشد (`isConnected`).
-- **قاعدهٔ به‌روز‌شده:** خط‌مبنای تازه ۳۶۴ مس؛ عبور از ۶۰۰ مس = رجعت کارایی ⇒ توقف و گزارش (§۰.۵.۲۶).
-
-## فرناز فاز ۱ — چت ۴: وارسی پس‌ازمرج — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** گزارش `CHAT4_POST_MERGE_REPORT.md` (ریشه — ارائه شد). شاخه‌ها: مین @ `6961b72` · پی‌آرهای ۹/۱۰ مرج‌شده · **پی‌آرهای ۸ و ۱۱ هنوز مرج نشده‌اند** (برخلاف فرض دستور؛ با مدرکِ راه‌دور ثبت شد و گزارش جعلی نوشته نشد).
-
-- **رگرسیون کامل روی مین واقعی:** ۱۶۷/۱۶۷ سبز · `RUNNER_EXIT=0` · ۱۷۷۰ ثانیه — حتی فلیک `ics T12a` ظاهر نشد. (۹ سئوتِ شبیه‌سازی فقط روی شاخه‌های مرج‌نشدهٔ پی‌آر ۸/۱۱ است.)
-- **دروازه‌ها:** ساخت ۰ · دودی ۵۴۷/۵۴۷ · مجوزها ۰ · اسکن راز ۱۱/۱۱.
-- **کارایی:** میانهٔ **۷۷۷ مس** (۶۹۹–۹۴۹) — بدون رجعت نسبت به ۷۸۱؛ هدف ۶۰۰ محقق نیست. پیش‌نویس رندرِ جزئیِ `att-set` در بند ۵ گزارش (برآورد ۲۹۰–۳۳۰ مس) — منتظر تأیید؛ کدی لمس نشد.
-- **چت ۲:** هیچ شاخه‌ای در راه‌دور نیست؛ پیشنهاد واگذاری ب.۳–ب.۵ به چت ۱ و ج.۱–ج.۳+گ.۳ به چت ۳ ثبت شد.
-- **گام بعد:** مرج واقعی ۸/۱۱ → تکرار رگرسیون → سپس بهینه‌سازی کارایی با تأیید ناظر.
-
-## چت۱ — فرناز C.3: گزارش عمومی مدرسه (بدون ورود) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** پیاده‌سازی کامل روی `feat/farnaz-phase1-chat1-c` (پس از C.2). هر سه بند C تمام شد.
-- **نما:** بخش «📊 گزارش عمومی مدرسه» زیر فرم ورود (`publicReportHTML` در `06-login.js` + یک قانون CSS): انتخاب مدرسهٔ فعال (تعویض با مسیر ژنریک `data-f`) + نام/مقطع/شهر + آمار دانش‌آموز/دبیر/کلاس + جلسه‌ها به‌تفکیک هر سه نوع C.1 (تعداد + آخرین تاریخ، بایگانی‌شده حساب نیست) + بوم C.2 (اگر ثبت شده باشد) + راهنمای ورود.
-- **حریم خصوصی:** فقط تجمیعی؛ نام هیچ فردی، متن مصوبه و فهرست حاضرین نمایش داده نمی‌شود (تست P5)؛ مدرسهٔ غیرفعال قابل انتخاب نیست و شناسهٔ نامعتبر به اول برمی‌گردد؛ داخل پنل (ورودکرده) بخش نیست.
-- **تست:** `tests/public2.js` ‏(۸/۸ ✅)‏ + `tests/public2-mutations.js` ‏(۳/۳ کشته ✅)‏؛ رگرسیون کامل: minutes2 ‏(۸/۸)‏، boom2 ‏(۸/۸)‏، assocmin2 ‏(۸/۸)‏، assocmin3 ‏(۸/۸)‏، دودی ‏۵۴۷/۵۴۷‏، run.js ‏۰‏، مجوزها ۰، build ‏--check‏ ۰.
-- **گیت:** تک‌کامیت `feat(chat1-c): C.3 ...` + پوش. شاخه آمادهٔ بازبینی: `feat/farnaz-phase1-chat1-c` (سه کامیت C.1/C.2/C.3).
-
-## چت۱ — فرناز C.2: برنامه ویژه مدرسه (بوم) — اهداف سالانه — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** پیاده‌سازی کامل روی `feat/farnaz-phase1-chat1-c` (پس از C.1).
-- **فیلد:** `schools.boom_goals` متنی (مدل +۱ خط، write-perms بازتولید با مولد + اکشن تازه، قاعدهٔ سرور string/۲۰۰۰ در `ruleFor`)؛ خالی = پاک شدن (بدون مهاجرت).
-- **مسیر مدیر:** کارت «🎯 برنامه ویژه (بوم)» در داشبورد مدرسه (نمایش اهداف + دکمهٔ ثبت/ویرایش) → مودال `boomModal` → اکشن `school-boom-save` (فقط مدیر، گیت مدرسهٔ خودی در `ACTION_ROLES` + خود اکشن، سقف ۲۰۰۰ نویسه). نکته: مسیر اولیه (دکمه در فهرست مدارس) مرده بود چون `canRoute` مدیر را از `schools` منع می‌کند — به داشبورد منتقل شد.
-- **مسیر سوپرادمین:** فیلد `m_boom` در `schoolModal` + یک خط در `school-save`؛ چکیدهٔ ۸۰ نویسه‌ای در فهرست مدارس برای نظارت.
-- **تست:** `tests/boom2.js` ‏(۸/۸ ✅ — داشبورد واقعی/پیش‌پر/گیت جعل/سوپرادمین/سقف/پاک‌سازی/سرور مستقیم)‏ + `tests/boom2-mutations.js` ‏(۳/۳ کشته ✅)‏؛ رگرسیون: minutes2 ‏(۸/۸)‏، دودی ‏۵۴۷/۵۴۷‏، run.js ‏۰‏، مجوزها ۰، build ‏--check‏ ۰.
-- **گیت:** تک‌کامیت `feat(chat1-c): C.2 ...` + پوش. بعدی: C.3 (گزارش عمومی).
-
-## چت۱ — فرناز C.1: نوع جلسه در صورت‌جلسه (انجمن/معلمان/دانش‌آموزان) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** پیاده‌سازی کامل روی `feat/farnaz-phase1-chat1-c` (از `6961b72` — main پس از مرج چت ۳/چت ۴).
-- **همان جدول:** فیلد `meeting_type` ∈ ‏{assoc,teachers,students}‏ روی `assoc_minutes` (مدل +۱ خط، write-perms بازتولید با مولد، enum سرور در `ruleFor`)؛ رکوردهای قدیمی با `minTypeOf` پیش‌فرض «انجمن» می‌گیرند (سازگاری عقب‌رو، بدون مهاجرت).
-- **کلاینت:** سلکت نوع در مودال ثبت + ستون «نوع جلسه» + فیلتر `data-f="mtype"` (مسیر ژنریک change، بدون اکشن تازه) + تیتر چاپ نوع‌به‌نوع؛ اعتبارسنجی سمت اکشن (نامعتبر→assoc).
-- **احتیاط لنگر:** تابع `assocMinutes` بایت‌به‌بایت دست‌نخورده ماند (لنگر M1 در `assocmin2-mutations`)؛ خط toggle هم دست‌نخورده (M2).
-- **تست:** `tests/minutes2.js` ‏(۸/۸ ✅ — فرم واقعی/فیلتر/پیش‌فرض/چاپ/سرور مستقیم)‏ + `tests/minutes2-mutations.js` ‏(۳/۳ کشته ✅)‏؛ رگرسیون: assocmin2 ‏(۸/۸)‏، assocmin3 ‏(۸/۸)‏، assocmin2-mutations ‏(۵/۵)‏، دودی ‏۵۴۷/۵۴۷‏، مجوزها ۰، build ‏--check‏ ۰.
-- **گیت:** تک‌کامیت `feat(chat1-c): C.1 ...` + پوش.
-- بعدی: C.2 (بوم مدرسه)، سپس C.3 (گزارش عمومی).
-
-## فرناز فاز ۱ — چت ۴ (هماهنگی و نظارت کیفیت): روز نخست — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — در جریان
-
-**وضعیت:** شاخهٔ `feat/farnaz-phase1-chat4` از `main` (`4ca531c`). گزارش: `CHAT4_DAILY_REPORT_2026-09-08.md` (ریشه — ارائه شد). **صفر تغییر در `src/`** — نقش، نظارتی است.
-
-- **دروازه‌ها روی ۴ درخت (مین + سه شاخهٔ فرناز):** دودی ۵۴۷/۵۴۷ × ۴ ✅ · `check-authz` خروجی ۰ × ۴ ✅ · `build --check` × ۴ ✅ (هر شاخه در `git worktree` جدا + `node_modules` پیوندی).
-- **ابزار تازه:** `tools/perf-attendance.js` — هارنسِ قطعیِ «علامت تک‌تک + ثبت نهایی» برای کلاس ۱ (۱۳ دانش‌آموز، `teacher1_1`) در جی‌ساد‌ام؛ ۵ اجرا در دامِ تازه + صحت‌سنجیِ ۱۳ رکورد. خط‌مبنای ۸۳۶ مسِ اعلامی بازتولید شد (میانهٔ ۸۳۱؛ بازهٔ ذاتی ۵۹۳–۹۴۷). میانهٔ شاخه‌ها: چت ۱ = ۶۴۷ · پایه = ۶۸۱ · چت ۳ = ۷۱۲ — **همه درون بازهٔ نویزِ مین ⇒ بدون رجعت**. هدفِ زیر ۶۰۰ مس هنوز محقق نیست؛ ریشه = ۱۳ رندرِ کامل در ۱۳ کلیکِ `att-set` (~۷۰٪ زمان) — پیشنهاد: رندرِ جزئی در `att-set` (ساخته نشد؛ منتظر تأیید).
-- **تداخل‌ها (`git merge-tree`):** `USER_GUIDE.html` در هر سه جفتِ مرج تداخلِ متنی دارد؛ `HANDOFF.md` در پایه×چت ۳؛ بقیه خودکار — ولی `19-actions-core.js`/`30-authz.js` (چت ۱ × چت ۳) پس از مرج نیازمند راستی‌آزماییِ رفتاری‌اند. ترتیب پیشنهادی ادغام: پایه → چت ۱ (پی‌آر ۸) → چت ۳ → چت ۲.
-- **🔴 انحراف:** شاخهٔ `feat/farnaz-phase1-chat2` روی اصل **وجود ندارد** — نقضِ «هیچ تغییری فقط محلی نماند». بندهای ب.۳–ب.۵/ج.۱–ج.۳/د.۱–د.۴/گ.۳ نامرئی‌اند؛ پوشِ فوری لازم است.
-- **ریز‌یافته‌ها:** اکشن‌ها ۳۳۸ شدند (اسناد هنوز ۳۳۷ دارند) · شرحِ پی‌آر ۸ کهنه است · قلمِ ۱ حسابرسی (مُهر راهنما) روی مین سبز شد.
-- **باقی‌ماندهٔ نقش:** پایش کامیت‌های تازهٔ چت ۳ · وارسی چت ۲ پس از پوش · گزارشِ یکپارچهٔ پایانِ فاز.
-## چت۱ — فرناز G.3: بررسی USER_GUIDE.html (فقط گزارش) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** فقط گزارش، بدون هیچ تغییری در کد/راهنما. روی `feat/farnaz-phase1-chat1`.
-- **رأی:** هیبرید — اسکلت نقشی و زبان ساده برای مدیر غیرفنی مناسب است، ولی در وضع فعلی «مرجع قابل‌اعتماد» نیست: محتوای توسعه‌دهنده (بیلد/–check/meta) داخل راهنمای کاربر، عددهای کهنه (۳۳ بخش منو در برابر ۴۳ واقعی؛ ۸ حساب نمونه در برابر ۷ واقعی)، غیبت هر ۵ ماژول تازهٔ فاز (حضور کادر/دوره‌ها/مانور/کمک‌ها/تیکت)، غلط سیستماتیک ک→گ (۲۵+ مورد)، و صفر دستور گام‌به‌گام.
-- **تحویل:** فایل `FARNAZ_G3_REPORT.md` (بیرون مخزن) با یافته‌ها + ۵ پیشنهاد (اجرا نشد).
-- **گیت:** تک‌کامیت `docs(chat1-farnaz): G.3 ...` (فقط همین ورودی HANDOFF) + پوش. هر سه بند B.4/B.5/G.3 تمام شد.
-
-## چت۱ — فرناز B.5: ثبت کمک‌های داوطلبانه — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** پیاده‌سازی کامل روی `feat/farnaz-phase1-chat1` (الگوی ماژولی B.1/B.2/B.4 همین شاخه).
-- **جدول تازه:** `donations` ‏(school_id/donor_name/amount/date/description/registered_by‏ + استاندارد) با ins/upd/del مدیر+سوپرادمین؛ سید قطعی ۱۲ رکورد (۶ نامدار + ۶ ناشناس، صفر مصرف rng)؛ قاعدهٔ سرور integer مثبت برای amount (محدود به همین مجموعه تا شهریه دست نخورد) + donor_name در SHORT_FIELDS (≤۱۰۰).
-- **مدیر:** روت `donations` در گروه «مالی» (ثبت/ویرایش/حذف با تأیید، school_id از نشست، ضد IDOR) + بنر جمع کمک‌ها؛ رسید چاپی ساده (🧾 نام مدرسه/شماره رسید/کمک‌کننده یا «ناشناس»/مبلغ به ریال/تاریخ شمسی) با گیت مدرسه.
-- **جدایی از شهریه:** جدول/اکشن/روت/توابع جدا؛ تست N10 طول tuitions/installments/transactions را پیش‌وپس ثابت می‌کند.
-- **تست:** `tests/donations2.js` ‏(۱۰/۱۰ ✅ — سید/مسیر واقعی/ناشناس/رسید چاپی/گاردها/ماتریس canAction/سرور مستقیم/جدایی)‏ + `tests/donations-mutations.js` ‏(۳/۳ کشته ✅)‏؛ رگرسیون: drills ‏(۱۰/۱۰)‏، staffatt ‏(۱۰/۱۰)‏، training ‏(۱۱/۱۱)‏، دودی ‏۵۴۷/۵۴۷‏، run.js ‏۰‏، مجوزها ۰، build ‏--check‏ ۰.
-- **گیت:** تک‌کامیت `feat(chat1-farnaz): B.5 ...` + پوش. بعدی: G.3 (فقط گزارش).
-
-## چت۱ — فرناز B.4: مانور سالانهٔ ایمنی/زلزله — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** پیاده‌سازی کامل روی `feat/farnaz-phase1-chat1` (الگوی ماژولی B.1/B.2 همین شاخه).
-- **جدول تازه:** `safety_drills` ‏(school_id/date/participant_count_students/participant_count_staff/notes/registered_by‏ + استاندارد) با ins/upd/del مدیر+سوپرادمین؛ سید قطعی ۶ رکورد (صفر مصرف rng، فردها سبز/زوج‌ها قرمز)؛ قاعدهٔ سرور integer ‏۰..۱۰۰۰۰۰‏ برای شمارها (تاریخ قاعدهٔ ژنریک date را دارد).
-- **تعریف «سالانه»:** پنجرهٔ غلتان ۳۶۵ روزه (مستند در سربرگ `71-safety-drills.js`) — بدون محاسبات تقویمی و لبهٔ نوروز/مهر.
-- **مدیر:** روت `drills` در «کار روزانه» (ثبت/ویرایش/حذف با تأیید، school_id از نشست، ضد IDOR) + نماد 🟢/🔴 در داشبورد با دکمهٔ «ثبت/مشاهده».
-- **رئیس اداره:** کارت تجمیعی «⛑️ مانور ایمنی سالانه» در officedash (X از Y مدرسه + جمع شرکت‌کنندگان) + ستون «مانور امسال» در جدول عملکرد + همان در چاپ گزارش.
-- **تست:** `tests/drills2.js` ‏(۱۰/۱۰ ✅ — سید/مسیر واقعی/گاردها/نماد/اداره/ماتریس canAction/سرور مستقیم/جدایی)‏ + `tests/drills-mutations.js` ‏(۳/۳ کشته ✅)‏؛ رگرسیون: staffatt ‏(۱۰/۱۰)‏، training ‏(۱۱/۱۱)‏، دودی ‏۵۴۷/۵۴۷‏، run.js ‏۰‏، مجوزها ۰، build ‏--check‏ ۰.
-- **گیت:** تک‌کامیت `feat(chat1-farnaz): B.4 ...` + پوش. بعدی: B.5، سپس G.3.
-
-## چت۱ — دستیار چت ۲، تحلیل دستهٔ D (رئیس اداره دوسطحی) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** فقط تحقیق/مستند — صفر تغییر `src/server/tests` (main در `4ca531c`؛ چت ۲ همچنان بدون شاخه → کار روی شاخهٔ چت ۱ ماند).
-- **تحلیل:** `docs/D_OFFICE_LEVEL_ANALYSIS.md` — ساختار فعلی (مدل offices.level، seed چهاراداره‌ای، مسیرها/کنش‌ها، سرور) + ۳ قوت + ۸ ضعف + ۵ پیشنهاد (تصمیم با چت ۲).
-- **یافته‌های کلیدی:** (۱) «رئیس» وجود ندارد (همه کارشناس‌اند)؛ (۲) ‏`officeScopeSchools` میدان `level` را نمی‌خواند؛ (۳) سرور اداره را نامحدود می‌داند (`inScope` ‏`return true`)؛ (۴) جغرافیا سینک نمی‌شود (`ins/upd/del` خالی)؛ (۵) ‏`geo-*` فقط گیت مسیری دارند.
-- **نمونه:** `tools/seed-office-data.js` (مستقل، پیش‌نویس؛ JSON دوسطحی با رئیس/کارشناس جدا + خودسنجی قاعدهٔ سازگاری) + همین ورودی.
-- **هماهنگی:** شاخهٔ چت ۴ وارسی شد — بدون هم‌پوشانی و بدون درخواست؛ چت ۳ بند E.6 را پوش کرد (ddcc02f)؛ AI_PROMPT/HANDOFF دستهٔ D پس از اتمام کار چت ۲ به‌روز می‌شود (طبق دستور).
-- **گیت:** تک‌کامیت مستنداتی + پوش (PR #8 به‌روز شد)؛ دودی ۵۴۷/۵۴۷ + مجوزها ۰ قبل و بعد.
-- بعدی: در دسترس چت ۲ برای کمک؛ پایش دوره‌ای ادامه دارد.
-
-## چت۱ — دستیار هماهنگ‌کننده، گزارش تجمیعی نهایی فرناز (مستنداتی) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** فقط مستندات — صفر تغییر `src/server/tests` (main در `4ca531c` ثابت).
-- **گردآوری:** ۱۸ گزارش هر ۴ چت/پایه در `‎/tmp/farnaz-reports` (فقط‌خواندنی، کامیت نشد)؛ فهرست در گزارش نهایی.
-- **تازه‌ها از راه‌دور:** چت ۳ بند E.4 را پوش کرد (`a9373f6` — دانلود همهٔ ICS با دامنهٔ نقش، ۲۲/۲۲ + جهش ۵/۵)؛ شاخهٔ چت ۴ آمد (هارنس `tools/perf-attendance.js` + گزارش روزانه + ‏AI_PROMPT §۰.۵.۲۴‏)؛ چت ۲ همچنان بدون شاخه (ب.۳–ب.۵/ج/د/گ.۳ نامشخص).
-- **نوشته‌ها:** ‏`docs/FARNAZ_PHASE1_FINAL_REPORT.md` (خلاصه اجرایی + تطابق A.1–G.3/S.1–S.5 + جدول ۱۷ کامیت + معماری + تست‌ها + باقی‌مانده + توصیه‌ها)‏ + ‏AI_PROMPT §۰.۵.۲۵‏ (قواعد E.1–E.4/S.4/S.5 + قاعدهٔ مرج) + همین ورودی.
-- **راستی‌آزمایی:** شبیه‌سازی مرج سه‌شاخه با E.4 → فقط تعارض پیش‌پاافتادهٔ مُهر/لنگر → دودی ‏۵۴۷/۵۴۷‏ + مجوزها ۰ + همهٔ سئوت‌ها سبز؛ یک فلیک ۲۱/۱ در `ics` زیر بار موازی (۴ اجرای بعد ۲۲/۲۲ — محیطی، به چت ۴ سپرده شد).
-- **کالیبراسیون پرف:** هارنس مرجع چت ۴ روی شاخهٔ من → میانهٔ ‏۵۹۸ms‏ (۵۴۰–۶۵۷) — درون نویز محیط، بدون رجعت؛ هدف پایدار زیر ۶۰۰ms همچنان نیازمند رندر جزئی (با تأیید ناظر).
-- **گیت:** تک‌کامیت مستنداتی + پوش (PR #8 به‌روز شد)؛ شرح PR هم تازه شد (ب.۲/و.۱/و.۲ از «باقی‌مانده» درآمدند).
-- بعدی: منتظر پوش چت ۲ و دستور مرج از ناظر ارشد؛ اقدامی روی کد نیست.
-
-## چت۱ — فرناز فاز ۱، بندهای F.1/F.2 + مستندات پایانی (گزارشی) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** فقط گزارش/تست/مستند — صفر تغییر `src` (main در `4ca531c` ثابت — ریبیس لازم نشد).
-- **F.1:** دو حساب ولیِ مستقل (پدر + مادر، بدون اولویت) روی یک دانش‌آموز — سناریوی `tests/family2.js` ‏(۱۱/۱۱ ✅)‏: هر دو پرونده/نمره/حضور/مالی را مستقل و **بایت‌به‌بایت یکسان** می‌بینند؛ اعلان‌ها به هر دو می‌رسد (الگوی fan-out در `risk-notify` و مرخصی خوابگاه)؛ پرداختِ یکی پنلِ هر دو را باز می‌کند.
-- **F.2:** `relation` برچسب آزاد است — قیمِ غیر والد (پدربزرگ/قیم قانونی) با پیوند صریح دسترسی کامل دارد؛ اتصال خودکار کد ملی فقط پدر/مادر؛ `parent_verifications` خوداظهاری است (pending هم کامل می‌بیند).
-- **یافتهٔ محصولی (بدون تغییر کد):** مفهوم «ولی اصلی» وجود ندارد و مدیر هیچ «محدودیت جزئی ولی» ندارد — فقط حذف کامل پیوند. اگر محصول روزی «ولی محدود» خواست، قابلیت تازه است.
-- **مستندات:** بخش `۰.۵.۲۳` در `docs/AI_PROMPT.md` (قوانین A.1/A.2/B.1/B.2/F.1/F.2 + چهار دام ماندگار) + همین ورودی.
-- **سبزها:** family2 ‏(۱۱/۱۱)‏، دودی ‏(۵۴۷/۵۴۷)‏، authz-model ‏(۲۳۶/۲۳۶)‏، check-authz ‏(exit 0)‏.
-- **گیت:** دو کامیت جدا (`test(chat1-farnaz): F.1+F.2 ...` + `docs(chat1-farnaz): ...`) + پوش (PR پیش‌نویس #8 خودکار به‌روز شد).
-- بعدی: گزارش تجمیعی چت۱ (جدول کامیت‌ها) — سپس استندبای تا دستور بعدی ناظم.
-
-## چت۱ — فرناز فاز ۱، بند B.2: دوره‌های آموزشی کادر + گواهی پایان دوره (جدید) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** پیاده‌سازی کامل روی `feat/farnaz-phase1-chat1` (main در `4ca531c` ثابت — ریبیس لازم نشد).
-- **جدید:** مجموعهٔ `training_courses` ‏(school_id/staff_id/title/hours/date/status)‏ + `src/js/70-training.js` (دامنه + نمای جدول + سند گواهی) + `src/js/19-actions-training.js` (۷ اکشن) + روت `training` در گروه «کادر مدرسه».
-- **گواهی (الگوی دانش‌آموز):** استخراج `certHash` از `certCodeCalc` بدون تغییر رفتار (certify ‏۸/۸‏ گواه) + کد `DOR-` مقید به (دوره، همکار، مدرسه، سال) + سطر `certificates` با type=`staff_training` (بدون student_id — اعتبارسنج sync فیلد غایب را رد نمی‌کند) + چاپ با `printableDoc`. صدور در لحظهٔ تکمیل، idempotent (هر دوره یک گواهی).
-- **فقط-مدیر سه‌لایه** (هر ۷ اکشن)؛ ساعت: عدد مثبت الزامی، ۲۰ تا ۶۰ فقط راهنمای UI (۱۰۰ پذیرفته می‌شود — تست شده)؛ بدون نقش تازه.
-- **تست:** `tests/training2.js` ‏(۱۱/۱۱ ✅ — ثبت/تکمیل/صدور/راستی‌آزمایی/چاپ واقعی با window.open قلابی/کلیک سرتاسری)‏ + `tests/training-mutations.js` ‏(۳/۳ ✅ — حذف گارد و حذف ماشهٔ صدور کشته شدند).
-- **قرمزی میانی (۱):** دودی ‏(۵۴۶/۵۴۷)‏ — فقط NAV_EXPECT (قابل‌پیش‌بینی، همان الگوی B.1) → به‌روز شد → ۵۴۷/۵۴۷ (همان تعداد چک).
-- **سبزها:** authz-model ‏(۲۳۶/۲۳۶)‏، server16 ‏(۳۹/۰)‏، server18 ‏(۵۵/۰)‏، xss ‏(۲۳/۰)‏، certify ‏(۸/۸)‏، persist-roundtrip ‏(۹/۹)‏، navgroups ‏(۹/۹)‏، staffatt2 ‏(۱۰/۱۰، بدون رگرسیون B.1)‏، att2 ‏(۶/۶)‏، check-authz/build --check ‏(exit 0)‏، secret-scan ‏(۱۱/۱۱).
-- **پرف:** حضور دبیر دست‌نخورده؛ هارنس شاخه ۲×: ‏۶۰۱/۶۴۳‏ (میانگین ۶۲۲ms) در برابر میانگین B.1 ‏(main ‏۷۰۸‏/شاخه ‏۶۵۸)‏ → بدون رگرسیون.
-- **گیت:** تک‌کامیت `feat(chat1-farnaz): B.2 ...` + پوش (PR پیش‌نویس #8 خودکار به‌روز شد).
-- بعدی: F.1/F.2 گزارشی + AI_PROMPT + گزارش تجمیعی.
-
-## چت۱ — فرناز فاز ۱، بند B.1: ماژول حضور کادر (جدید) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** پیاده‌سازی کامل روی `feat/farnaz-phase1-chat1` (main در `4ca531c` ثابت بود — ریبیس لازم نشد).
-- **جدید:** مجموعهٔ `staff_attendance` ‏(school_id/staff_id/date/status/note/registered_by)‏ + `src/js/69-staff-attendance.js` (دامنه + نمای ماهانه: شبکهٔ روزها + جدول خلاصه) + `src/js/19-actions-staff.js` (۶ اکشن) + روت `staffatt` در گروه «کادر مدرسه» منوی مدیر.
-- **فقط-مدیر سه‌لایه:** ACTION_ROLES ‏(هر ۶ اکشن)‏ + گارد دسپاتچ + گارد داخل `markStaffAttendance` (upsert با کلید staff_id+date، اعتبارسنجی fail-closed، school_id از نشست). سوپرادمین طبق اصل سراسری مجاز.
-- **زنجیره مجوز:** مدل + بازتولید write-perms ‏(۸۱ مجموعه، pure-add)‏ + enum سرور `['present','absent','late']` در validate.js؛ بدون نقش تازه.
-- **تست:** `tests/staffatt2.js` ‏(۱۰/۱۰ ✅ — ثبت/ویرایش، ماتریس ۸ نقش، اعتبارسنجی، نما، جدایی از attendance، کلیک واقعی)‏ + `tests/staffatt-mutations.js` ‏(۳/۳ ✅ — حذف گارد و حذف فیلتر ماه هر دو کشته شدند).
-- **دو قرمزی و ریشه‌یابی:** (۱) navgroups ‏(۶/۹)‏ — سید rng آخر generate جریان فازهای بعدی (اداره/مشاور/راننده) را جابه‌جا کرد → سید صفر-rng با هش قطعی → ۹/۹؛ (۲) دودی ‏(۵۴۵/۵۴۷)‏ — TITLES و NAV_EXPECT مدیر به‌روز شد (همان ۵۴۷ چک، بدون چک تازه) → ۵۴۷/۵۴۷.
-- **سبزها:** authz-model ‏(۲۳۳/۲۳۳)‏، server16 ‏(۳۹/۰)‏، server18 ‏(۵۵/۰)‏، xss ‏(۲۳/۰)‏، att2/3/4، navgroups، association2، diag2، superadmin، check-authz ‏(exit 0)‏، build --check، secret-scan ‏(۱۱/۱۱).
-- **پرف:** صفحهٔ حضور دبیر دست‌نخورده؛ هارنس یکسان روی main و شاخه (۱۳ نفره، ۳×): main ‏میانگین ۷۰۸ms‏ — شاخه ‏میانگین ۶۵۸ms‏ → بدون رگرسیون (نوسان محیطی).
-- **گیت:** تک‌کامیت `feat(chat1-farnaz): B.1 ...` + پوش + PR پیش‌نویس به main.
-- بعدی: B.2 دوره‌های آموزشی + گواهی چاپی با کد رهگیری.
-
-## چت۱ — فرناز فاز ۱، بند A.2: مالی فرزندبه‌فرزند + سناریوی شاهد (فقط تست) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** بررسی + تکمیل با تست (روی شاخه‌ی `feat/farnaz-phase1-chat1`). مدل مالی از قبل فرزندبه‌فرزند بود و ناقصیِ رفتاری نداشت — پس صفر تغییر در `src`:
-- اشتراک/قفل پنل: `studentSubOf` + `effectiveParentAccess` + `parentLocked` در `src/js/23-subscription.js` (فعال‌بودن = دست‌کم یک فرزند فعال).
-- شهریه: رکورد سطح دانش‌آموز با `discount/payable` و وضعیت‌های open/partial/settled در `src/js/20-communication-finance.js`؛ معافیت کامل = تخفیفِ برابرِ سقف (`payable=0`، سقف با `Math.min` در `issueTuition`).
-- تکمیل: `tests/tuition-exempt.js` (۸/۸ ✅ — بدهکار+معاف در یک مدرسه، استقلال مانده‌ها، اشتراک جدا، قفل از روی فرزند فعال، سقف تخفیف) + `tests/tuition-exempt-mutations.js` (۳/۳ ✅ — هر دو جهشِ سقف/نشت کشته شدند).
-- سبزها: finance2 (۲۰/۲۰)، subs2 (۹/۹)، scholarship2/3 (۸/۸)، smoke ‏(۵۴۷/۵۴۷)، check-authz ‏(exit 0).
-- بعدی: B.1 جدول `staff_attendance` (فقط-نوشت مدیر، نمای ماهانه، جدا از حضور دانش‌آموز).
-
-## چت۱ — فرناز فاز ۱، بند A.1: تأیید رفع باگ قیف/پیگیری (بدون تغییر کد) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** فقط بررسی (روی شاخه‌ی `feat/farnaz-phase1-chat1` از `4ca531c`). باگ دور ۷۸ (`pre-confirm/pre-reject` + کرش `bus-follow-open`) از قبل در دور ۷۹ رفع شده بود — کامیت `a9897ce` (رفع دسپاتچ بدون پارامتر + سئوت کلیک واقعی uiclick + ۴ جهش کشته‌شده). تأیید با اجرای هر ۶ سوئیت مرتبط روی همین شاخه — همه سبز، پس طبق دستور تغییری زده نشد.
-
-- **شواهد:** `uiclick` ۴/۴ · `uiclick-mutations` ۵/۵ · `preapp2` ۸/۸ · `preapp3` ۸/۸ · `bus2` ۵/۵ · `bus3` ۷/۷.
-- **کد:** هندلرها (`19-actions-core`/`19-actions-bus`) و دکمه‌ها (`39-school-year`/`48-bus-service`) سر جا هستند؛ کامنت ریشه (سایه‌اندازی el/id) در `19-actions-core:1356` موجود است.
-
-## دورِ ۱۰۱ — OTPِ ۶رقمی + rate-limitِ توزیع‌شده (otp.json) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** برنچِ `feat/otp-ratelimit` از `fix/behavior-findings` در `d6118dd`؛ گزارش: `R100_OTP_RATELIMIT_FINAL_REPORT.md` (ریشه — ارائه شد). (از چتِ ۱ چیزی در ورک‌اسپیس نبود — از صفر پیاده شد.)
-
-- **سرور:** `server/otp-store.js` (تازه: حالتِ OTP در `server/data/otp.json` — ذخیرهٔ اتمیکِ sync، ‏`reloadIfChanged` برایِ توزیع، مهاجرتِ یک‌باره از `__auth`) · ‏`auth.js`: کدِ ۶رقمیِ `randomInt` + سقف‌هایِ تازه (ارسال ‎۵/۱۵min در phone‎، ‎۲۰/روز‎، ‎۱۰/۱۵min در IP‎؛ ورود ‎۱۰/۱۵min در IP‎ + مرگِ کد با ۵ غلط؛ cooldown ‏۶۰s) + ‏`PAYESH_SMS_WINDOW_S`/`PAYESH_OTP_FILE` · ‏`index.js`: سیم‌کشی + حذفِ جارویِ `__auth.codes`.
-- **کلاینت (حداقلی):** «کد ۶ رقمی» در فرمِ ورود + راهنما.
-- **آزمونِ تازه:** `tests/otp-ratelimit.js` ‏**۴۹/۴۹** (شکل/CSPRNG، هر ۴ سقف با مقدارِ پیش‌فرض، tries، brute-force، جفتِ توزیع‌شده، تولیدِ بی‌echo، مهاجرت، رازداری) + جهش‌ها **۷/۷**، ۰ محیطی.
-- **ریشه‌یابی‌ها:** R8 (rebindِ `data` در `load()` — اصلاحِ درجا) · M7 زنده ماند (سئوت پاسخِ غلط‌ها را نمی‌سنجید — R6a2 اضافه شد) · پیامدهایِ دستوری در `server1`/`server17`/`server14-gc(-mutations)` (فقط-تست).
-- **دروازه:** ‏`build --check` ✅ · ‏smoke ‏**547/547** ✅ · ‏`check-authz` (خروجِ ۰) ✅ · همهٔ سوئیت‌هایِ سروریِ لمس‌شده سبز (۱–۱۰، ۱۲–۱۸، security2، sim_full3، integration، dropout2، شش *3، سه جهشِ سروری).
-- **باقی‌ماندهٔ کلِ پروژه (بدونِ تغییر):** تصمیمِ محصولِ پرداختِ والد · ۲.۷ (throttle + UUID) · ۲.۱(a) نرخِ اکسل · ۲.۱(b) قواعدِ عمیق · Lax→Strict · pull/bootstrapِ خواندن (جدا).
-
-## دورِ ۱۰۰ — رفعِ هر ۶ یافتهٔ رفتاری (P0–P2) — ۱۸/۰۶/۱۴۰۵ (2026-09-08) — کامل ✅
-
-**وضعیت:** برنچِ `fix/behavior-findings` از `main` (`078c6bc`)؛ طرح: `docs/FIXES_ACTION_PLAN.md`؛ ۸ کامیت (`7ae96a4` + ‏`c2a9fd1` + ‏`9558707` + ‏`a7a918f` + ‏`da4611b` + ‏`411fc5b` + ‏`f8f3e21` + کامیتِ نهاییِ R100)؛ پوش به `origin/fix/behavior-findings`. گزارش‌ها: `R100_STEP0..7_*_REPORT.md` + ‏`R100_FINAL_REPORT.md` (ریشه — ارائه شد).
-
-- **گامِ ۱ (P0 ماندگاری):** ‏۷ مسیرِ کاربر `add` ← ‏`insert` + نگهبانِ ایستا؛ persist ‏۹/۹ + جهش ۷/۷ ✅
-- **گامِ ۲ (P0 همگام‌سازی):** دسته‌هایِ ۲۰۰تایی + شکافتِ بازگشتیِ 413 + نامهٔ مرده؛ sync-chunk ‏۲۸/۲۸ + جهش ۵/۵ ✅
-- **گامِ ۳ (P1 طرحِ شهریه):** ‏`tuition-plan-save` یکتا + بازتولیدِ مجوزها؛ tuition-plan ‏۱۷/۱۷ + جهش ۴/۴ ✅
-- **گامِ ۴ (P1 چیدمان):** ‏`{buckets,unplaced}` + نشانِ «بدون کلاس» + اعمالِ جزئی؛ overflow ‏۱۸/۱۸ + جهش ۵/۵ ✅
-- **گامِ ۵ (P2 پشتیبان):** فرمتِ v3 + بازپخشِ `applyLog` + **رداکشنِ رمز در اسنپ‌شات (یافتهٔ امنیتیِ حینِ کار)** + سازگاریِ v2؛ backup-snap ‏۱۸/۱۸ + جهش ۵/۵ ✅
-- **گامِ ۶ (P2 تداخل):** ‏`generatePriorYear` + فراخوانیِ دوگانه + نگهبانِ یکتایی؛ genp12 ‏۹/۹ + جهش ۴/۴ ✅
-- **گامِ ۷ (دروازه):** رجیسیونِ کامل ۱۴۴ سبز + ۴ قرمز → هر ۴ ریشه‌یابی و با اصلاحِ **فقط-تست** سبز شدند (جزئیات در `R100_STEP7_FINAL_GATE_REPORT.md`)؛ ‏`build --check` ✅ · ‏smoke ‏**547/547** ✅ · ‏`check-authz` ✅؛ مستندات (AI_PROMPT §۰.۵.۲۱ + راهنما + همین ورودی) ✅
+## چت ۳ — Wave 20: نهایی‌سازی Arena 5 (QA/Reliability) + دو نقصِ date-bound — ۲۱/۰۶/۱۴ (2026-09-10)
+
+**وضعیت:** شاخهٔ `arena/01a08545-p2`. سه کامیت: fix اپ (03f6840) / fix تست smoke (ef79216) / مستندات+آزمون Arena 5.
+- **`docs/ARENA5_QA_RELIABILITY.md`:** سندِ مرجعِ QA/Reliability — استراتژی، ابزارها، وضعیتِ ۹ مسئولیت با شواهد، **Release Gate** (گیت‌های خودکار + G1–G8 پیشِ Go-Live) + نقش‌ها.
+- **`tests/arena5-recovery.js` — 32/32:** تکمیلِ «Recovery Validation» + شروطِ Production (Restore Drill + Failover Test): R1 crash consistency (SIGKILL واقعی) · R2 restore drill (backup→فساد→restore+audit) · R3 Redis failover/failback با **ioredis واقعی** (failback بدونِ restart در پنجرهٔ retry؛ قطعِ طولانی ⇒ restart لازم) · R4 قراردادِ PG-failback (استاتیک).
+- **دو نقصِ date-bound (چهارشنبهٔ 2026-09-10 خودبه‌خود ظاهر شد — dow پنجشنبه=5 خارج ازِ دامنهٔ ۵روزه):** (1) crash بوتِ دمو در `02-demo-data.js` (slot undefined) ⇒ فِلبک + نگهبانِ قطعی `tests/arena5-demo-guard.js` (4/4)؛ (2) تستِ smoke ۱.۷ کلاسِ اشتباه (driftِ ثبت‌نام از آزمون‌های پیشین) ⇒ `classOf(sid)`. فرعی: badge `DAYS[dow]` undefined در پنجشنبه/جمعه ⇒ `DAYS_FULL`.
+- **گیت‌ها (در چهارشنبه!):** smoke **547/547**، check-authz 0، secret-scan 11/11، build --check، arena5-recovery 32/32، demo-guard 4/4.
+- **pending:** اجرایِ L3 واقعی (G1–G3/G6–G8) رویِ زیرساختِ چند-نمونه — «در انتظارِ زیرساخت» (جزئیات در سند).
+
+## چت ۳ — Wave 19: تست آشوب و شکست (5 سناریو + ابزار chaos) — ۲۰/۰۶/۱۴ (2026-09-09)
+
+**وضعیت:** شاخهٔ `arena/01a08545-p2`. سه کامیت: ابزار + طرح + تست‌ها / مستندات / گزارش.
+- **5 سناریو با فرضیهٔ از-معماری:** `kill-api` (SIGKILL — crash consistency: ack‌شده‌ها mirror شده‌اند ⇒ با PG صفر loss؛ store خراب نمی‌شود — tmp+rename) · `redis-down` (readiness 503 + liveness 200 + **صفر 500** + rate-limit fail-open + OTP state در حافظه ⇒ صفر data loss) · `pg-down` (خوانش‌ها از store ⇒ دست‌نخورده؛ sync ⇒ 200 + audit `sync_mirror_failed`؛ فقط DELETE-REST ⇒ 500 + retry ایدمپوتان) · `net-latency` (p95 خطی + سقف 65s) · `disk-full` (persistStore crash-free + سقفِ ایمنی).
+- **`tools/chaos-test.sh`:** DRY_RUN پیش‌فرض (ایمن) / `--live`؛ هر سناریو snapshot before/after + timeline.csv + summary با **PASS/FAIL خودکار**؛ خروجی `tests/chaos-output/` (gitignore). ترافیکِ هم‌زمان: k6 `chaos-redis-test.js` (فاز ۵).
+- **یافتهٔ صادقانه (مستند در طرح):** بعد از قطعِ طولانیِ Redis، retryStrategyِ ioredis تمام می‌شود ⇒ restart فرایند برایِ بازپس‌گیری لازم (پیشنهادِ بهبود: retryStrategy پایدار).
+- **تست:** `tests/wave19-chaos.js` **28/28** (DRY_RUN همهٔ 5 سناریو + 20 فایل، سند، سازگاریِ فرضیه‌ها با قوانین، gitignore، اتصالِ k6). گیت‌ها: smoke 547/547، check-authz 0، secret-scan 11/11، build --check.
+- **pending (ثبت‌شده):** اجرایِ LIVE نیازمندِ محیطِ چند-نمونهٔ زنده (API+Redis+PG+root) — در ساندباکس طراحی + ابزار + DRY_RUN کامل است.
+
+## چت ۳ — Wave 18: تست بار ملی (دادهٔ 10M کاربر + چهار سناریو) — ۲۰/۰۶/۱۴ (2026-09-09)
+
+**وضعیت:** شاخهٔ `arena/01a08545-p2`. سه کامیت: ابزار + تست‌ها + طرح / مستندات / گزارش.
+- **`tools/generate-national-dataset.js`:** دادهٔ ملی — **10,000,000 کاربر** (8M دانش‌آموز = 80/مدرسه، 1M دبیر = 1/کلاس، 900k ولی ≈11٪، 99.9k مدیر، 99 اداره، 1 سوپرادمین) + **100,000 مدرسه + 1,000,000 کلاس + 50,000,000 حضور + 20,000,000 نمره** + 900k parent_link. خروجی CSV (PG COPY + k6) + `stats.json` (با sha256) + README. قطعی (seed ⇒ بایت-به-بایت) و پخش‌شده (مقیاسِ کامل ≈10GB در ~3 دقیقه، فقط stdlib). `--plan` جدولِ ملی، `--scale 0.001` پیش‌فرضِ CI.
+- **اصولِ داده:** نید/تلفن با تابعِ **دو-یک-یک** از id (رقمِ کنترلِ معتبر + تکرارناپذیریِ تضمین‌شده در 10M — الگوی slice از 11 رقم با birthday paradox کولایز می‌زد؛ اصلاح شد). همهٔ داده‌ها مصنوعی، بدونِ PII واقعی. `data/national/` در .gitignore.
+- **طرح:** `docs/WAVE18_LOAD_TEST_PLAN.md` — چهار سناریویِ الزامی مطابقت با k6ِ موجود: بار عادی (scenarios 01/02/03) · بار اوج (`spike-mehr-test.js`) · فشار (`saturation-test.js` تا نقطهٔ شکست) · چند روزه (`soak-24h-test.js` — نشت حافظه). SLOها از thresholds.json.
+- **تست:** `tests/wave18-load-test.js` **38/38** (planِ دقیق، سازگاری stats/CSV، اعتبارِ نید/تلفن + تکرارناپذیری، FKها، determinism، کشفِ زیرساختِ k6، مستندات). گیت‌ها: smoke 547/547، check-authz 0، secret-scan 11/11، build --check.
+- **pending (ثبت‌شده در طرح):** اجرایِ واقعیِ بارِ ملی نیازمندِ PG/Redis/k6 زنده است — در این ساندباکس فقط طراحی + تولیدِ داده + اعتبارسنجی (کالibrating و اجراها در مراحلِ ۱-۳ِ طرح، «در انتظارِ زیرساخت»).
+
+## چت ۳ — Wave 15: Health / Deployment (Liveness/Readiness/Health + Graceful Shutdown) — ۲۰/۰۶/۱۴ (2026-09-09)
+
+**وضعیت:** شاخهٔ `arena/01a08545-p2`. سه کامیت: هسته + تست‌ها / مستندات / گزارش.
+- **سه endpoint، سه رفتارِ عمدی:** `/api/liveness` (همیشه 200 — عمداً وابستگی نمی‌بیند تا قطعِ Redis طوفانِ ری‌استارت نکند) · `/api/readiness` (store+DB+Redis؛ **PAYESH_ENV=production یا NODE_ENV=production + Redis قطع ⇒ 503**؛ در حینِ drain فوراً 503) · `/api/health` (کدِ وضعیت روی درگاهِ P0-13 قدیمی — قراردادِ server13/T2b دست نمی‌خورد — بدنهٔ کامل: db+pool stats، redis، queue، cache_l1، memory).
+- **Graceful Shutdown (SIGTERM/SIGINT):** draining ⇒ closeIdleConnections + server.close ⇒ drainِ in-flight (poll 50ms؛ مهلت `PAYESH_SHUTDOWN_TIMEOUT_MS`=10s پیش‌فرض) ⇒ persistStore + db.close + redis.close ⇒ **exit 0**؛ فراتر از مهلت+2s ⇒ exit 1 (نگهبانِ زور). در‌حالت‌پرواز کامل می‌شود، نه abort.
+- **تست:** `tests/wave15-health.js` **10/10** (H1–H7 درون‌فرایند + S1–S3 فرایندِ فرزند با سیگنالِ واقعی؛ S2 = SIGTERM در حینِ درخواستِ 1.5s: کامل شد + اتصالِ تازه reject + exit 0) + hookِ فقط-تست `/api/__slow` (env-gated).
+- **گیت‌ها:** smoke 547/547، check-authz 0، secret-scan 11/11، build --check؛ رگرسیون: server1 31، server13 9 (production)، server17 70، wave6 22، wave11 20، redis-fallback 10، otp-redis 16، lock-atomic 12، pull-bootstrap 12، server-mutations 17/20 = بازهٔ پیشین (M18 یک‌بار با پیشوندِ `backupTimer =` شکست — خطِ verbatim برگشت).
+- **مستندات:** `docs/DEPLOYMENT_GUIDE.md` (پروب‌های k8s، preStop، rolling با maxSurge=1/maxUnavailable=0، rollback، جدولِ env، چک‌لیست) + AI_PROMPT §0.5.33 + ROADMAP B.6.
+- **ملاحظه:** این شاخه worker ندارد (outbox/worker در main) — seamِ توقفِ worker در توالیِ shutdown آماده است؛ بعد از merge به main باید بازبینی شود که worker جدید هم در همان seam ایستاده شود.
+
+## چت ۳ جدید — Wave 11: Cache (TTL، invalidation، stampede protection) — ۲۰/۰۶/۱۴ (2026-09-09)
+
+**وضعیت:** شاخهٔ `arena/01a08545-p2` (بعد از دور ۱۰). سه کامیت: هسته + تست‌ها / اسنکواری و مستندات / گزارش.
+- **Audit + ۴ شکافِ رفع‌شده:** (۱) L1 بی‌سقف بود ⇒ **LRU با سقف** (`PAYESH_CACHE_L1_MAX` پیش‌فرض ۱۰٬۰۰۰) + TTL 60s. (۲) انقضایِ ناقصِ L2: `invalidateSchool` فقط L1-resident‌ها را پاک می‌کرد و رویدادِ `user` L2 را نمی‌زد ⇒ ایندکسِ مشترکِ `payesh:cache:school:<sid>` + `purgeSchoolL2` (در انقضایِ school و شنوندهٔ pub/sub) + انقضایِ L2 در رویدادِ user. (۳) REST routes (۵ فایل، ۱۶ نقطهٔ نوشت) کش نمی‌زدند ⇒ همه با `invalidateCollection`. (۴) stampede ⇒ `cache.withSingleFlight` + پوشاندنِ مسیرِ bootstrap (N هم‌زمانِ miss = یک build).
+- **توسعهٔ redis.js:** `sAdd`/`sMembers`/`sRem` با فال‌بکِ حافظه.
+- **تست‌ها:** `tests/wave11-cache.js` (C1…C6 = ۲۰ بررسی؛ fake clientِ قراردادسازگار با Set/TTL؛ C6 = stampede روی route واقعی).
+- **گیت‌ها سبز:** smoke ۵۴/۵۴۷، check-authz ۰، secret-scan ۱۱/۱۱، build --check. رگرسیون: server1 31 · s12 43 · s13 9 · s14 13 · s15 40 · s17 70 · s18 55 · pull-bootstrap 12 · wave1-writes 14 · wave6-redis 22 · sync-atomic-batch 22 · waf-mutations 4/4 — همه سبز.
+- **مستندات:** `docs/WAVE11_CACHE_STRATEGY.md`، AI_PROMPT ۰/۵/۳۲، ROADMAP B.5 ✅.
+- **pending:** ردیسِ زنده در ساندباکس نیست (fake قراردادسازگار؛ CI pending — در سند ثبت شد).
+
+## چت ۳ جدید — Wave 6: Redis و Distributed State (Audit و تکمیل) — ۲۰/۰۶/۱۴ (2026-09-09)
+
+**وضعیت:** شاخهٔ `arena/01a08545-p2` (بعد از دور ۱۰۵). سه کامیت: هسته + تست‌ها / اسنکواری و مستندات / گزارش.
+- **Audit:** `docs/WAVE6_REDIS_AUDIT.md` — همهٔ stateهایِ حیاتی (OTP، rate-limit، revocation، idempotency، cache، lock) روی Redis با TTL؛ **تولید بدونِ فال‌بکِ حافظه** (P0-13: بدونِ ردیسِ زنده استارت نمی‌شود + `/api/health` 503)؛ `otp.json` فقط حالتِ توسعهٔ بدونِ ردیس.
+- **دو شکافِ رفع‌شده:** (۱) rate-limitِ WAF (`cache.checkRateLimit`) غیراتومِ GET+SET ⇒ حالا `incrWithTtl` (burstِ ۱۲ ⇒ دقیقاً ۵ مجاز). (۲) نگهبانِ شمارشِ شناسهٔ R97 درون‌فروشگاهی + `__auth.enum` بدونِ GC در payesh.json ⇒ شمارنده روی `payesh:enum:<jti>` (TTL=پنجره) + REVOKEٔ توزیع‌شده در denylist؛ `sendJsonCounting` (callbackِ syncِ ۷ ماژول) قراردادش دست‌نخورده.
+- **تست‌ها:** `tests/wave6-redis.js` (R1…R8 = ۲۲ بررسی؛ fake clientِ قراردادسازگار با TTL/اسکرپت/ثبتِ دستورات؛ readiness با کودفرزند و `REDIS_URL`ِ نالایق) + `redis.__setClientForTests`.
+- **رفعِ پیشینه:** الگوهایِ M3–M6 در `otp-ratelimit-mutations.js` (پایین‌دستیِ کدِ پیشینِ R-dist) ⇒ به خطِ اجرایِ فعلیِ auth.js: 7/7.
+- **گیت‌ها سبز:** smoke ۵۴/۵۴۷، check-authz ۰، secret-scan ۱۱/۱۱، build --check. رگرسیون: server1 31 (S25) · s17 70 · s11-sms 9 · otp-ratelimit 49 + جهش‌ها 7/7 · otp-redis 16 · redis-fallback 10 · redis-key-audit 17 · rate-limit-distributed 9 · session-revocation 16 + جهش‌ها 3/3 · lock-atomic 12 · waf-mutations 4/4 · sync-atomic-batch 22 · wave1-writes 14 · id-collision 11 · occ 18 · tombstone 25 — همه سبز. پیشینه‌هایِ ثبت‌شده (بدونِ تغییر): server-mutations 17/20.
+- **pending:** ردیسِ زنده در ساندباکس نیست (اثبات با fakeِ قراردادسازگار؛ CI pending — در سند ثبت شد).
+- **مستندات:** AI_PROMPT ۰/۵/۳۱، ROADMAP B.4 ✅.
+
+## چت ۳ جدید — Wave 1 (بخش دوم): انتقال Writes و Transactions به PG — ۲۰/۰۶/۱۴ (2026-09-09)
+
+**وضعیت:** شاخهٔ `arena/01a08545-p2` (بعد از E.9). پیشنهادِ ناظر برایِ `feat/wave1-writes-chat3` به‌دلیلِ session-pin قابلِ اجرا نبود — انحراف در گزارشِ دور ثبت شد. سه کامیت: هسته + تست‌ها / اسنکواری و مستندات / گزارش.
+- **کد:** sms — نوشت‌هایِ هر آیتم (sms_log+sms_wallet+notify_queue یا رکوردِ failed) در **یک تراکنش** (`mirrorItem` با `persistOpsBatch`؛ شکستِ آینه نامرئی + audit). sync — نوتیفیکیشن‌هایِ مشتقِ ۴ hook (conflict/leaves/chat/corrections) به `derived` → `mirror.concat(derived)` در **همان تراکنش**. delete-service — `db.transaction`: DELETE + رویدادِ `server_outbox` (all-or-nothing؛ شکست در PG ⇒ 500 از handlerِ سراسری = fail-closed). outbox — `append(event, client)` اختیاری (داخل تراکنشِ فراخوان / اتصالِ جدا).
+- **اسنکواری:** `docs/WAVE1_WRITES_INVENTORY.md` — PG اتمیک / best-effort (REST routes تک‌رکوردی) / فقط-JSONِ سازِ‌عملکرد (جلسات، OTP، گورناخن‌ها، sync_conflicts، صفِ outbox، فایل‌ها) + تصمیمِ max+1 محلیِ idهایِ sms (NAMESPACESِ ids.js فقط ۴ کلکسیون دارد).
+- **تست‌ها:** `tests/wave1-writes.js` (W1…W7 = ۱۴ بررسی؛ pool/clientِ جعلی — BEGIN/COMMIT/ROLLBACK و توالیِ نوشت‌ها) + `tests/wave1-writes-mutations.js` (MW1…MW5 همه کشته).
+- **گیت‌ها سبز:** smoke ۵۴/۵۴۷، check-authz ۰ (۶/۶ بررسی)، secret-scan ۱۱/۱۱، build --check. رگرسیون: server1 31، s10 7، s11-sms 9، s11-mut 6، s12 43، s13 9، s14 13، s15 40، s16 39، s17 70، s18 55، s4 16، s5 14، s6 9، s7 15، s8 9، s9 10، tombstone 25، occ 18، id-collision 11، lock-atomic 12، sync-atomic-batch 22 — همه سبز. **موجودِ پیشین (نه رگرسیون):** server-mutations 17/20 (M1/M14/M15 روی in-tree) و کرشِ server11-child به‌تنهایی (فایلِ helper است).
+- **مستندات:** AI_PROMPT ۰/۵/۳۰، ROADMAP B.3 ✅.
+
+## چت ۳ جدید — E.9: مدیریت مراجعین (visitors) — ۱۸/۰۶/۱۴ (2026-09-09)
+
+**وضعیت:** شاخهٔ `arena/01a08545-p2` (بعد از E.1). دو کامیت: هسته‌ی E.9 + مستندات. گیت‌ها سبز: smoke ۵۴/۵۴۷، check-authz=0، secret-scan ۱۱/۱۱، build --check، authz-model ۲۴/۲۴۸، سوئیت‌های تازه ۱۳/۱۳ + جهش‌ها ۵/۵.
+- **پیشینه:** «نسخهٔ سبک» بند ۷ فقط با مدیر + دو فیلد بود؛ E.9 آن را کامل کرد (فامیل/مسیر/جدولِ سرور از قبل موجود بودند — هیچ‌کدام شکسته نشد).
+- **مدل:** فیلدهای تازه `national_id`/`phone`/`visiting_person` (اختیاری) + `status:'in'|'out'` (کهنه‌ها از `out_at` مشتق — بدونِ مهاجرت). STATUS_ENUMS + whitelist + write-perms + schema.sql (regenerate؛ diffِ بزرگ = driftِ ساعتِ seed، عادی).
+- **دسترسی:** مدیر + **نگهبان** (`role=guard` — نقشِ تازه: USER_ROLES سرور، NAV.guard، گزینهٔ «نگهبان/پذیرش» در فرمِ کاربر) ⇒ ثبت/خروج؛ **معاون** (مدیرِ سطحی با عنوان) ⇒ فقط‌خوان (گاردِ عنوان روی داده)؛ سایر ⇒ هیچ. **یافته + رفع:** مسیرِ `#visitors` پیش‌تر برایِ هر نقشی با hash باز بود (نشتِ نسخهٔ سبک) — حالا `viewVisitors` گاردِ نقش دارد.
+- **UI:** فرمِ ۵ فیلدی، دکمهٔ خروجِ ردیفی، جستجویِ زندهٔ نام + تاریخ، `visitorDashCard` روی داشبوردِ مدیر/نگهبان. دادهٔ نمونه از `new Date()` به ۳ رکوردِ قطعی رسید.
+- **تست‌ها:** `tests/visitors2.js` (V0–V12) + `tests/visitors-mutations.js` (۵/۵).
+
+## چت ۳ جدید — E.1: نمره‌های تئوری/عملی هنرستان (grades) — ۱۸/۰۶/۱۴۰ (2026-09-09)
+
+**وضعیت:** شاخهٔ `arena/01a08545-p2` (از `2a2b74f` = main). دو کامیت: هسته‌ی E.1 + مستندات. گیت‌ها سبز: smoke ۵۴/۵۴۷، check-authz=0، secret-scan ۱۱/۱۱، build --check، authz-model ۲۴/۲۴۸، سوئیت‌های تازه ۱۴/۱۴ + جهش‌ها ۵/۵، workshop2 ۱۲/۱۲ + جهش‌هایش ۴/۴.
+- **مدل:** سه فیلدِ تازه در `grades` — `theoretical_score`/`practical_score` (کسری ۰–۲۰، nullable) + `is_vocational` (بول). `score` = **میانگینِ قسمت‌هایِ پرشده**؛ همهٔ مصرف‌کننده‌های `score` (معدل، رتبه، هشدار، آمار) خودکار درست کار می‌کنند. authz: سه فیلد در `model.json` (ورودیِ سطح‌متن؛ فایلِ curated را هرگز با json.dump بازنویسی نکنید)، دو قاعده در `server/validate.js`، بازتولید `write-perms.json` (فقط ۳ خط).
+- **فرم (`gradeModal` در `18-modals.js`):** در کلاس‌هایِ مدرسهٔ توانِ `workshop` فیلدِ «نوعِ نمره»: «تئوری» (پیش‌فرض) ⇒ دو قسمتِ تئوری/عملی + پنهان‌شدنِ فیلدِ «نمره»؛ «عملی/کارگاهی» ⇒ رفتارِ دور ۶۹ (رکوردِ واحد) + هم‌پیکریِ فیلدهای تازه (`practical_score=score`). جابه‌جاییِ فیلدها با تغییرِ نوع: `gradeKindToggle` + caseٔ `g_kind` در شنوندهٔ `change`ِ سراسری. مدرسهٔ غیرکارگاهی: فرم دست‌نخورده.
+- **نمایش:** ستون‌های جدا «تئوری»/«عملی» در `viewGrades` (فقط کلاسِ کارگاهی؛ دیدِ دانش‌آموز با `workshopStudent`)؛ `vocationalParts(g)` در `13-grades.js` تنها نقطهٔ تفسیرِ قسمت‌ها (رکوردِ کهنهٔ `kind=practical` از `score` می‌گیرد — سازگاریِ عقب)؛ چِپِ پرونده (`17-student-record`) + کارنامهٔ A4 (`reportCardCert`، هر دو قالب).
+- **دادهٔ نمونه:** پایهٔ آخرِ هنرستان (مجتمع ایران‌زمین، دوازدهم فنی): یک نمرهٔ تئوریِ ترکیبیِ تئوری ۱۵/عملی ۱۷ (score=۱۶) — قطعی.
+- **نکتهٔ تست:** جهشِ M4ِ workshop2 با معنایِ تازهٔ E.1 زودتر (در ردِّ ذخیره) می‌میرد؛ `expectFail` به «نمرهٔ تازه ثبت نشد» به‌روز شد — کشتنِ رفتاری همان است.
+- **مستندات:** `docs/VOCATIONAL_GRADES.md`، AI_PROMPT ۰.۵.۲۸، ROADMAP E.1 ✅، USER_GUIDE (دو calloutِ دور ۶۹ با یادداشتِ دور ۱۰ بسط شدند).
+ ۱۴۴ سبز + ۴ قرمز → هر ۴ ریشه‌یابی و با اصلاحِ **فقط-تست** سبز شدند (جزئیات در `R100_STEP7_FINAL_GATE_REPORT.md`)؛ ‏`build --check` ✅ · ‏smoke ‏**547/547** ✅ · ‏`check-authz` ✅؛ مستندات (AI_PROMPT §۰.۵.۲۱ + راهنما + همین ورودی) ✅
 - **جمعِ آزمونِ تازه:** ۹۹ ادعایِ تازه (۹+۲۸+۱۷+۱۸+۱۸+۹) + ۳۰ جهشِ تازه (۷+۵+۴+۵+۵+۴) — همه سبز، ۰ خطایِ محیطی.
 - **باقی‌ماندهٔ کلِ پروژه (بدونِ تغییر):** تصمیمِ محصولِ پرداختِ والد · ۲.۷ (throttle + UUID) · ۲.۱(a) نرخِ اکسل · ۲.۱(b) قواعدِ عمیق · Lax→Strict · pull/bootstrapِ خواندن (جدا).
 
@@ -1463,3 +1796,14 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 - UI: بج سال در هدر + سلکت سال عملیاتی در مودال (خودکار/پارسال/جاری/بعد) + بج+قفل در جدول مدارس + فیلتر سال در کارت سابقه + بنر نرم فصل؛ بدون اکشن/روت تازه.
 - تست: `tests/academic-years.js` ‏9/9‏ (AY0–AY8) + `tests/academic-years-mutations.js` ‏5/5‏ کشته (YM1–YM5)؛ سند: `docs/ACADEMIC_YEARS_GUIDE.md`.
 - گیت‌ها: smoke ‏547/547‏، authz ‏0‏، secret-scan ‏11/11‏، build --check سبز، authz-model ‏232/232‏؛ رگرسیون دامنه: uiclick ‏4/4‏ + جهش ‏5/5‏، boom2 ‏8/8‏، simulation ‏48/48‏ ✅
+
+## ویو ۵ — مدل یکتای مجوز + ایزولاسیون مستأجر (بخش دوم) — ✅ (2026-09-10)
+- **مدل یکتا:** همهٔ دروازه‌ها از `server/policy.js` — sync delegate است (T15b)، پنج مسیر v1 (users/students/classes/grades/attendance) بازمهندسی شدند: فهرست=`filterReadable`، خواند=`restReadGate` (رد⇒۴۰۴ ضدشمارش)، نوشتن=`restWriteRoleOk`+`inScope`/`restCreateScopeOk` روی رکورد/بدنهٔ جمع‌شده؛ `idor.js` هم به `policy.studentRecordOk` واگذار شد — آخرین کپیِ موازیِ §۱.۲ حذف.
+- **قراردادهای تازهٔ policy:** `studentRecordOk` (مدیر سخت‌مدرسه؛ دبیر کلاسِ تدرسیِ **واقعی** — کلاس شبح fail-open نبود؛ ولی از parent_links؛ دانش‌آموز خودش؛ بقیه از جمله اداره DENY)؛ در `inScope`: مهارِ سختِ مدرسه (بدون IS-NULL) + **سازگاریِ مهارِ دانش‌آموز** (student_id مدرسه‌دیگر با مُهرِ خودِ مدرسه ⇒ رد — BOLAِ sync/REST بسته شد؛ یتیم‌ها legacy ماندند، قفلش با FKِ Wave-1)؛ باندِ هندسهٔ اداره در readOk (classes/attendance/grades) هم‌راستا با SQL؛ `DELETE_ROLES_REST` (تنگ‌سازیِ مستندِ حذفِ فیزیکی: REST ⊆ مدل، هیچ‌گاه بازتر نه).
+- **PG (`dbquery.js`):** SUPER_SCOPED از policy (bypass اداره حذف)؛ مهارِ سخت در پنج builder؛ `_officeGeoClause` (geo؛ بی‌دفتر⇒`1=0`)؛ `_roleScopeParts` آینهٔ readOk؛ students برای اداره `1=0`؛ attendance دبیر class-only (schema)؛ مسیرها `office` را پاس می‌دهند.
+- **خود‌ویرایشی:** allowlist تفکیکیِ users PATCH (خود=full_name؛ manager=۷فیلد؛ دبیر=iep_*) + `field_denied` ۴۰۳ روی کلیدِ ناشناخته (میراثِ پذیرشِ بی‌صدا جمع شد).
+- **scope.js:** شیمِ fail-closed روی policy؛ مصرف‌کننده ندارد (حذفِ نهایی ← Wave-15).
+- **تست:** `wave5-authz.js` ۲۱→**37** (یکپارچگیِ پنج‌فهرست×پنج‌نقش REST↔مدل با total+عضویت، BOLAِ نمره/حضور، دروازهٔ ساختِ دبیر ۲۰۱/۴۰۳، خود‌آلوتستِ T21، نشتِ پارامتری T23، هندسهٔ حافظه T24، قراردادِ هفت‌گانهٔ builderهای PG T25–T31)؛ `wave5-authz-mutations` 5/5 (درهای دروازه؛ دروازهٔ ساختِ دبیر و allowlistِ خود افزوده شد)؛ هارنسِ هم‌ارزی 93,024/۰.
+- **گیت‌ها:** smoke **547/547** · api **7/7** · wave1 18/18 · wave3 13+13 · wave4 11/11 · wave8 14+5 · wave9 39 · wave10 26 · authz-model 248 · server1 31 · server16 39 · server17 70 · security2 25 · waf-ddos 29 · occ 18 · academic-years 9 · pull-bootstrap 12 · check-authz **0** · secret-scan **11/11** ✅ (تنها قرمزِ wave13: نبودِ ZAP در محیط — در پایهٔ تمیز هم قرمز، بی‌ربط).
+- **اسناد:** `docs/WAVE5_AUTHZ.md` (جدید — مرجعِ اجرا) + به‌روزرسانی `AUTHORIZATION_MODEL.md` (لایهٔ ۴ ← policy؛ جدول تست ۳۷) و ردیف Wave 5 در `NATIONAL_ROADMAP_PROGRESS.md` ← ✅.
+- **کامیت‌ها (بر روی 3e86993):** `8472f17` fix(policy) · `fa359a3` fix(pg) · `7a0e796` fix(rest) · `d5230b7` test(wave5) · `—` docs(wave5) — همگی push به `arena/01a08a4e-p2`.
