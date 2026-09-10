@@ -15,6 +15,10 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
+/* ویو ۱۴ (Observability) — نتیجهٔ پردازشِ هر رویداد به‌صورت metric.
+   metrics.js هرگز خطا نمی‌دهد (R1)، پس رفتارِ کارگر تغییر نمی‌کند. */
+const metrics = require('./metrics');
+
 /**
  * @param {object} opts
  * @param {object} opts.store      — فروشگاه (آرایهٔ `store.outbox` منبع صف است)
@@ -61,6 +65,7 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
             last_error: null
           });
           processed++;
+          metrics.inc('payesh_worker_events_total', { outcome: 'processed' });
         } catch (err) {
           const rc = (Number(evt.retry_count) || 0) + 1;
           const patch = {
@@ -69,6 +74,8 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
           };
           if (rc > maxRetries) { patch.status = 'failed'; failedDelta++; }
           await outbox.mark(evt.id, patch);
+          /* برچسب از مجموعهٔ بسته (retry/failed)؛ متن خطا هرگز label نیست. */
+          metrics.inc('payesh_worker_events_total', { outcome: patch.status === 'failed' ? 'failed' : 'retry' });
         } finally {
           inFlight.delete(evt.id);
         }

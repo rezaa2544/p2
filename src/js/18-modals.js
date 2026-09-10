@@ -448,9 +448,16 @@ function discModal(d){
 }
 function annModal(a){
   a=a||{title:'',body:'',audience:'all'};
+  /* د.۳ — سطح اهمیت برای ناشران؛ اطلاعیهٔ اداره در محدودهٔ خود اداره منتشر می‌شود */
+  const isOffice=S.user.role==='edu_office';
+  const canSeverity=['manager','superadmin','edu_office'].includes(S.user.role);
+  const officeName=isOffice&&S.user.office_id?((byId('offices',S.user.office_id)||{}).name||''):'';
   openModal(modalTpl(a.id?'ویرایش اطلاعیه':'انتشار اطلاعیه',
    `${f('عنوان *',inp('a_title',a.title))}
     ${f('مخاطب',sel('a_aud',[['all','همه'],['teacher','دبیران'],['student','دانش‌آموزان'],['parent','اولیا'],['manager','مدیران']],a.audience))}
+    ${canSeverity?`${f('سطح اهمیت',sel('a_sev',[['normal','عادی'],['urgent','🟠 فوری'],['critical','🔴 بحرانی']],a.severity||'normal'))}
+      <div class="small muted" style="margin:-6px 0 10px">بحرانی با بنر قرمز و فوری با نوار کهربایی اولِ فهرست مخاطبان نمایش داده می‌شود.</div>`:''}
+    ${isOffice?`<div class="small" style="background:var(--purple-soft);padding:8px 12px;border-radius:10px;margin-bottom:10px">🏛️ این اطلاعیه به‌نام «${esc(officeName)}» برای همهٔ مدارس محدودهٔ همان اداره منتشر می‌شود.</div>`:''}
     ${f('متن *',`<textarea class="input" id="a_body" rows="5">${esc(a.body||'')}</textarea>`)}`,'ann-save'));
   window._annEdit=a.id||0;
 }
