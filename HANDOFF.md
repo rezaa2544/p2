@@ -14,6 +14,45 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## ویو ۱۴ — استقرارِ زندهٔ Observability (Prometheus/Grafana/Loki/Jaeger) — ✅ (2026-09-10)
+- **فاز۲ِ این سشن:** اسکراپ‌تارگتِ واقعی اضافه شد — `server/metrics.js` (text-expositionِ صفرِوابستگی: http histogram/counters با tapِ finish + guardهایِ کاردینالیتی + self-scrape-excluded، lag/GC/heap از stdlib، pullsِ زمانِ اسکرپ guardشده ⇒ سرویسِ مرده = `*_up=0`)؛ وایرینگ `index.js` با دروازهٔ اختیاریِ `METRICS_TOKEN` (چهل‌وی‌وان) — edge هرگز `/metrics` را روت نمی‌کند. **تأییدِ زنده در سندباکس:** بوتِ سرویس، سری‌ها، شمارنده‌ها، گیتِ توکن.
+- **استک compose:** `infra/observability/` — prometheus v2.54.1 + alertmanager v0.27.0 + grafana 11.2.0 (datasource/dashboard provisioningِ خودکار؛ uidهای payesh-prom/loki/jaeger + لینکِ exemplar→Jaeger) + loki/promtail 3.1.1 (structured_metadataِ trace_id برایِ audit-log) + otelcol-contrib 0.100.0 + jaeger 1.59؛ bind‌ها همه 127.0.0.1؛ رازها env-file.
+- **قوانین هفت‌گانه:** HighErrorRate 5xx>0.1٪ · HighLatency p95>300ms · RedisDown · DBLatencyHigh>50ms · SyncQueueDepth>1000 · EventLoopLagHigh p99>100ms · MemoryHigh heap>80٪ — نام‌ها با metrics.js قفلِ متقابل.
+- **داشبوردها:** `payesh-main.json` ۱۰پنل (RPS/p50-95-99/4xx5xx/DB latency+pool wait/Redis/cache-hit/queue/lag+heap+GC) + `payesh-logs.json` جست‌وجو با trace_id.
+- **تست‌ها:** `observability-config` **55/55** · `observability-dashboards` **30/30** · `observability-config-mutations` **6/6** — ضدرانشِ سه‌جانبه (متریک↔قانون↔داشبورد↔پورت OTLP) با جهش اثبات‌شده. گیت‌ها: smoke **547/547** · api 7/7 · check-authz **0** · secret-scan **11/11** · build --check 0 · run.js 35/35.
+- **اسناد:** `docs/OBSERVABILITY_DEPLOYMENT.md` (استقرارِ واقعی + صحت‌سنجیِ ۵دقیقه + retention) + `docs/WAVE14_OBSERVABILITY.md` (فاز۱ PR#22 + فاز۲) + ردیفِ ۱۴ نقشهٔ راه 🟡.
+- **کامیت‌ها:** 6039000 (exporter) · 66b2918 (استک) · 45f9f67 (provisioning+داشبورد) · 080900f (تست) · 9231690 (اسناد).
+- **باقی:** اجرای compose روی میزبان (/targets سبز)، __WEBHOOK_URL__ واقعی، توکنِ اسکرپ در prometheus.yml میزبان (رازِ gitignored)، drillِ کوریِ مانیتورینگ.
+
+## زیرساختِ HA + PITR + Failover — رفعِ مانعِ P0#3 (Production Readiness / Reliability) — ✅ (2026-09-10)
+- **PG HA:** `infra/postgres/` — compose با Primary(wal_level=replica + archive هم‌زمان pgbackrest→S3/MinIO) + hot-standby (basebackup -R یا STANDBY_BOOTSTRAP=repo) + PgBouncer (txn pooling، مسیرهای payesh/payesh-readonly دقیقاً منطبق بر DATABASE_URL/READ_DATABASE_URL در server/db.js) + بازویِ pg-backup + post-checks.sh (gate دهیِ PASS/FAIL). ایمیج سفارشیِ pgbackrest-دار (پین‌شده)؛ هیچ رمزی در فایل‌ها — env-file با ${VAR:?}؛ env.ha.example بیرونِ ignore با نامِ env* (قانونِ .env* فایل‌های دات را می‌بلعد).
+- **Redis HA:** `infra/redis/` — ۱ master + ۲ replica + ۳ sentinel؛ قراردادِ اتصالِ آماده در server/redis.js فعال می‌شود (REDIS_SENTINELS + REDIS_SENTINEL_NAME=mymaster)؛ quorum=2/down-after=5s/failover≤30s طبق RELIABILITY_DR_PLAN؛ redis-checks.sh.
+- **PITR:** tools/pitr-restore.sh (pgbackrest --type=time/xid/name/latest، محیطِ ایزوله با fsync=off و پورتِ غیراستاندارد، promote خودکار، verify خودکار) + tools/pitr-verify.sh (promoted/جداولِ حیاتی non-empty/target رعایت/checksumِ ۲۰۰ردیفی برایِ drill ماهانه).
+- **Failover:** tools/failover-postgres.sh (گاردِ split-brain + سه‌بار نمونه‌گیریِ مرگ + آستانهٔ lag + pg_promote(wait) + چک‌لیستِ fence/rebuild) و tools/failover-redis.sh (SENTINEL FAILOVER با poll و تأییدِ INFO؛ REDISCLI_AUTH فقط).
+- **Runbook:** docs/DR_RUNBOOK.md — چهار سناریو (PG primary، Redis master، DC منطقه‌ای (طرحِ دوم‌منطقه‌ای تهران⇄تبریز با bucket replication)، فسادِ داده/PITR) × RPO/RTOهایِ مصوبِ RELIABILITY_DR_PLAN + گیت‌هایِ مشترکِ پسازاقدام + drill-log + on-call.
+- **تست:** `node tests/ha-config.js` **92/92** · `node tests/dr-runbook.js` **38/38** · `node tests/ha-config-mutations.js` **7/7 کشته** (M1..M6 + پایه) — و گیت‌های همیشگی: smoke **547/547** · check-authz **0** · secret-scan **11/11** · build --check **0** · tests/run.js 35/35 (SASTِ CI).
+- **کامیت‌ها:** 7aca4c9 (PG infra) · 4e4ab8b (HA_POSTGRES) · 7ce584a (Redis) · 4b7fd52 (HA_REDIS) · 2f5c2f1 (PITR) · f1f05fa (failover) · 24d281a (DR_RUNBOOK+نقشهٔ راه) · test+handoff — push به arena/01a08a4e-p2.
+- **باقی‌مانده (خارج از sandbox):** اجرایِ واقعیِ compose روی میزبانِ Docker (config-check عمیق)، مانورهایِ فصلی و ثبتِ drill-log، slot فیزیکی + max_slot_wal_keep_size، تفکیکِ رازهایِ replicator/pgbouncer، ACL ردیس.
+
+## چت ۴: مرج PR #43 (ویو ۱۲ — شبکه/لبه) + هم‌سازی سشن با main — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
+- **PR #43:** کانفلیکت HANDOFF با حفظ دوطرف حل؛ پچ ci/pending بازتولید شد (SCA حالا در Security Program اصلی است؛ فقط CodeQL در انتظار توکن workflow)؛ جهش M3 به خودِ workflow تغییر هدف یافت (5/5)؛ **باگِ واقعیِ CI:** آکولادِ بدون‌نقل‌قول در کلیدهای regex نگینکس (`on\w{2,}` → `on\w\w+`) — `nginx -t` رانر را می‌شکست. merge-commit `463233c` با ۷/۷ چک سبز؛ شاخه feat حذف شد.
+- **سشنِ ویو ۵ (این شاخه):** ۱۱ کامیت روی mainِ رفته‌پیش (۷۵۰+)؛ ادغامِ تازهٔ origin/main → تنها کانفلیت HANDOFF (union)؛ درختِ ادغامی کاملِ سبز: smoke 547 · api 7/7 · wave5 37+5 · wave12 24+5 · authz-model 248 · server16 · occ 18 · pull-bootstrap 12 · wave1/3/4 · build-check 0 · check-authz 0 · secret-scan 11.
+- **وضعیت:** PR از `arena/01a08a4e-p2` → `main` باز شد؛ منتظر Review/تأیید ناظر (مرجع‌های ویو ۵ هنوز در main نیستند — تا پیش از آن، `server/policy.js` و هم‌سازیهایی در خط اصلی اجرا نمی‌شوند).
+
+## چت ۴: اتصال نشست جدید + پایشِ کامل (بدون کد) + کشفِ «باگ پنجشنبه» — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
+
+**شاخه:** `arena/01a08a4e-p2` (بر پایهٔ `main` @ `40c5f96` — مرج PR #44)
+
+**وضعیت:** گام‌های اتصال/پایش/Ruflo طبق دستور کارفرما اجرا شد؛ **هیچ کدی تغییر نکرد**.
+
+- **گیت‌های پایه:** check-authz 0 · secret-scan 11/11 · `build --check` بیت‌به‌بیت ✅ — همه سبز.
+- **⭐ کشفِ کلیدی:** smoke در سندباکس 405/530 قرمز شد؛ ریشه = **باگ پنجشنبهٔ** `src/js/02-demo-data.js` (حلقهٔ روزهای سخت‌کدِ ۰..۴ در برابرِ `work_days=[0..5]` → `slot` تعریف‌نشده → `teacher_id` در زمانِ بارگذاری؛ خطای زنجیره‌ای روی ۱۲۵ بررسی). CI راه‌دور سبز بود چون ران چهارشنبهٔ UTC اجرا شده بود. **رفعش دقیقاً داخل PR #45 است** (`tests/demo-thursday.js` + فیکس + تنظیم بند ۱.۵ smoke؛ وضعیت: CLEAN/MERGEABLE) — صفر رگرسیون از این نشست.
+- **Ruflo:** سندباکس تازه ⇒ `/tmp/ruflo-unified` صفرورودی و هر سه کلیدِ تیمی گم. `ruflo@3.39.2` نصب؛ کلیدهای `p2/roadmap-status` · `p2/memory-branch-map` · `next_wave` از ریپو+gh بازسازی و `p2/chat4-new-session` ذخیره شد (۴ ورودی، بازیابی معنایی سالم؛ اجرا از بیرونِ ریپو با envهای الزامی).
+- **Wave 13 (شکافِ ZAP):** صحت‌سنجی شد — فیکس‌های `env.SECURITY_TARGET_URL` و `spdx` روی main مرج هستند؛ شکافِ باقی‌مانده عملیاتی است (staging URL تنظیم نشده ⇒ DAST skip). قرمزی job «WAF & nginx» در ران ۱۴ ساعت پیش = `Install nginx` (اختلال گذرای رانر).
+- **مستندات:** گزارش تجمیعی `CHAT4_ONBOARDING_REPORT_2026-09-10.md` (مطابق اصل کارفرما به‌صورت فایل ارائه شد).
+- **بعدی (منتظر دستور):** مرج PR #45 با تأیید ناظر ⇒ پنجشنبه‌های سبز روی main؛ سپس تکمیل Wave 1 با PG زنده.
+
+
 ## چت ۱: موج ۱ P0 — PG transaction-first writes — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅ (روی شاخه؛ push نهایی + PR باقی)
 
 **شاخه:** `arena/01a08a2e-p2` (بیس `origin/main` @ `40c5f96`) — ۱۳ کامیت موج ۱: `c16b178` (inventory) → `2d610e9` (migration 004) → `87c0ee5` (boot/hydrate) → `ea95508` (۵ روت + dispatch) → `f3b4dc0` (sync دوفازی) → `61b2681`/`49e0e03` (سرویس‌ها) → `050e6f3`/`0fbd3fe` (فیکس‌های cross-instance) → `c66cfc7` (تست چندنمونه‌ای) → `aa7fdc9` (گیت) → `9019b90`/`c3bf3a1` (فیکس hydrate + تست 004).
@@ -30,7 +69,6 @@
 **پس از PR:** چک DAST قرمز شد — ریشه‌یابی: اسکن واقعی ۱۰۶ ثانیه‌ای با exit code ‏2‏ یعنی WARN-only بدون هیچ FAIL (شواهد: annotations + تایمینگ stepها؛ لاگ CI از سندباکس unreachable است)؛ رفتار صفر/یک ZAP با سیاست advisory خود ورک‌فلو هم‌خوان شد (exit ‏2‏ سبز، ‏1‏ و ‏3+‏ همچنان قرمز — بدون false-green).
 **نکات Wave 2:** سطرهای `sync_conflicts` عمداً cache-side؛ ردیف‌های یتیمِ cross-instance در GDPR؛ پنجرهٔ درخواستِ زودهنگامِ بوت؛ شکلِ NUMERIC از PG رشته برمی‌گردد (فراخوان‌ها Number می‌کنند)؛ `tools/reseed-from-pg.js` برای بازگشتِ اضطراری PG→JSON.
 **بعدی:** reconnect گیت‌هاب → push → چرخاندنِ `wave1_status=completed` در ruflo → PR به main.
-
 ## چت ۴: ویو ۱۲ — شبکه / لبه (Network / Edge) — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
 
 **وضعیت:** شاخهٔ تازهٔ `feat/wave12-chat4` (بر پایهٔ `origin/main` @ `781a471`). شش کامیت:
@@ -76,8 +114,7 @@
 - `1106464` **قراردادِ تست:** `tests/wave20-arena5.js` ‏۲۲/۲۲ (سند + اسکریپت + گیت‌های ‏CI).
 **گیت‌ها:** ‏smoke ۵۴۷/۵۴۷ · check-authz=0 · نشت‌یاب ۱۱/۱۱ · بیلد‌چک ✅.
 **یافتهٔ ممیزی:** ‏`npm test` فقط ‏`tests/run.js` + دودی را در ‏CI اجرا می‌کند و بقیهٔ ~۲۴۰ سوئیت قرارداداً در رگرسیونِ کاملِ محلی اجرا می‌شوند — این تقسیم‌کار در سندِ آرنا ۵ صریح ثبت شد (به‌همراهِ پچِ در انتظارِ ‏SAST/SCA).
-**بعدی:** ادغام با تأیید ناظر ارشد (اصل هشتم)؛ اجرای نخستین دروازهٔ انتشار پیش از ‏Go-Live.
-## چت ۲ (ج): سبزِ کاملِ CI روی GitHub — ریشهٔ دومِ zero-job کشف شد — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+**بعدی:** ادغام با تأیید ناظر ارشد (اصل هشتم)؛ اجرای نخستین دروازهٔ انتشار پیش از ‏Go-Live.## چت ۲ (ج): سبزِ کاملِ CI روی GitHub — ریشهٔ دومِ zero-job کشف شد — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
 
 **شاخه:** `arena/01a08648-p2` (ادامهٔ همان نشست؛ HEAD = `da13943`)
 
@@ -1763,3 +1800,14 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 - UI: بج سال در هدر + سلکت سال عملیاتی در مودال (خودکار/پارسال/جاری/بعد) + بج+قفل در جدول مدارس + فیلتر سال در کارت سابقه + بنر نرم فصل؛ بدون اکشن/روت تازه.
 - تست: `tests/academic-years.js` ‏9/9‏ (AY0–AY8) + `tests/academic-years-mutations.js` ‏5/5‏ کشته (YM1–YM5)؛ سند: `docs/ACADEMIC_YEARS_GUIDE.md`.
 - گیت‌ها: smoke ‏547/547‏، authz ‏0‏، secret-scan ‏11/11‏، build --check سبز، authz-model ‏232/232‏؛ رگرسیون دامنه: uiclick ‏4/4‏ + جهش ‏5/5‏، boom2 ‏8/8‏، simulation ‏48/48‏ ✅
+
+## ویو ۵ — مدل یکتای مجوز + ایزولاسیون مستأجر (بخش دوم) — ✅ (2026-09-10)
+- **مدل یکتا:** همهٔ دروازه‌ها از `server/policy.js` — sync delegate است (T15b)، پنج مسیر v1 (users/students/classes/grades/attendance) بازمهندسی شدند: فهرست=`filterReadable`، خواند=`restReadGate` (رد⇒۴۰۴ ضدشمارش)، نوشتن=`restWriteRoleOk`+`inScope`/`restCreateScopeOk` روی رکورد/بدنهٔ جمع‌شده؛ `idor.js` هم به `policy.studentRecordOk` واگذار شد — آخرین کپیِ موازیِ §۱.۲ حذف.
+- **قراردادهای تازهٔ policy:** `studentRecordOk` (مدیر سخت‌مدرسه؛ دبیر کلاسِ تدرسیِ **واقعی** — کلاس شبح fail-open نبود؛ ولی از parent_links؛ دانش‌آموز خودش؛ بقیه از جمله اداره DENY)؛ در `inScope`: مهارِ سختِ مدرسه (بدون IS-NULL) + **سازگاریِ مهارِ دانش‌آموز** (student_id مدرسه‌دیگر با مُهرِ خودِ مدرسه ⇒ رد — BOLAِ sync/REST بسته شد؛ یتیم‌ها legacy ماندند، قفلش با FKِ Wave-1)؛ باندِ هندسهٔ اداره در readOk (classes/attendance/grades) هم‌راستا با SQL؛ `DELETE_ROLES_REST` (تنگ‌سازیِ مستندِ حذفِ فیزیکی: REST ⊆ مدل، هیچ‌گاه بازتر نه).
+- **PG (`dbquery.js`):** SUPER_SCOPED از policy (bypass اداره حذف)؛ مهارِ سخت در پنج builder؛ `_officeGeoClause` (geo؛ بی‌دفتر⇒`1=0`)؛ `_roleScopeParts` آینهٔ readOk؛ students برای اداره `1=0`؛ attendance دبیر class-only (schema)؛ مسیرها `office` را پاس می‌دهند.
+- **خود‌ویرایشی:** allowlist تفکیکیِ users PATCH (خود=full_name؛ manager=۷فیلد؛ دبیر=iep_*) + `field_denied` ۴۰۳ روی کلیدِ ناشناخته (میراثِ پذیرشِ بی‌صدا جمع شد).
+- **scope.js:** شیمِ fail-closed روی policy؛ مصرف‌کننده ندارد (حذفِ نهایی ← Wave-15).
+- **تست:** `wave5-authz.js` ۲۱→**37** (یکپارچگیِ پنج‌فهرست×پنج‌نقش REST↔مدل با total+عضویت، BOLAِ نمره/حضور، دروازهٔ ساختِ دبیر ۲۰۱/۴۰۳، خود‌آلوتستِ T21، نشتِ پارامتری T23، هندسهٔ حافظه T24، قراردادِ هفت‌گانهٔ builderهای PG T25–T31)؛ `wave5-authz-mutations` 5/5 (درهای دروازه؛ دروازهٔ ساختِ دبیر و allowlistِ خود افزوده شد)؛ هارنسِ هم‌ارزی 93,024/۰.
+- **گیت‌ها:** smoke **547/547** · api **7/7** · wave1 18/18 · wave3 13+13 · wave4 11/11 · wave8 14+5 · wave9 39 · wave10 26 · authz-model 248 · server1 31 · server16 39 · server17 70 · security2 25 · waf-ddos 29 · occ 18 · academic-years 9 · pull-bootstrap 12 · check-authz **0** · secret-scan **11/11** ✅ (تنها قرمزِ wave13: نبودِ ZAP در محیط — در پایهٔ تمیز هم قرمز، بی‌ربط).
+- **اسناد:** `docs/WAVE5_AUTHZ.md` (جدید — مرجعِ اجرا) + به‌روزرسانی `AUTHORIZATION_MODEL.md` (لایهٔ ۴ ← policy؛ جدول تست ۳۷) و ردیف Wave 5 در `NATIONAL_ROADMAP_PROGRESS.md` ← ✅.
+- **کامیت‌ها (بر روی 3e86993):** `8472f17` fix(policy) · `fa359a3` fix(pg) · `7a0e796` fix(rest) · `d5230b7` test(wave5) · `—` docs(wave5) — همگی push به `arena/01a08a4e-p2`.

@@ -9,7 +9,6 @@
 'use strict';
 
 const { projectUserByRole } = require('../middleware/projection');
-const { filterByScope } = require('../middleware/scope');
 const cache = require('../cache');
 
 function createBootstrapRoute(ctx) {
