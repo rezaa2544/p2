@@ -204,14 +204,21 @@ async function main() {
 
     console.log('\n— پوشش مدل —');
     {
+      /* ویو ۵ بخش دوم — منبع یکتای سیاست policy.js است؛ sync.js فقط مصرف‌کننده.
+         این آزمون هم پوشش فهرست را می‌سنجد و هم «یکپارچگی لایه‌ها» را:
+         اگر روزی sync سیاست موازیِ تازه‌ای بسازد یا از policy جدا شود، قرمز می‌شود. */
+      const policySrc = fs.readFileSync(path.join(ROOT, 'server', 'policy.js'), 'utf8');
       const syncSrc = fs.readFileSync(path.join(ROOT, 'server', 'sync.js'), 'utf8');
-      const gated = (syncSrc.match(/EO_SCOPE_GATED = \[([^\]]+)\]/) || [])[1] || '';
+      const gated = (policySrc.match(/EO_SCOPE_GATED = \[([^\]]+)\]/) || [])[1] || '';
       const eoWrite = Object.keys(MODEL.collections).filter(n => {
         const d = MODEL.collections[n];
         return ['ins', 'upd', 'del'].some(op => (d[op] || []).indexOf('edu_office') > -1);
       });
       const uncovered = eoWrite.filter(n => gated.indexOf("'" + n + "'") === -1 && n !== 'offices');
       chk('T15 هر نوشتنِ اداره در مدل، دروازهٔ دامنه دارد', uncovered.length === 0, 'بدون دروازه: ' + uncovered.join(','));
+      chk('T15b یکپارچگی: محدودهٔ نوشتنِ sync از policy.js عبور می‌کند',
+        /function inScope\(session, coll, recId, data\)\{\s*return policy\.inScope\(/.test(syncSrc)
+        && syncSrc.includes("require('./policy')"));
     }
 
     await sleep(100);

@@ -37,6 +37,7 @@ const cache = require('./cache');
    و diff می‌کند — جدولِ کهنه = build قرمز. بخشِ `actions` همان نقشهٔ
    صریحِ «اکشن ← نقش‌ها + مجموعه‌هایِ قابلِ نوشتن» است. */
 const WR = require('../authz/write-perms.json');
+const policy = require('./policy'); /* ویو ۵ — مدل یکتای محدوده/مالکیت */
 const AUTHZ = (function(){
   const out = {};
   for (const c of Object.keys(WR.ops)){
@@ -365,151 +366,16 @@ function filterFields(op, collection, role){
   return null;
 }
 
-/* #4 — is the target record inside this user's scope? Real records
-   from the store; unknown ids fail closed. */
+/* #4 — محدوده/مالکیت: ویو ۵ بخش دوم — مدلِ یکتا در `server/policy.js`.
+   sync دیگر سیاستِ موازی ندارد؛ این‌جا فقط «درِ» دسترسی با همان امضا و
+   همان store تزریق‌شده است. رفتار بیت‌به‌بیت حفظ شده (آزمون برابریِ
+   ۳۸٬۳۳۶ ترکیبی روی فروشگاه واقعی + سوئیت‌های T5b/server16).
+   EO_SCOPE_GATED: نشانهٔ سازگاری — منبع حقیقت در policy است؛ این نام
+   فقط re-export است تا مصرف‌کنندگانِ داخلیِ همین فایل یکسان بخوانند. */
+const EO_SCOPE_GATED = policy.EO_SCOPE_GATED;
+
 function inScope(session, coll, recId, data){
-  const u = session;
-  if(u.role === 'superadmin') return true;
-  const rec = recId != null ? (store_get(coll).find(x => x.id === Number(recId))) : null;
-  function store_get(c){ return (get_store() || {})[c] || []; }
-
-  /* Round 89 — ownership that does not ride on student_id:
-     messages  : for record-scoped roles (student/parent/teacher) the sender (from_id)
-                 owns the record — chat (fail-closed without from_id).
-                 manager/edu_office keep the pre-existing school-level path (S20).
-     notifications: the recipient (user_id) may update their own record (read badge) */
-  function msgOwnerOk(){
-    const f = (data && data.from_id != null) ? Number(data.from_id)
-             : (rec && rec.from_id != null) ? Number(rec.from_id) : null;
-    return f != null && f === u.id;
-  }
-  /* R90 — scoped to parent/student (manager/teacher keep the school-level path):
-     own notification => read flag ONLY (title/body/etc. stay manager-domain) */
-  if(coll === 'notifications' && rec && Number(rec.user_id) === u.id
-     && (u.role === 'parent' || u.role === 'student')){
-    const nk = Object.keys(data || {});
-    return nk.length > 0 && nk.every(k => k === 'read');
-  }
-
-  /* ب.۳ — ارزشیابی ناشناس معلم: رکورد عمداً هیچ فیلد هویتی ندارد، پس
-     مالکیت به «مدرسهٔ پاسخ‌دهنده» گره می‌خورد:
-     - دانش‌آموز: فقط مدرسهٔ خودش
-     - ولی: فقط مدرسهٔ فرزندانش (از parent_links)
-     - بقیهٔ نقش‌ها: رد (درج/ویرایش/حذف) — نقش‌های مجازِ مدل هم فقط
-       دانش‌آموز و ولی‌اند و دروازهٔ نقش جداگانه نگهبانی می‌کند. */
-  if(coll === 'teacher_evaluations'){
-    if(u.role === 'student'){
-      return !!(data && Number(data.school_id) === Number(u.school_id));
-    }
-    if(u.role === 'parent'){
-      const kids = (get_store().parent_links || []).filter(l => l.parent_id === u.id).map(l => Number(l.student_id));
-      const kidSchools = kids.map(kid => {
-        const k = (get_store().users || []).find(x => x.id === kid);
-        return k && Number(k.school_id);
-      }).filter(x => x != null);
-      return !!(data && kidSchools.indexOf(Number(data.school_id)) > -1);
-    }
-    return false;
-  }
-
-  if(u.role === 'student'){
-    if(coll === 'messages') return msgOwnerOk();
-    if(coll === 'users' && rec && rec.id === u.id) return true;
-    if(rec && rec.student_id != null) return rec.student_id === u.id;
-    if(data && data.student_id != null) return Number(data.student_id) === u.id;
-    return false;
-  }
-  if(u.role === 'parent'){
-    if(coll === 'messages') return msgOwnerOk();
-    const kids = (get_store().parent_links || []).filter(l => l.parent_id === u.id).map(l => l.student_id);
-    /* R96: رزرو نوبت — رکوردِ نوبتِ آزاد student_id ندارد، پس مالکیت
-       از data.student_id (فرزندِ خود) می‌آید؛ وگرنه مجوزِ مدل برای
-       parent×meeting_slots×upd با inScope قابلِ اجرا نبود. */
-    if(coll === 'meeting_slots' && !rec && data && data.student_id != null)
-      return kids.indexOf(Number(data.student_id)) > -1;
-    if(coll === 'meeting_slots' && data && data.student_id != null && rec && rec.student_id == null)
-      return kids.indexOf(Number(data.student_id)) > -1;
-    const sid = rec ? rec.student_id : (data && data.student_id);
-    /* Round 89 — parent_links (kid-reject flow removes their own link):
-       a NEW link must belong to the parent themselves (no forging links for others) */
-    if(coll === 'parent_links' && !rec && data && Number(data.parent_id) !== u.id) return false;
-    if(sid == null) return !!(rec && rec.parent_id === u.id);
-    return kids.indexOf(Number(sid)) > -1;
-  }
-  if(u.role === 'teacher'){
-    if(coll === 'messages') return msgOwnerOk();
-    /* Round 89 — class-level collections: a teacher is bound to classes they actually
-       teach (homeroom or schedule) — fail-closed for any other class.
-       meeting_slots: their own slots (created with parent_id/student_id null). */
-    const t2 = rec || data || {};
-    if(coll === 'meeting_slots' && t2.teacher_id != null){
-      return Number(t2.teacher_id) === u.id;
-    }
-    if((coll === 'hw_assignments' || coll === 'vclass_sessions') && t2.class_id != null){
-      const cls2 = (get_store().classes || []).find(c => c.id === Number(t2.class_id));
-      if(!cls2) return false;
-      if(cls2.homeroom_teacher_id === u.id) return true;
-      return (get_store().schedule || []).some(x => x.class_id === cls2.id && x.teacher_id === u.id);
-    }
-    const sid = rec ? rec.student_id : (data && data.student_id);
-    if(sid != null){
-      const enr = (get_store().enrollments || []).find(e => e.student_id === Number(sid));
-      if(!enr) return false;
-      const cls = (get_store().classes || []).find(c => c.id === enr.class_id);
-      if(!cls) return false;
-      if(cls.homeroom_teacher_id === u.id) return true;
-      return (get_store().schedule || []).some(s => s.class_id === cls.id && s.teacher_id === u.id);
-    }
-    if(rec && rec.teacher_id != null) return rec.teacher_id === u.id;
-    if(rec && rec.school_id != null) return rec.school_id === u.school_id;
-    return false;
-  }
-  /* ویو ۵ — ایزولاسیون مستأجر برای اداره (Tenant Isolation):
-     کارشناس اداره فقط روی مدارسی می‌نویسد که در محدودهٔ جغرافیاییِ
-     اداره‌اش است (استان/شهرستان/منطقه). مجموعه‌هایِ دارای مهارِ مدرسه
-     (مستقیم یا از طریق گیرنده) دروازه دارند؛ رکورد/دادهٔ بدونِ مهارِ
-     قابلِ حل ⇒ رد (fail-closed). `offices` ساختاری است و اصلاً از
-     اختیار اداره بیرون است (دفاعِ دوم — مجوزش هم در مدل گرفته شده). */
-  if(u.role === 'edu_office'){
-    if(coll === 'offices') return false;
-    const EO_SCOPE_GATED = ['announcements','teacher_schools','attendance_modes','notifications','notify_queue'];
-    if(EO_SCOPE_GATED.indexOf(coll) > -1){
-      function schoolInOfficeScope(schoolId){
-        if(schoolId == null) return false;
-        const school = store_get('schools').find(s => s.id === Number(schoolId));
-        const office = store_get('offices').find(o => o.id === Number(u.office_id));
-        if(!school || !office) return false; /* fail-closed */
-        if(office.province_id && school.province_id !== office.province_id) return false;
-        if(office.county_id && school.county_id !== office.county_id) return false;
-        if(office.district_id && school.district_id !== office.district_id) return false;
-        return true;
-      }
-      const t = rec || data || {};
-      let sid = t.school_id != null ? t.school_id : null;
-      /* اعلان/صف پیام: اگر مهارِ مدرسه نبود، از مدرسهٔ گیرنده حل می‌شود */
-      if(sid == null && t.user_id != null){
-        const rcp = store_get('users').find(x => x.id === Number(t.user_id));
-        sid = rcp ? rcp.school_id : null;
-      }
-      return schoolInOfficeScope(sid);
-    }
-    return true; /* بقیه: اختیار بین‌مدرسه‌ای که مدل داده است */
-  }
-  /* manager: school-level */
-  const s = rec ? rec.school_id : (data && data.school_id);
-  if(s == null){
-    /* R96: مجموعه‌هایِ بدونِ school_id (مثلِ hw_submissions) — scope از
-       رشتهٔ student → enrollment → class → school حل می‌شود (fail-closed). */
-    const sid2 = (rec && rec.student_id != null) ? rec.student_id
-             : (data && data.student_id != null ? data.student_id : null);
-    if(sid2 != null){
-      const enr = (get_store().enrollments || []).find(e => e.student_id === Number(sid2));
-      const cls = enr && (get_store().classes || []).find(c => c.id === enr.class_id);
-      if(cls) return Number(cls.school_id) === Number(u.school_id);
-    }
-    return false;
-  }
-  return s === u.school_id;
+  return policy.inScope(session, get_store(), coll, recId, data);
 }
 
 /* get_store is injected so the module stays pure-ish and testable */
