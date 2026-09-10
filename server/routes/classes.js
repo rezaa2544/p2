@@ -10,7 +10,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const { filterByScope, checkSchoolScope } = require('../middleware/scope');
+const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز */
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { buildClassesList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
@@ -34,6 +34,7 @@ function createClassRoutes(ctx) {
     if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
       const built = buildClassesList({
         user,
+        office: policy.userOffice(store, user), /* Wave 5 — هندسهٔ اداره */
         grade: urlParams.get('grade'),
         limit: paginationOpts.limit,
         cursor: paginationOpts.cursor
@@ -42,9 +43,10 @@ function createClassRoutes(ctx) {
       return { ok: true, ...res };
     }
 
-    /* Memory/JS pipeline (runtime in this sandbox — byte-identical to before). */
+    /* Memory/JS pipeline — Wave 5: مدلِ یکتا (دبیر فقط کلاس‌های تدرسی/سرپرستی،
+       دانش‌آموز فقط کلاس خودش، ولی فقط کلاس فرزندان، مدیر فقط مدرسهٔ خودش). */
     let classes = (store.classes || []);
-    classes = filterByScope(user, classes);
+    classes = policy.filterReadable(store, user, 'classes', classes);
 
     const grade = urlParams.get('grade');
     if (grade) {
@@ -71,7 +73,7 @@ function createClassRoutes(ctx) {
   function getClassById(req, id) {
     const user = req.user;
     const cls = (store.classes || []).find(c => c.id === Number(id));
-    if (!cls || !checkSchoolScope(user, cls.school_id)) {
+    if (!cls || !policy.restReadGate(store, user, 'classes', cls).ok) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
     }
 
@@ -97,7 +99,7 @@ function createClassRoutes(ctx) {
 
   async function createClass(req, body) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'superadmin') {
+    if (!policy.restWriteRoleOk(user, 'classes', 'ins')) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط مدیر مدرسه مجاز به ایجاد کلاس است' } };
     }
 
@@ -135,12 +137,12 @@ function createClassRoutes(ctx) {
 
   async function updateClass(req, id, body) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'superadmin') {
+    if (!policy.restWriteRoleOk(user, 'classes', 'upd', Object.keys(body || {}))) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط مدیر مدرسه مجاز به ویرایش کلاس است' } };
     }
 
     const cls = (store.classes || []).find(c => c.id === Number(id));
-    if (!cls || !checkSchoolScope(user, cls.school_id)) {
+    if (!cls || !policy.inScope(user, store, 'classes', cls.id, null)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
     }
 
@@ -164,7 +166,7 @@ function createClassRoutes(ctx) {
 
   async function deleteClass(req, id) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'superadmin') {
+    if (!policy.restWriteRoleOk(user, 'classes', 'del')) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط مدیر مدرسه مجاز به حذف کلاس است' } };
     }
 
@@ -174,7 +176,7 @@ function createClassRoutes(ctx) {
     }
 
     const cls = store.classes[clsIdx];
-    if (!checkSchoolScope(user, cls.school_id)) {
+    if (!policy.inScope(user, store, 'classes', cls.id, null)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
     }
 
