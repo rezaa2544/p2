@@ -84,6 +84,17 @@ const SYNC = {
 function loadQueue(){
   try{ SYNC.queue = Store.getJSON(SYNC_QUEUE_KEY, []) || []; }
   catch(e){ SYNC.queue = []; }
+  /* W7-1 (موج ۷): احیایِ sendingِ بی‌پاسخ. اگر مرورگر وسطِ ارسال کرش کرده
+     (یا تب بسته شده)، قلم‌ها با وضعیتِ sending ذخیره مانده‌اند و syncNow
+     فقط pending/failed را برمی‌دارد — بدونِ این احیا، برایِ همیشه می‌ماندند
+     و نشانگر هم «همگام»ِ دروغین نشان می‌داد. قلمِ sending هرگز پاسخی نگرفته
+     پس pending شدنش امن است؛ اگر رویِ سرور اعمال شده بود، تکراریِ uid با
+     duplicate_ignored همگام می‌شود (S2-1). */
+  var revived = 0;
+  for(var i = 0; i < SYNC.queue.length; i++){
+    if(SYNC.queue[i] && SYNC.queue[i].status === 'sending'){ SYNC.queue[i].status = 'pending'; revived++; }
+  }
+  if(revived) saveQueue();
   try{ SYNC.dlq = Store.getJSON(SYNC_DLQ_KEY, []) || []; }   /* P1-10 */
   catch(e){ SYNC.dlq = []; }
   try{
@@ -298,11 +309,15 @@ async function syncNow(manual){
   try{
     const res = await sendChunked(batch);
 
+    /* W7-2 (موج ۷): «آخرین همگام‌سازی موفق» فقط وقتی جلو می‌رود که دست‌کم
+       یک قلم واقعاً همگام شده باشد (ok یا duplicate_ignored) — پیش‌تر پس
+       از هر اجرا جلو می‌رفت، حتی با صفرِ همگام (تازگیِ دروغین در پنل). */
+    let syncedN = 0;
     res.forEach(r => {
       const item = SYNC.queue.find(x => x.uid === r.uid);
       if(!item) return;
       if(r.ok){
-        item.status = 'synced';
+        item.status = 'synced'; syncedN++;
       }else if(r.conflict){
         item.status = 'conflict';
         item.error  = r.message || 'تعارض با نسخه سرور';
@@ -328,10 +343,17 @@ async function syncNow(manual){
       }
     });
 
+    /* W7-1 (موج ۷): جارویِ پس‌ازدسته. اگر پاسخِ سرور برایِ بعضی قلم‌ها نتیجه
+       نداشت (results ناقص/خالی)، آن‌ها sending می‌ماندند و درونِ همین جلسه
+       می‌چسبیدند — حالا failedِ گذرا می‌شوند تا دوباره تلاش شود (پس از ۵ بار:
+       DLQِ مرئی، نه چسبندگیِ نامرئی). */
+    batch.forEach(x => {
+      if(x.status === 'sending') noteOpFailed(x, 'پاسخِ سرور برایِ این تغییر ناقص بود');
+    });
+
     /* موارد موفق (و duplicates) از صف حذف می‌شوند */
     SYNC.queue = SYNC.queue.filter(x => x.status !== 'synced');
-    SYNC.lastSync = new Date().toISOString();
-    saveSyncMeta();
+    if(syncedN > 0){ SYNC.lastSync = new Date().toISOString(); saveSyncMeta(); }   /* W7-2 */
     saveQueue();
 
     const okCount   = res.filter(r => r.ok).length;
@@ -355,7 +377,17 @@ async function syncNow(manual){
     }
 
     SYNC.attempts = bad ? SYNC.attempts + 1 : 0;
-    if(bad) scheduleSync(backoffDelay());
+    /* W7-6 (موج ۷، نشست ۴): backoffِ خودکار باید قلم‌هایِ failedِ باقی‌مانده در
+       صف را هم ببیند. پیش‌تر فقط `bad` (که از نتایجِ res حساب می‌شد) شرطِ
+       زمان‌بندی بود؛ قلم‌هایی که جارویِ W7-1 (پاسخِ ناقصِ سرور) failed
+       می‌کند در res نیستند، پس `bad` صفر می‌ماند، شمارندهٔ attempts ریست
+       می‌شد و هیچ تلاشِ خودکاری زمان‌بندی نمی‌شد — قلمِ failed تا یک محرکِ
+       بیرونی (آنلاین‌شدن/کلیکِ دستی/opِ تازه) زمین‌گیر می‌ماند. حالا هر
+       قلمِ failedِ باقی در صف (قابلِ تلاشِ دوباره؛ قلم‌هایِ DLQ از صف
+       جدا شده‌اند) هم زمان‌بندی را فعال می‌کند. */
+    const retryable = SYNC.queue.some(x => x.status === 'failed');
+    SYNC.attempts = (bad || retryable) ? SYNC.attempts + 1 : 0;
+    if(bad || retryable) scheduleSync(backoffDelay());
 
   }catch(err){
     /* شکست کل دسته — همه failed می‌شوند (پس از ۵ تلاش: DLQ) تا دوباره تلاش شود */
@@ -587,7 +619,8 @@ function syncPanelModal(){
             <div class="small muted">${jalaliDateTime(x.dead_at)}${x.tries>1?` — ${fa(x.tries)} تلاش`:''}</div>
             ${x.error?`<div class="small muted">${esc(x.error)}</div>`:''}</td>
           <td class="small">${esc(SYNC_DLQ_REASON_FA[x.dead_reason]||x.dead_reason||'—')}</td>
-          <td><button class="btn ghost sm" data-act="sync-del" data-uid="${escAttr(x.uid)}">حذف</button></td>
+          <td style="white-space:nowrap"><button class="btn ghost sm" data-act="sync-retry" data-uid="${escAttr(x.uid)}" title="برگرداندن به صفِ ارسال با شمارشِ تازه (برایِ دفنِ گذرا: قطعی یا سقف)">تلاش دوباره</button>
+            <button class="btn ghost sm" data-act="sync-del" data-uid="${escAttr(x.uid)}">حذف</button></td>
         </tr>`;}).join('')}
       </tbody></table></div>
       ${SYNC.dlqDropped?`<div class="small muted" style="margin-top:6px">⚠️ ${fa(SYNC.dlqDropped)} موردِ قدیمیِ صفِ مرده به‌خاطرِ سقف دور ریخته شد.</div>`:''}`:''}
@@ -623,6 +656,33 @@ const SYNC_ACTIONS = {
   'sync-toggle-net'(){ closeModal(); setOnline(!SYNC.online); },
   /* حذفِ دستیِ عملیاتِ «رد شده» (dead-letter) از صف.
      (SYNC_ACTIONS برخلافِ A با (el, id) فراخوانی می‌شود.) */
+  /* W7-3 (موج ۷): تلاشِ دوبارهٔ قلمِ مرده. DLQ فقط «حذف» داشت و قلمِ دفنِ
+     گذرا (قطعیِ مکرر/سقفِ صف — داده‌ای که سرور هرگز ندیده) هیچ مسیرِ
+     بازگشتی نداشت. حالا با شمارشِ تازه به صف برمی‌گردد و در چرخهٔ عادی
+     ارسال می‌شود؛ سقف‌ها دوباره اعمال می‌شوند و دوبار-کلیک ورودیِ تکراری
+     نمی‌سازد. */
+  'sync-retry'(el){
+    const uid = (el && el.dataset) ? el.dataset.uid : null;
+    if(!uid) return;
+    const idx = SYNC.dlq.findIndex(x => x.uid === uid);
+    if(idx < 0) return;
+    const item = SYNC.dlq[idx];
+    SYNC.dlq.splice(idx, 1);
+    if(!SYNC.queue.some(x => x.uid === uid)){
+      item.status = 'pending';
+      item.tries = 0;
+      item.error = null;
+      delete item.dead_at;
+      delete item.dead_reason;
+      SYNC.queue.push(item);
+      enforceQueueCaps();
+    }
+    saveQueueChecked(); saveDlq();
+    checkCapWarning(); refreshSyncBadge();
+    toast('عملیات به صفِ ارسال برگشت', 'ok');
+    scheduleSync(400);
+    syncPanelModal();
+  },
   'sync-del'(el){
     const uid = (el && el.dataset) ? el.dataset.uid : null;
     if(!uid) return;

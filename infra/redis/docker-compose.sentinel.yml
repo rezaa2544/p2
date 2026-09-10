@@ -1,0 +1,140 @@
+# ═══════════════════════════════════════════════════════════════════════
+# docker-compose.sentinel.yml — Redis HA: ۱ Master + ۲ Replica + ۳ Sentinel
+# ───────────────────────────────────────────────────────────────────────
+#   • failover خودکار با quorum=2 (RTO < ۳۰ ثانیه — سنجهٔ RELIABILITY_DR_PLAN)
+#   • AOF everysec + RDB (redis-backup.sh در tools/ جدا از این HA کار می‌کند)
+#   • برنامه (server/redis.js): REDIS_SENTINELS=host:26379,... و
+#     REDIS_SENTINEL_NAME=mymaster و REDIS_PASSWORD=... ⇒ mode='sentinel'
+#   • سناریوهایِ عملیاتی و drill: docs/HA_REDIS.md + docs/DR_RUNBOOK.md §۲
+#
+# اجرا:
+#   REDIS_PASSWORD='<قوی>' docker compose -f infra/redis/docker-compose.sentinel.yml up -d
+#   bash infra/redis/redis-checks.sh
+#
+# امنیت: رمز فقط از env (--env-file با ۰۶۰۰)؛ پورت‌ها 127.0.0.1؛ هیچ
+# رازی در فایل‌ها نیست (secret-scan همین را می‌پاید).
+# ═══════════════════════════════════════════════════════════════════════
+name: payesh-redis-ha
+
+x-redis-cmd: &redis-cmd
+  - sh
+  - -c
+  - |
+    redis-server --requirepass "$${REDIS_PASSWORD}" --masterauth "$${REDIS_PASSWORD}" \
+      --appendonly yes --appendfsync everysec \
+      --maxmemory 512mb --maxmemory-policy noeviction \
+      --rename-command FLUSHALL "" --rename-command FLUSHDB "" --rename-command DEBUG "" $${REDIS_EXTRA_ARGS}
+
+x-sentinel-cmd: &sentinel-cmd
+  - sh
+  - -c
+  - |
+    sed -e "s|__MASTER_NAME__|$${SENTINEL_MASTER_NAME}|g" \
+        -e "s|__MASTER_HOST__|$${SENTINEL_MASTER_HOST}|g" \
+        -e "s|__MASTER_PORT__|6379|g" \
+        -e "s|__REDIS_PASSWORD__|$${REDIS_PASSWORD}|g" \
+        -e "s|__ANNOUNCE_IP__|$${HOSTNAME}|g" \
+        -e "s|__QUORUM__|2|g" \
+        -e "s|__DOWN_AFTER__|5000|g" \
+        -e "s|__FAILOVER_TIMEOUT__|15000|g" \
+        /template/sentinel.conf.template > /data/sentinel.conf
+    exec redis-sentinel /data/sentinel.conf
+
+services:
+  redis-master:
+    image: redis:7.4.2-alpine
+    command: *redis-cmd
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD را در env بگذارید}
+    volumes:
+      - redis-master-data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis-replica-1:
+    image: redis:7.4.2-alpine
+    command:
+      - sh
+      - -c
+      - |
+        redis-server --requirepass "$${REDIS_PASSWORD}" --masterauth "$${REDIS_PASSWORD}" \
+          --replicaof redis-master 6379 --appendonly yes --appendfsync everysec \
+          --maxmemory 512mb --maxmemory-policy noeviction
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redis-replica1-data:/data
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis-replica-2:
+    image: redis:7.4.2-alpine
+    command:
+      - sh
+      - -c
+      - |
+        redis-server --requirepass "$${REDIS_PASSWORD}" --masterauth "$${REDIS_PASSWORD}" \
+          --replicaof redis-master 6379 --appendonly yes --appendfsync everysec \
+          --maxmemory 512mb --maxmemory-policy noeviction
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redis-replica2-data:/data
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # سه sentinel روی میزبان‌های جدا در پروداکشن (anti-affinity) — اینجا سه سرویس
+  sentinel-1: &sentinel-svc
+    image: redis:7.4.2-alpine
+    command: *sentinel-cmd
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SENTINEL_MASTER_NAME: mymaster
+      SENTINEL_MASTER_HOST: redis-master
+    volumes:
+      - ../redis/sentinel.conf.template:/template/sentinel.conf.template:ro
+      - redis-sentinel1-data:/data
+    ports:
+      - "127.0.0.1:26379:26379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -p 26379 -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    depends_on:
+      - redis-master
+    restart: unless-stopped
+
+  sentinel-2:
+    <<: *sentinel-svc
+    volumes:
+      - ../redis/sentinel.conf.template:/template/sentinel.conf.template:ro
+      - redis-sentinel2-data:/data
+    ports:
+      - "127.0.0.1:26380:26379"
+
+  sentinel-3:
+    <<: *sentinel-svc
+    volumes:
+      - ../redis/sentinel.conf.template:/template/sentinel.conf.template:ro
+      - redis-sentinel3-data:/data
+    ports:
+      - "127.0.0.1:26381:26379"
+
+volumes:
+  redis-master-data:
+  redis-replica1-data:
+  redis-replica2-data:
+  redis-sentinel1-data:
+  redis-sentinel2-data:
+  redis-sentinel3-data:
