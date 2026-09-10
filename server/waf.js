@@ -4,8 +4,11 @@
    - ورودی‌ها: نشانی (خام + decodeشده) و User-Agent؛ بدنه هرگز خوانده نمی‌شود.
    - خروجی‌ها: req.context.waf ‏+ سرآیندِ X-WAF-Verdict ‏+ ممیزیِ throttled.
    - نرخ: شمارشِ Redis-محور (checkRateLimit) فقط برای سرآیندِ advisory؛
-     اِعمالِ واقعیِ نرخ = nginx/Cloudflare (لبه). v1 هیچ تصمیمِ دسترسی
-     نمی‌گیرد، پس fail-open/closed در کار نیست: خطا = بی‌سرآیند + ادامه.
+     اِعمالِ واقعیِ نرخ = nginx/Cloudflare (لبه).
+   - حالت‌ها (P0 #6): PAYESH_WAF_MODE=report (پیش‌فرض — رفتارِ v1: هیچ
+     تصمیمی گرفته نمی‌شود) یا enforce: هر verdict = 403 waf_blocked،
+     مگر مسیرِ allowlist (fail-safe: مسیرهای ضرورِی هرگز مسدود نمی‌شوند؛
+     PAYESH_WAF_ALLOW پیشوندِ اضافی). خطایِ خودِ enforce = fail-open.
    - ممیزی: فقط (rule, field, ip)؛ هیچ‌وقت excerpt از payload (PII).
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
@@ -15,6 +18,28 @@ var RATE_LIMIT = 100;      /* هم‌عدد با nginx (درخواست در دق
 var RATE_WINDOW = 60;      /* ثانیه */
 var REDIS_TIMEOUT_MS = 100;/* سقفِ انتظارِ Redis در هر درخواست */
 var AUDIT_PER_RULE = 5;    /* سقفِ ممیزی در دقیقه برای هر rule (ضدِ سیل) */
+
+/* P0 #6 — حالتِ WAF: report (پیش‌فرض، فقط-تشخیص) | enforce (مسدودکننده). */
+var WAF_MODE = process.env.PAYESH_WAF_MODE === 'enforce' ? 'enforce' : 'report';
+
+/* fail-safe: مسیرهای ضروری که در enforce هرگز مسدود نمی‌شوند (حتی اگر
+   الگویی بخورد) — پروب‌های زیرساخت؛ اپراتور می‌تواند با PAYESH_WAF_ALLOW
+   (کاما-جداسازِ پیشوندها) گسترش دهد. */
+var ALLOW_BASE = ['^/api/health$', '^/api/liveness$', '^/api/readiness$'];
+function isAllowlisted(pathname) {
+  try {
+    pathname = String(pathname || '');
+    for (var i = 0; i < ALLOW_BASE.length; i++) {
+      if (new RegExp(ALLOW_BASE[i]).test(pathname)) return true;
+    }
+    var extra = String(process.env.PAYESH_WAF_ALLOW || '')
+      .split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    for (var j = 0; j < extra.length; j++) {
+      if (pathname === extra[j] || pathname.indexOf(extra[j] + '/') === 0) return true;
+    }
+  } catch (e) {}
+  return false;
+}
 
 var RULES = [
   { id: 'traversal', field: 'url', res: [
@@ -70,15 +95,16 @@ function lazyMod(name) {
   try { return require(name); } catch (e) { return null; }
 }
 
-/* ممیزیِ throttled (awaitشدنی؛ خطا = سکوت؛ فقط روی تشخیص صدا زده می‌شود). */
-async function throttledAudit(verdict, ip) {
+/* ممیزیِ throttled (awaitشدنی؛ خطا = سکوت؛ فقط روی تشخیص صدا زده می‌شود).
+   event: 'waf_detect' (report) یا 'waf_block' (enforce). */
+async function throttledAudit(verdict, ip, event) {
   try {
     var cache = lazyMod('./cache.js');
     var am = lazyMod('./audit.js');
     if (!cache || !am || typeof cache.checkRateLimit !== 'function') return;
     var r = await withTimeout(cache.checkRateLimit(verdict.rule, 'waf:audit', AUDIT_PER_RULE, 60), REDIS_TIMEOUT_MS);
     if (r && r.allowed && typeof am.audit === 'function') {
-      am.audit('waf_detect', { rule: verdict.rule, field: verdict.field, ip: ip });
+      am.audit(event || 'waf_detect', { rule: verdict.rule, field: verdict.field, ip: ip });
     }
   } catch (e) {}
 }
@@ -113,7 +139,29 @@ async function wafMiddleware(req, res) {
     } catch (e) {}
     req.context.waf = w;
     try { res.setHeader('X-WAF-Verdict', w.verdict); } catch (e) {}
-    if (verdict) { try { await throttledAudit(verdict, ip); } catch (e) {} }
+    /* P0 #6 — ENFORCE (PAYESH_WAF_MODE=enforce): verdict = 403 waf_blocked،
+       مگر مسیرِ fail-safeِ allowlist. هر خطا در این بلوک = fail-open. */
+    if (WAF_MODE === 'enforce' && verdict) {
+      try {
+        var pathOnly = url;
+        try { pathOnly = String(new URL(url, 'http://waf.local').pathname || url); } catch (e) {}
+        if (isAllowlisted(pathOnly)) {
+          w.allowlisted = true; /* verdict دیده شد اما fail-safe مسدود نکرد */
+        } else {
+          w.blocked = verdict.rule;
+          w.action = 'block';
+          try { res.setHeader('X-WAF-Action', 'block'); } catch (e) {}
+          try { await throttledAudit(verdict, ip, 'waf_block'); } catch (e) {}
+          var body = JSON.stringify({ ok: false, code: 'waf_blocked', rule: verdict.rule });
+          res.statusCode = 403;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.setHeader('Content-Length', String(Buffer.byteLength(body)));
+          res.end(body);
+          return;
+        }
+      } catch (e) { /* fail-open — به حالتِ report برمی‌گردد */ }
+    }
+    if (verdict && !w.blocked) { try { await throttledAudit(verdict, ip); } catch (e) {} }
   } catch (e) {
     try { if (req) req.context = req.context || {}; } catch (_) {}
   }
@@ -121,6 +169,9 @@ async function wafMiddleware(req, res) {
 
 module.exports = {
   WAF_VERSION: WAF_VERSION,
+  WAF_MODE: WAF_MODE,
+  ALLOW_BASE: ALLOW_BASE,
+  isAllowlisted: isAllowlisted,
   RATE_LIMIT: RATE_LIMIT,
   RATE_WINDOW: RATE_WINDOW,
   RULES: RULES,
