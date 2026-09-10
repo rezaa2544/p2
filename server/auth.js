@@ -143,6 +143,7 @@ function createAuth(ctx){
   const IP_SEND_MAX = _lim(process.env.PAYESH_SMS_IP_LIMIT, 10);   /* sends / window per IP */
   const PHONE_SEND_MAX = _lim(process.env.PAYESH_SMS_PHONE_LIMIT, 5); /* sends / window per phone */
   const IP_LOGIN_MAX = _lim(process.env.PAYESH_LOGIN_IP_LIMIT, 10); /* logins / window per IP */
+  const PHONE_LOGIN_MAX = _lim(process.env.PAYESH_LOGIN_PHONE_LIMIT, 50); /* logins / window per phone (P0 #6) */
   const LOGIN_TRIES_MAX = _lim(process.env.PAYESH_LOGIN_TRIES, 5);  /* wrong codes before code dies */
   function clientIp(req){
     const xf = req.headers && req.headers['x-forwarded-for'];
@@ -230,6 +231,11 @@ function createAuth(ctx){
     /* R dist: شمارندهٔ login در Redis (اتمیک)؛ login_fail (تأخیرِ تصاعدی) در حالتِ فروشگاه می‌ماند. */
     const rLi = await rateLimit.checkRateLimit({ prefix: 'otp:login:ip', identifier: ip, limit: IP_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });
     if(!rLi.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
+    /* P0 #6 — سقفِ سختِ per-phone: brute-force چند-IP علیه یک شماره به
+       این سقف می‌خورد (در کنارِ IP-cap + تلاش‌هایِ کد + تأخیرِ تصاعدی).
+       پیش‌فرضِ 50 مصلحتِ آزمون‌هایِ موجود است؛ تولید: با env تنگ‌تر. */
+    const rLp = await rateLimit.checkRateLimit({ prefix: 'otp:login:phone', identifier: phone, limit: PHONE_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });
+    if(!rLp.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
 
     const user = (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === phone.slice(-10));
 
@@ -305,6 +311,45 @@ function createAuth(ctx){
     const s = await sessionFrom(req);
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
     const uid = s.id;
+    /* Wave 1: PG-first erasure — the authority commits before the cache is purged.
+       Satellite rows delete by id; the users row is ANONYMIZED in place, never
+       deleted: grades.student_id/teacher_id reference users(id) ON DELETE CASCADE,
+       and institutional data (grades/attendance) must survive erasure. The stub
+       (PII nulled, active=false) keeps FK integrity; sessions die via revoke-all
+       plus active=false. The update is last-writer-wins (no base_version): erasure
+       is authoritative, applied over the live PG row to avoid clobbering. Memory
+       mode keeps the legacy full-row delete (JSON has no FKs; D2b/G2/H-d lock it). */
+    const db = ctx.db || null;
+    if(db && typeof db.isPostgres === 'function' && db.isPostgres()
+        && typeof db.persistOpsBatch === 'function'){
+      const ops = [];
+      const collectDel = (coll, pred) => {
+        const rows = store[coll];
+        if(!Array.isArray(rows)) return;
+        for(const r of rows){ if(r && r.id != null && pred(r)) ops.push({ c: coll, t: 'del', id: r.id }); }
+      };
+      /* Predicates mirror gdpr.eraseUserData — the canonical list lives there. */
+      collectDel('parent_links', (r) => Number(r.parent_id) === uid || Number(r.student_id) === uid);
+      collectDel('parent_verifications', (r) => Number(r.parent_id) === uid);
+      collectDel('parent_subscriptions', (r) => Number(r.user_id) === uid);
+      collectDel('messages', (r) => Number(r.from_id) === uid);
+      let urow = (store.users || []).find(u => u && Number(u.id) === uid);
+      if(urow && typeof db.readOne === 'function'){
+        try{ const live = await db.readOne('users', uid); if(live) urow = live; }catch(e){}
+      }
+      if(urow){
+        ops.push({ c: 'users', t: 'upd', data: Object.assign({}, urow, {
+          full_name: 'حذف‌شده', phone: null, national_id: null, birth_date: null,
+          father_nid: null, mother_nid: null, job: null, degree: null, field: null,
+          entry_gpa: null, iep_notes: null, iep_staff: null, active: false,
+          version: (urow.version || 1) + 1, updated_at: new Date().toISOString()
+        })});
+      }
+      if(ops.length){
+        try{ await db.persistOpsBatch(ops); }
+        catch(pgErr){ return sendJson(res, 503, { ok: false, code: 'pg_unavailable' }); }
+      }
+    }
     /* حقِ فراموشی (gdpr.js): همان پاک‌سازی + ابطالِ همهٔ نشست‌ها. */
     const purged = gdpr.eraseUserData(store, uid);
     await gdpr.eraseUserSessions(uid, s.jti, SESSION_TTL_S);

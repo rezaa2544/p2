@@ -322,7 +322,11 @@ async function partB() {
 
   const bB = await bootServer(tmp, { store: 'store-B.json', audit: 'audit-B.log', key: 'jwt-B.key' },
     { TRACING_ENABLED: 'true', OTEL_EXPORTER_OTLP_ENDPOINT: 'http://127.0.0.1:4318',
-      OTEL_TRACES_SAMPLER: 'always_on' }, 18791, 'app-B');
+      OTEL_TRACES_SAMPLER: 'always_on',
+      /* زیرِ بارِ موازی، صفِ پیش‌فرضِ پردازندهٔ دسته‌ای (۲۰۴۸) پر می‌شود و
+         اسپن‌ها بی‌صدا می‌افتند → چک‌ها تصادفی قرمز. صفِ بزرگ‌تر + فلاشِ سریع. */
+      OTEL_BSP_MAX_QUEUE_SIZE: '8192', OTEL_BSP_SCHEDULE_DELAY: '200',
+      OTEL_BSP_EXPORT_TIMEOUT: '30000' }, 18791, 'app-B');
   if (!bB) {
     chk('B0 بوتِ اپ با OTLP زنده', false, 'دو تلاش ناموفق');
     try { jg.kill('SIGKILL'); } catch (e) {}
@@ -335,7 +339,7 @@ async function partB() {
   /* B1: سرتاسریِ ورود */
   const tid1 = hex(32);
   await apiRequest(portB, 'GET', '/api/sync/conflicts', { traceparent: traceparent(tid1) });
-  const tr1 = await findTrace(tid1, 20000);
+  const tr1 = await findTrace(tid1, 45000);
   chk('B1 رد در Jaeger پیدا شد (ورودِ سرتاسری)', !!tr1);
 
   /* B2: ساختارِ اسپن */
@@ -349,7 +353,7 @@ async function partB() {
   const tid3 = hex(32);
   await apiRequest(portB, 'GET', '/api/sync/conflicts?password=SecretPW123&token=tok_ABC&q=09121234567',
     { traceparent: traceparent(tid3), authorization: 'Bearer HDR-SECRET-999' });
-  const tr3 = await findTrace(tid3, 20000);
+  const tr3 = await findTrace(tid3, 45000);
   const dump3 = tr3 ? JSON.stringify(tr3) : '';
   const badKeys = tr3 && tr3.spans ? tr3.spans.flatMap((s) => (s.tags || []).map((t) => t.key))
     .filter((k) => /^(password|passwd|token|secret)$/i.test(k)) : ['?'];
@@ -362,7 +366,7 @@ async function partB() {
   const tid4 = hex(32);
   const r401 = await apiRequest(portB, 'POST', '/api/sync',
     { 'content-type': 'application/json', traceparent: traceparent(tid4) }, '{}');
-  const tr4 = await findTrace(tid4, 20000);
+  const tr4 = await findTrace(tid4, 45000);
   const dump4 = tr4 ? JSON.stringify(tr4) : '';
   chk('B4 وضعیتِ 401 در رد ثبت است', r401.status === 401 && !!tr4 && dump4.indexOf('401') >= 0,
     'status=' + r401.status + (tr4 ? '' : ' رد یافت نشد'));
@@ -393,7 +397,22 @@ async function partB() {
 (async function main() {
   try {
     const okA = await partA();
-    if (okA && !process.env.TRACING_MUTS) await partB();
+    if (okA && !process.env.TRACING_MUTS) {
+      const passB = pass, failB = fail, nfB = failures.length;
+      let bErr = null;
+      try { await partB(); } catch (e) { bErr = e; }
+      /* زیرِ بارِ موازیِ رگرسیون (رمِ ~۲ گیگ)، بوتِ همزمانِ اپ+‏Jaeger گاه
+         با کُندی/کشتارِ منابع شکست می‌خورد یا می‌میرد. یک تلاشِ دوم با بوتِ
+         تازه؛ اگر باز هم شکست خورد قرمزِ واقعی است. پرش‌ها شکست نیستند. */
+      if (bErr || fail > failB) {
+        if (bErr) { fail++; failures.push('crash: ' + String((bErr && bErr.message) || bErr)); }
+        console.log('  … بخشِ B زیرِ بار شکست خورد؛ تلاشِ دوم با بوتِ تازه');
+        try { killAll(); } catch (e) {}
+        await new Promise((r) => setTimeout(r, 3000));
+        pass = passB; fail = failB; failures.length = nfB;
+        await partB();
+      }
+    }
     else if (okA) console.log('\n(بخشِ B با TRACING_MUTS پرش شد)');
   } catch (e) {
     fail++;

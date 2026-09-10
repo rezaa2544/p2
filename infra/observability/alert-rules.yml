@@ -1,0 +1,64 @@
+# ═══════════════════════════════════════════════════════════════════════
+# alert-rules.yml — قوانینِ بحرانیِ P0 (ویو ۱۴)
+# ───────────────────────────────────────────────────────────────────────
+# آستانه‌ها از چک‌لیستِ Production Readiness؛ slabsِ «for» کوتاه‌مدتِ نویزگیر
+# هستند. نامِ متریک‌ها با server/metrics.js قفلِ متقابل دارد
+# (tests/observability-config.js) — تغییرِ یک‌طرفه قرمز می‌شود.
+groups:
+  - name: payesh-critical
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          (sum(rate(payesh_http_requests_total{status="5xx"}[5m]))
+           / clamp_min(sum(rate(payesh_http_requests_total[5m])), 0.01)) > 0.001
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "نرخ ۵xx بیش از ۰٫۱٪ (پنجره ۵د)"
+          description: "ارزشِ لحظه‌ای {{ $value | humanizePercentage }} — شیفتِ on-call (DR_RUNBOOK §۰)"
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(payesh_http_request_duration_seconds_bucket[5m]))) > 0.300
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "p95 بیش از ۳۰۰ms"
+          description: "p95={{ $value | humanizeDuration }} — اولِ مسیرهایِ sync را با trace_id در لاگِ Grafana/Loki ببینید"
+      - alert: RedisDown
+        expr: payesh_redis_up == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "ردیس در دسترس نیست (rate-limit/idempotency تحتِ فشارِ fail-closed)"
+          description: "لایهٔ کشِ health طبقِ P0-13 قرمز است؛ /api/health را ببینید و سناریوی §۲ DR_RUNBOOK را اجرا کنید"
+      - alert: DBLatencyHigh
+        expr: payesh_db_up == 1 and payesh_db_query_latency_ms > 50
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "تأخیرِ نمونه‌ایِ SELECT-1 دیتابیس بیش از ۵۰ms"
+          description: "sampled at scrape time via healthCheck — با p95ِ HTTP و pool waiting هم‌سنجی کنید"
+      - alert: SyncQueueDepth
+        expr: payesh_sync_queue_depth > 1000
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "صفِ outbox/sync بیش از ۱۰۰۰ رویدادِ pending"
+          description: "worker را ببینید (server/worker.js)؛ مصرف‌کننده‌ی مرده = داده‌ی stale در همهٔ کلاینت‌ها"
+      - alert: EventLoopLagHigh
+        expr: payesh_eventloop_lag_ms{q="p99"} > 100
+        for: 3m
+        labels: { severity: warning }
+        annotations:
+          summary: "lagِ event-loop (p99) بیش از ۱۰۰ms"
+          description: "معمولاً هم‌مسیرِ GC یا کارِ CPU-سنگین در پروسس — پروفایل بگیرید"
+      - alert: MemoryHigh
+        expr: |
+          payesh_process_heap_bytes{kind="used"}
+          / clamp_min(payesh_process_heap_bytes{kind="limit"}, 1) > 0.80
+        for: 3m
+        labels: { severity: warning }
+        annotations:
+          summary: "heap بیش از ۸۰٪ِ سقفِ V8"
+          description: "ریسکِ OOM؛ ری‌استارتِ نرمِ instance طبقِ runbook + بررسیِ نشتی با snapshotِ next drill"

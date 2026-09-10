@@ -1,0 +1,30 @@
+# ci/pending — ویو ۱۲ (شبکه/لبه) — به‌روزشده پس از ادغامِ main (Security Program)
+# تحلیلِ ایستایِ SCA اکنون در خودِ .github/workflows/security.yml اعمال شده است؛
+# آنچه در انتظارِ اعمال است فقطِ موتورِ CodeQL است (توکنِ فعلی اسکوپِ workflow
+# ندارد — قرارداد: تغییراتِ گردش‌کار از این پچ عبور می‌کنند).
+# اعمال پس از رفعِ محدودیتِ توکن:  git apply ci/pending/security-sast-sca.patch
+--- a/.github/workflows/security.yml
++++ b/.github/workflows/security.yml
+@@ -139,3 +139,22 @@
+         run: sudo apt-get update -qq && sudo apt-get install -y -qq nginx > /dev/null
+       - name: Validate nginx.conf
+         run: nginx -t -c $PWD/nginx/nginx.conf -p $PWD/nginx/
++
++  # ── SAST (CodeQL) — ویو ۱۲، در انتظارِ اعمال (توکن بدونِ اسکوپِ workflow) ──
++  codeql:
++    name: SAST (CodeQL, pending apply)
++    runs-on: ubuntu-latest
++    permissions:
++      actions: read
++      contents: read
++      security-events: write
++    steps:
++      - uses: actions/checkout@v4
++      - name: Initialize CodeQL
++        uses: github/codeql-action/init@v3
++        with:
++          languages: javascript-typescript
++      - name: Perform CodeQL Analysis
++        uses: github/codeql-action/analyze@v3
++        with:
++          category: "/language:javascript-typescript"

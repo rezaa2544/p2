@@ -138,16 +138,29 @@ function generate(){
          نداشت و `teacherNowClass` برایش null می‌داد — فنی درست
          ولی در دمو گیج‌کننده. تصمیم رضا: دادهٔ نمونه گسترش یابد،
          نه کاهش الگو. شش زنگ حاشیهٔ امن هم می‌دهد. */
-      for(let d=0;d<5;d++)for(let p=1;p<=6;p++){const s=chosen[(d*6+p)%chosen.length];const t=teachers.find(x=>x.subject_id===s.id)||teachers[0];
+      /* ⚠️ باگ پنجشنبه (ویو ۲۰): حلقهٔ قبلی روزها را سخت‌کد ۰ تا ۴
+         می‌پیمود، ولی مدرسهٔ دمو (si=0) روزهای کاریِ [۰..۵] دارد و
+         بلوک جابه‌جای هم برای پنجشنبه (dow0=5) اسلاتِ روز ۵ می‌خواست —
+         در پنجشنبه‌ها اسلات پیدا نمی‌شد و `slot.teacher_id` کلِ ساختِ
+         دمو را می‌کُشت. حالا پیمایش طبق work_days خود مدرسه است. */
+      for(const d of (school.work_days&&school.work_days.length?school.work_days:[0,1,2,3,4]))for(let p=1;p<=6;p++){const s=chosen[(d*6+p)%chosen.length];const t=teachers.find(x=>x.subject_id===s.id)||teachers[0];
         add('schedule',{school_id:school.id,class_id:c.id,subject_id:s.id,teacher_id:t.id,day:d,period:p});}
       /* جابه‌جای موقت نمونه (بند ۱.۵): فقط برای مدرسهٔ اول و وقتی
          امروز روزِ مدرسه است — تا نمای «جابه‌جای» در دمو قابل دیدن
          باشد. تاریخِ امروز روی همان روز هفتهٔ زنگ است. */
       if(school.id===1){
         const dow0=(new Date(todayISO()+'T12:00:00').getDay()+1)%7;
-        const dow=dow0<=5?dow0:0;
+        /* هفتهٔ مدرسه پنج‌روزه است (شنبه..چهارشنبه = 0..4)؛ روی پنجشنبه (۵) و
+           جمعه (۶) زنگ روزِ جاری در جدول نیست و `slot` undefined می‌شد (کرشِ
+           بوتِ دمو در چهارشنبه — دور ۱۱۱) → روزِ زنگ = اولین روز هفته.
+           تاریخِ جابه‌جای همان قراردادِ پیشین می‌ماند: امروز (پنجشنبه) یا
+           فردا (جمعه) تا بند ۱.۵ِ smoke «جابه‌جایِ امروز» دیده شود. */
+        const dow=dow0<=4?dow0:0;
         const dt=dow0<=5?todayISO():addDaysISO(todayISO(),1);
-        const slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.day===dow&&x.period===2);
+        /* فِلبکِ دفاعی: اگر به‌هر‌دلیلی زنگِ همان روز نبود، همان period از
+           هر روزِ معتبر انتخاب می‌شود. */
+        let slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.day===dow&&x.period===2);
+        if(!slot) slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.period===2);
         const sub=teachers.find(t=>t.id!==slot.teacher_id)||teachers[0];
         add('substitutions',{school_id:school.id,schedule_id:slot.id,sub_teacher_id:sub.id,date:dt,created_at:todayISO()});
       }
@@ -234,6 +247,11 @@ function generate(){
         wstuds.slice(0,4).forEach(function(st,idx){
           if(idx<2&&wsubs[0]&&wteach){
             add('grades',{school_id:school.id,student_id:st.id,class_id:w12.id,subject_id:wsubs[0].id,teacher_id:wteach.id,term:'نوبت اول',exam_type:'کارگاهی',kind:'practical',score:16+idx*2,max_score:20,created_at:daysAgoISO(30-idx)});
+          }
+          /* E.1 — نمرهٔ ترکیبی تئوری/عملی (قطعی، بدون rng): دانش‌آموزِ
+             نخست، درسِ دوم — تئوری ۱۵ + عملی ۱۷ ⇒ نهایی ۱۶ (میانگین). */
+          if(idx===0&&wsubs[1]&&wteach){
+            add('grades',{school_id:school.id,student_id:st.id,class_id:w12.id,subject_id:wsubs[1].id,teacher_id:wteach.id,term:'نوبت اول',exam_type:'میان‌ترم',kind:'theory',theoretical_score:15,practical_score:17,score:16,is_vocational:true,max_score:20,created_at:daysAgoISO(28)});
           }
           /* دو جلسهٔ کارآموزی: جلسهٔ اول تأییدشده، جلسهٔ دوم در انتظار (برای idx زوج) */
           add('internships',{school_id:school.id,student_id:st.id,date:daysAgoISO(21-idx*7),hours:16,location:idx%2?'کارگاهِ صنعتیِ شهر':'معاونتِ فنیِ منطقه',status:'approved',approved_by:wteach?wteach.id:null,approved_at:daysAgoISO(18-idx*7),note:'حضورِ کامل',created_by:manager.id,created_at:daysAgoISO(21-idx*7)});
