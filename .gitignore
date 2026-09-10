@@ -48,3 +48,4 @@ tests/chaos-output/
 
 # P0 #6 — خروجیِ DAST زنده (tools/dast-live.sh)
 out/
+node_modules
