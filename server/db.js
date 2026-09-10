@@ -325,17 +325,20 @@ async function readOne(name, id) {
 
 /**
  * Wave 1 — boot hydration: replace store domain collections with PG truth.
- * Only SCHEMA_TABLES members are ever touched, so a collection without a PG
- * table keeps its store copy. Per-table try/catch: one bad table warns and
- * keeps going (single reads still route to PG when live, so boot stays safe).
+ * Iterates SCHEMA_TABLES (not store keys) so a skeleton boot — whose store has
+ * no domain keys yet — is POPULATED from PG, not left empty. Only SCHEMA_TABLES
+ * members are ever touched, so cache-only collections (outbox, tombstones,
+ * __deleted_records, __* internals) keep their store copies. Per-table
+ * try/catch: one bad table warns and keeps going (single reads still route to
+ * PG when live, so boot stays safe).
  * @param {Object} store - live in-memory store object (mutated in place)
  * @returns {Promise<{ok:boolean, hydrated:number, skipped:Array}>}
  */
 async function hydrateStoreFromPg(store) {
   const out = { ok: true, hydrated: 0, skipped: [] };
   if (!store || typeof store !== 'object') return out;
-  for (const key of Object.keys(store)) {
-    if (!isPgReadableTable(key) || !SCHEMA_TABLES.has(key)) continue;
+  for (const key of SCHEMA_TABLES) {
+    if (!isPgReadableTable(key)) continue;
     try {
       store[key] = await readCollection(key);
       out.hydrated++;
