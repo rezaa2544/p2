@@ -14,6 +14,21 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۱: موج ۱ P0 — PG transaction-first writes — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅ (روی شاخه؛ push نهایی + PR باقی)
+
+**شاخه:** `arena/01a08a2e-p2` (بیس `origin/main` @ `40c5f96`) — ۱۳ کامیت موج ۱: `c16b178` (inventory) → `2d610e9` (migration 004) → `87c0ee5` (boot/hydrate) → `ea95508` (۵ روت + dispatch) → `f3b4dc0` (sync دوفازی) → `61b2681`/`49e0e03` (سرویس‌ها) → `050e6f3`/`0fbd3fe` (فیکس‌های cross-instance) → `c66cfc7` (تست چندنمونه‌ای) → `aa7fdc9` (گیت) → `9019b90`/`c3bf3a1` (فیکس hydrate + تست 004).
+
+**وضعیت:** همهٔ مسیرهای نوشت (۱۴ مسیرِ `docs/WAVE1_WRITES_INVENTORY.md`) PG-first شدند: کامیتِ authority پیش از هر جهشِ کش؛ شکستِ PG = ‎503‎ + rollback + retry تمیز (uidها post-commit علامت می‌خورند). بوتِ PG-authoritative (اسکلت + hydrate)، persist دوره‌ایِ JSON در حالت PG خاموش، حذفِ GDPR به‌صورت anonymize (به‌خاطر FK با CASCADE)، بکاپ/ریستورِ JSON در حالت PG fail-closed (‎501‎ + ران‌بوک pg_dump)، شناسه‌های outbox از سکانس مشترک.
+**شواهد:**
+- `tests/wave1-multi-instance.js` ‏33/33‏ (دو نمونه + یک PG روی pg-mem: دیده‌شدن، عدم برخورد id، ‎503‎+replay، OCC در sync و REST، حذف، outbox، hydrate اسکلتی).
+- `tools/wave1-gate.js` ‏35/35‏ سبز (۲۱ ایستا + ۱۴ سوئیت شامل smoke ‏47s‏ و REST روی HTTP واقعی).
+- رگرسیون کامل حافظه: ‏243/247‏؛ ۴ قرمز با تعیین‌تکلیف: `db-engineering` (انتظارِ لیست مهاجرت — اصلاح و سبز ‏13/13‏) + ۳ پیش‌موجود/محیطیِ نامرتبط: `server11-child` (هلپرِ آرگومانی، سوئیت نیست)، `wave20-arena5` (تستِ کهنهٔ ماتریس CI در برابر تصمیمِ ثبت‌شدهٔ `[22.x]`)، `workdays` (فرضِ «امروز شنبه است» — فقط شنبه‌ها سبز می‌شود).
+- باگِ یافته‌شده در ریویو و رفع‌شده: hydrate روی کلیدهای store می‌چرخید و بوتِ اسکلتی را خالی می‌گذاشت (`9019b90` + تست T0b).
+**گیت‌ها:** wave1-gate ‏35/35‏ · smoke ‏۵۴۷/۵۴۷‏ (در متن گیت) · occ ‏18/18‏ · tombstone ‏25/25‏ · sync-atomic-batch ‏22/22‏ (شاخهٔ legacyِ B8 حفظ شد).
+**push:** تا `aa7fdc9` روی origin است؛ `9019b90` + `c3bf3a1` (+ همین ورودی) فعلاً محلی‌اند — پوش با خطای احراز GitHub شکست خورد (نیازمند reconnect در Arena). به‌همین دلیل `wave1_status` در ruflo هنوز چرخانده نشده (ممنوع تا تکمیلِ push).
+**نکات Wave 2:** سطرهای `sync_conflicts` عمداً cache-side؛ ردیف‌های یتیمِ cross-instance در GDPR؛ پنجرهٔ درخواستِ زودهنگامِ بوت؛ شکلِ NUMERIC از PG رشته برمی‌گردد (فراخوان‌ها Number می‌کنند)؛ `tools/reseed-from-pg.js` برای بازگشتِ اضطراری PG→JSON.
+**بعدی:** reconnect گیت‌هاب → push → چرخاندنِ `wave1_status=completed` در ruflo → PR به main.
+
 ## چت ۱: Production Readiness Gate (§۲۷) — چک‌لیست شواهدمحور — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
 
 **شاخه:** `arena/01a08a2e-p2` (بیس `origin/main` @ `351bd10`)
