@@ -19,7 +19,7 @@
 const tracing = require('./tracing');
 tracing.initTracing();
 const metrics = require('./metrics'); /* Wave 14 — Prometheus text endpoint (zero-dep) */
-const waf = require('./waf'); /* P-WAF: فقط-تشخیص (detect-only) */
+const waf = require('./waf'); /* P-WAF: report/enforce (P0 #6 — enforce با PAYESH_WAF_MODE=enforce) */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -458,8 +458,11 @@ const onRequest = async (req, res) => {
     const __tid = tracing.getTraceId();
     if(__tid){ req.context.trace_id = __tid; res.setHeader('X-Trace-Id', __tid); }
   }catch(e){}
-  /* WAF (P-WAF): فقط-تشخیص (detect-only)؛ هرگز مسدود نمی‌کند — اِعمال با لبه است */
+  /* WAF (P-WAF): حالتِ report (پیش‌فرض — فقط-تشخیص) یا enforce (P0 #6:
+     PAYESH_WAF_MODE=enforce ⇒ verdict = 403 waf_blocked با fail-safe allowlist) */
   try{ await waf.wafMiddleware(req, res); }catch(e){}
+  /* P0 #6: اگر WAF (enforce) درخواست را مسدود کرده باشد (403 فرستاده)، روتینگ ادامه نمی‌یابد */
+  if(res.writableEnded) return;
   /* R97 — نگهبانِ شمردنِ شناسه: شمارِ رد‌ها (404/403/401) و شمارِ همهٔ
      خوانش‌هایِ /api/students/:id (مسطحِ شمردنِ شناسهٔ §5.7) به ازای هر
      نشست؛ از SLOW1 به بعد تأخیر، در REVOKE ابطال (sendJsonCounting). */
