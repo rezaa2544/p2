@@ -25,7 +25,7 @@
 | 13 | Security Program | Arena 2 + Arena 5 | ⏳ | Critical | Wave 5 و threat model | در انتظار شروع |
 | 14 | Observability | Arena 4 + Arena 5 | ⏳ | High | Wave -1 و deployment model | در انتظار شروع |
 | 15 | Health / Deployment | Arena 4 | ⏳ | High | Wave 14 و stateless API | در انتظار شروع |
-| 16 | Disaster Recovery | Arena 4 + Arena 5 | ⏳ | Critical | Wave 10/15 و RPO/RTO | در انتظار شروع |
+| 16 | Disaster Recovery | Arena 4 + Arena 5 | 🟡 | Critical | Wave 10/15 و RPO/RTO | P0#3 زیرساخت-as-Code+Runbook آماده (infra/postgres HA، infra/redis sentinel، tools/pitr-*/failover-*، docs/DR_RUNBOOK.md با RPO/RTO مصوب RELIABILITY_DR_PLAN؛ تست 92/92 + 38/38 + جهش 7/7) — اجرای مانور روی استیجینگ باقی |
 | 17 | Testing Pyramid | Arena 5 | ⏳ | High | همه Waveها | در انتظار شروع |
 | 18 | National Load Testing | Arena 5 + Arena 4 | ⏳ | High | Capacity Model، Wave 3/10/14 | در انتظار شروع |
 | 19 | Chaos / Failure Testing | Arena 5 + Arena 4 | ⏳ | Critical | Wave 15/16 و Observability | در انتظار شروع |
