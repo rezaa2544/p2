@@ -18,8 +18,14 @@
 #   - port-holding suites (fixed 89xx/90xx ports, direct or via
 #     the suite a mutation runs)                              -> one serial lane
 #   Copy = tar (0.03 s) + symlinked node_modules.
-#   125 canonical suites = 90 base + 35 mutations
-#   (tests/server11-child.js is a worker script, not a suite — excluded by design)
+#   موج ۲۰ (آرنا ۵): پوشش کامل —
+#   - همهٔ پرونده‌های مستقیمِ tests/*.js (پایه + جهش‌ها)
+#   - سابت‌های REST در tests/api از طریق tests/api/runner.js (درون‌فرآیندی،
+#     استور را به شاخهٔ موقت کپی می‌کنند؛ در مسیرِ اصلی و موازی اجرا می‌شوند)
+#   - کنارگذاشته‌های طراحی: tests/server11-child.js (اسکریپتِ کارگر)،
+#     tests/helpers/ (کمکی)، tests/performance/ (بار/پایداریِ k6 — دستی و
+#     بر‌اساسِ برنامهٔ رسمی؛ ورودیِ دروازهٔ انتشار، نه رگرسیونِ هر کامیت)
+#   شمارِ زندهٔ سوئیت‌ها با `ls tests/*.js` سنجه می‌شود؛ اعدادِ این‌جا تقریبی‌اند.
 #
 # Usage:  bash scripts/run-all-tests.sh     (log: /tmp/all-tests.log, per-suite: /tmp/at-<name>.log)
 # Self-heal (sandbox resets have wiped node_modules and .git/config three times):
@@ -89,6 +95,11 @@ fi
 
 # ── suite lists ────────────────────────────────────────────────────────────
 ALL=$(ls tests/*.js | grep -v -- '-mutations.js$' | grep -v 'server11-child.js')
+# موج ۲۰: سابت‌های REST فاز ۳ (زیرپوشهٔ tests/api) هم جزو رگرسیون‌اند —
+# دونده‌شان متوالی اجرا می‌کند و استور را ایزوله می‌کند؛ یک واحدِ موازی‌پذیر.
+if [ -f tests/api/runner.js ]; then
+  ALL="$ALL"$'\n'"tests/api/runner.js"
+fi
 REBUILDING=$(grep -l "build.js" tests/*.js 2>/dev/null | grep -v -- '-mutations.js$' | grep -v 'server11-child.js')
 SERVERS=$(echo "$ALL" | grep '^tests/server')
 MUTS=$(ls tests/*-mutations.js)
@@ -103,6 +114,11 @@ uses_port() {
   grep -qE "89[0-9]{2}|90[0-9]{2}" "$f" && return 0
   local refs r
   refs=$(grep -ohE "['\"]tests/[^'\"]+\.js['\"]" "$f" | tr -d "'\"" | sort -u)
+  # دروازهٔ انتشار: ارجاع‌های ‍path.join(..., 'tests', 'X.js') مسیرِ تحتانیِ
+  # «‍tests/» ندارند و از تورِ بالا می‌افتادند (نمونه: جهش‌های ‍wave5 که سوئیتِ
+  # پایه‌شان پورت ۹۰۳۴ دارد و موازی اجرا می‌شد). این‌جا آن‌ها را هم کشف می‌کنیم.
+  refs="$refs
+$(grep -ohE "path\.join\([^)]*'tests'[^)]*'[A-Za-z0-9_.-]+\.js'\)" "$f" | grep -oE "'[A-Za-z0-9_.-]+\.js'\)" | tr -d "'\")" | sed 's|^|tests/|' | sort -u)"
   for r in $refs; do
     [ -f "$r" ] && grep -qE "89[0-9]{2}|90[0-9]{2}" "$r" && return 0
   done
