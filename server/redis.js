@@ -30,6 +30,7 @@ let isRedisActive = false;
 let activeMode = 'memory'; // 'memory' | 'standalone' | 'sentinel' | 'cluster'
 let memCache = new Map();
 let memExpiry = new Map();
+let memSets = new Map(); // key -> Set<string> (SADD/SMEMBERS fallback)
 let subscriptions = new Map(); // channel -> Set of callbacks
 
 const REDIS_URL = process.env.REDIS_URL || null;
@@ -256,6 +257,24 @@ function getStatus() {
 }
 
 /**
+ * Wave 6: test hook — inject a contract-compatible fake client
+ * (records commands; behaves like Redis for get/set/del/incr/eval/...).
+ * `__setClientForTests(null)` restores the real state (inactive).
+ */
+let _realClient = null;
+let _realActive = false;
+function __setClientForTests(c) {
+  if (c) {
+    _realClient = client;
+    _realActive = isRedisActive;
+    client = c;
+    isRedisActive = true;
+  } else {
+    client = _realClient;
+    isRedisActive = _realActive;
+  }}
+
+/**
  * P0-13: Readiness gate — در تولید فقط با ردیسِ زنده «آماده» است؛
  * در توسعه حافظهٔ محلی قابل‌قبول است.
  */
@@ -336,6 +355,63 @@ async function set(key, value, mode, duration) {
     memExpiry.delete(key);
   }
   return 'OK';
+}
+
+/**
+ * Add members to a set (returns number of NEW members).
+ * Wave 11: indexِ «مدرسه ⇒ کاربرانِ کش‌شده» برای انقضای کاملِ L2.
+ */
+async function sAdd(key, ...members) {
+  if (isRedis()) {
+    try {
+      return await client.sadd(key, ...members.map(String));
+    } catch (err) {
+      // Fallback to memory
+    }
+  }
+  if (!memSets.has(key)) memSets.set(key, new Set());
+  const s = memSets.get(key);
+  let n = 0;
+  for (const m of members) {
+    if (!s.has(String(m))) { s.add(String(m)); n++; }
+  }
+  return n;
+}
+
+/**
+ * All members of a set (empty array when missing).
+ */
+async function sMembers(key) {
+  if (isRedis()) {
+    try {
+      return await client.smembers(key);
+    } catch (err) {
+      // Fallback to memory
+    }
+  }
+  const s = memSets.get(key);
+  return s ? Array.from(s) : [];
+}
+
+/**
+ * Remove members from a set (returns number removed).
+ */
+async function sRem(key, ...members) {
+  if (isRedis()) {
+    try {
+      return await client.srem(key, ...members.map(String));
+    } catch (err) {
+      // Fallback to memory
+    }
+  }
+  const s = memSets.get(key);
+  if (!s) return 0;
+  let n = 0;
+  for (const m of members) {
+    if (s.delete(String(m))) n++;
+  }
+  if (s.size === 0) memSets.delete(key);
+  return n;
 }
 
 /**
@@ -663,6 +739,7 @@ async function close() {
   activeMode = 'memory';
   memCache.clear();
   memExpiry.clear();
+  memSets.clear();
   subscriptions.clear();
 }
 
@@ -685,5 +762,9 @@ module.exports = {
   ping,
   setNX,
   compareAndDelete,
-  close
+  sAdd,
+  sMembers,
+  sRem,
+  close,
+  __setClientForTests
 };
