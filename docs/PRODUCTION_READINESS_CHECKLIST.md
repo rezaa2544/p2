@@ -53,19 +53,19 @@
 | HA database | ❌ | رپلیکای زنده وجود ندارد؛ Wave 10 فقط routing/fallback با fake-pool را ثابت می‌کند (`tests/wave10-db-scale.js` ‏26/26، با قید صریح «اجرای PG واقعی در انتظار») |
 | backup | ⏳ | `apiBackup/apiRestore` + بکاپ خودکار (`server/admin.js`) + `tools/redis-backup.sh` + `docs/REDIS_RESTORE_PROCEDURE.md`؛ بکاپ برون‌سایتی و PITR وجود ندارد |
 | PITR | ❌ | هیچ نشانه‌ای از WAL archiving / بازیابی نقطه-در-زمان در کد و اسناد نیست |
-| restore drill | ❌ | کد ری‌استور هست (`apiRestore`) ولی هیچ گزارش/لاگ مانور ری‌استور وجود ندارد |
-| failover drill | ❌ | هیچ مدرکی از مانور failover نیست |
+| restore drill | ❌ | کد ری‌استور هست (`apiRestore`) ولی هیچ گزارش/لاگ مانور ری‌استور وجود ندارد؛ رویهٔ ماهانه اکنون مستند است (`docs/PRODUCTION_RUNBOOK.md` §۴ + `docs/DR_RUNBOOK.md` §۶) — اجرا باقی است |
+| failover drill | ❌ | هیچ مدرکی از مانور failover نیست؛ رویه مستند: `docs/PRODUCTION_RUNBOOK.md` §۵ + `docs/DR_RUNBOOK.md` §۱/§۲ — اجرا باقی است |
 | RPO/RTO | ⏳ | در `docs/RELIABILITY_DR_PLAN.md` تعریف شده (RTO کمتر از ۱۵ دقیقه، RPO کمتر از ۵ دقیقه + طرح مانور ماهانه) ولی هرگز سنجیده/درل نشده |
 
 ## Observability (رصدپذیری)
 
 | معیار §27 | وضعیت | شاهد |
 |---|---|---|
-| metrics | ❌ | اندپوینت `/metrics` (یا معادل Prometheus) وجود ندارد؛ فقط `/api/health` هست که متریک نیست |
+| metrics | ✅ | `server/metrics.js` (اکسپوزیشنِ صفرِوابستگی، دروازهٔ `METRICS_TOKEN`) — مرجِ ویو ۱۴ در PR #49؛ صحت‌سنجی زنده در سندباکس؛ پایش مستمر: `docs/PRODUCTION_RUNBOOK.md` §۳ |
 | logs | ✅ | `server/audit.js` (چرخش 10MB، ماسک PII، حالت async) + تزریق `trace_id` (PR #22) |
 | traces | ✅ | `server/tracing.js` + سرآیند `X-Trace-Id` (PR #22، OTLP fail-open)؛ سوئیت‌های tracing سبز (شامل فیکس‌های PR #45) |
-| dashboards | ❌ | فقط `infra/tracing/jaeger-*.yaml` هست؛ داشبورد Grafana (یا معادل) وجود ندارد |
-| alerts | ❌ | هیچ قاعدهٔ alert (آستانه‌ها، مسیر escalation) در ریپو نیست |
+| dashboards | ✅ | `infra/observability/dashboards/payesh-main.json` + `payesh-logs.json` با پروویژنینگ خودکار گرافانا (ویو ۱۴، تست ۳۰/۳۰) — اجرای زنده روی میزبان باقی است |
+| alerts | ⏳ | هفت قانون بحرانی در `infra/observability/alert-rules.yml` (هم‌نام با `server/metrics.js`، تست ۵۵/۵۵) + ماتریس ارجاع و پلی‌بوک‌ها (`docs/INCIDENT_RESPONSE.md` §۲/§۳) — وب‌هوک واقعی/دریل اعلان باقی است |
 
 ## Testing (آزمون)
 
@@ -73,14 +73,14 @@
 |---|---|---|
 | integration | ✅ | ۷ سوئیت `tests/api/*` + رگرسیون کامل سبز در PR #45 (green=243, red=0) + smoke ‏**547/547** (اجرای زنده 2026-09-10) |
 | concurrency | ⏳ | `tests/sync-atomic-batch.js` ‏22/22‏ + `tests/lock-atomic.js` ‏12/12‏ (اجرای زنده) روی main؛ ماتریس کامل‌تر (اتمی‌بودن ۲۰۰همزمان ریت‌لیمیت و…) روی شاخهٔ مرج‌نشدهٔ چت ۳ است |
-| load | ❌ | Wave 18 روی شاخهٔ مرج‌نشده است؛ روی main فقط پلن (`docs/PERFORMANCE_TESTING_PLAN.md`) + بدون k6/دیتاست ملی |
+| load | ⏳ | طرح رسمی `docs/LOAD_TEST_PLAN.md` (چت ۶، ۲۰۲۶-۰۹-۱۰) + زیرساخت k6 روی main (`tests/performance/`: ۶ سناریو + ۴ سوئیت)؛ اجرا مسدود به ادغام شاخهٔ چت ۳ (`seed-national.js`) و استیجینگ §۵ سند |
 | stress | ❌ | اجرا نشده (همان انسداد load) |
 | spike | ❌ | اجرا نشده |
 | soak | ❌ | اجرا نشده |
 | chaos | ❌ | Wave 19 (پنج سناریو + `tools/chaos-test.sh`) روی شاخهٔ مرج‌نشدهٔ چت ۳ است |
 | recovery | ❌ | بدون chaos/recovery drill زنده؛ فقط طرح روی کاغذ (`RELIABILITY_DR_PLAN`) |
 
-**جمع‌بندی شمارشی:** ✅ ۱۰ · ⏳ ۱۴ · ❌ ۱۶ (از ۴۰ معیار)
+**جمع‌بندی شمارشی:** ✅ ۱۲ · ⏳ ۱۵ · ❌ ۱۳ (از ۴۰ معیار)
 
 ---
 
@@ -93,8 +93,8 @@
 1. **Wave 1 — ‏PostgreSQL تنها SoT:** تا store حافظه‌ای/JSON مسیر اصلی است، معیارهای «sole SoT»، ‏«no whole-store serialization» و «stateless API» قابل تحقق نیستند. (وابسته‌ها: Data-1، ‏Performance-3‏، Distributed-1)
 2. **معماری چندنمونه‌ای امن:** حذف وابستگی به فایل/حافظهٔ محلی در مسیر درخواست (OTP فایلی، ‏`memoryStore` اختصاصی) + اعتبارسنجی زندهٔ دو نمونه با یک DB. (Distributed-1/2)
 3. **پایایی داده:** رپلیکای HA + ‏PITR + اجرای واقعی مانورهای restore/failover + سنجش RPO/RTO (تعریف‌ها آماده‌اند، اجرا نشده‌اند). (Reliability ۱ تا ۶)
-4. **رصدپذیری حداقلی بهره‌برداری:** اندپوینت متریک + داشبورد + آلارم (بدون این‌ها، تیم در تاریکی اپراتوری می‌کند). (Observability-1/4/5)
-5. **آزمون‌های مقیاس روی staging:** اجرا (نه فقط پلن) load/stress/spike/soak + ‏chaos + ‏recovery روی infra چندنوده با k6 و دیتاست ملی — نیازمند مرج شاخهٔ چت ۳ (Wave 18/19) و سپس اجرا. (Testing ۳ تا ۸)
+4. **رصدپذیری حداقلی بهره‌برداری:** کدِ متریک/داشبورد/قوانینِ آلارم مرج شده (ویو ۱۴، PR #49)؛ باقی‌ماندهٔ مسدودکننده: اجرای زندهٔ استک روی میزبان، وب‌هوک واقعی آلارم و دریل اعلان (`docs/OBSERVABILITY_DEPLOYMENT.md` «باقی» + `docs/INCIDENT_RESPONSE.md`). (Observability-4/5)
+5. **آزمون‌های مقیاس روی staging:** اجرا (نه فقط پلن) load/stress/spike/soak + ‏chaos + ‏recovery روی infra چندنوده با k6 و دیتاست ملی — پلن رسمی آماده است (`docs/LOAD_TEST_PLAN.md`)؛ اجرا نیازمند مرج شاخهٔ چت ۳ (Wave 18/19) و سپس اجرا. (Testing ۳ تا ۸)
 6. **امنیت اجرایی:** اجرای زندهٔ DAST (staging یا مسیر محلی جدید در CI)، اجرای pen-test طبق چک‌لیست، و فعال‌سازی حالت enforce در WAF. (Security-4/5/6)
 
 ### موارد P1 (پس از P0، پیش از مقیاس ملی)
@@ -119,11 +119,11 @@
 | NATIONAL_ARCHITECTURE.md | ❌ | نزدیک‌ترین معادل: `ARCHITECTURE.md` / `ARCHITECTURE_DECISIONS.md` (نیازمند هم‌نام‌سازی یا نگاشت رسمی) |
 | DISASTER_RECOVERY.md | ❌ | نزدیک‌ترین معادل: `RELIABILITY_DR_PLAN.md` |
 | OBSERVABILITY.md | ❌ | پراکنده در `TRACING_SETUP.md` و WAF/rate-limit docs |
-| CAPACITY_MODEL.md | ❌ | نزدیک‌ترین معادل: `CAPACITY.md` / `CAPACITY_SIM.md` |
-| LOAD_TEST_PLAN.md | ❌ | نزدیک‌ترین معادل: `LOAD_TESTING_PLAN.md` / `PERFORMANCE_TESTING_PLAN.md` |
+| CAPACITY_MODEL.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — مدل رسمی برای طراحی/تست؛ اعداد در انتظار اثبات در Wave 18 |
+| LOAD_TEST_PLAN.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — ورودی رسمی Wave 18؛ جایگزین اعداد اسناد قدیمی (`LOAD_TESTING_PLAN.md`/`PERFORMANCE_TESTING_PLAN.md`) |
 | LOAD_TEST_RESULTS.md | ❌ | اجرا نشده — ذاتاً مسدود به P0-5 |
-| PRODUCTION_RUNBOOK.md | ❌ | وجود ندارد |
-| INCIDENT_RESPONSE.md | ❌ | وجود ندارد |
+| PRODUCTION_RUNBOOK.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — ۸ بخش + پوشش‌سنج `tests/runbook-coverage.js` (72/72) |
+| INCIDENT_RESPONSE.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — ۴ سطح شدت + ۱۰ پلی‌بوک + پوشش‌سنج `tests/incident-playbooks.js` (86/86) |
 | MIGRATION_GUIDE.md | ❌ | پراکنده در `DATABASE_ARCHITECTURE.md`؛ راهنمای مستقل نیست |
 
-**جمع §30:** موجود ۵ از ۱۴ — تکمیل/هم‌نام‌سازی اسناد، پیش‌نیاز نرم Go-Live است (به‌ویژه runbook و incident response).
+**جمع §30:** موجود ۹ از ۱۴ — تکمیل/هم‌نام‌سازی ۵ سند باقی‌مانده (NATIONAL_ARCHITECTURE، DISASTER_RECOVERY، OBSERVABILITY، LOAD_TEST_RESULTS، MIGRATION_GUIDE) پیش‌نیاز نرم Go-Live است.
