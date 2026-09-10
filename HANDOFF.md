@@ -14,6 +14,19 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۷ (Merge Queue): خالی‌کردنِ صف — هر ۸ PRِ بلاک‌شده رفع شد — ۲۰/۰۶/۱۴۰۵ (2026-09-10) — ✅
+
+**شاخه:** `arena/01a08c7a-p2` · **گزارش کامل:** `CHAT7_MERGE_QUEUE_FINAL_REPORT.md` · روش: worktreeهای جدا (`/tmp/prXX`) — بدون تداخل با کار چت‌های دیگر.
+
+**وضعیت اولیه:** هر ۸ PRِ باز CONFLICTING/DIRTY (#51 #34 #33 #31 #29 #32 #35 #46). نتیجه: ۷ مرج شد (#51 #34 #33 #31 #35 #46 #32) و #29 آخرین مورد باز است: MERGEABLE/CLEAN با هر ۷ چک CI سبز.
+
+- **چرخهٔ صفِ زنده:** ناظر حین کار مرج می‌کرد و main چهار بار جلو رفت (fac2ddf→cd484c3) ⇒ چهار موج re-dirty که هر بار re-resolve شد (۱۷ حلقهٔ رفع جمعاً).
+- **رفع‌های معماری‌محور:** قواعد inScope شاخه‌ها به policy.js ویو ۵ منتقل شد (E.4 کتابدار + E.5 تحویلدار + D.3/D.4 چت ۴ — D.4 عمداً data-first تا انتقال هنجار به مدرسهٔ بیرون بسته بماند)؛ schema.sql با مولد بازتولید شد؛ metrics.js دو ماژول مستقل union شد (رجیستری Wave 14 + سری‌های سازگاری استک live-deploy + publishRuntimeProbes + گارد خوداسکرپ)؛ جبر compositeCursorKey چت ۲ روی dbquery اصلی پیاده شد.
+- **درسِ تست جهش:** دفاع لایه‌ایِ main (ایدمپوتانس پیش-اعمال + sweep چت ۵) جهشِ تک‌خطی Z3 را بی‌اثر می‌کرد ⇒ helper جدید `mutateMulti` در wave17-testing-mutations (هر دو لایه با هم) — 10/10 کشته.
+- **گیت‌ها (هر رفع):** دودی ۵۴۷/۵۴۷ · authz ۰ · نشت‌یاب ۱۱/۱۱ · build --check ۰ + سوئیت اختصاصی هر PR (همه سبز)؛ wave5-authz روی #35/#32 دقیقاً ۳۴/۳۷ = baseline تمیز main (۳ قرمز pre-existing — بدون رگرسیون).
+- **راستی‌آزمایی پس از مرج روی main (cd484c3):** build بیت‌به‌بیت · authz ۰ · scan ۱۱/۱۱ · دودی ۵۴۷/۵۴۷ · wave14 · wave3-query3 · wave17 · assets2 · health-index همگی سبز (library2 هنوز روی main نیست — منتظر مرج #29).
+- **Ruflo:** `chat7_queue_empty_2026-09-10` + `chat7_lessons` ثبت شد. همهٔ pushها با ls-remote تأیید شدند.
+
 ## چت ۵: PR نهایی Bug Hunt — انتقال ۴ نشست به main (PR #52) — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — آمادهٔ مرج ✅
 
 **شاخه:** `arena/01a08b3d-p2` · **PR:** https://github.com/rezaa2544/p2/pull/52 · **گزارش کامل:** `docs/BUG_HUNT_REPORT.md` § نشست ۴ (§۶)
