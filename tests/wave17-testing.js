@@ -8,6 +8,12 @@
 
    IN  Integration  — auth → sync → REST read-your-write → idempotency
                       → optimistic concurrency → metrics accounting
+   CT  Contract     — the wire shapes every deployed client is compiled
+                      against: envelope key set, malformed_op, per-op
+                      fail-closed, MAX_BATCH, the exact `ins` result keys,
+                      the REST envelope, 404 shape, and PII masking
+   E2E E2E          — one session walks auth → REST → sync → store →
+                      observability → audit, then replays itself
    CC  Concurrency  — parallel requests: no lost counter updates, no lost
                       writes, duplicate uids collapse, one OCC winner
    LD  Load         — sustained mixed traffic: p50/p95/p99, zero 5xx,
@@ -46,6 +52,11 @@ function chk(name, cond, extra) {
   else { failc++; fails.push(name + (extra ? ' — ' + String(extra).slice(0, 200) : '')); console.log('  ❌ ' + name + (extra ? ' — ' + String(extra).slice(0, 200) : '')); }
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/* the audit log is append-only JSONL; count lines without parsing them */
+function countLines(file) {
+  try { return fs.readFileSync(file, 'utf8').split('\n').filter((l) => l.trim().length > 0).length; }
+  catch (e) { return 0; }
+}
 function pct(sorted, q) {
   if (!sorted.length) return 0;
   const i = Math.min(sorted.length - 1, Math.max(0, Math.ceil(q * sorted.length) - 1));
@@ -110,12 +121,57 @@ function parseMetrics(text) {
       1000-request run does not spend its time re-serialising 5.6 MB.
       Trimming is honest here — these levels test request/response shape
       under concurrency, not dataset size (that is Wave 18). ────────── */
+/* server/seed.js builds the demo world inside jsdom, and when that generation
+   throws it STILL writes a partial store and exits 0 — observed in this
+   environment: 28 KB, 15 users, 1 school, 0 students, 0 grades, with
+   `TypeError: Cannot read properties of undefined (reading 'teacher_id')` in the
+   bundle. A suite that reads its fixtures straight out of that store then fails
+   for reasons that have nothing to do with the code under test.
+
+   So the fixture is guaranteed here instead of assumed: the source store is
+   trimmed for speed, and every row this suite needs is synthesised if missing.
+   Deterministic either way. */
+function ensureFixture(s) {
+  const nextId = (coll) => (s[coll] || []).reduce((m, r) => Math.max(m, Number(r.id) || 0), 0) + 1;
+  if (!Array.isArray(s.schools) || s.schools.length === 0) s.schools = [{ id: 1, name: 'مدرسهٔ فیکسچر' }];
+  const schoolId = s.schools[0].id;
+  if (!Array.isArray(s.classes) || s.classes.length === 0) s.classes = [{ id: 1, school_id: schoolId, name: '۱۰/۱' }];
+  const classId = s.classes[0].id;
+  if (!Array.isArray(s.subjects) || s.subjects.length === 0) s.subjects = [{ id: 1, school_id: schoolId, name: 'ریاضی' }];
+  const subjectId = s.subjects[0].id;
+  const teacher = (s.users || []).find((u) => u.role === 'teacher') || (s.users || [])[0] || { id: 2 };
+  if (!Array.isArray(s.students)) s.students = [];
+  for (let i = 0; s.students.length < 3; i++) {
+    s.students.push({
+      id: nextId('students'), school_id: schoolId, class_id: classId,
+      first_name: 'دانش‌آموز', last_name: 'فیکسچر ' + i, national_id: String(9000000000 + i)
+    });
+  }
+  if (!Array.isArray(s.grades)) s.grades = [];
+  for (let i = 0; s.grades.length < 3; i++) {
+    s.grades.push({
+      id: nextId('grades'), school_id: schoolId, student_id: s.students[i % s.students.length].id,
+      subject_id: subjectId, teacher_id: teacher.id, term: 1, score: 10 + i,
+      version: 1, updated_at: new Date().toISOString()
+    });
+  }
+  if (!Array.isArray(s.attendance)) s.attendance = [];
+  for (let i = 0; s.attendance.length < 3; i++) {
+    s.attendance.push({
+      id: nextId('attendance'), school_id: schoolId, student_id: s.students[i % s.students.length].id,
+      class_id: classId, date: '2026-09-01', status: 'present', version: 1
+    });
+  }
+  return s;
+}
+
 function compactStore(srcPath, destPath, keep) {
   const s = JSON.parse(fs.readFileSync(srcPath, 'utf8'));
   for (const k of Object.keys(s)) {
     if (Array.isArray(s[k]) && s[k].length > keep) s[k] = s[k].slice(0, keep);
   }
   for (const k of Object.keys(s)) if (k.indexOf('__') === 0) delete s[k];
+  ensureFixture(s);
   fs.writeFileSync(destPath, JSON.stringify(s), { encoding: 'utf8', mode: 0o600 });
   return s;
 }
@@ -254,6 +310,131 @@ const uid = (tag) => 'w17-' + tag + '-' + (++uidSeq) + '-' + Date.now().toString
     chk('IN10 the metrics layer counted every sync request', syncCount >= 4, 'count=' + syncCount);
     const conflictCount = await metricSum('payesh_sync_conflicts_total');
     chk('IN11 the conflict metric recorded the OCC rejection', conflictCount >= 1, 'count=' + conflictCount);
+  }
+
+  /* ═══ CT — Contract ═══
+     The wire contract is what every client (27-sync, 03-persistence, the mobile
+     app) is compiled against. These checks pin SHAPES, not values: changing one
+     here is a breaking change for every deployed client, so it must fail loudly. */
+  console.log('\n  — Contract');
+  {
+    /* an undocumented key rejects the WHOLE batch — 403, not a per-op error */
+    const bad = await req(port, 'POST', '/api/sync', {
+      ops: [{ uid: uid('ct'), t: 'ins', c: 'teacher_notes', data: { school_id: 1, body: 'x' }, by: SA.id, NOT_A_KEY: 1 }]
+    }, cookie);
+    chk('CT1 an undocumented envelope key rejects the whole batch (403 malformed_op)',
+      bad.status === 403 && bad.json.code === 'malformed_op' && bad.json.results[0].code === 'malformed_op',
+      'status=' + bad.status + ' ' + JSON.stringify(bad.json).slice(0, 120));
+
+    const nouid = await req(port, 'POST', '/api/sync',
+      { ops: [{ t: 'ins', c: 'teacher_notes', data: { school_id: 1 }, by: SA.id }] }, cookie);
+    chk('CT2 an op without `uid` is malformed (replay safety depends on the uid)',
+      nouid.status === 403 && nouid.json.code === 'malformed_op', 'status=' + nouid.status);
+
+    /* an unknown `t` is NOT a 4xx — fieldGate fails it closed per-op and the batch
+       still succeeds. Clients must read results[], not branch on the status code. */
+    const badt = await req(port, 'POST', '/api/sync',
+      { ops: [{ uid: uid('ct'), t: 'nope', c: 'teacher_notes', data: { school_id: 1 }, by: SA.id }] }, cookie);
+    chk('CT3 an unknown `t` fails closed per-op while the batch stays 200',
+      badt.status === 200 && badt.json.ok === true && badt.json.results[0].ok === false
+      && badt.json.results[0].code === 'role_denied', JSON.stringify(badt.json).slice(0, 140));
+
+    const empty = await req(port, 'POST', '/api/sync', { ops: [] }, cookie);
+    chk('CT4 an empty batch is legal and returns an empty results array',
+      empty.status === 200 && empty.json.ok === true && Array.isArray(empty.json.results)
+      && empty.json.results.length === 0, JSON.stringify(empty.json));
+
+    const big = await req(port, 'POST', '/api/sync', {
+      ops: Array.from({ length: 501 }, (_, i) => ({ uid: 'ct-' + i, t: 'ins', c: 'teacher_notes', data: { school_id: 1 }, by: SA.id }))
+    }, cookie);
+    chk('CT5 501 ops exceeds MAX_BATCH and answers 413 batch_too_large',
+      big.status === 413 && big.json.code === 'batch_too_large', 'status=' + big.status);
+
+    /* the shape clients destructure — {uid, ok, serverTime} and NOTHING else.
+       Adding an `id` here would silently change every client's write path. */
+    const oku = uid('ct');
+    const good = await req(port, 'POST', '/api/sync', {
+      ops: [{ uid: oku, t: 'ins', c: 'teacher_notes', data: { school_id: 1, teacher_id: 2, body: 'contract' }, by: SA.id, at: new Date().toISOString() }]
+    }, cookie);
+    const r0 = good.json.results[0];
+    chk('CT6 a successful `ins` result is exactly {uid, ok, serverTime}',
+      good.status === 200 && r0.uid === oku && r0.ok === true && typeof r0.serverTime === 'string'
+      && Object.keys(r0).sort().join(',') === 'ok,serverTime,uid', 'keys=' + Object.keys(r0).sort().join(','));
+
+    const list = await req(port, 'GET', '/api/v1/grades?limit=1', null, cookie);
+    chk('CT7 a REST list is {ok, data:Array, pagination}',
+      list.status === 200 && list.json.ok === true && Array.isArray(list.json.data)
+      && typeof list.json.pagination === 'object', 'keys=' + Object.keys(list.json || {}).join(','));
+
+    const nf = await req(port, 'GET', '/api/v1/definitely-not-a-route', null, cookie);
+    chk('CT8 an unknown authenticated route is 404 {ok:false, code:"not_found"}',
+      nf.status === 404 && nf.json.ok === false && nf.json.code === 'not_found', JSON.stringify(nf.json));
+
+    /* privacy contract, in two parts. The LOGIN response is the one that carries
+       identity, and it must mask the phone; /api/auth/me must carry no raw PII
+       at all. Verified shapes: login -> {ok, user:{id, full_name, role,
+       school_id, phone_masked}};  me -> {id, full_name, role, school_id}. */
+    const lu = (lg.json && lg.json.user) || {};
+    chk('CT9 the login response masks the phone and omits the national id',
+      lg.status === 200 && typeof lu.phone_masked === 'string' && /\*/.test(lu.phone_masked)
+      && lu.phone === undefined && lu.national_id === undefined, 'keys=' + Object.keys(lu).join(','));
+    const me = await req(port, 'GET', '/api/auth/me', null, cookie);
+    const u = me.json.user || {};
+    chk('CT10 /api/auth/me carries no raw phone and no national id',
+      me.status === 200 && u.phone === undefined && u.national_id === undefined && u.id === SA.id,
+      'keys=' + Object.keys(u).join(','));
+  }
+
+  /* ═══ E2E — one journey across every module ═══
+     tests/smoke.js is the browser-level E2E (jsdom, 547 checks). This is the
+     SERVER-side journey: a single session walks auth → REST → sync → store →
+     observability → audit. No single-module suite covers that whole path. */
+  console.log('\n  — E2E (server-side journey)');
+  {
+    const me = await req(port, 'GET', '/api/auth/me', null, cookie);
+    chk('E2E1 the session knows who it is', me.status === 200 && me.json.user.id === SA.id,
+      JSON.stringify(me.json.user));
+
+    const health = await req(port, 'GET', '/api/health');
+    chk('E2E2 /api/health is public and self-describing',
+      health.status === 200 && health.json.ok === true && typeof health.json.version === 'string'
+      && health.json.pid > 0, 'keys=' + Object.keys(health.json || {}).join(','));
+
+    const pub = await req(port, 'GET', '/api/public-report');
+    chk('E2E3 the public report needs no session', pub.status === 200 && Array.isArray(pub.json.schools),
+      'status=' + pub.status);
+
+    const auditFile = path.join(tmp, 'audit.log');
+    const auditBefore = countLines(auditFile);
+    const syncBefore = await metricSum('payesh_sync_requests_total');
+
+    const marks = [0, 1, 2].map((i) => 'w17-e2e-' + i + '-' + Date.now().toString(36));
+    const batch = {
+      ops: marks.map((m) => ({ uid: uid('e2e'), t: 'ins', c: 'teacher_notes', data: { school_id: 1, teacher_id: 2, body: m }, by: SA.id, at: new Date().toISOString() }))
+    };
+    const w = await req(port, 'POST', '/api/sync', batch, cookie);
+    chk('E2E4 one batch writes three records',
+      w.status === 200 && w.json.results.length === 3 && w.json.results.every((r) => r.ok === true),
+      JSON.stringify(w.json).slice(0, 140));
+
+    const countMarks = () => ((JSON.parse(fs.readFileSync(storeFile, 'utf8')).teacher_notes) || [])
+      .filter((n) => marks.indexOf(n.body) !== -1).length;
+    let landed = 0;
+    for (let i = 0; i < 25 && landed < 3; i++) { await sleep(400); try { landed = countMarks(); } catch (e) {} }
+    chk('E2E5 all three reached the store', landed === 3, 'landed=' + landed);
+
+    const syncAfter = await metricSum('payesh_sync_requests_total');
+    chk('E2E6 the journey is observable (sync counter moved)', syncAfter > syncBefore,
+      syncBefore + ' -> ' + syncAfter);
+
+    const auditAfter = countLines(auditFile);
+    chk('E2E7 the journey is audited', auditAfter > auditBefore, auditBefore + ' -> ' + auditAfter);
+
+    const rep = await req(port, 'POST', '/api/sync', batch, cookie);
+    chk('E2E8 replaying the whole journey changes nothing',
+      rep.status === 200 && rep.json.results.length === 3
+      && rep.json.results.every((r) => r.code === 'duplicate_ignored'), JSON.stringify(rep.json).slice(0, 140));
+    chk('E2E9 the store still holds exactly three records', countMarks() === 3, 'landed=' + countMarks());
   }
 
   /* ═══ CC — Concurrency ═══ */
