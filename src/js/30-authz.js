@@ -248,6 +248,7 @@ var ACTION_ROLES = {
   'internship-save':    ['teacher','manager'],
   'internship-approve': ['teacher','manager'],
   'internship-del':     ['manager'],
+  'internship-cert':    ['manager','superadmin'],
   /* بند ۲.۲ — IEP: فیلدِ آزاد است ولی تغییرش اختیارِ کادر است (دبیر/مدیر) */
   'iep-save': ['teacher','manager'],
   /* بند ۴.۴ — قیف پیش‌ثبت‌نام: پیگیریِ داوطلب کارِ مدیر است */
