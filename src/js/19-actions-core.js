@@ -455,11 +455,15 @@ function coreActions(e, el, id, a, rawId){
        f('نام *', inp('as_name',''))
        + f('دسته', inp('as_category',''))
        + f('مکان', inp('as_location',''))
-       + f('وضعیت', sel('as_status',[['available','در دسترس'],['in_use','در حال استفاده'],['repair','در تعمیرات']],'available')),
+       + f('وضعیت', sel('as_status',[['available','در دسترس'],['in_use','در حال استفاده'],['repair','در تعمیرات']],'available'))
+       + f('یادداشت', inp('as_note',''))
+       + f('تعداد کل', inp('as_total','1','number'))
+       + f('قابل‌استفاده (خالی = خودکار)', inp('as_usable','','number')),
        'as-save'));
    },
    'as-save'(){
-     const r = assetAdd(V('as_name'), V('as_category'), V('as_location'), V('as_status'));
+     const r = assetAdd(V('as_name'), V('as_category'), V('as_location'), V('as_status'), V('as_note'),
+       {total_count: Number(V('as_total')) || 1, usable_count: (V('as_usable') === '' ? undefined : Number(V('as_usable')))});
      if(!r.ok){ toast(r.msg,'err'); return; }
      closeModal(); toast('تجهیز ثبت شد','ok');
      render();
@@ -470,11 +474,14 @@ function coreActions(e, el, id, a, rawId){
      window._asEditId = a.id;
      openModal(modalTpl('وضعیت — ' + a.name,
        f('وضعیت', sel('as_status',[['available','در دسترس'],['in_use','در حال استفاده'],['repair','در تعمیرات']], a.status))
-       + f('مکان', inp('as_location', a.location||'')),
+       + f('مکان', inp('as_location', a.location||''))
+       + f('تعداد کل', inp('as_total', String(assetTotal(a)), 'number'))
+       + f('قابل‌استفاده', inp('as_usable', String(assetUsable(a)), 'number')),
        'as-status-save'));
    },
    'as-status-save'(){
-     const r = assetSetStatus(window._asEditId, V('as_status'), V('as_location'));
+     const r = assetSetStatus(window._asEditId, V('as_status'), V('as_location'),
+       {total_count: Number(V('as_total')), usable_count: Number(V('as_usable'))});
      if(!r.ok){ toast(r.msg,'err'); return; }
      closeModal(); toast('وضعیت به‌روز شد','ok');
      render();
@@ -485,6 +492,19 @@ function coreActions(e, el, id, a, rawId){
        if(!r.ok){ toast(r.msg,'err'); return; }
        toast('تجهیز حذف شد','ok'); render();
      }, {title:'حذف تجهیز', ok:'حذف', danger:true});
+   },
+   'as-search'(){
+     try{ window._asQ = V('as_q') || ''; }catch(e){ window._asQ = ''; }
+     render();
+   },
+   'as-cust-toggle'(){
+     const t = byId('users', Number(id));
+     if(!t) return;
+     const was = (t.asset_staff === 1);
+     const r = assetSetCustodian(t.id, !was);
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     toast(was ? 'مجوزِ تحویلداری لغو شد' : 'مجوزِ تحویلداری اعطا شد','ok');
+     render();
    },
    'sd-new'(){
      const u = S.user;
@@ -1526,6 +1546,7 @@ function coreActions(e, el, id, a, rawId){
    'internship-edit'(){internshipModal(byId('internships',id),Number(id));},
    'internship-del'(){confirmModal('حذف این ردیفِ کارآموزی؟','internship-del-ok',id);},
    'internship-del-ok'(){remove('internships',window._delId);closeModal();toast('حذف شد','ok');render();},
+   'internship-cert'(){const r=internshipIssueCert(id);toast(r.msg,r.ok?'ok':'err');if(r.ok)render();},
    'internship-save'(){const i=window._inEdit;if(!i)return;
      const hours=Number(V('in_hours'));
      if(!hours||hours<1||hours>40){toast('ساعت باید عددی بین ۱ تا ۰ باشد','err');return;}
@@ -1679,6 +1700,7 @@ function coreActions(e, el, id, a, rawId){
    'disc-edit'(){discModal(byId('discipline',id));},
    'disc-del'(){confirmModal('حذف این مورد انضباطی؟','disc-del-ok',id);},
    'disc-del-ok'(){remove('discipline',window._delId);closeModal();toast('حذف شد','ok');render();},
+   'disc-quick'(){const r=dojoQuickAward(id);toast(r.msg,r.ok?'ok':'err');if(r.ok)render();},
    'disc-save'(){const d=window._edit;
      const data={kind:V('d_kind'),title:V('d_title'),description:V('d_desc'),points:Number(V('d_points'))||0,date:V('d_date')};
      if(d.id)update('discipline',d.id,data);
@@ -1728,8 +1750,20 @@ function coreActions(e, el, id, a, rawId){
    'ann-del'(){const a=byId('announcements',id);askDelete(`اطلاعیه «${a.title}» حذف شود؟`,()=>{remove('announcements',id);toast('اطلاعیه حذف شد','ok');render();});},
    'ann-save'(){ if(needAll([['a_title','عنوان و متن الزامی است'],['a_body','عنوان و متن الزامی است']]))return;
      const data={title:V('a_title'),body:V('a_body'),audience:V('a_aud')};
+     /* د.۳ — سطح اهمیت: فقط مقدارهای معتبر؛ نبودِ فیلد (ناشرانِ بدون انتخابگر) = عادی */
+     const sevEl=$('#a_sev');
+     const sev=sevEl?sevEl.value:'normal';
+     if(['normal','urgent','critical'].indexOf(sev)<0){toast('سطح اهمیت معتبر نیست','err');return;}
+     data.severity=sev;
      if(window._annEdit)update('announcements',window._annEdit,data);
-     else insert('announcements',Object.assign({school_id:S.user.school_id||null,created_by:S.user.id,created_at:todayISO()},data));
+     else{
+       /* اطلاعیهٔ اداره: در محدودهٔ ادارهٔ خود (school_id خالی + office_id خود)؛
+          بقیهٔ نقش‌ها مثل پیش (مدرسه‌ای یا سراسری) — د.۳ */
+       const base=S.user.role==='edu_office'
+         ?{school_id:null,office_id:S.user.office_id||null,created_by:S.user.id,created_at:todayISO()}
+         :{school_id:S.user.school_id||null,office_id:null,created_by:S.user.id,created_at:todayISO()};
+       insert('announcements',Object.assign(base,data));
+     }
      closeModal();toast(window._annEdit?'اطلاعیه ویرایش شد':'اطلاعیه منتشر شد','ok');window._annEdit=0;render();},
    /* ── مشاور مدرسه و پیگیری الگوها (دور ۶۳) ── */
    'fu-days'(){S.filters.fu_days=Number(el.dataset.d);render();},
@@ -1821,6 +1855,8 @@ document.addEventListener('click',e=>{
   else if(typeof FILTER_ACTIONS!=='undefined'&&FILTER_ACTIONS[a]){e.preventDefault();FILTER_ACTIONS[a](el,id);}
   else if(typeof SYNC_ACTIONS!=='undefined'&&SYNC_ACTIONS[a]){e.preventDefault();SYNC_ACTIONS[a](el,id);}
   else if(typeof TEVAL_ACTIONS!=='undefined'&&TEVAL_ACTIONS[a]){e.preventDefault();TEVAL_ACTIONS[a](el,id);} /* 73-teacher-eval */
+  else if(typeof REGION_ACTIONS!=='undefined'&&REGION_ACTIONS[a]){e.preventDefault();REGION_ACTIONS[a](el,id);} /* 74-region-tools */
+  else if(typeof STAFFGAP_ACTIONS!=='undefined'&&STAFFGAP_ACTIONS[a]){e.preventDefault();STAFFGAP_ACTIONS[a](el,id);} /* 75-staff-gap */
 });
 // live filters
 document.addEventListener('input',e=>{

@@ -48,7 +48,7 @@ const GLOBAL_NULL_SCHOOL_READ = new Set(['announcements', 'subjects']);
 /* مجموعه‌هایی که نوشتنِ اداره روی آن‌ها نیازمندِ مهارِ قابل‌حل است
    (منبعِ یکتا؛ sync.js از همین‌جا مصرف می‌کند — آزمونِ T15 این فهرست را
    در برابرِ مدلِ مجوزهایِ اداره می‌سنجد). */
-const EO_SCOPE_GATED = ['announcements', 'teacher_schools', 'attendance_modes', 'notifications', 'notify_queue'];
+const EO_SCOPE_GATED = ['announcements', 'teacher_schools', 'attendance_modes', 'notifications', 'notify_queue', 'staff_posts']; /* staff_posts: د.۴ (چت ۴) */
 
 /* فیلدهای IEP — استثنای صریحِ دبیر روی users (آینهٔ IEP_KEYS در sync). */
 const IEP_KEYS = ['iep_notes', 'iep_staff', 'iep_updated'];
@@ -266,6 +266,14 @@ function inScope(session, store, coll, recId, data) {
   }
   if (u.role === 'teacher') {
     if (coll === 'messages') return msgOwnerOk();
+    /* E.5 — تحویلدار: به‌روزرسانیِ اموال در سطحِ مدرسه است نه کلاس؛
+       پرچمِ تفویضیِ مدیر (users.asset_staff=1) لازم است. (منتقل از sync.js — ویو ۵) */
+    if (coll === 'assets') {
+      const me = ((store && store.users) || []).find((x) => Number(x.id) === Number(u.id));
+      if (!me || me.asset_staff !== 1) return false;
+      const t3 = rec || data || {};
+      return t3.school_id != null && Number(t3.school_id) === Number(u.school_id);
+    }
     /* Round 89 — کلاس‌هایی که واقعاً تدریس می‌شوند (سرپرستی یا برنامه)؛
        نوبت‌ها: نوبت‌هایِ خودِ دبیر (با parent_id/student_id null ساخته می‌شوند). */
     const t2 = rec || data || {};
@@ -291,10 +299,26 @@ function inScope(session, store, coll, recId, data) {
      offices ساختاری و بسته است (دفاعِ دوم — در مدلِ نقش هم مجوزش نیست). */
   if (u.role === 'edu_office') {
     if (coll === 'offices') return false;
+    /* د.۳ — اطلاعیهٔ فوری/بحرانی اداره: کارشناس فقط می‌تواند اطلاعیه‌ای
+       با office_id ادارهٔ خودش بنویسد/ویرایش/حذف کند؛ اطلاعیهٔ ادارهٔ
+       دیگر ⇒ رد (بستنِ شکافِ انتشار بین‌اداره‌ای). (منتقل از sync.js — ویو ۵) */
+    if (coll === 'announcements') {
+      const t0 = rec || data || {};
+      if (t0.office_id != null && Number(t0.office_id) !== Number(u.office_id)) return false;
+    }
     if (EO_SCOPE_GATED.indexOf(coll) > -1) {
       const t = rec || data || {};
-      const sid = t.school_id != null ? t.school_id
-        : (t.user_id != null ? (((store.users) || []).find((x) => Number(x.id) === Number(t.user_id)) || {}).school_id : null);
+      /* د.۴ — staff_posts: مدرسهٔ «هدف» بر رکوردِ موجود مقدم است؛
+         انتقالِ هنجار به مدرسهٔ بیرونِ محدودهٔ دفتر ⇒ رد (فیل‌کلوزد). */
+      const sid = (coll === 'staff_posts' && data && data.school_id != null) ? data.school_id
+        : (t.school_id != null ? t.school_id
+        : (t.user_id != null ? (((store.users) || []).find((x) => Number(x.id) === Number(t.user_id)) || {}).school_id : null));
+      /* د.۳ — اطلاعیهٔ سطحِ اداره: بدونِ مهارِ مدرسه/گیرنده ولی با
+         office_id خودِ ادارهٔ کاربر ⇒ در محدودهٔ همان اداره است؛
+         office_id ادارهٔ دیگر یا نبودِ آن ⇒ رد (فیل‌کلوزد) */
+      if (sid == null && t.office_id != null) {
+        return Number(t.office_id) === Number(u.office_id);
+      }
       return schoolInOfficeScope(store, u, sid);
     }
     return true; /* بقیه: اختیارِ بین‌مدرسه‌ای که مدل داده است */

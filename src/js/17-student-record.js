@@ -161,16 +161,23 @@ function internshipCard(sid){
   if(!isFinalYearStudent(sid))return '';
   var rows=internshipSessions(sid);
   var tot=internshipTotals(sid);
+  var pr=(typeof internshipProgress==='function')?internshipProgress(sid):{required:200,approved:tot.approved,pct:0,done:false};
+  var cert=(typeof internshipCert==='function')?internshipCert(sid):null;
   var persona=(typeof activePersona==='function')?activePersona():(S.user&&S.user.role);
   var canManage=persona==='manager'||persona==='superadmin';
+  var canRegister=canManage||persona==='teacher';
   var canApprove=canManage||persona==='teacher';
   var h='<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:14px">'
    +'<div class="row" style="align-items:center;gap:10px;flex-wrap:wrap"><b>🏭 ساعتِ کارآموزی</b>'
    +'<span class="badge b-green">مجموع: '+fa(tot.total)+' ساعت</span>'
    +'<span class="badge b-blue">تأییدشده: '+fa(tot.approved)+' ساعت</span>'
+   +'<span class="badge b-purple">پیشرفت: '+fa(pr.approved)+' از '+fa(pr.required)+'</span>'
+   +(cert?'<span class="badge b-green">🎓 '+esc(cert.code||'')+'</span>':'')
    +'<div class="spacer"></div>'
-   +(canManage?'<button class="btn sm" data-act="internship-new" data-id="'+escAttr(sid)+'">➕ ثبتِ ساعت</button>':'')
-   +'</div>';
+   +(canRegister?'<button class="btn sm" data-act="internship-new" data-id="'+escAttr(sid)+'">➕ ثبتِ ساعت</button>':'')
+   +(canManage&&pr.done&&!cert?'<button class="btn ghost sm" data-act="internship-cert" data-id="'+escAttr(sid)+'">🎓 صدور گواهی</button>':'')
+   +'</div>'
+   +'<div style="margin-top:8px">'+bar(pr.approved,pr.required,pr.done?'var(--green)':'var(--primary)')+'</div>';
   if(rows.length){
     h+='<div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>تاریخ</th><th>ساعت</th><th>محل</th><th>وضعیت</th><th>تأییدکننده</th><th></th></tr></thead><tbody>';
     rows.forEach(function(r){
