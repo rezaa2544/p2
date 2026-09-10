@@ -73,7 +73,8 @@
 ## ۶. Push
 
 - شاخه: `arena/01a08a9c-p2`
-- تأییدیهٔ `git ls-remote`: (پس از push ثبت می‌شود)
+- تأییدیهٔ `git ls-remote origin arena/01a08a9c-p2`:
+  `c834461095b49c189a4d242d92771784c10e0982` = HEAD ✅ (۹ کامیت، ۲۰۲۶-۰۹-۱۰)
 
 ## ۷. Ruflo
 
