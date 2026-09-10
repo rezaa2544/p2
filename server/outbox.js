@@ -25,14 +25,29 @@ function createOutbox({ store, db }) {
     return store.__outbox_seq;
   };
 
+  /* Wave 1: PG-live ids come from payesh_outbox_id_seq (migration 004) so two
+     instances never collide; the local counter stays for memory mode and as the
+     fallback if the sequence read fails (the PG mirror is best-effort; the
+     store copy is the durability path, and ON CONFLICT DO NOTHING keeps a
+     fallback-id collision from erroring). */
+  async function nextPgId(){
+    try{
+      const r = await db.query("SELECT nextval('payesh_outbox_id_seq') AS id");
+      const v = r && r.rows && r.rows[0] && Number(r.rows[0].id);
+      if(Number.isFinite(v)) return v;
+    }catch(e){ /* fall through to the local counter */ }
+    return nextId();
+  }
+
   const isPg = () => db && typeof db.isPostgres === 'function' && db.isPostgres();
 
   /**
    * @param {object} event — { type, collection, record_id, actor_id, version, payload? }
    */
   async function append(event) {
+    const pgSeq = isPg() && db && typeof db.query === 'function';
     const evt = Object.assign({
-      id: nextId(),
+      id: pgSeq ? await nextPgId() : nextId(),
       at: new Date().toISOString(),
       /* ویو ۸ — چرخهٔ عمر (سازگار با گذشته: رویدادهای قدیمی بدون وضعیت
          از دید کارگر حکمِ 'pending' دارند) */

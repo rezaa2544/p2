@@ -78,6 +78,12 @@ const DEMO_CODE_ECHO = process.env.PAYESH_DEMO_CODE === '1';
 /* ── store ────────────────────────────────────────────────────────── */
 function loadStore(){
   if(!fs.existsSync(STORE_FILE)){
+    /* Wave 1: with PostgreSQL configured, the file is only a bootstrap
+       artifact — boot from an empty skeleton and hydrate from PG below. */
+    if(process.env.DATABASE_URL){
+      console.log('[store] no JSON file; DATABASE_URL set — booting skeleton for PG hydration');
+      return { __processed_uids: {}, __revoked_jti: {}, __auth: { codes: {}, login_fail: {}, code_rate: {}, enum: {} } };
+    }
     console.error('no store found: ' + STORE_FILE);
     console.error('run:  node server/seed.js   (builds it from the demo world)');
     process.exit(1);
@@ -100,9 +106,16 @@ const workers = createHeavyWorker({ getStore: () => store });
 const staticCache = createStaticCache();
 
 /* ── database and caching layers initialization ── */
-db.init(store).then(info => {
+db.init(store).then(async info => {
   if (info.driver === 'postgres') {
     console.log('[DB] Connected to PostgreSQL relational engine');
+    /* Wave 1: PG is authoritative — replace store domain collections with
+       PG truth at boot (per-table failures warn and keep going). */
+    try {
+      const h = await db.hydrateStoreFromPg(store);
+      console.log('[DB] Hydrated ' + h.hydrated + ' collections from PostgreSQL' +
+        (h.skipped.length ? ' (skipped: ' + h.skipped.join(',') + ')' : ''));
+    } catch (e) { console.warn('[DB] Hydration warning:', e.message); }
   }
 }).catch(err => {
   console.warn('[DB] PostgreSQL init warning:', err.message);
@@ -229,7 +242,7 @@ function persistStoreSync(){
     try{ fs.chmodSync(STORE_FILE, 0o600); }catch(e){}
   }catch(e){ /* store file may be gone (tests) — never crash on exit */ }
 }
-setInterval(persistStore, 2000).unref();
+setInterval(() => { if(!db.isPostgres()) persistStore(); }, 2000).unref(); /* Wave 1: no periodic JSON persist in PG mode */
 process.on('exit', () => {
   try { worker.stop(); } catch (e) {}
   persistStoreSync();
@@ -346,20 +359,20 @@ function securityHeaders(res, nonce, https){
    P0-15: وقتی ردیس فعال است، همان کلیدِ مشترکِ ردیس منبع حقیقت می‌شود
    و فایل فقط فال‌بکِ توسعهٔ بدون ردیس است. */
 const otp = createOtpStore({ file: OTP_FILE, ttlMs: CODE_TTL_MS, store, markDirty, redis, cache });
-const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty, otp });
+const auth = createAuth({ store, db, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty, otp });
 /* R97: همهٔ ماژول‌هایِ /api با sendJsonCounting می‌چرخند تا رد‌ها شمرده
    شوند؛ auth استثناست (سقفِ OTP سقفِ خودش را می‌سازد). */
-const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
+/* P0-16: شناسه‌های بدون‌برخورد — دنبالهٔ پستگرس یا مکس+۱ قفل‌دار (پیش از sync: حلقهٔ اعمال از آن استفاده می‌کند) */
+const ids = createIds({ db, cache });
+const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, ids });
 const idor = createIdor({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const pubrep = createPublicReport({ store, sendJson: sendJsonCounting, workers });
-const admin = createAdmin({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, dataDir: path.dirname(STORE_FILE), workers });
+const admin = createAdmin({ store, db, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, dataDir: path.dirname(STORE_FILE), workers });
 const sms = createSms({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
-const conflicts = createConflicts({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
+const conflicts = createConflicts({ store, db, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 
 /* ── Phase 3: RESTful Resource Routes ─────────────────────────────── */
-/* P0-16: شناسه‌های بدون‌برخورد — دنبالهٔ پستگرس یا مکس+۱ قفل‌دار */
-const ids = createIds({ db, cache });
 /* P0-17: صندوق برون‌مرزی + سرویس حذف واحد (سنگ‌قبر به‌جای اسپلایسِ خام) */
 const outbox = createOutbox({ store, db });
 const deleter = createDeleteService({ store, db, markDirty, outbox });
@@ -499,7 +512,7 @@ const onRequest = async (req, res) => {
       if(/^\/api\/v1\/students\/\d+$/.test(p)){
         const id = p.split('/')[4];
         if(req.method === 'GET'){
-          const r = studentRoutes.getStudentById(req, id);
+          const r = await studentRoutes.getStudentById(req, id);
           return sendJson(res, r.status, r.body);
         }
         if(req.method === 'PATCH'){
@@ -524,7 +537,7 @@ const onRequest = async (req, res) => {
       if(/^\/api\/v1\/classes\/\d+$/.test(p)){
         const id = p.split('/')[4];
         if(req.method === 'GET'){
-          const r = classRoutes.getClassById(req, id);
+          const r = await classRoutes.getClassById(req, id);
           return sendJson(res, r.status, r.body);
         }
         if(req.method === 'PATCH'){
@@ -591,7 +604,7 @@ const onRequest = async (req, res) => {
       if(/^\/api\/v1\/users\/\d+$/.test(p)){
         const id = p.split('/')[4];
         if(req.method === 'GET'){
-          const r = userRoutes.getUserById(req, id);
+          const r = await userRoutes.getUserById(req, id);
           return sendJson(res, r.status, r.body);
         }
         if(req.method === 'PATCH'){
