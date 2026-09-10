@@ -1962,9 +1962,13 @@ function migrateFromLocalStorageToIdb(customStorage) {
     }
 
     // ۲. انتقال صف همگام‌سازی معلق
+    //    W7-5 (باگ‌هانت چت ۵، نشست ۴): کلیدِ واقعیِ صف `sms_syncq_v1`
+    //    (SYNC_QUEUE_KEY در 27-sync.js) است؛ پیش‌تر فقط کلیدِ کهنهٔ
+    //    `sms_queue_v1`/`payesh_sync_queue` خوانده می‌شد، پس صفِ معلقِ
+    //    واقعی هیچ‌وقت مهاجرت نمی‌کرد و پرچم با صفِ ناتمام سبز می‌شد.
     try {
       if (typeof Store !== 'undefined') {
-        var rawQueue = Store.get('sms_queue_v1') || Store.get('payesh_sync_queue');
+        var rawQueue = Store.get('sms_syncq_v1') || Store.get('sms_queue_v1') || Store.get('payesh_sync_queue');
         if (rawQueue) {
           var queueEntries = JSON.parse(rawQueue);
           if (Array.isArray(queueEntries)) {
