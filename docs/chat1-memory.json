@@ -1,0 +1,38 @@
+{
+  "schema": "ruflo-memory-export/v1",
+  "exportedAt": "2026-09-10T07:22:54.905Z",
+  "namespace": null,
+  "count": 3,
+  "entries": [
+    {
+      "key": "chat1_connected",
+      "namespace": "default",
+      "value": "connected 2026-09-10 (merge coordinator session)",
+      "createdAt": 1789024974294,
+      "updatedAt": 1789024974294,
+      "accessCount": 0,
+      "hasEmbedding": true,
+      "size": 48
+    },
+    {
+      "key": "p2/memory-branch-map",
+      "namespace": "default",
+      "value": "Memory export locations: docs/chat1-memory.json=arena/01a08a2e-p2 (native ruflo-memory-export/v1); docs/chat2-memory.json=arena/01a0867f-p2 (native, 2 entries: chat2_connected, p2/wave17); docs/chat3-memory.json=arena/01a08545-p2 (custom p2-chat-memory/v1 + empty native block); docs/chat4-memory.json=feat/wave20-chat4 (custom schema); docs/unified-memory.json=arena/01a08a2e-p2 (native merged). No chat memory on origin/main.",
+      "createdAt": 1789024970019,
+      "updatedAt": 1789024970019,
+      "accessCount": 0,
+      "hasEmbedding": true,
+      "size": 427
+    },
+    {
+      "key": "p2/unified-merge",
+      "namespace": "default",
+      "value": "Team memory merge coordinator (chat1, branch arena/01a08a2e-p2, 2026-09-10). Sources found by searching ALL origin branches: chat2=origin/arena/01a0867f-p2, chat3=origin/arena/01a08545-p2 (NOT on main), chat4=origin/feat/wave20-chat4. Method: ruflo v3.40.0 local install (/tmp/ruflo-run); native import for ruflo-schema files, memory-store-as-key for custom-schema files (chat3/chat4 direct import yields 0 entries). /shared/ruflo absent in sandbox -> local store used. First unified commit 3680759 (5 entries); final unified adds native chat1 export (this file).",
+      "createdAt": 1789024969245,
+      "updatedAt": 1789024969245,
+      "accessCount": 0,
+      "hasEmbedding": true,
+      "size": 563
+    }
+  ]
+}
