@@ -59,6 +59,11 @@ function navFor(u){
   if(u.role==='teacher' && u.lib_staff===1){
     nav = nav.concat([[ 'کتابخانه', [['library','📚','کتابخانه']] ]]);
   }
+  /* تحویلدار: دبیرِ دارای پرچم، اموال را در منو می‌بیند
+     (فقط نمایش؛ مجوزِ مسیر با canRoute و مجوزِ عمل با assetStaffCan است). */
+  if(u.role==='teacher' && u.asset_staff===1){
+    nav = nav.concat([[ 'اموال', [['assets','🧰','املاک و موجودی']] ]]);
+  }
   if(u.role==='parent'){
     nav=nav.concat([['حساب من',[['subscription','💳','اشتراک پنل اولیا']]]]);
     /* بند ۴ دور ۷۸ (بماندهٔ DISCOVERABILITY_R43، مورد ۲): برچسب پویای
