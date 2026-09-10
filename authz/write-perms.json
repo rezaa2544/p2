@@ -93,6 +93,7 @@
       "hw_assignments",
       "hw_submissions",
       "internships",
+      "lib_loans",
       "meeting_slots",
       "messages",
       "notifications",
@@ -722,10 +723,12 @@
     "lib_loans": {
       "ins": [
         "manager",
+        "teacher",
         "superadmin"
       ],
       "upd": [
         "manager",
+        "teacher",
         "superadmin"
       ],
       "del": [
@@ -1895,9 +1898,12 @@
       "code",
       "created_at",
       "id",
+      "isbn",
+      "location",
       "school_id",
       "serial",
       "title",
+      "total_copies",
       "updated_at"
     ],
     "lib_loans": [
@@ -2417,6 +2423,7 @@
       "iep_updated",
       "asset_staff",
       "job",
+      "lib_staff",
       "mother_nid",
       "national_id",
       "office_id",
@@ -3180,7 +3187,8 @@
     },
     "lib-lend-save": {
       "roles": [
-        "manager"
+        "manager",
+        "teacher"
       ],
       "collections": [
         "lib_loans"
@@ -3188,7 +3196,8 @@
     },
     "lib-return": {
       "roles": [
-        "manager"
+        "manager",
+        "teacher"
       ],
       "collections": [
         "lib_loans"
@@ -3203,9 +3212,19 @@
       ]
     },
     "lib-serial-save": {
-      "roles": null,
+      "roles": [
+        "manager"
+      ],
       "collections": [
         "lib_books"
+      ]
+    },
+    "lib-staff-toggle": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "users"
       ]
     },
     "login": {
