@@ -91,7 +91,8 @@ function createGradeRoutes(ctx) {
     });
 
     enriched.sort((a, b) => b.id - a.id);
-    const paginated = paginateArray(enriched, paginationOpts);
+    /* W3-1: sort is id DESC, so keyset "next" walks backwards (id < cursor). */
+    const paginated = paginateArray(enriched, Object.assign({}, paginationOpts, { order: 'desc' }));
 
     return { ok: true, ...paginated };
   }
