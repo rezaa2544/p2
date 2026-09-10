@@ -138,7 +138,12 @@ function generate(){
          نداشت و `teacherNowClass` برایش null می‌داد — فنی درست
          ولی در دمو گیج‌کننده. تصمیم رضا: دادهٔ نمونه گسترش یابد،
          نه کاهش الگو. شش زنگ حاشیهٔ امن هم می‌دهد. */
-      for(let d=0;d<5;d++)for(let p=1;p<=6;p++){const s=chosen[(d*6+p)%chosen.length];const t=teachers.find(x=>x.subject_id===s.id)||teachers[0];
+      /* ⚠️ باگ پنجشنبه (ویو ۲۰): حلقهٔ قبلی روزها را سخت‌کد ۰ تا ۴
+         می‌پیمود، ولی مدرسهٔ دمو (si=0) روزهای کاریِ [۰..۵] دارد و
+         بلوک جابه‌جای هم برای پنجشنبه (dow0=5) اسلاتِ روز ۵ می‌خواست —
+         در پنجشنبه‌ها اسلات پیدا نمی‌شد و `slot.teacher_id` کلِ ساختِ
+         دمو را می‌کُشت. حالا پیمایش طبق work_days خود مدرسه است. */
+      for(const d of (school.work_days&&school.work_days.length?school.work_days:[0,1,2,3,4]))for(let p=1;p<=6;p++){const s=chosen[(d*6+p)%chosen.length];const t=teachers.find(x=>x.subject_id===s.id)||teachers[0];
         add('schedule',{school_id:school.id,class_id:c.id,subject_id:s.id,teacher_id:t.id,day:d,period:p});}
       /* جابه‌جای موقت نمونه (بند ۱.۵): فقط برای مدرسهٔ اول و وقتی
          امروز روزِ مدرسه است — تا نمای «جابه‌جای» در دمو قابل دیدن
