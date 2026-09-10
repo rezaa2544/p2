@@ -2224,7 +2224,11 @@ function generate(){
            اولین روز هفته (شنبه) انتخاب می‌شود. (رفع خطای دمو در پنجشنبه) */
         const dow=dow0<=4?dow0:0;
         const dt=dow0<=4?todayISO():addDaysISO(todayISO(),dow0===5?2:1);
-        const slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.day===dow&&x.period===2);
+        /* دور ۱۱۱ (Wave 20, Arena 5): فِلبکِ دفاعی — اگر به‌هر‌دلیلی زنگِ
+           همان روز نبود (smoke در چهارشنبه 405/547 کرش می‌کرد)، همان
+           period از هر روزِ معتبر انتخاب می‌شود. */
+        let slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.day===dow&&x.period===2);
+        if(!slot) slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.period===2);
         const sub=teachers.find(t=>t.id!==slot.teacher_id)||teachers[0];
         add('substitutions',{school_id:school.id,schedule_id:slot.id,sub_teacher_id:sub.id,date:dt,created_at:todayISO()});
       }
@@ -5554,7 +5558,7 @@ function todayCard(sid,iso){
   var attFA={present:'حاضر',absent:'غایب',late:'با تأخیر',excused:'موجه'};
   var attColor={present:'var(--green)',absent:'var(--red)',late:'var(--amber)',excused:'var(--primary)'};
   return `<div class="card today-card"><div class="card-head"><h3>🌅 امروز</h3>
-    <span class="badge b-blue">${jalali(iso)} — ${DAYS[dow]}</span></div>
+    <span class="badge b-blue">${jalali(iso)} — ${DAYS_FULL[dow]}</span></div>
    <div class="card-body" style="display:grid;gap:12px">
     ${rec
      ?`<div class="row"><span>وضعیت حضور امروز</span><div class="spacer"></div><b style="color:${attColor[rec.status]||'var(--text)'}">${attFA[rec.status]||'—'}</b></div>`
