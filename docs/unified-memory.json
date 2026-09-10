@@ -1,25 +1,15 @@
 {
   "schema": "ruflo-memory-export/v1",
-  "exportedAt": "2026-09-10T07:20:52.411Z",
+  "exportedAt": "2026-09-10T07:23:05.529Z",
   "namespace": null,
-  "count": 5,
+  "count": 7,
   "entries": [
-    {
-      "key": "p2/chat1-status",
-      "namespace": "default",
-      "value": "chat1 has no memory export: no docs/chat1-memory.json on any branch (searched all origin branches 2026-09-10). Only CHAT1_*_REPORT md files exist (2 on main, 15 on origin/arena/01a0827b-p2 and origin/arena/01a08543-p2). Unified merge covers chat2+chat3+chat4.",
-      "createdAt": 1789024848230,
-      "updatedAt": 1789024848230,
-      "accessCount": 0,
-      "hasEmbedding": true,
-      "size": 259
-    },
     {
       "key": "p2/chat4-export",
       "namespace": "default",
       "value": "{\n  \"chat\": \"chat4\",\n  \"exported_at\": \"2026-09-10\",\n  \"branch\": \"feat/wave20-chat4\",\n  \"tip_pushed\": \"8a64e5e\",\n  \"base\": \"origin/main @ 84875b4 (PR #36 merged)\",\n  \"mission\": \"آرنا ۵ — تضمین کیفیت و قابلیت اطمینان: دروازهٔ انتشار ده‌بندی (ARENA5_QA_RELIABILITY.md §6)\",\n  \"status\": \"release-gate executed; code complete and pushed; docs finalization interrupted\",\n  \"completed\": {\n    \"wave20\": [\n      \"0edac5a: پوشش کامل رگرسیون — سابت‌های REST (tests/api/runner.js) به کشفِ run-all-tests.sh اضافه شد\",\n      \"4c76d71: سند آرنا ۵ (docs/ARENA5_QA_RELIABILITY.md) — هرم تست، نقشهٔ CI، دروازهٔ انتشار ده‌بندی\",\n      \"1106464: قرارداد تست tests/wave20-arena5.js — 22/22\",\n      \"PR #45 روی این شاخه باز است\"\n    ],\n    \"release_gate_fixes_pushed_this_session\": [\n      \"bc0eba6 merge origin/main (84875b4)\",\n      \"e0c1a79 fix(deps): jsdom 30→25.0.1 — undici@8 روی Node <22.19 می‌شکند؛ تست دودی بی‌سرصدا رد می‌شد (سبز تهی در پاهای 18/20 ماتریس)\",\n      \"cbbcca8 fix(qa): الحاق دوندهٔ tests/api با خطِ تازه (نه فاصله)\",\n      \"fd4611f fix(qa): xss-guard — ممهورکردن ۲ نقطهٔ چاپ رسید (08/72) → 23/23\",\n      \"92ad500 fix(qa): sync-atomic-batch — شناسه‌های گیومه‌دارِ موج ۲ → 22/22 + جهش‌ها 5/5\",\n      \"e171e56 fix(qa): server-mutations M1/M14/M15 → 20/20\",\n      \"295afd5 fix(qa): otp-ratelimit-mutations M3–M6 → 7/7\",\n      \"66a1101 fix(qa): rate-limit-mutations M2 → 4/4\",\n      \"70820ba fix(qa): ics — مسابقهٔ ثانیه‌ایِ DTSTAMP\",\n      \"9bddaa2 ci(pending): پچِ اصلاحِ security.yml (بند ۶)\",\n      \"1fd377a fix(backup): redis-backup — مسابقهٔ واقعیِ محصول: SIGPIPE میانِ pipefail و grep -q\",\n      \"16b74cc fix(qa): tracing-performance — انتظارِ فعالِ بوت\",\n      \"66cb6cf + 2852938 + 6134a63 fix(qa): tracing-integration — مهلت ۴۵ث + تلاشِ دوم + جلوگیری از افتِ اسپن (OTEL_BSP_*)\",\n      \"8a64e5e fix(qa): run-all-tests — کشفِ سوئیت‌های پورتی با ارجاعِ path.join\"\n    ],\n    \"gate_results_best_round\": {\n      \"smoke\": \"547/547\",\n      \"check_authz\": \"exit 0\",\n      \"build_check\": \"تطبیق کامل\",\n      \"secret_scan\": \"11/11\",\n      \"full_regression_round6\": \"green=243 red=0 RUN_ALL_EXIT=0\"\n    },\n    \"gate_status_summary\": \"بندهای 1،2،3،4،5،8،9،10 سبز؛ بند 6 مشروط (گردش امنیتی مِین بی‌شغل — پچ آماده در ci/pending)؛ بند 7 معوق (باینری k6 در ساندباکس نیست)\"\n  },\n  \"pending\": [\n    \"ادغامِ پچِ ci/pending/security-yml-secrets-if-fix.patch توسط ناظر (نیازمندِ اسکوپِ workflow)\",\n    \"اجرای واقعیِ سناریوهای k6 روی استیجینگ (بند ۷)\",\n    \"کامیتِ نهاییِ اسناد: گزارش کامل در پیش‌نویس بود (docs/RELEASE_GATE_STATUS.md) — نتیجه: خیرِ مشروط به دو موردِ بالا؛ هیچ نقصِ کدیِ بازی در محصول نیست\",\n    \"بازسازیِ استور پیش از هر اجرای تست: اگر تست دودی کمتر از 547 شد → ابتدا `node server/seed.js` و سپس `node build.js` (استور با اجرای تست‌ها تغییر می‌کند و بیلد ممکن است کهنه باشد)\"\n  ],\n  \"hard_rules\": [\n    \"smoke 547/547 و check-authz=0 همیشه\",\n    \"هر تغییر روی شاخهٔ خودش + پوشِ فوری به origin (هیچ تغییرِ محلیِ نمانده)\",\n    \"هر تغییر یک کامیتِ جدا؛ ادغام فقط با تأیید ناظر\",\n    \"تست جهش برای هر اصلاحِ منطقِ حساس\",\n    \"هرگز ویرایشِ مستقیمِ index.html؛ فقط src/\",\n    \"توکن فقط در ~/.payesh_gh_token\"\n  ],\n  \"environment_gotchas\": [\n    \"اسنپ‌شاتِ سندباکس بینِ نوبت‌ها حالتِ گیت را برمی‌گرداند: شاخه/آی‌دنتیتی/اشیای لوکالِ پوش‌نشده پاک می‌شوند → بلافاصله پس از هر گروه کامیت، پوش کن\",\n    \"هرگز اسکریپتِ در حالِ اجرا (مثل run-all-tests.sh) را ادیت نکن — باش از روی دیسک بازخوانی می‌کند و با خطای نحو می‌میرد\",\n    \"گره‌ها در ساندباکس: Node 20.20.2؛ jsdom باید 25.0.1 بماند (30 → سقوطِ وندایسی)\",\n    \"فایلِ تست/استورِ آلوده نتیجه را خراب می‌کند: درختِ تمیز + استورِ تازه (seed) پیش از رگرسیون\",\n    \"پچ‌های گردشِ کاری (.github/workflows/*) به‌دلیلِ نداشتنِ اسکوپِ workflow قابلِ پوش نیستند → مسیرِ ci/pending/\",\n    \"security.yml روی مِین از 95677e9 به بعد بی‌شغل رد می‌شود (ارجاعِ secrets.* در if:) — ریشه در پچِ بندِ ۶ توضیح داده شده\"\n  ],\n  \"supervisor_directive_log\": [\n    \"اجرای دروازهٔ انتشار کامل شد؛ در میانهٔ نهایی‌سازیِ اسناد، دستورِ توقف و صدورِ همین فایلِ حافظه صادر شد\"\n  ]\n}",
-      "createdAt": 1789024847640,
-      "updatedAt": 1789024847640,
+      "createdAt": 1789024983013,
+      "updatedAt": 1789024983013,
       "accessCount": 0,
       "hasEmbedding": true,
       "size": 3993
@@ -28,8 +18,8 @@
       "key": "p2/chat3-export",
       "namespace": "default",
       "value": "{\n  \"schema\": \"p2-chat-memory/v1\",\n  \"chat\": 3,\n  \"agent\": \"Arena.ai Agent Mode\",\n  \"branch\": \"arena/01a08545-p2\",\n  \"remote_head\": \"c135a390764acdcb31e1bba90d9467f96e8018ea\",\n  \"date\": \"2026-09-10\",\n  \"provenance\": \"Structured from chat-3 session state by the agent. The native ruflo store (CLAUDE_FLOW_MEMORY_PATH=/shared/ruflo) is empty in this sandbox (0 entries — volume not available here); the literal tool output is embedded in `ruflo_native_export` for transparency.\",\n  \"status\": {\n    \"current_wave\": \"Wave 19 (Chaos Testing) — COMPLETE\",\n    \"all_waves_complete\": true,\n    \"live_execution_pending_infra\": true,\n    \"next\": \"Final merge to main + Go-Live (requires supervisor approval), then live load/chaos execution on multi-node infra\"\n  },\n  \"completed_waves\": {\n    \"wave1_part2\": { \"commits\": [\"45ef4c4\", \"89352ca\", \"9902a03\"], \"tests\": \"14/14 + 5/5\" },\n    \"wave6\": { \"commits\": [\"e0c0308\", \"a4ffe27\", \"cd3fe5b\"], \"tests\": \"22/22\" },\n    \"wave11\": { \"commits\": [\"ea827cf\", \"d695eb7\", \"3cfb9d5\"], \"tests\": \"20/20\" },\n    \"wave15_health\": { \"commits\": [\"c707e12\", \"49da6cb\", \"4543b92\"], \"tests\": \"10/10\", \"note\": \"liveness 200 / readiness 503 / SIGTERM drain\" },\n    \"wave18_load\": { \"commits\": [\"5b0fb9a\", \"a00c0c2\", \"ea24580\"], \"tests\": \"38/38\", \"artifacts\": \"docs/WAVE18_LOAD_TEST_PLAN.md, tests/generate-national-data.js (10M users / 100k schools / 1M classes / 50M attendance / 20M grades / 900k parent_links, ~10GB)\" },\n    \"wave19_chaos\": { \"commits\": [\"966d1bb\", \"ded2f91\", \"c135a39\"], \"tests\": \"28/28\", \"artifacts\": \"docs/WAVE19_CHAOS_PLAN.md, tools/chaos-test.sh, tests/wave19-chaos.js\" },\n    \"five_pr_conflict_resolution\": { \"merged_prs\": { \"29\": \"1b5ae06\", \"31\": \"4326d7a\", \"32\": \"99bc772\", \"33\": \"e6bf233\", \"34\": \"e080f3c\" } }\n  },\n  \"gates\": {\n    \"smoke\": \"547/547\",\n    \"check_authz\": \"0\",\n    \"secret_scan\": \"11/11\",\n    \"build_check\": \"ok\"\n  },\n  \"key_findings\": {\n    \"chaos_failure_map\": {\n      \"store\": \"Primary source of truth; atomic tmp+rename => never corrupt; persist every ~2s\",\n      \"kill_api_sigkill\": \"Acked ops are mirrored BEFORE ack => zero data loss with PG up; worst case (PG also down) only the <=2s unflushed window\",\n      \"redis_down\": \"readiness 503 + liveness 200; reads 200 via L1 cache + memory fallback + single-flight; rate-limit fail-open; OTP state in-memory => zero data loss\",\n      \"pg_down\": \"reads from store unaffected; sync => 200 + audit sync_mirror_failed; only DELETE REST => 500 (tombstone kept, client retry idempotent); readiness 503\",\n      \"net_latency\": \"p95 linear + 65s hard request timeout; client sync queue (offline-first) => delay = UX, zero loss\",\n      \"disk_full\": \"persistStore crash-free (try/catch), audit self-limiting (10MB rotation), corrupt backup never written, GC guards growth => zero crash/500\"\n    },\n    \"known_limitation\": \"After a long Redis outage, ioredis retryStrategy (3 attempts) is exhausted and the client stays closed => process restart required to re-acquire Redis. Improvement candidate: persistent retryStrategy (k8s: rolling restart after Redis healthy).\"\n  },\n  \"pending_items\": [\n    \"Live execution of Wave 18 (10M load) and Wave 19 (5 chaos scenarios) — needs multi-node live env: API + PostgreSQL + Redis + root (tc netem, fallocate) + k6\",\n    \"National-scale disk plan: >=50GB, alerts at 80%/90% (docs/WAVE19_CHAOS_PLAN.md S5)\",\n    \"Final merge to main + Go-Live — blocked on supervisor approval\",\n    \"ioredis persistent retryStrategy improvement (candidate for next wave)\"\n  ],\n  \"architecture_contract\": {\n    \"store\": \"JSON store = primary source of truth (atomic tmp+rename, 0600, persist ~2s)\",\n    \"postgres\": \"Optional engine (memory fallback + scheduleReconnect); reads always from store; mirror before ack\",\n    \"redis\": \"Required in production (P0-13 fail-fast startup); readiness coupled (Wave 15)\",\n    \"cache\": \"L1 <=60s + single-flight\",\n    \"request_timeout\": \"65s (S-73-6)\",\n    \"audit\": \"10MB rotation\",\n    \"no_cdn\": true,\n    \"offline_first\": true\n  },\n  \"session_incidents\": [\n    \"Sandbox .git reset to session base (2a2b74f) occurred 3 times (incl. start of this turn); remote was always intact => recovered via git ls-remote + explicit-refspec fetch + git hash-object verification + git reset --hard <remote head>\",\n    \"node_modules partially wiped after resets => npm i --no-save jsdom (reinstalls full tree)\",\n    \"A GitHub PAT was leaked in chat earlier; it was never used/stored and the user was advised to revoke it\"\n  ],\n  \"reports\": [\n    \"CHAT3_ROUND110_WAVE19_CHAOS_REPORT.md\",\n    \"CHAT3_ROUND109_WAVE18_LOAD_TEST_REPORT.md\",\n    \"docs/AI_PROMPT.md §0.5.35 (latest entry)\",\n    \"docs/ROADMAP.md B.8 (latest row)\",\n    \"HANDOFF.md (top entries)\"\n  ],\n  \"ruflo_native_export\": {\n    \"schema\": \"ruflo-memory-export/v1\",\n    \"exportedAt\": \"2026-09-10T07:01:26.713Z\",\n    \"namespace\": null,\n    \"count\": 0,\n    \"entries\": [],\n    \"note\": \"Literal output of: CLAUDE_FLOW_MEMORY_PATH=/shared/ruflo CLAUDE_FLOW_DISABLE_BRIDGE=1 ruflo memory export (ruflo v3.40.0, installed in-sandbox for this run)\"\n  }\n}",
-      "createdAt": 1789024847034,
-      "updatedAt": 1789024847034,
+      "createdAt": 1789024982435,
+      "updatedAt": 1789024982435,
       "accessCount": 0,
       "hasEmbedding": true,
       "size": 5059
@@ -38,8 +28,8 @@
       "key": "p2/wave17",
       "namespace": "default",
       "value": "Wave 17 testing pyramid: tests/wave17-testing.js 54/54, mutations 10/10. Pushed to origin/arena/01a0867f-p2 @ 96bf550.",
-      "createdAt": 1789024839689,
-      "updatedAt": 1789024839689,
+      "createdAt": 1789024981380,
+      "updatedAt": 1789024981380,
       "accessCount": 0,
       "hasEmbedding": true,
       "size": 118
@@ -48,11 +38,41 @@
       "key": "chat2_connected",
       "namespace": "default",
       "value": "true",
-      "createdAt": 1789024839274,
-      "updatedAt": 1789024839274,
+      "createdAt": 1789024981191,
+      "updatedAt": 1789024981191,
       "accessCount": 0,
       "hasEmbedding": true,
       "size": 4
+    },
+    {
+      "key": "p2/unified-merge",
+      "namespace": "default",
+      "value": "Team memory merge coordinator (chat1, branch arena/01a08a2e-p2, 2026-09-10). Sources found by searching ALL origin branches: chat2=origin/arena/01a0867f-p2, chat3=origin/arena/01a08545-p2 (NOT on main), chat4=origin/feat/wave20-chat4. Method: ruflo v3.40.0 local install (/tmp/ruflo-run); native import for ruflo-schema files, memory-store-as-key for custom-schema files (chat3/chat4 direct import yields 0 entries). /shared/ruflo absent in sandbox -> local store used. First unified commit 3680759 (5 entries); final unified adds native chat1 export (this file).",
+      "createdAt": 1789024980859,
+      "updatedAt": 1789024980859,
+      "accessCount": 0,
+      "hasEmbedding": true,
+      "size": 563
+    },
+    {
+      "key": "p2/memory-branch-map",
+      "namespace": "default",
+      "value": "Memory export locations: docs/chat1-memory.json=arena/01a08a2e-p2 (native ruflo-memory-export/v1); docs/chat2-memory.json=arena/01a0867f-p2 (native, 2 entries: chat2_connected, p2/wave17); docs/chat3-memory.json=arena/01a08545-p2 (custom p2-chat-memory/v1 + empty native block); docs/chat4-memory.json=feat/wave20-chat4 (custom schema); docs/unified-memory.json=arena/01a08a2e-p2 (native merged). No chat memory on origin/main.",
+      "createdAt": 1789024980850,
+      "updatedAt": 1789024980850,
+      "accessCount": 0,
+      "hasEmbedding": true,
+      "size": 427
+    },
+    {
+      "key": "chat1_connected",
+      "namespace": "default",
+      "value": "connected 2026-09-10 (merge coordinator session)",
+      "createdAt": 1789024980652,
+      "updatedAt": 1789024980652,
+      "accessCount": 0,
+      "hasEmbedding": true,
+      "size": 48
     }
   ]
 }
