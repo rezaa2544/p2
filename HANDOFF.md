@@ -564,6 +564,14 @@ DB-native کوئری/پجینگ (`server/dbquery.js`) + سیم‌کشیِ `stude
 - **سرور:** دبیر از `internships.del` بیرون رفت (`model.json` + بازتولیدِ `write-perms.json`)؛ `STATUS_UPD_ROLE` از قبل دبیر را برای تأیید داشت.
 - **برای سوپروایزر:** چاپِ کاغذیِ گواهی از مسیرِ موجودِ `printableDoc` ممکن است — اگر قالبِ چاپ خواسته شود، کارِ بعدی است.
 
+## چت ۳ (E.3 رفتار): امتیازِ سریع + کارتِ داشبورد + حذفِ فقط-مدیر — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
+
+**وضعیت:** کامیت `feat(behavior): add e.3 quick awards, dashboard strip, manager-only delete` روی `feat/behavior-chat3`. گیت‌ها سبز: ‏smoke ۵۴۷/۵۴۷‏، ‏check-authz=0‏، ‏secret-scan ۱۱/۱۱‏، ‏build --check‏ تمیز، سوئیت تازه ‏۴/۴‏ + جهش‌ها ‏۴/۴‏، رگرسیونِ دوژو سبز.
+- **یافته:** گیمیفیکیشن از قبل بود (`discipline` + لایهٔ `dojo` ابتدایی)؛ همان گسترش یافت (الگوی E.4/E.5) — بدونِ جدولِ موازیِ `behavior_points`.
+- **کلاینت:** `dojoQuickAward`/`dojoCanQuickAward` (ابتداییِ دارای مدل + کلاسِ خود)، دکمهٔ ⭐ در ردیفِ حضور، اکشنِ `disc-quick`، نوارِ «آخرین امتیازها» در داشبوردِ مشترکِ دانش‌آموز/ولی، پنهان‌سازیِ 🗑️ برای دبیر.
+- **سرور:** دبیر از `discipline.del` بیرون رفت (`model.json` + بازتولیدِ `write-perms.json`)؛ `inScope` کلاس‌محور از قبل بود.
+- **برای سوپروایزر:** اگر جدولِ جدای `behavior_points` اصرار شود، نیازمندِ مهاجرتِ سابقهٔ `discipline` است — بیرونِ اسکوپ.
+
 ## چت ۳ (E.4 کتابخانه): فیلدها + سقف نسخه + کتابدارِ تفویضی + نمای دانش‌آموز — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
 
 **وضعیت:** کامیت `feat(library): add e.4 delegation, copies, and student view` روی `feat/library-chat3`. گیت‌ها سبز: ‏smoke ۵۴۷/۵۴۷‏، ‏check-authz=0‏، ‏secret-scan ۱۱/۱۱‏، ‏build --check‏ تمیز، سوئیت تازه ‏۷/۷‏ + جهش‌ها ‏۴/۴‏، رگرسیونِ کتابخانه (library/libserial2) سبز.
