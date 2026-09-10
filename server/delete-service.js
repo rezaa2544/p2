@@ -66,14 +66,16 @@ function createDeleteService({ store, db, markDirty, outbox }) {
       await db.persistOp({ c: collection, t: 'del', id: delId });
     }
 
-    /* ۳) رویداد برون‌مرزی */
+    /* ۳) رویداد برون‌مرزی — ویو ۸: مهارِ مدرسه در payload تا کارگر
+       بتواند بدون رکورد (که حذف شده) محدوده را حل کند */
     if (outbox) {
       await outbox.append({
         type: collection + '.deleted',
         collection,
         record_id: Number.isFinite(delId) ? delId : null,
         actor_id: meta.actor ? meta.actor.id : null,
-        version: rec.version
+        version: rec.version,
+        payload: { school_id: rec.school_id != null ? rec.school_id : null }
       });
     }
 

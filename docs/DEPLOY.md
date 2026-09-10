@@ -67,6 +67,9 @@ mkdir -p /home/payesh/data /home/payesh/backups
 | `PAYESH_TLS_CERT` | `/home/payesh/tls/fullchain.pem` | فقط با `PAYESH_HTTPS=1` |
 | `PAYESH_TLS_KEY` | `/home/payesh/tls/privkey.pem` | فقط با `PAYESH_HTTPS=1` |
 | `PAYESH_BACKUP_EVERY_HOURS` | `24` | بکاپِ خودکارِ درون‌پروسه (۱۰ نسخه نگه می‌ماند) |
+| `PAYESH_AUDIT_ASYNC` | `1` | Wave 9 — ممیزیِ پس‌زمینه (صف → نوشتنِ دسته‌ای؛ پیش‌فرضِ `0` فقط برای سازگاریِ آزمون‌هاست) |
+| `PAYESH_L1_MAX_ENTRIES` | `2048` | Wave 9 — سقفِ L1 کشِ bootstrap (LRU + TTL) |
+| `PAYESH_WORKER_TIMEOUT_MS` | `15000` | Wave 9 — مهلتِ عملیاتِ رشتهٔ کارِ سنگین قبل از فال‌بکِ درون‌پروسه‌ای |
 
 ساختنِ سرّ:
 ```bash

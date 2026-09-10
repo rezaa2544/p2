@@ -1,17 +1,127 @@
-# WAF & DDoS Protection — اعتبارسنجیِ امنیتی (P-WAF)
-# - نحویِ nginx + تستِ واحدِ WAF + نشتِ راز
-# - نسخهٔ کاملِ tests/waf-ddos.js (بوتِ سرور) به استورِ سیدشده نیاز دارد و
-#   فقط محلی اجرا می‌شود؛ در CI همان --unit-only کافی است.
-name: Security (WAF)
+# ═══════════════════════════════════════════════════════════════════════
+# Security Program (Wave 13) — SAST · SCA · SBOM · DAST · Secret · WAF
+# -----------------------------------------------------------------------
+# Repo-native Security Program CI. Principles:
+#  - SAST uses the repo's OWN static security gates (no invented ESLint):
+#      tests/run.js         → structure + JS syntax + offline + add()/scope guards (35 checks)
+#      tools/check-authz.js → authorisation model parity (client ACTION_ROLES ⇄ server WRITE_PERMS)
+#    (The jsdom XSS boot suites — tests/xss-guard.js, tests/security*.js,
+#    tests/waf-ddos.js full — need a seeded server/data/payesh.json and/or a
+#    booted instance; they run in the local/nightly flow, not the merge gate.)
+#  - Secret scan is the repo's own tools-backed tests/secret-scan.js.
+#  - SCA (npm audit) / SBOM (npm sbom) / DAST (OWASP ZAP baseline) are
+#    BEST-EFFORT (continue-on-error): they need a live npm registry / a live
+#    target URL (SECURITY_TARGET_URL). They must not break the merge gate when
+#    infra is not provisioned.
+# ═══════════════════════════════════════════════════════════════════════
+name: Security Program (SAST · SCA · SBOM · DAST · Secret)
 
 on:
   push:
     branches: ["main"]
   pull_request:
     branches: ["main"]
+  workflow_dispatch:
 
 jobs:
+  # ── SAST: repo-native static analysis ──────────────────────────────
+  sast:
+    name: SAST (repo-native static)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci
+      - name: Structure / syntax / offline + security guards (run.js)
+        run: node tests/run.js
+      - name: Authorisation model parity (check-authz)
+        run: node tools/check-authz.js
+      - name: Syntax check of core modules
+        run: node --check server/index.js && node --check server/sync.js && node --check server/db.js
+
+  # ── Secret scan ─────────────────────────────────────────────────────
+  secret:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci
+      - name: Secret scan (repo rules)
+        run: node tests/secret-scan.js
+
+  # ── SCA: dependency audit (best-effort; needs live npm registry) ────
+  sca:
+    name: SCA (npm audit, best-effort)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci
+      - name: npm audit (fail at high or above)
+        run: npm audit --audit-level=high
+
+  # ── SBOM: dependency inventory (SPDX) — best-effort ─────────────────
+  sbom:
+    name: SBOM (npm sbom / SPDX, best-effort)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci
+      - name: Generate SBOM (SPDX JSON)
+        run: npm sbom --sbom-format=spdx > sbom.spdx.json
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-spdx
+          path: sbom.spdx.json
+
+  # ── DAST: OWASP ZAP baseline (best-effort; needs live target URL) ───
+  dast:
+    name: DAST (OWASP ZAP baseline, best-effort)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: OWASP ZAP baseline scan
+        # NOTE: secrets.* must not be referenced directly in `if:` on this repo —
+        # GitHub rejects the workflow with zero jobs ("workflow file issue").
+        # Verified empirically (bisect on wftest-branch, runs #61–#66, 2026-09-09):
+        # passing the secret via env and testing env.* in `if` works.
+        env:
+          SECURITY_TARGET_URL: ${{ secrets.SECURITY_TARGET_URL }}
+        if: env.SECURITY_TARGET_URL != ''
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: ${{ secrets.SECURITY_TARGET_URL }}
+          # advisory (continue-on-error) until a stable staging URL is provided.
+      - name: DAST skipped (no SECURITY_TARGET_URL)
+        if: env.SECURITY_TARGET_URL == ''
+        run: echo "SECURITY_TARGET_URL not set — DAST baseline skipped (needs a live staging URL)."
+        env:
+          SECURITY_TARGET_URL: ${{ secrets.SECURITY_TARGET_URL }}
+
+  # ── WAF (kept from the earlier Security (WAF) workflow) ─────────────
   waf:
+    name: WAF & nginx config
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,5 +139,3 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq nginx > /dev/null
       - name: Validate nginx.conf
         run: nginx -t -c $PWD/nginx/nginx.conf -p $PWD/nginx/
-      - name: Secret scan
-        run: node tests/secret-scan.js

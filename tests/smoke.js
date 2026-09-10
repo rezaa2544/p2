@@ -7404,12 +7404,17 @@ test('بند ۱.۵: ثبت جابه‌جای + رد دبیر مشغول + حذف
 
 test('بند ۱.۵: جابه‌جایِ امروز در خانهٔ برنامه و فهرست دیده می‌شود', () => {
   W("S.user=db.users.find(u=>u.role==='manager'&&u.school_id===1);S.persona=null;S.boss=null");
-  const r = W('(()=>{var x=db.substitutions.find(function(s){return s.school_id===1&&(s.date===todayISO()||s.date===addDaysISO(todayISO(),1));});if(!x)return "none";var slot=byId("schedule",x.schedule_id);var cls=byId("classes",slot.class_id);var sub=db.users.find(u=>u.id===x.sub_teacher_id);return JSON.stringify({cid:cls.id,sub:sub.full_name,today:x.date===todayISO()});})()');
+  const r = W('(()=>{var x=db.substitutions.find(function(s){return s.school_id===1&&(s.date===todayISO()||s.date===addDaysISO(todayISO(),1));});if(!x)return "none";var slot=byId("schedule",x.schedule_id);var cls=byId("classes",slot.class_id);var sub=db.users.find(u=>u.id===x.sub_teacher_id);return JSON.stringify({cid:cls.id,sub:sub.full_name,today:x.date===todayISO(),day:slot.day});})()');
   assert(r !== 'none', 'جابه‌جای نمونهٔ دمو نیست');
   const d = JSON.parse(r);
   const out = W("(S.route='schedule', S.filters={class:'" + d.cid + "'}, renderRoute())");
   assert(out.indexOf('جابه‌جای‌های موقت این کلاس') > -1, 'فهرست جابه‌جای‌ها دیده نمی‌شود');
-  if(d.today) assert(out.indexOf('جابه‌جای: ' + d.sub) > -1, 'نشان جابه‌جای در خانهٔ برنامه نیست');
+  /* جدول برنامه به‌طور طراحانه ۵ ستونه است (شنبه تا چهارشنبه —
+     ستون‌ها، مودال زنگ و CSS روی همین عرض قفل‌اند؛ بند روزهای کاریِ
+     دور ۶۵ فقط منطق زنگ/حضور را می‌راند، نه ستون‌های جدول را).
+     پس اگر روزِ جابه‌جای بیرونِ روزهای قابلِ ترسیمِ جدول باشد،
+     خانه‌ای برای نشان وجود ندارد و سنجهٔ فهرست کافی است. */
+  if(d.today && d.day <= 4) assert(out.indexOf('جابه‌جای: ' + d.sub) > -1, 'نشان جابه‌جای در خانهٔ برنامه نیست');
 });
 
 test('بند ۱.۵: جابه‌جای فقط برای مدیر و سوپرادمین است', () => {

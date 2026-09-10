@@ -15,6 +15,46 @@ const redis = require('./redis');
 const INVAL_CHANNEL = 'payesh:pubsub:inval';
 const localUserBootstrapCache = new Map(); // L1 memory cache for microsecond reads
 
+/* ── Wave 9 — L1 محدود: سقفِ ورودی + LRU + TTL ──────────────────────
+   نقشهٔ L1 تا پیش از این فقط-رشد بود (در مقیاسِ ملی = نشتِ حافظه).
+   حالا سقفِ ورودی دارد (پیش‌فرض ۲۰۴۸؛ PAYESH_L1_MAX_ENTRIES)، ورودی‌های
+   منقضی اول کشته می‌شوند و بعد قدیمی‌ترین‌ها (LRU با ترتیبِ درجِ Map
+   و تازگی در خواندن). TTL همان ۶۰ ثانیهٔ قبلی است. */
+const L1_DEFAULT_MAX = Number.isFinite(Number(process.env.PAYESH_L1_MAX_ENTRIES)) && Number(process.env.PAYESH_L1_MAX_ENTRIES) > 0
+  ? Math.floor(Number(process.env.PAYESH_L1_MAX_ENTRIES))
+  : 2048;
+let l1MaxEntries = L1_DEFAULT_MAX;
+let l1Hits = 0;
+let l1Misses = 0;
+
+function l1Set(id, val) {
+  if (localUserBootstrapCache.size >= l1MaxEntries && !localUserBootstrapCache.has(id)) {
+    const now = Date.now();
+    /* اول: ورودی‌های منقضی را بکش */
+    for (const [k, it] of localUserBootstrapCache) {
+      if (localUserBootstrapCache.size < l1MaxEntries) break;
+      if (!it || it.exp <= now) localUserBootstrapCache.delete(k);
+    }
+    /* بعد: قدیمی‌ترین‌ها (LRU) */
+    while (localUserBootstrapCache.size >= l1MaxEntries) {
+      const k = localUserBootstrapCache.keys().next().value;
+      if (k === undefined) break;
+      localUserBootstrapCache.delete(k);
+    }
+  }
+  localUserBootstrapCache.delete(id);
+  localUserBootstrapCache.set(id, val);
+}
+
+function l1Get(id) {
+  const hit = localUserBootstrapCache.get(id);
+  if (hit === undefined) return undefined;
+  /* تازگیِ LRU: خوانده‌شده = تازه‌ترین */
+  localUserBootstrapCache.delete(id);
+  localUserBootstrapCache.set(id, hit);
+  return hit;
+}
+
 /**
  * Initialize Cache layer and Pub/Sub invalidation listeners
  */
@@ -51,10 +91,12 @@ async function init() {
  */
 async function getBootstrapCache(userId) {
   // L1 Check
-  const local = localUserBootstrapCache.get(Number(userId));
+  const local = l1Get(Number(userId));
   if (local && Date.now() < local.exp) {
+    l1Hits++;
     return local.data;
   }
+  l1Misses++;
 
   // L2 Redis Check
   const key = `payesh:cache:bootstrap:${userId}`;
@@ -62,7 +104,7 @@ async function getBootstrapCache(userId) {
   if (raw) {
     try {
       const data = JSON.parse(raw);
-      localUserBootstrapCache.set(Number(userId), { data, exp: Date.now() + 60000, school_id: data.school ? data.school.id : null });
+      l1Set(Number(userId), { data, exp: Date.now() + 60000, school_id: data.school ? data.school.id : null });
       return data;
     } catch (e) {}
   }
@@ -77,7 +119,7 @@ async function getBootstrapCache(userId) {
  */
 async function setBootstrapCache(userId, data, ttlSeconds = 300) {
   const key = `payesh:cache:bootstrap:${userId}`;
-  localUserBootstrapCache.set(Number(userId), { data, exp: Date.now() + 60000, school_id: data.school ? data.school.id : null });
+  l1Set(Number(userId), { data, exp: Date.now() + 60000, school_id: data.school ? data.school.id : null });
   await redis.set(key, JSON.stringify(data), 'EX', ttlSeconds);
 }
 
@@ -201,6 +243,24 @@ async function releaseLock(lockKey, token) {
   return redis.compareAndDelete(`payesh:lock:${lockKey}`, token);
 }
 
+/* ── Wave 9 — مشاهده‌پذیری و تنظیمِ L1 (بدونِ ری‌استارت) ─────────── */
+function l1Stats() {
+  return { size: localUserBootstrapCache.size, max: l1MaxEntries, hits: l1Hits, misses: l1Misses };
+}
+function setL1MaxEntries(n) {
+  const v = Math.floor(Number(n));
+  if (Number.isFinite(v) && v > 0) {
+    l1MaxEntries = v;
+    /* اگر سقفِ تازه پایین‌تر از اندازهٔ فعلی است، هم‌جا کوچک کن */
+    while (localUserBootstrapCache.size > l1MaxEntries) {
+      const k = localUserBootstrapCache.keys().next().value;
+      if (k === undefined) break;
+      localUserBootstrapCache.delete(k);
+    }
+  }
+  return l1MaxEntries;
+}
+
 module.exports = {
   init,
   getBootstrapCache,
@@ -212,5 +272,7 @@ module.exports = {
   isProcessedUid,
   markProcessedUid,
   acquireLock,
-  releaseLock
+  releaseLock,
+  l1Stats,
+  setL1MaxEntries
 };
