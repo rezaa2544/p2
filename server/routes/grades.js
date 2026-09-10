@@ -13,6 +13,7 @@ const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز 
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { buildGradesList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
+const { inScope: syncInScope } = require('../sync'); /* BUG-4: سیاستِ واحد با sync (نه موازی) */
 
 function createGradeRoutes(ctx) {
   const store = ctx.store;
@@ -111,6 +112,11 @@ function createGradeRoutes(ctx) {
     }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
+    /* BUG-4 (باگ‌هانت چت ۵): بایندِ دبیر→کلاس — همان سیاستِ sync؛ دبیر
+       فقط روی دانش‌آموزِ کلاسِ خودش (مبوّب/برنامه) می‌نویسد. */
+    if (user.role === 'teacher' && !syncInScope(user, 'grades', null, { student_id: Number(body.student_id), school_id: schoolId })) {
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'این دانش‌آموز در کلاس‌های شما نیست' } };
+    }
     /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
     const nextId = await ids.nextId('grades', store.grades);
 
@@ -162,7 +168,14 @@ function createGradeRoutes(ctx) {
     }
 
     const grade = await findLive('grades', id);
+    /* BUG-4 (باگ‌هانت چت ۵): بایندِ دبیر→کلاس — همان سیاستِ sync؛ دبیرِ
+       هم‌مدرسه ولی خارج از کلاس → 403 (نه 404). رکوردِ ناموجود یا مدرسهٔ
+       دیگر → 404 (عدم افشا). */
     if (!grade || !policy.inScope(user, store, 'grades', grade.id, grade)) {
+      if (grade && user.role === 'teacher' && user.school_id != null
+          && Number(grade.school_id) === Number(user.school_id)) {
+        return { status: 403, body: { ok: false, code: 'forbidden', message: 'این نمره در کلاس‌های شما نیست' } };
+      }
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
 
@@ -213,11 +226,14 @@ function createGradeRoutes(ctx) {
     }
 
     const grade = await findLive('grades', id);
-    if (!grade) {
-      return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
-    }
-
-    if (!policy.inScope(user, store, 'grades', grade.id, grade)) {
+    /* BUG-4 (باگ‌هانت چت ۵): بایندِ دبیر→کلاس — همان سیاستِ sync؛ دبیرِ
+       هم‌مدرسه ولی خارج از کلاس → 403 (نه 404). رکوردِ ناموجود یا مدرسهٔ
+       دیگر → 404 (عدم افشا). */
+    if (!grade || !policy.inScope(user, store, 'grades', grade.id, grade)) {
+      if (grade && user.role === 'teacher' && user.school_id != null
+          && Number(grade.school_id) === Number(user.school_id)) {
+        return { status: 403, body: { ok: false, code: 'forbidden', message: 'این نمره در کلاس‌های شما نیست' } };
+      }
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
 
