@@ -98,7 +98,7 @@ ALL=$(ls tests/*.js | grep -v -- '-mutations.js$' | grep -v 'server11-child.js')
 # موج ۲۰: سابت‌های REST فاز ۳ (زیرپوشهٔ tests/api) هم جزو رگرسیون‌اند —
 # دونده‌شان متوالی اجرا می‌کند و استور را ایزوله می‌کند؛ یک واحدِ موازی‌پذیر.
 if [ -f tests/api/runner.js ]; then
-  ALL="$ALL tests/api/runner.js"
+  ALL="$ALL"$'\n'"tests/api/runner.js"
 fi
 REBUILDING=$(grep -l "build.js" tests/*.js 2>/dev/null | grep -v -- '-mutations.js$' | grep -v 'server11-child.js')
 SERVERS=$(echo "$ALL" | grep '^tests/server')
