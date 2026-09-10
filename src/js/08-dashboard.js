@@ -154,7 +154,7 @@ function todayCard(sid,iso){
   var attFA={present:'حاضر',absent:'غایب',late:'با تأخیر',excused:'موجه'};
   var attColor={present:'var(--green)',absent:'var(--red)',late:'var(--amber)',excused:'var(--primary)'};
   return `<div class="card today-card"><div class="card-head"><h3>🌅 امروز</h3>
-    <span class="badge b-blue">${jalali(iso)} — ${DAYS[dow]}</span></div>
+    <span class="badge b-blue">${jalali(iso)} — ${DAYS_FULL[dow]}</span></div>
    <div class="card-body" style="display:grid;gap:12px">
     ${rec
      ?`<div class="row"><span>وضعیت حضور امروز</span><div class="spacer"></div><b style="color:${attColor[rec.status]||'var(--text)'}">${attFA[rec.status]||'—'}</b></div>`
