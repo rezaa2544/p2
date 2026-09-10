@@ -56,8 +56,11 @@ const has = (s) => wf.indexOf(s) >= 0;
   chk('S5a npm sbom present', has('npm sbom'));
   chk('S5b SPDX artifact upload', has('sbom.spdx.json') && has('actions/upload-artifact'));
 
-  /* S6 — DAST */
-  chk('S6a OWASP ZAP present', has('zaproxy/actions-baseline'));
+  /* S6 — DAST
+     BUG-6 (باگ‌هانت چت ۵): لنگرِ قبلی مسیرِ غلطِ `actions-baseline` (مخزنِ
+     ناموجود — علتِ ران‌های صفر-جاب) را می‌خواست؛ چت ۲ عمداً به
+     `action-baseline` اصلاحش کرد. حالا مسیرِ درست + نبودِ مسیرِ غلط. */
+  chk('S6a OWASP ZAP present', has('zaproxy/action-baseline') && !has('zaproxy/actions-baseline'));
   chk('S6b needs SECURITY_TARGET_URL', has('SECURITY_TARGET_URL'));
 
   /* S7 — WAF preserved */
