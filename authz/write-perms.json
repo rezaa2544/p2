@@ -144,8 +144,10 @@
       "attendance_modes",
       "notifications",
       "notify_queue",
-      "offices",
       "teacher_schools"
+    ],
+    "guard": [
+      "visitors"
     ]
   },
   "ops": {
@@ -871,15 +873,12 @@
     },
     "offices": {
       "ins": [
-        "edu_office",
         "superadmin"
       ],
       "upd": [
-        "edu_office",
         "superadmin"
       ],
       "del": [
-        "edu_office",
         "superadmin"
       ]
     },
@@ -1410,10 +1409,12 @@
     },
     "visitors": {
       "ins": [
+        "guard",
         "manager",
         "superadmin"
       ],
       "upd": [
+        "guard",
         "manager",
         "superadmin"
       ],
@@ -1778,8 +1779,10 @@
       "date",
       "exam_type",
       "id",
+      "is_vocational",
       "kind",
       "max_score",
+      "practical_score",
       "school_id",
       "score",
       "source",
@@ -1787,6 +1790,7 @@
       "subject_id",
       "teacher_id",
       "term",
+      "theoretical_score",
       "updated_at"
     ],
     "hw_assignments": [
@@ -2457,11 +2461,15 @@
       "id",
       "in_at",
       "name",
+      "national_id",
       "out_at",
+      "phone",
       "purpose",
       "registered_by",
       "school_id",
-      "updated_at"
+      "status",
+      "updated_at",
+      "visiting_person"
     ]
   },
   "actions": {
@@ -3930,7 +3938,8 @@
     },
     "vis-out": {
       "roles": [
-        "manager"
+        "manager",
+        "guard"
       ],
       "collections": [
         "visitors"
@@ -3938,7 +3947,8 @@
     },
     "vis-save": {
       "roles": [
-        "manager"
+        "manager",
+        "guard"
       ],
       "collections": [
         "visitors"

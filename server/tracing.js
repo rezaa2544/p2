@@ -91,6 +91,11 @@ function selectSampler(env) {
   if(n === 'parentbased_always_off') return { name: 'parentbased_off', arg: 0 };
   if(n === 'parentbased_traceidratio' || n === 'parentbased_ratio') return { name: 'parentbased_ratio', arg: arg };
   if(n) return null; /* unknown standard name: fall through to env default (never crash on config) */
+  /* BUG-5 (باگ‌هانت چت ۵؛ پیش‌تر در PR_MERGE_PLAN §۱ triage شده بود):
+     تشخیص تولیدِ سرور PAYESH_ENV است (گیت TLS در index.js) — اگر فقط
+     NODE_ENV خوانده شود، استقرارِ PAYESH_ENV=production با نمونه‌برداریِ
+     ۱۰۰٪ (always_on) به‌جایِ ۱۰٪ والد-محور بالا می‌آید. */
+  if(env.PAYESH_ENV === 'production') return { name: 'parentbased_ratio', arg: 0.1 };
   if(env.NODE_ENV === 'production') return { name: 'parentbased_ratio', arg: 0.1 };
   return { name: 'always_on', arg: 1 };
 }

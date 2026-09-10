@@ -1,0 +1,32 @@
+# datasourcesِ خودکار (ویو ۱۴) — uidهایِ اینجا با dashboards قفل‌اند؛
+# tests/observability-dashboards.js همین هم‌خوانی را می‌پاید.
+apiVersion: 1
+datasources:
+  - name: payesh-prometheus
+    type: prometheus
+    uid: payesh-prom
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      httpMethod: POST
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: payesh-jaeger
+  - name: payesh-loki
+    type: loki
+    uid: payesh-loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        - name: trace_id
+          matcherRegex: '"trace_id":"(\\w+)"'
+          url: "$${__value.raw}"
+          datasourceUid: payesh-jaeger
+  - name: payesh-jaeger
+    type: jaeger
+    uid: payesh-jaeger
+    access: proxy
+    url: http://jaeger:16686
