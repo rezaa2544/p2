@@ -30,8 +30,17 @@ async function okAsync(name, fn){
   const migDir = path.join(ROOT, 'migrations');
   ok('پوشه migrations وجود دارد', () => assert.ok(fs.statSync(migDir).isDirectory()));
   const forwards = fs.readdirSync(migDir).filter(f => /^\d{3}_[a-z0-9_]+\.sql$/.test(f)).sort();
-  ok('migrationهای forward نسخه‌دار و مرتب هستند', () => assert.deepStrictEqual(forwards, ['001_initial.sql', '002_indexes.sql', '003_constraints.sql']));
+  ok('migrationهای forward نسخه‌دار و مرتب هستند', () => assert.deepStrictEqual(forwards, ['001_initial.sql', '002_indexes.sql', '003_constraints.sql', '004_wave1_version_seq.sql']));
   ok('برای هر migration فایل rollback وجود دارد', () => forwards.forEach(f => assert.ok(fs.existsSync(path.join(migDir, f.replace(/\.sql$/, '.down.sql'))))));
+  ok('migration 004: ستون version روی ۹ جدولِ VERSION_TRACKED + دنباله outbox (idempotent)', () => {
+    const m4 = read('migrations/004_wave1_version_seq.sql');
+    for(const t of ['grades', 'attendance', 'discipline', 'schools', 'classes', 'subjects', 'users', 'enrollments', 'schedule'])
+      assert.match(m4, new RegExp("table_name='" + t + "' AND column_name='version'"));
+    assert.match(m4, /CREATE SEQUENCE IF NOT EXISTS payesh_outbox_id_seq/);
+    assert.match(m4, /IF NOT EXISTS/);
+    const d4 = read('migrations/004_wave1_version_seq.down.sql');
+    assert.match(d4, /DROP SEQUENCE IF EXISTS payesh_outbox_id_seq/);
+  });
   ok('migrationها transactional و immutable-style هستند', () => forwards.forEach(f => {
     const t = fs.readFileSync(path.join(migDir, f), 'utf8');
     assert.match(t, /BEGIN;/);

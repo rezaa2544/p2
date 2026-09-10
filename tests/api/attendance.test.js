@@ -79,6 +79,10 @@ async function main() {
   const cookieMgr1 = await loginAs(manager1);
   const cookieTch1 = await loginAs(teacher1);
   const cookieStd1 = await loginAs(student1);
+  /* BUG-4: دبیرِ کلاسِ دیگر — در سید فقط کلاس ۹ را دارد، پس روی
+     رکوردهایِ کلاس ۱ (student1) خارج از scope است. */
+  const teacherOther = store.users.find(u => u.id === 12);
+  const cookieTchOther = await loginAs(teacherOther);
 
   console.log('\n🔍 Testing /api/v1/attendance Endpoints');
 
@@ -126,6 +130,29 @@ async function main() {
   await test('ATT5: DELETE /api/v1/attendance/:id removes record', async () => {
     const r = await req('DELETE', `/api/v1/attendance/${createdAttId}`, { cookie: cookieMgr1 });
     assert.strictEqual(r.status, 200);
+  });
+
+  /* BUG-4 (باگ‌هانت چت ۵): بایندِ دبیر→کلاس در REST مثلِ sync —
+     رکوردِ سید شماره ۱ مالِ student1 (کلاس ۱) است؛ teacher1 مبوّبِ
+     کلاس ۱ است (داخلِ scope) و teacherOther فقط کلاس ۹ (خارج). */
+  await test('ATT6: teacher outside the class cannot write attendance (403), own teacher can', async () => {
+    const seedAtt = (store.attendance || []).find(a => a.student_id === student1.id);
+    assert.ok(seedAtt, 'رکوردِ سیدِ حضور برای student1 نیست');
+    const rPost = await req('POST', '/api/v1/attendance', {
+      body: { student_id: student1.id, class_id: 1, date: '2026-09-08', status: 'present' },
+      cookie: cookieTchOther
+    });
+    assert.strictEqual(rPost.status, 403);
+    const rPatch = await req('PATCH', `/api/v1/attendance/${seedAtt.id}`, {
+      body: { note: 'تلاشِ خارج از scope' },
+      cookie: cookieTchOther
+    });
+    assert.strictEqual(rPatch.status, 403);
+    const rOk = await req('PATCH', `/api/v1/attendance/${seedAtt.id}`, {
+      body: { note: 'یادداشتِ دبیرِ کلاس' },
+      cookie: cookieTch1
+    });
+    assert.strictEqual(rOk.status, 200);
   });
 
   console.log(`\nAttendance API Tests: ${pass}/${pass + fail} passed`);

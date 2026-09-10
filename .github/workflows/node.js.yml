@@ -16,8 +16,10 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x, 20.x, 22.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+        node-version: [22.x]
+        # Release-gate honest matrix: package engines is >=22 and jsdom 30
+        # requires >=22 — on 18/20 the smoke suite silently skips (exit 0),
+        # which produced fake-green CI lanes. Node 18/20 lanes removed.
 
     steps:
     - uses: actions/checkout@v4

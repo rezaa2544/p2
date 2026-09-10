@@ -1,0 +1,28 @@
+{
+  "schema": "ruflo-memory-export/v1",
+  "exportedAt": "2026-09-09T18:53:44.151Z",
+  "namespace": null,
+  "count": 2,
+  "entries": [
+    {
+      "key": "chat2_connected",
+      "namespace": "default",
+      "value": "true",
+      "createdAt": 1788979719772,
+      "updatedAt": 1788979719772,
+      "accessCount": 1,
+      "hasEmbedding": true,
+      "size": 4
+    },
+    {
+      "key": "p2/wave17",
+      "namespace": "default",
+      "value": "Wave 17 testing pyramid: tests/wave17-testing.js 54/54, mutations 10/10. Pushed to origin/arena/01a0867f-p2 @ 96bf550.",
+      "createdAt": 1788979026782,
+      "updatedAt": 1788979026782,
+      "accessCount": 1,
+      "hasEmbedding": true,
+      "size": 118
+    }
+  ]
+}

@@ -129,7 +129,7 @@ function userModal(x){
   openModal(modalTpl(x.id?'ویرایش کاربر':'افزودن کاربر',
    `<div class="grid g2">${f('نام و نام خانوادگی *',inp('u_name',x.full_name))}
     ${f('نام کاربری *',`<input class="input" id="u_user" value="${esc(x.username)}" ${x.id?'disabled':''} />`)}
-    ${f('نقش',sel('u_role',[['manager','مدیر مدرسه'],['teacher','دبیر'],['student','دانش‌آموز'],['parent','ولی'],['counselor','مشاور'],['driver','راننده سرویس']],x.role))}
+    ${f('نقش',sel('u_role',[['manager','مدیر مدرسه'],['teacher','دبیر'],['student','دانش‌آموز'],['parent','ولی'],['counselor','مشاور'],['driver','راننده سرویس'],['guard','نگهبان/پذیرش (E.9)']],x.role))}
     ${isSuper?f('مدرسه',sel('u_school',db.schools.map(s=>[s.id,s.name]),x.school_id)):''}
     ${f('کد ملی',inp('u_nid',x.national_id))}${f('تلفن همراه',inp('u_phone',x.phone))}
     ${f('کلاس (برای دانش‌آموز)',sel('u_class',[['','— بدون کلاس —']].concat(clsList.map(c=>[c.id,c.name])),cur))}
@@ -271,8 +271,18 @@ function gradeModal(g){
   const _gLocked=!!(_gNat&&_gRole==='teacher');
   /* بند ۴.۲: در مدارسِ فنی‌وحرفه‌ای/کاردانش، نوعِ نمره (تئوری/عملی) انتخاب می‌شود */
   const _gsc=byId('schools',(byId('classes',cid)||{}).school_id);
-  const _gkindOpts=(typeof workshopSchool==='function'&&workshopSchool(_gsc&&_gsc.id))?
+  const _gws=(typeof workshopSchool==='function'&&_gsc)?workshopSchool(_gsc.id):false;
+  const _gkindOpts=_gws?
     `${f('نوع نمره',sel('g_kind',[['theory','تئوری'],['practical','عملی/کارگاهی']],g.kind||'theory'))}`:'';
+  /* E.1 — هنرستان: نوع «تئوری» ⇒ قسمت‌های تئوری/عملی (نمرهٔ نهایی =
+     میانگینِ پرشده‌ها)؛ نوع «عملی/کارگاهی» ⇒ رکوردِ واحد که فقط فیلدِ
+     «نمره» شمده می‌شود (رفتارِ پیشینِ بند ۴.۲). فیلدهایِ نامرتبط با
+     نوع، gradeKindToggle (شنوندهٔ change روی g_kind) پنهان می‌کند. */
+  const _isPrac=(g.kind==='practical');
+  const _gparts=_gws?`<div id="g_parts_wrap" style="display:${_isPrac?'none':'contents'}">`
+    +`${f('نمرهٔ تئوری (از ۲۰)',`<input class="input" id="g_theory" type="number" step="0.25" min="0" max="20" value="${escAttr(g.theoretical_score!=null?g.theoretical_score:'')}" />`)}`
+    +`${f('نمرهٔ عملی (از ۲۰)',`<input class="input" id="g_practical" type="number" step="0.25" min="0" max="20" value="${escAttr(g.practical_score!=null?g.practical_score:(g.kind==='practical'&&g.score!=null?g.score:''))}" />`)}`
+    +`<div class="small muted" style="margin-top:-4px">نمرهٔ نهایی = میانگینِ قسمت‌هایِ پرشده است.</div></div>`:'';
   openModal(modalTpl(g.id?'ویرایش نمره':'ثبت نمره جدید',
    `<div class="grid g2">
     ${f('دانش‌آموز',`<select class="select" id="g_st" ${g.id?'disabled':''}>${studs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
@@ -280,8 +290,20 @@ function gradeModal(g){
     ${f('نوبت',sel('g_term',TERMS.map(t=>[t,t]),g.term))}${f('نوع آزمون',sel('g_type',_gTypes.map(t=>[t,t]),g.exam_type))}
     ${_gkindOpts}
     ${_gNat?`<div class="small" style="grid-column:1/-1">${_gLocked?'🔒':'🏛️'} <b>نتیجهٔ امتحان نهایی کشوری</b> — ${_gLocked?'فقط مدیر مدرسه می‌تواند آن را وارد یا اصلاح کند.':'از بیرون (اعلام اداره) وارد می‌شود و در کارنامه جدا نشان داده می‌شود.'}</div>`:''}
-    ${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${escAttr(g.score)}" ${_gLocked?'disabled':''} />`)}</div>`,'grade-save'));
+    <div id="g_score_field" style="display:${_gws&&!_isPrac?'none':'contents'}">${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${escAttr(g.score)}" ${_gLocked?'disabled':''} />`)}</div>
+    ${_gparts}</div>`,'grade-save'));
   window._edit=g;window._gclass=cid;
+}
+
+/* E.1 — جابه‌جاییِ فیلدهایِ فرمِ نمره هنگامِ تغییرِ نوع (g_kind):
+   «عملی/کارگاهی» ⇒ فقط فیلدِ «نمره»؛ «تئوری» ⇒ قسمت‌های تئوری/عملی.
+   در مدرسهٔ غیرکارگاهی هیچ‌کدام وجود ندارد (no-op). */
+function gradeKindToggle(kind){
+  const pf=$('#g_score_field'),pw=$('#g_parts_wrap');
+  if(!pf&&!pw)return;
+  const prac=(kind==='practical');
+  if(pf)pf.style.display=prac?'contents':'none';
+  if(pw)pw.style.display=prac?'none':'contents';
 }
 
 /* بند ۴.۲ — مودالِ ثبت/ویرایشِ ساعتِ کارآموزی.

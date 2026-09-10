@@ -1,0 +1,432 @@
+{
+ "uid": "payesh-main",
+ "title": "Payesh — Main (Wave 14)",
+ "tags": [
+  "payesh",
+  "wave14"
+ ],
+ "timezone": "Asia/Tehran",
+ "schemaVersion": 39,
+ "version": 1,
+ "editable": true,
+ "refresh": "30s",
+ "time": {
+  "from": "now-6h",
+  "to": "now"
+ },
+ "templating": {
+  "list": [
+   {
+    "name": "instance",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "payesh-prom"
+    },
+    "query": {
+     "query": "label_values(payesh_http_requests_total, instance)",
+     "refId": "V"
+    },
+    "refresh": 2,
+    "includeAll": true,
+    "multi": true
+   }
+  ]
+ },
+ "panels": [
+  {
+   "id": 1,
+   "type": "timeseries",
+   "title": "RPS (traffic baseline)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "payesh-prom"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 0
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(payesh_http_requests_total[5m]))",
+     "legendFormat": "req/s",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 2,
+   "type": "timeseries",
+   "title": "4xx/5xx rate",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "payesh-prom"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 0
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (status) (rate(payesh_http_requests_total{status=~\"4xx|5xx\"}[5m]))",
+     "legendFormat": "{{status}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 3,
+   "type": "timeseries",
+   "title": "Latency p50/p95/p99",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "payesh-prom"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.50, sum by (le) (rate(payesh_http_request_duration_seconds_bucket[5m])))",
+     "legendFormat": "p50",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    },
+    {
+     "refId": "B",
+     "expr": "histogram_quantile(0.95, sum by (le) (rate(payesh_http_request_duration_seconds_bucket[5m])))",
+     "legendFormat": "p95",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    },
+    {
+     "refId": "C",
+     "expr": "histogram_quantile(0.99, sum by (le) (rate(payesh_http_request_duration_seconds_bucket[5m])))",
+     "legendFormat": "p99",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s"
+    },
+    "overrides": []
+   },
+   "description": "exemplarِ p95/p99 به Jaeger وصل است (provisioning)"
+  },
+  {
+   "id": 4,
+   "type": "timeseries",
+   "title": "Per-route p95",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "payesh-prom"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.95, sum by (le, route) (rate(payesh_http_request_duration_seconds_bucket[5m])))",
+     "legendFormat": "{{route}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 5,
+   "type": "timeseries",
+   "title": "DB latency (sample) + pool",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "payesh-prom"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 16
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "payesh_db_query_latency_ms",
+     "legendFormat": "select-1 ms",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    },
+    {
+     "refId": "B",
+     "expr": "payesh_db_pool_waiting",
+     "legendFormat": "waiting",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    },
+    {
+     "refId": "C",
+     "expr": "payesh_db_pool_total",
+     "legendFormat": "pool total",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 6,
+   "type": "timeseries",
+   "title": "Redis latency / up",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "payesh-prom"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 16
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "payesh_redis_ping_latency_ms",
+     "legendFormat": "ping ms",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    },
+    {
+     "refId": "B",
+     "expr": "payesh_redis_up",
+     "legendFormat": "up",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 7,
+   "type": "timeseries",
+   "title": "Cache hit rate (L1)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "payesh-prom"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 24
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(payesh_cache_hits_total[5m])) / clamp_min(sum(rate(payesh_cache_hits_total[5m])) + rate(payesh_cache_misses_total[5m]), 0.001)",
+     "legendFormat": "hit ratio",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 8,
+   "type": "timeseries",
+   "title": "Sync queue depth (outbox pending)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "payesh-prom"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 24
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "payesh_sync_queue_depth",
+     "legendFormat": "depth",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "description": "هم‌نامِ قانونِ SyncQueueDepth"
+  },
+  {
+   "id": 9,
+   "type": "timeseries",
+   "title": "Event-loop lag (ms)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "payesh-prom"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 32
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "payesh_eventloop_lag_ms{q=\"p50\"}",
+     "legendFormat": "p50",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    },
+    {
+     "refId": "B",
+     "expr": "payesh_eventloop_lag_ms{q=\"p95\"}",
+     "legendFormat": "p95",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    },
+    {
+     "refId": "C",
+     "expr": "payesh_eventloop_lag_ms{q=\"p99\"}",
+     "legendFormat": "p99",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ms"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 10,
+   "type": "timeseries",
+   "title": "Heap + GC",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "payesh-prom"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 32
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "payesh_process_heap_bytes{kind=\"used\"} / clamp_min(payesh_process_heap_bytes{kind=\"limit\"}, 1)",
+     "legendFormat": "heap ratio",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    },
+    {
+     "refId": "B",
+     "expr": "rate(payesh_process_gc_total[5m])",
+     "legendFormat": "gc/s",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "payesh-prom"
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   }
+  }
+ ]
+}
