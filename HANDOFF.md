@@ -14,6 +14,16 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## ویو ۱۴ — استقرارِ زندهٔ Observability (Prometheus/Grafana/Loki/Jaeger) — ✅ (2026-09-10)
+- **فاز۲ِ این سشن:** اسکراپ‌تارگتِ واقعی اضافه شد — `server/metrics.js` (text-expositionِ صفرِوابستگی: http histogram/counters با tapِ finish + guardهایِ کاردینالیتی + self-scrape-excluded، lag/GC/heap از stdlib، pullsِ زمانِ اسکرپ guardشده ⇒ سرویسِ مرده = `*_up=0`)؛ وایرینگ `index.js` با دروازهٔ اختیاریِ `METRICS_TOKEN` (چهل‌وی‌وان) — edge هرگز `/metrics` را روت نمی‌کند. **تأییدِ زنده در سندباکس:** بوتِ سرویس، سری‌ها، شمارنده‌ها، گیتِ توکن.
+- **استک compose:** `infra/observability/` — prometheus v2.54.1 + alertmanager v0.27.0 + grafana 11.2.0 (datasource/dashboard provisioningِ خودکار؛ uidهای payesh-prom/loki/jaeger + لینکِ exemplar→Jaeger) + loki/promtail 3.1.1 (structured_metadataِ trace_id برایِ audit-log) + otelcol-contrib 0.100.0 + jaeger 1.59؛ bind‌ها همه 127.0.0.1؛ رازها env-file.
+- **قوانین هفت‌گانه:** HighErrorRate 5xx>0.1٪ · HighLatency p95>300ms · RedisDown · DBLatencyHigh>50ms · SyncQueueDepth>1000 · EventLoopLagHigh p99>100ms · MemoryHigh heap>80٪ — نام‌ها با metrics.js قفلِ متقابل.
+- **داشبوردها:** `payesh-main.json` ۱۰پنل (RPS/p50-95-99/4xx5xx/DB latency+pool wait/Redis/cache-hit/queue/lag+heap+GC) + `payesh-logs.json` جست‌وجو با trace_id.
+- **تست‌ها:** `observability-config` **55/55** · `observability-dashboards` **30/30** · `observability-config-mutations` **6/6** — ضدرانشِ سه‌جانبه (متریک↔قانون↔داشبورد↔پورت OTLP) با جهش اثبات‌شده. گیت‌ها: smoke **547/547** · api 7/7 · check-authz **0** · secret-scan **11/11** · build --check 0 · run.js 35/35.
+- **اسناد:** `docs/OBSERVABILITY_DEPLOYMENT.md` (استقرارِ واقعی + صحت‌سنجیِ ۵دقیقه + retention) + `docs/WAVE14_OBSERVABILITY.md` (فاز۱ PR#22 + فاز۲) + ردیفِ ۱۴ نقشهٔ راه 🟡.
+- **کامیت‌ها:** 6039000 (exporter) · 66b2918 (استک) · 45f9f67 (provisioning+داشبورد) · 080900f (تست) · 9231690 (اسناد).
+- **باقی:** اجرای compose روی میزبان (/targets سبز)، __WEBHOOK_URL__ واقعی، توکنِ اسکرپ در prometheus.yml میزبان (رازِ gitignored)، drillِ کوریِ مانیتورینگ.
+
 ## زیرساختِ HA + PITR + Failover — رفعِ مانعِ P0#3 (Production Readiness / Reliability) — ✅ (2026-09-10)
 - **PG HA:** `infra/postgres/` — compose با Primary(wal_level=replica + archive هم‌زمان pgbackrest→S3/MinIO) + hot-standby (basebackup -R یا STANDBY_BOOTSTRAP=repo) + PgBouncer (txn pooling، مسیرهای payesh/payesh-readonly دقیقاً منطبق بر DATABASE_URL/READ_DATABASE_URL در server/db.js) + بازویِ pg-backup + post-checks.sh (gate دهیِ PASS/FAIL). ایمیج سفارشیِ pgbackrest-دار (پین‌شده)؛ هیچ رمزی در فایل‌ها — env-file با ${VAR:?}؛ env.ha.example بیرونِ ignore با نامِ env* (قانونِ .env* فایل‌های دات را می‌بلعد).
 - **Redis HA:** `infra/redis/` — ۱ master + ۲ replica + ۳ sentinel؛ قراردادِ اتصالِ آماده در server/redis.js فعال می‌شود (REDIS_SENTINELS + REDIS_SENTINEL_NAME=mymaster)؛ quorum=2/down-after=5s/failover≤30s طبق RELIABILITY_DR_PLAN؛ redis-checks.sh.
