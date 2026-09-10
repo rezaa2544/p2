@@ -9,7 +9,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const { filterByScope, checkSchoolScope } = require('../middleware/scope');
+const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز */
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { buildGradesList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
@@ -33,6 +33,7 @@ function createGradeRoutes(ctx) {
     if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
       const built = buildGradesList({
         user,
+        office: policy.userOffice(store, user), /* Wave 5 — هندسهٔ اداره */
         studentId: urlParams.get('student_id'),
         subjectId: urlParams.get('subject_id'),
         classId: urlParams.get('class_id'),
@@ -43,9 +44,11 @@ function createGradeRoutes(ctx) {
       return { ok: true, ...res };
     }
 
-    /* Memory/JS pipeline (runtime in this sandbox — byte-identical to before). */
+    /* Memory/JS pipeline — Wave 5: مدلِ یکتا (دانش‌آموز=خودش، ولی=فرزندان،
+       دبیر=کلاس/درسِ تدریسی یا نمرهٔ خودش، مدیر=مدرسهٔ خودش — همان
+       فیلتری که pull و PG (dbquery) اعمال می‌کنند). */
     let list = (store.grades || []);
-    list = filterByScope(user, list);
+    list = policy.filterReadable(store, user, 'grades', list);
 
     const studentId = urlParams.get('student_id');
     if (studentId) {
@@ -62,17 +65,7 @@ function createGradeRoutes(ctx) {
       list = list.filter(g => String(g.class_id) === String(classId));
     }
 
-    // Role restrictions
-    if (user.role === 'student') {
-      list = list.filter(g => g.student_id === user.id);
-    } else if (user.role === 'parent') {
-      const kids = (store.parent_links || []).filter(l => l.parent_id === user.id).map(l => l.student_id);
-      list = list.filter(g => kids.includes(g.student_id));
-    } else if (user.role === 'teacher') {
-      // Teacher can only view grades for subjects they teach
-      const teacherSubjects = new Set((store.schedule || []).filter(s => s.teacher_id === user.id).map(s => s.subject_id));
-      list = list.filter(g => teacherSubjects.has(g.subject_id) || g.teacher_id === user.id);
-    }
+    /* role restrictions unified in policy.filterReadable above */
 
     // Enrich with subject & student names
     const enriched = list.map(g => {
@@ -93,7 +86,7 @@ function createGradeRoutes(ctx) {
 
   async function createGrade(req, body) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'teacher' && user.role !== 'superadmin') {
+    if (!policy.restWriteRoleOk(user, 'grades', 'ins')) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'شما مجاز به ثبت نمره نیستید' } };
     }
 
@@ -125,6 +118,12 @@ function createGradeRoutes(ctx) {
       created_at: new Date().toISOString()
     };
 
+    /* Wave 5 — مهارِ دانش‌آموز با محدوده (دبیر: کلاسِ تدرسی؛ مدیر: مدرسهٔ خود) —
+       همان inScope که sync اعمال می‌کند. */
+    if (!policy.restCreateScopeOk(store, user, 'grades', newGrade)) {
+      return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'دانش‌آموز خارج از محدودهٔ دسترسی شماست' } };
+    }
+
     if (!Array.isArray(store.grades)) store.grades = [];
     store.grades.push(newGrade);
     markDirty();
@@ -142,12 +141,12 @@ function createGradeRoutes(ctx) {
 
   async function updateGrade(req, id, body) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'teacher' && user.role !== 'superadmin') {
+    if (!policy.restWriteRoleOk(user, 'grades', 'upd', Object.keys(body || {}))) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
     }
 
     const grade = (store.grades || []).find(g => g.id === Number(id));
-    if (!grade || !checkSchoolScope(user, grade.school_id)) {
+    if (!grade || !policy.inScope(user, store, 'grades', grade.id, null)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
 
@@ -185,7 +184,7 @@ function createGradeRoutes(ctx) {
 
   async function deleteGrade(req, id) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'teacher' && user.role !== 'superadmin') {
+    if (!policy.restWriteRoleOk(user, 'grades', 'del')) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
     }
 
@@ -195,7 +194,7 @@ function createGradeRoutes(ctx) {
     }
 
     const grade = store.grades[gradeIdx];
-    if (!checkSchoolScope(user, grade.school_id)) {
+    if (!policy.inScope(user, store, 'grades', grade.id, null)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
 
