@@ -119,11 +119,11 @@
 | NATIONAL_ARCHITECTURE.md | ❌ | نزدیک‌ترین معادل: `ARCHITECTURE.md` / `ARCHITECTURE_DECISIONS.md` (نیازمند هم‌نام‌سازی یا نگاشت رسمی) |
 | DISASTER_RECOVERY.md | ❌ | نزدیک‌ترین معادل: `RELIABILITY_DR_PLAN.md` |
 | OBSERVABILITY.md | ❌ | پراکنده در `TRACING_SETUP.md` و WAF/rate-limit docs |
-| CAPACITY_MODEL.md | ❌ | نزدیک‌ترین معادل: `CAPACITY.md` / `CAPACITY_SIM.md` |
+| CAPACITY_MODEL.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — مدل رسمی برای طراحی/تست؛ اعداد در انتظار اثبات در Wave 18 |
 | LOAD_TEST_PLAN.md | ❌ | نزدیک‌ترین معادل: `LOAD_TESTING_PLAN.md` / `PERFORMANCE_TESTING_PLAN.md` |
 | LOAD_TEST_RESULTS.md | ❌ | اجرا نشده — ذاتاً مسدود به P0-5 |
 | PRODUCTION_RUNBOOK.md | ❌ | وجود ندارد |
 | INCIDENT_RESPONSE.md | ❌ | وجود ندارد |
 | MIGRATION_GUIDE.md | ❌ | پراکنده در `DATABASE_ARCHITECTURE.md`؛ راهنمای مستقل نیست |
 
-**جمع §30:** موجود ۵ از ۱۴ — تکمیل/هم‌نام‌سازی اسناد، پیش‌نیاز نرم Go-Live است (به‌ویژه runbook و incident response).
+**جمع §30:** موجود ۶ از ۱۴ — تکمیل/هم‌نام‌سازی اسناد، پیش‌نیاز نرم Go-Live است (به‌ویژه runbook و incident response).
