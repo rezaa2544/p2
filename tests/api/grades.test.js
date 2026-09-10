@@ -79,6 +79,10 @@ async function main() {
   const cookieMgr1 = await loginAs(manager1);
   const cookieTch1 = await loginAs(teacher1);
   const cookieStd1 = await loginAs(student1);
+  /* BUG-4: دبیرِ کلاسِ دیگر — در سید فقط کلاس ۹ را دارد، پس روی
+     رکوردهایِ کلاس ۱ (student1) خارج از scope است. */
+  const teacherOther = store.users.find(u => u.id === 12);
+  const cookieTchOther = await loginAs(teacherOther);
 
   console.log('\n🔍 Testing /api/v1/grades Endpoints');
 
@@ -137,6 +141,32 @@ async function main() {
   await test('GRD5: DELETE /api/v1/grades/:id removes grade record', async () => {
     const r = await req('DELETE', `/api/v1/grades/${createdGradeId}`, { cookie: cookieMgr1 });
     assert.strictEqual(r.status, 200);
+  });
+
+  /* BUG-4 (باگ‌هانت چت ۵): بایندِ دبیر→کلاس در REST مثلِ sync —
+     نمرهٔ سید شماره ۱ مالِ student1 (کلاس ۱) است؛ teacher1 مبوّبِ
+     کلاس ۱ است (داخلِ scope) و teacherOther فقط کلاس ۹ (خارج). */
+  await test('GRD6: teacher outside the class cannot write grades (403), own teacher can', async () => {
+    const seedGrade = (store.grades || []).find(g => g.student_id === student1.id);
+    assert.ok(seedGrade, 'نمرهٔ سید برای student1 نیست');
+    const subject = (store.subjects || [])[0];
+    const rPost = await req('POST', '/api/v1/grades', {
+      body: { student_id: student1.id, subject_id: subject.id, score: 10, type: 'quiz', term: 'term1' },
+      cookie: cookieTchOther
+    });
+    assert.strictEqual(rPost.status, 403);
+    const rPatch = await req('PATCH', `/api/v1/grades/${seedGrade.id}`, {
+      body: { score: 10 },
+      cookie: cookieTchOther
+    });
+    assert.strictEqual(rPatch.status, 403);
+    const rDel = await req('DELETE', `/api/v1/grades/${seedGrade.id}`, { cookie: cookieTchOther });
+    assert.strictEqual(rDel.status, 403);
+    const rOk = await req('PATCH', `/api/v1/grades/${seedGrade.id}`, {
+      body: { score: seedGrade.score },
+      cookie: cookieTch1
+    });
+    assert.strictEqual(rOk.status, 200);
   });
 
   console.log(`\nGrades API Tests: ${pass}/${pass + fail} passed`);

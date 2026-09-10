@@ -9,9 +9,12 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const { filterByScope, checkSchoolScope } = require('../middleware/scope');
+const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز */
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
+const { buildGradesList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
+const { inScope: syncInScope } = require('../sync'); /* BUG-4: سیاستِ واحد با sync (نه موازی) */
+const cache = require('../cache'); /* Wave 11 */
 
 function createGradeRoutes(ctx) {
   const store = ctx.store;
@@ -21,10 +24,44 @@ function createGradeRoutes(ctx) {
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
-  function getGradesList(req, urlParams) {
+  /* Wave 1: PG-live read helper — single records come from PostgreSQL when it
+     is the authority (fresh cross-instance reads); memory mode keeps the exact
+     legacy store-direct find. PG copies are detached; callers commit to the
+     store cache explicitly after a successful PG write. */
+  const pgLive = () => db && typeof db.isPostgres === 'function' && db.isPostgres();
+  async function findLive(collection, id) {
+    if (pgLive() && typeof db.readOne === 'function') return await db.readOne(collection, id);
+    return (store[collection] || []).find(r => r && r.id === Number(id)) || null;
+  }
+  const pgDown = () => ({ status: 503, body: { ok: false, code: 'pg_unavailable', message: 'پایگاه داده در دسترس نیست؛ دوباره تلاش کنید' } });
+
+  async function getGradesList(req, urlParams) {
     const user = req.user;
+    const paginationOpts = parsePaginationParams(urlParams);
+
+    /* Wave 3: DB-native path — runs ONLY when a live PostgreSQL is wired.
+       Pushes role-scope + filters + order + keyset pagination (with subject /
+       student name enrichment via LEFT JOINs) down to SQL. Unverified against
+       a real PG in this sandbox (see docs/WAVE3_QUERY_PERFORMANCE.md). */
+    if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
+      const built = buildGradesList({
+        user,
+        office: policy.userOffice(store, user), /* Wave 5 — هندسهٔ اداره */
+        studentId: urlParams.get('student_id'),
+        subjectId: urlParams.get('subject_id'),
+        classId: urlParams.get('class_id'),
+        limit: paginationOpts.limit,
+        cursor: paginationOpts.cursor
+      });
+      const res = await executePagedList(db, built, paginationOpts);
+      return { ok: true, ...res };
+    }
+
+    /* Memory/JS pipeline — Wave 5: مدلِ یکتا (دانش‌آموز=خودش، ولی=فرزندان،
+       دبیر=کلاس/درسِ تدریسی یا نمرهٔ خودش، مدیر=مدرسهٔ خودش — همان
+       فیلتری که pull و PG (dbquery) اعمال می‌کنند). */
     let list = (store.grades || []);
-    list = filterByScope(user, list);
+    list = policy.filterReadable(store, user, 'grades', list);
 
     const studentId = urlParams.get('student_id');
     if (studentId) {
@@ -41,17 +78,7 @@ function createGradeRoutes(ctx) {
       list = list.filter(g => String(g.class_id) === String(classId));
     }
 
-    // Role restrictions
-    if (user.role === 'student') {
-      list = list.filter(g => g.student_id === user.id);
-    } else if (user.role === 'parent') {
-      const kids = (store.parent_links || []).filter(l => l.parent_id === user.id).map(l => l.student_id);
-      list = list.filter(g => kids.includes(g.student_id));
-    } else if (user.role === 'teacher') {
-      // Teacher can only view grades for subjects they teach
-      const teacherSubjects = new Set((store.schedule || []).filter(s => s.teacher_id === user.id).map(s => s.subject_id));
-      list = list.filter(g => teacherSubjects.has(g.subject_id) || g.teacher_id === user.id);
-    }
+    /* role restrictions unified in policy.filterReadable above */
 
     // Enrich with subject & student names
     const enriched = list.map(g => {
@@ -65,15 +92,15 @@ function createGradeRoutes(ctx) {
     });
 
     enriched.sort((a, b) => b.id - a.id);
-    const paginationOpts = parsePaginationParams(urlParams);
-    const paginated = paginateArray(enriched, paginationOpts);
+    /* W3-1: sort is id DESC, so keyset "next" walks backwards (id < cursor). */
+    const paginated = paginateArray(enriched, Object.assign({}, paginationOpts, { order: 'desc' }));
 
     return { ok: true, ...paginated };
   }
 
   async function createGrade(req, body) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'teacher' && user.role !== 'superadmin') {
+    if (!policy.restWriteRoleOk(user, 'grades', 'ins')) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'شما مجاز به ثبت نمره نیستید' } };
     }
 
@@ -87,6 +114,11 @@ function createGradeRoutes(ctx) {
     }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
+    /* BUG-4 (باگ‌هانت چت ۵): بایندِ دبیر→کلاس — همان سیاستِ sync؛ دبیر
+       فقط روی دانش‌آموزِ کلاسِ خودش (مبوّب/برنامه) می‌نویسد. */
+    if (user.role === 'teacher' && !syncInScope(user, 'grades', null, { student_id: Number(body.student_id), school_id: schoolId })) {
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'این دانش‌آموز در کلاس‌های شما نیست' } };
+    }
     /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
     const nextId = await ids.nextId('grades', store.grades);
 
@@ -105,29 +137,48 @@ function createGradeRoutes(ctx) {
       created_at: new Date().toISOString()
     };
 
+    /* Wave 5 — مهارِ دانش‌آموز با محدوده (دبیر: کلاسِ تدرسی؛ مدیر: مدرسهٔ خود) —
+       همان inScope که sync اعمال می‌کند. */
+    if (!policy.restCreateScopeOk(store, user, 'grades', newGrade)) {
+      return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'دانش‌آموز خارج از محدودهٔ دسترسی شماست' } };
+    }
+
     if (!Array.isArray(store.grades)) store.grades = [];
+    /* Wave 1: PG-first — the insert commits before the cache is touched, so a
+       PG failure returns here with the store still clean (memory mode: no-op). */
+    try {
+      if (db && typeof db.persistOpsBatch === 'function') {
+        /* Wave 2: مسیر حیاتی ثبت نمره از transaction مشترک db.persistOpsBatch عبور می‌کند. */
+        await db.persistOpsBatch([{ c: 'grades', t: 'ins', data: newGrade }]);
+      } else if (db && typeof db.persistOp === 'function') {
+        await db.persistOp({ c: 'grades', t: 'ins', data: newGrade });
+      }
+    } catch (e) {
+      return pgDown();
+    }
     store.grades.push(newGrade);
     markDirty();
 
-    if (db && typeof db.persistOpsBatch === 'function') {
-      /* Wave 2: مسیر حیاتی ثبت نمره از transaction مشترک db.persistOpsBatch عبور می‌کند. */
-      await db.persistOpsBatch([{ c: 'grades', t: 'ins', data: newGrade }]);
-    } else if (db && typeof db.persistOp === 'function') {
-      await db.persistOp({ c: 'grades', t: 'ins', data: newGrade });
-    }
-
+      cache.invalidateCollection('grades', newGrade.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
     audit('grade_created', { user_id: user.id, student_id: newGrade.student_id, subject_id: newGrade.subject_id, score: newGrade.score });
     return { status: 201, body: { ok: true, data: newGrade } };
   }
 
   async function updateGrade(req, id, body) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'teacher' && user.role !== 'superadmin') {
+    if (!policy.restWriteRoleOk(user, 'grades', 'upd', Object.keys(body || {}))) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
     }
 
-    const grade = (store.grades || []).find(g => g.id === Number(id));
-    if (!grade || !checkSchoolScope(user, grade.school_id)) {
+    const grade = await findLive('grades', id);
+    /* BUG-4 (باگ‌هانت چت ۵): بایندِ دبیر→کلاس — همان سیاستِ sync؛ دبیرِ
+       هم‌مدرسه ولی خارج از کلاس → 403 (نه 404). رکوردِ ناموجود یا مدرسهٔ
+       دیگر → 404 (عدم افشا). */
+    if (!grade || !policy.inScope(user, store, 'grades', grade.id, grade)) {
+      if (grade && user.role === 'teacher' && user.school_id != null
+          && Number(grade.school_id) === Number(user.school_id)) {
+        return { status: 403, body: { ok: false, code: 'forbidden', message: 'این نمره در کلاس‌های شما نیست' } };
+      }
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
 
@@ -135,47 +186,58 @@ function createGradeRoutes(ctx) {
     const conflict = checkOcc(grade, body, 'نمره');
     if (conflict) return conflict;
 
+    /* Wave 1: patch روی کپی محاسبه می‌شود؛ store فقط پس از کامیت PG لمس می‌شود. */
+    const next = Object.assign({}, grade);
     if (body.score != null) {
       const s = Number(body.score);
       if (isNaN(s) || s < 0 || s > 20) {
         return { status: 400, body: { ok: false, code: 'bad_score', message: 'نمره نامعتبر است' } };
       }
-      grade.score = s;
+      next.score = s;
     }
 
-    if (body.type !== undefined) grade.type = body.type;
-    if (body.term !== undefined) grade.term = body.term;
-    bump(grade); /* P0-18 */
+    if (body.type !== undefined) next.type = body.type;
+    if (body.term !== undefined) next.term = body.term;
+    bump(next); /* P0-18 */
 
-    markDirty();
+    const base = body.base_version !== undefined ? body.base_version : body.version;
     try {
       if (db && typeof db.persistOpsBatch === 'function') {
-        await db.persistOpsBatch([{ c: 'grades', t: 'upd', id: grade.id, data: grade, base_version: body.base_version !== undefined ? body.base_version : body.version }]);
+        await db.persistOpsBatch([{ c: 'grades', t: 'upd', id: grade.id, data: next, base_version: base }]);
       } else if (db) {
-        await db.persistOp({ c: 'grades', t: 'upd', data: grade });
+        await db.persistOp({ c: 'grades', t: 'upd', data: next });
       }
     } catch (e) {
       if (e && e.status === 409) return { status: 409, body: { ok: false, code: 'conflict', message: 'نمره هم‌زمان تغییر کرده است' } };
-      throw e;
+      return pgDown();
     }
 
-    audit('grade_updated', { user_id: user.id, grade_id: grade.id, score: grade.score, version: grade.version });
-    return { status: 200, body: { ok: true, data: grade } };
+    /* کامیت به کش: به‌روزرسانی کپی store (یا seed اگر رکوردِ نمونهٔ دیگر است). */
+    const cached = (store.grades || []).find(g => g.id === Number(id));
+    if (cached) Object.assign(cached, next);
+    else { if (!Array.isArray(store.grades)) store.grades = []; store.grades.push(next); }
+    markDirty();
+
+    audit('grade_updated', { user_id: user.id, grade_id: grade.id, score: next.score, version: next.version });
+    return { status: 200, body: { ok: true, data: cached || next } };
+    cache.invalidateCollection('grades', grade.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
   }
 
   async function deleteGrade(req, id) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'teacher' && user.role !== 'superadmin') {
+    if (!policy.restWriteRoleOk(user, 'grades', 'del')) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
     }
 
-    const gradeIdx = (store.grades || []).findIndex(g => g.id === Number(id));
-    if (gradeIdx === -1) {
-      return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
-    }
-
-    const grade = store.grades[gradeIdx];
-    if (!checkSchoolScope(user, grade.school_id)) {
+    const grade = await findLive('grades', id);
+    /* BUG-4 (باگ‌هانت چت ۵): بایندِ دبیر→کلاس — همان سیاستِ sync؛ دبیرِ
+       هم‌مدرسه ولی خارج از کلاس → 403 (نه 404). رکوردِ ناموجود یا مدرسهٔ
+       دیگر → 404 (عدم افشا). */
+    if (!grade || !policy.inScope(user, store, 'grades', grade.id, grade)) {
+      if (grade && user.role === 'teacher' && user.school_id != null
+          && Number(grade.school_id) === Number(user.school_id)) {
+        return { status: 403, body: { ok: false, code: 'forbidden', message: 'این نمره در کلاس‌های شما نیست' } };
+      }
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
 
@@ -185,8 +247,10 @@ function createGradeRoutes(ctx) {
       audit: () => audit('grade_deleted', { user_id: user.id, grade_id: Number(id) })
     });
     if (!del.ok) {
+      if (del.status === 503) return pgDown();
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
+    cache.invalidateCollection('grades', grade.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
     return { status: 200, body: { ok: true, message: 'نمره با موفقیت حذف شد' } };
   }
 

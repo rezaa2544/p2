@@ -1,0 +1,28 @@
+# promtail.yml — جمع‌کنندهٔ لاگ‌هایِ پایش به Loki
+# ── دو جریان (ساختارِ واقعیِ سرور):
+#   ۱) server.log — logfmt با traceId=   (ساختارِ requestContext/tracing)
+#   ۲) audit.log  — JSON lines با trace_id (audit.js) ⇒ structured_metadata
+# dployِ فایل‌ها روی میزبان: mountِ /var/log/payesh (compose). مسیرِ پیش‌فرضِ
+# توسعه (sandbox): ./server/data/*.log — هر دو حالت پوشش داده می‌شود.
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+positions: { filename: /tmp/positions.yaml }
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+scrape_configs:
+  - job_name: payesh-app
+    static_configs:
+      - targets: [localhost]
+        labels: { service: payesh, log_source: server-log, __path__: /var/log/payesh/server.log }
+    pipeline_stages:
+      - regex: { expression: "traceId=(?P<trace_id>[0-9a-f]+)" }
+      - structured_metadata: { trace_id: }
+      - labels: []
+  - job_name: payesh-audit
+    static_configs:
+      - targets: [localhost]
+        labels: { service: payesh, log_source: audit-log, __path__: /var/log/payesh/audit.log }
+    pipeline_stages:
+      - json: { expressions: { trace_id: trace_id } }
+      - structured_metadata: { trace_id: }

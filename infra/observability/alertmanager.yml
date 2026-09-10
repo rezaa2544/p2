@@ -1,0 +1,26 @@
+# alertmanager.yml — مسیرِ اعلان‌ها
+# ── __WEBHOOK_URL__ را با آدرسِ کانالِ on-call (Matrix/Slack/سرویسِ داخلی)
+#    جایگزین کنید؛ نمونهٔ ایمیل کامنت‌شده است. secretها در فایلِ config
+#    نمی‌نشینند (smtp auth از env با amtool/secrets) — secret-scan پایداریش می‌کند.
+route:
+  receiver: payesh-webhook
+  group_by: ["alertname", "instance_role"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: ['severity="critical"']
+      receiver: payesh-webhook
+      group_wait: 10s
+      repeat_interval: 1h
+receivers:
+  - name: payesh-webhook
+    webhook_configs:
+      - url: "__WEBHOOK_URL__"
+        send_resolved: true
+#  - name: payesh-email
+#    email_configs:
+#      - to: "oncall@example.edu"
+#        from: "alerts@example.edu"
+#        smarthost: "smtp.example.edu:587"
+#        auth_username: "alerts"        # از env-fileِ میزبان/secret تزریق شود، نه اینجا

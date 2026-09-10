@@ -1,0 +1,102 @@
+# ═══════════════════════════════════════════════════════════════════════
+# docker-compose.observability.yml — استکِ زندهٔ Observability (ویو ۱۴)
+#   Prometheus + Alertmanager + Grafana + Loki + Promtail + OTel Collector + Jaeger
+# ───────────────────────────────────────────────────────────────────────
+# اجرا (روی میزبانِ سرور، از ریشهٔ ریپو):
+#   cp infra/observability/.env.observability.example infra/observability/.env.observability
+#   docker compose -f infra/observability/docker-compose.observability.yml \
+#     --env-file infra/observability/.env.observability up -d
+# Grafana: http://127.0.0.1:3001  (source/prometheus+loki+jaeger از provisioning)
+# Prometheus: 127.0.0.1:9090 · Alertmanager: 127.0.0.1:9093 · Jaeger UI: 127.0.0.1:16686
+# برنامه را با OTLP به همین‌جا وصل کنید (پیش‌فرضِ server/tracing.js دقیقاً همین است):
+#   OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:4318/v1/traces
+# اسکرپِ /metrics: از in-host (host.docker.internal:3000). اگر METRICS_TOKEN
+# تنظیم شده، PROMETHEUS_METRICS_TOKEN را هم‌کلید کنید (پرومetheus 2.54 با
+# Authorization از env — الگویِ bearer_path در prometheus.yml میزبان).
+# ═══════════════════════════════════════════════════════════════════════
+name: payesh-observability
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - prom-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+      - --web.enable-lifecycle
+    ports:
+      - "127.0.0.1:9090:9090"
+    restart: unless-stopped
+    extra_hosts: ["host.docker.internal:host-gateway"]
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "127.0.0.1:9093:9093"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?GRAFANA_PASSWORD را در env-file بگذارید}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./dashboards:/var/lib/grafana/dashboards:ro
+      - graf-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3001:3000"
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.1.1
+    volumes:
+      - ./loki-config.yml:/etc/loki/config.yml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/config.yml
+    ports:
+      - "127.0.0.1:3100:3100"
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:3.1.1
+    volumes:
+      - ./promtail.yml:/etc/promtail/config.yml:ro
+      - ${PAYESH_LOG_DIR:-../../server/data}:/var/log/payesh:ro
+    command: -config.file=/etc/promtail/config.yml
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.100.0
+    volumes:
+      - ./otelcol-config.yml:/etc/otelcol/config.yml:ro
+    command: ["--config=/etc/otelcol/config.yml"]
+    ports:
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+    restart: unless-stopped
+    depends_on:
+      - jaeger
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.59
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    volumes:
+      - jaeger-data:/var/lib/jaeger
+    ports:
+      - "127.0.0.1:16686:16686"
+    restart: unless-stopped
+
+volumes:
+  prom-data:
+  graf-data:
+  loki-data:
+  jaeger-data:
