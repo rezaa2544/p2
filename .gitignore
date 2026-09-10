@@ -40,3 +40,11 @@ tests/.cache-jaeger/
 server/data/jwt.key
 .claude/memory.db
 .claude-flow/
+
+# Wave 18 — دادهٔ آزمایشیِ مقیاسِ ملی (حجم‌دار؛ هرگز commit نشود)
+data/national/
+# Wave 19 — خروجیِ تست‌هایِ آشوب (حجم‌دار/پویا؛ هرگز commit نشود)
+tests/chaos-output/
+
+# P0 #6 — خروجیِ DAST زنده (tools/dast-live.sh)
+out/

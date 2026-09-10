@@ -30,6 +30,7 @@ let isRedisActive = false;
 let activeMode = 'memory'; // 'memory' | 'standalone' | 'sentinel' | 'cluster'
 let memCache = new Map();
 let memExpiry = new Map();
+let memSets = new Map(); // key -> Set<string> (SADD/SMEMBERS fallback)
 let subscriptions = new Map(); // channel -> Set of callbacks
 
 const REDIS_URL = process.env.REDIS_URL || null;
@@ -256,11 +257,44 @@ function getStatus() {
 }
 
 /**
+ * Wave 6: test hook — inject a contract-compatible fake client
+ * (records commands; behaves like Redis for get/set/del/incr/eval/...).
+ * `__setClientForTests(null)` restores the real state (inactive).
+ */
+let _realClient = null;
+let _realActive = false;
+function __setClientForTests(c) {
+  if (c) {
+    _realClient = client;
+    _realActive = isRedisActive;
+    client = c;
+    isRedisActive = true;
+  } else {
+    client = _realClient;
+    isRedisActive = _realActive;
+  }}
+
+/**
  * P0-13: Readiness gate — در تولید فقط با ردیسِ زنده «آماده» است؛
  * در توسعه حافظهٔ محلی قابل‌قبول است.
  */
 function ready() {
   return IS_PRODUCTION ? isRedis() : true;
+}
+
+/* BUG-2 (باگ‌هانت چت ۵): fail-closedِ زمانِ اجرا در تولید.
+   P0-13 فقط بوت را نگهبانی می‌کرد؛ ولی اگر ردیس وسطِ کار خطا می‌داد
+   (catch) یا رویدادِ error پرچمِ اتصال را می‌انداخت، همهٔ عملیات‌ها
+   بی‌صدا به حافظهٔ محلی می‌افتادند و state حیاتی (ریت‌لیمیت،
+   idempotency، OTP، قفل‌ها، کش) بین نمونه‌ها واگرا می‌شد. در تولید
+   حالا خطا بالا می‌رود (→ ۵۰۰ + readiness ـ ۵۰۳)؛ توسعه بی‌تغییر.
+   setNX/compareAndDelete از پیش روی خطا false می‌دادند (fail-closed)
+   و دست‌نخورده می‌مانند؛ ping/ready/status/close هم مشاهده‌اند. */
+function prodNoRedis(op){
+  if(IS_PRODUCTION && !isRedis()) throw new Error('Redis unavailable in production (fail-closed): ' + op);
+}
+function prodRethrow(err){
+  if(IS_PRODUCTION) throw err;
 }
 
 /**
@@ -272,10 +306,11 @@ async function get(key) {
     try {
       return await client.get(key);
     } catch (err) {
-      // Fallback to memory
+      prodRethrow(err); // BUG-2: تولید می‌پراند؛ توسعه به حافظه می‌افتد
     }
   }
 
+  prodNoRedis('get'); // BUG-2: تولیدِ بدونِ ردیسِ زنده به حافظه نمی‌افتد
   cleanExpiredMem();
   const exp = memExpiry.get(key);
   if (exp && Date.now() >= exp) {
@@ -303,17 +338,80 @@ async function set(key, value, mode, duration) {
       }
       return await client.set(key, strVal);
     } catch (err) {
-      // Fallback to memory
+      prodRethrow(err); // BUG-2: تولید می‌پراند؛ توسعه به حافظه می‌افتد
     }
   }
 
+  prodNoRedis('set'); // BUG-2: تولیدِ بدونِ ردیسِ زنده به حافظه نمی‌افتد
   memCache.set(key, strVal);
-  if (mode === 'EX' && typeof duration === 'number') {
-    memExpiry.set(key, Date.now() + duration * 1000);
-  } else if (mode === 'PX' && typeof duration === 'number') {
-    memExpiry.set(key, Date.now() + duration);
+  /* W11-3 (موج ۱۱): وفاداری به معنایِ ردیس. (۱) بازنویسیِ بی‌TTL انقضایِ
+     قبلی را پاک می‌کند (SET بی‌EX = ماندگار) — پیش‌تر انقضایِ کهنه
+     می‌ماند و کلید زود ناپدید می‌شد. (۲) مدتِ رشته‌ایِ عددی ('60')
+     مثلِ ioredis پذیرفته می‌شود. */
+  const durNum = Number(duration);
+  if ((mode === 'EX' || mode === 'PX') && Number.isFinite(durNum) && duration !== '' && duration != null) {
+    memExpiry.set(key, Date.now() + (mode === 'EX' ? durNum * 1000 : durNum));
+  } else {
+    memExpiry.delete(key);
   }
   return 'OK';
+}
+
+/**
+ * Add members to a set (returns number of NEW members).
+ * Wave 11: indexِ «مدرسه ⇒ کاربرانِ کش‌شده» برای انقضای کاملِ L2.
+ */
+async function sAdd(key, ...members) {
+  if (isRedis()) {
+    try {
+      return await client.sadd(key, ...members.map(String));
+    } catch (err) {
+      // Fallback to memory
+    }
+  }
+  if (!memSets.has(key)) memSets.set(key, new Set());
+  const s = memSets.get(key);
+  let n = 0;
+  for (const m of members) {
+    if (!s.has(String(m))) { s.add(String(m)); n++; }
+  }
+  return n;
+}
+
+/**
+ * All members of a set (empty array when missing).
+ */
+async function sMembers(key) {
+  if (isRedis()) {
+    try {
+      return await client.smembers(key);
+    } catch (err) {
+      // Fallback to memory
+    }
+  }
+  const s = memSets.get(key);
+  return s ? Array.from(s) : [];
+}
+
+/**
+ * Remove members from a set (returns number removed).
+ */
+async function sRem(key, ...members) {
+  if (isRedis()) {
+    try {
+      return await client.srem(key, ...members.map(String));
+    } catch (err) {
+      // Fallback to memory
+    }
+  }
+  const s = memSets.get(key);
+  if (!s) return 0;
+  let n = 0;
+  for (const m of members) {
+    if (s.delete(String(m))) n++;
+  }
+  if (s.size === 0) memSets.delete(key);
+  return n;
 }
 
 /**
@@ -328,10 +426,11 @@ async function del(...keys) {
     try {
       return await client.del(...flatKeys);
     } catch (err) {
-      // Fallback
+      prodRethrow(err); // BUG-2: تولید می‌پراند؛ توسعه به حافظه می‌افتد
     }
   }
 
+  prodNoRedis('del'); // BUG-2: تولیدِ بدونِ ردیسِ زنده به حافظه نمی‌افتد
   let count = 0;
   for (const k of flatKeys) {
     if (memCache.delete(k)) count++;
@@ -359,6 +458,7 @@ async function setNX(key, value, ttlSeconds) {
     }
   }
 
+  prodNoRedis('setNX'); // BUG-2: قفلِ حافظه‌ای در تولید = شکستِ انحصارِ متقابل
   // Memory mode is single-process, so check+set is atomic inside one tick
   cleanExpiredMem();
   if (memCache.has(key)) return false;
@@ -403,9 +503,10 @@ async function incrWithTtl(key, ttlSeconds) {
       const reply = await client.eval(INCR_WITH_TTL_SCRIPT, 1, key, ttlSeconds);
       return Number(reply);
     } catch (err) {
-      // Fallback to memory
+      prodRethrow(err); // BUG-2: تولید می‌پراند؛ توسعه به حافظه می‌افتد
     }
   }
+  prodNoRedis('incrWithTtl'); // BUG-2
   /* مسیر حافظه از درگاه‌های صادرشده می‌گذرد تا هم‌قراردادِ تست‌ها
      (مثلاً شبیه‌سازی خرابی با وصله روی incr) باقی بماند. */
   const v = await module.exports.incr(key);
@@ -432,9 +533,11 @@ async function scan(match) {
       } while (cursor !== '0');
       return out;
     } catch (err) {
+      prodRethrow(err); // BUG-2: تولید می‌پراند (فهرستِ ناقص گمراه‌کننده است)
       return out;
     }
   }
+  prodNoRedis('scan'); // BUG-2
   cleanExpiredMem();
   const keys = Array.from(memCache.keys());
   if (!match) return keys;
@@ -459,6 +562,7 @@ async function compareAndDelete(key, expectedValue) {
     }
   }
 
+  prodNoRedis('compareAndDelete'); // BUG-2: قفلِ حافظه‌ای در تولید ممنوع
   cleanExpiredMem();
   if (memCache.has(key) && memCache.get(key) === expectedValue) {
     memCache.delete(key);
@@ -479,9 +583,10 @@ async function publish(channel, message) {
   if (isRedis()) {
     try {
       return await client.publish(channel, payload);
-    } catch (err) {}
+    } catch (err) { prodRethrow(err); } // BUG-2: تولید می‌پراند
   }
 
+  prodNoRedis('publish'); // BUG-2: تحویلِ فقط-محلی در تولید گمراه‌کننده است
   // In-memory Pub/Sub delivery
   const cbs = subscriptions.get(channel);
   if (cbs) {
@@ -498,6 +603,7 @@ async function publish(channel, message) {
  * @param {Function} callback (message, channel) => void
  */
 async function subscribe(channel, callback) {
+  prodNoRedis('subscribe'); // BUG-2: اشتراکِ فقط-محلی در تولید گمراه‌کننده است
   if (!subscriptions.has(channel)) {
     subscriptions.set(channel, new Set());
   }
@@ -506,7 +612,7 @@ async function subscribe(channel, callback) {
   if (isRedis() && subClient) {
     try {
       await subClient.subscribe(channel);
-    } catch (err) {}
+    } catch (err) { prodRethrow(err); } // BUG-2: تولید می‌پراند
   }
   return true;
 }
@@ -522,9 +628,10 @@ async function incr(key) {
     try {
       return await client.incr(key);
     } catch (err) {
-      // Fallback to memory
+      prodRethrow(err); // BUG-2: تولید می‌پراند؛ توسعه به حافظه می‌افتد
     }
   }
+  prodNoRedis('incr'); // BUG-2: تولیدِ بدونِ ردیسِ زنده به حافظه نمی‌افتد
   cleanExpiredMem();
   const exp = memExpiry.get(key);
   if (exp && Date.now() >= exp) {
@@ -555,9 +662,10 @@ async function expire(key, seconds) {
     try {
       return await client.expire(key, seconds);
     } catch (err) {
-      // Fallback to memory
+      prodRethrow(err); // BUG-2: تولید می‌پراند؛ توسعه به حافظه می‌افتد
     }
   }
+  prodNoRedis('expire'); // BUG-2: تولیدِ بدونِ ردیسِ زنده به حافظه نمی‌افتد
   cleanExpiredMem();
   const exp = memExpiry.get(key);
   if (exp && Date.now() >= exp) {
@@ -584,9 +692,10 @@ async function ttl(key) {
     try {
       return await client.ttl(key);
     } catch (err) {
-      // Fallback to memory
+      prodRethrow(err); // BUG-2: تولید می‌پراند؛ توسعه به حافظه می‌افتد
     }
   }
+  prodNoRedis('ttl'); // BUG-2: تولیدِ بدونِ ردیسِ زنده به حافظه نمی‌افتد
   cleanExpiredMem();
   const exp = memExpiry.get(key);
   if (exp && Date.now() >= exp) {
@@ -630,6 +739,7 @@ async function close() {
   activeMode = 'memory';
   memCache.clear();
   memExpiry.clear();
+  memSets.clear();
   subscriptions.clear();
 }
 
@@ -652,5 +762,9 @@ module.exports = {
   ping,
   setNX,
   compareAndDelete,
-  close
+  sAdd,
+  sMembers,
+  sRem,
+  close,
+  __setClientForTests
 };

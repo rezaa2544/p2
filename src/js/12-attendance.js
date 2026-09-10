@@ -134,6 +134,7 @@ function attRowHTML(s, i, ctx){
        </span>
        <span class="att-sep" aria-hidden="true"></span>
        <button class="att-btn att-btn-exit${_tmRun?' att-btn-running':''}" data-act="att-set" data-id="${escAttr(s.id)}" data-s="early_exit">${_tmRun?'⏱ توقف خروج':'🚪 خروج از کلاس'}</button>
+       ${(typeof dojoCanQuickAward==='function'&&dojoCanQuickAward(s.id))?`<button class="att-btn" data-act="disc-quick" data-id="${escAttr(s.id)}" title="امتیازِ سریع ‎+۱">⭐</button>`:''}
      </td>
      <td class="att-status-cell">${v?`<span class="badge ${ATT_BADGE[v]}">${ATT_FA[v]}</span>`:'<span class="badge b-gray">ثبت نشده</span>'}
        ${e.late?`<div class="att-sub">${e.late.late_excused?'<span class="badge b-purple">⏰ تاخیر — موجه‌شده</span>':`<span class="badge b-amber">⏰ تاخیر</span> <span class="small muted">${_lateTxt}</span>`}</div>`:''}

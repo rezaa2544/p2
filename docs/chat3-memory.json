@@ -1,0 +1,77 @@
+{
+  "schema": "p2-chat-memory/v1",
+  "chat": 3,
+  "agent": "Arena.ai Agent Mode",
+  "branch": "arena/01a08545-p2",
+  "remote_head": "c135a390764acdcb31e1bba90d9467f96e8018ea",
+  "date": "2026-09-10",
+  "provenance": "Structured from chat-3 session state by the agent. The native ruflo store (CLAUDE_FLOW_MEMORY_PATH=/shared/ruflo) is empty in this sandbox (0 entries — volume not available here); the literal tool output is embedded in `ruflo_native_export` for transparency.",
+  "status": {
+    "current_wave": "Wave 19 (Chaos Testing) — COMPLETE",
+    "all_waves_complete": true,
+    "live_execution_pending_infra": true,
+    "next": "Final merge to main + Go-Live (requires supervisor approval), then live load/chaos execution on multi-node infra"
+  },
+  "completed_waves": {
+    "wave1_part2": { "commits": ["45ef4c4", "89352ca", "9902a03"], "tests": "14/14 + 5/5" },
+    "wave6": { "commits": ["e0c0308", "a4ffe27", "cd3fe5b"], "tests": "22/22" },
+    "wave11": { "commits": ["ea827cf", "d695eb7", "3cfb9d5"], "tests": "20/20" },
+    "wave15_health": { "commits": ["c707e12", "49da6cb", "4543b92"], "tests": "10/10", "note": "liveness 200 / readiness 503 / SIGTERM drain" },
+    "wave18_load": { "commits": ["5b0fb9a", "a00c0c2", "ea24580"], "tests": "38/38", "artifacts": "docs/WAVE18_LOAD_TEST_PLAN.md, tests/generate-national-data.js (10M users / 100k schools / 1M classes / 50M attendance / 20M grades / 900k parent_links, ~10GB)" },
+    "wave19_chaos": { "commits": ["966d1bb", "ded2f91", "c135a39"], "tests": "28/28", "artifacts": "docs/WAVE19_CHAOS_PLAN.md, tools/chaos-test.sh, tests/wave19-chaos.js" },
+    "five_pr_conflict_resolution": { "merged_prs": { "29": "1b5ae06", "31": "4326d7a", "32": "99bc772", "33": "e6bf233", "34": "e080f3c" } }
+  },
+  "gates": {
+    "smoke": "547/547",
+    "check_authz": "0",
+    "secret_scan": "11/11",
+    "build_check": "ok"
+  },
+  "key_findings": {
+    "chaos_failure_map": {
+      "store": "Primary source of truth; atomic tmp+rename => never corrupt; persist every ~2s",
+      "kill_api_sigkill": "Acked ops are mirrored BEFORE ack => zero data loss with PG up; worst case (PG also down) only the <=2s unflushed window",
+      "redis_down": "readiness 503 + liveness 200; reads 200 via L1 cache + memory fallback + single-flight; rate-limit fail-open; OTP state in-memory => zero data loss",
+      "pg_down": "reads from store unaffected; sync => 200 + audit sync_mirror_failed; only DELETE REST => 500 (tombstone kept, client retry idempotent); readiness 503",
+      "net_latency": "p95 linear + 65s hard request timeout; client sync queue (offline-first) => delay = UX, zero loss",
+      "disk_full": "persistStore crash-free (try/catch), audit self-limiting (10MB rotation), corrupt backup never written, GC guards growth => zero crash/500"
+    },
+    "known_limitation": "After a long Redis outage, ioredis retryStrategy (3 attempts) is exhausted and the client stays closed => process restart required to re-acquire Redis. Improvement candidate: persistent retryStrategy (k8s: rolling restart after Redis healthy)."
+  },
+  "pending_items": [
+    "Live execution of Wave 18 (10M load) and Wave 19 (5 chaos scenarios) — needs multi-node live env: API + PostgreSQL + Redis + root (tc netem, fallocate) + k6",
+    "National-scale disk plan: >=50GB, alerts at 80%/90% (docs/WAVE19_CHAOS_PLAN.md S5)",
+    "Final merge to main + Go-Live — blocked on supervisor approval",
+    "ioredis persistent retryStrategy improvement (candidate for next wave)"
+  ],
+  "architecture_contract": {
+    "store": "JSON store = primary source of truth (atomic tmp+rename, 0600, persist ~2s)",
+    "postgres": "Optional engine (memory fallback + scheduleReconnect); reads always from store; mirror before ack",
+    "redis": "Required in production (P0-13 fail-fast startup); readiness coupled (Wave 15)",
+    "cache": "L1 <=60s + single-flight",
+    "request_timeout": "65s (S-73-6)",
+    "audit": "10MB rotation",
+    "no_cdn": true,
+    "offline_first": true
+  },
+  "session_incidents": [
+    "Sandbox .git reset to session base (2a2b74f) occurred 3 times (incl. start of this turn); remote was always intact => recovered via git ls-remote + explicit-refspec fetch + git hash-object verification + git reset --hard <remote head>",
+    "node_modules partially wiped after resets => npm i --no-save jsdom (reinstalls full tree)",
+    "A GitHub PAT was leaked in chat earlier; it was never used/stored and the user was advised to revoke it"
+  ],
+  "reports": [
+    "CHAT3_ROUND110_WAVE19_CHAOS_REPORT.md",
+    "CHAT3_ROUND109_WAVE18_LOAD_TEST_REPORT.md",
+    "docs/AI_PROMPT.md §0.5.35 (latest entry)",
+    "docs/ROADMAP.md B.8 (latest row)",
+    "HANDOFF.md (top entries)"
+  ],
+  "ruflo_native_export": {
+    "schema": "ruflo-memory-export/v1",
+    "exportedAt": "2026-09-10T07:01:26.713Z",
+    "namespace": null,
+    "count": 0,
+    "entries": [],
+    "note": "Literal output of: CLAUDE_FLOW_MEMORY_PATH=/shared/ruflo CLAUDE_FLOW_DISABLE_BRIDGE=1 ruflo memory export (ruflo v3.40.0, installed in-sandbox for this run)"
+  }
+}
