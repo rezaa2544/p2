@@ -4181,7 +4181,8 @@ function syncPanelModal(){
             <div class="small muted">${jalaliDateTime(x.dead_at)}${x.tries>1?` — ${fa(x.tries)} تلاش`:''}</div>
             ${x.error?`<div class="small muted">${esc(x.error)}</div>`:''}</td>
           <td class="small">${esc(SYNC_DLQ_REASON_FA[x.dead_reason]||x.dead_reason||'—')}</td>
-          <td><button class="btn ghost sm" data-act="sync-del" data-uid="${escAttr(x.uid)}">حذف</button></td>
+          <td style="white-space:nowrap"><button class="btn ghost sm" data-act="sync-retry" data-uid="${escAttr(x.uid)}" title="برگرداندن به صفِ ارسال با شمارشِ تازه (برایِ دفنِ گذرا: قطعی یا سقف)">تلاش دوباره</button>
+            <button class="btn ghost sm" data-act="sync-del" data-uid="${escAttr(x.uid)}">حذف</button></td>
         </tr>`;}).join('')}
       </tbody></table></div>
       ${SYNC.dlqDropped?`<div class="small muted" style="margin-top:6px">⚠️ ${fa(SYNC.dlqDropped)} موردِ قدیمیِ صفِ مرده به‌خاطرِ سقف دور ریخته شد.</div>`:''}`:''}
@@ -4217,6 +4218,33 @@ const SYNC_ACTIONS = {
   'sync-toggle-net'(){ closeModal(); setOnline(!SYNC.online); },
   /* حذفِ دستیِ عملیاتِ «رد شده» (dead-letter) از صف.
      (SYNC_ACTIONS برخلافِ A با (el, id) فراخوانی می‌شود.) */
+  /* W7-3 (موج ۷): تلاشِ دوبارهٔ قلمِ مرده. DLQ فقط «حذف» داشت و قلمِ دفنِ
+     گذرا (قطعیِ مکرر/سقفِ صف — داده‌ای که سرور هرگز ندیده) هیچ مسیرِ
+     بازگشتی نداشت. حالا با شمارشِ تازه به صف برمی‌گردد و در چرخهٔ عادی
+     ارسال می‌شود؛ سقف‌ها دوباره اعمال می‌شوند و دوبار-کلیک ورودیِ تکراری
+     نمی‌سازد. */
+  'sync-retry'(el){
+    const uid = (el && el.dataset) ? el.dataset.uid : null;
+    if(!uid) return;
+    const idx = SYNC.dlq.findIndex(x => x.uid === uid);
+    if(idx < 0) return;
+    const item = SYNC.dlq[idx];
+    SYNC.dlq.splice(idx, 1);
+    if(!SYNC.queue.some(x => x.uid === uid)){
+      item.status = 'pending';
+      item.tries = 0;
+      item.error = null;
+      delete item.dead_at;
+      delete item.dead_reason;
+      SYNC.queue.push(item);
+      enforceQueueCaps();
+    }
+    saveQueueChecked(); saveDlq();
+    checkCapWarning(); refreshSyncBadge();
+    toast('عملیات به صفِ ارسال برگشت', 'ok');
+    scheduleSync(400);
+    syncPanelModal();
+  },
   'sync-del'(el){
     const uid = (el && el.dataset) ? el.dataset.uid : null;
     if(!uid) return;
