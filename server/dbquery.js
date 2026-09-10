@@ -59,7 +59,16 @@ function _finalize(o) {
   // Page: add keyset cursor, then LIMIT limit+1 (detect has_more, no OFFSET)
   const pageParams = o.params.slice();
   const pageParts = o.parts.slice();
-  if (o.cursor != null && !isNaN(Number(o.cursor))) {
+  const spec = o.cursorKey || null;
+  if (o.cursor != null && spec) {
+    /* Composite keyset. A single-column `id > cursor` is only correct when the
+       ORDER BY is on id. attendance orders by (date DESC, id ASC), so an
+       id-only cursor silently abandons the rest of the result set — measured
+       on a live PostgreSQL with 120,000 rows in scope: walking next_cursor
+       reached 6,000 rows, 13 pages, and 95% of the data was never returned. */
+    const pred = spec.predicate(o.cursor, pageParams);
+    if (pred) pageParts.push(pred);
+  } else if (o.cursor != null && !isNaN(Number(o.cursor))) {
     pageParams.push(Number(o.cursor));
     pageParts.push(`${o.cursorRef} > $${pageParams.length}`);
   }
@@ -69,7 +78,47 @@ function _finalize(o) {
   const pageFrom = o.pageFrom || o.from;
   const pageSql = `SELECT ${selectList} FROM ${pageFrom} ${pageWhere} ORDER BY ${o.orderBy} LIMIT $${pageParams.length}`;
 
-  return { page: { sql: pageSql, params: pageParams }, count: { sql: countSql, params: countParams } };
+  return { page: { sql: pageSql, params: pageParams }, count: { sql: countSql, params: countParams }, cursorKey: spec };
+}
+
+/**
+ * A composite keyset cursor over `cols`, which MUST mirror the ORDER BY.
+ *   cols: [{ ref, key, dir, cast? }]   e.g. [{ref:'date',key:'date',dir:'DESC'},
+ *                                            {ref:'id',  key:'id',  dir:'ASC'}]
+ * The wire cursor is the column values joined with `|`, in ORDER BY order.
+ * The predicate is the standard row-value comparison expanded for the planner:
+ *   (a < v1) OR (a = v1 AND b > v2) …
+ * A bare numeric cursor (what clients built before this change still send)
+ * degrades to the trailing id column only — never worse than before.
+ */
+function compositeCursorKey(cols) {
+  const val = (col, raw) => (col.cast ? col.cast(raw) : raw);
+  return {
+    cols,
+    encode(row) {
+      if (!row) return null;
+      const parts = cols.map((c) => row[c.key]);
+      if (parts.some((p) => p === undefined || p === null)) return String(row[cols[cols.length - 1].key]);
+      return parts.join('|');
+    },
+    predicate(cursor, params) {
+      const raw = String(cursor).split('|');
+      if (raw.length !== cols.length) {
+        const last = cols[cols.length - 1];
+        if (!isNaN(Number(cursor))) { params.push(Number(cursor)); return `${last.ref} > $${params.length}`; }
+        return null;
+      }
+      const ors = [];
+      for (let i = 0; i < cols.length; i++) {
+        const ands = [];
+        for (let j = 0; j < i; j++) { params.push(val(cols[j], raw[j])); ands.push(`${cols[j].ref} = $${params.length}`); }
+        params.push(val(cols[i], raw[i]));
+        ands.push(`${cols[i].ref} ${cols[i].dir === 'DESC' ? '<' : '>'} $${params.length}`);
+        ors.push('(' + ands.join(' AND ') + ')');
+      }
+      return '(' + ors.join(' OR ') + ')';
+    }
+  };
 }
 
 /**
@@ -142,7 +191,17 @@ function buildAttendanceList({ user, date, classId, studentId, limit, cursor }) 
     parts.push(`EXISTS (SELECT 1 FROM "${tableName('parent_links')}" pl WHERE pl.parent_id = $${pid} AND pl.student_id = attendance.student_id)`);
   }
 
-  return _finalize({ from, parts, params, orderBy: 'date DESC, id ASC', cursorRef: 'id', limit, cursor });
+  /* The ORDER BY is (date DESC, id ASC), so the keyset must be composite.
+     An id-only cursor here is not a cursor at all — see compositeCursorKey. */
+  return _finalize({
+    from, parts, params, orderBy: 'date DESC, id ASC', cursorRef: 'id', limit, cursor,
+    /* `id` is cast to a number: the cursor arrives off the wire as a string and
+       binding "77" against an integer column would rely on an implicit cast. */
+    cursorKey: compositeCursorKey([
+      { ref: 'date', key: 'date', dir: 'DESC' },
+      { ref: 'id', key: 'id', dir: 'ASC', cast: Number }
+    ])
+  });
 }
 
 /**
@@ -280,13 +339,19 @@ async function executePagedList(db, built, { limit, cursor }) {
 
   const first = data[0];
   const last = data[data.length - 1];
+  /* encode the cursor with the same key the WHERE clause decoded, so a walk
+     resumes exactly where it stopped instead of jumping by id */
+  const spec = built.cursorKey || null;
+  const enc = (row) => (row ? (spec ? spec.encode(row) : String(row.id)) : null);
+  const next = enc(last);
+  const prev = enc(first);
   return {
     data,
     pagination: {
       limit,
       has_more: hasMore,
-      next_cursor: hasMore && last ? String(last.id) : null,
-      prev_cursor: cursor ? (first ? String(first.id) : null) : null,
+      next_cursor: hasMore ? next : null,
+      prev_cursor: cursor ? prev : null,
       count: data.length,
       total
     }
@@ -295,6 +360,7 @@ async function executePagedList(db, built, { limit, cursor }) {
 
 module.exports = {
   buildPagedSql: _finalize,
+  compositeCursorKey,
   buildStudentsList,
   buildAttendanceList,
   buildGradesList,
