@@ -26,6 +26,17 @@ function createUserRoutes(ctx) {
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
+  /* Wave 1: PG-live read helper — single records come from PostgreSQL when it
+     is the authority (fresh cross-instance reads); memory mode keeps the exact
+     legacy store-direct find. PG copies are detached; callers commit to the
+     store cache explicitly after a successful PG write. */
+  const pgLive = () => db && typeof db.isPostgres === 'function' && db.isPostgres();
+  async function findLive(collection, id) {
+    if (pgLive() && typeof db.readOne === 'function') return await db.readOne(collection, id);
+    return (store[collection] || []).find(r => r && r.id === Number(id)) || null;
+  }
+  const pgDown = () => ({ status: 503, body: { ok: false, code: 'pg_unavailable', message: 'پایگاه داده در دسترس نیست؛ دوباره تلاش کنید' } });
+
   async function getUsersList(req, urlParams) {
     const user = req.user;
     const paginationOpts = parsePaginationParams(urlParams);
@@ -73,9 +84,9 @@ function createUserRoutes(ctx) {
     return { ok: true, ...paginated };
   }
 
-  function getUserById(req, id) {
+  async function getUserById(req, id) {
     const user = req.user;
-    const target = (store.users || []).find(u => u.id === Number(id));
+    const target = await findLive('users', id);
     if (!target || !checkSchoolScope(user, target.school_id)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
@@ -127,12 +138,19 @@ function createUserRoutes(ctx) {
     };
 
     if (!Array.isArray(store.users)) store.users = [];
+    /* Wave 1: PG-first — the insert commits before the cache is touched, so a
+       PG failure returns here with the store still clean (memory mode: no-op). */
+    try {
+      if (db && typeof db.persistOpsBatch === 'function') {
+        await db.persistOpsBatch([{ c: 'users', t: 'ins', data: newUser }]);
+      } else if (db && typeof db.persistOp === 'function') {
+        await db.persistOp({ c: 'users', t: 'ins', data: newUser });
+      }
+    } catch (e) {
+      return pgDown();
+    }
     store.users.push(newUser);
     markDirty();
-
-    if (db && typeof db.persistOp === 'function') {
-      await db.persistOp({ c: 'users', t: 'ins', data: newUser });
-    }
 
     audit('user_created', { user_id: user.id, target_user_id: newUser.id, role: newUser.role, school_id: schoolId });
     return { status: 201, body: { ok: true, data: projectUserByRole(newUser, user.role) } };
@@ -140,7 +158,7 @@ function createUserRoutes(ctx) {
 
   async function updateUser(req, id, body) {
     const user = req.user;
-    const target = (store.users || []).find(u => u.id === Number(id));
+    const target = await findLive('users', id);
     if (!target || !checkSchoolScope(user, target.school_id)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
@@ -156,6 +174,8 @@ function createUserRoutes(ctx) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
     }
 
+    /* Wave 1: patch روی کپی محاسبه می‌شود؛ store فقط پس از کامیت PG لمس می‌شود. */
+    const next = Object.assign({}, target);
     // Role change rules
     if (body.role && body.role !== target.role) {
       if (!isManager) {
@@ -165,20 +185,35 @@ function createUserRoutes(ctx) {
       if (user.role !== 'superadmin' && (targetLvl == null || targetLvl > ROLE_LEVEL[user.role])) {
         return { status: 403, body: { ok: false, code: 'role_escalation', message: 'ارتقای نقش به سطحی بالاتر از خود مجاز نیست' } };
       }
-      target.role = body.role;
+      next.role = body.role;
     }
 
     const allowed = ['full_name', 'phone', 'national_id', 'active', 'status', 'grade_level', 'field'];
     for (const key of allowed) {
-      if (body[key] !== undefined) target[key] = body[key];
+      if (body[key] !== undefined) next[key] = body[key];
     }
-    bump(target); /* P0-18 */
+    bump(next); /* P0-18 */
 
+    const base = body.base_version !== undefined ? body.base_version : body.version;
+    try {
+      if (db && typeof db.persistOpsBatch === 'function') {
+        await db.persistOpsBatch([{ c: 'users', t: 'upd', id: target.id, data: next, base_version: base }]);
+      } else if (db) {
+        await db.persistOp({ c: 'users', t: 'upd', data: next });
+      }
+    } catch (e) {
+      if (e && e.status === 409) return { status: 409, body: { ok: false, code: 'conflict', message: 'کاربر هم‌زمان تغییر کرده است' } };
+      return pgDown();
+    }
+
+    /* کامیت به کش: به‌روزرسانی کپی store (یا seed اگر رکوردِ نمونهٔ دیگر است). */
+    const cached = (store.users || []).find(u => u.id === Number(id));
+    if (cached) Object.assign(cached, next);
+    else { if (!Array.isArray(store.users)) store.users = []; store.users.push(next); }
     markDirty();
-    if (db) await db.persistOp({ c: 'users', t: 'upd', data: target });
 
     audit('user_updated', { user_id: user.id, target_user_id: target.id });
-    return { status: 200, body: { ok: true, data: projectUserByRole(target, user.role, isSelf) } };
+    return { status: 200, body: { ok: true, data: projectUserByRole(cached || next, user.role, isSelf) } };
   }
 
   async function deleteUser(req, id) {
@@ -187,12 +222,11 @@ function createUserRoutes(ctx) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط مدیریت مجاز به حذف حساب کاربری است' } };
     }
 
-    const uIdx = (store.users || []).findIndex(u => u.id === Number(id));
-    if (uIdx === -1) {
+    const target = await findLive('users', id);
+    if (!target) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
 
-    const target = store.users[uIdx];
     if (!checkSchoolScope(user, target.school_id)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
@@ -203,6 +237,7 @@ function createUserRoutes(ctx) {
       audit: () => audit('user_deleted', { user_id: user.id, target_user_id: Number(id) })
     });
     if (!del.ok) {
+      if (del.status === 503) return pgDown();
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }
     return { status: 200, body: { ok: true, message: 'کاربر با موفقیت حذف شد' } };

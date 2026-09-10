@@ -512,7 +512,7 @@ const onRequest = async (req, res) => {
       if(/^\/api\/v1\/students\/\d+$/.test(p)){
         const id = p.split('/')[4];
         if(req.method === 'GET'){
-          const r = studentRoutes.getStudentById(req, id);
+          const r = await studentRoutes.getStudentById(req, id);
           return sendJson(res, r.status, r.body);
         }
         if(req.method === 'PATCH'){
@@ -537,7 +537,7 @@ const onRequest = async (req, res) => {
       if(/^\/api\/v1\/classes\/\d+$/.test(p)){
         const id = p.split('/')[4];
         if(req.method === 'GET'){
-          const r = classRoutes.getClassById(req, id);
+          const r = await classRoutes.getClassById(req, id);
           return sendJson(res, r.status, r.body);
         }
         if(req.method === 'PATCH'){
@@ -604,7 +604,7 @@ const onRequest = async (req, res) => {
       if(/^\/api\/v1\/users\/\d+$/.test(p)){
         const id = p.split('/')[4];
         if(req.method === 'GET'){
-          const r = userRoutes.getUserById(req, id);
+          const r = await userRoutes.getUserById(req, id);
           return sendJson(res, r.status, r.body);
         }
         if(req.method === 'PATCH'){
