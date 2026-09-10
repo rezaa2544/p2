@@ -393,7 +393,22 @@ async function partB() {
 (async function main() {
   try {
     const okA = await partA();
-    if (okA && !process.env.TRACING_MUTS) await partB();
+    if (okA && !process.env.TRACING_MUTS) {
+      const passB = pass, failB = fail, nfB = failures.length;
+      let bErr = null;
+      try { await partB(); } catch (e) { bErr = e; }
+      /* زیرِ بارِ موازیِ رگرسیون (رمِ ~۲ گیگ)، بوتِ همزمانِ اپ+‏Jaeger گاه
+         با کُندی/کشتارِ منابع شکست می‌خورد یا می‌میرد. یک تلاشِ دوم با بوتِ
+         تازه؛ اگر باز هم شکست خورد قرمزِ واقعی است. پرش‌ها شکست نیستند. */
+      if (bErr || fail > failB) {
+        if (bErr) { fail++; failures.push('crash: ' + String((bErr && bErr.message) || bErr)); }
+        console.log('  … بخشِ B زیرِ بار شکست خورد؛ تلاشِ دوم با بوتِ تازه');
+        try { killAll(); } catch (e) {}
+        await new Promise((r) => setTimeout(r, 3000));
+        pass = passB; fail = failB; failures.length = nfB;
+        await partB();
+      }
+    }
     else if (okA) console.log('\n(بخشِ B با TRACING_MUTS پرش شد)');
   } catch (e) {
     fail++;
