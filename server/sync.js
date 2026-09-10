@@ -785,8 +785,16 @@ function createSync(ctx){
       }
       store.__server_version = (store.__server_version || 0) + 1;
       store.__processed_uids[op.uid] = Date.now();
-      cache.markProcessedUid(op.uid).catch(() => {});
-      cache.invalidateCollection(op.c, op.data && op.data.school_id).catch(() => {});
+      /* SUSPECT-C (باگ‌هانت چت ۵، نشست ۲): این دو خطا پیش‌تر با
+         `.catch(()=>{})` بلعیده می‌شد؛ در تولید (گاردهای BUG-2) واقعی‌اند
+         و بی‌صدا ماندنشان واگراییِ نامرئی می‌سازد. حالا audit می‌شوند؛
+         پاسخ بی‌تغییر می‌ماند و خودِ audit هم هرگز پاسخ را نمی‌شکند. */
+      cache.markProcessedUid(op.uid).catch((markErr) => {
+        try { audit('sync_idempotency_mark_failed', { user_id: s.id, uid: op.uid, error: String((markErr && markErr.message) || markErr) }); } catch (_) {}
+      });
+      cache.invalidateCollection(op.c, op.data && op.data.school_id).catch((invErr) => {
+        try { audit('sync_invalidate_failed', { user_id: s.id, collection: op.c, error: String((invErr && invErr.message) || invErr) }); } catch (_) {}
+      });
       /* P1-14: آینه این‌جا نیست — پس از حلقه، یک‌جا و اتمیک (persistOpsBatch) */
     }
     /* Round 88 + Round 89 — server side: the client cannot create notifications
