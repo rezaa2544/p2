@@ -114,6 +114,11 @@ uses_port() {
   grep -qE "89[0-9]{2}|90[0-9]{2}" "$f" && return 0
   local refs r
   refs=$(grep -ohE "['\"]tests/[^'\"]+\.js['\"]" "$f" | tr -d "'\"" | sort -u)
+  # دروازهٔ انتشار: ارجاع‌های ‍path.join(..., 'tests', 'X.js') مسیرِ تحتانیِ
+  # «‍tests/» ندارند و از تورِ بالا می‌افتادند (نمونه: جهش‌های ‍wave5 که سوئیتِ
+  # پایه‌شان پورت ۹۰۳۴ دارد و موازی اجرا می‌شد). این‌جا آن‌ها را هم کشف می‌کنیم.
+  refs="$refs
+$(grep -ohE "path\.join\([^)]*'tests'[^)]*'[A-Za-z0-9_.-]+\.js'\)" "$f" | grep -oE "'[A-Za-z0-9_.-]+\.js'\)" | tr -d "'\")" | sed 's|^|tests/|' | sort -u)"
   for r in $refs; do
     [ -f "$r" ] && grep -qE "89[0-9]{2}|90[0-9]{2}" "$r" && return 0
   done
