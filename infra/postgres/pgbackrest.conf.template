@@ -1,0 +1,26 @@
+# infra/postgres/pgbackrest.conf.template — پیکربندیِ stash
+# entrypoint با env این placeholderها را پر می‌کند (render-config.sh):
+#   __REPO_S3_BUCKET__   (پیش‌فرض payesh-pgbackrest)
+#   __REPO_S3_ENDPOINT__ (مثل minio:9000 یا s3.eu-east-1.amazonaws.com)
+#   __REPO_S3_REGION__   (پیش‌فرض us-east-1 برای MinIO)
+#   (اختیاری) repo1-s3-ca-file=/etc/ssl/ca.pem — خالی = TLS غیرفعال؛ فقط شبکهٔ داخلی
+# کلید/رمز هرگز در این فایل نیست: pgbackrest از محیط می‌خواند
+#   PGBACKREST_REPO1_S3_KEY / PGBACKREST_REPO1_S3_KEY_SECRET (در compose ست می‌شوند)
+[payesh]
+pg1-path=/var/lib/postgresql/data
+repo1-type=s3
+repo1-s3-endpoint=__REPO_S3_ENDPOINT__
+repo1-s3-bucket=__REPO_S3_BUCKET__
+repo1-s3-region=__REPO_S3_REGION__
+repo1-s3-verify-tls=__REPO_S3_VERIFY_TLS__
+repo1-retention-full=14
+repo1-retention-archive-type=full
+repo1-retention-archive=2
+compress-type=zst
+process-max=4
+start-fast=y
+
+[global]
+log-level-console=info
+log-level-file=detail
+spool-path=/var/spool/pgbackrest

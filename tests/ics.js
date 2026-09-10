@@ -125,7 +125,11 @@ async function main() {
   for (let i = 0; i < 20 && W('window.__blobText') === null; i++) await sleep(50);
   const blobText = W('window.__blobText');
   const expectText = W('icsBuild().text');
-  chk('T12a blob content = ics text', blobText === expectText);
+  /* DTSTAMP مهرِ لحظهٔ ساخت است (دقتِ ثانیه)؛ بلاب در لحظهٔ کلیک ساخته می‌شود
+     و متنِ انتظار بعد از خواندن — اگر از مرزِ ثانیه بگذرند متفاوت‌اند.
+     پس فقط خطِ DTSTAMP را نرمال می‌کنیم؛ بقیهٔ محتوا باید مو‌به‌مو یکی باشد. */
+  const noStamp = (t) => String(t == null ? '' : t).replace(/DTSTAMP:\d{8}T\d{6}Z\r?\n/g, '');
+  chk('T12a blob content = ics text', noStamp(blobText) === noStamp(expectText));
   chk('T12b anchor filename', W('window.__dl') === pack.filename, String(W('window.__dl')));
 
   // ── دکمه در صفحه ──

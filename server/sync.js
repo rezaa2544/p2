@@ -37,6 +37,7 @@ const cache = require('./cache');
    و diff می‌کند — جدولِ کهنه = build قرمز. بخشِ `actions` همان نقشهٔ
    صریحِ «اکشن ← نقش‌ها + مجموعه‌هایِ قابلِ نوشتن» است. */
 const WR = require('../authz/write-perms.json');
+const policy = require('./policy'); /* ویو ۵ — مدل یکتای محدوده/مالکیت */
 const AUTHZ = (function(){
   const out = {};
   for (const c of Object.keys(WR.ops)){
@@ -365,129 +366,16 @@ function filterFields(op, collection, role){
   return null;
 }
 
-/* #4 — is the target record inside this user's scope? Real records
-   from the store; unknown ids fail closed. */
+/* #4 — محدوده/مالکیت: ویو ۵ بخش دوم — مدلِ یکتا در `server/policy.js`.
+   sync دیگر سیاستِ موازی ندارد؛ این‌جا فقط «درِ» دسترسی با همان امضا و
+   همان store تزریق‌شده است. رفتار بیت‌به‌بیت حفظ شده (آزمون برابریِ
+   ۳۸٬۳۳۶ ترکیبی روی فروشگاه واقعی + سوئیت‌های T5b/server16).
+   EO_SCOPE_GATED: نشانهٔ سازگاری — منبع حقیقت در policy است؛ این نام
+   فقط re-export است تا مصرف‌کنندگانِ داخلیِ همین فایل یکسان بخوانند. */
+const EO_SCOPE_GATED = policy.EO_SCOPE_GATED;
+
 function inScope(session, coll, recId, data){
-  const u = session;
-  if(u.role === 'superadmin') return true;
-  const rec = recId != null ? (store_get(coll).find(x => x.id === Number(recId))) : null;
-  function store_get(c){ return (get_store() || {})[c] || []; }
-
-  /* Round 89 — ownership that does not ride on student_id:
-     messages  : for record-scoped roles (student/parent/teacher) the sender (from_id)
-                 owns the record — chat (fail-closed without from_id).
-                 manager/edu_office keep the pre-existing school-level path (S20).
-     notifications: the recipient (user_id) may update their own record (read badge) */
-  function msgOwnerOk(){
-    const f = (data && data.from_id != null) ? Number(data.from_id)
-             : (rec && rec.from_id != null) ? Number(rec.from_id) : null;
-    return f != null && f === u.id;
-  }
-  /* R90 — scoped to parent/student (manager/teacher keep the school-level path):
-     own notification => read flag ONLY (title/body/etc. stay manager-domain) */
-  if(coll === 'notifications' && rec && Number(rec.user_id) === u.id
-     && (u.role === 'parent' || u.role === 'student')){
-    const nk = Object.keys(data || {});
-    return nk.length > 0 && nk.every(k => k === 'read');
-  }
-
-  /* ب.۳ — ارزشیابی ناشناس معلم: رکورد عمداً هیچ فیلد هویتی ندارد، پس
-     مالکیت به «مدرسهٔ پاسخ‌دهنده» گره می‌خورد:
-     - دانش‌آموز: فقط مدرسهٔ خودش
-     - ولی: فقط مدرسهٔ فرزندانش (از parent_links)
-     - بقیهٔ نقش‌ها: رد (درج/ویرایش/حذف) — نقش‌های مجازِ مدل هم فقط
-       دانش‌آموز و ولی‌اند و دروازهٔ نقش جداگانه نگهبانی می‌کند. */
-  if(coll === 'teacher_evaluations'){
-    if(u.role === 'student'){
-      return !!(data && Number(data.school_id) === Number(u.school_id));
-    }
-    if(u.role === 'parent'){
-      const kids = (get_store().parent_links || []).filter(l => l.parent_id === u.id).map(l => Number(l.student_id));
-      const kidSchools = kids.map(kid => {
-        const k = (get_store().users || []).find(x => x.id === kid);
-        return k && Number(k.school_id);
-      }).filter(x => x != null);
-      return !!(data && kidSchools.indexOf(Number(data.school_id)) > -1);
-    }
-    return false;
-  }
-
-  if(u.role === 'student'){
-    if(coll === 'messages') return msgOwnerOk();
-    if(coll === 'users' && rec && rec.id === u.id) return true;
-    if(rec && rec.student_id != null) return rec.student_id === u.id;
-    if(data && data.student_id != null) return Number(data.student_id) === u.id;
-    return false;
-  }
-  if(u.role === 'parent'){
-    if(coll === 'messages') return msgOwnerOk();
-    const kids = (get_store().parent_links || []).filter(l => l.parent_id === u.id).map(l => l.student_id);
-    /* R96: رزرو نوبت — رکوردِ نوبتِ آزاد student_id ندارد، پس مالکیت
-       از data.student_id (فرزندِ خود) می‌آید؛ وگرنه مجوزِ مدل برای
-       parent×meeting_slots×upd با inScope قابلِ اجرا نبود. */
-    if(coll === 'meeting_slots' && !rec && data && data.student_id != null)
-      return kids.indexOf(Number(data.student_id)) > -1;
-    if(coll === 'meeting_slots' && data && data.student_id != null && rec && rec.student_id == null)
-      return kids.indexOf(Number(data.student_id)) > -1;
-    const sid = rec ? rec.student_id : (data && data.student_id);
-    /* Round 89 — parent_links (kid-reject flow removes their own link):
-       a NEW link must belong to the parent themselves (no forging links for others) */
-    if(coll === 'parent_links' && !rec && data && Number(data.parent_id) !== u.id) return false;
-    if(sid == null) return !!(rec && rec.parent_id === u.id);
-    return kids.indexOf(Number(sid)) > -1;
-  }
-  if(u.role === 'teacher'){
-    if(coll === 'messages') return msgOwnerOk();
-    /* E.4 — کتابدار: امانت/بازگشت در سطحِ مدرسه است نه کلاس (کتابدار به
-       همهٔ دانش‌آموزانِ مدرسه امانت می‌دهد)؛ پرچمِ تفویضی لازم است. */
-    if(coll === 'lib_loans'){
-      const me = (get_store().users || []).find(x => x.id === u.id);
-      if(!me || me.lib_staff !== 1) return false;
-      const t3 = rec || data || {};
-      return t3.school_id != null && Number(t3.school_id) === Number(u.school_id);
-    }
-    /* Round 89 — class-level collections: a teacher is bound to classes they actually
-       teach (homeroom or schedule) — fail-closed for any other class.
-       meeting_slots: their own slots (created with parent_id/student_id null). */
-    const t2 = rec || data || {};
-    if(coll === 'meeting_slots' && t2.teacher_id != null){
-      return Number(t2.teacher_id) === u.id;
-    }
-    if((coll === 'hw_assignments' || coll === 'vclass_sessions') && t2.class_id != null){
-      const cls2 = (get_store().classes || []).find(c => c.id === Number(t2.class_id));
-      if(!cls2) return false;
-      if(cls2.homeroom_teacher_id === u.id) return true;
-      return (get_store().schedule || []).some(x => x.class_id === cls2.id && x.teacher_id === u.id);
-    }
-    const sid = rec ? rec.student_id : (data && data.student_id);
-    if(sid != null){
-      const enr = (get_store().enrollments || []).find(e => e.student_id === Number(sid));
-      if(!enr) return false;
-      const cls = (get_store().classes || []).find(c => c.id === enr.class_id);
-      if(!cls) return false;
-      if(cls.homeroom_teacher_id === u.id) return true;
-      return (get_store().schedule || []).some(s => s.class_id === cls.id && s.teacher_id === u.id);
-    }
-    if(rec && rec.teacher_id != null) return rec.teacher_id === u.id;
-    if(rec && rec.school_id != null) return rec.school_id === u.school_id;
-    return false;
-  }
-  /* manager / edu_office: school-level */
-  if(u.role === 'edu_office') return true; /* اداره = مرجعِ بین‌مدرسه (مثلِ مدل) */
-  const s = rec ? rec.school_id : (data && data.school_id);
-  if(s == null){
-    /* R96: مجموعه‌هایِ بدونِ school_id (مثلِ hw_submissions) — scope از
-       رشتهٔ student → enrollment → class → school حل می‌شود (fail-closed). */
-    const sid2 = (rec && rec.student_id != null) ? rec.student_id
-             : (data && data.student_id != null ? data.student_id : null);
-    if(sid2 != null){
-      const enr = (get_store().enrollments || []).find(e => e.student_id === Number(sid2));
-      const cls = enr && (get_store().classes || []).find(c => c.id === enr.class_id);
-      if(cls) return Number(cls.school_id) === Number(u.school_id);
-    }
-    return false;
-  }
-  return s === u.school_id;
+  return policy.inScope(session, get_store(), coll, recId, data);
 }
 
 /* get_store is injected so the module stays pure-ish and testable */
@@ -541,6 +429,35 @@ function virtualDayViolation(op, store){
   }
   return null;
 }
+/* S2-2 (موج ۴): مبنایِ «آفلاینِ» تصمیمِ روزِ مجازی. برمی‌گرداند {schoolId,
+   date} فقط وقتی (۱) شکلِ عملیات از آنِ گیتِ فیزیکی است و روزِ مؤثر از
+   op.atِ ادعایی آمده (نه از دادهٔ رکورد)، (۲) آن روز با امروزِ سرور فرق
+   دارد، و (۳) امروزِ سرور برایِ همان مدرسه مجازی است — یعنی واگراییِ ساعتِ
+   کلاینت در تصمیمِ «مجاز» مؤثر بوده و باید ردِّ پا داشته باشد. در غیرِ این
+   صورت null (روزِ عادی، یا تاریخی که سرور هم قبول دارد → بی‌سر‌و‌صدا).
+   خالص؛ در تست واحد صدا زده می‌شود. */
+function virtualDayOfflineBasis(op, store){
+  const c = op.c;
+  const d = op.data || {};
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const day = isoDay(op.at || '');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(day) || day === todayIso) return null;
+  let schoolId = null;
+  if(c === 'assets' && op.t === 'upd' && d.status === 'in_use'){
+    const rec = (store.assets || []).find(x => x.id === Number(op.id != null ? op.id : d.id));
+    if(!rec) return null;
+    schoolId = rec.school_id;
+  }else if(c === 'lib_loans' && op.t === 'ins' && d.loan_at == null){
+    schoolId = d.school_id;
+  }else if(c === 'visitors' && op.t === 'ins' && d.in_at == null){
+    schoolId = d.school_id;
+  }else{
+    return null;
+  }
+  if(schoolId == null) return null;
+  if(!isVirtualDay(store, schoolId, todayIso)) return null;
+  return { schoolId: schoolId, date: day };
+}
 
 function nextId(c){
   let m = 0;
@@ -571,6 +488,39 @@ function createSync(ctx){
   const audit = ctx.audit;
   const sessionFrom = ctx.sessionFrom;
   const sendJson = ctx.sendJson;
+  const ids = ctx.ids || null; /* Wave 1: ids service for server-assigned ids (PG sequences when live) */
+
+  /* Wave 1: server-assigned ids come from the ids service (PG sequences when live,
+     local max+1 -- same values as nextId -- in memory mode) so two instances never
+     collide. Legacy local max+1 stays as the fallback when no ids service was
+     injected (older tests). */
+  async function serverId(c){
+    if(ids && typeof ids.nextId === 'function'){
+      try{ return await ids.nextId(c, store[c] || []); }catch(e){ /* fall through */ }
+    }
+    return nextId(c);
+  }
+
+  /* Wave 1: cross-instance apply -- a record created on another instance is not in
+     this store; when PG is live, hydrate the miss from the authority before deciding
+     the op targets nothing. Memory mode: identical skip semantics. */
+  async function findForApply(c, id){
+    const arr = store[c] || [];
+    const rec = arr.find(x => x && x.id === Number(id));
+    if(rec) return rec;
+    if(db && typeof db.isPostgres === 'function' && db.isPostgres()
+        && typeof db.readOne === 'function'){
+      try{
+        const row = await db.readOne(c, id);
+        if(row){
+          if(!Array.isArray(store[c])) store[c] = [];
+          store[c].push(row);
+          return row;
+        }
+      }catch(e){ /* not in PG either: genuinely missing */ }
+    }
+    return null;
+  }
 
   async function apiSync(req, res, body){
     const s = await sessionFrom(req);
@@ -594,6 +544,8 @@ function createSync(ctx){
     };
 
     const results = [];
+
+    const derived = [];  /* Wave1-W: نوشت‌هایِ مشتقِ سرور (نوتیفیکیشن‌ها) — با mirror در یک تراکنش */
     const apply = [];
     for(const op of ops){
       /* پاکتِ عملیات (validate.js): کلیدِ ناشناخته یا uid/c/id/atِ بدشکل =
@@ -626,6 +578,15 @@ function createSync(ctx){
       if(dropTouchesDropout(op) && s.role !== 'superadmin' && !dropUsersUpdate(s, op)) return all('role_denied');
       /* #4 — target record inside scope */
       const recId = op.id != null ? op.id : (op.data && op.data.id);
+      /* Wave 1: cross-instance scope — the authority knows the record's school.
+         Hydrate store-misses from PG before the scope check so a valid
+         cross-instance op is judged on truth, not on cache absence (inScope
+         keeps enforcing school/ownership on the hydrated row; unknown ids still
+         fail closed). Memory mode: no-op, legacy fail-closed preserved. */
+      if((op.t === 'upd' || op.t === 'del') && recId != null
+          && !(store[op.c] || []).some(x => x && x.id === Number(recId))){
+        await findForApply(op.c, recId);
+      }
       if(!inScope(s, op.c, recId, op.data)) return all('out_of_scope');
       /* R96 P0-2 — دروازهٔ فیلد: فیلدِ ناشناخته / ارتقاءِ نقش / مالکیت /
          status. استثنایِ IEP/DROP (users) که در گِیتِ قبلی اعطا شده،
@@ -660,6 +621,14 @@ function createSync(ctx){
         results.push({ uid: op.uid, ok: false, code: 'virtual_day', message: 'در روز غیرحضوری، این عملیاتِ فیزیکی مسدود است' });
         continue;
       }
+      /* S2-2 (موج ۴): اجازه‌ای که بر تاریخِ ادعاییِ کلاینت (op.at) تکیه کرد
+         و امروزِ سرور مجازی بود، ردِّ پا می‌گیرد — وگرنه جعلِ op.at برایِ
+         دور زدنِ روزِ مجازی کاملاً نامرئی بود. رفتار (مجاز/مسدود) بی‌تغییر؛
+         مشروعیتِ آفلاین حفظ شده. (خطِ vd بالا لنگرِ جهشِ M13 است — نخورد.) */
+      const vdb = virtualDayOfflineBasis(op, store);
+      if(vdb){
+        try { audit('sync_virtual_day_offline_allow', { user_id: s.id, uid: op.uid, collection: op.c, school_id: vdb.schoolId, date: vdb.date }); } catch(_) {}
+      }
       /* §3.3 — idempotency: a repeated uid is already applied */
       const isProcessed = (await cache.isProcessedUid(op.uid)) ||
         ((db && typeof db.isUidProcessed === 'function') ? await db.isUidProcessed(op.uid) : false) ||
@@ -677,7 +646,7 @@ function createSync(ctx){
           const nowIso = new Date().toISOString();
           if(!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
           const cf = {
-            id: nextId('sync_conflicts'),
+            id: await serverId('sync_conflicts'),
             collection: op.c, record_id: vid,
             school_id: (vrec && vrec.school_id != null ? vrec.school_id
                        : (op.data && op.data.school_id != null ? op.data.school_id : s.school_id)),
@@ -693,12 +662,14 @@ function createSync(ctx){
           const cmgr = (store.users || []).find(x => x.school_id === cf.school_id && x.role === 'manager');
           if(cmgr){
             if(!Array.isArray(store.notifications)) store.notifications = [];
-            store.notifications.push({
-              id: nextId('notifications'), user_id: cmgr.id, school_id: cf.school_id, type: 'announcement',
+            const cnotif = {
+              id: await serverId('notifications'), user_id: cmgr.id, school_id: cf.school_id, type: 'announcement',
               title: '⚠️ تعارض همگام‌سازی',
               body: 'یک تغییرِ «' + op.c + '» با نسخهٔ کهنه رسید و به‌جای اعمال، برایِ داوری محفوظ شد.',
               link: 'dashboard', read: 0, created_at: nowIso.slice(0, 10)
-            });
+            };
+            store.notifications.push(cnotif);
+            derived.push({ c: 'notifications', t: 'ins', data: cnotif }); /* Wave1-W */
           }
           ctx.markDirty();
           results.push({ uid: op.uid, ok: false, code: 'conflict_preserved', conflict_id: cf.id,
@@ -720,15 +691,52 @@ function createSync(ctx){
       apply.push(op);
     }
 
+    /* Wave 1: PG-first two-phase. Phase 1 applies to a snapshot-guarded store;
+       phase 2 commits the atomic PG mirror; on mirror failure the store is rolled
+       back and the client gets 503 (uids stay unmarked so the retry replays cleanly).
+       Memory mode: the mirror is a no-op success, so behavior is identical and the
+       snapshot is skipped for zero overhead. sync_conflicts is snapshotted too so
+       validation-phase rows (created pre-commit) also roll back and are not
+       duplicated by the retry. */
+    const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+    const snap = {};
+    if(pgLive){
+      const keys = { notifications: 1, __deleted_records: 1, sync_conflicts: 1 };
+      for(const op of apply){ if(op.c) keys[op.c] = 1; }
+      for(const k of Object.keys(keys)){
+        try{ snap[k] = JSON.parse(JSON.stringify(store[k] != null ? store[k] : null)); }
+        catch(e){ snap[k] = null; }
+      }
+      snap.__server_version = store.__server_version || 0;
+      snap.__processed_uids = Object.assign({}, store.__processed_uids || {});
+    }
     const mirror = [];   /* P1-14: opsِ آینه با شناسه‌هایِ اعمال‌شدهٔ سرور */
     for(const op of apply){
+      /* S2-1 (موج ۴): ادعایِ اتمیکِ uid — حتماً پیش از اعمال. بررسی در
+         اعتبارسنجی بود ولی ثبت بعدتر — تکراریِ درون‌دسته دو بار اعمال
+         می‌شد و دسته‌هایِ هم‌زمان مسابقه می‌دادند. این حلقه هیچ await
+         ندارد پس check+claim درون‌فرآیند اتمیک است. تکراری، ورودیِ
+         متناظرِ خودش در results (از آخر به اول — op دوم به بعد) را
+         duplicate_ignored می‌کند. (ادعایِ توزیع‌شده چندنمونه‌ای = Wave 6.) */
+      if(store.__processed_uids && store.__processed_uids[op.uid]){
+        for(let ri = results.length - 1; ri >= 0; ri--){
+          if(results[ri].uid === op.uid && results[ri].ok && !results[ri].code){
+            results[ri] = { uid: op.uid, ok: true, code: 'duplicate_ignored', serverTime: results[ri].serverTime };
+            break;
+          }
+        }
+        try { audit('sync_duplicate_ignored', { user_id: s.id, uid: op.uid }); } catch(_) {}
+        continue;
+      }
+      store.__processed_uids[op.uid] = Date.now();
       if(!Array.isArray(store[op.c])) store[op.c] = [];
       if(op.t === 'ins'){
         const data = Object.assign({}, op.data);
         const prot = stripProtected(data); /* R98 — ممنوع‌ها جدا؛ بعداً صریح */
-        if(data.id == null) data.id = nextId(op.c);
+        if(data.id == null) data.id = await serverId(op.c); /* Wave 1: ids service (PG sequences when live) */
         if(VERSION_TRACKED[op.c] && data.version == null) data.version = 1; /* R95 */
-        const ex = store[op.c].find(x => x.id === data.id);
+        /* Wave 1: hydrate cross-instance misses from PG before the upsert check. */
+        const ex = await findForApply(op.c, data.id);
         if(ex){ Object.assign(ex, data); Object.assign(ex, prot); }
         else store[op.c].push(Object.assign(data, prot));
         data.updated_at = new Date().toISOString();
@@ -738,7 +746,8 @@ function createSync(ctx){
         }
         mirror.push({ uid: op.uid, c: op.c, t: 'ins', data: (ex || data) });   /* P1-14: رکوردِ اعمال‌شده با شناسهٔ سرور */
       }else if(op.t === 'upd'){
-        const rec = store[op.c].find(x => x.id === Number(op.id != null ? op.id : (op.data && op.data.id)));
+        /* Wave 1: hydrate cross-instance misses from PG before applying. */
+        const rec = await findForApply(op.c, op.id != null ? op.id : (op.data && op.data.id));
         if(rec){
           const clean = Object.assign({}, op.data); /* R98 — op.data برایِ hookها دست‌نخورده */
           const prot = stripProtected(clean);
@@ -752,7 +761,8 @@ function createSync(ctx){
         }
       }else if(op.t === 'del'){
         const delId = Number(op.id != null ? op.id : (op.data && op.data.id));
-        const delRec = (store[op.c] || []).find(x => x.id === delId);
+        /* Wave 1: hydrate cross-instance misses from PG (seeded row is removed by the filter below). */
+        const delRec = await findForApply(op.c, delId);
         const delSchoolId = delRec ? delRec.school_id : (op.data && op.data.school_id ? op.data.school_id : s.school_id);
         store[op.c] = store[op.c].filter(x => x.id !== delId);
         if(!Array.isArray(store.__deleted_records)) store.__deleted_records = [];
@@ -762,9 +772,14 @@ function createSync(ctx){
         mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId });   /* P1-14 */
       }
       store.__server_version = (store.__server_version || 0) + 1;
-      store.__processed_uids[op.uid] = Date.now();
-      cache.markProcessedUid(op.uid).catch(() => {});
-      cache.invalidateCollection(op.c, op.data && op.data.school_id).catch(() => {});
+      /* Wave 1: uid marking moved post-commit (see below) so failed batches replay.
+         SUSPECT-C (باگ‌هانت چت ۵، نشست ۲): خطایِ ابطال پیش‌تر با `.catch(()=>{})`
+         بلعیده می‌شد؛ در تولید (گاردهای BUG-2) واقعی است و بی‌صدایی واگراییِ
+         نامرئی می‌سازد. حالا audit می‌شود؛ پاسخ بی‌تغییر می‌ماند و خودِ audit
+         هم هرگز پاسخ را نمی‌شکند. (markProcessedUid پس از کامیت پایین‌تر audit می‌شود.) */
+      cache.invalidateCollection(op.c, op.data && op.data.school_id).catch((invErr) => {
+        try { audit('sync_invalidate_failed', { user_id: s.id, collection: op.c, error: String((invErr && invErr.message) || invErr) }); } catch (_) {}
+      });
       /* P1-14: آینه این‌جا نیست — پس از حلقه، یک‌جا و اتمیک (persistOpsBatch) */
     }
     /* Round 88 + Round 89 — server side: the client cannot create notifications
@@ -775,6 +790,7 @@ function createSync(ctx){
        3) corrections open (non-manager)-> school manager   (R89)
        Manager/superadmin actions keep the client-created notification (applied),
        so the hook skips them — no duplicates. */
+    const notifBefore = Array.isArray(store.notifications) ? store.notifications.length : 0;
     for(const op of apply){
       if(!Array.isArray(store.notifications)) store.notifications = [];
       const todayD = new Date().toISOString().slice(0, 10);
@@ -784,12 +800,14 @@ function createSync(ctx){
         const mgr = (store.users || []).find(x => x.school_id === d.school_id && x.role === 'manager');
         if(mgr){
           const st = (store.users || []).find(x => x.id === d.student_id);
-          store.notifications.push({
-            id: nextId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'leave',
+            const ln = {
+              id: await serverId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'leave',
             title: '📨 درخواست مرخصی جدید',
             body: 'برای ' + ((st && st.full_name) || '') + ' از ' + d.from_date + ' تا ' + d.to_date + ' — در انتظارِ بررسی.',
             link: 'leaves', read: 0, created_at: todayD
-          });
+          };
+          store.notifications.push(ln);
+          derived.push({ c: 'notifications', t: 'ins', data: ln }); /* Wave1-W */
           audit('leave_request_notified', { user_id: s.id, leave_id: d.id, school_id: d.school_id });
         }
       }
@@ -799,13 +817,15 @@ function createSync(ctx){
         const to = (store.users || []).find(x => x.id === Number(op.data.to_id));
         if(to){
           const from = (store.users || []).find(x => x.id === Number(op.data.from_id != null ? op.data.from_id : s.id));
-          store.notifications.push({
-            id: nextId('notifications'), user_id: to.id,
+            const cn = {
+              id: await serverId('notifications'), user_id: to.id,
             school_id: op.data.school_id != null ? op.data.school_id : to.school_id,
             type: 'chat', title: '💬 پیام جدید',
             body: ((from && from.full_name) || '') + ': ' + String(op.data.body || '').slice(0, 60),
             link: 'chat', read: 0, created_at: todayD
-          });
+          };
+          store.notifications.push(cn);
+          derived.push({ c: 'notifications', t: 'ins', data: cn }); /* Wave1-W */
           audit('chat_notified', { user_id: s.id, to_user_id: to.id });
         }
       }
@@ -816,31 +836,66 @@ function createSync(ctx){
         if(mgr){
           const st = (store.users || []).find(x => x.id === d.student_id);
           const par = (store.users || []).find(x => x.id === d.parent_id);
-          store.notifications.push({
-            id: nextId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'announcement',
+            const crn = {
+              id: await serverId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'announcement',
             title: '⚠️ درخواست اصلاح اطلاعات ولی',
             body: ((par && par.full_name) || '') + ' اعلام کرد ' + ((st && st.full_name) || '') + ' فرزند او نیست.',
             link: 'corrections', read: 0, created_at: todayD
-          });
+          };
+          store.notifications.push(crn);
+          derived.push({ c: 'notifications', t: 'ins', data: crn }); /* Wave1-W */
           audit('correction_notified', { user_id: s.id, correction_id: d.id, school_id: d.school_id });
         }
       }
     }
     /* P1-14: آینهٔ اتمیکِ چندرکوردی — همه در یک تراکنش (all-or-nothing).
-       شکست → rollback + audit؛ پاسخِ کلاینت عوض نمی‌شود (مثلِ قبل بی‌خبر). */
-    if(mirror.length && db && typeof db.persistOpsBatch === 'function'){
+       شکست → rollback + audit؛ در حالتِ PG پاسخ ۵۰۳ می‌شود تا کلاینت retry کند
+       (Wave 1)؛ در memory پاسخ مثلِ قبل عوض نمی‌شود — ولی دیگر بی‌خبر هم نیست:
+       پرچمِ مرئیِ mirror_failed (SUSPECT-A، نشست ۲) همراهِ ok=true برمی‌گردد. */
+    /* Wave1-W: نوشت‌هایِ مشتقِ سرور (نوتیفیکیشن‌هایِ hook) در همان تراکنش —
+       همان ردیف‌هایی که store.notifications.slice(notifBefore) می‌داد، ولی
+       دقیق و بدونِ اسکن (هر hook خودش را به derived می‌رساند). */
+    const batchAll = mirror.concat(derived);
+    /* Wave 1: phase 2 -- the atomic PG commit. On failure with PG live, roll the
+       store back to the pre-request snapshot and fail closed (503) so the client
+       retries; uids stay unmarked so the retry replays instead of being skipped.
+       Without PG (memory mode, e.g. older mirror-failure tests), keep the legacy
+       audit-and-continue semantics plus the visible mirror_failed flag (SUSPECT-A). */
+    let mirrorFailed = false;
+    if(batchAll.length && db && typeof db.persistOpsBatch === 'function'){
       try{
-        await db.persistOpsBatch(mirror);
+        await db.persistOpsBatch(batchAll);
       }catch(mirrorErr){
-        audit('sync_mirror_failed', { user_id: s.id, ops: mirror.length,
-          error: String((mirrorErr && mirrorErr.message) || mirrorErr) });
+        const why = String((mirrorErr && mirrorErr.message) || mirrorErr);
+        mirrorFailed = true;
+        audit('sync_mirror_failed', { user_id: s.id, ops: batchAll.length, error: why });
+        if(pgLive){
+          for(const k of Object.keys(snap)){
+            if(k === '__server_version'){ store.__server_version = snap[k]; continue; }
+            if(k === '__processed_uids'){ store.__processed_uids = snap[k]; continue; }
+            if(snap[k] === null || snap[k] === undefined){ delete store[k]; }
+            else store[k] = snap[k];
+          }
+          for(const r of results){ if(r) r.ok = false; }
+          return sendJson(res, 503, { ok: false, code: 'sync_mirror_failed', results });
+        }
       }
+    }
+    /* Wave 1: uids are marked only after the authority committed (store AND cache),
+       so a failed batch always replays. End state in memory mode is unchanged. */
+    if(!store.__processed_uids) store.__processed_uids = {};
+    for(const op of apply){
+      store.__processed_uids[op.uid] = Date.now();
+      /* SUSPECT-C (باگ‌هانت چت ۵، نشست ۲): علامتِ idempotency در کش هم audit می‌شود. */
+      try{ cache.markProcessedUid(op.uid).catch((markErr) => {
+        try { audit('sync_idempotency_mark_failed', { user_id: s.id, uid: op.uid, error: String((markErr && markErr.message) || markErr) }); } catch (_) {}
+      }); }catch(e){}
     }
     if(apply.length) ctx.markDirty();
     audit('sync_ok', { user_id: s.id, ops: apply.length });
-    sendJson(res, 200, { ok: true, results });
+    sendJson(res, 200, mirrorFailed ? { ok: true, results, mirror_failed: true } : { ok: true, results });
   }
 
   return { apiSync, canWrite, inScope };
 }
-module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED };
+module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, virtualDayOfflineBasis, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED };

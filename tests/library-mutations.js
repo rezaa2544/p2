@@ -43,8 +43,8 @@ mutate('src/js/54-library.js',
   '  if(false){}',
   /❌ B2/, 'M2 برداشتنِ سقفِ نسخه');
 
-mutate('server/sync.js',
-  '      if(!me || me.lib_staff !== 1) return false;',
+mutate('server/policy.js',
+  '      if (!me || me.lib_staff !== 1) return false;',
   '      if(false){}',
   /❌ S1/, 'M3 برداشتنِ گاردِ پرچم در inScope');
 
