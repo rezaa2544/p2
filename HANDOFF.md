@@ -14,6 +14,16 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## زیرساختِ HA + PITR + Failover — رفعِ مانعِ P0#3 (Production Readiness / Reliability) — ✅ (2026-09-10)
+- **PG HA:** `infra/postgres/` — compose با Primary(wal_level=replica + archive هم‌زمان pgbackrest→S3/MinIO) + hot-standby (basebackup -R یا STANDBY_BOOTSTRAP=repo) + PgBouncer (txn pooling، مسیرهای payesh/payesh-readonly دقیقاً منطبق بر DATABASE_URL/READ_DATABASE_URL در server/db.js) + بازویِ pg-backup + post-checks.sh (gate دهیِ PASS/FAIL). ایمیج سفارشیِ pgbackrest-دار (پین‌شده)؛ هیچ رمزی در فایل‌ها — env-file با ${VAR:?}؛ env.ha.example بیرونِ ignore با نامِ env* (قانونِ .env* فایل‌های دات را می‌بلعد).
+- **Redis HA:** `infra/redis/` — ۱ master + ۲ replica + ۳ sentinel؛ قراردادِ اتصالِ آماده در server/redis.js فعال می‌شود (REDIS_SENTINELS + REDIS_SENTINEL_NAME=mymaster)؛ quorum=2/down-after=5s/failover≤30s طبق RELIABILITY_DR_PLAN؛ redis-checks.sh.
+- **PITR:** tools/pitr-restore.sh (pgbackrest --type=time/xid/name/latest، محیطِ ایزوله با fsync=off و پورتِ غیراستاندارد، promote خودکار، verify خودکار) + tools/pitr-verify.sh (promoted/جداولِ حیاتی non-empty/target رعایت/checksumِ ۲۰۰ردیفی برایِ drill ماهانه).
+- **Failover:** tools/failover-postgres.sh (گاردِ split-brain + سه‌بار نمونه‌گیریِ مرگ + آستانهٔ lag + pg_promote(wait) + چک‌لیستِ fence/rebuild) و tools/failover-redis.sh (SENTINEL FAILOVER با poll و تأییدِ INFO؛ REDISCLI_AUTH فقط).
+- **Runbook:** docs/DR_RUNBOOK.md — چهار سناریو (PG primary، Redis master، DC منطقه‌ای (طرحِ دوم‌منطقه‌ای تهران⇄تبریز با bucket replication)، فسادِ داده/PITR) × RPO/RTOهایِ مصوبِ RELIABILITY_DR_PLAN + گیت‌هایِ مشترکِ پسازاقدام + drill-log + on-call.
+- **تست:** `node tests/ha-config.js` **92/92** · `node tests/dr-runbook.js` **38/38** · `node tests/ha-config-mutations.js` **7/7 کشته** (M1..M6 + پایه) — و گیت‌های همیشگی: smoke **547/547** · check-authz **0** · secret-scan **11/11** · build --check **0** · tests/run.js 35/35 (SASTِ CI).
+- **کامیت‌ها:** 7aca4c9 (PG infra) · 4e4ab8b (HA_POSTGRES) · 7ce584a (Redis) · 4b7fd52 (HA_REDIS) · 2f5c2f1 (PITR) · f1f05fa (failover) · 24d281a (DR_RUNBOOK+نقشهٔ راه) · test+handoff — push به arena/01a08a4e-p2.
+- **باقی‌مانده (خارج از sandbox):** اجرایِ واقعیِ compose روی میزبانِ Docker (config-check عمیق)، مانورهایِ فصلی و ثبتِ drill-log، slot فیزیکی + max_slot_wal_keep_size، تفکیکِ رازهایِ replicator/pgbouncer، ACL ردیس.
+
 ## چت ۴: مرج PR #43 (ویو ۱۲ — شبکه/لبه) + هم‌سازی سشن با main — ۱۹/۰۶/۱۴۰۵ (2026-09-10) — کامل ✅
 - **PR #43:** کانفلیکت HANDOFF با حفظ دوطرف حل؛ پچ ci/pending بازتولید شد (SCA حالا در Security Program اصلی است؛ فقط CodeQL در انتظار توکن workflow)؛ جهش M3 به خودِ workflow تغییر هدف یافت (5/5)؛ **باگِ واقعیِ CI:** آکولادِ بدون‌نقل‌قول در کلیدهای regex نگینکس (`on\w{2,}` → `on\w\w+`) — `nginx -t` رانر را می‌شکست. merge-commit `463233c` با ۷/۷ چک سبز؛ شاخه feat حذف شد.
 - **سشنِ ویو ۵ (این شاخه):** ۱۱ کامیت روی mainِ رفته‌پیش (۷۵۰+)؛ ادغامِ تازهٔ origin/main → تنها کانفلیت HANDOFF (union)؛ درختِ ادغامی کاملِ سبز: smoke 547 · api 7/7 · wave5 37+5 · wave12 24+5 · authz-model 248 · server16 · occ 18 · pull-bootstrap 12 · wave1/3/4 · build-check 0 · check-authz 0 · secret-scan 11.
