@@ -14,7 +14,7 @@
 | 2 | Database Engineering | Arena 1 | ✅ | High | Wave -1 برای کشف کامل؛ Wave 1 برای PG-only شدن تولید | docs/DATABASE_ARCHITECTURE.md؛ migrations/؛ tests/db-engineering.js |
 | 3 | Query و Performance [P0] | Arena 1 + Arena 4 | ⏳ | High | Wave 1/2 | در انتظار شروع |
 | 4 | Sync / A01 | Arena 3 | ⏳ | High | Wave 1/2/5 | در انتظار شروع |
-| 5 | Authorization و Tenant Isolation [P0] | Arena 2 | ⏳ | Critical | Wave -1 و مدل واحد policy | در انتظار شروع |
+| 5 | Authorization و Tenant Isolation [P0] | Arena 2 | ✅ | Critical | Wave -1 و مدل واحد policy | مدل یکتای `server/policy.js` (Sync+REST+PG هم‌قرارداد)؛ `docs/WAVE5_AUTHZ.md` + `docs/AUTHORIZATION_MODEL.md`؛ wave5-authz 37/37، جهش‌ها 5/5، هم‌ارزی 93,024/۰، smoke 547/547، api 7/7 — commits 8472f17..d5230b7 |
 | 6 | Redis و Distributed State [P0] | Arena 4 | ⏳ | High | Wave 1 و سیاست production readiness | در انتظار شروع |
 | 7 | Offline-first | Arena 3 | ⏳ | Medium | Wave 4/6 | در انتظار شروع |
 | 8 | Async Architecture | Arena 4 | ⏳ | Medium | Wave 1/2 و Outbox | در انتظار شروع |
@@ -36,7 +36,7 @@
 | Arena | مالکیت | وضعیت | توضیح | Evidence |
 |---|---|---|---|---|
 | Arena 1 — Database/Core | PostgreSQL، schema، migrations، queries، indexes، transactions، OCC | 🟡 | Wave 2 کامل؛ Wave 1/3/10 باقی | `docs/DATABASE_ARCHITECTURE.md` |
-| Arena 2 — Security | Auth، RBAC، Tenant isolation، session، rate limiting، security tests | ⏳ | منتظر Wave -1 و Wave 5/13 | `docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md` |
+| Arena 2 — Security | Auth، RBAC، Tenant isolation، session، rate limiting، security tests | 🟡 | Wave 5 کامل (ویو ۵)؛ Wave 13 باقی | `docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md` |
 | Arena 3 — Sync/Offline | A01، Pull/Push، tombstone، cursor، offline queue، conflict resolution، IndexedDB | ⏳ | منتظر Wave 4/7 | `docs/ROADMAP.md` |
 | Arena 4 — Performance/Infra | Redis، cache، workers، observability، load tests، deployment | ⏳ | منتظر Wave 6/8/9/14/15 | `docs/ROADMAP.md` |
 | Arena 5 — QA / Reliability Engineering | Test Strategy، Regression، Load/Stress/Spike/Soak/Chaos، Recovery Validation، Release Gate | ⏳ | افزوده‌شده طبق Addendum؛ باید مالک quality gate همه Waves باشد | `docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md` |
