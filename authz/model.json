@@ -973,7 +973,6 @@
    ],
    "del": [
     "manager",
-    "teacher",
     "superadmin"
    ]
   },
