@@ -103,3 +103,173 @@
 `tests/wave20-arena5.js` مفادِ بالا را به‌صورتِ ماشینی می‌سنجد (وجودِ سند و
 بخش‌های الزامی، نحوِ اسکریپت، پوششِ ‏`tests/api`، گاردهای درختِ کثیف، و حضورِ
 گیت‌ها در ‏`package.json`). هر تغییری در این سند یا اسکریپت باید آن را سبز نگه دارد.
+
+---
+
+## Arena 5 — QA / Reliability Engineering (نهایی‌شده، Wave 20)
+
+**تاریخ:** ۱۴۵۵/۰۶/۲۰ (2026-09-10)
+**شاخه:** `arena/01a08545-p2`
+**منشأ:** «Arena پنجم — QA / Reliability Engineering» در `docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md` +
+شروط Production (§Reliability: HA, Backup, **Restore Drill**, **Failover Test**) + ریسک کلیدی
+«اعلام آمادگی بدون تست واقعی» (الزام: 10M Dataset + Peak Load + Failure Testing + **Recovery Testing**).
+
+این سند، سندِ مرجعِ QA/Reliabilityِ پایش برایِ مقیاسِ ملی است: استراتژی، ابزارها، معیارهای پذیرش،
+نقش‌ها و درِ انتشار (Release Gate). وضعیتِ هر مسئولیت **با شواهد** (آزمونِ اجراشده یا زیرساختِ
+در‌انتظار) گزارش می‌شود — نه «وضعیت» خشک.
+
+---
+
+### ۱. استراتژی تست
+
+#### ۱.۱ اصول
+1. **هر ادعای آمادگی، شواهد دارد.** (ریسکِ ADDENDUM: «اعلام آمادگی بدون تست واقعی» ممنوع.)
+   شواهد = خروجیِ آزمونِ تکرارپذیر (کامیت + آدرسِ فایل) — نه گزارشِ شفاهی.
+2. **پوششِ همهٔ سطوحِ پشته** — از واحد تا زیرساخت:
+   - **L1 واحد/کانتراکت:** `tests/*.js` (smoke 547, authz-model, mutations, backup-snap, ...) — jsdom + static + in-process
+   - **L2 یکپارچگیِ سرور:** فرایندِ واقعی + سیگنالِ واقعی + store جدا (الگویِ wave15-child / arena5-recovery)
+   - **L3 بار/آشوب:** k6 (ترافیک) + `tools/chaos-test.sh` (تزریقِ خرابی) — رویِ محیطِ زنده
+3. **تستِ «شکست» هم‌ارزِ تستِ «سالمی» است.** هر سناریویِ بار، یک سناریویِ شکستِ جفت دارد
+   (load↔chaos، spike↔kill، soak↔disk-full).
+4. **Offline-first:** کلاینتِ مرورگر صفِ sync دارد؛ بنابراین معیارِ طلاییِ همهٔ تست‌های شکست
+   = **صفر data loss برایِ عملِ ack‌شده** + **تأخیر = UX** (نه 500، نه گم‌شدن).
+5. **تست برایِ سبزِ کور تغییر نمی‌کند** (قانونِ سختِ Arenas) — اگر قرارداد تغییر کرد، قرارداد
+   در `AI_PROMPT.md` و همین سند ثبت می‌شود، بعد آزمون.
+6. **محدودیت‌ها مُستند می‌شوند نه پنهان** (مثال: محدودیتِ retryStrategy — §۴.۳.R3).
+
+#### ۱.۲ محیط‌های تست
+| محیط | کاربرد | وضعیت |
+|---|---|---|
+| Sاندباکس (اینجا) | L1 + L2 تمام، L3 فقط DRY_RUN/شبیه‌سازی | ✅ فعال |
+| زیرساختِ زنده (چند نمونه) | L3 واقعی: PG + Redis + k6 + root (tc/fallocate) | ⏳ در انتظار |
+
+---
+
+### ۲. ابزارها
+
+| ابزار | سطح | اجرا |
+|---|---|---|
+| `tests/smoke.js` | L1 — کانتراکتِ کلِ محصول | `node tests/smoke.js` → **547/547** |
+| `tools/check-authz.js` | L1 — اعتبارِ مدلِ مجوزها | `node tools/check-authz.js` → **0** |
+| `tests/secret-scan.js` | L1 — راز در کد/داده | `node tests/secret-scan.js` → **11/11** |
+| `build.js --check` | L1 — یکپارچگیِ build | `node build.js --check` |
+| `tests/*.js` (موج‌ها: wave1/6/11/15/18/19 + arena5) | L2 — سناریوهایِ یکپارچگی | `node tests/<suite>.js` |
+| `tests/wave15-child.js` / الگویِ child | L2 — فرایندِ واقعی + سیگنال | (درونِ سوئیت‌ها) |
+| `tests/performance/suites/*.js` (k6) | L3 — بار/استرس/اسپایک/ساک/آشوب | `k6 run tests/performance/suites/<s>.js` |
+| `tools/chaos-test.sh` | L3 — تزریقِ خرابی (5 سناریو) | `bash tools/chaos-test.sh <scenario>` (پیش‌فرض DRY_RUN) |
+| `tests/generate-national-data.js` | L3 — دادهٔ 10M کاربر (Wave 18) | `node tests/generate-national-data.js` |
+
+---
+
+### ۳. وضعیتِ ۹ مسئولیتِ Arena 5
+
+| # | مسئولیت | دارایی | معیارِ پذیرش | وضعیت |
+|---|---|---|---|---|
+| 1 | **Test Strategy** | این سند + `AI_PROMPT.md` §تست | سندِ واحد + الزامِ «شواهد» | ✅ کامل |
+| 2 | **Regression** | smoke 547 + ۲۰+ سوئیتِ mutation + سوئیت‌های موج | هر commit: smoke 547/547 + authz 0 + secret 11/11 + build | ✅ کامل (خودکار در گیت) |
+| 3 | **Load** | Wave 18: دادهٔ 10M + ۴ سناریو (عادی/اوج/فشار/چندروزه) + k6 | p95 زیر سقف‌های سناریو؛ بدون 500؛ queue syncِ کلاینت سالم | 🟡 طراحی+داده ✅ — اجرا روی زیرساخت pending |
+| 4 | **Stress** | k6 `saturation-test.js` (5→25→75→150→200 VU، 5 فاز + Knee Point) | Knee Point شناسایی + بدون crash + پایداریِ 5xx=0 | 🟡 طراحی ✅ — اجرای زنده pending |
+| 5 | **Spike** | k6 `spike-mehr-test.js` (15→**150 VU** جهشِ ۱۰برابر «اول مهر» → بازگشت) | عبورِ نرم از spike + بازگشتِ p95 به خطِ پایه | 🟡 طراحی ✅ — اجرای زنده pending |
+| 6 | **Soak** | k6 `soak-24h-test.js` (p95<200, p99<400 در ۲۴h) | بدون memory-leak/دهریفت؛ آستانه‌ها 24h سبز | 🟡 طراحی ✅ — اجرای زنده pending |
+| 7 | **Chaos** | Wave 19: 5 سناریو (kill-api/redis-down/pg-down/net-latency/disk-full) + `chaos-test.sh` (DRY_RUN/`--live`) + `tests/wave19-chaos.js` 28/28 + k6 `chaos-redis-test.js` | جدولِ پذیرشِ §5 در `docs/WAVE19_CHAOS_PLAN.md` (صفر 500 در redis-down، 503 readiness، صفر data loss، crash-free) | 🟡 طراحی+ابزار+اعتبارسنجی ✅ — اجرای LIVE pending |
+| 8 | **Recovery Validation** | **`tests/arena5-recovery.js` 32/32** (جدید، Wave 20) + Wave 15 (drain/fail-fast) | §۴.۳ — crash consistency + restore drill + failover/failback | ✅ **کامل — در ساندباکس اجرا شد** |
+| 9 | **Release Gate** | §۵ این سند + گیت‌هایِ خودکار | همهٔ آیتم‌هایِ §۵ سبز + تأییدِ ناظر | ✅ تعریفِ نهایی (اجرا: روزِ ریلیز) |
+
+---
+
+### ۴. جزئیات
+
+#### ۴.۱ Regression (تفصیل)
+- **smoke 547/547:** کانتراکتِ کلِ محصول (کلاینت + سرور + build) — هر تغییر.
+- **سوئیت‌های موج (regression model):** wave1 (writes) 14+5، wave6 (redis) 22، wave11 (cache) 20،
+  wave15 (health) 10، wave18 (load/data) 38، wave19 (chaos) 28، **arena5 (recovery) 32** — هرکدام
+  در همان موج ساخته و از آن‌طرف‌تر در هر گیت اجرا.
+- **mutations:** ۲۰+ فایل `*-mutations.js` برایِ نگهبان‌هایِ کلیدی (ممنوع: «تغییر تست فقط برایِ سبز شدن»).
+- **check-authz 0:** مدلِ مجوزها (write-perms + idor + scope) — هر commit.
+
+#### ۴.۲ Load/Stress/Spike/Soak (معیارها)
+سقف‌ها و سناریوها در `docs/WAVE18_LOAD_TEST_PLAN.md` + `docs/LOAD_TESTING_PLAN.md`؛ دادهٔ ملی
+(10M کاربر / 100k مدرسه / 1M کلاس / 50M حضور / 20M نمره — ~10GB) با `tests/generate-national-data.js`
+تولید و اعتبارسنجی شده (38/38). اجرای واقعی نیازمندِ زیرساخت (کِیواس/EC2 + PG + Redis).
+
+#### ۴.۳ Recovery Validation — جدید (Wave 20، `tests/arena5-recovery.js` — **32/32 سبز**)
+
+| گره | سناریو (فرایندِ واقعی) | قراردادِ اثبات‌شده |
+|---|---|---|
+| **R1 (10)** | Crash Consistency: نوشتِ واقعی (sync) → flush → **SIGKILL** → بررسیِ فایل → restart | store هرگز خراب نمی‌شود (atomik tmp+rename)؛ دادهٔ flushشده ماندگار؛ restart ⇒ readiness 200؛ داده **قابلِ خواندن/نوشتن** (del زنده + flush)؛ **session از crash عبور می‌کند** (JWT با همان کلید معتبر) |
+| **R2 (9)** | Restore Drill: backup (API) → **فسادِ حافظه‌ای** → restore (API) | بکاپِ اتمیِ سالم؛ بازگشتِ واقعیِ داده؛ audit `backup_created`/`restore_completed` — **مطابقِ شرطِ Production «Restore Drill»** |
+| **R3 (8)** | Redis Failover/Failback با **ioredis واقعی** + fake RESP TCP: زنده→200؛ مرگ→**503**؛ بازگشت در پنجرهٔ retry (200+400+600ms) → **200 بدونِ restart**؛ قطعِ طولانی → 503 ماندگار؛ restart → 200 | **Failover** (readiness 503 = LB نمونه را تخلیه می‌کند، liveness 200 می‌ماند) + **Failback خودکار در پنجرهٔ retry** + محدودیتِ مُستند: قطعِ طولانی ⇒ restart فرایند لازم — **مطابقِ شرطِ Production «Failover Test»** (سطحِ نمونه) |
+| **R4 (5)** | PostgreSQL Failback (قراردادِ استاتیک — PG در ساندباکس نیست) | `scheduleReconnect` در مسیرِ خطا/بستن (≥2 نقطه) + delayِ ثابت 10s بدونِ انباشت + unref + ping با `SELECT 1` + readiness driver-aware (خوانش‌ها از store ⇒ PG-down خوانش را نمی‌بندد — همان نتیجهٔ Wave 19) |
+
+**یافته‌هایِ جدیدِ R3 (برایِ اپراتور):**
+1. **ioredis 6 handshake:** اتصالِ واقعی ابتدا `HELLO 3` + `CLIENT SETINFO` می‌فرستد و سپس
+   ready-check با `INFO` (باید `loading:0`) — هر fake/سبک‌وزنِ RESP باید این سه را بپذیرد
+   (خطای `unknown command 'HELLO'` ⇒ down خودکار به RESP2). fakeِ تستِ Arena 5 این قرارداد را پیاده می‌کند.
+2. **race-guard استارت:** readiness می‌تواند پیش از تکمیلِ init (مرحلهٔ subClient) 200 بدهد؛
+   مرگِ Redis در آن پنجرهٔ ~100ms ⇒ fail-fastِ P0-13 (exit 1) — در عمل LB نمونه را بازمی‌گرداند
+   (رفتارِ ایمن)، ولی تست/اپراتور باید منتظرِ `[Cache] Redis distributed` باشد.
+3. **steady-state:** مرگِ Redis پس ازِ init ⇒ فرایند **ماندگار** با readiness 503 (خروجِ خودکار
+   نیست)؛ retry بعد از ۳ تلاش تمام ⇒ بازگشتِ دیرهنگامِ Redis بدونِ restart پذیرفته **نمی‌شود**.
+
+#### ۴.۴ Chaos (مرجع)
+جدولِ پذیرش و فرضیه‌هایِ از-معماری: `docs/WAVE19_CHAOS_PLAN.md`. ابزار: `tools/chaos-test.sh`
+(DRY_RUN پیش‌فرض؛ `--live` با envهایِ الزامی؛ snapshot+timeline+PASS/FAIL خودکار).
+ترافیکِ هم‌زمان: k6 `chaos-redis-test.js` (30 VU / 45s: بدون 500 + p95<400 + صحتِ نشست).
+
+---
+
+### ۵. Release Gate (درِ انتشار)
+
+#### ۵.۱ گیت‌هایِ خودکار (هر commit — بدونِ استثنا)
+| گیت | آستانه |
+|---|---|
+| `node tests/smoke.js` | **547/547** |
+| `node tools/check-authz.js` | **0** |
+| `node tests/secret-scan.js` | **11/11** |
+| `node build.js --check` | rc=0 |
+| سوئیت‌هایِ موجِ معنی‌دار (wave1/6/11/15/18/19/arena5) | همهٔ سبز |
+
+#### ۵.۲ گیت‌هایِ قبلِ Go-Live (رویِ زیرساختِ زنده)
+| # | آیتم | شواهدِ موردنیاز | وضعیتِ فعلی |
+|---|---|---|---|
+| G1 | Load 10M (Wave 18، 4 سناریو) | HTML/JSON خروجیِ k6 + p95 زیر سقف | ⏳ در انتظارِ زیرساخت |
+| G2 | Chaos (Wave 19، 5 سناریو) | `tests/chaos-output/*/summary.txt` با PASS کامل | ⏳ در انتظارِ زیرساخت |
+| G3 | Soak 24h | آستانه‌هایِ soak-24h-test سبز | ⏳ در انتظارِ زیرساخت |
+| G4 | Recovery: Restore Drill واقعی (بکاپِ production → restore) | گزارشِ drill + RPO/RTO اندازه‌شده | ✅ الگوریتمِ کامل در ساندباکس (R2) — drillِ productionی باقی |
+| G5 | Failover: کشتنِ نمونهٔ زنده + Redis + PG | خروجی‌هایِ chaos + زمانِ ریکاوری | ✅ الگوریتم در ساندباکس (R1/R3) — drillِ productionی باقی |
+| G6 | دیسکِ ≥50GB + آگهی 80/90٪ | مانیتورینگ فعال | ⏳ در انتظارِ زیرساخت |
+| G7 | HA/Region: Primary+Secondary + Replication + Failover (ADDENDUM §DR) | طرحِ deployment + drill | ⏳ در انتظارِ زیرساخت |
+| G8 | TLS CA + Secret Management | گواهیِ CA + vault | ⏳ در انتظارِ زیرساخت |
+
+**قانون:** Go-Live = (همهٔ §۵.۱ سبز) AND (G1–G8 سبز) AND تأییدِ صریحِ ناظر.
+«آمادگی» بدونِ شواهدِ G1–G3 ممنوع (ADDENDUM §ریسکهای اصلی).
+
+#### ۵.۳ نقش‌ها (RACI خلاصه)
+| نقش | مسئولیت |
+|---|---|
+| **Arena 5 (این چت — چت ۳)** | A/R: استراتژی، طراحی سناریو، ابزار، آزمون، شواهد، به‌روزرسانیِ همین سند |
+| **سوپروایزر** | A: تأییدِ Release Gate + Merge نهایی + Go-Live |
+| **چت‌هایِ دیگر (Arenas 1–4)** | C: اجرایِ موج‌هایِ خود + ارائهٔ شواهد؛ R: رفعِ نقصِ به‌دست‌آمده |
+| **اپراتور (بعد از Go-Live)** | R: اجرایِ دوره‌ایِ drillها (Restore ماهانه، Chaos فصلی، Soak بعد ازِ هر ریلیز) |
+
+---
+
+### ۶. Progress Tracker (فرمتِ ADDENDUM)
+
+| Wave | Owner | Status | Risk | Dependency | Evidence |
+|---|---|---|---|---|---|
+| 18 Load (طراحی+داده) | چت ۳ | ✅ کامل | کم (اجرا pending) | زیرساخت | `5b0fb9a`/`a00c0c2`/`ea24580` + 38/38 |
+| 19 Chaos (طراحی+ابزار) | چت ۳ | ✅ کامل | کم (اجرا pending) | زیرساخت | `966d1bb` + 28/28 |
+| **20 Arena5 Recovery+Gate** | چت ۳ | ✅ کامل | کم | — (اجرا در ساندباکس شد) | `tests/arena5-recovery.js` 32/32 + این سند |
+| Go-Live (G1–G8) | سوپروایزر+اپراتور | ⏳ pending | **بالاترین** | زیرساختِ چند-نمونه | — |
+
+---
+
+### ۷. محدودیت‌ها و آیتم‌هایِ باز (صادقانه)
+1. **اجرای L3 واقعی** (G1/G2/G3/G6/G7) نیازمندِ محیطِ چند-نمونهٔ زنده (API+PG+Redis+root+k6) —
+   در این ساندباکس طراحی+ابزار+شبیه‌سازیِ کامل است؛ «در انتظارِ زیرساخت».
+2. **محدودیتِ ioredis** (مُستند در §4.3): بعد از قطعِ طولانیِ Redis ⇒ restart فرایند لازم.
+   پیشنهادِ بهبود (کاندیدایِ موجِ بعد): `retryStrategy` پایدار برایِ بازپس‌گیریِ خودکار.
+3. **race استارتِ subClient** (§4.3.2) ایمن است (fail-fast + restart توسط LB) ولی مُستند شد
+   تا در deployment با LBِ واقعی رفتارِ انتظار برود.
+4. PG Failback در ساندباکس **قراردادِ استاتیک** است (PG واقعی نیست) — drillِ productionی در G5.

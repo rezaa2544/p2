@@ -7468,9 +7468,15 @@ test('بند ۱.۶: گواهی بدون نمره رد می‌شود و دکمه 
 test('بند ۱.۷: کارت امروز تاریخ، حضور و زنگ‌های امروز را می‌دهد', () => {
   let schedId, attId;
   try{
+    /* ⚠️ درس دور ۱۱۱ (Wave 20): زنگ روی کلاسِ واقعیِ دانش‌آموز (classOf)
+       ساخته شود، نه db.classes[0]. آزمون‌های پیشین (چرخهٔ پایان‌سال)
+       ثبت‌نامِ نخستین دانش‌آموز را به کلاس ۲ می‌برند؛ روی روزِ
+       غیرمدرسه (پنجشنبه، dow=5) جدولِ دمو هیچ ردیفی ندارد و فقط
+       سطرِ درج‌شده «زنگ امروز» می‌سازد — اگر کلاش با classOf(sid)
+       نباشد، کارت امروز خالی می‌شود و تست دروغین می‌شکست. */
     const t = JSON.parse(W(`(()=>{
-      var cls=db.classes[0];
-      var st=db.users.filter(function(x){return x.role==='student'&&x.school_id===cls.school_id;})[0];
+      var st=db.users.filter(function(x){return x.role==='student';})[0];
+      var cls=classOf(st.id)||db.classes[0];
       return JSON.stringify({sid:st.id, cls:cls.id, dow:todayDow()});
     })()`));
     schedId = W(`(insert('schedule',{school_id:byId('classes',${t.cls}).school_id,class_id:${t.cls},subject_id:db.subjects[0].id,teacher_id:null,day:${t.dow},period:1,id:null}).id)`);
