@@ -65,8 +65,12 @@ const dast = (_di >= 0 && _wi > _di) ? wf.slice(_di, _wi) : '';
   chk('S5a npm sbom present', has('npm sbom'));
   chk('S5b SPDX artifact upload', has('sbom.spdx.json') && has('actions/upload-artifact'));
 
-  /* S6 — DAST: present AND executable (no skip-only gate) */
-  chk('S6a OWASP ZAP action present', has('zaproxy/action-baseline'));
+  /* S6 — DAST: present AND executable (no skip-only gate)
+     BUG-6 (باگ‌هانت چت ۵): لنگرِ قبلی مسیرِ غلطِ `actions-baseline` (مخزنِ
+     ناموجود — علتِ ران‌های صفر-جاب) را می‌خواست؛ چت ۲ عمداً به
+     `action-baseline` اصلاحش کرد. حالا مسیرِ درست + نبودِ مسیرِ غلط —
+     و زیرچک‌های S6b..S6h ویو ۱۳ حفظ شد. */
+  chk('S6a OWASP ZAP action present', has('zaproxy/action-baseline') && !has('zaproxy/actions-baseline'));
   chk('S6b staging target via SECURITY_TARGET_URL', has('SECURITY_TARGET_URL'));
   chk('S6c local-boot fallback (seed + boot API on 127.0.0.1)',
     dast.indexOf('server/seed.js') >= 0 && dast.indexOf('server/index.js') >= 0 && dast.indexOf('127.0.0.1') >= 0);

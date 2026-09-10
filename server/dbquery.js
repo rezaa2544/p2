@@ -111,9 +111,18 @@ function _finalize(o) {
   // Page: add keyset cursor, then LIMIT limit+1 (detect has_more, no OFFSET)
   const pageParams = o.params.slice();
   const pageParts = o.parts.slice();
-  if (o.cursor != null && !isNaN(Number(o.cursor))) {
-    pageParams.push(Number(o.cursor));
-    pageParts.push(`${o.cursorRef} > $${pageParams.length}`);
+  if (o.cursor != null) {
+    if (typeof o.cursorKeyset === 'function') {
+      /* composite keyset (e.g. "date|id"): custom predicate — params pushed inside */
+      const frag = o.cursorKeyset(String(o.cursor), (v) => { pageParams.push(v); return pageParams.length; });
+      if (frag) pageParts.push(frag);
+    } else if (!isNaN(Number(o.cursor))) {
+      pageParams.push(Number(o.cursor));
+      /* W3-1: a DESC ordering must walk keys backwards (<) or the page repeats
+         itself (id > cursor over id DESC returns rows already seen). */
+      const op = o.orderDir === 'DESC' ? '<' : '>';
+      pageParts.push(`${o.cursorRef} ${op} $${pageParams.length}`);
+    }
   }
   const pageWhere = pageParts.length ? `WHERE ${pageParts.join(' AND ')}` : '';
   pageParams.push(Number(o.limit) + 1);
@@ -206,7 +215,31 @@ function buildAttendanceList({ user, office, date, classId, studentId, limit, cu
     parts.push(`EXISTS (SELECT 1 FROM "${tableName('parent_links')}" pl WHERE pl.parent_id = $${pid} AND pl.student_id = attendance.student_id)`);
   }
 
-  return _finalize({ from, parts, params, orderBy: 'date DESC, id ASC', cursorRef: 'id', limit, cursor });
+  /* W3-2: ORDER BY date DESC, id ASC is a *composite* sort — a single
+     `id > cursor` predicate would skip every older date. The cursor therefore
+     encodes "date|id" and the keyset predicate is
+     `date < $d OR (date = $d AND id > $i)`. A bare numeric cursor still works
+     (legacy) as id-only. */
+  const cursorKeyset = (cursorStr, push) => {
+    const s = String(cursorStr || '');
+    const pipe = s.indexOf('|');
+    if (pipe === -1) {
+      const n = Number(s);
+      if (isNaN(n)) return null;
+      const i = push(n);
+      return `id > $${i}`;
+    }
+    const date = s.slice(0, pipe);
+    const id = Number(s.slice(pipe + 1));
+    if (isNaN(id)) return null;
+    const d = push(date);
+    const i = push(id);
+    return `(date < $${d} OR (date = $${d} AND id > $${i}))`;
+  };
+
+  const built = _finalize({ from, parts, params, orderBy: 'date DESC, id ASC', cursorRef: 'id', cursorKeyset, limit, cursor });
+  built.cursorKey = (row) => (row && row.date != null ? String(row.date) : '') + '|' + String(row && row.id);
+  return built;
 }
 
 /**
@@ -261,7 +294,7 @@ function buildGradesList({ user, office, studentId, subjectId, classId, limit, c
 
   return _finalize({
     from, pageFrom, selectList, parts, params,
-    orderBy: 'g.id DESC', cursorRef: 'g.id', limit, cursor
+    orderBy: 'g.id DESC', cursorRef: 'g.id', orderDir: 'DESC', limit, cursor
   });
 }
 
@@ -358,13 +391,16 @@ async function executePagedList(db, built, { limit, cursor }) {
 
   const first = data[0];
   const last = data[data.length - 1];
+  /* W3-2: composite-ordered lists (attendance) return a "date|id" cursor; every
+     other list returns the bare id. */
+  const cursorKey = built.cursorKey || ((r) => (r == null ? null : String(r.id)));
   return {
     data,
     pagination: {
       limit,
       has_more: hasMore,
-      next_cursor: hasMore && last ? String(last.id) : null,
-      prev_cursor: cursor ? (first ? String(first.id) : null) : null,
+      next_cursor: hasMore && last ? cursorKey(last) : null,
+      prev_cursor: cursor ? (first ? cursorKey(first) : null) : null,
       count: data.length,
       total
     }

@@ -1,24 +1,19 @@
 #!/usr/bin/env node
 /* ─────────────────────────────────────────────────────────────
-   wave11-cache.js — Wave 11: Cache (TTL، invalidation، stampede)
-   ─────────────────────────────────────────────────────────────
-   C1  TTL: L2 با EX (≤۳۰s) + L1 و بازگرداندن از L2 پس از خالی‌شدن L1
-       + عضویت در ایندکسِ «مدرسه ⇒ کاربرانِ کش‌شده»
-   C2  Invalidation: تغییرِ collection با school_id ⇒ انقضایِ L2 کاربرانِ
-       همان مدرسه (از ایندکس) + PUBLISH برایِ نمونه‌هایِ دیگر + اثرِ
-       نداشتن روی مدرسهٔ دیگر
-   C3  انقضایِ کاملِ L2 حتی برایِ کاربرانی که در L1ِ این نمونه نیستند
-       (باگِ پیشین: فقط L1-resident پاک می‌شدند و بقیه تا TTL می‌ماندند)
-   C4  LRU + سقف: تکمیلِ سقف ⇒ خروجِ قدیمی‌ترین + refresh با دسترسی
-   C5  Single-flight: ۱۰ فراخوانِ هم‌زمانِ یک کلید ⇒ یک build
-   C6  bootstrap route: ۲ درخواستِ هم‌زمانِ سرد ⇒ یک set + پاسخِ یکسان؛
-       درخواستِ سوم از کش (cached:true)
-   fake: mini-redisِ سازگار با قرارداد (TTL + SET/EX/NX + اسکرپت‌ها +
-   دستوراتِ Set) — بدونِ ردیسِ زنده.
+   wave11-cache.js — Wave 11: Cache (L1/L2 Bootstrap، ابطال، TTL،
+   stampede، قفل، idempotency، Pub/Sub، epoch)
+   -------------------------------------------------------------------
+   ادغامِ keep-both (باگ‌هانت چت ۵، نشست ۴): سوئیتِ یکپارچگیِ موج ۱۱
+   (نشست ۳ — رفت‌وبرگشت/ابطال/epoch/ریت‌لیمیت/قفل/idempotency/Pub/Sub/
+   آمار/ابطال سراسری) + سوئیتِ استراتژی کش (main — TTL/ایندکس مدرسه/
+   انقضای کامل/LRU/single-flight/bootstrap route).
+   باگ‌هایِ عمیق‌تر در سوئیت‌هایِ اختصاصی‌اند (cache-l2-epoch، redis-mem-ttl).
    ───────────────────────────────────────────────────────────── */
 'use strict';
-const redis = require('../server/redis.js');
 const cache = require('../server/cache.js');
+const redis = require('../server/redis.js');
+const rateLimit = require('../server/rate-limit.js');
+const { classifyKey } = require('../tools/redis-audit.js');
 const { createBootstrapRoute } = require('../server/routes/bootstrap.js');
 
 let okc = 0, failc = 0;
@@ -27,7 +22,9 @@ function chk(name, cond, extra) {
   if (cond) { okc++; console.log('  ✅ ' + name); }
   else { failc++; fails.push(name + (extra ? ' — ' + extra : '')); console.log('  ❌ ' + name + (extra ? ' — ' + extra : '')); }
 }
+const P = (uid, schoolId, tag) => ({ user: { id: uid }, school: { id: schoolId }, tag });
 
+/* ── fake redis (main) ── */
 function fakeRedis() {
   const m = new Map();   /* key -> { v, exp } */
   const sets = new Map(); /* key -> Set<string> */
@@ -85,9 +82,87 @@ function fakeRedis() {
 const data = (uid, schoolId) => ({ ok: true, user: { id: uid }, school: { id: schoolId, name: 'S' + schoolId } });
 
 (async () => {
-  console.log('\n▸ Wave11-C — استراتژی کش (TTL، invalidation، stampede)');
+  console.log('\n▸ Wave 11 — Cache یکپارچه (driver=' + (redis.isRedis() ? 'redis' : 'memory') + ')');
 
-  /* ── C1: TTL + L1/L2 + ایندکسِ مدرسه ── */
+  /* ═══════════ بخش ۱: سوئیتِ یکپارچگی (نشست ۳) ═══════════ */
+
+  /* ── C1: رفت‌وبرگشت ── */
+  await cache.setBootstrapCache(101, P(101, 1, 'c1'), 300);
+  const c1 = await cache.getBootstrapCache(101);
+  chk('C1 نوشتن و خواندنِ بوت‌استرپ', !!c1 && c1.tag === 'c1');
+
+  /* ── C2: ابطالِ کاربر ── */
+  await cache.setBootstrapCache(102, P(102, 1, 'c2'), 300);
+  await cache.invalidateUser(102);
+  chk('C2 پس از ابطالِ کاربر تهی است', (await cache.getBootstrapCache(102)) === null);
+
+  /* ── C3: جداییِ مدرسه‌ها ── */
+  await cache.setBootstrapCache(103, P(103, 3, 'c3a'), 300);
+  await cache.setBootstrapCache(104, P(104, 4, 'c3b'), 300);
+  await cache.invalidateSchool(3);
+  chk('C3a مدرسهٔ باطل‌شده تهی شد', (await cache.getBootstrapCache(103)) === null);
+  const c3b = await cache.getBootstrapCache(104);
+  chk('C3b مدرسهٔ دیگر سالم ماند', !!c3b && c3b.tag === 'c3b');
+
+  /* ── C4: ثبتِ epoch در ممیزی ── */
+  const spec = classifyKey('payesh:cache:epoch:school:9');
+  chk('C4a کلیدِ epoch شناخته می‌شود', !!spec && spec.owner.indexOf('cache.js') >= 0);
+  chk('C4b انتظارِ TTL دارد', !!spec && spec.expectTtl === true);
+
+  /* ── C5: ریت‌لیمیتِ اتمیک ── */
+  const rlId = 'w11c5-' + Date.now();
+  let allowed = 0, blocked = 0;
+  for (let i = 0; i < 4; i++) {
+    const r = await rateLimit.checkRateLimit({ prefix: 'w11:test', identifier: rlId, limit: 3, windowSeconds: 60 });
+    if (r.allowed) allowed++; else blocked++;
+  }
+  chk('C5 سه‌تایِ اول مجاز، چهارمی مسدود', allowed === 3 && blocked === 1, allowed + '/' + blocked);
+  await redis.del('rate:w11:test:' + rlId);
+
+  /* ── C6: قفل ── */
+  const lk = 'w11-lock-' + Date.now();
+  const t1 = await cache.acquireLock(lk, 5);
+  const t2 = await cache.acquireLock(lk, 5);
+  chk('C6a دومی در انحصارِ اولی شکست خورد', typeof t1 === 'string' && t2 === null);
+  chk('C6b آزادسازیِ مالک موفق', (await cache.releaseLock(lk, t1)) === true);
+  const t3 = await cache.acquireLock(lk, 5);
+  chk('C6c پس از آزادسازی دوباره تصاحب شد', typeof t3 === 'string');
+  await cache.releaseLock(lk, t3);
+
+  /* ── C7: idempotency ── */
+  const uid = 'w11-uid-' + Date.now();
+  chk('C7a پیش از علامت، پردازش‌نشده', (await cache.isProcessedUid(uid)) === false);
+  await cache.markProcessedUid(uid, 60);
+  chk('C7b پس از علامت، پردازش‌شده', (await cache.isProcessedUid(uid)) === true);
+  await redis.del('payesh:idempotency:' + uid);
+
+  /* ── C8: فن‌اوتِ Pub/Sub ── */
+  const got = [];
+  await redis.subscribe('w11:chan', (m) => got.push('a:' + m));
+  await redis.subscribe('w11:chan', (m) => got.push('b:' + m));
+  await redis.publish('w11:chan', 'hello');
+  chk('C8 هر دو مشترک پیام گرفتند', got.length === 2 && got[0] === 'a:hello' && got[1] === 'b:hello',
+    JSON.stringify(got));
+
+  /* ── C9: شکلِ آمارِ L1 ── */
+  const st = cache.l1Stats();
+  chk('C9 آمارِ L1 شکلِ درست دارد',
+    st && Number.isFinite(st.size) && Number.isFinite(st.max) && Number.isFinite(st.hits) && Number.isFinite(st.misses),
+    JSON.stringify(st));
+
+  /* ── C10: ابطالِ سراسری ── */
+  await cache.setBootstrapCache(105, P(105, 5, 'c10a'), 300);
+  await cache.setBootstrapCache(106, P(106, 6, 'c10b'), 300);
+  await cache.invalidateCollection('subjects');
+  chk('C10 ابطالِ سراسری هر دو را پاک کرد',
+    (await cache.getBootstrapCache(105)) === null && (await cache.getBootstrapCache(106)) === null);
+
+  /* پاک‌سازی */
+  for (const u of [101, 102, 103, 104, 105, 106]) await redis.del('payesh:cache:bootstrap:' + u);
+
+  /* ═══════════ بخش ۲: سوئیتِ استراتژی کش (main) ═══════════ */
+
+  /* ── C1 (main): TTL + L1/L2 + ایندکسِ مدرسه ── */
   {
     const fake = fakeRedis();
     redis.__setClientForTests(fake);
@@ -111,7 +186,7 @@ const data = (uid, schoolId) => ({ ok: true, user: { id: uid }, school: { id: sc
     redis.__setClientForTests(null);
   }
 
-  /* ── C2: Invalidation با school_id (مسیرِ sync/REST) ── */
+  /* ── C2 (main): Invalidation با school_id ── */
   {
     const fake = fakeRedis();
     redis.__setClientForTests(fake);
@@ -128,7 +203,7 @@ const data = (uid, schoolId) => ({ ok: true, user: { id: uid }, school: { id: sc
     redis.__setClientForTests(null);
   }
 
-  /* ── C3: انقضایِ کاملِ L2 حتی بیرونِ L1 (باگِ پیشین) ── */
+  /* ── C3 (main): انقضایِ کاملِ L2 حتی بیرونِ L1 ── */
   {
     const fake = fakeRedis();
     redis.__setClientForTests(fake);
@@ -146,7 +221,7 @@ const data = (uid, schoolId) => ({ ok: true, user: { id: uid }, school: { id: sc
     redis.__setClientForTests(null);
   }
 
-  /* ── C4: LRU + سقف ── */
+  /* ── C4 (main): LRU + سقف ── */
   {
     const fake = fakeRedis();
     redis.__setClientForTests(fake);
@@ -168,7 +243,7 @@ const data = (uid, schoolId) => ({ ok: true, user: { id: uid }, school: { id: sc
     redis.__setClientForTests(null);
   }
 
-  /* ── C5: Single-flight (stampede protection) ── */
+  /* ── C5 (main): Single-flight ── */
   {
     let builds = 0;
     const slow = () => new Promise(res => setTimeout(() => { builds++; res('value-' + builds); }, 30));
@@ -177,12 +252,11 @@ const data = (uid, schoolId) => ({ ok: true, user: { id: uid }, school: { id: sc
     chk('C5b single-flight: همهٔ فراخوانِ همان نتیجه را می‌گیرند',
       results.every(r => r === 'value-1') && cache.__inflightForTests() === 0,
       'res=' + [...new Set(results)].join('|') + ' inflight=' + cache.__inflightForTests());
-    /* buildِ دوم (بعد از خالی‌شدن) دوباره مجاز است */
     const again = await cache.withSingleFlight('hot-key', slow);
     chk('C5c single-flight: پس از اتمام، کلید دوباره قابلِ build است', again === 'value-2' && builds === 2);
   }
 
-  /* ── C6: bootstrap route — stampede در مسیرِ واقعی + cached hit ── */
+  /* ── C6 (main): bootstrap route — stampede + cached hit ── */
   {
     const fake = fakeRedis();
     redis.__setClientForTests(fake);
@@ -210,7 +284,6 @@ const data = (uid, schoolId) => ({ ok: true, user: { id: uid }, school: { id: sc
     chk('C6c route: درخواستِ سوم از کش (cached:true)',
       r3.status === 200 && r3.cached === true && JSON.stringify(r3.body) === JSON.stringify(r1.body),
       'cached=' + r3.cached);
-    /* انقضایِ مدرسه (مثلِ ثبتِ نمره) کشِ این کاربر را هم می‌زند */
     await cache.invalidateCollection('grades', 1);
     const r4 = await route.getBootstrapData(req);
     chk('C6d route: پس از انقضایِ مدرسه، پاسخِ تازه (نه cached)',
@@ -220,6 +293,6 @@ const data = (uid, schoolId) => ({ ok: true, user: { id: uid }, school: { id: sc
 
   console.log('\n────────────────────────────────────────────────────');
   console.log(`wave11-cache: ${okc + failc} بررسی — ✅ ${okc} · ❌ ${failc}`);
-  if (failc) process.exit(1);
+  if (failc) { console.log('  مواردِ ناموفق:\n   - ' + fails.join('\n   - ')); process.exit(1); }
   process.exit(0);
-})().catch(e => { console.error(e); process.exit(1); });
+})().catch(e => { console.error('FATAL', e); process.exit(2); });
