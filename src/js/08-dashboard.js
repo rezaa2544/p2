@@ -276,7 +276,7 @@ function summaryBlock(sid){
    ${statCard('🏅',fa(d.rank)+' از '+fa(d.size),'رتبه در کلاس','amber')}
    ${statCard('⚖️',fa(d.points),'امتیاز انضباطی ('+fa(d.disc.length)+' مورد)',d.points>=0?'purple':'red')}</div>
    ${(typeof internshipProgressHtml==='function')?internshipProgressHtml(sid):''}
-   <div class="grid g2">
+   ${(typeof dojoRecentHtml==='function')?dojoRecentHtml(sid):''}
     <div class="card"><div class="card-head"><h3>وضعیت حضور</h3><span class="badge b-green">${fa(tot?Math.round(cnt('present')/tot*100):0)}٪ حضور</span></div>
      <div class="card-body" style="display:grid;gap:12px">${['present','absent','late','excused','early_exit'].map(k=>`<div><div class="row"><span>${ATT_FA[k]}</span><div class="spacer"></div><b>${fa(cnt(k))} روز</b></div>${bar(cnt(k),tot,ATT_COLOR[k])}</div>`).join('')}</div></div>
     <div class="card"><div class="card-head"><h3>میانگین به تفکیک درس</h3><button class="btn ghost sm" data-act="go" data-r="${escAttr(S.user.role==='student'?'record':'children')}">پرونده کامل</button></div>
