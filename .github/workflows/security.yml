@@ -121,7 +121,21 @@ jobs:
             echo "mode=local" >> "$GITHUB_OUTPUT"
             echo "url=http://127.0.0.1:3000" >> "$GITHUB_OUTPUT"
           fi
+      - name: Report DAST mode (P0 #6)
+        if: always()
+        run: |
+          if [ "$DAST_MODE" = "staging" ]; then
+            echo "DAST target: **staging** (secret SECURITY_TARGET_URL set)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "DAST target: **local boot** (set the SECURITY_TARGET_URL repo secret to scan staging)" >> "$GITHUB_STEP_SUMMARY"
+            echo "Go-Live equivalent: tools/dast-live.sh (staging = API + Redis + store, ZAP baseline/full)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "dast mode: $DAST_MODE"
+        env:
+          DAST_MODE: ${{ steps.dast-target.outputs.mode }}
       - name: Boot local API for DAST (no staging URL configured)
+        # P0 #6: بدون secret → local boot. با secret → مستقیم staging.
+        # معادلِ Go-Live: tools/dast-live.sh (DRY_RUN در سندباکس سبز است).
         if: steps.dast-target.outputs.mode == 'local'
         run: |
           node server/seed.js
