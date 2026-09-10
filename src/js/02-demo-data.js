@@ -155,7 +155,11 @@ function generate(){
            اولین روز هفته (شنبه) انتخاب می‌شود. (رفع خطای دمو در پنجشنبه) */
         const dow=dow0<=4?dow0:0;
         const dt=dow0<=4?todayISO():addDaysISO(todayISO(),dow0===5?2:1);
-        const slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.day===dow&&x.period===2);
+        /* دور ۱۱۱ (Wave 20, Arena 5): فِلبکِ دفاعی — اگر به‌هر‌دلیلی زنگِ
+           همان روز نبود (smoke در چهارشنبه 405/547 کرش می‌کرد)، همان
+           period از هر روزِ معتبر انتخاب می‌شود. */
+        let slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.day===dow&&x.period===2);
+        if(!slot) slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.period===2);
         const sub=teachers.find(t=>t.id!==slot.teacher_id)||teachers[0];
         add('substitutions',{school_id:school.id,schedule_id:slot.id,sub_teacher_id:sub.id,date:dt,created_at:todayISO()});
       }
