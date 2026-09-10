@@ -23,11 +23,11 @@
 | 11 | Cache | Arena 4 | ⏳ | Medium | Wave 3/6 و benchmark | در انتظار شروع |
 | 12 | Network / Edge | Arena 4 | ⏳ | Medium | استقرار production و TLS/CDN/WAF | در انتظار شروع |
 | 13 | Security Program | Arena 2 + Arena 5 | ⏳ | Critical | Wave 5 و threat model | در انتظار شروع |
-| 14 | Observability | Arena 4 + Arena 5 | ⏳ | High | Wave -1 و deployment model | در انتظار شروع |
+| 14 | Observability | Arena 4 + Arena 5 | ✅ | High | Wave -1 و deployment model | server/metrics.js (۲۷ metric، cardinality guard، scrape fail-closed) + ابزارگیری در index/db/cache/worker/sync/outbox؛ docs/WAVE14_OBSERVABILITY.md؛ infra/observability/ (prometheus.yml, alerts.yml, dashboard)؛ tests/wave14-observability.js **۹۵/۹۵** + mutations **۱۲/۱۲** |
 | 15 | Health / Deployment | Arena 4 | ⏳ | High | Wave 14 و stateless API | در انتظار شروع |
-| 16 | Disaster Recovery | Arena 4 + Arena 5 | ⏳ | Critical | Wave 10/15 و RPO/RTO | در انتظار شروع |
-| 17 | Testing Pyramid | Arena 5 | ⏳ | High | همه Waveها | در انتظار شروع |
-| 18 | National Load Testing | Arena 5 + Arena 4 | ⏳ | High | Capacity Model، Wave 3/10/14 | در انتظار شروع |
+| 16 | Disaster Recovery | Arena 4 + Arena 5 | ✅ | Critical | Wave 10/15 و RPO/RTO | server/dr.js (SHA-256 manifest، AES-256-GCM + scrypt، fail-closed بدون کلید در تولید، RPO ۳۰۰s / RTO ۹۰۰s) + scripts/dr-restore-drill.js (۸ فاز زمان‌دار)؛ docs/WAVE16_DISASTER_RECOVERY.md + docs/RUNBOOK_DISASTER_RECOVERY.md؛ tests/wave16-dr.js **۷۵/۷۵** + mutations **۱۱/۱۱**. PITR سمتِ PostgreSQL است (🟡) |
+| 17 | Testing Pyramid | Arena 5 | ✅ | High | همه Waveها | tests/wave17-testing.js **۷۳/۷۳** روی سرورِ واقعی: P0/IN(۱۱)/CT(۱۰)/E2E(۹)/CC(۶)/LD(۶)/ST(۶)/SP(۵)/SK(۷)/PY(۸) + mutations **۱۰/۱۰**؛ docs/WAVE17_TESTING.md و docs/WAVE17_TESTING_PYRAMID.md. هر ۱۲ سطح به سوئیتِ موجود نگاشت شده؛ سوئیتِ موجودی حذف/ضعیف نشده (PY1–PY8) |
+| 18 | National Load Testing | Arena 5 + Arena 4 | 🟡 | High | Capacity Model، Wave 3/10/14 | tools/seed-national.js (مدلِ ۱۰M کاربر با نسبت‌هایِ صریح + مولدِ دیتاست)؛ tests/wave18-load.js **۶۲/۶۲** (مدل/دیتاست/Load/Stress/Spike/Soak با ۶ آشکارسازِ نشتی)؛ tests/performance/suites/national-load-test.js (k6، هر ۴ سناریو)؛ docs/WAVE18_LOAD_TESTING.md. **ظرفیتِ ملی اندازه‌گیری نشده** — k6 نصب نیست و DB TPS/Redis ops/sec در مسیرِ JSON معنا ندارند |
 | 19 | Chaos / Failure Testing | Arena 5 + Arena 4 | ⏳ | Critical | Wave 15/16 و Observability | در انتظار شروع |
 | 20 | چهار Arena + Arena پنجم | همه Arenaها | ⏳ | Medium | Addendum اعمال‌شده | Arena 5 ثبت شد؛ تقسیم مالکیت به‌روز شد |
 
