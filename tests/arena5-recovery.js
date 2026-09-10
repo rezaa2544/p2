@@ -355,7 +355,8 @@ function fakeRedis(){
     const rport = fake.port;
     chk('R3a fake ردیس (TCP RESP) بالا', rport > 0, 'port ' + rport);
 
-    const c3 = spawnServer(T, tmp, { PAYESH_ENV: 'production', NODE_ENV: 'production', PAYESH_BEHIND_PROXY: '1', REDIS_URL: 'redis://127.0.0.1:' + rport });
+    /* P0#2: production + Redis مشترک ⇒ کلیدِ نشستِ مشترک الزامی است (fail-fastِ تازه) */
+    const c3 = spawnServer(T, tmp, { PAYESH_ENV: 'production', NODE_ENV: 'production', PAYESH_BEHIND_PROXY: '1', REDIS_URL: 'redis://127.0.0.1:' + rport, PAYESH_JWT_SECRET: 'arena5-recovery-shared-jwt-secret-0123456789' });
     let BASE = '';
     try { BASE = await c3.ready(15000); } catch (e) { chk('R3b استارتِ production + ردیسِ زنده', false, String(e.message).slice(0, 200)); }
     if(BASE){
@@ -404,7 +405,7 @@ function fakeRedis(){
         const t = setTimeout(() => { try { c3.proc.kill('SIGKILL'); } catch (e) {} resolve(); }, 8000);
         c3.proc.on('exit', () => { clearTimeout(t); resolve(); });
       });
-      const c4 = spawnServer(T, tmp, { PAYESH_ENV: 'production', NODE_ENV: 'production', PAYESH_BEHIND_PROXY: '1', REDIS_URL: 'redis://127.0.0.1:' + rport });
+      const c4 = spawnServer(T, tmp, { PAYESH_ENV: 'production', NODE_ENV: 'production', PAYESH_BEHIND_PROXY: '1', REDIS_URL: 'redis://127.0.0.1:' + rport, PAYESH_JWT_SECRET: 'arena5-recovery-shared-jwt-secret-0123456789' });
       let BASE4 = '';
       try { BASE4 = await c4.ready(15000); } catch (e) { chk('R3h restart پس ازِ قطعِ طولانی', false, String(e.message).slice(0, 200)); }
       if(BASE4){

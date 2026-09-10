@@ -269,6 +269,18 @@ process.on('exit', () => {
    (در رویدادِ exit promise‌ها هرگز به‌جا نمی‌رسند). */
 
 /* ── JWT secret (env, or generated once; never committed) ──────────── */
+/* P0#2 (چندنمونه‌ای): در production با بک‌اندِ مشترک (Redis/PG) کلیدِ نشست
+   باید **مشترک** باشد — اگر env نباشد، هر instance کلیدِ خودش را روی
+   دیسکِ محلی تولید می‌کند و توکنِ صادرشده در A در B نامعتبر می‌شود
+   (جلساتِ چندنمونه‌ای ساکت می‌شکنند). ⇒ fail-fast در استارت.
+   تک‌نمونهٔ production بدون Redis/PG دست‌نخورده می‌ماند (حالتِ پیشین). */
+const SHARED_BACKEND_CONFIGURED = !!(process.env.REDIS_URL || process.env.REDIS_CLUSTER_NODES
+  || process.env.REDIS_SENTINELS || process.env.DATABASE_URL);
+if((process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production')
+   && !process.env.PAYESH_JWT_SECRET && SHARED_BACKEND_CONFIGURED){
+  console.error('Error: production with shared state (Redis/PostgreSQL) requires a shared PAYESH_JWT_SECRET — the auto-generated per-instance key makes tokens valid only on the issuing instance (multi-instance sessions break). Set the same PAYESH_JWT_SECRET (>=32 bytes) in every instance.');
+  process.exit(1);
+}
 let JWT_SECRET = process.env.PAYESH_JWT_SECRET || null;
 if(!JWT_SECRET){
   if(fs.existsSync(KEY_FILE)) JWT_SECRET = fs.readFileSync(KEY_FILE, 'utf8').trim();
