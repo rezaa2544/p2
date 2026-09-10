@@ -1,0 +1,40 @@
+# ═══════════════════════════════════════════════════════════════════
+# sentinel.conf.template — الگویِ سه‌گانهٔ Sentinel
+# ───────────────────────────────────────────────────────────────────
+# در compose، sed همین placeholderها را با env پر می‌کند و فایل را در
+# /data/sentinel.conf می‌نویسد (sentinel باید فایلِ نوشتنی داشته باشد تا
+# epoch/config خود را به‌روز کند — به همین دلیل read-only mount نمی‌شود).
+# placeholderها:
+#   __MASTER_NAME__   نامِ سرویس (باید با REDIS_SENTINEL_NAME برنامه یکی باشد
+#                     — پیش‌فرضِ server/redis.js: mymaster)
+#   __MASTER_HOST__ __MASTER_PORT__   آدرسِ master (host-name در شبکهٔ compose)
+#   __REDIS_PASSWORD__                requirepassِ مشترکِ master/replica/sentinel
+#   __ANNOUNCE_IP__   IP/نامی که کلاینت‌ها باید با آن برسند (در compose همان
+#                     نامِ سرویس؛ در VLAN دوم‌توره ipِ شناخته‌شده)
+#   __QUORUM__ __DOWN_AFTER__ __FAILOVER_TIMEOUT__
+# ═══════════════════════════════════════════════════════════════════
+port 26379
+daemonize no
+pidfile /var/run/redis-sentinel.pid
+dir /data
+
+sentinel monitor __MASTER_NAME__ __MASTER_HOST__ __MASTER_PORT__ __QUORUM__
+sentinel down-after-milliseconds __MASTER_NAME__ __DOWN_AFTER__
+sentinel failover-timeout __MASTER_NAME__ __FAILOVER_TIMEOUT__
+sentinel parallel-syncs __MASTER_NAME__ 1
+
+# resolve-hostnames برایِ محیطِ container لازم است (master با نام سرویس ثبت می‌شود)
+sentinel resolve-hostnames yes
+sentinel announce-hostnames yes
+sentinel announce-ip __ANNOUNCE_IP__
+sentinel announce-port 26379
+
+# احراز (Redis ≥ 6.2 — named ACL users؛ برنامه با REDIS_PASSWORD وصل می‌شود):
+requirepass __REDIS_PASSWORD__
+sentinel auth-pass __MASTER_NAME__ __REDIS_PASSWORD__
+masterauth __REDIS_PASSWORD__
+
+# محافظتِ خودِ API فرمان‌هایِ خطرناک روی sentinel (باز کردنِ failover دستی فقط از شبکهٔ داخلی)
+rename-command FLUSHALL ""
+rename-command FLUSHDB ""
+rename-command DEBUG ""

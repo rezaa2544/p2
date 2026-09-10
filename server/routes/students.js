@@ -10,7 +10,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const { filterByScope, checkSchoolScope } = require('../middleware/scope');
+const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز */
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { projectUserByRole } = require('../middleware/projection');
@@ -50,6 +50,7 @@ function createStudentRoutes(ctx) {
     if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
       const built = buildStudentsList({
         user,
+        office: policy.userOffice(store, user), /* Wave 5 — هندسهٔ اداره */
         classId: urlParams.get('class_id'),
         grade: urlParams.get('grade'),
         search: urlParams.get('q'),
@@ -61,9 +62,10 @@ function createStudentRoutes(ctx) {
       return { ok: true, ...res };
     }
 
-    /* Memory/JS pipeline (runtime in this sandbox — byte-identical to before). */
+    /* Memory/JS pipeline — Wave 5: مدلِ یکتا (دانش‌آموز=خودش، ولی=فرزندان،
+       دبیر=کلاس‌های تدرسی، مدیر=مدرسهٔ خودش، بی‌مهار=دیده نمی‌شود). */
     let students = (store.users || []).filter(u => u.role === 'student');
-    students = filterByScope(user, students);
+    students = policy.filterReadable(store, user, 'students', students);
 
     // Filter by class
     const classId = urlParams.get('class_id');
@@ -89,16 +91,7 @@ function createStudentRoutes(ctx) {
       );
     }
 
-    // Teacher scope: limit to students in classes the teacher actually teaches
-    if (user.role === 'teacher') {
-      const teacherClassIds = new Set();
-      (store.classes || []).filter(c => c.homeroom_teacher_id === user.id).forEach(c => teacherClassIds.add(c.id));
-      (store.schedule || []).filter(s => s.teacher_id === user.id).forEach(s => teacherClassIds.add(s.class_id));
-
-      const taughtEnrollments = (store.enrollments || []).filter(e => teacherClassIds.has(e.class_id));
-      const taughtStudentIds = new Set(taughtEnrollments.map(e => e.student_id));
-      students = students.filter(s => taughtStudentIds.has(s.id));
-    }
+    /* teacher scope unified in policy.filterReadable (single model — no parallel logic) */
 
     // Sort by id ascending
     students.sort((a, b) => a.id - b.id);
@@ -113,23 +106,16 @@ function createStudentRoutes(ctx) {
     const user = req.user;
     const _cand = await findLive('users', id);
     const student = (_cand && _cand.role === 'student') ? _cand : null;
-    if (!student) {
+    /* Wave 5 — نما/رکوردِ دانش‌آموز = همان قاعدهٔ idor.js (دبیر فقط کلاس‌های
+       تدرسی؛ والد فقط فرزندان؛ مدیر فقط مدرسهٔ خودش؛ بقیه از جمله اداره ⇒ رد)
+       — یک دروازه برای هر دو endpoint؛ بیرون ⇒ ۴۰۴ ضدشمارش. در حالتِ PG،
+       پیوندهایِ والد زنده از DB خوانده و به‌عنوان opts به همانِ دروازهٔ policy
+       پاس می‌شود (ویو ۱: داده تازه، مدلِ یکتا). */
+    const _gateOpts = pgLive() ? { parentLinks: await listLive('parent_links') } : null;
+    const gate = policy.restReadGate(store, user, 'students', student, _gateOpts);
+    if (!student || !gate.ok) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
-
-    if (!checkSchoolScope(user, student.school_id)) {
-      return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
-    }
-
-    // Parent check: only own children
-    if (user.role === 'parent') {
-      const isMyKid = (await listLive('parent_links')).some(l => l.parent_id === user.id && l.student_id === student.id);
-      if (!isMyKid) {
-        return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
-      }
-      return { status: 200, body: { ok: true, data: projectUserByRole(student, user.role, true) } };
-    }
-
     return { status: 200, body: { ok: true, data: projectUserByRole(student, user.role, user.id === student.id) } };
   }
 
@@ -144,6 +130,10 @@ function createStudentRoutes(ctx) {
     }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
+    /* Wave 5 — ساختِ دانش‌آموز فقط برایِ نقشِ مجازِ مدل (manager/superadmin) */
+    if (!policy.restWriteRoleOk(user, 'users', 'ins')) {
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط مدیر مدرسه مجاز به ثبت دانش‌آموز است' } };
+    }
     /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
     const nextId = await ids.nextId('users', store.users);
 
@@ -187,7 +177,13 @@ function createStudentRoutes(ctx) {
     const user = req.user;
     const _found = await findLive('users', id);
     const student = (_found && _found.role === 'student') ? _found : null;
-    if (!student || !checkSchoolScope(user, student.school_id)) {
+    /* Wave 5 — محدوده از policy.inScope (users collection): مدیر فقط مدرسهٔ
+       خودش fail-closed؛ دبیر IEP هم‌مدرسه (آینهٔ استثنایِ sync)؛ رکوردِ
+       یافته‌شده به‌عنوان data پاس می‌شود تا در حالتِ PG (کپیِ detached،
+       نبودِ در store) هم دقیق حل شود (ویو ۱). */
+    const scopeOk = !!student && (policy.inScope(user, store, 'users', student.id, student)
+      || (user.role === 'teacher' && student.school_id != null && Number(student.school_id) === Number(user.school_id)));
+    if (!student || !scopeOk) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
 
@@ -253,7 +249,7 @@ function createStudentRoutes(ctx) {
 
   async function deleteStudent(req, id) {
     const user = req.user;
-    if (user.role !== 'manager' && user.role !== 'superadmin') {
+    if (!policy.restWriteRoleOk(user, 'users', 'del')) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط مدیریت مجاز به حذف دانش‌آموز است' } };
     }
 
@@ -263,7 +259,7 @@ function createStudentRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
 
-    if (!checkSchoolScope(user, student.school_id)) {
+    if (!policy.inScope(user, store, 'users', student.id, student)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
 
