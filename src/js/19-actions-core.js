@@ -1700,6 +1700,7 @@ function coreActions(e, el, id, a, rawId){
    'disc-edit'(){discModal(byId('discipline',id));},
    'disc-del'(){confirmModal('حذف این مورد انضباطی؟','disc-del-ok',id);},
    'disc-del-ok'(){remove('discipline',window._delId);closeModal();toast('حذف شد','ok');render();},
+   'disc-quick'(){const r=dojoQuickAward(id);toast(r.msg,r.ok?'ok':'err');if(r.ok)render();},
    'disc-save'(){const d=window._edit;
      const data={kind:V('d_kind'),title:V('d_title'),description:V('d_desc'),points:Number(V('d_points'))||0,date:V('d_date')};
      if(d.id)update('discipline',d.id,data);
