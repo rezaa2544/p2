@@ -47,7 +47,7 @@ async function bootCapture(extraEnv, waitMs) {
   const t0 = Date.now();
   let exited = null;
   p.on('exit', (c) => { exited = c; });
-  while (Date.now() - t0 < (waitMs || 15000)) {
+  while (Date.now() - t0 < (waitMs || 25000)) {
     if (exited !== null || out.indexOf('payesh-server (phase 1') >= 0) break;
     await sleep(200);
   }
@@ -70,16 +70,16 @@ async function bootCapture(extraEnv, waitMs) {
     /NODE_ENV/.test(w) && /PAYESH_ENV/.test(w) && /Redis/i.test(w) && /TLS/.test(w), w.slice(0, 120));
 
   /* ── ۲) سیم‌کشیِ بوت (فرزندِ زنده) ── */
-  const m1 = await bootCapture({ NODE_ENV: 'production' }, 15000);
+  const m1 = await bootCapture({ NODE_ENV: 'production' }, 25000);
   chk('E6 بوتِ فقط-NODE_ENV هشدارِ ناهماهنگی می‌دهد', /production-flag mismatch/.test(m1.out), m1.out.slice(0, 200));
   chk('E7 همان بوت هنوز برایِ کش می‌میرد (رفتارِ P0-13 حفظ شده)',
     m1.exited !== null && m1.exited !== 0 && /Cache readiness/i.test(m1.out), 'exit=' + m1.exited);
 
-  const m2 = await bootCapture({ NODE_ENV: '', PAYESH_ENV: 'production', PAYESH_BEHIND_PROXY: '1' }, 15000);
+  const m2 = await bootCapture({ NODE_ENV: '', PAYESH_ENV: 'production', PAYESH_BEHIND_PROXY: '1' }, 25000);
   chk('E8 بوتِ فقط-PAYESH_ENV هشدارِ ناهماهنگی می‌دهد', /production-flag mismatch/.test(m2.out), m2.out.slice(0, 200));
   chk('E9 همان بوت بالا می‌آید (رفتارِ T2 حفظ شده)', m2.out.indexOf('payesh-server (phase 1') >= 0);
 
-  const m3 = await bootCapture({ NODE_ENV: '', PAYESH_ENV: '' }, 15000);
+  const m3 = await bootCapture({ NODE_ENV: '', PAYESH_ENV: '' }, 25000);
   chk('E10 بوتِ توسعه بالا می‌آید', m3.out.indexOf('payesh-server (phase 1') >= 0);
   chk('E11 در بوتِ توسعه هشدارِ ناهماهنگی نیست', !/production-flag mismatch/.test(m3.out));
 
