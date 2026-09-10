@@ -46,8 +46,11 @@ const { createUserRoutes } = require('./routes/users');
 const { createBootstrapRoute } = require('./routes/bootstrap');
 const { createIds } = require('./ids'); /* P0-16 */
 const { createOutbox } = require('./outbox'); /* P0-17 */
+const { createWorker } = require('./worker'); /* ویو ۸ — کارگرِ صندوق رویدادها */
 const { createDeleteService } = require('./delete-service'); /* P0-17 */
 const { createPull } = require('./pull');
+const { createHeavyWorker } = require('./worker-service'); /* Wave 9 — رشتهٔ کارِ عملیاتِ سنگین */
+const { createStaticCache } = require('./static-cache');   /* Wave 9 — کشِ استاتیک */
 
 const ROOT = path.join(__dirname, '..');
 const DATA_DIR = path.join(__dirname, 'data');
@@ -87,6 +90,14 @@ function loadStore(){
 }
 const store = loadStore();
 syncAttach(store);
+
+/* ── Wave 9 — رشتهٔ کارِ عملیاتِ سنگین ─────────────────────────────
+   JSON.stringify(store) و نوشتنِ سنکرونِ فایل از رشتهٔ اصلی به ورکر
+   می‌روند (persist هر ۲ ثانیه، بکاپ، گزارشِ عمومی). ورکر دیرزیاد و
+   unref است؛ شکستش به مسیرِ سنکرونِ قدیمی برمی‌گردد (فال‌بک). */
+const workers = createHeavyWorker({ getStore: () => store });
+/* Wave 9 — کشِ استاتیک: خواندنِ async + اعتبارسنجیِ mtime (نه readFileSync در هر درخواست) */
+const staticCache = createStaticCache();
 
 /* ── database and caching layers initialization ── */
 db.init(store).then(info => {
@@ -156,7 +167,7 @@ function enumStage(e, sess){
 }
 
 let dirty = false;
-function markDirty(){ dirty = true; }
+function markDirty(){ dirty = true; workers.bump(); }
 
 /* ── GC of internal state (دور ۸۵ P1-3 — AD ۸۵.۲) ─────────────
    سه نقشهٔ فقط-رشد:
@@ -181,9 +192,34 @@ function gcStore(){
   }
   return n;
 }
+/* ── Wave 9 — persist بیرون از رشتهٔ اصلی ──────────────────────────
+   مسیرِ عادی (تیکرِ ۲ ثانیه): اسنپ‌شات با structured clone به ورکر
+   می‌رود؛ JSON.stringify و نوشتنِ فایل در رشتهٔ پس‌زمینه انجام می‌شود.
+   تازگیِ داده با نسخه‌ها تضمین می‌شود (workers.bump در markDirty):
+   هر جهشِ حینِ پرواز دوباره dirty می‌کند و چرخهٔ بعدی می‌نویسد.
+   هم‌جوشی: اگر نوشتنِ قبلی هنوز در جریان است، فقط پرچم می‌خورد. */
+let persistBusy = false;    /* نوشتنِ ورکر در جریان است */
+let persistQueued = false;  /* حینِ پرواز دوباره کثیف شد */
 function persistStore(){
   if(!dirty) return;
-  dirty = false;
+  if(persistBusy){ persistQueued = true; return; }
+  dirty = false; /* نقطهٔ اسنپ‌شات — جهشِ بعدی دوباره کثیف می‌کند */
+  const gc = gcStore();
+  if(gc) try { audit('store_gc', { removed: gc }); } catch(e){}
+  persistBusy = true;
+  workers.runPersist(STORE_FILE).then(() => {
+    persistBusy = false;
+    if(persistQueued || dirty){ persistQueued = false; persistStore(); }
+  }).catch(() => {
+    persistBusy = false;
+    persistStoreSync(); /* ورکر در دسترس نیست → مسیرِ سنکرونِ قدیمی */
+  });
+}
+/* مسیرِ سنکرون — فقط خاموشی (exit/SIGTERM/SIGINT) و فال‌بکِ خطای ورکر؛
+   هرگز در مسیرِ درخواست یا تیکرِ دوره‌ای صدا نمی‌شود. */
+function persistStoreSync(){
+  if(!dirty && !persistBusy && !persistQueued) return;
+  dirty = false; persistQueued = false;
   const gc = gcStore();
   if(gc) try { audit('store_gc', { removed: gc }); } catch(e){}
   try{
@@ -194,9 +230,26 @@ function persistStore(){
   }catch(e){ /* store file may be gone (tests) — never crash on exit */ }
 }
 setInterval(persistStore, 2000).unref();
-process.on('exit', () => { persistStore(); db.close(); redis.close(); });
-process.on('SIGTERM', () => { persistStore(); db.close(); redis.close(); process.exit(0); });
-process.on('SIGINT', () => { persistStore(); db.close(); redis.close(); process.exit(0); });
+process.on('exit', () => {
+  try { worker.stop(); } catch (e) {}
+  persistStoreSync();
+  try{ if(typeof auditLogger.flushSync === 'function') auditLogger.flushSync(); }catch(e){}
+  db.close(); redis.close(); workers.terminate();
+});
+process.on('SIGTERM', () => {
+  try { worker.stop(); } catch (e) {}
+  persistStoreSync();
+  try{ if(typeof auditLogger.flushSync === 'function') auditLogger.flushSync(); }catch(e){}
+  db.close(); redis.close(); workers.terminate();
+  process.exit(0);
+});
+process.on('SIGINT', () => {
+  try { worker.stop(); } catch (e) {}
+  persistStoreSync();
+  try{ if(typeof auditLogger.flushSync === 'function') auditLogger.flushSync(); }catch(e){}
+  db.close(); redis.close(); workers.terminate();
+  process.exit(0);
+});
 
 /* ── JWT secret (env, or generated once; never committed) ──────────── */
 let JWT_SECRET = process.env.PAYESH_JWT_SECRET || null;
@@ -299,8 +352,8 @@ const auth = createAuth({ store, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESS
 const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 const idor = createIdor({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
-const pubrep = createPublicReport({ store, sendJson: sendJsonCounting });
-const admin = createAdmin({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, dataDir: path.dirname(STORE_FILE) });
+const pubrep = createPublicReport({ store, sendJson: sendJsonCounting, workers });
+const admin = createAdmin({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, dataDir: path.dirname(STORE_FILE), workers });
 const sms = createSms({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 const conflicts = createConflicts({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 
@@ -310,13 +363,29 @@ const ids = createIds({ db, cache });
 /* P0-17: صندوق برون‌مرزی + سرویس حذف واحد (سنگ‌قبر به‌جای اسپلایسِ خام) */
 const outbox = createOutbox({ store, db });
 const deleter = createDeleteService({ store, db, markDirty, outbox });
+/* ویو ۸ — کارگرِ صندوق رویدادها: کارهای پس از حذف (مثل باطل‌کردن کش)
+   از مسیر درخواست بیرون می‌افتد و به‌صورت ناهم‌زمان با تلاشِ مجدد اجرا می‌شود. */
+const worker = createWorker({
+  store, outbox,
+  handlers: {
+    '*.deleted': async (evt) => {
+      const sid = evt.payload && evt.payload.school_id;
+      if (sid != null && typeof cache.invalidateCollection === 'function') {
+        await cache.invalidateCollection(evt.collection, sid);
+      }
+    }
+  },
+  intervalMs: Number(process.env.PAYESH_WORKER_INTERVAL_MS || 1000),
+  maxRetries: Number(process.env.PAYESH_WORKER_MAX_RETRIES || 5)
+});
+worker.start();
 const studentRoutes = createStudentRoutes({ store, db, audit, markDirty, ids, deleter });
 const classRoutes = createClassRoutes({ store, db, audit, markDirty, ids, deleter });
 const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, ids, deleter });
 const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty, ids, deleter });
 const userRoutes = createUserRoutes({ store, db, audit, markDirty, ids, deleter });
-const bootstrapRoute = createBootstrapRoute({ store });
-const pullRoute = createPull({ store, sessionFrom: auth.sessionFrom, sendJson });
+const bootstrapRoute = createBootstrapRoute({ store, db });
+const pullRoute = createPull({ store, db, sessionFrom: auth.sessionFrom, sendJson });
 
 /* ── static ────────────────────────────────────────────────────────── */
 const STATIC = {
@@ -330,12 +399,13 @@ const STATIC = {
   '/privacy.html': { file: 'privacy.html', type: 'text/html; charset=utf-8' },
   '/privacy':      { file: 'privacy.html', type: 'text/html; charset=utf-8' },
 };
-function serveStatic(res, urlPath, nonce){
+async function serveStatic(res, urlPath, nonce){
   const entry = STATIC[urlPath];
   if(!entry) return sendJson(res, 404, { ok: false, code: 'not_found' });
   const fp = path.join(ROOT, entry.file);
-  if(!fs.existsSync(fp)) return sendJson(res, 500, { ok: false, code: 'missing_build' });
-  let html = fs.readFileSync(fp, 'utf8');
+  /* Wave 9 — خواندنِ async + کشِ mtime: نه readFileSyncِ سنکرون در هر درخواست */
+  let html = await staticCache.read(fp);
+  if(html === null) return sendJson(res, 500, { ok: false, code: 'missing_build' });
   /* per-request CSP nonce (contract §5.6.2) — build.js placeholder */
   if(nonce) html = html.split('__PAYESH_NONCE__').join(nonce);
   res.writeHead(200, { 'Content-Type': entry.type, 'Cache-Control': 'no-cache' });
@@ -376,7 +446,11 @@ const onRequest = async (req, res) => {
     if(p === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')){
       /* P0-13: ریدی = در تولید، کشِ توزیع‌شده زنده است؛ وگرنه 503. */
       const rdy = redis.ready();
-      return sendJson(res, rdy ? 200 : 503, { ok: rdy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid, cache: redis.isRedis() ? 'redis' : (rdy ? 'memory-dev' : 'unavailable') });
+      const body = { ok: rdy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid, cache: redis.isRedis() ? 'redis' : (rdy ? 'memory-dev' : 'unavailable') };
+      /* Wave 10 — pool observability (primary + optional read replica) when PG live */
+      try { if (db.isPostgres && db.isPostgres() && typeof db.poolStats === 'function') body.db_pools = db.poolStats(); }
+      catch (e) {}
+      return sendJson(res, rdy ? 200 : 503, body);
     }
     if(p === '/api/auth/send-code' && req.method === 'POST') return await auth.apiSendCode(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/auth/login'     && req.method === 'POST') return await auth.apiLogin(req, res, await readBody(req, 4 * 1024));
@@ -415,7 +489,7 @@ const onRequest = async (req, res) => {
 
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
-        const r = studentRoutes.getStudentsList(req, url.searchParams);
+        const r = await studentRoutes.getStudentsList(req, url.searchParams);
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/students' && req.method === 'POST'){
@@ -440,7 +514,7 @@ const onRequest = async (req, res) => {
 
       // /api/v1/classes & /api/v1/classes/:id
       if(p === '/api/v1/classes' && req.method === 'GET'){
-        const r = classRoutes.getClassesList(req, url.searchParams);
+        const r = await classRoutes.getClassesList(req, url.searchParams);
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/classes' && req.method === 'POST'){
@@ -465,7 +539,7 @@ const onRequest = async (req, res) => {
 
       // /api/v1/attendance & /api/v1/attendance/:id
       if(p === '/api/v1/attendance' && req.method === 'GET'){
-        const r = attendanceRoutes.getAttendanceList(req, url.searchParams);
+        const r = await attendanceRoutes.getAttendanceList(req, url.searchParams);
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/attendance' && req.method === 'POST'){
@@ -486,7 +560,7 @@ const onRequest = async (req, res) => {
 
       // /api/v1/grades & /api/v1/grades/:id
       if(p === '/api/v1/grades' && req.method === 'GET'){
-        const r = gradeRoutes.getGradesList(req, url.searchParams);
+        const r = await gradeRoutes.getGradesList(req, url.searchParams);
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/grades' && req.method === 'POST'){
@@ -507,7 +581,7 @@ const onRequest = async (req, res) => {
 
       // /api/v1/users & /api/v1/users/:id
       if(p === '/api/v1/users' && req.method === 'GET'){
-        const r = userRoutes.getUsersList(req, url.searchParams);
+        const r = await userRoutes.getUsersList(req, url.searchParams);
         return sendJson(res, 200, r);
       }
       if(p === '/api/v1/users' && req.method === 'POST'){
@@ -533,7 +607,7 @@ const onRequest = async (req, res) => {
       return sendJson(res, 404, { ok: false, code: 'not_found' });
     }
     if(p.indexOf('/api/') === 0) return sendJson(res, 404, { ok: false, code: 'not_found' });
-    return serveStatic(res, p, nonce);
+    return await serveStatic(res, p, nonce);
   }catch(err){
     /* R96 P0-5: حجمِ بیش‌ازحدِ body → 413 (نه 500) — و خطا را لاگ نکن که
        محتوای بدنه در audit نیاید. */
@@ -625,4 +699,4 @@ if(require.main === module){
     }
   });
 }
-module.exports = { server, store, audit, isHttps, persistStore, db, redis, cache };
+module.exports = { server, store, audit, isHttps, persistStore, persistStoreSync, db, redis, cache, workers, staticCache };
