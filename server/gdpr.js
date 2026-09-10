@@ -16,11 +16,26 @@ function eraseUserData(store, uid) {
   function purge(coll, pred) {
     const rows = store[coll];
     if (!Array.isArray(rows)) return;
-    const keep = rows.filter((r) => !pred(r));
-    if (keep.length !== rows.length) {
-      purged[coll] = rows.length - keep.length;
-      store[coll] = keep;
+    const gone = rows.filter((r) => pred(r));
+    if (!gone.length) return;
+    purged[coll] = gone.length;
+    store[coll] = rows.filter((r) => !pred(r));
+    /* S2-3b (موج ۴): پلِ سنگ‌قبرِ دلتا. سطرِ پاک‌شدهٔ بی‌سنگ‌قبر رویِ
+       کلاینت‌ها (دلتا و بوت‌استرپِ ادغامی) می‌ماند — فراموشیِ ناقص.
+       سطرهایِ idدار سنگ‌قبرِ سبک می‌گیرند (همان سقفِ ۵۰۰۰)؛ پیوندِ مرکبِ
+       بی‌id (parent_links) سنگ‌قبرِ کاذب نمی‌گیرد. شمار/ترتیب/گزاره‌ها
+       بی‌تغییر. */
+    if (!Array.isArray(store.__deleted_records)) store.__deleted_records = [];
+    const at = new Date().toISOString();
+    for (const g of gone) {
+      if (g && g.id != null) {
+        store.__deleted_records.push({
+          c: coll, id: g.id,
+          school_id: g.school_id != null ? g.school_id : null, at: at
+        });
+      }
     }
+    if (store.__deleted_records.length > 5000) store.__deleted_records = store.__deleted_records.slice(-5000);
   }
   purge('parent_links', (r) => Number(r.parent_id) === uid || Number(r.student_id) === uid);
   purge('parent_verifications', (r) => Number(r.parent_id) === uid);
