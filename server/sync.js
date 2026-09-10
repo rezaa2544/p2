@@ -857,18 +857,23 @@ function createSync(ctx){
       }
     }
     /* P1-14: آینهٔ اتمیکِ چندرکوردی — همه در یک تراکنش (all-or-nothing).
-       شکست → rollback + audit؛ پاسخِ کلاینت عوض نمی‌شود (مثلِ قبل بی‌خبر). */
+       شکست → rollback + audit + پرچمِ مرئی (SUSPECT-A، نشست ۲: پیش‌تر
+       کاملاً بی‌خبر بود در حالی که خوانشِ PG و حافظه ناهمگام می‌ماند).
+       ok همچنان true است (سازگاری با کلاینت/B8) ولی دیگر بی‌خبر نیست.
+       برشِ تراکنشیِ کامل (push در PG) همچنان کار Wave 1 است. */
+    let mirrorFailed = false;
     if(mirror.length && db && typeof db.persistOpsBatch === 'function'){
       try{
         await db.persistOpsBatch(mirror);
       }catch(mirrorErr){
+        mirrorFailed = true;
         audit('sync_mirror_failed', { user_id: s.id, ops: mirror.length,
           error: String((mirrorErr && mirrorErr.message) || mirrorErr) });
       }
     }
     if(apply.length) ctx.markDirty();
     audit('sync_ok', { user_id: s.id, ops: apply.length });
-    sendJson(res, 200, { ok: true, results });
+    sendJson(res, 200, mirrorFailed ? { ok: true, results, mirror_failed: true } : { ok: true, results });
   }
 
   return { apiSync, canWrite, inScope };
