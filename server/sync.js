@@ -563,6 +563,35 @@ function virtualDayViolation(op, store){
   }
   return null;
 }
+/* S2-2 (موج ۴): مبنایِ «آفلاینِ» تصمیمِ روزِ مجازی. برمی‌گرداند {schoolId,
+   date} فقط وقتی (۱) شکلِ عملیات از آنِ گیتِ فیزیکی است و روزِ مؤثر از
+   op.atِ ادعایی آمده (نه از دادهٔ رکورد)، (۲) آن روز با امروزِ سرور فرق
+   دارد، و (۳) امروزِ سرور برایِ همان مدرسه مجازی است — یعنی واگراییِ ساعتِ
+   کلاینت در تصمیمِ «مجاز» مؤثر بوده و باید ردِّ پا داشته باشد. در غیرِ این
+   صورت null (روزِ عادی، یا تاریخی که سرور هم قبول دارد → بی‌سر‌و‌صدا).
+   خالص؛ در تست واحد صدا زده می‌شود. */
+function virtualDayOfflineBasis(op, store){
+  const c = op.c;
+  const d = op.data || {};
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const day = isoDay(op.at || '');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(day) || day === todayIso) return null;
+  let schoolId = null;
+  if(c === 'assets' && op.t === 'upd' && d.status === 'in_use'){
+    const rec = (store.assets || []).find(x => x.id === Number(op.id != null ? op.id : d.id));
+    if(!rec) return null;
+    schoolId = rec.school_id;
+  }else if(c === 'lib_loans' && op.t === 'ins' && d.loan_at == null){
+    schoolId = d.school_id;
+  }else if(c === 'visitors' && op.t === 'ins' && d.in_at == null){
+    schoolId = d.school_id;
+  }else{
+    return null;
+  }
+  if(schoolId == null) return null;
+  if(!isVirtualDay(store, schoolId, todayIso)) return null;
+  return { schoolId: schoolId, date: day };
+}
 
 function nextId(c){
   let m = 0;
@@ -681,6 +710,14 @@ function createSync(ctx){
         audit('sync_virtual_day_blocked', { user_id: s.id, uid: op.uid, collection: op.c, school_id: vd.schoolId, date: vd.date });
         results.push({ uid: op.uid, ok: false, code: 'virtual_day', message: 'در روز غیرحضوری، این عملیاتِ فیزیکی مسدود است' });
         continue;
+      }
+      /* S2-2 (موج ۴): اجازه‌ای که بر تاریخِ ادعاییِ کلاینت (op.at) تکیه کرد
+         و امروزِ سرور مجازی بود، ردِّ پا می‌گیرد — وگرنه جعلِ op.at برایِ
+         دور زدنِ روزِ مجازی کاملاً نامرئی بود. رفتار (مجاز/مسدود) بی‌تغییر؛
+         مشروعیتِ آفلاین حفظ شده. (خطِ vd بالا لنگرِ جهشِ M13 است — نخورد.) */
+      const vdb = virtualDayOfflineBasis(op, store);
+      if(vdb){
+        try { audit('sync_virtual_day_offline_allow', { user_id: s.id, uid: op.uid, collection: op.c, school_id: vdb.schoolId, date: vdb.date }); } catch(_) {}
       }
       /* §3.3 — idempotency: a repeated uid is already applied */
       const isProcessed = (await cache.isProcessedUid(op.uid)) ||
@@ -894,4 +931,4 @@ function createSync(ctx){
 
   return { apiSync, canWrite, inScope };
 }
-module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED };
+module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, virtualDayOfflineBasis, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED };
