@@ -309,19 +309,61 @@ function inScope(session, store, coll, recId, data) {
     }
     return false;
   }
-  return s === u.school_id;
+  if (s !== u.school_id) return false;
+  /* ویو ۵ بخش دوم — سازگاریِ مهارِ دانش‌آموز با مهارِ مدرسه: شناسهٔ
+     دانش‌آموزِ «مدرسهٔ دیگر» با مُهرِ مدرسهٔ نویسنده نمی‌چربد ⇒ رد
+     (هیچ Resource ID به‌تنهایی مجوز نیست). دانش‌آموزِ ناشناس رَد نمی‌کند —
+     رفتارِ legacy رکوردهایِ یتیم حفظ است (docs/WAVE5_AUTHZ.md §۵). */
+  const st = rec && rec.student_id != null ? rec.student_id
+    : (data && data.student_id != null ? data.student_id : null);
+  if (st != null) {
+    const stu = ((store && store.users) || []).find((x) => Number(x.id) === Number(st) && x.role === 'student');
+    if (stu && stu.school_id != null && Number(stu.school_id) !== Number(u.school_id)) return false;
+  }
+  return true;
 }
 
+/* نما/رکوردِ دانش‌آموز — قراردادِ مرجعِ idor.js §۱.۲ (تنها منبع، idor.js
+   و /api/v1/students و pullِ زیرمجموعه‌ها از همین‌جا می‌خوانند):
+   مدیر ⇒ فقط مدرسهٔ خودش؛ دبیر ⇒ فقط شاگردانِ کلاس‌هایی که تدریس می‌کند؛
+   والد ⇒ فقط فرزندان؛ خودِ دانش‌آموز ⇒ خودش؛ بقیه ⇒ رد (fail-closed). */
+function studentRecordOk(store, session, rec) {
+  if (!session || !rec) return false;
+  const role = session.role;
+  if (role === 'superadmin') return true;
+  if (role === 'manager') return rec.school_id != null && Number(rec.school_id) === num(session.school_id);
+  if (role === 'student') return Number(rec.id) === Number(session.id);
+  if (role === 'parent') return childrenOfParent(store, session.id).has(Number(rec.id));
+  if (role === 'teacher') {
+    if (Number(rec.id) === Number(session.id)) return true;
+    if (rec.school_id == null || Number(rec.school_id) !== num(session.school_id)) return false;
+    const taught = teacherClassIds(store, session.id);
+    /* کلاسِ واقعی‌بودن — آینهٔ §۱.۲: کلاسِ شبح (schedule بدونِ سطرِ classes)
+       هرگز دسترسی باز نمی‌کند (تلهٔ fail-openِ ثبت‌شده). */
+    const real = new Set(((store && store.classes) || []).map((c) => Number(c.id)));
+    return Array.from(studentClassIds(store, rec.id)).some((cid) => taught.has(Number(cid)) && real.has(Number(cid)));
+  }
+  return false;
+}
+
+
+
 /* ── دروازهٔ خواند‌نِ REST (مدلِ یکتا با pull.js) ────────────────────
-   برایِ مجموعه‌هایِ سرویس‌شده در /api/v1. خروجی boolean. */
+   دو «منبعِ» خواند‌نِ users مجزاست و هرکدام قاعدهٔ خودش را has — یکی در policy:
+     • users     — دایرکتوریِ کاربرانِ مدرسه (pull همین را می‌دهد):
+                   دبیر/مدیر ⇒ مدرسهٔ خود، با پروژکشنِ ماسک‌شده.
+     • students  — نما/رکوردِ دانش‌آموز (studentRecordOk — همان idor).
+   خروجی هر دو boolean. */
 function readOk(store, session, coll, rec) {
   if (!session || !rec) return false;
   const role = session.role;
   if (role === 'superadmin') return true;
   const schoolId = num(session.school_id);
 
-  if ((coll === 'users' || coll === 'students') && role === 'student') return Number(rec.id) === Number(session.id);
-  if ((coll === 'users' || coll === 'students') && role === 'parent') {
+  if (coll === 'students') return studentRecordOk(store, session, rec);
+
+  if (coll === 'users' && role === 'student') return Number(rec.id) === Number(session.id);
+  if (coll === 'users' && role === 'parent') {
     return Number(rec.id) === Number(session.id) || childrenOfParent(store, session.id).has(Number(rec.id));
   }
 
@@ -332,6 +374,9 @@ function readOk(store, session, coll, rec) {
       const enr = ((store.enrollments) || []).find((e) => kids.has(Number(e.student_id)) && Number(e.class_id) === Number(rec.id));
       return !!enr;
     }
+    /* اداره (برایِ مجموعه‌هایِ مدرسه‌محورِ عمومی): هندسهٔ دفتر — همان باندی
+       که dbquery با _officeGeoClause به SQL می‌ریزد؛ بی‌دفتر ⇒ رد. */
+    if (role === 'edu_office') return rec.school_id != null && schoolInOfficeScope(store, session, rec.school_id);
     if (rec.school_id == null) return false;
     if (Number(rec.school_id) !== schoolId) return false;
     if (role === 'teacher') {
@@ -344,6 +389,7 @@ function readOk(store, session, coll, rec) {
   if (coll === 'attendance' || coll === 'grades' || coll === 'discipline') {
     if (role === 'student') return Number(rec.student_id) === Number(session.id);
     if (role === 'parent') return childrenOfParent(store, session.id).has(Number(rec.student_id));
+    if (role === 'edu_office') return rec.school_id != null && schoolInOfficeScope(store, session, rec.school_id);
     if (rec.school_id == null) return false;
     if (Number(rec.school_id) !== schoolId) return false;
     if (role === 'teacher') {
@@ -369,7 +415,8 @@ function filterReadable(store, session, coll, records) {
   if (role === 'superadmin') return records;
   const schoolId = num(session.school_id);
 
-  const isUsersLike = coll === 'users' || coll === 'students';
+  const isUsersLike = coll === 'users';
+  if (coll === 'students') return records.filter((r) => studentRecordOk(store, session, r));
   if (isUsersLike) {
     if (role === 'student') return records.filter((r) => Number(r.id) === Number(session.id));
     if (role === 'parent') {
@@ -455,6 +502,11 @@ function restCreateScopeOk(store, session, coll, data) {
   return inScope(session, store, coll, null, data);
 }
 
+/* تنگ‌سازیِ مستندِ REST: حذفِ فیزیکیِ رکوردهایِ درسی (attendance/grades) در
+   REST تنها برایِ مدیر/سوپر — مدلِ sync عامدانه بازتر است (میراثِ write-perms)
+   و REST هرگز بازتر از مدل نمی‌شود. رجوع: docs/WAVE5_AUTHZ.md §۴. */
+const DELETE_ROLES_REST = new Set(['manager', 'superadmin']);
+
 /* ── خود‌ویرایشی (Self-Update) ─────────────────────────────────────── */
 function selfEditDeniedKeys(coll, body) {
   const allow = SELF_EDIT_FIELDS[coll] || [];
@@ -467,7 +519,8 @@ module.exports = {
   writeRoleOk, isTeacherIepUpdate, restWriteRoleOk,
   officeCoversSchool, userOffice, schoolInOfficeScope,
   teacherClassIds, teacherSubjectIds, studentClassIds, childrenOfParent, writeChildrenOfParent, recordSchoolId,
-  inScope, readOk, filterReadable,
+  studentRecordOk,
+  inScope, readOk, filterReadable, DELETE_ROLES_REST,
   restReadGate, restWriteGate, restCreateScopeOk,
   selfEditDeniedKeys
 };
