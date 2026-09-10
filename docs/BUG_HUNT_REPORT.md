@@ -241,3 +241,65 @@
 ## ۷. Ruflo
 
 - ثبت نشد (تکرار نشست ۲): `ruflo memory store` با `memory allocation of 4158883080 bytes failed` کرش می‌کند؛ سوابق در همین گزارش + HANDOFF + کامیت‌هاست. (آشغالِ untracked تازه‌ساخته‌شده‌اش هم به `/tmp/ruflo-state-backup/` منتقل شد.)
+
+---
+
+# گزارش باگ‌هانت — نشست ۴ (چت ۵: مهندس ادغام و رفع خطا)
+
+**تاریخ:** ۲۰۲۶-۰۹-۱۰ · **مبنا:** `arena/01a08b3d-p2 @ 0801b40` (مرج ادغام نشست‌های ۱–۳) · **شاخهٔ کار:** `arena/01a08b3d-p2`
+**مأموریت:** (۱) ادغام `arena/01a08a9c-p2` به‌صورت merge `--no-ff` با حفظ هر دو طرف · (۲) آدیت موج ۳ (query/performance: `server/dbquery.js` + مسیرهای v1) و موج ۷ (offline-first: `src/js/27-sync.js` + لایهٔ IndexedDB) — هر باگ: تست-اول-قرمز + رفع + کامیت جدا.
+
+## ۱. ادغام (Step 1–3)
+
+- `git fetch origin` + `git merge --no-ff` از `arena/01a08a9c-p2` (`779552c9`) روی `arena/01a08b3d-p2`؛ ۵ تعارض با «حفظ هر دو طرف» حل شد (HANDOFF اتحاد · `users.js` BUG-3 · `delete-service.js` سنگ‌قبر + `pgLive` · `sync.js` `mirrorFailed` + `pgLive` · `wave13-security.js` S6)؛ هیچ نشانِ تعارض نماند.
+- مرج `0801b40` (والدین `a30fb20` + `779552c`) پوش و با `git ls-remote` تأیید شد.
+- گیت‌های پس‌ازادغام: دودی **۵۴۷/۵۴۷** · مجوزها **۰** · نشت‌یاب **۱۱/۱۱** · بیلد‌چک ✅ · رانر API **۷/۷ سوئیت**.
+
+## ۲. گیت‌های اولیهٔ نشست ۴ (پیش از رفع‌ها)
+
+| گیت | نتیجه |
+|---|---|
+| `node tests/smoke.js` | ✅ ۵۴۷/۵۴۷ |
+| `node tools/check-authz.js` | ✅ ۰ ناهمخوانی |
+| `node tests/secret-scan.js` | ✅ ۱۱/۱۱ |
+| `node build.js --check` | ✅ سبز |
+
+## ۳. جدول باگ‌ها
+
+| شناسه | عنوان | شدت | وضعیت | شاهد |
+|---|---|---|---|---|
+| W3-1 | صفحه‌بندی keyset نمرات روی `ORDER BY g.id DESC` همچنان `g.id > $n` می‌زد → هر صفحه ردیف‌های تکراری برمی‌گرداند (پیمایش ناپایدار) | P1 | ✅ رفع‌شده (جهت‌آگاه: `<` برای DESC) | `tests/wave3-keyset.js` پیش از رفع: تکرار ردیف در پیمایش |
+| W3-2 | کرسر حضوروغیاب `id` تنها بود ولی مرتب‌سازی مرکب است (`date DESC, id ASC`) → `id > $n` همهٔ تاریخ‌های قدیمی‌تر را رد می‌کرد (پس از صفحهٔ ۱، داده نامرئی) | P1 | ✅ رفع‌شده (کرسر مرکب `date\|id` + گزارهٔ `date < $d OR (date = $d AND id > $i)`) | `tests/wave3-keyset.js` پیش از رفع: صفحات بعدی خالی/ناقص |
+| W7-5 | مهاجرت IDB کلیدِ کهنهٔ `sms_queue_v1`/`payesh_sync_queue` را می‌خواند در حالی که صفِ واقعی زیر `sms_syncq_v1` است → صفِ معلق هرگز مهاجرت نمی‌کرد ولی پرچم «انجام شد» می‌شد (مهاجرت ناتمامِ بی‌بازگشت) | P2 | ✅ رفع‌شده (خواندن `sms_syncq_v1` نخست، فال‌بک کهنه) | `tests/idb-migration-queue.js` پیش از رفع: قلمِ واقعی غایب از IDB |
+| W7-6 | قلم‌های `failed`‌شدهٔ جارویِ «پاسخِ ناقصِ سرور» (W7-1) بیرون از شمارش `bad` بودند → بدون backoffِ خودکار تا یک محرکِ بیرونی زمین‌گیر می‌ماندند | P2 | ✅ رفع‌شده (هر `failed`ِ باقی در صف backoff را زمان‌بندی می‌کند) | `tests/wave7-offline-queue.js` پیش از رفع: attempts=0 و autoTimer خالی |
+
+### موارد بررسی‌شده و سالم (باگ نیستند)
+
+- **نشت حافظهٔ صف:** سقف‌ها (P1-10) فعال و بسته‌اند — صف ≤۱۰۰۰ قلم / ≤۵MB، DLQ ≤۲۰۰، هرسِ قدمت فقط روی قلم‌های ترمینال (pending/sending هرگز). نشتی نیافتیم.
+- **ساعتِ کج (clock skew):** کرسرِ pull دلتا پژواکِ `server_time` (ساعتِ سرور) است و سرور `sync_clock_skew` را آدیت می‌کند؛ `lastSync` روی ساعتِ کلاینت است (فقط نمایش، بی‌اثر بر داده). سطحِ skewِ داده‌ای همان `op.at` بود (S2-2، رفع‌شده).
+- **بلع خطاها:** `.catch(()=>{})` روی نوشتن‌های آینهٔ IDB درست است (بهترین-تلاش نباید برنامه را بشکند) — همان نتیجه‌گیریِ ثبت‌شدهٔ نشست ۲.
+- **`noteOpFailed` و قلمِ بدون `tries`:** اگر localStorage از نسخه‌ای پیش از فیلد `tries` قلم داشته باشد، `undefined + 1 = NaN` می‌شود و قلم هرگز به DLQ نمی‌رسد؛ مسیرِ تکرارپذیر در تولید نیست (همهٔ قلم‌ها با `tries:0` ساخته می‌شوند) — ثبت به‌عنوان سخت‌سازیِ اختیاری، رفع نشد.
+
+## ۴. رفع‌ها (هر رفع = یک کامیت)
+
+| کامیت | باگ | تغییر | تست رگرسیون |
+|---|---|---|---|
+| `5a2d69e` | W3-1, W3-2 | `server/dbquery.js`: `_finalize` جهت‌آگاه + `cursorKeyset`/`cursorKey` مرکب؛ `middleware/pagination.js`: پشتیبانی `order`/`composite`؛ `routes/grades.js` `order:'desc'` · `routes/attendance.js` `composite:true` | `tests/wave3-keyset.js` — ۱۳/۱۳ |
+| `30dffb0` | W7-5 | `src/js/00-migration.js`: خواندن `sms_syncq_v1` نخست + فال‌بک کهنه + بازبیلد | `tests/idb-migration-queue.js` — ۵/۵ |
+| `ed013a9` | W7-6 | `src/js/27-sync.js`: backoff خودکار برای هر `failed`ِ باقی در صف + بازبیلد | `tests/wave7-offline-queue.js` — ۷/۷ |
+
+## ۵. راستی‌آزمایی پس از رفع (تک‌تک، بدون تداخل)
+
+- گیت‌ها: دودی **۵۴۷/۵۴۷** · مجوزها **۰** · نشت‌یاب **۱۱/۱۱** · `build.js --check` ✅ · رانر API **۷/۷ سوئیت**.
+- موج ۳: `wave3-query` **۱۳/۱۳** · `wave3-query2` **۱۳/۱۳** · `wave3-keyset` **۱۳/۱۳**.
+- موج ۷: `wave7-offline-queue` **۷/۷** · `idb-migration-queue` **۵/۵** · همسایه‌ها: `sync-sending-revive` **۷/۷** · `sync-lastsync` **۸/۸** · `sync-dlq-retry` **۷/۷** · `sync-queue-caps` **۳۶/۳۶** · `idb-persistence` **۱۶/۱۶** · `idb-persistence-mutations` **۳/۳**.
+
+## ۶. Push
+
+- شاخه: `arena/01a08b3d-p2` · ۳ کامیت نشست ۴ (به‌علاوهٔ مرج `0801b40`).
+- تأییدیهٔ `git ls-remote origin arena/01a08b3d-p2`:
+  `ed013a90ce959d18878a8c74785e7cf5c3f1c5d8` = HEAD ✅
+
+## ۷. Ruflo
+
+- `bug_hunt_session4` = `"completed"` ✅ (ثبت با `CLAUDE_FLOW_MEMORY_PATH=/tmp/ruflo-unified CLAUDE_FLOW_DISABLE_BRIDGE=1`).
