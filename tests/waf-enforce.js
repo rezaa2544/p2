@@ -160,7 +160,10 @@ async function main() {
   const A = await boot(8993, { PAYESH_LOGIN_PHONE_LIMIT: '3', PAYESH_SMS_PHONE_LIMIT: '2', PAYESH_SMS_COOLDOWN_S: '0', PAYESH_SMS_WINDOW_S: '3600' });
   chk('D0 سرورِ abuse بالا آمد', !!A && A.ok, A ? A.log() : '');
   if (A && A.ok) {
-    const known = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), 'utf8'));
+    /* seed ممکن است نباشد (CI: gitignored) — fallback: شمارنده‌ها پیش از
+       وجود‌سنجی کار می‌کنند، پس رفتارِ test با شمارهٔ نامشخص یکسان است. */
+    let known = { users: [] };
+    try { known = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), 'utf8')); } catch (e) {}
     const ph = String((known.users && known.users[0] ? known.users[0].phone : '09121234567')).replace(/[\s\-()]/g, '').slice(-10);
     const ph2 = String((known.users && known.users[1] ? known.users[1].phone : '09121234568')).replace(/[\s\-()]/g, '').slice(-10);
     /* D1: سقفِ per-phoneِ login: ۳ تلاش ⇒ چهارم ۴۲۹ */
