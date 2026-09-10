@@ -213,9 +213,14 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Syntax check (waf)
-        run: node --check server/waf.js && node --check tests/waf-ddos.js && node --check tests/waf-mutations.js
+        run: node --check server/waf.js && node --check tests/waf-ddos.js && node --check tests/waf-mutations.js && node --check tests/waf-enforce.js
       - name: WAF unit tests (no boot)
         run: node tests/waf-ddos.js --unit-only
+      - name: WAF enforce + abuse protection (P0 #6)
+        # enforce: XSS/SQLi ⇒ 403 waf_blocked (fail-safe allowlist) ·
+        # report پیش‌فرض دست‌نخورده · per-phone login cap · پلکانِ send-code.
+        # seed لازم ندارد (boot با store خالی — رفتارِ rate-limit مستقل است).
+        run: node tests/waf-enforce.js
       - name: Install nginx (for config test)
         run: sudo apt-get update -qq && sudo apt-get install -y -qq nginx > /dev/null
       - name: Validate nginx.conf
