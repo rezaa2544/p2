@@ -29,9 +29,9 @@ const fs = require('fs');
 const MUTS = [
   {
     file: 'server/auth.js', suite: 'tests/server1.js', heap: 1500,
-    bad: "if(typeof payload.jti !== 'string' || store.__revoked_jti[payload.jti]) return { err: 'revoked' };",
-    mut: "if(typeof payload.jti !== 'string' || false) return { err: 'revoked' };",
-    name: 'M1 لغوِ جراینِ نشست (jti)',
+    bad: " store.__revoked_jti[v.payload.jti] = Date.now(); await revocation.revokeSession(v.payload.jti, Math.max(1, v.payload.exp - Math.floor(Date.now() / 1000)));",
+    mut: " /* M1: ثبتِ لغو در خروج حذف شد */",
+    name: 'M1 ثبتِ لغوِ نشست در خروج حذف شد (هر دو لایهٔ بررسی بی‌خبر می‌مانند)',
     expectFail: 'S11'
   },
   {
@@ -121,16 +121,16 @@ const MUTS = [
     expectFail: 'V1a'
   },
   {
-    file: 'server/auth.js', suite: 'tests/security2.js', heap: 1500,
-    bad: "    purge('parent_links', r => Number(r.parent_id) === uid || Number(r.student_id) === uid);",
-    mut: "    purge('parent_links', r => Number(r.parent_id) === uid);",
+    file: 'server/gdpr.js', suite: 'tests/security2.js', heap: 1500,
+    bad: "  purge('parent_links', (r) => Number(r.parent_id) === uid || Number(r.student_id) === uid);",
+    mut: "  purge('parent_links', (r) => Number(r.parent_id) === uid);",
     name: 'M14 حذفِ حساب، parent_links را نمی‌شکند (پیوندِ student باقی می‌ماند)',
     expectFail: 'S7'
   },
   {
-    file: 'server/auth.js', suite: 'tests/server7.js', heap: 1500,
-    bad: "    purge('users', r => Number(r.id) === uid);",
-    mut: "    { const u2 = (store.users || []).find(r => Number(r.id) === uid); if(u2) u2.active = false; }",
+    file: 'server/gdpr.js', suite: 'tests/server7.js', heap: 1500,
+    bad: "  purge('users', (r) => Number(r.id) === uid);",
+    mut: "  { const u2 = (store.users || []).find((r) => Number(r.id) === uid); if(u2) u2.active = false; }",
     name: 'M15 حذفِ حساب به «غیرفعال‌کردن» تقلیل می‌یابد',
     expectFail: 'D2b'
   },
