@@ -56,11 +56,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const ok = JSON.parse(probe);
   chk('G2 جستجویِ جابه‌جای برایِ dow=0..5 همواره سطرِ معتبر می‌دهد (فِلبکِ period)', ok.length === 6 && ok.every(Boolean), JSON.stringify(ok));
 
-  /* G3: خودِ نقص — بدونِ فِلبک، دمایِ دانهٔ چهارشنبه (d=5) وجود ندارد؛
-          این assert ثابت می‌کند چرا فِلبک لازم است (رگرسِ معکوس). */
+  /* G3: بنیاد — پیش از PR #45 مدرسهٔ دمو پنج‌روزه بود و دمایِ خامِ d=5 وجود
+          نداشت (رگرسِ معکوسِ نقص). با دموِ شش‌روزهٔ 351bd10 دمایِ d=5 هست؛
+          فِلبکِ period باقی می‌ماند به‌عنوانِ دفاعِ دوم (G2 + بندِ ۱.۵ِ smoke). */
   const raw = W(`(()=>{const c=db.classes.find(x=>x.school_id===1);
     return JSON.stringify(db.schedule.some(x=>x.class_id===c.id&&x.day===5&&x.period===2));})()`);
-  chk('G3 دمایِ خامِ d=5 وجود ندارد (بنیادِ نقص — فِلبک الزامی است)', JSON.parse(raw) === false);
+  chk('G3 دمایِ خامِ d=5 وجود دارد (مدرسهٔ دمو شش‌روزه — فِلبک به‌عنوانِ دفاعِ دوم می‌ماند)', JSON.parse(raw) === true);
 
   /* G4: نتیجهٔ کاربری — جابه‌جایِ دمو ساخته شده (مدرسهٔ ۱) */
   const subs = W(`(()=>db.substitutions.filter(s=>s.school_id===1).length)()`);
