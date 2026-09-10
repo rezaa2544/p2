@@ -9,6 +9,7 @@ const { validate } = require('./validate');
 
 function createConflicts(ctx){
   const store     = ctx.store;
+  const db        = ctx.db || null; /* Wave 1: PG-first adjudication writes */
   const audit     = ctx.audit;
   const sessionFrom = ctx.sessionFrom;
   const sendJson  = ctx.sendJson;
@@ -58,18 +59,61 @@ function createConflicts(ctx){
     if(c.status !== 'open')
       return sendJson(res, 409, { ok: false, code: 'already_resolved', conflict: c });
 
+    /* Wave 1: PG-first adjudication. The winning record commits to the authority
+       (OCC on the live version) BEFORE the cache mutates; on PG failure nothing
+       mutates and the conflict stays open (retryable). NOTE: sync_conflicts rows
+       themselves are intentionally cache-side in Wave 1 (arbitration state; the
+       validation path never mirrored them), so apiList keeps reading the store. */
+    const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+    let pgNext = null, pgIsInsert = false, pgBase = null;
     if(winner === 'incoming' && c.incoming && c.incoming.data){
       if(!Array.isArray(store[c.collection])) store[c.collection] = [];
-      const rec = store[c.collection].find(x => x.id === Number(c.record_id));
+      let rec = store[c.collection].find(x => x.id === Number(c.record_id));
+      if(!rec && pgLive && typeof db.readOne === 'function'){
+        try{
+          const row = await db.readOne(c.collection, c.record_id);
+          if(row){ store[c.collection].push(row); rec = row; }
+        }catch(e){ /* genuinely missing: insert path */ }
+      }
       const nowIso = new Date().toISOString();
+      if(pgLive && db && typeof db.persistOpsBatch === 'function'){
+        if(rec){
+          pgBase = (rec.version || 1);
+          pgNext = Object.assign({}, rec, c.incoming.data, { id: rec.id, updated_at: nowIso });
+          pgNext.version = pgBase + 1;
+        }else{
+          pgIsInsert = true;
+          pgNext = Object.assign({}, c.incoming.data);
+          pgNext.id = Number(c.record_id);
+          pgNext.version = (c.server_version || 0) + 1;
+          pgNext.updated_at = nowIso;
+        }
+        try{
+          await db.persistOpsBatch([pgIsInsert
+            ? { c: c.collection, t: 'ins', data: pgNext }
+            : { c: c.collection, t: 'upd', data: pgNext, base_version: pgBase }]);
+        }catch(pgErr){
+          const st = pgErr && pgErr.status ? Number(pgErr.status) : 0;
+          if(st === 409)
+            return sendJson(res, 409, { ok: false, code: 'version_conflict', conflict: c,
+              message: 'رکورد از زمانِ بارگذاریِ تعارض تغییر کرده — دوباره داوری کنید' });
+          return sendJson(res, 503, { ok: false, code: 'pg_unavailable' });
+        }
+      }
+      /* Authority committed (or memory mode): apply the identical state to the cache. */
       if(rec){
-        Object.assign(rec, c.incoming.data, { id: rec.id, updated_at: nowIso });
-        rec.version = (rec.version || 1) + 1;
+        if(pgNext) Object.assign(rec, pgNext);
+        else{
+          Object.assign(rec, c.incoming.data, { id: rec.id, updated_at: nowIso });
+          rec.version = (rec.version || 1) + 1;
+        }
       }else{
-        const data = Object.assign({}, c.incoming.data);
-        data.id = Number(c.record_id);
-        data.version = (c.server_version || 0) + 1;
-        data.updated_at = nowIso;
+        const data = pgNext || Object.assign({}, c.incoming.data);
+        if(!pgNext){
+          data.id = Number(c.record_id);
+          data.version = (c.server_version || 0) + 1;
+          data.updated_at = nowIso;
+        }
         store[c.collection].push(data);
       }
     }

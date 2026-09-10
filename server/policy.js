@@ -151,11 +151,13 @@ function studentClassIds(store, studentId) {
 /** فرزندانِ ولی — یکتا از parent_links + زنجیرهٔ legacy (parent_id).
     (زنجیرهٔ parent_national_ids فقط در خواند‌نِ legacy پیوش هست و در فروشگاهِ
      PG ستونی ندارد — بدهیِ ثبت‌شدهٔ Wave 4؛ رجوع: docs/WAVE5_AUTHZ.md §۶.) */
-function childrenOfParent(store, parentId) {
+/* Wave 1 (opts.parentLinks): در حالتِ PG، لینک‌ها زنده از DB خوانده و به
+   دروازه پاس می‌شوند — مدلِ یکتا همین‌جاست، فقط داده تازه‌تر است. */
+function childrenOfParent(store, parentId, links) {
   const pid = num(parentId);
   const out = new Set();
   if (pid == null) return out;
-  ((store && store.parent_links) || []).forEach((l) => { if (Number(l.parent_id) === pid) out.add(Number(l.student_id)); });
+  (Array.isArray(links) ? links : ((store && store.parent_links) || [])).forEach((l) => { if (Number(l.parent_id) === pid) out.add(Number(l.student_id)); });
   ((store && store.users) || []).forEach((u) => {
     if (u.role === 'student' && Number(u.parent_id) === pid) out.add(Number(u.id));
   });
@@ -241,7 +243,8 @@ function inScope(session, store, coll, recId, data) {
 
   if (u.role === 'student') {
     if (coll === 'messages') return msgOwnerOk();
-    if (coll === 'users' && rec && rec.id === u.id) return true;
+    if (coll === 'users' && ((rec && Number(rec.id) === Number(u.id))
+        || (!rec && data && Number(data.id) === Number(u.id)))) return true; /* data = کپیِ detachedِ PG */
     if (rec && rec.student_id != null) return rec.student_id === u.id;
     if (data && data.student_id != null) return Number(data.student_id) === u.id;
     return false;
@@ -327,13 +330,13 @@ function inScope(session, store, coll, recId, data) {
    و /api/v1/students و pullِ زیرمجموعه‌ها از همین‌جا می‌خوانند):
    مدیر ⇒ فقط مدرسهٔ خودش؛ دبیر ⇒ فقط شاگردانِ کلاس‌هایی که تدریس می‌کند؛
    والد ⇒ فقط فرزندان؛ خودِ دانش‌آموز ⇒ خودش؛ بقیه ⇒ رد (fail-closed). */
-function studentRecordOk(store, session, rec) {
+function studentRecordOk(store, session, rec, opts) {
   if (!session || !rec) return false;
   const role = session.role;
   if (role === 'superadmin') return true;
   if (role === 'manager') return rec.school_id != null && Number(rec.school_id) === num(session.school_id);
   if (role === 'student') return Number(rec.id) === Number(session.id);
-  if (role === 'parent') return childrenOfParent(store, session.id).has(Number(rec.id));
+  if (role === 'parent') return childrenOfParent(store, session.id, opts && opts.parentLinks).has(Number(rec.id));
   if (role === 'teacher') {
     if (Number(rec.id) === Number(session.id)) return true;
     if (rec.school_id == null || Number(rec.school_id) !== num(session.school_id)) return false;
@@ -354,13 +357,13 @@ function studentRecordOk(store, session, rec) {
                    دبیر/مدیر ⇒ مدرسهٔ خود، با پروژکشنِ ماسک‌شده.
      • students  — نما/رکوردِ دانش‌آموز (studentRecordOk — همان idor).
    خروجی هر دو boolean. */
-function readOk(store, session, coll, rec) {
+function readOk(store, session, coll, rec, opts) {
   if (!session || !rec) return false;
   const role = session.role;
   if (role === 'superadmin') return true;
   const schoolId = num(session.school_id);
 
-  if (coll === 'students') return studentRecordOk(store, session, rec);
+  if (coll === 'students') return studentRecordOk(store, session, rec, opts);
 
   if (coll === 'users' && role === 'student') return Number(rec.id) === Number(session.id);
   if (coll === 'users' && role === 'parent') {
@@ -480,15 +483,15 @@ function filterReadable(store, session, coll, records) {
    writeGate: ردِ نقش ⇒ ۴۰۳ forbidden · ردِ محدوده ⇒ ۴۰۳ out_of_scope
    (قرارداد sync: scope در sync هم ۴۰۳ است — نوشتن ادعاست، وجودِ هدف را
     از قبل کلاینت اعلام کرده؛ خواند‌ن اما باید «نبود» را بازی کند.)      */
-function restReadGate(store, session, coll, rec) {
-  if (!rec || !readOk(store, session, coll, rec)) return { ok: false, status: 404, code: 'not_found' };
+function restReadGate(store, session, coll, rec, opts) {
+  if (!rec || !readOk(store, session, coll, rec, opts)) return { ok: false, status: 404, code: 'not_found' };
   return { ok: true };
 }
 function restWriteGate(store, session, coll, t, rec, bodyKeys) {
   if (!restWriteRoleOk(session, coll, t, bodyKeys)) {
     return { ok: false, status: 403, code: 'forbidden' };
   }
-  if (rec && !inScope(session, store, coll, rec.id, null)) {
+  if (rec && !inScope(session, store, coll, rec.id, rec)) {
     return { ok: false, status: 403, code: 'out_of_scope' };
   }
   if (!rec) {

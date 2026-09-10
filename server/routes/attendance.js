@@ -22,6 +22,17 @@ function createAttendanceRoutes(ctx) {
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
+  /* Wave 1: PG-live read helper — single records come from PostgreSQL when it
+     is the authority (fresh cross-instance reads); memory mode keeps the exact
+     legacy store-direct find. PG copies are detached; callers commit to the
+     store cache explicitly after a successful PG write. */
+  const pgLive = () => db && typeof db.isPostgres === 'function' && db.isPostgres();
+  async function findLive(collection, id) {
+    if (pgLive() && typeof db.readOne === 'function') return await db.readOne(collection, id);
+    return (store[collection] || []).find(r => r && r.id === Number(id)) || null;
+  }
+  const pgDown = () => ({ status: 503, body: { ok: false, code: 'pg_unavailable', message: 'پایگاه داده در دسترس نیست؛ دوباره تلاش کنید' } });
+
   async function getAttendanceList(req, urlParams) {
     const user = req.user;
     const paginationOpts = parsePaginationParams(urlParams);
@@ -106,16 +117,21 @@ function createAttendanceRoutes(ctx) {
     }
 
     if (!Array.isArray(store.attendance)) store.attendance = [];
+    /* Wave 1: PG-first — the insert commits before the cache is touched, so a
+       PG failure returns here with the store still clean (memory mode: no-op). */
+    try {
+      if (db && typeof db.persistOpsBatch === 'function') {
+        /* Wave 2: مسیر حیاتی ثبت حضور (قابل استفاده برای ثبت گروهی با چند op)
+           از transaction مشترک db.persistOpsBatch عبور می‌کند. */
+        await db.persistOpsBatch([{ c: 'attendance', t: 'ins', data: newRecord }]);
+      } else if (db && typeof db.persistOp === 'function') {
+        await db.persistOp({ c: 'attendance', t: 'ins', data: newRecord });
+      }
+    } catch (e) {
+      return pgDown();
+    }
     store.attendance.push(newRecord);
     markDirty();
-
-    if (db && typeof db.persistOpsBatch === 'function') {
-      /* Wave 2: مسیر حیاتی ثبت حضور (قابل استفاده برای ثبت گروهی با چند op)
-         از transaction مشترک db.persistOpsBatch عبور می‌کند. */
-      await db.persistOpsBatch([{ c: 'attendance', t: 'ins', data: newRecord }]);
-    } else if (db && typeof db.persistOp === 'function') {
-      await db.persistOp({ c: 'attendance', t: 'ins', data: newRecord });
-    }
 
     audit('attendance_recorded', { user_id: user.id, student_id: newRecord.student_id, date: newRecord.date, status: newRecord.status });
     return { status: 201, body: { ok: true, data: newRecord } };
@@ -127,8 +143,8 @@ function createAttendanceRoutes(ctx) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
     }
 
-    const rec = (store.attendance || []).find(a => a.id === Number(id));
-    if (!rec || !policy.inScope(user, store, 'attendance', rec.id, null)) {
+    const rec = await findLive('attendance', id);
+    if (!rec || !policy.inScope(user, store, 'attendance', rec.id, rec)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'رکورد حضور و غیاب یافت نشد' } };
     }
 
@@ -136,25 +152,33 @@ function createAttendanceRoutes(ctx) {
     const conflict = checkOcc(rec, body, 'رکورد حضور و غیاب');
     if (conflict) return conflict;
 
-    if (body.status !== undefined) rec.status = String(body.status).trim();
-    if (body.late !== undefined) rec.late = Number(body.late);
-    if (body.note !== undefined) rec.note = String(body.note).trim();
-    bump(rec);
+    /* Wave 1: patch روی کپی محاسبه می‌شود؛ store فقط پس از کامیت PG لمس می‌شود. */
+    const next = Object.assign({}, rec);
+    if (body.status !== undefined) next.status = String(body.status).trim();
+    if (body.late !== undefined) next.late = Number(body.late);
+    if (body.note !== undefined) next.note = String(body.note).trim();
+    bump(next);
 
-    markDirty();
+    const base = body.base_version !== undefined ? body.base_version : body.version;
     try {
       if (db && typeof db.persistOpsBatch === 'function') {
-        await db.persistOpsBatch([{ c: 'attendance', t: 'upd', id: rec.id, data: rec, base_version: body.base_version !== undefined ? body.base_version : body.version }]);
+        await db.persistOpsBatch([{ c: 'attendance', t: 'upd', id: rec.id, data: next, base_version: base }]);
       } else if (db) {
-        await db.persistOp({ c: 'attendance', t: 'upd', data: rec });
+        await db.persistOp({ c: 'attendance', t: 'upd', data: next });
       }
     } catch (e) {
       if (e && e.status === 409) return { status: 409, body: { ok: false, code: 'conflict', message: 'رکورد حضور و غیاب هم‌زمان تغییر کرده است' } };
-      throw e;
+      return pgDown();
     }
 
+    /* کامیت به کش: به‌روزرسانی کپی store (یا seed اگر رکوردِ نمونهٔ دیگر است). */
+    const cached = (store.attendance || []).find(a => a.id === Number(id));
+    if (cached) Object.assign(cached, next);
+    else { if (!Array.isArray(store.attendance)) store.attendance = []; store.attendance.push(next); }
+    markDirty();
+
     audit('attendance_updated', { user_id: user.id, record_id: rec.id });
-    return { status: 200, body: { ok: true, data: rec } };
+    return { status: 200, body: { ok: true, data: cached || next } };
   }
 
   async function deleteAttendance(req, id) {
@@ -167,13 +191,12 @@ function createAttendanceRoutes(ctx) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط مدیر مجاز به حذف است' } };
     }
 
-    const recIdx = (store.attendance || []).findIndex(a => a.id === Number(id));
-    if (recIdx === -1) {
+    const rec = await findLive('attendance', id);
+    if (!rec) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'رکورد یافت نشد' } };
     }
 
-    const rec = store.attendance[recIdx];
-    if (!policy.inScope(user, store, 'attendance', rec.id, null)) {
+    if (!policy.inScope(user, store, 'attendance', rec.id, rec)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'رکورد یافت نشد' } };
     }
 
@@ -183,6 +206,7 @@ function createAttendanceRoutes(ctx) {
       audit: () => audit('attendance_deleted', { user_id: user.id, record_id: Number(id) })
     });
     if (!del.ok) {
+      if (del.status === 503) return pgDown();
       return { status: 404, body: { ok: false, code: 'not_found', message: 'رکورد یافت نشد' } };
     }
     return { status: 200, body: { ok: true, message: 'رکورد حضور با موفقیت حذف شد' } };

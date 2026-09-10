@@ -24,6 +24,21 @@ function createStudentRoutes(ctx) {
   const audit = ctx.audit || (() => {});
   const markDirty = ctx.markDirty || (() => {});
 
+  /* Wave 1: PG-live read helper — single records come from PostgreSQL when it
+     is the authority (fresh cross-instance reads); memory mode keeps the exact
+     legacy store-direct find. PG copies are detached; callers commit to the
+     store cache explicitly after a successful PG write. */
+  const pgLive = () => db && typeof db.isPostgres === 'function' && db.isPostgres();
+  async function findLive(collection, id) {
+    if (pgLive() && typeof db.readOne === 'function') return await db.readOne(collection, id);
+    return (store[collection] || []).find(r => r && r.id === Number(id)) || null;
+  }
+  async function listLive(collection) {
+    if (pgLive() && typeof db.readCollection === 'function') return await db.readCollection(collection);
+    return (store[collection] || []);
+  }
+  const pgDown = () => ({ status: 503, body: { ok: false, code: 'pg_unavailable', message: 'پایگاه داده در دسترس نیست؛ دوباره تلاش کنید' } });
+
   async function getStudentsList(req, urlParams) {
     const user = req.user;
     const paginationOpts = parsePaginationParams(urlParams);
@@ -87,14 +102,18 @@ function createStudentRoutes(ctx) {
     return { ok: true, ...paginated };
   }
 
-  function getStudentById(req, id) {
+  async function getStudentById(req, id) {
     const user = req.user;
-    const student = (store.users || []).find(u => u.id === Number(id) && u.role === 'student');
+    const _cand = await findLive('users', id);
+    const student = (_cand && _cand.role === 'student') ? _cand : null;
     /* Wave 5 — نما/رکوردِ دانش‌آموز = همان قاعدهٔ idor.js (دبیر فقط کلاس‌های
-       تدرسی؛ والد فقط فرزندان؛ مدیر فقط مدرسهٔ خودش) — یک دروازه برای
-       هر دو endpoint؛ بیرون ⇒ ۴۰۴ ضدشمارش. */
-    const gate = policy.restReadGate(store, user, 'students', student);
-    if (!gate.ok) {
+       تدرسی؛ والد فقط فرزندان؛ مدیر فقط مدرسهٔ خودش؛ بقیه از جمله اداره ⇒ رد)
+       — یک دروازه برای هر دو endpoint؛ بیرون ⇒ ۴۰۴ ضدشمارش. در حالتِ PG،
+       پیوندهایِ والد زنده از DB خوانده و به‌عنوان opts به همانِ دروازهٔ policy
+       پاس می‌شود (ویو ۱: داده تازه، مدلِ یکتا). */
+    const _gateOpts = pgLive() ? { parentLinks: await listLive('parent_links') } : null;
+    const gate = policy.restReadGate(store, user, 'students', student, _gateOpts);
+    if (!student || !gate.ok) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
     return { status: 200, body: { ok: true, data: projectUserByRole(student, user.role, user.id === student.id) } };
@@ -134,16 +153,21 @@ function createStudentRoutes(ctx) {
       updated_at: new Date().toISOString()
     };
 
+    /* Wave 1: PG-first — the insert commits before the cache is touched, so a
+       PG failure returns here with the store still clean (memory mode: no-op). */
+    try {
+      if (db && typeof db.persistOpsBatch === 'function') {
+        /* Wave 2: مسیر حیاتی ثبت دانش‌آموز در آینهٔ PostgreSQL اتمیک است
+           (transaction در db.persistOpsBatch)؛ در حالت JSON memory همان رفتار قبلی حفظ می‌شود. */
+        await db.persistOpsBatch([{ c: 'users', t: 'ins', data: newStudent }]);
+      } else if (db && typeof db.persistOp === 'function') {
+        await db.persistOp({ c: 'users', t: 'ins', data: newStudent });
+      }
+    } catch (e) {
+      return pgDown();
+    }
     store.users.push(newStudent);
     markDirty();
-
-    if (db && typeof db.persistOpsBatch === 'function') {
-      /* Wave 2: مسیر حیاتی ثبت دانش‌آموز در آینهٔ PostgreSQL اتمیک است
-         (transaction در db.persistOpsBatch)؛ در حالت JSON memory همان رفتار قبلی حفظ می‌شود. */
-      await db.persistOpsBatch([{ c: 'users', t: 'ins', data: newStudent }]);
-    } else if (db && typeof db.persistOp === 'function') {
-      await db.persistOp({ c: 'users', t: 'ins', data: newStudent });
-    }
 
     audit('student_created', { user_id: user.id, student_id: newStudent.id, school_id: schoolId });
     return { status: 201, body: { ok: true, data: projectUserByRole(newStudent, user.role) } };
@@ -151,10 +175,13 @@ function createStudentRoutes(ctx) {
 
   async function updateStudent(req, id, body) {
     const user = req.user;
-    const student = (store.users || []).find(u => u.id === Number(id) && u.role === 'student');
+    const _found = await findLive('users', id);
+    const student = (_found && _found.role === 'student') ? _found : null;
     /* Wave 5 — محدوده از policy.inScope (users collection): مدیر فقط مدرسهٔ
-       خودش fail-closed؛ دبیر IEP هم‌مدرسه (آینهٔ استثنایِ sync). */
-    const scopeOk = !!student && (policy.inScope(user, store, 'users', student.id, null)
+       خودش fail-closed؛ دبیر IEP هم‌مدرسه (آینهٔ استثنایِ sync)؛ رکوردِ
+       یافته‌شده به‌عنوان data پاس می‌شود تا در حالتِ PG (کپیِ detached،
+       نبودِ در store) هم دقیق حل شود (ویو ۱). */
+    const scopeOk = !!student && (policy.inScope(user, store, 'users', student.id, student)
       || (user.role === 'teacher' && student.school_id != null && Number(student.school_id) === Number(user.school_id)));
     if (!student || !scopeOk) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
@@ -166,30 +193,58 @@ function createStudentRoutes(ctx) {
 
     // Teacher is allowed to update IEP fields only
     if (user.role === 'teacher') {
-      if (body.iep_notes !== undefined) student.iep_notes = body.iep_notes;
-      if (body.iep_staff !== undefined) student.iep_staff = body.iep_staff;
-      student.iep_updated = new Date().toISOString();
-      bump(student); /* P0-18 */
+      /* Wave 1: patch روی کپی؛ store فقط پس از کامیت PG. */
+      const next = Object.assign({}, student);
+      if (body.iep_notes !== undefined) next.iep_notes = body.iep_notes;
+      if (body.iep_staff !== undefined) next.iep_staff = body.iep_staff;
+      next.iep_updated = new Date().toISOString();
+      bump(next); /* P0-18 */
+      const baseT = body.base_version !== undefined ? body.base_version : body.version;
+      try {
+        if (db && typeof db.persistOpsBatch === 'function') {
+          await db.persistOpsBatch([{ c: 'users', t: 'upd', id: student.id, data: next, base_version: baseT }]);
+        } else if (db) {
+          await db.persistOp({ c: 'users', t: 'upd', data: next });
+        }
+      } catch (e) {
+        if (e && e.status === 409) return { status: 409, body: { ok: false, code: 'conflict', message: 'دانش‌آموز هم‌زمان تغییر کرده است' } };
+        return pgDown();
+      }
+      const cachedT = (store.users || []).find(u => u.id === Number(id));
+      if (cachedT) Object.assign(cachedT, next);
       markDirty();
-      if (db) await db.persistOp({ c: 'users', t: 'upd', data: student });
       audit('student_iep_updated', { user_id: user.id, student_id: student.id });
-      return { status: 200, body: { ok: true, data: projectUserByRole(student, user.role) } };
+      return { status: 200, body: { ok: true, data: projectUserByRole(cachedT || next, user.role) } };
     }
 
     if (user.role !== 'manager' && user.role !== 'superadmin') {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
     }
 
+    const next = Object.assign({}, student);
     const allowed = ['full_name', 'phone', 'national_id', 'grade_level', 'field', 'active', 'status', 'iep_notes'];
     for (const key of allowed) {
-      if (body[key] !== undefined) student[key] = body[key];
+      if (body[key] !== undefined) next[key] = body[key];
     }
-    bump(student); /* P0-18 */
+    bump(next); /* P0-18 */
+
+    const base = body.base_version !== undefined ? body.base_version : body.version;
+    try {
+      if (db && typeof db.persistOpsBatch === 'function') {
+        await db.persistOpsBatch([{ c: 'users', t: 'upd', id: student.id, data: next, base_version: base }]);
+      } else if (db) {
+        await db.persistOp({ c: 'users', t: 'upd', data: next });
+      }
+    } catch (e) {
+      if (e && e.status === 409) return { status: 409, body: { ok: false, code: 'conflict', message: 'دانش‌آموز هم‌زمان تغییر کرده است' } };
+      return pgDown();
+    }
+    const cached = (store.users || []).find(u => u.id === Number(id));
+    if (cached) Object.assign(cached, next);
     markDirty();
 
-    if (db) await db.persistOp({ c: 'users', t: 'upd', data: student });
     audit('student_updated', { user_id: user.id, student_id: student.id });
-    return { status: 200, body: { ok: true, data: projectUserByRole(student, user.role) } };
+    return { status: 200, body: { ok: true, data: projectUserByRole(cached || next, user.role) } };
   }
 
   async function deleteStudent(req, id) {
@@ -198,13 +253,13 @@ function createStudentRoutes(ctx) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط مدیریت مجاز به حذف دانش‌آموز است' } };
     }
 
-    const studentIdx = (store.users || []).findIndex(u => u.id === Number(id) && u.role === 'student');
-    if (studentIdx === -1) {
+    const _del = await findLive('users', id);
+    const student = (_del && _del.role === 'student') ? _del : null;
+    if (!student) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
 
-    const student = store.users[studentIdx];
-    if (!policy.inScope(user, store, 'users', student.id, null)) {
+    if (!policy.inScope(user, store, 'users', student.id, student)) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
 
@@ -214,6 +269,7 @@ function createStudentRoutes(ctx) {
       audit: () => audit('student_deleted', { user_id: user.id, student_id: Number(id) })
     });
     if (!del.ok) {
+      if (del.status === 503) return pgDown();
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
     return { status: 200, body: { ok: true, message: 'دانش‌آموز با موفقیت حذف شد' } };
