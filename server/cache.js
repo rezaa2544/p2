@@ -13,6 +13,18 @@ const crypto = require('crypto');
 const redis = require('./redis');
 
 const INVAL_CHANNEL = 'payesh:pubsub:inval';
+/* W11-2 (موج ۱۱): epochِ ابطالِ L2. ابطالِ مدرسه/سراسری فقط کلیدهایِ L2
+   کاربرانِ حاضر در L1 همان نمونه را پاک می‌کرد؛ ورودیِ خالص-L2 (پس از
+   LRU یا ری‌استارت) تا پایانِ TTL کهنه می‌ماند. حالا هر ابطال epoch تازهٔ
+   یکتایی می‌نشاند، set جفتِ جاری را در پاکتِ L2 می‌دوزد و خوانشِ L2-hit
+   اعتبارسنجی می‌کند. EX=۳۶۰۰ (بسی بزرگ‌تر از TTL ‏۵دقیقه‌ایِ L2) پس کلیدِ
+   epoch زودتر از هیچ ورودیِ زنده‌ای منقضی نمی‌شود. */
+const EPOCH_GLOBAL_KEY = 'payesh:cache:epoch:global';
+const EPOCH_TTL_SECONDS = 3600;
+const epochSchoolKey = (schoolId) => `payesh:cache:epoch:school:${Number(schoolId)}`;
+function newEpoch() {
+  return Date.now().toString(36) + ':' + crypto.randomUUID();
+}
 const localUserBootstrapCache = new Map(); // L1 memory cache for microsecond reads
 
 /* ── Wave 9 — L1 محدود: سقفِ ورودی + LRU + TTL ──────────────────────
@@ -103,7 +115,21 @@ async function getBootstrapCache(userId) {
   const raw = await redis.get(key);
   if (raw) {
     try {
-      const data = JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      /* W11-2: پاکتِ epochدار اعتبارسنجی می‌شود؛ legacy (بی‌پاکت، از پیش
+         از استقرار — حداکثر ۵ دقیقه عمر دارد) همان‌طور پذیرفته می‌شود. */
+      if (parsed && parsed.__epoch_env === 1) {
+        const schoolId = parsed.data && parsed.data.school ? parsed.data.school.id : null;
+        const curSe = schoolId != null ? await redis.get(epochSchoolKey(schoolId)) : null;
+        const curGe = await redis.get(EPOCH_GLOBAL_KEY);
+        if ((parsed.se || null) !== (curSe || null) || (parsed.ge || null) !== (curGe || null)) {
+          return null;   /* ابطال‌شده پس از نوشتن — کهنه نخوان */
+        }
+        const data = parsed.data;
+        l1Set(Number(userId), { data, exp: Date.now() + 60000, school_id: schoolId != null ? Number(schoolId) : null });
+        return data;
+      }
+      const data = parsed;
       l1Set(Number(userId), { data, exp: Date.now() + 60000, school_id: data.school ? data.school.id : null });
       return data;
     } catch (e) {}
@@ -119,8 +145,13 @@ async function getBootstrapCache(userId) {
  */
 async function setBootstrapCache(userId, data, ttlSeconds = 300) {
   const key = `payesh:cache:bootstrap:${userId}`;
-  l1Set(Number(userId), { data, exp: Date.now() + 60000, school_id: data.school ? data.school.id : null });
-  await redis.set(key, JSON.stringify(data), 'EX', ttlSeconds);
+  const schoolId = data && data.school ? data.school.id : null;
+  l1Set(Number(userId), { data, exp: Date.now() + 60000, school_id: schoolId != null ? Number(schoolId) : null });
+  /* W11-2: جفتِ جاریِ epoch در پاکتِ L2 دوخته می‌شود (خوانشِ بعدی اعتبارسنجی
+     می‌کند). در خطایِ ردیس می‌پراند — مثلِ خودِ set امروز (fail-closed). */
+  const se = schoolId != null ? await redis.get(epochSchoolKey(schoolId)) : null;
+  const ge = await redis.get(EPOCH_GLOBAL_KEY);
+  await redis.set(key, JSON.stringify({ __epoch_env: 1, data, se: se || null, ge: ge || null }), 'EX', ttlSeconds);
 }
 
 /**
@@ -140,6 +171,10 @@ async function invalidateUser(userId) {
  */
 async function invalidateSchool(schoolId) {
   if (!schoolId) return;
+  /* W11-2: اول epoch (بادوام، تک‌کلید) — حتی اگر publish بعدی بپرد، L2
+     از این لحظه کهنه‌خوان نمی‌شود؛ L1 نمونه‌هایِ دیگر حداکثر ۶۰ ثانیه
+     (TTL خودشان) عقب می‌ماند و بعد با L2-miss خودترمیم می‌شود. */
+  await redis.set(epochSchoolKey(schoolId), newEpoch(), 'EX', EPOCH_TTL_SECONDS);
   for (const [uid, item] of localUserBootstrapCache.entries()) {
     if (item.school_id === Number(schoolId)) {
       localUserBootstrapCache.delete(uid);
@@ -158,6 +193,8 @@ async function invalidateCollection(collection, schoolId) {
   if (schoolId) {
     await invalidateSchool(schoolId);
   } else {
+    /* W11-2: ابطالِ سراسری هم L2 را می‌پوشاند (همان حفره، مقیاسِ کل) */
+    await redis.set(EPOCH_GLOBAL_KEY, newEpoch(), 'EX', EPOCH_TTL_SECONDS);
     localUserBootstrapCache.clear();
     await redis.publish(INVAL_CHANNEL, { type: 'all', collection });
   }
