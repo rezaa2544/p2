@@ -73,7 +73,7 @@
 |---|---|---|
 | integration | ✅ | ۷ سوئیت `tests/api/*` + رگرسیون کامل سبز در PR #45 (green=243, red=0) + smoke ‏**547/547** (اجرای زنده 2026-09-10) |
 | concurrency | ⏳ | `tests/sync-atomic-batch.js` ‏22/22‏ + `tests/lock-atomic.js` ‏12/12‏ (اجرای زنده) روی main؛ ماتریس کامل‌تر (اتمی‌بودن ۲۰۰همزمان ریت‌لیمیت و…) روی شاخهٔ مرج‌نشدهٔ چت ۳ است |
-| load | ❌ | Wave 18 روی شاخهٔ مرج‌نشده است؛ روی main فقط پلن (`docs/PERFORMANCE_TESTING_PLAN.md`) + بدون k6/دیتاست ملی |
+| load | ⏳ | طرح رسمی `docs/LOAD_TEST_PLAN.md` (چت ۶، ۲۰۲۶-۰۹-۱۰) + زیرساخت k6 روی main (`tests/performance/`: ۶ سناریو + ۴ سوئیت)؛ اجرا مسدود به ادغام شاخهٔ چت ۳ (`seed-national.js`) و استیجینگ §۵ سند |
 | stress | ❌ | اجرا نشده (همان انسداد load) |
 | spike | ❌ | اجرا نشده |
 | soak | ❌ | اجرا نشده |
@@ -94,7 +94,7 @@
 2. **معماری چندنمونه‌ای امن:** حذف وابستگی به فایل/حافظهٔ محلی در مسیر درخواست (OTP فایلی، ‏`memoryStore` اختصاصی) + اعتبارسنجی زندهٔ دو نمونه با یک DB. (Distributed-1/2)
 3. **پایایی داده:** رپلیکای HA + ‏PITR + اجرای واقعی مانورهای restore/failover + سنجش RPO/RTO (تعریف‌ها آماده‌اند، اجرا نشده‌اند). (Reliability ۱ تا ۶)
 4. **رصدپذیری حداقلی بهره‌برداری:** اندپوینت متریک + داشبورد + آلارم (بدون این‌ها، تیم در تاریکی اپراتوری می‌کند). (Observability-1/4/5)
-5. **آزمون‌های مقیاس روی staging:** اجرا (نه فقط پلن) load/stress/spike/soak + ‏chaos + ‏recovery روی infra چندنوده با k6 و دیتاست ملی — نیازمند مرج شاخهٔ چت ۳ (Wave 18/19) و سپس اجرا. (Testing ۳ تا ۸)
+5. **آزمون‌های مقیاس روی staging:** اجرا (نه فقط پلن) load/stress/spike/soak + ‏chaos + ‏recovery روی infra چندنوده با k6 و دیتاست ملی — پلن رسمی آماده است (`docs/LOAD_TEST_PLAN.md`)؛ اجرا نیازمند مرج شاخهٔ چت ۳ (Wave 18/19) و سپس اجرا. (Testing ۳ تا ۸)
 6. **امنیت اجرایی:** اجرای زندهٔ DAST (staging یا مسیر محلی جدید در CI)، اجرای pen-test طبق چک‌لیست، و فعال‌سازی حالت enforce در WAF. (Security-4/5/6)
 
 ### موارد P1 (پس از P0، پیش از مقیاس ملی)
@@ -120,10 +120,10 @@
 | DISASTER_RECOVERY.md | ❌ | نزدیک‌ترین معادل: `RELIABILITY_DR_PLAN.md` |
 | OBSERVABILITY.md | ❌ | پراکنده در `TRACING_SETUP.md` و WAF/rate-limit docs |
 | CAPACITY_MODEL.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — مدل رسمی برای طراحی/تست؛ اعداد در انتظار اثبات در Wave 18 |
-| LOAD_TEST_PLAN.md | ❌ | نزدیک‌ترین معادل: `LOAD_TESTING_PLAN.md` / `PERFORMANCE_TESTING_PLAN.md` |
+| LOAD_TEST_PLAN.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — ورودی رسمی Wave 18؛ جایگزین اعداد اسناد قدیمی (`LOAD_TESTING_PLAN.md`/`PERFORMANCE_TESTING_PLAN.md`) |
 | LOAD_TEST_RESULTS.md | ❌ | اجرا نشده — ذاتاً مسدود به P0-5 |
 | PRODUCTION_RUNBOOK.md | ❌ | وجود ندارد |
 | INCIDENT_RESPONSE.md | ❌ | وجود ندارد |
 | MIGRATION_GUIDE.md | ❌ | پراکنده در `DATABASE_ARCHITECTURE.md`؛ راهنمای مستقل نیست |
 
-**جمع §30:** موجود ۶ از ۱۴ — تکمیل/هم‌نام‌سازی اسناد، پیش‌نیاز نرم Go-Live است (به‌ویژه runbook و incident response).
+**جمع §30:** موجود ۷ از ۱۴ — تکمیل/هم‌نام‌سازی اسناد، پیش‌نیاز نرم Go-Live است (به‌ویژه runbook و incident response).
