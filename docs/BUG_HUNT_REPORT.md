@@ -235,8 +235,9 @@
 ## ۶. Push
 
 - شاخه: `arena/01a08a9c-p2`
-- (تأییدیهٔ `git ls-remote` پس از پوشِ پایانی ثبت می‌شود.)
+- تأییدیهٔ `git ls-remote origin arena/01a08a9c-p2`:
+  `523c2df92c750535d30254392ea640d2dadf3273` = HEAD ✅ (۶ کامیت نشست ۳، ۲۰۲۶-۰۹-۱۰)
 
 ## ۷. Ruflo
 
-- (پس از تلاش ثبت می‌شود — اگر کرش کرد قید می‌شود.)
+- ثبت نشد (تکرار نشست ۲): `ruflo memory store` با `memory allocation of 4158883080 bytes failed` کرش می‌کند؛ سوابق در همین گزارش + HANDOFF + کامیت‌هاست. (آشغالِ untracked تازه‌ساخته‌شده‌اش هم به `/tmp/ruflo-state-backup/` منتقل شد.)
