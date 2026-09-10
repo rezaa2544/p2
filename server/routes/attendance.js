@@ -79,7 +79,8 @@ function createAttendanceRoutes(ctx) {
     /* role restrictions unified in policy.filterReadable above */
 
     list.sort((a, b) => (b.date || '').localeCompare(a.date || '') || a.id - b.id);
-    const paginated = paginateArray(list, paginationOpts);
+    /* W3-2: composite order (date DESC, id ASC) ⇒ composite "date|id" keyset. */
+    const paginated = paginateArray(list, Object.assign({}, paginationOpts, { composite: true }));
 
     return { ok: true, ...paginated };
   }
