@@ -37,7 +37,7 @@
 | `node tests/wave12.js` → `wave12-network.js` | ۲۴/۲۴ | **۲۴/۲۴** (نام فایل واقعی: `wave12-network.js`) | ✅ |
 | `node tests/wave14-observability.js` | ۹۵/۹۵ | **۹۵/۹۵** | ✅ |
 | `node tests/wave15-health.js` | ۱۰/۱۰ | **۱۰/۱۰** | ✅ |
-| `node tests/wave17-testing.js` | ۷۳/۷۳ | **۷۳/۳۳** → **۷۳/۷۳** | ✅ |
+| `node tests/wave17-testing.js` | ۷۳/۷۳ | **۷۳/۷۳** | ✅ |
 | `node tests/wave18-load-test.js` | ۳۸/۳۸ | **۳۸/۳۸** | ✅ |
 | `node tests/wave19-chaos.js` | ۲۸/۲۸ | **۲۸/۲۸** | ✅ |
 | `node tests/wave20-arena5.js` | ۲۲/۲۲ | **۲۲/۲۲** | ✅ |
@@ -48,4 +48,35 @@
 - سنجیده‌شده روی `main @ c7eee52` (امروز، این ممیزی): `34/37` — همان سه مورد.
 - در میانهٔ مسیر (حلقهٔ رفع #35 و #32) نیز `34/37` همان بود.
 **نتیجه:** زنجیرهٔ ۸ مرج **صفر** قرمزِ تازه وارد کرد. سه قرمزِ باقی‌مانده یک بدهیِ تستی قدیمی است (احتمالاً drift تست-با-کد پس از بازمهندسی REST ویو ۵) — پیگیری‌اش در بخش ۴.
+
+## بخش ۳ — Interference Check (تداخل مرج‌های زنجیره‌ای)
+
+### ۳.۱ — آیا #46 (waves 14/16/17/18) با #35 (B.3/D.2-D.4) تداخل داشته؟
+**خیر — هم‌زیستی سالم.** هر دو PR قواعد مجوز را در `server/policy.js` (منبع یکتای ویو ۵) تغییر دادند:
+- #35: گارد D.3 (`announcements` + office_id) و گیت جغرافیایی D.4 (`staff_posts`، data-first) در شاخهٔ edu_office
+- #46: **صفر تغییر در policy.js** (ممیزی diff تأیید کرد — موج‌های ۱۴/۱۶/۱۷/۱۸ لایهٔ observability/DR/test/load هستند)
+- راستی‌آزمایی رفتاری روی main نهایی: `staff-gap` **۱۷/۱۷** · `urgent-ann` **۱۴/۱۴** · `region-scorecard` **۱۴/۱۴** · `exam-types` **۲۷/۲۷** · `wave14-observability` **۹۵/۹۵** — یعنی قواعد #35 و رصدپذیری #46 همزمان سبزند.
+- نقطهٔ تماس واقعی: `server/metrics.js` (#46 مالک) — مسیر `/api/health-index` (#31) و مسیرهای Wave 15 در کاتالوگ روت اضافه شدند (T7a سبز: ۹۵/۹۵).
+
+### ۳.۲ — آیا #51 (سند OBSERVABILITY) با کد wave14 تداخل داشته؟
+**خیر — سند و کد هم‌راستا.** #51 سند `docs/OBSERVABILITY.md` (§30) را ساخت و #46 استک زندهٔ observability را آورد. هر سه گارد تطابق:
+- `observability-doc-coverage` **۵۵/۵۵** (ارجاع‌های فایل سند §30 زنده‌اند)
+- `observability-config` **۵۵/۵۵** (alert-rules/prometheus/compose ↔ metrics.js — همهٔ متریک‌های قوانین تعریف‌شده)
+- `observability-dashboards` **۳۰/۳۰** (داشبوردها فقط متریک‌های واقعی می‌خوانند)
+> نکتهٔ فنی: برای تأمین این گاردها، سری‌های سازگاریِ استکِ live-deploy (`payesh_redis_up`، `payesh_db_up`، …) با probeهای لحظهٔ scrape (`publishRuntimeProbes`) به registry ویو ۱۴ اضافه شدند — حلقهٔ رفع #46.
+
+### ۳.۳ — آیا library (#29) و assets (#32) در policy.js درست ادغام شده‌اند؟
+**بله — keep-both کامل.** `server/policy.js`، شاخهٔ teacher:
+- خط ۲۷۱: `if (coll === 'lib_loans')` — قانون E.4 کتابدار (`lib_staff === 1` + مهار مدرسه)
+- خط ۲۷۹: `if (coll === 'assets')` — قانون E.5 تحویلدار (`asset_staff === 1` + مهار مدرسه)
+- راستی‌آزمایی: `library2` **۷/۷** · `library-mutations` **۴/۴ کشته** · `assets2` **۵/۵** · `assets-mutations` **۴/۴ کشته** — هر دو ماژول همزمان کار می‌کنند و گاردها با جهش کشته می‌شوند.
+- همسایگی‌های چت ۳: `internship2` ۴/۴ · `behavior2` ۴/۴ · `health-index` ۳۲/۳۲ ✅
+- جبر cursor: `wave3-query3` **۱۸/۱۸** (algebra چت ۲ + W3-1/W3-2 main) ✅
+
+### ۳.۴ — آیا index.html و USER_GUIDE.html بیت‌به‌بیت با src مطابق دارند؟
+**بله.** `node build.js --check` روی `main @ c7eee52`:
+- «✅ خروجی build با index.html بیت‌به‌بیت یکسان است.»
+- «✅ راهنما همگام با index.html است.» (مُهرِ `payesh-build` = hash زندهٔ بیلد)
+- «✅ generate-write-perms: authz/write-perms.json با منبعِ یکسان است»
+یعنی هیچ مرج دستیِ خروجی‌ها صورت نگرفته — همه از مولد رسمی عبور کرده‌اند (اصل Single-File Distribution رعیت شد).
 
