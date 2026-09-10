@@ -151,13 +151,14 @@ function generate(){
       if(school.id===1){
         const dow0=(new Date(todayISO()+'T12:00:00').getDay()+1)%7;
         /* هفتهٔ مدرسه پنج‌روزه است (شنبه..چهارشنبه = 0..4)؛ روی پنجشنبه (۵) و
-           جمعه (۶) زنگ روزِ جاری در جدول نیست و `slot` undefined می‌شد →
-           اولین روز هفته (شنبه) انتخاب می‌شود. (رفع خطای دمو در پنجشنبه) */
+           جمعه (۶) زنگ روزِ جاری در جدول نیست و `slot` undefined می‌شد (کرشِ
+           بوتِ دمو در چهارشنبه — دور ۱۱۱) → روزِ زنگ = اولین روز هفته.
+           تاریخِ جابه‌جای همان قراردادِ پیشین می‌ماند: امروز (پنجشنبه) یا
+           فردا (جمعه) تا بند ۱.۵ِ smoke «جابه‌جایِ امروز» دیده شود. */
         const dow=dow0<=4?dow0:0;
-        const dt=dow0<=4?todayISO():addDaysISO(todayISO(),dow0===5?2:1);
-        /* دور ۱۱۱ (Wave 20, Arena 5): فِلبکِ دفاعی — اگر به‌هر‌دلیلی زنگِ
-           همان روز نبود (smoke در چهارشنبه 405/547 کرش می‌کرد)، همان
-           period از هر روزِ معتبر انتخاب می‌شود. */
+        const dt=dow0<=5?todayISO():addDaysISO(todayISO(),1);
+        /* فِلبکِ دفاعی: اگر به‌هر‌دلیلی زنگِ همان روز نبود، همان period از
+           هر روزِ معتبر انتخاب می‌شود. */
         let slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.day===dow&&x.period===2);
         if(!slot) slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.period===2);
         const sub=teachers.find(t=>t.id!==slot.teacher_id)||teachers[0];
