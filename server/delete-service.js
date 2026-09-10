@@ -44,11 +44,12 @@ function createDeleteService({ store, db, markDirty, outbox }) {
     rec.version = (Number(rec.version) || 0) + 1;
 
     /* ۲) سنگ‌قبر: نسخهٔ کامل + متادیتای حذف */
+    const deletedAt = new Date().toISOString();
     store.tombstones.push({
       collection,
       record: rec,
       deleted_by: meta.actor ? meta.actor.id : null,
-      deleted_at: new Date().toISOString(),
+      deleted_at: deletedAt,
       reason: meta.reason || null
     });
     /* سنگ‌قبرها بی‌نهایت نمی‌مانند — اما سقف‌شان بسیار بالاتر از صفِ رویداد است */
@@ -59,6 +60,21 @@ function createDeleteService({ store, db, markDirty, outbox }) {
     /* ۴-نیم) خروج از مجموعهٔ زنده */
     arr.splice(idx, 1);
     if (typeof markDirty === 'function') markDirty();
+
+    /* S2-3a (موج ۴): پلِ سنگ‌قبرِ دلتا. pull فقط `__deleted_records` را
+       می‌خواند و حذفِ REST هیچ‌جا آن را نمی‌گذاشت — کلاینت‌ها (دلتا و
+       حتی بوت‌استرپِ ادغامی) حذف را هیچ‌وقت نمی‌دیدند و رکوردِ شبح
+       برایِ همیشه می‌ماند. حالا همان مهرِ زمانیِ بایگانی، سنگ‌قبرِ سبکِ
+       دلتا هم می‌شود؛ سقفِ ۵۰۰۰ (مثلِ مسیرِ sync) و اسکوپِ مدرسه سرِ جایش. */
+    if (!Array.isArray(store.__deleted_records)) store.__deleted_records = [];
+    const delIdEarly = Number(match.id);
+    if (Number.isFinite(delIdEarly)) {
+      store.__deleted_records.push({
+        c: collection, id: delIdEarly,
+        school_id: rec.school_id != null ? rec.school_id : null, at: deletedAt
+      });
+      if (store.__deleted_records.length > 5000) store.__deleted_records = store.__deleted_records.slice(-5000);
+    }
 
     /* حذف در پستگرس (رفتار پیشین، بدون تغییر) */
     const delId = Number(match.id);
