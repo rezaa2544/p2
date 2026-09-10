@@ -593,6 +593,39 @@ function createSync(ctx){
   const audit = ctx.audit;
   const sessionFrom = ctx.sessionFrom;
   const sendJson = ctx.sendJson;
+  const ids = ctx.ids || null; /* Wave 1: ids service for server-assigned ids (PG sequences when live) */
+
+  /* Wave 1: server-assigned ids come from the ids service (PG sequences when live,
+     local max+1 -- same values as nextId -- in memory mode) so two instances never
+     collide. Legacy local max+1 stays as the fallback when no ids service was
+     injected (older tests). */
+  async function serverId(c){
+    if(ids && typeof ids.nextId === 'function'){
+      try{ return await ids.nextId(c, store[c] || []); }catch(e){ /* fall through */ }
+    }
+    return nextId(c);
+  }
+
+  /* Wave 1: cross-instance apply -- a record created on another instance is not in
+     this store; when PG is live, hydrate the miss from the authority before deciding
+     the op targets nothing. Memory mode: identical skip semantics. */
+  async function findForApply(c, id){
+    const arr = store[c] || [];
+    const rec = arr.find(x => x && x.id === Number(id));
+    if(rec) return rec;
+    if(db && typeof db.isPostgres === 'function' && db.isPostgres()
+        && typeof db.readOne === 'function'){
+      try{
+        const row = await db.readOne(c, id);
+        if(row){
+          if(!Array.isArray(store[c])) store[c] = [];
+          store[c].push(row);
+          return row;
+        }
+      }catch(e){ /* not in PG either: genuinely missing */ }
+    }
+    return null;
+  }
 
   async function apiSync(req, res, body){
     const s = await sessionFrom(req);
@@ -699,7 +732,7 @@ function createSync(ctx){
           const nowIso = new Date().toISOString();
           if(!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
           const cf = {
-            id: nextId('sync_conflicts'),
+            id: await serverId('sync_conflicts'),
             collection: op.c, record_id: vid,
             school_id: (vrec && vrec.school_id != null ? vrec.school_id
                        : (op.data && op.data.school_id != null ? op.data.school_id : s.school_id)),
@@ -716,7 +749,7 @@ function createSync(ctx){
           if(cmgr){
             if(!Array.isArray(store.notifications)) store.notifications = [];
             store.notifications.push({
-              id: nextId('notifications'), user_id: cmgr.id, school_id: cf.school_id, type: 'announcement',
+              id: await serverId('notifications'), user_id: cmgr.id, school_id: cf.school_id, type: 'announcement',
               title: '⚠️ تعارض همگام‌سازی',
               body: 'یک تغییرِ «' + op.c + '» با نسخهٔ کهنه رسید و به‌جای اعمال، برایِ داوری محفوظ شد.',
               link: 'dashboard', read: 0, created_at: nowIso.slice(0, 10)
@@ -742,15 +775,35 @@ function createSync(ctx){
       apply.push(op);
     }
 
+    /* Wave 1: PG-first two-phase. Phase 1 applies to a snapshot-guarded store;
+       phase 2 commits the atomic PG mirror; on mirror failure the store is rolled
+       back and the client gets 503 (uids stay unmarked so the retry replays cleanly).
+       Memory mode: the mirror is a no-op success, so behavior is identical and the
+       snapshot is skipped for zero overhead. sync_conflicts is snapshotted too so
+       validation-phase rows (created pre-commit) also roll back and are not
+       duplicated by the retry. */
+    const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+    const snap = {};
+    if(pgLive){
+      const keys = { notifications: 1, __deleted_records: 1, sync_conflicts: 1 };
+      for(const op of apply){ if(op.c) keys[op.c] = 1; }
+      for(const k of Object.keys(keys)){
+        try{ snap[k] = JSON.parse(JSON.stringify(store[k] != null ? store[k] : null)); }
+        catch(e){ snap[k] = null; }
+      }
+      snap.__server_version = store.__server_version || 0;
+      snap.__processed_uids = Object.assign({}, store.__processed_uids || {});
+    }
     const mirror = [];   /* P1-14: opsِ آینه با شناسه‌هایِ اعمال‌شدهٔ سرور */
     for(const op of apply){
       if(!Array.isArray(store[op.c])) store[op.c] = [];
       if(op.t === 'ins'){
         const data = Object.assign({}, op.data);
         const prot = stripProtected(data); /* R98 — ممنوع‌ها جدا؛ بعداً صریح */
-        if(data.id == null) data.id = nextId(op.c);
+        if(data.id == null) data.id = await serverId(op.c); /* Wave 1: ids service (PG sequences when live) */
         if(VERSION_TRACKED[op.c] && data.version == null) data.version = 1; /* R95 */
-        const ex = store[op.c].find(x => x.id === data.id);
+        /* Wave 1: hydrate cross-instance misses from PG before the upsert check. */
+        const ex = await findForApply(op.c, data.id);
         if(ex){ Object.assign(ex, data); Object.assign(ex, prot); }
         else store[op.c].push(Object.assign(data, prot));
         data.updated_at = new Date().toISOString();
@@ -760,7 +813,8 @@ function createSync(ctx){
         }
         mirror.push({ uid: op.uid, c: op.c, t: 'ins', data: (ex || data) });   /* P1-14: رکوردِ اعمال‌شده با شناسهٔ سرور */
       }else if(op.t === 'upd'){
-        const rec = store[op.c].find(x => x.id === Number(op.id != null ? op.id : (op.data && op.data.id)));
+        /* Wave 1: hydrate cross-instance misses from PG before applying. */
+        const rec = await findForApply(op.c, op.id != null ? op.id : (op.data && op.data.id));
         if(rec){
           const clean = Object.assign({}, op.data); /* R98 — op.data برایِ hookها دست‌نخورده */
           const prot = stripProtected(clean);
@@ -774,7 +828,8 @@ function createSync(ctx){
         }
       }else if(op.t === 'del'){
         const delId = Number(op.id != null ? op.id : (op.data && op.data.id));
-        const delRec = (store[op.c] || []).find(x => x.id === delId);
+        /* Wave 1: hydrate cross-instance misses from PG (seeded row is removed by the filter below). */
+        const delRec = await findForApply(op.c, delId);
         const delSchoolId = delRec ? delRec.school_id : (op.data && op.data.school_id ? op.data.school_id : s.school_id);
         store[op.c] = store[op.c].filter(x => x.id !== delId);
         if(!Array.isArray(store.__deleted_records)) store.__deleted_records = [];
@@ -784,8 +839,7 @@ function createSync(ctx){
         mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId });   /* P1-14 */
       }
       store.__server_version = (store.__server_version || 0) + 1;
-      store.__processed_uids[op.uid] = Date.now();
-      cache.markProcessedUid(op.uid).catch(() => {});
+      /* Wave 1: uid marking moved post-commit (see below) so failed batches replay. */
       cache.invalidateCollection(op.c, op.data && op.data.school_id).catch(() => {});
       /* P1-14: آینه این‌جا نیست — پس از حلقه، یک‌جا و اتمیک (persistOpsBatch) */
     }
@@ -797,6 +851,7 @@ function createSync(ctx){
        3) corrections open (non-manager)-> school manager   (R89)
        Manager/superadmin actions keep the client-created notification (applied),
        so the hook skips them — no duplicates. */
+    const notifBefore = Array.isArray(store.notifications) ? store.notifications.length : 0;
     for(const op of apply){
       if(!Array.isArray(store.notifications)) store.notifications = [];
       const todayD = new Date().toISOString().slice(0, 10);
@@ -807,7 +862,7 @@ function createSync(ctx){
         if(mgr){
           const st = (store.users || []).find(x => x.id === d.student_id);
           store.notifications.push({
-            id: nextId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'leave',
+            id: await serverId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'leave',
             title: '📨 درخواست مرخصی جدید',
             body: 'برای ' + ((st && st.full_name) || '') + ' از ' + d.from_date + ' تا ' + d.to_date + ' — در انتظارِ بررسی.',
             link: 'leaves', read: 0, created_at: todayD
@@ -822,7 +877,7 @@ function createSync(ctx){
         if(to){
           const from = (store.users || []).find(x => x.id === Number(op.data.from_id != null ? op.data.from_id : s.id));
           store.notifications.push({
-            id: nextId('notifications'), user_id: to.id,
+            id: await serverId('notifications'), user_id: to.id,
             school_id: op.data.school_id != null ? op.data.school_id : to.school_id,
             type: 'chat', title: '💬 پیام جدید',
             body: ((from && from.full_name) || '') + ': ' + String(op.data.body || '').slice(0, 60),
@@ -839,7 +894,7 @@ function createSync(ctx){
           const st = (store.users || []).find(x => x.id === d.student_id);
           const par = (store.users || []).find(x => x.id === d.parent_id);
           store.notifications.push({
-            id: nextId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'announcement',
+            id: await serverId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'announcement',
             title: '⚠️ درخواست اصلاح اطلاعات ولی',
             body: ((par && par.full_name) || '') + ' اعلام کرد ' + ((st && st.full_name) || '') + ' فرزند او نیست.',
             link: 'corrections', read: 0, created_at: todayD
@@ -850,13 +905,43 @@ function createSync(ctx){
     }
     /* P1-14: آینهٔ اتمیکِ چندرکوردی — همه در یک تراکنش (all-or-nothing).
        شکست → rollback + audit؛ پاسخِ کلاینت عوض نمی‌شود (مثلِ قبل بی‌خبر). */
+    /* Wave 1: server-created notification rows join the same atomic mirror so the
+       batch and its side effects commit together. */
+    if(Array.isArray(store.notifications)){
+      for(const n of store.notifications.slice(notifBefore)){
+        mirror.push({ c: 'notifications', t: 'ins', data: n });
+      }
+    }
+    /* Wave 1: phase 2 -- the atomic PG commit. On failure with PG live, roll the
+       store back to the pre-request snapshot and fail closed (503) so the client
+       retries; uids stay unmarked so the retry replays instead of being skipped.
+       Without PG (memory mode, e.g. older mirror-failure tests), keep the legacy
+       audit-and-continue semantics. */
     if(mirror.length && db && typeof db.persistOpsBatch === 'function'){
       try{
         await db.persistOpsBatch(mirror);
       }catch(mirrorErr){
-        audit('sync_mirror_failed', { user_id: s.id, ops: mirror.length,
-          error: String((mirrorErr && mirrorErr.message) || mirrorErr) });
+        const why = String((mirrorErr && mirrorErr.message) || mirrorErr);
+        if(pgLive){
+          for(const k of Object.keys(snap)){
+            if(k === '__server_version'){ store.__server_version = snap[k]; continue; }
+            if(k === '__processed_uids'){ store.__processed_uids = snap[k]; continue; }
+            if(snap[k] === null || snap[k] === undefined){ delete store[k]; }
+            else store[k] = snap[k];
+          }
+          audit('sync_mirror_failed', { user_id: s.id, ops: mirror.length, error: why });
+          for(const r of results){ if(r) r.ok = false; }
+          return sendJson(res, 503, { ok: false, code: 'sync_mirror_failed', results });
+        }
+        audit('sync_mirror_failed', { user_id: s.id, ops: mirror.length, error: why });
       }
+    }
+    /* Wave 1: uids are marked only after the authority committed (store AND cache),
+       so a failed batch always replays. End state in memory mode is unchanged. */
+    if(!store.__processed_uids) store.__processed_uids = {};
+    for(const op of apply){
+      store.__processed_uids[op.uid] = Date.now();
+      try{ cache.markProcessedUid(op.uid).catch(() => {}); }catch(e){}
     }
     if(apply.length) ctx.markDirty();
     audit('sync_ok', { user_id: s.id, ops: apply.length });
