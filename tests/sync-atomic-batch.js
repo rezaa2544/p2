@@ -58,10 +58,10 @@ const quiet = (fn) => { const e0 = console.error; console.error = () => {}; retu
   const c2 = fakeClient(null, false);
   await db.persistOpWithClient(c2, { uid: 'u-1', c: 'grades', t: 'ins', data: { id: 7, score: 19, meta: { a: 1 } } });
   const upsert = c2.queries[0] || '', uparams = c2.queries.length;
-  chk('B2a upsert با ON CONFLICT(id)', upsert.indexOf('INSERT INTO grades') === 0 && upsert.indexOf('ON CONFLICT (id) DO UPDATE SET') > 0, upsert.slice(0, 80));
+  chk('B2a upsert با ON CONFLICT(id)', upsert.indexOf('INSERT INTO "grades"') === 0 && upsert.indexOf('ON CONFLICT (id) DO UPDATE SET') > 0, upsert.slice(0, 80));
   const c2d = fakeClient(null, false);
   await db.persistOpWithClient(c2d, { uid: 'u-2', c: 'grades', t: 'del', id: 9 });
-  chk('B2b حذف با شناسه', (c2d.queries[0] || '').indexOf('DELETE FROM grades WHERE id = $1') >= 0);
+  chk('B2b حذف با شناسه', (c2d.queries[0] || '').indexOf('DELETE FROM "grades" WHERE id = $1') >= 0);
   chk('B2c ردیابی uid پس از هر دو', c2.queries.some(q => q.indexOf('server_processed_uids') >= 0)
     && c2d.queries.some(q => q.indexOf('server_processed_uids') >= 0));
   const c2e = fakeClient(null, false);
@@ -134,7 +134,7 @@ const quiet = (fn) => { const e0 = console.error; console.error = () => {}; retu
     ]);
   } catch (e) { err6 = e; }
   chk('B6 دسته در اولین شکست می‌ایستد و می‌اندازد', !!err6 && res6 === null
-    && c6.queries.filter(q => q.indexOf('INSERT INTO t1') >= 0).length === 1, err6 && err6.message);
+    && c6.queries.filter(q => q.indexOf('INSERT INTO "t1"') >= 0).length === 1, err6 && err6.message);
 
   /* ── B7/B8: سیم‌کشی sync.js ── */
   function makeCtx(dbFake, audits) {
