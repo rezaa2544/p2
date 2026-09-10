@@ -85,7 +85,10 @@ function cinGroup() {
   try { sec = fs.readFileSync(CI_SEC, 'utf8'); } catch (e) {}
   chk('CIN-0 npm test = run.js + دودی',
     /tests\/run\.js/.test(pkg.scripts.test || '') && /smoke/.test(pkg.scripts.test || ''));
-  chk('CIN-1 CI اصلی روی سه نسخهٔ نود', /18\.x/.test(ci) && /20\.x/.test(ci) && /22\.x/.test(ci));
+  /* BUG-6 (باگ‌هانت چت ۵): ماتریس عمداً به [22.x] باریک شده (لِین‌های 18/20
+     با jsdom 30 سبزِ کاذب می‌دادند — HANDOFF چت ۲)؛ قراردادِ «سه نسخه»
+     کهنه بود و روی main قرمز. حالا تک‌نسخهٔ مصوب + نبودِ لِین‌های حذف‌شده. */
+  chk('CIN-1 CI اصلی روی نودِ مصوب (22.x تک‌نسخه)', /22\.x/.test(ci) && !/18\.x/.test(ci) && !/20\.x/.test(ci));
   chk('CIN-2 CI اصلی بیلد و تست را اجرا می‌کند', /npm run build/.test(ci) && /npm test/.test(ci));
   chk('CIN-3 CI امنیتی: نشت‌یاب + نحوی نگینکس + واحدِ WAF',
     /secret-scan\.js/.test(sec) && /nginx -t/.test(sec) && /waf-ddos\.js --unit-only/.test(sec));
