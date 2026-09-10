@@ -14,6 +14,16 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## چت ۳ — P0 #6 امنیتِ اجرایی (DAST زنده + PENT-TEST + WAF ENFORCE + Abuse) — ۱۹/۰۶/۱۴۵ (2026-09-10) — کامل ✅
+
+**وضعیت:** هر ۸ گامِ P0 #6 انجام و push شد. دروازه‌ها: smoke **547/547** · check-authz **0** · secret-scan **11/11** · wave13-security **23/23** · **waf-enforce (جدید) 33/33** · waf-ddos unit **19/19** · waf-mutations **4/4** · otp-ratelimit-mutations **11/11** · wave12-network **24/24** · wave1-multi-instance **33/33** · multi-instance **17/17** · arena5-recovery **32/32**.
+
+- **DAST زنده:** `tools/dast-live.sh` — استیجینگِ سبک (API+Redis+store، production + fail-closed) + ZAP baseline/full + artifact. پیش‌فرض DRY_RUN (در سندباکس سبز)؛ `--live` در سندباکس تا بوتِ production (Redis واقعی + guardهایِ JWT اشتراکی/TLS) سبز است و بخشِ ZAP به‌درستی exit 3 (ابزار در سندباکس نیست — محیطِ واقعی). CI: lane `dast` با secret `SECURITY_TARGET_URL` مستقیم staging + mode در step summary + ارجاع به dast-live.
+- **WAF ENFORCE (in-app):** `PAYESH_WAF_MODE=enforce` ⇒ هر verdict (sqli/xss/traversal/badbot) = 403 `waf_blocked` + `X-WAF-Action: block` + ممیزیِ `waf_block`. fail-safe allowlist: پروب‌هایِ زیرساخت هرگز مسدود نمی‌شوند (+ `PAYESH_WAF_ALLOW` اپراتوری). خطایِ خودِ enforce = fail-open. پیش‌فرض report — رفتارِ پیشین دست‌نخورده. لبهٔ nginx جدا و aِمال‌گر است (markers `wave12-edge-rules` دست‌نخورده).
+- **حفاظتِ سوءاستفاده:** سقفِ سختِ per-phoneِ login (`PAYESH_LOGIN_PHONE_LIMIT`، پیش‌فرض ۵۰ — مصلحتِ سوت‌هایِ موجود؛ تولید: تنگ‌تر) + Redis (tوزیع‌شده). پلکانِ send-code کامل بود (روزانه ۲۰ + ۵/پنجره + IP ۱۰ + cooldown). **register عمومی وجود ندارد** (ایجادِ کاربر = نقشِ مدیر + scope).
+- **سند:** `docs/PEN_TEST_CHECKLIST.md` گسترش یافت — ۸ سناریو (Session Fixation / Rate Limit Bypass / Tenant Escape اضافه) + §۳ گام‌به‌گام (curl/sqlmap/nuclei) + معیارِ پذیرشِ هر سناریو. `docs/SECURITY_MODEL.md` §۵ «لایهٔ اجرایی» (DAST زنده/پنتست/WAF enforce/جدولِ سقف‌ها/چک‌لیستِ Go-Live) + pending به‌روز.
+- **دروازهٔ جدید در CI:** lane `waf` حالا `tests/waf-enforce.js` را اجرا می‌کند.
+- **pending (صداقت):** اجرایِ زندهٔ sqlmap/nuclei/Burp علیه استیجینگِ دائمی (ابزارِ اسکن در سندباکس نیست؛ اسکریپت‌ها + سناریوها + معیارها آماده‌اند). Go-Live: `PAYESH_WAF_MODE=enforce` + secret `SECURITY_TARGET_URL` + `dast-live.sh --live --scan full` پیش از release.
 ## چت ۳ — ریبیسِ سومِ `arena/01a08545-p2` روی `origin/main` (`ac590be`، PR #48) — ۱۹/۰۶/۱۴۵ (2026-09-10) — کامل ✅
 
 **وضعیت:** `main` با ادغامِ PR #48 (چت ۱: **موج ۱ P0 — PG transaction-first writes** + ویو ۱۲ شبکه + ویو ۱۳ امنیت + `pg-mem`) جابه‌جا شد و PR #47 `CONFLICTING` شد. ریبیسِ سوم با قاعدهٔ همیشگی «هر دو سمت — ادغام معنایی، نه اتصالِ خُرد» کامل شد؛ شاخه بازنویسی و force-push (lease با sha) شد و PR #47 دوباره `MERGEABLE` است.
