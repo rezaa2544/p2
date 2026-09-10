@@ -85,8 +85,9 @@ function cinGroup() {
   try { sec = fs.readFileSync(CI_SEC, 'utf8'); } catch (e) {}
   chk('CIN-0 npm test = run.js + دودی',
     /tests\/run\.js/.test(pkg.scripts.test || '') && /smoke/.test(pkg.scripts.test || ''));
-  /* 19ea463 (main, PR #45): ماتریسِ صادق — engines >=22 و jsdom 30 نیازمندِ >=22 است؛
-     لن‌های 18/20 دودی را خاموش-اسکیپ می‌کردند (exit 0) = سبزِ دروغ. گیت: فقط 22.x. */
+  /* ماتریسِ صادق (19ea463، PR #45 / BUG-6، باگ‌هانت چت ۵): engines >=22 و
+     jsdom 30 نیازمندِ >=22 است؛ لِین‌های 18/20 دودی را خاموش-اسکیپ می‌کردند
+     (exit 0) = سبزِ دروغ. قراردادِ «سه نسخه» کهنه بود. گیت: فقط 22.x. */
   chk('CIN-1 CI اصلی روی نسخهٔ صادقِ نود (honest matrix: 22.x فقط)',
     /22\.x/.test(ci) && !/18\.x/.test(ci) && !/20\.x/.test(ci));
   chk('CIN-2 CI اصلی بیلد و تست را اجرا می‌کند', /npm run build/.test(ci) && /npm test/.test(ci));

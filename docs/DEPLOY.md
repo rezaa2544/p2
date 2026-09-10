@@ -70,6 +70,15 @@ mkdir -p /home/payesh/data /home/payesh/backups
 | `PAYESH_AUDIT_ASYNC` | `1` | Wave 9 — ممیزیِ پس‌زمینه (صف → نوشتنِ دسته‌ای؛ پیش‌فرضِ `0` فقط برای سازگاریِ آزمون‌هاست) |
 | `PAYESH_L1_MAX_ENTRIES` | `2048` | Wave 9 — سقفِ L1 کشِ bootstrap (LRU + TTL) |
 | `PAYESH_WORKER_TIMEOUT_MS` | `15000` | Wave 9 — مهلتِ عملیاتِ رشتهٔ کارِ سنگین قبل از فال‌بکِ درون‌پروسه‌ای |
+| `NODE_ENV` | `production` | گیتِ داده‌صفحه (P0-13: ردیس اجباری؛ بدونِ آن بوت fail-fast) |
+| `PAYESH_ENV` | `production` | گیتِ TLS (بدونِ گواهیِ CA یا پروکسیِ اعلام‌شده بوت fail-fast) |
+| `REDIS_URL` | `redis://…` | کشِ توزیع‌شده/قفل/ریت‌لیمیت (در تولید اجباری) |
+
+> **قانونِ متعارفِ پرچم‌ها (SUSPECT-B، نشست ۲):** در استقرارِ واقعی **هر دو**
+> پرچم باید `production` باشند. `NODE_ENV` گیتِ داده‌صفحه (ردیس) و `PAYESH_ENV`
+> گیتِ TLS است؛ اگر فقط یکی production باشد سرور بالا می‌آید ولی هشدارِ
+> `[ENV] production-flag mismatch` در stderr می‌نویسد و readiness/health
+> رفتارِ متفاوتی می‌گیرد. یکپارچه‌سازیِ کاملِ دو پرچم نیازمند تأیید Wave 15 است.
 
 ساختنِ سرّ:
 ```bash
