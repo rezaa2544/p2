@@ -12,7 +12,7 @@
 const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز */
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
-const { buildAttendanceList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
+const { buildAttendanceList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */const cache = require('../cache'); /* Wave 11 */
 
 function createAttendanceRoutes(ctx) {
   const store = ctx.store;
@@ -133,6 +133,7 @@ function createAttendanceRoutes(ctx) {
     store.attendance.push(newRecord);
     markDirty();
 
+      cache.invalidateCollection('attendance', newRecord.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
     audit('attendance_recorded', { user_id: user.id, student_id: newRecord.student_id, date: newRecord.date, status: newRecord.status });
     return { status: 201, body: { ok: true, data: newRecord } };
   }
@@ -176,7 +177,7 @@ function createAttendanceRoutes(ctx) {
     if (cached) Object.assign(cached, next);
     else { if (!Array.isArray(store.attendance)) store.attendance = []; store.attendance.push(next); }
     markDirty();
-
+    cache.invalidateCollection('attendance', rec.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
     audit('attendance_updated', { user_id: user.id, record_id: rec.id });
     return { status: 200, body: { ok: true, data: cached || next } };
   }
@@ -209,6 +210,7 @@ function createAttendanceRoutes(ctx) {
       if (del.status === 503) return pgDown();
       return { status: 404, body: { ok: false, code: 'not_found', message: 'رکورد یافت نشد' } };
     }
+    cache.invalidateCollection('attendance', rec.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
     return { status: 200, body: { ok: true, message: 'رکورد حضور با موفقیت حذف شد' } };
   }
 

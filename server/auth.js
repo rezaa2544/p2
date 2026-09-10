@@ -143,6 +143,7 @@ function createAuth(ctx){
   const IP_SEND_MAX = _lim(process.env.PAYESH_SMS_IP_LIMIT, 10);   /* sends / window per IP */
   const PHONE_SEND_MAX = _lim(process.env.PAYESH_SMS_PHONE_LIMIT, 5); /* sends / window per phone */
   const IP_LOGIN_MAX = _lim(process.env.PAYESH_LOGIN_IP_LIMIT, 10); /* logins / window per IP */
+  const PHONE_LOGIN_MAX = _lim(process.env.PAYESH_LOGIN_PHONE_LIMIT, 50); /* logins / window per phone (P0 #6) */
   const LOGIN_TRIES_MAX = _lim(process.env.PAYESH_LOGIN_TRIES, 5);  /* wrong codes before code dies */
   function clientIp(req){
     const xf = req.headers && req.headers['x-forwarded-for'];
@@ -230,6 +231,11 @@ function createAuth(ctx){
     /* R dist: شمارندهٔ login در Redis (اتمیک)؛ login_fail (تأخیرِ تصاعدی) در حالتِ فروشگاه می‌ماند. */
     const rLi = await rateLimit.checkRateLimit({ prefix: 'otp:login:ip', identifier: ip, limit: IP_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });
     if(!rLi.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
+    /* P0 #6 — سقفِ سختِ per-phone: brute-force چند-IP علیه یک شماره به
+       این سقف می‌خورد (در کنارِ IP-cap + تلاش‌هایِ کد + تأخیرِ تصاعدی).
+       پیش‌فرضِ 50 مصلحتِ آزمون‌هایِ موجود است؛ تولید: با env تنگ‌تر. */
+    const rLp = await rateLimit.checkRateLimit({ prefix: 'otp:login:phone', identifier: phone, limit: PHONE_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });
+    if(!rLp.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
 
     const user = (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === phone.slice(-10));
 

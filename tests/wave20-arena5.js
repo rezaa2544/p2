@@ -85,7 +85,10 @@ function cinGroup() {
   try { sec = fs.readFileSync(CI_SEC, 'utf8'); } catch (e) {}
   chk('CIN-0 npm test = run.js + دودی',
     /tests\/run\.js/.test(pkg.scripts.test || '') && /smoke/.test(pkg.scripts.test || ''));
-  chk('CIN-1 CI اصلی روی سه نسخهٔ نود', /18\.x/.test(ci) && /20\.x/.test(ci) && /22\.x/.test(ci));
+  /* 19ea463 (main, PR #45): ماتریسِ صادق — engines >=22 و jsdom 30 نیازمندِ >=22 است؛
+     لن‌های 18/20 دودی را خاموش-اسکیپ می‌کردند (exit 0) = سبزِ دروغ. گیت: فقط 22.x. */
+  chk('CIN-1 CI اصلی روی نسخهٔ صادقِ نود (honest matrix: 22.x فقط)',
+    /22\.x/.test(ci) && !/18\.x/.test(ci) && !/20\.x/.test(ci));
   chk('CIN-2 CI اصلی بیلد و تست را اجرا می‌کند', /npm run build/.test(ci) && /npm test/.test(ci));
   chk('CIN-3 CI امنیتی: نشت‌یاب + نحوی نگینکس + واحدِ WAF',
     /secret-scan\.js/.test(sec) && /nginx -t/.test(sec) && /waf-ddos\.js --unit-only/.test(sec));

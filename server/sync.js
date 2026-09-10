@@ -515,6 +515,8 @@ function createSync(ctx){
     };
 
     const results = [];
+
+    const derived = [];  /* Wave1-W: نوشت‌هایِ مشتقِ سرور (نوتیفیکیشن‌ها) — با mirror در یک تراکنش */
     const apply = [];
     for(const op of ops){
       /* پاکتِ عملیات (validate.js): کلیدِ ناشناخته یا uid/c/id/atِ بدشکل =
@@ -623,12 +625,14 @@ function createSync(ctx){
           const cmgr = (store.users || []).find(x => x.school_id === cf.school_id && x.role === 'manager');
           if(cmgr){
             if(!Array.isArray(store.notifications)) store.notifications = [];
-            store.notifications.push({
+            const cnotif = {
               id: await serverId('notifications'), user_id: cmgr.id, school_id: cf.school_id, type: 'announcement',
               title: '⚠️ تعارض همگام‌سازی',
               body: 'یک تغییرِ «' + op.c + '» با نسخهٔ کهنه رسید و به‌جای اعمال، برایِ داوری محفوظ شد.',
               link: 'dashboard', read: 0, created_at: nowIso.slice(0, 10)
-            });
+            };
+            store.notifications.push(cnotif);
+            derived.push({ c: 'notifications', t: 'ins', data: cnotif }); /* Wave1-W */
           }
           ctx.markDirty();
           results.push({ uid: op.uid, ok: false, code: 'conflict_preserved', conflict_id: cf.id,
@@ -736,12 +740,14 @@ function createSync(ctx){
         const mgr = (store.users || []).find(x => x.school_id === d.school_id && x.role === 'manager');
         if(mgr){
           const st = (store.users || []).find(x => x.id === d.student_id);
-          store.notifications.push({
-            id: await serverId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'leave',
+            const ln = {
+              id: await serverId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'leave',
             title: '📨 درخواست مرخصی جدید',
             body: 'برای ' + ((st && st.full_name) || '') + ' از ' + d.from_date + ' تا ' + d.to_date + ' — در انتظارِ بررسی.',
             link: 'leaves', read: 0, created_at: todayD
-          });
+          };
+          store.notifications.push(ln);
+          derived.push({ c: 'notifications', t: 'ins', data: ln }); /* Wave1-W */
           audit('leave_request_notified', { user_id: s.id, leave_id: d.id, school_id: d.school_id });
         }
       }
@@ -751,13 +757,15 @@ function createSync(ctx){
         const to = (store.users || []).find(x => x.id === Number(op.data.to_id));
         if(to){
           const from = (store.users || []).find(x => x.id === Number(op.data.from_id != null ? op.data.from_id : s.id));
-          store.notifications.push({
-            id: await serverId('notifications'), user_id: to.id,
+            const cn = {
+              id: await serverId('notifications'), user_id: to.id,
             school_id: op.data.school_id != null ? op.data.school_id : to.school_id,
             type: 'chat', title: '💬 پیام جدید',
             body: ((from && from.full_name) || '') + ': ' + String(op.data.body || '').slice(0, 60),
             link: 'chat', read: 0, created_at: todayD
-          });
+          };
+          store.notifications.push(cn);
+          derived.push({ c: 'notifications', t: 'ins', data: cn }); /* Wave1-W */
           audit('chat_notified', { user_id: s.id, to_user_id: to.id });
         }
       }
@@ -768,12 +776,14 @@ function createSync(ctx){
         if(mgr){
           const st = (store.users || []).find(x => x.id === d.student_id);
           const par = (store.users || []).find(x => x.id === d.parent_id);
-          store.notifications.push({
-            id: await serverId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'announcement',
+            const crn = {
+              id: await serverId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'announcement',
             title: '⚠️ درخواست اصلاح اطلاعات ولی',
             body: ((par && par.full_name) || '') + ' اعلام کرد ' + ((st && st.full_name) || '') + ' فرزند او نیست.',
             link: 'corrections', read: 0, created_at: todayD
-          });
+          };
+          store.notifications.push(crn);
+          derived.push({ c: 'notifications', t: 'ins', data: crn }); /* Wave1-W */
           audit('correction_notified', { user_id: s.id, correction_id: d.id, school_id: d.school_id });
         }
       }
@@ -781,21 +791,18 @@ function createSync(ctx){
     /* P1-14: آینهٔ اتمیکِ چندرکوردی — همه در یک تراکنش (all-or-nothing).
        شکست → rollback + audit؛ در حالتِ PG پاسخ ۵۰۳ می‌شود تا کلاینت retry کند
        (Wave 1)؛ در memory پاسخ مثلِ قبل عوض نمی‌شود. */
-    /* Wave 1: server-created notification rows join the same atomic mirror so the
-       batch and its side effects commit together. */
-    if(Array.isArray(store.notifications)){
-      for(const n of store.notifications.slice(notifBefore)){
-        mirror.push({ c: 'notifications', t: 'ins', data: n });
-      }
-    }
+    /* Wave1-W: نوشت‌هایِ مشتقِ سرور (نوتیفیکیشن‌هایِ hook) در همان تراکنش —
+       همان ردیف‌هایی که store.notifications.slice(notifBefore) می‌داد، ولی
+       دقیق و بدونِ اسکن (هر hook خودش را به derived می‌رساند). */
+    const batchAll = mirror.concat(derived);
     /* Wave 1: phase 2 -- the atomic PG commit. On failure with PG live, roll the
        store back to the pre-request snapshot and fail closed (503) so the client
        retries; uids stay unmarked so the retry replays instead of being skipped.
        Without PG (memory mode, e.g. older mirror-failure tests), keep the legacy
        audit-and-continue semantics. */
-    if(mirror.length && db && typeof db.persistOpsBatch === 'function'){
+    if(batchAll.length && db && typeof db.persistOpsBatch === 'function'){
       try{
-        await db.persistOpsBatch(mirror);
+        await db.persistOpsBatch(batchAll);
       }catch(mirrorErr){
         const why = String((mirrorErr && mirrorErr.message) || mirrorErr);
         if(pgLive){
@@ -805,11 +812,11 @@ function createSync(ctx){
             if(snap[k] === null || snap[k] === undefined){ delete store[k]; }
             else store[k] = snap[k];
           }
-          audit('sync_mirror_failed', { user_id: s.id, ops: mirror.length, error: why });
+          audit('sync_mirror_failed', { user_id: s.id, ops: batchAll.length, error: why });
           for(const r of results){ if(r) r.ok = false; }
           return sendJson(res, 503, { ok: false, code: 'sync_mirror_failed', results });
         }
-        audit('sync_mirror_failed', { user_id: s.id, ops: mirror.length, error: why });
+        audit('sync_mirror_failed', { user_id: s.id, ops: batchAll.length, error: why });
       }
     }
     /* Wave 1: uids are marked only after the authority committed (store AND cache),

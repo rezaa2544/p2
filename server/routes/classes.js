@@ -13,7 +13,7 @@
 const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز */
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
-const { buildClassesList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
+const { buildClassesList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */const cache = require('../cache'); /* Wave 11 */
 
 function createClassRoutes(ctx) {
   const store = ctx.store;
@@ -154,6 +154,7 @@ function createClassRoutes(ctx) {
     store.classes.push(newClass);
     markDirty();
 
+      cache.invalidateCollection('classes', newClass.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
     audit('class_created', { user_id: user.id, class_id: newClass.id, school_id: schoolId });
     return { status: 201, body: { ok: true, data: newClass } };
   }
@@ -199,6 +200,7 @@ function createClassRoutes(ctx) {
     if (cached) Object.assign(cached, next);
     else { if (!Array.isArray(store.classes)) store.classes = []; store.classes.push(next); }
     markDirty();
+    cache.invalidateCollection('classes', cls.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
 
     audit('class_updated', { user_id: user.id, class_id: cls.id });
     return { status: 200, body: { ok: true, data: cached || next } };
@@ -228,6 +230,7 @@ function createClassRoutes(ctx) {
       if (del.status === 503) return pgDown();
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
     }
+    cache.invalidateCollection('classes', cls.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
     return { status: 200, body: { ok: true, message: 'کلاس با موفقیت حذف شد' } };
   }
 
