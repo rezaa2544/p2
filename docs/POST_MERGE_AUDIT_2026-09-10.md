@@ -21,3 +21,31 @@
 
 **جمع:** ۸ مرج در ~۸۰ دقیقه · ۷۹ کامیت · ~۱۳۵ فایل. هر مرج پس از یک رفع تعارض چت ۷ انجام شد (۱۷ حلقهٔ رفع در ۴ موج re-dirty — `main` حین کار ۵ بار جلو رفت: `fac2ddf→fb9fcba→80c5e3e→c2473e1→cd484c3→c7eee52`).
 
+## بخش ۲ — Gate Verification (روی `main @ c7eee52`)
+
+| گیت | انتظار | نتیجهٔ واقعی | وضعیت |
+|---|---|---|---|
+| `node tests/smoke.js` | ۵۴۷/۵۴۷ | **۵۴۷/۵۴۷** | ✅ |
+| `node tools/check-authz.js` | ۰ | **۰** (۳۸۳ اکشن؛ ۱۸۷ نویسنده) | ✅ |
+| `node tests/secret-scan.js` | ۱۱/۱۱ | **۱۱/۱۱** | ✅ |
+| `node build.js --check` | exit 0 | **exit 0** — «خروجی build با index.html بیت‌به‌بیت یکسان» + راهنما و write-perms همگام | ✅ |
+| `node tests/api/runner.js` | ۷/۷ | **۷/۷ سوئیت** | ✅ |
+| `node tests/wave1-writes.js` | سبز | **۱۴/۱۴** | ✅ |
+| `node tests/wave1-multi-instance.js` | ۳۳/۳۳ | **۳۳/۳۳** | ✅ |
+| `node tests/wave5-authz.js` | ۳۷/۳۷ | **۳۴/۳۷** — ۳ قرمزِ **pre-existing** (T18/T20/T21) | ⚠️ (بدون رگرسیون — مدرک زیر) |
+| `node tests/wave6-redis.js` | ۲۲/۲۲ | **۲۲/۲۲** | ✅ |
+| `node tests/wave12.js` → `wave12-network.js` | ۲۴/۲۴ | **۲۴/۲۴** (نام فایل واقعی: `wave12-network.js`) | ✅ |
+| `node tests/wave14-observability.js` | ۹۵/۹۵ | **۹۵/۹۵** | ✅ |
+| `node tests/wave15-health.js` | ۱۰/۱۰ | **۱۰/۱۰** | ✅ |
+| `node tests/wave17-testing.js` | ۷۳/۷۳ | **۷۳/۳۳** → **۷۳/۷۳** | ✅ |
+| `node tests/wave18-load-test.js` | ۳۸/۳۸ | **۳۸/۳۸** | ✅ |
+| `node tests/wave19-chaos.js` | ۲۸/۲۸ | **۲۸/۲۸** | ✅ |
+| `node tests/wave20-arena5.js` | ۲۲/۲۲ | **۲۲/۲۲** | ✅ |
+
+### ⚠️ مدرک wave5-authz (۳۴/۳۷) — pre-existing، نه رگرسیون
+سه قرمزِ T18/T20/T21 **دقیقاً همان سه قرمزِ baseline تمیزِ main پیش از هر مرج** است:
+- سنجیده‌شده روی `main @ fac2ddf` (قبل از هر ۸ مرج، نشست چت ۷): `34/37` — ناموفق‌ها: T18 · T20 · T21 (امضاها بیت‌به‌بیت همان).
+- سنجیده‌شده روی `main @ c7eee52` (امروز، این ممیزی): `34/37` — همان سه مورد.
+- در میانهٔ مسیر (حلقهٔ رفع #35 و #32) نیز `34/37` همان بود.
+**نتیجه:** زنجیرهٔ ۸ مرج **صفر** قرمزِ تازه وارد کرد. سه قرمزِ باقی‌مانده یک بدهیِ تستی قدیمی است (احتمالاً drift تست-با-کد پس از بازمهندسی REST ویو ۵) — پیگیری‌اش در بخش ۴.
+
