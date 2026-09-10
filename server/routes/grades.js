@@ -12,7 +12,7 @@
 const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز */
 const { checkOcc, bump } = require('../occ'); /* P0-18 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
-const { buildGradesList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
+const { buildGradesList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */const cache = require('../cache'); /* Wave 11 */
 
 function createGradeRoutes(ctx) {
   const store = ctx.store;
@@ -151,6 +151,7 @@ function createGradeRoutes(ctx) {
     store.grades.push(newGrade);
     markDirty();
 
+      cache.invalidateCollection('grades', newGrade.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
     audit('grade_created', { user_id: user.id, student_id: newGrade.student_id, subject_id: newGrade.subject_id, score: newGrade.score });
     return { status: 201, body: { ok: true, data: newGrade } };
   }
@@ -204,6 +205,7 @@ function createGradeRoutes(ctx) {
 
     audit('grade_updated', { user_id: user.id, grade_id: grade.id, score: next.score, version: next.version });
     return { status: 200, body: { ok: true, data: cached || next } };
+    cache.invalidateCollection('grades', grade.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
   }
 
   async function deleteGrade(req, id) {
@@ -230,6 +232,7 @@ function createGradeRoutes(ctx) {
       if (del.status === 503) return pgDown();
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
+    cache.invalidateCollection('grades', grade.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
     return { status: 200, body: { ok: true, message: 'نمره با موفقیت حذف شد' } };
   }
 

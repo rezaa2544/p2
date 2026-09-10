@@ -56,3 +56,92 @@
 - `tests/wave1-multi-instance.js`: دو ست کنترلر (storeهای جدا، بدون اشتراک مرجع) روی یک بک‌اند مشترک (pg-mem؛ یا PG زنده اگر `DATABASE_URL` باشد): ‏write A → read B → update B → read A + ‏OCC-409 بدون lead + ‏rollback روی شکست mirror + ‏GDPR/restore/outbox.
 - گیت‌ها: smoke ‏547/547‏ · check-authz=0 · secret-scan ‏11/11‏ · رگرسیون کامل `run-all-tests.sh` سبز.
 - behavior-parity در مموری: همهٔ سوئیت‌های موجود (به‌ویژه `sync-atomic-batch` با ادعای exact-once mirror) بدون تغییر سبز می‌مانند.
+
+---
+
+> **یادداشتِ پس از ریبیس (2026-09-10، چت ۳):** دو پیاده‌سازیِ Wave-1 (نسخهٔ main از چت ۴ در بالاتر + بخش دومِ W1p2 از چت ۳ در پایین) در شاخهٔ `arena/01a08545-p2` با هم ادغام شدند: orderingِ PG-first و rollback اسنپ‌شات و 503 (بالا) + تراکنشِ اتمیکِ delete/outbox و نوتیفیکیشن‌هایِ مشتق در همان تراکنش (پایین) — هر دو در کدِ نهایی زنده‌اند.
+
+# Wave 1 — بخش دوم: اسنکواریِ نوشت‌ها (منبعِ حقیقت = PostgreSQL)
+
+_دورِ Wave-1-W (چت ۳) — تاریخ: ۱۴۰/۰۶/۹ (2026-09-09)_
+
+## روش
+
+«نوشت» = هر تغییری که سمتِ سرور روی یک کلکسیونِ `store` می‌زند.
+هر نوشت سه وضعیت دارد:
+
+- **PG اتمیک** — داخل `db.transaction` (all-or-nothing؛ شکست ⇒ ROLLBACK)
+- **PG best-effort** — `db.persistOp` بدون تراکنش (شکست لاگ/audit می‌شود، خطا نمی‌دهد)
+- **فقط JSON (سازِ‌عملکرد)** — جدولِ PG ندارد؛ منبعِ حقیقت اسنپ‌شاتِ `payesh.json` است
+
+وقتی PG فعال نیست (بدون pool) همهٔ مسیرها در حافظه کار می‌کنند (Zero-Disruption §5 طرح).
+اسکیم (`server/schema.sql`) ۸۹ جدول دارد — هر کلکسیونِ store جدول دارد؛ «فقط JSON»
+به معنایِ «جدولِ موجود اما بی‌فایده» نیست، بلکه **وضعیتِ داخلیِ سرور** است که دادهٔ
+کسب‌وکار کلاینت نیست.
+
+## A. نوشت‌های کلاینت از طریق sync (`server/sync.js`)
+
+| نوشت | کلکسیون | وضعیت PG | توضیح |
+|---|---|---|---|
+| ins/upd/del اعمال‌شده از دستهٔ کلاینت | هر ۸۹ کلکسیون | ✅ **اتمی‌ک** | `persistOpsBatch` = یک تراکنش برای کل دسته (P1-14) |
+| **نوتیفیکیشن‌های مشتقِ سرور (Wave1-W)** | `notifications` | ✅ **اتمی‌ک** | چهار hook (conflict/leaves/chat/corrections) نوتیفیکیشن را به `derived` می‌رانند؛ `mirror.concat(derived)` در **همان** تراکنشِ mirror می‌نشیند |
+| نشانِ uid پردازش‌شده | `server_processed_uids` | ✅ (best-effort درون همان تراکنش) | هستهٔ `persistOp*` |
+
+## B. REST routes مستقیم (موجود از قبل — best-effort، تک‌رکوردی)
+
+| مسیر | کلکسیون | وضعیت PG | توضیح |
+|---|---|---|---|
+| `routes/attendance.js` | `attendance` ins/upd | ✅ best-effort | یک رکورد در هر درخواست؛ `ids.nextId` + `persistOp` |
+| `routes/classes.js` | `classes` ins/upd | ✅ best-effort | همان الگو |
+| `routes/grades.js` | `grades` ins/upd | ✅ best-effort | همان الگو |
+| `routes/students.js` | `users` (دانش‌آموزان) ins/upd | ✅ best-effort | همان الگو |
+| `routes/users.js` | `users` ins/upd | ✅ best-effort | همان الگو |
+
+> **عملیاتِ چندمرحله‌ای** (حضور گروهی کلاس، ثبت نمرات، ساخت دانش‌آموز + ثبت‌نام)
+> سمتِ کلاینت به‌صورتِ **چند op در یک batch** می‌آیند → اتمی‌بودن در سطحِ batch
+> (بخش A) تأمین می‌شود؛ خودِ رست‌ها تک‌رکوردی‌اند و تراکنشِ چندگانه ندارند.
+
+## C. تراکنش‌هایِ جدیدِ Wave1-W
+
+| نوشت | کلکسیون‌ها | تراکنش | توضیح |
+|---|---|---|---|
+| sms آیتمِ موفق | `sms_log` (ins) + `sms_wallet` (upd) + `notify_queue` (upd) | ✅ یک تراکنش | `mirrorItem` در `server/sms.js` — همهٔ نوشت‌هایِ آیتم با `persistOpsBatch` |
+| sms آیتمِ شکست‌خورده | `sms_log` (ins 'failed') | ✅ یک تراکنش | همان helper |
+| حذفِ نرم (delete-service) | `del` روی جدول + `server_outbox` (رویداد) | ✅ یک تراکنش | `db.transaction` — اگر یکی شکست، دیگری نمی‌نشیند |
+| `outbox.append(event, client)` | `server_outbox` | ✅ داخل تراکنشِ فراخوان | client اختیاری؛ بدون client → اتصالِ جدا (رفتارِ پیشین) |
+
+**نرفت‌نی‌ها (fail-closed):**
+
+- شکستِ آینهٔ sms/sync برای کلاینت **نامرئی** است (audit `*_mirror_failed`؛ پاسخ عوض نمی‌شود) — الگویِ P1-14.
+- شکستِ تراکنشِ delete در PG به handlerِ سراسری (`server/index.js`) می‌رسد ⇒ **500** —
+  پذیرفته‌شده (fail-closed)؛ در حالتِ حافظه هیچ‌گاه throw نمی‌کند.
+
+## D. فقط JSON — سازِ‌عملکرد (بدون جدولِ PG)
+
+| وضعیت | کجا | چرا |
+|---|---|---|
+| نشست‌ها + JTIs ابطال‌شده | `server/auth.js` (`__sessions`, `__revoked_jti`) | وضعیتِ authn با عمرِ درون‌پروسه؛ دادهٔ کسب‌وکار نیست |
+| OTP + شمارنده‌هایِ rate-limit | `server/otp-store.js` | وضعیتِ امنیتیِ گذرا |
+| گورناخن‌ها | `__deleted_records` (delete-service) | متادیتایِ حذفِ نرم (P0-17)؛ رکورد از PG پاک شده، گورناخن در اسنپ‌شات می‌ماند |
+| تضادها | `sync_conflicts` (sync.js) | صفِ تضادِ در انتظارِ تصمیمِ کلاینت |
+| صفِ outbox | `store.outbox` (outbox.js) | خودِ صف (سقف ۱۰۰، FIFO) JSON است؛ آینهٔ رویدادها = `server_outbox` |
+| پشتیبان‌گیری/بازیابی | `server/admin.js` | فایل‌هایِ filesystem |
+| لاگِ حسابرسی | `server/index.js` | فایل |
+| uidهایِ پردازش‌شده (کپی) | `store.__processed_uids` | best-effort؛ در حالتِ PG کپیِ آینه‌ای در `server_processed_uids` هم دارد |
+
+## E. تصمیمات و یادداشت‌ها
+
+1. **شناسه‌های sms**: max+1 محلی (نه دنبالهٔ مرکزی `ids.js`).
+   دلیل: `NAMESPACES` در `server/ids.js` فقط `{attendance, classes, grades, users}` است؛
+   `sms_log` به دنبالهٔ `users` نگاشت می‌شد (غلط). الگویِ max+1 محلی همان الگویی است
+   که `sync.js` برایِ کلکسیون‌هایِ خارج‌از-NAMESPACES استفاده می‌کند. در PG تکرارِ
+   ناشی از هم‌زمانی توسطِ `ON CONFLICT (id) DO UPDATE` دفع می‌شود (upsert).
+2. **`outbox.append` با client**: INSERT داخل تراکنشِ فراخوان اجرا می‌شود و خطا
+   می‌پردازد تا ROLLBACK بگیرد؛ بدون client، اتصالِ جدا و خطاِ بلعیده‌شده
+   (منبعِ حقیقتِ رویداد = اسنپ‌شات).
+3. **محدودهٔ این بخش**: نوشت‌هایِ بخش A/B از قبل به PG می‌رسیدند؛ کارِ این بخش
+   (C) تراکنش‌بندیِ نوشت‌هایِ چندگانهٔ جدید + آینهٔ نوتیفیکیشن‌هایِ مشتق بود.
+4. **تست‌ها**: `tests/wave1-writes.js` (۱۴ بررسی — W1…W7) +
+   `tests/wave1-writes-mutations.js` (۵ جهش، همه کشته) — با pool/clientِ جعلی،
+   بدون PG واقعی؛ انضباطِ فراخوانی (BEGIN/COMMIT/ROLLBACK، توالیِ نوشت‌ها در
+   تراکنش) آزموده می‌شود.
