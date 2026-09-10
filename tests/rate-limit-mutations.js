@@ -8,6 +8,7 @@ const cp = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const RL = path.join(ROOT, 'server', 'rate-limit.js');
+const RDS = path.join(ROOT, 'server', 'redis.js');
 const AUTH = path.join(ROOT, 'server', 'auth.js');
 const SUITE = path.join(__dirname, 'rate-limit-distributed.js');
 
@@ -24,8 +25,9 @@ const MUTS = [
   { id: 'M1', file: RL, desc: 'همیشه-مجاز (allowed:true)',
     good: '      allowed: current <= limit,', bad: '      allowed: true,',
     cmd: UNIT, expect: 'RL-b' },
-  { id: 'M2', file: RL, desc: 'بدونِ TTL (پنجره منقضی نمی‌شود)',
-    good: '    if (current === 1) {', bad: '    if (false) {',
+  { id: 'M2', file: RDS, desc: 'بدونِ TTL (پنجره منقضی نمی‌شود)',
+    good: '  if (t === -1 && ttlSeconds > 0) await module.exports.expire(key, ttlSeconds);',
+    bad: '  if (false) await module.exports.expire(key, ttlSeconds);',
     cmd: UNIT, expect: 'RL-f' },
   { id: 'M3', file: AUTH, desc: 'دورزدنِ سقفِ phone در auth',
     good: "    if(!rPh.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
