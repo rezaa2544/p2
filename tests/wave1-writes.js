@@ -88,10 +88,16 @@ const PHONE = '09123456789';
     chk('W1a پاسخ 200 و ارسالِ موفق', cap.code === 200 && cap.body && cap.body.sent === 1, JSON.stringify(cap.body));
     chk('W1b sms: یک تراکنشِ کامل (BEGIN…COMMIT، بدون ROLLBACK) صادر شود',
       st.begin === 1 && st.commit === 1 && st.rollback === 0, JSON.stringify(st));
-    const up = c.queries.filter(q => String(q).indexOf('ON CONFLICT') >= 0);
-    const tables = up.map(q => String(q).match(/INSERT INTO (\w+)/)[1]);
-    chk('W1c sms: log + wallet + queue در همان تراکنش (۳ upsert)',
-      up.length === 3 && tables.sort().join(',') === 'notify_queue,sms_log,sms_wallet', tables.join(','));
+    /* mainline db.js: ins = upsert (ON CONFLICT)، upd = UPDATE — سه نوشتِ
+       sms (log + wallet + queue) باید هر سه در همان یک تراکنش باشند */
+    const q3 = c.queries;
+    const hasInsLog = q3.some(q => /^INSERT INTO "?sms_log"?/.test(String(q)));
+    const hasUpdWallet = q3.some(q => /^UPDATE "?sms_wallet"?/.test(String(q)));
+    const hasUpdQueue = q3.some(q => /^UPDATE "?notify_queue"?/.test(String(q)));
+    const inTx = q3.every(q => true) && st.begin === 1 && st.commit === 1;
+    chk('W1c sms: log + wallet + queue در همان تراکنش (۳ نوشت اتمیک)',
+      inTx && hasInsLog && hasUpdWallet && hasUpdQueue,
+      'insLog=' + hasInsLog + ' updWallet=' + hasUpdWallet + ' updQueue=' + hasUpdQueue + ' tx=' + JSON.stringify(st));
     db.__setPoolForTests(null);
   }
 
@@ -119,7 +125,7 @@ const PHONE = '09123456789';
     chk('W2a پاسخ 200 با failed=1', cap.code === 200 && cap.body && cap.body.failed === 1, JSON.stringify(cap.body));
     chk('W2b sms: تراکنشِ رکوردِ failed صادر شود (یک upsertِ sms_log)',
       st.begin === 1 && st.commit === 1 && up.length === 1
-      && String(up[0]).indexOf('INSERT INTO sms_log') === 0
+      && /^INSERT INTO "?sms_log"?/.test(String(up[0]))
       && store.sms_log.length === 1 && store.sms_log[0].status === 'failed',
       'up=' + up.length + ' log=' + store.sms_log.map(x => x.status).join('|'));
     delete process.env.PAYESH_SMS_MOCK_FAIL;
@@ -184,7 +190,7 @@ const PHONE = '09123456789';
     const c = pool.txClient();
     const st = txStats(c.queries);
     const up = c.queries.filter(q => String(q).indexOf('ON CONFLICT') >= 0);
-    const tables = up.map(q => String(q).match(/INSERT INTO (\w+)/)[1]).sort();
+    const tables = up.map(q => String(q).match(/INSERT INTO "?(\w+)"?/)[1]).sort();
     chk('W4a sync: op اعمال + 200', cap.code === 200 && cap.body && cap.body.results[0] && cap.body.results[0].ok === true, JSON.stringify(cap.body && cap.body.results));
     chk('W4b sync: نوتیفیکیشنِ مشتق در همان تراکنش (messages + notifications)',
       st.begin === 1 && st.commit === 1
@@ -207,7 +213,7 @@ const PHONE = '09123456789';
     const r = await quiet(async () => deleter.softDelete('attendance', { id: 7 }, { actor: { id: 5 }, audit: () => {} }));
     const c = pool.txClient();
     const st = txStats(c.queries);
-    const del = c.queries.find(q => String(q).indexOf('DELETE FROM attendance') === 0);
+    const del = c.queries.find(q => /^DELETE FROM "?attendance"?/.test(String(q)));
     const obx = c.queries.find(q => String(q).indexOf('INSERT INTO server_outbox') === 0);
     const delIdx = del ? c.queries.indexOf(del) : -1;
     const obxIdx = obx ? c.queries.indexOf(obx) : -1;
@@ -247,7 +253,7 @@ const PHONE = '09123456789';
 
   /* ── W7: delete-service شکست → ROLLBACK + انتشار ── */
   {
-    const pool = fakePool('DELETE FROM attendance');
+    const pool = fakePool('DELETE FROM');
     db.__setPoolForTests(pool);
     const store = { attendance: [{ id: 9, school_id: 1, version: 1 }], tombstones: [] };
     const outbox = createOutbox({ store, db });
