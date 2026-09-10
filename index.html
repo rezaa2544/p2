@@ -4939,6 +4939,7 @@ var ACTION_ROLES = {
   'internship-save':    ['teacher','manager'],
   'internship-approve': ['teacher','manager'],
   'internship-del':     ['manager'],
+  'internship-cert':    ['manager','superadmin'],
   /* بند ۲.۲ — IEP: فیلدِ آزاد است ولی تغییرش اختیارِ کادر است (دبیر/مدیر) */
   'iep-save': ['teacher','manager'],
   /* بند ۴.۴ — قیف پیش‌ثبت‌نام: پیگیریِ داوطلب کارِ مدیر است */
@@ -5739,6 +5740,7 @@ function summaryBlock(sid){
    ${statCard('📊',fa(d.avg.toFixed(2)),'معدل کل','green')}
    ${statCard('🏅',fa(d.rank)+' از '+fa(d.size),'رتبه در کلاس','amber')}
    ${statCard('⚖️',fa(d.points),'امتیاز انضباطی ('+fa(d.disc.length)+' مورد)',d.points>=0?'purple':'red')}</div>
+   ${(typeof internshipProgressHtml==='function')?internshipProgressHtml(sid):''}
    <div class="grid g2">
     <div class="card"><div class="card-head"><h3>وضعیت حضور</h3><span class="badge b-green">${fa(tot?Math.round(cnt('present')/tot*100):0)}٪ حضور</span></div>
      <div class="card-body" style="display:grid;gap:12px">${['present','absent','late','excused','early_exit'].map(k=>`<div><div class="row"><span>${ATT_FA[k]}</span><div class="spacer"></div><b>${fa(cnt(k))} روز</b></div>${bar(cnt(k),tot,ATT_COLOR[k])}</div>`).join('')}</div></div>
@@ -6490,6 +6492,86 @@ function internshipTotals(sid){
   });
   return {total:total,approved:approved,count:internshipSessions(sid).length};
 }
+/* ── E.2: ساعتِ لازم، پیشرفت، نمای کلی، گواهی ── */
+/** ساعتِ لازمِ کارآموزی (پیش‌فرضِ ۲۰۰؛ اگر مدرسه سقفِ خودش را داشت همان) */
+function internshipRequired(schoolId){
+  var sc = schoolId ? (byId('schools', Number(schoolId)) || {}) : {};
+  var h = Math.floor(Number(sc.internship_hours) || 0);
+  return h > 0 ? h : 200;
+}
+/** پیشرفتِ دانش‌آموز: تأییدشده در برابرِ لازم */
+function internshipProgress(sid){
+  var u = byId('users', sid) || {};
+  var req = internshipRequired(u.school_id);
+  var appr = internshipTotals(sid).approved;
+  return { required: req, approved: appr,
+    pct: req > 0 ? Math.min(100, Math.round((appr * 100) / req)) : 100,
+    done: appr >= req };
+}
+/** گواهیِ صادرشدهٔ کارآموزیِ امسالِ دانش‌آموز (یا تهی) */
+function internshipCert(sid){
+  var y = (typeof yearCode === 'function') ? yearCode() : '';
+  return ((db.certificates || []).filter(function(x){
+    return x.type === 'internship' && Number(x.student_id) === Number(sid) && String(x.year) === String(y);
+  })[0]) || null;
+}
+/** صدورِ گواهیِ پایانِ کارآموزی — فقط مدیر/سوپرادمین، فقط دورهٔ تکمیل‌شده */
+function internshipIssueCert(sid){
+  var role = (typeof activePersona === 'function') ? activePersona() : ((S.user && S.user.role) || '');
+  if(role !== 'manager' && role !== 'superadmin') return { ok: false, msg: 'فقط مدیر می‌تواند گواهی صادر کند' };
+  var u = byId('users', sid);
+  if(!u || u.role !== 'student') return { ok: false, msg: 'دانش‌آموز پیدا نشد' };
+  if(S.user.school_id && u.school_id !== S.user.school_id && role !== 'superadmin')
+    return { ok: false, msg: 'دانش‌آموزِ مدرسهٔ دیگری است' };
+  if(!workshopStudent(sid) || !isFinalYearStudent(sid))
+    return { ok: false, msg: 'فقط سالِ آخرِ رشتهٔ فنی/کاردانش' };
+  var pr = internshipProgress(sid);
+  if(!pr.done) return { ok: false, msg: 'هنوز کامل نشده (' + fa(pr.approved) + ' از ' + fa(pr.required) + ' ساعت)' };
+  if(internshipCert(sid)) return { ok: false, msg: 'گواهیِ امسال قبلاً صادر شده است' };
+  var r = certRecord('internship', sid);
+  if(!r.ok) return r;
+  return { ok: true, msg: 'گواهی صادر شد — کد: ' + r.code, code: r.code };
+}
+/** نمای کلیِ مدیر: وضعیتِ کارآموزیِ همهٔ سالِ آخری‌ها */
+function internshipOverviewHtml(schoolId){
+  if(!workshopSchool(schoolId)) return '';
+  var studs = db.users.filter(function(u){
+    return u.role === 'student' && u.school_id === schoolId && isFinalYearStudent(u.id);
+  });
+  if(!studs.length) return '';
+  function rowHtml(sid){
+    var st = byId('users', sid) || {};
+    var pr = internshipProgress(sid);
+    var cert = internshipCert(sid);
+    return '<tr><td><b>' + esc(st.full_name || '—') + '</b></td>'
+      + '<td class="muted">' + esc(((typeof classOf === 'function') ? classOf(sid) : null || {}).name || '—') + '</td>'
+      + '<td><b>' + fa(pr.approved) + '</b> <span class="muted">از ' + fa(pr.required) + '</span></td>'
+      + '<td>' + bar(pr.approved, pr.required, pr.done ? 'var(--green)' : 'var(--primary)') + '</td>'
+      + '<td>' + (cert
+          ? '<span class="badge b-green">🎓 ' + esc(cert.code || '') + '</span>'
+          : (pr.done ? '<span class="badge b-blue">تکمیل — آمادهٔ گواهی</span>' : '<span class="badge b-amber">در حال انجام</span>'))
+        + '</td></tr>';
+  }
+  return '<div class="card" data-l="نمای کلی کارآموزی"><div class="card-head"><h3>🏭 نمای کلیِ کارآموزی</h3>'
+    + '<span class="badge b-gray">' + fa(studs.length) + ' دانش‌آموزِ سالِ آخر</span></div>'
+    + '<div class="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>کلاس</th>'
+    + '<th>ساعتِ تأییدشده</th><th>پیشرفت</th><th>وضعیت</th></tr></thead><tbody>'
+    + studs.map(function(x){ return rowHtml(x.id); }).join('')
+    + '</tbody></table></div></div>';
+}
+/** نوارِ پیشرفت برای داشبوردِ دانش‌آموز/ولی — فقط سالِ آخرِ فنی */
+function internshipProgressHtml(sid){
+  if(!workshopStudent(sid) || !isFinalYearStudent(sid)) return '';
+  var pr = internshipProgress(sid);
+  var cert = internshipCert(sid);
+  return '<div class="card"><div class="card-head"><h3>🏭 پیشرفتِ کارآموزی</h3>'
+    + (cert ? '<span class="badge b-green">🎓 گواهی صادر شده</span>'
+            : '<span class="badge b-blue">' + fa(pr.pct) + '٪</span>') + '</div>'
+    + '<div class="card-body"><div class="row"><span>تأییدشده: <b>' + fa(pr.approved) + '</b> از '
+    + fa(pr.required) + ' ساعت</span></div>'
+    + '<div style="margin-top:8px">' + bar(pr.approved, pr.required, pr.done ? 'var(--green)' : 'var(--primary)') + '</div>'
+    + '</div></div>';
+}
 /** آیا کاربرِ فعلی می‌تواند این رکوردِ کارآموزی را تأیید کند؟
     (مدیر هر مدرسهٔ خود؛ دبیر فقط وقتی دبیرِ مربوطهٔ دانش‌آموز است) */
 function canApproveInternship(rec,role){
@@ -6508,6 +6590,7 @@ function canApproveInternship(rec,role){
 
 function viewGrades(){
   const u=S.user, canEdit=['superadmin','manager','teacher'].includes(u.role);
+  const _inOv=(typeof internshipOverviewHtml==='function'&&(u.role==='manager'||u.role==='superadmin'))?internshipOverviewHtml(u.school_id):'';
   const cls=visibleClasses(), subs=visibleSubjects();
   /* طرح زنگ (گام ثبت نمره): کلاس و درس از زنگ جاری پیش‌گزینش می‌شوند.
      انتخاب دستی همیشه مقدم است؛ S.bellNow فقط برای آزمون‌پذیری. */
@@ -6540,7 +6623,7 @@ function viewGrades(){
       ${_ws?`<td>${_vpCell(vocationalParts(g),'theory')}</td><td>${_vpCell(vocationalParts(g),'practice')}</td>`:''}
       <td><span class="badge ${g.score>=17?'b-green':g.score>=12?'b-blue':'b-red'}">${fa(g.score)} / ${fa(g.max_score)}</span></td>
       ${canEdit?`<td><button class="icon-btn" data-act="grade-edit" data-id="${escAttr(g.id)}">✏️</button> <button class="icon-btn danger" data-act="grade-del" data-id="${escAttr(g.id)}">🗑️</button></td>`:''}</tr>`).join('')}
-   </tbody></table></div>`:empty('📝','نمره‌ای ثبت نشده',canEdit?'با دکمه «ثبت نمره» شروع کنید.':'هنوز نمره‌ای برای شما ثبت نشده است.')}</div>`;
+   </tbody></table></div>`:empty('📝','نمره‌ای ثبت نشده',canEdit?'با دکمه «ثبت نمره» شروع کنید.':'هنوز نمره‌ای برای شما ثبت نشده است.')}</div>`+_inOv;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -6886,16 +6969,23 @@ function internshipCard(sid){
   if(!isFinalYearStudent(sid))return '';
   var rows=internshipSessions(sid);
   var tot=internshipTotals(sid);
+  var pr=(typeof internshipProgress==='function')?internshipProgress(sid):{required:200,approved:tot.approved,pct:0,done:false};
+  var cert=(typeof internshipCert==='function')?internshipCert(sid):null;
   var persona=(typeof activePersona==='function')?activePersona():(S.user&&S.user.role);
   var canManage=persona==='manager'||persona==='superadmin';
+  var canRegister=canManage||persona==='teacher';
   var canApprove=canManage||persona==='teacher';
   var h='<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:14px">'
    +'<div class="row" style="align-items:center;gap:10px;flex-wrap:wrap"><b>🏭 ساعتِ کارآموزی</b>'
    +'<span class="badge b-green">مجموع: '+fa(tot.total)+' ساعت</span>'
    +'<span class="badge b-blue">تأییدشده: '+fa(tot.approved)+' ساعت</span>'
+   +'<span class="badge b-purple">پیشرفت: '+fa(pr.approved)+' از '+fa(pr.required)+'</span>'
+   +(cert?'<span class="badge b-green">🎓 '+esc(cert.code||'')+'</span>':'')
    +'<div class="spacer"></div>'
-   +(canManage?'<button class="btn sm" data-act="internship-new" data-id="'+escAttr(sid)+'">➕ ثبتِ ساعت</button>':'')
-   +'</div>';
+   +(canRegister?'<button class="btn sm" data-act="internship-new" data-id="'+escAttr(sid)+'">➕ ثبتِ ساعت</button>':'')
+   +(canManage&&pr.done&&!cert?'<button class="btn ghost sm" data-act="internship-cert" data-id="'+escAttr(sid)+'">🎓 صدور گواهی</button>':'')
+   +'</div>'
+   +'<div style="margin-top:8px">'+bar(pr.approved,pr.required,pr.done?'var(--green)':'var(--primary)')+'</div>';
   if(rows.length){
     h+='<div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>تاریخ</th><th>ساعت</th><th>محل</th><th>وضعیت</th><th>تأییدکننده</th><th></th></tr></thead><tbody>';
     rows.forEach(function(r){
@@ -13687,6 +13777,7 @@ function coreActions(e, el, id, a, rawId){
    'internship-edit'(){internshipModal(byId('internships',id),Number(id));},
    'internship-del'(){confirmModal('حذف این ردیفِ کارآموزی؟','internship-del-ok',id);},
    'internship-del-ok'(){remove('internships',window._delId);closeModal();toast('حذف شد','ok');render();},
+   'internship-cert'(){const r=internshipIssueCert(id);toast(r.msg,r.ok?'ok':'err');if(r.ok)render();},
    'internship-save'(){const i=window._inEdit;if(!i)return;
      const hours=Number(V('in_hours'));
      if(!hours||hours<1||hours>40){toast('ساعت باید عددی بین ۱ تا ۰ باشد','err');return;}

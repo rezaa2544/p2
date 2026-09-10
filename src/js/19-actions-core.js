@@ -1526,6 +1526,7 @@ function coreActions(e, el, id, a, rawId){
    'internship-edit'(){internshipModal(byId('internships',id),Number(id));},
    'internship-del'(){confirmModal('حذف این ردیفِ کارآموزی؟','internship-del-ok',id);},
    'internship-del-ok'(){remove('internships',window._delId);closeModal();toast('حذف شد','ok');render();},
+   'internship-cert'(){const r=internshipIssueCert(id);toast(r.msg,r.ok?'ok':'err');if(r.ok)render();},
    'internship-save'(){const i=window._inEdit;if(!i)return;
      const hours=Number(V('in_hours'));
      if(!hours||hours<1||hours>40){toast('ساعت باید عددی بین ۱ تا ۰ باشد','err');return;}
