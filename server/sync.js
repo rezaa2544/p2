@@ -744,6 +744,23 @@ function createSync(ctx){
 
     const mirror = [];   /* P1-14: opsِ آینه با شناسه‌هایِ اعمال‌شدهٔ سرور */
     for(const op of apply){
+      /* S2-1 (موج ۴): ادعایِ اتمیکِ uid — حتماً پیش از اعمال. بررسی در
+         اعتبارسنجی بود ولی ثبت بعدتر — تکراریِ درون‌دسته دو بار اعمال
+         می‌شد و دسته‌هایِ هم‌زمان مسابقه می‌دادند. این حلقه هیچ await
+         ندارد پس check+claim درون‌فرآیند اتمیک است. تکراری، ورودیِ
+         متناظرِ خودش در results (از آخر به اول — op دوم به بعد) را
+         duplicate_ignored می‌کند. (ادعایِ توزیع‌شده چندنمونه‌ای = Wave 6.) */
+      if(store.__processed_uids && store.__processed_uids[op.uid]){
+        for(let ri = results.length - 1; ri >= 0; ri--){
+          if(results[ri].uid === op.uid && results[ri].ok && !results[ri].code){
+            results[ri] = { uid: op.uid, ok: true, code: 'duplicate_ignored', serverTime: results[ri].serverTime };
+            break;
+          }
+        }
+        try { audit('sync_duplicate_ignored', { user_id: s.id, uid: op.uid }); } catch(_) {}
+        continue;
+      }
+      store.__processed_uids[op.uid] = Date.now();
       if(!Array.isArray(store[op.c])) store[op.c] = [];
       if(op.t === 'ins'){
         const data = Object.assign({}, op.data);
@@ -784,7 +801,6 @@ function createSync(ctx){
         mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId });   /* P1-14 */
       }
       store.__server_version = (store.__server_version || 0) + 1;
-      store.__processed_uids[op.uid] = Date.now();
       /* SUSPECT-C (باگ‌هانت چت ۵، نشست ۲): این دو خطا پیش‌تر با
          `.catch(()=>{})` بلعیده می‌شد؛ در تولید (گاردهای BUG-2) واقعی‌اند
          و بی‌صدا ماندنشان واگراییِ نامرئی می‌سازد. حالا audit می‌شوند؛
