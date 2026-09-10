@@ -913,7 +913,8 @@ function createSync(ctx){
       }
     }
     /* P1-14: آینهٔ اتمیکِ چندرکوردی — همه در یک تراکنش (all-or-nothing).
-       شکست → rollback + audit؛ پاسخِ کلاینت عوض نمی‌شود (مثلِ قبل بی‌خبر). */
+       شکست → rollback + audit؛ در حالتِ PG پاسخ ۵۰۳ می‌شود تا کلاینت retry کند
+       (Wave 1)؛ در memory پاسخ مثلِ قبل عوض نمی‌شود. */
     /* Wave 1: server-created notification rows join the same atomic mirror so the
        batch and its side effects commit together. */
     if(Array.isArray(store.notifications)){
