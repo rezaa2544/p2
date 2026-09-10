@@ -25,7 +25,7 @@ var WAF_MODE = process.env.PAYESH_WAF_MODE === 'enforce' ? 'enforce' : 'report';
 /* fail-safe: مسیرهای ضروری که در enforce هرگز مسدود نمی‌شوند (حتی اگر
    الگویی بخورد) — پروب‌های زیرساخت؛ اپراتور می‌تواند با PAYESH_WAF_ALLOW
    (کاما-جداسازِ پیشوندها) گسترش دهد. */
-var ALLOW_BASE = ['^/api/health$', '^/api/liveness$', '^/api/readiness$'];
+var ALLOW_BASE = ['^/api/health$', '^/api/liveness$', '^/api/readiness$', '^/metrics$'];
 function isAllowlisted(pathname) {
   try {
     pathname = String(pathname || '');
