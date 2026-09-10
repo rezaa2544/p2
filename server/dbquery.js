@@ -112,7 +112,11 @@ function _finalize(o) {
   const pageParams = o.params.slice();
   const pageParts = o.parts.slice();
   if (o.cursor != null) {
-    if (typeof o.cursorKeyset === 'function') {
+    if (o.cursorKey && typeof o.cursorKey.predicate === 'function') {
+      /* composite keyset spec (Wave 3 — چت ۲): params را خودش push می‌کند */
+      const frag = o.cursorKey.predicate(String(o.cursor), pageParams);
+      if (frag) pageParts.push(frag);
+    } else if (typeof o.cursorKeyset === 'function') {
       /* composite keyset (e.g. "date|id"): custom predicate — params pushed inside */
       const frag = o.cursorKeyset(String(o.cursor), (v) => { pageParams.push(v); return pageParams.length; });
       if (frag) pageParts.push(frag);
@@ -130,7 +134,47 @@ function _finalize(o) {
   const pageFrom = o.pageFrom || o.from;
   const pageSql = `SELECT ${selectList} FROM ${pageFrom} ${pageWhere} ORDER BY ${o.orderBy} LIMIT $${pageParams.length}`;
 
-  return { page: { sql: pageSql, params: pageParams }, count: { sql: countSql, params: countParams } };
+  return { page: { sql: pageSql, params: pageParams }, count: { sql: countSql, params: countParams }, cursorKey: o.cursorKey || null };
+}
+
+/**
+ * A composite keyset cursor over `cols`, which MUST mirror the ORDER BY.
+ *   cols: [{ ref, key, dir, cast? }]   e.g. [{ref:'date',key:'date',dir:'DESC'},
+ *                                            {ref:'id',  key:'id',  dir:'ASC'}]
+ * The wire cursor is the column values joined with `|`, in ORDER BY order.
+ * The predicate is the standard row-value comparison expanded for the planner:
+ *   (a < v1) OR (a = v1 AND b > v2) …
+ * A bare numeric cursor (what clients built before this change still send)
+ * degrades to the trailing id column only — never worse than before.
+ */
+function compositeCursorKey(cols) {
+  const val = (col, raw) => (col.cast ? col.cast(raw) : raw);
+  return {
+    cols,
+    encode(row) {
+      if (!row) return null;
+      const parts = cols.map((c) => row[c.key]);
+      if (parts.some((p) => p === undefined || p === null)) return String(row[cols[cols.length - 1].key]);
+      return parts.join('|');
+    },
+    predicate(cursor, params) {
+      const raw = String(cursor).split('|');
+      if (raw.length !== cols.length) {
+        const last = cols[cols.length - 1];
+        if (!isNaN(Number(cursor))) { params.push(Number(cursor)); return `${last.ref} > $${params.length}`; }
+        return null;
+      }
+      const ors = [];
+      for (let i = 0; i < cols.length; i++) {
+        const ands = [];
+        for (let j = 0; j < i; j++) { params.push(val(cols[j], raw[j])); ands.push(`${cols[j].ref} = $${params.length}`); }
+        params.push(val(cols[i], raw[i]));
+        ands.push(`${cols[i].ref} ${cols[i].dir === 'DESC' ? '<' : '>'} $${params.length}`);
+        ors.push('(' + ands.join(' AND ') + ')');
+      }
+      return '(' + ors.join(' OR ') + ')';
+    }
+  };
 }
 
 /**
@@ -220,26 +264,15 @@ function buildAttendanceList({ user, office, date, classId, studentId, limit, cu
      encodes "date|id" and the keyset predicate is
      `date < $d OR (date = $d AND id > $i)`. A bare numeric cursor still works
      (legacy) as id-only. */
-  const cursorKeyset = (cursorStr, push) => {
-    const s = String(cursorStr || '');
-    const pipe = s.indexOf('|');
-    if (pipe === -1) {
-      const n = Number(s);
-      if (isNaN(n)) return null;
-      const i = push(n);
-      return `id > $${i}`;
-    }
-    const date = s.slice(0, pipe);
-    const id = Number(s.slice(pipe + 1));
-    if (isNaN(id)) return null;
-    const d = push(date);
-    const i = push(id);
-    return `(date < $${d} OR (date = $${d} AND id > $${i}))`;
-  };
 
-  const built = _finalize({ from, parts, params, orderBy: 'date DESC, id ASC', cursorRef: 'id', cursorKeyset, limit, cursor });
-  built.cursorKey = (row) => (row && row.date != null ? String(row.date) : '') + '|' + String(row && row.id);
-  return built;
+
+  /* W3-2 (algebraی چت ۲): cursor مرکب «date|id»؛ جهت‌ها از spec،
+     شناسهٔ عددی cast می‌شود و cursorِ عددیِ legacy به id-only تنزل می‌کند. */
+  const cursorKey = compositeCursorKey([
+    { ref: 'date', key: 'date', dir: 'DESC' },
+    { ref: 'id', key: 'id', dir: 'ASC', cast: Number }
+  ]);
+  return _finalize({ from, parts, params, orderBy: 'date DESC, id ASC', cursorRef: 'id', cursorKey, limit, cursor });
 }
 
 /**
@@ -393,7 +426,10 @@ async function executePagedList(db, built, { limit, cursor }) {
   const last = data[data.length - 1];
   /* W3-2: composite-ordered lists (attendance) return a "date|id" cursor; every
      other list returns the bare id. */
-  const cursorKey = built.cursorKey || ((r) => (r == null ? null : String(r.id)));
+  const _ck = built.cursorKey;
+  const cursorKey = typeof _ck === 'function' ? _ck
+    : (_ck && typeof _ck.encode === 'function') ? (r) => _ck.encode(r)
+    : ((r) => (r == null ? null : String(r.id)));
   return {
     data,
     pagination: {
@@ -409,6 +445,7 @@ async function executePagedList(db, built, { limit, cursor }) {
 
 module.exports = {
   buildPagedSql: _finalize,
+  compositeCursorKey,
   buildStudentsList,
   buildAttendanceList,
   buildGradesList,

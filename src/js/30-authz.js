@@ -73,6 +73,14 @@ function canRoute(route, role){
       if(me && me.lib_staff === 1) return true;
     }catch(e){}
   }
+  /* تحویلدار: دبیرِ دارای پرچمِ asset_staff، روتِ اموال را می‌بیند
+     (دبیرِ بی‌مجوز همچنان رد می‌شود — تستِ assets/A2). */
+  if(route === 'assets' && role === 'teacher'){
+    try{
+      var me = (typeof S !== 'undefined') ? S.user : null;
+      if(me && me.asset_staff === 1) return true;
+    }catch(e){}
+  }
   return !!allowedRoutes(role)[route];
 }
 
@@ -212,8 +220,9 @@ var ACTION_ROLES = {
   'conflict-resolve':['manager','superadmin'],
   'as-new':         ['manager'],
   'as-save':        ['manager'],
-  'as-status':      ['manager'],
-  'as-status-save': ['manager'],
+  'as-status':      ['manager','teacher'],
+  'as-status-save': ['manager','teacher'],
+  'as-cust-toggle': ['manager'],
   'as-del':         ['manager'],
   'sd-new':         ['manager'],
   'sd-save':        ['manager'],

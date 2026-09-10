@@ -1,0 +1,258 @@
+# ═══════════════════════════════════════════════════════════════════
+# Wave 14 (Observability) — alerting rules for payesh
+# -------------------------------------------------------------------
+# Every metric referenced here is emitted by server/metrics.js.
+# tests/wave14-observability.js (drift guard T8) fails the build if an
+# alert references a metric name that no longer exists, so a rename
+# cannot silently blind the on-call.
+#
+# Severity convention:
+#   critical → page  (user-visible outage or data-loss risk)
+#   warning  → ticket (SLO burn, capacity, leading indicators)
+# ═══════════════════════════════════════════════════════════════════
+groups:
+  - name: payesh-availability
+    interval: 30s
+    rules:
+      - alert: PayeshHighServerErrorRate
+        expr: |
+          sum(rate(payesh_http_requests_total{code=~"5.."}[5m]))
+            /
+          clamp_min(sum(rate(payesh_http_requests_total[5m])), 1e-9) > 0.01
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "payesh is returning 5xx on >1% of requests"
+          description: "5xx ratio {{ $value | humanizePercentage }} over 5m. Start at docs/WAVE14_OBSERVABILITY.md §7.3, then the error-rate panel on the Overview dashboard."
+
+      - alert: PayeshLatencySlobreach
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(payesh_http_request_duration_seconds_bucket[5m]))) > 0.3
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "p95 latency above the 300 ms SLO"
+          description: "p95 = {{ $value }}s. Check payesh_node_eventloop_lag_seconds and payesh_db_query_duration_seconds before blaming the network."
+
+      - alert: PayeshLatencyP99Breach
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (rate(payesh_http_request_duration_seconds_bucket[5m]))) > 1
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "p99 latency above 1 s"
+          description: "Tail latency {{ $value }}s — usually a slow query or a synchronous hot path (docs/BOTTLENECK_MAP.md)."
+
+      - alert: CriticalErrorBudgetBurn
+        # Multi-window burn rate: 2% of a 30-day budget in 1 hour.
+        expr: |
+          (
+            sum(rate(payesh_http_requests_total{code=~"5.."}[1h]))
+              / clamp_min(sum(rate(payesh_http_requests_total[1h])), 1e-9)
+          ) > (14.4 * 0.0005)
+          and
+          (
+            sum(rate(payesh_http_requests_total{code=~"5.."}[5m]))
+              / clamp_min(sum(rate(payesh_http_requests_total[5m])), 1e-9)
+          ) > (14.4 * 0.0005)
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "Error budget burning 14.4x — 2% of the 30-day budget in 1h"
+          description: "Fast burn. Consider rolling back the last deploy (correlate with payesh_build_info)."
+
+      - alert: PayeshInstanceDown
+        expr: up{job="payesh-api"} == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "payesh replica not scraped for 1m"
+          description: "Either the instance is down or the scrape token rotated. /metrics is fail-closed: a 403/404 also shows up as down."
+
+      - alert: PayeshRestartLoop
+        expr: payesh_node_uptime_seconds < 300
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "A payesh instance keeps restarting"
+          description: "Uptime below 5m for 5m straight. Check the crash log and the last deploy."
+
+  - name: payesh-database
+    interval: 30s
+    rules:
+      - alert: PayeshDbPoolSaturated
+        expr: |
+          sum by (pool) (payesh_db_pool_waiting) > 0
+          and
+          sum by (pool) (payesh_db_pool_connections{state="idle"}) == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "PostgreSQL pool '{{ $labels.pool }}' is exhausted and queueing"
+          description: "Requests are waiting for a connection. docs/WAVE10_DB_SCALE.md (replica routing) and docs/DATABASE_PERFORMANCE_OPTIMIZATION.md."
+
+      - alert: PayeshDbPoolUtilisationHigh
+        expr: |
+          sum by (pool) (payesh_db_pool_connections{state="total"} - payesh_db_pool_connections{state="idle"})
+            /
+          clamp_min(sum by (pool) (payesh_db_pool_connections{state="total"}), 1) > 0.85
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "DB pool '{{ $labels.pool }}' above 85% utilisation"
+          description: "Leading indicator of exhaustion — act before requests start queueing."
+
+      - alert: PayeshDbErrorRate
+        expr: |
+          sum by (op, target) (rate(payesh_db_query_errors_total[5m]))
+            /
+          clamp_min(sum by (op, target) (rate(payesh_db_query_duration_seconds_count[5m])), 1e-9) > 0.01
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "SQL error rate above 1% on {{ $labels.op }}/{{ $labels.target }}"
+          description: "Failover or a broken migration. Verify data integrity per the Wave 16 restore runbook."
+
+      - alert: PayeshDbSlowQueries
+        expr: sum by (op, target) (rate(payesh_db_slow_queries_total[5m])) > 0.5
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Sustained slow queries on {{ $labels.op }}/{{ $labels.target }}"
+          description: "Above PAYESH_DB_SLOW_MS. Look for a missing composite index (Wave 3) or replica lag."
+
+      - alert: PayeshDbReplicaFailing
+        expr: sum(rate(payesh_db_query_errors_total{target="replica"}[5m])) > 0
+        for: 2m
+        labels: { severity: warning }
+        annotations:
+          summary: "Read replica errors — reads have fallen back to primary"
+          description: "server/db.js stops routing to a dead replica, so primary load just went up."
+
+  - name: payesh-cache
+    interval: 30s
+    rules:
+      - alert: PayeshCacheHitRateLow
+        expr: |
+          sum(rate(payesh_cache_lookups_total{outcome="hit"}[15m]))
+            /
+          clamp_min(sum(rate(payesh_cache_lookups_total[15m])), 1e-9) < 0.8
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "Bootstrap cache hit rate below 80%"
+          description: "Expect DB load to rise. Check invalidation storms (payesh_cache_invalidations_total)."
+
+      - alert: PayeshInvalidationStorm
+        expr: sum(rate(payesh_cache_invalidations_total[5m])) > 20
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Cache invalidation storm"
+          description: "Something is invalidating in a loop; the cache is effectively off."
+
+  - name: payesh-async
+    interval: 30s
+    rules:
+      - alert: PayeshOutboxBacklog
+        expr: payesh_outbox_depth{status="pending"} > 500
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Outbox backlog above 500 pending events"
+          description: "The worker is not keeping up. The queue is capped at 1000 — beyond that the oldest events slide off. docs/ASYNC_ARCHITECTURE.md."
+
+      - alert: PayeshWorkerFailures
+        expr: sum(rate(payesh_worker_events_total{outcome="failed"}[10m])) > 0
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "Worker events permanently failed"
+          description: "Events past maxRetries are marked failed and NEVER deleted — inspect store.outbox and retry deliberately."
+
+      - alert: PayeshSyncConflictSpike
+        expr: sum(rate(payesh_sync_conflicts_total[10m])) > 1
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Sync conflicts spiking"
+          description: "Optimistic concurrency is rejecting writes at scale — usually a client clock/version bug, not user error."
+
+  - name: payesh-runtime
+    interval: 30s
+    rules:
+      - alert: PayeshEventLoopLag
+        expr: payesh_node_eventloop_lag_seconds > 0.25
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "Event-loop lag above 250 ms"
+          description: "The process is blocked. This is the truest saturation signal we have — check it before CPU."
+
+      - alert: PayeshHeapGrowth
+        expr: |
+          (payesh_node_heap_used_bytes / clamp_min(payesh_node_heap_total_bytes, 1)) > 0.9
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "Heap consistently above 90% of total"
+          description: "Possible leak — this is exactly what the Wave 17 soak test hunts. Capture a heap snapshot before the OOM does it for you."
+
+      - alert: PayeshRssGrowth
+        expr: deriv(payesh_node_rss_bytes[30m]) > 0
+        for: 2h
+        labels: { severity: warning }
+        annotations:
+          summary: "RSS growing monotonically for 2h"
+          description: "Connection or buffer leak. Correlate with pool and outbox depth."
+
+  - name: payesh-security
+    interval: 30s
+    rules:
+      - alert: PayeshLoginAbuse
+        expr: |
+          sum(rate(payesh_auth_login_total{outcome=~"failed|rate_limited"}[10m]))
+            /
+          clamp_min(sum(rate(payesh_auth_login_total[10m])), 1e-9) > 0.5
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Majority of login attempts are failing or rate-limited"
+          description: "Credential stuffing or an OTP delivery outage. Cross-check the masked audit log."
+
+      - alert: PayeshOtpFlood
+        expr: sum(rate(payesh_auth_otp_requests_total{outcome="rate_limited"}[5m])) > 1
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "OTP send-code requests being rate-limited at scale"
+          description: "SMS-gateway cost and abuse risk. docs/RATE_LIMITING_DESIGN.md."
+
+      - alert: PayeshEnumerationEscalation
+        expr: sum(rate(payesh_auth_rejections_total{stage=~"slow2|revoke"}[10m])) > 0
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Enumeration guard reached slow2/revoke for some session"
+          description: "Someone is walking record ids. The R97 guard already delayed/revoked the session."
+
+  - name: payesh-selfmonitoring
+    interval: 60s
+    rules:
+      - alert: PayeshMetricsCardinalityGuardFiring
+        expr: increase(payesh_metrics_dropped_series_total[10m]) > 0
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: "Metrics cardinality guard dropped observations"
+          description: "A label is unbounded — this is a code bug, not a capacity problem. Find the recorder; do NOT raise PAYESH_METRICS_MAX_SERIES."
+
+      - alert: PayeshMetricsAbsent
+        expr: absent(payesh_http_requests_total)
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "No payesh metrics at all"
+          description: "Scrape is broken or the service is gone. /metrics is fail-closed — check the bearer token first."
