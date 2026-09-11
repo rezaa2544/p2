@@ -1,5 +1,31 @@
 # دفترچهٔ تحویل کار — پایش
 
+## Handoff — چت ۳: موج ۲۱ — کلاس چندپایه (مدارس روستایی) — ✅ (2026-09-11)
+
+- **ماموریت:** نمای ماتریسی برای مدارس روستایی/چندپایه: سطر=دانش‌آموز،
+  ستون=پایه؛ حضور با دکمه‌های سریع (حاضر/غایب/مرخصی) + ثبتِ گروهیِ هر
+  پایه با یک ضربه + فیلتر پایه + وضعیت فعلی؛ نمرهٔ گروهی؛ حفظ Offline-First.
+- **شاخه:** `feat/wave21-multigrade` (از `main@7567607` + مرجِ
+  `feat/a11y-keyboard-nav` تا گیتِ کیبورد در دسترس باشد — PR #77 هنوز باز است).
+- **کد:** `src/js/76-multigrade.js` (روت `multigrade`، منویِ مدیر/دبیر).
+  هیچ مسیرِ نوشتنِ تازه‌ای ساخته نشد: حضور روی لایهٔ پیش‌نویسِ
+  `attDraftSet/attDraftSetAll` و ثبتِ نهایی از `att-review→att-commit`
+  (پیامک/قاعدهٔ ۳۰٪/صف سالم)؛ نمره از `insert('grades')` → صفِ آفلاین.
+  امتحان نهایی کشوری عمداً غایب (فاز ۰.۳). ACTION_ROLES + write-perms
+  بازتولید؛ NAV_EXPECT در smoke به‌روز شد (تغییرِ منویِ عمدی).
+- **تست:** `tests/multi-grade.js` — **34/34** (JSDOM)؛ mutation-verified ×۳
+  (فیلترِ پایهٔ سرستون → M11 قرمز؛ اعتبارسنجی نمره → M29؛ خانهٔ خاموش → M7/M23).
+- **گیت‌ها پس از هر مرحله:** smoke **547/547**، check-authz تطبیق کامل،
+  secret-scan **11/11**، a11y-keyboard **92/92** (chromium این سشن دوباره
+  نصب شد — اسنپ‌شات آن را پاک می‌کند)، `build.js --check` سبز.
+- **مستندات:** `docs/MULTI_GRADE_GUIDE.md` (نو)، بخش §۵ در
+  `docs/A11Y_GUIDE.md`، ردیف Wave 21 در `docs/NATIONAL_ROADMAP_PROGRESS.md`.
+- **نکته برای نفر بعد:** پایهٔ دانش‌آموز = `users.grade_level` و در نبودش
+  پایهٔ کلاسِ ثبت‌نامی (`mgStudentGradeNum`)؛ شرطِ نمایش = `c.multigrade`
+  + قابلیت `has_multigrade` مدرسه (پیش‌فرضِ پروفایل روستایی/عشایری).
+
+---
+
 ## Handoff — پ۷: مرج مانور WAL Disk-Full / PR #78 — ✅ (2026-09-11)
 
 - **PR:** [#78](https://github.com/rezaa2544/p2/pull/78) با عنوان `feat: WAL disk-full drill (tmpfs variant — second implementation, see PR #76)` ابتدا از GitHub API با `state=open`، `merged=false` و `mergeable=false`/`mergeable_state=dirty` دیده شد؛ شاخهٔ PR نسبت به `main` به‌روز نبود.
