@@ -1,5 +1,17 @@
 # دفترچهٔ تحویل کار — پایش
 
+## Handoff — پ۷: تأیید و مرج A11y Keyboard Navigation / PR #77 — ✅ (2026-09-11)
+
+- **PR:** [#77](https://github.com/rezaa2544/p2/pull/77) با عنوان `feat: a11y keyboard navigation (focus trap + tab order)` ابتدا با `mergeable=false` و وضعیت `dirty` دیده شد؛ شاخهٔ PR روی آخرین `main` به‌روز و conflict `USER_GUIDE.html` با بازسازی رسمی build حل شد.
+- **تأیید mergeability:** پس از push اصلاح merge، API وضعیت `mergeable=true` را تأیید کرد؛ merge از API انجام شد.
+- **Merge commit:** `2c7097d8e22894bdcf3decf4c6e494d4854e09f7`.
+- **تست‌های محلی روی clone تمیز main:** smoke **547/547**، `check-authz` exit 0 با 389 اکشن، secret-scan **11/11**، `node build.js --check` سبز، `a11y-keyboard` **92/92** و `a11y-regressions` **46/46**.
+- **تأیید پوش:** commit مستندات `cd04485` به main push شد و تأیید SHA پس از push انجام شد.
+- **مستندات:** ردیف Wave 17 در `docs/NATIONAL_ROADMAP_PROGRESS.md` با PR #77 و شواهد تست به‌روز شد.
+- **یادداشت محیط:** هشدار jsdom برای `window.scrollTo` در smoke غیرمسدودکننده است؛ نیازمندی engine پروژه Node >=22 است و محیط محلی Node 20.20.2 دارد.
+
+---
+
 ## Handoff — چت ۷: مرج Delta Sync Phase 4 / PR #71 — ✅ (2026-09-11)
 
 - **ماموریت:** بررسی وضعیت PRها، تأیید merge از API، اجرای گیت‌های حیاتی پس از merge، و ثبت نتیجه در roadmap و HANDOFF.
