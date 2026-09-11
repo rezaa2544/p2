@@ -25,10 +25,10 @@ function renderShell(){
       <span>🔑 شما به‌عنوان <b>${esc(u.full_name)}</b> (${ROLE_FA[u.role]}${school?' — '+esc(school.name):''}) وارد شده‌اید — حساب واقعی: ${esc(S.boss.full_name)}</span>
       <div class="spacer"></div>
       <button data-act="stop-imp">بازگشت به پنل سوپر ادمین</button></div>`:''}
-    <header class="topbar"><button class="burger" data-act="opennav">☰</button>
-      ${(S.stack.length||S.route!==(u.role==='edu_office'?'officedash':'dashboard'))?`<button class="icon-btn back-btn" data-act="back" title="بازگشت">→</button>`:''}
+    <header class="topbar"><button class="burger" data-act="opennav" aria-label="باز کردن منوی ناوبری">☰</button>
+      ${(S.stack.length||S.route!==(u.role==='edu_office'?'officedash':'dashboard'))?`<button class="icon-btn back-btn" data-act="back" title="بازگشت" aria-label="بازگشت">→</button>`:''}
       <div><h1>${t[0]}</h1><div class="sub">${t[1]}</div></div><div class="spacer"></div>
-      <button class="icon-btn" data-act="go" data-r="notifications" title="اعلان‌ها" style="position:relative;font-size:17px">🔔${(()=>{const n=unreadCount();return n?`<span style="position:absolute;top:-4px;inset-inline-end:-4px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border:2px solid #fff">${n>99?'۹۹+':fa(n)}</span>`:''})()}</button>
+      <button class="icon-btn" data-act="go" data-r="notifications" title="اعلان‌ها" aria-label="اعلان‌ها" style="position:relative;font-size:17px">🔔${(()=>{const n=unreadCount();return n?`<span style="position:absolute;top:-4px;inset-inline-end:-4px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border:2px solid #fff">${n>99?'۹۹+':fa(n)}</span>`:''})()}</button>
       ${typeof syncBadge==='function'?syncBadge():''}
       ${typeof themeSegHtml==='function'?themeSegHtml():''}
       ${(()=>{try{if(typeof activeYearOf!=='function')return '';var yc=activeYearOf(u.school_id||null);if(!yc)return '';var t=(typeof yearCodeTitle==='function')?yearCodeTitle(yc):yc;return `<span class="badge b-gray" title="سال تحصیلی عملیاتی">📅 ${esc(t)}</span>`;}catch(e){return '';}})()}
