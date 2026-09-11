@@ -489,6 +489,17 @@ end
 return v
 `;
 
+/* Delta Phase 4 (gap 1): شمارشِ وزن‌دار — یک درخواستِ sync با N عملیات
+   باید N واحد از پنجرهٔ نرخ مصرف کند، نه ۱. همان تضمینِ اتمیکِ
+   incrWithTtl (INCRBY + EXPIRE در یک اسکریپت). */
+const INCRBY_WITH_TTL_SCRIPT = `
+local v = redis.call("INCRBY", KEYS[1], ARGV[2])
+if redis.call("TTL", KEYS[1]) < 0 then
+  redis.call("EXPIRE", KEYS[1], ARGV[1])
+end
+return v
+`;
+
 /**
  * Atomic increment that GUARANTEES a TTL on the key.
  * Self-heals orphaned keys (created by INCR but never expired, e.g. after a
@@ -512,6 +523,39 @@ async function incrWithTtl(key, ttlSeconds) {
   const v = await module.exports.incr(key);
   const t = await module.exports.ttl(key);
   if (t === -1 && ttlSeconds > 0) await module.exports.expire(key, ttlSeconds);
+  return v;
+}
+
+/**
+ * Weighted atomic increment with guaranteed TTL (Delta Phase 4, gap 1).
+ * @param {string} key
+ * @param {number} ttlSeconds
+ * @param {number} amount integer >= 1 (defaults 1 — behaves like incrWithTtl)
+ * @returns {Promise<number>} new counter value
+ */
+async function incrByWithTtl(key, ttlSeconds, amount) {
+  const by = Math.max(1, Math.trunc(Number(amount) || 1));
+  if (isRedis()) {
+    try {
+      const reply = await client.eval(INCRBY_WITH_TTL_SCRIPT, 1, key, ttlSeconds, by);
+      return Number(reply);
+    } catch (err) {
+      prodRethrow(err); // BUG-2
+    }
+  }
+  prodNoRedis('incrByWithTtl'); // BUG-2
+  cleanExpiredMem();
+  const exp = memExpiry.get(key);
+  if (exp && Date.now() >= exp) {
+    memCache.delete(key);
+    memExpiry.delete(key);
+  }
+  const cur = memCache.has(key) ? parseInt(memCache.get(key), 10) : 0;
+  if (!Number.isFinite(cur)) throw new Error('ERR value is not an integer or out of range');
+  const v = cur + by;
+  memCache.set(key, String(v));
+  /* TTL فقط با نخستین افزایشِ پنجره (پنجرهٔ ثابت از اولین ضربه) */
+  if (!memExpiry.has(key) && ttlSeconds > 0) memExpiry.set(key, Date.now() + ttlSeconds * 1000);
   return v;
 }
 
@@ -754,6 +798,7 @@ module.exports = {
   del,
   incr,
   incrWithTtl,
+  incrByWithTtl,
   expire,
   ttl,
   scan,

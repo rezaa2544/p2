@@ -493,6 +493,20 @@ function createSync(ctx){
   const sendJson = ctx.sendJson;
   const ids = ctx.ids || null; /* Wave 1: ids service for server-assigned ids (PG sequences when live) */
 
+  /* ── Backpressure (Delta Phase 4, gap 1) ────────────────────────────
+     دروازهٔ نرخ روی «تعداد op در پنجرهٔ ۶۰ثانیه‌ای به‌ازای نشست» با همان
+     موتورِ توزیع‌شدهٔ rate-limit.js (Redis در تولید، fallback درون‌حافظه‌ای در
+     dev/test). خطای موتور = fail-open (اجازه) — لبهٔ سختِ نرخ نزدِ
+     nginx/Cloudflare می‌ماند؛ این دروازه برای «مهارِ مؤدبانهٔ کلاینتِ مشتاق»
+     است، نه DDoS. ctx.rateLimit تزریق می‌شود (index.js)؛ نبودنش (تست‌های
+     قدیمی) یعنی بدونِ سقف — رفتارِ پیشین. */
+  const rateLimit = ctx.rateLimit || null;
+  const syncOpsPerMinute = () => {
+    const n = Number(ctx.syncOpsPerMin != null ? ctx.syncOpsPerMin : process.env.PAYESH_SYNC_OPS_PER_MIN);
+    if (!Number.isFinite(n)) return 5000; /* پیش‌فرض: سخاوتمندانه — فقط مشتاق‌های واقعی مهار می‌شوند */
+    return Math.min(1000000, Math.max(100, Math.trunc(n)));
+  };
+
   /* Wave 1: server-assigned ids come from the ids service (PG sequences when live,
      local max+1 -- same values as nextId -- in memory mode) so two instances never
      collide. Legacy local max+1 stays as the fallback when no ids service was
@@ -539,6 +553,37 @@ function createSync(ctx){
     if(!Array.isArray(ops)) return sendJson(res, 400, { ok: false, code: 'bad_payload' });
     if(ops.length > MAX_BATCH) return sendJson(res, 413, { ok: false, code: 'batch_too_large' });
     if(ops.length === 0) return sendJson(res, 200, { ok: true, results: [] });
+
+    /* ── Backpressure (Delta Phase 4, gap 1) ────────────────────────────
+       سقفِ op در پنجرهٔ ۶۰ثانیه‌ای برایِ این نشست. رد = 429 + retry_after_s
+       (از TTLِ واقعیِ پنجره) + سرآیندِ Retry-After؛ هیچ op اعمال نمی‌شود —
+       کلاینت (27-sync.js) دسته را دست‌نخورده در صف نگه می‌دارد و با مُهرِ
+       سرور دوباره می‌آید. گذراست: نه dead-letter، نه شمارشِ تلاشِ ناموفق op. */
+    if (rateLimit && typeof rateLimit === 'function') {
+      let r = null;
+      try {
+        r = await rateLimit({
+          prefix: 'sync:ops',
+          identifier: 'u' + (s.id != null ? s.id : 'anon'),
+          limit: syncOpsPerMinute(),
+          windowSeconds: 60,
+          weight: ops.length
+        });
+      } catch (_) { r = null; /* fail-open — همان قراردادِ rate-limit.js */ }
+      if (r && r.allowed === false) {
+        metrics.inc('payesh_sync_backpressure_rejections_total', []);
+        const retryAfterS = Math.max(1, Math.min(60, Math.round(Number(r.reset) || 60)));
+        if (res && typeof res.setHeader === 'function') {
+          try { res.setHeader('Retry-After', String(retryAfterS)); } catch (_) {}
+        }
+        return sendJson(res, 429, {
+          ok: false,
+          code: 'sync_backpressure',
+          retry_after_s: retryAfterS,
+          message: 'سرور زیر فشار است — تغییرات در صفِ محلی می‌مانند و کمی بعد دوباره ارسال می‌شوند'
+        });
+      }
+    }
 
     const all = (code) => {
       /* R96 P1-8: authorization failure باید ردِّ پای داشته باشد (بدونِ PII) */

@@ -42,6 +42,9 @@ const { createAudit, clientIp } = require('./audit');
 const db = require('./db');
 const redis = require('./redis');
 const cache = require('./cache');
+/* Delta Phase 4 (gap 1): sync backpressure uses the same distributed
+   fixed-window limiter as auth (Redis live, in-memory dev fallback). */
+const rateLimit = require('./rate-limit');
 const revocation = require('./revocation'); /* Wave 6: ابطالِ توزیع‌شدهٔ مرحلهٔ REVOKE */
 
 const { createStudentRoutes } = require('./routes/students');
@@ -432,7 +435,7 @@ const auth = createAuth({ store, db, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, 
    شوند؛ auth استثناست (سقفِ OTP سقفِ خودش را می‌سازد). */
 /* P0-16: شناسه‌های بدون‌برخورد — دنبالهٔ پستگرس یا مکس+۱ قفل‌دار (پیش از sync: حلقهٔ اعمال از آن استفاده می‌کند) */
 const ids = createIds({ db, cache });
-const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, ids });
+const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, ids, rateLimit: rateLimit.checkRateLimit });
 const idor = createIdor({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const pubrep = createPublicReport({ store, sendJson: sendJsonCounting, workers });
