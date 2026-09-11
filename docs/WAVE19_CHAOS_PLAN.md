@@ -137,3 +137,32 @@ k6 run tests/performance/suites/chaos-redis-test.js --env BASE_URL=http://127.0.
 ## ۶. تست‌هایِ این موج — `tests/wave19-chaos.js`
 
 بررسیِ وجود/اعتبارِ اسکریپت (syntax، help، DRY_RUNِ هر 5 سناریو + خروجی‌ها)، پوششِ 5 سناریویِ الزامی در سند، سازگاریِ فرضیه‌ها با قوانینِ پروژه (atomik store، fail-open rate-limit، 503ِ readiness، صفر data loss، crash-free disk-full)، gitignore شدنِ `tests/chaos-output/` و اتصالِ سند به سوئیتِ k6ِ فاز ۵.
+## S6 ? ?????? ???? (AZ Partition)
+
+**??:** Network partition between availability zones using tc + netem + toxiproxy.
+| ?? | ?? |
+|---|---|
+| AZ partition | tc qdisc add dev IFACE root netem loss 100% between API and Redis/PG |
+| Readiness | **503** (Wave 15) |
+| Liveness | **200** |
+| Failover | Auto-promote standby PG (RPO < 1s, RTO < 30s) |
+| Data loss | **No** (sync mirror + WAL archiving) |
+| Reconnect | scheduleReconnect + readiness-driven restart |
+
+**??:** AZ partition detection أ¢â€ â€™ promote standby أ¢â€ â€™ readiness 200 أ¢â€ â€™ data integrity check.
+
+## S7 ? WAL-disk-full (PANIC + Recovery + RTO)
+
+**??:** Fill WAL disk with fallocate -l 5G to trigger PostgreSQL PANIC, then measure recovery time.
+| ?? | ?? |
+|---|---|
+| WAL disk full | fallocate -l DISK_FILL_GB /var/lib/postgresql/data/pg_wal |
+| PostgreSQL state | **PANIC** shutdown |
+| Recovery mode | Automatic crash recovery on restart |
+| RTO measurement | Time from PANIC to readiness=200 |
+| Data integrity | WAL archive recovery + PITR verification |
+| Audit | wal_full event logged |
+| RTO objective | < 900s (D1a) |
+
+**??:** Fill WAL disk أ¢â€ â€™ PG PANIC أ¢â€ â€™ restart أ¢â€ â€™ crash recovery أ¢â€ â€™ PITR أ¢â€ â€™ readiness=200 أ¢â€ â€™ verify data integrity أ¢â€ â€™ measure RTO.
+
