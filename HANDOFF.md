@@ -14,6 +14,16 @@
 > ظ‡ظ…ظ‡ظ” ع©ط§ط±ظ‡ط§ ط§ط¹ظ…ط§ظ„ ظ…غŒâ€Œط´ظˆط¯.
 
 
+## Wave 19 — مانورِ واقعیِ WAL disk-full (`feat/wave19-wal-drill`) — ✅ (2026-09-11)
+
+- **مأموریت:** شبیه‌سازیِ پر شدنِ دیسکِ WAL در PostgreSQL و بازیابی (W1–W5). پیش‌از این در `docs/WAVE19_CHAOS_LIVE_REPORT.md` صریحاً **NOT TESTED** بود چون PG نصب نبود؛ در این نشست PG17 نصب و مانور **واقعاً** اجرا شد.
+- **زیرساخت:** `infra/wal-drill/bootstrap.sh` — PG17 روی **۵۵۴۳۲**، `pg_wal` روی **tmpfsِ ۱۰۰MB**، هر ۷ migration (۹۰ جدول)، seed.
+- **تست:** `tests/wal-disk-full.js` — **۲۰/۲۱ سبز**. کدهای خروج: ۰ سبز · ۱ خطا · **۲ = سناریوهایِ زنده اجرا نشدند** (عمداً از ۰ جدا، تا سبزِ جعلی نشود).
+- **نتایج:** W1 = ۸۳٪ سالم و **بی‌صدا** · W2 = **PANICِ واقعی** (`could not write to file "pg_wal/xlogtemp.NNNN": No space left on device`) · W3 = **RTO ۳۰٫۲ث** (restart با دیسکِ پُر شکست خورد؛ پس از آزادسازیِ فضا بالا آمد) · W4 = replica با **RPO=۰** (۱۴٬۱۰۰ = ۱۴٬۱۰۰) · W5 = صفر data loss.
+- **دو یافتهٔ عملیاتیِ باز:** (۱) **PG در ۸۰٪ پُریِ WAL هیچ هشداری نمی‌دهد** ⇒ آلارمِ دیسکِ WAL باید بیرونی باشد (node_exporter/`pg_stat_wal`) — قلمِ P1 برایِ `docs/OBSERVABILITY.md`. (۲) restart با دیسکِ پُر ناموفق است ⇒ در `docs/DR_RUNBOOK.md` §۸ گامِ «آزادسازیِ فضا پیش از restart» الزامی شد.
+- **صداقت:** RPO=0 فقط با «شمارِ رکوردها» تأیید شد (نه checksumِ سطر‌به‌سطر)؛ PITR از آرشیو و سناریوی منطقه‌ای آزمایش **نشد**؛ `wal_segment_size=1MB` و `wal_recycle=off` فقط برایِ شتاب‌دهیِ مانور بود ⇒ عددِ مطلقِ RTO به تولید تعمیم داده نشود. سه «سبزِ کاذب» هم حینِ کار گرفته شد (گزارش §۶).
+- **اسناد:** `docs/WAVE19_WAL_DRILL_REPORT.md` (جدولِ W1–W5) · `docs/DR_RUNBOOK.md` §۶ ردیف + §۸ سناریویِ تازه · `docs/DISASTER_RECOVERY.md` §۵/§۸ · `docs/PRODUCTION_READINESS_CHECKLIST.md` (Reliability).
+
 ## ط±ط§ط³طھغŒâ€Œط¢ط²ظ…ط§غŒغŒظگ ط¯ط³طھط±ط³â€Œظ¾ط°غŒط±غŒ ط¯ط± ط²ظ…ط§ظ†ظگ ط§ط¬ط±ط§ (`feat/a11y-runtime-verification`) â€” âœ… (2026-09-11)
 
 - **ظ…ط£ظ…ظˆط±غŒطھ:** ط§ط³ع©ظ†ظگ axe-core ط±ظˆغŒظگ DOM ط²ظ†ط¯ظ‡ظ” Chromium ظˆط§ظ‚ط¹غŒ (playwright â€” ظ†ظ‡ jsdom)ط› ظ¾ط§غŒظ‡: `main@b872f44`.
