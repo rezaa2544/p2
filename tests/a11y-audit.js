@@ -63,7 +63,13 @@ chk('C1 برگر aria-label دارد', /class="burger"[^>]*aria-label="[^"]+"/.t
 chk('C2 دکمهٔ بازگشت aria-label دارد', /back-btn"[^>]*aria-label="[^"]+"|aria-label="[^"]+"[^>]*back-btn/.test(shell));
 chk('C3 زنگِ اعلان‌ها aria-label دارد', /data-r="notifications"[^>]*aria-label="[^"]+"|aria-label="[^"]+"[^>]*data-r="notifications"/.test(shell));
 chk('C4 دکمهٔ ✕ مودالِ اصلی aria-label دارد', (modals.match(/data-act="modal-close"[^>]*aria-label="[^"]+"|aria-label="[^"]+"[^>]*data-act="modal-close"/g) || []).length >= 1);
-chk('C5 هیچ ✕ بدونِ aria-label در src نیست', !/data-act="modal-close"[^>]*>✕/.test(modals + subs + office + sync));
+chk('C5 هیچ ✕ بدونِ aria-label در src نیست', (() => {
+  const files = fs.readdirSync(JS).filter((f) => f.endsWith('.js'));
+  for (const f of files) {
+    if (/<button(?![^>]*aria-label="[^"]+")[^>]*>✕</.test(js(f))) return false;
+  }
+  return true;
+})());
 
 // ── D: association برچسبِ f() (۴) ─────────────────────────────
 group('D — association برچسب و کنترل');

@@ -4251,7 +4251,7 @@ function syncPanelModal(){
     </div>`;
 
   openModal(`<div class="card-head"><h3>وضعیت همگام‌سازی</h3>
-      <button class="icon-btn" data-act="modal-close">✕</button></div>
+      <button class="icon-btn" data-act="modal-close" aria-label="بستن">✕</button></div>
     <div class="card-body">${body}</div>
     <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border)">
       ${SYNC.demoMode?`<button class="btn ghost sm" data-act="sync-toggle-net">${SYNC.online?'📴 شبیه‌سازی قطع اینترنت':'🌐 شبیه‌سازی وصل شدن'}</button>`:''}
@@ -7506,7 +7506,7 @@ function __modalTrap(e){
 }
 if(typeof document!=='undefined'&&typeof window!=='undefined'&&!window.__payeshModalTrap){window.__payeshModalTrap=true;document.addEventListener('keydown',__modalTrap,true);}
 function modalTpl(title,body,saveAct,danger,okLabel){
-  return `<div class="card-head"><h3>${esc(title)}</h3><button class="icon-btn" data-act="modal-close">✕</button></div>
+  return `<div class="card-head"><h3>${esc(title)}</h3><button class="icon-btn" data-act="modal-close" aria-label="بستن">✕</button></div>
    <div class="card-body">${body}</div>
    <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border);justify-content:flex-end">
     <button class="btn ghost" data-act="modal-close">انصراف</button>
@@ -18362,7 +18362,7 @@ const P8_ACTIONS = {
     const colors=['var(--primary-soft)','var(--green-soft)','var(--amber-soft)','var(--purple-soft)'];
     const cmap={}; schools.forEach((n,i)=>cmap[n]=colors[i%colors.length]);
     const periods=[...new Set(slots.map(s=>s.period))].sort((a,b)=>a-b);
-    openModal(`<div class="card-head"><h3>برنامه کامل — ${esc(t.full_name)}</h3><button class="icon-btn" data-act="modal-close">✕</button></div>
+    openModal(`<div class="card-head"><h3>برنامه کامل — ${esc(t.full_name)}</h3><button class="icon-btn" data-act="modal-close" aria-label="بستن">✕</button></div>
       <div class="card-body">
         <div class="row" style="gap:8px;margin-bottom:12px"><span class="badge b-blue">مجموع ${fa(slots.length)} زنگ</span>
         ${schools.map(n=>`<span class="badge" style="background:${cmap[n]};color:var(--text)">${esc(n)}: ${fa(slots.filter(s=>(byId('schools',s.school_id)||{}).name===n).length)} زنگ</span>`).join('')}</div>

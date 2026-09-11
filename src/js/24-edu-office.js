@@ -628,7 +628,7 @@ const P8_ACTIONS = {
     const colors=['var(--primary-soft)','var(--green-soft)','var(--amber-soft)','var(--purple-soft)'];
     const cmap={}; schools.forEach((n,i)=>cmap[n]=colors[i%colors.length]);
     const periods=[...new Set(slots.map(s=>s.period))].sort((a,b)=>a-b);
-    openModal(`<div class="card-head"><h3>برنامه کامل — ${esc(t.full_name)}</h3><button class="icon-btn" data-act="modal-close">✕</button></div>
+    openModal(`<div class="card-head"><h3>برنامه کامل — ${esc(t.full_name)}</h3><button class="icon-btn" data-act="modal-close" aria-label="بستن">✕</button></div>
       <div class="card-body">
         <div class="row" style="gap:8px;margin-bottom:12px"><span class="badge b-blue">مجموع ${fa(slots.length)} زنگ</span>
         ${schools.map(n=>`<span class="badge" style="background:${cmap[n]};color:var(--text)">${esc(n)}: ${fa(slots.filter(s=>(byId('schools',s.school_id)||{}).name===n).length)} زنگ</span>`).join('')}</div>
