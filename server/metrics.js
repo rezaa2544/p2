@@ -411,6 +411,17 @@ function declareAll(r) {
      write. Labels are a closed set: conflict | stale | clean. */
   r.histogram('payesh_sync_conflict_detection_seconds', 'OCC conflict-detection time (base_version gate).', ['outcome'],
     [0.00005, 0.0001, 0.00025, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25]);
+  /* ── Delta Phase 4 — backpressure / compression / observability / region ── */
+  r.counter('payesh_sync_backpressure_rejections_total', 'Sync batches rejected with 429 sync_backpressure (per-session op window exceeded).', []);
+  r.counter('payesh_sync_pulls_total', 'Pull requests served, by mode (delta | full).', ['mode']);
+  r.counter('payesh_sync_pushes_total', 'Sync pushes received (POST /api/sync with a non-empty ops batch).', []);
+  r.histogram('payesh_sync_delta_size_bytes', 'Pull response JSON size before compression (bytes).', [],
+    [256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304]);
+  r.histogram('payesh_sync_delta_wire_bytes', 'Pull response bytes actually put on the wire (post-compression when negotiated).', [],
+    [256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304]);
+  r.counter('payesh_sync_delta_compressions_total', 'Pull responses compressed, by encoding (gzip | br).', ['encoding']);
+  r.counter('payesh_cursor_expired_total', 'Pull cursors rejected as expired (TTL).', []);
+  r.counter('payesh_cursor_region_mismatch_total', 'Pull cursors rejected because they were issued by another region (cursor v2 rg binding).', []);
   /* ── Database ── */
   r.histogram('payesh_db_query_duration_seconds', 'SQL round-trip latency.', ['op', 'target']);
   r.counter('payesh_db_query_errors_total', 'SQL errors by op and target.', ['op', 'target']);
