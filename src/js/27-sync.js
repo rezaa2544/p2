@@ -17,6 +17,7 @@
 const SYNC_QUEUE_KEY = 'sms_syncq_v1';
 const SYNC_META_KEY  = 'sms_syncmeta_v1';
 const SYNC_DLQ_KEY   = 'sms_syncdlq_v1';   /* P1-10: صفِ مردهٔ ماندگار (پس از ۵ تلاش یا خروج از سقف) */
+const BGSYNC_TAG     = 'payesh-sync-queue'; /* W8-1: برچسبِ Background Sync — هم‌نام با sw.js */
 
 /* P1-10 (مقیاس ملی): سقف و نگهداشتِ صفِ ارسال.
    - maxOperations: بیشینهٔ قلم‌هایِ صف (تخلیه از قدیمی‌ترینِ ترمینال‌ها؛ pending آخر)
@@ -77,6 +78,7 @@ const SYNC = {
   progress   : null,        /* دور ۱۰۰: پیشرفتِ ارسالِ تکه‌تکه {done,total} */
   dlq        : [],          /* P1-10: صفِ مرده (پس از ۵ تلاش / خروج از سقف) */
   capWarned  : false,       /* P1-10: هشدارِ «نزدیک سقف» داده شده؟ (هیسترزیس) */
+  quotaWarned: false,       /* W8-4: هشدارِ «نزدیکِ سهمیهٔ مرورگر» داده شده؟ (هیسترزیس) */
   dlqDropped : 0,           /* P1-10: قلم‌هایِ دورریخته‌شده از DLQیِ پر */
 };
 
@@ -252,7 +254,10 @@ function enqueueOp(op){
   enforceQueueCaps();         /* P1-10: سقفِ تعدادی/حجمی + هرسِ قدمت */
   saveQueueChecked();         /* P1-10: مقاوم در برابرِ پرشدنِ حافظه */
   checkCapWarning();          /* P1-10: هشدارِ «نزدیک سقف» */
+  checkStorageQuota();        /* W8-4: پایشِ سهمیهٔ ذخیره‌سازیِ مرورگر (async) */
   refreshSyncBadge();         /* نشانگر بدون رندر کامل به‌روز شود */
+  bgMirrorQueue();            /* W8-1: آینهٔ IDB برایِ Background Sync */
+  bgRegisterSync();           /* W8-1: اگر تب بسته شد، مرورگر خودش بفرستد */
   scheduleSync(400);          /* اگر آنلاین بود، خیلی زود ارسال شود */
   return item;
 }
@@ -334,6 +339,9 @@ async function syncNow(manual){
         item.error  = (r.code === 'conflict_preserved')
           ? 'تغییر هم‌زمان روی سرور حفظ شد — مدیر مدرسه باید داوری کند'
           : 'سرور نسخهٔ تازه‌تری از این رکورد دارد — تغییر اعمال نشد';
+        /* W8-2: نسخهٔ سرور (اگر بود) نگه داشته می‌شود تا کاربر بتواند
+           دو نسخه را روبه‌رویِ هم ببیند (مودالِ «کدام نسخه برنده شد») */
+        if(r.server) item.server = r.server;
       }else if(SYNC_DEAD_CODES[r.code]){
         /* ردِّ پایدار — دوباره‌ارسال بی‌فایده است (P0-2) */
         item.status = 'rejected';
@@ -400,6 +408,7 @@ async function syncNow(manual){
   }finally{
     SYNC.syncing = false;
     SYNC.progress = null; /* دور ۱۰۰: پایانِ نمایشِ پیشرفت */
+    bgMirrorQueue();      /* W8-1: آینهٔ IDB با نتیجهٔ این دور تازه شود */
     refreshSyncBadge();
   }
 }
@@ -513,6 +522,53 @@ async function sendBatch(batch){
   return batch.map(x => ({ uid: x.uid, ok: true }));
 }
 
+/* ---------- W8-3: تفکیکِ صف و زمانِ نسبی برایِ نشانگرِ آفلاین ---------- */
+/* شمارشِ صفِ در انتظار به تفکیکِ نوعِ عملیات: {ins, upd, del, total} */
+function queueBreakdown(){
+  var b = { ins: 0, upd: 0, del: 0, total: 0 };
+  SYNC.queue.forEach(function(x){
+    if(x.status !== 'pending' && x.status !== 'failed') return;
+    var t = (x.op && x.op.t) || '';
+    if(b[t] !== undefined) b[t]++;
+    b.total++;
+  });
+  return b;
+}
+/* زمانِ نسبیِ خوانا: «۳ دقیقه پیش»، «همین حالا»، «۲ ساعت پیش» */
+function syncRelTime(iso){
+  if(!iso) return null;
+  var t = Date.parse(iso);
+  if(isNaN(t)) return null;
+  var s = Math.max(0, Math.round((Date.now() - t) / 1000));
+  if(s < 60)      return 'همین حالا';
+  if(s < 3600)    return fa(Math.floor(s / 60)) + ' دقیقه پیش';
+  if(s < 86400)   return fa(Math.floor(s / 3600)) + ' ساعت پیش';
+  return fa(Math.floor(s / 86400)) + ' روز پیش';
+}
+/* تخمینِ زمانِ همگام‌سازیِ صف: هر تکهٔ ۲۰۰تایی ≈ یک رفت‌وبرگشت (~۱.۵ ثانیه
+   در دمو/شبکهٔ معمول). تخمین است، نه قول — فقط برایِ حسِ انتظارِ کاربر. */
+function estimateSyncSeconds(){
+  var n = pendingCount();
+  if(!n) return 0;
+  var chunks = Math.ceil(n / SYNC_CHUNK);
+  return Math.max(2, Math.round(chunks * 1.5));
+}
+function estimateSyncFa(){
+  var s = estimateSyncSeconds();
+  if(!s) return null;
+  if(s < 60) return 'حدود ' + fa(s) + ' ثانیه';
+  return 'حدود ' + fa(Math.ceil(s / 60)) + ' دقیقه';
+}
+/* خلاصهٔ تفکیکِ صف به فارسی: «۵ ثبت، ۲ حذف» */
+function queueBreakdownFa(){
+  var b = queueBreakdown();
+  var parts = [];
+  if(b.ins) parts.push(fa(b.ins) + ' ثبت');
+  if(b.upd) parts.push(fa(b.upd) + ' ویرایش');
+  if(b.del) parts.push(fa(b.del) + ' حذف');
+  return parts.join('، ');
+}
+
 /* ---------- نشانگر وضعیت در نوار بالا ---------- */
 function syncBadge(){
   const n  = pendingCount();
@@ -521,7 +577,16 @@ function syncBadge(){
   const nearCap = queueRatio() >= SYNC_QUEUE_CAPS.warnRatio;   /* P1-10 */
 
   if(!SYNC.online){
-    return `<button class="sync-chip off" data-act="sync-panel" title="آفلاین — تغییرات ذخیره می‌شوند${nearCap?' — ⚠️ صف نزدیک سقف است':''}">
+    /* W8-3: tooltip با تفکیکِ صف + آخرین همگام‌سازی + تخمین */
+    const bk = queueBreakdownFa();
+    const rel = syncRelTime(SYNC.lastSync);
+    const est = estimateSyncFa();
+    const tip = 'آفلاین — تغییرات ذخیره می‌شوند'
+      + (bk ? ' — در صف: ' + bk : '')
+      + (rel ? ' — آخرین همگام‌سازی: ' + rel : '')
+      + (est ? ' — ارسال پس از اتصال: ' + est : '')
+      + (nearCap ? ' — ⚠️ صف نزدیک سقف است' : '');
+    return `<button class="sync-chip off" data-act="sync-panel" title="${escAttr(tip)}">
       <span class="dot"></span><span>آفلاین</span>${n ? `<span class="badge b-amber sm">${fa(n)}</span>` : ''}${nearCap?'<span class="badge b-red sm">⚠️</span>':''}</button>`;
   }
   if(SYNC.syncing){
@@ -578,16 +643,22 @@ function syncPanelModal(){
     rejected:['رد شده','b-red'],
   };
 
+  /* W8-3: تفکیکِ صف + زمانِ نسبی + تخمینِ ارسال */
+  const bk  = queueBreakdownFa();
+  const rel = syncRelTime(SYNC.lastSync);
+  const est = estimateSyncFa();
+
   const body = `
     <div class="row" style="gap:10px;margin-bottom:12px;flex-wrap:wrap">
       <span class="badge ${SYNC.online?'b-green':'b-gray'}">${SYNC.online?'🌐 آنلاین':'📴 آفلاین'}</span>
-      ${n ?`<span class="badge b-amber">${fa(n)} تغییر در صف</span>`:'<span class="badge b-green">همه‌چیز همگام است</span>'}
+      ${n ?`<span class="badge b-amber" title="${escAttr(bk)}">${fa(n)} تغییر در صف${bk?` (${bk})`:''}</span>`:'<span class="badge b-green">همه‌چیز همگام است</span>'}
       ${cf?`<span class="badge b-red">${fa(cf)} تعارض</span>`:''}
       ${rd?`<span class="badge b-red" title="عملیات‌هایی که سرور آن‌ها را به‌صورتِ پایدار رد کرده است — دوباره ارسال نمی‌شوند">${fa(rd)} رد شده</span>`:''}
       ${nearCap?'<span class="badge b-red">⚠️ نزدیکِ سقفِ صف</span>':''}
       <div class="spacer"></div>
-      <span class="small muted">آخرین همگام‌سازی: ${SYNC.lastSync?jalaliDateTime(SYNC.lastSync):'—'}</span>
+      <span class="small muted" title="${escAttr(SYNC.lastSync?jalaliDateTime(SYNC.lastSync):'')}">آخرین همگام‌سازی: ${rel||(SYNC.lastSync?jalaliDateTime(SYNC.lastSync):'—')}</span>
     </div>
+    ${n&&est?`<div class="small muted" style="margin-bottom:10px">⏱️ زمانِ تخمینیِ ارسال${SYNC.online?'':' پس از اتصال'}: ${est}</div>`:''}
 
     ${!SYNC.online?`<div class="sync-note" style="margin-bottom:10px">
       بدون اینترنت هم می‌توانید کار کنید. همه‌ی تغییرات روی همین دستگاه ذخیره می‌شوند و
@@ -604,7 +675,9 @@ function syncPanelModal(){
           <td><span class="badge ${st[1]}">${st[0]}</span>
             ${x.error?`<div class="small muted">${esc(x.error)}</div>`:''}
             ${x.tries>1?`<div class="small muted">${fa(x.tries)} تلاش</div>`:''}
-            ${x.status==='rejected'?`<div style="margin-top:6px"><button class="btn ghost sm" data-act="sync-del" data-uid="${escAttr(x.uid)}" title="این عملیات دوباره ارسال نمی‌شود؛ اگر مطمئنید لازم نیست، حذفش کنید">حذف از صف</button></div>`:''}
+            ${(x.status==='conflict'||x.status==='rejected')?`<div style="margin-top:6px">
+              <button class="btn ghost sm" data-act="sync-conflict-view" data-uid="${escAttr(x.uid)}" title="نسخهٔ شما و نسخهٔ سرور روبه‌رویِ هم — ببینید کدام برنده شد">⚖️ مقایسهٔ دو نسخه</button>
+              ${x.status==='rejected'?`<button class="btn ghost sm" data-act="sync-del" data-uid="${escAttr(x.uid)}" title="این عملیات دوباره ارسال نمی‌شود؛ اگر مطمئنید لازم نیست، حذفش کنید">حذف از صف</button>`:''}</div>`:''}
           </td>
         </tr>`;}).join('')}
       </tbody></table></div>`
@@ -634,9 +707,210 @@ function syncPanelModal(){
     <div class="card-body">${body}</div>
     <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border)">
       ${SYNC.demoMode?`<button class="btn ghost sm" data-act="sync-toggle-net">${SYNC.online?'📴 شبیه‌سازی قطع اینترنت':'🌐 شبیه‌سازی وصل شدن'}</button>`:''}
+      <button class="btn ghost sm" data-act="sync-quota" title="مصرفِ حافظهٔ مرورگر و پاک‌سازیِ انتخابی">🗄️ حافظه</button>
       <div class="spacer"></div>
       ${n?`<button class="btn" data-act="sync-run">🔄 ارسال همه</button>`:''}
       <button class="btn ghost" data-act="modal-close">بستن</button>
+    </div>`);
+}
+
+/* ---------- W8-4: مدیریتِ سهمیهٔ ذخیره‌سازی (Storage Quota) ----------
+   اگر IndexedDB/حافظهٔ مرورگر به سهمیه نزدیک شود، نوشتن‌هایِ بعدی
+   ساکت شکست می‌خورند و دادهٔ آفلاینِ کاربر از دست می‌رود. این بخش:
+   ۱) با navigator.storage.estimate سهمیه را می‌پاید (هیسترزیس مثلِ
+      هشدارِ سقفِ صف تا پیام نوسان نکند)،
+   ۲) هشدارِ روشن به کاربر می‌دهد،
+   ۳) مودالِ «پاک‌سازیِ انتخابی» می‌گشاید: صفِ مرده، قلم‌هایِ ترمینالِ
+      کهنه — دادهٔ ارسال‌نشدهٔ کاربر (pending/sending) هرگز گزینه نیست. */
+var STORAGE_QUOTA_WARN  = 0.85;   /* آستانهٔ هشدار: ۸۵٪ سهمیه */
+var STORAGE_QUOTA_RESET = 0.70;   /* هیسترزیس: ریستِ هشدار زیرِ ۷۰٪ */
+
+/* تخمینِ سهمیه — promise؛ در نبودِ API «ناشناخته» برمی‌گردد (بی‌هشدار) */
+function storageQuotaEstimate(){
+  return new Promise(function(resolve){
+    try{
+      if(typeof navigator !== 'undefined' && navigator.storage &&
+         typeof navigator.storage.estimate === 'function'){
+        navigator.storage.estimate().then(function(est){
+          var usage = est.usage || 0, quota = est.quota || 0;
+          resolve({ usage: usage, quota: quota,
+            ratio: quota > 0 ? usage / quota : 0, known: quota > 0 });
+        }).catch(function(){ resolve({ usage:0, quota:0, ratio:0, known:false }); });
+        return;
+      }
+    }catch(e){}
+    resolve({ usage:0, quota:0, ratio:0, known:false });
+  });
+}
+/* پایشِ سهمیه — پس از هر enqueue صدا می‌شود؛ async و بی‌هزینه برایِ مسیرِ نوشتن */
+function checkStorageQuota(){
+  storageQuotaEstimate().then(function(est){
+    if(!est.known) return;
+    if(est.ratio >= STORAGE_QUOTA_WARN && !SYNC.quotaWarned){
+      SYNC.quotaWarned = true;
+      toast('حافظهٔ مرورگر نزدیکِ سهمیه است (' + fa(Math.round(est.ratio * 100)) + '٪) — از پنلِ همگام‌سازی پاک‌سازی کنید تا داده‌ای از دست نرود', 'warn');
+    }else if(est.ratio < STORAGE_QUOTA_RESET && SYNC.quotaWarned){
+      SYNC.quotaWarned = false;
+    }
+  });
+}
+/* برچسبِ خوانایِ بایت — مستقل از ماژولِ کلاسِ مجازی */
+function quotaSizeFa(bytes){
+  if(bytes == null || isNaN(bytes)) return '—';
+  var mb = bytes / 1048576;
+  if(mb >= 1024) return fa(Math.round(mb / 102.4) / 10) + ' گیگابایت';
+  if(mb >= 1)    return fa(Math.round(mb * 10) / 10) + ' مگابایت';
+  var kb = bytes / 1024;
+  if(kb >= 1)    return fa(Math.round(kb)) + ' کیلوبایت';
+  return fa(Math.round(bytes)) + ' بایت';
+}
+/* پاک‌سازیِ انتخابی ۱: کلِ صفِ مرده (DLQ) — سرور این‌ها را رد کرده یا دفن شده‌اند */
+function quotaClearDlq(){
+  var n = SYNC.dlq.length;
+  SYNC.dlq = [];
+  SYNC.dlqDropped = 0;
+  saveDlq();
+  refreshSyncBadge();
+  return n;
+}
+/* پاک‌سازیِ انتخابی ۲: قلم‌هایِ ترمینالِ کهنه‌تر از ۷ روز (rejected/failed/conflict).
+   دادهٔ ارسال‌نشدهٔ کاربر (pending/sending) هرگز حذف نمی‌شود. */
+function quotaPruneTerminal(){
+  var weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  var before = SYNC.queue.length;
+  SYNC.queue = SYNC.queue.filter(function(x){
+    if(x.status === 'pending' || x.status === 'sending') return true;
+    var t = Date.parse(x.created_at);
+    return isNaN(t) || t >= weekAgo;
+  });
+  var n = before - SYNC.queue.length;
+  if(n){ saveQueue(); bgMirrorQueue(); refreshSyncBadge(); }
+  return n;
+}
+/* مودالِ سهمیه: نمودارِ مصرف + گزینه‌هایِ پاک‌سازیِ انتخابی */
+function storageQuotaModal(){
+  storageQuotaEstimate().then(function(est){
+    var pct = est.known ? Math.min(100, Math.round(est.ratio * 100)) : null;
+    var barColor = pct == null ? 'var(--border)' : (pct >= 85 ? 'var(--red)' : (pct >= 70 ? '#d97706' : 'var(--green)'));
+    var dlqN = SYNC.dlq.length;
+    var termOld = SYNC.queue.filter(function(x){
+      if(x.status === 'pending' || x.status === 'sending') return false;
+      var t = Date.parse(x.created_at);
+      return !isNaN(t) && t < Date.now() - 7 * 24 * 60 * 60 * 1000;
+    }).length;
+    openModal(`<div class="card-head"><h3>🗄️ حافظهٔ ذخیره‌سازیِ مرورگر</h3>
+        <button class="icon-btn" data-act="modal-close">✕</button></div>
+      <div class="card-body">
+        ${est.known ? `
+          <div class="row" style="margin-bottom:6px"><span class="small muted">مصرف: <b>${quotaSizeFa(est.usage)}</b> از ${quotaSizeFa(est.quota)}</span><div class="spacer"></div><b>${fa(pct)}٪</b></div>
+          <div style="background:var(--surface-2);border-radius:999px;height:10px;overflow:hidden;margin-bottom:12px">
+            <div style="width:${pct}%;height:100%;background:${barColor};border-radius:999px"></div>
+          </div>
+          ${pct >= 85 ? '<div class="sync-note" style="margin-bottom:10px">⚠️ حافظه نزدیکِ سهمیه است — اگر پر شود، تغییراتِ آفلاینِ تازه ذخیره نمی‌شوند. موارد زیر را پاک‌سازی کنید.</div>' : ''}`
+        : '<div class="muted small" style="margin-bottom:10px">مرورگرِ شما اندازهٔ سهمیه را گزارش نمی‌کند — پاک‌سازیِ انتخابی همچنان در دسترس است.</div>'}
+        <div style="background:var(--surface-2);border-radius:10px;padding:10px;margin-bottom:8px">
+          <div class="row" style="align-items:center">
+            <div><b>صفِ مرده (DLQ)</b><div class="small muted">عملیات‌هایی که سرور رد کرده یا از سقف بیرون رفته‌اند — دیگر ارسال نمی‌شوند</div></div>
+            <div class="spacer"></div>
+            <span class="badge ${dlqN?'b-amber':'b-gray'}">${fa(dlqN)} قلم</span>
+            ${dlqN?`<button class="btn ghost sm" data-act="sync-quota-clear-dlq">🧹 پاک‌سازی</button>`:''}
+          </div>
+        </div>
+        <div style="background:var(--surface-2);border-radius:10px;padding:10px">
+          <div class="row" style="align-items:center">
+            <div><b>قلم‌هایِ پایان‌یافتهٔ کهنه</b><div class="small muted">ردشده/ناموفق/تعارضِ کهنه‌تر از ۷ روز — دادهٔ ارسال‌نشدهٔ شما دست نمی‌خورد</div></div>
+            <div class="spacer"></div>
+            <span class="badge ${termOld?'b-amber':'b-gray'}">${fa(termOld)} قلم</span>
+            ${termOld?`<button class="btn ghost sm" data-act="sync-quota-prune">🧹 هرس</button>`:''}
+          </div>
+        </div>
+        <div class="small muted" style="margin-top:10px">🛡️ تغییراتِ در صفِ ارسال (pending) هرگز پاک نمی‌شوند.</div>
+      </div>
+      <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border)">
+        <div class="spacer"></div>
+        <button class="btn ghost" data-act="sync-panel">بازگشت به صف</button>
+        <button class="btn" data-act="modal-close">بستن</button>
+      </div>`);
+  });
+}
+
+/* ---------- W8-2: مودالِ داوریِ تعارض — «نسخهٔ شما رد شد» ----------
+   وقتی دو دستگاه هم‌زمان یک رکورد را عوض کنند، سرور تغییرِ دیرهنگام را
+   conflict_preserved / stale_base می‌کند. کاربر باید ببیند کدام نسخه
+   برنده شد: این مودال نسخهٔ محلیِ او و نسخهٔ سرور را روبه‌رویِ هم،
+   فیلدبه‌فیلد و با برجسته‌سازیِ تفاوت‌ها نشان می‌دهد. */
+var SYNC_CONFLICT_FIELD_FA = {
+  student_id:'دانش‌آموز', subject_id:'درس', class_id:'کلاس', score:'نمره',
+  status:'وضعیت', kind:'نوع', points:'امتیاز', reason:'توضیح', title:'عنوان',
+  body:'متن', day:'روز', date:'تاریخ', term:'نوبت', period:'زنگ', amount:'مبلغ'
+};
+function syncConflictFieldFa(k){ return SYNC_CONFLICT_FIELD_FA[k] || k; }
+function syncConflictCell(v){
+  if(v === undefined || v === null || v === '') return '—';
+  if(typeof v === 'number') return fa(v);
+  return esc(String(v));
+}
+/* ردیف‌هایِ مقایسه: اجتماعِ کلیدهایِ دو نسخه؛ تفاوت‌ها برجسته می‌شوند.
+   فیلدهایِ سیستمی (نسخه/زمان/مالکیت) در مقایسه نمی‌آیند. */
+function syncConflictRows(localData, serverData){
+  var skip = { id:1, version:1, base_version:1, created_at:1, updated_at:1, by:1, at:1, school_id:1, uid:1 };
+  var keys = [], seen = {};
+  [localData || {}, serverData || {}].forEach(function(d){
+    Object.keys(d).forEach(function(k){ if(!skip[k] && !seen[k]){ seen[k] = 1; keys.push(k); } });
+  });
+  if(!keys.length) return '<div class="muted small">فیلدی برایِ مقایسه نیست</div>';
+  return `<table style="width:100%"><thead><tr><th>فیلد</th><th>📱 نسخهٔ شما (رد شد)</th><th>🖥️ نسخهٔ سرور (برنده)</th></tr></thead><tbody>`
+    + keys.map(function(k){
+        var lv = (localData || {})[k], sv = (serverData || {})[k];
+        var diff = JSON.stringify(lv) !== JSON.stringify(sv);
+        return `<tr${diff ? ' style="background:var(--surface-2)"' : ''}>
+          <td class="small">${esc(syncConflictFieldFa(k))}</td>
+          <td>${diff ? '<b>' : ''}${syncConflictCell(lv)}${diff ? '</b>' : ''}</td>
+          <td>${diff ? '<b>' : ''}${syncConflictCell(sv)}${diff ? '</b>' : ''}</td>
+        </tr>`;
+      }).join('')
+    + '</tbody></table>';
+}
+function syncConflictModal(uid){
+  var item = SYNC.queue.find(function(x){ return x.uid === uid; })
+          || SYNC.dlq.find(function(x){ return x.uid === uid; });
+  if(!item) return;
+  var op = item.op || {};
+  var collFa = {
+    attendance:'حضور و غیاب', grades:'نمرات', discipline:'انضباط', users:'کاربران',
+    schools:'مدارس', classes:'کلاس‌ها', subjects:'دروس', leaves:'مرخصی',
+    announcements:'اطلاعیه‌ها', messages:'پیام‌ها', installments:'اقساط',
+    transactions:'تراکنش‌ها', exams:'امتحانات', schedule:'برنامه هفتگی',
+  };
+  var isConflict = item.status === 'conflict';
+  var hasServer = !!item.server;
+  openModal(`<div class="card-head"><h3>${isConflict ? '⚖️ تعارضِ همگام‌سازی' : '⛔ نسخهٔ شما رد شد'}</h3>
+      <button class="icon-btn" data-act="modal-close">✕</button></div>
+    <div class="card-body">
+      <div class="sync-note" style="margin-bottom:10px">
+        ${isConflict
+          ? 'دستگاهِ دیگری هم‌زمان همین رکورد را تغییر داده و سرور آن نسخه را حفظ کرده است — تغییرِ شما اعمال نشد و مدیر مدرسه باید داوری کند.'
+          : 'سرور نسخهٔ تازه‌تری از این رکورد داشت؛ تغییرِ شما اعمال نشد و نسخهٔ سرور برنده است. اگر تغییرتان هنوز لازم است، آن را رویِ نسخهٔ تازه دوباره ثبت کنید.'}
+      </div>
+      <div class="row" style="gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <span class="badge b-blue">${esc(collFa[op.c] || op.c || 'رکورد')}</span>
+        <span class="badge ${isConflict ? 'b-red' : 'b-gray'}">${isConflict ? 'در انتظارِ داوریِ مدیر' : 'ردِ نسخه‌ای'}</span>
+        <span class="muted small">ثبتِ محلی: ${jalaliDateTime(item.created_at)}</span>
+      </div>
+      ${hasServer
+        ? `<div class="table-wrap">${syncConflictRows(op.data, item.server)}</div>`
+        : `<div style="background:var(--surface-2);border-radius:10px;padding:10px">
+             <div class="muted small" style="margin-bottom:4px">📱 تغییری که همگام نشد</div>
+             ${syncConflictRows(op.data, null)}
+           </div>
+           <div class="muted small" style="margin-top:6px">نسخهٔ سرور در دسترسِ این دستگاه نیست — پس از اتصال، فهرستِ تعارض‌ها را مدیر مدرسه می‌بیند.</div>`}
+      ${item.error ? `<div class="muted small" style="margin-top:8px">${esc(item.error)}</div>` : ''}
+    </div>
+    <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border)">
+      <div class="spacer"></div>
+      <button class="btn ghost sm" data-act="sync-del" data-uid="${escAttr(item.uid)}" title="این تغییر دیگر ارسال نمی‌شود؛ حذفش فقط صف را خلوت می‌کند">حذف از صف</button>
+      <button class="btn ghost" data-act="sync-panel">بازگشت به صف</button>
+      <button class="btn" data-act="modal-close">فهمیدم</button>
     </div>`);
 }
 
@@ -653,6 +927,25 @@ function jalaliDateTime(iso){
 const SYNC_ACTIONS = {
   'sync-panel'(){ syncPanelModal(); },
   'sync-run'(){ closeModal(); syncNow(true); },
+  /* W8-2: مودالِ مقایسهٔ نسخهٔ محلی و نسخهٔ سرور برایِ قلمِ conflict/rejected */
+  'sync-conflict-view'(el){
+    const uid = (el && el.dataset) ? el.dataset.uid : null;
+    if(uid) syncConflictModal(uid);
+  },
+  /* W8-4: مودالِ سهمیهٔ ذخیره‌سازی و پاک‌سازیِ انتخابی */
+  'sync-quota'(){ storageQuotaModal(); },
+  'sync-quota-clear-dlq'(){
+    const n = quotaClearDlq();
+    toast(n ? fa(n) + ' قلمِ صفِ مرده پاک شد' : 'صفِ مرده خالی بود', 'ok');
+    checkStorageQuota();
+    storageQuotaModal();
+  },
+  'sync-quota-prune'(){
+    const n = quotaPruneTerminal();
+    toast(n ? fa(n) + ' قلمِ پایان‌یافتهٔ کهنه هرس شد' : 'قلمِ کهنه‌ای نبود', 'ok');
+    checkStorageQuota();
+    storageQuotaModal();
+  },
   'sync-toggle-net'(){ closeModal(); setOnline(!SYNC.online); },
   /* حذفِ دستیِ عملیاتِ «رد شده» (dead-letter) از صف.
      (SYNC_ACTIONS برخلافِ A با (el, id) فراخوانی می‌شود.) */
@@ -697,6 +990,182 @@ const SYNC_ACTIONS = {
   },
 };
 
+/* ---------- W8-1: Background Sync (تخلیهٔ صف با تبِ بسته) ----------
+   SW به حافظهٔ محلیِ صفحه (Store) دسترسی ندارد؛ صفِ ارسال (pending/failed) در
+   IndexedDB (payesh_offline_v2 → sync_queue) «آینه» می‌شود تا رویدادِ
+   sync مرورگر بتواند بدونِ تبِ باز آن را بفرستد (sw.js → bgFlushQueue).
+   آینه debounce می‌شود تا هر enqueue یک گذرِ کاملِ IDB نسازد. */
+var _bgMirrorTimer = null;
+function bgSyncSupported(){
+  return typeof navigator !== 'undefined' && 'serviceWorker' in navigator
+    && typeof window !== 'undefined' && 'SyncManager' in window;
+}
+function bgMirrorQueue(){
+  if(typeof offlineStorage === 'undefined' || !offlineStorage.isSupported()) return;
+  clearTimeout(_bgMirrorTimer);
+  _bgMirrorTimer = setTimeout(function(){
+    var want = SYNC.queue.filter(function(x){ return x.status === 'pending' || x.status === 'failed'; });
+    offlineStorage.getQueue().then(function(have){
+      var wantU = {}; want.forEach(function(x){ wantU[x.uid] = x; });
+      var ops = [];
+      /* قلم‌هایی که دیگر در صفِ زنده نیستند (synced/rejected/حذف‌شده) از آینه پاک شوند */
+      have.forEach(function(h){ if(!wantU[h.uid]) ops.push(offlineStorage.removeFromQueue(h.uid)); });
+      /* قلم‌هایِ زنده نوشته/تازه شوند (put ایدمپوتنت است) */
+      want.forEach(function(x){
+        ops.push(offlineStorage.addToQueue({
+          uid: x.uid, op: x.op, status: x.status, attempts: x.tries || 0, created_at: x.created_at
+        }));
+      });
+      return Promise.all(ops);
+    }).catch(function(){ /* آینهٔ ناموفق مانعِ کارِ صفِ اصلی نمی‌شود */ });
+  }, 400);
+}
+/* ثبتِ برچسبِ sync — مرورگر پس از برگشتِ اتصال، SW را حتی با تبِ بسته می‌راند */
+function bgRegisterSync(){
+  if(!bgSyncSupported()) return;
+  try{
+    navigator.serviceWorker.ready.then(function(reg){
+      if(reg && reg.sync && typeof reg.sync.register === 'function')
+        return reg.sync.register(BGSYNC_TAG);
+    }).catch(function(){ /* ثبت‌نشدنِ sync خطایِ کاربر نیست — مسیرِ عادیِ تب باز کار می‌کند */ });
+  }catch(e){}
+}
+/* پیامِ SW پس از تخلیهٔ پس‌زمینه: صفِ محلی با نتیجهٔ SW آشتی داده می‌شود */
+function bgApplyResult(msg){
+  var syncedU = {}, rejU = {};
+  (msg.synced || []).forEach(function(u){ syncedU[u] = 1; });
+  (msg.rejected || []).forEach(function(u){ rejU[u] = 1; });
+  var changed = 0;
+  SYNC.queue = SYNC.queue.filter(function(x){
+    if(syncedU[x.uid]){ changed++; return false; }
+    return true;
+  });
+  SYNC.queue.forEach(function(x){
+    if(rejU[x.uid] && x.status !== 'rejected'){
+      x.status = 'rejected';
+      if(!x.error) x.error = 'در همگام‌سازیِ پس‌زمینه رد شد';
+      changed++;
+    }
+  });
+  if(changed){
+    if(msg.synced && msg.synced.length){ SYNC.lastSync = new Date().toISOString(); saveSyncMeta(); }
+    saveQueue(); bgMirrorQueue(); refreshSyncBadge();
+    if(msg.synced && msg.synced.length) toast(fa(msg.synced.length) + ' تغییر در پس‌زمینه همگام شد ✓', 'ok');
+    if(msg.rejected && msg.rejected.length) toast(fa(msg.rejected.length) + ' تغییر در پس‌زمینه رد شد — پنلِ همگام‌سازی را ببینید', 'warn');
+  }
+}
+function bgListen(){
+  if(typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+  try{
+    navigator.serviceWorker.addEventListener('message', function(e){
+      if(e && e.data && e.data.type === 'payesh-bgsync-done') bgApplyResult(e.data);
+    });
+  }catch(e){}
+}
+
+/* ---------- W8-5: Pull-to-Refresh (کشیدن برایِ همگام‌سازی) ----------
+   رویِ موبایل، کشیدنِ صفحه به پایین از بالایِ اسکرول باید همگام‌سازی
+   کند (ارسالِ صف + در حالتِ سروری، کشیدنِ دلتا). شنونده‌ها رویِ document
+   واگذار شده‌اند پس در «همهٔ viewها» کار می‌کند — .content هر روت را
+   در بر می‌گیرد و پس از هر render هم زنده می‌ماند.
+   ضدِ دوبار-اجرا: تا پایانِ refreshِ جاری (busy) کشیدنِ تازه بی‌اثر است. */
+var PTR = {
+  startY   : 0,        /* نقطهٔ شروعِ لمس */
+  pulling  : false,    /* آیا کشیدنِ معتبر شروع شده؟ (فقط از scrollTop=0) */
+  dist     : 0,        /* فاصلهٔ کشیده‌شده (px، میرا) */
+  busy     : false,    /* در حالِ refresh — کشیدنِ تازه نمی‌پذیرد (ضدِ double-trigger) */
+  threshold: 70,       /* آستانهٔ رهاسازی برایِ trigger */
+};
+function ptrContainer(){
+  return document.querySelector('.content');
+}
+function ptrIndicator(){
+  var el = document.getElementById('ptr-indicator');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'ptr-indicator';
+    el.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function ptrRender(){
+  var el = ptrIndicator();
+  if(PTR.busy){
+    el.className = 'ptr-busy';
+    el.textContent = '⏳ در حال همگام‌سازی…';
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0)';
+    return;
+  }
+  if(!PTR.pulling || PTR.dist <= 0){
+    el.className = '';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-46px)';
+    return;
+  }
+  var ready = PTR.dist >= PTR.threshold;
+  el.className = ready ? 'ptr-ready' : '';
+  el.textContent = ready ? '↻ رها کنید تا همگام شود' : '↓ برایِ همگام‌سازی بکشید';
+  el.style.opacity = String(Math.min(1, PTR.dist / PTR.threshold));
+  el.style.transform = 'translateY(' + Math.min(0, PTR.dist - 46) + 'px)';
+}
+function ptrTouchStart(e){
+  if(PTR.busy) return;                            /* ضدِ double-trigger */
+  var c = ptrContainer();
+  if(!c || !e.touches || e.touches.length !== 1) return;
+  if(!c.contains(e.target) && e.target !== c) return;
+  if(c.scrollTop > 0) return;                     /* فقط از بالایِ لیست */
+  if(document.querySelector('.modal-back')) return; /* نه وسطِ مودال */
+  PTR.startY = e.touches[0].clientY;
+  PTR.pulling = true;
+  PTR.dist = 0;
+}
+function ptrTouchMove(e){
+  if(!PTR.pulling || PTR.busy || !e.touches || !e.touches.length) return;
+  var dy = e.touches[0].clientY - PTR.startY;
+  if(dy <= 0){ PTR.dist = 0; ptrRender(); return; }
+  PTR.dist = Math.min(140, dy * 0.55);            /* مقاومتِ کشسانی */
+  ptrRender();
+}
+function ptrTouchEnd(){
+  if(!PTR.pulling || PTR.busy){ PTR.pulling = false; return; }
+  var fire = PTR.dist >= PTR.threshold;
+  PTR.pulling = false;
+  PTR.dist = 0;
+  if(fire) ptrTrigger();
+  else ptrRender();
+}
+/* اجرایِ refresh: ارسالِ صف + (حالتِ سروری) کشیدنِ دلتایِ سرور.
+   busy تا پایان true می‌ماند — کشیدنِ دوباره وسطِ کار هیچ‌کاره است. */
+function ptrTrigger(){
+  if(PTR.busy) return;                            /* ضدِ double-trigger */
+  PTR.busy = true;
+  ptrRender();
+  var jobs = [];
+  try{ jobs.push(Promise.resolve(syncNow(true))); }catch(e){}
+  try{
+    if(typeof pullFromServer === 'function' && typeof isServerMode === 'function' && isServerMode())
+      jobs.push(Promise.resolve(pullFromServer()).catch(function(){}));
+  }catch(e){}
+  return Promise.all(jobs).catch(function(){}).then(function(){
+    /* حداقل نیم‌ثانیه نشان بده تا پرش نکند؛ بعد آزاد کن */
+    return new Promise(function(r){ setTimeout(r, 500); });
+  }).then(function(){
+    PTR.busy = false;
+    ptrRender();
+    refreshSyncBadge();
+  });
+}
+function initPullToRefresh(){
+  if(typeof document === 'undefined') return;
+  /* passive: شنونده‌ها اسکرول را نمی‌گیرند — فقط می‌خوانند */
+  document.addEventListener('touchstart', ptrTouchStart, { passive: true });
+  document.addEventListener('touchmove',  ptrTouchMove,  { passive: true });
+  document.addEventListener('touchend',   ptrTouchEnd,   { passive: true });
+  document.addEventListener('touchcancel', ptrTouchEnd,  { passive: true });
+}
+
 /* ---------- راه‌اندازی ---------- */
 function initSync(){
   loadQueue();
@@ -705,6 +1174,9 @@ function initSync(){
     window.addEventListener('online',  () => setOnline(true));
     window.addEventListener('offline', () => setOnline(false));
   }
+  bgListen();                        /* W8-1: نتیجهٔ همگام‌سازیِ پس‌زمینه را بشنود */
+  bgMirrorQueue();                   /* W8-1: بقایایِ جلسهٔ قبل هم آینه شوند */
+  initPullToRefresh();               /* W8-5: کشیدن برایِ همگام‌سازی (همهٔ viewها) */
   /* اگر چیزی از جلسه‌ی قبل در صف مانده، تلاش کن بفرستی */
   if(pendingCount() && SYNC.online) scheduleSync(1500);
 }
