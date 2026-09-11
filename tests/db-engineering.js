@@ -30,7 +30,12 @@ async function okAsync(name, fn){
   const migDir = path.join(ROOT, 'migrations');
   ok('پوشه migrations وجود دارد', () => assert.ok(fs.statSync(migDir).isDirectory()));
   const forwards = fs.readdirSync(migDir).filter(f => /^\d{3}_[a-z0-9_]+\.sql$/.test(f)).sort();
-  ok('migrationهای forward نسخه‌دار و مرتب هستند', () => assert.deepStrictEqual(forwards, ['001_initial.sql', '002_indexes.sql', '003_constraints.sql', '004_wave1_version_seq.sql']));
+  /* S7-3 (باگ‌هانت نشست ۷): پینِ این فهرست کهنه بود — زنجیرهٔ واقعی دو فایل بیشتر دارد:
+     004_wave3_query_indexes (از main؛ تکرارِ عمدیِ شمارهٔ ۰۰۴ — قلمِ بازِ به‌ارث‌رسیده)
+     و 005_delta_sync_updated_at_indexes. renumber عمداً انجام نشد (اسناد main به نامِ
+     فایل ارجاع دارند)؛ پس فهرستِ واقعی پین می‌شود و فایل‌های جدیدِ نیامده در اینجا
+     باید صریحاً افزوده شوند تا سکوت‌کردنِ تست ممکن نباشد. */
+  ok('migrationهای forward نسخه‌دار و مرتب هستند', () => assert.deepStrictEqual(forwards, ['001_initial.sql', '002_indexes.sql', '003_constraints.sql', '004_wave1_version_seq.sql', '004_wave3_query_indexes.sql', '005_delta_sync_updated_at_indexes.sql']));
   ok('برای هر migration فایل rollback وجود دارد', () => forwards.forEach(f => assert.ok(fs.existsSync(path.join(migDir, f.replace(/\.sql$/, '.down.sql'))))));
   ok('migration 004: ستون version روی ۹ جدولِ VERSION_TRACKED + دنباله outbox (idempotent)', () => {
     const m4 = read('migrations/004_wave1_version_seq.sql');
