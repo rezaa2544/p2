@@ -42,6 +42,19 @@ CREATE TABLE IF NOT EXISTS server_outbox (
 );
 CREATE INDEX IF NOT EXISTS idx_server_outbox_status ON server_outbox (status);
 
+-- Table: server_tombstones (بازیابی‌شده پس از ادغام — `server/syncdelta.js` به آن وابسته است؛ در بازتولید اسکیمای بالادست حذف شده بود)
+CREATE TABLE IF NOT EXISTS server_tombstones (
+  id BIGSERIAL PRIMARY KEY,
+  "collection" VARCHAR(64) NOT NULL,
+  record_id INTEGER NOT NULL,
+  school_id INTEGER,
+  deleted_by INTEGER,
+  deleted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  reason VARCHAR(255)
+);
+CREATE INDEX IF NOT EXISTS idx_server_tombstones_deleted_at ON server_tombstones (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_server_tombstones_school_deleted_at ON server_tombstones (school_id, deleted_at);
+
 -- Table: announcements
 CREATE TABLE IF NOT EXISTS announcements (
   "audience" VARCHAR(255),
