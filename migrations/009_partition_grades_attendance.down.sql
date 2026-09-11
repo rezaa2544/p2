@@ -18,10 +18,10 @@ END $$;
 DO $$
 BEGIN
   IF (SELECT COUNT(*) FROM attendance) > (SELECT COUNT(*) FROM attendance_old) THEN
-    EXECUTE 'CREATE TABLE attendance_recovered AS SELECT * FROM attendance WHERE id NOT IN (SELECT id FROM attendance_old)';
+    EXECUTE 'CREATE TABLE attendance_recovered AS SELECT * FROM attendance n WHERE NOT EXISTS (SELECT 1 FROM attendance_old o WHERE o.id = n.id AND o.created_at = n.created_at)';
   END IF;
   IF (SELECT COUNT(*) FROM grades) > (SELECT COUNT(*) FROM grades_old) THEN
-    EXECUTE 'CREATE TABLE grades_recovered AS SELECT * FROM grades WHERE id NOT IN (SELECT id FROM grades_old)';
+    EXECUTE 'CREATE TABLE grades_recovered AS SELECT * FROM grades n WHERE NOT EXISTS (SELECT 1 FROM grades_old o WHERE o.id = n.id AND o.created_at = n.created_at)';
   END IF;
 END $$;
 
