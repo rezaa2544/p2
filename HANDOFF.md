@@ -14,6 +14,18 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## راستی‌آزماییِ دسترس‌پذیری در زمانِ اجرا (`feat/a11y-runtime-verification`) — ✅ (2026-09-11)
+
+- **مأموریت:** اسکنِ axe-core رویِ DOM زندهٔ Chromium واقعی (playwright — نه jsdom)؛ پایه: `main@b872f44`.
+- **هارنس:** `tests/a11y-runtime.js` — سرورِ استاتیک :3199 → index.html تک‌فایلی؛ ورودِ ۵ نقش (manager1، teacher1_1، parent_multi، student، counselor1 — **نقشِ staff در مخزن وجود ندارد؛ counselor جایگزین و صادقانه ثبت شد**)؛ ≤۱۰ نمایِ اصلی از NAV هر نقش + صفحهٔ ورود = **۴۵ اسکن**؛ تگ‌ها: wcag2a/2aa/21a/21aa؛ قبولی = صفر critical و صفر serious؛ خروجیِ ماشینی `out/a11y-runtime.json`. نکته‌هایِ فنی: `db/S/NAV` با const تعریف شده‌اند → دسترسی با `eval` درونِ صفحه؛ CSP تک‌فایلی → `browser.newContext({bypassCSP:true})` فقط برایِ تزریقِ axe.
+- **خطِ پایه:** critical=**43** (select-name ×10، label ×33)، serious=**337** (color-contrast) در ۴۴ نما.
+- **رفعِ critical (`daee937`):** aria-label فارسی رویِ ۱۱ کنترلِ بی‌نام (pubschool، riskDays، term، class ×2، homepick، cert_term، cert_tpl، تاریخِ حضورغیاب، چک‌باکسِ چک‌لیستِ فردا با زنگ+درس، فایلِ تکلیف) → 43→0.
+- **رفعِ serious (`d59b3e8`):** توکن‌ها AA شدند با حفظِ هویتِ رنگ: `--green→#0a6f46`، `--red→#b7253f`، `--amber→#96590a`؛ توکن‌هایِ نو `--*-text` برایِ badge/sync-chip رویِ soft؛ `.nav-group→#8b9ab8`؛ `.b-gray/.b-cyan/.b-purple` تیره‌تر؛ toast.warn/err؛ `--muted` هر ۳ تم؛ حذفِ `opacity:.7` از تاریخ‌ها → 337→0.
+- **نگهبان (`de55ca0`):** `tests/a11y-regressions.js` — ۲۸ چکِ استاتیک (aria-labelها + محاسبهٔ کنتراستِ WCAG از توکن‌هایِ CSS + منعِ opacity رویِ muted)؛ **mutation-verified** (حذفِ aria-label → exit 1؛ برگرداندنِ --red روشن → exit 1).
+- **نتیجهٔ نهایی:** ۴۵/۴۵ اسکن سبز — critical=0 serious=0 moderate=0 minor=0.
+- **اسناد:** `docs/A11Y_RUNTIME_REPORT.md` (جدول‌ها + بازتولید)، `docs/A11Y_GUIDE.md` (قاعده‌ها + توکن‌هایِ تأییدشده)، همین HANDOFF.
+- **نکته/بدهی:** اسکن فقط نماهایِ سطحِ NAV را می‌بیند — مودال‌ها و حالت‌هایِ تعاملی (ویرایشِ درون‌خطی و…) اسکن نشدند؛ moderate/minor صفر گزارش شد ولی تضمینِ آینده ندارد؛ playwright با `--no-save` نصب می‌شود (در CI باید صریح نصب شود وگرنه تست با exit 3 «نصب نیست» می‌گوید، سبزِ جعلی نمی‌دهد).
+
 ## موج ۸ — Offline-First Enhancements (`feat/client-offline-v2`) — ✅ (2026-09-11)
 
 - **مأموریت:** پنج شکافِ Offline-First (W8-1..5) روی شاخهٔ `feat/client-offline-v2` (پایه: `8ba3462`) — هر شکاف یک کامیتِ جدا + سوئیتِ تستِ خودش.
