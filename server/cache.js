@@ -35,6 +35,7 @@ function newEpoch() {
    Stampede: single-flight — N درخواستِ هم‌زمانِ cache-miss برایِ یک کلید =
    یک بساز/یک نوشت (withSingleFlight). */
 const L1_TTL_MS = 60 * 1000;
+const SCHOOL_INDEX_GRACE_SECONDS = 60; /* index must not outlive its L2 entries by much */
 const localUserBootstrapCache = new Map(); // L1 — insertion order = LRU order
 const inflight = new Map(); // single-flight: key -> Promise
 
@@ -113,10 +114,13 @@ async function init() {
    حتی برایِ کاربرانی که در L1ِ این نمونه نیستند (وگرنه تا TTL می‌ماندند). */
 const schoolSetKey = (schoolId) => `payesh:cache:school:${schoolId}`;
 async function purgeSchoolL2(schoolId) {
-  const members = await redis.sMembers(schoolSetKey(schoolId));
-  for (const uid of members) {
-    await redis.del(`payesh:cache:bootstrap:${uid}`);
-  }
+  const indexKey = schoolSetKey(schoolId);
+  const members = await redis.sMembers(indexKey);
+  /* Delete individual keys concurrently (cluster-safe: no cross-slot DEL)
+     and remove the membership in the same pass. Without this cleanup the
+     school set grew forever even though each bootstrap value had a TTL. */
+  await Promise.all(members.map(uid => redis.del(`payesh:cache:bootstrap:${uid}`)));
+  if (members.length) await redis.sRem(indexKey, ...members);
   return members.length;
 }
 
@@ -181,8 +185,18 @@ async function setBootstrapCache(userId, data, ttlSeconds = 300) {
   const se = schoolId != null ? await redis.get(epochSchoolKey(schoolId)) : null;
   const ge = await redis.get(EPOCH_GLOBAL_KEY);
   await redis.set(key, JSON.stringify({ __epoch_env: 1, data, se: se || null, ge: ge || null }), 'EX', ttlSeconds);
-  /* Wave 11: عضویت در ایندکسِ مدرسه برای انقضایِ کامل */
-  if (schoolId) await redis.sAdd(schoolSetKey(schoolId), String(userId));
+  /* Wave 11: عضویت در ایندکسِ مدرسه برای انقضایِ کامل. The set itself
+     needs a TTL too; otherwise expired bootstrap keys leave user ids in
+     Redis/memory forever and every later invalidation scans stale members. */
+  if (schoolId) {
+    const indexKey = schoolSetKey(schoolId);
+    await redis.sAdd(indexKey, String(userId));
+    const valueTtl = Number(ttlSeconds);
+    const indexTtl = (Number.isFinite(valueTtl) && valueTtl > 0)
+      ? Math.ceil(valueTtl) + SCHOOL_INDEX_GRACE_SECONDS
+      : 300 + SCHOOL_INDEX_GRACE_SECONDS;
+    await redis.expire(indexKey, indexTtl);
+  }
 }
 
 /**
