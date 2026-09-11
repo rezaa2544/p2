@@ -121,6 +121,9 @@ function createConflicts(ctx){
     c.winner = winner;
     c.resolved_by = s.id;
     c.resolved_at = new Date().toISOString();
+    /* Gap 3 (Δ-schema): داوری خودش یک تغییر است — بدونِ این مُهر، دلتا
+       ردیفِ حل‌شدهٔ قدیمی را هرگز نمی‌بیند (created_at کهنه است). */
+    c.updated_at = c.resolved_at;
     if(body.reason) c.reason = String(body.reason).slice(0, 200);
     markDirty();
     audit('conflict_resolved', { user_id: s.id, conflict_id: c.id, collection: c.collection, record_id: c.record_id, winner });
