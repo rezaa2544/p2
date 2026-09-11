@@ -113,7 +113,25 @@ $ git rev-parse HEAD
 - **ردیف Wave 21 در roadmap** به «PR #85 مرج شد» به‌روز شد؛ ورودی
   HANDOFF هم اصلاح شد.
 
-## ۹) نکته‌ها و باقی‌مانده‌ها
+## ۹) راستی‌آزمایی نهایی به ابلاغ پ۳ (پس از مرج)
+
+بریفِ «آماده‌سازی PR #85 برای مرج» رسید در حالی که PR قبلاً مرج شده بود؛
+به‌جای آماده‌سازی، **مرج راستی‌آزمایی شد**:
+
+- **GitHub API:** `state: closed`، `merged: true`، `merged_by: rezaa2544`،
+  `merged_at: 2026-09-11T21:13:35Z`، merge commit `d1a0bf2`.
+- **CI روی `c841ee4`: 7/7 سبز** (build Node 22، SAST، DAST، Secret scan،
+  SBOM، WAF/nginx، SCA).
+- **عضویت در main:** هر ۶ کامیت شاخه با `merge-base --is-ancestor` ∈ main.
+- **گیت‌های حیاتی روی `main@e69abb6` از نو اجرا شدند — همه سبز:**
+  smoke **547/547** · check-authz **exit 0** · secret-scan **11/11** ·
+  multi-grade **34/34** · a11y-keyboard **92/92** · `build.js --check` سبز.
+- **SHA remote = محلی:** `feat/wave21-multigrade` = `c841ee4`؛
+  `main` = `e69abb6`.
+- برای چت ۷ کاری باقی نمانده؛ فقط حذفِ اختیاریِ شاخهٔ feature (اینجا عمداً
+  انجام نشد — قاعدهٔ «حذف از مخزن ممنوع»).
+
+## ۱۰) نکته‌ها و باقی‌مانده‌ها
 
 - **ruflo:** طبق تجربهٔ قبلی نصب‌ناپذیر است (OOM 137) — استفاده نشد.
 - تغییرِ NAV_EXPECT در `tests/smoke.js` عمدی و همراهِ تغییرِ منو بود
