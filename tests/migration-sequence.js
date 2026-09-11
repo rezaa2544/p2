@@ -91,7 +91,11 @@ const noCommit = forwards.filter((f) => !/COMMIT;/.test(rd('migrations/' + f)));
 chk('همهٔ مهاجرت‌های forward با `COMMIT;` پایان می‌یابند',
   noCommit.length === 0, 'بدونِ COMMIT: ' + (noCommit.join(',') || '—'));
 
-const dropTable = forwards.filter((f) => /\bDROP\s+TABLE\b/i.test(rd('migrations/' + f)));
+/* روی SQLِ اجرایی سنجیده می‌شود، نه روی توضیحات: یک مهاجرت که در سربرگش
+   می‌نویسد «بدونِ DROP TABLE» نباید به‌خاطرِ همان جمله قرمز شود. (قالبِ
+   tools/migrate-helper.js دقیقاً همین جمله را دارد و این حفره را پیدا کرد.) */
+const sqlOf = (f) => rd('migrations/' + f).split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
+const dropTable = forwards.filter((f) => /\bDROP\s+TABLE\b/i.test(sqlOf(f)));
 chk('هیچ forward ای `DROP TABLE` نمی‌کند (انقباض باید مهاجرتِ جدا باشد)',
   dropTable.length === 0, 'DROP TABLE در: ' + (dropTable.join(',') || '—'));
 
