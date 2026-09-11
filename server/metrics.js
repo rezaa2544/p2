@@ -401,6 +401,11 @@ function declareAll(r) {
   r.counter('payesh_sync_requests_total', 'POST /api/sync requests by status code.', ['code']);
   r.histogram('payesh_sync_batch_ops', 'Ops per sync push (offline queue drain size).', [], [1, 5, 10, 25, 50, 100, 250, 500]);
   r.counter('payesh_sync_conflicts_total', 'Sync conflicts detected (optimistic concurrency).', ['collection']);
+  /* Delta Hardening Phase 2 (gap 4): OCC base_version gate latency — the
+     detection step (locate record + version compare) on every versioned
+     write. Labels are a closed set: conflict | stale | clean. */
+  r.histogram('payesh_sync_conflict_detection_seconds', 'OCC conflict-detection time (base_version gate).', ['outcome'],
+    [0.00005, 0.0001, 0.00025, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25]);
   /* ── Database ── */
   r.histogram('payesh_db_query_duration_seconds', 'SQL round-trip latency.', ['op', 'target']);
   r.counter('payesh_db_query_errors_total', 'SQL errors by op and target.', ['op', 'target']);

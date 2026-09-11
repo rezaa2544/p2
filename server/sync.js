@@ -642,10 +642,22 @@ function createSync(ctx){
       }
       /* R95 بند ۲.۵ — base_version: تعارضِ حفظ‌شده / سرورِ مرجع */
       if(op.t === 'upd' && op.base_version != null){
+        const occT0 = process.hrtime.bigint();
         const vid = Number(op.id != null ? op.id : (op.data && op.data.id));
         const vrec = (store[op.c] || []).find(x => x.id === vid);
         const cur = vrec ? (vrec.version || 1) : 0;
-        if(VERSIONED[op.c] && Number(op.base_version) !== cur){
+        const versionedMismatch = !!VERSIONED[op.c] && Number(op.base_version) !== cur;
+        const structuralMismatch = !versionedMismatch && !!STRUCTURAL[op.c] && Number(op.base_version) !== cur;
+        /* Delta Hardening Phase 2 (gap 4): conflict-detection latency — the
+           locate+compare step itself (before any conflict bookkeeping), on
+           every versioned write. Closed label set: conflict|stale|clean. R1:
+           observability never breaks the request path. */
+        try {
+          const occSec = Number(process.hrtime.bigint() - occT0) / 1e9;
+          metrics.observe('payesh_sync_conflict_detection_seconds',
+            { outcome: versionedMismatch ? 'conflict' : (structuralMismatch ? 'stale' : 'clean') }, occSec);
+        } catch(_) {}
+        if(versionedMismatch){
           const nowIso = new Date().toISOString();
           if(!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
           const cf = {
@@ -682,7 +694,7 @@ function createSync(ctx){
                          message: 'تعارض محفوظ شد — برایِ داوری به بخشِ «تعارض‌های همگام‌سازی» مراجعه کنید' });
           continue;
         }
-        if(STRUCTURAL[op.c] && Number(op.base_version) !== cur){
+        if(structuralMismatch){
           results.push({ uid: op.uid, ok: false, code: 'stale_base',
                          message: 'نسخهٔ رکورد کهنه است — سرور مرجع است؛ داده را تازه کنید و دوباره تلاش کنید' });
           continue;

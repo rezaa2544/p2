@@ -12,9 +12,9 @@
 | معیار §27 | وضعیت | شاهد |
 |---|---|---|
 | PostgreSQL تنها Source of Truth | ❌ | `server/db.js`: fallback به حافظه/JSON یک قابلیت رسمی است («zero-dependency in-memory JSON fallback» + fallback هنگام خطای PG) و خوانش‌ها از `store` می‌آیند؛ Wave 1 فقط «Part 1 — reads inventory» مرج شده (PR #39) |
-| transactions | ⏳ | `db.transaction(callback)` + pooling پیاده شده؛ راستی‌آزمایی فقط با fake-pool در `tests/wave10-db-scale.js` (D4) — اجرای زنده روی PG واقعی نشده |
+| transactions | ⏳ | `db.transaction(callback)` + pooling پیاده شده؛ راستی‌آزمایی فقط با fake-pool در `tests/wave10-db-scale.js` (D4) — اجرای زندهٔ تراکنش هنوز نه؛ اما مسیرِ خواندنِ دلتا روی PG 18.4 زنده اجرا و سنجه شد (فاز ۲، `docs/DELTA_HARDENING.md` §۳) |
 | constraints | ⏳ | `migrations/003_constraints.sql` (بلوک‌های idempotent + فایل rollback) تعریف شده، ولی فقط وقتی PG زنده باشد اعمال می‌شود |
-| migrations | ⏳ | `migrations/001–004` نسخه‌دار و تغییرناپذیر با جفتِ رفت/برگشت؛ قرارداد کامل: `docs/MIGRATION_GUIDE.md` (§30، چت ۶)؛ رانر خودکار برای اعمال `*.sql` وجود ندارد (اعمال دستی) |
+| migrations | ⏳ | `migrations/001–005` نسخه‌دار و تغییرناپذیر با جفتِ رفت/برگشت؛ قرارداد کامل: `docs/MIGRATION_GUIDE.md` (§30، چت ۶)؛ ۰۰۵ (ایندکس‌های `updated_at` دلتا — Delta Hardening فاز ۲) در ۲۰۲۶-۰۹-۱۱ روی PG 18.4 زنده اعمال و A/B شد (`docs/DELTA_HARDENING.md` §۳)؛ رانر خودکار برای اعمال `*.sql` وجود ندارد (اعمال دستی) |
 | OCC | ✅ | `server/occ.js` + `base_version` در روت‌های `attendance/classes/grades` + خطای `409`؛ `tests/occ.js` ‏**18/18** سبز (اجرای زنده 2026-09-10) |
 | tombstones | ✅ | `server/delete-service.js` + `pull.js` + `syncdelta.js` + `schema.sql`؛ `tests/tombstone.js` ‏**25/25** سبز (اجرای زنده) |
 
@@ -34,7 +34,7 @@
 | معیار §27 | وضعیت | شاهد |
 |---|---|---|
 | SQL pagination | ✅ | `executePagedList` در `server/dbquery.js` + استفاده در ۵ روت + سوئیت‌های `tests/wave3-query*.js` |
-| indexed queries | ⏳ | `migrations/002_indexes.sql` (+ ایندکس‌های `001`) تعریف شده؛ راستی‌آزمایی روی PG زنده نشده (Wave 3 باز است) |
+| indexed queries | ⏳→✅(دلتا) | ایندکس‌های دلتا: راستی‌آزماییِ زنده انجام شد — قبل از `005` پلنِ دلتا Parallel Seq Scan بود (۳۷.۴ms، ‏p50≈۴s زیر بارِ ۱۰۰۰)؛ بعد از ۰۰۵ (۱۶ ایندکس `updated_at`): BitmapOr، ‏p50=۴۷۲ms، ‏۱۱۵۷ req/s (`docs/DELTA_HARDENING.md` §۳). ایندکس‌های لیست‌های REST از Wave 3 روی PG زنده باقی است |
 | no whole-store serialization | ❌ | `persistStoreSync` در `server/index.js` کل store را یک‌جا serialize می‌کند؛ با Wave 9 (PR #44) از مسیر درخواست خارج شد (ورکر + فقط-هنگام-تغییر) ولی ذاتاً باقی است — رفع کامل مسدود به Wave 1 |
 | no request-path sync disk I/O | ⏳ | Wave 9: persist در ورکر + صف پس‌زمینهٔ audit؛ باقی‌مانده در مسیر درخواست: `writeFileSync` در `server/admin.js` (بکاپ)، `server/otp-store.js` (حالت فایلی)، و حالت پیش‌فرض sync ممیزی (حالت async با `PAYESH_AUDIT_ASYNC=1` opt-in است) |
 | cache strategy | ✅ | `docs/CACHE_STRATEGY_DESIGN.md` + کش L1 در `server/cache.js` + Redis (کلاستر: PR #36) + اسناد `REDIS_*` (کلیدها، کلاستر، ری‌استور) |
