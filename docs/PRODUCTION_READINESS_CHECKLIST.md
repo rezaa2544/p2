@@ -4,6 +4,8 @@
 - **مرجع:** `docs/ROADMAP.md` §27 (چهل معیار در هفت محور) + §30 (اسناد اجباری)
 - **روش:** راستی‌آزمایی زنده — خواندن کد، اجرای تست‌های هدفمند (`occ`، ‏`tombstone`‏، ‏`lock-atomic`‏)، گیت‌ها (smoke/check-authz/secret-scan) و وضعیت واقعی PRها. هیچ موردی از روی حدس علامت نخورده است.
 - **راهنما:** ✅ برآورده‌شده (با شاهد) · ⏳ ناقص/در مسیر (پیشرفت واقعی + باقی‌ماندهٔ مشخص) · ❌ برآورده‌نشده/مسدود
+- **مرجع کلان:** معماری هدف و ضدالگوهای حاکم بر همهٔ محورها: `docs/NATIONAL_ARCHITECTURE.md` (سند چتر §30، چت ۶).
+- **پیگیری موانع:** شش مانع پ0 بازِ این چک‌لیست به‌صورت زنده در `docs/P0_BLOCKER_TRACKER.md` (مسیر نو-گو → گو) پیگیری می‌شوند.
 
 ## Data (داده)
 
@@ -12,7 +14,7 @@
 | PostgreSQL تنها Source of Truth | ❌ | `server/db.js`: fallback به حافظه/JSON یک قابلیت رسمی است («zero-dependency in-memory JSON fallback» + fallback هنگام خطای PG) و خوانش‌ها از `store` می‌آیند؛ Wave 1 فقط «Part 1 — reads inventory» مرج شده (PR #39) |
 | transactions | ⏳ | `db.transaction(callback)` + pooling پیاده شده؛ راستی‌آزمایی فقط با fake-pool در `tests/wave10-db-scale.js` (D4) — اجرای زندهٔ تراکنش هنوز نه؛ اما مسیرِ خواندنِ دلتا روی PG 18.4 زنده اجرا و سنجه شد (فاز ۲، `docs/DELTA_HARDENING.md` §۳) |
 | constraints | ⏳ | `migrations/003_constraints.sql` (بلوک‌های idempotent + فایل rollback) تعریف شده، ولی فقط وقتی PG زنده باشد اعمال می‌شود |
-| migrations | ⏳ | `migrations/001–005` نسخه‌دار و immutable + rollback صریح (`docs/DATABASE_ARCHITECTURE.md` §2)؛ ۰۰۵ (ایندکس‌های `updated_at` دلتا) در ۲۰۲۶-۰۹-۱۱ روی PG 18.4 زنده اعمال و A/B شد؛ رانر خودکار برای اعمال `*.sql` وجود ندارد (اعمال دستی) |
+| migrations | ⏳ | `migrations/001–005` نسخه‌دار و تغییرناپذیر با جفتِ رفت/برگشت؛ قرارداد کامل: `docs/MIGRATION_GUIDE.md` (§30، چت ۶)؛ ۰۰۵ (ایندکس‌های `updated_at` دلتا — Delta Hardening فاز ۲) در ۲۰۲۶-۰۹-۱۱ روی PG 18.4 زنده اعمال و A/B شد (`docs/DELTA_HARDENING.md` §۳)؛ رانر خودکار برای اعمال `*.sql` وجود ندارد (اعمال دستی) |
 | OCC | ✅ | `server/occ.js` + `base_version` در روت‌های `attendance/classes/grades` + خطای `409`؛ `tests/occ.js` ‏**18/18** سبز (اجرای زنده 2026-09-10) |
 | tombstones | ✅ | `server/delete-service.js` + `pull.js` + `syncdelta.js` + `schema.sql`؛ `tests/tombstone.js` ‏**25/25** سبز (اجرای زنده) |
 
@@ -48,6 +50,8 @@
 
 ## Reliability (پایایی)
 
+> **مرجع معماری بازیابی:** `docs/DISASTER_RECOVERY.md` (سیاست/توپولوژی/چرخهٔ آزمون — §30، چت ۶) + بازوی اجرایی `docs/DR_RUNBOOK.md`.
+
 | معیار §27 | وضعیت | شاهد |
 |---|---|---|
 | HA database | ❌ | رپلیکای زنده وجود ندارد؛ Wave 10 فقط routing/fallback با fake-pool را ثابت می‌کند (`tests/wave10-db-scale.js` ‏26/26، با قید صریح «اجرای PG واقعی در انتظار») |
@@ -75,7 +79,7 @@
 |---|---|---|
 | integration | ✅ | ۷ سوئیت `tests/api/*` + رگرسیون کامل سبز در PR #45 (green=243, red=0) + smoke ‏**547/547** (اجرای زنده 2026-09-10) |
 | concurrency | ⏳ | `tests/sync-atomic-batch.js` ‏22/22‏ + `tests/lock-atomic.js` ‏12/12‏ (اجرای زنده) روی main؛ ماتریس کامل‌تر (اتمی‌بودن ۲۰۰همزمان ریت‌لیمیت و…) روی شاخهٔ مرج‌نشدهٔ چت ۳ است |
-| load | ⏳ | طرح رسمی `docs/LOAD_TEST_PLAN.md` (چت ۶، ۲۰۲۶-۰۹-۱۰) + زیرساخت k6 روی main (`tests/performance/`: ۶ سناریو + ۴ سوئیت)؛ اجرا مسدود به ادغام شاخهٔ چت ۳ (`seed-national.js`) و استیجینگ §۵ سند |
+| load | ⏳ | طرح رسمی `docs/LOAD_TEST_PLAN.md` (چت ۶، ۲۰۲۶-۰۹-۱۰) + زیرساخت k6 روی main (`tests/performance/`: ۶ سناریو + ۴ سوئیت)؛ اجرا مسدود به ادغام شاخهٔ چت ۳ (`seed-national.js`) و استیجینگ §۵ سند. هماهنگی ممیزی: مولد هم‌ارز `tools/generate-national-dataset.js` روی main موجود است — قلم باز ۲ در `docs/DOCS_CONSISTENCY_REPORT.md` |
 | stress | ❌ | اجرا نشده (همان انسداد load) |
 | spike | ❌ | اجرا نشده |
 | soak | ❌ | اجرا نشده |
@@ -87,6 +91,8 @@
 ---
 
 ## آیا سیستم برای Go-Live آماده است؟
+
+> **بستهٔ رسمی انتشار:** `docs/GO_LIVE_PACKAGE.md` (چک‌لیست پیش از انتشار، ترتیب روز صفر، برنامهٔ بازگشت، ماتریس تصمیم، مانع‌های باز) + `docs/RELEASE_NOTES.md` (v1.0.0-rc1).
 
 **خیر — آماده نیست.** سیستم در «کیفیت کد و امنیت پایه» قوی است ولی در «آمادگی بهره‌برداری واقعی» (دادهٔ توزیع‌شده، پایایی، رصد، آزمون‌های مقیاس) شکاف‌های مسدودکننده دارد.
 
@@ -118,14 +124,14 @@
 | AUTHORIZATION_MODEL.md | ✅ | + گزارش‌های R98/R99 |
 | SYNC_PROTOCOL.md | ✅ | |
 | SECURITY_MODEL.md | ✅ | + چک‌لیست pen-test |
-| NATIONAL_ARCHITECTURE.md | ❌ | نزدیک‌ترین معادل: `ARCHITECTURE.md` / `ARCHITECTURE_DECISIONS.md` (نیازمند هم‌نام‌سازی یا نگاشت رسمی) |
-| DISASTER_RECOVERY.md | ❌ | نزدیک‌ترین معادل: `RELIABILITY_DR_PLAN.md` |
+| NATIONAL_ARCHITECTURE.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — سند چتر معماری ملی (۱۴ بخش + ۱۰ رکورد تصمیم) + تست پوشش `tests/national-architecture-coverage.js` |
+| DISASTER_RECOVERY.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — معماری کلان بازیابی + تست پوشش `tests/disaster-recovery-coverage.js` |
 | OBSERVABILITY.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — سند یکپارچهٔ معماری رصدپذیری + تست پوشش `tests/observability-doc-coverage.js` |
 | CAPACITY_MODEL.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — مدل رسمی برای طراحی/تست؛ اعداد در انتظار اثبات در Wave 18 |
 | LOAD_TEST_PLAN.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — ورودی رسمی Wave 18؛ جایگزین اعداد اسناد قدیمی (`LOAD_TESTING_PLAN.md`/`PERFORMANCE_TESTING_PLAN.md`) |
-| LOAD_TEST_RESULTS.md | ❌ | اجرا نشده — ذاتاً مسدود به P0-5 |
+| LOAD_TEST_RESULTS.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — **قالب آماده + چارچوب تحلیل** (نسخهٔ ۰.۱.۰) + پوشش‌سنج `tests/load-test-results-coverage.js`؛ پر شدن اعداد همچنان مسدود به اجرای زندهٔ موج ۱۸ است |
 | PRODUCTION_RUNBOOK.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — ۸ بخش + پوشش‌سنج `tests/runbook-coverage.js` (72/72) |
 | INCIDENT_RESPONSE.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — ۴ سطح شدت + ۱۰ پلی‌بوک + پوشش‌سنج `tests/incident-playbooks.js` (86/86) |
-| MIGRATION_GUIDE.md | ❌ | پراکنده در `DATABASE_ARCHITECTURE.md`؛ راهنمای مستقل نیست |
+| MIGRATION_GUIDE.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — سیاست/چرخه/بسط‌انقباض/مهاجرت زنده + تست پوشش `tests/migration-guide-coverage.js` |
 
-**جمع §30:** موجود ۱۰ از ۱۴ — تکمیل/هم‌نام‌سازی ۴ سند باقی‌مانده (NATIONAL_ARCHITECTURE، DISASTER_RECOVERY، LOAD_TEST_RESULTS، MIGRATION_GUIDE) پیش‌نیاز نرم Go-Live است.
+**جمع §30:** موجود **۱۴ از ۱۴** — آخرین سند (`LOAD_TEST_RESULTS.md`) با قالب آماده و چارچوب تحلیل تحویل شد؛ فقط پر شدن اعداد به اجرای واقعی آزمون بار ملی (موج ۱۸) مسدود است.
