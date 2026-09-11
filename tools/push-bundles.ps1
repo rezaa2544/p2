@@ -40,21 +40,17 @@ function Write-Log([string]$msg) {
 }
 
 function Invoke-Git([string[]]$gitArgs) {
-  # NOTE: never use `2>&1` here. Merging stderr into the success stream
-  # creates ErrorRecords that terminate under $ErrorActionPreference='Stop'
-  # even when git exits 0 (e.g. "bundle is okay" goes to stderr).
-  # Redirect stderr to a temp file instead.
-  $errFile = [IO.Path]::GetTempFileName()
+  # git writes informational messages (e.g. "bundle is okay") to stderr
+  # even on success - do not let them trigger $ErrorActionPreference='Stop'.
+  $prevEap = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
   try {
-    $out = & git @gitArgs 2>$errFile
+    $out = & git @gitArgs 2>&1
     $code = $LASTEXITCODE
-    $err = ''
-    if (Test-Path -LiteralPath $errFile) { $err = (Get-Content -LiteralPath $errFile -Raw) }
   } finally {
-    Remove-Item -LiteralPath $errFile -Force -ErrorAction SilentlyContinue
+    $ErrorActionPreference = $prevEap
   }
-  $text = ((($out | Out-String) + "`n" + $err)).Trim()
-  return @{ Ok = ($code -eq 0); Out = $text }
+  return @{ Ok = ($code -eq 0); Out = ($out | Out-String).Trim() }
 }
 
 function Get-Processed {
