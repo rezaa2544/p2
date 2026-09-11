@@ -22,6 +22,7 @@ tracing.initTracing();
    side-effect در require: زمان‌بندِ نمونه‌برداری فقط در بوتِ سرور روشن می‌شود. */
 const metrics = require('./metrics');
 const waf = require('./waf'); /* P-WAF: report/enforce (P0 #6 — enforce با PAYESH_WAF_MODE=enforce) */
+const csrf = require('./csrf'); /* Q3 red-team: same-origin gate for unsafe cookie writes */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -511,6 +512,15 @@ const onRequest = async (req, res) => {
   try{ await waf.wafMiddleware(req, res); }catch(e){}
   /* P0 #6: اگر WAF (enforce) درخواست را مسدود کرده باشد (403 فرستاده)، روتینگ ادامه نمی‌یابد */
   if(res.writableEnded) return;
+  /* Q3 red-team / CSRF: an explicit browser Origin or Referer on every
+     unsafe API request must agree with this exact host+scheme. This runs
+     before the body is read and before route dispatch, so a cross-origin
+     form/fetch cannot invoke logout, sync, delete, or any REST write. */
+  const csrfDecision = csrf.checkCsrfOrigin(req, isHttps);
+  if(!csrfDecision.ok){
+    audit('csrf_denied', { path: p, reason: csrfDecision.code, ip: clientIp(req) });
+    return sendJson(res, 403, { ok: false, code: csrfDecision.code });
+  }
   /* R97 — نگهبانِ شمردنِ شناسه: شمارِ رد‌ها (404/403/401) و شمارِ همهٔ
      خوانش‌هایِ /api/students/:id (مسطحِ شمردنِ شناسهٔ §5.7) به ازای هر
      نشست؛ از SLOW1 به بعد تأخیر، در REVOKE ابطال (sendJsonCounting). */
