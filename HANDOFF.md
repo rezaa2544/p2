@@ -1,5 +1,42 @@
 # دفترچهٔ تحویل کار — پایش
 
+## Handoff — پ۳: ویو ۲۳ «سیستم گزارش‌دهی پیشرفته» — پیاده‌سازی کامل روی شاخه — 🟡 آمادهٔ PR (2026-09-12)
+
+- **شاخه:** `feat/wave23-advanced-reporting` (پایه: `main@9e7da2c`) — پنج کامیت
+  مرحله‌ای: (۱) سرور `f303687`، (۲) sync/report_logs `8244fb3`، (۳) کلاینت
+  `c5f2594`، (۴) تست‌ها `44e36b5`، (۵) اسناد (این کامیت).
+- **سرور:** `server/routes/reports.js` — چهار endpoint فقط‌خواندنی
+  `/api/v1/reports/{attendance|academic|finance|teachers}` با الگوی factory و
+  مهار اجاره‌ای fail-closed (مدیر=مدرسهٔ خودش؛ اداره=هندسهٔ office؛ درخواست
+  برون‌دامنه=403 نه لیست خالی؛ finance فقط مدارس شهریه‌دار، درخواست صریحِ
+  بدون‌شهریه=400)؛ audit: `report_generated`.
+- **آفلاین‌اول:** مجموعهٔ تازهٔ `report_logs` (ins: manager/counselor/edu_office/
+  superadmin) در `authz/model.json` + write-perms بازتولیدشده + عضویت در
+  `EO_SCOPE_GATED` (T15) + `02-demo-data.js` + جدول در `schema.sql` +
+  **مهاجرت 008** (±down، ایندکس updated_at سطح delta). خروجی‌گیری کلاینت یک
+  ردیف ژورنال می‌سازد که از `insert→applyOp→enqueueOp` به صف sync می‌رود.
+- **کلاینت:** `src/js/77-reports.js` — روت `reports` با ۴ تب؛ تجمیع کاملاً
+  محلی (آینهٔ سرور)؛ ناوبری ماه شمسی؛ نمودار `bar()`؛ CSV با `downloadCSV`
+  (BOM+csvCell ضدتزریق)؛ چاپ A4 با `printableDoc` (عریض‌ها landscape)؛ منو
+  برای manager/edu_office/superadmin (+`NAV_EXPECT` smoke به‌روز).
+- **تست‌ها (۳۵ تازه، همه سبز):** `reports-basic` ۹ (تجمیع=شمارش مستقل)؛
+  `reports-tenant-isolation` ۱۱ (401/403/دامنه‌ها/sync/جهش‌بان EO)؛
+  `reports-offline` ۱۰ (JSDOM با fetch قطع؛ صف sync)؛ `reports-export` ۵
+  (ضدتزریق CSV؛ سند A4/RTL؛ **PDF واقعی با playwright+chromium** — در نبودِ
+  playwright به‌جای سبزِ جعلی SKIP صریح چاپ می‌کند).
+- **گیت‌ها:** run.js ‏35/35 ✅ · smoke ‏547/547 ✅ · build --check ✅ ·
+  wave5-authz ‏37/37 ✅ · db-engineering ‏14/14 ✅ · data-dictionary ‏30/30 ✅ ·
+  authz-model ‏255 سبز/۱ قرمزِ **pre-existing** (t_depth از wave14-observability
+  — روی baseline هم قرمز است، ربطی به این ویو ندارد).
+- **تصمیم ثبت‌شده:** `financial_profiles` در مدل داده وجود ندارد؛ بریف به
+  دادهٔ مالی موجود (`tuitions/installments/scholarships`) نگاشت شد —
+  `docs/REPORTING_SYSTEM_GUIDE.md` §۷.
+- **اسناد:** `docs/REPORTING_SYSTEM_GUIDE.md` (تازه) + §۵ و تاریخچهٔ
+  `NATIONAL_ARCHITECTURE.md` + ردیف Wave 23 در `NATIONAL_ROADMAP_PROGRESS.md`.
+- **گام بعد:** push شاخه + گشودن PR به `main` و پایش CI.
+
+---
+
 ## Handoff — پ۳: تأیید نهایی Wave 21 + وضعیت PRها + آماده‌سازی Wave 23 — ✅ (2026-09-12)
 
 - **بند ۱ — Wave 21 تأیید شد:** PR #85 `merged: true` @ `d1a0bf2` (GitHub API)؛
