@@ -48,7 +48,7 @@ const GLOBAL_NULL_SCHOOL_READ = new Set(['announcements', 'subjects']);
 /* مجموعه‌هایی که نوشتنِ اداره روی آن‌ها نیازمندِ مهارِ قابل‌حل است
    (منبعِ یکتا؛ sync.js از همین‌جا مصرف می‌کند — آزمونِ T15 این فهرست را
    در برابرِ مدلِ مجوزهایِ اداره می‌سنجد). */
-const EO_SCOPE_GATED = ['announcements', 'teacher_schools', 'attendance_modes', 'notifications', 'notify_queue', 'staff_posts']; /* staff_posts: د.۴ (چت ۴) */
+const EO_SCOPE_GATED = ['announcements', 'teacher_schools', 'attendance_modes', 'notifications', 'notify_queue', 'staff_posts', 'report_logs']; /* staff_posts: د.۴ (چت ۴) — report_logs: ویو ۲۳ (گزارش‌دهی) */
 
 /* فیلدهای IEP — استثنای صریحِ دبیر روی users (آینهٔ IEP_KEYS در sync). */
 const IEP_KEYS = ['iep_notes', 'iep_staff', 'iep_updated'];
