@@ -312,7 +312,7 @@
 
 # گزارش باگ‌هانت — نشست ۸ / Wave 9 Performance
 
-**تاریخ:** ۲۰۲۶-۰۹-۱۱ · **مبنا:** `origin/main @ aaf3fab` · **شاخه:** `feat/bughunt-session8-wave9` · **HEAD فعلی:** `685f935`
+**تاریخ:** ۲۰۲۶-۰۹-۱۱ · **مبنا:** `origin/main @ aaf3fab` · **شاخه:** `feat/bughunt-session8-wave9` · **آخرین code-fix HEAD:** `685f935`
 
 این نشست با رجوع به `SKILLS_MASTER.md` و چرخهٔ اجباریِ قرمز→رفع→جهش انجام شد. هدف، حذف کار سنگین از مسیر درخواست، کنترل رشد حافظه/کش، و حفظ fail-closed و tenant isolation بود. گزارش کامل و ماتریس گیت‌ها در `docs/WAVE9_SESSION8_PERFORMANCE.md` است.
 
@@ -345,7 +345,9 @@
 
 ## وضعیت delivery و موارد باز
 
-- ثبت Ruflo با کلید `bug_hunt_session8` انجام نشد: executable `ruflo` در sandbox نصب نیست؛ بنابراین سبز جعلی یا `memory store` ساختگی ثبت نمی‌شود.
-- Push و PR بعد از commit مستندات انجام می‌شود. عنوان مقرر PR: `fix: bug hunt session 8 (wave 9 performance)`.
+- ثبت Ruflo با کلید `bug_hunt_session8` انجام نشد: executable `ruflo` در sandbox نصب نیست و تلاش واقعی با exit 127 و `ruflo: command not found` برگشت؛ بنابراین memory store ساختگی ثبت نمی‌شود.
+- `git fetch origin` و `git push origin HEAD:feat/bughunt-session8-wave9` با remote بدون credential انجام شد اما پیش از احراز هویت با `could not read Username for 'https://github.com'` شکست خوردند. PR ساخته نشد.
+- fallback بدون credential در `/home/user/bandle/bug-hunt-session8-wave9.bundle` ساخته و با `git bundle verify` معتبر شناخته شد؛ ۲۴ patch جداگانه نیز در `/home/user/bandle/patches/` است.
+- عنوان مقرر PR پس از push: `fix: bug hunt session 8 (wave 9 performance)`.
 - `tests/wave8-deep-audit.js` باید در یک commit/محیط بعدی ارائه شود؛ نبودن آن یک regression گیت است، نه یک pass.
 - گزارش full regression ناقص است؛ redهای legacy در partial log به Session 8 نسبت داده نشده‌اند و بدون اجرای تمیز دوباره سبز اعلام نمی‌شوند.

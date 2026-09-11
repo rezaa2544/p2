@@ -3,7 +3,7 @@
 **Date:** 2026-09-11 (Asia/Tehran)  
 **Branch:** `feat/bughunt-session8-wave9`  
 **Base:** `origin/main @ aaf3fab`  
-**Current local HEAD:** `685f935`  
+**Current local HEAD at the start of delivery:** `9169480`
 **Method:** `SKILLS_MASTER.md`; red regression first, implementation second, mutation test third, one Conventional Commit per fix.
 
 ## Scope
@@ -53,6 +53,7 @@ No secret, token, or credential is recorded in this document.
 
 | Gate | Result | Evidence / limitation |
 |---|---|---|
+| `node tests/run.js` | **35/35** | Base integration/structure suite passed. |
 | `node tests/smoke.js` | **547/547** | One expected jsdom `window.scrollTo` “Not implemented” console notice; no failed assertion. Node warns that the workspace is v20.20.2 while the project engine requests >=22. |
 | `node tools/check-authz.js` | **exit 0** | 388 actions checked; authorization mapping matched. The tool reports 54 writer actions without a client `canAction` label as an existing advisory; server fail-closed guard remains the contract. |
 | `node tests/secret-scan.js` | **11/11** | No credential findings; `.gitignore` coverage passed. |
@@ -73,12 +74,13 @@ No secret, token, or credential is recorded in this document.
 
 - Ruflo registration key requested: `bug_hunt_session8`.
 - **Registration is pending:** no `ruflo` executable is installed in this sandbox, so no successful memory write is claimed. No credential or token was placed in a report, patch, bundle, or remote URL.
-- Push and PR are pending until documentation is committed and the clean-tree/secret checks are repeated.
+- Documentation is committed and the final fast gates were repeated successfully.
+- Authenticated fetch/push was attempted with the credential-free HTTPS remote but failed before authentication: `could not read Username for 'https://github.com'`.
+- No PR was created because the branch could not be pushed. A credential-free fallback was created and verified at `/home/user/bandle/bug-hunt-session8-wave9.bundle` (24 format-patch files are also under `/home/user/bandle/patches/`).
+- No token, credential, or remote URL containing a token was written to the repository, report, patch, or bundle.
 
 ## Next steps
 
-1. Commit the Session 8/Wave 9 documentation and handoff updates.
-2. Repeat the fast required gates on the final clean tree.
-3. Attempt the authenticated push using the existing temporary authentication mechanism without persisting credentials; leave the permanent remote credential-free.
-4. Create PR titled `fix: bug hunt session 8 (wave 9 performance)` if push succeeds.
-5. If push fails, write a credential-free patch/bundle under `/home/user/bandle` and report the exact failure.
+1. On a machine with authenticated GitHub access, fetch the bundle or apply the patches and push `feat/bughunt-session8-wave9`.
+2. Create PR titled `fix: bug hunt session 8 (wave 9 performance)` after the push.
+3. Install/enable Ruflo and register `bug_hunt_session8`; this sandbox cannot claim that write because `ruflo` is unavailable.
