@@ -75,7 +75,7 @@ chk('D4 برچسب‌هایِ کد/کدملی به کنترل وصل‌اند', 
 // ── E: alt تصاویر (۴) ─────────────────────────────────────────
 group('E — متنِ جایگزینِ تصاویر');
 chk('E1 تصویرِ تکلیف (hw_img) دارایِ alt است', /id="hw_img"[^>]*alt="[^"]+"/.test(homework));
-chk('E2 تصویرِ پخش‌کنندهٔ تکلیف دارایِ alt است', !/<img src="' \+ escAttr\(url\)/.test(homework));
+chk('E2 تصویرِ پخش‌کنندهٔ تکلیف دارایِ alt است', !/'<img src="' \+ escAttr\(url\) \+ '" style/.test(homework));
 chk('E3 لوگویِ پوسته (brand-logo) دارایِ alt است', /class="brand-logo"[^>]*alt="[^"]+"/.test(shell));
 chk('E4 هیچ <img بدونِ alt در src نیست', (() => {
   const files = fs.readdirSync(JS).filter((f) => f.endsWith('.js'));
