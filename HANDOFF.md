@@ -47,6 +47,18 @@
 - **شاهدهای زندهٔ PG 18.4 (خوشهٔ باقی‌ماندهٔ فاز ۲، :55432):** زنجیرهٔ تازه 001→006 روی DB خالی سبز؛ ارتقای پایگاهِ ۹۲۳k فاز ۲ (۱۶۲ تعارضِ واقعی): قبل 42703 → بعد backfill ۱۶۲/۱۶۲ (`updated_at = created_at`)، صفر NULL، NOT NULL، ۳ ایندکس، EXPLAIN از ایندکس می‌خواند؛ برستِ `--live -n 60 -c 10` با builderهای تولیدی: **60/60 · p50=4.15ms · 1132 req/s**. خروجی: `~/.cache/pgtool/verify-006.js` (20/20) + `live-006.json`.
 - **گیت‌ها:** smoke **۵۴۷/۵۴۷** · check-authz **0** (تطبیق کامل) · secret-scan **۱۱/۱۱** · build --check **0** · tests/run.js 35/35 · رگرسیون: pull-bootstrap 12/12 · wave1-reads 18/18 · wave3-query 13/13 · wave14-observability 95/95 · sync-dup-claim 7/7 · sync-chunk ✓ · sync-atomic-batch 22/22 · فاز ۲: delta-sync-hardening 19/19 · wave4-all 13/13 · wave10-query-audit 14/14 · contract-layers 18/18 · DRY_RUN exit 0 · **delta-schema-gaps 12/12** ✅
 - **اسناد:** `docs/DELTA_HARDENING.md` §6 بند ۱ بسته + §۷ (فاز ۳) · `docs/MIGRATION_GUIDE.md` §۸ ردیف‌های 004_wave3/005/006 + یادداشتِ «بعدی 007» · همین ورودی.
+## A11y ناوبریِ صفحه‌کلید (`feat/a11y-keyboard-nav`) — ✅ (2026-09-11)
+
+- **مأموریت:** بستنِ بدهیِ فازِ ۲ («focus-trap و ترتیبِ tab سنجیده نشد») — تستِ **رفتاری** با کلیدهایِ واقعیِ Chromium. پایه: `main@ace1223` (PR #72 مرج شده بود).
+- **هارنس:** `tests/a11y-keyboard.js` — **۹۲ چک**: ۱۱ مودال × (focus اولیه، Tab-wrap، Shift+Tab-wrap، trap با ۳×Tab، Escape، بازگشتِ focus) + پوستهٔ ۵ نقش × (skip-link با نخستین Tab، Enter→main، nav-item فوکوس‌پذیر و Enter-فعال) + dropdown پوسته (Enter/Arrow/Escape، در ۴۲۰px — UIِ واقعیِ موبایل) + selectِ فرم (رفتارِ بومیِ Arrow سالم). ضدِ سبزِ جعلی: وجودِ هر حالت اول assert می‌شود؛ خطِ پایه واقعاً سرخ بود: **۲۳/۵۵**.
+- **رفعِ ۱ (`aa33cb4`) — مودال:** `openModal` → ثبتِ بازکننده + `role=dialog aria-modal` + focus اولیه به نخستین کنترل + keydown-trap (چرخهٔ Tab/Shift+Tab)؛ `closeModal` → حذفِ trap + بازگشتِ focus. نکته: تست باید دکمهٔ *مرئی* را trigger کند — `.burger` در دسکتاپ display:none است و focus نمی‌گیرد → 23→67.
+- **رفعِ ۲ (`81eb468`) — پوسته:** skip-link (مخفی تا فوکوس، CSS) + اکشنِ `skip-to-main` (focus به `.main` با tabindex=-1) + `.nav-item` با `role=link tabindex=0` + `:focus-visible` + هندلرِ سراسریِ Enter/Space→click برایِ عناصرِ غیربومیِ `data-act` → 67→87.
+- **رفعِ ۳ (`b82bfad`) — dropdown:** پاپ‌اورِ پوسته: Arrow پیمایشِ چرخه‌ای + Home/End + Escape با **capture** (وگرنه Escape سراسری goBack می‌کرد) + بازگشتِ focus → 87→**92/92**.
+- **نگهبان:** §6 در `a11y-regressions.js` (35→**46** چک)؛ **mutation ×۳**: حذفِ role=dialog → سرخ؛ حذفِ skip-link → سرخ؛ حذفِ trap-listener → سوئیتِ رفتاری 92→70.
+- **گیت‌ها:** smoke **547/547** · check-authz 0 · secret-scan **11/11** · build --check 0 · a11y-runtime صفر/صفر · a11y-interactive صفر/صفر · a11y-keyboard **92/92** · a11y-regressions **46/46**.
+- **اسناد:** `docs/A11Y_RUNTIME_REPORT.md` (فاز ۳)، `docs/A11Y_GUIDE.md` (§۲.۶)، همین HANDOFF.
+- **نکته/بدهی:** trap فقط از راهِ openModal/closeModal تضمین می‌شود (دست‌کاریِ مستقیمِ #modal ممنوع — در GUIDE ثبت شد)؛ سناریوهایِ کیبورد جدول‌هایِ درون‌صفحه (سلول‌به‌سلول با Arrow) را نمی‌پوشانند؛ صفحهٔ ورود (پیش از احراز) در پوششِ skip-link نیست.
+
 ## A11y مودال‌ها و حالت‌هایِ تعاملی (`feat/a11y-modals-interactive`) — ✅ (2026-09-11)
 
 - **مأموریت:** بستنِ بدهیِ دورِ قبل («اسکن فقط نماهایِ سطحِ NAV») — axe-core رویِ مودال‌ها/حالت‌هایِ تعاملی در Chromium واقعی. پایه: `main@6dbef89`.
