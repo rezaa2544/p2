@@ -40,3 +40,22 @@ const EXAM_TYPES=['کلاسی','میان‌ترم','پایان‌ترم','عمل
 function toast(msg,type=''){const w=$('#toasts');const d=document.createElement('div');d.className='toast '+type;d.textContent=msg;w.appendChild(d);setTimeout(()=>d.remove(),3000);}
 function empty(emoji,title,desc,btn){return `<div class="empty"><span class="emoji">${emoji}</span><h4>${esc(title)}</h4><div class="small">${esc(desc||'')}</div>${btn?`<div style="margin-top:14px">${btn}</div>`:''}</div>`;}
 function bar(v,max,color){return `<div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,(v/(max||1))*100)}%;background:${color}"></div></div>`;}
+/* ── پاسِ دسترس‌پذریِ ناحیه‌هایِ اسکرول‌شونده (axe: scrollable-region-focusable, serious) ──
+   ناحیه‌ای که overflow دارد ولی فوکوس‌پذیر نیست، برایِ کاربرِ صفحه‌کلید
+   غیرقابل پیمایش است. این پاس بعدِ هر render/openModal رویِ ریشهٔ داده‌شده
+   اجرا می‌شود و به .table-wrap/.vscroll که «واقعاً» سرریز دارند tabindex=0
+   و نقش/برچسبِ ناحیه می‌دهد. idempotent است و DOM را بازنویسی نمی‌کند. */
+function a11yScrollablePass(root){
+  try{
+    (root||document).querySelectorAll('.table-wrap,.vscroll').forEach(function(el){
+      var scrollable = el.scrollHeight>el.clientHeight+1 || el.scrollWidth>el.clientWidth+1;
+      if(scrollable){
+        if(!el.hasAttribute('tabindex')) el.setAttribute('tabindex','0');
+        if(!el.hasAttribute('role')) el.setAttribute('role','region');
+        if(!el.hasAttribute('aria-label')) el.setAttribute('aria-label','ناحیهٔ جدول (با کلیدهای جهت‌نما پیمایش کنید)');
+      }else if(el.getAttribute('tabindex')==='0' && el.hasAttribute('data-a11y-auto')){
+        el.removeAttribute('tabindex');
+      }
+    });
+  }catch(e){}
+}
