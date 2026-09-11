@@ -52,6 +52,7 @@ const { createClassRoutes } = require('./routes/classes');
 const { createAttendanceRoutes } = require('./routes/attendance');
 const { createGradeRoutes } = require('./routes/grades');
 const { createUserRoutes } = require('./routes/users');
+const { createReportsRoutes } = require('./routes/reports'); /* Wave 23 — گزارش‌دهی پیشرفته */
 const { createBootstrapRoute } = require('./routes/bootstrap');
 const { createIds } = require('./ids'); /* P0-16 */
 const { createOutbox } = require('./outbox'); /* P0-17 */
@@ -487,6 +488,7 @@ const classRoutes = createClassRoutes({ store, db, audit, markDirty, ids, delete
 const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, ids, deleter });
 const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty, ids, deleter });
 const userRoutes = createUserRoutes({ store, db, audit, markDirty, ids, deleter });
+const reportsRoutes = createReportsRoutes({ store, db, audit, markDirty, ids, deleter }); /* Wave 23 */
 const bootstrapRoute = createBootstrapRoute({ store, db });
 /* Delta Hardening Phase 2 (gap 2): signed TTL cursor — the resolved JWT key
    (env or key-file) feeds a domain-separated cursor key inside server/cursor.js;
@@ -806,6 +808,24 @@ const onRequest = async (req, res) => {
       // /api/v1/pull (A01: General Pull & Delta Sync)
       if(p === '/api/v1/pull' && req.method === 'GET'){
         return await pullRoute.apiPull(req, res);
+      }
+
+      // /api/v1/reports/* (Wave 23 — گزارش‌های استاندارد وزارتی، فقط‌خواندنی)
+      if(p === '/api/v1/reports/attendance' && req.method === 'GET'){
+        const r = await reportsRoutes.attendanceReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/reports/academic' && req.method === 'GET'){
+        const r = await reportsRoutes.academicReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/reports/finance' && req.method === 'GET'){
+        const r = await reportsRoutes.financeReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/reports/teachers' && req.method === 'GET'){
+        const r = await reportsRoutes.teachersReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
       }
 
       // /api/v1/students & /api/v1/students/:id
