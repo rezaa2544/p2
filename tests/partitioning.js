@@ -10,9 +10,12 @@
      U5  بدونِ id ⇒ INSERT خالص
      U6  قراردادِ مهاجرتِ ۰۰۹ (+down): ساختار، PK (id, created_at)،
          پارتیشن‌های سالانه + DEFAULT، تریگرِ chg، تراکنش
-     U7  کچ‌آپِ swap (یافتهٔ استیجینگ): دو تراکنش + قفلِ انحصاری +
-         ضدالحاقِ (id, created_at, chg_id) + ON CONFLICT ⇒ هیچ نوشتهٔ
-         حینِ کپی در *_old اسیر نمی‌ماند
+     U7  کچ‌آپِ swap (یافتهٔ استیجینگ): تنها تراکنشِ قفل‌دار = پنجرهٔ
+         کوتاهِ swap + ضدالحاقِ (id, created_at, chg_id) + ON CONFLICT ⇒
+         هیچ نوشتهٔ حینِ کپی در *_old اسیر نمی‌ماند
+     U8  یافته‌هایِ مانورِ ۲۵M (۲۰۲۶-۰۹-۱۲): FKها با NOT VALID+VALIDATE
+         پس از کپی (نه داخلِ CREATE — قفلِ والد) · کپیِ chunk-commitِ
+         قابلِ ازسرگیری (PROCEDURE، نه تک‌تراکنشِ حافظه‌خوار)
 
    بخشِ زنده (وقتی PG در دسترس است — چینِ کامل 001→009 روی دیتابیسِ تازه):
      L1  چینِ ۰۰۱..۰۰۹ سبز می‌شود
@@ -28,6 +31,9 @@
          بازیافت می‌شود (grades_recovered)
      L9  نویسندهٔ هم‌زمان حینِ ۰۰۹: هر درج/به‌روزرسانیِ حینِ کپی بعد از
          swap در جدولِ نو با آخرین مقدار هست (کچ‌آپ)
+     L10 FKهای جدول‌های نهایی validated اند (NOT VALID موقتی نبوده)
+     L11 کرش وسطِ کپی (kill بعد از اولین چانکِ کامیت‌شده) ⇒ رانِ مجدد
+         از مرزِ MAX(id) ازسرگیری می‌کند و کامل سبز می‌شود
 
    Run: node tests/partitioning.js
    PG زنده: PAYESH_W10_PG_URL (پیش‌فرض postgres://w10:w10@127.0.0.1:5432/payesh_w10)
@@ -36,7 +42,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawn } = require('child_process');
 const { execFile } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 
@@ -145,7 +151,7 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
      بود. قراردادِ تازه: (۱) دو تراکنش؛ (۲) قفلِ انحصاری قبل از rename؛
      (۳) ضدالحاقِ (id, created_at, chg_id) برای هر دو جدول؛ (۴) آپسرتِ
      ON CONFLICT (id, created_at) برای تازه‌کردنِ کپیِ کهنه. */
-  chk('U7a دو تراکنش (کپیِ بلند بدونِ قفل + پنجرهٔ کوتاهِ swap)', (up9.match(/^COMMIT;$/gm) || []).length === 2 && (up9.match(/^BEGIN;$/gm) || []).length === 2);
+  chk('U7a تنها یک جفتِ BEGIN/COMMIT صریح = پنجرهٔ کوتاهِ swap (کپی با چانک‌هایِ CALL)', (up9.match(/^COMMIT;$/gm) || []).length === 1 && (up9.match(/^BEGIN;$/gm) || []).length === 1);
   chk('U7b قفلِ انحصاری هر دو جدول قبل از rename', /LOCK TABLE attendance IN ACCESS EXCLUSIVE MODE;/.test(up9) && /LOCK TABLE grades IN ACCESS EXCLUSIVE MODE;/.test(up9) && up9.indexOf('LOCK TABLE grades') < up9.indexOf('ALTER TABLE grades RENAME TO grades_old'));
   const catchA = /INSERT INTO attendance_p[\s\S]*?WHERE NOT EXISTS \(SELECT 1 FROM attendance_p p[\s\S]*?ON CONFLICT \(id, created_at\) DO UPDATE/.test(up9);
   const catchG = /INSERT INTO grades_p[\s\S]*?WHERE NOT EXISTS \(SELECT 1 FROM grades_p p[\s\S]*?ON CONFLICT \(id, created_at\) DO UPDATE/.test(up9);
@@ -153,6 +159,9 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
   chk('U7d ادغام با شرطِ تازگیِ chg_id (last-writer-wins؛ نه تساوی که نوشتهٔ نو را بازنویسیِ معکوس می‌کند)', !/IS NOT DISTINCT FROM o\.chg_id/.test(up9) && (up9.match(/p\.chg_id >= o\.chg_id/g) || []).length >= 6);
   chk('U7e فازِ D — ادغامِ سرگردان‌ها بعد از کامیتِ swap (idempotent)', /STRAY-MERGE:BEGIN/.test(up9) && /STRAY-MERGE:END/.test(up9) && /FROM grades o[\s\S]*?STRAY-MERGE:END/.test(up9));
   chk('U7f تریگرِ chg حینِ کپی خاموش است (chg_id حفظ می‌شود؛ کچ‌آپ سبک می‌ماند)', /ALTER TABLE attendance_p DISABLE TRIGGER trg_attendance_chg;/.test(up9) && /ALTER TABLE grades_p DISABLE TRIGGER trg_grades_chg;/.test(up9) && /ALTER TABLE attendance_p ENABLE TRIGGER trg_attendance_chg;/.test(up9) && /ALTER TABLE grades_p ENABLE TRIGGER trg_grades_chg;/.test(up9));
+  /* U8 — یافته‌هایِ مانورِ ۲۵M سطر (۲۰۲۶-۰۹-۱۲) */
+  chk('U8a FKها با ALTER رویِ جدولِ خالی قبل از کپی (قفلِ والد میلی‌ثانیه‌ای؛ نه داخلِ CREATE تا پایانِ کپی؛ NOT VALID رویِ partitioned ممنوعِ PG 17 است)', (up9.match(/ADD CONSTRAINT fk_/g) || []).length === 6 && !/ADD CONSTRAINT[^;]*NOT VALID/s.test(up9) && !/VALIDATE CONSTRAINT/.test(up9) && !/PRIMARY KEY \(id, created_at\),/.test(up9) && up9.indexOf('ADD CONSTRAINT fk_') < up9.indexOf('CALL payesh_copy_attendance_009'));
+  chk('U8b کپیِ chunk-commitِ قابلِ ازسرگیری (PROCEDURE + COMMIT پریودیک + ازسرگیری از MAX(id))', /CREATE OR REPLACE PROCEDURE payesh_copy_grades_009\(\)/.test(up9) && /CREATE OR REPLACE PROCEDURE payesh_copy_attendance_009\(\)/.test(up9) && (up9.match(/^\s+COMMIT;$/gm) || []).length >= 4 && /GREATEST\(minid, COALESCE\(\(SELECT MAX\(id\) FROM grades_p\), 0\) \+ 1\)/.test(up9));
 
   /* ═══════════ بخشِ زنده ═══════════ */
   const LIVE_URL = process.env.PAYESH_W10_PG_URL || 'postgres://w10:w10@127.0.0.1:5432/payesh_w10';
@@ -173,12 +182,17 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
 
   console.log('\n▸ Wave 10 — پارتیشن‌بندی (PG زنده: چینِ کامل 001→009)');
   const q = (sql) => live.query(sql);
+  const psqlF = (file) => new Promise((res) => {
+    execFile('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', file, LIVE_URL],
+      { env: Object.assign({}, process.env, { PGPASSWORD: process.env.PGPASSWORD || 'w10' }) },
+      (err, so, se) => res({ code: err ? (err.code || 1) : 0, so: String(so), se: String(se) }));
+  });
   const psql = (file) => execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', file, LIVE_URL], { stdio: 'pipe' }).toString();
 
-  /* چین را روی همین دیتابیسِ کار می‌کنیم؛ اگر جدولی ماند، پاک کن */
+  /* چین را روی همین دیتابیسِ کار می‌کنیم؛ مستقل از وضعیتِ قبلی (رانِ شکست‌خورده،
+     مهاجرتِ ناتمام و…) همهٔ جدول‌های مرتبط را پاک کن */
   try {
-    await q('DROP TABLE IF EXISTS grades_old, attendance_old, grades_recovered, attendance_recovered CASCADE');
-    await q('DROP TABLE IF EXISTS grades, attendance CASCADE');
+    await q('DROP TABLE IF EXISTS grades, attendance, grades_old, attendance_old, grades_p, attendance_p, grades_recovered, attendance_recovered, schools, users, classes, subjects CASCADE');
   } catch (e) { /* اولِ کار خالی است */ }
 
   try {
@@ -217,16 +231,17 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
      است: UPDATE by id → 0 ⇒ INSERT (آپسرتِ idempotent). */
   let ledger = new Map(); /* id -> score نهایی */
   let writerErrs = 0;
+  let stopW = false; let writerP = Promise.resolve(); /* بایستد حتی اگر مهاجرت شکست بخورد (عرضِ L11) */
   try {
     const t9 = Date.now();
-    let stopW = false, wTick = 0, nextId = 800001;
+    let wTick = 0, nextId = 800001;
     const upsert = async (id, score) => {
       /* همان قراردادِ persistOp پارتیشن‌ساز (db.js) */
       const u = await live.query('UPDATE grades SET score = $2, updated_at = now() WHERE id = $1', [id, score]);
       if (u.rowCount === 0) await live.query('INSERT INTO grades (id, school_id, student_id, class_id, subject_id, teacher_id, score, created_at, updated_at, version) VALUES ($1, 1, 100, 10, 20, 200, $2, $3, now(), 1)', [id, score, '2026-09-10T09:00:00Z']);
       ledger.set(id, score);
     };
-    const writer = (async () => {
+    writerP = (async () => {
       while (!stopW) {
         try {
           const k = wTick++ % 3;
@@ -242,11 +257,12 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
         { env: Object.assign({}, process.env, { PGPASSWORD: (LIVE_URL.match(/\/\/[^:]+:([^@]+)@/) || [])[1] || process.env.PGPASSWORD }) },
         (err, so, se) => err ? rej(new Error(String(se || err.message).split('\n').filter((l) => /ERROR|FATAL/.test(l)).join(' | ').slice(0, 160) || err.message)) : res());
     });
-    stopW = true; await writer;
     console.log('     009 (کپیِ 180k + کچ‌آپ + swap؛ نویسندهٔ هم‌زمان: ' + ledger.size + ' سطر): ' + ((Date.now() - t9) / 1000).toFixed(1) + 's');
     chk('L1c مهاجرتِ 009 با دادهٔ 180k + ترافیکِ هم‌زمان سبز شد (خطای نویسنده: ' + writerErrs + ')', writerErrs === 0);
   } catch (e) {
     chk('L1c مهاجرتِ 009', false, String(e.message || e).slice(0, 160));
+  } finally {
+    stopW = true; await writerP; /* در هر دو مسیر — نویسنده هرگز نشت نمی‌کند */
   }
 
   /* L9: هیچ نوشتهٔ حینِ کپی در *_old اسیر نشده و کپیِ کهنه نمانده */
@@ -319,6 +335,11 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
     chk('L2d ایندکس‌ها با نامِ نهایی روی والد', idx.rows.length === 4, JSON.stringify(idx.rows.map((r) => r.indexname)));
     const trg = await q("SELECT tgname FROM pg_trigger WHERE tgrelid='grades'::regclass AND NOT tgisinternal");
     chk('L2e تریگرِ chg روی والدِ جدید', trg.rows.some((r) => r.tgname === 'trg_grades_chg'), JSON.stringify(trg.rows));
+    /* L10 — یافتهٔ مانورِ ۲۵M: FKها باید وجود داشته باشند و validated باشند
+       (NOT VALID فقط موقتیِ بینِ ADD و VALIDATE است؛ بعد از مهاجرت باید
+       convalidated=true باشد — وگرنه یکپارچگیِ ارجاعی تضمین نشده است). */
+    const fks = await q("SELECT conname, convalidated FROM pg_constraint WHERE conrelid IN ('grades'::regclass, 'attendance'::regclass) AND contype='f' ORDER BY 1");
+    chk('L10 هر ۶ FK روی جدول‌های نهایی موجود و validated', fks.rows.length === 6 && fks.rows.every((r) => r.convalidated), JSON.stringify(fks.rows.map((r) => r.conname + ':' + r.convalidated)));
   } catch (e) { chk('L2 ساختار', false, String(e.message || e).slice(0, 120)); }
 
   /* L3: پریتی — روی بازهٔ فیکسچر (id ≤ 800000)؛ سطرهای نویسندهٔ هم‌زمانِ L9
@@ -436,16 +457,19 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
   /* L8: وارون‌سازی */
   try {
     /* یک سطرِ پس از swap واقعی — مسیرِ بازیافتِ down را واقعاً تست کن */
-    await q("INSERT INTO grades (school_id, student_id, class_id, subject_id, teacher_id, score, created_at, updated_at, version) VALUES (1, 100, 10, 20, 200, 19, '2026-09-05 09:00:00+00', now(), 1)");
-    const before = await q('SELECT (SELECT count(*) FROM grades) AS g, (SELECT count(*) FROM grades_old) AS go, (SELECT count(*) FROM grades WHERE id NOT IN (SELECT id FROM grades_old)) AS extra');
+    const insRow = await q("INSERT INTO grades (school_id, student_id, class_id, subject_id, teacher_id, score, created_at, updated_at, version) VALUES (1, 100, 10, 20, 200, 19, '2026-09-05 09:00:00+00', now(), 1) RETURNING id");
+    const dbg = await q("SELECT id, created_at FROM grades n WHERE NOT EXISTS (SELECT 1 FROM grades_old o WHERE o.id = n.id AND o.created_at = n.created_at) ORDER BY id LIMIT 6");
+    console.log('     [L8c-debug] inserted id=' + insRow.rows[0].id + ' · سطرهای نو-تنها: ' + JSON.stringify(dbg.rows));
+    const before = await q('SELECT (SELECT count(*) FROM grades) AS g, (SELECT count(*) FROM grades_old) AS go, (SELECT count(*) FROM grades WHERE id NOT IN (SELECT id FROM grades_old)) AS extra, (SELECT count(*) FROM grades n WHERE NOT EXISTS (SELECT 1 FROM grades_old o WHERE o.id = n.id AND o.created_at = n.created_at)) AS extra_pair');
     psql(path.join(ROOT, 'migrations', '009_partition_grades_attendance.down.sql'));
     const notPart = await q("SELECT count(*)::int AS n FROM pg_partitioned_table pt JOIN pg_class c ON c.oid = pt.partrelid WHERE c.relname IN ('grades','attendance')");
     chk('L8a وارون‌سازی: جدول‌ها دیگر پارتیشن‌شده نیستند', notPart.rows[0].n === 0, String(notPart.rows[0].n));
     const after = await q('SELECT (SELECT count(*) FROM grades) AS g');
     chk('L8b دادهٔ قدیمی سالم برگشت', Number(after.rows[0].g) === Number(before.rows[0].go), JSON.stringify({ b: before.rows[0], a: after.rows[0] }));
     const rec = await q("SELECT to_regclass('grades_recovered') AS t");
-    const nExtra = Number(before.rows[0].extra);
-    /* اگر سطرِ پس از swap بود ⇒ جدولِ بازیافت با همان شمار؛ اگر نبود ⇒ نبودنش درست است (چیزی گم نشده) */
+    /* معیارِ «سطرِ پس از swap» = جفتِ (id, created_at) که در old نیست — همان
+       معیاری که recovery مهاجرتِ down با آن می‌سازد. */
+    const nExtra = Number(before.rows[0].extra_pair);
     let recOk;
     if (nExtra > 0) {
       const rc = rec.rows[0].t === 'grades_recovered' ? await q('SELECT count(*)::int AS n FROM grades_recovered') : { rows: [{ n: -1 }] };
@@ -453,11 +477,84 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
     } else {
       recOk = rec.rows[0].t === null;
     }
-    chk('L8c سطرهای پس از swap بازیافت/پوشش داده شدند (extra=' + nExtra + ')', recOk, JSON.stringify(rec.rows[0]));
+    chk('L8c سطرهای پس از swap بازیافت/پوشش داده شدند (extra=' + nExtra + ')', recOk, JSON.stringify(rec.rows[0]) + ' debug=' + JSON.stringify({ idOnly: Number(before.rows[0].extra) }));
     /* چین را برای اجرای دوبارهٔ تست تمیز کن */
     await q('DROP TABLE IF EXISTS grades_recovered, attendance_recovered');
     await q('DROP TABLE IF EXISTS grades, attendance, schools, users, classes, subjects CASCADE');
   } catch (e) { chk('L8 وارون‌سازی', false, String(e.message || e).slice(0, 160)); }
+
+  /* L11 — ازسرگیریِ کپی بعد از کرش (یافتهٔ مانورِ ۲۵M: chunk-commit).
+     چینِ تازه + فیکسچرِ ۳۲۰k (بیش از دو چانکِ ۱۵۰k)؛ ۰۰9 با psql اجرا و
+     بلافاصله بعد از اولین NOTICEِ «copy grades» (یعنی اولین چانک کامیت
+     شده) SIGKILL؛ سپس ۰۰9 کامل دوباره — باید از مرزِ MAX(id) ادامه بدهد. */
+  try {
+    /* مستقل از وضعیتِ قبلی: هر چیزی از چین‌های قبلی هست پاک کن */
+    await q('DROP TABLE IF EXISTS grades, attendance, grades_old, attendance_old, grades_p, attendance_p, grades_recovered, attendance_recovered, schools, users, classes, subjects CASCADE');
+    const files = fs.readdirSync(path.join(ROOT, 'migrations')).filter((f) => /^00[1-8].*\.sql$/.test(f) && !/\.down\.sql$/.test(f)).sort();
+    for (const f of files) { const r = await psqlF(path.join(ROOT, 'migrations', f)); if (r.code !== 0) throw new Error(f + ': ' + r.se.slice(0, 100)); }
+    await q("INSERT INTO schools (id, name, created_at, updated_at, version) VALUES (1, 'مدرسه L11', now(), now(), 1) ON CONFLICT (id) DO NOTHING");
+    await q("INSERT INTO users (id, username, role, school_id, created_at, updated_at, version) VALUES (100,'s100','student',1,now(),now(),1),(200,'t200','teacher',1,now(),now(),1) ON CONFLICT (id) DO NOTHING");
+    await q("INSERT INTO classes (id, school_id, name, created_at, updated_at, version) VALUES (10,1,'کلاس ۱۰',now(),now(),1) ON CONFLICT (id) DO NOTHING");
+    await q("INSERT INTO subjects (id, school_id, name, created_at, updated_at, version) VALUES (20,1,'ریاضی',now(),now(),1) ON CONFLICT (id) DO NOTHING");
+    await q(`INSERT INTO grades (school_id, student_id, class_id, subject_id, teacher_id, score, created_at, updated_at, version)
+             SELECT 1, 100, 10, 20, 200, (g % 20)::numeric,
+                    make_timestamp((2025 + (g % 2))::int, (1 + (g % 12))::int, (1 + (g % 28))::int, 9, (g % 60)::int, 0),
+                    make_timestamp((2025 + (g % 2))::int, (1 + (g % 12))::int, (1 + (g % 28))::int, 9, (g % 60)::int, 0), 1
+             FROM generate_series(1::bigint, 320000::bigint) g`);
+    await q(`INSERT INTO attendance (school_id, student_id, class_id, date, status, created_at, updated_at, version)
+             SELECT 1, 100, 10, make_date(2026, (1 + (g % 12))::int, (1 + (g % 28))::int)::text, 'present',
+                    make_timestamp(2026, (1 + (g % 12))::int, (1 + (g % 28))::int, 8, (g % 60)::int, 0),
+                    make_timestamp(2026, (1 + (g % 12))::int, (1 + (g % 28))::int, 8, (g % 60)::int, 0), 1
+             FROM generate_series(1::bigint, 20000::bigint) g`);
+    /* اجرای ۰۰9 و کشتنِ آن بعد از اولین چانکِ کامیت‌شدهٔ grades.
+       تریگر = خودِ دیتابیس (نه استریمِ psql که می‌تواند بافر شود و دیر برسد):
+       به‌محضِ اینکه MAX(id) در grades_p به مرزِ چانکِ اول (۱۵۰k) رسید — یعنی
+       چانکِ اول کامیت شده و دیده می‌شود — psql با SIGKILL می‌میرد؛ بک‌اندِ
+       سرور در NOTICEِ چانکِ بعدی متوجهِ سوکتِ مرده می‌شود و می‌ایستد. */
+    const killed = await new Promise((res) => {
+      const ps = spawn('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', '009_partition_grades_attendance.sql'), LIVE_URL], { env: process.env });
+      let fired = false, closed = false;
+      const finish = (sig) => { if (!closed) { closed = true; clearInterval(pol); res({ sig, fired }); } };
+      const pol = setInterval(() => {
+        if (fired || closed) return;
+        q('SELECT COALESCE(MAX(id), 0) AS mx FROM grades_p').then((r) => {
+          if (!fired && Number(r.rows[0].mx) >= 150000) {
+            fired = true;
+            /* قتلِ بک‌اندِ سرور (نه فقط کلاینتِ psql): کشتنِ psql به‌تنهایی
+               بک‌اند را نمی‌کشد — NOTICEهای بعدی در بافرِ سوکت جا می‌شوند و
+               CALL تا آخر می‌رود. pg_terminate_backend همان «کرشِ جلسه» است:
+               چانکِ در حالِ اجرا بک‌رول می‌شود، چانک‌های کامیت‌شده می‌مانند. */
+            q("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE query LIKE '%payesh_copy_grades_009%' AND pid <> pg_backend_pid()")
+              .then(() => { try { ps.kill('SIGKILL'); } catch (e) {} }).catch(() => { try { ps.kill('SIGKILL'); } catch (e) {} });
+          }
+        }).catch(() => {});
+      }, 150);
+      ps.on('close', () => finish('closed'));
+      setTimeout(() => { try { ps.kill('SIGKILL'); } catch (e) {} finish('timeout'); }, 180000);
+    });
+    /* بعد از kill: بک‌اندِ سرور ممکن است همچنان چانک را تمام کند/بک‌رول کند؛
+       تا رفتنِ بک‌اند و پایداریِ شمار صبر کن (کامیتِ ۱۵۰k سطری زیرِ I/O ثانیه‌ها
+       طول می‌کشد — نه میلی‌ثانیه). */
+    let partial = { rows: [{ n: 0, mx: 0 }] };
+    for (let i = 0; i < 50; i++) {
+      await new Promise((r) => setTimeout(r, 400));
+      try {
+        partial = await q("SELECT COALESCE((SELECT count(*) FROM grades_p), 0)::int AS n, COALESCE((SELECT max(id) FROM grades_p), 0)::int AS mx");
+        const act = await q("SELECT count(*)::int AS a FROM pg_stat_activity WHERE query LIKE '%payesh_copy_grades_009%' AND state = 'active'");
+        if (act.rows[0].a === 0 && partial.rows[0].n > 0) break; /* بک‌اند رفت و چانکی نشسته */
+      } catch (e) { /* جدول ممکن است هنوز در تراکنشِ عقب‌مانده باشد */ }
+    }
+    chk('L11a kill بعد از اولین چانک ⇒ کپی ناقصِ کامیت‌شده (چانک‌بندی واقعی)', killed.fired && partial.rows[0].n > 0 && partial.rows[0].n < 320000, 'fired=' + killed.fired + ' sig=' + killed.sig + ' n=' + partial.rows[0].n + ' maxid=' + partial.rows[0].mx);
+    /* رانِ کامل: ازسرگیری از مرز + ادامه تا swap */
+    const r2 = await psqlF(path.join(ROOT, 'migrations', '009_partition_grades_attendance.sql'));
+    const v11 = await q("SELECT (SELECT count(*) FROM grades)::int AS g, (SELECT count(*) FROM grades_old)::int AS g_old, (SELECT count(*) FROM attendance)::int AS a, (SELECT count(*) FROM attendance_old)::int AS a_old, (SELECT relkind FROM pg_class WHERE relname='grades') AS rk");
+    const extra = await q('SELECT count(*)::int AS n FROM grades WHERE id > 320000');
+    const fks2 = await q("SELECT count(*)::int AS n FROM pg_constraint WHERE conrelid IN ('grades'::regclass, 'attendance'::regclass) AND contype='f' AND convalidated");
+    chk('L11b رانِ مجدد سبز + پریتیِ کاملِ شمار (ازسرگیری، نه کپیِ دوباره)', r2.code === 0 && v11.rows[0].g === v11.rows[0].g_old && v11.rows[0].g >= 320000 && v11.rows[0].a === v11.rows[0].a_old && v11.rows[0].rk === 'p' && extra.rows[0].n === 0, JSON.stringify(v11.rows[0]) + ' extra=' + extra.rows[0].n + ' exit=' + r2.code);
+    chk('L11c FKها بعد از ازسرگیری هم validated', fks2.rows[0].n === 6, 'n=' + fks2.rows[0].n);
+    await q('DROP TABLE IF EXISTS grades_recovered, attendance_recovered');
+    await q('DROP TABLE IF EXISTS grades, attendance, grades_old, attendance_old, schools, users, classes, subjects CASCADE');
+  } catch (e) { chk('L11 ازسرگیری', false, String(e.message || e).slice(0, 160)); }
 
   try { await live.end(); } catch (e) {}
 

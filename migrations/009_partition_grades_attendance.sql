@@ -53,7 +53,9 @@
 --     guard raises because *_old exists (leftover from the first run).
 --     Resolve via 009.down (full rollback) or drop the *_old remnants
 --     manually — never re-copy over a live swapped table.
-BEGIN;
+--   * کپی با PROCEDURE های chunk-commit اجرا می‌شود (هر ۲M سطر COMMIT —
+--     یافتهٔ مانورِ ۲۵M: تک‌تراکنش ۱.۳GB حافظه می‌بلعید) و از MAX(id)
+--     ازسرگیری می‌کند؛ عبارت‌هایِ فازِ B هرکدام تراکنشِ خودشان را دارند.
 
 -- ═══════════════ Phase B — attendance ═══════════════
 CREATE TABLE IF NOT EXISTS attendance_p (
@@ -74,8 +76,12 @@ CREATE TABLE IF NOT EXISTS attendance_p (
   "updated_at" TIMESTAMPTZ,
   "version" INTEGER NOT NULL DEFAULT 1,
   "chg_id" BIGINT,
-  PRIMARY KEY (id, created_at),
-  CONSTRAINT fk_attendance_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+  PRIMARY KEY (id, created_at)
+  /* FK عمداً اینجا نیست (یافتهٔ مانورِ ۲۵M سطر، ۲۰۲۶-۰۹-۱۲): FKِ داخلِ
+     CREATE داخلِ تراکنشِ کپی، SHARE ROW EXCLUSIVE رویِ جدولِ والد
+     (users/schools/…) تا کامیتِ کپی نگه می‌دارد ⇒ نوشتنِ رویِ والد برایِ
+     کلِ مدتِ کپی بلاک می‌شد — در ۲۵M سطر: دقیقه‌ها. FKها با ALTER رویِ
+     جدولِ خالی ساخته می‌شوند (بخشِ grades پایین‌تر). */
 ) PARTITION BY RANGE (created_at);
 
 DO $$
@@ -119,17 +125,38 @@ CREATE TRIGGER trg_attendance_chg BEFORE INSERT OR UPDATE ON attendance_p
    «تغییرکرده» می‌دید و کلِ آن را زیرِ قفلِ انحصاری آپسرت می‌کرد (~۴۹s روی
    600k سطر؛ روی 50M فاجعه). با تریگرِ خاموش، کپی chg_id را عیناً حفظ
    می‌کند و کچ‌آپ فقط سرگردان‌های حقیقی را می‌گیرد. */
+/* ═══ FK رویِ جدولِ خالی، قبل از کپی (یافتهٔ مانورِ ۲۵M سطر، ۲۰۲۶-۰۹-۱۲) ═══
+   نسخهٔ اولیهٔ این مهاجرت FK را داخلِ CREATE TABLE می‌ساخت داخلِ همان
+   تراکنشِ کپی ⇒ قفلِ SHARE ROW EXCLUSIVE رویِ جدول‌هایِ والد (users/
+   schools/classes/subjects) تا کامیتِ کپی نگه داشته می‌شد ⇒ هر نوشتنِ رویِ
+   والد (ساختِ کاربر/کلاس/…) برایِ کلِ مدتِ کپی بلاک بود — در ۲۵M سطر:
+   دقیقه‌ها. NOT VALID هم رویِ جدولِ partitioned مجاز نیست (محدودیتِ PG 17).
+   الگویِ درست: ADD CONSTRAINT رویِ جدولِ خالی (اعتبارسنجی آنی، قفلِ والد
+   میلی‌ثانیه‌ای) و بعد کپی — چکِ FK سطربه‌سطر حینِ کپی انجام می‌شود و
+   قفلِ سطریِ key-share با نوشتنِ سطرهایِ نوِ والد تعارض ندارد. */
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_attendance_school' AND conrelid = 'attendance_p'::regclass) THEN
+    EXECUTE 'ALTER TABLE attendance_p ADD CONSTRAINT fk_attendance_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED';
+  END IF;
+END $$;
+
 ALTER TABLE attendance_p DISABLE TRIGGER trg_attendance_chg;
 
-DO $$
+/* کپیِ chunk-commit (یافتهٔ مانورِ ۲۵M سطر، ۲۰۲۶-۰۹-۱۲): کپیِ تک‌تراکنشه
+   به‌ازایِ هر سطر ~۵۰B حافظهٔ bookkeeping انباشته می‌کند — در ۲۵M سطر =
+   1.3GB و OOM-kill رویِ میزبانِ 2GB. اینجا هر ۳ دستهٔ ۵۰k (=۱۵۰k سطر ≈
+   ۷.۵MB حافظه) COMMIT می‌شود و از MAX(id) ازسرگیری می‌شود: کرشِ وسطِ کپی
+   ⇒ رانِ بعدی از مرزِ چانکِ کامیت‌شده ادامه می‌دهد (تستِ L11). */
+CREATE OR REPLACE PROCEDURE payesh_copy_attendance_009()
+LANGUAGE plpgsql AS $$
 DECLARE
-  minid BIGINT; maxid BIGINT; lo BIGINT; hi2 BIGINT;
+  minid BIGINT; maxid BIGINT; lo BIGINT; hi2 BIGINT; nb BIGINT := 0;
   batch CONSTANT BIGINT := 50000;
+  per_commit CONSTANT BIGINT := 3; /* ×۵۰k = ۱۵۰k سطر ⇒ ~۷.۵MB حافظه/چانک */
 BEGIN
-  /* rerun-safety: اگر کپیِ قبلی انجام شده، دوباره درج نکن (PK می‌شکند) */
-  IF NOT EXISTS (SELECT 1 FROM attendance_p LIMIT 1) THEN
   SELECT COALESCE(MIN(id), 0), COALESCE(MAX(id), 0) INTO minid, maxid FROM attendance;
-  lo := minid;
+  SELECT GREATEST(minid, COALESCE((SELECT MAX(id) FROM attendance_p), 0) + 1) INTO lo;
   WHILE lo <= maxid LOOP
     hi2 := LEAST(lo + batch, maxid);
     INSERT INTO attendance_p ("class_id", "created_at", "date", "exit_at", "exit_minutes", "id",
@@ -140,9 +167,17 @@ BEGIN
            "status", "student_id", "taken_at", "updated_at", "version", "chg_id"
     FROM attendance WHERE id >= lo AND id <= hi2;
     lo := hi2 + 1;
+    nb := nb + 1;
+    IF nb % per_commit = 0 THEN
+      RAISE NOTICE 'copy attendance: تا id %', hi2;
+      COMMIT;
+    END IF;
   END LOOP;
-  END IF;
+  COMMIT;
 END $$;
+
+CALL payesh_copy_attendance_009();
+DROP PROCEDURE payesh_copy_attendance_009();
 
 ALTER TABLE attendance_p ENABLE TRIGGER trg_attendance_chg;
 
@@ -168,12 +203,10 @@ CREATE TABLE IF NOT EXISTS grades_p (
   "updated_at" TIMESTAMPTZ,
   "version" INTEGER NOT NULL DEFAULT 1,
   "chg_id" BIGINT,
-  PRIMARY KEY (id, created_at),
-  CONSTRAINT fk_grades_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
-  CONSTRAINT fk_grades_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
-  CONSTRAINT fk_grades_class FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
-  CONSTRAINT fk_grades_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
-  CONSTRAINT fk_grades_teacher FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+  PRIMARY KEY (id, created_at)
+  /* FKها عمداً اینجا نیستند — یافتهٔ مانورِ ۲۵M: قفلِ SHARE ROW EXCLUSIVE
+     رویِ جدول‌هایِ والد تا کامیتِ کپی. با ALTER رویِ جدولِ خالی ساخته
+     می‌شوند (بلافاصله بالاتر). */
 ) PARTITION BY RANGE (created_at);
 
 DO $$
@@ -212,17 +245,35 @@ CREATE TRIGGER trg_grades_chg BEFORE INSERT OR UPDATE ON grades_p
   FOR EACH ROW EXECUTE FUNCTION payesh_chg_bump();
 
 /* همان یافتهٔ attendance: تریگر حینِ کپی خاموش تا chg_id حفظ شود. */
-ALTER TABLE grades_p DISABLE TRIGGER trg_grades_chg;
-
 DO $$
 DECLARE
-  minid BIGINT; maxid BIGINT; lo BIGINT; hi2 BIGINT;
-  batch CONSTANT BIGINT := 50000;
+  fk RECORD;
 BEGIN
-  /* rerun-safety: اگر کپیِ قبلی انجام شده، دوباره درج نکن (PK می‌شکند) */
-  IF NOT EXISTS (SELECT 1 FROM grades_p LIMIT 1) THEN
+  FOR fk IN SELECT * FROM (VALUES
+    ('fk_grades_school',  'ALTER TABLE grades_p ADD CONSTRAINT fk_grades_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED'),
+    ('fk_grades_student', 'ALTER TABLE grades_p ADD CONSTRAINT fk_grades_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED'),
+    ('fk_grades_class',   'ALTER TABLE grades_p ADD CONSTRAINT fk_grades_class FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED'),
+    ('fk_grades_subject', 'ALTER TABLE grades_p ADD CONSTRAINT fk_grades_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED'),
+    ('fk_grades_teacher', 'ALTER TABLE grades_p ADD CONSTRAINT fk_grades_teacher FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED')
+  ) AS t(name, ddl)
+  LOOP
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = fk.name AND conrelid = 'grades_p'::regclass) THEN
+      EXECUTE fk.ddl;
+    END IF;
+  END LOOP;
+END $$;
+
+ALTER TABLE grades_p DISABLE TRIGGER trg_grades_chg;
+
+CREATE OR REPLACE PROCEDURE payesh_copy_grades_009()
+LANGUAGE plpgsql AS $$
+DECLARE
+  minid BIGINT; maxid BIGINT; lo BIGINT; hi2 BIGINT; nb BIGINT := 0;
+  batch CONSTANT BIGINT := 50000;
+  per_commit CONSTANT BIGINT := 3; /* ×۵۰k = ۱۵۰k سطر ⇒ ~۷.۵MB حافظه/چانک */
+BEGIN
   SELECT COALESCE(MIN(id), 0), COALESCE(MAX(id), 0) INTO minid, maxid FROM grades;
-  lo := minid;
+  SELECT GREATEST(minid, COALESCE((SELECT MAX(id) FROM grades_p), 0) + 1) INTO lo;
   WHILE lo <= maxid LOOP
     hi2 := LEAST(lo + batch, maxid);
     INSERT INTO grades_p ("class_id", "created_at", "date", "exam_type", "id",
@@ -235,21 +286,22 @@ BEGIN
            "updated_at", "version", "chg_id"
     FROM grades WHERE id >= lo AND id <= hi2;
     lo := hi2 + 1;
+    nb := nb + 1;
+    IF nb % per_commit = 0 THEN
+      RAISE NOTICE 'copy grades: تا id %', hi2;
+      COMMIT;
+    END IF;
   END LOOP;
-  END IF;
+  COMMIT;
 END $$;
+
+CALL payesh_copy_grades_009();
+DROP PROCEDURE payesh_copy_grades_009();
 
 ALTER TABLE grades_p ENABLE TRIGGER trg_grades_chg;
 
 SELECT setval(pg_get_serial_sequence('grades_p', 'id'),
               COALESCE((SELECT MAX(id) FROM grades_p), 0) + 1, false);
-
--- ═══════════════ Phase C — swap (جدول‌ها، ایندکس‌ها، سکوئنس‌ها) ═══════════════
--- دو تراکنش (یافتهٔ استیجینگ ۲۰۲۶-۰۹-۱۲): تراکنشِ بلندِ ساخت+کپی هیچ قفلِ
--- انحصاری روی جدولِ زنده نمی‌گیرد؛ پنجرهٔ قفل فقط تراکنشِ دوم است — و چون
--- این تراکنشِ کوچک است، کامیتش هم کوتاه است. در حالتِ تک‌تراکنشِ قبلی،
--- پنجرهٔ قفل تا کامیتِ ۱.۲M سطری طول می‌کشید (اندازه‌گیری‌شده: ~۲۴s خواندن).
-COMMIT;
 
 /* آمارِ پلن‌ساز قبل از پنجرهٔ قفل (یافتهٔ استیجینگ): جدولِ تازه‌کپی‌شده بدونِ
    ANALYZE است و کچ‌آپِ ضدالحاقی به‌جای Hash Anti-Join ممکن است Nested-Loop
@@ -257,6 +309,12 @@ COMMIT;
    ShareUpdateExclusive می‌گیرد و ترافیک را نمی‌بندد. */
 ANALYZE attendance_p;
 ANALYZE grades_p;
+
+-- ═══════════════ Phase C — swap (جدول‌ها، ایندکس‌ها، سکوئنس‌ها) ═══════════════
+-- تنها تراکنشِ قفل‌دار (یافتهٔ استیجینگ ۲۰۲۶-۰۹-۱۲): کپی با چانک‌هایِ
+-- COMMIT شده بیرون از هر قفلِ انحصاری انجام شده؛ پنجرهٔ قفل فقط این
+-- تراکنشِ کوچک است (LOCK + کچ‌آپ + rename) و کامیتش کوتاه. در حالتِ
+-- تک‌تراکنشِ اولیه، پنجرهٔ قفل تا کامیتِ ۱.۲M سطری طول می‌کشید (~۲۴s خواندن).
 
 /* پنجرهٔ کوتاه: قفلِ انحصاری هر دو جدول زنده — نوبت‌گیری با ترافیکِ در حالِ
    اجرا اما بدون گرسنگی (صفِ قفل FIFO است). */
