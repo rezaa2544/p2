@@ -27,6 +27,9 @@ const { JSDOM } = require('jsdom');
 
 const ROOT = path.join(__dirname, '..');
 const { createSync, attach } = require(path.join(ROOT, 'server', 'sync'));
+const { createPull } = require(path.join(ROOT, 'server', 'pull'));
+const { createCursor } = require(path.join(ROOT, 'server', 'cursor'));
+const zlib = require('zlib');
 const metrics = require(path.join(ROOT, 'server', 'metrics'));
 const { opX } = require('./helpers/opx');
 
@@ -212,6 +215,114 @@ await test('BP6 کلاینت (jsdom): 429 ← opها pending می‌مانند �
   dom.window.close();
 });
 
+
+/* ═══════════════ گپ ۲ — Delta Compression ═══════════════ */
+group('گپ ۲ — فشرده‌سازیِ پاسخِ دلتا (gzip/brotli)');
+
+/* فیکسچر بزرگ: پاسخِ کامل چند صد کیلوبایت JSON پرتکرار (شبیهِ دلتای واقعی) */
+function bigStore() {
+  const store = { __deleted_records: [], __server_version: 42 };
+  const rows = [];
+  for (let i = 1; i <= 3000; i++) {
+    rows.push({ id: i, school_id: 1, class_id: i % 30, student_id: 1000 + i,
+      subject_id: i % 12, teacher_id: 20 + (i % 7), score: (i * 7) % 20,
+      ref: 'grade-row-' + i + '-of-big-fixture', note: 'توضیح تکرارشونده برای فشرده‌شدن خوب ' + (i % 40),
+      created_at: iso(Date.now() - 30 * 864e5), updated_at: iso(Date.now() - 30 * 864e5) });
+  }
+  store.grades = rows;
+  return store;
+}
+function mkPullCtx(o) {
+  o = o || {};
+  const store = o.store || bigStore();
+  const cap = {};
+  const rawRes = () => {
+    const r = { _chunks: [], _head: null, _headers: {} };
+    r.setHeader = (k, v) => { r._headers[String(k).toLowerCase()] = String(v); };
+    r.writeHead = (status, headers) => { r._head = { status, headers: headers || {} }; };
+    r.end = (buf) => { r._chunks.push(Buffer.isBuffer(buf) ? buf : Buffer.from(String(buf))); };
+    Object.defineProperty(r, '_body', { get() { return Buffer.concat(this._chunks); } });
+    return r;
+  };
+  const controller = createPull({
+    store, db: null,
+    sessionFrom: async () => ({ id: 10, school_id: 1, role: 'manager' }),
+    sendJson: (res, code, body) => { res._head = { status: code, headers: { 'Content-Type': 'application/json' } }; res._chunks = [Buffer.from(JSON.stringify(body))]; },
+    cursor: createCursor({ secret: 'k'.repeat(64) })
+  });
+  return { store, cap, rawRes, pull: async (req) => { const r = rawRes(); await controller.apiPull(req || { url: '/api/v1/pull', headers: {} }, r); return r; } };
+}
+
+await test('CM1 پاسخِ بزرگ با Accept-Encoding: gzip ← فشرده و بازشدنی', async () => {
+  const { pull } = mkPullCtx();
+  const res = await pull({ url: '/api/v1/pull', headers: { 'accept-encoding': 'gzip, deflate, br' } });
+  assert(res._head && res._head.status === 200, 'status 200');
+  assert(res._head.headers['Content-Encoding'] === 'gzip', 'Content-Encoding: gzip');
+  assert(res._head.headers['Vary'] === 'Accept-Encoding', 'Vary header for caches');
+  const body = zlib.gunzipSync(res._body);
+  const parsed = JSON.parse(body.toString('utf8'));
+  assert(parsed.ok === true && Array.isArray(parsed.collections.grades) && parsed.collections.grades.length === 3000,
+    'gunzip => same JSON with 3000 grade rows');
+  const raw = body.length, wire = res._body.length;
+  assert(wire < raw / 4, `gzip must cut size at least 4x (raw=${raw}, wire=${wire})`);
+  const t0 = process.hrtime.bigint();
+  JSON.parse(body.toString('utf8'));
+  const parseMs = Number(process.hrtime.bigint() - t0) / 1e6;
+  console.log(`     حجم: خام=${(raw / 1024).toFixed(1)}KB · gzip=${(wire / 1024).toFixed(1)}KB (${(100 * wire / raw).toFixed(0)}%) · parse=${parseMs.toFixed(1)}ms`);
+});
+
+await test('CM2 فقط brotli ← br فشرده می‌کند (کیفیت ۵)', async () => {
+  const { pull } = mkPullCtx();
+  const res = await pull({ url: '/api/v1/pull', headers: { 'accept-encoding': 'br' } });
+  assert(res._head.headers['Content-Encoding'] === 'br', 'Content-Encoding: br');
+  const body = zlib.brotliDecompressSync(res._body);
+  const parsed = JSON.parse(body.toString('utf8'));
+  assert(parsed.collections.grades.length === 3000, 'brotli roundtrip');
+  console.log(`     brotli=${(res._body.length / 1024).toFixed(1)}KB در برابر خام=${(body.length / 1024).toFixed(1)}KB`);
+});
+
+await test('CM3 بدونِ Accept-Encoding ← نافشرده (سازگاریِ کلاینتِ قدیمی)', async () => {
+  const { pull } = mkPullCtx();
+  const res = await pull({ url: '/api/v1/pull', headers: {} });
+  assert(res._head.status === 200, 'status 200');
+  assert(!res._head.headers['Content-Encoding'], 'no Content-Encoding');
+  const parsed = JSON.parse(res._body.toString('utf8'));
+  assert(parsed.collections.grades.length === 3000, 'plain JSON served');
+});
+
+await test('CM4 پاسخِ کوچک زیرِ آستانه ← نافشرده (سربارِ هدر بی‌صرفه)', async () => {
+  const store = { __deleted_records: [], __server_version: 1, grades: [{ id: 1, school_id: 1, created_at: iso(Date.now()), updated_at: iso(Date.now()) }] };
+  const { pull } = mkPullCtx({ store });
+  const res = await pull({ url: '/api/v1/pull', headers: { 'accept-encoding': 'gzip' } });
+  assert(res._head.status === 200, 'status 200');
+  assert(!res._head.headers['Content-Encoding'], 'small body stays uncompressed');
+});
+
+await test('CM5 res بدونِ writeHead (هارنس قدیمی) ← sendJson نافشرده', async () => {
+  const store = bigStore();
+  const controller = createPull({
+    store, db: null,
+    sessionFrom: async () => ({ id: 10, school_id: 1, role: 'manager' }),
+    sendJson: (res, code, body) => { res._cap = { code, body }; },
+    cursor: createCursor({ secret: 'k'.repeat(64) })
+  });
+  const res = {}; /* هارنسِ موج ۴ — بدون writeHead/end */
+  await controller.apiPull({ url: '/api/v1/pull', headers: { 'accept-encoding': 'gzip' } }, res);
+  assert(res._cap && res._cap.code === 200, 'legacy harness still works via sendJson');
+  assert(Array.isArray(res._cap.body.collections.grades), 'full JSON body delivered');
+});
+
+await test('CM6 متریک‌های حجم: خام/سیم ثبت شدند و فشرده شمرده شد', async () => {
+  const beforeC = counterValue('payesh_sync_delta_compressions_total');
+  const { pull } = mkPullCtx();
+  await pull({ url: '/api/v1/pull', headers: { 'accept-encoding': 'gzip' } });
+  const afterC = counterValue('payesh_sync_delta_compressions_total');
+  assert(afterC > beforeC, 'compressions_total{gzip} incremented (' + beforeC + '→' + afterC + ')');
+  const sizeSnap = metrics.snapshot()['payesh_sync_delta_size_bytes'];
+  const wireSnap = metrics.snapshot()['payesh_sync_delta_wire_bytes'];
+  assert(sizeSnap && sizeSnap.series.length > 0, 'delta_size_bytes observed');
+  assert(wireSnap && wireSnap.series.length > 0, 'delta_wire_bytes observed');
+});
 
 /* ═══════════════ خلاصه ═══════════════ */
 console.log('\n────────────────────────────────────────────────────────');

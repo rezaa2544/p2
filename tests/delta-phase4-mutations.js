@@ -9,6 +9,9 @@
    M3  کلاینت: شاخهٔ ۴۲۹ در sendBatch حذف      → BP6 باید بمیرد
    M4  کلاینت: sendChunked دیگر re-throw       → BP6 باید بمیرد
    M5  سرور: وزنِ op حذف می‌شود (weight=1)     → BP3 باید بمیرد
+   M6  فشرده‌سازی: مذاکره همیشه null          → CM1/CM2/CM6 باید بمیرند
+   M7  pull.js: فراخوانیِ فشرده‌ساز حذف        → CM1/CM6 باید بمیرند
+   M8  فشرده‌سازی: آستانهٔ حجم حذف            → CM4 باید بمیرد
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const fs = require('fs');
@@ -83,6 +86,30 @@ function buildClient() {
   chk('M5 جهشِ «وزنِ op حذف» کشته شد', runSuite() !== 0);
   fs.writeFileSync(path.join(ROOT, 'server/sync.js'), orig, 'utf8');
 
+
+  /* ── جهش‌های گپ ۲ — فشرده‌سازی ── */
+  console.log('\n▸ جهش‌های گپ ۲ — فشرده‌سازی');
+
+  /* M6: مذاکره هرگز encoding برنمی‌گرداند */
+  orig = mutate('server/compress.js',
+    "  const enc = raw.length >= minBytes() ? negotiateEncoding(headers['accept-encoding']) : null;",
+    "  const enc = null; /*MUT*/");
+  chk('M6 جهشِ «مذاکرهٔ خاموش» کشته شد', runSuite() !== 0);
+  fs.writeFileSync(path.join(ROOT, 'server/compress.js'), orig, 'utf8');
+
+  /* M7: pull.js به sendJson خام برمی‌گردد */
+  orig = mutate('server/pull.js',
+    "    const encInfo = sendJsonCompressed(res, req, 200, body, sendJson);",
+    "    sendJson(res, 200, body); const encInfo = { encoding: null, rawBytes: 0, wireBytes: 0 }; /*MUT*/");
+  chk('M7 جهشِ «فراخوانی حذف» کشته شد', runSuite() !== 0);
+  fs.writeFileSync(path.join(ROOT, 'server/pull.js'), orig, 'utf8');
+
+  /* M8: آستانهٔ حجم حذف — حتی بدنهٔ کوچک فشرده می‌شود */
+  orig = mutate('server/compress.js',
+    "  const enc = raw.length >= minBytes() ? negotiateEncoding(headers['accept-encoding']) : null;",
+    "  const enc = raw.length >= 0 ? negotiateEncoding(headers['accept-encoding']) : null; /*MUT*/");
+  chk('M8 جهشِ «آستانهٔ حذف» کشته شد', runSuite() !== 0);
+  fs.writeFileSync(path.join(ROOT, 'server/compress.js'), orig, 'utf8');
 
   /* سلامت پایه پس از بازگردانی‌ها */
   chk('پایه پس از بازگردانی سبز است', runSuite() === 0);
