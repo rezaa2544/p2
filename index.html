@@ -3955,6 +3955,9 @@ async function syncNow(manual){
         item.error  = (r.code === 'conflict_preserved')
           ? 'تغییر هم‌زمان روی سرور حفظ شد — مدیر مدرسه باید داوری کند'
           : 'سرور نسخهٔ تازه‌تری از این رکورد دارد — تغییر اعمال نشد';
+        /* W8-2: نسخهٔ سرور (اگر بود) نگه داشته می‌شود تا کاربر بتواند
+           دو نسخه را روبه‌رویِ هم ببیند (مودالِ «کدام نسخه برنده شد») */
+        if(r.server) item.server = r.server;
       }else if(SYNC_DEAD_CODES[r.code]){
         /* ردِّ پایدار — دوباره‌ارسال بی‌فایده است (P0-2) */
         item.status = 'rejected';
@@ -4226,7 +4229,9 @@ function syncPanelModal(){
           <td><span class="badge ${st[1]}">${st[0]}</span>
             ${x.error?`<div class="small muted">${esc(x.error)}</div>`:''}
             ${x.tries>1?`<div class="small muted">${fa(x.tries)} تلاش</div>`:''}
-            ${x.status==='rejected'?`<div style="margin-top:6px"><button class="btn ghost sm" data-act="sync-del" data-uid="${escAttr(x.uid)}" title="این عملیات دوباره ارسال نمی‌شود؛ اگر مطمئنید لازم نیست، حذفش کنید">حذف از صف</button></div>`:''}
+            ${(x.status==='conflict'||x.status==='rejected')?`<div style="margin-top:6px">
+              <button class="btn ghost sm" data-act="sync-conflict-view" data-uid="${escAttr(x.uid)}" title="نسخهٔ شما و نسخهٔ سرور روبه‌رویِ هم — ببینید کدام برنده شد">⚖️ مقایسهٔ دو نسخه</button>
+              ${x.status==='rejected'?`<button class="btn ghost sm" data-act="sync-del" data-uid="${escAttr(x.uid)}" title="این عملیات دوباره ارسال نمی‌شود؛ اگر مطمئنید لازم نیست، حذفش کنید">حذف از صف</button>`:''}</div>`:''}
           </td>
         </tr>`;}).join('')}
       </tbody></table></div>`
@@ -4262,6 +4267,86 @@ function syncPanelModal(){
     </div>`);
 }
 
+/* ---------- W8-2: مودالِ داوریِ تعارض — «نسخهٔ شما رد شد» ----------
+   وقتی دو دستگاه هم‌زمان یک رکورد را عوض کنند، سرور تغییرِ دیرهنگام را
+   conflict_preserved / stale_base می‌کند. کاربر باید ببیند کدام نسخه
+   برنده شد: این مودال نسخهٔ محلیِ او و نسخهٔ سرور را روبه‌رویِ هم،
+   فیلدبه‌فیلد و با برجسته‌سازیِ تفاوت‌ها نشان می‌دهد. */
+var SYNC_CONFLICT_FIELD_FA = {
+  student_id:'دانش‌آموز', subject_id:'درس', class_id:'کلاس', score:'نمره',
+  status:'وضعیت', kind:'نوع', points:'امتیاز', reason:'توضیح', title:'عنوان',
+  body:'متن', day:'روز', date:'تاریخ', term:'نوبت', period:'زنگ', amount:'مبلغ'
+};
+function syncConflictFieldFa(k){ return SYNC_CONFLICT_FIELD_FA[k] || k; }
+function syncConflictCell(v){
+  if(v === undefined || v === null || v === '') return '—';
+  if(typeof v === 'number') return fa(v);
+  return esc(String(v));
+}
+/* ردیف‌هایِ مقایسه: اجتماعِ کلیدهایِ دو نسخه؛ تفاوت‌ها برجسته می‌شوند.
+   فیلدهایِ سیستمی (نسخه/زمان/مالکیت) در مقایسه نمی‌آیند. */
+function syncConflictRows(localData, serverData){
+  var skip = { id:1, version:1, base_version:1, created_at:1, updated_at:1, by:1, at:1, school_id:1, uid:1 };
+  var keys = [], seen = {};
+  [localData || {}, serverData || {}].forEach(function(d){
+    Object.keys(d).forEach(function(k){ if(!skip[k] && !seen[k]){ seen[k] = 1; keys.push(k); } });
+  });
+  if(!keys.length) return '<div class="muted small">فیلدی برایِ مقایسه نیست</div>';
+  return `<table style="width:100%"><thead><tr><th>فیلد</th><th>📱 نسخهٔ شما (رد شد)</th><th>🖥️ نسخهٔ سرور (برنده)</th></tr></thead><tbody>`
+    + keys.map(function(k){
+        var lv = (localData || {})[k], sv = (serverData || {})[k];
+        var diff = JSON.stringify(lv) !== JSON.stringify(sv);
+        return `<tr${diff ? ' style="background:var(--surface-2)"' : ''}>
+          <td class="small">${esc(syncConflictFieldFa(k))}</td>
+          <td>${diff ? '<b>' : ''}${syncConflictCell(lv)}${diff ? '</b>' : ''}</td>
+          <td>${diff ? '<b>' : ''}${syncConflictCell(sv)}${diff ? '</b>' : ''}</td>
+        </tr>`;
+      }).join('')
+    + '</tbody></table>';
+}
+function syncConflictModal(uid){
+  var item = SYNC.queue.find(function(x){ return x.uid === uid; })
+          || SYNC.dlq.find(function(x){ return x.uid === uid; });
+  if(!item) return;
+  var op = item.op || {};
+  var collFa = {
+    attendance:'حضور و غیاب', grades:'نمرات', discipline:'انضباط', users:'کاربران',
+    schools:'مدارس', classes:'کلاس‌ها', subjects:'دروس', leaves:'مرخصی',
+    announcements:'اطلاعیه‌ها', messages:'پیام‌ها', installments:'اقساط',
+    transactions:'تراکنش‌ها', exams:'امتحانات', schedule:'برنامه هفتگی',
+  };
+  var isConflict = item.status === 'conflict';
+  var hasServer = !!item.server;
+  openModal(`<div class="card-head"><h3>${isConflict ? '⚖️ تعارضِ همگام‌سازی' : '⛔ نسخهٔ شما رد شد'}</h3>
+      <button class="icon-btn" data-act="modal-close">✕</button></div>
+    <div class="card-body">
+      <div class="sync-note" style="margin-bottom:10px">
+        ${isConflict
+          ? 'دستگاهِ دیگری هم‌زمان همین رکورد را تغییر داده و سرور آن نسخه را حفظ کرده است — تغییرِ شما اعمال نشد و مدیر مدرسه باید داوری کند.'
+          : 'سرور نسخهٔ تازه‌تری از این رکورد داشت؛ تغییرِ شما اعمال نشد و نسخهٔ سرور برنده است. اگر تغییرتان هنوز لازم است، آن را رویِ نسخهٔ تازه دوباره ثبت کنید.'}
+      </div>
+      <div class="row" style="gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <span class="badge b-blue">${esc(collFa[op.c] || op.c || 'رکورد')}</span>
+        <span class="badge ${isConflict ? 'b-red' : 'b-gray'}">${isConflict ? 'در انتظارِ داوریِ مدیر' : 'ردِ نسخه‌ای'}</span>
+        <span class="muted small">ثبتِ محلی: ${jalaliDateTime(item.created_at)}</span>
+      </div>
+      ${hasServer
+        ? `<div class="table-wrap">${syncConflictRows(op.data, item.server)}</div>`
+        : `<div style="background:var(--surface-2);border-radius:10px;padding:10px">
+             <div class="muted small" style="margin-bottom:4px">📱 تغییری که همگام نشد</div>
+             ${syncConflictRows(op.data, null)}
+           </div>
+           <div class="muted small" style="margin-top:6px">نسخهٔ سرور در دسترسِ این دستگاه نیست — پس از اتصال، فهرستِ تعارض‌ها را مدیر مدرسه می‌بیند.</div>`}
+      ${item.error ? `<div class="muted small" style="margin-top:8px">${esc(item.error)}</div>` : ''}
+    </div>
+    <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border)">
+      <div class="spacer"></div>
+      <button class="btn ghost sm" data-act="sync-del" data-uid="${escAttr(item.uid)}" title="این تغییر دیگر ارسال نمی‌شود؛ حذفش فقط صف را خلوت می‌کند">حذف از صف</button>
+      <button class="btn ghost" data-act="sync-panel">بازگشت به صف</button>
+      <button class="btn" data-act="modal-close">فهمیدم</button>
+    </div>`);
+}
+
 /* تاریخ و ساعت شمسی خوانا — توجه: fa() فقط برای عدد است، نه رشته */
 function jalaliDateTime(iso){
   if(!iso) return '—';
@@ -4275,6 +4360,11 @@ function jalaliDateTime(iso){
 const SYNC_ACTIONS = {
   'sync-panel'(){ syncPanelModal(); },
   'sync-run'(){ closeModal(); syncNow(true); },
+  /* W8-2: مودالِ مقایسهٔ نسخهٔ محلی و نسخهٔ سرور برایِ قلمِ conflict/rejected */
+  'sync-conflict-view'(el){
+    const uid = (el && el.dataset) ? el.dataset.uid : null;
+    if(uid) syncConflictModal(uid);
+  },
   'sync-toggle-net'(){ closeModal(); setOnline(!SYNC.online); },
   /* حذفِ دستیِ عملیاتِ «رد شده» (dead-letter) از صف.
      (SYNC_ACTIONS برخلافِ A با (el, id) فراخوانی می‌شود.) */
