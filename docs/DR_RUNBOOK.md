@@ -131,6 +131,12 @@ bash infra/postgres/post-checks.sh && bash infra/redis/redis-checks.sh
 | تاریخ | سناریو | RTO واقعی | RPO واقعی | نتیجه/اقدامِ اصلاحی | امضا |
 |---|---|---|---|---|---|
 | _(نمونهٔ قالب)_ 2026-10-05 | §۱ stop-primary | ۳د۴۰ث | ۴ث | سبز؛ افزودنِ alertِ pg_stat_archiver | ناظر ارشد |
+| 2026-09-11 | WAL disk-full (§۸) — PG17، `pg_wal` روی tmpfsِ ۱۰۰MB | **۳۰٫۲ث** | **۰** | سبز؛ PANIC واقعی ثبت شد. اقدامِ اصلاحیِ باز: **آلارمِ بیرونیِ دیسکِ WAL** (PG در ۸۰٪ ساکت است) + افزودنِ گامِ «آزادسازیِ فضا پیش از restart» به رویه. شاهد: `docs/WAVE19_WAL_DRILL_REPORT.md` | Arena |
+
+> **قیدِ صداقتِ ردیفِ بالا:** RPO=0 با «شمارِ رکوردها» تأیید شد نه checksumِ
+> سطر‌به‌سطر؛ PITR از آرشیو و سناریوی منطقه‌ای در این مانور آزمایش **نشد**؛
+> و `wal_segment_size` برایِ شتاب‌دهیِ مانور ۱MB بود، پس عددِ مطلقِ RTO
+> مستقیماً به تولید تعمیم داده نشود. جزئیات در گزارشِ مانور §۵.
 
 ## ۷) مالکیت و طرحِ روتیشنِ تماس
 
@@ -138,3 +144,48 @@ bash infra/postgres/post-checks.sh && bash infra/redis/redis-checks.sh
 - اعلامِ وضعیتِ بحران: `docs/COMPLETE_REPORT_FOR_CLOUD.md` الگو را دارد؛
   به‌روزرسانیِ HANDOFF در انتهای هر سناریو الزامی است (`docs:` کامیت با
   `dr: scenario=<n> date=...` در سوژه).
+
+---
+
+## ۸) سناریو ۸ — پر شدنِ دیسکِ WAL (ENOSPC روی `pg_wal`)
+
+> مانورِ واقعیِ این سناریو در ۲۰۲۶-۰۹-۱۱ اجرا شد: `docs/WAVE19_WAL_DRILL_REPORT.md`
+> (PG17، `pg_wal` روی tmpfsِ ۱۰۰MB، PANICِ واقعی، RTO=۳۰٫۲ث، RPO=۰).
+
+**چگونه خودش را نشان می‌دهد** — سه چهره دارد و هر سه در مانور دیده شد:
+
+| چهره | پیام | حالتِ سرویس |
+|---|---|---|
+| الف | `PANIC: could not write to file "pg_wal/xlogtemp.NNNN": No space left on device` | خاموشیِ فوریِ کلاستر |
+| ب | همان پیام با سطحِ `FATAL` + `shutting down due to startup process failure` | بالا نمی‌آید |
+| پ | همان پیام با سطحِ `ERROR`، هر ~۱ ثانیه تکرار | **زنده ولی بی‌فایده** — `pg_isready` سبز می‌دهد ولی هیچ نوشتنی پیش نمی‌رود |
+
+**⚠ چهرهٔ «پ» خطرناک‌ترین است** چون آلارمِ «PG بالاست» آن را رد می‌کند.
+
+**ترتیبِ اجباریِ بازیابی — گامِ ۱ قابلِ جهش نیست:**
+
+```bash
+# ۱) اول فضا آزاد کن. restart با دیسکِ پُر «ناموفق است»، چون خودِ crash
+#    recovery برایِ نوشتنِ xlogtemp به فضا نیاز دارد (در مانور تأیید شد).
+df -h /var/lib/postgresql/17/main/pg_wal          # تأییدِ پُری
+sudo -u postgres psql -c 'select pg_walfile_name(pg_current_wal_lsn())'  # اگر بالا می‌آید
+#    - اگر آرشیو سالم است: مقصدِ archive_command را درست/باز کن
+#    - وگرنه: سگمنت‌های «قدیمیِ» غیرلازم را حذف کن (هرگز سگمنتِ جاری/آینده)
+
+# ۲) حالا restart
+sudo -u postgres /usr/lib/postgresql/17/bin/pg_ctl \
+  -D /var/lib/postgresql/17/main -w start
+
+# ۳) راستی‌آزمایی
+sudo -u postgres psql -c 'select pg_is_in_recovery(), pg_current_wal_lsn()'
+sudo -u postgres psql -c 'checkpointer'   # نبودِ ERROR در لاگِ تازه
+```
+
+**پیشگیری (قلمِ باز — از مانور بیرون آمد):**
+- آلارمِ **بیرونیِ** مصرفِ دیسکِ `pg_wal` روی آستانهٔ ۷۰٪ (هشدار) و ۸۵٪ (بحرانی).
+  PostgreSQL خودش در ۸۰٪ **هیچ هشداری نمی‌دهد**؛ نخستین نشانهٔ درون‌سیستمی،
+  PANIC است.
+- ظرفیتِ `pg_wal` ≥ `max_wal_size × 3` + فضایِ آرشیوِ معوق.
+- رصدِ `pg_stat_archiver.failed_count` — آرشیوِ معوق، دیسکِ WAL را پُر می‌کند.
+
+---
