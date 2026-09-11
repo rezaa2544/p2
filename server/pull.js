@@ -84,7 +84,11 @@ function createPull(ctx) {
     try {
       const built = deltaRowsSql(c, { sinceISO });
       const res = await db.query(built.sql, built.params);
-      return Array.isArray(res && res.rows) ? res.rows : [];
+      /* Wave 10 (chg_id): ستونِ داخلیِ لایهٔ DB هرگز به کلاینت نمی‌رسد —
+         شکلِ سطرِ دلتا با حالتِ حافظه یکی می‌ماند (dbهای جعلی/قدیمیِ تست
+         بدونِ این helper هم مثلِ قبل کار می‌کنند). */
+      const rows = Array.isArray(res && res.rows) ? res.rows : [];
+      return (typeof db.stripInternalColumns === 'function') ? db.stripInternalColumns(rows) : rows;
     } catch (e) {
       // timestamp columns absent or DB hiccup → fall back to full-table read
       return null;
