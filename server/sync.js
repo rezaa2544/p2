@@ -669,7 +669,7 @@ function createSync(ctx){
             server_version: vrec ? (vrec.version || 1) : null,
             server_state: vrec ? Object.assign({}, vrec) : null,
             incoming: { data: Object.assign({}, op.data), by: s.id, at: nowIso, op_uid: op.uid },
-            status: 'open', created_at: nowIso
+            status: 'open', created_at: nowIso, updated_at: nowIso
           };
           store.sync_conflicts.push(cf);
           /* ویو ۱۴: برچسبِ collection نامِ جدول است (مجموعهٔ بستهٔ VERSIONED)،
