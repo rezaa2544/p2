@@ -58,7 +58,7 @@ caf00e1 feat(db): PgBouncer contract locked + final partitioning design for grad
 
 | قلم | خروجی | تست |
 |---|---|---|
-| **۵ · Partitioning (اجرا)** | `migrations/009_partition_grades_attendance.sql` +down — دو تراکنش + کچ‌آپ + فاز D؛ زنده 180k و **استیجینگ ۱.۸M سطر با نویسندهٔ هم‌زمان (صفر خطا، توقفِ خواندن ~۲s)**؛ retention سالانه (ابزار + cron)؛ persistOp با `PAYESH_PARTITIONED_TABLES` | partitioning **۵۵/۵۵** · retention **۱۵/۱۵** |
+| **۵ · Partitioning (اجرا)** | `migrations/009_partition_grades_attendance.sql` +down — کپیِ chunk-commitِ قابلِ ازسرگیری + FK رویِ جدولِ خالی + کچ‌آپ + فاز D؛ زنده 180k · استیجینگ ۱.۸M با نویسندهٔ هم‌زمان (صفر خطا، توقفِ خواندن ~۲s) · **مانورِ ۲۵M: ۱۹.۶ دقیقه، صفر خطا/گم‌شدگی، users حینِ کپی ۵.۲ms**؛ retention سالانه (ابزار + cron)؛ persistOp با `PAYESH_PARTITIONED_TABLES` | partitioning **۶۱/۶۱** · retention **۱۵/۱۵** |
 | **۶ · chg↔cursor v3** | توکنِ v3 (+cw) · pre-read watermark · فیدِ byChg بدونِ time-guard · سازگاریِ v1/v2 · سقوط‌های نرم · دو فیکسِ coercion (cw=0 و type-strict verify) | chg_id_cursor **۳۳/۳۳** · delta-phase4 **۲۳/۲۳** (+جهش ۲۰/۲۰) |
 
 برون‌یابیِ مقیاس: ~۳۵k سطر/s ⇒ ۵۰M ≈ ۲۴ دقیقه (مرتبهٔ بزرگی؛ §۷.۴ سند).
