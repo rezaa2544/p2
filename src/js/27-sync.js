@@ -731,7 +731,7 @@ function syncPanelModal(){
     </div>`;
 
   openModal(`<div class="card-head"><h3>وضعیت همگام‌سازی</h3>
-      <button class="icon-btn" data-act="modal-close">✕</button></div>
+      <button class="icon-btn" data-act="modal-close" aria-label="بستن">✕</button></div>
     <div class="card-body">${body}</div>
     <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border)">
       ${SYNC.demoMode?`<button class="btn ghost sm" data-act="sync-toggle-net">${SYNC.online?'📴 شبیه‌سازی قطع اینترنت':'🌐 شبیه‌سازی وصل شدن'}</button>`:''}
@@ -827,7 +827,7 @@ function storageQuotaModal(){
       return !isNaN(t) && t < Date.now() - 7 * 24 * 60 * 60 * 1000;
     }).length;
     openModal(`<div class="card-head"><h3>🗄️ حافظهٔ ذخیره‌سازیِ مرورگر</h3>
-        <button class="icon-btn" data-act="modal-close">✕</button></div>
+        <button class="icon-btn" data-act="modal-close" aria-label="بستن">✕</button></div>
       <div class="card-body">
         ${est.known ? `
           <div class="row" style="margin-bottom:6px"><span class="small muted">مصرف: <b>${quotaSizeFa(est.usage)}</b> از ${quotaSizeFa(est.quota)}</span><div class="spacer"></div><b>${fa(pct)}٪</b></div>
@@ -913,7 +913,7 @@ function syncConflictModal(uid){
   var isConflict = item.status === 'conflict';
   var hasServer = !!item.server;
   openModal(`<div class="card-head"><h3>${isConflict ? '⚖️ تعارضِ همگام‌سازی' : '⛔ نسخهٔ شما رد شد'}</h3>
-      <button class="icon-btn" data-act="modal-close">✕</button></div>
+      <button class="icon-btn" data-act="modal-close" aria-label="بستن">✕</button></div>
     <div class="card-body">
       <div class="sync-note" style="margin-bottom:10px">
         ${isConflict
