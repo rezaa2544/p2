@@ -2,7 +2,7 @@
    مودال و فرم
    openModal, modalTpl, askConfirm و سازنده‌های فیلد: f, inp, sel, opt, V.
    ═══════════════════════════════════════════════════════════════════ */
-function openModal(html){$('#modal').innerHTML=`<div class="modal-back" data-act="modal-back"><div class="modal">${html}</div></div>`;}
+function openModal(html){$('#modal').innerHTML=`<div class="modal-back" data-act="modal-back"><div class="modal">${html}</div></div>`;if(typeof a11yScrollablePass==='function')a11yScrollablePass($('#modal'));}
 function closeModal(){$('#modal').innerHTML='';}
 function modalTpl(title,body,saveAct,danger,okLabel){
   return `<div class="card-head"><h3>${esc(title)}</h3><button class="icon-btn" data-act="modal-close">✕</button></div>
