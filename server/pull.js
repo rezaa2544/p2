@@ -243,7 +243,7 @@ function createPull(ctx) {
     const ALL_COLLECTIONS = [
       'schools', 'users', 'classes', 'subjects', 'schedule', 'enrollments',
       'attendance', 'grades', 'discipline', 'leaves', 'notifications',
-      'announcements', 'homework', 'hw_submissions', 'vclass_rooms',
+      'announcements', 'hw_assignments', 'hw_submissions', 'vclass_sessions',
       'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
     ];
 
