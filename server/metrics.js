@@ -399,6 +399,7 @@ function declareAll(r) {
   r.counter('payesh_auth_rejections_total', 'Session-scoped rejections (401/403/404) counted by the enumeration guard.', ['stage']);
   /* ── Runtime security monitoring (Q3) ── */
   r.counter('payesh_runtime_anomalies_total', 'Rolling-baseline runtime anomalies by bounded signal.', ['signal']);
+  r.counter('payesh_attack_patterns_detected_total', 'Runtime attack signatures detected by bounded pattern and severity.', ['pattern', 'severity']);
   r.gauge('payesh_suspicious_sessions', 'Distinct suspicious runtime sessions in the last 24 hours.', []);
   r.gauge('payesh_attack_patterns_blocked', 'Detected attack patterns associated with blocked/denied attempts in the last 24 hours.', []);
   /* ── Sync / A01 ── */
