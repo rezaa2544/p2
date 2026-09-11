@@ -115,7 +115,7 @@ function viewSidaDiff(){
   });
   var h = '<div class="page-head"><h2>⚖️ اختلاف با سیدا</h2></div>';
   h += '<div class="card"><div class="card-head"><div class="row" style="gap:8px;flex-wrap:wrap">'
-    + '<select class="select" data-f="term" style="width:130px"><option value="">همهٔ نوبت‌ها</option>'
+    + '<select class="select" data-f="term" style="width:130px" aria-label="انتخاب نوبت"><option value="">همهٔ نوبت‌ها</option>'
     + TERMS.map(function(t){ return '<option' + (term===t?' selected':'') + '>' + esc(t) + '</option>'; }).join('')
     + '</select>'
     + '<span class="badge b-gray">ردیف: ' + fa(rows.length) + '</span>'

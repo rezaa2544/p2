@@ -163,7 +163,7 @@ function viewGrades(){
   const _ws=u.role==='student'?workshopStudent(u.id):workshopSchool((byId('classes',cid)||{}).school_id);
   const _vpCell=(vp,k)=>vp&&vp[k]!=null?fa(vp[k]):'—';
   return `<div class="card"><div class="card-head"><div class="row">
-    ${u.role!=='student'?`<select class="select" style="width:170px" data-f="class">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>${_autoShown?`<span class="badge b-blue" title="بر اساس زنگ جاری و برنامهٔ هفتگی شما — انتخاب دستی بر این مقدم است">🔔 انتخاب خودکار بر اساس زنگ</span><button class="btn ghost sm" data-act="grade-reset-auto">همهٔ کلاس و درس</button>`:''}`:''}
+    ${u.role!=='student'?`<select class="select" style="width:170px" data-f="class" aria-label="انتخاب کلاس">${cls.map(c=>`<option value="${escAttr(c.id)}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>${_autoShown?`<span class="badge b-blue" title="بر اساس زنگ جاری و برنامهٔ هفتگی شما — انتخاب دستی بر این مقدم است">🔔 انتخاب خودکار بر اساس زنگ</span><button class="btn ghost sm" data-act="grade-reset-auto">همهٔ کلاس و درس</button>`:''}`:''}
     ${avg?`<span class="badge b-blue">میانگین: ${fa(avg)}</span>`:''}</div>
     ${canEdit?`<button class="btn" data-act="grade-new">➕ ثبت نمره</button>`:''}</div>
    ${filterPanel('grades',`
