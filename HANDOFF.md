@@ -25,6 +25,19 @@
 - **شاهدهای زندهٔ PG 18.4 (خوشهٔ باقی‌ماندهٔ فاز ۲، :55432):** زنجیرهٔ تازه 001→006 روی DB خالی سبز؛ ارتقای پایگاهِ ۹۲۳k فاز ۲ (۱۶۲ تعارضِ واقعی): قبل 42703 → بعد backfill ۱۶۲/۱۶۲ (`updated_at = created_at`)، صفر NULL، NOT NULL، ۳ ایندکس، EXPLAIN از ایندکس می‌خواند؛ برستِ `--live -n 60 -c 10` با builderهای تولیدی: **60/60 · p50=4.15ms · 1132 req/s**. خروجی: `~/.cache/pgtool/verify-006.js` (20/20) + `live-006.json`.
 - **گیت‌ها:** smoke **۵۴۷/۵۴۷** · check-authz **0** (تطبیق کامل) · secret-scan **۱۱/۱۱** · build --check **0** · tests/run.js 35/35 · رگرسیون: pull-bootstrap 12/12 · wave1-reads 18/18 · wave3-query 13/13 · wave14-observability 95/95 · sync-dup-claim 7/7 · sync-chunk ✓ · sync-atomic-batch 22/22 · فاز ۲: delta-sync-hardening 19/19 · wave4-all 13/13 · wave10-query-audit 14/14 · contract-layers 18/18 · DRY_RUN exit 0 · **delta-schema-gaps 12/12** ✅
 - **اسناد:** `docs/DELTA_HARDENING.md` §6 بند ۱ بسته + §۷ (فاز ۳) · `docs/MIGRATION_GUIDE.md` §۸ ردیف‌های 004_wave3/005/006 + یادداشتِ «بعدی 007» · همین ورودی.
+## A11y مودال‌ها و حالت‌هایِ تعاملی (`feat/a11y-modals-interactive`) — ✅ (2026-09-11)
+
+- **مأموریت:** بستنِ بدهیِ دورِ قبل («اسکن فقط نماهایِ سطحِ NAV») — axe-core رویِ مودال‌ها/حالت‌هایِ تعاملی در Chromium واقعی. پایه: `main@6dbef89`.
+- **هارنس:** `tests/a11y-interactive.js` — **۱۸ سناریو**، هر یک در contextِ تازه: ۸ مودالِ CRUD (user new/edit، class، subject، calendar، ticket، school، grade)، ۲ تأیید (confirmModal/askConfirm)، ۲ پنل (syncPanel/storageQuota)، ۲ حالتِ خطایِ ولیدیشن (invalid → has-error)، toastهایِ سه‌گانه، سایدبارِ بازِ موبایل (۴۲۰px + scrim)، منویِ بازِ پوسته (dropdown)، panel-picker. **ضدِ سبزِ جعلی:** هر سناریو وجودِ واقعیِ حالت را assert می‌کند (مودالِ بازنشده = شکست).
+- **خطِ پایه:** critical=**74** (label ×42 + select-name ×32 — ریشه: هلپرِ `f(label,inner)` در 18-modals بدونِ `for=`)، serious=**2** (scrollable-region-focusable).
+- **رفعِ critical (`2f003cd`):** خودِ هلپرِ `f()` — کنترلِ id-دار → `<label for=…>`؛ بی‌id → aria-label از متنِ برچسب. یک نقطه، ~۳۰ فرمِ مودال درست شد → 74→0.
+- **رفعِ serious (`2014c93`):** `a11yScrollablePass()` در 01-helpers؛ hook در انتهایِ `render()` (24-edu-office) و در `openModal()` (18-modals): `.table-wrap/.vscroll` سرریزدار → tabindex=0 + role=region + aria-label → 2→0.
+- **نگهبان (`904fd93`):** §4–5 در `a11y-regressions.js` (28→**35** چک)؛ mutation-verified (برگرداندنِ f() قدیمی → ۳ چک سرخ؛ حذفِ hook → ۱ چک سرخ).
+- **🔴 کشفِ جانبیِ مهم (`087a67c`):** کامیتِ `9a08ac5` (PR #66) سه الگو را با بایت‌هایِ **UTF-16LE+CRLF** به `.gitignore` چسبانده بود؛ git خطی با `*` تنها می‌دید و **هر فایلِ تازهٔ مخزن ignore می‌شد** (git add رد می‌کرد). فایل UTF-8/LF بازنویسی شد با حفظِ سه الگویِ موردنظر (`*.bundle`، `*.tar.gz`، `*work.patch`).
+- **گیت‌ها:** smoke **547/547** · check-authz 0 · secret-scan **11/11** · build --check 0 · a11y-runtime **۴۵/۴۵ صفر/صفر** (رگرسیون نگرفت) · a11y-interactive **۱۸/۱۸ صفر/صفر** · a11y-regressions **35/35**.
+- **اسناد:** `docs/A11Y_RUNTIME_REPORT.md` (بخشِ فاز ۲)، `docs/A11Y_GUIDE.md` (§۲.۵ مودال‌ها)، همین HANDOFF.
+- **نکته/بدهی:** پاسِ اسکرول فقط `.table-wrap/.vscroll` را می‌شناسد — ظرفِ اسکرول‌شونده با کلاسِ دیگر باید به سلکتور اضافه شود؛ سناریوها focus-trap و ترتیبِ tab را نمی‌سنجند (axe rule ندارد — بدهیِ آینده: تستِ رفتاریِ کیبورد)؛ اسکنِ مودال‌ها رویِ نقش‌هایِ manager/teacher/superadmin بود، نه همهٔ نقش‌ها.
+
 ## راستی‌آزماییِ دسترس‌پذیری در زمانِ اجرا (`feat/a11y-runtime-verification`) — ✅ (2026-09-11)
 
 - **مأموریت:** اسکنِ axe-core رویِ DOM زندهٔ Chromium واقعی (playwright — نه jsdom)؛ پایه: `main@b872f44`.
