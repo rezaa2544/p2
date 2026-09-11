@@ -153,5 +153,32 @@ console.log('▸ پاسِ scrollable-region-focusable');
   ok(/a11yScrollablePass\(document\)/.test(eduOffice), 'render() پاس را صدا می‌زند');
 }
 
+
+/* ── ۶) ناوبریِ صفحه‌کلید (focus trap / skip-link / dropdown) — نگهبانِ استاتیک ── */
+console.log('▸ زیرساختِ ناوبریِ صفحه‌کلید');
+{
+  const modals = read('src/js/18-modals.js');
+  ok(/function _modalTrap\(/.test(modals) && /_modalFocusables\(/.test(modals),
+     'مودال: trap تعریف شده (_modalTrap/_modalFocusables)');
+  ok(/role="dialog" aria-modal="true"/.test(modals), 'مودال: role=dialog + aria-modal');
+  ok(/_modalOpener/.test(modals) && /_modalOpener\.focus\(\)/.test(modals),
+     'مودال: بازگشتِ focus به بازکننده در closeModal');
+  ok(/addEventListener\('keydown',_modalTrap\)/.test(modals), 'مودال: trap به #modal بسته می‌شود');
+
+  const shell = read('src/js/07-shell.js');
+  ok(/class="skip-link" data-act="skip-to-main"/.test(shell), 'پوسته: skip-link در renderShell');
+  ok(/nav-item[^`]*role="link" tabindex="0"/.test(shell), 'پوسته: nav-item با tabindex=0 و role=link');
+  ok(/ArrowDown/.test(shell) && /ArrowUp/.test(shell) && /themeSegCloseMenus\(\);/.test(shell),
+     'dropdown پوسته: ArrowDown/ArrowUp/Escape پیاده شده');
+
+  const actions = read('src/js/19-actions-core.js');
+  ok(/'skip-to-main'\(/.test(actions), 'اکشنِ skip-to-main موجود است');
+  ok(/e\.key!=='Enter'&&e\.key!==' '/.test(actions), 'Enter/Space رویِ data-act غیربومی فعال‌سازی می‌کند');
+
+  const css = read('src/styles/base.css');
+  ok(/\.skip-link:focus\{top:0/.test(css), 'skip-link تا فوکوس نگیرد مخفی است و با فوکوس دیده می‌شود');
+  ok(/\.nav-item:focus-visible\{outline/.test(css), 'nav-item نشانگرِ فوکوسِ مرئی دارد (WCAG 2.4.7)');
+}
+
 console.log(`\nجمع: ${pass} قبول، ${fail} رد`);
 process.exit(fail ? 1 : 0);
