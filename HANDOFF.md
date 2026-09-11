@@ -15,6 +15,18 @@
 
 
 
+## آرنا (Agent Mode): Delta Sync Phase 4 — Backpressure/Compression/Warmup/Metrics/Region — ۲۰/۰۶/۱۴۰۵ (2026-09-11) — ✅
+
+- **مأموریت:** پنج شکافِ آماده‌سازیِ مسیرِ دلتا برای مقیاسِ چند-سرویس/چند-منطقه‌ای روی شاخهٔ `feat/delta-phase4` (پایه: main @ `6dbef89` — PR #68). هر گپ = کامیتِ جدا + تستِ جهشی (همهٔ ۲۰ جهش کشته شد).
+- **گپ ۱ Backpressure (`3b262c7`):** پنجرهٔ op وزن‌دار per-session (60s، `PAYESH_SYNC_OPS_PER_MIN` پیش‌فرض ۵۰۰۰) در `server/sync.js` بعد ازِ 400/413 و قبل ازِ اعمال؛ رد ⇒ 429 `sync_backpressure` + `retry_after_s` + `Retry-After` بدونِ اعمالِ هیچ op؛ fail-open. زیرساخت: `incrByWithTtl` اتمیک (Lua + دوقلوی حافظه) + `weight` در `checkRateLimit`. کلاینت: opها pending (نه failed/DLQ)، re-throw کامل در sendChunked، زمان‌بندی باِ `max(retry_after, backoff)`.
+- **گپ ۲ Compression (`d936511`):** `server/compress.js` — gzip ارجح (سطح ۶)/br جایگزین (کیفیت ۵)، آستانهٔ `PAYESH_DELTA_COMPRESS_MIN_BYTES` (۱KB)، fallback سازگار به sendJson (بازگشتِ مقدار حفظ شد — pull-bootstrap 12/12)، `Vary`. عددِ زنده: 868.9KB → 51.8KB gzip (۶٪)/31.2KB br؛ متریک‌های خام/سیم/compressions.
+- **گپ ۳ Warmup (`424afc3`):** کلیدِ کرسر از پیش پایدار بود (keyfile→JWT_SECRET→domain-separated) — تحویلِ غایب: `cursor.keySource` (explicit/env_cursor/env_jwt/none)، لاگِ بوت، `/api/health` ⇒ `cursor:{enabled,persistent,key_source}`، هشدارِ رازِ کوتاه؛ CW3 بوتِ واقعیِ فرآیند ×۲ با همان keyfile + توکنِ پیش-restart همچنان verify.
+- **گپ ۴ Metrics (`412eaa1`):** `syncHealthStats` (metrics.js، محض) ⇒ `/api/health` ⇒ `sync:{pulls_total, pulls_delta/full, pushes_total, conflicts_total, backpressure_rejections_total, cursor_expired_total, cursor_region_mismatch_total, delta_size/wire_bytes_avg, compressions_total}`؛ pushes فقط دستهٔ غیرخالی؛ Q3-safe.
+- **گپ ۵ Region (`fe9ac26`):** کرسرِ v2 `{v:2,…,rg}` از `PAYESH_REGION` (پیش‌فرض 'default')؛ بین‌منطقه‌ای ⇒ 401 `region_mismatch` + `cursor_renewal:'full_pull'` (کلاینتِ 29-pull.js بدونِ تغییر)؛ v2 بدشکل (بدونِ rg) ⇒ `cursor_invalid`؛ v1 تا TTLِ خودش (گذار). متریک mismatch.
+- **حوادث:** کشف و ترمیمِ **موجی‌بیکِ `.gitignore`** (`0c86c97`): دنبالهٔ UTF-16/NUL از کامیت قدیمی 9a08ac5 = قاعدهٔ تنها `*` که همهٔ فایل‌های جدید را بی‌صدا ignore می‌کرد — تست‌های گپ ۱ و compress.js از کامیت‌های خودشان جا مانده بودند؛ تاریخچه با reset/rebuild بازسازی شد (هر گپ تست‌های خودش). همچنین: رگرسیونِ بازگشتِ مقدارِ sendJson در pull (pull-bootstrap 6/12 → ترمیم → 12/12) و بلعیده‌شدنِ خطای 429 در sendChunked (BP6) — هر دو در تست‌های جهشی پوشش داده شدند.
+- **گیت‌ها:** smoke **۵۴۷/۵۴۷** · check-authz **0** · secret-scan **۱۱/۱۱** · build --check ✅ · delta-sync-hardening **19/19** · wave4-all **13/13** · wave10 **14/14** · pull-bootstrap **12/12** · pull-rest-delete ✓ · pull-to-refresh ✓ · contract-layers **18/18** · delta-schema-gaps **12/12** · sync-chunk ✓ · sync-atomic-batch **22/22** · **delta-phase4 23/23** · **delta-phase4-mutations 20/20** ✅
+- **اسناد:** `docs/DELTA_HARDENING_PHASE4.md` (جدید) · `docs/SYNC_PROTOCOL.md` §۶ · `docs/SERVER_CLIENT_CONTRACT.md` (401 region_mismatch + §۲ backpressure/compression) · همین ورودی.
+
 ## آرنا (Agent Mode): رفعِ تصادمِ مهاجرتِ ۰۰۴ + راهنمای مهاجرت v2 — ۲۰/۰۶/۱۴۰۵ (2026-09-11) — ✅
 
 - **مأموریت:** سه شکافِ زنجیرهٔ مهاجرت روی شاخهٔ `feat/migration-v2-duplicate-fix` (استک روی `main` @ `6dbef898`). مرجع: `SKILLS_MASTER.md`.
