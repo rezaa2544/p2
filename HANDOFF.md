@@ -1,5 +1,18 @@
 # دفترچهٔ تحویل کار — پایش
 
+## Handoff — چت ۷: مرج Delta Sync Phase 4 / PR #71 — ✅ (2026-09-11)
+
+- **ماموریت:** بررسی وضعیت PRها، تأیید merge از API، اجرای گیت‌های حیاتی پس از merge، و ثبت نتیجه در roadmap و HANDOFF.
+- **PR:** [#71](https://github.com/rezaa2544/p2/pull/71) با عنوان `feat: delta sync phase 4 (backpressure, compression, region-aware)` با تأیید API merge شده است.
+- **Merge commit:** `e5c9b2718772059699e7c6f6567daef7b1861748`؛ شاخهٔ مبنا `main` پس از آن تا mergeهای بعدی پیش رفته است.
+- **محتوا:** backpressure وزن‌دار sync، gzip/brotli delta compression، cursor warmup پایدار، health sync metrics، و cursor v2 وابسته به region.
+- **گیت‌های پس از merge روی clone تمیزِ `main`:** smoke **547/547**، `check-authz` exit 0 با 388 اکشن، secret-scan **11/11**، و `build.js --check` سبز. هشدار شناخته‌شدهٔ jsdom برای `window.scrollTo` در smoke شکست محسوب نمی‌شود.
+- **تست‌های اعلام‌شده در PR:** `delta-phase4` **23/23**، mutationها **20/20**، wave4 **13/13**، wave10 **14/14** و سایر گیت‌های PR سبز.
+- **مستندات:** ردیف Wave 4 در `docs/NATIONAL_ROADMAP_PROGRESS.md` به‌روز شد؛ جزئیات فنی در `docs/DELTA_HARDENING_PHASE4.md` و `docs/DELTA_PHASE4_REPORT.md` است.
+- **محدودیت باقی‌مانده:** اجرای تست کامل repository و Ruflo در این sandbox انجام نشده‌اند؛ سبز جعلی گزارش نشود.
+
+---
+
 > **قاعده:** در پایان هر سشن کاری، پیش از بستن مکالمه، یک ورودی
 > تازه **بالای** این فایل اضافه کنید (جدیدترین اول).
 >
