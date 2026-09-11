@@ -120,7 +120,7 @@ function hwGradeModal(submissionId){
       + '</div>'
       + '<div style="position:relative;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#f6f7f9">'
       +   '<img id="hw_img" src="' + escAttr(url) + '" alt="تصویر تکلیف ' + esc(stu.full_name || '') + ' برای تصحیح" style="width:100%;display:block" />'
-      +   '<canvas id="hw_canvas" style="position:absolute;inset:0;width:100%;height:100%;cursor:crosshair"></canvas>'
+      +   '<canvas id="hw_canvas" role="img" aria-label="بوم تصحیح: محل رسم خطوط تصحیح روی تصویر تکلیف" style="position:absolute;inset:0;width:100%;height:100%;cursor:crosshair"></canvas>'
       + '</div>'
       + '<div class="row" style="gap:8px;flex-wrap:wrap">'
       +   '<label class="small">رنگ خط</label>'
