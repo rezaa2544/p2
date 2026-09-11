@@ -335,12 +335,34 @@ group('بررسیِ ایستا (بدونِ زیرساخت)');
     chk('S2 bootstrap روی tmpfsِ سقف‌دار mount می‌کند', /mount -t tmpfs -o "size=\$\{WAL_MB\}M/.test(b));
     chk('S3 pg_wal به tmpfs پیوند می‌خورد', /ln -s "\$WAL_MNT" "\$PGDATA\/pg_wal"/.test(b));
     chk('S4 پورتِ ۵۵۴۳۲ پیش‌فرض است', /PGPORT="\$\{PGPORT:-55432\}"/.test(b));
-    chk('S5 هر ۷ migration را اعمال می‌کند', (b.match(/migrations\/\d+_/g) || []).length >= 7);
+    /* S5 (S9-6): پیش‌تر این ادعا فقط «تعدادِ *نام‌های* ذکرشده در متن» را
+       می‌شمرد (>= ۷)، پس فهرستِ کهنهٔ hardcode — که پس از بازشماریِ
+       ۰۰۴→۰۰۷ دو نامِ ناموجود داشت و آن‌ها را بی‌صدا skip می‌کرد — همچنان
+       سبز می‌ماند. حالا خودِ سازوکار سنجیده می‌شود: کشفِ پویا از دایرکتوری،
+       و نبودِ هر نامِ hardcode‌شده. */
+    const globbed = /migrations\/\[0-9\]\[0-9\]\[0-9\]_\*\.sql/.test(b);
+    const hardcoded = /migrations\/\d{3}_[a-z0-9_]+\.sql/.test(b);
+    const onDisk = fs.readdirSync(path.join(ROOT, 'migrations'))
+      .filter((f) => /^\d{3}_.*\.sql$/.test(f) && !/\.down\.sql$/.test(f)).sort();
+    chk('S5 migrationها با کشفِ پویا اعمال می‌شوند (نامِ hardcode نشده)',
+      globbed && !hardcoded && onDisk.length > 0,
+      'glob=' + globbed + ' hardcoded=' + hardcoded + ' on-disk=' + onDisk.length);
     const syn = sh('bash', ['-n', boot]);
     chk('S6 bash -n سالم است', syn.status === 0, (syn.stderr || '').trim());
   }
   const doc = path.join(ROOT, 'docs', 'WAVE19_WAL_DRILL_REPORT.md');
   chk('S7 گزارشِ مانور وجود دارد', fs.existsSync(doc));
+
+  if (fs.existsSync(boot)) {
+    const b = fs.readFileSync(boot, 'utf8');
+    /* S8: migrationِ شکست‌خورده باید مانور را متوقف کند، نه اینکه بی‌صدا
+       ادامه دهد و اسکیمایِ ناقص را «آماده» اعلام کند. */
+    chk('S8 migrationِ شکست‌خورده اجرا را می‌بندد (die، نه ادامه)',
+      /die "migration failed/.test(b) && !/skip \(absent\): \$m/.test(b));
+    /* S9: مسیرهایِ متغیرِ مخرب باید گارد داشته باشند (rm -rf/mount/chown) */
+    chk('S9 مسیرهایِ PGDATA/WAL_MNT/RUN گاردِ مسیرِ سیستمی دارند',
+      /guard_path PGDATA/.test(b) && /guard_path WAL_MNT/.test(b) && /guard_path RUN/.test(b));
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -360,6 +382,8 @@ function liveAvailable() {
   return { ok: true };
 }
 
+/* S9-7: خودِ تعریفِ `finished` اکنون در سرِ فایل است (پیش از فراخوانیِ
+   زودهنگامِ finish() در مسیرِ --skip-live)؛ این‌جا تکرار نمی‌شود. */
 (async function main() {
   const live = liveAvailable();
   if (!live.ok) {
