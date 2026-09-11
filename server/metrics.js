@@ -397,6 +397,10 @@ function declareAll(r) {
   r.counter('payesh_auth_otp_requests_total', 'OTP send-code requests by outcome.', ['outcome']);
   r.counter('payesh_auth_login_total', 'Login attempts by outcome.', ['outcome']);
   r.counter('payesh_auth_rejections_total', 'Session-scoped rejections (401/403/404) counted by the enumeration guard.', ['stage']);
+  /* ── Runtime security monitoring (Q3) ── */
+  r.counter('payesh_runtime_anomalies_total', 'Rolling-baseline runtime anomalies by bounded signal.', ['signal']);
+  r.gauge('payesh_suspicious_sessions', 'Distinct suspicious runtime sessions in the last 24 hours.', []);
+  r.gauge('payesh_attack_patterns_blocked', 'Detected attack patterns associated with blocked/denied attempts in the last 24 hours.', []);
   /* ── Sync / A01 ── */
   r.counter('payesh_sync_requests_total', 'POST /api/sync requests by status code.', ['code']);
   r.histogram('payesh_sync_batch_ops', 'Ops per sync push (offline queue drain size).', [], [1, 5, 10, 25, 50, 100, 250, 500]);
