@@ -93,9 +93,23 @@ const decRows = (decSec.match(/^\|\s*20[0-9]{2}-[0-9]{2}-[0-9]{2}\s*\|/gm) || []
 chk('دست‌کم ۵ تصمیم ثبت‌شده با تاریخ', decRows >= 5, String(decRows));
 chk('تصمیم نو-گو ثبت شده است', /نو-گو/.test(decSec));
 chk('ستون‌های تصمیم‌گیر/دلیل/تأثیر در سربرگ', /تصمیم‌گیر/.test(decSec) && /دلیل/.test(decSec) && /تأثیر/.test(decSec));
+/* لنگرِ بخش را با خطای خوانا پیدا کن: اگر سربرگی عوض/شماره‌گذاری مجدد شود،
+   split()[1] مقدارِ undefined می‌داد و تست با stack trace می‌ترکید — نه با پیامِ
+   معلوم. ضمنِ اینکه از خودِ لنگر onward برش می‌زند، پس لنگرِ پایان نمی‌تواند
+   تصادفاً **پیش از** لنگرِ شروع پیدا شود. */
+const cut = (d, fromRe, toRe, label) => {
+  const i = d.search(fromRe);
+  if (i < 0) { console.log('  ❌ لنگرِ شروعِ بخش «' + label + '» پیدا نشد (سربرگ عوض شده؟)'); process.exit(1); }
+  const rest = d.slice(i);
+  const j = rest.search(toRe);
+  if (j < 0) { console.log('  ❌ لنگرِ پایانِ بخش «' + label + '» پیدا نشد (سربرگ عوض شده؟)'); process.exit(1); }
+  return rest.slice(0, j);
+};
 
 grp('PT-RISK — ثبت ریسک‌ها');
-const riskSec = doc.split(/ثبت ریسک‌ها/)[1].split(/اقدام‌های هفتهٔ پیش رو/)[0];
+/* لنگرِ سربرگ: عبارتِ «ثبت ریسک‌ها» در یادداشتِ «نمای جامع» زیرِ همان سربرگ هم
+   تکرار شده، پس split روی نخستین رخداد فقط فاصلهٔ دو خط را برمی‌داشت (۰ ردیف). */
+const riskSec = cut(doc, /## ۵\) ثبت ریسک‌ها/, /## ۶\) اقدام‌های هفتهٔ پیش رو/, 'ثبت ریسک‌ها');
 const riskRows = (riskSec.match(/^\|(?!\s*ریسک|\s*-)/gm) || []).length;
 chk('دست‌کم ۷ ریسک ثبت شده (یکی به ازای هر مانع + مشترک)', riskRows >= 7, String(riskRows));
 chk('ستون‌های احتمال/تأثیر/کاهش ریسک', /احتمال/.test(riskSec) && /تأثیر/.test(riskSec) && /کاهش ریسک/.test(riskSec));
