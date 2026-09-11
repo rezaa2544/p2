@@ -39,7 +39,10 @@ git fetch origin main
 git checkout -b chat6-master-recovery origin/main
 
 # ۴. واردکردن تاریخچهٔ باندل و مرج
-git fetch /home/user/chat6-master-recovery.bundle 'refs/heads/*':refs/heads/bundle-chat6
+#    رف را صریح بنامید: 'refs/heads/*' با مقصد بی‌ستاره «invalid refspec» می‌دهد و
+#    این باندل در عمل فقط HEAD دارد (git bundle list-heads)، پس refs/heads/* تهی است.
+git bundle list-heads /home/user/chat6-master-recovery.bundle
+git fetch /home/user/chat6-master-recovery.bundle HEAD:refs/heads/bundle-chat6
 git merge bundle-chat6 --no-ff -m "merge: بازیابی جامع کارهای چت ۶ (مأموریت‌های ۳۶–۴۳)"
 ```
 
