@@ -48,4 +48,15 @@ tests/chaos-output/
 
 # P0 #6 — خروجیِ DAST زنده (tools/dast-live.sh)
 out/
+
+# برون‌برد مستندات (tools/docs-export.sh) — تولیدی، هرگز کامیت نشود
+docs/_export/
+
+# کاتالوگ متادیتا (tools/docs-metadata.js) — تولیدی، هرگز کامیت نشود
+docs/_metadata.json
+docs/_search-index.json
+
+# پسماند ابزارهای حافظهٔ عامل (روفلو) — هرگز کامیت نشود
+.claude/proven-config.json
+.claude/.proven-config-version
 node_modules

@@ -65,7 +65,8 @@ for (const f of files) {
          خط را ببین و تصمیم بگیر؛ الگویِ hex فقط رویِ مقادیرِ متغیر
          (بعد از = / : / ') هشدار می‌دهد. */
       if (p.name.indexOf('long hex') > -1) {
-        const line = t.slice(0, t.lastIndexOf('\n', m.index)).split('\n').pop() || '';
+        /* خطِ خودِ هیت (نه خطِ قبل) — آف‌بای‌وانِ قبلی فیلتر را روی خط اشتباه می‌سنجید */
+        const line = t.slice(0, m.index).split('\n').pop() || '';
         if (/0x|digest|sha256|example|dummy|test|fixture|deadbeef/i.test(line)) continue;
         if (hexAllow[f]) continue;
         /* padding/dummy ثابت (مثلاً ۶۴ صفر برایِ timing-safe-equal) */

@@ -1,6 +1,6 @@
 {
   "global": {
-    "http_req_failed": ["rate<0.01"],
+    "http_req_failed": ["rate<0.001"],
     "http_req_duration": ["p(95)<250", "p(99)<500"]
   },
   "scenarios": {

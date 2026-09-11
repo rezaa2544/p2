@@ -91,6 +91,8 @@ ESLint). سئوت‌هایِ jsdomِ وابسته به بوتِ سرور (xss-gu
 ---
 
 ## ۴) متدولوژیِ امنیتیِ مرتبط
+- ممیزی کنترل‌به‌کنترل ای‌اس‌وی‌اس: `docs/WAVE13_ASVS_AUDIT.md` (۱۵ حوزهٔ کنترل،
+  یافته‌ها و رفع‌ها، اقلام در انتظار اجرای زنده).
 - نقشهٔ راهِ حملات: `docs/PEN_TEST_CHECKLIST.md` (آمادگیِ پنتست: auth bypass,
   IDOR, XSS, SQLi, CSRF, SSRF + ابزار و اجرا).
 - قراردادِ امنیتیِ سرور: `docs/SERVER_SECURITY_CONTRACT.md`.
