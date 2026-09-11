@@ -2077,6 +2077,25 @@ const EXAM_TYPES=['کلاسی','میان‌ترم','پایان‌ترم','عمل
 function toast(msg,type=''){const w=$('#toasts');const d=document.createElement('div');d.className='toast '+type;d.textContent=msg;w.appendChild(d);setTimeout(()=>d.remove(),3000);}
 function empty(emoji,title,desc,btn){return `<div class="empty"><span class="emoji">${emoji}</span><h4>${esc(title)}</h4><div class="small">${esc(desc||'')}</div>${btn?`<div style="margin-top:14px">${btn}</div>`:''}</div>`;}
 function bar(v,max,color){return `<div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,(v/(max||1))*100)}%;background:${color}"></div></div>`;}
+/* ── پاسِ دسترس‌پذریِ ناحیه‌هایِ اسکرول‌شونده (axe: scrollable-region-focusable, serious) ──
+   ناحیه‌ای که overflow دارد ولی فوکوس‌پذیر نیست، برایِ کاربرِ صفحه‌کلید
+   غیرقابل پیمایش است. این پاس بعدِ هر render/openModal رویِ ریشهٔ داده‌شده
+   اجرا می‌شود و به .table-wrap/.vscroll که «واقعاً» سرریز دارند tabindex=0
+   و نقش/برچسبِ ناحیه می‌دهد. idempotent است و DOM را بازنویسی نمی‌کند. */
+function a11yScrollablePass(root){
+  try{
+    (root||document).querySelectorAll('.table-wrap,.vscroll').forEach(function(el){
+      var scrollable = el.scrollHeight>el.clientHeight+1 || el.scrollWidth>el.clientWidth+1;
+      if(scrollable){
+        if(!el.hasAttribute('tabindex')) el.setAttribute('tabindex','0');
+        if(!el.hasAttribute('role')) el.setAttribute('role','region');
+        if(!el.hasAttribute('aria-label')) el.setAttribute('aria-label','ناحیهٔ جدول (با کلیدهای جهت‌نما پیمایش کنید)');
+      }else if(el.getAttribute('tabindex')==='0' && el.hasAttribute('data-a11y-auto')){
+        el.removeAttribute('tabindex');
+      }
+    });
+  }catch(e){}
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    دادهٔ نمونه
@@ -4023,6 +4042,19 @@ async function syncNow(manual){
     if(bad || retryable) scheduleSync(backoffDelay());
 
   }catch(err){
+    if(err && err.code === 'sync_backpressure'){
+      /* فاز ۴: opها sending ماندند → به pending برمی‌گردند (هیچ‌چیز از دست
+         نمی‌رود، شمارندهٔ DLQ هیچ‌چیز نمی‌شمرد چون noteOpFailed صدا نمی‌شود).
+         تلاشِ بعدی = حداکثرِ مُهرِ سرور (retry_after_s) و backoffِ نمایی. */
+      batch.forEach(x => { if(x.status === 'sending') x.status = 'pending'; });
+      SYNC.lastError = 'سرور زیر فشار است — کمی بعد دوباره ارسال می‌شود';
+      SYNC.attempts += 1;
+      const wait = Math.max((err.retryAfterS || 0) * 1000, backoffDelay());
+      saveQueue();
+      if(manual) toast('سرور زیر فشار است — کمی بعد دوباره تلاش می‌شود', 'warn');
+      scheduleSync(wait);
+      return;
+    }
     /* شکست کل دسته — همه failed می‌شوند (پس از ۵ تلاش: DLQ) تا دوباره تلاش شود */
     batch.forEach(x => { if(x.status === 'sending') noteOpFailed(x, err.message); });   /* P1-10 */
     SYNC.lastError = err.message;
@@ -4079,6 +4111,11 @@ async function sendChunked(batch){
     try{
       res = await sendBatch(chunk);
     }catch(err){
+      /* فاز ۴: 429/backpressure به‌کل دسته برمی‌گردد — تکه‌تکه‌کردن بی‌فایده
+         است (سقفِ نرخ روی مجموعِ opهاست، نه اندازهٔ تکه)؛ خطا عیناً به
+         syncNow می‌رود تا opها pending بمانند و با retry_afterِ سرور دوباره
+         بیایند. */
+      if(err && err.code === 'sync_backpressure') throw err;
       if(is413Error(err) && chunk.length > 1){ splitPush(pend, chunk); continue; }
       if(is413Error(err)){ out.push(oversizedResult(chunk[0])); continue; }
       /* خطایِ انتقالی: این تکه + همهٔ تکه‌هایِ مانده ⇒ failed */
@@ -4136,6 +4173,16 @@ async function sendBatch(batch){
     const code = (raw.body && raw.body.code) || 'http_' + raw.status;
     /* 401 = نشستِ ناکام — گذرا؛ بعد از ورودِ دوباره دوباره تلاش می‌شود */
     if(raw.status === 401 || code === 'no_session') throw new Error('نشست سرور معتبر نیست (401)');
+    /* فاز ۴ (backpressure): 429 = سرور زیرِ فشار — گذرا و با مُهرِ زمانیِ
+       سرور؛ نه dead-letter، نه شمارشِ به‌عنوانِ خطای op. کل دسته دست‌نخورده
+       در صف می‌ماند و syncNow با retry_afterِ سرور زمان‌بندی می‌شود. */
+    if(raw.status === 429 || code === 'sync_backpressure'){
+      const ra = Math.max(0, Number(raw.body && raw.body.retry_after_s) || 0);
+      const e = new Error('سرور زیر فشار است (429)');
+      e.code = 'sync_backpressure';
+      e.retryAfterS = ra;
+      throw e;
+    }
     /* 400/403 = ردِّ پایدارِ کل دسته → هر op به‌صورتِ ردِ پایدار
        برمی‌گردد تا dead-letter آن را از صفِ ارسال جدا کند */
     return batch.map(x => ({ uid: x.uid, ok: false, code: code, message: (raw.body && raw.body.message) || 'رد سرور' }));
@@ -8026,7 +8073,7 @@ function gradeTrendCard(sid){
    مودال و فرم
    openModal, modalTpl, askConfirm و سازنده‌های فیلد: f, inp, sel, opt, V.
    ═══════════════════════════════════════════════════════════════════ */
-function openModal(html){$('#modal').innerHTML=`<div class="modal-back" data-act="modal-back"><div class="modal">${html}</div></div>`;}
+function openModal(html){$('#modal').innerHTML=`<div class="modal-back" data-act="modal-back"><div class="modal">${html}</div></div>`;if(typeof a11yScrollablePass==='function')a11yScrollablePass($('#modal'));}
 function closeModal(){$('#modal').innerHTML='';}
 function modalTpl(title,body,saveAct,danger,okLabel){
   return `<div class="card-head"><h3>${esc(title)}</h3><button class="icon-btn" data-act="modal-close">✕</button></div>
@@ -8035,7 +8082,18 @@ function modalTpl(title,body,saveAct,danger,okLabel){
     <button class="btn ghost" data-act="modal-close">انصراف</button>
     <button class="btn ${danger?'danger':''}" data-act="${escAttr(saveAct)}">${okLabel||(danger?'حذف کن':'ذخیره')}</button></div>`;
 }
-const f=(label,inner)=>`<div class="field"><label>${label}</label>${inner}</div>`;
+/* هلپرِ فیلدِ فرم — دسترس‌پذیر (axe: label/select-name).
+   اگر کنترلِ درونی id داشته باشد، <label for=…> می‌سازد تا نامِ دسترس‌پذیر
+   برنامه‌ای برقرار شود؛ وگرنه متنِ برچسب (بدونِ تگ) به‌عنوانِ aria-label
+   رویِ نخستین کنترل می‌نشیند. ساختارِ DOM (div.field>label+کنترل) دست نمی‌خورد. */
+const f=(label,inner)=>{
+  const s=String(inner);
+  const m=/\sid="([^"]+)"/.exec(s);
+  if(m) return `<div class="field"><label for="${m[1]}">${label}</label>${s}</div>`;
+  const plain=String(label).replace(/<[^>]*>/g,'').replace(/"/g,'&quot;').trim();
+  const patched=plain?s.replace(/<(input|select|textarea)\b(?![^>]*aria-label)/i,`<$1 aria-label="${plain}"`):s;
+  return `<div class="field"><label>${label}</label>${patched}</div>`;
+};
 const inp=(id,val,type='text')=>`<input class="input" id="${escAttr(id)}" type="${escAttr(type)}" value="${esc(val??'')}" />`;
 const sel=(id,opts,val)=>`<select class="select" id="${escAttr(id)}">${opts.map(o=>`<option value="${esc(o[0])}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
 const V=id=>{const e=$('#'+id);return e?e.value.trim():'';};
@@ -19215,6 +19273,9 @@ function render(){
     if(main && mainTop) main.scrollTop = mainTop;
     if(winTop) { try { window.scrollTo(0, winTop); } catch(e) {} }
   }
+  /* پاسِ دسترس‌پذیری: ناحیه‌هایِ اسکرول‌شونده فوکوس‌پذیر شوند
+     (axe: scrollable-region-focusable — رفعِ serious دورِ a11y-تعاملی) */
+  if(typeof a11yScrollablePass==='function') a11yScrollablePass(document);
 }
 setTimeout(()=>{
   /* دفترچه را پیش از مولدِ دنیای دمو بخوان: مولد (generateExtras) op

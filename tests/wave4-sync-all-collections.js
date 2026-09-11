@@ -46,7 +46,7 @@ const iso = (t) => new Date(t).toISOString();
 const ALL = [
   'schools', 'users', 'classes', 'subjects', 'schedule', 'enrollments',
   'attendance', 'grades', 'discipline', 'leaves', 'notifications',
-  'announcements', 'homework', 'hw_submissions', 'vclass_rooms',
+  'announcements', 'hw_assignments', 'hw_submissions', 'vclass_sessions',
   'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
 ];
 
@@ -199,7 +199,7 @@ const ids = (b, c) => (b.collections[c] || []).map(r => r.id).sort((x, y) => x -
       async query(sql, params) {
         const t = (/FROM "([a-z_]+)"/.exec(sql) || [])[1];
         queries.push(t);
-        if (/FROM "vclass_rooms"/.test(sql)) throw new Error('no timestamp columns');
+        if (/FROM "vclass_sessions"/.test(sql)) throw new Error('no timestamp columns');
         /* جدولِ schools با s.id سنجه‌ییده می‌شود (نه school_id)؛
            notifications با user_id (نقشِ جلسه = ۱۰) */
         const rowId = t === 'schools' ? 1 : 2;
@@ -214,7 +214,7 @@ const ids = (b, c) => (b.collections[c] || []).map(r => r.id).sort((x, y) => x -
       assert(queries.indexOf(c) > -1, 'no delta query for ' + c);
       assert(Array.isArray(cap.body.collections[c]) && cap.body.collections[c].length > 0, c + ' must have rows (pg or fallback)');
     }
-    assert(queries.indexOf('vclass_rooms') > -1, 'failing table still got its delta query first');
+    assert(queries.indexOf('vclass_sessions') > -1, 'failing table still got its delta query first');
   });
 
   await test('AC11 دلتای کهنه اصلاً به DB دلتا نمی‌زند (فقط خواندنِ کامل)', async () => {

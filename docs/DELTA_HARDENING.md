@@ -120,8 +120,30 @@
 
 ## ۶) کارهای باقی‌مانده (صادقانه)
 
-1. **شکاف اسکیما:** جدول‌های `homework`/`vclass_rooms` در زنجیرهٔ migrations نیستند؛ `sync_conflicts` ستون `updated_at` ندارد (پولِ PG برای این سه همیشه full-read است — امن ولی ناکارآمد).
+1. ~~**شکاف اسکیما:** جدول‌های `homework`/`vclass_rooms` در زنجیرهٔ migrations نیستند؛ `sync_conflicts` ستون `updated_at` ندارد~~ — **✅ بسته شد در فاز ۳** (شاخهٔ `feat/delta-schema-gaps`، کامیت‌های `2dad76a`/`a5a4226`/`ebd3d4e`؛ جزئیات: §۷ همین سند).
 2. ایندکس‌های 005 روی تولید با `CONCURRENTLY` اعمال شوند (قیدِ داخلِ تراکنش — همان سیاستِ 004).
 3. بستنِ TOCTOUِ هم‌پایهٔ هم‌زمان روی موتورِ حافظه (وابسته به push تک‌تراکنشی).
 4. تومب‌استونِ DB-native (`server_tombstones`) همچنان PENDING (وابسته به write-side زنده).
 5. سنجهٔ بار روی سخت‌افزارِ واقعیِ تولید/replica — اعداد این سند از سندباکسِ ۲GB است.
+
+---
+
+## ۷) فاز ۳ — بستن شکاف‌های اسکیما (`feat/delta-schema-gaps`)
+
+**تاریخ:** ۲۰۲۶-۰۹-۱۱ · **بیس:** `feat/delta-hardening-phase2` @ `c13cd3f` · **مهاجرت:** `006_delta_schema_gaps.sql` (+down)
+
+| شکاف | تصمیم فنی | کامیت | شاهد |
+|---|---|---|---|
+| ۱. `homework` در allowlist، بدون جدول (کلاینت/مدل/zنجیره همه `hw_assignments`) | جایگزینی نامِ مرده با مجموعهٔ واقعی `hw_assignments` (دارای school_id و updated_at) در pull/syncdelta + هر سه آینه | `2dad76a` | `tests/delta-schema-gaps.js` SG1–SG5؛ رگرسیونِ باگِ پنهان: پولِ PG-live قبلاً با `SELECT * FROM "homework"` (42P01) کلِ درخواست را ۵۰۰ می‌کرد |
+| ۲. `vclass_rooms` در allowlist، بدون هیچ معادل | **حذف نامِ مرده — جدول ساخته نشد** (صفر مصرف‌کننده؛ جدولِ بی‌خواننده = نویزِ اسکیما). سطحِ واقعیِ vclass یعنی `vclass_sessions` (school_id ⇒ scope) جایگزین شد | `a5a4226` | SG6–SG8 (ساخت کوئری، سرو در پولِ پیش‌فرض، جداسازی مدرسه‌ای)؛ شاهدِ زندهٔ A8: `SELECT * FROM "vclass_rooms"` ⇒ 42P01 — جدول هرگز وجود نداشت |
+| ۳. `sync_conflicts` بدون `updated_at` ⇒ دلتا در PG-live خطای 42703 | مهاجرت 006 دقیقاً با SQL بریف (ADD COLUMN → backfill از created_at → SET NOT NULL → ایندکس) + ایندکس‌های `hw_assignments`/`vclass_sessions` + مُهرِ `updated_at` در sync.js (ایجاد) و conflicts.js (داوری) | `ebd3d4e` | SG9–SG12؛ شاهدهای زندهٔ §۷.۳ |
+
+**مرزِ آگاهانه (نه باگ):** `vclass_questions`/`vclass_links`/`vclass_attendance` جدول دارند ولی **school_id ندارند** (فقط session_id/student_id) — افزودن‌شان به پولِ پیش‌فرض یعنی عبورِ همهٔ سطرها از فیلترِ scope به‌عنوانِ «global» و **نشت بین‌مدرسه‌ای**. تا وقتی scope مبتنی بر session→school ساخته نشود، در سطحِ پول نمی‌آیند.
+
+### ۷.۳) شاهدهای زندهٔ PostgreSQL 18.4 (همان خوشهٔ فاز ۲، پورت 55432)
+
+- **زنجیرهٔ تازه 001→006 روی DB خالی:** همهٔ مهاجرت‌ها سبز؛ `updated_at` از ابتدا NOT NULL؛ INSERT بدون updated_at ⇒ 23502 رد؛ با مُهر صریح ⇒ پذیرفته.
+- **ارتقای پایگاهِ «تولید» فاز ۲ (162 تعارضِ واقعی، pre-006):** قبل از 006 کوئری دلتا با خطای واقعی `column "updated_at" does not exist` می‌میرد؛ 006 دوبارِ متوالی اعمال شد (توان‌مند)؛ backfill دقیقاً ۱۶۲/۱۶۲ ردیف `updated_at = created_at`، صفر NULL؛ هر سه ایندکس ساخته شد؛ EXPLAIN با `enable_seqscan=off` از `idx_sync_conflicts_updated_at` می‌خواند.
+- **دلتای واقعی با builder خودِ ریپو:** ردیفِ تعارضِ کهنه که «حالا» resolve شد (فقط updated_at تازه) دقیقاً خودش در دلتا برمی‌گردد — مسیرِ resolve→delta که بدونِ این ستون هرگز دیده نمی‌شد.
+- **برستِ end-to-end با ابزار خودِ ریپو** (`--live -n 60 -c 10` روی سه مجموعهٔ شکاف): **60/60 موفق · خطای سخت 0 · p50=4.15ms · p95=35.16ms · توان 1132 req/s** — pool پیکِ waiting=0.
+- خروجی کامل: `node /home/user/.cache/pgtool/verify-006.js` (20/20) و `live-006.json`.
