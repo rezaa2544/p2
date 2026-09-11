@@ -3696,6 +3696,7 @@ const SYNC = {
   progress   : null,        /* دور ۱۰۰: پیشرفتِ ارسالِ تکه‌تکه {done,total} */
   dlq        : [],          /* P1-10: صفِ مرده (پس از ۵ تلاش / خروج از سقف) */
   capWarned  : false,       /* P1-10: هشدارِ «نزدیک سقف» داده شده؟ (هیسترزیس) */
+  quotaWarned: false,       /* W8-4: هشدارِ «نزدیکِ سهمیهٔ مرورگر» داده شده؟ (هیسترزیس) */
   dlqDropped : 0,           /* P1-10: قلم‌هایِ دورریخته‌شده از DLQیِ پر */
 };
 
@@ -3871,6 +3872,7 @@ function enqueueOp(op){
   enforceQueueCaps();         /* P1-10: سقفِ تعدادی/حجمی + هرسِ قدمت */
   saveQueueChecked();         /* P1-10: مقاوم در برابرِ پرشدنِ حافظه */
   checkCapWarning();          /* P1-10: هشدارِ «نزدیک سقف» */
+  checkStorageQuota();        /* W8-4: پایشِ سهمیهٔ ذخیره‌سازیِ مرورگر (async) */
   refreshSyncBadge();         /* نشانگر بدون رندر کامل به‌روز شود */
   bgMirrorQueue();            /* W8-1: آینهٔ IDB برایِ Background Sync */
   bgRegisterSync();           /* W8-1: اگر تب بسته شد، مرورگر خودش بفرستد */
@@ -4323,10 +4325,131 @@ function syncPanelModal(){
     <div class="card-body">${body}</div>
     <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border)">
       ${SYNC.demoMode?`<button class="btn ghost sm" data-act="sync-toggle-net">${SYNC.online?'📴 شبیه‌سازی قطع اینترنت':'🌐 شبیه‌سازی وصل شدن'}</button>`:''}
+      <button class="btn ghost sm" data-act="sync-quota" title="مصرفِ حافظهٔ مرورگر و پاک‌سازیِ انتخابی">🗄️ حافظه</button>
       <div class="spacer"></div>
       ${n?`<button class="btn" data-act="sync-run">🔄 ارسال همه</button>`:''}
       <button class="btn ghost" data-act="modal-close">بستن</button>
     </div>`);
+}
+
+/* ---------- W8-4: مدیریتِ سهمیهٔ ذخیره‌سازی (Storage Quota) ----------
+   اگر IndexedDB/حافظهٔ مرورگر به سهمیه نزدیک شود، نوشتن‌هایِ بعدی
+   ساکت شکست می‌خورند و دادهٔ آفلاینِ کاربر از دست می‌رود. این بخش:
+   ۱) با navigator.storage.estimate سهمیه را می‌پاید (هیسترزیس مثلِ
+      هشدارِ سقفِ صف تا پیام نوسان نکند)،
+   ۲) هشدارِ روشن به کاربر می‌دهد،
+   ۳) مودالِ «پاک‌سازیِ انتخابی» می‌گشاید: صفِ مرده، قلم‌هایِ ترمینالِ
+      کهنه — دادهٔ ارسال‌نشدهٔ کاربر (pending/sending) هرگز گزینه نیست. */
+var STORAGE_QUOTA_WARN  = 0.85;   /* آستانهٔ هشدار: ۸۵٪ سهمیه */
+var STORAGE_QUOTA_RESET = 0.70;   /* هیسترزیس: ریستِ هشدار زیرِ ۷۰٪ */
+
+/* تخمینِ سهمیه — promise؛ در نبودِ API «ناشناخته» برمی‌گردد (بی‌هشدار) */
+function storageQuotaEstimate(){
+  return new Promise(function(resolve){
+    try{
+      if(typeof navigator !== 'undefined' && navigator.storage &&
+         typeof navigator.storage.estimate === 'function'){
+        navigator.storage.estimate().then(function(est){
+          var usage = est.usage || 0, quota = est.quota || 0;
+          resolve({ usage: usage, quota: quota,
+            ratio: quota > 0 ? usage / quota : 0, known: quota > 0 });
+        }).catch(function(){ resolve({ usage:0, quota:0, ratio:0, known:false }); });
+        return;
+      }
+    }catch(e){}
+    resolve({ usage:0, quota:0, ratio:0, known:false });
+  });
+}
+/* پایشِ سهمیه — پس از هر enqueue صدا می‌شود؛ async و بی‌هزینه برایِ مسیرِ نوشتن */
+function checkStorageQuota(){
+  storageQuotaEstimate().then(function(est){
+    if(!est.known) return;
+    if(est.ratio >= STORAGE_QUOTA_WARN && !SYNC.quotaWarned){
+      SYNC.quotaWarned = true;
+      toast('حافظهٔ مرورگر نزدیکِ سهمیه است (' + fa(Math.round(est.ratio * 100)) + '٪) — از پنلِ همگام‌سازی پاک‌سازی کنید تا داده‌ای از دست نرود', 'warn');
+    }else if(est.ratio < STORAGE_QUOTA_RESET && SYNC.quotaWarned){
+      SYNC.quotaWarned = false;
+    }
+  });
+}
+/* برچسبِ خوانایِ بایت — مستقل از ماژولِ کلاسِ مجازی */
+function quotaSizeFa(bytes){
+  if(bytes == null || isNaN(bytes)) return '—';
+  var mb = bytes / 1048576;
+  if(mb >= 1024) return fa(Math.round(mb / 102.4) / 10) + ' گیگابایت';
+  if(mb >= 1)    return fa(Math.round(mb * 10) / 10) + ' مگابایت';
+  var kb = bytes / 1024;
+  if(kb >= 1)    return fa(Math.round(kb)) + ' کیلوبایت';
+  return fa(Math.round(bytes)) + ' بایت';
+}
+/* پاک‌سازیِ انتخابی ۱: کلِ صفِ مرده (DLQ) — سرور این‌ها را رد کرده یا دفن شده‌اند */
+function quotaClearDlq(){
+  var n = SYNC.dlq.length;
+  SYNC.dlq = [];
+  SYNC.dlqDropped = 0;
+  saveDlq();
+  refreshSyncBadge();
+  return n;
+}
+/* پاک‌سازیِ انتخابی ۲: قلم‌هایِ ترمینالِ کهنه‌تر از ۷ روز (rejected/failed/conflict).
+   دادهٔ ارسال‌نشدهٔ کاربر (pending/sending) هرگز حذف نمی‌شود. */
+function quotaPruneTerminal(){
+  var weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  var before = SYNC.queue.length;
+  SYNC.queue = SYNC.queue.filter(function(x){
+    if(x.status === 'pending' || x.status === 'sending') return true;
+    var t = Date.parse(x.created_at);
+    return isNaN(t) || t >= weekAgo;
+  });
+  var n = before - SYNC.queue.length;
+  if(n){ saveQueue(); bgMirrorQueue(); refreshSyncBadge(); }
+  return n;
+}
+/* مودالِ سهمیه: نمودارِ مصرف + گزینه‌هایِ پاک‌سازیِ انتخابی */
+function storageQuotaModal(){
+  storageQuotaEstimate().then(function(est){
+    var pct = est.known ? Math.min(100, Math.round(est.ratio * 100)) : null;
+    var barColor = pct == null ? 'var(--border)' : (pct >= 85 ? 'var(--red)' : (pct >= 70 ? '#d97706' : 'var(--green)'));
+    var dlqN = SYNC.dlq.length;
+    var termOld = SYNC.queue.filter(function(x){
+      if(x.status === 'pending' || x.status === 'sending') return false;
+      var t = Date.parse(x.created_at);
+      return !isNaN(t) && t < Date.now() - 7 * 24 * 60 * 60 * 1000;
+    }).length;
+    openModal(`<div class="card-head"><h3>🗄️ حافظهٔ ذخیره‌سازیِ مرورگر</h3>
+        <button class="icon-btn" data-act="modal-close">✕</button></div>
+      <div class="card-body">
+        ${est.known ? `
+          <div class="row" style="margin-bottom:6px"><span class="small muted">مصرف: <b>${quotaSizeFa(est.usage)}</b> از ${quotaSizeFa(est.quota)}</span><div class="spacer"></div><b>${fa(pct)}٪</b></div>
+          <div style="background:var(--surface-2);border-radius:999px;height:10px;overflow:hidden;margin-bottom:12px">
+            <div style="width:${pct}%;height:100%;background:${barColor};border-radius:999px"></div>
+          </div>
+          ${pct >= 85 ? '<div class="sync-note" style="margin-bottom:10px">⚠️ حافظه نزدیکِ سهمیه است — اگر پر شود، تغییراتِ آفلاینِ تازه ذخیره نمی‌شوند. موارد زیر را پاک‌سازی کنید.</div>' : ''}`
+        : '<div class="muted small" style="margin-bottom:10px">مرورگرِ شما اندازهٔ سهمیه را گزارش نمی‌کند — پاک‌سازیِ انتخابی همچنان در دسترس است.</div>'}
+        <div style="background:var(--surface-2);border-radius:10px;padding:10px;margin-bottom:8px">
+          <div class="row" style="align-items:center">
+            <div><b>صفِ مرده (DLQ)</b><div class="small muted">عملیات‌هایی که سرور رد کرده یا از سقف بیرون رفته‌اند — دیگر ارسال نمی‌شوند</div></div>
+            <div class="spacer"></div>
+            <span class="badge ${dlqN?'b-amber':'b-gray'}">${fa(dlqN)} قلم</span>
+            ${dlqN?`<button class="btn ghost sm" data-act="sync-quota-clear-dlq">🧹 پاک‌سازی</button>`:''}
+          </div>
+        </div>
+        <div style="background:var(--surface-2);border-radius:10px;padding:10px">
+          <div class="row" style="align-items:center">
+            <div><b>قلم‌هایِ پایان‌یافتهٔ کهنه</b><div class="small muted">ردشده/ناموفق/تعارضِ کهنه‌تر از ۷ روز — دادهٔ ارسال‌نشدهٔ شما دست نمی‌خورد</div></div>
+            <div class="spacer"></div>
+            <span class="badge ${termOld?'b-amber':'b-gray'}">${fa(termOld)} قلم</span>
+            ${termOld?`<button class="btn ghost sm" data-act="sync-quota-prune">🧹 هرس</button>`:''}
+          </div>
+        </div>
+        <div class="small muted" style="margin-top:10px">🛡️ تغییراتِ در صفِ ارسال (pending) هرگز پاک نمی‌شوند.</div>
+      </div>
+      <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border)">
+        <div class="spacer"></div>
+        <button class="btn ghost" data-act="sync-panel">بازگشت به صف</button>
+        <button class="btn" data-act="modal-close">بستن</button>
+      </div>`);
+  });
 }
 
 /* ---------- W8-2: مودالِ داوریِ تعارض — «نسخهٔ شما رد شد» ----------
@@ -4426,6 +4549,20 @@ const SYNC_ACTIONS = {
   'sync-conflict-view'(el){
     const uid = (el && el.dataset) ? el.dataset.uid : null;
     if(uid) syncConflictModal(uid);
+  },
+  /* W8-4: مودالِ سهمیهٔ ذخیره‌سازی و پاک‌سازیِ انتخابی */
+  'sync-quota'(){ storageQuotaModal(); },
+  'sync-quota-clear-dlq'(){
+    const n = quotaClearDlq();
+    toast(n ? fa(n) + ' قلمِ صفِ مرده پاک شد' : 'صفِ مرده خالی بود', 'ok');
+    checkStorageQuota();
+    storageQuotaModal();
+  },
+  'sync-quota-prune'(){
+    const n = quotaPruneTerminal();
+    toast(n ? fa(n) + ' قلمِ پایان‌یافتهٔ کهنه هرس شد' : 'قلمِ کهنه‌ای نبود', 'ok');
+    checkStorageQuota();
+    storageQuotaModal();
   },
   'sync-toggle-net'(){ closeModal(); setOnline(!SYNC.online); },
   /* حذفِ دستیِ عملیاتِ «رد شده» (dead-letter) از صف.
