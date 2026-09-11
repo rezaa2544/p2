@@ -181,6 +181,10 @@ function coreActions(e, el, id, a, rawId){
    'do-reset'(){resetAll();},
    'ask-ok'(){ const fn=window._askFn; window._askFn=null; closeModal(); if(typeof fn==='function')fn(); },
    go(){go(el.dataset.r);},
+   'skip-to-main'(){ /* skip-link (WCAG 2.4.1 Bypass Blocks): پرش به محتوا */
+     const m=document.querySelector('.main');
+     if(m){ if(!m.hasAttribute('tabindex'))m.setAttribute('tabindex','-1'); try{m.focus();}catch(e){} }
+   },
    back(){ goBack(); },
    home(){ go(S.user.role==='edu_office'?'officedash':'dashboard'); },
    opennav(){S.sidebar=true;render();},
@@ -2164,6 +2168,19 @@ document.addEventListener('change',e=>{
   if(el.dataset.f==='sc'){S.filters.sc=el.value;S.filters.sd='';S.page=1;render();return;}
   if(el.dataset.f==='term'){S.filters.term=Number(el.value);render();return;}
   if(el.tagName==='SELECT'||el.type==='date'){S.filters[el.dataset.f]=el.value;S.page=1;render();}
+});
+/* ── فعال‌سازیِ کیبوردیِ عناصرِ غیربومیِ data-act (WCAG 2.1.1 Keyboard) ──
+   div/spanهایِ کلیک‌پذیر (مثلِ .nav-item با tabindex=0) با Enter/Space هم
+   باید فعال شوند — رویدادِ click ساختگی به همان مسیرِ event delegation می‌رود. */
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'&&e.key!==' ')return;
+  const t=e.target;
+  if(!t||!t.closest)return;
+  if(/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(t.tagName||''))return; /* بومی‌ها خودشان درست‌اند */
+  const el=t.closest('[data-act]');
+  if(!el||el!==t)return; /* فقط وقتی خودِ عنصرِ فوکوس‌شده data-act دارد */
+  e.preventDefault();
+  el.click();
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){ if($('#modal').innerHTML)closeModal(); else if(S.user)goBack(); }
