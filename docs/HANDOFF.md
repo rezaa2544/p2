@@ -1,3 +1,63 @@
+# Wave 10 (نوبتِ سوم) — Partitioning زنده + chg_id↔Cursor v3 — Handoff
+
+**Date:** 2026-09-11 · **Branch:** `feat/db-scale-wave10` · **Status:** همهٔ گیت‌ها سبز؛ تحویل کامل
+
+## این نوبت چه شد
+
+1. **محیطِ PG زنده:** PostgreSQL 17.11 در سندباکس + role/db `w10`/`payesh_w10`؛
+   زنجیرهٔ `001→008` از صفر سبز شد.
+2. **مهاجرتِ `009_partition_grades_attendance.sql` (+down):** پارتیشن‌بندیِ
+   چهارفازیِ grades/attendance (RANGE(created_at) سالانه + default؛ PK ⇒
+   (id, created_at)؛ کپیِ دسته‌ایِ ۵۰k؛ swap یک‌تراکنشی با حفظِ نام‌های
+   ایندکس/سکوئنس؛ `*_old` برای rollback، `*_recovered` در down). سه اصلاحِ
+   مهمِ دیباگ: حذفِ ۳ ستونِ غیرواقعیِ grades (زنجیرهٔ مهاجرت مرجع است، نه
+   schema اپ) + دو ایندکسِ جاافتادهٔ ۰۰۲ (`school_class_date`،
+   `school_student_subject`) + رقصِ rename کامل.
+3. **رفعِ مسدودکنندهٔ persistOp** (`server/db.js`): جدولِ در
+   `PAYESH_PARTITIONED_TABLES` ⇒ UPDATE→INSERT→23505→UPDATE-retry؛ مسیرِ
+   legacy دست‌نخورده. خروجیِ `isPartitionedTable` هم export شد.
+4. **اتصالِ chg_id به کرسرِ v3:** `cursor.js` (sign سه‌پارامتری + verify) ·
+   `pull.js` (`captureChgWatermark` pre-read + مسیرِ byChg بدونِ time-guard +
+   `chg_watermark` در پاسخ) · `syncdelta.js` (`CHG_TABLES`).
+5. **دو باگِ coercion که تست‌ها گرفتند:** `sign(…,null)` می‌ساخت cw=0 (فیدِ
+   chg از صفر!) و `verify` با `Number([1])`/`Number(true)` عبور می‌داد — هر
+   دو فیکس + رگرسیون.
+6. **تست‌ها:** `tests/partitioning.js` **۴۲/۴۲** (واحد ۱۶ + زندهٔ ۲۶ روی
+   PG با فیکسچرِ 180k: پریتی، EXPLAIN pruning، وارون‌سازی) ·
+   `tests/chg_id_cursor.js` **۳۳/۳۳** (جدید) · MR1/M17 فاز ۴ به v3+cw
+   مهاجرت شد.
+
+## گیت‌ها (همه سبز)
+
+smoke **547/547** · check-authz **0** · secret-scan **11/11** ·
+partitioning **42/42** · chg_id_cursor **33/33** · wave10-chg-id **31/31** ·
+wave10-db-scale **26/26** · wave10-pgbouncer **22/22** · delta-phase4 **23/23**
+(+ جهش **20/20**) · delta-sync-hardening **19/19** · contract-layers **18/18**
+· pull-bootstrap **12/12** · pull-to-refresh **15/15** · wave3-keyset **13/13**
+· migration-sequence ✓ · build --check ✓
+
+## محدودیت‌ها — سبز گزارش نشود
+
+- **۵۰M/۲۸۸M در سندباکس اجرا نشد** — فیکسچرِ 180k + زمان‌سنجی
+  (~۳۵k سطر/s کپی) + برون‌یابیِ مستند (۵۰M ≈ ۲۴ دقیقه؛ فقط مرتبهٔ بزرگی).
+  `docs/WAVE10_DB_SCALE.md` §۷.۴.
+- read-replica همچنان fake-DB (تأییدِ نهایی موعودِ استیجینگ).
+- ۰۰۹ روی استیجینگ/تولید هنوز اجرا نشده — پیش‌نیازِ فعال‌سازی: تنظیمِ
+  `PAYESH_PARTITIONED_TABLES=grades,attendance` **فقط پس از** اجرای ۰۰۹.
+- PG زندهٔ سندباکس بین ترن‌ها پاک می‌شود؛ راه‌اندازیِ تکرارپذیر در
+  `tests/partitioning.js` سربرگ + `docs/WAVE10_DB_SCALE.md` §۷.
+
+## پی‌آیندهای پیشنهادی نوبتِ بعد
+
+- اجرای ۰۰۹ بر استیجینگ با دادهٔ واقعی + `ANALYZE` پس از کپی.
+- فعال‌سازیِ `PAYESH_PARTITIONED_TABLES` در compose استیجینگ + پایشِ
+  متریک‌های pool پس از تعویض.
+- retention سالانهٔ پارتیشن‌ها (detach/drop سال‌های قدیمی با تأییدِ وزارتی —
+  طراحی در §۳ نوبتِ دوم).
+- کلاینت: نمایشِ سنجهٔ `chg_watermark` در پنل دیباگِ سینک (اختیاری).
+
+---
+
 # Bug Hunt Session 8 / Wave 9 — Handoff
 
 **Date:** 2026-09-11
