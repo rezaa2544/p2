@@ -60,6 +60,7 @@ No secret, token, or credential is recorded in this document.
 | `node tests/wave8-outbox.js` | **14/14** | Green. |
 | `node tests/wave8-deep-audit.js` | **NOT RUN / missing** | The repository has no such file; Node exited with `MODULE_NOT_FOUND` (exit 1 in the combined gate command). This is not counted as green. |
 | `bash scripts/run-all-tests.sh` | **incomplete / not accepted as green** | The runner did not reach a final `TOTAL` before the 30-minute tool window and stale overlapping runner processes were stopped. Partial logs contained unrelated pre-existing red suites; no all-suite green claim is made. |
+| Documentation consistency checks | **partial** | `docs-health.js` passed 9/9. `docs-consistency.js` remained red on the pre-existing migration-count mismatch (19/22), and `docs-metadata.js` remained red on the existing orphan-document check (16/17); generated reports were restored rather than claiming green. |
 
 ### Wave 8 regression record
 
