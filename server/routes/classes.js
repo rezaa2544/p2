@@ -68,13 +68,23 @@ function createClassRoutes(ctx) {
       classes = classes.filter(c => String(c.grade) === String(grade));
     }
 
-    // Attach student count and teacher name
+    /* Attach student count and teacher name without rescanning the full
+       enrollment/user collections for every class. The old nested filter/find
+       made this endpoint O(classes × enrollments) on the memory path. */
+    const enrollmentCounts = new Map();
+    for (const enrollment of (Array.isArray(store.enrollments) ? store.enrollments : [])) {
+      const classId = enrollment && enrollment.class_id;
+      if (classId != null) enrollmentCounts.set(classId, (enrollmentCounts.get(classId) || 0) + 1);
+    }
+    const teachersById = new Map();
+    for (const user of (Array.isArray(store.users) ? store.users : [])) {
+      if (user && user.id != null) teachersById.set(user.id, user);
+    }
     const enriched = classes.map(c => {
-      const studentCount = (store.enrollments || []).filter(e => e.class_id === c.id).length;
-      const teacher = (store.users || []).find(u => u.id === c.homeroom_teacher_id);
+      const teacher = teachersById.get(c.homeroom_teacher_id);
       return {
         ...c,
-        student_count: studentCount,
+        student_count: enrollmentCounts.get(c.id) || 0,
         homeroom_teacher_name: teacher ? teacher.full_name : null
       };
     });
