@@ -177,6 +177,7 @@ function _renderRouteInner(){
     case 'classes':return viewClasses();
     case 'subjects':return viewSubjects();
     case 'attendance':return viewAttendance();
+    case 'multigrade':return viewMultigrade();
     case 'grades':return viewGrades();
     case 'discipline':return viewDiscipline();
     case 'schedule':return viewSchedule();
