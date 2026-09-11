@@ -155,6 +155,9 @@ pm2 stop payesh-old && pm2 delete payesh-old
 
 ## ۶. متغیرهایِ محیطیِ مرتبط
 
+> **مرجع کامل:** فهرست همهٔ ۱۲۸ متغیر محیطی با پیش‌فرض/الزامی/مثال، حالت‌های شکست و روش چرخش
+> در `docs/CONFIGURATION_REFERENCE.md` است؛ جدول زیر فقط متغیرهای مؤثر بر استقرار موج ۱۵ را نشان می‌دهد.
+
 | متغیر | پیش‌فرض | نقش در Wave 15 |
 |---|---|---|
 | `PAYESH_ENV` | — | `production` ⇒ readiness سخت‌گیرانه (Redis الزامی) + fail-fast استارت (P0-13) + TLS الزامی (DEPLOY.md §TLS) |
