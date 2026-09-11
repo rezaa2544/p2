@@ -439,7 +439,10 @@ const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, i
 const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty, ids, deleter });
 const userRoutes = createUserRoutes({ store, db, audit, markDirty, ids, deleter });
 const bootstrapRoute = createBootstrapRoute({ store, db });
-const pullRoute = createPull({ store, db, sessionFrom: auth.sessionFrom, sendJson });
+/* Delta Hardening Phase 2 (gap 2): signed TTL cursor — the resolved JWT key
+   (env or key-file) feeds a domain-separated cursor key inside server/cursor.js;
+   PAYESH_CURSOR_SECRET overrides it. */
+const pullRoute = createPull({ store, db, sessionFrom: auth.sessionFrom, sendJson, cursorSecret: process.env.PAYESH_CURSOR_SECRET || JWT_SECRET });
 
 /* ── static ────────────────────────────────────────────────────────── */
 const STATIC = {

@@ -11,6 +11,7 @@
 const url = require('url');
 const { projectUserByRole } = require('./middleware/projection');
 const { deltaRowsSql } = require('./syncdelta'); /* Wave 4 (chat2) */
+const { createCursor } = require('./cursor'); /* Delta Hardening Phase 2 (gap 2) */
 
 /* ── Gap 1 (Delta Hardening Phase 2): long-lived delta cutoff ─────────
    A delta whose `since` is older than DELTA_MAX_AGE_DAYS (default 7) is
@@ -37,6 +38,10 @@ function createPull(ctx) {
   const db = ctx.db; /* Wave 1 (chat2): unified read seam — PG when active, JSON store otherwise */
   const sessionFrom = ctx.sessionFrom;
   const sendJson = ctx.sendJson;
+  /* Gap 2: signed, TTL-bound cursor. ctx.cursor may carry a pre-built signer
+     (tests); ctx.cursorSecret a raw key; otherwise the module resolves from
+     env (PAYESH_CURSOR_SECRET / PAYESH_JWT_SECRET). No key ⇒ disabled. */
+  const cursor = ctx.cursor || createCursor({ secret: ctx.cursorSecret });
 
   /**
    * Wave 1: single read seam for pulling a collection's raw rows. When the
@@ -201,6 +206,27 @@ function createPull(ctx) {
 
     const parsed = url.parse(req.url, true);
     const query = parsed.query || {};
+    const cursorToken = query.cursor ? String(query.cursor) : null;
+
+    /* Gap 2: a presented cursor token is verified fail-closed. The signed
+       `since` inside the token wins over any query-string `since` (the token
+       is authenticated; the query param is a client claim). */
+    if (cursorToken) {
+      const v = cursor.verify(cursorToken);
+      if (!v.ok) {
+        /* 401 + machine-readable code; the client renews with one full pull
+           (its response always carries a fresh next_cursor). */
+        return sendJson(res, 401, {
+          ok: false,
+          code: v.code, /* cursor_expired | cursor_invalid | cursor_unavailable */
+          message: v.code === 'cursor_expired'
+            ? 'کرسر دلتا منقضی شده است — یک pull کامل بگیرید'
+            : 'کرسر دلتا نامعتبر است',
+          cursor_renewal: 'full_pull'
+        });
+      }
+      query.since = v.payload.since;
+    }
 
     const since = query.since ? String(query.since) : null;
     const sinceTime = since ? new Date(since).getTime() : 0;
@@ -267,6 +293,11 @@ function createPull(ctx) {
       }).map(d => ({ c: d.c, id: d.id, at: d.at }));
     }
 
+    /* Gap 2: mint the next cursor over this response's snapshot moment. Only
+       when cursor signing is enabled (a key exists); legacy clients simply
+       keep using `server_time` as their next `since`. */
+    const nextCursor = cursor.enabled ? cursor.sign(startedAtIso) : null;
+
     return sendJson(res, 200, {
       ok: true,
       server_time: startedAtIso,
@@ -274,6 +305,8 @@ function createPull(ctx) {
       full_snapshot: !isDelta || forceFull,
       full_snapshot_required: forceFull ? true : undefined,
       full_snapshot_reason: forceFull ? 'since_too_old' : undefined,
+      next_cursor: nextCursor != null ? nextCursor : undefined,
+      cursor_ttl_s: cursor.enabled ? cursor.ttlS : undefined,
       server_version: store.__server_version || 1,
       collections: resultCollections,
       deleted: deletedRecords

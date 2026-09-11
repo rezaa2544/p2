@@ -1,0 +1,138 @@
+/* ═══════════════════════════════════════════════════════════════════
+   server/cursor.js — Signed, TTL-bound delta-pull cursor (Delta Hardening Phase 2)
+   -------------------------------------------------------------------
+   WHY: the delta-pull "cursor" was the client-controlled, unsigned `since`
+   ISO string. Anyone could replay or forge any `since` (cheap time-shift
+   probing), and a cursor never went stale. This module turns the cursor
+   into a server-signed, expiring token:
+
+     pc1.<base64url(payload json)>.<base64url(HMAC-SHA256)>
+
+   payload = { v:1, since:<iso>, iat:<epoch-s>, exp:<epoch-s>, jti:<hex> }
+
+   - HMAC-SHA256 over "<b64payload>" with a server-side key (constant-time compare).
+   - TTL default 3600s (1h), env PAYESH_CURSOR_TTL_S (clamped 60..86400).
+   - Key: PAYESH_CURSOR_SECRET (>=32 bytes) — else domain-separated
+     derivation from PAYESH_JWT_SECRET so instances sharing the session key
+     also share the cursor key (multi-instance safe). No key ⇒ cursors
+     DISABLED (fail-closed: pull keeps working via legacy `since`, but no
+     next_cursor is issued and a presented cursor token is rejected as
+     cursor_unavailable — never silently trusted).
+   - Verify results: {ok:true, payload} | {ok:false, code:'cursor_expired'}
+     | {ok:false, code:'cursor_invalid'} | {ok:false, code:'cursor_unavailable'}.
+   Stateless: no Redis/DB state — renewal is "pull full once, get a fresh
+   cursor" (the pull response always carries next_cursor).
+   ═══════════════════════════════════════════════════════════════════ */
+'use strict';
+
+const crypto = require('crypto');
+
+const PREFIX = 'pc1';          /* token version tag */
+const DEFAULT_TTL_S = 3600;    /* 1 hour — the contract default (Delta Hardening Phase 2) */
+const MIN_TTL_S = 60;
+const MAX_TTL_S = 86400;       /* never longer than a day */
+const MAX_SKEW_S = 300;        /* iat in the far future = forged/misaligned clock */
+
+function clampInt(v, dflt, min, max) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return dflt;
+  return Math.min(max, Math.max(min, Math.trunc(n)));
+}
+
+function ttlSeconds() {
+  return clampInt(process.env.PAYESH_CURSOR_TTL_S, DEFAULT_TTL_S, MIN_TTL_S, MAX_TTL_S);
+}
+
+/**
+ * Resolve the cursor signing key.
+ * @param {string} [explicit] caller-provided key (highest priority — lets index.js
+ *   pass its file-derived JWT key without it having to live in env)
+ * @returns {string|null} hex key (256-bit) or null when cursors must be disabled.
+ *   Whatever source wins is domain-separated (sha256 "payesh.cursor.v1|…") so the
+ *   cursor HMAC key is NEVER the raw JWT key — same input secret, distinct key.
+ */
+function resolveSecret(explicit) {
+  const candidates = [explicit, process.env.PAYESH_CURSOR_SECRET, process.env.PAYESH_JWT_SECRET];
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.length >= 32) {
+      return crypto.createHash('sha256').update('payesh.cursor.v1|' + c).digest('hex');
+    }
+  }
+  return null;
+}
+
+const b64u = (buf) => Buffer.from(buf).toString('base64url');
+
+function sigOf(secret, payloadB64) {
+  return crypto.createHmac('sha256', secret).update(PREFIX + '.' + payloadB64).digest();
+}
+
+/**
+ * Create a cursor signer/verifier bound to one key.
+ * @param {object} [o] { secret?: string, ttlS?: number, now?: () => number }
+ */
+function createCursor(o) {
+  o = o || {};
+  const secret = resolveSecret(o.secret);
+  const ttl = clampInt(o.ttlS != null ? o.ttlS : ttlSeconds(), DEFAULT_TTL_S, MIN_TTL_S, MAX_TTL_S);
+  const now = typeof o.now === 'function' ? o.now : () => Math.floor(Date.now() / 1000);
+
+  return {
+    enabled: !!secret,
+    ttlS: ttl,
+
+    /**
+     * Sign a `since` ISO timestamp into an expiring cursor token.
+     * @param {string} sinceISO
+     * @param {number} [atEpochS] issue time (defaults now) — tests inject fixed clocks
+     * @returns {string|null} token, or null when cursors are disabled
+     */
+    sign(sinceISO, atEpochS) {
+      if (!secret) return null;
+      if (!sinceISO || isNaN(new Date(sinceISO).getTime())) return null;
+      const iat = Number.isFinite(atEpochS) ? Math.trunc(atEpochS) : now();
+      const payload = {
+        v: 1,
+        since: String(sinceISO),
+        iat,
+        exp: iat + ttl,
+        jti: crypto.randomBytes(8).toString('hex')
+      };
+      const body = b64u(JSON.stringify(payload));
+      return PREFIX + '.' + body + '.' + b64u(sigOf(secret, body));
+    },
+
+    /**
+     * Verify a cursor token (fail-closed).
+     * @param {string} token
+     * @returns {{ok:true, payload:object}|{ok:false, code:string}}
+     */
+    verify(token) {
+      if (!secret) return { ok: false, code: 'cursor_unavailable' };
+      if (typeof token !== 'string' || token.length > 4096) return { ok: false, code: 'cursor_invalid' };
+      const parts = token.split('.');
+      if (parts.length !== 3 || parts[0] !== PREFIX) return { ok: false, code: 'cursor_invalid' };
+      let payload;
+      try {
+        payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+      } catch (e) { return { ok: false, code: 'cursor_invalid' }; }
+      if (!payload || payload.v !== 1) return { ok: false, code: 'cursor_invalid' };
+      /* signature first (constant-time) — expired-but-forged is invalid, not expired */
+      let sigOk = false;
+      try {
+        const expect = sigOf(secret, parts[1]);
+        const got = Buffer.from(parts[2], 'base64url');
+        sigOk = expect.length === got.length && crypto.timingSafeEqual(expect, got);
+      } catch (e) { sigOk = false; }
+      if (!sigOk) return { ok: false, code: 'cursor_invalid' };
+      const t = now();
+      if (typeof payload.exp !== 'number' || !Number.isFinite(payload.exp)) return { ok: false, code: 'cursor_invalid' };
+      if (payload.exp <= t) return { ok: false, code: 'cursor_expired' };
+      if (typeof payload.iat !== 'number' || payload.iat - t > MAX_SKEW_S) return { ok: false, code: 'cursor_invalid' };
+      if (!payload.since || isNaN(new Date(payload.since).getTime())) return { ok: false, code: 'cursor_invalid' };
+      return { ok: true, payload };
+    }
+  };
+}
+
+module.exports = { createCursor, resolveSecret, ttlSeconds, DEFAULT_TTL_S, MIN_TTL_S, MAX_TTL_S };
