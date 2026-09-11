@@ -2,8 +2,35 @@
    مودال و فرم
    openModal, modalTpl, askConfirm و سازنده‌های فیلد: f, inp, sel, opt, V.
    ═══════════════════════════════════════════════════════════════════ */
-function openModal(html){$('#modal').innerHTML=`<div class="modal-back" data-act="modal-back"><div class="modal">${html}</div></div>`;}
-function closeModal(){$('#modal').innerHTML='';}
+/* ── دسترس‌پذیریِ مودال (WCAG 4.1.2/2.4.3) ──
+   role=dialog + aria-modal + نامِ خودکار از اولین h3، انتقالِ فوکوس
+   به داخل، تلهٔ Tab و بازگردانیِ فوکوس هنگامِ بستن. بستن با Escape و
+   کلیکِ پس‌زمینه (19-actions-core) دست‌نخورده باقی است. */
+var __modalPrevFocus=null;
+function __modalFocusables(){
+  if(typeof document==='undefined')return [];
+  return Array.prototype.slice.call(document.querySelectorAll('#modal .modal button, #modal .modal input, #modal .modal select, #modal .modal textarea, #modal .modal a[href]'))
+    .filter(function(el){return !el.disabled && el.offsetParent!==null;});
+}
+function openModal(html,label){
+  try{__modalPrevFocus=document.activeElement||null;}catch(e){__modalPrevFocus=null;}
+  var _m=String(html).match(/<h3[^>]*>([^<]{1,120})/);
+  var _name=label||(_m?_m[1]:'گفتگو');
+  $('#modal').innerHTML=`<div class="modal-back" data-act="modal-back"><div class="modal" role="dialog" aria-modal="true" aria-label="${escAttr(_name)}">${html}</div></div>`;
+  setTimeout(function(){try{var f=__modalFocusables()[0]||$('#modal .modal');if(f){if(!f.hasAttribute('tabindex'))f.setAttribute('tabindex','-1');f.focus();}}catch(e){}},30);
+}
+function closeModal(){$('#modal').innerHTML='';try{if(__modalPrevFocus&&__modalPrevFocus.focus)__modalPrevFocus.focus();}catch(e){}__modalPrevFocus=null;}
+function __modalTrap(e){
+  if(!e||e.key!=='Tab')return;
+  var box=(typeof document!=='undefined')?$('#modal'):null;
+  if(!box||!box.innerHTML)return;
+  var f=__modalFocusables();
+  if(!f.length)return;
+  var first=f[0],last=f[f.length-1];
+  if(e.shiftKey&&document.activeElement===first){last.focus();e.preventDefault();}
+  else if(!e.shiftKey&&document.activeElement===last){first.focus();e.preventDefault();}
+}
+if(typeof document!=='undefined'&&typeof window!=='undefined'&&!window.__payeshModalTrap){window.__payeshModalTrap=true;document.addEventListener('keydown',__modalTrap,true);}
 function modalTpl(title,body,saveAct,danger,okLabel){
   return `<div class="card-head"><h3>${esc(title)}</h3><button class="icon-btn" data-act="modal-close">✕</button></div>
    <div class="card-body">${body}</div>
