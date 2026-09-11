@@ -27,6 +27,28 @@
 - **گیت‌ها:** smoke **۵۴۷/۵۴۷** · check-authz **0** · secret-scan **۱۱/۱۱** · build --check ✅ · delta-sync-hardening **19/19** · wave4-all **13/13** · wave10 **14/14** · pull-bootstrap **12/12** · pull-rest-delete ✓ · pull-to-refresh ✓ · contract-layers **18/18** · delta-schema-gaps **12/12** · sync-chunk ✓ · sync-atomic-batch **22/22** · **delta-phase4 23/23** · **delta-phase4-mutations 20/20** ✅
 - **اسناد:** `docs/DELTA_HARDENING_PHASE4.md` (جدید) · `docs/SYNC_PROTOCOL.md` §۶ · `docs/SERVER_CLIENT_CONTRACT.md` (401 region_mismatch + §۲ backpressure/compression) · همین ورودی.
 
+## آرنا (Agent Mode): رفعِ تصادمِ مهاجرتِ ۰۰۴ + راهنمای مهاجرت v2 — ۲۰/۰۶/۱۴۰۵ (2026-09-11) — ✅
+
+- **مأموریت:** سه شکافِ زنجیرهٔ مهاجرت روی شاخهٔ `feat/migration-v2-duplicate-fix` (استک روی `main` @ `6dbef898`). مرجع: `SKILLS_MASTER.md`.
+- **یافتهٔ بحرانیِ جانبی (`fe9dde02`):** ‏`.gitignore` یک دنبالهٔ **UTF-16LE با CRLF** داشت (از PR #66 / `9a08ac5c`). گیت بایت می‌خواند، پس نخستین الگو به گلابِ `*` تبدیل شده بود ⇒ **هر فایلِ ردیابی‌نشده نادیده گرفته می‌شد**. این فرضی نبود: بدونِ رفعِ آن، کامیتِ رنیمِ ۰۰۴→۰۰۷ تنها **حذفِ** `004_wave3_query_indexes.sql` را ثبت می‌کرد و `007_…` هرگز اضافه نمی‌شد. شاهد: `touch ZZ_probe.txt` سپس `git check-ignore` → `ignored`. پس از رفع: `file .gitignore` از `data` به `UTF-8 text`، بایتِ NUL از ۳۳ به ۰.
+- **شکافِ ۱ — تصادمِ ۰۰۴ (`fdb5f6c0`):** ‏`004_wave3_query_indexes` → **`007`** (نه `006` — `006_delta_schema_gaps` پیش‌تر گرفته شده بود). SQL اجرایی بایت‌به‌بایت یکسان (تنها نام و سربرگ عوض شد). سه دلیلِ فنی: (الف) **هیچ دفترِ کلِ مهاجرت وجود ندارد** — جست‌وجوی `schema_migrations|applied_migrations|migration_history` صفر نتیجه و `tools/migrate-to-pg.js` هرگز `migrations/` را نمی‌خواند؛ (ب) هفت ایندکسِ موج ۳ در هیچ مهاجرتِ دیگری ارجاع ندارند (تک‌تک بررسی شد)؛ (ج) صفر ارجاعِ کدی، فقط دو ارجاعِ سند.
+- **تست‌ها:** ‏`tests/migration-sequence.js` **جدید — ۱۹/۱۹** (نام‌گذاری، پیوستگی، شمارهٔ تکراری، جفتِ رفت/برگشت، تراکنش، توان‌پذیریِ جمله‌به‌جمله، بلوکِ `DO`، بی‌`DROP TABLE`، ساختارِ بازگشت، همگامیِ سند). ‏`tests/db-engineering.js` که روی `main` **قرمز** بود (فهرستِ سخت‌کدِ ۴تایی در برابر ۷ فایل) به بررسیِ ساختاری تبدیل شد → **۱۴/۱۴**. ‏`tools/docs-consistency-check.sh`: پینِ `DUP004 -eq 2` با خودِ قاعده جایگزین شد → **۴۹/۰** (پیش‌تر ۴۷/۱).
+- **جهش‌آزمایی (§۵):** هر **۸** جهش کشته شد — بازسازیِ تصادمِ ۰۰۴، پرشِ شماره، `.down` ناقص، `CREATE INDEX`/`ADD COLUMN` بی‌محافظ، بلوکِ `DO` بی‌بررسی، `DROP TABLE`، حذفِ ردیفِ راهنما. **جهشِ چهارم در نسخهٔ نخست زنده ماند** (مقایسهٔ شمارِ کل به‌جای جمله‌به‌جمله) — بازنویسی شد.
+- **شکافِ ۲ (`237eb1c8`):** ‏`docs/MIGRATION_AUDIT.md` + `docs/MIGRATION_DECISION.md` (جدید) · `docs/MIGRATION_GUIDE.md` → **v2.0.0** با §۱.۱ استراتژیِ شماره‌گذاریِ ماشینی‌سنج، §۴ رویهٔ بازگشتِ تفکیک‌شده برای هر هفت مهاجرت (از خودِ فایل‌های `.down` استخراج شد)، §۷.۱ چک‌لیستِ نگارش، §۹ قراردادِ آینده.
+- **شکافِ ۳ (`309e5da8`):** ‏`tools/migrate-helper.js` — ‏`--next` (شماره از دیسک: `008`)، ‏`--check`، ‏`--new <name>` (قالب)، ‏`--verify <n>` (کوئری‌های راستی‌آزمایی از DDL خودِ مهاجرت). **جایگزینِ دفترِ کل نیست** — صریحاً در سربرگ ثبت شد.
+- **گیت‌ها:** smoke **۵۴۷/۵۴۷** · check-authz **0** · secret-scan **۱۱/۱۱** · build --check **0**.
+- **قلمِ باز (ربطی به این کار ندارد):** باتری مستندات روی `main` **۴۳/۵۰** است — قفلِ `rc27` ‏۲۷۷ سند را قفل کرده در حالی که دیسک ۲۹۰ سند دارد (۱۳ سندِ PRهای #۵۶–#۶۸ بدونِ bump). رفع = bump به `rc28`؛ کارِ جدا.
+- **یک نمونهٔ «سبزِ جعلی» که گرفته شد:** پس از ریستِ سندباکس، `tests/smoke.js` با exit 0 برگشت ولی در واقع **رد شده بود** («jsdom نصب نیست»). بدونِ `npm install` هیچ تستی واقعاً اجرا نمی‌شود.
+
+## نشستِ بازسازیِ دسترس‌پذیری WCAG 2.1 AA (`feat/a11y-rebuild`) — ✅ (2026-09-11)
+
+- **مأموریت:** حسابرسی + رفعِ P1 دسترس‌پذیری (۵ نقش × ۱۰ محور) با شاهدِ زنده و جهش‌اثبات.
+- **یافته‌ها → رفع‌ها (هر رفع = کامیت جدا):** skip-link + `main`/`aside`؛ توست `role=status` + `aria-live`؛ نامِ برگر/بازگشت/زنگ/✕ها؛ `for` خودکارِ `f()` + لیبل‌های لاگین؛ `alt` تصاویر تکلیف/رسانه؛ `role=dialog` + انتقال/تله/بازگردانی فوکوس؛ `thead`+`th scope=col` جداول audit؛ جایگزین متنی canvas. کنتراست محاسبه‌شده: متن/پرایمری ✅، پالت بج‌ها P2 (تصمیم بصری).
+- **تست‌ها:** `tests/a11y-audit.js` **۴۰/۴۰** (قرمز اول ۱۰/۴۰) · smoke **۵۴۷/۵۴۷** · run **۳۵/۳۵** · check-authz exit 0 · secret-scan **۱۱/۱۱** · build --check سبز.
+- **گیت‌هاب:** push شد (`6107bc1` تأیید با ls-remote) · **PR #69** (https://github.com/rezaa2544/p2/pull/69) · باندل fallback: `Temp/a11y-rebuild.bundle` (verify شد).
+- **نکته‌ها:** توکن gh فرسوده بود (۲ نوبت)؛ push با URL-token و PR با REST API (gh به `read:org` گیر می‌دهد). کامیت‌های خارجی `a8f750b`/`d133db2` و تغییرِ `secret-scan.js`/`grades.js` مال نشستِ موازی است — دست نخورد. `smoke` ابتدا به‌خاطر نبود `jsdom` بلوکه بود، بعداً اجرا شد.
+- **اسناد:** `docs/A11Y_AUDIT.md` · `docs/A11Y_GUIDE.md` · §۱۷ `USER_GUIDE.html`.
+
 ## آرنا (Agent Mode): بستن شکاف اسکیما Delta — فاز ۳ — ۲۰/۰۶/۱۴۰۵ (2026-09-11) — ✅
 
 - **مأموریت:** سه شکافِ اسکیمای مسیر دلتا (`DELTA_HARDENING.md` §6 بند ۱) روی شاخهٔ `feat/delta-schema-gaps` (استک روی `feat/delta-hardening-phase2` @ `c13cd3f` — PR #56 هنوز باز).
@@ -37,6 +59,19 @@
 - **شاهدهای زندهٔ PG 18.4 (خوشهٔ باقی‌ماندهٔ فاز ۲، :55432):** زنجیرهٔ تازه 001→006 روی DB خالی سبز؛ ارتقای پایگاهِ ۹۲۳k فاز ۲ (۱۶۲ تعارضِ واقعی): قبل 42703 → بعد backfill ۱۶۲/۱۶۲ (`updated_at = created_at`)، صفر NULL، NOT NULL، ۳ ایندکس، EXPLAIN از ایندکس می‌خواند؛ برستِ `--live -n 60 -c 10` با builderهای تولیدی: **60/60 · p50=4.15ms · 1132 req/s**. خروجی: `~/.cache/pgtool/verify-006.js` (20/20) + `live-006.json`.
 - **گیت‌ها:** smoke **۵۴۷/۵۴۷** · check-authz **0** (تطبیق کامل) · secret-scan **۱۱/۱۱** · build --check **0** · tests/run.js 35/35 · رگرسیون: pull-bootstrap 12/12 · wave1-reads 18/18 · wave3-query 13/13 · wave14-observability 95/95 · sync-dup-claim 7/7 · sync-chunk ✓ · sync-atomic-batch 22/22 · فاز ۲: delta-sync-hardening 19/19 · wave4-all 13/13 · wave10-query-audit 14/14 · contract-layers 18/18 · DRY_RUN exit 0 · **delta-schema-gaps 12/12** ✅
 - **اسناد:** `docs/DELTA_HARDENING.md` §6 بند ۱ بسته + §۷ (فاز ۳) · `docs/MIGRATION_GUIDE.md` §۸ ردیف‌های 004_wave3/005/006 + یادداشتِ «بعدی 007» · همین ورودی.
+## A11y مودال‌ها و حالت‌هایِ تعاملی (`feat/a11y-modals-interactive`) — ✅ (2026-09-11)
+
+- **مأموریت:** بستنِ بدهیِ دورِ قبل («اسکن فقط نماهایِ سطحِ NAV») — axe-core رویِ مودال‌ها/حالت‌هایِ تعاملی در Chromium واقعی. پایه: `main@6dbef89`.
+- **هارنس:** `tests/a11y-interactive.js` — **۱۸ سناریو**، هر یک در contextِ تازه: ۸ مودالِ CRUD (user new/edit، class، subject، calendar، ticket، school، grade)، ۲ تأیید (confirmModal/askConfirm)، ۲ پنل (syncPanel/storageQuota)، ۲ حالتِ خطایِ ولیدیشن (invalid → has-error)، toastهایِ سه‌گانه، سایدبارِ بازِ موبایل (۴۲۰px + scrim)، منویِ بازِ پوسته (dropdown)، panel-picker. **ضدِ سبزِ جعلی:** هر سناریو وجودِ واقعیِ حالت را assert می‌کند (مودالِ بازنشده = شکست).
+- **خطِ پایه:** critical=**74** (label ×42 + select-name ×32 — ریشه: هلپرِ `f(label,inner)` در 18-modals بدونِ `for=`)، serious=**2** (scrollable-region-focusable).
+- **رفعِ critical (`2f003cd`):** خودِ هلپرِ `f()` — کنترلِ id-دار → `<label for=…>`؛ بی‌id → aria-label از متنِ برچسب. یک نقطه، ~۳۰ فرمِ مودال درست شد → 74→0.
+- **رفعِ serious (`2014c93`):** `a11yScrollablePass()` در 01-helpers؛ hook در انتهایِ `render()` (24-edu-office) و در `openModal()` (18-modals): `.table-wrap/.vscroll` سرریزدار → tabindex=0 + role=region + aria-label → 2→0.
+- **نگهبان (`904fd93`):** §4–5 در `a11y-regressions.js` (28→**35** چک)؛ mutation-verified (برگرداندنِ f() قدیمی → ۳ چک سرخ؛ حذفِ hook → ۱ چک سرخ).
+- **🔴 کشفِ جانبیِ مهم (`087a67c`):** کامیتِ `9a08ac5` (PR #66) سه الگو را با بایت‌هایِ **UTF-16LE+CRLF** به `.gitignore` چسبانده بود؛ git خطی با `*` تنها می‌دید و **هر فایلِ تازهٔ مخزن ignore می‌شد** (git add رد می‌کرد). فایل UTF-8/LF بازنویسی شد با حفظِ سه الگویِ موردنظر (`*.bundle`، `*.tar.gz`، `*work.patch`).
+- **گیت‌ها:** smoke **547/547** · check-authz 0 · secret-scan **11/11** · build --check 0 · a11y-runtime **۴۵/۴۵ صفر/صفر** (رگرسیون نگرفت) · a11y-interactive **۱۸/۱۸ صفر/صفر** · a11y-regressions **35/35**.
+- **اسناد:** `docs/A11Y_RUNTIME_REPORT.md` (بخشِ فاز ۲)، `docs/A11Y_GUIDE.md` (§۲.۵ مودال‌ها)، همین HANDOFF.
+- **نکته/بدهی:** پاسِ اسکرول فقط `.table-wrap/.vscroll` را می‌شناسد — ظرفِ اسکرول‌شونده با کلاسِ دیگر باید به سلکتور اضافه شود؛ سناریوها focus-trap و ترتیبِ tab را نمی‌سنجند (axe rule ندارد — بدهیِ آینده: تستِ رفتاریِ کیبورد)؛ اسکنِ مودال‌ها رویِ نقش‌هایِ manager/teacher/superadmin بود، نه همهٔ نقش‌ها.
+
 ## راستی‌آزماییِ دسترس‌پذیری در زمانِ اجرا (`feat/a11y-runtime-verification`) — ✅ (2026-09-11)
 
 - **مأموریت:** اسکنِ axe-core رویِ DOM زندهٔ Chromium واقعی (playwright — نه jsdom)؛ پایه: `main@b872f44`.

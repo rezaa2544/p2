@@ -59,8 +59,7 @@ docs/_search-index.json
 # پسماند ابزارهای حافظهٔ عامل (روفلو) — هرگز کامیت نشود
 .claude/proven-config.json
 .claude/.proven-config-version
-
-# آرتیفکت‌های برون‌بردِ عامل (خارج از repo در /home/user ساخته می‌شوند)
+node_modules
 *.bundle
 *.tar.gz
 *work.patch
