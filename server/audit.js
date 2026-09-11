@@ -135,6 +135,8 @@ function createAudit(opts = {}) {
   const auditDir = opts.auditDir || path.join(path.dirname(auditFile), 'audit');
   const maxEvents = opts.maxEvents != null ? opts.maxEvents : (parseInt(process.env.PAYESH_AUDIT_MAX_EVENTS || '1000', 10) || 1000);
   const maxBytes = opts.maxBytes != null ? opts.maxBytes : (parseInt(process.env.PAYESH_AUDIT_MAX_BYTES || String(10 * 1024 * 1024), 10) || 10 * 1024 * 1024);
+  const requestedQueue = opts.maxQueue != null ? Number(opts.maxQueue) : Number(process.env.PAYESH_AUDIT_MAX_QUEUE || 10000);
+  const maxQueue = Number.isFinite(requestedQueue) && requestedQueue > 0 ? Math.floor(requestedQueue) : 10000;
   const asyncMode = opts.asyncMode === true || process.env.PAYESH_AUDIT_ASYNC === '1';
 
   let initialized = false;
@@ -145,6 +147,8 @@ function createAudit(opts = {}) {
   let flushQueue = [];
   let flushScheduled = false;
   let flushRunning = false;
+  let droppedEvents = 0;
+  let overflowWarned = false;
 
   function ensureInit() {
     if (initialized) return;
@@ -267,11 +271,24 @@ function createAudit(opts = {}) {
    * مسیرِ اصلی را نمی‌شکند — همان قراردادِ قبلی).
    */
   function enqueueLine(line) {
+    /* The request path must never turn a slow disk into an unbounded heap.
+       Drop newest lines once the explicit bound is reached; the counter is
+       exposed for telemetry/operators and the oldest queued audit history is
+       preserved. */
+    if (flushQueue.length >= maxQueue) {
+      droppedEvents++;
+      if (!overflowWarned) {
+        overflowWarned = true;
+        try { process.emitWarning('audit async queue reached its bound; newest events are being dropped', { code: 'PAYESH_AUDIT_QUEUE_OVERFLOW' }); } catch (e) {}
+      }
+      return false;
+    }
     flushQueue.push(line);
     if (!flushScheduled && !flushRunning) {
       flushScheduled = true;
       setImmediate(flush);
     }
+    return true;
   }
 
   async function flush() {
@@ -421,6 +438,7 @@ function createAudit(opts = {}) {
   audit.getAuditFile = () => auditFile;
   audit.getAuditDir = () => auditDir;
   audit.getEventCounter = () => eventCounter;
+  audit.getQueueStats = () => ({ queued: flushQueue.length, max: maxQueue, dropped: droppedEvents, flushing: flushRunning });
   audit.isAsync = () => asyncMode;
   audit.flush = asyncMode ? flush : async () => {};
   audit.flushSync = flushSync;
@@ -437,6 +455,7 @@ function createAudit(opts = {}) {
     getAuditFile: () => auditFile,
     getAuditDir: () => auditDir,
     getEventCounter: () => eventCounter,
+    getQueueStats: () => ({ queued: flushQueue.length, max: maxQueue, dropped: droppedEvents, flushing: flushRunning }),
     isAsync: () => asyncMode,
     flush: asyncMode ? flush : (async () => {}),
     flushSync
