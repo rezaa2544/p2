@@ -62,3 +62,24 @@ groups:
         annotations:
           summary: "heap بیش از ۸۰٪ِ سقفِ V8"
           description: "ریسکِ OOM؛ ری‌استارتِ نرمِ instance طبقِ runbook + بررسیِ نشتی با snapshotِ next drill"
+      - alert: AnomalyDetected
+        expr: sum(increase(payesh_runtime_anomalies_total[5m])) > 0
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: "Runtime anomaly detected"
+          description: "A request, auth-error, response-volume, tenant-switch, or sync-rate signal exceeded its rolling 3σ baseline. Follow RC-016; inspect only redacted audit event metadata."
+      - alert: AttackPatternSignature
+        expr: sum by (pattern, severity) (increase(payesh_attack_patterns_detected_total[5m])) > 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "Runtime attack pattern signature detected"
+          description: "A bounded {{ $labels.pattern }} signature fired (detector severity {{ $labels.severity }}). Contain per RC-016; do not add raw actor identifiers to the incident channel."
+      - alert: SuspiciousSession
+        expr: payesh_suspicious_sessions > 0
+        for: 2m
+        labels: { severity: warning }
+        annotations:
+          summary: "Suspicious runtime session retained"
+          description: "One or more one-way-hashed sessions are tied to an anomaly or denied attack signature in the preceding 24 hours. Triage using RC-016."

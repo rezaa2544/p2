@@ -71,7 +71,7 @@
 | logs | ✅ | `server/audit.js` (چرخش 10MB، ماسک PII، حالت async) + تزریق `trace_id` (PR #22) |
 | traces | ✅ | `server/tracing.js` + سرآیند `X-Trace-Id` (PR #22، OTLP fail-open)؛ سوئیت‌های tracing سبز (شامل فیکس‌های PR #45) |
 | dashboards | ✅ | `infra/observability/dashboards/payesh-main.json` + `payesh-logs.json` با پروویژنینگ خودکار گرافانا (ویو ۱۴، تست ۳۰/۳۰) — اجرای زنده روی میزبان باقی است |
-| alerts | ⏳ | هفت قانون بحرانی در `infra/observability/alert-rules.yml` (هم‌نام با `server/metrics.js`، تست ۵۵/۵۵) + ماتریس ارجاع و پلی‌بوک‌ها (`docs/INCIDENT_RESPONSE.md` §۲/§۳) — وب‌هوک واقعی/دریل اعلان باقی است |
+| alerts | ⏳ | ده قانون: هفت قانون زیرساختی + `AnomalyDetected`/`AttackPatternSignature`/`SuspiciousSession` در `infra/observability/alert-rules.yml` (alias: `monitoring/alert-rules.yml`)؛ metricهای runtime و RC-016 تست شده‌اند. وب‌هوک واقعی، stack production و drill اعلان همچنان باقی است |
 
 ## Testing (آزمون)
 
