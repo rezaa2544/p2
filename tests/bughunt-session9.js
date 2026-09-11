@@ -13,6 +13,8 @@
         payesh_cursor_region_mismatch_total **تکان نمی‌خورد** (مسموم‌سازیِ
         متریکِ سلامت با توکنِ جعلی بسته شود). پیش از رفع: قرمز.
      A5 توکنِ v1 در دورهٔ گذار ⇐ همچنان پذیرفته می‌شود
+     A6 توکنِ منقضی ⇒ cursor_expired (سطحِ verify و سطحِ pull)
+     A7 توکنِ بدساخت/غیررشته‌ای/سرآیندِ غلط ⇒ cursor_invalid؛ بی‌کلید ⇒ cursor_unavailable
    گروه B — S9-2: مذاکرهٔ Accept-Encoding باید q=0 را بفهمد
      B1 gzip;q=0 ⇒ هیچ (پیش از رفع: gzip می‌فرستاد — نقضِ صریحِ کلاینت)
      B2 gzip;q=0, br ⇒ br (پیش از رفع: gzip)
@@ -27,6 +29,9 @@
      C2 درستیِ خروجی: gunzip ⇒ همان JSON · Vary/Content-Encoding · اعدادِ متریک
      C3 هارنسِ قدیمی (بدونِ writeHead) ⇒ همان مسیرِ sendJson (سازگاری)
      C4 بدنهٔ سریال‌نشدنی ⇒ fallbackِ نافشرده (پاسخ هرگز نمی‌میرد)
+     C5 کرشِ میانهٔ نوشتن (writeHead پرتاب) ⇒ همان fallback
+     C6 مسیرِ کاملِ pull: awaitِ فشرده‌سازی + بازشدنِ بدنه + سنجه‌های حجم
+     C7 مسیرِ brotli (کیفیت ۵) و C8 آستانهٔ کمینه (min bytes)
    گروه D — پینِ رگرسیونِ سطوحِ آدیت‌شده (سبزِ پایه — محافظت از کدِ سالم)
      D1 429 backpressure: کد + Retry-After + هیچ op اعمال نمی‌شود
      D2 checkRateLimit وزن‌دار: weight=N مصرفِ N واحد (fallbackِ حافظه)
@@ -57,10 +62,12 @@ async function test(name, fn) {
 const group = (t) => console.log(`\n▸ ${t}`);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const iso = (t) => new Date(t).toISOString();
-const counterValue = (name) => {
+/* هم شمارنده (value) و هم هیستوگرام (count/sum) را می‌فهمد — سنجه‌های حجمی
+   هیستوگرام‌اند و جمعِ «sum» معنا دارد. */
+const counterValue = (name, field) => {
   const snap = metrics.snapshot()[name];
   if (!snap || !Array.isArray(snap.series)) return 0;
-  return snap.series.reduce((a, s) => a + (Number(s.value) || 0), 0);
+  return snap.series.reduce((a, s) => a + (Number(s[field || 'value'] ?? s.sum) || 0), 0);
 };
 const b64u = (s) => Buffer.from(s).toString('base64url');
 /* ساختِ توکنِ دلخواه با کلیدِ مشتق‌شده — برای سناریوهای جعل (آدم‌ورزی) */
@@ -131,6 +138,43 @@ await test('A5 توکنِ v1 (دورهٔ گذار) ⇒ همچنان پذیرفت
   const v1 = mintToken(SECRET, { v: 1, since: iso(Date.now() - 600e3), iat: nowS, exp: nowS + 3600, jti: 'dd'.repeat(8) });
   const v = c.verify(v1);
   assert(v.ok === true, 'v1 باید در گذار پذیرفته شود: ' + JSON.stringify(v));
+});
+
+await test('A6 توکنِ منقضی (TTL گذشته) ⇒ cursor_expired — و در سطحِ pull هم 401 با همان کد', async () => {
+  /* ساعتِ امضاکننده ۲ ساعت عقب: توکن با ttl=۶۰ ثانیه صادر شده و بی‌تردید منقضی است */
+  const past = createCursor({ secret: SECRET, ttlS: 60, now: () => Math.floor(Date.now() / 1000) - 7200 });
+  const tok = past.sign(iso(Date.now() - 7200e3));
+  const v = createCursor({ secret: SECRET }).verify(tok);
+  assert(v.ok === false && v.code === 'cursor_expired', 'توکنِ منقضی باید cursor_expired بدهد: ' + JSON.stringify(v));
+  const store = { __deleted_records: [], __server_version: 1, grades: [] };
+  const ctl = createPull({
+    store, db: null, sessionFrom: async () => ({ id: 10, school_id: 1, role: 'manager' }),
+    sendJson: (res, code, body) => { res._cap = { code, body }; },
+    cursor: createCursor({ secret: SECRET })
+  });
+  const res = {};
+  await ctl.apiPull({ url: '/api/v1/pull?cursor=' + encodeURIComponent(tok), headers: {} }, res);
+  assert(res._cap && res._cap.code === 401 && res._cap.body.code === 'cursor_expired',
+    'pull باید 401/cursor_expired بدهد: ' + JSON.stringify(res._cap && res._cap.code + '/' + (res._cap.body && res._cap.body.code)));
+});
+
+await test('A7 توکنِ بدساخت/غیررشته‌ای/سرآیندِ غلط ⇒ cursor_invalid (fail-closed)', async () => {
+  const c = createCursor({ secret: SECRET });
+  const cases = [
+    [null, 'null'], [undefined, 'undefined'], [12345, 'number'], ['', 'empty'],
+    ['not-a-token', 'no dots'], ['pc9.' + b64u('{}') + '.x', 'wrong prefix'],
+    ['pc1.' + b64u('not-json') + '.' + b64u('sig'), 'payload not JSON'],
+    ['pc1.' + b64u('{"v":2}') + '.', 'empty signature'],
+    ['pc1.' + b64u(JSON.stringify({ v: 9, since: iso(Date.now()), iat: 0, exp: 9999999999, jti: 'x' })) + '.' + b64u('sig'), 'unknown version'],
+    ['x'.repeat(5000), 'over-long'],
+  ];
+  for (const [tok, label] of cases) {
+    const v = c.verify(tok);
+    assert(v.ok === false && v.code === 'cursor_invalid', label + ' ⇒ انتظار cursor_invalid، گرفت: ' + JSON.stringify(v));
+  }
+  const off = createCursor({ secret: '' });
+  const v2 = off.verify('pc1.abc.def');
+  assert(v2.ok === false && v2.code === 'cursor_unavailable', 'بدونِ کلید ⇒ cursor_unavailable (هرگز اعتمادِ خاموش): ' + JSON.stringify(v2));
 });
 
 if (oldRegion === undefined) delete process.env.PAYESH_REGION; else process.env.PAYESH_REGION = oldRegion;
@@ -224,6 +268,69 @@ await test('C4 بدنهٔ سریال‌نشدنی (دایره‌ای) ⇒ fallba
   const out = await sendJsonCompressed(res, { headers: { 'accept-encoding': 'gzip' } }, 200, cyc, (r2, c, o) => { r2._cap = { c, o }; });
   assert(out.encoding === null, 'بدونِ فشرده‌سازی');
   assert(res._cap && res._cap.c === 200, 'پاسخ از مسیرِ sendJson رفت');
+});
+
+await test('C5 شبیه‌سازیِ کرشِ میانهٔ نوشتن (writeHead پرتاب می‌کند) ⇒ fallbackِ نافشرده، بدونِ رد شدنِ Promise', async () => {
+  const res = mkRes();
+  res.writeHead = () => { throw new Error('EPIPE: client gone'); };
+  const out = await sendJsonCompressed(res, { headers: { 'accept-encoding': 'gzip' } }, 200, bigJson(),
+    (r2, c, o) => { r2._cap = { c, o }; });
+  assert(out.encoding === null, 'کرشِ نوشتن نباید پاسخ را بکشد؛ encoding=' + JSON.stringify(out.encoding));
+  assert(res._cap && res._cap.c === 200 && res._cap.o && res._cap.o.ok === true,
+    'بدنهٔ کامل از مسیرِ نافشرده (sendJson) باید برود');
+});
+
+await test('C6 مسیرِ کاملِ pull: فشرده‌سازی *await* می‌شود (بدنه و متریک‌ها پیش از بازگشت کامل‌اند)', async () => {
+  const rows = [];
+  for (let i = 1; i <= 3000; i++) rows.push({ id: i, school_id: 1, class_id: i % 30, student_id: 1000 + i,
+    score: (i * 7) % 20, ref: 's9-e2e-row-' + i, note: 'توضیحِ تکرارشونده برای فشرده‌شدنِ خوب ' + (i % 40),
+    created_at: iso(Date.now() - 30 * 864e5), updated_at: iso(Date.now() - 30 * 864e5) });
+  const store = { __deleted_records: [], __server_version: 7, grades: rows };
+  const res = mkRes();
+  const controller = createPull({
+    store, db: null,
+    sessionFrom: async () => ({ id: 10, school_id: 1, role: 'manager' }),
+    sendJson: (r2, c, o) => { r2._head = { status: c, headers: {} }; r2._chunks = [Buffer.from(JSON.stringify(o))]; },
+    cursor: createCursor({ secret: SECRET })
+  });
+  const beforeSize = counterValue('payesh_sync_delta_size_bytes', 'sum');
+  await controller.apiPull({ url: '/api/v1/pull', headers: { 'accept-encoding': 'gzip' } }, res);
+  assert(res._head && res._head.status === 200, 'پاسخ باید پیش از بازگشتِ هندلر نوشته شده باشد');
+  assert(res._head.headers['Content-Encoding'] === 'gzip', 'gzip مذاکره شد');
+  const back = JSON.parse(zlib.gunzipSync(res._body).toString('utf8'));
+  assert(Array.isArray(back.collections.grades) && back.collections.grades.length === 3000, 'بدنهٔ بازشده کامل است');
+  const afterSize = counterValue('payesh_sync_delta_size_bytes', 'sum');
+  assert(afterSize > beforeSize, 'سنجهٔ حجمِ خام باید با عددِ واقعی ثبت شود (' + beforeSize + '→' + afterSize + ')');
+});
+
+await test('C7 مسیرِ brotli: مذاکرهٔ br ⇒ بدنهٔ brotliِ بازشدنی (کیفیت ۵، نه پیش‌فرضِ ۱۱)', async () => {
+  const body = bigJson();
+  const res = mkRes();
+  const info = await sendJsonCompressed(res, { headers: { 'accept-encoding': 'br' } }, 200, body, () => {});
+  assert(info.encoding === 'br' && res._head.headers['Content-Encoding'] === 'br', 'br باید مذاکره شود');
+  const back = JSON.parse(zlib.brotliDecompressSync(res._body).toString('utf8'));
+  assert(back.collections.grades.length === body.collections.grades.length, 'بدنهٔ brotli کامل بازمی‌گردد');
+  assert(info.wireBytes < info.rawBytes, 'brotli باید کوچک‌تر باشد');
+});
+
+await test('C8 آستانهٔ کمینه: بدنهٔ کوچک نافشرده می‌ماند و با min=0 فشرده می‌شود', async () => {
+  const small = { ok: true, collections: { grades: [{ id: 1 }] } };
+  const keep = process.env.PAYESH_DELTA_COMPRESS_MIN_BYTES;
+  try {
+    delete process.env.PAYESH_DELTA_COMPRESS_MIN_BYTES;
+    const res1 = mkRes();
+    const i1 = await sendJsonCompressed(res1, { headers: { 'accept-encoding': 'gzip' } }, 200, small, (r, c, o) => { r._cap = { c, o }; });
+    assert(i1.encoding === null && res1._cap && res1._cap.c === 200, 'بدنهٔ کوچک باید نافشرده از مسیرِ sendJson برود');
+    assert(!res1._head, 'هیچ سرآیندِ فشرده‌سازی نباید نوشته شود');
+    process.env.PAYESH_DELTA_COMPRESS_MIN_BYTES = '0';
+    const res2 = mkRes();
+    const i2 = await sendJsonCompressed(res2, { headers: { 'accept-encoding': 'gzip' } }, 200, small, () => {});
+    assert(i2.encoding === 'gzip', 'با min=0 همان بدنهٔ کوچک هم باید فشرده شود: ' + JSON.stringify(i2.encoding));
+    assert(JSON.parse(zlib.gunzipSync(res2._body).toString('utf8')).ok === true, 'بدنهٔ بازشده سالم است');
+  } finally {
+    if (keep === undefined) delete process.env.PAYESH_DELTA_COMPRESS_MIN_BYTES;
+    else process.env.PAYESH_DELTA_COMPRESS_MIN_BYTES = keep;
+  }
 });
 
 /* ═══════════════ D — پینِ رگرسیونِ سطوحِ آدم‌یت‌شدهٔ سالم ═══════════════ */
