@@ -101,6 +101,36 @@ node tests/a11y-regressions.js  # نگهبانِ استاتیک — بدونِ �
 | `a11y-runtime.js` (۴۵ اسکنِ فاز ۱ — رگرسیون نگرفت) | **critical=0 serious=0** ✅ |
 | `a11y-regressions.js` | 35/35 ✅ |
 
+## فاز ۳ — ناوبریِ صفحه‌کلید (2026-09-11، شاخهٔ `feat/a11y-keyboard-nav`)
+
+بدهیِ فازِ ۲ («focus-trap و ترتیبِ tab سنجیده نشد — axe برایش rule ندارد») بسته شد:
+هارنسِ **رفتاریِ** `tests/a11y-keyboard.js` با فشردنِ کلیدهایِ واقعی (`page.keyboard`)
+**۹۲ چک** را می‌سنجد — نه ساختارِ DOM، بلکه خودِ رفتار.
+
+### پوششِ آزمون
+
+| گروه | چک‌ها |
+|---|---|
+| ۱۱ مودال (manager/teacher/superadmin) | focus اولیه واردِ مودال؛ Tab از آخرین→اولین؛ Shift+Tab از اولین→آخرین؛ ۳×Tab بدونِ فرار (trap)؛ Escape می‌بندد؛ focus به بازکننده برمی‌گردد |
+| پوستهٔ ۵ نقش (manager/teacher/parent/student/counselor) | نخستین Tab → skip-link؛ Enter → focus رویِ `.main`؛ nav-item فوکوس‌پذیر و با Enter فعال |
+| dropdown پوسته (نمایِ موبایل ۴۲۰px) | Enter باز می‌کند؛ ArrowDown/ArrowUp پیمایش؛ Escape می‌بندد + focus برمی‌گردد |
+| فرم | ArrowDown رویِ select رفتارِ بومی را حفظ کرده |
+
+### خطِ پایه: ۲۳ قبول / ۵۵ رد → نهایی: **۹۲ / ۰**
+
+| کامیت | رفع | نتیجه |
+|---|---|---|
+| `aa33cb4` | **focus trap مودال**: `openModal` بازکننده را به‌خاطر می‌سپارد، `role=dialog aria-modal=true` می‌دهد، focus اولیه به نخستین کنترلِ فرم می‌رود، keydown-trap چرخهٔ Tab/Shift+Tab را می‌بندد؛ `closeModal` focus را برمی‌گرداند | 23→67 |
+| `81eb468` | **skip-link + nav**: `<a class=skip-link>` نخستین عنصرِ پوسته (تا فوکوس نگیرد مخفی)؛ اکشنِ `skip-to-main` → focus رویِ `.main`؛ `.nav-item` با `role=link tabindex=0` + حلقهٔ `:focus-visible`؛ هندلرِ سراسریِ Enter/Space برایِ عناصرِ غیربومیِ `data-act` | 67→87 |
+| `b82bfad` | **dropdown پوسته**: ArrowDown/ArrowUp پیمایشِ چرخه‌ای، Home/End، Escape با capture (تا هندلرِ سراسریِ goBack نبلعد) + بازگشتِ focus به 🎨 | 87→**92** |
+| `0ceaa6c` | §6 در `a11y-regressions.js` (35→46 چک) | نگهبان |
+
+### mutation فاز ۳
+- حذفِ `role=dialog` → گاردِ استاتیک سرخ (exit 1) ✅
+- حذفِ skip-link → گاردِ استاتیک سرخ (exit 1) ✅
+- حذفِ listenerِ trap → سوئیتِ رفتاری از ۹۲ به ۷۰ سقوط کرد ✅
+- خطِ پایه واقعاً سرخ بود (۵۵ شکست) و با هر کامیت پیوسته بالا آمد (23→67→87→92).
+
 ## راستی‌آزماییِ mutation (سبزِ جعلی ممنوع)
 
 - حذفِ `aria-label` از سلکتِ مدرسهٔ ورود → `a11y-regressions.js` خروجی 1 ✅
