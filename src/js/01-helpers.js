@@ -37,6 +37,6 @@ const TERMS=['نوبت اول','نوبت دوم'];
    اعمال می‌شود — خودِ فهرست قاعده ندارد تا گزینه برای همه
    در دسترس باشد و اعتبارسنجی در محل ثبت باشد. */
 const EXAM_TYPES=['کلاسی','میان‌ترم','پایان‌ترم','عملی','امتحان نهایی'];
-function toast(msg,type=''){const w=$('#toasts');const d=document.createElement('div');d.className='toast '+type;d.textContent=msg;w.appendChild(d);setTimeout(()=>d.remove(),3000);}
+function toast(msg,type=''){const w=$('#toasts');if(!w)return;const d=document.createElement('div');d.className='toast '+type;d.setAttribute('role','status');d.textContent=msg;w.appendChild(d);setTimeout(()=>d.remove(),3000);}
 function empty(emoji,title,desc,btn){return `<div class="empty"><span class="emoji">${emoji}</span><h4>${esc(title)}</h4><div class="small">${esc(desc||'')}</div>${btn?`<div style="margin-top:14px">${btn}</div>`:''}</div>`;}
 function bar(v,max,color){return `<div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,(v/(max||1))*100)}%;background:${color}"></div></div>`;}
