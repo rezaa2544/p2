@@ -111,18 +111,20 @@ const atEdge = (page, which) => page.evaluate((w) => {
 }, which);
 
 /* مودال‌هایِ زیرِ آزمون */
+/* nav: ناوبری (render کامل) — جدا از open تا مثلِ جریانِ واقعی، trigger بعدِ
+   ناوبری فوکوس شود و openModal همان عنصرِ زنده را به‌عنوانِ opener ثبت کند. */
 const MODALS = [
-  { name: 'user-new',    login: `db.users.find(x=>x.username==='manager1')`,  open: `S.route='users'; render(); userModal(null);` },
-  { name: 'user-edit',   login: `db.users.find(x=>x.username==='manager1')`,  open: `S.route='users'; render(); userModal(db.users.find(u=>u.role==='student'&&u.school_id===S.user.school_id));` },
-  { name: 'class',       login: `db.users.find(x=>x.username==='manager1')`,  open: `S.route='classes'; render(); classModal(null);` },
-  { name: 'subject',     login: `db.users.find(x=>x.username==='manager1')`,  open: `S.route='subjects'; render(); subjectModal(null);` },
-  { name: 'calendar',    login: `db.users.find(x=>x.username==='manager1')`,  open: `S.route='calendar'; render(); calModal(null);` },
-  { name: 'ticket',      login: `db.users.find(x=>x.username==='manager1')`,  open: `S.route='dashboard'; render(); ticketModal();` },
-  { name: 'confirm-del', login: `db.users.find(x=>x.username==='manager1')`,  open: `S.route='users'; render(); confirmModal('حذف شود؟','user-del-ok',1);` },
-  { name: 'ask-confirm', login: `db.users.find(x=>x.username==='manager1')`,  open: `S.route='dashboard'; render(); askConfirm('ادامه؟',function(){},{danger:false});` },
-  { name: 'sync-panel',  login: `db.users.find(x=>x.username==='manager1')`,  open: `S.route='dashboard'; render(); syncPanelModal();` },
-  { name: 'grade',       login: `db.users.find(x=>x.username==='teacher1_1')`, open: `S.route='grades'; render(); gradeModal(null);` },
-  { name: 'school',      login: `db.users.find(x=>x.role==='superadmin')`,    open: `S.route='schools'; render(); schoolModal(null);` },
+  { name: 'user-new',    login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='users'; render();`,     open: `userModal(null);` },
+  { name: 'user-edit',   login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='users'; render();`,     open: `userModal(db.users.find(u=>u.role==='student'&&u.school_id===S.user.school_id));` },
+  { name: 'class',       login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='classes'; render();`,   open: `classModal(null);` },
+  { name: 'subject',     login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='subjects'; render();`,  open: `subjectModal(null);` },
+  { name: 'calendar',    login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='calendar'; render();`,  open: `calModal(null);` },
+  { name: 'ticket',      login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='dashboard'; render();`, open: `ticketModal();` },
+  { name: 'confirm-del', login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='users'; render();`,     open: `confirmModal('حذف شود؟','user-del-ok',1);` },
+  { name: 'ask-confirm', login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='dashboard'; render();`, open: `askConfirm('ادامه؟',function(){},{danger:false});` },
+  { name: 'sync-panel',  login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='dashboard'; render();`, open: `syncPanelModal();` },
+  { name: 'grade',       login: `db.users.find(x=>x.username==='teacher1_1')`, nav: `S.route='grades'; render();`,   open: `gradeModal(null);` },
+  { name: 'school',      login: `db.users.find(x=>x.role==='superadmin')`,    nav: `S.route='schools'; render();`,   open: `schoolModal(null);` },
 ];
 
 /* نقش‌ها برایِ آزمونِ پوسته (skip-link + nav) */
@@ -149,11 +151,18 @@ const SHELL_ROLES = [
       const who = await login(page, M.login);
       if (!who) { check(false, `${M.name}: کاربرِ آزمون پیدا نشد`); await context.close(); continue; }
 
-      /* عنصرِ بازکننده را focus می‌کنیم تا «بازگشتِ focus» سنجیدنی باشد */
-      await page.evaluate(() => {
-        const b = document.querySelector('.burger') || document.querySelector('button');
-        if (b) { b.id = b.id || 'kb-trigger'; b.focus(); }
+      /* اول ناوبری (render کامل)، بعد فوکوسِ trigger، بعد باز کردنِ مودال —
+         مثلِ جریانِ واقعیِ کاربر که دکمه را فوکوس/کلیک می‌کند */
+      await page.evaluate((code) => { eval(code); }, M.nav);
+      await page.waitForTimeout(100);
+      const trigOk = await page.evaluate(() => {
+        /* دکمهٔ «مرئیِ» صفحه (burger در دسکتاپ display:none است و focus نمی‌گیرد) */
+        const b = [...document.querySelectorAll('button')].find(x => x.offsetParent !== null);
+        if (!b) return false;
+        b.id = 'kb-trigger'; b.focus();
+        return document.activeElement === b;
       });
+      if (!trigOk) { check(false, `${M.name}: عنصرِ بازکنندهٔ مرئی برایِ فوکوس پیدا نشد`); await context.close(); continue; }
       await page.evaluate((code) => { eval(code); }, M.open);
       await page.waitForTimeout(sleepFor(M));
 
