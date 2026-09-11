@@ -50,6 +50,34 @@ function tableName(t) {
  * @param {Object} o { sinceISO, lastUpdatedAt?, lastId? }
  * @returns {{sql:string, params:Array<*>}}
  */
+/**
+ * Build the change-ID delta SELECT (Wave 10): rows whose chg_id is strictly
+ * after the watermark, ordered by (chg_id, id) — the skew-proof delta feed
+ * for the future cursor-v3 pull mode. Same allowlist discipline as
+ * deltaRowsSql; scope is still applied by the caller (scope only removes).
+ *
+ * NOT wired into pull.js yet — pull still speaks timestamp `since`. This
+ * builder + migration 008's 14 (chg_id) indexes are the ready-to-flip
+ * substrate; the wire-up (cursor v3 carrying the watermark) is the scoped
+ * follow-up recorded in docs/WAVE10_DB_SCALE.md.
+ *
+ * @param {string} table
+ * @param {Object} o { afterChgId:number }
+ * @returns {{sql:string, params:Array<number>}}
+ */
+function deltaRowsByChgSql(table, o) {
+  o = o || {};
+  const t = tableName(table);
+  const after = Number(o.afterChgId);
+  if (!Number.isFinite(after) || after < 0) {
+    throw new Error('syncdelta.deltaRowsByChgSql: afterChgId (non-negative number) required');
+  }
+  return {
+    sql: `SELECT * FROM "${t}" WHERE chg_id > $1 ORDER BY chg_id ASC, id ASC`,
+    params: [Math.trunc(after)]
+  };
+}
+
 function deltaRowsSql(table, o) {
   o = o || {};
   const t = tableName(table);
@@ -133,4 +161,4 @@ function tombstonesSql(o) {
   };
 }
 
-module.exports = { deltaRowsSql, deltaKeysetSql, tombstonesSql, tableName };
+module.exports = { deltaRowsSql, deltaRowsByChgSql, deltaKeysetSql, tombstonesSql, tableName };

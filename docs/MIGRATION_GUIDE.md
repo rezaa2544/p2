@@ -259,8 +259,9 @@ $ node tools/migrate-helper.js --next
 | ۰۰۵ | `005_delta_sync_updated_at_indexes.sql` / `.down` | ۱۶ ایندکسِ تک‌ستونیِ `updated_at` برای پیشیکیت/ORDER BY دلتا — یافتهٔ اجرای زندهٔ فاز ۲ (p50 ‏۸.۶×) | مرج (فاز ۲ — PR #56) |
 | ۰۰۶ | `006_delta_schema_gaps.sql` / `.down` | بستنِ سه شکافِ اسکیمای دلتا: `sync_conflicts.updated_at` (ADD→backfill از created_at→NOT NULL→ایندکس) + ایندکس‌های `hw_assignments`/`vclass_sessions` | مرج (فاز ۳ — این PR) |
 | ۰۰۷ | `007_wave3_query_indexes.sql` / `.down` | هفت ایندکسِ کیستِ موج ۳ روی users/attendance/grades/classes — پیش‌تر `۰۰۴` بود و با `004_wave1_version_seq` تصادم داشت؛ در ۲۰۲۶-۰۹-۱۱ شماره‌گذاریِ مجدد شد (`docs/MIGRATION_DECISION.md`) | مرج (موج ۳) |
+| ۰۰۸ | `008_delta_chg_id.sql` / `.down` | زیرساختِ دلتایِ change-ID: سکوئنسِ مشترکِ `payesh_chg_seq` + ستونِ `chg_id` + تریگرِ bump (idempotent) + backfill + **۱۴ ایندکسِ `(chg_id)`** روی ۱۴ جدولِ تراکنشیِ دلتا — موج ۱۰ (`docs/WAVE10_DB_SCALE.md` §۶) | مرج (موج ۱۰ — این PR) |
 
-> مهاجرت بعدی شمارهٔ `008` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را
+> مهاجرت بعدی شمارهٔ `009` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را
 > (با وضعیتِ مرج) به جدول اضافه کند — مالک: نویسندهٔ مهاجرت.
 
 ---

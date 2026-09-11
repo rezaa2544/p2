@@ -351,6 +351,31 @@ function isPgReadableTable(name) {
     && name.indexOf('__') !== 0;
 }
 
+/* Wave 10 (chg_id): ستون‌هایِ داخلیِ لایهٔ DB — هرگز از سرور بیرون نمی‌روند.
+   SELECT * آن‌ها را برمی‌گرداند (ستونِ پارتیشن‌نشده به ازایِ هر جدول)؛ این‌جا
+   کنار گذاشته می‌شوند تا شکلِ سطرِ PG با حالتِ حافظه بایت‌به‌بایت یکی بماند و
+   هیچ‌وقت به op کلاینت راه پیدا نکنند (validate.js آن را unknown_field می‌گیرد). */
+const INTERNAL_ROW_COLUMNS = new Set(['chg_id']);
+
+/**
+ * Remove server-internal columns from rows leaving the DB layer.
+ * Pure function; returns the same array shape with shallow-copied rows.
+ * @param {Array<Object>} rows
+ * @returns {Array<Object>}
+ */
+function stripInternalColumns(rows) {
+  if (!Array.isArray(rows)) return rows;
+  return rows.map((r) => {
+    if (!r || typeof r !== 'object') return r;
+    let has = false;
+    for (const k of INTERNAL_ROW_COLUMNS) { if (k in r) { has = true; break; } }
+    if (!has) return r;
+    const c = Object.assign({}, r);
+    for (const k of INTERNAL_ROW_COLUMNS) delete c[k];
+    return c;
+  });
+}
+
 /**
  * Read one full collection via the unified layer.
  * @param {string} name - collection / table name (real data table only)
@@ -360,7 +385,7 @@ async function readCollection(name) {
   if (typeof name !== 'string' || !name) return [];
   if (isPostgres() && isPgReadableTable(name)) {
     const res = await pool.query(`SELECT * FROM "${name}"`);
-    return reviveRows(res.rows);
+    return stripInternalColumns(reviveRows(res.rows));
   }
   return (memoryStore && Array.isArray(memoryStore[name])) ? memoryStore[name] : [];
 }
@@ -378,7 +403,7 @@ async function readOne(name, id) {
     const n = Number(id);
     if (!Number.isFinite(n)) return null;
     const res = await pool.query(`SELECT * FROM "${name}" WHERE id = $1 LIMIT 1`, [n]);
-    const rows = reviveRows(res.rows);
+    const rows = stripInternalColumns(reviveRows(res.rows));
     return rows.length ? rows[0] : null;
   }
   const rows = await readCollection(name);
@@ -723,6 +748,8 @@ module.exports = {
   persistOpsBatchWithClient,
   persistOpsBatch,
   __setPoolForTests,
+  /* Wave 10 (chg_id): کنارگذاریِ ستون‌های داخلی برای خواننده‌های بیرونی (pull/delta) */
+  stripInternalColumns,
   __setReadPoolForTests,
   __setReprobeDelayForTests,
   isUidProcessed,
