@@ -165,7 +165,7 @@ function publicReportHTML(){
   if(!schools.length)return '<div class="pub-report" id="pub-report"><div class="card"><div class="card-body">'+empty('🏫','داده‌ای برای نمایش وجود ندارد','')+'</div></div></div>';
   const d=publicReportData(Number((S.filters||{}).pubschool)||null);
   return `<div class="pub-report" id="pub-report"><div class="card"><div class="card-head"><h3>📊 گزارش عمومی مدرسه</h3>
-    <select class="select" data-f="pubschool" style="width:220px">${schools.map(s=>`<option value="${s.id}" ${s.id===d.sid?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
+    <select class="select" data-f="pubschool" style="width:220px" aria-label="انتخاب مدرسه">${schools.map(s=>`<option value="${s.id}" ${s.id===d.sid?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
    <div class="card-body" id="pub-report-body">${publicReportBodyHTML(d)}
    </div></div></div>`;
 }
