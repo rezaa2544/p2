@@ -63,12 +63,39 @@ function chk(name, cond, extra) {
   /* فال‌بکِ کهنه (کلیدِ قدیمی) هنوز کار می‌کند */
   W(`
     Store.set('payesh_idb_migrated_v2', '');
+    Store.set('payesh_idb_migrated_v3', '');
     Store.remove('sms_syncq_v1');
     Store.set('sms_queue_v1', JSON.stringify([{ uid: 'legacy-q-9', op: { t: 'ins', c: 'legacy' } }]));
   `);
   const migrated2 = await W(`migrateFromLocalStorageToIdb(offlineStorage)`);
   const queue2 = await W(`offlineStorage.getQueue()`);
   chk('M5 فال‌بکِ کلیدِ کهنه هم مهاجرت می‌کند', migrated2 === true && (queue2 || []).some(q => q.uid === 'legacy-q-9'), JSON.stringify((queue2 || []).map(q => q.uid)));
+
+  /* S7-10a: کاربرانِ نسخهٔ قبلی ممکن است پرچمِ v2 را داشته باشند اما
+     یک کلیدِ کهنه هنوز منتقل نشده باشد. پرچم نباید این repair را bypass کند. */
+  await W(`offlineStorage.clearAll()`);
+  W(`
+    Store.set('payesh_idb_migrated_v2', 'true');
+    Store.set('payesh_idb_migrated_v3', '');
+    Store.set('sms_queue_v1', JSON.stringify([{ uid: 'late-legacy-q', op: { t: 'ins', c: 'legacy_late' }, status: 'pending' }]));
+  `);
+  const migrated3 = await W(`migrateFromLocalStorageToIdb(offlineStorage)`);
+  const queue3 = await W(`offlineStorage.getQueue()`);
+  chk('M6 پرچمِ قدیمی، صفِ کهنه را bypass نمی‌کند', migrated3 === true && (queue3 || []).some(q => q.uid === 'late-legacy-q'), JSON.stringify((queue3 || []).map(q => q.uid)));
+
+  /* S7-10b: uid مشترک در سه نسل — قدیمی‌تر اول، کلیدِ جاری آخر؛
+     محتوای جاری نباید با رکوردِ کهنه overwrite شود. */
+  await W(`offlineStorage.clearAll()`);
+  W(`
+    Store.set('payesh_idb_migrated_v2', '');
+    Store.set('payesh_idb_migrated_v3', '');
+    Store.set('sms_syncq_v1', JSON.stringify([{ uid: 'shared-q', op: { t: 'upd', c: 'current_shape' }, status: 'failed', attempts: 4 }]));
+    Store.set('sms_queue_v1', JSON.stringify([{ uid: 'shared-q', op: { t: 'ins', c: 'legacy_shape' }, status: 'pending', attempts: 0 }]));
+  `);
+  await W(`migrateFromLocalStorageToIdb(offlineStorage)`);
+  const queue4 = await W(`offlineStorage.getQueue()`);
+  const shared = (queue4 || []).find(q => q.uid === 'shared-q');
+  chk('M7 نسخهٔ جاریِ uid مشترک برنده می‌شود', !!shared && shared.status === 'failed' && shared.attempts === 4 && shared.op && shared.op.c === 'current_shape', JSON.stringify(shared));
 
   console.log(`\n  جمع: ${okc} موفق، ${failc} ناموفق از ${okc + failc}`);
   if (failc) { console.log('  مواردِ ناموفق:\n   - ' + fails.join('\n   - ')); process.exit(1); }

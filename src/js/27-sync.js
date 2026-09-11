@@ -999,6 +999,11 @@ const SYNC_ACTIONS = {
       enforceQueueCaps();
     }
     saveQueueChecked(); saveDlq();
+    /* S7-8 (باگ‌هانت نشست ۷): بازگشتِ قلم از DLQ صف را عوض می‌کند ⇒ آینهٔ
+       IndexedDB (Background Sync) باید همان لحظه هم‌گام شود؛ تکیه بر چرخهٔ
+       scheduleSync کافی نیست (چرخه می‌تواند بی‌شبکه شکست بخورد و آینه
+       قلم را pending نشان ندهد). bgMirrorQueue ایدمپوتنت و دِبونس‌شده است. */
+    bgMirrorQueue();
     checkCapWarning(); refreshSyncBadge();
     toast('عملیات به صفِ ارسال برگشت', 'ok');
     scheduleSync(400);
@@ -1012,6 +1017,14 @@ const SYNC_ACTIONS = {
     SYNC.dlq   = SYNC.dlq.filter(x => x.uid !== uid);   /* P1-10: حذف از صفِ مرده هم */
     if(SYNC.queue.length + SYNC.dlq.length === before) return;
     saveQueue(); saveDlq();
+    /* S7-8 (باگ‌هانت نشست ۷): حذفِ دستی تا پیش از این هیچ مسیری به آینهٔ
+       IndexedDB نداشت (و برخلافِ sync-retry هیچ scheduleSync هم نبود)، پس
+       قلمِ حذف‌شده با status=pending/failed در آینه می‌ماند و رویدادِ
+       بعدیِ Background Sync آن را می‌فرستاد — یعنی کاربر چیزی را که
+       صریحاً حذف کرده بود، سرور اعمال می‌کرد. شاخهٔ حذفِ خودِ
+       bgMirrorQueue («قلم‌هایی که دیگر در صفِ زنده نیستند … از آینه پاک
+       شوند») دقیقاً همین را می‌خواست؛ فقط صدا زده نمی‌شد. */
+    bgMirrorQueue();
     refreshSyncBadge();
     toast('عملیاتِ ردشده از صف حذف شد', 'ok');
     syncPanelModal();

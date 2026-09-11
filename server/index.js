@@ -532,7 +532,14 @@ async function serveStatic(res, urlPath, nonce){
 
 /* ── router ────────────────────────────────────────────────────────── */
 const onRequest = async (req, res) => {
-  const url = new URL(req.url, 'http://localhost');
+  /* S7-1 (Bug Hunt session 7): a malformed request-target (e.g. `//[`, `///`,
+     `//@`) made `new URL(req.url, …)` throw at the very top of this async
+     handler — outside every try/catch and with no rejection handler on the
+     caller — so one raw request line killed the process (unauthenticated DoS).
+     Parse defensively: bad target = plain 400, never a throw. */
+  let url;
+  try{ url = new URL(req.url, 'http://localhost'); }
+  catch(e){ return sendJson(res, 400, { ok: false, code: 'bad_request' }); }
   const p = url.pathname;
   const https = isHttps(req);
   const nonce = crypto.randomBytes(16).toString('base64');
@@ -953,7 +960,15 @@ const SHUTDOWN_TIMEOUT_MS = Math.max(500, Number(process.env.PAYESH_SHUTDOWN_TIM
 const wrappedRequest = async (req, res) => {
   inFlight++;
   res.on('close', () => { inFlight = Math.max(0, inFlight - 1); });
-  await onRequest(req, res);
+  /* S7-1: fail-safe — a rejection from any request handler must never reach the
+     process-level unhandledRejection path (Node ≥15 exits the process there).
+     One bad request may fail; it may not take the service down with it. */
+  try{
+    await onRequest(req, res);
+  }catch(e){
+    try{ console.error('[request] unhandled handler error:', (e && e.message) || e); }catch(_){}
+    try{ if(!res.writableEnded) sendJson(res, 500, { ok: false, code: 'internal_error' }); }catch(_){}
+  }
 };
 
 /* ── TLS (stage 2): real https when PAYESH_TLS_CERT / PAYESH_TLS_KEY
