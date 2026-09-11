@@ -37,14 +37,35 @@ const PATTERNS = [
   { name: 'Bearer/Authorization hardcoded', re: /Authorization['"]?\s*[:=]\s*['"][A-Za-z0-9._\-]{16,}/g },
 ];
 
+/* S7-9 (باگ‌هانت چت ۵، نشست ۷): پیش‌تر فقط یک فهرستِ بستهٔ پسوند اسکن
+   می‌شد (.js/.json/.html/.md/.env/.sh/.yml/.yaml) و هر چیزِ دیگری — از جمله
+   اسکریپت‌های PowerShell/Cmd، فایل‌های .txt/.toml/.ini/.sql/.py — از دیدِ
+   اسکنر بیرون بود. یک توکنِ زنده در `setup-deps.ps1` دقیقاً از همین سوراخ
+   رد شده بود (گیت ۱۱/۱۱ سبز بود). سیاستِ تازه: هر فایلِ متنی اسکن می‌شود؛
+   فقط باینری‌های شناخته‌شده و فایل‌های بزرگ‌تر از ۲ مگابایت کنار می‌روند. */
+const SKIP_EXT = new Set([
+  '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.bmp', '.svgz',
+  '.woff', '.woff2', '.ttf', '.otf', '.eot',
+  '.zip', '.gz', '.tgz', '.tar', '.bz2', '.xz', '.7z', '.rar',
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+  '.mp3', '.mp4', '.wav', '.webm', '.ogg', '.flac',
+  '.exe', '.dll', '.so', '.dylib', '.node', '.bin', '.wasm', '.pyc', '.class', '.jar', '.db', '.sqlite', '.sqlite3'
+]);
+const MAX_SCAN_BYTES = 2 * 1024 * 1024;
 function walk(dir, out) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     if (e.isDirectory()) {
       if (SKIP_DIRS.has(e.name) || e.name.startsWith('.git')) continue;
       if (SKIP_PATHS.has(path.relative(ROOT, path.join(dir, e.name)))) continue;
       walk(path.join(dir, e.name), out);
-    } else if (e.name.endsWith('.js') || e.name.endsWith('.json') || e.name.endsWith('.html') || e.name.endsWith('.md') || e.name.endsWith('.env') || e.name.endsWith('.sh') || e.name.endsWith('.yml') || e.name.endsWith('.yaml')) {
-      out.push(path.relative(ROOT, path.join(dir, e.name)));
+    } else {
+      const ext = path.extname(e.name).toLowerCase();
+      if (SKIP_EXT.has(ext)) continue;
+      const abs = path.join(dir, e.name);
+      let size = Infinity;
+      try { size = fs.statSync(abs).size; } catch (err) { continue; }
+      if (size > MAX_SCAN_BYTES) continue;
+      out.push(path.relative(ROOT, abs));
     }
   }
 }
@@ -55,11 +76,16 @@ console.log('');
 console.log('— اسکنِ ' + files.length + ' فایل —');
 let hits = 0;
 const hexAllow = { 'build.js': 1, 'server/tls-cert.js': 1, 'server/seed.js': 1, 'tests/tls-self.js': 1 };
+/* S7-9: `.env.example` تنها جایِ مجازِ «نمونهٔ» راز است (فایلِ الگو است، نه
+   پیکربندیِ واقعی) — و آن‌هم فقط برای الگویِ hex؛ توکنِ واقعی حتی در فایلِ
+   نمونه هم قابل‌قبول نیست. */
+const FILE_ALLOW = { '.env.example': { 'long hex (≥64) — کاندیدای کلید': 1 } };
 for (const f of files) {
   const t = fs.readFileSync(path.join(ROOT, f), 'utf8');
   for (const p of PATTERNS) {
     p.re.lastIndex = 0;
     let m;
+    if (FILE_ALLOW[f] && FILE_ALLOW[f][p.name]) continue; /* نمونهٔ مستند، نه راز */
     while ((m = p.re.exec(t))) {
       /* hex: فقط اگر شبیهِ ثابتِ کد (0x / digest نمونه) نباشد —
          خط را ببین و تصمیم بگیر؛ الگویِ hex فقط رویِ مقادیرِ متغیر
@@ -83,6 +109,16 @@ for (const f of files) {
   }
 }
 chk('هیچ اعتبارسنجی شناخته‌شده‌ای در فایل‌های پروژه نیست', hits === 0, hits + ' هیت');
+/* S7-9: خودسنجیِ دامنه — کلاس‌هایی که پیش‌تر بیرونِ فهرستِ پسوند بودند باید
+   حالا در دامنه باشند؛ وگرنه گیت بی‌صدا عقب می‌رود. */
+{
+  const inScope = (rel) => files.indexOf(rel) >= 0;
+  const scopeNeeds = ['setup-deps.ps1', 'package-lock.json', 'build.js'];
+  const missing = scopeNeeds.filter((f) => !inScope(f));
+  chk('دامنهٔ اسکن اسکریپت‌های غیر-JS را پوشش می‌دهد (ps1/lockfile)', missing.length === 0, 'خارج: ' + missing.join(', ') || '—');
+  const idxHtml = files.filter((f) => /\.(html|md|sh)$/.test(f)).length;
+  chk('اسکنِ متنی وسعت دارد (≥۱۵۰ فایلِ html/md/sh)', idxHtml >= 150, 'یافت‌شده: ' + idxHtml);
+}
 
 console.log('');
 console.log('— پوششِ .gitignore —');
