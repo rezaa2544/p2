@@ -10,6 +10,9 @@
      U5  بدونِ id ⇒ INSERT خالص
      U6  قراردادِ مهاجرتِ ۰۰۹ (+down): ساختار، PK (id, created_at)،
          پارتیشن‌های سالانه + DEFAULT، تریگرِ chg، تراکنش
+     U7  کچ‌آپِ swap (یافتهٔ استیجینگ): دو تراکنش + قفلِ انحصاری +
+         ضدالحاقِ (id, created_at, chg_id) + ON CONFLICT ⇒ هیچ نوشتهٔ
+         حینِ کپی در *_old اسیر نمی‌ماند
 
    بخشِ زنده (وقتی PG در دسترس است — چینِ کامل 001→009 روی دیتابیسِ تازه):
      L1  چینِ ۰۰۱..۰۰۹ سبز می‌شود
@@ -23,6 +26,8 @@
      L7  دلتای chg از طریقِ pull.js (کالکشنِ scoped) درست می‌آید
      L8  وارون‌سازیِ ۰۰۹: جدول‌ها برمی‌گردند، داده سالم، سطرِ تازه
          بازیافت می‌شود (grades_recovered)
+     L9  نویسندهٔ هم‌زمان حینِ ۰۰۹: هر درج/به‌روزرسانیِ حینِ کپی بعد از
+         swap در جدولِ نو با آخرین مقدار هست (کچ‌آپ)
 
    Run: node tests/partitioning.js
    PG زنده: PAYESH_W10_PG_URL (پیش‌فرض postgres://w10:w10@127.0.0.1:5432/payesh_w10)
@@ -32,6 +37,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { execFile } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 
 const db = require(path.join(ROOT, 'server', 'db'));
@@ -134,6 +140,19 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
   chk('U6i swap با نگهداریِ *_old برایِ rollback', /RENAME TO attendance_old/.test(up9) && /RENAME TO grades_old/.test(up9));
   chk('U6j down: وارون‌سازی + بازیابیِ سطرهای پس از swap', /RENAME TO attendance;/.test(down9) && /attendance_recovered/.test(down9));
   chk('U6k تراکنشِ کامل در هر دو', /^\s*BEGIN;/m.test(up9) && /^\s*COMMIT;/m.test(up9) && /^\s*BEGIN;/m.test(down9) && /^\s*COMMIT;/m.test(down9));
+  /* U7 — کچ‌آپِ swap (یافتهٔ استیجینگ ۲۰۲۶-۰۹-۱۲): تک‌تراکنش بودن، سطرهای
+     حینِ کپی را در *_old اسیر می‌کرد و پنجرهٔ قفل تا کامیتِ کلِ کپی طولانی
+     بود. قراردادِ تازه: (۱) دو تراکنش؛ (۲) قفلِ انحصاری قبل از rename؛
+     (۳) ضدالحاقِ (id, created_at, chg_id) برای هر دو جدول؛ (۴) آپسرتِ
+     ON CONFLICT (id, created_at) برای تازه‌کردنِ کپیِ کهنه. */
+  chk('U7a دو تراکنش (کپیِ بلند بدونِ قفل + پنجرهٔ کوتاهِ swap)', (up9.match(/^COMMIT;$/gm) || []).length === 2 && (up9.match(/^BEGIN;$/gm) || []).length === 2);
+  chk('U7b قفلِ انحصاری هر دو جدول قبل از rename', /LOCK TABLE attendance IN ACCESS EXCLUSIVE MODE;/.test(up9) && /LOCK TABLE grades IN ACCESS EXCLUSIVE MODE;/.test(up9) && up9.indexOf('LOCK TABLE grades') < up9.indexOf('ALTER TABLE grades RENAME TO grades_old'));
+  const catchA = /INSERT INTO attendance_p[\s\S]*?WHERE NOT EXISTS \(SELECT 1 FROM attendance_p p[\s\S]*?ON CONFLICT \(id, created_at\) DO UPDATE/.test(up9);
+  const catchG = /INSERT INTO grades_p[\s\S]*?WHERE NOT EXISTS \(SELECT 1 FROM grades_p p[\s\S]*?ON CONFLICT \(id, created_at\) DO UPDATE/.test(up9);
+  chk('U7c ضدالحاقِ کچ‌آپ برایِ هر دو جدول + آپسرتِ PK', catchA && catchG, 'att=' + catchA + ' grades=' + catchG);
+  chk('U7d ادغام با شرطِ تازگیِ chg_id (last-writer-wins؛ نه تساوی که نوشتهٔ نو را بازنویسیِ معکوس می‌کند)', !/IS NOT DISTINCT FROM o\.chg_id/.test(up9) && (up9.match(/p\.chg_id >= o\.chg_id/g) || []).length >= 6);
+  chk('U7e فازِ D — ادغامِ سرگردان‌ها بعد از کامیتِ swap (idempotent)', /STRAY-MERGE:BEGIN/.test(up9) && /STRAY-MERGE:END/.test(up9) && /FROM grades o[\s\S]*?STRAY-MERGE:END/.test(up9));
+  chk('U7f تریگرِ chg حینِ کپی خاموش است (chg_id حفظ می‌شود؛ کچ‌آپ سبک می‌ماند)', /ALTER TABLE attendance_p DISABLE TRIGGER trg_attendance_chg;/.test(up9) && /ALTER TABLE grades_p DISABLE TRIGGER trg_grades_chg;/.test(up9) && /ALTER TABLE attendance_p ENABLE TRIGGER trg_attendance_chg;/.test(up9) && /ALTER TABLE grades_p ENABLE TRIGGER trg_grades_chg;/.test(up9));
 
   /* ═══════════ بخشِ زنده ═══════════ */
   const LIVE_URL = process.env.PAYESH_W10_PG_URL || 'postgres://w10:w10@127.0.0.1:5432/payesh_w10';
@@ -193,15 +212,99 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
     chk('L1b فیکسچر', false, String(e.message || e).slice(0, 120));
   }
 
-  /* ۰۰۹ با دادهٔ واقعی — مسیرِ کپیِ دسته‌ای واقعاً تست می‌شود */
+  /* ۰۰۹ با دادهٔ واقعی + نویسندهٔ هم‌زمان (شبیهٔ تولید) — کپیِ دسته‌ای و
+     کچ‌آپِ swap واقعاً تست می‌شوند. نویسنده همان مسیرِ persistOp پارتیشن‌ساز
+     است: UPDATE by id → 0 ⇒ INSERT (آپسرتِ idempotent). */
+  let ledger = new Map(); /* id -> score نهایی */
+  let writerErrs = 0;
   try {
     const t9 = Date.now();
-    psql(path.join(ROOT, 'migrations', '009_partition_grades_attendance.sql'));
-    console.log('     009 (کپیِ 180k + swap): ' + ((Date.now() - t9) / 1000).toFixed(1) + 's');
-    chk('L1c مهاجرتِ 009 با دادهٔ 180k سطری سبز شد', true);
+    let stopW = false, wTick = 0, nextId = 800001;
+    const upsert = async (id, score) => {
+      /* همان قراردادِ persistOp پارتیشن‌ساز (db.js) */
+      const u = await live.query('UPDATE grades SET score = $2, updated_at = now() WHERE id = $1', [id, score]);
+      if (u.rowCount === 0) await live.query('INSERT INTO grades (id, school_id, student_id, class_id, subject_id, teacher_id, score, created_at, updated_at, version) VALUES ($1, 1, 100, 10, 20, 200, $2, $3, now(), 1)', [id, score, '2026-09-10T09:00:00Z']);
+      ledger.set(id, score);
+    };
+    const writer = (async () => {
+      while (!stopW) {
+        try {
+          const k = wTick++ % 3;
+          if (k === 0) await upsert(nextId++, nextId % 20);
+          else if (k === 1 && ledger.size) await upsert(Math.max(...ledger.keys()), 20 - (nextId % 17));
+          /* k===2: تنفس — فرصتِ تغییرِ فازِ مهاجرت */
+        } catch (e) { writerErrs++; }
+        await new Promise((r) => setTimeout(r, 120));
+      }
+    })();
+    const mig = await new Promise((res, rej) => {
+      execFile('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', '009_partition_grades_attendance.sql'), LIVE_URL],
+        { env: Object.assign({}, process.env, { PGPASSWORD: (LIVE_URL.match(/\/\/[^:]+:([^@]+)@/) || [])[1] || process.env.PGPASSWORD }) },
+        (err, so, se) => err ? rej(new Error(String(se || err.message).split('\n').filter((l) => /ERROR|FATAL/.test(l)).join(' | ').slice(0, 160) || err.message)) : res());
+    });
+    stopW = true; await writer;
+    console.log('     009 (کپیِ 180k + کچ‌آپ + swap؛ نویسندهٔ هم‌زمان: ' + ledger.size + ' سطر): ' + ((Date.now() - t9) / 1000).toFixed(1) + 's');
+    chk('L1c مهاجرتِ 009 با دادهٔ 180k + ترافیکِ هم‌زمان سبز شد (خطای نویسنده: ' + writerErrs + ')', writerErrs === 0);
   } catch (e) {
     chk('L1c مهاجرتِ 009', false, String(e.message || e).slice(0, 160));
   }
+
+  /* L9: هیچ نوشتهٔ حینِ کپی در *_old اسیر نشده و کپیِ کهنه نمانده */
+  try {
+    /* گامِ ران‌بوک: یک پاسِ ادغامِ سرگردان (فازِ D مهاجرت دو پاس زده؛
+       این پاسِ سوم برای قطعیتِ تست است — بیداریِ نویسندهٔ بلاک می‌تواند
+       از پاس‌های مهاجرت دیرتر باشد). */
+    {
+      const pd = up9.slice(up9.indexOf('-- STRAY-MERGE:BEGIN') + '-- STRAY-MERGE:BEGIN'.length, up9.indexOf('-- STRAY-MERGE:END'));
+      await live.query(pd);
+    }
+    let missing = 0, wrong = 0;
+    const ids = [...ledger.keys()];
+    for (let i = 0; i < ids.length; i += 400) {
+      const chunk = ids.slice(i, i + 400);
+      const r = await live.query('SELECT id, score FROM grades WHERE id = ANY($1)', [chunk]);
+      const got = new Map(r.rows.map((x) => [Number(x.id), Number(x.score)]));
+      for (const id of chunk) { if (!got.has(id)) missing++; else if (got.get(id) !== ledger.get(id)) wrong++; }
+    }
+    chk('L9a هر سطرِ نویسنده (حینِ کپی و بعد از swap) در جدولِ نو با آخرین نمره هست', missing === 0 && wrong === 0, 'missing=' + missing + ' wrong=' + wrong + ' total=' + ids.length);
+    const stranded = await q('SELECT count(*)::int AS n FROM grades_old o WHERE NOT EXISTS (SELECT 1 FROM grades n WHERE n.id = o.id AND n.created_at = o.created_at)');
+    chk('L9b هیچ سطرِ قدیمی در جدولِ نو گم نشده (ضدالحاقِ کچ‌آپ)', stranded.rows[0].n === 0, 'n=' + stranded.rows[0].n);
+    /* کهنه‌بودن یعنی: سطرِ قدیمی از کپیِ نو تازه‌تر باشد (کچ‌آپ/ادغام جا مانده).
+       سطرِ نوِ تازه‌تر (نوشتهٔ پس از swap) سالم است — فقط در جدولِ نو است. */
+    const stale = await q('SELECT count(*)::int AS n FROM grades_old o JOIN grades n ON n.id = o.id AND n.created_at = o.created_at WHERE o.chg_id > n.chg_id');
+    chk('L9c کپیِ کهنه نمانده (کچ‌آپ/ادغام، قدیمی را تازه کرده)', stale.rows[0].n === 0, 'n=' + stale.rows[0].n);
+    /* L9d: سرگردانِ حقیقی — نویسنده‌ای که لحظهٔ swap بلاک بود و بعد از کامیت
+       روی *_old نشست. یک سطرِ صوری در grades_old می‌سازیم و فازِ D واقعیِ
+       مهاجرت (متنی که خودِ فایل دارد) را اجرا می‌کنیم. */
+    const strayId = 899999;
+    await live.query("INSERT INTO grades_old (id, school_id, student_id, class_id, subject_id, teacher_id, score, created_at, updated_at, version, chg_id) VALUES ($1, 1, 100, 10, 20, 200, 13, '2026-09-10T09:00:00Z', now(), 1, nextval('payesh_chg_seq'))", [strayId]);
+    const phaseD = up9.slice(up9.indexOf('-- STRAY-MERGE:BEGIN') + '-- STRAY-MERGE:BEGIN'.length, up9.indexOf('-- STRAY-MERGE:END'));
+    await live.query(phaseD);
+    await live.query(phaseD); /* idempotencyِ دوباره‌اجرا */
+    const stray = await live.query('SELECT score FROM grades WHERE id = $1', [strayId]);
+    const strayCnt = await live.query('SELECT count(*)::int AS n FROM grades WHERE id = $1', [strayId]);
+    chk('L9d فازِ D سرگردانِ پس از swap را ادغام می‌کند (idempotent)', strayCnt.rows[0].n === 1 && Number(stray.rows[0].score) === 13, 'n=' + strayCnt.rows[0].n + ' score=' + (stray.rows[0] && stray.rows[0].score));
+    /* L9e — رگرسیونِ بازنویسیِ معکوس (یافتهٔ استیجینگ). سناریوی واقعی:
+       نوشتهٔ پس از swap روی جدولِ نو (chg تازه C) در برابرِ نسخهٔ old با
+       chg کهنه‌تر (پیش از swap). شرطِ تازگی باید نو را نگه دارد (skip) و
+       اگر old واقعاً تازه‌تر باشد (chg بزرگ‌تر)، ادغام کند. آپدیتِ عادیِ old
+       تریگرِ chg را هم می‌پرد و old را «تازه‌ترین» می‌کند — پس برایِ
+       شبیه‌سازیِ chg کهنه، تریگرِ old موقتاً خاموش می‌شود. */
+    {
+      await live.query('UPDATE grades SET score = 19 WHERE id = $1', [strayId]); /* نو: score=19، chg می‌پرد (تازه‌ترین) */
+      await live.query('ALTER TABLE grades_old DISABLE TRIGGER trg_grades_chg');
+      await live.query('UPDATE grades_old SET score = 1 WHERE id = $1', [strayId]); /* old: score عوض ولی chg کهنه ماند */
+      await live.query('ALTER TABLE grades_old ENABLE TRIGGER trg_grades_chg');
+      await live.query(phaseD);
+      const keep = await live.query('SELECT score FROM grades WHERE id = $1', [strayId]);
+      chk('L9e-1 نوشتهٔ تازهٔ جدولِ نو با کهنهٔ *_old بازنویسی نمی‌شود (تازگی ⇒ skip)', Number(keep.rows[0].score) === 19, 'score=' + keep.rows[0].score);
+      /* جهتِ درستِ ادغام: old حالا واقعاً تازه‌تر شود (تریگر فعال ⇒ chg جدید) */
+      await live.query('UPDATE grades_old SET score = 2 WHERE id = $1', [strayId]); /* chg می‌پرد ⇒ تازه‌ترین */
+      await live.query(phaseD);
+      const merged = await live.query('SELECT score FROM grades WHERE id = $1', [strayId]);
+      chk('L9e-2 تازه‌تر بودنِ *_old ⇒ ادغام (last-writer-wins)', Number(merged.rows[0].score) === 2, 'score=' + merged.rows[0].score);
+    }
+  } catch (e) { chk('L9 کچ‌آپ', false, String(e.message || e).slice(0, 160)); }
 
   /* L2: ساختار */
   try {
@@ -218,15 +321,20 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
     chk('L2e تریگرِ chg روی والدِ جدید', trg.rows.some((r) => r.tgname === 'trg_grades_chg'), JSON.stringify(trg.rows));
   } catch (e) { chk('L2 ساختار', false, String(e.message || e).slice(0, 120)); }
 
-  /* L3: پریتی */
+  /* L3: پریتی — روی بازهٔ فیکسچر (id ≤ 800000)؛ سطرهای نویسندهٔ هم‌زمانِ L9
+     (id ≥ 800001) خودشان در L9 اثبات می‌شوند. */
   try {
-    const pc = await q('SELECT (SELECT count(*) FROM grades) AS g_new, (SELECT count(*) FROM grades_old) AS g_old, (SELECT count(*) FROM attendance) AS a_new, (SELECT count(*) FROM attendance_old) AS a_old');
+    const pc = await q('SELECT (SELECT count(*) FROM grades WHERE id <= 800000) AS g_new, (SELECT count(*) FROM grades_old WHERE id <= 800000) AS g_old, (SELECT count(*) FROM attendance) AS a_new, (SELECT count(*) FROM attendance_old) AS a_old');
     const r = pc.rows[0];
     chk('L3a پریتیِ شمار (نمره/حضور)', Number(r.g_new) === Number(r.g_old) && Number(r.a_new) === Number(r.a_old), JSON.stringify(r));
-    const mx = await q('SELECT (SELECT COALESCE(MAX(id),0) FROM grades) AS g_new, (SELECT COALESCE(MAX(id),0) FROM grades_old) AS g_old');
-    chk('L3b بیشینهٔ id حفظ شد', Number(mx.rows[0].g_new) === Number(mx.rows[0].g_old), JSON.stringify(mx.rows[0]));
+    const mx = await q('SELECT (SELECT COALESCE(MAX(id),0) FROM grades WHERE id <= 800000) AS g_new, (SELECT COALESCE(MAX(id),0) FROM grades_old WHERE id <= 800000) AS g_old');
+    chk('L3b بیشینهٔ id (بازهٔ فیکسچر) حفظ شد', Number(mx.rows[0].g_new) === Number(mx.rows[0].g_old), JSON.stringify(mx.rows[0]));
     const chg = await q("SELECT COUNT(*)::int AS n FROM grades WHERE chg_id IS NULL");
     chk('L3c همهٔ سطرها chg_id دارند (کپی + تریگر)', chg.rows[0].n === 0, String(chg.rows[0].n));
+    /* با تریگرِ خاموشِ کپی، chg_id سطرهای کپی‌شده باید عیناً یکی باشد —
+       این همان چیزی است که کچ‌آپ را سبک نگه می‌دارد. */
+    const chgEq = await q('SELECT count(*)::int AS n FROM grades_old o JOIN grades n ON n.id = o.id AND n.created_at = o.created_at WHERE o.chg_id = n.chg_id');
+    chk('L3e chg_id سطرهای کپی‌شده حفظ می‌شود (نه nextval تازه)', chgEq.rows[0].n >= 119500, 'n=' + chgEq.rows[0].n);
     const nullCa = await q("SELECT COUNT(*)::int AS n FROM grades WHERE created_at IS NULL");
     chk('L3d created_at هرگز NULL نیست (NOT NULL + COALESCE)', nullCa.rows[0].n === 0, String(nullCa.rows[0].n));
   } catch (e) { chk('L3 پریتی', false, String(e.message || e).slice(0, 120)); }
@@ -276,7 +384,11 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
   try {
     const ex1 = await q("EXPLAIN SELECT * FROM grades WHERE created_at >= '2026-06-01' AND created_at < '2026-09-01'");
     const plan1 = ex1.rows.map((r) => Object.values(r)[0]).join('\n');
-    chk('L6a هرسِ پارتیشن (فقط 2026)', /grades_y2026/.test(plan1) && !/grades_y2025/.test(plan1) && !/Seq Scan on grades/.test(plan1), plan1.split('\n')[0]);
+    /* هرس یعنی فقط پارتیشنِ 2026 خوانده شود. نوعِ اسکنِ درونِ پارتیشن
+       (Index یا Seq) به گزینش‌پذیری بستگی دارد — با آمارِ تازه و ~۳۹٪
+       تطابق، Seq Scan روی همان یک پارتیشن پلنِ درست است (ادعای «نه Seq»
+       بیش‌از حد سخت‌گیرانه و وابسته به بی‌آماریِ جدول بود). */
+    chk('L6a هرسِ پارتیشن (فقط y2026؛ نه y2025، نه default)', /grades_y2026/.test(plan1) && !/grades_y2025/.test(plan1) && !/grades_default/.test(plan1) && !/Seq Scan on grades_y2025/.test(plan1), plan1.split('\n')[0]);
     await q('ANALYZE grades');
     const wmMax = await q('SELECT COALESCE(MAX(chg_id), 0)::bigint AS v FROM grades');
     const ex2 = await q('EXPLAIN SELECT * FROM grades WHERE chg_id > ' + (Number(wmMax.rows[0].v) - 50) + ' ORDER BY chg_id ASC, id ASC');
