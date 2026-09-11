@@ -28,6 +28,19 @@ function chk(name, cond, extra) {
 function grp(t) { console.log('\n▸ ' + t); }
 const rd = (p) => { try { return fs.readFileSync(path.join(ROOT, p), 'utf8'); } catch (e) { return null; } };
 const sec = (doc, from, to) => doc.split(from)[1].split(to)[0];
+/* لنگرِ بخش را با خطای خوانا پیدا کن: اگر سربرگی عوض/شماره‌گذاری مجدد شود،
+   split()[1] مقدارِ undefined می‌داد و تست با stack trace می‌ترکید — نه با پیامِ
+   معلوم. ضمنِ اینکه از خودِ لنگر onward برش می‌زند، پس لنگرِ پایان نمی‌تواند
+   تصادفاً **پیش از** لنگرِ شروع پیدا شود. */
+const cut = (d, fromRe, toRe, label) => {
+  const i = d.search(fromRe);
+  if (i < 0) { console.log('  ❌ لنگرِ شروعِ بخش «' + label + '» پیدا نشد (سربرگ عوض شده؟)'); process.exit(1); }
+  const rest = d.slice(i);
+  const j = rest.search(toRe);
+  if (j < 0) { console.log('  ❌ لنگرِ پایانِ بخش «' + label + '» پیدا نشد (سربرگ عوض شده؟)'); process.exit(1); }
+  return rest.slice(0, j);
+};
+
 
 const doc = rd('docs/PILOT_ROLLOUT_PLAN.md');
 if (!doc) { console.log('❌ docs/PILOT_ROLLOUT_PLAN.md نیست'); process.exit(1); }
@@ -102,7 +115,7 @@ chk('فرایند تریاژ', /تریاج|سطح‌بندی/.test(sup));
 chk('مسیر ارتقا تا ناظر', /مسیر ارتقا/.test(sup) && /ناظر/.test(sup));
 
 grp('PR-FBK — بازخورد');
-const fbk = sec(doc, 'جمع‌آوری داده و بازخورد', 'محرک‌های بازگشت');
+const fbk = cut(doc, /## ۷\) جمع‌آوری داده و بازخورد/, /## ۸\) محرک‌های بازگشت/, 'جمع‌آوری داده و بازخورد');
 chk('دکمهٔ بازخورد درون‌برنامه‌ای (با قید صادقانهٔ نبودن)', /دکمهٔ بازخورد/.test(fbk) && /در محصول نیست/.test(fbk));
 chk('نظرسنجی هفتگی پنج سؤالی', /هفتگی/.test(fbk) && /۵ سؤال/.test(fbk));
 chk('گروه متمرکز ماهانه', /گروه متمرکز|focus group/.test(fbk) && /ماهانه/.test(fbk));
@@ -110,7 +123,9 @@ chk('ضبط نشست فقط با رضایت', /با رضایت/.test(fbk));
 chk('حریم دانش‌آموز: رضایت ولی + ماسک داده', /رضایت ولی/.test(fbk) && /ماسک/.test(fbk));
 
 grp('PR-RBK — محرک‌های بازگشت');
-const rbk = sec(doc, 'محرک‌های بازگشت', 'بازبینی پساپایلوت');
+/* لنگرِ سربرگ (نه خودِ عبارت): عبارتِ «محرک‌های بازگشت» در §۰ (چک‌لیست پیش‌شرط) هم
+   می‌آید، پس split روی نخستین رخداد، §۱–§۷ را برمی‌داشت نه جدول محرک‌ها را. */
+const rbk = cut(doc, /## ۸\) محرک‌های بازگشت/, /## ۹\) بازبینی پساپایلوت/, 'محرک‌های بازگشت');
 chk('دسترس < ۹۵٪ در ۲۴ ساعت → توقف فاز', /۹۵٪/.test(rbk) && /توقف فاز/.test(rbk));
 chk('فساد داده → بازگشت فوری', /فساد/.test(rbk) && /بازگشت فوری/.test(rbk));
 chk('شکایت امنیتی جدی → بررسی فوری + تصمیم', /امنیتی جدی/.test(rbk) && /بررسی فوری/.test(rbk));
