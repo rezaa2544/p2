@@ -47,6 +47,7 @@ function cleanExpiredMem() {
   for (const [k, exp] of memExpiry.entries()) {
     if (now >= exp) {
       memCache.delete(k);
+      memSets.delete(k);
       memExpiry.delete(k);
     }
   }
@@ -369,6 +370,7 @@ async function sAdd(key, ...members) {
       // Fallback to memory
     }
   }
+  cleanExpiredMem();
   if (!memSets.has(key)) memSets.set(key, new Set());
   const s = memSets.get(key);
   let n = 0;
@@ -389,6 +391,7 @@ async function sMembers(key) {
       // Fallback to memory
     }
   }
+  cleanExpiredMem();
   const s = memSets.get(key);
   return s ? Array.from(s) : [];
 }
@@ -404,6 +407,7 @@ async function sRem(key, ...members) {
       // Fallback to memory
     }
   }
+  cleanExpiredMem();
   const s = memSets.get(key);
   if (!s) return 0;
   let n = 0;
@@ -433,7 +437,7 @@ async function del(...keys) {
   prodNoRedis('del'); // BUG-2: تولیدِ بدونِ ردیسِ زنده به حافظه نمی‌افتد
   let count = 0;
   for (const k of flatKeys) {
-    if (memCache.delete(k)) count++;
+    if (memCache.delete(k) || memSets.delete(k)) count++;
     memExpiry.delete(k);
   }
   return count;
@@ -714,11 +718,13 @@ async function expire(key, seconds) {
   const exp = memExpiry.get(key);
   if (exp && Date.now() >= exp) {
     memCache.delete(key);
+    memSets.delete(key);
     memExpiry.delete(key);
   }
-  if (!memCache.has(key)) return 0;
+  if (!memCache.has(key) && !memSets.has(key)) return 0;
   if (!(seconds > 0)) {
     memCache.delete(key);
+    memSets.delete(key);
     memExpiry.delete(key);
     return 1;
   }
@@ -744,10 +750,11 @@ async function ttl(key) {
   const exp = memExpiry.get(key);
   if (exp && Date.now() >= exp) {
     memCache.delete(key);
+    memSets.delete(key);
     memExpiry.delete(key);
     return -2;
   }
-  if (!memCache.has(key)) return -2;
+  if (!memCache.has(key) && !memSets.has(key)) return -2;
   if (!exp) return -1;
   return Math.max(0, Math.ceil((exp - Date.now()) / 1000));
 }

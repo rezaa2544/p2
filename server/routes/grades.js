@@ -80,10 +80,19 @@ function createGradeRoutes(ctx) {
 
     /* role restrictions unified in policy.filterReadable above */
 
-    // Enrich with subject & student names
+    /* Enrich with subject/student names from indexes. The old nested find()
+       calls made this path O(grades × (subjects + users)) in memory mode. */
+    const subjectsById = new Map();
+    for (const subject of (Array.isArray(store.subjects) ? store.subjects : [])) {
+      if (subject && subject.id != null) subjectsById.set(subject.id, subject);
+    }
+    const usersById = new Map();
+    for (const userRow of (Array.isArray(store.users) ? store.users : [])) {
+      if (userRow && userRow.id != null) usersById.set(userRow.id, userRow);
+    }
     const enriched = list.map(g => {
-      const sub = (store.subjects || []).find(s => s.id === g.subject_id);
-      const student = (store.users || []).find(u => u.id === g.student_id);
+      const sub = subjectsById.get(g.subject_id);
+      const student = usersById.get(g.student_id);
       return {
         ...g,
         subject_name: sub ? sub.name : null,
