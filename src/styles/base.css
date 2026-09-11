@@ -76,6 +76,8 @@ a{color:inherit;text-decoration:none}
 .topbar h1{font-weight:800;font-size:19px;margin:0;letter-spacing:-.3px}.topbar .sub{font-size:12.5px;color:var(--muted);font-weight:500}
 .content{padding:18px 20px 60px;display:flex;flex-direction:column;gap:16px}
 .burger{display:none;background:none;border:1px solid var(--border);border-radius:9px;padding:7px 10px;cursor:pointer}
+.skip-link{position:absolute;top:-56px;inset-inline-start:16px;z-index:200;background:var(--primary-dark);color:#fff;padding:8px 16px;border-radius:0 0 10px 10px;font-weight:700;font-size:13px;text-decoration:none;transition:top .15s}
+.skip-link:focus-visible,.skip-link:focus{top:0;color:#fff;outline:2px solid #fff;outline-offset:-2px}
 .card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);transition:box-shadow .18s,transform .18s;min-width:0}
 .card:hover{box-shadow:var(--shadow-lg);border-color:var(--border-strong)}
 .stat:hover{transform:translateY(-2px)}
