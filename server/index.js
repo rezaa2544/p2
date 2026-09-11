@@ -710,7 +710,10 @@ const onRequest = async (req, res) => {
         /* Delta Phase 4 (gap 3): warmupِ کرسر — کلیدِ امضا بینِ restart
            پایدار است یا نه. persistent=true یعنی کرسرِ صادرشدهٔ نسخهٔ
            پیشینِ فرآیند بعد از restart هم هنوز verify می‌شود (تا TTL). */
-        cursor: { enabled: pullRoute.cursor.enabled, persistent: pullRoute.cursor.enabled, key_source: CURSOR_KEY_SOURCE }
+        cursor: { enabled: pullRoute.cursor.enabled, persistent: pullRoute.cursor.enabled, key_source: CURSOR_KEY_SOURCE },
+        /* Delta Phase 4 (gap 4): پالسِ sync در سلامت — pull/push/conflict/
+           backpressure/کرسر + میانگینِ حجمِ دلتا (خام و سیم). */
+        sync: metrics.syncHealthStats(metrics.snapshot())
       };
       /* Wave 10 — pool observability (primary + optional read replica) when PG live */
       try { if (db.isPostgres && db.isPostgres() && typeof db.poolStats === 'function') body.db_pools = db.poolStats(); }

@@ -956,6 +956,9 @@ function createSync(ctx){
     }
     if(apply.length) ctx.markDirty();
     audit('sync_ok', { user_id: s.id, ops: apply.length });
+    /* Delta Phase 4 (gap 4): هر pushِ موفق (دستهٔ غیرخالی که به ۲۰۰ رسید)
+       یک واحد — پالسِ سلامتِ مسیرِ write. */
+    metrics.inc('payesh_sync_pushes_total');
     sendJson(res, 200, mirrorFailed ? { ok: true, results, mirror_failed: true } : { ok: true, results });
   }
 

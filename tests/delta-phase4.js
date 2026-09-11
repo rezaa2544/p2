@@ -451,6 +451,98 @@ await test('CW3 بوتِ واقعی ×۲ با همان keyfile: /api/health بل
   }
 });
 
+
+/* ═══════════════ گپ ۴ — Sync Metrics ═══════════════ */
+group('گپ ۴ — سنجه‌های sync در سلامت');
+
+await test('MX1 helper واحد: جمعِ سری‌ها + میانگینِ هیستوگرام + صفرِ ایمن', async () => {
+  const fakeSnap = {
+    'payesh_sync_pulls_total': { series: [
+      { labels: { mode: 'delta' }, value: 7 },
+      { labels: { mode: 'full' }, value: 3 }
+    ] },
+    'payesh_sync_pushes_total': { series: [{ labels: {}, value: 12 }] },
+    'payesh_sync_delta_size_bytes': { series: [{ labels: {}, count: 2, sum: 3072 }] },
+    'payesh_sync_delta_wire_bytes': { series: [] }
+  };
+  const st = metrics.syncHealthStats(fakeSnap);
+  assert(st.pulls_total === 10 && st.pulls_delta === 7 && st.pulls_full === 3, 'labeled series summed, got ' + JSON.stringify(st.pulls_total) + '/' + st.pulls_delta + '/' + st.pulls_full);
+  assert(st.pushes_total === 12, 'pushes summed');
+  assert(st.delta_size_bytes_avg === 1536, 'histogram avg = sum/count, got ' + st.delta_size_bytes_avg);
+  assert(st.delta_wire_bytes_avg === null, 'empty histogram => null (not NaN)');
+  assert(st.conflicts_total === 0 && st.cursor_expired_total === 0, 'missing metrics => 0');
+  const empty = metrics.syncHealthStats({});
+  assert(empty.pulls_total === 0 && empty.delta_size_bytes_avg === null, 'empty snapshot => safe zeros');
+});
+
+await test('MX2 پول: full و delta هر دو شمرده می‌شوند + حجم دلتا مشاهده شد', async () => {
+  const { pull } = mkPullCtx();
+  const before = metrics.syncHealthStats(metrics.snapshot());
+  await pull({ url: '/api/v1/pull', headers: {} });                        /* بدونِ since = full */
+  const mid = metrics.syncHealthStats(metrics.snapshot());
+  assert(mid.pulls_full === before.pulls_full + 1, 'full pull counted, got ' + before.pulls_full + '→' + mid.pulls_full);
+  const c = createCursor({ secret: 'k'.repeat(64) });
+  const tok = c.sign(iso(Date.now() - 5000));
+  await pull({ url: '/api/v1/pull?cursor=' + encodeURIComponent(tok), headers: {} }); /* کرسرِ تازه = delta */
+  const after = metrics.syncHealthStats(metrics.snapshot());
+  assert(after.pulls_delta === mid.pulls_delta + 1, 'delta pull counted');
+  assert(after.delta_size_bytes_avg != null && after.delta_size_bytes_avg > 0, 'delta size observed, got ' + after.delta_size_bytes_avg);
+});
+
+await test('MX3 پوشِ غیرخالی شمرده می‌شود؛ خالی نه؛ کرسرِ منقضی شمرده می‌شود', async () => {
+  const { ctx } = makeSyncCtx({});
+  const s = createSync(ctx);
+  const before = metrics.syncHealthStats(metrics.snapshot());
+  const r0 = mkRes(); await s.apiSync({}, r0, { ops: [] });
+  assert(r0._cap.code === 200, 'empty batch is a 200');
+  let now = metrics.syncHealthStats(metrics.snapshot());
+  assert(now.pushes_total === before.pushes_total, 'empty batch must NOT count as a push, got ' + before.pushes_total + '→' + now.pushes_total);
+  const r1 = mkRes(); await s.apiSync({}, r1, { ops: mkOps(3, 'mx3') });
+  assert(r1._cap.code === 200, 'non-empty batch 200');
+  now = metrics.syncHealthStats(metrics.snapshot());
+  assert(now.pushes_total === before.pushes_total + 1, 'non-empty push counted');
+  /* کرسرِ منقضی: امضا با ttl کوتاه + ساعتِ جلو */
+  const c = createCursor({ secret: 'k'.repeat(64), ttlS: 60, now: () => Math.floor(Date.now() / 1000) - 7200 });
+  const tok = c.sign(iso(Date.now() - 7200e3));
+  const { pull } = mkPullCtx();
+  const beforeExp = metrics.syncHealthStats(metrics.snapshot());
+  const ctl = createPull({
+    store: { __deleted_records: [], __server_version: 1, grades: [] }, db: null,
+    sessionFrom: async () => ({ id: 10, school_id: 1, role: 'manager' }),
+    sendJson: (res, code, body) => { res._cap = { code, body }; },
+    cursor: createCursor({ secret: 'k'.repeat(64) })
+  });
+  const res = { _cap: null };
+  await ctl.apiPull({ url: '/api/v1/pull?cursor=' + encodeURIComponent(tok), headers: {} }, res);
+  assert(res._cap.code === 401 && res._cap.body.code === 'cursor_expired', 'expired cursor rejected 401, got ' + JSON.stringify(res._cap && res._cap.body));
+  const afterExp = metrics.syncHealthStats(metrics.snapshot());
+  assert(afterExp.cursor_expired_total === beforeExp.cursor_expired_total + 1, 'cursor_expired counted');
+});
+
+await test('MX4 بوتِ واقعی: /api/health بلوکِ sync با کلِ شکل می‌دهد', async () => {
+  const REAL_STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
+  if (!fs.existsSync(REAL_STORE)) { console.log('     ⏭️  store موجود نیست — رد می‌شود'); return; }
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'p4-mx4-'));
+  fs.copyFileSync(REAL_STORE, path.join(tmp, 'store.json'));
+  const port = 41700 + Math.floor(Math.random() * 200);
+  let b1;
+  try {
+    b1 = await bootServer(tmp, port);
+    const r = await fetch('http://127.0.0.1:' + port + '/api/health');
+    const body = await r.json();
+    assert(body.sync && typeof body.sync === 'object', 'health.sync present, got ' + JSON.stringify(body.sync));
+    for (const k of ['pulls_total', 'pulls_delta', 'pulls_full', 'pushes_total', 'conflicts_total',
+                     'backpressure_rejections_total', 'cursor_expired_total', 'cursor_region_mismatch_total',
+                     'delta_size_bytes_avg', 'delta_wire_bytes_avg', 'compressions_total']) {
+      assert(body.sync[k] === 0 || body.sync[k] === null || typeof body.sync[k] === 'number', 'sync.' + k + ' is numeric/null, got ' + JSON.stringify(body.sync[k]));
+    }
+    assert(body.cursor && body.cursor.key_source, 'cursor block still present alongside sync');
+  } finally {
+    await killServer(b1 && b1.child);
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 /* ═══════════════ خلاصه ═══════════════ */
 console.log('\n────────────────────────────────────────────────────────');
 if (fail === 0) {

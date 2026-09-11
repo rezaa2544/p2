@@ -368,6 +368,42 @@ const STATIC_EXACT = new Set([
   '/account-deletion.html', '/account-deletion', '/privacy.html', '/privacy'
 ]);
 
+/* Delta Phase 4 (gap 4): جمعِ سنجه‌هایِ sync برایِ /api/health —
+   سری‌های برچسب‌دار (pulls{mode}، compressions{encoding}) جمع می‌شوند و
+   برایِ هیستوگرام‌های حجم، میانگینِ sum/count گزارش می‌شود. خروجی فقط
+   عدد صحیح/اعشاریِ محدود است (قاعدهٔ Q3 — هیچ دادهٔ session/tenant بیرون
+   نمی‌رود). */
+function syncHealthStats(snap) {
+  snap = snap || {};
+  const total = (name, labelKey, labelVal) => {
+    const m = snap[name];
+    if (!m || !Array.isArray(m.series)) return 0;
+    return m.series
+      .filter((x) => !labelKey || (x.labels && x.labels[labelKey] === labelVal))
+      .reduce((a, x) => a + (Number(x.value) || 0), 0);
+  };
+  const avg = (name) => {
+    const m = snap[name];
+    if (!m || !Array.isArray(m.series) || !m.series.length) return null;
+    let sum = 0, cnt = 0;
+    for (const x of m.series) { sum += Number(x.sum) || 0; cnt += Number(x.count) || 0; }
+    return cnt > 0 ? Math.round((sum / cnt) * 10) / 10 : null;
+  };
+  return {
+    pulls_total: total('payesh_sync_pulls_total'),
+    pulls_delta: total('payesh_sync_pulls_total', 'mode', 'delta'),
+    pulls_full: total('payesh_sync_pulls_total', 'mode', 'full'),
+    pushes_total: total('payesh_sync_pushes_total'),
+    conflicts_total: total('payesh_sync_conflicts_total'),
+    backpressure_rejections_total: total('payesh_sync_backpressure_rejections_total'),
+    cursor_expired_total: total('payesh_cursor_expired_total'),
+    cursor_region_mismatch_total: total('payesh_cursor_region_mismatch_total'),
+    delta_size_bytes_avg: avg('payesh_sync_delta_size_bytes'),
+    delta_wire_bytes_avg: avg('payesh_sync_delta_wire_bytes'),
+    compressions_total: total('payesh_sync_delta_compressions_total')
+  };
+}
+
 function routeTemplate(pathname) {
   if (typeof pathname !== 'string' || pathname === '') return 'static_other';
   const p = pathname.length > 512 ? pathname.slice(0, 512) : pathname;
@@ -727,6 +763,7 @@ module.exports = {
   stats: registry.stats,
   reset: registry.reset,
   /* helpers */
+  syncHealthStats,
   routeTemplate,
   observeHttpRequest,
   observeAuth,
