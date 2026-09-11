@@ -30,6 +30,8 @@ const { createSync, attach } = require(path.join(ROOT, 'server', 'sync'));
 const { createPull } = require(path.join(ROOT, 'server', 'pull'));
 const { createCursor } = require(path.join(ROOT, 'server', 'cursor'));
 const zlib = require('zlib');
+const os = require('os');
+const { spawn } = require('child_process');
 const metrics = require(path.join(ROOT, 'server', 'metrics'));
 const { opX } = require('./helpers/opx');
 
@@ -322,6 +324,131 @@ await test('CM6 متریک‌های حجم: خام/سیم ثبت شدند و ف�
   const wireSnap = metrics.snapshot()['payesh_sync_delta_wire_bytes'];
   assert(sizeSnap && sizeSnap.series.length > 0, 'delta_size_bytes observed');
   assert(wireSnap && wireSnap.series.length > 0, 'delta_wire_bytes observed');
+});
+
+
+/* ═══════════════ گپ ۳ — Cursor Warmup ═══════════════ */
+group('گپ ۳ — کلیدِ کرسرِ پایدار (restart-safe)');
+
+await test('CW1 شبیه‌سازیِ restart: توکنِ boot1 در boot2 هنوز verify می‌شود؛ TTL هم می‌میرد', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'p4-cw1-'));
+  const keyFile = path.join(tmp, 'jwt.key');
+  /* دقیقاً جریانِ index.js: read-or-create با mode 600 */
+  const bootKey = () => {
+    if (fs.existsSync(keyFile)) return fs.readFileSync(keyFile, 'utf8').trim();
+    const k = require('crypto').randomBytes(32).toString('hex');
+    fs.writeFileSync(keyFile, k, { mode: 0o600 });
+    return k;
+  };
+  const k1 = bootKey();                     /* boot 1 — keyfile ساخته می‌شود */
+  const c1 = createCursor({ secret: k1 });
+  assert(c1.enabled && c1.keySource === 'explicit', 'boot1 cursor enabled');
+  const since = iso(Date.now() - 60e3);
+  const tok = c1.sign(since);
+  assert(!!tok, 'boot1 signed a cursor');
+  const k2 = bootKey();                     /* boot 2 — همان keyfile خوانده می‌شود */
+  assert(k1 === k2, 'keyfile is the SAME key across boots (persistence)');
+  const c2 = createCursor({ secret: k2 });
+  const v = c2.verify(tok);
+  assert(v.ok === true && v.payload.since === since, 'boot2 verifies boot1 token — warmup gap closed');
+  /* TTL پس از restart هم اعمال می‌شود (ساعتِ جلو‌رفته) */
+  const c3 = createCursor({ secret: k2, ttlS: 60, now: () => Math.floor(Date.now() / 1000) + 7200 });
+  const vExpired = c3.verify(tok);
+  assert(vExpired.ok === false && vExpired.code === 'cursor_expired', 'expired token still rejected after restart, got ' + JSON.stringify(vExpired));
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+await test('CW2 keySource: explicit / env_cursor / env_jwt / none + هشدارِ رازِ کوتاه', async () => {
+  const hadC = process.env.PAYESH_CURSOR_SECRET, hadJ = process.env.PAYESH_JWT_SECRET;
+  const warns = [];
+  const origWarn = console.warn; console.warn = (...a) => { warns.push(a.join(' ')); };
+  try {
+    process.env.PAYESH_CURSOR_SECRET = ''; delete process.env.PAYESH_CURSOR_SECRET;
+    process.env.PAYESH_JWT_SECRET = ''; delete process.env.PAYESH_JWT_SECRET;
+    let c = createCursor({});
+    assert(c.enabled === false && c.keySource === 'none', 'none => disabled, got ' + c.keySource);
+
+    process.env.PAYESH_JWT_SECRET = 'j'.repeat(45);
+    c = createCursor({});
+    assert(c.enabled === true && c.keySource === 'env_jwt', 'env_jwt wins when no cursor secret, got ' + c.keySource);
+
+    process.env.PAYESH_CURSOR_SECRET = 'c'.repeat(50);
+    c = createCursor({});
+    assert(c.enabled === true && c.keySource === 'env_cursor', 'env_cursor has priority over env_jwt, got ' + c.keySource);
+
+    c = createCursor({ secret: 'x'.repeat(33) });
+    assert(c.enabled === true && c.keySource === 'explicit', 'explicit wins overall, got ' + c.keySource);
+
+    /* رازِ کوتاه: سقوط به منبعِ بعدی + هشدارِ بلند */
+    process.env.PAYESH_CURSOR_SECRET = 'short';
+    c = createCursor({});
+    assert(c.enabled === true && c.keySource === 'env_jwt', 'short cursor secret falls through, got ' + c.keySource);
+    assert(warns.some(w => w.indexOf('PAYESH_CURSOR_SECRET') > -1 && w.indexOf('32') > -1), 'misconfig warning emitted, got ' + JSON.stringify(warns));
+  } finally {
+    console.warn = origWarn;
+    if (hadC != null) process.env.PAYESH_CURSOR_SECRET = hadC; else { process.env.PAYESH_CURSOR_SECRET = ''; delete process.env.PAYESH_CURSOR_SECRET; }
+    if (hadJ != null) process.env.PAYESH_JWT_SECRET = hadJ; else { process.env.PAYESH_JWT_SECRET = ''; delete process.env.PAYESH_JWT_SECRET; }
+  }
+});
+
+/* بوتِ واقعیِ سرور به‌عنوان فرآیندِ جدا — دوبار، با همان keyfile */
+function bootServer(tmp, port) {
+  return new Promise((resolve, reject) => {
+    const env = Object.assign({}, process.env, {
+      PAYESH_STORE: path.join(tmp, 'store.json'),
+      PAYESH_AUDIT: path.join(tmp, 'audit.log'),
+      PAYESH_KEY: path.join(tmp, 'jwt.key'),
+      PORT: String(port),
+      PAYESH_DEMO_CODE: '1',
+      PAYESH_ENV: '', REDIS_URL: '', NODE_ENV: ''
+    });
+    delete env.PAYESH_CURSOR_SECRET; delete env.PAYESH_JWT_SECRET;
+    delete env.PAYESH_ENV; delete env.REDIS_URL; delete env.NODE_ENV;
+    const child = spawn(process.execPath, [path.join(ROOT, 'server', 'index.js')], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '', done = false;
+    const t = setTimeout(() => { if (!done) { done = true; reject(new Error('boot timeout: ' + out.slice(-300))); } }, 25000);
+    child.stdout.on('data', (d) => {
+      out += d.toString();
+      if (!done && out.indexOf(':' + port) > -1) { done = true; clearTimeout(t); resolve({ child, log: out }); }
+    });
+    child.stderr.on('data', (d) => { out += d.toString(); });
+    child.on('exit', (code) => { if (!done) { done = true; clearTimeout(t); reject(new Error('early exit ' + code + ': ' + out.slice(-300))); } });
+  });
+}
+const killServer = (c) => new Promise((r) => { if (!c || c.exitCode != null) return r(); c.on('exit', r); try { c.kill('SIGTERM'); } catch (e) { try { c.kill('SIGKILL'); } catch (e2) { r(); } } setTimeout(r, 5000); });
+
+await test('CW3 بوتِ واقعی ×۲ با همان keyfile: /api/health بلوکِ cursor می‌دهد و کلید بینِ restart یکی است', async () => {
+  const REAL_STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
+  if (!fs.existsSync(REAL_STORE)) { console.log('     ⏭️  store موجود نیست (node server/seed.js) — طبقِ الگوی wave15 رد می‌شود'); return; }
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'p4-cw3-'));
+  fs.copyFileSync(REAL_STORE, path.join(tmp, 'store.json'));
+  const port = 41700 + Math.floor(Math.random() * 200);
+  let b1, b2;
+  try {
+    b1 = await bootServer(tmp, port);
+    assert(b1.log.indexOf('cursor : enabled') > -1 && b1.log.indexOf('key=keyfile') > -1, 'boot1 log announces cursor key source, got: ' + b1.log.split('\n').filter(l => l.indexOf('cursor') > -1).join(' | '));
+    let r = await fetch('http://127.0.0.1:' + port + '/api/health');
+    let body = await r.json();
+    assert(body.cursor && body.cursor.enabled === true && body.cursor.persistent === true && body.cursor.key_source === 'keyfile',
+      'boot1 health cursor block, got ' + JSON.stringify(body.cursor));
+    /* توکنِ صادرشده در دورِ boot1 (با کلیدِ keyfile) */
+    const key1 = fs.readFileSync(path.join(tmp, 'jwt.key'), 'utf8').trim();
+    const c1 = createCursor({ secret: key1 });
+    const tok = c1.sign(iso(Date.now() - 30e3));
+    await killServer(b1.child);
+
+    b2 = await bootServer(tmp, port);      /* restart — همان keyfile، همان پورت */
+    r = await fetch('http://127.0.0.1:' + port + '/api/health');
+    body = await r.json();
+    assert(body.cursor && body.cursor.enabled === true && body.cursor.key_source === 'keyfile', 'boot2 identical cursor block, got ' + JSON.stringify(body.cursor));
+    const key2 = fs.readFileSync(path.join(tmp, 'jwt.key'), 'utf8').trim();
+    const c2 = createCursor({ secret: key2 });
+    const v = c2.verify(tok);
+    assert(v.ok === true, 'cursor issued before the restart still verifies after it (within TTL)');
+  } finally {
+    await killServer(b1 && b1.child); await killServer(b2 && b2.child);
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 });
 
 /* ═══════════════ خلاصه ═══════════════ */

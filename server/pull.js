@@ -333,7 +333,10 @@ function createPull(ctx) {
 
   return {
     apiPull,
-    filterCollectionForSession
+    filterCollectionForSession,
+    /* Delta Phase 4 (gap 3): introspection — سلامتِ بوت و /api/health
+       می‌پرسند کلیدِ کرسر پایدار است یا نه. */
+    cursor
   };
 }
 

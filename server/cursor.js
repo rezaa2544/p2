@@ -52,13 +52,30 @@ function ttlSeconds() {
  *   cursor HMAC key is NEVER the raw JWT key — same input secret, distinct key.
  */
 function resolveSecret(explicit) {
-  const candidates = [explicit, process.env.PAYESH_CURSOR_SECRET, process.env.PAYESH_JWT_SECRET];
+  return resolveKey(explicit).key;
+}
+
+/* Delta Phase 4 (gap 3): منبعِ برنده را هم برگردان تا سلامتِ بوت و
+   /api/health بگویند کلیدِ کرسر از کجا آمده — و بازراه‌اندازی پایدار
+   است یا نه (keyfile/env پایدارند؛ منبعِ پایدار = کرسرِ زنده). */
+function resolveKey(explicit) {
+  /* هشدارِ misconfig: رازِ کوتاهِ صریح بی‌صدا رد نمی‌شود — اپراتور
+     باید بداند چرا سقوط به منبعِ بعدی کرده (رفتار، همانِ پیشین است). */
+  const cs = process.env.PAYESH_CURSOR_SECRET;
+  if (typeof cs === 'string' && cs.length > 0 && cs.length < 32) {
+    console.warn('[cursor] PAYESH_CURSOR_SECRET is shorter than 32 bytes — falling back to the JWT key source (domain-separated). Set a >=32-byte secret to stop this warning.');
+  }
+  const candidates = [
+    { v: explicit, source: 'explicit' },
+    { v: process.env.PAYESH_CURSOR_SECRET, source: 'env_cursor' },
+    { v: process.env.PAYESH_JWT_SECRET, source: 'env_jwt' }
+  ];
   for (const c of candidates) {
-    if (typeof c === 'string' && c.length >= 32) {
-      return crypto.createHash('sha256').update('payesh.cursor.v1|' + c).digest('hex');
+    if (typeof c.v === 'string' && c.v.length >= 32) {
+      return { key: crypto.createHash('sha256').update('payesh.cursor.v1|' + c.v).digest('hex'), source: c.source };
     }
   }
-  return null;
+  return { key: null, source: 'none' };
 }
 
 const b64u = (buf) => Buffer.from(buf).toString('base64url');
@@ -73,13 +90,16 @@ function sigOf(secret, payloadB64) {
  */
 function createCursor(o) {
   o = o || {};
-  const secret = resolveSecret(o.secret);
+  const resolved = resolveKey(o.secret);
+  const secret = resolved.key;
   const ttl = clampInt(o.ttlS != null ? o.ttlS : ttlSeconds(), DEFAULT_TTL_S, MIN_TTL_S, MAX_TTL_S);
   const now = typeof o.now === 'function' ? o.now : () => Math.floor(Date.now() / 1000);
 
   return {
     enabled: !!secret,
     ttlS: ttl,
+    /* Delta Phase 4 (gap 3): 'explicit' | 'env_cursor' | 'env_jwt' | 'none' */
+    keySource: resolved.source,
 
     /**
      * Sign a `since` ISO timestamp into an expiring cursor token.
@@ -135,4 +155,4 @@ function createCursor(o) {
   };
 }
 
-module.exports = { createCursor, resolveSecret, ttlSeconds, DEFAULT_TTL_S, MIN_TTL_S, MAX_TTL_S };
+module.exports = { createCursor, resolveSecret, resolveKey, ttlSeconds, DEFAULT_TTL_S, MIN_TTL_S, MAX_TTL_S };
