@@ -1,6 +1,14 @@
 -- ═══════════════════════════════════════════════════════════════════
--- 004_wave3_query_indexes.sql — Wave 3 keyset indexes, brought into
+-- 007_wave3_query_indexes.sql — Wave 3 keyset indexes, brought into
 -- the migration chain
+--
+-- RENUMBERED 004 -> 007 (2026-09-11): it collided with
+-- 004_wave1_version_seq.sql, violating the continuous-numbering rule in
+-- docs/MIGRATION_GUIDE.md. 007 is the first free number (006 is taken by
+-- 006_delta_schema_gaps). Safe to reorder: every statement is an
+-- idempotent CREATE INDEX IF NOT EXISTS on tables created by 001, and no
+-- other migration references these seven indexes. See
+-- docs/MIGRATION_DECISION.md.
 -- ───────────────────────────────────────────────────────────────────
 -- server/schema.sql has carried these seven indexes since Wave 3
 -- (idx_users_school_role_id … idx_classes_school_grade_id), but the
