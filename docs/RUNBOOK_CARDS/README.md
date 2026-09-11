@@ -18,6 +18,7 @@
 | RC-008 | بازیابی پشتیبان | ≤۹۰ دقیقه | از دست رفتن داده | [کارت](BACKUP_RESTORE.md) |
 | RC-009 | پر شدن دیسک | ≤۲۰ دقیقه | مصرف >۹۵٪ | [کارت](DISK_FULL_EMERGENCY.md) |
 | RC-010 | مقابله با دیداس | ≤۱۵ دقیقه | ترافیک >۵× عادی | [کارت](DDOS_MITIGATION.md) |
+| RC-016 | هشدار پایش امنیت زمان اجرا | ≤۱۵ دقیقه | `AnomalyDetected` / `AttackPatternSignature` / `SuspiciousSession` | [کارت](RC-016.md) |
 
 ## نقشهٔ درخت تصمیم: اگر این آلارم → این کارت
 
@@ -31,6 +32,7 @@
   - کلید امضا لو رفته → [چرخش کلید](JWT_SECRET_ROTATION.md)
   - سوءاستفادهٔ الگویی (آی‌پی/کاربر مشخص) → [محدودسازی نرخ](RATE_LIMIT_EMERGENCY.md)
   - ترافیک پخش‌شدهٔ عظیم (>۵×) → [مقابله با دیداس](DDOS_MITIGATION.md)
+  - `AnomalyDetected` / `AttackPatternSignature` / `SuspiciousSession` → [هشدار پایش امنیت زمان اجرا](RC-016.md)
 - **زیرساخت:**
   - دیسک >۹۵٪ → [دیسک پر](DISK_FULL_EMERGENCY.md)
 

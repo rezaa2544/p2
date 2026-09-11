@@ -28,9 +28,10 @@ const CARDS = [
   ['RC-008', 'BACKUP_RESTORE.md', 'بازیابی پشتیبان', '۹۰'],
   ['RC-009', 'DISK_FULL_EMERGENCY.md', 'پر شدن دیسک', '۲۰'],
   ['RC-010', 'DDOS_MITIGATION.md', 'مقابله با دیداس', '۱۵'],
+  ['RC-016', 'RC-016.md', 'هشدار پایش امنیت زمان اجرا', '۱۵'],
 ];
 
-grp('ساختار A4 هر ۱۰ کارت');
+grp('ساختار A4 هر ۱۱ کارت');
 CARDS.forEach(([id, file, title, budget]) => {
   const p = path.join(DIR, file);
   const exists = fs.existsSync(p);
@@ -55,6 +56,7 @@ chk('RC-005 سه حالت ابطال (همه/کاربر/بازهٔ جی‌تی�
 chk('RC-006 چرخش غلتان با کلید قبلی', (() => { const d = get('JWT_SECRET_ROTATION.md'); return d.includes('PAYESH_JWT_SECRET') && d.includes('PAYESH_JWT_SECRET_PREV'); })());
 chk('RC-007 حالت اِجرای دیوار آتش', get('RATE_LIMIT_EMERGENCY.md').includes('PAYESH_WAF_MODE=enforce'));
 chk('RC-010 ترکیب سه‌گانهٔ دیداس', (() => { const d = get('DDOS_MITIGATION.md'); return d.includes('enforce') && d.includes('کش') && d.includes('سقف نرخ'); })());
+chk('RC-016 سه آلارم runtime و پیوند مهار را دارد', (() => { const d = get('RC-016.md'); return d.includes('AnomalyDetected') && d.includes('AttackPatternSignature') && d.includes('SuspiciousSession') && d.includes('RATE_LIMIT_EMERGENCY.md'); })());
 
 grp('فهرست و نقشهٔ تصمیم');
 const readme = fs.existsSync(path.join(DIR, 'README.md')) ? fs.readFileSync(path.join(DIR, 'README.md'), 'utf8') : '';
