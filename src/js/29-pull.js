@@ -105,6 +105,13 @@ function mergeServerDelta(payload) {
 
   var cols = payload.collections;
   var touchedCols = {};
+  /* Gap 1 (Delta Hardening Phase 2): اسنپ‌شات کامل یعنی «حالتِ واقعیِ سرور» —
+     هر ردیفی که در پاسخِ کاملِ یک مجموعه نیست، دیگر وجود ندارد. ادغامِ
+     صرفِ by-id ردیف‌های حذف‌شدهٔ قدیمی را برای همیشه نگه می‌داشت؛ پس
+     مجموعه‌های بازگشدهٔ اسنپ‌شاتِ کامل جایگزین می‌شوند — به‌جز ردیف‌های
+     محافظت‌شده توسط صفِ آفلاین (pendingSet). دلتا (full_snapshot=false)
+     عینِ قبل merge می‌شود. */
+  var isFullSnapshot = payload.full_snapshot === true;
 
   for (var c in cols) {
     if (!Object.prototype.hasOwnProperty.call(cols, c)) continue;
@@ -116,6 +123,17 @@ function mergeServerDelta(payload) {
     }
 
     touchedCols[c] = true;
+
+    if (isFullSnapshot) {
+      var keptRows = [];
+      for (var ki = 0; ki < db[c].length; ki++) {
+        var oldRow = db[c][ki];
+        if (oldRow && oldRow.id != null && pendingSet[c + '::' + oldRow.id]) {
+          keptRows.push(oldRow);
+        }
+      }
+      db[c] = keptRows;
+    }
 
     for (var i = 0; i < records.length; i++) {
       var rec = records[i];
