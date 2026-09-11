@@ -41,6 +41,8 @@
 
 ## ۵. فایل‌های کلیدی برای هماهنگ‌کنندهٔ جدید
 
+- `docs/DOCS_INDEX.md` — **نمایهٔ مرکزی مستندات؛ از اینجا شروع کنید** (نقشهٔ دسته‌ها، وابستگی‌ها، مالکیت و سلامت + `docs/DOCS_HEALTH_REPORT.md`)
+- `docs/MASTER_ONBOARDING_PATH.md` — مسیر جامع مطالعهٔ تازه‌واردها (روز اول/هفتهٔ اول/ماه اول + چک‌لیست درک)
 - `docs/ROADMAP.md`
 - `docs/NATIONAL_ROADMAP_PROGRESS.md`
 - `docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md`
