@@ -6,6 +6,10 @@
 > دلتا** (§۶) · طراحیِ نهاییِ پارتیشن‌بندیِ grades/attendance با یافتهٔ مسدودکنندهٔ
 > upsert (§۳).
 >
+> **نوبتِ سوم (Arena/Agent Mode):** ۲۰۲۶-۰۹-۱۱ — **اجرا و تأییدِ زنده بر PostgreSQL
+> 17.11**: مهاجرتِ `009_partition_grades_attendance` (چهارفازی، با دادهٔ 180k)
+> + رفعِ مسدودکنندهٔ persistOp (§۷) + **اتصالِ chg_id به کرسرِ v3** (§۸).
+>
 > **تصمیمِ کاربر (پاسخ به سؤالِ دامنه):** کدِ DB-layer (read-replica pool +
 > routing + pool observability) با fake-DB پیاده و تست شد؛ **پارتیشن‌بندی فقط
 > به‌صورت طراحی در این سند** ثبت شد (pending برایِ PG زنده). هیچ DDLِ مهاجرتیِ
@@ -20,7 +24,7 @@
 |---|---|---|
 | **Connection Pooling** | موجود — `server/db.js` از `pg.Pool` واقعی با min2/max20، timeout، auto-reconnect استفاده می‌کند | تقویت‌شده: pool هایِ primary و read-replica + مشاهده‌پذیری (`poolStats`/health) |
 | **Read Replica** | **نبود** — هیچ `READ_*`، هیچ pool خواندنی، همهٔ خوانش‌ها روی pool نوشتن | **افزوده شد** — pool رپلیکای اختیاری (`READ_DATABASE_URL`) + `queryRead()` |
-| **Partitioning** | **نبود** — `attendance`/`grades`/`notifications` جداولِ heap ساده‌اند | **طراحی ثبت شد** (پیاده‌سازی pending بر PG زنده) |
+| **Partitioning** | **نبود** — `attendance`/`grades`/`notifications` جداولِ heap ساده‌اند | **اجرا و تأییدِ زنده (نوبت ۳):** مهاجرتِ ۰۰۹ — grades/attendance → `PARTITION BY RANGE (created_at)` سالانه + DEFAULT؛ persistOp با env-flag مسیرِ پارتیشن‌شده گرفت (§۷) |
 | **PgBouncer** | **نبود** (سندِ RELIABILITY_DR_PLAN به آن به‌عنوان لایهٔ استقرار اشاره دارد) | ثبت در §۴ (استقرارِ pending) |
 
 `server/db.js` همچنان تنها seamِ دسترسی به PG است — هیچ route مستقیماً به
@@ -200,15 +204,17 @@ CREATE TRIGGER trg_attendance_chg BEFORE INSERT OR UPDATE ON attendance_p
   - `tests/wave10-chg-id.js` → **۳۱/۳۱** (نوبتِ دوم: مهاجرتِ ۰۰۸ + سازنده + پریتی)
   - `tests/wave10-chg-id-mutations.js` → همهٔ جهش‌ها کشته شوند
   - `tests/migration-sequence.js` → با ۰۰۸ سبز بماند
+  - `tests/partitioning.js` → **۴۲/۴۲** (نوبتِ سوم: U1–U6 واحد + L1–L8 زنده بر PG 17.11)
+  - `tests/chg_id_cursor.js` → **۳۳/۳۳** (نوبتِ سوم: کرسرِ v3 + سازگاریِ v1/v2 + pull)
 - گیت‌های حیاتی پس از هر مرحله: smoke **۵۴۷/۵۴۷** · `tools/check-authz.js` →
   **۰** · `tests/secret-scan.js` → **۱۱/۱۱** · `build.js --check`.
 - رگرسیون‌های سهممند: wave1-reads، wave3-query(+2)، wave4-sync،
   delta-sync-hardening، pull-bootstrap.
-- **قیدِ صداقت (پابرجا):** اجرایِ واقعیِ read-replica و پارتیشن‌بندی بر
-  PostgreSQL زنده pending است (سندباکس PG زنده ندارد)؛ fake-DB انضباطِ مسیریابی
-  و قراردادِ فایل‌ها را راستی‌آزمایی می‌کند. مهاجرتِ ۰۰۸ چون کاملاً additive و
-  idempotent است کم‌ریسک‌ترین شکلِ DDL است ولی تأییدِ نهاییِ آن هم موعودِ PG
-  زنده (فاز B/C مستقرِ پارتیشن یا محیطِ استیجینگ) است.
+- **قیدِ صداقت (به‌روزِ نوبتِ سوم):** read-replica همچنان fake-DB است (تأییدِ
+  نهایی موعودِ استیجینگ)؛ اما **پارتیشن‌بندی و مهاجرتِ ۰۰۸ دیگر pending
+  نیستند** — روی PostgreSQL 17.11 زندهٔ سندباکس با فیکسچرِ نمایندهٔ 180k سطر
+  (60k حضور + 120k نمره) اجرا و وارون‌سازی شدند (§۷). اجرای ۵۰M/۲۸۸M در
+  سندباکس شدنی نیست؛ زمان‌سنجیِ اندازه‌گیری‌شده و برون‌یابیِ صادقانه در §۷.۴.
 
 ## ۶) دلتای مبتنی بر change-ID — مهاجرتِ ۰۰۸ (نوبتِ دوم، تحویل‌شده)
 
@@ -247,3 +253,107 @@ backfill را دسته‌ای با id-range در پنجرهٔ نگهداری ا�
 ---
 
 ---
+
+## ۷) پارتیشن‌بندی grades/attendance — اجرا و تأییدِ زنده (نوبتِ سوم)
+
+**محیط:** PostgreSQL 17.11 زندهٔ سندباکس (`payesh_w10`)، چینِ کاملِ
+`001→008` سپس `009` روی همان دیتابیس — دقیقاً مثلِ تولید: فیکسچر روی
+**heap** درج شد و بعد ۰۰۹ اجرا شد تا مسیرِ کپیِ واقعی تست شود.
+
+### ۷.۱ مهاجرتِ `009_partition_grades_attendance.sql` (+ `.down.sql`)
+
+- **Phase A (attendance):** ساختِ `attendance_p` به‌صورتِ
+  `PARTITION BY RANGE (created_at)` + پارتیشن‌های سالانهٔ `y2025`/`y2026`/`y2027`
+  + `attendance_default` (ردیفِ ناشناخته ⇒ هرگز خطای routing نمی‌گیریم) ·
+  کپیِ دسته‌ایِ ۵۰k-تایی با id-range · بازسازیِ **همهٔ ایندکس‌های زنجیره** روی
+  والد (کلونِ خودکار به پارتیشن‌ها) · `setval` جایگاهِ identity.
+- **Phase B (grades):** همان قرارداد؛ PK ⇒ **`(id, created_at)`** (تکرارِ id
+  بین سال‌ها مجاز) + ایندکسِ غیر یکتای `(id)` برای مسیرِ UPDATE-by-id ·
+  FKهای پنج‌گانه به schools/users/classes/subjects (DEFERRABLE INITIALLY
+  DEFERRED) · **`created_at` روی هر دو جدول `NOT NULL`** و کپی با
+  `COALESCE(created_at, updated_at, epoch)` (زنجیرهٔ قدیمی NULL مجاز داشت).
+- **Phase C (swap در یک تراکنش):** `grades→grades_old`، `grades_p→grades`
+  + رقصِ rename ایندکس‌ها/سکوئنس‌ها به نام‌های نهایی — نام‌هایی که
+  `002/005/007/008` ساخته‌اند عیناً حفظ می‌شوند (کوئری‌های اپ بدونِ تغییر
+  کار می‌کنند). `*_old` نگه داشته می‌شود (rollback بی‌درز).
+- **تریگرِ `chg_id`** روی والدِ پارتیشن‌شده بازسازی شد (قراردادِ ۰۰۸) — تریگرِ
+  partitioned table به همهٔ پارتیشن‌ها اعمال می‌شود.
+- **`.down.sql`:** وارون‌سازیِ کامل — نوشته‌های پس از swap که در `*_old`
+  نیستند اول به `*_recovered` نجات داده می‌شوند (چیزی بی‌صدا گم نمی‌شود)،
+  بعد swap معکوس + حذفِ جدول‌های پارتیشن‌شده + پیش‌بردنِ identity.
+
+### ۷.۲ رفعِ مسدودکنندهٔ `persistOp` (فاز A طراحیِ نوبتِ دوم)
+
+مسیرِ legacy برای جدول‌های heap دست‌نخورده ماند. جدولِ نام‌برده در
+`PAYESH_PARTITIONED_TABLES` (CSV؛ پیش‌فرض: خالی = رفتارِ قبل):
+
+```
+UPDATE … WHERE id=$id  → rowCount>0 ⇒ تمام
+                       ↘ 0 ⇒ INSERT … (بدون ON CONFLICT)
+                            ↘ SQLSTATE 23505 + id ⇒ UPDATE دوباره (باید بگیرد؛ وگرنه throw)
+```
+
+این همان idempotencyِ push را حفظ می‌کند: پوشِ دوبارهٔ همان op ⇒ UPDATE، نه
+سطرِ دوم. سطرِ بدونِ id ⇒ INSERT مستقیم.
+
+### ۷.۳ تأییدِ زنده (`tests/partitioning.js` — ۴۲/۴۲)
+
+واحد (۱۶): persistOp با fake-client در هر ۵ حالت (legacy/update-only/
+insert-only/23505/بدون-id) + قراردادِ متنِ ۰۰۹/۰۰9.down.
+زنده (۲۶): چینِ 001→008 + فیکسچرِ heap (60k+120k در ~۵s) + ۰۰۹ (کپی+swap
+~۵.۳s) ⇒ هر دو جدول `relkind=p` با PK جدید · پریتیِ شمار/MAX(id)/chg_id/
+created_at · UPDATE ⇒ chg_id تازه · درج/upsert/حذفِ persistOpsBatch روی
+پارتیشن‌شده · **EXPLAIN: هرسِ پارتیشن (فقط y2026 خوانده شد)** · فیدِ chg از
+ایندکس (`…_chg_id_idx` روی هر پارتیشن؛ Index Scan، نه Seq) · فول‌پول ⇒
+`chg_watermark` · وارون‌سازیِ کامل + بازیابیِ سطرِ پس از swap در
+`grades_recovered`.
+
+### ۷.۴ صداقتِ مقیاس — زمان‌سنجی و برون‌یابی
+
+| اندازه‌گیری (PG 17.11 سندباکس) | عدد |
+|---|---|
+| درجِ فیکسچر heap (180k سطر، تریگرهای chg فعال) | ~۴.۷–۵.۰s |
+| ۰۰۹: کپیِ 180k + ایندکس/FK/تریگر + swap | ~۵.۲–۵.۳s |
+| نرخِ مؤثر کپی (با نگهداریِ ایندکس) | ~۳۵k سطر/s |
+
+برون‌یابیِ خطی به **۵۰M سطر ≈ ۲۴ دقیقه** و ۲۸۸M ≈ ~۲.۳ ساعت — این فقط
+مرتبهٔ بزرگی است، نه SLA: در تولید، I/O و shared_buffers و پراکندگیِ واقعیِ
+created_at حاکم‌اند. توصیهٔ اجرایی: پنجرهٔ نگهداری + پایشِ لاگِ دسته‌ایِ ۰۰۹
+(پیشرفتِ id-range) + `ANALYZE` پس از کپی. ۵۰M/۲۸۸M در سندباکس اجرا نشد و
+ادعای سبزی برایش وجود ندارد.
+
+### ۷.۵ درس‌های دیباگ (ثبت برای آینده)
+
+1. **مرجعِ واقعیتِ دیتابیس، زنجیرهٔ `migrations/` است — نه `server/schema.txt`
+   و نه schema اپ.** سه ستونِ grades فقط در اپ بود؛ DDL با آن‌ها شکست.
+2. `EXPLAIN` روی جدولِ کوچک/بدون آمار: planner به‌جای ایندکس Sort می‌گیرد؛
+   برای تستِ قطعیِ index-scan اول `ANALYZE` بعد واترمارک نزدیک MAX.
+3. ایندکس‌های والدهای پارتیشن‌شده در EXPLAIN با نامِ فرزند ظاهر می‌شوند
+   (`grades_y2026_chg_id_idx`) — تستِ قراردادی باید الگوی نام را ببیند.
+
+## ۸) اتصالِ chg_id به کرسرِ v3 (نوبتِ سوم)
+
+توکنِ **v3 = v2 + `cw`** (نشانگرِ آبِ change-ID): payload
+`{v:3, since, cw?, iat, exp, jti, rg}` — `cw` غایب ⇒ مسیرِ زمانیِ v2.
+
+- **pre-read:** پیش از هر خواندنِ داده، `MAX(chg_id)` هر ۱۴ جدولِ chg دار
+  گرفته می‌شود (`captureChgWatermark`) — همان انضباطِ `startedAtIso`: ردیفی
+  که وسطِ pull می‌آید حداکثر دوباره خوانده می‌شود، هرگز گم نمی‌شود. خروجی در
+  پاسخ: `chg_watermark` + داخلِ `next_cursor`.
+- **فید:** توکنِ v3ِ امضاشده با cw + جدولِ chg دار ⇒ `deltaRowsByChgSql`
+  (`WHERE chg_id > $1 ORDER BY chg_id, id`) و **فیلترِ زمانیِ JS اجرا نمی
+  شود** — آب مرجع است، نه ساعت (نوشتهٔ عقب‌بازگردِ updated_at سطر را گم
+  نمی‌کند).
+- **سازگاری (تست‌شده):** v1 تا TTL گذار · v2 مسیرِ زمانی · `?since=` legacy ·
+  کلاینتِ v2 که `next_cursor` v3 می‌گیرد آن را opaque می‌داند و دفعهٔ بعد
+  خودکار از فیدِ chg می‌آید — بدونِ هیچ تغییری در کلاینت.
+- **سقوطِ نرم:** شکستِ pre-read ⇒ پاسخ بدونِ `chg_watermark` و توکنِ بعدی
+  بدونِ cw (مسیرِ زمانی)؛ شکستِ فیدِ chg روی یک جدول ⇒ همان جدول از مسیرِ
+  زمانی (داده گم نمی‌شود).
+- **دو باگِ معنایی که تست‌های این نوبت گرفتند و همان‌جا فیکس شد:**
+  1. `sign(…, null)` با coercionِ JS می‌ساخت **cw=0** ⇒ توکنِ بعدی فیدِ chg
+     را از صفر می‌خواند (دلتای تمام‌جدول). حالا null ⇒ حذفِ cw.
+  2. `verify` با `Number([1])===1` و `Number(true)===1` عبور می‌داد ⇒ حالا
+     نوعِ JSON باید خودِ number باشد (fail-closed روی شکل).
+- تست: `tests/chg_id_cursor.js` **۳۳/۳۳** (K: واحدِ v1/v2/v3 + cw بدشکل؛
+  P: یکپارچگیِ pull با db جعلی — ۱۱ سناریو).
