@@ -181,10 +181,10 @@ function renderLogin(){
         ممنوع است — هر بازدیدکننده با یک کلیک وارد پرریسک‌ترین حساب می‌شد.
         حساب‌های نمونهٔ پایین همین کار را با یک کلیکِ آگاهانه انجام می‌دهند. */
      <div class="small muted" style="line-height:1.9;margin-bottom:10px">ورود با <b>شماره + کد + کد ملی</b> است — بدونِ رمز عبور.</div>
-     <div class="field"><label>شمارهٔ همراه</label><input class="input" id="lpn" inputmode="tel" placeholder="09xxxxxxxxx" style="direction:ltr;text-align:left" /></div>
+           <div class="field"><label for="lpn">شمارهٔ همراه</label><input class="input" id="lpn" inputmode="tel" placeholder="09xxxxxxxxx" style="direction:ltr;text-align:left" /></div>
      <button class="btn" style="width:100%;justify-content:center;margin-bottom:8px;padding:9px" data-act="login-code">ارسالِ کد</button>
-     <div class="field"><label>کد</label><input class="input" id="lcode" inputmode="numeric" placeholder="کد ۶ رقمی" style="direction:ltr;text-align:left" /></div>
-     <div class="field"><label>کد ملی</label><input class="input" id="lnid" inputmode="numeric" placeholder="کد ملی ۱۰ رقمی" style="direction:ltr;text-align:left" /></div>
+           <div class="field"><label for="lcode">کد</label><input class="input" id="lcode" inputmode="numeric" placeholder="کد ۶ رقمی" style="direction:ltr;text-align:left" /></div>
+           <div class="field"><label for="lnid">کد ملی</label><input class="input" id="lnid" inputmode="numeric" placeholder="کد ملی ۱۰ رقمی" style="direction:ltr;text-align:left" /></div>
      <div id="ldemo" class="small" style="display:none;background:var(--soft,#eef2f7);border:1px dashed var(--border,#c9d4e0);border-radius:8px;padding:8px 10px;margin-bottom:8px;line-height:1.8"></div>
      <div id="lerr"></div>
      <button class="btn" style="width:100%;justify-content:center;padding:12px;font-size:15px" data-act="login">استعلام و ورود</button>
