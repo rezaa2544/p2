@@ -1,5 +1,28 @@
 # دفترچهٔ تحویل کار — پایش
 
+## Handoff — پ۳: تأیید نهایی Wave 21 + وضعیت PRها + آماده‌سازی Wave 23 — ✅ (2026-09-12)
+
+- **بند ۱ — Wave 21 تأیید شد:** PR #85 `merged: true` @ `d1a0bf2` (GitHub API)؛
+  هر ۷ کامیت زنجیره (تا خود merge commit) با `merge-base --is-ancestor` عضو
+  `main`؛ هر ۴ فایل کلیدی (ماژول/تست/راهنما/گزارش) روی main موجود؛ ردیف
+  Wave 21 در roadmap = ✅ با Evidence مرج.
+- **بند ۲ — PRهای بررسی‌شده:**
+  - **PR #74** (Bug Hunt S7): **open، mergeable: false (dirty)** — ۲۰ کامیت/
+    ۱۹ فایل، نیازمند حل تعارض با main توسط مالکش؛ به این شاخه دست نزدم.
+  - **PR #81** (WAL drill S9): **مرج شد** @ `9e7da2c` (= head فعلی main).
+  - **PR #84** (Bug Hunt S9): **مرج شد** @ `886e2da` ∈ main.
+- **بند ۳ — محیط Wave 23 آماده شد:** شاخهٔ `feat/wave23-advanced-reporting`
+  از `main@9e7da2c` ساخته و push شد (`git ls-remote` تأیید)؛ وابستگی‌ها نصب
+  (jsdom، playwright + chromium + کتابخانه‌های سیستمی — بازیابی اسنپ‌شات
+  همه را پاک کرده بود)؛ **baseline سبز:** smoke 547/547، check-authz exit 0،
+  secret-scan 11/11، multi-grade 34/34، a11y-keyboard 92/92، build --check.
+- **⚠️ نکته برای شروع Wave 23:** «سیستم گزارش‌دهی پیشرفته» در
+  `docs/ROADMAP.md` تعریف نشده (جدول تا Wave 20 است). زیرساخت موجود:
+  `export-csv` (37-admin-tools)، کارت امتیازی منطقه (74-region-tools)،
+  داشبوردها (08-dashboard). پیش از توسعه، بریف دامنهٔ دقیق لازم است.
+
+---
+
 ## Handoff — پ۷: رفعِ findingهای PR #81 در مانور WAL — ✅ (2026-09-12)
 
 - **شاخه:** `fix/wave19-wal-drill-s9` روی `main@9ccb2fa`؛ تعارضِ `HANDOFF.md` با حفظِ نسخهٔ جاریِ main حل شد تا متنِ خراب/قدیمیِ شاخه دوباره وارد نشود.
