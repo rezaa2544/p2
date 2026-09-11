@@ -3635,6 +3635,7 @@ function pathwayGuideCard(sid){
 const SYNC_QUEUE_KEY = 'sms_syncq_v1';
 const SYNC_META_KEY  = 'sms_syncmeta_v1';
 const SYNC_DLQ_KEY   = 'sms_syncdlq_v1';   /* P1-10: صفِ مردهٔ ماندگار (پس از ۵ تلاش یا خروج از سقف) */
+const BGSYNC_TAG     = 'payesh-sync-queue'; /* W8-1: برچسبِ Background Sync — هم‌نام با sw.js */
 
 /* P1-10 (مقیاس ملی): سقف و نگهداشتِ صفِ ارسال.
    - maxOperations: بیشینهٔ قلم‌هایِ صف (تخلیه از قدیمی‌ترینِ ترمینال‌ها؛ pending آخر)
@@ -3871,6 +3872,8 @@ function enqueueOp(op){
   saveQueueChecked();         /* P1-10: مقاوم در برابرِ پرشدنِ حافظه */
   checkCapWarning();          /* P1-10: هشدارِ «نزدیک سقف» */
   refreshSyncBadge();         /* نشانگر بدون رندر کامل به‌روز شود */
+  bgMirrorQueue();            /* W8-1: آینهٔ IDB برایِ Background Sync */
+  bgRegisterSync();           /* W8-1: اگر تب بسته شد، مرورگر خودش بفرستد */
   scheduleSync(400);          /* اگر آنلاین بود، خیلی زود ارسال شود */
   return item;
 }
@@ -4018,6 +4021,7 @@ async function syncNow(manual){
   }finally{
     SYNC.syncing = false;
     SYNC.progress = null; /* دور ۱۰۰: پایانِ نمایشِ پیشرفت */
+    bgMirrorQueue();      /* W8-1: آینهٔ IDB با نتیجهٔ این دور تازه شود */
     refreshSyncBadge();
   }
 }
@@ -4315,6 +4319,79 @@ const SYNC_ACTIONS = {
   },
 };
 
+/* ---------- W8-1: Background Sync (تخلیهٔ صف با تبِ بسته) ----------
+   SW به حافظهٔ محلیِ صفحه (Store) دسترسی ندارد؛ صفِ ارسال (pending/failed) در
+   IndexedDB (payesh_offline_v2 → sync_queue) «آینه» می‌شود تا رویدادِ
+   sync مرورگر بتواند بدونِ تبِ باز آن را بفرستد (sw.js → bgFlushQueue).
+   آینه debounce می‌شود تا هر enqueue یک گذرِ کاملِ IDB نسازد. */
+var _bgMirrorTimer = null;
+function bgSyncSupported(){
+  return typeof navigator !== 'undefined' && 'serviceWorker' in navigator
+    && typeof window !== 'undefined' && 'SyncManager' in window;
+}
+function bgMirrorQueue(){
+  if(typeof offlineStorage === 'undefined' || !offlineStorage.isSupported()) return;
+  clearTimeout(_bgMirrorTimer);
+  _bgMirrorTimer = setTimeout(function(){
+    var want = SYNC.queue.filter(function(x){ return x.status === 'pending' || x.status === 'failed'; });
+    offlineStorage.getQueue().then(function(have){
+      var wantU = {}; want.forEach(function(x){ wantU[x.uid] = x; });
+      var ops = [];
+      /* قلم‌هایی که دیگر در صفِ زنده نیستند (synced/rejected/حذف‌شده) از آینه پاک شوند */
+      have.forEach(function(h){ if(!wantU[h.uid]) ops.push(offlineStorage.removeFromQueue(h.uid)); });
+      /* قلم‌هایِ زنده نوشته/تازه شوند (put ایدمپوتنت است) */
+      want.forEach(function(x){
+        ops.push(offlineStorage.addToQueue({
+          uid: x.uid, op: x.op, status: x.status, attempts: x.tries || 0, created_at: x.created_at
+        }));
+      });
+      return Promise.all(ops);
+    }).catch(function(){ /* آینهٔ ناموفق مانعِ کارِ صفِ اصلی نمی‌شود */ });
+  }, 400);
+}
+/* ثبتِ برچسبِ sync — مرورگر پس از برگشتِ اتصال، SW را حتی با تبِ بسته می‌راند */
+function bgRegisterSync(){
+  if(!bgSyncSupported()) return;
+  try{
+    navigator.serviceWorker.ready.then(function(reg){
+      if(reg && reg.sync && typeof reg.sync.register === 'function')
+        return reg.sync.register(BGSYNC_TAG);
+    }).catch(function(){ /* ثبت‌نشدنِ sync خطایِ کاربر نیست — مسیرِ عادیِ تب باز کار می‌کند */ });
+  }catch(e){}
+}
+/* پیامِ SW پس از تخلیهٔ پس‌زمینه: صفِ محلی با نتیجهٔ SW آشتی داده می‌شود */
+function bgApplyResult(msg){
+  var syncedU = {}, rejU = {};
+  (msg.synced || []).forEach(function(u){ syncedU[u] = 1; });
+  (msg.rejected || []).forEach(function(u){ rejU[u] = 1; });
+  var changed = 0;
+  SYNC.queue = SYNC.queue.filter(function(x){
+    if(syncedU[x.uid]){ changed++; return false; }
+    return true;
+  });
+  SYNC.queue.forEach(function(x){
+    if(rejU[x.uid] && x.status !== 'rejected'){
+      x.status = 'rejected';
+      if(!x.error) x.error = 'در همگام‌سازیِ پس‌زمینه رد شد';
+      changed++;
+    }
+  });
+  if(changed){
+    if(msg.synced && msg.synced.length){ SYNC.lastSync = new Date().toISOString(); saveSyncMeta(); }
+    saveQueue(); bgMirrorQueue(); refreshSyncBadge();
+    if(msg.synced && msg.synced.length) toast(fa(msg.synced.length) + ' تغییر در پس‌زمینه همگام شد ✓', 'ok');
+    if(msg.rejected && msg.rejected.length) toast(fa(msg.rejected.length) + ' تغییر در پس‌زمینه رد شد — پنلِ همگام‌سازی را ببینید', 'warn');
+  }
+}
+function bgListen(){
+  if(typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+  try{
+    navigator.serviceWorker.addEventListener('message', function(e){
+      if(e && e.data && e.data.type === 'payesh-bgsync-done') bgApplyResult(e.data);
+    });
+  }catch(e){}
+}
+
 /* ---------- راه‌اندازی ---------- */
 function initSync(){
   loadQueue();
@@ -4323,6 +4400,8 @@ function initSync(){
     window.addEventListener('online',  () => setOnline(true));
     window.addEventListener('offline', () => setOnline(false));
   }
+  bgListen();                        /* W8-1: نتیجهٔ همگام‌سازیِ پس‌زمینه را بشنود */
+  bgMirrorQueue();                   /* W8-1: بقایایِ جلسهٔ قبل هم آینه شوند */
   /* اگر چیزی از جلسه‌ی قبل در صف مانده، تلاش کن بفرستی */
   if(pendingCount() && SYNC.online) scheduleSync(1500);
 }
