@@ -69,10 +69,14 @@
 مسیر دقیق هر باندل در ستون «مسیر در سندباکس» §۲ است. در نشست تازهٔ دارای دسترسی گیت‌هاب:
 
 ```bash
-git bundle verify /home/user/<name>.bundle                 # باید okay بدهد
+git bundle verify /home/user/<name>.bundle                 # باید okay بدهد (داخل مخزن)
 git fetch origin main
-git checkout -b push-<sandbox-name> main
-git fetch /home/user/<name>.bundle 'refs/heads/*':refs/heads/bundle-<sandbox-name>
+git checkout -b push-<sandbox-name> origin/main            # از ریموت، نه مِین محلیِ کهنه
+git bundle list-heads /home/user/<name>.bundle             # رف‌های باندل را ببینید
+# رفِ دلخواه را صریحاً واکشی کنید؛ رف‌اسپکِ ستاره‌دار در مبدأ نامعتبر است و
+# ستاره‌کردن مقصد هم برای باندل‌های تک‌کامیتی صفر رف می‌سازد (فقط HEAD دارند).
+git fetch /home/user/<name>.bundle refs/heads/<branch-in-bundle>:refs/heads/bundle-<sandbox-name>
+#   یا برای باندلِ تک‌کامیتی:  HEAD:refs/heads/bundle-<sandbox-name>
 git merge bundle-<sandbox-name> --no-ff
 # چهار گیت: دود ۵۴۷ · مجوز ۰ · راز ۱۱/۱۱ · بیلد ۰ — شرح کامل: PUSH_RECOVERY_PLAYBOOK.md §۴
 git push origin push-<sandbox-name>
