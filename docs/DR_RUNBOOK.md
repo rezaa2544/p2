@@ -131,6 +131,7 @@ bash infra/postgres/post-checks.sh && bash infra/redis/redis-checks.sh
 | تاریخ | سناریو | RTO واقعی | RPO واقعی | نتیجه/اقدامِ اصلاحی | امضا |
 |---|---|---|---|---|---|
 | _(نمونهٔ قالب)_ 2026-10-05 | §۱ stop-primary | ۳د۴۰ث | ۴ث | سبز؛ افزودنِ alertِ pg_stat_archiver | ناظر ارشد |
+| **2026-09-11** | **WAL disk-full (W1–W5)** — `tests/wal-disk-full.js` | **۱۶۲ms** | **۰** | ✅ ۱۷/۱۷ سبز. PANIC واقعیِ `could not write to file "pg_wal/xlogtemp": No space left on device`؛ postmaster خودبازیابی شد؛ standby زنده ماند. اقدام اصلاحی: `logging_collector=off` در محیط drill — چون بافرِ collector در کرش، پیام PANIC را از دست می‌داد. گزارش: `docs/WAVE19_WAL_DRILL_REPORT.md` | Arena |
 
 ## ۷) مالکیت و طرحِ روتیشنِ تماس
 

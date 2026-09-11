@@ -58,8 +58,8 @@
 | backup | ⏳ | `apiBackup/apiRestore` + بکاپ خودکار (`server/admin.js`) + `tools/redis-backup.sh` + `docs/REDIS_RESTORE_PROCEDURE.md`؛ بکاپ برون‌سایتی و PITR وجود ندارد |
 | PITR | ❌ | هیچ نشانه‌ای از WAL archiving / بازیابی نقطه-در-زمان در کد و اسناد نیست |
 | restore drill | ❌ | کد ری‌استور هست (`apiRestore`) ولی هیچ گزارش/لاگ مانور ری‌استور وجود ندارد؛ رویهٔ ماهانه اکنون مستند است (`docs/PRODUCTION_RUNBOOK.md` §۴ + `docs/DR_RUNBOOK.md` §۶) — اجرا باقی است |
-| failover drill | ❌ | هیچ مدرکی از مانور failover نیست؛ رویه مستند: `docs/PRODUCTION_RUNBOOK.md` §۵ + `docs/DR_RUNBOOK.md` §۱/§۲ — اجرا باقی است |
-| RPO/RTO | ⏳ | در `docs/RELIABILITY_DR_PLAN.md` تعریف شده (RTO کمتر از ۱۵ دقیقه، RPO کمتر از ۵ دقیقه + طرح مانور ماهانه) ولی هرگز سنجیده/درل نشده |
+| failover drill | ⏳ | مانور WAL disk-full شامل replica واقعی (`pg_basebackup -X stream` روی پورت ۵۵۴۳۳) بود که پس از PANICِ primary به سرویس‌دهی خواند ادامه داد (`in_recovery=true`, ۳۰٬۰۰۰ ردیف) — `docs/WAVE19_WAL_DRILL_REPORT.md`. اما promoteِ واقعی standby هنوز درل نشده؛ رویه مستند: `docs/PRODUCTION_RUNBOOK.md` §۵ + `docs/DR_RUNBOOK.md` §۱/§۲ — اجرا باقی است |
+| RPO/RTO | ⏳ | در `docs/RELIABILITY_DR_PLAN.md` تعریف شده (RTO کمتر از ۱۵ دقیقه، RPO کمتر از ۵ دقیقه). **اولین سنجش واقعی:** مانور WAL disk-full روی PostgreSQL 17 زنده — **RTO=۱۶۲ms، RPO=۰** (۳۰٬۰۰۰ تراکنش کامیت‌شده، صفر اتلاف) — `docs/WAVE19_WAL_DRILL_REPORT.md`. هنوز روی محیط production-like با حجم واقعی داده تکرار نشده |
 
 ## Observability (رصدپذیری)
 
