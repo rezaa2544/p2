@@ -30,7 +30,22 @@ async function okAsync(name, fn){
   const migDir = path.join(ROOT, 'migrations');
   ok('پوشه migrations وجود دارد', () => assert.ok(fs.statSync(migDir).isDirectory()));
   const forwards = fs.readdirSync(migDir).filter(f => /^\d{3}_[a-z0-9_]+\.sql$/.test(f)).sort();
-  ok('migrationهای forward نسخه‌دار و مرتب هستند', () => assert.deepStrictEqual(forwards, ['001_initial.sql', '002_indexes.sql', '003_constraints.sql', '004_wave1_version_seq.sql']));
+  /* پیش‌تر این بررسی یک فهرستِ سخت‌کدِ چهارتایی بود و با افزودنِ هر مهاجرتِ تازه
+     قرمز می‌شد (و روی main قرمز بود: ۷ فایل روی دیسک در برابر ۴ انتظار).
+     حالا ساختار بررسی می‌شود، نه فهرست: شماره‌گذاریِ پیوسته و بی‌تکرار از ۰۰۱.
+     این هم قوی‌تر است و هم با مهاجرتِ بعدی نمی‌شکند. */
+  const migNums = forwards.map((f) => f.slice(0, 3));
+  ok('migrationهای forward نسخه‌دار و مرتب هستند', () => {
+    assert.ok(forwards.length >= 4, 'دستِ‌کم چهار مهاجرت انتظار می‌رود، یافت شد: ' + forwards.length);
+    assert.deepStrictEqual(forwards, [...forwards].sort(), 'فایل‌ها باید بر اساس نام مرتب باشند');
+  });
+  ok('شماره‌گذاری پیوسته است و شمارهٔ تکراری وجود ندارد (سیاست MIGRATION_GUIDE §۱)', () => {
+    const dupes = migNums.filter((n, i) => migNums.indexOf(n) !== i);
+    assert.deepStrictEqual([...new Set(dupes)], [], 'شمارهٔ تکراری: ' + [...new Set(dupes)].join(','));
+    const expected = migNums.map((_, i) => String(i + 1).padStart(3, '0'));
+    assert.deepStrictEqual(migNums, expected,
+      'شماره‌ها باید از ۰۰۱ پیوسته باشند؛ یافت شد: ' + migNums.join(','));
+  });
   ok('برای هر migration فایل rollback وجود دارد', () => forwards.forEach(f => assert.ok(fs.existsSync(path.join(migDir, f.replace(/\.sql$/, '.down.sql'))))));
   ok('migration 004: ستون version روی ۹ جدولِ VERSION_TRACKED + دنباله outbox (idempotent)', () => {
     const m4 = read('migrations/004_wave1_version_seq.sql');
