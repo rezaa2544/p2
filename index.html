@@ -4334,6 +4334,11 @@ function initSync(){
 
 var PULL_MIGRATION_FLAG = 'payesh_pull_migrated';
 var PULL_SYNC_CURSOR_KEY = 'payesh_last_pull_time';
+/* Delta Hardening Phase 2 (gap 2): کلیدِ ذخیرهٔ کرسرِ امضاشدهٔ سرور.
+   وقتی موجود است، به‌جای `since` خام ارسال می‌شود و سرور آن را راستی‌آزمایی
+   می‌کند (امضا + TTL یک‌ساعته). `payesh_last_pull_time` به‌عنوان مسیرِ
+   سازگاری با کلاینت‌های قدیمی/سرورِ بدون کلید باقی می‌ماند. */
+var PULL_CURSOR_KEY = 'payesh_pull_cursor';
 var PULL_IS_SYNCING = false;
 
 /**
@@ -4355,12 +4360,25 @@ function pullFromServer(options) {
   PULL_IS_SYNCING = true;
 
   var since = null;
+  var cursorToken = null;
   if (!options.forceSnapshot) {
     since = options.since || (typeof Store !== 'undefined' ? Store.get(PULL_SYNC_CURSOR_KEY) : null);
+    /* Gap 2: کرسرِ امضاشده مقدم بر `since` خام است — مگر اینکه فراخواننده
+       صریحاً since داده باشد (آزمون‌ها/ابزارها). سرور sinceِ داخلِ توکن را
+       معتبر می‌شمارد، نه ادعای آزادِ کلاینت را. فقط توکنِ سالمِ شکل‌دار
+       (pc1.… — نه رشتهٔ «null» یا مقدارِ کهنهٔ خراب) ارسال می‌شود. */
+    if (!options.since && typeof Store !== 'undefined') {
+      var storedCursor = Store.get(PULL_CURSOR_KEY);
+      if (typeof storedCursor === 'string' && storedCursor.indexOf('pc1.') === 0 && storedCursor.length > 10) {
+        cursorToken = storedCursor;
+      }
+    }
   }
 
   var queryParts = [];
-  if (since) {
+  if (cursorToken) {
+    queryParts.push('cursor=' + encodeURIComponent(cursorToken));
+  } else if (since) {
     queryParts.push('since=' + encodeURIComponent(since));
   }
   if (options.collections && Array.isArray(options.collections) && options.collections.length > 0) {
@@ -4375,24 +4393,62 @@ function pullFromServer(options) {
     return Promise.resolve({ ok: false, fallback: true });
   }
 
-  return apiCaller.get(endpoint).then(function(payload) {
+  /* Gap 2: حالت raw تا کدِ وضعیت (۴۰۱ cursor_expired) هم دیده شود؛
+     stubهای آزمونی که آرگومان دوم را نادیده می‌گیرند و خودِ payload را
+     برمی‌گردانند هم با همان نرمال‌سازی پایین کار می‌کنند. */
+  return apiCaller.get(endpoint, { raw: true }).then(function(raw) {
     PULL_IS_SYNCING = false;
-    if (!payload || !payload.ok) {
-      return { ok: false, payload: payload };
+
+    var status = 200;
+    var payload = raw;
+    if (raw && typeof raw === 'object' && typeof raw.status === 'number' && raw.body != null) {
+      status = raw.status;
+      payload = raw.body;
+    }
+
+    /* Gap 2: تمدید خودکار — کرسرِ منقضی/نامعتبر ⇒ یک pull کامل (فقط یک
+       بار؛ خروجی‌اش next_cursor تازه دارد و چرخه ادامه می‌یابد). */
+    if (status === 401 && payload && payload.cursor_renewal === 'full_pull') {
+      if (typeof Store !== 'undefined') { Store.set(PULL_CURSOR_KEY, null); }
+      if (!options._renewing) {
+        return pullFromServer({
+          forceSnapshot: true,
+          _renewing: true,
+          customApi: options.customApi,
+          collections: options.collections
+        });
+      }
+      return { ok: false, code: payload.code || 'cursor_expired', payload: payload };
+    }
+
+    if (status !== 200 || !payload || !payload.ok) {
+      return { ok: false, status: status, payload: payload };
     }
 
     // ادغام تغییرات در پایگاه داده کلاینت
     mergeServerDelta(payload);
 
-    // ثبت زمان آخرین همگام‌سازی موفق
+    // ثبت زمان آخرین همگام‌سازی موفق + کرسرِ امضاشدهٔ بعدی (gap 2)
     if (payload.server_time && typeof Store !== 'undefined') {
       Store.set(PULL_SYNC_CURSOR_KEY, payload.server_time);
       Store.set(PULL_MIGRATION_FLAG, 'true');
+    }
+    if (typeof Store !== 'undefined') {
+      if (payload.next_cursor) {
+        Store.set(PULL_CURSOR_KEY, payload.next_cursor);
+      } else if (!payload.full_snapshot) {
+        /* سرورِ بدونِ کلیدِ کرسر: مسیرِ legacy را نگه دار و توکنِ کهنه را
+           دور بریز تا دفعهٔ بعد since ارسال شود. */
+        Store.set(PULL_CURSOR_KEY, null);
+      }
     }
 
     if (typeof offlineStorage !== 'undefined' && offlineStorage.isSupported() && payload.server_time) {
       try {
         offlineStorage.setMetadata(PULL_SYNC_CURSOR_KEY, payload.server_time).catch(function(){});
+        if (payload.next_cursor) {
+          offlineStorage.setMetadata(PULL_CURSOR_KEY, payload.next_cursor).catch(function(){});
+        }
         if (payload.server_version != null) {
           offlineStorage.setMetadata('server_version', payload.server_version).catch(function(){});
         }
@@ -4434,6 +4490,13 @@ function mergeServerDelta(payload) {
 
   var cols = payload.collections;
   var touchedCols = {};
+  /* Gap 1 (Delta Hardening Phase 2): اسنپ‌شات کامل یعنی «حالتِ واقعیِ سرور» —
+     هر ردیفی که در پاسخِ کاملِ یک مجموعه نیست، دیگر وجود ندارد. ادغامِ
+     صرفِ by-id ردیف‌های حذف‌شدهٔ قدیمی را برای همیشه نگه می‌داشت؛ پس
+     مجموعه‌های بازگشدهٔ اسنپ‌شاتِ کامل جایگزین می‌شوند — به‌جز ردیف‌های
+     محافظت‌شده توسط صفِ آفلاین (pendingSet). دلتا (full_snapshot=false)
+     عینِ قبل merge می‌شود. */
+  var isFullSnapshot = payload.full_snapshot === true;
 
   for (var c in cols) {
     if (!Object.prototype.hasOwnProperty.call(cols, c)) continue;
@@ -4445,6 +4508,17 @@ function mergeServerDelta(payload) {
     }
 
     touchedCols[c] = true;
+
+    if (isFullSnapshot) {
+      var keptRows = [];
+      for (var ki = 0; ki < db[c].length; ki++) {
+        var oldRow = db[c][ki];
+        if (oldRow && oldRow.id != null && pendingSet[c + '::' + oldRow.id]) {
+          keptRows.push(oldRow);
+        }
+      }
+      db[c] = keptRows;
+    }
 
     for (var i = 0; i < records.length; i++) {
       var rec = records[i];

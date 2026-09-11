@@ -14,6 +14,28 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## آرنا (Agent Mode): Delta Sync Hardening — فاز ۲ (چهار گپ) — ۲۰/۰۶/۱۴۰۵ (2026-09-11) — ✅
+
+**شاخه:** `feat/delta-hardening-phase2` (از `main` @ `8ba3462`) · **سند کامل:** `docs/DELTA_HARDENING.md` · **قرارداد سیم (جدید):** `docs/SERVER_CLIENT_CONTRACT.md`
+
+**محیط صادقانه:** سندباکس آرنا (لینوکس، ۲GB RAM)؛ PG زنده = `embedded-postgres@18.4.0-beta.17` (PostgreSQL **18.4**، نه ۱۶ِ بریف) خارج از ریپو در `~/.cache/pgtool`، پورت ۵۵۴۳۲، migrations 001-005 اعمال‌شده، فیکسچرِ **دقیقاً ۹۲۳٬۲۹۲ ردیف** (۱۷ جدول از ۱۹ مجموعهٔ pull؛ `homework`/`vclass_rooms` در زنجیرهٔ migrations غایب‌اند — قید شد). نکتهٔ بریف: `docs/SERVER_CLIENT_CONTRACT.md` و سه گیتِ `wave4-sync-all-collections`/`wave10-query-audit`/`contract-layers` از قبل وجود نداشتند → در این فاز ساخته شدند؛ «کرسرِ امضاشدهٔ موجود» هم وجود نداشت (کرسرِ واقعی `since` خامِ بی‌امضا بود).
+
+**گپ ۱ (دلتای کهنه ۷+ روز):** `server/pull.js` — `since` کهنه‌تر از `PAYESH_DELTA_MAX_AGE_DAYS` (پیش‌فرض ۷، خواندنِ per-request) ⇒ پاسخ خودِ اسنپ‌شات کامل + `full_snapshot_required:true` + `full_snapshot_reason:'since_too_old'` + تومب‌استون‌های بعد از since (کلاینتِ قدیمی هم جمع می‌شود). کلاینت (`src/js/29-pull.js`): در full، مجموعه‌ها **جایگزین** می‌شوند (صفِ آفلاین محفوظ). `server_time`/کرسرِ بعدی از لحظهٔ **شروعِ خواندن** (رفعِ باگِ مرزیِ از دست‌رفتنِ تغییراتِ وسطِ pull).
+
+**گپ ۲ (کرسرِ TTL):** ماژول تازهٔ `server/cursor.js` — توکن `pc1.<b64>.<hmac-sha256>` با `{v,since,iat,exp,jti}`، TTL پیش‌فرض **۱ ساعت** (clamp 60..86400)، کلید: `PAYESH_CURSOR_SECRET` یا اشتقاقِ domain-separated از کلید JWT (هرگز برابرِ JWT). pull: `?cursor=` verify می‌شود — منقضی ⇒ **401 cursor_expired** · دستکاری ⇒ 401 cursor_invalid · بدون کلید ⇒ 401 cursor_unavailable (همگی + `cursor_renewal:'full_pull'`)؛ sinceِ توکن بر `?since=` ادعایی مقدم؛ هر ۲۰۰ پاسخ `next_cursor` + `cursor_ttl_s` دارد. کلاینت: ذخیره/ارسالِ توکن (فقط شکلِ سالمِ `pc1.`) + تمدیدِ خودکارِ **یک‌باره** (بدون حلقه). سازگاری کامل با کلاینتِ legacy.
+
+**گپ ۳ (دلتا زیر بار):** `tools/delta-load-test.js` — DRY_RUN پیش‌فرض (برچسبِ صریح «شبیه‌سازی») + `--live` (۱۰۰۰ درخواست موازی از builderهای واقعی + p50/p95/p99 + throughput + pool metrics + تفکیکِ خطای سخت از fallbackِ اسکیما). **اجرای زنده:** یافتهٔ P0 = نبودِ هر ایندکسی روی `updated_at` → `migrations/005_delta_sync_updated_at_indexes.sql` (۱۶ ایندکس + down)؛ A/B روی همان burst: ‏p50 ‏۴۰۴۸→**۴۷۲ms** (۸.۶×) · throughput ‏۱۹۴→**۱۱۵۷ req/s** (۶×) · EXPLAIN: ‏Seq Scan ‏37.4ms → BitmapOr ‏0.9ms. مرجعِ c=100: ‏p50=86ms.
+
+**گپ ۴ (اندازه‌گیری تعارض):** `server/metrics.js` هیستوگرامِ `payesh_sync_conflict_detection_seconds{outcome=conflict|stale|clean}` (باکت‌های ms) + `server/sync.js` زمان‌گیریِ خودِ گیتِ OCC (یافتن+مقایسه، پیش از ثبت)؛ شاهدِ دو-کلاینتِ موازی DH15 (یک برنده + یک `conflict_preserved` + سطرِ sync_conflicts + شمارنده). قیدِ ثبت‌شده: TOCTOUِ دو نوشتِ هم‌پایهٔ کاملاً هم‌زمان روی موتورِ حافظه باز است (وابسته به push تک‌تراکنشی).
+
+**تست‌های تازه:** `tests/delta-sync-hardening.js` **۱۹/۱۹** · `tests/wave4-sync-all-collections.js` **۱۳/۱۳** · `tests/wave10-query-audit.js` **۱۴/۱۴** · `tests/contract-layers.js` **۱۸/۱۸**.
+
+**گیت‌ها:** smoke **۵۴۷/۵۴۷** · check-authz **0** · secret-scan **۱۱/۱۱** · build --check **0** · wave4-sync ‏۱۱/۱۱ · wave10-db-scale ‏26/26 · رگرسیون (pull-bootstrap 12/12، wave1-reads 18/18، wave3-query 13+13، wave14-observability 95/95، sync-dup-claim 7/7، sync-chunk، sync-atomic-batch 22/22) سبز · **قرمزِ پیش‌موجود (A/B با HEAD تمیز):** wave3-keyset ‏11/13 و occ.js (نبودِ seed در ریپو) — نامرتبط با این فاز.
+
+**اسناد:** `docs/DELTA_HARDENING.md` (جدید) · `docs/SYNC_PROTOCOL.md` §۶ · `docs/SERVER_CLIENT_CONTRACT.md` (جدید) · `docs/PRODUCTION_READINESS_CHECKLIST.md` (سه ردیف به‌روزشده) · همین ورودی.
+
+**Ruflo:** `npm i -g` به EACCES خورد → نصب لوکال در `/tmp/ruflo-npm`؛ ‏`memory init` سبز؛ ‏`p2/roadmap-status` **موجود نبود** (حافظهٔ تازه)؛ کلید `delta_hardening_phase2=completed` ذخیره شد.
+
 ## مرج `origin/main` در `feat/chat6-recovery` + بامپ `rc27` — ✅ (2026-09-11)
 
 - **ابلاغ:** مرج `origin/main` در شاخهٔ نجات، حل تعارض‌ها، اجرای گیت‌ها، پوش و پی‌آر. شاخه پیش از مرج **۱ کامیت جلو / ۲۰۲ کامیت عقب** از `origin/main` بود (بیس مشترک `a30fb20`).
