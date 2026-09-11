@@ -15,6 +15,10 @@
    M9  کرسر: چکِ TTL در verify حذف           → CW1 باید بمیرد
    M10 کرسر: keySource همیشه 'none'          → CW2 باید بمیرد
    M11 health: persistent همیشه false        → CW3 باید بمیرد
+   M12 pull: شمارندهٔ pulls حذف                → MX2 باید بمیرد
+   M13 sync: شمارندهٔ pushes حذف               → MX3 باید بمیرد
+   M14 metrics: syncHealthStats خالی برمی‌گرداند → MX1/MX4 باید بمیرند
+   M15 pull: شمارندهٔ cursor_expired حذف       → MX3 باید بمیرد
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const fs = require('fs');
@@ -138,6 +142,34 @@ function buildClient() {
     "        cursor: { enabled: pullRoute.cursor.enabled, persistent: false /*MUT*/, key_source: CURSOR_KEY_SOURCE }");
   chk('M11 جهشِ «persistent=false» کشته شد', runSuite() !== 0);
   fs.writeFileSync(path.join(ROOT, 'server/index.js'), orig, 'utf8');
+
+
+  /* ── جهش‌های گپ ۴ — سنجه‌های sync ── */
+  console.log('\n▸ جهش‌های گپ ۴ — سنجه‌های sync');
+
+  orig = mutate('server/pull.js',
+    "    metrics.inc('payesh_sync_pulls_total', { mode: (isDelta && !forceFull) ? 'delta' : 'full' });",
+    "    /*MUT*/");
+  chk('M12 جهشِ «pulls حذف» کشته شد', runSuite() !== 0);
+  fs.writeFileSync(path.join(ROOT, 'server/pull.js'), orig, 'utf8');
+
+  orig = mutate('server/sync.js',
+    "    metrics.inc('payesh_sync_pushes_total');",
+    "    /*MUT*/");
+  chk('M13 جهشِ «pushes حذف» کشته شد', runSuite() !== 0);
+  fs.writeFileSync(path.join(ROOT, 'server/sync.js'), orig, 'utf8');
+
+  orig = mutate('server/metrics.js',
+    "function syncHealthStats(snap) {",
+    "function syncHealthStats(snap) { if (true) { return {}; } /*MUT*/ snap = snap || {};");
+  chk('M14 جهشِ «helper خالی» کشته شد', runSuite() !== 0);
+  fs.writeFileSync(path.join(ROOT, 'server/metrics.js'), orig, 'utf8');
+
+  orig = mutate('server/pull.js',
+    "        if (v.code === 'cursor_expired') metrics.inc('payesh_cursor_expired_total');",
+    "        /*MUT*/");
+  chk('M15 جهشِ «cursor_expired حذف» کشته شد', runSuite() !== 0);
+  fs.writeFileSync(path.join(ROOT, 'server/pull.js'), orig, 'utf8');
 
   /* سلامت پایه پس از بازگردانی‌ها */
   chk('پایه پس از بازگردانی سبز است', runSuite() === 0);

@@ -216,6 +216,8 @@ function createPull(ctx) {
     if (cursorToken) {
       const v = cursor.verify(cursorToken);
       if (!v.ok) {
+        /* Delta Phase 4 (gap 4): دیده‌بانیِ چرخهٔ عمرِ کرسر. */
+        if (v.code === 'cursor_expired') metrics.inc('payesh_cursor_expired_total');
         /* 401 + machine-readable code; the client renews with one full pull
            (its response always carries a fresh next_cursor). */
         return sendJson(res, 401, {
