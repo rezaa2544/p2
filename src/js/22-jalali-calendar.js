@@ -56,7 +56,7 @@ function jdate(id,val,opts){
   const v=val?String(val).slice(0,10):'';
   return '<div class="jdate" data-jd="'+id+'">'
     +'<input type="hidden" id="'+id+'" value="'+esc(v)+'" />'
-    +'<button type="button" class="input jdate-btn" data-act="jd-open" data-r="'+id+'">'
+    +'<button type="button" class="input jdate-btn" data-act="jd-open" data-r="'+id+'" aria-labelledby="jdate-label-'+escAttr(id)+'" aria-label="انتخاب تاریخ">'
     +'<span>📅</span><span class="jdate-val">'+(v?isoToJalali(v):'انتخاب تاریخ')+'</span></button>'
     +'<div class="jdate-pop" id="pop_'+id+'" hidden></div></div>';
 }
