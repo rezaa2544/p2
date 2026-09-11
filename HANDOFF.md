@@ -1,5 +1,16 @@
 # دفترچهٔ تحویل کار — پایش
 
+## موج ۱۰ — Database Scale (`feat/db-scale-wave10`) — ✅ (2026-09-11)
+
+- **مأموریت (کارفرما):** تکمیلِ Wave 10 در چهار گام — read-replica routing، PgBouncer، طراحیِ پارتیشنِ grades/attendance، و ۱۴ ایندکسِ `chg_id` برای دلتا؛ گیت‌های حیاتی پس از هر مرحله؛ سند + HANDOFF + push/ls-remote. پایه: `main @ 7567607` (پس از مرجِ PR #71 و #75).
+- **گام ۱ — Read Replica (راستی‌آزمایی نوبتِ چت ۲):** `server/db.js` (queryRead + poolهای primary/read + `poolStats`/health + fail-open fallback) و مسیردهیِ `executePagedList` سالم — `tests/wave10-db-scale.js` **۲۶/۲۶**؛ خوانش‌هایِ صحتِ پول عمداً روی primary می‌مانند.
+- **گام ۲ — PgBouncer:** زیرساختِ موج ۱۶ (compose HA + `infra/postgres/pgbouncer/pgbouncer.ini`، transaction pooling، auth_query بدونِ راز) با تستِ قراردادِ جدید **قفل** شد: `tests/wave10-pgbouncer.js` **۲۲/۲۲** — دو پایگاهِ payesh/payesh-readonly دقیقاً جفتِ `DATABASE_URL`/`READ_DATABASE_URL`، سقف‌های ملی‌مقیاس (2000/25/5/5)، پورتِ 6432 فقط 127.0.0.1، healthcheck.
+- **گام ۳ — پارتیشن‌بندی (طراحی نهایی، `docs/WAVE10_DB_SCALE.md` §۳):** grades ‏۲۸۸M و attendance ‏۵۰M رکورد/سال ⇒ RANGE(created_at) سالانه + DEFAULT؛ PK ⇒ (id, created_at)؛ همهٔ ایندکس‌های 002/005/007/008 بازسازی روی والد. **یافتهٔ مسدودکننده:** `persistOp` با `ON CONFLICT (id)` روی جدولِ پارتیشن‌شده نمی‌تواند (هدفِ conflict با هیچ uniqueای نمی‌خواند؛ `(id, created_at)` هم idempotency را می‌شکند) ⇒ طرحِ چهارفازی (A: بازنویسیِ مسیرِ نوشتن پشتِ `PAYESH_PARTITIONED_TABLES` → B: ساخت/کپیِ دسته‌ای → C: swap کوتاه → D: parity و drop) — اجرا pending بر PG زنده.
+- **گام ۴ — chg_id (`87a4006`):** `migrations/008_delta_chg_id.sql` (+down) — سکوئنسِ مشترکِ `payesh_chg_seq` + ستون + تریگرِ idempotentِ BEFORE INSERT/UPDATE (روی upsertِ persistOp هم فعال) + backfill + **۱۴ ایندکسِ `(chg_id)`** روی ۱۴ جدولِ تراکنشیِ دلتا (فهرستِ ۰۰۵ منهای schools/bell_schedules). `syncdelta.deltaRowsByChgSql` سازندهٔ آمادهٔ watermark؛ `db.stripInternalColumns` ستونِ داخلی را از readCollection/readOne/دلتای pull بیرون نمی‌دهد (شکلِ PG = حافظه؛ هرگز به op کلاینت نمی‌رسد). **صداقت:** ایندکس‌ها هنوز production-queried نیستند — وصل‌کردن (cursor v3) ثبتِ موجِ بعد است. `tests/wave10-chg-id.js` **۳۱/۳۱** + جهش **۸/۸**؛ `migration-sequence` **۱۹/۱۹** (ردیفِ ۰۰۸ در MIGRATION_GUIDE §۸) و `migrate-helper --next` = 009.
+- **گیت‌ها:** smoke **۵۴۷/۵۴۷** · check-authz **0** · secret-scan **۱۱/۱۱** · build --check ✓ · migration-sequence 19/19 · db-engineering 14/14 · wave1-reads 18/18 · wave3-query 13/13 (+2) · wave4-sync · delta-sync-hardening · pull-bootstrap · wave10-db-scale 26/26 · wave10-pgbouncer 22/22 · wave10-chg-id 31/31 + جهش 8/8 ✅
+- **حوادث:** `.git` و node_modules در بازیابیِ سندباکس از بین رفته بودند — بازسازی از remote (init+fetch+checkout) و `npm install`؛ نه داده‌ای از دست رفت نه تاریخی.
+- **اسناد:** `docs/WAVE10_DB_SCALE.md` (§۳ طراحی نهایی + §۴ PgBouncer تحویل‌شده + §۶ chg_id) · `docs/MIGRATION_GUIDE.md` §۸ ردیفِ ۰۰8 · `docs/NATIONAL_ROADMAP_PROGRESS.md` ردیفِ ۱۰ 🟡 · همین ورودی.
+
 ## Handoff — چت ۷: مرج Delta Sync Phase 4 / PR #71 — ✅ (2026-09-11)
 
 - **ماموریت:** بررسی وضعیت PRها، تأیید merge از API، اجرای گیت‌های حیاتی پس از merge، و ثبت نتیجه در roadmap و HANDOFF.
