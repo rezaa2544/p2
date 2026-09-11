@@ -4704,10 +4704,10 @@ function renderLogin(){
         ممنوع است — هر بازدیدکننده با یک کلیک وارد پرریسک‌ترین حساب می‌شد.
         حساب‌های نمونهٔ پایین همین کار را با یک کلیکِ آگاهانه انجام می‌دهند. */
      <div class="small muted" style="line-height:1.9;margin-bottom:10px">ورود با <b>شماره + کد + کد ملی</b> است — بدونِ رمز عبور.</div>
-     <div class="field"><label>شمارهٔ همراه</label><input class="input" id="lpn" inputmode="tel" placeholder="09xxxxxxxxx" style="direction:ltr;text-align:left" /></div>
+           <div class="field"><label for="lpn">شمارهٔ همراه</label><input class="input" id="lpn" inputmode="tel" placeholder="09xxxxxxxxx" style="direction:ltr;text-align:left" /></div>
      <button class="btn" style="width:100%;justify-content:center;margin-bottom:8px;padding:9px" data-act="login-code">ارسالِ کد</button>
-     <div class="field"><label>کد</label><input class="input" id="lcode" inputmode="numeric" placeholder="کد ۶ رقمی" style="direction:ltr;text-align:left" /></div>
-     <div class="field"><label>کد ملی</label><input class="input" id="lnid" inputmode="numeric" placeholder="کد ملی ۱۰ رقمی" style="direction:ltr;text-align:left" /></div>
+           <div class="field"><label for="lcode">کد</label><input class="input" id="lcode" inputmode="numeric" placeholder="کد ۶ رقمی" style="direction:ltr;text-align:left" /></div>
+           <div class="field"><label for="lnid">کد ملی</label><input class="input" id="lnid" inputmode="numeric" placeholder="کد ملی ۱۰ رقمی" style="direction:ltr;text-align:left" /></div>
      <div id="ldemo" class="small" style="display:none;background:var(--soft,#eef2f7);border:1px dashed var(--border,#c9d4e0);border-radius:8px;padding:8px 10px;margin-bottom:8px;line-height:1.8"></div>
      <div id="lerr"></div>
      <button class="btn" style="width:100%;justify-content:center;padding:12px;font-size:15px" data-act="login">استعلام و ورود</button>
@@ -7485,7 +7485,10 @@ function modalTpl(title,body,saveAct,danger,okLabel){
     <button class="btn ghost" data-act="modal-close">انصراف</button>
     <button class="btn ${danger?'danger':''}" data-act="${escAttr(saveAct)}">${okLabel||(danger?'حذف کن':'ذخیره')}</button></div>`;
 }
-const f=(label,inner)=>`<div class="field"><label>${label}</label>${inner}</div>`;
+/* f(): برچسب همیشه با for به شناسهٔ کنترلِ داخلش وصل می‌شود —
+   شناسه از همان رشتهٔ inner استخراج می‌شود تا همهٔ فراخوانی‌هایِ موجود
+   (WCAG 1.3.1/3.3.2) بدونِ تغییرِ call-site اصلاح شوند. */
+const f=(label,inner)=>{const m=String(inner).match(/ id="([^"]+)"/);const id=m?m[1]:'';return `<div class="field"><label${id?` for="${id}"`:''}>${label}</label>${inner}</div>`;};
 const inp=(id,val,type='text')=>`<input class="input" id="${escAttr(id)}" type="${escAttr(type)}" value="${esc(val??'')}" />`;
 const sel=(id,opts,val)=>`<select class="select" id="${escAttr(id)}">${opts.map(o=>`<option value="${esc(o[0])}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
 const V=id=>{const e=$('#'+id);return e?e.value.trim():'';};

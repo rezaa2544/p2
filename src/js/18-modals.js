@@ -11,7 +11,10 @@ function modalTpl(title,body,saveAct,danger,okLabel){
     <button class="btn ghost" data-act="modal-close">انصراف</button>
     <button class="btn ${danger?'danger':''}" data-act="${escAttr(saveAct)}">${okLabel||(danger?'حذف کن':'ذخیره')}</button></div>`;
 }
-const f=(label,inner)=>`<div class="field"><label>${label}</label>${inner}</div>`;
+/* f(): برچسب همیشه با for به شناسهٔ کنترلِ داخلش وصل می‌شود —
+   شناسه از همان رشتهٔ inner استخراج می‌شود تا همهٔ فراخوانی‌هایِ موجود
+   (WCAG 1.3.1/3.3.2) بدونِ تغییرِ call-site اصلاح شوند. */
+const f=(label,inner)=>{const m=String(inner).match(/ id="([^"]+)"/);const id=m?m[1]:'';return `<div class="field"><label${id?` for="${id}"`:''}>${label}</label>${inner}</div>`;};
 const inp=(id,val,type='text')=>`<input class="input" id="${escAttr(id)}" type="${escAttr(type)}" value="${esc(val??'')}" />`;
 const sel=(id,opts,val)=>`<select class="select" id="${escAttr(id)}">${opts.map(o=>`<option value="${esc(o[0])}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
 const V=id=>{const e=$('#'+id);return e?e.value.trim():'';};
