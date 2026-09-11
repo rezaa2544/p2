@@ -212,6 +212,110 @@ await test('SG8 جداسازی مدرسه‌ایِ vclass_sessions (school_id �
     'school-2 session must see only its own vclass row, got ' + JSON.stringify(rows2));
 });
 
+
+/* ═══════════════ گپ ۳ — sync_conflicts.updated_at (مهاجرت ۰۰۶) ═══════════════ */
+group('گپ ۳ — ستونِ دلتای sync_conflicts + مُهرِ داوری');
+
+await test('SG9 مهاجرتِ 006: ستون + backfill + NOT NULL + ایندکس‌ها + down', async () => {
+  const up = fs.readFileSync(path.join(ROOT, 'migrations', '006_delta_schema_gaps.sql'), 'utf8');
+  const dn = fs.readFileSync(path.join(ROOT, 'migrations', '006_delta_schema_gaps.down.sql'), 'utf8');
+  assert(/BEGIN;/.test(up) && /COMMIT;/.test(up), '006 must be wrapped in a transaction');
+  assert(/ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ/.test(up), 'idempotent ADD COLUMN');
+  assert(/UPDATE sync_conflicts SET updated_at = created_at WHERE updated_at IS NULL/.test(up),
+    'idempotent backfill from created_at');
+  assert(/ALTER TABLE sync_conflicts ALTER COLUMN updated_at SET NOT NULL/.test(up), 'SET NOT NULL per brief');
+  assert(/CREATE INDEX IF NOT EXISTS idx_sync_conflicts_updated_at\s+ON sync_conflicts\s*\(updated_at\)/.test(up),
+    'index on sync_conflicts(updated_at)');
+  assert(/CREATE INDEX IF NOT EXISTS idx_hw_assignments_updated_at/.test(up) &&
+         /CREATE INDEX IF NOT EXISTS idx_vclass_sessions_updated_at/.test(up),
+    'delta indexes for the two collections that joined the surface (gaps 1-2)');
+  assert(/BEGIN;/.test(dn) && /COMMIT;/.test(dn), 'down must be transactional');
+  assert(/DROP INDEX IF EXISTS idx_sync_conflicts_updated_at/.test(dn) &&
+         /DROP INDEX IF EXISTS idx_hw_assignments_updated_at/.test(dn) &&
+         /DROP INDEX IF EXISTS idx_vclass_sessions_updated_at/.test(dn),
+    'down drops all three indexes');
+  assert(/ALTER TABLE sync_conflicts DROP COLUMN IF EXISTS updated_at/.test(dn), 'down drops the column');
+});
+
+await test('SG10 ردیفِ تعارضِ تازه (sync.js) updated_at هم‌ارزِ created_at دارد', async () => {
+  const store = {
+    grades: [{ id: 55, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 19, version: 3, updated_at: iso(Date.now()) }],
+    users: [{ id: 5, role: 'manager', school_id: 1 }, { id: 7, role: 'manager', school_id: 1 }],
+    __processed_uids: {}, __server_version: 0
+  };
+  const ctx = {
+    store,
+    db: { persistOpsBatch: async () => ({ ok: true }), isUidProcessed: async () => false },
+    MAX_BATCH: 500, AT_DRIFT_MS: 24 * 3600 * 1000,
+    audit: () => {},
+    sessionFrom: async () => ({ id: 5, role: 'manager', school_id: 1 }),
+    sendJson: (res, code, body) => { res._cap = { code, body }; },
+    markDirty: () => {}
+  };
+  attach(store);
+  const s = createSync(ctx);
+  const rClean = {}, rStale = {};
+  await s.apiSync({}, rClean, { ops: [opX({ by: 5, collection: 'grades', type: 'upd', id: 55, base_version: 3,
+    data: { id: 55, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 20 } })] });
+  await s.apiSync({}, rStale, { ops: [opX({ by: 5, collection: 'grades', type: 'upd', id: 55, base_version: 2,
+    data: { id: 55, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 10 } })] });
+  assert(rClean._cap.body.results[0].ok === true, 'clean op must apply');
+  assert(rStale._cap.body.results[0].code === 'conflict_preserved', 'stale op must conflict');
+  const cf = (store.sync_conflicts || [])[0];
+  assert(cf, 'conflict row must exist');
+  assert(typeof cf.updated_at === 'string' && cf.updated_at === cf.created_at,
+    'conflict row must carry updated_at === created_at, got ' + JSON.stringify({ created_at: cf.created_at, updated_at: cf.updated_at }));
+});
+
+await test('SG11 داوری (resolve) روی ردیفِ تعارض updated_at مُهر می‌زند', async () => {
+  const store = {
+    users: [{ id: 5, role: 'manager', school_id: 1 }],
+    grades: [{ id: 55, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 18, version: 4, updated_at: iso(NOW - 1 * DAY) }],
+    sync_conflicts: [{ id: 901, collection: 'grades', record_id: 55, school_id: 1, status: 'open',
+      base_version: 2, server_version: 4, winner: null,
+      server_state: { id: 55, score: 18, version: 4 },
+      incoming: { data: { id: 55, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 17 }, by: 7, at: iso(NOW - 1 * DAY) },
+      created_at: iso(NOW - 5 * DAY), updated_at: iso(NOW - 5 * DAY) }],
+    __server_version: 0
+  };
+  const cap = {};
+  const conflicts = createConflicts({
+    store, db: null, audit: () => {},
+    sessionFrom: async () => ({ id: 5, role: 'manager', school_id: 1 }),
+    sendJson: (res, code, body) => { cap.code = code; cap.body = body; },
+    markDirty: () => {}
+  });
+  const res = {};
+  await conflicts.apiResolve({}, res, { conflict_id: 901, winner: 'server' });
+  assert(cap.code === 200 && cap.body.ok === true, 'resolve must succeed, got ' + cap.code + ' ' + JSON.stringify(cap.body));
+  const c = (store.sync_conflicts || []).find(x => x.id === 901);
+  assert(c.status === 'resolved', 'status resolved');
+  assert(typeof c.updated_at === 'string' && c.updated_at === c.resolved_at,
+    'resolve must stamp updated_at (= resolved_at), got ' + JSON.stringify({ resolved_at: c.resolved_at, updated_at: c.updated_at }));
+  assert(new Date(c.updated_at).getTime() > NOW - 5 * DAY, 'stamp must be fresh, not the old value');
+});
+
+await test('SG12 دلتا ردیفِ حل‌شدهٔ قدیمی را از راهِ updated_at می‌بیند', async () => {
+  /* pre-gap-3: ردیفِ تعارضِ کهنه که «حالا» داوری شده با created_at کهنه
+     در دلتا هرگز نمی‌آمد (upAt نا manifesto → فقط crAt کهنه). حالا مُهرِ
+     updated_at داوری، آن را به دلتا می‌آورد. */
+  const q = deltaRowsSql('sync_conflicts', { sinceISO: FRESH });
+  const sql = (q && q.sql) ? q.sql : String(q);
+  assert(/FROM "sync_conflicts"/.test(sql) && /updated_at/.test(sql),
+    'builder must emit the updated_at predicate for sync_conflicts: ' + sql);
+  const store = makeStore();
+  store.sync_conflicts = [
+    { id: 1, school_id: 1, status: 'open', created_at: iso(NOW - 30 * DAY), updated_at: iso(NOW - 30 * DAY) },
+    { id: 2, school_id: 1, status: 'resolved', created_at: iso(NOW - 30 * DAY), updated_at: iso(NOW - 1 * DAY) }
+  ];
+  const { cap, pull } = makePull({ store });
+  await pull('since=' + encodeURIComponent(FRESH) + '&collections=' + encodeURIComponent('sync_conflicts'));
+  assert(cap.code === 200, 'status 200, got ' + cap.code);
+  const rows = cap.body.collections.sync_conflicts;
+  assert(Array.isArray(rows) && rows.length === 1 && rows[0].id === 2,
+    'delta must return only the recently-resolved conflict (via updated_at), got ' + JSON.stringify(rows));
+});
+
 /* ═══════════════ خلاصه ═══════════════ */
 console.log('\n────────────────────────────────────────────────────────');
 if (fail === 0) {
