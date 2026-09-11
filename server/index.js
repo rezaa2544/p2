@@ -58,6 +58,7 @@ const { createPull } = require('./pull');
 const { createHeavyWorker } = require('./worker-service'); /* Wave 9 — رشتهٔ کارِ عملیاتِ سنگین */
 const { createStaticCache } = require('./static-cache');   /* Wave 9 — کشِ استاتیک */
 const { checkEnvFlags, mismatchWarning } = require('./env-flags'); /* SUSPECT-B */
+const { createRuntimeMonitor } = require('./runtime-monitor'); /* Q3 runtime security signals */
 
 /* SUSPECT-B (نشست ۲): ناهماهنگیِ پرچم‌هایِ تولید را بلند کن — رفتارِ بوت
    عوض نمی‌شود (T2 و redis-fallback §۶ همان رفتار را پین کرده‌اند)؛ فقط
@@ -324,6 +325,11 @@ const auditLogger = createAudit({
 });
 const audit = auditLogger.audit;
 
+/* ── Q3 runtime security monitoring ──────────────────────────────────
+   The monitor is bounded and fail-safe: it never changes authorization or
+   response behavior, and keeps no raw session, tenant, URL, or payload data. */
+const runtimeMonitor = createRuntimeMonitor();
+
 /* ── shared helpers ────────────────────────────────────────────────── */
 function isHttps(req){
   if(req && req.socket && req.socket.encrypted) return true;
@@ -499,6 +505,15 @@ const onRequest = async (req, res) => {
       durationSeconds: metrics.elapsedSeconds(__mStart),
       bytes: __mBytes
     });
+    /* Q3: record only closed-set role/signal values. The monitor hashes its
+       session/tenant inputs internally and never exports raw request data. */
+    try {
+      const rt = (req.context && req.context.runtime) || {};
+      runtimeMonitor.recordRequest({
+        role: rt.role || 'anonymous', status: res.statusCode, responseBytes: __mBytes,
+        sessionId: rt.sessionId, tenantId: rt.tenantId, syncOps: rt.syncOps
+      });
+    } catch (_) {}
   });
   /* Tracing (P-Trace): شناسهٔ ردیابی در کانتکست و سرآیندِ پاسخ برای هم‌بستگی —
      پیش از WAF تا رویدادهای ممیزیِ آن شناسهٔ ردیابی داشته باشند. */
@@ -530,6 +545,14 @@ const onRequest = async (req, res) => {
     const gs = await auth.sessionFrom(req);
     if(gs){
       REQ_STATE.sess = gs;
+      req.context.runtime = {
+        role: gs.role,
+        sessionId: gs.jti,
+        /* A supplied school selector is an untrusted telemetry signal only;
+           authorization still derives scope from the authenticated session. */
+        tenantId: url.searchParams.get('school_id') || gs.school_id || null,
+        syncOps: 0
+      };
       let enumN = 0;
       if(/^\/api\/students\/\d+$/.test(p)){
         enumN = await enumTouch(gs); /* §5.7: هر خوانشِ این مسیر می‌شمارد (Wave 6: ردیس) */
@@ -611,8 +634,18 @@ const onRequest = async (req, res) => {
       let rdp = { ok: false, driver: 'unknown', alive: false };
       try { rdp = await redis.ping(); } catch (e) {}
       const pool = db.getPool();
+      /* Q3: health exposes bounded integer counters only; no session, tenant,
+         actor, URL, or payload data leaves the runtime monitor. */
+      const runtimeSecurity = runtimeMonitor.snapshot();
+      try {
+        metrics.set('payesh_suspicious_sessions', [], runtimeSecurity.suspicious_sessions);
+        metrics.set('payesh_attack_patterns_blocked', [], runtimeSecurity.attack_patterns_blocked);
+      } catch (_) {}
       const body = {
         ok: rdy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid,
+        anomalies_detected_24h: runtimeSecurity.anomalies_detected_24h,
+        suspicious_sessions: runtimeSecurity.suspicious_sessions,
+        attack_patterns_blocked: runtimeSecurity.attack_patterns_blocked,
         cache: redis.isRedis() ? 'redis' : (rdy ? 'memory-dev' : 'unavailable'),
         db: { driver: dbp.driver, alive: !!(dbp && dbp.ok), pool: pool ? { total: pool.totalCount, idle: pool.idleCount, pending: pool.pendingCount } : null },
         redis: { driver: rdp.driver, alive: !!(rdp && rdp.ok) },
@@ -652,6 +685,13 @@ const onRequest = async (req, res) => {
     if(p === '/api/auth/delete-account' && req.method === 'POST') return await auth.apiDeleteAccount(req, res);
     if(p === '/api/sync'           && req.method === 'POST'){
       const b = await readBody(req, 1024 * 1024);
+      /* Q3: sync op count / claimed tenant are monitoring inputs only. The
+         sync authorization gate still independently validates every stamp. */
+      if(req.context && req.context.runtime) {
+        req.context.runtime.syncOps = b && Array.isArray(b.ops) ? b.ops.length : 0;
+        const claimed = b && Array.isArray(b.ops) && b.ops.find(op => op && op.school_id != null);
+        if(claimed) req.context.runtime.tenantId = claimed.school_id;
+      }
       /* ویو ۱۴: اندازهٔ دستهٔ جهش‌ها = عمقِ صفِ آفلاینِ کلاینت در لحظهٔ drain. */
       metrics.observeSyncBatch(b && Array.isArray(b.ops) ? b.ops.length : 0);
       const r = await sync.apiSync(req, res, b);
