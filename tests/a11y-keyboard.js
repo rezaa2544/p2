@@ -255,18 +255,19 @@ const SHELL_ROLES = [
 
   /* ═══ ۳) dropdown پوسته + فرم ═══ */
   {
-    console.log('\n— منویِ پوسته (dropdown) + فرم —');
-    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    console.log('\n— منویِ پوسته (dropdown، نمایِ موبایل) + فرم —');
+    /* پاپ‌اورِ پوسته UIِ موبایل است (زیرِ 640px) — همان حالتِ واقعیِ کاربر */
+    const context = await browser.newContext({ viewport: { width: 420, height: 900 } });
     try {
       const page = await bootPage(context);
       await login(page, `db.users.find(x=>x.username==='manager1')`);
+      await page.waitForTimeout(150); /* themeSegApply با setTimeout(0) اجرا می‌شود */
 
       /* ۸. منویِ پوسته با کیبورد */
       const hasPop = await page.evaluate(() => {
         const b = document.querySelector('[data-tpop]');
-        if (!b) return false;
-        /* رویِ دسکتاپ پاپ‌اور پنهانِ سگمنت است — نمایش برایِ آزمون */
-        b.style.display = ''; b.focus();
+        if (!b || b.offsetParent === null) return false;
+        b.focus();
         return document.activeElement === b;
       });
       check(hasPop, 'dropdown: دکمهٔ منویِ پوسته فوکوس‌پذیر است');

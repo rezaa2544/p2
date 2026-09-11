@@ -328,5 +328,36 @@ function themeSegCloseMenus(){
     themeSegPaint();
     themeSegCloseMenus();
   });
+  /* ── کیبورد در پاپ‌اورِ پوسته (WCAG 2.1.1): ArrowDown/ArrowUp پیمایش،
+     Escape بستن + بازگشتِ فوکوس به دکمهٔ 🎨، Home/End پرش به سر/تهِ منو. ── */
+  document.addEventListener('keydown', function(ev){
+    var menu = ev.target && ev.target.closest ? ev.target.closest('[data-tpopmenu]') : null;
+    var onTrigger = ev.target && ev.target.closest ? ev.target.closest('[data-tpop]') : null;
+    /* ArrowDown رویِ دکمهٔ بازکننده وقتی منو باز است → ورود به منو */
+    if(onTrigger && (ev.key === 'ArrowDown' || ev.key === 'ArrowUp')){
+      var wrap = onTrigger.parentElement;
+      var m2 = wrap ? wrap.querySelector('[data-tpopmenu]') : null;
+      if(m2 && !m2.hidden){
+        var items2 = m2.querySelectorAll('button');
+        if(items2.length){ ev.preventDefault(); items2[ev.key === 'ArrowDown' ? 0 : items2.length - 1].focus(); }
+      }
+      return;
+    }
+    if(!menu) return;
+    var items = [].slice.call(menu.querySelectorAll('button'));
+    if(!items.length) return;
+    var idx = items.indexOf(document.activeElement);
+    if(ev.key === 'ArrowDown'){ ev.preventDefault(); items[(idx + 1) % items.length].focus(); }
+    else if(ev.key === 'ArrowUp'){ ev.preventDefault(); items[(idx - 1 + items.length) % items.length].focus(); }
+    else if(ev.key === 'Home'){ ev.preventDefault(); items[0].focus(); }
+    else if(ev.key === 'End'){ ev.preventDefault(); items[items.length - 1].focus(); }
+    else if(ev.key === 'Escape'){
+      ev.preventDefault(); ev.stopPropagation(); /* نگذار هندلرِ سراسری goBack کند */
+      themeSegCloseMenus();
+      var wrapEl = menu.parentElement;
+      var btn = wrapEl ? wrapEl.querySelector('[data-tpop]') : null;
+      if(btn){ try{ btn.focus(); }catch(e){} }
+    }
+  }, true); /* capture: پیش از هندلرِ Escape سراسری اجرا شود */
   if(typeof window.addEventListener === 'function') window.addEventListener('resize', themeSegApply);
 })();
