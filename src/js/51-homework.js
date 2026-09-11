@@ -361,7 +361,7 @@ function hwStudentView(){
                   : '<span class="badge b-amber">🔒 بسته شد</span>';
                 var dis = stt.open ? '' : ' disabled';
                 return badge
-                  + '<input type="file" id="hwfile_' + a.id + '" accept="image/*,audio/*,video/*,.pdf,.doc,.docx" class="input"' + dis + ' />'
+                  + '<input type="file" id="hwfile_' + a.id + '" accept="image/*,audio/*,video/*,.pdf,.doc,.docx" class="input" aria-label="بارگذاری پاسخ تکلیف"' + dis + ' />'
                   + ' <button class="btn sm" data-act="hw-submit" data-id="' + a.id + '"' + dis + '>⬆️ بارگذاری</button>';
               })()
             + '</div>')

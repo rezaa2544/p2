@@ -204,7 +204,7 @@ function tomorrowCard(sid,iso){
         const gear=tomorrowGearFor(sub), sb=subs[s.id];
         const on=checks['p'+s.period]?'checked':'';
         return `<div class="row" style="padding:7px 10px;background:var(--surface-2);border-radius:8px;gap:8px">`
-          + `<input type="checkbox" data-act="tomorrow-check" data-sid="${escAttr(sid)}" data-iso="${escAttr(tmr)}" data-idx="p${s.period}" ${on} />`
+          + `<input type="checkbox" data-act="tomorrow-check" data-sid="${escAttr(sid)}" data-iso="${escAttr(tmr)}" data-idx="p${s.period}" ${on} aria-label="آماده‌سازی زنگ ${escAttr(fa(s.period))} — ${escAttr(sub)}" />`
           + `<span class="badge b-green" style="flex:none">زنگ ${fa(s.period)}</span>`
           + `<b>${esc(sub)}</b>`
           + (sb?`<span class="badge b-amber">🔁 جابه‌جای: ${esc((byId('users',sb.sub_teacher_id)||{}).full_name||'—')}</span>`:'')

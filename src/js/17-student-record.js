@@ -80,10 +80,10 @@ function viewRecord(sid){
     if(!certTerms.length)return '';
     return '<div class="card-body row" style="gap:10px;align-items:center;border:1px dashed var(--border);border-radius:12px;padding:10px 14px;flex-wrap:wrap">'
       + '<span>🖨️</span><span class="small"><b>گواهی نمرات</b> (چاپ — PDF بعداً)</span>'
-      + '<select class="select" style="width:150px" id="cert_term">'
+      + '<select class="select" style="width:150px" id="cert_term" aria-label="انتخاب نوبت برای گواهی">'
       + certTerms.map(t=>'<option value="'+escAttr(t)+'">'+esc(t)+'</option>').join('')
       + '<option value="">همهٔ نوبت‌ها</option></select>'
-      + '<select class="select" style="width:150px" id="cert_tpl"><option value="classic" selected>قالبِ کلاسیک</option><option value="compact">قالبِ فشرده (دوستونه)</option></select>'
+      + '<select class="select" style="width:150px" id="cert_tpl" aria-label="قالب کارنامه"><option value="classic" selected>قالبِ کلاسیک</option><option value="compact">قالبِ فشرده (دوستونه)</option></select>'
       + '<button class="btn sm" data-act="cert-print" data-sid="'+escAttr(sid)+'">چاپ گواهی</button>'
       + '<button class="btn ghost sm" data-act="report-print" data-sid="'+escAttr(sid)+'" title="قالبِ حرفه‌ایِ A4 — چاپ یا ذخیرهٔ PDF">🖨️ چاپ کارنامه</button>'
       + '</div>';
