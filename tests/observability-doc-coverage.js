@@ -57,7 +57,8 @@ grp('OBS-MET — مدلِ متریک');
 chk('پیشوندِ استانداردِ نام‌گذاری', /پیشوند.*`payesh_`|`payesh_`/.test(doc));
 const METRICS = ['payesh_http_requests_total', 'payesh_http_request_duration_seconds', 'payesh_redis_up',
   'payesh_db_pool_total', 'payesh_sync_queue_depth', 'payesh_cache_hits_total',
-  'payesh_eventloop_lag_ms', 'payesh_process_heap_bytes', 'payesh_build_info'];
+  'payesh_eventloop_lag_ms', 'payesh_process_heap_bytes', 'payesh_build_info',
+  'payesh_runtime_anomalies_total', 'payesh_attack_patterns_detected_total', 'payesh_suspicious_sessions'];
 METRICS.forEach((m) => chk('متریکِ زندهٔ ' + m + ' در جدول هست', doc.includes(m)));
 chk('نگهبانِ کاردینالیتی (برچسبِ بی‌کران ممنوع) مستند است', /کاردینالیتی/.test(doc));
 chk('ضدرانشِ سه‌جانبه (متریک⇄آلارم⇄داشبورد) مستند است', /ضدرانش|قفل/.test(doc));
@@ -81,7 +82,7 @@ chk('قراردادِ نام‌گذاریِ اسپن (سرویس.منبع.عمل
 
 /* ── OBS-ALR: سیاستِ آلارم ── */
 grp('OBS-ALR — سیاستِ آلارم');
-const ALERTS = ['HighErrorRate', 'RedisDown', 'HighLatency', 'DBLatencyHigh', 'SyncQueueDepth', 'EventLoopLagHigh', 'MemoryHigh'];
+const ALERTS = ['HighErrorRate', 'RedisDown', 'HighLatency', 'DBLatencyHigh', 'SyncQueueDepth', 'EventLoopLagHigh', 'MemoryHigh', 'AnomalyDetected', 'AttackPatternSignature', 'SuspiciousSession'];
 ALERTS.forEach((a) => chk('قانونِ آلارمِ ' + a + ' در جدول هست', doc.includes(a)));
 chk('چهار سطحِ شدت (پی۰..پی۳) تعریف شده', /پی۰/.test(doc) && /پی۱/.test(doc) && /پی۲/.test(doc) && /پی۳/.test(doc));
 chk('ارجاعِ پله‌بندی به سندِ پاسخِ حادثه', /INCIDENT_RESPONSE\.md/.test(doc));

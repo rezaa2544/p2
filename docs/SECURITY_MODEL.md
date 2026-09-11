@@ -155,3 +155,25 @@ ESLint). سئوت‌هایِ jsdomِ وابسته به بوتِ سرور (xss-gu
 - فعال‌سازیِ کاملِ tombstone از سمتِ write به PG و push در یک تراکنشِ PG.
 - اجرایِ واقعیِ SCA/SBOM/DAST در CI با registry/URL زنده (DAST از P0 #6 با
   `SECURITY_TARGET_URL` فعال می‌شود).
+
+---
+
+## ۷) پایش امنیت زمان اجرا (Runtime Security Monitoring)
+
+- لایهٔ تشخیصِ درون‌فرایندی `server/runtime-monitor.js` روی پنج سطلِ یک‌دقیقه‌ای
+  (baseline پنج‌دقیقه‌ای) نرخ درخواست بر پایهٔ نقش، خطاهای 401/403، حجم پاسخ،
+  تغییر tenant و عملیات sync را می‌سنجد؛ عبورِ strict از `mean + 3σ` فقط یک‌بار
+  در هر سطل هشدار می‌دهد. این لایه **مجوزدهی یا پاسخ را تغییر نمی‌دهد**.
+- `server/attack-detector.js` امضاهای شمارش ترتیبی ID/IDOR، شکستِ سریع ورود میان
+  کاربران، تلاش میان‌مدرسه‌ای، export انبوه و metadata جعلی sync را به
+  `server/abuse-guard.js` می‌دهد. guard برای هر تشخیص auditِ پاک‌سازی‌شده، metric
+  محدود، شمارندهٔ health و webhook HTTPS اختیاری را فرا می‌خواند؛ خطای telemetry
+  fail-safe است. کنترل‌های WAF/scope/rate-limit همچنان مرز enforcement هستند.
+- هیچ IP، token، شماره، شناسهٔ رکورد، tenant، URL یا payload در هشدار/metric/
+  health نمی‌رود. state با هش یک‌طرفهٔ داخلی، TTL حداکثر ۲۴ ساعت و سقف mapها
+  محدود است. `/api/health`: `anomalies_detected_24h`, `suspicious_sessions`,
+  `attack_patterns_blocked`.
+- قواعد Prometheus: `AnomalyDetected`, `AttackPatternSignature`,
+  `SuspiciousSession`؛ مقصد عملیاتی: [RC-016](RUNBOOK_CARDS/RC-016.md). مرجع:
+  [Runtime Security](RUNTIME_SECURITY.md) و [Attack Patterns](ATTACK_PATTERNS.md).
+  اجرای زندهٔ مقصد webhook و مانور on-call همچنان پیش‌نیاز Go-Live است.

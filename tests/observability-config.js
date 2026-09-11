@@ -61,13 +61,20 @@ const RULES = [
   ['DBLatencyHigh', /alert: DBLatencyHigh[\s\S]*?payesh_db_query_latency_ms > 50/],
   ['SyncQueueDepth', /alert: SyncQueueDepth[\s\S]*?payesh_sync_queue_depth > 1000/],
   ['EventLoopLagHigh', /alert: EventLoopLagHigh[\s\S]*?payesh_eventloop_lag_ms\{q="p99"\} > 100/],
-  ['MemoryHigh', /alert: MemoryHigh[\s\S]*?0\.80/]
+  ['MemoryHigh', /alert: MemoryHigh[\s\S]*?0\.80/],
+  ['AnomalyDetected', /alert: AnomalyDetected[\s\S]*?payesh_runtime_anomalies_total/],
+  ['AttackPatternSignature', /alert: AttackPatternSignature[\s\S]*?payesh_attack_patterns_detected_total/],
+  ['SuspiciousSession', /alert: SuspiciousSession[\s\S]*?payesh_suspicious_sessions > 0/]
 ];
 RULES.forEach(([n, re]) => chk('قانون ' + n + ' با آستانهٔ درست', re.test(rules)));
 const ruleBlocks = rules.split('- alert:').slice(1);
 chk('همهٔ قوانین for+severity دارند', ruleBlocks.length === RULES.length
   && ruleBlocks.every((b) => /for: \d+m/.test(b) && /severity: (critical|warning)/.test(b)), ruleBlocks.length);
 chk('critical برای HighErrorRate و RedisDown', /HighErrorRate[\s\S]*?severity: critical/.test(rules) && /RedisDown[\s\S]*?severity: critical/.test(rules));
+const runtimeRuleAlias = path.join(ROOT, 'monitoring', 'alert-rules.yml');
+chk('alias موردنیاز monitoring/alert-rules.yml به قانونِ mounted وصل است',
+  fs.existsSync(runtimeRuleAlias) && fs.lstatSync(runtimeRuleAlias).isSymbolicLink()
+  && fs.readlinkSync(runtimeRuleAlias) === '../infra/observability/alert-rules.yml');
 
 grp('OBS-METRICS — نام‌ها زنده‌اند');
 const metricsJs = rd('server/metrics.js') || '';

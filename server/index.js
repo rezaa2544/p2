@@ -58,6 +58,9 @@ const { createPull } = require('./pull');
 const { createHeavyWorker } = require('./worker-service'); /* Wave 9 — رشتهٔ کارِ عملیاتِ سنگین */
 const { createStaticCache } = require('./static-cache');   /* Wave 9 — کشِ استاتیک */
 const { checkEnvFlags, mismatchWarning } = require('./env-flags'); /* SUSPECT-B */
+const { createRuntimeMonitor } = require('./runtime-monitor'); /* Q3 runtime security signals */
+const { createAttackDetector } = require('./attack-detector'); /* Q3 attack signatures */
+const { createAbuseGuard } = require('./abuse-guard'); /* Q3 audit/metric/webhook egress */
 
 /* SUSPECT-B (نشست ۲): ناهماهنگیِ پرچم‌هایِ تولید را بلند کن — رفتارِ بوت
    عوض نمی‌شود (T2 و redis-fallback §۶ همان رفتار را پین کرده‌اند)؛ فقط
@@ -324,6 +327,20 @@ const auditLogger = createAudit({
 });
 const audit = auditLogger.audit;
 
+/* ── Q3 runtime security monitoring ──────────────────────────────────
+   The monitor's observations are bounded and fail-safe. Attack detection is
+   deliberately separated from enforcement: WAF/authz/rate-limits continue to
+   make access decisions, while abuseGuard emits redacted audit/metric/webhook
+   signals for operator response. */
+let abuseGuard;
+const runtimeMonitor = createRuntimeMonitor({
+  onAnomaly: (finding) => { try { if (abuseGuard) abuseGuard.reportAnomaly(finding); } catch (_) {} }
+});
+abuseGuard = createAbuseGuard({ audit, metrics, runtimeMonitor });
+const attackDetector = createAttackDetector({
+  onDetect: (finding) => { try { abuseGuard.report(finding).catch(() => {}); } catch (_) {} }
+});
+
 /* ── shared helpers ────────────────────────────────────────────────── */
 function isHttps(req){
   if(req && req.socket && req.socket.encrypted) return true;
@@ -361,6 +378,17 @@ function sendJsonCounting(res, status, obj){
       metrics.observeAuth('rejection', stage);
     }).catch(() => {});
   }
+  /* Q3: API modules return stable denial codes. Feed only those codes and the
+     already-authenticated session to the signature detector; data/payloads
+     remain outside telemetry. */
+  try {
+    if(r && r.sess && obj && (obj.code === 'out_of_scope' || obj.code === 'school_mismatch')) {
+      attackDetector.observeCrossSchool({ sessionId: r.sess.jti });
+    }
+    if(r && r.sess && obj && ['forged_by', 'user_mismatch', 'school_mismatch', 'ownership_forge'].includes(obj.code)) {
+      attackDetector.observeSyncResult({ sessionId: r.sess.jti, code: obj.code });
+    }
+  }catch(_){}
   return sendJson(res, status, obj);
 }
 function readBody(req, limit){
@@ -499,6 +527,22 @@ const onRequest = async (req, res) => {
       durationSeconds: metrics.elapsedSeconds(__mStart),
       bytes: __mBytes
     });
+    /* Q3: record only closed-set role/signal values. The monitor hashes its
+       session/tenant inputs internally and never exports raw request data. */
+    try {
+      const rt = (req.context && req.context.runtime) || {};
+      runtimeMonitor.recordRequest({
+        role: rt.role || 'anonymous', status: res.statusCode, responseBytes: __mBytes,
+        sessionId: rt.sessionId, tenantId: rt.tenantId, syncOps: rt.syncOps
+      });
+      attackDetector.observeRequest({
+        sessionId: rt.sessionId, source: clientIp(req), path: p, status: res.statusCode,
+        wafBlocked: !!(req.context && req.context.waf && req.context.waf.blocked)
+      });
+      if (req.context && req.context.waf && req.context.waf.blocked) {
+        attackDetector.observeWafBlock({ sessionId: rt.sessionId, source: clientIp(req), blocked: true });
+      }
+    } catch (_) {}
   });
   /* Tracing (P-Trace): شناسهٔ ردیابی در کانتکست و سرآیندِ پاسخ برای هم‌بستگی —
      پیش از WAF تا رویدادهای ممیزیِ آن شناسهٔ ردیابی داشته باشند. */
@@ -530,6 +574,14 @@ const onRequest = async (req, res) => {
     const gs = await auth.sessionFrom(req);
     if(gs){
       REQ_STATE.sess = gs;
+      req.context.runtime = {
+        role: gs.role,
+        sessionId: gs.jti,
+        /* A supplied school selector is an untrusted telemetry signal only;
+           authorization still derives scope from the authenticated session. */
+        tenantId: url.searchParams.get('school_id') || gs.school_id || null,
+        syncOps: 0
+      };
       let enumN = 0;
       if(/^\/api\/students\/\d+$/.test(p)){
         enumN = await enumTouch(gs); /* §5.7: هر خوانشِ این مسیر می‌شمارد (Wave 6: ردیس) */
@@ -562,6 +614,13 @@ const onRequest = async (req, res) => {
       try{
         if(typeof outbox.depth === 'function') metrics.publishOutboxDepth(outbox.depth());
       }catch(e){}
+      /* Runtime health gauges must also refresh on the Prometheus scrape path;
+         `/api/health` is operator-facing, not the collector's source. */
+      try {
+        const runtimeSecurity = runtimeMonitor.snapshot();
+        metrics.set('payesh_suspicious_sessions', [], runtimeSecurity.suspicious_sessions);
+        metrics.set('payesh_attack_patterns_blocked', [], runtimeSecurity.attack_patterns_blocked);
+      } catch (_) {}
       const body = metrics.render();
       res.writeHead(200, {
         'Content-Type': 'text/plain; version=0.0.4; charset=utf-8',
@@ -611,8 +670,18 @@ const onRequest = async (req, res) => {
       let rdp = { ok: false, driver: 'unknown', alive: false };
       try { rdp = await redis.ping(); } catch (e) {}
       const pool = db.getPool();
+      /* Q3: health exposes bounded integer counters only; no session, tenant,
+         actor, URL, or payload data leaves the runtime monitor. */
+      const runtimeSecurity = runtimeMonitor.snapshot();
+      try {
+        metrics.set('payesh_suspicious_sessions', [], runtimeSecurity.suspicious_sessions);
+        metrics.set('payesh_attack_patterns_blocked', [], runtimeSecurity.attack_patterns_blocked);
+      } catch (_) {}
       const body = {
         ok: rdy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid,
+        anomalies_detected_24h: runtimeSecurity.anomalies_detected_24h,
+        suspicious_sessions: runtimeSecurity.suspicious_sessions,
+        attack_patterns_blocked: runtimeSecurity.attack_patterns_blocked,
         cache: redis.isRedis() ? 'redis' : (rdy ? 'memory-dev' : 'unavailable'),
         db: { driver: dbp.driver, alive: !!(dbp && dbp.ok), pool: pool ? { total: pool.totalCount, idle: pool.idleCount, pending: pool.pendingCount } : null },
         redis: { driver: rdp.driver, alive: !!(rdp && rdp.ok) },
@@ -645,6 +714,11 @@ const onRequest = async (req, res) => {
       const b = await readBody(req, 4 * 1024);
       const r = await auth.apiLogin(req, res, b);
       metrics.observeAuth('login', res.statusCode === 200 ? 'ok' : res.statusCode === 429 ? 'rate_limited' : res.statusCode === 401 ? 'failed' : 'rejected');
+      /* Q3: detector hashes source/subject internally; neither phone nor IP is
+         emitted to logs, metrics, webhooks, or health. */
+      if(res.statusCode === 401) {
+        try { attackDetector.observeLoginFailure({ source: clientIp(req), subject: b && b.phone }); } catch (_) {}
+      }
       return r;
     }
     if(p === '/api/auth/me'        && req.method === 'GET')  return await auth.apiMe(req, res);
@@ -652,6 +726,13 @@ const onRequest = async (req, res) => {
     if(p === '/api/auth/delete-account' && req.method === 'POST') return await auth.apiDeleteAccount(req, res);
     if(p === '/api/sync'           && req.method === 'POST'){
       const b = await readBody(req, 1024 * 1024);
+      /* Q3: sync op count / claimed tenant are monitoring inputs only. The
+         sync authorization gate still independently validates every stamp. */
+      if(req.context && req.context.runtime) {
+        req.context.runtime.syncOps = b && Array.isArray(b.ops) ? b.ops.length : 0;
+        const claimed = b && Array.isArray(b.ops) && b.ops.find(op => op && op.school_id != null);
+        if(claimed) req.context.runtime.tenantId = claimed.school_id;
+      }
       /* ویو ۱۴: اندازهٔ دستهٔ جهش‌ها = عمقِ صفِ آفلاینِ کلاینت در لحظهٔ drain. */
       metrics.observeSyncBatch(b && Array.isArray(b.ops) ? b.ops.length : 0);
       const r = await sync.apiSync(req, res, b);
