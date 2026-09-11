@@ -810,3 +810,6 @@ tbody tr:hover{background:linear-gradient(90deg,#eef4ff 0%,#f3f7ff 100%)}
 .skip-link:focus{top:0;outline:3px solid var(--brand-cyan);outline-offset:1px}
 /* nav-item حالا با کیبورد فوکوس می‌گیرد — نشانگرِ مرئی لازم است (WCAG 2.4.7) */
 .nav-item:focus-visible{outline:2px solid var(--brand-cyan);outline-offset:-2px}
+
+/* ── موج ۲۱: کلاس چندپایه — خانهٔ خارج از پایهٔ دانش‌آموز ── */
+.mg-off{background:var(--surface-2,#f4f6fa);opacity:.55}
