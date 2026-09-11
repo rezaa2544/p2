@@ -11,7 +11,18 @@ function modalTpl(title,body,saveAct,danger,okLabel){
     <button class="btn ghost" data-act="modal-close">انصراف</button>
     <button class="btn ${danger?'danger':''}" data-act="${escAttr(saveAct)}">${okLabel||(danger?'حذف کن':'ذخیره')}</button></div>`;
 }
-const f=(label,inner)=>`<div class="field"><label>${label}</label>${inner}</div>`;
+/* هلپرِ فیلدِ فرم — دسترس‌پذیر (axe: label/select-name).
+   اگر کنترلِ درونی id داشته باشد، <label for=…> می‌سازد تا نامِ دسترس‌پذیر
+   برنامه‌ای برقرار شود؛ وگرنه متنِ برچسب (بدونِ تگ) به‌عنوانِ aria-label
+   رویِ نخستین کنترل می‌نشیند. ساختارِ DOM (div.field>label+کنترل) دست نمی‌خورد. */
+const f=(label,inner)=>{
+  const s=String(inner);
+  const m=/\sid="([^"]+)"/.exec(s);
+  if(m) return `<div class="field"><label for="${m[1]}">${label}</label>${s}</div>`;
+  const plain=String(label).replace(/<[^>]*>/g,'').replace(/"/g,'&quot;').trim();
+  const patched=plain?s.replace(/<(input|select|textarea)\b(?![^>]*aria-label)/i,`<$1 aria-label="${plain}"`):s;
+  return `<div class="field"><label>${label}</label>${patched}</div>`;
+};
 const inp=(id,val,type='text')=>`<input class="input" id="${escAttr(id)}" type="${escAttr(type)}" value="${esc(val??'')}" />`;
 const sel=(id,opts,val)=>`<select class="select" id="${escAttr(id)}">${opts.map(o=>`<option value="${esc(o[0])}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
 const V=id=>{const e=$('#'+id);return e?e.value.trim():'';};
