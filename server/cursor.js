@@ -9,6 +9,15 @@
      pc1.<base64url(payload json)>.<base64url(HMAC-SHA256)>
 
    payload = { v:1, since:<iso>, iat:<epoch-s>, exp:<epoch-s>, jti:<hex> }
+     v1 (legacy): قبول می‌شود تا انقضای TTLِ خودش (دورهٔ گذارِ استقرار).
+   payload = { v:2, since, iat, exp, jti, rg:<region> }   — Delta Phase 4 (gap 5)
+     v2: کرسر به منطقهٔ صادرکننده گره می‌خورد (PAYESH_REGION، پیش‌فرض
+     'default'). توکنِ v2 که در منطقهٔ دیگری ارائه شود = 401
+     region_mismatch + cursor_renewal:'full_pull' — کلاینت همان مسیرِ
+     تجدیدِ عمومیِ pull کامل را می‌رود (29-pull.js؛ بدونِ تغییرِ کلاینت).
+     رازِ امضای مشترک + برچسبِ rg یعنی توکنِ بین‌منطقه‌ای حتی با کلیدِ
+     یکسانِ HA هم replay نمی‌شود مگر آن‌که خودِ خطا را بپذیرد (خنثی:
+     چون sinceِ آن منطقه ممکن است جلوتر از ساعتِ محلیِ این‌جا باشد).
 
    - HMAC-SHA256 over "<b64payload>" with a server-side key (constant-time compare).
    - TTL default 3600s (1h), env PAYESH_CURSOR_TTL_S (clamped 60..86400).
@@ -43,6 +52,13 @@ function ttlSeconds() {
   return clampInt(process.env.PAYESH_CURSOR_TTL_S, DEFAULT_TTL_S, MIN_TTL_S, MAX_TTL_S);
 }
 
+/* Delta Phase 4 (gap 5): نامِ منطقهٔ این instance — برچسبِ داخلِ کرسرِ v2.
+   کوتاه/بسته تا payload را تحمیل‌پذیر (oversized) نکند. */
+function regionName() {
+  const r = process.env.PAYESH_REGION;
+  return (typeof r === 'string' && r.length) ? r.trim().slice(0, 32) : 'default';
+}
+
 /**
  * Resolve the cursor signing key.
  * @param {string} [explicit] caller-provided key (highest priority — lets index.js
@@ -52,13 +68,30 @@ function ttlSeconds() {
  *   cursor HMAC key is NEVER the raw JWT key — same input secret, distinct key.
  */
 function resolveSecret(explicit) {
-  const candidates = [explicit, process.env.PAYESH_CURSOR_SECRET, process.env.PAYESH_JWT_SECRET];
+  return resolveKey(explicit).key;
+}
+
+/* Delta Phase 4 (gap 3): منبعِ برنده را هم برگردان تا سلامتِ بوت و
+   /api/health بگویند کلیدِ کرسر از کجا آمده — و بازراه‌اندازی پایدار
+   است یا نه (keyfile/env پایدارند؛ منبعِ پایدار = کرسرِ زنده). */
+function resolveKey(explicit) {
+  /* هشدارِ misconfig: رازِ کوتاهِ صریح بی‌صدا رد نمی‌شود — اپراتور
+     باید بداند چرا سقوط به منبعِ بعدی کرده (رفتار، همانِ پیشین است). */
+  const cs = process.env.PAYESH_CURSOR_SECRET;
+  if (typeof cs === 'string' && cs.length > 0 && cs.length < 32) {
+    console.warn('[cursor] PAYESH_CURSOR_SECRET is shorter than 32 bytes — falling back to the JWT key source (domain-separated). Set a >=32-byte secret to stop this warning.');
+  }
+  const candidates = [
+    { v: explicit, source: 'explicit' },
+    { v: process.env.PAYESH_CURSOR_SECRET, source: 'env_cursor' },
+    { v: process.env.PAYESH_JWT_SECRET, source: 'env_jwt' }
+  ];
   for (const c of candidates) {
-    if (typeof c === 'string' && c.length >= 32) {
-      return crypto.createHash('sha256').update('payesh.cursor.v1|' + c).digest('hex');
+    if (typeof c.v === 'string' && c.v.length >= 32) {
+      return { key: crypto.createHash('sha256').update('payesh.cursor.v1|' + c.v).digest('hex'), source: c.source };
     }
   }
-  return null;
+  return { key: null, source: 'none' };
 }
 
 const b64u = (buf) => Buffer.from(buf).toString('base64url');
@@ -73,13 +106,16 @@ function sigOf(secret, payloadB64) {
  */
 function createCursor(o) {
   o = o || {};
-  const secret = resolveSecret(o.secret);
+  const resolved = resolveKey(o.secret);
+  const secret = resolved.key;
   const ttl = clampInt(o.ttlS != null ? o.ttlS : ttlSeconds(), DEFAULT_TTL_S, MIN_TTL_S, MAX_TTL_S);
   const now = typeof o.now === 'function' ? o.now : () => Math.floor(Date.now() / 1000);
 
   return {
     enabled: !!secret,
     ttlS: ttl,
+    /* Delta Phase 4 (gap 3): 'explicit' | 'env_cursor' | 'env_jwt' | 'none' */
+    keySource: resolved.source,
 
     /**
      * Sign a `since` ISO timestamp into an expiring cursor token.
@@ -92,11 +128,12 @@ function createCursor(o) {
       if (!sinceISO || isNaN(new Date(sinceISO).getTime())) return null;
       const iat = Number.isFinite(atEpochS) ? Math.trunc(atEpochS) : now();
       const payload = {
-        v: 1,
+        v: 2,
         since: String(sinceISO),
         iat,
         exp: iat + ttl,
-        jti: crypto.randomBytes(8).toString('hex')
+        jti: crypto.randomBytes(8).toString('hex'),
+        rg: regionName() /* Delta Phase 4 (gap 5): گرهِ منطقهٔ صادرکننده */
       };
       const body = b64u(JSON.stringify(payload));
       return PREFIX + '.' + body + '.' + b64u(sigOf(secret, body));
@@ -116,7 +153,20 @@ function createCursor(o) {
       try {
         payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
       } catch (e) { return { ok: false, code: 'cursor_invalid' }; }
-      if (!payload || payload.v !== 1) return { ok: false, code: 'cursor_invalid' };
+      if (!payload) return { ok: false, code: 'cursor_invalid' };
+      /* Delta Phase 4 (gap 5): v2 به منطقهٔ صادرکننده گره خورده؛ v1 تا
+         انقضای TTL خودش قبول می‌شود (گذارِ استقرارِ چندمنطقه‌ای). */
+      if (payload.v === 2) {
+        /* بدشکلِ v2 (بدونِ rg) نامعتبر است؛ v2 سالم از منطقهٔ دیگر mismatch. */
+        if (typeof payload.rg !== 'string' || !payload.rg) {
+          return { ok: false, code: 'cursor_invalid' };
+        }
+        if (payload.rg !== regionName()) {
+          return { ok: false, code: 'region_mismatch' };
+        }
+      } else if (payload.v !== 1) {
+        return { ok: false, code: 'cursor_invalid' };
+      }
       /* signature first (constant-time) — expired-but-forged is invalid, not expired */
       let sigOk = false;
       try {
@@ -135,4 +185,4 @@ function createCursor(o) {
   };
 }
 
-module.exports = { createCursor, resolveSecret, ttlSeconds, DEFAULT_TTL_S, MIN_TTL_S, MAX_TTL_S };
+module.exports = { createCursor, resolveSecret, resolveKey, ttlSeconds, regionName, DEFAULT_TTL_S, MIN_TTL_S, MAX_TTL_S };
