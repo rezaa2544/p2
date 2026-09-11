@@ -15,6 +15,15 @@
 
 
 
+## نشستِ بازسازیِ دسترس‌پذیری WCAG 2.1 AA (`feat/a11y-rebuild`) — ✅ (2026-09-11)
+
+- **مأموریت:** حسابرسی + رفعِ P1 دسترس‌پذیری (۵ نقش × ۱۰ محور) با شاهدِ زنده و جهش‌اثبات.
+- **یافته‌ها → رفع‌ها (هر رفع = کامیت جدا):** skip-link + `main`/`aside`؛ توست `role=status` + `aria-live`؛ نامِ برگر/بازگشت/زنگ/✕ها؛ `for` خودکارِ `f()` + لیبل‌های لاگین؛ `alt` تصاویر تکلیف/رسانه؛ `role=dialog` + انتقال/تله/بازگردانی فوکوس؛ `thead`+`th scope=col` جداول audit؛ جایگزین متنی canvas. کنتراست محاسبه‌شده: متن/پرایمری ✅، پالت بج‌ها P2 (تصمیم بصری).
+- **تست‌ها:** `tests/a11y-audit.js` **۴۰/۴۰** (قرمز اول ۱۰/۴۰) · smoke **۵۴۷/۵۴۷** · run **۳۵/۳۵** · check-authz exit 0 · secret-scan **۱۱/۱۱** · build --check سبز.
+- **گیت‌هاب:** push شد (`6107bc1` تأیید با ls-remote) · **PR #69** (https://github.com/rezaa2544/p2/pull/69) · باندل fallback: `Temp/a11y-rebuild.bundle` (verify شد).
+- **نکته‌ها:** توکن gh فرسوده بود (۲ نوبت)؛ push با URL-token و PR با REST API (gh به `read:org` گیر می‌دهد). کامیت‌های خارجی `a8f750b`/`d133db2` و تغییرِ `secret-scan.js`/`grades.js` مال نشستِ موازی است — دست نخورد. `smoke` ابتدا به‌خاطر نبود `jsdom` بلوکه بود، بعداً اجرا شد.
+- **اسناد:** `docs/A11Y_AUDIT.md` · `docs/A11Y_GUIDE.md` · §۱۷ `USER_GUIDE.html`.
+
 ## آرنا (Agent Mode): بستن شکاف اسکیما Delta — فاز ۳ — ۲۰/۰۶/۱۴۰۵ (2026-09-11) — ✅
 
 - **مأموریت:** سه شکافِ اسکیمای مسیر دلتا (`DELTA_HARDENING.md` §6 بند ۱) روی شاخهٔ `feat/delta-schema-gaps` (استک روی `feat/delta-hardening-phase2` @ `c13cd3f` — PR #56 هنوز باز).
