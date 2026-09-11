@@ -1,3 +1,18 @@
+## Handoff — پ۷: مرج مانور WAL Disk-Full / PR #78 — ✅ (2026-09-11)
+
+- **PR:** [#78](https://github.com/rezaa2544/p2/pull/78) با عنوان `feat: WAL disk-full drill (tmpfs variant — second implementation, see PR #76)` ابتدا از GitHub API با `state=open`، `merged=false` و `mergeable=false`/`mergeable_state=dirty` دیده شد؛ شاخهٔ PR نسبت به `main` به‌روز نبود.
+- **حلِ تعارض:** درختِ به‌روزِ `main` حفظ شد و پچِ هشت‌فایلیِ PR روی آن اعمال شد؛ `HANDOFF.md` کهنه/کدگذاری‌خرابِ شاخه جایگزین نشد. commit حلِ merge روی شاخهٔ PR: `2366f02bd564c6d4a459ac9c6563e2d4d8b2d7f0`.
+- **اصلاحِ کشف‌شده پیش از merge:** مسیرِ fail-closedِ بدونِ زیرساخت در `tests/wal-disk-full.js` به‌علت TDZ روی `finished` قرمز بود؛ با انتقال declaration پیش از IIFE رفع شد. بازتولید قرمز انجام شد و `tests/wal-disk-full-mutations.js` جهشِ حذف declaration را کشت: **2/2**.
+- **تأیید mergeability:** API پس از resolution مقدار `mergeable=true` و `mergeable_state=unstable` را نشان داد؛ پس از تکمیلِ CI هر ۷ check موفق شدند: SCA، DAST، Secret scan، WAF، SAST، SBOM و build روی Node 22.
+- **مرج نهایی:** API با `merged=true` موفق شد؛ merge commit: `94d3ac234534f124f6dafe0cbb6a8698cfd89d31`.
+- **گیت‌های محلی روی درختِ تمیزِ merge‌شده:** smoke **547/547**؛ `check-authz` exit 0 با **389** اکشن؛ secret-scan **11/11**؛ `node build.js --check` سبز.
+- **مانور اختصاصی:** `node tests/wal-disk-full.js --skip-live` بررسیِ ایستا را **7/7** سبز کرد و ۵ سناریوی زنده را با exit 2 به‌صورت **NOT-RUN** گزارش کرد؛ PostgreSQL 17، mountِ tmpfs و دسترسی root در این sandbox موجود نبودند. سبزِ جعلی برای اجرای زنده گزارش نشده است. گزارشِ عملیاتیِ PR در `docs/WAVE19_WAL_DRILL_REPORT.md` محدودیت‌های RPO/PITR/منطقه‌ای را صریح ثبت می‌کند.
+- **مستندات:** `docs/WAVE19_WAL_DRILL_REPORT.md`، `docs/DISASTER_RECOVERY.md`، `docs/DR_RUNBOOK.md` و `docs/PRODUCTION_READINESS_CHECKLIST.md` وارد `main` شدند؛ ردیف Wave 19 در `docs/NATIONAL_ROADMAP_PROGRESS.md` به‌روز شد.
+- **تأیید پوش:** پس از commit مستندات، `git ls-remote origin refs/heads/main` باید SHA نهایی `main` را مستقل تأیید کند.
+- **یادداشت محیط:** Node محلی `v20.20.2` است، درحالی‌که engine پروژه `>=22` می‌خواهد؛ CI رسمی build روی Node 22 سبز شد. هشدار شناخته‌شدهٔ jsdom برای `window.scrollTo` در smoke غیرمسدودکننده است.
+
+---
+
 # دفترچهٔ تحویل کار — پایش
 
 ## Handoff — پ۷: تأیید و مرج A11y Keyboard Navigation / PR #77 — ✅ (2026-09-11)
@@ -6,7 +21,7 @@
 - **تأیید mergeability:** پس از push اصلاح merge، API وضعیت `mergeable=true` را تأیید کرد؛ merge از API انجام شد.
 - **Merge commit:** `2c7097d8e22894bdcf3decf4c6e494d4854e09f7`.
 - **تست‌های محلی روی clone تمیز main:** smoke **547/547**، `check-authz` exit 0 با 389 اکشن، secret-scan **11/11**، `node build.js --check` سبز، `a11y-keyboard` **92/92** و `a11y-regressions` **46/46**.
-- **تأیید پوش:** commit مستندات `cd04485` به main push شد و تأیید SHA پس از push انجام شد.
+- **تأیید پوش:** commit مستندات `44f645c6161d58698e17b84b06b0f47a749887a0` به main push شد و تأیید SHA پس از push انجام شد.
 - **مستندات:** ردیف Wave 17 در `docs/NATIONAL_ROADMAP_PROGRESS.md` با PR #77 و شواهد تست به‌روز شد.
 - **یادداشت محیط:** هشدار jsdom برای `window.scrollTo` در smoke غیرمسدودکننده است؛ نیازمندی engine پروژه Node >=22 است و محیط محلی Node 20.20.2 دارد.
 
