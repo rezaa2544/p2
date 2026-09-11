@@ -11,6 +11,8 @@
 
 const crypto = require('crypto');
 const redis = require('./redis');
+/* ویو ۱۴ (Observability) — نرخِ برخوردِ کش، ابطال‌ها و تصمیم‌هایِ rate-limit. */
+const metrics = require('./metrics');
 
 const INVAL_CHANNEL = 'payesh:pubsub:inval';
 /* W11-2 (موج ۱۱، باگ‌هانت چت ۵): epochِ ابطالِ L2. ابطالِ مدرسه/سراسری فقط
@@ -127,6 +129,8 @@ async function getBootstrapCache(userId) {
   const local = l1Get(userId);
   if (local) {
     l1Hits++;
+    /* ویو ۱۴ — نرخِ برخوردِ کش (لایهٔ حافظهٔ محلی) */
+    metrics.inc('payesh_cache_lookups_total', { layer: 'l1_memory', outcome: 'hit' });
     return local;
   }
   l1Misses++;
@@ -144,17 +148,21 @@ async function getBootstrapCache(userId) {
         const curSe = schoolId != null ? await redis.get(epochSchoolKey(schoolId)) : null;
         const curGe = await redis.get(EPOCH_GLOBAL_KEY);
         if ((parsed.se || null) !== (curSe || null) || (parsed.ge || null) !== (curGe || null)) {
+          metrics.inc('payesh_cache_lookups_total', { layer: 'l2_redis', outcome: 'miss' }); /* ویو ۱۴: کهنه‌خوان = miss */
           return null;   /* ابطال‌شده پس از نوشتن — کهنه نخوان */
         }
         const data = parsed.data;
         l1Set(Number(userId), data, schoolId != null ? Number(schoolId) : null);
+        metrics.inc('payesh_cache_lookups_total', { layer: 'l2_redis', outcome: 'hit' }); /* ویو ۱۴ */
         return data;
       }
       const data = parsed;
       l1Set(userId, data, data.school ? data.school.id : null);
+      metrics.inc('payesh_cache_lookups_total', { layer: 'l2_redis', outcome: 'hit' }); /* ویو ۱۴ */
       return data;
     } catch (e) {}
   }
+  metrics.inc('payesh_cache_lookups_total', { layer: 'l2_redis', outcome: 'miss' });
   return null;
 }
 
@@ -213,6 +221,9 @@ async function invalidateSchool(schoolId) {
  * @param {number} [schoolId] 
  */
 async function invalidateCollection(collection, schoolId) {
+  /* ویو ۱۴ — برچسبِ scope از مجموعهٔ بسته (school/global) می‌آید؛ نامِ
+     collection وارد label نمی‌شود تا cardinality کران‌دار بماند. */
+  metrics.inc('payesh_cache_invalidations_total', { scope: schoolId ? 'school' : 'global' });
   if (schoolId) {
     await invalidateSchool(schoolId);
   } else {
@@ -276,6 +287,10 @@ async function checkRateLimit(identifier, action, limit = 10, windowSeconds = 60
   const key = `payesh:rl:${action}:${identifier}`;
   try {
     const count = await redis.incrWithTtl(key, windowSeconds);
+    const allowed = count <= limit;
+    /* ویو ۱۴ — برچسبِ action نامِ اقدام است (send_code/login/api)، نه
+       شناسهٔ کاربر؛ تصمیم‌هایِ رد‌شده یعنی فشارِ سوءاستفاده. */
+    metrics.inc('payesh_rate_limit_decisions_total', { action: String(action || 'unknown').slice(0, 32), decision: allowed ? 'allowed' : 'denied' });
     return {
       allowed: count <= limit,
       remaining: Math.max(0, limit - count),

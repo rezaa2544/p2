@@ -29,7 +29,7 @@ const rootTests = fs.readdirSync(path.join(ROOT, 'tests')).filter((f) => f.endsW
 const apiTests = fs.readdirSync(path.join(ROOT, 'tests', 'api')).filter((f) => f.endsWith('.js'));
 const total = rootTests.length + apiTests.length;
 chk('ادعای سند با دیسک یکی است (' + fa(total) + ' فایل)', doc.includes('**' + fa(total) + '**'), String(total));
-chk('شمار ریشه در سند آمده', doc.includes('۳۳۶'));
+chk('شمار ریشه در سند آمده (' + fa(rootTests.length) + ')', doc.includes(fa(rootTests.length)), String(rootTests.length));
 chk('شمار ای‌پی‌آی در سند آمده', doc.includes('tests/api/'));
 chk('دود ۵۴۷ موردی ذکر شده', doc.includes('۵۴۷/۵۴۷'));
 chk('اسکن راز ۱۱/۱۱ ذکر شده', doc.includes('۱۱/۱۱'));

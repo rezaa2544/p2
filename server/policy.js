@@ -266,6 +266,22 @@ function inScope(session, store, coll, recId, data) {
   }
   if (u.role === 'teacher') {
     if (coll === 'messages') return msgOwnerOk();
+    /* E.4 — کتابدار: امانت/بازگشت در سطحِ مدرسه است نه کلاس (کتابدار به
+       همهٔ دانش‌آموزانِ مدرسه امانت می‌دهد)؛ پرچمِ تفویضی لازم است. (منتقل از sync.js — ویو ۵) */
+    if (coll === 'lib_loans') {
+      const me = ((store && store.users) || []).find((x) => Number(x.id) === Number(u.id));
+      if (!me || me.lib_staff !== 1) return false;
+      const t3 = rec || data || {};
+      return t3.school_id != null && Number(t3.school_id) === Number(u.school_id);
+    }
+    /* E.5 — تحویلدار: به‌روزرسانیِ اموال در سطحِ مدرسه است نه کلاس؛
+       پرچمِ تفویضیِ مدیر (users.asset_staff=1) لازم است. (منتقل از sync.js — ویو ۵) */
+    if (coll === 'assets') {
+      const me = ((store && store.users) || []).find((x) => Number(x.id) === Number(u.id));
+      if (!me || me.asset_staff !== 1) return false;
+      const t3 = rec || data || {};
+      return t3.school_id != null && Number(t3.school_id) === Number(u.school_id);
+    }
     /* Round 89 — کلاس‌هایی که واقعاً تدریس می‌شوند (سرپرستی یا برنامه)؛
        نوبت‌ها: نوبت‌هایِ خودِ دبیر (با parent_id/student_id null ساخته می‌شوند). */
     const t2 = rec || data || {};

@@ -38,6 +38,8 @@ tests/.cache-jaeger/
 *.key
 *.crt
 server/data/jwt.key
+.claude/memory.db
+.claude-flow/
 
 # Wave 18 — دادهٔ آزمایشیِ مقیاسِ ملی (حجم‌دار؛ هرگز commit نشود)
 data/national/
@@ -55,6 +57,6 @@ docs/_metadata.json
 docs/_search-index.json
 
 # پسماند ابزارهای حافظهٔ عامل (روفلو) — هرگز کامیت نشود
-.claude-flow/
 .claude/proven-config.json
 .claude/.proven-config-version
+node_modules

@@ -386,11 +386,15 @@ function coreActions(e, el, id, a, rawId){
        f('عنوان *', inp('lib_title',''))
        + f('نویسنده', inp('lib_author',''))
        + f('کد/رگال (اختیاری)', inp('lib_code',''))
+       + f('شابک (اختیاری)', inp('lib_isbn',''))
+       + f('محل قفسه (اختیاری)', inp('lib_location',''))
+       + f('تعداد نسخه‌ها (خالی = نامحدود)', inp('lib_copies','','number'))
        + f('شمارهٔ سریال (اختیاری — در هر مدرسه یکتا)', inp('lib_serial','')),
        'lib-save'));
    },
    'lib-save'(){
-     const r = libAddBook(V('lib_title'), V('lib_author'), V('lib_code'), V('lib_serial'));
+     const r = libAddBook(V('lib_title'), V('lib_author'), V('lib_code'), V('lib_serial'),
+       {isbn: V('lib_isbn'), location: V('lib_location'), total_copies: Number(V('lib_copies')) || 0});
      if(!r.ok){ toast(r.msg,'err'); return; }
      closeModal(); toast('کتاب ثبت شد','ok');
      render();
@@ -400,13 +404,21 @@ function coreActions(e, el, id, a, rawId){
      const b = byId('lib_books', Number(id));
      if(!b) return;
      window._libSerialBook = b.id;
-     openModal(modalTpl('شمارهٔ سریال — ' + b.title,
-       f('شمارهٔ سریال (خالی = حذف سریال)', inp('lib_ser2', b.serial || ''))
-       + '<div class="small muted">سریالِ هر کتابِ فیزیکی در همین مدرسه یکتا است؛ برای چندین کپیِ یک کتاب، چند ردیفِ جدا با سریال‌های متفاوت ثبت کنید.</div>',
+     openModal(modalTpl('ویرایش کتاب — ' + b.title,
+       f('عنوان *', inp('lib_ed_title', b.title || ''))
+       + f('نویسنده', inp('lib_ed_author', b.author || ''))
+       + f('کد/رگال', inp('lib_ed_code', b.code || ''))
+       + f('شابک', inp('lib_ed_isbn', b.isbn || ''))
+       + f('محل قفسه', inp('lib_ed_location', b.location || ''))
+       + f('تعداد نسخه‌ها (۰ = نامحدود)', inp('lib_ed_copies', String((b.total_copies === undefined || b.total_copies === null) ? '' : b.total_copies), 'number'))
+       + f('شمارهٔ سریال (خالی = حذف سریال)', inp('lib_ser2', b.serial || ''))
+       + '<div class="small muted">سریالِ هر کتابِ فیزیکی در همین مدرسه یکتا است.</div>',
        'lib-serial-save'));
    },
    'lib-serial-save'(){
-     const r = libSetSerial(window._libSerialBook, V('lib_ser2'));
+     const r = libEditBook(window._libSerialBook, {title: V('lib_ed_title'), author: V('lib_ed_author'),
+       code: V('lib_ed_code'), isbn: V('lib_ed_isbn'), location: V('lib_ed_location'),
+       total_copies: (V('lib_ed_copies') === '' ? 0 : Number(V('lib_ed_copies'))), serial: V('lib_ser2')});
      if(!r.ok){ toast(r.msg,'err'); return; }
      closeModal(); toast('سریال ذخیره شد','ok');
      render();
@@ -450,16 +462,33 @@ function coreActions(e, el, id, a, rawId){
      toast('بازگشت ثبت شد','ok');
      render();
    },
+   'lib-search'(){
+     try{ window._libQ = V('lib_q') || ''; }catch(e){ window._libQ = ''; }
+     render();
+   },
+   'lib-staff-toggle'(){
+     const t = byId('users', Number(id));
+     if(!t) return;
+     const was = (t.lib_staff === 1);
+     const r = libSetStaff(t.id, !was);
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     toast(was ? 'مجوزِ کتابداری لغو شد' : 'مجوزِ کتابداری اعطا شد','ok');
+     render();
+   },
    'as-new'(){
      openModal(modalTpl('تجهیز جدید',
        f('نام *', inp('as_name',''))
        + f('دسته', inp('as_category',''))
        + f('مکان', inp('as_location',''))
-       + f('وضعیت', sel('as_status',[['available','در دسترس'],['in_use','در حال استفاده'],['repair','در تعمیرات']],'available')),
+       + f('وضعیت', sel('as_status',[['available','در دسترس'],['in_use','در حال استفاده'],['repair','در تعمیرات']],'available'))
+       + f('یادداشت', inp('as_note',''))
+       + f('تعداد کل', inp('as_total','1','number'))
+       + f('قابل‌استفاده (خالی = خودکار)', inp('as_usable','','number')),
        'as-save'));
    },
    'as-save'(){
-     const r = assetAdd(V('as_name'), V('as_category'), V('as_location'), V('as_status'));
+     const r = assetAdd(V('as_name'), V('as_category'), V('as_location'), V('as_status'), V('as_note'),
+       {total_count: Number(V('as_total')) || 1, usable_count: (V('as_usable') === '' ? undefined : Number(V('as_usable')))});
      if(!r.ok){ toast(r.msg,'err'); return; }
      closeModal(); toast('تجهیز ثبت شد','ok');
      render();
@@ -470,11 +499,14 @@ function coreActions(e, el, id, a, rawId){
      window._asEditId = a.id;
      openModal(modalTpl('وضعیت — ' + a.name,
        f('وضعیت', sel('as_status',[['available','در دسترس'],['in_use','در حال استفاده'],['repair','در تعمیرات']], a.status))
-       + f('مکان', inp('as_location', a.location||'')),
+       + f('مکان', inp('as_location', a.location||''))
+       + f('تعداد کل', inp('as_total', String(assetTotal(a)), 'number'))
+       + f('قابل‌استفاده', inp('as_usable', String(assetUsable(a)), 'number')),
        'as-status-save'));
    },
    'as-status-save'(){
-     const r = assetSetStatus(window._asEditId, V('as_status'), V('as_location'));
+     const r = assetSetStatus(window._asEditId, V('as_status'), V('as_location'),
+       {total_count: Number(V('as_total')), usable_count: Number(V('as_usable'))});
      if(!r.ok){ toast(r.msg,'err'); return; }
      closeModal(); toast('وضعیت به‌روز شد','ok');
      render();
@@ -485,6 +517,19 @@ function coreActions(e, el, id, a, rawId){
        if(!r.ok){ toast(r.msg,'err'); return; }
        toast('تجهیز حذف شد','ok'); render();
      }, {title:'حذف تجهیز', ok:'حذف', danger:true});
+   },
+   'as-search'(){
+     try{ window._asQ = V('as_q') || ''; }catch(e){ window._asQ = ''; }
+     render();
+   },
+   'as-cust-toggle'(){
+     const t = byId('users', Number(id));
+     if(!t) return;
+     const was = (t.asset_staff === 1);
+     const r = assetSetCustodian(t.id, !was);
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     toast(was ? 'مجوزِ تحویلداری لغو شد' : 'مجوزِ تحویلداری اعطا شد','ok');
+     render();
    },
    'sd-new'(){
      const u = S.user;

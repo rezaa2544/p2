@@ -85,6 +85,7 @@
       "visitors"
     ],
     "teacher": [
+      "assets",
       "attendance",
       "corrections",
       "discipline",
@@ -92,6 +93,7 @@
       "hw_assignments",
       "hw_submissions",
       "internships",
+      "lib_loans",
       "meeting_slots",
       "messages",
       "notifications",
@@ -181,6 +183,7 @@
       ],
       "upd": [
         "manager",
+        "teacher",
         "superadmin"
       ],
       "del": [
@@ -720,10 +723,12 @@
     "lib_loans": {
       "ins": [
         "manager",
+        "teacher",
         "superadmin"
       ],
       "upd": [
         "manager",
+        "teacher",
         "superadmin"
       ],
       "del": [
@@ -1467,7 +1472,9 @@
       "note",
       "school_id",
       "status",
-      "updated_at"
+      "total_count",
+      "updated_at",
+      "usable_count"
     ],
     "assoc_minutes": [
       "archived",
@@ -1891,9 +1898,12 @@
       "code",
       "created_at",
       "id",
+      "isbn",
+      "location",
       "school_id",
       "serial",
       "title",
+      "total_copies",
       "updated_at"
     ],
     "lib_loans": [
@@ -2411,7 +2421,9 @@
       "iep_notes",
       "iep_staff",
       "iep_updated",
+      "asset_staff",
       "job",
+      "lib_staff",
       "mother_nid",
       "national_id",
       "office_id",
@@ -2525,6 +2537,14 @@
         "announcements"
       ]
     },
+    "as-cust-toggle": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "users"
+      ]
+    },
     "as-del": {
       "roles": [
         "manager"
@@ -2543,7 +2563,8 @@
     },
     "as-status-save": {
       "roles": [
-        "manager"
+        "manager",
+        "teacher"
       ],
       "collections": [
         "assets"
@@ -3166,7 +3187,8 @@
     },
     "lib-lend-save": {
       "roles": [
-        "manager"
+        "manager",
+        "teacher"
       ],
       "collections": [
         "lib_loans"
@@ -3174,7 +3196,8 @@
     },
     "lib-return": {
       "roles": [
-        "manager"
+        "manager",
+        "teacher"
       ],
       "collections": [
         "lib_loans"
@@ -3189,9 +3212,19 @@
       ]
     },
     "lib-serial-save": {
-      "roles": null,
+      "roles": [
+        "manager"
+      ],
       "collections": [
         "lib_books"
+      ]
+    },
+    "lib-staff-toggle": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "users"
       ]
     },
     "login": {

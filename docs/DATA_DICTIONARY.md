@@ -160,7 +160,7 @@ INITIALLY DEFERRED`اند تا همگام‌سازی دسته‌ای چندجد�
 - **اسکوپ:** مستأجر
 - **نگهداری:** دائمی
 - **برآورد ردیف:** <1M
-- **نقش‌های نوشتار:** درج: manager، superadmin · ویرایش: manager، superadmin · حذف: manager، superadmin
+- **نقش‌های نوشتار:** درج: manager، superadmin · ویرایش: manager، teacher، superadmin · حذف: manager، superadmin
 
 **ستون‌ها:**
 
@@ -2179,7 +2179,7 @@ INITIALLY DEFERRED`اند تا همگام‌سازی دسته‌ای چندجد�
 - **اسکوپ:** مستأجر
 - **نگهداری:** دائمی
 - **برآورد ردیف:** <1M
-- **نقش‌های نوشتار:** درج: manager، superadmin · ویرایش: manager، superadmin · حذف: manager، superadmin
+- **نقش‌های نوشتار:** درج: manager، teacher، superadmin · ویرایش: manager، teacher، superadmin · حذف: manager، superadmin
 
 **ستون‌ها:**
 

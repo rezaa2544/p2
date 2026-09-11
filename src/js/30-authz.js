@@ -65,6 +65,22 @@ function canRoute(route, role){
   if(!role) return false;
   /* اصل (تصمیمِ کاربر ۲۰۲۶/۰۹/۰۵): سوپرادمین هیچ محدودیتی ندارد */
   if(role === 'superadmin') return true;
+  /* کتابدار: دبیرِ دارای پرچمِ تفویضیِ مدیر، روتِ کتابخانه را می‌بیند
+     (دبیرِ بی‌مجوز همچنان رد می‌شود — تستِ library/L2). */
+  if(route === 'library' && role === 'teacher'){
+    try{
+      var me = (typeof S !== 'undefined') ? S.user : null;
+      if(me && me.lib_staff === 1) return true;
+    }catch(e){}
+  }
+  /* تحویلدار: دبیرِ دارای پرچمِ asset_staff، روتِ اموال را می‌بیند
+     (دبیرِ بی‌مجوز همچنان رد می‌شود — تستِ assets/A2). */
+  if(route === 'assets' && role === 'teacher'){
+    try{
+      var me = (typeof S !== 'undefined') ? S.user : null;
+      if(me && me.asset_staff === 1) return true;
+    }catch(e){}
+  }
   return !!allowedRoutes(role)[route];
 }
 
@@ -162,10 +178,13 @@ var ACTION_ROLES = {
   /* کتابخانه (بند ۸): فقط مدیر؛ مالکیت مدرسه در توابع دامنه روی داده */
   'lib-new':        ['manager'],
   'lib-save':       ['manager'],
+  'lib-serial':     ['manager'],
+  'lib-serial-save': ['manager'],
   'lib-del':        ['manager'],
-  'lib-lend':       ['manager'],
-  'lib-lend-save':  ['manager'],
-  'lib-return':     ['manager'],
+  'lib-lend':       ['manager','teacher'],
+  'lib-lend-save':  ['manager','teacher'],
+  'lib-return':     ['manager','teacher'],
+  'lib-staff-toggle': ['manager'],
   /* خوابگاه/اسکان (دور ۷۸ بند ۷): فقط مدیر؛ مالکیت مدرسه در توابع دامنه روی داده */
   'dorm-room-new':  ['manager'],
   'dorm-room-edit': ['manager'],
@@ -201,8 +220,9 @@ var ACTION_ROLES = {
   'conflict-resolve':['manager','superadmin'],
   'as-new':         ['manager'],
   'as-save':        ['manager'],
-  'as-status':      ['manager'],
-  'as-status-save': ['manager'],
+  'as-status':      ['manager','teacher'],
+  'as-status-save': ['manager','teacher'],
+  'as-cust-toggle': ['manager'],
   'as-del':         ['manager'],
   'sd-new':         ['manager'],
   'sd-save':        ['manager'],
