@@ -26,6 +26,44 @@
 
 ---
 
+## Handoff — پ۷: مرج مانور WAL Disk-Full / PR #78 — ✅ (2026-09-11)
+
+- **PR:** [#78](https://github.com/rezaa2544/p2/pull/78) با عنوان `feat: WAL disk-full drill (tmpfs variant — second implementation, see PR #76)` ابتدا از GitHub API با `state=open`، `merged=false` و `mergeable=false`/`mergeable_state=dirty` دیده شد؛ شاخهٔ PR نسبت به `main` به‌روز نبود.
+- **حلِ تعارض:** درختِ به‌روزِ `main` حفظ شد و پچِ هشت‌فایلیِ PR روی آن اعمال شد؛ `HANDOFF.md` کهنه/کدگذاری‌خرابِ شاخه جایگزین نشد. commit حلِ merge روی شاخهٔ PR: `2366f02bd564c6d4a459ac9c6563e2d4d8b2d7f0`.
+- **اصلاحِ کشف‌شده پیش از merge:** مسیرِ fail-closedِ بدونِ زیرساخت در `tests/wal-disk-full.js` به‌علت TDZ روی `finished` قرمز بود؛ با انتقال declaration پیش از IIFE رفع شد. بازتولید قرمز انجام شد و `tests/wal-disk-full-mutations.js` جهشِ حذف declaration را کشت: **2/2**.
+- **تأیید mergeability:** API پس از resolution مقدار `mergeable=true` و `mergeable_state=unstable` را نشان داد؛ پس از تکمیلِ CI هر ۷ check موفق شدند: SCA، DAST، Secret scan، WAF، SAST، SBOM و build روی Node 22.
+- **مرج نهایی:** API با `merged=true` موفق شد؛ merge commit: `94d3ac234534f124f6dafe0cbb6a8698cfd89d31`.
+- **گیت‌های محلی روی درختِ تمیزِ merge‌شده:** smoke **547/547**؛ `check-authz` exit 0 با **389** اکشن؛ secret-scan **11/11**؛ `node build.js --check` سبز.
+- **مانور اختصاصی:** `node tests/wal-disk-full.js --skip-live` بررسیِ ایستا را **7/7** سبز کرد و ۵ سناریوی زنده را با exit 2 به‌صورت **NOT-RUN** گزارش کرد؛ PostgreSQL 17، mountِ tmpfs و دسترسی root در این sandbox موجود نبودند. سبزِ جعلی برای اجرای زنده گزارش نشده است. گزارشِ عملیاتیِ PR در `docs/WAVE19_WAL_DRILL_REPORT.md` محدودیت‌های RPO/PITR/منطقه‌ای را صریح ثبت می‌کند.
+- **مستندات:** `docs/WAVE19_WAL_DRILL_REPORT.md`، `docs/DISASTER_RECOVERY.md`، `docs/DR_RUNBOOK.md` و `docs/PRODUCTION_READINESS_CHECKLIST.md` وارد `main` شدند؛ ردیف Wave 19 در `docs/NATIONAL_ROADMAP_PROGRESS.md` به‌روز شد.
+- **تأیید پوش:** پس از commit مستندات، `git ls-remote origin refs/heads/main` باید SHA نهایی `main` را مستقل تأیید کند.
+- **یادداشت محیط:** Node محلی `v20.20.2` است، درحالی‌که engine پروژه `>=22` می‌خواهد؛ CI رسمی build روی Node 22 سبز شد. هشدار شناخته‌شدهٔ jsdom برای `window.scrollTo` در smoke غیرمسدودکننده است.
+
+---
+
+## باگ‌هانت نشست ۹ — آدیتِ PR #71 (ادغام‌شده) + شاخه‌های بازِ #77/#78 — ✅ (۲۰۲۶-۰۹-۱۱)
+
+- **مأموریت:** آدیتِ موج‌های باقی‌مانده روی `main@7567607`: زنجیرهٔ Delta Phase 4 (PR #71، ادغام‌شده)، ناوبریِ کیبوردِ PR #77 و مانورِ واقعیِ WAL disk-full PR #78 (هر دو باز). هر یافته: تستِ قرمزِ اول ⇒ رفع ⇒ جهش‌آزمایی.
+- **هفت یافته (همه رفع‌شده):** S9-1 کرسرِ v2 داوریِ منطقه را پیش از HMAC برمی‌گرداند (توکنِ جعلی «region_mismatch» می‌گرفت و شمارندهٔ سلامتِ چندمنطقه‌ای را بی‌امضا جلو می‌بُرد) · S9-2 مذاکرهٔ `Accept-Encoding` مقدارِ `q=0` و بزرگی/کوچکیِ حرف‌ها را نمی‌فهمید · S9-3 فشرده‌سازیِ سنکرونِ `gzipSync`/`brotliCompressSync` روی مسیرِ داغِ pull (~۴٫۷ms/MB قفلِ حلقهٔ رویداد) ⇒ ناهمگام شد · S9-4 زنجیرهٔ مودالِ تودرتو بازکنندهٔ فوکوس را نابود می‌کرد ⇒ سقوطِ فوکوس روی `<body>` (WCAG 2.4.3) · S9-5 کلِ `HANDOFF.md` در PR #78 مو‌جی‌بِیک بود (۱۷۱۹/۱۹۵۶ خط) · S9-6 فهرستِ hardcodeشدهٔ migration در `bootstrap.sh` مانورِ WAL + ردِ بی‌صدای فایلِ ناموجود ⇒ اسکیمایِ ناقص با گزارشِ سبز، به‌علاوهٔ نبودِ گارد روی مسیرهای مخربِ محیطی · S9-7 حالتِ مستندِ `--skip-live` با TDZ می‌مرد.
+- **کامیت‌ها (روی `bug-hunt-session9`، از `7567607`):** `98ebc54` تستِ قرمزِ اول (۱۱/۱۹) · `1b6ae2d` S9-1 · `941e1b5` S9-2+S9-3 · `2be3fb4` سخت‌سازیِ تست + هارنسِ جهش + نگهبانِ دست‌آف · به‌علاوهٔ دو شاخهٔ رفعِ PR-محور: `fix/a11y-modal-focus-s9` @ `c469f70` (PR #80 روی `feat/a11y-keyboard-nav`) و `fix/wave19-wal-drill-s9` @ `767f2e0` (PR #81 روی `feat/wave19-wal-drill-tmpfs`).
+- **جهش‌آزمایی:** ۷ جهشِ هدفمند همه کشته؛ جاروبِ حذفِ تصادفیِ خط با بذرِ ثابت: **۱۵/۱۹ (۷۹٪)** روی جهش‌های معتبر. دو جهشِ *معادل* شناسایی و صادقانه کنار گذاشته شدند (حذفِ `removeEventListener`ِ پیش از `add` در `openModal` — چون DOM ثبتِ یکسان را ادغام می‌کند و رفتارِ مشاهده‌پذیری ندارد؛ کامنتِ نادرست هم اصلاح شد).
+- **گیت‌ها:** `bughunt-session9` **۲۵/۲۵** · `bughunt-session9-mutations` **۸/۸** · `handoff-integrity` **۴/۴** · `delta-phase4` **۲۳/۲۳** · `delta-phase4-mutations` **۲۰/۲۰** (لنگرهای M7/M16/M19 به‌روز شد، بدونِ تضعیف) · `a11y-modal-focus` **۹/۹** + جهش **۵/۵** · `wal-drill-bootstrap` **۷/۷** · `wal-disk-full --skip-live` ۹ ایستا + ۵ NOT-RUN (exit 2) · `smoke` **۵۴۷/۵۴۷** (روی هر دو شاخه) · `build --check` ✅ · `check-authz` exit 0 · `secret-scan` **۱۱/۱۱** · `docs-consistency` ✅ · `security-findings-register-coverage` **۵۱/۵۱**.
+- **صداقت:** هیچ تستی حذف/تضعیف نشد؛ قفلِ استاتیکِ خودِ PR #77 («`_modalOpener.focus()`») دست‌نخورده ماند و رفعِ من با آن هم‌راستا نوشته شد. `tests/docs-freeze-marker.js` روی `main` **۳ خطای پیش‌موجود** دارد — نه ساختهٔ این نشست و نه سبز اعلام می‌شود.
+- **باز:** PR #74 (نشست ۷) هنوز open · PR #80/#81 منتظرِ پذیرشِ نویسندگانِ #77/#78 · PR #76 (واریانتِ دیگرِ مانورِ WAL) بررسی نشد · یافتهٔ بازِ خودِ مانور: PG در ۸۰٪ پُریِ WAL هیچ هشداری نمی‌دهد (آلارمِ بیرونی لازم است).
+- **اسناد:** `docs/BUG_HUNT_REPORT.md` (بخش نشست ۹) · `docs/SECURITY_FINDINGS_REGISTER.md` (پیوستِ پس از قفل: `اس‌اف-۰۳۸`..`۰۴۲`؛ بدنهٔ یخ‌زدهٔ `rc11` دست‌نخورده).
+
+## Handoff — پ۷: تأیید و مرج A11y Keyboard Navigation / PR #77 — ✅ (2026-09-11)
+
+- **PR:** [#77](https://github.com/rezaa2544/p2/pull/77) با عنوان `feat: a11y keyboard navigation (focus trap + tab order)` ابتدا با `mergeable=false` و وضعیت `dirty` دیده شد؛ شاخهٔ PR روی آخرین `main` به‌روز و conflict `USER_GUIDE.html` با بازسازی رسمی build حل شد.
+- **تأیید mergeability:** پس از push اصلاح merge، API وضعیت `mergeable=true` را تأیید کرد؛ merge از API انجام شد.
+- **Merge commit:** `2c7097d8e22894bdcf3decf4c6e494d4854e09f7`.
+- **تست‌های محلی روی clone تمیز main:** smoke **547/547**، `check-authz` exit 0 با 389 اکشن، secret-scan **11/11**، `node build.js --check` سبز، `a11y-keyboard` **92/92** و `a11y-regressions` **46/46**.
+- **تأیید پوش:** commit مستندات `44f645c6161d58698e17b84b06b0f47a749887a0` به main push شد و تأیید SHA پس از push انجام شد.
+- **مستندات:** ردیف Wave 17 در `docs/NATIONAL_ROADMAP_PROGRESS.md` با PR #77 و شواهد تست به‌روز شد.
+- **یادداشت محیط:** هشدار jsdom برای `window.scrollTo` در smoke غیرمسدودکننده است؛ نیازمندی engine پروژه Node >=22 است و محیط محلی Node 20.20.2 دارد.
+
+---
+
 ## Handoff — چت ۷: مرج Delta Sync Phase 4 / PR #71 — ✅ (2026-09-11)
 
 - **ماموریت:** بررسی وضعیت PRها، تأیید merge از API، اجرای گیت‌های حیاتی پس از merge، و ثبت نتیجه در roadmap و HANDOFF.
