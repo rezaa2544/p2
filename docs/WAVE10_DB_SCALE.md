@@ -1,6 +1,10 @@
 # Wave 10 — Database Scale: Partitioning · Read Replica · Connection Pooling
 
 > موج ۱۰ (چت ۲) — تاریخ: ۲۰۲۶-۰۹-۰۹ · شاخه: `arena/01a085ca-p2` · PR #39
+> **نوبتِ دوم (Arena/Agent Mode):** ۲۰۲۶-۰۹-۱۱ · شاخه: `feat/db-scale-wave10` —
+> تکمیلِ موج: قراردادِ PgBouncer قفل شد (§۴) · **مهاجرتِ ۰۰۸ chg_id + ۱۴ ایندکسِ
+> دلتا** (§۶) · طراحیِ نهاییِ پارتیشن‌بندیِ grades/attendance با یافتهٔ مسدودکنندهٔ
+> upsert (§۳).
 >
 > **تصمیمِ کاربر (پاسخ به سؤالِ دامنه):** کدِ DB-layer (read-replica pool +
 > routing + pool observability) با fake-DB پیاده و تست شد؛ **پارتیشن‌بندی فقط
@@ -70,62 +74,176 @@ READ_POOL_MAX       # (جدید) پیش‌فرض 10
 
 ---
 
-## ۳) پارتیشن‌بندی (DESIGN-ONLY — پیاده‌سازی pending بر PG زنده)
+## ۳) پارتیشن‌بندی grades و attendance — طراحیِ نهایی (نوبتِ دوم)
 
-هیچ جدولِ بزرگی امروز پارتیشن نیست. طراحیِ پیشنهادی برای موجِ دارای PG:
+اهداف بر پایهٔ `docs/CAPACITY_MODEL.md`: **grades ≈ ۲۸۸M رکورد/سال** و
+**attendance ≈ ۵۰M رکورد/سال** — پرحجم‌ترین جداولِ تراکنشیِ per-school. هر دو
+time-oriented هستند و الگویِ خواندنِشان (دلتای pull، گزارشِ ترم، کارنامه)
+پنجرهٔ زمانی دارد ⇒ کاندیدای استانداردِ **RANGE پارتیشن روی `created_at`**.
 
-### ۳.۱ جدول‌هایِ نامزد و کلیدِ پارتیشن
-- `attendance`، `grades`، `notifications`، `staff_attendance`، `vclass_attendance`
-  → **پارتیشنِ بازه‌ایِ زمانی** روی `created_at`/`date`.
-- کلیدِ درستِ «دسترسی مدرسه» یعنی `school_id` در همهٔ این جدول‌ها هست، اما
-  پارتیشنِ BY LIST روی `school_id` با ده‌ها هزار مدرسهٔ ملی پراکندگیِ بد می‌دهد
-  (پارتیشن‌هایِ کج). بنابراین **پارتیشنِ RANGE بر مبنایِ زمان** (مثلاً ماهانه/
-  سالانه) به‌علاوهٔ ایندکس‌هایِ موجودِ `(school_id, ...)` توصیه می‌شود.
+### ۳.۱ قواعدِ طراحی (قفل‌شده)
 
-### ۳.۲ شکلِ DDL پیشنهادی (برای اجرا در موجِ PG زنده)
+1. **کلیدِ پارتیشن: `created_at` سالانه** (+ پارتیشنِ DEFAULT برایِ آیندهٔ
+   ناشناخته — نوشتن هرگز به‌خاطرِ نبودِ پارتیشن نمی‌میرد). ماهانه در سالِ اولِ
+   رول‌آوت اگرگرید می‌شود؛ ۲۸۸M/سال ÷ ۱۲ = پارتیشن‌هایِ ۲۴Mیی هنوز درشت‌اند —
+   سالانه شروع، تقسیمِ بعدی با تصمیمِ benchmark.
+2. **PK باید کلیدِ پارتیشن را شامل شود** ⇒ `PRIMARY KEY (id, created_at)`؛
+   تمامِ unique indexها هم همین‌طور. یکتاییِ «خالصِ id» در سطحِ جدولِ
+   پارتیشن‌شده **قابل‌اجبار نیست** (محدودیتِ ذاتیِ PostgreSQL).
+3. **FKهای خارج‌شونده** (attendance→schools، grades→schools/users/classes/
+   subjects) روی جدولِ پارتیشن‌شدهٔ والد می‌مانند (PG اجازه می‌دهد). **هیچ
+   FKای به این دو جدول اشاره نمی‌کند** (با grep روی schema.sql اثبات شد) ⇒
+   تبدیل، FK-گیر نیست.
+4. **ایندکس‌های موجود همه بازسازی می‌شوند** روی والدِ پارتیشن‌شده:
+   `(school_id)`، `(school_id, student_id)`، `(school_id, class_id)`،
+   `(created_at DESC)`، `(updated_at)` (۰۰۵)، `(school_id, date DESC, id)` /
+   `(school_id, id DESC)` (۰۰۷)، و **`(chg_id)` (۰۰۸)** — پارتیشن‌بندی ایندکس
+   را به ازایِ پارتیشن تکرار می‌کند و prune + index-scan هم‌زمان ممکن می‌ماند.
+5. **Retention با DROP PARTITION** (لحظه‌ای به‌جای DELETE میلیونی) — ولی برایِ
+   نمرات محدودیتِ قانونیِ نگهداریِ مدرک هست: **هیچ پارتیشنی بدونِ تأییدِ سیاستِ
+   آرشیوِ وزارتی حذف نمی‌شود**؛ پیش‌فرض = detach + archive (pg_dump پارتیشن) و
+   نگهداری.
+
+### ۳.۲ 🔴 یافتهٔ مسدودکننده — upsertِ لایهٔ DB
+
+`persistOp` (server/db.js) با `INSERT … ON CONFLICT (id) DO UPDATE SET …`
+آینه‌ی اتمیک push را می‌نویسد. روی جدولِ پارتیشن‌شده:
+
+- `ON CONFLICT (id)` دیگر به constraintی اشاره نمی‌کند (PK حالا `(id,
+  created_at)` است) ⇒ **خطای «no unique or exclusion constraint matching»**.
+- `ON CONFLICT (id, created_at)` از نظرِ语法 معتبر است ولی **معنا عوض می‌شود**:
+  سطرِ موجود با `created_at` متفاوت conflict نمی‌گیرد ⇒ همان id دو بار insert
+  می‌شود — شکستنِ idempotency (تکراری‌شدنِ op در پوشِ دوباره) و خرابیِ شکلِ
+  داده.
+
+**نتیجه:** پارتیشن‌بندیِ این دو جدول **بدونِ بازنویسیِ مسیرِ نوشتن ممکن نیست**.
+پیش‌نیازِ صریح (فاز A): persistOp برایِ جداولِ پارتیشن‌شده به الگویِ
+UPDATE-then-INSERT (یا upsertِ plpgsql با قفلِ advisory) تغییر کند، پشتِ
+پرچمِ `PAYESH_PARTITIONED_TABLES=grades,attendance` تا rollout تدریجی ممکن باشد.
+
+### ۳.۳ طرحِ مهاجرتِ چهارفازی (zero-downtime، هنگامِ اجرا)
+
+- **فاز A (کد):** بازنویسیِ persistOp پشتِ پرچم + تست‌های جهشی. بدونِ DDL.
+- **فاز B (ساخت):** `attendance_p`/`grades_p` پارتیشن‌شده + پارتیشن‌هایِ سالانه
+  از `MIN(created_at)` (از 001 برایِ سالِ جاری و دو سالِ آینده) + همهٔ
+  ایندکس‌ها؛ کپیِ دسته‌ای با id-range (هر دسته ≤ ۱M ردیف، commit جدا)؛
+  `ANALYZE`.
+- **فاز C (جا‌به‌جایی):** در یک تراکنشِ کوتاه: `ALTER TABLE attendance RENAME
+  TO attendance_old` → `attendance_p RENAME TO attendance` → بازسازیِ FKهای
+  خارج‌شونده → `setval` جایگاهِ identity. `attendance_old` برایِ rollback
+  می‌ماند.
+- **فاز D (راستی‌آزمایی و پاک‌سازی):** parity (count/max(id)/checksum)،
+  EXPLAIN با فیلترِ created_at (prune به پارتیشن‌هایِ مرتبط)، بعد ازِ دورهٔ
+  اطمینان `DROP TABLE attendance_old`.
+
+Down-migration: swapِ معکوس از `*_old` (فقط در پنجرهٔ C/D، قبل از drop).
+
+### ۳.۴ شکلِ DDL (برای فاز B — اجرا فقط روی PG زنده)
+
 ```sql
--- جدولِ پایه باید به پارتیشن‌شده تبدیل شود (خلقِ جدید + migrate + dropِ قدیم):
-CREATE TABLE attendance (
-  id BIGSERIAL, school_id INTEGER, student_id INTEGER, class_id INTEGER,
-  date TEXT, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ, /* … */
-  PRIMARY KEY (id, created_at)
+CREATE TABLE attendance_p (
+  id INTEGER GENERATED BY DEFAULT AS IDENTITY,
+  school_id INTEGER, student_id INTEGER, class_id INTEGER,
+  date VARCHAR(50), status VARCHAR(255), /* … ستون‌های 001 … */
+  created_at TIMESTAMPTZ NOT NULL, updated_at TIMESTAMPTZ,
+  chg_id BIGINT,                                   /* مهاجرتِ ۰۰۸ */
+  PRIMARY KEY (id, created_at),
+  CONSTRAINT fk_attendance_school FOREIGN KEY (school_id) REFERENCES schools(id)
+    ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
 ) PARTITION BY RANGE (created_at);
-
-CREATE TABLE attendance_y2024 PARTITION OF attendance
-  FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
-CREATE TABLE attendance_y2025 PARTITION OF attendance
-  FOR VALUES FROM ('2025-01-01') TO ('2026-01-01');
-/* … پارتیشن‌هایِ دوره‌ای + جدولِ DEFAULT برایِ آیندهٔ ناشناخته */
+CREATE TABLE attendance_y2026 PARTITION OF attendance_p
+  FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');
+CREATE TABLE attendance_default PARTITION OF attendance_p DEFAULT;
+CREATE INDEX ON attendance_p (school_id, student_id);   /* … همهٔ ۳.۱.۴ */
+CREATE TRIGGER trg_attendance_chg BEFORE INSERT OR UPDATE ON attendance_p
+  FOR EACH ROW EXECUTE FUNCTION payesh_chg_bump();
 ```
-- با وجودِ PRIMARY KEY، کلیدِ پارتیشن باید داخلِ PK باشد → `PRIMARY KEY (id, created_at)`.
-- FK هایِ فرزند (مثل `fk_attendance_school`) باید روی جدولِ پارتیشن‌شدهٔ والد بمانند.
-- نگهداشتِ پارتیشن (archive/drop پارتیشن‌هایِ قدیمی، افزودنِ پارتیشنِ آینده) کارِ
-  cron/مهاجرتِ جداگانه است.
 
-> 🔴 **قید:** اجرایِ این DDL رویِ جدول‌هایِ موجود بدونِ PG زنده و بدونِ تستِ
-> میگرِش تأیید **نشده** و نباید در این سندباکس اجرا شود. به موجِ دارای PG موکول شد.
+> 🔴 **قید (پابرجا از نوبتِ اول):** اجرایِ این DDL بدونِ PG زنده و بدونِ
+> تأییدِ فاز A تأیید نشده و در این سندباکس اجرا نمی‌شود. ثبتِ وضعیت:
+> **طراحیِ نهایی ✅ · اجرا pending بر فاز A + PG زنده + benchmark**.
+
+## ۴) PgBouncer — تحویل‌شده (زیرساختِ compose HA) + قراردادِ قفل‌شده
+
+نوبتِ اول این بخش را «pending استقرار» ثبت کرد؛ نوبتِ دوم (۲۰۲۶-۰۹-۱۱) وضعیت را
+به **تحویل‌شده** ارتقا داد — زیرساخت از موج ۱۶ (PR #46) در `infra/postgres/`
+موجود است و این موج قراردادش را قفل کرد:
+
+- `infra/postgres/pgbouncer/pgbouncer.ini` — **transaction pooling**،
+  `max_client_conn=2000`، `default/min/reserve pool = 25/5/5`،
+  `server_reset_query=DEALLOCATE ALL`، `server_lifetime=3600`،
+  `query_timeout=300`؛ احرازِ هویت با `auth_query` به pg_shadow (هیچ رازی در
+  فایل نیست).
+- `infra/postgres/docker-compose.ha.yml` — سرویسِ pgbouncer (edoburu v1.23.1)،
+  مونتِ read-only، پورتِ 6432 **فقط به 127.0.0.1**، healthcheck با pg_isready،
+  وابستگیِ سالم به pg-primary.
+- **جفتِ رپلیکا:** `payesh = pg-primary:5432` و `payesh-readonly =
+  pg-standby:5432` — دقیقاً همان دو در که `DATABASE_URL` /
+  `READ_DATABASE_URL`ِ `server/db.js` (§۲) می‌خوانند: روتینگِ رپلیکا و
+  استخرِ اتصال در یک لایهٔ ورود جمع می‌شوند.
+- قرارداد فازی: session-level features (LISTEN/NOTIFY، advisory lock، temp
+  table) در حالتِ transaction گران/نادرست‌اند — برنامه در مسیرِ داغ این‌ها را
+  ندارد (docs/HA_POSTGRES.md §۴).
+- **تستِ نگه‌دارنده:** `tests/wave10-pgbouncer.js` — **۲۲/۲۲** (P1–P7: پارس،
+  هر دو پایگاه، سقف‌های اتصال، auth بدونِ راز، سیم‌کشیِ compose، هم‌خوانی با
+  کد، اسکنِ نبودِ راز).
+
+
 
 ---
 
-## ۴) PgBouncer و لایهٔ استقرار (pending)
+## ۵) دروازه‌ها و قیدها (به‌روزِ نوبتِ دوم)
 
-- App-side pooling (`pg.Pool`) در کد هست و بهینه‌سازی‌شده. در مقیاس ملی، توصیهٔ
-  استاندارد افزودنِ **PgBouncer در حالت transaction** بین سرورهای Node و PostgreSQL
-  است تا اتصالاتِ DB ثابت بماند (به‌ویژه با پاتریونی که در
-  `RELIABILITY_DR_PLAN.md` تصویر شده).
-- این لایه جزءِ استقرار/تأمین است، نه کدِ repo؛ به‌عنوانِ pending برایِ موجِ
-  استقرار ثبت می‌شود. `READ_DATABASE_URL` به‌خوبی با مسیرِ PgBouncerِ خواندنی
-  (replica) جفت می‌شود.
+- **تست‌های این موج:**
+  - `tests/wave10-db-scale.js` → **۲۶/۲۶** (نوبتِ اول: رپلیکا/روتینگ/pool)
+  - `tests/wave10-pgbouncer.js` → **۲۲/۲۲** (نوبتِ دوم: قراردادِ PgBouncer)
+  - `tests/wave10-chg-id.js` → **۳۱/۳۱** (نوبتِ دوم: مهاجرتِ ۰۰۸ + سازنده + پریتی)
+  - `tests/wave10-chg-id-mutations.js` → همهٔ جهش‌ها کشته شوند
+  - `tests/migration-sequence.js` → با ۰۰۸ سبز بماند
+- گیت‌های حیاتی پس از هر مرحله: smoke **۵۴۷/۵۴۷** · `tools/check-authz.js` →
+  **۰** · `tests/secret-scan.js` → **۱۱/۱۱** · `build.js --check`.
+- رگرسیون‌های سهممند: wave1-reads، wave3-query(+2)، wave4-sync،
+  delta-sync-hardening، pull-bootstrap.
+- **قیدِ صداقت (پابرجا):** اجرایِ واقعیِ read-replica و پارتیشن‌بندی بر
+  PostgreSQL زنده pending است (سندباکس PG زنده ندارد)؛ fake-DB انضباطِ مسیریابی
+  و قراردادِ فایل‌ها را راستی‌آزمایی می‌کند. مهاجرتِ ۰۰۸ چون کاملاً additive و
+  idempotent است کم‌ریسک‌ترین شکلِ DDL است ولی تأییدِ نهاییِ آن هم موعودِ PG
+  زنده (فاز B/C مستقرِ پارتیشن یا محیطِ استیجینگ) است.
+
+## ۶) دلتای مبتنی بر change-ID — مهاجرتِ ۰۰۸ (نوبتِ دوم، تحویل‌شده)
+
+**چرا:** دلتای فعلی روی wall-clock است (`created_at|updated_at > since`) —
+آسیب‌پذیر به clock-skew و وابسته به ساعتِ مناطق (فاز ۲ با keyset tie-breaker
+نشانه را درمان می‌کند، علت را نه). یک شناسهٔ تغییرِ یکنواخت (monotonic) زمان را
+از معادله حذف می‌کند: هر نسخهٔ سطر (INSERT یا UPDATE) یک مقدار از سکوئنسِ مشترک
+می‌گیرد؛ فیدِ دلتا می‌شود `WHERE chg_id > $watermark` — مرتب، بدونِ skew.
+
+**تحویل (کامیتِ این نوبت):**
+- `migrations/008_delta_chg_id.sql` (+ `.down.sql`): سکوئنسِ `payesh_chg_seq` +
+  ستونِ `chg_id BIGINT` + تریگرِ `BEFORE INSERT OR UPDATE` (روی مسیرِ
+  `ON CONFLICT DO UPDATE` هم فعال می‌ماند ⇒ persistOp دست‌نخورده) + backfill +
+  **۱۴ ایندکسِ `(chg_id)`** روی ۱۴ جدولِ تراکنشیِ دلتا (فهرستِ ۰۰۵ منهای
+  schools/bell_schedules).
+- `server/syncdelta.js` — `deltaRowsByChgSql(table, {afterChgId})`: سازندهٔ
+  آمادهٔ فیدِ chg (همان allowlist).
+- `server/db.js` — `stripInternalColumns`: ستونِ داخلیِ `chg_id` هرگز از لایهٔ
+  DB بیرون نمی‌رود (readCollection/readOne/دلتای pull) — شکلِ سطرِ PG با حالتِ
+  حافظه بایت‌به‌بایت یکی می‌ماند و هرگز به op کلاینت نمی‌رسد (validate.js آن را
+  unknown_field می‌گرفت).
+- **تست‌ها:** `tests/wave10-chg-id.js` **۳۱/۳۱** (C1–C7: قراردادِ مهاجرت،
+  وارون‌سازی، سازنده، strip واحد/نشت‌نکردن، یکپارچگیِ pull) + جهش‌ها
+  (`tests/wave10-chg-id-mutations.js`).
+
+**صداقتِ کامل (سبزِ جعلی ممنوع):** این ۱۴ ایندکس **هنوز توسط هیچ کوئریِ
+production خوانده نمی‌شوند** — وصل‌کردن (cursor v3 با watermarkِ chg_id،
+سوئیچِ pull به `deltaRowsByChgSql`) کارِ موجِ بعدی است و همین‌جا ثبت شد. آنچه
+امروز تحویل شد: زیرساختِ مهاجرت + سازندهٔ تست‌شده + پریتیِ شکل. سکوئنس با هر
+نوشتن پیش می‌رود، پس watermarkهای آینده از همان روزِ مهاجرت معتبرند.
+
+**ملاحظهٔ backfill در تولید:** جدولِ موجودِ عظیم (مثلاً ۱۰M+ ردیف) باید
+backfill را دسته‌ای با id-range در پنجرهٔ نگهداری اجرا کند، نه تک-تراکنشِ
+مهاجرت — در سربرگِ ۰۰۸ ثبت شد.
 
 ---
 
-## ۵) دروازه‌ها و قیدها
-
-- **تستِ این موج:** `tests/wave10-db-scale.js` → **۲۶/۲۶**.
-- سایرِ دروازه‌ها (کدِ server تغییر کرد، پس سهمند اجرا شد): smoke **۵۴۷/۵۴۷**
-  (jsdom، جدا از کدِ server) · `tools/check-authz.js` → **۰** ·
-  `tests/secret-scan.js` → **۱۱/۱۱** · `build.js --check`.
-- تست‌هایِ وابسته به db/dbquery سبز ماندند: wave1-reads، wave3-query(+2)، wave4-sync.
-- **قیدِ صداقت:** اجرایِ واقعیِ read-replica و پارتیشن‌بندی بر PostgreSQL **pending**
-  است (در سندباکس PG زنده وجود ندارد). این موج با fake-DB راستی‌آزماییِ انضباطِ
-  مسیریابی (نوشتن→primary، GET-list سنگین→رپلیکا، fallback) را انجام می‌دهد.
+---
