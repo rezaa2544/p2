@@ -108,9 +108,12 @@ function buildClient() {
   chk('M6 جهشِ «مذاکرهٔ خاموش» کشته شد', runSuite() !== 0);
   fs.writeFileSync(path.join(ROOT, 'server/compress.js'), orig, 'utf8');
 
-  /* M7: pull.js به sendJson خام برمی‌گردد */
+  /* M7: pull.js به sendJson خام برمی‌گردد.
+     S9-3 (باگ‌هانت نشست ۹): لنگر به خطِ تازه به‌روز شد — فراخوانی حالا
+     await دارد (فشرده‌سازی ناهمگام شد). جهش همان معنا را دارد: حذفِ مسیرِ
+     فشرده‌سازی از pull. */
   orig = mutate('server/pull.js',
-    "    const encInfo = sendJsonCompressed(res, req, 200, body, sendJson);",
+    "    const encInfo = await sendJsonCompressed(res, req, 200, body, sendJson);",
     "    sendJson(res, 200, body); const encInfo = { encoding: null, rawBytes: 0, wireBytes: 0 }; /*MUT*/");
   chk('M7 جهشِ «فراخوانی حذف» کشته شد', runSuite() !== 0);
   fs.writeFileSync(path.join(ROOT, 'server/pull.js'), orig, 'utf8');
@@ -179,9 +182,11 @@ function buildClient() {
   /* ── جهش‌های گپ ۵ — کرسرِ region-aware ── */
   console.log('\n▸ جهش‌های گپ ۵ — کرسرِ region-aware');
 
+  /* S9-1 (باگ‌هانت نشست ۹): چکِ منطقه پس از امضا آمد و شرطش v2-محور شد؛
+     لنگر به‌روز شد، معنا همان: خنثی‌کردنِ داوریِ منطقه. */
   orig = mutate('server/cursor.js',
-    "        if (payload.rg !== regionName()) {",
-    "        if (false && payload.rg !== regionName()) { /*MUT*/");
+    "      if (payload.v === 2 && payload.rg !== regionName()) {",
+    "      if (false && payload.v === 2 && payload.rg !== regionName()) { /*MUT*/");
   chk('M16 جهشِ «چکِ rg حذف» کشته شد', runSuite() !== 0);
   fs.writeFileSync(path.join(ROOT, 'server/cursor.js'), orig, 'utf8');
 
@@ -198,8 +203,8 @@ function buildClient() {
   fs.writeFileSync(path.join(ROOT, 'server/pull.js'), orig, 'utf8');
 
   orig = mutate('server/cursor.js',
-    "      } else if (payload.v !== 1) {",
-    "      } else if (payload.v !== 99) { /*MUT: v1 grace removed */");
+    "      if (payload.v !== 1 && payload.v !== 2) {",
+    "      if (payload.v !== 2) { /*MUT: v1 grace removed */");
   chk('M19 جهشِ «گذارِ v1 حذف» کشته شد', runSuite() !== 0);
   fs.writeFileSync(path.join(ROOT, 'server/cursor.js'), orig, 'utf8');
 
