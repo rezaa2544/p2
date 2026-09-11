@@ -22,7 +22,8 @@
 #   - همهٔ پرونده‌های مستقیمِ tests/*.js (پایه + جهش‌ها)
 #   - سابت‌های REST در tests/api از طریق tests/api/runner.js (درون‌فرآیندی،
 #     استور را به شاخهٔ موقت کپی می‌کنند؛ در مسیرِ اصلی و موازی اجرا می‌شوند)
-#   - کنارگذاشته‌های طراحی: tests/server11-child.js (اسکریپتِ کارگر)،
+#   - کنارگذاشته‌های طراحی: tests/server11-child.js و tests/wave15-child.js
+#     (اسکریپت‌های کارگر — با <root> <mode> اجرا می‌شوند، نه مستقل؛ S7-2)،
 #     tests/helpers/ (کمکی)، tests/performance/ (بار/پایداریِ k6 — دستی و
 #     بر‌اساسِ برنامهٔ رسمی؛ ورودیِ دروازهٔ انتشار، نه رگرسیونِ هر کامیت)
 #   شمارِ زندهٔ سوئیت‌ها با `ls tests/*.js` سنجه می‌شود؛ اعدادِ این‌جا تقریبی‌اند.
@@ -94,13 +95,17 @@ if [ "$AVAIL_KB" -lt 250000 ]; then
 fi
 
 # ── suite lists ────────────────────────────────────────────────────────────
-ALL=$(ls tests/*.js | grep -v -- '-mutations.js$' | grep -v 'server11-child.js')
+# S7-2 (Bug Hunt session 7): worker scripts are spawned *by* their parent suite
+# with arguments (`node tests/<x>-child.js <root> <mode>`); running them
+# standalone crashes on argv[2]=undefined and showed up as a false RED.
+# Exclude the whole *-child.js family instead of naming one file.
+ALL=$(ls tests/*.js | grep -v -- '-mutations.js$' | grep -v -- '-child.js$')
 # موج ۲۰: سابت‌های REST فاز ۳ (زیرپوشهٔ tests/api) هم جزو رگرسیون‌اند —
 # دونده‌شان متوالی اجرا می‌کند و استور را ایزوله می‌کند؛ یک واحدِ موازی‌پذیر.
 if [ -f tests/api/runner.js ]; then
   ALL="$ALL"$'\n'"tests/api/runner.js"
 fi
-REBUILDING=$(grep -l "build.js" tests/*.js 2>/dev/null | grep -v -- '-mutations.js$' | grep -v 'server11-child.js')
+REBUILDING=$(grep -l "build.js" tests/*.js 2>/dev/null | grep -v -- '-mutations.js$' | grep -v -- '-child.js$')
 SERVERS=$(echo "$ALL" | grep '^tests/server')
 MUTS=$(ls tests/*-mutations.js)
 PHASE2_SET=$( { echo "$REBUILDING"; echo "$SERVERS"; echo "$MUTS"; } | sed '/^$/d' | sort -u )
