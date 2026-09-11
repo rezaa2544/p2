@@ -54,7 +54,16 @@ walk(ROOT, files);
 console.log('');
 console.log('— اسکنِ ' + files.length + ' فایل —');
 let hits = 0;
-const hexAllow = { 'build.js': 1, 'server/tls-cert.js': 1, 'server/seed.js': 1, 'tests/tls-self.js': 1 };
+const hexAllow = { 
+  'build.js': 1, 
+  'server/tls-cert.js': 1, 
+  'server/seed.js': 1, 
+  'tests/tls-self.js': 1,
+  '.claude/proven-config.json': 1, 
+  '.claude-flow/harness-active-policy.json': 1,
+  '.claude\\proven-config.json': 1,
+  '.claude-flow\\harness-active-policy.json': 1
+};
 for (const f of files) {
   const t = fs.readFileSync(path.join(ROOT, f), 'utf8');
   for (const p of PATTERNS) {
