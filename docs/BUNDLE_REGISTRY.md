@@ -30,7 +30,7 @@
 | چت ۳ | `a11y-rebuild.bundle` | `/home/user/a11y-rebuild.bundle` | نامشخص در گزارش | نامشخص | نامشخص در گزارش | نامشخص | نامشخص | ⏳ در انتظار (بازسازی دسترس‌پذیری فعال) |
 | چت ۴ | `wave19-chaos-live.bundle` | `/home/user/wave19-chaos-live.bundle` | `arena/01a08a4e-p2` | ۱۳ | نامشخص در گزارش | نامشخص | نامشخص | 📝 گزارش‌شده |
 | چت ۴ | `wave19-wal-full.bundle` | `/home/user/wave19-wal-full.bundle` | `arena/01a08a4e-p2` | نامشخص | — | — | — | ⏳ در انتظار (دریل وال-دیسک فعال) |
-| چت ۵ | (هنوز ساخته نشده) | — | — | — | — | — | — | ⏳ در انتظار (باگ‌هانت نشست ۷) |
+| چت ۵ | `chat5-session7.bundle` | `/home/user/bandle/chat5-session7.bundle` | `bug-hunt-session7` | **۸** (۷ رفع/سند + ردیفِ همین رجیستری یک کامیت بعد) | `8ea217a2c390cb570a3673e0572110eac3a60794` | `b872f44` (مرجِ PR #63) | ۳۰ مگابایت · sha256 `002d4ea77a301c8d46001610cb4a2f3c10622a12a4af4a323844bd5167aaaed6` | ✅ تأییدشده (`git bundle verify` ok) — رکوردهای بستهٔ `chat5-session7.patch` + `chat5-worktree-backup.tar.gz` + `chat5-sha256.txt` در همان پوشه |
 | چت ۷ | `chat7-session6.bundle` | `/home/user/chat7-session6.bundle` | `arena/01a08c7a-p2` | **۲۷** | نامشخص در گزارش | نامشخص | نامشخص | 📝 گزارش‌شده — پرریسک‌ترین |
 | چت ۶ | `lessons-learned.bundle` | `/home/user/lessons-learned.bundle` | `arena/01a08b24-p2` | مأموریت ۳۴ | `66e03f0` | نامشخص | نامشخص | ❌ فایل با ریست رفت؛ رأس در گزارش ثبت است |
 | چت ۶ | `executive-briefing.bundle` | `/home/user/executive-briefing.bundle` | `arena/01a08b24-p2` | مأموریت ۳۵ | `66e03f0` | نامشخص | نامشخص | ❌ فایل با ریست رفت؛ رأس در گزارش ثبت است |
