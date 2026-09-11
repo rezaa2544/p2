@@ -154,17 +154,20 @@ function createCursor(o) {
         payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
       } catch (e) { return { ok: false, code: 'cursor_invalid' }; }
       if (!payload) return { ok: false, code: 'cursor_invalid' };
-      /* Delta Phase 4 (gap 5): v2 به منطقهٔ صادرکننده گره خورده؛ v1 تا
-         انقضای TTL خودش قبول می‌شود (گذارِ استقرارِ چندمنطقه‌ای). */
-      if (payload.v === 2) {
-        /* بدشکلِ v2 (بدونِ rg) نامعتبر است؛ v2 سالم از منطقهٔ دیگر mismatch. */
-        if (typeof payload.rg !== 'string' || !payload.rg) {
-          return { ok: false, code: 'cursor_invalid' };
-        }
-        if (payload.rg !== regionName()) {
-          return { ok: false, code: 'region_mismatch' };
-        }
-      } else if (payload.v !== 1) {
+      /* Delta Phase 4 (gap 5) + S9-1 (Bug Hunt session 9): v2 به منطقهٔ
+         صادرکننده گره خورده؛ v1 تا انقضای TTL خودش قبول می‌شود (گذارِ
+         استقرارِ چندمنطقه‌ای).
+         این‌جا فقط *ساختار* سنجیده می‌شود (نسخهٔ شناخته‌شده، و v2 با rgِ
+         رشته‌ای). داوریِ معناییِ منطقه عمداً بعد از امضا می‌آید: پیش‌تر
+         `region_mismatch` پیش از بررسیِ HMAC برگردانده می‌شد، پس هر توکنِ
+         جعلی با rgِ بیگانه می‌توانست (الف) از «نامعتبر» به «کرسرِ منطقهٔ
+         دیگر» ارتقا بگیرد — نقضِ قراردادِ خودِ ماژول («signature first —
+         expired-but-forged is invalid») — و (ب) شمارندهٔ سلامتِ
+         `payesh_cursor_region_mismatch_total` را بی‌هیچ امضایی جلو ببرد. */
+      if (payload.v !== 1 && payload.v !== 2) {
+        return { ok: false, code: 'cursor_invalid' };
+      }
+      if (payload.v === 2 && (typeof payload.rg !== 'string' || !payload.rg)) {
         return { ok: false, code: 'cursor_invalid' };
       }
       /* signature first (constant-time) — expired-but-forged is invalid, not expired */
@@ -175,6 +178,11 @@ function createCursor(o) {
         sigOk = expect.length === got.length && crypto.timingSafeEqual(expect, got);
       } catch (e) { sigOk = false; }
       if (!sigOk) return { ok: false, code: 'cursor_invalid' };
+      /* S9-1: داوریِ منطقه فقط برای توکنِ *اصیل* — توکنِ جعلی همیشه invalid
+         است، هر منطقه‌ای که ادعا کند. */
+      if (payload.v === 2 && payload.rg !== regionName()) {
+        return { ok: false, code: 'region_mismatch' };
+      }
       const t = now();
       if (typeof payload.exp !== 'number' || !Number.isFinite(payload.exp)) return { ok: false, code: 'cursor_invalid' };
       if (payload.exp <= t) return { ok: false, code: 'cursor_expired' };
