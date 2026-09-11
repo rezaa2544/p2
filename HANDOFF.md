@@ -14,6 +14,18 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## موج ۸ — Offline-First Enhancements (`feat/client-offline-v2`) — ✅ (2026-09-11)
+
+- **مأموریت:** پنج شکافِ Offline-First (W8-1..5) روی شاخهٔ `feat/client-offline-v2` (پایه: `8ba3462`) — هر شکاف یک کامیتِ جدا + سوئیتِ تستِ خودش.
+- **W8-1 Background Sync:** `sw.js` رویدادِ `sync` (برچسبِ `payesh-sync-queue`) + `bgFlushQueue` از IDB (`payesh_offline_v2/sync_queue`) تکه‌تکه به `/api/sync` با کوکیِ HttpOnly (بدونِ توکن در SW)؛ کلاینت: `bgMirrorQueue` (آینهٔ debounceشدهٔ صف در IDB با آشتیِ حذف)، `bgRegisterSync` در هر enqueue، `bgListen/bgApplyResult` (synced حذف + lastSync؛ rejected مرئی). تست: `tests/bgsync.js` **14/14**.
+- **W8-2 Conflict UI:** `syncConflictModal` — «نسخهٔ شما رد شد»/«تعارض» با مقایسهٔ فیلدبه‌فیلدِ محلی↔سرور (تفاوت برجسته، برچسبِ فارسی، esc/escAttr)؛ `conflict_preserved` حالا `r.server` را نگه می‌دارد؛ دکمهٔ «⚖️ مقایسهٔ دو نسخه» در پنل (اکشنِ `sync-conflict-view`). تست: `tests/sync-conflict-ui.js` **12/12** (با پروبِ XSS).
+- **W8-3 Offline Indicator:** `queueBreakdown(Fa)` («۵ ثبت، ۲ حذف»)، `syncRelTime` («۳ دقیقه پیش»)، `estimateSync*` (تخمین از تعدادِ تکه‌ها)؛ tooltip بجِ آفلاین + پنل. تست: `tests/offline-indicator.js` **12/12**.
+- **W8-4 Storage Quota:** `checkStorageQuota` (estimate؛ هشدارِ هیسترزیسی ۸۵٪/۷۰٪؛ بدونِ API ساکت)، `storageQuotaModal` (نوارِ مصرف + پاک‌سازیِ انتخابی: `quotaClearDlq`، `quotaPruneTerminal` ۷روزه — pending هرگز)، دکمهٔ «🗄️ حافظه». تست: `tests/storage-quota.js` **14/14** (سناریویِ near-full با استاب ۹۰٪).
+- **W8-5 Pull-to-Refresh:** شنونده‌هایِ passive رویِ document (همهٔ viewها؛ از رندر جان به در می‌برد)؛ فقط از `scrollTop=0` و بیرونِ مودال؛ آستانه ۷۰px با مقاومتِ کشسانی؛ `ptrTrigger` = `syncNow` + (سروری) `pullFromServer`؛ `PTR.busy` ضدِ double-trigger؛ نشانگرِ `#ptr-indicator` (CSS در mobile.css). تست: `tests/pull-to-refresh.js` **15/15**.
+- **گیت‌ها:** smoke **547/547** · build --check **0** · check-authz **0** · secret-scan **11/11** · wave7-offline-queue **7/7** + پنج سوئیتِ تازه (۶۷ چکِ جدید) ✅
+- **اسناد:** `docs/OFFLINE_FIRST.md` (جدید — مرجعِ موج ۸)، `docs/user-guides/PARENT_GUIDE.md` (§۳.۷ کارِ آفلاین)، همین HANDOFF.
+- **نکته/بدهی:** iOS Safari SyncManager ندارد → تنزلِ نرم به مسیرِ تبِ باز؛ تخمینِ ارسال heuristic است؛ تستِ «بستنِ تبِ واقعی» در jsdom ممکن نیست — قراردادِ دوطرفِ SW↔کلاینت تست شده (شرح در OFFLINE_FIRST §۲).
+
 ## مرج `origin/main` در `feat/chat6-recovery` + بامپ `rc27` — ✅ (2026-09-11)
 
 - **ابلاغ:** مرج `origin/main` در شاخهٔ نجات، حل تعارض‌ها، اجرای گیت‌ها، پوش و پی‌آر. شاخه پیش از مرج **۱ کامیت جلو / ۲۰۲ کامیت عقب** از `origin/main` بود (بیس مشترک `a30fb20`).
