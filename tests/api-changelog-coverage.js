@@ -54,12 +54,29 @@ const inv = doc.split(/موجودی مسیرها/)[1].split(/تاریخچهٔ ت
  '/api/health-index', '/metrics']
   .forEach((p) => chk('مسیر «' + p + '» در موجودی', inv.includes(p)));
 ['روش', 'مسیر', 'توضیح', 'احراز', 'ریت‌لیمیت', 'نوع پاسخ'].forEach((c) => chk('ستون «' + c + '» در جدول', inv.includes(c)));
-/* شمارهای اعلامیِ سند با شمار واقعیِ سطرهای §۴.۱/§۴.۲ یکی باشد
-   (۱۲ عملیات نسخه‌دار + ۱۸ پلتفرمی + ۱ فقط-تست = ۳۱) */
-const invRows = inv.split('\n').filter((l) => /^\|\s*(GET|POST|PUT|PATCH|DELETE)\b/.test(l)).length;
+/* شمارهای اعلامیِ سند باید از **سطرهای واقعیِ جدول** مشتق شوند، نه اینکه فقط
+   به‌صورت متن جست‌وجو شوند. سطرهای «GET / POST» دو عملیات‌اند؛ سطرِ فقط-تست
+   (`/api/__slow`) پلتفرمی شمرده نمی‌شود ولی در جمعِ کل می‌آید:
+     نسخه‌دار = سطر + سطرهای دو‌روش = ۷ + ۵ = ۱۲
+     پلتفرمی  = سطرهای §۴.۲ − فقط-تست = ۱۹ − ۱ = ۱۸
+     جمع کل   = نسخه‌دار + همهٔ سطرهای §۴.۲ = ۱۲ + ۱۹ = ۳۱ */
+const fa = (n) => String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[+d]);
+const opRows = (t) => t.split('\n').filter((l) => /^\|\s*(GET|POST|PUT|PATCH|DELETE)\b/.test(l));
+const tblV = opRows(inv.split('### ۴.۲')[0]);
+const tblP = opRows(inv.split('### ۴.۲')[1] || '');
+const dualV = tblV.filter((l) => /GET \/ POST/.test(l)).length;
+const testOnly = tblP.filter((l) => /فقط-تست|__slow/.test(l)).length;
+const verOps = tblV.length + dualV;
+const platOps = tblP.length - testOnly;
+const allOps = verOps + tblP.length;
+chk('جدولِ نسخه‌دار: سطر و عملیات شمارش شد', tblV.length > 0 && verOps >= tblV.length,
+  tblV.length + ' سطر / ' + verOps + ' عملیات');
+chk('جدولِ پلتفرمی: سطر و عملیات شمارش شد', tblP.length > 0 && testOnly === 1,
+  tblP.length + ' سطر / ' + testOnly + ' فقط-تست');
 chk('شمارش اعلام‌شده با جدول هم‌خوان است',
-  /۱۲ نسخه‌دار/.test(doc) && /۱۸ پلتفرمی/.test(doc) && /۳۱ عملیات/.test(doc),
-  'سطرهای جدول: ' + invRows);
+  doc.includes(fa(verOps) + ' نسخه‌دار') && doc.includes(fa(platOps) + ' پلتفرمی') &&
+  doc.includes(fa(allOps) + ' عملیات'),
+  'از جدول: ' + verOps + ' نسخه‌دار / ' + platOps + ' پلتفرمی / ' + allOps + ' عملیات');
 
 grp('AC-BRK — شکننده/منسوخ/مهاجرت');
 chk('شکننده: «هیچ» از وی۱ صادقانه', /هیچ/.test(doc.split(/تاریخچهٔ تغییرات شکننده/)[1].split(/هشدارهای منسوخ‌سازی/)[0]));
