@@ -128,5 +128,30 @@ console.log('▸ opacity رویِ متنِ muted ممنوع');
   ok(bad.length === 0, 'هیچ opacity<0.9 رویِ متنِ muted — ' + (bad.length ? 'نقض: ' + bad.join(', ') : 'پاک'));
 }
 
+
+/* ── ۴) هلپرِ f() مودال‌ها باید label برنامه‌ای بسازد (axe: label/select-name در مودال‌ها) ── */
+console.log('▸ هلپرِ f() در 18-modals: label دسترس‌پذیر');
+{
+  const src18 = read('src/js/18-modals.js');
+  /* امضایِ رفع: استخراجِ id و ساختِ for= */
+  ok(/label for="\$\{m\[1\]\}"/.test(src18), 'f() برایِ کنترلِ id-دار <label for=…> می‌سازد');
+  ok(/aria-label="\$\{plain\}"/.test(src18) || /aria-label=/.test(src18.split('const f=')[1].split('};')[0]),
+     'f() برایِ کنترلِ بی‌id متنِ برچسب را aria-label می‌کند');
+  ok(!/const f=\(label,inner\)=>`<div class="field"><label>\$\{label\}<\/label>\$\{inner\}<\/div>`;/.test(src18),
+     'نسخهٔ قدیمیِ بی‌label برنگشته');
+}
+
+/* ── ۵) ناحیه‌هایِ اسکرول‌شونده فوکوس‌پذیر (axe: scrollable-region-focusable) ── */
+console.log('▸ پاسِ scrollable-region-focusable');
+{
+  const helpers = read('src/js/01-helpers.js');
+  ok(/function a11yScrollablePass\(/.test(helpers), 'a11yScrollablePass در 01-helpers تعریف شده');
+  ok(/tabindex/.test(helpers) && /\.table-wrap,\.vscroll/.test(helpers), 'پاس tabindex=0 به .table-wrap/.vscroll سرریزدار می‌دهد');
+  const modals = read('src/js/18-modals.js');
+  ok(/a11yScrollablePass\(\$\('#modal'\)\)/.test(modals), 'openModal پاس را صدا می‌زند');
+  const eduOffice = read('src/js/24-edu-office.js');
+  ok(/a11yScrollablePass\(document\)/.test(eduOffice), 'render() پاس را صدا می‌زند');
+}
+
 console.log(`\nجمع: ${pass} قبول، ${fail} رد`);
 process.exit(fail ? 1 : 0);
