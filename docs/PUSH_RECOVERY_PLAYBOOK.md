@@ -63,15 +63,32 @@
 
 در نشستی که دسترسی گیت‌هاب دارد (نشست تازهٔ آره‌نا روی همین ریپو):
 
+> **دو دام که اینجا رفع شد** (راستی‌آزمایی‌شده با اجرای واقعی، ۲۰۲۶-۰۹-۱۱):
+> ۱. ‏`git fetch origin main` فقط `origin/main` را تازه می‌کند، **نه مِین محلی**؛ پس
+>    `git checkout -b push-… main` از پایهٔ کهنه شاخه می‌سازد و گیت‌ها مرج با پایهٔ
+>    جاری را نمی‌سنجند. شاخه را از `origin/main` بسازید.
+> ۲. رف‌اسپکِ ستاره‌دار در مبدأ، مقصد ستاره‌دار می‌خواهد؛
+>    ‏`'refs/heads/*':refs/heads/bundle-<name>` با `fatal: invalid refspec` می‌شکند.
+>    ستاره‌کردنِ هر دو سو هم برای این باندل‌ها کار نمی‌کند: ‏`chat6-work.bundle`
+>    **فقط `HEAD` دارد** و هیچ `refs/heads/*` ندارد، پس `refs/heads/*` هیچ چیز
+>    واکشی نمی‌کند و بی‌صدا صفر رف می‌سازد. رف را **صریح** بنامید.
+
 ```bash
 # ۱. باندل را در نشست آپلود کنید (مثلاً در ریشهٔ فضای کار)
 # ۲. راستی‌آزمایی — باید «okay» و «complete history» بدهد
+#    (این دستور باید داخل یک مخزن اجرا شود؛ بیرون مخزن «need a repository» می‌دهد)
 git bundle verify <bundle>
 
 # ۳. شاخهٔ کاری از پایهٔ جاری بسازید و باندل را وارد کنید
 git fetch origin main
-git checkout -b push-<sandbox-name> main
-git fetch <bundle> 'refs/heads/*':refs/heads/bundle-<sandbox-name>
+git checkout -b push-<sandbox-name> origin/main   # از ریموت، نه مِین محلیِ کهنه
+
+# ۴. رف‌های داخل باندل را ببینید و رفِ دلخواه را صریحاً واکشی کنید
+git bundle list-heads <bundle>
+git fetch <bundle> refs/heads/<branch-in-bundle>:refs/heads/bundle-<sandbox-name>
+#   باندل‌های تک‌کامیتی فقط HEAD دارند؛ در آن صورت:
+#   git fetch <bundle> HEAD:refs/heads/bundle-<sandbox-name>
+
 git merge bundle-<sandbox-name> --no-ff -m "merge: بازیابی کامیت‌های <نام سندباکس>"
 
 # ۴. گیت کامل پیش از پوش (بدون استثناء)
