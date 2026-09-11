@@ -28,6 +28,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $RepoDir      = 'C:\p2'
 $WatchDir     = 'C:\bundles'
+$DoneDir      = Join-Path $WatchDir 'done'
 $ProcessedDb  = Join-Path $WatchDir 'processed.txt'
 $LogFile      = Join-Path $WatchDir 'push-log.txt'
 $PollSeconds  = 300
@@ -39,8 +40,17 @@ function Write-Log([string]$msg) {
 }
 
 function Invoke-Git([string[]]$gitArgs) {
-  $out = & git @gitArgs 2>&1
-  return @{ Ok = ($LASTEXITCODE -eq 0); Out = ($out | Out-String).Trim() }
+  # git writes informational messages (e.g. "bundle is okay") to stderr
+  # even on success - do not let them trigger $ErrorActionPreference='Stop'.
+  $prevEap = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try {
+    $out = & git @gitArgs 2>&1
+    $code = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $prevEap
+  }
+  return @{ Ok = ($code -eq 0); Out = ($out | Out-String).Trim() }
 }
 
 function Get-Processed {
@@ -50,8 +60,11 @@ function Get-Processed {
   return @()
 }
 
-function Mark-Processed([string]$name) {
-  Add-Content -LiteralPath $ProcessedDb -Value $name -Encoding UTF8
+function Mark-Processed([string]$bundlePath) {
+  $fileName = [IO.Path]::GetFileName($bundlePath)
+  Add-Content -LiteralPath $ProcessedDb -Value $fileName -Encoding UTF8
+  if (-not (Test-Path -LiteralPath $DoneDir)) { New-Item -ItemType Directory -Path $DoneDir | Out-Null }
+  Move-Item -LiteralPath $bundlePath -Destination (Join-Path $DoneDir $fileName) -Force
 }
 
 function Test-Gates {
@@ -147,7 +160,7 @@ function Invoke-Bundle([string]$bundlePath) {
   }
 
   Invoke-Git @('branch', '-D', $tempBranch) | Out-Null
-  Mark-Processed ([IO.Path]::GetFileName($bundlePath))
+  Mark-Processed $bundlePath
   Write-Log ("=== done {0} ===" -f $name)
   return $true
 }
