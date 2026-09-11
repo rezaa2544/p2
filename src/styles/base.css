@@ -805,3 +805,8 @@ tbody tr:hover{background:linear-gradient(90deg,#eef4ff 0%,#f3f7ff 100%)}
   border-color: transparent;
   box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
 }
+/* ── skip-link (WCAG 2.4.1): تا فوکوسِ کیبورد نگیرد دیده نمی‌شود ── */
+.skip-link{position:absolute;top:-48px;right:12px;z-index:2000;background:var(--primary);color:#fff;padding:9px 16px;border-radius:0 0 10px 10px;font-size:13px;font-weight:700;text-decoration:none;transition:top .15s}
+.skip-link:focus{top:0;outline:3px solid var(--brand-cyan);outline-offset:1px}
+/* nav-item حالا با کیبورد فوکوس می‌گیرد — نشانگرِ مرئی لازم است (WCAG 2.4.7) */
+.nav-item:focus-visible{outline:2px solid var(--brand-cyan);outline-offset:-2px}

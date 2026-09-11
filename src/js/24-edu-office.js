@@ -961,6 +961,9 @@ function render(){
     if(main && mainTop) main.scrollTop = mainTop;
     if(winTop) { try { window.scrollTo(0, winTop); } catch(e) {} }
   }
+  /* پاسِ دسترس‌پذیری: ناحیه‌هایِ اسکرول‌شونده فوکوس‌پذیر شوند
+     (axe: scrollable-region-focusable — رفعِ serious دورِ a11y-تعاملی) */
+  if(typeof a11yScrollablePass==='function') a11yScrollablePass(document);
 }
 setTimeout(()=>{
   /* دفترچه را پیش از مولدِ دنیای دمو بخوان: مولد (generateExtras) op

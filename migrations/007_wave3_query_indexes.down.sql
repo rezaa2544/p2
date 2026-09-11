@@ -1,4 +1,4 @@
--- Rollback for 004_wave3_query_indexes.sql
+-- Rollback for 007_wave3_query_indexes.sql (renumbered from 004 — see docs/MIGRATION_DECISION.md)
 -- Drops only the seven Wave 3 keyset indexes. Note that server/schema.sql
 -- still declares them, so re-running schema.sql will recreate them; this
 -- rollback is for the migration chain only.

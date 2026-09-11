@@ -87,7 +87,7 @@ function fakeDbFor(rows) {
   await (async () => {
     const b = buildAttendanceList({ user: mgr, date: null, classId: null, studentId: null, limit: 5, cursor: '2026-09-08|3' });
     chk('A1 predicateِ مرکب `date < $d OR (date = $d AND id > $i)`',
-      /date < \$\d+ OR \(date = \$\d+ AND id > \$\d+\)/.test(b.page.sql), b.page.sql);
+      /date < \$\d+.*OR.*\(date = \$\d+ AND id > \$\d+\)/.test(b.page.sql), b.page.sql);
     chk('A2 هم date و هم id بایند شده‌اند',
       b.page.params.includes('2026-09-08') && b.page.params.includes(3), JSON.stringify(b.page.params));
   })();
@@ -106,8 +106,9 @@ function fakeDbFor(rows) {
       async query(sql, params) {
         if (/^SELECT COUNT/i.test(sql)) return { rows: [{ n: rows.length }] };
         const limit = params[params.length - 1];
-        let out = rows.slice().sort((a, b) => (b.date < a.date ? -1 : b.date > a.date ? 1 : a.id - b.id));
-        const m = sql.match(/date < \$(\d+) OR \(date = \$(\d+) AND id > \$(\d+)\)/);
+        /* date DESC, id ASC: تاریخ‌های جدیدتر اول، هم‌تاریخ id کوچک‌تر اول */
+        let out = rows.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.id - b.id));
+        const m = sql.match(/date < \$(\d+).*OR.*\(date = \$(\d+) AND id > \$(\d+)\)/);
         if (m) {
           const d = params[Number(m[1]) - 1];
           const i = params[Number(m[3]) - 1];

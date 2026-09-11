@@ -307,3 +307,47 @@
 
 - `bug_hunt_session4` = `"completed"` ✅ (ثبت با `CLAUDE_FLOW_MEMORY_PATH=/tmp/ruflo-unified CLAUDE_FLOW_DISABLE_BRIDGE=1`).
 - `bug_hunt_pr_status` = `"ready-for-merge"` ✅ (همان env؛ تأیید با `memory get`).
+
+---
+
+# گزارش باگ‌هانت — نشست ۸ / Wave 9 Performance
+
+**تاریخ:** ۲۰۲۶-۰۹-۱۱ · **مبنا:** `origin/main @ aaf3fab` · **شاخه:** `feat/bughunt-session8-wave9` · **آخرین code-fix HEAD:** `685f935`
+
+این نشست با رجوع به `SKILLS_MASTER.md` و چرخهٔ اجباریِ قرمز→رفع→جهش انجام شد. هدف، حذف کار سنگین از مسیر درخواست، کنترل رشد حافظه/کش، و حفظ fail-closed و tenant isolation بود. گزارش کامل و ماتریس گیت‌ها در `docs/WAVE9_SESSION8_PERFORMANCE.md` است.
+
+## گیت‌های ثبت‌شده
+
+| گیت | شاهد |
+|---|---|
+| `node tests/smoke.js` | ✅ **۵۴۷/۵۴۷**؛ فقط هشدار شناخته‌شدهٔ jsdom برای `window.scrollTo` و هشدار engine محلی Node 20 در برابر نیازمندی >=22 |
+| `node tools/check-authz.js` | ✅ exit 0؛ **۳۸۸** اکشن بررسی شد و تطبیق مجوز کامل بود |
+| `node tests/secret-scan.js` | ✅ **۱۱/۱۱**؛ هیچ credential ثبت‌شده‌ای یافت نشد |
+| `node build.js --check` | ✅ build/index/guide و authz هم‌گام |
+| `node tests/wave8-outbox.js` | ✅ **۱۴/۱۴** |
+| `node tests/wave8-outbox-mutations.js` | ✅ **۵/۵**؛ anchor جهش M3 در `685f935` با وضعیت red قبلی اصلاح شد |
+| `node tests/wave9-performance.js` | ✅ **۳۹/۳۹** |
+| `node tests/wave8-deep-audit.js` | ⚠️ فایل در repository وجود ندارد؛ اجرا `MODULE_NOT_FOUND` داد و سبز گزارش نشد |
+| `scripts/run-all-tests.sh` | ⚠️ در پنجرهٔ ابزار به ماتریس نهایی نرسید؛ به‌علت runnerهای stale/هم‌پوشان متوقف شد و هیچ ادعای سبز کامل ثبت نمی‌شود |
+
+## جدول رفع‌های نشست ۸
+
+| شناسه | باگ | شدت | کامیت | شاهد رگرسیون / جهش |
+|---|---|---|---|---|
+| W9-S8-1 | GC timestampهای شیئی state داخلی را جمع نمی‌کرد؛ نشتِ تدریجی `__processed_uids`/`__revoked_jti` | P2 | `062fbe3` | `session8-gc` **۵/۵** · جهش **۲/۲** |
+| W9-S8-2 | صف async audit سقف نداشت؛ audit burst می‌توانست heap را بی‌حد رشد دهد | P1 | `324eec8` | `session8-audit-queue` **۴/۴** · جهش **۲/۲** |
+| W9-S8-3 | append ناموفق audit batch را دور می‌ریخت؛ از دست‌رفتن evidence | P1 | `8f45f54` | `session8-audit-flush` **۴/۴** · جهش **۲/۲** |
+| W9-S8-4 | school index کش TTL و purge کامل membership/L2 نداشت | P1 | `d4fc168` | `session8-cache-index` **۶/۶** · جهش **۲/۲** |
+| W9-S8-5 | گزارش عمومی meeting را در چند پیمایش محاسبه می‌کرد | P2 | `6035028` | `session8-public-report` **۴/۴** · جهش **۲/۲** |
+| W9-S8-6 | enrichment کلاس برای هر کلاس `enrollments.filter` می‌زد؛ O(classes×enrollments) | P2 | `dd2d7eb` | `session8-classes-index` **۵/۵** · جهش **۲/۲** |
+| W9-S8-7 | enrichment نمره برای هر نمره `subjects/users.find` می‌زد؛ اسکن خطی تکراری | P2 | `6aeb5ba` | `session8-grades-index` **۵/۵** · جهش **۲/۲** |
+| W9-S8-8 | init/rotation async audit هنوز sync filesystem داشت و event loop را block می‌کرد | P1 | `e54b998` | `session8-audit-async-io` **۵/۵** · جهش **۲/۲** |
+
+## وضعیت delivery و موارد باز
+
+- ثبت Ruflo با کلید `bug_hunt_session8` انجام نشد: executable `ruflo` در sandbox نصب نیست و تلاش واقعی با exit 127 و `ruflo: command not found` برگشت؛ بنابراین memory store ساختگی ثبت نمی‌شود.
+- با احراز هویت موقت، `feat/bughunt-session8-wave9` با موفقیت به GitHub push شد؛ remote دائمی بدون credential باقی ماند.
+- PR ساخته شد: `https://github.com/rezaa2544/p2/pull/75` با عنوان `fix: bug hunt session 8 (wave 9 performance)`.
+- fallback بدون credential نیز در `/home/user/bandle/bug-hunt-session8-wave9.bundle` نگه داشته و با `git bundle verify` معتبر شناخته شده است؛ ۲۴ patch جداگانه در `/home/user/bandle/patches/` قرار دارد.
+- `tests/wave8-deep-audit.js` باید در یک commit/محیط بعدی ارائه شود؛ نبودن آن یک regression گیت است، نه یک pass.
+- گزارش full regression ناقص است؛ redهای legacy در partial log به Session 8 نسبت داده نشده‌اند و بدون اجرای تمیز دوباره سبز اعلام نمی‌شوند.

@@ -112,6 +112,36 @@ GET /api/v1/pull?since=<iso>&collections=<c1,c2,…>
 
 ---
 
+## ۶. فاز ۴ — Backpressure · Compression · Warmup · Metrics · Region (2026-09-11)
+
+پنج شکافِ مقیاس‌پذیری روی شاخهٔ `feat/delta-phase4` (پایه: main @ `6dbef89`، PR #68).
+جزئیاتِ کامل و اعداد در **`docs/DELTA_HARDENING_PHASE4.md`**؛ خلاصه:
+
+1. **Backpressure:** پنجرهٔ op وزن‌دار per-session (`sync:ops`، 60s،
+   `PAYESH_SYNC_OPS_PER_MIN` پیش‌فرض ۵۰۰۰) — رد ⇒ 429 `sync_backpressure` +
+   `retry_after_s`/`Retry-After` بدونِ اعمال؛ کلاینت pending می‌ماند و با
+   `max(retry_after, backoff)` دوباره می‌آید؛ `incrByWithTtl` اتمیک (Lua/حافظه).
+2. **Compression:** `server/compress.js` — gzip ارجح/br جایگزین، آستانهٔ ۱KB،
+   fallback به sendJson (هارنس قدیمی/خطای zlib)، `Vary: Accept-Encoding`؛
+   868.9KB → 51.8KB gzip (۶٪) در فیکسچرِ ۳۰۰۰ ردیف.
+3. **Warmup:** کلیدِ کرسر از پیش پایدار بود (keyfile/env)؛ حالا دیده می‌شود:
+   `cursor.keySource`، لاگِ بوت، `/api/health` ⇒ `cursor:{enabled,persistent,
+   key_source}`، هشدارِ رازِ کوتاه؛ تستِ بوتِ واقعی ×۲ همان keyfile.
+4. **Metrics:** `/api/health` ⇒ `sync:{pulls_total, pulls_delta, pulls_full,
+   pushes_total, conflicts_total, backpressure_rejections_total,
+   cursor_expired_total, cursor_region_mismatch_total, delta_size_bytes_avg,
+   delta_wire_bytes_avg, compressions_total}`.
+5. **Region:** کرسرِ v2 با `rg` از `PAYESH_REGION`؛ توکنِ بین‌منطقه‌ای ⇒ 401
+   `region_mismatch` + `cursor_renewal:'full_pull'` (کلاینت بدونِ تغییر)؛ v1 تا
+   TTL گذار.
+
+گیت‌ها: smoke 547/547 · check-authz 0 · secret-scan 11/11 · build --check ·
+delta-sync-hardening 19/19 · wave4 13/13 · wave10 14/14 · pull-bootstrap 12/12 ·
+contract-layers 18/18 · delta-schema-gaps 12/12 · **delta-phase4 23/23 ·
+mutations 20/20** ✅
+
+---
+
 ## ۵. دروازه‌ها (این موج)
 
 smoke **۵۴۷/۵۴۷** · tests/run.js **۳۵/۳۵** · wave4-sync **۱۱/۱۱** ·

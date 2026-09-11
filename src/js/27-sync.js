@@ -398,6 +398,19 @@ async function syncNow(manual){
     if(bad || retryable) scheduleSync(backoffDelay());
 
   }catch(err){
+    if(err && err.code === 'sync_backpressure'){
+      /* فاز ۴: opها sending ماندند → به pending برمی‌گردند (هیچ‌چیز از دست
+         نمی‌رود، شمارندهٔ DLQ هیچ‌چیز نمی‌شمرد چون noteOpFailed صدا نمی‌شود).
+         تلاشِ بعدی = حداکثرِ مُهرِ سرور (retry_after_s) و backoffِ نمایی. */
+      batch.forEach(x => { if(x.status === 'sending') x.status = 'pending'; });
+      SYNC.lastError = 'سرور زیر فشار است — کمی بعد دوباره ارسال می‌شود';
+      SYNC.attempts += 1;
+      const wait = Math.max((err.retryAfterS || 0) * 1000, backoffDelay());
+      saveQueue();
+      if(manual) toast('سرور زیر فشار است — کمی بعد دوباره تلاش می‌شود', 'warn');
+      scheduleSync(wait);
+      return;
+    }
     /* شکست کل دسته — همه failed می‌شوند (پس از ۵ تلاش: DLQ) تا دوباره تلاش شود */
     batch.forEach(x => { if(x.status === 'sending') noteOpFailed(x, err.message); });   /* P1-10 */
     SYNC.lastError = err.message;
@@ -454,6 +467,11 @@ async function sendChunked(batch){
     try{
       res = await sendBatch(chunk);
     }catch(err){
+      /* فاز ۴: 429/backpressure به‌کل دسته برمی‌گردد — تکه‌تکه‌کردن بی‌فایده
+         است (سقفِ نرخ روی مجموعِ opهاست، نه اندازهٔ تکه)؛ خطا عیناً به
+         syncNow می‌رود تا opها pending بمانند و با retry_afterِ سرور دوباره
+         بیایند. */
+      if(err && err.code === 'sync_backpressure') throw err;
       if(is413Error(err) && chunk.length > 1){ splitPush(pend, chunk); continue; }
       if(is413Error(err)){ out.push(oversizedResult(chunk[0])); continue; }
       /* خطایِ انتقالی: این تکه + همهٔ تکه‌هایِ مانده ⇒ failed */
@@ -511,6 +529,16 @@ async function sendBatch(batch){
     const code = (raw.body && raw.body.code) || 'http_' + raw.status;
     /* 401 = نشستِ ناکام — گذرا؛ بعد از ورودِ دوباره دوباره تلاش می‌شود */
     if(raw.status === 401 || code === 'no_session') throw new Error('نشست سرور معتبر نیست (401)');
+    /* فاز ۴ (backpressure): 429 = سرور زیرِ فشار — گذرا و با مُهرِ زمانیِ
+       سرور؛ نه dead-letter، نه شمارشِ به‌عنوانِ خطای op. کل دسته دست‌نخورده
+       در صف می‌ماند و syncNow با retry_afterِ سرور زمان‌بندی می‌شود. */
+    if(raw.status === 429 || code === 'sync_backpressure'){
+      const ra = Math.max(0, Number(raw.body && raw.body.retry_after_s) || 0);
+      const e = new Error('سرور زیر فشار است (429)');
+      e.code = 'sync_backpressure';
+      e.retryAfterS = ra;
+      throw e;
+    }
     /* 400/403 = ردِّ پایدارِ کل دسته → هر op به‌صورتِ ردِ پایدار
        برمی‌گردد تا dead-letter آن را از صفِ ارسال جدا کند */
     return batch.map(x => ({ uid: x.uid, ok: false, code: code, message: (raw.body && raw.body.message) || 'رد سرور' }));

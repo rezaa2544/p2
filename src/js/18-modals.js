@@ -2,8 +2,47 @@
    مودال و فرم
    openModal, modalTpl, askConfirm و سازنده‌های فیلد: f, inp, sel, opt, V.
    ═══════════════════════════════════════════════════════════════════ */
-function openModal(html){$('#modal').innerHTML=`<div class="modal-back" data-act="modal-back"><div class="modal">${html}</div></div>`;}
-function closeModal(){$('#modal').innerHTML='';}
+/* ── دسترس‌پذریِ صفحه‌کلید در مودال (WCAG 2.1 §2.1.2 No Keyboard Trap / §2.4.3 Focus Order) ──
+   openModal:
+     • عنصرِ فعالِ لحظهٔ باز شدن را نگه می‌دارد تا closeModal فوکوس را برگرداند
+     • role=dialog + aria-modal رویِ ظرف
+     • فوکوسِ اولیه به نخستین کنترلِ مودال می‌رود
+     • trap: رویدادِ keydown رویِ #modal، Tab/Shift+Tab را درونِ مودال می‌چرخاند
+   closeModal: فوکوس را به بازکننده برمی‌گرداند (اگر هنوز در سند باشد). */
+function _modalFocusables(){
+  const m=$('#modal') && $('#modal').querySelector('.modal');
+  if(!m)return[];
+  const sel='button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
+  return [...m.querySelectorAll(sel)].filter(el=>!el.disabled&&el.offsetParent!==null);
+}
+function _modalTrap(e){
+  if(e.key!=='Tab')return;
+  const list=_modalFocusables();
+  if(!list.length)return;
+  const first=list[0],last=list[list.length-1];
+  if(e.shiftKey){
+    if(document.activeElement===first||!$('#modal').contains(document.activeElement)){e.preventDefault();last.focus();}
+  }else{
+    if(document.activeElement===last||!$('#modal').contains(document.activeElement)){e.preventDefault();first.focus();}
+  }
+}
+let _modalOpener=null;
+function openModal(html){
+  _modalOpener=(document.activeElement&&document.activeElement!==document.body)?document.activeElement:null;
+  $('#modal').innerHTML=`<div class="modal-back" data-act="modal-back"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;
+  if(typeof a11yScrollablePass==='function')a11yScrollablePass($('#modal'));
+  /* فوکوسِ اولیه: نخستین کنترلِ فرم اگر بود، وگرنه نخستین فوکوس‌پذیر (دکمهٔ ✕) */
+  const list=_modalFocusables();
+  const target=list.find(el=>/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName))||list[0];
+  if(target){try{target.focus();}catch(e){}}
+  $('#modal').addEventListener('keydown',_modalTrap);
+}
+function closeModal(){
+  const el=$('#modal');
+  if(el){el.removeEventListener('keydown',_modalTrap);el.innerHTML='';}
+  if(_modalOpener&&document.contains(_modalOpener)){try{_modalOpener.focus();}catch(e){}}
+  _modalOpener=null;
+}
 function modalTpl(title,body,saveAct,danger,okLabel){
   return `<div class="card-head"><h3>${esc(title)}</h3><button class="icon-btn" data-act="modal-close">✕</button></div>
    <div class="card-body">${body}</div>
@@ -11,7 +50,18 @@ function modalTpl(title,body,saveAct,danger,okLabel){
     <button class="btn ghost" data-act="modal-close">انصراف</button>
     <button class="btn ${danger?'danger':''}" data-act="${escAttr(saveAct)}">${okLabel||(danger?'حذف کن':'ذخیره')}</button></div>`;
 }
-const f=(label,inner)=>`<div class="field"><label>${label}</label>${inner}</div>`;
+/* هلپرِ فیلدِ فرم — دسترس‌پذیر (axe: label/select-name).
+   اگر کنترلِ درونی id داشته باشد، <label for=…> می‌سازد تا نامِ دسترس‌پذیر
+   برنامه‌ای برقرار شود؛ وگرنه متنِ برچسب (بدونِ تگ) به‌عنوانِ aria-label
+   رویِ نخستین کنترل می‌نشیند. ساختارِ DOM (div.field>label+کنترل) دست نمی‌خورد. */
+const f=(label,inner)=>{
+  const s=String(inner);
+  const m=/\sid="([^"]+)"/.exec(s);
+  if(m) return `<div class="field"><label for="${m[1]}">${label}</label>${s}</div>`;
+  const plain=String(label).replace(/<[^>]*>/g,'').replace(/"/g,'&quot;').trim();
+  const patched=plain?s.replace(/<(input|select|textarea)\b(?![^>]*aria-label)/i,`<$1 aria-label="${plain}"`):s;
+  return `<div class="field"><label>${label}</label>${patched}</div>`;
+};
 const inp=(id,val,type='text')=>`<input class="input" id="${escAttr(id)}" type="${escAttr(type)}" value="${esc(val??'')}" />`;
 const sel=(id,opts,val)=>`<select class="select" id="${escAttr(id)}">${opts.map(o=>`<option value="${esc(o[0])}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
 const V=id=>{const e=$('#'+id);return e?e.value.trim():'';};
