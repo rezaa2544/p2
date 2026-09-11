@@ -12,6 +12,9 @@
    M6  فشرده‌سازی: مذاکره همیشه null          → CM1/CM2/CM6 باید بمیرند
    M7  pull.js: فراخوانیِ فشرده‌ساز حذف        → CM1/CM6 باید بمیرند
    M8  فشرده‌سازی: آستانهٔ حجم حذف            → CM4 باید بمیرد
+   M9  کرسر: چکِ TTL در verify حذف           → CW1 باید بمیرد
+   M10 کرسر: keySource همیشه 'none'          → CW2 باید بمیرد
+   M11 health: persistent همیشه false        → CW3 باید بمیرد
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const fs = require('fs');
@@ -110,6 +113,31 @@ function buildClient() {
     "  const enc = raw.length >= 0 ? negotiateEncoding(headers['accept-encoding']) : null; /*MUT*/");
   chk('M8 جهشِ «آستانهٔ حذف» کشته شد', runSuite() !== 0);
   fs.writeFileSync(path.join(ROOT, 'server/compress.js'), orig, 'utf8');
+
+
+  /* ── جهش‌های گپ ۳ — کلیدِ کرسرِ پایدار ── */
+  console.log('\n▸ جهش‌های گپ ۳ — کلیدِ کرسرِ پایدار');
+
+  /* M9: انقضای TTL دیگر چک نمی‌شود */
+  orig = mutate('server/cursor.js',
+    "      if (payload.exp <= t) return { ok: false, code: 'cursor_expired' };",
+    "      /*MUT: TTL check removed*/");
+  chk('M9 جهشِ «TTL حذف» کشته شد', runSuite() !== 0);
+  fs.writeFileSync(path.join(ROOT, 'server/cursor.js'), orig, 'utf8');
+
+  /* M10: keySource همیشه none گزارش می‌شود */
+  orig = mutate('server/cursor.js',
+    "    keySource: resolved.source,",
+    "    keySource: 'none' /*MUT*/,");
+  chk('M10 جهشِ «keySource دروغ» کشته شد', runSuite() !== 0);
+  fs.writeFileSync(path.join(ROOT, 'server/cursor.js'), orig, 'utf8');
+
+  /* M11: سلامتِ cursor پایدار را false گزارش می‌کند */
+  orig = mutate('server/index.js',
+    "        cursor: { enabled: pullRoute.cursor.enabled, persistent: pullRoute.cursor.enabled, key_source: CURSOR_KEY_SOURCE }",
+    "        cursor: { enabled: pullRoute.cursor.enabled, persistent: false /*MUT*/, key_source: CURSOR_KEY_SOURCE }");
+  chk('M11 جهشِ «persistent=false» کشته شد', runSuite() !== 0);
+  fs.writeFileSync(path.join(ROOT, 'server/index.js'), orig, 'utf8');
 
   /* سلامت پایه پس از بازگردانی‌ها */
   chk('پایه پس از بازگردانی سبز است', runSuite() === 0);
