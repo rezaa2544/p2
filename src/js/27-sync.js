@@ -1063,6 +1063,109 @@ function bgListen(){
   }catch(e){}
 }
 
+/* ---------- W8-5: Pull-to-Refresh (کشیدن برایِ همگام‌سازی) ----------
+   رویِ موبایل، کشیدنِ صفحه به پایین از بالایِ اسکرول باید همگام‌سازی
+   کند (ارسالِ صف + در حالتِ سروری، کشیدنِ دلتا). شنونده‌ها رویِ document
+   واگذار شده‌اند پس در «همهٔ viewها» کار می‌کند — .content هر روت را
+   در بر می‌گیرد و پس از هر render هم زنده می‌ماند.
+   ضدِ دوبار-اجرا: تا پایانِ refreshِ جاری (busy) کشیدنِ تازه بی‌اثر است. */
+var PTR = {
+  startY   : 0,        /* نقطهٔ شروعِ لمس */
+  pulling  : false,    /* آیا کشیدنِ معتبر شروع شده؟ (فقط از scrollTop=0) */
+  dist     : 0,        /* فاصلهٔ کشیده‌شده (px، میرا) */
+  busy     : false,    /* در حالِ refresh — کشیدنِ تازه نمی‌پذیرد (ضدِ double-trigger) */
+  threshold: 70,       /* آستانهٔ رهاسازی برایِ trigger */
+};
+function ptrContainer(){
+  return document.querySelector('.content');
+}
+function ptrIndicator(){
+  var el = document.getElementById('ptr-indicator');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'ptr-indicator';
+    el.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function ptrRender(){
+  var el = ptrIndicator();
+  if(PTR.busy){
+    el.className = 'ptr-busy';
+    el.textContent = '⏳ در حال همگام‌سازی…';
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0)';
+    return;
+  }
+  if(!PTR.pulling || PTR.dist <= 0){
+    el.className = '';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-46px)';
+    return;
+  }
+  var ready = PTR.dist >= PTR.threshold;
+  el.className = ready ? 'ptr-ready' : '';
+  el.textContent = ready ? '↻ رها کنید تا همگام شود' : '↓ برایِ همگام‌سازی بکشید';
+  el.style.opacity = String(Math.min(1, PTR.dist / PTR.threshold));
+  el.style.transform = 'translateY(' + Math.min(0, PTR.dist - 46) + 'px)';
+}
+function ptrTouchStart(e){
+  if(PTR.busy) return;                            /* ضدِ double-trigger */
+  var c = ptrContainer();
+  if(!c || !e.touches || e.touches.length !== 1) return;
+  if(!c.contains(e.target) && e.target !== c) return;
+  if(c.scrollTop > 0) return;                     /* فقط از بالایِ لیست */
+  if(document.querySelector('.modal-back')) return; /* نه وسطِ مودال */
+  PTR.startY = e.touches[0].clientY;
+  PTR.pulling = true;
+  PTR.dist = 0;
+}
+function ptrTouchMove(e){
+  if(!PTR.pulling || PTR.busy || !e.touches || !e.touches.length) return;
+  var dy = e.touches[0].clientY - PTR.startY;
+  if(dy <= 0){ PTR.dist = 0; ptrRender(); return; }
+  PTR.dist = Math.min(140, dy * 0.55);            /* مقاومتِ کشسانی */
+  ptrRender();
+}
+function ptrTouchEnd(){
+  if(!PTR.pulling || PTR.busy){ PTR.pulling = false; return; }
+  var fire = PTR.dist >= PTR.threshold;
+  PTR.pulling = false;
+  PTR.dist = 0;
+  if(fire) ptrTrigger();
+  else ptrRender();
+}
+/* اجرایِ refresh: ارسالِ صف + (حالتِ سروری) کشیدنِ دلتایِ سرور.
+   busy تا پایان true می‌ماند — کشیدنِ دوباره وسطِ کار هیچ‌کاره است. */
+function ptrTrigger(){
+  if(PTR.busy) return;                            /* ضدِ double-trigger */
+  PTR.busy = true;
+  ptrRender();
+  var jobs = [];
+  try{ jobs.push(Promise.resolve(syncNow(true))); }catch(e){}
+  try{
+    if(typeof pullFromServer === 'function' && typeof isServerMode === 'function' && isServerMode())
+      jobs.push(Promise.resolve(pullFromServer()).catch(function(){}));
+  }catch(e){}
+  return Promise.all(jobs).catch(function(){}).then(function(){
+    /* حداقل نیم‌ثانیه نشان بده تا پرش نکند؛ بعد آزاد کن */
+    return new Promise(function(r){ setTimeout(r, 500); });
+  }).then(function(){
+    PTR.busy = false;
+    ptrRender();
+    refreshSyncBadge();
+  });
+}
+function initPullToRefresh(){
+  if(typeof document === 'undefined') return;
+  /* passive: شنونده‌ها اسکرول را نمی‌گیرند — فقط می‌خوانند */
+  document.addEventListener('touchstart', ptrTouchStart, { passive: true });
+  document.addEventListener('touchmove',  ptrTouchMove,  { passive: true });
+  document.addEventListener('touchend',   ptrTouchEnd,   { passive: true });
+  document.addEventListener('touchcancel', ptrTouchEnd,  { passive: true });
+}
+
 /* ---------- راه‌اندازی ---------- */
 function initSync(){
   loadQueue();
@@ -1073,6 +1176,7 @@ function initSync(){
   }
   bgListen();                        /* W8-1: نتیجهٔ همگام‌سازیِ پس‌زمینه را بشنود */
   bgMirrorQueue();                   /* W8-1: بقایایِ جلسهٔ قبل هم آینه شوند */
+  initPullToRefresh();               /* W8-5: کشیدن برایِ همگام‌سازی (همهٔ viewها) */
   /* اگر چیزی از جلسه‌ی قبل در صف مانده، تلاش کن بفرستی */
   if(pendingCount() && SYNC.online) scheduleSync(1500);
 }
