@@ -20,7 +20,7 @@
 | 6 | `f()` برچسب را به کنترل وصل نمی‌کند | 1.3.1 / 3.3.2 Labels (A) | `src/js/18-modals.js:14` `<label>` بدونِ `for` | P1 | رفع شد |
 | 7 | لاگین: برچسب‌هایِ lpn/lcode/lnid بدونِ `for` | 3.3.2 (A) | `src/js/06-login.js:184-187` | P1 | رفع شد |
 | 8 | تصاویرِ تکلیف بدونِ `alt` | 1.1.1 Non-text Content (A) | `src/js/51-homework.js:122` و `:508` | P1 | رفع شد |
-| 9 | لوگویِ پوسته بدونِ `alt` | 1.1.1 (A) | `src/js/07-shell.js:13` `brand-logo` | P1 | رفع شد |
+| 9 | لوگویِ پوسته `alt="پایش"` داشت (تأیید شد) — بدونِ تغییر ماند | 1.1.1 (A) | `src/js/07-shell.js:13` (انتهایِ تگ) | — | سالم بود ✅ |
 | 10 | مودال بدونِ `role/dialog` و `aria-modal` | 4.1.2 (A) | `src/js/18-modals.js:5` | P1 | رفع شد |
 | 11 | مودال فوکوس را داخل نمی‌برد/برنمی‌گرداند | 2.4.3 Focus Order (A) | `openModal`/`closeModal` در `18-modals.js:5-6` | P1 | رفع شد |
 | 12 | تلهٔ فوکوس (Tab) نیست | 2.4.3 / 2.1.2 No Trap (A) | همان — فقط Escape در `19-actions-core.js:2169` بود | P1 | رفع شد |
