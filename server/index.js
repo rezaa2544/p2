@@ -232,11 +232,25 @@ const JTI_GC_MS = SESSION_TTL_S * 1000;
 function gcStore(){
   const now = Date.now();
   let n = 0;
+  /* logout stores a scalar timestamp, while the enumeration guard stores
+     { at, reason }. Normalize both shapes before applying the retention
+     window; subtracting an object yields NaN and made those entries live
+     forever in a long-running process. Invalid internal timestamps are
+     discarded as unusable state so the maps remain bounded. */
+  const timestampOf = (value) => {
+    if (typeof value === 'number') return value;
+    if (value && typeof value === 'object') return Number(value.at);
+    return Number(value);
+  };
+  const expired = (value, ttl) => {
+    const at = timestampOf(value);
+    return !Number.isFinite(at) || now - at > ttl;
+  };
   for(const k in store.__processed_uids){
-    if(now - store.__processed_uids[k] > UID_GC_MS){ delete store.__processed_uids[k]; n++; }
+    if(expired(store.__processed_uids[k], UID_GC_MS)){ delete store.__processed_uids[k]; n++; }
   }
   for(const k in store.__revoked_jti){
-    if(now - store.__revoked_jti[k] > JTI_GC_MS){ delete store.__revoked_jti[k]; n++; }
+    if(expired(store.__revoked_jti[k], JTI_GC_MS)){ delete store.__revoked_jti[k]; n++; }
   }
   return n;
 }
@@ -1087,6 +1101,7 @@ if(require.main === module){
 /* rebase: union — main added persistStoreSync/workers/staticCache + Wave 6/15 test hooks, Wave 14 adds metrics. */
 module.exports = {
   server, store, audit, isHttps, persistStore, persistStoreSync, db, redis, cache, workers, staticCache, metrics,
+  __gcStoreForTests: gcStore,
   /* Wave 6: برای تستِ مستقیمِ نگهبانِ شمارش (state روی Redis) */
   __enumForTests: { enumTouch, enumRead, enumDelayMs, enumStage, enumKey },
   /* Wave 15: برای تستِ Graceful Shutdown (وضعیتِ drain) */
