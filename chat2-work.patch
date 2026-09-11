@@ -1,0 +1,906 @@
+From 2dad76a9100332c8810e9587d3b7a34f9d9398ef Mon Sep 17 00:00:00 2001
+From: arena-agent <arena-agent@users.noreply.github.com>
+Date: Fri, 11 Sep 2026 10:21:04 +0000
+Subject: [PATCH 1/4] fix(delta): replace dead `homework` collection with real
+ `hw_assignments` (schema gap 1)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+DELTA_HARDENING.md §6 gap 1: the pull/delta allowlists carried the
+collection name `homework`, but the migration chain, authz model,
+SCHEMA_TABLES and the client (src/js/51-homework.js → db.hw_assignments)
+all model homework as `hw_assignments`. Consequences before this fix:
+
+- PG-live pull: readCollection('homework') → SELECT * FROM "homework"
+  → 42P01 → the whole /api/v1/pull request 500s (latent, no PG-live
+  default-pull test existed).
+- Homework data never synced down: the response key `homework` merged
+  into a client collection that does not exist; the real collection
+  `hw_assignments` (table + migration 005-adjacent schema, updated_at
+  present) was never served.
+
+Fix: swap `homework` → `hw_assignments` in the canonical surface and
+every mirror:
+
+- server/pull.js ALL_COLLECTIONS (default pull + ?collections= filter)
+- server/syncdelta.js ALLOWED (delta SQL builder allowlist)
+- tests/wave4-sync-all-collections.js ALL fixture list
+- tests/wave10-query-audit.js PULL_TABLES
+- tools/delta-load-test.js ALL_COLLECTIONS
+
+Old clients explicitly requesting ?collections=homework get it
+silently dropped by the fail-closed collection filter (store has no
+such collection either) — no crash, consistent with AC6 semantics.
+
+Tests: tests/delta-schema-gaps.js (new) — SG1..SG5: builder accepts
+hw_assignments and emits FROM "hw_assignments"; dead name rejected
+fail-closed by syncdelta; default memory-mode pull serves
+collections.hw_assignments (delta row only, school-scoped) and omits
+homework; PG-live regression — no delta query is issued for the
+missing table, pull stays 200; legacy ?collections=homework,grades
+drops the dead name and serves grades. Phase-2 suites re-run green:
+delta-sync-hardening 19/19, wave4-all-collections 13/13,
+wave10-query-audit 14/14, contract-layers 18/18.
+---
+ server/pull.js                      |   2 +-
+ server/syncdelta.js                 |   2 +-
+ tests/delta-schema-gaps.js          | 183 ++++++++++++++++++++++++++++
+ tests/wave10-query-audit.js         |   2 +-
+ tests/wave4-sync-all-collections.js |   2 +-
+ tools/delta-load-test.js            |   2 +-
+ 6 files changed, 188 insertions(+), 5 deletions(-)
+ create mode 100644 tests/delta-schema-gaps.js
+
+diff --git a/server/pull.js b/server/pull.js
+index 68f57f1..1724b04 100644
+--- a/server/pull.js
++++ b/server/pull.js
+@@ -243,7 +243,7 @@ function createPull(ctx) {
+     const ALL_COLLECTIONS = [
+       'schools', 'users', 'classes', 'subjects', 'schedule', 'enrollments',
+       'attendance', 'grades', 'discipline', 'leaves', 'notifications',
+-      'announcements', 'homework', 'hw_submissions', 'vclass_rooms',
++      'announcements', 'hw_assignments', 'hw_submissions', 'vclass_rooms',
+       'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
+     ];
+ 
+diff --git a/server/syncdelta.js b/server/syncdelta.js
+index d0d5780..411e1b6 100644
+--- a/server/syncdelta.js
++++ b/server/syncdelta.js
+@@ -27,7 +27,7 @@
+ const ALLOWED = new Set([
+   'schools', 'users', 'classes', 'subjects', 'schedule', 'enrollments',
+   'attendance', 'grades', 'discipline', 'leaves', 'notifications',
+-  'announcements', 'homework', 'hw_submissions', 'vclass_rooms',
++  'announcements', 'hw_assignments', 'hw_submissions', 'vclass_rooms',
+   'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
+ ]);
+ 
+diff --git a/tests/delta-schema-gaps.js b/tests/delta-schema-gaps.js
+new file mode 100644
+index 0000000..f380c5b
+--- /dev/null
++++ b/tests/delta-schema-gaps.js
+@@ -0,0 +1,183 @@
++#!/usr/bin/env node
++/* ═══════════════════════════════════════════════════════════════════
++   tests/delta-schema-gaps.js — «بستن شکاف اسکیما Delta»
++   (DELTA_HARDENING.md §6 — سه شکاف اسکیمای مسیر دلتا)
++   ─────────────────────────────────────────────────────────────────
++   گپ ۱ — نامِ مردهٔ `homework` در سطحِ allowlist (pull/syncdelta) با
++          مجموعهٔ واقعیِ `hw_assignments` (جدول + کلاینت + authz مدل)
++          جایگزین شده:
++     SG1  tableName/deltaRowsSql برای hw_assignments پذیرفته می‌شود و
++          FROM "hw_assignments" با پیشیکیتِ updated_at می‌سازد
++     SG2  نامِ مردهٔ homework در syncdelta fail-closed رد می‌شود
++     SG3  پولِ پیش‌فرض (حافظه) کلید collections.hw_assignments می‌دهد و
++          homework را دیگر نمی‌فرستد؛ دلتا فقط سطرِ تازه را می‌دهد
++     SG4  رگرسیونِ PG-live: قبلاً SELECT * FROM "homework" ⇒ 42P01 ⇒
++          ۵۰۰؛ حالا حتی کوئری‌ای برای homework صادر نمی‌شود و پول ۲۰۰
++          می‌ماند (با db جعلی که برای جدولِ غایب پرتاب می‌کند)
++     SG5  کلاینتِ قدیمی ?collections=homework,grades ⇒ homework بی‌صدا
++          حذف می‌شود (fail-closed)، بدونِ کرش؛ grades سرو می‌شود
++
++   گپ ۲ — نامِ مردهٔ `vclass_rooms` (هیچ جدول/کلاینتی ندارد) حذف و
++          مجموعهٔ واقعیِ vclass_sessions (دارای school_id ⇒ scope-پذیر)
++          جایگزین شده:
++     SG6  tableName برای vclass_sessions پاس / vclass_rooms رد
++     SG7  پولِ پیش‌فرض vclass_sessions دارد و vclass_rooms ندارد
++     SG8  جداسازی مدرسه‌ای: سطر school_id=2 در دلتای vclass_sessions
++          به جلسهٔ مدرسهٔ ۱ نشت نمی‌کند
++
++   گپ ۳ — sync_conflicts.updated_at (ستون دلتا + ایندکس، مهاجرت ۰۰۶):
++     SG9  مهاجرتِ 006: ADD COLUMN IF NOT EXISTS / backfill با WHERE
++          updated_at IS NULL / SET NOT NULL / ایندکس — به‌همراهِ فایلِ
++          down (drop index + drop column) و ایندکس‌های hw_assignments
++          و vclass_sessions؛ باBEGIN/COMMIT
++     SG10 ردیفِ تعارضِ تازه (sync.js) updated_at هم‌ارزِ created_at دارد
++     SG11 مسیرِ داوری (conflicts.js) هنگامِ resolve روی ردیف stamp
++          می‌زند (status→resolved به‌همراهِ updated_at)
++     SG12 دلتای حافظه‌ایِ sync_conflicts: سطرِ تازه (updated_at>since)
++          برمی‌گردد؛ سطرِ کهنه نه
++
++   Run: node tests/delta-schema-gaps.js   (exit 0 = all green)
++   ═══════════════════════════════════════════════════════════════════ */
++'use strict';
++
++const path = require('path');
++const fs = require('fs');
++
++const ROOT = path.join(__dirname, '..');
++const { createPull } = require(path.join(ROOT, 'server', 'pull'));
++const { createCursor } = require(path.join(ROOT, 'server', 'cursor'));
++const { createSync, attach } = require(path.join(ROOT, 'server', 'sync'));
++const { createConflicts } = require(path.join(ROOT, 'server', 'conflicts'));
++const { tableName, deltaRowsSql } = require(path.join(ROOT, 'server', 'syncdelta'));
++const { opX } = require('./helpers/opx');
++
++let pass = 0, fail = 0;
++const failures = [];
++const assert = (c, m) => { if (!c) throw new Error(m || 'شرط برقرار نیست'); };
++async function test(name, fn) {
++  try { await fn(); pass++; console.log(`  ✅ ${name}`); }
++  catch (e) { fail++; failures.push({ name, msg: e.message }); console.log(`  ❌ ${name}\n     ${e.message}`); }
++}
++function group(t) { console.log(`\n▸ ${t}`); }
++
++const DAY = 24 * 60 * 60 * 1000;
++const NOW = Date.now();
++const iso = (t) => new Date(t).toISOString();
++const FRESH = iso(NOW - 2 * DAY); /* دلتا (نه full): سطرهای ۱‌روزه تازه‌اند */
++
++/* ── سطحِ کانونیِ مجموعه‌ها پس ازِ این مأموریت (۱۹ عضو) ── */
++const EXPECTED = [
++  'schools', 'users', 'classes', 'subjects', 'schedule', 'enrollments',
++  'attendance', 'grades', 'discipline', 'leaves', 'notifications',
++  'announcements', 'hw_assignments', 'hw_submissions', 'vclass_sessions',
++  'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
++];
++const DEAD = ['homework', 'vclass_rooms'];
++
++function makeStore() {
++  const store = { __deleted_records: [], __server_version: 42 };
++  for (const c of EXPECTED) {
++    const uid = c === 'notifications' ? 10 : null;
++    store[c] = [
++      { id: 1, school_id: 1, user_id: uid, ref: c + '-old', created_at: iso(NOW - 30 * DAY), updated_at: iso(NOW - 30 * DAY) },
++      { id: 2, school_id: 1, user_id: uid, ref: c + '-new', created_at: iso(NOW - 1 * DAY), updated_at: iso(NOW - 1 * DAY) },
++      { id: 3, school_id: 2, user_id: uid, ref: c + '-new-s2', created_at: iso(NOW - 1 * DAY), updated_at: iso(NOW - 1 * DAY) }
++    ];
++  }
++  return store;
++}
++
++function makePull(o) {
++  o = o || {};
++  const store = o.store || makeStore();
++  const cap = {};
++  const db = o.db || null;
++  const controller = createPull({
++    store, db,
++    sessionFrom: async () => o.session || { id: 10, school_id: 1, role: 'manager' },
++    sendJson: (res, code, body) => { cap.code = code; cap.body = body; },
++    cursor: o.cursor !== undefined ? o.cursor : createCursor({ secret: 'k'.repeat(64) })
++  });
++  return { store, cap, pull: (qs) => controller.apiPull({ url: '/api/v1/pull' + (qs ? '?' + qs : '') }, {}) };
++}
++
++/* ═══════════════ گپ ۱ — homework → hw_assignments ═══════════════ */
++(async () => {
++group('گپ ۱ — نامِ مردهٔ homework با hw_assignments جایگزین شد');
++
++await test('SG1 syncdelta برای hw_assignments کوئری دلتا می‌سازد', async () => {
++  assert(tableName('hw_assignments') === 'hw_assignments', 'tableName must pass hw_assignments');
++  const q = deltaRowsSql('hw_assignments', { sinceISO: FRESH });
++  const sql = (q && q.sql) ? q.sql : String(q);
++  assert(/FROM "hw_assignments"/.test(sql), 'FROM "hw_assignments" in: ' + sql);
++  assert(/updated_at/.test(sql) && /created_at/.test(sql), 'timestamp predicate in: ' + sql);
++});
++
++await test('SG2 نامِ مردهٔ homework در allowlist رد می‌شود (fail-closed)', async () => {
++  let threw = false;
++  try { tableName('homework'); } catch (_) { threw = true; }
++  assert(threw, 'tableName("homework") must throw');
++  let threw2 = false;
++  try { deltaRowsSql('homework', { sinceISO: FRESH }); } catch (_) { threw2 = true; }
++  assert(threw2, 'deltaRowsSql("homework") must throw');
++});
++
++await test('SG3 پولِ پیش‌فرض (حافظه): hw_assignments هست، homework نیست', async () => {
++  const { cap, pull } = makePull();
++  await pull('since=' + encodeURIComponent(FRESH));
++  assert(cap.code === 200, 'status 200, got ' + cap.code);
++  const keys = Object.keys(cap.body.collections || {});
++  assert(keys.indexOf('hw_assignments') > -1, 'hw_assignments must be served');
++  assert(keys.indexOf('homework') === -1, 'homework must NOT be served');
++  /* دلتا: فقط سطرِ تازهٔ مدرسهٔ ۱ (نه کهنه، نه مدرسهٔ ۲) */
++  const rows = cap.body.collections.hw_assignments;
++  assert(Array.isArray(rows) && rows.length === 1 && rows[0].ref === 'hw_assignments-new',
++    'delta must return only the fresh school-1 row, got ' + JSON.stringify(rows));
++});
++
++await test('SG4 رگرسیون PG-live: کوئری‌ای برای جدولِ غایبِ homework صادر نمی‌شود (۲۰۰)', async () => {
++  const queries = [];
++  const db = {
++    isPostgres: () => true,
++    async readCollection(c) { return makeStore()[c] || []; },
++    async query(sql, params) {
++      const t = (/FROM "([a-z_]+)"/.exec(sql) || [])[1];
++      queries.push(t);
++      /* شبیه‌سازیِ 42P01: جدولِ غایب در PG زنده پرتاب می‌کند (باگِ پنهانِ
++         پیشین: SELECT * FROM "homework" ⇒ 500 کلِ پول) */
++      if (t === 'homework') throw new Error('relation does not exist');
++      const rowId = t === 'schools' ? 1 : 2;
++      const uid = t === 'notifications' ? 10 : null;
++      return { rows: [{ id: rowId, school_id: 1, user_id: uid, ref: 'pg-' + t, created_at: iso(NOW - 1 * DAY), updated_at: iso(NOW - 1 * DAY) }] };
++    }
++  };
++  const { cap, pull } = makePull({ db });
++  await pull('since=' + encodeURIComponent(FRESH));
++  assert(cap.code === 200, 'pull must stay 200 with the fixed surface, got ' + cap.code);
++  assert(queries.indexOf('homework') === -1,
++    'no delta query for dead name homework, saw: ' + queries.join(','));
++  assert(queries.indexOf('hw_assignments') > -1, 'hw_assignments must be delta-queried');
++  const rows = cap.body.collections.hw_assignments;
++  assert(Array.isArray(rows) && rows.length === 1 && rows[0].ref === 'pg-hw_assignments',
++    'hw_assignments row must come from the PG delta path');
++});
++
++await test('SG5 کلاینتِ قدیمی ?collections=homework ⇒ حذفِ بی‌صدای fail-closed، بدونِ کرش', async () => {
++  const { cap, pull } = makePull();
++  await pull('since=' + encodeURIComponent(FRESH) + '&collections=' + encodeURIComponent('homework,grades'));
++  assert(cap.code === 200, 'status 200, got ' + cap.code);
++  const keys = Object.keys(cap.body.collections || {});
++  assert(keys.indexOf('homework') === -1, 'homework must be dropped');
++  assert(keys.indexOf('grades') > -1, 'grades must still be served');
++});
++
++/* ═══════════════ خلاصه ═══════════════ */
++console.log('\n────────────────────────────────────────────────────────');
++if (fail === 0) {
++  console.log(`نتیجه Delta Schema Gaps: ${pass}/${pass}  —  بدون خطا ✅`);
++} else {
++  console.log(`نتیجه Delta Schema Gaps: ${pass}/${pass + fail}  —  ${fail} خطا ❌`);
++  for (const f of failures) console.log(`  ✗ ${f.name}: ${f.msg}`);
++}
++process.exit(fail === 0 ? 0 : 1);
++})().catch(e => { console.error('FATAL:', e); process.exit(2); });
+diff --git a/tests/wave10-query-audit.js b/tests/wave10-query-audit.js
+index 11d01b3..d7511b3 100644
+--- a/tests/wave10-query-audit.js
++++ b/tests/wave10-query-audit.js
+@@ -50,7 +50,7 @@ const HOSTILE = [
+ const PULL_TABLES = [
+   'schools', 'users', 'classes', 'subjects', 'schedule', 'enrollments',
+   'attendance', 'grades', 'discipline', 'leaves', 'notifications',
+-  'announcements', 'homework', 'hw_submissions', 'vclass_rooms',
++  'announcements', 'hw_assignments', 'hw_submissions', 'vclass_rooms',
+   'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
+ ];
+ 
+diff --git a/tests/wave4-sync-all-collections.js b/tests/wave4-sync-all-collections.js
+index 45fdbee..a2b762d 100644
+--- a/tests/wave4-sync-all-collections.js
++++ b/tests/wave4-sync-all-collections.js
+@@ -46,7 +46,7 @@ const iso = (t) => new Date(t).toISOString();
+ const ALL = [
+   'schools', 'users', 'classes', 'subjects', 'schedule', 'enrollments',
+   'attendance', 'grades', 'discipline', 'leaves', 'notifications',
+-  'announcements', 'homework', 'hw_submissions', 'vclass_rooms',
++  'announcements', 'hw_assignments', 'hw_submissions', 'vclass_rooms',
+   'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
+ ];
+ 
+diff --git a/tools/delta-load-test.js b/tools/delta-load-test.js
+index 124e456..28fdd7b 100644
+--- a/tools/delta-load-test.js
++++ b/tools/delta-load-test.js
+@@ -63,7 +63,7 @@ function usage() {
+ const ALL_COLLECTIONS = [
+   'schools', 'users', 'classes', 'subjects', 'schedule', 'enrollments',
+   'attendance', 'grades', 'discipline', 'leaves', 'notifications',
+-  'announcements', 'homework', 'hw_submissions', 'vclass_rooms',
++  'announcements', 'hw_assignments', 'hw_submissions', 'vclass_rooms',
+   'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
+ ];
+ 
+-- 
+2.47.3
+
+
+From a5a42267a7c364ab204fed1dcd1ba302b06b1b3d Mon Sep 17 00:00:00 2001
+From: arena-agent <arena-agent@users.noreply.github.com>
+Date: Fri, 11 Sep 2026 10:22:14 +0000
+Subject: [PATCH 2/4] fix(delta): drop dead `vclass_rooms`, serve real
+ `vclass_sessions` (schema gap 2)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+DELTA_HARDENING.md §6 gap 2: `vclass_rooms` sat in the pull/delta
+allowlists but has NO equivalent anywhere — no table in the migration
+chain, not in SCHEMA_TABLES, not in the authz model, not in the client
+store (the virtual-classroom domain is modeled as vclass_sessions /
+vclass_questions / vclass_links / vclass_attendance).
+
+Technical decision (per brief: «حذف از allowlist یا ساخت جدول؟ تصمیم
+فنی بگیر»): REMOVE the dead name; do NOT create a table for a
+collection with zero consumers. Creating a vclass_rooms table would be
+schema noise nothing reads or writes. The real vclass pull surface is
+vclass_sessions — school-scoped (school_id column ⇒ default
+filterCollectionForSession scope rule), table + updated_at present —
+which replaces it in the default list.
+
+Deliberately NOT added to the default pull surface:
+vclass_questions / vclass_links / vclass_attendance — their tables
+carry only session_id/student_id and NO school_id, so the default
+school-scope filter would treat every row as global and leak rows
+across schools. Pulling them safely needs session→school scoping
+machinery; documented as the known boundary in DELTA_HARDENING §6.
+
+Changes (same surface + mirrors as gap 1):
+- server/pull.js ALL_COLLECTIONS: vclass_rooms → vclass_sessions
+- server/syncdelta.js ALLOWED: same
+- tests/wave4-sync-all-collections.js: ALL list + AC10 fallback probe
+  table switched to vclass_sessions
+- tests/wave10-query-audit.js PULL_TABLES
+- tools/delta-load-test.js ALL_COLLECTIONS
+
+Legacy clients requesting ?collections=vclass_rooms get the name
+silently dropped (fail-closed), consistent with gap-1 semantics.
+
+Tests: tests/delta-schema-gaps.js SG6..SG8 — builder accepts
+vclass_sessions (FROM "vclass_sessions") and rejects vclass_rooms
+fail-closed; default pull serves collections.vclass_sessions and omits
+vclass_rooms; school isolation: school-1 session never sees school-2
+vclass rows and vice versa. SG4 extended to prove no delta query is
+issued for either dead name in PG-live mode. Re-run green: wave4-all
+13/13, wave10-query-audit 14/14, delta-sync-hardening 19/19,
+contract-layers 18/18, delta-load-test DRY_RUN exit 0.
+---
+ server/pull.js                      |  2 +-
+ server/syncdelta.js                 |  2 +-
+ tests/delta-schema-gaps.js          | 47 +++++++++++++++++++++++++++--
+ tests/wave10-query-audit.js         |  2 +-
+ tests/wave4-sync-all-collections.js |  6 ++--
+ tools/delta-load-test.js            |  2 +-
+ 6 files changed, 51 insertions(+), 10 deletions(-)
+
+diff --git a/server/pull.js b/server/pull.js
+index 1724b04..9b14562 100644
+--- a/server/pull.js
++++ b/server/pull.js
+@@ -243,7 +243,7 @@ function createPull(ctx) {
+     const ALL_COLLECTIONS = [
+       'schools', 'users', 'classes', 'subjects', 'schedule', 'enrollments',
+       'attendance', 'grades', 'discipline', 'leaves', 'notifications',
+-      'announcements', 'hw_assignments', 'hw_submissions', 'vclass_rooms',
++      'announcements', 'hw_assignments', 'hw_submissions', 'vclass_sessions',
+       'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
+     ];
+ 
+diff --git a/server/syncdelta.js b/server/syncdelta.js
+index 411e1b6..969cb82 100644
+--- a/server/syncdelta.js
++++ b/server/syncdelta.js
+@@ -27,7 +27,7 @@
+ const ALLOWED = new Set([
+   'schools', 'users', 'classes', 'subjects', 'schedule', 'enrollments',
+   'attendance', 'grades', 'discipline', 'leaves', 'notifications',
+-  'announcements', 'hw_assignments', 'hw_submissions', 'vclass_rooms',
++  'announcements', 'hw_assignments', 'hw_submissions', 'vclass_sessions',
+   'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
+ ]);
+ 
+diff --git a/tests/delta-schema-gaps.js b/tests/delta-schema-gaps.js
+index f380c5b..096aec0 100644
+--- a/tests/delta-schema-gaps.js
++++ b/tests/delta-schema-gaps.js
+@@ -145,7 +145,7 @@ await test('SG4 رگرسیون PG-live: کوئری‌ای برای جدولِ غ
+       queries.push(t);
+       /* شبیه‌سازیِ 42P01: جدولِ غایب در PG زنده پرتاب می‌کند (باگِ پنهانِ
+          پیشین: SELECT * FROM "homework" ⇒ 500 کلِ پول) */
+-      if (t === 'homework') throw new Error('relation does not exist');
++      if (t === 'homework' || t === 'vclass_rooms') throw new Error('relation does not exist');
+       const rowId = t === 'schools' ? 1 : 2;
+       const uid = t === 'notifications' ? 10 : null;
+       return { rows: [{ id: rowId, school_id: 1, user_id: uid, ref: 'pg-' + t, created_at: iso(NOW - 1 * DAY), updated_at: iso(NOW - 1 * DAY) }] };
+@@ -154,8 +154,8 @@ await test('SG4 رگرسیون PG-live: کوئری‌ای برای جدولِ غ
+   const { cap, pull } = makePull({ db });
+   await pull('since=' + encodeURIComponent(FRESH));
+   assert(cap.code === 200, 'pull must stay 200 with the fixed surface, got ' + cap.code);
+-  assert(queries.indexOf('homework') === -1,
+-    'no delta query for dead name homework, saw: ' + queries.join(','));
++  assert(queries.indexOf('homework') === -1 && queries.indexOf('vclass_rooms') === -1,
++    'no delta query for dead names, saw: ' + queries.join(','));
+   assert(queries.indexOf('hw_assignments') > -1, 'hw_assignments must be delta-queried');
+   const rows = cap.body.collections.hw_assignments;
+   assert(Array.isArray(rows) && rows.length === 1 && rows[0].ref === 'pg-hw_assignments',
+@@ -171,6 +171,47 @@ await test('SG5 کلاینتِ قدیمی ?collections=homework ⇒ حذفِ ب
+   assert(keys.indexOf('grades') > -1, 'grades must still be served');
+ });
+ 
++
++/* ═══════════════ گپ ۲ — vclass_rooms → vclass_sessions ═══════════════ */
++group('گپ ۲ — نامِ مردهٔ vclass_rooms حذف، vclass_sessions واقعی نشست');
++
++await test('SG6 syncdelta برای vclass_sessions می‌سازد / vclass_rooms رد می‌شود', async () => {
++  assert(tableName('vclass_sessions') === 'vclass_sessions', 'tableName must pass vclass_sessions');
++  const q = deltaRowsSql('vclass_sessions', { sinceISO: FRESH });
++  const sql = (q && q.sql) ? q.sql : String(q);
++  assert(/FROM "vclass_sessions"/.test(sql), 'FROM "vclass_sessions" in: ' + sql);
++  let threw = false;
++  try { tableName('vclass_rooms'); } catch (_) { threw = true; }
++  assert(threw, 'tableName("vclass_rooms") must throw');
++});
++
++await test('SG7 پولِ پیش‌فرض: vclass_sessions هست، vclass_rooms نیست', async () => {
++  const { cap, pull } = makePull();
++  await pull('since=' + encodeURIComponent(FRESH));
++  assert(cap.code === 200, 'status 200, got ' + cap.code);
++  const keys = Object.keys(cap.body.collections || {});
++  assert(keys.indexOf('vclass_sessions') > -1, 'vclass_sessions must be served');
++  assert(keys.indexOf('vclass_rooms') === -1, 'vclass_rooms must NOT be served');
++  const rows = cap.body.collections.vclass_sessions;
++  assert(Array.isArray(rows) && rows.length === 1 && rows[0].ref === 'vclass_sessions-new',
++    'delta must return only the fresh school-1 row, got ' + JSON.stringify(rows));
++});
++
++await test('SG8 جداسازی مدرسه‌ایِ vclass_sessions (school_id ⇒ scope پیش‌فرض)', async () => {
++  /* جلسهٔ مدرسهٔ ۱: سطرِ مدرسهٔ ۲ نمی‌آید */
++  const a = makePull();
++  await a.pull('since=' + encodeURIComponent(FRESH) + '&collections=' + encodeURIComponent('vclass_sessions'));
++  const rows1 = a.cap.body.collections.vclass_sessions;
++  assert(Array.isArray(rows1) && rows1.every(r => Number(r.school_id) === 1),
++    'school-1 session must not see school-2 vclass rows, got ' + JSON.stringify(rows1));
++  /* جلسهٔ مدرسهٔ ۲: فقط سطرِ خودش */
++  const b = makePull({ session: { id: 11, school_id: 2, role: 'manager' } });
++  await b.pull('since=' + encodeURIComponent(FRESH) + '&collections=' + encodeURIComponent('vclass_sessions'));
++  const rows2 = b.cap.body.collections.vclass_sessions;
++  assert(Array.isArray(rows2) && rows2.length === 1 && Number(rows2[0].school_id) === 2,
++    'school-2 session must see only its own vclass row, got ' + JSON.stringify(rows2));
++});
++
+ /* ═══════════════ خلاصه ═══════════════ */
+ console.log('\n────────────────────────────────────────────────────────');
+ if (fail === 0) {
+diff --git a/tests/wave10-query-audit.js b/tests/wave10-query-audit.js
+index d7511b3..d558058 100644
+--- a/tests/wave10-query-audit.js
++++ b/tests/wave10-query-audit.js
+@@ -50,7 +50,7 @@ const HOSTILE = [
+ const PULL_TABLES = [
+   'schools', 'users', 'classes', 'subjects', 'schedule', 'enrollments',
+   'attendance', 'grades', 'discipline', 'leaves', 'notifications',
+-  'announcements', 'hw_assignments', 'hw_submissions', 'vclass_rooms',
++  'announcements', 'hw_assignments', 'hw_submissions', 'vclass_sessions',
+   'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
+ ];
+ 
+diff --git a/tests/wave4-sync-all-collections.js b/tests/wave4-sync-all-collections.js
+index a2b762d..14b4334 100644
+--- a/tests/wave4-sync-all-collections.js
++++ b/tests/wave4-sync-all-collections.js
+@@ -46,7 +46,7 @@ const iso = (t) => new Date(t).toISOString();
+ const ALL = [
+   'schools', 'users', 'classes', 'subjects', 'schedule', 'enrollments',
+   'attendance', 'grades', 'discipline', 'leaves', 'notifications',
+-  'announcements', 'hw_assignments', 'hw_submissions', 'vclass_rooms',
++  'announcements', 'hw_assignments', 'hw_submissions', 'vclass_sessions',
+   'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
+ ];
+ 
+@@ -199,7 +199,7 @@ const ids = (b, c) => (b.collections[c] || []).map(r => r.id).sort((x, y) => x -
+       async query(sql, params) {
+         const t = (/FROM "([a-z_]+)"/.exec(sql) || [])[1];
+         queries.push(t);
+-        if (/FROM "vclass_rooms"/.test(sql)) throw new Error('no timestamp columns');
++        if (/FROM "vclass_sessions"/.test(sql)) throw new Error('no timestamp columns');
+         /* جدولِ schools با s.id سنجه‌ییده می‌شود (نه school_id)؛
+            notifications با user_id (نقشِ جلسه = ۱۰) */
+         const rowId = t === 'schools' ? 1 : 2;
+@@ -214,7 +214,7 @@ const ids = (b, c) => (b.collections[c] || []).map(r => r.id).sort((x, y) => x -
+       assert(queries.indexOf(c) > -1, 'no delta query for ' + c);
+       assert(Array.isArray(cap.body.collections[c]) && cap.body.collections[c].length > 0, c + ' must have rows (pg or fallback)');
+     }
+-    assert(queries.indexOf('vclass_rooms') > -1, 'failing table still got its delta query first');
++    assert(queries.indexOf('vclass_sessions') > -1, 'failing table still got its delta query first');
+   });
+ 
+   await test('AC11 دلتای کهنه اصلاً به DB دلتا نمی‌زند (فقط خواندنِ کامل)', async () => {
+diff --git a/tools/delta-load-test.js b/tools/delta-load-test.js
+index 28fdd7b..56d79b9 100644
+--- a/tools/delta-load-test.js
++++ b/tools/delta-load-test.js
+@@ -63,7 +63,7 @@ function usage() {
+ const ALL_COLLECTIONS = [
+   'schools', 'users', 'classes', 'subjects', 'schedule', 'enrollments',
+   'attendance', 'grades', 'discipline', 'leaves', 'notifications',
+-  'announcements', 'hw_assignments', 'hw_submissions', 'vclass_rooms',
++  'announcements', 'hw_assignments', 'hw_submissions', 'vclass_sessions',
+   'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
+ ];
+ 
+-- 
+2.47.3
+
+
+From ebd3d4eaece21c9c861580306a67a24190dafcad Mon Sep 17 00:00:00 2001
+From: arena-agent <arena-agent@users.noreply.github.com>
+Date: Fri, 11 Sep 2026 10:24:41 +0000
+Subject: [PATCH 3/4] =?UTF-8?q?fix(delta):=20sync=5Fconflicts.updated=5Fat?=
+ =?UTF-8?q?=20=E2=80=94=20migration=20006=20+=20conflict=20stamps=20(schem?=
+ =?UTF-8?q?a=20gap=203)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+DELTA_HARDENING.md §6 gap 3: sync_conflicts had created_at but NO
+updated_at, while the delta pull predicate is
+(created_at > $since OR updated_at > $since) ORDER BY updated_at, id —
+in PG-live mode every sync_conflicts delta query died on the missing
+column and the collection could never be delta-bounded.
+
+migration 006_delta_schema_gaps.sql (+ .down), following the repo
+conventions (idempotent guards, BEGIN/COMMIT, paired rollback, header
+WHY — same no-CONCURRENTLY policy as 004/005):
+- ALTER TABLE sync_conflicts ADD COLUMN IF NOT EXISTS updated_at
+  TIMESTAMPTZ
+- UPDATE sync_conflicts SET updated_at = created_at
+  WHERE updated_at IS NULL  (idempotent backfill per the brief's SQL)
+- ALTER COLUMN updated_at SET NOT NULL
+- CREATE INDEX IF NOT EXISTS idx_sync_conflicts_updated_at
+- CREATE INDEX IF NOT EXISTS idx_hw_assignments_updated_at and
+  idx_vclass_sessions_updated_at — the two collections that joined the
+  delta surface in gaps 1-2 (same 005 policy: btree on updated_at for
+  the OR predicate / ORDER BY).
+
+Writers: no code path INSERTs into sync_conflicts today (Wave 1 keeps
+arbitration state cache-side — see the apiResolve note), so SET NOT
+NULL breaks nothing; the stamps below make the future mirror path
+correct from day one:
+- server/sync.js: new conflict rows carry updated_at: nowIso
+  (=== created_at).
+- server/conflicts.js apiResolve: resolving stamps
+  c.updated_at = c.resolved_at. Without it a long-lived conflict that
+  gets adjudicated NOW would never surface in any client's delta pull
+  (created_at stays old) — the exact hole the column closes.
+
+Tests (tests/delta-schema-gaps.js SG9..SG12, now 12/12): 006 file
+contract (idempotent column add, backfill, NOT NULL, all three
+indexes, transactional up + down that drops them); conflict row from
+the real two-op sync path carries updated_at === created_at; resolve
+stamps updated_at === resolved_at (fresh); delta of a store whose old
+conflict was resolved recently returns exactly that row via
+updated_at. Re-run green: delta-sync-hardening 19/19 (incl. DH15/16
+conflict witnesses), contract-layers 18/18, wave4-all 13/13,
+wave10-query-audit 14/14.
+---
+ migrations/006_delta_schema_gaps.down.sql |  10 +++
+ migrations/006_delta_schema_gaps.sql      |  33 +++++++
+ server/conflicts.js                       |   3 +
+ server/sync.js                            |   2 +-
+ tests/delta-schema-gaps.js                | 104 ++++++++++++++++++++++
+ 5 files changed, 151 insertions(+), 1 deletion(-)
+ create mode 100644 migrations/006_delta_schema_gaps.down.sql
+ create mode 100644 migrations/006_delta_schema_gaps.sql
+
+diff --git a/migrations/006_delta_schema_gaps.down.sql b/migrations/006_delta_schema_gaps.down.sql
+new file mode 100644
+index 0000000..0333a44
+--- /dev/null
++++ b/migrations/006_delta_schema_gaps.down.sql
+@@ -0,0 +1,10 @@
++-- Rollback for 006_delta_schema_gaps.sql
++-- NOTE: dropping the updated_at column discards the resolve-stamp history
++-- of sync_conflicts rows (arbitration state) — pre-production only, same
++-- policy as the other .down files in this chain.
++BEGIN;
++DROP INDEX IF EXISTS idx_vclass_sessions_updated_at;
++DROP INDEX IF EXISTS idx_hw_assignments_updated_at;
++DROP INDEX IF EXISTS idx_sync_conflicts_updated_at;
++ALTER TABLE sync_conflicts DROP COLUMN IF EXISTS updated_at;
++COMMIT;
+diff --git a/migrations/006_delta_schema_gaps.sql b/migrations/006_delta_schema_gaps.sql
+new file mode 100644
+index 0000000..9429ec7
+--- /dev/null
++++ b/migrations/006_delta_schema_gaps.sql
+@@ -0,0 +1,33 @@
++-- Payesh migration 006: delta schema gaps (DELTA_HARDENING.md §6, phase 3)
++-- Immutable forward migration. Rollback: 006_delta_schema_gaps.down.sql
++--
++-- WHY: three schema gaps on the delta path («بستن شکاف اسکیما Delta»):
++--   1) sync_conflicts had created_at but NO updated_at — the delta pull
++--      predicate is (created_at > $since OR updated_at > $since)
++--      ORDER BY updated_at, id, so in PG-live mode every sync_conflicts
++--      delta query died on the missing column and the collection could
++--      never be delta-bounded. Per the brief: ADD COLUMN updated_at
++--      TIMESTAMPTZ, backfill from created_at, SET NOT NULL, index it.
++--   2) hw_assignments and vclass_sessions joined the pull/delta surface in
++--      this phase (replacing the dead names homework / vclass_rooms, which
++--      never had tables). Same policy as migration 005: single-column btree
++--      on updated_at so the OR predicate gets a BitmapOr path and the
++--      ORDER BY has an ordered scan source.
++--
++-- Writers: sync_conflicts rows are cache-side in Wave 1 (arbitration state;
++-- no INSERT path mirrors them yet — see server/conflicts.js apiResolve
++-- note), so SET NOT NULL breaks no existing writer. server/sync.js now
++-- stamps updated_at on new conflict rows and server/conflicts.js stamps it
++-- on resolve, so the future mirror path is already correct.
++--
++-- CONCURRENTLY is deliberately NOT used (same policy as 004/005):
++-- migrations run inside a transaction and CREATE INDEX CONCURRENTLY cannot.
++-- Apply by hand with CONCURRENTLY on a production database with live traffic.
++BEGIN;
++ALTER TABLE sync_conflicts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
++UPDATE sync_conflicts SET updated_at = created_at WHERE updated_at IS NULL;
++ALTER TABLE sync_conflicts ALTER COLUMN updated_at SET NOT NULL;
++CREATE INDEX IF NOT EXISTS idx_sync_conflicts_updated_at  ON sync_conflicts   (updated_at);
++CREATE INDEX IF NOT EXISTS idx_hw_assignments_updated_at  ON hw_assignments   (updated_at);
++CREATE INDEX IF NOT EXISTS idx_vclass_sessions_updated_at ON vclass_sessions  (updated_at);
++COMMIT;
+diff --git a/server/conflicts.js b/server/conflicts.js
+index b7f5bba..af9fb0b 100644
+--- a/server/conflicts.js
++++ b/server/conflicts.js
+@@ -121,6 +121,9 @@ function createConflicts(ctx){
+     c.winner = winner;
+     c.resolved_by = s.id;
+     c.resolved_at = new Date().toISOString();
++    /* Gap 3 (Δ-schema): داوری خودش یک تغییر است — بدونِ این مُهر، دلتا
++       ردیفِ حل‌شدهٔ قدیمی را هرگز نمی‌بیند (created_at کهنه است). */
++    c.updated_at = c.resolved_at;
+     if(body.reason) c.reason = String(body.reason).slice(0, 200);
+     markDirty();
+     audit('conflict_resolved', { user_id: s.id, conflict_id: c.id, collection: c.collection, record_id: c.record_id, winner });
+diff --git a/server/sync.js b/server/sync.js
+index b33ac33..63a5371 100644
+--- a/server/sync.js
++++ b/server/sync.js
+@@ -669,7 +669,7 @@ function createSync(ctx){
+             server_version: vrec ? (vrec.version || 1) : null,
+             server_state: vrec ? Object.assign({}, vrec) : null,
+             incoming: { data: Object.assign({}, op.data), by: s.id, at: nowIso, op_uid: op.uid },
+-            status: 'open', created_at: nowIso
++            status: 'open', created_at: nowIso, updated_at: nowIso
+           };
+           store.sync_conflicts.push(cf);
+           /* ویو ۱۴: برچسبِ collection نامِ جدول است (مجموعهٔ بستهٔ VERSIONED)،
+diff --git a/tests/delta-schema-gaps.js b/tests/delta-schema-gaps.js
+index 096aec0..b695389 100644
+--- a/tests/delta-schema-gaps.js
++++ b/tests/delta-schema-gaps.js
+@@ -212,6 +212,110 @@ await test('SG8 جداسازی مدرسه‌ایِ vclass_sessions (school_id 
+     'school-2 session must see only its own vclass row, got ' + JSON.stringify(rows2));
+ });
+ 
++
++/* ═══════════════ گپ ۳ — sync_conflicts.updated_at (مهاجرت ۰۰۶) ═══════════════ */
++group('گپ ۳ — ستونِ دلتای sync_conflicts + مُهرِ داوری');
++
++await test('SG9 مهاجرتِ 006: ستون + backfill + NOT NULL + ایندکس‌ها + down', async () => {
++  const up = fs.readFileSync(path.join(ROOT, 'migrations', '006_delta_schema_gaps.sql'), 'utf8');
++  const dn = fs.readFileSync(path.join(ROOT, 'migrations', '006_delta_schema_gaps.down.sql'), 'utf8');
++  assert(/BEGIN;/.test(up) && /COMMIT;/.test(up), '006 must be wrapped in a transaction');
++  assert(/ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ/.test(up), 'idempotent ADD COLUMN');
++  assert(/UPDATE sync_conflicts SET updated_at = created_at WHERE updated_at IS NULL/.test(up),
++    'idempotent backfill from created_at');
++  assert(/ALTER TABLE sync_conflicts ALTER COLUMN updated_at SET NOT NULL/.test(up), 'SET NOT NULL per brief');
++  assert(/CREATE INDEX IF NOT EXISTS idx_sync_conflicts_updated_at\s+ON sync_conflicts\s*\(updated_at\)/.test(up),
++    'index on sync_conflicts(updated_at)');
++  assert(/CREATE INDEX IF NOT EXISTS idx_hw_assignments_updated_at/.test(up) &&
++         /CREATE INDEX IF NOT EXISTS idx_vclass_sessions_updated_at/.test(up),
++    'delta indexes for the two collections that joined the surface (gaps 1-2)');
++  assert(/BEGIN;/.test(dn) && /COMMIT;/.test(dn), 'down must be transactional');
++  assert(/DROP INDEX IF EXISTS idx_sync_conflicts_updated_at/.test(dn) &&
++         /DROP INDEX IF EXISTS idx_hw_assignments_updated_at/.test(dn) &&
++         /DROP INDEX IF EXISTS idx_vclass_sessions_updated_at/.test(dn),
++    'down drops all three indexes');
++  assert(/ALTER TABLE sync_conflicts DROP COLUMN IF EXISTS updated_at/.test(dn), 'down drops the column');
++});
++
++await test('SG10 ردیفِ تعارضِ تازه (sync.js) updated_at هم‌ارزِ created_at دارد', async () => {
++  const store = {
++    grades: [{ id: 55, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 19, version: 3, updated_at: iso(Date.now()) }],
++    users: [{ id: 5, role: 'manager', school_id: 1 }, { id: 7, role: 'manager', school_id: 1 }],
++    __processed_uids: {}, __server_version: 0
++  };
++  const ctx = {
++    store,
++    db: { persistOpsBatch: async () => ({ ok: true }), isUidProcessed: async () => false },
++    MAX_BATCH: 500, AT_DRIFT_MS: 24 * 3600 * 1000,
++    audit: () => {},
++    sessionFrom: async () => ({ id: 5, role: 'manager', school_id: 1 }),
++    sendJson: (res, code, body) => { res._cap = { code, body }; },
++    markDirty: () => {}
++  };
++  attach(store);
++  const s = createSync(ctx);
++  const rClean = {}, rStale = {};
++  await s.apiSync({}, rClean, { ops: [opX({ by: 5, collection: 'grades', type: 'upd', id: 55, base_version: 3,
++    data: { id: 55, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 20 } })] });
++  await s.apiSync({}, rStale, { ops: [opX({ by: 5, collection: 'grades', type: 'upd', id: 55, base_version: 2,
++    data: { id: 55, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 10 } })] });
++  assert(rClean._cap.body.results[0].ok === true, 'clean op must apply');
++  assert(rStale._cap.body.results[0].code === 'conflict_preserved', 'stale op must conflict');
++  const cf = (store.sync_conflicts || [])[0];
++  assert(cf, 'conflict row must exist');
++  assert(typeof cf.updated_at === 'string' && cf.updated_at === cf.created_at,
++    'conflict row must carry updated_at === created_at, got ' + JSON.stringify({ created_at: cf.created_at, updated_at: cf.updated_at }));
++});
++
++await test('SG11 داوری (resolve) روی ردیفِ تعارض updated_at مُهر می‌زند', async () => {
++  const store = {
++    users: [{ id: 5, role: 'manager', school_id: 1 }],
++    grades: [{ id: 55, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 18, version: 4, updated_at: iso(NOW - 1 * DAY) }],
++    sync_conflicts: [{ id: 901, collection: 'grades', record_id: 55, school_id: 1, status: 'open',
++      base_version: 2, server_version: 4, winner: null,
++      server_state: { id: 55, score: 18, version: 4 },
++      incoming: { data: { id: 55, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 17 }, by: 7, at: iso(NOW - 1 * DAY) },
++      created_at: iso(NOW - 5 * DAY), updated_at: iso(NOW - 5 * DAY) }],
++    __server_version: 0
++  };
++  const cap = {};
++  const conflicts = createConflicts({
++    store, db: null, audit: () => {},
++    sessionFrom: async () => ({ id: 5, role: 'manager', school_id: 1 }),
++    sendJson: (res, code, body) => { cap.code = code; cap.body = body; },
++    markDirty: () => {}
++  });
++  const res = {};
++  await conflicts.apiResolve({}, res, { conflict_id: 901, winner: 'server' });
++  assert(cap.code === 200 && cap.body.ok === true, 'resolve must succeed, got ' + cap.code + ' ' + JSON.stringify(cap.body));
++  const c = (store.sync_conflicts || []).find(x => x.id === 901);
++  assert(c.status === 'resolved', 'status resolved');
++  assert(typeof c.updated_at === 'string' && c.updated_at === c.resolved_at,
++    'resolve must stamp updated_at (= resolved_at), got ' + JSON.stringify({ resolved_at: c.resolved_at, updated_at: c.updated_at }));
++  assert(new Date(c.updated_at).getTime() > NOW - 5 * DAY, 'stamp must be fresh, not the old value');
++});
++
++await test('SG12 دلتا ردیفِ حل‌شدهٔ قدیمی را از راهِ updated_at می‌بیند', async () => {
++  /* pre-gap-3: ردیفِ تعارضِ کهنه که «حالا» داوری شده با created_at کهنه
++     در دلتا هرگز نمی‌آمد (upAt نا manifesto → فقط crAt کهنه). حالا مُهرِ
++     updated_at داوری، آن را به دلتا می‌آورد. */
++  const q = deltaRowsSql('sync_conflicts', { sinceISO: FRESH });
++  const sql = (q && q.sql) ? q.sql : String(q);
++  assert(/FROM "sync_conflicts"/.test(sql) && /updated_at/.test(sql),
++    'builder must emit the updated_at predicate for sync_conflicts: ' + sql);
++  const store = makeStore();
++  store.sync_conflicts = [
++    { id: 1, school_id: 1, status: 'open', created_at: iso(NOW - 30 * DAY), updated_at: iso(NOW - 30 * DAY) },
++    { id: 2, school_id: 1, status: 'resolved', created_at: iso(NOW - 30 * DAY), updated_at: iso(NOW - 1 * DAY) }
++  ];
++  const { cap, pull } = makePull({ store });
++  await pull('since=' + encodeURIComponent(FRESH) + '&collections=' + encodeURIComponent('sync_conflicts'));
++  assert(cap.code === 200, 'status 200, got ' + cap.code);
++  const rows = cap.body.collections.sync_conflicts;
++  assert(Array.isArray(rows) && rows.length === 1 && rows[0].id === 2,
++    'delta must return only the recently-resolved conflict (via updated_at), got ' + JSON.stringify(rows));
++});
++
+ /* ═══════════════ خلاصه ═══════════════ */
+ console.log('\n────────────────────────────────────────────────────────');
+ if (fail === 0) {
+-- 
+2.47.3
+
+
+From abe9c608332ab2f164f0523b41cd17be68297cae Mon Sep 17 00:00:00 2001
+From: arena-agent <arena-agent@users.noreply.github.com>
+Date: Fri, 11 Sep 2026 10:35:08 +0000
+Subject: [PATCH 4/4] =?UTF-8?q?docs:=20close=20delta=20schema=20gaps=20in?=
+ =?UTF-8?q?=20DELTA=5FHARDENING=20=C2=A76,=20migration=20guide=20006,=20HA?=
+ =?UTF-8?q?NDOFF=20phase-3=20entry?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- docs/DELTA_HARDENING.md: §6 item 1 (schema gaps) marked closed with
+  commit pointers; new §7 — phase 3 report: per-gap decision table
+  (شکاف|تصمیم|کامیت|شاهد), the deliberate vclass scope boundary
+  (vclass_questions/links/attendance carry no school_id → excluded
+  from the pull surface until session→school scoping exists), and the
+  live-PG 18.4 verification results (fresh chain 001→006 green;
+  production-upgrade witness: pre-006 delta died 42703, post-006
+  backfill 162/162 updated_at=created_at, zero NULLs, NOT NULL, three
+  indexes, EXPLAIN uses the index; end-to-end burst 60/60,
+  p50=4.15ms, 1132 req/s).
+- docs/MIGRATION_GUIDE.md: §8 table debt fixed — added the missing
+  004_wave3 and 005 rows, added 006_delta_schema_gaps; "next migration"
+  note bumped to 007; version history 1.1.0.
+- HANDOFF.md: phase-3 session entry with full gates battery
+  (smoke 547/547, check-authz 0, secret-scan 11/11, build --check,
+  regression suites, delta-schema-gaps 12/12, live witnesses).
+---
+ HANDOFF.md              | 12 ++++++++++++
+ docs/DELTA_HARDENING.md | 24 +++++++++++++++++++++++-
+ docs/MIGRATION_GUIDE.md |  6 +++++-
+ 3 files changed, 40 insertions(+), 2 deletions(-)
+
+diff --git a/HANDOFF.md b/HANDOFF.md
+index 9583b74..3c2d68e 100644
+--- a/HANDOFF.md
++++ b/HANDOFF.md
+@@ -14,6 +14,18 @@
+ > همهٔ کارها اعمال می‌شود.
+ 
+ 
++## آرنا (Agent Mode): بستن شکاف اسکیما Delta — فاز ۳ — ۲۰/۰۶/۱۴۰۵ (2026-09-11) — ✅
++
++- **مأموریت:** سه شکافِ اسکیمای مسیر دلتا (`DELTA_HARDENING.md` §6 بند ۱) روی شاخهٔ `feat/delta-schema-gaps` (استک روی `feat/delta-hardening-phase2` @ `c13cd3f` — PR #56 هنوز باز).
++- **گپ ۱ (`2dad76a`):** نامِ مردهٔ `homework` (هیچ جدولی؛ کلاینت/مدل/zنجیره همه `hw_assignments`) از سطحِ pull/syncdelta + هر سه آینه (wave4/wave10/delta-load-test) با مجموعهٔ واقعی `hw_assignments` جایگزین شد. باگِ پنهانِ رفع‌شده: پولِ PG-live قبلاً با `SELECT * FROM "homework"` (42P01) **کلِ درخواست را ۵۰۰** می‌کرد.
++- **گپ ۲ (`a5a4226`):** `vclass_rooms` حذف شد و جدول ساخته **نشد** (تصمیم فنی: صفر مصرف‌کننده — کلاینت، مدل، اسکیما؛ شاهدِ زندهٔ 42P01). `vclass_sessions` (school_id ⇒ scope) جانشین شد. **مرزِ آگاهانه:** `vclass_questions/links/attendance` بدونِ school_id هستند و بدونِ scope مبتنی بر session→school به سطحِ پول نمی‌آیند (نشت بین‌مدرسه‌ای).
++- **گپ ۳ (`ebd3d4e`):** مهاجرت `006_delta_schema_gaps.sql` (+down) دقیقاً با SQL بریف (ADD COLUMN `sync_conflicts.updated_at` → backfill از created_at → SET NOT NULL → ایندکس) + ایندکس‌های `hw_assignments`/`vclass_sessions`؛ مُهرِ `updated_at` در sync.js (ایجادِ تعارض) و conflicts.js (داوری) — بدونِ مُهرِ داوری، تعارضِ کهنه‌ای که «حالا» resolve می‌شد هرگز در دلتا دیده نمی‌شد.
++- **تست‌های تازه:** `tests/delta-schema-gaps.js` **۱۲/۱۲** (SG1–SG12) — builder، fail-closed نام‌های مرده، پولِ حافظه/PG-live، جداسازی مدرسه‌ای، قراردادِ فایلِ 006، مُهرهای ایجاد/داوری، دلتای resolve.
++- **شاهدهای زندهٔ PG 18.4 (خوشهٔ باقی‌ماندهٔ فاز ۲، :55432):** زنجیرهٔ تازه 001→006 روی DB خالی سبز؛ ارتقای پایگاهِ ۹۲۳k فاز ۲ (۱۶۲ تعارضِ واقعی): قبل 42703 → بعد backfill ۱۶۲/۱۶۲ (`updated_at = created_at`)، صفر NULL، NOT NULL، ۳ ایندکس، EXPLAIN از ایندکس می‌خواند؛ برستِ `--live -n 60 -c 10` با builderهای تولیدی: **60/60 · p50=4.15ms · 1132 req/s**. خروجی: `~/.cache/pgtool/verify-006.js` (20/20) + `live-006.json`.
++- **گیت‌ها:** smoke **۵۴۷/۵۴۷** · check-authz **0** (تطبیق کامل) · secret-scan **۱۱/۱۱** · build --check **0** · tests/run.js 35/35 · رگرسیون: pull-bootstrap 12/12 · wave1-reads 18/18 · wave3-query 13/13 · wave14-observability 95/95 · sync-dup-claim 7/7 · sync-chunk ✓ · sync-atomic-batch 22/22 · فاز ۲: delta-sync-hardening 19/19 · wave4-all 13/13 · wave10-query-audit 14/14 · contract-layers 18/18 · DRY_RUN exit 0 · **delta-schema-gaps 12/12** ✅
++- **اسناد:** `docs/DELTA_HARDENING.md` §6 بند ۱ بسته + §۷ (فاز ۳) · `docs/MIGRATION_GUIDE.md` §۸ ردیف‌های 004_wave3/005/006 + یادداشتِ «بعدی 007» · همین ورودی.
++
++
+ ## آرنا (Agent Mode): Delta Sync Hardening — فاز ۲ (چهار گپ) — ۲۰/۰۶/۱۴۰۵ (2026-09-11) — ✅
+ 
+ **شاخه:** `feat/delta-hardening-phase2` (از `main` @ `8ba3462`) · **سند کامل:** `docs/DELTA_HARDENING.md` · **قرارداد سیم (جدید):** `docs/SERVER_CLIENT_CONTRACT.md`
+diff --git a/docs/DELTA_HARDENING.md b/docs/DELTA_HARDENING.md
+index d3d72eb..4689728 100644
+--- a/docs/DELTA_HARDENING.md
++++ b/docs/DELTA_HARDENING.md
+@@ -120,8 +120,30 @@
+ 
+ ## ۶) کارهای باقی‌مانده (صادقانه)
+ 
+-1. **شکاف اسکیما:** جدول‌های `homework`/`vclass_rooms` در زنجیرهٔ migrations نیستند؛ `sync_conflicts` ستون `updated_at` ندارد (پولِ PG برای این سه همیشه full-read است — امن ولی ناکارآمد).
++1. ~~**شکاف اسکیما:** جدول‌های `homework`/`vclass_rooms` در زنجیرهٔ migrations نیستند؛ `sync_conflicts` ستون `updated_at` ندارد~~ — **✅ بسته شد در فاز ۳** (شاخهٔ `feat/delta-schema-gaps`، کامیت‌های `2dad76a`/`a5a4226`/`ebd3d4e`؛ جزئیات: §۷ همین سند).
+ 2. ایندکس‌های 005 روی تولید با `CONCURRENTLY` اعمال شوند (قیدِ داخلِ تراکنش — همان سیاستِ 004).
+ 3. بستنِ TOCTOUِ هم‌پایهٔ هم‌زمان روی موتورِ حافظه (وابسته به push تک‌تراکنشی).
+ 4. تومب‌استونِ DB-native (`server_tombstones`) همچنان PENDING (وابسته به write-side زنده).
+ 5. سنجهٔ بار روی سخت‌افزارِ واقعیِ تولید/replica — اعداد این سند از سندباکسِ ۲GB است.
++
++---
++
++## ۷) فاز ۳ — بستن شکاف‌های اسکیما (`feat/delta-schema-gaps`)
++
++**تاریخ:** ۲۰۲۶-۰۹-۱۱ · **بیس:** `feat/delta-hardening-phase2` @ `c13cd3f` · **مهاجرت:** `006_delta_schema_gaps.sql` (+down)
++
++| شکاف | تصمیم فنی | کامیت | شاهد |
++|---|---|---|---|
++| ۱. `homework` در allowlist، بدون جدول (کلاینت/مدل/zنجیره همه `hw_assignments`) | جایگزینی نامِ مرده با مجموعهٔ واقعی `hw_assignments` (دارای school_id و updated_at) در pull/syncdelta + هر سه آینه | `2dad76a` | `tests/delta-schema-gaps.js` SG1–SG5؛ رگرسیونِ باگِ پنهان: پولِ PG-live قبلاً با `SELECT * FROM "homework"` (42P01) کلِ درخواست را ۵۰۰ می‌کرد |
++| ۲. `vclass_rooms` در allowlist، بدون هیچ معادل | **حذف نامِ مرده — جدول ساخته نشد** (صفر مصرف‌کننده؛ جدولِ بی‌خواننده = نویزِ اسکیما). سطحِ واقعیِ vclass یعنی `vclass_sessions` (school_id ⇒ scope) جایگزین شد | `a5a4226` | SG6–SG8 (ساخت کوئری، سرو در پولِ پیش‌فرض، جداسازی مدرسه‌ای)؛ شاهدِ زندهٔ A8: `SELECT * FROM "vclass_rooms"` ⇒ 42P01 — جدول هرگز وجود نداشت |
++| ۳. `sync_conflicts` بدون `updated_at` ⇒ دلتا در PG-live خطای 42703 | مهاجرت 006 دقیقاً با SQL بریف (ADD COLUMN → backfill از created_at → SET NOT NULL → ایندکس) + ایندکس‌های `hw_assignments`/`vclass_sessions` + مُهرِ `updated_at` در sync.js (ایجاد) و conflicts.js (داوری) | `ebd3d4e` | SG9–SG12؛ شاهدهای زندهٔ §۷.۳ |
++
++**مرزِ آگاهانه (نه باگ):** `vclass_questions`/`vclass_links`/`vclass_attendance` جدول دارند ولی **school_id ندارند** (فقط session_id/student_id) — افزودن‌شان به پولِ پیش‌فرض یعنی عبورِ همهٔ سطرها از فیلترِ scope به‌عنوانِ «global» و **نشت بین‌مدرسه‌ای**. تا وقتی scope مبتنی بر session→school ساخته نشود، در سطحِ پول نمی‌آیند.
++
++### ۷.۳) شاهدهای زندهٔ PostgreSQL 18.4 (همان خوشهٔ فاز ۲، پورت 55432)
++
++- **زنجیرهٔ تازه 001→006 روی DB خالی:** همهٔ مهاجرت‌ها سبز؛ `updated_at` از ابتدا NOT NULL؛ INSERT بدون updated_at ⇒ 23502 رد؛ با مُهر صریح ⇒ پذیرفته.
++- **ارتقای پایگاهِ «تولید» فاز ۲ (162 تعارضِ واقعی، pre-006):** قبل از 006 کوئری دلتا با خطای واقعی `column "updated_at" does not exist` می‌میرد؛ 006 دوبارِ متوالی اعمال شد (توان‌مند)؛ backfill دقیقاً ۱۶۲/۱۶۲ ردیف `updated_at = created_at`، صفر NULL؛ هر سه ایندکس ساخته شد؛ EXPLAIN با `enable_seqscan=off` از `idx_sync_conflicts_updated_at` می‌خواند.
++- **دلتای واقعی با builder خودِ ریپو:** ردیفِ تعارضِ کهنه که «حالا» resolve شد (فقط updated_at تازه) دقیقاً خودش در دلتا برمی‌گردد — مسیرِ resolve→delta که بدونِ این ستون هرگز دیده نمی‌شد.
++- **برستِ end-to-end با ابزار خودِ ریپو** (`--live -n 60 -c 10` روی سه مجموعهٔ شکاف): **60/60 موفق · خطای سخت 0 · p50=4.15ms · p95=35.16ms · توان 1132 req/s** — pool پیکِ waiting=0.
++- خروجی کامل: `node /home/user/.cache/pgtool/verify-006.js` (20/20) و `live-006.json`.
+diff --git a/docs/MIGRATION_GUIDE.md b/docs/MIGRATION_GUIDE.md
+index c9e063a..c6dbc3c 100644
+--- a/docs/MIGRATION_GUIDE.md
++++ b/docs/MIGRATION_GUIDE.md
+@@ -158,8 +158,11 @@
+ | ۰۰۲ | `002_indexes.sql` / `.down` | ایندکس‌های کاریِ خط پایهٔ ملی (ترکیبی روی مدرسه/کلاس/تاریخ…) — `IF NOT EXISTS` | مرج (موج ۲) |
+ | ۰۰۳ | `003_constraints.sql` / `.down` | پیکان‌های تغییرناپذیری داده: کلید خارجی/یکتا/بررسی — بلوک‌های توان‌پذیر با بررسی `pg_constraint` | مرج (موج ۲) |
+ | ۰۰۴ | `004_wave1_version_seq.sql` / `.down` | بسطِ مرجعیتِ موج ۱: ستون‌های `version` + دنبالکِ مشترکِ صندوق خروجی برای امنیتِ چندنمونه‌ای | مرج (موج ۱) |
++| ۰۰۴ | `004_wave3_query_indexes.sql` / `.down` | ایندکس‌های کوئریِ موج ۳ (نقشهٔ شاخص‌های خواندنِ سنگین) — هم‌شماره با ۰۰۴ موج ۱ | مرج (موج ۳) |
++| ۰۰۵ | `005_delta_sync_updated_at_indexes.sql` / `.down` | ۱۶ ایندکسِ تک‌ستونیِ `updated_at` برای پیشیکیت/ORDER BY دلتا — یافتهٔ اجرای زندهٔ فاز ۲ (p50 ‏۸.۶×) | فاز ۲ (شاخهٔ `feat/delta-hardening-phase2`) |
++| ۰۰۶ | `006_delta_schema_gaps.sql` / `.down` | بستنِ سه شکافِ اسکیمای دلتا: `sync_conflicts.updated_at` (ADD→backfill از created_at→NOT NULL→ایندکس) + ایندکس‌های `hw_assignments`/`vclass_sessions` | فاز ۳ (شاخهٔ `feat/delta-schema-gaps`) |
+ 
+-> مهاجرت بعدی شمارهٔ `005` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را
++> مهاجرت بعدی شمارهٔ `007` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را
+ > (با وضعیتِ مرج) به جدول اضافه کند — مالک: نویسندهٔ مهاجرت.
+ 
+ ---
+@@ -169,3 +172,4 @@
+ | نسخه | تاریخ | تغییر |
+ |---|---|---|
+ | ۱.۰.۰ | ۲۰۲۶-۰۹-۱۰ | نسخهٔ اولیه — چت ۶ |
++| ۱.۱.۰ | ۲۰۲۶-۰۹-۱۱ | بدهیِ سندی: ردیف‌های 004_wave3 و 005 به جدولِ §۸ اضافه شد + ردیف 006 (فاز ۳) |
+-- 
+2.47.3
+
