@@ -346,8 +346,8 @@
 ## وضعیت delivery و موارد باز
 
 - ثبت Ruflo با کلید `bug_hunt_session8` انجام نشد: executable `ruflo` در sandbox نصب نیست و تلاش واقعی با exit 127 و `ruflo: command not found` برگشت؛ بنابراین memory store ساختگی ثبت نمی‌شود.
-- `git fetch origin` و `git push origin HEAD:feat/bughunt-session8-wave9` با remote بدون credential انجام شد اما پیش از احراز هویت با `could not read Username for 'https://github.com'` شکست خوردند. PR ساخته نشد.
-- fallback بدون credential در `/home/user/bandle/bug-hunt-session8-wave9.bundle` ساخته و با `git bundle verify` معتبر شناخته شد؛ ۲۴ patch جداگانه نیز در `/home/user/bandle/patches/` است.
-- عنوان مقرر PR پس از push: `fix: bug hunt session 8 (wave 9 performance)`.
+- با احراز هویت موقت، `feat/bughunt-session8-wave9` با موفقیت به GitHub push شد؛ remote دائمی بدون credential باقی ماند.
+- PR ساخته شد: `https://github.com/rezaa2544/p2/pull/75` با عنوان `fix: bug hunt session 8 (wave 9 performance)`.
+- fallback بدون credential نیز در `/home/user/bandle/bug-hunt-session8-wave9.bundle` نگه داشته و با `git bundle verify` معتبر شناخته شده است؛ ۲۴ patch جداگانه در `/home/user/bandle/patches/` قرار دارد.
 - `tests/wave8-deep-audit.js` باید در یک commit/محیط بعدی ارائه شود؛ نبودن آن یک regression گیت است، نه یک pass.
 - گزارش full regression ناقص است؛ redهای legacy در partial log به Session 8 نسبت داده نشده‌اند و بدون اجرای تمیز دوباره سبز اعلام نمی‌شوند.

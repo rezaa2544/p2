@@ -26,9 +26,9 @@
 ## Delivery status
 
 - Fast gates were repeated after the documentation commit: smoke 547/547, authz exit 0, secret scan 11/11, build check pass, Wave 8 outbox 14/14 + mutations 5/5, and Wave 9 39/39.
-- Authenticated `git fetch origin` and `git push` were attempted with a credential-free HTTPS remote; both stopped at `could not read Username for 'https://github.com'`. No PR was created.
-- Fallback bundle is verified at `/home/user/bandle/bug-hunt-session8-wave9.bundle`; 24 credential-free patches are in `/home/user/bandle/patches/`.
-- The requested PR title remains `fix: bug hunt session 8 (wave 9 performance)` once a machine with GitHub authentication pushes the branch.
+- With temporary authentication, `feat/bughunt-session8-wave9` was pushed successfully; the permanent remote remains credential-free.
+- PR created: `https://github.com/rezaa2544/p2/pull/75` with title `fix: bug hunt session 8 (wave 9 performance)`.
+- Fallback bundle remains verified at `/home/user/bandle/bug-hunt-session8-wave9.bundle`; 24 credential-free patches are in `/home/user/bandle/patches/`.
 - Ruflo registration `bug_hunt_session8` is pending because `ruflo` is not installed; no fabricated memory result is recorded.
 
 ---

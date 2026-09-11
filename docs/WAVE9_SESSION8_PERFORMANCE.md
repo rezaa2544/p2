@@ -75,12 +75,12 @@ No secret, token, or credential is recorded in this document.
 - Ruflo registration key requested: `bug_hunt_session8`.
 - **Registration is pending:** no `ruflo` executable is installed in this sandbox, so no successful memory write is claimed. No credential or token was placed in a report, patch, bundle, or remote URL.
 - Documentation is committed and the final fast gates were repeated successfully.
-- Authenticated fetch/push was attempted with the credential-free HTTPS remote but failed before authentication: `could not read Username for 'https://github.com'`.
-- No PR was created because the branch could not be pushed. A credential-free fallback was created and verified at `/home/user/bandle/bug-hunt-session8-wave9.bundle` (24 format-patch files are also under `/home/user/bandle/patches/`).
-- No token, credential, or remote URL containing a token was written to the repository, report, patch, or bundle.
+- Temporary authentication was used only for the push/API operation; the permanent remote remains credential-free and no token was written to the repository, report, patch, or bundle.
+- Branch push succeeded and PR **#75** was created: `https://github.com/rezaa2544/p2/pull/75`.
+- Credential-free fallback remains available at `/home/user/bandle/bug-hunt-session8-wave9.bundle` (24 format-patch files are also under `/home/user/bandle/patches/`).
 
 ## Next steps
 
-1. On a machine with authenticated GitHub access, fetch the bundle or apply the patches and push `feat/bughunt-session8-wave9`.
-2. Create PR titled `fix: bug hunt session 8 (wave 9 performance)` after the push.
-3. Install/enable Ruflo and register `bug_hunt_session8`; this sandbox cannot claim that write because `ruflo` is unavailable.
+1. Monitor PR #75 checks and review results.
+2. Install/enable Ruflo and register `bug_hunt_session8`; this sandbox cannot claim that write because `ruflo` is unavailable.
+3. Resolve or explicitly accept the missing `tests/wave8-deep-audit.js` gate before merge.
