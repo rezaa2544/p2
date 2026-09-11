@@ -1,0 +1,54 @@
+{
+  "schema": "payesh-dependency-drift/v1",
+  "generated_at": "2026-09-11",
+  "lockfile": "package-lock.json",
+  "lockfile_version": 3,
+  "lockfile_sha256": "bbf621178e16d91511d65c6deb98eb5abc17ba81b51f136be080c128a623e047",
+  "package_count": 126,
+  "direct_dependencies": {
+    "@opentelemetry/api": {
+      "declared": "^1.9.1",
+      "resolved": "1.9.1"
+    },
+    "@opentelemetry/context-async-hooks": {
+      "declared": "^2.11.0",
+      "resolved": "2.11.0"
+    },
+    "@opentelemetry/exporter-trace-otlp-http": {
+      "declared": "^0.222.0",
+      "resolved": "0.222.0"
+    },
+    "@opentelemetry/instrumentation-http": {
+      "declared": "^0.222.0",
+      "resolved": "0.222.0"
+    },
+    "@opentelemetry/resources": {
+      "declared": "^2.11.0",
+      "resolved": "2.11.0"
+    },
+    "@opentelemetry/sdk-trace-node": {
+      "declared": "^2.11.0",
+      "resolved": "2.11.0"
+    },
+    "@opentelemetry/semantic-conventions": {
+      "declared": "^1.43.0",
+      "resolved": "1.43.0"
+    },
+    "ioredis": {
+      "declared": "^6.0.0",
+      "resolved": "6.0.0"
+    },
+    "jsdom": {
+      "declared": "^25.0.1",
+      "resolved": "25.0.1"
+    },
+    "pg": {
+      "declared": "^8.23.0",
+      "resolved": "8.23.0"
+    },
+    "pg-mem": {
+      "declared": "^3.0.14",
+      "resolved": "3.0.14"
+    }
+  }
+}
