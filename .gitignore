@@ -60,6 +60,7 @@ docs/_search-index.json
 .claude/proven-config.json
 .claude/.proven-config-version
 node_modules
+# پسماندِ مسیرِ جایگزینِ push — این‌ها خروجی‌اند، نه ورودیِ مخزن
 *.bundle
 *.tar.gz
-*work.patch
+*.patch
