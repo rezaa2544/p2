@@ -429,6 +429,35 @@ function virtualDayViolation(op, store){
   }
   return null;
 }
+/* S2-2 (موج ۴): مبنایِ «آفلاینِ» تصمیمِ روزِ مجازی. برمی‌گرداند {schoolId,
+   date} فقط وقتی (۱) شکلِ عملیات از آنِ گیتِ فیزیکی است و روزِ مؤثر از
+   op.atِ ادعایی آمده (نه از دادهٔ رکورد)، (۲) آن روز با امروزِ سرور فرق
+   دارد، و (۳) امروزِ سرور برایِ همان مدرسه مجازی است — یعنی واگراییِ ساعتِ
+   کلاینت در تصمیمِ «مجاز» مؤثر بوده و باید ردِّ پا داشته باشد. در غیرِ این
+   صورت null (روزِ عادی، یا تاریخی که سرور هم قبول دارد → بی‌سر‌و‌صدا).
+   خالص؛ در تست واحد صدا زده می‌شود. */
+function virtualDayOfflineBasis(op, store){
+  const c = op.c;
+  const d = op.data || {};
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const day = isoDay(op.at || '');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(day) || day === todayIso) return null;
+  let schoolId = null;
+  if(c === 'assets' && op.t === 'upd' && d.status === 'in_use'){
+    const rec = (store.assets || []).find(x => x.id === Number(op.id != null ? op.id : d.id));
+    if(!rec) return null;
+    schoolId = rec.school_id;
+  }else if(c === 'lib_loans' && op.t === 'ins' && d.loan_at == null){
+    schoolId = d.school_id;
+  }else if(c === 'visitors' && op.t === 'ins' && d.in_at == null){
+    schoolId = d.school_id;
+  }else{
+    return null;
+  }
+  if(schoolId == null) return null;
+  if(!isVirtualDay(store, schoolId, todayIso)) return null;
+  return { schoolId: schoolId, date: day };
+}
 
 function nextId(c){
   let m = 0;
@@ -515,6 +544,8 @@ function createSync(ctx){
     };
 
     const results = [];
+
+    const derived = [];  /* Wave1-W: نوشت‌هایِ مشتقِ سرور (نوتیفیکیشن‌ها) — با mirror در یک تراکنش */
     const apply = [];
     for(const op of ops){
       /* پاکتِ عملیات (validate.js): کلیدِ ناشناخته یا uid/c/id/atِ بدشکل =
@@ -590,6 +621,14 @@ function createSync(ctx){
         results.push({ uid: op.uid, ok: false, code: 'virtual_day', message: 'در روز غیرحضوری، این عملیاتِ فیزیکی مسدود است' });
         continue;
       }
+      /* S2-2 (موج ۴): اجازه‌ای که بر تاریخِ ادعاییِ کلاینت (op.at) تکیه کرد
+         و امروزِ سرور مجازی بود، ردِّ پا می‌گیرد — وگرنه جعلِ op.at برایِ
+         دور زدنِ روزِ مجازی کاملاً نامرئی بود. رفتار (مجاز/مسدود) بی‌تغییر؛
+         مشروعیتِ آفلاین حفظ شده. (خطِ vd بالا لنگرِ جهشِ M13 است — نخورد.) */
+      const vdb = virtualDayOfflineBasis(op, store);
+      if(vdb){
+        try { audit('sync_virtual_day_offline_allow', { user_id: s.id, uid: op.uid, collection: op.c, school_id: vdb.schoolId, date: vdb.date }); } catch(_) {}
+      }
       /* §3.3 — idempotency: a repeated uid is already applied */
       const isProcessed = (await cache.isProcessedUid(op.uid)) ||
         ((db && typeof db.isUidProcessed === 'function') ? await db.isUidProcessed(op.uid) : false) ||
@@ -623,12 +662,14 @@ function createSync(ctx){
           const cmgr = (store.users || []).find(x => x.school_id === cf.school_id && x.role === 'manager');
           if(cmgr){
             if(!Array.isArray(store.notifications)) store.notifications = [];
-            store.notifications.push({
+            const cnotif = {
               id: await serverId('notifications'), user_id: cmgr.id, school_id: cf.school_id, type: 'announcement',
               title: '⚠️ تعارض همگام‌سازی',
               body: 'یک تغییرِ «' + op.c + '» با نسخهٔ کهنه رسید و به‌جای اعمال، برایِ داوری محفوظ شد.',
               link: 'dashboard', read: 0, created_at: nowIso.slice(0, 10)
-            });
+            };
+            store.notifications.push(cnotif);
+            derived.push({ c: 'notifications', t: 'ins', data: cnotif }); /* Wave1-W */
           }
           ctx.markDirty();
           results.push({ uid: op.uid, ok: false, code: 'conflict_preserved', conflict_id: cf.id,
@@ -671,6 +712,23 @@ function createSync(ctx){
     }
     const mirror = [];   /* P1-14: opsِ آینه با شناسه‌هایِ اعمال‌شدهٔ سرور */
     for(const op of apply){
+      /* S2-1 (موج ۴): ادعایِ اتمیکِ uid — حتماً پیش از اعمال. بررسی در
+         اعتبارسنجی بود ولی ثبت بعدتر — تکراریِ درون‌دسته دو بار اعمال
+         می‌شد و دسته‌هایِ هم‌زمان مسابقه می‌دادند. این حلقه هیچ await
+         ندارد پس check+claim درون‌فرآیند اتمیک است. تکراری، ورودیِ
+         متناظرِ خودش در results (از آخر به اول — op دوم به بعد) را
+         duplicate_ignored می‌کند. (ادعایِ توزیع‌شده چندنمونه‌ای = Wave 6.) */
+      if(store.__processed_uids && store.__processed_uids[op.uid]){
+        for(let ri = results.length - 1; ri >= 0; ri--){
+          if(results[ri].uid === op.uid && results[ri].ok && !results[ri].code){
+            results[ri] = { uid: op.uid, ok: true, code: 'duplicate_ignored', serverTime: results[ri].serverTime };
+            break;
+          }
+        }
+        try { audit('sync_duplicate_ignored', { user_id: s.id, uid: op.uid }); } catch(_) {}
+        continue;
+      }
+      store.__processed_uids[op.uid] = Date.now();
       if(!Array.isArray(store[op.c])) store[op.c] = [];
       if(op.t === 'ins'){
         const data = Object.assign({}, op.data);
@@ -714,8 +772,14 @@ function createSync(ctx){
         mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId });   /* P1-14 */
       }
       store.__server_version = (store.__server_version || 0) + 1;
-      /* Wave 1: uid marking moved post-commit (see below) so failed batches replay. */
-      cache.invalidateCollection(op.c, op.data && op.data.school_id).catch(() => {});
+      /* Wave 1: uid marking moved post-commit (see below) so failed batches replay.
+         SUSPECT-C (باگ‌هانت چت ۵، نشست ۲): خطایِ ابطال پیش‌تر با `.catch(()=>{})`
+         بلعیده می‌شد؛ در تولید (گاردهای BUG-2) واقعی است و بی‌صدایی واگراییِ
+         نامرئی می‌سازد. حالا audit می‌شود؛ پاسخ بی‌تغییر می‌ماند و خودِ audit
+         هم هرگز پاسخ را نمی‌شکند. (markProcessedUid پس از کامیت پایین‌تر audit می‌شود.) */
+      cache.invalidateCollection(op.c, op.data && op.data.school_id).catch((invErr) => {
+        try { audit('sync_invalidate_failed', { user_id: s.id, collection: op.c, error: String((invErr && invErr.message) || invErr) }); } catch (_) {}
+      });
       /* P1-14: آینه این‌جا نیست — پس از حلقه، یک‌جا و اتمیک (persistOpsBatch) */
     }
     /* Round 88 + Round 89 — server side: the client cannot create notifications
@@ -736,12 +800,14 @@ function createSync(ctx){
         const mgr = (store.users || []).find(x => x.school_id === d.school_id && x.role === 'manager');
         if(mgr){
           const st = (store.users || []).find(x => x.id === d.student_id);
-          store.notifications.push({
-            id: await serverId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'leave',
+            const ln = {
+              id: await serverId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'leave',
             title: '📨 درخواست مرخصی جدید',
             body: 'برای ' + ((st && st.full_name) || '') + ' از ' + d.from_date + ' تا ' + d.to_date + ' — در انتظارِ بررسی.',
             link: 'leaves', read: 0, created_at: todayD
-          });
+          };
+          store.notifications.push(ln);
+          derived.push({ c: 'notifications', t: 'ins', data: ln }); /* Wave1-W */
           audit('leave_request_notified', { user_id: s.id, leave_id: d.id, school_id: d.school_id });
         }
       }
@@ -751,13 +817,15 @@ function createSync(ctx){
         const to = (store.users || []).find(x => x.id === Number(op.data.to_id));
         if(to){
           const from = (store.users || []).find(x => x.id === Number(op.data.from_id != null ? op.data.from_id : s.id));
-          store.notifications.push({
-            id: await serverId('notifications'), user_id: to.id,
+            const cn = {
+              id: await serverId('notifications'), user_id: to.id,
             school_id: op.data.school_id != null ? op.data.school_id : to.school_id,
             type: 'chat', title: '💬 پیام جدید',
             body: ((from && from.full_name) || '') + ': ' + String(op.data.body || '').slice(0, 60),
             link: 'chat', read: 0, created_at: todayD
-          });
+          };
+          store.notifications.push(cn);
+          derived.push({ c: 'notifications', t: 'ins', data: cn }); /* Wave1-W */
           audit('chat_notified', { user_id: s.id, to_user_id: to.id });
         }
       }
@@ -768,36 +836,39 @@ function createSync(ctx){
         if(mgr){
           const st = (store.users || []).find(x => x.id === d.student_id);
           const par = (store.users || []).find(x => x.id === d.parent_id);
-          store.notifications.push({
-            id: await serverId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'announcement',
+            const crn = {
+              id: await serverId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'announcement',
             title: '⚠️ درخواست اصلاح اطلاعات ولی',
             body: ((par && par.full_name) || '') + ' اعلام کرد ' + ((st && st.full_name) || '') + ' فرزند او نیست.',
             link: 'corrections', read: 0, created_at: todayD
-          });
+          };
+          store.notifications.push(crn);
+          derived.push({ c: 'notifications', t: 'ins', data: crn }); /* Wave1-W */
           audit('correction_notified', { user_id: s.id, correction_id: d.id, school_id: d.school_id });
         }
       }
     }
     /* P1-14: آینهٔ اتمیکِ چندرکوردی — همه در یک تراکنش (all-or-nothing).
        شکست → rollback + audit؛ در حالتِ PG پاسخ ۵۰۳ می‌شود تا کلاینت retry کند
-       (Wave 1)؛ در memory پاسخ مثلِ قبل عوض نمی‌شود. */
-    /* Wave 1: server-created notification rows join the same atomic mirror so the
-       batch and its side effects commit together. */
-    if(Array.isArray(store.notifications)){
-      for(const n of store.notifications.slice(notifBefore)){
-        mirror.push({ c: 'notifications', t: 'ins', data: n });
-      }
-    }
+       (Wave 1)؛ در memory پاسخ مثلِ قبل عوض نمی‌شود — ولی دیگر بی‌خبر هم نیست:
+       پرچمِ مرئیِ mirror_failed (SUSPECT-A، نشست ۲) همراهِ ok=true برمی‌گردد. */
+    /* Wave1-W: نوشت‌هایِ مشتقِ سرور (نوتیفیکیشن‌هایِ hook) در همان تراکنش —
+       همان ردیف‌هایی که store.notifications.slice(notifBefore) می‌داد، ولی
+       دقیق و بدونِ اسکن (هر hook خودش را به derived می‌رساند). */
+    const batchAll = mirror.concat(derived);
     /* Wave 1: phase 2 -- the atomic PG commit. On failure with PG live, roll the
        store back to the pre-request snapshot and fail closed (503) so the client
        retries; uids stay unmarked so the retry replays instead of being skipped.
        Without PG (memory mode, e.g. older mirror-failure tests), keep the legacy
-       audit-and-continue semantics. */
-    if(mirror.length && db && typeof db.persistOpsBatch === 'function'){
+       audit-and-continue semantics plus the visible mirror_failed flag (SUSPECT-A). */
+    let mirrorFailed = false;
+    if(batchAll.length && db && typeof db.persistOpsBatch === 'function'){
       try{
-        await db.persistOpsBatch(mirror);
+        await db.persistOpsBatch(batchAll);
       }catch(mirrorErr){
         const why = String((mirrorErr && mirrorErr.message) || mirrorErr);
+        mirrorFailed = true;
+        audit('sync_mirror_failed', { user_id: s.id, ops: batchAll.length, error: why });
         if(pgLive){
           for(const k of Object.keys(snap)){
             if(k === '__server_version'){ store.__server_version = snap[k]; continue; }
@@ -805,11 +876,9 @@ function createSync(ctx){
             if(snap[k] === null || snap[k] === undefined){ delete store[k]; }
             else store[k] = snap[k];
           }
-          audit('sync_mirror_failed', { user_id: s.id, ops: mirror.length, error: why });
           for(const r of results){ if(r) r.ok = false; }
           return sendJson(res, 503, { ok: false, code: 'sync_mirror_failed', results });
         }
-        audit('sync_mirror_failed', { user_id: s.id, ops: mirror.length, error: why });
       }
     }
     /* Wave 1: uids are marked only after the authority committed (store AND cache),
@@ -817,13 +886,16 @@ function createSync(ctx){
     if(!store.__processed_uids) store.__processed_uids = {};
     for(const op of apply){
       store.__processed_uids[op.uid] = Date.now();
-      try{ cache.markProcessedUid(op.uid).catch(() => {}); }catch(e){}
+      /* SUSPECT-C (باگ‌هانت چت ۵، نشست ۲): علامتِ idempotency در کش هم audit می‌شود. */
+      try{ cache.markProcessedUid(op.uid).catch((markErr) => {
+        try { audit('sync_idempotency_mark_failed', { user_id: s.id, uid: op.uid, error: String((markErr && markErr.message) || markErr) }); } catch (_) {}
+      }); }catch(e){}
     }
     if(apply.length) ctx.markDirty();
     audit('sync_ok', { user_id: s.id, ops: apply.length });
-    sendJson(res, 200, { ok: true, results });
+    sendJson(res, 200, mirrorFailed ? { ok: true, results, mirror_failed: true } : { ok: true, results });
   }
 
   return { apiSync, canWrite, inScope };
 }
-module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED };
+module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, virtualDayOfflineBasis, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED };

@@ -10,8 +10,10 @@
     "created_by",
     "date",
     "id",
+    "office_id",
     "pinned",
     "school_id",
+    "severity",
     "title",
     "updated_at"
    ],
@@ -564,7 +566,6 @@
    ],
    "del": [
     "manager",
-    "teacher",
     "superadmin"
    ]
   },
@@ -811,8 +812,10 @@
     "date",
     "exam_type",
     "id",
+    "is_vocational",
     "kind",
     "max_score",
+    "practical_score",
     "school_id",
     "score",
     "source",
@@ -820,6 +823,7 @@
     "subject_id",
     "teacher_id",
     "term",
+    "theoretical_score",
     "updated_at"
    ],
    "ins": [
@@ -967,7 +971,6 @@
    ],
    "del": [
     "manager",
-    "teacher",
     "superadmin"
    ]
   },
@@ -2303,23 +2306,51 @@
     "id",
     "in_at",
     "name",
+    "national_id",
     "out_at",
+    "phone",
     "purpose",
     "registered_by",
     "school_id",
-    "updated_at"
+    "status",
+    "updated_at",
+    "visiting_person"
    ],
    "ins": [
+    "guard",
     "manager",
     "superadmin"
    ],
    "upd": [
+    "guard",
     "manager",
     "superadmin"
    ],
    "del": [
     "manager",
     "superadmin"
+   ]
+  },
+  "staff_posts": {
+   "fields": [
+    "created_at",
+    "id",
+    "required",
+    "school_id",
+    "subject_id",
+    "updated_at"
+   ],
+   "ins": [
+    "superadmin",
+    "edu_office"
+   ],
+   "upd": [
+    "superadmin",
+    "edu_office"
+   ],
+   "del": [
+    "superadmin",
+    "edu_office"
    ]
   }
  }

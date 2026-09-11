@@ -98,4 +98,33 @@ function setClassSubjectMembers(cid,sid,studentIds){
 const avgOf=list=>list.length?list.reduce((a,b)=>a+b.score,0)/list.length:0;
 function visibleClasses(){const u=S.user;if(u.role==='superadmin')return db.classes;if(u.role==='manager')return db.classes.filter(c=>c.school_id===u.school_id);if(u.role==='teacher')return teacherClasses(u.id);const c=classOf(u.id);return c?[c]:[];}
 function visibleSubjects(){const u=S.user;return u.role==='superadmin'?db.subjects:db.subjects.filter(s=>s.school_id===u.school_id);}
-function myAnnouncements(){const u=S.user;return db.announcements.filter(a=>(a.school_id===null||u.role==='superadmin'||a.school_id===u.school_id)&&(a.audience==='all'||a.audience===u.role)).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));}
+/* د.۳ — ادارهٔ صاحب‌محدودهٔ یک مدرسه (برای اطلاعیه‌های اداره‌ای):
+   همهٔ فیلدهای جغرافیاییِ غیرخالیِ اداره باید با مدرسه بخواند. */
+function officeForSchool(s){
+  if(!s) return null;
+  const cands=(db.offices||[]).filter(function(o){
+    return (o.province_id||o.county_id||o.district_id)
+      &&(!o.province_id||o.province_id===s.province_id)
+      &&(!o.county_id||o.county_id===s.county_id)
+      &&(!o.district_id||o.district_id===s.district_id);
+  });
+  if(!cands.length) return null;
+  /* خاص‌ترین اداره می‌برد: منطقه > شهرستان > استان */
+  const spec=(o)=>(o.province_id?1:0)+(o.county_id?1:0)+(o.district_id?1:0);
+  cands.sort(function(a,b){ return spec(b)-spec(a); });
+  return cands[0];
+}
+const ANN_SEV_RANK={critical:2,urgent:1,normal:0};
+function myAnnouncements(){const u=S.user;
+  const mySchool=u.school_id!=null?byId('schools',u.school_id):null;
+  const myOffice=mySchool?officeForSchool(mySchool):null;
+  const visible=(a)=>{
+    if(a.office_id!=null){
+      if(u.role==='superadmin')return true;
+      if(u.role==='edu_office')return Number(a.office_id)===Number(u.office_id);
+      return !!myOffice&&Number(a.office_id)===myOffice.id;
+    }
+    return a.school_id===null||u.role==='superadmin'||a.school_id===u.school_id;
+  };
+  return db.announcements.filter(a=>visible(a)&&(a.audience==='all'||a.audience===u.role))
+    .sort((a,b)=>((ANN_SEV_RANK[b.severity]||0)-(ANN_SEV_RANK[a.severity]||0))||(b.created_at||'').localeCompare(a.created_at||''));}

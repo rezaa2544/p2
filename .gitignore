@@ -38,3 +38,23 @@ tests/.cache-jaeger/
 *.key
 *.crt
 server/data/jwt.key
+
+# Wave 18 — دادهٔ آزمایشیِ مقیاسِ ملی (حجم‌دار؛ هرگز commit نشود)
+data/national/
+# Wave 19 — خروجیِ تست‌هایِ آشوب (حجم‌دار/پویا؛ هرگز commit نشود)
+tests/chaos-output/
+
+# P0 #6 — خروجیِ DAST زنده (tools/dast-live.sh)
+out/
+
+# برون‌برد مستندات (tools/docs-export.sh) — تولیدی، هرگز کامیت نشود
+docs/_export/
+
+# کاتالوگ متادیتا (tools/docs-metadata.js) — تولیدی، هرگز کامیت نشود
+docs/_metadata.json
+docs/_search-index.json
+
+# پسماند ابزارهای حافظهٔ عامل (روفلو) — هرگز کامیت نشود
+.claude-flow/
+.claude/proven-config.json
+.claude/.proven-config-version

@@ -7,6 +7,7 @@
 > `tools/failover-redis.sh`، `tools/pitr-restore.sh`، `tools/pitr-verify.sh`،
 > `infra/postgres/post-checks.sh`، `infra/redis/redis-checks.sh`.
 > هر سناریو: **نشانه‌ها → تشخیص → اقدام → تأیید → بازگشت → ثبتِ drill**.
+> **کارت‌های سریع on-call:** نسخهٔ فشردهٔ A4 سناریوهای این سند در `docs/RUNBOOK_CARDS/` است (احیای ردیس، فیلاور پستگرس، بازیابی نقطه‌ای، بازیابی پشتیبان).
 > خروجیِ همهٔ چک‌ها fail-closed است؛ FAIL بدونِ «تأییدِ سبز» یعنی بحران تمام نشده.
 
 ## ۰) جدولِ RPO/RTO (مصوبِ RELIABILITY_DR_PLAN — این‌ها سقف‌اند، نه هدفِ میانگین)

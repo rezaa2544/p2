@@ -35,6 +35,8 @@ try {
 let pool = null;
 let readPool = null;          /* Wave 10: optional read-replica pool (READ_DATABASE_URL) */
 let readPoolActive = false;   /* Wave 10: true only after the replica answers a ping */
+let replicaReprobeTimer = null; /* S3-1: کاوشِ خودکارِ بازگشتِ رپلیکا */
+let REPLICA_REPROBE_MS = 10000;
 let isPgActive = false;
 let memoryStore = null;
 let reconnectTimer = null;
@@ -119,6 +121,7 @@ async function init(fallbackStore) {
         readPool.on('error', (err) => {
           console.error('[DB] Read-replica pool background error:', err.message);
           readPoolActive = false;   /* stop routing to a dead replica */
+          scheduleReplicaReprobe(); /* S3-1: ولی برایِ بازگشتش کاوش کن */
         });
         const rc = await readPool.connect();
         try { await rc.query('SELECT 1 AS ping'); readPoolActive = true; }
@@ -131,6 +134,7 @@ async function init(fallbackStore) {
     } catch (e) {
       readPoolActive = false;
       console.warn('[DB] Read replica unavailable; reads will use primary pool:', e.message);
+      scheduleReplicaReprobe(); /* S3-1: اگر pool هست، بعداً دوباره بچش */
     }
 
     return { ok: true, driver: 'postgres', serverTime, read_replica: readPoolActive };
@@ -158,6 +162,38 @@ function scheduleReconnect() {
       }
     } catch (e) {}
   }, 10000).unref();
+}
+
+/* S3-1 (موج ۱۰): خطایِ خودِ کوئری (گناهِ statement) در برابرِ خطایِ اتصال.
+   کلاس‌هایِ SQLSTATE ‏22 (داده) / 23 (جامعیت) / 42 (نحو/دسترسی/ناشناخته)
+   قطعاً گناهِ statement است و ربطی به سلامتِ رپلیکا ندارد — مسیریابی نباید
+   بخوابد. هر چیزِ دیگر (از جمله خطایِ بی‌کد — پینِ D3c) ابهامِ اتصال است. */
+function isReplicaQueryError(err) {
+  const code = String((err && err.code) || '');
+  return code.length >= 2 && (code.indexOf('22') === 0 || code.indexOf('23') === 0 || code.indexOf('42') === 0);
+}
+
+/**
+ * S3-1: کاوشِ خودکارِ بازگشتِ رپلیکا (آینهٔ scheduleReconnect برایِ پرماری).
+ * پیش‌تر رپلیکایِ خوابیده هیچ مسیرِ بازگشتی نداشت — تا ری‌استارت، همهٔ
+ * خوانش‌ها رویِ پرماری می‌ماند. شکستِ کاوش ساکت است (شکستِ اول همان‌جا که
+ * رخ داد لاگ شد)؛ فقط بهبودی لاگ می‌شود تا در قطعیِ طولانی لاگ هرز نرود.
+ */
+function scheduleReplicaReprobe() {
+  if (!readPool || readPoolActive || replicaReprobeTimer) return;
+  replicaReprobeTimer = setTimeout(async () => {
+    replicaReprobeTimer = null;
+    if (!readPool || readPoolActive) return;
+    try {
+      const rc = await readPool.connect();
+      try { await rc.query('SELECT 1 AS ping'); }
+      finally { try { rc.release(); } catch (e) {} }
+      readPoolActive = true;
+      console.log('[DB] Read replica recovered; routing reads back to replica');
+    } catch (e) {
+      scheduleReplicaReprobe();   /* هنوز خواب است — بعداً دوباره */
+    }
+  }, REPLICA_REPROBE_MS).unref();
 }
 
 /**
@@ -211,7 +247,13 @@ async function queryRead(text, params) {
     try {
       return await readPool.query(text, params);
     } catch (err) {
-      readPoolActive = false;   /* dead replica → stop routing, fall back to primary */
+      /* S3-1: فقط خطایِ اتصال مسیریابی را می‌خواباند (+ کاوشِ بازگشت)؛
+         خطایِ خودِ کوئری (SQL بد) سلامتِ رپلیکا را زیرِ سؤال نمی‌برد.
+         fallback به پرماری در هر دو حالت سرِ جاست. */
+      if (!isReplicaQueryError(err)) {
+        readPoolActive = false;   /* dead replica → stop routing, fall back to primary */
+        scheduleReplicaReprobe();
+      }
       console.warn('[DB] Read replica query failed; falling back to primary:', err.message);
     }
   }
@@ -598,6 +640,10 @@ async function close() {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
   }
+  if (replicaReprobeTimer) {
+    clearTimeout(replicaReprobeTimer);
+    replicaReprobeTimer = null;
+  }
   if (pool) {
     try {
       await pool.end();
@@ -628,6 +674,13 @@ function __setReadPoolForTests(p) {
   else { readPool = null; readPoolActive = false; }
 }
 
+/* S3-1: درزِ تأخیرِ کاوش برایِ تست (پیش‌فرضِ اجرایی ۱۰۰۰۰ms دست‌نخورده) */
+function __setReprobeDelayForTests(ms) {
+  const v = Number(ms);
+  if (Number.isFinite(v) && v >= 0) REPLICA_REPROBE_MS = v;
+  return REPLICA_REPROBE_MS;
+}
+
 module.exports = {
   init,
   isPostgres,
@@ -647,6 +700,7 @@ module.exports = {
   persistOpsBatch,
   __setPoolForTests,
   __setReadPoolForTests,
+  __setReprobeDelayForTests,
   isUidProcessed,
   healthCheck,
   poolStats,

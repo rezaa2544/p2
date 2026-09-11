@@ -83,9 +83,10 @@ function fakeDb(rows, count) {
     assert(!/school_id = \$\d+/.test(b.page.sql), 'no school bound for superadmin');
   });
 
-  await test('grades: keyset cursor bound + LIMIT+1', async () => {
+  await test('grades: keyset cursor bound (DESC ⇒ id < cursor) + LIMIT+1', async () => {
     const b = buildGradesList({ user: mgr, studentId: null, subjectId: null, classId: null, limit: 25, cursor: 7 });
-    assert(/g\.id > \$\d+/.test(b.page.sql), 'cursor predicate bound');
+    assert(/g\.id < \$\d+/.test(b.page.sql), 'DESC keyset cursor predicate (id <)');
+    assert(!/g\.id > \$\d+/.test(b.page.sql), 'no inverted cursor (id >) over DESC');
     assert(b.page.params.some(p => p === 7), 'cursor=7 bound');
   });
 

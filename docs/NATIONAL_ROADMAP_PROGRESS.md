@@ -23,13 +23,35 @@
 | 11 | Cache | Arena 4 | ⏳ | Medium | Wave 3/6 و benchmark | در انتظار شروع |
 | 12 | Network / Edge | Arena 4 | ✅ | Medium | استقرار production و TLS/CDN/WAF | PR #43 مرج شد (463233c): بلاک‌های لبه nginx + اسناد CDN/WAF + ci/pending CodeQL + wave12 24/24 و جهش 5/5؛ رفعِ braceِ رگکس‌های map در nginx -t رانر؛ باقی‌مانده: اِعمال پچ CodeQL با توکن workflow |
 | 13 | Security Program | Arena 2 + Arena 5 | ⏳ | Critical | Wave 5 و threat model | در انتظار شروع |
-| 14 | Observability | Arena 4 + Arena 5 | 🟡 | High | Wave -1 و deployment model | فاز۱ tracing مرج (PR #22) + فاز۲ استقرارِ زنده: metrics.js (exporter بدونِ وابستگی، ۵۵/۵۵ config + ۳۰/۳۰ dashboards + جهش ۶/۶)، استک compose (Prometheus/Grafana/Alertmanager/Loki/Promtail/OTel/Jaeger)، ۷ قانونِ بحرانی + داشبوردها — اجرایِ واقعیِ compose/تستِ webhook روی میزبان باقی |
-| 15 | Health / Deployment | Arena 4 | ⏳ | High | Wave 14 و stateless API | در انتظار شروع |
-| 16 | Disaster Recovery | Arena 4 + Arena 5 | 🟡 | Critical | Wave 10/15 و RPO/RTO | P0#3 زیرساخت-as-Code+Runbook آماده (infra/postgres HA، infra/redis sentinel، tools/pitr-*/failover-*، docs/DR_RUNBOOK.md با RPO/RTO مصوب RELIABILITY_DR_PLAN؛ تست 92/92 + 38/38 + جهش 7/7) — اجرای مانور روی استیجینگ باقی |
-| 17 | Testing Pyramid | Arena 5 | ⏳ | High | همه Waveها | در انتظار شروع |
-| 18 | National Load Testing | Arena 5 + Arena 4 | ⏳ | High | Capacity Model، Wave 3/10/14 | در انتظار شروع |
+| 14 | Observability | Arena 4 + Arena 5 | 🟡 | High | Wave -1 و deployment model | فاز۱ tracing مرج (PR #22) + فاز۲ استقرارِ زنده: metrics.js (exporter بدونِ وابستگی، ۵۵/۵۵ config + ۳۰/۳۰ dashboards + جهش ۶/۶)، استک compose (Prometheus/Grafana/Alertmanager/Loki/Promtail/OTel/Jaeger)، ۷ قانونِ بحرانی + داشبوردها؛ **پی‌آر #۵۱ (رصدپذیری) مرج شد (2026-09-10، بستهٔ هفت‌گانه @ cd484c3)** — اجرایِ واقعیِ compose/تستِ webhook روی میزبان باقی |
+| 15 | Health / Deployment | Arena 4 | 🟡 | High | Wave 14 و stateless API | شروع شد: **پی‌آر #۳۱ (شاخص سلامت مدرسه، بند ج.۱) مرج شد (2026-09-10 @ cd484c3)** — `GET /api/health-index` فقط-سوپرادمین، امتیاز ۰–۱۰۰ + رنگ + دلیل (`docs/HEALTH_INDEX_MODULE.md`)؛ استقرار/دیپلوی باقی |
+| 16 | Disaster Recovery | Arena 4 + Arena 5 | 🟡 | Critical | Wave 10/15 و RPO/RTO | P0#3 زیرساخت-as-Code+Runbook آماده (infra/postgres HA، infra/redis sentinel، tools/pitr-*/failover-*، docs/DR_RUNBOOK.md با RPO/RTO مصوب RELIABILITY_DR_PLAN؛ تست 92/92 + 38/38 + جهش 7/7)؛ **پی‌آر #۴۶ (بستهٔ موج‌های ۱۴/۱۶/۱۷/۱۸) مرج شد (2026-09-10 @ cd484c3)** — اجرای مانور روی استیجینگ باقی |
+| 17 | Testing Pyramid | Arena 5 | 🟡 | High | همه Waveها | شروع شد: **پی‌آر #۴۶ مرج شد (2026-09-10 @ cd484c3)** — سوئیت‌های موج‌های ۳/۶/۷/۱۸/۱۹ روی `main` (`tests/wave3-keyset.js`، `wave6-redis.js`، `wave7-offline-queue.js`، `wave18-load-test.js`، `wave18w19-multinode-live.js`، `wave19-chaos.js` + `tools/chaos-test.sh`/`dast-live.sh`)؛ تکمیل هرم باقی |
+| 18 | National Load Testing | Arena 5 + Arena 4 | 🟡 | High | Capacity Model (✅ `docs/CAPACITY_MODEL.md` — چت ۶)، Wave 3/10/14 | شروع شد: **پی‌آر #۴۶ مرج شد (2026-09-10 @ cd484c3)** — مولد دیتاست ملی `tools/generate-national-dataset.js` + `tests/wave18-load-test.js` ‏38/38 روی `main`؛ ⚠️ واگرایی ابعاد مولد با §۲.۱ طرح بار همچنان باز (قلم ۲ `docs/DOCS_CONSISTENCY_REPORT.md`)؛ اجرای رسمی منوط به استیجینگ |
 | 19 | Chaos / Failure Testing | Arena 5 + Arena 4 | ⏳ | Critical | Wave 15/16 و Observability | در انتظار شروع |
 | 20 | چهار Arena + Arena پنجم | همه Arenaها | ⏳ | Medium | Addendum اعمال‌شده | Arena 5 ثبت شد؛ تقسیم مالکیت به‌روز شد |
+
+## بندهای ادغام‌شده در بستهٔ هفت‌گانه (2026-09-10 @ cd484c3)
+
+> هفت پی‌آر تیمی در `main` مرج شدند؛ بندهای زیر «موج» نیستند ولی در نقشهٔ ملی
+> اثر دارند. مرجع جزئیات فنی: پیوست `docs/ROADMAP.md` + سند هر بند.
+
+| بند | موضوع | پی‌آر | سند | وضعیت ادغام |
+|---|---|---|---|---|
+| ب.۳ | ارزشیابی ناشناس معلم | #۳۵ | پیوست `docs/ROADMAP.md` بخش آ | ✅ مرج |
+| د.۲ | کارت امتیازی منطقه (۵ بعد + CSV) | #۳۵ | پیوست `docs/ROADMAP.md` بخش آ | ✅ مرج |
+| د.۳ | اطلاعیه فوری/بحرانی اداره (`severity`+`office_id`) | #۳۵ | پیوست `docs/ROADMAP.md` بخش آ | ✅ مرج |
+| د.۴ | نمای کمبود نیروی انسانی (جدول `staff_posts`) | #۳۵ | پیوست `docs/ROADMAP.md` بخش آ | ✅ مرج |
+| ج.۱ | شاخص سلامت مدرسه (فقط-سوپرادمین) | #۳۱ | `docs/HEALTH_INDEX_MODULE.md` | ✅ مرج |
+| ئ.۲ | کارآموزی هنرستان (روی جدول `internships`) | #۳۴ | `docs/INTERNSHIP_MODULE.md` | ✅ مرج |
+| ئ.۳ | گیمیفیکیشن رفتاری دبستان (روی `discipline`+`dojo_types`) | #۳۳ | `docs/BEHAVIOR_GAMIFICATION.md` | ✅ مرج |
+| ئ.۵ | اموال | #۳۲ | — (سندش در اسنپ‌شات محلی نیست؛ تأیید از ابلاغ تیمی) | ✅ مرج |
+| ویو ۱۴/۱۶/۱۷/۱۸ | بستهٔ موج‌ها (رصد/بازیابی/هرم تست/بار ملی) | #۴۶ | ردیف‌های ۱۴–۱۸ جدول بالا | ✅ مرج |
+| رصدپذیری | تکمیل کد رصد (مکمل ویو ۱۴) | #۵۱ | `docs/OBSERVABILITY.md` | ✅ مرج |
+
+**قید صداقت:** شش پی‌آر از هفت‌گانه (همه جز #۳۱) پس از اسنپ‌شات محلیِ `origin/main`
+مرج شده‌اند و کدشان در این کلون نیست؛ وضعیت‌های بالا از ابلاغ تیمی و آثار موجود در
+اسنپ‌شات (اسناد بندها + پیوست نقشه) گرفته شده، نه از وارسی کدِ آن پی‌آرها.
 
 ## Arenaها
 
