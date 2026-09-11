@@ -6,9 +6,9 @@
 
 **نسخهٔ قفل:** ۱.۰.۰-rc29 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۱ | **مالک:** چت ۶ (مستندات و انتشار)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc28` (تاریخی) می‌شود. فهرست زیر **همهٔ ۲۹۷ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc28` (تاریخی) می‌شود. فهرست زیر **همهٔ ۲۹۸ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
-است (خودارجاعی ممکن نیست) و شمارهٔ ریشه با آن به ۲۹۸ می‌رسد.
+است (خودارجاعی ممکن نیست) و شمارهٔ ریشه با آن به ۲۹۹ می‌رسد.
 
 **دلیل بامپ:** باگ‌هانت چت ۵ — نشست ۹ (۲۰۲۶-۰۹-۱۱) دو سندِ فهرست‌شده را ویرایش کرد
 (`BUG_HUNT_REPORT.md` بخشِ نشست ۹ و `SECURITY_FINDINGS_REGISTER.md` پیوستِ پس از قفل با
@@ -22,8 +22,8 @@
 
 | نوع | شمار | نمونه |
 |---|---|---|
-| سندِ تازهٔ ریشه | ۰ | — (درختِ اسناد تغییرِ ساختاری نداشت) |
-| سندِ ویرایش‌شده | ۵ | ‏`BUG_HUNT_REPORT.md` · `SECURITY_FINDINGS_REGISTER.md` (نشست ۹) · `A11Y_GUIDE.md` · `A11Y_RUNTIME_REPORT.md` · `NATIONAL_ROADMAP_PROGRESS.md` (پیش‌تر، از مرجِ #۷۷) |
+| سندِ تازهٔ ریشه | ۱ | `WAVE19_WAL_DRILL_REPORT.md` (از مرجِ PR #۷۸) |
+| سندِ ویرایش‌شده | ۷ | ‏`BUG_HUNT_REPORT.md` · `SECURITY_FINDINGS_REGISTER.md` (نشست ۹) · `A11Y_GUIDE.md` · `A11Y_RUNTIME_REPORT.md` · `NATIONAL_ROADMAP_PROGRESS.md` (مرجِ #۷۷) · `DISASTER_RECOVERY.md` · `DR_RUNBOOK.md` (مرجِ #۷۸) |
 | سندِ به‌روزرسانیِ شمارشی | ۲ | ‏`DOCS_METRICS.md` (۲۹۶→۲۹۷) · `DOCUMENTATION_MAP.md` (۳۱۷→۳۱۸) |
 | قفلِ پیشین | ۱ | ‏`DOCS_FREEZE_v1.0.0-rc28.md` — تاریخی شد و بنر گرفت |
 
@@ -62,7 +62,7 @@
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
 
-## ۳) فهرست اسناد ریشه با هش (شمار: ۲۹۷)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۲۹۸)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -117,7 +117,7 @@
 | `DEPLOY.md` | `sha256:f501bc8a827c136394a6431d7e86665fc25e30478db736ea83e687b60e6e91c4` |
 | `DEPLOYMENT_GUIDE.md` | `sha256:145dfd6cf24f85d2923e9824ec8a1ec9b016623d14aacaadf726d5cd2f279a05` |
 | `DEVELOPMENT.md` | `sha256:36583814876f4be82e6963dcf025160618576ed55a342296687ff942890af12e` |
-| `DISASTER_RECOVERY.md` | `sha256:cb63210eab050d3ed3adcff527d31d6d2b44f2ad4ae7937761863d51a3e100b9` |
+| `DISASTER_RECOVERY.md` | `sha256:786013c7d85b88ca5c93a2d464ff56038c0cd6295a7589df0e6d288a8023dfc3` |
 | `DISCOVERABILITY_R43.md` | `sha256:b0be575e99a75fadc310ede35eae24a63fd4e11a525d85e1947fb11d8b76c5ca` |
 | `DOCS_CONSISTENCY_REPORT.md` | `sha256:a934eb13b96a07c0f291b9b61d9caa47ff9d153eb8aab4c0e333c90281c3df78` |
 | `DOCS_EXPORT_GUIDE.md` | `sha256:c5064687de82757e6bbbe10d35dfd29f2d37effe960f146511aefdd86c456fb5` |
@@ -151,11 +151,11 @@
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:db54b5c615a22186c3162afe39d09d3dbb0c3c53f874436aab7ef211a9aac05e` |
 | `DOCS_INDEX.md` | `sha256:30436891a6d8b183e5a0caf1b293fd66afb80684b2089e588e290e4a9fcc61c7` |
-| `DOCS_METRICS.md` | `sha256:654be36c6d16409b9e4f41105252806301d4c28cf43906c28c143c2e208d8c0e` |
+| `DOCS_METRICS.md` | `sha256:aaed5d8170c3ee56fa58b229fc262d8a2f7971775a020fdedefa5d54309a87fe` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:bbca0ce31bc63dabaacf2f2eab15f2ac2de60528a53de9a34985ef1ea41ee091` |
-| `DOCUMENTATION_MAP.md` | `sha256:be2788eb4bfe1c14005fbffda1db9bdd58f38a9ade00a3daa744580aca2ec0e9` |
-| `DR_RUNBOOK.md` | `sha256:d41181a05ddde65f0ee0db4c3203509184ccc181b409e62afd6e6bb00b4af035` |
+| `DOCUMENTATION_MAP.md` | `sha256:bd6f2b2cd127a5784e60d11620bb896f66ce3d7e560750a6bf38fa6faf5fbbe2` |
+| `DR_RUNBOOK.md` | `sha256:8c0d8f7e2bb1e1305c2aaf645850de68d4b429895445ecae74a5a0a732db0e26` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
 | `EXAM_TYPES_GUIDE.md` | `sha256:bfc9a35481de6bd64c48f31bca4396951fc41ea1aedbc6070260fef9ea026354` |
@@ -197,7 +197,7 @@
 | `NATIONAL_BASELINE_PART3.md` | `sha256:66b2bf5e2df32e471a0b0b5e44a733764d9c01e2557aecb94a58b2f58b054d76` |
 | `NATIONAL_BASELINE_PART4.md` | `sha256:68d5446b6a2f2334ae8748412923431c6a3ad0e952dc70387dcc804d85bb5e01` |
 | `NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md` | `sha256:911f99cda41d415193f9179f5bb6183a6242c769f28a3471af38abb5bb81d228` |
-| `NATIONAL_ROADMAP_PROGRESS.md` | `sha256:c9d10840115eae69861bc1a587d670b9b99aaa77075cb4ea24691b6231262214` |
+| `NATIONAL_ROADMAP_PROGRESS.md` | `sha256:d3894383ddbd8a7405d60b1b0556eb24b17bbeeabd073b5a51110af0e054edb6` |
 | `OBSERVABILITY.md` | `sha256:feb00705b81c38758c2b866249d6dd5dfac52068c78c2cf4b675c49f5cb325ca` |
 | `OBSERVABILITY_DEPLOYMENT.md` | `sha256:efaf413b9130c57a5473984bf24e0652f21fa7fa57099a0bf68ba191473822a9` |
 | `OBSERVABILITY_LIVE_SETUP.md` | `sha256:a99b046779fe46883733858080f338ee014c79c438db827da2d605037320d34c` |
@@ -238,7 +238,7 @@
 | `POST_MERGE_AUDIT_2026-09-10.md` | `sha256:ce0a844a0d5f3175ce2b4de2e227fba5d4c38085cf130d4721ba5646a2983acd` |
 | `POST_RESET_INTEGRITY_REPORT.md` | `sha256:e7561e1d66f1d0cd0d72b2973532fcfb63a1ebd0897dff014a03d12b610f9c8a` |
 | `PRIVACY_POLICY.md` | `sha256:94651d72ec3ef03777f007cca01ca34aad138350472bbf495beb288b5fb08757` |
-| `PRODUCTION_READINESS_CHECKLIST.md` | `sha256:3ad4a07bea9cb51aa2c3239abde976e6ef29997e776a285534b6e443c820a0e7` |
+| `PRODUCTION_READINESS_CHECKLIST.md` | `sha256:6bdf7eea9e9532d374391717259554a60eb19dbb1a99b580b89de1985506a460` |
 | `PRODUCTION_RUNBOOK.md` | `sha256:c0ace61e14145b2bc00fb2fb5817199066eaa5f3b9023fc18741d10fb8de326e` |
 | `PR_MERGE_PLAN.md` | `sha256:b3b44a4f70218120d0377b2e5abbf700d208f3978b9e3fe08940bbf6b21d58df` |
 | `PULL_BOOTSTRAP_DESIGN.md` | `sha256:b2266cdf6bb3433d7ad322f43809f7d300c6875f5591ecb1d59aa63b26b2927f` |
@@ -349,6 +349,7 @@
 | `WAVE18_LOAD_TEST_PLAN.md` | `sha256:a2df124b003624a1f5abd4c795d5f4bf78bdc54c0b2a7772402da04219d58960` |
 | `WAVE19_CHAOS_LIVE_REPORT.md` | `sha256:5f05e18363d65da6482cddb57199b13cb649961115f1dfc3107237c1f120e6df` |
 | `WAVE19_CHAOS_PLAN.md` | `sha256:19083ae992c1c2336d02db7286c6f0bdd46d3b555fdd3b06569e63e9b0607dd8` |
+| `WAVE19_WAL_DRILL_REPORT.md` | `sha256:6ab7c1ad7b67eeee6efdf941639f51923a67baa6210e0b8cccc12e7a16e1c2bd` |
 | `WAVE1_READS_INVENTORY.md` | `sha256:6e29c2f59cce63eb1add329dd09d130b01f7216e9a205123a3eda766386218c3` |
 | `WAVE1_WRITES_INVENTORY.md` | `sha256:c72b4b881c6ee051d0ca95d68e42fa18e079d1569bac67fa40a43e617cd67c9a` |
 | `WAVE3_QUERY_PERFORMANCE.md` | `sha256:45cab65f575d045e9a022080b62850213327700207adaab391dfeb5362c4cf03` |
