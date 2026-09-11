@@ -1,5 +1,28 @@
 # دفترچهٔ تحویل کار — پایش
 
+## Handoff — پ۳: ویو ۲۳ بسته شد — PR #88 مرج @ `0a45c13` — ✅ (2026-09-12)
+
+- **merge:** PR [#88](https://github.com/rezaa2544/p2/pull/88) با روش merge commit
+  در `main@0a45c13` ادغام شد؛ `merge-base --is-ancestor` تأیید کرد هر ۶ کامیت
+  شاخه (f303687…3756d97) عضو main هستند.
+- **⚠️ قید صداقت — CI اجرا نشد:** هر ۷ چکِ PR در ۳ تلاش (attempt 1..3) با
+  «صفر step» و پیام رسمی گیت‌هاب شکست: *"recent account payments have failed
+  or your spending limit needs to be increased"*. این انسداد بیلینگِ حساب
+  rezaa2544 است، نه خطای کد — همان دو workflow ساعتی قبل روی `main@8812e15`
+  سبز بودند. مخزن branch protection ندارد (403: «Upgrade to GitHub Pro»)، پس
+  merge بدون چک ممکن و مجاز بود.
+- **جبران CI با گیت‌های محلی روی همان head (`3756d97`)، همه سبز:**
+  run.js ‏35/35 · smoke ‏547 ✅/۰ ❌ · build --check بیت‌به‌بیت · check-authz
+  تطبیق کامل · secret-scan ‏11/11 · wave5-authz ‏37/37 · db-engineering ‏14/14 ·
+  multi-grade ‏34/34 · a11y-keyboard «جمع: 92 قبول، 0 رد» (خطِ شمارش وارسی شد) ·
+  چهار سوئیت ویو ۲۳ = ۳۵/۳۵ (شامل PDF واقعی با playwright+chromium).
+- **کار باقی‌مانده برای صاحب مخزن:** پس از اصلاح Billing & plans، یک run روی
+  `main` (push بعدی یا re-run دستی) برای ثبت رسمی سبزِ CI روی `0a45c13` کافی است.
+- ردیف Wave 23 در `NATIONAL_ROADMAP_PROGRESS.md` به ✅ ارتقا یافت (با ثبت
+  صریح ماجرای CI).
+
+---
+
 ## Handoff — پ۳: ویو ۲۳ «سیستم گزارش‌دهی پیشرفته» — پیاده‌سازی کامل روی شاخه — 🟡 آمادهٔ PR (2026-09-12)
 
 - **شاخه:** `feat/wave23-advanced-reporting` (پایه: `main@9e7da2c`) — پنج کامیت
