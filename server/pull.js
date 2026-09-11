@@ -12,6 +12,8 @@ const url = require('url');
 const { projectUserByRole } = require('./middleware/projection');
 const { deltaRowsSql } = require('./syncdelta'); /* Wave 4 (chat2) */
 const { createCursor } = require('./cursor'); /* Delta Hardening Phase 2 (gap 2) */
+const { sendJsonCompressed } = require('./compress'); /* Delta Phase 4 (gap 2) */
+const metrics = require('./metrics'); /* Delta Phase 4 (gaps 2+4) */
 
 /* ── Gap 1 (Delta Hardening Phase 2): long-lived delta cutoff ─────────
    A delta whose `since` is older than DELTA_MAX_AGE_DAYS (default 7) is
@@ -298,7 +300,7 @@ function createPull(ctx) {
        keep using `server_time` as their next `since`. */
     const nextCursor = cursor.enabled ? cursor.sign(startedAtIso) : null;
 
-    return sendJson(res, 200, {
+    const body = {
       ok: true,
       server_time: startedAtIso,
       since: since,
@@ -310,7 +312,23 @@ function createPull(ctx) {
       server_version: store.__server_version || 1,
       collections: resultCollections,
       deleted: deletedRecords
-    });
+    };
+
+    /* Delta Phase 4 — gap 4: شمارندهٔ پول‌ها (delta/full) پیش از فرستتن. */
+    metrics.inc('payesh_sync_pulls_total', { mode: (isDelta && !forceFull) ? 'delta' : 'full' });
+
+    /* Delta Phase 4 — gap 2: فشرده‌سازیِ مذاکره‌شده (gzip ارجح، br جایگزین)
+       + سنجه‌های حجم (خام و سیم). res بدونِ writeHead (هارنس قدیمی) =
+       عیناً مسیرِ پیشین. */
+    const encInfo = sendJsonCompressed(res, req, 200, body, sendJson);
+    metrics.observe('payesh_sync_delta_size_bytes', [], encInfo.rawBytes);
+    metrics.observe('payesh_sync_delta_wire_bytes', [], encInfo.wireBytes);
+    if (encInfo.encoding) {
+      metrics.inc('payesh_sync_delta_compressions_total', { encoding: encInfo.encoding });
+    }
+    /* حفظِ قراردادِ قبلی: مقدارِ بازگشتیِ sendJson به فراخوان عیناً برمی‌گردد
+       (هارنس‌های قدیمی روی آن حساب می‌کنند). */
+    return encInfo.reply;
   }
 
   return {
