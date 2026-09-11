@@ -630,7 +630,7 @@ function syncPanelModal(){
     </div>`;
 
   openModal(`<div class="card-head"><h3>وضعیت همگام‌سازی</h3>
-      <button class="icon-btn" data-act="modal-close">✕</button></div>
+      <button class="icon-btn" data-act="modal-close" aria-label="بستن">✕</button></div>
     <div class="card-body">${body}</div>
     <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border)">
       ${SYNC.demoMode?`<button class="btn ghost sm" data-act="sync-toggle-net">${SYNC.online?'📴 شبیه‌سازی قطع اینترنت':'🌐 شبیه‌سازی وصل شدن'}</button>`:''}

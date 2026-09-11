@@ -32,7 +32,7 @@ function __modalTrap(e){
 }
 if(typeof document!=='undefined'&&typeof window!=='undefined'&&!window.__payeshModalTrap){window.__payeshModalTrap=true;document.addEventListener('keydown',__modalTrap,true);}
 function modalTpl(title,body,saveAct,danger,okLabel){
-  return `<div class="card-head"><h3>${esc(title)}</h3><button class="icon-btn" data-act="modal-close">✕</button></div>
+  return `<div class="card-head"><h3>${esc(title)}</h3><button class="icon-btn" data-act="modal-close" aria-label="بستن">✕</button></div>
    <div class="card-body">${body}</div>
    <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border);justify-content:flex-end">
     <button class="btn ghost" data-act="modal-close">انصراف</button>
