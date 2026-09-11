@@ -23,10 +23,17 @@
 --   Phase D (verify + drop): NOT in this file — run tests/partitioning.js,
 --                      keep *_old for the bake period, then DROP manually
 --                      (runbook: docs/WAVE10_DB_SCALE.md §7).
---   On a production database with live traffic, run B's statements split
---   (build+copy first, swap in a short maintenance window). In one
---   transaction it is correct but holds locks for the whole copy — that is
---   acceptable only in a maintenance window (same policy note as 005).
+--   TWO TRANSACTIONS (staging finding, 2026-09-12): the long build+copy
+--   transaction takes NO exclusive lock on the live tables (readers and
+--   writers keep working); the short swap transaction (LOCK + catchup +
+--   renames + COMMIT) is the only locking window. A concurrent-write probe
+--   on 1.8M rows showed the single-transaction form stalls traffic for the
+--   whole commit (~24s reads / ~42s writes) AND strands rows written during
+--   the copy — the swap transaction now (a) re-copies the delta under
+--   ACCESS EXCLUSIVE locks via a (id, created_at, chg_id) anti-join upsert
+--   (chg_id from 008 marks every change), and (b) commits in ~a second.
+--   Hard DELETEs during the window would resurrect — freeze them (soft
+--   delete/tombstone is the app rule anyway).
 --
 -- DATA RULES:
 --   * rows with NULL created_at land at the epoch partition via
@@ -106,6 +113,14 @@ DROP TRIGGER IF EXISTS trg_attendance_chg ON attendance_p;
 CREATE TRIGGER trg_attendance_chg BEFORE INSERT OR UPDATE ON attendance_p
   FOR EACH ROW EXECUTE FUNCTION payesh_chg_bump();
 
+/* تریگر حینِ کپی خاموش است (یافتهٔ استیجینگ ۲۰۲۶-۰۹-۱۲): payesh_chg_bump
+   غیرمشروط است و کپی را هم nextval می‌زد — chg_id سطرهای کپی‌شده عوض می‌شد
+   (نمونهٔ اندازه‌گیری: 500007 → 13000626)، ضدالحاقِ کچ‌آپِ فازِ C همهٔ جدول را
+   «تغییرکرده» می‌دید و کلِ آن را زیرِ قفلِ انحصاری آپسرت می‌کرد (~۴۹s روی
+   600k سطر؛ روی 50M فاجعه). با تریگرِ خاموش، کپی chg_id را عیناً حفظ
+   می‌کند و کچ‌آپ فقط سرگردان‌های حقیقی را می‌گیرد. */
+ALTER TABLE attendance_p DISABLE TRIGGER trg_attendance_chg;
+
 DO $$
 DECLARE
   minid BIGINT; maxid BIGINT; lo BIGINT; hi2 BIGINT;
@@ -128,6 +143,8 @@ BEGIN
   END LOOP;
   END IF;
 END $$;
+
+ALTER TABLE attendance_p ENABLE TRIGGER trg_attendance_chg;
 
 SELECT setval(pg_get_serial_sequence('attendance_p', 'id'),
               COALESCE((SELECT MAX(id) FROM attendance_p), 0) + 1, false);
@@ -194,6 +211,9 @@ DROP TRIGGER IF EXISTS trg_grades_chg ON grades_p;
 CREATE TRIGGER trg_grades_chg BEFORE INSERT OR UPDATE ON grades_p
   FOR EACH ROW EXECUTE FUNCTION payesh_chg_bump();
 
+/* همان یافتهٔ attendance: تریگر حینِ کپی خاموش تا chg_id حفظ شود. */
+ALTER TABLE grades_p DISABLE TRIGGER trg_grades_chg;
+
 DO $$
 DECLARE
   minid BIGINT; maxid BIGINT; lo BIGINT; hi2 BIGINT;
@@ -219,10 +239,84 @@ BEGIN
   END IF;
 END $$;
 
+ALTER TABLE grades_p ENABLE TRIGGER trg_grades_chg;
+
 SELECT setval(pg_get_serial_sequence('grades_p', 'id'),
               COALESCE((SELECT MAX(id) FROM grades_p), 0) + 1, false);
 
--- ═══════════════ Phase C — swap (جدول‌ها، ایندکس‌ها، سکوئنس‌ها؛ یک تراکنش) ═══════════════
+-- ═══════════════ Phase C — swap (جدول‌ها، ایندکس‌ها، سکوئنس‌ها) ═══════════════
+-- دو تراکنش (یافتهٔ استیجینگ ۲۰۲۶-۰۹-۱۲): تراکنشِ بلندِ ساخت+کپی هیچ قفلِ
+-- انحصاری روی جدولِ زنده نمی‌گیرد؛ پنجرهٔ قفل فقط تراکنشِ دوم است — و چون
+-- این تراکنشِ کوچک است، کامیتش هم کوتاه است. در حالتِ تک‌تراکنشِ قبلی،
+-- پنجرهٔ قفل تا کامیتِ ۱.۲M سطری طول می‌کشید (اندازه‌گیری‌شده: ~۲۴s خواندن).
+COMMIT;
+
+/* آمارِ پلن‌ساز قبل از پنجرهٔ قفل (یافتهٔ استیجینگ): جدولِ تازه‌کپی‌شده بدونِ
+   ANALYZE است و کچ‌آپِ ضدالحاقی به‌جای Hash Anti-Join ممکن است Nested-Loop
+   بگیرد — پنجرهٔ قفل به‌جای ~۱s تا ~۶۷s طول می‌کشید. ANALYZE فقط
+   ShareUpdateExclusive می‌گیرد و ترافیک را نمی‌بندد. */
+ANALYZE attendance_p;
+ANALYZE grades_p;
+
+/* پنجرهٔ کوتاه: قفلِ انحصاری هر دو جدول زنده — نوبت‌گیری با ترافیکِ در حالِ
+   اجرا اما بدون گرسنگی (صفِ قفل FIFO است). */
+BEGIN;
+LOCK TABLE attendance IN ACCESS EXCLUSIVE MODE;
+LOCK TABLE grades IN ACCESS EXCLUSIVE MODE;
+
+/* ── کچ‌آپِ نوشته‌های حینِ کپی (چرا لازم است؟) ──
+   کپیِ Phase A/B با snapshot عبارت‌خودش کار می‌کند؛ هر درج/به‌روزرسانی‌ای که
+   بینِ آن و اینجا روی جدولِ زنده بنشیند، فقط در هیپِ قدیمی است و بعد از
+   swap در *_old اسیر می‌شد (اندازه‌گیریِ استیجینگ: با ترافیکِ 250ms، ۱۵ درج
+   + ۱۵ به‌روزرسانی اسیر شد). اینجا، زیرِ قفلِ انحصاری و با snapshot تازهٔ
+   هر عبارت (READ COMMITTED)، هر سطرِ «جدید یا با chg_id تازه» آپsert
+   می‌شود: ضدالحاقِ (id, created_at) با شرطِ تازگیِ chg_id — سطرِ old فقط
+   وقتی ادغام می‌شود که نو نداشته باشیم یا chg_id نو کهنه‌تر از old باشد
+   (سکوئنسِ سراسری = ترتیبِ کاملِ نوشتن‌ها ⇒ last-writer-wins). شرطِ تساوی
+   خطرناک بود: نوشتهٔ تازهٔ پس از swap روی جدولِ نو را نسخهٔ کهنهٔ old
+   بازنویسی می‌کرد (یافتهٔ استیجینگ). حذفِ سخت (hard DELETE) حینِ پنجره
+   سمتِ اپ نادر/ممنوع است (حذفِ نرم/سنگ‌قبر قاعده است) — چنین سطری
+   بازمی‌گردد؛ در پنجرهٔ نگهداری فریز کنید اگر حذفِ سخت لازم است. */
+INSERT INTO attendance_p ("class_id", "created_at", "date", "exit_at", "exit_minutes",
+                          "id", "late_at", "late_minutes", "note", "school_id",
+                          "source", "status", "student_id", "taken_at",
+                          "updated_at", "version", "chg_id")
+SELECT o."class_id", COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00'), o."date",
+       o."exit_at", o."exit_minutes", o."id", o."late_at", o."late_minutes", o."note", o."school_id",
+       o."source", o."status", o."student_id", o."taken_at", o."updated_at", o."version", o."chg_id"
+FROM attendance o
+WHERE NOT EXISTS (SELECT 1 FROM attendance_p p
+                  WHERE p.id = o.id
+                    AND p.created_at = COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00')
+                    AND p.chg_id >= o.chg_id)
+ON CONFLICT (id, created_at) DO UPDATE SET
+  "class_id" = EXCLUDED."class_id", "date" = EXCLUDED."date", "exit_at" = EXCLUDED."exit_at",
+  "exit_minutes" = EXCLUDED."exit_minutes", "late_at" = EXCLUDED."late_at",
+  "late_minutes" = EXCLUDED."late_minutes", "note" = EXCLUDED."note",
+  "school_id" = EXCLUDED."school_id", "source" = EXCLUDED."source", "status" = EXCLUDED."status",
+  "student_id" = EXCLUDED."student_id", "taken_at" = EXCLUDED."taken_at",
+  "updated_at" = EXCLUDED."updated_at", "version" = EXCLUDED."version", "chg_id" = EXCLUDED."chg_id";
+
+INSERT INTO grades_p ("class_id", "created_at", "date", "exam_type", "id",
+                      "kind", "max_score", "school_id", "score", "source",
+                      "student_id", "subject_id", "teacher_id", "term",
+                      "updated_at", "version", "chg_id")
+SELECT o."class_id", COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00'), o."date",
+       o."exam_type", o."id", o."kind", o."max_score", o."school_id",
+       o."score", o."source", o."student_id", o."subject_id", o."teacher_id", o."term",
+       o."updated_at", o."version", o."chg_id"
+FROM grades o
+WHERE NOT EXISTS (SELECT 1 FROM grades_p p
+                  WHERE p.id = o.id
+                    AND p.created_at = COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00')
+                    AND p.chg_id >= o.chg_id)
+ON CONFLICT (id, created_at) DO UPDATE SET
+  "class_id" = EXCLUDED."class_id", "date" = EXCLUDED."date", "exam_type" = EXCLUDED."exam_type",
+  "kind" = EXCLUDED."kind", "max_score" = EXCLUDED."max_score", "school_id" = EXCLUDED."school_id",
+  "score" = EXCLUDED."score", "source" = EXCLUDED."source", "student_id" = EXCLUDED."student_id",
+  "subject_id" = EXCLUDED."subject_id", "teacher_id" = EXCLUDED."teacher_id", "term" = EXCLUDED."term",
+  "updated_at" = EXCLUDED."updated_at", "version" = EXCLUDED."version", "chg_id" = EXCLUDED."chg_id";
+
 DO $$
 BEGIN
   IF EXISTS (SELECT FROM pg_class WHERE relname = 'attendance_old')
@@ -284,3 +378,97 @@ ALTER INDEX idx_grades_p_id                  RENAME TO idx_grades_id;
 ALTER SEQUENCE grades_p_id_seq               RENAME TO grades_id_seq;
 
 COMMIT;
+
+/* ═══════════════ Phase D — stray-merge (پس از کامیتِ swap؛ idempotent) ═══════════════
+   نویسنده‌ای که عبارتش دقیقاً حینِ پنجرهٔ قفل بلاک شده بود، پس از بیداری روی
+   OID قدیمی (اکنون *_old) اجرا می‌شود — چون تحلیلِ نام پیش از بلاک رخ داده.
+   همین ادغامِ ضدالحاقی سطرهایش را برمی‌گرداند؛ دوباره‌اجرا بی‌اثر است.
+   دو پاسِ پشت‌سرهم اجرا می‌شود (بیداریِ نویسنده‌های بلاک و کامیتِشان
+   میکروثانیه است؛ پاسِ دوم قطعی می‌گیرد). راستی‌آزماییِ پس از مهاجرت:
+   SELECT count(*) FROM grades_old o WHERE NOT EXISTS (SELECT 1 FROM grades n
+   WHERE n.id=o.id AND n.created_at=o.created_at AND n.chg_id >= o.chg_id);  ⇒ 0 */
+-- STRAY-MERGE:BEGIN
+INSERT INTO attendance ("class_id", "created_at", "date", "exit_at", "exit_minutes",
+                          "id", "late_at", "late_minutes", "note", "school_id",
+                          "source", "status", "student_id", "taken_at",
+                          "updated_at", "version", "chg_id")
+SELECT o."class_id", COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00'), o."date",
+       o."exit_at", o."exit_minutes", o."id", o."late_at", o."late_minutes", o."note", o."school_id",
+       o."source", o."status", o."student_id", o."taken_at", o."updated_at", o."version", o."chg_id"
+FROM attendance_old o
+WHERE NOT EXISTS (SELECT 1 FROM attendance p
+                  WHERE p.id = o.id
+                    AND p.created_at = COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00')
+                    AND p.chg_id >= o.chg_id)
+ON CONFLICT (id, created_at) DO UPDATE SET
+  "class_id" = EXCLUDED."class_id", "date" = EXCLUDED."date", "exit_at" = EXCLUDED."exit_at",
+  "exit_minutes" = EXCLUDED."exit_minutes", "late_at" = EXCLUDED."late_at",
+  "late_minutes" = EXCLUDED."late_minutes", "note" = EXCLUDED."note",
+  "school_id" = EXCLUDED."school_id", "source" = EXCLUDED."source", "status" = EXCLUDED."status",
+  "student_id" = EXCLUDED."student_id", "taken_at" = EXCLUDED."taken_at",
+  "updated_at" = EXCLUDED."updated_at", "version" = EXCLUDED."version", "chg_id" = EXCLUDED."chg_id";
+
+INSERT INTO grades ("class_id", "created_at", "date", "exam_type", "id",
+                      "kind", "max_score", "school_id", "score", "source",
+                      "student_id", "subject_id", "teacher_id", "term",
+                      "updated_at", "version", "chg_id")
+SELECT o."class_id", COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00'), o."date",
+       o."exam_type", o."id", o."kind", o."max_score", o."school_id",
+       o."score", o."source", o."student_id", o."subject_id", o."teacher_id", o."term",
+       o."updated_at", o."version", o."chg_id"
+FROM grades_old o
+WHERE NOT EXISTS (SELECT 1 FROM grades p
+                  WHERE p.id = o.id
+                    AND p.created_at = COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00')
+                    AND p.chg_id >= o.chg_id)
+ON CONFLICT (id, created_at) DO UPDATE SET
+  "class_id" = EXCLUDED."class_id", "date" = EXCLUDED."date", "exam_type" = EXCLUDED."exam_type",
+  "kind" = EXCLUDED."kind", "max_score" = EXCLUDED."max_score", "school_id" = EXCLUDED."school_id",
+  "score" = EXCLUDED."score", "source" = EXCLUDED."source", "student_id" = EXCLUDED."student_id",
+  "subject_id" = EXCLUDED."subject_id", "teacher_id" = EXCLUDED."teacher_id", "term" = EXCLUDED."term",
+  "updated_at" = EXCLUDED."updated_at", "version" = EXCLUDED."version", "chg_id" = EXCLUDED."chg_id";
+
+/* پاسِ دوم: نویسنده‌های بلاک‌شدهٔ لحظهٔ swap در لحظهٔ رهاشدنِ قفل بیدار
+   می‌شوند و در میکروثانیه کامیت می‌کنند — پاسِ اول ممکن است هم‌زمانِ
+   بیداری‌شان باشد و پاسِ دوم آن‌ها را قطعی بگیرد. دوباره‌اجرا بی‌اثر است. */
+
+INSERT INTO attendance ("class_id", "created_at", "date", "exit_at", "exit_minutes",
+                          "id", "late_at", "late_minutes", "note", "school_id",
+                          "source", "status", "student_id", "taken_at",
+                          "updated_at", "version", "chg_id")
+SELECT o."class_id", COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00'), o."date",
+       o."exit_at", o."exit_minutes", o."id", o."late_at", o."late_minutes", o."note", o."school_id",
+       o."source", o."status", o."student_id", o."taken_at", o."updated_at", o."version", o."chg_id"
+FROM attendance_old o
+WHERE NOT EXISTS (SELECT 1 FROM attendance p
+                  WHERE p.id = o.id
+                    AND p.created_at = COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00')
+                    AND p.chg_id >= o.chg_id)
+ON CONFLICT (id, created_at) DO UPDATE SET
+  "class_id" = EXCLUDED."class_id", "date" = EXCLUDED."date", "exit_at" = EXCLUDED."exit_at",
+  "exit_minutes" = EXCLUDED."exit_minutes", "late_at" = EXCLUDED."late_at",
+  "late_minutes" = EXCLUDED."late_minutes", "note" = EXCLUDED."note",
+  "school_id" = EXCLUDED."school_id", "source" = EXCLUDED."source", "status" = EXCLUDED."status",
+  "student_id" = EXCLUDED."student_id", "taken_at" = EXCLUDED."taken_at",
+  "updated_at" = EXCLUDED."updated_at", "version" = EXCLUDED."version", "chg_id" = EXCLUDED."chg_id";
+
+INSERT INTO grades ("class_id", "created_at", "date", "exam_type", "id",
+                      "kind", "max_score", "school_id", "score", "source",
+                      "student_id", "subject_id", "teacher_id", "term",
+                      "updated_at", "version", "chg_id")
+SELECT o."class_id", COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00'), o."date",
+       o."exam_type", o."id", o."kind", o."max_score", o."school_id",
+       o."score", o."source", o."student_id", o."subject_id", o."teacher_id", o."term",
+       o."updated_at", o."version", o."chg_id"
+FROM grades_old o
+WHERE NOT EXISTS (SELECT 1 FROM grades p
+                  WHERE p.id = o.id
+                    AND p.created_at = COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00')
+                    AND p.chg_id >= o.chg_id)
+ON CONFLICT (id, created_at) DO UPDATE SET
+  "class_id" = EXCLUDED."class_id", "date" = EXCLUDED."date", "exam_type" = EXCLUDED."exam_type",
+  "kind" = EXCLUDED."kind", "max_score" = EXCLUDED."max_score", "school_id" = EXCLUDED."school_id",
+  "score" = EXCLUDED."score", "source" = EXCLUDED."source", "student_id" = EXCLUDED."student_id",
+  "subject_id" = EXCLUDED."subject_id", "teacher_id" = EXCLUDED."teacher_id", "term" = EXCLUDED."term",
+  "updated_at" = EXCLUDED."updated_at", "version" = EXCLUDED."version", "chg_id" = EXCLUDED."chg_id";
+-- STRAY-MERGE:END
