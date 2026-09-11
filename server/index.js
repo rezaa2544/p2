@@ -42,6 +42,9 @@ const { createAudit, clientIp } = require('./audit');
 const db = require('./db');
 const redis = require('./redis');
 const cache = require('./cache');
+/* Delta Phase 4 (gap 1): sync backpressure uses the same distributed
+   fixed-window limiter as auth (Redis live, in-memory dev fallback). */
+const rateLimit = require('./rate-limit');
 const revocation = require('./revocation'); /* Wave 6: ابطالِ توزیع‌شدهٔ مرحلهٔ REVOKE */
 
 const { createStudentRoutes } = require('./routes/students');
@@ -229,11 +232,25 @@ const JTI_GC_MS = SESSION_TTL_S * 1000;
 function gcStore(){
   const now = Date.now();
   let n = 0;
+  /* logout stores a scalar timestamp, while the enumeration guard stores
+     { at, reason }. Normalize both shapes before applying the retention
+     window; subtracting an object yields NaN and made those entries live
+     forever in a long-running process. Invalid internal timestamps are
+     discarded as unusable state so the maps remain bounded. */
+  const timestampOf = (value) => {
+    if (typeof value === 'number') return value;
+    if (value && typeof value === 'object') return Number(value.at);
+    return Number(value);
+  };
+  const expired = (value, ttl) => {
+    const at = timestampOf(value);
+    return !Number.isFinite(at) || now - at > ttl;
+  };
   for(const k in store.__processed_uids){
-    if(now - store.__processed_uids[k] > UID_GC_MS){ delete store.__processed_uids[k]; n++; }
+    if(expired(store.__processed_uids[k], UID_GC_MS)){ delete store.__processed_uids[k]; n++; }
   }
   for(const k in store.__revoked_jti){
-    if(now - store.__revoked_jti[k] > JTI_GC_MS){ delete store.__revoked_jti[k]; n++; }
+    if(expired(store.__revoked_jti[k], JTI_GC_MS)){ delete store.__revoked_jti[k]; n++; }
   }
   return n;
 }
@@ -315,6 +332,9 @@ if(Buffer.byteLength(JWT_SECRET, 'utf8') < 32){
 }
 /* R96 P0-3: rotation — کلیدِ قبلی برایِ مدتِ عمرِ نشست‌ها معتبر می‌ماند */
 const JWT_PREV_SECRET = (process.env.PAYESH_JWT_SECRET_PREV || '').trim() || null;
+/* Delta Phase 4 (gap 3): خاستگاهِ کلیدِ امضا — سلامتِ کرسر همین را
+   بازمی‌گوید (env پایدارِ config / keyfile پایدارِ دیسک). */
+const JWT_KEY_ORIGIN = process.env.PAYESH_JWT_SECRET ? 'env' : 'keyfile';
 
 /* ── audit log (append-only, sanitized: no phone / nid / password) ───
    R96 P1-8 + Audit Hardening: outside store, 0600 mode, rotation on 1000 events / daily / 10MB */
@@ -432,7 +452,7 @@ const auth = createAuth({ store, db, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, 
    شوند؛ auth استثناست (سقفِ OTP سقفِ خودش را می‌سازد). */
 /* P0-16: شناسه‌های بدون‌برخورد — دنبالهٔ پستگرس یا مکس+۱ قفل‌دار (پیش از sync: حلقهٔ اعمال از آن استفاده می‌کند) */
 const ids = createIds({ db, cache });
-const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, ids });
+const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, ids, rateLimit: rateLimit.checkRateLimit });
 const idor = createIdor({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const pubrep = createPublicReport({ store, sendJson: sendJsonCounting, workers });
@@ -472,6 +492,18 @@ const bootstrapRoute = createBootstrapRoute({ store, db });
    (env or key-file) feeds a domain-separated cursor key inside server/cursor.js;
    PAYESH_CURSOR_SECRET overrides it. */
 const pullRoute = createPull({ store, db, sessionFrom: auth.sessionFrom, sendJson, cursorSecret: process.env.PAYESH_CURSOR_SECRET || JWT_SECRET });
+/* Delta Phase 4 (gap 3): منبعِ کلیدِ کرسر از دیدِ اپراتور — env_cursor
+   رازِ صریحِ >=32 بایت است؛ وگرنه همان خاستگاهِ کلیدِ JWT (env/keyfile).
+   هر منبعِ فعال بینِ restart پایدار است؛ کلیدِ تصادفیِ per-boot هرگز
+   رخ نمی‌دهد (بدونِ کلید، کرسر fail-closed خاموش است). */
+const CURSOR_KEY_SOURCE = !pullRoute.cursor.enabled
+  ? 'disabled'
+  : (Buffer.byteLength(String(process.env.PAYESH_CURSOR_SECRET || ''), 'utf8') >= 32
+      ? 'env_cursor'
+      : (JWT_KEY_ORIGIN === 'env' ? 'env_jwt' : 'keyfile'));
+console.log('  cursor : ' + (pullRoute.cursor.enabled
+  ? 'enabled — key=' + CURSOR_KEY_SOURCE + ' (signed cursors survive restarts, ttl=' + pullRoute.cursor.ttlS + 's)'
+  : 'DISABLED — set PAYESH_CURSOR_SECRET (>=32 bytes) or provide a JWT key; pull keeps working via legacy since'));
 
 /* ── static ────────────────────────────────────────────────────────── */
 const STATIC = {
@@ -688,7 +720,14 @@ const onRequest = async (req, res) => {
         queue: { outbox: (store.outbox || []).length, notify_pending: (store.notify_queue || []).filter(q => q.status === 'pending').length, in_flight: inFlight },
         cache_l1: cache.stats().l1,
         uptime_s: Math.round(process.uptime()),
-        memory: { heap_used_kb: Math.round(process.memoryUsage().heapUsed / 1024) }
+        memory: { heap_used_kb: Math.round(process.memoryUsage().heapUsed / 1024) },
+        /* Delta Phase 4 (gap 3): warmupِ کرسر — کلیدِ امضا بینِ restart
+           پایدار است یا نه. persistent=true یعنی کرسرِ صادرشدهٔ نسخهٔ
+           پیشینِ فرآیند بعد از restart هم هنوز verify می‌شود (تا TTL). */
+        cursor: { enabled: pullRoute.cursor.enabled, persistent: pullRoute.cursor.enabled, key_source: CURSOR_KEY_SOURCE },
+        /* Delta Phase 4 (gap 4): پالسِ sync در سلامت — pull/push/conflict/
+           backpressure/کرسر + میانگینِ حجمِ دلتا (خام و سیم). */
+        sync: metrics.syncHealthStats(metrics.snapshot())
       };
       /* Wave 10 — pool observability (primary + optional read replica) when PG live */
       try { if (db.isPostgres && db.isPostgres() && typeof db.poolStats === 'function') body.db_pools = db.poolStats(); }
@@ -1062,6 +1101,7 @@ if(require.main === module){
 /* rebase: union — main added persistStoreSync/workers/staticCache + Wave 6/15 test hooks, Wave 14 adds metrics. */
 module.exports = {
   server, store, audit, isHttps, persistStore, persistStoreSync, db, redis, cache, workers, staticCache, metrics,
+  __gcStoreForTests: gcStore,
   /* Wave 6: برای تستِ مستقیمِ نگهبانِ شمارش (state روی Redis) */
   __enumForTests: { enumTouch, enumRead, enumDelayMs, enumStage, enumKey },
   /* Wave 15: برای تستِ Graceful Shutdown (وضعیتِ drain) */

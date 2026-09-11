@@ -318,6 +318,11 @@ function replicaCatchUp(sock, port, targetLsn) {
   return false;
 }
 
+/* Completion state is declared before the async entry point because the
+   no-infrastructure path calls finish() immediately. Keeping this before the
+   IIFE prevents a temporal-dead-zone failure on the fail-closed early exit. */
+let finished = false;
+
 /* ═══════════════════════════════════════════════════════════════════
    بخشِ ایستا — همیشه اجرا می‌شود (بدون نیاز به زیرساخت)
    ═══════════════════════════════════════════════════════════════════ */
@@ -554,7 +559,6 @@ function liveAvailable() {
   finish(null);
 })();
 
-let finished = false;
 function finish(liveWhy) {
   if (finished) return;
   finished = true;

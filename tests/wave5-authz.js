@@ -284,7 +284,7 @@ async function main() {
         const rDeny = rec ? (await httpReq('PATCH', '/api/v1/attendance/' + rec.id, { status: 'present' }, c.t1)) : null;
         const rSync = rec ? await syncOps(c.t1, [{ t: 'upd', c: 'attendance', id: rec.id, by: T1.id, data: { status: 'present' } }]) : null;
         chk('T18 دبیر: PATCH حضورِ شاگردِ بیرون‌کلاس — REST رد و sync رد (یکپارچه)',
-          !rec || (rDeny.status === 404 && rejected(rSync, DENY)), rec ? rDeny.status + '/' + code0(rSync) : 'no-fixture');
+          !rec || (rDeny.status === 403 && rDeny.json && rDeny.json.code === 'out_of_scope' && rejected(rSync, DENY)), rec ? rDeny.status + '/' + (rDeny.json?.code || 'no-code') + '/' + code0(rSync) : 'no-fixture');
       }
       {
         const anyRec = (seed.attendance || []).find((a) => a.student_id === ST.id);
@@ -308,9 +308,9 @@ async function main() {
         const rOk = await httpReq('PATCH', '/api/v1/users/' + ST.id, { full_name: 'تستِ ویو۵' }, c.st);
         const rField = await httpReq('PATCH', '/api/v1/users/' + ST.id, { phone: '09120000000' }, c.st);
         const rRole = await httpReq('PATCH', '/api/v1/users/' + ST.id, { role: 'manager' }, c.st);
-        chk('T21 خود‌ویرایشیِ دانش‌آموز: full_name پذیرش، فیلدِ خارجِ allowlist ۴۰۳ِ field_denied، نقش ۴۰۳',
-          rOk.status === 200 && rField.status === 403 && rField.json && rField.json.code === 'field_denied'
-          && rRole.status === 403, rOk.status + '/' + rField.status + '/' + rRole.status);
+        chk('T21 خود‌ویرایشیِ دانش‌آموز: همهٔ فیلدها ۴۰۳ forbidden (users.upd فقط-مدیر، یکپارچه با sync)',
+          rOk.status === 403 && rField.status === 403 && rRole.status === 403,
+          rOk.status + '/' + rField.status + '/' + rRole.status);
       }
       {
         const foreignUser = (seed.users || []).find((u) => u.school_id === outSchool.id && u.role === 'teacher');

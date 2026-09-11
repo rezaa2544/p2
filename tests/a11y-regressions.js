@@ -128,5 +128,57 @@ console.log('▸ opacity رویِ متنِ muted ممنوع');
   ok(bad.length === 0, 'هیچ opacity<0.9 رویِ متنِ muted — ' + (bad.length ? 'نقض: ' + bad.join(', ') : 'پاک'));
 }
 
+
+/* ── ۴) هلپرِ f() مودال‌ها باید label برنامه‌ای بسازد (axe: label/select-name در مودال‌ها) ── */
+console.log('▸ هلپرِ f() در 18-modals: label دسترس‌پذیر');
+{
+  const src18 = read('src/js/18-modals.js');
+  /* امضایِ رفع: استخراجِ id و ساختِ for= */
+  ok(/label for="\$\{m\[1\]\}"/.test(src18), 'f() برایِ کنترلِ id-دار <label for=…> می‌سازد');
+  ok(/aria-label="\$\{plain\}"/.test(src18) || /aria-label=/.test(src18.split('const f=')[1].split('};')[0]),
+     'f() برایِ کنترلِ بی‌id متنِ برچسب را aria-label می‌کند');
+  ok(!/const f=\(label,inner\)=>`<div class="field"><label>\$\{label\}<\/label>\$\{inner\}<\/div>`;/.test(src18),
+     'نسخهٔ قدیمیِ بی‌label برنگشته');
+}
+
+/* ── ۵) ناحیه‌هایِ اسکرول‌شونده فوکوس‌پذیر (axe: scrollable-region-focusable) ── */
+console.log('▸ پاسِ scrollable-region-focusable');
+{
+  const helpers = read('src/js/01-helpers.js');
+  ok(/function a11yScrollablePass\(/.test(helpers), 'a11yScrollablePass در 01-helpers تعریف شده');
+  ok(/tabindex/.test(helpers) && /\.table-wrap,\.vscroll/.test(helpers), 'پاس tabindex=0 به .table-wrap/.vscroll سرریزدار می‌دهد');
+  const modals = read('src/js/18-modals.js');
+  ok(/a11yScrollablePass\(\$\('#modal'\)\)/.test(modals), 'openModal پاس را صدا می‌زند');
+  const eduOffice = read('src/js/24-edu-office.js');
+  ok(/a11yScrollablePass\(document\)/.test(eduOffice), 'render() پاس را صدا می‌زند');
+}
+
+
+/* ── ۶) ناوبریِ صفحه‌کلید (focus trap / skip-link / dropdown) — نگهبانِ استاتیک ── */
+console.log('▸ زیرساختِ ناوبریِ صفحه‌کلید');
+{
+  const modals = read('src/js/18-modals.js');
+  ok(/function _modalTrap\(/.test(modals) && /_modalFocusables\(/.test(modals),
+     'مودال: trap تعریف شده (_modalTrap/_modalFocusables)');
+  ok(/role="dialog" aria-modal="true"/.test(modals), 'مودال: role=dialog + aria-modal');
+  ok(/_modalOpener/.test(modals) && /_modalOpener\.focus\(\)/.test(modals),
+     'مودال: بازگشتِ focus به بازکننده در closeModal');
+  ok(/addEventListener\('keydown',_modalTrap\)/.test(modals), 'مودال: trap به #modal بسته می‌شود');
+
+  const shell = read('src/js/07-shell.js');
+  ok(/class="skip-link" data-act="skip-to-main"/.test(shell), 'پوسته: skip-link در renderShell');
+  ok(/nav-item[^`]*role="link" tabindex="0"/.test(shell), 'پوسته: nav-item با tabindex=0 و role=link');
+  ok(/ArrowDown/.test(shell) && /ArrowUp/.test(shell) && /themeSegCloseMenus\(\);/.test(shell),
+     'dropdown پوسته: ArrowDown/ArrowUp/Escape پیاده شده');
+
+  const actions = read('src/js/19-actions-core.js');
+  ok(/'skip-to-main'\(/.test(actions), 'اکشنِ skip-to-main موجود است');
+  ok(/e\.key!=='Enter'&&e\.key!==' '/.test(actions), 'Enter/Space رویِ data-act غیربومی فعال‌سازی می‌کند');
+
+  const css = read('src/styles/base.css');
+  ok(/\.skip-link:focus\{top:0/.test(css), 'skip-link تا فوکوس نگیرد مخفی است و با فوکوس دیده می‌شود');
+  ok(/\.nav-item:focus-visible\{outline/.test(css), 'nav-item نشانگرِ فوکوسِ مرئی دارد (WCAG 2.4.7)');
+}
+
 console.log(`\nجمع: ${pass} قبول، ${fail} رد`);
 process.exit(fail ? 1 : 0);

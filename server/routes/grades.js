@@ -80,10 +80,19 @@ function createGradeRoutes(ctx) {
 
     /* role restrictions unified in policy.filterReadable above */
 
-    // Enrich with subject & student names
+    /* Enrich with subject/student names from indexes. The old nested find()
+       calls made this path O(grades × (subjects + users)) in memory mode. */
+    const subjectsById = new Map();
+    for (const subject of (Array.isArray(store.subjects) ? store.subjects : [])) {
+      if (subject && subject.id != null) subjectsById.set(subject.id, subject);
+    }
+    const usersById = new Map();
+    for (const userRow of (Array.isArray(store.users) ? store.users : [])) {
+      if (userRow && userRow.id != null) usersById.set(userRow.id, userRow);
+    }
     const enriched = list.map(g => {
-      const sub = (store.subjects || []).find(s => s.id === g.subject_id);
-      const student = (store.users || []).find(u => u.id === g.student_id);
+      const sub = subjectsById.get(g.subject_id);
+      const student = usersById.get(g.student_id);
       return {
         ...g,
         subject_name: sub ? sub.name : null,
@@ -113,11 +122,11 @@ function createGradeRoutes(ctx) {
       return { status: 400, body: { ok: false, code: 'bad_score', message: 'نمره باید بین ۰ تا ۲۰ باشد' } };
     }
 
-    const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
+const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
     /* BUG-4 (باگ‌هانت چت ۵): بایندِ دبیر→کلاس — همان سیاستِ sync؛ دبیر
-       فقط روی دانش‌آموزِ کلاسِ خودش (مبوّب/برنامه) می‌نویسد. */
+        فقط روی دانش‌آموزِ کلاسِ خودش (مبوّب/برنامه) می‌نویسد. */
     if (user.role === 'teacher' && !syncInScope(user, 'grades', null, { student_id: Number(body.student_id), school_id: schoolId })) {
-      return { status: 403, body: { ok: false, code: 'forbidden', message: 'این دانش‌آموز در کلاس‌های شما نیست' } };
+      return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'این دانش‌آموز در کلاس‌های شما نیست' } };
     }
     /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
     const nextId = await ids.nextId('grades', store.grades);
@@ -164,7 +173,7 @@ function createGradeRoutes(ctx) {
     return { status: 201, body: { ok: true, data: newGrade } };
   }
 
-  async function updateGrade(req, id, body) {
+async function updateGrade(req, id, body) {
     const user = req.user;
     if (!policy.restWriteRoleOk(user, 'grades', 'upd', Object.keys(body || {}))) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
@@ -172,12 +181,12 @@ function createGradeRoutes(ctx) {
 
     const grade = await findLive('grades', id);
     /* BUG-4 (باگ‌هانت چت ۵): بایندِ دبیر→کلاس — همان سیاستِ sync؛ دبیرِ
-       هم‌مدرسه ولی خارج از کلاس → 403 (نه 404). رکوردِ ناموجود یا مدرسهٔ
-       دیگر → 404 (عدم افشا). */
+        هم‌مدرسه ولی خارج از کلاس → 403 out_of_scope (نه 404). رکوردِ ناموجود یا مدرسهٔ
+        دیگر → 404 (عدم افشا). */
     if (!grade || !policy.inScope(user, store, 'grades', grade.id, grade)) {
       if (grade && user.role === 'teacher' && user.school_id != null
           && Number(grade.school_id) === Number(user.school_id)) {
-        return { status: 403, body: { ok: false, code: 'forbidden', message: 'این نمره در کلاس‌های شما نیست' } };
+        return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'این نمره در کلاس‌های شما نیست' } };
       }
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }
@@ -219,11 +228,11 @@ function createGradeRoutes(ctx) {
     markDirty();
 
     audit('grade_updated', { user_id: user.id, grade_id: grade.id, score: next.score, version: next.version });
-    return { status: 200, body: { ok: true, data: cached || next } };
     cache.invalidateCollection('grades', grade.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
+    return { status: 200, body: { ok: true, data: cached || next } };
   }
 
-  async function deleteGrade(req, id) {
+async function deleteGrade(req, id) {
     const user = req.user;
     if (!policy.restWriteRoleOk(user, 'grades', 'del')) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی غیرمجاز' } };
@@ -231,12 +240,12 @@ function createGradeRoutes(ctx) {
 
     const grade = await findLive('grades', id);
     /* BUG-4 (باگ‌هانت چت ۵): بایندِ دبیر→کلاس — همان سیاستِ sync؛ دبیرِ
-       هم‌مدرسه ولی خارج از کلاس → 403 (نه 404). رکوردِ ناموجود یا مدرسهٔ
-       دیگر → 404 (عدم افشا). */
+        هم‌مدرسه ولی خارج از کلاس → 403 out_of_scope (نه 404). رکوردِ ناموجود یا مدرسهٔ
+        دیگر → 404 (عدم افشا). */
     if (!grade || !policy.inScope(user, store, 'grades', grade.id, grade)) {
       if (grade && user.role === 'teacher' && user.school_id != null
           && Number(grade.school_id) === Number(user.school_id)) {
-        return { status: 403, body: { ok: false, code: 'forbidden', message: 'این نمره در کلاس‌های شما نیست' } };
+        return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'این نمره در کلاس‌های شما نیست' } };
       }
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }

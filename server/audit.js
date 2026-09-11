@@ -135,9 +135,13 @@ function createAudit(opts = {}) {
   const auditDir = opts.auditDir || path.join(path.dirname(auditFile), 'audit');
   const maxEvents = opts.maxEvents != null ? opts.maxEvents : (parseInt(process.env.PAYESH_AUDIT_MAX_EVENTS || '1000', 10) || 1000);
   const maxBytes = opts.maxBytes != null ? opts.maxBytes : (parseInt(process.env.PAYESH_AUDIT_MAX_BYTES || String(10 * 1024 * 1024), 10) || 10 * 1024 * 1024);
+  const requestedQueue = opts.maxQueue != null ? Number(opts.maxQueue) : Number(process.env.PAYESH_AUDIT_MAX_QUEUE || 10000);
+  const maxQueue = Number.isFinite(requestedQueue) && requestedQueue > 0 ? Math.floor(requestedQueue) : 10000;
   const asyncMode = opts.asyncMode === true || process.env.PAYESH_AUDIT_ASYNC === '1';
 
   let initialized = false;
+  let asyncReady = false;
+  let asyncInitPromise = null;
   let currentDay = new Date().toISOString().slice(0, 10);
   let eventCounter = 0;
 
@@ -145,10 +149,15 @@ function createAudit(opts = {}) {
   let flushQueue = [];
   let flushScheduled = false;
   let flushRunning = false;
+  let droppedEvents = 0;
+  let overflowWarned = false;
 
   function ensureInit() {
     if (initialized) return;
     initialized = true;
+    /* Async audit initialization is deliberately deferred to flush(). This
+       keeps the first request free of mkdir/stat/open/chmod system calls. */
+    if (asyncMode) return;
     try {
       const dir = path.dirname(auditFile);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
@@ -178,6 +187,32 @@ function createAudit(opts = {}) {
     } catch (e) {
       // ادامه بدون توقف
     }
+  }
+
+  async function ensureAsyncInit() {
+    if (!asyncMode || asyncReady) return;
+    if (asyncInitPromise) return asyncInitPromise;
+    asyncInitPromise = (async () => {
+      try {
+        const dir = path.dirname(auditFile);
+        await fs.promises.mkdir(dir, { recursive: true, mode: 0o700 });
+        await fs.promises.mkdir(auditDir, { recursive: true, mode: 0o700 });
+        try {
+          const stat = await fs.promises.stat(auditFile);
+          try { await fs.promises.chmod(auditFile, 0o600); } catch (e) {}
+          currentDay = new Date(stat.mtime).toISOString().slice(0, 10);
+        } catch (e) {
+          const handle = await fs.promises.open(auditFile, 'a', 0o600);
+          await handle.close();
+        }
+        asyncReady = true;
+      } catch (e) {
+        /* appendFile will report the failure and flush() will requeue. */
+      } finally {
+        asyncInitPromise = null;
+      }
+    })();
+    return asyncInitPromise;
   }
 
   /**
@@ -245,18 +280,46 @@ function createAudit(opts = {}) {
     } catch (e) {}
   }
 
-  /* چرخشِ سبک (حالتِ async): فقط تصمیم‌های درون‌حافظه — روز و شمارِ
-     رویداد. سقفِ حجم در فلشِ پس‌زمینه با statِ async چک می‌شود تا
-     statSync در مسیرِ رویداد نیفتد. */
-  function checkRotationLight() {
+  /* Async rotation is used only by the background flusher. It deliberately
+     mirrors rotate() without any synchronous filesystem calls. */
+  async function rotateAsync(reason = 'manual') {
+    try {
+      await ensureAsyncInit();
+      const stat = await fs.promises.stat(auditFile);
+      if (stat.size === 0 && eventCounter === 0) return null;
+      await fs.promises.mkdir(auditDir, { recursive: true, mode: 0o700 });
+
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}-${String(now.getMilliseconds()).padStart(3, '0')}`;
+      const rotatedFile = path.join(auditDir, `audit-${ts}.log`);
+
+      await fs.promises.rename(auditFile, rotatedFile);
+      try { await fs.promises.chmod(rotatedFile, 0o600); } catch (e) {}
+      try {
+        await fs.promises.copyFile(rotatedFile, auditFile + '.1');
+        await fs.promises.chmod(auditFile + '.1', 0o600);
+      } catch (e) {}
+
+      eventCounter = 0;
+      currentDay = now.toISOString().slice(0, 10);
+      const handle = await fs.promises.open(auditFile, 'a', 0o600);
+      await handle.close();
+      return rotatedFile;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function checkRotationAsync() {
     const today = new Date().toISOString().slice(0, 10);
-    if (today !== currentDay) {
-      rotate('daily');
-      return;
-    }
-    if (eventCounter >= maxEvents) {
-      rotate('count');
-    }
+    if (today !== currentDay) return rotateAsync('daily');
+    if (eventCounter >= maxEvents) return rotateAsync('count');
+    try {
+      const stat = await fs.promises.stat(auditFile);
+      if (stat.size >= maxBytes) return rotateAsync('size');
+    } catch (e) {}
+    return null;
   }
 
   /**
@@ -267,34 +330,57 @@ function createAudit(opts = {}) {
    * مسیرِ اصلی را نمی‌شکند — همان قراردادِ قبلی).
    */
   function enqueueLine(line) {
+    /* The request path must never turn a slow disk into an unbounded heap.
+       Drop newest lines once the explicit bound is reached; the counter is
+       exposed for telemetry/operators and the oldest queued audit history is
+       preserved. */
+    if (flushQueue.length >= maxQueue) {
+      droppedEvents++;
+      if (!overflowWarned) {
+        overflowWarned = true;
+        try { process.emitWarning('audit async queue reached its bound; newest events are being dropped', { code: 'PAYESH_AUDIT_QUEUE_OVERFLOW' }); } catch (e) {}
+      }
+      return false;
+    }
     flushQueue.push(line);
     if (!flushScheduled && !flushRunning) {
       flushScheduled = true;
       setImmediate(flush);
     }
+    return true;
   }
 
+  let flushPromise = null;
   async function flush() {
     flushScheduled = false;
-    if (flushRunning) return;
-    flushRunning = true;
-    try {
-      while (flushQueue.length) {
-        const batch = flushQueue;
-        flushQueue = [];
-        try { checkRotationLight(); } catch (e) {}
-        try {
-          const st = await fs.promises.stat(auditFile).catch(() => null);
-          if (st && st.size >= maxBytes) { try { rotate('size'); } catch (e) {} }
-        } catch (e) {}
-        const chunk = batch.join('');
-        await new Promise((resolve) => {
-          fs.appendFile(auditFile, chunk, { encoding: 'utf8', mode: 0o600 }, () => resolve());
-        });
+    if (flushPromise) return flushPromise;
+    flushPromise = (async () => {
+      flushRunning = true;
+      try {
+        await ensureAsyncInit();
+        while (flushQueue.length) {
+          const batch = flushQueue;
+          flushQueue = [];
+          try { await checkRotationAsync(); } catch (e) {}
+          const chunk = batch.join('');
+          const ok = await new Promise((resolve) => {
+            fs.appendFile(auditFile, chunk, { encoding: 'utf8', mode: 0o600 }, (err) => resolve(!err));
+          });
+          if (!ok) {
+            /* Keep failed lines at the head of the FIFO. The next explicit
+               flush (or a later enqueue) retries them instead of silently
+               losing security evidence. */
+            flushQueue = batch.concat(flushQueue);
+            return false;
+          }
+        }
+        return true;
+      } finally {
+        flushRunning = false;
+        flushPromise = null;
       }
-    } finally {
-      flushRunning = false;
-    }
+    })();
+    return flushPromise;
   }
 
   /**
@@ -305,7 +391,15 @@ function createAudit(opts = {}) {
     if (!asyncMode || !flushQueue.length) return;
     const chunk = flushQueue.join('');
     flushQueue = [];
-    try { fs.appendFileSync(auditFile, chunk, { encoding: 'utf8', mode: 0o600 }); } catch (e) {}
+    try {
+      fs.mkdirSync(path.dirname(auditFile), { recursive: true, mode: 0o700 });
+      fs.mkdirSync(auditDir, { recursive: true, mode: 0o700 });
+      fs.appendFileSync(auditFile, chunk, { encoding: 'utf8', mode: 0o600 });
+      try { fs.chmodSync(auditFile, 0o600); } catch (e) {}
+    } catch (e) {
+      /* Preserve the final batch for an embedding process that retries. */
+      flushQueue = [chunk].concat(flushQueue);
+    }
   }
 
   /**
@@ -421,6 +515,7 @@ function createAudit(opts = {}) {
   audit.getAuditFile = () => auditFile;
   audit.getAuditDir = () => auditDir;
   audit.getEventCounter = () => eventCounter;
+  audit.getQueueStats = () => ({ queued: flushQueue.length, max: maxQueue, dropped: droppedEvents, flushing: flushRunning });
   audit.isAsync = () => asyncMode;
   audit.flush = asyncMode ? flush : async () => {};
   audit.flushSync = flushSync;
@@ -437,6 +532,7 @@ function createAudit(opts = {}) {
     getAuditFile: () => auditFile,
     getAuditDir: () => auditDir,
     getEventCounter: () => eventCounter,
+    getQueueStats: () => ({ queued: flushQueue.length, max: maxQueue, dropped: droppedEvents, flushing: flushRunning }),
     isAsync: () => asyncMode,
     flush: asyncMode ? flush : (async () => {}),
     flushSync

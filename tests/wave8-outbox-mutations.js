@@ -60,6 +60,8 @@ mutate(
           };
           if (rc > maxRetries) { patch.status = 'failed'; failedDelta++; }
           await outbox.mark(evt.id, patch);
+          /* برچسب از مجموعهٔ بسته (retry/failed)؛ متن خطا هرگز label نیست. */
+          metrics.inc('payesh_worker_events_total', { outcome: patch.status === 'failed' ? 'failed' : 'retry' });
         } finally {`,
   `} catch (err) {
           /* جهش: رویداد در شکست حذف می‌شود — از دست رفتن داده */
