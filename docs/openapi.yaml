@@ -1,0 +1,1083 @@
+openapi: 3.0.3
+info:
+  title: پایش — مدرسهٔ ملی (Payesh School API)
+  version: 1.0.0
+  description: |
+    مشخصات رسمی ای‌پی‌آی سامانهٔ مدرسه‌محور «پایش» — منبع حقیقت: `server/index.js` و شش ماژول
+    `server/routes/`. این سند با `tools/openapi-drift.js` در برابر کد راستی‌آزمایی می‌شود؛
+    هر مغایرت = خطای این سند، نه کد.
+
+    قراردادها:
+    - فضای نسخه‌دار `/api/v1/...`؛ مسیرهای احراز/همگام‌سازی/سلامت عمداً بدون نسخه
+      (قراردادشان با پروتکل گره خورده — `docs/API_CHANGELOG.md` §۱).
+    - احراز: نشست کوکی‌محور `HttpOnly; Secure; SameSite=Lax` + جی‌دابلیوتی سخت‌شده.
+    - همگام‌سازی: پروتکل ای۰۱ (`docs/SYNC_PROTOCOL.md`) — پول کرسورمحور + پوش عملیات + سنگ‌قبر.
+    - نرخ‌بندی: ۴۲۹ با بدنهٔ خطای استاندارد؛ مسیرهای حساس ریت محدود دارند.
+    - مسیر `/api/__slow` فقط-تست است و بدون متغیر محیطی `PAYESH_TEST_SLOW_MS` وجود ندارد.
+  contact:
+    name: تیم پایش — چت ۶ (مستندات و انتشار)
+    url: https://arena.ai
+  license:
+    name: Proprietary — تمام حقوق برای کارفرما محفوظ است
+    url: https://example.ir/license
+
+servers:
+  - url: https://payesh.example.ir
+    description: تولید — نشانی قطعی پس از تصمیم کارفرما دربارهٔ میزبان/دامنه نهایی می‌شود (قید صادقانه)
+  - url: https://staging.payesh.example.ir
+    description: استیجینگ — هنوز برپا نشده؛ مانع پ0 در docs/P0_BLOCKER_TRACKER.md
+
+security:
+  - cookieAuth: []
+
+tags:
+  - name: auth
+    description: احراز هویت — او‌تی‌پی پیامکی، ورود، نشست، خروج، حذف حساب
+  - name: sync
+    description: همگام‌سازی ای۰۱ — پوش عملیات، تعارض‌ها، حل تعارض
+  - name: students
+    description: دانش‌آموزان (نسخه‌دار)
+  - name: teachers
+    description: دبیران — رزرو برای موج‌های آینده؛ هنوز اندپوینت سروری ندارد
+  - name: classes
+    description: کلاس‌ها (نسخه‌دار)
+  - name: grades
+    description: نمره‌ها و ارزشیابی (نسخه‌دار)
+  - name: attendance
+    description: حضور و غیاب (نسخه‌دار)
+  - name: library
+    description: کتابخانه — رزرو برای موج‌های آینده؛ هنوز اندپوینت سروری ندارد
+  - name: assets
+    description: اموال — رزرو برای موج‌های آینده؛ هنوز اندپوینت سروری ندارد
+  - name: visitors
+    description: مهمانان/مراجعان — رزرو برای موج‌های آینده؛ هنوز اندپوینت سروری ندارد
+  - name: summer
+    description: برنامهٔ تابستانه — رزرو برای موج‌های آینده؛ هنوز اندپوینت سروری ندارد
+  - name: feedback
+    description: بازخورد — رزرو برای موج‌های آینده؛ هنوز اندپوینت سروری ندارد
+  - name: admin
+    description: عملیات ادمین/سوپرادمین — پشتیبان، ری‌استور، پیامک، شاخص سلامت
+  - name: observability
+    description: سلامت و آمادگی — liveness/readiness/health و مسیر فقط-تست
+
+paths:
+
+  # ─────────── auth ───────────
+  /api/auth/send-code:
+    post:
+      tags: [auth]
+      summary: ارسال کد یک‌بارمصرف (او‌تی‌پی)
+      description: ریت‌لیمیت ۵ در ۱۰ دقیقه بر شماره؛ پاسخ هم‌شکل ضدشمارش.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendCodeRequest'
+      responses:
+        '200':
+          description: کد ارسال شد (یا برای جلوگیری از شمارش، همان پاسخ موفق معمولی)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: ورود با کد یک‌بارمصرف
+      description: نگهبان آرای۹۷ (پیش‌شماره‌های غیرمجاز رد می‌شوند)؛ در موفقیت کوکی نشست صادر می‌شود.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: ورود موفق — کوکی نشست + پروفایل
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: 'نشست: `sid=...; HttpOnly; Secure; SameSite=Lax`'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/auth/me:
+    get:
+      tags: [auth]
+      summary: نشست فعلی
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: پروفایل کاربر نشست فعلی
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      summary: خروج و ابطال جی‌تی‌آی
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: خروج موفق؛ جی‌تی‌آی روی ردیس مشترک باطل شد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/auth/delete-account:
+    post:
+      tags: [auth]
+      summary: حذف حساب کاربری
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: حساب حذف شد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ─────────── sync (A01) ───────────
+  /api/sync:
+    post:
+      tags: [sync]
+      summary: پوش عملیات — موتور امنیتی ای۰۱
+      description: بدنه تا ۱ مگابایت؛ پاسخ تأیید/رد هر عملیات با نسخهٔ جدید.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncPushRequest'
+      responses:
+        '200':
+          description: نتیجهٔ عملیات‌ها (تأیید/رد/تعارض)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SyncPushResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/sync/conflicts:
+    get:
+      tags: [sync]
+      summary: فهرست تعارض‌های باز
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: فهرست تعارض‌ها
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConflictList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/sync/resolve-conflict:
+    post:
+      tags: [sync]
+      summary: حل تعارض (انتخاب سمت برنده)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveConflictRequest'
+      responses:
+        '200':
+          description: تعارض حل شد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ─────────── عمومی/پلتفرمی ───────────
+  /api/bell/now:
+    get:
+      tags: [observability]
+      summary: وضعیت زنگ فعلی مدرسه
+      security: []
+      responses:
+        '200':
+          description: وضعیت زنگ
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BellStatus' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/public-report:
+    get:
+      tags: [observability]
+      summary: گزارش عمومی (با کش ایستا)
+      security: []
+      responses:
+        '200':
+          description: گزارش عمومی مدرسه
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicReport' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/sms/send:
+    post:
+      tags: [admin]
+      summary: ارسال پیامک داخلی
+      description: احراز نشست یا سرویس؛ ریت‌لیمیت اختصاصی پیامک.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SmsSendRequest'
+      responses:
+        '200':
+          description: پیامک در صف ارسال قرار گرفت
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/admin/backup:
+    post:
+      tags: [admin]
+      summary: پشتیبان‌گیری (فقط سوپرادمین)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: پشتیبان ساخته شد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BackupResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/admin/restore:
+    post:
+      tags: [admin]
+      summary: ری‌استور از پشتیبان (فقط سوپرادمین)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestoreRequest'
+      responses:
+        '200':
+          description: ری‌استور انجام شد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ─────────── سلامت و پایش ───────────
+  /api/liveness:
+    get:
+      tags: [observability]
+      summary: زنده‌بودن فرآیند
+      security: []
+      responses:
+        '200':
+          description: زنده
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+
+  /api/readiness:
+    get:
+      tags: [observability]
+      summary: آمادگی سرویس (هنگام تخلیهٔ آرام ۵۰۳)
+      security: []
+      responses:
+        '200':
+          description: آماده
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/health:
+    get:
+      tags: [observability]
+      summary: سلامت کلی (وابستگی‌ها)
+      security: []
+      responses:
+        '200':
+          description: وضعیت سلامت
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthStatus' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/health-index:
+    get:
+      tags: [admin]
+      summary: شاخص سلامت مدرسه (فقط سوپرادمین)
+      description: افزوده‌شده در بستهٔ مرج هفت‌گانه (ج.۱) — دسترسی فقط-سوپرادمین.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: شاخص سلامت
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthIndex' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/__slow:
+    get:
+      tags: [observability]
+      summary: '[فقط-تست] شبیه‌سازی پاسخ کند برای اثبات تخلیهٔ آرام'
+      description: تنها با متغیر محیطی `PAYESH_TEST_SLOW_MS` فعال است؛ در تولید وجود ندارد.
+      security: []
+      parameters:
+        - name: PAYESH_TEST_SLOW_MS
+          in: header
+          required: false
+          description: میزان تأخیر ساختگی (میلی‌ثانیه) — از محیط خوانده می‌شود، نه سرآیند
+          schema: { type: string }
+      responses:
+        '200':
+          description: پاسخ پس از تأخیر
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /metrics:
+    get:
+      tags: [observability]
+      summary: اسکراپ پرومتئوس (ویو ۱۴ — خروجی متنی)
+      description: |
+        لبه هرگز این مسیر را روت نمی‌کند (انجین‌ایکس فقط `/api/` و فایل استاتیک).
+        با `METRICS_TOKEN` تنظیم‌شده، فقدان سرآیند مطابق ⇒ ۴۰۱.
+      security:
+        - metricsToken: []
+      responses:
+        '200':
+          description: متریک‌ها در قالب متنی پرومتئوس
+          content:
+            text/plain:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ─────────── /api/v1 (نسخه‌دار) ───────────
+  /api/v1/bootstrap:
+    get:
+      tags: [students, classes]
+      summary: دادهٔ آغازین کلاینت (مدرسه/کلاس‌ها)
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SchoolScope'
+      responses:
+        '200':
+          description: بستهٔ آغازین
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bootstrap' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/pull:
+    get:
+      tags: [sync]
+      summary: پول دلتای پی‌جی-بنیاد با کرسر (ای۰۱)
+      description: پاسخ شامل دلتا + سنگ‌قبرها؛ کرسور در پاسخ بعدی استفاده می‌شود.
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: دلتای تغییرات
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeltaPull' }
+              examples:
+                نمونه:
+                  $ref: '#/components/examples/PullExample'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/students:
+    get:
+      tags: [students]
+      summary: فهرست صفحه‌بندی‌شدهٔ دانش‌آموزان
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/SchoolScope'
+      responses:
+        '200':
+          description: صفحهٔ دانش‌آموزان
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StudentPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [students]
+      summary: ایجاد دانش‌آموز
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StudentInput' }
+            examples:
+              نمونه:
+                $ref: '#/components/examples/StudentExample'
+      responses:
+        '200':
+          description: رکورد ایجادشده با نسخهٔ تازه
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Student' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/classes:
+    get:
+      tags: [classes]
+      summary: فهرست کلاس‌ها
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SchoolScope'
+      responses:
+        '200':
+          description: کلاس‌ها
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClassPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [classes]
+      summary: ایجاد کلاس
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClassInput' }
+      responses:
+        '200':
+          description: کلاس ایجادشده
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClassRoom' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/attendance:
+    get:
+      tags: [attendance]
+      summary: رکوردهای حضور (فیلتر نقش/کلاس)
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SchoolScope'
+        - name: class_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: date
+          in: query
+          required: false
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: رکوردهای حضور
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttendancePage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [attendance]
+      summary: ثبت حضور با کنترل هم‌زمانی خوش‌بینانه (OCC)
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AttendanceInput' }
+      responses:
+        '200':
+          description: رکورد ثبت‌شده
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttendanceRecord' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/grades:
+    get:
+      tags: [grades]
+      summary: نمره‌ها (فیلتر نقش)
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SchoolScope'
+      responses:
+        '200':
+          description: نمره‌ها
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GradePage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [grades]
+      summary: ثبت نمره با او‌سی‌سی
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GradeInput' }
+      responses:
+        '200':
+          description: نمرهٔ ثبت‌شده
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Grade' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/users:
+    get:
+      tags: [admin]
+      summary: فهرست کاربران
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SchoolScope'
+      responses:
+        '200':
+          description: کاربران
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [admin]
+      summary: ایجاد کاربر
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserInput' }
+      responses:
+        '200':
+          description: کاربر ایجادشده
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+components:
+
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sid
+      description: نشست کوکی‌محور `HttpOnly; Secure; SameSite=Lax` با جی‌دابلیوتی سخت‌شده و ابطال جی‌تی‌آی روی ردیس
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: توکن ضدسی‌اس‌آرف برای درخواست‌های تغییردهنده (در حال حاضر توسط لایهٔ نشست پوشش داده می‌شود؛ تعریف برای شفافیت)
+    metricsToken:
+      type: apiKey
+      in: header
+      name: X-Metrics-Token
+      description: توکن اسکراپ متریک‌ها — با متغیر محیطی `METRICS_TOKEN` مقایسه می‌شود
+
+  parameters:
+    SchoolScope:
+      name: X-School-Id
+      in: header
+      required: false
+      description: اسکوپ مدرسه — از نشست هم قابل استخراج است
+      schema: { type: string }
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: کرسور پول دلتا (ای۰۱) — از پاسخ قبلی
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: حداکثر تعداد رکورد در صفحه
+      schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+    Page:
+      name: page
+      in: query
+      required: false
+      description: شمارهٔ صفحه (از ۱)
+      schema: { type: integer, minimum: 1, default: 1 }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      description: نسخهٔ رکورد برای او‌سی‌سی — در صورت کهنگی، ۴۰۹
+      schema: { type: string }
+
+  responses:
+    BadRequest:
+      description: درخواست نامعتبر (۴۰۰)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: نشست نامعتبر یا منقضی (۴۰۱)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: اسکوپ/نقش ناکافی (۴۰۳)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: منبع یافت نشد (۴۰۴)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: تعارض نسخه/هم‌زمانی (۴۰۹)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    TooManyRequests:
+      description: عبور از نرخ مجاز (۴۲۹) — با سرآیند `Retry-After`
+      headers:
+        Retry-After:
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    InternalError:
+      description: خطای داخلی (۵۰۰) — با شناسهٔ رخداد برای ردیابی
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ServiceUnavailable:
+      description: سرویس در دسترس نیست — تخلیهٔ آرام/درین (۵۰۳)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Error:
+      type: object
+      required: [ok, code]
+      properties:
+        ok: { type: boolean, example: false }
+        code: { type: string, description: کد ماشینی خطا, example: not_found }
+        message: { type: string }
+        event_id: { type: string, description: شناسهٔ رخداد برای همبستگی لاگ }
+    Ok:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean, example: true }
+    SendCodeRequest:
+      type: object
+      required: [phone]
+      properties:
+        phone: { type: string, description: شمارهٔ موبایل با پیش‌شمارهٔ مجاز (نگهبان آرای۹۷), example: '09120000000' }
+    LoginRequest:
+      type: object
+      required: [phone, code]
+      properties:
+        phone: { type: string, example: '09120000000' }
+        code: { type: string, description: کد یک‌بارمصرف, example: '123456' }
+    Session:
+      type: object
+      properties:
+        ok: { type: boolean }
+        user: { $ref: '#/components/schemas/User' }
+        school_id: { type: string }
+        roles:
+          type: array
+          items: { type: string }
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        phone: { type: string }
+        name: { type: string }
+        role: { type: string, description: نقش در مدل مجوز یکتا, example: teacher }
+        version: { type: integer, description: نسخهٔ او‌سی‌سی }
+    UserInput:
+      type: object
+      required: [phone, name, role]
+      properties:
+        phone: { type: string }
+        name: { type: string }
+        role: { type: string }
+    UserPage:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/User' }
+    Student:
+      type: object
+      properties:
+        id: { type: string }
+        first_name: { type: string }
+        last_name: { type: string }
+        national_id: { type: string, description: کد ملی — در پاسخ‌ها ماسک می‌شود }
+        class_id: { type: string }
+        school_id: { type: string }
+        version: { type: integer }
+        deleted_at: { type: string, format: date-time, nullable: true, description: سنگ‌قبر — حذف منطقی }
+    StudentInput:
+      type: object
+      required: [first_name, last_name]
+      properties:
+        first_name: { type: string }
+        last_name: { type: string }
+        national_id: { type: string }
+        class_id: { type: string }
+    StudentPage:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Student' }
+    Teacher:
+      type: object
+      description: رزرو — اندپوینت سروری هنوز ندارد؛ مدل داده در دیکشنری
+      properties:
+        id: { type: string }
+        name: { type: string }
+        subject: { type: string }
+    ClassRoom:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        grade_level: { type: string }
+        school_id: { type: string }
+        version: { type: integer }
+    ClassInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        grade_level: { type: string }
+    ClassPage:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/ClassRoom' }
+    AttendanceRecord:
+      type: object
+      properties:
+        id: { type: string }
+        student_id: { type: string }
+        class_id: { type: string }
+        date: { type: string, format: date }
+        status: { type: string, enum: [present, absent, late, excused] }
+        version: { type: integer }
+    AttendanceInput:
+      type: object
+      required: [student_id, date, status]
+      properties:
+        student_id: { type: string }
+        date: { type: string, format: date }
+        status: { type: string, enum: [present, absent, late, excused] }
+    AttendancePage:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/AttendanceRecord' }
+    Grade:
+      type: object
+      properties:
+        id: { type: string }
+        student_id: { type: string }
+        lesson: { type: string }
+        score: { type: number, minimum: 0, maximum: 20 }
+        term: { type: string }
+        version: { type: integer }
+    GradeInput:
+      type: object
+      required: [student_id, lesson, score]
+      properties:
+        student_id: { type: string }
+        lesson: { type: string }
+        score: { type: number, minimum: 0, maximum: 20 }
+        term: { type: string }
+    GradePage:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Grade' }
+    PageMeta:
+      type: object
+      properties:
+        ok: { type: boolean }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+        next_cursor: { type: string, nullable: true }
+    SyncPushRequest:
+      type: object
+      required: [ops]
+      properties:
+        ops:
+          type: array
+          items:
+            type: object
+            required: [entity, op, payload]
+            properties:
+              entity: { type: string, example: students }
+              op: { type: string, enum: [create, update, delete] }
+              payload: { type: object }
+              base_version: { type: integer }
+    SyncPushResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              accepted: { type: boolean }
+              reason: { type: string }
+              new_version: { type: integer }
+    ConflictList:
+      type: object
+      properties:
+        ok: { type: boolean }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              entity: { type: string }
+              server_value: { type: object }
+              client_value: { type: object }
+    ResolveConflictRequest:
+      type: object
+      required: [conflict_id, winner]
+      properties:
+        conflict_id: { type: string }
+        winner: { type: string, enum: [server, client] }
+    DeltaPull:
+      type: object
+      properties:
+        ok: { type: boolean }
+        cursor: { type: string, description: کرسور بعدی }
+        changes:
+          type: array
+          items:
+            type: object
+            properties:
+              entity: { type: string }
+              op: { type: string }
+              row: { type: object }
+        tombstones:
+          type: array
+          description: سنگ‌قبرهای حذف منطقی
+          items:
+            type: object
+            properties:
+              entity: { type: string }
+              id: { type: string }
+              deleted_at: { type: string, format: date-time }
+    Bootstrap:
+      type: object
+      properties:
+        ok: { type: boolean }
+        school: { type: object }
+        classes:
+          type: array
+          items: { $ref: '#/components/schemas/ClassRoom' }
+    BellStatus:
+      type: object
+      properties:
+        ok: { type: boolean }
+        state: { type: string, example: class }
+        until: { type: string, format: date-time, nullable: true }
+    PublicReport:
+      type: object
+      properties:
+        ok: { type: boolean }
+        generated_at: { type: string, format: date-time }
+        stats: { type: object }
+    SmsSendRequest:
+      type: object
+      required: [to, text]
+      properties:
+        to: { type: string }
+        text: { type: string, maxLength: 500 }
+    BackupResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        backup_id: { type: string }
+        created_at: { type: string, format: date-time }
+    RestoreRequest:
+      type: object
+      required: [backup_id]
+      properties:
+        backup_id: { type: string }
+    HealthStatus:
+      type: object
+      properties:
+        ok: { type: boolean }
+        db: { type: string, example: up }
+        redis: { type: string, example: up }
+        draining: { type: boolean }
+    HealthIndex:
+      type: object
+      properties:
+        ok: { type: boolean }
+        index: { type: number, description: شاخص سلامت مدرسه, example: 0.87 }
+        components: { type: object }
+
+  examples:
+    PullExample:
+      summary: پاسخ پول دلتا
+      value:
+        ok: true
+        cursor: 'eyJ2IjoxMjM0fQ'
+        changes:
+          - entity: students
+            op: update
+            row: { id: st_1, first_name: زهرا, version: 7 }
+        tombstones:
+          - entity: students
+            id: st_9
+            deleted_at: '2026-09-10T12:00:00Z'
+    StudentExample:
+      summary: ایجاد دانش‌آموز
+      value:
+        first_name: زهرا
+        last_name: محمدی
+        class_id: cls_3

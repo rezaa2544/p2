@@ -134,6 +134,36 @@ async function main() {
     assert.strictEqual(r.status, 200);
   });
 
+  /* BUG-3 (باگ‌هانت چت ۵): مدل users.upd فقط-مدیر است؛ خودبه‌روزرسانیِ
+     غیرمدیر در REST (حتی رکوردِ خودش) باید 403 بدهد — مثلِ role_denied
+     در sync. وگرنه phone/national_id/active/status قابلِ جعل است. */
+  await test('USR6: PATCH self by student/teacher is denied (manager-only, like sync)', async () => {
+    const origName = student1.full_name;
+    const origPhone = teacher1.phone;
+    const rStd = await req('PATCH', `/api/v1/users/${student1.id}`, {
+      body: { full_name: 'نامِ جعلی', phone: '09000000000', national_id: '0000000000', active: false, status: 'x' },
+      cookie: cookieStd1
+    });
+    assert.strictEqual(rStd.status, 403);
+    const rTch = await req('PATCH', `/api/v1/users/${teacher1.id}`, {
+      body: { phone: '09000000001' },
+      cookie: cookieTch1
+    });
+    assert.strictEqual(rTch.status, 403);
+    const back = await req('GET', `/api/v1/users/${student1.id}`, { cookie: cookieMgr1 });
+    assert.strictEqual(back.json.data.full_name, origName);
+    const backT = await req('GET', `/api/v1/users/${teacher1.id}`, { cookie: cookieMgr1 });
+    assert.strictEqual(backT.json.data.phone, origPhone);
+  });
+
+  await test('USR7: PATCH self by manager still works (positive control)', async () => {
+    const r = await req('PATCH', `/api/v1/users/${manager1.id}`, {
+      body: { full_name: manager1.full_name },
+      cookie: cookieMgr1
+    });
+    assert.strictEqual(r.status, 200);
+  });
+
   console.log(`\nUsers API Tests: ${pass}/${pass + fail} passed`);
   if (fail > 0) process.exit(1);
   server.close();

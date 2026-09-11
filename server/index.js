@@ -19,7 +19,7 @@
 const tracing = require('./tracing');
 tracing.initTracing();
 const metrics = require('./metrics'); /* Wave 14 — Prometheus text endpoint (zero-dep) */
-const waf = require('./waf'); /* P-WAF: فقط-تشخیص (detect-only) */
+const waf = require('./waf'); /* P-WAF: report/enforce (P0 #6 — enforce با PAYESH_WAF_MODE=enforce) */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -32,12 +32,14 @@ const { createIdor } = require('./idor');
 const { createBell } = require('./bell');
 const { createPublicReport } = require('./public-report');
 const { createAdmin } = require('./admin');
+const { createHealthIndex } = require('./health-index'); /* G.1 */
 const { createSms } = require('./sms');
 const { createConflicts } = require('./conflicts');
 const { createAudit, clientIp } = require('./audit');
 const db = require('./db');
 const redis = require('./redis');
 const cache = require('./cache');
+const revocation = require('./revocation'); /* Wave 6: ابطالِ توزیع‌شدهٔ مرحلهٔ REVOKE */
 
 const { createStudentRoutes } = require('./routes/students');
 const { createClassRoutes } = require('./routes/classes');
@@ -52,6 +54,15 @@ const { createDeleteService } = require('./delete-service'); /* P0-17 */
 const { createPull } = require('./pull');
 const { createHeavyWorker } = require('./worker-service'); /* Wave 9 — رشتهٔ کارِ عملیاتِ سنگین */
 const { createStaticCache } = require('./static-cache');   /* Wave 9 — کشِ استاتیک */
+const { checkEnvFlags, mismatchWarning } = require('./env-flags'); /* SUSPECT-B */
+
+/* SUSPECT-B (نشست ۲): ناهماهنگیِ پرچم‌هایِ تولید را بلند کن — رفتارِ بوت
+   عوض نمی‌شود (T2 و redis-fallback §۶ همان رفتار را پین کرده‌اند)؛ فقط
+   اپراتور می‌فهمد. قانونِ متعارف («هر دو production») در DEPLOY.md §۳. */
+try {
+  const __envf = checkEnvFlags(process.env);
+  if(__envf.mismatch) console.warn(mismatchWarning(__envf));
+}catch(e){}
 
 const ROOT = path.join(__dirname, '..');
 const DATA_DIR = path.join(__dirname, 'data');
@@ -92,7 +103,10 @@ function loadStore(){
   const s = JSON.parse(fs.readFileSync(STORE_FILE, 'utf8'));
   s.__processed_uids = s.__processed_uids || {};
   s.__revoked_jti    = s.__revoked_jti || {};
-  s.__auth = s.__auth || { codes: {}, login_fail: {}, code_rate: {}, enum: {} };
+  s.__auth = s.__auth || { codes: {}, login_fail: {}, code_rate: {} };
+  /* Wave 6: شمارندهٔ نگهبان به Redis رفت — نگه‌داشتنِ نسخهٔ قدیمی
+     (فقط‌رشد و بدونِ GC در payesh.json) معنا ندارد. */
+  if(s.__auth && s.__auth.enum) delete s.__auth.enum;
   return s;
 }
 const store = loadStore();
@@ -156,27 +170,38 @@ const ENUM_SLOW1  = _num(process.env.PAYESH_ENUM_SLOW1, 100);
 const ENUM_SLOW2  = _num(process.env.PAYESH_ENUM_SLOW2, 500);
 const ENUM_REVOKE = _num(process.env.PAYESH_ENUM_REVOKE, 2000);
 const REQ_STATE = { sess: null };
-function enumTouch(sess){
-  const e = (store.__auth.enum[sess.jti] = store.__auth.enum[sess.jti] || { t: Date.now(), n: 0 });
-  if(Date.now() - e.t > ENUM_WINDOW_MS){ e.t = Date.now(); e.n = 0; }
-  e.n += 1;
-  return e;
+/* Wave 6: شمارندهٔ نگهبان روی Redis — پنجرهٔ ۱۰ دقیقه با TTL؛ بین نمونه‌ها
+   مشترک (پیش‌تر درون‌فروشگاهی بود و چرخشِ حمله بین نمونه‌ها آن را صفر
+   می‌کرد؛ هم‌چنین در payesh.json بدونِ GC رشدِ بی‌پایان داشت). */
+const ENUM_TTL_S = ENUM_WINDOW_MS / 1000;
+function enumKey(sess){ return 'payesh:enum:' + sess.jti; }
+async function enumTouch(sess){
+  try{
+    return await redis.incrWithTtl(enumKey(sess), ENUM_TTL_S);
+  }catch(e){ return 0; } /* خطای ردیس = شمارِ این درخواست گم می‌شود (سکوت) — پنجرهٔ بعدی از نو می‌شمارد */
 }
-function enumDelay(sess){
-  const e = store.__auth.enum && store.__auth.enum[sess.jti];
-  if(!e) return 0;
-  if(e.n >= ENUM_SLOW2) return 2000;
-  if(e.n >= ENUM_SLOW1) return 500;
+async function enumRead(sess){
+  try{
+    const v = await redis.get(enumKey(sess));
+    const n = v == null ? 0 : parseInt(v, 10);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  }catch(e){ return 0; }
+}
+function enumDelayMs(n){
+  if(n >= ENUM_SLOW2) return 2000;
+  if(n >= ENUM_SLOW1) return 500;
   return 0;
 }
-/* R97 — مراحلِ نگهبان (هشدار/تأخیر/ابطال)؛ در هر دو نقطهٔ شمارش: رد‌ها و خوانشِ ID */
-function enumStage(e, sess){
-  if(e.n === ENUM_WARN) audit('enum_warn', { user_id: sess.id, n: e.n });
-  else if(e.n === ENUM_SLOW1) audit('enum_slow', { user_id: sess.id, n: e.n, delay_ms: 500 });
-  else if(e.n === ENUM_SLOW2) audit('enum_slow2', { user_id: sess.id, n: e.n, delay_ms: 2000 });
-  else if(e.n === ENUM_REVOKE){
+/* R97 — مراحلِ نگهبان (هشدار/تأخیر/ابطال)؛ Wave 6: ورودی = nِ شمارندهٔ ردیس.
+   ابطال در REVOKE هم توزیع‌شده می‌شود (denylistِ Redis) — پیش‌تر فقط محلی بود. */
+function enumStage(n, sess){
+  if(n === ENUM_WARN) audit('enum_warn', { user_id: sess.id, n });
+  else if(n === ENUM_SLOW1) audit('enum_slow', { user_id: sess.id, n, delay_ms: 500 });
+  else if(n === ENUM_SLOW2) audit('enum_slow2', { user_id: sess.id, n, delay_ms: 2000 });
+  else if(n === ENUM_REVOKE){
     store.__revoked_jti[sess.jti] = { at: Date.now(), reason: 'enumeration' };
-    audit('enum_revoke', { user_id: sess.id, n: e.n });
+    revocation.revokeSession(sess.jti, SESSION_TTL_S).catch(() => {});
+    audit('enum_revoke', { user_id: sess.id, n });
   }
 }
 
@@ -248,24 +273,24 @@ process.on('exit', () => {
   try { worker.stop(); } catch (e) {}
   persistStoreSync();
   try{ if(typeof auditLogger.flushSync === 'function') auditLogger.flushSync(); }catch(e){}
-  db.close(); redis.close(); workers.terminate();
 });
-process.on('SIGTERM', () => {
-  try { worker.stop(); } catch (e) {}
-  persistStoreSync();
-  try{ if(typeof auditLogger.flushSync === 'function') auditLogger.flushSync(); }catch(e){}
-  db.close(); redis.close(); workers.terminate();
-  process.exit(0);
-});
-process.on('SIGINT', () => {
-  try { worker.stop(); } catch (e) {}
-  persistStoreSync();
-  try{ if(typeof auditLogger.flushSync === 'function') auditLogger.flushSync(); }catch(e){}
-  db.close(); redis.close(); workers.terminate();
-  process.exit(0);
-});
+/* Wave 15: SIGTERM/SIGINT → handleShutdown (drain + close ناهمگام) —
+   ثبتِ آن در پایینی فایل است؛ رویدادِ exit فقط کارِ همگام انجام می‌دهد
+   (در رویدادِ exit promise‌ها هرگز به‌جا نمی‌رسند). */
 
 /* ── JWT secret (env, or generated once; never committed) ──────────── */
+/* P0#2 (چندنمونه‌ای): در production با بک‌اندِ مشترک (Redis/PG) کلیدِ نشست
+   باید **مشترک** باشد — اگر env نباشد، هر instance کلیدِ خودش را روی
+   دیسکِ محلی تولید می‌کند و توکنِ صادرشده در A در B نامعتبر می‌شود
+   (جلساتِ چندنمونه‌ای ساکت می‌شکنند). ⇒ fail-fast در استارت.
+   تک‌نمونهٔ production بدون Redis/PG دست‌نخورده می‌ماند (حالتِ پیشین). */
+const SHARED_BACKEND_CONFIGURED = !!(process.env.REDIS_URL || process.env.REDIS_CLUSTER_NODES
+  || process.env.REDIS_SENTINELS || process.env.DATABASE_URL);
+if((process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production')
+   && !process.env.PAYESH_JWT_SECRET && SHARED_BACKEND_CONFIGURED){
+  console.error('Error: production with shared state (Redis/PostgreSQL) requires a shared PAYESH_JWT_SECRET — the auto-generated per-instance key makes tokens valid only on the issuing instance (multi-instance sessions break). Set the same PAYESH_JWT_SECRET (>=32 bytes) in every instance.');
+  process.exit(1);
+}
 let JWT_SECRET = process.env.PAYESH_JWT_SECRET || null;
 if(!JWT_SECRET){
   if(fs.existsSync(KEY_FILE)) JWT_SECRET = fs.readFileSync(KEY_FILE, 'utf8').trim();
@@ -316,11 +341,13 @@ function sendJson(res, status, obj){
 }
 function sendJsonCounting(res, status, obj){
   /* R97 (TODO 2.7): شمارِ رد‌ها (401/403/404) به ازای هر نشست — مرحله‌بندی
-     در enumStage/enumDelay. مسیرهایِ /api/auth/* سقفِ خودشان را دارند. */
+     در enumStage. Wave 6: شمارنده روی Redis است (پنجرهٔ ۱۰ دقیقه، TTL) —
+     شمارش async و بدونِ مسدودکردنِ پاسخ (فنا = سکوت؛ پنجرهٔ بعدی می‌بیند).
+     مسیرهایِ /api/auth/* سقفِ خودشان را دارند. */
   const r = REQ_STATE;
   const isIdorRead = r && /^\/api\/students\/\d+$/.test(r.p || '');
   if(r && r.sess && (status === 401 || status === 403 || status === 404) && !isIdorRead){
-    enumStage(enumTouch(r.sess), r.sess);
+    enumTouch(r.sess).then(n => { if(n) enumStage(n, r.sess); }).catch(() => {});
   }
   return sendJson(res, status, obj);
 }
@@ -369,8 +396,10 @@ const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom:
 const idor = createIdor({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const pubrep = createPublicReport({ store, sendJson: sendJsonCounting, workers });
+/* هر سه ماژول با db می‌چرخند: admin/conflicts (Wave 1 main) + sms (W1p2 تراکنسی) */
 const admin = createAdmin({ store, db, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, dataDir: path.dirname(STORE_FILE), workers });
-const sms = createSms({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
+const healthIdx = createHealthIndex({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting }); /* G.1 */
+const sms = createSms({ store, db, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 const conflicts = createConflicts({ store, db, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty });
 
 /* ── Phase 3: RESTful Resource Routes ─────────────────────────────── */
@@ -440,8 +469,11 @@ const onRequest = async (req, res) => {
     const __tid = tracing.getTraceId();
     if(__tid){ req.context.trace_id = __tid; res.setHeader('X-Trace-Id', __tid); }
   }catch(e){}
-  /* WAF (P-WAF): فقط-تشخیص (detect-only)؛ هرگز مسدود نمی‌کند — اِعمال با لبه است */
+  /* WAF (P-WAF): حالتِ report (پیش‌فرض — فقط-تشخیص) یا enforce (P0 #6:
+     PAYESH_WAF_MODE=enforce ⇒ verdict = 403 waf_blocked با fail-safe allowlist) */
   try{ await waf.wafMiddleware(req, res); }catch(e){}
+  /* P0 #6: اگر WAF (enforce) درخواست را مسدود کرده باشد (403 فرستاده)، روتینگ ادامه نمی‌یابد */
+  if(res.writableEnded) return;
   /* R97 — نگهبانِ شمردنِ شناسه: شمارِ رد‌ها (404/403/401) و شمارِ همهٔ
      خوانش‌هایِ /api/students/:id (مسطحِ شمردنِ شناسهٔ §5.7) به ازای هر
      نشست؛ از SLOW1 به بعد تأخیر، در REVOKE ابطال (sendJsonCounting). */
@@ -451,8 +483,14 @@ const onRequest = async (req, res) => {
     const gs = await auth.sessionFrom(req);
     if(gs){
       REQ_STATE.sess = gs;
-      if(/^\/api\/students\/\d+$/.test(p)) enumStage(enumTouch(gs), gs); /* §5.7: هر خوانشِ این مسیر می‌شمارد */
-      const dm = enumDelay(gs);
+      let enumN = 0;
+      if(/^\/api\/students\/\d+$/.test(p)){
+        enumN = await enumTouch(gs); /* §5.7: هر خوانشِ این مسیر می‌شمارد (Wave 6: ردیس) */
+        if(enumN) enumStage(enumN, gs);
+      } else {
+        enumN = await enumRead(gs);
+      }
+      const dm = enumDelayMs(enumN);
       if(dm) await new Promise(r => setTimeout(r, dm));
     }
   }
@@ -472,14 +510,69 @@ const onRequest = async (req, res) => {
       res.end(text);
       return;
     }
+    if(p === '/api/liveness' && (req.method === 'GET' || req.method === 'HEAD')){
+      /* Wave 15: liveness = فرایند زنده است و event-loop پاسخ می‌دهد.
+         عمداً هیچ وابستگی (DB/Redis) چک نمی‌کند — خرابیِ وابستگی نباید
+         ارکستراتور را وادار به restart کند (طوفانِ ری‌استارت)؛ برایِ آن
+         readiness هست. حتی در حالِ drain همیشه 200. */
+      return sendJson(res, 200, { ok: true, status: 'live', name: 'payesh-server', pid: process.pid, uptime_s: Math.round(process.uptime()), draining });
+    }
+    if(p === '/api/readiness' && (req.method === 'GET' || req.method === 'HEAD')){
+      /* Wave 15: readiness = آیا می‌توانم ترافیک بپذیرم؟
+         - DB: store در استارت لود شده (وگرنه فرایند اصلاً بالا نمی‌آمد) +
+           pingِ موتور (memory همیشه ok؛ postgres = SELECT 1).
+         - Redis: در تولید (PAYESH_ENV=production یا NODE_ENV=production)
+           ردیسِ زنده لازم است (P0-13)؛ در توسعه فال‌بکِ حافظه قابل‌قبول است.
+           ⇒ PAYESH_ENV=production + قطعِ ردیس = 503 (سپکِ Wave 15).
+         - draining: بلافاصله پس از SIGTERM ⇒ 503 تا LB ترافیکِ تازه نفرستد. */
+      const prod = process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production';
+      let dbp = { ok: true, driver: 'memory', alive: true };
+      try { dbp = await db.ping(); } catch (e) { dbp = { ok: false, driver: 'memory', alive: false, error: String(e.message || e).slice(0, 120) }; }
+      let rdp = { ok: true, driver: 'memory', alive: true };
+      try { rdp = await redis.ping(); } catch (e) { rdp = { ok: false, driver: 'memory', alive: false, error: String(e.message || e).slice(0, 120) }; }
+      const dbOk = !!(dbp && dbp.ok);
+      const redisOk = !!(rdp && rdp.ok);
+      const redisLive = redis.isRedis();
+      const ready = !draining && dbOk && redisOk && (!prod || redisLive);
+      return sendJson(res, ready ? 200 : 503, {
+        ok: ready, status: ready ? 'ready' : 'not_ready', name: 'payesh-server',
+        db: { driver: dbp.driver, alive: dbOk },
+        redis: { driver: rdp.driver, alive: redisOk, live: redisLive, required: prod },
+        draining, time: new Date().toISOString()
+      });
+    }
     if(p === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')){
-      /* P0-13: ریدی = در تولید، کشِ توزیع‌شده زنده است؛ وگرنه 503. */
+      /* P0-13: ریدی = در تولید، کشِ توزیع‌شده زنده است؛ وگرنه 503.
+         Wave 15: کدِ وضعیت روی همان درگاهِ P0-13 می‌ماند (قراردادِ
+         server13/S1 — تغییر نمی‌کند) و بدنه گسترش یافت: گزارشِ کاملِ
+         db/redis/queue + آمارِ pool و حافظه. */
       const rdy = redis.ready();
-      const body = { ok: rdy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid, cache: redis.isRedis() ? 'redis' : (rdy ? 'memory-dev' : 'unavailable') };
+      let dbp = { ok: false, driver: 'unknown', alive: false };
+      try { dbp = await db.ping(); } catch (e) {}
+      let rdp = { ok: false, driver: 'unknown', alive: false };
+      try { rdp = await redis.ping(); } catch (e) {}
+      const pool = db.getPool();
+      const body = {
+        ok: rdy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid,
+        cache: redis.isRedis() ? 'redis' : (rdy ? 'memory-dev' : 'unavailable'),
+        db: { driver: dbp.driver, alive: !!(dbp && dbp.ok), pool: pool ? { total: pool.totalCount, idle: pool.idleCount, pending: pool.pendingCount } : null },
+        redis: { driver: rdp.driver, alive: !!(rdp && rdp.ok) },
+        queue: { outbox: (store.outbox || []).length, notify_pending: (store.notify_queue || []).filter(q => q.status === 'pending').length, in_flight: inFlight },
+        cache_l1: cache.stats().l1,
+        uptime_s: Math.round(process.uptime()),
+        memory: { heap_used_kb: Math.round(process.memoryUsage().heapUsed / 1024) }
+      };
       /* Wave 10 — pool observability (primary + optional read replica) when PG live */
       try { if (db.isPostgres && db.isPostgres() && typeof db.poolStats === 'function') body.db_pools = db.poolStats(); }
       catch (e) {}
       return sendJson(res, rdy ? 200 : 503, body);
+    }
+    /* Wave 15: hookِ فقط-تست (env-gated، پیش‌فرض خاموش) — مسیرِ آهسته برای
+       اثباتِ قطعیِ drain در Graceful Shutdown (tests/wave15-health.js). */
+    if(p === '/api/__slow' && req.method === 'GET' && process.env.PAYESH_TEST_SLOW_MS){
+      const ms = Math.min(30000, Math.max(1, Number(process.env.PAYESH_TEST_SLOW_MS) || 1));
+      await new Promise(r => setTimeout(r, ms));
+      return sendJson(res, 200, { ok: true, slow_ms: ms });
     }
     if(p === '/api/auth/send-code' && req.method === 'POST') return await auth.apiSendCode(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/auth/login'     && req.method === 'POST') return await auth.apiLogin(req, res, await readBody(req, 4 * 1024));
@@ -497,6 +590,7 @@ const onRequest = async (req, res) => {
        بی‌دلیل بود؛ حالا 4KB مثلِ بقیهٔ بدنه‌هایِ کوچک (413 برایِ بیشتر). */
     if(p === '/api/admin/restore' && req.method === 'POST') return await admin.apiRestore(req, res, await readBody(req, 4 * 1024));
     if(p === '/api/sms/send' && req.method === 'POST') return await sms.apiSend(req, res, await readBody(req, 32 * 1024));
+    if(p === '/api/health-index' && req.method === 'GET') return await healthIdx.apiHealthIndex(req, res, url.searchParams); /* G.1 */
 
     /* ── Phase 3: RESTful Resource Endpoints (/api/v1/*) ────────── */
     if(p.indexOf('/api/v1/') === 0){
@@ -652,6 +746,18 @@ const onRequest = async (req, res) => {
   }
 };
 
+/* ── Wave 15: شمارشِ درخواست‌هایِ درحالت‌پرواز برایِ Graceful Shutdown ──
+   هر درخواست در ورود شمار می‌شود و در 'close' پاسخ (پس از flush کامل،
+   حتی روی اتصالِ keep-alive) کم می‌شود. drain = صفرِ این شمارنده. */
+let draining = false;
+let inFlight = 0;
+const SHUTDOWN_TIMEOUT_MS = Math.max(500, Number(process.env.PAYESH_SHUTDOWN_TIMEOUT_MS) || 10000);
+const wrappedRequest = async (req, res) => {
+  inFlight++;
+  res.on('close', () => { inFlight = Math.max(0, inFlight - 1); });
+  await onRequest(req, res);
+};
+
 /* ── TLS (stage 2): real https when PAYESH_TLS_CERT / PAYESH_TLS_KEY
      point at PEM files (self-signed: `node server/tls-cert.js`).
      PAYESH_HTTPS=1 still means "behind a TLS reverse proxy". ──────── */
@@ -688,9 +794,9 @@ if(TLS_CERT || TLS_KEY){
     }
   }
   const https = require('https');
-  server = https.createServer({ key: keyPem, cert: certPem }, onRequest);
+  server = https.createServer({ key: keyPem, cert: certPem }, wrappedRequest);
 }else{
-  server = http.createServer(onRequest);
+  server = http.createServer(wrappedRequest);
 }
 /* Wave 14 — تاپِ زمان‌سنجی پاسخ (هر دو حالت HTTP/HTTPS) — fail-safe؛ هرگز
    بوتِ سرویس را نمی‌شکند. */
@@ -710,6 +816,61 @@ try{
   server.keepAliveTimeout = 65000;
 }catch(e){}
 
+/* ── Wave 15: Graceful Shutdown (SIGTERM / SIGINT) ───────────────────
+   توالی:
+     1) draining = true — /api/readiness فوراً 503 (بالانس بار از ما می‌رود)
+     2) closeIdleConnections + server.close — پذیرشِ اتصالِ تازه متوقف
+        (اتصالاتِ keep-aliveٔ خالی فوراً بسته می‌شوند؛ Node ≥ 18.2)
+     3) انتظارِ پایانِ درخواست‌هایِ درحالت‌پرواز (poll 50ms؛ مهلت
+        PAYESH_SHUTDOWN_TIMEOUT_MS، پیش‌فرض 10s)
+     4) seamِ worker: اگر در آینده workerی بیاید همین‌جا ایستاده
+        شود (این شاخه worker ندارد؛ تایمرِ بکاپِ خودکار unref است و
+        خروج را نگه نمی‌دارد — persistStoreٔ بعدی dirty را می‌پوشاند)
+     5) persistStore (همگام) + db.close() + redis.close() (ناهمگام)
+     6) process.exit(0)
+   نگهبانِ زور: اگر drain از مهلت بگذرد، خروج اجباری با کد ۱
+   (غیرصفر = قابلِ مشاهده در مانیتورینگ؛ کد ۰ فقط برایِ ختمِ تمیز).
+   اگر listener اصلاً شروع نشده باشد (تستِ درون‌فرایند)، server.close()
+   بی‌اثر است و توالی به‌همان‌ترتیب انجام می‌شود. */
+let shutdownRunning = false;
+function handleShutdown(signal) {
+  if (draining || shutdownRunning) return;
+  shutdownRunning = true;
+  draining = true;
+  const t0 = Date.now();
+  const started = inFlight;
+  console.log('[shutdown] ' + signal + ' received — draining ' + started + ' in-flight request(s), budget ' + SHUTDOWN_TIMEOUT_MS + 'ms');
+  try { if (server.closeIdleConnections) server.closeIdleConnections(); } catch (e) {}
+  try { server.close(() => {}); } catch (e) {} /* ERR_SERVER_NOT_RUNNING — context تست */
+  let done = false;
+  const killer = setTimeout(() => {
+    console.error('[shutdown] drain budget exceeded — forcing exit');
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS + 2000);
+  const poll = setInterval(() => {
+    if (inFlight > 0) return;
+    finish();
+  }, 50);
+  function finish() {
+    if (done) return;
+    done = true;
+    clearTimeout(killer);
+    clearInterval(poll);
+    try { persistStore(); } catch (e) {}
+    (async () => {
+      try { await db.close(); } catch (e) {}
+      try { await redis.close(); } catch (e) {}
+      console.log('[shutdown] clean — dependencies closed in ' + (Date.now() - t0) + 'ms; exit 0');
+      process.exit(0);
+    })();
+  }
+  /* بدونِ listenerِ فعال، close() هرگز کامل نمی‌شود — اگر الان هم درحالت
+    پروازی نباشد، خودمان را پیش می‌بریم (poll ۵۰ms هم پادزهرِ دوم است). */
+  if (inFlight === 0) setTimeout(() => { if (inFlight === 0) finish(); }, 50);
+}
+process.on('SIGTERM', () => { handleShutdown('SIGTERM'); });
+process.on('SIGINT', () => { handleShutdown('SIGINT'); });
+
 /* ── بکاپِ دوره‌ایِ خودکار (باقی‌ماندهٔ 2.4) — درون‌پروسه ─────────
    PAYESH_BACKUP_EVERY_HOURS (production، مثلاً 24) یا
    PAYESH_BACKUP_EVERY_MS (تست). بی‌ارزش/صفر = خاموش. */
@@ -719,16 +880,25 @@ const BACKUP_EVERY_MS = (Number(process.env.PAYESH_BACKUP_EVERY_MS) > 0)
       ? Number(process.env.PAYESH_BACKUP_EVERY_HOURS) * 3600000 : 0);
 
 if(require.main === module){
+  /* Wave 15: این خطِ verbatim باید بماند (جهشِ M18 روی همین الگو است).
+     تایمرِ بکاپِ خودکار unref است — خروجِ shutdown را هرگز نگه نمی‌دارد؛
+     persistStoreٔ نهاییِ handleShutdown وضعیتِ dirty را می‌پوشاند. */
   if(BACKUP_EVERY_MS > 0) admin.startAutoBackup(BACKUP_EVERY_MS);
   server.listen(PORT, HOST, () => {
     const proto = (TLS_CERT && TLS_KEY) ? 'https' : 'http';
     console.log('payesh-server (phase 1' + (TLS_CERT ? ' + TLS' : '') + ') on ' + proto + '://' + HOST + ':' + PORT);
     console.log('  static : ' + path.join(ROOT, 'index.html'));
-    console.log('  api    : /api/health /api/auth/* /api/sync /api/sync/conflicts /api/sync/resolve-conflict /api/students/:id /api/bell/now /api/public-report /api/admin/{backup,restore} /api/sms/send');
+    console.log('  api    : /api/health /api/readiness /api/liveness /api/auth/* /api/sync /api/sync/conflicts /api/sync/resolve-conflict /api/students/:id /api/bell/now /api/public-report /api/admin/{backup,restore} /api/sms/send');
     console.log('  store  : ' + STORE_FILE + '  (' + (store.users || []).length + ' users)');
     if(BACKUP_EVERY_MS > 0){
       console.log('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');
     }
   });
 }
-module.exports = { server, store, audit, isHttps, persistStore, persistStoreSync, db, redis, cache, workers, staticCache };
+module.exports = {
+  server, store, audit, isHttps, persistStore, persistStoreSync, db, redis, cache, workers, staticCache,
+  /* Wave 6: برای تستِ مستقیمِ نگهبانِ شمارش (state روی Redis) */
+  __enumForTests: { enumTouch, enumRead, enumDelayMs, enumStage, enumKey },
+  /* Wave 15: برای تستِ Graceful Shutdown (وضعیتِ drain) */
+  __drainForTests: () => ({ draining, inFlight })
+};

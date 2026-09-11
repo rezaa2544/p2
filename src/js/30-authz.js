@@ -152,10 +152,13 @@ var ACTION_ROLES = {
   'dojo-row-del':   ['manager'],
   'dojo-pick':      ['teacher','manager'],
   /* حضور و غیاب: فقط دبیر و مدیر */
-  /* مهمان‌ها (بند ۷): فقط مدیر؛ مالکیت مدرسه در visitorRegister/visitorCheckout روی داده */
-  'vis-new':        ['manager'],
-  'vis-save':       ['manager'],
-  'vis-out':        ['manager'],
+  /* مهمان‌ها (E.9): مدیر + نگهبان (نقشِ تفویضی — سوپرادمین کاربرِ
+     role=guard می‌سازد). معاون (مدیرِ سطحی با عنوانِ معاون) فقط‌خوان است:
+     گاردِ عنوان در visitorWriteOk روی داده. مالکیت مدرسه در
+     visitorRegister/visitorCheckout روی داده تکرار می‌شود. */
+  'vis-new':        ['manager','guard'],
+  'vis-save':       ['manager','guard'],
+  'vis-out':        ['manager','guard'],
   /* کتابخانه (بند ۸): فقط مدیر؛ مالکیت مدرسه در توابع دامنه روی داده */
   'lib-new':        ['manager'],
   'lib-save':       ['manager'],
@@ -245,6 +248,7 @@ var ACTION_ROLES = {
   'internship-save':    ['teacher','manager'],
   'internship-approve': ['teacher','manager'],
   'internship-del':     ['manager'],
+  'internship-cert':    ['manager','superadmin'],
   /* بند ۲.۲ — IEP: فیلدِ آزاد است ولی تغییرش اختیارِ کادر است (دبیر/مدیر) */
   'iep-save': ['teacher','manager'],
   /* بند ۴.۴ — قیف پیش‌ثبت‌نام: پیگیریِ داوطلب کارِ مدیر است */
@@ -289,6 +293,7 @@ var ACTION_ROLES = {
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],
   'disc-modal':    ['teacher','manager'],
+  'disc-quick':    ['teacher','manager'],
   /* کاربران و مدارس */
   'user-save':     ['manager','superadmin'],
   'user-del':      ['manager','superadmin'],
@@ -318,6 +323,11 @@ var ACTION_ROLES = {
   'ann-del':       ['manager','superadmin','edu_office'],
   /* ب.۳ — ارزشیابی ناشناس معلم: فقط دانش‌آموز و ولی پاسخ می‌دهند */
   'eval-save':     ['student','parent'],
+  /* د.۴ — کمبود نیروی انسانی: تعیین/حذف هنجار فقط سوپرادمین و کارشناس اداره
+     (دروازهٔ سمت سرور هم در server/sync.js بر محدودهٔ اداره) */
+  'staffgap-norm':   ['superadmin','edu_office'],
+  'staffpost-save':  ['superadmin','edu_office'],
+  'staffpost-del':   ['superadmin','edu_office'],
   /* مالی */
   'tuition-plan-save': ['manager','superadmin'],
   'plan-del':      ['manager','superadmin'],

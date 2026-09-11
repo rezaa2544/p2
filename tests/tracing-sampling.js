@@ -64,6 +64,9 @@ function parentCtx(sampled) {
   /* ── SMP: انتخاب ── */
   chk('SMP-sel پیش‌فرضِ توسعه always_on', tracing.selectSampler({}).name === 'always_on');
   chk('SMP-sel پیش‌فرضِ پروداکشن parentbased/۱۰٪', JSON.stringify(tracing.selectSampler({ NODE_ENV: 'production' })) === JSON.stringify({ name: 'parentbased_ratio', arg: 0.1 }));
+  /* BUG-5 (باگ‌هانت چت ۵): تشخیص تولیدِ سرور PAYESH_ENV است (گیت TLS) —
+     sampler نباید با NODE_ENVِ خالی به always_on برگردد. */
+  chk('SMP-sel پروداکشنِ PAYESH_ENV هم parentbased/۱۰٪', JSON.stringify(tracing.selectSampler({ PAYESH_ENV: 'production' })) === JSON.stringify({ name: 'parentbased_ratio', arg: 0.1 }));
   chk('SMP-sel TRACING_SAMPLE_ALL بر همه می‌چربد', tracing.selectSampler({ NODE_ENV: 'production', TRACING_SAMPLE_ALL: '1' }).name === 'always_on');
   chk('SMP-sel هر ۷ نامِ استاندارد OTEL', tracing.selectSampler({ OTEL_TRACES_SAMPLER: 'always_on' }).name === 'always_on'
     && tracing.selectSampler({ OTEL_TRACES_SAMPLER: 'always_off' }).name === 'always_off'

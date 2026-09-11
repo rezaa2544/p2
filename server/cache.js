@@ -13,7 +13,50 @@ const crypto = require('crypto');
 const redis = require('./redis');
 
 const INVAL_CHANNEL = 'payesh:pubsub:inval';
-const localUserBootstrapCache = new Map(); // L1 memory cache for microsecond reads
+/* W11-2 (موج ۱۱، باگ‌هانت چت ۵): epochِ ابطالِ L2. ابطالِ مدرسه/سراسری فقط
+   کلیدهایِ L2ِ کاربرانِ حاضر در L1 همان نمونه را پاک می‌کرد؛ ورودیِ
+   خالص-L2 (پس از LRU یا ری‌استارت) تا پایانِ TTL کهنه می‌ماند. حالا هر
+   ابطال epoch تازهٔ یکتایی می‌نشاند، جفتِ جاری را در پاکتِ L2 می‌دوزد و
+   خوانشِ L2-hit اعتبارسنجی می‌کند. EX=۳۶۰۰ (بسی بزرگ‌تر از TTL ‏۵دقیقه‌ایِ
+   L2) پس کلیدِ epoch زودتر از هیچ ورودیِ زنده‌ای منقضی نمی‌شود. */
+const EPOCH_GLOBAL_KEY = 'payesh:cache:epoch:global';
+const EPOCH_TTL_SECONDS = 3600;
+const epochSchoolKey = (schoolId) => `payesh:cache:epoch:school:${Number(schoolId)}`;
+function newEpoch() {
+  return Date.now().toString(36) + ':' + crypto.randomUUID();
+}
+/* Wave 11 — قواعدِ کش:
+   L1: حافظهٔ فرایند، LRU با سقف (PAYESH_CACHE_L1_MAX، پیش‌فرض ۱۰٬۰۰۰) +
+   TTLِ ۶۰s برای هر ورودی. L2: Redis، TTL = TTLِ منطقِ کلید (bootstrap ۵دقیقه).
+   انقضا: رویدادهایِ user/school/all از مسیرِ تغییر (sync و REST) منتشر می‌شوند؛
+   انقضایِ کاملِ L2 با ایندکسِ «مدرسه ⇒ کاربرانِ کش‌شده» (payesh:cache:school:<sid>).
+   Stampede: single-flight — N درخواستِ هم‌زمانِ cache-miss برایِ یک کلید =
+   یک بساز/یک نوشت (withSingleFlight). */
+const L1_TTL_MS = 60 * 1000;
+const localUserBootstrapCache = new Map(); // L1 — insertion order = LRU order
+const inflight = new Map(); // single-flight: key -> Promise
+
+function l1Get(userId) {
+  const it = localUserBootstrapCache.get(Number(userId));
+  if (!it) return null;
+  if (Date.now() >= it.exp) {
+    localUserBootstrapCache.delete(Number(userId));
+    return null;
+  }
+  /* LRU: دسترسی ⇒ انتهای صف (قدیمی‌ترین = ابتدای صف) */
+  localUserBootstrapCache.delete(Number(userId));
+  localUserBootstrapCache.set(Number(userId), it);
+  return it.data;
+}
+function l1Set(userId, data, schoolId) {
+  const uid = Number(userId);
+  if (localUserBootstrapCache.has(uid)) localUserBootstrapCache.delete(uid);
+  localUserBootstrapCache.set(uid, { data, exp: Date.now() + L1_TTL_MS, school_id: schoolId });
+  while (localUserBootstrapCache.size > l1MaxEntries) {
+    const oldest = localUserBootstrapCache.keys().next().value;
+    localUserBootstrapCache.delete(oldest);
+  }
+}
 
 /* ── Wave 9 — L1 محدود: سقفِ ورودی + LRU + TTL ──────────────────────
    نقشهٔ L1 تا پیش از این فقط-رشد بود (در مقیاسِ ملی = نشتِ حافظه).
@@ -22,38 +65,13 @@ const localUserBootstrapCache = new Map(); // L1 memory cache for microsecond re
    و تازگی در خواندن). TTL همان ۶۰ ثانیهٔ قبلی است. */
 const L1_DEFAULT_MAX = Number.isFinite(Number(process.env.PAYESH_L1_MAX_ENTRIES)) && Number(process.env.PAYESH_L1_MAX_ENTRIES) > 0
   ? Math.floor(Number(process.env.PAYESH_L1_MAX_ENTRIES))
-  : 2048;
+  : Math.max(1, Number(process.env.PAYESH_CACHE_L1_MAX || 2048));
+/* سقفِ L1 — یکدست‌شدهٔ ریبیس: setL1MaxEntries (W9) و setMax (W11) و هرسِ
+   l1Set همه روی همین مقدار کار می‌کنند. اولویت: PAYESH_L1_MAX_ENTRIES (W9) >
+   PAYESH_CACHE_L1_MAX (W11) > ۲۰۸. */
 let l1MaxEntries = L1_DEFAULT_MAX;
 let l1Hits = 0;
 let l1Misses = 0;
-
-function l1Set(id, val) {
-  if (localUserBootstrapCache.size >= l1MaxEntries && !localUserBootstrapCache.has(id)) {
-    const now = Date.now();
-    /* اول: ورودی‌های منقضی را بکش */
-    for (const [k, it] of localUserBootstrapCache) {
-      if (localUserBootstrapCache.size < l1MaxEntries) break;
-      if (!it || it.exp <= now) localUserBootstrapCache.delete(k);
-    }
-    /* بعد: قدیمی‌ترین‌ها (LRU) */
-    while (localUserBootstrapCache.size >= l1MaxEntries) {
-      const k = localUserBootstrapCache.keys().next().value;
-      if (k === undefined) break;
-      localUserBootstrapCache.delete(k);
-    }
-  }
-  localUserBootstrapCache.delete(id);
-  localUserBootstrapCache.set(id, val);
-}
-
-function l1Get(id) {
-  const hit = localUserBootstrapCache.get(id);
-  if (hit === undefined) return undefined;
-  /* تازگیِ LRU: خوانده‌شده = تازه‌ترین */
-  localUserBootstrapCache.delete(id);
-  localUserBootstrapCache.set(id, hit);
-  return hit;
-}
 
 /**
  * Initialize Cache layer and Pub/Sub invalidation listeners
@@ -70,12 +88,16 @@ async function init() {
       const event = JSON.parse(msg);
       if (event.type === 'user' && event.user_id) {
         localUserBootstrapCache.delete(Number(event.user_id));
+        /* Wave 11: کلیدِ L2 هم پاک شود — وگرنه تا TTL کشِ کهنه می‌ماند */
+        redis.del(`payesh:cache:bootstrap:${event.user_id}`).catch(() => {});
       } else if (event.type === 'school' && event.school_id) {
         for (const [uid, item] of localUserBootstrapCache.entries()) {
           if (item.school_id === Number(event.school_id)) {
             localUserBootstrapCache.delete(uid);
           }
         }
+        /* Wave 11: انقضایِ کاملِ L2 از ایندکسِ مشترک (کاربرانِ کش‌شدهٔ مدرسه) */
+        purgeSchoolL2(Number(event.school_id)).catch(() => {});
       } else if (event.type === 'all') {
         localUserBootstrapCache.clear();
       }
@@ -85,16 +107,27 @@ async function init() {
   return { ok: true };
 }
 
+/* Wave 11: ایندکسِ مشترکِ «مدرسه ⇒ کاربرانِ کش‌شده» — انقضایِ کاملِ L2
+   حتی برایِ کاربرانی که در L1ِ این نمونه نیستند (وگرنه تا TTL می‌ماندند). */
+const schoolSetKey = (schoolId) => `payesh:cache:school:${schoolId}`;
+async function purgeSchoolL2(schoolId) {
+  const members = await redis.sMembers(schoolSetKey(schoolId));
+  for (const uid of members) {
+    await redis.del(`payesh:cache:bootstrap:${uid}`);
+  }
+  return members.length;
+}
+
 /**
  * Get cached Bootstrap payload
  * @param {number} userId 
  */
 async function getBootstrapCache(userId) {
-  // L1 Check
-  const local = l1Get(Number(userId));
-  if (local && Date.now() < local.exp) {
+  // L1 Check (LRU + TTL 60s)
+  const local = l1Get(userId);
+  if (local) {
     l1Hits++;
-    return local.data;
+    return local;
   }
   l1Misses++;
 
@@ -103,8 +136,22 @@ async function getBootstrapCache(userId) {
   const raw = await redis.get(key);
   if (raw) {
     try {
-      const data = JSON.parse(raw);
-      l1Set(Number(userId), { data, exp: Date.now() + 60000, school_id: data.school ? data.school.id : null });
+      const parsed = JSON.parse(raw);
+      /* W11-2: پاکتِ epochدار اعتبارسنجی می‌شود؛ legacy (بی‌پاکت، از پیش
+         از استقرار — حداکثر ۵ دقیقه عمر دارد) همان‌طور پذیرفته می‌شود. */
+      if (parsed && parsed.__epoch_env === 1) {
+        const schoolId = parsed.data && parsed.data.school ? parsed.data.school.id : null;
+        const curSe = schoolId != null ? await redis.get(epochSchoolKey(schoolId)) : null;
+        const curGe = await redis.get(EPOCH_GLOBAL_KEY);
+        if ((parsed.se || null) !== (curSe || null) || (parsed.ge || null) !== (curGe || null)) {
+          return null;   /* ابطال‌شده پس از نوشتن — کهنه نخوان */
+        }
+        const data = parsed.data;
+        l1Set(Number(userId), data, schoolId != null ? Number(schoolId) : null);
+        return data;
+      }
+      const data = parsed;
+      l1Set(userId, data, data.school ? data.school.id : null);
       return data;
     } catch (e) {}
   }
@@ -119,8 +166,15 @@ async function getBootstrapCache(userId) {
  */
 async function setBootstrapCache(userId, data, ttlSeconds = 300) {
   const key = `payesh:cache:bootstrap:${userId}`;
-  l1Set(Number(userId), { data, exp: Date.now() + 60000, school_id: data.school ? data.school.id : null });
-  await redis.set(key, JSON.stringify(data), 'EX', ttlSeconds);
+  const schoolId = data && data.school ? data.school.id : null;
+  l1Set(userId, data, schoolId);
+  /* W11-2: جفتِ جاریِ epoch در پاکتِ L2 دوخته می‌شود (خوانشِ بعدی اعتبارسنجی
+     می‌کند). در خطایِ ردیس می‌پراند — مثلِ خودِ set امروز (fail-closed). */
+  const se = schoolId != null ? await redis.get(epochSchoolKey(schoolId)) : null;
+  const ge = await redis.get(EPOCH_GLOBAL_KEY);
+  await redis.set(key, JSON.stringify({ __epoch_env: 1, data, se: se || null, ge: ge || null }), 'EX', ttlSeconds);
+  /* Wave 11: عضویت در ایندکسِ مدرسه برای انقضایِ کامل */
+  if (schoolId) await redis.sAdd(schoolSetKey(schoolId), String(userId));
 }
 
 /**
@@ -140,12 +194,16 @@ async function invalidateUser(userId) {
  */
 async function invalidateSchool(schoolId) {
   if (!schoolId) return;
-  for (const [uid, item] of localUserBootstrapCache.entries()) {
+  /* W11-2: اول epoch (بادوام، تک‌کلید) — حتی اگر publish بعدی بپرد، L2
+     از این لحظه کهنه‌خوان نمی‌شود؛ L1 نمونه‌هایِ دیگر حداکثر ۶۰ ثانیه
+     (TTL خودشان) عقب می‌ماند و بعد با L2-miss خودترمیم می‌شود. */
+  await redis.set(epochSchoolKey(schoolId), newEpoch(), 'EX', EPOCH_TTL_SECONDS);
+  for (const [uid, item] of Array.from(localUserBootstrapCache.entries())) {
     if (item.school_id === Number(schoolId)) {
       localUserBootstrapCache.delete(uid);
-      await redis.del(`payesh:cache:bootstrap:${uid}`);
     }
   }
+  await purgeSchoolL2(Number(schoolId));
   await redis.publish(INVAL_CHANNEL, { type: 'school', school_id: Number(schoolId) });
 }
 
@@ -158,13 +216,56 @@ async function invalidateCollection(collection, schoolId) {
   if (schoolId) {
     await invalidateSchool(schoolId);
   } else {
+    /* W11-2: ابطالِ سراسری هم L2 را می‌پوشاند (همان حفره، مقیاسِ کل) */
+    await redis.set(EPOCH_GLOBAL_KEY, newEpoch(), 'EX', EPOCH_TTL_SECONDS);
     localUserBootstrapCache.clear();
     await redis.publish(INVAL_CHANNEL, { type: 'all', collection });
   }
 }
 
 /**
- * Distributed Rate Limiting
+ * Wave 11 — Single-flight (stampede protection): هم‌زمانیِ N فراخوان برایِ
+ * یک کلیدِ در حالِ build ⇒ فقط یک build؛ بقیه همان Promise را می‌گیرند.
+ * (هر نمونهٔ فرایندِ خود را حفظ می‌کند — L2 هم‌چنان یک‌نوشته می‌ماند.)
+ * @param {string} key
+ * @param {Function} fn — async builder
+ * @returns {Promise<*>} نتیجهٔ build
+ */
+async function withSingleFlight(key, fn) {
+  const pend = inflight.get(key);
+  if (pend) return pend;
+  const p = (async () => {
+    try { return await fn(); }
+    finally { inflight.delete(key); }
+  })();
+  inflight.set(key, p);
+  return p;
+}
+
+/* Wave 15: آمارِ کش برایِ /api/health (L1 + در‌حالت‌پروازِ single-flight) */
+function stats() {
+  return { l1: localUserBootstrapCache.size, inflight: inflight.size };
+}
+
+/* Wave 11: دسترسی‌هایِ آزمون — L1 و single-flight را قابلِ مشاهده می‌کنند */
+function __l1ForTests() {
+  return {
+    get size() { return localUserBootstrapCache.size; },
+    has: (uid) => !!l1Get(uid),
+    clear: () => localUserBootstrapCache.clear(),
+    setMax: (n) => { l1MaxEntries = Math.max(1, Number(n) || 1); }
+  };
+}
+function __inflightForTests() {
+  return inflight.size;
+}
+
+/**
+ * Distributed Rate Limiting (fixed-window)
+ * Wave 6: اتمیک — شمارش با `incrWithTtl` (INCR+EXPIRE در یک اسکرپت)؛
+ * نسخهٔ پیشین GET+SET غیراتوم بود و زیر burstِ هم‌زمان سقف را رد می‌کرد.
+ * خطا = fail-open (allowed:true) — مثلِ server/rate-limit.js؛ لبهٔ سخت
+ * (nginx/Cloudflare) کنترلِ سختِ نرخ می‌ماند.
  * @param {string} identifier - e.g., IP address or Phone
  * @param {string} action - e.g., 'send_code', 'login', 'api'
  * @param {number} limit - max allowed attempts
@@ -173,25 +274,16 @@ async function invalidateCollection(collection, schoolId) {
  */
 async function checkRateLimit(identifier, action, limit = 10, windowSeconds = 60) {
   const key = `payesh:rl:${action}:${identifier}`;
-  const countStr = await redis.get(key);
-  let count = countStr ? parseInt(countStr, 10) : 0;
-
-  if (count >= limit) {
+  try {
+    const count = await redis.incrWithTtl(key, windowSeconds);
     return {
-      allowed: false,
-      remaining: 0,
-      resetSeconds: windowSeconds
+      allowed: count <= limit,
+      remaining: Math.max(0, limit - count),
+      resetSeconds: await redis.ttl(key)
     };
+  } catch (e) {
+    return { allowed: true, remaining: limit, resetSeconds: windowSeconds };
   }
-
-  count += 1;
-  await redis.set(key, String(count), 'EX', windowSeconds);
-
-  return {
-    allowed: true,
-    remaining: Math.max(0, limit - count),
-    resetSeconds: windowSeconds
-  };
 }
 
 /**
@@ -274,5 +366,8 @@ module.exports = {
   acquireLock,
   releaseLock,
   l1Stats,
-  setL1MaxEntries
-};
+  setL1MaxEntries,
+  withSingleFlight,
+  stats,
+  __l1ForTests,
+  __inflightForTests};
