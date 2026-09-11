@@ -68,7 +68,7 @@ function closeModal(){
   }
 }
 function modalTpl(title,body,saveAct,danger,okLabel){
-  return `<div class="card-head"><h3>${esc(title)}</h3><button class="icon-btn" data-act="modal-close">✕</button></div>
+  return `<div class="card-head"><h3>${esc(title)}</h3><button class="icon-btn" data-act="modal-close" aria-label="بستن">✕</button></div>
    <div class="card-body">${body}</div>
    <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border);justify-content:flex-end">
     <button class="btn ghost" data-act="modal-close">انصراف</button>
@@ -81,7 +81,12 @@ function modalTpl(title,body,saveAct,danger,okLabel){
 const f=(label,inner)=>{
   const s=String(inner);
   const m=/\sid="([^"]+)"/.exec(s);
-  if(m) return `<div class="field"><label for="${m[1]}">${label}</label>${s}</div>`;
+  /* jdate() stores the value in a hidden input, but its visible button is the
+     actual control. Give the visible button the label's accessible name. */
+  const jd=/\sdata-jd="([^"]+)"/.exec(s);
+  const labelId=jd?'jdate-label-'+jd[1]:'';
+  const labelAttrs=(m&&!jd?` for="${escAttr(m[1])}"`:'')+(labelId?` id="${escAttr(labelId)}"`:'');
+  if(m||labelId) return `<div class="field"><label${labelAttrs}>${label}</label>${s}</div>`;
   const plain=String(label).replace(/<[^>]*>/g,'').replace(/"/g,'&quot;').trim();
   const patched=plain?s.replace(/<(input|select|textarea)\b(?![^>]*aria-label)/i,`<$1 aria-label="${plain}"`):s;
   return `<div class="field"><label>${label}</label>${patched}</div>`;
