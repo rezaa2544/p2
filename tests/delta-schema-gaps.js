@@ -1,0 +1,328 @@
+#!/usr/bin/env node
+/* ═══════════════════════════════════════════════════════════════════
+   tests/delta-schema-gaps.js — «بستن شکاف اسکیما Delta»
+   (DELTA_HARDENING.md §6 — سه شکاف اسکیمای مسیر دلتا)
+   ─────────────────────────────────────────────────────────────────
+   گپ ۱ — نامِ مردهٔ `homework` در سطحِ allowlist (pull/syncdelta) با
+          مجموعهٔ واقعیِ `hw_assignments` (جدول + کلاینت + authz مدل)
+          جایگزین شده:
+     SG1  tableName/deltaRowsSql برای hw_assignments پذیرفته می‌شود و
+          FROM "hw_assignments" با پیشیکیتِ updated_at می‌سازد
+     SG2  نامِ مردهٔ homework در syncdelta fail-closed رد می‌شود
+     SG3  پولِ پیش‌فرض (حافظه) کلید collections.hw_assignments می‌دهد و
+          homework را دیگر نمی‌فرستد؛ دلتا فقط سطرِ تازه را می‌دهد
+     SG4  رگرسیونِ PG-live: قبلاً SELECT * FROM "homework" ⇒ 42P01 ⇒
+          ۵۰۰؛ حالا حتی کوئری‌ای برای homework صادر نمی‌شود و پول ۲۰۰
+          می‌ماند (با db جعلی که برای جدولِ غایب پرتاب می‌کند)
+     SG5  کلاینتِ قدیمی ?collections=homework,grades ⇒ homework بی‌صدا
+          حذف می‌شود (fail-closed)، بدونِ کرش؛ grades سرو می‌شود
+
+   گپ ۲ — نامِ مردهٔ `vclass_rooms` (هیچ جدول/کلاینتی ندارد) حذف و
+          مجموعهٔ واقعیِ vclass_sessions (دارای school_id ⇒ scope-پذیر)
+          جایگزین شده:
+     SG6  tableName برای vclass_sessions پاس / vclass_rooms رد
+     SG7  پولِ پیش‌فرض vclass_sessions دارد و vclass_rooms ندارد
+     SG8  جداسازی مدرسه‌ای: سطر school_id=2 در دلتای vclass_sessions
+          به جلسهٔ مدرسهٔ ۱ نشت نمی‌کند
+
+   گپ ۳ — sync_conflicts.updated_at (ستون دلتا + ایندکس، مهاجرت ۰۰۶):
+     SG9  مهاجرتِ 006: ADD COLUMN IF NOT EXISTS / backfill با WHERE
+          updated_at IS NULL / SET NOT NULL / ایندکس — به‌همراهِ فایلِ
+          down (drop index + drop column) و ایندکس‌های hw_assignments
+          و vclass_sessions؛ باBEGIN/COMMIT
+     SG10 ردیفِ تعارضِ تازه (sync.js) updated_at هم‌ارزِ created_at دارد
+     SG11 مسیرِ داوری (conflicts.js) هنگامِ resolve روی ردیف stamp
+          می‌زند (status→resolved به‌همراهِ updated_at)
+     SG12 دلتای حافظه‌ایِ sync_conflicts: سطرِ تازه (updated_at>since)
+          برمی‌گردد؛ سطرِ کهنه نه
+
+   Run: node tests/delta-schema-gaps.js   (exit 0 = all green)
+   ═══════════════════════════════════════════════════════════════════ */
+'use strict';
+
+const path = require('path');
+const fs = require('fs');
+
+const ROOT = path.join(__dirname, '..');
+const { createPull } = require(path.join(ROOT, 'server', 'pull'));
+const { createCursor } = require(path.join(ROOT, 'server', 'cursor'));
+const { createSync, attach } = require(path.join(ROOT, 'server', 'sync'));
+const { createConflicts } = require(path.join(ROOT, 'server', 'conflicts'));
+const { tableName, deltaRowsSql } = require(path.join(ROOT, 'server', 'syncdelta'));
+const { opX } = require('./helpers/opx');
+
+let pass = 0, fail = 0;
+const failures = [];
+const assert = (c, m) => { if (!c) throw new Error(m || 'شرط برقرار نیست'); };
+async function test(name, fn) {
+  try { await fn(); pass++; console.log(`  ✅ ${name}`); }
+  catch (e) { fail++; failures.push({ name, msg: e.message }); console.log(`  ❌ ${name}\n     ${e.message}`); }
+}
+function group(t) { console.log(`\n▸ ${t}`); }
+
+const DAY = 24 * 60 * 60 * 1000;
+const NOW = Date.now();
+const iso = (t) => new Date(t).toISOString();
+const FRESH = iso(NOW - 2 * DAY); /* دلتا (نه full): سطرهای ۱‌روزه تازه‌اند */
+
+/* ── سطحِ کانونیِ مجموعه‌ها پس ازِ این مأموریت (۱۹ عضو) ── */
+const EXPECTED = [
+  'schools', 'users', 'classes', 'subjects', 'schedule', 'enrollments',
+  'attendance', 'grades', 'discipline', 'leaves', 'notifications',
+  'announcements', 'hw_assignments', 'hw_submissions', 'vclass_sessions',
+  'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
+];
+const DEAD = ['homework', 'vclass_rooms'];
+
+function makeStore() {
+  const store = { __deleted_records: [], __server_version: 42 };
+  for (const c of EXPECTED) {
+    const uid = c === 'notifications' ? 10 : null;
+    store[c] = [
+      { id: 1, school_id: 1, user_id: uid, ref: c + '-old', created_at: iso(NOW - 30 * DAY), updated_at: iso(NOW - 30 * DAY) },
+      { id: 2, school_id: 1, user_id: uid, ref: c + '-new', created_at: iso(NOW - 1 * DAY), updated_at: iso(NOW - 1 * DAY) },
+      { id: 3, school_id: 2, user_id: uid, ref: c + '-new-s2', created_at: iso(NOW - 1 * DAY), updated_at: iso(NOW - 1 * DAY) }
+    ];
+  }
+  return store;
+}
+
+function makePull(o) {
+  o = o || {};
+  const store = o.store || makeStore();
+  const cap = {};
+  const db = o.db || null;
+  const controller = createPull({
+    store, db,
+    sessionFrom: async () => o.session || { id: 10, school_id: 1, role: 'manager' },
+    sendJson: (res, code, body) => { cap.code = code; cap.body = body; },
+    cursor: o.cursor !== undefined ? o.cursor : createCursor({ secret: 'k'.repeat(64) })
+  });
+  return { store, cap, pull: (qs) => controller.apiPull({ url: '/api/v1/pull' + (qs ? '?' + qs : '') }, {}) };
+}
+
+/* ═══════════════ گپ ۱ — homework → hw_assignments ═══════════════ */
+(async () => {
+group('گپ ۱ — نامِ مردهٔ homework با hw_assignments جایگزین شد');
+
+await test('SG1 syncdelta برای hw_assignments کوئری دلتا می‌سازد', async () => {
+  assert(tableName('hw_assignments') === 'hw_assignments', 'tableName must pass hw_assignments');
+  const q = deltaRowsSql('hw_assignments', { sinceISO: FRESH });
+  const sql = (q && q.sql) ? q.sql : String(q);
+  assert(/FROM "hw_assignments"/.test(sql), 'FROM "hw_assignments" in: ' + sql);
+  assert(/updated_at/.test(sql) && /created_at/.test(sql), 'timestamp predicate in: ' + sql);
+});
+
+await test('SG2 نامِ مردهٔ homework در allowlist رد می‌شود (fail-closed)', async () => {
+  let threw = false;
+  try { tableName('homework'); } catch (_) { threw = true; }
+  assert(threw, 'tableName("homework") must throw');
+  let threw2 = false;
+  try { deltaRowsSql('homework', { sinceISO: FRESH }); } catch (_) { threw2 = true; }
+  assert(threw2, 'deltaRowsSql("homework") must throw');
+});
+
+await test('SG3 پولِ پیش‌فرض (حافظه): hw_assignments هست، homework نیست', async () => {
+  const { cap, pull } = makePull();
+  await pull('since=' + encodeURIComponent(FRESH));
+  assert(cap.code === 200, 'status 200, got ' + cap.code);
+  const keys = Object.keys(cap.body.collections || {});
+  assert(keys.indexOf('hw_assignments') > -1, 'hw_assignments must be served');
+  assert(keys.indexOf('homework') === -1, 'homework must NOT be served');
+  /* دلتا: فقط سطرِ تازهٔ مدرسهٔ ۱ (نه کهنه، نه مدرسهٔ ۲) */
+  const rows = cap.body.collections.hw_assignments;
+  assert(Array.isArray(rows) && rows.length === 1 && rows[0].ref === 'hw_assignments-new',
+    'delta must return only the fresh school-1 row, got ' + JSON.stringify(rows));
+});
+
+await test('SG4 رگرسیون PG-live: کوئری‌ای برای جدولِ غایبِ homework صادر نمی‌شود (۲۰۰)', async () => {
+  const queries = [];
+  const db = {
+    isPostgres: () => true,
+    async readCollection(c) { return makeStore()[c] || []; },
+    async query(sql, params) {
+      const t = (/FROM "([a-z_]+)"/.exec(sql) || [])[1];
+      queries.push(t);
+      /* شبیه‌سازیِ 42P01: جدولِ غایب در PG زنده پرتاب می‌کند (باگِ پنهانِ
+         پیشین: SELECT * FROM "homework" ⇒ 500 کلِ پول) */
+      if (t === 'homework' || t === 'vclass_rooms') throw new Error('relation does not exist');
+      const rowId = t === 'schools' ? 1 : 2;
+      const uid = t === 'notifications' ? 10 : null;
+      return { rows: [{ id: rowId, school_id: 1, user_id: uid, ref: 'pg-' + t, created_at: iso(NOW - 1 * DAY), updated_at: iso(NOW - 1 * DAY) }] };
+    }
+  };
+  const { cap, pull } = makePull({ db });
+  await pull('since=' + encodeURIComponent(FRESH));
+  assert(cap.code === 200, 'pull must stay 200 with the fixed surface, got ' + cap.code);
+  assert(queries.indexOf('homework') === -1 && queries.indexOf('vclass_rooms') === -1,
+    'no delta query for dead names, saw: ' + queries.join(','));
+  assert(queries.indexOf('hw_assignments') > -1, 'hw_assignments must be delta-queried');
+  const rows = cap.body.collections.hw_assignments;
+  assert(Array.isArray(rows) && rows.length === 1 && rows[0].ref === 'pg-hw_assignments',
+    'hw_assignments row must come from the PG delta path');
+});
+
+await test('SG5 کلاینتِ قدیمی ?collections=homework ⇒ حذفِ بی‌صدای fail-closed، بدونِ کرش', async () => {
+  const { cap, pull } = makePull();
+  await pull('since=' + encodeURIComponent(FRESH) + '&collections=' + encodeURIComponent('homework,grades'));
+  assert(cap.code === 200, 'status 200, got ' + cap.code);
+  const keys = Object.keys(cap.body.collections || {});
+  assert(keys.indexOf('homework') === -1, 'homework must be dropped');
+  assert(keys.indexOf('grades') > -1, 'grades must still be served');
+});
+
+
+/* ═══════════════ گپ ۲ — vclass_rooms → vclass_sessions ═══════════════ */
+group('گپ ۲ — نامِ مردهٔ vclass_rooms حذف، vclass_sessions واقعی نشست');
+
+await test('SG6 syncdelta برای vclass_sessions می‌سازد / vclass_rooms رد می‌شود', async () => {
+  assert(tableName('vclass_sessions') === 'vclass_sessions', 'tableName must pass vclass_sessions');
+  const q = deltaRowsSql('vclass_sessions', { sinceISO: FRESH });
+  const sql = (q && q.sql) ? q.sql : String(q);
+  assert(/FROM "vclass_sessions"/.test(sql), 'FROM "vclass_sessions" in: ' + sql);
+  let threw = false;
+  try { tableName('vclass_rooms'); } catch (_) { threw = true; }
+  assert(threw, 'tableName("vclass_rooms") must throw');
+});
+
+await test('SG7 پولِ پیش‌فرض: vclass_sessions هست، vclass_rooms نیست', async () => {
+  const { cap, pull } = makePull();
+  await pull('since=' + encodeURIComponent(FRESH));
+  assert(cap.code === 200, 'status 200, got ' + cap.code);
+  const keys = Object.keys(cap.body.collections || {});
+  assert(keys.indexOf('vclass_sessions') > -1, 'vclass_sessions must be served');
+  assert(keys.indexOf('vclass_rooms') === -1, 'vclass_rooms must NOT be served');
+  const rows = cap.body.collections.vclass_sessions;
+  assert(Array.isArray(rows) && rows.length === 1 && rows[0].ref === 'vclass_sessions-new',
+    'delta must return only the fresh school-1 row, got ' + JSON.stringify(rows));
+});
+
+await test('SG8 جداسازی مدرسه‌ایِ vclass_sessions (school_id ⇒ scope پیش‌فرض)', async () => {
+  /* جلسهٔ مدرسهٔ ۱: سطرِ مدرسهٔ ۲ نمی‌آید */
+  const a = makePull();
+  await a.pull('since=' + encodeURIComponent(FRESH) + '&collections=' + encodeURIComponent('vclass_sessions'));
+  const rows1 = a.cap.body.collections.vclass_sessions;
+  assert(Array.isArray(rows1) && rows1.every(r => Number(r.school_id) === 1),
+    'school-1 session must not see school-2 vclass rows, got ' + JSON.stringify(rows1));
+  /* جلسهٔ مدرسهٔ ۲: فقط سطرِ خودش */
+  const b = makePull({ session: { id: 11, school_id: 2, role: 'manager' } });
+  await b.pull('since=' + encodeURIComponent(FRESH) + '&collections=' + encodeURIComponent('vclass_sessions'));
+  const rows2 = b.cap.body.collections.vclass_sessions;
+  assert(Array.isArray(rows2) && rows2.length === 1 && Number(rows2[0].school_id) === 2,
+    'school-2 session must see only its own vclass row, got ' + JSON.stringify(rows2));
+});
+
+
+/* ═══════════════ گپ ۳ — sync_conflicts.updated_at (مهاجرت ۰۰۶) ═══════════════ */
+group('گپ ۳ — ستونِ دلتای sync_conflicts + مُهرِ داوری');
+
+await test('SG9 مهاجرتِ 006: ستون + backfill + NOT NULL + ایندکس‌ها + down', async () => {
+  const up = fs.readFileSync(path.join(ROOT, 'migrations', '006_delta_schema_gaps.sql'), 'utf8');
+  const dn = fs.readFileSync(path.join(ROOT, 'migrations', '006_delta_schema_gaps.down.sql'), 'utf8');
+  assert(/BEGIN;/.test(up) && /COMMIT;/.test(up), '006 must be wrapped in a transaction');
+  assert(/ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ/.test(up), 'idempotent ADD COLUMN');
+  assert(/UPDATE sync_conflicts SET updated_at = created_at WHERE updated_at IS NULL/.test(up),
+    'idempotent backfill from created_at');
+  assert(/ALTER TABLE sync_conflicts ALTER COLUMN updated_at SET NOT NULL/.test(up), 'SET NOT NULL per brief');
+  assert(/CREATE INDEX IF NOT EXISTS idx_sync_conflicts_updated_at\s+ON sync_conflicts\s*\(updated_at\)/.test(up),
+    'index on sync_conflicts(updated_at)');
+  assert(/CREATE INDEX IF NOT EXISTS idx_hw_assignments_updated_at/.test(up) &&
+         /CREATE INDEX IF NOT EXISTS idx_vclass_sessions_updated_at/.test(up),
+    'delta indexes for the two collections that joined the surface (gaps 1-2)');
+  assert(/BEGIN;/.test(dn) && /COMMIT;/.test(dn), 'down must be transactional');
+  assert(/DROP INDEX IF EXISTS idx_sync_conflicts_updated_at/.test(dn) &&
+         /DROP INDEX IF EXISTS idx_hw_assignments_updated_at/.test(dn) &&
+         /DROP INDEX IF EXISTS idx_vclass_sessions_updated_at/.test(dn),
+    'down drops all three indexes');
+  assert(/ALTER TABLE sync_conflicts DROP COLUMN IF EXISTS updated_at/.test(dn), 'down drops the column');
+});
+
+await test('SG10 ردیفِ تعارضِ تازه (sync.js) updated_at هم‌ارزِ created_at دارد', async () => {
+  const store = {
+    grades: [{ id: 55, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 19, version: 3, updated_at: iso(Date.now()) }],
+    users: [{ id: 5, role: 'manager', school_id: 1 }, { id: 7, role: 'manager', school_id: 1 }],
+    __processed_uids: {}, __server_version: 0
+  };
+  const ctx = {
+    store,
+    db: { persistOpsBatch: async () => ({ ok: true }), isUidProcessed: async () => false },
+    MAX_BATCH: 500, AT_DRIFT_MS: 24 * 3600 * 1000,
+    audit: () => {},
+    sessionFrom: async () => ({ id: 5, role: 'manager', school_id: 1 }),
+    sendJson: (res, code, body) => { res._cap = { code, body }; },
+    markDirty: () => {}
+  };
+  attach(store);
+  const s = createSync(ctx);
+  const rClean = {}, rStale = {};
+  await s.apiSync({}, rClean, { ops: [opX({ by: 5, collection: 'grades', type: 'upd', id: 55, base_version: 3,
+    data: { id: 55, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 20 } })] });
+  await s.apiSync({}, rStale, { ops: [opX({ by: 5, collection: 'grades', type: 'upd', id: 55, base_version: 2,
+    data: { id: 55, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 10 } })] });
+  assert(rClean._cap.body.results[0].ok === true, 'clean op must apply');
+  assert(rStale._cap.body.results[0].code === 'conflict_preserved', 'stale op must conflict');
+  const cf = (store.sync_conflicts || [])[0];
+  assert(cf, 'conflict row must exist');
+  assert(typeof cf.updated_at === 'string' && cf.updated_at === cf.created_at,
+    'conflict row must carry updated_at === created_at, got ' + JSON.stringify({ created_at: cf.created_at, updated_at: cf.updated_at }));
+});
+
+await test('SG11 داوری (resolve) روی ردیفِ تعارض updated_at مُهر می‌زند', async () => {
+  const store = {
+    users: [{ id: 5, role: 'manager', school_id: 1 }],
+    grades: [{ id: 55, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 18, version: 4, updated_at: iso(NOW - 1 * DAY) }],
+    sync_conflicts: [{ id: 901, collection: 'grades', record_id: 55, school_id: 1, status: 'open',
+      base_version: 2, server_version: 4, winner: null,
+      server_state: { id: 55, score: 18, version: 4 },
+      incoming: { data: { id: 55, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 17 }, by: 7, at: iso(NOW - 1 * DAY) },
+      created_at: iso(NOW - 5 * DAY), updated_at: iso(NOW - 5 * DAY) }],
+    __server_version: 0
+  };
+  const cap = {};
+  const conflicts = createConflicts({
+    store, db: null, audit: () => {},
+    sessionFrom: async () => ({ id: 5, role: 'manager', school_id: 1 }),
+    sendJson: (res, code, body) => { cap.code = code; cap.body = body; },
+    markDirty: () => {}
+  });
+  const res = {};
+  await conflicts.apiResolve({}, res, { conflict_id: 901, winner: 'server' });
+  assert(cap.code === 200 && cap.body.ok === true, 'resolve must succeed, got ' + cap.code + ' ' + JSON.stringify(cap.body));
+  const c = (store.sync_conflicts || []).find(x => x.id === 901);
+  assert(c.status === 'resolved', 'status resolved');
+  assert(typeof c.updated_at === 'string' && c.updated_at === c.resolved_at,
+    'resolve must stamp updated_at (= resolved_at), got ' + JSON.stringify({ resolved_at: c.resolved_at, updated_at: c.updated_at }));
+  assert(new Date(c.updated_at).getTime() > NOW - 5 * DAY, 'stamp must be fresh, not the old value');
+});
+
+await test('SG12 دلتا ردیفِ حل‌شدهٔ قدیمی را از راهِ updated_at می‌بیند', async () => {
+  /* pre-gap-3: ردیفِ تعارضِ کهنه که «حالا» داوری شده با created_at کهنه
+     در دلتا هرگز نمی‌آمد (upAt نا manifesto → فقط crAt کهنه). حالا مُهرِ
+     updated_at داوری، آن را به دلتا می‌آورد. */
+  const q = deltaRowsSql('sync_conflicts', { sinceISO: FRESH });
+  const sql = (q && q.sql) ? q.sql : String(q);
+  assert(/FROM "sync_conflicts"/.test(sql) && /updated_at/.test(sql),
+    'builder must emit the updated_at predicate for sync_conflicts: ' + sql);
+  const store = makeStore();
+  store.sync_conflicts = [
+    { id: 1, school_id: 1, status: 'open', created_at: iso(NOW - 30 * DAY), updated_at: iso(NOW - 30 * DAY) },
+    { id: 2, school_id: 1, status: 'resolved', created_at: iso(NOW - 30 * DAY), updated_at: iso(NOW - 1 * DAY) }
+  ];
+  const { cap, pull } = makePull({ store });
+  await pull('since=' + encodeURIComponent(FRESH) + '&collections=' + encodeURIComponent('sync_conflicts'));
+  assert(cap.code === 200, 'status 200, got ' + cap.code);
+  const rows = cap.body.collections.sync_conflicts;
+  assert(Array.isArray(rows) && rows.length === 1 && rows[0].id === 2,
+    'delta must return only the recently-resolved conflict (via updated_at), got ' + JSON.stringify(rows));
+});
+
+/* ═══════════════ خلاصه ═══════════════ */
+console.log('\n────────────────────────────────────────────────────────');
+if (fail === 0) {
+  console.log(`نتیجه Delta Schema Gaps: ${pass}/${pass}  —  بدون خطا ✅`);
+} else {
+  console.log(`نتیجه Delta Schema Gaps: ${pass}/${pass + fail}  —  ${fail} خطا ❌`);
+  for (const f of failures) console.log(`  ✗ ${f.name}: ${f.msg}`);
+}
+process.exit(fail === 0 ? 0 : 1);
+})().catch(e => { console.error('FATAL:', e); process.exit(2); });
