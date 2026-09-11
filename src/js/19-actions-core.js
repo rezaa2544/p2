@@ -1886,6 +1886,7 @@ document.addEventListener('click',e=>{
   else if(typeof TEVAL_ACTIONS!=='undefined'&&TEVAL_ACTIONS[a]){e.preventDefault();TEVAL_ACTIONS[a](el,id);} /* 73-teacher-eval */
   else if(typeof REGION_ACTIONS!=='undefined'&&REGION_ACTIONS[a]){e.preventDefault();REGION_ACTIONS[a](el,id);} /* 74-region-tools */
   else if(typeof STAFFGAP_ACTIONS!=='undefined'&&STAFFGAP_ACTIONS[a]){e.preventDefault();STAFFGAP_ACTIONS[a](el,id);} /* 75-staff-gap */
+  else if(typeof MG_ACTIONS!=='undefined'&&MG_ACTIONS[a]){e.preventDefault();MG_ACTIONS[a](el,id);} /* 76-multigrade */
 });
 // live filters
 document.addEventListener('input',e=>{

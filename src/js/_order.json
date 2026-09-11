@@ -91,5 +91,6 @@
     "74-region-tools.js",
  "74-schedgen.js",
     "75-staff-gap.js",
+ "76-multigrade.js",
     "99-theme-loader.js"
 ]

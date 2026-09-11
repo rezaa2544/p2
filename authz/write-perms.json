@@ -2582,6 +2582,14 @@
         "assoc_minutes"
       ]
     },
+    "assoc-min-print": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "grades"
+      ]
+    },
     "assoc-min-save": {
       "roles": [
         "manager"
@@ -2736,13 +2744,21 @@
     "cert-enroll-print": {
       "roles": null,
       "collections": [
-        "certificates"
+        "certificates",
+        "grades"
+      ]
+    },
+    "cert-print": {
+      "roles": null,
+      "collections": [
+        "grades"
       ]
     },
     "cert-transfer-print": {
       "roles": null,
       "collections": [
-        "certificates"
+        "certificates",
+        "grades"
       ]
     },
     "class-del-ok": {
@@ -2871,6 +2887,14 @@
         "donations"
       ]
     },
+    "don-print": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "grades"
+      ]
+    },
     "don-save": {
       "roles": [
         "manager"
@@ -2983,7 +3007,16 @@
       "roles": null,
       "collections": [
         "exam_duties",
-        "exams"
+        "exams",
+        "grades"
+      ]
+    },
+    "form-print": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "grades"
       ]
     },
     "geo-edit-save": {
@@ -3246,6 +3279,16 @@
         "makeup_classes"
       ]
     },
+    "mg-grades-save": {
+      "roles": [
+        "teacher",
+        "manager"
+      ],
+      "collections": [
+        "grades",
+        "notify_queue"
+      ]
+    },
     "mtg-book-ok": {
       "roles": [
         "parent"
@@ -3375,6 +3418,12 @@
         "notifications"
       ]
     },
+    "office-print": {
+      "roles": null,
+      "collections": [
+        "grades"
+      ]
+    },
     "office-save": {
       "roles": [
         "superadmin"
@@ -3403,6 +3452,7 @@
     "pay-save": {
       "roles": null,
       "collections": [
+        "grades",
         "installments",
         "notifications",
         "transactions",
@@ -3503,6 +3553,12 @@
         "users"
       ]
     },
+    "pubrep-print": {
+      "roles": null,
+      "collections": [
+        "grades"
+      ]
+    },
     "qe-save": {
       "roles": null,
       "collections": [
@@ -3535,9 +3591,16 @@
     "remind-due": {
       "roles": null,
       "collections": [
+        "grades",
         "installments",
         "notifications",
         "tuitions"
+      ]
+    },
+    "report-print": {
+      "roles": null,
+      "collections": [
+        "grades"
       ]
     },
     "restore-ok": {
@@ -3879,6 +3942,14 @@
       "collections": [
         "certificates",
         "training_courses"
+      ]
+    },
+    "trn-print": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "grades"
       ]
     },
     "trn-save": {
