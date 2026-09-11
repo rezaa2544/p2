@@ -14,6 +14,18 @@
 > همهٔ کارها اعمال می‌شود.
 
 
+## آرنا (Agent Mode): بستن شکاف اسکیما Delta — فاز ۳ — ۲۰/۰۶/۱۴۰۵ (2026-09-11) — ✅
+
+- **مأموریت:** سه شکافِ اسکیمای مسیر دلتا (`DELTA_HARDENING.md` §6 بند ۱) روی شاخهٔ `feat/delta-schema-gaps` (استک روی `feat/delta-hardening-phase2` @ `c13cd3f` — PR #56 هنوز باز).
+- **گپ ۱ (`2dad76a`):** نامِ مردهٔ `homework` (هیچ جدولی؛ کلاینت/مدل/zنجیره همه `hw_assignments`) از سطحِ pull/syncdelta + هر سه آینه (wave4/wave10/delta-load-test) با مجموعهٔ واقعی `hw_assignments` جایگزین شد. باگِ پنهانِ رفع‌شده: پولِ PG-live قبلاً با `SELECT * FROM "homework"` (42P01) **کلِ درخواست را ۵۰۰** می‌کرد.
+- **گپ ۲ (`a5a4226`):** `vclass_rooms` حذف شد و جدول ساخته **نشد** (تصمیم فنی: صفر مصرف‌کننده — کلاینت، مدل، اسکیما؛ شاهدِ زندهٔ 42P01). `vclass_sessions` (school_id ⇒ scope) جانشین شد. **مرزِ آگاهانه:** `vclass_questions/links/attendance` بدونِ school_id هستند و بدونِ scope مبتنی بر session→school به سطحِ پول نمی‌آیند (نشت بین‌مدرسه‌ای).
+- **گپ ۳ (`ebd3d4e`):** مهاجرت `006_delta_schema_gaps.sql` (+down) دقیقاً با SQL بریف (ADD COLUMN `sync_conflicts.updated_at` → backfill از created_at → SET NOT NULL → ایندکس) + ایندکس‌های `hw_assignments`/`vclass_sessions`؛ مُهرِ `updated_at` در sync.js (ایجادِ تعارض) و conflicts.js (داوری) — بدونِ مُهرِ داوری، تعارضِ کهنه‌ای که «حالا» resolve می‌شد هرگز در دلتا دیده نمی‌شد.
+- **تست‌های تازه:** `tests/delta-schema-gaps.js` **۱۲/۱۲** (SG1–SG12) — builder، fail-closed نام‌های مرده، پولِ حافظه/PG-live، جداسازی مدرسه‌ای، قراردادِ فایلِ 006، مُهرهای ایجاد/داوری، دلتای resolve.
+- **شاهدهای زندهٔ PG 18.4 (خوشهٔ باقی‌ماندهٔ فاز ۲، :55432):** زنجیرهٔ تازه 001→006 روی DB خالی سبز؛ ارتقای پایگاهِ ۹۲۳k فاز ۲ (۱۶۲ تعارضِ واقعی): قبل 42703 → بعد backfill ۱۶۲/۱۶۲ (`updated_at = created_at`)، صفر NULL، NOT NULL، ۳ ایندکس، EXPLAIN از ایندکس می‌خواند؛ برستِ `--live -n 60 -c 10` با builderهای تولیدی: **60/60 · p50=4.15ms · 1132 req/s**. خروجی: `~/.cache/pgtool/verify-006.js` (20/20) + `live-006.json`.
+- **گیت‌ها:** smoke **۵۴۷/۵۴۷** · check-authz **0** (تطبیق کامل) · secret-scan **۱۱/۱۱** · build --check **0** · tests/run.js 35/35 · رگرسیون: pull-bootstrap 12/12 · wave1-reads 18/18 · wave3-query 13/13 · wave14-observability 95/95 · sync-dup-claim 7/7 · sync-chunk ✓ · sync-atomic-batch 22/22 · فاز ۲: delta-sync-hardening 19/19 · wave4-all 13/13 · wave10-query-audit 14/14 · contract-layers 18/18 · DRY_RUN exit 0 · **delta-schema-gaps 12/12** ✅
+- **اسناد:** `docs/DELTA_HARDENING.md` §6 بند ۱ بسته + §۷ (فاز ۳) · `docs/MIGRATION_GUIDE.md` §۸ ردیف‌های 004_wave3/005/006 + یادداشتِ «بعدی 007» · همین ورودی.
+
+
 ## آرنا (Agent Mode): Delta Sync Hardening — فاز ۲ (چهار گپ) — ۲۰/۰۶/۱۴۰۵ (2026-09-11) — ✅
 
 **شاخه:** `feat/delta-hardening-phase2` (از `main` @ `8ba3462`) · **سند کامل:** `docs/DELTA_HARDENING.md` · **قرارداد سیم (جدید):** `docs/SERVER_CLIENT_CONTRACT.md`
