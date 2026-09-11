@@ -16,7 +16,7 @@
 2. **فایل `.bundle` را دانلود کنید**
    - در تنظیمات نشست، فایل `/home/user/<name>.bundle` را پیدا کنید
    - یا از گزارش مأموریت مسیر باندل را بگیرید
-   - مسیرها رایج:
+   - مسیرهای رایج:
      - `/home/user/p0-2-close-v5.bundle` (چت ۱)
      - `/home/user/chat7-final.bundle` (چت ۷)
      - `/home/user/wave19-chaos-live.bundle` (چت ۴)
@@ -101,7 +101,7 @@ powershell -ExecutionPolicy Bypass -File C:\p2\tools\watch-bundles.ps1
 ## ۶) بررسی وضعیت
 
 ```powershell
-# باندل‌های در حال انتظار:
+# باندل‌های در انتظار:
 Get-ChildItem C:\bundles\*.bundle
 
 # باندل‌های موفق:
