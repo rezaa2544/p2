@@ -319,7 +319,7 @@ function viewNotifications(){
     ${items.length?items.map(n=>`<div class="row" style="padding:12px 16px;border-bottom:1px solid var(--border);background:${n.read?'#fff':'var(--primary-soft)'};cursor:pointer" data-act="notif-open" data-id="${escAttr(n.id)}">
       <span style="font-size:19px">${NOTIF_ICON[n.type]||'🔔'}</span>
       <div style="min-width:0"><b>${esc(n.title)}</b><div class="small muted" style="line-height:1.9">${esc(n.body||'')}</div>
-      <div class="small muted" style="opacity:.7">${jalali(n.created_at)}</div></div>${absenceExcuseBtn(n)}</div>`).join('')
+      <div class="small muted">${jalali(n.created_at)}</div></div>${absenceExcuseBtn(n)}</div>`).join('')
     :empty('🔕','اعلانی ندارید','رویدادهای مهم مدرسه اینجا نمایش داده می‌شود.')}</div>`;
 }
 
@@ -484,7 +484,7 @@ function viewChat(){
     <div class="card"><div class="card-head"><h3>${active?esc(active.full_name):'گفتگو'}</h3></div>
       <div class="card-body vscroll" style="display:grid;gap:8px;max-height:420px;overflow:auto">
         ${msgs.length?msgs.map(m=>`<div style="justify-self:${m.from_id===u.id?'start':'end'};max-width:75%;background:${m.from_id===u.id?'var(--primary-soft)':'var(--surface-2)'};padding:9px 13px;border-radius:12px">
-          <div style="line-height:1.9">${esc(m.body)}</div><div class="small muted" style="opacity:.7">${jalali(m.created_at)}</div></div>`).join(''):empty('💬','پیامی نیست','اولین پیام را بفرستید.')}
+          <div style="line-height:1.9">${esc(m.body)}</div><div class="small muted">${jalali(m.created_at)}</div></div>`).join(''):empty('💬','پیامی نیست','اولین پیام را بفرستید.')}
       </div>
       ${active?`<div class="card-head" style="border-top:1px solid var(--border);border-bottom:none;gap:8px">
         <input class="input" id="chat_body" placeholder="پیام خود را بنویسید…" style="flex:1" />
