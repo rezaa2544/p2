@@ -218,6 +218,7 @@ function createPull(ctx) {
       if (!v.ok) {
         /* Delta Phase 4 (gap 4): دیده‌بانیِ چرخهٔ عمرِ کرسر. */
         if (v.code === 'cursor_expired') metrics.inc('payesh_cursor_expired_total');
+        if (v.code === 'region_mismatch') metrics.inc('payesh_cursor_region_mismatch_total');
         /* 401 + machine-readable code; the client renews with one full pull
            (its response always carries a fresh next_cursor). */
         return sendJson(res, 401, {
@@ -225,7 +226,9 @@ function createPull(ctx) {
           code: v.code, /* cursor_expired | cursor_invalid | cursor_unavailable */
           message: v.code === 'cursor_expired'
             ? 'کرسر دلتا منقضی شده است — یک pull کامل بگیرید'
-            : 'کرسر دلتا نامعتبر است',
+            : v.code === 'region_mismatch'
+              ? 'کرسر دلتا در منطقهٔ دیگری صادر شده است — یک pull کامل بگیرید'
+              : 'کرسر دلتا نامعتبر است',
           cursor_renewal: 'full_pull'
         });
       }

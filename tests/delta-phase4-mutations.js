@@ -19,6 +19,10 @@
    M13 sync: شمارندهٔ pushes حذف               → MX3 باید بمیرد
    M14 metrics: syncHealthStats خالی برمی‌گرداند → MX1/MX4 باید بمیرند
    M15 pull: شمارندهٔ cursor_expired حذف       → MX3 باید بمیرد
+   M16 کرسر: چکِ rg حذف                        → MR2 باید بمیرد
+   M17 کرسر: امضا v1 بدونِ rg                   → MR1 باید بمیرد
+   M18 pull: شمارندهٔ region_mismatch حذف       → MR2 باید بمیرد
+   M19 کرسر: دورهٔ گذارِ v1 حذف                 → MR3 باید بمیرد
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const fs = require('fs');
@@ -170,6 +174,34 @@ function buildClient() {
     "        /*MUT*/");
   chk('M15 جهشِ «cursor_expired حذف» کشته شد', runSuite() !== 0);
   fs.writeFileSync(path.join(ROOT, 'server/pull.js'), orig, 'utf8');
+
+
+  /* ── جهش‌های گپ ۵ — کرسرِ region-aware ── */
+  console.log('\n▸ جهش‌های گپ ۵ — کرسرِ region-aware');
+
+  orig = mutate('server/cursor.js',
+    "        if (payload.rg !== regionName()) {",
+    "        if (false && payload.rg !== regionName()) { /*MUT*/");
+  chk('M16 جهشِ «چکِ rg حذف» کشته شد', runSuite() !== 0);
+  fs.writeFileSync(path.join(ROOT, 'server/cursor.js'), orig, 'utf8');
+
+  orig = mutate('server/cursor.js',
+    "        v: 2,",
+    "        v: 1, /*MUT*/");
+  chk('M17 جهشِ «امضای v1» کشته شد', runSuite() !== 0);
+  fs.writeFileSync(path.join(ROOT, 'server/cursor.js'), orig, 'utf8');
+
+  orig = mutate('server/pull.js',
+    "        if (v.code === 'region_mismatch') metrics.inc('payesh_cursor_region_mismatch_total');",
+    "        /*MUT*/");
+  chk('M18 جهشِ «شمارندهٔ mismatch حذف» کشته شد', runSuite() !== 0);
+  fs.writeFileSync(path.join(ROOT, 'server/pull.js'), orig, 'utf8');
+
+  orig = mutate('server/cursor.js',
+    "      } else if (payload.v !== 1) {",
+    "      } else if (payload.v !== 99) { /*MUT: v1 grace removed */");
+  chk('M19 جهشِ «گذارِ v1 حذف» کشته شد', runSuite() !== 0);
+  fs.writeFileSync(path.join(ROOT, 'server/cursor.js'), orig, 'utf8');
 
   /* سلامت پایه پس از بازگردانی‌ها */
   chk('پایه پس از بازگردانی سبز است', runSuite() === 0);

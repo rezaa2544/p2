@@ -9,6 +9,15 @@
      pc1.<base64url(payload json)>.<base64url(HMAC-SHA256)>
 
    payload = { v:1, since:<iso>, iat:<epoch-s>, exp:<epoch-s>, jti:<hex> }
+     v1 (legacy): قبول می‌شود تا انقضای TTLِ خودش (دورهٔ گذارِ استقرار).
+   payload = { v:2, since, iat, exp, jti, rg:<region> }   — Delta Phase 4 (gap 5)
+     v2: کرسر به منطقهٔ صادرکننده گره می‌خورد (PAYESH_REGION، پیش‌فرض
+     'default'). توکنِ v2 که در منطقهٔ دیگری ارائه شود = 401
+     region_mismatch + cursor_renewal:'full_pull' — کلاینت همان مسیرِ
+     تجدیدِ عمومیِ pull کامل را می‌رود (29-pull.js؛ بدونِ تغییرِ کلاینت).
+     رازِ امضای مشترک + برچسبِ rg یعنی توکنِ بین‌منطقه‌ای حتی با کلیدِ
+     یکسانِ HA هم replay نمی‌شود مگر آن‌که خودِ خطا را بپذیرد (خنثی:
+     چون sinceِ آن منطقه ممکن است جلوتر از ساعتِ محلیِ این‌جا باشد).
 
    - HMAC-SHA256 over "<b64payload>" with a server-side key (constant-time compare).
    - TTL default 3600s (1h), env PAYESH_CURSOR_TTL_S (clamped 60..86400).
@@ -41,6 +50,13 @@ function clampInt(v, dflt, min, max) {
 
 function ttlSeconds() {
   return clampInt(process.env.PAYESH_CURSOR_TTL_S, DEFAULT_TTL_S, MIN_TTL_S, MAX_TTL_S);
+}
+
+/* Delta Phase 4 (gap 5): نامِ منطقهٔ این instance — برچسبِ داخلِ کرسرِ v2.
+   کوتاه/بسته تا payload را تحمیل‌پذیر (oversized) نکند. */
+function regionName() {
+  const r = process.env.PAYESH_REGION;
+  return (typeof r === 'string' && r.length) ? r.trim().slice(0, 32) : 'default';
 }
 
 /**
@@ -112,11 +128,12 @@ function createCursor(o) {
       if (!sinceISO || isNaN(new Date(sinceISO).getTime())) return null;
       const iat = Number.isFinite(atEpochS) ? Math.trunc(atEpochS) : now();
       const payload = {
-        v: 1,
+        v: 2,
         since: String(sinceISO),
         iat,
         exp: iat + ttl,
-        jti: crypto.randomBytes(8).toString('hex')
+        jti: crypto.randomBytes(8).toString('hex'),
+        rg: regionName() /* Delta Phase 4 (gap 5): گرهِ منطقهٔ صادرکننده */
       };
       const body = b64u(JSON.stringify(payload));
       return PREFIX + '.' + body + '.' + b64u(sigOf(secret, body));
@@ -136,7 +153,20 @@ function createCursor(o) {
       try {
         payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
       } catch (e) { return { ok: false, code: 'cursor_invalid' }; }
-      if (!payload || payload.v !== 1) return { ok: false, code: 'cursor_invalid' };
+      if (!payload) return { ok: false, code: 'cursor_invalid' };
+      /* Delta Phase 4 (gap 5): v2 به منطقهٔ صادرکننده گره خورده؛ v1 تا
+         انقضای TTL خودش قبول می‌شود (گذارِ استقرارِ چندمنطقه‌ای). */
+      if (payload.v === 2) {
+        /* بدشکلِ v2 (بدونِ rg) نامعتبر است؛ v2 سالم از منطقهٔ دیگر mismatch. */
+        if (typeof payload.rg !== 'string' || !payload.rg) {
+          return { ok: false, code: 'cursor_invalid' };
+        }
+        if (payload.rg !== regionName()) {
+          return { ok: false, code: 'region_mismatch' };
+        }
+      } else if (payload.v !== 1) {
+        return { ok: false, code: 'cursor_invalid' };
+      }
       /* signature first (constant-time) — expired-but-forged is invalid, not expired */
       let sigOk = false;
       try {
@@ -155,4 +185,4 @@ function createCursor(o) {
   };
 }
 
-module.exports = { createCursor, resolveSecret, resolveKey, ttlSeconds, DEFAULT_TTL_S, MIN_TTL_S, MAX_TTL_S };
+module.exports = { createCursor, resolveSecret, resolveKey, ttlSeconds, regionName, DEFAULT_TTL_S, MIN_TTL_S, MAX_TTL_S };
