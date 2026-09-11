@@ -543,6 +543,85 @@ await test('MX4 بوتِ واقعی: /api/health بلوکِ sync با کلِ ش�
   }
 });
 
+
+/* ═══════════════ گپ ۵ — Multi-Region Ready ═══════════════ */
+group('گپ ۵ — کرسرِ region-aware (v2)');
+
+const SECRET5 = 'r'.repeat(64);
+const withRegion = (rg, fn) => {
+  const had = process.env.PAYESH_REGION;
+  if (rg === null) { delete process.env.PAYESH_REGION; } else { process.env.PAYESH_REGION = rg; }
+  try { return fn(); } finally {
+    if (had != null) process.env.PAYESH_REGION = had; else delete process.env.PAYESH_REGION;
+  }
+};
+const decodeTok = (tok) => JSON.parse(Buffer.from(tok.split('.')[1], 'base64url').toString('utf8'));
+const v1Token = (secret, sinceIso, ttlS, iatOffsetS) => {
+  /* توکنِ v1ِ دست‌ساز دقیقاً با طرحِ مستندِ فاز ۲ (بدونِ rg) */
+  const crypto = require('crypto');
+  const key = crypto.createHash('sha256').update('payesh.cursor.v1|' + secret).digest('hex');
+  const iat = Math.floor(Date.now() / 1000) + (iatOffsetS || 0);
+  const payload = { v: 1, since: sinceIso, iat, exp: iat + (ttlS || 3600), jti: crypto.randomBytes(8).toString('hex') };
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha256', key).update('pc1.' + body).digest().toString('base64url');
+  return 'pc1.' + body + '.' + sig;
+};
+
+await test('MR1 امضا: payload v2 با برچسبِ rg از PAYESH_REGION', async () => {
+  const tok = withRegion('eu-1', () => createCursor({ secret: SECRET5 }).sign(iso(Date.now() - 1000)));
+  const pl = decodeTok(tok);
+  assert(pl.v === 2 && pl.rg === 'eu-1', 'v2 payload with rg=eu-1, got ' + JSON.stringify(pl));
+  assert(pl.since && pl.iat && pl.exp && pl.jti, 'v1 fields all preserved');
+  const tokDef = withRegion(null, () => createCursor({ secret: SECRET5 }).sign(iso(Date.now() - 1000)));
+  assert(decodeTok(tokDef).rg === 'default', 'default region when env unset, got ' + decodeTok(tokDef).rg);
+});
+
+await test('MR2 توکنِ v2 در منطقهٔ دیگر ← 401 region_mismatch + full_pull + متریک', async () => {
+  const tok = withRegion('eu-1', () => createCursor({ secret: SECRET5 }).sign(iso(Date.now() - 1000)));
+  /* verify در منطقهٔ دیگر */
+  const v = withRegion('ap-1', () => createCursor({ secret: SECRET5 }).verify(tok));
+  assert(v.ok === false && v.code === 'region_mismatch', 'cross-region v2 rejected, got ' + JSON.stringify(v));
+  const vSame = withRegion('eu-1', () => createCursor({ secret: SECRET5 }).verify(tok));
+  assert(vSame.ok === true, 'same-region v2 still verifies');
+  /* مسیرِ کاملِ pull — قراردادِ 401 که کلاینتِ 29-pull.js عمومی پردازشش می‌کند */
+  const before = metrics.syncHealthStats(metrics.snapshot());
+  const store = { __deleted_records: [], __server_version: 1, grades: [] };
+  const ctl = withRegion('ap-1', () => createPull({
+    store, db: null,
+    sessionFrom: async () => ({ id: 10, school_id: 1, role: 'manager' }),
+    sendJson: (res, code, body) => { res._cap = { code, body }; },
+    cursor: createCursor({ secret: SECRET5 })
+  }));
+  const res = { _cap: null };
+  await ctl.apiPull({ url: '/api/v1/pull?cursor=' + encodeURIComponent(tok), headers: {} }, res);
+  assert(res._cap.code === 401, 'pull rejects with 401, got ' + res._cap.code);
+  assert(res._cap.body.code === 'region_mismatch' && res._cap.body.cursor_renewal === 'full_pull',
+    'machine contract: region_mismatch + cursor_renewal full_pull, got ' + JSON.stringify(res._cap.body));
+  const after = metrics.syncHealthStats(metrics.snapshot());
+  assert(after.cursor_region_mismatch_total === before.cursor_region_mismatch_total + 1, 'region_mismatch metric counted');
+});
+
+await test('MR3 دورهٔ گذار: توکنِ v1 (بدونِ rg) تا TTL خودش قبول می‌شود', async () => {
+  const tok = v1Token(SECRET5, iso(Date.now() - 1000), 3600);
+  const v = withRegion('ap-1', () => createCursor({ secret: SECRET5 }).verify(tok));
+  assert(v.ok === true && v.payload.v === 1, 'v1 token accepted during grace in ANY region, got ' + JSON.stringify(v));
+  const tokDead = v1Token(SECRET5, iso(Date.now() - 7200e3), 3600, -7200); /* iat در گذشته ⇒ exp گذشته */
+  const vDead = withRegion('ap-1', () => createCursor({ secret: SECRET5 }).verify(tokDead));
+  assert(vDead.ok === false && vDead.code === 'cursor_expired', 'v1 grace is still TTL-bound, got ' + JSON.stringify(vDead));
+});
+
+await test('MR4 v2 بدونِ rg یا با rg غیررشته‌ای ← cursor_invalid (نه mismatch)', async () => {
+  /* دست‌کاری‌شده: v2 بدونِ rg ولی با امضای معتبر — باید invalid بخورد */
+  const crypto = require('crypto');
+  const key = crypto.createHash('sha256').update('payesh.cursor.v1|' + SECRET5).digest('hex');
+  const iat = Math.floor(Date.now() / 1000);
+  const payload = { v: 2, since: iso(Date.now() - 1000), iat, exp: iat + 3600, jti: 'deadbeefdeadbeef' };
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha256', key).update('pc1.' + body).digest().toString('base64url');
+  const v = withRegion('eu-1', () => createCursor({ secret: SECRET5 }).verify('pc1.' + body + '.' + sig));
+  assert(v.ok === false && v.code === 'cursor_invalid', 'v2 without rg => invalid (fail-closed), got ' + JSON.stringify(v));
+});
+
 /* ═══════════════ خلاصه ═══════════════ */
 console.log('\n────────────────────────────────────────────────────────');
 if (fail === 0) {
