@@ -1973,18 +1973,26 @@ function migrateFromLocalStorageToIdb(customStorage) {
     //    (SYNC_QUEUE_KEY در 27-sync.js) است؛ پیش‌تر فقط کلیدِ کهنهٔ
     //    `sms_queue_v1`/`payesh_sync_queue` خوانده می‌شد، پس صفِ معلقِ
     //    واقعی هیچ‌وقت مهاجرت نمی‌کرد و پرچم با صفِ ناتمام سبز می‌شد.
+    //    S7-5 (باگ‌هانت چت ۵، نشست ۷): کلیدها قبلاً با `||` و «اولی-برنده»
+    //    خوانده می‌شدند؛ پس اگر کلیدِ جاریِ برنامه (`sms_syncq_v1`) موجود بود،
+    //    صفِ کهنهٔ `sms_queue_v1`/`payesh_sync_queue` هرگز خوانده نمی‌شد و
+    //    عملیاتِ معلقِ قدیمی بی‌صدا گم می‌شد (تستِ ۱۴ همین را می‌گیرد).
+    //    حالا هر سه کلید ادغام می‌شوند؛ `addToQueue` روی uid یکتا می‌کند،
+    //    پس ادغام تکراری نمی‌سازد و ترتیبِ کهنه‌تر→جاری حفظ می‌شود.
     try {
       if (typeof Store !== 'undefined') {
-        var rawQueue = Store.get('sms_syncq_v1') || Store.get('sms_queue_v1') || Store.get('payesh_sync_queue');
-        if (rawQueue) {
-          var queueEntries = JSON.parse(rawQueue);
-          if (Array.isArray(queueEntries)) {
-            for (var i = 0; i < queueEntries.length; i++) {
-              var op = queueEntries[i];
-              if (op && (op.uid || op.id)) {
-                if (!op.uid) op.uid = op.id;
-                promises.push(storage.addToQueue(op));
-              }
+        var QUEUE_KEYS = ['sms_syncq_v1', 'sms_queue_v1', 'payesh_sync_queue'];
+        for (var qk = 0; qk < QUEUE_KEYS.length; qk++) {
+          var rawQueue = Store.get(QUEUE_KEYS[qk]);
+          if (!rawQueue) continue;
+          var queueEntries;
+          try { queueEntries = JSON.parse(rawQueue); } catch (eQp) { continue; }
+          if (!Array.isArray(queueEntries)) continue;
+          for (var i = 0; i < queueEntries.length; i++) {
+            var op = queueEntries[i];
+            if (op && (op.uid || op.id)) {
+              if (!op.uid) op.uid = op.id;
+              promises.push(storage.addToQueue(op));
             }
           }
         }
