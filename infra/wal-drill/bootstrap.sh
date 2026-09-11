@@ -27,6 +27,27 @@ RUN="${RUN:-/var/tmp/wal-drill-run}"
 log() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
 die() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
 
+# ── گاردهای ایمنیِ مسیر (S9-6) ─────────────────────────────────────────────
+# این اسکریپت `mount`, `rm -rf`, `chown -R` و `ln -s` روی مسیرهای متغیر اجرا
+# می‌کند؛ اگر کسی WAL_MNT=/ یا PGDATA=/usr بدهد، فاجعه است. گاردها عمداً
+# پیش از هر کارِ سنگین‌اند تا (الف) بی‌نیاز از PostgreSQL قابل آزمودن باشند و
+# (ب) هیچ‌وقت بعد از نیمه‌کارِ مخرب متوقف نشویم.
+guard_path() { # $1=قلمِ متغیر $2=مقدار
+  case "$2" in
+    /*) ;;
+    *) die "$1 must be an absolute path (got: $2)";;
+  esac
+  case "$2" in
+    /|/bin|/boot|/dev|/etc|/home|/lib|/lib64|/opt|/proc|/root|/run|/sbin|/srv|/sys|/usr|/var)
+      die "$1 refuses to operate on a system path: $2";;
+  esac
+}
+guard_path PGDATA  "$PGDATA"
+guard_path WAL_MNT "$WAL_MNT"
+guard_path RUN     "$RUN"
+[ "$PGDATA" != "$WAL_MNT" ] || die "PGDATA and WAL_MNT must be different directories (both: $PGDATA)"
+case "$PGDATA/" in "$WAL_MNT"/*) die "PGDATA must not sit inside WAL_MNT ($PGDATA ⊂ $WAL_MNT)";; esac
+
 [ -x "$PGBIN/postgres" ] || die "postgres 17 binaries not found at $PGBIN (run: apt-get install -y postgresql-17)"
 
 log "1/6 tmpfs for pg_wal (${WAL_MB}MB at $WAL_MNT)"
@@ -106,22 +127,28 @@ export PGHOST="$RUN/sock" PGPORT="$PGPORT" PGUSER=postgres
 "$PGBIN/psql" -tAc 'select version()' | head -1
 echo "    pg_wal on: $(df --output=target,size,avail "$WAL_MNT" | tail -1 | xargs)"
 
-log "6/6 migrations 001-006"
+log "6/6 migrations (کشفِ پویا از $REPO/migrations)"
 cd "$REPO"
-for m in migrations/001_initial.sql \
-         migrations/002_indexes.sql \
-         migrations/003_constraints.sql \
-         migrations/004_wave1_version_seq.sql \
-         migrations/004_wave3_query_indexes.sql \
-         migrations/005_delta_sync_updated_at_indexes.sql \
-         migrations/006_delta_schema_gaps.sql; do
-  [ -f "$m" ] || { echo "    skip (absent): $m"; continue; }
+# S9-6 (باگ‌هانت نشست ۹): نسخهٔ پیشین فهرستِ نام‌ها را hardcode کرده بود، و
+# فایلِ ناموجود را با «skip (absent)» رد می‌کرد. پس از بازشماریِ ۰۰۴→۰۰۷ در
+# main، دو نام از آن فهرست دیگر وجود نداشتند: مانور بدونِ ایندکس‌های wave3 و
+# بدونِ ۰۰۵ بالا می‌آمد و **سبزِ کاذب** می‌شد. حالا دایرکتوری ملاک است.
+shopt -s nullglob
+migs=(migrations/[0-9][0-9][0-9]_*.sql)
+shopt -u nullglob
+[ "${#migs[@]}" -gt 0 ] || die "no migrations found under $REPO/migrations"
+applied=0; skipped=0
+for m in "${migs[@]}"; do
+  case "$m" in *.down.sql) skipped=$((skipped+1)); continue;; esac
   if "$PGBIN/psql" -v ON_ERROR_STOP=1 -q -f "$m" >/dev/null 2>"$RUN/mig.err"; then
-    echo "    ok   $m"
+    applied=$((applied+1)); echo "    ok   $m"
   else
-    echo "    FAIL $m"; head -3 "$RUN/mig.err" >&2
+    echo "    FAIL $m" >&2; head -5 "$RUN/mig.err" >&2
+    die "migration failed — stopping instead of continuing with a partial schema"
   fi
 done
+echo "    migrations applied: $applied (+$skipped rollback files skipped)"
+[ "$applied" -gt 0 ] || die "no forward migrations were applied — schema is not ready"
 
 echo
 echo "TABLES: $("$PGBIN/psql" -tAc "select count(*) from information_schema.tables where table_schema='public'")"

@@ -1,3 +1,5 @@
+# دفترچهٔ تحویل کار — پایش
+
 ## Handoff — پ۷: مرج مانور WAL Disk-Full / PR #78 — ✅ (2026-09-11)
 
 - **PR:** [#78](https://github.com/rezaa2544/p2/pull/78) با عنوان `feat: WAL disk-full drill (tmpfs variant — second implementation, see PR #76)` ابتدا از GitHub API با `state=open`، `merged=false` و `mergeable=false`/`mergeable_state=dirty` دیده شد؛ شاخهٔ PR نسبت به `main` به‌روز نبود.
@@ -12,8 +14,6 @@
 - **یادداشت محیط:** Node محلی `v20.20.2` است، درحالی‌که engine پروژه `>=22` می‌خواهد؛ CI رسمی build روی Node 22 سبز شد. هشدار شناخته‌شدهٔ jsdom برای `window.scrollTo` در smoke غیرمسدودکننده است.
 
 ---
-
-# دفترچهٔ تحویل کار — پایش
 
 ## Handoff — پ۷: تأیید و مرج A11y Keyboard Navigation / PR #77 — ✅ (2026-09-11)
 
