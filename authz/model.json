@@ -1491,6 +1491,33 @@
     "superadmin"
    ]
   },
+  "report_logs": {
+   "fields": [
+    "created_at",
+    "format",
+    "generated_by",
+    "id",
+    "kind",
+    "meta",
+    "school_id",
+    "status",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "counselor",
+    "edu_office",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
   "safety_drills": {
    "fields": [
     "created_at",
