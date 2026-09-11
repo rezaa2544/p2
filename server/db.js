@@ -480,6 +480,15 @@ async function transaction(callback) {
   }
 }
 
+/* Wave 10 (پارتیشن‌بندی): فهرستِ جدول‌هایِ پارتیشن‌شده — PAYESH_PARTITIONED_TABLES
+   (مثلاً "grades,attendance"). خالی ⇒ همه‌چیز مثلِ قبل (ON CONFLICT (id)).
+   سوییچِ صریح تا rollout تدریجی و rollback لحظه‌ای ممکن باشد. */
+function isPartitionedTable(name) {
+  const v = String(process.env.PAYESH_PARTITIONED_TABLES || '');
+  if (!v) return false;
+  return v.split(',').map((x) => x.trim()).filter(Boolean).includes(String(name));
+}
+
 /**
  * P1-14: persist ONE op on a given client — THROWS on error (for use inside transactions).
  * Semantics mirror the old persistOp: empty-data ins/upd is a no-op; uid tracking is
@@ -507,6 +516,41 @@ async function persistOpWithClient(client, op) {
       .filter(f => f !== 'id')
       .map(f => `${ident(f)} = EXCLUDED.${ident(f)}`)
       .join(', ');
+
+    /* Wave 10 (پارتیشن‌بندی): جدولِ پارتیشن‌شده PK (id, created_at) دارد —
+       ON CONFLICT (id) دیگر به هیچ uniqueای نمی‌خورد و فرمِ (id, created_at)
+       هم idempotency را می‌شکند (id تکراری با created_at متفاوت ⇒ سطرِ
+       دوم). معادلِ دقیقِ upsert: اول UPDATE به id (ایندکسِ غیر یکتایِ id)؛
+       اگر هیچ سطری نداشت INSERT؛ رقابتِ هم‌زمان با 23505 گرفته می‌شود و
+       UPDATE دوباره می‌زند — «آخرین برنده»، همان ترتیبِ DO UPDATE. */
+    if (isPartitionedTable(col)) {
+      const upFields = fields.filter(f => f !== 'id');
+      const hasId = data.id != null && Number.isFinite(Number(data.id));
+      if (hasId && upFields.length > 0) {
+        const setSql = upFields.map((f, i) => `${ident(f)} = $${i + 1}`).join(', ');
+        const upVals = upFields.map(f => valOf(data[f]));
+        const updSql = `UPDATE ${table} SET ${setSql} WHERE id = $${upFields.length + 1};`;
+        const updRes = await client.query(updSql, upVals.concat([Number(data.id)]));
+        if (updRes && Number(updRes.rowCount) > 0) return; /* سطرِ موجود ⇒ به‌روزرسانی شد */
+      }
+      const insSql = `INSERT INTO ${table} (${cols}) VALUES (${placeholders});`;
+      try {
+        await client.query(insSql, values);
+      } catch (err) {
+        /* رقابت: کسِ دیگری همین id را همین لحظه درج کرد — مثلِ ON CONFLICT
+           DO UPDATE، ما برندهٔ نهایی هستیم: UPDATE دوباره. */
+        if (err && err.code === '23505' && hasId && upFields.length > 0) {
+          const setSql = upFields.map((f, i) => `${ident(f)} = $${i + 1}`).join(', ');
+          const upVals = upFields.map(f => valOf(data[f]));
+          const updSql = `UPDATE ${table} SET ${setSql} WHERE id = $${upFields.length + 1};`;
+          const updRes = await client.query(updSql, upVals.concat([Number(data.id)]));
+          if (!updRes || !(Number(updRes.rowCount) > 0)) throw err;
+        } else {
+          throw err;
+        }
+      }
+      return;
+    }
 
     const sql = `INSERT INTO ${table} (${cols}) VALUES (${placeholders}) ON CONFLICT (id) DO UPDATE SET ${updateSet};`;
     await client.query(sql, values);
@@ -750,6 +794,8 @@ module.exports = {
   __setPoolForTests,
   /* Wave 10 (chg_id): کنارگذاریِ ستون‌های داخلی برای خواننده‌های بیرونی (pull/delta) */
   stripInternalColumns,
+  /* Wave 10 (پارتیشن‌بندی): آیا این جدول در PAYESH_PARTITIONED_TABLES است */
+  isPartitionedTable,
   __setReadPoolForTests,
   __setReprobeDelayForTests,
   isUidProcessed,
