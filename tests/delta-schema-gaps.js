@@ -145,7 +145,7 @@ await test('SG4 رگرسیون PG-live: کوئری‌ای برای جدولِ غ
       queries.push(t);
       /* شبیه‌سازیِ 42P01: جدولِ غایب در PG زنده پرتاب می‌کند (باگِ پنهانِ
          پیشین: SELECT * FROM "homework" ⇒ 500 کلِ پول) */
-      if (t === 'homework') throw new Error('relation does not exist');
+      if (t === 'homework' || t === 'vclass_rooms') throw new Error('relation does not exist');
       const rowId = t === 'schools' ? 1 : 2;
       const uid = t === 'notifications' ? 10 : null;
       return { rows: [{ id: rowId, school_id: 1, user_id: uid, ref: 'pg-' + t, created_at: iso(NOW - 1 * DAY), updated_at: iso(NOW - 1 * DAY) }] };
@@ -154,8 +154,8 @@ await test('SG4 رگرسیون PG-live: کوئری‌ای برای جدولِ غ
   const { cap, pull } = makePull({ db });
   await pull('since=' + encodeURIComponent(FRESH));
   assert(cap.code === 200, 'pull must stay 200 with the fixed surface, got ' + cap.code);
-  assert(queries.indexOf('homework') === -1,
-    'no delta query for dead name homework, saw: ' + queries.join(','));
+  assert(queries.indexOf('homework') === -1 && queries.indexOf('vclass_rooms') === -1,
+    'no delta query for dead names, saw: ' + queries.join(','));
   assert(queries.indexOf('hw_assignments') > -1, 'hw_assignments must be delta-queried');
   const rows = cap.body.collections.hw_assignments;
   assert(Array.isArray(rows) && rows.length === 1 && rows[0].ref === 'pg-hw_assignments',
@@ -169,6 +169,47 @@ await test('SG5 کلاینتِ قدیمی ?collections=homework ⇒ حذفِ ب�
   const keys = Object.keys(cap.body.collections || {});
   assert(keys.indexOf('homework') === -1, 'homework must be dropped');
   assert(keys.indexOf('grades') > -1, 'grades must still be served');
+});
+
+
+/* ═══════════════ گپ ۲ — vclass_rooms → vclass_sessions ═══════════════ */
+group('گپ ۲ — نامِ مردهٔ vclass_rooms حذف، vclass_sessions واقعی نشست');
+
+await test('SG6 syncdelta برای vclass_sessions می‌سازد / vclass_rooms رد می‌شود', async () => {
+  assert(tableName('vclass_sessions') === 'vclass_sessions', 'tableName must pass vclass_sessions');
+  const q = deltaRowsSql('vclass_sessions', { sinceISO: FRESH });
+  const sql = (q && q.sql) ? q.sql : String(q);
+  assert(/FROM "vclass_sessions"/.test(sql), 'FROM "vclass_sessions" in: ' + sql);
+  let threw = false;
+  try { tableName('vclass_rooms'); } catch (_) { threw = true; }
+  assert(threw, 'tableName("vclass_rooms") must throw');
+});
+
+await test('SG7 پولِ پیش‌فرض: vclass_sessions هست، vclass_rooms نیست', async () => {
+  const { cap, pull } = makePull();
+  await pull('since=' + encodeURIComponent(FRESH));
+  assert(cap.code === 200, 'status 200, got ' + cap.code);
+  const keys = Object.keys(cap.body.collections || {});
+  assert(keys.indexOf('vclass_sessions') > -1, 'vclass_sessions must be served');
+  assert(keys.indexOf('vclass_rooms') === -1, 'vclass_rooms must NOT be served');
+  const rows = cap.body.collections.vclass_sessions;
+  assert(Array.isArray(rows) && rows.length === 1 && rows[0].ref === 'vclass_sessions-new',
+    'delta must return only the fresh school-1 row, got ' + JSON.stringify(rows));
+});
+
+await test('SG8 جداسازی مدرسه‌ایِ vclass_sessions (school_id ⇒ scope پیش‌فرض)', async () => {
+  /* جلسهٔ مدرسهٔ ۱: سطرِ مدرسهٔ ۲ نمی‌آید */
+  const a = makePull();
+  await a.pull('since=' + encodeURIComponent(FRESH) + '&collections=' + encodeURIComponent('vclass_sessions'));
+  const rows1 = a.cap.body.collections.vclass_sessions;
+  assert(Array.isArray(rows1) && rows1.every(r => Number(r.school_id) === 1),
+    'school-1 session must not see school-2 vclass rows, got ' + JSON.stringify(rows1));
+  /* جلسهٔ مدرسهٔ ۲: فقط سطرِ خودش */
+  const b = makePull({ session: { id: 11, school_id: 2, role: 'manager' } });
+  await b.pull('since=' + encodeURIComponent(FRESH) + '&collections=' + encodeURIComponent('vclass_sessions'));
+  const rows2 = b.cap.body.collections.vclass_sessions;
+  assert(Array.isArray(rows2) && rows2.length === 1 && Number(rows2[0].school_id) === 2,
+    'school-2 session must see only its own vclass row, got ' + JSON.stringify(rows2));
 });
 
 /* ═══════════════ خلاصه ═══════════════ */
