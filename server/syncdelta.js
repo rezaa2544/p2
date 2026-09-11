@@ -31,6 +31,16 @@ const ALLOWED = new Set([
   'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
 ]);
 
+/* Wave 10 (cursor v3): جدول‌هایی که مهاجرتِ ۰۰۸ به آن‌ها chg_id داده —
+   دلتایشان با نشانگرِ آب (cw) خوانده می‌شود. بقیه (schools،
+   bell_schedules، hw_assignments، vclass_sessions، sync_conflicts) همان
+   مسیرِ زمانیِ since را می‌روند. با مهاجرتِ ۰۰۸ هم‌گام نگه داشته شود. */
+const CHG_TABLES = new Set([
+  'users', 'classes', 'subjects', 'schedule', 'enrollments',
+  'attendance', 'grades', 'discipline', 'leaves', 'notifications',
+  'announcements', 'hw_submissions', 'counselor_refs', 'counselor_msgs'
+]);
+
 function tableName(t) {
   if (!ALLOWED.has(t)) throw new Error(`syncdelta: table not allowlisted: ${String(t)}`);
   return t;
@@ -161,4 +171,4 @@ function tombstonesSql(o) {
   };
 }
 
-module.exports = { deltaRowsSql, deltaRowsByChgSql, deltaKeysetSql, tombstonesSql, tableName };
+module.exports = { deltaRowsSql, deltaRowsByChgSql, deltaKeysetSql, tombstonesSql, tableName, CHG_TABLES };

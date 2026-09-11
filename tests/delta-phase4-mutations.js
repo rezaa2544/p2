@@ -186,7 +186,7 @@ function buildClient() {
   fs.writeFileSync(path.join(ROOT, 'server/cursor.js'), orig, 'utf8');
 
   orig = mutate('server/cursor.js',
-    "        v: 2,",
+    "        v: 3,",
     "        v: 1, /*MUT*/");
   chk('M17 جهشِ «امضای v1» کشته شد', runSuite() !== 0);
   fs.writeFileSync(path.join(ROOT, 'server/cursor.js'), orig, 'utf8');

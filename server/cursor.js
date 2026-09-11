@@ -10,6 +10,11 @@
 
    payload = { v:1, since:<iso>, iat:<epoch-s>, exp:<epoch-s>, jti:<hex> }
      v1 (legacy): قبول می‌شود تا انقضای TTLِ خودش (دورهٔ گذارِ استقرار).
+   payload = { v:3, since:<iso>, cw:<chg-id>, iat, exp, jti, rg:<region> } — Wave 10
+     v3 = v2 + cw: نشانگرِ آبِ change-ID (مهاجرتِ ۰۰۸) — دلتای جدول‌هایِ chg دار
+     باِ `chg_id > cw` خوانده می‌شود (بدونِ clock-skew)؛ جدول‌های بی-chg همان
+     مسیرِ زمانیِ since را می‌روند. توکن همچنان pc1.<b64>.<sig> و برایِ کلاینت
+     مات است (هیچ تغییری سمتِ کلاینت لازم نیست).
    payload = { v:2, since, iat, exp, jti, rg:<region> }   — Delta Phase 4 (gap 5)
      v2: کرسر به منطقهٔ صادرکننده گره می‌خورد (PAYESH_REGION، پیش‌فرض
      'default'). توکنِ v2 که در منطقهٔ دیگری ارائه شود = 401
@@ -121,15 +126,26 @@ function createCursor(o) {
      * Sign a `since` ISO timestamp into an expiring cursor token.
      * @param {string} sinceISO
      * @param {number} [atEpochS] issue time (defaults now) — tests inject fixed clocks
+     * @param {number} [chgWatermark] Wave 10 (v3): آخرین chg_idِ دیده‌شده — مبنای
+     *   دلتای جدول‌هایِ chg دار؛ غیرعددی/منفی ⇒ توکن بدون cw (مسیرِ زمانی).
      * @returns {string|null} token, or null when cursors are disabled
      */
-    sign(sinceISO, atEpochS) {
+    sign(sinceISO, atEpochS, chgWatermark) {
       if (!secret) return null;
       if (!sinceISO || isNaN(new Date(sinceISO).getTime())) return null;
       const iat = Number.isFinite(atEpochS) ? Math.trunc(atEpochS) : now();
+      /* Wave 10 (cursor v3): نشانگرِ آبِ change-ID — مبنای دلتای جدول‌هایِ
+         chg دار (مهاجرتِ ۰۰۸). null/undefined ⇒ کلید حذف می‌شود (توکن همچنان
+         v3 ولی بدون cw ⇒ مسیرِ زمانیِ legacy). */
+      /* null/undefined ⇒ cw حذف می‌شود (Number(null) === 0 دامِ coercion است —
+         شکستِ captureChgWatermark نباید توکنِ cw=0 بسازد که فیدِ chg را از صفر
+         می‌خواند؛ باید به مسیرِ زمانی برگردد). */
+      const nChg = chgWatermark == null ? null : Number(chgWatermark);
+      const cw = (nChg != null && Number.isFinite(nChg) && nChg >= 0) ? Math.trunc(nChg) : null;
       const payload = {
-        v: 2,
+        v: 3,
         since: String(sinceISO),
+        cw: cw == null ? undefined : cw,
         iat,
         exp: iat + ttl,
         jti: crypto.randomBytes(8).toString('hex'),
@@ -156,13 +172,21 @@ function createCursor(o) {
       if (!payload) return { ok: false, code: 'cursor_invalid' };
       /* Delta Phase 4 (gap 5): v2 به منطقهٔ صادرکننده گره خورده؛ v1 تا
          انقضای TTL خودش قبول می‌شود (گذارِ استقرارِ چندمنطقه‌ای). */
-      if (payload.v === 2) {
-        /* بدشکلِ v2 (بدونِ rg) نامعتبر است؛ v2 سالم از منطقهٔ دیگر mismatch. */
+      if (payload.v === 2 || payload.v === 3) {
+        /* بدشکلِ v2/v3 (بدونِ rg) نامعتبر است؛ نسخهٔ سالم از منطقهٔ دیگر mismatch. */
         if (typeof payload.rg !== 'string' || !payload.rg) {
           return { ok: false, code: 'cursor_invalid' };
         }
         if (payload.rg !== regionName()) {
           return { ok: false, code: 'region_mismatch' };
+        }
+        /* v3 (Wave 10): cw اگر هست باید عددِ صحیحِ نامنفی باشد — وگرنه fail-closed. */
+        /* نوعِ JSON باید خودِ number باشد — Number([1]) === 1 و Number(true) === 1
+           با coercion می‌گذرند؛ ستونِ امضا تضمین نمی‌کند که سرور چنین چیزی صادر
+           کرده باشد (fail-closed روی شکل، نه فقط قابل‌تبدیل‌بودن). */
+        if (payload.v === 3 && payload.cw != null
+            && (typeof payload.cw !== 'number' || !Number.isInteger(payload.cw) || payload.cw < 0)) {
+          return { ok: false, code: 'cursor_invalid' };
         }
       } else if (payload.v !== 1) {
         return { ok: false, code: 'cursor_invalid' };
