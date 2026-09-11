@@ -3652,6 +3652,18 @@
         "notifications"
       ]
     },
+    "rpt-csv": {
+      "roles": null,
+      "collections": [
+        "report_logs"
+      ]
+    },
+    "rpt-print": {
+      "roles": null,
+      "collections": [
+        "report_logs"
+      ]
+    },
     "sched-conf-move": {
       "roles": [
         "manager",
