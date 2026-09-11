@@ -59,6 +59,8 @@ const { createHeavyWorker } = require('./worker-service'); /* Wave 9 — رشت�
 const { createStaticCache } = require('./static-cache');   /* Wave 9 — کشِ استاتیک */
 const { checkEnvFlags, mismatchWarning } = require('./env-flags'); /* SUSPECT-B */
 const { createRuntimeMonitor } = require('./runtime-monitor'); /* Q3 runtime security signals */
+const { createAttackDetector } = require('./attack-detector'); /* Q3 attack signatures */
+const { createAbuseGuard } = require('./abuse-guard'); /* Q3 audit/metric/webhook egress */
 
 /* SUSPECT-B (نشست ۲): ناهماهنگیِ پرچم‌هایِ تولید را بلند کن — رفتارِ بوت
    عوض نمی‌شود (T2 و redis-fallback §۶ همان رفتار را پین کرده‌اند)؛ فقط
@@ -326,9 +328,18 @@ const auditLogger = createAudit({
 const audit = auditLogger.audit;
 
 /* ── Q3 runtime security monitoring ──────────────────────────────────
-   The monitor is bounded and fail-safe: it never changes authorization or
-   response behavior, and keeps no raw session, tenant, URL, or payload data. */
-const runtimeMonitor = createRuntimeMonitor();
+   The monitor's observations are bounded and fail-safe. Attack detection is
+   deliberately separated from enforcement: WAF/authz/rate-limits continue to
+   make access decisions, while abuseGuard emits redacted audit/metric/webhook
+   signals for operator response. */
+let abuseGuard;
+const runtimeMonitor = createRuntimeMonitor({
+  onAnomaly: (finding) => { try { if (abuseGuard) abuseGuard.reportAnomaly(finding); } catch (_) {} }
+});
+abuseGuard = createAbuseGuard({ audit, metrics, runtimeMonitor });
+const attackDetector = createAttackDetector({
+  onDetect: (finding) => { try { abuseGuard.report(finding).catch(() => {}); } catch (_) {} }
+});
 
 /* ── shared helpers ────────────────────────────────────────────────── */
 function isHttps(req){
@@ -367,6 +378,17 @@ function sendJsonCounting(res, status, obj){
       metrics.observeAuth('rejection', stage);
     }).catch(() => {});
   }
+  /* Q3: API modules return stable denial codes. Feed only those codes and the
+     already-authenticated session to the signature detector; data/payloads
+     remain outside telemetry. */
+  try {
+    if(r && r.sess && obj && (obj.code === 'out_of_scope' || obj.code === 'school_mismatch')) {
+      attackDetector.observeCrossSchool({ sessionId: r.sess.jti });
+    }
+    if(r && r.sess && obj && ['forged_by', 'user_mismatch', 'school_mismatch', 'ownership_forge'].includes(obj.code)) {
+      attackDetector.observeSyncResult({ sessionId: r.sess.jti, code: obj.code });
+    }
+  }catch(_){}
   return sendJson(res, status, obj);
 }
 function readBody(req, limit){
@@ -513,6 +535,13 @@ const onRequest = async (req, res) => {
         role: rt.role || 'anonymous', status: res.statusCode, responseBytes: __mBytes,
         sessionId: rt.sessionId, tenantId: rt.tenantId, syncOps: rt.syncOps
       });
+      attackDetector.observeRequest({
+        sessionId: rt.sessionId, source: clientIp(req), path: p, status: res.statusCode,
+        wafBlocked: !!(req.context && req.context.waf && req.context.waf.blocked)
+      });
+      if (req.context && req.context.waf && req.context.waf.blocked) {
+        attackDetector.observeWafBlock({ sessionId: rt.sessionId, source: clientIp(req), blocked: true });
+      }
     } catch (_) {}
   });
   /* Tracing (P-Trace): شناسهٔ ردیابی در کانتکست و سرآیندِ پاسخ برای هم‌بستگی —
@@ -585,6 +614,13 @@ const onRequest = async (req, res) => {
       try{
         if(typeof outbox.depth === 'function') metrics.publishOutboxDepth(outbox.depth());
       }catch(e){}
+      /* Runtime health gauges must also refresh on the Prometheus scrape path;
+         `/api/health` is operator-facing, not the collector's source. */
+      try {
+        const runtimeSecurity = runtimeMonitor.snapshot();
+        metrics.set('payesh_suspicious_sessions', [], runtimeSecurity.suspicious_sessions);
+        metrics.set('payesh_attack_patterns_blocked', [], runtimeSecurity.attack_patterns_blocked);
+      } catch (_) {}
       const body = metrics.render();
       res.writeHead(200, {
         'Content-Type': 'text/plain; version=0.0.4; charset=utf-8',
@@ -678,6 +714,11 @@ const onRequest = async (req, res) => {
       const b = await readBody(req, 4 * 1024);
       const r = await auth.apiLogin(req, res, b);
       metrics.observeAuth('login', res.statusCode === 200 ? 'ok' : res.statusCode === 429 ? 'rate_limited' : res.statusCode === 401 ? 'failed' : 'rejected');
+      /* Q3: detector hashes source/subject internally; neither phone nor IP is
+         emitted to logs, metrics, webhooks, or health. */
+      if(res.statusCode === 401) {
+        try { attackDetector.observeLoginFailure({ source: clientIp(req), subject: b && b.phone }); } catch (_) {}
+      }
       return r;
     }
     if(p === '/api/auth/me'        && req.method === 'GET')  return await auth.apiMe(req, res);
