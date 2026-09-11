@@ -12,6 +12,22 @@ const url = require('url');
 const { projectUserByRole } = require('./middleware/projection');
 const { deltaRowsSql } = require('./syncdelta'); /* Wave 4 (chat2) */
 
+/* ── Gap 1 (Delta Hardening Phase 2): long-lived delta cutoff ─────────
+   A delta whose `since` is older than DELTA_MAX_AGE_DAYS (default 7) is
+   upgraded to a FULL snapshot: the delta window grows unboundedly for
+   offline clients, tombstone/compaction retention is not guaranteed
+   beyond the window, and re-scanning 7+ days defeats the point of a
+   delta. The response still carries tombstones after `since` so old
+   clients converge correctly, plus the explicit flag
+   `full_snapshot_required: true` (new clients may clear delta state).
+   Read per-request (not at module load) so deployments can tune it and
+   tests can override it without a process restart. */
+function deltaMaxAgeMs() {
+  const d = Number(process.env.PAYESH_DELTA_MAX_AGE_DAYS);
+  const days = (Number.isFinite(d) && d > 0) ? d : 7;
+  return days * 24 * 60 * 60 * 1000;
+}
+
 /**
  * ایجاد کنترلر دریافت داده‌ها و دلتاهای سرور
  * @param {object} ctx
@@ -176,11 +192,24 @@ function createPull(ctx) {
       return sendJson(res, 401, { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' });
     }
 
+    /* Gap 2 (Delta Hardening Phase 2): the request snapshot clock is captured
+       BEFORE any data read — the response `server_time`/next-cursor `since` is
+       this moment. Using a post-read timestamp could silently skip rows that
+       changed between the read and the response build (the next delta would
+       start after them). Slight overlap on retry is harmless (idempotent merge). */
+    const startedAtIso = new Date().toISOString();
+
     const parsed = url.parse(req.url, true);
     const query = parsed.query || {};
+
     const since = query.since ? String(query.since) : null;
     const sinceTime = since ? new Date(since).getTime() : 0;
     const isDelta = !!since && !isNaN(sinceTime) && sinceTime > 0;
+
+    /* Gap 1: too-old delta → force a full snapshot (with tombstones after
+       `since` so both old and new clients converge). */
+    const sinceTooOld = isDelta && (Date.now() - sinceTime > deltaMaxAgeMs());
+    const forceFull = sinceTooOld;
 
     const requestedCols = query.collections ? String(query.collections).split(',').map(s => s.trim()).filter(Boolean) : null;
 
@@ -197,17 +226,18 @@ function createPull(ctx) {
     const resultCollections = {};
     for (const c of targetCols) {
       /* Wave 4: in PG-live delta mode, ask the DB for only rows changed after
-         `since` (no full-table scan). Returns null → fall back to full read. */
+         `since` (no full-table scan). Returns null → fall back to full read.
+         Gap 1: a forced-full pull skips the delta predicate entirely. */
       let rawList;
-      if (isDelta) {
+      if (isDelta && !forceFull) {
         rawList = await fetchDeltaRows(c, since); // null ⇒ fall back below
       }
-      if (!isDelta || rawList == null) {
+      if (!isDelta || forceFull || rawList == null) {
         rawList = await readCol(c);
       }
       const scopedList = filterCollectionForSession(c, rawList, session);
 
-      if (isDelta) {
+      if (isDelta && !forceFull) {
         // JS time filter is kept as a harmless second guard (DB already bounded
         // the set, and the memory fallback still needs it).
         resultCollections[c] = scopedList.filter(r => {
@@ -221,6 +251,10 @@ function createPull(ctx) {
     }
 
     // استخراج رکوردهای حذف‌شده (Tombstones) در حالت Delta
+    /* Gap 1: tombstones are ALSO returned on a forced-full snapshot (they are
+       the only way an old client learns about deletions inside the skipped
+       window), so `isDelta` (a `since` was presented) — not full_snapshot —
+       gates this block. */
     let deletedRecords = [];
     if (isDelta && Array.isArray(store.__deleted_records)) {
       const schoolId = session.school_id != null ? Number(session.school_id) : null;
@@ -235,9 +269,11 @@ function createPull(ctx) {
 
     return sendJson(res, 200, {
       ok: true,
-      server_time: new Date().toISOString(),
+      server_time: startedAtIso,
       since: since,
-      full_snapshot: !isDelta,
+      full_snapshot: !isDelta || forceFull,
+      full_snapshot_required: forceFull ? true : undefined,
+      full_snapshot_reason: forceFull ? 'since_too_old' : undefined,
       server_version: store.__server_version || 1,
       collections: resultCollections,
       deleted: deletedRecords
