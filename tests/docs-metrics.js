@@ -20,7 +20,7 @@ const doc = (() => { try { return fs.readFileSync(path.join(ROOT, 'docs/DOCS_MET
 if (!doc) { console.log('❌ docs/DOCS_METRICS.md نیست'); process.exit(1); }
 
 grp('DM-KEY — اعداد اصلی');
-chk('شمار اسناد ۲۶۶ ریشه + ۱۹ زیرپوشه (لحظهٔ قفلِ آر‌سی۲۶)', doc.includes('۲۶۶') && doc.includes('۲۸۶'));
+chk('شمار اسناد ۲۷۷ ریشه + ۱۹ زیرپوشه (لحظهٔ قفلِ آر‌سی۲۷)', doc.includes('۲۷۷') && doc.includes('۲۹۷'));
 chk('صفر لینک شکسته', /\| لینک شکسته \| \*\*۰\*\*/.test(doc) || /لینک شکسته/.test(doc));
 chk('پوشش §۳۰: چهارده از چهارده', /۱۴ از ۱۴/.test(doc));
 chk('هفده مأموریت تکمیل‌شده', /۱۷/.test(doc) && /مأموریت‌های تکمیل‌شده/.test(doc));
@@ -33,7 +33,7 @@ chk('قفل ۲۰۲۶-۰۹-۱۰', doc.includes('۲۰۲۶-۰۹-۱۰'));
 
 grp('DM-LIVE — راستی‌آزمایی زنده');
 const onDisk = fs.readdirSync(path.join(ROOT, 'docs')).filter((f) => f.endsWith('.md'));
-chk('ادعای سند با دیسک سازگار است (۲۳۷ + خود سند قفل)', onDisk.length === 267, String(onDisk.length));
+chk('ادعای سند با دیسک سازگار است (۲۷۷ + خود سند قفل)', onDisk.length === 278, String(onDisk.length));
 const covTests = fs.readdirSync(path.join(ROOT, 'tests'))
   .filter((f) => /coverage\.js$/.test(f)).length;
 const docTests = covTests + ['docs-consistency.js', 'docs-health.js', 'incident-playbooks.js',
