@@ -291,27 +291,40 @@ function createAudit(opts = {}) {
     return true;
   }
 
+  let flushPromise = null;
   async function flush() {
     flushScheduled = false;
-    if (flushRunning) return;
-    flushRunning = true;
-    try {
-      while (flushQueue.length) {
-        const batch = flushQueue;
-        flushQueue = [];
-        try { checkRotationLight(); } catch (e) {}
-        try {
-          const st = await fs.promises.stat(auditFile).catch(() => null);
-          if (st && st.size >= maxBytes) { try { rotate('size'); } catch (e) {} }
-        } catch (e) {}
-        const chunk = batch.join('');
-        await new Promise((resolve) => {
-          fs.appendFile(auditFile, chunk, { encoding: 'utf8', mode: 0o600 }, () => resolve());
-        });
+    if (flushPromise) return flushPromise;
+    flushPromise = (async () => {
+      flushRunning = true;
+      try {
+        while (flushQueue.length) {
+          const batch = flushQueue;
+          flushQueue = [];
+          try { checkRotationLight(); } catch (e) {}
+          try {
+            const st = await fs.promises.stat(auditFile).catch(() => null);
+            if (st && st.size >= maxBytes) { try { rotate('size'); } catch (e) {} }
+          } catch (e) {}
+          const chunk = batch.join('');
+          const ok = await new Promise((resolve) => {
+            fs.appendFile(auditFile, chunk, { encoding: 'utf8', mode: 0o600 }, (err) => resolve(!err));
+          });
+          if (!ok) {
+            /* Keep failed lines at the head of the FIFO. The next explicit
+               flush (or a later enqueue) retries them instead of silently
+               losing security evidence. */
+            flushQueue = batch.concat(flushQueue);
+            return false;
+          }
+        }
+        return true;
+      } finally {
+        flushRunning = false;
+        flushPromise = null;
       }
-    } finally {
-      flushRunning = false;
-    }
+    })();
+    return flushPromise;
   }
 
   /**
