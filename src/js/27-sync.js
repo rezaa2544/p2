@@ -520,6 +520,53 @@ async function sendBatch(batch){
   return batch.map(x => ({ uid: x.uid, ok: true }));
 }
 
+/* ---------- W8-3: تفکیکِ صف و زمانِ نسبی برایِ نشانگرِ آفلاین ---------- */
+/* شمارشِ صفِ در انتظار به تفکیکِ نوعِ عملیات: {ins, upd, del, total} */
+function queueBreakdown(){
+  var b = { ins: 0, upd: 0, del: 0, total: 0 };
+  SYNC.queue.forEach(function(x){
+    if(x.status !== 'pending' && x.status !== 'failed') return;
+    var t = (x.op && x.op.t) || '';
+    if(b[t] !== undefined) b[t]++;
+    b.total++;
+  });
+  return b;
+}
+/* زمانِ نسبیِ خوانا: «۳ دقیقه پیش»، «همین حالا»، «۲ ساعت پیش» */
+function syncRelTime(iso){
+  if(!iso) return null;
+  var t = Date.parse(iso);
+  if(isNaN(t)) return null;
+  var s = Math.max(0, Math.round((Date.now() - t) / 1000));
+  if(s < 60)      return 'همین حالا';
+  if(s < 3600)    return fa(Math.floor(s / 60)) + ' دقیقه پیش';
+  if(s < 86400)   return fa(Math.floor(s / 3600)) + ' ساعت پیش';
+  return fa(Math.floor(s / 86400)) + ' روز پیش';
+}
+/* تخمینِ زمانِ همگام‌سازیِ صف: هر تکهٔ ۲۰۰تایی ≈ یک رفت‌وبرگشت (~۱.۵ ثانیه
+   در دمو/شبکهٔ معمول). تخمین است، نه قول — فقط برایِ حسِ انتظارِ کاربر. */
+function estimateSyncSeconds(){
+  var n = pendingCount();
+  if(!n) return 0;
+  var chunks = Math.ceil(n / SYNC_CHUNK);
+  return Math.max(2, Math.round(chunks * 1.5));
+}
+function estimateSyncFa(){
+  var s = estimateSyncSeconds();
+  if(!s) return null;
+  if(s < 60) return 'حدود ' + fa(s) + ' ثانیه';
+  return 'حدود ' + fa(Math.ceil(s / 60)) + ' دقیقه';
+}
+/* خلاصهٔ تفکیکِ صف به فارسی: «۵ ثبت، ۲ حذف» */
+function queueBreakdownFa(){
+  var b = queueBreakdown();
+  var parts = [];
+  if(b.ins) parts.push(fa(b.ins) + ' ثبت');
+  if(b.upd) parts.push(fa(b.upd) + ' ویرایش');
+  if(b.del) parts.push(fa(b.del) + ' حذف');
+  return parts.join('، ');
+}
+
 /* ---------- نشانگر وضعیت در نوار بالا ---------- */
 function syncBadge(){
   const n  = pendingCount();
@@ -528,7 +575,16 @@ function syncBadge(){
   const nearCap = queueRatio() >= SYNC_QUEUE_CAPS.warnRatio;   /* P1-10 */
 
   if(!SYNC.online){
-    return `<button class="sync-chip off" data-act="sync-panel" title="آفلاین — تغییرات ذخیره می‌شوند${nearCap?' — ⚠️ صف نزدیک سقف است':''}">
+    /* W8-3: tooltip با تفکیکِ صف + آخرین همگام‌سازی + تخمین */
+    const bk = queueBreakdownFa();
+    const rel = syncRelTime(SYNC.lastSync);
+    const est = estimateSyncFa();
+    const tip = 'آفلاین — تغییرات ذخیره می‌شوند'
+      + (bk ? ' — در صف: ' + bk : '')
+      + (rel ? ' — آخرین همگام‌سازی: ' + rel : '')
+      + (est ? ' — ارسال پس از اتصال: ' + est : '')
+      + (nearCap ? ' — ⚠️ صف نزدیک سقف است' : '');
+    return `<button class="sync-chip off" data-act="sync-panel" title="${escAttr(tip)}">
       <span class="dot"></span><span>آفلاین</span>${n ? `<span class="badge b-amber sm">${fa(n)}</span>` : ''}${nearCap?'<span class="badge b-red sm">⚠️</span>':''}</button>`;
   }
   if(SYNC.syncing){
@@ -585,16 +641,22 @@ function syncPanelModal(){
     rejected:['رد شده','b-red'],
   };
 
+  /* W8-3: تفکیکِ صف + زمانِ نسبی + تخمینِ ارسال */
+  const bk  = queueBreakdownFa();
+  const rel = syncRelTime(SYNC.lastSync);
+  const est = estimateSyncFa();
+
   const body = `
     <div class="row" style="gap:10px;margin-bottom:12px;flex-wrap:wrap">
       <span class="badge ${SYNC.online?'b-green':'b-gray'}">${SYNC.online?'🌐 آنلاین':'📴 آفلاین'}</span>
-      ${n ?`<span class="badge b-amber">${fa(n)} تغییر در صف</span>`:'<span class="badge b-green">همه‌چیز همگام است</span>'}
+      ${n ?`<span class="badge b-amber" title="${escAttr(bk)}">${fa(n)} تغییر در صف${bk?` (${bk})`:''}</span>`:'<span class="badge b-green">همه‌چیز همگام است</span>'}
       ${cf?`<span class="badge b-red">${fa(cf)} تعارض</span>`:''}
       ${rd?`<span class="badge b-red" title="عملیات‌هایی که سرور آن‌ها را به‌صورتِ پایدار رد کرده است — دوباره ارسال نمی‌شوند">${fa(rd)} رد شده</span>`:''}
       ${nearCap?'<span class="badge b-red">⚠️ نزدیکِ سقفِ صف</span>':''}
       <div class="spacer"></div>
-      <span class="small muted">آخرین همگام‌سازی: ${SYNC.lastSync?jalaliDateTime(SYNC.lastSync):'—'}</span>
+      <span class="small muted" title="${escAttr(SYNC.lastSync?jalaliDateTime(SYNC.lastSync):'')}">آخرین همگام‌سازی: ${rel||(SYNC.lastSync?jalaliDateTime(SYNC.lastSync):'—')}</span>
     </div>
+    ${n&&est?`<div class="small muted" style="margin-bottom:10px">⏱️ زمانِ تخمینیِ ارسال${SYNC.online?'':' پس از اتصال'}: ${est}</div>`:''}
 
     ${!SYNC.online?`<div class="sync-note" style="margin-bottom:10px">
       بدون اینترنت هم می‌توانید کار کنید. همه‌ی تغییرات روی همین دستگاه ذخیره می‌شوند و
