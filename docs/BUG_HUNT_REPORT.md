@@ -351,3 +351,48 @@
 - fallback بدون credential نیز در `/home/user/bandle/bug-hunt-session8-wave9.bundle` نگه داشته و با `git bundle verify` معتبر شناخته شده است؛ ۲۴ patch جداگانه در `/home/user/bandle/patches/` قرار دارد.
 - `tests/wave8-deep-audit.js` باید در یک commit/محیط بعدی ارائه شود؛ نبودن آن یک regression گیت است، نه یک pass.
 - گزارش full regression ناقص است؛ redهای legacy در partial log به Session 8 نسبت داده نشده‌اند و بدون اجرای تمیز دوباره سبز اعلام نمی‌شوند.
+
+
+---
+
+## نشست ۹ — آدیتِ ادغام‌شده‌ها و شاخه‌های باز (PR #71 · #77 · #78) — ۲۰۲۶-۰۹-۱۱
+
+**محدوده:** PR #71 (Delta Hardening Phase 4، ادغام‌شده در `main@7567607`) · PR #77 (ناوبریِ کیبورد/a11y، باز) · PR #78 (مانورِ واقعیِ WAL disk-full، باز).
+**روش:** هر یافته با تستِ قرمزِ اول بازتولید شد، بعد رفع، بعد جهش‌آزمایی (تغییرِ شرط/حذفِ خط/شبیه‌سازیِ کرش).
+
+| شناسه | یافته | شدت | محل | کامیت | شاهد رگرسیون / جهش |
+|---|---|---|---|---|---|
+| S9-1 | کرسرِ v2 داوریِ منطقه را **پیش از** تأییدِ HMAC برمی‌گرداند: توکنِ جعلیِ بی‌امضا با ادعایِ منطقهٔ دیگر «region_mismatch» می‌گرفت (نقضِ قراردادِ خودِ ماژول: signature first) و شمارندهٔ سلامتِ `payesh_cursor_region_mismatch_total` را بی‌هیچ امضایی جلو می‌بُرد | P2 | `server/cursor.js` | `1b6ae2d` | `bughunt-session9` A1–A7 · جهش M1/M2 |
+| S9-2 | `negotiateEncoding` مقدارِ `q=0` و بزرگی/کوچکیِ حرف‌ها را نمی‌فهمید: `Accept-Encoding: gzip;q=0` (ردِ صریح) پاسخِ gzip می‌گرفت، `gzip;q=0, br` به brotli fallback نمی‌کرد و `GZIP` هیچ نمی‌گرفت | P2 | `server/compress.js` | `941e1b5` | B1–B6 · جهش M3 |
+| S9-3 | فشرده‌سازیِ **سنکرون** روی مسیرِ داغِ pull: اندازه‌گیریِ واقعی ~۴٫۷ms به‌ازای هر مگابایت — برای دلتای واقعیِ ده‌ها مگابایتی صدها میلی‌ثانیه قفلِ کاملِ حلقهٔ رویداد در هر pull، و همهٔ درخواست‌های هم‌زمان پشتِ آن | P1 | `server/compress.js` · `server/pull.js` | `941e1b5` | C1/C6/C7 · جهش M4/M7 |
+| S9-4 | زنجیرهٔ مودالِ تودرتو (دکمه‌ای درونِ مودال A که مودال B را باز می‌کند — همهٔ ۳۲ فراخوانِ `askConfirm` و مسیرهای `dorm-assign-pick`/`sub-del`/`hw-view`/`leave-new`) بازکنندهٔ فوکوس را با نابودیِ A از سند بیرون می‌انداخت ⇒ `document.contains` رد می‌کرد و فوکوس روی `<body>` سقوط می‌کرد (WCAG 2.4.3) | P3 | `src/js/18-modals.js` (PR #77) | `c469f70` — شاخهٔ `fix/a11y-modal-focus-s9` / PR #80 | `a11y-modal-focus` ۹/۹ · جهش ۵/۵ · `a11y-regressions` خودِ PR ۴۶/۴۶ دست‌نخورده |
+| S9-5 | کلِ `HANDOFF.md` در PR #78 مو‌جی‌بِیک نوشته شده بود (UTF-8 → Windows-1256 → UTF-8): ۱۷۱۹ از ۱۹۵۶ خطِ فارسی ناخوانا و همهٔ ورودی‌های سشن‌های قبلی با نسخهٔ خراب جایگزین ⇒ با merge، دفترچهٔ تحویل برای همیشه از دست می‌رفت | P2 | `HANDOFF.md` (PR #78) | `767f2e0` — PR #81 | `handoff-integrity` ۴/۴ (پیش از رفع ۱/۴) |
+| S9-6 | `bootstrap.sh` مانورِ WAL فهرستِ migrationها را hardcode کرده بود و فایلِ ناموجود را «skip (absent)» می‌کرد؛ پس از بازشماریِ ۰۰۴→۰۰۷ دو نام بی‌وجود شده بودند ⇒ مانور بدونِ ایندکس‌های wave3 و بدونِ ۰۰۵ «سبز» می‌شد. چکِ ایستایِ خودِ PR هم فقط *تعدادِ نام‌های ذکرشده در متن* را می‌شمرد. همچنین `WAL_MNT`/`PGDATA` از محیط می‌آمدند و هیچ گاردی پیش از `mount`/`rm -rf`/`chown -R` نبود | P1 | `infra/wal-drill/bootstrap.sh` (PR #78) | `767f2e0` — PR #81 | `wal-drill-bootstrap` ۷/۷ (پیش از رفع ۲/۷) · S5/S8/S9 تازه |
+| S9-7 | حالتِ ایستایِ مستندِ `node tests/wal-disk-full.js --skip-live` با TDZ می‌مرد (`Cannot access 'finished' before initialization`) — چون `let finished` بعد از IIFE تعریف شده بود؛ یعنی چکِ آفلاینِ مانور هیچ‌وقت کار نکرده بود | P2 | `tests/wal-disk-full.js` (PR #78) | `767f2e0` — PR #81 | پیش از رفع: استک‌تریس بدونِ خروجی؛ پس از رفع: **۹/۱۴ + exit 2** |
+
+**جهش‌آزماییِ نشست ۹ (`tests/bughunt-session9-mutations.js`):** ۷ جهشِ هدفمند — همه کشته؛ به‌علاوهٔ جاروبِ حذفِ تصادفیِ خط با بذرِ ثابت روی `compress.js`/`cursor.js`: **۱۵ از ۱۹ جهشِ معتبر (۷۹٪) کشته شد** (خطوطِ کامنتی و جهش‌های غیرقابل‌تجزیه از مخرج کنار گذاشته شدند؛ ۰ خطای محیطی).
+
+### گیت‌های نشست ۹
+
+| گیت | نتیجه |
+|---|---|
+| `node tests/bughunt-session9.js` | **۲۵/۲۵ ✅** |
+| `node tests/bughunt-session9-mutations.js` | **۸/۸ ✅** (۷ هدفمند + جاروب) |
+| `node tests/handoff-integrity.js` | **۴/۴ ✅** |
+| `node tests/delta-phase4.js` (خودِ PR #71) | **۲۳/۲۳ ✅** |
+| `node tests/delta-phase4-mutations.js` (لنگرهای M7/M16/M19 به‌روز شد) | **۲۰/۲۰ ✅** |
+| `node tests/a11y-modal-focus.js` + `-mutations` (شاخهٔ PR #80) | **۹/۹ ✅** · **۵/۵ ✅** |
+| `node tests/wal-drill-bootstrap.js` (شاخهٔ PR #81) | **۷/۷ ✅** |
+| `node tests/wal-disk-full.js --skip-live` | ۹ ایستا + ۵ NOT-RUN · **exit 2** (طراحیِ خودِ فایل) |
+| `node tests/smoke.js` | **۵۴۷/۵۴۷ ✅** (روی `bug-hunt-session9` و روی شاخهٔ #77) |
+| `tools/check-authz.js` · `tests/secret-scan.js` | exit 0 · **۱۱/۱۱ ✅** |
+| `node build.js --check` | ✅ |
+| `tests/docs-consistency.js` · `security-findings-register-coverage.js` | ۲۳/۲۳ ✅ · ۵۱/۵۱ ✅ |
+| `tests/docs-freeze-marker.js` | ⚠️ **۳ خطای پیش‌موجود روی `main`** — باگهانت نشست ۹ آن‌ها را نه ساخته و نه سبز اعلام می‌کند |
+
+### وضعیتِ تحویلِ نشست ۹
+
+- شاخهٔ کاریِ نشست روی `main@7567607`: `bug-hunt-session9` با ۴ کامیت (`98ebc54` تستِ قرمزِ اول · `1b6ae2d` S9-1 · `941e1b5` S9-2+S9-3 · `2be3fb4` سخت‌سازیِ تست/جهش/نگهبانِ دست‌آف).
+- برای دو PR بازی که کدشان روی `main` نیست، رفع‌ها روی شاخهٔ خودشان نشست (قاعدهٔ keep-both): **PR #80** (`fix/a11y-modal-focus-s9` @ `c469f70`) روی `feat/a11y-keyboard-nav` و **PR #81** (`fix/wave19-wal-drill-s9` @ `767f2e0`) روی `feat/wave19-wal-drill-tmpfs`.
+- `docs/SECURITY_FINDINGS_REGISTER.md` عمداً دست‌نخورده نماند: پیوستِ پس از قفل با شناسه‌های `اس‌اف-۰۳۸` تا `اس‌اف-۰۴۲` اضافه شد (بدنهٔ یخ‌زدهٔ `rc11` تغییر نکرد).
+- باز: PR #74 (نشست ۷ من) هنوز open است؛ #76 (واریانتِ دیگرِ مانورِ WAL) بررسی نشد؛ S9-4 در PR #80 منتظرِ پذیرشِ نویسندهٔ #77 است.
