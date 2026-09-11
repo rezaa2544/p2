@@ -71,13 +71,44 @@ GET /api/v1/pull?since=<iso>&collections=<c1,c2,…>
 
 ## ۴. وضعیتِ اجزا و کارهایِ باقی‌مانده
 
-| جزء | وضعیت این موج | باقی‌مانده (پی‌وآیند) |
+| جزء | وضعیت | باقی‌مانده (پی‌وآیند) |
 |---|---|---|
-| Pull دلتا | ✅ DB-native (time-pushed؛ پشت `db.isPostgres()` + fallback) | تأییدِ واقعی بر PG |
-| Cursor/keyset `(updated_at,id)` | ✅ builder (`deltaKeysetSql`) + تست | حالتِ pull کرسوری در پروتکل + کلاینت |
-| Clock-skew | ✅ تای-بریکرِ id در builder (تست) | تأییدِ واقعی بر PG |
+| Pull دلتا | ✅ DB-native (time-pushed؛ پشت `db.isPostgres()` + fallback) | ✅ **تأییدِ واقعی بر PG 18.4 زنده انجام شد** (فاز ۲ — §۶ همین سند + `docs/DELTA_HARDENING.md`) |
+| Cursor/keyset `(updated_at,id)` | ✅ builder (`deltaKeysetSql`) + تست | ✅ **فاز ۲:** کرسرِ امضاشدهٔ pull با TTL + renewal سیم شد (`server/cursor.js`) |
+| Clock-skew | ✅ تای-بریکرِ id در builder (تست) | ✅ تأییدِ واقعی بر PG (فاز ۲ — کوئری‌های دلتا از builder واقعی اجرا شدند) |
 | Tombstone جدول (`server_tombstones`) | ✅ آماده (schema + builder) | **فعال‌سازی:** تا وقتی push/delete به PG ننویسد، pull همچنان سنگ‌قبر را از store می‌فرستد تا دادهٔ حذف گم نشود |
 | Push در یک تراکنشِ PG | 🔲 **pending** (مستند) | بازنویسی با گیتِ امنیت/validation/OCC/audit در یک تراکنش + تأییدِ واقعی بر PG |
+
+---
+
+## ۶. Delta Hardening — فاز ۲ (۲۰۲۶-۰۹-۱۱)
+
+سندِ کامل: **`docs/DELTA_HARDENING.md`** (طراحی + شواهد + اجرای زنده). خلاصهٔ قراردادی:
+
+### ۶.۱ دلتای کهنه (گپ ۱)
+`since` کهنه‌تر از `PAYESH_DELTA_MAX_AGE_DAYS` (پیش‌فرض ۷ روز) ⇒ پاسخ **خودِ اسنپ‌شات کامل** است +
+`full_snapshot_required: true` + `full_snapshot_reason: 'since_too_old'`؛ تومب‌استون‌های بعد از `since`
+همچنان برمی‌گردند (کلاینتِ قدیمی هم جمع می‌شود). کلاینت در اسنپ‌شاتِ کامل مجموعه‌ها را **جایگزین** می‌کند
+(ردیف‌های صفِ آفلاین محفوظ). `server_time`/کرسرِ بعدی از **لحظهٔ شروعِ خواندن** بریده می‌شود.
+
+### ۶.۲ کرسرِ امضاشده با TTL (گپ ۲)
+- توکن `pc1.<b64>.<hmac-sha256>` با payload `{v:1, since, iat, exp, jti}` — ماژول `server/cursor.js`.
+- TTL پیش‌فرض **۱ ساعت** (`PAYESH_CURSOR_TTL_S`؛ clamp ۶۰..۸۶۴۰۰). کلید: `PAYESH_CURSOR_SECRET` یا
+  اشتقاقِ domain-separated از کلید JWT. بدون کلید ⇒ کرسر غیرفعال (fail-closed)، ‏`since` legacy سالم.
+- `GET /api/v1/pull?cursor=<token>`: منقضی ⇒ ‏**401 `cursor_expired`** · دستکاری‌شده ⇒ ‏**401
+  `cursor_invalid`** (+ `cursor_renewal: 'full_pull'`). sinceِ توکن بر `?since=` ادعایی مقدم است.
+- هر ۲۰۰ پاسخ: `next_cursor` تازه + `cursor_ttl_s`. کلاینت خودکار تمدید می‌کند (یک pull کامل، بدون حلقه).
+
+### ۶.۳ ایندکس‌های دلتا (گپ ۳ — یافتهٔ اجرای زنده)
+`migrations/005_delta_sync_updated_at_indexes.sql` (+down): شانزده ایندکس `updated_at` — قبل از آن
+پلنِ دلتا Parallel Seq Scan بود (۳۷.۴ms روی grades با ۳۲۳K ردیف؛ زیر بارِ ۱۰۰۰ درخواست ‏p50≈۴s)؛ بعد از
+آن BitmapOr روی `(created_at ∪ updated_at)` — ‏**p50=۴۷۲ms و ۱٬۱۵۷ req/s در همان burst** (A/B کامل در
+`docs/DELTA_HARDENING.md` §۳). قید: روی تولید با `CONCURRENTLY` اعمال شود.
+
+### ۶.۴ سنجهٔ تعارض (گپ ۴)
+هیستوگرام `payesh_sync_conflict_detection_seconds{outcome=conflict|stale|clean}` (باکت‌های میلی‌ثانیه‌ای)
+در `server/sync.js` روی گیتِ OCC ثبت می‌شود — زمانِ یافتن+مقایسه، پیش از ثبتِ تعارض؛ R1 رعایت شده.
+شاهد دو-کلاینتِ موازی: `tests/delta-sync-hardening.js` DH15–DH17.
 
 ---
 
