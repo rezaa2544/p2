@@ -12,21 +12,30 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و
+   index.html هرگز بازنویسی نمی‌شوند — بازگردانیِ دستی و rebuildِ
+   پایانی حذف شدند. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('sct-mut-');
+kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
 
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0, envFails = 0;
 function chk(c, m) { if (c) { pass++; console.log('  ✅ ' + m); } else { fail++; console.log('  ❌ ' + m); } }
 
+let lastFile = null;
 function mutate(file, from, to, suite, killRe, tag) {
   const f = path.join(ROOT, file);
+  if (lastFile && lastFile !== f) kit.clear(lastFile); /* فقط جهشِ جاری فعال */
+  lastFile = f;
   const orig = fs.readFileSync(f, 'utf8');
   const bad = orig.replace(from, to);
   if (bad === orig) { chk(false, tag + ': جهش اعمال نشد (نماد پیدا نشد)'); return; }
-  fs.writeFileSync(f, bad, 'utf8');
-  try {
-    const runOnce = () => spawnSync('node', [path.join(ROOT, suite)], { cwd: ROOT, encoding: 'utf8' });
+  kit.mutant(f, bad); /* کپی جدا؛ سورس اصلی دست‌نخورده */
+  {
+    const runOnce = () => spawnSync('node', [path.join(ROOT, suite)], { cwd: ROOT, encoding: 'utf8', env: kit.env() });
     const completed = (o) => /نوع مدرسه \(school_type\): /.test(o || '');
-    execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
+    execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore', env: kit.env() });
     let r = runOnce();
     if (r.status !== 0 && !killRe.test(r.stdout) && !completed(r.stdout)) {
       const r2 = runOnce();
@@ -38,8 +47,6 @@ function mutate(file, from, to, suite, killRe, tag) {
       return;
     }
     chk(r.status !== 0 && killRe.test(r.stdout), tag);
-  } finally {
-    fs.writeFileSync(f, orig, 'utf8');
   }
 }
 
@@ -68,6 +75,5 @@ mutate('src/js/19-actions-core.js',
   "if(false){ /* SM5 */",
   'tests/school-type.js', /❌ ST4/, 'SM5 از کار افتادن flip خودکار مودال');
 
-execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
 console.log(`جهش‌های نوع مدرسه: ${pass}/${pass + fail} کشته` + (envFails ? ` (${envFails} خطای محیطی)` : ''));
 process.exit(fail || envFails ? 1 : 0);
