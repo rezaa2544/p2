@@ -363,8 +363,16 @@ const stats = {
 };
 for(const f of fs.readdirSync(OUT_DIR)){
   if(f.endsWith('.csv')){
+    /* P0-4 fix: readFileSync سقف ~2GiB دارد — attendance.csv از scale≈0.5
+       به بالا از آن می‌گذرد و مولد در پایان کرش می‌کرد (stats.json نمی‌نوشت).
+       هش را پخش‌شده (چانک ۴MiB) محاسبه می‌کنیم؛ خروجی sha256 تغییر نمی‌کند. */
     const h = crypto.createHash('sha256');
-    h.update(fs.readFileSync(path.join(OUT_DIR, f)));
+    const fp = path.join(OUT_DIR, f);
+    const fh = fs.openSync(fp, 'r');
+    const buf = Buffer.alloc(4 << 20);
+    let n;
+    while((n = fs.readSync(fh, buf, 0, buf.length, null)) > 0) h.update(buf.subarray(0, n));
+    fs.closeSync(fh);
     stats.checksums[f] = h.digest('hex');
   }
 }
