@@ -1,31 +1,29 @@
-# 🔒 قفل مستندات — DOCS_FREEZE_v1.0.0-rc31
+# 🔒 قفل مستندات — DOCS_FREEZE_v1.0.0-rc32
 
-> **⚠️ قفلِ تاریخی.** این نسخه در ۲۰۲۶-۰۹-۱۲ با `DOCS_FREEZE_v1.0.0-rc32.md` جایگزین شد و دیگر «جاری» نیست.
-> **تاریخِ دست‌نخورده:** مانیفستِ زیر **عمداً ویرایش نشده** است — وضعیت لحظهٔ قبلی قفل را
-> قابل اثبات نگه می‌دارد. برای راستی‌آزماییِ قفلِ جاری: `node tests/docs-freeze-marker.js`.
-
-**نسخهٔ قفل:** ۱.۰.۰-rc31 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۲ | **مالک:** چت ۶ (مستندات و انتشار)
-**وضعیت:** این سند نقطهٔ انجماد رسمی و **تاریخی** (پیشینِ `rc32`) کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc30` (تاریخی) می‌شود. فهرست زیر **همهٔ سند ریشهٔ**
+**نسخهٔ قفل:** ۱.۰.۰-rc32 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۲ | **مالک:** چت ۶ (مستندات و انتشار)
+**وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc31` (تاریخی) می‌شود. فهرست زیر **همهٔ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
-**دلیل بامپ:** دو دسته تغییر، هر دو پس از `rc30`:
+**دلیل بامپ:** چهار سندِ فهرست‌شده ویرایش شد:
 
-| نوع | شمار | نمونه |
+| نوع | شمار | سند |
 |---|---|---|
-| سندِ تازهٔ ریشه | ۲ | `MULTI_GRADE_GUIDE.md` · `WAVE21_MULTIGRADE_REPORT.md` (موج ۲۱، PR #85) |
-| سندِ ویرایش‌شده | ۵ | `DOCS_INDEX.md` · `DOCS_METRICS.md` · `DOCUMENTATION_MAP.md` · `TEST_COVERAGE_REPORT.md` · `NATIONAL_ROADMAP_PROGRESS.md` |
-| قفلِ پیشین | ۱ | `DOCS_FREEZE_v1.0.0-rc30.md` — تاریخی شد و بنر گرفت |
+| سندِ ویرایش‌شده | ۳ | `MIGRATION_GUIDE.md` (ردیفِ مهاجرتِ ۰۰۸) · `DOCS_INDEX.md` (بازهٔ ۰۰۱–۰۰۸) · `RELEASE_NOTES.md` (بازهٔ ۰۰۱–۰۰۸) |
+| سندِ ویرایش‌شده | ۱ | `NATIONAL_ROADMAP_PROGRESS.md` (ردیفِ Wave 17) |
+| قفلِ پیشین | ۱ | `DOCS_FREEZE_v1.0.0-rc31.md` — تاریخی شد و بنر گرفت |
 
-**چرا این بار فرق دارد.** ‏`rc28`، `rc29` و `rc30` هر سه به یک دلیل بسته شدند: کسی سند یا
-تستی افزود و شمارهای دستیِ سه سند کهنه شد. این بامپ علاوه بر همگام‌سازی، **علت را
-برمی‌دارد**: `tools/docs-stats-sync.js` آن شمارها را از دیسک می‌سازد و `--check`
-کهنه‌بودن را با exit 1 گزارش می‌کند. از این پس بامپِ قفل یک تصمیم انسانی می‌ماند
-(که باید باشد) ولی شمارها دیگر دستی نوشته نمی‌شوند. شرح روش در `SKILLS_MASTER.md` §۵.
+**چرا این ویرایش‌ها لازم بود.** موج ۲۳ مهاجرتِ `008_wave23_report_logs.sql` را افزود ولی
+ردیفِ §۸ راهنما و سه پینِ دستیِ `tools/docs-consistency-check.sh` (شمارِ `7`، رشتهٔ
+`001 … 007`، و `۰۰۱–۰۰۷`) به‌روز نشدند. نتیجه دو تستِ قرمز روی `main` بود:
+`migration-sequence` ‏۱۸/۱ و `docs-consistency` ‏۱۹/۳. **این دقیقاً همان الگویی است که
+`tools/docs-stats-sync.js` برای آمارِ مستندات برداشت**، پس پین‌ها هم از دیسک مشتق شدند
+نه اینکه به `۸` و `۰۰۱–۰۰۸` پینِ تازه بخورند.
 
-ضمناً یک نقص در `rc30` اصلاح شد: آن قفل با وجودِ «جاری» بودن، بنرِ «قفلِ تاریخی —
-با `rc29` جایگزین شد» داشت (کپی از نسخهٔ پیشین، با جهتِ برعکس). بنرش اکنون درست است.
+ضمناً `tools/docs-refs-check.js` افزوده شد: ارجاعِ سند به فایلِ ناموجود را می‌گیرد،
+۷۱ موردِ تاریخی را در `tools/docs-refs-baseline.json` قفل می‌کند و فقط موردِ تازه را
+قرمز می‌کند. شرح روش در `SKILLS_MASTER.md` §۵.۲ و §۵.۳.
 
 **زیرپوشه‌های بیرون مانیفست ریشه** (۲۰ سند؛ پوشش ساختاری‌شان را تست‌های پوشش
 می‌پایند و فهرست قطعی‌شان در نمایه ثبت شده است):
@@ -61,7 +59,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۳۰۷)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۳۰۸)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -119,7 +117,7 @@
 | `DEVELOPMENT.md` | `sha256:36583814876f4be82e6963dcf025160618576ed55a342296687ff942890af12e` |
 | `DISASTER_RECOVERY.md` | `sha256:786013c7d85b88ca5c93a2d464ff56038c0cd6295a7589df0e6d288a8023dfc3` |
 | `DISCOVERABILITY_R43.md` | `sha256:b0be575e99a75fadc310ede35eae24a63fd4e11a525d85e1947fb11d8b76c5ca` |
-| `DOCS_CONSISTENCY_REPORT.md` | `sha256:a934eb13b96a07c0f291b9b61d9caa47ff9d153eb8aab4c0e333c90281c3df78` |
+| `DOCS_CONSISTENCY_REPORT.md` | `sha256:ddd8b0b9c8544c538182d82d178a214eb0f480ff264936938e82aa3cf7a309c5` |
 | `DOCS_EXPORT_GUIDE.md` | `sha256:c5064687de82757e6bbbe10d35dfd29f2d37effe960f146511aefdd86c456fb5` |
 | `DOCS_FREEZE_v1.0.0-rc1.md` | `sha256:54a86e2f181e88a1c7062d0ecd7303ea4ed0fe080c627b272b977f2eb7709254` |
 | `DOCS_FREEZE_v1.0.0-rc10.md` | `sha256:0ae335dbeee27185dad172fb75ec395d5e7e0b56791313212a13692dbee8a7ad` |
@@ -145,6 +143,7 @@
 | `DOCS_FREEZE_v1.0.0-rc29.md` | `sha256:7bfdeaaa37ba9e7f6300c824c522316079b59d28d02a79360c93285d797aac5c` |
 | `DOCS_FREEZE_v1.0.0-rc3.md` | `sha256:dde6513623ab09ee2d0a52ef608118999669c145f562e6288e58340894628e77` |
 | `DOCS_FREEZE_v1.0.0-rc30.md` | `sha256:8f20cc0a0e0c754779ea6d92dc33ba92f8d4b6c48c778bd26de840dc297616ac` |
+| `DOCS_FREEZE_v1.0.0-rc31.md` | `sha256:029fc1faa7848eae2b62868f6ed5458a923dd604e53e4273b084e9b86f481457` |
 | `DOCS_FREEZE_v1.0.0-rc4.md` | `sha256:c33ea913bef9630a24e34ab0348980e291570cad81d906fcf57908df96fdff73` |
 | `DOCS_FREEZE_v1.0.0-rc5.md` | `sha256:df97a36b50b8e4398fd8ac3090b1a2bd7ed1a113780ec8841c8b44e490dce79e` |
 | `DOCS_FREEZE_v1.0.0-rc6.md` | `sha256:ded449054c3464e7c34fc913cf3f71dc5745ffe24e34888cc1aceb94ee93782e` |
@@ -152,11 +151,11 @@
 | `DOCS_FREEZE_v1.0.0-rc8.md` | `sha256:361dfe21c653239ddad6873c394c454a5b2bdc1deb067f32de0686f08d96a205` |
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:2dd7cba8f7c3e68eec958467ea54e69bc8558dd6358a7c25616c1636a494d979` |
-| `DOCS_INDEX.md` | `sha256:bb0c4646fa2eb9121076f57cf6acda9c6657edfb9d92663a5803b1fb6a417965` |
-| `DOCS_METRICS.md` | `sha256:738cae4a4d38bf4a853e5ea86863bcecd5f2f7c9efa44182ca215064a1e1f170` |
+| `DOCS_INDEX.md` | `sha256:9e36b4a227d5eaf2aeba717870f1978b14ab67905c042ecbc3cf77b3bf64e00d` |
+| `DOCS_METRICS.md` | `sha256:5b1ac411d5ed528aeb094c36a60e7936cec4fa1716aa9a7a8cabba24ef1a7862` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:bbca0ce31bc63dabaacf2f2eab15f2ac2de60528a53de9a34985ef1ea41ee091` |
-| `DOCUMENTATION_MAP.md` | `sha256:e76ed16cc63bf01bee3ddd6d92959a4002757ff1685e609fc6f62626d3df4a12` |
+| `DOCUMENTATION_MAP.md` | `sha256:1b41cea2fa4f6869faa314edbb30d1fbf1a50f9ae3388bcf7d8cb526aa30a3e4` |
 | `DR_RUNBOOK.md` | `sha256:8c0d8f7e2bb1e1305c2aaf645850de68d4b429895445ecae74a5a0a732db0e26` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
@@ -189,7 +188,7 @@
 | `MASTER_ONBOARDING_PATH.md` | `sha256:f973f920496b1348387ac347bf5121cb0271c8fb8996b12322ea3e1f8d2437cc` |
 | `MIGRATION_AUDIT.md` | `sha256:d1361ed0ccf6bb3b12676aa07756d02933c72ccc795b6ebe6d5b86c1838a75bf` |
 | `MIGRATION_DECISION.md` | `sha256:1d475fdc918f6c1029d4f280bb80891d78b013934a60135d2960e978168b7d9d` |
-| `MIGRATION_GUIDE.md` | `sha256:b9857bbfbdb68af57d24f397ad1995e2b54b0ea1e7410c9b345faaab2d3c3fb5` |
+| `MIGRATION_GUIDE.md` | `sha256:c12bf7297992ee7d554753301ff92e2eeaffe28a67664ff9b07a1644789fbd04` |
 | `MULTI_GRADE_GUIDE.md` | `sha256:a5fee017eb9f95b9989d0f8eadb3b07e7afc8ba06131cdcfec3a885cd087b4e4` |
 | `MULTI_INSTANCE_ARCHITECTURE.md` | `sha256:67e0b9447275483f25159fc8034546c8eeacf925d5b7ea594d929453a4dc1146` |
 | `MULTI_INSTANCE_AUDIT.md` | `sha256:767bda832dc565cb74577d58eb2708ae3245be8fc52713ef6a75f7b08652f8d8` |
@@ -200,7 +199,7 @@
 | `NATIONAL_BASELINE_PART3.md` | `sha256:66b2bf5e2df32e471a0b0b5e44a733764d9c01e2557aecb94a58b2f58b054d76` |
 | `NATIONAL_BASELINE_PART4.md` | `sha256:68d5446b6a2f2334ae8748412923431c6a3ad0e952dc70387dcc804d85bb5e01` |
 | `NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md` | `sha256:911f99cda41d415193f9179f5bb6183a6242c769f28a3471af38abb5bb81d228` |
-| `NATIONAL_ROADMAP_PROGRESS.md` | `sha256:6edd3605e909922f697fd1a66929c156e176ce8884d144aa6d433cbe9cc014d8` |
+| `NATIONAL_ROADMAP_PROGRESS.md` | `sha256:0cdace50ddf55817142504a6b9a6b642ef6a83c86a321b5170f45b1c6f080053` |
 | `OBSERVABILITY.md` | `sha256:5220f088a47b84c01806871b574f47fae007785a9d4b58c3bad368e7e53423c0` |
 | `OBSERVABILITY_DEPLOYMENT.md` | `sha256:efaf413b9130c57a5473984bf24e0652f21fa7fa57099a0bf68ba191473822a9` |
 | `OBSERVABILITY_LIVE_SETUP.md` | `sha256:a99b046779fe46883733858080f338ee014c79c438db827da2d605037320d34c` |
@@ -256,7 +255,7 @@
 | `RED_TEAM_EXERCISE_2026_Q3.md` | `sha256:34346602f0f036101774529e610f3fcd4536a4ba0d124a20ff4864237cf7e9ab` |
 | `RELEASE_GATE_CHECKLIST.md` | `sha256:6959441852029e2aecf5bae8ad28de3c8c753a34c1f5cbd37d80924933462676` |
 | `RELEASE_GATE_EVIDENCE.md` | `sha256:c1b52cb02299401a23e8fed0ff31c90ea5f7200bf3f0acb3d89e1c7e61ce6384` |
-| `RELEASE_NOTES.md` | `sha256:ee5dc420c8e65743bc0ea63f5a58819c469903a20cf26908aa82bb89e20be8ed` |
+| `RELEASE_NOTES.md` | `sha256:04c30bc9bce6c300e6f85a53c1db0eb9a014a72fc42212c3f4f4a3f203caf7c1` |
 | `RELIABILITY_DR_PLAN.md` | `sha256:797d8cb0ec5c4542bf849045936505d80d59a1ee92f8eded7bec965fd37caad2` |
 | `REPORTING_SYSTEM_GUIDE.md` | `sha256:66d7d33caf060395f093a8caad815173f26b935415d3d3fcfb8f5c17298bcff1` |
 | `REPORT_2026-09-05.md` | `sha256:d0059ac9a148be5445ec2f5c93f00f48c36e6c75a3f1fa65c92fc41bdc664d7f` |
@@ -333,7 +332,7 @@
 | `SUPPLY_CHAIN_AUDIT_2026_Q3.md` | `sha256:34ffa9a2145022b210dd8650b7cc15378e8361f44eadb63c86b4c802dbbc6e30` |
 | `SYNC_FLOW.md` | `sha256:0d768e1fa6bcbdf0f69108408ba5733a787cbb881bf60c8b3b57cf5acc54db0a` |
 | `SYNC_PROTOCOL.md` | `sha256:2799aeb7207edc7eb3ade3fc367f90601ab1e485ad113cc17077278479fdff7a` |
-| `TEST_COVERAGE_REPORT.md` | `sha256:a73ed16498e4387d87b60bd58c242655da1f2177193964e55fe44f41bdeecd89` |
+| `TEST_COVERAGE_REPORT.md` | `sha256:9baa7e00a80f5d8eae64012a1695a82b36f396c2d120a0a43736529771334c6e` |
 | `THIRD_PARTY_LICENSES.md` | `sha256:0440f94b6395ee2fab1b2a34d9c8e3d5141887c1c276b4327c5d134317a33a08` |
 | `THREAT_MODEL.md` | `sha256:2d93966da760fec407778e27e9ef85033f95efffe71d1135dd849f6780d966f0` |
 | `TRACING_SETUP.md` | `sha256:6d17e75b8cc28763db6d7d7c9310d587fb3419c15a2d1dbf2f9e938881040099` |
@@ -374,4 +373,4 @@
 | `راهنمای_کاربر.md` | `sha256:e7061c3b64353b6b04c0a17551eb990df1805f27a861dbb17996c9d6e62b26be` |
 
 ---
-_قفل `rc31` در ۲۰۲۶-۰۹-۱۲ بسته شد تا مانیفست با دیسکِ واقعی پس از موج ۲۱ همگام شود و شمارهای آماری به `tools/docs-stats-sync.js` سپرده شود. راستی‌آزمایی: `node tests/docs-freeze-marker.js`._
+_قفل `rc32` در ۲۰۲۶-۰۹-۱۲ بسته شد: ردیفِ مهاجرتِ ۰۰۸، مشتق‌سازیِ پین‌های `docs-consistency-check.sh` از دیسک، و افزودنِ جغجغهٔ ارجاع‌های کهنه. راستی‌آزمایی: `node tests/docs-freeze-marker.js`._
