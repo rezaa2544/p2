@@ -398,12 +398,41 @@ async function readOne(name, id) {
  * @returns {Promise<{ok:boolean, hydrated:number, skipped:Array}>}
  */
 async function hydrateStoreFromPg(store) {
-  const out = { ok: true, hydrated: 0, skipped: [] };
+  const out = { ok: true, hydrated: 0, skipped: [], capped: [], env_skipped: [] };
   if (!store || typeof store !== 'object') return out;
+  /* Wave 18 — هیدراتاسیونِ مقیّد (مانورِ بارِ ملی): در مقیاسِ ملی، بارگذاریِ
+     کلِ جدول‌ها در RAM ممکن نیست (کاربران ۱۰M ⇒ چند GB شیءِ JS؛ OOM در بوت).
+     دو env اختیاری، هر دو پیش‌فرض خاموش (رفتارِ فعلی حفظ می‌شود):
+       PAYESH_PG_HYDRATE_SKIP=t1,t2      — این جدول‌ها اصلاً هیدراته نشوند
+       PAYESH_PG_HYDRATE_LIMIT=u:5000    — سقفِ سطرِ per-جدول (ORDER BY id)
+     مسیرهایِ خواندنِ زنده (pgLive ⇒ db.readCollection/executePagedList)
+     همچنان مستقیم از PG می‌خوانند؛ سقف فقط «آینهٔ درون‌حافظه‌ایِ بوت» را
+     مقیّد می‌کند. یافتهٔ مانور: auth فعلاً از همین آینه می‌خواند (اسکنِ
+     خطیِ store.users) — در مقیاسِ واقعی باید به جست‌وجویِ ایندکس‌دارِ PG
+     برود (users.phone ایندکس ندارد). */
+  const skipEnv = String(process.env.PAYESH_PG_HYDRATE_SKIP || '')
+    .split(',').map((s) => s.trim()).filter(Boolean);
+  const limEnv = {};
+  String(process.env.PAYESH_PG_HYDRATE_LIMIT || '')
+    .split(',').map((s) => s.trim()).filter(Boolean).forEach((p) => {
+      const i = p.indexOf(':');
+      if (i > 0) {
+        const t = p.slice(0, i).trim(), n = Number(p.slice(i + 1));
+        if (t && Number.isFinite(n) && n >= 0) limEnv[t] = n;
+      }
+    });
   for (const key of SCHEMA_TABLES) {
     if (!isPgReadableTable(key)) continue;
+    if (skipEnv.indexOf(key) > -1) { out.env_skipped.push(key); continue; }
     try {
-      store[key] = await readCollection(key);
+      const cap = limEnv[key];
+      if (cap !== undefined) {
+        const res = await pool.query(`SELECT * FROM "${key}" ORDER BY id LIMIT $1`, [cap]);
+        store[key] = reviveRows(res.rows);
+        out.capped.push(key + ':' + cap);
+      } else {
+        store[key] = await readCollection(key);
+      }
       out.hydrated++;
     } catch (e) {
       out.skipped.push(key);
