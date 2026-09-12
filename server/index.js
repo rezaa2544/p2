@@ -282,9 +282,12 @@ function gcStore(){
 let persistBusy = false;    /* نوشتنِ ورکر در جریان است */
 let persistQueued = false;  /* حینِ پرواز دوباره کثیف شد */
 function persistStore(){
-  /* PR #94 review-guard: در PG-live با آینهٔ سقف‌دار، فایل هرگز با
-     اسنپ‌شاتِ بریده بازنویسی نمی‌شود (این مسیرِ FATAL/فال‌بک هم هست). */
-  if(mirrorIncomplete && db.isPostgres()) return;
+  /* PR #94 review-guard: با آینهٔ سقف‌دار، فایل هرگز با اسنپ‌شاتِ بریده
+     بازنویسی نمی‌شود (این مسیرِ FATAL/فال‌بک هم هست). شرط عمداً فقط
+     mirrorIncomplete است، نه isPostgres(): در خاموشی، db.close() پیش از
+     رویدادِ exit اجرا می‌شود و isPostgres() دیگر false است — تصمیم باید
+     با snapshotِ بوت قفل بماند (یافتهٔ آزمونِ لایو). */
+  if(mirrorIncomplete) return;
   if(!dirty) return;
   if(persistBusy){ persistQueued = true; return; }
   dirty = false; /* نقطهٔ اسنپ‌شات — جهشِ بعدی دوباره کثیف می‌کند */
@@ -302,8 +305,10 @@ function persistStore(){
 /* مسیرِ سنکرون — فقط خاموشی (exit/SIGTERM/SIGINT) و فال‌بکِ خطای ورکر؛
    هرگز در مسیرِ درخواست یا تیکرِ دوره‌ای صدا نمی‌شود. */
 function persistStoreSync(){
-  /* همان گارد — مسیرِ خاموشی (exit/SIGTERM/SIGINT) و فال‌بکِ ورکر */
-  if(mirrorIncomplete && db.isPostgres()) return;
+  /* همان گارد — مسیرِ خاموشی (exit/SIGTERM/SIGINT) و فال‌بکِ ورکر.
+     مستقل از isPostgres(): در exit بعد از db.close() اتصال مرده است ولی
+     آینه هنوز بریده است — نباید نوشت. */
+  if(mirrorIncomplete) return;
   if(!dirty && !persistBusy && !persistQueued) return;
   dirty = false; persistQueued = false;
   const gc = gcStore();
