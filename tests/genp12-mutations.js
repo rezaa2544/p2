@@ -9,6 +9,14 @@
    ───────────────────────────────────────────────────────────── */
 const { execSync } = require('child_process');
 const fs = require('fs');
+const path = require('path');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و
+   index.html هرگز بازنویسی نمی‌شوند — بازگردانیِ دستی و rebuildِ
+   پایانی حذف شدند. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('g12-mut-');
+const ROOT = path.join(__dirname, '..');
+kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
 
 const SUITE = 'tests/genp12.js';
 const MUTS = [
@@ -30,25 +38,27 @@ const MUTS = [
     name: 'M4 نگهبانِ یکتاییِ run.js تداخل را می‌گیرد', expectFail: 'یکتا' },
 ];
 
-let killed = 0, envFails = 0;
+let killed = 0, prevFile = null, envFails = 0;
 for (const m of MUTS) {
+  const abs = path.join(ROOT, m.file);
+  if (prevFile && prevFile !== abs) kit.clear(prevFile); /* فقط جهشِ جاری فعال */
+  prevFile = abs;
   const suite = m.suite || SUITE;
-  const src0 = fs.readFileSync(m.file, 'utf8');
+  const src0 = fs.readFileSync(abs, 'utf8');
   if (src0.indexOf(m.bad) < 0) { console.log(`  ❌ ${m.name}: الگو پیدا نشد در ${m.file}`); continue; }
-  fs.writeFileSync(m.file, src0.replace(m.bad, m.mut));
-  execSync('node build.js', { stdio: 'pipe' });
+  kit.mutant(abs, src0.replace(m.bad, m.mut)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
+  execSync('node build.js', { stdio: 'pipe', env: kit.env(), cwd: ROOT });
   let out = '', crashed = false;
   const cmd = 'node --max-old-space-size=1500 ' + suite;
-  try { execSync(cmd, { stdio: 'pipe' }); out = 'PASSED (no failure)'; }
+  try { execSync(cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
   catch (e) {
     out = String(e.stdout || '') + String(e.stderr || '');
     if (out.trim() === '') {
-      try { execSync(cmd, { stdio: 'pipe' }); out = 'PASSED (no failure)'; }
+      try { execSync(cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
       catch (e2) { out = String(e2.stdout || '') + String(e2.stderr || ''); }
     }
     if (/JavaScript heap out of memory|FATAL|aborting/.test(out) || out.trim() === '') crashed = true;
   }
-  fs.writeFileSync(m.file, src0);
   if (crashed) {
     envFails++;
     console.log(`  ⚠️ ${m.name} — خطایِ محیطی (کرش/بی‌خروجی)، نه «زنده ماندن»`);
@@ -58,10 +68,9 @@ for (const m of MUTS) {
   console.log(`  ${killedThis ? '✅' : '❌'} ${m.name} — ${killedThis ? 'کشته شد' : 'زنده ماند! (خطا: ' + ((out.split('\n').find(l => l.includes('❌')) || out.slice(0, 140))) + ')'}`);
   if (killedThis) killed++;
 }
-execSync('node build.js', { stdio: 'pipe' });
 let backGreen = false, finalOut = '';
 try {
-  finalOut = execSync('node --max-old-space-size=1500 ' + SUITE, { stdio: 'pipe' }).toString();
+  finalOut = execSync('node --max-old-space-size=1500 ' + SUITE, { stdio: 'pipe' }).toString(); /* پایه: بدون env */
   backGreen = /genp12: \d+\/\d+  ✅/.test(finalOut);
 } catch (e) { finalOut = String(e.stdout || '') + String(e.stderr || ''); }
 console.log(`\nجهش: ${killed}/${MUTS.length} کشته · خطِ پایه: ${backGreen ? 'سبز ✅' : 'قرمز ❌'} · خطایِ محیطی: ${envFails}`);
