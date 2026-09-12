@@ -22,6 +22,7 @@
 'use strict';
 
 const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز */
+const reportsSql = require('../reports-sql'); /* Wave 23 fix — تجمیع در دیتابیس، نه در حافظه */
 
 /* ── تقویم شمسی (آینهٔ src/js/22-jalali-calendar.js — بدون وابستگی) ── */
 const _div = (a, b) => Math.floor(a / b);
@@ -56,6 +57,7 @@ function schoolHasTuition(school) {
 
 function createReportsRoutes(ctx) {
   const store = ctx.store;
+  const db = ctx.db || null;   /* Wave 23 fix: مسیر DB-native وقتی PG زنده است */
   const audit = ctx.audit || (() => {});
 
   /* نقش‌های مجاز هر گزارش — ناظر منطقه = edu_office؛ مربی تحصیلی = counselor */
@@ -110,6 +112,94 @@ function createReportsRoutes(ctx) {
     return { jy, jm };
   }
 
+  /* ── مسیر DB-native گزارشِ حضور (Wave 23 fix) ───────────────────
+     به‌جای پویشِ کلِ store.attendance در حافظه، سه کوئریِ پارامتری روی
+     PostgreSQL: صفحهٔ کلاس‌ها (keyset، bounded) · جمعِ هر مدرسه روی همهٔ
+     کلاس‌های دامنه (نه فقط صفحه) · شمارِ دانش‌آموزان. خواندن‌ها با
+     queryRead می‌روند تا رپلیکای فقط‌خواندنی بار را بردارد؛ اگر رپلیکا
+     نبود، خودِ queryRead به پرماری برمی‌گردد. */
+  async function attendanceReportDb({ user, mp, schools, classFilter, urlParams }) {
+    const scopeIds = schools.map((s) => Number(s.id));
+    const range = reportsSql.jalaliMonthRange(mp.jy, mp.jm);
+    const limit = reportsSql.clampLimit(urlParams.get('limit'));
+    const cursor = urlParams.get('cursor') || null;
+    const read = (typeof db.queryRead === 'function') ? db.queryRead.bind(db) : db.query.bind(db);
+
+    const pageBuilt = reportsSql.buildAttendanceClassPage({
+      schoolIds: scopeIds, classId: classFilter, from: range.from, to: range.to, limit, cursor
+    });
+    const pageRes = await read(pageBuilt.sql, pageBuilt.params);
+    const rows = (pageRes && Array.isArray(pageRes.rows)) ? pageRes.rows : [];
+    const hasMore = rows.length > limit;
+    const data = hasMore ? rows.slice(0, limit) : rows;
+
+
+    /* شکلِ پاسخ دقیقاً همانِ مسیرِ حافظه است؛ «مدارس» فقط وقتی کلِ دامنه در
+       یک صفحه جا شده کامل می‌آید، وگرنه صفحه‌بندی صریح است. */
+    const zero = { present: 0, absent: 0, late: 0, excused: 0, early_exit: 0, total: 0 };
+    const mkRow = (c, agg) => ({
+      class_id: c.class_id, name: c.name, grade: c.grade == null ? null : c.grade,
+      present: agg.present, absent: agg.absent, late: agg.late,
+      excused: agg.excused, early_exit: agg.early_exit, total: agg.total,
+      rate: reportsSql.rate10(agg.present + agg.late + agg.early_exit, agg.total)
+    });
+    const bySchool = new Map();
+    for (const r of data) {
+      const sid = Number(r.school_id);
+      if (!bySchool.has(sid)) bySchool.set(sid, []);
+      bySchool.get(sid).push(mkRow(r, {
+        present: Number(r.present) || 0, absent: Number(r.absent) || 0, late: Number(r.late) || 0,
+        excused: Number(r.excused) || 0, early_exit: Number(r.early_exit) || 0, total: Number(r.total) || 0
+      }));
+    }
+    const list = hasMore ? schools.filter((s) => bySchool.has(Number(s.id))) : schools;
+
+    /* جمع‌ها و شمارِ دانش‌آموز برای **همهٔ مدارسِ پاسخ** — نه فقط آن‌هایی که
+       در این صفحه ردیف دارند، وگرنه مدرسهٔ بدونِ ردیف students=0 می‌گرفت در
+       حالی که مسیرِ حافظه شمارِ واقعی را می‌داد. همچنان bounded: به‌اندازهٔ
+       مدارسِ همین پاسخ. */
+    const listIds = list.map((s) => Number(s.id));
+    let totals = new Map(), students = new Map();
+    if (listIds.length) {
+      const totBuilt = reportsSql.buildAttendanceSchoolTotals({
+        schoolIds: listIds, from: range.from, to: range.to, classId: classFilter
+      });
+      const stuBuilt = reportsSql.buildStudentsPerSchool({ schoolIds: listIds });
+      const [totRes, stuRes] = await Promise.all([read(totBuilt.sql, totBuilt.params), read(stuBuilt.sql, stuBuilt.params)]);
+      for (const r of ((totRes && totRes.rows) || [])) totals.set(Number(r.school_id), r);
+      for (const r of ((stuRes && stuRes.rows) || [])) students.set(Number(r.school_id), Number(r.n) || 0);
+    }
+    const out = list.map((s) => {
+      const sid = Number(s.id);
+      const rowsOfSchool = bySchool.get(sid) || [];
+      const t = totals.get(sid);
+      const tot = t ? {
+        present: Number(t.present) || 0, absent: Number(t.absent) || 0, late: Number(t.late) || 0,
+        excused: Number(t.excused) || 0, early_exit: Number(t.early_exit) || 0, total: Number(t.total) || 0
+      } : Object.assign({}, zero);
+      return {
+        school_id: s.id, school_name: s.name,
+        students: students.get(sid) || 0,
+        classes: rowsOfSchool,
+        totals: Object.assign(tot, { rate: reportsSql.rate10(tot.present + tot.late + tot.early_exit, tot.total) })
+      };
+    });
+
+    audit('report_generated', { user_id: user.id, kind: 'attendance', jy: mp.jy, jm: mp.jm, schools: out.length });
+    return {
+      status: 200,
+      body: {
+        ok: true, kind: 'attendance', jy: mp.jy, jm: mp.jm,
+        source: 'postgresql', schools: out,
+        pagination: {
+          limit, count: data.length, has_more: hasMore,
+          next_cursor: hasMore && data.length ? reportsSql.attendanceCursor(data[data.length - 1]) : null,
+          cursor: cursor || null
+        }
+      }
+    };
+  }
+
   /* ════ ۱) حضور و غیاب ماهانه ════════════════════════════════════ */
   async function attendanceReport(req, urlParams) {
     const user = req.user;
@@ -119,7 +209,21 @@ function createReportsRoutes(ctx) {
     const schools = scopedSchools(user, urlParams.get('school_id'));
     if (schools === null) return deny();
 
-    const classFilter = urlParams.get('class_id') ? Number(urlParams.get('class_id')) : null;
+    /* class_id باید عددِ صحیح باشد؛ وگرنه مسیرِ SQL با خطای نوع از دیتابیس
+       ۵۰۰ می‌داد («invalid input syntax for type integer: "NaN"»). هر دو مسیر
+       یک رفتار دارند: ورودیِ خراب ⇒ ۴۰۰. */
+    const classParam = urlParams.get('class_id');
+    let classFilter = null;
+    if (classParam != null && classParam !== '') {
+      classFilter = Number(classParam);
+      if (!Number.isInteger(classFilter)) return bad('class_id نامعتبر است');
+    }
+
+    /* PostgreSQL زنده ⇒ تجمیع در دیتابیس (ایندکس + نتیجهٔ bounded)، نه پویشِ حافظه */
+    if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
+      return attendanceReportDb({ user, mp, schools, classFilter, urlParams });
+    }
+
     const schoolIds = new Set(schools.map((s) => Number(s.id)));
     const classes = (store.classes || []).filter((c) => c && schoolIds.has(Number(c.school_id))
       && (classFilter == null || Number(c.id) === classFilter));
