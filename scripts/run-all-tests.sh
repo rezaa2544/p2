@@ -70,6 +70,16 @@ if [ ! -f server/data/payesh.json ]; then
   node server/seed.js >>$OUT 2>&1 || { echo "!! reseed FAILED" | tee -a $OUT; exit 2; }
 fi
 
+# ── live-PostgreSQL probe ─────────────────────────────────────────────────
+# tests/wave23-reports-pg.js is the parity/authorization gate for the DB-native
+# report path. It self-skips with a loud NOT-RUN when no PostgreSQL is reachable,
+# so a PG-less machine does not go red for a reason it cannot act on. When one IS
+# reachable we REQUIRE it: the gate must not be silently skipped where it can run.
+if [ -n "$DATABASE_URL" ] || (command -v pg_isready >/dev/null 2>&1 && pg_isready -h 127.0.0.1 -p 5432 -q 2>/dev/null); then
+  export WAVE23_REQUIRE_PG=1
+  echo "-- live PostgreSQL detected — wave23-reports-pg is REQUIRED" | tee -a $OUT
+fi
+
 # ── docs-stats pre-flight ──────────────────────────────────────────────────
 # Count blocks in DOCS_METRICS / DOCUMENTATION_MAP / TEST_COVERAGE_REPORT and the
 # freeze manifest are generated, not hand-typed. Check BEFORE the dirty-tree guard
