@@ -39,7 +39,7 @@
 | 15 | Health / Deployment | 🟡 | health-index مرج؛ استقرار باقی |
 | 16 | Disaster Recovery | 🟡 | زیرساخت+Runbook مرج (PR #46)؛ مانور استیجینگ باقی |
 | 17 | Testing Pyramid | 🟡 | موج‌های ۳/۶/۷/۱۸/۱۹ + A11y روی main؛ تکمیل هرم باقی |
-| 18 | **National Load Testing** | 🟡→**اجرای سندباکس کامل** | **امروز:** ۵ سناریو + ۳ یافتهٔ معماری + رفع OOM بوت (PR #94، mergeable)؛ استیجینگ چندنمونه‌ای باقی |
+| 18 | **National Load Testing** | 🟡→**اجرای سندباکس کامل** | **امروز:** ۵ سناریو + ۳ یافتهٔ معماری + رفع OOM بوت (PR #94، mergeable)؛ استیجینگ چندنمونه‌ای باقی؛ **دور P0-4 همان روز:** مولد دیتاست با روابط واقعی (۱۰ جدول: enrollments/messages/notifications/مالی/کادر/outbox) + گیت integrity ‏۱۲/۱۲ + جهش ۷/۷ + بارگذاری scale=0.01 روی PG زنده (۱.۴GB، ۸ کوئری داغ Index Scan) — مقیاس 10M همچنان NOT-RUN (سندباکس) |
 | 19 | Chaos / Failure Testing | 🟡 | WAL drill مرج (PR #78)؛ اجرای زندهٔ مستقل NOT-RUN |
 | 20 | چهار Arena + Arena پنجم | ⏳ | ثبت مالکیت باقی |
 | 21 | مدارس روستایی/چندپایه | ✅ | PR #85 |
