@@ -143,6 +143,22 @@ END $$;
 
 ALTER TABLE attendance_p DISABLE TRIGGER trg_attendance_chg;
 
+/* ── نشانگرِ chg آغازِ کپی (یافتهٔ مانورِ ۲۵M: پنجرهٔ swap ~۳۶s) ──
+   کچ‌آپِ فازِ C زیرِ ACCESS EXCLUSIVE فقط باید سطرهایی را ببیند که بعد از
+   آغازِ کپی تغییر کرده‌اند — نه کلِ جدول را. هر نوشتهٔ آینده chg_id تازه‌ای
+   از سکوئنسِ سراسری می‌گیرد که از بیشینهٔ فعلی بزرگ‌تر است؛ مرزِ w0 یک‌بار
+   ثبت می‌شود (ON CONFLICT DO NOTHING ⇒ رانِ ازسرگیری‌شده پس از کرش، مرزِ
+   اصلی را حفظ می‌کند — مرزِ دیرتر ناامن بود: نوشته‌های بینِ دو ران گم
+   می‌شدند) و کچ‌آپِ فازِ C با ایندکسِ chg_id فقط بالایِ مرز را اسکن
+   می‌کند: پنجرهٔ قفل با تعدادِ سرگردان‌ها مقیاس می‌یابد، نه با اندازهٔ
+   جدول. سطرهای chg_id NULL (که نباید وجود داشته باشند) محافظانهً
+   کاندیدا می‌شوند. */
+CREATE TABLE IF NOT EXISTS mig009_w0 (id INT PRIMARY KEY, w0 BIGINT NOT NULL, at TIMESTAMPTZ NOT NULL DEFAULT now());
+INSERT INTO mig009_w0 (id, w0)
+SELECT 1, GREATEST(COALESCE((SELECT MAX(chg_id) FROM grades), 0),
+                   COALESCE((SELECT MAX(chg_id) FROM attendance), 0))
+ON CONFLICT (id) DO NOTHING;
+
 /* کپیِ chunk-commit (یافتهٔ مانورِ ۲۵M سطر، ۲۰۲۶-۰۹-۱۲): کپیِ تک‌تراکنشه
    به‌ازایِ هر سطر ~۵۰B حافظهٔ bookkeeping انباشته می‌کند — در ۲۵M سطر =
    1.3GB و OOM-kill رویِ میزبانِ 2GB. اینجا هر ۳ دستهٔ ۵۰k (=۱۵۰k سطر ≈
@@ -318,6 +334,18 @@ ANALYZE grades_p;
 
 /* پنجرهٔ کوتاه: قفلِ انحصاری هر دو جدول زنده — نوبت‌گیری با ترافیکِ در حالِ
    اجرا اما بدون گرسنگی (صفِ قفل FIFO است). */
+
+/* مرزِ w0 به‌صورتِ ثابتِ زمانِ پلان (یافتهٔ رانِ چهارمِ مانورِ ۲۵M):
+   همین پیشیکیت با زیرپلانِ اسکالری مثل (SELECT w0 FROM mig009_w0 …)
+   بی‌اثر بود — مقدارِ زیرپلان در زمانِ پلان مجهول است ⇒ تخمینِ پیش‌فرضِ
+   میلیون‌ها سطر (واقعیت: ~هزار) ⇒ planner به‌جای Nested-Loopِ ایندکسی،
+   Hash Right Anti-Join می‌گیرد و کلِ جدولِ نو (۲۵M سطر، همهٔ پارتیشن‌ها)
+   را زیرِ قفل Seq-Scan + Hash می‌کند — پنجرهٔ ۳۸.۸s با وجودِ ایندکسِ
+   کاملاً سالم. اینجا psql مرز را با \gset در متغیر می‌خواند و :w0
+   به‌صورتِ لیترال جایگذاری می‌شود ⇒ تخمینِ دقیق ⇒ Bitmap Index Scan +
+   Nested-Loop (EXPLAIN: هزینهٔ ~۳۴× کمتر). مقدار از نشانگرِ یک‌سطریِ
+   بالای فایل می‌آید و بینِ این خواندن و تراکنشِ زیر تغییر نمی‌کند. */
+SELECT w0 FROM mig009_w0 WHERE id = 1 \gset
 BEGIN;
 LOCK TABLE attendance IN ACCESS EXCLUSIVE MODE;
 LOCK TABLE grades IN ACCESS EXCLUSIVE MODE;
@@ -334,7 +362,21 @@ LOCK TABLE grades IN ACCESS EXCLUSIVE MODE;
    خطرناک بود: نوشتهٔ تازهٔ پس از swap روی جدولِ نو را نسخهٔ کهنهٔ old
    بازنویسی می‌کرد (یافتهٔ استیجینگ). حذفِ سخت (hard DELETE) حینِ پنجره
    سمتِ اپ نادر/ممنوع است (حذفِ نرم/سنگ‌قبر قاعده است) — چنین سطری
-   بازمی‌گردد؛ در پنجرهٔ نگهداری فریز کنید اگر حذفِ سخت لازم است. */
+   بازمی‌گردد؛ در پنجرهٔ نگهداری فریز کنید اگر حذفِ سخت لازم است.
+   ── پیشیکیتِ chg (یافتهٔ مانورِ ۲۵M): قبلاً این ضدالحاق کلِ جدولِ قدیمی
+   را زیرِ قفل اسکن می‌کرد — در ۲۵M سطر پنجرهٔ swap ~۳۶s شد. حالا فقط
+   سطرهایِ «بعد از آغازِ کپی تغییرکرده» (chg_id > w0؛ ثبتِ w0 در بالای
+   فایل) کاندیدایند و اسکن با ایندکسِ chg_id انجام می‌شود ⇒ پنجرهٔ قفل
+   با تعدادِ سرگردان‌ها مقیاس می‌یابد، نه با اندازهٔ جدول. صحت: هر نوشتهٔ
+   پس از ثبتِ w0 chg تازه > w0 دارد (سکوئنسِ سراسری) و نوشتهٔ پیش از آن
+   دیگر تغییر نمی‌کند ⇒ کپیِ نهاییِ همان سطر حکمفرماست.
+   سطرهایِ chg_id NULL (به‌حکمِ ۰۰8 نباید وجود داشته باشند) در این اسکنِ
+   ایندکسی نمی‌آیند — تورِ ایمنیِ آن‌ها فازِ D است (اسکنِ کاملِ بدونِ قفل
+   بعد از swap؛ ضدالحاقِ آن، سطرِ NULL را هم می‌گیرد). عمداً بدونِ
+   «OR IS NULL»: همان OR اسکنِ ایندکسی را به Seq Scanِ کامل تبدیل
+   می‌کرد (تأییدِ EXPLAIN — یافتهٔ رانِ سومِ مانورِ ۲۵M). رانِ چهارم:
+   حتی پیشیکیتِ ایندکسیِ سالم، با زیرپلانِ مجهول‌مقدار Hash Anti-Joinِ
+   کلِ جدولِ نو را می‌ساخت — مرز باید ثابتِ زمانِ پلان باشد (\gset بالا). */
 INSERT INTO attendance_p ("class_id", "created_at", "date", "exit_at", "exit_minutes",
                           "id", "late_at", "late_minutes", "note", "school_id",
                           "source", "status", "student_id", "taken_at",
@@ -343,7 +385,8 @@ SELECT o."class_id", COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-
        o."exit_at", o."exit_minutes", o."id", o."late_at", o."late_minutes", o."note", o."school_id",
        o."source", o."status", o."student_id", o."taken_at", o."updated_at", o."version", o."chg_id"
 FROM attendance o
-WHERE NOT EXISTS (SELECT 1 FROM attendance_p p
+WHERE o.chg_id > :w0
+  AND NOT EXISTS (SELECT 1 FROM attendance_p p
                   WHERE p.id = o.id
                     AND p.created_at = COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00')
                     AND p.chg_id >= o.chg_id)
@@ -364,7 +407,8 @@ SELECT o."class_id", COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-
        o."score", o."source", o."student_id", o."subject_id", o."teacher_id", o."term",
        o."updated_at", o."version", o."chg_id"
 FROM grades o
-WHERE NOT EXISTS (SELECT 1 FROM grades_p p
+WHERE o.chg_id > :w0
+  AND NOT EXISTS (SELECT 1 FROM grades_p p
                   WHERE p.id = o.id
                     AND p.created_at = COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00')
                     AND p.chg_id >= o.chg_id)
@@ -530,3 +574,8 @@ ON CONFLICT (id, created_at) DO UPDATE SET
   "subject_id" = EXCLUDED."subject_id", "teacher_id" = EXCLUDED."teacher_id", "term" = EXCLUDED."term",
   "updated_at" = EXCLUDED."updated_at", "version" = EXCLUDED."version", "chg_id" = EXCLUDED."chg_id";
 -- STRAY-MERGE:END
+
+/* نشانگرِ w0 عمداً می‌ماند (یک سطرِ audit: مرزِ chg و زمانِ آغازِ کپی) —
+   ماندنش ازسرگیریِ بعد ازِ هر کرشی را هم ایمن‌تر می‌کند و rerun بعد از
+   موفقیتِ swap به‌هرحال توسطِ گاردِ swap رد می‌شود. حذفِ نشانگر در ۰۰9.down
+   انجام می‌شود (قراردادِ مخزن: حذفِ جدول در مهاجرتِ forward ممنوع است). */

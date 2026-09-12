@@ -153,8 +153,8 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
      ON CONFLICT (id, created_at) برای تازه‌کردنِ کپیِ کهنه. */
   chk('U7a تنها یک جفتِ BEGIN/COMMIT صریح = پنجرهٔ کوتاهِ swap (کپی با چانک‌هایِ CALL)', (up9.match(/^COMMIT;$/gm) || []).length === 1 && (up9.match(/^BEGIN;$/gm) || []).length === 1);
   chk('U7b قفلِ انحصاری هر دو جدول قبل از rename', /LOCK TABLE attendance IN ACCESS EXCLUSIVE MODE;/.test(up9) && /LOCK TABLE grades IN ACCESS EXCLUSIVE MODE;/.test(up9) && up9.indexOf('LOCK TABLE grades') < up9.indexOf('ALTER TABLE grades RENAME TO grades_old'));
-  const catchA = /INSERT INTO attendance_p[\s\S]*?WHERE NOT EXISTS \(SELECT 1 FROM attendance_p p[\s\S]*?ON CONFLICT \(id, created_at\) DO UPDATE/.test(up9);
-  const catchG = /INSERT INTO grades_p[\s\S]*?WHERE NOT EXISTS \(SELECT 1 FROM grades_p p[\s\S]*?ON CONFLICT \(id, created_at\) DO UPDATE/.test(up9);
+  const catchA = /INSERT INTO attendance_p[\s\S]*?NOT EXISTS \(SELECT 1 FROM attendance_p p[\s\S]*?ON CONFLICT \(id, created_at\) DO UPDATE/.test(up9);
+  const catchG = /INSERT INTO grades_p[\s\S]*?NOT EXISTS \(SELECT 1 FROM grades_p p[\s\S]*?ON CONFLICT \(id, created_at\) DO UPDATE/.test(up9);
   chk('U7c ضدالحاقِ کچ‌آپ برایِ هر دو جدول + آپسرتِ PK', catchA && catchG, 'att=' + catchA + ' grades=' + catchG);
   chk('U7d ادغام با شرطِ تازگیِ chg_id (last-writer-wins؛ نه تساوی که نوشتهٔ نو را بازنویسیِ معکوس می‌کند)', !/IS NOT DISTINCT FROM o\.chg_id/.test(up9) && (up9.match(/p\.chg_id >= o\.chg_id/g) || []).length >= 6);
   chk('U7e فازِ D — ادغامِ سرگردان‌ها بعد از کامیتِ swap (idempotent)', /STRAY-MERGE:BEGIN/.test(up9) && /STRAY-MERGE:END/.test(up9) && /FROM grades o[\s\S]*?STRAY-MERGE:END/.test(up9));
@@ -162,6 +162,7 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
   /* U8 — یافته‌هایِ مانورِ ۲۵M سطر (۲۰۲۶-۰۹-۱۲) */
   chk('U8a FKها با ALTER رویِ جدولِ خالی قبل از کپی (قفلِ والد میلی‌ثانیه‌ای؛ نه داخلِ CREATE تا پایانِ کپی؛ NOT VALID رویِ partitioned ممنوعِ PG 17 است)', (up9.match(/ADD CONSTRAINT fk_/g) || []).length === 6 && !/ADD CONSTRAINT[^;]*NOT VALID/s.test(up9) && !/VALIDATE CONSTRAINT/.test(up9) && !/PRIMARY KEY \(id, created_at\),/.test(up9) && up9.indexOf('ADD CONSTRAINT fk_') < up9.indexOf('CALL payesh_copy_attendance_009'));
   chk('U8b کپیِ chunk-commitِ قابلِ ازسرگیری (PROCEDURE + COMMIT پریودیک + ازسرگیری از MAX(id))', /CREATE OR REPLACE PROCEDURE payesh_copy_grades_009\(\)/.test(up9) && /CREATE OR REPLACE PROCEDURE payesh_copy_attendance_009\(\)/.test(up9) && (up9.match(/^\s+COMMIT;$/gm) || []).length >= 4 && /GREATEST\(minid, COALESCE\(\(SELECT MAX\(id\) FROM grades_p\), 0\) \+ 1\)/.test(up9));
+  chk('U7g کچ‌آپِ فازِ C با پیشیکیتِ chg به‌صورتِ ثابتِ زمانِ پلان — \\gset + لیترالِ :w0 (زیرپلانِ مجهول‌مقدار ⇒ overestimate ⇒ Hash Anti-Joinِ کلِ جدولِ نو زیرِ قفل؛ رانِ چهارمِ ۲۵M: ۳۸.۸s)', /CREATE TABLE IF NOT EXISTS mig009_w0/.test(up9) && /ON CONFLICT \(id\) DO NOTHING/.test(up9) && /^SELECT w0 FROM mig009_w0 WHERE id = 1 \\gset$/m.test(up9) && (up9.match(/o\.chg_id > :w0\b/g) || []).length === 2 && !/o\.chg_id > \(SELECT w0/.test(up9) && !/DROP TABLE/.test(up9) && up9.indexOf('INSERT INTO mig009_w0') < up9.indexOf('CALL payesh_copy_attendance_009') && /DROP TABLE IF EXISTS mig009_w0;/.test(down9));
 
   /* ═══════════ بخشِ زنده ═══════════ */
   const LIVE_URL = process.env.PAYESH_W10_PG_URL || 'postgres://w10:w10@127.0.0.1:5432/payesh_w10';

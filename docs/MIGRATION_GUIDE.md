@@ -176,6 +176,7 @@ $ node tools/migrate-helper.js --next
 | پرکردنِ گذشته (بک‌فیل) | دسته‌های کوچک با صفحه‌بندیِ اشاره‌گر (مانندِ `updated_at, id`) + مکثِ بینِ دسته‌ها؛ ثبتِ نرخ در گزارش |
 | قید جدید | ابتدا بررسیِ نقض‌ها با `SELECT` شمارشی، سپس قید؛ در صورت نیاز «قید نامعتبر» سپس اعتبارسنجی تدریجی |
 | دوخوانی | در پنجرهٔ انتقال، هر دو ساختار خوانده/سنجیده شوند (پیش از انقباض) |
+| جایگزینی/پارتیشنِ جدولِ بزرگ | کپیِ chunk-commit بیرون از قفل + تنها تراکنشِ قفل‌دار = swap کوتاه (LOCK + کچ‌آپِ پیشیکیت‌دار + rename) + فازِ ادغامِ سرگردان بعد از کامیت — مقدارِ پیشیکیتِ پویا باید **ثابتِ زمانِ پلان** باشد (`\gset`/لیترال؛ زیرپلان ⇒ overestimate ⇒ Hash Anti-Join زیر قفل — `WAVE10_DB_SCALE.md` §۹.۷) |
 
 ---
 
@@ -230,6 +231,7 @@ $ node tools/migrate-helper.js --next
 - [ ] هر `ALTER TABLE … ADD COLUMN` با `IF NOT EXISTS`، یا درونِ بلوکِ `DO $$` با `IF NOT EXISTS (SELECT … FROM information_schema…)` — `MS-IDEM`
 - [ ] **هیچ** `DROP TABLE` — انقباض باید مهاجرتِ جدا باشد — `MS-TX`
 - [ ] `CREATE INDEX CONCURRENTLY` **نه** — داخلِ تراکنش ممکن نیست؛ برای تولید، دستی با `CONCURRENTLY` اعمال و در گزارشِ موج ثبت شود — **دستی**
+- [ ] اگر کوئری‌ای زیرِ قفلِ انحصاری اجرا می‌شود و پیشیکیتِ مقدارِ پویا دارد: مقدار را **ثابتِ زمانِ پلان** کنید (psql `\gset` + لیترال)، نه زیرپلان/پارامتر — مقدارِ مجهول برای planner ⇒ تخمینِ پیش‌فرض ⇒ join شکلِ بد ⇒ پنجرهٔ قفلِ چندده‌ثانیه‌ای (درسِ رانِ چهارمِ مانورِ ۲۵M — `WAVE10_DB_SCALE.md` §۹.۲/§۹.۷) — **دستی**
 - [ ] سربرگ: چرا این مهاجرت لازم است + اندازه‌گیریِ قبل/بعد اگر مسیرِ پرترافیک را لمس می‌کند — **دستی**
 
 **در فایلِ `NNN_name.down.sql`**
@@ -260,7 +262,7 @@ $ node tools/migrate-helper.js --next
 | ۰۰۶ | `006_delta_schema_gaps.sql` / `.down` | بستنِ سه شکافِ اسکیمای دلتا: `sync_conflicts.updated_at` (ADD→backfill از created_at→NOT NULL→ایندکس) + ایندکس‌های `hw_assignments`/`vclass_sessions` | مرج (فاز ۳ — این PR) |
 | ۰۰۷ | `007_wave3_query_indexes.sql` / `.down` | هفت ایندکسِ کیستِ موج ۳ روی users/attendance/grades/classes — پیش‌تر `۰۰۴` بود و با `004_wave1_version_seq` تصادم داشت؛ در ۲۰۲۶-۰۹-۱۱ شماره‌گذاریِ مجدد شد (`docs/MIGRATION_DECISION.md`) | مرج (موج ۳) |
 | ۰۰۸ | `008_delta_chg_id.sql` / `.down` | زیرساختِ دلتایِ change-ID: سکوئنسِ مشترکِ `payesh_chg_seq` + ستونِ `chg_id` + تریگرِ bump (idempotent) + backfill + **۱۴ ایندکسِ `(chg_id)`** روی ۱۴ جدولِ تراکنشیِ دلتا — موج ۱۰ (`docs/WAVE10_DB_SCALE.md` §۶) | مرج (موج ۱۰ — این PR) |
-| ۰۰۹ | `009_partition_grades_attendance.sql` / `.down` | پارتیشن‌بندیِ grades/attendance: `PARTITION BY RANGE (created_at)` سالانه (تا ۲ سالِ آینده + default) · PK ⇒ `(id, created_at)` + ایندکسِ غیر یکتای `(id)` · **کپیِ chunk-commit با PROCEDURE (هر ۱۵۰k سطر COMMIT؛ حافظهٔ مقیّد؛ ازسرگیری از MAX(id) بعد از کرش)** با تریگرِ chg خاموش (chg_id کپی حفظ می‌شود) · **FKها با ALTER رویِ جدولِ خالی قبل از کپی** (NOT VALID رویِ partitioned ممنوعِ PG 17؛ قفلِ والد میلی‌ثانیه‌ای به‌جایِ کلِ مدتِ کپی) · تنها تراکنشِ قفل‌دار = swap + کچ‌آپِ ضدالحاق با شرطِ تازگیِ chg (`p.chg_id >= o.chg_id`) + فاز D دوپاس برای سرگردان‌های لحظهٔ swap · ANALYZE پیش از swap · `*_old` برایِ rollback و `*_recovered` در down (بازیافت با معیارِ جفتیِ (id, created_at)) · تأیید: زنده بر PG 17.11 (`tests/partitioning.js` **۶۱/۶۱**) + استیجینگ ۱.۸M با نویسندهٔ هم‌زمان (صفر خطا، توقفِ خواندن ~۲s) + **مانورِ ۲۵M سطر: ۱۹.۶ دقیقه، صفر خطا/گم‌شدگی، نوشتنِ users حینِ کپی ۵.۲ms، پنجرهٔ swap ~۳۶s** (§۹.۷) · نگهداریِ سالانه: `tools/partition-retention.js` + cron. **پیش‌نیازِ فعال‌سازی:** مسیرِ نوشتنِ persistOp با `PAYESH_PARTITIONED_TABLES` (از قبل روشن) | مرج (موج ۱۰ — نوبت ۳–۴) |
+| ۰۰۹ | `009_partition_grades_attendance.sql` / `.down` | پارتیشن‌بندیِ grades/attendance: `PARTITION BY RANGE (created_at)` سالانه (تا ۲ سالِ آینده + default) · PK ⇒ `(id, created_at)` + ایندکسِ غیر یکتای `(id)` · **کپیِ chunk-commit با PROCEDURE (هر ۱۵۰k سطر COMMIT؛ حافظهٔ مقیّد؛ ازسرگیری از MAX(id) بعد از کرش)** با تریگرِ chg خاموش (chg_id کپی حفظ می‌شود) · **FKها با ALTER رویِ جدولِ خالی قبل از کپی** (NOT VALID رویِ partitioned ممنوعِ PG 17؛ قفلِ والد میلی‌ثانیه‌ای به‌جایِ کلِ مدتِ کپی) · تنها تراکنشِ قفل‌دار = swap + کچ‌آپِ ضدالحاق با **پیشیکیتِ `chg_id > :w0` به‌صورتِ ثابتِ زمانِ پلان (`psql \gset` + نشانگرِ یک‌سطریِ `mig009_w0`)** و شرطِ تازگیِ chg (`p.chg_id >= o.chg_id`) + فاز D دوپاس برای سرگردان‌های لحظهٔ swap · ANALYZE پیش از swap · `*_old` برایِ rollback و `*_recovered` در down (بازیافت با معیارِ جفتیِ (id, created_at) + گاردِ fail-closed برایِ recoveredِ سیکلِ قبل) · تأیید: زنده بر PG 17.11 (`tests/partitioning.js` **۶۲/۶۲**) + استیجینگ ۱.۸M با نویسندهٔ هم‌زمان (صفر خطا، توقفِ خواندن ~۲s) + **مانورِ ۲۵M سطر: ۱۹ دقیقه، صفر خطا/گم‌شدگی، نوشتنِ users حینِ کپی ۵.۲ms، پنجرهٔ swap: ~۳۶s → ۰.۱۱۵s/۱.۱۴s با ثابتِ زمانِ پلان** (§۹.۷) · نگهداریِ سالانه: `tools/partition-retention.js` + cron. **پیش‌نیازِ فعال‌سازی:** مسیرِ نوشتنِ persistOp با `PAYESH_PARTITIONED_TABLES` (از قبل روشن) | مرج (موج ۱۰ — نوبت ۳–۴) |
 
 > مهاجرت بعدی شمارهٔ `010` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را
 > (با وضعیتِ مرج) به جدول اضافه کند — مالک: نویسندهٔ مهاجرت.
@@ -310,3 +312,4 @@ $ node tools/migrate-helper.js --next
 | ۲.۱.۰ | ۲۰۲۶-۰۹-۱۱ | ردیفِ ۰۰۹ (پارتیشن‌بندیِ grades/attendance — تأییدِ زنده بر PG 17.11) |
 | ۲.۱.۱ | ۲۰۲۶-۰۹-۱۲ | ردیفِ ۰۰۹ به‌روز (دو تراکنش + کچ‌آپ + فاز D؛ استیجینگ ۱.۸M سطر؛ retention) |
 | ۲.۱.۲ | ۲۰۲۶-۰۹-۱۲ | ردیفِ ۰۰۹ به‌روزِ دوم (کپیِ chunk-commitِ قابلِ ازسرگیری؛ FK قبل از کپی؛ مانورِ ۲۵M؛ partitioning ۶۱/۶۱) |
+| ۲.۱.۳ | ۲۰۲۶-۰۹-۱۲ | ردیفِ ۰۰۹ به‌روزِ سوم (کچ‌آپ با پیشیکیتِ `chg_id > :w0` به‌صورتِ ثابتِ زمانِ پلان با `\gset`؛ پنجرهٔ swap در ۲۵M: ‏~۳۶s → ۰.۱۱۵s/۱.۱۴s؛ گاردِ `*_recovered` در down؛ partitioning ۶۲/۶۲) · §۵ ردیفِ «جایگزینی/پارتیشنِ جدولِ بزرگ» · §۷.۱ بندِ ثابتِ زمانِ پلان |
