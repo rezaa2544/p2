@@ -549,13 +549,25 @@ function createSync(ctx){
      لیستِ خالی (پیش‌فرض) = هرس هرگز — رفتارِ پیش از P0-6 برای مجوزها. */
   function mirrorPruneSafe(){
     if(!(db && typeof db.isPostgres === 'function' && db.isPostgres())) return [];
-    return String(process.env.PAYESH_PG_MIRROR_PRUNE_SAFE || '')
+    /* P1-2: sync_conflicts = صفِ داوریِ انسانی — تنها read-pathی که زنده از
+       آینه می‌خواند (conflicts.js؛ pull از db.readCollection یعنی PG می‌خواند)
+       و بالذاتِ bounded است (resolve ⇒ del). همیشه در لیستِ سفید، فارغ از env. */
+    const env = String(process.env.PAYESH_PG_MIRROR_PRUNE_SAFE || '')
       .split(',').map((s) => s.trim()).filter(Boolean);
+    return env.indexOf('sync_conflicts') === -1 ? env.concat(['sync_conflicts']) : env;
   }
   function uidDedupMax(){
     if(!(db && typeof db.isPostgres === 'function' && db.isPostgres())) return 0;
     const n = Number(process.env.PAYESH_UID_DEDUP_MAX);
     return Number.isFinite(n) && n >= 0 ? n : 20000;
+  }
+  /* P1-2 (Wave 18 §۵-۳): dedup با TTL — پیش‌فرض ۲۴h، هم‌پنجرهٔ کشِ Redis
+     (cache.markProcessedUid خودش TTL 24h دارد). این TTL برای سقفِ حافظهٔ
+     in-memory است، نه تضعیفِ idempotency: مرجعِ رد، PG (server_processed_uids)
+     و کش است و دست‌نخورده می‌ماند. */
+  function uidDedupTtlMs(){
+    const n = Number(process.env.PAYESH_UID_DEDUP_TTL_MS);
+    return Number.isFinite(n) && n >= 0 ? n : 24 * 3600 * 1000;
   }
   function mirrorAppend(c, row){
     if(row == null) return row;
@@ -577,10 +589,16 @@ function createSync(ctx){
     return row;
   }
   function pruneProcessedUids(){
-    const cap = uidDedupMax();
-    if(cap <= 0) return;
     const pu = store.__processed_uids;
     if(!pu || typeof pu !== 'object') return;
+    /* P1-2: اول TTL — uidهای بیرونِ پنجره حذف می‌شوند، فارغ از شمارِ کل */
+    const ttl = uidDedupTtlMs();
+    if(ttl > 0){
+      const now = Date.now();
+      for(const k of Object.keys(pu)) if(now - (pu[k] || 0) > ttl) delete pu[k];
+    }
+    const cap = uidDedupMax();
+    if(cap <= 0) return;
     const keys = Object.keys(pu);
     if(keys.length <= cap) return;
     keys.sort((a, b) => (pu[a] || 0) - (pu[b] || 0));
@@ -726,7 +744,10 @@ function createSync(ctx){
          fail closed). Memory mode: no-op, legacy fail-closed preserved. */
       if((op.t === 'upd' || op.t === 'del') && recId != null
           && !(store[op.c] || []).some(x => x && x.id === Number(recId))){
-        await findForApply(op.c, recId);
+        /* P1-2: هیدراتاسیونِ گِیت هم undo می‌گیرد — پیش‌تر بدونِ مدخل بود و
+           ردیفِ هیدراته‌شده در rollback نمی‌ماند به عقب برمی‌گشت و در آینه
+           می‌نشست (نشتیِ §۵-۳). ثبتِ pop = rollback دقیق + برشِ post-commit. */
+        await findForApply(op.c, recId, undo);
       }
       if(!inScope(s, op.c, recId, op.data)) return all('out_of_scope');
       /* R96 P0-2 — دروازهٔ فیلد: فیلدِ ناشناخته / ارتقاءِ نقش / مالکیت /
@@ -825,8 +846,7 @@ function createSync(ctx){
               body: 'یک تغییرِ «' + op.c + '» با نسخهٔ کهنه رسید و به‌جای اعمال، برایِ داوری محفوظ شد.',
               link: 'dashboard', read: 0, created_at: nowIso.slice(0, 10)
             };
-            store.notifications.push(cnotif);
-            uPush('notifications', cnotif);   /* P0-6 */
+            uPush('notifications', mirrorAppend('notifications', cnotif));   /* P1-2: از مسیرِ سقف‌دار، نه push خام؛ uPush همان‌جا */
             derived.push({ c: 'notifications', t: 'ins', data: cnotif }); /* Wave1-W */
           }
           ctx.markDirty();
@@ -1132,10 +1152,33 @@ function createSync(ctx){
         try { audit('sync_idempotency_mark_failed', { user_id: s.id, uid: op.uid, error: String((markErr && markErr.message) || markErr) }); } catch (_) {}
       }); }catch(e){}
     }
+    /* P1-2 (Wave 18 §۵-۳): قطعِ آینه از مسیرِ نوشتن در PG-live — مجموعه‌های
+       خارجِ لیستِ سفیدِ هرس (PAYESH_PG_MIRROR_PRUNE_SAFE) پس از commitِ موفق
+       به آینهٔ پیش از دسته بازمی‌گردند: رکورد فقط در PG است (مرجع) و آینه
+       cacheیِ bounded می‌ماند (هیدراتاسیونِ بوت + write-through صرفاً برای
+       مجموعه‌های هرس‌امن). درونِ دسته رفتارِ امروز حفظ می‌شود تا policy و
+       دست‌های وابستهٔ همان batch همان‌طور ببینند؛ rollbackِ دستهٔ شکست‌خورده
+       (undo) پیش از این اجرا شده و این‌جا فقط مسیرِ موفق را می‌بُرد.
+       مالکیت‌دار: مدخلِ pop با after فقط وقتی می‌بُرد که رکورد هنوز state
+       نهاییِ خودِ همین دسته باشد (تغییرِ هم‌زمانِ دیگری محفوظ می‌ماند)؛
+       مدخلِ بدونِ after = هیدراتاسیونِ همین دسته (ردیف عیناً از PG آمده). */
+    if(pgLive && undo && mirrorGrowthCap() > 0){
+      const safeSet = mirrorPruneSafe();
+      for(let i = undo.items.length - 1; i >= 0; i--){
+        const u = undo.items[i];
+        if(u.k !== 'pop' || safeSet.indexOf(u.c) !== -1) continue;
+        const arr = store[u.c];
+        if(!Array.isArray(arr)) continue;
+        const j = (arr[u.idx] && arr[u.idx].id === u.id) ? u.idx : arr.findIndex(x => x && x.id === u.id);
+        if(j < 0) continue;
+        if(u.after && JSON.stringify(arr[j]) !== JSON.stringify(u.after)) continue;   /* هم‌زمانی — احترام */
+        arr.splice(j, 1);
+      }
+    }
     if(Array.isArray(store.__deleted_records) && store.__deleted_records.length > 5000){
       store.__deleted_records = store.__deleted_records.slice(-5000);   /* باگ ۳: پس از commit — rollback دیگر در کار نیست */
     }
-    pruneProcessedUids();   /* P0-6: __processed_uids سقف‌دار (پیش‌فرض PG-live=20000؛ پنجرهٔ اخیر کافی است چون Redis dedup اشتراکی هم هست) */
+    pruneProcessedUids();   /* P1-2: TTL + سقف */   /* P0-6: __processed_uids سقف‌دار (پیش‌فرض PG-live=20000؛ پنجرهٔ اخیر کافی است چون Redis dedup اشتراکی هم هست) */
     if(apply.length) ctx.markDirty();
     audit('sync_ok', { user_id: s.id, ops: apply.length });
     /* Delta Phase 4 (gap 4): هر pushِ موفق (دستهٔ غیرخالی که به ۲۰۰ رسید)
