@@ -1,5 +1,60 @@
 # دفترچهٔ تحویل کار — پایش
 
+## دور ۸۲ — تکمیل: merge با main + بامپ قفل rc33 + PR #89 آماده (۲۰۲۶-۰۹-۱۲)
+
+- **merge با main:** `origin/main@efe364d` (کارهای چت ۶: docs-refs-check، قفل rc32، migration 008) به شاخهٔ ویو ۲۴ merge شد (`b93dfe1`)؛ تعارض HANDOFF با نگه‌داشتن هر دو ورودی حل شد.
+- **بامپ قفل مستندات rc32 → rc33** (`82033c2`): دو سند تازهٔ ویو ۲۴ + دو ویرایش (معماری §۷.۱، roadmap ردیف ۲۴) طبق قاعدهٔ قفل §۱ بند ۳ بامپ می‌خواست؛ مانیفست ۳۱۱ ردیف با `tools/docs-stats-sync --freeze`؛ rc32 بنر تاریخی گرفت؛ `docs-freeze-marker` ۱۴/۱۴.
+- **PR [#89](https://github.com/rezaa2544/p2/pull/89)** (از قبل توسط ناظر باز بود) با عنوان/بدنهٔ کامل ویو ۲۴ به‌روز شد: head `82033c2`، ۹ کامیت، ۲۷ فایل، `mergeable=true` / `mergeable_state=unstable` (فقط به‌خاطر چک‌های CI مسدودِ بیلینگ — شاخه محافظت ندارد، merge ممکن است).
+- **رگرسیون روی نتیجهٔ merge (همه سبز):** baseline --assert ‏4/4 KPI · perf-suites ‏26+11+20+15 · run ‏35/35 · smoke ‏547/547 · authz ‏37/37 · db-eng ‏14/14 · multi-grade ‏34/34 · secret-scan ‏11/11 · reports ‏35 · a11y ‏43/43+92/0+9/9+0crit · گیت‌های تازهٔ main: docs-refs-check ✅، a11y-regressions ‏54/54، freeze-marker ‏14/14، docs-index ‏75/75، docs-consistency ‏22/22، stats-sync --check ✅.
+- **تصمیم باز برای ناظر:** merge PR #89 (بدون CI سبز — مثل #88 با ثبت صادقانه) یا صبر تا رفع انسداد بیلینگ.
+
+## دور ۸۲ — چت ۳ · Wave 24: بهینه‌سازی عملکرد — ۴/۴ KPI سبز (۲۰۲۶-۰۹-۱۲)
+
+**شاخه:** `feat/wave24-performance-optimization` (از `main@4cf53af` + گزارش آماده‌سازی `3e36378`)
+
+**نتیجهٔ KPIها** (گیت: `node tests/performance/baseline.js --assert` → «جمع: 4/4»):
+| KPI | قبل | هدف | بعد |
+|---|---|---|---|
+| اندازهٔ index.html | 2,257,641B | <1.8MB | **1,657,003B** |
+| زمان build | ~100ms | <70ms | **~60ms** |
+| پارس استور (۵.۷MB) | ~70ms | <50ms | **~35-40ms** |
+| p95 API | 248ms (staging بریف) | <150ms | **~5ms درون‌پردازه** (k6/staging در سندباکس نیست — صادقانه در سند §۵.۳) |
+
+**کامیت‌ها (هر بهینه‌سازی = کامیت + تست جدا):**
+1. `b2e6c3a` هارنس KPI ‏(`tests/performance/baseline.js`)
+2. `9bc02ac` KPI-1+2: کوچک‌ساز محافظه‌کار (`tools/minify-source.js`) + کش افزایشی build + skip نوشتن بی‌تغییر → تست `build-optimization.js` (۲۶ سبز، موتانت‌گارد M1-M5)
+3. `29e20da` KPI-3: قالب ASCII-escaped استور (`server/json-fast.js`؛ ورکر persist + فال‌بک + seed) + پارس Buffer در loadStore → تست `query-optimization.js` (۱۱ سبز)
+4. `73ad697` فاز کلاینت: memoize کران‌دار fa/jalali + کش افزایشی queueBytes (پروفایل: ۴۴۰ms در ۲۵ رندر) → تست `ui-optimization.js` (۲۰ سبز)
+5. تست آفلاین‌اول `offline-optimization.js` (۱۵ سبز: صف/ماندگاری/احیای sending/DLQ زیر کش‌های نو)
+6. اسناد: `docs/PERFORMANCE_OPTIMIZATION_GUIDE.md` + §۷.۱ `NATIONAL_ARCHITECTURE.md` (v1.0.2) + سطر ۲۴ roadmap
+
+**قراردادهای حفظ‌شده:** `build --check` بیت‌به‌بیت ✅؛ آفلاین‌اول ✅؛ قالب استور JSON استاندارد و سازگار عقب‌رو ✅؛ هیچ توکن/newline کدی در کوچک‌سازی عوض نمی‌شود (ASI امن).
+
+**رگرسیون کامل سبز:** run ‏35/35 · smoke ‏547/547 · wave5-authz ‏37/37 · db-eng ‏14/14 · multi-grade ‏34/34 · secret-scan ‏11/11 · reports ‏9+11+10+5 · a11y ‏«جمع: 92 قبول، 0 رد» + modal ‏9/9 + runtime ‏0 critical/serious · sync-queue-caps ‏36/36 · backup-snap ‏18/18 · integration ‏12/12 · check-authz ✅.
+
+**⚠️ CI:** همچنان مسدود بیلینگ (مالک) — هیچ run سبزی وجود ندارد؛ همهٔ گیت‌ها محلی و صادقانه ثبت شدند. **PR ساخته نشده** — منتظر تصمیم ناظر (merge بدون CI ممکن است چون شاخه محافظت ندارد).
+
+**نکتهٔ نگهداری:** تغییر منطق `tools/minify-source.js` ⇒ `CACHE_VERSION` در `build.js` جلو برود؛ `.build-cache.*` gitignore و تولیدی است.
+
+## Handoff — پ۳: تأیید نهایی Wave 23 + وضعیت PRها + آماده‌سازی Wave 24 — ✅ (2026-09-12)
+
+- **Wave 23 تأیید شد:** PR #88 `merged: true` @ `0a45c13` (merged_by: rezaa2544)؛
+  هر ۸ کامیت زنجیره (f303687…4cf53af) با `merge-base --is-ancestor` عضو main؛
+  هر ۱۰ فایل کلیدی + سیم‌کشی server/index.js + مدل report_logs + EO_SCOPE_GATED
+  روی main وارسی شد؛ رگرسیون reports ‏۳۵/۳۵ سبز.
+- **PRها:** #81 مرج (21:38) · #84 مرج (20:59) · **#74 هنوز باز و dirty**
+  (mergeable:false — دست نخورد، منتظر تصمیم ناظر). سایر بازها: #87، #82، #76.
+- **Wave 24 آماده:** شاخهٔ `feat/wave24-performance-optimization` از `main@4cf53af`
+  ساخته و push شد؛ deps (jsdom/playwright/chromium --with-deps) نصب؛ seed
+  بازتولید؛ baseline کامل سبز: run ‏35/35 · smoke ‏547/0 · build --check ✅ ·
+  check-authz ✅ · secret-scan ‏11/11 · wave5-authz ‏37/37 · db-engineering ‏14/14 ·
+  multi-grade ‏34/34 · reports ‏35/35 · a11y «جمع: 92 قبول، 0 رد».
+  سنجه‌های مرجع: index.html ‏2,257,641B · build ‏~100ms · parse store ‏~70ms/33,993 ردیف.
+- **⚠️ CI همچنان مسدودِ بیلینگ:** rerun امروز روی main@4cf53af هم صفر-step شکست
+  (annotation رسمی billing). اقدام با صاحب مخزن.
+- گزارش کامل: `docs/WAVE24_PREP_REPORT.md`.
+
+---
 ## Handoff — چت ۶: جغجغهٔ ارجاع‌های کهنه + مهاجرتِ ۰۰۸ + قفل `rc32` — ✅ (2026-09-12)
 
 - **ماموریت:** بستنِ سه بدهیِ مستنداتی که هیچ گیتی نمی‌گرفتشان، و تبدیلِ یکی از
