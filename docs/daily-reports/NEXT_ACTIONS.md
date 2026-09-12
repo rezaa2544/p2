@@ -30,6 +30,7 @@
 | HO-1 | **handoff به چت ۸:** رفعِ سه ارجاعِ کهنه در `docs/daily-reports/2026-09-13.md` | ‏`tests/docs-refs-check.js` روی `main` قرمزِ ۲۷/۲ است؛ هر سه ارجاع (`tests/bounded-delta-resume.js` · `-mutations.js` · `tests/reports-bounded-cache-mutations.js`) از فایلِ روزانهٔ چت ۸ می‌آیند. چت ۶ به آن فایل و به `tools/docs-refs-baseline.json` **دست نزد** (قاعدهٔ ضدتداخل) | سبز شدنِ `docs-refs-check` بدونِ دست‌کاریِ baseline | چت ۸ (یا تصمیم مالک برای بازپایه‌سازی) |
 | HO-2 | **handoff به چت ۲:** هماهنگیِ فاز ۲ مهاجرت BH-mut با سوئیتِ جدیدِ لبه‌ها | `tests/wave23-norm-edge-mutations.js` از `tests/helpers/mutant-kit.js` استفاده می‌کند؛ مهاجرتِ `tests/wave23-reports-mutations.js` در فاز ۲ چت ۲ نباید جهش‌های لبهٔ چت ۶ را از دست بدهد | پس از مهاجرت، یک اجرای تأییدی: هر دو سوئیتِ جهش «همه کشته» بدهند | چت ۲ |
 
+| HO-3 | **handoff به مالک/زیرساخت:** گیت‌های جهش به هیچ ورک‌فلویِ CI وصل نیستند | بررسیِ `.github/workflows/` نشان می‌دهد **هیچ** ورک‌فلویی هیچ گیتِ جهشی را صدا نمی‌زند؛ CI فقط `npm test` (‏`tests/run.js` + `smoke.js`) را اجرا می‌کند و سوئیت‌های جهش در `run.js` نیستند. وصل‌کردنِ آن‌ها به `run.js` درست نیست چون آن گیتِ سریعِ **آفلاین** است و شمارِ ۳۵ تستش در اسنادِ زیادی ارجاع شده | یک step در ورک‌فلو که هر سه گیتِ جهش (`wave23-reports-mutations.js` · `wave23-norm-edge-mutations.js` · `tools/mutate-reports-check.sh`) را با `DATABASE_URL` اجرا کند؛ تا آن زمان این گیت‌ها فقط دستی‌اند | مالک/زیرساخت |
 ## صفِ باگ‌هانت و ادغام (چت ۵ — به‌روز 2026-09-12)
 
 | # | اقدام | چرا | معیار قبولی | مالک |
