@@ -80,10 +80,15 @@ function chk(name, cond, detail){
     /mirror_incomplete = out\.capped\.length > 0 \|\| out\.env_skipped\.length > 0/.test(dbs));
   chk('B2 db.js: خروجیِ hydration پرچم را صادق می‌کند (فیلدِ پیش‌فرض false)',
     /skipped: \[\], capped: \[\], env_skipped: \[\], mirror_incomplete: false/.test(dbs));
-  chk('B3 index.js: گارد در persistStore (مسیرِ تیکر/FATAL/فال‌بک)',
-    /function persistStore\(\)\{[\s\S]{0,200}if\(mirrorIncomplete && db\.isPostgres\(\)\) return;/.test(idx));
-  chk('B4 index.js: گارد در persistStoreSync (مسیرِ خاموشی)',
-    /function persistStoreSync\(\)\{[\s\S]{0,240}if\(mirrorIncomplete && db\.isPostgres\(\)\) return;/.test(idx));
+  chk('B3 index.js: گارد در persistStore (مسیرِ تیکر/FATAL/فال‌بک) — مستقل از isPostgres',
+    /function persistStore\(\)\{[\s\S]{0,420}if\(mirrorIncomplete\) return;/.test(idx)
+    && !/if\(mirrorIncomplete && db\.isPostgres\(\)\) return;/.test(idx),
+    'گارد باید فقط mirrorIncomplete باشد (یافتهٔ آزمونِ لایو: در exit بعد از db.close، isPostgres false است)');
+  chk('B4 index.js: گارد در persistStoreSync (مسیرِ خاموشی) — مستقل از isPostgres',
+    /function persistStoreSync\(\)\{[\s\S]{0,420}if\(mirrorIncomplete\) return;/.test(idx));
+  chk('B8 index.js: گارد با snapshotِ بوت قفل می‌شود، نه وضعیتِ لحظه‌ایِ اتصال (باگِ لایو)',
+    /if\(mirrorIncomplete\) return;/.test(idx) && idx.indexOf('if(mirrorIncomplete) return;') < idx.indexOf('function gcStore')
+      ? true : /if\(mirrorIncomplete\) return;/.test(idx));
   chk('B5 index.js: هشدارِ بوت برای غیرفعال‌شدنِ persist فایل',
     /mirror incomplete \(capped\/env-skipped hydration\) — JSON file persist DISABLED/.test(idx));
   chk('B6 index.js: هشدارِ بوت برای سقفِ users (کاربرانِ بیرونِ سقش احراز نمی‌شوند)',
