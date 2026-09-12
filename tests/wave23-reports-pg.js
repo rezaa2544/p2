@@ -420,6 +420,34 @@ async function main() {
     wT.over === 0 && wT.pages > 1 && new Set(wT.seen).size === wT.seen.length
     && JSON.stringify([...wT.seen].sort()) === JSON.stringify([...wT.want].sort()),
     `pages=${wT.pages} seen=${wT.seen.length} want=${wT.want.length}`);
+
+  /* ── یافتهٔ بازبینِ PR #120 (flag 2، red-first): در پیمایشِ چندصفحه‌ای،
+     صفحهٔ آخر نباید مدارسِ مصرف‌شدهٔ صفحاتِ قبل را دوباره با ردیفِ خالی
+     برگرداند. قرارداد: در پاسخِ صفحه‌دار (cursor یا has_more) فقط مدارسِ
+     دارای ردیفِ همان صفحه؛ مدارسِ بی‌ردیف فقط در پاسخِ تک‌صفحه‌ای. */
+  async function walkNoEmpty(kind, q, rowsOf) {
+    let cur = null, pages3 = 0;
+    const offenders = [];
+    while (pages3 < 80) {
+      const qq = Object.assign({}, q, { limit: 7 });
+      if (cur) qq.cursor = cur;
+      const r = await dbRoutes[kind]({ user: { id: 1, role: 'superadmin' } }, url(qq));
+      pages3++;
+      const paged = !!cur || r.body.pagination.has_more;
+      if (paged) {
+        for (const s of r.body.schools) if (!rowsOf(s).length) offenders.push(`p${pages3}:s${s.school_id}`);
+      }
+      if (!r.body.pagination.has_more) break;
+      cur = r.body.pagination.next_cursor;
+    }
+    return offenders;
+  }
+  const oAtt = await walkNoEmpty('attendanceReport', { jy: JY, jm: JM }, (s) => s.classes);
+  chk('attendance: هیچ صفحه‌ای مدرسهٔ بدونِ ردیف را برنمی‌گرداند (بدونِ تکرارِ ظرف)', oAtt.length === 0, oAtt.join(','));
+  const oAc = await walkNoEmpty('academicReport', { term: JTERM }, (s) => s.classes);
+  chk('academic: هیچ صفحه‌ای مدرسهٔ بدونِ ردیف را برنمی‌گرداند', oAc.length === 0, oAc.join(','));
+  const oTe = await walkNoEmpty('teachersReport', { jy: JY, jm: JM }, (s) => s.staff);
+  chk('teachers: هیچ صفحه‌ای مدرسهٔ بدونِ ردیف را برنمی‌گرداند', oTe.length === 0, oTe.join(','));
   const acP1 = await dbRoutes.academicReport({ user: { id: 1, role: 'superadmin' } }, url({ term: JTERM, limit: 3, school_id: 1 }));
   const acPA = await dbRoutes.academicReport({ user: { id: 1, role: 'superadmin' } }, url({ term: JTERM, school_id: 1 }));
   chk('academic: میانگین/روندِ مدرسه با صفحه‌بندی عوض نمی‌شود',
