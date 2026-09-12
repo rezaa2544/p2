@@ -16,8 +16,10 @@ const fs = require('fs');
 const MUTS = [
   {
     file: 'server/sync.js', suite: 'tests/server15.js',
-    bad: 'store.sync_conflicts.push(cf);',
-    mut: 'if(false) store.sync_conflicts.push(cf);',
+    bad: "uPush('sync_conflicts', mirrorAppend('sync_conflicts', cf));",
+    /* ری‌تارگت (ممیزی دور ۲): push خام → mirrorAppend + uPush (باگ ۲ #124)؛
+       جهش = درج به صف اصلاً انجام نشود. */
+    mut: "if(false) uPush('sync_conflicts', mirrorAppend('sync_conflicts', cf));",
     name: 'M1 رکوردِ sync_conflicts نوشته نمی‌شود',
     expectFail: 'C3b'
   },
@@ -52,8 +54,10 @@ const MUTS = [
   },
   {
     file: 'server/sync.js', suite: 'tests/server15.js',
-    bad: 'if(VERSIONED[op.c] && Number(op.base_version) !== cur){',
-    mut: "if((VERSIONED[op.c] || op.c === 'announcements') && Number(op.base_version) !== cur){",
+    /* ری‌تارگت (ممیزی دور ۲): شرط به versionedMismatch/structuralMismatch
+       بازآرایی شده (delta hardening phase 2)؛ جهش = LWW هم versioned تلقی شود. */
+    bad: 'const versionedMismatch = !!VERSIONED[op.c] && Number(op.base_version) !== cur;',
+    mut: "const versionedMismatch = !!(VERSIONED[op.c] || op.c === 'announcements') && Number(op.base_version) !== cur;",
     name: 'M6 base_version روی مجموعهٔ LWW هم الزام شد',
     expectFail: 'C6b'
   }
