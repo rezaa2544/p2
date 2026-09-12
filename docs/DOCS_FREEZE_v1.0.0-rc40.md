@@ -1,26 +1,24 @@
-# 🔒 قفل مستندات — DOCS_FREEZE_v1.0.0-rc39
+# 🔒 قفل مستندات — DOCS_FREEZE_v1.0.0-rc40
 
-> **⚠️ قفلِ تاریخی.** این نسخه در ۲۰۲۶-۰۹-۱۳ با `DOCS_FREEZE_v1.0.0-rc40.md` جایگزین شد و دیگر «جاری» نیست.
-> **تاریخِ دست‌نخورده:** مانیفستِ زیر **عمداً ویرایش نشده** است — وضعیتِ لحظهٔ قبلی قفل را قابل اثبات نگه می‌دارد.
-> (سطرِ پیشین:) جانشینِ rc38
+> **✅ قفلِ جاری.** این نسخه جانشینِ `DOCS_FREEZE_v1.0.0-rc39.md` است؛ فهرستِ زیر، اثرِ لحظهٔ فعلیِ
 > کتابخانه را ثبت می‌کند. راستی‌آزمایی: `node tests/docs-freeze-marker.js`.
-> نسخه‌های پیشین (`rc1`…`rc38`) با بنرِ تاریخی و مانیفستِ **دست‌نخورده** باقی می‌مانند.
+> نسخه‌های پیشین (`rc1`…`rc39`) با بنرِ تاریخی و مانیفستِ **دست‌نخورده** باقی می‌مانند.
 
-**نسخهٔ قفل:** ۱.۰.۰-rc39 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۲ | **مالک:** BH-mut فازِ ۱ — الگوی امنِ جهش (Arena)
+**نسخهٔ قفل:** ۱.۰.۰-rc40 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** ثبتِ چکیدهٔ P1-2 + بستنِ یتیمیِ گزارش‌ها (Arena)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc38` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۲۱ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc39` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۲۲ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
-**دلیل بامپ:** BH-mut فازِ ۱ — مهاجرتِ فایل‌های جهش به الگوی امن (کپی جدا + unlink در exit، الگوی p06/p11):
+**دلیل بامپ:** ثبتِ چکیدهٔ بستنِ حلقهٔ P1-2 + بستنِ یتیمیِ گزارش‌های روزانه + ترمیم کهنگی آمار:
 
 | تغییر | شاهد |
 |---|---|
-| افزودنِ `tests/mutant-kit-test.js` — خودآزمِ کیتِ الگوی امن (۱۷/۱۷) | `node tests/mutant-kit-test.js` = ۱۷/۱۷ · `node tools/docs-stats-sync.js --check` |
-| افزودنِ `tests/helpers/mutant-kit.js` + `tests/helpers/mutant-preload.js` (بیرونِ شمارشِ رسمی، در شمارِ تو‌در‌تو) | خروجیِ stats-sync |
-| به‌روزرسانیِ ماشینیِ `TEST_COVERAGE_REPORT.md`/`DOCS_METRICS.md`/`DOCUMENTATION_MAP.md` | `node tools/docs-stats-sync.js` |
+| افزودنِ `docs/daily-reports/2026-09-13-p12-mirror-cutoff.md` (چکیدهٔ P1-2 با حقایق راستی‌آزمایی‌شده) | همین کامیت |
+| ثبتِ §۲.۱۳ برای چهار گزارش یتیم‌مانده (چکیدهٔ P1-2 + bh-mut-phase1 + دو گزارش P1-2) ⇒ `docs-metadata`: یتیم ۳ → **۰** | `node tools/docs-metadata.js` |
+| ترمیم کهنگی آمار main (daily-reports ۱۴ِ قفل‌شده در برابر ۱۵ِ واقعی — از رقصِ مرجِ #132/#131) ⇒ اکنون ۱۶ | `node tools/docs-stats-sync.js --check` |
 
-`rc38` بنرِ تاریخی گرفت و **مانیفستش دست‌نخورده** ماند. هیچ تستی ضعیف، حذف یا مستثنا نشد.
+`rc39` بنرِ تاریخی گرفت و **مانیفستش دست‌نخورده** ماند. هیچ تستی ضعیف، حذف یا مستثنا نشد.
 
 **زیرپوشه‌های بیرون مانیفست ریشه** (۲۰ سند؛ پوشش ساختاری‌شان را تست‌های پوشش
 می‌پایند و فهرست قطعی‌شان در نمایه ثبت شده است):
@@ -56,7 +54,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۳۲۱)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۳۲۲)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -148,6 +146,7 @@
 | `DOCS_FREEZE_v1.0.0-rc36.md` | `sha256:c96664917cf425245af036e21f1e736f80d9b433e6d9bc3956c4dbf861d10a18` |
 | `DOCS_FREEZE_v1.0.0-rc37.md` | `sha256:5cd9f96bb6149f23a36bf697d538a76029c7115acc75f0b0135a9e00e21f923e` |
 | `DOCS_FREEZE_v1.0.0-rc38.md` | `sha256:34a8221cd55ccc579a70d70615265ead3844b04c9b4d270d03a6bd7885d4f5e7` |
+| `DOCS_FREEZE_v1.0.0-rc39.md` | `sha256:42d03e0c43d87d40702433a2c56dac84590b1616210e9c6096a432c076ae0799` |
 | `DOCS_FREEZE_v1.0.0-rc4.md` | `sha256:c33ea913bef9630a24e34ab0348980e291570cad81d906fcf57908df96fdff73` |
 | `DOCS_FREEZE_v1.0.0-rc5.md` | `sha256:df97a36b50b8e4398fd8ac3090b1a2bd7ed1a113780ec8841c8b44e490dce79e` |
 | `DOCS_FREEZE_v1.0.0-rc6.md` | `sha256:ded449054c3464e7c34fc913cf3f71dc5745ffe24e34888cc1aceb94ee93782e` |
@@ -156,10 +155,10 @@
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:36bf496d42732300a7872e76e6a3ce64dca6d52ed20eb1d9621fdce63f3d4169` |
 | `DOCS_INDEX.md` | `sha256:d8670d983dd4dba8ece9e3a585bad0a0b05432585309ec3ce908b8e231507890` |
-| `DOCS_METRICS.md` | `sha256:9af092798d28ea37c09edcca0626921c67033be7f817f6a6e7037a424c418f1f` |
+| `DOCS_METRICS.md` | `sha256:c1e6ac315e000016fa8a4ce5329aa30a4ffbcc4fdcf8b1fa908deaf0683df98d` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:bbca0ce31bc63dabaacf2f2eab15f2ac2de60528a53de9a34985ef1ea41ee091` |
-| `DOCUMENTATION_MAP.md` | `sha256:34a8ea9ff757681810562a8ae420b7034b3bc7a58bde6d4bd458c42990c60223` |
+| `DOCUMENTATION_MAP.md` | `sha256:d79fe80cabc2e779b8452939b9561b87103b9e0b198f031afdff8f759395a643` |
 | `DR_RUNBOOK.md` | `sha256:8c0d8f7e2bb1e1305c2aaf645850de68d4b429895445ecae74a5a0a732db0e26` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
@@ -383,4 +382,4 @@
 | `راهنمای_کاربر.md` | `sha256:e7061c3b64353b6b04c0a17551eb990df1805f27a861dbb17996c9d6e62b26be` |
 
 ---
-_قفل `rc39` در ۲۰۲۶-۰۹-۱۲ بسته شد: BH-mut فازِ ۱ — مهاجرتِ فایل‌های جهش به الگوی امن (۹ فایل پایلوت، ۵۴/۵۴ جهش کشته). راستی‌آزمایی: `node tests/docs-freeze-marker.js` و `node tools/docs-stats-sync.js --check`._
+_قفل `rc40` در ۲۰۲۶-۰۹-۱۳ بسته شد: چکیدهٔ P1-2 + بستنِ یتیمیِ چهار گزارش روزانه + ترمیم آمار. راستی‌آزمایی: `node tests/docs-freeze-marker.js` و `node tools/docs-stats-sync.js --check`._
