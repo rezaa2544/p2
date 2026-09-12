@@ -12,6 +12,7 @@
 
    اجرا:
      k6 run -e SCENARIO=load    tests/performance/suites/national-load-test.js
+     k6 run -e SCENARIO=peak    tests/performance/suites/national-load-test.js
      k6 run -e SCENARIO=stress  tests/performance/suites/national-load-test.js
      k6 run -e SCENARIO=spike   tests/performance/suites/national-load-test.js
      k6 run -e SCENARIO=soak    tests/performance/suites/national-load-test.js
@@ -55,12 +56,38 @@ const PEAK_VUS = parseInt(__ENV.PEAK_VUS || '400', 10);
 const STRESS_START = parseInt(__ENV.STRESS_START || '50', 10);
 const STRESS_MAX = parseInt(__ENV.STRESS_MAX || '3000', 10);
 const SPIKE_VUS = parseInt(__ENV.SPIKE_VUS || '1500', 10);
+/* نرخِ هدفِ قله: مدلِ ملی ۲۰٬۰۰۰ rps می‌خواهد (§2.1). اینجا پیش‌فرض همان
+   PEAK_VUS است تا با بقیهٔ سناریوها هم‌مقیاس بماند. */
+const PEAK_RPS = parseInt(__ENV.PEAK_RPS || String(PEAK_VUS), 10);
+
+/* نگهبان: پیش‌تر یک نامِ نامعتبر (مثلاً SCENARIO=peak قبل از تعریفش) باعث
+   می‌شد همهٔ شرط‌ها false شوند، options.scenarios خالی بماند و k6 فقط
+   setup() را یک بار اجرا کند — خروجی‌اش «موفق» به نظر می‌رسید در حالی که
+   هیچ باری تولید نشده بود (سبزِ کاذب). حالا صریحاً خطا می‌دهیم. */
+const VALID_SCENARIOS = ['load', 'peak', 'stress', 'spike', 'soak', 'all'];
+if (VALID_SCENARIOS.indexOf(SCENARIO) < 0) {
+  throw new Error('SCENARIO نامعتبر: "' + SCENARIO + '" — باید یکی از '
+    + VALID_SCENARIOS.join(' / ') + ' باشد');
+}
 const SOAK_DURATION = __ENV.SOAK_DURATION || '2h';
+/* مدت‌ها هم قابلِ تنظیم‌اند: پیش‌فرض‌ها برای stagingِ واقعی‌اند (مجموعاً ~۳۵
+   دقیقه) و روی یک ماشینِ ۲ هسته‌ای باید کوتاه شوند. این فقط «مدتِ اجرا» است؛
+   آستانه‌های SLO و نرخِ هدفِ مدلِ ملی دست‌نخورده می‌مانند. */
+const DUR_LOAD  = __ENV.DUR_LOAD  || '5m';
+const DUR_GAP   = __ENV.DUR_GAP   || '6m';   /* شروعِ load_peak پس از load_normal */
+const DUR_STAGE = __ENV.DUR_STAGE || '5m';   /* هر پلهٔ stress_ramp */
+const DUR_PEAK  = __ENV.DUR_PEAK  || '5m';
+const DUR_SPK_A = __ENV.DUR_SPK_A || '2m';
+const DUR_SPK_B = __ENV.DUR_SPK_B || '30s';
+const DUR_SPK_C = __ENV.DUR_SPK_C || '10m';
+const DUR_SPK_D = __ENV.DUR_SPK_D || '2m';
+const DUR_STRS  = __ENV.DUR_STRS  || '10m';
 
 /* متریک‌های اختصاصیِ §21 */
 const writeErrors = new Rate('write_errors');
 const writesPerSec = new Counter('writes_total');
 const syncLatency = new Trend('sync_duration', true);
+const syncRejects = new Counter('sync_rejected_reason');
 
 export const options = {
   scenarios: Object.assign(
@@ -69,13 +96,23 @@ export const options = {
       /* بارِ عادی، سپس قله — §21: «بار عادی و peak» */
       load_normal: {
         executor: 'constant-arrival-rate',
-        rate: LOAD_VUS, timeUnit: '1s', duration: '5m',
+        rate: LOAD_VUS, timeUnit: '1s', duration: DUR_LOAD,
         preAllocatedVUs: LOAD_VUS, maxVUs: LOAD_VUS * 4
       },
       load_peak: {
         executor: 'constant-arrival-rate',
-        rate: PEAK_VUS, timeUnit: '1s', duration: '5m', startTime: '6m',
+        rate: PEAK_VUS, timeUnit: '1s', duration: DUR_PEAK, startTime: DUR_GAP,
         preAllocatedVUs: PEAK_VUS, maxVUs: PEAK_VUS * 2
+      }
+    } : {},
+    SCENARIO === 'peak' ? {
+      /* قلهٔ مستقلِ «صبحِ اولِ مهر» — §21: peak برابرِ ۳ برابرِ بارِ عادی.
+         پیش‌تر peak فقط به‌عنوان فازِ دومِ SCENARIO=load وجود داشت و اجرایِ
+         SCENARIO=peak هیچ سناریویی نمی‌ساخت. */
+      peak_standalone: {
+        executor: 'constant-arrival-rate',
+        rate: PEAK_RPS, timeUnit: '1s', duration: DUR_PEAK,
+        preAllocatedVUs: Math.min(PEAK_RPS, 2000), maxVUs: Math.max(PEAK_RPS * 2, 2000)
       }
     } : {},
     SCENARIO === 'all' || SCENARIO === 'stress' ? {
@@ -97,12 +134,16 @@ export const options = {
       spike_mehr: {
         executor: 'ramping-arrival-rate',
         startRate: 50, timeUnit: '1s',
-        preAllocatedVUs: 200, maxVUs: SPIKE_VUS * 2,
+        /* باگِ پیشین: preAllocatedVUs=200 ثابت بود در حالی که
+           maxVUs=SPIKE_VUS*2؛ اگر SPIKE_VUS < 100 باشد k6 با خطایِ
+           «maxVUs can't be less than preAllocatedVUs» اصلاً اجرا نمی‌شود.
+           preAllocated هم باید از همان SPIKE_VUS مشتق شود. */
+        preAllocatedVUs: Math.min(200, SPIKE_VUS), maxVUs: Math.max(SPIKE_VUS * 2, 200),
         stages: [
-          { target: 50, duration: '2m' },
-          { target: SPIKE_VUS, duration: '30s' },   /* جهش */
-          { target: SPIKE_VUS, duration: '10m' },   /* نگه‌داشتنِ قله */
-          { target: 50, duration: '2m' }            /* بازگشت */
+          { target: 50, duration: DUR_SPK_A },
+          { target: SPIKE_VUS, duration: DUR_SPK_B },   /* جهش */
+          { target: SPIKE_VUS, duration: DUR_SPK_C },   /* نگه‌داشتنِ قله */
+          { target: 50, duration: DUR_SPK_D }            /* بازگشت */
         ]
       }
     } : {},
