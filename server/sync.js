@@ -518,10 +518,70 @@ function createSync(ctx){
     return nextId(c);
   }
 
+  /* ═══ P0-6 — مهارِ رشدِ آینهٔ درون‌حافظه‌ای در PG-live ═══════════════
+     یافتهٔ کمّی Wave 18 §۵-۳: هر op پذیرفته‌شده (و هر missِ hydrate از PG)
+     به آینهٔ store اضافه می‌شد بدون سقف — ۱۰,۴۸۸B به‌ازایِ هر نوشتن؛ در سوکِ
+     زیرِ بار یعنی رشدِ خطیِ حافظه. مهار:
+     • mirrorAppend: push + ثبت در growthLog؛ وقتی رشدِ بعد از بوت از سقف گذشت
+       (PAYESH_PG_MIRROR_GROWTH_CAP؛ پیش‌فرض PG-live=50000، memory=0=بی‌سقف)
+       قدیمی‌ترینِ رشد‌ها batch-wise حذف می‌شوند (تا سقف برگردند). رکوردهای
+       هیدراته‌شده در بوت دست‌نخورده می‌مانند.
+     • pruneProcessedUids: __processed_uids هم بی‌سقف رشد می‌کرد؛ سقف
+       (PAYESH_UID_DEDUP_MAX؛ پیش‌فرض PG-live=20000، memory=0) با حذفِ
+       قدیمی‌ترین‌ها (بر اساسِ timestamp ذخیره‌شده) نگه داشته می‌شود.
+       dedup تازه پوشش کامل دارد (پنجرهٔ اخیر) و در استقرارِ چندنمونه‌ای،
+       Redis (cache.markProcessedUid با TTL 24h) مرجعِ اشتراکی است.
+     اعدادِ پیش‌فرض محافظه‌کارانه‌اند تا در دپلوی‌های کوچکِ موجود رفتار
+     عملاً تغییر نکند (هرگز به سقف نمی‌رسند). */
+  const growthLog = {};   /* [c] → idهایی که بعد از بوت به آینه افزودیم */
+  function mirrorGrowthCap(){
+    if(!(db && typeof db.isPostgres === 'function' && db.isPostgres())) return 0;
+    const n = Number(process.env.PAYESH_PG_MIRROR_GROWTH_CAP);
+    return Number.isFinite(n) && n >= 0 ? n : 50000;
+  }
+  function uidDedupMax(){
+    if(!(db && typeof db.isPostgres === 'function' && db.isPostgres())) return 0;
+    const n = Number(process.env.PAYESH_UID_DEDUP_MAX);
+    return Number.isFinite(n) && n >= 0 ? n : 20000;
+  }
+  function mirrorAppend(c, row){
+    if(row == null) return row;
+    if(!Array.isArray(store[c])) store[c] = [];
+    store[c].push(row);
+    const cap = mirrorGrowthCap();
+    if(cap > 0){
+      if(!Array.isArray(growthLog[c])) growthLog[c] = [];
+      growthLog[c].push(row.id);
+      if(growthLog[c].length > cap * 1.2){
+        const drop = growthLog[c].splice(0, growthLog[c].length - cap);
+        for(const id of drop){
+          const arr = store[c];
+          const j = arr.findIndex(x => x && x.id === id);
+          if(j >= 0) arr.splice(j, 1);
+        }
+      }
+    }
+    return row;
+  }
+  function pruneProcessedUids(){
+    const cap = uidDedupMax();
+    if(cap <= 0) return;
+    const pu = store.__processed_uids;
+    if(!pu || typeof pu !== 'object') return;
+    const keys = Object.keys(pu);
+    if(keys.length <= cap) return;
+    keys.sort((a, b) => (pu[a] || 0) - (pu[b] || 0));
+    const drop = keys.slice(0, keys.length - cap);
+    for(const d of drop) delete pu[d];
+  }
+
   /* Wave 1: cross-instance apply -- a record created on another instance is not in
      this store; when PG is live, hydrate the miss from the authority before deciding
-     the op targets nothing. Memory mode: identical skip semantics. */
-  async function findForApply(c, id){
+     the op targets nothing. Memory mode: identical skip semantics.
+     P0-6: hydration از PG رشدِ آینه است — از mirrorAppend می‌گذرد (سقفِ رشد در
+     PG-live) و اگر درخواستِ جاری undo-log باز دارد، در آن ثبت می‌شود تا شکستِ
+     آینه دقیقاً همین ردیفِ تازه‌هیدراته‌شده را هم بازگرداند (رفتارِ snapshot قدیمی). */
+  async function findForApply(c, id, undo){
     const arr = store[c] || [];
     const rec = arr.find(x => x && x.id === Number(id));
     if(rec) return rec;
@@ -530,8 +590,8 @@ function createSync(ctx){
       try{
         const row = await db.readOne(c, id);
         if(row){
-          if(!Array.isArray(store[c])) store[c] = [];
-          store[c].push(row);
+          mirrorAppend(c, row);
+          if(undo) undo.items.push({ k: 'pop', c, id: row.id, idx: store[c].length - 1 });
           return row;
         }
       }catch(e){ /* not in PG either: genuinely missing */ }
@@ -592,6 +652,20 @@ function createSync(ctx){
     };
 
     const results = [];
+
+    /* P0-6 — undo-log به‌جای snapshotِ کلِ کالکشن (جزئیات در کامنتِ فازِ دوم):
+       اینجا و پیش از حلقهٔ اعتبارسنجی ساخته می‌شود تا pushهایِ فازِ اعتبارسنجی
+       (sync_conflicts و notifications تعارض) هم — مثلِ snapshot قدیمی — پوشش
+       داشته باشند. هزینهٔ ساخت O(1) است؛ در حالتِ memory مقدار null می‌ماند. */
+    const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+    const undo = pgLive ? { version: store.__server_version || 0, items: [] } : null;
+    /* ثبتِ undo برای یک push تازه به انتهای آرایه (idx فعلی) */
+    const uPush = (c, row) => {
+      if(undo && row != null){
+        const arr = store[c];
+        undo.items.push({ k: 'pop', c, id: row.id, idx: Array.isArray(arr) ? arr.length - 1 : -1 });
+      }
+    };
 
     const derived = [];  /* Wave1-W: نوشت‌هایِ مشتقِ سرور (نوتیفیکیشن‌ها) — با mirror در یک تراکنش */
     const apply = [];
@@ -717,6 +791,7 @@ function createSync(ctx){
             status: 'open', created_at: nowIso, updated_at: nowIso
           };
           store.sync_conflicts.push(cf);
+          uPush('sync_conflicts', cf);   /* P0-6: بازگشتِ دقیق همین ردیف در rollback */
           /* ویو ۱۴: برچسبِ collection نامِ جدول است (مجموعهٔ بستهٔ VERSIONED)،
              نه شناسهٔ رکورد — بدون PII و با cardinality کران‌دار. */
           metrics.inc('payesh_sync_conflicts_total', { collection: String(op.c || 'unknown').slice(0, 32) });
@@ -732,6 +807,7 @@ function createSync(ctx){
               link: 'dashboard', read: 0, created_at: nowIso.slice(0, 10)
             };
             store.notifications.push(cnotif);
+            uPush('notifications', cnotif);   /* P0-6 */
             derived.push({ c: 'notifications', t: 'ins', data: cnotif }); /* Wave1-W */
           }
           ctx.markDirty();
@@ -754,25 +830,23 @@ function createSync(ctx){
       apply.push(op);
     }
 
-    /* Wave 1: PG-first two-phase. Phase 1 applies to a snapshot-guarded store;
-       phase 2 commits the atomic PG mirror; on mirror failure the store is rolled
-       back and the client gets 503 (uids stay unmarked so the retry replays cleanly).
-       Memory mode: the mirror is a no-op success, so behavior is identical and the
-       snapshot is skipped for zero overhead. sync_conflicts is snapshotted too so
-       validation-phase rows (created pre-commit) also roll back and are not
-       duplicated by the retry. */
-    const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
-    const snap = {};
-    if(pgLive){
-      const keys = { notifications: 1, __deleted_records: 1, sync_conflicts: 1 };
-      for(const op of apply){ if(op.c) keys[op.c] = 1; }
-      for(const k of Object.keys(keys)){
-        try{ snap[k] = JSON.parse(JSON.stringify(store[k] != null ? store[k] : null)); }
-        catch(e){ snap[k] = null; }
-      }
-      snap.__server_version = store.__server_version || 0;
-      snap.__processed_uids = Object.assign({}, store.__processed_uids || {});
-    }
+    /* Wave 1: PG-first two-phase. Phase 1 applies to the store; phase 2 commits the
+       atomic PG mirror; on mirror failure the store changes are rolled back and the
+       client gets 503 (uids stay unmarked so the retry replays cleanly).
+       Memory mode: the mirror is a no-op success, so behavior is identical and
+       nothing is journaled for zero overhead.
+       P0-6 — undo-log به‌جای snapshotِ کلِ کالکشن: نسخهٔ قبلی این کد کلِ هر
+       کالکشنِ درگیر را با JSON.parse(JSON.stringify(store[k])) clone می‌کرد ⇒
+       هزینهٔ هر درخواستِ sync با اندازهٔ آینه رشد می‌کرد (O(collection)، در
+       مانورِ بار ~۱MB/درخواستِ هم‌زمان)، نه با اندازهٔ batch. حالا هر mutation
+       فقط یک مدخلِ O(1) در undo ثبت می‌کند (clone تک‌رکورد برای upd، idx/id
+       برای push، رکوردِ حذف‌شده برای del) و rollback مدخل‌ها را معکوس اجرا
+       می‌کند ⇒ O(batch). از نظرِ صحت هم بهتر است: snapshotِ کل، تغییرهایِ
+       هم‌زمانِ درخواست‌هایِ دیگر (بینِ awaitها) را هم بی‌سروصدا برمی‌گرداند؛
+       undo فقط تغییرهایِ همین batch را برمی‌گرداند. sync_conflicts و
+       notifications ساخته‌شده در فازِ اعتبارسنجی هم — مثلِ قبل — پوشش دارند:
+       undo پیش از حلقهٔ اعتبارسنجی ساخته می‌شود و همان حلقه‌ها در آن ثبت
+       می‌کنند. */
     const mirror = [];   /* P1-14: opsِ آینه با شناسه‌هایِ اعمال‌شدهٔ سرور */
     for(const op of apply){
       /* S2-1 (موج ۴): ادعایِ اتمیکِ uid — حتماً پیش از اعمال. بررسی در
@@ -792,6 +866,7 @@ function createSync(ctx){
         continue;
       }
       store.__processed_uids[op.uid] = Date.now();
+      if(undo) undo.items.push({ k: 'unmarkUid', uid: op.uid });   /* P0-6 */
       if(!Array.isArray(store[op.c])) store[op.c] = [];
       if(op.t === 'ins'){
         const data = Object.assign({}, op.data);
@@ -799,9 +874,12 @@ function createSync(ctx){
         if(data.id == null) data.id = await serverId(op.c); /* Wave 1: ids service (PG sequences when live) */
         if(VERSION_TRACKED[op.c] && data.version == null) data.version = 1; /* R95 */
         /* Wave 1: hydrate cross-instance misses from PG before the upsert check. */
-        const ex = await findForApply(op.c, data.id);
-        if(ex){ Object.assign(ex, data); Object.assign(ex, prot); }
-        else store[op.c].push(Object.assign(data, prot));
+        const ex = await findForApply(op.c, data.id, undo);
+        if(ex){
+          if(undo) undo.items.push({ k: 'rec', c: op.c, id: ex.id, rec: JSON.parse(JSON.stringify(ex)) });   /* P0-6: clone تک‌رکورد O(1) */
+          Object.assign(ex, data); Object.assign(ex, prot);
+        }
+        else { const rec = Object.assign(data, prot); mirrorAppend(op.c, rec); uPush(op.c, rec); }
         data.updated_at = new Date().toISOString();
         if(op.c === 'users' && (data.role || (prot && prot.role))){
           const r = data.role || prot.role;
@@ -810,8 +888,9 @@ function createSync(ctx){
         mirror.push({ uid: op.uid, c: op.c, t: 'ins', data: (ex || data) });   /* P1-14: رکوردِ اعمال‌شده با شناسهٔ سرور */
       }else if(op.t === 'upd'){
         /* Wave 1: hydrate cross-instance misses from PG before applying. */
-        const rec = await findForApply(op.c, op.id != null ? op.id : (op.data && op.data.id));
+        const rec = await findForApply(op.c, op.id != null ? op.id : (op.data && op.data.id), undo);
         if(rec){
+          if(undo) undo.items.push({ k: 'rec', c: op.c, id: rec.id, rec: JSON.parse(JSON.stringify(rec)) });   /* P0-6 */
           const clean = Object.assign({}, op.data); /* R98 — op.data برایِ hookها دست‌نخورده */
           const prot = stripProtected(clean);
           if(op.c === 'users' && clean.role && rec.role !== clean.role){
@@ -825,11 +904,13 @@ function createSync(ctx){
       }else if(op.t === 'del'){
         const delId = Number(op.id != null ? op.id : (op.data && op.data.id));
         /* Wave 1: hydrate cross-instance misses from PG (seeded row is removed by the filter below). */
-        const delRec = await findForApply(op.c, delId);
+        const delRec = await findForApply(op.c, delId, undo);
         const delSchoolId = delRec ? delRec.school_id : (op.data && op.data.school_id ? op.data.school_id : s.school_id);
+        if(undo && delRec) undo.items.push({ k: 'reinsert', c: op.c, rec: JSON.parse(JSON.stringify(delRec)) });   /* P0-6 */
         store[op.c] = store[op.c].filter(x => x.id !== delId);
         if(!Array.isArray(store.__deleted_records)) store.__deleted_records = [];
         store.__deleted_records.push({ c: op.c, id: delId, school_id: delSchoolId, at: new Date().toISOString() });
+        if(undo) undo.items.push({ k: 'popDelRec' });   /* P0-6 */
         if(store.__deleted_records.length > 5000) store.__deleted_records = store.__deleted_records.slice(-5000);
         audit('record_deleted', { user_id: s.id, role: s.role, school_id: s.school_id, collection: op.c, record_id: delId, summary: 'حذف رکورد ' + delId + ' از ' + op.c });
         mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId });   /* P1-14 */
@@ -869,7 +950,7 @@ function createSync(ctx){
             body: 'برای ' + ((st && st.full_name) || '') + ' از ' + d.from_date + ' تا ' + d.to_date + ' — در انتظارِ بررسی.',
             link: 'leaves', read: 0, created_at: todayD
           };
-          store.notifications.push(ln);
+          mirrorAppend('notifications', ln); uPush('notifications', ln);   /* P0-6 */
           derived.push({ c: 'notifications', t: 'ins', data: ln }); /* Wave1-W */
           audit('leave_request_notified', { user_id: s.id, leave_id: d.id, school_id: d.school_id });
         }
@@ -887,7 +968,7 @@ function createSync(ctx){
             body: ((from && from.full_name) || '') + ': ' + String(op.data.body || '').slice(0, 60),
             link: 'chat', read: 0, created_at: todayD
           };
-          store.notifications.push(cn);
+          mirrorAppend('notifications', cn); uPush('notifications', cn);   /* P0-6 */
           derived.push({ c: 'notifications', t: 'ins', data: cn }); /* Wave1-W */
           audit('chat_notified', { user_id: s.id, to_user_id: to.id });
         }
@@ -905,7 +986,7 @@ function createSync(ctx){
             body: ((par && par.full_name) || '') + ' اعلام کرد ' + ((st && st.full_name) || '') + ' فرزند او نیست.',
             link: 'corrections', read: 0, created_at: todayD
           };
-          store.notifications.push(crn);
+          mirrorAppend('notifications', crn); uPush('notifications', crn);   /* P0-6 */
           derived.push({ c: 'notifications', t: 'ins', data: crn }); /* Wave1-W */
           audit('correction_notified', { user_id: s.id, correction_id: d.id, school_id: d.school_id });
         }
@@ -933,11 +1014,32 @@ function createSync(ctx){
         mirrorFailed = true;
         audit('sync_mirror_failed', { user_id: s.id, ops: batchAll.length, error: why });
         if(pgLive){
-          for(const k of Object.keys(snap)){
-            if(k === '__server_version'){ store.__server_version = snap[k]; continue; }
-            if(k === '__processed_uids'){ store.__processed_uids = snap[k]; continue; }
-            if(snap[k] === null || snap[k] === undefined){ delete store[k]; }
-            else store[k] = snap[k];
+          /* P0-6 — rollback با undo-log: معکوسِ ثبت‌های همین batch — O(batch)،
+             نه بازنویسیِ کلِ کالکشن. مزیتِ صحت: تغییرهایِ هم‌زمانِ درخواست‌هایِ
+             دیگر بینِ awaitها حفظ می‌شوند (snapshot قدیمی آن‌ها را هم برمی‌گرداند). */
+          if(undo){
+            store.__server_version = undo.version;
+            for(let i = undo.items.length - 1; i >= 0; i--){
+              const u = undo.items[i];
+              try{
+                if(u.k === 'pop'){
+                  const arr = store[u.c];
+                  if(Array.isArray(arr)){
+                    if(u.idx >= 0 && u.idx < arr.length && arr[u.idx] && arr[u.idx].id === u.id) arr.splice(u.idx, 1);
+                    else { const j = arr.findIndex(x => x && x.id === u.id); if(j >= 0) arr.splice(j, 1); }
+                  }
+                } else if(u.k === 'rec'){
+                  const r = (store[u.c] || []).find(x => x && x.id === u.id);
+                  if(r){ for(const key of Object.keys(r)) delete r[key]; Object.assign(r, u.rec); }
+                } else if(u.k === 'reinsert'){
+                  if(Array.isArray(store[u.c]) && !store[u.c].some(x => x && x.id === u.rec.id)) store[u.c].push(u.rec);
+                } else if(u.k === 'popDelRec'){
+                  if(Array.isArray(store.__deleted_records) && store.__deleted_records.length) store.__deleted_records.pop();
+                } else if(u.k === 'unmarkUid'){
+                  delete store.__processed_uids[u.uid];
+                }
+              }catch(_){ /* best-effort — audit بالا خطای آینه را ثبت کرده است */ }
+            }
           }
           for(const r of results){ if(r) r.ok = false; }
           return sendJson(res, 503, { ok: false, code: 'sync_mirror_failed', results });
@@ -954,6 +1056,7 @@ function createSync(ctx){
         try { audit('sync_idempotency_mark_failed', { user_id: s.id, uid: op.uid, error: String((markErr && markErr.message) || markErr) }); } catch (_) {}
       }); }catch(e){}
     }
+    pruneProcessedUids();   /* P0-6: __processed_uids سقف‌دار (پیش‌فرض PG-live=20000؛ پنجرهٔ اخیر کافی است چون Redis dedup اشتراکی هم هست) */
     if(apply.length) ctx.markDirty();
     audit('sync_ok', { user_id: s.id, ops: apply.length });
     /* Delta Phase 4 (gap 4): هر pushِ موفق (دستهٔ غیرخالی که به ۲۰۰ رسید)
