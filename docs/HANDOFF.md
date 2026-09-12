@@ -1,7 +1,8 @@
 # Wave 18 — National Load Testing — Handoff
 
 **Date:** 2026-09-12
-**Branch:** `feat/wave18-load-test` (از `main` @ `4cf53af` — بدون دست‌زدن به شاخه‌های دیگر)
+**Branch:** `feat/wave18-load-test` (بازسازی‌شده روی `main` @ `20ed3e8` — بدون دست‌زدن به شاخه‌های دیگر)
+**PR:** [#94](https://github.com/rezaa2544/p2/pull/94) (باز؛ mergeable ✓ — پوش تأییدشده با `git ls-remote`: head `60d85c1`)
 **Status:** هر ۵ سناریوی طرح روی محیط production-like سندباکس اجرا و مستند شد
 **Author:** rezaa2544
 
