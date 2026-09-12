@@ -1,5 +1,33 @@
 # دفترچهٔ تحویل کار — پایش
 
+## دور ۸۲ — چت ۳ · Wave 24: بهینه‌سازی عملکرد — ۴/۴ KPI سبز (۲۰۲۶-۰۹-۱۲)
+
+**شاخه:** `feat/wave24-performance-optimization` (از `main@4cf53af` + گزارش آماده‌سازی `3e36378`)
+
+**نتیجهٔ KPIها** (گیت: `node tests/performance/baseline.js --assert` → «جمع: 4/4»):
+| KPI | قبل | هدف | بعد |
+|---|---|---|---|
+| اندازهٔ index.html | 2,257,641B | <1.8MB | **1,657,003B** |
+| زمان build | ~100ms | <70ms | **~60ms** |
+| پارس استور (۵.۷MB) | ~70ms | <50ms | **~35-40ms** |
+| p95 API | 248ms (staging بریف) | <150ms | **~5ms درون‌پردازه** (k6/staging در سندباکس نیست — صادقانه در سند §۵.۳) |
+
+**کامیت‌ها (هر بهینه‌سازی = کامیت + تست جدا):**
+1. `b2e6c3a` هارنس KPI ‏(`tests/performance/baseline.js`)
+2. `9bc02ac` KPI-1+2: کوچک‌ساز محافظه‌کار (`tools/minify-source.js`) + کش افزایشی build + skip نوشتن بی‌تغییر → تست `build-optimization.js` (۲۶ سبز، موتانت‌گارد M1-M5)
+3. `29e20da` KPI-3: قالب ASCII-escaped استور (`server/json-fast.js`؛ ورکر persist + فال‌بک + seed) + پارس Buffer در loadStore → تست `query-optimization.js` (۱۱ سبز)
+4. `73ad697` فاز کلاینت: memoize کران‌دار fa/jalali + کش افزایشی queueBytes (پروفایل: ۴۴۰ms در ۲۵ رندر) → تست `ui-optimization.js` (۲۰ سبز)
+5. تست آفلاین‌اول `offline-optimization.js` (۱۵ سبز: صف/ماندگاری/احیای sending/DLQ زیر کش‌های نو)
+6. اسناد: `docs/PERFORMANCE_OPTIMIZATION_GUIDE.md` + §۷.۱ `NATIONAL_ARCHITECTURE.md` (v1.0.2) + سطر ۲۴ roadmap
+
+**قراردادهای حفظ‌شده:** `build --check` بیت‌به‌بیت ✅؛ آفلاین‌اول ✅؛ قالب استور JSON استاندارد و سازگار عقب‌رو ✅؛ هیچ توکن/newline کدی در کوچک‌سازی عوض نمی‌شود (ASI امن).
+
+**رگرسیون کامل سبز:** run ‏35/35 · smoke ‏547/547 · wave5-authz ‏37/37 · db-eng ‏14/14 · multi-grade ‏34/34 · secret-scan ‏11/11 · reports ‏9+11+10+5 · a11y ‏«جمع: 92 قبول، 0 رد» + modal ‏9/9 + runtime ‏0 critical/serious · sync-queue-caps ‏36/36 · backup-snap ‏18/18 · integration ‏12/12 · check-authz ✅.
+
+**⚠️ CI:** همچنان مسدود بیلینگ (مالک) — هیچ run سبزی وجود ندارد؛ همهٔ گیت‌ها محلی و صادقانه ثبت شدند. **PR ساخته نشده** — منتظر تصمیم ناظر (merge بدون CI ممکن است چون شاخه محافظت ندارد).
+
+**نکتهٔ نگهداری:** تغییر منطق `tools/minify-source.js` ⇒ `CACHE_VERSION` در `build.js` جلو برود؛ `.build-cache.*` gitignore و تولیدی است.
+
 ## Handoff — پ۳: تأیید نهایی Wave 23 + وضعیت PRها + آماده‌سازی Wave 24 — ✅ (2026-09-12)
 
 - **Wave 23 تأیید شد:** PR #88 `merged: true` @ `0a45c13` (merged_by: rezaa2544)؛
