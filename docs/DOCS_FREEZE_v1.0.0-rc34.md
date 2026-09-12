@@ -1,27 +1,27 @@
-# 🔒 قفل مستندات — DOCS_FREEZE_v1.0.0-rc33
+# 🔒 قفل مستندات — DOCS_FREEZE_v1.0.0-rc34
 
 > **⚠️ قفلِ تاریخی.** این نسخه در ۲۰۲۶-۰۹-۱۲ با `DOCS_FREEZE_v1.0.0-rc34.md` جایگزین شد و دیگر «جاری» نیست.
 > **تاریخِ دست‌نخورده:** مانیفستِ زیر **عمداً ویرایش نشده** است — وضعیتِ لحظهٔ قبلی قفل را قابل اثبات نگه می‌دارد.
 > برای راستی‌آزماییِ قفلِ جاری: `node tests/docs-freeze-marker.js`.
 
-**نسخهٔ قفل:** ۱.۰.۰-rc33 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۲ | **مالک:** چت ۶ (مستندات و انتشار)
+**نسخهٔ قفل:** ۱.۰.۰-rc34 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۲ | **مالک:** چت ۶ (مستندات و انتشار)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc32` (تاریخی) می‌شود. فهرست زیر **همهٔ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc33` (تاریخی) می‌شود. فهرست زیر **همهٔ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
-**دلیل بامپ:** ویو ۲۴ (چت ۳ — بهینه‌سازی عملکرد) دو سند تازه افزود و دو سند فهرست‌شده را ویرایش کرد:
+**دلیل بامپ:** `main` پیش از این دور **۱۱/۱۴** بود، نه ۱۴/۱۴. سه نقصِ قفل روی درختِ `main` وجود داشت
+و این بامپ آن‌ها را با **دیسکِ واقعی** هم‌گام می‌کند:
 
-| نوع | شمار | سند |
+| نقصِ `rc33` | شاهد | رفع در `rc34` |
 |---|---|---|
-| سندِ تازه | ۲ | `PERFORMANCE_OPTIMIZATION_GUIDE.md` (راهنمای کامل بهینه‌سازی ویو ۲۴) · `WAVE24_PREP_REPORT.md` (گزارش آماده‌سازی) |
-| سندِ ویرایش‌شده | ۲ | `NATIONAL_ARCHITECTURE.md` (§۷.۱ بهینه‌سازی‌های ویو ۲۴؛ v1.0.2) · `NATIONAL_ROADMAP_PROGRESS.md` (ردیف ۲۴) |
-| قفلِ پیشین | ۱ | `DOCS_FREEZE_v1.0.0-rc32.md` — تاریخی شد و بنر گرفت |
+| سندِ جاافتاده در مانیفست | `❌ هیچ سندی جا نمانده — WAVE18_LOAD_TEST_REPORT.md` | ردیفِ سند افزوده شد |
+| شمارِ ردیف ≠ شمارِ سند | `ردیف ۳۱۱ در برابر ۳۱۲` | مانیفست با دیسک بازتولید شد |
+| هشِ کهنه | `HANDOFF.md, NATIONAL_ROADMAP_PROGRESS.md` | هشِ تازه |
 
-**چرا این ویرایش‌ها لازم بود.** ویو ۲۴ چهار KPI عملکرد را بست (`index.html` ‏۲٬۲۵۷٬۶۴۱→۱٬۶۵۷٬۰۰۳B،
-‏build ‏~۱۰۰→~۶۰ms، پارس استور ~۷۰→~۳۵-۴۰ms، ‏p95 درون‌پردازه ~۵ms) و طبق بریف باید
-سند راهنما و بخش عملکرد معماری ملی به‌روز می‌شد؛ طبق قاعدهٔ قفل §۱ بند ۳ سند تازه آزاد
-است ولی ویرایش دو سند فهرست‌شده بامپ می‌خواهد — همین سند.
+به‌علاوه، این دور دو سندِ فهرست‌شده را ویرایش کرد (`BUNDLE_REGISTRY.md` با ردیفِ باندلِ پ۵ — طبقِ §۶ بند ۳
+همان سند «افزودن ردیف تازه با بامپ انجام می‌شود» — و `NATIONAL_ROADMAP_PROGRESS.md` ردیفِ ۱۹ با شاهدِ
+مرجِ PR #۸۱). `rc33` بنرِ تاریخی گرفت و مانیفستش **دست‌نخورده** ماند. هیچ تستی ضعیف یا استثنا نشد.
 
 **زیرپوشه‌های بیرون مانیفست ریشه** (۲۰ سند؛ پوشش ساختاری‌شان را تست‌های پوشش
 می‌پایند و فهرست قطعی‌شان در نمایه ثبت شده است):
@@ -57,7 +57,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۳۱۱)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۳۱۳)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -85,7 +85,7 @@
 | `BEHAVIOR_GAMIFICATION.md` | `sha256:9c53d8e73346af73a1934b3fc5f23776895cdf016a4bd878d4b29c4e129deaa8` |
 | `BOTTLENECK_MAP.md` | `sha256:5c6be2301e932bc963ef9e18750343babf19d65af4e2acdf111cf0e76ad34c1d` |
 | `BUG_HUNT_REPORT.md` | `sha256:ca95ab098f2f512badd4758182e26cacfb54266801e1d74b217c03f25be318c1` |
-| `BUNDLE_REGISTRY.md` | `sha256:c4dd6dc3cdd0c081c8ec9481610cf8dac75559705bbc5f738919614f1218571d` |
+| `BUNDLE_REGISTRY.md` | `sha256:5cbe1a3bd02ffb4857af4f44a2159f9b628ab7a647b996cf74941adea6294c71` |
 | `CACHE_STRATEGY_DESIGN.md` | `sha256:9186d05e39cb8095593cfbe9cbcbd699bab519e41994255ebe3708102a3cca20` |
 | `CAPACITY.md` | `sha256:f99be9d2fd2b4cbcb4e0d6c043071625b6473c26ddaed777d7248e8d30989738` |
 | `CAPACITY_MODEL.md` | `sha256:6f939aced476d7b0e8e9f0155ec5c86ce348d7f4bc99a3cd49f5c87a3234ed74` |
@@ -115,7 +115,7 @@
 | `DEVELOPMENT.md` | `sha256:36583814876f4be82e6963dcf025160618576ed55a342296687ff942890af12e` |
 | `DISASTER_RECOVERY.md` | `sha256:786013c7d85b88ca5c93a2d464ff56038c0cd6295a7589df0e6d288a8023dfc3` |
 | `DISCOVERABILITY_R43.md` | `sha256:b0be575e99a75fadc310ede35eae24a63fd4e11a525d85e1947fb11d8b76c5ca` |
-| `DOCS_CONSISTENCY_REPORT.md` | `sha256:ddd8b0b9c8544c538182d82d178a214eb0f480ff264936938e82aa3cf7a309c5` |
+| `DOCS_CONSISTENCY_REPORT.md` | `sha256:725c2c967177c696c24cc10049da3469b780ae59455af72f5947ad2d55b91b3f` |
 | `DOCS_EXPORT_GUIDE.md` | `sha256:c5064687de82757e6bbbe10d35dfd29f2d37effe960f146511aefdd86c456fb5` |
 | `DOCS_FREEZE_v1.0.0-rc1.md` | `sha256:54a86e2f181e88a1c7062d0ecd7303ea4ed0fe080c627b272b977f2eb7709254` |
 | `DOCS_FREEZE_v1.0.0-rc10.md` | `sha256:0ae335dbeee27185dad172fb75ec395d5e7e0b56791313212a13692dbee8a7ad` |
@@ -143,13 +143,14 @@
 | `DOCS_FREEZE_v1.0.0-rc30.md` | `sha256:8f20cc0a0e0c754779ea6d92dc33ba92f8d4b6c48c778bd26de840dc297616ac` |
 | `DOCS_FREEZE_v1.0.0-rc31.md` | `sha256:029fc1faa7848eae2b62868f6ed5458a923dd604e53e4273b084e9b86f481457` |
 | `DOCS_FREEZE_v1.0.0-rc32.md` | `sha256:7e6e6f4d77a0d2f70861ce8f75d1d8dec21b7eae3571207eb4f19b8127257d1d` |
+| `DOCS_FREEZE_v1.0.0-rc33.md` | `sha256:6b507dd0d1c80e4d96583cd84e07b45cd02bada262172203bd67ee2ca8fbdba5` |
 | `DOCS_FREEZE_v1.0.0-rc4.md` | `sha256:c33ea913bef9630a24e34ab0348980e291570cad81d906fcf57908df96fdff73` |
 | `DOCS_FREEZE_v1.0.0-rc5.md` | `sha256:df97a36b50b8e4398fd8ac3090b1a2bd7ed1a113780ec8841c8b44e490dce79e` |
 | `DOCS_FREEZE_v1.0.0-rc6.md` | `sha256:ded449054c3464e7c34fc913cf3f71dc5745ffe24e34888cc1aceb94ee93782e` |
 | `DOCS_FREEZE_v1.0.0-rc7.md` | `sha256:f0bbd20a82f5d700283703a265d3fadbadc49198d442ebf10950441bf27c55c4` |
 | `DOCS_FREEZE_v1.0.0-rc8.md` | `sha256:361dfe21c653239ddad6873c394c454a5b2bdc1deb067f32de0686f08d96a205` |
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
-| `DOCS_HEALTH_REPORT.md` | `sha256:2dd7cba8f7c3e68eec958467ea54e69bc8558dd6358a7c25616c1636a494d979` |
+| `DOCS_HEALTH_REPORT.md` | `sha256:05b7bdc41510b730d45c63c2dcb1a63ab3c23c32ec36250dfcc80a5b6ede90d2` |
 | `DOCS_INDEX.md` | `sha256:c5aae7e5154dc188c05357989909846844331e7b1ec3f52cc2921e6aaab8de96` |
 | `DOCS_METRICS.md` | `sha256:08064e84710d96bebd80b4ade5ff80f207f2fa45bf958fd982f4e101ad960bfe` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
@@ -170,7 +171,7 @@
 | `GITHUB_COMPARISON.md` | `sha256:3a57d084d3f419f6799ef4ad7d49894b78418a61784ce9bbb3a21b7fe9cdc381` |
 | `GLOSSARY.md` | `sha256:6c57f358053b05223da135eeb892487a8921594978b320d37046290cda145e26` |
 | `GO_LIVE_PACKAGE.md` | `sha256:6b95a9ba516ff20327a51d348c103866983560b6c41b5dc9f3a467e755a76946` |
-| `HANDOFF.md` | `sha256:b2728286263bd7a7bc34142d1a9cb538f05e8b7cd0612738f81eb45cee412144` |
+| `HANDOFF.md` | `sha256:45a769850528c5b06e04c9ec2bc7f8c4bca8dabf672872699b816aa948f90c03` |
 | `HANDOFF_ARCHIVE.md` | `sha256:812efbb71396089dafa22af9a47570bc250c902cf8c5ce5a4807f8301ca4a763` |
 | `HA_POSTGRES.md` | `sha256:8a73c7c0d783b0c8139e518bfdfbd709109adb585170e313102f1a4c3bbca677` |
 | `HA_REDIS.md` | `sha256:aaabbaf59318616ef520a002de1e096e37b500e4c27592f67ac0627ca7854a34` |
@@ -198,7 +199,7 @@
 | `NATIONAL_BASELINE_PART3.md` | `sha256:66b2bf5e2df32e471a0b0b5e44a733764d9c01e2557aecb94a58b2f58b054d76` |
 | `NATIONAL_BASELINE_PART4.md` | `sha256:68d5446b6a2f2334ae8748412923431c6a3ad0e952dc70387dcc804d85bb5e01` |
 | `NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md` | `sha256:911f99cda41d415193f9179f5bb6183a6242c769f28a3471af38abb5bb81d228` |
-| `NATIONAL_ROADMAP_PROGRESS.md` | `sha256:437b9c20638869218dbc5aa3446d291b5de057f99b1dad7228ee9619e3cafd50` |
+| `NATIONAL_ROADMAP_PROGRESS.md` | `sha256:e33030c1e6c74233aa59efccd967131d769968b2b328fc60e0b4738d016bb6ab` |
 | `OBSERVABILITY.md` | `sha256:5220f088a47b84c01806871b574f47fae007785a9d4b58c3bad368e7e53423c0` |
 | `OBSERVABILITY_DEPLOYMENT.md` | `sha256:efaf413b9130c57a5473984bf24e0652f21fa7fa57099a0bf68ba191473822a9` |
 | `OBSERVABILITY_LIVE_SETUP.md` | `sha256:a99b046779fe46883733858080f338ee014c79c438db827da2d605037320d34c` |
@@ -351,6 +352,7 @@
 | `WAVE17_TESTING_PYRAMID.md` | `sha256:0d3a0dbbf345e618232bed22f4c648b8ad151668865665dc35c7ea9e7ab4b185` |
 | `WAVE18_LOAD_TESTING.md` | `sha256:ad120d888b6bd391632ce6145468879b6599daba1c9afac802cb10f04934f605` |
 | `WAVE18_LOAD_TEST_PLAN.md` | `sha256:a2df124b003624a1f5abd4c795d5f4bf78bdc54c0b2a7772402da04219d58960` |
+| `WAVE18_LOAD_TEST_REPORT.md` | `sha256:29eb83fd2a922b98a1ebef76b40b2bfab12cbdc5aff85457aea4d747d68d7ecd` |
 | `WAVE19_CHAOS_LIVE_REPORT.md` | `sha256:5f05e18363d65da6482cddb57199b13cb649961115f1dfc3107237c1f120e6df` |
 | `WAVE19_CHAOS_PLAN.md` | `sha256:19083ae992c1c2336d02db7286c6f0bdd46d3b555fdd3b06569e63e9b0607dd8` |
 | `WAVE19_WAL_DRILL_REPORT.md` | `sha256:6ab7c1ad7b67eeee6efdf941639f51923a67baa6210e0b8cccc12e7a16e1c2bd` |
