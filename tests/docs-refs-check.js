@@ -17,6 +17,7 @@ const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const TOOL = path.join(ROOT, 'tools', 'docs-refs-check.js');
 const BASELINE = path.join(ROOT, 'tools', 'docs-refs-baseline.json');
+const mod = require(TOOL);
 
 let pass = 0, fail = 0;
 const errors = [];
@@ -98,8 +99,57 @@ try {
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 
+grp('RC-IGNORE — قاعدهٔ «تولیدی» از .gitignore');
+/* باگی که این بخش می‌بندد: روی یک **کلونِ تازه** ‏`docs/_metadata.json` و
+   ‏`server/data/*.json` هنوز ساخته نشده‌اند، چون تولیدی‌اند و در `.gitignore`‌اند.
+   نسخهٔ نخست آن‌ها را «ارجاعِ کهنه» می‌شمرد و گیت را روی مخزنِ سالم قرمز
+   می‌کرد — و در درختِ کاریِ خودم سبز بود، چون آن فایل‌ها از اجرای قبلی
+   ابزار حضور داشتند. سبزی که به فایلِ بیرون از گیت وابسته باشد، سبزِ جعلی است. */
+const tmpG = fs.mkdtempSync(path.join(os.tmpdir(), 'refs-ignore-'));
+try {
+  fs.mkdirSync(path.join(tmpG, 'tools'), { recursive: true });
+  fs.mkdirSync(path.join(tmpG, 'docs'), { recursive: true });
+  const tTool = path.join(tmpG, 'tools', 'docs-refs-check.js');
+  fs.copyFileSync(TOOL, tTool);
+  const tBase = path.join(tmpG, 'tools', 'docs-refs-baseline.json');
+  fs.writeFileSync(tBase, JSON.stringify({ _why: 'probe', count: 0, known: [] }), 'utf8');
+  const gi = path.join(tmpG, '.gitignore');
+  fs.writeFileSync(gi, 'server/data/\ndocs/_meta.json\ntests/gen-out/\n', 'utf8');
+  /* سندی که فقط به خروجی‌های تولیدی ارجاع می‌دهد */
+  fs.writeFileSync(path.join(tmpG, 'docs', 'C.md'),
+    '# ج\n\n`server/data/payesh.json` و `docs/_meta.json` و `tests/gen-out/x.js`\n', 'utf8');
+
+  const g1 = run(['--check'], { cwd: tmpG, bin: tTool });
+  chk('ارجاع به خروجیِ ignore‌شده قرمز نمی‌کند (کلونِ تازه)', g1.code === 0,
+    'exit=' + g1.code + ' ' + g1.out.slice(0, 200));
+
+  const g2 = run(['--json'], { cwd: tmpG, bin: tTool });
+  let gd = null; try { gd = JSON.parse(g2.out); } catch (e) { /* پایین سنجیده می‌شود */ }
+  chk('مواردِ ردشده در --json دیده می‌شوند (ساکت قورت داده نمی‌شوند)',
+    !!gd && Array.isArray(gd.generatedSkipped) && gd.generatedSkipped.length === 3,
+    gd ? JSON.stringify(gd.generatedSkipped) : '—');
+  chk('قاعده پوشهٔ ignore‌شده را هم می‌گیرد (server/data/ → server/data/x.json)',
+    !!gd && gd.generatedSkipped.includes('server/data/payesh.json'));
+  chk('شمارِ ردشده‌ها در خروجیِ انسان‌خوان هست', g1.out.includes('تولیدی'), g1.out.slice(0, 200));
+
+  /* قاعده باید از خودِ .gitignore بیاید، نه از یک فهرستِ سخت‌کدشده */
+  fs.unlinkSync(gi);
+  const g3 = run(['--check'], { cwd: tmpG, bin: tTool });
+  chk('بدونِ .gitignore همان ارجاع‌ها دوباره قرمز می‌شوند (قاعده سخت‌کد نیست)',
+    g3.code === 1, 'exit=' + g3.code);
+  fs.writeFileSync(gi, 'server/data/\ndocs/_meta.json\ndist/\n', 'utf8');
+
+  /* قاعده نباید بدهیِ واقعی را ببلعد */
+  fs.appendFileSync(path.join(tmpG, 'docs', 'C.md'), '\nو `tests/real-ghost.js`\n', 'utf8');
+  const g4 = run(['--check'], { cwd: tmpG, bin: tTool });
+  chk('ارجاعِ کهنهٔ واقعی کنارِ تولیدی‌ها هنوز قرمز می‌کند', g4.code === 1, 'exit=' + g4.code);
+  chk('فقط همان ارجاعِ واقعی را نام می‌برد',
+    g4.out.includes('tests/real-ghost.js') && !g4.out.includes('docs/_meta.json'), g4.out.slice(0, 240));
+} finally {
+  fs.rmSync(tmpG, { recursive: true, force: true });
+}
+
 grp('RC-SCOPE — دامنهٔ پویش');
-const mod = require(TOOL);
 const docs = mod.allDocs();
 chk('docs/ و ریشهٔ مخزن را می‌پوید',
   docs.some((d) => d.includes(`${path.sep}docs${path.sep}`)) && docs.some((d) => path.dirname(d) === ROOT));
