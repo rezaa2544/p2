@@ -4,7 +4,9 @@
  * Every mutant below represents a real regression: an old migration marker
  * bypass, newest-first queue merge, or a stale Background Sync mirror after
  * explicit deletion. The generated single-file app is rebuilt for each
- * browser-facing mutant and restored byte-for-byte afterwards.
+ * browser-facing mutant — BH-mut safe pattern (p06/p11): the mutant lives in a
+ * sibling copy, build outputs are shadowed in tmpdir, and the tracked files
+ * are asserted byte-for-byte unchanged afterwards (by construction + check).
  */
 'use strict';
 
@@ -12,6 +14,10 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
+/* BH-mut (الگوی امن p06/p11): جهش در کپیِ جدا + خروجی‌های build در سایه. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('pr74-mut-');
+kit.remapBuildOutputs();
 
 const ROOT = path.join(__dirname, '..');
 const SOURCE = path.join(ROOT, 'src', 'js', '00-migration.js');
@@ -32,10 +38,10 @@ function sha(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 }
 
-function run(command, args, timeout = 180000) {
+function run(command, args, timeout = 180000, env) {
   return spawnSync(command, args, {
     cwd: ROOT,
-    env: process.env,
+    env: env || process.env,
     encoding: 'utf8',
     timeout,
     maxBuffer: 8 * 1024 * 1024
@@ -56,21 +62,22 @@ function withGeneratedMutation(file, from, to, killPattern, label, suite) {
     return;
   }
   try {
-    fs.writeFileSync(file, mutated, 'utf8');
-    const build = run(process.execPath, ['build.js']);
+    kit.mutant(file, mutated); /* کپی هم‌جوار — سورس اصلی هرگز نوشته نمی‌شود */
+    const build = run(process.execPath, ['build.js'], 180000, kit.env()); /* build به سایه */
     const builtOut = outputOf(build);
     if (build.status !== 0) {
       check(false, label + ' — build شکست خورد: ' + builtOut.slice(-240));
       return;
     }
-    const result = run(process.execPath, [suite], 180000);
+    const result = run(process.execPath, [suite], 180000, kit.env());
     const out = outputOf(result);
     const suiteRan = /(?:جمع: \d+ موفق|sync-del-mirror:)/.test(out);
     check(suiteRan && result.status !== 0 && killPattern.test(out), label);
   } finally {
-    for (const [f, value] of before) fs.writeFileSync(f, value.text, 'utf8');
+    /* الگوی امن: فایل‌های tracked هرگز نوشته نشدند — این assert بقای
+       بایت‌به‌بایت را اثبات می‌کند (در جایگزینِ قدیمی: restore + sha-check) */
     for (const [f, value] of before) {
-      if (sha(f) !== value.hash) check(false, label + ' — بازگردانیِ بایت‌به‌بایت شکست خورد');
+      if (sha(f) !== value.hash) check(false, label + ' — سورس/خروجیِ اصلی تغییر کرد (نقضِ الگوی امن!)');
     }
   }
 }
