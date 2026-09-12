@@ -1,5 +1,60 @@
 # دفترچهٔ تحویل کار — پایش
 
+## Handoff — پایان چت ۳: جمع‌بندی دورهای ۸۵/۸۶/۸۷ + تعیین تکلیف قیدهای زنده — ✅ (2026-09-12)
+
+**وضعیت:** چت ۳ سه قید سرخ/pending مهم را با زیرساخت واقعی (PostgreSQL 18.4 embedded و Redis 7.4.2 بیلد از سورس) بست — نه با fake.
+
+**دستاوردهای کلیدی:**
+- **Wave 3 (دور ۸۵):** گیت برابری JS↔SQL روی PG زنده (PR #96 @ `f2f0ba1`) — ۲۰/۲۰ سبز، ۵/۵ جهش کشته؛ همان روز روی کلاستر تازه بازراستی‌آزمایی مستقل شد (EXPLAIN: همه Index Scan ‏0.05–1.5ms؛ benchmark صادقانه: SQL keyset ‏~1.7ms در برابر JS full-scan ‏~19ms ≈ ۱۱× در ۱۵۷k — عدد ۴۸۰× متعلق به مقیاس 2.19M بدون ایندکس است).
+- **Wave 6+11 (دور ۸۶):** گیت زندهٔ Redis (PR #97 @ `83ad521`) — ۱۶/۱۶ سبز روی Redis واقعی، ۵/۵ جهش کشته؛ سوئیت `session-revocation` اولین‌بار بدون skip سبز شد (۱۸/۱۸).
+- **Wave 10 (دور ۸۷):** گیت زندهٔ PG با streaming replica واقعی + DDL پارتیشن‌بندی §۳.۲ (PR #99 @ `a8bc038`) — ۱۹/۱۹ سبز، ۵/۵ جهش کشته؛ قید سرخ §۳.۲ و قید صداقت §۵ سند WAVE10 بسته شد.
+- **مستندات:** ردیف‌های ملی ۳→🟡→(بند مهندسی ✅ در پوشهٔ گزارش‌ها) و ۶/۷/۱۰/۱۱/۱۳→🟡 با شواهد؛ گزارش روزانهٔ Wave 3 در `docs/daily-reports/2026-09-12-wave3.md` (PR #100 — باز، mergeable).
+
+**⚠️ قید صداقت — CI:** انسداد بیلینگ گیت‌هاب پابرجاست. تمامی گیت‌های زنده (PG و Redis) محلی اجرا و ثبت شدند؛ هارنس‌ها self-skip دارند تا CI در نبود زیرساخت قرمز نشود.
+
+**قیدهای باز و منتظر تصمیم ناظر:**
+1. تصمیم tenancy دربارهٔ `school_id IS NULL` (backfill به NOT NULL یا تغییر هم‌زمان مسیرهای JS/SQL؟) — پیش‌نیاز حذف `OR TRUE` از کوئری‌ها.
+2. Wave 13 — DAST زنده (منوط به استیجینگ)؛ PgBouncer و اعمال تولیدی پارتیشن‌بندی (لایهٔ استقرار).
+3. یافته‌های P0 بازبینی مستقل: P0-1 «Reporting DB-native» (ادامهٔ PR #93) و Offline E2E.
+4. مرج PR #100 (گزارش روزانه) و تعیین تکلیف PRهای باز قدیمی (#74/#76/#82/#91/#93/#94/#98).
+
+**گام بعدی:** بریف ناظر رسید — مأموریت بعدی: باقی‌ماندهٔ Wave 10 ‏(Observability پول در `/api/health`) + P0-1 ‏(Reporting DB-native). شروع در نشست بعد.
+
+## دور ۸۷ — چت ۳ · Wave 10: گیت زندهٔ PostgreSQL (replica + پارتیشن‌بندی) — قید pending بسته شد (۲۰۲۶-۰۹-۱۲)
+
+- **چه بسته شد:** قید سرخ §۳.۲ و قید صداقت §۵ سند `WAVE10_DB_SCALE.md` («read-replica واقعی و DDL پارتیشن‌بندی هرگز روی PG زنده اجرا نشده»).
+- **زیرساخت:** جفت PostgreSQL 18 واقعی با `embedded-postgres@18.4.0-beta.17` (در `/home/user/pgws`؛ باینری‌ها: `pgws/node_modules/@embedded-postgres/linux-x64/native/bin`). replica با روش استاندارد cold-copy: shutdown تمیز primary → `cp -a` → `standby.signal` + `primary_conninfo` (پکیج embedded باینری `pg_basebackup` ندارد — ENOENT؛ cold-copy جایگزین مستند PG است). دام: `persistent:false` در embedded-postgres هنگام `stop()` کل دایرکتوری داده را پاک می‌کند — برای copy باید `persistent:true` بود.
+- **گیت تازه (`tests/wave10-pg-live.js`) — ۱۹/۱۹:** P1..P4 خود رپلیکیشن (نقش‌ها، `pg_stat_replication` streaming، write→read واقعی WAL، رد write با 25006)؛ D1..D4 `server/db.js` با `DATABASE_URL`+`READ_DATABASE_URL` زنده (init ⇒ `read_replica:true`، queryRead⇒replica و query⇒primary با `pg_is_in_recovery`، رپلیکای خاموش ⇒ fallback بی‌خطا + خواباندن مسیریابی، بازگشت ⇒ reprobe خودکار S3-1 با `__setReprobeDelayForTests(300)`)؛ T1..T8 همان DDL §۳.۲ روی PG زنده (والد RANGE(created_at) + PK(id,created_at) + FK + سالانه+DEFAULT، مهاجرت از heap با tableoid-check، PK مرکب 23505، FK والد 23503، pruning در EXPLAIN، rename-swap + drop-old + ایندکس والد، و دیده‌شدن جدول پارتیشن‌شده روی replica). بدون باینری‌های PG (PATH یا `PG_LIVE_BIN`) یا ماژول `pg` ⇒ self-skip.
+- **جهش (`tests/wave10-pg-live-mutations.js`): ۵/۵ کشته** — isReplicaActive همیشه‌false، queryRead از primary، حذف fallback، reprobe عقیم، init بدون فعال‌سازی.
+- **migrations سالم:** هر ۸ مهاجرت (001..008) روی PG 18 زنده بدون خطا اجرا شد (۹۱ جدول).
+- **schema.sql محصول دست‌نخورده:** DDL پارتیشن فقط در گیت اجرا می‌شود؛ اعمال تولیدی (پنجرهٔ نگه‌داری) کار موج استقرار است. PgBouncer (§۴) هم لایهٔ استقرار می‌ماند.
+- **نقشهٔ ملی:** ردیف‌های ۶/۷/۱۰/۱۱/۱۳ از «⏳ در انتظار شروع» به 🟡 با شواهد به‌روز شد (کهنگی مستندات — کار از قبل انجام شده بود).
+- **رگرسیون:** wave10 ‏26/26 · wave10-query-audit ‏14/14 · db-replica-recovery ‏11/11 · run ‏35/35 · smoke ‏547/547.
+- **⚠️ CI:** همچنان مسدود بیلینگ — گیت زنده در CI منوط به رفع انسداد + باینری‌های PG.
+
+## دور ۸۶ — چت ۳ · Wave 6+11: گیت زندهٔ Redis — قید pending هر دو موج بسته شد (۲۰۲۶-۰۹-۱۲)
+
+- **چه بسته شد:** قید pending مشترک `WAVE6_REDIS_AUDIT.md` و `WAVE11_CACHE_STRATEGY.md` («ردیس زنده در ساندباکس نیست — همه با fake»).
+- **زیرساخت:** Redis **۷.۴.۲ از سورس** بیلد شد (`/tmp/redis-7.4.2`، `make MALLOC=libc`؛ باینری در `/home/user/.local/bin/redis-server` هم کپی شد تا `which` تست‌ها پیدایش کند). npm `redis-memory-server` دانلودش شکست؛ apt هم root می‌خواست — بیلد از سورس تنها راه بود (~۲ دقیقه).
+- **گیت تازه (`tests/wave6-11-redis-live.js`) — ۱۶/۱۶:** موج ۶: init واقعی، EX واقعی، incrWithTtl لغزان، قفل NX (۱ برنده از ۲۰ رقیب همزمان)، CAS-del فقط-صاحب، sets، pub/sub بین دو کلاینت جدا، denylist ابطال. موج ۱۱: L2 واقعی+TTL، invalidateUser/School، stampede (۵۰⇒۱ تولید)، W11-2 epoch (بازسازی ورودی خالص-L2 کهنه). بدون redis-server در PATH ⇒ self-skip.
+- **جهش (`tests/wave6-11-redis-live-mutations.js`): ۵/۵ کشته** — NX خنثی، CAS بی‌شرط، ابطال خنثی، epoch خاموش، حذف single-flight. (نکته: جهش epoch با تغییر نام فیلد پاکت کشته نمی‌شد — چون پاکت ناشناس مسیر legacy می‌رود؛ جهش درست = `if(false)` روی خود مقایسه.)
+- **جایزه:** گروه DIST سوئیت `session-revocation` اولین بار بدون skip سبز شد — **۱۸/۱۸** (ابطال بین‌نمونه‌ای روی Redis واقعی).
+- **نکتهٔ API کش:** امضای `setBootstrapCache(userId, data)` است و school از `data.school.id` می‌آید — نه آبجکت user.
+- **رگرسیون:** wave6 ‏22/22 · wave11 ‏35/35 · redis-fallback ‏10/10 · session-revocation ‏18/18 · run ‏35/35 · smoke ‏547/547.
+- **⚠️ CI:** مسدود بیلینگ — گیت زنده در CI منوط به رفع انسداد + نصب redis (سند ثبت شد).
+
+
+## دور ۸۵ — چت ۳ · Wave 3: گیت برابری JS↔SQL روی PG زنده — قید سرخ §۴ بسته شد (۲۰۲۶-۰۹-۱۲)
+
+- **چه بسته شد:** قید سرخ باز `docs/WAVE3_QUERY_PERFORMANCE.md` §۴ — «گیتِ برابریِ بایت‌به‌بایتِ مسیرِ JS و مسیرِ SQL».
+- **زیرساخت:** PostgreSQL ۱۸.۴ با `embedded-postgres` بیرون از ریپو (`/home/user/pgws`، دیتا در `/tmp/pg-wave3-data`، پورت ۵۵۴۳۳)؛ هر ۸ مهاجرت `migrations/` اعمال؛ سید: ۳ مدرسه، ~۱۰۱k کاربر، ۳۶k حضور (۴۰ روز × ۹۰۰ — سناریوی کرسر مرکب)، ۱۵۷k نمره، ۳۰k کلاس.
+- **گیت تازه (`tests/wave3-parity.js`):** route-handlerهای واقعی دو بار صدا می‌خورند (db=null → JS؛ PG زنده → SQL) و خروجی فیلد‌به‌فیلد مقایسه می‌شود (id/ترتیب/غنی‌سازی/pagination) + پیمایش کامل چندصفحه‌ای با next_cursor. **۲۰/۲۰ سبز** (۱۶ سناریو + ۴ walk تا ۲۰k ردیف). بدون DATABASE_URL ⇒ self-skip (الگوی بخش B).
+- **جهش (`tests/wave3-parity-mutations.js`): ۵/۵ کشته** — ترتیب برعکس، نشت مهار مدرسه، غنی‌سازی خراب، کرسر مرکب شکسته، has_more دروغین. فایل‌های جهش‌خورده پس از هر جهش restore می‌شوند (راستی‌آزمایی شد: tree تمیز).
+- **ضمناً:** بخش B سوئیت `wave3-query3` روی همین کلاستر **۲۵/۲۵** سبز شد (اولین اجرای زندهٔ مستقل پس از چت ۲). نکتهٔ عملی: B7 در مقیاس کوچک به‌حق قرمز است — planner برای جدول چندهزارتایی Seq Scan را به‌صرفه می‌داند؛ سید باید ده‌هاهزار ردیف باشد.
+- **رگرسیون:** run ‏35/35 · smoke ‏547/547 · authz ‏37/37 · wave3-query/query2/keyset ‏13+13+13 · گیت‌های مستندات همه سبز.
+- **⚠️ CI:** همچنان مسدود بیلینگ — گیت‌ها محلی.
+
+
 ## دور ۸۴ — چت ۳ · E.11: به‌روزرسانی راهنمای کاربر + بستن جدول E (۲۰۲۶-۰۹-۱۲)
 
 - **کشف:** جدول فاز E در `docs/ROADMAP.md` کهنه بود — E.2/E.3/E.6 مدت‌ها پیش انجام شده بودند (PR #33/#34 بستهٔ هفت‌گانه + `74-schedgen.js`) ولی ⏳ مانده بودند. با راستی‌آزمایی محلی (internship2 ‏4/4+جهش ‏5/5، dojo ‏6/6، schedule-gen ‏6/6+جهش ‏5/5، schedconf2 ‏9/9) هر سه ✅ شدند (`ef5b599`).
@@ -85,7 +140,7 @@
   (`d8880f4` و `613df6c`).
 - **ابزارِ تازه:** `tools/docs-refs-check.js` — ارجاعِ سند به فایلِ ناموجود را می‌گیرد.
   ‏`--check` (exit 1 فقط برای موردِ **تازه**) · `--baseline` (ثبتِ بدهیِ تاریخی با دلیل) ·
-  ‏`--json`. ‏**۷۱ ارجاعِ کهنهٔ تاریخی** در `tools/docs-refs-baseline.json` قفل شد؛
+  ‏`--json`. ‏**۷۶ ارجاعِ کهنهٔ تاریخی** در `tools/docs-refs-baseline.json` قفل شد (۷۱ + ۵ ارجاعِ گزارش‌های نقطه‌درزمانیِ `docs/daily-reports/` که این دور از شاخهٔ PR #100 وارد شد)؛
   مسیرهای قالب (`NN-my-feature.js`، ‏`MODULE.js`، ‏`docs/_export/`) با قاعده رد می‌شوند
   نه با خطِ پایه. تستِ خودِ ابزار: `tests/docs-refs-check.js` ‏**۲۹/۲۹**.
 - **مهاجرتِ ۰۰۸:** موج ۲۳ `008_wave23_report_logs.sql` را افزود ولی ردیفِ §۸
@@ -117,7 +172,7 @@
   ‏`server/data/*.json` بودند** — بدهیِ واقعی حذف نشد، فقط از شمارِ اشتباه بیرون آمد.
 - **شمارِ کهنه در سند:** چهار سند عددِ «۱۱۸» را می‌نوشتند در حالی که فایلِ خطِ پایه
   ‏۹۹ تا داشت — هیچ گیتی نگرفتشان. سنجهٔ تازهٔ `RC-DOC` هر عددِ کنارِ «ارجاعِ
-  کهنه»/«موردِ تاریخی» را با `count` فایل می‌سنجد؛ هر چهار سند به ۷۱ اصلاح شدند.
+  کهنه»/«موردِ تاریخی» را با `count` فایل می‌سنجد؛ هر چهار سند به ۷۶ اصلاح شدند.
 - **یافتهٔ CI (گزارش شد، رفع نشد):** هر ۷ شغلِ Actions روی **هر کامیت از جمله `main`**
   با «The job was not started because recent account payments have failed…» شکست
   می‌خورد — صورتحسابِ حساب است، نه کد. ‏`mergeable_state=unstable` پی‌آرها از همین

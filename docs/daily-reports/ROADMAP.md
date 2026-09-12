@@ -23,7 +23,7 @@
 |---|---|---|---|
 | 0 | Baseline و Freeze | ✅ | ۴ بخش + tag |
 | 1 | PostgreSQL Source of Truth [P0] | 🟡 | P0 کامل + PR #48؛ تعیین‌تکلیف پیاده‌سازی موازی چت ۳ |
-| 2 | Database Engineering | ✅ | migrations + سند معماری |
+| 2 | Database Engineering | ✅ | migrations + سند معماری؛ **این دور: مهاجرت ۰۰۹** (CHECK ‏report_logs + ۳ ایندکس مرکب tenant/delta اثبات‌شده؛ گیت زنده ۱۳/۱۳ + جهش ۵/۵) |
 | 3 | Query و Performance [P0] | ✅ | بند مهندسی بسته: builderها + ۷ ایندکس + EXPLAIN زنده (۲.۱۹M) + **گیت برابری JS↔SQL مرج (PR #96 @ `f2f0ba1`) و بازراستی‌آزمایی مستقل 2026-09-12 (۲۰/۲۰ + جهش ۵/۵ + `wave3-query3` B ‏۲۵/۲۵)** — گزارش: `2026-09-12-wave3.md`؛ قیود باز (خارج از کنترل مهندسی): tenancy `school_id IS NULL` (ناظر)، بخش B در CI (بیلینگ)، `CONCURRENTLY` (deployment) |
 | 4 | Sync / A01 | 🟡 | فاز ۴ با PR #71؛ اجرای ملی باز |
 | 5 | Authorization و Tenant Isolation [P0] | ✅ | مدل واحد policy؛ ۵/۵ جهش |
@@ -51,7 +51,7 @@
 
 | موج | وضعیت | مرجع |
 |---|---|---|
-| 10 (Database Scale) | ⏳ شروع‌نشده | ردیف ۱۰ |
+| 10 (Database Scale) | 🟡 دور ۸۷: گیت زندهٔ PG+replica ‏۱۹/۱۹ (PR #99 مرج)؛ این دور: ایندکس‌های دلتای tenant در ۰۰۹ + دوزیهٔ tenancy برای ناظر | ردیف ۱۰ + `2026-09-12.md` بخش چت ۳ |
 | 18 (National Load) | 🟡 اجرای سندباکس کامل امروز؛ استیجینگ واقعی باز | PR #94 + `2026-09-12.md` |
 | 21 (چندپایه) | ✅ مرج | PR #85 |
 | 22 | **UNMAPPED** — تعریف نشده در نقشهٔ مخزن | — |

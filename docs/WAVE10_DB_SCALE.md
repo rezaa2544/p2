@@ -15,8 +15,8 @@
 | مورد | وضعیتِ قبل | تغییرِ این موج |
 |---|---|---|
 | **Connection Pooling** | موجود — `server/db.js` از `pg.Pool` واقعی با min2/max20، timeout، auto-reconnect استفاده می‌کند | تقویت‌شده: pool هایِ primary و read-replica + مشاهده‌پذیری (`poolStats`/health) |
-| **Read Replica** | **نبود** — هیچ `READ_*`، هیچ pool خواندنی، همهٔ خوانش‌ها روی pool نوشتن | **افزوده شد** — pool رپلیکای اختیاری (`READ_DATABASE_URL`) + `queryRead()` |
-| **Partitioning** | **نبود** — `attendance`/`grades`/`notifications` جداولِ heap ساده‌اند | **طراحی ثبت شد** (پیاده‌سازی pending بر PG زنده) |
+| **Read Replica** | **نبود** — هیچ `READ_*`، هیچ pool خواندنی، همهٔ خوانش‌ها روی pool نوشتن | **افزوده شد** — pool رپلیکای اختیاری (`READ_DATABASE_URL`) + `queryRead()` — ✅ از ۲۰۲۶-۰۹-۱۲ رویِ streaming replica *واقعی* هم اثبات‌شده (`tests/wave10-pg-live.js`) |
+| **Partitioning** | **نبود** — `attendance`/`grades`/`notifications` جداولِ heap ساده‌اند | **طراحی ثبت شد** — ✅ از ۲۰۲۶-۰۹-۱۲ همان DDL §۳.۲ رویِ PG زنده اجرا و راستی‌آزمایی شد (`tests/wave10-pg-live.js` بخش T؛ schema.sqlِ محصول دست‌نخورده — اجرایِ تولیدی همچنان کارِ موجِ استقرار) |
 | **PgBouncer** | **نبود** (سندِ RELIABILITY_DR_PLAN به آن به‌عنوان لایهٔ استقرار اشاره دارد) | ثبت در §۴ (استقرارِ pending) |
 
 `server/db.js` همچنان تنها seamِ دسترسی به PG است — هیچ route مستقیماً به
@@ -70,7 +70,7 @@ READ_POOL_MAX       # (جدید) پیش‌فرض 10
 
 ---
 
-## ۳) پارتیشن‌بندی (DESIGN-ONLY — پیاده‌سازی pending بر PG زنده)
+## ۳) پارتیشن‌بندی (طراحی + ✅ اثباتِ زنده ۲۰۲۶-۰۹-۱۲ — اعمالِ تولیدی pending بر موجِ استقرار)
 
 هیچ جدولِ بزرگی امروز پارتیشن نیست. طراحیِ پیشنهادی برای موجِ دارای PG:
 
@@ -102,8 +102,16 @@ CREATE TABLE attendance_y2025 PARTITION OF attendance
 - نگهداشتِ پارتیشن (archive/drop پارتیشن‌هایِ قدیمی، افزودنِ پارتیشنِ آینده) کارِ
   cron/مهاجرتِ جداگانه است.
 
-> 🔴 **قید:** اجرایِ این DDL رویِ جدول‌هایِ موجود بدونِ PG زنده و بدونِ تستِ
-> میگرِش تأیید **نشده** و نباید در این سندباکس اجرا شود. به موجِ دارای PG موکول شد.
+> ✅ **قید بسته شد (۲۰۲۶-۰۹-۱۲ چت ۳):** همین DDL (والدِ `PARTITION BY RANGE (created_at)`
+> با `PRIMARY KEY (id, created_at)`، پارتیشن‌هایِ سالانه + `DEFAULT`، FK رویِ والد) به‌همراهِ
+> مسیرِ مهاجرت از heap (create-new + `INSERT…SELECT` + `setval` + rename-swap + drop-old +
+> بازسازیِ ایندکسِ `(school_id, date DESC, id)` رویِ والد) رویِ **PostgreSQL 18 زنده** با
+> **streaming replica واقعی** اجرا و ۸ قرارداد راستی‌آزمایی شد
+> (`tests/wave10-pg-live.js` بخش T — T1..T8: مسیریابیِ سطرها با `tableoid`، سطرِ
+> خارج‌ازبازه→DEFAULT، اعمالِ PK مرکب (23505)، اعمالِ FK رویِ والد (23503)،
+> partition pruning در پلن، و دیده‌شدنِ جدولِ پارتیشن‌شده رویِ replica).
+> `migrations/` و schema.sqlِ محصول عمداً دست‌نخورده ماند — **اعمالِ تولیدی**
+> (پنجرهٔ نگه‌داری + backup) همچنان کارِ موجِ استقرار است.
 
 ---
 
@@ -126,6 +134,14 @@ CREATE TABLE attendance_y2025 PARTITION OF attendance
   (jsdom، جدا از کدِ server) · `tools/check-authz.js` → **۰** ·
   `tests/secret-scan.js` → **۱۱/۱۱** · `build.js --check`.
 - تست‌هایِ وابسته به db/dbquery سبز ماندند: wave1-reads، wave3-query(+2)، wave4-sync.
-- **قیدِ صداقت:** اجرایِ واقعیِ read-replica و پارتیشن‌بندی بر PostgreSQL **pending**
-  است (در سندباکس PG زنده وجود ندارد). این موج با fake-DB راستی‌آزماییِ انضباطِ
-  مسیریابی (نوشتن→primary، GET-list سنگین→رپلیکا، fallback) را انجام می‌دهد.
+- **قیدِ صداقت (به‌روزرسانی ۲۰۲۶-۰۹-۱۲ چت ۳):** قیدِ «اجرایِ واقعیِ read-replica و
+  پارتیشن‌بندی pending» **بسته شد**. گیتِ زندهٔ `tests/wave10-pg-live.js` → **۱۹/۱۹**
+  رویِ PostgreSQL 18 واقعی (embedded، primary+streaming replica):
+  P1..P4 خودِ رپلیکیشن (streaming، انتشارِ WAL، ردِ write با 25006) ·
+  D1..D4 `server/db.js` با `DATABASE_URL`+`READ_DATABASE_URL` زنده (مسیریابیِ
+  queryRead→replica، query→primary، fallbackِ بی‌خطا با رپلیکایِ خاموش، بازگشتِ
+  خودکارِ S3-1) · T1..T8 DDL §۳.۲ + مهاجرت از heap. جهش‌سنجی:
+  `tests/wave10-pg-live-mutations.js` → **۵/۵ کشته**. هر دو سوئیت بدونِ باینریِ
+  PG (PATH یا `PG_LIVE_BIN`) یا ماژولِ `pg` **self-skip** می‌شوند تا CI بدونِ PG
+  قرمز نشود. آنچه هنوز pending است: PgBouncer (§۴، لایهٔ استقرار) و اعمالِ
+  تولیدیِ پارتیشن‌بندی رویِ دادهٔ واقعی (موجِ استقرار).
