@@ -149,6 +149,30 @@ try {
   fs.rmSync(tmpG, { recursive: true, force: true });
 }
 
+grp('RC-DOC — شمارِ خطِ پایه در مستندات کهنه نمی‌شود');
+/* باگِ دومِ همین پی‌آر: سند می‌گفت «۱۱۸ ارجاعِ کهنه» در حالی که فایلِ خطِ پایه
+   ۹۹ تا داشت. هیچ گیتی نگرفتشان. پس شمار را از خودِ فایل می‌خوانیم و هر سندی
+   که آن را به عدد نوشته می‌سنجیم — طبقِ §۵.۱ یا ابزار عدد را می‌سازد یا عدد
+   نباید در سند باشد. */
+const FA = '۰۱۲۳۴۵۶۷۸۹';
+const unfa = (str) => parseInt(String(str).split('').map((c) => {
+  const i = FA.indexOf(c); return i >= 0 ? String(i) : c;
+}).join(''), 10);
+const fa = (n) => String(n).split('').map((c) => FA[+c]).join('');
+const COUNT_RE = /([۰-۹0-9]+)\s*(?:ارجاعِ کهنه|موردِ تاریخی)/g;
+const claims = [];
+const docTexts = mod.allDocs().map((d) => ({ rel: path.relative(ROOT, d).split(path.sep).join('/'), text: fs.readFileSync(d, 'utf8') }));
+for (const d of docTexts) {
+  for (const m of d.text.matchAll(COUNT_RE)) claims.push({ doc: d.rel, n: unfa(m[1]) });
+}
+chk('دستِ‌کم یک سند شمارِ خطِ پایه را نوشته', claims.length > 0, String(claims.length));
+const wrong = claims.filter((c) => base && c.n !== base.count);
+chk('همهٔ شمارهای نوشته‌شده با فایلِ خطِ پایه می‌خوانند',
+  wrong.length === 0 && !!base, wrong.map((c) => `${c.doc}=${c.n}`).join('، ') + ` (درست: ${base && base.count})`);
+chk('شمارِ درست با رقمِ فارسی در سند نوشته شده',
+  !!base && docTexts.some((d) => d.text.includes(fa(base.count) + ' ارجاعِ کهنه') || d.text.includes(fa(base.count) + ' موردِ تاریخی')),
+  base ? fa(base.count) : '—');
+
 grp('RC-SCOPE — دامنهٔ پویش');
 const docs = mod.allDocs();
 chk('docs/ و ریشهٔ مخزن را می‌پوید',
