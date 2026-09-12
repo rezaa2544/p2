@@ -1,5 +1,13 @@
 # دفترچهٔ تحویل کار — پایش
 
+## دور ۸۲ — تکمیل: merge با main + بامپ قفل rc33 + PR #89 آماده (۲۰۲۶-۰۹-۱۲)
+
+- **merge با main:** `origin/main@efe364d` (کارهای چت ۶: docs-refs-check، قفل rc32، migration 008) به شاخهٔ ویو ۲۴ merge شد (`b93dfe1`)؛ تعارض HANDOFF با نگه‌داشتن هر دو ورودی حل شد.
+- **بامپ قفل مستندات rc32 → rc33** (`82033c2`): دو سند تازهٔ ویو ۲۴ + دو ویرایش (معماری §۷.۱، roadmap ردیف ۲۴) طبق قاعدهٔ قفل §۱ بند ۳ بامپ می‌خواست؛ مانیفست ۳۱۱ ردیف با `tools/docs-stats-sync --freeze`؛ rc32 بنر تاریخی گرفت؛ `docs-freeze-marker` ۱۴/۱۴.
+- **PR [#89](https://github.com/rezaa2544/p2/pull/89)** (از قبل توسط ناظر باز بود) با عنوان/بدنهٔ کامل ویو ۲۴ به‌روز شد: head `82033c2`، ۹ کامیت، ۲۷ فایل، `mergeable=true` / `mergeable_state=unstable` (فقط به‌خاطر چک‌های CI مسدودِ بیلینگ — شاخه محافظت ندارد، merge ممکن است).
+- **رگرسیون روی نتیجهٔ merge (همه سبز):** baseline --assert ‏4/4 KPI · perf-suites ‏26+11+20+15 · run ‏35/35 · smoke ‏547/547 · authz ‏37/37 · db-eng ‏14/14 · multi-grade ‏34/34 · secret-scan ‏11/11 · reports ‏35 · a11y ‏43/43+92/0+9/9+0crit · گیت‌های تازهٔ main: docs-refs-check ✅، a11y-regressions ‏54/54، freeze-marker ‏14/14، docs-index ‏75/75، docs-consistency ‏22/22، stats-sync --check ✅.
+- **تصمیم باز برای ناظر:** merge PR #89 (بدون CI سبز — مثل #88 با ثبت صادقانه) یا صبر تا رفع انسداد بیلینگ.
+
 ## دور ۸۲ — چت ۳ · Wave 24: بهینه‌سازی عملکرد — ۴/۴ KPI سبز (۲۰۲۶-۰۹-۱۲)
 
 **شاخه:** `feat/wave24-performance-optimization` (از `main@4cf53af` + گزارش آماده‌سازی `3e36378`)
