@@ -83,9 +83,17 @@ const SYNC = {
 };
 
 /* ---------- ذخیره‌سازی صف ---------- */
+/* P0-3 (آفلاین E2E): تا وقتی صف از دیسک خوانده نشده، هیچ saveQueue ای
+   حق بازنویسیِ sms_syncq_v1 را ندارد — وگرنه هر enqueueOp ی که پیش از
+   initSync اجرا شود (مولدِ دنیایِ دمو در بوت) صفِ نشستِ قبل را با
+   صفِ تقریباً خالیِ حافظه بازنویسی می‌کند و تغییراتِ آفلاینِ کاربر
+   پس از restart بی‌صدا گم می‌شوند. enqueueOp هم پیش از اولین نوشتن،
+   خودش خواندن را تضمین می‌کند (lazy-load). */
+var _QUEUE_LOADED = false;
 function loadQueue(){
   try{ SYNC.queue = Store.getJSON(SYNC_QUEUE_KEY, []) || []; }
   catch(e){ SYNC.queue = []; }
+  _QUEUE_LOADED = true;
   /* W7-1 (موج ۷): احیایِ sendingِ بی‌پاسخ. اگر مرورگر وسطِ ارسال کرش کرده
      (یا تب بسته شده)، قلم‌ها با وضعیتِ sending ذخیره مانده‌اند و syncNow
      فقط pending/failed را برمی‌دارد — بدونِ این احیا، برایِ همیشه می‌ماندند
@@ -109,6 +117,18 @@ function saveQueue(){
      وگرنه هر عملیات کل صف را دوباره JSON.stringify می‌کند و هزینه
      درجه‌دوم می‌شود. پرچم در 03-persistence.js مدیریت می‌شود. */
   if(typeof _BATCH_DEPTH !== 'undefined' && _BATCH_DEPTH > 0){ _BATCH_QUEUE_DIRTY = true; return true; }
+  /* P0-3: اولین نوشتن پیش از loadQueue (مولدِ دمو در بوت، قبل از
+     initSync) حق ندارد قلم‌هایِ ماندگارِ نشستِ قبل را له کند — قلم‌هایِ
+     دیسکی که در حافظه نیستند با uid ادغام می‌شوند و بعد نوشته می‌شود. */
+  if(!_QUEUE_LOADED){
+    try{
+      var _disk = Store.getJSON(SYNC_QUEUE_KEY, []) || [];
+      var _have = {};
+      for(var _i = 0; _i < SYNC.queue.length; _i++){ if(SYNC.queue[_i]) _have[SYNC.queue[_i].uid] = 1; }
+      for(var _j = 0; _j < _disk.length; _j++){ if(_disk[_j] && !_have[_disk[_j].uid]) SYNC.queue.push(_disk[_j]); }
+    }catch(e){}
+    _QUEUE_LOADED = true;
+  }
   return Store.setJSON(SYNC_QUEUE_KEY, SYNC.queue);   /* P1-10: خروجی false یعنی حافظهٔ مرورگر پر است */
 }
 function saveSyncMeta(){
