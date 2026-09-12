@@ -2747,9 +2747,11 @@ capWarned  : false,
 quotaWarned: false,
 dlqDropped : 0,
 };
+var _QUEUE_LOADED = false;
 function loadQueue(){
 try{ SYNC.queue = Store.getJSON(SYNC_QUEUE_KEY, []) || []; }
 catch(e){ SYNC.queue = []; }
+_QUEUE_LOADED = true;
 var revived = 0;
 for(var i = 0; i < SYNC.queue.length; i++){
 if(SYNC.queue[i] && SYNC.queue[i].status === 'sending'){ SYNC.queue[i].status = 'pending'; revived++; }
@@ -2764,6 +2766,15 @@ SYNC.lastSync = m.lastSync || null;
 }
 function saveQueue(){
 if(typeof _BATCH_DEPTH !== 'undefined' && _BATCH_DEPTH > 0){ _BATCH_QUEUE_DIRTY = true; return true; }
+if(!_QUEUE_LOADED){
+try{
+var _disk = Store.getJSON(SYNC_QUEUE_KEY, []) || [];
+var _have = {};
+for(var _i = 0; _i < SYNC.queue.length; _i++){ if(SYNC.queue[_i]) _have[SYNC.queue[_i].uid] = 1; }
+for(var _j = 0; _j < _disk.length; _j++){ if(_disk[_j] && !_have[_disk[_j].uid]) SYNC.queue.push(_disk[_j]); }
+}catch(e){}
+_QUEUE_LOADED = true;
+}
 return Store.setJSON(SYNC_QUEUE_KEY, SYNC.queue);
 }
 function saveSyncMeta(){
