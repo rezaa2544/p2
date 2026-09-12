@@ -162,6 +162,7 @@
 | ۱۷ | `WAVE17_TESTING.md` (فهرست سوئیت/قرارداد/نتایج ۷۳/۷۳) · `WAVE17_TESTING_PYRAMID.md` | ✅ |
 | ۱۸ | `WAVE18_LOAD_TEST_PLAN.md` (ورودی اجرایی؛ طرح رسمی = `LOAD_TEST_PLAN.md`) | ✅ |
 | ۱۹ | `WAVE19_CHAOS_PLAN.md` | ✅ |
+| ۲۳ | `WAVE23_DB_NATIVE_REPORTS.md` (گزارش‌های DB-native: معماری چهار گزارش، سنجهٔ پیش/پس روی PostgreSQLِ واقعی، `EXPLAIN ANALYZE`) | ✅ |
 
 ### ۲.۹ هماهنگی و تحویل
 
