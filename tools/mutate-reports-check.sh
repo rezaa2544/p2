@@ -114,23 +114,23 @@ run 'M2 * 20 → * 10 (ضریبِ نرمال)' \
 run 'M3 MX_NUM > 0 → >= 0 (تقسیم بر صفر)' \
   'WHEN ${MX_VALID} AND ${MX_NUM} > 0 THEN' \
   'WHEN ${MX_VALID} AND ${MX_NUM} >= 0 THEN' \
-  'GAP:فیکسچر ردیفی با max_score عددیِ صفر ندارد؛ PG در این حالت division by zero می‌دهد'
+  'GAP:در دو سنجهٔ این ابزار زنده است (فیکسچر max_score صفر ندارند)؛ پوششِ واقعی در tests/wave23-norm-edge-mutations.js جهش N1 کشته می‌شود'
 # M4 — max_score منفی باید ردیف را حذف کند (NULL)، نه صفر.
 run 'M4 max_score<0 ⇒ NULL → 0' \
   'WHEN ${MX_VALID} AND ${MX_NUM} < 0 THEN NULL' \
   'WHEN ${MX_VALID} AND ${MX_NUM} < 0 THEN 0' \
-  'GAP:فیکسچر max_score منفی ندارد؛ چنین ردیفی باید از count/sum بیرون بماند'
+  'GAP:در دو سنجهٔ این ابزار زنده است؛ پوششِ واقعی در tests/wave23-norm-edge-mutations.js جهش N2 کشته می‌شود'
 # M5 — کستِ عددی نباید اعشار را ببرد.
 run 'M5 max_score::numeric → ::int (گرد کردن)' \
   'const MX_NUM = `btrim(g.max_score)::numeric`;' \
   'const MX_NUM = `btrim(g.max_score)::int`;' \
-  'GAP:فیکسچر max_score اعشاری ندارد (مثلاً 19.5)'
+  'GAP:در دو سنجهٔ این ابزار زنده است؛ پوششِ واقعی در tests/wave23-norm-edge-mutations.js جهش N3 کشته می‌شود'
 # M6 — score تهی باید صفر حساب شود، نه NULL.
 run 'M6 COALESCE(g.score,0) → g.score' \
   'THEN COALESCE(g.score, 0) * 20 / ${MX_NUM}' \
   'THEN g.score * 20 / ${MX_NUM}' \
  \
-  'GAP:فیکسچر score=NULL ندارد'
+  'GAP:در دو سنجهٔ این ابزار زنده است؛ پوششِ واقعی در tests/wave23-norm-edge-mutations.js جهش N4 کشته می‌شود'
 echo ""
 echo "▸ جهش‌های ساختاری (صفحه‌بندی، JOIN، گرد کردن)"
 # M7 — LEFT JOIN باید کلاسِ بی‌نمره را با cnt=0 نگه دارد.
@@ -165,9 +165,10 @@ echo "────────────────────────�
 echo "نتیجه: کشته=$KILLED · زندهٔ بی‌حساب=$SURVIVED · زندهٔ شناخته‌شده=$GAP · هم‌ارز=$EQ · اعمال‌نشده=$NOTAPPLIED · تناقضِ طبقه‌بندی=$MISMATCH"
 if [ "$GAP" -gt 0 ]; then
   echo ""
-  echo "⚠ این $GAP جهشِ شناخته‌شده روی main زنده می‌ماند و نقصِ واقعیِ پوشش است،"
-  echo "  نه سبز. رفعش یعنی افزودنِ چهار ردیفِ فیکسچر به tests/wave23-reports-pg.js:"
-  echo "  max_score='0' · max_score منفی · max_score اعشاری · score=NULL."
+  echo "⚠ این $GAP جهش در دو سنجهٔ **این ابزار** زنده می‌ماند چون فیکسچرهایشان"
+  echo "  این لبه‌ها را ندارند (max_score='0' · منفی · اعشاری · score=NULL)."
+  echo "  پوششِ واقعی‌شان در tests/wave23-norm-edge-mutations.js است که هر چهار"
+  echo "  جهشِ لبه را با فیکسچرِ اختصاصی و تغییرِ عدد می‌کُشد؛ آن گیت را هم اجرا کنید."
 fi
 if [ "$SURVIVED" -eq 0 ] && [ "$NOTAPPLIED" -eq 0 ] && [ "$MISMATCH" -eq 0 ]; then
   echo "mutate-reports-check: سبز ✅ (هر جهش یا کشته شد یا از پیش مستند و راستی‌آزمایی شده)"
