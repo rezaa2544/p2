@@ -1585,8 +1585,30 @@ const $ = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>Array.prototype.slice.call(r.querySelectorAll(s));
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const escAttr = v => String(v??'').replace(/[&<>"'`=]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;','=':'&#61;'}[c]));
-const fa = n => (n===null||n===undefined||n==='')?'—':Number(n).toLocaleString('fa-IR',{maximumFractionDigits:2});
-const jalali = iso => { if(!iso) return '—'; try{ return new Intl.DateTimeFormat('fa-IR-u-ca-persian',{year:'numeric',month:'long',day:'numeric'}).format(new Date(iso)); }catch(e){ return iso; } };
+var _FA_CACHE = new Map(), _FA_CACHE_MAX = 4096;
+const fa = n => {
+if(n===null||n===undefined||n==='') return '—';
+var hit = _FA_CACHE.get(n);
+if(hit !== undefined) return hit;
+var out = Number(n).toLocaleString('fa-IR',{maximumFractionDigits:2});
+if(_FA_CACHE.size >= _FA_CACHE_MAX) _FA_CACHE.clear();
+_FA_CACHE.set(n, out);
+return out;
+};
+var _JAL_CACHE = new Map(), _JAL_CACHE_MAX = 2048, _JAL_FMT = null;
+const jalali = iso => {
+if(!iso) return '—';
+var hit = _JAL_CACHE.get(iso);
+if(hit !== undefined) return hit;
+var out;
+try{
+if(!_JAL_FMT) _JAL_FMT = new Intl.DateTimeFormat('fa-IR-u-ca-persian',{year:'numeric',month:'long',day:'numeric'});
+out = _JAL_FMT.format(new Date(iso));
+}catch(e){ out = iso; }
+if(_JAL_CACHE.size >= _JAL_CACHE_MAX) _JAL_CACHE.clear();
+_JAL_CACHE.set(iso, out);
+return out;
+};
 const todayISO = ()=> new Date().toISOString().slice(0,10);
 const daysAgoISO = d => { const t=new Date(); t.setDate(t.getDate()-d); return t.toISOString().slice(0,10); };
 const DAYS=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه'];
@@ -2744,8 +2766,24 @@ Store.setJSON(SYNC_META_KEY, { lastSync: SYNC.lastSync });
 function saveDlq(){
 Store.setJSON(SYNC_DLQ_KEY, SYNC.dlq);
 }
+var _QB_CACHE = { ref: null, len: -1, at: 0, val: 0 };
 function queueBytes(){
-try{ return JSON.stringify(SYNC.queue).length; }catch(e){ return 0; }
+try{
+var q = SYNC.queue, now = Date.now();
+if(_QB_CACHE.ref === q && (now - _QB_CACHE.at) < 250){
+if(_QB_CACHE.len === q.length) return _QB_CACHE.val;
+if(q.length > _QB_CACHE.len){
+var v2 = _QB_CACHE.val;
+for(var i=_QB_CACHE.len;i<q.length;i++) v2 += JSON.stringify(q[i]).length + 1;
+_QB_CACHE.len = q.length; _QB_CACHE.val = v2;
+return v2;
+}
+}
+var v = JSON.stringify(q).length;
+_QB_CACHE.ref = q; _QB_CACHE.len = q.length;
+_QB_CACHE.at = now; _QB_CACHE.val = v;
+return v;
+}catch(e){ return 0; }
 }
 function queueRatio(){
 return Math.max(
