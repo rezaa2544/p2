@@ -12,6 +12,11 @@
 'use strict';
 const { spawnSync } = require('child_process');
 const fs = require('fs');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و
+   بازنویسی نمی‌شود — بازگردانیِ دستی و rebuildِ پایانی حذف شدند. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('s11-mut-');
+
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -56,8 +61,8 @@ const MUTS = [
   }
 ];
 
-function runSuite(){
-  const r = spawnSync('node', ['--max-old-space-size=1500', SUITE], { encoding: 'utf8', cwd: ROOT });
+function runSuite(e){
+  const r = spawnSync('node', ['--max-old-space-size=1500', SUITE], { encoding: 'utf8', cwd: ROOT, env: e });
   return { code: r.status, out: (r.stdout || '') + (r.stderr || '') };
 }
 
@@ -71,15 +76,17 @@ if(base.code !== 0){ console.error('پایه سبز نیست:\n' + base.out.spli
 console.log('پایه: ' + (base.out.match(/(\d+) بررسی/) || [])[1] + ' بررسی سبز');
 
 let ok = 0;
+let prevAbs = null;
 for(const m of MUTS){
   const fp = path.join(ROOT, m.file);
+  if (prevAbs && prevAbs !== fp) kit.clear(prevAbs);
+  prevAbs = fp;
   const orig = fs.readFileSync(fp, 'utf8');
   const n = orig.split(m.bad).length - 1;
   if(n !== 1){ console.log('  FAIL ' + m.name + ' :: anchor count ' + n); process.exit(1); }
-  fs.writeFileSync(fp, orig.replace(m.bad, m.mut), 'utf8');
-  let r = runSuite();
-  if(crashed(r)){ const r2 = runSuite(); if(!crashed(r2)) r = r2; }
-  fs.writeFileSync(fp, orig, 'utf8');
+  kit.mutant(fp, orig.replace(m.bad, m.mut)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
+  let r = runSuite(kit.env());
+  if(crashed(r)){ const r2 = runSuite(kit.env()); if(!crashed(r2)) r = r2; }
   if(crashed(r)){ console.log('  FAIL ' + m.name + ' — خطای محیطی: فرآیند بدون خروجی/با کرش (حافظه) — نه کشته و نه زنده شمرده شد'); process.exit(1); }
   const killed = r.code !== 0;
   if(killed){ ok++; console.log('  PASS ' + m.name + ' — کشته شد (' + m.expect + ')'); }
