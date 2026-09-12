@@ -142,7 +142,9 @@ db.init(store).then(async info => {
     try {
       const h = await db.hydrateStoreFromPg(store);
       console.log('[DB] Hydrated ' + h.hydrated + ' collections from PostgreSQL' +
-        (h.skipped.length ? ' (skipped: ' + h.skipped.join(',') + ')' : ''));
+        (h.skipped.length ? ' (skipped: ' + h.skipped.join(',') + ')' : '') +
+        (h.capped && h.capped.length ? ' (capped: ' + h.capped.join(',') + ')' : '') +
+        (h.env_skipped && h.env_skipped.length ? ' (env-skipped: ' + h.env_skipped.join(',') + ')' : ''));
     } catch (e) { console.warn('[DB] Hydration warning:', e.message); }
   }
 }).catch(err => {
