@@ -29,6 +29,9 @@ APIPORT="${W18_PORT:-3000}"
 SCALE="${W18_SCALE:-0.001}"
 DB="${W18_DB:-payesh_db}"
 DBUSER="${W18_DBUSER:-payesh_user}"
+# پسوردِ نقشِ staging: پیش‌فرض دارد تا bootstrap بی‌arg کار کند، ولی
+# قابلِ override است — در استیجینگِ اشتراکی حتماً W18_DB_PASS بدهید.
+DBPASS="${W18_DB_PASS:-w18_staging}"
 
 log() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
 die() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
@@ -81,7 +84,7 @@ export PGHOST="$RUN/sock" PGPORT="$PGPORT" PGUSER=postgres
 
 log "3/6 role + database"
 "$PGBIN/psql" -tAc "select 1 from pg_roles where rolname='$DBUSER'" | grep -q 1 \
-  || "$PGBIN/psql" -q -c "create role $DBUSER login password 'w18_staging'"
+  || "$PGBIN/psql" -q -c "create role $DBUSER login password '$DBPASS'"
 "$PGBIN/psql" -tAc "select 1 from pg_database where datname='$DB'" | grep -q 1 \
   || "$PGBIN/psql" -q -c "create database $DB owner $DBUSER"
 echo "    $DB (owner $DBUSER) ready"
