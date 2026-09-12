@@ -1,5 +1,17 @@
 # دفترچهٔ تحویل کار — پایش
 
+## دور ۸۶ — چت ۳ · Wave 6+11: گیت زندهٔ Redis — قید pending هر دو موج بسته شد (۲۰۲۶-۰۹-۱۲)
+
+- **چه بسته شد:** قید pending مشترک `WAVE6_REDIS_AUDIT.md` و `WAVE11_CACHE_STRATEGY.md` («ردیس زنده در ساندباکس نیست — همه با fake»).
+- **زیرساخت:** Redis **۷.۴.۲ از سورس** بیلد شد (`/tmp/redis-7.4.2`، `make MALLOC=libc`؛ باینری در `/home/user/.local/bin/redis-server` هم کپی شد تا `which` تست‌ها پیدایش کند). npm `redis-memory-server` دانلودش شکست؛ apt هم root می‌خواست — بیلد از سورس تنها راه بود (~۲ دقیقه).
+- **گیت تازه (`tests/wave6-11-redis-live.js`) — ۱۶/۱۶:** موج ۶: init واقعی، EX واقعی، incrWithTtl لغزان، قفل NX (۱ برنده از ۲۰ رقیب همزمان)، CAS-del فقط-صاحب، sets، pub/sub بین دو کلاینت جدا، denylist ابطال. موج ۱۱: L2 واقعی+TTL، invalidateUser/School، stampede (۵۰⇒۱ تولید)، W11-2 epoch (بازسازی ورودی خالص-L2 کهنه). بدون redis-server در PATH ⇒ self-skip.
+- **جهش (`tests/wave6-11-redis-live-mutations.js`): ۵/۵ کشته** — NX خنثی، CAS بی‌شرط، ابطال خنثی، epoch خاموش، حذف single-flight. (نکته: جهش epoch با تغییر نام فیلد پاکت کشته نمی‌شد — چون پاکت ناشناس مسیر legacy می‌رود؛ جهش درست = `if(false)` روی خود مقایسه.)
+- **جایزه:** گروه DIST سوئیت `session-revocation` اولین بار بدون skip سبز شد — **۱۸/۱۸** (ابطال بین‌نمونه‌ای روی Redis واقعی).
+- **نکتهٔ API کش:** امضای `setBootstrapCache(userId, data)` است و school از `data.school.id` می‌آید — نه آبجکت user.
+- **رگرسیون:** wave6 ‏22/22 · wave11 ‏35/35 · redis-fallback ‏10/10 · session-revocation ‏18/18 · run ‏35/35 · smoke ‏547/547.
+- **⚠️ CI:** مسدود بیلینگ — گیت زنده در CI منوط به رفع انسداد + نصب redis (سند ثبت شد).
+
+
 ## دور ۸۵ — چت ۳ · Wave 3: گیت برابری JS↔SQL روی PG زنده — قید سرخ §۴ بسته شد (۲۰۲۶-۰۹-۱۲)
 
 - **چه بسته شد:** قید سرخ باز `docs/WAVE3_QUERY_PERFORMANCE.md` §۴ — «گیتِ برابریِ بایت‌به‌بایتِ مسیرِ JS و مسیرِ SQL».
