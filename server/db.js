@@ -398,7 +398,7 @@ async function readOne(name, id) {
  * @returns {Promise<{ok:boolean, hydrated:number, skipped:Array}>}
  */
 async function hydrateStoreFromPg(store) {
-  const out = { ok: true, hydrated: 0, skipped: [], capped: [], env_skipped: [] };
+  const out = { ok: true, hydrated: 0, skipped: [], capped: [], env_skipped: [], mirror_incomplete: false };
   if (!store || typeof store !== 'object') return out;
   /* Wave 18 — هیدراتاسیونِ مقیّد (مانورِ بارِ ملی): در مقیاسِ ملی، بارگذاریِ
      کلِ جدول‌ها در RAM ممکن نیست (کاربران ۱۰M ⇒ چند GB شیءِ JS؛ OOM در بوت).
@@ -439,7 +439,33 @@ async function hydrateStoreFromPg(store) {
       console.warn('[DB] Hydration skipped for ' + key + ':', e.message);
     }
   }
+  /* بازخوردِ بازبینِ PR #94: آینهٔ سقف‌دار/ناقص هرگز نباید روی فایلِ
+     store.json نوشته شود — فایلِ کاملِ قبلی را می‌کُشد. این پرچم به
+     index.js می‌گوید مسیرهای persist فایل را در PG-live ببندد. */
+  out.mirror_incomplete = out.capped.length > 0 || out.env_skipped.length > 0;
   return out;
+}
+
+/**
+ * آیا آینهٔ درون‌حافظه‌ای را باید روی store.json نوشت؟
+ * خالث/خالص — قابلِ تستِ مستقیم (tests/wave18-hydration-guards.js).
+ * فقط وقتی «نه» می‌گوید که PG مرجع است و هیدراتاسیون عمداً بریده
+ * بوده (capped/env-skipped). هر حالتِ دیگر — از جمله آینهٔ کامل و
+ * حالتِ بدونِ PG — رفتارِ قبلی (نوشتن) را حفظ می‌کند.
+ */
+function shouldPersistMirrorFile(pgLive, hydrateResult){
+  return !(pgLive && hydrateResult && hydrateResult.mirror_incomplete);
+}
+
+/**
+ * آیا سقفِ هیدراتاسیون جدولِ users را بریده؟ (هشدارِ بوت: کاربرانِ
+ * بیرونِ سقف با auth مبتنی بر آینه نمی‌توانند وارد شوند — فقط برای
+ * محیط‌های آزمونِ بار معنا دارد.)
+ */
+function hydrationUsersCapped(h){
+  return !!(h && Array.isArray(h.capped) && h.capped.some(function(s){
+    return String(s).split(':')[0] === 'users';
+  }));
 }
 
 /**
@@ -737,6 +763,8 @@ function __setReprobeDelayForTests(ms) {
 module.exports = {
   init,
   isPostgres,
+  shouldPersistMirrorFile,
+  hydrationUsersCapped,
   getPool,
   isReplicaActive,
   getReadPool,
