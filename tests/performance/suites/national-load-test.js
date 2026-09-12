@@ -42,6 +42,10 @@ const NATIONAL = {
 const BASE = __ENV.PAYESH_BASE_URL || 'http://localhost:3000';
 const PHONE = __ENV.PAYESH_PHONE || '09999838444';
 const NID = __ENV.PAYESH_NID || '';
+/* کاربرِ آزمون باید «teacher» باشد و یک دانش‌آموزِ ثبت‌نام‌شده در کلاسِ خودش
+   داشته باشد؛ وگرنه authz درستاً رد می‌کند (role_denied / out_of_scope) و
+   سنجهٔ نوشتن بی‌معنا می‌شود. PAYESH_STUDENT_ID از دادهٔ واقعیِ دیتاست می‌آید. */
+const STUDENT_ID = parseInt(__ENV.PAYESH_STUDENT_ID || '0', 10);
 const SCENARIO = (__ENV.SCENARIO || 'all').toLowerCase();
 
 /* هر سناریو با نسبتی از بارِ ملی اجرا می‌شود؛ پیش‌فرض‌ها برای یک محیطِ
@@ -81,10 +85,10 @@ export const options = {
         startRate: STRESS_START, timeUnit: '1s',
         preAllocatedVUs: STRESS_START, maxVUs: STRESS_MAX * 2,
         stages: [
-          { target: STRESS_START * 4, duration: '5m' },
-          { target: STRESS_START * 16, duration: '5m' },
-          { target: STRESS_MAX, duration: '10m' },
-          { target: STRESS_MAX, duration: '5m' }
+          { target: STRESS_START * 4, duration: DUR_STAGE },
+          { target: STRESS_START * 16, duration: DUR_STAGE },
+          { target: STRESS_MAX, duration: DUR_STRS },
+          { target: STRESS_MAX, duration: DUR_STAGE }
         ]
       }
     } : {},
@@ -137,7 +141,12 @@ function login() {
   if (!ok) return null;
   const setCookie = res.headers['Set-Cookie'];
   const raw = Array.isArray(setCookie) ? setCookie.join('; ') : String(setCookie || '');
-  return raw.split(';').map((c) => c.trim()).filter((c) => c.indexOf('=') > 0).join('; ');
+  const cookie = raw.split(';').map((c) => c.trim()).filter((c) => c.indexOf('=') > 0).join('; ');
+  /* هویتِ واقعیِ کاربرِ login‌شده را برمی‌گردانیم. نوشتنِ `by` با شناسهٔ
+     هاردکد، گاردِ forged_by سرور را فعال می‌کند و همهٔ نوشتن‌ها رد می‌شوند. */
+  let me = null;
+  try { me = res.json('user'); } catch (e) { me = null; }
+  return { cookie, user: me || {} };
 }
 
 let uidSeq = 0;
@@ -157,34 +166,50 @@ function readMix(cookie) {
 }
 
 /* ── سناریوی نوشتن (sync) ─────────────────────────────────────────── */
-function writeOnce(cookie) {
+function writeOnce(sess) {
+  const cookie = sess && sess.cookie;
+  const me = (sess && sess.user) || {};
+  /* فقط فیلدهایِ مجازِ مدلِ teacher_notes (authz/model.json):
+     body, created_at, school_id, student_id, teacher_id, updated_at.
+     هر کلیدِ دیگر ⇒ unknown_field (fail-closed). */
+  const data = { school_id: me.school_id || 1, teacher_id: me.id || 1, body: 'k6 load probe' };
+  if (STUDENT_ID) data.student_id = STUDENT_ID;
   const body = JSON.stringify({
-    ops: [{
-      uid: uid(), t: 'ins', c: 'teacher_notes',
-      data: { school_id: 1, teacher_id: 3, body: 'k6 load probe' },
-      by: 1, at: new Date().toISOString()
-    }]
+    ops: [{ uid: uid(), t: 'ins', c: 'teacher_notes', data,
+            by: me.id || 1, at: new Date().toISOString() }]
   });
   const t0 = Date.now();
   const res = http.post(BASE + '/api/sync', body,
     { headers: { 'content-type': 'application/json', cookie: cookie || '' } });
   syncLatency.add(Date.now() - t0);
   writesPerSec.add(1);
-  const good = res.status === 200;
+  /* سرور برایِ نوشتنِ ردشده هم HTTP 200 می‌دهد و `ok:false` را در body
+     می‌گذارد (مثلاً forged_by). سنجهٔ write_errors باید body را بخواند،
+     وگرنه یک اجرایِ کاملاً ردشده «سبز» گزارش می‌شود. */
+  let good = false, code = 'unparsed';
+  try {
+    const j = res.json();
+    code = (j && j.code) || (j && j.results && j.results[0] && j.results[0].code) || '';
+    good = res.status === 200 && j && j.ok !== false &&
+      (!j.results || j.results.every((r) => r.ok !== false));
+  } catch (e) { good = false; }
   writeErrors.add(!good);
-  check(res, { 'sync 200': () => good });
+  check(res, { 'sync accepted (ok in body)': () => good });
+  if (!good) syncRejects.add(code || 'unknown');
 }
 
 export function setup() {
-  const cookie = login();
-  return { cookie, model: NATIONAL };
+  const sess = login();
+  if (!sess) throw new Error('login در setup شکست خورد — PAYESH_PHONE/PAYESH_NID را بررسی کنید');
+  return { sess, model: NATIONAL };
 }
 
 export default function (data) {
-  const cookie = data && data.cookie;
+  const sess = data && data.sess;
+  const cookie = sess && sess.cookie;
   group('read mix', () => readMix(cookie));
   /* نسبتِ ۸ خواندن به ۱ نوشتن، همان چیزی که مدلِ ملی فرض می‌کند */
-  if (__ITER % 8 === 0) group('write', () => writeOnce(cookie));
+  if (__ITER % 8 === 0) group('write', () => writeOnce(sess));
   sleep(Math.random() * 0.4 + 0.1);
 }
 
