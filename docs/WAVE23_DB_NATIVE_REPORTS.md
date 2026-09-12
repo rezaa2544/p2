@@ -186,10 +186,22 @@ Execution Time: 0.603 ms   (روی ۳۶٬۰۰۰ رکورد)
 ## ۸. قلم‌های باز
 
 1. سه گزارشِ دیگر هنوز in-memory‌اند (§۴).
-2. `finance` روی `school.school_type` تکیه می‌کند در حالی که ستونِ PostgreSQL
-   ‏`type` نام دارد — **بررسی‌نشده**؛ اگر `hydrateStoreFromPg` این نام را
-   بازنگرداند، `schoolHasTuition()` در حالتِ PG-live همیشه `false` می‌دهد. باید
-   جداگانه سنجیده شود.
+2. **باگِ تأییدشده (رفع‌نشده):** ‏`schoolHasTuition()` روی `school.school_type`
+   تکیه می‌کند ولی ستونِ PostgreSQL ‏`type` نام دارد و `reviveRows()` در
+   ‏`server/db.js` فقط مقدار‌های رشته‌ای را JSON-parse می‌کند و هیچ ستونی را
+   تغییرِ نام نمی‌دهد. اندازه‌گیریِ مستقیم روی دیتابیسِ واقعی:
+
+   ```
+   keys from PG: [ 'type' ]        has school_type? false
+   schoolHasTuition(PG-shaped {type:'shahed'})        = false   ← غلط
+   schoolHasTuition(store-shaped {school_type:'shahed'}) = true
+   ```
+
+   یعنی در حالتِ PG-live گزارشِ مالی **هر مدرسهٔ شاهد/غیرانتفاعی را بی‌شهریه**
+   می‌بیند (مگر `capabilities.has_tuition` صریحاً تنظیم باشد) و درخواستِ صریحِ آن
+   مدرسه ۴۰۰ می‌گیرد. این در دامنهٔ همین پی‌آر رفع نشد چون به مسیرِ `finance`
+   مربوط است و آن گزارش هنوز DB-native نشده؛ باید در پیاده‌سازیِ گزارشِ مالی
+   (یا در `reviveRows`) بسته شود.
 3. `tests/wave23-reports-pg.js` در محیطِ بدونِ PostgreSQL با برچسبِ NOT-RUN رد
    می‌شود؛ `scripts/run-all-tests.sh` وقتی PostgreSQLِ در دسترس بیابد
    ‏`WAVE23_REQUIRE_PG=1` می‌گذارد تا آن‌جا تست الزامی شود.
