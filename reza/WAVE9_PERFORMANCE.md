@@ -109,9 +109,23 @@ markDirty()  →  workers.bump()  →  mainVersion++
 
 ## ۸. باقی‌ماندهٔ Wave 9 (نقشهٔ راه)
 
-- «large array filter/sort» در لیست‌های `server/routes/*.js` (فیلترهای O(n)
-  هر درخواست) → نیازمند ایندکس/صفحه‌بندیِ کلید-مقدار روی داده؛ وابسته به
-  Wave 1 (منبعِ حقیقتِ PostgreSQL).
+- کاندیدِ «large array filter/find» در enrichment فهرست‌های `classes` و `grades`
+  در نشست ۸ با ایندکس‌های یک‌باره رفع شد؛ فیلترهای scope و صفحه‌بندیِ عمومی هنوز
+  O(n) روی fallback حافظه‌اند و برای مقیاس ملی به ایندکس/صفحه‌بندیِ PostgreSQL
+  (Wave 1) وابسته می‌مانند.
 - ممیزیِ «متمرکز» (خروجی به صف/سرویسِ لاگِ مرکزی) — گامِ بعدی پس از
   نویسندهٔ پس‌زمینه.
 - سنجشِ استرسِ ورکر زیرِ بارِ واقعی ملی (Wave 18 — National Load Testing).
+
+## ۹. نشست ۸ — تکمیلِ کاندیدهای مسیرِ درخواست (2026-09-11)
+
+گزارش جزئی و شاهدهای تستی در [گزارش Session 8](WAVE9_SESSION8_PERFORMANCE.md) ثبت شده است. این نشست هشت نقص را با چرخهٔ قرمز→رفع→جهش پوشش داد:
+
+- GC اکنون timestampهای عددی و شیئیِ state داخلی را جمع می‌کند (`062fbe3`).
+- صف audit سقف دارد و batch شکست‌خورده برای retry نگه داشته می‌شود (`324eec8`، `8f45f54`).
+- مقداردهی اولیه و rotation در حالت async از مسیر sync خارج شده‌اند (`e54b998`)، در حالی که `flushSync` فقط برای shutdown باقی است.
+- school index کش در L1/L2 TTL و purge کامل membership دارد (`d4fc168`).
+- meetingهای public report در یک aggregation خطی محاسبه می‌شوند (`6035028`).
+- enrichment فهرست کلاس و نمره با `Map`های یک‌باره انجام می‌شود، نه `filter/find` تو‌در‌تو (`dd2d7eb`، `6aeb5ba`).
+
+شاهد نهایی: `wave9-performance` برابر **39/39** و همهٔ هشت regression جدید سبز؛ mutationها **16/16 کشته** شدند. گیت `wave8-deep-audit` به‌دلیل نبودن فایل در repository اجرا نشد و عمداً سبز گزارش نشده است. رجوع کنید به گزارش Session 8 برای وضعیت full-run و تحویل.
