@@ -1,5 +1,25 @@
 # دفترچهٔ تحویل کار — پایش
 
+## Handoff — پ۳: تأیید نهایی Wave 23 + وضعیت PRها + آماده‌سازی Wave 24 — ✅ (2026-09-12)
+
+- **Wave 23 تأیید شد:** PR #88 `merged: true` @ `0a45c13` (merged_by: rezaa2544)؛
+  هر ۸ کامیت زنجیره (f303687…4cf53af) با `merge-base --is-ancestor` عضو main؛
+  هر ۱۰ فایل کلیدی + سیم‌کشی server/index.js + مدل report_logs + EO_SCOPE_GATED
+  روی main وارسی شد؛ رگرسیون reports ‏۳۵/۳۵ سبز.
+- **PRها:** #81 مرج (21:38) · #84 مرج (20:59) · **#74 هنوز باز و dirty**
+  (mergeable:false — دست نخورد، منتظر تصمیم ناظر). سایر بازها: #87، #82، #76.
+- **Wave 24 آماده:** شاخهٔ `feat/wave24-performance-optimization` از `main@4cf53af`
+  ساخته و push شد؛ deps (jsdom/playwright/chromium --with-deps) نصب؛ seed
+  بازتولید؛ baseline کامل سبز: run ‏35/35 · smoke ‏547/0 · build --check ✅ ·
+  check-authz ✅ · secret-scan ‏11/11 · wave5-authz ‏37/37 · db-engineering ‏14/14 ·
+  multi-grade ‏34/34 · reports ‏35/35 · a11y «جمع: 92 قبول، 0 رد».
+  سنجه‌های مرجع: index.html ‏2,257,641B · build ‏~100ms · parse store ‏~70ms/33,993 ردیف.
+- **⚠️ CI همچنان مسدودِ بیلینگ:** rerun امروز روی main@4cf53af هم صفر-step شکست
+  (annotation رسمی billing). اقدام با صاحب مخزن.
+- گزارش کامل: `docs/WAVE24_PREP_REPORT.md`.
+
+---
+
 ## Handoff — پ۳: ویو ۲۳ بسته شد — PR #88 مرج @ `0a45c13` — ✅ (2026-09-12)
 
 - **merge:** PR [#88](https://github.com/rezaa2544/p2/pull/88) با روش merge commit
