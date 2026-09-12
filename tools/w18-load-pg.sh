@@ -135,12 +135,82 @@ SELECT id, school_id, student_id, class_id, subject_id, teacher_id, term, exam_t
 FROM csv_grades;
 DROP TABLE csv_grades;"
 
+# ── جدول‌های روابط P0-4 (در CSVهای قدیمی نیستند — optional برای سازگاری) ──
+ENR_SQL="CREATE TEMP TABLE csv_enr (id BIGINT, school_id BIGINT, student_id BIGINT, class_id BIGINT, year INT, created_at TEXT);
+\\copy csv_enr FROM '$ABS/enrollments.csv' WITH (FORMAT csv, HEADER true, ENCODING 'UTF8')
+INSERT INTO enrollments (id, school_id, student_id, class_id, year, created_at, updated_at)
+SELECT id, school_id, student_id, class_id, year, created_at::timestamptz, created_at::timestamptz FROM csv_enr;
+DROP TABLE csv_enr;"
+
+MSG_SQL="CREATE TEMP TABLE csv_msg (id BIGINT, school_id BIGINT, from_id BIGINT, to_id BIGINT, body TEXT, created_at TEXT);
+\\copy csv_msg FROM '$ABS/messages.csv' WITH (FORMAT csv, HEADER true, ENCODING 'UTF8')
+INSERT INTO messages (id, school_id, from_id, to_id, body, created_at, updated_at)
+SELECT id, school_id, from_id, to_id, body, created_at::timestamptz, created_at::timestamptz FROM csv_msg;
+DROP TABLE csv_msg;"
+
+NOTIF_SQL="CREATE TEMP TABLE csv_ntf (id BIGINT, school_id BIGINT, user_id BIGINT, role TEXT, type TEXT, title TEXT, body TEXT, read INT, created_at TEXT);
+\\copy csv_ntf FROM '$ABS/notifications.csv' WITH (FORMAT csv, HEADER true, ENCODING 'UTF8')
+INSERT INTO notifications (id, school_id, user_id, role, type, title, body, read, created_at, updated_at)
+SELECT id, school_id, user_id, role, type, title, body, read, created_at::timestamptz, created_at::timestamptz FROM csv_ntf;
+DROP TABLE csv_ntf;"
+
+TUI_SQL="CREATE TEMP TABLE csv_tui (id BIGINT, school_id BIGINT, student_id BIGINT, class_id BIGINT, total NUMERIC, paid TEXT, payable TEXT, status TEXT, created_at TEXT);
+\\copy csv_tui FROM '$ABS/tuitions.csv' WITH (FORMAT csv, HEADER true, ENCODING 'UTF8')
+INSERT INTO tuitions (id, school_id, student_id, class_id, total, paid, payable, status, created_at, updated_at)
+SELECT id, school_id, student_id, class_id, total, paid, payable, status, created_at::timestamptz, created_at::timestamptz FROM csv_tui;
+DROP TABLE csv_tui;"
+
+INST_SQL="CREATE TEMP TABLE csv_inst (id BIGINT, school_id BIGINT, student_id BIGINT, tuition_id BIGINT, seq TEXT, amount NUMERIC, status TEXT, due_date TEXT, created_at TEXT);
+\\copy csv_inst FROM '$ABS/installments.csv' WITH (FORMAT csv, HEADER true, ENCODING 'UTF8')
+INSERT INTO installments (id, school_id, student_id, tuition_id, seq, amount, status, due_date, created_at, updated_at)
+SELECT id, school_id, student_id, tuition_id, seq, amount, status, due_date, created_at::timestamptz, created_at::timestamptz FROM csv_inst;
+DROP TABLE csv_inst;"
+
+SCHOL_SQL="CREATE TEMP TABLE csv_schol (id BIGINT, school_id BIGINT, student_id BIGINT, status TEXT, note TEXT, created_at TEXT);
+\\copy csv_schol FROM '$ABS/scholarships.csv' WITH (FORMAT csv, HEADER true, ENCODING 'UTF8')
+INSERT INTO scholarships (id, school_id, student_id, status, note, created_at, updated_at)
+SELECT id, school_id, student_id, status, note, created_at::timestamptz, created_at::timestamptz FROM csv_schol;
+DROP TABLE csv_schol;"
+
+STAFFATT_SQL="CREATE TEMP TABLE csv_sat (id BIGINT, school_id BIGINT, staff_id BIGINT, date TEXT, status TEXT, registered_by TEXT, created_at TEXT);
+\\copy csv_sat FROM '$ABS/staff_attendance.csv' WITH (FORMAT csv, HEADER true, ENCODING 'UTF8')
+INSERT INTO staff_attendance (id, school_id, staff_id, date, status, registered_by, created_at, updated_at)
+SELECT id, school_id, staff_id, date, status, registered_by, created_at::timestamptz, created_at::timestamptz FROM csv_sat;
+DROP TABLE csv_sat;"
+
+SUBST_SQL="CREATE TEMP TABLE csv_sub (id BIGINT, school_id BIGINT, date TEXT, sub_teacher_id BIGINT, created_at TEXT);
+\\copy csv_sub FROM '$ABS/substitutions.csv' WITH (FORMAT csv, HEADER true, ENCODING 'UTF8')
+INSERT INTO substitutions (id, school_id, date, sub_teacher_id, created_at, updated_at)
+SELECT id, school_id, date, sub_teacher_id, created_at::timestamptz, created_at::timestamptz FROM csv_sub;
+DROP TABLE csv_sub;"
+
+TRAIN_SQL="CREATE TEMP TABLE csv_trn (id BIGINT, school_id BIGINT, staff_id BIGINT, title TEXT, hours INT, status TEXT, date TEXT, created_at TEXT);
+\\copy csv_trn FROM '$ABS/training_courses.csv' WITH (FORMAT csv, HEADER true, ENCODING 'UTF8')
+INSERT INTO training_courses (id, school_id, staff_id, title, hours, status, date, created_at, updated_at)
+SELECT id, school_id, staff_id, title, hours, status, date, created_at::timestamptz, created_at::timestamptz FROM csv_trn;
+DROP TABLE csv_trn;"
+
+OUTBOX_SQL="CREATE TEMP TABLE csv_obx (id BIGINT, type TEXT, collection TEXT, record_id BIGINT, actor_id BIGINT, version INT, status TEXT, created_at TEXT);
+\\copy csv_obx FROM '$ABS/outbox.csv' WITH (FORMAT csv, HEADER true, ENCODING 'UTF8')
+INSERT INTO server_outbox (id, type, collection, record_id, actor_id, version, status, created_at)
+SELECT id, type, collection, record_id, actor_id, version, status, created_at::timestamptz FROM csv_obx;
+DROP TABLE csv_obx;"
+
 SETVAL_SQL="SELECT setval(pg_get_serial_sequence('schools','id'),      (SELECT COALESCE(MAX(id),1) FROM schools));
 SELECT setval(pg_get_serial_sequence('classes','id'),      (SELECT COALESCE(MAX(id),1) FROM classes));
 SELECT setval(pg_get_serial_sequence('users','id'),        (SELECT COALESCE(MAX(id),1) FROM users));
 SELECT setval(pg_get_serial_sequence('parent_links','id'), (SELECT COALESCE(MAX(id),1) FROM parent_links));
 SELECT setval(pg_get_serial_sequence('attendance','id'),   (SELECT COALESCE(MAX(id),1) FROM attendance));
-SELECT setval(pg_get_serial_sequence('grades','id'),       (SELECT COALESCE(MAX(id),1) FROM grades));"
+SELECT setval(pg_get_serial_sequence('grades','id'),       (SELECT COALESCE(MAX(id),1) FROM grades));
+SELECT setval(pg_get_serial_sequence('enrollments','id'),  (SELECT COALESCE(MAX(id),1) FROM enrollments));
+SELECT setval(pg_get_serial_sequence('messages','id'),     (SELECT COALESCE(MAX(id),1) FROM messages));
+SELECT setval(pg_get_serial_sequence('notifications','id'),(SELECT COALESCE(MAX(id),1) FROM notifications));
+SELECT setval(pg_get_serial_sequence('tuitions','id'),     (SELECT COALESCE(MAX(id),1) FROM tuitions));
+SELECT setval(pg_get_serial_sequence('installments','id'), (SELECT COALESCE(MAX(id),1) FROM installments));
+SELECT setval(pg_get_serial_sequence('scholarships','id'), (SELECT COALESCE(MAX(id),1) FROM scholarships));
+SELECT setval(pg_get_serial_sequence('staff_attendance','id'), (SELECT COALESCE(MAX(id),1) FROM staff_attendance));
+SELECT setval(pg_get_serial_sequence('substitutions','id'), (SELECT COALESCE(MAX(id),1) FROM substitutions));
+SELECT setval(pg_get_serial_sequence('training_courses','id'), (SELECT COALESCE(MAX(id),1) FROM training_courses));"
 
 run_psql(){ psql "$URL" -v ON_ERROR_STOP=1 "$@"; }
 
@@ -149,6 +219,14 @@ if [ "$LOW_DISK" = 0 ]; then
   { echo '\set ON_ERROR_STOP on'; echo 'BEGIN;';
     echo "$GUARD_SQL"; echo "$SUBJECTS_SQL"; echo "$SCHOOLS_SQL"; echo "$CLASSES_SQL";
     echo "$USERS_SQL"; echo "$PL_SQL"; echo "$ATT_SQL"; echo "$GRADES_SQL";
+    # روابط P0-4 — فقط اگر CSV آن‌ها موجود است (سازگاری با دیتاست‌های قدیمی)
+    for pair in "enrollments|$ENR_SQL" "messages|$MSG_SQL" "notifications|$NOTIF_SQL" \
+                "tuitions|$TUI_SQL" "installments|$INST_SQL" "scholarships|$SCHOL_SQL" \
+                "staff_attendance|$STAFFATT_SQL" "substitutions|$SUBST_SQL" \
+                "training_courses|$TRAIN_SQL" "outbox|$OUTBOX_SQL"; do
+      csvname=${pair%%|*}; sqlblock=${pair#*|}
+      [ -f "$ABS/$csvname.csv" ] && echo "$sqlblock"
+    done
     echo "$SETVAL_SQL"; echo 'COMMIT;';
   } | run_psql
 else
@@ -164,10 +242,22 @@ else
     rm -f "$ABS/$tbl.csv"
     echo "    ✓ $tbl — CSV آزاد شد"
   done
+  # روابط P0-4 — اختیاری (سازگاری با دیتاست‌های قدیمیِ بدون این CSVها)
+  for pair in "enrollments|$ENR_SQL" "messages|$MSG_SQL" "notifications|$NOTIF_SQL" \
+              "tuitions|$TUI_SQL" "installments|$INST_SQL" "scholarships|$SCHOL_SQL" \
+              "staff_attendance|$STAFFATT_SQL" "substitutions|$SUBST_SQL" \
+              "training_courses|$TRAIN_SQL" "outbox|$OUTBOX_SQL"; do
+    csvname=${pair%%|*}; sqlblock=${pair#*|}
+    [ -f "$ABS/$csvname.csv" ] || continue
+    echo "  → $csvname …"
+    { echo '\set ON_ERROR_STOP on'; echo 'BEGIN;'; echo "$sqlblock"; echo 'COMMIT;'; } | run_psql
+    rm -f "$ABS/$csvname.csv"
+    echo "    ✓ $csvname — CSV آزاد شد"
+  done
   { echo '\set ON_ERROR_STOP on'; echo "$SETVAL_SQL"; } | run_psql
 fi
 
 echo "→ ANALYZE (می‌تواند چند دقیقه طول بکشد)…"
-psql "$URL" -v ON_ERROR_STOP=1 -c "ANALYZE schools; ANALYZE classes; ANALYZE users; ANALYZE parent_links; ANALYZE attendance; ANALYZE grades; ANALYZE subjects; ANALYZE provinces;"
+psql "$URL" -v ON_ERROR_STOP=1 -c "ANALYZE schools; ANALYZE classes; ANALYZE users; ANALYZE parent_links; ANALYZE attendance; ANALYZE grades; ANALYZE subjects; ANALYZE provinces; ANALYZE enrollments; ANALYZE messages; ANALYZE notifications; ANALYZE tuitions; ANALYZE installments; ANALYZE scholarships; ANALYZE staff_attendance; ANALYZE substitutions; ANALYZE training_courses; ANALYZE server_outbox;"
 echo "✓ بارگذاری کامل — شمارش‌ها:"
-psql "$URL" -t -c "SELECT 'schools='||(SELECT count(*) FROM schools)||' classes='||(SELECT count(*) FROM classes)||' users='||(SELECT count(*) FROM users)||' parent_links='||(SELECT count(*) FROM parent_links)||' attendance='||(SELECT count(*) FROM attendance)||' grades='||(SELECT count(*) FROM grades);"
+psql "$URL" -t -c "SELECT 'schools='||(SELECT count(*) FROM schools)||' classes='||(SELECT count(*) FROM classes)||' users='||(SELECT count(*) FROM users)||' parent_links='||(SELECT count(*) FROM parent_links)||' attendance='||(SELECT count(*) FROM attendance)||' grades='||(SELECT count(*) FROM grades)||' enrollments='||(SELECT count(*) FROM enrollments)||' messages='||(SELECT count(*) FROM messages)||' notifications='||(SELECT count(*) FROM notifications)||' tuitions='||(SELECT count(*) FROM tuitions)||' installments='||(SELECT count(*) FROM installments)||' outbox='||(SELECT count(*) FROM server_outbox);"
