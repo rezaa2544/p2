@@ -124,6 +124,12 @@ function loadStore(){
 }
 const store = loadStore();
 syncAttach(store);
+/* بازخوردِ بازبینِ PR #94: وقتی هیدراتاسیون از PG عمداً سقف‌دار/بریده
+   است (PAYESH_PG_HYDRATE_LIMIT/SKIP)، هیچ مسیری نباید این آینهٔ ناقص
+   را روی store.json بنویسد (خاموشی، فال‌بکِ ورکر، خروجِ FATAL) — چون
+   فایلِ کاملِ قبلی را می‌کُشد و بوتِ بدونِ PG فقط دادهٔ بریده می‌بیند.
+   در PG-live مرجع PG است؛ فایلِ قدیمی دست‌نخورده می‌ماند. */
+let mirrorIncomplete = false;
 
 /* ── Wave 9 — رشتهٔ کارِ عملیاتِ سنگین ─────────────────────────────
    JSON.stringify(store) و نوشتنِ سنکرونِ فایل از رشتهٔ اصلی به ورکر
@@ -141,8 +147,17 @@ db.init(store).then(async info => {
        PG truth at boot (per-table failures warn and keep going). */
     try {
       const h = await db.hydrateStoreFromPg(store);
+      mirrorIncomplete = db.shouldPersistMirrorFile(db.isPostgres(), h) === false;
+      if (mirrorIncomplete) {
+        console.warn('[store] mirror incomplete (capped/env-skipped hydration) — JSON file persist DISABLED: a trimmed snapshot must never overwrite the full store file (PG is authoritative)');
+      }
+      if (db.hydrationUsersCapped && db.hydrationUsersCapped(h)) {
+        console.warn('[store] WARNING: users hydration is capped — users beyond the cap CANNOT authenticate; PAYESH_PG_HYDRATE_LIMIT is for load-test/staging sandboxes only (see docs/WAVE18_LOAD_TEST_REPORT.md §5-4)');
+      }
       console.log('[DB] Hydrated ' + h.hydrated + ' collections from PostgreSQL' +
-        (h.skipped.length ? ' (skipped: ' + h.skipped.join(',') + ')' : ''));
+        (h.skipped.length ? ' (skipped: ' + h.skipped.join(',') + ')' : '') +
+        (h.capped && h.capped.length ? ' (capped: ' + h.capped.join(',') + ')' : '') +
+        (h.env_skipped && h.env_skipped.length ? ' (env-skipped: ' + h.env_skipped.join(',') + ')' : ''));
     } catch (e) { console.warn('[DB] Hydration warning:', e.message); }
   }
 }).catch(err => {
@@ -267,6 +282,12 @@ function gcStore(){
 let persistBusy = false;    /* نوشتنِ ورکر در جریان است */
 let persistQueued = false;  /* حینِ پرواز دوباره کثیف شد */
 function persistStore(){
+  /* PR #94 review-guard: با آینهٔ سقف‌دار، فایل هرگز با اسنپ‌شاتِ بریده
+     بازنویسی نمی‌شود (این مسیرِ FATAL/فال‌بک هم هست). شرط عمداً فقط
+     mirrorIncomplete است، نه isPostgres(): در خاموشی، db.close() پیش از
+     رویدادِ exit اجرا می‌شود و isPostgres() دیگر false است — تصمیم باید
+     با snapshotِ بوت قفل بماند (یافتهٔ آزمونِ لایو). */
+  if(mirrorIncomplete) return;
   if(!dirty) return;
   if(persistBusy){ persistQueued = true; return; }
   dirty = false; /* نقطهٔ اسنپ‌شات — جهشِ بعدی دوباره کثیف می‌کند */
@@ -284,6 +305,10 @@ function persistStore(){
 /* مسیرِ سنکرون — فقط خاموشی (exit/SIGTERM/SIGINT) و فال‌بکِ خطای ورکر؛
    هرگز در مسیرِ درخواست یا تیکرِ دوره‌ای صدا نمی‌شود. */
 function persistStoreSync(){
+  /* همان گارد — مسیرِ خاموشی (exit/SIGTERM/SIGINT) و فال‌بکِ ورکر.
+     مستقل از isPostgres(): در exit بعد از db.close() اتصال مرده است ولی
+     آینه هنوز بریده است — نباید نوشت. */
+  if(mirrorIncomplete) return;
   if(!dirty && !persistBusy && !persistQueued) return;
   dirty = false; persistQueued = false;
   const gc = gcStore();
@@ -539,7 +564,14 @@ async function serveStatic(res, urlPath, nonce){
 
 /* ── router ────────────────────────────────────────────────────────── */
 const onRequest = async (req, res) => {
-  const url = new URL(req.url, 'http://localhost');
+  /* S7-1 (Bug Hunt session 7): a malformed request-target (e.g. `//[`, `///`,
+     `//@`) made `new URL(req.url, …)` throw at the very top of this async
+     handler — outside every try/catch and with no rejection handler on the
+     caller — so one raw request line killed the process (unauthenticated DoS).
+     Parse defensively: bad target = plain 400, never a throw. */
+  let url;
+  try{ url = new URL(req.url, 'http://localhost'); }
+  catch(e){ return sendJson(res, 400, { ok: false, code: 'bad_request' }); }
   const p = url.pathname;
   const https = isHttps(req);
   const nonce = crypto.randomBytes(16).toString('base64');
@@ -978,7 +1010,15 @@ const SHUTDOWN_TIMEOUT_MS = Math.max(500, Number(process.env.PAYESH_SHUTDOWN_TIM
 const wrappedRequest = async (req, res) => {
   inFlight++;
   res.on('close', () => { inFlight = Math.max(0, inFlight - 1); });
-  await onRequest(req, res);
+  /* S7-1: fail-safe — a rejection from any request handler must never reach the
+     process-level unhandledRejection path (Node ≥15 exits the process there).
+     One bad request may fail; it may not take the service down with it. */
+  try{
+    await onRequest(req, res);
+  }catch(e){
+    try{ console.error('[request] unhandled handler error:', (e && e.message) || e); }catch(_){}
+    try{ if(!res.writableEnded) sendJson(res, 500, { ok: false, code: 'internal_error' }); }catch(_){}
+  }
 };
 
 /* ── TLS (stage 2): real https when PAYESH_TLS_CERT / PAYESH_TLS_KEY
