@@ -33,10 +33,12 @@ if (MUT) {
   const src = fs.readFileSync(real, 'utf8');
   const mangled = path.join(__dirname, '..', 'server', 'sync.p06-mutated.js');
   const muts = {
-    M1: [/if\(undo\) undo\.items\.push\(\{ k: 'rec'[^;]*;\s*/g, ''],
+    M1: [/const uRec = undo \? undo\.items\.push\(\{ k: 'rec'[\s\S]*?\}\) - 1 : -1;/g, 'const uRec = -1;'],
     M2: [/    pruneProcessedUids\(\);   \/\* P0-6[^*]*\*\//, ''],
-    M3: [/mirrorAppend\(op\.c, rec\); uPush\(op\.c, rec\);/, 'store[op.c].push(rec); uPush(op.c, rec);'],
-    M4: [/mirrorAppend\(op\.c, rec\); uPush\(op\.c, rec\);/, 'mirrorAppend(op.c, rec);']
+    M3: [/mirrorAppend\(op\.c, insRec\);/, 'store[op.c].push(insRec);'],
+    M5: [/&& u\.after && JSON\.stringify\(r\) === JSON\.stringify\(u\.after\)/, ''],
+    M6: [/if\(Array\.isArray\(store\.__deleted_records\) && store\.__deleted_records\.length > 5000\)\{[\s\S]*?\}/, ''],
+    M4: [/uPush\(op\.c, insRec\);/, ''],
   };
   if (!muts[MUT]) { console.error('جهش ناشناخته: ' + MUT); process.exit(2); }
   fs.writeFileSync(mangled, src.replace(muts[MUT][0], muts[MUT][1]));
@@ -60,7 +62,8 @@ async function quiet(fn) {
   try { return await fn(); } finally { console.error = e0; }
 }
 
-function makeInstance() {
+function makeInstance(session) {
+  const sess = session || { id: 5, role: 'manager', school_id: 1 };
   const store = {
     announcements: [], notifications: [], sync_conflicts: [],
     users: [{ id: 5, role: 'manager', school_id: 1, full_name: 'M', active: true }],
@@ -71,7 +74,7 @@ function makeInstance() {
   const sync = createSync({
     store, db, ids, MAX_BATCH: 500, AT_DRIFT_MS: 24 * 3600 * 1000,
     audit: (ev, d) => audits.push({ ev, d }),
-    sessionFrom: async () => ({ id: 5, role: 'manager', school_id: 1 }),
+    sessionFrom: async () => sess,
     sendJson: (res, code, body) => { res._cap = { code, body }; },
     markDirty: () => {}
   });
@@ -90,8 +93,8 @@ async function apiSyncOf(inst, ops) {
   /* ══ U1 — کانترکت سورس ══ */
   const srcPath = path.join(__dirname, '..', 'server', 'sync.js');
   const src = fs.readFileSync(srcPath, 'utf8');
-  chk('U1a undo-log به‌جای snapshot (سازندهٔ journal حاضر)',
-    /\{ version: store\.__server_version \|\| 0, items: \[\] \}/.test(src));
+  chk('U1a undo-log به‌جای snapshot (سازندهٔ journal: bumps + items)',
+    /\{ bumps: 0, items: \[\] \}/.test(src));
   chk('U1b clone کل کالکشن در مسیر sync حذف شد',
     !/=\s*JSON\.parse\(JSON\.stringify\(store\[k\]/.test(src)
     && !/snap\[k\]/.test(src));
@@ -207,6 +210,7 @@ async function apiSyncOf(inst, ops) {
   const C = makeInstance();
   const CAP4 = 8;
   process.env.PAYESH_PG_MIRROR_GROWTH_CAP = String(CAP4);
+  process.env.PAYESH_PG_MIRROR_PRUNE_SAFE = 'announcements';   /* باگ ۱: هرس فقط با لیست سفید */
   for (let i = 0; i < 30; i++) {
     await quiet(() => apiSyncOf(C, [opX({ uid: 'u4-' + i, by: 5, collection: 'announcements',
       type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, title: 'g-' + i } })]));
@@ -218,6 +222,7 @@ async function apiSyncOf(inst, ops) {
   chk('U4c قدیمی‌های رشد prune شدند',
     !C.store.announcements.some(x => x.title === 'g-0') && !C.store.announcements.some(x => x.title === 'g-1'));
   delete process.env.PAYESH_PG_MIRROR_GROWTH_CAP;
+  delete process.env.PAYESH_PG_MIRROR_PRUNE_SAFE;
 
   /* ══ U5 — کران کپی: sync موفق روی آینهٔ بزرگ بدون stringify بزرگ ══ */
   const D = makeInstance();
@@ -243,6 +248,102 @@ async function apiSyncOf(inst, ops) {
     bigStringifies === 0, 'big=' + bigStringifies);
   chk('U5c اعمال شد (ins+upd)', D.store.announcements.length === bigBefore + 1
     && D.store.announcements.find(x => x.id === 1000).title === 'seed-0-تغییر');
+
+  /* ══ U6 — باگ ۳ بازبین: rollback نباید سنگ‌قبری گم کند (برش = post-commit) ══ */
+  const F = makeInstance();
+  F.store.announcements.push({ id: 301, school_id: 1, title: 'قربانی-۶', version: 1 });
+  await pool.query(`INSERT INTO announcements (id, school_id, title, body, version) VALUES (301, 1, 'قربانی-۶', 'x', 1)`);
+  const seed5000 = [];
+  for (let i = 0; i < 5000; i++) seed5000.push({ c: 'grades', id: 900000 + i, school_id: 1, at: '2026-09-01T00:00:00Z' });
+  F.store.__deleted_records = JSON.parse(JSON.stringify(seed5000));
+  const drBefore = JSON.stringify(F.store.__deleted_records);
+  pgDown = true;
+  const cap6 = await quiet(() => apiSyncOf(F, [opX({ uid: 'u6-del', by: 5, collection: 'announcements',
+    type: 'del', user_id: 5, school_id: 1, id: 301, data: { school_id: 1 } })]));
+  chk('U6a حذفِ ناموفق: 503', cap6.code === 503);
+  chk('U6b آرایهٔ سنگ‌قبرها دقیقاً به قبل بازگشت (۵۰۰۰ عضو، مقایسهٔ کامل)',
+    JSON.stringify(F.store.__deleted_records) === drBefore,
+    'n=' + F.store.__deleted_records.length);
+  pgDown = false;
+  const cap6b = await quiet(() => apiSyncOf(F, [opX({ uid: 'u6-del2', by: 5, collection: 'announcements',
+    type: 'del', user_id: 5, school_id: 1, id: 301, data: { school_id: 1 } })]));
+  chk('U6c حذفِ موفق: ۲۰۰ و برشِ post-commit آرایه را در ۵۰۰۰ نگه داشت',
+    cap6b.code === 200 && F.store.__deleted_records.length === 5000
+    && F.store.__deleted_records.some(x => x.id === 301),
+    'n=' + F.store.__deleted_records.length);
+
+  /* ══ U7 — باگ ۲ بازبین: rollback نباید تغییرِ هم‌زمانِ موفقِ درخواستِ دیگر را پاک کند ══ */
+  const E = makeInstance();
+  E.store.announcements.push({ id: 200, school_id: 1, title: 'اصلی', body: 'v0', version: 1 });
+  await pool.query(`INSERT INTO announcements (id, school_id, title, body, version) VALUES (200, 1, 'اصلی', 'v0', 1)`);
+  const v0 = E.store.__server_version;
+  /* wrapper: اولین BEGIN (پیشانیِ persistOpsBatch دستهٔ A) → اول B کامل اجرا می‌شود
+     (موفق)، سپس برای A خطا. fired تضمین می‌کند کوئری‌های B مستقیم بروند. */
+  const wrappedQuery = pool.query;
+  let inter = { fired: false, fn: null };
+  pool.query = async (...args) => {
+    if (inter.fn && !inter.fired && String(args[0]).indexOf('BEGIN') === 0) {
+      inter.fired = true;
+      const fn = inter.fn; inter.fn = null;
+      await fn();
+      throw new Error('pg down (A mirror — U7)');
+    }
+    return wrappedQuery(...args);
+  };
+  inter.fn = async () => {
+    await quiet(() => apiSyncOf(E, [opX({ uid: 'u7-B', by: 5, collection: 'announcements',
+      type: 'upd', user_id: 5, school_id: 1, id: 200, data: { school_id: 1, title: 'پیروزی-ب' } })]));
+  };
+  const cap7 = await quiet(() => apiSyncOf(E, [opX({ uid: 'u7-A', by: 5, collection: 'announcements',
+    type: 'upd', user_id: 5, school_id: 1, id: 200, data: { school_id: 1, title: 'شکست-آ' } })]));
+  pool.query = wrappedQuery;   /* برگرداندن wrapper برای ادامهٔ تست */
+  chk('U7a دستهٔ A (شکستِ آینه): 503', cap7.code === 503);
+  const r200 = E.store.announcements.find(x => x.id === 200);
+  chk('U7b تغییرِ موفقِ هم‌زمانِ B حفظ شد (آینه با PG هم‌گام)',
+    r200 && r200.title === 'پیروزی-ب', JSON.stringify(r200 && r200.title));
+  chk('U7c __server_version فقط افزایش‌های A معکوس شد (سهم B ماند)',
+    E.store.__server_version === v0 + 1, 'v=' + E.store.__server_version + ' (انتظار ' + (v0 + 1) + ')');
+  const pg200 = (await pool.query('SELECT * FROM announcements WHERE id = 200')).rows[0];
+  chk('U7d رکورد PG دست‌نخورده ماند (مرجع)',
+    pg200 && pg200.title === 'پیروزی-ب', JSON.stringify(pg200 && pg200.title));
+
+  /* ══ U8 — باگ ۱ بازبین: هرس فقط لیست سفید؛ مجوزِ والد پس از عبور از سقف سالم ══ */
+  /* بدون لیست سفید: هیچ هرسی — آینه کامل می‌ماند (مجموعه‌های مجوزی مصون) */
+  const G = makeInstance();
+  const CAP8 = 4;
+  process.env.PAYESH_PG_MIRROR_GROWTH_CAP = String(CAP8);
+  for (let i = 0; i < 12; i++) {
+    await quiet(() => apiSyncOf(G, [opX({ uid: 'u8-' + i, by: 5, collection: 'announcements',
+      type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, title: 'ns-' + i } })]));
+  }
+  chk('U8a بدون لیست سفید، هیچ هرسی رخ نمی‌دهد (مجموعهٔ مجوزی مصون)',
+    G.store.announcements.filter(x => x.title && x.title.startsWith('ns-')).length === 12);
+  /* با لیست سفید: هرس فقط همان مجموعه؛ نوشتنِ والد روی رابطهٔ هرس‌نشده موفق */
+  const H = makeInstance({ id: 9, role: 'parent', school_id: 1 });
+  H.store.users.push(
+    { id: 9, role: 'parent', school_id: 1, full_name: 'والد', active: true },
+    { id: 10, role: 'student', school_id: 1, full_name: 'فرزند', active: true });
+  H.store.parent_links = [{ id: 1, parent_id: 9, student_id: 10, relation: 'پدر' }];
+  process.env.PAYESH_PG_MIRROR_PRUNE_SAFE = 'announcements';
+  for (let i = 0; i < 12; i++) {
+    await quiet(() => apiSyncOf(H, [opX({ uid: 'u8h-' + i, by: 9, collection: 'announcements',
+      type: 'ins', user_id: 9, school_id: 1, data: { school_id: 1, title: 'h-' + i } })]));
+  }
+  const hGrown = H.store.announcements.filter(x => x.title && x.title.startsWith('h-')).length;
+  chk('U8b با لیست سفید، فقط مجموعهٔ لیست‌شده هرس شد (≤ ' + (CAP8 + 2) + ')',
+    hGrown <= CAP8 + 2, 'grown=' + hGrown);
+  /* نوشتن والد (leaves) پس از عبور از سقف — روابط مجوز (parent_links/users) هرس‌نشده */
+  await pool.query(`CREATE TABLE IF NOT EXISTS leaves
+    (id INTEGER PRIMARY KEY, school_id INTEGER, student_id INTEGER, status TEXT,
+     from_date TEXT, to_date TEXT, version INTEGER, updated_at TEXT, created_at TEXT)`);
+  const cap8 = await quiet(() => apiSyncOf(H, [opX({ uid: 'u8-leave', by: 9, collection: 'leaves',
+    type: 'ins', user_id: 9, school_id: 1,
+    data: { school_id: 1, student_id: 10, from_date: '2026-09-13', to_date: '2026-09-14', status: 'pending' } })]));
+  chk('U8c نوشتنِ والد روی رابطهٔ فرزند پس از عبور از سقف موفق است (باگ ۱ رفع)',
+    cap8.code === 200 && cap8.body.results[0].ok === true,
+    JSON.stringify(cap8.body && cap8.body.results));
+  delete process.env.PAYESH_PG_MIRROR_GROWTH_CAP;
+  delete process.env.PAYESH_PG_MIRROR_PRUNE_SAFE;
 
   console.log('────────────────────────────────────────────');
   if (failc === 0) console.log('P0-6 Sync OOM Arch: ' + okc + '/' + (okc + failc) + ' موفق  —  بدون خطا ✅');
