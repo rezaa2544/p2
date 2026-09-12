@@ -900,9 +900,13 @@ function createSync(ctx){
           Object.assign(ex, data); Object.assign(ex, prot);
           if(undo) undo.items[uRec].after = JSON.parse(JSON.stringify(ex));
         }
-        else { var insRec = Object.assign(data, prot); mirrorAppend(op.c, insRec); }
+        else { Object.assign(data, prot); mirrorAppend(op.c, data); }
         data.updated_at = new Date().toISOString();   /* تکمیلِ رکورد پیش از ثبتِ after */
-        if(insRec) uPush(op.c, insRec);   /* باگ ۲: after دقیقاً state نهایی push خودمان */
+        /* باگ ۱ (بازبین، دور ۲): uPush فقط برای درجِ خودِ این op — var تابع‌محدوده
+           بود و مقدارش از دورِ قبل می‌ماند؛ op برخوردیِ بعدی (مسیرِ ex) با رکوردِ
+           دورِ قبل مدخلِ popِ تکراری/نامالک می‌ساخت و rollback می‌توانست رکوردِ
+           قطعی‌شدهٔ درخواستِ دیگر را از آینه حذف کند. */
+        if(!ex) uPush(op.c, data);   /* باگ ۲: after دقیقاً state نهایی push خودمان */
         if(op.c === 'users' && (data.role || (prot && prot.role))){
           const r = data.role || prot.role;
           audit('role_change', { user_id: s.id, role: s.role, school_id: s.school_id, target_user_id: data.id, new_role: r, summary: 'ثبت کاربر با نقش ' + r + ' (شناسه ' + data.id + ')' });
@@ -933,11 +937,15 @@ function createSync(ctx){
         if(undo && delRec) undo.items.push({ k: 'reinsert', c: op.c, rec: JSON.parse(JSON.stringify(delRec)) });   /* P0-6 */
         store[op.c] = store[op.c].filter(x => x.id !== delId);
         if(!Array.isArray(store.__deleted_records)) store.__deleted_records = [];
-        store.__deleted_records.push({ c: op.c, id: delId, school_id: delSchoolId, at: new Date().toISOString() });
+        const tomb = { c: op.c, id: delId, school_id: delSchoolId, at: new Date().toISOString() };
+        store.__deleted_records.push(tomb);
         /* باگ ۳ (بازبین): برشِ ۵۰۰۰تایی دیگر در مسیرِ apply نیست — پس از
            commitِ موفق انجام می‌شود تا rollback آرایه را دقیقاً به قبل بازگرداند
            (برشِ داخل apply یک سنگ‌قبرِ قدیمی را گم می‌کرد). */
-        if(undo) undo.items.push({ k: 'popDelRec', idx: store.__deleted_records.length - 1, id: delId });
+        /* باگ ۳ (بازبین، دور ۲): رفرنسِ خودِ سنگ‌قبر (identity) + c — جایگاه فقط
+           تا اولین برشِ post-commitِ درخواستِ دیگر معتبر است و id تنها، بینِ
+           مجموعه‌ها اشتباه می‌گرفت (grades:42 vs announcements:42). */
+        if(undo) undo.items.push({ k: 'popDelRec', idx: store.__deleted_records.length - 1, id: delId, c: op.c, at: tomb.at, ref: tomb });
         audit('record_deleted', { user_id: s.id, role: s.role, school_id: s.school_id, collection: op.c, record_id: delId, summary: 'حذف رکورد ' + delId + ' از ' + op.c });
         mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId });   /* P1-14 */
       }
@@ -1073,14 +1081,35 @@ function createSync(ctx){
                     Object.assign(r, u.before);
                   }
                 } else if(u.k === 'reinsert'){
-                  if(Array.isArray(store[u.c]) && !store[u.c].some(x => x && x.id === u.rec.id)) store[u.c].push(u.rec);
+                  /* باگ ۲ (بازبین، دور ۲): نبودِ رکورد در آینه ثابت نمی‌کند حذفِ
+                     همین درخواست عاملش است — درخواستِ دیگری می‌تواند همان حذف را
+                     در PG قطعی کرده باشد. پیش از بازدرج، مرجع را می‌پرسیم:
+                     رکورد در PG هست → حذفِ ما اعمال نشده → بازدرج درست است؛
+                     نیست → حذفِ دیگری قطعی شده → دست نمی‌زنیم. خطایِ پرسش →
+                     بازدرج: وقتی PG پایین است هیچ commitِ هم‌زمانی ممکن نبوده. */
+                  if(Array.isArray(store[u.c]) && !store[u.c].some(x => x && x.id === u.rec.id)){
+                    let pgHas = true;
+                    try{
+                      const r = await db.query('SELECT 1 FROM "' + String(u.c).replace(/"/g, '') + '" WHERE id = $1 LIMIT 1', [u.rec.id]);
+                      pgHas = !!(r && r.rows && r.rows.length);
+                    }catch(_){ pgHas = true; }
+                    if(pgHas) store[u.c].push(u.rec);
+                  }
                 } else if(u.k === 'popDelRec'){
-                  /* باگ ۲: حذفِ دقیقِ مدخلِ خودِ این درخواست (با id)، نه کورکورانهٔ
-                     انتهای آرایه — سنگ‌قبرِ هم‌زمانِ موفقِ دیگری حفظ می‌شود. */
+                  /* باگ ۳ (بازبین، دور ۲): حذفِ دقیقِ مدخلِ خودِ این درخواست —
+                     با هویتِ کامل: ۱) جایگاه+رفرنس (تا اولین برش)؛ ۲) indexOf با
+                     رفرنسِ همان آبجکت (پس از جابه‌جایی هم دقیق)؛ ۳) c+id+at. */
                   const dr = store.__deleted_records;
                   if(Array.isArray(dr)){
-                    if(dr[u.idx] && dr[u.idx].id === u.id) dr.splice(u.idx, 1);
-                    else { const j = dr.findIndex((x) => x && x.id === u.id); if(j >= 0) dr.splice(j, 1); }
+                    if(u.ref){
+                      if(dr[u.idx] === u.ref) dr.splice(u.idx, 1);
+                      else { const j = dr.indexOf(u.ref); if(j >= 0) dr.splice(j, 1); }
+                    } else if(dr[u.idx] && dr[u.idx].id === u.id && dr[u.idx].c === u.c){
+                      dr.splice(u.idx, 1);
+                    } else {
+                      const j = dr.findIndex((x) => x && x.c === u.c && x.id === u.id && x.at === u.at);
+                      if(j >= 0) dr.splice(j, 1);
+                    }
                   }
                 } else if(u.k === 'unmarkUid'){
                   delete store.__processed_uids[u.uid];
