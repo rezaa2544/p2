@@ -9,7 +9,7 @@
 |---|---|---|---|
 | P0-1 | **Reporting DB-native** | public-report و گزارش‌ها از آینهٔ درون‌حافظه‌ای محاسبه می‌شوند (نقض قاعدهٔ in-memory aggregation؛ در دیتاست ملی با هیدراتاسیون مقیّد = تقریبِ غلط) | کوئری‌های SQL با ایندکس + نتیجهٔ bounded؛ benchmark قبل/بعد + `EXPLAIN ANALYZE` |
 | P0-2 | **Browser Cache Hardening** | کش سمت مرورگر باید صریحاً مهار شود (پیش‌نیاز درست‌بودن اعداد ظرفیت و یکپارچگی داده) | گیت رگرسیون کش + تست رفتاری |
-| P0-3 | **Offline E2E** | مسیر آفلاین باید end-to-end اثبات شود (صف → reconnect → push → persistence → conflict → retry + ضدتکرار + OCC + idempotency) | تست E2E خودکار سبز در CI |
+| P0-3 | **Offline E2E** | مسیر آفلاین باید end-to-end اثبات شود (صف → reconnect → push → persistence → conflict → retry + ضدتکرار + OCC + idempotency) | ✅ **تست E2E خودکار سبز (محلی):** `tests/offline-e2e.js` ‏۲۳/۲۳ + جهش ۷/۷ (این دور)؛ «سبز در CI» = NOT-RUN (بیلینگ Actions)؛ SW-live/استیجینگ باقی |
 | P0-4 | **National Dataset** | بارگذاری دیتاست کامل مقیاس ۱ (۱۰M کاربر / ۱۰۰k مدرسه / ۵۰M حضور / ۲۰M نمره) — ابزار آماده (`tools/generate-national-dataset.js` + `tools/w18-load-pg.sh`) | بارگذاری موفق + بازشماری + گیت‌های داده |
 | P0-5 | **Capacity Environment** | استیجینگ چندنمونه‌ای مجزا (طبق §21): API/PG/Redis/mولد جدا؛ اعداد Wave 18 فعلی حدِ پایینِ تک‌جعبه‌اند | اجرای ۵ سناریوی Wave 18 روی آن + SLO سبز |
 | P0-6 | **OOM Root Cause (اصلاح معماری)** | یافته‌های کمّی Wave 18: snapshot ‏O(collection) در sync (~۱MB/درخواستِ هم‌زمان) + رشد آینهٔ store (۱۰,۴۸۸B/نوشتن) | snapshot ‏O(batch) یا حذف در PG-live؛ سوکِ زیر بار بدون رشد خطی حافظه |
@@ -37,6 +37,7 @@
 | # | اقدام | منبع evidence |
 |---|---|---|
 | P1-1 | ایندکس `users(phone)` + auth از PG (حذف اسکن خطیِ آینه در ۱۰M کاربر) | Wave 18 §۵-۴ |
+| P1-1′ (بریف ناظر این دور) | **PDF E2E مسیر واقعی UI** — reports→rptPrint→printableDoc→Chromium→%PDF+نشانگر tenant | ✅ این دور: `tests/reports-pdf-e2e.js` ‏۸/۸ (مدیر مجاز + student ردشده پیش از تولید)؛ reports-export دست‌نخورده |
 | P1-2 | قطع آینهٔ درون‌حافظه‌ای از مسیر نوشتن در حالت PG-live (dedup با سقف/TTL) | Wave 18 §۵-۳ |
 | P1-3 | public-report → aggregation سمت PG (هم‌راستا با P0-1) | Wave 18 §۵-۸ |
 | P1-4 | tracing در محیط بار: sampling ۱۰٪ + collector زنده (حذف always_on بدون collector) | Wave 18 §۵-۵ |
