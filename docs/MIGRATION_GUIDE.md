@@ -6,7 +6,7 @@
 
 > **تغییراتِ نسخهٔ ۲:** استراتژیِ شماره‌گذاریِ پیوسته (§۱.۱) · رویهٔ بازگشتِ
 > تفکیک‌شده برای هر مهاجرت (§۴) · چک‌لیستِ نگارشِ مهاجرتِ تازه (§۷.۱) ·
-> قراردادِ مهاجرت‌های آینده (§۹) · جدولِ §۸ همگام با دیسک (۰۰۱–۰۰۷).
+> قراردادِ مهاجرت‌های آینده (§۹) · جدولِ §۸ همگام با دیسک (۰۰۱–۰۱۰).
 > دلیلِ بازنگری: تصادمِ شمارهٔ ۰۰۴ — `docs/MIGRATION_DECISION.md`.
 
 > این سند قراردادِ تغییر اسکیماست. هیچ تغییری در ساختار دیتابیس خارج از این
@@ -261,6 +261,7 @@ $ node tools/migrate-helper.js --next
 | ۰۰۷ | `007_wave3_query_indexes.sql` / `.down` | هفت ایندکسِ کیستِ موج ۳ روی users/attendance/grades/classes — پیش‌تر `۰۰۴` بود و با `004_wave1_version_seq` تصادم داشت؛ در ۲۰۲۶-۰۹-۱۱ شماره‌گذاریِ مجدد شد (`docs/MIGRATION_DECISION.md`) | مرج (موج ۳) |
 | ۰۰۸ | `008_wave23_report_logs.sql` / `.down` | مجموعهٔ `report_logs` برای گزارش‌های پیشرفتهٔ موج ۲۳ — ژورنالِ سمتِ کلاینتِ گزارشِ تولیدشده در حالتِ آفلاین و همگام‌سازی هنگامِ بازگشتِ اتصال (۱ جدول + ۴ ایندکس؛ ستون‌ها آینهٔ `server/schema.sql`) | مرج (موج ۲۳ — PR #88) |
 | ۰۰۹ | `009_report_logs_constraints.sql` / `.down` | قیدهایِ CHECK رویِ enumهایِ واقعیِ کد برای `report_logs` (`kind`: attendance/academic/finance/teachers · `format`: csv/pdf — «screen» عمداً مجاز نیست چون هیچ مسیرِ کدی نمی‌نویسدش · `status`: generated/synced · `generated_by`: digits-only یا NULL) با الگویِ NOT VALID + VALIDATE (fail-closed رویِ زبالهٔ موجود) + سه ایندکسِ مرکبِ اثبات‌شدهٔ tenant/delta ‏`(school_id, updated_at, id)` رویِ `report_logs`/`attendance`/`grades` (بنچمارک ۲۰۲۶-۰۹-۱۲: دلتایِ tenant ِ grades از ‏Seq ‏۴۷ms به ‏Index ‏۰٫۱ms) — گیتِ زنده: `tests/migration-009-live.js` ‏۱۳/۱۳ + جهش ‏۵/۵ | این دور (چت ۳) |
+| ۰۱۰ | `010_users_phone_auth.sql` / `.down` | ایندکسِ عبارتـی `users(phone)` برای auth از PG (P1-1): `right(regexp_replace(phone, ...), 10)` — زوجِ درست با lookupِ `server/auth.js`؛ idempotent (`IF NOT EXISTS`)، بدونِ تغییرِ داده | مرج (PR #115) |
 
 > مهاجرت بعدی شمارهٔ `009` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را
 > (با وضعیتِ مرج) به جدول اضافه کند — مالک: نویسندهٔ مهاجرت.
