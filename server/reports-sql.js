@@ -212,6 +212,324 @@ function rate10(attended, total) {
   return total ? Math.round((attended / total) * 1000) / 10 : null;
 }
 
+/* ═══ Wave 23 completion — academic / finance / teachers builders ═══
+   Same doctrine as the attendance builders above: pure functions, every
+   user value a bound parameter, identifiers from the allowlist, keyset
+   pagination with LIMIT n+1, tenant scope in SQL. */
+
+ALLOWED_TABLES.add('tuitions');
+ALLOWED_TABLES.add('installments');
+ALLOWED_TABLES.add('scholarships');
+ALLOWED_TABLES.add('staff_attendance');
+ALLOWED_TABLES.add('substitutions');
+ALLOWED_TABLES.add('training_courses');
+
+/* ── standard parameter validation (P2) ────────────────────────────
+   The in-memory paths used bare Number() — a broken input became NaN and
+   silently matched nothing (or hit SQL as 'NaN' → 500 on PG). These four
+   parsers give every endpoint the same contract: broken input ⇒ 400,
+   never a silent NaN. Pure + exported so they are directly testable. */
+
+/** Strict positive integer (>=1). Returns the int, or null when invalid. */
+function parsePositiveInt(v) {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (!/^[0-9]+$/.test(s)) return null;
+  const n = Number(s);
+  return (Number.isSafeInteger(n) && n >= 1) ? n : null;
+}
+
+/** Optional positive int: absent/'' ⇒ ok:null; present ⇒ must parse. */
+function parseOptionalPositiveInt(v) {
+  if (v == null || v === '') return { ok: true, value: null };
+  const n = parsePositiveInt(v);
+  return n == null ? { ok: false, value: null } : { ok: true, value: n };
+}
+
+/** term is only ever a bound equality parameter, but we still refuse
+    garbage early: absent ⇒ null; a short printable string ⇒ itself. */
+function validateTerm(v) {
+  if (v == null || v === '') return { ok: true, value: null };
+  const s = String(v);
+  if (s.length > 60) return { ok: false, value: null };
+  if (/[\u0000-\u001f\u007f]/.test(s)) return { ok: false, value: null };
+  return { ok: true, value: s };
+}
+
+/** school_id has the same shape rule as any id — the scope check itself
+    (403 for out-of-scope) stays in the route; this is only the 400 gate. */
+function validateSchoolId(v) {
+  return parseOptionalPositiveInt(v);
+}
+
+/* ── Number()-parity casts ─────────────────────────────────────────
+   Several money/score columns are VARCHAR in PostgreSQL (schema drift the
+   JSON store never noticed). The in-memory paths do `Number(x) || 0`.
+   A bare ::numeric would throw on junk, so the cast only fires when the
+   trimmed value looks like a decimal number — junk counts as 0 exactly
+   like Number('junk')||0. (Number's exotic accepts — '1e3', '0x10' —
+   are deliberately NOT mirrored; report money/score data is decimal.
+   Recorded in docs/WAVE23_DB_NATIVE_REPORTS.md.) */
+const NUM_RE_SQL = `'^[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)$'`;
+const numOr0 = (col) =>
+  `CASE WHEN ${col} IS NOT NULL AND btrim(${col}) ~ ${NUM_RE_SQL} THEN btrim(${col})::numeric ELSE 0 END`;
+
+/* grades.max_score is VARCHAR; the in-memory norm is:
+     mx = Number(max_score) || 20;  v = mx > 0 ? score/mx*20 : null(skip)
+   so: castable-and-negative ⇒ row skipped; 0/''/junk/NULL ⇒ 20 (v=score);
+   positive ⇒ score*20/mx. NULL norm rows fall out of count()/sum(). */
+const MX_VALID = `(g.max_score IS NOT NULL AND btrim(g.max_score) ~ ${NUM_RE_SQL})`;
+const MX_NUM = `btrim(g.max_score)::numeric`;
+const NORM_EXPR = `CASE
+    WHEN ${MX_VALID} AND ${MX_NUM} < 0 THEN NULL
+    WHEN ${MX_VALID} AND ${MX_NUM} > 0 THEN COALESCE(g.score, 0) * 20 / ${MX_NUM}
+    ELSE COALESCE(g.score, 0)
+  END`;
+
+/**
+ * Academic report — page of class rows. Same pagination doctrine as the
+ * attendance page: the page walks CLASSES (so a class with no grades in
+ * the term still appears with count=0), keyset over (school_id, id).
+ */
+function buildAcademicClassPage({ schoolIds, classId, term, limit, cursor }) {
+  const params = [];
+  const push = (v) => { params.push(v); return params.length; };
+  const pSchools = push(schoolIds.map(Number));
+
+  const gParts = [`school_id = ANY($${pSchools})`];
+  if (term != null && term !== '') gParts.push(`term = $${push(String(term))}`);
+
+  const cParts = [`c.school_id = ANY($${pSchools})`];
+  if (classId != null && classId !== '') cParts.push(`c.id = $${push(Number(classId))}`);
+  if (cursor != null && cursor !== '') {
+    const raw = String(cursor).split('|');
+    const cs = Number(raw[0]); const ci = Number(raw[1]);
+    if (raw.length === 2 && Number.isFinite(cs) && Number.isFinite(ci)) {
+      cParts.push(`(c.school_id, c.id) > ($${push(cs)}, $${push(ci)})`);
+    }
+  }
+
+  const lim = clampLimit(limit) + 1;
+  const sql = `WITH g AS (
+  SELECT g.school_id, g.class_id, ${NORM_EXPR} AS norm
+  FROM ${tbl('grades')} g
+  WHERE ${gParts.join(' AND ')}
+)
+SELECT c.school_id, c.id AS class_id, c.name, c.grade,
+  count(g.norm)::int AS cnt,
+  COALESCE(sum(g.norm), 0)::float8 AS total,
+  count(g.norm) FILTER (WHERE g.norm >= 10)::int AS pass
+FROM ${tbl('classes')} c
+LEFT JOIN g ON g.class_id = c.id AND g.school_id = c.school_id
+WHERE ${cParts.join('\n  AND ')}
+GROUP BY c.school_id, c.id, c.name, c.grade
+ORDER BY c.school_id, c.id
+LIMIT ${lim}`;
+  return { sql, params };
+}
+
+/**
+ * Academic per-school weighted average over ALL classes in scope (with the
+ * same class/term filters) — pagination must not change the meaning of the
+ * school figure. Mirrors the in-memory formula exactly, including the
+ * quirk that it weights the ROUNDED per-class average by the class count.
+ */
+function buildAcademicSchoolTotals({ schoolIds, classId, term }) {
+  const params = [];
+  const push = (v) => { params.push(v); return params.length; };
+  const pSchools = push(schoolIds.map(Number));
+  const gParts = [`school_id = ANY($${pSchools})`];
+  if (term != null && term !== '') gParts.push(`term = $${push(String(term))}`);
+  const cParts = [`c.school_id = ANY($${pSchools})`];
+  if (classId != null && classId !== '') cParts.push(`c.id = $${push(Number(classId))}`);
+
+  const sql = `WITH g AS (
+  SELECT g.school_id, g.class_id, ${NORM_EXPR} AS norm
+  FROM ${tbl('grades')} g
+  WHERE ${gParts.join(' AND ')}
+), per_class AS (
+  SELECT c.school_id, count(g.norm)::int AS cnt,
+         CASE WHEN count(g.norm) > 0
+              THEN round((sum(g.norm) / count(g.norm))::numeric, 1) END AS avg1
+  FROM ${tbl('classes')} c
+  LEFT JOIN g ON g.class_id = c.id AND g.school_id = c.school_id
+  WHERE ${cParts.join(' AND ')}
+  GROUP BY c.school_id, c.id
+)
+SELECT school_id,
+  COALESCE(sum(avg1 * cnt), 0)::float8 AS wsum,
+  COALESCE(sum(cnt), 0)::int AS n
+FROM per_class
+GROUP BY school_id`;
+  return { sql, params };
+}
+
+/**
+ * Academic trend: per-school per-term average over ALL grades in scope —
+ * the in-memory path builds the trend before applying term/class filters,
+ * so this builder deliberately takes no filters. Row order mirrors the JS
+ * Map insertion order (first appearance in id order) via min(id).
+ */
+function buildAcademicTrend({ schoolIds }) {
+  const params = [schoolIds.map(Number)];
+  const sql = `WITH g AS (
+  SELECT g.school_id, g.id, g.term, ${NORM_EXPR} AS norm
+  FROM ${tbl('grades')} g
+  WHERE school_id = ANY($1)
+)
+SELECT school_id,
+  CASE WHEN term IS NULL OR term = '' THEN '—' ELSE term END AS term,
+  count(norm)::int AS cnt,
+  COALESCE(sum(norm), 0)::float8 AS total
+FROM g
+GROUP BY school_id, 2
+ORDER BY school_id, min(id)`;
+  return { sql, params };
+}
+
+/** Finance: per-school tuition sums. total is NUMERIC; discount/payable/
+    paid are VARCHAR ⇒ Number()-parity cast. */
+function buildFinanceTuitions({ schoolIds }) {
+  const params = [schoolIds.map(Number)];
+  const sql = `SELECT school_id,
+  count(*)::int AS cnt,
+  COALESCE(sum(COALESCE(total, 0)), 0)::float8 AS total,
+  COALESCE(sum(${numOr0('discount')}), 0)::float8 AS discount,
+  COALESCE(sum(${numOr0('payable')}), 0)::float8 AS payable,
+  COALESCE(sum(${numOr0('paid')}), 0)::float8 AS paid
+FROM ${tbl('tuitions')}
+WHERE school_id = ANY($1)
+GROUP BY school_id`;
+  return { sql, params };
+}
+
+/** Finance: per-school installment buckets. Unknown status ⇒ 'pending'
+    (in-memory catch-all); overdue = pending/partial past `today`
+    (bound parameter — the route passes the same ISO date string the
+    in-memory path computes, so the two paths cannot disagree on "now"). */
+function buildFinanceInstallments({ schoolIds, today }) {
+  const params = [schoolIds.map(Number), String(today)];
+  const sql = `SELECT school_id,
+  count(*) FILTER (WHERE st = 'paid')::int AS paid,
+  count(*) FILTER (WHERE st = 'pending')::int AS pending,
+  count(*) FILTER (WHERE st = 'partial')::int AS partial,
+  count(*) FILTER (WHERE st = 'canceled')::int AS canceled,
+  count(*) FILTER (WHERE st IN ('pending','partial')
+                   AND due_date IS NOT NULL AND due_date <> ''
+                   AND due_date < $2)::int AS overdue,
+  COALESCE(sum(${numOr0('paid_amount')}), 0)::float8 AS paid_amount,
+  COALESCE(sum(COALESCE(amount, 0)) FILTER (WHERE st <> 'canceled'), 0)::float8 AS due_amount
+FROM (
+  SELECT *, CASE WHEN status IN ('paid','pending','partial','canceled')
+                 THEN status ELSE 'pending' END AS st
+  FROM ${tbl('installments')}
+  WHERE school_id = ANY($1)
+) x
+GROUP BY school_id`;
+  return { sql, params };
+}
+
+/** Finance: per-school scholarship counts. */
+function buildFinanceScholarships({ schoolIds }) {
+  const params = [schoolIds.map(Number)];
+  const sql = `SELECT school_id,
+  count(*)::int AS cnt,
+  count(*) FILTER (WHERE status = 'approved')::int AS approved
+FROM ${tbl('scholarships')}
+WHERE school_id = ANY($1)
+GROUP BY school_id`;
+  return { sql, params };
+}
+
+/**
+ * Teachers: page of staff rows — three per-source aggregates FULL-joined
+ * on (school_id, staff_id), keyset over that same key. staff_attendance
+ * and substitutions are month-scoped; training_courses is whole-history
+ * (the in-memory path aggregates training hours with no date filter).
+ */
+function buildTeachersStaffPage({ schoolIds, from, to, limit, cursor }) {
+  const params = [];
+  const push = (v) => { params.push(v); return params.length; };
+  const pSchools = push(schoolIds.map(Number));
+  const pFrom = push(String(from));
+  const pTo = push(String(to));
+
+  const parts = [];
+  if (cursor != null && cursor !== '') {
+    const raw = String(cursor).split('|');
+    const cs = Number(raw[0]); const ci = Number(raw[1]);
+    if (raw.length === 2 && Number.isFinite(cs) && Number.isFinite(ci)) {
+      parts.push(`(school_id, staff_id) > ($${push(cs)}, $${push(ci)})`);
+    }
+  }
+
+  const lim = clampLimit(limit) + 1;
+  const sql = `WITH sa AS (
+  SELECT school_id, staff_id,
+    count(*) FILTER (WHERE status = 'present')::int AS present,
+    count(*) FILTER (WHERE status = 'late')::int AS late,
+    count(*) FILTER (WHERE COALESCE(status,'') NOT IN ('present','late'))::int AS absent
+  FROM ${tbl('staff_attendance')}
+  WHERE school_id = ANY($${pSchools}) AND date >= $${pFrom} AND date < $${pTo}
+  GROUP BY school_id, staff_id
+), su AS (
+  SELECT school_id, sub_teacher_id AS staff_id, count(*)::int AS substitutions
+  FROM ${tbl('substitutions')}
+  WHERE school_id = ANY($${pSchools}) AND date >= $${pFrom} AND date < $${pTo}
+  GROUP BY school_id, sub_teacher_id
+), tr AS (
+  SELECT school_id, staff_id,
+    COALESCE(sum(COALESCE(hours, 0)), 0)::int AS training_hours,
+    count(*) FILTER (WHERE status IN ('completed','done'))::int AS training_done
+  FROM ${tbl('training_courses')}
+  WHERE school_id = ANY($${pSchools})
+  GROUP BY school_id, staff_id
+)
+SELECT school_id, staff_id,
+  COALESCE(present, 0) AS present, COALESCE(absent, 0) AS absent, COALESCE(late, 0) AS late,
+  COALESCE(substitutions, 0) AS substitutions,
+  COALESCE(training_hours, 0) AS training_hours, COALESCE(training_done, 0) AS training_done
+FROM sa
+FULL JOIN su USING (school_id, staff_id)
+FULL JOIN tr USING (school_id, staff_id)
+${parts.length ? 'WHERE ' + parts.join(' AND ') + '\n' : ''}ORDER BY school_id, staff_id
+LIMIT ${lim}`;
+  return { sql, params };
+}
+
+/** Teachers: per-school totals over ALL staff in scope (not just the
+    page) — same reason as the attendance/academic totals builders. */
+function buildTeachersSchoolTotals({ schoolIds, from, to }) {
+  const page = buildTeachersStaffPage({ schoolIds, from, to, limit: 1 });
+  /* reuse the identical CTE set, aggregate by school, no LIMIT */
+  const body = page.sql.slice(0, page.sql.indexOf(')\nSELECT school_id, staff_id,') + 2);
+  const sql = `${body}
+SELECT school_id,
+  COALESCE(sum(COALESCE(present, 0)), 0)::int AS present,
+  COALESCE(sum(COALESCE(absent, 0)), 0)::int AS absent,
+  COALESCE(sum(COALESCE(late, 0)), 0)::int AS late,
+  COALESCE(sum(COALESCE(substitutions, 0)), 0)::int AS substitutions,
+  COALESCE(sum(COALESCE(training_hours, 0)), 0)::int AS training_hours
+FROM sa
+FULL JOIN su USING (school_id, staff_id)
+FULL JOIN tr USING (school_id, staff_id)
+GROUP BY school_id`;
+  return { sql, params: page.params.slice(0, 3) };
+}
+
+/** Bounded name/role lookup for exactly the staff ids on the page. */
+function buildUsersByIds({ ids }) {
+  const params = [ids.map(Number)];
+  const sql = `SELECT id, full_name, role FROM ${tbl('users')} WHERE id = ANY($1)`;
+  return { sql, params };
+}
+
+/** Wire cursor for staff pages: "school_id|staff_id". */
+function teachersCursor(row) {
+  if (!row) return null;
+  return `${row.school_id}|${row.staff_id}`;
+}
+
 module.exports = {
   jalaliToGregorian,
   jalaliMonthRange,
@@ -223,5 +541,20 @@ module.exports = {
   clampLimit,
   MAX_PAGE,
   ALLOWED_TABLES,
-  tableName: tbl   /* exported so the allowlist itself is testable (as in dbquery.js) */
+  tableName: tbl,  /* exported so the allowlist itself is testable (as in dbquery.js) */
+  /* Wave 23 completion */
+  parsePositiveInt,
+  parseOptionalPositiveInt,
+  validateTerm,
+  validateSchoolId,
+  buildAcademicClassPage,
+  buildAcademicSchoolTotals,
+  buildAcademicTrend,
+  buildFinanceTuitions,
+  buildFinanceInstallments,
+  buildFinanceScholarships,
+  buildTeachersStaffPage,
+  buildTeachersSchoolTotals,
+  buildUsersByIds,
+  teachersCursor
 };
