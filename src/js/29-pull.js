@@ -12,6 +12,56 @@ var PULL_SYNC_CURSOR_KEY = 'payesh_last_pull_time';
 var PULL_CURSOR_KEY = 'payesh_pull_cursor';
 var PULL_IS_SYNCING = false;
 
+/* ── P0-2 (پ۳ 2026-09-12): کشِ کرانداِر گزارش‌ها — لایهٔ کلاینت ──────
+   دفاعِ دولایه: سرور مجموعه‌های سنگینِ گزارشی را کران‌دار می‌فرستد
+   (server/pull.js) و کلاینت هم مستقلاً هرگز بیش از این سقف‌ها را در
+   حافظه/IndexedDB نگه نمی‌دارد — سرورِ قدیمی/جعلی نمی‌تواند مرورگر را
+   با جدولِ ملی پر کند. متادیتای snapshot جزئی + TTL هم این‌جاست. */
+var RPT_CACHE_HEAVY_COLS = ['attendance', 'grades', 'discipline', 'hw_submissions'];
+var RPT_CACHE_MAX_ROWS = 5000;          /* هم‌ارزِ سقفِ سرور */
+var RPT_CACHE_TTL_MS = 24 * 3600 * 1000; /* پس از ۲۴h snapshot گزارشی کهنه است */
+var RPT_CACHE_META_KEY = 'payesh_report_cache_meta';
+
+function rptCacheRecency(r){
+  var t = r && (r.updated_at || r.created_at);
+  var ms = t ? new Date(t).getTime() : NaN;
+  if (!isNaN(ms)) return ms;
+  var id = r && Number(r.id);
+  return isFinite(id) ? id : 0;
+}
+
+/** اعمالِ کرانِ کلاینت روی یک مجموعهٔ سنگین — تازه‌ترین‌ها می‌مانند. */
+function rptCacheBound(c){
+  if (RPT_CACHE_HEAVY_COLS.indexOf(c) === -1) return false;
+  if (!Array.isArray(db[c]) || db[c].length <= RPT_CACHE_MAX_ROWS) return false;
+  db[c].sort(function(a, b){ return rptCacheRecency(b) - rptCacheRecency(a); });
+  var dropped = db[c].splice(RPT_CACHE_MAX_ROWS);
+  /* ردیف‌های بریده از IndexedDB هم پاک می‌شوند تا بوتِ بعدی برنگردند */
+  if (typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()) {
+    for (var i = 0; i < dropped.length; i++) {
+      try { offlineStorage.removeEntity(c, dropped[i].id).catch(function(){}); } catch (e) {}
+    }
+  }
+  return true;
+}
+
+/** ثبت متادیتای snapshot گزارشی: کدام مجموعه‌ها جزئی‌اند + زمان. */
+function rptCacheSetMeta(partialCols){
+  var meta = { at: Date.now(), partial: partialCols || [] };
+  if (typeof Store !== 'undefined') Store.setJSON(RPT_CACHE_META_KEY, meta);
+  return meta;
+}
+
+/** وضعیتِ کش گزارشی برای UI: {partial:[…], stale:bool} یا null. */
+function rptCacheStatus(){
+  var meta = typeof Store !== 'undefined' ? Store.getJSON(RPT_CACHE_META_KEY, null) : null;
+  if (!meta) return null;
+  return {
+    partial: Array.isArray(meta.partial) ? meta.partial : [],
+    stale: (Date.now() - (meta.at || 0)) > RPT_CACHE_TTL_MS
+  };
+}
+
 /**
  * دریافت اسنپ‌شات یا دلتای تغییرات از سرور و ادغام در پایگاه داده کلاینت
  * @param {object} [options] تنظیمات دلتا یا اسنپ‌شات کامل
@@ -244,6 +294,18 @@ function mergeServerDelta(payload) {
       }
     }
   }
+
+  /* P0-2: کرانِ مستقلِ کلاینت روی مجموعه‌های سنگینِ گزارشی + ثبت
+     متادیتای «جزئی» (اعلامِ سرور ∪ برشِ خودِ کلاینت). scope دست‌نخورده:
+     کران فقط از ردیف‌هایِ همان دامنه می‌کاهد، چیزی اضافه نمی‌کند. */
+  var partialCols = Array.isArray(payload.partial_collections) ? payload.partial_collections.slice() : [];
+  for (var bc = 0; bc < RPT_CACHE_HEAVY_COLS.length; bc++) {
+    var hcol = RPT_CACHE_HEAVY_COLS[bc];
+    if (touchedCols[hcol] && rptCacheBound(hcol) && partialCols.indexOf(hcol) === -1) {
+      partialCols.push(hcol);
+    }
+  }
+  rptCacheSetMeta(partialCols);
 
   // باطل‌سازی ایندکس‌های کش‌شده برای رندرهای بعدی
   for (var tc in touchedCols) {
