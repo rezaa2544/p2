@@ -129,14 +129,73 @@ console.log('▸ opacity رویِ متنِ muted ممنوع');
 }
 
 
-/* ── ۴) هلپرِ f() مودال‌ها باید label برنامه‌ای بسازد (axe: label/select-name در مودال‌ها) ── */
-console.log('▸ هلپرِ f() در 18-modals: label دسترس‌پذیر');
+/* ── ۴) هلپرِ f() مودال‌ها باید label برنامه‌ای بسازد (axe: label/select-name در مودال‌ها) ──
+   این بخش **رفتاری** است، نه متنی.
+
+   چرا عوض شد: سنجهٔ پیشین امضایِ literals `/label for="${m[1]}"/` را در سورس می‌گشت.
+   وقتی f() سخت‌تر شد — id را با escAttr() پاک‌سازی می‌کند و حالت jdate را هم
+   می‌شناسد — همان رفتارِ درست دیگر آن رشتهٔ دقیق را تولید نمی‌کرد و سنجه قرمز شد،
+   در حالی که خروجی صحیح بود (۵/۵ در بررسیِ رفتاری). سنجهٔ متنی هم «املا»ی
+   پیاده‌سازی را می‌پاید هم رفتار را؛ این نسخه فقط رفتار را می‌پاید و سخت‌تر است:
+   f() واقعی از سورس استخراج و **اجرا** می‌شود. */
+console.log('▸ هلپرِ f() در 18-modals: label دسترس‌پذیر (رفتاری)');
 {
   const src18 = read('src/js/18-modals.js');
-  /* امضایِ رفع: استخراجِ id و ساختِ for= */
-  ok(/label for="\$\{m\[1\]\}"/.test(src18), 'f() برایِ کنترلِ id-دار <label for=…> می‌سازد');
-  ok(/aria-label="\$\{plain\}"/.test(src18) || /aria-label=/.test(src18.split('const f=')[1].split('};')[0]),
-     'f() برایِ کنترلِ بی‌id متنِ برچسب را aria-label می‌کند');
+  const srcHelpers = read('src/js/01-helpers.js');
+
+  /* escAttr واقعیِ خودِ برنامه — نه یک shim که ممکن است با اصل واگرا شود */
+  const escAttrSrc = (srcHelpers.match(/^const escAttr = .*$/m) || [])[0];
+  ok(!!escAttrSrc, 'escAttr در 01-helpers.js پیدا شد');
+
+  /* f() را با موازنهٔ آکولاد از سورس بیرون می‌کشیم */
+  const at = src18.indexOf('const f=(label,inner)=>{');
+  ok(at >= 0, 'هلپرِ f() در 18-modals.js وجود دارد');
+  let f = null;
+  if (at >= 0) {
+    let i = src18.indexOf('{', at), depth = 0, end = -1;
+    for (let j = i; j < src18.length; j++) {
+      if (src18[j] === '{') depth++;
+      else if (src18[j] === '}') { depth--; if (depth === 0) { end = j + 1; break; } }
+    }
+    /* jdate از توابعِ دیگری استفاده نمی‌کند؛ فقط escAttr لازم است */
+    f = new Function(escAttrSrc + '\nreturn (' + src18.slice(at, end).replace(/^const f=/, '') + ');')();
+  }
+  ok(typeof f === 'function', 'f() قابل استخراج و اجراست');
+
+  if (typeof f === 'function') {
+    const attrsOf = (html) => { const m = /<label([^>]*)>/.exec(html); return m ? m[1] : ''; };
+    const forOf   = (html) => { const m = /\sfor="([^"]*)"/.exec(attrsOf(html)); return m ? m[1] : null; };
+
+    /* ۱) کنترلِ id-دار → <label for=همان id> (قرارداد، نه امضا) */
+    ok(forOf(f('کلاس', '<select id="cls"></select>')) === 'cls',
+       'f() برایِ کنترلِ id-دار <label for=…> می‌سازد');
+
+    /* ۲) مقدارِ for= از escAttr رد می‌شود — نه «نقل‌قول خام نیست» که
+         قابلِ تشخیص نبود، بلکه دقیقاً همان خروجیِ escAttr. با id شاملِ
+         & و < تفاوتِ با/بی escAttr قابلِ دیدن است. */
+    ok(forOf(f('بد', '<input id="a&b<c">')) === 'a&amp;b&lt;c',
+       'مقدارِ for= از escAttr رد می‌شود (a&b<c → a&amp;b&lt;c)');
+    ok(forOf(f('بد', '<input id="a&b<c">')) !== 'a&b<c',
+       'id خام و پاک‌سازی‌نشده در for= نمی‌نشیند');
+
+    /* ۳) jdate: دکمهٔ دیداری کنترل است، نه ورودیِ پنهان */
+    ok(/<label[^>]*\sid="jdate-label-d1"/.test(
+         f('تاریخ', '<input type="hidden" id="d1"><button data-jd="d1">x</button>')),
+       'f() برای jdate برچسب را به دکمهٔ دیداری گره می‌زند');
+
+    /* ۴) کنترلِ بی‌id → aria-label از متنِ برچسب */
+    ok(/aria-label="یادداشت"/.test(f('یادداشت', '<textarea></textarea>')),
+       'f() برایِ کنترلِ بی‌id متنِ برچسب را aria-label می‌کند');
+
+    /* ۵) ساختارِ DOM دست‌نخورده می‌ماند */
+    ok(/^<div class="field"><label/.test(f('کلاس', '<select id="cls"></select>')),
+       'ساختارِ div.field > label + کنترل حفظ می‌شود');
+
+    /* ۶) کنترلِ پیش‌تر aria-label‌دار، aria-label دوباره نمی‌گیرد */
+    const once = f('کلاس', '<select id="cls" aria-label="x"></select>');
+    ok((once.match(/aria-label=/g) || []).length <= 1, 'aria-label تکراری ساخته نمی‌شود');
+  }
+
   ok(!/const f=\(label,inner\)=>`<div class="field"><label>\$\{label\}<\/label>\$\{inner\}<\/div>`;/.test(src18),
      'نسخهٔ قدیمیِ بی‌label برنگشته');
 }
