@@ -196,10 +196,46 @@ const PHONE = '09123456789';
       st.begin === 1 && st.commit === 1
       && tables.indexOf('messages') >= 0 && tables.indexOf('notifications') >= 0,
       'tables=' + tables.join(',') + ' tx=' + JSON.stringify(st));
-    chk('W4c sync: نوتیفیکیشن در store هم هست (برای کلاینتِ بعدی)',
-      store.notifications.length === 1 && store.notifications[0].user_id === 202,
+    /* ممیزی دور ۲ — قراردادِ W4c با معماریِ «قطعِ آینه از مسیرِ نوشتن»
+       (#124، برشِ post-commitِ مالکیت‌دار) به‌روزرسانی شد: در PG-live
+       «کلاینتِ بعدی» از PG می‌خواند (pull → db.readCollection)؛ نوتیفِ
+       مشتق در همان تراکنش commit شده (W4b) و آینه پس از commit بریده
+       می‌شود تا bounded بماند — پس store دیگر مرجعِ خواندن نیست. */
+    chk('W4c sync (PG-live): نوتیفِ مشتق پس از commit از آینه بریده شد (مرجع = PG؛ آینه bounded)',
+      store.notifications.length === 0,
       'n=' + store.notifications.length);
     db.__setPoolForTests(null);
+    attach({});
+  }
+
+  /* ── W4m: memory-mode — نوتیفِ مشتق در store می‌ماند (تنها مرجعِ کلاینتِ بعدی) ── */
+  {
+    db.__setPoolForTests(null);
+    const store = {
+      users: [
+        { id: 201, role: 'teacher', school_id: 1, full_name: 'T' },
+        { id: 202, role: 'student', school_id: 1, full_name: 'S' }
+      ],
+      messages: [], notifications: [],
+      __processed_uids: {}, __server_version: 0
+    };
+    attach(store);
+    const sync = createSync({
+      store, db, MAX_BATCH: 500, AT_DRIFT_MS: 24 * 3600 * 1000,
+      audit: () => {},
+      sessionFrom: async () => ({ id: 201, role: 'teacher', school_id: 1 }),
+      sendJson: (res, code, body) => { res._cap = { code, body }; },
+      markDirty: () => {}
+    });
+    const res = {};
+    await sync.apiSync({}, res, { ops: [opX({
+      uid: 'w4m-msg-1', by: 201, collection: 'messages', type: 'ins',
+      data: { from_id: 201, to_id: 202, school_id: 1, body: 'سلام (حالتِ حافظه)' }
+    })] });
+    const cap = res._cap || {};
+    chk('W4m sync (memory): op اعمال + نوتیفِ مشتق در store ماند (تنها مرجعِ pull)',
+      cap.code === 200 && store.notifications.length === 1 && store.notifications[0].user_id === 202,
+      'code=' + cap.code + ' n=' + store.notifications.length);
     attach({});
   }
 
