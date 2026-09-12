@@ -35,10 +35,15 @@ if (MUT) {
   const muts = {
     M1: [/const uRec = undo \? undo\.items\.push\(\{ k: 'rec'[\s\S]*?\}\) - 1 : -1;/g, 'const uRec = -1;'],
     M2: [/    pruneProcessedUids\(\);   \/\* P0-6[^*]*\*\//, ''],
-    M3: [/mirrorAppend\(op\.c, insRec\);/, 'store[op.c].push(insRec);'],
+    M3: [/mirrorAppend\(op\.c, data\);/, 'store[op.c].push(data);'],
     M5: [/&& u\.after && JSON\.stringify\(r\) === JSON\.stringify\(u\.after\)/, ''],
     M6: [/if\(Array\.isArray\(store\.__deleted_records\) && store\.__deleted_records\.length > 5000\)\{[\s\S]*?\}/, ''],
-    M4: [/uPush\(op\.c, insRec\);/, ''],
+    M4: [/if\(!ex\) uPush\(op\.c, data\);/, ''],
+    /* عینِ خطرِ واقعیِ var مانده: در op برخوردی هم مدخلِ pop با رکوردِ واقعیِ ex
+       ساخته می‌شود (after دقیقاً state است → مچ می‌شود و rollback رکورد را حذف می‌کند) */
+    M7: [/if\(!ex\) uPush\(op\.c, data\);/, 'uPush(op.c, ex || data);'],
+    M8: [/if\(pgHas\) store\[u\.c\]\.push\(u\.rec\);/, 'store[u.c].push(u.rec);'],
+    M9: [/dr\.indexOf\(u\.ref\)/, 'dr.findIndex((x) => x && x.id === u.id)'],
   };
   if (!muts[MUT]) { console.error('جهش ناشناخته: ' + MUT); process.exit(2); }
   fs.writeFileSync(mangled, src.replace(muts[MUT][0], muts[MUT][1]));
@@ -344,6 +349,101 @@ async function apiSyncOf(inst, ops) {
     JSON.stringify(cap8.body && cap8.body.results));
   delete process.env.PAYESH_PG_MIRROR_GROWTH_CAP;
   delete process.env.PAYESH_PG_MIRROR_PRUNE_SAFE;
+
+  /* ══ U9 — باگ ۱ (بازبین، دور ۲): var مانده → uPush تکراری/نامالک در درج برخوردی ══ */
+  const H2 = makeInstance();
+  await quiet(() => apiSyncOf(H2, [opX({ uid: 'u9-seed', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1,
+    data: { school_id: 1, id: 55, title: 'پایه' } })]));
+  const v9 = H2.store.__server_version;
+  chk('U9a فیکس در کد است: uPush فقط برای درجِ خودِ op (var حذف شد)',
+    src.indexOf('if(!ex) uPush(op.c, data);') !== -1 && src.indexOf('var insRec') === -1);
+  pgDown = true;
+  const cap9 = await quiet(() => apiSyncOf(H2, [
+    opX({ uid: 'u9-a', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1,
+      data: { school_id: 1, title: 'درج-جدید' } }),
+    opX({ uid: 'u9-b', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1,
+      data: { school_id: 1, id: 55, title: 'برخوردی' } }),
+  ]));
+  pgDown = false;
+  const r55 = H2.store.announcements.find(x => x.id === 55);
+  chk('U9b دستهٔ [ins + ins برخوردی]: شکست آینه ⇒ 503', cap9.code === 503);
+  chk('U9c رکورد برخوردشده به before بازگشت (مدخلِ تکراریِ pop او را حذف نمی‌کند)',
+    r55 && r55.title === 'پایه', JSON.stringify(r55 && r55.title));
+  chk('U9d رکوردِ درجِ همین دسته rollback شد (فقط 55 ماند)',
+    H2.store.announcements.filter(x => x.id !== 55).length === 0);
+  chk('U9e version فقط bumps همین دسته کم شد (سهم sync موفق اول ماند)',
+    H2.store.__server_version === v9, 'v=' + H2.store.__server_version + ' (انتظار ' + v9 + ')');
+
+  /* ══ U10 — باگ ۲ (بازبین، دور ۲): reinsert بی‌قید، حذفِ قطعی‌شدهٔ دیگری را زنده می‌کند ══ */
+  const E2 = makeInstance();
+  E2.store.announcements.push({ id: 210, school_id: 1, title: 'reinsert-q', version: 1 });
+  await pool.query(`INSERT INTO announcements (id, school_id, title, version) VALUES (210, 1, 'reinsert-q', 1)`);
+  const wrap10 = pool.query;
+  let inter10 = { fired: false, fn: null };
+  pool.query = async (...args) => {
+    if(inter10.fn && !inter10.fired && String(args[0]).indexOf('BEGIN') === 0){
+      inter10.fired = true;
+      const fn = inter10.fn; inter10.fn = null;
+      await fn();
+      throw new Error('pg down (A mirror — U10)');
+    }
+    return wrap10(...args);
+  };
+  inter10.fn = async () => {   /* ب: همان حذف را کامل و commit می‌کند */
+    await quiet(() => apiSyncOf(E2, [opX({ uid: 'u10-B', by: 5, collection: 'announcements', type: 'del', user_id: 5, school_id: 1, id: 210, data: { school_id: 1 } })]));
+  };
+  const cap10 = await quiet(() => apiSyncOf(E2, [opX({ uid: 'u10-A', by: 5, collection: 'announcements', type: 'del', user_id: 5, school_id: 1, id: 210, data: { school_id: 1 } })]));
+  pool.query = wrap10;
+  const pgHas200 = (await pool.query('SELECT count(*)::int AS n FROM announcements WHERE id = 210')).rows[0].n;
+  chk('U10a حذفِ هم‌زمانِ ب قطعی شد؛ شکست آینهٔ الف ⇒ 503', cap10.code === 503);
+  chk('U10b rollbackِ الف رکوردِ حذف‌شدهٔ قطعیِ ب را زنده نکرد (آینه با PG سازگار)',
+    !E2.store.announcements.some(x => x.id === 210) && pgHas200 === 0);
+  /* حالت معکوس: بدون commitِ دیگری، reinsert باید انجام شود (PG هم پایین است → هیچ هم‌زمانی ممکن نبوده) */
+  const F2 = makeInstance();
+  F2.store.announcements.push({ id: 211, school_id: 1, title: 'reinsert-r', version: 1 });
+  await pool.query(`INSERT INTO announcements (id, school_id, title, version) VALUES (211, 1, 'reinsert-r', 1)`);
+  pgDown = true;
+  const cap10b = await quiet(() => apiSyncOf(F2, [opX({ uid: 'u10b', by: 5, collection: 'announcements', type: 'del', user_id: 5, school_id: 1, id: 211, data: { school_id: 1 } })]));
+  pgDown = false;
+  chk('U10c بدونِ هم‌زمانی: rollback رکورد را بازدرج کرد (reinsert معتبر)',
+    cap10b.code === 503 && F2.store.announcements.some(x => x.id === 211));
+
+  /* ══ U11 — باگ ۳ (بازبین، دور ۲): popDelRec با id تنها، سنگ‌قبرِ مجموعهٔ دیگر را می‌پاکید ══ */
+  const G2 = makeInstance();
+  G2.store.announcements.push(
+    { id: 90042, school_id: 1, title: 'قربانی-الف', version: 1 },
+    { id: 90043, school_id: 1, title: 'قربانی-ب', version: 1 });
+  await pool.query(`INSERT INTO announcements (id, school_id, title, version) VALUES (90042, 1, 'قربانی-الف', 1), (90043, 1, 'قربانی-ب', 1)`);
+  const seedTomb = [];
+  for(let i = 0; i < 5000; i++) seedTomb.push({ c: 'grades', id: 600 + i, school_id: 1, at: '2026-09-01T00:00:00Z' });
+  seedTomb[3] = { c: 'grades', id: 90042, school_id: 1, at: '2026-08-01T00:00:00Z' };   /* هم‌شناسه با tomb الف — دشمن */
+  G2.store.__deleted_records = seedTomb;
+  const wrap11 = pool.query;
+  let inter11 = { fired: false, fn: null };
+  pool.query = async (...args) => {
+    if(inter11.fn && !inter11.fired && String(args[0]).indexOf('BEGIN') === 0){
+      inter11.fired = true;
+      const fn = inter11.fn; inter11.fn = null;
+      await fn();
+      throw new Error('pg down (A mirror — U11)');
+    }
+    return wrap11(...args);
+  };
+  inter11.fn = async () => {   /* ب: حذفِ دیگر + commit → برشِ post-commit جایگاه‌ها را می‌جابه‌جا کند */
+    await quiet(() => apiSyncOf(G2, [opX({ uid: 'u11-B', by: 5, collection: 'announcements', type: 'del', user_id: 5, school_id: 1, id: 90043, data: { school_id: 1 } })]));
+  };
+  const cap11 = await quiet(() => apiSyncOf(G2, [opX({ uid: 'u11-A', by: 5, collection: 'announcements', type: 'del', user_id: 5, school_id: 1, id: 90042, data: { school_id: 1 } })]));
+  pool.query = wrap11;
+  const dr11 = G2.store.__deleted_records;
+  chk('U11a حذفِ الف شکست خورد ⇒ 503', cap11.code === 503);
+  chk('U11b سنگ‌قبرِ هم‌شناسهٔ مجموعهٔ دیگر (grades:90042) ماند',
+    dr11.some(x => x.c === 'grades' && x.id === 90042));
+  chk('U11c سنگ‌قبرِ خودِ الف (announcements:90042) دقیقاً حذف شد',
+    !dr11.some(x => x.c === 'announcements' && x.id === 90042));
+  chk('U11d سنگ‌قبرِ حذفِ موفقِ ب (announcements:90043) ماند',
+    dr11.some(x => x.c === 'announcements' && x.id === 90043));
+  /* ۵۰۰۰ (برشِ ب) منهایِ tomb الف که rollback شد = ۴۹۹۹؛ سنگ‌قبرِ الف هرگز commit نشد */
+  chk('U11e شمارش دقیق: ۵۰۰۰ (برشِ ب) − ۱ (tomb الف) = ۴۹۹۹', dr11.length === 4999, 'n=' + dr11.length);
 
   console.log('────────────────────────────────────────────');
   if (failc === 0) console.log('P0-6 Sync OOM Arch: ' + okc + '/' + (okc + failc) + ' موفق  —  بدون خطا ✅');
