@@ -169,6 +169,80 @@ const totSql = rs.buildAttendanceSchoolTotals({ schoolIds: [1], from: 'FROMX', t
 chk('بازهٔ ماه در WHERE جمعِ مدرسه هست (نه فقط در params)',
   /a\.date >= \$2/.test(totSql) && /a\.date <\s+\$3/.test(totSql), totSql.slice(-160));
 
+/* ═══ ۹) تکمیلِ Wave 23 — سازنده‌های academic/finance/teachers ═══ */
+grp('W23C-VALID — parserهای مشترکِ اعتبارسنجی (P2)');
+chk('parsePositiveInt: عددِ سالم', rs.parsePositiveInt('42') === 42 && rs.parsePositiveInt(7) === 7);
+chk('parsePositiveInt: صفر/منفی/اعشار رد', rs.parsePositiveInt('0') === null && rs.parsePositiveInt('-3') === null && rs.parsePositiveInt('1.5') === null);
+chk('parsePositiveInt: متن/تزریق/NaN رد',
+  rs.parsePositiveInt('abc') === null && rs.parsePositiveInt('1 OR 1=1') === null && rs.parsePositiveInt('NaN') === null && rs.parsePositiveInt('1e3') === null);
+chk('parseOptionalPositiveInt: غایب ⇒ ok:null', rs.parseOptionalPositiveInt(null).ok && rs.parseOptionalPositiveInt('').ok && rs.parseOptionalPositiveInt('').value === null);
+chk('parseOptionalPositiveInt: حاضر و خراب ⇒ !ok', !rs.parseOptionalPositiveInt('x').ok && !rs.parseOptionalPositiveInt('7;').ok);
+chk('validateTerm: غایب/سالم ok', rs.validateTerm(null).ok && rs.validateTerm('نوبت اول').ok && rs.validateTerm('نوبت اول').value === 'نوبت اول');
+chk('validateTerm: کاراکترِ کنترلی/خیلی بلند رد', !rs.validateTerm('a\u0000b').ok && !rs.validateTerm('x'.repeat(61)).ok);
+chk('validateSchoolId همانندِ optional-int است', rs.validateSchoolId('12').value === 12 && !rs.validateSchoolId('DROP').ok);
+
+grp('W23C-ACADEMIC — سازنده‌های گزارشِ تحصیلی');
+const ac1 = rs.buildAcademicClassPage({ schoolIds: [1, 2], classId: 9, term: 'نوبت اول', limit: 5, cursor: '1|2' });
+chk('صفحه روی classes با LEFT JOIN زیرکوئریِ نمره (کلاسِ بی‌نمره حذف نشود)',
+  /FROM classes c/.test(ac1.sql) && /LEFT JOIN g ON g\.class_id = c\.id AND g\.school_id = c\.school_id/.test(ac1.sql));
+chk('term و class_id پارامترند نه متنِ SQL', ac1.params.includes('نوبت اول') && ac1.params.includes(9) && !ac1.sql.includes('نوبت اول'));
+chk('نرمال‌سازی نمره در SQL است (score*20/max_score با گاردِ VARCHAR خراب)',
+  /max_score/.test(ac1.sql) && /\* 20 \//.test(ac1.sql) && /CASE/.test(ac1.sql));
+chk('قبولی FILTER روی norm>=10', /FILTER \(WHERE g\.norm >= 10\)/.test(ac1.sql));
+chk('keyset روی (school_id,id) بدونِ OFFSET', /\(c\.school_id, c\.id\) > \(\$\d+, \$\d+\)/.test(ac1.sql) && !/OFFSET/i.test(ac1.sql));
+chk('LIMIT n+1', /LIMIT 6$/.test(ac1.sql.trim()));
+const acT = rs.buildAcademicSchoolTotals({ schoolIds: [1], classId: 4, term: 't1' });
+chk('میانگینِ مدرسه: وزن‌دهیِ میانگینِ گردشدهٔ کلاس (آینهٔ فرمولِ حافظه)',
+  /round\(/.test(acT.sql) && /avg1 \* cnt/.test(acT.sql));
+const acTr = rs.buildAcademicTrend({ schoolIds: [1, 2] });
+chk('روندِ ترمی: ترمِ خالی/NULL سطلِ «—» می‌شود و ترتیبِ min(id) دارد',
+  /THEN '—'/.test(acTr.sql) && /ORDER BY school_id, min\(id\)/.test(acTr.sql));
+
+grp('W23C-FINANCE — سازنده‌های گزارشِ مالی');
+const fT = rs.buildFinanceTuitions({ schoolIds: [1, 2] });
+chk('شهریه: جمع‌های discount/payable/paid با castِ ایمنِ VARCHAR (هم‌ارزِ Number()||0)',
+  /discount/.test(fT.sql) && /payable/.test(fT.sql) && /~ '\^/.test(fT.sql) && /GROUP BY school_id/.test(fT.sql));
+const fI = rs.buildFinanceInstallments({ schoolIds: [1], today: '2026-09-12' });
+chk('اقساط: وضعیتِ ناشناخته pending می‌شود (catch-all حافظه)',
+  /ELSE 'pending'/.test(fI.sql));
+chk('اقساط: overdue = pending/partial با سررسیدِ قبل از پارامترِ today (نه CURRENT_DATE)',
+  /due_date < \$2/.test(fI.sql) && fI.params[1] === '2026-09-12' && !/CURRENT_DATE/.test(fI.sql));
+chk('اقساط: due_amount قسط‌های canceled را نمی‌شمارد', /FILTER \(WHERE st <> 'canceled'\)/.test(fI.sql));
+const fS = rs.buildFinanceScholarships({ schoolIds: [3] });
+chk('بورسیه: count و approved با FILTER', /FILTER \(WHERE status = 'approved'\)/.test(fS.sql));
+chk('هر سه جدولِ مالی allowlist شده‌اند',
+  ['tuitions', 'installments', 'scholarships'].every((t) => rs.ALLOWED_TABLES.has(t)));
+
+grp('W23C-TEACHERS — سازنده‌های گزارشِ معلمان');
+const R9 = rs.jalaliMonthRange(1404, 6);
+const tP = rs.buildTeachersStaffPage({ schoolIds: [1], from: R9.from, to: R9.to, limit: 5, cursor: '1|2' });
+chk('سه منبع در CTE جدا و FULL JOIN روی (school_id,staff_id)',
+  /WITH sa AS/.test(tP.sql) && /su AS/.test(tP.sql) && /tr AS/.test(tP.sql) && /FULL JOIN su USING \(school_id, staff_id\)/.test(tP.sql));
+chk('حضورِ کادر و جانشینی ماه-مقیدند؛ ضمنِ خدمت کل-تاریخ (رفتارِ حافظه)',
+  (tP.sql.match(/date >= \$2 AND date < \$3/g) || []).length === 2 &&
+  !/tr AS \([\s\S]*?date >=[\s\S]*?\)\nSELECT/.test(tP.sql));
+chk('وضعیتِ ناشناختهٔ کادر غایب حساب می‌شود', /NOT IN \('present','late'\)/.test(tP.sql));
+chk('keyset روی (school_id,staff_id) + LIMIT n+1', /\(school_id, staff_id\) > \(\$\d+, \$\d+\)/.test(tP.sql) && /LIMIT 6$/.test(tP.sql.trim()));
+const tT = rs.buildTeachersSchoolTotals({ schoolIds: [1], from: R9.from, to: R9.to });
+chk('جمعِ مدرسه همان CTEها را بدونِ LIMIT تجمیع می‌کند',
+  /GROUP BY school_id/.test(tT.sql) && !/LIMIT/.test(tT.sql));
+const uB = rs.buildUsersByIds({ ids: [1, 2, 3] });
+chk('نام/نقش فقط برای idهای صفحه (ANY($1)) و از جدولِ allowlist',
+  /FROM users WHERE id = ANY\(\$1\)/.test(uB.sql));
+chk('teachersCursor «school|staff»', rs.teachersCursor({ school_id: 2, staff_id: 17 }) === '2|17' && rs.teachersCursor(null) === null);
+
+grp('W23C-INVARIANT — ناوردای پارامتر/جای‌نگهدار روی سازنده‌های جدید');
+invariant('academic صفحه', rs.buildAcademicClassPage({ schoolIds: [1], classId: 2, term: 't', limit: 5, cursor: '1|2' }));
+invariant('academic صفحه (بی‌فیلتر)', rs.buildAcademicClassPage({ schoolIds: [1, 2], limit: 5 }));
+invariant('academic جمعِ مدرسه', rs.buildAcademicSchoolTotals({ schoolIds: [1], classId: 2, term: 't' }));
+invariant('academic روند', rs.buildAcademicTrend({ schoolIds: [1] }));
+invariant('finance شهریه', rs.buildFinanceTuitions({ schoolIds: [1] }));
+invariant('finance اقساط', rs.buildFinanceInstallments({ schoolIds: [1], today: '2026-01-01' }));
+invariant('finance بورسیه', rs.buildFinanceScholarships({ schoolIds: [1] }));
+invariant('teachers صفحه', rs.buildTeachersStaffPage({ schoolIds: [1], from: 'f', to: 't', limit: 5, cursor: '1|2' }));
+invariant('teachers جمع', rs.buildTeachersSchoolTotals({ schoolIds: [1], from: 'f', to: 't' }));
+invariant('users lookup', rs.buildUsersByIds({ ids: [1] }));
+
 console.log('\n──────────────────────────────────────────');
 console.log('نتیجه: ' + pass + ' موفق / ' + fail + ' ناموفق (از ' + (pass + fail) + ')');
 if (fail) { console.log('موارد ناموفق:\n- ' + errors.join('\n- ')); process.exit(1); }

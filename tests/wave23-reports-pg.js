@@ -261,6 +261,253 @@ async function main() {
     audits.some((a) => a[0] === 'report_generated' && a[1].kind === 'attendance' && a[1].user_id === 42),
     JSON.stringify(audits));
 
+  /* ═══════════════════════════════════════════════════════════════
+     تکمیلِ Wave 23 — سه گزارشِ دیگر: academic / finance / teachers
+     ═══════════════════════════════════════════════════════════════ */
+
+  /* ── دادهٔ سه گزارشِ جدید (قطعی) ── */
+  const JTERM = 'نوبت اول';
+  await c.query(`INSERT INTO subjects (id, school_id, name)
+                 SELECT g, 1+((g-1)%$1), 'درس '||g FROM generate_series(1,10) g`, [N_SCHOOLS]);
+  await c.query(`INSERT INTO grades (school_id, class_id, student_id, subject_id, score, max_score, term, version)
+                 SELECT cl.school_id, cl.id, 1+((g-1)%$1), 1+(g%9),
+                        (('x'||substr(md5(g::text),1,3))::bit(12)::int % 2100) / 100.0,
+                        CASE WHEN g % 11 = 0 THEN '100' WHEN g % 13 = 0 THEN '' ELSE '20' END,
+                        CASE WHEN g % 3 = 0 THEN 'نوبت دوم' WHEN g % 17 = 0 THEN NULL ELSE $4 END, 1
+                 FROM generate_series(1,$2) g JOIN classes cl ON cl.id = 1+((g-1)%$3)`,
+    [N_STUDENTS, 24000, N_CLASSES, JTERM]);
+  /* score > max_score('20') برای g%11: score تا 21 — عمداً؛ نرمال‌سازی باید تحمل کند */
+  await c.query(`UPDATE schools SET type = 'shahed' WHERE id % 4 = 1`);
+  await c.query(`UPDATE schools SET type = 'non_profit' WHERE id % 4 = 2`);
+  /* id%4∈{0,3} governmental می‌مانند — گزارشِ مالی نباید آن‌ها را بیاورد */
+  await c.query(`INSERT INTO tuitions (school_id, student_id, total, discount, payable, paid)
+                 SELECT 1+((g-1)%$1), 1+((g-1)%$2), 1000+g, CASE WHEN g%7=0 THEN 'junk' ELSE (g%90)::text END,
+                        (900+g)::text, ((900+g)/2)::text
+                 FROM generate_series(1,3000) g`, [N_SCHOOLS, N_STUDENTS]);
+  await c.query(`INSERT INTO installments (school_id, student_id, amount, paid_amount, status, due_date)
+                 SELECT 1+((g-1)%$1), 1+((g-1)%$2), 100+g%400,
+                        CASE WHEN g%3=0 THEN ((100+g%400)/2)::text ELSE '0' END,
+                        (ARRAY['paid','pending','partial','canceled','weird'])[1+g%5],
+                        CASE WHEN g%2=0 THEN '2020-01-01' ELSE '2099-01-01' END
+                 FROM generate_series(1,4000) g`, [N_SCHOOLS, N_STUDENTS]);
+  await c.query(`INSERT INTO scholarships (school_id, student_id, status)
+                 SELECT 1+((g-1)%$1), 1+((g-1)%$2), (ARRAY['approved','pending','rejected'])[1+g%3]
+                 FROM generate_series(1,900) g`, [N_SCHOOLS, N_STUDENTS]);
+  /* کادر: id بالای 8000 تا با دانش‌آموزان نخورد؛ ~15 نفر در هر مدرسه */
+  await c.query(`INSERT INTO users (id, school_id, role, full_name, version)
+                 SELECT 8000+g, 1+((g-1)%$1), 'teacher', 'دبیر '||g, 1 FROM generate_series(1,300) g`, [N_SCHOOLS]);
+  await c.query(`INSERT INTO staff_attendance (school_id, staff_id, date, status)
+                 SELECT 1+((g-1)%$1), 8000+(1+((g-1)%300)),
+                        to_char(DATE '2025-08-23' + (g%40), 'YYYY-MM-DD'),
+                        (ARRAY['present','absent','late','odd'])[1+g%4]
+                 FROM generate_series(1,6000) g`, [N_SCHOOLS]);
+  await c.query(`UPDATE staff_attendance SET school_id = 1+((staff_id-8001)%${N_SCHOOLS})`); /* سازگار با مدرسهٔ کادر */
+  await c.query(`INSERT INTO substitutions (school_id, sub_teacher_id, date)
+                 SELECT 1+((g-1)%300)%$1+((1+((g-1)%300))-1)%$1*0, 8000+(1+((g-1)%300)),
+                        to_char(DATE '2025-08-23' + (g%40), 'YYYY-MM-DD')
+                 FROM generate_series(1,800) g`, [N_SCHOOLS]);
+  await c.query(`UPDATE substitutions SET school_id = 1+((sub_teacher_id-8001)%${N_SCHOOLS})`);
+  await c.query(`INSERT INTO training_courses (school_id, staff_id, hours, status, date)
+                 SELECT 1+((1+((g-1)%300))-1)%$1, 8000+(1+((g-1)%300)), 4+g%20,
+                        (ARRAY['completed','done','open'])[1+g%3],
+                        to_char(DATE '2024-01-01' + (g%700), 'YYYY-MM-DD')
+                 FROM generate_series(1,600) g`, [N_SCHOOLS]);
+  await c.query(`UPDATE training_courses SET school_id = 1+((staff_id-8001)%${N_SCHOOLS})`);
+  await c.query('ANALYZE grades; ANALYZE tuitions; ANALYZE installments; ANALYZE scholarships; ANALYZE staff_attendance; ANALYZE substitutions; ANALYZE training_courses; ANALYZE users');
+
+  /* آینهٔ حافظه از همان داده — schoolها PG-شکل‌اند ({type}) تا رفعِ باگِ
+     schoolHasTuition روی هر دو مسیر سنجیده شود */
+  store.schools = (await c.query('SELECT id, name, type FROM schools ORDER BY id')).rows;
+  store.users = (await c.query('SELECT id, school_id, role, full_name FROM users ORDER BY id')).rows;
+  store.grades = (await c.query('SELECT school_id, class_id, student_id, score, max_score, term, id FROM grades ORDER BY id')).rows
+    .map((r) => ({ school_id: r.school_id, class_id: r.class_id, student_id: r.student_id, score: r.score, max_score: r.max_score, term: r.term }));
+  store.tuitions = (await c.query('SELECT school_id, student_id, total, discount, payable, paid FROM tuitions ORDER BY id')).rows;
+  store.installments = (await c.query('SELECT school_id, student_id, amount, paid_amount, status, due_date FROM installments ORDER BY id')).rows;
+  store.scholarships = (await c.query('SELECT school_id, student_id, status FROM scholarships ORDER BY id')).rows;
+  store.staff_attendance = (await c.query('SELECT school_id, staff_id, date, status FROM staff_attendance ORDER BY id')).rows;
+  store.substitutions = (await c.query('SELECT school_id, sub_teacher_id, date FROM substitutions ORDER BY id')).rows;
+  store.training_courses = (await c.query('SELECT school_id, staff_id, hours, status FROM training_courses ORDER BY id')).rows;
+
+  /* ════ ۷) هم‌ارزیِ سه گزارشِ جدید ═════════════════════════════ */
+  grp('W23C-PARITY — هم‌ارزیِ academic/finance/teachers با مسیرِ حافظه');
+  const cases2 = [
+    { kind: 'academicReport', name: 'academic: سوپرادمین، کلِ دامنه', user: { id: 1, role: 'superadmin' }, q: {} },
+    { kind: 'academicReport', name: 'academic: term فیلترشده', user: { id: 1, role: 'superadmin' }, q: { term: JTERM } },
+    { kind: 'academicReport', name: 'academic: مدیرِ مدرسهٔ ۵ + term', user: { id: 2, role: 'manager', school_id: 5 }, q: { term: JTERM } },
+    { kind: 'academicReport', name: 'academic: counselor مدرسهٔ ۳', user: { id: 3, role: 'counselor', school_id: 3 }, q: {} },
+    { kind: 'academicReport', name: 'academic: فیلترِ کلاس', user: { id: 1, role: 'superadmin' }, q: { class_id: 7 } },
+    { kind: 'financeReport', name: 'finance: سوپرادمین، کلِ دامنه', user: { id: 1, role: 'superadmin' }, q: {} },
+    { kind: 'financeReport', name: 'finance: مدیرِ مدرسهٔ شهریه‌دار (شاهد PG-شکل)', user: { id: 2, role: 'manager', school_id: 5 }, q: {} },
+    { kind: 'teachersReport', name: 'teachers: سوپرادمین، ماهِ داده‌دار', user: { id: 1, role: 'superadmin' }, q: { jy: JY, jm: JM } },
+    { kind: 'teachersReport', name: 'teachers: مدیرِ مدرسهٔ ۵', user: { id: 2, role: 'manager', school_id: 5 }, q: { jy: JY, jm: JM } },
+    { kind: 'teachersReport', name: 'teachers: ماهِ بی‌داده', user: { id: 1, role: 'superadmin' }, q: { jy: 1400, jm: 1 } }
+  ];
+  for (const t of cases2) {
+    const a = await memRoutes[t.kind]({ user: t.user }, url(t.q));
+    const b = await dbRoutes[t.kind]({ user: t.user }, url(t.q));
+    const same = JSON.stringify(strip(a.body)) === JSON.stringify(strip(b.body));
+    chk('هم‌ارز: ' + t.name, same && a.status === b.status,
+      same ? '' : `mem=${JSON.stringify(strip(a.body)).slice(0, 220)} db=${JSON.stringify(strip(b.body)).slice(0, 220)}`);
+  }
+  for (const k of ['academicReport', 'financeReport', 'teachersReport']) {
+    const r = await dbRoutes[k]({ user: { id: 1, role: 'superadmin' } }, url(k === 'teachersReport' ? { jy: JY, jm: JM } : {}));
+    chk(k + ' مسیرِ DB خودش را اعلام می‌کند', r.body.source === 'postgresql', String(r.body.source));
+  }
+
+  /* رفعِ باگِ schoolHasTuition روی دیتابیسِ واقعی: مدرسهٔ شاهدِ PG-شکل */
+  grp('W23-TUITION — رفعِ باگِ school_type/type (red-first)');
+  const shahedId = Number((await c.query(`SELECT id FROM schools WHERE type = 'shahed' ORDER BY id LIMIT 1`)).rows[0].id);
+  const govId = Number((await c.query(`SELECT id FROM schools WHERE type = 'governmental' ORDER BY id LIMIT 1`)).rows[0].id);
+  const finShahed = await dbRoutes.financeReport({ user: { id: 1, role: 'superadmin' } }, url({ school_id: shahedId }));
+  chk('مدرسهٔ شاهد (ستونِ PG «type») دیگر 400 نمی‌گیرد', finShahed.status === 200
+    && finShahed.body.schools.length === 1 && finShahed.body.schools[0].school_type === 'shahed',
+    `status=${finShahed.status}`);
+  const finGov = await dbRoutes.financeReport({ user: { id: 1, role: 'superadmin' } }, url({ school_id: govId }));
+  chk('درخواستِ صریحِ مدرسهٔ بدونِ شهریه همچنان 400 است', finGov.status === 400, `status=${finGov.status}`);
+  const finAll = await dbRoutes.financeReport({ user: { id: 1, role: 'superadmin' } }, url({}));
+  chk('گزارشِ کلی فقط مدارسِ شهریه‌دار را می‌آورد',
+    finAll.body.schools.length > 0 && finAll.body.schools.every((s) => ['shahed', 'non_profit'].includes(s.school_type)),
+    JSON.stringify(finAll.body.schools.map((s) => s.school_type).slice(0, 6)));
+
+  /* ════ ۸) مهارِ اجاره‌ای سه گزارشِ جدید ═══════════════════════ */
+  grp('W23C-AUTHZ — مهار اجاره‌ای و اعتبارسنجی (P2)');
+  const acMgr = await dbRoutes.academicReport({ user: { id: 2, role: 'manager', school_id: 5 } }, url({}));
+  chk('academic: مدیر فقط مدرسهٔ خودش', acMgr.body.schools.length === 1 && Number(acMgr.body.schools[0].school_id) === 5);
+  const teMgr = await dbRoutes.teachersReport({ user: { id: 2, role: 'manager', school_id: 5 } }, url({ jy: JY, jm: JM }));
+  chk('teachers: مدیر فقط مدرسهٔ خودش و staff فقط از همان مدرسه',
+    teMgr.body.schools.length === 1 && teMgr.body.schools[0].staff.every((r) => Number(r.school_id) === 5));
+  const fiMgr = await dbRoutes.financeReport({ user: { id: 2, role: 'manager', school_id: 5 } }, url({}));
+  chk('finance: مدیر فقط مدرسهٔ خودش', fiMgr.body.schools.every((s) => Number(s.school_id) === 5));
+  chk('academic: نقشِ بی‌حق 403', (await dbRoutes.academicReport({ user: { id: 9, role: 'student', school_id: 5 } }, url({}))).status === 403);
+  chk('finance: counselor حق ندارد (فقط academic دارد)', (await dbRoutes.financeReport({ user: { id: 9, role: 'counselor', school_id: 5 } }, url({}))).status === 403);
+  chk('teachers: مدرسهٔ خارج از دامنه 403', (await dbRoutes.teachersReport({ user: { id: 2, role: 'manager', school_id: 5 } }, url({ jy: JY, jm: JM, school_id: 6 }))).status === 403);
+  /* P2: ورودیِ خراب ⇒ 400 در هر ۴ endpoint (نه NaN/500) */
+  chk('P2: academic class_id خراب ⇒ 400', (await dbRoutes.academicReport({ user: { id: 1, role: 'superadmin' } }, url({ class_id: '7; DROP' }))).status === 400);
+  chk('P2: academic school_id خراب ⇒ 400', (await dbRoutes.academicReport({ user: { id: 1, role: 'superadmin' } }, url({ school_id: 'NaN' }))).status === 400);
+  chk('P2: finance school_id خراب ⇒ 400', (await dbRoutes.financeReport({ user: { id: 1, role: 'superadmin' } }, url({ school_id: '1 OR 1=1' }))).status === 400);
+  chk('P2: teachers school_id خراب ⇒ 400', (await dbRoutes.teachersReport({ user: { id: 1, role: 'superadmin' } }, url({ jy: JY, jm: JM, school_id: 'x' }))).status === 400);
+  chk('P2: attendance school_id خراب ⇒ 400 (parserِ مشترک روی endpoint چت ۶ هم)', (await dbRoutes.attendanceReport({ user: { id: 1, role: 'superadmin' } }, url({ jy: JY, jm: JM, school_id: '−۱' }))).status === 400);
+  chk('P2: term با کاراکترِ کنترلی ⇒ 400', (await dbRoutes.academicReport({ user: { id: 1, role: 'superadmin' } }, url({ term: 'a\u0000b' }))).status === 400);
+  chk('P2: مسیرِ حافظه هم همان 400 را می‌دهد (قراردادِ واحد)', (await memRoutes.academicReport({ user: { id: 1, role: 'superadmin' } }, url({ class_id: 'zz' }))).status === 400);
+
+  /* ════ ۹) صفحه‌بندیِ گزارش‌های جدید ═══════════════════════════ */
+  grp('W23C-PAGE — پیمایشِ cursor گزارشِ تحصیلی و معلمان');
+  async function walk(kind, q, keyOf) {
+    const all = await dbRoutes[kind]({ user: { id: 1, role: 'superadmin' } }, url(q));
+    const want = [];
+    for (const s of all.body.schools) for (const r of (s.classes || s.staff)) want.push(keyOf(s, r));
+    const seen2 = []; let cur = null, pages2 = 0, over2 = 0;
+    while (pages2 < 80) {
+      const qq = Object.assign({}, q, { limit: 7 });
+      if (cur) qq.cursor = cur;
+      const r = await dbRoutes[kind]({ user: { id: 1, role: 'superadmin' } }, url(qq));
+      const n = r.body.schools.reduce((a, s) => a + (s.classes || s.staff).length, 0);
+      if (n > 7) over2++;
+      for (const s of r.body.schools) for (const row of (s.classes || s.staff)) seen2.push(keyOf(s, row));
+      pages2++;
+      if (!r.body.pagination.has_more) break;
+      cur = r.body.pagination.next_cursor;
+    }
+    return { want, seen: seen2, pages: pages2, over: over2 };
+  }
+  const wA = await walk('academicReport', { term: JTERM }, (s, r) => `${s.school_id}|${r.class_id}`);
+  chk('academic: پیمایش کامل، بدونِ تکرار و بدونِ overflow',
+    wA.over === 0 && wA.pages > 1 && new Set(wA.seen).size === wA.seen.length
+    && JSON.stringify([...wA.seen].sort()) === JSON.stringify([...wA.want].sort()),
+    `pages=${wA.pages} seen=${wA.seen.length} want=${wA.want.length}`);
+  const wT = await walk('teachersReport', { jy: JY, jm: JM }, (s, r) => `${s.school_id}|${r.staff_id}`);
+  chk('teachers: پیمایش کامل، بدونِ تکرار و بدونِ overflow',
+    wT.over === 0 && wT.pages > 1 && new Set(wT.seen).size === wT.seen.length
+    && JSON.stringify([...wT.seen].sort()) === JSON.stringify([...wT.want].sort()),
+    `pages=${wT.pages} seen=${wT.seen.length} want=${wT.want.length}`);
+  const acP1 = await dbRoutes.academicReport({ user: { id: 1, role: 'superadmin' } }, url({ term: JTERM, limit: 3, school_id: 1 }));
+  const acPA = await dbRoutes.academicReport({ user: { id: 1, role: 'superadmin' } }, url({ term: JTERM, school_id: 1 }));
+  chk('academic: میانگین/روندِ مدرسه با صفحه‌بندی عوض نمی‌شود',
+    acP1.body.schools[0].avg === acPA.body.schools[0].avg
+    && JSON.stringify(acP1.body.schools[0].trend) === JSON.stringify(acPA.body.schools[0].trend));
+  const teP1 = await dbRoutes.teachersReport({ user: { id: 1, role: 'superadmin' } }, url({ jy: JY, jm: JM, limit: 3, school_id: 1 }));
+  const tePA = await dbRoutes.teachersReport({ user: { id: 1, role: 'superadmin' } }, url({ jy: JY, jm: JM, school_id: 1 }));
+  chk('teachers: جمعِ مدرسه با صفحه‌بندی عوض نمی‌شود',
+    JSON.stringify(teP1.body.schools[0].totals) === JSON.stringify(tePA.body.schools[0].totals));
+
+  /* رکوردِ ناسازگارِ نمره: school_id می‌گوید مدرسهٔ دیگر، class_id مالِ
+     مدرسهٔ zSchool — مسیرِ SQL (تطبیقِ g.school_id = c.school_id در JOIN)
+     نباید بشمارد؛ همان دکترینِ W23-JOIN حضور برای grades. */
+  grp('W23C-JOIN — نمرهٔ ناسازگار (school_id ≠ مدرسهٔ کلاس)');
+  const gBad = zSchool === 1 ? 2 : 1;
+  const before3 = await dbRoutes.academicReport({ user: { id: 1, role: 'superadmin' } }, url({ class_id: 3 }));
+  const pickAc = (b) => ((b.body.schools.find((s) => Number(s.school_id) === zSchool) || { classes: [] }).classes
+    .find((r) => Number(r.class_id) === 3)) || {};
+  const cntBefore = Number(pickAc(before3).count) || 0;
+  await c.query(`INSERT INTO grades (school_id, class_id, student_id, subject_id, score, max_score, term, version)
+                 VALUES ($1, 3, 1, 1, 15, '20', $2, 1)`, [gBad, JTERM]);
+  const after3 = await dbRoutes.academicReport({ user: { id: 1, role: 'superadmin' } }, url({ class_id: 3 }));
+  chk('مسیرِ SQL نمرهٔ ناسازگار را نمی‌شمارد (تطبیقِ مدرسه در JOIN)',
+    (Number(pickAc(after3).count) || 0) === cntBefore,
+    `before=${cntBefore} after=${pickAc(after3).count}`);
+  await c.query(`DELETE FROM grades WHERE class_id = 3 AND school_id = $1`, [gBad]);
+
+  /* ════ ۱۰) مسیریابیِ خواندن و شمارِ کوئری ═════════════════════ */
+  grp('W23C-ROUTE — همهٔ خواندن‌ها از queryRead و bounded');
+  /* bounded در خودِ دیتابیس: هیچ کوئریِ صفحه‌ای نباید بیش از limit+1 ردیف
+     از PG برگرداند — پاسخِ slice شده کافی نیست، چون LIMITِ حذف‌شده یعنی
+     کلِ جدول خوانده شده است (همان anti-pattern که این موج می‌بندد). */
+  {
+    const rowCounts = [];
+    const dbCount = {
+      isPostgres: () => true,
+      query: async (sql, params) => c.query(sql, params),
+      queryRead: async (sql, params) => { const r = await c.query(sql, params); rowCounts.push({ n: r.rows.length, page: /LIMIT/.test(sql) }); return r; }
+    };
+    const countRoutes = createReportsRoutes({ store, db: dbCount, audit });
+    rowCounts.length = 0;
+    await countRoutes.teachersReport({ user: { id: 1, role: 'superadmin' } }, url({ jy: JY, jm: JM, limit: 7 }));
+    const pageResults = rowCounts.filter((r) => r.page);
+    chk('teachers: کوئریِ صفحه LIMIT دارد و بیش از limit+1 ردیف از PG نمی‌آید',
+      pageResults.length >= 1 && pageResults.every((r) => r.n <= 8),
+      JSON.stringify(rowCounts));
+    rowCounts.length = 0;
+    await countRoutes.academicReport({ user: { id: 1, role: 'superadmin' } }, url({ term: JTERM, limit: 7 }));
+    const pageResults2 = rowCounts.filter((r) => r.page);
+    chk('academic: کوئریِ صفحه LIMIT دارد و بیش از limit+1 ردیف از PG نمی‌آید',
+      pageResults2.length >= 1 && pageResults2.every((r) => r.n <= 8),
+      JSON.stringify(rowCounts));
+  }
+  readCalls = 0; writeCalls = 0;
+  await dbRoutes.academicReport({ user: { id: 1, role: 'superadmin' } }, url({ term: JTERM, limit: 5 }));
+  chk('academic: فقط queryRead، شمارِ ثابتِ کوئری (۳)', readCalls === 3 && writeCalls === 0, `read=${readCalls} write=${writeCalls}`);
+  readCalls = 0; writeCalls = 0;
+  await dbRoutes.financeReport({ user: { id: 1, role: 'superadmin' } }, url({}));
+  chk('finance: فقط queryRead، شمارِ ثابتِ کوئری (۳)', readCalls === 3 && writeCalls === 0, `read=${readCalls} write=${writeCalls}`);
+  readCalls = 0; writeCalls = 0;
+  await dbRoutes.teachersReport({ user: { id: 1, role: 'superadmin' } }, url({ jy: JY, jm: JM, limit: 5 }));
+  chk('teachers: فقط queryRead، شمارِ ثابت (۳: صفحه+نام‌ها+جمع)', readCalls === 3 && writeCalls === 0, `read=${readCalls} write=${writeCalls}`);
+
+  /* ════ ۱۱) نقشهٔ اجرا — EXPLAIN (ANALYZE, BUFFERS) ═══════════ */
+  grp('W23C-PLAN — EXPLAIN (ANALYZE, BUFFERS) سه گزارشِ جدید');
+  const seqFindings = [];
+  async function planOf(label, built) {
+    const ex2 = await c.query('EXPLAIN (ANALYZE, BUFFERS) ' + built.sql, built.params);
+    const plan2 = ex2.rows.map((r) => r['QUERY PLAN']).join('\n');
+    const ms2 = /Execution Time: ([\d.]+) ms/.exec(plan2);
+    const seqs = [...plan2.matchAll(/Seq Scan on (\w+)/g)].map((m) => m[1]);
+    if (seqs.length) seqFindings.push(`${label}: Seq Scan on ${[...new Set(seqs)].join(',')}`);
+    console.log(`  · ${label}: ${ms2 ? ms2[1] : '?'} ms${seqs.length ? ' — Seq: ' + [...new Set(seqs)].join(',') : ' — بدونِ Seq Scan'}`);
+    return { plan: plan2, ms: ms2 ? Number(ms2[1]) : null, seqs };
+  }
+  const scope3 = [1, 2, 3];
+  const pAc = await planOf('academic صفحه', rs.buildAcademicClassPage({ schoolIds: scope3, term: JTERM, limit: 500 }));
+  chk('academic: grades با ایندکس خوانده می‌شود (نه Seq Scan روی جدولِ پایه)',
+    !pAc.seqs.includes('grades'), pAc.seqs.join(','));
+  const pFi = await planOf('finance شهریه', rs.buildFinanceTuitions({ schoolIds: scope3 }));
+  chk('finance: tuitions با ایندکس خوانده می‌شود', !pFi.seqs.includes('tuitions'), pFi.seqs.join(','));
+  const pFi2 = await planOf('finance اقساط', rs.buildFinanceInstallments({ schoolIds: scope3, today: '2026-09-12' }));
+  chk('finance: installments با ایندکس خوانده می‌شود', !pFi2.seqs.includes('installments'), pFi2.seqs.join(','));
+  const rng9 = rs.jalaliMonthRange(JY, JM);
+  const pTe = await planOf('teachers صفحه', rs.buildTeachersStaffPage({ schoolIds: scope3, from: rng9.from, to: rng9.to, limit: 500 }));
+  chk('teachers: staff_attendance با ایندکس خوانده می‌شود', !pTe.seqs.includes('staff_attendance'), pTe.seqs.join(','));
+  if (seqFindings.length) console.log('  ⚠ یافته‌های Seq Scan (ثبت در سند): ' + seqFindings.join(' | '));
+
   await c.end();
   return { totalRows };
 }
