@@ -22,7 +22,7 @@
 نه اینکه به `۸` و `۰۰۱–۰۰۸` پینِ تازه بخورند.
 
 ضمناً `tools/docs-refs-check.js` افزوده شد: ارجاعِ سند به فایلِ ناموجود را می‌گیرد،
-۱۱۸ موردِ تاریخی را در `tools/docs-refs-baseline.json` قفل می‌کند و فقط موردِ تازه را
+۷۱ موردِ تاریخی را در `tools/docs-refs-baseline.json` قفل می‌کند و فقط موردِ تازه را
 قرمز می‌کند. شرح روش در `SKILLS_MASTER.md` §۵.۲ و §۵.۳.
 
 **زیرپوشه‌های بیرون مانیفست ریشه** (۲۰ سند؛ پوشش ساختاری‌شان را تست‌های پوشش
@@ -199,7 +199,7 @@
 | `NATIONAL_BASELINE_PART3.md` | `sha256:66b2bf5e2df32e471a0b0b5e44a733764d9c01e2557aecb94a58b2f58b054d76` |
 | `NATIONAL_BASELINE_PART4.md` | `sha256:68d5446b6a2f2334ae8748412923431c6a3ad0e952dc70387dcc804d85bb5e01` |
 | `NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md` | `sha256:911f99cda41d415193f9179f5bb6183a6242c769f28a3471af38abb5bb81d228` |
-| `NATIONAL_ROADMAP_PROGRESS.md` | `sha256:c137a22137068623570da1066de10e3149b9fda209cde50a251a9a6e796987cb` |
+| `NATIONAL_ROADMAP_PROGRESS.md` | `sha256:0cdace50ddf55817142504a6b9a6b642ef6a83c86a321b5170f45b1c6f080053` |
 | `OBSERVABILITY.md` | `sha256:5220f088a47b84c01806871b574f47fae007785a9d4b58c3bad368e7e53423c0` |
 | `OBSERVABILITY_DEPLOYMENT.md` | `sha256:efaf413b9130c57a5473984bf24e0652f21fa7fa57099a0bf68ba191473822a9` |
 | `OBSERVABILITY_LIVE_SETUP.md` | `sha256:a99b046779fe46883733858080f338ee014c79c438db827da2d605037320d34c` |
