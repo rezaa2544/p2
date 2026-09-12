@@ -165,6 +165,10 @@ function pullFromServer(options) {
   if (options.collections && Array.isArray(options.collections) && options.collections.length > 0) {
     queryParts.push('collections=' + encodeURIComponent(options.collections.join(',')));
   }
+  /* پ۳ تله‌متری: درخواستِ resume خود را اعلام می‌کند تا سرور کانترِ
+     payesh_pull_resume_snapshot_total را بشمارد (فقط observability؛
+     هیچ رفتاری سمتِ سرور به آن گره نیست). */
+  if (options._resume) queryParts.push('resume=1');
 
   var endpoint = '/api/v1/pull' + (queryParts.length > 0 ? ('?' + queryParts.join('&')) : '');
   var apiCaller = options.customApi || (typeof Api !== 'undefined' ? Api : null);
