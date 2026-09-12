@@ -110,7 +110,15 @@ function createAuth(ctx){
     if(await revocation.isRevoked(p.jti)) return null;
     const sv = await revocation.getSessionVersion(p.sub);
     if(sv > 0 && (p.sv || 0) < sv) return null;
-    const user = (store.users || []).find(u => u.id === p.sub);
+    /* P1-1 (بازبین): کاربرِ خارج از سقفِ hydration هم نشستِ معتبر دارد — ورودش را
+       از PG آوردیم؛ هویتِ هر درخواست را هم از PG حل می‌کنیم (PK lookup ایندکسی).
+       نبود در PG = نبود (نشست می‌میرد — fail-closed). خطای اتصال همین حکم را دارد
+       (با لاگ): به PG فقط وقتی می‌رسیم که آینه کاربر را ندارد. */
+    let user = (store.users || []).find(u => u.id === p.sub);
+    if(!user && db && typeof db.isPostgres === 'function' && db.isPostgres()){
+      try{ user = await db.readOne('users', p.sub); }
+      catch(e){ console.error('[AUTH] sessionFrom: PG lookup failed —', e.message); user = null; }
+    }
     if(!user || !user.active) return null;
     return Object.assign({ jti: p.jti, token: tok }, user);
   }

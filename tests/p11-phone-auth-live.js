@@ -93,15 +93,24 @@ function chk(name, cond, extra){
   process.env.PAYESH_LOGIN_IP_LIMIT = '10000';
   process.env.PAYESH_LOGIN_PHONE_LIMIT = '10000';
   const { createAuth } = require('../server/auth');
-  const db = { isPostgres: () => true, query: async (t, p) => pool.query(t, p) };
+  const db = {
+    isPostgres: () => true,
+    query: async (t, p) => pool.query(t, p),
+    readOne: async (name, id) => {
+      const r = await pool.query('SELECT * FROM "' + String(name).replace(/"/g, '') + '" WHERE id = $1 LIMIT 1', [Number(id)]);
+      return (r && r.rows && r.rows[0]) || null;
+    },
+  };
   const otp = { data: { cd: {}, codes: {}, login_fail: {} }, save: async () => {}, reloadIfChanged: async () => {}, deleteCode: (ph) => { delete otp.data.codes[ph]; } };
   const auth = createAuth({
-    store: { users: [] }, db, /* آینهٔ خالی — کاربر فقط در PG است */
+    /* آینهٔ خالی — کاربر فقط در PG است؛ __revoked_jti همان‌طور که سرور واقعی
+       می‌سازد اینجا هم هست (jwtVerify به آن نیاز دارد) */
+    store: { users: [], __revoked_jti: {} }, db,
     JWT_SECRET: 'p11-live-secret-0123456789-0123456789-0123456789',
     SESSION_NAME: 'sid', SESSION_TTL_S: 3600, CODE_TTL_MS: 600000,
     DEMO_CODE_ECHO: true, audit: () => {}, isHttps: () => false, markDirty: () => {}, otp,
   });
-  const mkRes = () => { const r = { headers: {} }; r.writeHead = c => { r.statusCode = c; }; r.setHeader = () => {}; r.end = b => { r.body = b ? JSON.parse(b) : null; }; return r; };
+  const mkRes = () => { const r = { headers: {} }; r.writeHead = c => { r.statusCode = c; }; r.setHeader = (k, v) => { r.headers[String(k).toLowerCase()] = v; }; r.end = b => { r.body = b ? JSON.parse(b) : null; }; return r; };
   const req = { socket: { remoteAddress: '127.0.0.9' }, headers: {} };
   const s = mkRes();
   await auth.apiSendCode(req, s, { phone: '0912-345-6789' });
@@ -116,6 +125,23 @@ function chk(name, cond, extra){
   const s2 = mkRes();
   await auth.apiSendCode({ socket: { remoteAddress: '127.0.0.9' }, headers: {} }, s2, { phone: '09990000000' });
   chk('L7 ناشناس: شکلِ sent بدون کد (بدون enumeration)', s2.statusCode === 200 && s2.body.ok === true && s2.body.demo_code === undefined, JSON.stringify(s2.body));
+
+  /* ══ L8 — باگ بازبین: نشستِ کاربرِ فقط-PG باید در درخواست بعدی هم حل شود ══ */
+  const reqWithCookie = (cookie) => ({ socket: { remoteAddress: '127.0.0.9' }, headers: { cookie } });
+  const cookie1 = String(l.headers['set-cookie'] || '').split(';')[0];   /* از L6b */
+  const sess = await auth.sessionFrom(reqWithCookie(cookie1));
+  chk('L8a sessionFrom کاربرِ فقط-PG (آینهٔ خالی) از PG حل شد',
+      sess && sess.id === 9001 && sess.role === 'manager', JSON.stringify(sess && sess.id));
+  const me = mkRes();
+  await auth.apiMe(reqWithCookie(cookie1), me);
+  chk('L8b /api/auth/me برای کاربرِ فقط-PG: 200 و هویت درست',
+      me.statusCode === 200 && me.body.ok === true && me.body.user && me.body.user.id === 9001,
+      JSON.stringify(me.body).slice(0, 90));
+  /* نشستِ کاربرِ ناموجود در PG: مرد (fail-closed) */
+  const tokGone8 = auth.jwtSign({ sub: 999999, role: 'manager', school_id: 1, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 600, jti: 'jt_l8c', sv: 0 });
+  const resGone8 = mkRes();
+  await auth.apiMe(reqWithCookie('sid=' + tokGone8), resGone8);
+  chk('L8c نشستِ کاربرِ حذف‌شده از PG مرد (fail-closed)', resGone8.statusCode === 401);
 
   await pool.end();
   console.log('\n────────────────────────────────────────────');
