@@ -160,7 +160,14 @@ function createReportsRoutes(ctx) {
         excused: Number(r.excused) || 0, early_exit: Number(r.early_exit) || 0, total: Number(r.total) || 0
       }));
     }
-    const list = hasMore ? schools.filter((s) => bySchool.has(Number(s.id))) : schools;
+    /* یافتهٔ بازبینِ PR #120 (red-first): شرطِ قبلی `hasMore ? صفحه : همه` در
+       صفحهٔ آخرِ یک پیمایشِ چندصفحه‌ای (hasMore=false ولی cursor حاضر) کلِ
+       دامنه را برمی‌گرداند و مدارسِ مصرف‌شدهٔ صفحاتِ قبل با ردیفِ خالی تکرار
+       می‌شدند. قراردادِ یکنواخت: پاسخِ «صفحه‌دار» (cursor یا has_more) فقط
+       مدارسِ دارایِ ردیفِ همین صفحه؛ پاسخِ تک‌صفحه‌ای همهٔ دامنه (هم‌ارز با
+       مسیرِ حافظه — سنجهٔ parity همین را قفل می‌کند). */
+    const paged = hasMore || (cursor != null && cursor !== '');
+    const list = paged ? schools.filter((s) => bySchool.has(Number(s.id))) : schools;
 
     /* جمع‌ها و شمارِ دانش‌آموز برای **همهٔ مدارسِ پاسخ** — نه فقط آن‌هایی که
        در این صفحه ردیف دارند، وگرنه مدرسهٔ بدونِ ردیف students=0 می‌گرفت در
@@ -317,7 +324,14 @@ function createReportsRoutes(ctx) {
         pass_rate: cnt ? Math.round((Number(r.pass) / cnt) * 1000) / 10 : null
       });
     }
-    const list = hasMore ? schools.filter((s) => bySchool.has(Number(s.id))) : schools;
+    /* یافتهٔ بازبینِ PR #120 (red-first): شرطِ قبلی `hasMore ? صفحه : همه` در
+       صفحهٔ آخرِ یک پیمایشِ چندصفحه‌ای (hasMore=false ولی cursor حاضر) کلِ
+       دامنه را برمی‌گرداند و مدارسِ مصرف‌شدهٔ صفحاتِ قبل با ردیفِ خالی تکرار
+       می‌شدند. قراردادِ یکنواخت: پاسخِ «صفحه‌دار» (cursor یا has_more) فقط
+       مدارسِ دارایِ ردیفِ همین صفحه؛ پاسخِ تک‌صفحه‌ای همهٔ دامنه (هم‌ارز با
+       مسیرِ حافظه — سنجهٔ parity همین را قفل می‌کند). */
+    const paged = hasMore || (cursor != null && cursor !== '');
+    const list = paged ? schools.filter((s) => bySchool.has(Number(s.id))) : schools;
     const listIds = list.map((s) => Number(s.id));
 
     let totals = new Map(), trends = new Map();
@@ -622,7 +636,14 @@ function createReportsRoutes(ctx) {
         attendance_rate: total ? Math.round(((present + late) / total) * 1000) / 10 : null
       });
     }
-    const list = hasMore ? schools.filter((s) => bySchool.has(Number(s.id))) : schools;
+    /* یافتهٔ بازبینِ PR #120 (red-first): شرطِ قبلی `hasMore ? صفحه : همه` در
+       صفحهٔ آخرِ یک پیمایشِ چندصفحه‌ای (hasMore=false ولی cursor حاضر) کلِ
+       دامنه را برمی‌گرداند و مدارسِ مصرف‌شدهٔ صفحاتِ قبل با ردیفِ خالی تکرار
+       می‌شدند. قراردادِ یکنواخت: پاسخِ «صفحه‌دار» (cursor یا has_more) فقط
+       مدارسِ دارایِ ردیفِ همین صفحه؛ پاسخِ تک‌صفحه‌ای همهٔ دامنه (هم‌ارز با
+       مسیرِ حافظه — سنجهٔ parity همین را قفل می‌کند). */
+    const paged = hasMore || (cursor != null && cursor !== '');
+    const list = paged ? schools.filter((s) => bySchool.has(Number(s.id))) : schools;
     const listIds = list.map((s) => Number(s.id));
 
     let totals = new Map();

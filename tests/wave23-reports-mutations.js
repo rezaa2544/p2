@@ -114,6 +114,13 @@ const mutations = [
     mutate: (s) => s.replace(
       "FULL JOIN tr USING (school_id, staff_id)\nGROUP BY school_id`;",
       "FULL JOIN tr USING (school_id, staff_id)\nGROUP BY school_id\nLIMIT 1`; /* MUTANT */")
+  },
+  {
+    name: 'M11 برگرداندنِ باگِ flag-2 بازبین (صفحهٔ آخر دوباره همهٔ مدارس با ردیفِ خالی)',
+    file: 'route',
+    mutate: (s) => s.replace(
+      /const paged = hasMore \|\| \(cursor != null && cursor !== ''\);\n    const list = paged \? schools\.filter\(\(s\) => bySchool\.has\(Number\(s\.id\)\)\) : schools;/,
+      "const list = hasMore ? schools.filter((s) => bySchool.has(Number(s.id))) : schools; /* MUTANT: reviewer flag-2 bug restored */")
   }
 ];
 
