@@ -106,6 +106,33 @@ git push origin push-<sandbox-name>
 3. ویرایش این سند بدون بامپ قفل ممنوع است؛ افزودن ردیف تازه با بامپ انجام می‌شود.
 4. پس از مرج موفق هر باندل: وضعیت ردیف → «✅ نجات‌یافته» + پیوند به پی‌آر.
 
+
+## ۷) حذف‌های ثبت‌شده — پ۰ (پاک‌سازی ورک‌اسپیس، ۲۰۲۶-۰۹-۱۲)
+
+> در مأموریت **پ۰** (بهداشت ورک‌اسپیس سندباکس؛ سقف ۱۲۸MB/۱۰٬۰۰۰ فایل) این اقلام حذف شدند.
+> **هر قلم پیش از `rm` یک خط شاهد گرفت** (فایل شاهد: `/tmp/deletion-evidence.log`، ساعت ۱۵:۲۶).
+> هیچ‌کدام محتوای یگانه نداشتند؛ بازیابی همه از `origin` ممکن است.
+
+| قلم | حجم | شاهدِ پوشش | بازیابی |
+|---|---:|---|---|
+| `bandle/chat5-full-history.bundle` | 19M | ۱۱۲ ref · ۱۰۵ عیناً روی origin + ۷ جد · `bundle verify` OK · `sha256 e9c4947eb309…` ≡ مانیفست | بازسازی از `origin` |
+| `bandle/chat5-work.bundle` | 18M | HEAD `b872f44f` ∈ `origin/main` · verify OK · `sha256 b4d42414a155…` ≡ مانیفست | `git fetch origin` (رأس روی main) |
+| `bandle/chat5-session7.bundle` | 15M | ردیف رجیستری + tip `8ea217a2` ∈ `origin/bug-hunt-session7` · `sha256 002d4ea77a30…` | `git fetch origin bug-hunt-session7` |
+| `bandle/chat5-session7-continued.bundle` | 14M | ردیف رجیستری + tip `e3bb9364` ∈ همان شاخه · `sha256 9030dec1252e…` | همان |
+| `bandle/chat5-session7-final.bundle` | 14M | ردیف رجیستری + tip `1b6cd4c8` ∈ همان شاخه · `sha256 c69be49ebd74…` | همان |
+| `bandle/chat5-session9-worktree.tar.gz` | 12M | ۱۲۰۲ فایل: ۱۱۷۳ مسیر+blob در refها · ۲۷ blob جای‌دیگر · ۲ تولیدیِ gitignored | بازتولید از refها |
+| `bandle/chat5-worktree-backup.tar.gz` | 12M | ۱۱۴۹ فایل: ۱۱۲۰ مسیر+blob در refها · ۲۷ blob جای‌دیگر | بازتولید از refها |
+| `state-backup-2026-09-12/p2-worktree-dirty.tar.gz` | 12M | ۱۱۹۹ فایل: ۱۱۷۱ مسیر+blob در refها · ۲۵ blob جای‌دیگر · ۳ عیناً روی دیسک · ۰ قلمِ بی‌شاهد | بازتولید از refها |
+| `p2/.build-cache.blob` | 1.6M | `.gitignore` خط ۶۸ · خروجیِ `node build.js` | `npm run build` |
+| `p2/.build-cache.meta.json` | 8K | `.gitignore` خط ۶۷ · خروجیِ `node build.js` | `npm run build` |
+| ۱۴۶ ref محلی/ریموتیِ بی‌استفاده (از ۱۵۹) | — | هر ۵۴ شاخهٔ محلی پیش‌تر «عیناً روی origin یا جدِ آن» تأیید شد · فهرست: `state-backup-2026-09-12/dropped-refs-local.txt` | `git fetch --all` |
+
+**جمعِ حجمِ اقلامِ بالا:** ≈۱۱۷٫۶MB (حجمِ `du` هر قلم؛ قبل از `repack` نهایی).
+**حذف‌نشده‌ها (توقفِ آگاهانه):** دو فایلِ `src/js/00-migration.js` + `src/js/27-sync.js` که blob‌هایشان در هیچ ref محلی/ریموتی نبود ⇒ منتقل به
+`/home/user/state-backup-2026-09-12/preserved-unpushed/` (حفظ شد، حذف نشد).
+**وضعیت ردیف‌های ۴۶/۴۷ (باندل‌های پ۵ و نشست ۹):** این دو فایل روی دیسک نیستند (ریست سندباکس)، اما محتوایشان روی `origin` است؛
+وضعیت‌شان هرگز از ref کهنه نتیجه‌گیری نشود — فقط با `git ls-remote` زنده.
+
 ---
 
 _چت ۶ (مستندات و انتشار) — مأموریت ۴۲. این رجیستری پس از دو ریست پیاپی سندباکس در یک روز ساخته شد؛
