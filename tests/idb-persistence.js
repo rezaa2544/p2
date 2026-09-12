@@ -232,6 +232,7 @@ function group(title) {
     // مقداردهی داده‌های نمونه در Store
     W(`
       Store.set('payesh_idb_migrated_v2', '');
+      Store.set('payesh_idb_migrated_v3', '');
       Store.set('sms_log_v1', JSON.stringify([{ t: 'ins', c: 'legacy_test', data: { id: 1 } }]));
       Store.set('sms_queue_v1', JSON.stringify([{ uid: 'legacy-q-1', op: { t: 'ins', c: 'legacy_test' } }]));
       Store.set('sms_app_settings', JSON.stringify({ school_year: '1403-1404' }));

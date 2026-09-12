@@ -1497,13 +1497,14 @@ return req;
 var offlineStorage = new OfflineStorage();
 
 var IDB_MIGRATION_FLAG = 'payesh_idb_migrated_v2';
+var IDB_MIGRATION_REPAIR_FLAG = 'payesh_idb_migrated_v3';
 function migrateFromLocalStorageToIdb(customStorage) {
 var storage = customStorage || (typeof offlineStorage !== 'undefined' ? offlineStorage : null);
 if (!storage || !storage.isSupported()) {
 return Promise.resolve(false);
 }
 try {
-if (typeof Store !== 'undefined' && Store.get(IDB_MIGRATION_FLAG) === 'true') {
+if (typeof Store !== 'undefined' && Store.get(IDB_MIGRATION_REPAIR_FLAG) === 'true') {
 return Promise.resolve(true);
 }
 } catch (e) {
@@ -1526,16 +1527,18 @@ console.warn('هشدار در خواندن لاگ قدیمی جهت مهاجرت
 }
 try {
 if (typeof Store !== 'undefined') {
-var rawQueue = Store.get('sms_syncq_v1') || Store.get('sms_queue_v1') || Store.get('payesh_sync_queue');
-if (rawQueue) {
-var queueEntries = JSON.parse(rawQueue);
-if (Array.isArray(queueEntries)) {
+var QUEUE_KEYS = ['payesh_sync_queue', 'sms_queue_v1', 'sms_syncq_v1'];
+for (var qk = 0; qk < QUEUE_KEYS.length; qk++) {
+var rawQueue = Store.get(QUEUE_KEYS[qk]);
+if (!rawQueue) continue;
+var queueEntries;
+try { queueEntries = JSON.parse(rawQueue); } catch (eQp) { continue; }
+if (!Array.isArray(queueEntries)) continue;
 for (var i = 0; i < queueEntries.length; i++) {
 var op = queueEntries[i];
 if (op && (op.uid || op.id)) {
 if (!op.uid) op.uid = op.id;
 promises.push(storage.addToQueue(op));
-}
 }
 }
 }
@@ -1556,7 +1559,10 @@ console.warn('هشدار در انتقال تنظیمات جهت مهاجرت:',
 }
 return Promise.all(promises).then(function() {
 try {
-if (typeof Store !== 'undefined') Store.set(IDB_MIGRATION_FLAG, 'true');
+if (typeof Store !== 'undefined') {
+Store.set(IDB_MIGRATION_FLAG, 'true');
+Store.set(IDB_MIGRATION_REPAIR_FLAG, 'true');
+}
 } catch (e) {}
 return true;
 }).catch(function(err) {
@@ -3486,6 +3492,7 @@ SYNC.queue.push(item);
 enforceQueueCaps();
 }
 saveQueueChecked(); saveDlq();
+bgMirrorQueue();
 checkCapWarning(); refreshSyncBadge();
 toast('عملیات به صفِ ارسال برگشت', 'ok');
 scheduleSync(400);
@@ -3499,6 +3506,7 @@ SYNC.queue = SYNC.queue.filter(x => x.uid !== uid);
 SYNC.dlq   = SYNC.dlq.filter(x => x.uid !== uid);
 if(SYNC.queue.length + SYNC.dlq.length === before) return;
 saveQueue(); saveDlq();
+bgMirrorQueue();
 refreshSyncBadge();
 toast('عملیاتِ ردشده از صف حذف شد', 'ok');
 syncPanelModal();
