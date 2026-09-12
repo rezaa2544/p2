@@ -60,7 +60,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۳۱۸)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۳۱۹)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -157,10 +157,10 @@
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:b3e27c5e263b92a89f95d691dc9a294eb131232eea2bddc42fb2dbfcff7ea677` |
 | `DOCS_INDEX.md` | `sha256:d8a3db14a01d85152d63322dc8cd29486d8bc5c1c31a20f35453610be99e01bc` |
-| `DOCS_METRICS.md` | `sha256:f90e29c56f3e35bcca54ff85f7ad308635d118f68dc6c2a5cb0950e7a00e66b6` |
+| `DOCS_METRICS.md` | `sha256:bc69e6d9bce5ed4e5b731704fc7a8280dee88ad58697c4b1a6bb0e8155d0ec68` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:bbca0ce31bc63dabaacf2f2eab15f2ac2de60528a53de9a34985ef1ea41ee091` |
-| `DOCUMENTATION_MAP.md` | `sha256:56e946800a939791105714772ad12fdf0d690da5bbd8e20654a8687c591567cc` |
+| `DOCUMENTATION_MAP.md` | `sha256:639e223eb7fba888af91fd7b3400319356f0cc506dfe4dfe27018eb97a31f580` |
 | `DR_RUNBOOK.md` | `sha256:8c0d8f7e2bb1e1305c2aaf645850de68d4b429895445ecae74a5a0a732db0e26` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
@@ -310,6 +310,7 @@
 | `REPORT_AUDIT_HARDENING.md` | `sha256:38e350686df3308d8eaeb5f8b7ac6b63b983c6e1897efbfbbca5fea84e775ffb` |
 | `REPORT_BATCH11-13.md` | `sha256:a4d2e2f0a66de6ae9fc8235a673eb5e91698516978fd9f3c0a93efab63b4cf75` |
 | `REPORT_BATCH8-10.md` | `sha256:ded217bd8d051610f21e76778ff926891152e69dcd62b451667280357ddd9a19` |
+| `REPORT_CACHE_ISOLATION_DOSSIER.md` | `sha256:978fc8cecc64ce2b745ecbcf557fd0b94eb0f8075a67ce6103d31c0aa94125d7` |
 | `REPORT_FULL_PERIOD_2026-09-05.md` | `sha256:02b7ee41d3270f1684b52277ed8dc5221620412736b221b2d92482df941fc8a5` |
 | `REPORT_OPEN_2026-09-05.md` | `sha256:bed47e123b34e7d8cc14c18ff335493d79261aae2e54607946d522f9ccbacec9` |
 | `REPORT_ROUND89_FINAL.md` | `sha256:2a8e639ecaff7fe96764fcd7a21a0af0bf40f4fdfb37afef78b08b5217afc805` |
