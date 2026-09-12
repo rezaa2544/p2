@@ -1,5 +1,14 @@
 # دفترچهٔ تحویل کار — پایش
 
+## Handoff — چت ۹: ممیزی و راستی‌آزمایی کل مخزن — نقشهٔ وضعیت + یافته‌ها — ✅ (2026-09-13)
+
+**وضعیت:** چت ۹ (مهندس ممیزی، مالکِ هیچ فیچری) اسکنِ کامل + تستِ کارکردِ همهٔ اجزا روی `main@523c1f5` انجام داد — **صفر تغییر کد**. خروجی اول = نقشهٔ وضعیت (طبق توصیهٔ هماهنگ‌کننده)، نه رفع.
+**سبزِ کامل:** هسته run 35/35 · smoke 547/547 · server1..18 همه سبز (شامل **server15 = 40/40** — قرمزِ شناخته‌شدهٔ 37/40 در **#143 رفع شده**) · sync-queue-caps 36/36 · sync-del-mirror 7/7 · delta-phase4 23/23 · offline-e2e 23/23 · bgsync 14/14 · reports-basic 9/9 · reports-tenant-isolation 11/11 · **همهٔ ۸ گیت PG-زنده** (wave10 19/19 · wave3-parity 20/20 · wave3-query3 25/25 · migration-sequence 19/19 · p11 14/14 · wave23-reports 76/76 · p13 9/9) · جهشِ الگوی امن (norm-edge 4/4 · clsctx 3/3 · deadletter 2/2 · health-index 5/5) · secret-scan 11/11 · build --check ✅ · reza-mirror 21/21.
+**یافته‌ها (همه پیش‌موجود، A/B روی درخت تمیز):** **P1-1** `run-all-tests.sh` با `DATABASE_URL` خالی crash (`set -u` + `$DATABASE_URL` خط ۷۸) — رگرسیون کامل شروع نمی‌شود · **P1-2** `docs-refs-check` قرمز (۱۱ ارجاع به فایل‌های #129 مرج‌نشده ⇒ pre-flight exit 6) — شناخته‌شده (HO-1)، با مرج #129 می‌بندد · **P2** openapi-drift (۴ endpoint گزارش) · config-audit (۲۹+۲۵ متغیر) · migration-009-live M1 (assert کهنهٔ «آخرین=009») · **P3** docs-metadata (۱ یتیم) · DOCS_HEALTH_REPORT کهنه (۳۲۱→۳۲۳). **ردشده:** bgsync 12/14 نخست = flake تایمینگی (۲ اجرای مجدد 14/14) — رگرسیون نیست.
+**NOT-RUN (صادقانه):** رگرسیون کامل (P1-1/P1-2) · reports-bounded-cache/bounded-delta-resume/truncation-telemetry (فایل روی main نیست، در #129) · multinode --live (بدون Redis؛ DRY_RUN ✅) · a11y (بدون playwright/chromium) · CI (بیلینگ).
+**گزارش:** `docs/daily-reports/2026-09-13-chat9-audit.md` + بخش «چت ۹» در `2026-09-13.md`.
+**گام بعدی:** ارجاعِ P1-1/P1-2 به صف NEXT_ACTIONS؛ P2/P3 به RISK_REGISTER. تصمیم ناظر دربارهٔ مرج #129 (بازکردن رگرسیون) و رفعِ `set -u`.
+
 ## Handoff — چت ۸: دورهای ۲/۳ — رفع USER_GUIDE + تجمیعِ PRها + سناریوی استیجینگ — ✅ (2026-09-13)
 
 **وضعیت:** دور ۲ (رفعِ مارکرهای تعارضِ `USER_GUIDE.html` — ریشهٔ `609ad23`/PR #1؛ red-first؛ −۴ خط) **مرج‌شده به main** (`58c7ece` = PR #138). دور ۳: تجمیعِ PRهای چت ۸ در شاخهٔ یگانهٔ `docs/daily-reports-2026-09-13` (PR #139) — محتوای #137 (NEXT_ACTIONS + HANDOFF + گزارشِ نهایی) در همین شاخه تجمیع شد و **`2026-09-13.md` نسخهٔ واحدِ سه‌دور شد**؛ #137 با کامنتِ «superseded by #139» بسته شد.
