@@ -19,8 +19,34 @@ const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>
 
    قاعده: هیچ مقدار پویایی بدون esc یا escAttr وارد innerHTML نشود. */
 const escAttr = v => String(v??'').replace(/[&<>"'`=]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;','=':'&#61;'}[c]));
-const fa = n => (n===null||n===undefined||n==='')?'—':Number(n).toLocaleString('fa-IR',{maximumFractionDigits:2});
-const jalali = iso => { if(!iso) return '—'; try{ return new Intl.DateTimeFormat('fa-IR-u-ca-persian',{year:'numeric',month:'long',day:'numeric'}).format(new Date(iso)); }catch(e){ return iso; } };
+/* Wave 24 (فاز کلاینت): fa/jalali داغ‌ترین توابعِ رندرند (صدها بار در هر
+   صفحهٔ جدولی؛ toLocaleString/Intl هر بار ~۰٫۰۳ms). memoize با Map کران‌دار:
+   ورودی → خروجی قطعی است، پس کش همیشه صحیح است؛ سقف جلوی رشدِ حافظه را
+   می‌گیرد (پاک‌سازیِ کامل در سررسید — ساده و کافی). */
+var _FA_CACHE = new Map(), _FA_CACHE_MAX = 4096;
+const fa = n => {
+  if(n===null||n===undefined||n==='') return '—';
+  var hit = _FA_CACHE.get(n);
+  if(hit !== undefined) return hit;
+  var out = Number(n).toLocaleString('fa-IR',{maximumFractionDigits:2});
+  if(_FA_CACHE.size >= _FA_CACHE_MAX) _FA_CACHE.clear();
+  _FA_CACHE.set(n, out);
+  return out;
+};
+var _JAL_CACHE = new Map(), _JAL_CACHE_MAX = 2048, _JAL_FMT = null;
+const jalali = iso => {
+  if(!iso) return '—';
+  var hit = _JAL_CACHE.get(iso);
+  if(hit !== undefined) return hit;
+  var out;
+  try{
+    if(!_JAL_FMT) _JAL_FMT = new Intl.DateTimeFormat('fa-IR-u-ca-persian',{year:'numeric',month:'long',day:'numeric'});
+    out = _JAL_FMT.format(new Date(iso));
+  }catch(e){ out = iso; }
+  if(_JAL_CACHE.size >= _JAL_CACHE_MAX) _JAL_CACHE.clear();
+  _JAL_CACHE.set(iso, out);
+  return out;
+};
 const todayISO = ()=> new Date().toISOString().slice(0,10);
 const daysAgoISO = d => { const t=new Date(); t.setDate(t.getDate()-d); return t.toISOString().slice(0,10); };
 const DAYS=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه'];

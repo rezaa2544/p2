@@ -119,8 +119,37 @@ function saveSyncMeta(){
 function saveDlq(){
   Store.setJSON(SYNC_DLQ_KEY, SYNC.dlq);
 }
+/* Wave 24 (فاز کلاینت): queueBytes در هر رندر (از مسیرِ syncBadge →
+   queueRatio) کلِ صف را stringify می‌کرد — با صفِ چندصدتایی داغ‌ترین
+   تابعِ کلاینت بود (~۴۴۰ms در پروفایلِ ۲۵ رندر). کش با کلیدِ
+   (مرجعِ آرایه + طول + TTL کوتاه):
+   - هر حذف/تخلیه، آرایه را با filter نو می‌سازد → مرجع عوض می‌شود →
+     بازمحاسبه؛ پس حلقهٔ enforceQueueCaps همیشه مقدارِ تازه می‌بیند.
+   - push طول را عوض می‌کند → بازمحاسبه.
+   - تغییرِ وضعیتِ درجا (failed→pending) فقط چند بایت جابه‌جا می‌کند؛
+     TTL ۲۵۰ms همان را هم به‌سرعت تازه می‌کند (مصرفش فقط نشانگر است). */
+var _QB_CACHE = { ref: null, len: -1, at: 0, val: 0 };
 function queueBytes(){
-  try{ return JSON.stringify(SYNC.queue).length; }catch(e){ return 0; }
+  try{
+    var q = SYNC.queue, now = Date.now();
+    if(_QB_CACHE.ref === q && (now - _QB_CACHE.at) < 250){
+      if(_QB_CACHE.len === q.length) return _QB_CACHE.val;
+      if(q.length > _QB_CACHE.len){
+        /* push فقط انتها اضافه می‌کند (هیچ‌جا درجِ میانی نداریم) —
+           فقط قلم‌های تازه شمرده می‌شوند، نه کل صف. ‏(+۱ تقریبِ کامای
+           جداکننده؛ برای گیت/هشدارِ سقف بیش‌برآوردِ امن است.) */
+        var v2 = _QB_CACHE.val;
+        for(var i=_QB_CACHE.len;i<q.length;i++) v2 += JSON.stringify(q[i]).length + 1;
+        _QB_CACHE.len = q.length; _QB_CACHE.val = v2;
+        return v2;
+      }
+      /* کوچک‌شدن = filter/حذف — مرجع معمولاً عوض می‌شود؛ محاسبهٔ کامل */
+    }
+    var v = JSON.stringify(q).length;
+    _QB_CACHE.ref = q; _QB_CACHE.len = q.length;
+    _QB_CACHE.at = now; _QB_CACHE.val = v;
+    return v;
+  }catch(e){ return 0; }
 }
 /* نسبتِ اشغالِ صف نسبت به سقف (بزرگ‌ترینِ نسبتِ تعدادی و حجمی) */
 function queueRatio(){
