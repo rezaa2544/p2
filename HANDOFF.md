@@ -1,5 +1,15 @@
 # دفترچهٔ تحویل کار — پایش
 
+## دور ۸۳ — چت ۳ · Wave 24 بسته شد: PR #89 مرج @ `7ee5237` (۲۰۲۶-۰۹-۱۲)
+
+- **merge:** PR [#89](https://github.com/rezaa2544/p2/pull/89) با روش merge commit در `main@7ee5237` ادغام شد؛ `merge-base --is-ancestor` تأیید کرد هر ۹ کامیت شاخه (b2e6c3a…b580e8a) عضو main هستند؛ هر ۹ فایل کلیدی (کوچک‌ساز، json-fast، ۵ تست performance، راهنما، قفل rc33) روی main موجود.
+- **⚠️ قید صداقت — CI اجرا نشد:** انسداد بیلینگ GitHub Actions همچنان فعال (فقط مالک). به‌جای آن، رگرسیون کامل **روی main پس از merge** سبز شد: baseline --assert ‏4/4 KPI (‏index 1,657,981B · build ~65ms · parse ~34ms · p95 ~3.3ms) · perf-suites ‏26+11+20+15 · run ‏35/35 · smoke ‏547/547 · authz ‏37/37 · db-eng ‏14/14 · multi-grade ‏34/34 · secret-scan ‏11/11 · reports ‏9+11+10+5 · a11y ‏43/43+92/0+54/54 · docs-index ‏75/75 · docs-consistency ‏22/22 · freeze-marker ‏14/14 · refs-check ✅ · stats-sync --check ✅ · `build --check` بیت‌به‌بیت ✅.
+- **یک رفعِ پس از merge:** `1a08b32` — هش `DOCS_INDEX.md` در مانیفست rc33 کهنه بود (در دور ۸۲ نمایه **پس از** بازتولید مانیفست ویرایش شده بود — خطای ترتیب). بازتولید با `tools/docs-stats-sync --freeze`؛ درسِ عملی: **اول همهٔ ویرایش‌های سند، بعد `--freeze`، بعد commit.**
+- **roadmap:** ردیف ۲۴ → PR #89 مرج‌شده @ `7ee5237`.
+- **وضعیت شاخه:** `feat/wave24-performance-optimization` مرج شد و دیگر فعال نیست؛ main = `1a08b32`.
+- **بعدی:** منتظر بریف ویو بعدی از ناظر. تنها مانع باز: بیلینگ CI (مالک).
+
+
 ## دور ۸۲ — تکمیل: merge با main + بامپ قفل rc33 + PR #89 آماده (۲۰۲۶-۰۹-۱۲)
 
 - **merge با main:** `origin/main@efe364d` (کارهای چت ۶: docs-refs-check، قفل rc32، migration 008) به شاخهٔ ویو ۲۴ merge شد (`b93dfe1`)؛ تعارض HANDOFF با نگه‌داشتن هر دو ورودی حل شد.
