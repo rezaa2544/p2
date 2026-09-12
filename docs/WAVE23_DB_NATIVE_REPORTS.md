@@ -185,24 +185,85 @@ Execution Time: 0.603 ms   (روی ۳۶٬۰۰۰ رکورد)
 
 ## ۸. قلم‌های باز
 
-1. سه گزارشِ دیگر هنوز in-memory‌اند (§۴).
-2. **باگِ تأییدشده (رفع‌نشده):** ‏`schoolHasTuition()` روی `school.school_type`
-   تکیه می‌کند ولی ستونِ PostgreSQL ‏`type` نام دارد و `reviveRows()` در
-   ‏`server/db.js` فقط مقدار‌های رشته‌ای را JSON-parse می‌کند و هیچ ستونی را
-   تغییرِ نام نمی‌دهد. اندازه‌گیریِ مستقیم روی دیتابیسِ واقعی:
-
-   ```
-   keys from PG: [ 'type' ]        has school_type? false
-   schoolHasTuition(PG-shaped {type:'shahed'})        = false   ← غلط
-   schoolHasTuition(store-shaped {school_type:'shahed'}) = true
-   ```
-
-   یعنی در حالتِ PG-live گزارشِ مالی **هر مدرسهٔ شاهد/غیرانتفاعی را بی‌شهریه**
-   می‌بیند (مگر `capabilities.has_tuition` صریحاً تنظیم باشد) و درخواستِ صریحِ آن
-   مدرسه ۴۰۰ می‌گیرد. این در دامنهٔ همین پی‌آر رفع نشد چون به مسیرِ `finance`
-   مربوط است و آن گزارش هنوز DB-native نشده؛ باید در پیاده‌سازیِ گزارشِ مالی
-   (یا در `reviveRows`) بسته شود.
+1. ~~سه گزارشِ دیگر هنوز in-memory‌اند (§۴).~~ **بسته شد (۲۰۲۶-۰۹-۱۲، تکمیلِ
+   P0-1 چت ۳):** هر سه گزارش (`academic`/`finance`/`teachers`) DB-native
+   شدند — §۹ همین سند.
+2. ~~**باگِ تأییدشده (رفع‌نشده):** ‏`schoolHasTuition()`…~~ **رفع شد (red-first):**
+   نوعِ ساختاری حالا از هر دو شکل خوانده می‌شود
+   (`school.school_type ?? school.type` — ‏`school_type` در تعارض برنده است،
+   چون نامِ store/validate.js است). بازتولیدِ قرمز پیش از رفع:
+   ‏`financeReport` روی `{type:'shahed'}` → **۴۰۰**؛ پس از رفع → **۲۰۰** و
+   درخواستِ صریحِ مدرسهٔ governmental همچنان **۴۰۰**. سنجهٔ قفل:
+   ‏`tests/wave23-reports-pg.js` بخشِ `W23-TUITION`؛ جهشِ M8 (برگرداندنِ باگ)
+   کشته می‌شود.
 3. `tests/wave23-reports-pg.js` در محیطِ بدونِ PostgreSQL با برچسبِ NOT-RUN رد
    می‌شود؛ `scripts/run-all-tests.sh` وقتی PostgreSQLِ در دسترس بیابد
    ‏`WAVE23_REQUIRE_PG=1` می‌گذارد تا آن‌جا تست الزامی شود.
 4. CI روی GitHub به‌دلیلِ صورتحسابِ حساب اجرا نمی‌شود؛ همهٔ Evidence بالا محلی است.
+
+---
+
+## ۹. تکمیلِ P0-1 (۲۰۲۶-۰۹-۱۲): سه گزارشِ باقی‌مانده DB-native شدند
+
+پیاده‌سازی دقیقاً طبقِ طرح‌هایِ §۴ و با همان دکترینِ گزارشِ حضور: سازندهٔ
+خالص در `server/reports-sql.js` · مسیرِ SQL فقط با `db.isPostgres()` · مسیرِ
+حافظه بایت‌به‌بایت دست‌نخورده · همهٔ خواندن‌ها `queryRead` · صفحه‌بندیِ keyset
+با `LIMIT n+1` · مهارِ اجاره‌ای در SQL (`school_id = ANY($1)`).
+
+### ۹.۱ آنچه ساخته شد
+
+| گزارش | سازنده‌ها | صفحه | نکتهٔ هم‌ارزی |
+| :--- | :--- | :--- | :--- |
+| `academic` | `buildAcademicClassPage` + `buildAcademicSchoolTotals` + `buildAcademicTrend` | روی `classes` — کلاسِ بی‌نمره با count=0 می‌ماند | نرمال‌سازیِ `score*20/max_score` در SQL با گاردِ VARCHAR خراب (هم‌ارزِ `Number()||20`)؛ میانگینِ مدرسه وزنِ **میانگینِ گردشدهٔ** کلاس را می‌گیرد (آینهٔ فرمولِ حافظه)؛ روند از **همهٔ** ترم‌ها با ترتیبِ نخستین-دیدار (`min(id)`) |
+| `finance` | `buildFinanceTuitions` + `buildFinanceInstallments` + `buildFinanceScholarships` | bounded به مدارسِ شهریه‌دارِ دامنه | ستون‌هایِ پولیِ VARCHAR (`discount`/`payable`/`paid`/`paid_amount`) با castِ regex-گارد — junk مثل `Number()||0` صفر می‌شود؛ «امروز»ِ overdue پارامتر است نه `CURRENT_DATE` تا دو مسیر روی «حالا» یکی باشند |
+| `teachers` | `buildTeachersStaffPage` + `buildTeachersSchoolTotals` + `buildUsersByIds` | keyset روی `(school_id, staff_id)` از سه CTE با FULL JOIN | حضورِ کادر و جانشینی ماه-مقید؛ ضمنِ خدمت کل-تاریخ (رفتارِ حافظه)؛ نام/نقش فقط برای staffهای صفحه (`ANY($1)`) |
+
+**اعتبارسنجیِ استاندارد (P2):** ‏`parsePositiveInt` / `parseOptionalPositiveInt` /
+`validateTerm` / `validateSchoolId` در `server/reports-sql.js` و روی **هر ۴**
+endpoint (شاملِ حضورِ چت ۶). ورودیِ خراب ⇒ `400 bad_request` در **هر دو مسیر**
+(نه NaN خاموشِ حافظه، نه ۵۰۰ از PG).
+
+### ۹.۲ Evidence (Measured، محلی، PostgreSQL 18.4 embedded)
+
+- ‏`tests/wave23-reports-sql.js` → **۱۱۰/۱۱۰** (۵۱ قبلی + ۵۹ برای سازنده‌های
+  جدید و parserها؛ ناوردایِ «هر پارامتر مصرف می‌شود» روی هر ۱۰ سازنده).
+- ‏`tests/wave23-reports-pg.js` → **۷۳/۷۳** روی PG واقعی (۳۰ قبلی دست‌نخورده +
+  ۴۳ جدید): هم‌ارزیِ بایت‌به‌بایتِ ۱۰ سناریو برای سه گزارشِ جدید · `W23-TUITION`
+  (رفعِ باگ) · مهار/۴۰۰های P2 · پیمایشِ کاملِ cursor (academic/teachers) ·
+  ثباتِ جمع‌ها زیرِ صفحه‌بندی · فقط-queryRead با شمارِ ثابتِ کوئری (۳ برای هر
+  گزارش) · bounded در خودِ PG (کوئریِ صفحه ≤ limit+1 ردیف برمی‌گرداند) ·
+  `W23C-JOIN` نمرهٔ ناسازگار.
+- **جهش‌کشی:** `tests/wave23-reports-mutations.js` → **۱۰/۱۰ کشته** (حذفِ
+  GROUP BY روند، JOIN بدونِ تطبیقِ مدرسه، حذفِ فیلترِ tenant مالی، تغییرِ فرمولِ
+  نرمال‌سازی، حذفِ LIMIT n+1، حذفِ گاردِ P2، حذفِ queryRead، برگرداندنِ باگِ
+  has_tuition، حذفِ catch-all قسط، LIMIT در totals). دو جهشِ M2/M5 در دورِ
+  اول **زنده ماندند** و با دو سنجهٔ تازه (W23C-JOIN و bounded-at-PG) کشته شدند
+  — تست ضعیف نشد، قوی شد.
+- **EXPLAIN (ANALYZE, BUFFERS)** روی هر کوئریِ جدید (36k حضور + 24k نمره):
+  academic صفحه ‏۷.۸ms — `grades` با ایندکس، **یافتهٔ ثبت‌شده: Seq Scan روی
+  `classes`** (جدولِ ۲۰۰ ردیفی؛ برنامه‌ریز درست انتخاب می‌کند — ایندکسِ تازه
+  **NOT-ADD**) · finance شهریه ‏۱.۳ms و اقساط ‏۱.۳ms — بدونِ Seq Scan
+  (idx_tuitions_school_id/idx_installments_school_id) · teachers صفحه ‏۰.۹ms —
+  بدونِ Seq Scan (idx_staff_attendance_school_id). **هیچ ایندکسِ تازه‌ای لازم
+  نشد** — طبقِ قاعدهٔ «ایندکس فقط با اثبات»، NOT-ADD مستند.
+- **هم‌زمانی (P1-7 سبک):** `tools/bench-reports-concurrency.js` — ۵۰ درخواستِ
+  هم‌زمانِ ترکیبی (هر ۴ گزارش) روی PG زنده، Pool(max=10)، **Measured @ 200k
+  حضور/60k نمره**: حافظه p50≈104–108ms · p95≈185–238ms؛ DB-native
+  p50≈226–321ms · p95≈364–416ms؛ خطا ۰/۵۰ در هر دو. **یافتهٔ منفیِ صریح:**
+  در این مقیاس و با store ازپیش-در-RAM، زیرِ هم‌زمانی مسیرِ حافظه سریع‌تر است
+  (CPU-bound روی ۲ هسته؛ رفت‌وبرگشت‌هایِ شبکه/Pool جمع می‌شوند). مزیتِ DB-native
+  همان است که §۵.۳ نشان داد: حافظه **خطی با کلِ جدول** رشد می‌کند و ۱۶.۶MiB+
+  RAM per store می‌خواهد؛ در مقیاسِ ملی full-scan اصلاً گزینه نیست.
+  **Target≠Measured:** هدفِ بریف scale=0.01 (~100k کاربر/1.4GB) در sandbox
+  با ~1GB RAM اجرا-نشدنی بود ⇒ **NOT-RUN** با همین دلیل.
+
+### ۹.۳ فایل‌هایِ این تکمیل
+
+| فایل | تغییر |
+| :--- | :--- |
+| `server/reports-sql.js` | +۱۳ سازنده/parser جدید (خالص، تست‌پذیر) |
+| `server/routes/reports.js` | سه مسیرِ DB-native + P2 روی هر ۴ endpoint + رفعِ has_tuition |
+| `tests/wave23-reports-sql.js` | ۵۱ → ۱۱۰ سنجه |
+| `tests/wave23-reports-pg.js` | ۳۰ → ۷۳ سنجه |
+| `tests/wave23-reports-mutations.js` | جدید — ۱۰ جهش، اجرایِ گیتِ زنده |
+| `tools/bench-reports-concurrency.js` | جدید — بنچِ هم‌زمانی |
