@@ -124,6 +124,12 @@ function loadStore(){
 }
 const store = loadStore();
 syncAttach(store);
+/* بازخوردِ بازبینِ PR #94: وقتی هیدراتاسیون از PG عمداً سقف‌دار/بریده
+   است (PAYESH_PG_HYDRATE_LIMIT/SKIP)، هیچ مسیری نباید این آینهٔ ناقص
+   را روی store.json بنویسد (خاموشی، فال‌بکِ ورکر، خروجِ FATAL) — چون
+   فایلِ کاملِ قبلی را می‌کُشد و بوتِ بدونِ PG فقط دادهٔ بریده می‌بیند.
+   در PG-live مرجع PG است؛ فایلِ قدیمی دست‌نخورده می‌ماند. */
+let mirrorIncomplete = false;
 
 /* ── Wave 9 — رشتهٔ کارِ عملیاتِ سنگین ─────────────────────────────
    JSON.stringify(store) و نوشتنِ سنکرونِ فایل از رشتهٔ اصلی به ورکر
@@ -141,8 +147,17 @@ db.init(store).then(async info => {
        PG truth at boot (per-table failures warn and keep going). */
     try {
       const h = await db.hydrateStoreFromPg(store);
+      mirrorIncomplete = db.shouldPersistMirrorFile(db.isPostgres(), h) === false;
+      if (mirrorIncomplete) {
+        console.warn('[store] mirror incomplete (capped/env-skipped hydration) — JSON file persist DISABLED: a trimmed snapshot must never overwrite the full store file (PG is authoritative)');
+      }
+      if (db.hydrationUsersCapped && db.hydrationUsersCapped(h)) {
+        console.warn('[store] WARNING: users hydration is capped — users beyond the cap CANNOT authenticate; PAYESH_PG_HYDRATE_LIMIT is for load-test/staging sandboxes only (see docs/WAVE18_LOAD_TEST_REPORT.md §5-4)');
+      }
       console.log('[DB] Hydrated ' + h.hydrated + ' collections from PostgreSQL' +
-        (h.skipped.length ? ' (skipped: ' + h.skipped.join(',') + ')' : ''));
+        (h.skipped.length ? ' (skipped: ' + h.skipped.join(',') + ')' : '') +
+        (h.capped && h.capped.length ? ' (capped: ' + h.capped.join(',') + ')' : '') +
+        (h.env_skipped && h.env_skipped.length ? ' (env-skipped: ' + h.env_skipped.join(',') + ')' : ''));
     } catch (e) { console.warn('[DB] Hydration warning:', e.message); }
   }
 }).catch(err => {
@@ -267,6 +282,12 @@ function gcStore(){
 let persistBusy = false;    /* نوشتنِ ورکر در جریان است */
 let persistQueued = false;  /* حینِ پرواز دوباره کثیف شد */
 function persistStore(){
+  /* PR #94 review-guard: با آینهٔ سقف‌دار، فایل هرگز با اسنپ‌شاتِ بریده
+     بازنویسی نمی‌شود (این مسیرِ FATAL/فال‌بک هم هست). شرط عمداً فقط
+     mirrorIncomplete است، نه isPostgres(): در خاموشی، db.close() پیش از
+     رویدادِ exit اجرا می‌شود و isPostgres() دیگر false است — تصمیم باید
+     با snapshotِ بوت قفل بماند (یافتهٔ آزمونِ لایو). */
+  if(mirrorIncomplete) return;
   if(!dirty) return;
   if(persistBusy){ persistQueued = true; return; }
   dirty = false; /* نقطهٔ اسنپ‌شات — جهشِ بعدی دوباره کثیف می‌کند */
@@ -284,6 +305,10 @@ function persistStore(){
 /* مسیرِ سنکرون — فقط خاموشی (exit/SIGTERM/SIGINT) و فال‌بکِ خطای ورکر؛
    هرگز در مسیرِ درخواست یا تیکرِ دوره‌ای صدا نمی‌شود. */
 function persistStoreSync(){
+  /* همان گارد — مسیرِ خاموشی (exit/SIGTERM/SIGINT) و فال‌بکِ ورکر.
+     مستقل از isPostgres(): در exit بعد از db.close() اتصال مرده است ولی
+     آینه هنوز بریده است — نباید نوشت. */
+  if(mirrorIncomplete) return;
   if(!dirty && !persistBusy && !persistQueued) return;
   dirty = false; persistQueued = false;
   const gc = gcStore();
