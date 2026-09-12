@@ -35,6 +35,11 @@ Browser
 
 **قانون:** در Production فقط PostgreSQL منبع حقیقت داده‌های اصلی باشد. JSON/in-memory store نباید source of truth باشد. Browser نباید دیتاست ملی را نگه دارد.
 
+> **وضعیت «bounded cache» (پ۳ 2026-09-12):** قانون «Browser نباید دیتاست ملی
+> را نگه دارد» اکنون گیت اجرایی دارد — کش کراندار گزارش‌ها با دفاع دولایه
+> (کران ردیف/بایت در `server/pull.js` + کران مستقل کلاینت + TTL + نشانگر
+> «دادهٔ جزئی»)؛ `tests/reports-bounded-cache.js` ‏۱۵/۱۵ + جهش ۱۰/۱۰.
+
 ---
 
 # 3. Wave 0 — Baseline و Freeze
