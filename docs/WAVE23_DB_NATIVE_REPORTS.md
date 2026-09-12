@@ -301,6 +301,52 @@ seed کرده‌اند» را می‌سنجند. نشتِ `DATABASE_URL` از م
 (`wave23-reports-pg` — ۷۶ سنجه با مهاجرت‌های واقعی، dual-mode تکراری می‌بود).
 جهشِ حذفِ pin دوباره قرمز می‌کند (کشته). هیچ سنجه‌ای حذف/ضعیف نشد.
 
+### ۹.۲د قراردادِ resume برای دلتای بریده (پ۳-ادامه — رفعِ ۴ کامنتِ بازبینِ PR #129)
+
+**مسئله (کامنت ۱ بازبین):** cursor دلتا روی `startedAtIso` جلو می‌رود؛ اگر
+دلتا به سقفِ ردیف/بایت بخورد و بریده شود، pull بعدی ردیف‌های بریده را
+دیگر نمی‌بیند — شکافِ دادهٔ دائمی و ساکت.
+
+**قرارداد (سرور → کلاینت → UI):**
+
+1. **سرور** (`server/pull.js`): برشِ row-cap یا byte-budget در حالتِ دلتا
+   (`isDelta && !forceFull`) نامِ مجموعه را در `truncatedDeltaCols` ثبت و در
+   پاسخ فیلدِ `full_snapshot_required_collections: [cols]` می‌فرستد.
+   snapshot کامل این فیلد را **نمی‌دهد** (خودش مقصدِ resume است؛ بریدگی‌اش
+   با `partial_collections` اعلام می‌شود). اندازه‌سنجی بودجه با
+   `Buffer.byteLength(json,'utf8')` است نه `.length` (کامنت ۴ — متنِ فارسی
+   ~۲ بایت بر کاراکتر؛ length بودجه را تا ~۲× کم می‌شمرد).
+2. **کلاینت** (`src/js/29-pull.js`): پس از merge، اگر پاسخ
+   `full_snapshot_required_collections` داشت و خودِ درخواست resume نبود
+   (`!options._resume`)، `rptResumeTruncatedDelta(cols, options)` اجرا
+   می‌شود: یک pull با `{forceSnapshot, collections, force, _resume}` —
+   snapshot کاملِ کران‌دار فقط برای مجموعه‌های بریده. **حلقه‌شکن دولایه:**
+   `_resume` (پاسخِ resume دیگر resume صادر نمی‌کند) + گاردِ
+   `RPT_RESUME_IN_FLIGHT` (حداکثر یک resume هم‌زمان). خروجی
+   `{ok, resumed, resume_result}`.
+3. **سنجهٔ همگرایی:** پس از resume، کلاینت == جدیدترین `CAP` ردیفِ سرور،
+   بدونِ هیچ شکافی در پنجرهٔ کران (تستِ گیت شمارشِ ردیف‌به‌ردیف می‌کند) +
+   idempotency (resume دوباره = صفر رکوردِ تکراری).
+4. **متادیتای partial — قراردادِ union (کامنت ۲):** دلتا فقط پرچم‌ها را
+   union می‌کند؛ هرگز پرچم پاک نمی‌کند و TTL (`at`) را تازه نمی‌کند. فقط
+   snapshot کاملِ *نبریده* پرچمِ مجموعه‌های touched را برمی‌دارد و `at` را
+   تازه می‌کند. فیلدِ `resuming` در متا وضعیتِ resumeِ در جریان را نگه
+   می‌دارد.
+5. **UI (کامنت ۳):** بنرِ گزارش‌ها حالتِ «در حال تکمیل» را نشان می‌دهد
+   (`data-rpt-resuming`)؛ بنرِ shell (`data-rpt-partial-shell`) در نماهای
+   عملیاتیِ متأثر (attendance/grades/discipline/homework/student-record)
+   هشدارِ دادهٔ جزئی می‌دهد. جداسازیِ کاملِ کشِ گزارشی از دادهٔ عملیاتی =
+   قلمِ معماریِ باز برای تصمیمِ ناظر (تغییرِ ساختاری، خارج از دامنهٔ این
+   رفع).
+
+**Evidence (Measured، محلی):** `tests/bounded-delta-resume.js` — ۱۴/۱۴ سبز
+(red-first: بدونِ رفع ۷/۱۳ قرمز)؛
+`tests/bounded-delta-resume-mutations.js` — ۱۰/۱۰ جهش کشته (RM1 چندلایهٔ
+سرور+کلاینت، RM5 چندلایهٔ هر دو حلقه‌شکن)؛ رگرسیون: bounded-cache ۱۵/۱۵،
+جهش‌های آن ۱۰/۱۰ (BM10 با امضای جدیدِ `rptCacheSetMeta` هم‌راستا شد)،
+pull/delta/offline ۱۲ سوئیت سبز، smoke ۵۴۷/۵۴۷، run ۳۵/۳۵،
+secret-scan ۱۱/۱۱، tenant ۱۱/۱۱، authz ۳۷/۳۷. CI=NOT-RUN (بیلینگ).
+
 ### ۹.۳ فایل‌هایِ این تکمیل
 
 | فایل | تغییر |
