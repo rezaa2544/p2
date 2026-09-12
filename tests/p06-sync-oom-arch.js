@@ -44,6 +44,15 @@ if (MUT) {
     M7: [/if\(!ex\) uPush\(op\.c, data\);/, 'uPush(op.c, ex || data);'],
     M8: [/if\(pgHas\) store\[u\.c\]\.push\(u\.rec\);/, 'store[u.c].push(u.rec);'],
     M9: [/dr\.indexOf\(u\.ref\)/, 'dr.findIndex((x) => x && x.id === u.id)'],
+    /* P1-2: */
+    N1: [/    \/\* P1-2 \(Wave 18 §۵-۳\): قطعِ آینه از مسیرِ نوشتن در PG-live[\s\S]*?\n    \}\n/, ''],
+    N2: [/if\(u\.k !== 'pop' \|\| safeSet\.indexOf\(u\.c\) !== -1\) continue;/, "if(u.k !== 'pop') continue;"],
+    N3: [/    \/\* P1-2: اول TTL[\s\S]*?\n    \}/, ''],
+    /* بازبین دور ۱ #124: */
+    N4: [/(function uidDedupTtlMs\(\)\{)[\s\S]*?if\(!\(db && typeof db\.isPostgres === 'function' && db\.isPostgres\(\)\)\) return 0;/, '$1'],
+    N5: [/uPush\('sync_conflicts', mirrorAppend\('sync_conflicts', cf\)\);/, 'store.sync_conflicts.push(cf);'],
+    N6: [/      if\(undo && undo\.items\.length\) await rollbackUndo\(\);\n/, ''],
+    N7: [/idx: store\[c\]\.length - 1,\n            after: JSON\.parse\(JSON\.stringify\(row\)\) \}\);/, 'idx: store[c].length - 1 });'],
   };
   if (!muts[MUT]) { console.error('جهش ناشناخته: ' + MUT); process.exit(2); }
   fs.writeFileSync(mangled, src.replace(muts[MUT][0], muts[MUT][1]));
@@ -188,9 +197,13 @@ async function apiSyncOf(inst, ops) {
     JSON.stringify(cap2b.body && cap2b.body.results));
   const r101b = A.store.announcements.find(x => x.id === 101);
   const r102b = A.store.announcements.find(x => x.id === 102);
-  const insCount = A.store.announcements.filter(x => x.title === 'تازه').length;
-  chk('U2i اعمالِ نهایی صحیح: upd زد، del برد، ins یک‌بار',
-    r101b && r101b.title === 'تغییر‌یافته' && !r102b && insCount === 1);
+  /* P1-2: مجموعهٔ خارجِ لیستِ سفید پس از commit از آینه بریده می‌شود —
+     اعمالِ نهایی را مرجع (PG) می‌سنجیم، نه آینه را */
+  const insCountPg = (await pool.query("SELECT count(*)::int AS n FROM announcements WHERE title = 'تازه'")).rows[0].n;
+  const insCountMirror = A.store.announcements.filter(x => x.title === 'تازه').length;
+  chk('U2i اعمالِ نهایی صحیح: upd زد، del برد، ins یک‌بار (در PG؛ آینه بریده شد — P1-2)',
+    r101b && r101b.title === 'تغییر‌یافته' && !r102b && insCountPg === 1 && insCountMirror === 0,
+    'pg=' + insCountPg + ' mirror=' + insCountMirror);
 
   /* ══ U3 — سقف dedup uid ══ */
   const B = makeInstance();
@@ -251,8 +264,12 @@ async function apiSyncOf(inst, ops) {
   chk('U5a sync موفق روی آینهٔ ۳۰۰۰ رکوردی', cap5.code === 200 && cap5.body.results.every(r => r.ok === true));
   chk('U5b هیچ clone بزرگ (>200KB) رخ نداد — O(batch) نه O(collection)',
     bigStringifies === 0, 'big=' + bigStringifies);
-  chk('U5c اعمال شد (ins+upd)', D.store.announcements.length === bigBefore + 1
-    && D.store.announcements.find(x => x.id === 1000).title === 'seed-0-تغییر');
+  const u5insPg = (await pool.query("SELECT count(*)::int AS n FROM announcements WHERE title = 'تازه-۵'")).rows[0].n;
+  chk('U5c اعمال شد (ins+upd): اعمال در PG، آینهٔ بدونِ رشد (P1-2)',
+    D.store.announcements.length === bigBefore
+    && D.store.announcements.find(x => x.id === 1000).title === 'seed-0-تغییر'
+    && u5insPg === 1,
+    'len=' + D.store.announcements.length + ' (انتظار ' + bigBefore + ') pg-ins=' + u5insPg);
 
   /* ══ U6 — باگ ۳ بازبین: rollback نباید سنگ‌قبری گم کند (برش = post-commit) ══ */
   const F = makeInstance();
@@ -321,8 +338,14 @@ async function apiSyncOf(inst, ops) {
     await quiet(() => apiSyncOf(G, [opX({ uid: 'u8-' + i, by: 5, collection: 'announcements',
       type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, title: 'ns-' + i } })]));
   }
-  chk('U8a بدون لیست سفید، هیچ هرسی رخ نمی‌دهد (مجموعهٔ مجوزی مصون)',
-    G.store.announcements.filter(x => x.title && x.title.startsWith('ns-')).length === 12);
+  /* P1-2 (Wave 18 §۵-۳): بدون لیست سفید، مجموعه از مسیرِ نوشتن بریده می‌شود —
+     رشدِ آینه = صفر؛ داده در PG کامل است؛ seed/آینهٔ موجود دست‌نخورده می‌ماند
+     (برشِ نهفته نیست: فقط تازه‌ها وارد نمی‌شوند) */
+  const u8aPg = (await pool.query("SELECT count(*)::int AS n FROM announcements WHERE title LIKE 'ns-%'")).rows[0].n;
+  chk('U8a بدون لیست سفید: آینه پس از ۱۲ نوشتن رشد نکرد (قطع از مسیر نوشتن) و داده کامل در PG است',
+    G.store.announcements.filter(x => x.title && x.title.startsWith('ns-')).length === 0
+    && G.store.users.length === 1 && u8aPg === 12,
+    'mirror=' + G.store.announcements.filter(x => x.title && x.title.startsWith('ns-')).length + ' pg=' + u8aPg);
   /* با لیست سفید: هرس فقط همان مجموعه؛ نوشتنِ والد روی رابطهٔ هرس‌نشده موفق */
   const H = makeInstance({ id: 9, role: 'parent', school_id: 1 });
   H.store.users.push(
@@ -350,7 +373,10 @@ async function apiSyncOf(inst, ops) {
   delete process.env.PAYESH_PG_MIRROR_GROWTH_CAP;
   delete process.env.PAYESH_PG_MIRROR_PRUNE_SAFE;
 
-  /* ══ U9 — باگ ۱ (بازبین، دور ۲): var مانده → uPush تکراری/نامالک در درج برخوردی ══ */
+  /* ══ U9 — باگ ۱ (بازبین، دور ۲): var مانده → uPush تکراری/نامالک در درج برخوردی ══
+     P1-2: این سناریو روی آینهٔ پُر بنا شده (seed sync اول باید در آینه بماند تا
+     op برخوردی از مسیرِ ex برود) — با لیستِ سفید write-through اجرا می‌شود. */
+  process.env.PAYESH_PG_MIRROR_PRUNE_SAFE = 'announcements';
   const H2 = makeInstance();
   await quiet(() => apiSyncOf(H2, [opX({ uid: 'u9-seed', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1,
     data: { school_id: 1, id: 55, title: 'پایه' } })]));
@@ -373,6 +399,7 @@ async function apiSyncOf(inst, ops) {
     H2.store.announcements.filter(x => x.id !== 55).length === 0);
   chk('U9e version فقط bumps همین دسته کم شد (سهم sync موفق اول ماند)',
     H2.store.__server_version === v9, 'v=' + H2.store.__server_version + ' (انتظار ' + v9 + ')');
+  delete process.env.PAYESH_PG_MIRROR_PRUNE_SAFE;
 
   /* ══ U10 — باگ ۲ (بازبین، دور ۲): reinsert بی‌قید، حذفِ قطعی‌شدهٔ دیگری را زنده می‌کند ══ */
   const E2 = makeInstance();
@@ -444,6 +471,169 @@ async function apiSyncOf(inst, ops) {
     dr11.some(x => x.c === 'announcements' && x.id === 90043));
   /* ۵۰۰۰ (برشِ ب) منهایِ tomb الف که rollback شد = ۴۹۹۹؛ سنگ‌قبرِ الف هرگز commit نشد */
   chk('U11e شمارش دقیق: ۵۰۰۰ (برشِ ب) − ۱ (tomb الف) = ۴۹۹۹', dr11.length === 4999, 'n=' + dr11.length);
+
+  /* ════════════════════════════════════════════════════════════════════
+     V — P1-2 (Wave 18 §۵-۳ بند ۳): قطعِ آینه از مسیرِ نوشتن در PG-live
+     مجموعهٔ غیرِ لیست‌سفید = cacheیِ bounded: پس از commitِ موفق به
+     آینهٔ پیش از دسته بازمی‌گردد؛ رکورد فقط در PG (مرجع). whitelist =
+     write-through (رفتارِ پیشین). dedup با TTL + سقف.
+     ════════════════════════════════════════════════════════════════════ */
+
+  /* ══ V1 — blocked بین‌دسته‌ای: هر دسته پس از commit بریده می‌شود، نه فقط آخرین ══ */
+  const P1 = makeInstance();
+  await quiet(() => apiSyncOf(P1, [
+    opX({ uid: 'v1-a1', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, title: 'v1-1' } }),
+    opX({ uid: 'v1-a2', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, title: 'v1-2' } }),
+    opX({ uid: 'v1-a3', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, title: 'v1-3' } })]));
+  await quiet(() => apiSyncOf(P1, [
+    opX({ uid: 'v1-b1', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, title: 'v1-4' } }),
+    opX({ uid: 'v1-b2', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, title: 'v1-5' } })]));
+  const v1pg = (await pool.query("SELECT count(*)::int AS n FROM announcements WHERE title LIKE 'v1-%'")).rows[0].n;
+  chk('V1 بدونِ لیستِ سفید: پس از ۲ دستهٔ موفق، رشدِ آینه = صفر و دادهٔ کامل در PG',
+    P1.store.announcements.length === 0 && v1pg === 5,
+    'mirror=' + P1.store.announcements.length + ' pg=' + v1pg);
+
+  /* ══ V2 — درونِ دسته و درجِ id-دارِ موجود در PG روی آینهٔ سرد (هیدراتاسیون ⇒ مسیرِ ex، نه شکست) ══ */
+  await pool.query(`INSERT INTO announcements (id, school_id, title, version) VALUES (701, 1, 'v2-پایه', 1)`);
+  const P2 = makeInstance();   /* آینهٔ سرد: 701 در PG هست، در آینه نیست */
+  const cap2v = await quiet(() => apiSyncOf(P2, [
+    opX({ uid: 'v2-ins', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, id: 701, title: 'v2-برخوردی' } }),
+    opX({ uid: 'v2-upd', by: 5, collection: 'announcements', type: 'upd', user_id: 5, school_id: 1, id: 701, data: { school_id: 1, title: 'v2-نهایی' } })]));
+  const v2row = (await pool.query('SELECT title FROM announcements WHERE id = 701')).rows[0];
+  chk('V2 دستهٔ [ins با id موجود در PG، upd همان]: موفق و اعمال در مرجع، آینه پس از commit بدونِ رکورد',
+    cap2v.code === 200 && cap2v.body.results.every(r => r.ok === true)
+    && v2row && v2row.title === 'v2-نهایی'
+    && !P2.store.announcements.some(x => x.id === 701),
+    'code=' + cap2v.code + ' pg=' + JSON.stringify(v2row && v2row.title) + ' mirror-has-701=' + P2.store.announcements.some(x => x.id === 701));
+
+  /* ══ V3 — whitelist = write-through: رکورد پس از commit در آینه می‌ماند ══ */
+  process.env.PAYESH_PG_MIRROR_PRUNE_SAFE = 'announcements';
+  const P3 = makeInstance();
+  await quiet(() => apiSyncOf(P3, [
+    opX({ uid: 'v3-a', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, title: 'v3-x' } }),
+    opX({ uid: 'v3-b', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, title: 'v3-y' } })]));
+  const v3pg = (await pool.query("SELECT count(*)::int AS n FROM announcements WHERE title LIKE 'v3-%'")).rows[0].n;
+  chk('V3 لیستِ سفید: write-through — رکورد در آینه ماند و در PG هم هست',
+    P3.store.announcements.filter(x => x.title && x.title.startsWith('v3-')).length === 2 && v3pg === 2,
+    'mirror=' + P3.store.announcements.filter(x => x.title && x.title.startsWith('v3-')).length + ' pg=' + v3pg);
+  delete process.env.PAYESH_PG_MIRROR_PRUNE_SAFE;
+
+  /* ══ V4 — rollbackِ دستهٔ شکست‌خورده در حالتِ blocked (رفتارِ دور ۲ دست‌نخورده) ══ */
+  const P4 = makeInstance();
+  pgDown = true;
+  const cap4v = await quiet(() => apiSyncOf(P4, [
+    opX({ uid: 'v4-a', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, title: 'v4-z' } })]));
+  pgDown = false;
+  chk('V4 شکستِ PG در حالتِ blocked: 503 + آینه به پیش از دسته (rollback کامل)',
+    cap4v.code === 503 && P4.store.announcements.length === 0 && !P4.store.__processed_uids['v4-a'],
+    'code=' + cap4v.code + ' mirror=' + P4.store.announcements.length);
+
+  /* ══ V5 — هیدراتاسیونِ findForApply هم بریده می‌شود (upd از PG، آینه پس از commit خالی) ══ */
+  await pool.query(`INSERT INTO announcements (id, school_id, title, version) VALUES (505, 1, 'v5-کهنه', 1)`);
+  const P5 = makeInstance();
+  const cap5v = await quiet(() => apiSyncOf(P5, [
+    opX({ uid: 'v5-upd', by: 5, collection: 'announcements', type: 'upd', user_id: 5, school_id: 1, id: 505, data: { school_id: 1, title: 'v5-تازه' } })]));
+  const v5row = (await pool.query('SELECT title FROM announcements WHERE id = 505')).rows[0];
+  chk('V5 upd روی رکوردِ فقط-PG (بدون آینه): موفق در مرجع؛ ردیفِ هیدراته‌شده پس از commit از آینه رفت',
+    cap5v.code === 200 && v5row && v5row.title === 'v5-تازه'
+    && !P5.store.announcements.some(x => x.id === 505),
+    'code=' + cap5v.code + ' pg=' + JSON.stringify(v5row && v5row.title) + ' mirror-has-505=' + P5.store.announcements.some(x => x.id === 505));
+
+  /* ══ V6 — dedup با TTL: uidهای بیرونِ پنجره پس از sync بعدی جارو می‌شوند ══ */
+  const P6 = makeInstance();
+  P6.store.__processed_uids['v6-old'] = Date.now() - 2 * 3600 * 1000;   /* ۲ ساعت پیش */
+  process.env.PAYESH_UID_DEDUP_TTL_MS = String(3600 * 1000);            /* پنجره: ۱ ساعت */
+  await quiet(() => apiSyncOf(P6, [
+    opX({ uid: 'v6-fresh', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, title: 'v6-t' } })]));
+  const pu6 = P6.store.__processed_uids;
+  chk('V6 TTL: uid منقضی (۲h) جارو شد؛ uid همین دسته (تازه) در پنجره ماند',
+    pu6['v6-old'] === undefined && typeof pu6['v6-fresh'] === 'number',
+    'old=' + pu6['v6-old'] + ' fresh=' + pu6['v6-fresh']);
+  delete process.env.PAYESH_UID_DEDUP_TTL_MS;
+
+  /* ══ V7 — باگ ۱ (بازبین دور ۱ #124): TTL فقط در PG-live — در memory-mode،
+     __processed_uids تنها مرجعِ idempotency است و TTL نمی‌سوزد ══ */
+  db.__setPoolForTests(null);
+  const P7 = makeInstance();
+  const cap7a = await quiet(() => apiSyncOf(P7, [opX({ uid: 'v7-ok', by: 5, collection: 'announcements',
+    type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, title: 'v7-t' } })]));
+  P7.store.__processed_uids['v7-old'] = Date.now() - 48 * 3600 * 1000;   /* ۴۸ ساعت پیش */
+  await quiet(() => apiSyncOf(P7, [opX({ uid: 'v7-ok2', by: 5, collection: 'announcements',
+    type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, title: 'v7-t2' } })]));
+  const cap7c = await quiet(() => apiSyncOf(P7, [opX({ uid: 'v7-old', by: 5, collection: 'announcements',
+    type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, title: 'v7-replay' } })]));
+  chk('V7 memory-mode: uid قدیمی (۴۸h) جارو نشد و replay آن duplicate_ignored ماند (TTL فقط PG-live)',
+    cap7a.code === 200 && cap7c.code === 200
+    && cap7c.body.results[0].ok === true && cap7c.body.results[0].code === 'duplicate_ignored'
+    && typeof P7.store.__processed_uids['v7-old'] === 'number',
+    JSON.stringify(cap7c.body && cap7c.body.results));
+  db.__setPoolForTests(pool);
+
+  /* ══ V8 — باگ ۲ (بازبین دور ۱ #124): صف تعارض سقف‌دار (mirrorAppend + هرس ring + resolve ⇒ del) ══ */
+  process.env.PAYESH_PG_MIRROR_GROWTH_CAP = '5';
+  const P8 = makeInstance();
+  for(let i = 0; i < 12; i++){
+    await quiet(() => apiSyncOf(P8, [opX({ uid: 'v8-ins-' + i, by: 5, collection: 'grades',
+      type: 'ins', user_id: 5, school_id: 1,
+      data: { school_id: 1, id: 800 + i, student_id: 9 + i, subject_id: 3, score: 10 } })]));
+    const r8 = await quiet(() => apiSyncOf(P8, [opX({ uid: 'v8-upd-' + i, by: 5, collection: 'grades',
+      type: 'upd', user_id: 5, school_id: 1, id: 800 + i, base_version: 99,
+      data: { school_id: 1, score: 11 } })]));
+    if(!r8 || r8.code !== 200) { chk('V8 پیش‌شرط تعارض ' + i, false, JSON.stringify(r8 && r8.body)); break; }
+  }
+  chk('V8a دوازده تعارض OCC → صفِ آینهٔ sync_conflicts سقف‌دار ماند (هرس ring از mirrorAppend)',
+    P8.store.sync_conflicts.length >= 4 && P8.store.sync_conflicts.length <= 6
+    && P8.store.sync_conflicts.every(x => x.status === 'open'),
+    'len=' + P8.store.sync_conflicts.length);
+  delete process.env.PAYESH_PG_MIRROR_GROWTH_CAP;
+  /* resolve ⇒ del */
+  const { createConflicts } = require('../server/conflicts.js');
+  const confApi = createConflicts({ store: P8.store, db, audit: () => {},
+    sessionFrom: async () => ({ id: 5, role: 'manager', school_id: 1 }),
+    sendJson: (res, code, body) => { res._cap = { code, body }; }, markDirty: () => {} });
+  const before8 = P8.store.sync_conflicts.length;
+  const target8 = P8.store.sync_conflicts[0] && P8.store.sync_conflicts[0].id;
+  const res8 = {}; await confApi.apiResolve({}, res8, { conflict_id: target8, winner: 'server' });
+  chk('V8b resolve ⇒ del: تعارضِ داوری‌شده از صف حذف شد (پاسخ resolved برمی‌گردد)',
+    res8._cap.code === 200 && res8._cap.body.ok === true
+    && res8._cap.body.conflict.status === 'resolved'
+    && !P8.store.sync_conflicts.some(x => x.id === target8)
+    && P8.store.sync_conflicts.length === before8 - 1,
+    'code=' + res8._cap.code + ' len=' + P8.store.sync_conflicts.length + '/' + before8);
+
+  /* ══ V9 — باگ ۳ (بازبین دور ۱ #124): خروج زودهنگام هیچ اثرِ آینه‌ای نمی‌گذارد ══ */
+  await pool.query(`INSERT INTO announcements (id, school_id, title, version) VALUES (801, 2, 'v9-مدرسه-دگر', 1)`);
+  const P9 = makeInstance();
+  const cap9a = await quiet(() => apiSyncOf(P9, [opX({ uid: 'v9-a', by: 5, collection: 'announcements',
+    type: 'upd', user_id: 5, school_id: 1, id: 801, data: { title: 'v9-x' } })]));
+  chk('V9a ردِ خارج از scope (id معتبرِ مدرسهٔ دیگر): 403 و آینه بدونِ رشد — هیدراتاسیونِ گِیت برگشت',
+    cap9a.code === 403 && cap9a.body.code === 'out_of_scope' && P9.store.announcements.length === 0,
+    'code=' + cap9a.code + ' mirror=' + P9.store.announcements.length);
+  const pgB9 = (await pool.query('SELECT count(*)::int AS n FROM announcements')).rows[0].n;
+  const cap9b = await quiet(() => apiSyncOf(P9, [
+    opX({ uid: 'v9-b-ins', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1,
+      data: { school_id: 1, title: 'v9-b' } }),
+    opX({ uid: 'v9-b-upd', by: 5, collection: 'announcements', type: 'upd', user_id: 5, school_id: 1,
+      id: 801, data: { title: 'v9-b2' } })]));
+  const pgA9 = (await pool.query('SELECT count(*)::int AS n FROM announcements')).rows[0].n;
+  chk('V9b ردِ پایِ زودهنگام کلِ دسته: آینه و PG به پیش از درخواست (insِ اعمال‌شدهٔ همان دسته هم برگشت)',
+    cap9b.code === 403 && P9.store.announcements.length === 0 && pgA9 === pgB9,
+    'code=' + cap9b.code + ' mirror=' + P9.store.announcements.length + ' pg=' + pgB9 + '→' + pgA9);
+  await pool.query(`INSERT INTO announcements (id, school_id, title, version) VALUES (506, 1, 'v9-کهنه', 1)`);
+  const P9c = makeInstance();
+  /* pgDownِ ساده قبل از هیدراتاسیون می‌ایستد (readOne هم می‌میرد) — برایِ
+     سنجشِ rollbackِ ردیفِ هیدراته، فقط BEGINِ commit می‌اندازد (الگوی U10) */
+  const wrap9 = pool.query; let fired9 = false;
+  pool.query = async (...args) => {
+    if(!fired9 && String(args[0]).indexOf('BEGIN') === 0){ fired9 = true; throw new Error('pg down (V9c)'); }
+    return wrap9(...args);
+  };
+  const cap9c = await quiet(() => apiSyncOf(P9c, [opX({ uid: 'v9-c', by: 5, collection: 'announcements',
+    type: 'upd', user_id: 5, school_id: 1, id: 506, data: { school_id: 1, title: 'v9-تازه' } })]));
+  pool.query = wrap9;
+  chk('V9c شکستِ commit با هیدراتاسیون: rollback ردیفِ هیدراته را هم برگرداند (pop با after)',
+    cap9c.code === 503 && !P9c.store.announcements.some(x => x.id === 506),
+    'code=' + cap9c.code + ' mirror-has-506=' + P9c.store.announcements.some(x => x.id === 506));
 
   console.log('────────────────────────────────────────────');
   if (failc === 0) console.log('P0-6 Sync OOM Arch: ' + okc + '/' + (okc + failc) + ' موفق  —  بدون خطا ✅');
