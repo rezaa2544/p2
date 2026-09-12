@@ -67,13 +67,13 @@ function measureBuild(){
   record('build.js (median of 5)', median(times), TARGETS.buildMs, 'ms');
 }
 
-/* ── ۳) parse استور (read+decode+parse — همان مسیر loadStore سرور) ─ */
+/* ── ۳) parse استور — همان مسیرِ loadStore سرور (Wave 24: پارس از Buffer) ─ */
 function measureParse(){
   const storeFile = path.join(ROOT, 'server', 'data', 'payesh.json');
   const times = [];
   for (let i = 0; i < 5; i++){
     const t0 = process.hrtime.bigint();
-    JSON.parse(fs.readFileSync(storeFile, 'utf8'));
+    JSON.parse(fs.readFileSync(storeFile));
     times.push(Number(process.hrtime.bigint() - t0) / 1e6);
   }
   record('store JSON parse (median of 5)', median(times), TARGETS.parseMs, 'ms');
