@@ -291,6 +291,19 @@ function rptExportBar(){
     + '</div>';
 }
 
+/* P0-2: نشانگرِ «دادهٔ جزئی/کهنه» — وقتی snapshot گزارشی کران‌خورده
+   (partial) یا از TTL گذشته (stale) است، کاربر باید بداند اعدادِ صفحه
+   ممکن است کاملِ دامنه نباشند (rptCacheStatus در 29-pull.js). */
+function rptPartialBanner(){
+  var st = typeof rptCacheStatus === 'function' ? rptCacheStatus() : null;
+  if (!st || (!st.partial.length && !st.stale)) return '';
+  var msgs = [];
+  if (st.partial.length) msgs.push('این گزارش روی «دادهٔ جزئی» محاسبه شده است (کشِ مرورگر کران‌دار است: ' + st.partial.length + ' مجموعهٔ بریده‌شده)');
+  if (st.stale) msgs.push('کشِ گزارشی کهنه است (بیش از ۲۴ ساعت) — برای اعدادِ قطعی همگام‌سازی کنید');
+  return '<div class="card" role="status" data-rpt-partial="1" style="border-right:4px solid #d99114;margin-bottom:12px">'
+    + '<div class="card-body small">⚠️ ' + msgs.join(' · ') + '</div></div>';
+}
+
 function rptViewAttendance(){
   var data = rptAttendanceData();
   return rptMonthNav() + rptExportBar() + data.map(function(g){
@@ -387,7 +400,7 @@ function viewReports(){
     : st.kind === 'academic' ? rptViewAcademic()
     : st.kind === 'finance' ? rptViewFinance()
     : rptViewTeachers();
-  return tabs + body;
+  return tabs + rptPartialBanner() + body;
 }
 
 const RPT_ACTIONS = {
