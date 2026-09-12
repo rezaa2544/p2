@@ -260,6 +260,7 @@ $ node tools/migrate-helper.js --next
 | ۰۰۶ | `006_delta_schema_gaps.sql` / `.down` | بستنِ سه شکافِ اسکیمای دلتا: `sync_conflicts.updated_at` (ADD→backfill از created_at→NOT NULL→ایندکس) + ایندکس‌های `hw_assignments`/`vclass_sessions` | مرج (فاز ۳ — این PR) |
 | ۰۰۷ | `007_wave3_query_indexes.sql` / `.down` | هفت ایندکسِ کیستِ موج ۳ روی users/attendance/grades/classes — پیش‌تر `۰۰۴` بود و با `004_wave1_version_seq` تصادم داشت؛ در ۲۰۲۶-۰۹-۱۱ شماره‌گذاریِ مجدد شد (`docs/MIGRATION_DECISION.md`) | مرج (موج ۳) |
 | ۰۰۸ | `008_wave23_report_logs.sql` / `.down` | مجموعهٔ `report_logs` برای گزارش‌های پیشرفتهٔ موج ۲۳ — ژورنالِ سمتِ کلاینتِ گزارشِ تولیدشده در حالتِ آفلاین و همگام‌سازی هنگامِ بازگشتِ اتصال (۱ جدول + ۴ ایندکس؛ ستون‌ها آینهٔ `server/schema.sql`) | مرج (موج ۲۳ — PR #88) |
+| ۰۰۹ | `009_report_logs_constraints.sql` / `.down` | قیدهایِ CHECK رویِ enumهایِ واقعیِ کد برای `report_logs` (`kind`: attendance/academic/finance/teachers · `format`: csv/pdf — «screen» عمداً مجاز نیست چون هیچ مسیرِ کدی نمی‌نویسدش · `status`: generated/synced · `generated_by`: digits-only یا NULL) با الگویِ NOT VALID + VALIDATE (fail-closed رویِ زبالهٔ موجود) + سه ایندکسِ مرکبِ اثبات‌شدهٔ tenant/delta ‏`(school_id, updated_at, id)` رویِ `report_logs`/`attendance`/`grades` (بنچمارک ۲۰۲۶-۰۹-۱۲: دلتایِ tenant ِ grades از ‏Seq ‏۴۷ms به ‏Index ‏۰٫۱ms) — گیتِ زنده: `tests/migration-009-live.js` ‏۱۳/۱۳ + جهش ‏۵/۵ | این دور (چت ۳) |
 
 > مهاجرت بعدی شمارهٔ `009` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را
 > (با وضعیتِ مرج) به جدول اضافه کند — مالک: نویسندهٔ مهاجرت.
