@@ -662,7 +662,7 @@ Capacity
 | E.8 | کلاس‌های تابستانی (ماژول سبک) | چت ۲ | ⏳ |
 | E.9 | مدیریت مراجعین (Visitor Management) | چت ۱/۳ | ✅ کامل (دور ۱۰۴) |
 | E.10 | شاخص «سلامت مدرسه» (G.1 – کدنویسی) | چت ۴ | ⏳ |
-| E.11 | پایگاه دانش برای کاربر نهایی (USER_GUIDE) | چت ۳ | ⏳ |
+| E.11 | پایگاه دانش برای کاربر نهایی (USER_GUIDE) | چت ۳ | ✅ کامل (2026-09-12) — چهار پیشنهاد `docs/G3_USER_GUIDE_REVIEW.md` اجرا شد: عدد منو از `NAV_EXPECT` (۴۷)، فصل «تازه‌های سامانه» (۱۱ ماژول)، «یک روز کاری مدیر»، حذف بخش فنی، رفع ۸ غلط تایپی؛ گارد رگرسیون `tests/user-guide.js` ‏33/33 + جهش ‏5/5 |
 | E.12 | صفحه‌ی وضعیت عمومی سرویس | چت ۲ | ⏳ |
 | B.3 | PG منبعِ حقیقت — Wave 1 بخش ۲ (انتقالِ Writes + تراکنش‌ها) | چت ۳ | ✅ کامل (دور ۱۰۵ — اسنکواری در `docs/WAVE1_WRITES_INVENTORY.md`) |
 | B.4 | PG/Redis: Wave 6 — Audit و تکمیلِ Distributed State (OTP/rate-limit/revocation/idempotency/cache/lock) | چت ۳ | ✅ کامل (`docs/WAVE6_REDIS_AUDIT.md`) |
