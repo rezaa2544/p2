@@ -28,7 +28,7 @@
 | 4 | Sync / A01 | 🟡 | فاز ۴ با PR #71؛ اجرای ملی باز |
 | 5 | Authorization و Tenant Isolation [P0] | ✅ | مدل واحد policy؛ ۵/۵ جهش |
 | 6 | Redis و Distributed State [P0] | 🟡 | لایهٔ redis.js + گیت زندهٔ Redis 7.4.2 واقعی (PR #97 @ `83ad521`؛ ۱۶/۱۶ + جهش ۵/۵)؛ استقرار تولیدی باقی |
-| 7 | Offline-first | 🟡 | معماری آفلاین‌اول + صف + delta-sync پیاده و تست‌شده (`wave7-offline-queue` ۷/۷)؛ مانور E2E استیجینگ باقی (= P0-3) |
+| 7 | Offline-first | 🟡 | معماری آفلاین‌اول + صف + delta-sync پیاده و تست‌شده (`wave7-offline-queue` ۷/۷)؛ **این دور (P0-3):** زنجیرهٔ کاملِ E2E خودکار `tests/offline-e2e.js` ‏۲۳/۲۳ + جهش ۷/۷ (restart واقعی دو-jsdom + server/sync.js واقعی + dedupe/retry/OCC/tenant) + رفعِ باگِ بازنویسیِ صف در بوت؛ مانورِ استیجینگ/SW-live همچنان باقی |
 | 8 | Async Architecture (Outbox) | ⏳ | شروع نشده |
 | 9 | Application Performance | 🟡 | heavy worker + L1 محدود؛ ایندکس‌های O(n) باز |
 | 10 | Database Scale | 🟡 | read-replica + queryRead + گیت زندهٔ PG (PR #99 @ `a8bc038`؛ ۱۹/۱۹: streaming replica واقعی + DDL پارتیشن §۳.۲ + جهش ۵/۵)؛ PgBouncer/اعمال تولیدی باقی |
