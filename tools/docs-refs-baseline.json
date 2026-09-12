@@ -1,7 +1,7 @@
 {
   "_generated": "2026-09-12",
   "_why": "ارجاع‌های کهنهٔ موجود در گزارش‌های تاریخیِ نقطه‌درزمانی — ویرایششان یعنی جعلِ سابقه. این فهرست فقط از رشدِ بدهی جلوگیری می‌کند؛ ارجاعِ کهنهٔ تازه گیت را قرمز می‌کند.",
-  "count": 71,
+  "count": 76,
   "known": [
     "COMPREHENSIVE_TEST_REPORT.md → src/js/19-actions.js",
     "docs/AI_PROMPT.md → src/js/19-actions.js",
@@ -15,6 +15,11 @@
     "docs/CLIENT_OFFLINE_ARCHITECTURE.md → src/js/27-sync-backoff.js",
     "docs/CONFIGURATION_REFERENCE.md → server/ratelimit.js",
     "docs/CONFLICT_MODEL_DESIGN.md → tools/migrate-to-ulid.js",
+    "docs/daily-reports/2026-09-12.md → docs/WAVE18_LOAD_TEST_REPORT.md",
+    "docs/daily-reports/2026-09-12.md → tests/wave18-spike-test.js",
+    "docs/daily-reports/2026-09-12.md → tests/wave18-stress-test.js",
+    "docs/daily-reports/2026-09-12.md → tools/w18-load-pg.sh",
+    "docs/daily-reports/NEXT_ACTIONS.md → tools/w18-load-pg.sh",
     "docs/DATABASE_PERFORMANCE_OPTIMIZATION.md → server/health.js",
     "docs/DELTA_HARDENING.md → docs/DELTA_COVERAGE_REPORT_2026-09-11.md",
     "docs/HANDOFF_ARCHIVE.md → tests/atttime.tmp.js",
