@@ -3718,8 +3718,29 @@ try { offlineStorage.removeEntity(c, dropped[i].id).catch(function(){}); } catch
 }
 return true;
 }
-function rptCacheSetMeta(partialCols){
-var meta = { at: Date.now(), partial: partialCols || [] };
+function rptCacheSetMeta(partialCols, opts){
+opts = opts || {};
+var prev = typeof Store !== 'undefined' ? (Store.getJSON(RPT_CACHE_META_KEY, null) || {}) : {};
+var prevPartial = Array.isArray(prev.partial) ? prev.partial : [];
+var nowPartial = partialCols || [];
+var merged;
+if (opts.fullSnapshot) {
+merged = nowPartial.slice();
+for (var i = 0; i < prevPartial.length; i++) {
+var pc = prevPartial[i];
+if (!(opts.touched && opts.touched[pc]) && merged.indexOf(pc) === -1) merged.push(pc);
+}
+} else {
+merged = prevPartial.slice();
+for (var j = 0; j < nowPartial.length; j++) {
+if (merged.indexOf(nowPartial[j]) === -1) merged.push(nowPartial[j]);
+}
+}
+var meta = {
+at: opts.fullSnapshot ? Date.now() : (prev.at || Date.now()),
+partial: merged,
+resuming: !!opts.resuming
+};
 if (typeof Store !== 'undefined') Store.setJSON(RPT_CACHE_META_KEY, meta);
 return meta;
 }
@@ -3728,8 +3749,28 @@ var meta = typeof Store !== 'undefined' ? Store.getJSON(RPT_CACHE_META_KEY, null
 if (!meta) return null;
 return {
 partial: Array.isArray(meta.partial) ? meta.partial : [],
-stale: (Date.now() - (meta.at || 0)) > RPT_CACHE_TTL_MS
+stale: (Date.now() - (meta.at || 0)) > RPT_CACHE_TTL_MS,
+resuming: !!meta.resuming
 };
+}
+var RPT_RESUME_IN_FLIGHT = false;
+function rptResumeTruncatedDelta(cols, baseOptions){
+if (RPT_RESUME_IN_FLIGHT || !cols || !cols.length) return Promise.resolve({ ok: false, skipped: true });
+RPT_RESUME_IN_FLIGHT = true;
+return pullFromServer({
+forceSnapshot: true,
+collections: cols.slice(),
+force: true,
+_resume: true,
+customApi: baseOptions && baseOptions.customApi,
+forceOnline: baseOptions && baseOptions.forceOnline
+}).then(function(r){
+RPT_RESUME_IN_FLIGHT = false;
+return r;
+}).catch(function(e){
+RPT_RESUME_IN_FLIGHT = false;
+return { ok: false, error: e && e.message };
+});
 }
 function pullFromServer(options) {
 options = options || {};
@@ -3811,6 +3852,17 @@ if (payload.server_version != null) {
 offlineStorage.setMetadata('server_version', payload.server_version).catch(function(){});
 }
 } catch (e) {}
+}
+var needFull = Array.isArray(payload.full_snapshot_required_collections)
+? payload.full_snapshot_required_collections : [];
+if (needFull.length && !options._resume) {
+return rptResumeTruncatedDelta(needFull, options).then(function(resumeResult){
+if (resumeResult && resumeResult.ok && typeof Store !== 'undefined') {
+var meta = Store.getJSON(RPT_CACHE_META_KEY, null);
+if (meta) { meta.resuming = false; Store.setJSON(RPT_CACHE_META_KEY, meta); }
+}
+return { ok: true, payload: payload, resumed: needFull, resume_result: resumeResult };
+});
 }
 return { ok: true, payload: payload };
 }).catch(function(err) {
@@ -3904,7 +3956,13 @@ if (touchedCols[hcol] && rptCacheBound(hcol) && partialCols.indexOf(hcol) === -1
 partialCols.push(hcol);
 }
 }
-rptCacheSetMeta(partialCols);
+var needResume = Array.isArray(payload.full_snapshot_required_collections)
+? payload.full_snapshot_required_collections : [];
+rptCacheSetMeta(partialCols, {
+fullSnapshot: payload.full_snapshot === true,
+touched: touchedCols,
+resuming: needResume.length > 0
+});
 for (var tc in touchedCols) {
 if (typeof idxInvalidate === 'function') {
 try { idxInvalidate(tc); } catch (e) {}
@@ -4450,7 +4508,7 @@ return `<a href="#" class="skip-link" data-act="skip-to-main">پرش به محت
       ${typeof themeSegHtml==='function'?themeSegHtml():''}
       ${(()=>{try{if(typeof activeYearOf!=='function')return '';var yc=activeYearOf(u.school_id||null);if(!yc)return '';var t=(typeof yearCodeTitle==='function')?yearCodeTitle(yc):yc;return `<span class="badge b-gray" title="سال تحصیلی عملیاتی">📅 ${esc(t)}</span>`;}catch(e){return '';}})()}
       <span class="badge b-blue">${ROLE_FA[u.role]}</span></header>
-     <div class="content">${childSwitcherBar()}${typeof notifyAutoBanner==='function'?notifyAutoBanner():''}${renderRoute()}</div>
+     <div class="content">${childSwitcherBar()}${typeof notifyAutoBanner==='function'?notifyAutoBanner():''}${typeof rptPartialShellBanner==='function'?rptPartialShellBanner():''}${renderRoute()}</div>
     </main>
   </div>`;
 }
@@ -27169,13 +27227,27 @@ return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
 + '<button class="btn ghost sm" data-act="rpt-print">🖨️ چاپ / PDF</button>'
 + '</div>';
 }
+var RPT_PARTIAL_AFFECTED_ROUTES = {
+attendance: 1, grades: 1, discipline: 1, homework: 1, 'student-record': 1, reports: 0
+};
+function rptPartialShellBanner(){
+var st = typeof rptCacheStatus === 'function' ? rptCacheStatus() : null;
+if (!st || !st.partial.length) return '';
+if (typeof S === 'undefined' || !RPT_PARTIAL_AFFECTED_ROUTES[S.route]) return '';
+return '<div class="card" role="status" data-rpt-partial-shell="1" style="border-right:4px solid #d99114;margin-bottom:12px">'
++ '<div class="card-body small">⚠️ بخشی از تاریخچهٔ این صفحه به‌دلیل کشِ کرانداِر مرورگر روی این دستگاه نیست ('
++ st.partial.length + ' مجموعهٔ بریده‌شده' + (st.resuming ? ' — تکمیل در جریان' : '') + '). '
++ 'رکوردهای قدیمی‌تر با همگام‌سازی/گزارش سرور در دسترس‌اند.</div></div>';
+}
 function rptPartialBanner(){
 var st = typeof rptCacheStatus === 'function' ? rptCacheStatus() : null;
-if (!st || (!st.partial.length && !st.stale)) return '';
+if (!st || (!st.partial.length && !st.stale && !st.resuming)) return '';
 var msgs = [];
+if (st.resuming) msgs.push('در حال تکمیلِ داده‌های همگام‌سازی (دلتای بریده — resume در جریان است)');
 if (st.partial.length) msgs.push('این گزارش روی «دادهٔ جزئی» محاسبه شده است (کشِ مرورگر کران‌دار است: ' + st.partial.length + ' مجموعهٔ بریده‌شده)');
 if (st.stale) msgs.push('کشِ گزارشی کهنه است (بیش از ۲۴ ساعت) — برای اعدادِ قطعی همگام‌سازی کنید');
-return '<div class="card" role="status" data-rpt-partial="1" style="border-right:4px solid #d99114;margin-bottom:12px">'
+return '<div class="card" role="status" data-rpt-partial="1"' + (st.resuming ? ' data-rpt-resuming="1"' : '')
++ ' style="border-right:4px solid #d99114;margin-bottom:12px">'
 + '<div class="card-body small">⚠️ ' + msgs.join(' · ') + '</div></div>';
 }
 function rptViewAttendance(){

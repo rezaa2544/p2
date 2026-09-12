@@ -291,16 +291,37 @@ function rptExportBar(){
     + '</div>';
 }
 
+/* پ۳ (کامنت ۳ بازبین #129): مجموعه‌های سنگینِ کران‌خورده فقط «کش گزارش»
+   نیستند — نماهای عملیاتی (حضور/نمره/انضباط/تکلیف/پروندهٔ دانش‌آموز) هم
+   همین آرایه‌ها را می‌خوانند. تا جداسازیِ کاملِ کشِ گزارشی از دادهٔ
+   عملیاتی (قلمِ معماریِ باز برای ناظر)، نشانگرِ «دادهٔ جزئی» باید در
+   نماهای عملیاتیِ متأثر هم دیده شود، نه فقط صفحهٔ گزارش‌ها. */
+var RPT_PARTIAL_AFFECTED_ROUTES = {
+  attendance: 1, grades: 1, discipline: 1, homework: 1, 'student-record': 1, reports: 0
+  /* reports خودش بنرِ کاملِ خودش را دارد (rptPartialBanner) */
+};
+function rptPartialShellBanner(){
+  var st = typeof rptCacheStatus === 'function' ? rptCacheStatus() : null;
+  if (!st || !st.partial.length) return '';
+  if (typeof S === 'undefined' || !RPT_PARTIAL_AFFECTED_ROUTES[S.route]) return '';
+  return '<div class="card" role="status" data-rpt-partial-shell="1" style="border-right:4px solid #d99114;margin-bottom:12px">'
+    + '<div class="card-body small">⚠️ بخشی از تاریخچهٔ این صفحه به‌دلیل کشِ کرانداِر مرورگر روی این دستگاه نیست ('
+    + st.partial.length + ' مجموعهٔ بریده‌شده' + (st.resuming ? ' — تکمیل در جریان' : '') + '). '
+    + 'رکوردهای قدیمی‌تر با همگام‌سازی/گزارش سرور در دسترس‌اند.</div></div>';
+}
+
 /* P0-2: نشانگرِ «دادهٔ جزئی/کهنه» — وقتی snapshot گزارشی کران‌خورده
    (partial) یا از TTL گذشته (stale) است، کاربر باید بداند اعدادِ صفحه
    ممکن است کاملِ دامنه نباشند (rptCacheStatus در 29-pull.js). */
 function rptPartialBanner(){
   var st = typeof rptCacheStatus === 'function' ? rptCacheStatus() : null;
-  if (!st || (!st.partial.length && !st.stale)) return '';
+  if (!st || (!st.partial.length && !st.stale && !st.resuming)) return '';
   var msgs = [];
+  if (st.resuming) msgs.push('در حال تکمیلِ داده‌های همگام‌سازی (دلتای بریده — resume در جریان است)');
   if (st.partial.length) msgs.push('این گزارش روی «دادهٔ جزئی» محاسبه شده است (کشِ مرورگر کران‌دار است: ' + st.partial.length + ' مجموعهٔ بریده‌شده)');
   if (st.stale) msgs.push('کشِ گزارشی کهنه است (بیش از ۲۴ ساعت) — برای اعدادِ قطعی همگام‌سازی کنید');
-  return '<div class="card" role="status" data-rpt-partial="1" style="border-right:4px solid #d99114;margin-bottom:12px">'
+  return '<div class="card" role="status" data-rpt-partial="1"' + (st.resuming ? ' data-rpt-resuming="1"' : '')
+    + ' style="border-right:4px solid #d99114;margin-bottom:12px">'
     + '<div class="card-body small">⚠️ ' + msgs.join(' · ') + '</div></div>';
 }
 

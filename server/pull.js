@@ -272,6 +272,10 @@ function createPull(ctx) {
       return Number.isFinite(id) ? id : 0; /* fallback قطعی: id بزرگ‌تر = جدیدتر */
     };
     const partialCollections = [];
+    /* پ۳ — قراردادِ resume: دلتاهایی که به‌خاطرِ کران بریده شدند؛ کلاینت
+       باید برای این‌ها snapshot کاملِ کران‌دار بگیرد وگرنه تغییراتِ بریده
+       برای همیشه گم می‌شوند (کرسر جلو رفته است). */
+    const truncatedDeltaCols = [];
 
     // مجموعه‌های استاندارد سامانه
     const ALL_COLLECTIONS = [
@@ -310,18 +314,26 @@ function createPull(ctx) {
       }
 
       /* P0-2: کرانِ ردیف روی مجموعه‌های سنگینِ گزارشی — بعد از scope
-         (کران هرگز scope را جایگزین نمی‌کند، فقط از آن می‌کاهد). */
+         (کران هرگز scope را جایگزین نمی‌کند، فقط از آن می‌کاهد).
+         پ۳ (بازخورد بازبین #129، کامنت ۱): بریدگیِ «دلتا» بدونِ جبران یعنی
+         گم‌شدنِ همیشگیِ تغییرات (کرسر جلو می‌رود). این‌جا فقط ثبت می‌کنیم؛
+         پایین‌تر برای دلتاهای بریده full_snapshot_required_collections
+         اعلام می‌شود تا کلاینت با snapshot کاملِ کران‌دار همگرا شود. */
       if (HEAVY_REPORT_COLS.includes(c) && resultCollections[c].length > pullRowCap) {
         const sorted = resultCollections[c].slice().sort((a, b) => rowRecency(b) - rowRecency(a));
         resultCollections[c] = sorted.slice(0, pullRowCap);
         partialCollections.push(c);
+        if (isDelta && !forceFull) truncatedDeltaCols.push(c);
       }
     }
 
     /* P0-2: بودجهٔ بایتِ مجموعِ سنگین‌ها — اگر حتی بعد از کرانِ ردیف از
-       بودجه گذشت، از سنگین‌ترین مجموعه شروع به نصف‌کردن می‌کند. */
+       بودجه گذشت، از سنگین‌ترین مجموعه شروع به نصف‌کردن می‌کند.
+       پ۳ (کامنت ۴ بازبین #129): اندازه بر حسبِ بایتِ UTF-8 واقعی سنجیده
+       می‌شود (Buffer.byteLength) — length برای متنِ فارسی تا ~۲x کم می‌شمرد
+       و پاسخِ خام از سقف عبور می‌کرد. */
     {
-      const sizeOf = (c) => JSON.stringify(resultCollections[c] || []).length;
+      const sizeOf = (c) => Buffer.byteLength(JSON.stringify(resultCollections[c] || []), 'utf8');
       let guard = 24; /* قطعیت خاتمه */
       while (guard-- > 0) {
         const heavies = HEAVY_REPORT_COLS.filter(c => Array.isArray(resultCollections[c]) && resultCollections[c].length > 1);
@@ -331,6 +343,7 @@ function createPull(ctx) {
         const list = resultCollections[biggest].slice().sort((a, b) => rowRecency(b) - rowRecency(a));
         resultCollections[biggest] = list.slice(0, Math.max(1, Math.floor(list.length / 2)));
         if (!partialCollections.includes(biggest)) partialCollections.push(biggest);
+        if (isDelta && !forceFull && !truncatedDeltaCols.includes(biggest)) truncatedDeltaCols.push(biggest);
       }
     }
 
@@ -370,6 +383,10 @@ function createPull(ctx) {
       /* P0-2: مجموعه‌هایی که سرور به‌خاطر کران بریده است — کلاینت snapshot
          این‌ها را «جزئی» علامت می‌زند (نشانگرِ دادهٔ جزئی در گزارش‌ها). */
       partial_collections: partialCollections.length ? partialCollections : undefined,
+      /* پ۳ — resume (کامنت ۱ بازبین #129): دلتایِ بریده = کلاینت باید برای
+         این مجموعه‌ها یک snapshot کاملِ کران‌دار بگیرد تا همگرا شود؛ وگرنه
+         تغییراتِ حذف‌شده پشتِ کرسرِ جلورفته گم می‌شوند. */
+      full_snapshot_required_collections: truncatedDeltaCols.length ? truncatedDeltaCols : undefined,
       deleted: deletedRecords
     };
 
