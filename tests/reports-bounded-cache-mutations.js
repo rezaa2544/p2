@@ -117,9 +117,10 @@ const mutations = [
         to: "      partial_collections: undefined, /* BM */"
       },
       {
+        /* پس از پ۳ فراخوانی متا امضای (partialCols, opts) دارد */
         file: 'cli',
-        from: "  rptCacheSetMeta(partialCols);",
-        to: "  /* BM: meta not recorded */"
+        from: "  rptCacheSetMeta(partialCols, {",
+        to: "  if (false) rptCacheSetMeta(partialCols, { /* BM: meta not recorded */"
       }
     ]
   }
