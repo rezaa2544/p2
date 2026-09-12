@@ -137,3 +137,19 @@ git push origin push-<sandbox-name>
 
 _چت ۶ (مستندات و انتشار) — مأموریت ۴۲. این رجیستری پس از دو ریست پیاپی سندباکس در یک روز ساخته شد؛
 وجودش خود دلیل ضرورتش است._
+
+## ۸) حذف‌های ثبت‌شده — پ۰ دورِ ۲ (پاک‌سازی پیگیر، ۲۰۲۶-۰۹-۱۲ عصر)
+
+> دورِ دوم بهداشت ورک‌اسپیس (۱۴۷MB/۱٬۳۲۳ فایل → ۸۸MB/۳۷ فایل؛ گزارش:
+> `daily-reports/2026-09-12-p0-workspace-hygiene.md`). هر قلم پیش از `rm` با شاهدِ remote
+> اثبات شد (`/tmp/deletion-evidence-p0r2.log`)؛ هیچ محتوای یگانه‌ای حذف نشد.
+
+| قلم | حجم | شاهدِ پوشش | بازیابی |
+|---|---:|---|---|
+| `bandle/chat2-work.bundle` | 17M | HEAD `abe9c608` == `origin/feat/delta-schema-gaps` (PR #59؛ ls-remote) · `bundle verify` = complete history · `sha256 aee67a774b40…` ≡ `chat2-sha256.txt` | `git fetch origin feat/delta-schema-gaps` |
+| `bandle/chat2-work.patch` | 57K | ۴ پچ == کامیت‌های همان شاخه (`2dad76a9`…) · sha256 ≡ مانیفست | همان |
+| `bandle/chat2-worktree-backup.tar.gz` | 11M | ۱۱۲۳ فایل: ۱۱۴/۱۱۷ متفاوتِ SHA-مچ کامل با history remote؛ ۳ فایلِ میانی (HANDOFF/USER_GUIDE/index.html) با تمامِ محتوا در `f4f9797`/`bed30f0`/`08d4492`/`32da05e` (جستجوی `-S`) · sha256 ≡ مانیفست | checkout کامیت‌های نامبرده از origin |
+| `p2` (به‌جز `docs/daily-reports/`) | ۳۲M | کپیِ بی‌گیتِ کهنه: ۴۱/۴۴ متفاوت SHA-مچ با history remote؛ `NEXT_ACTIONS`/`ROADMAP` پیش‌نویسِ مقدم‌شده (ردیف‌هایشان در main به‌روزتر)؛ `server/data` = اجرایی (audit.log + jwt.key) | `git clone` از origin |
+| `w18-delivery/` + `w18-delivery-bundle.tar.gz` | ۲۶۸K | ۶/۹ فایل == کامیت `81a523e` (PR #94 مرج‌شده)؛ ۳ فایلِ باقی نسخهٔ پیش-اصلاحِ بازبین‌اند — diff دقیقاً guardهای `db43769`/`fffde46` است که نهایی روی remoteاند | `git show 81a523e:<path>` |
+| `git-auth.sh` · `replay-push.sh` · `w18-push-rebuild.sh` | ~۲۴K | **توکن GitHub در متنِ فایل‌ها** (نقض قاعدهٔ توکن) — حذفِ امنیتی (P2-5) | — (عمداً بازیابی نمی‌شود؛ توکن‌ها rotate شوند) |
+| `replay-manifests/` · دو `*-commit-message.txt` · `build-w18-bundle.sh` | ~۳۲K | مانیفست/پیامِ کامیت‌های موجود در remote (`81a523e`؛ init شاخهٔ `docs/daily-reports-init` در history مرجِ PR #98) | از history remote |

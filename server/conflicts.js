@@ -125,6 +125,11 @@ function createConflicts(ctx){
        ردیفِ حل‌شدهٔ قدیمی را هرگز نمی‌بیند (created_at کهنه است). */
     c.updated_at = c.resolved_at;
     if(body.reason) c.reason = String(body.reason).slice(0, 200);
+    /* باگ ۲ (بازبین دور ۱ #124): resolve ⇒ del — تعارضِ داوری‌شده از صفِ آینه
+       حذف می‌شود تا آرایه با نرخِ تعارض بی‌سقف نرود (پاسخ خودِ رکوردِ resolved
+       را برمی‌گرداند؛ فهرست فقط تعارض‌هایِ باز را می‌ماند). درجِ تعارض هم از
+       mirrorAppend می‌گذرد (هرسِ ringِ سقف‌دار در sync.js). */
+    store.sync_conflicts = (store.sync_conflicts || []).filter(x => x !== c);
     markDirty();
     audit('conflict_resolved', { user_id: s.id, conflict_id: c.id, collection: c.collection, record_id: c.record_id, winner });
     return sendJson(res, 200, { ok: true, conflict: c });
