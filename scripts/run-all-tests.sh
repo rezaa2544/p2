@@ -82,6 +82,18 @@ if [ -f tools/docs-stats-sync.js ]; then
   fi
 fi
 
+# ── docs-refs pre-flight ───────────────────────────────────────────────────
+# Docs must not point at files that do not exist. Historical debt is
+# grandfathered in tools/docs-refs-baseline.json; only a NEW stale ref fails.
+if [ -f tools/docs-refs-check.js ]; then
+  if ! node tools/docs-refs-check.js --check >> $OUT 2>&1; then
+    echo "!! STALE DOC REFERENCE — a doc points at a file that does not exist" | tee -a $OUT
+    echo "   fix the reference, or if the doc is historical:" | tee -a $OUT
+    echo "   node tools/docs-refs-check.js --baseline && git commit" | tee -a $OUT
+    exit 6
+  fi
+fi
+
 # ── dirty-tree guard ───────────────────────────────────────────────────────
 # A mutation suite killed mid-run (timeout/kill/reset) leaves src files
 # MUTATED on disk -> every suite that domain touches fails in a confusing
