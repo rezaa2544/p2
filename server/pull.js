@@ -393,6 +393,23 @@ function createPull(ctx) {
     /* Delta Phase 4 — gap 4: شمارندهٔ پول‌ها (delta/full) پیش از فرستتن. */
     metrics.inc('payesh_sync_pulls_total', { mode: (isDelta && !forceFull) ? 'delta' : 'full' });
 
+    /* ── پ۳ تله‌متری بریدگی/resume (دوزیهٔ کش §۵ — روشِ سنجشِ معیارِ
+       بازفعال‌سازی #۱). کاردینالیته کران‌دار: برچسب فقط از مجموعهٔ ثابتِ
+       سنگین؛ هر نامِ دیگر ⇒ 'other' (سری‌ها هرگز با دادهٔ کاربر رشد
+       نمی‌کنند). resume با query param ‏resume=1 از کلاینت اعلام می‌شود. */
+    const boundedLabel = (c) => (HEAVY_REPORT_COLS.includes(c) ? c : 'other');
+    for (const c of partialCollections) {
+      metrics.inc('payesh_pull_partial_collections_total', { collection: boundedLabel(c) });
+    }
+    for (const c of truncatedDeltaCols) {
+      metrics.inc('payesh_pull_full_snapshot_required_total', { collection: boundedLabel(c) });
+    }
+    if (String(query.resume || '') === '1' && (!isDelta || forceFull)) {
+      for (const c of (requestedCols || ['other'])) {
+        metrics.inc('payesh_pull_resume_snapshot_total', { collection: boundedLabel(c) });
+      }
+    }
+
     /* Delta Phase 4 — gap 2: فشرده‌سازیِ مذاکره‌شده (gzip ارجح، br جایگزین)
        + سنجه‌های حجم (خام و سیم). res بدونِ writeHead (هارنس قدیمی) =
        عیناً مسیرِ پیشین. */
