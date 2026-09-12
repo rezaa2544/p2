@@ -33,6 +33,12 @@
 | P1-6 | تعیین‌تکلیف ردیف ۲۲ (UNMAPPED) و ردیف‌های شروع‌نشدهٔ P0 نقشه (۶/۷/۸/۱۰/۱۳) | ROADMAP.md این پوشه |
 | P1-7 | رفع انسداد billing گیت‌هاب CI (۶ job با steps=0/0) یا مهاجرت گیت‌ها به runner خودمختار | HANDOFF ویو ۲۳ + PR #94 |
 
+## تحویل‌های این دور (چت ۳ — 2026-09-12، شاخهٔ `feat/migration-009-check-constraints`)
+
+- ✅ مهاجرت ۰۰۹: CHECK ‏kind/format/status/generated_by روی `report_logs` (enum از کد، NOT VALID+VALIDATE) + ۳ ایندکس مرکب `(school_id, updated_at, id)` با اثبات EXPLAIN ANALYZE (grades دلتای tenant: ‏47.2ms→0.101ms) — گیت `tests/migration-009-live.js` ‏۱۳/۱۳ + جهش ۵/۵
+- 📋 دوزیهٔ tenancy ‏`school_id IS NULL` (تصمیم ناظر — گزینهٔ الف/ب با اعداد در `2026-09-12.md` بخش چت ۳)؛ **بدون تغییر کد**
+- 📋 دوزیهٔ counselor ‏(model.json/ REPORT_ROLES در برابر منوی کلاینت) — تصمیم ناظر؛ **بدون تغییر مجوز**
+
 ## P2 — بهبود / بدهی فنی
 
 - P2-1 ‏pgbouncer برای استقرار چندنمونه‌ای (تک‌نمونه لازم نبود — Wave 18 §۵-۷)
