@@ -39,6 +39,12 @@ const ROOT = path.join(__dirname, '..');
 const DOCS = path.join(ROOT, 'docs');
 const FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
 
+/* اسناد «زنده» — همان سه سندی که §۱ بند ۲ قفل از تضمینِ اثر مستثنا کرده */
+const LIVE_DOCS = ['DOCS_HEALTH_REPORT.md', 'DOCS_CONSISTENCY_REPORT.md', 'SECURITY_INCIDENT_LOG.md'];
+
+/* خواندنِ عددِ فارسی از یک ردیفِ جدول */
+const unfa = (str) => Number(String(str).replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+
 /* ── ابزارها ─────────────────────────────────────────────────────── */
 const fa = (n) => String(n).replace(/\d/g, (d) => FA_DIGITS[+d]);
 
@@ -86,6 +92,25 @@ function truth() {
   const testsApi = fs.existsSync(apiDir)
     ? fs.readdirSync(apiDir).filter((f) => f.endsWith('.js')).length : 0;
 
+  /* تست‌های تو‌در‌تویِ غیرِ api. شمارِ رسمی (= آنچه tests/test-coverage-report-coverage.js
+     می‌سنجد) فقط tests/ و tests/api/ است؛ این‌ها عمداً بیرون آن تعریف‌اند، ولی باید
+     **دیده** شوند تا افزودنِ تست در tests/performance/suites بی‌صدا از قلم نیفتد. */
+  const nested = {};
+  (function walk(dir, rel) {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!e.isDirectory()) continue;
+      const sub = rel ? rel + '/' + e.name : e.name;
+      if (sub === 'api') continue;
+      const n = fs.readdirSync(path.join(dir, e.name)).filter((f) => f.endsWith('.js')).length;
+      if (n) nested[sub] = n;
+      walk(path.join(dir, e.name), sub);
+    }
+  })(path.join(ROOT, 'tests'), '');
+  const testsNested = Object.values(nested).reduce((a, b) => a + b, 0);
+
+  /* دسته‌بندیِ وضعیت برای نقشهٔ مستندات */
+  const frozenDocs = fs.readdirSync(DOCS).filter((f) => /^DOCS_FREEZE_v1\.0\.0-rc\d+\.md$/.test(f)).length;
+
   return {
     rc: rc || '?',
     docsRoot: rootMd.length,                 // همهٔ docs/*.md، با خودِ قفل
@@ -96,6 +121,10 @@ function truth() {
     testsRoot,
     testsApi,
     testsTotal: testsRoot + testsApi,
+    testsNested,
+    nested,
+    frozenDocs,
+    liveDocs: LIVE_DOCS.length,
   };
 }
 
@@ -139,6 +168,26 @@ const OWNED = [
     match: /^\| اسناد زیرپوشه‌ها \(.*?\) \|.*\|$/m,
     render: (t) => `| اسناد زیرپوشه‌ها (${subLabel(t)}) | ${fa(t.docsSub)} |`,
   },
+  /* جدولِ «به تفکیک وضعیت» یکپارچه مالکیت می‌شود: اگر فقط ردیفِ جمع عوض شود،
+     اجزا با جمع نمی‌خوانند و جدولِ نامعتبر منتشر می‌شود. */
+  {
+    file: 'docs/DOCUMENTATION_MAP.md',
+    key: 'map-status-active',
+    match: /^\| فعال \(در حال استفاده\) \|.*\|$/m,
+    render: (t, m, ctx) => `| فعال (در حال استفاده) | ${fa(ctx.active)} |`,
+  },
+  {
+    file: 'docs/DOCUMENTATION_MAP.md',
+    key: 'map-status-live',
+    match: /^\| زنده \(ماشینی\/رخدادی، مستثنی از بامپ\) \|.*\|$/m,
+    render: (t, m, ctx) => `| زنده (ماشینی/رخدادی، مستثنی از بامپ) | ${fa(t.liveDocs)} |`,
+  },
+  {
+    file: 'docs/DOCUMENTATION_MAP.md',
+    key: 'map-status-frozen',
+    match: /^\| منجمد \(قفل‌های تاریخی\) \|.*\|$/m,
+    render: (t, m, ctx) => `| منجمد (قفل‌های تاریخی) | ${fa(t.frozenDocs)} |`,
+  },
   {
     file: 'docs/DOCUMENTATION_MAP.md',
     key: 'map-sum',
@@ -152,9 +201,24 @@ function freezeManifest() {
   const rel = currentFreeze();
   const p = path.join(ROOT, rel);
   const selfName = path.basename(rel);
+
+  /* اسناد «زنده» (§۱ بند ۲ قفل) از تضمینِ اثر مستثنا‌اند و تستِ نگهبان هم
+     هششان را نمی‌سنجد. اگر این ابزار هشِ تازه‌شان را بنویسد، هر بار که
+     `tests/docs-consistency.js` گزارش‌های ماشینی را بازتولید کند --check
+     قرمز می‌شود — و گیتی که با هر اجرای تست قرمز شود به‌درد نمی‌خورد.
+     پس هشِ ثبت‌شدهٔ لحظهٔ قفل دست‌نخورده می‌ماند، دقیقاً مانندِ قرارداد. */
+  const prev = {};
+  if (fs.existsSync(p)) {
+    for (const m of fs.readFileSync(p, 'utf8').matchAll(/\| `([^`]+\.md)` \| `sha256:([0-9a-f]{64})` \|/g)) {
+      prev[m[1]] = m[2];
+    }
+  }
+
   const files = listMd(DOCS).filter((f) => f !== selfName).sort();
   const rows = files.map((f) => {
-    const h = crypto.createHash('sha256').update(fs.readFileSync(path.join(DOCS, f))).digest('hex');
+    const h = LIVE_DOCS.includes(f) && prev[f]
+      ? prev[f]
+      : crypto.createHash('sha256').update(fs.readFileSync(path.join(DOCS, f))).digest('hex');
     return `| \`${f}\` | \`sha256:${h}\` |`;
   });
   return { rel, p, count: rows.length, table: rows.join('\n') };
@@ -181,32 +245,53 @@ function rewriteFreeze(man) {
 }
 
 /* ── موتور ───────────────────────────────────────────────────────── */
+/* ردیفِ «آرشیو» قاعدهٔ ماشینی ندارد (دستهٔ ۲.۱۱ نقشه است)، پس مقدارِ جاری‌اش
+   خوانده می‌شود و «فعال» باقی‌مانده می‌شود. اگر باقی‌مانده منفی شد، یعنی آرشیو
+   اشتباه است و ابزار به‌جای نوشتن می‌ایستد. */
+function statusContext(t) {
+  const src = fs.readFileSync(path.join(ROOT, 'docs/DOCUMENTATION_MAP.md'), 'utf8');
+  const m = src.match(/^\| آرشیو \(بایگانی نمایه\) \|\s*([\d۰-۹]+)\s*\|$/m);
+  const archive = m ? unfa(m[1]) : 0;
+  const active = t.docsTree - t.liveDocs - t.frozenDocs - archive;
+  return { archive, active, archiveRowFound: !!m };
+}
+
 function run({ check, freeze, json }) {
   const t = truth();
   if (json) { console.log(JSON.stringify(t, null, 2)); return 0; }
 
   const stale = [];
+  const ambiguous = [];
   let changedFiles = 0;
+  let ctx = {};
+  try { ctx = statusContext(t); } catch (e) { /* سند نبود؛ پایین گزارش می‌شود */ }
+
+  /* اگر دسته‌بندی قابل derivation نبود، هیچ ردیفی از آن جدول نوشته نمی‌شود */
+  if (ctx.archiveRowFound && ctx.active < 0) {
+    ambiguous.push('docs/DOCUMENTATION_MAP.md [به تفکیک وضعیت]: فعال = ' + ctx.active +
+      ' (منفی) — ردیفِ آرشیو (' + ctx.archive + ') با جمعِ درخت (' + t.docsTree +
+      ') نمی‌خواند؛ از نوشتن خودداری شد');
+  }
 
   for (const spec of OWNED) {
-    const p = path.join(ROOT, spec.file);
-    if (!fs.existsSync(p)) { stale.push(`${spec.file}: فایل نیست (${spec.key})`); continue; }
-    const src = fs.readFileSync(p, 'utf8');
+    const p2 = path.join(ROOT, spec.file);
+    if (!fs.existsSync(p2)) { ambiguous.push(`${spec.file}: فایل نیست (${spec.key})`); continue; }
+    const src = fs.readFileSync(p2, 'utf8');
 
     /* الگو باید دقیقاً یک بار بخورد — وگرنه بی‌صدا سند را خراب می‌کنیم */
     const hits = src.match(new RegExp(spec.match.source, 'gm')) || [];
     if (hits.length !== 1) {
-      stale.push(`${spec.file} [${spec.key}]: الگو ${hits.length} بار خورد (باید ۱ باشد) — از نوشتن خودداری شد`);
+      ambiguous.push(`${spec.file} [${spec.key}]: الگو ${hits.length} بار خورد (باید ۱ باشد) — از نوشتن خودداری شد`);
       continue;
     }
     const m = src.match(spec.match);
-    const want = spec.render(t, m);
+    const want = spec.render(t, m, ctx);
     const have = m[0];
     if (want === have) continue;
 
     stale.push(`${spec.file} [${spec.key}]\n      بود: ${have}\n      شد : ${want}`);
     if (!check) {
-      fs.writeFileSync(p, src.replace(spec.match, () => want), 'utf8');
+      fs.writeFileSync(p2, src.replace(spec.match, () => want), 'utf8');
       changedFiles++;
     }
   }
@@ -221,27 +306,37 @@ function run({ check, freeze, json }) {
     }
   }
 
+  /* ابهام = شکست، در هر دو حالت. پیش‌تر در حالتِ نوشتن exit 0 می‌داد و
+     «موفقیتِ نیمه‌کاره» گزارش می‌کرد — Devin review روی #۸۷ همین را گرفت. */
+  if (ambiguous.length) {
+    console.error('\u274c ابهام — از نوشتن خودداری شد (exit 2):');
+    for (const a of ambiguous) console.error('  \u2022 ' + a);
+    return 2;
+  }
+
   if (check) {
     if (stale.length) {
-      console.error('❌ آمارِ مستندات کهنه است:');
-      for (const s of stale) console.error('  • ' + s);
+      console.error('\u274c آمارِ مستندات کهنه است:');
+      for (const s2 of stale) console.error('  \u2022 ' + s2);
       console.error('\nرفع: node tools/docs-stats-sync.js' + (freeze ? ' --freeze' : ''));
       return 1;
     }
-    console.log('✅ آمارِ مستندات با دیسک یکی است.');
-    console.log(`   اسناد: ${t.docsRoot} ریشه (مانیفست ${t.docsRootMinusFreeze}) + ${t.docsSub} زیرپوشه = ${t.docsTree} درخت · قفل rc${t.rc}`);
-    console.log(`   تست‌ها: ${t.testsTotal} = ${t.testsRoot} ریشه + ${t.testsApi} ای‌پی‌آی`);
-    return 0;
+    console.log('\u2705 آمارِ مستندات با دیسک یکی است.');
+  } else if (stale.length === 0) {
+    console.log('\u2705 چیزی کهنه نبود؛ سندها دست‌نخورده ماندند.');
+  } else {
+    console.log(`\u2705 ${stale.length} مورد همگام شد (${changedFiles} فایل):`);
+    for (const s2 of stale) console.log('  \u2022 ' + s2.split('\n')[0]);
   }
 
-  if (stale.length === 0) {
-    console.log('✅ چیزی کهنه نبود؛ سندها دست‌نخورده ماندند.');
-  } else {
-    console.log(`✅ ${stale.length} مورد همگام شد (${changedFiles} فایل):`);
-    for (const s of stale) console.log('  • ' + s.split('\n')[0]);
-  }
   console.log(`   اسناد: ${t.docsRoot} ریشه (مانیفست ${t.docsRootMinusFreeze}) + ${t.docsSub} زیرپوشه = ${t.docsTree} درخت · قفل rc${t.rc}`);
+  console.log(`   وضعیت: فعال ${ctx.active} + زنده ${t.liveDocs} + منجمد ${t.frozenDocs} + آرشیو ${ctx.archive} = ${t.docsTree}`);
   console.log(`   تست‌ها: ${t.testsTotal} = ${t.testsRoot} ریشه + ${t.testsApi} ای‌پی‌آی`);
+  if (t.testsNested) {
+    console.log(`   \u26a0 بیرونِ آن تعریف: ${t.testsNested} فایلِ تو‌در‌تو (` +
+      Object.entries(t.nested).map(([k, v]) => `${k}: ${v}`).join('، ') +
+      `) — شمارِ رسمی همان تعریفِ tests/test-coverage-report-coverage.js است`);
+  }
   return 0;
 }
 
