@@ -1,27 +1,24 @@
-# 🔒 قفل مستندات — DOCS_FREEZE_v1.0.0-rc34
+# 🔒 قفل مستندات — DOCS_FREEZE_v1.0.0-rc35
 
-> **⚠️ قفلِ تاریخی.** این نسخه در ۲۰۲۶-۰۹-۱۲ با `DOCS_FREEZE_v1.0.0-rc35.md` جایگزین شد و دیگر «جاری» نیست.
-> **تاریخِ دست‌نخورده:** مانیفستِ زیر **عمداً ویرایش نشده** است — وضعیتِ لحظهٔ قبلی قفل را قابل اثبات نگه می‌دارد.
-> برای راستی‌آزماییِ قفلِ جاری: `node tests/docs-freeze-marker.js`.
+> **✅ قفلِ جاری.** این نسخه جانشینِ `DOCS_FREEZE_v1.0.0-rc34.md` است؛ فهرستِ زیر، اثرِ لحظهٔ فعلیِ
+> کتابخانه را ثبت می‌کند. راستی‌آزمایی: `node tests/docs-freeze-marker.js`.
+> نسخه‌های پیشین (`rc1`…`rc34`) با بنرِ تاریخی و مانیفستِ **دست‌نخورده** باقی می‌مانند.
 
-**نسخهٔ قفل:** ۱.۰.۰-rc34 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۲ | **مالک:** چت ۶ (مستندات و انتشار)
+**نسخهٔ قفل:** ۱.۰.۰-rc35 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۲ | **مالک:** چت ۶ (مستندات و انتشار)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc33` (تاریخی) می‌شود. فهرست زیر **همهٔ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc34` (تاریخی) می‌شود. فهرست زیر **همهٔ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
-**دلیل بامپ:** `main` پیش از این دور **۱۱/۱۴** بود، نه ۱۴/۱۴. سه نقصِ قفل روی درختِ `main` وجود داشت
-و این بامپ آن‌ها را با **دیسکِ واقعی** هم‌گام می‌کند:
+**دلیل بامپ:** مأموریت **پ۰** (بهداشت ورک‌اسپیس سندباکس) سه تغییرِ مستندِ ریشه داشت:
 
-| نقصِ `rc33` | شاهد | رفع در `rc34` |
-|---|---|---|
-| سندِ جاافتاده در مانیفست | `❌ هیچ سندی جا نمانده — WAVE18_LOAD_TEST_REPORT.md` | ردیفِ سند افزوده شد |
-| شمارِ ردیف ≠ شمارِ سند | `ردیف ۳۱۱ در برابر ۳۱۲` | مانیفست با دیسک بازتولید شد |
-| هشِ کهنه | `HANDOFF.md, NATIONAL_ROADMAP_PROGRESS.md` | هشِ تازه |
+| تغییر | شاهد |
+|---|---|
+| سند جدیدِ `WORKSPACE_HYGIENE.md` (ردیف ۳۱۵ مانیفست؛ ۳۱۶ سند ریشه با خودِ قفل) | `rc34`: `❌ هیچ سندی جا نمانده — WORKSPACE_HYGIENE.md` |
+| §۷ تازه در `BUNDLE_REGISTRY.md` — «حذف‌های ثبت‌شده» (۱۰ قلم + ۱۴۶ ref) | طبق §۶ بند ۳ همان سند: «افزودن ردیف تازه با بامپ انجام می‌شود» · شاهدها در `/tmp/deletion-evidence.log` |
+| ردیف سند بهداشت در `DOCS_INDEX.md` + شمارهای تازهٔ `DOCS_METRICS.md` | سنجهٔ `docs-metrics.js`: `ادعای سند با دیسک سازگار است (۳۱۵ سند ریشه)` |
 
-به‌علاوه، این دور دو سندِ فهرست‌شده را ویرایش کرد (`BUNDLE_REGISTRY.md` با ردیفِ باندلِ پ۵ — طبقِ §۶ بند ۳
-همان سند «افزودن ردیف تازه با بامپ انجام می‌شود» — و `NATIONAL_ROADMAP_PROGRESS.md` ردیفِ ۱۹ با شاهدِ
-مرجِ PR #۸۱). `rc33` بنرِ تاریخی گرفت و مانیفستش **دست‌نخورده** ماند. هیچ تستی ضعیف یا استثنا نشد.
+`rc34` بنرِ تاریخی گرفت و **مانیفستش دست‌نخورده** ماند. هیچ تستی ضعیف، حذف یا استثنا نشد.
 
 **زیرپوشه‌های بیرون مانیفست ریشه** (۲۰ سند؛ پوشش ساختاری‌شان را تست‌های پوشش
 می‌پایند و فهرست قطعی‌شان در نمایه ثبت شده است):
@@ -57,7 +54,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۳۱۳)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۳۱۵)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -85,7 +82,7 @@
 | `BEHAVIOR_GAMIFICATION.md` | `sha256:9c53d8e73346af73a1934b3fc5f23776895cdf016a4bd878d4b29c4e129deaa8` |
 | `BOTTLENECK_MAP.md` | `sha256:5c6be2301e932bc963ef9e18750343babf19d65af4e2acdf111cf0e76ad34c1d` |
 | `BUG_HUNT_REPORT.md` | `sha256:ca95ab098f2f512badd4758182e26cacfb54266801e1d74b217c03f25be318c1` |
-| `BUNDLE_REGISTRY.md` | `sha256:5cbe1a3bd02ffb4857af4f44a2159f9b628ab7a647b996cf74941adea6294c71` |
+| `BUNDLE_REGISTRY.md` | `sha256:76734ce54d557726b6a1af84c27b6b87f32d32213101c24d82478dd4a222f847` |
 | `CACHE_STRATEGY_DESIGN.md` | `sha256:9186d05e39cb8095593cfbe9cbcbd699bab519e41994255ebe3708102a3cca20` |
 | `CAPACITY.md` | `sha256:f99be9d2fd2b4cbcb4e0d6c043071625b6473c26ddaed777d7248e8d30989738` |
 | `CAPACITY_MODEL.md` | `sha256:6f939aced476d7b0e8e9f0155ec5c86ce348d7f4bc99a3cd49f5c87a3234ed74` |
@@ -144,15 +141,16 @@
 | `DOCS_FREEZE_v1.0.0-rc31.md` | `sha256:029fc1faa7848eae2b62868f6ed5458a923dd604e53e4273b084e9b86f481457` |
 | `DOCS_FREEZE_v1.0.0-rc32.md` | `sha256:030ca63536c2e847a49458603f59e3898cf17cb10b32dbe59de863eb9100fa29` |
 | `DOCS_FREEZE_v1.0.0-rc33.md` | `sha256:3fab587b8bde63dd1ab98e1c438d9d3fb3ae40d28fc0047c4baf77bcc2fabed4` |
+| `DOCS_FREEZE_v1.0.0-rc34.md` | `sha256:f38d476a855d68b42e849e02ee8f9b64584199024baf62040b9859ddb28427e8` |
 | `DOCS_FREEZE_v1.0.0-rc4.md` | `sha256:c33ea913bef9630a24e34ab0348980e291570cad81d906fcf57908df96fdff73` |
 | `DOCS_FREEZE_v1.0.0-rc5.md` | `sha256:df97a36b50b8e4398fd8ac3090b1a2bd7ed1a113780ec8841c8b44e490dce79e` |
 | `DOCS_FREEZE_v1.0.0-rc6.md` | `sha256:ded449054c3464e7c34fc913cf3f71dc5745ffe24e34888cc1aceb94ee93782e` |
 | `DOCS_FREEZE_v1.0.0-rc7.md` | `sha256:f0bbd20a82f5d700283703a265d3fadbadc49198d442ebf10950441bf27c55c4` |
 | `DOCS_FREEZE_v1.0.0-rc8.md` | `sha256:361dfe21c653239ddad6873c394c454a5b2bdc1deb067f32de0686f08d96a205` |
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
-| `DOCS_HEALTH_REPORT.md` | `sha256:05b7bdc41510b730d45c63c2dcb1a63ab3c23c32ec36250dfcc80a5b6ede90d2` |
-| `DOCS_INDEX.md` | `sha256:c5aae7e5154dc188c05357989909846844331e7b1ec3f52cc2921e6aaab8de96` |
-| `DOCS_METRICS.md` | `sha256:edf6067da0b5ed587770a1179638082b99ec426ba978ae1884d97bd81c3493fe` |
+| `DOCS_HEALTH_REPORT.md` | `sha256:b3e27c5e263b92a89f95d691dc9a294eb131232eea2bddc42fb2dbfcff7ea677` |
+| `DOCS_INDEX.md` | `sha256:ad6a6d0de75af0e2cd81ed008e60ff05b9de55094e6c0d53cb2016dff667bd5f` |
+| `DOCS_METRICS.md` | `sha256:e92d0ec3dd2f6969495539871343b0e550453a9d0f4519ac9083f9fd2e45e4b7` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:bbca0ce31bc63dabaacf2f2eab15f2ac2de60528a53de9a34985ef1ea41ee091` |
 | `DOCUMENTATION_MAP.md` | `sha256:ce9c08c7ae9e486d8a34ea53b641931d932999e213cf2f402581c005e04f1e85` |
@@ -369,6 +367,7 @@
 | `WAVE7_OFFLINE_QUEUE.md` | `sha256:7b93c7f20769f0640912ee0e4f36ef9427ee1db5f431f5d36dd206bd601382c6` |
 | `WAVE9_PERFORMANCE.md` | `sha256:c0742bc279259364974019a9236e313393960cd12602d2d0a3bcd460d469ac20` |
 | `WAVE9_SESSION8_PERFORMANCE.md` | `sha256:d04122bb96f4286dfe5c11ef787a4e891d5598423624d8641d8a69e0a6303948` |
+| `WORKSPACE_HYGIENE.md` | `sha256:cf0cbb5f9881917251962836ffd5b0e70ba52f054bb37a8a1f5c9974ba7f3bef` |
 | `ZERO_TRUST_ARCHITECTURE.md` | `sha256:0df302eab2c29a9ccff1280058b87eeb7811106932e9004e4ec0867c1402ac5c` |
 | `توضیح_کامل_برنامه.md` | `sha256:c7b8199918aba64f02114df01226f22464beee19f63db4b89ef80d4cfcad9d2a` |
 | `راهنمای_برنامه_نویس.md` | `sha256:19ba18ccf6b3bdb4b9974249c9a2493f7f209850510e7a175d546e81835bf84b` |
