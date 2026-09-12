@@ -1,5 +1,17 @@
 # دفترچهٔ تحویل کار — پایش
 
+## دور ۸۷ — چت ۳ · Wave 10: گیت زندهٔ PostgreSQL (replica + پارتیشن‌بندی) — قید pending بسته شد (۲۰۲۶-۰۹-۱۲)
+
+- **چه بسته شد:** قید سرخ §۳.۲ و قید صداقت §۵ سند `WAVE10_DB_SCALE.md` («read-replica واقعی و DDL پارتیشن‌بندی هرگز روی PG زنده اجرا نشده»).
+- **زیرساخت:** جفت PostgreSQL 18 واقعی با `embedded-postgres@18.4.0-beta.17` (در `/home/user/pgws`؛ باینری‌ها: `pgws/node_modules/@embedded-postgres/linux-x64/native/bin`). replica با روش استاندارد cold-copy: shutdown تمیز primary → `cp -a` → `standby.signal` + `primary_conninfo` (پکیج embedded باینری `pg_basebackup` ندارد — ENOENT؛ cold-copy جایگزین مستند PG است). دام: `persistent:false` در embedded-postgres هنگام `stop()` کل دایرکتوری داده را پاک می‌کند — برای copy باید `persistent:true` بود.
+- **گیت تازه (`tests/wave10-pg-live.js`) — ۱۹/۱۹:** P1..P4 خود رپلیکیشن (نقش‌ها، `pg_stat_replication` streaming، write→read واقعی WAL، رد write با 25006)؛ D1..D4 `server/db.js` با `DATABASE_URL`+`READ_DATABASE_URL` زنده (init ⇒ `read_replica:true`، queryRead⇒replica و query⇒primary با `pg_is_in_recovery`، رپلیکای خاموش ⇒ fallback بی‌خطا + خواباندن مسیریابی، بازگشت ⇒ reprobe خودکار S3-1 با `__setReprobeDelayForTests(300)`)؛ T1..T8 همان DDL §۳.۲ روی PG زنده (والد RANGE(created_at) + PK(id,created_at) + FK + سالانه+DEFAULT، مهاجرت از heap با tableoid-check، PK مرکب 23505، FK والد 23503، pruning در EXPLAIN، rename-swap + drop-old + ایندکس والد، و دیده‌شدن جدول پارتیشن‌شده روی replica). بدون باینری‌های PG (PATH یا `PG_LIVE_BIN`) یا ماژول `pg` ⇒ self-skip.
+- **جهش (`tests/wave10-pg-live-mutations.js`): ۵/۵ کشته** — isReplicaActive همیشه‌false، queryRead از primary، حذف fallback، reprobe عقیم، init بدون فعال‌سازی.
+- **migrations سالم:** هر ۸ مهاجرت (001..008) روی PG 18 زنده بدون خطا اجرا شد (۹۱ جدول).
+- **schema.sql محصول دست‌نخورده:** DDL پارتیشن فقط در گیت اجرا می‌شود؛ اعمال تولیدی (پنجرهٔ نگه‌داری) کار موج استقرار است. PgBouncer (§۴) هم لایهٔ استقرار می‌ماند.
+- **نقشهٔ ملی:** ردیف‌های ۶/۷/۱۰/۱۱/۱۳ از «⏳ در انتظار شروع» به 🟡 با شواهد به‌روز شد (کهنگی مستندات — کار از قبل انجام شده بود).
+- **رگرسیون:** wave10 ‏26/26 · wave10-query-audit ‏14/14 · db-replica-recovery ‏11/11 · run ‏35/35 · smoke ‏547/547.
+- **⚠️ CI:** همچنان مسدود بیلینگ — گیت زنده در CI منوط به رفع انسداد + باینری‌های PG.
+
 ## دور ۸۶ — چت ۳ · Wave 6+11: گیت زندهٔ Redis — قید pending هر دو موج بسته شد (۲۰۲۶-۰۹-۱۲)
 
 - **چه بسته شد:** قید pending مشترک `WAVE6_REDIS_AUDIT.md` و `WAVE11_CACHE_STRATEGY.md` («ردیس زنده در ساندباکس نیست — همه با fake»).
