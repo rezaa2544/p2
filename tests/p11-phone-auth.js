@@ -28,9 +28,10 @@ const path = require('path');
 
 const MUT = process.env.P11_MUTATE || '';
 if(MUT){
-  const target = 'server/auth.js';
+  /* الگوی p06: جهش روی کپی می‌نویسد، هرگز روی سورسِ خودِ auth.js */
+  const target = 'server/auth.p11-mutated.js';
   const p = path.join(__dirname, '..', target);
-  let src = fs.readFileSync(p, 'utf8');
+  let src = fs.readFileSync(path.join(__dirname, '..', 'server/auth.js'), 'utf8');
   const M = {
     /* بازگشت به اسکنِ همیشگیِ آینه (P3 می‌میرد: کاربر فقط-PG گم می‌شود) */
     M1: ["if(db && typeof db.isPostgres === 'function' && db.isPostgres()){", "if(false){"],
@@ -40,12 +41,17 @@ if(MUT){
     M3: ["}catch(e){\n        console.error('[AUTH] userByPhone: PG lookup failed, falling back to mirror —', e.message);\n      }", "}catch(e){ throw e; }"],
     /* حذف tie-break کوئری (P5-ب می‌میرد) */
     M4: ["ORDER BY id LIMIT 1',", "',"],
+    /* بازگشتِ باگِ بازبین: sessionFrom فقط آینه را می‌گردد (P8a می‌میرد) */
+    M5: ["if(!user && db && typeof db.isPostgres === 'function' && db.isPostgres()){\n      try{ user = await db.readOne('users', p.sub); }\n      catch(e){ console.error('[AUTH] sessionFrom: PG lookup failed —', e.message); user = null; }\n    }", ""],
+    /* حذف try/catch — خطای PG نشست را کرش می‌کند به‌جای fail-closed (P8c می‌میرد) */
+    M6: ["try{ user = await db.readOne('users', p.sub); }\n      catch(e){ console.error('[AUTH] sessionFrom: PG lookup failed —', e.message); user = null; }", "user = await db.readOne('users', p.sub);"],
   };
   if(!M[MUT]){ console.error('جهش ناشناخته:', MUT); process.exit(2); }
   const [a, b] = M[MUT];
   if(src.split(a).length - 1 !== (MUT === 'M4' ? 1 : 1)){ console.error('الگوی جهش مچ نشد:', MUT); process.exit(2); }
   fs.writeFileSync(p, src.replace(a, b));
   console.log('[mutated]', MUT, '→', target);
+  process.on('exit', () => { try { fs.unlinkSync(p); } catch (_) {} });
 }
 
 /* سقف‌های rate-limit بالاتر از تعداد فراخوانی‌های تست — رفتارِ خودِ سقف‌ها
@@ -55,7 +61,9 @@ process.env.PAYESH_SMS_PHONE_LIMIT = '10000';
 process.env.PAYESH_LOGIN_IP_LIMIT = '10000';
 process.env.PAYESH_LOGIN_PHONE_LIMIT = '10000';
 
-const { createAuth } = require('../server/auth');
+const { createAuth } = require(MUT ? '../server/auth.p11-mutated.js' : '../server/auth');
+/* ادعاهای source-check باید روی همان فایلی باشند که اجرا شد (درسِ جهش M4) */
+const AUTH_SRC_PATH = require.resolve(MUT ? '../server/auth.p11-mutated.js' : '../server/auth');
 
 let pass = 0, fail = 0, fails = [];
 function chk(name, cond, extra){
@@ -72,8 +80,10 @@ function mkOtp(){
   };
 }
 function mkCtx(store, db){
+  /* jwtVerify به store.__revoked_jti نیاز دارد (sessionFrom از P8 به بعد صدا می‌شود) */
+  const s = Object.assign({ __revoked_jti: {}, __auth: { codes: {}, login_fail: {}, code_rate: {}, enum: {} } }, store);
   return {
-    store, db,
+    store: s, db,
     JWT_SECRET: 'p11-test-secret-0123456789-0123456789-0123456789',
     SESSION_NAME: 'sid', SESSION_TTL_S: 3600, CODE_TTL_MS: 10 * 60 * 1000,
     DEMO_CODE_ECHO: true,
@@ -172,7 +182,7 @@ const users = [
     chk('P5b tie: اولین به ترتیب id برنده (id=7 نه id=9 — سازگار با find)',
         l.statusCode === 200 && l.body.user && l.body.user.id === 7,
         JSON.stringify(l.body.user || l.body).slice(0, 80));
-    const src = fs.readFileSync(path.join(__dirname, '..', 'server/auth.js'), 'utf8');
+    const src = fs.readFileSync(AUTH_SRC_PATH, 'utf8');
     /* عبارت باید در خودِ کوئری SQL باشد — نه صرفاً در کامنت‌ها (درسِ جهش M4) */
     chk('P5c کوئریِ PG همان tie-break را دارد (ORDER BY id LIMIT 1)', src.indexOf(String.fromCharCode(39) + 'ORDER BY id LIMIT 1' + String.fromCharCode(39)) !== -1);
   }
@@ -199,12 +209,47 @@ const users = [
   /* ══ P7: سازگاری عبارتِ ایندکس با کوئریِ auth ══ */
   {
     const mig = fs.readFileSync(path.join(__dirname, '..', 'migrations/010_users_phone_auth.sql'), 'utf8');
-    const src = fs.readFileSync(path.join(__dirname, '..', 'server/auth.js'), 'utf8');
+    const src = fs.readFileSync(AUTH_SRC_PATH, 'utf8');
     chk('P7a migration عبارتِ نرمال‌سازیِ همین کد را ایندکس می‌کند',
         mig.indexOf("right(regexp_replace(phone, '[\\s\\-()]', '', 'g'), 10)") !== -1 &&
         src.indexOf("right(regexp_replace(phone, $2, \\'\\', \\'g\\'), 10)") !== -1);
     const d = fs.readFileSync(path.join(__dirname, '..', 'migrations/010_users_phone_auth.down.sql'), 'utf8');
     chk('P7b down مهاجرت ایندکس را برمی‌دارد', d.indexOf('DROP INDEX IF EXISTS idx_users_phone_auth') !== -1);
+  }
+
+  /* ══ P8 — باگ بازبین: نشستِ کاربرِ خارج از آینه (sessionFrom از PG) ══ */
+  const cookieOf = (res) => String(res.headers['set-cookie'] || '').split(';')[0];
+  {
+    /* کاربر فقط-PG: login موفق است؛ نشست باید در درخواست بعدی هم حل شود */
+    const pgOnly8 = { id: 77, role: 'manager', school_id: 1, national_id: '0055555555', active: true, full_name: 'دور از آینه', phone: '09155550000' };
+    const db8 = {
+      isPostgres: () => true,
+      readOne: async (name, id) => (name === 'users' && Number(id) === 77) ? pgOnly8 : null,
+      query: async (text, params) => (String(text).indexOf('FROM users') !== -1 && params[0] === '9155550000') ? { rows: [pgOnly8] } : { rows: [] },
+    };
+    const auth = createAuth(mkCtx({ users: [] }, db8));   /* آینهٔ خالی */
+    const s = await sendCode(auth, '09155550000');
+    const l = await login(auth, '09155550000', s.body.demo_code, '0055555555');
+    chk('P8a فقط-PG: login موفق', l.statusCode === 200 && l.body.user.id === 77);
+    const sess = await auth.sessionFrom({ headers: { cookie: cookieOf(l) } });
+    chk('P8b فقط-PG: نشست در درخواست بعدی حل شد (sessionFrom از PG — باگِ بازبین)',
+        sess && sess.id === 77 && sess.role === 'manager', JSON.stringify(sess && sess.id));
+    /* کاربرِ ناموجود در PG: توکن معتبر ولی نشست مرده */
+    const tok999 = auth.jwtSign({ sub: 999, role: 'manager', school_id: 1, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 600, jti: 'jt_p8b', sv: 0 });
+    const s999 = await auth.sessionFrom({ headers: { cookie: 'sid=' + tok999 } });
+    chk('P8c نبود در PG = نبود: نشستِ کاربرِ حذف‌شده مرد', s999 === null);
+  }
+  {
+    /* خطای PG در sessionFrom: fail-closed (null)، نه کرش و نه احیای نادرست */
+    const db8e = {
+      isPostgres: () => true,
+      readOne: async () => { throw new Error('pg down (p8)'); },
+      query: async () => { throw new Error('pg down (p8)'); },
+    };
+    const auth = createAuth(mkCtx({ users: [] }, db8e));
+    const tok = auth.jwtSign({ sub: 5, role: 'manager', school_id: 1, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 600, jti: 'jt_p8e', sv: 0 });
+    const sess = await auth.sessionFrom({ headers: { cookie: 'sid=' + tok } });
+    chk('P8d خطای PG در sessionFrom ⇒ fail-closed (null بدون کرش)', sess === null);
   }
 
   console.log('\n────────────────────────────────────────────');
