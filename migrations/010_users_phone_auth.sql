@@ -15,5 +15,8 @@
 -- الگوی ۰۰۷: CREATE INDEX IF NOT EXISTS (idempotent؛ فقط روی جدولِ
 -- موجود، بدون تغییرِ داده).
 -- ═══════════════════════════════════════════════════════════════════
+-- قرارداد §۳۰ مهاجرت‌ها: هر مهاجرت تراکنشی است (BEGIN/COMMIT)
+BEGIN;
 CREATE INDEX IF NOT EXISTS idx_users_phone_auth
   ON users (right(regexp_replace(phone, '[\s\-()]', '', 'g'), 10));
+COMMIT;
