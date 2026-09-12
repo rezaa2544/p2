@@ -60,6 +60,62 @@ const TEMPLATE_PATTERNS = [
 ];
 const isTemplate = (ref) => TEMPLATE_PATTERNS.some((re) => re.test(ref));
 
+/* ── قاعدهٔ «تولیدی» (نه خطِ پایه) ─────────────────────────────────
+   بعضی مسیرها در `.gitignore`‌اند چون **خروجیِ ساخت‌اند**، نه فایلِ
+   ورودیِ مخزن: ‏`docs/_metadata.json` را `tools/docs-metadata.js` می‌سازد،
+   ‏`docs/_export/` را `tools/docs-export.sh`. ارجاعِ سند به آن‌ها درست است؛
+   فقط روی یک **کلونِ تازه** هنوز ساخته نشده‌اند. اگر آن‌ها را «ارجاعِ
+   کهنه» حساب کنیم، گیت روی مخزنِ سالمِ تازه‌کلون‌شده قرمز می‌شود و
+   بعد نادیده گرفته می‌شود — همان درسی که در freezeManifest گرفتیم.
+   پس قاعده از خودِ `.gitignore` خوانده می‌شود (خودنگهدار)، و شمارِ
+   مواردِ ردشده در خروجی **دیده می‌شود** تا ساکت قورت داده نشوند. */
+function readIgnorePatterns(file) {
+  let text = '';
+  try { text = fs.readFileSync(file, 'utf8'); } catch (e) { return []; }
+  return text.split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith('#') && !l.startsWith('!'));
+}
+
+/* الگوی gitignore → رگکس. سه حالت: anchored (با / ابتدایی)، directory
+   (با / انتهایی)، و basename (بدون / — در هر عمقی می‌خورد). */
+function ignoreRegex(pattern) {
+  let p = pattern;
+  let dirOnly = false;
+  if (p.endsWith('/')) { dirOnly = true; p = p.slice(0, -1); }
+  const anchored = p.startsWith('/') || p.indexOf('/') !== -1;
+  if (p.startsWith('/')) p = p.slice(1);
+  const body = p
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*/g, '\u0001')
+    .replace(/\*/g, '[^/]*')
+    .replace(/\?/g, '[^/]')
+    .replace(/\u0001/g, '.*');
+  const head = anchored ? '^' : '(?:^|/)';
+  return new RegExp(head + body + (dirOnly ? '(?:/|$)' : '$'));
+}
+
+let _ignoreRes = null;
+function ignoreRes() {
+  if (_ignoreRes === null) {
+    _ignoreRes = readIgnorePatterns(path.join(ROOT, '.gitignore')).map(ignoreRegex);
+  }
+  return _ignoreRes;
+}
+
+/* یک ارجاع «تولیدی» است اگر خودش یا هر بخشِ والدِ مسیرش ignore شود
+   ‏(مثلاً `dist/` باید `dist/x.js` را هم بگیرد). */
+function isGenerated(ref) {
+  const res = ignoreRes();
+  if (!res.length) return false;
+  const parts = ref.split('/');
+  for (let i = 1; i <= parts.length; i++) {
+    const sub = parts.slice(0, i).join('/');
+    if (res.some((re) => re.test(sub))) return true;
+  }
+  return false;
+}
+
 function scanDir(dir, out) {
   if (!fs.existsSync(dir)) return;
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -85,6 +141,7 @@ function rel(p) { return path.relative(ROOT, p).split(path.sep).join('/'); }
 function findRefs() {
   const byDoc = new Map();     // doc -> Set(missing ref)
   const byRef = new Map();     // ref -> Set(doc)
+  const gen = new Map();       // ref -> Set(doc) — تولیدی (ignore شده)، قرمز نمی‌کند
   for (const doc of allDocs()) {
     const src = fs.readFileSync(doc, 'utf8');
     for (const m of src.matchAll(REF_RE)) {
@@ -94,6 +151,8 @@ function findRefs() {
       if (/[<>{}*]/.test(ref)) continue;
       if (isTemplate(ref)) continue;
       if (fs.existsSync(path.join(ROOT, ref))) continue;
+      /* خروجیِ ساخت است، نه ارجاعِ کهنه — ولی شمارش می‌شود تا پنهان نماند */
+      if (isGenerated(ref)) { if (!gen.has(ref)) gen.set(ref, new Set()); gen.get(ref).add(rel(doc)); continue; }
       const d = rel(doc);
       if (!byDoc.has(d)) byDoc.set(d, new Set());
       byDoc.get(d).add(ref);
@@ -101,7 +160,7 @@ function findRefs() {
       byRef.get(ref).add(d);
     }
   }
-  return { byDoc, byRef };
+  return { byDoc, byRef, gen };
 }
 
 function loadBaseline() {
@@ -116,7 +175,7 @@ function loadBaseline() {
 const keyOf = (doc, ref) => doc + ' → ' + ref;
 
 function run({ check, baseline, json }) {
-  const { byDoc, byRef } = findRefs();
+  const { byDoc, byRef, gen } = findRefs();
 
   const pairs = [];
   for (const [doc, refs] of byDoc) for (const ref of refs) pairs.push({ doc, ref });
@@ -142,6 +201,7 @@ function run({ check, baseline, json }) {
     console.log(JSON.stringify({
       totalMissing: pairs.length,
       grandfathers: known.size,
+      generatedSkipped: [...gen.keys()].sort(),
       fresh: fresh.map((p) => ({ doc: p.doc, ref: p.ref })),
       resolvedSinceBaseline: gone,
     }, null, 2));
@@ -151,6 +211,7 @@ function run({ check, baseline, json }) {
   console.log(`ارجاعِ کهنه به فایلِ ناموجود: ${pairs.length} مورد در ${byDoc.size} سند`);
   console.log(`  خطِ پایه (بدهیِ تاریخی): ${known.size}`);
   console.log(`  تازه (باید رفع شود)   : ${fresh.length}`);
+  if (gen.size) console.log(`  تولیدی (ردشده با قاعدهٔ .gitignore، نه بدهی): ${gen.size}`);
   if (gone.length) console.log(`  از زمانِ خطِ پایه رفع شده: ${gone.length} ← خطِ پایه را با --baseline تازه کنید`);
 
   if (fresh.length) {
@@ -184,4 +245,4 @@ if (require.main === module) {
   } catch (e) { console.error('❌ ' + e.message); process.exit(2); }
 }
 
-module.exports = { findRefs, allDocs, loadBaseline, keyOf };
+module.exports = { findRefs, allDocs, loadBaseline, keyOf, isGenerated, ignoreRegex, readIgnorePatterns };
