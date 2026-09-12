@@ -48,14 +48,15 @@ async function rlGroup() {
   await sleep(2300);
   const fresh = await rl.checkRateLimit({ prefix: wtag, identifier: 'k', limit: 2, windowSeconds: 2 });
   chk('RL-f انقضای پنجره (مردود → تازه)', !denied.allowed && fresh.allowed && fresh.remaining === 1);
-  /* fail-open: خرابیِ کاملِ Redis */
-  const realIncr = redis.incr;
+  /* fail-open: خرابیِ کاملِ Redis — BH-mut یافته: استاب باید روی
+     incrByWithTtl باشد (مسیرِ واقعیِ rate-limit از P0-TTL)، نه incr. */
+  const realIncr = redis.incrByWithTtl;
   try {
-    redis.incr = async () => { throw new Error('boom'); };
+    redis.incrByWithTtl = async () => { throw new Error('boom'); };
     const fo = await rl.checkRateLimit({ prefix: 'tfail', identifier: 'k', limit: 5, windowSeconds: 60 });
     chk('RL-g خرابی = fail-open', fo.allowed === true && fo.remaining === 5);
   } finally {
-    redis.incr = realIncr;
+    redis.incrByWithTtl = realIncr;
   }
 }
 
