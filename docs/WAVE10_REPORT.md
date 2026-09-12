@@ -62,3 +62,18 @@ caf00e1 feat(db): PgBouncer contract locked + final partitioning design for grad
 | **۶ · chg↔cursor v3** | توکنِ v3 (+cw) · pre-read watermark · فیدِ byChg بدونِ time-guard · سازگاریِ v1/v2 · سقوط‌های نرم · دو فیکسِ coercion (cw=0 و type-strict verify) | chg_id_cursor **۳۳/۳۳** · delta-phase4 **۲۳/۲۳** (+جهش ۲۰/۲۰) |
 
 برون‌یابیِ مقیاس: ~۳۵k سطر/s ⇒ ۵۰M ≈ ۲۴ دقیقه (مرتبهٔ بزرگی؛ §۷.۴ سند).
+
+---
+
+# نوبتِ چهارم (پایان) — مانورِ ۲۵M: تعقیبِ پنجرهٔ swap تا ثابتِ زمانِ پلان
+
+**تاریخ:** ۲۰۲۶-۰۹-۱۲ · همان شاخه · مأموریت: پنجرهٔ swap باید با سرگردان‌ها مقیاس یابد، نه با اندازهٔ جدول (پایه: ۳۵.۸s).
+
+| ران | کچ‌آپِ فاز C | بدترینِ خواندن/نوشتن حینِ مهاجرتِ ~۱۹ دقیقه‌ای |
+|---|---|---|
+| ۲ (پایه) | ضدالحاقِ کامل | ۳۵.۸s / ۳۵.۸s |
+| ۳ | پیشیکیت + `OR chg_id IS NULL` | ۲۹.۱s / ۲۹.۳s — OR اسکنِ ایندکسی را به Seq Scan تبدیل می‌کند ⇒ حذف OR |
+| ۴ | پیشیکیت با زیرپلانِ `(SELECT w0 …)` | ۳۸.۸s / ۳۸.۸s — مقدارِ زیرپلان در زمانِ پلان مجهول ⇒ تخمینِ ~۳.۵M سطر ⇒ Hash Anti-Joinِ کلِ جدولِ نو زیرِ قفل |
+| ۵ | لیترالِ `:w0` با `psql \gset` | **۰.۱۱۵s / ۱.۱۴s** ✅ — Bitmap Index Scan + Nested-Loop (هزینهٔ پلان ~۳۴× کمتر) |
+
+راستی‌آزماییِ رانِ ۵: صفر خطا (خواندن ۹۲۴۰/نوشتن ۴۴۳۶) · اسیر/کپی‌کهنه/عقب‌مانده/گم/غلط/chg-null همه ۰ · دفترِ نویسنده ۱۴۷۹+۱۴۷۹ ✓ · Δ=۸۰ · p95 ‏۵/۱۳ms · pruning ✓ · down@25M ≈ ۲۰–۲۸s · گاردِ fail-closedِ `*_recovered` در down برایِ چرخهٔ up→down→up→down. تست: partitioning **۶۲/۶۲** (U7g: ثابتِ زمانِ پلان + ممنوعیتِ الگوی زیرپلان) · smoke 547 · cursor 33 · chg-id 31+8 · db-scale 26 · pgbouncer 22 · retention 15 · sequence 19 · authz 0 · secret 11 · build ✓ · docs-consistency ✓

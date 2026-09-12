@@ -1,5 +1,14 @@
 # دفترچهٔ تحویل کار — پایش
 
+## آرنا (Agent Mode): مانورِ ۲۵M — بستنِ پنجرهٔ swap مهاجرتِ ۰۰۹ (پیشیکیتِ chg + ثابتِ زمانِ پلان) — ۲۰۲۶-۰۹-۱۲ — ✅
+
+- **مأموریت (کارفرما):** کچ‌آپِ فاز C با پیشیکیتِ chg تا پنجرهٔ swap با سرگردان‌ها مقیاس یابد نه با اندازهٔ جدول؛ تحویلپذیری: بهبودِ قابل‌اندازه‌گیری نسبت به ۳۵.۸s. فاز D دست نخورد (بدونِ قفل، فول‌اسکن مجاز — تورِ سطرهای NULL-chg).
+- **سه رانِ تعقیبی روی payesh_scale (grades ‏۲۵M + attendance 600k + نویسندهٔ هم‌زمانِ واقعی):** رانِ ۳ (پیشیکیت + `OR chg_id IS NULL`): ۲۹.۱/۲۹.۳s — همان OR اسکنِ ایندکسی را به Parallel Seq Scan تبدیل می‌کند (تأییدِ EXPLAIN) ⇒ OR حذف شد. رانِ ۴ (زیرپلانِ `(SELECT w0 …)`): ۳۸.۸/۳۸.۸s — بدتر از پایه؛ ریشه با EXPLAINِ عینِ کوئری رویِ وضعیتِ عینیِ زیرِ قفل: مقدارِ زیرپلان در زمانِ پلان مجهول ⇒ تخمینِ ~۳.۵M سطر (واقعیت ~۱.۵k) ⇒ planner به‌جای Nested-Loopِ ایندکسی Hash Right Anti-Join می‌گیرد و کلِ جدولِ نو (۲۵M، ۸ پارتیشن) را زیرِ ACCESS EXCLUSIVE می‌سازد و Hash می‌کند. رانِ ۵ (لیترالِ `:w0` جایگذاری‌شده با `psql \gset`): **۰.۱۱۵s/۱.۱۴s** — Bitmap Index Scan + Nested-Loop، هزینهٔ پلان ~۳۴× کمتر؛ صفر خطا/اسیر/گم‌شدگی، دفترِ نویسنده ۱۴۷۹+۱۴۷۹ ✓، p95 ‏۵/۱۳ms.
+- **تغییرات:** `migrations/009_partition_grades_attendance.sql` (نشانگرِ دائمیِ یک‌سطریِ `mig009_w0` — forward بدونِ DROP؛ `\gset` + لیترالِ `:w0` در هر دو کچ‌آپ) · `.down.sql` (گاردِ fail-closed برایِ `*_recovered`ِ سیکلِ قبل: اپراتور اول ادغام/بایگانی می‌کند) · `tests/partitioning.js` (U7g بازنویسی: `\gset` + `:w0` ×۲ + ممنوعیتِ الگوی زیرپلان؛ ۶۲ چک).
+- **گیت‌ها:** partitioning **۶۲/۶۲** · migration-sequence **19/19** · wave10-retention 15/15 · wave10-db-scale 26/26 · wave10-chg-id 31/31 + جهش 8/8 · chg_id_cursor 33/33 · wave10-pgbouncer 22/22 · smoke **547/547** · check-authz 0 · secret-scan 11/11 · build ✓ · docs-consistency ✓
+- **مستندات:** `docs/WAVE10_DB_SCALE.md` §۹.۲ (یافتهٔ ششم: زیرپلانِ مجهول‌مقدار) + §۹.۷ (جدولِ پنج ران + دو درس: OR و زیرپلان) + §۷.۳ (۶۲) · `docs/MIGRATION_GUIDE.md` ‏۲.۱.۳ (§۵ ردیفِ جایگزینی/پارتیشنِ جدولِ بزرگ + §۷.۱ بندِ ثابتِ زمانِ پلان + §۸ ردیفِ ۰۰۹) · `docs/WAVE10_REPORT.md` (نوبتِ چهارم — پایان) · `docs/NATIONAL_ROADMAP_PROGRESS.md` ردیفِ ۱۰ · همین ورودی.
+- **حالتِ سندباکس:** `payesh_scale` در حالتِ مرجعِ پیش از مهاجرت (هیپِ ۲۵,۰۰۵,۶۲۱) + `grades_recovered` (۸۰ سطرِ آرشیویِ post-swap — CSVها در staging)؛ گزارشِ کاملِ رانِ پنجم: `staging/report-scale.json`.
+
 ## موج ۱۰ — Database Scale (`feat/db-scale-wave10`) — ✅ (2026-09-11)
 
 - **مأموریت (کارفرما):** تکمیلِ Wave 10 در چهار گام — read-replica routing، PgBouncer، طراحیِ پارتیشنِ grades/attendance، و ۱۴ ایندکسِ `chg_id` برای دلتا؛ گیت‌های حیاتی پس از هر مرحله؛ سند + HANDOFF + push/ls-remote. پایه: `main @ 7567607` (پس از مرجِ PR #71 و #75).
