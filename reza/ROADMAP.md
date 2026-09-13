@@ -35,6 +35,16 @@ Browser
 
 **قانون:** در Production فقط PostgreSQL منبع حقیقت داده‌های اصلی باشد. JSON/in-memory store نباید source of truth باشد. Browser نباید دیتاست ملی را نگه دارد.
 
+> **وضعیت «bounded cache» (پ۳ 2026-09-12):** قانون «Browser نباید دیتاست ملی
+> را نگه دارد» اکنون گیت اجرایی دارد — کش کراندار گزارش‌ها با دفاع دولایه
+> (کران ردیف/بایت در `server/pull.js` + کران مستقل کلاینت + TTL + نشانگر
+> «دادهٔ جزئی»)؛ `tests/reports-bounded-cache.js` ‏۱۵/۱۵ + جهش ۱۰/۱۰.
+> **تکمیل (پ۳-ادامه):** دلتای بریده دیگر ساکت گم نمی‌شود — سرور
+> `full_snapshot_required_collections` اعلام و کلاینت خودکار resume می‌کند
+> (snapshot کران‌دارِ فقط مجموعه‌های بریده + سنجهٔ همگرایی + حلقه‌شکن دولایه)؛
+> قرارداد: `WAVE23_DB_NATIVE_REPORTS.md` §۹.۲د؛ گیت
+> `tests/bounded-delta-resume.js` ‏۱۴/۱۴ + جهش ۱۰/۱۰.
+
 ---
 
 # 3. Wave 0 — Baseline و Freeze
@@ -65,7 +75,6 @@ Browser
    `write A → read B → update B → read A`
 
 **Acceptance:** همه instanceها state واحد را از DB ببینند.
-
 ---
 
 # 5. Wave 2 — Database Engineering
@@ -117,7 +126,6 @@ WHERE id = $id AND version = $base_version
 ```
 
 صفر row → `409 Conflict`.
-
 ---
 
 # 6. Wave 3 — Query و Performance [P0]
@@ -154,10 +162,10 @@ GET /students?cursor=...
 
 ## Index
 Index فقط بر اساس workload و query plan واقعی ایجاد شود.
-
 ---
 
 # 7. Wave 4 — Sync / A01
+
 
 A01 حفظ شود اما database-native شود.
 
@@ -194,367 +202,7 @@ Retention مشخص شود و قبل از حذف tombstone امکان full resync
 - transaction
 
 در یک مسیر استاندارد انجام شود.
-
----
-
-# 8. Wave 5 — Authorization و Tenant Isolation [P0]
-
-REST و Sync نباید policyهای جدا داشته باشند.
-
-مدل واحد:
-
-```text
-Identity
- ↓
-Role
- ↓
-Tenant Scope
- ↓
-Resource
- ↓
-Operation
- ↓
-Field Policy
-```
-
-ساختار scope:
-
-```text
-National
- └── Province
-      └── District
-           └── School
-                └── Class
-```
-
-Teacher فقط به کلاس/درس/دانش‌آموزی دسترسی داشته باشد که واقعاً به او assign شده است.
-
-Parent فقط childهای مجاز را ببیند.
-
-هیچ resource ID به تنهایی authorization محسوب نشود.
-
-Self-update نیز فقط allowlist فیلدهای مجاز را قبول کند.
-
----
-
-# 9. Wave 6 — Redis و Distributed State [P0]
-
-Redis برای:
-
-```text
-OTP
-rate limit
-session/revocation
-idempotency
-cache
-distributed coordination
-```
-
-استفاده شود.
-
-برای state حیاتی:
-
-```text
-Redis down → production instance not ready
-```
-
-و fallback حافظه‌ای وجود نداشته باشد.
-
-## Lock
-از primitive اتمیک مانند:
-
-```text
-SET key token NX EX ttl
-```
-
-استفاده شود و release مالکیت token را بررسی کند.
-
-## OTP
-`otp.json` و local-memory state حذف و Redis با TTL استفاده شود.
-
-## Idempotency
-برای mutationهای مهم:
-
-```text
-principal + operation + idempotency_key
-```
-
-ثبت شود تا retry باعث duplicate نشود.
-
----
-
-# 10. Wave 7 — Offline-first
-
-Offline-first یکی از نقاط قوت پایش است و حفظ شود.
-
-مدل هدف:
-
-```text
-Server authoritative
-      ↓
-bounded local cache
-      ↓
-offline queue
-      ↓
-sync
-```
-
-Queue دارای:
-- max operations
-- max bytes
-- max age
-- retry limit
-- dead-letter/conflict state
-
-باشد.
-
-هیچ full national dataset به browser منتقل نشود.
-
----
-
-# 11. Wave 8 — Async Architecture
-
-کارهای غیرضروری برای پاسخ فوری از request path خارج شوند:
-
-```text
-SMS
-Email
-Push
-Notifications
-Reports
-Exports
-Analytics
-Heavy audit fan-out
-```
-
-مدل:
-
-```text
-API
- ↓
-DB transaction + outbox
- ↓
-Queue
- ↓
-Worker
-```
-
-هدف جلوگیری از lost events و duplicate side effects است.
-
----
-
-# 12. Wave 9 — Application Performance
-
-از request path حذف شود:
-
-```text
-JSON.stringify(whole store)
-synchronous file I/O
-large array filter/sort
-full backup
-heavy report generation
-```
-
-Audit logging باید asynchronous/centralized شود.
-
-Backup نباید داخل application request process انجام شود.
-
-L1 cache باید bounded + TTL + eviction داشته باشد.
-
----
-
-# 13. Wave 10 — Database Scale
-
-ابتدا:
-
-```text
-PostgreSQL Primary
-+ correct indexes
-+ pool limits
-+ backup
-```
-
-بعد در صورت نیاز:
-
-```text
-Read Replicas
-```
-
-و سپس با benchmark:
-
-```text
-Partitioning
-```
-
-نامزدهای partitioning معمولاً داده‌های حجیم و time-oriented مانند attendance، audit، notification/event و sync history هستند؛ partition key باید از workload واقعی انتخاب شود.
-
-PostgreSQL برای high availability، streaming replication، hot standby و failover سازوکارهای رسمی دارد و انتخاب معماری HA باید بر اساس RPO/RTO باشد.
-
----
-
-# 14. Wave 11 — Cache
-
-Hierarchy:
-
-```text
-Browser
- ↓
-CDN
- ↓
-Redis
- ↓
-PostgreSQL
-```
-
-Cache باید:
-- TTL
-- invalidation
-- max size
-- stampede protection
-
-داشته باشد.
-
-برای hot keys از single-flight/locking یا stale-while-revalidate متناسب با نوع داده استفاده شود.
-
----
-
-# 15. Wave 12 — Network / Edge
-
-Production:
-
-```text
-DNS
-→ CDN
-→ WAF
-→ Load Balancer
-→ Stateless API
-```
-
-اجباری:
-- TLS
-- HSTS
-- security headers
-- request size limits
-- timeouts
-- compression
-- rate limiting
-- origin protection
-- DDoS strategy
-
-WAF جای authorization برنامه را نمی‌گیرد.
-
----
-
-# 16. Wave 13 — Security Program
-
-امنیت باید فراتر از security.js باشد.
-
-بررسی:
-
-```text
-Authentication
-Authorization
-Session
-Tenant Isolation
-Input Validation
-Output Encoding
-XSS
-Injection
-IDOR/BOLA
-CSRF where applicable
-Secrets
-Cryptography
-API abuse
-Rate limits
-File handling
-Audit
-Supply chain
-Infrastructure
-```
-
-برای baseline رسمی می‌توان OWASP ASVS را مبنا قرار داد؛ نسخه پایدار فعلی ASVS 5.0.0 است.
-
-CI:
-- SAST
-- DAST
-- dependency/SCA scan
-- secret scan
-- SBOM
-- lockfile/dependency policy
-
----
-
-# 17. Wave 14 — Observability
-
-حداقل سه signal:
-
-```text
-Metrics
-Logs
-Traces
-```
-
-OpenTelemetry چارچوب vendor-neutral برای traces، metrics و logs است.
-
-Metrics:
-```text
-RPS
-p50/p95/p99
-4xx/5xx
-DB latency
-DB pool wait
-DB connections
-Redis latency/errors
-cache hit rate
-sync queue depth
-sync conflicts
-OTP/login abuse
-event-loop lag
-heap
-GC
-CPU
-memory
-```
-
-داشبورد و alerting برای همه موارد بحرانی ساخته شود.
-
----
-
-# 18. Wave 15 — Health / Deployment
-
-Endpoints:
-
-```text
-/liveness
-/readiness
-/health
-```
-
-تفاوت آنها رعایت شود.
-
-Graceful shutdown:
-
-```text
-stop traffic
-→ finish in-flight requests
-→ stop workers
-→ flush telemetry
-→ close DB/Redis
-```
-
-Deployment:
-- immutable image
-- config خارج code
-- rolling deployment
-- برای تغییرات پرریسک canary یا blue/green
-
-Kubernetes در صورت انتخاب می‌تواند با HPA ظرفیت workload را بر اساس resource یا custom metrics تغییر دهد، اما orchestration بعد از stateless شدن application و اصلاح معماری انجام شود.
-
----
-
-# 19. Wave 16 — Disaster Recovery
-
-باید مشخص شود:
+ید مشخص شود:
 
 ```text
 RPO = حداکثر داده قابل از دست رفتن
@@ -574,7 +222,6 @@ Runbook
 ```
 
 Backup داشتن بدون restore drill کافی نیست.
-
 ---
 
 # 20. Wave 17 — Testing Pyramid
@@ -1005,3 +652,110 @@ Capacity
 ```
 
 هدف نهایی «تست سبز» نیست؛ هدف **اثبات ظرفیت، امنیت، درستی داده، پایداری و recovery با آزمایش واقعی** است.
+
+---
+
+## پیوست: وضعیت فاز ۵ (E) — تکمیل‌شده‌ها (از roadmap قدیمی، دور ۱۰۳–۱۰۴)
+
+> یادداشتِ ریبیسِ دور ۱۱۲: این جدول از roadmapِ قدیمی (نسخهٔ `2a2b74f`)
+> به این سندِ مهندسی منتقل شد تا وضعیتِ تکالیفِ فازِ E گم نشود.
+
+| # | کار | مسئول | وضعیت |
+|---|-----|-------|-------|
+| E.1 | نمره‌ی عملی/کارگاهی هنرستان — قسمت‌های تئوری/عملی | چت ۳ | ✅ کامل (دور ۱۰۳) |
+| E.2 | ثبت ساعت کارآموزی هنرستان | چت ۳ | ✅ کامل — PR #34 (بستهٔ هفت‌گانه @ cd484c3)؛ سند `docs/INTERNSHIP_MODULE.md`؛ تست `internship2` ‏4/4 + جهش ‏5/5 (راستی‌آزمایی محلی 2026-09-12) |
+| E.3 | گیمیفیکیشن رفتاری برای دبستان | چت ۳ | ✅ کامل — PR #33 (بستهٔ هفت‌گانه @ cd484c3)؛ سند `docs/BEHAVIOR_GAMIFICATION.md`؛ تست `dojo` ‏6/6 (راستی‌آزمایی محلی 2026-09-12) |
+| E.4 | مدیریت کتابخانه‌ی مدرسه | چت ۱ | ⏳ |
+| E.5 | مدیریت اموال/انبار مدرسه | چت ۱ |  |
+| E.6 | تولید خودکار برنامه‌ی هفتگی | چت ۳ | ✅ کامل — `src/js/74-schedgen.js` + سند `docs/SCHEDULE_GENERATOR.md`؛ تست‌ها `schedule-gen` ‏6/6 + جهش ‏5/5 + `schedconf2` ‏9/9 (راستی‌آزمایی محلی 2026-09-12) |
+| E.7 | گردش کار امتحانات شهریور/تجدیدی | چت ۲ | ⏳ |
+| E.8 | کلاس‌های تابستانی (ماژول سبک) | چت ۲ | ⏳ |
+| E.9 | مدیریت مراجعین (Visitor Management) | چت ۱/۳ | ✅ کامل (دور ۱۰۴) |
+| E.10 | شاخص «سلامت مدرسه» (G.1 – کدنویسی) | چت ۴ | ⏳ |
+| E.11 | پایگاه دانش برای کاربر نهایی (USER_GUIDE) | چت ۳ | ✅ کامل (2026-09-12) — چهار پیشنهاد `docs/G3_USER_GUIDE_REVIEW.md` اجرا شد: عدد منو از `NAV_EXPECT` (۴۷)، فصل «تازه‌های سامانه» (۱۱ ماژول)، «یک روز کاری مدیر»، حذف بخش فنی، رفع ۸ غلط تایپی؛ گارد رگرسیون `tests/user-guide.js` ‏33/33 + جهش ‏5/5 |
+| E.12 | صفحه‌ی وضعیت عمومی سرویس | چت ۲ | ⏳ |
+| B.3 | PG منبعِ حقیقت — Wave 1 بخش ۲ (انتقالِ Writes + تراکنش‌ها) | چت ۳ | ✅ کامل (دور ۱۰۵ — اسنکواری در `docs/WAVE1_WRITES_INVENTORY.md`) |
+| B.4 | PG/Redis: Wave 6 — Audit و تکمیلِ Distributed State (OTP/rate-limit/revocation/idempotency/cache/lock) | چت ۳ | ✅ کامل (`docs/WAVE6_REDIS_AUDIT.md`) |
+| B.5 | کشینگ: Wave 11 — TTL، invalidation، stampede protection (Cache Hierarchy) | چت ۳ | ✅ کامل (`docs/WAVE11_CACHE_STRATEGY.md`) |
+| B.6 | Health/Deployment: Wave 15 — Liveness/Readiness/Health + Graceful Shutdown + راهنمای Rolling Deployment/Rollback | چت ۳ | ✅ کامل (`docs/DEPLOYMENT_GUIDE.md`) |
+| B.7 | تست بار ملی: Wave 18 — دادهٔ آزمایشیِ 10M کاربر + چهار سناریو (عادی/اوج/فشار/چند روزه) | چت ۳ | ✅ کامل — اجرا روی زیرساختِ زنده pending (`docs/WAVE18_LOAD_TEST_PLAN.md`) |
+| B.8 | تست آشوب و شکست: Wave 19 — 5 سناریو (kill/redis/pg/latency/disk) + ابزار chaos-test.sh | چت ۳ | ✅ کامل — اجرای LIVE روی محیطِ چند-نمونه pending (`docs/WAVE19_CHAOS_PLAN.md`) |
+| B.9 | نهایی‌سازی Arena 5: Wave 20 — سندِ QA/Reliability + Recovery Validation (32/32) + Release Gate + رفع دو نقصِ date-bound | چت ۳ | ✅ کامل — اجرای L3 واقعی (G1–G8) pending زیرساخت (`docs/ARENA5_QA_RELIABILITY.md`) |
+
+## پیوست — وضعیت بندهای ب.۳/د.۲/د.۳/د.۴ (چت ۴)
+
+> مرجع وضعیت بندهای در حال اجرا. جدیدترین وضعیت همیشه در بالای هر
+> بخش می‌آید. تغییر وضعیت فقط پس از سبزبودن گیت‌ها (‏`smoke`،
+> `check-authz`، آزمون‌های رفتاری و جهش همان بند) ثبت می‌شود.
+
+**به‌روزرسانی:** ۱۸/۰۶/۱۴۰۵ (2026-09-09) — چت ۴
+
+---
+
+## بخش آ — بندهای سوپروایزر (موج فعلی)
+
+| ردیف | بند | موضوع | وضعیت | شاخه / کامیت |
+|------|------|--------|--------|--------------|
+| A.1 | ب.۳ | ارزشیابی ناشناس معلم | ✅ کامل | `feat/b3-d234-chat4` @ `d868f3a` |
+| A.2 | د.۲ | کارت امتیازی منطقه (۵ بعد + CSV) | ✅ کامل | `feat/b3-d234-chat4` @ `236e19e` |
+| A.3 | د.۳ | اطلاعیه فوری/بحرانی اداره | ✅ کامل | `feat/b3-d234-chat4` @ `4266b1d` |
+| A.4 | د.۴ | نمای کمبود نیروی انسانی | ✅ کامل | `feat/b3-d234-chat4` @ `7f7dc3e` |
+
+> هر چهار بند در شاخهٔ `feat/b3-d234-chat4` پوش شده‌اند و **در انتظار
+> تأیید صریح ناظر ارشد برای ادغام به `main`** هستند (اصل هشتم).
+> جزئیات: `REPORT_B3_D234_CHAT4.md` و `HANDOFF.md`.
+>
+> **به‌روزرسانی 2026-09-10 (چت ۶، ممیزی هم‌راستایی):** پی‌آر #۳۵ (همین چهار بند)
+> در بستهٔ هفت‌گانهٔ تیمی در `main` مرج شد (سر: `cd484c3`). اثر اسکیمایی: جدول
+> `staff_posts` + ستون‌های `office_id`/`severity` روی `announcements` — ثبت‌شده در
+> `server/schema.sql` (بدون مهاجرت؛ انحراف ثبت‌شده) و `docs/DATA_DICTIONARY.md`
+> (بازتولید: ۹۳ جدول). وضعیت هر چهار ردیف: ✅ مرج‌شده.
+
+### خلاصهٔ فنی بندهای کامل‌شده
+
+- **A.1 — ب.۳:** پرسش‌نامهٔ ناشناس دانش‌آموز/ولی؛ هیچ فیلد هویتی در
+  ذخیره‌گاه، پاسخ خطا یا آدیت ثبت نمی‌شود؛ `upd:[]/del:[]` تغییرناپذیر؛
+  دروازهٔ `server/sync.js` بر مالکیت مدرسه/دانش‌آموز. آزمون: ۱۲/۱۲ رفتاری
+  + ۱۳/۱۳ سرور + ۵/۵ جهش.
+- **A.2 — د.۲:** امتیاز ۰ تا ۱۰۰ در ۵ بعد (مالی/داخلی/رشد/رضایت/مدیریت)
+  با بازنرمال‌سازی وزن روی داده‌های موجود؛ «داده ناکافی» به‌جای صفر؛
+  بازهٔ رنگی (سبز ≥۶۰، کهربایی ≥۳۵، قرمز <۳۵) + خروجی CSV؛ دامنه
+  `officeScopeSchools`. آزمون: ۱۴/۱۴ + ۶/۶ جهش.
+- **A.3 — د.۳:** `severity` ∈ normal/urgent/critical (نبود فیلد = عادی،
+  سازگار با گذشته) + `office_id`؛ بنر قرمز/کهربایی، بج «اطلاعیهٔ اداره»،
+  مرتب‌سازی بحرانی > فوری > تازه‌ترین؛ دروازهٔ سرور انتشار بین‌اداره‌ای
+  را می‌بندد. آزمون: ۱۳/۱۳ + ۶/۶ جهش.
+- **A.4 — د.۴:** مجموعهٔ تازهٔ `staff_posts {school_id, subject_id,
+  required}`؛ موجود = معلمان متمایز هر درس از برنامهٔ هفتگی؛ بدون هنجار =
+  «تعریف نشده» (هرگز صفر ساختگی)؛ تجمیع شهرستان/استان؛ ویرایشگر هنجار با
+  اعتبارسنجی؛ دروازهٔ دامنهٔ اداره در سرور. آزمون: ۱۶/۱۶ + ۷/۷ جهش.
+
+---
+
+## سایر کارهای در جریان (وضعیت از گزارش سوپروایزر)
+
+| چت | کار | وضعیت |
+|-----|-----|--------|
+| چت ۱ | فیلد «نوع مدرسه» (فاز ۰٫۱) | ⏳ در حال اجرا |
+| چت ۳ | نمرهٔ عملی/کارگاهی هنرستان (E.1) | ⏳ در حال اجرا |
+
+---
+
+## گیت‌های سراسری (آخرین اجرا — ۲۰۲۶-۰۹-۰۹، سرِ `feat/b3-d234-chat4`)
+
+| گیت | نتیجه |
+|---|---|
+| `tests/smoke.js` | ✅ ۵۴۷/۵۴۷ |
+| `tools/check-authz.js` | ✅ خروجی ۰ |
+| `tests/authz-model.js` | ✅ ۲۵۰/۲۵۰ |
+| `tests/server16.js` | ✅ ۳۹/۳۹ |
+| `build --check` | ✅ بیت‌به‌بیت + تطبیق راهنما |
+
+---
+
+## اسناد مرتبط
+
+- سند جامع پژوهشی و فازبندی: `docs/RESEARCH_2026-09-05_UNIFIED_EDU_ROADMAP.md`
+- اسکن نهایی نقشه‌راه در برابر کد: `docs/ROADMAP_FINAL_SCAN_2026-09-08.md`
+- پیش‌نویس‌های طراحی د.۲/د.۳/د.۴: `docs/D2_DRAFT.md`، `docs/D3_DRAFT.md`، `docs/D4_DRAFT.md`
+- دفترچهٔ تحویل: `HANDOFF.md`

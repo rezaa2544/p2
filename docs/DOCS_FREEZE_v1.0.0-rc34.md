@@ -1,6 +1,6 @@
 # 🔒 قفل مستندات — DOCS_FREEZE_v1.0.0-rc34
 
-> **⚠️ قفلِ تاریخی.** این نسخه در ۲۰۲۶-۰۹-۱۲ با `DOCS_FREEZE_v1.0.0-rc34.md` جایگزین شد و دیگر «جاری» نیست.
+> **⚠️ قفلِ تاریخی.** این نسخه در ۲۰۲۶-۰۹-۱۲ با `DOCS_FREEZE_v1.0.0-rc35.md` جایگزین شد و دیگر «جاری» نیست.
 > **تاریخِ دست‌نخورده:** مانیفستِ زیر **عمداً ویرایش نشده** است — وضعیتِ لحظهٔ قبلی قفل را قابل اثبات نگه می‌دارد.
 > برای راستی‌آزماییِ قفلِ جاری: `node tests/docs-freeze-marker.js`.
 
@@ -152,10 +152,10 @@
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:05b7bdc41510b730d45c63c2dcb1a63ab3c23c32ec36250dfcc80a5b6ede90d2` |
 | `DOCS_INDEX.md` | `sha256:c5aae7e5154dc188c05357989909846844331e7b1ec3f52cc2921e6aaab8de96` |
-| `DOCS_METRICS.md` | `sha256:edf6067da0b5ed587770a1179638082b99ec426ba978ae1884d97bd81c3493fe` |
+| `DOCS_METRICS.md` | `sha256:dca9526cc8aca45bb26b36415602d88966df6bdb8aa1a131c8d2cf8d6d0690bf` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:bbca0ce31bc63dabaacf2f2eab15f2ac2de60528a53de9a34985ef1ea41ee091` |
-| `DOCUMENTATION_MAP.md` | `sha256:ce9c08c7ae9e486d8a34ea53b641931d932999e213cf2f402581c005e04f1e85` |
+| `DOCUMENTATION_MAP.md` | `sha256:e3076afec77059814073f661c05efd0035aec329bbaecd884d5d933c09df9ba4` |
 | `DR_RUNBOOK.md` | `sha256:8c0d8f7e2bb1e1305c2aaf645850de68d4b429895445ecae74a5a0a732db0e26` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
@@ -333,7 +333,7 @@
 | `SUPPLY_CHAIN_AUDIT_2026_Q3.md` | `sha256:34ffa9a2145022b210dd8650b7cc15378e8361f44eadb63c86b4c802dbbc6e30` |
 | `SYNC_FLOW.md` | `sha256:0d768e1fa6bcbdf0f69108408ba5733a787cbb881bf60c8b3b57cf5acc54db0a` |
 | `SYNC_PROTOCOL.md` | `sha256:2799aeb7207edc7eb3ade3fc367f90601ab1e485ad113cc17077278479fdff7a` |
-| `TEST_COVERAGE_REPORT.md` | `sha256:a0f08f3cdf7da6b9387efd7eb45840617f1e09341eddba145e30c3fcbdcf636e` |
+| `TEST_COVERAGE_REPORT.md` | `sha256:508b0ec9ac72570f1a1cda9f27bcb740d86b50d0de1e8fd236ca1e552319f352` |
 | `THIRD_PARTY_LICENSES.md` | `sha256:0440f94b6395ee2fab1b2a34d9c8e3d5141887c1c276b4327c5d134317a33a08` |
 | `THREAT_MODEL.md` | `sha256:2d93966da760fec407778e27e9ef85033f95efffe71d1135dd849f6780d966f0` |
 | `TRACING_SETUP.md` | `sha256:6d17e75b8cc28763db6d7d7c9310d587fb3419c15a2d1dbf2f9e938881040099` |
@@ -342,7 +342,7 @@
 | `VISITORS_MODULE.md` | `sha256:6882e68880cc068fbb32d0b0f7da4eaafa477b27535dbf869f560ffe98f2825e` |
 | `VOCATIONAL_GRADES.md` | `sha256:ddc79151225d8b6cf605b97c4bec7d5a1bfc4800b71dedd13db3f97bf1b717bb` |
 | `WAF_DDOS_SETUP.md` | `sha256:0aa30a600e0c07b15e6f2b39a347a921e043aca5240ab0321c88a80c559ed6d2` |
-| `WAVE10_DB_SCALE.md` | `sha256:d5c7c24e0e2f712ec9e9cbf8fab09521d049ee6fcbb839e8fc80d72904e48e11` |
+| `WAVE10_DB_SCALE.md` | `sha256:3d21d934e942f4bde04e367594ca33f67dbae060a673deaecaa39fd65263c355` |
 | `WAVE11_CACHE_STRATEGY.md` | `sha256:5f8dea3e2b8633d8b76b8e447e7227cd745631910f221d362bacc96b53b504aa` |
 | `WAVE12_NETWORK_EDGE.md` | `sha256:ab98a49fb41cfab607d2f77777bd13323439255ecb889871be5c63618cc9b103` |
 | `WAVE13_ASVS_AUDIT.md` | `sha256:50de6c4eafbe96486c98643658549f41e85042af0ec7f043dfdfeb82fd7864cc` |

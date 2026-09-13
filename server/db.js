@@ -69,6 +69,66 @@ const config = {
   readMax: parseInt(process.env.READ_POOL_MAX || '10', 10)
 };
 
+/* ── P0-1 (Package 1) — PostgreSQL production enforcement ─────────────
+   In production the JSON/in-memory store must never be the backing store:
+   it is per-process, so two instances silently diverge on every write
+   (auth codes, idempotency UIDs, attendance, grades, finance) and a
+   container restart loses everything since the last 2s persist tick.
+
+   This is the exact contract Redis already implements for itself
+   (server/redis.js:150-158 "REDIS_URL is required when NODE_ENV=production
+   (in-memory fallback is dev-only)" and redis.js:224-236 "Redis unreachable
+   in production"), so the two backing stores now fail the same way.
+
+   ALLOW_MEMORY_FALLBACK=1 is an explicit dev/test opt-in. It is IGNORED in
+   production — a flag must not be able to re-open a production data-loss
+   path. */
+function isProductionEnv() {
+  return process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production';
+}
+
+function memoryFallbackAllowed() {
+  if (isProductionEnv()) return false;
+  return true; /* dev/test: fallback stays available (see init() warning) */
+}
+
+function memoryFallbackRequested() {
+  return process.env.ALLOW_MEMORY_FALLBACK === '1';
+}
+
+/**
+ * Why the JSON/in-memory backing store is (not) usable right now.
+ * Pure/env-only — safe to call from boot gates and tests.
+ */
+function backingStorePolicy() {
+  const production = isProductionEnv();
+  const allow = memoryFallbackAllowed();
+  return {
+    production: production,
+    allow_memory_fallback: allow,
+    flag_requested: memoryFallbackRequested(),
+    reason: !production
+      ? 'non-production: JSON/in-memory backing store permitted'
+      : (allow
+        ? 'production: JSON/in-memory backing store permitted'
+        : 'production: DATABASE_URL required — JSON/in-memory fallback is dev-only')
+  };
+}
+
+/* P0-1 (round 3, item 2) — see the pool.on('connect') handler in init().
+   Counted so a test can prove the event was observed rather than crashed on. */
+let clientErrorCount = 0;
+function onClientError(err) {
+  clientErrorCount++;
+  const msg = (err && err.message) || String(err);
+  if (isProductionEnv()) {
+    console.error('[DB] PostgreSQL client error in production — the operation fails explicitly and readiness goes red (no silent retry, no process crash):', msg);
+  } else {
+    console.warn('[DB] PostgreSQL client error:', msg);
+  }
+}
+function clientErrors() { return clientErrorCount; }
+
 /**
  * Initialize Database Layer & Pool Lifecycle
  * @param {Object} fallbackStore - In-memory store object loaded from payesh.json
@@ -83,6 +143,18 @@ async function init(fallbackStore) {
     isPgActive = false;
     readPoolActive = false;
     if (readPool) { try { readPool.end().catch(() => {}); } catch (e) {} readPool = null; }
+    /* P0-1: production refuses the JSON/in-memory backing store (mirrors
+       server/redis.js:150-158). ok:false is what the boot gate keys on. */
+    if (!memoryFallbackAllowed()) {
+      const error = !config.connectionString
+        ? 'DATABASE_URL is required when NODE_ENV=production (JSON/in-memory fallback is dev-only)'
+        : 'pg driver is not installed (required when NODE_ENV=production)';
+      return { ok: false, driver: 'none', poolSize: 0, read_replica: false, error: error };
+    }
+    if (!memoryFallbackRequested()) {
+      console.warn('[DB] no DATABASE_URL — using the JSON/in-memory store. Dev/test only; '
+        + 'set ALLOW_MEMORY_FALLBACK=1 to silence this warning. In production this is a startup failure.');
+    }
     return { ok: true, driver: 'memory', poolSize: 0, read_replica: false };
   }
 
@@ -103,6 +175,22 @@ async function init(fallbackStore) {
       console.error('[DB] PostgreSQL pool background error:', err.message);
       // Attempt reconnect if pool died
       scheduleReconnect();
+    });
+
+    /* P0-1 (round 3, item 2) — a checked-out pg Client whose connection dies
+       emits an 'error' event that nothing listened to, which aborted the
+       whole Node process ("Unhandled 'error' event" on Client). The in-flight
+       query already rejects, so the caller still sees an explicit failure;
+       this listener only stops the crash and records the event.
+
+       Production semantics deliberately follow the existing Redis precedent
+       (server/redis.js:224-236 and tests/redis-prodfail.js): operations throw
+       and readiness goes red — the process is NOT killed, because a single
+       reset connection must not become a full outage. Exit-on-client-error
+       would be stricter than the contract this codebase already ships for its
+       other shared backend. */
+    pool.on('connect', (c) => {
+      try { c.on('error', onClientError); } catch (e) {}
     });
 
     // Test connection & verify ping
@@ -154,11 +242,17 @@ async function init(fallbackStore) {
 
     return { ok: true, driver: 'postgres', serverTime, read_replica: readPoolActive };
   } catch (err) {
-    console.warn('[DB] PostgreSQL connection failed. Falling back to JSON in-memory store:', err.message);
     isPgActive = false;
     readPoolActive = false;
     if (readPool) { try { readPool.end().catch(() => {}); } catch (e) {} readPool = null; }
     scheduleReconnect();
+    /* P0-1: an unreachable PostgreSQL in production is a startup failure, not a
+       silent downgrade to the JSON store (mirrors server/redis.js:224-236). */
+    if (!memoryFallbackAllowed()) {
+      console.error('[DB] PostgreSQL unreachable in production — refusing the JSON/in-memory fallback:', err.message);
+      return { ok: false, driver: 'none', error: 'PostgreSQL unreachable in production: ' + err.message };
+    }
+    console.warn('[DB] PostgreSQL connection failed. Falling back to JSON in-memory store:', err.message);
     return { ok: true, driver: 'memory', fallback: true, warning: err.message };
   }
 }
@@ -351,6 +445,31 @@ function isPgReadableTable(name) {
     && name.indexOf('__') !== 0;
 }
 
+/* Wave 10 (chg_id): ستون‌هایِ داخلیِ لایهٔ DB — هرگز از سرور بیرون نمی‌روند.
+   SELECT * آن‌ها را برمی‌گرداند (ستونِ پارتیشن‌نشده به ازایِ هر جدول)؛ این‌جا
+   کنار گذاشته می‌شوند تا شکلِ سطرِ PG با حالتِ حافظه بایت‌به‌بایت یکی بماند و
+   هیچ‌وقت به op کلاینت راه پیدا نکنند (validate.js آن را unknown_field می‌گیرد). */
+const INTERNAL_ROW_COLUMNS = new Set(['chg_id']);
+
+/**
+ * Remove server-internal columns from rows leaving the DB layer.
+ * Pure function; returns the same array shape with shallow-copied rows.
+ * @param {Array<Object>} rows
+ * @returns {Array<Object>}
+ */
+function stripInternalColumns(rows) {
+  if (!Array.isArray(rows)) return rows;
+  return rows.map((r) => {
+    if (!r || typeof r !== 'object') return r;
+    let has = false;
+    for (const k of INTERNAL_ROW_COLUMNS) { if (k in r) { has = true; break; } }
+    if (!has) return r;
+    const c = Object.assign({}, r);
+    for (const k of INTERNAL_ROW_COLUMNS) delete c[k];
+    return c;
+  });
+}
+
 /**
  * Read one full collection via the unified layer.
  * @param {string} name - collection / table name (real data table only)
@@ -360,7 +479,7 @@ async function readCollection(name) {
   if (typeof name !== 'string' || !name) return [];
   if (isPostgres() && isPgReadableTable(name)) {
     const res = await pool.query(`SELECT * FROM "${name}"`);
-    return reviveRows(res.rows);
+    return stripInternalColumns(reviveRows(res.rows));
   }
   return (memoryStore && Array.isArray(memoryStore[name])) ? memoryStore[name] : [];
 }
@@ -378,7 +497,7 @@ async function readOne(name, id) {
     const n = Number(id);
     if (!Number.isFinite(n)) return null;
     const res = await pool.query(`SELECT * FROM "${name}" WHERE id = $1 LIMIT 1`, [n]);
-    const rows = reviveRows(res.rows);
+    const rows = stripInternalColumns(reviveRows(res.rows));
     return rows.length ? rows[0] : null;
   }
   const rows = await readCollection(name);
@@ -468,11 +587,24 @@ function hydrationUsersCapped(h){
   }));
 }
 
+/* F1 (chaos-drill #185 — بحرانی): «PG انتظار می‌رود؟»
+   در production با DATABASE_URL ست، اگر isPgActive وسطِ اجرا false شود
+   (قطعِ PG + reconnectِ ناموفق)، هیچ مسیری حق ندارد memory را «سالم»
+   جا بزند — وگرنه readiness سبزِ دروغ می‌شود و ackهای 200 پس از بازگشتِ
+   PG در آن نیستند (گم‌شدنِ دائمیِ دادهٔ ackشده؛ شاهد: chaos-drill-pg-outage). */
+function pgExpected() {
+  return !memoryFallbackAllowed() && !!(process.env.DATABASE_URL);
+}
+
 /**
  * Quick ping for health probes & readiness checks
  */
 async function ping() {
   if (!isPostgres()) {
+    if (pgExpected()) {
+      return { ok: false, driver: 'none', alive: false,
+        error: 'PostgreSQL expected in production (DATABASE_URL set) but not connected — refusing memory driver' };
+    }
     return { ok: true, driver: 'memory', alive: true };
   }
   try {
@@ -510,6 +642,15 @@ async function transaction(callback) {
   }
 }
 
+/* Wave 10 (پارتیشن‌بندی): فهرستِ جدول‌هایِ پارتیشن‌شده — PAYESH_PARTITIONED_TABLES
+   (مثلاً "grades,attendance"). خالی ⇒ همه‌چیز مثلِ قبل (ON CONFLICT (id)).
+   سوییچِ صریح تا rollout تدریجی و rollback لحظه‌ای ممکن باشد. */
+function isPartitionedTable(name) {
+  const v = String(process.env.PAYESH_PARTITIONED_TABLES || '');
+  if (!v) return false;
+  return v.split(',').map((x) => x.trim()).filter(Boolean).includes(String(name));
+}
+
 /**
  * P1-14: persist ONE op on a given client — THROWS on error (for use inside transactions).
  * Semantics mirror the old persistOp: empty-data ins/upd is a no-op; uid tracking is
@@ -537,6 +678,41 @@ async function persistOpWithClient(client, op) {
       .filter(f => f !== 'id')
       .map(f => `${ident(f)} = EXCLUDED.${ident(f)}`)
       .join(', ');
+
+    /* Wave 10 (پارتیشن‌بندی): جدولِ پارتیشن‌شده PK (id, created_at) دارد —
+       ON CONFLICT (id) دیگر به هیچ uniqueای نمی‌خورد و فرمِ (id, created_at)
+       هم idempotency را می‌شکند (id تکراری با created_at متفاوت ⇒ سطرِ
+       دوم). معادلِ دقیقِ upsert: اول UPDATE به id (ایندکسِ غیر یکتایِ id)؛
+       اگر هیچ سطری نداشت INSERT؛ رقابتِ هم‌زمان با 23505 گرفته می‌شود و
+       UPDATE دوباره می‌زند — «آخرین برنده»، همان ترتیبِ DO UPDATE. */
+    if (isPartitionedTable(col)) {
+      const upFields = fields.filter(f => f !== 'id');
+      const hasId = data.id != null && Number.isFinite(Number(data.id));
+      if (hasId && upFields.length > 0) {
+        const setSql = upFields.map((f, i) => `${ident(f)} = $${i + 1}`).join(', ');
+        const upVals = upFields.map(f => valOf(data[f]));
+        const updSql = `UPDATE ${table} SET ${setSql} WHERE id = $${upFields.length + 1};`;
+        const updRes = await client.query(updSql, upVals.concat([Number(data.id)]));
+        if (updRes && Number(updRes.rowCount) > 0) return; /* سطرِ موجود ⇒ به‌روزرسانی شد */
+      }
+      const insSql = `INSERT INTO ${table} (${cols}) VALUES (${placeholders});`;
+      try {
+        await client.query(insSql, values);
+      } catch (err) {
+        /* رقابت: کسِ دیگری همین id را همین لحظه درج کرد — مثلِ ON CONFLICT
+           DO UPDATE، ما برندهٔ نهایی هستیم: UPDATE دوباره. */
+        if (err && err.code === '23505' && hasId && upFields.length > 0) {
+          const setSql = upFields.map((f, i) => `${ident(f)} = $${i + 1}`).join(', ');
+          const upVals = upFields.map(f => valOf(data[f]));
+          const updSql = `UPDATE ${table} SET ${setSql} WHERE id = $${upFields.length + 1};`;
+          const updRes = await client.query(updSql, upVals.concat([Number(data.id)]));
+          if (!updRes || !(Number(updRes.rowCount) > 0)) throw err;
+        } else {
+          throw err;
+        }
+      }
+      return;
+    }
 
     const sql = `INSERT INTO ${table} (${cols}) VALUES (${placeholders}) ON CONFLICT (id) DO UPDATE SET ${updateSet};`;
     await client.query(sql, values);
@@ -625,6 +801,12 @@ async function persistOpsBatchWithClient(client, ops) {
 async function persistOpsBatch(ops) {
   const list = ops || [];
   if (!isPostgres()) {
+    /* F1 (chaos-drill #185): در production با DATABASE_URL، skipِ بی‌صدایِ
+       آینه = ackِ 200ی که هرگز به PG نمی‌رسد ⇒ THROW تا sync.js همان مسیرِ
+       رسمیِ sync_mirror_failed/503 + rollback را برود (کلاینت retry می‌کند). */
+    if (pgExpected()) {
+      throw new Error('PostgreSQL expected in production but not connected — refusing silent memory ack (F1)');
+    }
     return { ok: true, driver: 'memory', count: list.length };
   }
   return await transaction(async (client) => {
@@ -642,7 +824,21 @@ async function isUidProcessed(uid) {
     try {
       const res = await pool.query('SELECT 1 FROM server_processed_uids WHERE uid = $1', [uid]);
       if (res.rowCount > 0) return true;
-    } catch (e) {}
+    } catch (e) {
+      /* P0-1 (round 3, item 3) — this used to be an empty catch, which silently
+         downgraded a PostgreSQL failure to the per-process JSON store. That is
+         an idempotency hole: a sync uid whose "already applied?" check could
+         not be answered was treated as *not* applied, so the same op could be
+         applied twice across instances. In production we now fail closed; the
+         sync route turns the throw into a clean 500 (server/index.js request
+         wrapper) / 503, and the client retries. Dev/test keeps the old
+         warn-and-continue behaviour so local offline runs still work. */
+      if (!memoryFallbackAllowed()) {
+        throw new Error('isUidProcessed: PostgreSQL idempotency check failed in production (refusing to fall back to the per-process store): '
+          + ((e && e.message) || e));
+      }
+      console.warn('[DB] isUidProcessed: PostgreSQL query failed, using the in-memory store (dev/test only):', (e && e.message) || e);
+    }
   }
   if (memoryStore && memoryStore.__processed_uids) {
     return !!memoryStore.__processed_uids[uid];
@@ -763,6 +959,14 @@ function __setReprobeDelayForTests(ms) {
 module.exports = {
   init,
   isPostgres,
+  /* P0-1 (Package 1) — production backing-store policy */
+  isProductionEnv,
+  pgExpected,
+  memoryFallbackAllowed,
+  memoryFallbackRequested,
+  backingStorePolicy,
+  /* round 3, item 2 — observed pg Client errors (crash-prevention counter) */
+  clientErrors,
   shouldPersistMirrorFile,
   hydrationUsersCapped,
   getPool,
@@ -780,6 +984,10 @@ module.exports = {
   persistOpsBatchWithClient,
   persistOpsBatch,
   __setPoolForTests,
+  /* Wave 10 (chg_id): کنارگذاریِ ستون‌های داخلی برای خواننده‌های بیرونی (pull/delta) */
+  stripInternalColumns,
+  /* Wave 10 (پارتیشن‌بندی): آیا این جدول در PAYESH_PARTITIONED_TABLES است */
+  isPartitionedTable,
   __setReadPoolForTests,
   __setReprobeDelayForTests,
   isUidProcessed,
