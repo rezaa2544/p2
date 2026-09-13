@@ -121,10 +121,12 @@ snapshot(){ # snapshot <name> <phase>
     echo "  \"ts\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
     echo "  \"live\": $LIVE,"
     echo "  \"endpoints\": {"
+    # کامایِ آخر باید حذف شود وگرنه JSON نامعتبر است (یافتهٔ مانورِ 2026-09-13:
+    # فایل‌های before/after با کامای انتهایی تولید می‌شدند و JSON.parse می‌شکست)
     for ep in /api/liveness /api/readiness /api/health; do
       local r; r=$( [ "$LIVE" = 1 ] && probe_once "$name" "$ep" || echo "dry-run,0" )
       echo "    \"$ep\": \"$r\","
-    done
+    done | sed '$ s/,$//'
     echo "  }"
     echo "}"
   } > "$f"
@@ -134,7 +136,11 @@ snapshot(){ # snapshot <name> <phase>
 probe_loop(){ # probe_loop <name>
   local name="$1" f="$OUT_DIR/${name}-timeline.csv"
   echo "ts,endpoint,status,ms" > "$f"
-  local end=$(( $(date +%s) + DURATION ))
+  # در LIVE دو دُمِ PROBE_INTERVAL هم probe می‌کنیم تا دورهایِ پس از بازیابی
+  # (restart سرویس در انتهایِ پنجرهٔ خرابی) هم در timeline ثبت شوند.
+  local dur=$DURATION
+  [ "$LIVE" = 1 ] && dur=$(( DURATION + PROBE_INTERVAL * 2 ))
+  local end=$(( $(date +%s) + dur ))
   while [ "$(date +%s)" -lt "$end" ]; do
     local ts r
     ts=$(date -u +%H:%M:%S)
@@ -146,8 +152,11 @@ probe_loop(){ # probe_loop <name>
       fi
       echo "$ts,$ep,${r%%,*},${r##*,}" >> "$f"
     done
-    [ "$LIVE" = 1 ] && sleep "$PROBE_INTERVAL"
-    break # DRY_RUN: فقط یک دور
+    if [ "$LIVE" = 1 ]; then
+      sleep "$PROBE_INTERVAL"
+    else
+      break # DRY_RUN: فقط یک دور
+    fi
   done
 }
 
@@ -159,7 +168,7 @@ expect_check(){ # expect_check <name> — بررسیِ رفتارِ مورد ا�
     if [ "$LIVE" = 1 ]; then
       case "$name" in
         kill-api)
-          grep -q ',503\|,ERR' "$f" && echo "  ✅ نمونهٔ مرده: probe‌ها ERR/503 ثبت شدند" \
+          grep -qE ',(503|[0-9]*ERR)' "$f" && echo "  ✅ نمونهٔ مرده: probe‌ها ERR/503 ثبت شدند" \
                || echo "  ❌ هیچ probe‌ای بعد از kill خطا نداشت (انتظار: ERR)" ;;
         redis-down)
           grep -q '/api/readiness,503' "$f" && echo "  ✅ readiness در حینِ قطعِ Redis = 503 (قراردادِ Wave 15)" \
@@ -205,7 +214,12 @@ run_scenario(){ # run_scenario <name>
   require_live_env "$name"
   mkdir -p "$OUT_DIR"
   snapshot "$name" before
-  probe_loop "$name"
+  # در LIVE حلقهٔ probe باید «همزمان با» تزریقِ خرابی بچرخد، نه پیش از آن —
+  # وگرنه timeline فقط لحظهٔ سالمِ پیش از خرابی را می‌بیند. (باگِ live که در
+  # مانورِ 2026-09-13 آشکار شد: break غیرشرطی + probeِ فقط-پیش از تزریق؛
+  # شاهدِ قرمز: timeline همه-200 در حینِ kill واقعی.)
+  local probe_bg=""
+  if [ "$LIVE" = 1 ]; then probe_loop "$name" & probe_bg=$!; else probe_loop "$name"; fi
   # ── تزریقِ خرابی + بازگشت ──
   if [ "$LIVE" = 1 ]; then
     case "$name" in
@@ -261,6 +275,8 @@ run_scenario(){ # run_scenario <name>
       disk-full)   log "DRY_RUN: fallocate ${DISK_FILL_GB}G در $DISK_DIR → صبر $DURATION s → rm";;
     esac
   fi
+  # تا پایانِ دُمِ probeها صبر کن تا timeline کامل شود (snapshotِ after سالم بماند)
+  [ -n "$probe_bg" ] && wait "$probe_bg" 2>/dev/null
   snapshot "$name" after
   expect_check "$name"
   # ── بازگشتِ کامل (reset بینِ سناریوها) ──

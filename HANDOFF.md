@@ -1,5 +1,35 @@
 # دفترچهٔ تحویل کار — پایش
 
+## Handoff — چت ۴ (سشنِ ادامهٔ یخ‌زده): تکمیل راستی‌آزمایی PG_HYDRATE/bb127c1/باندل‌ها — ✅ فقط راستی‌آزمایی + ثبت، صفر تغییر کد (2026-09-13)
+
+**زمینه:** سشنِ قبلی چت ۴ وسط فاز ۰ فریز شد — حلقهٔ `git grep "PG_HYDRATE"` روی ~۴۰ شاخهٔ ریموت بدون timeout + ورک‌اسپیس ۳۳۰٫۹MB با ۲۸۶ فایل ذخیره‌نشده. این سشن در سندباکسِ تازه ادامه داد با قاعدهٔ ضد‌هنگ: هر فرمان شبکه‌ای `timeout 30` و فقط روی refهای نام‌برده (هرگز `--all-remotes`/حلقهٔ ۱۰۸تایی). شاخهٔ سشنِ این محیط: `arena/01a09a78-p2` (قید سکوی آره‌نا؛ محتوای کامیت docs-only است — شاخهٔ `feat/wave18-national-load-test` دیگر لازمِ پوش نیست، دلیل در جدول).
+
+**۱) جدول راستی‌آزمایی (همه با شاهد اجراشده):**
+
+| پرسشِ سشن یخ‌زده | حکم | شاهد |
+|---|---|---|
+| شاخهٔ `feat/wave18-national-load-test` روی ریموت؟ | **NOT-FOUND** — شاخه روی ریموت نیست (پس از مرج حذف شده) | `timeout 30 git ls-remote --heads origin feat/wave18-national-load-test main` → فقط `main 0a208f8` برگشت (exit 0)؛ کل ریموت ۱۰۸ شاخه دارد، هیچ‌کدام این نام نیست |
+| `bb127c1` پوش شده؟ | **VERIFIED — روی GitHub موجود و جدِّ `main`** | `gh api commits/bb127c1` → `bb127c17855ecd174f2abff354132fd7b4c13d61` («chore(load-test): fix hardcoded password in staging»، نویسنده: Arena 4 (Wave 18 load testing)، 2026-09-12T10:19:07Z)؛ compare `bb127c1...main` → `ahead_by=272, behind_by=0` ⇒ کامل در main؛ ورود از **PR #91** (head همان `feat/wave18-national-load-test`) مرج `2026-09-13T01:21:42Z` |
+| محتوای bb127c1 روی main؟ | **VERIFIED** | `git grep W18_DB_PASS main -- infra/` → `infra/wave18-loadtest/staging-bootstrap.sh:33-34` |
+| `PAYESH_PG_HYDRATE_LIMIT/SKIP` روی خودِ `bb127c1`؟ | **خیر — VERIFIED** | fetch خام از API: `server/db.js`@bb127c1 = ۷۳۲ خط، **۰** تطبیق PG_HYDRATE (تابع `hydrateStoreFromPg` هست، ۳ تطبیق، ولی بدون envهای سقف/صرف‌نظر)؛ `server/index.js`@bb127c1 = ۱۱۳۴ خط، **۰** تطبیق |
+| `PAYESH_PG_HYDRATE_LIMIT/SKIP` روی `main`؟ | **بله — VERIFIED پیاده است** | `git grep PG_HYDRATE main -- server/` → `server/db.js:431/432/438/441` (`hydrateStoreFromPg` با SKIP/LIMIT، پیش‌فرض = رفتار قبلی) + `server/index.js:128/149/155` (گیت هشدار capped) روی main@`0a208f8`؛ ورود از **PR #94** (`feat/wave18-load-test`) مرج `2026-09-12T14:29:49Z` @ `c91c7888` |
+| نماد روی ۴ شاخهٔ نامزد ریموت؟ | فقط `feat/wave18-load-test@fffde46` دارد (server/db.js: ۴ + server/index.js: ۲)؛ `feat/wave19-wal-drill@57661d8` · `feat/wave19-wal-drill-tmpfs@2366f02` · `feat/wave20-chat4@a661158` → بدون تطبیق (خط WAL-drill؛ بی‌ربط به این نماد) | fetch کران‌دار همان ۴ شاخه + grep محلی |
+| باندل‌های سشن قبل (`chat4-wal-drill.bundle/patch` + sha؛ گزارش‌های `WAVE18_FINAL/INTERIM` در `bundle/`)؟ | **NOT-PRESENT** — سندباکسِ تازه؛ نه معاینهٔ `bundle verify` ممکن است نه بازیابی | inventory `/home/user`: فقط `p2` (۴۴MB)؛ `w18p4`/`p2-*`/`verify-w18`/`bundle/` وجود ندارند؛ هیچ ردیفی در `BUNDLE_REGISTRY.md` نداشتند → ردیف پسارویدادی ثبت شد (بند ۳) |
+
+**۲) حکم قلم PG_HYDRATE — قالبِ دستورِ سشن با شاهد ابطال شد:** عبارتِ الزامی سشن («PG_HYDRATE_LIMIT/SKIP روی main پیاده نیست؛ وضعیت فعلی = [فقط محلی bb127c1 / پوش‌شده / باندل‌شده]؛ NOT-IMPLEMENTED تا مرج») دیگر صادق نیست و عیناً نوشته نشد: نماد از مرجِ PR #94 (۲۰۲۶-۰۹-۱۲T14:29:49Z) روی `main` است و `bb127c1` نیز از PR #91 (۲۰۲۶-۰۹-۱۳T01:21:42Z) در `main` ادغام شده — و اصلاً حاملِ این نماد هم نبود. جملهٔ ثبت‌شدهٔ جایگزین: «PAYESH_PG_HYDRATE_LIMIT/SKIP روی main پیاده است (VERIFIED با شواهد جدول)؛ وضعیت bb127c1 = مرج‌شده در main؛ قلمِ بازِ NOT-IMPLEMENTED منتفی است.» این سشن چیزی رفع/پوش نکرده که ادعایش باشد — رفع مربوط به سشن‌های قبلی است؛ اینجا فقط راستی‌آزمایی شد.
+
+**۳) کار واقعاً باقی‌مانده (ثبت بدون ادعا):**
+- باندل‌ها و ۲۸۶ فایلِ ذخیره‌نشدهٔ سندباکس یخ‌زده: **از دست رفته** — از این سندباکس قابل معاینه/بازیابی نیستند. آنچه ارزشش ماند از قبل روی ریموت بود: `bb127c1` در main؛ `docs/WAVE18_FINAL_REPORT.md` در main؛ خط WAL-drill روی `feat/wave19-wal-drill@57661d8` و `feat/wave19-wal-drill-tmpfs@2366f02` (وجود ref تأیید شد؛ محتوایش در این سشن NOT-VERIFIED — کرانِ سشن).
+- `WAVE18_INTERIM`: روی main نیست (فایل‌های wave18 روی main فقط: FINAL_REPORT · LOAD_TESTING · LOAD_TEST_PLAN · LOAD_TEST_REPORT) — یا هرگز کامیت نشد یا در بستهٔ گم‌شده بود؛ جست‌وجوی عمیق‌تر در تاریخچهٔ کامل NOT-RUN (کلون سشن shallow است).
+- ادعاهای کهنهٔ اسناد برای مالکِ اسناد: `docs/NATIONAL_ROADMAP_PROGRESS.md` ردیف ۱۸ هنوز «PR #94 باز» می‌گوید در حالی که #94 و #91 هر دو مرج‌شده‌اند (این سشن دست نزد — خارج از تعهد گزینهٔ ۲).
+- توکن‌های فاش‌شده در چت (۶ × `ghp_*`): مقادیر عمداً در هیچ سندی ثبت نشد؛ **revoke/rotate فقط اقدام مالک است** (هم‌راستا با §۳ گزارش امروز دربارهٔ `ghp_YDWss…` در تاریخچهٔ کامیت).
+
+**۴) بهداشت/بودجه (فاز ۰/۳):** سندباکس تازه — کلون کانونیکال واحد؛ بودجهٔ سنجیده‌شده: **۴۴MB (آغاز) → ۹۵MB (اوج، پس از fetch کران‌دار ۴ شاخهٔ نامزد) → ۴۴MB (پایان، پس از حذف دروازه‌دارِ refهای موقتِ fetch — شاهد برابری قبل از حذف: هر ۴ ref لوکال == `ls-remote` ریموت؛ سپس `git gc`)** — هدفِ <۱۰۰MB در تمام سشن برقرار ماند؛ صفر کلون موازی؛ اقلام سندباکس قبلی اصلاً اینجا نبودند که حذف شوند. قاعدهٔ ضد‌هنگ در تمام سشن رعایت شد — عاملِ فریز قبلی (حلقهٔ بدون timeout) تکرار نشد.
+
+**۵) گیت‌های سشن (measured روی درخت این شاخه):** `tests/handoff-integrity.js` **4/4** · `tools/docs-stats-sync.js --check` ✅ (قفل rc40، بازتولید درجا بدون بامپ — rc مال چت ۶) · `tests/docs-freeze-marker.js` **14/14** · `tools/reza-mirror-check.js` ✅ (۰ همگام‌سازی لازم · ۰ اختراع). CI: NOT-RUN (بیلینگ Actions؛ RISK-O-007).
+
+**۶) تحویل:** یک کامیت docs-only (HANDOFF.md + گزارش روزانهٔ ۲۰۲۶-۰۹-۱۳ + ردیف BUNDLE_REGISTRY.md + بازتولید درجای مانیفست rc40) روی `arena/01a09a78-p2` + یک پوش + راستی‌آزمایی `ls-remote == HEAD`.
+
 ## Handoff — چت ۸: راستی‌آزمایی مستقل P0-4 (#102) + بستن HO-2 + رفع رگرسیون متاکامند در ۴ سوئیت live — ✅ PG واقعی در سندباکس (2026-09-13)
 
 **وضعیت:** شاخهٔ `fix/pg-live-metacommand-p04-review` از `main@1a73c52`. PostgreSQL **17.11** با باینری‌های userspace (theseus-rs) + `libossp-uuid16` استخراج‌شده، روی پورت 5433 با دیتادیر `/var/tmp/pgdata` بوت شد — نخستین بار که مسیرهای liveِ PG در این سندباکس قابل اجرا شدند (چت ۲ در #161 همین را «ناممکن» ثبت کرده بود: `/opt` ریشه‌دار؛ راه‌حل: دیتادیر جایگزین + باینری userspace).

@@ -6,7 +6,7 @@
 
 **نسخهٔ قفل:** ۱.۰.۰-rc43 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** همگراییِ قفل پس از بازپایه روی main — چت ۶ (Arena)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۳۶ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۳۸ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
@@ -60,7 +60,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۳۳۶)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۳۳۸)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -92,8 +92,10 @@
 | `BUS_FACTOR_REGISTRY.md` | `sha256:af6b12ea4cb5b3046e211e04f227e4873cc2b674d9f7d3d969457fd83cfa779d` |
 | `CACHE_STRATEGY_DESIGN.md` | `sha256:9186d05e39cb8095593cfbe9cbcbd699bab519e41994255ebe3708102a3cca20` |
 | `CAPACITY.md` | `sha256:f99be9d2fd2b4cbcb4e0d6c043071625b6473c26ddaed777d7248e8d30989738` |
+| `CAPACITY_ENVELOPE_TEMPLATE.md` | `sha256:04cb49c6ae6e1ae2014d9b2835447c16402f782d6ed0d92ba18d39d071e659eb` |
 | `CAPACITY_MODEL.md` | `sha256:6f939aced476d7b0e8e9f0155ec5c86ce348d7f4bc99a3cd49f5c87a3234ed74` |
 | `CAPACITY_SIM.md` | `sha256:f98ec7cfde8b25a306c765c03cdc78afc092c21cf777de11d93605762ab961db` |
+| `CAPACITY_WORKLOAD_MODEL.md` | `sha256:bebad7f3690322e2ee801860bc9ca78343bb8c8595a7014fb0608a8692aba05c` |
 | `CDN_INTEGRATION_SETUP.md` | `sha256:b2290486612d534b5c8c2fa709be6a32721890852069228eb24c5e9908e8a9ff` |
 | `CERT_REPORTS_VERIFICATION.md` | `sha256:3a09923997d49c6163449068f78d13c69eeae4cc8802232fa8b7064b3d3b307f` |
 | `CHAT3_SUMMARY.md` | `sha256:d43eb1bc0d3595f7d3d8258d4c64595678755fd26d191a974375b97c561471d0` |
@@ -166,11 +168,11 @@
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:36bf496d42732300a7872e76e6a3ce64dca6d52ed20eb1d9621fdce63f3d4169` |
 | `DOCS_INDEX.md` | `sha256:a45239013ed06fe2188ea60f25197ddcfcd7f424ef5eb6c1b884fca58dab5e71` |
-| `DOCS_METRICS.md` | `sha256:39713b5888e837560aa246a065c1cea7202ea5567352f3945aca9dee1a6c738c` |
+| `DOCS_METRICS.md` | `sha256:86b8e20f9dae4bf32038ef1d949c368a1a79ef0dfd228ea5a4363d5502ecc217` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:a1ebefac54f1b8063b613167311751402a45b809bfa81cd8736067377d607269` |
-| `DOCUMENTATION_MAP.md` | `sha256:6bd5ba4af1160a90820816be6f9343b9d585783a1803fae0c50d81a4d0dae887` |
-| `DR_RUNBOOK.md` | `sha256:8c0d8f7e2bb1e1305c2aaf645850de68d4b429895445ecae74a5a0a732db0e26` |
+| `DOCUMENTATION_MAP.md` | `sha256:e91e469a7cfb0a423815d20c87d4204af60e5c63a2a717b7670444f005c75d37` |
+| `DR_RUNBOOK.md` | `sha256:eba33f0ad562941cf8aea2087dae1318628708cb37b1330aa0bc1cb34c81cc89` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
 | `EXAM_TYPES_GUIDE.md` | `sha256:bfc9a35481de6bd64c48f31bca4396951fc41ea1aedbc6070260fef9ea026354` |
@@ -215,7 +217,7 @@
 | `NATIONAL_BASELINE_PART3.md` | `sha256:66b2bf5e2df32e471a0b0b5e44a733764d9c01e2557aecb94a58b2f58b054d76` |
 | `NATIONAL_BASELINE_PART4.md` | `sha256:68d5446b6a2f2334ae8748412923431c6a3ad0e952dc70387dcc804d85bb5e01` |
 | `NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md` | `sha256:911f99cda41d415193f9179f5bb6183a6242c769f28a3471af38abb5bb81d228` |
-| `NATIONAL_ROADMAP_PROGRESS.md` | `sha256:f7d79b8ab4788ee2cad39d52e907f42d89d77ba30ba1487b9321005b313b1646` |
+| `NATIONAL_ROADMAP_PROGRESS.md` | `sha256:1140b517363f1965074bda713c2e075793c08e40f3854728d2c0ef2de2c7a545` |
 | `OBSERVABILITY.md` | `sha256:5220f088a47b84c01806871b574f47fae007785a9d4b58c3bad368e7e53423c0` |
 | `OBSERVABILITY_DEPLOYMENT.md` | `sha256:efaf413b9130c57a5473984bf24e0652f21fa7fa57099a0bf68ba191473822a9` |
 | `OBSERVABILITY_LIVE_SETUP.md` | `sha256:a99b046779fe46883733858080f338ee014c79c438db827da2d605037320d34c` |
@@ -355,7 +357,7 @@
 | `SYNC_FLOW.md` | `sha256:0d768e1fa6bcbdf0f69108408ba5733a787cbb881bf60c8b3b57cf5acc54db0a` |
 | `SYNC_PROTOCOL.md` | `sha256:a2658779b478051e87dce461dcee2664a87b9d1dca2b42bc4a833cb0983274c7` |
 | `SYNC_RELIABILITY_EVIDENCE.md` | `sha256:326094b05babf475ca98ef231ed52f407cd06ef06690ee24c788f9660b31f39b` |
-| `TEST_COVERAGE_REPORT.md` | `sha256:efd384c2104dfc4de154ee193cd1451f6e84b328f8ccec41ba6a3c1d67e9894f` |
+| `TEST_COVERAGE_REPORT.md` | `sha256:95e2a2c4a6bed4d132ccbcbc6a706936cf7d8f694215896ade6a2bba07198c87` |
 | `THIRD_PARTY_LICENSES.md` | `sha256:0440f94b6395ee2fab1b2a34d9c8e3d5141887c1c276b4327c5d134317a33a08` |
 | `THREAT_MODEL.md` | `sha256:2d93966da760fec407778e27e9ef85033f95efffe71d1135dd849f6780d966f0` |
 | `TRACING_SETUP.md` | `sha256:6d17e75b8cc28763db6d7d7c9310d587fb3419c15a2d1dbf2f9e938881040099` |
