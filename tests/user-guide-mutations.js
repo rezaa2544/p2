@@ -12,6 +12,11 @@ const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const GUIDE = path.join(ROOT, 'USER_GUIDE.html');
+
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ هم‌جوارِ جدا (mutant-kit)؛
+   سورس اصلی هرگز بازنویسی نمی‌شود — restore/بازگردانیِ درجا حذف شد. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('ugd-');
 const original = fs.readFileSync(GUIDE, 'utf8');
 
 const mutations = [
@@ -45,14 +50,15 @@ for (const m of mutations) {
     console.error('  ⚠️ جهش «' + m.name + '» اعمال نشد (الگو پیدا نشد)');
     continue;
   }
-  fs.writeFileSync(GUIDE, mutated, 'utf8');
+  const mcopy = kit.mutant(GUIDE, mutated); /* کپیِ جدا؛ راهنمای اصلی دست‌نخورده */
+  try { fs.chmodSync(mcopy, fs.statSync(GUIDE).mode); } catch (_) {}
   let failedAsExpected = false;
   try {
-    execFileSync('node', [path.join(ROOT, 'tests', 'user-guide.js')], { stdio: 'pipe' });
+    execFileSync('node', [path.join(ROOT, 'tests', 'user-guide.js')], { stdio: 'pipe', env: kit.env() });
   } catch (e) {
     failedAsExpected = true;
   } finally {
-    fs.writeFileSync(GUIDE, original, 'utf8');
+    kit.clear(GUIDE);
   }
   if (failedAsExpected) { killed++; console.log('  🗡️ کشته شد: ' + m.name); }
   else console.error('  ❌ زنده ماند: ' + m.name);
@@ -60,10 +66,8 @@ for (const m of mutations) {
 
 /* راستی‌آزمایی: فایل به حالت اول برگشت */
 const after = fs.readFileSync(GUIDE, 'utf8');
-if (after !== original) {
-  fs.writeFileSync(GUIDE, original, 'utf8');
-  console.error('  ⚠️ فایل بازگردانده شد (restore ثانویه)');
-}
+/* الگوی کیت: سورس اصلی هرگز نوشته نمی‌شود؛ restore ثانویه زائد شد — فقط گواهی */
+if (after !== original) console.error('  ⚠️ سورس اصلی تغییر کرده بود!');
 
 const ok = killed === mutations.length;
 console.log(`user-guide-mutations: ${killed}/${mutations.length} کشته؛ سبزِ نهایی: ${ok ? '✅' : '❌'}`);

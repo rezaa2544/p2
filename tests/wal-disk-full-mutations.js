@@ -37,12 +37,15 @@ try {
     path.join(mutantRoot, 'infra', 'wal-drill', 'bootstrap.sh'));
   fs.copyFileSync(path.join(ROOT, 'docs', 'WAVE19_WAL_DRILL_REPORT.md'),
     path.join(mutantRoot, 'docs', 'WAVE19_WAL_DRILL_REPORT.md'));
-  /* ری‌تارگت (ممیزی دور ۲): S5ِ سوئیت حالا migrations/ را با readdir کشف
-     می‌کند — بدونِ کپی، mutant پیش از رسیدن به مسیرِ ReferenceError با
-     ENOENT می‌مُرد و assertionِ بازتولید شکست می‌خورد (قرمزِ کاذبِ گیت). */
+  /* ترمیم (BH-mut فاز ۲ — پوسیدگی ازپیش‌موجود): چکِ S5 (کشفِ پویای migrationها)
+     بعداً به دریل افزود شد اما فهرستِ کپیِ sandbox به‌روز نشده بود ⇒ جهش پیش از
+     رسیدن به مرجعِ finished با ENOENT می‌مرد و «کشته» شمرده نمی‌شد. */
   fs.mkdirSync(path.join(mutantRoot, 'migrations'), { recursive: true });
-  for (const f of fs.readdirSync(path.join(ROOT, 'migrations')))
-    fs.copyFileSync(path.join(ROOT, 'migrations', f), path.join(mutantRoot, 'migrations', f));
+  for (const mf of fs.readdirSync(path.join(ROOT, 'migrations'))) {
+    if (fs.statSync(path.join(ROOT, 'migrations', mf)).isFile()) {
+      fs.copyFileSync(path.join(ROOT, 'migrations', mf), path.join(mutantRoot, 'migrations', mf));
+    }
+  }
   const killed = spawnSync(process.execPath,
     [path.join(mutantRoot, 'tests', 'wal-disk-full.js'), '--skip-live'],
     { cwd: mutantRoot, encoding: 'utf8', timeout: 30000 });
