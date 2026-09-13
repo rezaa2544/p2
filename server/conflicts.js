@@ -44,6 +44,11 @@ function createConflicts(ctx){
     for(const d of drop)
       store.__deleted_records.push({ c: 'sync_conflicts', id: d.id,
         school_id: d.school_id != null ? d.school_id : null, at: nowIso });
+    /* بازخورد بازبین #153 (باگ ۱): این مسیر بیرونِ جاروی post-commitِ sync.js
+       اجرا می‌شود — بدونِ برشِ همین‌جا، داوری‌های پیوسته __deleted_records را
+       بی‌سقف می‌راندند. همان سقفِ ۵۰۰۰ قراردادِ موجود (sync.js/delete-service). */
+    if(store.__deleted_records.length > 5000)
+      store.__deleted_records = store.__deleted_records.slice(-5000);
     store.sync_conflicts = store.sync_conflicts.filter(x => !drop.has(x));
   }
 
