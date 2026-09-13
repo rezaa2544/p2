@@ -23,6 +23,7 @@ const fs = require('fs');
 const path = require('path');
 const { parentPort } = require('worker_threads');
 const { computePublicReport } = require('../public-report-core');
+const { stringifyAscii } = require('../json-fast');
 
 const NAME_RE = /^payesh-\d{8}-\d{6}-\d{3}\.json$/;
 
@@ -78,7 +79,10 @@ parentPort.on('message', (m) => {
     }
     if(m.op === 'persist'){
       if(!snapshot) throw new Error('no_snapshot');
-      const str = JSON.stringify(snapshot);
+      /* Wave 24 (KPI-3): خروجیِ ASCII-escaped — پارسِ بوتِ بعدی ~۲۰٪
+         سریع‌تر (مسیرِ یک‌بایتیِ V8). escape این‌جاست، بیرون از
+         event-loop اصلی؛ خروجی JSON استاندارد و هم‌ارز است. */
+      const str = stringifyAscii(snapshot);
       atomicWrite(m.file, str, 0o600); /* S-73-3: PII — owner-only */
       parentPort.postMessage({ id: m.id, ok: true, op: 'persist', bytes: Buffer.byteLength(str, 'utf8'), v: snapVersion });
       return;

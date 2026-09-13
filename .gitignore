@@ -64,3 +64,5 @@ node_modules
 *.bundle
 *.tar.gz
 *.patch
+.build-cache.meta.json
+.build-cache.blob

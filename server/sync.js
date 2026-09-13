@@ -518,10 +518,106 @@ function createSync(ctx){
     return nextId(c);
   }
 
+  /* ═══ P0-6 — مهارِ رشدِ آینهٔ درون‌حافظه‌ای در PG-live ═══════════════
+     یافتهٔ کمّی Wave 18 §۵-۳: هر op پذیرفته‌شده (و هر missِ hydrate از PG)
+     به آینهٔ store اضافه می‌شد بدون سقف — ۱۰,۴۸۸B به‌ازایِ هر نوشتن؛ در سوکِ
+     زیرِ بار یعنی رشدِ خطیِ حافظه. مهار:
+     • mirrorAppend: push + ثبت در growthLog؛ وقتی رشدِ بعد از بوت از سقف گذشت
+       (PAYESH_PG_MIRROR_GROWTH_CAP؛ پیش‌فرض PG-live=50000، memory=0=بی‌سقف)
+       قدیمی‌ترینِ رشد‌ها batch-wise حذف می‌شوند (تا سقف برگردند). رکوردهای
+       هیدراته‌شده در بوت دست‌نخورده می‌مانند.
+     • pruneProcessedUids: __processed_uids هم بی‌سقف رشد می‌کرد؛ سقف
+       (PAYESH_UID_DEDUP_MAX؛ پیش‌فرض PG-live=20000، memory=0) با حذفِ
+       قدیمی‌ترین‌ها (بر اساسِ timestamp ذخیره‌شده) نگه داشته می‌شود.
+       dedup تازه پوشش کامل دارد (پنجرهٔ اخیر) و در استقرارِ چندنمونه‌ای،
+       Redis (cache.markProcessedUid با TTL 24h) مرجعِ اشتراکی است.
+     اعدادِ پیش‌فرض محافظه‌کارانه‌اند تا در دپلوی‌های کوچکِ موجود رفتار
+     عملاً تغییر نکند (هرگز به سقف نمی‌رسند). */
+  const growthLog = {};   /* [c] → idهایی که بعد از بوت به آینه افزودیم */
+  function mirrorGrowthCap(){
+    if(!(db && typeof db.isPostgres === 'function' && db.isPostgres())) return 0;
+    const n = Number(process.env.PAYESH_PG_MIRROR_GROWTH_CAP);
+    return Number.isFinite(n) && n >= 0 ? n : 50000;
+  }
+  /* بازخورد بازبین PR #103 (باگ ۱): هرسِ آینه، دسترسیِ معتبر را می‌شکند —
+     دروازهٔ محدوده (policy.js:inScope) رکوردِ هدف و وابستگی‌های مجوز
+     (users/parent_links/enrollments/classes/schedule/schools/offices) را
+     فقط از آینه می‌خواند و خطای کش را با PG جبران نمی‌کند. پس هیچ
+     مجموعه‌ای به‌طور پیش‌فرض هرس نمی‌شود؛ فقط مجموعه‌های صراحتاً لیست‌شده
+     در PAYESH_PG_MIRROR_PRUNE_SAFE (جداشده با کاما) — انتخابِ اپراتورِ
+     بار/استیجینگ که پذیرفته رکوردهای قدیمیِ درج‌شده از آینه محلی بیایند.
+     لیستِ خالی (پیش‌فرض) = هرس هرگز — رفتارِ پیش از P0-6 برای مجوزها. */
+  function mirrorPruneSafe(){
+    if(!(db && typeof db.isPostgres === 'function' && db.isPostgres())) return [];
+    /* P1-2: sync_conflicts = صفِ داوریِ انسانی — تنها read-pathی که زنده از
+       آینه می‌خواند (conflicts.js؛ pull از db.readCollection یعنی PG می‌خواند)
+       و بالذاتِ bounded است (resolve ⇒ del). همیشه در لیستِ سفید، فارغ از env. */
+    const env = String(process.env.PAYESH_PG_MIRROR_PRUNE_SAFE || '')
+      .split(',').map((s) => s.trim()).filter(Boolean);
+    return env.indexOf('sync_conflicts') === -1 ? env.concat(['sync_conflicts']) : env;
+  }
+  function uidDedupMax(){
+    if(!(db && typeof db.isPostgres === 'function' && db.isPostgres())) return 0;
+    const n = Number(process.env.PAYESH_UID_DEDUP_MAX);
+    return Number.isFinite(n) && n >= 0 ? n : 20000;
+  }
+  /* P1-2 (Wave 18 §۵-۳): dedup با TTL — پیش‌فرض ۲۴h، هم‌پنجرهٔ کشِ Redis
+     (cache.markProcessedUid خودش TTL 24h دارد). این TTL برای سقفِ حافظهٔ
+     in-memory است، نه تضعیفِ idempotency: مرجعِ رد، PG (server_processed_uids)
+     و کش است و دست‌نخورده می‌ماند. */
+  function uidDedupTtlMs(){
+    /* باگ ۱ (بازبین دور ۱ #124): در حالتِ حافظه‌ای، __processed_uids تنها
+       مرجعِ idempotency است (PG/کش در کار نیست) — TTL آنجا نباید بسوزد وگرنه
+       بازپخش‌های دیرهنگام دوباره اعمال می‌شوند. TTL فقط وقتی فعال است که
+       مرجعِ پایدار (PG server_processed_uids / کشِ اشتراکی) هست — الگوی uidDedupMax. */
+    if(!(db && typeof db.isPostgres === 'function' && db.isPostgres())) return 0;
+    const n = Number(process.env.PAYESH_UID_DEDUP_TTL_MS);
+    return Number.isFinite(n) && n >= 0 ? n : 24 * 3600 * 1000;
+  }
+  function mirrorAppend(c, row){
+    if(row == null) return row;
+    if(!Array.isArray(store[c])) store[c] = [];
+    store[c].push(row);
+    const cap = mirrorGrowthCap();
+    if(cap > 0 && mirrorPruneSafe().indexOf(c) !== -1){   /* باگ ۱: فقط لیست سفید */
+      if(!Array.isArray(growthLog[c])) growthLog[c] = [];
+      growthLog[c].push(row.id);
+      if(growthLog[c].length > cap * 1.2){
+        const drop = growthLog[c].splice(0, growthLog[c].length - cap);
+        for(const id of drop){
+          const arr = store[c];
+          const j = arr.findIndex(x => x && x.id === id);
+          if(j >= 0) arr.splice(j, 1);
+        }
+      }
+    }
+    return row;
+  }
+  function pruneProcessedUids(){
+    const pu = store.__processed_uids;
+    if(!pu || typeof pu !== 'object') return;
+    /* P1-2: اول TTL — uidهای بیرونِ پنجره حذف می‌شوند، فارغ از شمارِ کل */
+    const ttl = uidDedupTtlMs();
+    if(ttl > 0){
+      const now = Date.now();
+      for(const k of Object.keys(pu)) if(now - (pu[k] || 0) > ttl) delete pu[k];
+    }
+    const cap = uidDedupMax();
+    if(cap <= 0) return;
+    const keys = Object.keys(pu);
+    if(keys.length <= cap) return;
+    keys.sort((a, b) => (pu[a] || 0) - (pu[b] || 0));
+    const drop = keys.slice(0, keys.length - cap);
+    for(const d of drop) delete pu[d];
+  }
+
   /* Wave 1: cross-instance apply -- a record created on another instance is not in
      this store; when PG is live, hydrate the miss from the authority before deciding
-     the op targets nothing. Memory mode: identical skip semantics. */
-  async function findForApply(c, id){
+     the op targets nothing. Memory mode: identical skip semantics.
+     P0-6: hydration از PG رشدِ آینه است — از mirrorAppend می‌گذرد (سقفِ رشد در
+     PG-live) و اگر درخواستِ جاری undo-log باز دارد، در آن ثبت می‌شود تا شکستِ
+     آینه دقیقاً همین ردیفِ تازه‌هیدراته‌شده را هم بازگرداند (رفتارِ snapshot قدیمی). */
+  async function findForApply(c, id, undo){
     const arr = store[c] || [];
     const rec = arr.find(x => x && x.id === Number(id));
     if(rec) return rec;
@@ -530,8 +626,13 @@ function createSync(ctx){
       try{
         const row = await db.readOne(c, id);
         if(row){
-          if(!Array.isArray(store[c])) store[c] = [];
-          store[c].push(row);
+          mirrorAppend(c, row);
+          /* باگ ۳ (بازبین دور ۱ #124): after = state هیدراته — rollback و برشِ
+             post-commit هر دو با همان قواعدِ مالکیتِ pop این‌جا کار می‌کنند؛
+             در rollback معکوس (LIFO)، recهای بعدیِ همین دسته اول به قبل
+             برمی‌گردند و بعد این pop دقیقاً مچ می‌شود. */
+          if(undo) undo.items.push({ k: 'pop', c, id: row.id, idx: store[c].length - 1,
+            after: JSON.parse(JSON.stringify(row)) });
           return row;
         }
       }catch(e){ /* not in PG either: genuinely missing */ }
@@ -585,13 +686,107 @@ function createSync(ctx){
       }
     }
 
-    const all = (code) => {
+    const all = async (code) => {
+      /* باگ ۳ (بازبین دور ۱ #124): ردِ پایِ زودهنگام یعنی دسته هرگز commit
+         نمی‌شود — آینه نمی‌تواند اثرِ نیمه‌کاره نگه دارد (هیدراتاسیونِ گِیتِ
+         scope و opهای قبلیِ همین دسته). همان rollbackِ شکستِ commit اجرا
+         می‌شود؛ پیش از هر تغییری no-op است و پاسخ عینِ قرارداد می‌ماند. */
+      if(undo && undo.items.length) await rollbackUndo();
       /* R96 P1-8: authorization failure باید ردِّ پای داشته باشد (بدونِ PII) */
       audit('sync_authz_fail', { user_id: s.id, code, ops: ops.length });
       return sendJson(res, 403, { ok: false, code, results: ops.map(o => ({ uid: o && o.uid, ok: false, code })) });
     };
 
     const results = [];
+
+    /* P0-6 — undo-log به‌جای snapshotِ کلِ کالکشن (جزئیات در کامنتِ فازِ دوم):
+       اینجا و پیش از حلقهٔ اعتبارسنجی ساخته می‌شود تا pushهایِ فازِ اعتبارسنجی
+       (sync_conflicts و notifications تعارض) هم — مثلِ snapshot قدیمی — پوشش
+       داشته باشند. هزینهٔ ساخت O(1) است؛ در حالتِ memory مقدار null می‌ماند. */
+    const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+    /* باگ ۲ (بازبین): undo مالکیت‌دار — هر مدخل حالتِ پس از تغییرِ خودِ این
+       درخواست (after) را هم نگه می‌دارد؛ rollback فقط وقتی اجرا می‌شود که
+       رکورد هنوز دقیقاً همان state باشد (تغییرِ هم‌زمانِ موفقِ درخواستِ دیگر
+       حفظ می‌شود). __server_version هم به‌جای انتسابِ مطلق، با شمارشِ
+       افزایش‌های خودِ درخواست (bumps) معکوس می‌شود. */
+    const undo = pgLive ? { bumps: 0, items: [] } : null;
+    /* ثبتِ undo برای یک push تازه به انتهای آرایه (idx فعلی) */
+    const uPush = (c, row) => {
+      if(undo && row != null){
+        const arr = store[c];
+        undo.items.push({ k: 'pop', c, id: row.id, idx: Array.isArray(arr) ? arr.length - 1 : -1,
+                          after: JSON.parse(JSON.stringify(row)) });   /* باگ ۲: شرط مالکیت */
+      }
+    };
+    /* P1-2 (بازبین دور ۱ #124): معکوسِ undo-log — مشترک بینِ شکستِ commit
+       (mirrorFailed) و ردِ پایِ زودهنگامِ all()؛ در هر دو، دسته commit نشده
+       و آینه باید دقیقاً به پیش از درخواست برگردد. */
+    const rollbackUndo = async () => {
+      if(!undo) return;
+      /* باگ ۲: معکوسِ افزایش‌های خودِ درخواست، نه انتسابِ مطلق —
+         افزایش‌های درخواست‌هایِ هم‌زمانِ موفق حفظ می‌شوند. */
+      store.__server_version = Math.max(0, (store.__server_version || 0) - undo.bumps);
+      for(let i = undo.items.length - 1; i >= 0; i--){
+        const u = undo.items[i];
+        try{
+          if(u.k === 'pop'){
+            /* فقط اگر رکورد هنوز دقیقاً همان state ای است که این درخواست
+               push کرده (تغییر/حذفِ هم‌زمانِ موفقِ دیگری → دست نمی‌زنیم) */
+            const arr = store[u.c];
+            if(Array.isArray(arr)){
+              const cur = arr[u.idx] && arr[u.idx].id === u.id ? arr[u.idx] : arr.find((x) => x && x.id === u.id);
+              if(cur && JSON.stringify(cur) === JSON.stringify(u.after)){
+                const j = arr[u.idx] && arr[u.idx].id === u.id ? u.idx : arr.findIndex((x) => x && x.id === u.id);
+                if(j >= 0) arr.splice(j, 1);
+              }
+            }
+          } else if(u.k === 'rec'){
+            /* فقط اگر رکورد هنوز دقیقاً afterِ همین درخواست است —
+               وگرنه کسی دیگر بعد از ما تغییرش داده و commit کرده؛
+               state او (که PG مرجع تأییدش کرده) حفظ می‌شود. */
+            const r = (store[u.c] || []).find(x => x && x.id === u.id);
+            if(r && u.after && JSON.stringify(r) === JSON.stringify(u.after)
+               && u.before){
+              for(const key of Object.keys(r)) delete r[key];
+              Object.assign(r, u.before);
+            }
+          } else if(u.k === 'reinsert'){
+            /* باگ ۲ (بازبین، دور ۲): نبودِ رکورد در آینه ثابت نمی‌کند حذفِ
+               همین درخواست عاملش است — درخواستِ دیگری می‌تواند همان حذف را
+               در PG قطعی کرده باشد. پیش از بازدرج، مرجع را می‌پرسیم:
+               رکورد در PG هست → حذفِ ما اعمال نشده → بازدرج درست است؛
+               نیست → حذفِ دیگری قطعی شده → دست نمی‌زنیم. خطایِ پرسش →
+               بازدرج: وقتی PG پایین است هیچ commitِ هم‌زمانی ممکن نبوده. */
+            if(Array.isArray(store[u.c]) && !store[u.c].some(x => x && x.id === u.rec.id)){
+              let pgHas = true;
+              try{
+                const r = await db.query('SELECT 1 FROM "' + String(u.c).replace(/"/g, '') + '" WHERE id = $1 LIMIT 1', [u.rec.id]);
+                pgHas = !!(r && r.rows && r.rows.length);
+              }catch(_){ pgHas = true; }
+              if(pgHas) store[u.c].push(u.rec);
+            }
+          } else if(u.k === 'popDelRec'){
+            /* باگ ۳ (بازبین، دور ۲): حذفِ دقیقِ مدخلِ خودِ این درخواست —
+               با هویتِ کامل: ۱) جایگاه+رفرنس (تا اولین برش)؛ ۲) indexOf با
+               رفرنسِ همان آبجکت (پس از جابه‌جایی هم دقیق)؛ ۳) c+id+at. */
+            const dr = store.__deleted_records;
+            if(Array.isArray(dr)){
+              if(u.ref){
+                if(dr[u.idx] === u.ref) dr.splice(u.idx, 1);
+                else { const j = dr.indexOf(u.ref); if(j >= 0) dr.splice(j, 1); }
+              } else if(dr[u.idx] && dr[u.idx].id === u.id && dr[u.idx].c === u.c){
+                dr.splice(u.idx, 1);
+              } else {
+                const j = dr.findIndex((x) => x && x.c === u.c && x.id === u.id && x.at === u.at);
+                if(j >= 0) dr.splice(j, 1);
+              }
+            }
+          } else if(u.k === 'unmarkUid'){
+            delete store.__processed_uids[u.uid];
+          }
+        }catch(_){ /* best-effort — audit بالا خطای آینه را ثبت کرده است */ }
+      }
+    };
 
     const derived = [];  /* Wave1-W: نوشت‌هایِ مشتقِ سرور (نوتیفیکیشن‌ها) — با mirror در یک تراکنش */
     const apply = [];
@@ -633,7 +828,10 @@ function createSync(ctx){
          fail closed). Memory mode: no-op, legacy fail-closed preserved. */
       if((op.t === 'upd' || op.t === 'del') && recId != null
           && !(store[op.c] || []).some(x => x && x.id === Number(recId))){
-        await findForApply(op.c, recId);
+        /* P1-2: هیدراتاسیونِ گِیت هم undo می‌گیرد — پیش‌تر بدونِ مدخل بود و
+           ردیفِ هیدراته‌شده در rollback نمی‌ماند به عقب برمی‌گشت و در آینه
+           می‌نشست (نشتیِ §۵-۳). ثبتِ pop = rollback دقیق + برشِ post-commit. */
+        await findForApply(op.c, recId, undo);
       }
       if(!inScope(s, op.c, recId, op.data)) return all('out_of_scope');
       /* R96 P0-2 — دروازهٔ فیلد: فیلدِ ناشناخته / ارتقاءِ نقش / مالکیت /
@@ -716,7 +914,11 @@ function createSync(ctx){
             incoming: { data: Object.assign({}, op.data), by: s.id, at: nowIso, op_uid: op.uid },
             status: 'open', created_at: nowIso, updated_at: nowIso
           };
-          store.sync_conflicts.push(cf);
+          /* باگ ۲ (بازبین دور ۱ #124): درج از mirrorAppend می‌گذرد تا هرسِ ringِ
+             سقف‌دار (sync_conflicts لیست‌سفید است) رویش کار کند — push خام
+             growthLog را خالی می‌گذاشت و صف بی‌سقف می‌راند. uPush همان‌جا:
+             بازگشتِ دقیق همین ردیف در rollback (P0-6). */
+          uPush('sync_conflicts', mirrorAppend('sync_conflicts', cf));
           /* ویو ۱۴: برچسبِ collection نامِ جدول است (مجموعهٔ بستهٔ VERSIONED)،
              نه شناسهٔ رکورد — بدون PII و با cardinality کران‌دار. */
           metrics.inc('payesh_sync_conflicts_total', { collection: String(op.c || 'unknown').slice(0, 32) });
@@ -731,7 +933,7 @@ function createSync(ctx){
               body: 'یک تغییرِ «' + op.c + '» با نسخهٔ کهنه رسید و به‌جای اعمال، برایِ داوری محفوظ شد.',
               link: 'dashboard', read: 0, created_at: nowIso.slice(0, 10)
             };
-            store.notifications.push(cnotif);
+            uPush('notifications', mirrorAppend('notifications', cnotif));   /* P1-2: از مسیرِ سقف‌دار، نه push خام؛ uPush همان‌جا */
             derived.push({ c: 'notifications', t: 'ins', data: cnotif }); /* Wave1-W */
           }
           ctx.markDirty();
@@ -754,25 +956,23 @@ function createSync(ctx){
       apply.push(op);
     }
 
-    /* Wave 1: PG-first two-phase. Phase 1 applies to a snapshot-guarded store;
-       phase 2 commits the atomic PG mirror; on mirror failure the store is rolled
-       back and the client gets 503 (uids stay unmarked so the retry replays cleanly).
-       Memory mode: the mirror is a no-op success, so behavior is identical and the
-       snapshot is skipped for zero overhead. sync_conflicts is snapshotted too so
-       validation-phase rows (created pre-commit) also roll back and are not
-       duplicated by the retry. */
-    const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
-    const snap = {};
-    if(pgLive){
-      const keys = { notifications: 1, __deleted_records: 1, sync_conflicts: 1 };
-      for(const op of apply){ if(op.c) keys[op.c] = 1; }
-      for(const k of Object.keys(keys)){
-        try{ snap[k] = JSON.parse(JSON.stringify(store[k] != null ? store[k] : null)); }
-        catch(e){ snap[k] = null; }
-      }
-      snap.__server_version = store.__server_version || 0;
-      snap.__processed_uids = Object.assign({}, store.__processed_uids || {});
-    }
+    /* Wave 1: PG-first two-phase. Phase 1 applies to the store; phase 2 commits the
+       atomic PG mirror; on mirror failure the store changes are rolled back and the
+       client gets 503 (uids stay unmarked so the retry replays cleanly).
+       Memory mode: the mirror is a no-op success, so behavior is identical and
+       nothing is journaled for zero overhead.
+       P0-6 — undo-log به‌جای snapshotِ کلِ کالکشن: نسخهٔ قبلی این کد کلِ هر
+       کالکشنِ درگیر را با JSON.parse(JSON.stringify(store[k])) clone می‌کرد ⇒
+       هزینهٔ هر درخواستِ sync با اندازهٔ آینه رشد می‌کرد (O(collection)، در
+       مانورِ بار ~۱MB/درخواستِ هم‌زمان)، نه با اندازهٔ batch. حالا هر mutation
+       فقط یک مدخلِ O(1) در undo ثبت می‌کند (clone تک‌رکورد برای upd، idx/id
+       برای push، رکوردِ حذف‌شده برای del) و rollback مدخل‌ها را معکوس اجرا
+       می‌کند ⇒ O(batch). از نظرِ صحت هم بهتر است: snapshotِ کل، تغییرهایِ
+       هم‌زمانِ درخواست‌هایِ دیگر (بینِ awaitها) را هم بی‌سروصدا برمی‌گرداند؛
+       undo فقط تغییرهایِ همین batch را برمی‌گرداند. sync_conflicts و
+       notifications ساخته‌شده در فازِ اعتبارسنجی هم — مثلِ قبل — پوشش دارند:
+       undo پیش از حلقهٔ اعتبارسنجی ساخته می‌شود و همان حلقه‌ها در آن ثبت
+       می‌کنند. */
     const mirror = [];   /* P1-14: opsِ آینه با شناسه‌هایِ اعمال‌شدهٔ سرور */
     for(const op of apply){
       /* S2-1 (موج ۴): ادعایِ اتمیکِ uid — حتماً پیش از اعمال. بررسی در
@@ -792,6 +992,7 @@ function createSync(ctx){
         continue;
       }
       store.__processed_uids[op.uid] = Date.now();
+      if(undo) undo.items.push({ k: 'unmarkUid', uid: op.uid });   /* P0-6 */
       if(!Array.isArray(store[op.c])) store[op.c] = [];
       if(op.t === 'ins'){
         const data = Object.assign({}, op.data);
@@ -799,10 +1000,20 @@ function createSync(ctx){
         if(data.id == null) data.id = await serverId(op.c); /* Wave 1: ids service (PG sequences when live) */
         if(VERSION_TRACKED[op.c] && data.version == null) data.version = 1; /* R95 */
         /* Wave 1: hydrate cross-instance misses from PG before the upsert check. */
-        const ex = await findForApply(op.c, data.id);
-        if(ex){ Object.assign(ex, data); Object.assign(ex, prot); }
-        else store[op.c].push(Object.assign(data, prot));
-        data.updated_at = new Date().toISOString();
+        const ex = await findForApply(op.c, data.id, undo);
+        if(ex){
+          const uRec = undo ? undo.items.push({ k: 'rec', c: op.c, id: ex.id,
+            before: JSON.parse(JSON.stringify(ex)) }) - 1 : -1;   /* باگ ۲: before + after */
+          Object.assign(ex, data); Object.assign(ex, prot);
+          if(undo) undo.items[uRec].after = JSON.parse(JSON.stringify(ex));
+        }
+        else { Object.assign(data, prot); mirrorAppend(op.c, data); }
+        data.updated_at = new Date().toISOString();   /* تکمیلِ رکورد پیش از ثبتِ after */
+        /* باگ ۱ (بازبین، دور ۲): uPush فقط برای درجِ خودِ این op — var تابع‌محدوده
+           بود و مقدارش از دورِ قبل می‌ماند؛ op برخوردیِ بعدی (مسیرِ ex) با رکوردِ
+           دورِ قبل مدخلِ popِ تکراری/نامالک می‌ساخت و rollback می‌توانست رکوردِ
+           قطعی‌شدهٔ درخواستِ دیگر را از آینه حذف کند. */
+        if(!ex) uPush(op.c, data);   /* باگ ۲: after دقیقاً state نهایی push خودمان */
         if(op.c === 'users' && (data.role || (prot && prot.role))){
           const r = data.role || prot.role;
           audit('role_change', { user_id: s.id, role: s.role, school_id: s.school_id, target_user_id: data.id, new_role: r, summary: 'ثبت کاربر با نقش ' + r + ' (شناسه ' + data.id + ')' });
@@ -810,8 +1021,10 @@ function createSync(ctx){
         mirror.push({ uid: op.uid, c: op.c, t: 'ins', data: (ex || data) });   /* P1-14: رکوردِ اعمال‌شده با شناسهٔ سرور */
       }else if(op.t === 'upd'){
         /* Wave 1: hydrate cross-instance misses from PG before applying. */
-        const rec = await findForApply(op.c, op.id != null ? op.id : (op.data && op.data.id));
+        const rec = await findForApply(op.c, op.id != null ? op.id : (op.data && op.data.id), undo);
         if(rec){
+          const uRec = undo ? undo.items.push({ k: 'rec', c: op.c, id: rec.id,
+            before: JSON.parse(JSON.stringify(rec)) }) - 1 : -1;   /* باگ ۲ */
           const clean = Object.assign({}, op.data); /* R98 — op.data برایِ hookها دست‌نخورده */
           const prot = stripProtected(clean);
           if(op.c === 'users' && clean.role && rec.role !== clean.role){
@@ -820,21 +1033,31 @@ function createSync(ctx){
           Object.assign(rec, clean, { id: rec.id, updated_at: new Date().toISOString() });
           Object.assign(rec, prot); /* مقادیرِ اعتبارسنجی‌شده — صریح، نه inject */
           if(VERSION_TRACKED[op.c]) rec.version = (rec.version || 1) + 1; /* R95 */
+          if(undo) undo.items[uRec].after = JSON.parse(JSON.stringify(rec));   /* باگ ۲ */
           mirror.push({ uid: op.uid, c: op.c, t: 'upd', data: rec });   /* P1-14 */
         }
       }else if(op.t === 'del'){
         const delId = Number(op.id != null ? op.id : (op.data && op.data.id));
         /* Wave 1: hydrate cross-instance misses from PG (seeded row is removed by the filter below). */
-        const delRec = await findForApply(op.c, delId);
+        const delRec = await findForApply(op.c, delId, undo);
         const delSchoolId = delRec ? delRec.school_id : (op.data && op.data.school_id ? op.data.school_id : s.school_id);
+        if(undo && delRec) undo.items.push({ k: 'reinsert', c: op.c, rec: JSON.parse(JSON.stringify(delRec)) });   /* P0-6 */
         store[op.c] = store[op.c].filter(x => x.id !== delId);
         if(!Array.isArray(store.__deleted_records)) store.__deleted_records = [];
-        store.__deleted_records.push({ c: op.c, id: delId, school_id: delSchoolId, at: new Date().toISOString() });
-        if(store.__deleted_records.length > 5000) store.__deleted_records = store.__deleted_records.slice(-5000);
+        const tomb = { c: op.c, id: delId, school_id: delSchoolId, at: new Date().toISOString() };
+        store.__deleted_records.push(tomb);
+        /* باگ ۳ (بازبین): برشِ ۵۰۰۰تایی دیگر در مسیرِ apply نیست — پس از
+           commitِ موفق انجام می‌شود تا rollback آرایه را دقیقاً به قبل بازگرداند
+           (برشِ داخل apply یک سنگ‌قبرِ قدیمی را گم می‌کرد). */
+        /* باگ ۳ (بازبین، دور ۲): رفرنسِ خودِ سنگ‌قبر (identity) + c — جایگاه فقط
+           تا اولین برشِ post-commitِ درخواستِ دیگر معتبر است و id تنها، بینِ
+           مجموعه‌ها اشتباه می‌گرفت (grades:42 vs announcements:42). */
+        if(undo) undo.items.push({ k: 'popDelRec', idx: store.__deleted_records.length - 1, id: delId, c: op.c, at: tomb.at, ref: tomb });
         audit('record_deleted', { user_id: s.id, role: s.role, school_id: s.school_id, collection: op.c, record_id: delId, summary: 'حذف رکورد ' + delId + ' از ' + op.c });
         mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId });   /* P1-14 */
       }
       store.__server_version = (store.__server_version || 0) + 1;
+      if(undo) undo.bumps++;   /* باگ ۲: فقط افزایش‌های خودِ این درخواست */
       /* Wave 1: uid marking moved post-commit (see below) so failed batches replay.
          SUSPECT-C (باگ‌هانت چت ۵، نشست ۲): خطایِ ابطال پیش‌تر با `.catch(()=>{})`
          بلعیده می‌شد؛ در تولید (گاردهای BUG-2) واقعی است و بی‌صدایی واگراییِ
@@ -869,7 +1092,7 @@ function createSync(ctx){
             body: 'برای ' + ((st && st.full_name) || '') + ' از ' + d.from_date + ' تا ' + d.to_date + ' — در انتظارِ بررسی.',
             link: 'leaves', read: 0, created_at: todayD
           };
-          store.notifications.push(ln);
+          mirrorAppend('notifications', ln); uPush('notifications', ln);   /* P0-6 */
           derived.push({ c: 'notifications', t: 'ins', data: ln }); /* Wave1-W */
           audit('leave_request_notified', { user_id: s.id, leave_id: d.id, school_id: d.school_id });
         }
@@ -887,7 +1110,7 @@ function createSync(ctx){
             body: ((from && from.full_name) || '') + ': ' + String(op.data.body || '').slice(0, 60),
             link: 'chat', read: 0, created_at: todayD
           };
-          store.notifications.push(cn);
+          mirrorAppend('notifications', cn); uPush('notifications', cn);   /* P0-6 */
           derived.push({ c: 'notifications', t: 'ins', data: cn }); /* Wave1-W */
           audit('chat_notified', { user_id: s.id, to_user_id: to.id });
         }
@@ -905,7 +1128,7 @@ function createSync(ctx){
             body: ((par && par.full_name) || '') + ' اعلام کرد ' + ((st && st.full_name) || '') + ' فرزند او نیست.',
             link: 'corrections', read: 0, created_at: todayD
           };
-          store.notifications.push(crn);
+          mirrorAppend('notifications', crn); uPush('notifications', crn);   /* P0-6 */
           derived.push({ c: 'notifications', t: 'ins', data: crn }); /* Wave1-W */
           audit('correction_notified', { user_id: s.id, correction_id: d.id, school_id: d.school_id });
         }
@@ -933,12 +1156,11 @@ function createSync(ctx){
         mirrorFailed = true;
         audit('sync_mirror_failed', { user_id: s.id, ops: batchAll.length, error: why });
         if(pgLive){
-          for(const k of Object.keys(snap)){
-            if(k === '__server_version'){ store.__server_version = snap[k]; continue; }
-            if(k === '__processed_uids'){ store.__processed_uids = snap[k]; continue; }
-            if(snap[k] === null || snap[k] === undefined){ delete store[k]; }
-            else store[k] = snap[k];
-          }
+          /* P0-6 — rollback با undo-log: معکوسِ ثبت‌های همین batch — O(batch)،
+             نه بازنویسیِ کلِ کالکشن. مزیتِ صحت: تغییرهایِ هم‌زمانِ درخواست‌هایِ
+             دیگر بینِ awaitها حفظ می‌شوند (snapshot قدیمی آن‌ها را هم برمی‌گرداند).
+             P1-2: بدنه به rollbackUndo منتقل شد (مشترک با ردِّ پایِ زودهنگامِ all). */
+          await rollbackUndo();
           for(const r of results){ if(r) r.ok = false; }
           return sendJson(res, 503, { ok: false, code: 'sync_mirror_failed', results });
         }
@@ -954,6 +1176,43 @@ function createSync(ctx){
         try { audit('sync_idempotency_mark_failed', { user_id: s.id, uid: op.uid, error: String((markErr && markErr.message) || markErr) }); } catch (_) {}
       }); }catch(e){}
     }
+    /* P1-2 (Wave 18 §۵-۳): قطعِ آینه از مسیرِ نوشتن در PG-live — مجموعه‌های
+       خارجِ لیستِ سفیدِ هرس (PAYESH_PG_MIRROR_PRUNE_SAFE) پس از commitِ موفق
+       به آینهٔ پیش از دسته بازمی‌گردند: رکورد فقط در PG است (مرجع) و آینه
+       cacheیِ bounded می‌ماند (هیدراتاسیونِ بوت + write-through صرفاً برای
+       مجموعه‌های هرس‌امن). درونِ دسته رفتارِ امروز حفظ می‌شود تا policy و
+       دست‌های وابستهٔ همان batch همان‌طور ببینند؛ rollbackِ دستهٔ شکست‌خورده
+       (undo) پیش از این اجرا شده و این‌جا فقط مسیرِ موفق را می‌بُرد.
+       مالکیت‌دار: مدخلِ pop با after فقط وقتی می‌بُرد که رکورد هنوز state
+       نهاییِ خودِ همین دسته باشد (تغییرِ هم‌زمانِ دیگری محفوظ می‌ماند)؛
+       مدخلِ بدونِ after = هیدراتاسیونِ همین دسته (ردیف عیناً از PG آمده). */
+    if(pgLive && undo && mirrorGrowthCap() > 0){
+      const safeSet = mirrorPruneSafe();
+      /* باگ ۳ (بازبین دور ۱ #124): مالکیت با «آخرین state نوشته‌شدهٔ خودِ همین
+         دسته» سنجیده می‌شود — نه فقط after خودِ pop: اگر opهای همین دسته
+         رکوردِ هیدراته‌شده را هم به‌روز کرده باشند (rec با after جدیدتر)،
+         state نهایی باز مالِ ماست و بریده می‌شود؛ تغییرِ ناهمگامِ درخواستِ
+         دیگر با هیچِ afterِ خودی مچ نمی‌شود و محفوظ می‌ماند. */
+      const lastAfter = {};
+      for(let i = undo.items.length - 1; i >= 0; i--){
+        const u = undo.items[i];
+        if(u.k !== 'pop' && u.k !== 'rec') continue;
+        const key = u.c + ':' + u.id;
+        if(!(key in lastAfter)) lastAfter[key] = u.after || null;   /* نخستینِ دیده‌شده از پایان = آخرین نوشته */
+        if(u.k !== 'pop' || safeSet.indexOf(u.c) !== -1) continue;
+        const arr = store[u.c];
+        if(!Array.isArray(arr)) continue;
+        const j = (arr[u.idx] && arr[u.idx].id === u.id) ? u.idx : arr.findIndex(x => x && x.id === u.id);
+        if(j < 0) continue;
+        const own = lastAfter[key];
+        if(own && JSON.stringify(arr[j]) !== JSON.stringify(own)) continue;   /* تغییرِ ناهمگامِ دیگران — احترام */
+        arr.splice(j, 1);
+      }
+    }
+    if(Array.isArray(store.__deleted_records) && store.__deleted_records.length > 5000){
+      store.__deleted_records = store.__deleted_records.slice(-5000);   /* باگ ۳: پس از commit — rollback دیگر در کار نیست */
+    }
+    pruneProcessedUids();   /* P1-2: TTL + سقف */   /* P0-6: __processed_uids سقف‌دار (پیش‌فرض PG-live=20000؛ پنجرهٔ اخیر کافی است چون Redis dedup اشتراکی هم هست) */
     if(apply.length) ctx.markDirty();
     audit('sync_ok', { user_id: s.id, ops: apply.length });
     /* Delta Phase 4 (gap 4): هر pushِ موفق (دستهٔ غیرخالی که به ۲۰۰ رسید)

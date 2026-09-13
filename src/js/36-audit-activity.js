@@ -121,16 +121,16 @@ function viewAudit(){
     + statCard('🗑️', fa(sum.byType.del), 'حذف', 'red') + '</div>'
 
     + '<div class="card" style="margin-bottom:14px"><div class="card-body"><div class="grid g4">'
-    + f('جستجو', '<input class="input" data-f="aq" value="' + esc(flt.q) + '" placeholder="نام کاربر یا نوع داده">')
-    + f('نوع داده', '<select class="select" data-f="aColl"><option value="">— همه —</option>'
+    + f('جستجو', '<input id="audit_q" class="input" data-f="aq" value="' + esc(flt.q) + '" placeholder="نام کاربر یا نوع داده">')
+    + f('نوع داده', '<select id="audit_coll" class="select" data-f="aColl"><option value="">— همه —</option>'
         + colls.map(function(k){
             return '<option value="' + k + '" ' + (flt.coll === k ? 'selected' : '') + '>'
               + (COLL_FA[k] || k) + '</option>'; }).join('') + '</select>')
-    + f('نوع عمل', '<select class="select" data-f="aOp"><option value="">— همه —</option>'
+    + f('نوع عمل', '<select id="audit_op" class="select" data-f="aOp"><option value="">— همه —</option>'
         + ['ins','upd','del'].map(function(t){
             return '<option value="' + t + '" ' + (flt.op === t ? 'selected' : '') + '>'
               + OP_FA[t][0] + '</option>'; }).join('') + '</select>')
-    + f('فقط حساس', '<select class="select" data-f="aSens">'
+    + f('فقط حساس', '<select id="audit_sens" class="select" data-f="aSens">'
         + '<option value="">— همه —</option><option value="1" ' + (flt.sensitive ? 'selected' : '')
         + '>فقط عملیات حساس</option></select>')
     + '</div></div></div>'
@@ -138,7 +138,7 @@ function viewAudit(){
     + '<div class="card"><div class="card-head"><h3>سابقهٔ تغییرات</h3>'
     + '<span class="badge b-gray">' + fa(rows.length) + ' مورد</span></div>'
     + (rows.length ? '<div class="table-wrap"><table class="table"><thead><tr>'
-      + '<th>#</th><th>عمل</th><th>نوع داده</th><th>انجام‌دهنده</th><th>زمان</th><th>شناسه رکورد</th>'
+      + '<th scope="col">#</th><th scope="col">عمل</th><th scope="col">نوع داده</th><th scope="col">انجام‌دهنده</th><th scope="col">زمان</th><th scope="col">شناسه رکورد</th>'
       + '</tr></thead><tbody>'
       + rows.slice(0, 200).map(function(r){
           var t = OP_FA[r.op.t] || ['—','b-gray'];
@@ -161,14 +161,14 @@ function viewAudit(){
     + '<div class="grid g2" style="margin-top:14px">'
     + '<div class="card"><div class="card-head"><h3>پرکارترین کاربران</h3></div>'
     + '<div class="card-body">' + (sum.topActor.length
-        ? '<table class="table"><tbody>' + sum.topActor.map(function(a){
+        ? '<table class="table"><thead><tr><th scope="col">کاربر</th><th scope="col">نقش</th><th scope="col">تعداد تغییر</th></tr></thead><tbody>' + sum.topActor.map(function(a){
             return '<tr><td>' + esc(a.user ? a.user.full_name : 'نامشخص') + '</td>'
               + '<td class="small muted">' + esc(a.user ? (ROLE_FA[a.user.role] || '') : '') + '</td>'
               + '<td style="text-align:left"><b>' + fa(a.n) + '</b></td></tr>';
           }).join('') + '</tbody></table>'
         : '<div class="small muted">هنوز تغییری با نام کاربر ثبت نشده است.</div>') + '</div></div>'
     + '<div class="card"><div class="card-head"><h3>پرتغییرترین داده‌ها</h3></div>'
-    + '<div class="card-body"><table class="table"><tbody>'
+    + '<div class="card-body"><table class="table"><thead><tr><th scope="col">نوع داده</th><th scope="col">تعداد تغییر</th></tr></thead><tbody>'
     + sum.topColl.map(function(c){
         return '<tr><td>' + esc(COLL_FA[c.name] || c.name) + '</td>'
           + '<td style="text-align:left"><b>' + fa(c.n) + '</b></td></tr>';
@@ -297,7 +297,7 @@ function viewActivity(){
     + '<span class="badge b-' + lvl[2] + '">' + lvl[0] + '</span></div>'
     + '<div class="card-body">'
     + (perf.samples
-      ? '<table class="table"><tbody>'
+      ? '<table class="table"><thead><tr><th scope="col">سنجه</th><th scope="col">مقدار</th></tr></thead><tbody>'
         + '<tr><td>نمونه‌های سنجش‌شده</td><td style="text-align:left"><b>' + fa(perf.samples) + '</b></td></tr>'
         + '<tr><td>میانه (صدک ۵۰)</td><td style="text-align:left"><b>' + fa(perf.p50) + ' ms</b></td></tr>'
         + '<tr><td>صدک ۹۰</td><td style="text-align:left"><b style="color:' + lvl[1] + '">'
@@ -312,7 +312,7 @@ function viewActivity(){
 
     /* بار سرور */
     + '<div class="card"><div class="card-head"><h3>بار سرور</h3></div><div class="card-body">'
-    + '<table class="table"><tbody>'
+    + '<table class="table"><thead><tr><th scope="col">شاخص</th><th scope="col">مقدار</th></tr></thead><tbody>'
     + '<tr><td>در صف ارسال</td><td style="text-align:left"><b>' + fa(perf.queue) + '</b> عملیات</td></tr>'
     + '<tr><td>عملیات یک ساعت اخیر</td><td style="text-align:left"><b>' + fa(perf.opsLastHour) + '</b></td></tr>'
     + '<tr><td>سرانه هر کاربر</td><td style="text-align:left"><b>۰٫۰۰۰۹۵</b> درخواست بر ثانیه</td></tr>'
@@ -336,8 +336,8 @@ function viewActivity(){
     /* زمان پاسخ به تفکیک صفحه */
     + (perf.routes.length ? '<div class="card" style="margin-bottom:14px">'
       + '<div class="card-head"><h3>زمان پاسخ به تفکیک صفحه</h3></div>'
-      + '<div class="table-wrap"><table class="table"><thead><tr><th>صفحه</th>'
-      + '<th>بازدید</th><th>میانگین</th><th>بیشینه</th></tr></thead><tbody>'
+      + '<div class="table-wrap"><table class="table"><thead><tr><th scope="col">صفحه</th>'
+      + '<th scope="col">بازدید</th><th scope="col">میانگین</th><th scope="col">بیشینه</th></tr></thead><tbody>'
       + perf.routes.slice(0, 12).map(function(r){
           return '<tr><td>' + esc((TITLES[r.route] || [r.route])[0]) + '</td>'
             + '<td>' + fa(r.n) + '</td>'
@@ -350,7 +350,7 @@ function viewActivity(){
     + '<div class="card"><div class="card-head"><h3>کاربران برخط</h3>'
     + '<span class="badge b-green">' + fa(online.length) + ' نفر</span></div>'
     + (online.length ? '<div class="table-wrap"><table class="table"><thead><tr>'
-      + '<th>کاربر</th><th>نقش</th><th>مدرسه</th><th>آخرین فعالیت</th></tr></thead><tbody>'
+      + '<th scope="col">کاربر</th><th scope="col">نقش</th><th scope="col">مدرسه</th><th scope="col">آخرین فعالیت</th></tr></thead><tbody>'
       + online.slice(0, 50).map(function(o){
           return '<tr><td><b>' + esc(o.user.full_name) + '</b></td>'
             + '<td class="small">' + esc(ROLE_FA[o.user.role] || o.user.role) + '</td>'

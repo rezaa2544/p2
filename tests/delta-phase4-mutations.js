@@ -31,6 +31,11 @@ const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const SUITE = 'tests/delta-phase4.js';
+
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ هم‌جوارِ جدا (mutant-kit)؛
+   سورس اصلی هرگز بازنویسی نمی‌شود — restore/بازگردانیِ درجا حذف شد. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('dp4-');kit.remapBuildOutputs(); /* index.html/.build-cache.* → سایه؛ خروجیِ build اصلی دست نمی‌خورد */
 let pass = 0, fail = 0;
 const chk = (name, cond, extra) => {
   if (cond) { pass++; console.log('  ✅ ' + name); }
@@ -41,17 +46,18 @@ function mutate(file, old, newTxt) {
   const p = path.join(ROOT, file);
   const src = fs.readFileSync(p, 'utf8');
   if (src.indexOf(old) === -1) throw new Error('anchor not found in ' + file + ': ' + old.slice(0, 50));
-  fs.writeFileSync(p, src.replace(old, newTxt), 'utf8');
+  const mcopy = kit.mutant(p, src.replace(old, newTxt)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+  try { fs.chmodSync(mcopy, fs.statSync(p).mode); } catch (_) {}
   return src;
 }
-function runSuite() {
+function runSuite(e) {
   try {
-    execFileSync('node', [path.join(ROOT, SUITE)], { stdio: 'pipe', timeout: 120000 });
+    execFileSync('node', [path.join(ROOT, SUITE)], { stdio: 'pipe', timeout: 120000, env: e });
     return 0;
   } catch (e) { return (e.status != null ? e.status : -1); }
 }
-function buildClient() {
-  try { execFileSync('node', [path.join(ROOT, 'build.js')], { stdio: 'pipe', timeout: 120000 }); }
+function buildClient(e) {
+  try { execFileSync('node', [path.join(ROOT, 'build.js')], { stdio: 'pipe', timeout: 120000, env: e }); }
   catch (e) { throw new Error('build failed after mutation: ' + (e.stderr || '')); }
 }
 
@@ -62,40 +68,40 @@ function buildClient() {
   let orig = mutate('server/sync.js',
     "if (r && r.allowed === false) {",
     "if (false && r && r.allowed === false) { /*MUT*/");
-  chk('M1 جهشِ «دروازهٔ ۴۲۹ خاموش» کشته شد', runSuite() !== 0, 'suite stayed green — test insufficient');
-  fs.writeFileSync(path.join(ROOT, 'server/sync.js'), orig, 'utf8');
+  chk('M1 جهشِ «دروازهٔ ۴۲۹ خاموش» کشته شد', runSuite(kit.env()) !== 0, 'suite stayed green — test insufficient');
+  kit.clear(path.join(ROOT, 'server/sync.js'));
 
   /* M2: fail-open حذف — خطای موتور پرتاب می‌شود */
   orig = mutate('server/sync.js',
     "} catch (_) { r = null; /* fail-open — همان قراردادِ rate-limit.js */ }",
     "} catch (e) { throw e; /*MUT: fail-open حذف*/ }");
-  chk('M2 جهشِ «fail-open حذف» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'server/sync.js'), orig, 'utf8');
+  chk('M2 جهشِ «fail-open حذف» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'server/sync.js'));
 
   /* M3: شاخهٔ ۴۲۹ کلاینت در sendBatch حذف */
   orig = mutate('src/js/27-sync.js',
     "if(raw.status === 429 || code === 'sync_backpressure'){",
     "if(false && (raw.status === 429 || code === 'sync_backpressure')){ /*MUT*/");
-  buildClient();
-  chk('M3 جهشِ «شاخهٔ ۴۲۹ کلاینت» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'src/js/27-sync.js'), orig, 'utf8');
-  buildClient();
+  buildClient(kit.env());
+  chk('M3 جهشِ «شاخهٔ ۴۲۹ کلاینت» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'src/js/27-sync.js'));
+  buildClient(kit.env()); /* بازسازیِ سایهٔ index.html از سورس‌های واقعی (پاک‌سازی پس از جهش) */
 
   /* M4: sendChunked دیگر backpressure را re-throw نمی‌کند */
   orig = mutate('src/js/27-sync.js',
     "if(err && err.code === 'sync_backpressure') throw err;",
     "if(false && err && err.code === 'sync_backpressure') throw err; /*MUT*/");
-  buildClient();
-  chk('M4 جهشِ «re-throw حذف» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'src/js/27-sync.js'), orig, 'utf8');
-  buildClient();
+  buildClient(kit.env());
+  chk('M4 جهشِ «re-throw حذف» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'src/js/27-sync.js'));
+  buildClient(kit.env()); /* بازسازیِ سایهٔ index.html از سورس‌های واقعی (پاک‌سازی پس از جهش) */
 
   /* M5: وزنِ op حذف — هر درخواست ۱ واحد مصرف می‌کند */
   orig = mutate('server/sync.js',
     "        weight: ops.length",
     "        weight: 1 /*MUT*/");
-  chk('M5 جهشِ «وزنِ op حذف» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'server/sync.js'), orig, 'utf8');
+  chk('M5 جهشِ «وزنِ op حذف» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'server/sync.js'));
 
 
   /* ── جهش‌های گپ ۲ — فشرده‌سازی ── */
@@ -105,8 +111,8 @@ function buildClient() {
   orig = mutate('server/compress.js',
     "  const enc = raw.length >= minBytes() ? negotiateEncoding(headers['accept-encoding']) : null;",
     "  const enc = null; /*MUT*/");
-  chk('M6 جهشِ «مذاکرهٔ خاموش» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'server/compress.js'), orig, 'utf8');
+  chk('M6 جهشِ «مذاکرهٔ خاموش» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'server/compress.js'));
 
   /* M7: pull.js به sendJson خام برمی‌گردد.
      S9-3 (باگ‌هانت نشست ۹): لنگر به خطِ تازه به‌روز شد — فراخوانی حالا
@@ -115,15 +121,15 @@ function buildClient() {
   orig = mutate('server/pull.js',
     "    const encInfo = await sendJsonCompressed(res, req, 200, body, sendJson);",
     "    sendJson(res, 200, body); const encInfo = { encoding: null, rawBytes: 0, wireBytes: 0 }; /*MUT*/");
-  chk('M7 جهشِ «فراخوانی حذف» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'server/pull.js'), orig, 'utf8');
+  chk('M7 جهشِ «فراخوانی حذف» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'server/pull.js'));
 
   /* M8: آستانهٔ حجم حذف — حتی بدنهٔ کوچک فشرده می‌شود */
   orig = mutate('server/compress.js',
     "  const enc = raw.length >= minBytes() ? negotiateEncoding(headers['accept-encoding']) : null;",
     "  const enc = raw.length >= 0 ? negotiateEncoding(headers['accept-encoding']) : null; /*MUT*/");
-  chk('M8 جهشِ «آستانهٔ حذف» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'server/compress.js'), orig, 'utf8');
+  chk('M8 جهشِ «آستانهٔ حذف» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'server/compress.js'));
 
 
   /* ── جهش‌های گپ ۳ — کلیدِ کرسرِ پایدار ── */
@@ -133,22 +139,22 @@ function buildClient() {
   orig = mutate('server/cursor.js',
     "      if (payload.exp <= t) return { ok: false, code: 'cursor_expired' };",
     "      /*MUT: TTL check removed*/");
-  chk('M9 جهشِ «TTL حذف» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'server/cursor.js'), orig, 'utf8');
+  chk('M9 جهشِ «TTL حذف» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'server/cursor.js'));
 
   /* M10: keySource همیشه none گزارش می‌شود */
   orig = mutate('server/cursor.js',
     "    keySource: resolved.source,",
     "    keySource: 'none' /*MUT*/,");
-  chk('M10 جهشِ «keySource دروغ» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'server/cursor.js'), orig, 'utf8');
+  chk('M10 جهشِ «keySource دروغ» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'server/cursor.js'));
 
   /* M11: سلامتِ cursor پایدار را false گزارش می‌کند */
   orig = mutate('server/index.js',
     "        cursor: { enabled: pullRoute.cursor.enabled, persistent: pullRoute.cursor.enabled, key_source: CURSOR_KEY_SOURCE }",
     "        cursor: { enabled: pullRoute.cursor.enabled, persistent: false /*MUT*/, key_source: CURSOR_KEY_SOURCE }");
-  chk('M11 جهشِ «persistent=false» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'server/index.js'), orig, 'utf8');
+  chk('M11 جهشِ «persistent=false» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'server/index.js'));
 
 
   /* ── جهش‌های گپ ۴ — سنجه‌های sync ── */
@@ -157,26 +163,26 @@ function buildClient() {
   orig = mutate('server/pull.js',
     "    metrics.inc('payesh_sync_pulls_total', { mode: (isDelta && !forceFull) ? 'delta' : 'full' });",
     "    /*MUT*/");
-  chk('M12 جهشِ «pulls حذف» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'server/pull.js'), orig, 'utf8');
+  chk('M12 جهشِ «pulls حذف» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'server/pull.js'));
 
   orig = mutate('server/sync.js',
     "    metrics.inc('payesh_sync_pushes_total');",
     "    /*MUT*/");
-  chk('M13 جهشِ «pushes حذف» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'server/sync.js'), orig, 'utf8');
+  chk('M13 جهشِ «pushes حذف» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'server/sync.js'));
 
   orig = mutate('server/metrics.js',
     "function syncHealthStats(snap) {",
     "function syncHealthStats(snap) { if (true) { return {}; } /*MUT*/ snap = snap || {};");
-  chk('M14 جهشِ «helper خالی» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'server/metrics.js'), orig, 'utf8');
+  chk('M14 جهشِ «helper خالی» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'server/metrics.js'));
 
   orig = mutate('server/pull.js',
     "        if (v.code === 'cursor_expired') metrics.inc('payesh_cursor_expired_total');",
     "        /*MUT*/");
-  chk('M15 جهشِ «cursor_expired حذف» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'server/pull.js'), orig, 'utf8');
+  chk('M15 جهشِ «cursor_expired حذف» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'server/pull.js'));
 
 
   /* ── جهش‌های گپ ۵ — کرسرِ region-aware ── */
@@ -185,28 +191,31 @@ function buildClient() {
   /* S9-1 (باگ‌هانت نشست ۹): چکِ منطقه پس از امضا آمد و شرطش v2-محور شد؛
      لنگر به‌روز شد، معنا همان: خنثی‌کردنِ داوریِ منطقه. */
   orig = mutate('server/cursor.js',
-    "      if (payload.v === 2 && payload.rg !== regionName()) {",
-    "      if (false && payload.v === 2 && payload.rg !== regionName()) { /*MUT*/");
-  chk('M16 جهشِ «چکِ rg حذف» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'server/cursor.js'), orig, 'utf8');
+    /* ری‌تارگت (PR #82): با ورودِ کرسرِ v3 (Wave 10) داوریِ منطقه هر دو
+       نسخهٔ منطقه‌بند را می‌سنجد — همان جهش، لنگرِ جاری. */
+    "      if ((payload.v === 2 || payload.v === 3) && payload.rg !== regionName()) {",
+    "      if (false && (payload.v === 2 || payload.v === 3) && payload.rg !== regionName()) { /*MUT*/");
+  chk('M16 جهشِ «چکِ rg حذف» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'server/cursor.js'));
 
   orig = mutate('server/cursor.js',
-    "        v: 2,",
+    "        v: 3,",
     "        v: 1, /*MUT*/");
-  chk('M17 جهشِ «امضای v1» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'server/cursor.js'), orig, 'utf8');
+  chk('M17 جهشِ «امضای v1» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'server/cursor.js'));
 
   orig = mutate('server/pull.js',
     "        if (v.code === 'region_mismatch') metrics.inc('payesh_cursor_region_mismatch_total');",
     "        /*MUT*/");
-  chk('M18 جهشِ «شمارندهٔ mismatch حذف» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'server/pull.js'), orig, 'utf8');
+  chk('M18 جهشِ «شمارندهٔ mismatch حذف» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'server/pull.js'));
 
+  /* ری‌تارگت (PR #82): پذیرشِ نسخه حالا v3 را هم می‌شناسد. */
   orig = mutate('server/cursor.js',
-    "      if (payload.v !== 1 && payload.v !== 2) {",
-    "      if (payload.v !== 2) { /*MUT: v1 grace removed */");
-  chk('M19 جهشِ «گذارِ v1 حذف» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'server/cursor.js'), orig, 'utf8');
+    "      if (payload.v !== 1 && payload.v !== 2 && payload.v !== 3) {",
+    "      if (payload.v !== 2 && payload.v !== 3) { /*MUT: v1 grace removed */");
+  chk('M19 جهشِ «گذارِ v1 حذف» کشته شد', runSuite(kit.env()) !== 0);
+  kit.clear(path.join(ROOT, 'server/cursor.js'));
 
   /* سلامت پایه پس از بازگردانی‌ها */
   chk('پایه پس از بازگردانی سبز است', runSuite() === 0);
