@@ -13,6 +13,10 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی
+   هرگز بازنویسی نمی‌شود — بازگردانی حذف شد (clear نگاشت). */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('w5a-mut-');
 const SUITE = path.join(ROOT, 'tests', 'wave5-authz.js');
 /* ویو ۵ بخش دوم — دروازهٔ محدوده به مدلِ یکتای policy.js منتقل شده؛
    جهش‌ها حالا همان‌جا می‌خورند (قرارداد کشتار و الگوهای قرمزی بدون تغییر). */
@@ -33,12 +37,13 @@ function mutate(find, replace, killRe, tag) {
   const orig = fs.readFileSync(F, 'utf8');
   try {
     if (!orig.includes(find)) { chk(tag + ' (جهش پیدا نشد)', false); return; }
-    fs.writeFileSync(F, orig.replace(find, replace), 'utf8');
-    const r = spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8', timeout: 240000 });
+    const mcopy = kit.mutant(F, orig.replace(find, replace)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+    try { fs.chmodSync(mcopy, fs.statSync(F).mode); } catch (_) {}
+    const r = spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8', timeout: 240000, env: kit.env() });
     const out = (r.stdout || '') + (r.stderr || '');
     chk(tag + ' کشته شد', r.status !== 0 && killRe.test(out), out.slice(-240).replace(/\n/g, ' '));
   } finally {
-    fs.writeFileSync(F, orig, 'utf8');
+    kit.clear(F); /* نقشهٔ خالی؛ پاک‌سازیِ واقعی در exit */
   }
 }
 
@@ -54,9 +59,14 @@ mutate(
   /❌ T5b/, 'M2 ساخت دفتر برای اداره');
 
 mutate(
-  `const sid = t.school_id != null ? t.school_id
-        : (t.user_id != null ? (((store.users) || []).find((x) => Number(x.id) === Number(t.user_id)) || {}).school_id : null);`,
-  `const sid = t.school_id != null ? t.school_id : null; /* حلِّ مهار از گیرنده حذف شد */`,
+  /* ترمیم لنگر (BH-mut فاز ۲): بندِ تقدمِ staff_posts (د.۴) بعداً به ابتدای همین
+     عبارت افزوده شد و لنگرِ قدیمی نمی‌خورد (پوششِ صفر روی main). همان جهش —
+     حذفِ حلِّ user_id→school — روی فرمِ فعلی، با حفظِ بندِ staff_posts. */
+  `const sid = (coll === 'staff_posts' && data && data.school_id != null) ? data.school_id
+        : (t.school_id != null ? t.school_id
+        : (t.user_id != null ? (((store.users) || []).find((x) => Number(x.id) === Number(t.user_id)) || {}).school_id : null));`,
+  `const sid = (coll === 'staff_posts' && data && data.school_id != null) ? data.school_id
+        : (t.school_id != null ? t.school_id : null); /* حلِّ مهار از گیرنده حذف شد */`,
   /❌ T7/, 'M3 حذف مهار گیرنده');
 
 const fin = spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8', timeout: 240000 });
