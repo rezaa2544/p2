@@ -110,7 +110,17 @@ process.on('SIGINT', () => { cleanup(); process.exit(130); });
   /* migrations واقعیِ مخزن */
   const files = fs.readdirSync(path.join(ROOT, 'migrations'))
     .filter((f) => /^\d+_.*\.sql$/.test(f) && !f.includes('.down.')).sort();
-  for (const f of files) await c.query(fs.readFileSync(path.join(ROOT, 'migrations', f), 'utf8'));
+  const { execFileSync } = require('child_process');
+  const dbUrl = `postgres://payesh@127.0.0.1:${PORT}/payesh`;
+  for (const f of files) {
+const sql = fs.readFileSync(path.join(ROOT, 'migrations', f), 'utf8');
+    if (/^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql)) {
+      /* فایلِ متاکامنددار — قرارداد §۹.۷ WAVE10_DB_SCALE: فقط psql (الگوی #163) */
+      execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', f), dbUrl], { stdio: 'pipe' });
+    } else {
+      await c.query(sql);
+    }
+  }
 
   /* ── seed دو مدرسه ─────────────────────────────────────────────
      مدرسهٔ ۱: مدیر 11 · دبیر 12 (درسِ 501 در کلاس 101) · دانش‌آموزان 13/14 · ولی 15 (فرزند: 13)
