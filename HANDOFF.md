@@ -3115,3 +3115,11 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 - **docs-health:** 478 لینک / 0 شکسته — ادعای لینک شکستهٔ alert-rules رد شد.
 - **reza-mirror-check:** فقط چک‌کننده است (`--json`)؛ پرچم `--sync` ندارد — همگام‌سازی دستی فقط برای آینه‌های قراردادی.
 - **بنچ Wave23 (یادآور برای نشست بعد):** گزارش‌های `academic`/`finance` هنوز کندتر از مسیر DB-native حضور/غیاب‌اند — کاندیدای EXPLAIN ANALYZE + ایندکس پوششی، فقط پس از ACCEPTهای معلق.
+
+## چت ۱۰ — دور ۱: Operational Readiness Package — ✅ (2026-09-13)
+- **نقش:** آرنا ۱۰، مالک بستهٔ ۵ نقشه راه (Operational Readiness) · شاخه: `arena/01a09be5-p2` از `622146f` · صفر تغییر کد.
+- **خروجی (۸ فایل تازه):** `docs/OPERATIONAL_READINESS.md` (SLO منبع‌دار + بودجهٔ خطا + IC + drill) · `docs/INCIDENT_PLAYBOOK.md` (۴ فاز + درخت rollback + قالب comms + شاخهٔ امنیتی + ۷ حالت خرابی) · `docs/ONCALL_SCHEDULE.md` (چرخش هفتگی + تشدید) · `docs/BUS_FACTOR_REGISTRY.md` (۸ زیرسیستم + ۳ هشدار factor=۱) · `docs/COST_ENVELOPE.md` (فرمول + S/M/L/ملی) · `templates/POSTMORTEM_TEMPLATE.md` · `templates/ONCALL_HANDOFF_TEMPLATE.md` · `templates/ESCALATION_MATRIX.md`.
+- **هم‌خوان‌سازی عمدی (خلاف بریف اولیه، با دلیل):** شدت = کانن P0–P3 (SEV فقط نگاشت) · API ‏99.95٪ و sync ‏99.5٪ از اسناد مصوب (نه اعداد بریف) · پست‌مورتم تکراری نساخته شد (فرم روی کانن §۵) · `SYNC_RELIABILITY_EVIDENCE.md` وجود ندارد → SLO با storm-drill ‏18/18 و offline-e2e ‏23/23 هم‌خوان شد.
+- **گیت‌ها:** stats-check ✅ · freeze ✅ (منجمدها دست‌نخورده) · metadata یتیم ۰ · mirror ‏۰/۰ چک‌فقط · secret-scan ‏12/12 · بودجه 🟢.
+- **NOT-RUN صادقانه:** tabletop اول + drillها (تیم انسانی + staging) · انتساب انسانی آن‌کال/owner (ACCEPT ناظر) · قیمت واقعی vendor · ‏CI (بیلینگ).
+- **گزارش کامل:** `docs/daily-reports/2026-09-13.md` § «چت ۱۰ — دور ۱» · PR از همین شاخه (مرج فقط با ACCEPT ناظر).
