@@ -34,7 +34,7 @@ function renderShell(){
       ${typeof themeSegHtml==='function'?themeSegHtml():''}
       ${(()=>{try{if(typeof activeYearOf!=='function')return '';var yc=activeYearOf(u.school_id||null);if(!yc)return '';var t=(typeof yearCodeTitle==='function')?yearCodeTitle(yc):yc;return `<span class="badge b-gray" title="سال تحصیلی عملیاتی">📅 ${esc(t)}</span>`;}catch(e){return '';}})()}
       <span class="badge b-blue">${ROLE_FA[u.role]}</span></header>
-     <div class="content">${childSwitcherBar()}${typeof notifyAutoBanner==='function'?notifyAutoBanner():''}${renderRoute()}</div>
+     <div class="content">${childSwitcherBar()}${typeof notifyAutoBanner==='function'?notifyAutoBanner():''}${typeof rptPartialShellBanner==='function'?rptPartialShellBanner():''}${renderRoute()}</div>
     </main>
   </div>`;
 }
