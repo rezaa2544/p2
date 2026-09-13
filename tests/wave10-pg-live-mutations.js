@@ -3,7 +3,7 @@
    wave10-pg-live-mutations.js — اثباتِ اینکه گیتِ زندهٔ PG موج ۱۰
    واقعاً نقضِ قرارداد را می‌گیرد (سبزِ جعلی ممنوع).
    هر جهش: نقضی عمدی در server/db.js تزریق و tests/wave10-pg-live.js
-   اجرا می‌شود — باید قرمز شود؛ بعد restore.
+   اجرا می‌شود — باید قرمز شود (جهش در کپیِ جدا — الگوی امن BH-mut).
    بدونِ باینری‌هایِ PG (PATH یا PG_LIVE_BIN) یا ماژولِ pg: self-skip.
    اجرا: PG_LIVE_BIN=/path/to/pg/bin node tests/wave10-pg-live-mutations.js
    ═══════════════════════════════════════════════════════════════════ */
@@ -34,8 +34,10 @@ if (!findPgBin() || !hasPgModule()) {
 const ROOT = path.join(__dirname, '..');
 const DB = path.join(ROOT, 'server', 'db.js');
 const original = fs.readFileSync(DB, 'utf8');
-function restore() { fs.writeFileSync(DB, original, 'utf8'); }
-process.on('exit', restore);
+/* BH-mut (الگوی امن p06/p11): بازگردانیِ درجا حذف شد — kit کپی هم‌جوار را
+   در exit unlink می‌کند؛ server/db.js اصلی هرگز بازنویسی نمی‌شود. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('w10-pg-mut-');
 
 const mutations = [
   {
@@ -80,15 +82,15 @@ for (const m of mutations) {
     console.log('  ❌ جهش اعمال نشد: ' + m.name);
     continue;
   }
-  fs.writeFileSync(DB, mutated, 'utf8');
+  kit.mutant(DB, mutated); /* کپی هم‌جوار؛ سورس دست‌نخورده */
   const r = cp.spawnSync(process.execPath, [path.join(__dirname, 'wave10-pg-live.js')],
-    { stdio: 'pipe', timeout: 300000, env: process.env });
-  restore();
+    { stdio: 'pipe', timeout: 300000, env: kit.env() });
   const failedAsExpected = r.status !== 0;
   if (failedAsExpected) { killed++; console.log('  ✅ کشته شد: ' + m.name); }
   else { survived++; survivors.push(m.name); console.log('  ❌ زنده ماند: ' + m.name); }
 }
 
+kit.cleanup();
 console.log('\n  جمع: ' + killed + ' کشته، ' + survived + ' زنده از ' + mutations.length);
 if (survivors.length) { console.log('  زنده‌ها:'); survivors.forEach((s) => console.log('   - ' + s)); }
 console.log('');

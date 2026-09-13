@@ -10,6 +10,10 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی
+   هرگز بازنویسی نمی‌شود — بازگردانی حذف شد (clear نگاشت). */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('a11y-mut-');
 const SUITE = path.join(ROOT, 'tests', 'a11y-audit.js');
 let killed = 0;
 const mutations = [
@@ -43,8 +47,8 @@ const mutations = [
   }
 ];
 
-function runAudit() {
-  return spawnSync(process.execPath, [SUITE], { cwd: ROOT, encoding: 'utf8' });
+function runAudit(e) {
+  return spawnSync(process.execPath, [SUITE], { cwd: ROOT, encoding: 'utf8', env: e });
 }
 function checkMutation(m) {
   const file = path.join(ROOT, m.file);
@@ -53,15 +57,20 @@ function checkMutation(m) {
     console.log('  ❌ ' + m.name + ' — الگوی جهش پیدا نشد');
     return false;
   }
-  fs.writeFileSync(file, original.replace(m.from, m.to), 'utf8');
+  const mcopy = kit.mutant(file, original.replace(m.from, m.to)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+  try { fs.chmodSync(mcopy, fs.statSync(file).mode); } catch (_) {}
   try {
-    const result = runAudit();
+    const result = runAudit(kit.env());
+    void mcopy;
     const output = (result.stdout || '') + (result.stderr || '');
     const dead = result.status !== 0 && m.expect.test(output);
     console.log('  ' + (dead ? '✅ ' : '❌ ') + m.name + (dead ? ' — کشته شد' : ' — زنده ماند'));
     return dead;
   } finally {
-    fs.writeFileSync(file, original, 'utf8');
+    kit.clear(file);
+    /* سوئیتِ a11y دایرکتوریِ src/js را با readdirSync اسکن می‌کند — کپیِ هم‌جوارِ
+       جهشِ قبلی نباید در اجرایِ جهش‌های بعدی/پایه دیده شود؛ همان‌جا حذف می‌شود. */
+    try { fs.unlinkSync(mcopy); } catch (_) {}
   }
 }
 

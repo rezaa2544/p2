@@ -486,7 +486,7 @@ const ids = createIds({ db, cache });
 const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, ids, rateLimit: rateLimit.checkRateLimit });
 const idor = createIdor({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
-const pubrep = createPublicReport({ store, sendJson: sendJsonCounting, workers });
+const pubrep = createPublicReport({ store, db, sendJson: sendJsonCounting, workers }); /* P1-3: مسیر PG */
 /* هر سه ماژول با db می‌چرخند: admin/conflicts (Wave 1 main) + sms (W1p2 تراکنسی) */
 const admin = createAdmin({ store, db, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, dataDir: path.dirname(STORE_FILE), workers });
 const healthIdx = createHealthIndex({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting }); /* G.1 */

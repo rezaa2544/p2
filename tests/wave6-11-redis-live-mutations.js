@@ -26,9 +26,14 @@ if (!hasRedis()) {
 const ROOT = path.join(__dirname, '..');
 const RED = path.join(ROOT, 'server', 'redis.js');
 const CCH = path.join(ROOT, 'server', 'cache.js');
+
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ هم‌جوارِ جدا (mutant-kit)؛
+   سورس اصلی هرگز بازنویسی نمی‌شود — restore/بازگردانیِ درجا حذف شد. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('w6r-');
 const originals = new Map();
 for (const f of [RED, CCH]) originals.set(f, fs.readFileSync(f, 'utf8'));
-function restore() { for (const [f, s] of originals) fs.writeFileSync(f, s, 'utf8'); }
+/* originals فقط خوانده می‌شود (بذرِ جهش‌ها)؛ نوشتن در کپیِ kit انجام می‌شود */
 
 const mutations = [
   {
@@ -77,17 +82,18 @@ for (const m of mutations) {
   const mutated = m.mutate(src);
   if (mutated === src) { console.error('  ⚠️ جهش «' + m.name + '» اعمال نشد (الگو پیدا نشد)'); continue; }
   applied++;
-  fs.writeFileSync(m.file, mutated, 'utf8');
+  const mcopy = kit.mutant(m.file, mutated); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+  try { fs.chmodSync(mcopy, fs.statSync(m.file).mode); } catch (_) {}
   let red = false;
   try {
     cp.execFileSync('node', [path.join(ROOT, 'tests', 'wave6-11-redis-live.js')],
-      { stdio: 'pipe', env: process.env, timeout: 180000 });
+      { stdio: 'pipe', env: kit.env(), timeout: 180000 });
   } catch (e) { red = true; }
-  restore();
+  kit.clear(m.file);
   if (red) { killed++; console.log('  🗡️ کشته شد: ' + m.name); }
   else console.error('  ❌ زنده ماند: ' + m.name);
 }
-restore();
+/* نیازی به restore نیست: هر جهش کپیِ خودش را داشت و نگاشتش را باز کرد */
 
 const ok = applied === mutations.length && killed === applied;
 console.log(`wave6-11-redis-live-mutations: ${killed}/${mutations.length} کشته؛ سبزِ نهایی: ${ok ? '✅' : '❌'}`);

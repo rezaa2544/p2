@@ -160,7 +160,7 @@
 | ۱۴ | `WAVE14_OBSERVABILITY.md` | ✅ |
 | ۱۶ | `WAVE16_DISASTER_RECOVERY.md` | ✅ |
 | ۱۷ | `WAVE17_TESTING.md` (فهرست سوئیت/قرارداد/نتایج ۷۳/۷۳) · `WAVE17_TESTING_PYRAMID.md` | ✅ |
-| ۱۸ | `WAVE18_LOAD_TEST_PLAN.md` (ورودی اجرایی؛ طرح رسمی = `LOAD_TEST_PLAN.md`) | ✅ |
+| ۱۸ | `WAVE18_LOAD_TEST_PLAN.md` (ورودی اجرایی؛ طرح رسمی = `LOAD_TEST_PLAN.md`) · `WAVE18_FINAL_REPORT.md` (گزارش نهاییِ تحویل — آرشیو از ریشهٔ سندباکس، پ۰ دور ۲) | ✅ |
 | ۱۹ | `WAVE19_CHAOS_PLAN.md` | ✅ |
 | ۲۳ | `WAVE23_DB_NATIVE_REPORTS.md` (گزارش‌های DB-native: معماری چهار گزارش، سنجهٔ پیش/پس روی PostgreSQLِ واقعی، `EXPLAIN ANALYZE`) | ✅ |
 
@@ -289,6 +289,12 @@
 | `daily-reports/2026-09-12-p06-sync-oom-arch.md` | P0-6 — ریشه‌یابی OOM معماری sync (undo-log ‏O(batch) + سقف‌های رشد) | ✅ | ۲۰۲۶-۰۹-۱۲ |
 | `daily-reports/2026-09-12-p06-review-fixes.md` | P0-6 — رفعِ باگ‌های بازبین روی کدِ مرج‌شدهٔ PR #103 | ✅ | ۲۰۲۶-۰۹-۱۲ |
 | `daily-reports/2026-09-12-p11-phone-auth-index.md` | P1-1 — ایندکس `users(phone)` + auth از PG (PR #115) | ✅ | ۲۰۲۶-۰۹-۱۲ |
+| `daily-reports/2026-09-12-review-round2-fixes.md` | دور ۲ بازبین — رفعِ ۳ باگِ #112 + ۱ باگِ #115 (پ۱۱) | ✅ | ۲۰۲۶-۰۹-۱۲ |
+| `daily-reports/2026-09-12-p0-workspace-hygiene.md` | پ۰ دور ۲ — بهداشتِ پیگیرِ ورک‌اسپیس (فازهای ۰-۵؛ ۱۴۷→۸۷MB) + `WORKSPACE_HYGIENE` §۱۰ + رجیستری §۸ | ✅ | ۲۰۲۶-۰۹-۱۲ |
+| `daily-reports/2026-09-12-p1-2-mirror-write-cut.md` | P1-2 — قطعِ آینه از مسیرِ نوشتن در PG-live (PR #124 مرج‌شده) | ✅ | ۲۰۲۶-۰۹-۱۲ |
+| `daily-reports/2026-09-12-p1-2-review-round1-fixes.md` | P1-2 — رفعِ ۳ باگِ بازبینِ دور ۱ #124 (59/59 + جهش 7/7) | ✅ | ۲۰۲۶-۰۹-۱۲ |
+| `daily-reports/2026-09-12-bh-mut-phase1.md` | BH-mut فاز ۱ — مهاجرتِ ۹ فایل جهش به الگوی امن + رفعِ RL-g + قفل rc39 (PR #131 مرج‌شده) | ✅ | ۲۰۲۶-۰۹-۱۲ |
+| `daily-reports/2026-09-13-p12-mirror-cutoff.md` | P1-2 — چکیدهٔ بستنِ حلقه: بستهٔ تحویل با حقایق راستی‌آزمایی‌شده + درس‌های فرایندی | ✅ | ۲۰۲۶-۰۹-۱۳ |
 
 ## ۳) نمودار وابستگی اسناد
 
