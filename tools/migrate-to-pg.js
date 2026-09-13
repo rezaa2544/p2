@@ -25,6 +25,15 @@ if (!fs.existsSync(MODEL_FILE)) {
 }
 const model = JSON.parse(fs.readFileSync(MODEL_FILE, 'utf8'));
 const collections = model.collections || {};
+const VERSION_TRACKED = { grades: 1, attendance: 1, discipline: 1, schools: 1, classes: 1, subjects: 1, users: 1, enrollments: 1, schedule: 1 };
+function managedFields(col, fields) {
+  const out = (fields || []).slice();
+  if (VERSION_TRACKED[col]) {
+    if (!out.includes('version')) out.push('version');
+    if (!out.includes('version_vector')) out.push('version_vector');
+  }
+  return out;
+}
 
 /* Infer optimal column types for PostgreSQL */
 function getColumnType(colName, fieldName, sampleVal) {
@@ -44,6 +53,10 @@ function getColumnType(colName, fieldName, sampleVal) {
       fieldName === 'class_id' || fieldName === 'subject_id' || fieldName === 'office_id') {
     return 'INTEGER';
   }
+  if (fieldName === 'version_vector' || fieldName === 'base_vector' || fieldName === 'server_vector' ||
+      (colName === 'summer_classes' && fieldName === 'schedule') ||
+      (colName === 'summer_enrollments' && fieldName === 'attendance') ||
+      (colName === 'summer_classes' && fieldName === 'student_ids')) return 'JSONB';
   if (fieldName === 'version' || fieldName === 'base_version' || fieldName === 'server_version' || 
       fieldName === 'grade' || fieldName === 'capacity' || fieldName === 'units' || 
       fieldName === 'year' || fieldName === 'read' || fieldName === 'late' || fieldName === 'count') {
@@ -169,7 +182,7 @@ CREATE INDEX IF NOT EXISTS idx_server_outbox_status ON server_outbox (status);
   const colNames = Object.keys(collections);
   for (const col of colNames) {
     const def = collections[col];
-    const fields = def.fields || [];
+    const fields = managedFields(col, def.fields || []);
     
     // Ensure 'id' exists
     const allFields = fields.includes('id') ? fields : ['id', ...fields];
@@ -290,7 +303,7 @@ function generateMigrationSQL(store) {
     if (rows.length === 0) continue;
 
     const def = collections[col];
-    const fields = def.fields || Object.keys(rows[0] || {});
+    const fields = managedFields(col, def.fields || Object.keys(rows[0] || {}));
     const colList = fields.map(f => `"${f}"`).join(', ');
 
     statements.push(`-- Inserting ${rows.length} rows into ${col}`);

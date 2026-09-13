@@ -633,6 +633,56 @@
 
 
 
+## چت ۴: E.8 کلاس‌های تابستانی — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**شاخهٔ اجرایی این سشن:** `arena/01a08527-p2` (به‌دلیل قفل Arena، شاخهٔ جدا ساخته نشد؛ پوش روی شاخهٔ مجاز انجام می‌شود).
+- **مدل داده:** `summer_classes` از نسخه سبک قبلی به فیلدهای کامل E.8 ارتقا یافت (`title/subject/teacher_id/start_date/end_date/schedule/capacity/status`) و جدول مستقل `summer_enrollments` برای ثبت‌نام، انصراف و حضور JSON اضافه شد؛ سازگاری عقب‌رو با `name/student_ids` حفظ شد.
+- **رابط:** مدیر در مسیر «کلاس‌های تابستانی» کلاس را ایجاد/ویرایش/حذف می‌کند، ثبت‌نام دانش‌آموزان را با کنترل ظرفیت انجام می‌دهد و حضور می‌زند. دبیر بدون افزایش روت smoke، کارت «کلاس‌های تابستانی من» را در داشبورد می‌بیند و فقط حضور کلاس خودش را ثبت می‌کند. دانش‌آموز/ولی کارت «کلاس‌های تابستانی من» را در داشبورد می‌بینند.
+- **امنیت/مجوز:** `authz/model.json` و `write-perms` به‌روز شد؛ سمت سرور `summer_enrollments` از روی کلاس، مدرسه، دانش‌آموز و دبیر scope می‌شود؛ دبیر فقط `attendance/updated_at` همان ثبت‌نام کلاس خودش را می‌نویسد و تغییر ثبت‌نام/انصراف fail-closed است.
+- **PostgreSQL:** `server/schema.sql` شامل ALTERهای idempotent برای ستون‌های جدید `summer_classes` و جدول/ایندکس/FKهای `summer_enrollments` شد؛ `tools/migrate-to-pg.js` برای `schedule` و `attendance` نوع `JSONB` تولید می‌کند.
+- **تست:** `tests/summer2.js` بازنویسی شد (۷/۷)، `tests/summer3.js` سروری شد (۹/۹)، `tests/summer-mutations.js` اضافه شد (۶/۶) و `tests/summer2-mutations.js` به نام جدید وصل شد.
+- **مستندات:** `docs/SUMMER_CLASSES_MODULE.md` اضافه و `docs/README.md`/`docs/ROADMAP.md` به‌روز شدند.
+- **گیت‌ها:** `build --check` ✅؛ `check-authz` ✅؛ `secret-scan` ۱۱/۱۱ ✅؛ smoke ۵۴۷/۵۴۷ ✅؛ رگرسیون Version Vectors/Weighted/PgBouncer هم سبز ماند.
+- **کامیت/پوش:** با کامیت‌های `468ecce` و `b15f60d` روی `origin/arena/01a08527-p2` پوش شد؛ گزارش نهایی در `CHAT4_SUMMER_CLASSES_REPORT.md`.
+
+## چت ۴: Version Vectors برای Offline-First Conflicts — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**شاخهٔ اجرایی این سشن:** `arena/01a08527-p2` (طبق قید Arena؛ پوش روی همین شاخهٔ مجاز انجام شد).
+- **تحلیل:** مسیر فعلی همگام‌سازی در `server/sync.js` فقط `base_version` عددی داشت؛ مجموعه‌های حساس (`grades`/`attendance`/`discipline`) conflict را در `sync_conflicts` حفظ می‌کردند و ساختاری‌ها (`schools`/`classes`/`subjects`/`users`/`enrollments`/`schedule`) با `stale_base` رد می‌شدند.
+- **هستهٔ Version Vector:** `server/version-vector.js` اضافه شد: اعتبارسنجی fail-closed، نرمال‌سازی، `mergeVectors`، `isAncestor`، `compareVectors`، `bumpVector`، `vectorOfRecord` و `resolveConflict`. شناسهٔ نود سرور با `PAYESH_NODE_ID` و پیش‌فرض `server` کنترل می‌شود.
+- **سرور:** `op.base_vector` در پاکت sync مجاز و اعتبارسنجی شد؛ وقتی حاضر باشد مرجع تشخیص تعارض است و اگر با `version_vector` سرور برابر نباشد، مسیر حساس conflict را با `base_vector/server_vector/vector_relation` حفظ می‌کند؛ ساختاری‌ها همچنان fail-closed با `stale_base` رد می‌شوند؛ نبود vector مسیر سازگار قدیمی `base_version` را نگه می‌دارد. `version_vector` خام داخل `data` قابل اعتماد نیست و توسط field gate رد می‌شود.
+- **کلاینت:** `src/js/03-persistence.js` برای رکوردهایی که vector معتبر دارند `base_vector` را کنار `base_version` در صف می‌گذارد و node id محلی پایدار می‌سازد؛ `src/js/27-sync.js` فیلدهای مدیریت‌شدهٔ `version`/`version_vector` را از `op.data` حذف می‌کند ولی `base_vector` سطح بالای op را نگه می‌دارد.
+- **PostgreSQL/مهاجرت:** `tools/migrate-to-pg.js` ستون‌های مدیریت‌شدهٔ `version` و `version_vector JSONB` را برای مجموعه‌های version-tracked تولید می‌کند؛ `server/schema.sql` نیز ALTERهای idempotent برای همین ستون‌ها دارد.
+- **مستندات:** `docs/VERSION_VECTORS.md` اضافه شد و `docs/README.md`/`docs/ROADMAP.md` به‌روز شدند.
+- **تست/گیت‌ها:** `version-vector` ۸/۸؛ `version-vector-sync` ۶/۶؛ `server15` ۴۰/۴۰؛ `server18` ۵۵/۵۵؛ `weighted-partitioning` ۱۲/۱۲؛ `pgbouncer-pooling` ۱۲/۱۲؛ `build --check` ✅؛ `check-authz` ✅؛ `secret-scan` ۱۱/۱۱ ✅؛ smoke ۵۴۷/۵۴۷ ✅ (فقط هشدار شناخته‌شدهٔ jsdom برای `scrollTo`).
+- **کامیت/پوش:** با کامیت‌های `d00dffc` و `0207de5` روی `origin/arena/01a08527-p2` پوش شد؛ گزارش نهایی در `CHAT4_VERSION_VECTORS_REPORT.md`.
+
+## چت ۴: Weighted Partitioning برای مدارس شلوغ — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**شاخهٔ اجرایی این سشن:** `arena/01a08527-p2` (درخواست شاخهٔ `feat/weighted-partitioning-chat4` به‌دلیل قفل Arena قابل انجام نبود؛ پوش روی شاخهٔ مجاز انجام شد).
+- **تحلیل:** جدول‌های پرترافیک مدرسه‌محور در `server/schema.sql` ستون/FK/ایندکس `school_id` دارند؛ مدارس شلوغ با شمارش دانش‌آموز یکتا از `enrollments` و آستانهٔ پیش‌فرض ۱۰۰۰ شناسایی می‌شوند.
+- **هسته (`server/partitioning.js`):** ماژول pure برای `enrollmentCountsBySchool`، `largeSchools`، `buildRoutingPlan`، `routeForSchool`، `metricsForPlan` و `analyzeSchema`؛ پشتیبانی CSV/JSON برای shardهای وزنی و read replicaها؛ مدرسه ناشناخته fail-closed به primary می‌رود.
+- **یکپارچه‌سازی (`server/db.js`):** `query(text, params, opts)` سازگار با امضای قبلی؛ اگر `PAYESH_WEIGHTED_PARTITIONING=1` و `{schoolId, readOnly:true}` برای مدرسهٔ heavy باشد، read به replica pool می‌رود؛ write همیشه primary می‌ماند؛ متریک‌ها در `partitioningHealth/healthCheck`.
+- **مستندات/env:** `docs/WEIGHTED_PARTITIONING.md`، `.env.example`، `docs/ROADMAP.md` و `docs/README.md` به‌روز شدند؛ ردیف فاز ۲.۴ با ✅ ثبت شد.
+- **تست:** `tests/weighted-partitioning.js` ۱۲/۱۲؛ رگرسیون PgBouncer ۱۲/۱۲؛ `build --check` ✅؛ `check-authz` ✅؛ `secret-scan` ۱۱/۱۱ ✅؛ smoke ۵۴۷/۵۴۷ ✅.
+- **کامیت/پوش:** `5ea62a3 feat(db): add weighted partitioning routing` و `b37907b docs: update weighted partitioning handoff report` روی `origin/arena/01a08527-p2` پوش شدند؛ گزارش نهایی در `CHAT4_WEIGHTED_PARTITIONING_REPORT.md`.
+
+
+## چت ۴ جدید: بررسی وضعیت PR قبلی + PgBouncer Connection Pooling — ۱۸/۰۶/۱۴۰۵ (2026-09-09) — کامل ✅
+
+**شاخهٔ اجرایی این سشن:** `arena/01a08527-p2` (طبق قید Arena؛ شاخه‌های `feat/*` فقط بررسی شدند و روی آن‌ها checkout/push انجام نشد).
+- **بررسی وضعیت چت ۴ قبلی:** `feat/b3-d234-chat4` و `feat/redis-cluster-chat4` روی ریموت وجود دارند؛ `feat/pgbouncer-chat4` در `ls-remote` دیده نشد. PR #35 (`feat/b3-d234-chat4`) باز و `CONFLICTING/DIRTY` است؛ PR #36 (`feat/redis-cluster-chat4`) باز است. Resolve مستقیم PR #35 نیازمند کار روی شاخهٔ `feat/b3-d234-chat4` است، اما این سشن اجازهٔ تغییر شاخه ندارد.
+- **PgBouncer فاز ۲.۳:** `docs/PGBOUNCER_SETUP.md` اضافه شد: معماری `Application Nodes → PgBouncer → PostgreSQL Primary`، نمونهٔ کامل `pgbouncer.ini` با `pool_mode=transaction`، userlist امن، env تولید، مانیتورینگ، runbook و سناریوهای شکست.
+- **یکپارچه‌سازی `server/db.js`:** پشتیبانی پیکربندی‌محور برای `PGBOUNCER`، تشخیص URL پورت `6432`، `PGBOUNCER_POOL_MODE`، `PG_IDLE_TIMEOUT_MS`، پیش‌فرض `PG_POOL_MIN=0` در حالت PgBouncer، گزارش metadata در `healthCheck`، و seam تست `__getConfigForTests`.
+- **تست:** `tests/pgbouncer-pooling.js` اضافه شد (۱۲/۱۲): قفل قرارداد مستندات، تنظیمات PgBouncer، اتصال `DATABASE_URL :6432`، `pg.Pool`، override env و health metadata.
+- **مستندات:** `.env.example`، `docs/ROADMAP.md` و `docs/README.md` به‌روز شدند؛ ردیف `PgBouncer Connection Pooling` در ROADMAP با ✅ ثبت شد.
+- **گیت‌ها:** `node build.js --check` ✅، `node tools/check-authz.js` ✅، `node tests/secret-scan.js` ۱۱/۱۱ ✅، `node tests/pgbouncer-pooling.js` ۱۲/۱۲ ✅، `node --expose-gc --max-old-space-size=2048 tests/smoke.js` ۵۴۷/۵۴۷ ✅.
+- **کامیت/پوش:** `3fd983e feat(db): add PgBouncer pooling contract` و `76dc606 docs: update HANDOFF and PgBouncer final report` روی `origin/arena/01a08527-p2` پوش شدند.
+
+
+
+## چت ۳ (E.6 زمان‌بند): تولید خودکار برنامهٔ هفتگی — ۱۸/۰۶/۱۴۰۵ (2026-09-09)
+
 ## آرنا (Agent Mode): Delta Sync Phase 4 — Backpressure/Compression/Warmup/Metrics/Region — ۲۰/۰۶/۱۴۰۵ (2026-09-11) — ✅
 
 - **مأموریت:** پنج شکافِ آماده‌سازیِ مسیرِ دلتا برای مقیاسِ چند-سرویس/چند-منطقه‌ای روی شاخهٔ `feat/delta-phase4` (پایه: main @ `6dbef89` — PR #68). هر گپ = کامیتِ جدا + تستِ جهشی (همهٔ ۲۰ جهش کشته شد).
