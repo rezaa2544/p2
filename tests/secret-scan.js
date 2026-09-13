@@ -43,7 +43,10 @@ function walk(dir, out) {
       if (SKIP_DIRS.has(e.name) || e.name.startsWith('.git')) continue;
       if (SKIP_PATHS.has(path.relative(ROOT, path.join(dir, e.name)))) continue;
       walk(path.join(dir, e.name), out);
-    } else if (e.name.endsWith('.js') || e.name.endsWith('.json') || e.name.endsWith('.html') || e.name.endsWith('.md') || e.name.endsWith('.env') || e.name.endsWith('.sh') || e.name.endsWith('.yml') || e.name.endsWith('.yaml')) {
+    } else if (e.name.endsWith('.js') || e.name.endsWith('.json') || e.name.endsWith('.html') || e.name.endsWith('.md') || e.name.endsWith('.env') || e.name.endsWith('.sh') || e.name.endsWith('.yml') || e.name.endsWith('.yaml')
+      /* S7-9c (دور ۵ چت ۳): PAT زندهٔ setup-deps.ps1 (حادثهٔ #74) از این اسکن
+         نامرئی بود — .ps1/.psm1/.bat/.cmd هم اسکریپت‌های اعتبارسنجی‌خیزند. */
+      || e.name.endsWith('.ps1') || e.name.endsWith('.psm1') || e.name.endsWith('.bat') || e.name.endsWith('.cmd')) {
       out.push(path.relative(ROOT, path.join(dir, e.name)));
     }
   }
