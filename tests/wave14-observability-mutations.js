@@ -25,6 +25,10 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی
+   هرگز بازنویسی نمی‌شود — بازگردانی حذف شد (clear نگاشت). */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('w14o-mut-');
 const SUITE = path.join(ROOT, 'tests', 'wave14-observability.js');
 const F = path.join(ROOT, 'server', 'metrics.js');
 
@@ -34,8 +38,8 @@ function chk(name, cond, extra) {
   else { fail++; console.log('  ❌ ' + name + (extra ? '  —  ' + String(extra).slice(0, 240) : '')); }
 }
 
-function runSuite() {
-  return spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8', timeout: 180000 });
+function runSuite(e) {
+  return spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8', timeout: 180000, env: e });
 }
 
 console.log('▸ خطِّ پایه');
@@ -47,12 +51,13 @@ function mutate(find, replace, killRe, tag) {
   const orig = fs.readFileSync(F, 'utf8');
   try {
     if (!orig.includes(find)) { chk(tag + ' (جهش پیدا نشد)', false, 'anchor missing'); return; }
-    fs.writeFileSync(F, orig.replace(find, replace), 'utf8');
-    const r = runSuite();
+    const mcopy = kit.mutant(F, orig.replace(find, replace)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+    try { fs.chmodSync(mcopy, fs.statSync(F).mode); } catch (_) {}
+    const r = runSuite(kit.env());
     const out = (r.stdout || '') + (r.stderr || '');
     chk(tag + ' کشته شد', r.status !== 0 && killRe.test(out), out.slice(-240).replace(/\n/g, ' '));
   } finally {
-    fs.writeFileSync(F, orig, 'utf8');
+    kit.clear(F); /* نقشهٔ خالی؛ پاک‌سازیِ واقعی در exit */
   }
 }
 
