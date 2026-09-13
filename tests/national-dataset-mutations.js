@@ -2,18 +2,23 @@
 /* ═══════════════════════════════════════════════════════════════════
    national-dataset-mutations.js — جهش‌سنجیِ گیتِ دیتاستِ ملی (P0-4)
    هر جهش: نقصی عمدی در مولد تزریق ⇒ tests/national-dataset-integrity.js
-   باید قرمز شود ⇒ restore. اگر جهشی زنده بماند، گیتِ integrity ضعیف است.
-   ═══════════════════════════════════════════════════════════════════ */
+   باید قرمز شود. اگر جهشی زنده بماند، گیتِ integrity ضعیف است.
+   ─────────────────────────────────────────────────────────────
+   BH-mut فاز ۲ / چت ۸ دور ۵ (الگوی امن p06/p11): جهش در کپیِ جدا
+   (mutant-kit)؛ مولد اصلی هرگز بازنویسی نمی‌شود — restore و
+   process.on('exit') حذف شدند. */
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const cp = require('child_process');
-
+const { execSync } = require('child_process');
+const { session } = require('./helpers/mutant-kit');
+const kit = session('nds-mut-');
 const ROOT = path.join(__dirname, '..');
+kit.remapBuildOutputs();
+
 const GEN = path.join(ROOT, 'tools', 'generate-national-dataset.js');
 const orig = fs.readFileSync(GEN, 'utf8');
-function restore() { fs.writeFileSync(GEN, orig, 'utf8'); }
-process.on('exit', restore);
+const SUITE = 'tests/national-dataset-integrity.js';
 
 const mutations = [
   {
@@ -49,7 +54,16 @@ const mutations = [
   }
 ];
 
-let killed = 0, survived = 0;
+const run = (env, timeout) => {
+  try {
+    const o = execSync(process.execPath + ' ' + SUITE, { stdio: 'pipe', timeout: timeout || 300000, cwd: ROOT, env });
+    return { code: 0, out: String(o) };
+  } catch (e) {
+    return { code: e.status === null ? 1 : e.status, out: String((e.stdout || '') + (e.stderr || '')) };
+  }
+};
+
+let killed = 0, survived = 0, envFails = 0;
 const survivors = [];
 console.log('\nnational-dataset-mutations — هر جهش باید گیتِ integrity را قرمز کند\n');
 for (const m of mutations) {
@@ -59,15 +73,27 @@ for (const m of mutations) {
     console.log('  ❌ جهش اعمال نشد: ' + m.name);
     continue;
   }
-  fs.writeFileSync(GEN, mutated, 'utf8');
-  const r = cp.spawnSync(process.execPath, [path.join(__dirname, 'national-dataset-integrity.js')],
-    { stdio: 'pipe', timeout: 300000 });
-  restore();
-  if (r.status !== 0) { killed++; console.log('  ✅ کشته شد: ' + m.name); }
+  const copy = kit.mutant(GEN, mutated); /* کپیِ جدا؛ مولد اصلی دست‌نخورده */
+  let r = run(kit.env());
+  if (r.out.trim() === '') { r = run(kit.env()); } /* R89 */
+  const envFail = r.out.trim() === '' || /JavaScript heap out of memory|FATAL|aborting/.test(r.out);
+  if (envFail) {
+    envFails++;
+    console.log('  ❌ ' + m.name + ' — خطای محیطی (کرش/بی‌خروجی) — نه کشته و نه زنده شمرده شد');
+    continue;
+  }
+  if (r.code !== 0) { killed++; console.log('  ✅ کشته شد: ' + m.name); }
   else { survived++; survivors.push(m.name); console.log('  ❌ زنده ماند: ' + m.name); }
+  kit.clear(GEN); /* پایانِ این جهش — بدونِ آلودگیِ بعدی */
+  try { fs.unlinkSync(copy); } catch (_) { /* بهترین تلاش */ }
 }
 
-console.log('\n  جمع: ' + killed + ' کشته، ' + survived + ' زنده از ' + mutations.length);
+/* بازبینیِ خطِ پایه (بدون env) — R97: یک retry. جارویِ سایه‌هایِ بازمانده قبلش. */
+kit.sweepStrays();
+let base = run(undefined);
+if (base.code !== 0) base = run(undefined);
+const backGreen = base.code === 0;
+console.log('\n  جمع: ' + killed + ' کشته، ' + survived + ' زنده، ' + envFails + ' خطای محیطی از ' + mutations.length + ' · خطِ پایه: ' + (backGreen ? 'سبز ✅' : 'قرمز ❌'));
 if (survivors.length) { console.log('  زنده‌ها:'); survivors.forEach((s) => console.log('   - ' + s)); }
 console.log('');
-process.exit(survived ? 1 : 0);
+process.exit(survived === 0 && envFails === 0 && backGreen ? 0 : 1);
