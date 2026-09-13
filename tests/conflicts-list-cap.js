@@ -109,6 +109,57 @@ function mkApi(store){
       JSON.stringify(tombs));
   }
 
+  /* ── L5 (بازبین #153 باگ ۱): سنگ‌قبرهای هرس هم زیر سقفِ ۵۰۰۰ می‌مانند ── */
+  {
+    const store = { users: [], sync_conflicts: [], __deleted_records: [] };
+    /* آرایهٔ حذف‌ها از قبل نزدیکِ سقف است */
+    for(let i = 0; i < 4998; i++)
+      store.__deleted_records.push({ c: 'grades', id: 10000 + i, school_id: 1, at: '2026-09-01T00:00:00Z' });
+    process.env.PAYESH_RESOLVED_CONFLICTS_MAX = '1';
+    for(let i = 0; i < 5; i++)
+      store.sync_conflicts.push({ id: 700 + i, school_id: 1, status: 'resolved',
+        created_at: '2026-09-01T00:00:00Z',
+        resolved_at: '2026-09-0' + (1 + i) + 'T00:00:00Z', updated_at: '2026-09-0' + (1 + i) + 'T00:00:00Z' });
+    store.sync_conflicts.push({ id: 901, school_id: 1, status: 'open',
+      base_version: 2, server_version: 4, winner: null,
+      server_state: { id: 55 }, incoming: null,
+      created_at: '2026-09-11T00:00:00Z', updated_at: '2026-09-11T00:00:00Z' });
+    const api = mkApi(store);
+    const res = {}; await api.apiResolve({}, res, { conflict_id: 901, winner: 'server' });
+    delete process.env.PAYESH_RESOLVED_CONFLICTS_MAX;
+    /* ۵ resolvedِ قبلی همه هرس شدند (سقف=۱، تازه‌ترین=901 می‌ماند) ⇒ ۵ سنگ‌قبر
+       به ۴۹۹۸تای موجود اضافه شد؛ بدونِ برش، طول ۵۰۰۳ می‌شد. */
+    chk('L5a برشِ سقفِ ۵۰۰۰ روی __deleted_records اعمال شد (نه ۵۰۰۳)',
+      res._cap.code === 200 && store.__deleted_records.length === 5000,
+      'len=' + store.__deleted_records.length);
+    chk('L5b تازه‌ترین سنگ‌قبرها (تعارض‌های هرس‌شده) ماندند، کهنه‌ترین‌ها بریده شدند',
+      store.__deleted_records.slice(-5).every(t => t.c === 'sync_conflicts')
+      && store.__deleted_records[0].id !== 10000,
+      'tail=' + JSON.stringify(store.__deleted_records.slice(-2)));
+  }
+
+  /* ── L6 (بازبین #153 باگ ۲): UI «داوری‌های اخیر» تازه‌ترین ۵ تا را نشان دهد ──
+     قراردادِ پاسخ (این سوئیت L1d را دارد): resolvedها تازه‌به‌کهنه می‌آیند؛
+     UI باید slice(0,5) بگیرد نه slice(-5).reverse(). این‌جا همان منطقِ
+     انتخابِ src/js/68-sync-conflicts.js را سرـبه‌سر می‌سنجیم: از سورس، خطِ
+     انتخابِ done را استخراج و روی دادهٔ مرتبِ سرور اجرا می‌کنیم. */
+  {
+    const fs = require('fs');
+    const src = fs.readFileSync(__dirname + '/../src/js/68-sync-conflicts.js', 'utf8');
+    const m = src.match(/const done = conflicts\n?\s*\.?filter\(c => c\.status !== 'open'\)([^;]*);/);
+    chk('L6a خطِ انتخابِ «داوری‌های اخیر» در سورس پیدا شد', !!m, 'الگو یافت نشد');
+    if(m){
+      /* دادهٔ سرور: ۱۰ resolved تازه‌به‌کهنه (id 10..1) */
+      const conflicts = [];
+      for(let i = 10; i >= 1; i--)
+        conflicts.push({ id: i, status: 'resolved', created_at: '2026-09-' + String(i).padStart(2, '0') });
+      const done = eval("conflicts.filter(c => c.status !== 'open')" + m[1]);
+      chk('L6b تازه‌ترین ۵ داوری انتخاب می‌شوند (10..6)، نه کهنه‌ترین‌ها',
+        done.length === 5 && done[0].id === 10 && done[4].id === 6,
+        'ids=' + done.map(c => c.id).join(','));
+    }
+  }
+
   console.log('\nconflicts-list-cap: ' + (okc + failc) + ' بررسی — ✅ ' + okc + ' · ❌ ' + failc);
   process.exit(failc ? 1 : 0);
 })();
