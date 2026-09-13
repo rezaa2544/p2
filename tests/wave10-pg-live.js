@@ -125,7 +125,21 @@ async function bootPair(Client) {
   await mig.connect();
   const files = fs.readdirSync(path.join(ROOT, 'migrations'))
     .filter((f) => /^\d+_.*\.sql$/.test(f) && !f.includes('.down.')).sort();
-  for (const f of files) await mig.query(fs.readFileSync(path.join(ROOT, 'migrations', f), 'utf8'));
+  /* 012 (پارتیشن‌بندی #82) عمداً اعمال نمی‌شود: بخشِ T این سوئیت خودش
+     DDL پارتیشن‌بندیِ زنده را می‌سازد و می‌سنجد (قراردادِ WAVE10_DB_SCALE §۳.۲) —
+     همان الگوی skipِ 009 در wave10-retention. اعمالِ 012 ⇒ تصادمِ
+     «already exists» با DDL بخش T. */
+  const applyFiles = files.filter((f) => !f.startsWith('012_'));
+  const { execFileSync } = require('child_process');
+  const migUrl = `postgres://payesh@127.0.0.1:${P_PORT}/payesh`;
+  for (const f of applyFiles) {
+    const sql = fs.readFileSync(path.join(ROOT, 'migrations', f), 'utf8');
+    if (/^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql)) {
+      execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', f), migUrl], { stdio: 'pipe' });
+    } else {
+      await mig.query(sql);
+    }
+  }
   /* بذر: مدرسه + سطرهایِ heapِ attendance در سال‌هایِ مختلف */
   await mig.query("INSERT INTO schools (id, name) VALUES (1, 'مدرسه گیت موج ۱۰') ON CONFLICT (id) DO NOTHING");
   await mig.query(
