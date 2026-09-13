@@ -25369,7 +25369,7 @@ function syncConflictsInner(conflicts){
 if(!conflicts.length)
 return '<div class="card-body" style="padding-top:12px"><div class="muted small" style="padding:6px 0">تعارضی نیست — همهٔ تغییرات بی‌دردسر همگام شده‌اند.</div></div>';
 const open = conflicts.filter(c => c.status === 'open');
-const done = conflicts.filter(c => c.status !== 'open').slice(-5).reverse();
+const done = conflicts.filter(c => c.status !== 'open').slice(0, 5);
 const cards = open.map(c => {
 const inc = c.incoming || {};
 const name = _scStudentName(inc.data);
