@@ -7,6 +7,10 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی
+   هرگز بازنویسی نمی‌شود — بازگردانیِ درجا و finally حذف شدند (clear نگاشت). */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('s8gi-mut-');
 const FILE = path.join(ROOT, 'server/routes/grades.js');
 const original = fs.readFileSync(FILE, 'utf8');
 const mutants = [
@@ -22,11 +26,11 @@ const mutants = [
   }
 ];
 
-function run() {
+function run(e) {
   try {
     return { code: 0, output: execFileSync(process.execPath, ['tests/session8-grades-index.js'], {
       cwd: ROOT, encoding: 'utf8', timeout: 60000,
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'], env: e
     }) };
   } catch (err) {
     return {
@@ -41,9 +45,9 @@ console.log('\n▸ Session 8 grades-index mutation tests');
 try {
   for (const mutant of mutants) {
     if (!original.includes(mutant.from)) throw new Error('Mutation anchor missing: ' + mutant.name);
-    fs.writeFileSync(FILE, original.replace(mutant.from, mutant.to));
-    const result = run();
-    fs.writeFileSync(FILE, original);
+    const mcopy = kit.mutant(FILE, original.replace(mutant.from, mutant.to)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+    try { fs.chmodSync(mcopy, fs.statSync(FILE).mode); } catch (_) {}
+    const result = run(kit.env());
     if (result.code !== 0 && /AssertionError|checks/.test(result.output)) {
       killed++;
       console.log('  ✅ ' + mutant.name + ' — killed');
@@ -53,7 +57,7 @@ try {
     }
   }
 } finally {
-  fs.writeFileSync(FILE, original);
+  kit.clear(FILE); /* نقشهٔ خالی؛ پاک‌سازیِ واقعی در exit */
 }
 const restored = run();
 const restoredGreen = restored.code === 0 && /session8-grades-index: 5\/5 checks/.test(restored.output);

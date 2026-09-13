@@ -8,6 +8,10 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی
+   هرگز بازنویسی نمی‌شود — بازگردانی حذف شد (clear نگاشت). */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('rt-csrf-mut-');
 const FILE = path.join(ROOT, 'server', 'csrf.js');
 const original = fs.readFileSync(FILE, 'utf8');
 const mutants = [
@@ -33,10 +37,10 @@ const mutants = [
   }
 ];
 
-function execute() {
+function execute(e) {
   try {
     const stdout = execFileSync(process.execPath, ['tests/red-team.js', '--csrf-only'], {
-      cwd: ROOT, encoding: 'utf8', timeout: 120000, stdio: ['ignore', 'pipe', 'pipe']
+      cwd: ROOT, encoding: 'utf8', timeout: 120000, stdio: ['ignore', 'pipe', 'pipe'], env: e
     });
     return { code: 0, output: stdout };
   } catch (err) {
@@ -49,9 +53,9 @@ console.log('\n▸ Red-team CSRF mutation tests (M1–M4)');
 try {
   for (const mutant of mutants) {
     if (!original.includes(mutant.from)) throw new Error('Mutation anchor missing: ' + mutant.name);
-    fs.writeFileSync(FILE, original.replace(mutant.from, mutant.to));
-    const result = execute();
-    fs.writeFileSync(FILE, original);
+    const mcopy = kit.mutant(FILE, original.replace(mutant.from, mutant.to)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+    try { fs.chmodSync(mcopy, fs.statSync(FILE).mode); } catch (_) {}
+    const result = execute(kit.env());
     const detected = result.code !== 0 && /RT-09.*❌|1 FAILED/.test(result.output);
     if (detected) {
       killed += 1;
@@ -62,7 +66,7 @@ try {
     }
   }
 } finally {
-  fs.writeFileSync(FILE, original);
+  kit.clear(FILE); /* نقشهٔ خالی؛ پاک‌سازیِ واقعی در exit */
 }
 
 const restored = execute();
