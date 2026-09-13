@@ -10,6 +10,14 @@
 'use strict';
 const { execSync } = require('child_process');
 const fs = require('fs');
+const path = require('path');
+/* BH-mut (الگوی امن p06/p11): جهش در کپیِ جدا + خروجی‌های build در سایه؛
+   نه src/js/27-sync.js و نه index.html اصلی بازنویسی نمی‌شوند (این سوئیت
+   قربانیِ آلودگیِ جهشِ حادثهٔ P1-2 بود — قرمزیِ کاذبِ سه‌باره). */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('sqc-mut-');
+const ROOT = path.join(__dirname, '..');
+kit.remapBuildOutputs();
 
 const SUITE = 'tests/sync-queue-caps.js';
 const MUTS = [
@@ -34,16 +42,16 @@ let killed = 0, envFails = 0;
 for (const m of MUTS) {
   const src0 = fs.readFileSync(m.file, 'utf8');
   if (src0.indexOf(m.bad) < 0) { console.log('  NO-PATTERN ' + m.name + ' در ' + m.file); continue; }
-  fs.writeFileSync(m.file, src0.replace(m.bad, m.mut));
-  execSync('node build.js', { stdio: 'pipe' });
+  kit.mutant(path.join(ROOT, m.file), src0.replace(m.bad, m.mut)); /* کپی هم‌جوار */
+  execSync('node build.js', { stdio: 'pipe', env: kit.env() }); /* build به سایه */
   let out = '', crashed = false;
   const cmd = 'node --max-old-space-size=1500 ' + SUITE;
-  try { execSync(cmd, { stdio: 'pipe', timeout: 120000 }); out = 'PASSED (no failure)'; }
+  try { execSync(cmd, { stdio: 'pipe', timeout: 120000, env: kit.env() }); out = 'PASSED (no failure)'; }
   catch (e) {
     out = String((e.stdout || '') + String(e.stderr || ''));
     if (/JavaScript heap out of memory|FATAL|aborting/.test(out) || out.trim() === '') crashed = true;
   }
-  fs.writeFileSync(m.file, src0);
+  /* بدونِ بازگردانی — سورس اصلی هرگز جهش نگرفت */
   if (crashed) {
     envFails++;
     console.log('  ENV-FAIL ' + m.name + ' — کرش/بی‌خروجی، نه زنده‌ماندن');
@@ -53,9 +61,9 @@ for (const m of MUTS) {
   console.log('  ' + (killedThis ? 'KILLED' : 'SURVIVED!') + ' ' + m.name);
   if (killedThis) killed++;
 }
-execSync('node build.js', { stdio: 'pipe' });
+kit.cleanup(); /* درخت از ابتدا بکر بود؛ rebuildِ پایانی حذف شد */
 let backGreen = false;
-try { execSync('node --max-old-space-size=1500 ' + SUITE, { stdio: 'pipe', timeout: 120000 }); backGreen = true; }
+try { execSync('node --max-old-space-size=1500 ' + SUITE, { stdio: 'pipe', timeout: 120000 }); backGreen = true; } /* بدونِ env → اصلی */
 catch (e) { backGreen = false; }
 console.log('sync-queue-caps-mutations: ' + killed + '/' + MUTS.length + ' killed, baseline-green=' + backGreen + ', env-fail=' + envFails);
 process.exit(killed === MUTS.length && backGreen && envFails === 0 ? 0 : 1);

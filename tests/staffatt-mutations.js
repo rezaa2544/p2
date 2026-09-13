@@ -10,24 +10,31 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و
+   index.html هرگز بازنویسی نمی‌شوند — بازگردانیِ دستی و rebuildِ
+   پایانی حذف شدند. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('sat-mut-');
+kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
 
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 function chk(c, m) { if (c) { pass++; console.log('  ✅ ' + m); } else { fail++; console.log('  ❌ ' + m); } }
 
+let lastFile = null;
 function mutate(file, from, to, killRe, tag) {
   const f = path.join(ROOT, file);
+  if (lastFile && lastFile !== f) kit.clear(lastFile); /* فقط جهشِ جاری فعال */
+  lastFile = f;
   const orig = fs.readFileSync(f, 'utf8');
   const bad = orig.replace(from, to);
   if (bad === orig) { chk(false, tag + ': جهش اعمال نشد (نماد پیدا نشد)'); return; }
-  fs.writeFileSync(f, bad, 'utf8');
-  try {
-    execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
-    const r = spawnSync('node', [path.join(ROOT, 'tests/staffatt2.js')], { cwd: ROOT, encoding: 'utf8' });
+  kit.mutant(f, bad); /* کپی جدا؛ سورس اصلی دست‌نخورده */
+  {
+    execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore', env: kit.env() });
+    const r = spawnSync('node', [path.join(ROOT, 'tests/staffatt2.js')], { cwd: ROOT, encoding: 'utf8', env: kit.env() });
     const out = r.stdout || r.stderr || '';
     chk(r.status !== 0 && killRe.test(out), tag + ' کشته شد');
-  } finally {
-    fs.writeFileSync(f, orig, 'utf8');
   }
 }
 
@@ -40,8 +47,7 @@ mutate('src/js/69-staff-attendance.js',
   '',
   /❌ S7/, 'M2 حذف فیلتر ماه');
 
-/* بازسازی + خطِّ پایه */
-execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
+/* خطِّ پایه (بدون env — سورس‌های اصلی) */
 const b = spawnSync('node', [path.join(ROOT, 'tests/staffatt2.js')], { cwd: ROOT, encoding: 'utf8' });
 chk(b.status === 0, 'خطِّ پایهٔ staffatt2 سبز است');
 const total = pass + fail;

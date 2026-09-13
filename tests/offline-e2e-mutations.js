@@ -12,6 +12,15 @@
 'use strict';
 const { execSync } = require('child_process');
 const fs = require('fs');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی و
+   index.html هرگز بازنویسی نمی‌شوند — restore/بازگردانی و rebuildِ پایانی حذف
+   شدند. همهٔ ویرایش‌های یک جهش (حتی چندتایی در یک فایل) در همان کپیِ واحد
+   تجمیع می‌شوند؛ همیشه فقط جهشِ جاری نگاشتِ فعال دارد. */
+const path = require('path');
+const { session } = require('./helpers/mutant-kit');
+const kit = session('oe2e-mut-');
+const ROOT = path.join(__dirname, '..');
+kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
 
 const SUITE = 'tests/offline-e2e.js';
 const MUTS = [
@@ -62,6 +71,7 @@ const MUTS = [
 ];
 
 let killed = 0, envFails = 0;
+let active = []; /* فایل‌های دارای نگاشتِ فعال — همیشه فقط جهشِ جاری */
 for (const m of MUTS) {
   const edits = m.edits || [{ file: m.file, bad: m.bad, mut: m.mut }];
   const originals = new Map();
@@ -72,19 +82,31 @@ for (const m of MUTS) {
     if (fs.readFileSync(ed.file, 'utf8').indexOf(ed.bad) < 0) { missing = ed; break; }
   }
   if (missing) {
-    for (const [f, src] of originals) fs.writeFileSync(f, src);
     console.log('  NO-PATTERN ' + m.name + ' در ' + missing.file);
     continue;
   }
-  for (const ed of edits) fs.writeFileSync(ed.file, fs.readFileSync(ed.file, 'utf8').replace(ed.bad, ed.mut));
-  try { execSync('node build.js', { stdio: 'pipe' }); } catch (e) {}
+  /* همهٔ ویرایش‌های این جهش (احتمالاً چندتایی در یک فایل) در یک کپیِ جدا تجمیع می‌شوند */
+  const byFile = new Map();
+  for (const ed of edits) {
+    const cur = byFile.has(ed.file) ? byFile.get(ed.file) : originals.get(ed.file);
+    byFile.set(ed.file, cur.replace(ed.bad, ed.mut));
+  }
+  for (const f of active) kit.clear(path.join(ROOT, f));
+  active = [...byFile.keys()];
+  for (const f of active) {
+    const abs = path.join(ROOT, f);
+    const mcopy = kit.mutant(abs, byFile.get(f)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+    try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {}
+  }
+  try { execSync('node build.js', { stdio: 'pipe', cwd: ROOT, env: kit.env() }); } catch (e) {}
   let out = '', crashed = false;
-  try { execSync('node ' + SUITE, { stdio: 'pipe', timeout: 180000 }); out = 'PASSED'; }
+  try { execSync('node ' + SUITE, { stdio: 'pipe', timeout: 180000, cwd: ROOT, env: kit.env() }); out = 'PASSED'; }
   catch (e) {
     out = String((e.stdout || '') + String(e.stderr || ''));
     if (out.trim() === '' || /FATAL(?!.*❌)/.test(out) && !/❌/.test(out)) crashed = /❌/.test(out) ? false : true;
   }
-  for (const [f, src] of originals) fs.writeFileSync(f, src);
+  for (const f of active) kit.clear(path.join(ROOT, f));
+  active = [];
   const killedThis = /❌/.test(out) && m.expectFail.some((t) => {
     const re = new RegExp('❌[^\\n]*' + t + '\\b');
     return re.test(out);
@@ -96,7 +118,6 @@ for (const m of MUTS) {
   }
   else console.log('  SURVIVED! ' + m.name);
 }
-try { execSync('node build.js', { stdio: 'pipe' }); } catch (e) {}
 let backGreen = false;
 try { execSync('node ' + SUITE, { stdio: 'pipe', timeout: 180000 }); backGreen = true; } catch (e) {}
 console.log('offline-e2e-mutations: ' + killed + '/' + MUTS.length + ' killed'

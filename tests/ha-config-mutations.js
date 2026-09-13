@@ -8,6 +8,15 @@
 const { execSync } = require('child_process');
 const fs = require('fs');
 
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی
+   هرگز بازنویسی نمی‌شود — restore/بازگردانیِ درجا حذف شد. همیشه فقط یک جهشِ
+   فعال است (نگاشتِ فایلِ قبلی پیش از جهشِ تازه پاک می‌شود). بیتِ اجراییِ
+   کپی از اصلی حفظ می‌شود تا چک‌های bash -n/X_OK معنای خود را نگه دارند. */
+const path = require('path');
+const { session } = require('./helpers/mutant-kit');
+const kit = session('ha-mut-');
+const ROOT = path.join(__dirname, '..');
+
 const SUITES = { ha: 'node tests/ha-config.js', dr: 'node tests/dr-runbook.js' };
 const WATCH = ['infra/postgres/docker-compose.ha.yml', 'infra/redis/docker-compose.sentinel.yml',
   'infra/redis/sentinel.conf.template', 'tools/pitr-restore.sh', 'docs/DR_RUNBOOK.md'];
@@ -53,24 +62,26 @@ const MUTS = [
   }
 ];
 
-function restore() { WATCH.forEach((f) => fs.writeFileSync(f, FILES[f])); }
+let prevAbs = null;
 
 let killed = 0;
 console.log('\n▸ جهش‌های زیرساختِ HA/PITR/Failover (M1–M6)');
-try {
-  MUTS.forEach((m) => {
+MUTS.forEach((m) => {
     const src = fs.readFileSync(m.file, 'utf8');
     if (src.indexOf(m.bad) < 0) { console.log('  ❌ ' + m.name + ': لنگر یافت نشد'); return; }
-    fs.writeFileSync(m.file, m.replaceAll ? src.split(m.bad).join(m.mut) : src.replace(m.bad, m.mut));
+        const abs = path.join(ROOT, m.file);
+    if (prevAbs && prevAbs !== abs) kit.clear(prevAbs);
+    const mcopy = kit.mutant(abs, m.replaceAll ? src.split(m.bad).join(m.mut) : src.replace(m.bad, m.mut)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+    try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {} /* حفظِ مود (بیتِ اجرایی) */
+    prevAbs = abs;
     let out = '', code = 0;
-    try { out = execSync(SUITES[m.suite], { stdio: 'pipe', timeout: 120000 }).toString(); }
+    try { out = execSync(SUITES[m.suite], { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }).toString(); }
     catch (e) { code = (e.status === null ? 1 : e.status); out = ((e.stdout || '') + (e.stderr || '')).toString(); }
     const ok = code !== 0 && out.indexOf('❌ ' + m.expectFail) >= 0;
     if (ok) { killed++; console.log('  ✅ ' + m.name + ' کشته شد'); }
     else console.log('  ❌ ' + m.name + ' زنده ماند' + (code === 0 ? ' (خروجیِ سوئیت ۰ شد)' : ' (❌ ' + m.expectFail + ' دیده نشد)'));
-    restore();
   });
-} finally { restore(); }
+if (prevAbs) kit.clear(prevAbs); /* نقشهٔ خالی برای شفافیت؛ پاک‌سازیِ واقعی در exit */
 
 let baseOk = true;
 try { execSync(SUITES.ha, { stdio: 'pipe', timeout: 120000 }); execSync(SUITES.dr, { stdio: 'pipe', timeout: 120000 }); }

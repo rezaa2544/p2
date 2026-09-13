@@ -55,7 +55,11 @@ function syncConflictsInner(conflicts){
   if(!conflicts.length)
     return '<div class="card-body" style="padding-top:12px"><div class="muted small" style="padding:6px 0">تعارضی نیست — همهٔ تغییرات بی‌دردسر همگام شده‌اند.</div></div>';
   const open = conflicts.filter(c => c.status === 'open');
-  const done = conflicts.filter(c => c.status !== 'open').slice(-5).reverse();
+  /* بازخورد بازبین #153 (باگ ۲): پاسخِ apiList حالا ترتیبِ نمایشی دارد
+     (بازها اول، هر گروه تازه‌به‌کهنه) — slice(-5).reverse() قراردادِ قبلی،
+     با ۵+ داوری «داوری‌های اخیر» را کهنه‌ترین‌ها می‌کرد. تازه‌ترین ۵ تا =
+     همان ۵ تای اول؛ معکوس هم لازم نیست. */
+  const done = conflicts.filter(c => c.status !== 'open').slice(0, 5);
   const cards = open.map(c => {
     const inc = c.incoming || {};
     const name = _scStudentName(inc.data);
