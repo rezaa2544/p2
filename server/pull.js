@@ -399,7 +399,9 @@ function createPull(ctx) {
     /* Delta Phase 4 — gap 2: فشرده‌سازیِ مذاکره‌شده (gzip ارجح، br جایگزین)
        + سنجه‌های حجم (خام و سیم). res بدونِ writeHead (هارنس قدیمی) =
        عیناً مسیرِ پیشین. */
-    const encInfo = sendJsonCompressed(res, req, 200, body, sendJson);
+    /* S9-3: فشرده‌سازی ناهمگام است — await لازم است تا پاسخ و متریک‌ها
+       پیش از بازگشتِ هندلر کامل شوند (قراردادِ پیشین از دیدِ فراخوان). */
+    const encInfo = await sendJsonCompressed(res, req, 200, body, sendJson);
     metrics.observe('payesh_sync_delta_size_bytes', [], encInfo.rawBytes);
     metrics.observe('payesh_sync_delta_wire_bytes', [], encInfo.wireBytes);
     if (encInfo.encoding) {

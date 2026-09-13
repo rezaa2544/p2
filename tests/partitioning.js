@@ -133,8 +133,8 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
     JSON.stringify(c5.calls.map((x) => x.sql.slice(0, 30))));
 
   /* ── U6: قرارداد مهاجرت ۰۰9 ── */
-  const up9 = fs.readFileSync(path.join(ROOT, 'migrations', '009_partition_grades_attendance.sql'), 'utf8');
-  const down9 = fs.readFileSync(path.join(ROOT, 'migrations', '009_partition_grades_attendance.down.sql'), 'utf8');
+  const up9 = fs.readFileSync(path.join(ROOT, 'migrations', '012_partition_grades_attendance.sql'), 'utf8');
+  const down9 = fs.readFileSync(path.join(ROOT, 'migrations', '012_partition_grades_attendance.down.sql'), 'utf8');
   chk('U6a هر دو جدولِ پارتیشن‌شده ساخته می‌شوند', /CREATE TABLE IF NOT EXISTS attendance_p/.test(up9) && /CREATE TABLE IF NOT EXISTS grades_p/.test(up9));
   chk('U6b PARTITION BY RANGE (created_at)', /PARTITION BY RANGE \(created_at\)/.test(up9));
   chk('U6c PK جدید (id, created_at)', /PRIMARY KEY \(id, created_at\)/.test(up9));
@@ -254,7 +254,7 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
       }
     })();
     const mig = await new Promise((res, rej) => {
-      execFile('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', '009_partition_grades_attendance.sql'), LIVE_URL],
+      execFile('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', '012_partition_grades_attendance.sql'), LIVE_URL],
         { env: Object.assign({}, process.env, { PGPASSWORD: (LIVE_URL.match(/\/\/[^:]+:([^@]+)@/) || [])[1] || process.env.PGPASSWORD }) },
         (err, so, se) => err ? rej(new Error(String(se || err.message).split('\n').filter((l) => /ERROR|FATAL/.test(l)).join(' | ').slice(0, 160) || err.message)) : res());
     });
@@ -462,7 +462,7 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
     const dbg = await q("SELECT id, created_at FROM grades n WHERE NOT EXISTS (SELECT 1 FROM grades_old o WHERE o.id = n.id AND o.created_at = n.created_at) ORDER BY id LIMIT 6");
     console.log('     [L8c-debug] inserted id=' + insRow.rows[0].id + ' · سطرهای نو-تنها: ' + JSON.stringify(dbg.rows));
     const before = await q('SELECT (SELECT count(*) FROM grades) AS g, (SELECT count(*) FROM grades_old) AS go, (SELECT count(*) FROM grades WHERE id NOT IN (SELECT id FROM grades_old)) AS extra, (SELECT count(*) FROM grades n WHERE NOT EXISTS (SELECT 1 FROM grades_old o WHERE o.id = n.id AND o.created_at = n.created_at)) AS extra_pair');
-    psql(path.join(ROOT, 'migrations', '009_partition_grades_attendance.down.sql'));
+    psql(path.join(ROOT, 'migrations', '012_partition_grades_attendance.down.sql'));
     const notPart = await q("SELECT count(*)::int AS n FROM pg_partitioned_table pt JOIN pg_class c ON c.oid = pt.partrelid WHERE c.relname IN ('grades','attendance')");
     chk('L8a وارون‌سازی: جدول‌ها دیگر پارتیشن‌شده نیستند', notPart.rows[0].n === 0, String(notPart.rows[0].n));
     const after = await q('SELECT (SELECT count(*) FROM grades) AS g');
@@ -513,7 +513,7 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
        چانکِ اول کامیت شده و دیده می‌شود — psql با SIGKILL می‌میرد؛ بک‌اندِ
        سرور در NOTICEِ چانکِ بعدی متوجهِ سوکتِ مرده می‌شود و می‌ایستد. */
     const killed = await new Promise((res) => {
-      const ps = spawn('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', '009_partition_grades_attendance.sql'), LIVE_URL], { env: process.env });
+      const ps = spawn('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', '012_partition_grades_attendance.sql'), LIVE_URL], { env: process.env });
       let fired = false, closed = false;
       const finish = (sig) => { if (!closed) { closed = true; clearInterval(pol); res({ sig, fired }); } };
       const pol = setInterval(() => {
@@ -547,7 +547,7 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
     }
     chk('L11a kill بعد از اولین چانک ⇒ کپی ناقصِ کامیت‌شده (چانک‌بندی واقعی)', killed.fired && partial.rows[0].n > 0 && partial.rows[0].n < 320000, 'fired=' + killed.fired + ' sig=' + killed.sig + ' n=' + partial.rows[0].n + ' maxid=' + partial.rows[0].mx);
     /* رانِ کامل: ازسرگیری از مرز + ادامه تا swap */
-    const r2 = await psqlF(path.join(ROOT, 'migrations', '009_partition_grades_attendance.sql'));
+    const r2 = await psqlF(path.join(ROOT, 'migrations', '012_partition_grades_attendance.sql'));
     const v11 = await q("SELECT (SELECT count(*) FROM grades)::int AS g, (SELECT count(*) FROM grades_old)::int AS g_old, (SELECT count(*) FROM attendance)::int AS a, (SELECT count(*) FROM attendance_old)::int AS a_old, (SELECT relkind FROM pg_class WHERE relname='grades') AS rk");
     const extra = await q('SELECT count(*)::int AS n FROM grades WHERE id > 320000');
     const fks2 = await q("SELECT count(*)::int AS n FROM pg_constraint WHERE conrelid IN ('grades'::regclass, 'attendance'::regclass) AND contype='f' AND convalidated");

@@ -65,23 +65,23 @@ function runSuite() {
   chk('M4 «predicate آب‌شده» کشته شد', runSuite() !== 0);
   fs.writeFileSync(path.join(ROOT, 'server', 'syncdelta.js'), orig, 'utf8');
 
-  orig = mutate('migrations/008_delta_chg_id.sql',
+  orig = mutate('migrations/011_delta_chg_id.sql',
     "CREATE INDEX IF NOT EXISTS idx_grades_chg_id           ON grades           (chg_id);",
     "/*MUT: index removed*/");
   chk('M5 «یکی از ۱۴ ایندکس حذف» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'migrations', '008_delta_chg_id.sql'), orig, 'utf8');
+  fs.writeFileSync(path.join(ROOT, 'migrations', '011_delta_chg_id.sql'), orig, 'utf8');
 
-  orig = mutate('migrations/008_delta_chg_id.sql',
+  orig = mutate('migrations/011_delta_chg_id.sql',
     "CREATE TRIGGER trg_%s_chg BEFORE INSERT OR UPDATE ON %I",
     "CREATE TRIGGER trg_%s_chg AFTER INSERT OR UPDATE ON %I /*MUT*/");
   chk('M6 «تریگر AFTER» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'migrations', '008_delta_chg_id.sql'), orig, 'utf8');
+  fs.writeFileSync(path.join(ROOT, 'migrations', '011_delta_chg_id.sql'), orig, 'utf8');
 
-  orig = mutate('migrations/008_delta_chg_id.down.sql',
+  orig = mutate('migrations/011_delta_chg_id.down.sql',
     "DROP SEQUENCE IF EXISTS payesh_chg_seq;",
     "/*MUT: sequence drop removed*/");
   chk('M7 «وارون‌سازیِ سکوئنس حذف» کشته شد', runSuite() !== 0);
-  fs.writeFileSync(path.join(ROOT, 'migrations', '008_delta_chg_id.down.sql'), orig, 'utf8');
+  fs.writeFileSync(path.join(ROOT, 'migrations', '011_delta_chg_id.down.sql'), orig, 'utf8');
 
   chk('پایه پس از بازگردانی سبز است', runSuite() === 0);
 

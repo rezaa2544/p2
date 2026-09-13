@@ -7,7 +7,7 @@
 > upsert (§۳).
 >
 > **نوبتِ سوم (Arena/Agent Mode):** ۲۰۲۶-۰۹-۱۱ — **اجرا و تأییدِ زنده بر PostgreSQL
-> 17.11**: مهاجرتِ `009_partition_grades_attendance` (چهارفازی، با دادهٔ 180k)
+> 17.11**: مهاجرتِ `012_partition_grades_attendance` (چهارفازی، با دادهٔ 180k)
 > + رفعِ مسدودکنندهٔ persistOp (§۷) + **اتصالِ chg_id به کرسرِ v3** (§۸).
 >
 > **تصمیمِ کاربر (پاسخ به سؤالِ دامنه):** کدِ DB-layer (read-replica pool +
@@ -23,7 +23,7 @@
 | مورد | وضعیتِ قبل | تغییرِ این موج |
 |---|---|---|
 | **Connection Pooling** | موجود — `server/db.js` از `pg.Pool` واقعی با min2/max20، timeout، auto-reconnect استفاده می‌کند | تقویت‌شده: pool هایِ primary و read-replica + مشاهده‌پذیری (`poolStats`/health) |
-| **Read Replica** | **نبود** — هیچ `READ_*`، هیچ pool خواندنی، همهٔ خوانش‌ها روی pool نوشتن | **افزوده شد** — pool رپلیکای اختیاری (`READ_DATABASE_URL`) + `queryRead()` |
+| **Read Replica** | **نبود** — هیچ `READ_*`، هیچ pool خواندنی، همهٔ خوانش‌ها روی pool نوشتن | **افزوده شد** — pool رپلیکای اختیاری (`READ_DATABASE_URL`) + `queryRead()` — ✅ از ۲۰۲۶-۰۹-۱۲ رویِ streaming replica *واقعی* هم اثبات‌شده (`tests/wave10-pg-live.js`) |
 | **Partitioning** | **نبود** — `attendance`/`grades`/`notifications` جداولِ heap ساده‌اند | **اجرا و تأییدِ زنده (نوبت ۳):** مهاجرتِ ۰۰۹ — grades/attendance → `PARTITION BY RANGE (created_at)` سالانه + DEFAULT؛ persistOp با env-flag مسیرِ پارتیشن‌شده گرفت (§۷) |
 | **PgBouncer** | **نبود** (سندِ RELIABILITY_DR_PLAN به آن به‌عنوان لایهٔ استقرار اشاره دارد) | ثبت در §۴ (استقرارِ pending) |
 
@@ -226,7 +226,7 @@ CREATE TRIGGER trg_attendance_chg BEFORE INSERT OR UPDATE ON attendance_p
 می‌گیرد؛ فیدِ دلتا می‌شود `WHERE chg_id > $watermark` — مرتب، بدونِ skew.
 
 **تحویل (کامیتِ این نوبت):**
-- `migrations/008_delta_chg_id.sql` (+ `.down.sql`): سکوئنسِ `payesh_chg_seq` +
+- `migrations/011_delta_chg_id.sql` (+ `.down.sql`): سکوئنسِ `payesh_chg_seq` +
   ستونِ `chg_id BIGINT` + تریگرِ `BEFORE INSERT OR UPDATE` (روی مسیرِ
   `ON CONFLICT DO UPDATE` هم فعال می‌ماند ⇒ persistOp دست‌نخورده) + backfill +
   **۱۴ ایندکسِ `(chg_id)`** روی ۱۴ جدولِ تراکنشیِ دلتا (فهرستِ ۰۰۵ منهای
@@ -261,7 +261,7 @@ backfill را دسته‌ای با id-range در پنجرهٔ نگهداری ا�
 `001→008` سپس `009` روی همان دیتابیس — دقیقاً مثلِ تولید: فیکسچر روی
 **heap** درج شد و بعد ۰۰۹ اجرا شد تا مسیرِ کپیِ واقعی تست شود.
 
-### ۷.۱ مهاجرتِ `009_partition_grades_attendance.sql` (+ `.down.sql`)
+### ۷.۱ مهاجرتِ `012_partition_grades_attendance.sql` (+ `.down.sql`)
 
 - **Phase A (attendance):** ساختِ `attendance_p` به‌صورتِ
   `PARTITION BY RANGE (created_at)` + پارتیشن‌های سالانهٔ `y2025`/`y2026`/`y2027`

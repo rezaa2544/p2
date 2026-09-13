@@ -254,6 +254,12 @@ var ACTION_ROLES = {
   'tnote-save':    ['teacher'],
   'tnote-del':     ['teacher'],
   'att-all':       ['teacher','manager'],
+  /* موج ۲۱ — کلاس چندپایه (مدارس روستایی): تیک و ثبتِ گروهی همان
+     پیش‌نویسِ حضور را می‌نویسند؛ نمرهٔ گروهی همان grades را. */
+  'mg-tab':        ['teacher','manager','superadmin'],
+  'mg-att-set':    ['teacher','manager'],
+  'mg-att-col':    ['teacher','manager'],
+  'mg-grades-save':['teacher','manager'],
   /* خروج از پیش‌گزینش زنگ (گام ۳ دور ۶۳): فقط فیلتر را عوض می‌کند */
   'att-reset-class': ['teacher','manager'],
   'grade-reset-auto': ['teacher','manager'],

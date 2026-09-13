@@ -12,23 +12,28 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی هرگز
+   بازنویسی نمی‌شود — بازگردانیِ دستی حذف شد. این سوئیت build ندارد. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('hi-mut-');
 
 const ROOT = path.join(__dirname, '..');
 const NODE = process.execPath;
 let pass = 0, fail = 0;
 function chk(c, m) { if (c) { pass++; console.log('  ✅ ' + m); } else { fail++; console.log('  ❌ ' + m); } }
 
+let lastFile = null;
 function mutate(from, to, killRe, tag) {
   const f = path.join(ROOT, 'server/health-index.js');
+  if (lastFile && lastFile !== f) kit.clear(lastFile);
+  lastFile = f;
   const orig = fs.readFileSync(f, 'utf8');
   if (orig.indexOf(from) < 0) { chk(false, tag + ': جهش اعمال نشد (نماد پیدا نشد)'); return; }
-  fs.writeFileSync(f, orig.replace(from, to), 'utf8');
-  try {
-    const r = spawnSync(NODE, [path.join(ROOT, 'tests/health-index.js')], { cwd: ROOT, encoding: 'utf8' });
+  kit.mutant(f, orig.replace(from, to)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
+  {
+    const r = spawnSync(NODE, [path.join(ROOT, 'tests/health-index.js')], { cwd: ROOT, encoding: 'utf8', env: kit.env() });
     const done = /سوئیت سلامت:/.test(r.stdout || '');
     chk(done && r.status !== 0 && killRe.test(r.stdout || ''), tag + ' کشته شد');
-  } finally {
-    fs.writeFileSync(f, orig, 'utf8');
   }
 }
 

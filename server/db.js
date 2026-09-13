@@ -423,19 +423,74 @@ async function readOne(name, id) {
  * @returns {Promise<{ok:boolean, hydrated:number, skipped:Array}>}
  */
 async function hydrateStoreFromPg(store) {
-  const out = { ok: true, hydrated: 0, skipped: [] };
+  const out = { ok: true, hydrated: 0, skipped: [], capped: [], env_skipped: [], mirror_incomplete: false };
   if (!store || typeof store !== 'object') return out;
+  /* Wave 18 — هیدراتاسیونِ مقیّد (مانورِ بارِ ملی): در مقیاسِ ملی، بارگذاریِ
+     کلِ جدول‌ها در RAM ممکن نیست (کاربران ۱۰M ⇒ چند GB شیءِ JS؛ OOM در بوت).
+     دو env اختیاری، هر دو پیش‌فرض خاموش (رفتارِ فعلی حفظ می‌شود):
+       PAYESH_PG_HYDRATE_SKIP=t1,t2      — این جدول‌ها اصلاً هیدراته نشوند
+       PAYESH_PG_HYDRATE_LIMIT=u:5000    — سقفِ سطرِ per-جدول (ORDER BY id)
+     مسیرهایِ خواندنِ زنده (pgLive ⇒ db.readCollection/executePagedList)
+     همچنان مستقیم از PG می‌خوانند؛ سقف فقط «آینهٔ درون‌حافظه‌ایِ بوت» را
+     مقیّد می‌کند. یافتهٔ مانور: auth فعلاً از همین آینه می‌خواند (اسکنِ
+     خطیِ store.users) — در مقیاسِ واقعی باید به جست‌وجویِ ایندکس‌دارِ PG
+     برود (users.phone ایندکس ندارد). */
+  const skipEnv = String(process.env.PAYESH_PG_HYDRATE_SKIP || '')
+    .split(',').map((s) => s.trim()).filter(Boolean);
+  const limEnv = {};
+  String(process.env.PAYESH_PG_HYDRATE_LIMIT || '')
+    .split(',').map((s) => s.trim()).filter(Boolean).forEach((p) => {
+      const i = p.indexOf(':');
+      if (i > 0) {
+        const t = p.slice(0, i).trim(), n = Number(p.slice(i + 1));
+        if (t && Number.isFinite(n) && n >= 0) limEnv[t] = n;
+      }
+    });
   for (const key of SCHEMA_TABLES) {
     if (!isPgReadableTable(key)) continue;
+    if (skipEnv.indexOf(key) > -1) { out.env_skipped.push(key); continue; }
     try {
-      store[key] = await readCollection(key);
+      const cap = limEnv[key];
+      if (cap !== undefined) {
+        const res = await pool.query(`SELECT * FROM "${key}" ORDER BY id LIMIT $1`, [cap]);
+        store[key] = reviveRows(res.rows);
+        out.capped.push(key + ':' + cap);
+      } else {
+        store[key] = await readCollection(key);
+      }
       out.hydrated++;
     } catch (e) {
       out.skipped.push(key);
       console.warn('[DB] Hydration skipped for ' + key + ':', e.message);
     }
   }
+  /* بازخوردِ بازبینِ PR #94: آینهٔ سقف‌دار/ناقص هرگز نباید روی فایلِ
+     store.json نوشته شود — فایلِ کاملِ قبلی را می‌کُشد. این پرچم به
+     index.js می‌گوید مسیرهای persist فایل را در PG-live ببندد. */
+  out.mirror_incomplete = out.capped.length > 0 || out.env_skipped.length > 0;
   return out;
+}
+
+/**
+ * آیا آینهٔ درون‌حافظه‌ای را باید روی store.json نوشت؟
+ * خالث/خالص — قابلِ تستِ مستقیم (tests/wave18-hydration-guards.js).
+ * فقط وقتی «نه» می‌گوید که PG مرجع است و هیدراتاسیون عمداً بریده
+ * بوده (capped/env-skipped). هر حالتِ دیگر — از جمله آینهٔ کامل و
+ * حالتِ بدونِ PG — رفتارِ قبلی (نوشتن) را حفظ می‌کند.
+ */
+function shouldPersistMirrorFile(pgLive, hydrateResult){
+  return !(pgLive && hydrateResult && hydrateResult.mirror_incomplete);
+}
+
+/**
+ * آیا سقفِ هیدراتاسیون جدولِ users را بریده؟ (هشدارِ بوت: کاربرانِ
+ * بیرونِ سقف با auth مبتنی بر آینه نمی‌توانند وارد شوند — فقط برای
+ * محیط‌های آزمونِ بار معنا دارد.)
+ */
+function hydrationUsersCapped(h){
+  return !!(h && Array.isArray(h.capped) && h.capped.some(function(s){
+    return String(s).split(':')[0] === 'users';
+  }));
 }
 
 /**
@@ -777,6 +832,8 @@ function __setReprobeDelayForTests(ms) {
 module.exports = {
   init,
   isPostgres,
+  shouldPersistMirrorFile,
+  hydrationUsersCapped,
   getPool,
   isReplicaActive,
   getReadPool,

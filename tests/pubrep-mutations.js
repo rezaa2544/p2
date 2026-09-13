@@ -13,6 +13,11 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
+/* BH-mut (الگوی امن p06/p11): جهش در کپیِ جدا + خروجی‌های build در سایه؛
+   سورس‌ها و index.html اصلی هرگز بازنویسی نمی‌شوند. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('pubrep-mut-');
+kit.remapBuildOutputs();
 
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0, envFails = 0;
@@ -23,12 +28,12 @@ function mutate(file, from, to, suite, killRe, tag) {
   const orig = fs.readFileSync(f, 'utf8');
   const bad = orig.replace(from, to);
   if (bad === orig) { chk(false, tag + ': جهش اعمال نشد (نماد پیدا نشد)'); return; }
-  fs.writeFileSync(f, bad, 'utf8');
-  try {
-  const runOnce = () => spawnSync('node', [path.join(ROOT, suite)], { cwd: ROOT, encoding: 'utf8' });
+  kit.mutant(f, bad); /* کپی هم‌جوار — سورس اصلی دست‌نخورده */
+  {
+  const runOnce = () => spawnSync('node', [path.join(ROOT, suite)], { cwd: ROOT, encoding: 'utf8', env: kit.env() });
   const completed = (o) => /بررسی — /.test(o || '');
 
-  execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
+  execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore', env: kit.env() }); /* build به سایه */
   let r = runOnce();
   if (r.status !== 0 && !killRe.test(r.stdout) && !completed(r.stdout)) {
     const r2 = runOnce();
@@ -40,8 +45,6 @@ function mutate(file, from, to, suite, killRe, tag) {
     return;
   }
   chk(r.status !== 0 && killRe.test(r.stdout), tag);
-  } finally {
-    fs.writeFileSync(f, orig, 'utf8');
   }
 }
 
@@ -75,8 +78,8 @@ mutate('src/js/08-dashboard.js',
   "if(false){}",
   'tests/pubrep.js', /❌ P8/, 'M6 برداشتنِ گیت درونی pubrepPrint');
 
-/* بازسازی + خطِّ پایه */
-execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
+/* خطِّ پایه — بدونِ env → سورس‌های اصلی (بازسازیِ پایانی حذف شد: هرگز آلوده نشدند) */
+kit.cleanup();
 const b = spawnSync('node', [path.join(ROOT, 'tests/pubrep.js')], { cwd: ROOT, encoding: 'utf8' });
 chk(b.status === 0, 'خطِّ پایهٔ pubrep سبز است');
 

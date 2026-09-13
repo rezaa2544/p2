@@ -2,10 +2,73 @@
    مودال و فرم
    openModal, modalTpl, askConfirm و سازنده‌های فیلد: f, inp, sel, opt, V.
    ═══════════════════════════════════════════════════════════════════ */
-function openModal(html){$('#modal').innerHTML=`<div class="modal-back" data-act="modal-back"><div class="modal">${html}</div></div>`;if(typeof a11yScrollablePass==='function')a11yScrollablePass($('#modal'));}
-function closeModal(){$('#modal').innerHTML='';}
+/* ── دسترس‌پذریِ صفحه‌کلید در مودال (WCAG 2.1 §2.1.2 No Keyboard Trap / §2.4.3 Focus Order) ──
+   openModal:
+     • عنصرِ فعالِ لحظهٔ باز شدن را نگه می‌دارد تا closeModal فوکوس را برگرداند
+     • role=dialog + aria-modal رویِ ظرف
+     • فوکوسِ اولیه به نخستین کنترلِ مودال می‌رود
+     • trap: رویدادِ keydown رویِ #modal، Tab/Shift+Tab را درونِ مودال می‌چرخاند
+   closeModal: فوکوس را به بازکننده برمی‌گرداند (اگر هنوز در سند باشد). */
+function _modalFocusables(){
+  const m=$('#modal') && $('#modal').querySelector('.modal');
+  if(!m)return[];
+  const sel='button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
+  return [...m.querySelectorAll(sel)].filter(el=>!el.disabled&&el.offsetParent!==null);
+}
+function _modalTrap(e){
+  if(e.key!=='Tab')return;
+  const list=_modalFocusables();
+  if(!list.length)return;
+  const first=list[0],last=list[list.length-1];
+  if(e.shiftKey){
+    if(document.activeElement===first||!$('#modal').contains(document.activeElement)){e.preventDefault();last.focus();}
+  }else{
+    if(document.activeElement===last||!$('#modal').contains(document.activeElement)){e.preventDefault();first.focus();}
+  }
+}
+let _modalOpener=null;
+function openModal(html){
+  const host=$('#modal');
+  /* S9-4 (باگ‌هانت نشست ۹): اگر مودالی از قبل باز است، بازکننده را *بازنویسی
+     نکن*. در زنجیرهٔ مودالِ تودرتو (دکمه‌ای درونِ مودال A مودالِ B را باز
+     می‌کند — مسیرهای واقعیِ مخزن: dorm-assign-pick، sub-del، hw-view،
+     leave-new و ۳۲ فراخوانِ askConfirm) عنصرِ فعالِ لحظهٔ باز شدن از داخلِ A
+     است و همین‌جا با جایگزینیِ innerHTML نابود می‌شود؛ ذخیره‌کردنِ آن یعنی
+     سوزاندنِ مسیرِ بازگشتِ فوکوس (document.contains رد می‌کند و فوکوس روی
+     <body> می‌افتد). بازکنندهٔ اصلی همان دکمهٔ صفحه است و باید بماند. */
+  if(!(host&&host.innerHTML.trim())){
+    _modalOpener=(document.activeElement&&document.activeElement!==document.body)?document.activeElement:null;
+  }
+  $('#modal').innerHTML=`<div class="modal-back" data-act="modal-back"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;
+  if(typeof a11yScrollablePass==='function')a11yScrollablePass($('#modal'));
+  /* فوکوسِ اولیه: نخستین کنترلِ فرم اگر بود، وگرنه نخستین فوکوس‌پذیر (دکمهٔ ✕) */
+  const list=_modalFocusables();
+  const target=list.find(el=>/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName))||list[0];
+  if(target){try{target.focus();}catch(e){}}
+  /* S9-4: ثبتِ trap. افزودنِ شنوندهٔ *یکسان* (نوع + callback + capture) در DOM
+     ادغام می‌شود، پس بازِ تودرتو هم شنوندهٔ دومی نمی‌سازد و نیازی به removeِ
+     پیش از add نیست (AF8 در tests/a11y-modal-focus.js همین را قفل می‌کند). */
+  $('#modal').addEventListener('keydown',_modalTrap);
+}
+function closeModal(){
+  const el=$('#modal');
+  const wasOpen=!!(el&&el.innerHTML.trim());
+  if(el){el.removeEventListener('keydown',_modalTrap);el.innerHTML='';}
+  /* بدونِ مودالِ باز، هیچ فوکوسی جابه‌جا نمی‌شود (closeModal در جریان‌های
+     عادی هم بی‌قید صدا زده می‌شود و نباید فوکوسِ کاربر را برُباید). */
+  if(!wasOpen){_modalOpener=null;return;}
+  if(_modalOpener&&document.contains(_modalOpener)){try{_modalOpener.focus();}catch(e){}_modalOpener=null;return;}
+  _modalOpener=null;
+  /* S9-4: بازکننده در دسترس نیست (رندرِ مجددِ پوسته یا زنجیرهٔ ناتمام) —
+     فوکوس نباید به <body> سقوط کند (WCAG 2.4.3)؛ به محتوای اصلی می‌رود. */
+  const m=document.querySelector('.main');
+  if(m){
+    if(!m.hasAttribute('tabindex'))m.setAttribute('tabindex','-1');
+    try{m.focus();}catch(e){}
+  }
+}
 function modalTpl(title,body,saveAct,danger,okLabel){
-  return `<div class="card-head"><h3>${esc(title)}</h3><button class="icon-btn" data-act="modal-close">✕</button></div>
+  return `<div class="card-head"><h3>${esc(title)}</h3><button class="icon-btn" data-act="modal-close" aria-label="بستن">✕</button></div>
    <div class="card-body">${body}</div>
    <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border);justify-content:flex-end">
     <button class="btn ghost" data-act="modal-close">انصراف</button>
@@ -18,7 +81,12 @@ function modalTpl(title,body,saveAct,danger,okLabel){
 const f=(label,inner)=>{
   const s=String(inner);
   const m=/\sid="([^"]+)"/.exec(s);
-  if(m) return `<div class="field"><label for="${m[1]}">${label}</label>${s}</div>`;
+  /* jdate() stores the value in a hidden input, but its visible button is the
+     actual control. Give the visible button the label's accessible name. */
+  const jd=/\sdata-jd="([^"]+)"/.exec(s);
+  const labelId=jd?'jdate-label-'+jd[1]:'';
+  const labelAttrs=(m&&!jd?` for="${escAttr(m[1])}"`:'')+(labelId?` id="${escAttr(labelId)}"`:'');
+  if(m||labelId) return `<div class="field"><label${labelAttrs}>${label}</label>${s}</div>`;
   const plain=String(label).replace(/<[^>]*>/g,'').replace(/"/g,'&quot;').trim();
   const patched=plain?s.replace(/<(input|select|textarea)\b(?![^>]*aria-label)/i,`<$1 aria-label="${plain}"`):s;
   return `<div class="field"><label>${label}</label>${patched}</div>`;

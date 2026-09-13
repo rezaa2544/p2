@@ -12,7 +12,7 @@
 | ۱ · **Read Replica Routing** | راستی‌آزمایی پیاده‌سازی نوبت اول (چت ۲): `db.queryRead` + مسیریابی `executePagedList` + `poolStats`/health + fallback شفاف به primary؛ خوانش‌های صحتِ پول عمداً روی primary | ✅ تحویل/راستی‌آزمایی‌شده | wave10-db-scale **۲۶/۲۶** |
 | ۲ · **PgBouncer** | زیرساخت compose HA (نوبت موج ۱۶) + **تست قرارداد جدید** که پیکربندی را قفل کرد: transaction pooling، `max_client_conn=2000`، pool ‏25/5/5، `DEALLOCATE ALL`، auth_query بدون راز، پورت فقط 127.0.0.1، جفتِ `payesh`/`payesh-readonly` با `DATABASE_URL`/`READ_DATABASE_URL` | ✅ قفل‌شده با تست | wave10-pgbouncer **۲۲/۲۲** |
 | ۳ · **طراحی Partitioning (grades/attendance)** | طراحی نهایی در `WAVE10_DB_SCALE.md` §۳: RANGE(created_at) سالانه + DEFAULT، PK ⇒ (id, created_at)، بازسازی همهٔ ایندکس‌ها، retention با تأیید وزارتی. **یافتهٔ مسدودکننده:** `persistOp` با `ON CONFLICT (id)` روی جدول پارتیشن‌شده نمی‌تواند ⇒ طرح چهارفازی (A: بازنویسی مسیر نوشتن → B: ساخت/کپی → C: swap → D: parity/drop) | 🟡 طراحی نهایی ✅ · اجرا pending (پیش‌نیاز فاز A + PG زنده) | — (قراردادی) |
-| ۴ · **۱۴ ایندکس chg_id برای دلتا** | `migrations/008_delta_chg_id.sql` (+down): سکوئنس مشترک + ستون + تریگر idempotent + backfill + **۱۴ ایندکس `(chg_id)`** روی ۱۴ جدول تراکنشی دلتا · سازندهٔ `deltaRowsByChgSql` · `stripInternalColumns` (ستون داخلی هرگز به کلاینت نمی‌رسد) | ✅ کامل | wave10-chg-id **۳۱/۳۱** + جهش **۸/۸** |
+| ۴ · **۱۴ ایندکس chg_id برای دلتا** | `migrations/011_delta_chg_id.sql` (+down): سکوئنس مشترک + ستون + تریگر idempotent + backfill + **۱۴ ایندکس `(chg_id)`** روی ۱۴ جدول تراکنشی دلتا · سازندهٔ `deltaRowsByChgSql` · `stripInternalColumns` (ستون داخلی هرگز به کلاینت نمی‌رسد) | ✅ کامل | wave10-chg-id **۳۱/۳۱** + جهش **۸/۸** |
 
 ## کامیت‌های شاخه (۳)
 
@@ -58,7 +58,7 @@ caf00e1 feat(db): PgBouncer contract locked + final partitioning design for grad
 
 | قلم | خروجی | تست |
 |---|---|---|
-| **۵ · Partitioning (اجرا)** | `migrations/009_partition_grades_attendance.sql` +down — کپیِ chunk-commitِ قابلِ ازسرگیری + FK رویِ جدولِ خالی + کچ‌آپ + فاز D؛ زنده 180k · استیجینگ ۱.۸M با نویسندهٔ هم‌زمان (صفر خطا، توقفِ خواندن ~۲s) · **مانورِ ۲۵M: ۱۹.۶ دقیقه، صفر خطا/گم‌شدگی، users حینِ کپی ۵.۲ms**؛ retention سالانه (ابزار + cron)؛ persistOp با `PAYESH_PARTITIONED_TABLES` | partitioning **۶۱/۶۱** · retention **۱۵/۱۵** |
+| **۵ · Partitioning (اجرا)** | `migrations/012_partition_grades_attendance.sql` +down — کپیِ chunk-commitِ قابلِ ازسرگیری + FK رویِ جدولِ خالی + کچ‌آپ + فاز D؛ زنده 180k · استیجینگ ۱.۸M با نویسندهٔ هم‌زمان (صفر خطا، توقفِ خواندن ~۲s) · **مانورِ ۲۵M: ۱۹.۶ دقیقه، صفر خطا/گم‌شدگی، users حینِ کپی ۵.۲ms**؛ retention سالانه (ابزار + cron)؛ persistOp با `PAYESH_PARTITIONED_TABLES` | partitioning **۶۱/۶۱** · retention **۱۵/۱۵** |
 | **۶ · chg↔cursor v3** | توکنِ v3 (+cw) · pre-read watermark · فیدِ byChg بدونِ time-guard · سازگاریِ v1/v2 · سقوط‌های نرم · دو فیکسِ coercion (cw=0 و type-strict verify) | chg_id_cursor **۳۳/۳۳** · delta-phase4 **۲۳/۲۳** (+جهش ۲۰/۲۰) |
 
 برون‌یابیِ مقیاس: ~۳۵k سطر/s ⇒ ۵۰M ≈ ۲۴ دقیقه (مرتبهٔ بزرگی؛ §۷.۴ سند).
