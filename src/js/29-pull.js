@@ -12,6 +12,116 @@ var PULL_SYNC_CURSOR_KEY = 'payesh_last_pull_time';
 var PULL_CURSOR_KEY = 'payesh_pull_cursor';
 var PULL_IS_SYNCING = false;
 
+/* ── P0-2 (پ۳ 2026-09-12): کشِ کرانداِر گزارش‌ها — لایهٔ کلاینت ──────
+   دفاعِ دولایه: سرور مجموعه‌های سنگینِ گزارشی را کران‌دار می‌فرستد
+   (server/pull.js) و کلاینت هم مستقلاً هرگز بیش از این سقف‌ها را در
+   حافظه/IndexedDB نگه نمی‌دارد — سرورِ قدیمی/جعلی نمی‌تواند مرورگر را
+   با جدولِ ملی پر کند. متادیتای snapshot جزئی + TTL هم این‌جاست. */
+var RPT_CACHE_HEAVY_COLS = ['attendance', 'grades', 'discipline', 'hw_submissions'];
+var RPT_CACHE_MAX_ROWS = 5000;          /* هم‌ارزِ سقفِ سرور */
+var RPT_CACHE_TTL_MS = 24 * 3600 * 1000; /* پس از ۲۴h snapshot گزارشی کهنه است */
+var RPT_CACHE_META_KEY = 'payesh_report_cache_meta';
+
+function rptCacheRecency(r){
+  var t = r && (r.updated_at || r.created_at);
+  var ms = t ? new Date(t).getTime() : NaN;
+  if (!isNaN(ms)) return ms;
+  var id = r && Number(r.id);
+  return isFinite(id) ? id : 0;
+}
+
+/** اعمالِ کرانِ کلاینت روی یک مجموعهٔ سنگین — تازه‌ترین‌ها می‌مانند. */
+function rptCacheBound(c){
+  if (RPT_CACHE_HEAVY_COLS.indexOf(c) === -1) return false;
+  if (!Array.isArray(db[c]) || db[c].length <= RPT_CACHE_MAX_ROWS) return false;
+  db[c].sort(function(a, b){ return rptCacheRecency(b) - rptCacheRecency(a); });
+  var dropped = db[c].splice(RPT_CACHE_MAX_ROWS);
+  /* ردیف‌های بریده از IndexedDB هم پاک می‌شوند تا بوتِ بعدی برنگردند */
+  if (typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()) {
+    for (var i = 0; i < dropped.length; i++) {
+      try { offlineStorage.removeEntity(c, dropped[i].id).catch(function(){}); } catch (e) {}
+    }
+  }
+  return true;
+}
+
+/** ثبت متادیتای snapshot گزارشی — قراردادِ union (بازخوردِ بازبین #129،
+    کامنت ۲): «جزئی» ویژگیِ وضعیتِ محلیِ کلِ مجموعه است نه آخرین پاسخ؛
+    دلتای کوچک نمی‌تواند پرچمِ مجموعه‌ای را که هنوز ناقص است پاک کند یا
+    TTL را تازه کند. فقط snapshot کاملِ واقعاً نبریدهٔ همان مجموعه پرچم را
+    برمی‌دارد و زمانِ تازگی را می‌نشاند.
+    @param partialCols مجموعه‌های جزئیِ این پاسخ
+    @param opts {fullSnapshot:bool, touched:{col:1}} — پاسخ full بود؟ کدام
+           مجموعه‌ها در پاسخ آمدند؟ */
+function rptCacheSetMeta(partialCols, opts){
+  opts = opts || {};
+  var prev = typeof Store !== 'undefined' ? (Store.getJSON(RPT_CACHE_META_KEY, null) || {}) : {};
+  var prevPartial = Array.isArray(prev.partial) ? prev.partial : [];
+  var nowPartial = partialCols || [];
+  var merged;
+  if (opts.fullSnapshot) {
+    /* snapshot کامل: پرچمِ مجموعه‌های حاضر در پاسخ از نو تعیین می‌شود
+       (نبریده = پاک)؛ مجموعه‌های غایب پرچمِ قبلی‌شان را نگه می‌دارند. */
+    merged = nowPartial.slice();
+    for (var i = 0; i < prevPartial.length; i++) {
+      var pc = prevPartial[i];
+      if (!(opts.touched && opts.touched[pc]) && merged.indexOf(pc) === -1) merged.push(pc);
+    }
+  } else {
+    /* دلتا: فقط اجتماع — دلتا هرگز پرچم پاک نمی‌کند. */
+    merged = prevPartial.slice();
+    for (var j = 0; j < nowPartial.length; j++) {
+      if (merged.indexOf(nowPartial[j]) === -1) merged.push(nowPartial[j]);
+    }
+  }
+  var meta = {
+    /* TTL فقط با snapshot کامل تازه می‌شود؛ دلتا زمانِ قبلی را نگه می‌دارد. */
+    at: opts.fullSnapshot ? Date.now() : (prev.at || Date.now()),
+    partial: merged,
+    /* resume در جریان؟ (برای نشانگرِ «در حال تکمیل» در UI) */
+    resuming: !!opts.resuming
+  };
+  if (typeof Store !== 'undefined') Store.setJSON(RPT_CACHE_META_KEY, meta);
+  return meta;
+}
+
+/** وضعیتِ کش گزارشی برای UI: {partial:[…], stale:bool} یا null. */
+function rptCacheStatus(){
+  var meta = typeof Store !== 'undefined' ? Store.getJSON(RPT_CACHE_META_KEY, null) : null;
+  if (!meta) return null;
+  return {
+    partial: Array.isArray(meta.partial) ? meta.partial : [],
+    stale: (Date.now() - (meta.at || 0)) > RPT_CACHE_TTL_MS,
+    resuming: !!meta.resuming
+  };
+}
+
+/* پ۳ — resume دلتای بریده (کامنت ۱ بازبین #129): وقتی سرور اعلام کند
+   دلتای مجموعه‌ای بریده شده (full_snapshot_required_collections)،
+   کلاینت باید برای همان مجموعه‌ها یک snapshot کاملِ کران‌دار بگیرد؛
+   وگرنه تغییراتِ پشتِ کرسرِ جلورفته برای همیشه گم می‌شوند.
+   حداکثر یک resume هم‌زمان؛ حلقه ممنوع (پاسخ snapshot، دلتا نیست). */
+var RPT_RESUME_IN_FLIGHT = false;
+function rptResumeTruncatedDelta(cols, baseOptions){
+  if (RPT_RESUME_IN_FLIGHT || !cols || !cols.length) return Promise.resolve({ ok: false, skipped: true });
+  RPT_RESUME_IN_FLIGHT = true;
+  return pullFromServer({
+    forceSnapshot: true,       /* بدونِ since/cursor ⇒ full snapshot کران‌دار */
+    collections: cols.slice(), /* فقط مجموعه‌های بریده — نه کل دنیا */
+    force: true,               /* از سدِ PULL_IS_SYNCING عبور (پاسخِ در جریان) */
+    _resume: true,             /* حلقه‌شکن: پاسخِ resume دوباره resume نمی‌کند */
+    /* همان کانالِ pull اصلی (آزمون‌ها/ابزارها customApi می‌دهند) */
+    customApi: baseOptions && baseOptions.customApi,
+    forceOnline: baseOptions && baseOptions.forceOnline
+  }).then(function(r){
+    RPT_RESUME_IN_FLIGHT = false;
+    return r;
+  }).catch(function(e){
+    RPT_RESUME_IN_FLIGHT = false;
+    return { ok: false, error: e && e.message };
+  });
+}
+
 /**
  * دریافت اسنپ‌شات یا دلتای تغییرات از سرور و ادغام در پایگاه داده کلاینت
  * @param {object} [options] تنظیمات دلتا یا اسنپ‌شات کامل
@@ -55,6 +165,10 @@ function pullFromServer(options) {
   if (options.collections && Array.isArray(options.collections) && options.collections.length > 0) {
     queryParts.push('collections=' + encodeURIComponent(options.collections.join(',')));
   }
+  /* پ۳ تله‌متری: درخواستِ resume خود را اعلام می‌کند تا سرور کانترِ
+     payesh_pull_resume_snapshot_total را بشمارد (فقط observability؛
+     هیچ رفتاری سمتِ سرور به آن گره نیست). */
+  if (options._resume) queryParts.push('resume=1');
 
   var endpoint = '/api/v1/pull' + (queryParts.length > 0 ? ('?' + queryParts.join('&')) : '');
   var apiCaller = options.customApi || (typeof Api !== 'undefined' ? Api : null);
@@ -124,6 +238,22 @@ function pullFromServer(options) {
           offlineStorage.setMetadata('server_version', payload.server_version).catch(function(){});
         }
       } catch (e) {}
+    }
+
+    /* پ۳ — resume دلتای بریده: سرور اعلام کرده این مجموعه‌ها snapshot
+       کامل لازم دارند. فقط اگر خودِ این پاسخ resume نبود (حلقه‌شکن). */
+    var needFull = Array.isArray(payload.full_snapshot_required_collections)
+      ? payload.full_snapshot_required_collections : [];
+    if (needFull.length && !options._resume) {
+      return rptResumeTruncatedDelta(needFull, options).then(function(resumeResult){
+        /* پس از resume موفق، پرچمِ «در حال تکمیل» برداشته می‌شود
+           (متادیتای partial خودِ پاسخِ resume طبق قراردادِ union نوشته شده). */
+        if (resumeResult && resumeResult.ok && typeof Store !== 'undefined') {
+          var meta = Store.getJSON(RPT_CACHE_META_KEY, null);
+          if (meta) { meta.resuming = false; Store.setJSON(RPT_CACHE_META_KEY, meta); }
+        }
+        return { ok: true, payload: payload, resumed: needFull, resume_result: resumeResult };
+      });
     }
 
     return { ok: true, payload: payload };
@@ -244,6 +374,26 @@ function mergeServerDelta(payload) {
       }
     }
   }
+
+  /* P0-2: کرانِ مستقلِ کلاینت روی مجموعه‌های سنگینِ گزارشی + ثبت
+     متادیتای «جزئی» (اعلامِ سرور ∪ برشِ خودِ کلاینت). scope دست‌نخورده:
+     کران فقط از ردیف‌هایِ همان دامنه می‌کاهد، چیزی اضافه نمی‌کند.
+     پ۳: متادیتا با قراردادِ union نوشته می‌شود (کامنت ۲ بازبین #129) —
+     دلتا پرچم پاک نمی‌کند و TTL را تازه نمی‌کند. */
+  var partialCols = Array.isArray(payload.partial_collections) ? payload.partial_collections.slice() : [];
+  for (var bc = 0; bc < RPT_CACHE_HEAVY_COLS.length; bc++) {
+    var hcol = RPT_CACHE_HEAVY_COLS[bc];
+    if (touchedCols[hcol] && rptCacheBound(hcol) && partialCols.indexOf(hcol) === -1) {
+      partialCols.push(hcol);
+    }
+  }
+  var needResume = Array.isArray(payload.full_snapshot_required_collections)
+    ? payload.full_snapshot_required_collections : [];
+  rptCacheSetMeta(partialCols, {
+    fullSnapshot: payload.full_snapshot === true,
+    touched: touchedCols,
+    resuming: needResume.length > 0
+  });
 
   // باطل‌سازی ایندکس‌های کش‌شده برای رندرهای بعدی
   for (var tc in touchedCols) {

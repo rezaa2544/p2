@@ -35,8 +35,15 @@ function createBootstrapRoute(ctx) {
       return { status: 401, body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' } };
     }
 
-    // Check Redis / L1 Cache
-    const cachedData = await cache.getBootstrapCache(user.id);
+    /* Check Redis / L1 Cache.
+       F2 (chaos-drill #185): قطعِ Redis در production این خوانشِ *کش* را
+       می‌پراند و کلِ bootstrap ‏500 می‌شد — درحالی‌که منبعِ حقیقت (PG/store)
+       سالم است. کش «تسریع» است نه «وابستگیِ صحت»: شکستش فقط cache-miss است. */
+    let cachedData = null;
+    try { cachedData = await cache.getBootstrapCache(user.id); }
+    catch (cacheErr) {
+      console.warn('[bootstrap] cache read unavailable (miss-through):', String((cacheErr && cacheErr.message) || cacheErr).slice(0, 120));
+    }
     if (cachedData) {
       return { status: 200, body: cachedData, cached: true };
     }
@@ -149,8 +156,9 @@ function createBootstrapRoute(ctx) {
         };
       }
 
-      // Cache computed response (5 min TTL)
-      await cache.setBootstrapCache(user.id, responseBody, 300);
+      // Cache computed response (5 min TTL) — F2: شکستِ نوشتنِ کش هم نباید پاسخِ ساخته‌شده را بسوزاند
+      try { await cache.setBootstrapCache(user.id, responseBody, 300); }
+      catch (setErr) { console.warn('[bootstrap] cache write unavailable:', String((setErr && setErr.message) || setErr).slice(0, 120)); }
       return responseBody;
     });
 

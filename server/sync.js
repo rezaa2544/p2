@@ -875,8 +875,18 @@ function createSync(ctx){
       if(vdb){
         try { audit('sync_virtual_day_offline_allow', { user_id: s.id, uid: op.uid, collection: op.c, school_id: vdb.schoolId, date: vdb.date }); } catch(_) {}
       }
-      /* §3.3 — idempotency: a repeated uid is already applied */
-      const isProcessed = (await cache.isProcessedUid(op.uid)) ||
+      /* §3.3 — idempotency: a repeated uid is already applied.
+         F2 (chaos-drill #185): dedupe سه‌لایه است (کشِ Redis → db → store).
+         قطعِ Redis در production پیش‌تر از prodRethrow تا این‌جا می‌پرید و
+         کلِ /api/sync را 500 می‌کرد — درحالی‌که دو لایهٔ authoritative بعدی
+         سالم‌اند. شکستِ لایهٔ کش فقط audit می‌شود و dedupe به لایه‌های
+         بعدی می‌افتد (fail-closedِ داده حفظ است: mark هم سه‌لایه است). */
+      let cacheProcessed = false;
+      try { cacheProcessed = await cache.isProcessedUid(op.uid); }
+      catch (cacheErr) {
+        try { audit('sync_idempotency_cache_unavailable', { user_id: s.id, uid: op.uid, error: String((cacheErr && cacheErr.message) || cacheErr).slice(0, 120) }); } catch (_) {}
+      }
+      const isProcessed = cacheProcessed ||
         ((db && typeof db.isUidProcessed === 'function') ? await db.isUidProcessed(op.uid) : false) ||
         !!(store.__processed_uids && store.__processed_uids[op.uid]);
       if(isProcessed){
@@ -1155,7 +1165,22 @@ function createSync(ctx){
         const why = String((mirrorErr && mirrorErr.message) || mirrorErr);
         mirrorFailed = true;
         audit('sync_mirror_failed', { user_id: s.id, ops: batchAll.length, error: why });
-        if(pgLive){
+        /* F1 (chaos-drill #185): pgLive در *ابتدای* درخواست ارزیابی شده؛ اگر
+           PG وسطِ قطع باشد isPostgres()=false و pgLive=false است — ولی وقتی
+           «PG انتظار می‌رود» (production + DATABASE_URL)، ackِ 200 بدونِ
+           mirror = گم‌شدنِ دائمیِ داده (پس از بازگشتِ PG آن ops آن‌جا نیستند
+           و retry هم duplicate_ignored می‌گیرد). همان مسیرِ 503 اجرا شود. */
+        const pgWasExpected = !!(db && typeof db.pgExpected === 'function' && db.pgExpected());
+        if(pgWasExpected && !pgLive){
+          /* در این حالت undo=null است (pgLive در ابتدای درخواست false بود) —
+             claimِ uidهای همین batch در __processed_uids می‌ماند و بازاجرایِ
+             کلاینت duplicate_ignored می‌گرفت بی‌آنکه به PG برسد (rows=0).
+             آزادسازیِ دستی: شکستِ کامل = replayِ کامل مجاز (قرارداد Wave 1). */
+          for(const op of batchAll){
+            if(op && op.uid && store.__processed_uids) delete store.__processed_uids[op.uid];
+          }
+        }
+        if(pgLive || pgWasExpected){
           /* P0-6 — rollback با undo-log: معکوسِ ثبت‌های همین batch — O(batch)،
              نه بازنویسیِ کلِ کالکشن. مزیتِ صحت: تغییرهایِ هم‌زمانِ درخواست‌هایِ
              دیگر بینِ awaitها حفظ می‌شوند (snapshot قدیمی آن‌ها را هم برمی‌گرداند).

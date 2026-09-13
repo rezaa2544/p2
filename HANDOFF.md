@@ -104,6 +104,33 @@
 
 **گام بعدی:** ① مرجِ **#159** (rc41 + بستنِ یتیمی) ⇒ آنگاه گزارشِ روزانهٔ این نشست قانونی می‌شود و `documentation-map-coverage` سبز ② تصمیمِ ناظر برایِ **دیتادیرِ PG** ⇒ اجرای **HO-2** ③ داوریِ **#149** (سوپرسدِ ۳/۳) و **#154** ④ رفعِ **HO-1** (`docs-refs-check`) توسطِ چت ۸ ⑤ تعیینِ تکلیفِ **بستهٔ تصمیمِ بند ۱۰** با تأمینِ محلِ دوزیه‌ها ⑥ #129 همچنان منتظرِ ACCEPT.
 
+## Handoff — چت ۹: دور ۴ — تشخیص دلتای آمار + ماتریس پذیرش دانه + اصلاح SIM-04 — ✅ (2026-09-13)
+
+**وضعیت:** چت ۹ (ناظر/مستندساز، صفر تغییر کد) دور ۳ (بازیابی ریست + ردِ بستهٔ coordinator) و دور ۴ (دلتای آمار + ماتریس پذیرش) را بست.
+**دلتای آمار (۳۶۱→۳۶۳):** دو سندِ افزوده = `docs/daily-reports/2026-09-13-chat9-audit.md` و `...-chat9-school-simulation.md` — هر دو **زیرپوشهٔ daily-reports** (بیرونِ مانیفستِ ریشهٔ قفل) ⇒ طبق قاعدهٔ قفل §۱ بند ۳ («افزودن آزاد») بامپ لازم نیست. اما چت ۹ سه سندِ ریشهٔ قفل‌شده (`RISK_REGISTER.md` + `DOCS_METRICS`/`DOCUMENTATION_MAP` آمار) را ویرایش کرد و مانیفست rc40 را با `--freeze` بازتولید کرد (گیت‌ها سبز) بدون بامپِ نسخه ⇒ **بدهی HO-4 به چت ۶** (بامپ rc40→rc41 مستلزم ویرایش `tests/docs-freeze-marker.js`، خارج از مرز چت ۹).
+**اصلاح SIM-04 (مهم):** `is_head`/رئیس اداره **پیاده نشده** (صفر ارجاع در `authz/model.json` و `src/`؛ فقط پیش‌نویس چت ۱ + تصمیم باز §P2) — نه «غایب از دانه». مالکیت: **چت ۲ (طراحی office_head/is_head) → چت ۳ (seed)**. guard/lib_staff/asset_staff واقعاً پیاده و فقط غایب از دانه‌اند.
+**ماتریس پذیرش دانه (SIM-01..04):** الحاق §۸ به گزارش شبیه‌سازی — سفر بیرون‌از-جعبه + assert‌های قابل‌کلیک برای چت ۳ (پذیرش) و چت ۹ (بازراستی‌آزمایی).
+**گیت‌ها:** docs-stats-sync ✅ · freeze-marker 14/14 ✅ · docs-metadata 17/17 ✅ · reza-mirror-check ✅ (۲۱ آینه).
+**گام بعدی:** چت ۳ غنی‌سازی دانه (guard/lib_staff/asset_staff) طبق ماتریس · چت ۲ تصمیم is_head · چت ۶ بامپ rc41 · ناظر تزریق ماتریس به پرامپت چت ۳.
+
+## Handoff — چت ۹: شبیه‌سازی کامل «یک مدرسهٔ واقعی» — پوشش رفتاری سبز + ۴ شکاف دانه — ✅ (2026-09-13، دور ۲)
+
+**وضعیت:** چت ۹ (مهندس شبیه‌سازی/ممیزی رفتاری، مالک هیچ فیچری) ماتریس «۵ پروفایل مدرسه × ۱۱ نقش × ~۳۰ عملگر × ۴ شرایط» را با ۶۰+ سوئیتِ موجود + پروب‌های jsdom/PG روی `main@523c1f5` اجرا کرد — **صفر تغییر کد، صفر جهش**.
+**نتیجه:** **هیچ نقطه‌ضعف رفتاری P1/P2 یافت نشد.** ستون‌فقرات (simulation 48/48 · sim_full2 58 · sim_full3 25 · integration 12/0 · security2 25/0) + همهٔ عملگرها (att3/att4/dorm-kind/dorm-leave-dates/library2/libserial2/certify/entry-gpa/visitors2/tickets/schedconf2/pathway2/report2/reporttpl2/cmsg2/cmsg3/finance2/subs2/import2/pubrep/public-security/multigrade2/workshop2/iep2/iep3/preapp2/preapp3/gradeavg2/client-features/dojo/assets2/scholarship2/scholarship3/tuition-plan/tuition-exempt/gdpr-tombstones/tombstone/privacy/session-revocation/audit + بستهٔ ۲۱ سوئیت sync/offline) + گزارش‌ها روی PG زنده (wave23-reports-pg 76/76 · p13 9/9) همگی سبز.
+**شکاف (۴ قلم P3 — فقط دانهٔ دمو):** `payesh.json` کاربر `guard` · دبیرِ کتابدار `lib_staff` · تحویلدار `asset_staff` · رئیس اداره `is_head` را ندارد (۰) — قابلیت‌ها با کاربران خودساخته در سوئیت‌ها اثبات شده‌اند ولی سفر واقعی بیرون‌از-جعبه ناقص است (SIM-01..04 → NEXT_ACTIONS + RISK C9-6).
+**پروب‌های مرزی (jsdom، `/tmp`):** dorm-full (اتاق پر رد می‌شود) ✅ · csvCell ضدتزریق `=+-@` ✅ · guard canAction ✅ · edu_office استان/شهرستان ✅.
+**NOT-RUN (صادقانه):** جهش (صفر در این دور) · سوئیت‌های >۵دقیقه · مرورگری واقعی (بدون playwright) · گیت‌های PG غیرگزارشی (🔗 ممیزی) · CI (بیلینگ).
+**گزارش:** `docs/daily-reports/2026-09-13-chat9-school-simulation.md` + بخش «چت ۹ — شبیه‌سازی» در `2026-09-13.md`.
+**گام بعدی:** غنی‌سازی دانه (guard/lib_staff/asset_staff/is_head) با PR red-first از چت مالک؛ سپس تبدیل بک‌لاگ به پرامپت‌های per-chat توسط ناظر.
+
+## Handoff — چت ۹: ممیزی و راستی‌آزمایی کل مخزن — نقشهٔ وضعیت + یافته‌ها — ✅ (2026-09-13)
+
+**وضعیت:** چت ۹ (مهندس ممیزی، مالکِ هیچ فیچری) اسکنِ کامل + تستِ کارکردِ همهٔ اجزا روی `main@523c1f5` انجام داد — **صفر تغییر کد**. خروجی اول = نقشهٔ وضعیت (طبق توصیهٔ هماهنگ‌کننده)، نه رفع.
+**سبزِ کامل:** هسته run 35/35 · smoke 547/547 · server1..18 همه سبز (شامل **server15 = 40/40** — قرمزِ شناخته‌شدهٔ 37/40 در **#143 رفع شده**) · sync-queue-caps 36/36 · sync-del-mirror 7/7 · delta-phase4 23/23 · offline-e2e 23/23 · bgsync 14/14 · reports-basic 9/9 · reports-tenant-isolation 11/11 · **همهٔ ۸ گیت PG-زنده** (wave10 19/19 · wave3-parity 20/20 · wave3-query3 25/25 · migration-sequence 19/19 · p11 14/14 · wave23-reports 76/76 · p13 9/9) · جهشِ الگوی امن (norm-edge 4/4 · clsctx 3/3 · deadletter 2/2 · health-index 5/5) · secret-scan 11/11 · build --check ✅ · reza-mirror 21/21.
+**یافته‌ها (همه پیش‌موجود، A/B روی درخت تمیز):** **P1-1** `run-all-tests.sh` با `DATABASE_URL` خالی crash (`set -u` + `$DATABASE_URL` خط ۷۸) — رگرسیون کامل شروع نمی‌شود · **P1-2** `docs-refs-check` قرمز (۱۱ ارجاع به فایل‌های #129 مرج‌نشده ⇒ pre-flight exit 6) — شناخته‌شده (HO-1)، با مرج #129 می‌بندد · **P2** openapi-drift (۴ endpoint گزارش) · config-audit (۲۹+۲۵ متغیر) · migration-009-live M1 (assert کهنهٔ «آخرین=009») · **P3** docs-metadata (۱ یتیم) · DOCS_HEALTH_REPORT کهنه (۳۲۱→۳۲۳). **ردشده:** bgsync 12/14 نخست = flake تایمینگی (۲ اجرای مجدد 14/14) — رگرسیون نیست.
+**NOT-RUN (صادقانه):** رگرسیون کامل (P1-1/P1-2) · reports-bounded-cache/bounded-delta-resume/truncation-telemetry (فایل روی main نیست، در #129) · multinode --live (بدون Redis؛ DRY_RUN ✅) · a11y (بدون playwright/chromium) · CI (بیلینگ).
+**گزارش:** `docs/daily-reports/2026-09-13-chat9-audit.md` + بخش «چت ۹» در `2026-09-13.md`.
+**گام بعدی:** ارجاعِ P1-1/P1-2 به صف NEXT_ACTIONS؛ P2/P3 به RISK_REGISTER. تصمیم ناظر دربارهٔ مرج #129 (بازکردن رگرسیون) و رفعِ `set -u`.
 
 ## Handoff — چت ۸: دورهای ۲/۳ — رفع USER_GUIDE + تجمیعِ PRها + سناریوی استیجینگ — ✅ (2026-09-13)
 
@@ -3120,3 +3147,82 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 - **گیت‌ها:** smoke **547/547** · api **7/7** · wave1 18/18 · wave3 13+13 · wave4 11/11 · wave8 14+5 · wave9 39 · wave10 26 · authz-model 248 · server1 31 · server16 39 · server17 70 · security2 25 · waf-ddos 29 · occ 18 · academic-years 9 · pull-bootstrap 12 · check-authz **0** · secret-scan **11/11** ✅ (تنها قرمزِ wave13: نبودِ ZAP در محیط — در پایهٔ تمیز هم قرمز، بی‌ربط).
 - **اسناد:** `docs/WAVE5_AUTHZ.md` (جدید — مرجعِ اجرا) + به‌روزرسانی `AUTHORIZATION_MODEL.md` (لایهٔ ۴ ← policy؛ جدول تست ۳۷) و ردیف Wave 5 در `NATIONAL_ROADMAP_PROGRESS.md` ← ✅.
 - **کامیت‌ها (بر روی 3e86993):** `8472f17` fix(policy) · `fa359a3` fix(pg) · `7a0e796` fix(rest) · `d5230b7` test(wave5) · `—` docs(wave5) — همگی push به `arena/01a08a4e-p2`.
+
+## پ۳-ادامه — Resume دلتای بریده + رفع ۴ کامنت بازبین PR #129 — ✅ (2026-09-13)
+
+### [CONTEXT برای نشست بعد]
+- شاخه: `feat/p03-reports-envfix-bounded-cache` @ `a0fae56` (پوش‌شده؛ ls-remote==HEAD تأیید). **PR #129 باز — مرج فقط با ACCEPT صریح ناظر.** پاسخ به ۴ کامنت بازبین روی PR ثبت شد (issuecomment-5648155854).
+- بودجهٔ ورک‌اسپیس: 🟢 (~98MB پس از بهداشت دروازه‌دار: حذف bandle با شاهد bundle-head روی origin + repack ‏85→56MB با شاهد ۵ ref SYNCED + fsck=0). پیش از هر کار سنگین، سنجش §۱ WORKSPACE_HYGIENE اجرا شود.
+- پس از هر restore سندباکس: remote/node_modules می‌پرند + mode-change جعلی 755→644 و حذف فایل‌های out/ در status ظاهر می‌شود ⇒ `git checkout -- .` + بازسازی remote، قبل از هر تفسیر دیگر.
+
+### [OPEN ITEMS — تصمیم ناظر]
+1. **PR #129:** منتظر ACCEPT (مرج ممنوع).
+2. **flag-1:** دوزیهٔ scopedSchools→SQL (`docs/FLAG1_SCOPE_SQL_DOSSIER.md`) منتظر ACCEPT — تغییر مجوزی، بدون تأیید هیچ کدی عوض نمی‌شود.
+3. **بدهی معماری:** جداسازی کامل کش گزارشی از دادهٔ عملیاتی (کامنت ۳ بازبین — بنر shell رفع کوتاه‌مدت است؛ نیازمند طراحی لایهٔ مجزا).
+
+### [قراردادهای تثبیت‌شده — نقض = قرمزی گیت]
+- **Resume:** سرور در دلتای بریده `full_snapshot_required_collections` اعلام می‌کند؛ کلاینت فقط برای مجموعه‌های بریده snapshot کران‌دار می‌گیرد؛ حلقه‌شکن دولایه (`_resume` + `RPT_RESUME_IN_FLIGHT`) الزامی — سرور بدخیم باید در ۲ درخواست مهار شود. مرجع: WAVE23 §۹.۲د؛ گیت: `tests/bounded-delta-resume.js` ‏۱۴/۱۴ + جهش ۱۰/۱۰.
+- **Union متا:** دلتا هرگز پرچم partial را پاک و TTL را تازه نمی‌کند؛ فقط snapshot کاملِ نبریدهٔ همان مجموعه.
+- **UTF-8:** حجم رشتهٔ فارسی هرگز با `.length`؛ فقط `Buffer.byteLength(str,'utf8')`.
+- **آینه‌ها:** مرجع = `tools/reza-mirror-check.js`؛ فقط آینه‌های زندهٔ قراردادی همگام می‌شوند — فایل تازه به reza اضافه نکن (رانش آینده).
+
+### [الحاقیهٔ راستی‌آزمایی — 2026-09-13]
+- **صف PRها (شواهد API):** ‏#93/#99/#102/#103/#115 همگی مرج‌شده‌اند — در بریف‌های آینده «باز» فرض نشوند. باز واقعی (۱۱): #130، **#129 (منتظر ACCEPT)**، #128/#127 (P1-3)، #125/#124 (P1-2)، #114، #91، #82، #76، #74.
+- **دوزیه‌های باز ناظر (علاوه بر #129/flag-1/کش گزارشی):** tenancy ‏`school_id IS NULL` + نقش counselor ‏(NEXT_ACTIONS خط ۶۵–۶۶؛ بدون تغییر کد/مجوز تا تصمیم).
+- **docs-health:** 478 لینک / 0 شکسته — ادعای لینک شکستهٔ alert-rules رد شد.
+- **reza-mirror-check:** فقط چک‌کننده است (`--json`)؛ پرچم `--sync` ندارد — همگام‌سازی دستی فقط برای آینه‌های قراردادی.
+- **بنچ Wave23 (یادآور برای نشست بعد):** گزارش‌های `academic`/`finance` هنوز کندتر از مسیر DB-native حضور/غیاب‌اند — کاندیدای EXPLAIN ANALYZE + ایندکس پوششی، فقط پس از ACCEPTهای معلق.
+## چت ۱ — بستهٔ ۰ (P0-1) + seed رابطه‌مند + PR #181 — ✅ (2026-09-13)
+
+- **زنجیرهٔ کامیت‌ها (روی `arena/01a09a7d-p2`):** `0a208f8` (پایهٔ main) → `33a7517` docs(wave22 recovery) → `6a68f6b` P0-1 PostgreSQL production enforcement → `a1e5e90` تسویهٔ ۴ قلمِ flag + seed رابطه‌مند → `[کامیتِ دورِ ۴]` manifest ماشین‌خوان + ثبتِ حکم‌ها. پوش تأییدشده با `ls-remote == HEAD`.
+- **وضعیتِ PR:** ‏**#181** — https://github.com/rezaa2544/p2/pull/181 · `OPEN` · `main ← arena/01a09a7d-p2` · **خود-merge نشد** · ترتیبِ مرج با ناظر است (پس از #176).
+- **مسئلهٔ بسته‌شده:** در `production` بدونِ PostgreSQL، سرور روی `payesh.json` بالا می‌آمد و سرویس می‌داد (`db.init()` ⇒ `{ok:true, driver:'memory'}`، بوت بدونِ `DATABASE_URL`، حلقهٔ نوشتِ JSON هر ۲s، نتیجهٔ init بررسی‌نشده) — در حالی که Redis از قبل fail-closed بود. همین نامتقارنی P0 بود و بسته شد.
+- **حکم ۱ (قلمِ ۴ = گزینهٔ ب رسمی):** تستِ سیاستِ `tests/pg-prod-suite-policy.js` قفل‌کنندهٔ invariant کافی است؛ ویرایشِ env در ۶۵ فایلی که `server/index.js` را لمس می‌کنند **ممنوع** می‌ماند (churnِ خالص، بدونِ سودِ امنیتی). invariant: هیچ سوئیتی نباید در production سرور را بدونِ PG URL — یا supply یا inherit — یا assertِ ردِ بوت بالا بیاورد.
+- **حکم ۲ (انحرافِ قلمِ ۲ پذیرفته):** مرگِ اتصالِ `pg.Client` ⇒ **عملیات throw می‌شود + readiness قرمز**، نه `exit(1)`. دلیل: سابقهٔ Redis در همین کدبیس (`server/redis.js:224-236`، `tests/redis-prodfail.js`) + catch سطحِ بالای روتر که ۵۰۰ تمیز برمی‌گرداند؛ یک اتصالِ reset‌شده نباید outage کامل شود. در کامنتِ کد (`server/db.js`) مستند است.
+- **حکم ۳ (تعارضِ گیت‌ها = چت ۶):** ‏`tools/docs-stats-sync.js --check` **قرمزِ شناخته‌شده** است (‏۴۸۰→۴۸۴ فایلِ تست). رفعش ویرایشِ `docs/TEST_COVERAGE_REPORT.md` را می‌خواهد که در `rc40` **یخ‌زده** است ⇒ ترمیمِ اثر نیازمندِ بامپِ `rc`. **اولویتِ ماندگار: freeze برنده است.** چت ۱ هیچ repairی نزد و میان‌بُرِ افزودنِ آن سند به فهرستِ `LIVE` را هم **رد** کرد (تضعیفِ یک‌جانبهٔ حاکمیتِ مستندات). **شرطِ بسته‌شدن:** `rc43` از مسیرِ #176، سپس `node tools/docs-stats-sync.js` و بستنِ دوبارهٔ قفل با اثرِ نو.
+- **artifact تازهٔ بستهٔ ۱:** ‏`tools/relational-seed-manifest.json` — ماشین‌خوان و checksum‌دار (بلوکِ «Dataset reproducible»). از **درون‌نگریِ زندهٔ PostgreSQL** تولید می‌شود، نه دستی: شمارها · ‏۱۰ FK (همه `DEFERRABLE INITIALLY DEFERRED`) · `uq_enrollments_student_year UNIQUE (student_id, year)` · روشِ سنجشِ `SET CONSTRAINTS ALL IMMEDIATE` · sha256 خودِ manifest و seeder · نسخهٔ PG · برچسبِ صریحِ **demo-scale، نه دیتاستِ ملی** و `benchmark_claim: NONE`. دستورِ تولید: `PG_SEED_FRESH=1 PG_SEED_MANIFEST=1 PG_LIVE_PG=<url> node tools/seed-relational-small.js`.
+- **تست‌ها:** ‏`tests/pg-relational-seed.js` ‏**۴۰/۴۰** (‏۲۷ چکِ seed + ۱۳ چکِ manifest شاملِ صحتِ self-hash، تطابقِ sha256 seeder، و یگانگیِ فهرستِ FK/UNIQUE با schema زنده)؛ با tamper-test اثبات شد که این چک‌ها binding‌اند. ‏`arena5-recovery` ‏۳۲/۳۲ و بدونِ PG ⇒ `exit 2` + NOT-RUN. گیت‌های بستهٔ ۱: ‏۱۴/۱۴ · ۱۱/۱۱ · ۱۲/۱۲ · ۱۱/۱۱ · ۱۷/۱۷ · رگرسیون **۰** با A/B.
+- **NOT-RUNهای صادقانه:** مهاجرتِ `012_partition_grades_attendance.sql` (خطِ ۳۴۸ از `\gset` استفاده می‌کند — متاکامندِ `psql`؛ با درایورِ `pg` ⇒ `syntax error at or near "\"`) · `wave23-reports-pg` · ‏CI (بیلینگ، RISK-O-007) · ‏EXPLAIN/BENCHMARK (بدونِ workload).
+- **یافتهٔ schema (باز، نیازمندِ حکمِ مهاجرتی):** ‏`enrollments` و `attendance` فقط روی `school_id` کلیدِ خارجی دارند ⇒ `class_id`/`student_id` یتیم یا بین‌مستأجری در سطحِ DB رد **نمی‌شود**. ‏`009_report_logs_constraints.sql` هم روی اجرای دوباره idempotent نیست.
+- **قاعدهٔ ماندگار (استانداردِ همهٔ چت‌ها):** وقتی دو گیت متعارض‌اند، **گیتِ حکمرانی (freeze) برنده است** و تعارض با مالک escalation می‌شود؛ هرگز با تضعیفِ سنجه سبزِ کاذب ساخته نمی‌شود.
+- **باز:** مرجِ PR #181 پس از #176 · patch-set سخت‌گیریِ چت ۲ پس از مرج · follow-up مجازِ چت ۱: اجراکنندهٔ حداقلیِ متاکامندهای `psql` برای بستنِ NOT-RUN مهاجرتِ ۰۱۲ (خارجِ این دور) · rotate توکنِ تاریخی = فقط اقدامِ مالک.
+
+## چت ۱ — shim وفادار `psql` برای `\gset` ⇒ مهاجرت ۰۱۲ از NOT-RUN به PASS — ✅ (2026-09-13)
+
+- **مسئلهٔ بسته‌شده:** ‏`migrations/012_partition_grades_attendance.sql:348` از `SELECT w0 FROM mig009_w0 WHERE id = 1 \gset` استفاده می‌کند. `\gset` یک **متاکامندِ psql** است و سرور هرگز آن را نمی‌بیند، پس اعمالِ فایل با درایورِ `pg` با `syntax error at or near "\"` می‌میرد. نتیجه: مهاجرتِ ۰۱۲ و هر سوئیتی که آن را اعمال می‌کند (از جمله `tests/wave23-reports-pg.js`) روی هر ماشینِ بدونِ باینریِ `psql` ‏**NOT-RUN** بود — یک مجهولِ مشترک برای چت‌های ۱/۲/۴.
+- **راه‌حل:** ‏`tools/psql-min.js` + wrapper اجراییِ `tools/bin/psql`. اجرای statement-by-statement با autocommit روی PG واقعی؛ فقط متاکامندهای لازم (`\gset [prefix]`)؛ جایگزینیِ `:var`/`:'var'`/`:"var"`؛ پشتیبانی از `BEGIN`/`COMMIT`، ‏`DO $$…$$` و `CREATE PROCEDURE` با `COMMIT` داخلی.
+- **گاردهای صداقت (الگوی درس‌گرفته از shim موقتِ چت ۲):** متاکامندِ ناشناخته ⇒ **شکستِ سخت** (نه skip بی‌صدا) · متغیرِ حل‌نشده ⇒ شکست · ‏`ON_ERROR_STOP` ⇒ `exit 3` (همان کدِ psql) · ‏`:var` در کامنت/رشته/‏`$$` جایگزین **نمی‌شود** · ‏`::` هرگز متغیر فرض نمی‌شود · **G7:** اگر `psql` واقعی جلوتر در PATH باشد، wrapper به آن `exec` می‌کند و کنار می‌رود (آزمون شد: آرگومان‌ها کامل پاس شد).
+- **اثباتِ اندازه‌گیری‌شده:** اعمالِ ۰۰۱..۰۱۲ روی schema تازه ⇒ **۱۰۲ جدول** (‏۱ مهاجرت via shim) + artifactهای واقعیِ پارتیشن (`attendance_y2025/2026/2027` · `attendance_default` · `grades_y2025/2026/2027` · `grades_default`) · ‏`PATH="$PWD/tools/bin:$PATH" node tests/wave23-reports-pg.js` ⇒ **۷۶/۷۶ · ‏`exit 0` · «سبز ✅ (روی PostgreSQL واقعی)»** · ‏`--selftest` ⇒ **۲۹/۲۹**.
+- **‏A/B صداقت:** بدونِ shim در PATH همان سوئیت **همچنان غیرسبز** است (`exit 1` · `spawnSync psql ENOENT`). هیچ «سبزِ محلی» جای NOT-RUN نگرفت.
+- **تصحیحِ یک فرض:** انتظارِ «NOT-RUN با exit 2/3» بود؛ عددِ واقعیِ پایه **`exit 1`** است، چون `ENOENT` در regex مسیرِ NOT-RUN آن سوئیت نیست. رفتارِ سوئیت دست‌نخورده ماند و فقط درست گزارش شد.
+- **صفر ویرایش در `tests/` و `server/` و `migrations/`** ⇒ شمارِ رسمیِ تست بدون تغییر (ضدِ Test-count) و بدونِ فشارِ تازه روی freeze. سوئیت‌ها shim را فقط از طریقِ **PATH** برمی‌دارند (‏environment-level، نه کد).
+- **`--selftest` تزئینی نبود:** نخستین اجرا ۲۵/۲۹ شد و چهار باگِ واقعیِ shim را لو داد — شکلِ trailing بودنِ `\gset`، regex غلطِ `:'var'`/`:"var"`، lexing شدنِ `:'name'` به‌عنوانِ رشته (psql آن را **پیش از** رشته حل می‌کند)، و اینکه متاکامند باید مثلِ psql **بافرِ کوئری را ببندد** (وگرنه `\gset` به سرور می‌رسد).
+- **گیت‌ها:** secret-scan **۱۲/۱۲** · freeze-marker **۱۴/۱۴** · docs-metadata یتیم **۰** · reza-mirror-check **۰/۰** · ‏`docs-stats-sync --check` همچنان **RED routed-to-chat6** (حکم ۳؛ بدونِ remediation).
+- **محدودیتِ سکو (صادقانه):** پرامپت شاخهٔ `feat/chat1-psql-gset-shim` و PR جدا خواست؛ این سشن به `arena/01a09a7d-p2` قفل است، پس کامیت روی همان شاخه نشست و در **PR #181** دیده می‌شود. **حکم ۵ نقض نشد** (هیچ rebase/merge روی #181) و مجموعهٔ تداخلِ #181 بدتر نشد (shim فقط در `tools/` است). اگر merge مستقلِ shim پیش از `rc43` لازم است، با `git cherry-pick <SHA>` روی شاخهٔ نو قابلِ جداسازی است — هیچ وابستگیِ محتوایی به #181 ندارد.
+- **دستورِ استفاده برای بقیهٔ چت‌ها:**
+  `PATH="$PWD/tools/bin:$PATH" NODE_PATH=<node_modules با pg> DATABASE_URL=<url> node tests/wave23-reports-pg.js`
+- **باز:** مرجِ #176 (‏`rc43`) ⇒ rebase یک‌نوبتیِ #181 ⇒ مرجِ #181 ⇒ patch-set سخت‌گیریِ چت ۲ · follow-up ممکنِ shim: افزودنِ `\if`/`\echo` **فقط** با حکمِ ناظر (الان عمداً شکستِ سخت می‌دهند) · rotate توکنِ تاریخی = فقط اقدامِ مالک.
+
+## چت ۱ — مستندسازی cross-chart ابزار `psql` shim + playbook ریبیس #181 — ✅ (2026-09-13)
+
+- **هدفِ دور:** فقط مستندسازی. **۰ کدِ اجراییِ نو · ۰ تستِ نو.** چت ۱ پس از این دور idle می‌ماند تا bump قفلِ مستندات از #176 روی `main` بنشیند.
+- **ابزارِ قابلِ استفادهٔ cross-chat:** ‏`tools/psql-min.js` + `tools/bin/psql` (از کامیتِ `7db609f`). راهنمای کامل: **`tools/PSQL_SHIM_GUIDE.md`**.
+  - کاربرد: ‏`PATH="$PWD/tools/bin:$PATH" NODE_PATH=<node_modules با pg> DATABASE_URL=<url> node tests/<suite>.js`
+  - خودآزمایی: ‏`node tools/psql-min.js --selftest` ⇒ **۲۹/۲۹** (همین دور بازسنجی شد؛ DB-free)
+  - گاردها: متاکامندِ ناشناخته ⇒ شکستِ سخت · متغیرِ حل‌نشده ⇒ شکست · ‏`ON_ERROR_STOP` ⇒ `exit 3` · جایگزینی‌نشدنِ `:var` در کامنت/رشته/‏`$$` · ‏`::` متغیر نیست · `\gset` یک ردیف می‌خواهد · **psql واقعیِ جلوتر در PATH برنده است**
+  - **هشدار به بقیهٔ چت‌ها:** کپیِ دومِ این فایل را نسازید؛ drift می‌کند. فقط `tools/bin` را به PATH اضافه کنید.
+- **چرا راهنما در `tools/` است نه `docs/` (سنجیده‌شده):** یک سندِ نو در `docs/` گیتِ `tests/docs-freeze-marker.js` را از **۱۴/۱۴ به ۱۲/۱۴** می‌برد (با فایلِ probe اندازه‌گیری شد)، چون آن سنجه تک‌تکِ `docs/*.md` را با مانیفستِ منجمدِ `rc40` تطبیق می‌دهد؛ افزودنِ ردیف = بامپِ `rc` = کارِ چت ۶. پس راهنما کنارِ ابزار ماند. **اقدامِ چت ۶:** در بامپِ rc، این دو سند را به `docs/` منتقل و re-freeze کند و shim را به‌عنوان ابزارِ رسمی ثبت کند.
+- **playbook ریبیسِ #181:** ‏`tools/PR181_REBASE_PLAYBOOK.md` — پیش‌نیازها، تفکیکِ ۴ سندِ مشترک (‏`rc40` و `TEST_COVERAGE_REPORT` ⇒ theirs · ‏`HANDOFF.md` و گزارشِ روزانه ⇒ union append-only) در برابر **۱۷ فایلِ تمیز**، مراحل، راستی‌آزمایی، و سناریوی شکست («اگر هر یک از آن ۱۷ فایل تداخل کرد ⇒ توقف»).
+- **دو تصحیحِ ثبت‌شده در playbook:** ‏(۱) شمارِ واقعیِ تست‌ها `۴۸۰ → ۴۸۴` است (`۴۷۲ → ۴۷۶`)، نه آنچه در پیش‌نویس بود. ‏(۲) **rollback با force-push در این محیط در دسترس نیست**؛ مسیرِ واقعی `git rebase --abort` و در صورتِ push شدنِ حالتِ بد، کامیتِ revert دنبال‌کننده است. هرگز rebase نیمه‌حل‌شده push نشود.
+- **وضعیتِ #176 (اندازه‌گیریِ تازه):** ‏**OPEN** · بالاترین سندِ قفل روی `main` هنوز **rc40** · فایل‌های #176 شاملِ `rc41`، `rc42` **و** `rc43` است (عنوانش `rc42` می‌گوید — **فهرستِ فایل معتبر است**). پس پیش‌نیازِ ریبیس **برآورده نیست** و حکمِ «ریبیس زودهنگام ممنوع» رعایت شد.
+- **یادآوریِ مهم برای مجریِ ریبیس:** ‏`tests/docs-freeze-marker.js` مسیرِ `docs/DOCS_FREEZE_v1.0.0-rc40.md` را **سخت‌کد** دارد. پس از bump، تا وقتی آن خط به سندِ قفلِ نو اشاره نکند این گیت سبز نمی‌شود — **آن ویرایش کارِ چت ۶ است**، نه مجریِ ریبیس. در آن حالت NOT-RUN با دلیل ثبت شود.
+- **گیت‌ها:** freeze-marker **۱۴/۱۴** · docs-metadata یتیم **۰** · reza-mirror-check **۰/۰** · secret-scan **۱۲/۱۲** · ‏`docs-stats-sync --check` همچنان **RED routed-to-chat6** (بدونِ remediation).
+- **باز:** نشستِ #176 ⇒ ریبیسِ تک‌نوبتیِ #181 با playbook ⇒ مرجِ #181 ⇒ patch-set سخت‌گیریِ چت ۲ · انتقالِ دو سند به `docs/` در bump (چت ۶) · ‏CI NOT-RUN (بیلینگ) · ظرفیتِ ملی اثبات‌نشده (مالکِ چت ۴) · rotate توکن = فقط اقدامِ مالک.
+
+## چت ۱۰ — دور ۱: Operational Readiness Package — ✅ (2026-09-13)
+- **نقش:** آرنا ۱۰، مالک بستهٔ ۵ نقشه راه (Operational Readiness) · شاخه: `arena/01a09be5-p2` از `622146f` · صفر تغییر کد.
+- **خروجی (۸ فایل تازه):** `docs/OPERATIONAL_READINESS.md` (SLO منبع‌دار + بودجهٔ خطا + IC + drill) · `docs/INCIDENT_PLAYBOOK.md` (۴ فاز + درخت rollback + قالب comms + شاخهٔ امنیتی + ۷ حالت خرابی) · `docs/ONCALL_SCHEDULE.md` (چرخش هفتگی + تشدید) · `docs/BUS_FACTOR_REGISTRY.md` (۸ زیرسیستم + ۳ هشدار factor=۱) · `docs/COST_ENVELOPE.md` (فرمول + S/M/L/ملی) · `templates/POSTMORTEM_TEMPLATE.md` · `templates/ONCALL_HANDOFF_TEMPLATE.md` · `templates/ESCALATION_MATRIX.md`.
+- **هم‌خوان‌سازی عمدی (خلاف بریف اولیه، با دلیل):** شدت = کانن P0–P3 (SEV فقط نگاشت) · API ‏99.95٪ و sync ‏99.5٪ از اسناد مصوب (نه اعداد بریف) · پست‌مورتم تکراری نساخته شد (فرم روی کانن §۵) · `SYNC_RELIABILITY_EVIDENCE.md` وجود ندارد → SLO با storm-drill ‏18/18 و offline-e2e ‏23/23 هم‌خوان شد.
+- **گیت‌ها:** stats-check ✅ · freeze ✅ (منجمدها دست‌نخورده) · metadata یتیم ۰ · mirror ‏۰/۰ چک‌فقط · secret-scan ‏12/12 · بودجه 🟢.
+- **NOT-RUN صادقانه:** tabletop اول + drillها (تیم انسانی + staging) · انتساب انسانی آن‌کال/owner (ACCEPT ناظر) · قیمت واقعی vendor · ‏CI (بیلینگ).
+- **گزارش کامل:** `docs/daily-reports/2026-09-13.md` § «چت ۱۰ — دور ۱» · PR از همین شاخه (مرج فقط با ACCEPT ناظر).
