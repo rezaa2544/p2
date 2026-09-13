@@ -115,6 +115,20 @@ function backingStorePolicy() {
   };
 }
 
+/* P0-1 (round 3, item 2) — see the pool.on('connect') handler in init().
+   Counted so a test can prove the event was observed rather than crashed on. */
+let clientErrorCount = 0;
+function onClientError(err) {
+  clientErrorCount++;
+  const msg = (err && err.message) || String(err);
+  if (isProductionEnv()) {
+    console.error('[DB] PostgreSQL client error in production — the operation fails explicitly and readiness goes red (no silent retry, no process crash):', msg);
+  } else {
+    console.warn('[DB] PostgreSQL client error:', msg);
+  }
+}
+function clientErrors() { return clientErrorCount; }
+
 /**
  * Initialize Database Layer & Pool Lifecycle
  * @param {Object} fallbackStore - In-memory store object loaded from payesh.json
@@ -161,6 +175,22 @@ async function init(fallbackStore) {
       console.error('[DB] PostgreSQL pool background error:', err.message);
       // Attempt reconnect if pool died
       scheduleReconnect();
+    });
+
+    /* P0-1 (round 3, item 2) — a checked-out pg Client whose connection dies
+       emits an 'error' event that nothing listened to, which aborted the
+       whole Node process ("Unhandled 'error' event" on Client). The in-flight
+       query already rejects, so the caller still sees an explicit failure;
+       this listener only stops the crash and records the event.
+
+       Production semantics deliberately follow the existing Redis precedent
+       (server/redis.js:224-236 and tests/redis-prodfail.js): operations throw
+       and readiness goes red — the process is NOT killed, because a single
+       reset connection must not become a full outage. Exit-on-client-error
+       would be stricter than the contract this codebase already ships for its
+       other shared backend. */
+    pool.on('connect', (c) => {
+      try { c.on('error', onClientError); } catch (e) {}
     });
 
     // Test connection & verify ping
@@ -775,7 +805,21 @@ async function isUidProcessed(uid) {
     try {
       const res = await pool.query('SELECT 1 FROM server_processed_uids WHERE uid = $1', [uid]);
       if (res.rowCount > 0) return true;
-    } catch (e) {}
+    } catch (e) {
+      /* P0-1 (round 3, item 3) — this used to be an empty catch, which silently
+         downgraded a PostgreSQL failure to the per-process JSON store. That is
+         an idempotency hole: a sync uid whose "already applied?" check could
+         not be answered was treated as *not* applied, so the same op could be
+         applied twice across instances. In production we now fail closed; the
+         sync route turns the throw into a clean 500 (server/index.js request
+         wrapper) / 503, and the client retries. Dev/test keeps the old
+         warn-and-continue behaviour so local offline runs still work. */
+      if (!memoryFallbackAllowed()) {
+        throw new Error('isUidProcessed: PostgreSQL idempotency check failed in production (refusing to fall back to the per-process store): '
+          + ((e && e.message) || e));
+      }
+      console.warn('[DB] isUidProcessed: PostgreSQL query failed, using the in-memory store (dev/test only):', (e && e.message) || e);
+    }
   }
   if (memoryStore && memoryStore.__processed_uids) {
     return !!memoryStore.__processed_uids[uid];
@@ -901,6 +945,8 @@ module.exports = {
   memoryFallbackAllowed,
   memoryFallbackRequested,
   backingStorePolicy,
+  /* round 3, item 2 — observed pg Client errors (crash-prevention counter) */
+  clientErrors,
   shouldPersistMirrorFile,
   hydrationUsersCapped,
   getPool,

@@ -45,6 +45,14 @@ const SUPERADMIN_PHONE = SEED_SU.phone;
 const SUPERADMIN_NID = String(SEED_SU.national_id);
 const SUPERADMIN_ID = SEED_SU.id;
 const SEED_SCHOOL_ID = (JSON.parse(fs.readFileSync(REAL_STORE, 'utf8')).schools || [])[0].id;
+
+/* P0-1 (بستهٔ ۱): در production سرور بدونِ PostgreSQL بالا نمی‌آید — پس R3
+   که یک نمونهٔ production بوت می‌کند به یک DATABASE_URL زنده نیاز دارد.
+   بدونِ آن R3 عملاً NOT-RUN است و exit code مجموعه ۲ می‌شود تا هرگز
+   «سبزِ بدونِ اجرا» خوانده نشود (همان قاعدهٔ سوئیت‌های pg-prod-*).
+   هارنس: node tests/helpers/boot-pg.js */
+const A5_PG_URL = process.env.A5_PG_URL || process.env.DATABASE_URL || '';
+const notRun = [];
 const CHILD = [
   "process.on('uncaughtException',function(e){console.log('UNCAUGHT:'+(e&&e.message||e));process.exit(4)});",
   "const m=require('./server/index.js');",
@@ -69,8 +77,13 @@ async function j(BASE, method, p, opts){
 
 function baseEnv(storePath, tmp){
   const env = Object.assign({}, process.env);
+  /* DATABASE_URL / A5_PG_URL are stripped on purpose: only the R3 production
+     children are meant to run on PostgreSQL (they pass DATABASE_URL
+     explicitly). If the operator exported DATABASE_URL, leaking it into the
+     R1/R2 JSON-store children moved their OTP flow onto PG and produced two
+     false reds (R1b/R2a) that had nothing to do with the code under test. */
   for(const k of ['PAYESH_ENV','NODE_ENV','REDIS_URL','PAYESH_TEST_SLOW_MS',
-    'PAYESH_BEHIND_PROXY','PAYESH_SHUTDOWN_TIMEOUT_MS']) delete env[k];
+    'PAYESH_BEHIND_PROXY','PAYESH_SHUTDOWN_TIMEOUT_MS','DATABASE_URL','A5_PG_URL']) delete env[k];
   env.PAYESH_STORE = storePath;
   env.PAYESH_AUDIT = path.join(tmp, 'audit.log');
   env.PAYESH_KEY = path.join(tmp, 'key');
@@ -297,6 +310,13 @@ function fakeRedis(){
     const T = path.join(tmp, 'store.json');
     fs.copyFileSync(REAL_STORE, T);
     Object.assign(process.env, baseEnv(T, tmp));
+    /* Object.assign only overwrites — it cannot remove keys. The ones baseEnv
+       deletes (DATABASE_URL, A5_PG_URL, NODE_ENV, …) therefore survive from
+       the parent env, and since R2 runs the server IN-PROCESS, an operator's
+       exported DATABASE_URL silently moved this JSON-store drill onto
+       PostgreSQL (R2b → 503, R2c → 501 pg_authoritative). Remove them here. */
+    for (const k of ['DATABASE_URL', 'A5_PG_URL', 'NODE_ENV', 'PAYESH_ENV', 'REDIS_URL',
+      'PAYESH_BEHIND_PROXY', 'PAYESH_SHUTDOWN_TIMEOUT_MS', 'PAYESH_TEST_SLOW_MS']) delete process.env[k];
 
     const mod = require(path.join(ROOT, 'server', 'index.js'));
     await new Promise((res) => mod.server.listen(0, res));
@@ -345,7 +365,11 @@ function fakeRedis(){
 
   /* ── R3: Redis Failover / Failback (ioredis واقعی) ── */
   console.log('\n▸ R3 — Redis Failover/Failback (ioredis واقعی)');
-  {
+  if (!A5_PG_URL) {
+    notRun.push('R3 — Redis Failover/Failback (production boot requires a live DATABASE_URL under P0-1)');
+    console.log('  ⏭️  R3 NOT-RUN — production بدونِ DATABASE_URL بالا نمی‌آید (P0-1)');
+    console.log('     رفع: node tests/helpers/boot-pg.js  سپس  A5_PG_URL=postgres://chat1:chat1@127.0.0.1:55433/payesh_chat1 node tests/arena5-recovery.js');
+  } else {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-a5-r3-'));
     const T = path.join(tmp, 'store.json');
     fs.copyFileSync(REAL_STORE, T);
@@ -356,7 +380,7 @@ function fakeRedis(){
     chk('R3a fake ردیس (TCP RESP) بالا', rport > 0, 'port ' + rport);
 
     /* P0#2: production + Redis مشترک ⇒ کلیدِ نشستِ مشترک الزامی است (fail-fastِ تازه) */
-    const c3 = spawnServer(T, tmp, { PAYESH_ENV: 'production', NODE_ENV: 'production', PAYESH_BEHIND_PROXY: '1', REDIS_URL: 'redis://127.0.0.1:' + rport, PAYESH_JWT_SECRET: 'arena5-recovery-shared-jwt-secret-0123456789' });
+    const c3 = spawnServer(T, tmp, { PAYESH_ENV: 'production', NODE_ENV: 'production', PAYESH_BEHIND_PROXY: '1', REDIS_URL: 'redis://127.0.0.1:' + rport, PAYESH_JWT_SECRET: 'arena5-recovery-shared-jwt-secret-0123456789', DATABASE_URL: A5_PG_URL });
     let BASE = '';
     try { BASE = await c3.ready(15000); } catch (e) { chk('R3b استارتِ production + ردیسِ زنده', false, String(e.message).slice(0, 200)); }
     if(BASE){
@@ -405,7 +429,7 @@ function fakeRedis(){
         const t = setTimeout(() => { try { c3.proc.kill('SIGKILL'); } catch (e) {} resolve(); }, 8000);
         c3.proc.on('exit', () => { clearTimeout(t); resolve(); });
       });
-      const c4 = spawnServer(T, tmp, { PAYESH_ENV: 'production', NODE_ENV: 'production', PAYESH_BEHIND_PROXY: '1', REDIS_URL: 'redis://127.0.0.1:' + rport, PAYESH_JWT_SECRET: 'arena5-recovery-shared-jwt-secret-0123456789' });
+      const c4 = spawnServer(T, tmp, { PAYESH_ENV: 'production', NODE_ENV: 'production', PAYESH_BEHIND_PROXY: '1', REDIS_URL: 'redis://127.0.0.1:' + rport, PAYESH_JWT_SECRET: 'arena5-recovery-shared-jwt-secret-0123456789', DATABASE_URL: A5_PG_URL });
       let BASE4 = '';
       try { BASE4 = await c4.ready(15000); } catch (e) { chk('R3h restart پس ازِ قطعِ طولانی', false, String(e.message).slice(0, 200)); }
       if(BASE4){
@@ -425,7 +449,7 @@ function fakeRedis(){
   }
 
   /* ── R4: PostgreSQL Failback (قراردادِ استاتیک) ── */
-  console.log('\n▸ R4 — PostgreSQL Failback (قراردادِ استاتیک — PG در ساندباکس نیست)');
+  console.log('\n▸ R4 — PostgreSQL Failback (قراردادِ استاتیک روی منبع)');
   {
     const dbsrc = fs.readFileSync(path.join(ROOT, 'server', 'db.js'), 'utf8');
     chk('R4a scheduleReconnect تعریف شده', dbsrc.indexOf('function scheduleReconnect') > -1);
@@ -442,11 +466,15 @@ function fakeRedis(){
   /* ── جمع ── */
   console.log('\n════════════════════════════════════════');
   console.log('Arena5-Recovery: ' + pass + ' سبز / ' + fail + ' قرمز');
+  if(notRun.length){
+    for(const n of notRun) console.log('  ⏭️  NOT-RUN: ' + n);
+  }
   if(fail) {
     for(const f of fails) console.log('  ✗ ' + f);
     process.exit(1);
   }
-  process.exit(0);
+  /* NOT-RUN ≠ PASS — exit 2 so a partially-run suite is never read as green. */
+  process.exit(notRun.length ? 2 : 0);
 })().catch((e) => {
   console.error('FATAL: ' + ((e && e.stack) || e));
   process.exit(1);
