@@ -1956,6 +1956,13 @@ add('donations',{school_id:sid,donor_name:'خیر مدرسه',amount:500000+((si
 add('donations',{school_id:sid,donor_name:null,amount:1000000+((sid*104729)%5)*1000000,date:daysAgoISO(60+sid),description:'نذر فرهنگی',registered_by:mgr.id,created_at:daysAgoISO(59+sid)});
 });
 })();
+(function(){
+add('users',{school_id:1,role:'guard',full_name:'رضا نگهبانی',username:'guard1',password:'123456',
+national_id:'9990000311',phone:'09990000031',active:1,title:'نگهبان/پذیرش',created_at:daysAgoISO(200)});
+var t1=db.users.filter(function(u){return u.role==='teacher'&&u.school_id===1&&u.active===1;});
+if(t1.length>=2) t1[t1.length-1].lib_staff=1;
+if(t1.length>=3) t1[t1.length-2].asset_staff=1;
+})();
 }
 
 var IDX_VER = Object.create(null);
