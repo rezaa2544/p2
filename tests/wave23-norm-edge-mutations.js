@@ -85,9 +85,17 @@ async function seed() {
   await admin.end();
 
   const c = await connect(DB);
+  const { execFileSync } = require('child_process');
+  const dbUrl = base.replace(/\/[^/]*$/, '/' + DB);
   for (const m of fs.readdirSync(path.join(ROOT, 'migrations'))
       .filter((x) => x.endsWith('.sql') && !x.endsWith('.down.sql')).sort()) {
-    await c.query(fs.readFileSync(path.join(ROOT, 'migrations', m), 'utf8'));
+    const sql = fs.readFileSync(path.join(ROOT, 'migrations', m), 'utf8');
+    if (/^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql)) {
+      /* متاکامنددار ⇒ psql (الگوی #163؛ رگرسیونِ پس از #82 روی مسیرِ live این سوئیت) */
+      execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', m), dbUrl], { stdio: 'pipe' });
+    } else {
+      await c.query(sql);
+    }
   }
   await c.query(`INSERT INTO schools (id,name,type,version) VALUES (1,'مدرسهٔ لبه','governmental',1)`);
   await c.query(`INSERT INTO classes (id,school_id,name,grade,version) VALUES (1,1,'کلاس لبه',7,1)`);

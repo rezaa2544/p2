@@ -353,6 +353,11 @@ const ROUTE_EXACT = new Set([
   '/api/v1/bootstrap', '/api/v1/pull',
   '/api/v1/students', '/api/v1/classes', '/api/v1/attendance',
   '/api/v1/grades', '/api/v1/users',
+  /* Wave 23 (f303687) — چهار endpointِ گزارشِ وزارتی (routes/reports.js).
+     ممیزی دور ۲: این‌ها از allowlist جا مانده بودند ⇒ T7a قرمز و هر
+     فراخوانی برچسبِ fail-closedِ api_unmatched می‌گرفت (کوریِ سنجه). */
+  '/api/v1/reports/attendance', '/api/v1/reports/academic',
+  '/api/v1/reports/finance', '/api/v1/reports/teachers',
   '/metrics'
 ]);
 const ROUTE_PATTERNS = [

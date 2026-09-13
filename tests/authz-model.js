@@ -30,12 +30,30 @@ function chk(name, cond, extra) {
 /* برایِ هر فراخوانی، آرگومانِ اول (نامِ مجموعه) و اولین آبجکتِ
    لیترالیِ آرگومان‌ها را می‌یابد و کلیدهای سطحِ یک را برمی‌گرداند.
    اگر آبجکت spread دارد، null برمی‌گرداند (تست را شکست نمی‌دهد). */
+/* S7-4 (Bug Hunt session 7): the metrics registry exposes `add(name, labels,
+   value)` — the same identifier the data API uses for writes. Scanning
+   `r.add('t_depth', { status: 'pending' }, -2)` as a *data* write reported a
+   false violation ("مجموعه در مدل نیست" for a metric label set). A registry
+   alias is recognizable from the file itself (`const r = metrics
+   .createRegistry()`), so those receivers are skipped — while every bare
+   `insert/update/add('collection', {…})` stays fully covered (the scanner's
+   original purpose: test-written fields must exist in the authz model). */
+function detectMetricsAliases(fileText) {
+  const aliases = new Set();
+  const re = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[A-Za-z_$][\w$]*\s*\.\s*createRegistry\s*\(/g;
+  let m;
+  while ((m = re.exec(fileText))) aliases.add(m[1]);
+  return aliases;
+}
 function extractWriteCalls(fileText) {
   const out = [];
-  const re = /\b(insert|update|add)\s*\(\s*['"]([a-z_]+)['"]/g;
+  const metricsAliases = detectMetricsAliases(fileText);
+  const re = /(?:(?:([A-Za-z_$][\w$]*)\s*\.\s*)?)\b(insert|update|add)\s*\(\s*['"]([a-z_]+)['"]/g;
   let m;
   while ((m = re.exec(fileText))) {
-    const coll = m[2];
+    const receiver = m[1] || null;
+    const coll = m[3];
+    if (receiver && metricsAliases.has(receiver)) continue; /* metric registry, not a collection */
     /* شروعِ آرگومان‌ها: بعد از اولین '(' */
     let i = re.lastIndex;
     /* اولین '{' را تا عمقِ پرانتزِ فراخوانی=0 بگرد */
