@@ -475,61 +475,37 @@ function assocMinModal(){
    ${f('مصوبات جلسه (هر خط یک مصوبه)',`<textarea class="input" id="am_res" rows="5" placeholder="مثلاً:\nتصویبِ کمکِ داوطلبانهٔ ۵ میلیونی برای کتابخانه\nتعیینِ اردوی پاییز در اواخرِ مهر" style="line-height:1.9"></textarea>`)}
    `,'assoc-min-save'));
 }
-/* E.8 — مودال‌های کلاس‌های تابستانی */
-function summerModal(sc){
-  sc=sc||{};
+/* بند ۶.۴ — مودال‌های کلاس‌های تابستانی */
+function summerModal(){
   var ts=db.users.filter(function(u){return u.role==='teacher'&&u.school_id===S.user.school_id&&u.active;})
     .sort(function(a,b){return a.full_name.localeCompare(b.full_name,'fa');});
-  var topts='<option value="">بدون دبیر</option>'+ts.map(function(u){return '<option value="'+u.id+'" '+(Number(sc.teacher_id)===u.id?'selected':'')+'>'+esc(u.full_name)+'</option>';}).join('');
-  var sched=JSON.stringify(summerScheduleObj(sc));
-  if(sched==='{}') sched='{"saturday":"08:00-10:00"}';
-  openModal(modalTpl(sc.id?'ویرایش کلاس تابستانی':'کلاس تابستانی تازه',
+  var topts=ts.map(function(u){return '<option value="'+u.id+'">'+esc(u.full_name)+'</option>';}).join('');
+  openModal(modalTpl('کلاسِ تابستانیِ تازه',
    `
-   ${sc.id?`<input type="hidden" id="su_id" value="${escAttr(sc.id)}" />`:''}
-   ${f('عنوان کلاس *',`<input class="input" id="su_title" value="${escAttr(summerTitle(sc)==='—'?'':summerTitle(sc))}" placeholder="مثلاً ریاضی تقویتی پایه هشتم" />`)}
-   ${f('درس/محور *',`<input class="input" id="su_subject" value="${escAttr(sc.subject||'')}" placeholder="ریاضی، هنر، ورزش..." />`)}
-   ${f('دبیر (اختیاری)',`<select class="input" id="su_teacher">${topts}</select>`)}
+   ${f('نام کلاس *',`<input class="input" id="su_name" value="" placeholder="مثلاً تکمیلی ریاضی تابستان" />`)}
+   ${f('دبیر *',`<select class="input" id="su_teacher">${topts}</select>`)}
    <div class="grid g2">
-   ${f('تاریخ شروع *',`<input class="input" id="su_start" type="date" value="${escAttr(sc.start_date||todayISO())}" /> <span class="badge b-gray">${jalali(sc.start_date||todayISO())}</span>`)}
-   ${f('تاریخ پایان',`<input class="input" id="su_end" type="date" value="${escAttr(sc.end_date||'')}" />`)}
-   ${f('ظرفیت *',`<input class="input" id="su_cap" type="number" min="1" max="200" value="${escAttr(sc.capacity||15)}" />`)}
-   ${f('وضعیت',sel('su_status',SUMMER_STATUS,sc.status||'planned'))}
+   ${f('تاریخِ شروع *',`<input class="input" id="su_start" type="date" value="${todayISO()}" /> <span class="badge b-gray">${jalali(todayISO())}</span>`)}
+   ${f('تاریخِ پایان',`<input class="input" id="su_end" type="date" value="" />`)}
    </div>
-   ${f('برنامه هفتگی JSON *',`<textarea class="input" id="su_schedule" rows="3" dir="ltr" placeholder='{"saturday":"08:00-10:00"}'>${esc(sched)}</textarea>`)}
-   ${f('یادداشت (اختیاری)',`<input class="input" id="su_note" value="${escAttr(sc.note||'')}" placeholder="توضیح کوتاه" />`)}
+   ${f('یادداشت (اختیاری)',`<input class="input" id="su_note" value="" placeholder="مثلاً ساعت و روزهای برگزاری" />`)}
    `,'summer-save'));
 }
 function summerStudentsModal(){
   var sc=byId('summer_classes',window._suId);
   if(!sc)return;
-  var have=summerStudentIds(sc);
-  var cap=Number(sc.capacity)||15;
-  var studs=db.users.filter(function(u){return u.role==='student'&&u.school_id===sc.school_id&&u.active;})
+  var have=sc.student_ids||[];
+  var studs=db.users.filter(function(u){return u.role==='student'&&u.school_id===S.user.school_id&&u.active;})
     .sort(function(a,b){return a.full_name.localeCompare(b.full_name,'fa');});
   var rows=studs.map(function(u){
     var on=have.indexOf(u.id)>-1;
     return '<label style="display:flex;gap:8px;align-items:center;padding:4px 0;cursor:pointer">'
       +'<input type="checkbox" class="su-chk" value="'+u.id+'" '+(on?'checked':'')+' /> '+esc(u.full_name)+'</label>';
   }).join('');
-  openModal(modalTpl('ثبت‌نام دانش‌آموزان — ' + summerTitle(sc),
-   `<div class="small muted" style="margin-bottom:6px">دانش‌آموزان این کلاس را انتخاب کنید (ظرفیت: ${fa(cap)} نفر). حذف تیک یعنی انصراف.</div>
+  openModal(modalTpl('دانش‌آموزان — ' + sc.name,
+   `<div class="small muted" style="margin-bottom:6px">دانش‌آموزانِ این کلاس را انتخاب کنید (هر کلاس تا ${fa(15)} نفر).</div>
    <div class="vscroll" style="max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px">${rows}</div>
    `,'summer-students-save'));
-}
-function summerAttendanceModal(){
-  var sc=byId('summer_classes',window._suId);
-  if(!sc)return;
-  var rows=summerActiveEnrollments(sc.id).map(function(e){
-    var st=byId('users',e.student_id)||{};
-    return '<div class="row" style="gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
-      +'<span style="min-width:160px">'+esc(st.full_name||'؟')+'</span><div class="spacer"></div>'
-      +sel('su_att_'+e.id,SUMMER_ATT_STATUS,(e.attendance||{})[todayISO()]||'present')+'</div>';
-  }).join('');
-  openModal(modalTpl('ثبت حضور — ' + summerTitle(sc),
-   `${f('تاریخ جلسه',`<input class="input" id="su_att_date" type="date" value="${todayISO()}" />`)}
-    <div class="small muted" style="margin:6px 0">حضور فقط برای دانش‌آموزان ثبت‌نام‌شدهٔ فعال ذخیره می‌شود.</div>
-    <div class="vscroll" style="max-height:330px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px">${rows||'<div class="muted small">ثبت‌نام فعالی نیست.</div>'}</div>`,
-   'summer-att-save'));
 }
 const PRESETS={positive:POS.map(p=>p[0]),negative:NEG.map(p=>p[0])};
 function discModal(d){
