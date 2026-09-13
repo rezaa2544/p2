@@ -22,18 +22,21 @@ const SRV = path.join(ROOT, 'server', 'pull.js');
 const CLI = path.join(ROOT, 'src', 'js', '29-pull.js');
 const RPT = path.join(ROOT, 'src', 'js', '77-reports.js');
 
+/* BH-mut (الگوی امن p06/p11 — درسِ حادثهٔ P1-2): جهش در کپیِ هم‌جوارِ جدا
+   (mutant-kit)؛ سورس‌ها و خروجی‌های build هرگز بازنویسی نمی‌شوند —
+   restore/rebuildِ درجا و process.on(exit) حذف شدند. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('rbc-');
+kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
+
+
 const orig = {
   srv: fs.readFileSync(SRV, 'utf8'),
   cli: fs.readFileSync(CLI, 'utf8'),
   rpt: fs.readFileSync(RPT, 'utf8'),
 };
-function restore() {
-  fs.writeFileSync(SRV, orig.srv, 'utf8');
-  fs.writeFileSync(CLI, orig.cli, 'utf8');
-  fs.writeFileSync(RPT, orig.rpt, 'utf8');
-  cp.execFileSync(process.execPath, [path.join(ROOT, 'build.js')], { stdio: 'ignore' });
-}
-process.on('exit', restore);
+/* بازگردانی درجا حذف شد: هر جهش کپیِ خودش را دارد (kit)؛
+   سقفِ timeout دیگر هرگز سورس را آلوده نمی‌کند (درسِ P1-2) */
 
 /* هر جهش: {name, edits:[{file, from, to}]} — چندویرایشی مجاز. */
 const SRV_CAP_OFF = {
@@ -143,21 +146,24 @@ for (const m of mutations) {
     survived++;
     continue;
   }
-  for (const k of Object.keys(FILES)) fs.writeFileSync(FILES[k], texts[k], 'utf8');
+  for (const k of Object.keys(FILES)) {
+    const mcopy = kit.mutant(FILES[k], texts[k]); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+    try { fs.chmodSync(mcopy, fs.statSync(FILES[k]).mode); } catch (_) {}
+  }
   /* کلاینت داخل index.html زندگی می‌کند — rebuild لازم */
-  cp.execFileSync(process.execPath, [path.join(ROOT, 'build.js')], { stdio: 'ignore' });
+  cp.execFileSync(process.execPath, [path.join(ROOT, 'build.js')], { stdio: 'ignore', env: kit.env() });
 
   let red = false;
   try {
     cp.execFileSync(process.execPath, [path.join(ROOT, 'tests', 'reports-bounded-cache.js')],
-      { stdio: 'ignore', timeout: 120000 });
+      { stdio: 'ignore', timeout: 120000, env: kit.env() });
   } catch (e) { red = true; }
 
   if (red) { killed++; console.log('  ✅ کشته: ' + m.name); }
   else { survived++; console.log('  ❌ زنده ماند: ' + m.name); }
 }
 
-restore();
+for (const k of Object.keys(FILES)) kit.clear(FILES[k]);
 console.log('\n────────────────────────────────────────────────────');
 console.log(`bounded-cache-mutations: ${killed} کشته / ${survived} زنده ${survived === 0 ? '✅' : '❌'}`);
 process.exit(survived === 0 ? 0 : 1);

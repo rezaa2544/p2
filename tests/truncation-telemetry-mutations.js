@@ -17,12 +17,17 @@ const FILES = {
   bench: path.join(ROOT, 'tools', 'bench-reports-scale.js')
 };
 const orig = {};
+
+/* BH-mut (الگوی امن p06/p11 — درسِ حادثهٔ P1-2): جهش در کپیِ هم‌جوارِ جدا
+   (mutant-kit)؛ سورس‌ها و خروجی‌های build هرگز بازنویسی نمی‌شوند —
+   restore/rebuildِ درجا و process.on(exit) حذف شدند. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('tct-');
+kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
+
 for (const k of Object.keys(FILES)) orig[k] = fs.readFileSync(FILES[k], 'utf8');
-function restore() {
-  for (const k of Object.keys(FILES)) fs.writeFileSync(FILES[k], orig[k], 'utf8');
-  cp.execFileSync(process.execPath, [path.join(ROOT, 'build.js')], { stdio: 'ignore' });
-}
-process.on('exit', restore);
+/* بازگردانی درجا حذف شد: هر جهش کپیِ خودش را دارد (kit)؛
+   سقفِ timeout دیگر هرگز سورس را آلوده نمی‌کند (درسِ P1-2) */
 
 const mutations = [
   {
@@ -91,18 +96,21 @@ for (const m of mutations) {
     texts[e.file] = texts[e.file].replace(e.from, e.to);
   }
   if (!applied) { console.log('  ❌ ' + m.name + ' — الگوی جهش پیدا نشد'); survived++; continue; }
-  for (const k of Object.keys(FILES)) fs.writeFileSync(FILES[k], texts[k], 'utf8');
-  cp.execFileSync(process.execPath, [path.join(ROOT, 'build.js')], { stdio: 'ignore' });
+  for (const k of Object.keys(FILES)) {
+    const mcopy = kit.mutant(FILES[k], texts[k]); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+    try { fs.chmodSync(mcopy, fs.statSync(FILES[k]).mode); } catch (_) {}
+  }
+  cp.execFileSync(process.execPath, [path.join(ROOT, 'build.js')], { stdio: 'ignore', env: kit.env() });
   let red = false;
   try {
     cp.execFileSync(process.execPath, [path.join(ROOT, 'tests', 'truncation-telemetry.js')],
-      { stdio: 'ignore', timeout: 120000 });
+      { stdio: 'ignore', timeout: 120000, env: kit.env() });
   } catch (e) { red = true; }
   if (red) { killed++; console.log('  ✅ کشته: ' + m.name); }
   else { survived++; console.log('  ❌ زنده ماند: ' + m.name); }
 }
 
-restore();
+for (const k of Object.keys(FILES)) kit.clear(FILES[k]);
 console.log('\n────────────────────────────────────────────────────');
 console.log(`truncation-telemetry-mutations: ${killed} کشته / ${survived} زنده ${survived === 0 ? '✅' : '❌'}`);
 process.exit(survived === 0 ? 0 : 1);
