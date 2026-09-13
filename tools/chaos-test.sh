@@ -121,10 +121,12 @@ snapshot(){ # snapshot <name> <phase>
     echo "  \"ts\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
     echo "  \"live\": $LIVE,"
     echo "  \"endpoints\": {"
+    # کامایِ آخر باید حذف شود وگرنه JSON نامعتبر است (یافتهٔ مانورِ 2026-09-13:
+    # فایل‌های before/after با کامای انتهایی تولید می‌شدند و JSON.parse می‌شکست)
     for ep in /api/liveness /api/readiness /api/health; do
       local r; r=$( [ "$LIVE" = 1 ] && probe_once "$name" "$ep" || echo "dry-run,0" )
       echo "    \"$ep\": \"$r\","
-    done
+    done | sed '$ s/,$//'
     echo "  }"
     echo "}"
   } > "$f"

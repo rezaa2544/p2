@@ -132,6 +132,8 @@ bash infra/postgres/post-checks.sh && bash infra/redis/redis-checks.sh
 |---|---|---|---|---|---|
 | _(نمونهٔ قالب)_ 2026-10-05 | §۱ stop-primary | ۳د۴۰ث | ۴ث | سبز؛ افزودنِ alertِ pg_stat_archiver | ناظر ارشد |
 | 2026-09-11 | WAL disk-full (§۸) — PG17، `pg_wal` روی tmpfsِ ۱۰۰MB | **۳۰٫۲ث** | **۰** | سبز؛ PANIC واقعی ثبت شد. اقدامِ اصلاحیِ باز: **آلارمِ بیرونیِ دیسکِ WAL** (PG در ۸۰٪ ساکت است) + افزودنِ گامِ «آزادسازیِ فضا پیش از restart» به رویه. شاهد: `docs/WAVE19_WAL_DRILL_REPORT.md` | Arena |
+| 2026-09-13 | WAL disk-full (§۸) — بازاجرای کامل روی PG ‏17.10 (باینری‌های userspace؛ سندباکس با sudo/tmpfs) | **۳۰٫۲ث** | **۰** | سبز **23/23** (پیش از این 20/21)؛ PANIC واقعی + replica با `pg_basebackup` (catch-up≈0.1s، ‏6000=6000). شاهد: `docs/daily-reports/2026-09-13.md` §چت۴ | چت ۴ |
+| 2026-09-13 | disk-full سطحِ اپ + kill-api + pg-down (ابزار chaos؛ store/audit/otp روی tmpfsِ ۱۴MB) | n/a (کرشی رخ نداد) | **۰** | سبز: جهش در دیسکِ پُر → ‏200 (`otp.json.tmp` صفربایتی = ENOSPC مستقیم)، کل timeline ‏200، صفر 500؛ پس از آزادسازی، ‏`otp.json` بازنویسی و store سالم. kill-api: detect≤5s/recover ‏15s · pg-down: detect≈173ms/recover≈507ms. شاهد: همان گزارش | چت ۴ |
 
 > **قیدِ صداقتِ ردیفِ بالا:** RPO=0 با «شمارِ رکوردها» تأیید شد نه checksumِ
 > سطر‌به‌سطر؛ PITR از آرشیو و سناریوی منطقه‌ای در این مانور آزمایش **نشد**؛
