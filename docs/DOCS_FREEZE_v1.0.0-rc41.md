@@ -1,24 +1,26 @@
-# 🔒 قفل مستندات — DOCS_FREEZE_v1.0.0-rc40
+# 🔒 قفل مستندات — DOCS_FREEZE_v1.0.0-rc41
 
-> **⚠️ قفلِ تاریخی.** این نسخه در ۲۰۲۶-۰۹-۱۳ با `DOCS_FREEZE_v1.0.0-rc43.md` جایگزین شد و دیگر «جاری» نیست.
+> **⚠️ قفلِ تاریخی.** این نسخه در ۲۰۲۶-۰۹-۱۳ با `DOCS_FREEZE_v1.0.0-rc42.md` جایگزین شد و دیگر «جاری» نیست.
 > **مانیفستِ دست‌نخورده:** فهرستِ زیر **عمداً ویرایش نشده** است — وضعیتِ لحظهٔ قفل را قابل اثبات نگه می‌دارد.
-> نسخه‌های پیشین (`rc1`…`rc39`) نیز با همین قاعده تاریخی‌اند.
+> نسخه‌های پیشین (`rc1`…`rc40`) نیز با همین قاعده تاریخی‌اند.
 
-**نسخهٔ قفل:** ۱.۰.۰-rc40 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** ثبتِ چکیدهٔ P1-2 + بستنِ یتیمیِ گزارش‌ها (Arena)
+**نسخهٔ قفل:** ۱.۰.۰-rc41 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** ثبتِ تصمیم‌های ناظر + چک‌لیست مرج docs-only (چت ۶)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc39` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۲۶ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc40` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۲۴ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
-**دلیل بامپ:** ثبتِ چکیدهٔ بستنِ حلقهٔ P1-2 + بستنِ یتیمیِ گزارش‌های روزانه + ترمیم کهنگی آمار:
+**دلیل بامپ:** ثبتِ رسمیِ بستهٔ تصمیم‌های ناظر (۵ حکم، ۴ تصحیح) + اجرای دو توصیهٔ ممیزیِ PR:
 
 | تغییر | شاهد |
 |---|---|
-| افزودنِ `docs/daily-reports/2026-09-13-p12-mirror-cutoff.md` (چکیدهٔ P1-2 با حقایق راستی‌آزمایی‌شده) | همین کامیت |
-| ثبتِ §۲.۱۳ برای چهار گزارش یتیم‌مانده (چکیدهٔ P1-2 + bh-mut-phase1 + دو گزارش P1-2) ⇒ `docs-metadata`: یتیم ۳ → **۰** | `node tools/docs-metadata.js` |
-| ترمیم کهنگی آمار main (daily-reports ۱۴ِ قفل‌شده در برابر ۱۵ِ واقعی — از رقصِ مرجِ #132/#131) ⇒ اکنون ۱۶ | `node tools/docs-stats-sync.js --check` |
+| افزودنِ `docs/SUPERVISOR_DECISIONS_2026-09-13.md` (ثبتِ ۵ حکمِ ناظر + ۴ تصحیحِ عددیِ پیش از ثبت + یافتهٔ ممیزیِ #135) | همین کامیت |
+| `docs/DOCUMENTATION_MAINTENANCE.md` §۵٫۱ — چک‌لیستِ مرجِ PRهای docs-only (اجرای توصیهٔ ۱ ممیزی) | همین کامیت |
+| `docs/daily-reports/NEXT_ACTIONS.md` — ردیف‌های تصمیم‌های ناظر (ب/پ/الف · tenancy · #135 · ایندکس ۰۱۲) | همین کامیت |
+| `.github/pull_request_template.md` — قالبِ PR با چک‌باکس‌های `docs-stats-sync --check` (توصیهٔ ۲؛ پیش‌تر وجود نداشت) | همین کامیت |
+| رفعِ یتیمیِ `docs/daily-reports/2026-09-13-chat6-final-delivery.md` (صفر ارجاع در کل ریپو) ⇒ `docs-metadata`: یتیم ۱ → **۰** | `node tools/docs-metadata.js` |
 
-`rc39` بنرِ تاریخی گرفت و **مانیفستش دست‌نخورده** ماند. هیچ تستی ضعیف، حذف یا مستثنا نشد.
+`rc40` بنرِ تاریخی گرفت و **مانیفستش دست‌نخورده** ماند. هیچ تستی ضعیف، حذف یا مستثنا نشد.
 
 **زیرپوشه‌های بیرون مانیفست ریشه** (۲۰ سند؛ پوشش ساختاری‌شان را تست‌های پوشش
 می‌پایند و فهرست قطعی‌شان در نمایه ثبت شده است):
@@ -42,9 +44,10 @@
    ولی اثرشان تضمین نمی‌شود.
 3. افزودن سند تازه آزاد است؛ **ویرایش/حذف** سایر اسناد فهرست‌شده بدون بامپ ممنوع است.
 4. راستی‌آزمایی هرزمانه: ‏`node tests/docs-freeze-marker.js` فهرست و اثرها را می‌سنجد.
-5. **درسِ این بامپ:** سیزده سند در فاصلهٔ دو قفل اضافه شد و هیچ‌کس بامپ نکرد، چون
-   هیچ گیتی در CI این را نمی‌سنجد — فقط `docs-freeze-marker.js` محلی. تا وقتی آن تست
-   در گیتِ پیش از مرج اجرا نشود، همین اتفاق دوباره می‌افتد.
+5. **درسِ این بامپ:** رانشِ آمار چهار بار تکرار شد چون `docs-stats-sync --check` نه در CI بود
+   و نه در چک‌لیستِ مرج. این بار هر دو بسته شد: چک‌لیست در `DOCUMENTATION_MAINTENANCE.md` §۵٫۱
+   و چک‌باکس در `.github/pull_request_template.md`. ابزار `--freeze` فقط مانیفستِ قفلِ **جاری**
+   را بازتولید می‌کند؛ ساختِ فایلِ rc بعدی و انتقالِ بنر گامِ دستی است (بخش ۵ راهنما).
 
 ## ۲) امضا
 
@@ -54,7 +57,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۳۲۶)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۳۲۴)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -82,7 +85,7 @@
 | `BEHAVIOR_GAMIFICATION.md` | `sha256:9c53d8e73346af73a1934b3fc5f23776895cdf016a4bd878d4b29c4e129deaa8` |
 | `BOTTLENECK_MAP.md` | `sha256:5c6be2301e932bc963ef9e18750343babf19d65af4e2acdf111cf0e76ad34c1d` |
 | `BUG_HUNT_REPORT.md` | `sha256:ca95ab098f2f512badd4758182e26cacfb54266801e1d74b217c03f25be318c1` |
-| `BUNDLE_REGISTRY.md` | `sha256:40e3edd00c62ba2de60467a4fbfd1a59a8a88289178811fd85267450d08f561f` |
+| `BUNDLE_REGISTRY.md` | `sha256:a95fd25dc082c7a870e467466c5e230a852a6b89a03b26aa73090223189a412f` |
 | `CACHE_STRATEGY_DESIGN.md` | `sha256:9186d05e39cb8095593cfbe9cbcbd699bab519e41994255ebe3708102a3cca20` |
 | `CAPACITY.md` | `sha256:f99be9d2fd2b4cbcb4e0d6c043071625b6473c26ddaed777d7248e8d30989738` |
 | `CAPACITY_MODEL.md` | `sha256:6f939aced476d7b0e8e9f0155ec5c86ce348d7f4bc99a3cd49f5c87a3234ed74` |
@@ -141,24 +144,25 @@
 | `DOCS_FREEZE_v1.0.0-rc31.md` | `sha256:029fc1faa7848eae2b62868f6ed5458a923dd604e53e4273b084e9b86f481457` |
 | `DOCS_FREEZE_v1.0.0-rc32.md` | `sha256:25bad87cd2239aaac5c11c1c27b9bc60f69503ca6e2f48dc76461db17266640b` |
 | `DOCS_FREEZE_v1.0.0-rc33.md` | `sha256:3fab587b8bde63dd1ab98e1c438d9d3fb3ae40d28fc0047c4baf77bcc2fabed4` |
-| `DOCS_FREEZE_v1.0.0-rc34.md` | `sha256:13dff9444b836dc3fcdcc6443c62097629bf6a052a7b592405b3de5d5d805218` |
+| `DOCS_FREEZE_v1.0.0-rc34.md` | `sha256:f38d476a855d68b42e849e02ee8f9b64584199024baf62040b9859ddb28427e8` |
 | `DOCS_FREEZE_v1.0.0-rc35.md` | `sha256:2177db44aa85ecba428c0621dd92a5da2ed9a2180eb2ee7e6fddc6669112ebbb` |
-| `DOCS_FREEZE_v1.0.0-rc36.md` | `sha256:4ad59f1e597ecb8db0b25c531a852efcebf6bb5f72856df4928a71b02e725846` |
+| `DOCS_FREEZE_v1.0.0-rc36.md` | `sha256:c96664917cf425245af036e21f1e736f80d9b433e6d9bc3956c4dbf861d10a18` |
 | `DOCS_FREEZE_v1.0.0-rc37.md` | `sha256:5cd9f96bb6149f23a36bf697d538a76029c7115acc75f0b0135a9e00e21f923e` |
-| `DOCS_FREEZE_v1.0.0-rc38.md` | `sha256:e6893b98249a37da81a65784d9ae2e2604ef4662ebd22193d47aa17580a29c9b` |
+| `DOCS_FREEZE_v1.0.0-rc38.md` | `sha256:34a8221cd55ccc579a70d70615265ead3844b04c9b4d270d03a6bd7885d4f5e7` |
 | `DOCS_FREEZE_v1.0.0-rc39.md` | `sha256:42d03e0c43d87d40702433a2c56dac84590b1616210e9c6096a432c076ae0799` |
 | `DOCS_FREEZE_v1.0.0-rc4.md` | `sha256:c33ea913bef9630a24e34ab0348980e291570cad81d906fcf57908df96fdff73` |
+| `DOCS_FREEZE_v1.0.0-rc40.md` | `sha256:d3fed86884b23335b9d780633fd035c117f9a939b084a0ec86dffd444cba8289` |
 | `DOCS_FREEZE_v1.0.0-rc5.md` | `sha256:df97a36b50b8e4398fd8ac3090b1a2bd7ed1a113780ec8841c8b44e490dce79e` |
 | `DOCS_FREEZE_v1.0.0-rc6.md` | `sha256:ded449054c3464e7c34fc913cf3f71dc5745ffe24e34888cc1aceb94ee93782e` |
 | `DOCS_FREEZE_v1.0.0-rc7.md` | `sha256:f0bbd20a82f5d700283703a265d3fadbadc49198d442ebf10950441bf27c55c4` |
 | `DOCS_FREEZE_v1.0.0-rc8.md` | `sha256:361dfe21c653239ddad6873c394c454a5b2bdc1deb067f32de0686f08d96a205` |
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:36bf496d42732300a7872e76e6a3ce64dca6d52ed20eb1d9621fdce63f3d4169` |
-| `DOCS_INDEX.md` | `sha256:38b32166898fa233b2fd939d93036239b8e3872325affcf0443c233085b51871` |
-| `DOCS_METRICS.md` | `sha256:4c345630f474840780ef1ac0d3bcacb3b360de36dedac85bfc1edea78aba4e95` |
+| `DOCS_INDEX.md` | `sha256:d8670d983dd4dba8ece9e3a585bad0a0b05432585309ec3ce908b8e231507890` |
+| `DOCS_METRICS.md` | `sha256:07f92ed9c6ebb590cb40055340fff7396dbda6a0c24a5eb7b47bd56d47d546f2` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
-| `DOCUMENTATION_MAINTENANCE.md` | `sha256:bbca0ce31bc63dabaacf2f2eab15f2ac2de60528a53de9a34985ef1ea41ee091` |
-| `DOCUMENTATION_MAP.md` | `sha256:26c5f435aaf7960f4514e7eafc0c48952dde6f4249191aac2659aa50757a497d` |
+| `DOCUMENTATION_MAINTENANCE.md` | `sha256:23ca9394050f0fc454eaba3b5f7d33b1d1ae9e6ef1353d30b78146ada64361a8` |
+| `DOCUMENTATION_MAP.md` | `sha256:5f453179335620c57aa564b0037827259c18dde71319e96fbba382f3fd7bc2c3` |
 | `DR_RUNBOOK.md` | `sha256:8c0d8f7e2bb1e1305c2aaf645850de68d4b429895445ecae74a5a0a732db0e26` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
@@ -168,14 +172,13 @@
 | `FAQ.md` | `sha256:b8609cf3ec063a343fa9bf50a708df5a8c298c675df8024302bbd20f49c1547b` |
 | `FARNAZ_PHASE1_FINAL_REPORT.md` | `sha256:7c370d0cc8bc69c85bb29f3af78857e0c99eb8ff5ecf17ccdfd78b0d03524a51` |
 | `FIXES_ACTION_PLAN.md` | `sha256:456eb5dfbe0b907be425e4fc24255de935b48d50f89e77135738d413b85baf53` |
-| `FLAG1_SCOPE_SQL_DOSSIER.md` | `sha256:d79b70ea668f32cf7256f6bdd22016e522bfab21ed33488190cd223459b34f1d` |
 | `G1_HEALTH_INDEX_DESIGN.md` | `sha256:9e4f0ad92cd70a9b4fe68a31459f99676b36e111d27e5dcb59b5a4ba49f58b27` |
 | `G3_USER_GUIDE_REVIEW.md` | `sha256:bf8ac3acff733ee58119a8c08f6dfb7854b448df3ae92145d4dee82affd729b1` |
 | `GAP_ANALYSIS_R43.md` | `sha256:e9877a3d16e9c33d66f2cf89296794c295d81f3fba0dbfe80b1feb036625ddfa` |
 | `GITHUB_COMPARISON.md` | `sha256:3a57d084d3f419f6799ef4ad7d49894b78418a61784ce9bbb3a21b7fe9cdc381` |
 | `GLOSSARY.md` | `sha256:6c57f358053b05223da135eeb892487a8921594978b320d37046290cda145e26` |
 | `GO_LIVE_PACKAGE.md` | `sha256:6b95a9ba516ff20327a51d348c103866983560b6c41b5dc9f3a467e755a76946` |
-| `HANDOFF.md` | `sha256:b8efd141f3b0723b802b78afdbf09ea26199b56f3d471ad5a51226369dc46715` |
+| `HANDOFF.md` | `sha256:45a769850528c5b06e04c9ec2bc7f8c4bca8dabf672872699b816aa948f90c03` |
 | `HANDOFF_ARCHIVE.md` | `sha256:812efbb71396089dafa22af9a47570bc250c902cf8c5ce5a4807f8301ca4a763` |
 | `HA_POSTGRES.md` | `sha256:8a73c7c0d783b0c8139e518bfdfbd709109adb585170e313102f1a4c3bbca677` |
 | `HA_REDIS.md` | `sha256:aaabbaf59318616ef520a002de1e096e37b500e4c27592f67ac0627ca7854a34` |
@@ -192,7 +195,7 @@
 | `MASTER_ONBOARDING_PATH.md` | `sha256:f973f920496b1348387ac347bf5121cb0271c8fb8996b12322ea3e1f8d2437cc` |
 | `MIGRATION_AUDIT.md` | `sha256:d1361ed0ccf6bb3b12676aa07756d02933c72ccc795b6ebe6d5b86c1838a75bf` |
 | `MIGRATION_DECISION.md` | `sha256:1d475fdc918f6c1029d4f280bb80891d78b013934a60135d2960e978168b7d9d` |
-| `MIGRATION_GUIDE.md` | `sha256:eb98cf9a3ad888472f11e39215dc1cd745bfbed956e5d24af246312304df8364` |
+| `MIGRATION_GUIDE.md` | `sha256:9127d01b822ad65ce675f90cea4134e34e89ca2de53f845600a472f7836083d6` |
 | `MULTI_GRADE_GUIDE.md` | `sha256:a5fee017eb9f95b9989d0f8eadb3b07e7afc8ba06131cdcfec3a885cd087b4e4` |
 | `MULTI_INSTANCE_ARCHITECTURE.md` | `sha256:67e0b9447275483f25159fc8034546c8eeacf925d5b7ea594d929453a4dc1146` |
 | `MULTI_INSTANCE_AUDIT.md` | `sha256:767bda832dc565cb74577d58eb2708ae3245be8fc52713ef6a75f7b08652f8d8` |
@@ -203,7 +206,7 @@
 | `NATIONAL_BASELINE_PART3.md` | `sha256:66b2bf5e2df32e471a0b0b5e44a733764d9c01e2557aecb94a58b2f58b054d76` |
 | `NATIONAL_BASELINE_PART4.md` | `sha256:68d5446b6a2f2334ae8748412923431c6a3ad0e952dc70387dcc804d85bb5e01` |
 | `NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md` | `sha256:911f99cda41d415193f9179f5bb6183a6242c769f28a3471af38abb5bb81d228` |
-| `NATIONAL_ROADMAP_PROGRESS.md` | `sha256:f7d79b8ab4788ee2cad39d52e907f42d89d77ba30ba1487b9321005b313b1646` |
+| `NATIONAL_ROADMAP_PROGRESS.md` | `sha256:f410c7552a3090cf4fc690b2be3d0347f22af67481966d8bc9337cd78946b300` |
 | `OBSERVABILITY.md` | `sha256:5220f088a47b84c01806871b574f47fae007785a9d4b58c3bad368e7e53423c0` |
 | `OBSERVABILITY_DEPLOYMENT.md` | `sha256:efaf413b9130c57a5473984bf24e0652f21fa7fa57099a0bf68ba191473822a9` |
 | `OBSERVABILITY_LIVE_SETUP.md` | `sha256:a99b046779fe46883733858080f338ee014c79c438db827da2d605037320d34c` |
@@ -260,7 +263,7 @@
 | `RED_TEAM_EXERCISE_2026_Q3.md` | `sha256:34346602f0f036101774529e610f3fcd4536a4ba0d124a20ff4864237cf7e9ab` |
 | `RELEASE_GATE_CHECKLIST.md` | `sha256:6959441852029e2aecf5bae8ad28de3c8c753a34c1f5cbd37d80924933462676` |
 | `RELEASE_GATE_EVIDENCE.md` | `sha256:c1b52cb02299401a23e8fed0ff31c90ea5f7200bf3f0acb3d89e1c7e61ce6384` |
-| `RELEASE_NOTES.md` | `sha256:d4ffd425162673db074229300388ed0f4d7d226be212dd8fba275bcb1dda634c` |
+| `RELEASE_NOTES.md` | `sha256:9bb9f63c61a4443ce9d73cb9cc487fc2d0f212c9f2bde9920e8b198d5f052b94` |
 | `RELIABILITY_DR_PLAN.md` | `sha256:797d8cb0ec5c4542bf849045936505d80d59a1ee92f8eded7bec965fd37caad2` |
 | `REPORTING_SYSTEM_GUIDE.md` | `sha256:1bc49e7ceb8c407492577228332f6a4a744d246170492e38b4b7ddd99c00b076` |
 | `REPORT_2026-09-05.md` | `sha256:d0059ac9a148be5445ec2f5c93f00f48c36e6c75a3f1fa65c92fc41bdc664d7f` |
@@ -308,17 +311,15 @@
 | `REPORT_AUDIT_HARDENING.md` | `sha256:38e350686df3308d8eaeb5f8b7ac6b63b983c6e1897efbfbbca5fea84e775ffb` |
 | `REPORT_BATCH11-13.md` | `sha256:a4d2e2f0a66de6ae9fc8235a673eb5e91698516978fd9f3c0a93efab63b4cf75` |
 | `REPORT_BATCH8-10.md` | `sha256:ded217bd8d051610f21e76778ff926891152e69dcd62b451667280357ddd9a19` |
-| `REPORT_CACHE_ISOLATION_DOSSIER.md` | `sha256:697c414cffc7e0bca794c668e45f9e1aba6d817ddc4fd00d29bad18b670434a0` |
 | `REPORT_FULL_PERIOD_2026-09-05.md` | `sha256:02b7ee41d3270f1684b52277ed8dc5221620412736b221b2d92482df941fc8a5` |
 | `REPORT_OPEN_2026-09-05.md` | `sha256:bed47e123b34e7d8cc14c18ff335493d79261aae2e54607946d522f9ccbacec9` |
-| `REPORT_PERF_GAP_SPEC.md` | `sha256:191e461f41fb36d3c0ec281232f2917fc0e78a908af9524f0a9f3688df73806d` |
 | `REPORT_ROUND89_FINAL.md` | `sha256:2a8e639ecaff7fe96764fcd7a21a0af0bf40f4fdfb37afef78b08b5217afc805` |
 | `REPORT_SCROLL_FIX_2026-09-05.md` | `sha256:6e9ea3a604aed1146ae0577c7ffc8c32d93389cee469c0a7f310836a8ed70505` |
 | `REPORT_UI_REVIEW_2026-09-05.md` | `sha256:7870b4de011dd12dd4cbce88baa1b86005d036a059ddf6877310ea252a1986b0` |
 | `RESEARCH_2026-09-05_UNIFIED_EDU_ROADMAP.md` | `sha256:95367f41cee304112aa091f10401669596a3c38edfd39a24b0bf6a1f18248c86` |
 | `REVIEW_PR2_FOR_SUPERVISOR.md` | `sha256:b64f2e6b188affb37f3762a69bd73fb940696d152bc7e9a7dbb52b124e1d66c1` |
 | `RISK_REGISTER.md` | `sha256:aa068a5fe2726e1e4d6482a9ce3a699818b75c3c60398958b01e71eaa7652e67` |
-| `ROADMAP.md` | `sha256:2573a338102795b40d70466b39eb6eed57025e233101bb7db219800f7be559ef` |
+| `ROADMAP.md` | `sha256:9855f4c01a5c839c1b007d9aa21c5083a93fae1563972f7edece1ebc995c6d06` |
 | `ROADMAP_FINAL_SCAN_2026-09-08.md` | `sha256:c99e4429df6c87800e6adc135039a69cdf96731bf76c913b625624df3bd1a86d` |
 | `RUNBOOK_DISASTER_RECOVERY.md` | `sha256:a12a28a102081f5de3125ca581fcce473c03e421e1d0d6c938fb641ec201873e` |
 | `RUNTIME_SECURITY.md` | `sha256:bacf0ce4e2a3338d85774a1d8715c8b5452f1fce8c0fbf31045083b9c4475c36` |
@@ -336,10 +337,11 @@
 | `STORAGE_OPTIONS_2026-09-06.md` | `sha256:1f78f4fdcc759fb014a65831ace199a6e1909d50e0190af3de5983af7a2c128a` |
 | `SUPERADMIN_GAPS.md` | `sha256:0f3da49a3cd88f39b5053179c5c932efafe10aab1f843cd4068d740b43362721` |
 | `SUPERVISOR_BRIEF.md` | `sha256:e9fec3570a93e4caa6e252e1774c705ccd269df9c6fbdcd9103bac37fc1b8871` |
+| `SUPERVISOR_DECISIONS_2026-09-13.md` | `sha256:c08db5f41be9437a4ec4653a75378edd21b385c5f469ace10ae8ee6fd3c81255` |
 | `SUPPLY_CHAIN_AUDIT_2026_Q3.md` | `sha256:34ffa9a2145022b210dd8650b7cc15378e8361f44eadb63c86b4c802dbbc6e30` |
 | `SYNC_FLOW.md` | `sha256:0d768e1fa6bcbdf0f69108408ba5733a787cbb881bf60c8b3b57cf5acc54db0a` |
-| `SYNC_PROTOCOL.md` | `sha256:bc993a6f7393d092a6675bcb7560991516e5193bd41e97dca5c33cc1471ba6a8` |
-| `TEST_COVERAGE_REPORT.md` | `sha256:f3faf2fc263ce5f97d5e92ea80484e16418306b10e861f378263e53832dcbb61` |
+| `SYNC_PROTOCOL.md` | `sha256:2799aeb7207edc7eb3ade3fc367f90601ab1e485ad113cc17077278479fdff7a` |
+| `TEST_COVERAGE_REPORT.md` | `sha256:8520093864a6cb8afa7207ee378040c0d2d1af6d5d849fb69610d92403c02bf3` |
 | `THIRD_PARTY_LICENSES.md` | `sha256:0440f94b6395ee2fab1b2a34d9c8e3d5141887c1c276b4327c5d134317a33a08` |
 | `THREAT_MODEL.md` | `sha256:2d93966da760fec407778e27e9ef85033f95efffe71d1135dd849f6780d966f0` |
 | `TRACING_SETUP.md` | `sha256:6d17e75b8cc28763db6d7d7c9310d587fb3419c15a2d1dbf2f9e938881040099` |
@@ -348,8 +350,7 @@
 | `VISITORS_MODULE.md` | `sha256:6882e68880cc068fbb32d0b0f7da4eaafa477b27535dbf869f560ffe98f2825e` |
 | `VOCATIONAL_GRADES.md` | `sha256:ddc79151225d8b6cf605b97c4bec7d5a1bfc4800b71dedd13db3f97bf1b717bb` |
 | `WAF_DDOS_SETUP.md` | `sha256:0aa30a600e0c07b15e6f2b39a347a921e043aca5240ab0321c88a80c559ed6d2` |
-| `WAVE10_DB_SCALE.md` | `sha256:b789fb4299310fefcb731d7a1e19dd0f6f94fcfda1cbfcda2b7b8e971e093f4e` |
-| `WAVE10_REPORT.md` | `sha256:d1626929685d836c946684184ec488221bf0d9323bb4188918c6dd5d80295d52` |
+| `WAVE10_DB_SCALE.md` | `sha256:d5c7c24e0e2f712ec9e9cbf8fab09521d049ee6fcbb839e8fc80d72904e48e11` |
 | `WAVE11_CACHE_STRATEGY.md` | `sha256:5f8dea3e2b8633d8b76b8e447e7227cd745631910f221d362bacc96b53b504aa` |
 | `WAVE12_NETWORK_EDGE.md` | `sha256:ab98a49fb41cfab607d2f77777bd13323439255ecb889871be5c63618cc9b103` |
 | `WAVE13_ASVS_AUDIT.md` | `sha256:50de6c4eafbe96486c98643658549f41e85042af0ec7f043dfdfeb82fd7864cc` |
@@ -360,14 +361,14 @@
 | `WAVE18_FINAL_REPORT.md` | `sha256:39b2c907903ccc80e9c3b2fff99d3765b910625467dd733097691ff153f3acdb` |
 | `WAVE18_LOAD_TESTING.md` | `sha256:ad120d888b6bd391632ce6145468879b6599daba1c9afac802cb10f04934f605` |
 | `WAVE18_LOAD_TEST_PLAN.md` | `sha256:a2df124b003624a1f5abd4c795d5f4bf78bdc54c0b2a7772402da04219d58960` |
-| `WAVE18_LOAD_TEST_REPORT.md` | `sha256:c88e947a1b867f4360e9b34aa9407138abe1e678e0e87eabfd9f38334243d4fe` |
+| `WAVE18_LOAD_TEST_REPORT.md` | `sha256:29eb83fd2a922b98a1ebef76b40b2bfab12cbdc5aff85457aea4d747d68d7ecd` |
 | `WAVE19_CHAOS_LIVE_REPORT.md` | `sha256:5f05e18363d65da6482cddb57199b13cb649961115f1dfc3107237c1f120e6df` |
 | `WAVE19_CHAOS_PLAN.md` | `sha256:19083ae992c1c2336d02db7286c6f0bdd46d3b555fdd3b06569e63e9b0607dd8` |
-| `WAVE19_WAL_DRILL_REPORT.md` | `sha256:c65ae8fb6feca810ae13e60e947c1e932b383dc3f3c1d2fd9db677f820343d1e` |
+| `WAVE19_WAL_DRILL_REPORT.md` | `sha256:6ab7c1ad7b67eeee6efdf941639f51923a67baa6210e0b8cccc12e7a16e1c2bd` |
 | `WAVE1_READS_INVENTORY.md` | `sha256:6e29c2f59cce63eb1add329dd09d130b01f7216e9a205123a3eda766386218c3` |
 | `WAVE1_WRITES_INVENTORY.md` | `sha256:c72b4b881c6ee051d0ca95d68e42fa18e079d1569bac67fa40a43e617cd67c9a` |
 | `WAVE21_MULTIGRADE_REPORT.md` | `sha256:f2b8485235d91eba310803263ac74c560f3b1134a7adc6de18b2db2bc064c11c` |
-| `WAVE23_DB_NATIVE_REPORTS.md` | `sha256:dfabc6159189eb78268b04b4005d9ae5a7764a451a205640c75cc4229cba875c` |
+| `WAVE23_DB_NATIVE_REPORTS.md` | `sha256:b908129126006e07959a35486e3f2293ba9ce6d0b1fa88b557d86d2f810d9a62` |
 | `WAVE23_IMPLEMENTATION_REPORT.md` | `sha256:2d883f3240185caaec39d07522c3304fef40650b00f20b6ab887284e1041b94e` |
 | `WAVE23_PREP_REPORT.md` | `sha256:804838fe139447e358ccbfc98bd22b2f83e4a4d297758d0829a073ffcefc6ce5` |
 | `WAVE24_PREP_REPORT.md` | `sha256:91cf585f05b1d69f5a6fbb2d0db6b9fc9c27947e3f26e6a712edc34104088fef` |
@@ -386,4 +387,4 @@
 | `راهنمای_کاربر.md` | `sha256:e7061c3b64353b6b04c0a17551eb990df1805f27a861dbb17996c9d6e62b26be` |
 
 ---
-_قفل `rc40` در ۲۰۲۶-۰۹-۱۳ بسته شد: چکیدهٔ P1-2 + بستنِ یتیمیِ چهار گزارش روزانه + ترمیم آمار. راستی‌آزمایی: `node tests/docs-freeze-marker.js` و `node tools/docs-stats-sync.js --check`._
+_قفل `rc41` در ۲۰۲۶-۰۹-۱۳ بسته شد: ثبتِ تصمیم‌های ناظر + چک‌لیست/قالبِ مرجِ docs-only + رفعِ یتیمی. راستی‌آزمایی: `node tests/docs-freeze-marker.js` و `node tools/docs-stats-sync.js --check`._
