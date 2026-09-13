@@ -438,4 +438,25 @@ function generate(){
       add('donations',{school_id:sid,donor_name:null,amount:1000000+((sid*104729)%5)*1000000,date:daysAgoISO(60+sid),description:'نذر فرهنگی',registered_by:mgr.id,created_at:daysAgoISO(59+sid)});
     });
   })();
+  /* SIM-01..03 (چت ۳ — ماتریسِ daily-reports/SEED_SIM_ROLES_ACCEPTANCE.md):
+     نقش‌های شبیه‌سازی که در دمو صفر بودند و مسیرهای E.9/کتابخانه/اموال را
+     تست‌ناپذیر می‌کردند.
+     ⚠️ صفر مصرفِ rng — دلیل در سید B.1 (شیفتِ جریانِ RNG = جابه‌جاییِ
+     phone/nidِ حساب‌های نمونهٔ مستندشده). nid با همان قاعدهٔ ۹۹۹ + چک‌سام،
+     ولی از رقم‌های ثابت؛ phone با پیش‌شمارهٔ ۰۹۹۹ رزرو دمو، بازهٔ ۰۰۰xxxx
+     (بیرونِ بازهٔ مولد demoPhone که از 1000000 شروع می‌شود ⇒ بدون تصادم).
+     در انتهای generate() تا idهای پیشین دست‌نخورده بمانند. */
+  (function(){
+    /* SIM-01: نگهبان/پذیرش (E.9) — کاربرِ تازه در مدرسهٔ ۱ (نمونهٔ اصلی دمو) */
+    add('users',{school_id:1,role:'guard',full_name:'رضا نگهبانی',username:'guard1',password:'123456',
+      national_id:'9990000311',phone:'09990000031',active:1,title:'نگهبان/پذیرش',created_at:daysAgoISO(200)});
+    /* SIM-02/03: پرچم‌های تفویضی روی دبیرانِ *موجودِ* مدرسهٔ ۱ (بدون کاربر تازه —
+       قراردادِ 54-library/55-assets: دبیرِ همان مدرسه با پرچم). انتخابِ قطعی:
+       دو دبیرِ فعالِ *آخرِ* مدرسهٔ ۱ — فیکسچرهای سوئیت‌های موجود (library2 و
+       هم‌خانواده‌ها) «دبیرِ [0]» را بی‌مجوز فرض می‌کنند؛ پرچم روی آخری‌ها
+       آن قرارداد را دست نمی‌زند. */
+    var t1=db.users.filter(function(u){return u.role==='teacher'&&u.school_id===1&&u.active===1;});
+    if(t1.length>=2) t1[t1.length-1].lib_staff=1;   /* SIM-02: کتابدار */
+    if(t1.length>=3) t1[t1.length-2].asset_staff=1; /* SIM-03: تحویلدارِ اموال */
+  })();
 }

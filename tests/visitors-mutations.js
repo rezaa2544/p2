@@ -12,6 +12,12 @@
  * زمان:  ~2 دقیقه (هر جهش = build + اجرای کامل تست)
  */
 const fs = require('fs');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و index.html هرگز
+   بازنویسی نمی‌شود — بازگردانیِ دستی و rebuildِ پایانی حذف شدند. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('vis-mut-');
+kit.remapBuildOutputs();
+
 const path = require('path');
 const { execSync } = require('child_process');
 
@@ -62,14 +68,18 @@ const MUTS = [
 ];
 
 let killed = 0;
+let prevAbs = null;
 for (const m of MUTS) {
+  const mabs = path.resolve(FILES[m.file]);
+  if (prevAbs && prevAbs !== mabs) kit.clear(prevAbs);
+  prevAbs = mabs;
   if (src[m.file].split(m.bad).length !== 2) {
     console.log(`  ⚠️  ${m.name}: الگوی جهش پیدا نشد — کد عوض شده؟`);
     continue;
   }
-  fs.writeFileSync(FILES[m.file], src[m.file].replace(m.bad, m.mut));
+  kit.mutant(mabs, src[m.file].replace(m.bad, m.mut)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
   try {
-    execSync('node build.js', { stdio: 'pipe' });
+    execSync('node build.js', { stdio: 'pipe', env: kit.env(), cwd: ROOT });
   } catch (e) {
     console.log(`  ✅ ${m.name} (build شکست — کشته شد)`);
     killed++;
@@ -77,7 +87,7 @@ for (const m of MUTS) {
   }
   let out;
   try {
-    out = execSync('node tests/visitors2.js', { stdio: 'pipe', encoding: 'utf8' });
+    out = execSync('node tests/visitors2.js', { stdio: 'pipe', encoding: 'utf8', env: kit.env(), cwd: ROOT });
     console.log(`  ❌ ${m.name}: جهش زنده ماند!`);
   } catch (e) {
     out = (e.stdout || '') + String(e.message);
@@ -88,11 +98,9 @@ for (const m of MUTS) {
       console.log(`  ⚠️  ${m.name}: کشته شد اما نه با پیامِ انتظار (${m.expectFail})`);
     }
   }
-  fs.writeFileSync(FILES[m.file], src[m.file]);
 }
 
 /* بازبینیِ خطِ پایه (بدون جهش) */
-execSync('node build.js', { stdio: 'pipe' });
 try {
   execSync('node tests/visitors2.js', { stdio: 'pipe' });
   console.log('  ✅ خطِ پایه (بدون جهش) سبز است');

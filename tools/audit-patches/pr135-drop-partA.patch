@@ -1,0 +1,98 @@
+# بخش الف — آمار عصر rc38 (حذف شود)
+# منشأ: gh pr diff 135 (PR: fix/pr-audit-stats-drift @ 0c57bb9)
+# ساخته‌شده توسط چت ۶ — دور پ۶ (۲۰۲۶-۰۹-۱۳) — فقط لایهٔ docs/governance
+# خودِ PR باز/بسته/مرج نشد (قاعدهٔ ۶: صلاحیت مالک)
+# وضعیتِ اندازه‌گیری‌شده در دور ۱۰ روی main@0a208f8: STALE در هر دو جهت (forward و --reverse)
+#   پیش‌تصویرِ این پچ متعلق به عصرِ rc38 است و main از آن زمان ۱۰۶ کامیت جلو رفته است.
+#   کاربردِ امروز: فقط مستند — نشان می‌دهد بخش الف چه چیزی را عوض می‌کرد.
+#   اقدامِ درست: حذفِ همان ۴ فایل از شاخهٔ PR (توسط مالک)، نه اعمالِ این پچ روی main.
+diff --git a/docs/DOCS_FREEZE_v1.0.0-rc38.md b/docs/DOCS_FREEZE_v1.0.0-rc38.md
+index 3c46d4ea..004529ed 100644
+--- a/docs/DOCS_FREEZE_v1.0.0-rc38.md
++++ b/docs/DOCS_FREEZE_v1.0.0-rc38.md
+@@ -149,10 +149,10 @@
+ | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
+ | `DOCS_HEALTH_REPORT.md` | `sha256:edf299015f5779173f96c58f5868fe1845500d0aa2aed72e54e6386c2da020a7` |
+ | `DOCS_INDEX.md` | `sha256:9ec5a8c1523f3ed7f5fc996396f0b7c4f587f4c375ec239729f42b1d3bb4c769` |
+-| `DOCS_METRICS.md` | `sha256:fb41fdb158a76a1ce937fbb9fcfd0fbdf68d947fa5fadffefa5bb2df38bfa1c2` |
++| `DOCS_METRICS.md` | `sha256:20b81a7d46dd023ee02c6b2077c5e4d263a1d237e7f8e9cc88a8d7a55cbd7708` |
+ | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
+ | `DOCUMENTATION_MAINTENANCE.md` | `sha256:bbca0ce31bc63dabaacf2f2eab15f2ac2de60528a53de9a34985ef1ea41ee091` |
+-| `DOCUMENTATION_MAP.md` | `sha256:ee3a85ee3dfe01efb8d487b8d9033405f7817efa7f8c85df8e0fd74b871d01f6` |
++| `DOCUMENTATION_MAP.md` | `sha256:1c21a905a3e428c55e5b5c5bcce804d9a432b2920a446d551680773e9d3fe85b` |
+ | `DR_RUNBOOK.md` | `sha256:8c0d8f7e2bb1e1305c2aaf645850de68d4b429895445ecae74a5a0a732db0e26` |
+ | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
+ | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
+@@ -330,7 +330,7 @@
+ | `SUPPLY_CHAIN_AUDIT_2026_Q3.md` | `sha256:34ffa9a2145022b210dd8650b7cc15378e8361f44eadb63c86b4c802dbbc6e30` |
+ | `SYNC_FLOW.md` | `sha256:0d768e1fa6bcbdf0f69108408ba5733a787cbb881bf60c8b3b57cf5acc54db0a` |
+ | `SYNC_PROTOCOL.md` | `sha256:2799aeb7207edc7eb3ade3fc367f90601ab1e485ad113cc17077278479fdff7a` |
+-| `TEST_COVERAGE_REPORT.md` | `sha256:3d36995142a24c945b8a2fcd5d81c3d49b1c8442201f8690ad4c1e76ddeccb7f` |
++| `TEST_COVERAGE_REPORT.md` | `sha256:5a1118a6852631a1b150f0bb5184dc56747f68af6d810cba0dc888249ad1e2ae` |
+ | `THIRD_PARTY_LICENSES.md` | `sha256:0440f94b6395ee2fab1b2a34d9c8e3d5141887c1c276b4327c5d134317a33a08` |
+ | `THREAT_MODEL.md` | `sha256:2d93966da760fec407778e27e9ef85033f95efffe71d1135dd849f6780d966f0` |
+ | `TRACING_SETUP.md` | `sha256:6d17e75b8cc28763db6d7d7c9310d587fb3419c15a2d1dbf2f9e938881040099` |
+diff --git a/docs/DOCS_METRICS.md b/docs/DOCS_METRICS.md
+index 03190727..d9a5681f 100644
+--- a/docs/DOCS_METRICS.md
++++ b/docs/DOCS_METRICS.md
+@@ -9,7 +9,7 @@
+ 
+ | سنجه | مقدار | منبع |
+ |---|---:|---|
+-| تعداد کل اسناد `docs/*.md` | **۳۲۰** سند ریشه (پیش از خود سند قفل `rc38`؛ با آن ۳۲۱) + ۳۲ سند در زیرپوشه‌ها (`RUNBOOK_CARDS/` + `user-guides/` + `pilot/` + `daily-reports/`) = جمع درخت ۳۵۳؛ تفکیک: سه زیرپوشهٔ پایه ۲۰ + `daily-reports/` ۱۲ ⇒ درخت بدونِ گزارش‌های روزانه ۳۴۱ | شمارش فایل |
++| تعداد کل اسناد `docs/*.md` | **۳۲۰** سند ریشه (پیش از خود سند قفل `rc38`؛ با آن ۳۲۱) + ۳۷ سند در زیرپوشه‌ها (`RUNBOOK_CARDS/` + `user-guides/` + `pilot/` + `daily-reports/`) = جمع درخت ۳۵۸؛ تفکیک: سه زیرپوشهٔ پایه ۲۰ + `daily-reports/` ۱۷ ⇒ درخت بدونِ گزارش‌های روزانه ۳۴۱ | شمارش فایل |
+ | لینک‌های داخلی بررسی‌شده | **۴۶۳** (۰ شکسته) | `tools/docs-health.sh` |
+ | لینک شکسته | **۰** | همان |
+ | تعارض عددی بین اسناد | **۰** (۴۸ بررسی هماهنگ) | `tools/docs-consistency-check.sh` |
+diff --git a/docs/DOCUMENTATION_MAP.md b/docs/DOCUMENTATION_MAP.md
+index 0c94feb0..9d7d9081 100644
+--- a/docs/DOCUMENTATION_MAP.md
++++ b/docs/DOCUMENTATION_MAP.md
+@@ -13,20 +13,20 @@
+ 
+ | سنجه | مقدار |
+ |---|---:|
+-| کل اسناد (لحظهٔ قفل `rc38`) | **۳۵۳** |
++| کل اسناد (لحظهٔ قفل `rc38`) | **۳۵۸** |
+ | اسناد ریشهٔ `docs/*.md` (با خود نقشه و قفل) | ۳۲۱ |
+-| اسناد زیرپوشه‌ها (`RUNBOOK_CARDS/` + `user-guides/` + `pilot/` + `daily-reports/`) | ۳۲ |
++| اسناد زیرپوشه‌ها (`RUNBOOK_CARDS/` + `user-guides/` + `pilot/` + `daily-reports/`) | ۳۷ |
+ | توکن در نمایهٔ جستجو | ۲۳۲۳ |
+ 
+ **به تفکیک وضعیت:**
+ 
+ | وضعیت | شمار |
+ |---|---:|
+-| فعال (در حال استفاده) | ۲۹۲ |
++| فعال (در حال استفاده) | ۲۹۷ |
+ | زنده (ماشینی/رخدادی، مستثنی از بامپ) | ۳ |
+ | منجمد (قفل‌های تاریخی) | ۳۸ |
+ | آرشیو (بایگانی نمایه) | ۲۰ |
+-| **جمع** | **۳۵۳** |
++| **جمع** | **۳۵۸** |
+ 
+ **به تفکیک مالک (صریح در سربرگ یا نقشهٔ مالکیت نمایه):**
+ 
+diff --git a/docs/TEST_COVERAGE_REPORT.md b/docs/TEST_COVERAGE_REPORT.md
+index 2c94465d..9255e9ff 100644
+--- a/docs/TEST_COVERAGE_REPORT.md
++++ b/docs/TEST_COVERAGE_REPORT.md
+@@ -14,7 +14,7 @@
+ 
+ | شاخص | مقدار |
+ |---|---|
+-| **کل فایل‌های تست** | **۴۶۲** (۴۵۴ در `tests/` + ۸ در `tests/api/`) |
++| **کل فایل‌های تست** | **۴۶۳** (۴۵۵ در `tests/` + ۸ در `tests/api/`) |
+ | تست دودی سرتاسری | **۵۴۷/۵۴۷** چک در `tests/smoke.js` |
+ | اسکن راز | **۱۱/۱۱** (`tests/secret-scan.js`) |
+ | مجوزها | خروجی ۰ (`node tools/check-authz.js`) |
+@@ -118,7 +118,7 @@
+ 
+ ## منابع
+ 
+-- `tests/` (۴۵۴ فایل) · `tests/api/` (۸ فایل) · `scripts/run-all-tests.sh` · `tools/release-gate.js` · `tools/check-authz.js`
++- `tests/` (۴۵۵ فایل) · `tests/api/` (۸ فایل) · `scripts/run-all-tests.sh` · `tools/release-gate.js` · `tools/check-authz.js`
+ - `docs/BUG_HUNT_REPORT.md` (شاهد قرمز-اول همهٔ رفع‌ها) · `docs/SECURITY_FINDINGS_REGISTER.md` (رگرسیون یافته‌ها) · `docs/ARENA5_QA_RELIABILITY.md` (منشور کیفیت) · `docs/GO_LIVE_PACKAGE.md` (ماتریس تصمیم)
+ 
+ > آمار این سند با شمارش زندهٔ دیسک تولید شده؛ تغییر تعداد تست‌ها = بامپ قفل و به‌روزرسانی این سند (تست پوشش، اعداد کلیدی را می‌پاید).

@@ -21,6 +21,15 @@ const REAL_STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-rpt-basic-'));
 process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
 
+/* پ۳ (2026-09-12): این سوئیت قراردادِ «پاسخِ API == شمارشِ مستقل روی همان
+   JSON store ای که خودش seed کرده» را می‌سنجد؛ قراردادِ PG-mode گیتِ
+   اختصاصیِ خودش را دارد (tests/wave23-reports-pg.js — ۷۶ سنجه روی PG
+   واقعیِ مهاجرت‌شده). اگر DATABASE_URL از محیط نشت کند، سرور PG-mode بوت
+   می‌شود و این سوئیت به‌جای کد، محیط را می‌سنجد (۵۰۰ روی دیتابیسِ بدونِ
+   schema — قرمزِ پیش‌موجودِ ثبت‌شده در گزارشِ 2026-09-12). پس حالتِ حافظه
+   صریحاً pin می‌شود؛ هیچ سنجه‌ای حذف/ضعیف نشده است. */
+delete process.env.DATABASE_URL;
+
 fs.copyFileSync(REAL_STORE, path.join(TMP, 'store.json'));
 process.env.PAYESH_STORE = path.join(TMP, 'store.json');
 process.env.PAYESH_AUDIT = path.join(TMP, 'audit.log');

@@ -59,8 +59,12 @@ function scrGroup() {
   try { syntaxOk = cp.spawnSync('bash', ['-n', SCRIPT], { stdio: 'pipe' }).status === 0; } catch (e) {}
   chk('SCR-1 نحوِ بش معتبر است', syntaxOk);
   chk('SCR-2 پوششِ سابت‌های REST (tests/api)', s.indexOf('tests/api/runner.js') >= 0);
-  chk('SCR-3 کنارگذاشتِ طراحی فقط اسکریپتِ کارگر است',
-    s.indexOf("grep -v 'server11-child.js'") >= 0);
+  /* S7-7 (باگ‌هانت نشست ۷): این بررسی به رشتهٔ «grep -v 'server11-child.js'»
+     پین بود؛ رفعِ S7-2 کنارگذاری را به کلِ خانوادهٔ *-child.js گسترد (چون
+     wave15-child هم اسکریپتِ کارگر است و مستقل اجرا نمی‌شود) ⇒ پین به قاعدهٔ
+     واقعی به‌روز شد: فیلترِ ‑child.js$ باید در فهرستِ سوئیت‌ها باشد. */
+  chk('SCR-3 کنارگذاشتِ طراحی فقط اسکریپت‌های کارگر (خانوادهٔ *-child.js) است',
+    /grep -v -- '-child\.js\$'/.test(s));
   chk('SCR-4 گاردِ درختِ کثیف (خروجی ۳)', /DIRTY/.test(s) && /exit 3/.test(s));
   chk('SCR-5 گاردِ فضای موقت (خروجی ۴)', /exit 4/.test(s));
   chk('SCR-6 خوددرمانی: جی‌اس‌دام/سید/هویت/ریپو',
@@ -68,7 +72,7 @@ function scrGroup() {
   chk('SCR-7 کشتنِ سرورهای زامبی پیش از اجرا (پورت ثابت)', /pkill -f 'node .*server\/index/.test(s));
   /* پوششِ کامل: هر پروندهٔ مستقیمی که اسکریپت ندیده باشد = قراردادِ شکسته */
   const all = fs.readdirSync(path.join(ROOT, 'tests'))
-    .filter((f) => f.endsWith('.js') && !f.endsWith('-mutations.js') && f !== 'server11-child.js');
+    .filter((f) => f.endsWith('.js') && !f.endsWith('-mutations.js') && !f.endsWith('-child.js'));
   const muts = fs.readdirSync(path.join(ROOT, 'tests')).filter((f) => f.endsWith('-mutations.js'));
   const apiRunner = fs.existsSync(path.join(ROOT, 'tests', 'api', 'runner.js'));
   chk('SCR-8 شمارِ زندهٔ سوئیت‌ها از حداقلِ سند بیشتر است',
