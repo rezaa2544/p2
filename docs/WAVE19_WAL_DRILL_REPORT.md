@@ -92,6 +92,27 @@ ERROR:  could not write to file "pg_wal/xlogtemp.4792": No space left on device 
 
 ---
 
+### ۳-۱) صداقتِ منبعِ شاهد (پورت از PR #76)
+
+### ۳-۱) پیام PANIC در این اجرا از سمت **کلاینت** ثبت شد، نه لاگ سرور
+
+در اجرای نهایی، پرچم‌های `panic`/`enospc` در JSON برابر `false` هستند، چون تست آن‌ها
+را از *فایل لاگ سرور* استخراج می‌کند و آن فایل در لحظهٔ کرش نوشته نشد. پیام واقعی از
+خطای کلاینت گرفته شده است:
+
+```
+could not write to file "pg_wal/xlogtemp.9228": No space left on device
+```
+
+**چرا؟** در یک نسخهٔ میانی، `logging_collector = on` بود و خروجی نشان داد که PANIC
+**هرگز** به دیسک نرسید (۰ occurrence در لاگ) — چون collector بافر دارد و همراهِ
+postmaster می‌میرد. بنابراین `logging_collector = off` شد و stderr با `pg_ctl -l`
+به فایل می‌رود. در اجرای `16:46:17` همین پیام **در لاگ سرور** هم ثبت شد:
+
+```
+2026-09-11 16:46:17.748 UTC [8008] PANIC:  could not write to file "pg_wal/xlogtemp.8008": No space left on device
+```
+
 ## ۴) یافته‌های عملیاتی
 
 1. **شکافِ پایش (مهم‌ترین یافته):** PostgreSQL در ۸۰٪ پُریِ WAL **کاملاً ساکت**
@@ -108,6 +129,21 @@ ERROR:  could not write to file "pg_wal/xlogtemp.4792": No space left on device 
    از دست نرفت.
 
 ---
+
+### ۴-۲) پرشدنِ archive_command به‌تنهایی توقف نیست (پورت از PR #76)
+
+### ۴-۲) پرشدنِ `archive_command` به‌تنهایی دیتابیس را متوقف نمی‌کند
+
+وقتی مقصد آرشیو روی همان tmpfs بود، اولین ENOSPC از مسیر `cp` در `archive_command`
+آمد:
+
+```
+cp: error copying 'pg_wal/000000010000000000000073' to '.../wal/archive/...': No space left on device
+```
+
+در این حالت PostgreSQL **زنده می‌ماند** و فقط آرشیو مختل می‌شود. برای رسیدن به PANIC
+باید خودِ walwriter در تخصیص فضا شکست بخورد. تفکیک این دو حالت مهم است: یکی «هشدارِ
+قابل‌ادامه» است و دیگری «توقف سرویس».
 
 ## ۵) آنچه تأیید **نشد** (محدودیت‌های صادقانه)
 

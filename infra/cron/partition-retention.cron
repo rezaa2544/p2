@@ -1,0 +1,25 @@
+# ═══════════════════════════════════════════════════════════════════
+# partition-retention.cron — زمان‌بندیِ نگهداریِ سالانهٔ پارتیشن‌ها (Wave 10)
+# ───────────────────────────────────────────────────────────────────
+# نصب (روی میزبانِ استقرار، با کاربری که دسترسی psql/node دارد):
+#   crontab -e   و افزودنِ خطِ زیر
+#
+# سیاستِ پیش‌فرض: نگهداریِ ۵ سالِ آموزشی (grades/attendance)؛ اجرا در
+# ساعتِ کم‌بارِ بامدادِ اولِ هر ماه. بایگانی الزامی است (تأییدِ وزارتی —
+# حذفِ بدونِ بایگانی ممنوع)؛ اگر pg_dump شکست بخورد ابزار حذف نمی‌کند
+# (fail-closed) و کدِ خروج ۱ می‌دهد — مانیتورِ cron باید آن را ببیند.
+#
+# جای‌گذاری‌ها:
+#   /opt/payesh                  مسیرِ استقرارِ مخزن (tools/partition-retention.js)
+#   $PAYESH_DB_URL               رشتهٔ اتصال (از فایلِ env سرویس یا systemd)
+#   /var/backups/payesh/parts    مقصدِ بایگانی (pg_dump خالص؛ pgbackrest هم
+#                                می‌تواند فایل‌ها را پوشش دهد)
+#   /var/log/payesh/partition-retention.log  لاگِ ماهانه
+#
+# هشدار: ابزار پیش‌فرض dry-run است — خطِ زیر --apply دارد و واقعاً حذف
+# می‌کند. اولین ماه را دستی و dry-run اجرا کنید، بعد نصب کنید.
+30 2 1 * * cd /opt/payesh && set -a && . .env && set +a && node tools/partition-retention.js --pg "$PAYESH_DB_URL" --tables grades,attendance --keep-years 5 --archive-dir /var/backups/payesh/parts --apply >> /var/log/payesh/partition-retention.log 2>&1
+
+# گامِ پیشاهنگیِ بدونِ ریسک (هر شنبه، 03:15) — فقط گزارشِ اینکه ماهِ بعد
+# چه چیزی کاندید است؛ برایِ پایشِ سیاست بدونِ تغییری:
+# 15 3 * * 6 cd /opt/payesh && set -a && . .env && set +a && node tools/partition-retention.js --pg "$PAYESH_DB_URL" --tables grades,attendance --keep-years 5 >> /var/log/payesh/partition-retention.log 2>&1
