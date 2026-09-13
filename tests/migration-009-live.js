@@ -99,11 +99,20 @@ async function main() {
   let m1ok = true, m1err = '';
   const files = fs.readdirSync(path.join(ROOT, 'migrations'))
     .filter((f) => /^\d+_.*\.sql$/.test(f) && !f.includes('.down.')).sort();
+  const { execFileSync } = require('child_process');
+  const dbUrl = `postgres://payesh@127.0.0.1:${PORT}/payesh`;
   for (const f of files) {
-    try { await c.query(fs.readFileSync(path.join(ROOT, 'migrations', f), 'utf8')); }
+    const sql = fs.readFileSync(path.join(ROOT, 'migrations', f), 'utf8');
+    const meta = /^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql);
+    try {
+      if (meta) execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', f), dbUrl], { stdio: 'pipe' });
+      else await c.query(sql);
+    }
     catch (e) { m1ok = false; m1err = f + ': ' + e.message; break; }
   }
-  chk('M1 زنجیرهٔ ۰۰۱..۰۰۹ رویِ دیتابیسِ خالی', m1ok && files[files.length - 1].startsWith('009'), m1err);
+  /* ری‌تارگتِ #82: زنجیره حالا تا 012 ادامه دارد؛ SUBJECT این تست 009 است، نه آخرین فایل */
+  chk('M1 زنجیرهٔ کاملِ مهاجرات (۰۰۱…آخر) رویِ دیتابیسِ خالی',
+      m1ok && files.some((f) => f.startsWith('009_')), m1err);
 
   /* M2 — قیدها و ایندکس در کاتالوگ */
   const cons = (await c.query(
