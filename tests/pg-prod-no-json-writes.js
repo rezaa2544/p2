@@ -100,9 +100,15 @@ function gatedBodies(src) {
   return out;
 }
 const bodies = gatedBodies(dbSrc);
-chk('b1 db.js gates BOTH fallback branches (absent + unreachable) with ok:false',
-  bodies.length >= 2 && bodies.every((b) => /ok:\s*false/.test(b)),
-  'gated blocks found=' + bodies.length + ' allOkFalse=' + bodies.every((b) => /ok:\s*false/.test(b)));
+/* "Fail closed" has two legitimate shapes in this codebase: returning
+   `{ok:false}` (boot/readiness paths) and `throw` (an operation that cannot
+   be answered, e.g. the idempotency check in isUidProcessed — round 3,
+   item 3). Both are accepted; `ok:true` is still forbidden by b2, so this
+   broadens the accepted fail-closed shapes without weakening the check. */
+const failClosed = (b) => /ok:\s*false/.test(b) || /\bthrow\b/.test(b);
+chk('b1 db.js gates BOTH fallback branches (absent + unreachable) fail-closed (ok:false or throw)',
+  bodies.length >= 2 && bodies.every(failClosed),
+  'gated blocks found=' + bodies.length + ' allFailClosed=' + bodies.every(failClosed));
 chk('b2 no gated block returns ok:true',
   bodies.length >= 2 && bodies.every((b) => !/ok:\s*true/.test(b)),
   bodies.map((b) => (/ok:\s*true/.test(b) ? 'HAS ok:true' : 'clean')).join(','));
