@@ -35,6 +35,16 @@ Browser
 
 **قانون:** در Production فقط PostgreSQL منبع حقیقت داده‌های اصلی باشد. JSON/in-memory store نباید source of truth باشد. Browser نباید دیتاست ملی را نگه دارد.
 
+> **وضعیت «bounded cache» (پ۳ 2026-09-12):** قانون «Browser نباید دیتاست ملی
+> را نگه دارد» اکنون گیت اجرایی دارد — کش کراندار گزارش‌ها با دفاع دولایه
+> (کران ردیف/بایت در `server/pull.js` + کران مستقل کلاینت + TTL + نشانگر
+> «دادهٔ جزئی»)؛ `tests/reports-bounded-cache.js` ‏۱۵/۱۵ + جهش ۱۰/۱۰.
+> **تکمیل (پ۳-ادامه):** دلتای بریده دیگر ساکت گم نمی‌شود — سرور
+> `full_snapshot_required_collections` اعلام و کلاینت خودکار resume می‌کند
+> (snapshot کران‌دارِ فقط مجموعه‌های بریده + سنجهٔ همگرایی + حلقه‌شکن دولایه)؛
+> قرارداد: `WAVE23_DB_NATIVE_REPORTS.md` §۹.۲د؛ گیت
+> `tests/bounded-delta-resume.js` ‏۱۴/۱۴ + جهش ۱۰/۱۰.
+
 ---
 
 # 3. Wave 0 — Baseline و Freeze
