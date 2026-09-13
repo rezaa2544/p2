@@ -594,12 +594,29 @@ async function apiSyncOf(inst, ops) {
   const before8 = P8.store.sync_conflicts.length;
   const target8 = P8.store.sync_conflicts[0] && P8.store.sync_conflicts[0].id;
   const res8 = {}; await confApi.apiResolve({}, res8, { conflict_id: target8, winner: 'server' });
-  chk('V8b resolve ⇒ del: تعارضِ داوری‌شده از صف حذف شد (پاسخ resolved برمی‌گردد)',
+  /* ممیزی دور ۲: قراردادِ resolve ⇒ del به resolve ⇒ keep + هرسِ سقف‌دارِ
+     resolvedها اصلاح شد — حذفِ فوری، Gap-3 (#59: دلتا ردیفِ resolved را از
+     راهِ updated_at می‌بیند) و 409 already_resolved (server15 C16) را می‌شکست.
+     بی‌سقفیِ #124 همچنان بسته است: این‌جا ماندنِ ردیف + سقفِ جدا سنجیده می‌شود. */
+  const kept8 = P8.store.sync_conflicts.find(x => x.id === target8);
+  chk('V8b resolve ⇒ keep: ردیفِ داوری‌شده resolved در صف ماند (برای دلتا/409)',
     res8._cap.code === 200 && res8._cap.body.ok === true
     && res8._cap.body.conflict.status === 'resolved'
-    && !P8.store.sync_conflicts.some(x => x.id === target8)
-    && P8.store.sync_conflicts.length === before8 - 1,
-    'code=' + res8._cap.code + ' len=' + P8.store.sync_conflicts.length + '/' + before8);
+    && !!kept8 && kept8.status === 'resolved'
+    && P8.store.sync_conflicts.length === before8,
+    'code=' + res8._cap.code + ' kept=' + !!kept8 + ' len=' + P8.store.sync_conflicts.length + '/' + before8);
+  /* V8c — سقفِ جدایِ resolvedها: با PAYESH_RESOLVED_CONFLICTS_MAX=2 داوریِ
+     تعارض‌هایِ بعدی، کهنه‌ترین resolvedها را هرس می‌کند و openها دست‌نخورده. */
+  process.env.PAYESH_RESOLVED_CONFLICTS_MAX = '2';
+  for(const cfr of P8.store.sync_conflicts.filter(x => x.status === 'open').slice(0, 3)){
+    const rr = {}; await confApi.apiResolve({}, rr, { conflict_id: cfr.id, winner: 'server' });
+    if(!(rr._cap && rr._cap.code === 200)) { chk('V8c پیش‌شرط resolve ' + cfr.id, false, JSON.stringify(rr._cap)); break; }
+  }
+  delete process.env.PAYESH_RESOLVED_CONFLICTS_MAX;
+  const resolved8 = P8.store.sync_conflicts.filter(x => x.status === 'resolved');
+  chk('V8c سقفِ resolvedها: هرسِ کهنه‌ترین‌ها تا سقف (۲) — صف بی‌سقف نمی‌راند',
+    resolved8.length === 2 && P8.store.sync_conflicts.every(x => x.status === 'open' || x.status === 'resolved'),
+    'resolved=' + resolved8.length + ' total=' + P8.store.sync_conflicts.length);
 
   /* ══ V9 — باگ ۳ (بازبین دور ۱ #124): خروج زودهنگام هیچ اثرِ آینه‌ای نمی‌گذارد ══ */
   await pool.query(`INSERT INTO announcements (id, school_id, title, version) VALUES (801, 2, 'v9-مدرسه-دگر', 1)`);

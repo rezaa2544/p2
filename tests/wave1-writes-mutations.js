@@ -15,6 +15,11 @@
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و
+   بازنویسی نمی‌شود — بازگردانیِ دستی حذف شد. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('w1w-mut-');
+const ROOT = path.join(__dirname, '..');
 
 const SUITE = 'node tests/wave1-writes.js';
 const MUTS = [
@@ -78,8 +83,11 @@ const MUTS = [
 ];
 
 let killed = 0, alive = 0, envErr = 0;
+let prevAbs = null;
 for (const m of MUTS) {
   const p = path.join(__dirname, '..', m.file);
+  if (prevAbs && prevAbs !== p) kit.clear(prevAbs);
+  prevAbs = p;
   const orig = fs.readFileSync(p, 'utf8');
   const n = orig.split(m.bad).length - 1;
   if (n !== 1) {
@@ -87,11 +95,10 @@ for (const m of MUTS) {
     envErr++;
     continue;
   }
-  fs.writeFileSync(p, orig.replace(m.bad, m.mut));
+  kit.mutant(p, orig.replace(m.bad, m.mut)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
   let out = '', code = 0;
-  try { out = execSync(SUITE, { stdio: 'pipe' }).toString(); }
+  try { out = execSync(SUITE, { stdio: 'pipe', env: kit.env(), cwd: ROOT }).toString(); }
   catch (e) { out = ((e.stdout || '') + '\n' + (e.stderr || '')).toString(); code = e.status; }
-  fs.writeFileSync(p, orig); /* بازگردانی */
   const failed = code !== 0;
   const sawFail = out.indexOf('❌') >= 0 && out.indexOf(m.expectFail) >= 0;
   if (failed && sawFail) {

@@ -4,8 +4,8 @@
    (تکمیل Wave 23: academic/finance/teachers + اعتبارسنجی P2)
 
    هر جهش یک نقض عمدی در server/reports-sql.js یا server/routes/reports.js
-   تزریق می‌کند؛ گیت PG زنده (tests/wave23-reports-pg.js) باید قرمز شود؛
-   سپس restore. اثبات این‌که سنجه‌های هم‌ارزی/authz/صفحه‌بندی واقعاً
+   تزریق می‌کند (در کپی جدا — الگوی امن BH-mut)؛ گیت PG زنده باید قرمز شود؛
+
    نقض را می‌گیرند — سبز جعلی ممنوع.
 
    پیش‌نیاز: PostgreSQL زنده (DATABASE_URL). بدون آن: NOT-RUN صریح
@@ -19,6 +19,9 @@
 const fs = require('fs');
 const path = require('path');
 const cp = require('child_process');
+/* BH-mut (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی هرگز بازنویسی نمی‌شود. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('w23-rep-mut-');
 
 const ROOT = path.join(__dirname, '..');
 const SQLF = path.join(ROOT, 'server', 'reports-sql.js');
@@ -34,11 +37,7 @@ if (!process.env.DATABASE_URL) {
 
 const origSql = fs.readFileSync(SQLF, 'utf8');
 const origRt = fs.readFileSync(RTF, 'utf8');
-function restore() {
-  fs.writeFileSync(SQLF, origSql, 'utf8');
-  fs.writeFileSync(RTF, origRt, 'utf8');
-}
-process.on('exit', restore);
+/* بازگردانیِ درجا حذف شد — kit خودش کپی را در exit unlink می‌کند */
 
 /* هر جهش: file + mutate. باید گیتِ زنده را قرمز کند. */
 const mutations = [
@@ -141,15 +140,15 @@ for (const m of mutations) {
     console.log('  ❌ جهش اعمال نشد: ' + m.name);
     continue;
   }
-  fs.writeFileSync(target, mutated, 'utf8');
+  kit.mutant(target, mutated); /* کپی جدا؛ سورس دست‌نخورده */
   const r = cp.spawnSync(process.execPath, [path.join(__dirname, 'wave23-reports-pg.js')],
-    { stdio: 'pipe', timeout: 600000, env: process.env });
-  restore();
+    { stdio: 'pipe', timeout: 600000, env: kit.env() });
   const failedAsExpected = r.status !== 0;
   if (failedAsExpected) { killed++; console.log('  ✅ کشته شد: ' + m.name); }
   else { survived++; survivors.push(m.name); console.log('  ❌ زنده ماند: ' + m.name); }
 }
 
+kit.cleanup();
 console.log('\n  جمع: ' + killed + ' کشته، ' + survived + ' زنده از ' + mutations.length);
 if (survivors.length) { console.log('  زنده‌ها:'); survivors.forEach((s) => console.log('   - ' + s)); }
 console.log('');
