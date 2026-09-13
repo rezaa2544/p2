@@ -58,8 +58,19 @@ const rows = [];
   T.freeAfterKb = freeKb;
   L.check(rows, 'inject: دیسک تا آستانهٔ ENOSPC پر شد (شاهدِ df، نه ادعا)',
     freeKb !== null && freeKb < 8192, 'free_before=' + T.freeBeforeKb + 'KB free_under_pressure=' + freeKb + 'KB');
+  /* رفع دور مرج (#185): وقتی خودِ backendِ psql با PANIC می‌میرد، stderrِ
+     کلاینت فقط «server closed the connection» می‌گوید و ENOSPC *در لاگِ
+     موتور* است (PANIC: could not write ... No space left on device).
+     شاهدِ معتبر = کلاینت **یا** لاگِ PG — هر دو evidence واقعی‌اند. */
+  if (!/space left|ENOSPC|disk full/i.test(enospcLine)) {
+    try {
+      const lg = fs.readFileSync(infra.pgLog, 'utf8').split('\n')
+        .find((l) => /No space left|ENOSPC|disk full/i.test(l));
+      if (lg) enospcLine = ('PG-LOG: ' + lg).slice(0, 170);
+    } catch (e) { /* لاگ در دسترس نیست — همان شاهد کلاینتی می‌ماند */ }
+  }
   console.log('[evidence] خطای موتورِ PG زیرِ فشار: ' + (enospcLine || 'بدونِ ENOSPC'));
-  L.check(rows, 'inject: فشارِ دیسک واقعاً PG را به شکستِ نوشت رساند (شاهدِ خطای موتور)',
+  L.check(rows, 'inject: فشارِ دیسک واقعاً PG را به شکستِ نوشت رساند (شاهدِ خطای موتور — کلاینت یا لاگ)',
     /space left|ENOSPC|disk full/i.test(enospcLine), enospcLine.slice(0, 150) || 'ENOSPC رخ نداد ⇒ NOT-REACHED');
 
   /* ── در دورهٔ فشار: نوشت‌های API ───────────────────────────── */
