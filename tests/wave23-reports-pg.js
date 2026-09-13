@@ -63,11 +63,22 @@ async function main() {
   const c = new Client({ connectionString: BASE_URL.replace(/\/[^/]*$/, '/' + TEST_DB) });
   await c.connect();
 
-  /* مهاجرت‌های واقعیِ مخزن — همان‌هایی که در تولید اعمال می‌شوند */
+  /* مهاجرت‌های واقعیِ مخزن — همان‌هایی که در تولید اعمال می‌شوند.
+     ری‌تارگت (مرج #82): مهاجرتِ 012 (پارتیشن‌بندی) متاکامندِ psql دارد
+     (\gset — مرزِ ثابتِ زمانِ پلان) و از client.query عبور نمی‌کند؛
+     قراردادِ خودِ مهاجرت اجرایِ psql است (§۹.۷ ‏WAVE10_DB_SCALE) —
+     فایل‌هایِ متاکامنددار با psql اعمال می‌شوند. */
+  const { execFileSync } = require('child_process');
   const migs = fs.readdirSync(path.join(ROOT, 'migrations'))
     .filter((f) => f.endsWith('.sql') && !f.endsWith('.down.sql')).sort();
+  const dbUrl = BASE_URL.replace(/\/[^/]*$/, '/' + TEST_DB);
   for (const f of migs) {
-    await c.query(fs.readFileSync(path.join(ROOT, 'migrations', f), 'utf8'));
+    const sql = fs.readFileSync(path.join(ROOT, 'migrations', f), 'utf8');
+    if (/^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql)) {
+      execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', f), dbUrl], { stdio: 'pipe' });
+    } else {
+      await c.query(sql);
+    }
   }
   console.log(`  · ${migs.length} مهاجرت اعمال شد (${migs[0]} … ${migs[migs.length - 1]})`);
 
@@ -245,10 +256,15 @@ async function main() {
   const ex = await c.query('EXPLAIN (ANALYZE, BUFFERS) ' + built.sql, built.params);
   const plan = ex.rows.map((r) => r['QUERY PLAN']).join('\n');
   const usedIndex = /Index(?: Only)? Scan using (\w+) on attendance|Bitmap Index Scan on (\w+)/.exec(plan);
-  chk('attendance با ایندکس خوانده می‌شود (نه Seq Scan)', !!usedIndex && !/Seq Scan on attendance/.test(plan),
+  /* پارتیشن‌آگاه (مرج #82 — مهاجرتِ 012): planner رویِ پارتیشن‌هایِ *خالی*
+     Seq Scan می‌گذارد (cost=0.00، rows=0) که هزینه ندارد؛ سنجهٔ درست =
+     هیچ Seq Scanِ *واقعی* (actual rows>0) رویِ attendance. نامِ ایندکسِ
+     پارتیشن هم پسوندِ جدول را می‌گیرد (…_school_id_class_id_date_idx). */
+  const realSeq = plan.split('\n').filter((l) => /Seq Scan on attendance/.test(l) && !/actual time=[\d.]+\.\.[\d.]+ rows=0(\.00)? /.test(l));
+  chk('attendance با ایندکس خوانده می‌شود (نه Seq Scanِ واقعی — پارتیشن‌های خالی مستثنا)', !!usedIndex && realSeq.length === 0,
     plan.split('\n').filter((l) => /attendance/.test(l)).join(' | '));
   chk('ایندکسِ استفاده‌شده همانِ (school_id, class_id, date) است',
-    !!usedIndex && /idx_attendance_school_class_date/.test(plan), (usedIndex && (usedIndex[1] || usedIndex[2])) || '—');
+    !!usedIndex && /(idx_attendance_school_class_date|attendance_\w*school_id_class_id_date_idx)/.test(plan), (usedIndex && (usedIndex[1] || usedIndex[2])) || '—');
   const ms = /Execution Time: ([\d.]+) ms/.exec(plan);
   chk('زمانِ اجرا ثبت شد', !!ms, plan.slice(-120));
   if (ms) console.log(`  · EXPLAIN ANALYZE: ${ms[1]} ms روی ${totalRows} رکورد (ایندکس: ${usedIndex[1] || usedIndex[2]})`);
