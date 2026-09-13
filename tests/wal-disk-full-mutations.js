@@ -37,6 +37,12 @@ try {
     path.join(mutantRoot, 'infra', 'wal-drill', 'bootstrap.sh'));
   fs.copyFileSync(path.join(ROOT, 'docs', 'WAVE19_WAL_DRILL_REPORT.md'),
     path.join(mutantRoot, 'docs', 'WAVE19_WAL_DRILL_REPORT.md'));
+  /* ری‌تارگت (ممیزی دور ۲): S5ِ سوئیت حالا migrations/ را با readdir کشف
+     می‌کند — بدونِ کپی، mutant پیش از رسیدن به مسیرِ ReferenceError با
+     ENOENT می‌مُرد و assertionِ بازتولید شکست می‌خورد (قرمزِ کاذبِ گیت). */
+  fs.mkdirSync(path.join(mutantRoot, 'migrations'), { recursive: true });
+  for (const f of fs.readdirSync(path.join(ROOT, 'migrations')))
+    fs.copyFileSync(path.join(ROOT, 'migrations', f), path.join(mutantRoot, 'migrations', f));
   const killed = spawnSync(process.execPath,
     [path.join(mutantRoot, 'tests', 'wal-disk-full.js'), '--skip-live'],
     { cwd: mutantRoot, encoding: 'utf8', timeout: 30000 });
