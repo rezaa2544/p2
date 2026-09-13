@@ -93,7 +93,42 @@ function plan(scale){
   const GR_BASE = 2, GR_FRAC = 0.5;                          /* 2.5 آزمون در هر دانش‌آموز */
   const grades = students * GR_BASE + Math.floor(students * GR_FRAC);
   const parentLinks = parents;
-  return { scale, schools, classesPerSchool, classes, studentsPerClass, students, teachers, parents, admins, eduOffice, superadmin, users, ATT_BASE, ATT_FRAC, attendance, GR_BASE, GR_FRAC, grades, parentLinks, seed: SEED };
+  /* ── روابط P0-4 (فهرست بازبین مستقل — نسبت‌های نزدیک به workload واقعی) ──
+     enrollments: هر دانش‌آموز دقیقاً ۱ ثبت‌نام سال جاری (UNIQUE student,year)
+     messages: هر ولیِ فعال ~۲ پیام به مدرسه در بازهٔ داده + hotspot
+     notifications: ۱ به‌ازای هر دانش‌آموز + ۱ به‌ازای هر دبیر
+     tuitions: هر دانش‌آموز ۱ پروندهٔ شهریه؛ installments: ۳ قسط per tuition
+     scholarships: ~۲٪ دانش‌آموزان تحت پوشش
+     staff_attendance: هر دبیر × همان ۶ روز مدرسه
+     substitutions: ~۳۰٪ کلاس‌ها یک جایگزینی در بازهٔ داده
+     training_courses: ~۲۰٪ دبیران یک دورهٔ ضمن خدمت
+     outbox (server_outbox): ۱ رویداد sync per دانش‌آموز (ژورنال رویداد واقعی
+       سیستم — جدول audit جداگانه در اسکیمای مخزن وجود ندارد؛ UI ی audit از
+       oplog درون‌حافظه می‌خواند: src/js/36-audit-activity.js) */
+  const enrollments = students;
+  const HOT_SCHOOLS = Math.max(1, Math.round(schools * 0.01));  /* ~۱٪ مدارس پرترافیک */
+  /* پایهٔ پیام باید از مدارسِ «فعال» محاسبه شود: پیوندِ ولی→دانش‌آموز در
+     مولدِ موجود سری است (ولی k → دانش‌آموز k)، پس پیام‌های پایه فقط در
+     ceil(parents/studentsPerSchool) مدرسهٔ اول می‌افتند — یافتهٔ Independent
+     Review این دور؛ محاسبه از میانگینِ همهٔ مدارس ضریبِ داغ را بی‌اثر می‌کرد. */
+  const studentsPerSchool = studentsPerClass * classesPerSchool;
+  const activeMsgSchools = Math.min(schools, Math.ceil(parents / studentsPerSchool));
+  const baseMsgsPerSchool = Math.ceil((parents * 2) / activeMsgSchools);
+  const HOT_FACTOR = 10;                                     /* مدرسهٔ داغ = ۱۰× پیام مدرسهٔ فعالِ عادی */
+  const hotExtraPerSchool = baseMsgsPerSchool * (HOT_FACTOR - 1);
+  const messages = parents * 2 + HOT_SCHOOLS * hotExtraPerSchool;
+  const notifications = students + teachers;
+  const tuitions = students;
+  const INST_PER_TUITION = 3;
+  const installments = tuitions * INST_PER_TUITION;
+  const scholarships = Math.max(1, Math.round(students * 0.02));
+  const staffAttendance = teachers * ATT_BASE;
+  const substitutions = Math.max(1, Math.round(classes * 0.3));
+  const trainingCourses = Math.max(1, Math.round(teachers * 0.2));
+  const outbox = students;
+  return { scale, schools, classesPerSchool, classes, studentsPerClass, students, teachers, parents, admins, eduOffice, superadmin, users, ATT_BASE, ATT_FRAC, attendance, GR_BASE, GR_FRAC, grades, parentLinks,
+    enrollments, messages, notifications, tuitions, INST_PER_TUITION, installments, scholarships, staffAttendance, substitutions, trainingCourses, outbox,
+    HOT_SCHOOLS, HOT_FACTOR, baseMsgsPerSchool, hotExtraPerSchool, seed: SEED };
 }
 const P = plan(SCALE);
 
@@ -111,6 +146,17 @@ if(has('--plan')){
   console.log('  attendance   ' + String(P.attendance).padStart(10) + '   (' + P.ATT_BASE + ' days + ' + P.ATT_FRAC + ' of students one more)');
   console.log('  grades       ' + String(P.grades).padStart(10) + '   (' + P.GR_BASE + ' exams + ' + P.GR_FRAC + ' of students one more)');
   console.log('  parent_links ' + String(P.parentLinks).padStart(10));
+  console.log('  ── روابط P0-4 ──');
+  console.log('  enrollments      ' + String(P.enrollments).padStart(10) + '   (1 per student, current year)');
+  console.log('  messages         ' + String(P.messages).padStart(10) + '   (2 per parent + ' + P.HOT_SCHOOLS + ' hot schools ×' + P.HOT_FACTOR + ')');
+  console.log('  notifications    ' + String(P.notifications).padStart(10) + '   (1 per student + 1 per teacher)');
+  console.log('  tuitions         ' + String(P.tuitions).padStart(10) + '   (1 per student)');
+  console.log('  installments     ' + String(P.installments).padStart(10) + '   (' + P.INST_PER_TUITION + ' per tuition)');
+  console.log('  scholarships     ' + String(P.scholarships).padStart(10) + '   (~2% of students)');
+  console.log('  staff_attendance ' + String(P.staffAttendance).padStart(10) + '   (teachers × ' + P.ATT_BASE + ' days)');
+  console.log('  substitutions    ' + String(P.substitutions).padStart(10) + '   (~30% of classes)');
+  console.log('  training_courses ' + String(P.trainingCourses).padStart(10) + '   (~20% of teachers)');
+  console.log('  outbox           ' + String(P.outbox).padStart(10) + '   (1 sync event per student — event journal)');
   process.exit(0);
 }
 
@@ -349,12 +395,206 @@ const done = {};
   log('  grades      ' + done.grades.rows);
 }
 
+/* ── هندسهٔ مشترک روابط (قطعی — همه از k دانش‌آموز/دبیر مشتق می‌شوند) ── */
+const studentOf = (k) => ID.students[0] + k;
+const classOfStudent = (k) => Math.floor(k / P.studentsPerClass) + 1;
+const schoolOfClass = (cls) => Math.ceil(cls / P.classesPerSchool);
+const homeroomOfClass = (cls) => {
+  const school = schoolOfClass(cls);
+  return ID.teachers[0] + (school - 1) * P.classesPerSchool + ((cls - 1) % P.classesPerSchool);
+};
+/* مدارس داغ: قطعی و پخش‌شده روی کل بازه (نه فقط اولین‌ها) */
+const hotStep = Math.max(1, Math.floor(P.schools / P.HOT_SCHOOLS));
+const isHotSchool = (s) => ((s - 1) % hotStep === 0) && ((s - 1) / hotStep) < P.HOT_SCHOOLS;
+const TS = (d, hh, mm) => SCHOOL_DAYS[d % SCHOOL_DAYS.length] + 'T' + String(hh).padStart(2, '0') + ':' + String(mm % 60).padStart(2, '0') + ':00';
+
+/* 7) enrollments: هر دانش‌آموز ۱ ثبت‌نام سال جاری (uq student,year) ── */
+{
+  const w = new CsvWriter(path.join(OUT_DIR, 'enrollments.csv'), 'id,school_id,student_id,class_id,year,created_at');
+  for(let k = 0; k < P.students; k++){
+    const cls = classOfStudent(k);
+    w.push([k + 1, schoolOfClass(cls), studentOf(k), cls, 1405, TS(0, 8, k % 60)]);
+  }
+  done.enrollments = w.close();
+  log('  enrollments ' + done.enrollments.rows);
+}
+
+/* 8) messages: ۲ پیام per ولی + ترافیک اضافی مدارس داغ ─────────────── */
+{
+  const w = new CsvWriter(path.join(OUT_DIR, 'messages.csv'), 'id,school_id,from_id,to_id,body,created_at');
+  let n = 0;
+  for(let k = 0; k < P.parentLinks; k++){
+    const parent = ID.parents[0] + k;
+    const sk = k % P.students;
+    const cls = classOfStudent(sk);
+    const school = schoolOfClass(cls);
+    const manager = ID.admins[0] + (school - 1) * 2;
+    for(let m = 0; m < 2; m++){
+      n++;
+      w.push([n, school, m % 2 ? manager : parent, m % 2 ? parent : manager,
+        'پیام شماره ' + n + ' دربارهٔ دانش‌آموز ' + studentOf(sk), TS(k % 8, 9 + m, k % 60)]);
+    }
+  }
+  /* hotspot: مدارس داغ ۹× پیام اضافه (بین ولی‌های همان مدرسه) */
+  for(let s = 1; s <= P.schools; s++){
+    if(!isHotSchool(s)) continue;
+    const manager = ID.admins[0] + (s - 1) * 2;
+    for(let e = 0; e < P.hotExtraPerSchool; e++){
+      n++;
+      /* یک ولیِ قطعی از همان بازه (پیوند از توزیع یکنواخت parent→student) */
+      const parent = ID.parents[0] + ((s * 131 + e * 17) % P.parentLinks);
+      w.push([n, s, e % 2 ? manager : parent, e % 2 ? parent : manager,
+        'پیام پرترافیک ' + n + ' (مدرسه داغ ' + s + ')', TS(e % 8, 10 + (e % 8), e % 60)]);
+    }
+  }
+  done.messages = w.close();
+  log('  messages    ' + done.messages.rows);
+}
+
+/* 9) notifications: ۱ per دانش‌آموز + ۱ per دبیر ───────────────────── */
+{
+  const w = new CsvWriter(path.join(OUT_DIR, 'notifications.csv'), 'id,school_id,user_id,role,type,title,body,read,created_at');
+  let n = 0;
+  for(let k = 0; k < P.students; k++){
+    n++;
+    const cls = classOfStudent(k);
+    w.push([n, schoolOfClass(cls), studentOf(k), 'student', 'attendance', 'اعلان حضور ' + n,
+      'وضعیت حضور به‌روز شد', k % 3 === 0 ? 1 : 0, TS(k % 8, 12, k % 60)]);
+  }
+  for(let t = 0; t < P.teachers; t++){
+    n++;
+    const school = Math.floor(t / P.classesPerSchool) + 1;
+    w.push([n, school, ID.teachers[0] + t, 'teacher', 'schedule', 'اعلان برنامه ' + n,
+      'برنامهٔ هفتگی به‌روز شد', t % 2, TS(t % 8, 13, t % 60)]);
+  }
+  done.notifications = w.close();
+  log('  notifications ' + done.notifications.rows);
+}
+
+/* 10) tuitions + installments (۳ قسط per پرونده) ───────────────────── */
+{
+  const w = new CsvWriter(path.join(OUT_DIR, 'tuitions.csv'), 'id,school_id,student_id,class_id,total,paid,payable,status,created_at');
+  const wi = new CsvWriter(path.join(OUT_DIR, 'installments.csv'), 'id,school_id,student_id,tuition_id,seq,amount,status,due_date,created_at');
+  let ni = 0;
+  for(let k = 0; k < P.students; k++){
+    const cls = classOfStudent(k);
+    const school = schoolOfClass(cls);
+    const total = 12000000 + (k % 10) * 500000;
+    const paidInst = k % 4;                                 /* 0..3 قسط پرداخته */
+    const per = Math.floor(total / P.INST_PER_TUITION);
+    w.push([k + 1, school, studentOf(k), cls, total, paidInst * per,
+      total - paidInst * per, paidInst === 3 ? 'paid' : 'open', TS(0, 8, k % 60)]);
+    for(let q = 0; q < P.INST_PER_TUITION; q++){
+      ni++;
+      wi.push([ni, school, studentOf(k), k + 1, q + 1, per,
+        q < paidInst ? 'paid' : 'due', '2026-1' + q + '-01', TS(q % 8, 9, k % 60)]);
+    }
+  }
+  done.tuitions = w.close();
+  done.installments = wi.close();
+  log('  tuitions    ' + done.tuitions.rows + '  installments ' + done.installments.rows);
+}
+
+/* 11) scholarships: ~۲٪ دانش‌آموزان (هر پنجاهمین) ──────────────────── */
+{
+  const w = new CsvWriter(path.join(OUT_DIR, 'scholarships.csv'), 'id,school_id,student_id,status,note,created_at');
+  let n = 0;
+  for(let k = 0; k < P.students; k += 50){
+    n++;
+    if(n > P.scholarships) break;
+    const cls = classOfStudent(k);
+    w.push([n, schoolOfClass(cls), studentOf(k), n % 3 ? 'approved' : 'pending',
+      'کمک‌هزینه ' + n, TS(k % 8, 11, k % 60)]);
+  }
+  done.scholarships = w.close();
+  log('  scholarships ' + done.scholarships.rows);
+}
+
+/* 12) staff_attendance: هر دبیر × ۶ روز مدرسه ─────────────────────── */
+{
+  const w = new CsvWriter(path.join(OUT_DIR, 'staff_attendance.csv'), 'id,school_id,staff_id,date,status,registered_by,created_at');
+  let n = 0;
+  for(let t = 0; t < P.teachers; t++){
+    const school = Math.floor(t / P.classesPerSchool) + 1;
+    const manager = ID.admins[0] + (school - 1) * 2;
+    for(let d = 0; d < P.ATT_BASE; d++){
+      n++;
+      const sv = (t * 17 + d * 31) % 100;
+      w.push([n, school, ID.teachers[0] + t, SCHOOL_DAYS[d],
+        sv < 92 ? 'present' : (sv < 96 ? 'absent' : 'leave'), manager, TS(d, 7, t % 60)]);
+    }
+  }
+  done.staff_attendance = w.close();
+  log('  staff_attendance ' + done.staff_attendance.rows);
+}
+
+/* 13) substitutions: ~۳۰٪ کلاس‌ها یک جایگزینی ──────────────────────── */
+{
+  const w = new CsvWriter(path.join(OUT_DIR, 'substitutions.csv'), 'id,school_id,date,sub_teacher_id,created_at');
+  let n = 0;
+  for(let c = 1; c <= P.classes && n < P.substitutions; c += 3){  /* هر سومین کلاس ≈ ۳۰٪+ */
+    n++;
+    const school = schoolOfClass(c);
+    /* دبیر جایگزین = دبیر بعدی همان مدرسه (قطعی، درون-tenant) */
+    const sub = ID.teachers[0] + (school - 1) * P.classesPerSchool + (c % P.classesPerSchool);
+    w.push([n, school, SCHOOL_DAYS[c % SCHOOL_DAYS.length], sub, TS(c % 8, 8, c % 60)]);
+  }
+  done.substitutions = w.close();
+  log('  substitutions ' + done.substitutions.rows);
+}
+
+/* 14) training_courses: ~۲۰٪ دبیران (هر پنجمین) ────────────────────── */
+{
+  const w = new CsvWriter(path.join(OUT_DIR, 'training_courses.csv'), 'id,school_id,staff_id,title,hours,status,date,created_at');
+  let n = 0;
+  for(let t = 0; t < P.teachers && n < P.trainingCourses; t += 5){
+    n++;
+    const school = Math.floor(t / P.classesPerSchool) + 1;
+    w.push([n, school, ID.teachers[0] + t, 'دوره ضمن خدمت ' + n, 8 + (t % 4) * 8,
+      n % 4 ? 'completed' : 'enrolled', SCHOOL_DAYS[t % SCHOOL_DAYS.length], TS(t % 8, 14, t % 60)]);
+  }
+  done.training_courses = w.close();
+  log('  training_courses ' + done.training_courses.rows);
+}
+
+/* 15) outbox (server_outbox): ژورنال رویداد sync — ۱ per دانش‌آموز ──
+   جدول audit جداگانه در اسکیمای مخزن نیست؛ ژورنال رویدادِ واقعی سیستم
+   server_outbox است (schema.sql:29) و UI ی «سابقه تغییرات» از oplog
+   درون‌حافظه می‌خواند (src/js/36-audit-activity.js). */
+{
+  const w = new CsvWriter(path.join(OUT_DIR, 'outbox.csv'), 'id,type,collection,record_id,actor_id,version,status,created_at');
+  for(let k = 0; k < P.outbox; k++){
+    const cls = classOfStudent(k);
+    const school = schoolOfClass(cls);
+    const homeroom = homeroomOfClass(cls);
+    w.push([k + 1, k % 2 ? 'upd' : 'ins', k % 3 === 0 ? 'grades' : 'attendance',
+      k + 1, homeroom, 1, 'processed', TS(k % 8, 15, k % 60)]);
+  }
+  done.outbox = w.close();
+  log('  outbox      ' + done.outbox.rows);
+}
+
 /* ── stats.json + README + hash ───────────────────────────────────── */
 const stats = {
   generated_at: new Date().toISOString(),
   tool: 'tools/generate-national-dataset.js (Wave 18)',
   plan: P,
   counts: Object.fromEntries(Object.entries(done).map(([k, v]) => [k, v.rows])),
+  /* نسبت‌های ثبت‌شده (قرارداد P0-4 — سوئیت integrity این‌ها را می‌سنجد) */
+  ratios: {
+    enrollments_per_student: 1,
+    messages_per_parent_base: 2,
+    hot_schools: P.HOT_SCHOOLS,
+    hot_factor: P.HOT_FACTOR,
+    notifications: 'students + teachers',
+    tuitions_per_student: 1,
+    installments_per_tuition: P.INST_PER_TUITION,
+    scholarships_share_of_students: 0.02,
+    staff_attendance_days: P.ATT_BASE,
+    substitutions_share_of_classes: 0.3,
+    training_share_of_teachers: 0.2,
+    outbox_per_student: 1
+  },
   total_users_by_role: {
     superadmin: P.superadmin, edu_office: P.eduOffice, manager: P.admins,
     teacher: P.teachers, student: P.students, parent: P.parents
@@ -363,8 +603,16 @@ const stats = {
 };
 for(const f of fs.readdirSync(OUT_DIR)){
   if(f.endsWith('.csv')){
+    /* P0-4 fix: readFileSync سقف ~2GiB دارد — attendance.csv از scale≈0.5
+       به بالا از آن می‌گذرد و مولد در پایان کرش می‌کرد (stats.json نمی‌نوشت).
+       هش را پخش‌شده (چانک ۴MiB) محاسبه می‌کنیم؛ خروجی sha256 تغییر نمی‌کند. */
     const h = crypto.createHash('sha256');
-    h.update(fs.readFileSync(path.join(OUT_DIR, f)));
+    const fp = path.join(OUT_DIR, f);
+    const fh = fs.openSync(fp, 'r');
+    const buf = Buffer.alloc(4 << 20);
+    let n;
+    while((n = fs.readSync(fh, buf, 0, buf.length, null)) > 0) h.update(buf.subarray(0, n));
+    fs.closeSync(fh);
     stats.checksums[f] = h.digest('hex');
   }
 }
@@ -385,7 +633,17 @@ Deterministic: same seed+scale => byte-identical files.
 | parent_links.csv | ${P.parentLinks} | parent_id → student_id |
 | attendance.csv | ${P.attendance} | ${P.ATT_BASE}+${P.ATT_FRAC} روز، status ∈ present/absent/late/excused |
 | grades.csv | ${P.grades} | ${P.GR_BASE}+${P.GR_FRAC} آزمون، score ≤ 20 |
-| stats.json | — | counts + plan + sha256 |
+| enrollments.csv | ${P.enrollments} | 1 per student (year=1405, uq student,year) |
+| messages.csv | ${P.messages} | 2 per parent + ${P.HOT_SCHOOLS} hot school(s) ×${P.HOT_FACTOR} |
+| notifications.csv | ${P.notifications} | 1 per student + 1 per teacher |
+| tuitions.csv | ${P.tuitions} | 1 per student |
+| installments.csv | ${P.installments} | ${P.INST_PER_TUITION} per tuition |
+| scholarships.csv | ${P.scholarships} | ~2% of students |
+| staff_attendance.csv | ${P.staffAttendance} | teachers × ${P.ATT_BASE} days |
+| substitutions.csv | ${P.substitutions} | ~30% of classes |
+| training_courses.csv | ${P.trainingCourses} | ~20% of teachers |
+| outbox.csv | ${P.outbox} | server_outbox sync journal, 1 per student |
+| stats.json | — | counts + plan + ratios + sha256 |
 
 ## Load into PostgreSQL (PG COPY)
 

@@ -17,28 +17,30 @@ function chk(name, cond, extra) {
   else { fail++; errors.push(name + (extra ? ' — ' + String(extra).slice(0, 220) : '')); console.log('  ❌ ' + name + (extra ? '  —  ' + String(extra).slice(0, 220) : '')); }
 }
 function grp(t) { console.log('\n▸ ' + t); }
-const FREEZE = 'docs/DOCS_FREEZE_v1.0.0-rc30.md';
+const FREEZE = 'docs/DOCS_FREEZE_v1.0.0-rc40.md';
 const doc = (() => { try { return fs.readFileSync(path.join(ROOT, FREEZE), 'utf8'); } catch (e) { return null; } })();
 if (!doc) { console.log('❌ سند قفل نیست'); process.exit(1); }
 
 grp('DF-SEC — ساختار');
 ['قاعدهٔ قفل', 'امضا', 'فهرست اسناد ریشه با هش'].forEach((s) => chk('بخشِ «' + s + '»', doc.includes(s)));
-chk('نسخهٔ وی۱.۰.۰-آرسی۳۰', doc.includes('v1.0.0-rc30') || doc.includes('۱.۰.۰-rc30'));
-chk('تاریخ قفل ۲۰۲۶-۰۹-۱۱', doc.includes('۲۰۲۶-۰۹-۱۱'));
+chk('نسخهٔ وی۱.۰.۰-آرسی۴۰', doc.includes('v1.0.0-rc40') || doc.includes('۱.۰.۰-rc40'));
+/* تاریخ قفل: از rc40 به بعد، قفل می‌تواند در هر تاریخی بسته شود —
+   الگوی تاریخِ ردهٔ «**تاریخ قفل:** YYYY-MM-DD» سنجیده می‌شود (rc36-rc39: ۲۰۲۶-۰۹-۱۲). */
+chk('تاریخ قفل (الگوی ردیف تاریخ)', /\*\*تاریخ قفل:\*\* ۲۰۲۶-۰۹-[۰-۹]{2}/.test(doc));
 chk('قاعدهٔ بامپ نسخه', /بامپ نسخه/.test(doc) && /rc2/.test(doc));
 chk('استثنای اسناد زنده', /مستثنا/.test(doc));
 chk('صداقت نبود جی‌پی‌جی + جایگزین', /جی‌پی‌جی|gpg/i.test(doc) && /کامیت/.test(doc));
 
 grp('DF-ALL — کامل بودن فهرست');
 const rows = [...doc.matchAll(/\| `([^`]+\.md)` \| `sha256:([0-9a-f]{64})` \|/g)].map((m) => ({ f: m[1], h: m[2] }));
-const onDisk = fs.readdirSync(path.join(ROOT, 'docs')).filter((f) => f.endsWith('.md') && f !== 'DOCS_FREEZE_v1.0.0-rc30.md').sort();
+const onDisk = fs.readdirSync(path.join(ROOT, 'docs')).filter((f) => f.endsWith('.md') && f !== 'DOCS_FREEZE_v1.0.0-rc40.md').sort();
 chk('شمار ردیف‌ها = شمار اسناد (خارج از سند قفل)', rows.length === onDisk.length, `ردیف ${rows.length} در برابر ${onDisk.length}`);
 const listed = new Set(rows.map((r) => r.f));
 const missing = onDisk.filter((f) => !listed.has(f));
 const extra = rows.map((r) => r.f).filter((f) => !onDisk.includes(f));
 chk('هیچ سندی جا نمانده', missing.length === 0, missing.slice(0, 5).join(','));
 chk('سند اضافه‌ای فهرست نشده', extra.length === 0, extra.slice(0, 5).join(','));
-chk('خود سند قفل در فهرست نیست', !doc.includes('| `DOCS_FREEZE_v1.0.0-rc30.md` | `'));
+chk('خود سند قفل در فهرست نیست', !doc.includes('| `DOCS_FREEZE_v1.0.0-rc40.md` | `'));
 
 grp('DF-HASH — صحت اثرها');
 /* اسناد زنده (قاعدهٔ قفل §۱ بند ۲) بازتولید ماشینی دارند — اثرشان تضمین نمی‌شود */

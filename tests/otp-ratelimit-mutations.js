@@ -14,6 +14,9 @@
 const { execSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+/* BH-mut (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی هرگز بازنویسی نمی‌شود. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('otp-rl-mut-');
 
 const ROOT = path.join(__dirname, '..');
 const SUITE = 'tests/otp-ratelimit.js';
@@ -58,10 +61,10 @@ for (const m of MUTS) {
   const fp = path.join(ROOT, F);
   const src0 = fs.readFileSync(fp, 'utf8');
   if (src0.indexOf(m.bad) < 0) { console.log(`  ❌ ${m.name}: الگو پیدا نشد`); continue; }
-  fs.writeFileSync(fp, src0.replace(m.bad, m.mut));
+  kit.mutant(fp, src0.replace(m.bad, m.mut)); /* کپی جدا؛ بدونِ بازگردانیِ دستی */
   let out = '', crashed = false;
-  const runOnce = () => spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8' });
-  try {
+  const runOnce = () => spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8', env: kit.env() });
+  {
     let r = runOnce();
     out = String((r.stdout || '') + (r.stderr || ''));
     if (r.status !== 0 && !/❌/.test(out)) { /* مرگِ زودهنگام؟ یک retry */
@@ -71,8 +74,6 @@ for (const m of MUTS) {
     }
     if (/FATAL|JavaScript heap out of memory|aborting/.test(out) || out.trim() === '') crashed = true;
     else if (r.status === 0) out = 'PASSED (no failure)';
-  } finally {
-    fs.writeFileSync(fp, src0);
   }
   try { execSync('pkill -f "[s]erver/index.js"'); } catch (e) {}
   if (crashed) {
@@ -85,8 +86,9 @@ for (const m of MUTS) {
   if (killedThis) killed++;
 }
 let backGreen = false, finalOut = '';
-const b = spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8' });
+const b = spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8' }); /* بدونِ env → سورس اصلی */
 finalOut = String((b.stdout || '') + (b.stderr || ''));
+kit.cleanup();
 backGreen = b.status === 0 && /otp-ratelimit: \d+ ✅ \/ 0 ❌/.test(finalOut);
 try { execSync('pkill -f "[s]erver/index.js"'); } catch (e) {}
 console.log(`\nجهش: ${killed}/${MUTS.length} کشته · خطِ پایه: ${backGreen ? 'سبز ✅' : 'قرمز ❌'} · خطایِ محیطی: ${envFails}`);

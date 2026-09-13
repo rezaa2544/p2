@@ -351,6 +351,31 @@ function isPgReadableTable(name) {
     && name.indexOf('__') !== 0;
 }
 
+/* Wave 10 (chg_id): ستون‌هایِ داخلیِ لایهٔ DB — هرگز از سرور بیرون نمی‌روند.
+   SELECT * آن‌ها را برمی‌گرداند (ستونِ پارتیشن‌نشده به ازایِ هر جدول)؛ این‌جا
+   کنار گذاشته می‌شوند تا شکلِ سطرِ PG با حالتِ حافظه بایت‌به‌بایت یکی بماند و
+   هیچ‌وقت به op کلاینت راه پیدا نکنند (validate.js آن را unknown_field می‌گیرد). */
+const INTERNAL_ROW_COLUMNS = new Set(['chg_id']);
+
+/**
+ * Remove server-internal columns from rows leaving the DB layer.
+ * Pure function; returns the same array shape with shallow-copied rows.
+ * @param {Array<Object>} rows
+ * @returns {Array<Object>}
+ */
+function stripInternalColumns(rows) {
+  if (!Array.isArray(rows)) return rows;
+  return rows.map((r) => {
+    if (!r || typeof r !== 'object') return r;
+    let has = false;
+    for (const k of INTERNAL_ROW_COLUMNS) { if (k in r) { has = true; break; } }
+    if (!has) return r;
+    const c = Object.assign({}, r);
+    for (const k of INTERNAL_ROW_COLUMNS) delete c[k];
+    return c;
+  });
+}
+
 /**
  * Read one full collection via the unified layer.
  * @param {string} name - collection / table name (real data table only)
@@ -360,7 +385,7 @@ async function readCollection(name) {
   if (typeof name !== 'string' || !name) return [];
   if (isPostgres() && isPgReadableTable(name)) {
     const res = await pool.query(`SELECT * FROM "${name}"`);
-    return reviveRows(res.rows);
+    return stripInternalColumns(reviveRows(res.rows));
   }
   return (memoryStore && Array.isArray(memoryStore[name])) ? memoryStore[name] : [];
 }
@@ -378,7 +403,7 @@ async function readOne(name, id) {
     const n = Number(id);
     if (!Number.isFinite(n)) return null;
     const res = await pool.query(`SELECT * FROM "${name}" WHERE id = $1 LIMIT 1`, [n]);
-    const rows = reviveRows(res.rows);
+    const rows = stripInternalColumns(reviveRows(res.rows));
     return rows.length ? rows[0] : null;
   }
   const rows = await readCollection(name);
@@ -398,19 +423,74 @@ async function readOne(name, id) {
  * @returns {Promise<{ok:boolean, hydrated:number, skipped:Array}>}
  */
 async function hydrateStoreFromPg(store) {
-  const out = { ok: true, hydrated: 0, skipped: [] };
+  const out = { ok: true, hydrated: 0, skipped: [], capped: [], env_skipped: [], mirror_incomplete: false };
   if (!store || typeof store !== 'object') return out;
+  /* Wave 18 — هیدراتاسیونِ مقیّد (مانورِ بارِ ملی): در مقیاسِ ملی، بارگذاریِ
+     کلِ جدول‌ها در RAM ممکن نیست (کاربران ۱۰M ⇒ چند GB شیءِ JS؛ OOM در بوت).
+     دو env اختیاری، هر دو پیش‌فرض خاموش (رفتارِ فعلی حفظ می‌شود):
+       PAYESH_PG_HYDRATE_SKIP=t1,t2      — این جدول‌ها اصلاً هیدراته نشوند
+       PAYESH_PG_HYDRATE_LIMIT=u:5000    — سقفِ سطرِ per-جدول (ORDER BY id)
+     مسیرهایِ خواندنِ زنده (pgLive ⇒ db.readCollection/executePagedList)
+     همچنان مستقیم از PG می‌خوانند؛ سقف فقط «آینهٔ درون‌حافظه‌ایِ بوت» را
+     مقیّد می‌کند. یافتهٔ مانور: auth فعلاً از همین آینه می‌خواند (اسکنِ
+     خطیِ store.users) — در مقیاسِ واقعی باید به جست‌وجویِ ایندکس‌دارِ PG
+     برود (users.phone ایندکس ندارد). */
+  const skipEnv = String(process.env.PAYESH_PG_HYDRATE_SKIP || '')
+    .split(',').map((s) => s.trim()).filter(Boolean);
+  const limEnv = {};
+  String(process.env.PAYESH_PG_HYDRATE_LIMIT || '')
+    .split(',').map((s) => s.trim()).filter(Boolean).forEach((p) => {
+      const i = p.indexOf(':');
+      if (i > 0) {
+        const t = p.slice(0, i).trim(), n = Number(p.slice(i + 1));
+        if (t && Number.isFinite(n) && n >= 0) limEnv[t] = n;
+      }
+    });
   for (const key of SCHEMA_TABLES) {
     if (!isPgReadableTable(key)) continue;
+    if (skipEnv.indexOf(key) > -1) { out.env_skipped.push(key); continue; }
     try {
-      store[key] = await readCollection(key);
+      const cap = limEnv[key];
+      if (cap !== undefined) {
+        const res = await pool.query(`SELECT * FROM "${key}" ORDER BY id LIMIT $1`, [cap]);
+        store[key] = reviveRows(res.rows);
+        out.capped.push(key + ':' + cap);
+      } else {
+        store[key] = await readCollection(key);
+      }
       out.hydrated++;
     } catch (e) {
       out.skipped.push(key);
       console.warn('[DB] Hydration skipped for ' + key + ':', e.message);
     }
   }
+  /* بازخوردِ بازبینِ PR #94: آینهٔ سقف‌دار/ناقص هرگز نباید روی فایلِ
+     store.json نوشته شود — فایلِ کاملِ قبلی را می‌کُشد. این پرچم به
+     index.js می‌گوید مسیرهای persist فایل را در PG-live ببندد. */
+  out.mirror_incomplete = out.capped.length > 0 || out.env_skipped.length > 0;
   return out;
+}
+
+/**
+ * آیا آینهٔ درون‌حافظه‌ای را باید روی store.json نوشت؟
+ * خالث/خالص — قابلِ تستِ مستقیم (tests/wave18-hydration-guards.js).
+ * فقط وقتی «نه» می‌گوید که PG مرجع است و هیدراتاسیون عمداً بریده
+ * بوده (capped/env-skipped). هر حالتِ دیگر — از جمله آینهٔ کامل و
+ * حالتِ بدونِ PG — رفتارِ قبلی (نوشتن) را حفظ می‌کند.
+ */
+function shouldPersistMirrorFile(pgLive, hydrateResult){
+  return !(pgLive && hydrateResult && hydrateResult.mirror_incomplete);
+}
+
+/**
+ * آیا سقفِ هیدراتاسیون جدولِ users را بریده؟ (هشدارِ بوت: کاربرانِ
+ * بیرونِ سقف با auth مبتنی بر آینه نمی‌توانند وارد شوند — فقط برای
+ * محیط‌های آزمونِ بار معنا دارد.)
+ */
+function hydrationUsersCapped(h){
+  return !!(h && Array.isArray(h.capped) && h.capped.some(function(s){
+    return String(s).split(':')[0] === 'users';
+  }));
 }
 
 /**
@@ -455,6 +535,15 @@ async function transaction(callback) {
   }
 }
 
+/* Wave 10 (پارتیشن‌بندی): فهرستِ جدول‌هایِ پارتیشن‌شده — PAYESH_PARTITIONED_TABLES
+   (مثلاً "grades,attendance"). خالی ⇒ همه‌چیز مثلِ قبل (ON CONFLICT (id)).
+   سوییچِ صریح تا rollout تدریجی و rollback لحظه‌ای ممکن باشد. */
+function isPartitionedTable(name) {
+  const v = String(process.env.PAYESH_PARTITIONED_TABLES || '');
+  if (!v) return false;
+  return v.split(',').map((x) => x.trim()).filter(Boolean).includes(String(name));
+}
+
 /**
  * P1-14: persist ONE op on a given client — THROWS on error (for use inside transactions).
  * Semantics mirror the old persistOp: empty-data ins/upd is a no-op; uid tracking is
@@ -482,6 +571,41 @@ async function persistOpWithClient(client, op) {
       .filter(f => f !== 'id')
       .map(f => `${ident(f)} = EXCLUDED.${ident(f)}`)
       .join(', ');
+
+    /* Wave 10 (پارتیشن‌بندی): جدولِ پارتیشن‌شده PK (id, created_at) دارد —
+       ON CONFLICT (id) دیگر به هیچ uniqueای نمی‌خورد و فرمِ (id, created_at)
+       هم idempotency را می‌شکند (id تکراری با created_at متفاوت ⇒ سطرِ
+       دوم). معادلِ دقیقِ upsert: اول UPDATE به id (ایندکسِ غیر یکتایِ id)؛
+       اگر هیچ سطری نداشت INSERT؛ رقابتِ هم‌زمان با 23505 گرفته می‌شود و
+       UPDATE دوباره می‌زند — «آخرین برنده»، همان ترتیبِ DO UPDATE. */
+    if (isPartitionedTable(col)) {
+      const upFields = fields.filter(f => f !== 'id');
+      const hasId = data.id != null && Number.isFinite(Number(data.id));
+      if (hasId && upFields.length > 0) {
+        const setSql = upFields.map((f, i) => `${ident(f)} = $${i + 1}`).join(', ');
+        const upVals = upFields.map(f => valOf(data[f]));
+        const updSql = `UPDATE ${table} SET ${setSql} WHERE id = $${upFields.length + 1};`;
+        const updRes = await client.query(updSql, upVals.concat([Number(data.id)]));
+        if (updRes && Number(updRes.rowCount) > 0) return; /* سطرِ موجود ⇒ به‌روزرسانی شد */
+      }
+      const insSql = `INSERT INTO ${table} (${cols}) VALUES (${placeholders});`;
+      try {
+        await client.query(insSql, values);
+      } catch (err) {
+        /* رقابت: کسِ دیگری همین id را همین لحظه درج کرد — مثلِ ON CONFLICT
+           DO UPDATE، ما برندهٔ نهایی هستیم: UPDATE دوباره. */
+        if (err && err.code === '23505' && hasId && upFields.length > 0) {
+          const setSql = upFields.map((f, i) => `${ident(f)} = $${i + 1}`).join(', ');
+          const upVals = upFields.map(f => valOf(data[f]));
+          const updSql = `UPDATE ${table} SET ${setSql} WHERE id = $${upFields.length + 1};`;
+          const updRes = await client.query(updSql, upVals.concat([Number(data.id)]));
+          if (!updRes || !(Number(updRes.rowCount) > 0)) throw err;
+        } else {
+          throw err;
+        }
+      }
+      return;
+    }
 
     const sql = `INSERT INTO ${table} (${cols}) VALUES (${placeholders}) ON CONFLICT (id) DO UPDATE SET ${updateSet};`;
     await client.query(sql, values);
@@ -708,6 +832,8 @@ function __setReprobeDelayForTests(ms) {
 module.exports = {
   init,
   isPostgres,
+  shouldPersistMirrorFile,
+  hydrationUsersCapped,
   getPool,
   isReplicaActive,
   getReadPool,
@@ -723,6 +849,10 @@ module.exports = {
   persistOpsBatchWithClient,
   persistOpsBatch,
   __setPoolForTests,
+  /* Wave 10 (chg_id): کنارگذاریِ ستون‌های داخلی برای خواننده‌های بیرونی (pull/delta) */
+  stripInternalColumns,
+  /* Wave 10 (پارتیشن‌بندی): آیا این جدول در PAYESH_PARTITIONED_TABLES است */
+  isPartitionedTable,
   __setReadPoolForTests,
   __setReprobeDelayForTests,
   isUidProcessed,

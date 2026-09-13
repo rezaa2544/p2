@@ -25,13 +25,18 @@ const INDEX = path.join(ROOT, 'server', 'index.js');
 const SYNC = path.join(ROOT, 'server', 'sync.js');
 const METRICS = path.join(ROOT, 'server', 'metrics.js');
 
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ هم‌جوارِ جدا (mutant-kit)؛
+   سورس اصلی هرگز بازنویسی نمی‌شود — restore/بازگردانیِ درجا حذف شد. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('w17-');
+
 let pass = 0, fail = 0;
 function chk(name, cond, extra) {
   if (cond) { pass++; console.log('  ✅ ' + name); }
   else { fail++; console.log('  ❌ ' + name + (extra ? '  —  ' + String(extra).slice(0, 260) : '')); }
 }
-function runSuite() {
-  return spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8', timeout: 600000 });
+function runSuite(e) {
+  return spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8', timeout: 600000, env: e });
 }
 
 console.log('▸ خطِّ پایه');
@@ -43,12 +48,13 @@ function mutate(file, find, replace, killRe, tag) {
   const orig = fs.readFileSync(file, 'utf8');
   try {
     if (!orig.includes(find)) { chk(tag + ' (جهش پیدا نشد)', false, 'anchor missing in ' + path.basename(file)); return; }
-    fs.writeFileSync(file, orig.replace(find, replace), 'utf8');
-    const r = runSuite();
+    const mcopy = kit.mutant(file, orig.replace(find, replace)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+    try { fs.chmodSync(mcopy, fs.statSync(file).mode); } catch (_) {}
+    const r = runSuite(kit.env());
     const out = (r.stdout || '') + (r.stderr || '');
     chk(tag + ' کشته شد', r.status !== 0 && killRe.test(out), out.slice(-300).replace(/\n/g, ' '));
   } finally {
-    fs.writeFileSync(file, orig, 'utf8');
+    kit.clear(file);
   }
 }
 
@@ -63,12 +69,13 @@ function mutateMulti(file, pairs, killRe, tag) {
       if (!mutated.includes(find)) { chk(tag + ' (جهش پیدا نشد)', false, 'anchor missing: ' + find.slice(0, 60)); return; }
       mutated = mutated.replace(find, replace);
     }
-    fs.writeFileSync(file, mutated, 'utf8');
-    const r = runSuite();
+    const mcopy = kit.mutant(file, mutated); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+    try { fs.chmodSync(mcopy, fs.statSync(file).mode); } catch (_) {}
+    const r = runSuite(kit.env());
     const out = (r.stdout || '') + (r.stderr || '');
     chk(tag + ' کشته شد', r.status !== 0 && killRe.test(out), out.slice(-300).replace(/\n/g, ' '));
   } finally {
-    fs.writeFileSync(file, orig, 'utf8');
+    kit.clear(file);
   }
 }
 
@@ -103,8 +110,10 @@ mutateMulti(SYNC, [
 ], /❌ (IN5|CC4)/, 'Z3 غیرفعال‌کردنِ هر دو لایهٔ ایدمپوتانس (sync.js)');
 /* Z4 — without the version gate a concurrent write silently clobbers */
 mutate(SYNC,
-  `        if(VERSIONED[op.c] && Number(op.base_version) !== cur){`,
-  `        if(false){ /* جهش: دروازهٔ base_version برداشته شد */`,
+  /* ترمیم لنگر (BH-mut فاز ۲): عبارتِ if قدیمی در بازآراییِ بعدی به
+     «const versionedMismatch = …» تبدیل شد؛ دروازه همان است — جانشینِ منبعِ فعلی. */
+  `        const versionedMismatch = !!VERSIONED[op.c] && Number(op.base_version) !== cur;`,
+  `        const versionedMismatch = false; /* جهش: دروازهٔ base_version برداشته شد */`,
   /❌ (IN7|CC5)/, 'Z4 برداشتنِ دروازهٔ base_version (sync.js)');
 
 /* Z5 — if the counter is not recorded, every accounting assertion is blind */

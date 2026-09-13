@@ -75,7 +75,15 @@ function statusOf(raw) {
 }
 
 async function main() {
-  if (!fs.existsSync(SEED)) throw new Error('Missing server/data/payesh.json; run node server/seed.js first.');
+  /* S7-split: دانهٔ نمایشی نیست ⇒ صریحاً NOT-RUN. نه ادعای سبز می‌کنیم و نه
+     آزمون را FATAL می‌کنیم؛ خروجیِ ۲ = «اجرا نشد» (هم‌قاعده با tests/wal-disk-full.js
+     که سناریوهای نیازمندِ زیرساخت را NOT-RUN می‌زند). */
+  if (!fs.existsSync(SEED)) {
+    console.log('\n⏭️  SKIP — دانهٔ نمایشی موجود نیست: ' + path.relative(ROOT, SEED));
+    console.log('   این آزمون سرورِ واقعی را با استورِ دانه‌شده بالا می‌آورد؛ اول `node server/seed.js`.');
+    console.log('   NOT-RUN ≠ موفق.');
+    process.exit(2);
+  }
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-url-guard-'));
   const storePath = path.join(tmp, 'store.json');
   fs.copyFileSync(SEED, storePath);

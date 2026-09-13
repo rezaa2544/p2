@@ -94,9 +94,11 @@ async function clientMutations() {
 
   /* M2: بازگشت، سابقهٔ ترک را پاک کند */
   await runMut('M2 بازگشت سابقهٔ ترک را می‌سازد', (h) => {
-    const a = "status: 'active',\n    active: 1,\n    returned_at: date,\n    returned_by:";
+    /* ترمیم لنگر (BH-mut فاز ۲): بدنهٔ dropReturn در index.html تخت (بدون تورفتگی)
+       است؛ لنگر و جهش با همان قالبِ فعلی. */
+    const a = "status: 'active',\nactive: 1,\nreturned_at: date,\nreturned_by:";
     if (h.indexOf(a) < 0) throw new Error('dropReturn پیدا نشد');
-    return h.replace(a, "status: 'active',\n    active: 1,\n    returned_at: date,\n    dropped_out_reason: null,\n    dropped_out_at: null,\n    dropped_out_by: null,\n    returned_by:");
+    return h.replace(a, "status: 'active',\nactive: 1,\nreturned_at: date,\ndropped_out_reason: null,\ndropped_out_at: null,\ndropped_out_by: null,\nreturned_by:");
   }, async (W) => {
     const st = Number(studentOf(W, 0));
     W(`dropRegister(${st},'2026-09-01','economic','مستند')`);
@@ -167,7 +169,7 @@ function cookieFrom(r) {
   return '';
 }
 
-async function serverMutated(mutName, mutateSync, probe) { /* mutateSync=null ⇒ سرورِ واقعی (سینیتی) */
+async function serverMutated(mutName, mutateSync, probe, mutatePolicyFn) { /* mutateSync=null ⇒ سرورِ واقعی (سینیتی) */
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-mut-'));
   const srvDir = path.join(tmp, 'server');
   fs.mkdirSync(srvDir, { recursive: true });
@@ -191,6 +193,12 @@ async function serverMutated(mutName, mutateSync, probe) { /* mutateSync=null �
   fs.copyFileSync(path.join(ROOT, 'authz', 'write-perms.json'), path.join(tmp, 'authz', 'write-perms.json'));
   const syncFile = path.join(srvDir, 'sync.js');
   if (mutateSync) fs.writeFileSync(syncFile, mutateSync(fs.readFileSync(syncFile, 'utf8')));
+  /* ترمیم لنگر (BH-mut فاز ۲): دروازه‌های رفتاری (از جمله دامنه‌بندیِ مدیر)
+     از sync.js به policy.js منتقل شدند (ویو ۵) ⇒ جهشِ M6 از این‌جا می‌گذرد. */
+  if (mutatePolicyFn) {
+    const policyFile = path.join(srvDir, 'policy.js');
+    fs.writeFileSync(policyFile, mutatePolicyFn(fs.readFileSync(policyFile, 'utf8')));
+  }
   const storeFile = path.join(tmp, 'payesh.json');
   fs.copyFileSync(path.join(ROOT, 'server/data/payesh.json'), storeFile);
 
@@ -272,14 +280,16 @@ async function serverMutations() {
       return !s.ok && s.code === 'out_of_scope';
     };
     const mut6 = (h) => {
-      const a = 'return s === u.school_id;';
+      /* ترمیم لنگر (BH-mut فاز ۲): inScope از sync.js به policy.js رفت (ویو ۵)؛
+         «if (s !== u.school_id) return false» همان دامنه‌بندیِ مدیر است. */
+      const a = '  if (s !== u.school_id) return false;';
       if (h.indexOf(a) < 0) throw new Error('inScope پیدا نشد');
-      return h.replace(a, 'return true;');
+      return h.replace(a, '  if (false && s !== u.school_id) return false; /*MUT: دامنه‌بندیِ مدیر خاموش*/');
     };
     const san6 = await serverMutated('M6-sanity', null, probe6);
     if (!san6) { fail++; console.log('  ❌ M6 — سینیتی شکست: چک رویِ سرورِ واقعی true نیست'); }
     else {
-      const mut6ok = await serverMutated('M6', mut6, probe6);
+      const mut6ok = await serverMutated('M6', null, probe6, mut6);
       if (mut6ok) { fail++; console.log('  ❌ M6 — موتانت زنده‌مانده است (تست‌ها پیدایش نکردند!)'); }
       else { pass++; console.log('  ✅ M6 مدیرِ مدرسهٔ دیگر fail-closed می‌ماند — کشته شد'); }
     }

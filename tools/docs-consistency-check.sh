@@ -74,18 +74,23 @@ has $DOCS/RELIABILITY_DR_PLAN.md "کمتر از ۵ دقیقه"; chk "برنام�
 has $DOCS/PRODUCTION_READINESS_CHECKLIST.md "RTO کمتر از ۱۵ دقیقه، RPO کمتر از ۵ دقیقه"; chk "چک‌لیست آمادگی با برنامهٔ پایایی هم‌خوان است" $? "در برابر مرجع"
 
 echo "▸ مهاجرت‌ها و موج‌ها"
-MIG=$(ls migrations/*.sql 2>/dev/null | grep -v '\.down\.sql$' | wc -l)
 # ۲۰۲۶-۰۰۹-۱۱: تصادمِ شمارهٔ ۰۰۴ رفع شد — 004_wave3_query_indexes به ۰۰۷
 # شماره‌گذاریِ مجدد شد (۰۰۶ پیش‌تر توسط 006_delta_schema_gaps گرفته شده بود).
 # دلیل و تحلیل: docs/MIGRATION_DECISION.md · ممیزی: docs/MIGRATION_AUDIT.md
-# حالا به‌جای پین‌کردنِ یک استثنا، خودِ قاعده سنجیده می‌شود.
-[ "$MIG" -eq 7 ]; chk "شمار مهاجرت‌های روی دیسک: ۷ فایل (شماره‌های ۰۰۱–۰۰۷)" $? "یافت‌شده: $MIG"
+# ۲۰۲۶-۰۹-۱۱ (موج ۱۰): به‌جای پین‌کردنِ شمار، خودِ قاعده سنجیده می‌شود —
+# شمارِ فایل‌ها باید با بیشینهٔ شماره یکی باشد و شماره‌ها از ۰۰۱ پیوسته؛
+# اسناد هم باید بازهٔ «۰۰۱–<آخرین>» را بگویند (بدونِ پینِ عدد).
+MIG=$(ls migrations/*.sql 2>/dev/null | grep -v '\.down\.sql$' | wc -l)
 DUPNUMS=$(ls migrations/*.sql 2>/dev/null | grep -v '\.down\.sql$' | grep -oE '[0-9]{3}' | sort | uniq -d | tr '\n' ' ')
 [ -z "$DUPNUMS" ]; chk "هیچ شمارهٔ مهاجرت تکراری نیست (سیاستِ شماره‌گذاریِ پیوسته)" $? "تکراری: ${DUPNUMS:-هیچ}"
 SEQ=$(ls migrations/*.sql 2>/dev/null | grep -v '\.down\.sql$' | grep -oE '[0-9]{3}' | sort | tr '\n' ' ')
-[ "$SEQ" = "001 002 003 004 005 006 007 " ]; chk "شماره‌ها از ۰۰۱ تا ۰۰۷ پیوسته‌اند" $? "یافت‌شده: $SEQ"
-has $DOCS/DOCS_INDEX.md "۰۰۱–۰۰۷"; chk "نمایه: فهرست مهاجرت ۰۰۱–۰۰۷" $? "در برابر دیسک"
-has $DOCS/RELEASE_NOTES.md "مهاجرت‌های نسخه‌دار ۰۰۱–۰۰۷"; chk "یادداشت انتشار: مهاجرت‌های ۰۰۱–۰۰۷" $? "در برابر دیسک"
+EXP=$(i=1; while [ "$i" -le "$MIG" ]; do printf '%03d ' "$i"; i=$((i+1)); done)
+[ "$SEQ" = "$EXP" ]; chk "شماره‌ها از ۰۰۱ تا آخرین ($MIG فایل) پیوسته‌اند" $? "یافت‌شده: $SEQ"
+LAST=$(printf '%s' "$SEQ" | awk '{print $NF}')
+[ "$((10#$LAST))" -eq "$MIG" ]; chk "شمارِ مهاجرت‌های روی دیسک = بیشینهٔ شماره" $? "شمار: $MIG · بیشینه: $LAST"
+LAST_FA=$(printf '%s' "$LAST" | sed 'y/0123456789/۰۱۲۳۴۵۶۷۸۹/')
+has $DOCS/DOCS_INDEX.md "۰۰۱–$LAST_FA"; chk "نمایه: فهرست مهاجرت ۰۰۱–$LAST_FA" $? "در برابر دیسک"
+has $DOCS/RELEASE_NOTES.md "مهاجرت‌های نسخه‌دار ۰۰۱–$LAST_FA"; chk "یادداشت انتشار: مهاجرت‌های ۰۰۱–$LAST_FA" $? "در برابر دیسک"
 has $DOCS/RELEASE_NOTES.md "| ۲۰ |"; chk "جدول موج‌ها تا موج ۲۰ کامل است" $? "یادداشت انتشار §۲"
 
 echo "▸ ردیاب P0 و پایلوت"

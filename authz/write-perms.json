@@ -55,6 +55,7 @@
       "pre_enrollments",
       "preapps",
       "reexams",
+      "report_logs",
       "safety_drills",
       "schedule",
       "scholarships",
@@ -139,13 +140,15 @@
     "counselor": [
       "counselor_msgs",
       "counselor_refs",
-      "messages"
+      "messages",
+      "report_logs"
     ],
     "edu_office": [
       "announcements",
       "attendance_modes",
       "notifications",
       "notify_queue",
+      "report_logs",
       "staff_posts",
       "teacher_schools"
     ],
@@ -968,6 +971,22 @@
     "reexams": {
       "ins": [
         "manager",
+        "superadmin"
+      ],
+      "upd": [
+        "manager",
+        "superadmin"
+      ],
+      "del": [
+        "manager",
+        "superadmin"
+      ]
+    },
+    "report_logs": {
+      "ins": [
+        "manager",
+        "counselor",
+        "edu_office",
         "superadmin"
       ],
       "upd": [
@@ -2100,6 +2119,17 @@
       "status",
       "student_id",
       "subject_id",
+      "updated_at"
+    ],
+    "report_logs": [
+      "created_at",
+      "format",
+      "generated_by",
+      "id",
+      "kind",
+      "meta",
+      "school_id",
+      "status",
       "updated_at"
     ],
     "safety_drills": [
@@ -3620,6 +3650,18 @@
       ],
       "collections": [
         "notifications"
+      ]
+    },
+    "rpt-csv": {
+      "roles": null,
+      "collections": [
+        "report_logs"
+      ]
+    },
+    "rpt-print": {
+      "roles": null,
+      "collections": [
+        "report_logs"
       ]
     },
     "sched-conf-move": {
