@@ -55,6 +55,7 @@
       "pre_enrollments",
       "preapps",
       "reexams",
+      "report_logs",
       "safety_drills",
       "schedule",
       "scholarships",
@@ -70,7 +71,6 @@
       "subscription_payments",
       "substitutions",
       "summer_classes",
-      "summer_enrollments",
       "support_tickets",
       "teacher_schools",
       "training_courses",
@@ -86,6 +86,7 @@
       "visitors"
     ],
     "teacher": [
+      "assets",
       "attendance",
       "corrections",
       "discipline",
@@ -93,13 +94,13 @@
       "hw_assignments",
       "hw_submissions",
       "internships",
+      "lib_loans",
       "meeting_slots",
       "messages",
       "notifications",
       "notify_queue",
       "nudges",
       "substitutions",
-      "summer_enrollments",
       "teacher_notes",
       "teacher_sms",
       "vclass_attendance",
@@ -139,15 +140,20 @@
     "counselor": [
       "counselor_msgs",
       "counselor_refs",
-      "messages"
+      "messages",
+      "report_logs"
     ],
     "edu_office": [
       "announcements",
       "attendance_modes",
       "notifications",
       "notify_queue",
-      "offices",
+      "report_logs",
+      "staff_posts",
       "teacher_schools"
+    ],
+    "guard": [
+      "visitors"
     ]
   },
   "ops": {
@@ -180,6 +186,7 @@
       ],
       "upd": [
         "manager",
+        "teacher",
         "superadmin"
       ],
       "del": [
@@ -467,7 +474,6 @@
       ],
       "del": [
         "manager",
-        "teacher",
         "superadmin"
       ]
     },
@@ -683,7 +689,6 @@
       ],
       "del": [
         "manager",
-        "teacher",
         "superadmin"
       ]
     },
@@ -721,10 +726,12 @@
     "lib_loans": {
       "ins": [
         "manager",
+        "teacher",
         "superadmin"
       ],
       "upd": [
         "manager",
+        "teacher",
         "superadmin"
       ],
       "del": [
@@ -874,15 +881,12 @@
     },
     "offices": {
       "ins": [
-        "edu_office",
         "superadmin"
       ],
       "upd": [
-        "edu_office",
         "superadmin"
       ],
       "del": [
-        "edu_office",
         "superadmin"
       ]
     },
@@ -967,6 +971,22 @@
     "reexams": {
       "ins": [
         "manager",
+        "superadmin"
+      ],
+      "upd": [
+        "manager",
+        "superadmin"
+      ],
+      "del": [
+        "manager",
+        "superadmin"
+      ]
+    },
+    "report_logs": {
+      "ins": [
+        "manager",
+        "counselor",
+        "edu_office",
         "superadmin"
       ],
       "upd": [
@@ -1413,10 +1433,12 @@
     },
     "visitors": {
       "ins": [
+        "guard",
         "manager",
         "superadmin"
       ],
       "upd": [
+        "guard",
         "manager",
         "superadmin"
       ],
@@ -1425,19 +1447,18 @@
         "superadmin"
       ]
     },
-    "summer_enrollments": {
+    "staff_posts": {
       "ins": [
-        "manager",
-        "superadmin"
+        "superadmin",
+        "edu_office"
       ],
       "upd": [
-        "manager",
-        "teacher",
-        "superadmin"
+        "superadmin",
+        "edu_office"
       ],
       "del": [
-        "manager",
-        "superadmin"
+        "superadmin",
+        "edu_office"
       ]
     }
   },
@@ -1450,8 +1471,10 @@
       "created_by",
       "date",
       "id",
+      "office_id",
       "pinned",
       "school_id",
+      "severity",
       "title",
       "updated_at"
     ],
@@ -1468,7 +1491,9 @@
       "note",
       "school_id",
       "status",
-      "updated_at"
+      "total_count",
+      "updated_at",
+      "usable_count"
     ],
     "assoc_minutes": [
       "archived",
@@ -1796,8 +1821,10 @@
       "date",
       "exam_type",
       "id",
+      "is_vocational",
       "kind",
       "max_score",
+      "practical_score",
       "school_id",
       "score",
       "source",
@@ -1805,6 +1832,7 @@
       "subject_id",
       "teacher_id",
       "term",
+      "theoretical_score",
       "updated_at"
     ],
     "hw_assignments": [
@@ -1889,9 +1917,12 @@
       "code",
       "created_at",
       "id",
+      "isbn",
+      "location",
       "school_id",
       "serial",
       "title",
+      "total_copies",
       "updated_at"
     ],
     "lib_loans": [
@@ -2090,6 +2121,17 @@
       "subject_id",
       "updated_at"
     ],
+    "report_logs": [
+      "created_at",
+      "format",
+      "generated_by",
+      "id",
+      "kind",
+      "meta",
+      "school_id",
+      "status",
+      "updated_at"
+    ],
     "safety_drills": [
       "created_at",
       "date",
@@ -2122,11 +2164,20 @@
       "updated_at"
     ],
     "school_years": [
+      "closed",
+      "closed_at",
       "created_at",
-      "updated_at"
+      "placement",
+      "placement_year",
+      "promoted",
+      "reminded_at",
+      "school_id",
+      "updated_at",
+      "year_code"
     ],
     "schools": [
       "active",
+      "active_year_code",
       "address",
       "area_kind",
       "boom_goals",
@@ -2150,6 +2201,7 @@
       "place_rules",
       "province_id",
       "public_goals",
+      "school_type",
       "shift",
       "type",
       "updated_at",
@@ -2268,12 +2320,7 @@
       "start_date",
       "student_ids",
       "teacher_id",
-      "updated_at",
-      "title",
-      "subject",
-      "schedule",
-      "capacity",
-      "status"
+      "updated_at"
     ],
     "support_tickets": [
       "created_at",
@@ -2404,7 +2451,9 @@
       "iep_notes",
       "iep_staff",
       "iep_updated",
+      "asset_staff",
       "job",
+      "lib_staff",
       "mother_nid",
       "national_id",
       "office_id",
@@ -2470,21 +2519,22 @@
       "id",
       "in_at",
       "name",
+      "national_id",
       "out_at",
+      "phone",
       "purpose",
       "registered_by",
       "school_id",
-      "updated_at"
-    ],
-    "summer_enrollments": [
-      "attendance",
-      "created_at",
-      "enrolled_at",
-      "id",
-      "school_id",
       "status",
-      "student_id",
-      "summer_class_id",
+      "updated_at",
+      "visiting_person"
+    ],
+    "staff_posts": [
+      "created_at",
+      "id",
+      "required",
+      "school_id",
+      "subject_id",
       "updated_at"
     ]
   },
@@ -2517,6 +2567,14 @@
         "announcements"
       ]
     },
+    "as-cust-toggle": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "users"
+      ]
+    },
     "as-del": {
       "roles": [
         "manager"
@@ -2535,7 +2593,8 @@
     },
     "as-status-save": {
       "roles": [
-        "manager"
+        "manager",
+        "teacher"
       ],
       "collections": [
         "assets"
@@ -2551,6 +2610,14 @@
       "roles": null,
       "collections": [
         "assoc_minutes"
+      ]
+    },
+    "assoc-min-print": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "grades"
       ]
     },
     "assoc-min-save": {
@@ -2707,13 +2774,21 @@
     "cert-enroll-print": {
       "roles": null,
       "collections": [
-        "certificates"
+        "certificates",
+        "grades"
+      ]
+    },
+    "cert-print": {
+      "roles": null,
+      "collections": [
+        "grades"
       ]
     },
     "cert-transfer-print": {
       "roles": null,
       "collections": [
-        "certificates"
+        "certificates",
+        "grades"
       ]
     },
     "class-del-ok": {
@@ -2808,6 +2883,15 @@
         "discipline"
       ]
     },
+    "disc-quick": {
+      "roles": [
+        "teacher",
+        "manager"
+      ],
+      "collections": [
+        "discipline"
+      ]
+    },
     "disc-save": {
       "roles": [
         "teacher",
@@ -2831,6 +2915,14 @@
       ],
       "collections": [
         "donations"
+      ]
+    },
+    "don-print": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "grades"
       ]
     },
     "don-save": {
@@ -2945,7 +3037,16 @@
       "roles": null,
       "collections": [
         "exam_duties",
-        "exams"
+        "exams",
+        "grades"
+      ]
+    },
+    "form-print": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "grades"
       ]
     },
     "geo-edit-save": {
@@ -3087,6 +3188,15 @@
         "internships"
       ]
     },
+    "internship-cert": {
+      "roles": [
+        "manager",
+        "superadmin"
+      ],
+      "collections": [
+        "certificates"
+      ]
+    },
     "internship-del-ok": {
       "roles": null,
       "collections": [
@@ -3140,7 +3250,8 @@
     },
     "lib-lend-save": {
       "roles": [
-        "manager"
+        "manager",
+        "teacher"
       ],
       "collections": [
         "lib_loans"
@@ -3148,7 +3259,8 @@
     },
     "lib-return": {
       "roles": [
-        "manager"
+        "manager",
+        "teacher"
       ],
       "collections": [
         "lib_loans"
@@ -3163,9 +3275,19 @@
       ]
     },
     "lib-serial-save": {
-      "roles": null,
+      "roles": [
+        "manager"
+      ],
       "collections": [
         "lib_books"
+      ]
+    },
+    "lib-staff-toggle": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "users"
       ]
     },
     "login": {
@@ -3185,6 +3307,16 @@
       "roles": null,
       "collections": [
         "makeup_classes"
+      ]
+    },
+    "mg-grades-save": {
+      "roles": [
+        "teacher",
+        "manager"
+      ],
+      "collections": [
+        "grades",
+        "notify_queue"
       ]
     },
     "mtg-book-ok": {
@@ -3316,6 +3448,12 @@
         "notifications"
       ]
     },
+    "office-print": {
+      "roles": null,
+      "collections": [
+        "grades"
+      ]
+    },
     "office-save": {
       "roles": [
         "superadmin"
@@ -3344,6 +3482,7 @@
     "pay-save": {
       "roles": null,
       "collections": [
+        "grades",
         "installments",
         "notifications",
         "transactions",
@@ -3444,6 +3583,12 @@
         "users"
       ]
     },
+    "pubrep-print": {
+      "roles": null,
+      "collections": [
+        "grades"
+      ]
+    },
     "qe-save": {
       "roles": null,
       "collections": [
@@ -3476,9 +3621,16 @@
     "remind-due": {
       "roles": null,
       "collections": [
+        "grades",
         "installments",
         "notifications",
         "tuitions"
+      ]
+    },
+    "report-print": {
+      "roles": null,
+      "collections": [
+        "grades"
       ]
     },
     "restore-ok": {
@@ -3498,6 +3650,18 @@
       ],
       "collections": [
         "notifications"
+      ]
+    },
+    "rpt-csv": {
+      "roles": null,
+      "collections": [
+        "report_logs"
+      ]
+    },
+    "rpt-print": {
+      "roles": null,
+      "collections": [
+        "report_logs"
       ]
     },
     "sched-conf-move": {
@@ -3652,6 +3816,15 @@
         "staff_attendance"
       ]
     },
+    "staffpost-save": {
+      "roles": [
+        "superadmin",
+        "edu_office"
+      ],
+      "collections": [
+        "staff_posts"
+      ]
+    },
     "sub-del": {
       "roles": [
         "manager",
@@ -3704,20 +3877,10 @@
         "app_settings"
       ]
     },
-    "summer-att-save": {
-      "roles": [
-        "manager",
-        "teacher"
-      ],
-      "collections": [
-        "summer_enrollments"
-      ]
-    },
     "summer-del-ok": {
       "roles": null,
       "collections": [
-        "summer_classes",
-        "summer_enrollments"
+        "summer_classes"
       ]
     },
     "summer-save": {
@@ -3733,8 +3896,7 @@
         "manager"
       ],
       "collections": [
-        "summer_classes",
-        "summer_enrollments"
+        "summer_classes"
       ]
     },
     "teacher-add-ok": {
@@ -3822,6 +3984,14 @@
       "collections": [
         "certificates",
         "training_courses"
+      ]
+    },
+    "trn-print": {
+      "roles": [
+        "manager"
+      ],
+      "collections": [
+        "grades"
       ]
     },
     "trn-save": {
@@ -3956,7 +4126,8 @@
     },
     "vis-out": {
       "roles": [
-        "manager"
+        "manager",
+        "guard"
       ],
       "collections": [
         "visitors"
@@ -3964,7 +4135,8 @@
     },
     "vis-save": {
       "roles": [
-        "manager"
+        "manager",
+        "guard"
       ],
       "collections": [
         "visitors"

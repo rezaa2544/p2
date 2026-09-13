@@ -1,0 +1,51 @@
+#!/bin/sh
+# ═══════════════════════════════════════════════════════════════════
+#  tools/bin/psql — PATH shim that fronts tools/psql-min.js
+# ───────────────────────────────────────────────────────────────────
+#  Put this directory on PATH to let suites that shell out to `psql`
+#  work on a machine without the real binary:
+#
+#      PATH="$PWD/tools/bin:$PATH" node tests/wave23-reports-pg.js
+#
+#  G7 — PRECEDENCE GUARD. If a real `psql` exists EARLIER in PATH than
+#  this directory, we exec it and get out of the way. This shim must
+#  never shadow the real binary, because the real one supports far more
+#  than \gset and silently doing less would be a lie.
+#
+#  It resolves the Node driver from NODE_PATH (see tools/psql-min.js).
+# ═══════════════════════════════════════════════════════════════════
+set -eu
+
+here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+real=$(CDPATH= cd -- "$here/.." && pwd)          # tools/
+repo=$(CDPATH= cd -- "$real/.." && pwd)           # repository root
+
+# ── G7: defer to a real psql found earlier in PATH ──────────────────
+case ":$PATH:" in
+  *":$here:"*)
+    prefix=${PATH%%":$here:"*}                    # entries before this dir
+    ;;
+  *)
+    prefix=$PATH                                  # we are not on PATH at all
+    ;;
+esac
+
+saved_ifs=$IFS
+IFS=:
+for dir in $prefix; do
+  IFS=$saved_ifs
+  [ -n "$dir" ] || continue
+  if [ -x "$dir/psql" ] && [ ! "$dir" = "$here" ]; then
+    exec "$dir/psql" "$@"
+  fi
+  IFS=:
+done
+IFS=$saved_ifs
+
+# ── otherwise run the minimal faithful implementation ───────────────
+if ! command -v node >/dev/null 2>&1; then
+  echo "tools/bin/psql: node is required but was not found on PATH" >&2
+  exit 1
+fi
+
+exec node "$repo/tools/psql-min.js" "$@"

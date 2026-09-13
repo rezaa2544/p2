@@ -75,3 +75,10 @@ th,td{padding:9px 8px;font-size:13px}
   .sync-chip{padding:5px 8px;font-size:11.5px;gap:4px}
   .sync-chip.ok span:not(.dot),.sync-chip.busy span:not(.spin){display:none}
 }
+/* W8-5: نشانگرِ کشیدن-برای-همگام‌سازی (Pull-to-Refresh) */
+#ptr-indicator{position:fixed;top:8px;left:50%;margin-left:-90px;width:180px;text-align:center;
+  padding:8px 12px;border-radius:999px;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);
+  box-shadow:0 4px 14px rgba(0,0,0,.12);font-size:12.5px;z-index:80;pointer-events:none;
+  opacity:0;transform:translateY(-46px);transition:opacity .15s}
+#ptr-indicator.ptr-ready{border-color:var(--green,#16a34a)}
+#ptr-indicator.ptr-busy{transition:opacity .15s,transform .2s}

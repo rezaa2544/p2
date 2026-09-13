@@ -5,16 +5,40 @@
    - Full ACID transaction management with connection pooling.
    - Dual-mode operation: Native PostgreSQL when DATABASE_URL is set,
      or zero-dependency in-memory JSON fallback when unset.
-   - Methods: query(sql, params), transaction(callback), ping(),
-     persistOp(op), persistOpsBatch(ops), healthCheck(), close().
-   - Supports: PG_POOL_MIN, PG_POOL_MAX, PG_TIMEOUT_MS, PG_IDLE_TIMEOUT_MS,
-     PGBOUNCER, PGBOUNCER_POOL_MODE, DATABASE_URL.
+   - Methods: query(sql, params), queryRead(sql, params), transaction(callback),
+     ping(), persistOp(op), persistOpsBatch(ops), healthCheck(), close().
+   - Supports: PG_POOL_MIN, PG_POOL_MAX, PG_TIMEOUT_MS, DATABASE_URL,
+     READ_DATABASE_URL (+ READ_POOL_MIN, READ_POOL_MAX).
+
+   Wave 10 (chat2) — Database Scale: READ REPLICA (additive, safe-by-default).
+   An optional read-only connection pool is created when READ_DATABASE_URL is
+   set. Heavy GET-list reads (the DB-native paged lists) are routed to it via
+   queryRead(); if the replica is not configured or hiccups, queryRead() falls
+   back to the primary pool (behaviour identical to before). Writes and sync /
+   pull correctness reads (readCollection/readOne/delta) intentionally stay on
+   the PRIMARY pool so a replica can never lag a client's own recent writes.
+   Partitioning of large tables is DESIGN-ONLY here (pending a live PG run);
+   see docs/WAVE10_DB_SCALE.md.
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
-const partitioning = require('./partitioning');
+/* ویو ۱۴ (Observability) — سیگنالِ metrics برای لایهٔ دیتابیس. بدون
+   وابستگیِ بیرونی؛ metrics.js فقط crypto را require می‌کند (بدون چرخه). */
+const metrics = require('./metrics');
+
+/* آستانهٔ «کوئریِ کند» — فقط برای شمارش، نه برای تغییرِ رفتار. */
+const DB_SLOW_MS = (Number(process.env.PAYESH_DB_SLOW_MS) > 0)
+  ? Number(process.env.PAYESH_DB_SLOW_MS) : 250;
+function dbSeconds(startNs) {
+  try { return Number(process.hrtime.bigint() - startNs) / 1e9; }
+  catch (e) { return 0; }
+}
+function dbSlow(startNs) {
+  try { return Number(process.hrtime.bigint() - startNs) / 1e6 >= DB_SLOW_MS; }
+  catch (e) { return false; }
+}
 
 let pg = null;
 try {
@@ -24,55 +48,86 @@ try {
 }
 
 let pool = null;
+let readPool = null;          /* Wave 10: optional read-replica pool (READ_DATABASE_URL) */
+let readPoolActive = false;   /* Wave 10: true only after the replica answers a ping */
+let replicaReprobeTimer = null; /* S3-1: کاوشِ خودکارِ بازگشتِ رپلیکا */
+let REPLICA_REPROBE_MS = 10000;
 let isPgActive = false;
 let memoryStore = null;
 let reconnectTimer = null;
-let replicaPools = [];
-let partitionPlan = partitioning.buildRoutingPlan({}, { enabled: false });
-const partitionMetrics = { queries: Object.create(null), replica_reads: 0, primary_reads: 0, writes: 0 };
 
 const config = {
-  connectionString: null,
-  min: 2,
-  max: 20,
-  connectionTimeoutMillis: 3000,
+  connectionString: process.env.DATABASE_URL || null,
+  min: parseInt(process.env.PG_POOL_MIN || '2', 10),
+  max: parseInt(process.env.PG_POOL_MAX || '20', 10),
+  connectionTimeoutMillis: parseInt(process.env.PG_TIMEOUT_MS || process.env.PG_TIMEOUT || '3000', 10),
   idleTimeoutMillis: 30000,
-  pgbouncer: false,
-  poolMode: null,
-  applicationName: 'payesh-server',
-  replicaUrls: []
+  /* Wave 10 — read replica (optional). When READ_DATABASE_URL is present a
+     second read-only pool is opened and heavy GET-list reads route to it. */
+  readConnectionString: process.env.READ_DATABASE_URL || null,
+  readMin: parseInt(process.env.READ_POOL_MIN || '2', 10),
+  readMax: parseInt(process.env.READ_POOL_MAX || '10', 10)
 };
 
-function envInt(name, fallback) {
-  const n = parseInt(process.env[name] || '', 10);
-  return Number.isFinite(n) && n >= 0 ? n : fallback;
+/* ── P0-1 (Package 1) — PostgreSQL production enforcement ─────────────
+   In production the JSON/in-memory store must never be the backing store:
+   it is per-process, so two instances silently diverge on every write
+   (auth codes, idempotency UIDs, attendance, grades, finance) and a
+   container restart loses everything since the last 2s persist tick.
+
+   This is the exact contract Redis already implements for itself
+   (server/redis.js:150-158 "REDIS_URL is required when NODE_ENV=production
+   (in-memory fallback is dev-only)" and redis.js:224-236 "Redis unreachable
+   in production"), so the two backing stores now fail the same way.
+
+   ALLOW_MEMORY_FALLBACK=1 is an explicit dev/test opt-in. It is IGNORED in
+   production — a flag must not be able to re-open a production data-loss
+   path. */
+function isProductionEnv() {
+  return process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production';
 }
 
-function truthyEnv(name) {
-  return /^(1|true|yes|on)$/i.test(String(process.env[name] || '').trim());
+function memoryFallbackAllowed() {
+  if (isProductionEnv()) return false;
+  return true; /* dev/test: fallback stays available (see init() warning) */
 }
 
-function looksLikePgbouncerUrl(url) {
-  return /:6432(?:\/|\?|$)/.test(String(url || ''));
+function memoryFallbackRequested() {
+  return process.env.ALLOW_MEMORY_FALLBACK === '1';
 }
 
-/* PgBouncer integration is intentionally configuration-driven: the app keeps
-   using pg.Pool and DATABASE_URL; production points DATABASE_URL at :6432. */
-function refreshConfig() {
-  const url = process.env.DATABASE_URL || null;
-  const pgb = truthyEnv('PGBOUNCER') || looksLikePgbouncerUrl(url);
-  config.connectionString = url;
-  config.pgbouncer = pgb;
-  config.poolMode = process.env.PGBOUNCER_POOL_MODE || (pgb ? 'transaction' : null);
-  config.min = envInt('PG_POOL_MIN', pgb ? 0 : 2);
-  config.max = envInt('PG_POOL_MAX', 20);
-  config.connectionTimeoutMillis = envInt('PG_TIMEOUT_MS', envInt('PG_TIMEOUT', 3000));
-  config.idleTimeoutMillis = envInt('PG_IDLE_TIMEOUT_MS', pgb ? 10000 : 30000);
-  config.applicationName = process.env.PGAPPNAME || 'payesh-server';
-  config.replicaUrls = partitioning.parseReplicaUrls(process.env.DATABASE_READ_REPLICA_URLS || process.env.PAYESH_READ_REPLICA_URLS);
-  return Object.assign({}, config);
+/**
+ * Why the JSON/in-memory backing store is (not) usable right now.
+ * Pure/env-only — safe to call from boot gates and tests.
+ */
+function backingStorePolicy() {
+  const production = isProductionEnv();
+  const allow = memoryFallbackAllowed();
+  return {
+    production: production,
+    allow_memory_fallback: allow,
+    flag_requested: memoryFallbackRequested(),
+    reason: !production
+      ? 'non-production: JSON/in-memory backing store permitted'
+      : (allow
+        ? 'production: JSON/in-memory backing store permitted'
+        : 'production: DATABASE_URL required — JSON/in-memory fallback is dev-only')
+  };
 }
-refreshConfig();
+
+/* P0-1 (round 3, item 2) — see the pool.on('connect') handler in init().
+   Counted so a test can prove the event was observed rather than crashed on. */
+let clientErrorCount = 0;
+function onClientError(err) {
+  clientErrorCount++;
+  const msg = (err && err.message) || String(err);
+  if (isProductionEnv()) {
+    console.error('[DB] PostgreSQL client error in production — the operation fails explicitly and readiness goes red (no silent retry, no process crash):', msg);
+  } else {
+    console.warn('[DB] PostgreSQL client error:', msg);
+  }
+}
+function clientErrors() { return clientErrorCount; }
 
 /**
  * Initialize Database Layer & Pool Lifecycle
@@ -82,12 +137,25 @@ async function init(fallbackStore) {
   if (fallbackStore) {
     memoryStore = fallbackStore;
   }
-  refreshConfig();
-  refreshPartitionPlan();
+  config.connectionString = process.env.DATABASE_URL || null;
 
   if (!config.connectionString || !pg) {
     isPgActive = false;
-    return { ok: true, driver: 'memory', poolSize: 0 };
+    readPoolActive = false;
+    if (readPool) { try { readPool.end().catch(() => {}); } catch (e) {} readPool = null; }
+    /* P0-1: production refuses the JSON/in-memory backing store (mirrors
+       server/redis.js:150-158). ok:false is what the boot gate keys on. */
+    if (!memoryFallbackAllowed()) {
+      const error = !config.connectionString
+        ? 'DATABASE_URL is required when NODE_ENV=production (JSON/in-memory fallback is dev-only)'
+        : 'pg driver is not installed (required when NODE_ENV=production)';
+      return { ok: false, driver: 'none', poolSize: 0, read_replica: false, error: error };
+    }
+    if (!memoryFallbackRequested()) {
+      console.warn('[DB] no DATABASE_URL — using the JSON/in-memory store. Dev/test only; '
+        + 'set ALLOW_MEMORY_FALLBACK=1 to silence this warning. In production this is a startup failure.');
+    }
+    return { ok: true, driver: 'memory', poolSize: 0, read_replica: false };
   }
 
   try {
@@ -100,10 +168,8 @@ async function init(fallbackStore) {
       min: config.min,
       max: config.max,
       connectionTimeoutMillis: config.connectionTimeoutMillis,
-      idleTimeoutMillis: config.idleTimeoutMillis,
-      application_name: config.applicationName
+      idleTimeoutMillis: config.idleTimeoutMillis
     });
-    await rebuildReplicaPools();
 
     pool.on('error', (err) => {
       console.error('[DB] PostgreSQL pool background error:', err.message);
@@ -111,23 +177,82 @@ async function init(fallbackStore) {
       scheduleReconnect();
     });
 
+    /* P0-1 (round 3, item 2) — a checked-out pg Client whose connection dies
+       emits an 'error' event that nothing listened to, which aborted the
+       whole Node process ("Unhandled 'error' event" on Client). The in-flight
+       query already rejects, so the caller still sees an explicit failure;
+       this listener only stops the crash and records the event.
+
+       Production semantics deliberately follow the existing Redis precedent
+       (server/redis.js:224-236 and tests/redis-prodfail.js): operations throw
+       and readiness goes red — the process is NOT killed, because a single
+       reset connection must not become a full outage. Exit-on-client-error
+       would be stricter than the contract this codebase already ships for its
+       other shared backend. */
+    pool.on('connect', (c) => {
+      try { c.on('error', onClientError); } catch (e) {}
+    });
+
     // Test connection & verify ping
     const client = await pool.connect();
+    let serverTime = null;
     try {
       const res = await client.query('SELECT NOW() as server_time');
+      serverTime = res.rows && res.rows[0] ? res.rows[0].server_time : null;
       isPgActive = true;
       if (reconnectTimer) {
         clearTimeout(reconnectTimer);
         reconnectTimer = null;
       }
-      return { ok: true, driver: 'postgres', serverTime: res.rows[0].server_time, pgbouncer: config.pgbouncer, poolMode: config.poolMode };
     } finally {
       client.release();
     }
+
+    /* Wave 10 — best-effort read-replica pool. Never fatal: if the replica is
+       not configured or cannot answer a ping, readPoolActive stays false and
+       queryRead() transparently uses the primary pool (identical behaviour). */
+    try {
+      if (config.readConnectionString && pg) {
+        if (readPool) { try { await readPool.end(); } catch (e) {} }
+        readPool = new pg.Pool({
+          connectionString: config.readConnectionString,
+          min: config.readMin,
+          max: config.readMax,
+          connectionTimeoutMillis: config.connectionTimeoutMillis,
+          idleTimeoutMillis: config.idleTimeoutMillis
+        });
+        readPool.on('error', (err) => {
+          console.error('[DB] Read-replica pool background error:', err.message);
+          readPoolActive = false;   /* stop routing to a dead replica */
+          scheduleReplicaReprobe(); /* S3-1: ولی برایِ بازگشتش کاوش کن */
+        });
+        const rc = await readPool.connect();
+        try { await rc.query('SELECT 1 AS ping'); readPoolActive = true; }
+        finally { rc.release(); }
+      } else {
+        /* READ_DATABASE_URL no longer set → drop any lingering replica pool */
+        readPoolActive = false;
+        if (readPool) { try { await readPool.end(); } catch (e) {} readPool = null; }
+      }
+    } catch (e) {
+      readPoolActive = false;
+      console.warn('[DB] Read replica unavailable; reads will use primary pool:', e.message);
+      scheduleReplicaReprobe(); /* S3-1: اگر pool هست، بعداً دوباره بچش */
+    }
+
+    return { ok: true, driver: 'postgres', serverTime, read_replica: readPoolActive };
   } catch (err) {
-    console.warn('[DB] PostgreSQL connection failed. Falling back to JSON in-memory store:', err.message);
     isPgActive = false;
+    readPoolActive = false;
+    if (readPool) { try { readPool.end().catch(() => {}); } catch (e) {} readPool = null; }
     scheduleReconnect();
+    /* P0-1: an unreachable PostgreSQL in production is a startup failure, not a
+       silent downgrade to the JSON store (mirrors server/redis.js:224-236). */
+    if (!memoryFallbackAllowed()) {
+      console.error('[DB] PostgreSQL unreachable in production — refusing the JSON/in-memory fallback:', err.message);
+      return { ok: false, driver: 'none', error: 'PostgreSQL unreachable in production: ' + err.message };
+    }
+    console.warn('[DB] PostgreSQL connection failed. Falling back to JSON in-memory store:', err.message);
     return { ok: true, driver: 'memory', fallback: true, warning: err.message };
   }
 }
@@ -148,6 +273,38 @@ function scheduleReconnect() {
   }, 10000).unref();
 }
 
+/* S3-1 (موج ۱۰): خطایِ خودِ کوئری (گناهِ statement) در برابرِ خطایِ اتصال.
+   کلاس‌هایِ SQLSTATE ‏22 (داده) / 23 (جامعیت) / 42 (نحو/دسترسی/ناشناخته)
+   قطعاً گناهِ statement است و ربطی به سلامتِ رپلیکا ندارد — مسیریابی نباید
+   بخوابد. هر چیزِ دیگر (از جمله خطایِ بی‌کد — پینِ D3c) ابهامِ اتصال است. */
+function isReplicaQueryError(err) {
+  const code = String((err && err.code) || '');
+  return code.length >= 2 && (code.indexOf('22') === 0 || code.indexOf('23') === 0 || code.indexOf('42') === 0);
+}
+
+/**
+ * S3-1: کاوشِ خودکارِ بازگشتِ رپلیکا (آینهٔ scheduleReconnect برایِ پرماری).
+ * پیش‌تر رپلیکایِ خوابیده هیچ مسیرِ بازگشتی نداشت — تا ری‌استارت، همهٔ
+ * خوانش‌ها رویِ پرماری می‌ماند. شکستِ کاوش ساکت است (شکستِ اول همان‌جا که
+ * رخ داد لاگ شد)؛ فقط بهبودی لاگ می‌شود تا در قطعیِ طولانی لاگ هرز نرود.
+ */
+function scheduleReplicaReprobe() {
+  if (!readPool || readPoolActive || replicaReprobeTimer) return;
+  replicaReprobeTimer = setTimeout(async () => {
+    replicaReprobeTimer = null;
+    if (!readPool || readPoolActive) return;
+    try {
+      const rc = await readPool.connect();
+      try { await rc.query('SELECT 1 AS ping'); }
+      finally { try { rc.release(); } catch (e) {} }
+      readPoolActive = true;
+      console.log('[DB] Read replica recovered; routing reads back to replica');
+    } catch (e) {
+      scheduleReplicaReprobe();   /* هنوز خواب است — بعداً دوباره */
+    }
+  }, REPLICA_REPROBE_MS).unref();
+}
+
 /**
  * Check if PostgreSQL is active
  */
@@ -156,88 +313,287 @@ function isPostgres() {
 }
 
 /**
- * Get active connection pool
+ * Get active connection pool (primary/write)
  */
 function getPool() {
   return pool;
 }
 
-
-async function closeReplicaPools() {
-  const pools = replicaPools;
-  replicaPools = [];
-  await Promise.all(pools.map(async (p) => {
-    try { if (p && typeof p.end === 'function') await p.end(); } catch (e) {}
-  }));
+/* Wave 10 — read-replica accessors (optional; active only when configured+live) */
+function isReplicaActive() {
+  return readPoolActive && readPool !== null;
 }
-
-async function rebuildReplicaPools() {
-  await closeReplicaPools();
-  if (!pg || !config.replicaUrls || !config.replicaUrls.length) return;
-  const max = envInt('PG_REPLICA_POOL_MAX', Math.max(2, Math.floor(config.max / 2) || 2));
-  replicaPools = config.replicaUrls.map((url, i) => new pg.Pool({
-    connectionString: url,
-    min: 0,
-    max,
-    connectionTimeoutMillis: config.connectionTimeoutMillis,
-    idleTimeoutMillis: config.idleTimeoutMillis,
-    application_name: config.applicationName + '-replica-' + i
-  }));
-}
-
-function refreshPartitionPlan(store, opts) {
-  const cfg = partitioning.configFromEnv();
-  partitionPlan = partitioning.buildRoutingPlan(store || memoryStore || {}, Object.assign(cfg, opts || {}));
-  partitionPlan.defaultShardId = cfg.defaultShardId;
-  return partitionPlan;
-}
-
-function routeQuery(opts) {
-  opts = opts || {};
-  const operation = opts.operation || (opts.readOnly ? 'read' : 'write');
-  const decision = partitioning.routeForSchool(partitionPlan, opts.schoolId || opts.school_id, operation);
-  if (partitionPlan.enabled && decision.target === 'read-replica' && decision.read_replica_index >= 0 && replicaPools[decision.read_replica_index]) {
-    return Object.assign({}, decision, { pool: replicaPools[decision.read_replica_index], operation });
-  }
-  return Object.assign({}, decision, { pool, operation });
-}
-
-function notePartitionQuery(decision) {
-  const shard = (decision && decision.shard_id) || 'primary-a';
-  partitionMetrics.queries[shard] = (partitionMetrics.queries[shard] || 0) + 1;
-  if (decision && decision.target === 'read-replica') partitionMetrics.replica_reads += 1;
-  else if (decision && decision.operation === 'write') partitionMetrics.writes += 1;
-  else partitionMetrics.primary_reads += 1;
-}
-
-function partitioningHealth() {
-  const m = partitioning.metricsForPlan(partitionPlan);
-  return Object.assign({}, m, {
-    replica_pools: replicaPools.length,
-    query_counts: Object.assign({}, partitionMetrics.queries),
-    replica_reads: partitionMetrics.replica_reads,
-    primary_reads: partitionMetrics.primary_reads,
-    writes: partitionMetrics.writes
-  });
+function getReadPool() {
+  return readPool;
 }
 
 /**
  * Execute parameterized query with automatic client lease
  */
-async function query(text, params, opts) {
+async function query(text, params) {
   if (!isPostgres()) {
     return { rows: [], rowCount: 0 };
   }
-  const routed = routeQuery(opts || {});
-  const targetPool = routed.pool || pool;
+  const start = process.hrtime.bigint();
   try {
-    const res = await targetPool.query(text, params);
-    notePartitionQuery(routed);
+    const res = await pool.query(text, params);
+    metrics.observeDb('query', 'primary', dbSeconds(start), false, dbSlow(start));
     return res;
   } catch (err) {
+    metrics.observeDb('query', 'primary', dbSeconds(start), true, false);
     console.error('[DB] Query execution error:', err.message);
     throw err;
   }
+}
+
+/**
+ * Wave 10 — READ-ONLY query routed to the read replica when one is live.
+ * Used by the heavy GET-list read seam (dbquery.executePagedList). Falls back
+ * to the primary pool when the replica is absent or errors — so behaviour is
+ * identical to query() in every non-replica configuration. Callers MUST only
+ * pass read-only SQL here (no writes); replicas reject/ignore writes anyway.
+ */
+async function queryRead(text, params) {
+  if (isReplicaActive()) {
+    const start = process.hrtime.bigint();
+    try {
+      const res = await readPool.query(text, params);
+      metrics.observeDb('query_read', 'replica', dbSeconds(start), false, dbSlow(start));
+      return res;
+    } catch (err) {
+      metrics.observeDb('query_read', 'replica', dbSeconds(start), true, false);
+      /* S3-1: فقط خطایِ اتصال مسیریابی را می‌خواباند (+ کاوشِ بازگشت)؛
+         خطایِ خودِ کوئری (SQL بد) سلامتِ رپلیکا را زیرِ سؤال نمی‌برد.
+         fallback به پرماری در هر دو حالت سرِ جاست. */
+      if (!isReplicaQueryError(err)) {
+        readPoolActive = false;   /* dead replica → stop routing, fall back to primary */
+        scheduleReplicaReprobe();
+      }
+      console.warn('[DB] Read replica query failed; falling back to primary:', err.message);
+    }
+  }
+  return query(text, params);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Wave 1 (chat2) — Read-path seam.
+   -------------------------------------------------------------------
+   A single entry point for server READS so that, once PostgreSQL is the
+   configured source of truth, every read route serves from the DB instead
+   of reaching into the in-memory JSON `store`.
+
+   Dual mode (identical to the rest of this file):
+   - PG active (DATABASE_URL + pg driver):  SELECT * FROM "<table>"
+   - memory fallback / offline:              (memoryStore[name] || [])
+     In this mode memoryStore === the JSON store that `server/index.js`
+     loaded, so the returned rows are byte-for-byte what the caller would
+     have read from `store[name]` before. Behavior is therefore preserved.
+
+   ⚠️ Verification note (recorded honestly): the PostgreSQL branch of
+   these helpers is defined and wired, but was NOT executed against a live
+   PostgreSQL in the CI sandbox for this part (no DATABASE_URL / driver /
+   seeded DB). It is exercised only when a real PG is present. See
+   docs/WAVE1_READS_INVENTORY.md. Only real data tables may be read here;
+   internal store keys (__deleted_records, __server_version, …) are NOT
+   relational tables and are intentionally NOT routable through PG.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const PG_READABLE_TABLE = /^[a-z][a-z0-9_]*$/;
+
+/* Wave 1 — relational tables mirrored from server/schema.sql (domain
+   collections only; server_* infra tables are PG-internal and have no store
+   counterpart). Used by hydrateStoreFromPg: ONLY these collections are ever
+   replaced from PG, so a collection without a PG table keeps its store copy. */
+const SCHEMA_TABLES = new Set(('announcements app_settings assets assoc_minutes attendance attendance_modes ' +
+  'bell_schedules bus_events bus_followups bus_locations bus_needs bus_routes bus_students calendar certificates ' +
+  'class_subject_members classes corrections counselor_msgs counselor_refs counties discipline districts donations ' +
+  'dojo_types dorm_assignments dorm_meals dorm_rooms enrollments exam_duties exam_terms exams grades hw_assignments ' +
+  'hw_submissions installments internships leaves lib_books lib_loans makeup_classes meeting_slots messages ' +
+  'nid_conflicts notifications notify_queue nudges offices parent_links parent_subscriptions parent_verifications ' +
+  'pre_enrollments preapps provinces reexams safety_drills schedule scholarships school_years schools sedascores ' +
+  'sms_log sms_wallet staff_attendance student_archive student_transfers subjects subscription_payments substitutions ' +
+  'summer_classes support_tickets teacher_evaluations teacher_notes teacher_schools teacher_sms training_courses ' +
+  'transactions transfer_requests tuition_plans tuitions users vclass_attendance vclass_links vclass_questions ' +
+  'vclass_sessions visitors sync_conflicts').split(' '));
+
+/* Wave 1 — shape parity: persistOp JSON-stringifies object values and the pg
+   driver returns TIMESTAMPTZ as Date, while the store holds ISO strings and
+   live objects. Revive PG rows so PG-reads are byte-shape-identical to the
+   store shape callers already handle. Conservative: only {/[-led strings are
+   parse-attempted (with fallback), Dates become ISO strings. Memory mode is
+   untouched (it returns store references directly, never through here). */
+function reviveValue(v) {
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v.toISOString();
+  if (typeof v === 'string' && (v.charAt(0) === '{' || v.charAt(0) === '[')) {
+    try { return JSON.parse(v); } catch (e) { return v; }
+  }
+  return v;
+}
+function reviveRows(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((r) => {
+    if (!r || typeof r !== 'object') return r;
+    const o = {};
+    for (const k of Object.keys(r)) o[k] = reviveValue(r[k]);
+    return o;
+  });
+}
+
+function isPgReadableTable(name) {
+  return typeof name === 'string'
+    && PG_READABLE_TABLE.test(name)
+    && name.indexOf('__') !== 0;
+}
+
+/* Wave 10 (chg_id): ستون‌هایِ داخلیِ لایهٔ DB — هرگز از سرور بیرون نمی‌روند.
+   SELECT * آن‌ها را برمی‌گرداند (ستونِ پارتیشن‌نشده به ازایِ هر جدول)؛ این‌جا
+   کنار گذاشته می‌شوند تا شکلِ سطرِ PG با حالتِ حافظه بایت‌به‌بایت یکی بماند و
+   هیچ‌وقت به op کلاینت راه پیدا نکنند (validate.js آن را unknown_field می‌گیرد). */
+const INTERNAL_ROW_COLUMNS = new Set(['chg_id']);
+
+/**
+ * Remove server-internal columns from rows leaving the DB layer.
+ * Pure function; returns the same array shape with shallow-copied rows.
+ * @param {Array<Object>} rows
+ * @returns {Array<Object>}
+ */
+function stripInternalColumns(rows) {
+  if (!Array.isArray(rows)) return rows;
+  return rows.map((r) => {
+    if (!r || typeof r !== 'object') return r;
+    let has = false;
+    for (const k of INTERNAL_ROW_COLUMNS) { if (k in r) { has = true; break; } }
+    if (!has) return r;
+    const c = Object.assign({}, r);
+    for (const k of INTERNAL_ROW_COLUMNS) delete c[k];
+    return c;
+  });
+}
+
+/**
+ * Read one full collection via the unified layer.
+ * @param {string} name - collection / table name (real data table only)
+ * @returns {Promise<Array>} array of row objects
+ */
+async function readCollection(name) {
+  if (typeof name !== 'string' || !name) return [];
+  if (isPostgres() && isPgReadableTable(name)) {
+    const res = await pool.query(`SELECT * FROM "${name}"`);
+    return stripInternalColumns(reviveRows(res.rows));
+  }
+  return (memoryStore && Array.isArray(memoryStore[name])) ? memoryStore[name] : [];
+}
+
+/**
+ * Read a single row by numeric id (via readCollection).
+ * @param {string} name - collection / table name
+ * @param {number|string} id
+ * @returns {Promise<Object|null>}
+ */
+async function readOne(name, id) {
+  /* Wave 1 — indexed single-row read when PG is live (PK lookup instead of
+     full-table scan); memory mode keeps the exact legacy find semantics. */
+  if (isPostgres() && isPgReadableTable(name)) {
+    const n = Number(id);
+    if (!Number.isFinite(n)) return null;
+    const res = await pool.query(`SELECT * FROM "${name}" WHERE id = $1 LIMIT 1`, [n]);
+    const rows = stripInternalColumns(reviveRows(res.rows));
+    return rows.length ? rows[0] : null;
+  }
+  const rows = await readCollection(name);
+  const n = Number(id);
+  return rows.find((r) => r && Number(r.id) === n) || null;
+}
+
+/**
+ * Wave 1 — boot hydration: replace store domain collections with PG truth.
+ * Iterates SCHEMA_TABLES (not store keys) so a skeleton boot — whose store has
+ * no domain keys yet — is POPULATED from PG, not left empty. Only SCHEMA_TABLES
+ * members are ever touched, so cache-only collections (outbox, tombstones,
+ * __deleted_records, __* internals) keep their store copies. Per-table
+ * try/catch: one bad table warns and keeps going (single reads still route to
+ * PG when live, so boot stays safe).
+ * @param {Object} store - live in-memory store object (mutated in place)
+ * @returns {Promise<{ok:boolean, hydrated:number, skipped:Array}>}
+ */
+async function hydrateStoreFromPg(store) {
+  const out = { ok: true, hydrated: 0, skipped: [], capped: [], env_skipped: [], mirror_incomplete: false };
+  if (!store || typeof store !== 'object') return out;
+  /* Wave 18 — هیدراتاسیونِ مقیّد (مانورِ بارِ ملی): در مقیاسِ ملی، بارگذاریِ
+     کلِ جدول‌ها در RAM ممکن نیست (کاربران ۱۰M ⇒ چند GB شیءِ JS؛ OOM در بوت).
+     دو env اختیاری، هر دو پیش‌فرض خاموش (رفتارِ فعلی حفظ می‌شود):
+       PAYESH_PG_HYDRATE_SKIP=t1,t2      — این جدول‌ها اصلاً هیدراته نشوند
+       PAYESH_PG_HYDRATE_LIMIT=u:5000    — سقفِ سطرِ per-جدول (ORDER BY id)
+     مسیرهایِ خواندنِ زنده (pgLive ⇒ db.readCollection/executePagedList)
+     همچنان مستقیم از PG می‌خوانند؛ سقف فقط «آینهٔ درون‌حافظه‌ایِ بوت» را
+     مقیّد می‌کند. یافتهٔ مانور: auth فعلاً از همین آینه می‌خواند (اسکنِ
+     خطیِ store.users) — در مقیاسِ واقعی باید به جست‌وجویِ ایندکس‌دارِ PG
+     برود (users.phone ایندکس ندارد). */
+  const skipEnv = String(process.env.PAYESH_PG_HYDRATE_SKIP || '')
+    .split(',').map((s) => s.trim()).filter(Boolean);
+  const limEnv = {};
+  String(process.env.PAYESH_PG_HYDRATE_LIMIT || '')
+    .split(',').map((s) => s.trim()).filter(Boolean).forEach((p) => {
+      const i = p.indexOf(':');
+      if (i > 0) {
+        const t = p.slice(0, i).trim(), n = Number(p.slice(i + 1));
+        if (t && Number.isFinite(n) && n >= 0) limEnv[t] = n;
+      }
+    });
+  for (const key of SCHEMA_TABLES) {
+    if (!isPgReadableTable(key)) continue;
+    if (skipEnv.indexOf(key) > -1) { out.env_skipped.push(key); continue; }
+    try {
+      const cap = limEnv[key];
+      if (cap !== undefined) {
+        const res = await pool.query(`SELECT * FROM "${key}" ORDER BY id LIMIT $1`, [cap]);
+        store[key] = reviveRows(res.rows);
+        out.capped.push(key + ':' + cap);
+      } else {
+        store[key] = await readCollection(key);
+      }
+      out.hydrated++;
+    } catch (e) {
+      out.skipped.push(key);
+      console.warn('[DB] Hydration skipped for ' + key + ':', e.message);
+    }
+  }
+  /* بازخوردِ بازبینِ PR #94: آینهٔ سقف‌دار/ناقص هرگز نباید روی فایلِ
+     store.json نوشته شود — فایلِ کاملِ قبلی را می‌کُشد. این پرچم به
+     index.js می‌گوید مسیرهای persist فایل را در PG-live ببندد. */
+  out.mirror_incomplete = out.capped.length > 0 || out.env_skipped.length > 0;
+  return out;
+}
+
+/**
+ * آیا آینهٔ درون‌حافظه‌ای را باید روی store.json نوشت؟
+ * خالث/خالص — قابلِ تستِ مستقیم (tests/wave18-hydration-guards.js).
+ * فقط وقتی «نه» می‌گوید که PG مرجع است و هیدراتاسیون عمداً بریده
+ * بوده (capped/env-skipped). هر حالتِ دیگر — از جمله آینهٔ کامل و
+ * حالتِ بدونِ PG — رفتارِ قبلی (نوشتن) را حفظ می‌کند.
+ */
+function shouldPersistMirrorFile(pgLive, hydrateResult){
+  return !(pgLive && hydrateResult && hydrateResult.mirror_incomplete);
+}
+
+/**
+ * آیا سقفِ هیدراتاسیون جدولِ users را بریده؟ (هشدارِ بوت: کاربرانِ
+ * بیرونِ سقف با auth مبتنی بر آینه نمی‌توانند وارد شوند — فقط برای
+ * محیط‌های آزمونِ بار معنا دارد.)
+ */
+function hydrationUsersCapped(h){
+  return !!(h && Array.isArray(h.capped) && h.capped.some(function(s){
+    return String(s).split(':')[0] === 'users';
+  }));
+}
+
+/* F1 (chaos-drill #185 — بحرانی): «PG انتظار می‌رود؟»
+   در production با DATABASE_URL ست، اگر isPgActive وسطِ اجرا false شود
+   (قطعِ PG + reconnectِ ناموفق)، هیچ مسیری حق ندارد memory را «سالم»
+   جا بزند — وگرنه readiness سبزِ دروغ می‌شود و ackهای 200 پس از بازگشتِ
+   PG در آن نیستند (گم‌شدنِ دائمیِ دادهٔ ackشده؛ شاهد: chaos-drill-pg-outage). */
+function pgExpected() {
+  return !memoryFallbackAllowed() && !!(process.env.DATABASE_URL);
 }
 
 /**
@@ -245,6 +601,10 @@ async function query(text, params, opts) {
  */
 async function ping() {
   if (!isPostgres()) {
+    if (pgExpected()) {
+      return { ok: false, driver: 'none', alive: false,
+        error: 'PostgreSQL expected in production (DATABASE_URL set) but not connected — refusing memory driver' };
+    }
     return { ok: true, driver: 'memory', alive: true };
   }
   try {
@@ -264,19 +624,31 @@ async function transaction(callback) {
     return await callback(null);
   }
 
+  const start = process.hrtime.bigint();
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const result = await callback(client);
     await client.query('COMMIT');
+    metrics.observeDb('transaction', 'primary', dbSeconds(start), false, dbSlow(start));
     return result;
   } catch (err) {
+    metrics.observeDb('transaction', 'primary', dbSeconds(start), true, false);
     try { await client.query('ROLLBACK'); }
     catch (rbErr) { console.error('[DB] ROLLBACK failed:', rbErr.message); }   /* P1-14: خطایِ rollback نباید خطایِ اصلی را بپوشاند */
     throw err;
   } finally {
     client.release();
   }
+}
+
+/* Wave 10 (پارتیشن‌بندی): فهرستِ جدول‌هایِ پارتیشن‌شده — PAYESH_PARTITIONED_TABLES
+   (مثلاً "grades,attendance"). خالی ⇒ همه‌چیز مثلِ قبل (ON CONFLICT (id)).
+   سوییچِ صریح تا rollout تدریجی و rollback لحظه‌ای ممکن باشد. */
+function isPartitionedTable(name) {
+  const v = String(process.env.PAYESH_PARTITIONED_TABLES || '');
+  if (!v) return false;
+  return v.split(',').map((x) => x.trim()).filter(Boolean).includes(String(name));
 }
 
 /**
@@ -288,42 +660,107 @@ async function persistOpWithClient(client, op) {
   const col = op.c;
   const t = op.t;
   const data = op.data || {};
+  const ident = (name) => {
+    if(!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(String(name || ''))) throw new Error('unsafe SQL identifier: ' + name);
+    return '"' + name + '"';
+  };
+  const table = ident(col);
+  const valOf = (v) => (v !== null && typeof v === 'object') ? JSON.stringify(v) : v;
 
-    if (t === 'ins' || t === 'upd') {
-      const fields = Object.keys(data);
-      if (fields.length === 0) return;
+  if (t === 'ins') {
+    const fields = Object.keys(data);
+    if (fields.length === 0) return;
 
-      const cols = fields.map(f => `"${f}"`).join(', ');
-      const placeholders = fields.map((_, i) => `$${i + 1}`).join(', ');
-      const values = fields.map(f => {
-        const val = data[f];
-        if (val !== null && typeof val === 'object') {
-          return JSON.stringify(val);
-        }
-        return val;
-      });
+    const cols = fields.map(ident).join(', ');
+    const placeholders = fields.map((_, i) => `$${i + 1}`).join(', ');
+    const values = fields.map(f => valOf(data[f]));
+    const updateSet = fields
+      .filter(f => f !== 'id')
+      .map(f => `${ident(f)} = EXCLUDED.${ident(f)}`)
+      .join(', ');
 
-      const updateSet = fields
-        .filter(f => f !== 'id')
-        .map((f, i) => `"${f}" = EXCLUDED."${f}"`)
-        .join(', ');
-
-      const sql = `INSERT INTO ${col} (${cols}) VALUES (${placeholders}) ON CONFLICT (id) DO UPDATE SET ${updateSet};`;
-      await client.query(sql, values);
-    } else if (t === 'del') {
-      const delId = Number(op.id != null ? op.id : (data && data.id));
-      if (delId) {
-        await client.query(`DELETE FROM ${col} WHERE id = $1;`, [delId]);
+    /* Wave 10 (پارتیشن‌بندی): جدولِ پارتیشن‌شده PK (id, created_at) دارد —
+       ON CONFLICT (id) دیگر به هیچ uniqueای نمی‌خورد و فرمِ (id, created_at)
+       هم idempotency را می‌شکند (id تکراری با created_at متفاوت ⇒ سطرِ
+       دوم). معادلِ دقیقِ upsert: اول UPDATE به id (ایندکسِ غیر یکتایِ id)؛
+       اگر هیچ سطری نداشت INSERT؛ رقابتِ هم‌زمان با 23505 گرفته می‌شود و
+       UPDATE دوباره می‌زند — «آخرین برنده»، همان ترتیبِ DO UPDATE. */
+    if (isPartitionedTable(col)) {
+      const upFields = fields.filter(f => f !== 'id');
+      const hasId = data.id != null && Number.isFinite(Number(data.id));
+      if (hasId && upFields.length > 0) {
+        const setSql = upFields.map((f, i) => `${ident(f)} = $${i + 1}`).join(', ');
+        const upVals = upFields.map(f => valOf(data[f]));
+        const updSql = `UPDATE ${table} SET ${setSql} WHERE id = $${upFields.length + 1};`;
+        const updRes = await client.query(updSql, upVals.concat([Number(data.id)]));
+        if (updRes && Number(updRes.rowCount) > 0) return; /* سطرِ موجود ⇒ به‌روزرسانی شد */
       }
+      const insSql = `INSERT INTO ${table} (${cols}) VALUES (${placeholders});`;
+      try {
+        await client.query(insSql, values);
+      } catch (err) {
+        /* رقابت: کسِ دیگری همین id را همین لحظه درج کرد — مثلِ ON CONFLICT
+           DO UPDATE، ما برندهٔ نهایی هستیم: UPDATE دوباره. */
+        if (err && err.code === '23505' && hasId && upFields.length > 0) {
+          const setSql = upFields.map((f, i) => `${ident(f)} = $${i + 1}`).join(', ');
+          const upVals = upFields.map(f => valOf(data[f]));
+          const updSql = `UPDATE ${table} SET ${setSql} WHERE id = $${upFields.length + 1};`;
+          const updRes = await client.query(updSql, upVals.concat([Number(data.id)]));
+          if (!updRes || !(Number(updRes.rowCount) > 0)) throw err;
+        } else {
+          throw err;
+        }
+      }
+      return;
     }
 
-    // Also persist processed UID into server_processed_uids (best-effort, as before)
-    if (op.uid) {
-      await client.query(
-        `INSERT INTO server_processed_uids (uid, processed_at) VALUES ($1, NOW()) ON CONFLICT (uid) DO NOTHING;`,
-        [op.uid]
-      ).catch(() => {});
+    const sql = `INSERT INTO ${table} (${cols}) VALUES (${placeholders}) ON CONFLICT (id) DO UPDATE SET ${updateSet};`;
+    await client.query(sql, values);
+  } else if (t === 'upd') {
+    const fields = Object.keys(data).filter(f => f !== 'id');
+    if (fields.length === 0) return;
+    const id = Number(op.id != null ? op.id : data.id);
+    if (!Number.isFinite(id) || id <= 0) throw new Error('missing id for update op');
+
+    const values = fields.map(f => valOf(data[f]));
+    const setSql = fields.map((f, i) => `${ident(f)} = $${i + 1}`).join(', ');
+
+    if (op.base_version != null) {
+      /* Wave 2 — OCC در سطح SQL: معادل
+         UPDATE ... WHERE id=$id AND version=$base_version؛ صفر row ⇒ 409. */
+      const base = Number(op.base_version);
+      if (!Number.isInteger(base) || base < 1) {
+        const e = new Error('bad base_version');
+        e.code = 'bad_base_version';
+        throw e;
+      }
+      const res = await client.query(
+        `UPDATE ${table} SET ${setSql} WHERE id = $${fields.length + 1} AND version = $${fields.length + 2};`,
+        values.concat([id, base])
+      );
+      if (res && res.rowCount === 0) {
+        const e = new Error('optimistic concurrency conflict');
+        e.code = 'occ_conflict';
+        e.status = 409;
+        throw e;
+      }
+    } else {
+      await client.query(`UPDATE ${table} SET ${setSql} WHERE id = $${fields.length + 1};`, values.concat([id]));
     }
+  } else if (t === 'del') {
+    const delId = Number(op.id != null ? op.id : (data && data.id));
+    if (delId) {
+      await client.query(`DELETE FROM ${table} WHERE id = $1;`, [delId]);
+    }
+  }
+
+  // Also persist processed UID into server_processed_uids (best-effort, as before)
+  if (op.uid) {
+    await client.query(
+      `INSERT INTO server_processed_uids (uid, processed_at) VALUES ($1, NOW()) ON CONFLICT (uid) DO NOTHING;`,
+      [op.uid]
+    ).catch(() => {});
+  }
 }
 
 /**
@@ -364,6 +801,12 @@ async function persistOpsBatchWithClient(client, ops) {
 async function persistOpsBatch(ops) {
   const list = ops || [];
   if (!isPostgres()) {
+    /* F1 (chaos-drill #185): در production با DATABASE_URL، skipِ بی‌صدایِ
+       آینه = ackِ 200ی که هرگز به PG نمی‌رسد ⇒ THROW تا sync.js همان مسیرِ
+       رسمیِ sync_mirror_failed/503 + rollback را برود (کلاینت retry می‌کند). */
+    if (pgExpected()) {
+      throw new Error('PostgreSQL expected in production but not connected — refusing silent memory ack (F1)');
+    }
     return { ok: true, driver: 'memory', count: list.length };
   }
   return await transaction(async (client) => {
@@ -381,7 +824,21 @@ async function isUidProcessed(uid) {
     try {
       const res = await pool.query('SELECT 1 FROM server_processed_uids WHERE uid = $1', [uid]);
       if (res.rowCount > 0) return true;
-    } catch (e) {}
+    } catch (e) {
+      /* P0-1 (round 3, item 3) — this used to be an empty catch, which silently
+         downgraded a PostgreSQL failure to the per-process JSON store. That is
+         an idempotency hole: a sync uid whose "already applied?" check could
+         not be answered was treated as *not* applied, so the same op could be
+         applied twice across instances. In production we now fail closed; the
+         sync route turns the throw into a clean 500 (server/index.js request
+         wrapper) / 503, and the client retries. Dev/test keeps the old
+         warn-and-continue behaviour so local offline runs still work. */
+      if (!memoryFallbackAllowed()) {
+        throw new Error('isUidProcessed: PostgreSQL idempotency check failed in production (refusing to fall back to the per-process store): '
+          + ((e && e.message) || e));
+      }
+      console.warn('[DB] isUidProcessed: PostgreSQL query failed, using the in-memory store (dev/test only):', (e && e.message) || e);
+    }
   }
   if (memoryStore && memoryStore.__processed_uids) {
     return !!memoryStore.__processed_uids[uid];
@@ -401,20 +858,53 @@ async function healthCheck() {
   try {
     await pool.query('SELECT 1');
     const latency = Date.now() - start;
-    return {
+    const out = {
       ok: true,
       driver: 'postgres',
       latency_ms: latency,
       total_count: pool.totalCount,
       idle_count: pool.idleCount,
-      waiting_count: pool.waitingCount,
-      pgbouncer: config.pgbouncer,
-      pool_mode: config.poolMode,
-      partitioning: partitioningHealth()
+      waiting_count: pool.waitingCount
     };
+    /* Wave 10 — read-replica observability (present only when configured+live) */
+    out.read_replica = isReplicaActive() ? {
+      active: true,
+      total_count: readPool.totalCount,
+      idle_count: readPool.idleCount,
+      waiting_count: readPool.waitingCount
+    } : { active: false };
+    return out;
   } catch (err) {
     return { ok: false, driver: 'postgres', error: err.message };
   }
+}
+
+/**
+ * Wave 10 — concise pool-summary for /health-style introspection: primary +
+ * (optional) read replica, their current lease counts, and replica routing flag.
+ */
+function poolStats() {
+  const stats = {
+    driver: isPostgres() ? 'postgres' : 'memory',
+    primary: {
+      active: isPostgres(),
+      min: config.min,
+      max: config.max,
+      total_count: pool ? pool.totalCount : 0,
+      idle_count: pool ? pool.idleCount : 0,
+      waiting_count: pool ? pool.waitingCount : 0
+    },
+    read_replica: isReplicaActive() ? {
+      active: true,
+      min: config.readMin,
+      max: config.readMax,
+      total_count: readPool.totalCount,
+      idle_count: readPool.idleCount,
+      waiting_count: readPool.waitingCount
+    } : { active: false }
+  };
+  stats.routing_reads_to_replica = isReplicaActive();   /* queryRead() target */
+  return stats;
 }
 
 /**
@@ -425,6 +915,10 @@ async function close() {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
   }
+  if (replicaReprobeTimer) {
+    clearTimeout(replicaReprobeTimer);
+    replicaReprobeTimer = null;
+  }
   if (pool) {
     try {
       await pool.end();
@@ -432,26 +926,57 @@ async function close() {
     pool = null;
     isPgActive = false;
   }
-  await closeReplicaPools();
+  /* Wave 10 — tear down the read replica too */
+  if (readPool) {
+    try {
+      await readPool.end();
+    } catch (e) {}
+    readPool = null;
+    readPoolActive = false;
+  }
 }
 
 /* P1-14: seam تزریقِ pool برای تستِ اتمی‌بودن بدون PG واقعی (pg-mem).
    فقط تست از آن استفاده می‌کند؛ کدِ اجرایی همیشه از init می‌آید. */
-function __getConfigForTests() { return Object.assign({}, refreshConfig()); }
-function __getPartitionPlanForTests() { return partitionPlan; }
-function __refreshPartitionPlanForTests(store, opts) { return refreshPartitionPlan(store, opts); }
-function __setReplicaPoolsForTests(pools) { replicaPools = pools || []; }
-
 function __setPoolForTests(p) {
   if (p) { pool = p; isPgActive = true; }
   else { pool = null; isPgActive = false; }
 }
 
+/* Wave 10 — same injection seam for the read-replica pool (fake-db tests only) */
+function __setReadPoolForTests(p) {
+  if (p) { readPool = p; readPoolActive = true; }
+  else { readPool = null; readPoolActive = false; }
+}
+
+/* S3-1: درزِ تأخیرِ کاوش برایِ تست (پیش‌فرضِ اجرایی ۱۰۰۰۰ms دست‌نخورده) */
+function __setReprobeDelayForTests(ms) {
+  const v = Number(ms);
+  if (Number.isFinite(v) && v >= 0) REPLICA_REPROBE_MS = v;
+  return REPLICA_REPROBE_MS;
+}
+
 module.exports = {
   init,
   isPostgres,
+  /* P0-1 (Package 1) — production backing-store policy */
+  isProductionEnv,
+  pgExpected,
+  memoryFallbackAllowed,
+  memoryFallbackRequested,
+  backingStorePolicy,
+  /* round 3, item 2 — observed pg Client errors (crash-prevention counter) */
+  clientErrors,
+  shouldPersistMirrorFile,
+  hydrationUsersCapped,
   getPool,
+  isReplicaActive,
+  getReadPool,
   query,
+  queryRead,
+  readCollection,
+  readOne,
+  hydrateStoreFromPg,
   ping,
   transaction,
   persistOp,
@@ -459,13 +984,14 @@ module.exports = {
   persistOpsBatchWithClient,
   persistOpsBatch,
   __setPoolForTests,
-  __getConfigForTests,
-  __getPartitionPlanForTests,
-  __refreshPartitionPlanForTests,
-  __setReplicaPoolsForTests,
-  routeQuery,
-  partitioningHealth,
+  /* Wave 10 (chg_id): کنارگذاریِ ستون‌های داخلی برای خواننده‌های بیرونی (pull/delta) */
+  stripInternalColumns,
+  /* Wave 10 (پارتیشن‌بندی): آیا این جدول در PAYESH_PARTITIONED_TABLES است */
+  isPartitionedTable,
+  __setReadPoolForTests,
+  __setReprobeDelayForTests,
   isUidProcessed,
   healthCheck,
+  poolStats,
   close
 };

@@ -1,0 +1,759 @@
+/* ═══════════════════════════════════════════════════════════════════
+   server/routes/reports.js — Wave 23: سیستم گزارش‌دهی پیشرفته
+   -------------------------------------------------------------------
+   چهار گزارش استاندارد وزارتی (فقط‌خواندنی — تجمیع روی store):
+   - GET /api/v1/reports/attendance ?jy=&jm=&school_id=&class_id=
+       حضور و غیاب ماهانه به تفکیک کلاس/پایه (مدیر/اداره/سوپرادمین)
+   - GET /api/v1/reports/academic   ?school_id=&class_id=&term=
+       پیشرفت تحصیلی: میانگین، روند، توصیه (مدیر/مربی/اداره/سوپرادمین)
+   - GET /api/v1/reports/finance    ?school_id=
+       گزارش مالی مدارس شهریه‌دار (شاهد/غیرانتفاعی/…): شهریه، تخفیف،
+       اقساط، بورسیه (مدیر/اداره/سوپرادمین)
+   - GET /api/v1/reports/teachers   ?jy=&jm=&school_id=
+       عملکرد معلمان: حضور کادر + جانشینی + دوره‌های ضمن خدمت
+       (مدیر/اداره/سوپرادمین)
+
+   مهار اجاره‌ای (tenant isolation) — آینهٔ policy:
+   - superadmin: همهٔ مدارس (یا فیلترشده)
+   - manager/counselor: فقط مدرسهٔ خودش (school_id پارامتر باید همان باشد)
+   - edu_office: فقط مدارسِ داخلِ هندسهٔ اداره (policy.officeCoversSchool)
+   - بقیهٔ نقش‌ها: 403 (fail-closed)
+   ═══════════════════════════════════════════════════════════════════ */
+'use strict';
+
+const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز */
+const reportsSql = require('../reports-sql'); /* Wave 23 fix — تجمیع در دیتابیس، نه در حافظه */
+
+/* ── تقویم شمسی (آینهٔ src/js/22-jalali-calendar.js — بدون وابستگی) ── */
+const _div = (a, b) => Math.floor(a / b);
+function toJalali(gy, gm, gd) {
+  const g = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+  let jy = gy <= 1600 ? 0 : 979; gy -= gy <= 1600 ? 621 : 1600;
+  const gy2 = gm > 2 ? gy + 1 : gy;
+  let days = 365 * gy + _div(gy2 + 3, 4) - _div(gy2 + 99, 100) + _div(gy2 + 399, 400) - 80 + gd + g[gm - 1];
+  jy += 33 * _div(days, 12053); days %= 12053;
+  jy += 4 * _div(days, 1461); days %= 1461;
+  if (days > 365) { jy += _div(days - 1, 365); days = (days - 1) % 365; }
+  const jm = days < 186 ? 1 + _div(days, 31) : 7 + _div(days - 186, 30);
+  const jd = 1 + (days < 186 ? days % 31 : (days - 186) % 30);
+  return [jy, jm, jd];
+}
+/** تاریخ ISO ⇒ [jy,jm,jd] یا null (ورودی خراب = حذف از تجمیع، نه خطا) */
+function isoToJ(iso) {
+  if (!iso) return null;
+  const m = String(iso).slice(0, 10).split('-').map(Number);
+  if (!m[0] || !m[1] || !m[2]) return null;
+  return toJalali(m[0], m[1], m[2]);
+}
+
+/* ── نوعِ ساختاری مدرسه (آینهٔ src/js/09-schools.js — fail-closed) ── */
+const TUITION_TYPES = ['exemplary', 'non_profit', 'shahed', 'boarding', 'vocational'];
+function schoolHasTuition(school) {
+  if (!school) return false;
+  const caps = school.capabilities || {};
+  if (caps.has_tuition != null) return !!caps.has_tuition;
+  /* BUG FIXED (confirmed on real PG, docs/WAVE23_DB_NATIVE_REPORTS.md §۸):
+     the PostgreSQL column is `type` and reviveRows() renames nothing, so a
+     PG-shaped row {type:'shahed'} used to fall through to `school_type`
+     (undefined) and the shahed/non-profit school was treated as tuition-free
+     — its explicit request got a wrong 400. The structural type is read from
+     either shape; `school_type` (the store/validate.js name) wins on
+     conflict. Red-first test: tests/wave23-reports-pg.js W23-TUITION. */
+  const stype = school.school_type != null ? school.school_type : school.type;
+  return TUITION_TYPES.indexOf(stype) > -1;
+}
+
+function createReportsRoutes(ctx) {
+  const store = ctx.store;
+  const db = ctx.db || null;   /* Wave 23 fix: مسیر DB-native وقتی PG زنده است */
+  const audit = ctx.audit || (() => {});
+
+  /* نقش‌های مجاز هر گزارش — ناظر منطقه = edu_office؛ مربی تحصیلی = counselor */
+  const REPORT_ROLES = {
+    attendance: ['manager', 'edu_office', 'superadmin'],
+    academic: ['manager', 'counselor', 'edu_office', 'superadmin'],
+    finance: ['manager', 'edu_office', 'superadmin'],
+    teachers: ['manager', 'edu_office', 'superadmin']
+  };
+
+  const deny = (msg) => ({ status: 403, body: { ok: false, code: 'forbidden', message: msg || 'دسترسی به این گزارش مجاز نیست' } });
+  const bad = (msg) => ({ status: 400, body: { ok: false, code: 'bad_request', message: msg } });
+
+  /** مدارسِ در دامنهٔ کاربر (پس از فیلتر school_id اختیاری). null ⇒ 403 */
+  function scopedSchools(user, schoolIdParam) {
+    const role = user && user.role;
+    let list = Array.isArray(store.schools) ? store.schools.filter(Boolean) : [];
+    if (role === 'superadmin') {
+      /* بدون مهار */
+    } else if (role === 'manager' || role === 'counselor') {
+      list = list.filter((s) => Number(s.id) === Number(user.school_id));
+    } else if (role === 'edu_office') {
+      const office = policy.userOffice(store, user);
+      if (!office) return null; /* اداره‌ی بی‌هندسه ⇒ رد (fail-closed) */
+      list = list.filter((s) => policy.officeCoversSchool(office, s));
+    } else {
+      return null;
+    }
+    if (schoolIdParam != null && schoolIdParam !== '') {
+      const sid = Number(schoolIdParam);
+      list = list.filter((s) => Number(s.id) === sid);
+      /* درخواستِ مدرسهٔ خارج از دامنه ⇒ 403 نه لیستِ خالی (تمایز عمدی:
+         خالی یعنی «داده نیست»، رد یعنی «حق نداری») */
+      if (!list.length) return null;
+    }
+    return list;
+  }
+
+  function roleGate(kind, user) {
+    if (!user || REPORT_ROLES[kind].indexOf(user.role) === -1) return deny();
+    return null;
+  }
+
+  /** پارامترهای jy/jm — پیش‌فرض: ماهِ شمسیِ جاری سرور */
+  function monthParams(urlParams) {
+    const now = new Date();
+    const j = toJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    const jy = Number(urlParams.get('jy') || j[0]);
+    const jm = Number(urlParams.get('jm') || j[1]);
+    if (!Number.isInteger(jy) || jy < 1300 || jy > 1500) return null;
+    if (!Number.isInteger(jm) || jm < 1 || jm > 12) return null;
+    return { jy, jm };
+  }
+
+  /* ── مسیر DB-native گزارشِ حضور (Wave 23 fix) ───────────────────
+     به‌جای پویشِ کلِ store.attendance در حافظه، سه کوئریِ پارامتری روی
+     PostgreSQL: صفحهٔ کلاس‌ها (keyset، bounded) · جمعِ هر مدرسه روی همهٔ
+     کلاس‌های دامنه (نه فقط صفحه) · شمارِ دانش‌آموزان. خواندن‌ها با
+     queryRead می‌روند تا رپلیکای فقط‌خواندنی بار را بردارد؛ اگر رپلیکا
+     نبود، خودِ queryRead به پرماری برمی‌گردد. */
+  async function attendanceReportDb({ user, mp, schools, classFilter, urlParams }) {
+    const scopeIds = schools.map((s) => Number(s.id));
+    const range = reportsSql.jalaliMonthRange(mp.jy, mp.jm);
+    const limit = reportsSql.clampLimit(urlParams.get('limit'));
+    const cursor = urlParams.get('cursor') || null;
+    const read = (typeof db.queryRead === 'function') ? db.queryRead.bind(db) : db.query.bind(db);
+
+    const pageBuilt = reportsSql.buildAttendanceClassPage({
+      schoolIds: scopeIds, classId: classFilter, from: range.from, to: range.to, limit, cursor
+    });
+    const pageRes = await read(pageBuilt.sql, pageBuilt.params);
+    const rows = (pageRes && Array.isArray(pageRes.rows)) ? pageRes.rows : [];
+    const hasMore = rows.length > limit;
+    const data = hasMore ? rows.slice(0, limit) : rows;
+
+
+    /* شکلِ پاسخ دقیقاً همانِ مسیرِ حافظه است؛ «مدارس» فقط وقتی کلِ دامنه در
+       یک صفحه جا شده کامل می‌آید، وگرنه صفحه‌بندی صریح است. */
+    const zero = { present: 0, absent: 0, late: 0, excused: 0, early_exit: 0, total: 0 };
+    const mkRow = (c, agg) => ({
+      class_id: c.class_id, name: c.name, grade: c.grade == null ? null : c.grade,
+      present: agg.present, absent: agg.absent, late: agg.late,
+      excused: agg.excused, early_exit: agg.early_exit, total: agg.total,
+      rate: reportsSql.rate10(agg.present + agg.late + agg.early_exit, agg.total)
+    });
+    const bySchool = new Map();
+    for (const r of data) {
+      const sid = Number(r.school_id);
+      if (!bySchool.has(sid)) bySchool.set(sid, []);
+      bySchool.get(sid).push(mkRow(r, {
+        present: Number(r.present) || 0, absent: Number(r.absent) || 0, late: Number(r.late) || 0,
+        excused: Number(r.excused) || 0, early_exit: Number(r.early_exit) || 0, total: Number(r.total) || 0
+      }));
+    }
+    /* یافتهٔ بازبینِ PR #120 (red-first): شرطِ قبلی `hasMore ? صفحه : همه` در
+       صفحهٔ آخرِ یک پیمایشِ چندصفحه‌ای (hasMore=false ولی cursor حاضر) کلِ
+       دامنه را برمی‌گرداند و مدارسِ مصرف‌شدهٔ صفحاتِ قبل با ردیفِ خالی تکرار
+       می‌شدند. قراردادِ یکنواخت: پاسخِ «صفحه‌دار» (cursor یا has_more) فقط
+       مدارسِ دارایِ ردیفِ همین صفحه؛ پاسخِ تک‌صفحه‌ای همهٔ دامنه (هم‌ارز با
+       مسیرِ حافظه — سنجهٔ parity همین را قفل می‌کند). */
+    const paged = hasMore || (cursor != null && cursor !== '');
+    const list = paged ? schools.filter((s) => bySchool.has(Number(s.id))) : schools;
+
+    /* جمع‌ها و شمارِ دانش‌آموز برای **همهٔ مدارسِ پاسخ** — نه فقط آن‌هایی که
+       در این صفحه ردیف دارند، وگرنه مدرسهٔ بدونِ ردیف students=0 می‌گرفت در
+       حالی که مسیرِ حافظه شمارِ واقعی را می‌داد. همچنان bounded: به‌اندازهٔ
+       مدارسِ همین پاسخ. */
+    const listIds = list.map((s) => Number(s.id));
+    let totals = new Map(), students = new Map();
+    if (listIds.length) {
+      const totBuilt = reportsSql.buildAttendanceSchoolTotals({
+        schoolIds: listIds, from: range.from, to: range.to, classId: classFilter
+      });
+      const stuBuilt = reportsSql.buildStudentsPerSchool({ schoolIds: listIds });
+      const [totRes, stuRes] = await Promise.all([read(totBuilt.sql, totBuilt.params), read(stuBuilt.sql, stuBuilt.params)]);
+      for (const r of ((totRes && totRes.rows) || [])) totals.set(Number(r.school_id), r);
+      for (const r of ((stuRes && stuRes.rows) || [])) students.set(Number(r.school_id), Number(r.n) || 0);
+    }
+    const out = list.map((s) => {
+      const sid = Number(s.id);
+      const rowsOfSchool = bySchool.get(sid) || [];
+      const t = totals.get(sid);
+      const tot = t ? {
+        present: Number(t.present) || 0, absent: Number(t.absent) || 0, late: Number(t.late) || 0,
+        excused: Number(t.excused) || 0, early_exit: Number(t.early_exit) || 0, total: Number(t.total) || 0
+      } : Object.assign({}, zero);
+      return {
+        school_id: s.id, school_name: s.name,
+        students: students.get(sid) || 0,
+        classes: rowsOfSchool,
+        totals: Object.assign(tot, { rate: reportsSql.rate10(tot.present + tot.late + tot.early_exit, tot.total) })
+      };
+    });
+
+    audit('report_generated', { user_id: user.id, kind: 'attendance', jy: mp.jy, jm: mp.jm, schools: out.length });
+    return {
+      status: 200,
+      body: {
+        ok: true, kind: 'attendance', jy: mp.jy, jm: mp.jm,
+        source: 'postgresql', schools: out,
+        pagination: {
+          limit, count: data.length, has_more: hasMore,
+          next_cursor: hasMore && data.length ? reportsSql.attendanceCursor(data[data.length - 1]) : null,
+          cursor: cursor || null
+        }
+      }
+    };
+  }
+
+  /* ════ ۱) حضور و غیاب ماهانه ════════════════════════════════════ */
+  async function attendanceReport(req, urlParams) {
+    const user = req.user;
+    const gate = roleGate('attendance', user); if (gate) return gate;
+    const mp = monthParams(urlParams);
+    if (!mp) return bad('سال/ماه شمسی نامعتبر است');
+    const sf = reportsSql.validateSchoolId(urlParams.get('school_id'));
+    if (!sf.ok) return bad('school_id نامعتبر است');
+    const schools = scopedSchools(user, urlParams.get('school_id'));
+    if (schools === null) return deny();
+
+    /* اعتبارسنجیِ استاندارد (P2): ورودیِ خراب ⇒ ۴۰۰، هرگز NaN خاموش یا
+       خطای نوع از دیتابیس. parser مشترک با سه گزارشِ دیگر. */
+    const cf = reportsSql.parseOptionalPositiveInt(urlParams.get('class_id'));
+    if (!cf.ok) return bad('class_id نامعتبر است');
+    const classFilter = cf.value;
+
+    /* PostgreSQL زنده ⇒ تجمیع در دیتابیس (ایندکس + نتیجهٔ bounded)، نه پویشِ حافظه */
+    if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
+      return attendanceReportDb({ user, mp, schools, classFilter, urlParams });
+    }
+
+    const schoolIds = new Set(schools.map((s) => Number(s.id)));
+    const classes = (store.classes || []).filter((c) => c && schoolIds.has(Number(c.school_id))
+      && (classFilter == null || Number(c.id) === classFilter));
+    const classById = new Map(classes.map((c) => [Number(c.id), c]));
+
+    /* تجمیع تک‌گذری روی attendance ماهِ خواسته‌شده */
+    const STATUSES = ['present', 'absent', 'late', 'excused', 'early_exit'];
+    const perClass = new Map(); /* class_id → شمارنده‌ها */
+    for (const rec of (store.attendance || [])) {
+      if (!rec || !schoolIds.has(Number(rec.school_id))) continue;
+      const cls = classById.get(Number(rec.class_id));
+      if (!cls) continue;
+      const j = isoToJ(rec.date);
+      if (!j || j[0] !== mp.jy || j[1] !== mp.jm) continue;
+      let row = perClass.get(Number(rec.class_id));
+      if (!row) { row = { present: 0, absent: 0, late: 0, excused: 0, early_exit: 0, total: 0 }; perClass.set(Number(rec.class_id), row); }
+      const st = STATUSES.indexOf(rec.status) > -1 ? rec.status : 'absent';
+      row[st]++; row.total++;
+    }
+
+    const studentsBySchool = new Map();
+    for (const u of (store.users || [])) {
+      if (u && u.role === 'student' && u.school_id != null) {
+        studentsBySchool.set(Number(u.school_id), (studentsBySchool.get(Number(u.school_id)) || 0) + 1);
+      }
+    }
+
+    const out = schools.map((s) => {
+      const rows = classes.filter((c) => Number(c.school_id) === Number(s.id)).map((c) => {
+        const agg = perClass.get(Number(c.id)) || { present: 0, absent: 0, late: 0, excused: 0, early_exit: 0, total: 0 };
+        const attended = agg.present + agg.late + agg.early_exit;
+        return {
+          class_id: c.id, name: c.name, grade: c.grade || null,
+          present: agg.present, absent: agg.absent, late: agg.late,
+          excused: agg.excused, early_exit: agg.early_exit, total: agg.total,
+          rate: agg.total ? Math.round((attended / agg.total) * 1000) / 10 : null
+        };
+      });
+      const tot = rows.reduce((a, r) => {
+        a.present += r.present; a.absent += r.absent; a.late += r.late;
+        a.excused += r.excused; a.early_exit += r.early_exit; a.total += r.total; return a;
+      }, { present: 0, absent: 0, late: 0, excused: 0, early_exit: 0, total: 0 });
+      const attended = tot.present + tot.late + tot.early_exit;
+      return {
+        school_id: s.id, school_name: s.name,
+        students: studentsBySchool.get(Number(s.id)) || 0,
+        classes: rows,
+        totals: Object.assign(tot, { rate: tot.total ? Math.round((attended / tot.total) * 1000) / 10 : null })
+      };
+    });
+
+    audit('report_generated', { user_id: user.id, kind: 'attendance', jy: mp.jy, jm: mp.jm, schools: out.length });
+    return { status: 200, body: { ok: true, kind: 'attendance', jy: mp.jy, jm: mp.jm, schools: out } };
+  }
+
+  /* ── مسیر DB-native گزارشِ تحصیلی (تکمیلِ Wave 23) ──────────────
+     همان دکترینِ گزارشِ حضور: صفحهٔ کلاس‌ها keyset و bounded؛ میانگینِ
+     مدرسه و روندِ ترمی روی کلِ دامنه (نه فقط صفحه)؛ همهٔ خواندن‌ها از
+     queryRead. فرمول‌ها آینهٔ دقیقِ مسیرِ حافظه‌اند (شاملِ گردکردنِ
+     میانگینِ کلاس پیش از وزن‌دهی) تا هم‌ارزی بایت‌به‌بایت بماند. */
+  async function academicReportDb({ user, schools, termFilter, classFilter, urlParams }) {
+    const scopeIds = schools.map((s) => Number(s.id));
+    const limit = reportsSql.clampLimit(urlParams.get('limit'));
+    const cursor = urlParams.get('cursor') || null;
+    const read = (typeof db.queryRead === 'function') ? db.queryRead.bind(db) : db.query.bind(db);
+
+    const pageBuilt = reportsSql.buildAcademicClassPage({
+      schoolIds: scopeIds, classId: classFilter, term: termFilter, limit, cursor
+    });
+    const pageRes = await read(pageBuilt.sql, pageBuilt.params);
+    const rows = (pageRes && Array.isArray(pageRes.rows)) ? pageRes.rows : [];
+    const hasMore = rows.length > limit;
+    const data = hasMore ? rows.slice(0, limit) : rows;
+
+    const r1 = (n) => Math.round(n * 10) / 10;
+    const bySchool = new Map();
+    for (const r of data) {
+      const sid = Number(r.school_id);
+      if (!bySchool.has(sid)) bySchool.set(sid, []);
+      const cnt = Number(r.cnt) || 0;
+      bySchool.get(sid).push({
+        class_id: r.class_id, name: r.name, grade: r.grade || null,
+        count: cnt,
+        avg: cnt ? r1(Number(r.total) / cnt) : null,
+        pass_rate: cnt ? Math.round((Number(r.pass) / cnt) * 1000) / 10 : null
+      });
+    }
+    /* یافتهٔ بازبینِ PR #120 (red-first): شرطِ قبلی `hasMore ? صفحه : همه` در
+       صفحهٔ آخرِ یک پیمایشِ چندصفحه‌ای (hasMore=false ولی cursor حاضر) کلِ
+       دامنه را برمی‌گرداند و مدارسِ مصرف‌شدهٔ صفحاتِ قبل با ردیفِ خالی تکرار
+       می‌شدند. قراردادِ یکنواخت: پاسخِ «صفحه‌دار» (cursor یا has_more) فقط
+       مدارسِ دارایِ ردیفِ همین صفحه؛ پاسخِ تک‌صفحه‌ای همهٔ دامنه (هم‌ارز با
+       مسیرِ حافظه — سنجهٔ parity همین را قفل می‌کند). */
+    const paged = hasMore || (cursor != null && cursor !== '');
+    const list = paged ? schools.filter((s) => bySchool.has(Number(s.id))) : schools;
+    const listIds = list.map((s) => Number(s.id));
+
+    let totals = new Map(), trends = new Map();
+    if (listIds.length) {
+      const totBuilt = reportsSql.buildAcademicSchoolTotals({ schoolIds: listIds, classId: classFilter, term: termFilter });
+      const trBuilt = reportsSql.buildAcademicTrend({ schoolIds: listIds });
+      const [totRes, trRes] = await Promise.all([read(totBuilt.sql, totBuilt.params), read(trBuilt.sql, trBuilt.params)]);
+      for (const r of ((totRes && totRes.rows) || [])) totals.set(Number(r.school_id), r);
+      for (const r of ((trRes && trRes.rows) || [])) {
+        const sid = Number(r.school_id);
+        if (!trends.has(sid)) trends.set(sid, []);
+        const cnt = Number(r.cnt) || 0;
+        trends.get(sid).push({ term: r.term, avg: cnt ? r1(Number(r.total) / cnt) : null, count: cnt });
+      }
+    }
+
+    const out = list.map((s) => {
+      const sid = Number(s.id);
+      const rows2 = bySchool.get(sid) || [];
+      const t = totals.get(sid);
+      const n = t ? Number(t.n) || 0 : 0;
+      const avg = n ? r1(Number(t.wsum) / n) : null;
+      const trend = trends.get(sid) || [];
+      const recommendations = [];
+      if (avg != null && avg < 10) recommendations.push('میانگین مدرسه زیر حد قبولی است؛ برنامهٔ تقویتی فوری پیشنهاد می‌شود.');
+      for (const r of rows2) {
+        if (r.avg != null && r.avg < 10) recommendations.push(`کلاس «${r.name}» میانگین ${r.avg} دارد؛ کلاس جبرانی پیشنهاد می‌شود.`);
+        else if (r.pass_rate != null && r.pass_rate < 70) recommendations.push(`کلاس «${r.name}» نرخ قبولی ${r.pass_rate}٪ دارد؛ بازبینی روش تدریس پیشنهاد می‌شود.`);
+      }
+      if (!recommendations.length && avg != null) recommendations.push('وضعیت تحصیلی در محدودهٔ قابل قبول است؛ روند فعلی حفظ شود.');
+      return { school_id: s.id, school_name: s.name, avg, classes: rows2, trend, recommendations };
+    });
+
+    audit('report_generated', { user_id: user.id, kind: 'academic', term: termFilter, schools: out.length });
+    return {
+      status: 200,
+      body: {
+        ok: true, kind: 'academic', term: termFilter,
+        source: 'postgresql', schools: out,
+        pagination: {
+          limit, count: data.length, has_more: hasMore,
+          next_cursor: hasMore && data.length ? reportsSql.attendanceCursor(data[data.length - 1]) : null,
+          cursor: cursor || null
+        }
+      }
+    };
+  }
+
+  /* ════ ۲) پیشرفت تحصیلی ═════════════════════════════════════════ */
+  async function academicReport(req, urlParams) {
+    const user = req.user;
+    const gate = roleGate('academic', user); if (gate) return gate;
+
+    /* اعتبارسنجیِ استاندارد (P2): ورودیِ خراب ⇒ ۴۰۰ (نه NaN خاموشی که
+       در مسیرِ حافظه هیچ کلاسی را نمی‌گرفت و در SQL خطای نوع می‌داد) */
+    const tf = reportsSql.validateTerm(urlParams.get('term'));
+    if (!tf.ok) return bad('term نامعتبر است');
+    const cf = reportsSql.parseOptionalPositiveInt(urlParams.get('class_id'));
+    if (!cf.ok) return bad('class_id نامعتبر است');
+    const sf = reportsSql.validateSchoolId(urlParams.get('school_id'));
+    if (!sf.ok) return bad('school_id نامعتبر است');
+
+    const schools = scopedSchools(user, urlParams.get('school_id'));
+    if (schools === null) return deny();
+
+    const termFilter = tf.value;
+    const classFilter = cf.value;
+
+    /* PostgreSQL زنده ⇒ تجمیع در دیتابیس، نه پویشِ کلِ store.grades */
+    if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
+      return academicReportDb({ user, schools, termFilter, classFilter, urlParams });
+    }
+    const schoolIds = new Set(schools.map((s) => Number(s.id)));
+    const classes = (store.classes || []).filter((c) => c && schoolIds.has(Number(c.school_id))
+      && (classFilter == null || Number(c.id) === classFilter));
+    const classById = new Map(classes.map((c) => [Number(c.id), c]));
+
+    /* نمره‌ها بر مقیاسِ ۲۰ نرمال می‌شوند (max_score متغیر است) */
+    const norm = (g) => {
+      const mx = Number(g.max_score) || 20;
+      return mx > 0 ? (Number(g.score) / mx) * 20 : null;
+    };
+
+    const perClass = new Map(); /* class_id → {sum,count,pass} */
+    const perTerm = new Map(); /* school_id → term → {sum,count} — روند */
+    for (const g of (store.grades || [])) {
+      if (!g || !schoolIds.has(Number(g.school_id))) continue;
+      const v = norm(g);
+      if (v == null || !isFinite(v)) continue;
+      /* روند از همهٔ ترم‌ها می‌آید؛ جدول کلاس‌ها فقط از ترمِ فیلترشده */
+      let terms = perTerm.get(Number(g.school_id));
+      if (!terms) { terms = new Map(); perTerm.set(Number(g.school_id), terms); }
+      const tkey = g.term || '—';
+      let trow = terms.get(tkey);
+      if (!trow) { trow = { sum: 0, count: 0 }; terms.set(tkey, trow); }
+      trow.sum += v; trow.count++;
+
+      if (termFilter && g.term !== termFilter) continue;
+      if (!classById.has(Number(g.class_id))) continue;
+      let row = perClass.get(Number(g.class_id));
+      if (!row) { row = { sum: 0, count: 0, pass: 0 }; perClass.set(Number(g.class_id), row); }
+      row.sum += v; row.count++;
+      if (v >= 10) row.pass++;
+    }
+
+    const r1 = (n) => Math.round(n * 10) / 10;
+    const out = schools.map((s) => {
+      const rows = classes.filter((c) => Number(c.school_id) === Number(s.id)).map((c) => {
+        const agg = perClass.get(Number(c.id)) || { sum: 0, count: 0, pass: 0 };
+        return {
+          class_id: c.id, name: c.name, grade: c.grade || null,
+          count: agg.count,
+          avg: agg.count ? r1(agg.sum / agg.count) : null,
+          pass_rate: agg.count ? Math.round((agg.pass / agg.count) * 1000) / 10 : null
+        };
+      });
+      const all = rows.reduce((a, r) => { if (r.count) { a.sum += r.avg * r.count; a.count += r.count; } return a; }, { sum: 0, count: 0 });
+      const avg = all.count ? r1(all.sum / all.count) : null;
+      const trend = [...(perTerm.get(Number(s.id)) || new Map()).entries()]
+        .map(([term, t]) => ({ term, avg: t.count ? r1(t.sum / t.count) : null, count: t.count }));
+      /* توصیه‌های قاعده‌محور (شفاف و قابلِ‌آزمون — نه جعبه‌سیاه) */
+      const recommendations = [];
+      if (avg != null && avg < 10) recommendations.push('میانگین مدرسه زیر حد قبولی است؛ برنامهٔ تقویتی فوری پیشنهاد می‌شود.');
+      for (const r of rows) {
+        if (r.avg != null && r.avg < 10) recommendations.push(`کلاس «${r.name}» میانگین ${r.avg} دارد؛ کلاس جبرانی پیشنهاد می‌شود.`);
+        else if (r.pass_rate != null && r.pass_rate < 70) recommendations.push(`کلاس «${r.name}» نرخ قبولی ${r.pass_rate}٪ دارد؛ بازبینی روش تدریس پیشنهاد می‌شود.`);
+      }
+      if (!recommendations.length && avg != null) recommendations.push('وضعیت تحصیلی در محدودهٔ قابل قبول است؛ روند فعلی حفظ شود.');
+      return { school_id: s.id, school_name: s.name, avg, classes: rows, trend, recommendations };
+    });
+
+    audit('report_generated', { user_id: user.id, kind: 'academic', term: termFilter, schools: out.length });
+    return { status: 200, body: { ok: true, kind: 'academic', term: termFilter, schools: out } };
+  }
+
+  /* ── مسیر DB-native گزارشِ مالی (تکمیلِ Wave 23) ────────────────
+     سه تجمیعِ FILTER‌دار روی tuitions/installments/scholarships —
+     bounded به مدارسِ شهریه‌دارِ دامنه. «امروز» به‌صورتِ پارامتر از همان
+     عبارتی می‌آید که مسیرِ حافظه می‌سازد تا دو مسیر روی «حالا» اختلاف
+     نداشته باشند. ستون‌های پولیِ VARCHAR با castِ هم‌ارزِ Number()||0. */
+  async function financeReportDb({ user, tuitionSchools }) {
+    const ids = tuitionSchools.map((s) => Number(s.id));
+    const read = (typeof db.queryRead === 'function') ? db.queryRead.bind(db) : db.query.bind(db);
+    const today = new Date().toISOString().slice(0, 10);
+
+    let tuit = new Map(), inst = new Map(), schol = new Map();
+    if (ids.length) {
+      const tB = reportsSql.buildFinanceTuitions({ schoolIds: ids });
+      const iB = reportsSql.buildFinanceInstallments({ schoolIds: ids, today });
+      const sB = reportsSql.buildFinanceScholarships({ schoolIds: ids });
+      const [tR, iR, sR] = await Promise.all([read(tB.sql, tB.params), read(iB.sql, iB.params), read(sB.sql, sB.params)]);
+      for (const r of ((tR && tR.rows) || [])) tuit.set(Number(r.school_id), r);
+      for (const r of ((iR && iR.rows) || [])) inst.set(Number(r.school_id), r);
+      for (const r of ((sR && sR.rows) || [])) schol.set(Number(r.school_id), r);
+    }
+
+    const out = tuitionSchools.map((s) => {
+      const sid = Number(s.id);
+      const t = tuit.get(sid);
+      const i = inst.get(sid);
+      const sc = schol.get(sid);
+      const tuitions = t ? {
+        count: Number(t.cnt) || 0, total: Number(t.total) || 0, discount: Number(t.discount) || 0,
+        payable: Number(t.payable) || 0, paid: Number(t.paid) || 0
+      } : { count: 0, total: 0, discount: 0, payable: 0, paid: 0 };
+      const installments = i ? {
+        paid: Number(i.paid) || 0, pending: Number(i.pending) || 0, partial: Number(i.partial) || 0,
+        canceled: Number(i.canceled) || 0, overdue: Number(i.overdue) || 0,
+        paid_amount: Number(i.paid_amount) || 0, due_amount: Number(i.due_amount) || 0
+      } : { paid: 0, pending: 0, partial: 0, canceled: 0, overdue: 0, paid_amount: 0, due_amount: 0 };
+      const scholarships = sc
+        ? { count: Number(sc.cnt) || 0, approved: Number(sc.approved) || 0 }
+        : { count: 0, approved: 0 };
+      const collect = tuitions.payable ? Math.round((tuitions.paid / tuitions.payable) * 1000) / 10 : null;
+      return {
+        school_id: s.id, school_name: s.name,
+        school_type: s.school_type || s.type || 'governmental',
+        tuitions, installments, scholarships,
+        collection_rate: collect
+      };
+    });
+
+    audit('report_generated', { user_id: user.id, kind: 'finance', schools: out.length });
+    return { status: 200, body: { ok: true, kind: 'finance', source: 'postgresql', schools: out } };
+  }
+
+  /* ════ ۳) گزارش مالی (مدارس شهریه‌دار: شاهد/غیرانتفاعی/…) ═══════ */
+  async function financeReport(req, urlParams) {
+    const user = req.user;
+    const gate = roleGate('finance', user); if (gate) return gate;
+
+    /* اعتبارسنجیِ استاندارد (P2) */
+    const sf = reportsSql.validateSchoolId(urlParams.get('school_id'));
+    if (!sf.ok) return bad('school_id نامعتبر است');
+
+    const schools = scopedSchools(user, urlParams.get('school_id'));
+    if (schools === null) return deny();
+
+    /* فقط مدارسِ دارای قابلیتِ شهریه — درخواستِ صریحِ مدرسهٔ بدونِ شهریه
+       با 400 پاسخ می‌گیرد تا UI پیامِ درست بدهد */
+    const tuitionSchools = schools.filter(schoolHasTuition);
+    if (urlParams.get('school_id') && !tuitionSchools.length) {
+      return bad('این مدرسه قابلیت شهریه ندارد (فقط شاهد/غیرانتفاعی و مشابه)');
+    }
+
+    /* PostgreSQL زنده ⇒ سه تجمیعِ SQL، نه سه پویشِ کاملِ حافظه */
+    if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
+      return financeReportDb({ user, tuitionSchools });
+    }
+    const schoolIds = new Set(tuitionSchools.map((s) => Number(s.id)));
+
+    const agg = new Map(); /* school_id → تجمیع */
+    const blank = () => ({
+      tuitions: { count: 0, total: 0, discount: 0, payable: 0, paid: 0 },
+      installments: { paid: 0, pending: 0, partial: 0, canceled: 0, overdue: 0, paid_amount: 0, due_amount: 0 },
+      scholarships: { count: 0, approved: 0 }
+    });
+    const today = new Date().toISOString().slice(0, 10);
+    for (const t of (store.tuitions || [])) {
+      if (!t || !schoolIds.has(Number(t.school_id))) continue;
+      let a = agg.get(Number(t.school_id)); if (!a) { a = blank(); agg.set(Number(t.school_id), a); }
+      a.tuitions.count++;
+      a.tuitions.total += Number(t.total) || 0;
+      a.tuitions.discount += Number(t.discount) || 0;
+      a.tuitions.payable += Number(t.payable) || 0;
+      a.tuitions.paid += Number(t.paid) || 0;
+    }
+    for (const i of (store.installments || [])) {
+      if (!i || !schoolIds.has(Number(i.school_id))) continue;
+      let a = agg.get(Number(i.school_id)); if (!a) { a = blank(); agg.set(Number(i.school_id), a); }
+      const st = ['paid', 'pending', 'partial', 'canceled'].indexOf(i.status) > -1 ? i.status : 'pending';
+      a.installments[st]++;
+      a.installments.paid_amount += Number(i.paid_amount) || 0;
+      if (st !== 'canceled') a.installments.due_amount += Number(i.amount) || 0;
+      if ((st === 'pending' || st === 'partial') && i.due_date && String(i.due_date) < today) a.installments.overdue++;
+    }
+    for (const sc of (store.scholarships || [])) {
+      if (!sc || !schoolIds.has(Number(sc.school_id))) continue;
+      let a = agg.get(Number(sc.school_id)); if (!a) { a = blank(); agg.set(Number(sc.school_id), a); }
+      a.scholarships.count++;
+      if (sc.status === 'approved') a.scholarships.approved++;
+    }
+
+    const out = tuitionSchools.map((s) => {
+      const a = agg.get(Number(s.id)) || blank();
+      const collect = a.tuitions.payable ? Math.round((a.tuitions.paid / a.tuitions.payable) * 1000) / 10 : null;
+      return {
+        school_id: s.id, school_name: s.name,
+        /* همان رفعِ schoolHasTuition: ردیفِ PG-شکل نوع را در `type` دارد */
+        school_type: s.school_type || s.type || 'governmental',
+        tuitions: a.tuitions, installments: a.installments, scholarships: a.scholarships,
+        collection_rate: collect
+      };
+    });
+
+    audit('report_generated', { user_id: user.id, kind: 'finance', schools: out.length });
+    return { status: 200, body: { ok: true, kind: 'finance', schools: out } };
+  }
+
+  /* ── مسیر DB-native گزارشِ معلمان (تکمیلِ Wave 23) ──────────────
+     یک صفحهٔ keyset روی (school_id, staff_id) از سه تجمیعِ CTE
+     (حضورِ کادرِ ماه + جانشینیِ ماه + کلِ دوره‌های ضمنِ خدمت) و یک
+     lookup نام/نقش فقط برای همان صفحه. جمعِ مدرسه روی کلِ دامنه. */
+  async function teachersReportDb({ user, mp, schools, urlParams }) {
+    const scopeIds = schools.map((s) => Number(s.id));
+    const range = reportsSql.jalaliMonthRange(mp.jy, mp.jm);
+    const limit = reportsSql.clampLimit(urlParams.get('limit'));
+    const cursor = urlParams.get('cursor') || null;
+    const read = (typeof db.queryRead === 'function') ? db.queryRead.bind(db) : db.query.bind(db);
+
+    const pageBuilt = reportsSql.buildTeachersStaffPage({
+      schoolIds: scopeIds, from: range.from, to: range.to, limit, cursor
+    });
+    const pageRes = await read(pageBuilt.sql, pageBuilt.params);
+    const rows = (pageRes && Array.isArray(pageRes.rows)) ? pageRes.rows : [];
+    const hasMore = rows.length > limit;
+    const data = hasMore ? rows.slice(0, limit) : rows;
+
+    /* نام/نقش فقط برای staffهای همین صفحه — bounded */
+    const staffIds = [...new Set(data.map((r) => Number(r.staff_id)))];
+    let names = new Map();
+    if (staffIds.length) {
+      const uB = reportsSql.buildUsersByIds({ ids: staffIds });
+      const uR = await read(uB.sql, uB.params);
+      for (const r of ((uR && uR.rows) || [])) names.set(Number(r.id), r);
+    }
+
+    const bySchool = new Map();
+    for (const r of data) {
+      const sid = Number(r.school_id);
+      if (!bySchool.has(sid)) bySchool.set(sid, []);
+      const u = names.get(Number(r.staff_id));
+      const present = Number(r.present) || 0, absent = Number(r.absent) || 0, late = Number(r.late) || 0;
+      const total = present + absent + late;
+      bySchool.get(sid).push({
+        school_id: sid, staff_id: Number(r.staff_id),
+        name: u ? u.full_name : ('#' + r.staff_id), role: u ? u.role : null,
+        present, absent, late,
+        substitutions: Number(r.substitutions) || 0,
+        training_hours: Number(r.training_hours) || 0,
+        training_done: Number(r.training_done) || 0,
+        attendance_rate: total ? Math.round(((present + late) / total) * 1000) / 10 : null
+      });
+    }
+    /* یافتهٔ بازبینِ PR #120 (red-first): شرطِ قبلی `hasMore ? صفحه : همه` در
+       صفحهٔ آخرِ یک پیمایشِ چندصفحه‌ای (hasMore=false ولی cursor حاضر) کلِ
+       دامنه را برمی‌گرداند و مدارسِ مصرف‌شدهٔ صفحاتِ قبل با ردیفِ خالی تکرار
+       می‌شدند. قراردادِ یکنواخت: پاسخِ «صفحه‌دار» (cursor یا has_more) فقط
+       مدارسِ دارایِ ردیفِ همین صفحه؛ پاسخِ تک‌صفحه‌ای همهٔ دامنه (هم‌ارز با
+       مسیرِ حافظه — سنجهٔ parity همین را قفل می‌کند). */
+    const paged = hasMore || (cursor != null && cursor !== '');
+    const list = paged ? schools.filter((s) => bySchool.has(Number(s.id))) : schools;
+    const listIds = list.map((s) => Number(s.id));
+
+    let totals = new Map();
+    if (listIds.length) {
+      const tB = reportsSql.buildTeachersSchoolTotals({ schoolIds: listIds, from: range.from, to: range.to });
+      const tR = await read(tB.sql, tB.params);
+      for (const r of ((tR && tR.rows) || [])) totals.set(Number(r.school_id), r);
+    }
+
+    const out = list.map((s) => {
+      const sid = Number(s.id);
+      const t = totals.get(sid);
+      const tot = t ? {
+        present: Number(t.present) || 0, absent: Number(t.absent) || 0, late: Number(t.late) || 0,
+        substitutions: Number(t.substitutions) || 0, training_hours: Number(t.training_hours) || 0
+      } : { present: 0, absent: 0, late: 0, substitutions: 0, training_hours: 0 };
+      return { school_id: s.id, school_name: s.name, staff: bySchool.get(sid) || [], totals: tot };
+    });
+
+    audit('report_generated', { user_id: user.id, kind: 'teachers', jy: mp.jy, jm: mp.jm, schools: out.length });
+    return {
+      status: 200,
+      body: {
+        ok: true, kind: 'teachers', jy: mp.jy, jm: mp.jm,
+        source: 'postgresql', schools: out,
+        pagination: {
+          limit, count: data.length, has_more: hasMore,
+          next_cursor: hasMore && data.length ? reportsSql.teachersCursor(data[data.length - 1]) : null,
+          cursor: cursor || null
+        }
+      }
+    };
+  }
+
+  /* ════ ۴) عملکرد معلمان ═════════════════════════════════════════ */
+  async function teachersReport(req, urlParams) {
+    const user = req.user;
+    const gate = roleGate('teachers', user); if (gate) return gate;
+    const mp = monthParams(urlParams);
+    if (!mp) return bad('سال/ماه شمسی نامعتبر است');
+
+    /* اعتبارسنجیِ استاندارد (P2) */
+    const sf = reportsSql.validateSchoolId(urlParams.get('school_id'));
+    if (!sf.ok) return bad('school_id نامعتبر است');
+
+    const schools = scopedSchools(user, urlParams.get('school_id'));
+    if (schools === null) return deny();
+
+    /* PostgreSQL زنده ⇒ تجمیع در دیتابیس، نه سه پویشِ کاملِ حافظه */
+    if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
+      return teachersReportDb({ user, mp, schools, urlParams });
+    }
+    const schoolIds = new Set(schools.map((s) => Number(s.id)));
+
+    const usersById = new Map();
+    for (const u of (store.users || [])) if (u && u.id != null) usersById.set(Number(u.id), u);
+
+    const perStaff = new Map(); /* school_id:staff_id → شمارنده‌ها */
+    const key = (sid, tid) => sid + ':' + tid;
+    const rowOf = (sid, tid) => {
+      let r = perStaff.get(key(sid, tid));
+      if (!r) {
+        const u = usersById.get(Number(tid));
+        r = { school_id: Number(sid), staff_id: Number(tid), name: u ? u.full_name : ('#' + tid), role: u ? u.role : null, present: 0, absent: 0, late: 0, substitutions: 0, training_hours: 0, training_done: 0 };
+        perStaff.set(key(sid, tid), r);
+      }
+      return r;
+    };
+
+    for (const rec of (store.staff_attendance || [])) {
+      if (!rec || !schoolIds.has(Number(rec.school_id))) continue;
+      const j = isoToJ(rec.date);
+      if (!j || j[0] !== mp.jy || j[1] !== mp.jm) continue;
+      const r = rowOf(rec.school_id, rec.staff_id);
+      const st = ['present', 'absent', 'late'].indexOf(rec.status) > -1 ? rec.status : 'absent';
+      r[st]++;
+    }
+    for (const rec of (store.substitutions || [])) {
+      if (!rec || !schoolIds.has(Number(rec.school_id))) continue;
+      const j = isoToJ(rec.date);
+      if (!j || j[0] !== mp.jy || j[1] !== mp.jm) continue;
+      rowOf(rec.school_id, rec.sub_teacher_id).substitutions++;
+    }
+    /* دوره‌های ضمن خدمت: تجمیعِ کلِ سال — ساعتِ آموزش، شاخصِ ماهانه نیست */
+    for (const rec of (store.training_courses || [])) {
+      if (!rec || !schoolIds.has(Number(rec.school_id))) continue;
+      const r = rowOf(rec.school_id, rec.staff_id);
+      r.training_hours += Number(rec.hours) || 0;
+      if (rec.status === 'completed' || rec.status === 'done') r.training_done++;
+    }
+
+    const out = schools.map((s) => {
+      const staff = [...perStaff.values()].filter((r) => r.school_id === Number(s.id))
+        .map((r) => {
+          const total = r.present + r.absent + r.late;
+          return Object.assign({}, r, {
+            attendance_rate: total ? Math.round(((r.present + r.late) / total) * 1000) / 10 : null
+          });
+        })
+        .sort((a, b) => a.staff_id - b.staff_id);
+      const tot = staff.reduce((a, r) => { a.present += r.present; a.absent += r.absent; a.late += r.late; a.substitutions += r.substitutions; a.training_hours += r.training_hours; return a; },
+        { present: 0, absent: 0, late: 0, substitutions: 0, training_hours: 0 });
+      return { school_id: s.id, school_name: s.name, staff, totals: tot };
+    });
+
+    audit('report_generated', { user_id: user.id, kind: 'teachers', jy: mp.jy, jm: mp.jm, schools: out.length });
+    return { status: 200, body: { ok: true, kind: 'teachers', jy: mp.jy, jm: mp.jm, schools: out } };
+  }
+
+  return { attendanceReport, academicReport, financeReport, teachersReport };
+}
+
+module.exports = { createReportsRoutes };

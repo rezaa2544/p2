@@ -12,7 +12,8 @@
 
 const { validate, validateSyncEnvelope, validateSyncData } = require('./validate');
 const cache = require('./cache');
-const vvec = require('./version-vector');
+/* ویو ۱۴ (Observability) — شمارِ تعارض‌هایِ همگام‌سازی (سیگنالِ OCC). */
+const metrics = require('./metrics');
 
 /* Core mirror of the client's ACTION_ROLES table for WRITE operations.
    The full table mirror is the next phase (AD.md §14) — unknown
@@ -38,6 +39,7 @@ const vvec = require('./version-vector');
    و diff می‌کند — جدولِ کهنه = build قرمز. بخشِ `actions` همان نقشهٔ
    صریحِ «اکشن ← نقش‌ها + مجموعه‌هایِ قابلِ نوشتن» است. */
 const WR = require('../authz/write-perms.json');
+const policy = require('./policy'); /* ویو ۵ — مدل یکتای محدوده/مالکیت */
 const AUTHZ = (function(){
   const out = {};
   for (const c of Object.keys(WR.ops)){
@@ -100,6 +102,7 @@ const STATUS_UPD_ROLE = {
   internships: ['teacher'],                  /* تأییدِ ساعتِ کارآموزی */
   nudges: ['teacher'],                       /* پاسخِ دبیر */
   parent_subscriptions: ['parent'],          /* وضعیتِ اشتراکِ خود */
+  assets: ['teacher'],                       /* E.5 — تحویلدار (پرچم+مدرسه در inScope) */
 };
 
 /**
@@ -241,7 +244,6 @@ function dropUsersUpdate(s, op){
 const VERSIONED = { grades: 1, attendance: 1, discipline: 1 };
 const STRUCTURAL = { schools: 1, classes: 1, subjects: 1, users: 1, enrollments: 1, schedule: 1 };
 const VERSION_TRACKED = Object.assign({}, VERSIONED, STRUCTURAL);
-const SERVER_NODE_ID = vvec.cleanNodeId(process.env.PAYESH_NODE_ID || 'server');
 
 /* ── R98 — field-level authorization: generic FIELD_ALLOWLISTS for all
    collections + explicit policy for the forbidden set.
@@ -340,12 +342,6 @@ function filterFields(op, collection, role){
   if(fa){
     const d = (op && op.data) || {};
     const isMgr = role === 'manager' || role === 'superadmin';
-    /* E.8: دبیر فقط حضور کلاس تابستانیِ خودش را ثبت می‌کند؛
-       ثبت‌نام/انصراف/تغییر دانش‌آموز با مدیر است. */
-    if(collection === 'summer_enrollments' && op.t === 'upd' && role === 'teacher'){
-      const ok = Object.keys(d).length > 0 && Object.keys(d).every(k => k === 'attendance' || k === 'updated_at');
-      if(!ok) return { kind: 'reject_op', code: 'field_denied' };
-    }
     /* R96 P0-1: دروازهٔ status (insِ مقدارِ اولیه + updِ نقش) تک‌منبع —
        fieldGate. اینجا فقط نرمال‌سازیِ نبودِ status می‌ماند.
        R98: defaultRoles/statusValues فقط برایِ leaves تعریف‌اند (entryهایِ
@@ -373,138 +369,16 @@ function filterFields(op, collection, role){
   return null;
 }
 
-/* #4 — is the target record inside this user's scope? Real records
-   from the store; unknown ids fail closed. */
+/* #4 — محدوده/مالکیت: ویو ۵ بخش دوم — مدلِ یکتا در `server/policy.js`.
+   sync دیگر سیاستِ موازی ندارد؛ این‌جا فقط «درِ» دسترسی با همان امضا و
+   همان store تزریق‌شده است. رفتار بیت‌به‌بیت حفظ شده (آزمون برابریِ
+   ۳۸٬۳۳۶ ترکیبی روی فروشگاه واقعی + سوئیت‌های T5b/server16).
+   EO_SCOPE_GATED: نشانهٔ سازگاری — منبع حقیقت در policy است؛ این نام
+   فقط re-export است تا مصرف‌کنندگانِ داخلیِ همین فایل یکسان بخوانند. */
+const EO_SCOPE_GATED = policy.EO_SCOPE_GATED;
+
 function inScope(session, coll, recId, data){
-  const u = session;
-  if(u.role === 'superadmin') return true;
-  const rec = recId != null ? (store_get(coll).find(x => x.id === Number(recId))) : null;
-  function store_get(c){ return (get_store() || {})[c] || []; }
-
-  /* Round 89 — ownership that does not ride on student_id:
-     messages  : for record-scoped roles (student/parent/teacher) the sender (from_id)
-                 owns the record — chat (fail-closed without from_id).
-                 manager/edu_office keep the pre-existing school-level path (S20).
-     notifications: the recipient (user_id) may update their own record (read badge) */
-  function msgOwnerOk(){
-    const f = (data && data.from_id != null) ? Number(data.from_id)
-             : (rec && rec.from_id != null) ? Number(rec.from_id) : null;
-    return f != null && f === u.id;
-  }
-  /* R90 — scoped to parent/student (manager/teacher keep the school-level path):
-     own notification => read flag ONLY (title/body/etc. stay manager-domain) */
-  if(coll === 'notifications' && rec && Number(rec.user_id) === u.id
-     && (u.role === 'parent' || u.role === 'student')){
-    const nk = Object.keys(data || {});
-    return nk.length > 0 && nk.every(k => k === 'read');
-  }
-
-  /* ب.۳ — ارزشیابی ناشناس معلم: رکورد عمداً هیچ فیلد هویتی ندارد، پس
-     مالکیت به «مدرسهٔ پاسخ‌دهنده» گره می‌خورد:
-     - دانش‌آموز: فقط مدرسهٔ خودش
-     - ولی: فقط مدرسهٔ فرزندانش (از parent_links)
-     - بقیهٔ نقش‌ها: رد (درج/ویرایش/حذف) — نقش‌های مجازِ مدل هم فقط
-       دانش‌آموز و ولی‌اند و دروازهٔ نقش جداگانه نگهبانی می‌کند. */
-  if(coll === 'summer_enrollments'){
-    const clsId = (data && data.summer_class_id != null) ? Number(data.summer_class_id)
-                 : (rec && rec.summer_class_id != null ? Number(rec.summer_class_id) : null);
-    const cls = clsId != null ? (get_store().summer_classes || []).find(c => Number(c.id) === clsId) : null;
-    if(!cls) return false;
-    const studentId = (data && data.student_id != null) ? Number(data.student_id)
-                    : (rec && rec.student_id != null ? Number(rec.student_id) : null);
-    if(studentId != null){
-      const st = (get_store().users || []).find(x => Number(x.id) === studentId && x.role === 'student');
-      if(!st || Number(st.school_id) !== Number(cls.school_id)) return false;
-    }
-    if(u.role === 'teacher') return Number(cls.teacher_id) === Number(u.id);
-    if(u.role === 'manager') return Number(cls.school_id) === Number(u.school_id);
-    if(u.role === 'superadmin') return true;
-    return false;
-  }
-
-  if(coll === 'teacher_evaluations'){
-    if(u.role === 'student'){
-      return !!(data && Number(data.school_id) === Number(u.school_id));
-    }
-    if(u.role === 'parent'){
-      const kids = (get_store().parent_links || []).filter(l => l.parent_id === u.id).map(l => Number(l.student_id));
-      const kidSchools = kids.map(kid => {
-        const k = (get_store().users || []).find(x => x.id === kid);
-        return k && Number(k.school_id);
-      }).filter(x => x != null);
-      return !!(data && kidSchools.indexOf(Number(data.school_id)) > -1);
-    }
-    return false;
-  }
-
-  if(u.role === 'student'){
-    if(coll === 'messages') return msgOwnerOk();
-    if(coll === 'users' && rec && rec.id === u.id) return true;
-    if(rec && rec.student_id != null) return rec.student_id === u.id;
-    if(data && data.student_id != null) return Number(data.student_id) === u.id;
-    return false;
-  }
-  if(u.role === 'parent'){
-    if(coll === 'messages') return msgOwnerOk();
-    const kids = (get_store().parent_links || []).filter(l => l.parent_id === u.id).map(l => l.student_id);
-    /* R96: رزرو نوبت — رکوردِ نوبتِ آزاد student_id ندارد، پس مالکیت
-       از data.student_id (فرزندِ خود) می‌آید؛ وگرنه مجوزِ مدل برای
-       parent×meeting_slots×upd با inScope قابلِ اجرا نبود. */
-    if(coll === 'meeting_slots' && !rec && data && data.student_id != null)
-      return kids.indexOf(Number(data.student_id)) > -1;
-    if(coll === 'meeting_slots' && data && data.student_id != null && rec && rec.student_id == null)
-      return kids.indexOf(Number(data.student_id)) > -1;
-    const sid = rec ? rec.student_id : (data && data.student_id);
-    /* Round 89 — parent_links (kid-reject flow removes their own link):
-       a NEW link must belong to the parent themselves (no forging links for others) */
-    if(coll === 'parent_links' && !rec && data && Number(data.parent_id) !== u.id) return false;
-    if(sid == null) return !!(rec && rec.parent_id === u.id);
-    return kids.indexOf(Number(sid)) > -1;
-  }
-  if(u.role === 'teacher'){
-    if(coll === 'messages') return msgOwnerOk();
-    /* Round 89 — class-level collections: a teacher is bound to classes they actually
-       teach (homeroom or schedule) — fail-closed for any other class.
-       meeting_slots: their own slots (created with parent_id/student_id null). */
-    const t2 = rec || data || {};
-    if(coll === 'meeting_slots' && t2.teacher_id != null){
-      return Number(t2.teacher_id) === u.id;
-    }
-    if((coll === 'hw_assignments' || coll === 'vclass_sessions') && t2.class_id != null){
-      const cls2 = (get_store().classes || []).find(c => c.id === Number(t2.class_id));
-      if(!cls2) return false;
-      if(cls2.homeroom_teacher_id === u.id) return true;
-      return (get_store().schedule || []).some(x => x.class_id === cls2.id && x.teacher_id === u.id);
-    }
-    const sid = rec ? rec.student_id : (data && data.student_id);
-    if(sid != null){
-      const enr = (get_store().enrollments || []).find(e => e.student_id === Number(sid));
-      if(!enr) return false;
-      const cls = (get_store().classes || []).find(c => c.id === enr.class_id);
-      if(!cls) return false;
-      if(cls.homeroom_teacher_id === u.id) return true;
-      return (get_store().schedule || []).some(s => s.class_id === cls.id && s.teacher_id === u.id);
-    }
-    if(rec && rec.teacher_id != null) return rec.teacher_id === u.id;
-    if(rec && rec.school_id != null) return rec.school_id === u.school_id;
-    return false;
-  }
-  /* manager / edu_office: school-level */
-  if(u.role === 'edu_office') return true; /* اداره = مرجعِ بین‌مدرسه (مثلِ مدل) */
-  const s = rec ? rec.school_id : (data && data.school_id);
-  if(s == null){
-    /* R96: مجموعه‌هایِ بدونِ school_id (مثلِ hw_submissions) — scope از
-       رشتهٔ student → enrollment → class → school حل می‌شود (fail-closed). */
-    const sid2 = (rec && rec.student_id != null) ? rec.student_id
-             : (data && data.student_id != null ? data.student_id : null);
-    if(sid2 != null){
-      const enr = (get_store().enrollments || []).find(e => e.student_id === Number(sid2));
-      const cls = enr && (get_store().classes || []).find(c => c.id === enr.class_id);
-      if(cls) return Number(cls.school_id) === Number(u.school_id);
-    }
-    return false;
-  }
-  return s === u.school_id;
+  return policy.inScope(session, get_store(), coll, recId, data);
 }
 
 /* get_store is injected so the module stays pure-ish and testable */
@@ -558,6 +432,35 @@ function virtualDayViolation(op, store){
   }
   return null;
 }
+/* S2-2 (موج ۴): مبنایِ «آفلاینِ» تصمیمِ روزِ مجازی. برمی‌گرداند {schoolId,
+   date} فقط وقتی (۱) شکلِ عملیات از آنِ گیتِ فیزیکی است و روزِ مؤثر از
+   op.atِ ادعایی آمده (نه از دادهٔ رکورد)، (۲) آن روز با امروزِ سرور فرق
+   دارد، و (۳) امروزِ سرور برایِ همان مدرسه مجازی است — یعنی واگراییِ ساعتِ
+   کلاینت در تصمیمِ «مجاز» مؤثر بوده و باید ردِّ پا داشته باشد. در غیرِ این
+   صورت null (روزِ عادی، یا تاریخی که سرور هم قبول دارد → بی‌سر‌و‌صدا).
+   خالص؛ در تست واحد صدا زده می‌شود. */
+function virtualDayOfflineBasis(op, store){
+  const c = op.c;
+  const d = op.data || {};
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const day = isoDay(op.at || '');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(day) || day === todayIso) return null;
+  let schoolId = null;
+  if(c === 'assets' && op.t === 'upd' && d.status === 'in_use'){
+    const rec = (store.assets || []).find(x => x.id === Number(op.id != null ? op.id : d.id));
+    if(!rec) return null;
+    schoolId = rec.school_id;
+  }else if(c === 'lib_loans' && op.t === 'ins' && d.loan_at == null){
+    schoolId = d.school_id;
+  }else if(c === 'visitors' && op.t === 'ins' && d.in_at == null){
+    schoolId = d.school_id;
+  }else{
+    return null;
+  }
+  if(schoolId == null) return null;
+  if(!isVirtualDay(store, schoolId, todayIso)) return null;
+  return { schoolId: schoolId, date: day };
+}
 
 function nextId(c){
   let m = 0;
@@ -588,6 +491,154 @@ function createSync(ctx){
   const audit = ctx.audit;
   const sessionFrom = ctx.sessionFrom;
   const sendJson = ctx.sendJson;
+  const ids = ctx.ids || null; /* Wave 1: ids service for server-assigned ids (PG sequences when live) */
+
+  /* ── Backpressure (Delta Phase 4, gap 1) ────────────────────────────
+     دروازهٔ نرخ روی «تعداد op در پنجرهٔ ۶۰ثانیه‌ای به‌ازای نشست» با همان
+     موتورِ توزیع‌شدهٔ rate-limit.js (Redis در تولید، fallback درون‌حافظه‌ای در
+     dev/test). خطای موتور = fail-open (اجازه) — لبهٔ سختِ نرخ نزدِ
+     nginx/Cloudflare می‌ماند؛ این دروازه برای «مهارِ مؤدبانهٔ کلاینتِ مشتاق»
+     است، نه DDoS. ctx.rateLimit تزریق می‌شود (index.js)؛ نبودنش (تست‌های
+     قدیمی) یعنی بدونِ سقف — رفتارِ پیشین. */
+  const rateLimit = ctx.rateLimit || null;
+  const syncOpsPerMinute = () => {
+    const n = Number(ctx.syncOpsPerMin != null ? ctx.syncOpsPerMin : process.env.PAYESH_SYNC_OPS_PER_MIN);
+    if (!Number.isFinite(n)) return 5000; /* پیش‌فرض: سخاوتمندانه — فقط مشتاق‌های واقعی مهار می‌شوند */
+    return Math.min(1000000, Math.max(100, Math.trunc(n)));
+  };
+
+  /* Wave 1: server-assigned ids come from the ids service (PG sequences when live,
+     local max+1 -- same values as nextId -- in memory mode) so two instances never
+     collide. Legacy local max+1 stays as the fallback when no ids service was
+     injected (older tests). */
+  async function serverId(c){
+    if(ids && typeof ids.nextId === 'function'){
+      try{ return await ids.nextId(c, store[c] || []); }catch(e){ /* fall through */ }
+    }
+    return nextId(c);
+  }
+
+  /* ═══ P0-6 — مهارِ رشدِ آینهٔ درون‌حافظه‌ای در PG-live ═══════════════
+     یافتهٔ کمّی Wave 18 §۵-۳: هر op پذیرفته‌شده (و هر missِ hydrate از PG)
+     به آینهٔ store اضافه می‌شد بدون سقف — ۱۰,۴۸۸B به‌ازایِ هر نوشتن؛ در سوکِ
+     زیرِ بار یعنی رشدِ خطیِ حافظه. مهار:
+     • mirrorAppend: push + ثبت در growthLog؛ وقتی رشدِ بعد از بوت از سقف گذشت
+       (PAYESH_PG_MIRROR_GROWTH_CAP؛ پیش‌فرض PG-live=50000، memory=0=بی‌سقف)
+       قدیمی‌ترینِ رشد‌ها batch-wise حذف می‌شوند (تا سقف برگردند). رکوردهای
+       هیدراته‌شده در بوت دست‌نخورده می‌مانند.
+     • pruneProcessedUids: __processed_uids هم بی‌سقف رشد می‌کرد؛ سقف
+       (PAYESH_UID_DEDUP_MAX؛ پیش‌فرض PG-live=20000، memory=0) با حذفِ
+       قدیمی‌ترین‌ها (بر اساسِ timestamp ذخیره‌شده) نگه داشته می‌شود.
+       dedup تازه پوشش کامل دارد (پنجرهٔ اخیر) و در استقرارِ چندنمونه‌ای،
+       Redis (cache.markProcessedUid با TTL 24h) مرجعِ اشتراکی است.
+     اعدادِ پیش‌فرض محافظه‌کارانه‌اند تا در دپلوی‌های کوچکِ موجود رفتار
+     عملاً تغییر نکند (هرگز به سقف نمی‌رسند). */
+  const growthLog = {};   /* [c] → idهایی که بعد از بوت به آینه افزودیم */
+  function mirrorGrowthCap(){
+    if(!(db && typeof db.isPostgres === 'function' && db.isPostgres())) return 0;
+    const n = Number(process.env.PAYESH_PG_MIRROR_GROWTH_CAP);
+    return Number.isFinite(n) && n >= 0 ? n : 50000;
+  }
+  /* بازخورد بازبین PR #103 (باگ ۱): هرسِ آینه، دسترسیِ معتبر را می‌شکند —
+     دروازهٔ محدوده (policy.js:inScope) رکوردِ هدف و وابستگی‌های مجوز
+     (users/parent_links/enrollments/classes/schedule/schools/offices) را
+     فقط از آینه می‌خواند و خطای کش را با PG جبران نمی‌کند. پس هیچ
+     مجموعه‌ای به‌طور پیش‌فرض هرس نمی‌شود؛ فقط مجموعه‌های صراحتاً لیست‌شده
+     در PAYESH_PG_MIRROR_PRUNE_SAFE (جداشده با کاما) — انتخابِ اپراتورِ
+     بار/استیجینگ که پذیرفته رکوردهای قدیمیِ درج‌شده از آینه محلی بیایند.
+     لیستِ خالی (پیش‌فرض) = هرس هرگز — رفتارِ پیش از P0-6 برای مجوزها. */
+  function mirrorPruneSafe(){
+    if(!(db && typeof db.isPostgres === 'function' && db.isPostgres())) return [];
+    /* P1-2: sync_conflicts = صفِ داوریِ انسانی — تنها read-pathی که زنده از
+       آینه می‌خواند (conflicts.js؛ pull از db.readCollection یعنی PG می‌خواند)
+       و بالذاتِ bounded است (resolve ⇒ del). همیشه در لیستِ سفید، فارغ از env. */
+    const env = String(process.env.PAYESH_PG_MIRROR_PRUNE_SAFE || '')
+      .split(',').map((s) => s.trim()).filter(Boolean);
+    return env.indexOf('sync_conflicts') === -1 ? env.concat(['sync_conflicts']) : env;
+  }
+  function uidDedupMax(){
+    if(!(db && typeof db.isPostgres === 'function' && db.isPostgres())) return 0;
+    const n = Number(process.env.PAYESH_UID_DEDUP_MAX);
+    return Number.isFinite(n) && n >= 0 ? n : 20000;
+  }
+  /* P1-2 (Wave 18 §۵-۳): dedup با TTL — پیش‌فرض ۲۴h، هم‌پنجرهٔ کشِ Redis
+     (cache.markProcessedUid خودش TTL 24h دارد). این TTL برای سقفِ حافظهٔ
+     in-memory است، نه تضعیفِ idempotency: مرجعِ رد، PG (server_processed_uids)
+     و کش است و دست‌نخورده می‌ماند. */
+  function uidDedupTtlMs(){
+    /* باگ ۱ (بازبین دور ۱ #124): در حالتِ حافظه‌ای، __processed_uids تنها
+       مرجعِ idempotency است (PG/کش در کار نیست) — TTL آنجا نباید بسوزد وگرنه
+       بازپخش‌های دیرهنگام دوباره اعمال می‌شوند. TTL فقط وقتی فعال است که
+       مرجعِ پایدار (PG server_processed_uids / کشِ اشتراکی) هست — الگوی uidDedupMax. */
+    if(!(db && typeof db.isPostgres === 'function' && db.isPostgres())) return 0;
+    const n = Number(process.env.PAYESH_UID_DEDUP_TTL_MS);
+    return Number.isFinite(n) && n >= 0 ? n : 24 * 3600 * 1000;
+  }
+  function mirrorAppend(c, row){
+    if(row == null) return row;
+    if(!Array.isArray(store[c])) store[c] = [];
+    store[c].push(row);
+    const cap = mirrorGrowthCap();
+    if(cap > 0 && mirrorPruneSafe().indexOf(c) !== -1){   /* باگ ۱: فقط لیست سفید */
+      if(!Array.isArray(growthLog[c])) growthLog[c] = [];
+      growthLog[c].push(row.id);
+      if(growthLog[c].length > cap * 1.2){
+        const drop = growthLog[c].splice(0, growthLog[c].length - cap);
+        for(const id of drop){
+          const arr = store[c];
+          const j = arr.findIndex(x => x && x.id === id);
+          if(j >= 0) arr.splice(j, 1);
+        }
+      }
+    }
+    return row;
+  }
+  function pruneProcessedUids(){
+    const pu = store.__processed_uids;
+    if(!pu || typeof pu !== 'object') return;
+    /* P1-2: اول TTL — uidهای بیرونِ پنجره حذف می‌شوند، فارغ از شمارِ کل */
+    const ttl = uidDedupTtlMs();
+    if(ttl > 0){
+      const now = Date.now();
+      for(const k of Object.keys(pu)) if(now - (pu[k] || 0) > ttl) delete pu[k];
+    }
+    const cap = uidDedupMax();
+    if(cap <= 0) return;
+    const keys = Object.keys(pu);
+    if(keys.length <= cap) return;
+    keys.sort((a, b) => (pu[a] || 0) - (pu[b] || 0));
+    const drop = keys.slice(0, keys.length - cap);
+    for(const d of drop) delete pu[d];
+  }
+
+  /* Wave 1: cross-instance apply -- a record created on another instance is not in
+     this store; when PG is live, hydrate the miss from the authority before deciding
+     the op targets nothing. Memory mode: identical skip semantics.
+     P0-6: hydration از PG رشدِ آینه است — از mirrorAppend می‌گذرد (سقفِ رشد در
+     PG-live) و اگر درخواستِ جاری undo-log باز دارد، در آن ثبت می‌شود تا شکستِ
+     آینه دقیقاً همین ردیفِ تازه‌هیدراته‌شده را هم بازگرداند (رفتارِ snapshot قدیمی). */
+  async function findForApply(c, id, undo){
+    const arr = store[c] || [];
+    const rec = arr.find(x => x && x.id === Number(id));
+    if(rec) return rec;
+    if(db && typeof db.isPostgres === 'function' && db.isPostgres()
+        && typeof db.readOne === 'function'){
+      try{
+        const row = await db.readOne(c, id);
+        if(row){
+          mirrorAppend(c, row);
+          /* باگ ۳ (بازبین دور ۱ #124): after = state هیدراته — rollback و برشِ
+             post-commit هر دو با همان قواعدِ مالکیتِ pop این‌جا کار می‌کنند؛
+             در rollback معکوس (LIFO)، recهای بعدیِ همین دسته اول به قبل
+             برمی‌گردند و بعد این pop دقیقاً مچ می‌شود. */
+          if(undo) undo.items.push({ k: 'pop', c, id: row.id, idx: store[c].length - 1,
+            after: JSON.parse(JSON.stringify(row)) });
+          return row;
+        }
+      }catch(e){ /* not in PG either: genuinely missing */ }
+    }
+    return null;
+  }
 
   async function apiSync(req, res, body){
     const s = await sessionFrom(req);
@@ -604,13 +655,140 @@ function createSync(ctx){
     if(ops.length > MAX_BATCH) return sendJson(res, 413, { ok: false, code: 'batch_too_large' });
     if(ops.length === 0) return sendJson(res, 200, { ok: true, results: [] });
 
-    const all = (code) => {
+    /* ── Backpressure (Delta Phase 4, gap 1) ────────────────────────────
+       سقفِ op در پنجرهٔ ۶۰ثانیه‌ای برایِ این نشست. رد = 429 + retry_after_s
+       (از TTLِ واقعیِ پنجره) + سرآیندِ Retry-After؛ هیچ op اعمال نمی‌شود —
+       کلاینت (27-sync.js) دسته را دست‌نخورده در صف نگه می‌دارد و با مُهرِ
+       سرور دوباره می‌آید. گذراست: نه dead-letter، نه شمارشِ تلاشِ ناموفق op. */
+    if (rateLimit && typeof rateLimit === 'function') {
+      let r = null;
+      try {
+        r = await rateLimit({
+          prefix: 'sync:ops',
+          identifier: 'u' + (s.id != null ? s.id : 'anon'),
+          limit: syncOpsPerMinute(),
+          windowSeconds: 60,
+          weight: ops.length
+        });
+      } catch (_) { r = null; /* fail-open — همان قراردادِ rate-limit.js */ }
+      if (r && r.allowed === false) {
+        metrics.inc('payesh_sync_backpressure_rejections_total', []);
+        const retryAfterS = Math.max(1, Math.min(60, Math.round(Number(r.reset) || 60)));
+        if (res && typeof res.setHeader === 'function') {
+          try { res.setHeader('Retry-After', String(retryAfterS)); } catch (_) {}
+        }
+        return sendJson(res, 429, {
+          ok: false,
+          code: 'sync_backpressure',
+          retry_after_s: retryAfterS,
+          message: 'سرور زیر فشار است — تغییرات در صفِ محلی می‌مانند و کمی بعد دوباره ارسال می‌شوند'
+        });
+      }
+    }
+
+    const all = async (code) => {
+      /* باگ ۳ (بازبین دور ۱ #124): ردِ پایِ زودهنگام یعنی دسته هرگز commit
+         نمی‌شود — آینه نمی‌تواند اثرِ نیمه‌کاره نگه دارد (هیدراتاسیونِ گِیتِ
+         scope و opهای قبلیِ همین دسته). همان rollbackِ شکستِ commit اجرا
+         می‌شود؛ پیش از هر تغییری no-op است و پاسخ عینِ قرارداد می‌ماند. */
+      if(undo && undo.items.length) await rollbackUndo();
       /* R96 P1-8: authorization failure باید ردِّ پای داشته باشد (بدونِ PII) */
       audit('sync_authz_fail', { user_id: s.id, code, ops: ops.length });
       return sendJson(res, 403, { ok: false, code, results: ops.map(o => ({ uid: o && o.uid, ok: false, code })) });
     };
 
     const results = [];
+
+    /* P0-6 — undo-log به‌جای snapshotِ کلِ کالکشن (جزئیات در کامنتِ فازِ دوم):
+       اینجا و پیش از حلقهٔ اعتبارسنجی ساخته می‌شود تا pushهایِ فازِ اعتبارسنجی
+       (sync_conflicts و notifications تعارض) هم — مثلِ snapshot قدیمی — پوشش
+       داشته باشند. هزینهٔ ساخت O(1) است؛ در حالتِ memory مقدار null می‌ماند. */
+    const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+    /* باگ ۲ (بازبین): undo مالکیت‌دار — هر مدخل حالتِ پس از تغییرِ خودِ این
+       درخواست (after) را هم نگه می‌دارد؛ rollback فقط وقتی اجرا می‌شود که
+       رکورد هنوز دقیقاً همان state باشد (تغییرِ هم‌زمانِ موفقِ درخواستِ دیگر
+       حفظ می‌شود). __server_version هم به‌جای انتسابِ مطلق، با شمارشِ
+       افزایش‌های خودِ درخواست (bumps) معکوس می‌شود. */
+    const undo = pgLive ? { bumps: 0, items: [] } : null;
+    /* ثبتِ undo برای یک push تازه به انتهای آرایه (idx فعلی) */
+    const uPush = (c, row) => {
+      if(undo && row != null){
+        const arr = store[c];
+        undo.items.push({ k: 'pop', c, id: row.id, idx: Array.isArray(arr) ? arr.length - 1 : -1,
+                          after: JSON.parse(JSON.stringify(row)) });   /* باگ ۲: شرط مالکیت */
+      }
+    };
+    /* P1-2 (بازبین دور ۱ #124): معکوسِ undo-log — مشترک بینِ شکستِ commit
+       (mirrorFailed) و ردِ پایِ زودهنگامِ all()؛ در هر دو، دسته commit نشده
+       و آینه باید دقیقاً به پیش از درخواست برگردد. */
+    const rollbackUndo = async () => {
+      if(!undo) return;
+      /* باگ ۲: معکوسِ افزایش‌های خودِ درخواست، نه انتسابِ مطلق —
+         افزایش‌های درخواست‌هایِ هم‌زمانِ موفق حفظ می‌شوند. */
+      store.__server_version = Math.max(0, (store.__server_version || 0) - undo.bumps);
+      for(let i = undo.items.length - 1; i >= 0; i--){
+        const u = undo.items[i];
+        try{
+          if(u.k === 'pop'){
+            /* فقط اگر رکورد هنوز دقیقاً همان state ای است که این درخواست
+               push کرده (تغییر/حذفِ هم‌زمانِ موفقِ دیگری → دست نمی‌زنیم) */
+            const arr = store[u.c];
+            if(Array.isArray(arr)){
+              const cur = arr[u.idx] && arr[u.idx].id === u.id ? arr[u.idx] : arr.find((x) => x && x.id === u.id);
+              if(cur && JSON.stringify(cur) === JSON.stringify(u.after)){
+                const j = arr[u.idx] && arr[u.idx].id === u.id ? u.idx : arr.findIndex((x) => x && x.id === u.id);
+                if(j >= 0) arr.splice(j, 1);
+              }
+            }
+          } else if(u.k === 'rec'){
+            /* فقط اگر رکورد هنوز دقیقاً afterِ همین درخواست است —
+               وگرنه کسی دیگر بعد از ما تغییرش داده و commit کرده؛
+               state او (که PG مرجع تأییدش کرده) حفظ می‌شود. */
+            const r = (store[u.c] || []).find(x => x && x.id === u.id);
+            if(r && u.after && JSON.stringify(r) === JSON.stringify(u.after)
+               && u.before){
+              for(const key of Object.keys(r)) delete r[key];
+              Object.assign(r, u.before);
+            }
+          } else if(u.k === 'reinsert'){
+            /* باگ ۲ (بازبین، دور ۲): نبودِ رکورد در آینه ثابت نمی‌کند حذفِ
+               همین درخواست عاملش است — درخواستِ دیگری می‌تواند همان حذف را
+               در PG قطعی کرده باشد. پیش از بازدرج، مرجع را می‌پرسیم:
+               رکورد در PG هست → حذفِ ما اعمال نشده → بازدرج درست است؛
+               نیست → حذفِ دیگری قطعی شده → دست نمی‌زنیم. خطایِ پرسش →
+               بازدرج: وقتی PG پایین است هیچ commitِ هم‌زمانی ممکن نبوده. */
+            if(Array.isArray(store[u.c]) && !store[u.c].some(x => x && x.id === u.rec.id)){
+              let pgHas = true;
+              try{
+                const r = await db.query('SELECT 1 FROM "' + String(u.c).replace(/"/g, '') + '" WHERE id = $1 LIMIT 1', [u.rec.id]);
+                pgHas = !!(r && r.rows && r.rows.length);
+              }catch(_){ pgHas = true; }
+              if(pgHas) store[u.c].push(u.rec);
+            }
+          } else if(u.k === 'popDelRec'){
+            /* باگ ۳ (بازبین، دور ۲): حذفِ دقیقِ مدخلِ خودِ این درخواست —
+               با هویتِ کامل: ۱) جایگاه+رفرنس (تا اولین برش)؛ ۲) indexOf با
+               رفرنسِ همان آبجکت (پس از جابه‌جایی هم دقیق)؛ ۳) c+id+at. */
+            const dr = store.__deleted_records;
+            if(Array.isArray(dr)){
+              if(u.ref){
+                if(dr[u.idx] === u.ref) dr.splice(u.idx, 1);
+                else { const j = dr.indexOf(u.ref); if(j >= 0) dr.splice(j, 1); }
+              } else if(dr[u.idx] && dr[u.idx].id === u.id && dr[u.idx].c === u.c){
+                dr.splice(u.idx, 1);
+              } else {
+                const j = dr.findIndex((x) => x && x.c === u.c && x.id === u.id && x.at === u.at);
+                if(j >= 0) dr.splice(j, 1);
+              }
+            }
+          } else if(u.k === 'unmarkUid'){
+            delete store.__processed_uids[u.uid];
+          }
+        }catch(_){ /* best-effort — audit بالا خطای آینه را ثبت کرده است */ }
+      }
+    };
+
+    const derived = [];  /* Wave1-W: نوشت‌هایِ مشتقِ سرور (نوتیفیکیشن‌ها) — با mirror در یک تراکنش */
     const apply = [];
     for(const op of ops){
       /* پاکتِ عملیات (validate.js): کلیدِ ناشناخته یا uid/c/id/atِ بدشکل =
@@ -643,6 +821,18 @@ function createSync(ctx){
       if(dropTouchesDropout(op) && s.role !== 'superadmin' && !dropUsersUpdate(s, op)) return all('role_denied');
       /* #4 — target record inside scope */
       const recId = op.id != null ? op.id : (op.data && op.data.id);
+      /* Wave 1: cross-instance scope — the authority knows the record's school.
+         Hydrate store-misses from PG before the scope check so a valid
+         cross-instance op is judged on truth, not on cache absence (inScope
+         keeps enforcing school/ownership on the hydrated row; unknown ids still
+         fail closed). Memory mode: no-op, legacy fail-closed preserved. */
+      if((op.t === 'upd' || op.t === 'del') && recId != null
+          && !(store[op.c] || []).some(x => x && x.id === Number(recId))){
+        /* P1-2: هیدراتاسیونِ گِیت هم undo می‌گیرد — پیش‌تر بدونِ مدخل بود و
+           ردیفِ هیدراته‌شده در rollback نمی‌ماند به عقب برمی‌گشت و در آینه
+           می‌نشست (نشتیِ §۵-۳). ثبتِ pop = rollback دقیق + برشِ post-commit. */
+        await findForApply(op.c, recId, undo);
+      }
       if(!inScope(s, op.c, recId, op.data)) return all('out_of_scope');
       /* R96 P0-2 — دروازهٔ فیلد: فیلدِ ناشناخته / ارتقاءِ نقش / مالکیت /
          status. استثنایِ IEP/DROP (users) که در گِیتِ قبلی اعطا شده،
@@ -670,17 +860,6 @@ function createSync(ctx){
         results.push({ uid: op.uid, ok: false, code: 'validation_failed', field: 'base_version', message: 'مقدارِ «base_version» معتبر نیست' });
         continue;
       }
-      /* Version Vectors: base_vector must be a small {node: integer} map.
-         If present, it is authoritative for conflict detection; malformed
-         vectors are rejected per-op to avoid poisoning the whole batch. */
-      if(op.t === 'upd' && op.base_vector != null){
-        const bv2 = vvec.validateVector(op.base_vector);
-        if(!bv2.ok){
-          audit('sync_validation_failed', { user_id: s.id, uid: op.uid, collection: op.c, field: 'base_vector', reason: bv2.reason });
-          results.push({ uid: op.uid, ok: false, code: 'validation_failed', field: 'base_vector', message: 'مقدارِ «base_vector» معتبر نیست' });
-          continue;
-        }
-      }
       /* §13.1 — non-in-person day: physical ops rejected per-op (rest continues) */
       const vd = virtualDayViolation(op, store);
       if(vd){
@@ -688,64 +867,92 @@ function createSync(ctx){
         results.push({ uid: op.uid, ok: false, code: 'virtual_day', message: 'در روز غیرحضوری، این عملیاتِ فیزیکی مسدود است' });
         continue;
       }
-      /* §3.3 — idempotency: a repeated uid is already applied */
-      const isProcessed = (await cache.isProcessedUid(op.uid)) ||
+      /* S2-2 (موج ۴): اجازه‌ای که بر تاریخِ ادعاییِ کلاینت (op.at) تکیه کرد
+         و امروزِ سرور مجازی بود، ردِّ پا می‌گیرد — وگرنه جعلِ op.at برایِ
+         دور زدنِ روزِ مجازی کاملاً نامرئی بود. رفتار (مجاز/مسدود) بی‌تغییر؛
+         مشروعیتِ آفلاین حفظ شده. (خطِ vd بالا لنگرِ جهشِ M13 است — نخورد.) */
+      const vdb = virtualDayOfflineBasis(op, store);
+      if(vdb){
+        try { audit('sync_virtual_day_offline_allow', { user_id: s.id, uid: op.uid, collection: op.c, school_id: vdb.schoolId, date: vdb.date }); } catch(_) {}
+      }
+      /* §3.3 — idempotency: a repeated uid is already applied.
+         F2 (chaos-drill #185): dedupe سه‌لایه است (کشِ Redis → db → store).
+         قطعِ Redis در production پیش‌تر از prodRethrow تا این‌جا می‌پرید و
+         کلِ /api/sync را 500 می‌کرد — درحالی‌که دو لایهٔ authoritative بعدی
+         سالم‌اند. شکستِ لایهٔ کش فقط audit می‌شود و dedupe به لایه‌های
+         بعدی می‌افتد (fail-closedِ داده حفظ است: mark هم سه‌لایه است). */
+      let cacheProcessed = false;
+      try { cacheProcessed = await cache.isProcessedUid(op.uid); }
+      catch (cacheErr) {
+        try { audit('sync_idempotency_cache_unavailable', { user_id: s.id, uid: op.uid, error: String((cacheErr && cacheErr.message) || cacheErr).slice(0, 120) }); } catch (_) {}
+      }
+      const isProcessed = cacheProcessed ||
         ((db && typeof db.isUidProcessed === 'function') ? await db.isUidProcessed(op.uid) : false) ||
         !!(store.__processed_uids && store.__processed_uids[op.uid]);
       if(isProcessed){
         results.push({ uid: op.uid, ok: true, code: 'duplicate_ignored', serverTime: new Date().toISOString() });
         continue;
       }
-      /* R95/RVV — base_version/base_vector: تعارضِ حفظ‌شده / سرورِ مرجع.
-         base_vector (اگر باشد) نسبت به base_version دقیق‌تر است و اختلاف
-         multi-device را حتی وقتی عدد ساده هم‌زمان جلو رفته باشد می‌گیرد. */
-      if(op.t === 'upd' && (op.base_version != null || op.base_vector != null)){
+      /* R95 بند ۲.۵ — base_version: تعارضِ حفظ‌شده / سرورِ مرجع */
+      if(op.t === 'upd' && op.base_version != null){
+        const occT0 = process.hrtime.bigint();
         const vid = Number(op.id != null ? op.id : (op.data && op.data.id));
         const vrec = (store[op.c] || []).find(x => x.id === vid);
         const cur = vrec ? (vrec.version || 1) : 0;
-        const serverVector = vrec ? vvec.vectorOfRecord(vrec, SERVER_NODE_ID) : vvec.bumpVector({}, SERVER_NODE_ID, 0);
-        const vectorMismatch = op.base_vector != null ? vvec.needsConflict(op.base_vector, serverVector) : false;
-        const versionMismatch = op.base_version != null ? Number(op.base_version) !== cur : false;
-        if(VERSIONED[op.c] && (vectorMismatch || (op.base_vector == null && versionMismatch))){
+        const versionedMismatch = !!VERSIONED[op.c] && Number(op.base_version) !== cur;
+        const structuralMismatch = !versionedMismatch && !!STRUCTURAL[op.c] && Number(op.base_version) !== cur;
+        /* Delta Hardening Phase 2 (gap 4): conflict-detection latency — the
+           locate+compare step itself (before any conflict bookkeeping), on
+           every versioned write. Closed label set: conflict|stale|clean. R1:
+           observability never breaks the request path. */
+        try {
+          const occSec = Number(process.hrtime.bigint() - occT0) / 1e9;
+          metrics.observe('payesh_sync_conflict_detection_seconds',
+            { outcome: versionedMismatch ? 'conflict' : (structuralMismatch ? 'stale' : 'clean') }, occSec);
+        } catch(_) {}
+        if(versionedMismatch){
           const nowIso = new Date().toISOString();
           if(!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
           const cf = {
-            id: nextId('sync_conflicts'),
+            id: await serverId('sync_conflicts'),
             collection: op.c, record_id: vid,
             school_id: (vrec && vrec.school_id != null ? vrec.school_id
                        : (op.data && op.data.school_id != null ? op.data.school_id : s.school_id)),
-            base_version: op.base_version != null ? Number(op.base_version) : null,
+            base_version: Number(op.base_version),
             server_version: vrec ? (vrec.version || 1) : null,
-            base_vector: op.base_vector ? vvec.normalizeVector(op.base_vector) : null,
-            server_vector: serverVector,
-            vector_relation: op.base_vector ? vvec.compareVectors(op.base_vector, serverVector) : null,
             server_state: vrec ? Object.assign({}, vrec) : null,
-            incoming: { data: Object.assign({}, op.data), by: s.id, at: nowIso, op_uid: op.uid,
-                        base_vector: op.base_vector ? vvec.normalizeVector(op.base_vector) : null },
-            status: 'open', created_at: nowIso
+            incoming: { data: Object.assign({}, op.data), by: s.id, at: nowIso, op_uid: op.uid },
+            status: 'open', created_at: nowIso, updated_at: nowIso
           };
-          store.sync_conflicts.push(cf);
-          audit('sync_conflict_preserved', { user_id: s.id, conflict_id: cf.id, collection: op.c, record_id: vid, school_id: cf.school_id, vector: !!op.base_vector });
+          /* باگ ۲ (بازبین دور ۱ #124): درج از mirrorAppend می‌گذرد تا هرسِ ringِ
+             سقف‌دار (sync_conflicts لیست‌سفید است) رویش کار کند — push خام
+             growthLog را خالی می‌گذاشت و صف بی‌سقف می‌راند. uPush همان‌جا:
+             بازگشتِ دقیق همین ردیف در rollback (P0-6). */
+          uPush('sync_conflicts', mirrorAppend('sync_conflicts', cf));
+          /* ویو ۱۴: برچسبِ collection نامِ جدول است (مجموعهٔ بستهٔ VERSIONED)،
+             نه شناسهٔ رکورد — بدون PII و با cardinality کران‌دار. */
+          metrics.inc('payesh_sync_conflicts_total', { collection: String(op.c || 'unknown').slice(0, 32) });
+          audit('sync_conflict_preserved', { user_id: s.id, conflict_id: cf.id, collection: op.c, record_id: vid, school_id: cf.school_id });
           /* هشدار به مدیرِ مدرسه (الگویِ hookهایِ R88/R89) */
           const cmgr = (store.users || []).find(x => x.school_id === cf.school_id && x.role === 'manager');
           if(cmgr){
             if(!Array.isArray(store.notifications)) store.notifications = [];
-            store.notifications.push({
-              id: nextId('notifications'), user_id: cmgr.id, school_id: cf.school_id, type: 'announcement',
+            const cnotif = {
+              id: await serverId('notifications'), user_id: cmgr.id, school_id: cf.school_id, type: 'announcement',
               title: '⚠️ تعارض همگام‌سازی',
-              body: 'یک تغییرِ «' + op.c + '» با نسخه/بردار کهنه رسید و به‌جای اعمال، برایِ داوری محفوظ شد.',
+              body: 'یک تغییرِ «' + op.c + '» با نسخهٔ کهنه رسید و به‌جای اعمال، برایِ داوری محفوظ شد.',
               link: 'dashboard', read: 0, created_at: nowIso.slice(0, 10)
-            });
+            };
+            uPush('notifications', mirrorAppend('notifications', cnotif));   /* P1-2: از مسیرِ سقف‌دار، نه push خام؛ uPush همان‌جا */
+            derived.push({ c: 'notifications', t: 'ins', data: cnotif }); /* Wave1-W */
           }
           ctx.markDirty();
           results.push({ uid: op.uid, ok: false, code: 'conflict_preserved', conflict_id: cf.id,
-                         vector_conflict: !!op.base_vector, server_vector: serverVector,
                          message: 'تعارض محفوظ شد — برایِ داوری به بخشِ «تعارض‌های همگام‌سازی» مراجعه کنید' });
           continue;
         }
-        if(STRUCTURAL[op.c] && (vectorMismatch || (op.base_vector == null && versionMismatch))){
+        if(structuralMismatch){
           results.push({ uid: op.uid, ok: false, code: 'stale_base',
-                         vector_conflict: !!op.base_vector, server_vector: serverVector,
                          message: 'نسخهٔ رکورد کهنه است — سرور مرجع است؛ داده را تازه کنید و دوباره تلاش کنید' });
           continue;
         }
@@ -759,29 +966,75 @@ function createSync(ctx){
       apply.push(op);
     }
 
+    /* Wave 1: PG-first two-phase. Phase 1 applies to the store; phase 2 commits the
+       atomic PG mirror; on mirror failure the store changes are rolled back and the
+       client gets 503 (uids stay unmarked so the retry replays cleanly).
+       Memory mode: the mirror is a no-op success, so behavior is identical and
+       nothing is journaled for zero overhead.
+       P0-6 — undo-log به‌جای snapshotِ کلِ کالکشن: نسخهٔ قبلی این کد کلِ هر
+       کالکشنِ درگیر را با JSON.parse(JSON.stringify(store[k])) clone می‌کرد ⇒
+       هزینهٔ هر درخواستِ sync با اندازهٔ آینه رشد می‌کرد (O(collection)، در
+       مانورِ بار ~۱MB/درخواستِ هم‌زمان)، نه با اندازهٔ batch. حالا هر mutation
+       فقط یک مدخلِ O(1) در undo ثبت می‌کند (clone تک‌رکورد برای upd، idx/id
+       برای push، رکوردِ حذف‌شده برای del) و rollback مدخل‌ها را معکوس اجرا
+       می‌کند ⇒ O(batch). از نظرِ صحت هم بهتر است: snapshotِ کل، تغییرهایِ
+       هم‌زمانِ درخواست‌هایِ دیگر (بینِ awaitها) را هم بی‌سروصدا برمی‌گرداند؛
+       undo فقط تغییرهایِ همین batch را برمی‌گرداند. sync_conflicts و
+       notifications ساخته‌شده در فازِ اعتبارسنجی هم — مثلِ قبل — پوشش دارند:
+       undo پیش از حلقهٔ اعتبارسنجی ساخته می‌شود و همان حلقه‌ها در آن ثبت
+       می‌کنند. */
     const mirror = [];   /* P1-14: opsِ آینه با شناسه‌هایِ اعمال‌شدهٔ سرور */
     for(const op of apply){
+      /* S2-1 (موج ۴): ادعایِ اتمیکِ uid — حتماً پیش از اعمال. بررسی در
+         اعتبارسنجی بود ولی ثبت بعدتر — تکراریِ درون‌دسته دو بار اعمال
+         می‌شد و دسته‌هایِ هم‌زمان مسابقه می‌دادند. این حلقه هیچ await
+         ندارد پس check+claim درون‌فرآیند اتمیک است. تکراری، ورودیِ
+         متناظرِ خودش در results (از آخر به اول — op دوم به بعد) را
+         duplicate_ignored می‌کند. (ادعایِ توزیع‌شده چندنمونه‌ای = Wave 6.) */
+      if(store.__processed_uids && store.__processed_uids[op.uid]){
+        for(let ri = results.length - 1; ri >= 0; ri--){
+          if(results[ri].uid === op.uid && results[ri].ok && !results[ri].code){
+            results[ri] = { uid: op.uid, ok: true, code: 'duplicate_ignored', serverTime: results[ri].serverTime };
+            break;
+          }
+        }
+        try { audit('sync_duplicate_ignored', { user_id: s.id, uid: op.uid }); } catch(_) {}
+        continue;
+      }
+      store.__processed_uids[op.uid] = Date.now();
+      if(undo) undo.items.push({ k: 'unmarkUid', uid: op.uid });   /* P0-6 */
       if(!Array.isArray(store[op.c])) store[op.c] = [];
       if(op.t === 'ins'){
         const data = Object.assign({}, op.data);
         const prot = stripProtected(data); /* R98 — ممنوع‌ها جدا؛ بعداً صریح */
-        if(data.id == null) data.id = nextId(op.c);
-        if(VERSION_TRACKED[op.c]){
-          if(data.version == null) data.version = 1; /* R95 */
-          if(!data.version_vector) data.version_vector = vvec.bumpVector({}, SERVER_NODE_ID, data.version);
+        if(data.id == null) data.id = await serverId(op.c); /* Wave 1: ids service (PG sequences when live) */
+        if(VERSION_TRACKED[op.c] && data.version == null) data.version = 1; /* R95 */
+        /* Wave 1: hydrate cross-instance misses from PG before the upsert check. */
+        const ex = await findForApply(op.c, data.id, undo);
+        if(ex){
+          const uRec = undo ? undo.items.push({ k: 'rec', c: op.c, id: ex.id,
+            before: JSON.parse(JSON.stringify(ex)) }) - 1 : -1;   /* باگ ۲: before + after */
+          Object.assign(ex, data); Object.assign(ex, prot);
+          if(undo) undo.items[uRec].after = JSON.parse(JSON.stringify(ex));
         }
-        const ex = store[op.c].find(x => x.id === data.id);
-        if(ex){ Object.assign(ex, data); Object.assign(ex, prot); }
-        else store[op.c].push(Object.assign(data, prot));
-        data.updated_at = new Date().toISOString();
+        else { Object.assign(data, prot); mirrorAppend(op.c, data); }
+        data.updated_at = new Date().toISOString();   /* تکمیلِ رکورد پیش از ثبتِ after */
+        /* باگ ۱ (بازبین، دور ۲): uPush فقط برای درجِ خودِ این op — var تابع‌محدوده
+           بود و مقدارش از دورِ قبل می‌ماند؛ op برخوردیِ بعدی (مسیرِ ex) با رکوردِ
+           دورِ قبل مدخلِ popِ تکراری/نامالک می‌ساخت و rollback می‌توانست رکوردِ
+           قطعی‌شدهٔ درخواستِ دیگر را از آینه حذف کند. */
+        if(!ex) uPush(op.c, data);   /* باگ ۲: after دقیقاً state نهایی push خودمان */
         if(op.c === 'users' && (data.role || (prot && prot.role))){
           const r = data.role || prot.role;
           audit('role_change', { user_id: s.id, role: s.role, school_id: s.school_id, target_user_id: data.id, new_role: r, summary: 'ثبت کاربر با نقش ' + r + ' (شناسه ' + data.id + ')' });
         }
         mirror.push({ uid: op.uid, c: op.c, t: 'ins', data: (ex || data) });   /* P1-14: رکوردِ اعمال‌شده با شناسهٔ سرور */
       }else if(op.t === 'upd'){
-        const rec = store[op.c].find(x => x.id === Number(op.id != null ? op.id : (op.data && op.data.id)));
+        /* Wave 1: hydrate cross-instance misses from PG before applying. */
+        const rec = await findForApply(op.c, op.id != null ? op.id : (op.data && op.data.id), undo);
         if(rec){
+          const uRec = undo ? undo.items.push({ k: 'rec', c: op.c, id: rec.id,
+            before: JSON.parse(JSON.stringify(rec)) }) - 1 : -1;   /* باگ ۲ */
           const clean = Object.assign({}, op.data); /* R98 — op.data برایِ hookها دست‌نخورده */
           const prot = stripProtected(clean);
           if(op.c === 'users' && clean.role && rec.role !== clean.role){
@@ -789,27 +1042,40 @@ function createSync(ctx){
           }
           Object.assign(rec, clean, { id: rec.id, updated_at: new Date().toISOString() });
           Object.assign(rec, prot); /* مقادیرِ اعتبارسنجی‌شده — صریح، نه inject */
-          if(VERSION_TRACKED[op.c]){
-            rec.version = (rec.version || 1) + 1; /* R95 */
-            rec.version_vector = vvec.bumpVector(vvec.mergeVectors(vvec.vectorOfRecord(rec, SERVER_NODE_ID), op.base_vector || {}), SERVER_NODE_ID, rec.version);
-          }
+          if(VERSION_TRACKED[op.c]) rec.version = (rec.version || 1) + 1; /* R95 */
+          if(undo) undo.items[uRec].after = JSON.parse(JSON.stringify(rec));   /* باگ ۲ */
           mirror.push({ uid: op.uid, c: op.c, t: 'upd', data: rec });   /* P1-14 */
         }
       }else if(op.t === 'del'){
         const delId = Number(op.id != null ? op.id : (op.data && op.data.id));
-        const delRec = (store[op.c] || []).find(x => x.id === delId);
+        /* Wave 1: hydrate cross-instance misses from PG (seeded row is removed by the filter below). */
+        const delRec = await findForApply(op.c, delId, undo);
         const delSchoolId = delRec ? delRec.school_id : (op.data && op.data.school_id ? op.data.school_id : s.school_id);
+        if(undo && delRec) undo.items.push({ k: 'reinsert', c: op.c, rec: JSON.parse(JSON.stringify(delRec)) });   /* P0-6 */
         store[op.c] = store[op.c].filter(x => x.id !== delId);
         if(!Array.isArray(store.__deleted_records)) store.__deleted_records = [];
-        store.__deleted_records.push({ c: op.c, id: delId, school_id: delSchoolId, at: new Date().toISOString() });
-        if(store.__deleted_records.length > 5000) store.__deleted_records = store.__deleted_records.slice(-5000);
+        const tomb = { c: op.c, id: delId, school_id: delSchoolId, at: new Date().toISOString() };
+        store.__deleted_records.push(tomb);
+        /* باگ ۳ (بازبین): برشِ ۵۰۰۰تایی دیگر در مسیرِ apply نیست — پس از
+           commitِ موفق انجام می‌شود تا rollback آرایه را دقیقاً به قبل بازگرداند
+           (برشِ داخل apply یک سنگ‌قبرِ قدیمی را گم می‌کرد). */
+        /* باگ ۳ (بازبین، دور ۲): رفرنسِ خودِ سنگ‌قبر (identity) + c — جایگاه فقط
+           تا اولین برشِ post-commitِ درخواستِ دیگر معتبر است و id تنها، بینِ
+           مجموعه‌ها اشتباه می‌گرفت (grades:42 vs announcements:42). */
+        if(undo) undo.items.push({ k: 'popDelRec', idx: store.__deleted_records.length - 1, id: delId, c: op.c, at: tomb.at, ref: tomb });
         audit('record_deleted', { user_id: s.id, role: s.role, school_id: s.school_id, collection: op.c, record_id: delId, summary: 'حذف رکورد ' + delId + ' از ' + op.c });
         mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId });   /* P1-14 */
       }
       store.__server_version = (store.__server_version || 0) + 1;
-      store.__processed_uids[op.uid] = Date.now();
-      cache.markProcessedUid(op.uid).catch(() => {});
-      cache.invalidateCollection(op.c, op.data && op.data.school_id).catch(() => {});
+      if(undo) undo.bumps++;   /* باگ ۲: فقط افزایش‌های خودِ این درخواست */
+      /* Wave 1: uid marking moved post-commit (see below) so failed batches replay.
+         SUSPECT-C (باگ‌هانت چت ۵، نشست ۲): خطایِ ابطال پیش‌تر با `.catch(()=>{})`
+         بلعیده می‌شد؛ در تولید (گاردهای BUG-2) واقعی است و بی‌صدایی واگراییِ
+         نامرئی می‌سازد. حالا audit می‌شود؛ پاسخ بی‌تغییر می‌ماند و خودِ audit
+         هم هرگز پاسخ را نمی‌شکند. (markProcessedUid پس از کامیت پایین‌تر audit می‌شود.) */
+      cache.invalidateCollection(op.c, op.data && op.data.school_id).catch((invErr) => {
+        try { audit('sync_invalidate_failed', { user_id: s.id, collection: op.c, error: String((invErr && invErr.message) || invErr) }); } catch (_) {}
+      });
       /* P1-14: آینه این‌جا نیست — پس از حلقه، یک‌جا و اتمیک (persistOpsBatch) */
     }
     /* Round 88 + Round 89 — server side: the client cannot create notifications
@@ -820,6 +1086,7 @@ function createSync(ctx){
        3) corrections open (non-manager)-> school manager   (R89)
        Manager/superadmin actions keep the client-created notification (applied),
        so the hook skips them — no duplicates. */
+    const notifBefore = Array.isArray(store.notifications) ? store.notifications.length : 0;
     for(const op of apply){
       if(!Array.isArray(store.notifications)) store.notifications = [];
       const todayD = new Date().toISOString().slice(0, 10);
@@ -829,12 +1096,14 @@ function createSync(ctx){
         const mgr = (store.users || []).find(x => x.school_id === d.school_id && x.role === 'manager');
         if(mgr){
           const st = (store.users || []).find(x => x.id === d.student_id);
-          store.notifications.push({
-            id: nextId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'leave',
+            const ln = {
+              id: await serverId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'leave',
             title: '📨 درخواست مرخصی جدید',
             body: 'برای ' + ((st && st.full_name) || '') + ' از ' + d.from_date + ' تا ' + d.to_date + ' — در انتظارِ بررسی.',
             link: 'leaves', read: 0, created_at: todayD
-          });
+          };
+          mirrorAppend('notifications', ln); uPush('notifications', ln);   /* P0-6 */
+          derived.push({ c: 'notifications', t: 'ins', data: ln }); /* Wave1-W */
           audit('leave_request_notified', { user_id: s.id, leave_id: d.id, school_id: d.school_id });
         }
       }
@@ -844,13 +1113,15 @@ function createSync(ctx){
         const to = (store.users || []).find(x => x.id === Number(op.data.to_id));
         if(to){
           const from = (store.users || []).find(x => x.id === Number(op.data.from_id != null ? op.data.from_id : s.id));
-          store.notifications.push({
-            id: nextId('notifications'), user_id: to.id,
+            const cn = {
+              id: await serverId('notifications'), user_id: to.id,
             school_id: op.data.school_id != null ? op.data.school_id : to.school_id,
             type: 'chat', title: '💬 پیام جدید',
             body: ((from && from.full_name) || '') + ': ' + String(op.data.body || '').slice(0, 60),
             link: 'chat', read: 0, created_at: todayD
-          });
+          };
+          mirrorAppend('notifications', cn); uPush('notifications', cn);   /* P0-6 */
+          derived.push({ c: 'notifications', t: 'ins', data: cn }); /* Wave1-W */
           audit('chat_notified', { user_id: s.id, to_user_id: to.id });
         }
       }
@@ -861,31 +1132,120 @@ function createSync(ctx){
         if(mgr){
           const st = (store.users || []).find(x => x.id === d.student_id);
           const par = (store.users || []).find(x => x.id === d.parent_id);
-          store.notifications.push({
-            id: nextId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'announcement',
+            const crn = {
+              id: await serverId('notifications'), user_id: mgr.id, school_id: d.school_id, type: 'announcement',
             title: '⚠️ درخواست اصلاح اطلاعات ولی',
             body: ((par && par.full_name) || '') + ' اعلام کرد ' + ((st && st.full_name) || '') + ' فرزند او نیست.',
             link: 'corrections', read: 0, created_at: todayD
-          });
+          };
+          mirrorAppend('notifications', crn); uPush('notifications', crn);   /* P0-6 */
+          derived.push({ c: 'notifications', t: 'ins', data: crn }); /* Wave1-W */
           audit('correction_notified', { user_id: s.id, correction_id: d.id, school_id: d.school_id });
         }
       }
     }
     /* P1-14: آینهٔ اتمیکِ چندرکوردی — همه در یک تراکنش (all-or-nothing).
-       شکست → rollback + audit؛ پاسخِ کلاینت عوض نمی‌شود (مثلِ قبل بی‌خبر). */
-    if(mirror.length && db && typeof db.persistOpsBatch === 'function'){
+       شکست → rollback + audit؛ در حالتِ PG پاسخ ۵۰۳ می‌شود تا کلاینت retry کند
+       (Wave 1)؛ در memory پاسخ مثلِ قبل عوض نمی‌شود — ولی دیگر بی‌خبر هم نیست:
+       پرچمِ مرئیِ mirror_failed (SUSPECT-A، نشست ۲) همراهِ ok=true برمی‌گردد. */
+    /* Wave1-W: نوشت‌هایِ مشتقِ سرور (نوتیفیکیشن‌هایِ hook) در همان تراکنش —
+       همان ردیف‌هایی که store.notifications.slice(notifBefore) می‌داد، ولی
+       دقیق و بدونِ اسکن (هر hook خودش را به derived می‌رساند). */
+    const batchAll = mirror.concat(derived);
+    /* Wave 1: phase 2 -- the atomic PG commit. On failure with PG live, roll the
+       store back to the pre-request snapshot and fail closed (503) so the client
+       retries; uids stay unmarked so the retry replays instead of being skipped.
+       Without PG (memory mode, e.g. older mirror-failure tests), keep the legacy
+       audit-and-continue semantics plus the visible mirror_failed flag (SUSPECT-A). */
+    let mirrorFailed = false;
+    if(batchAll.length && db && typeof db.persistOpsBatch === 'function'){
       try{
-        await db.persistOpsBatch(mirror);
+        await db.persistOpsBatch(batchAll);
       }catch(mirrorErr){
-        audit('sync_mirror_failed', { user_id: s.id, ops: mirror.length,
-          error: String((mirrorErr && mirrorErr.message) || mirrorErr) });
+        const why = String((mirrorErr && mirrorErr.message) || mirrorErr);
+        mirrorFailed = true;
+        audit('sync_mirror_failed', { user_id: s.id, ops: batchAll.length, error: why });
+        /* F1 (chaos-drill #185): pgLive در *ابتدای* درخواست ارزیابی شده؛ اگر
+           PG وسطِ قطع باشد isPostgres()=false و pgLive=false است — ولی وقتی
+           «PG انتظار می‌رود» (production + DATABASE_URL)، ackِ 200 بدونِ
+           mirror = گم‌شدنِ دائمیِ داده (پس از بازگشتِ PG آن ops آن‌جا نیستند
+           و retry هم duplicate_ignored می‌گیرد). همان مسیرِ 503 اجرا شود. */
+        const pgWasExpected = !!(db && typeof db.pgExpected === 'function' && db.pgExpected());
+        if(pgWasExpected && !pgLive){
+          /* در این حالت undo=null است (pgLive در ابتدای درخواست false بود) —
+             claimِ uidهای همین batch در __processed_uids می‌ماند و بازاجرایِ
+             کلاینت duplicate_ignored می‌گرفت بی‌آنکه به PG برسد (rows=0).
+             آزادسازیِ دستی: شکستِ کامل = replayِ کامل مجاز (قرارداد Wave 1). */
+          for(const op of batchAll){
+            if(op && op.uid && store.__processed_uids) delete store.__processed_uids[op.uid];
+          }
+        }
+        if(pgLive || pgWasExpected){
+          /* P0-6 — rollback با undo-log: معکوسِ ثبت‌های همین batch — O(batch)،
+             نه بازنویسیِ کلِ کالکشن. مزیتِ صحت: تغییرهایِ هم‌زمانِ درخواست‌هایِ
+             دیگر بینِ awaitها حفظ می‌شوند (snapshot قدیمی آن‌ها را هم برمی‌گرداند).
+             P1-2: بدنه به rollbackUndo منتقل شد (مشترک با ردِّ پایِ زودهنگامِ all). */
+          await rollbackUndo();
+          for(const r of results){ if(r) r.ok = false; }
+          return sendJson(res, 503, { ok: false, code: 'sync_mirror_failed', results });
+        }
       }
     }
+    /* Wave 1: uids are marked only after the authority committed (store AND cache),
+       so a failed batch always replays. End state in memory mode is unchanged. */
+    if(!store.__processed_uids) store.__processed_uids = {};
+    for(const op of apply){
+      store.__processed_uids[op.uid] = Date.now();
+      /* SUSPECT-C (باگ‌هانت چت ۵، نشست ۲): علامتِ idempotency در کش هم audit می‌شود. */
+      try{ cache.markProcessedUid(op.uid).catch((markErr) => {
+        try { audit('sync_idempotency_mark_failed', { user_id: s.id, uid: op.uid, error: String((markErr && markErr.message) || markErr) }); } catch (_) {}
+      }); }catch(e){}
+    }
+    /* P1-2 (Wave 18 §۵-۳): قطعِ آینه از مسیرِ نوشتن در PG-live — مجموعه‌های
+       خارجِ لیستِ سفیدِ هرس (PAYESH_PG_MIRROR_PRUNE_SAFE) پس از commitِ موفق
+       به آینهٔ پیش از دسته بازمی‌گردند: رکورد فقط در PG است (مرجع) و آینه
+       cacheیِ bounded می‌ماند (هیدراتاسیونِ بوت + write-through صرفاً برای
+       مجموعه‌های هرس‌امن). درونِ دسته رفتارِ امروز حفظ می‌شود تا policy و
+       دست‌های وابستهٔ همان batch همان‌طور ببینند؛ rollbackِ دستهٔ شکست‌خورده
+       (undo) پیش از این اجرا شده و این‌جا فقط مسیرِ موفق را می‌بُرد.
+       مالکیت‌دار: مدخلِ pop با after فقط وقتی می‌بُرد که رکورد هنوز state
+       نهاییِ خودِ همین دسته باشد (تغییرِ هم‌زمانِ دیگری محفوظ می‌ماند)؛
+       مدخلِ بدونِ after = هیدراتاسیونِ همین دسته (ردیف عیناً از PG آمده). */
+    if(pgLive && undo && mirrorGrowthCap() > 0){
+      const safeSet = mirrorPruneSafe();
+      /* باگ ۳ (بازبین دور ۱ #124): مالکیت با «آخرین state نوشته‌شدهٔ خودِ همین
+         دسته» سنجیده می‌شود — نه فقط after خودِ pop: اگر opهای همین دسته
+         رکوردِ هیدراته‌شده را هم به‌روز کرده باشند (rec با after جدیدتر)،
+         state نهایی باز مالِ ماست و بریده می‌شود؛ تغییرِ ناهمگامِ درخواستِ
+         دیگر با هیچِ afterِ خودی مچ نمی‌شود و محفوظ می‌ماند. */
+      const lastAfter = {};
+      for(let i = undo.items.length - 1; i >= 0; i--){
+        const u = undo.items[i];
+        if(u.k !== 'pop' && u.k !== 'rec') continue;
+        const key = u.c + ':' + u.id;
+        if(!(key in lastAfter)) lastAfter[key] = u.after || null;   /* نخستینِ دیده‌شده از پایان = آخرین نوشته */
+        if(u.k !== 'pop' || safeSet.indexOf(u.c) !== -1) continue;
+        const arr = store[u.c];
+        if(!Array.isArray(arr)) continue;
+        const j = (arr[u.idx] && arr[u.idx].id === u.id) ? u.idx : arr.findIndex(x => x && x.id === u.id);
+        if(j < 0) continue;
+        const own = lastAfter[key];
+        if(own && JSON.stringify(arr[j]) !== JSON.stringify(own)) continue;   /* تغییرِ ناهمگامِ دیگران — احترام */
+        arr.splice(j, 1);
+      }
+    }
+    if(Array.isArray(store.__deleted_records) && store.__deleted_records.length > 5000){
+      store.__deleted_records = store.__deleted_records.slice(-5000);   /* باگ ۳: پس از commit — rollback دیگر در کار نیست */
+    }
+    pruneProcessedUids();   /* P1-2: TTL + سقف */   /* P0-6: __processed_uids سقف‌دار (پیش‌فرض PG-live=20000؛ پنجرهٔ اخیر کافی است چون Redis dedup اشتراکی هم هست) */
     if(apply.length) ctx.markDirty();
     audit('sync_ok', { user_id: s.id, ops: apply.length });
-    sendJson(res, 200, { ok: true, results });
+    /* Delta Phase 4 (gap 4): هر pushِ موفق (دستهٔ غیرخالی که به ۲۰۰ رسید)
+       یک واحد — پالسِ سلامتِ مسیرِ write. */
+    metrics.inc('payesh_sync_pushes_total');
+    sendJson(res, 200, mirrorFailed ? { ok: true, results, mirror_failed: true } : { ok: true, results });
   }
 
   return { apiSync, canWrite, inScope };
 }
-module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED, SERVER_NODE_ID };
+module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, virtualDayOfflineBasis, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED };

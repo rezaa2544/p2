@@ -62,7 +62,7 @@ function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const
 
 function generate(){
   SEED=20260901; ids={};
-  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],summer_enrollments:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[],support_tickets:[],staff_attendance:[],training_courses:[],safety_drills:[],donations:[]};
+  db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[],support_tickets:[],staff_attendance:[],training_courses:[],safety_drills:[],donations:[],staff_posts:[],report_logs:[]};
   add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
@@ -138,16 +138,29 @@ function generate(){
          نداشت و `teacherNowClass` برایش null می‌داد — فنی درست
          ولی در دمو گیج‌کننده. تصمیم رضا: دادهٔ نمونه گسترش یابد،
          نه کاهش الگو. شش زنگ حاشیهٔ امن هم می‌دهد. */
-      for(let d=0;d<5;d++)for(let p=1;p<=6;p++){const s=chosen[(d*6+p)%chosen.length];const t=teachers.find(x=>x.subject_id===s.id)||teachers[0];
+      /* ⚠️ باگ پنجشنبه (ویو ۲۰): حلقهٔ قبلی روزها را سخت‌کد ۰ تا ۴
+         می‌پیمود، ولی مدرسهٔ دمو (si=0) روزهای کاریِ [۰..۵] دارد و
+         بلوک جابه‌جای هم برای پنجشنبه (dow0=5) اسلاتِ روز ۵ می‌خواست —
+         در پنجشنبه‌ها اسلات پیدا نمی‌شد و `slot.teacher_id` کلِ ساختِ
+         دمو را می‌کُشت. حالا پیمایش طبق work_days خود مدرسه است. */
+      for(const d of (school.work_days&&school.work_days.length?school.work_days:[0,1,2,3,4]))for(let p=1;p<=6;p++){const s=chosen[(d*6+p)%chosen.length];const t=teachers.find(x=>x.subject_id===s.id)||teachers[0];
         add('schedule',{school_id:school.id,class_id:c.id,subject_id:s.id,teacher_id:t.id,day:d,period:p});}
       /* جابه‌جای موقت نمونه (بند ۱.۵): فقط برای مدرسهٔ اول و وقتی
          امروز روزِ مدرسه است — تا نمای «جابه‌جای» در دمو قابل دیدن
          باشد. تاریخِ امروز روی همان روز هفتهٔ زنگ است. */
       if(school.id===1){
         const dow0=(new Date(todayISO()+'T12:00:00').getDay()+1)%7;
-        const dow=dow0<=5?dow0:0;
+        /* هفتهٔ مدرسه پنج‌روزه است (شنبه..چهارشنبه = 0..4)؛ روی پنجشنبه (۵) و
+           جمعه (۶) زنگ روزِ جاری در جدول نیست و `slot` undefined می‌شد (کرشِ
+           بوتِ دمو در چهارشنبه — دور ۱۱۱) → روزِ زنگ = اولین روز هفته.
+           تاریخِ جابه‌جای همان قراردادِ پیشین می‌ماند: امروز (پنجشنبه) یا
+           فردا (جمعه) تا بند ۱.۵ِ smoke «جابه‌جایِ امروز» دیده شود. */
+        const dow=dow0<=4?dow0:0;
         const dt=dow0<=5?todayISO():addDaysISO(todayISO(),1);
-        const slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.day===dow&&x.period===2);
+        /* فِلبکِ دفاعی: اگر به‌هر‌دلیلی زنگِ همان روز نبود، همان period از
+           هر روزِ معتبر انتخاب می‌شود. */
+        let slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.day===dow&&x.period===2);
+        if(!slot) slot=db.schedule.find(x=>x.class_id===classes[0].id&&x.period===2);
         const sub=teachers.find(t=>t.id!==slot.teacher_id)||teachers[0];
         add('substitutions',{school_id:school.id,schedule_id:slot.id,sub_teacher_id:sub.id,date:dt,created_at:todayISO()});
       }
@@ -235,6 +248,11 @@ function generate(){
           if(idx<2&&wsubs[0]&&wteach){
             add('grades',{school_id:school.id,student_id:st.id,class_id:w12.id,subject_id:wsubs[0].id,teacher_id:wteach.id,term:'نوبت اول',exam_type:'کارگاهی',kind:'practical',score:16+idx*2,max_score:20,created_at:daysAgoISO(30-idx)});
           }
+          /* E.1 — نمرهٔ ترکیبی تئوری/عملی (قطعی، بدون rng): دانش‌آموزِ
+             نخست، درسِ دوم — تئوری ۱۵ + عملی ۱۷ ⇒ نهایی ۱۶ (میانگین). */
+          if(idx===0&&wsubs[1]&&wteach){
+            add('grades',{school_id:school.id,student_id:st.id,class_id:w12.id,subject_id:wsubs[1].id,teacher_id:wteach.id,term:'نوبت اول',exam_type:'میان‌ترم',kind:'theory',theoretical_score:15,practical_score:17,score:16,is_vocational:true,max_score:20,created_at:daysAgoISO(28)});
+          }
           /* دو جلسهٔ کارآموزی: جلسهٔ اول تأییدشده، جلسهٔ دوم در انتظار (برای idx زوج) */
           add('internships',{school_id:school.id,student_id:st.id,date:daysAgoISO(21-idx*7),hours:16,location:idx%2?'کارگاهِ صنعتیِ شهر':'معاونتِ فنیِ منطقه',status:'approved',approved_by:wteach?wteach.id:null,approved_at:daysAgoISO(18-idx*7),note:'حضورِ کامل',created_by:manager.id,created_at:daysAgoISO(21-idx*7)});
           if(idx%2===0){
@@ -274,10 +292,8 @@ function generate(){
     var t=db.users.filter(function(u){return u.role==='teacher'&&u.school_id===1&&u.active;});
     var studs=db.users.filter(function(u){return u.role==='student'&&u.school_id===1&&u.active;});
     if(t.length<2||studs.length<4) return;
-    const su1=add('summer_classes',{school_id:1,name:'تکمیلی ریاضی تابستان',title:'تکمیلی ریاضی تابستان',subject:'ریاضی',teacher_id:t[0].id,student_ids:[studs[0].id,studs[1].id,studs[2].id],start_date:'2026-06-14',end_date:'2026-07-15',schedule:{tuesday:'09:00-11:00'},capacity:15,status:'active',note:'ساعت ۹ تا ۱۱ — سه‌شنبه‌ها',created_at:'2026-06-01',updated_at:'2026-06-10'});
-    const su2=add('summer_classes',{school_id:1,name:'کارگاه انگلیسی تابستان',title:'کارگاه انگلیسی تابستان',subject:'انگلیسی',teacher_id:t[1].id,student_ids:[studs[3].id,studs[4].id],start_date:'2026-06-20',end_date:'',schedule:{saturday:'08:00-10:00'},capacity:12,status:'planned',note:'',created_at:'2026-06-05',updated_at:'2026-06-05'});
-    [studs[0].id,studs[1].id,studs[2].id].forEach(function(sid,i){add('summer_enrollments',{school_id:1,summer_class_id:su1.id,student_id:sid,enrolled_at:'2026-06-10',status:'enrolled',attendance:i===0?{'2026-06-14':'present'}:{},created_at:'2026-06-10',updated_at:'2026-06-10'});});
-    [studs[3].id,studs[4].id].forEach(function(sid){add('summer_enrollments',{school_id:1,summer_class_id:su2.id,student_id:sid,enrolled_at:'2026-06-12',status:'enrolled',attendance:{},created_at:'2026-06-12',updated_at:'2026-06-12'});});
+    add('summer_classes',{school_id:1,name:'تکمیلی ریاضی تابستان',teacher_id:t[0].id,student_ids:[studs[0].id,studs[1].id,studs[2].id],start_date:'2026-06-14',end_date:'2026-07-15',note:'ساعت ۹ تا ۱۱ — سه‌شنبه‌ها',created_at:'2026-06-01',updated_at:'2026-06-10'});
+    add('summer_classes',{school_id:1,name:'کارگاه انگلیسی تابستان',teacher_id:t[1].id,student_ids:[studs[3].id,studs[4].id],start_date:'2026-06-20',end_date:'',note:'',created_at:'2026-06-05',updated_at:'2026-06-05'});
   })();
 
   (function(){
@@ -421,5 +437,26 @@ function generate(){
       add('donations',{school_id:sid,donor_name:'خیر مدرسه',amount:500000+((sid*7919)%7)*500000,date:daysAgoISO(20+sid),description:'کمک به تجهیز آزمایشگاه',registered_by:mgr.id,created_at:daysAgoISO(19+sid)});
       add('donations',{school_id:sid,donor_name:null,amount:1000000+((sid*104729)%5)*1000000,date:daysAgoISO(60+sid),description:'نذر فرهنگی',registered_by:mgr.id,created_at:daysAgoISO(59+sid)});
     });
+  })();
+  /* SIM-01..03 (چت ۳ — ماتریسِ daily-reports/SEED_SIM_ROLES_ACCEPTANCE.md):
+     نقش‌های شبیه‌سازی که در دمو صفر بودند و مسیرهای E.9/کتابخانه/اموال را
+     تست‌ناپذیر می‌کردند.
+     ⚠️ صفر مصرفِ rng — دلیل در سید B.1 (شیفتِ جریانِ RNG = جابه‌جاییِ
+     phone/nidِ حساب‌های نمونهٔ مستندشده). nid با همان قاعدهٔ ۹۹۹ + چک‌سام،
+     ولی از رقم‌های ثابت؛ phone با پیش‌شمارهٔ ۰۹۹۹ رزرو دمو، بازهٔ ۰۰۰xxxx
+     (بیرونِ بازهٔ مولد demoPhone که از 1000000 شروع می‌شود ⇒ بدون تصادم).
+     در انتهای generate() تا idهای پیشین دست‌نخورده بمانند. */
+  (function(){
+    /* SIM-01: نگهبان/پذیرش (E.9) — کاربرِ تازه در مدرسهٔ ۱ (نمونهٔ اصلی دمو) */
+    add('users',{school_id:1,role:'guard',full_name:'رضا نگهبانی',username:'guard1',password:'123456',
+      national_id:'9990000311',phone:'09990000031',active:1,title:'نگهبان/پذیرش',created_at:daysAgoISO(200)});
+    /* SIM-02/03: پرچم‌های تفویضی روی دبیرانِ *موجودِ* مدرسهٔ ۱ (بدون کاربر تازه —
+       قراردادِ 54-library/55-assets: دبیرِ همان مدرسه با پرچم). انتخابِ قطعی:
+       دو دبیرِ فعالِ *آخرِ* مدرسهٔ ۱ — فیکسچرهای سوئیت‌های موجود (library2 و
+       هم‌خانواده‌ها) «دبیرِ [0]» را بی‌مجوز فرض می‌کنند؛ پرچم روی آخری‌ها
+       آن قرارداد را دست نمی‌زند. */
+    var t1=db.users.filter(function(u){return u.role==='teacher'&&u.school_id===1&&u.active===1;});
+    if(t1.length>=2) t1[t1.length-1].lib_staff=1;   /* SIM-02: کتابدار */
+    if(t1.length>=3) t1[t1.length-2].asset_staff=1; /* SIM-03: تحویلدارِ اموال */
   })();
 }

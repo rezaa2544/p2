@@ -15,12 +15,15 @@ function getKey(prefix, identifier) {
   return `rate:${prefix}:${identifier}`;
 }
 
-async function checkRateLimit({ prefix, identifier, limit, windowSeconds }) {
+async function checkRateLimit({ prefix, identifier, limit, windowSeconds, weight }) {
   const key = getKey(prefix, identifier);
   try {
     /* P0-TTL: اینکریمِنتِ اتمیک با تضمینِ انقضا — کلیدِ یتیمِ بی‌TTL
-       (بازمانده از کرش) همین‌جا خوددرمانی می‌شود؛ نشت حافظه بسته شد. */
-    const current = await redis.incrWithTtl(key, windowSeconds);
+       (بازمانده از کرش) همین‌جا خوددرمانی می‌شود؛ نشت حافظه بسته شد.
+       Delta Phase 4 (gap 1): وزنِ اختیاری — درخواستِ sync با N عملیات،
+       N واحد مصرف می‌کند (پیش‌فرض 1 = رفتارِ پیشینِ auth.js). */
+    const w = Math.max(1, Math.trunc(Number(weight) || 1));
+    const current = await redis.incrByWithTtl(key, windowSeconds, w);
     return {
       allowed: current <= limit,
       remaining: Math.max(0, limit - current),

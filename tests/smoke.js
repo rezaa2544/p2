@@ -6195,13 +6195,13 @@ test('اسکرول: منوی کناری هم جای خود را حفظ می‌ک
    ۵. هر روت کمکی (EXTRA_ROUTES) مجاز و دارای نما باشد */
 
 const NAV_EXPECT = {
-  superadmin: ['dashboard','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications','tickets','teacheval'], /* G.2 فرناز: روت تیکت */
+  superadmin: ['dashboard','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications','tickets','teacheval','regionscore','staffgap','reports'], /* G.2 فرناز: روت تیکت — ویو ۲۳: reports */
   /* دور ۷۷: چهار ماژولِ مدیری (preapps/scholarships دور ۶۱-۶۲، reexams/summerclasses دور ۷۰)
      به منوی مدیر اضافه شدند ولی این فهرست به‌روز نشد و تا کرشِ قدیمیِ smoke پنهان ماند */
-  manager: ['dashboard','atrisk','growth','calendar','visitors','library','assets','dorm','sidadiff','formssms','preapps','scholarships','drills','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','grades','discipline','followup','leaves','exams','reexams','teachers','corrections','staff','staffatt','training','tuition','association','donations','meetings','notifyqueue','announcements','notifications','chat','busservice','summerclasses','tickets','teacheval'], /* G.2 فرناز: روت تیکت */
-  teacher: ['meetings','dashboard','classes','schedule','calendar','attendance','grades','discipline','leaves','exams','vclass','homework','announcements','notifications','chat'],
-  student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','homework','announcements','notifications','chat','teacheval'],
-  edu_office: ['officedash','officeschools','announcements','notifications','teacheval'],
+  manager: ['dashboard','atrisk','growth','calendar','visitors','library','assets','dorm','sidadiff','formssms','preapps','scholarships','drills','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','multigrade','grades','discipline','followup','leaves','exams','reexams','teachers','corrections','staff','staffatt','training','tuition','association','donations','meetings','notifyqueue','announcements','notifications','chat','busservice','summerclasses','tickets','teacheval','reports'], /* G.2 فرناز: روت تیکت — ویو ۲۳: reports */
+  teacher: ['meetings','dashboard','classes','schedule','calendar','attendance','multigrade','grades','discipline','leaves','exams','vclass','homework','announcements','notifications','chat'],
+  student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','homework','announcements','notifications','chat','library','teacheval'],
+  edu_office: ['officedash','officeschools','announcements','notifications','teacheval','regionscore','staffgap','reports'], /* ویو ۲۳ */
   parent: ['meetings','dashboard','family','children','exams','calendar','mytuition','leaves','announcements','notifications','chat','teacheval'],
   /* دور ۶۳: نقش تازهٔ مشاور — فقط صف ارجاع + صفحه‌های عمومی */
   counselor: ['cqueue','dashboard','announcements','notifications'],
@@ -7404,12 +7404,17 @@ test('بند ۱.۵: ثبت جابه‌جای + رد دبیر مشغول + حذف
 
 test('بند ۱.۵: جابه‌جایِ امروز در خانهٔ برنامه و فهرست دیده می‌شود', () => {
   W("S.user=db.users.find(u=>u.role==='manager'&&u.school_id===1);S.persona=null;S.boss=null");
-  const r = W('(()=>{var x=db.substitutions.find(function(s){return s.school_id===1&&(s.date===todayISO()||s.date===addDaysISO(todayISO(),1));});if(!x)return "none";var slot=byId("schedule",x.schedule_id);var cls=byId("classes",slot.class_id);var sub=db.users.find(u=>u.id===x.sub_teacher_id);return JSON.stringify({cid:cls.id,sub:sub.full_name,today:x.date===todayISO()});})()');
+  const r = W('(()=>{var x=db.substitutions.find(function(s){return s.school_id===1&&(s.date===todayISO()||s.date===addDaysISO(todayISO(),1));});if(!x)return "none";var slot=byId("schedule",x.schedule_id);var cls=byId("classes",slot.class_id);var sub=db.users.find(u=>u.id===x.sub_teacher_id);return JSON.stringify({cid:cls.id,sub:sub.full_name,today:x.date===todayISO(),day:slot.day});})()');
   assert(r !== 'none', 'جابه‌جای نمونهٔ دمو نیست');
   const d = JSON.parse(r);
   const out = W("(S.route='schedule', S.filters={class:'" + d.cid + "'}, renderRoute())");
   assert(out.indexOf('جابه‌جای‌های موقت این کلاس') > -1, 'فهرست جابه‌جای‌ها دیده نمی‌شود');
-  if(d.today) assert(out.indexOf('جابه‌جای: ' + d.sub) > -1, 'نشان جابه‌جای در خانهٔ برنامه نیست');
+  /* جدول برنامه به‌طور طراحانه ۵ ستونه است (شنبه تا چهارشنبه —
+     ستون‌ها، مودال زنگ و CSS روی همین عرض قفل‌اند؛ بند روزهای کاریِ
+     دور ۶۵ فقط منطق زنگ/حضور را می‌راند، نه ستون‌های جدول را).
+     پس اگر روزِ جابه‌جای بیرونِ روزهای قابلِ ترسیمِ جدول باشد،
+     خانه‌ای برای نشان وجود ندارد و سنجهٔ فهرست کافی است. */
+  if(d.today && d.day <= 4) assert(out.indexOf('جابه‌جای: ' + d.sub) > -1, 'نشان جابه‌جای در خانهٔ برنامه نیست');
 });
 
 test('بند ۱.۵: جابه‌جای فقط برای مدیر و سوپرادمین است', () => {
@@ -7463,9 +7468,15 @@ test('بند ۱.۶: گواهی بدون نمره رد می‌شود و دکمه 
 test('بند ۱.۷: کارت امروز تاریخ، حضور و زنگ‌های امروز را می‌دهد', () => {
   let schedId, attId;
   try{
+    /* ⚠️ درس دور ۱۱۱ (Wave 20): زنگ روی کلاسِ واقعیِ دانش‌آموز (classOf)
+       ساخته شود، نه db.classes[0]. آزمون‌های پیشین (چرخهٔ پایان‌سال)
+       ثبت‌نامِ نخستین دانش‌آموز را به کلاس ۲ می‌برند؛ روی روزِ
+       غیرمدرسه (پنجشنبه، dow=5) جدولِ دمو هیچ ردیفی ندارد و فقط
+       سطرِ درج‌شده «زنگ امروز» می‌سازد — اگر کلاش با classOf(sid)
+       نباشد، کارت امروز خالی می‌شود و تست دروغین می‌شکست. */
     const t = JSON.parse(W(`(()=>{
-      var cls=db.classes[0];
-      var st=db.users.filter(function(x){return x.role==='student'&&x.school_id===cls.school_id;})[0];
+      var st=db.users.filter(function(x){return x.role==='student';})[0];
+      var cls=classOf(st.id)||db.classes[0];
       return JSON.stringify({sid:st.id, cls:cls.id, dow:todayDow()});
     })()`));
     schedId = W(`(insert('schedule',{school_id:byId('classes',${t.cls}).school_id,class_id:${t.cls},subject_id:db.subjects[0].id,teacher_id:null,day:${t.dow},period:1,id:null}).id)`);
@@ -7846,9 +7857,13 @@ test('دور ۷۸ بند ۷: ماژول اسکان/خوابگاه — اتاق،
     const lrec = JSON.parse(lv);
     assert(lrec, 'رکوردِ مرخصیِ خوابگاه ساخته نشد');
     made.leave = lrec.id;
-    const exp = W(`(function(){var f=addDaysISO(todayISO(),((5-new Date().getDay())+7)%7);return JSON.stringify({f:f,t:addDaysISO(f,1)});})()`);
+    /* BUG-1 (باگ‌هانت چت ۵): انتظارِ قبلی همان فرمولِ غلطِ جمعه‌محور را آینه
+       می‌کرد و سبزِ کاذب می‌داد؛ حالا پنجشنبه‌محور + weekday صریح. */
+    const exp = W(`(function(){var f=addDaysISO(todayISO(),((4-new Date().getDay())+7)%7);return JSON.stringify({f:f,t:addDaysISO(f,1)});})()`);
     const expd = JSON.parse(exp);
     assert(lrec.from_date === expd.f && lrec.to_date === expd.t, 'بازهٔ پنجشنبه→جمعه نادرست بود');
+    assert(new Date(lrec.from_date+'T12:00:00').getDay() === 4, 'شروعِ مرخصیِ خوابگاه باید پنجشنبه باشد');
+    assert(new Date(lrec.to_date+'T12:00:00').getDay() === 5, 'پایانِ مرخصیِ خوابگاه باید جمعه باشد');
     assert(lrec.status === 'approved', 'مرخصیِ خوابگاه باید مستقیم تأییدشده باشد');
     assert(lrec.kind === 'dorm_weekend', 'نوعِ رکورد dorm_weekend نیست');
     assert(W(`db.notifications.length`) > nBefore, 'اعلان برای دانش‌آموز/ولی ساخته نشد');

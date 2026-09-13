@@ -2,16 +2,95 @@
    مودال و فرم
    openModal, modalTpl, askConfirm و سازنده‌های فیلد: f, inp, sel, opt, V.
    ═══════════════════════════════════════════════════════════════════ */
-function openModal(html){$('#modal').innerHTML=`<div class="modal-back" data-act="modal-back"><div class="modal">${html}</div></div>`;}
-function closeModal(){$('#modal').innerHTML='';}
+/* ── دسترس‌پذریِ صفحه‌کلید در مودال (WCAG 2.1 §2.1.2 No Keyboard Trap / §2.4.3 Focus Order) ──
+   openModal:
+     • عنصرِ فعالِ لحظهٔ باز شدن را نگه می‌دارد تا closeModal فوکوس را برگرداند
+     • role=dialog + aria-modal رویِ ظرف
+     • فوکوسِ اولیه به نخستین کنترلِ مودال می‌رود
+     • trap: رویدادِ keydown رویِ #modal، Tab/Shift+Tab را درونِ مودال می‌چرخاند
+   closeModal: فوکوس را به بازکننده برمی‌گرداند (اگر هنوز در سند باشد). */
+function _modalFocusables(){
+  const m=$('#modal') && $('#modal').querySelector('.modal');
+  if(!m)return[];
+  const sel='button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
+  return [...m.querySelectorAll(sel)].filter(el=>!el.disabled&&el.offsetParent!==null);
+}
+function _modalTrap(e){
+  if(e.key!=='Tab')return;
+  const list=_modalFocusables();
+  if(!list.length)return;
+  const first=list[0],last=list[list.length-1];
+  if(e.shiftKey){
+    if(document.activeElement===first||!$('#modal').contains(document.activeElement)){e.preventDefault();last.focus();}
+  }else{
+    if(document.activeElement===last||!$('#modal').contains(document.activeElement)){e.preventDefault();first.focus();}
+  }
+}
+let _modalOpener=null;
+function openModal(html){
+  const host=$('#modal');
+  /* S9-4 (باگ‌هانت نشست ۹): اگر مودالی از قبل باز است، بازکننده را *بازنویسی
+     نکن*. در زنجیرهٔ مودالِ تودرتو (دکمه‌ای درونِ مودال A مودالِ B را باز
+     می‌کند — مسیرهای واقعیِ مخزن: dorm-assign-pick، sub-del، hw-view،
+     leave-new و ۳۲ فراخوانِ askConfirm) عنصرِ فعالِ لحظهٔ باز شدن از داخلِ A
+     است و همین‌جا با جایگزینیِ innerHTML نابود می‌شود؛ ذخیره‌کردنِ آن یعنی
+     سوزاندنِ مسیرِ بازگشتِ فوکوس (document.contains رد می‌کند و فوکوس روی
+     <body> می‌افتد). بازکنندهٔ اصلی همان دکمهٔ صفحه است و باید بماند. */
+  if(!(host&&host.innerHTML.trim())){
+    _modalOpener=(document.activeElement&&document.activeElement!==document.body)?document.activeElement:null;
+  }
+  $('#modal').innerHTML=`<div class="modal-back" data-act="modal-back"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;
+  if(typeof a11yScrollablePass==='function')a11yScrollablePass($('#modal'));
+  /* فوکوسِ اولیه: نخستین کنترلِ فرم اگر بود، وگرنه نخستین فوکوس‌پذیر (دکمهٔ ✕) */
+  const list=_modalFocusables();
+  const target=list.find(el=>/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName))||list[0];
+  if(target){try{target.focus();}catch(e){}}
+  /* S9-4: ثبتِ trap. افزودنِ شنوندهٔ *یکسان* (نوع + callback + capture) در DOM
+     ادغام می‌شود، پس بازِ تودرتو هم شنوندهٔ دومی نمی‌سازد و نیازی به removeِ
+     پیش از add نیست (AF8 در tests/a11y-modal-focus.js همین را قفل می‌کند). */
+  $('#modal').addEventListener('keydown',_modalTrap);
+}
+function closeModal(){
+  const el=$('#modal');
+  const wasOpen=!!(el&&el.innerHTML.trim());
+  if(el){el.removeEventListener('keydown',_modalTrap);el.innerHTML='';}
+  /* بدونِ مودالِ باز، هیچ فوکوسی جابه‌جا نمی‌شود (closeModal در جریان‌های
+     عادی هم بی‌قید صدا زده می‌شود و نباید فوکوسِ کاربر را برُباید). */
+  if(!wasOpen){_modalOpener=null;return;}
+  if(_modalOpener&&document.contains(_modalOpener)){try{_modalOpener.focus();}catch(e){}_modalOpener=null;return;}
+  _modalOpener=null;
+  /* S9-4: بازکننده در دسترس نیست (رندرِ مجددِ پوسته یا زنجیرهٔ ناتمام) —
+     فوکوس نباید به <body> سقوط کند (WCAG 2.4.3)؛ به محتوای اصلی می‌رود. */
+  const m=document.querySelector('.main');
+  if(m){
+    if(!m.hasAttribute('tabindex'))m.setAttribute('tabindex','-1');
+    try{m.focus();}catch(e){}
+  }
+}
 function modalTpl(title,body,saveAct,danger,okLabel){
-  return `<div class="card-head"><h3>${esc(title)}</h3><button class="icon-btn" data-act="modal-close">✕</button></div>
+  return `<div class="card-head"><h3>${esc(title)}</h3><button class="icon-btn" data-act="modal-close" aria-label="بستن">✕</button></div>
    <div class="card-body">${body}</div>
    <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border);justify-content:flex-end">
     <button class="btn ghost" data-act="modal-close">انصراف</button>
     <button class="btn ${danger?'danger':''}" data-act="${escAttr(saveAct)}">${okLabel||(danger?'حذف کن':'ذخیره')}</button></div>`;
 }
-const f=(label,inner)=>`<div class="field"><label>${label}</label>${inner}</div>`;
+/* هلپرِ فیلدِ فرم — دسترس‌پذیر (axe: label/select-name).
+   اگر کنترلِ درونی id داشته باشد، <label for=…> می‌سازد تا نامِ دسترس‌پذیر
+   برنامه‌ای برقرار شود؛ وگرنه متنِ برچسب (بدونِ تگ) به‌عنوانِ aria-label
+   رویِ نخستین کنترل می‌نشیند. ساختارِ DOM (div.field>label+کنترل) دست نمی‌خورد. */
+const f=(label,inner)=>{
+  const s=String(inner);
+  const m=/\sid="([^"]+)"/.exec(s);
+  /* jdate() stores the value in a hidden input, but its visible button is the
+     actual control. Give the visible button the label's accessible name. */
+  const jd=/\sdata-jd="([^"]+)"/.exec(s);
+  const labelId=jd?'jdate-label-'+jd[1]:'';
+  const labelAttrs=(m&&!jd?` for="${escAttr(m[1])}"`:'')+(labelId?` id="${escAttr(labelId)}"`:'');
+  if(m||labelId) return `<div class="field"><label${labelAttrs}>${label}</label>${s}</div>`;
+  const plain=String(label).replace(/<[^>]*>/g,'').replace(/"/g,'&quot;').trim();
+  const patched=plain?s.replace(/<(input|select|textarea)\b(?![^>]*aria-label)/i,`<$1 aria-label="${plain}"`):s;
+  return `<div class="field"><label>${label}</label>${patched}</div>`;
+};
 const inp=(id,val,type='text')=>`<input class="input" id="${escAttr(id)}" type="${escAttr(type)}" value="${esc(val??'')}" />`;
 const sel=(id,opts,val)=>`<select class="select" id="${escAttr(id)}">${opts.map(o=>`<option value="${esc(o[0])}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
 const V=id=>{const e=$('#'+id);return e?e.value.trim():'';};
@@ -75,6 +154,8 @@ function schoolModal(s){
     <div class="grid g2">
       ${f('مقطع',sel('m_level',[['ابتدایی','ابتدایی'],['متوسطه اول','متوسطه اول'],['متوسطه دوم','متوسطه دوم']],s.level))}
       ${f('نوع',sel('m_type',SCHOOL_TYPES.map(x=>[x,x]),s.type||'عادی'))}
+      ${f('نوع مدرسه (تعیین‌کنندهٔ ماژول‌ها)',sel('m_school_type',(typeof SCHOOL_TYPE_DEFS!=='undefined'?SCHOOL_TYPE_DEFS.map(d=>[d[0],d[1]]):[['governmental','دولتی معمولی']]),(typeof schoolTypeOf==='function'?schoolTypeOf(s):'governmental')))}
+      ${(function(){var cur=(typeof yearCode==='function')?yearCode():'';var pv=(typeof prevYearCode==='function'&&cur)?prevYearCode(cur):'';var nx=(typeof nextYearCode==='function'&&cur)?nextYearCode(cur):'';var L=(typeof yearCodeTitle==='function')?function(c,tag){return 'سال '+yearCodeTitle(c)+(tag||'')}:function(c){return c};var o=[['','📅 دنبال تقویم (خودکار)']];if(pv)o.push([pv,L(pv)]);if(cur)o.push([cur,L(cur,' (جاری)')]);if(nx)o.push([nx,L(nx)]);return f('سال تحصیلی عملیاتی',sel('m_active_year',o,s.active_year_code||''));})()}
       ${f('جنسیت',sel('m_gender',[['پسرانه','پسرانه'],['دخترانه','دخترانه']],s.gender))}
       ${f('تلفن ثابت مدرسه',inp('m_landline',s.landline||''))}
       ${f('تلفن همراه رابط',inp('m_phone',s.phone||''))}
@@ -84,6 +165,7 @@ function schoolModal(s){
     <div class="small muted" style="margin:-4px 0 10px">
       شیفت بر ساعت شروع زنگ‌ها اثر می‌گذارد. زمان‌بندی دقیق زنگ‌ها را
       مدیر مدرسه در صفحهٔ «زمان‌بندی زنگ‌ها» تعیین می‌کند.</div>
+    <div class="small muted" style="margin:-4px 0 10px">نوع مدرسه تعیین می‌کند کدام ماژول‌ها (شهریه، خوابگاه، IEP، چندپایه، کارگاه) فعال باشند؛ با تغییر آن، چک‌باکس‌های «پروفایل قابلیت» خودکار تنظیم می‌شوند ولی دستی هم قابل اصلاح‌اند.</div>
     <div class="sec-title">🗓️ روزهای کاری</div>
     <div class="row" style="gap:12px;flex-wrap:wrap;padding:4px 0">
       ${(typeof DAYS_FULL!=='undefined'?DAYS_FULL:['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه']).map((d,i)=>`<label class="row" style="gap:5px;cursor:pointer"><input type="checkbox" class="m-wd" value="${i}" ${((s.work_days&&s.work_days.length?s.work_days:(typeof DEFAULT_WORK_DAYS!=='undefined'?DEFAULT_WORK_DAYS:[0,1,2,3])).indexOf(i)>-1)?'checked':''}/> ${d}</label>`).join('')}
@@ -126,7 +208,7 @@ function userModal(x){
   openModal(modalTpl(x.id?'ویرایش کاربر':'افزودن کاربر',
    `<div class="grid g2">${f('نام و نام خانوادگی *',inp('u_name',x.full_name))}
     ${f('نام کاربری *',`<input class="input" id="u_user" value="${esc(x.username)}" ${x.id?'disabled':''} />`)}
-    ${f('نقش',sel('u_role',[['manager','مدیر مدرسه'],['teacher','دبیر'],['student','دانش‌آموز'],['parent','ولی'],['counselor','مشاور'],['driver','راننده سرویس']],x.role))}
+    ${f('نقش',sel('u_role',[['manager','مدیر مدرسه'],['teacher','دبیر'],['student','دانش‌آموز'],['parent','ولی'],['counselor','مشاور'],['driver','راننده سرویس'],['guard','نگهبان/پذیرش (E.9)']],x.role))}
     ${isSuper?f('مدرسه',sel('u_school',db.schools.map(s=>[s.id,s.name]),x.school_id)):''}
     ${f('کد ملی',inp('u_nid',x.national_id))}${f('تلفن همراه',inp('u_phone',x.phone))}
     ${f('کلاس (برای دانش‌آموز)',sel('u_class',[['','— بدون کلاس —']].concat(clsList.map(c=>[c.id,c.name])),cur))}
@@ -258,18 +340,49 @@ function gradeModal(g){
   const studs=studentsOfClass(cid);
   if(!studs.length){toast('این کلاس دانش‌آموزی ندارد','err');return;}
   g=g||{student_id:studs[0].id,subject_id:(_autoOk?_auto.subjectId:subs[0].id),term:TERMS[0],exam_type:EXAM_TYPES[0],score:20,kind:'theory'};
+  /* ── فاز ۰.۳: نمرهٔ نهایی کشوری از بیرون می‌آید ──
+     دبیر نوع «امتحان نهایی» را در فرم نمی‌بیند و اگر به رکوردِ کشوری
+     رسید، نمره برایش فقط‌خواندنی است. گارد اصلی روی داده در
+     19-actions-core.js → grade-save است؛ اینجا فقط کشف‌پذیری. */
+  const _gRole=(typeof activePersona==='function')?activePersona():(S.user&&S.user.role);
+  const _gTypes=(_gRole==='teacher')?EXAM_TYPES.filter(t=>t!==NATIONAL_EXAM_TYPE):EXAM_TYPES;
+  const _gNat=(typeof gradeSource==='function')&&gradeSource(g)==='national';
+  const _gLocked=!!(_gNat&&_gRole==='teacher');
   /* بند ۴.۲: در مدارسِ فنی‌وحرفه‌ای/کاردانش، نوعِ نمره (تئوری/عملی) انتخاب می‌شود */
   const _gsc=byId('schools',(byId('classes',cid)||{}).school_id);
-  const _gkindOpts=(typeof workshopSchool==='function'&&workshopSchool(_gsc&&_gsc.id))?
+  const _gws=(typeof workshopSchool==='function'&&_gsc)?workshopSchool(_gsc.id):false;
+  const _gkindOpts=_gws?
     `${f('نوع نمره',sel('g_kind',[['theory','تئوری'],['practical','عملی/کارگاهی']],g.kind||'theory'))}`:'';
+  /* E.1 — هنرستان: نوع «تئوری» ⇒ قسمت‌های تئوری/عملی (نمرهٔ نهایی =
+     میانگینِ پرشده‌ها)؛ نوع «عملی/کارگاهی» ⇒ رکوردِ واحد که فقط فیلدِ
+     «نمره» شمده می‌شود (رفتارِ پیشینِ بند ۴.۲). فیلدهایِ نامرتبط با
+     نوع، gradeKindToggle (شنوندهٔ change روی g_kind) پنهان می‌کند. */
+  const _isPrac=(g.kind==='practical');
+  const _gparts=_gws?`<div id="g_parts_wrap" style="display:${_isPrac?'none':'contents'}">`
+    +`${f('نمرهٔ تئوری (از ۲۰)',`<input class="input" id="g_theory" type="number" step="0.25" min="0" max="20" value="${escAttr(g.theoretical_score!=null?g.theoretical_score:'')}" />`)}`
+    +`${f('نمرهٔ عملی (از ۲۰)',`<input class="input" id="g_practical" type="number" step="0.25" min="0" max="20" value="${escAttr(g.practical_score!=null?g.practical_score:(g.kind==='practical'&&g.score!=null?g.score:''))}" />`)}`
+    +`<div class="small muted" style="margin-top:-4px">نمرهٔ نهایی = میانگینِ قسمت‌هایِ پرشده است.</div></div>`:'';
   openModal(modalTpl(g.id?'ویرایش نمره':'ثبت نمره جدید',
    `<div class="grid g2">
     ${f('دانش‌آموز',`<select class="select" id="g_st" ${g.id?'disabled':''}>${studs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.student_id?'selected':''}>${esc(s.full_name)}</option>`).join('')}</select>`)}
     ${f('درس',`<select class="select" id="g_sub" ${g.id?'disabled':''}>${subs.map(s=>`<option value="${escAttr(s.id)}" ${s.id===g.subject_id?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`)}
-    ${f('نوبت',sel('g_term',TERMS.map(t=>[t,t]),g.term))}${f('نوع آزمون',sel('g_type',EXAM_TYPES.map(t=>[t,t]),g.exam_type))}
+    ${f('نوبت',sel('g_term',TERMS.map(t=>[t,t]),g.term))}${f('نوع آزمون',sel('g_type',_gTypes.map(t=>[t,t]),g.exam_type))}
     ${_gkindOpts}
-    ${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${escAttr(g.score)}" />`)}</div>`,'grade-save'));
+    ${_gNat?`<div class="small" style="grid-column:1/-1">${_gLocked?'🔒':'🏛️'} <b>نتیجهٔ امتحان نهایی کشوری</b> — ${_gLocked?'فقط مدیر مدرسه می‌تواند آن را وارد یا اصلاح کند.':'از بیرون (اعلام اداره) وارد می‌شود و در کارنامه جدا نشان داده می‌شود.'}</div>`:''}
+    <div id="g_score_field" style="display:${_gws&&!_isPrac?'none':'contents'}">${f('نمره (از ۲۰)',`<input class="input" id="g_score" type="number" step="0.25" min="0" max="20" value="${escAttr(g.score)}" ${_gLocked?'disabled':''} />`)}</div>
+    ${_gparts}</div>`,'grade-save'));
   window._edit=g;window._gclass=cid;
+}
+
+/* E.1 — جابه‌جاییِ فیلدهایِ فرمِ نمره هنگامِ تغییرِ نوع (g_kind):
+   «عملی/کارگاهی» ⇒ فقط فیلدِ «نمره»؛ «تئوری» ⇒ قسمت‌های تئوری/عملی.
+   در مدرسهٔ غیرکارگاهی هیچ‌کدام وجود ندارد (no-op). */
+function gradeKindToggle(kind){
+  const pf=$('#g_score_field'),pw=$('#g_parts_wrap');
+  if(!pf&&!pw)return;
+  const prac=(kind==='practical');
+  if(pf)pf.style.display=prac?'contents':'none';
+  if(pw)pw.style.display=prac?'none':'contents';
 }
 
 /* بند ۴.۲ — مودالِ ثبت/ویرایشِ ساعتِ کارآموزی.
@@ -438,9 +551,16 @@ function discModal(d){
 }
 function annModal(a){
   a=a||{title:'',body:'',audience:'all'};
+  /* د.۳ — سطح اهمیت برای ناشران؛ اطلاعیهٔ اداره در محدودهٔ خود اداره منتشر می‌شود */
+  const isOffice=S.user.role==='edu_office';
+  const canSeverity=['manager','superadmin','edu_office'].includes(S.user.role);
+  const officeName=isOffice&&S.user.office_id?((byId('offices',S.user.office_id)||{}).name||''):'';
   openModal(modalTpl(a.id?'ویرایش اطلاعیه':'انتشار اطلاعیه',
    `${f('عنوان *',inp('a_title',a.title))}
     ${f('مخاطب',sel('a_aud',[['all','همه'],['teacher','دبیران'],['student','دانش‌آموزان'],['parent','اولیا'],['manager','مدیران']],a.audience))}
+    ${canSeverity?`${f('سطح اهمیت',sel('a_sev',[['normal','عادی'],['urgent','🟠 فوری'],['critical','🔴 بحرانی']],a.severity||'normal'))}
+      <div class="small muted" style="margin:-6px 0 10px">بحرانی با بنر قرمز و فوری با نوار کهربایی اولِ فهرست مخاطبان نمایش داده می‌شود.</div>`:''}
+    ${isOffice?`<div class="small" style="background:var(--purple-soft);padding:8px 12px;border-radius:10px;margin-bottom:10px">🏛️ این اطلاعیه به‌نام «${esc(officeName)}» برای همهٔ مدارس محدودهٔ همان اداره منتشر می‌شود.</div>`:''}
     ${f('متن *',`<textarea class="input" id="a_body" rows="5">${esc(a.body||'')}</textarea>`)}`,'ann-save'));
   window._annEdit=a.id||0;
 }

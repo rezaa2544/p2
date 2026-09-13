@@ -4,6 +4,9 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 var IDB_MIGRATION_FLAG = 'payesh_idb_migrated_v2';
+/* S7-10: v2 was already set by the first-wins migrator. A separate repair
+   marker forces exactly one complete merge for those existing users. */
+var IDB_MIGRATION_REPAIR_FLAG = 'payesh_idb_migrated_v3';
 
 /**
  * مهاجرت خودکار داده‌های محلی به IndexedDB در اولین اجرا
@@ -16,9 +19,10 @@ function migrateFromLocalStorageToIdb(customStorage) {
     return Promise.resolve(false);
   }
 
-  // اگر قبلاً مهاجرت انجام شده باشد
+  // v2 در نسخهٔ first-wins ممکن است با صفِ ناقص سبز شده باشد؛
+  // فقط repair marker جدید اجازهٔ خروج زودهنگام دارد.
   try {
-    if (typeof Store !== 'undefined' && Store.get(IDB_MIGRATION_FLAG) === 'true') {
+    if (typeof Store !== 'undefined' && Store.get(IDB_MIGRATION_REPAIR_FLAG) === 'true') {
       return Promise.resolve(true);
     }
   } catch (e) {
@@ -44,18 +48,31 @@ function migrateFromLocalStorageToIdb(customStorage) {
     }
 
     // ۲. انتقال صف همگام‌سازی معلق
+    //    W7-5 (باگ‌هانت چت ۵، نشست ۴): کلیدِ واقعیِ صف `sms_syncq_v1`
+    //    (SYNC_QUEUE_KEY در 27-sync.js) است؛ پیش‌تر فقط کلیدِ کهنهٔ
+    //    `sms_queue_v1`/`payesh_sync_queue` خوانده می‌شد، پس صفِ معلقِ
+    //    واقعی هیچ‌وقت مهاجرت نمی‌کرد و پرچم با صفِ ناتمام سبز می‌شد.
+    //    S7-5 (باگ‌هانت چت ۵، نشست ۷): کلیدها قبلاً با `||` و «اولی-برنده»
+    //    خوانده می‌شدند؛ پس اگر کلیدِ جاریِ برنامه (`sms_syncq_v1`) موجود بود،
+    //    صفِ کهنهٔ `sms_queue_v1`/`payesh_sync_queue` هرگز خوانده نمی‌شد و
+    //    عملیاتِ معلقِ قدیمی بی‌صدا گم می‌شد (تستِ ۱۴ همین را می‌گیرد).
+    //    حالا هر سه کلید ادغام می‌شوند؛ `addToQueue` روی uid یکتا می‌کند،
+    //    پس ادغام تکراری نمی‌سازد و ترتیبِ کهنه‌تر→جاری حفظ می‌شود.
     try {
       if (typeof Store !== 'undefined') {
-        var rawQueue = Store.get('sms_queue_v1') || Store.get('payesh_sync_queue');
-        if (rawQueue) {
-          var queueEntries = JSON.parse(rawQueue);
-          if (Array.isArray(queueEntries)) {
-            for (var i = 0; i < queueEntries.length; i++) {
-              var op = queueEntries[i];
-              if (op && (op.uid || op.id)) {
-                if (!op.uid) op.uid = op.id;
-                promises.push(storage.addToQueue(op));
-              }
+        /* Oldest first: a current-generation record must win a uid collision. */
+        var QUEUE_KEYS = ['payesh_sync_queue', 'sms_queue_v1', 'sms_syncq_v1'];
+        for (var qk = 0; qk < QUEUE_KEYS.length; qk++) {
+          var rawQueue = Store.get(QUEUE_KEYS[qk]);
+          if (!rawQueue) continue;
+          var queueEntries;
+          try { queueEntries = JSON.parse(rawQueue); } catch (eQp) { continue; }
+          if (!Array.isArray(queueEntries)) continue;
+          for (var i = 0; i < queueEntries.length; i++) {
+            var op = queueEntries[i];
+            if (op && (op.uid || op.id)) {
+              if (!op.uid) op.uid = op.id;
+              promises.push(storage.addToQueue(op));
             }
           }
         }
@@ -79,7 +96,10 @@ function migrateFromLocalStorageToIdb(customStorage) {
 
     return Promise.all(promises).then(function() {
       try {
-        if (typeof Store !== 'undefined') Store.set(IDB_MIGRATION_FLAG, 'true');
+        if (typeof Store !== 'undefined') {
+          Store.set(IDB_MIGRATION_FLAG, 'true');
+          Store.set(IDB_MIGRATION_REPAIR_FLAG, 'true');
+        }
       } catch (e) {}
       return true;
     }).catch(function(err) {

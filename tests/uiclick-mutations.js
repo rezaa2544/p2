@@ -16,20 +16,29 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و
+   index.html هرگز بازنویسی نمی‌شوند — بازگردانیِ دستی و rebuildِ
+   پایانی حذف شدند. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('uic-mut-');
+kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
 
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0, envFails = 0;
 function chk(c, m) { if (c) { pass++; console.log('  ✅ ' + m); } else { fail++; console.log('  ❌ ' + m); } }
 
+let lastFile = null;
 function mutate(file, from, to, killRe, tag) {
   const f = path.join(ROOT, file);
+  if (lastFile && lastFile !== f) kit.clear(lastFile); /* فقط جهشِ جاری فعال */
+  lastFile = f;
   const orig = fs.readFileSync(f, 'utf8');
   const bad = orig.replace(from, to);
   if (bad === orig) { chk(false, tag + ': جهش اعمال نشد (نماد پیدا نشد)'); return; }
-  fs.writeFileSync(f, bad, 'utf8');
-  try {
-    execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
-    const runOnce = () => spawnSync('node', [path.join(ROOT, 'tests/uiclick.js')], { cwd: ROOT, encoding: 'utf8' });
+  kit.mutant(f, bad); /* کپی جدا؛ سورس اصلی دست‌نخورده */
+  {
+    execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore', env: kit.env() });
+    const runOnce = () => spawnSync('node', [path.join(ROOT, 'tests/uiclick.js')], { cwd: ROOT, encoding: 'utf8', env: kit.env() });
     const outOf = (x) => x.stdout || x.stderr || '';
   /* R92: مرگِ زودهنگامِ کشف‌کننده (پورت اشغال/حافظه — قبل از چاپِ چکِ موردِ انتظار و خطِ خلاصه) → retry یک‌بار، بعد env-failِ صریح. هرگز «زنده ماند»ِ کاذب. */
     const completed = (o) => /uiclick: \d+ بخش سبز/.test(o || '');
@@ -44,8 +53,6 @@ function mutate(file, from, to, killRe, tag) {
       return;
     }
     chk(r.status !== 0 && killRe.test(outOf(r)), tag + ' کشته شد');
-  } finally {
-    fs.writeFileSync(f, orig, 'utf8');
   }
 }
 
@@ -54,8 +61,7 @@ mutate('src/js/19-actions-core.js', "'pre-reject'(){", "'pre-reject'(el,id){", /
 mutate('src/js/19-actions-core.js', "'pre-del'(){", "'pre-del'(el,id){", /❌ U3/, 'M3 سایِ el/id روی pre-del');
 mutate('src/js/19-actions-bus.js', "'bus-follow-open'(){", "'bus-follow-open'(el){", /❌ U4/, 'M4 سایِ el روی bus-follow-open');
 
-/* بازسازی + خطِّ پایه */
-execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
+/* خطِّ پایه (بدون env — سورس‌های اصلی) */
 const b2 = spawnSync('node', [path.join(ROOT, 'tests/uiclick.js')], { cwd: ROOT, encoding: 'utf8' });
 chk(b2.status === 0, 'خطِّ پایهٔ uiclick سبز است');
 

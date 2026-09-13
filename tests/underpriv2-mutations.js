@@ -13,6 +13,11 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی
+   هرگز بازنویسی نمی‌شود — بازگردانی حذف شد (clear نگاشت). */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('upv2-mut-');
+kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
 let ok = 0, bad = 0, envFails = 0;
 function chk(cond, msg) {
   if (cond) { ok++; console.log('  ✅ ' + msg); }
@@ -24,12 +29,13 @@ function mutate(file, from, to, killRe, tag) {
   const orig = fs.readFileSync(f, 'utf8');
   const badSrc = orig.replace(from, to);
   if (badSrc === orig) { chk(false, tag + ': جهش اعمال نشد (نماد پیدا نشد)'); return; }
-  fs.writeFileSync(f, badSrc, 'utf8');
+  const mcopy = kit.mutant(f, badSrc); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+  try { fs.chmodSync(mcopy, fs.statSync(f).mode); } catch (_) {}
   try {
-  const runOnce = () => spawnSync('node', [path.join(ROOT, 'tests/underpriv2.js')], { cwd: ROOT, encoding: 'utf8' });
+  const runOnce = () => spawnSync('node', [path.join(ROOT, 'tests/underpriv2.js')], { cwd: ROOT, encoding: 'utf8', env: kit.env() });
   /* R92: مرگِ زودهنگامِ کشف‌کننده (پورت اشغال/حافظه — قبل از چاپِ چکِ موردِ انتظار و خطِ خلاصه) → retry یک‌بار، بعد env-failِ صریح. هرگز «زنده ماند»ِ کاذب. */
   const completed = (o) => /بررسی — /.test(o || '');
-  execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
+  execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore', env: kit.env() }); /* build در سایه */
   let r = runOnce();
   if (r.status !== 0 && !killRe.test(r.stdout) && !completed(r.stdout)) {
     const r2 = runOnce();
@@ -42,7 +48,7 @@ function mutate(file, from, to, killRe, tag) {
   }
   chk(r.status !== 0 && killRe.test(r.stdout), tag + ' کشته شد (' + killRe + ')');
   } finally {
-    fs.writeFileSync(f, orig, 'utf8');
+    kit.clear(f); /* نقشهٔ خالی؛ پاک‌سازیِ واقعی در exit */
   }
 }
 
@@ -66,8 +72,7 @@ mutate('src/js/24-edu-office.js',
   '${_sig[rows.indexOf(r)].length?\'<span class="badge b-purple"',
   /❌ U4/, 'M4 بجِ ردیفی با سیگنالِ عملکردی (به‌جای ساختاری)');
 
-/* بازسازی + خطِّ پایه */
-execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
+/* خطِّ پایه — سورس‌ها و index.html اصلی دست‌نخورده‌اند (بدون rebuild) */
 const base = spawnSync('node', [path.join(ROOT, 'tests/underpriv2.js')], { cwd: ROOT, encoding: 'utf8' });
 chk(base.status === 0, 'خطِّ پایهٔ underpriv2 سبز است');
 

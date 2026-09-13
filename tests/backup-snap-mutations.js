@@ -9,7 +9,15 @@
    M5 بررسیِ شکلِ اسنپ‌شات خاموش ← S5 (فایلِ خراب پذیرفته می‌شود)
    ───────────────────────────────────────────────────────────── */
 const { execSync } = require('child_process');
+const path = require('path');
 const fs = require('fs');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و index.html هرگز
+   بازنویسی نمی‌شود — بازگردانیِ دستی و rebuildِ پایانی حذف شدند. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('bsn-mut-');
+const ROOT = path.join(__dirname, '..');
+kit.remapBuildOutputs();
+
 
 const SUITE = 'tests/backup-snap.js';
 const FILE = 'src/js/38-plans-backup.js';
@@ -35,20 +43,19 @@ let killed = 0, envFails = 0;
 for (const m of MUTS) {
   const src0 = fs.readFileSync(FILE, 'utf8');
   if (src0.indexOf(m.bad) < 0) { console.log(`  ❌ ${m.name}: الگو پیدا نشد در ${FILE}`); continue; }
-  fs.writeFileSync(FILE, src0.replace(m.bad, m.mut));
-  execSync('node build.js', { stdio: 'pipe' });
+  kit.mutant(path.join(ROOT, FILE), src0.replace(m.bad, m.mut)); /* کپی جدا */
+  execSync('node build.js', { stdio: 'pipe', env: kit.env(), cwd: ROOT });
   let out = '', crashed = false;
   const cmd = 'node --max-old-space-size=1500 ' + SUITE;
-  try { execSync(cmd, { stdio: 'pipe' }); out = 'PASSED (no failure)'; }
+  try { execSync(cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
   catch (e) {
     out = String(e.stdout || '') + String(e.stderr || '');
     if (out.trim() === '') {
-      try { execSync(cmd, { stdio: 'pipe' }); out = 'PASSED (no failure)'; }
+      try { execSync(cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
       catch (e2) { out = String(e2.stdout || '') + String(e2.stderr || ''); }
     }
     if (/JavaScript heap out of memory|FATAL|aborting/.test(out) || out.trim() === '') crashed = true;
   }
-  fs.writeFileSync(FILE, src0);
   if (crashed) {
     envFails++;
     console.log(`  ⚠️ ${m.name} — خطایِ محیطی (کرش/بی‌خروجی)، نه «زنده ماندن»`);
@@ -58,7 +65,6 @@ for (const m of MUTS) {
   console.log(`  ${killedThis ? '✅' : '❌'} ${m.name} — ${killedThis ? 'کشته شد' : 'زنده ماند! (خطا: ' + ((out.split('\n').find(l => l.includes('❌')) || out.slice(0, 140))) + ')'}`);
   if (killedThis) killed++;
 }
-execSync('node build.js', { stdio: 'pipe' });
 let backGreen = false, finalOut = '';
 try {
   finalOut = execSync('node --max-old-space-size=1500 ' + SUITE, { stdio: 'pipe' }).toString();

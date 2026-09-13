@@ -52,6 +52,64 @@ function dojoBadge(sid){
   var cls = t > 0 ? 'b-green' : (t < 0 ? 'b-red' : 'b-gray');
   return '<span class="badge ' + cls + '" title="مجموع امتیازها از روی موارد انضباطی">⭐ مجموع امتیاز: ' + fa(t) + '</span>';
 }
+/** آیا کاربرِ فعلی می‌تواند به این دانش‌آموز امتیازِ سریع بدهد؟
+    مدیر/سوپرادمین: آری (همان مدرسه) — دبیر: فقط کلاسِ خودش. */
+function dojoCanQuickAward(sid){
+  if(!dojoAvailableForStudent(sid)) return false;
+  var u = S.user;
+  var role = (typeof activePersona === 'function') ? activePersona() : u.role;
+  if(role === 'superadmin') return true;
+  var st = byId('users', sid);
+  if(!st || st.school_id !== u.school_id) return false;
+  if(role === 'manager') return true;
+  if(role !== 'teacher') return false;
+  var c = (typeof classOf === 'function') ? classOf(sid) : null;
+  if(!c) return false;
+  return (typeof visibleClasses === 'function')
+    ? visibleClasses().some(function(x){ return x.id === c.id; })
+    : false;
+}
+/** امتیازِ سریعِ +۱ از صفحهٔ حضور: اولین نوعِ مثبتِ مدل، وگرنه «تشویق» */
+function dojoQuickAward(sid){
+  if(!dojoCanQuickAward(sid)) return {ok:false, msg:'مجاز نیستید'};
+  var st = byId('users', sid);
+  var sch = dojoSchoolOfStudent(sid);
+  var types = sch ? dojoTypes(sch.id) : [];
+  var pos = null;
+  for(var i = 0; i < types.length; i++){
+    if(Number(types[i].delta) > 0){ pos = types[i]; break; }
+  }
+  var title = pos ? (pos.icon + ' ' + pos.label) : '⭐ تشویق';
+  var pts = pos ? Number(pos.delta) : 1;
+  insert('discipline', {
+    school_id: st.school_id, student_id: sid, created_by: S.user.id,
+    kind: 'positive', title: title, description: 'امتیازِ سریع از صفحهٔ حضور',
+    points: pts, date: todayISO()
+  });
+  return {ok:true, msg:'⭐ ' + pts + ' امتیاز برای ' + (st.full_name || '') + ' ثبت شد'};
+}
+/** پنج امتیازِ اخیرِ دانش‌آموز برای کارتِ داشبورد (تازه‌ترین اول) */
+function dojoRecent(sid, n){
+  n = n || 5;
+  return db.discipline
+    .filter(function(d){ return d.student_id === sid; })
+    .slice().sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); })
+    .slice(0, n);
+}
+/** نوارِ «آخرین امتیازها» — فقط وقتی گیمیفیکیشن فعال است */
+function dojoRecentHtml(sid){
+  if(!dojoAvailableForStudent(sid)) return '';
+  var rows = dojoRecent(sid, 5);
+  if(!rows.length) return '';
+  return '<div class="card"><div class="card-head"><h3>⭐ آخرین امتیازها</h3>' + dojoBadge(sid) + '</div>'
+    + '<div class="card-body" style="display:grid;gap:8px">'
+    + rows.map(function(d){
+        return '<div class="row" style="gap:8px"><span class="badge ' + (d.points >= 0 ? 'b-green' : 'b-red') + '">'
+          + (d.points >= 0 ? '+' : '') + fa(d.points) + '</span><b>' + esc(d.title || '—') + '</b>'
+          + '<div class="spacer"></div><span class="muted small">' + jalali(d.date) + '</span></div>';
+      }).join('')
+    + '</div></div>';
+}
 /** چیپ‌های مدل برای فرمِ ثبت مورد انضباطی (دبیر) */
 function dojoChipsHtml(schId){
   var types = dojoTypes(schId);

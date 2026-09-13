@@ -1,7 +1,7 @@
 
 
 /* اعداد: ارقام هم‌عرض و خوانا برای جدول‌ها و آمار */
-:root{--bg:#f2f6fd;--surface:#fff;--surface-2:#f6f9ff;--border:#c2cee4;--border-strong:#a9b8d4;--text:#10203a;--muted:#64748b;--primary:#1668f0;--primary-dark:#0f4fc4;--primary-soft:#e7f0ff;--brand-cyan:#16b3f0;--brand-orange:#f7941d;--brand-green:#5cb531;--brand-navy:#14225a;--green:#0f9d63;--green-soft:#e6f7f0;--red:#e0405a;--red-soft:#fdecef;--amber:#e08e17;--amber-soft:#fdf3e2;--purple:#7b5cf0;--purple-soft:#f0ecff;--radius:16px;--shadow:0 1px 3px rgba(16,34,90,.10),0 10px 28px -16px rgba(16,34,90,.22);--shadow-lg:0 20px 50px -22px rgba(16,34,90,.35)}
+:root{--bg:#f2f6fd;--surface:#fff;--surface-2:#f6f9ff;--border:#c2cee4;--border-strong:#a9b8d4;--text:#10203a;--muted:#556074;--primary:#1668f0;--primary-dark:#0f4fc4;--primary-soft:#e7f0ff;--brand-cyan:#16b3f0;--brand-orange:#f7941d;--brand-green:#5cb531;--brand-navy:#14225a;--green:#0a6f46;--green-soft:#e6f7f0;--red:#b7253f;--red-soft:#fdecef;--amber:#96590a;--amber-soft:#fdf3e2;--green-text:#0a6f46;--red-text:#b7253f;--amber-text:#96590a;--purple:#7b5cf0;--purple-soft:#f0ecff;--radius:16px;--shadow:0 1px 3px rgba(16,34,90,.10),0 10px 28px -16px rgba(16,34,90,.22);--shadow-lg:0 20px 50px -22px rgba(16,34,90,.35)}
 *{box-sizing:border-box}html,body{height:100%;margin:0;max-width:100%;overflow-x:hidden}
 img{max-width:100%}
 body{background:var(--bg);color:var(--text);font-family:Vazirmatn,"Segoe UI",Tahoma,"Iranian Sans",sans-serif;font-size:14.5px;font-weight:500;line-height:1.9;-webkit-text-size-adjust:100%;
@@ -43,7 +43,7 @@ a{color:inherit;text-decoration:none}
 .brand-logo{width:44px;height:44px;border-radius:13px;background:#fff;padding:4px;object-fit:contain;box-shadow:0 6px 18px -8px rgba(0,0,0,.5)}
 .login-logo{width:min(300px,66vw);height:auto;border-radius:26px;background:#fff;padding:14px;object-fit:contain;box-shadow:0 28px 70px -26px rgba(0,0,0,.55);z-index:1}
 .brand b{color:#fff;font-size:15px;display:block}.brand span{font-size:11px;color:#7f8ca8}
-.nav-group{font-size:11px;color:#64718c;padding:12px 10px 5px}
+.nav-group{font-size:11px;color:#8b9ab8;padding:12px 10px 5px}
 .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;border:1px solid transparent}
 .nav-item:hover{background:#1a263d;color:#fff}
 .nav-item.active{background:linear-gradient(90deg,rgba(22,179,240,.28),rgba(22,104,240,.10));color:#fff;border-color:rgba(22,179,240,.45);box-shadow:inset 3px 0 0 var(--brand-cyan)}
@@ -76,6 +76,8 @@ a{color:inherit;text-decoration:none}
 .topbar h1{font-weight:800;font-size:19px;margin:0;letter-spacing:-.3px}.topbar .sub{font-size:12.5px;color:var(--muted);font-weight:500}
 .content{padding:18px 20px 60px;display:flex;flex-direction:column;gap:16px}
 .burger{display:none;background:none;border:1px solid var(--border);border-radius:9px;padding:7px 10px;cursor:pointer}
+.skip-link{position:absolute;top:-56px;inset-inline-start:16px;z-index:200;background:var(--primary-dark);color:#fff;padding:8px 16px;border-radius:0 0 10px 10px;font-weight:700;font-size:13px;text-decoration:none;transition:top .15s}
+.skip-link:focus-visible,.skip-link:focus{top:0;color:#fff;outline:2px solid #fff;outline-offset:-2px}
 .card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);transition:box-shadow .18s,transform .18s;min-width:0}
 .card:hover{box-shadow:var(--shadow-lg);border-color:var(--border-strong)}
 .stat:hover{transform:translateY(-2px)}
@@ -105,9 +107,9 @@ a{color:inherit;text-decoration:none}
 .input:hover,.select:hover,textarea.input:hover{border-color:var(--border-strong)}
 .field{display:grid;gap:5px;margin-bottom:10px}.field label{font-size:13px;color:var(--text);font-weight:700}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:4px 11px;border-radius:999px;font-size:12.5px;font-weight:700;border:1px solid currentColor}
-.b-blue{background:var(--primary-soft);color:var(--primary-dark)}.b-green{background:var(--green-soft);color:var(--green)}
-.b-red{background:var(--red-soft);color:var(--red)}.b-amber{background:var(--amber-soft);color:var(--amber)}
-.b-purple{background:var(--purple-soft);color:var(--purple)}.b-gray{background:#eef1f6;color:var(--muted)}.b-cyan{background:#e2f4fb;color:#0b7fa8}
+.b-blue{background:var(--primary-soft);color:var(--primary-dark)}.b-green{background:var(--green-soft);color:var(--green-text)}
+.b-red{background:var(--red-soft);color:var(--red-text)}.b-amber{background:var(--amber-soft);color:var(--amber-text)}
+.b-purple{background:var(--purple-soft);color:#5d3ad6}.b-gray{background:#eef1f6;color:#556074}.b-cyan{background:#e2f4fb;color:#09678a}
 /* عوامل اجرایی (دور ۶۳) */
 .staff-row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 16px;border:1px solid var(--border);border-radius:14px;margin-bottom:10px;background:var(--surface)}
 .staff-row.reserved{opacity:.62;background:var(--surface-2)}
@@ -129,7 +131,7 @@ tbody tr:hover{background:#eef4ff}
 @keyframes pop{from{transform:translateY(12px) scale(.98);opacity:0}}
 .toast-wrap{position:fixed;bottom:18px;left:18px;display:grid;gap:8px;z-index:90}
 .toast{background:#101a2e;color:#fff;padding:11px 16px;border-radius:11px;font-size:13px;animation:pop .18s ease;box-shadow:var(--shadow)}
-.toast.ok{background:var(--green)}.toast.err{background:var(--red)}
+.toast.ok{background:var(--green)}.toast.err{background:#b7253f}
 .bar-track{height:8px;background:#eef1f6;border-radius:999px;overflow:hidden}
 .bar-fill{height:100%;border-radius:999px;transition:width .5s ease}
 .chart{display:flex;align-items:stretch;gap:5px;height:165px;padding-top:10px}
@@ -205,10 +207,10 @@ tbody tr:hover{background:#eef4ff}
   font-size:12.5px;font-weight:700;color:var(--muted);white-space:nowrap;transition:filter .12s}
 .sync-chip:hover{filter:brightness(.96)}
 .sync-chip .dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
-.sync-chip.ok{color:var(--green);border-color:var(--green-soft);background:var(--green-soft)}
-.sync-chip.pend{color:var(--amber);border-color:var(--amber-soft);background:var(--amber-soft)}
+.sync-chip.ok{color:var(--green-text);border-color:var(--green-soft);background:var(--green-soft)}
+.sync-chip.pend{color:var(--amber-text);border-color:var(--amber-soft);background:var(--amber-soft)}
 .sync-chip.pend .dot{animation:pulse 1.6s ease-in-out infinite}
-.sync-chip.warn{color:var(--red);border-color:var(--red-soft);background:var(--red-soft)}
+.sync-chip.warn{color:var(--red-text);border-color:var(--red-soft);background:var(--red-soft)}
 .sync-chip.off{color:#64748b;background:#eef2f7;border-color:#dbe3ee}
 .sync-chip.off .dot{background:#94a3b8}
 .sync-chip.busy{color:var(--primary);border-color:var(--primary-soft);background:var(--primary-soft)}
@@ -218,7 +220,7 @@ tbody tr:hover{background:#eef4ff}
 @keyframes spin{to{transform:rotate(360deg)}}
 .sync-note{background:var(--amber-soft);border:1px solid var(--amber);color:#7c4a03;
   padding:10px 13px;border-radius:11px;font-size:13px;line-height:2}
-.toast.warn{background:var(--amber);color:#fff}
+.toast.warn{background:#96590a;color:#fff}
 
 /* ---------- نشانهٔ خطای فیلد فرم ---------- */
 .input.has-error,
@@ -736,7 +738,7 @@ tbody tr:hover{background:linear-gradient(90deg,#eef4ff 0%,#f3f7ff 100%)}
   --border: #e2e8f0;
   --border-strong: #cbd5e1;
   --text: #0f172a;
-  --muted: #64748b;
+  --muted: #556074;
   --primary: #2563eb;
   --primary-dark: #1d4ed8;
   --primary-soft: #eff6ff;
@@ -764,7 +766,7 @@ tbody tr:hover{background:linear-gradient(90deg,#eef4ff 0%,#f3f7ff 100%)}
   --border: #d0dcf2;
   --border-strong: #9ab4e6;
   --text: #0d1e3d;
-  --muted: #576b8b;
+  --muted: #4f6382;
   --primary: #1668f0;
   --primary-dark: #0f4dc0;
   --primary-soft: #e3edff;
@@ -805,3 +807,11 @@ tbody tr:hover{background:linear-gradient(90deg,#eef4ff 0%,#f3f7ff 100%)}
   border-color: transparent;
   box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
 }
+/* ── skip-link (WCAG 2.4.1): تا فوکوسِ کیبورد نگیرد دیده نمی‌شود ── */
+.skip-link{position:absolute;top:-48px;right:12px;z-index:2000;background:var(--primary);color:#fff;padding:9px 16px;border-radius:0 0 10px 10px;font-size:13px;font-weight:700;text-decoration:none;transition:top .15s}
+.skip-link:focus{top:0;outline:3px solid var(--brand-cyan);outline-offset:1px}
+/* nav-item حالا با کیبورد فوکوس می‌گیرد — نشانگرِ مرئی لازم است (WCAG 2.4.7) */
+.nav-item:focus-visible{outline:2px solid var(--brand-cyan);outline-offset:-2px}
+
+/* ── موج ۲۱: کلاس چندپایه — خانهٔ خارج از پایهٔ دانش‌آموز ── */
+.mg-off{background:var(--surface-2,#f4f6fa);opacity:.55}

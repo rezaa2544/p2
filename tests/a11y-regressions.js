@@ -1,0 +1,243 @@
+#!/usr/bin/env node
+'use strict';
+/**
+ * تست‌هایِ رگرسیونِ دسترس‌پذیری (استاتیک، بدونِ مرورگر) — مکملِ tests/a11y-runtime.js
+ *
+ * چرا جدا از تستِ runtime؟ تستِ runtime به playwright + chromium نیاز دارد؛
+ * این تست رویِ سورس اجرا می‌شود و در هر محیطی (CI سبک) جلوی بازگشتِ
+ * نقض‌هایی را می‌گیرد که یک‌بار در اسکنِ axe-core پیدا و رفع شدند:
+ *
+ *   دور ۱ (critical):
+ *     - select-name: سلکت‌های بی‌نام (بدونِ label/aria-label) در ۸ نما
+ *     - label: input بی‌برچسب (چک‌باکسِ «چک‌لیست فردا»، تاریخِ حضورغیاب، فایلِ تکلیف)
+ *   دور ۲ (serious):
+ *     - color-contrast: توکن‌هایِ رنگیِ متن باید رویِ پس‌زمینه‌هایشان AA (‏≥4.5:1) بدهند
+ *     - opacity:.7 رویِ متنِ muted کنتراستِ مؤثر را زیرِ 4.5 می‌بُرد
+ *
+ * قاعدهٔ mutation: اگر هر aria-label حذف شود یا توکنِ رنگی روشن‌تر شود، این تست سرخ می‌شود.
+ */
+const fs = require('fs');
+const path = require('path');
+const ROOT = path.join(__dirname, '..');
+const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
+
+let pass = 0, fail = 0;
+function ok(cond, name) {
+  if (cond) { pass++; console.log('  ✅ ' + name); }
+  else { fail++; console.log('  ❌ ' + name); }
+}
+
+/* ── ۱) select-name / label: کنترل‌هایِ رفع‌شده باید aria-label نگه دارند ── */
+const mustHaveAria = [
+  ['src/js/06-login.js',                 'data-f="pubschool"'],
+  ['src/js/32-atrisk-meetings-growth.js','data-f="riskDays"'],
+  ['src/js/56-sida-diff.js',             'data-f="term"'],
+  ['src/js/12-attendance.js',            'data-f="class"'],
+  ['src/js/13-grades.js',                'data-f="class"'],
+  ['src/js/15-schedule.js',              'data-f="homepick"'],
+  ['src/js/17-student-record.js',        'id="cert_term"'],
+  ['src/js/17-student-record.js',        'id="cert_tpl"'],
+  ['src/js/12-attendance.js',            'type="date" data-f="date"'],
+  ['src/js/08-dashboard.js',             'data-act="tomorrow-check"'],
+  ['src/js/51-homework.js',              'id="hwfile_'],
+];
+console.log('▸ کنترل‌هایِ فرم باید نامِ دسترس‌پذیر داشته باشند (axe: select-name/label)');
+for (const [file, marker] of mustHaveAria) {
+  const src = read(file);
+  const i = src.indexOf(marker);
+  if (i < 0) { ok(false, `${file} — نشانگرِ «${marker}» پیدا نشد (کد جابه‌جا شده؟ تست را به‌روز کن)`); continue; }
+  /* aria-label باید در همان تگ (تا ۳۰۰ نویسه اطراف نشانگر، پیش از >) باشد */
+  const start = src.lastIndexOf('<', i);
+  const end = src.indexOf('>', i);
+  const tag = src.slice(Math.max(0, start), end > 0 ? end + 1 : i + 300);
+  ok(/aria-label=/.test(tag), `${file} :: ${marker} → aria-label دارد`);
+}
+
+/* ── ۲) کنتراستِ رنگ (axe: color-contrast) — WCAG AA برایِ متنِ عادی ≥ 4.5:1 ── */
+function lum(hex) {
+  const c = hex.replace('#', '');
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(c.slice(i, i + 2), 16) / 255)
+    .map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function contrast(a, b) {
+  const [l1, l2] = [lum(a), lum(b)].sort((x, y) => y - x);
+  return (l1 + 0.05) / (l2 + 0.05);
+}
+const css = read('src/styles/base.css');
+function cssVar(name) {
+  const m = css.match(new RegExp('--' + name + ':\\s*(#[0-9a-fA-F]{6})'));
+  return m ? m[1] : null;
+}
+console.log('▸ توکن‌هایِ رنگی باید AA بدهند (axe: color-contrast)');
+const pairs = [
+  /* [نامِ تست, رنگِ متن, پس‌زمینه] */
+  ['--green رویِ سفید (متنِ درون‌خطی مثل «۰ ریال»)',        cssVar('green'), '#ffffff'],
+  ['--red رویِ سفید (متنِ درون‌خطی مثل «▼ ۰٫۵۶»)',           cssVar('red'), '#ffffff'],
+  ['--amber رویِ سفید',                                        cssVar('amber'), '#ffffff'],
+  ['سفید رویِ --green (toast.ok)',                             '#ffffff', cssVar('green')],
+  ['سفید رویِ --red (toast.err پایه)',                          '#ffffff', cssVar('red')],
+  ['--green-text رویِ --green-soft (badge/sync-chip)',          cssVar('green-text'), cssVar('green-soft')],
+  ['--red-text رویِ --red-soft',                                cssVar('red-text'), cssVar('red-soft')],
+  ['--amber-text رویِ --amber-soft',                            cssVar('amber-text'), cssVar('amber-soft')],
+  ['--muted رویِ سفید',                                        cssVar('muted'), '#ffffff'],
+  ['--muted رویِ --surface-2',                                  cssVar('muted'), cssVar('surface-2')],
+];
+for (const [name, fg, bg] of pairs) {
+  if (!fg || !bg) { ok(false, name + ' — توکن پیدا نشد'); continue; }
+  const r = contrast(fg, bg);
+  ok(r >= 4.5, `${name}: ${r.toFixed(2)}:1 (نیاز ≥ 4.5)`);
+}
+
+/* nav-group رویِ تیره‌ترین رنگِ گرادیانِ سایدبار */
+{
+  const m = css.match(/\.nav-group\{[^}]*color:(#[0-9a-fA-F]{6})/);
+  ok(m && contrast(m[1], '#0b1329') >= 4.5 && contrast(m[1], '#14225a') >= 4.5,
+    `.nav-group رویِ گرادیانِ سایدبار (هر دو سرِ گرادیان ≥ 4.5)` + (m ? ` — ${m[1]}` : ' — رنگ پیدا نشد'));
+}
+/* b-gray و b-cyan و b-purple: رنگِ صریح */
+for (const [cls, bg] of [['b-gray', '#eef1f6'], ['b-cyan', '#e2f4fb']]) {
+  const m = css.match(new RegExp('\\.' + cls + '\\{background:#[0-9a-fA-F]{6};color:(#[0-9a-fA-F]{6})'));
+  ok(m && contrast(m[1], bg) >= 4.5, `.${cls}: ` + (m ? contrast(m[1], bg).toFixed(2) + ':1' : 'رنگِ صریح پیدا نشد'));
+}
+{
+  const m = css.match(/\.b-purple\{background:var\(--purple-soft\);color:(#[0-9a-fA-F]{6})/);
+  const soft = cssVar('purple-soft');
+  ok(m && soft && contrast(m[1], soft) >= 4.5, '.b-purple: ' + (m && soft ? contrast(m[1], soft).toFixed(2) + ':1' : 'پیدا نشد'));
+}
+/* toast.warn: پس‌زمینهٔ صریح با متنِ سفید */
+{
+  const m = css.match(/\.toast\.warn\{background:(#[0-9a-fA-F]{6});color:#fff\}/);
+  ok(m && contrast('#ffffff', m[1]) >= 4.5, '.toast.warn: ' + (m ? contrast('#ffffff', m[1]).toFixed(2) + ':1' : 'پیدا نشد'));
+}
+/* toast.err: پس‌زمینهٔ صریحِ تیره (نه var(--red) روشنِ قدیمی) */
+{
+  const m = css.match(/\.toast\.err\{background:(#[0-9a-fA-F]{6})\}/);
+  ok(m && contrast('#ffffff', m[1]) >= 4.5, '.toast.err: ' + (m ? contrast('#ffffff', m[1]).toFixed(2) + ':1' : 'پیدا نشد'));
+}
+
+/* ── ۳) opacity رویِ متنِ muted ممنوع (کنتراستِ مؤثر را می‌شکند) ── */
+console.log('▸ opacity رویِ متنِ muted ممنوع');
+{
+  const bad = [];
+  for (const f of fs.readdirSync(path.join(ROOT, 'src/js'))) {
+    if (!f.endsWith('.js')) continue;
+    const src = read('src/js/' + f);
+    if (/class="small muted" style="opacity:\.?\d/.test(src) || /muted[^"]*"\s+style="[^"]*opacity:\s*\.[0-8]/.test(src)) bad.push(f);
+  }
+  ok(bad.length === 0, 'هیچ opacity<0.9 رویِ متنِ muted — ' + (bad.length ? 'نقض: ' + bad.join(', ') : 'پاک'));
+}
+
+
+/* ── ۴) هلپرِ f() مودال‌ها باید label برنامه‌ای بسازد (axe: label/select-name در مودال‌ها) ──
+   این بخش **رفتاری** است، نه متنی.
+
+   چرا عوض شد: سنجهٔ پیشین امضایِ literals `/label for="${m[1]}"/` را در سورس می‌گشت.
+   وقتی f() سخت‌تر شد — id را با escAttr() پاک‌سازی می‌کند و حالت jdate را هم
+   می‌شناسد — همان رفتارِ درست دیگر آن رشتهٔ دقیق را تولید نمی‌کرد و سنجه قرمز شد،
+   در حالی که خروجی صحیح بود (۵/۵ در بررسیِ رفتاری). سنجهٔ متنی هم «املا»ی
+   پیاده‌سازی را می‌پاید هم رفتار را؛ این نسخه فقط رفتار را می‌پاید و سخت‌تر است:
+   f() واقعی از سورس استخراج و **اجرا** می‌شود. */
+console.log('▸ هلپرِ f() در 18-modals: label دسترس‌پذیر (رفتاری)');
+{
+  const src18 = read('src/js/18-modals.js');
+  const srcHelpers = read('src/js/01-helpers.js');
+
+  /* escAttr واقعیِ خودِ برنامه — نه یک shim که ممکن است با اصل واگرا شود */
+  const escAttrSrc = (srcHelpers.match(/^const escAttr = .*$/m) || [])[0];
+  ok(!!escAttrSrc, 'escAttr در 01-helpers.js پیدا شد');
+
+  /* f() را با موازنهٔ آکولاد از سورس بیرون می‌کشیم */
+  const at = src18.indexOf('const f=(label,inner)=>{');
+  ok(at >= 0, 'هلپرِ f() در 18-modals.js وجود دارد');
+  let f = null;
+  if (at >= 0) {
+    let i = src18.indexOf('{', at), depth = 0, end = -1;
+    for (let j = i; j < src18.length; j++) {
+      if (src18[j] === '{') depth++;
+      else if (src18[j] === '}') { depth--; if (depth === 0) { end = j + 1; break; } }
+    }
+    /* jdate از توابعِ دیگری استفاده نمی‌کند؛ فقط escAttr لازم است */
+    f = new Function(escAttrSrc + '\nreturn (' + src18.slice(at, end).replace(/^const f=/, '') + ');')();
+  }
+  ok(typeof f === 'function', 'f() قابل استخراج و اجراست');
+
+  if (typeof f === 'function') {
+    const attrsOf = (html) => { const m = /<label([^>]*)>/.exec(html); return m ? m[1] : ''; };
+    const forOf   = (html) => { const m = /\sfor="([^"]*)"/.exec(attrsOf(html)); return m ? m[1] : null; };
+
+    /* ۱) کنترلِ id-دار → <label for=همان id> (قرارداد، نه امضا) */
+    ok(forOf(f('کلاس', '<select id="cls"></select>')) === 'cls',
+       'f() برایِ کنترلِ id-دار <label for=…> می‌سازد');
+
+    /* ۲) مقدارِ for= از escAttr رد می‌شود — نه «نقل‌قول خام نیست» که
+         قابلِ تشخیص نبود، بلکه دقیقاً همان خروجیِ escAttr. با id شاملِ
+         & و < تفاوتِ با/بی escAttr قابلِ دیدن است. */
+    ok(forOf(f('بد', '<input id="a&b<c">')) === 'a&amp;b&lt;c',
+       'مقدارِ for= از escAttr رد می‌شود (a&b<c → a&amp;b&lt;c)');
+    ok(forOf(f('بد', '<input id="a&b<c">')) !== 'a&b<c',
+       'id خام و پاک‌سازی‌نشده در for= نمی‌نشیند');
+
+    /* ۳) jdate: دکمهٔ دیداری کنترل است، نه ورودیِ پنهان */
+    ok(/<label[^>]*\sid="jdate-label-d1"/.test(
+         f('تاریخ', '<input type="hidden" id="d1"><button data-jd="d1">x</button>')),
+       'f() برای jdate برچسب را به دکمهٔ دیداری گره می‌زند');
+
+    /* ۴) کنترلِ بی‌id → aria-label از متنِ برچسب */
+    ok(/aria-label="یادداشت"/.test(f('یادداشت', '<textarea></textarea>')),
+       'f() برایِ کنترلِ بی‌id متنِ برچسب را aria-label می‌کند');
+
+    /* ۵) ساختارِ DOM دست‌نخورده می‌ماند */
+    ok(/^<div class="field"><label/.test(f('کلاس', '<select id="cls"></select>')),
+       'ساختارِ div.field > label + کنترل حفظ می‌شود');
+
+    /* ۶) کنترلِ پیش‌تر aria-label‌دار، aria-label دوباره نمی‌گیرد */
+    const once = f('کلاس', '<select id="cls" aria-label="x"></select>');
+    ok((once.match(/aria-label=/g) || []).length <= 1, 'aria-label تکراری ساخته نمی‌شود');
+  }
+
+  ok(!/const f=\(label,inner\)=>`<div class="field"><label>\$\{label\}<\/label>\$\{inner\}<\/div>`;/.test(src18),
+     'نسخهٔ قدیمیِ بی‌label برنگشته');
+}
+
+/* ── ۵) ناحیه‌هایِ اسکرول‌شونده فوکوس‌پذیر (axe: scrollable-region-focusable) ── */
+console.log('▸ پاسِ scrollable-region-focusable');
+{
+  const helpers = read('src/js/01-helpers.js');
+  ok(/function a11yScrollablePass\(/.test(helpers), 'a11yScrollablePass در 01-helpers تعریف شده');
+  ok(/tabindex/.test(helpers) && /\.table-wrap,\.vscroll/.test(helpers), 'پاس tabindex=0 به .table-wrap/.vscroll سرریزدار می‌دهد');
+  const modals = read('src/js/18-modals.js');
+  ok(/a11yScrollablePass\(\$\('#modal'\)\)/.test(modals), 'openModal پاس را صدا می‌زند');
+  const eduOffice = read('src/js/24-edu-office.js');
+  ok(/a11yScrollablePass\(document\)/.test(eduOffice), 'render() پاس را صدا می‌زند');
+}
+
+
+/* ── ۶) ناوبریِ صفحه‌کلید (focus trap / skip-link / dropdown) — نگهبانِ استاتیک ── */
+console.log('▸ زیرساختِ ناوبریِ صفحه‌کلید');
+{
+  const modals = read('src/js/18-modals.js');
+  ok(/function _modalTrap\(/.test(modals) && /_modalFocusables\(/.test(modals),
+     'مودال: trap تعریف شده (_modalTrap/_modalFocusables)');
+  ok(/role="dialog" aria-modal="true"/.test(modals), 'مودال: role=dialog + aria-modal');
+  ok(/_modalOpener/.test(modals) && /_modalOpener\.focus\(\)/.test(modals),
+     'مودال: بازگشتِ focus به بازکننده در closeModal');
+  ok(/addEventListener\('keydown',_modalTrap\)/.test(modals), 'مودال: trap به #modal بسته می‌شود');
+
+  const shell = read('src/js/07-shell.js');
+  ok(/class="skip-link" data-act="skip-to-main"/.test(shell), 'پوسته: skip-link در renderShell');
+  ok(/nav-item[^`]*role="link" tabindex="0"/.test(shell), 'پوسته: nav-item با tabindex=0 و role=link');
+  ok(/ArrowDown/.test(shell) && /ArrowUp/.test(shell) && /themeSegCloseMenus\(\);/.test(shell),
+     'dropdown پوسته: ArrowDown/ArrowUp/Escape پیاده شده');
+
+  const actions = read('src/js/19-actions-core.js');
+  ok(/'skip-to-main'\(/.test(actions), 'اکشنِ skip-to-main موجود است');
+  ok(/e\.key!=='Enter'&&e\.key!==' '/.test(actions), 'Enter/Space رویِ data-act غیربومی فعال‌سازی می‌کند');
+
+  const css = read('src/styles/base.css');
+  ok(/\.skip-link:focus\{top:0/.test(css), 'skip-link تا فوکوس نگیرد مخفی است و با فوکوس دیده می‌شود');
+  ok(/\.nav-item:focus-visible\{outline/.test(css), 'nav-item نشانگرِ فوکوسِ مرئی دارد (WCAG 2.4.7)');
+}
+
+console.log(`\nجمع: ${pass} قبول، ${fail} رد`);
+process.exit(fail ? 1 : 0);

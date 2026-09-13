@@ -9,10 +9,48 @@ const { validate } = require('./validate');
 
 function createConflicts(ctx){
   const store     = ctx.store;
+  const db        = ctx.db || null; /* Wave 1: PG-first adjudication writes */
   const audit     = ctx.audit;
   const sessionFrom = ctx.sessionFrom;
   const sendJson  = ctx.sendJson;
   const markDirty = ctx.markDirty;
+
+  /* سقفِ نگه‌داریِ تعارض‌هایِ داوری‌شده — بستنِ بی‌سقفیِ #124 بدونِ شکستنِ
+     قراردادِ Gap-3 (#59): ردیفِ resolved باید بماند تا (الف) دلتا آن را از
+     راهِ updated_at به کلاینت برساند و UI تعارضِ محلی را ببندد، و (ب)
+     resolveِ دوباره 409 already_resolved بدهد نه 404. پس حذفِ فوری ممنوع؛
+     به‌جایش صفِ resolvedها جدا هرس می‌شود: کهنه‌ترین resolved_at اول.
+     پیش‌فرض ۵۰۰؛ PAYESH_RESOLVED_CONFLICTS_MAX=0 یعنی بدونِ هرس. */
+  function resolvedKeepMax(){
+    const n = Number(process.env.PAYESH_RESOLVED_CONFLICTS_MAX);
+    return Number.isFinite(n) && n >= 0 ? n : 500;
+  }
+  function pruneResolved(){
+    const cap = resolvedKeepMax();
+    if(cap <= 0 || !Array.isArray(store.sync_conflicts)) return;
+    const resolved = store.sync_conflicts.filter(x => x && x.status === 'resolved');
+    if(resolved.length <= cap) return;
+    resolved.sort((a, b) => String(a.resolved_at || a.updated_at || '')
+      .localeCompare(String(b.resolved_at || b.updated_at || '')));
+    const drop = new Set(resolved.slice(0, resolved.length - cap));
+    /* بازخورد بازبین #143 (باگ ۲): هرسِ شمارشی بدون tombstone حذف را از
+       کلاینتِ آفلاین پنهان می‌کرد — دلتا فقط ردیف‌های موجود را می‌فرستد و
+       کلاینتی که ردیفِ resolved را پیش از هرس نگرفته بود، تعارضِ محلی را
+       برای همیشه باز می‌دید. مثل هر حذفِ دیگر (sync.js del)، سنگ‌قبر به
+       __deleted_records می‌رود تا مسیرِ دلتا (pull.js: deleted[]) بسته‌شدن را
+       اعلام کند. برشِ سقفِ __deleted_records همان مکانیزمِ موجودِ sync.js است. */
+    if(!Array.isArray(store.__deleted_records)) store.__deleted_records = [];
+    const nowIso = new Date().toISOString();
+    for(const d of drop)
+      store.__deleted_records.push({ c: 'sync_conflicts', id: d.id,
+        school_id: d.school_id != null ? d.school_id : null, at: nowIso });
+    /* بازخورد بازبین #153 (باگ ۱): این مسیر بیرونِ جاروی post-commitِ sync.js
+       اجرا می‌شود — بدونِ برشِ همین‌جا، داوری‌های پیوسته __deleted_records را
+       بی‌سقف می‌راندند. همان سقفِ ۵۰۰۰ قراردادِ موجود (sync.js/delete-service). */
+    if(store.__deleted_records.length > 5000)
+      store.__deleted_records = store.__deleted_records.slice(-5000);
+    store.sync_conflicts = store.sync_conflicts.filter(x => !drop.has(x));
+  }
 
   /* فهرستِ تعارض‌ها (بازها اول، تازه‌ترها اول — حداکثر ۵۰) */
   async function apiList(req, res){
@@ -27,7 +65,13 @@ function createConflicts(ctx){
     scoped.sort((a, b) =>
       ((a.status === 'open') === (b.status === 'open') ? 0 : (a.status === 'open' ? -1 : 1))
       || String(b.created_at || '').localeCompare(String(a.created_at || '')));
-    return sendJson(res, 200, { ok: true, conflicts: scoped.slice(-50).reverse() });
+    /* بازخورد بازبین #143 (باگ ۱): پیش از resolve⇒keep، حل‌شده‌ها فوراً حذف
+       می‌شدند و slice(-50).reverse() عملاً همان ۵۰ تای اولِ مرتب‌شده را
+       می‌داد؛ حالا که resolvedها می‌مانند، slice(-50) دقیقاً «ابتدای» آرایه
+       (بازها) را می‌بُرید — با ۵۰+ resolved مدیر هیچ تعارضِ بازی نمی‌دید.
+       قرارداد: comparator خودش ترتیبِ نمایشی است (بازها اول، تازه‌ترها اول)؛
+       سقف از همان ابتدا برداشته می‌شود تا بازها هرگز قربانیِ سقف نشوند. */
+    return sendJson(res, 200, { ok: true, conflicts: scoped.slice(0, 50) });
   }
 
   /* { conflict_id, winner: 'incoming' | 'server', reason? } → اعمالِ اتمیک */
@@ -58,18 +102,61 @@ function createConflicts(ctx){
     if(c.status !== 'open')
       return sendJson(res, 409, { ok: false, code: 'already_resolved', conflict: c });
 
+    /* Wave 1: PG-first adjudication. The winning record commits to the authority
+       (OCC on the live version) BEFORE the cache mutates; on PG failure nothing
+       mutates and the conflict stays open (retryable). NOTE: sync_conflicts rows
+       themselves are intentionally cache-side in Wave 1 (arbitration state; the
+       validation path never mirrored them), so apiList keeps reading the store. */
+    const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+    let pgNext = null, pgIsInsert = false, pgBase = null;
     if(winner === 'incoming' && c.incoming && c.incoming.data){
       if(!Array.isArray(store[c.collection])) store[c.collection] = [];
-      const rec = store[c.collection].find(x => x.id === Number(c.record_id));
+      let rec = store[c.collection].find(x => x.id === Number(c.record_id));
+      if(!rec && pgLive && typeof db.readOne === 'function'){
+        try{
+          const row = await db.readOne(c.collection, c.record_id);
+          if(row){ store[c.collection].push(row); rec = row; }
+        }catch(e){ /* genuinely missing: insert path */ }
+      }
       const nowIso = new Date().toISOString();
+      if(pgLive && db && typeof db.persistOpsBatch === 'function'){
+        if(rec){
+          pgBase = (rec.version || 1);
+          pgNext = Object.assign({}, rec, c.incoming.data, { id: rec.id, updated_at: nowIso });
+          pgNext.version = pgBase + 1;
+        }else{
+          pgIsInsert = true;
+          pgNext = Object.assign({}, c.incoming.data);
+          pgNext.id = Number(c.record_id);
+          pgNext.version = (c.server_version || 0) + 1;
+          pgNext.updated_at = nowIso;
+        }
+        try{
+          await db.persistOpsBatch([pgIsInsert
+            ? { c: c.collection, t: 'ins', data: pgNext }
+            : { c: c.collection, t: 'upd', data: pgNext, base_version: pgBase }]);
+        }catch(pgErr){
+          const st = pgErr && pgErr.status ? Number(pgErr.status) : 0;
+          if(st === 409)
+            return sendJson(res, 409, { ok: false, code: 'version_conflict', conflict: c,
+              message: 'رکورد از زمانِ بارگذاریِ تعارض تغییر کرده — دوباره داوری کنید' });
+          return sendJson(res, 503, { ok: false, code: 'pg_unavailable' });
+        }
+      }
+      /* Authority committed (or memory mode): apply the identical state to the cache. */
       if(rec){
-        Object.assign(rec, c.incoming.data, { id: rec.id, updated_at: nowIso });
-        rec.version = (rec.version || 1) + 1;
+        if(pgNext) Object.assign(rec, pgNext);
+        else{
+          Object.assign(rec, c.incoming.data, { id: rec.id, updated_at: nowIso });
+          rec.version = (rec.version || 1) + 1;
+        }
       }else{
-        const data = Object.assign({}, c.incoming.data);
-        data.id = Number(c.record_id);
-        data.version = (c.server_version || 0) + 1;
-        data.updated_at = nowIso;
+        const data = pgNext || Object.assign({}, c.incoming.data);
+        if(!pgNext){
+          data.id = Number(c.record_id);
+          data.version = (c.server_version || 0) + 1;
+          data.updated_at = nowIso;
+        }
         store[c.collection].push(data);
       }
     }
@@ -77,7 +164,19 @@ function createConflicts(ctx){
     c.winner = winner;
     c.resolved_by = s.id;
     c.resolved_at = new Date().toISOString();
+    /* Gap 3 (Δ-schema): داوری خودش یک تغییر است — بدونِ این مُهر، دلتا
+       ردیفِ حل‌شدهٔ قدیمی را هرگز نمی‌بیند (created_at کهنه است). */
+    c.updated_at = c.resolved_at;
     if(body.reason) c.reason = String(body.reason).slice(0, 200);
+    /* ممیزی دور ۲ (رگرسیونِ SG11/C15c/C16/C17c): resolve ⇒ delِ فوری (باگ ۲
+       بازبین #124) قراردادِ Gap-3 (#59) را می‌شکست — دلتا ردیفِ resolved را
+       از راهِ updated_at به کلاینت می‌رساند تا UI تعارضِ محلی را ببندد؛ حذفِ
+       فوری آن را کور می‌کرد و resolveِ دوباره به‌جای 409 already_resolved
+       404 می‌داد. جایگزین: ردیفِ resolved می‌ماند و صفِ resolvedها جدا
+       سقف‌دار هرس می‌شود (کهنه‌ترین resolved_at اول). بی‌سقفیِ #124 همچنان
+       بسته است: openها را ringِ mirrorAppend (sync.js) سقف می‌زند،
+       resolvedها را این هرس. */
+    pruneResolved();
     markDirty();
     audit('conflict_resolved', { user_id: s.id, conflict_id: c.id, collection: c.collection, record_id: c.record_id, winner });
     return sendJson(res, 200, { ok: true, conflict: c });

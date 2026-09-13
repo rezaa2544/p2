@@ -80,10 +80,10 @@ function viewRecord(sid){
     if(!certTerms.length)return '';
     return '<div class="card-body row" style="gap:10px;align-items:center;border:1px dashed var(--border);border-radius:12px;padding:10px 14px;flex-wrap:wrap">'
       + '<span>🖨️</span><span class="small"><b>گواهی نمرات</b> (چاپ — PDF بعداً)</span>'
-      + '<select class="select" style="width:150px" id="cert_term">'
+      + '<select class="select" style="width:150px" id="cert_term" aria-label="انتخاب نوبت برای گواهی">'
       + certTerms.map(t=>'<option value="'+escAttr(t)+'">'+esc(t)+'</option>').join('')
       + '<option value="">همهٔ نوبت‌ها</option></select>'
-      + '<select class="select" style="width:150px" id="cert_tpl"><option value="classic" selected>قالبِ کلاسیک</option><option value="compact">قالبِ فشرده (دوستونه)</option></select>'
+      + '<select class="select" style="width:150px" id="cert_tpl" aria-label="قالب کارنامه"><option value="classic" selected>قالبِ کلاسیک</option><option value="compact">قالبِ فشرده (دوستونه)</option></select>'
       + '<button class="btn sm" data-act="cert-print" data-sid="'+escAttr(sid)+'">چاپ گواهی</button>'
       + '<button class="btn ghost sm" data-act="report-print" data-sid="'+escAttr(sid)+'" title="قالبِ حرفه‌ایِ A4 — چاپ یا ذخیرهٔ PDF">🖨️ چاپ کارنامه</button>'
       + '</div>';
@@ -94,8 +94,13 @@ function viewRecord(sid){
      <span class="badge ${a>=17?'b-green':a>=12?'b-blue':'b-red'}">میانگین ${fa(a.toFixed(2))}</span></div>
      <div style="margin:8px 0 12px">${bar(a,20,a>=17?'var(--green)':a>=12?'var(--primary)':'var(--red)')}</div>
      <div class="row">${l.map(g=>{const c=(typeof classScoreContext!=='undefined'&&S.__clsCtx)?S.__clsCtx[Number(id)+'|'+g.term+'|'+g.exam_type]:null;
-     return `<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}${g.kind==='practical'?' • عملی':''}: <b>${fa(g.score)}</b>${c?' <span class="muted" style="font-weight:400">· کلاس: '+fa(c.avg.toFixed(2))+'</span>':''}</span>`;}).join('')}</div></div>`;}).join('')}</div>`
+     const vp=(typeof vocationalParts==='function')?vocationalParts(g):null;
+     let _pp='';
+     if(vp){if(vp.theory!=null)_pp+=' • تئوری '+fa(vp.theory);if(vp.practice!=null)_pp+=' • عملی '+fa(vp.practice);}
+     return `<span class="badge b-gray">${esc(g.term)} • ${esc(g.exam_type)}${g.kind==='practical'?' • عملی':''}${_pp}: <b>${fa(g.score)}</b>${c?' <span class="muted" style="font-weight:400">· کلاس: '+fa(c.avg.toFixed(2))+'</span>':''}${gradeSource(g)==='national'?' · 🏛️ نهایی کشوری':''}</span>`;}).join('')}</div></div>`;}).join('')}</div>`
     :empty('📝','نمره‌ای ثبت نشده','به محض ثبت نمره، کارنامه اینجا نمایش داده می‌شود.');
+  /* فاز ۰.۳: نمرات نهایی کشوری، جدا از کارنامهٔ داخلی */
+  if(S.tab==='grades') body += nationalGradesCard(sid);
   /* بند ۴.۲: کارتِ کارآموزی زیرِ کارنامه (فقط سالِ آخرِ رشته‌های فنی) */
   if(S.tab==='grades') body += (typeof internshipCard==='function')?internshipCard(sid):'';
   if(S.tab==='grades') body += (typeof reexamCard==='function')?reexamCard(sid):'';
@@ -156,16 +161,23 @@ function internshipCard(sid){
   if(!isFinalYearStudent(sid))return '';
   var rows=internshipSessions(sid);
   var tot=internshipTotals(sid);
+  var pr=(typeof internshipProgress==='function')?internshipProgress(sid):{required:200,approved:tot.approved,pct:0,done:false};
+  var cert=(typeof internshipCert==='function')?internshipCert(sid):null;
   var persona=(typeof activePersona==='function')?activePersona():(S.user&&S.user.role);
   var canManage=persona==='manager'||persona==='superadmin';
+  var canRegister=canManage||persona==='teacher';
   var canApprove=canManage||persona==='teacher';
   var h='<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:14px">'
    +'<div class="row" style="align-items:center;gap:10px;flex-wrap:wrap"><b>🏭 ساعتِ کارآموزی</b>'
    +'<span class="badge b-green">مجموع: '+fa(tot.total)+' ساعت</span>'
    +'<span class="badge b-blue">تأییدشده: '+fa(tot.approved)+' ساعت</span>'
+   +'<span class="badge b-purple">پیشرفت: '+fa(pr.approved)+' از '+fa(pr.required)+'</span>'
+   +(cert?'<span class="badge b-green">🎓 '+esc(cert.code||'')+'</span>':'')
    +'<div class="spacer"></div>'
-   +(canManage?'<button class="btn sm" data-act="internship-new" data-id="'+escAttr(sid)+'">➕ ثبتِ ساعت</button>':'')
-   +'</div>';
+   +(canRegister?'<button class="btn sm" data-act="internship-new" data-id="'+escAttr(sid)+'">➕ ثبتِ ساعت</button>':'')
+   +(canManage&&pr.done&&!cert?'<button class="btn ghost sm" data-act="internship-cert" data-id="'+escAttr(sid)+'">🎓 صدور گواهی</button>':'')
+   +'</div>'
+   +'<div style="margin-top:8px">'+bar(pr.approved,pr.required,pr.done?'var(--green)':'var(--primary)')+'</div>';
   if(rows.length){
     h+='<div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>تاریخ</th><th>ساعت</th><th>محل</th><th>وضعیت</th><th>تأییدکننده</th><th></th></tr></thead><tbody>';
     rows.forEach(function(r){
@@ -231,6 +243,30 @@ function certsCard(sid){
 /* ── E.6 فرناز: یادداشت شخصی ولی (هر فرزند یکی) ──
    کاملاً خصوصی: کلید شامل شناسهٔ خودِ ولی است و رندر/ذخیره فقط برای ولیِ لینک‌شده.
    فقط Store (حافظهٔ محلی) — هیچ‌چیز به سرور نمی‌رود، نه مدرسه نه والد دیگر نه دانش‌آموز. */
+/* ═══════════════════════════════════════════════════════════════════
+   فاز ۰.۳ — نمرات امتحان نهایی کشوری، جدا از نمرات داخلی مدرسه
+   نتیجهٔ نهایی کشوری را اداره اعلام می‌کند، نه دبیر؛ پس در کارنامه هم
+   جدا می‌نشیند: جدولِ خودش، معدلِ خودش و برچسبِ خودش. کارت فقط وقتی
+   ساخته می‌شود که دستِ‌کم یک نمره با grades.source==='national' باشد.
+   ⚠️ معدلِ وزنیِ گواهیِ نمرات (transcriptCert) عمداً دست‌نخورده ماند:
+   تفکیکِ «معدلِ داخلی» از «معدلِ نهایی» یک قاعدهٔ رسمی است و باید با
+   تصمیمِ کارفرما قفل شود — در docs/EXAM_TYPES_GUIDE.md ثبت شده.
+   ═══════════════════════════════════════════════════════════════════ */
+function nationalGradesCard(sid){
+  const l=nationalGradesOf(sid);
+  if(!l.length) return '';
+  const bySub={};
+  l.forEach(g=>{(bySub[g.subject_id]=bySub[g.subject_id]||[]).push(g);});
+  return `<div class="card-body" style="border-top:1px solid var(--border)">
+    <div class="row"><b>🏛️ نمرات امتحان نهایی کشوری</b><div class="spacer"></div>
+      <span class="badge b-red">${fa(l.length)} برگه</span>
+      <span class="badge b-blue">معدل نهایی: ${fa(nationalGpa(sid).toFixed(2))}</span></div>
+    <div class="small muted" style="margin:6px 0 10px">این نمرات از بیرون (اعلام اداره) وارد می‌شوند و با نمرات داخلی مدرسه قاطی نمی‌شوند.</div>
+    <div class="table-wrap"><table><thead><tr><th>درس</th><th>نوبت</th><th>نمره</th></tr></thead><tbody>
+    ${Object.keys(bySub).map(id=>bySub[id].map(g=>`<tr><td>${esc((byId('subjects',Number(id))||{}).name||'—')}</td><td><span class="badge b-gray">${esc(g.term)}</span></td><td><span class="badge b-red">${fa(g.score)}</span></td></tr>`).join('')).join('')}
+    </tbody></table></div></div>`;
+}
+
 function noteKey(pid,sid){ return 'payesh_note_'+pid+'_'+sid; }
 function noteGet(pid,sid){
   try{ var o=JSON.parse(Store.get(noteKey(pid,sid),'null'));

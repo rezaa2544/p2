@@ -1,12 +1,17 @@
 /* ═══════════════════════════════════════════════════════════════════
-   server/outbox.js — P0-17: صندوق رویدادهای برون‌مرزی (Transactional Outbox)
+   server/outbox.js — P0-17 + ویو ۸: صندوق رویدادهای برون‌مرزی (Transactional Outbox)
    ───────────────────────────────────────────────────────────────────
    هر جهشِ مهم یک رویداد به `store.outbox` می‌افزاید؛ مصرف‌کننده‌ها
-   (همگام‌سازی چندنمونه‌ای، بازسازی، حسابرسی) از روی آن پیش می‌روند.
+   (همگام‌سازی چندنمونه‌ای، بازسازی، حسابرسی، و کارگرِ ویو ۸) از روی آن
+   پیش می‌روند.
    - نوشت، هم‌تراز با تغییرِ فروشگاه است (هر دو در یک اسنپ‌شات ذخیره
      می‌شوند) → رویداد گم نمی‌شود.
    - با پستگرسِ فعال، رویدادها در جدول `server_outbox` نیز می‌نشینند.
    - سقف ۱۰۰۰ رویداد: قدیمی‌ترها سر می‌خورند (صف، نه انبار).
+   ویو ۸ — چرخهٔ عمر: هر رویداد با `status='pending'` ثبت می‌شود؛
+   کارگر (`server/worker.js`) آن را پردازش و با `mark()` به
+   'processed' یا (پس از سقف تلاش) 'failed' می‌برد. رویداد در شکست
+   هرگز حذف نمی‌شود — فقط علامت می‌خورد.
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
@@ -15,41 +20,168 @@ const OUTBOX_CAP = 1000;
 function createOutbox({ store, db }) {
   if (!Array.isArray(store.outbox)) store.outbox = [];
 
-  const nextId = () => {
+  /* P0#2 (چندنمونه‌ای): id باید **سراسری** باشد — شمارندهٔ فرایندی، دو
+     instance با PG مشترک را به idهایِ تکراری می‌رساند و INSERTِ
+     `ON CONFLICT (id) DO NOTHING` رویداد را ساکت می‌ریزد. وقتی Redis زنده
+     است (در production الزامی — P0-13) دنباله از `INCR` مشترک می‌آید
+     (monotonic، بدون TTL — شمارندهٔ دنباله انقضا نمی‌خواهد). حالتِ بدون
+     Redis (توسعهٔ تک‌نمونه‌ای) همان شمارندهٔ محلیِ پیشین است. */
+  const redis = require('./redis');
+  const OUTBOX_SEQ_KEY = 'payesh:outbox:seq';
+  async function nextId() {
+    try {
+      if (typeof redis.isRedis === 'function' && redis.isRedis()) {
+        const n = Number(await redis.incr(OUTBOX_SEQ_KEY));
+        if (Number.isFinite(n) && n > 0) return n;
+      }
+    } catch (e) { /* Redis رفت: شمارندهٔ محلی (سازگاریِ توسعه) */ }
     store.__outbox_seq = (Number(store.__outbox_seq) || 0) + 1;
     return store.__outbox_seq;
-  };
+  }
 
+  /* Wave 1: PG-live ids come from payesh_outbox_id_seq (migration 004) so two
+     instances never collide; the local counter stays for memory mode and as the
+     fallback if the sequence read fails (the PG mirror is best-effort; the
+     store copy is the durability path, and ON CONFLICT DO NOTHING keeps a
+     fallback-id collision from erroring). */
+  async function nextPgId(){
+    try{
+      const r = await db.query("SELECT nextval('payesh_outbox_id_seq') AS id");
+      const v = r && r.rows && r.rows[0] && Number(r.rows[0].id);
+      if(Number.isFinite(v)) return v;
+    }catch(e){ /* fall through to the local counter */ }
+    return nextId();
+  }
+
+  const isPg = () => db && typeof db.isPostgres === 'function' && db.isPostgres();
+  /** INSERT پستگرسِ رویداد — جدا تا در تراکنشِ فراخوان هم قابل‌استفاده باشد */
+  const outboxInsertSql =
+    `INSERT INTO server_outbox (id, type, collection, record_id, actor_id, version, payload, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+     ON CONFLICT (id) DO NOTHING;`;
+  const outboxParams = (evt) => [
+    evt.id, String(evt.type || ''), String(evt.collection || ''),
+    evt.record_id != null ? Number(evt.record_id) : null,
+    evt.actor_id != null ? Number(evt.actor_id) : null,
+    evt.version != null ? Number(evt.version) : null,
+    evt.payload ? JSON.stringify(evt.payload) : null
+  ];
   /**
    * @param {object} event — { type, collection, record_id, actor_id, version, payload? }
+   * @param {object} [client] — Wave1-W: اگر داده شود، INSERT روی همان client
+   *   (داخل تراکنشِ فراخوان) اجرا می‌شود و خطا می‌پردازد تا رول‌بک شود.
    */
-  async function append(event) {
+  async function append(event, client) {
+    const pgSeq = isPg() && db && typeof db.query === 'function';
     const evt = Object.assign({
-      id: nextId(),
-      at: new Date().toISOString()
+      /* PG-live: sequenceٔ پستگرس؛ وگرنه دنبالهٔ Redis مشترک (P0#2) یا محلی */
+      id: pgSeq ? await nextPgId() : await nextId(),
+      at: new Date().toISOString(),
+      /* ویو ۸ — چرخهٔ عمر (سازگار با گذشته: رویدادهای قدیمی بدون وضعیت
+         از دید کارگر حکمِ 'pending' دارند) */
+      status: 'pending',
+      retry_count: 0,
+      processed_at: null,
+      last_error: null
     }, event);
     store.outbox.push(evt);
     if (store.outbox.length > OUTBOX_CAP) {
       store.outbox.splice(0, store.outbox.length - OUTBOX_CAP);
     }
-    if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
+    if (client) {
+      await client.query(outboxInsertSql, outboxParams(evt)); /* Wave1-W: داخل تراکنش */
+      return evt;
+    }
+    if (isPg()) {
       try {
-        await db.query(
-          `INSERT INTO server_outbox (id, type, collection, record_id, actor_id, version, payload, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-           ON CONFLICT (id) DO NOTHING;`,
-          [evt.id, String(evt.type || ''), String(evt.collection || ''),
-           evt.record_id != null ? Number(evt.record_id) : null,
-           evt.actor_id != null ? Number(evt.actor_id) : null,
-           evt.version != null ? Number(evt.version) : null,
-           evt.payload ? JSON.stringify(evt.payload) : null]
-        );
+        await db.query(outboxInsertSql, outboxParams(evt));
       } catch (e) { /* جدول در دسترس نیست — منبع حقیقت اسنپ‌شات است */ }
     }
     return evt;
   }
 
-  return { append, cap: OUTBOX_CAP };
+  /**
+   * ویو ۸ — به‌روزرسانی وضعیت یک رویداد (توسط کارگر).
+   * @param {number} id
+   * @param {object} patch — { status?, retry_count?, last_error?, processed_at? }
+   */
+  async function mark(id, patch) {
+    const evt = store.outbox.find(e => e.id === id);
+    if (!evt) return null;
+    Object.assign(evt, patch || {});
+    if (isPg()) {
+      try {
+        await db.query(
+          `UPDATE server_outbox SET status = $2, retry_count = $3, last_error = $4, processed_at = $5
+           WHERE id = $1;`,
+          [evt.id, String(evt.status || 'pending'), Number(evt.retry_count) || 0,
+           evt.last_error != null ? String(evt.last_error) : null,
+           evt.processed_at || null]
+        );
+      } catch (e) { /* آینهٔ پستگرس بهترین‌تلاش است — منبع حقیقت اسنپ‌شات است */ }
+    }
+    return evt;
+  }
+
+  /**
+   * ویو ۱۴ — عمقِ صفِ ناهم‌زمان (queue depth) برای Observability.
+   * برچسب‌ها از یک مجموعهٔ بسته می‌آیند (pending/processed/failed/legacy)
+   * تا cardinality هرگز بی‌کران نشود. O(n) روی صفِ سقف‌دارِ ۱۰۰۰ —
+   * فقط هنگامِ scrape فراخوانی می‌شود، نه در مسیرِ درخواست.
+   * @returns {{ total: number, pending: number, processed: number, failed: number, legacy: number }}
+   */
+  function depth() {
+    const d = { total: store.outbox.length, pending: 0, processed: 0, failed: 0, legacy: 0 };
+    for (const e of store.outbox) {
+      const s = e && e.status;
+      if (s === 'pending') d.pending++;
+      else if (s === 'processed') d.processed++;
+      else if (s === 'failed') d.failed++;
+      else d.legacy++;
+    }
+    return d;
+  }
+
+  /**
+   * F3 (chaos-drill #185) — بازپخشِ صف پس از کرش در PG-live:
+   * store.outbox آینهٔ درون‌حافظه‌ای است و با restart خالی بوت می‌شود؛
+   * pendingهای جدولِ server_outbox (که append آن‌ها را نوشته بود) هیچ
+   * مصرف‌کننده‌ای نداشتند و برای همیشه pending می‌ماندند (کارِ باطل‌سازیِ
+   * کش اجرا نمی‌شد). این متد آن‌ها را به store.outbox برمی‌گرداند تا
+   * worker.tick همان مسیرِ همیشگی را برود (at-least-once پس از سقوط).
+   * best-effort و idempotent: رویدادِ موجود در store دوباره اضافه نمی‌شود.
+   */
+  async function replayPendingFromPg() {
+    if (!isPg()) return { ok: true, replayed: 0, driver: 'memory' };
+    let rows = [];
+    try {
+      const r = await db.query(
+        `SELECT id, type, collection, record_id, actor_id, version, payload, created_at, retry_count, last_error
+           FROM server_outbox WHERE status = 'pending' ORDER BY id ASC LIMIT $1;`, [OUTBOX_CAP]);
+      rows = (r && r.rows) || [];
+    } catch (e) {
+      return { ok: false, replayed: 0, error: String((e && e.message) || e).slice(0, 140) };
+    }
+    if (!Array.isArray(store.outbox)) store.outbox = [];
+    const have = new Set(store.outbox.map((e) => Number(e.id)));
+    let replayed = 0;
+    for (const row of rows) {
+      const id = Number(row.id);
+      if (have.has(id)) continue;
+      let payload = row.payload;
+      if (typeof payload === 'string') { try { payload = JSON.parse(payload); } catch (e) { /* عیناً */ } }
+      store.outbox.push({
+        id, type: row.type, collection: row.collection,
+        record_id: row.record_id, actor_id: row.actor_id, version: row.version,
+        payload, created_at: row.created_at, status: 'pending',
+        retry_count: Number(row.retry_count) || 0, last_error: row.last_error || null
+      });
+      replayed++;
+    }
+    return { ok: true, replayed, driver: 'postgres' };
+  }
+
+  return { append, mark, depth, replayPendingFromPg, cap: OUTBOX_CAP };
 }
 
 module.exports = { createOutbox };

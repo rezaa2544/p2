@@ -33,17 +33,36 @@ function parsePaginationParams(params) {
  */
 function paginateArray(items, options = {}) {
   const limit = options.limit || 50;
-  const cursor = options.cursor ? Number(options.cursor) : null;
+  const cursorRaw = options.cursor != null ? String(options.cursor) : null;
   const direction = options.direction || 'next';
   const key = options.key || 'id';
+  const order = options.order === 'desc' ? 'desc' : 'asc';
+  const composite = !!options.composite;
 
   let filtered = items;
 
-  if (cursor != null && !isNaN(cursor)) {
-    if (direction === 'next') {
-      filtered = items.filter(item => Number(item[key]) > cursor);
-    } else {
-      filtered = items.filter(item => Number(item[key]) < cursor);
+  if (cursorRaw != null && cursorRaw !== '') {
+    if (composite) {
+      /* composite keyset "date|id" — ORDER BY date DESC, id ASC */
+      const pipe = cursorRaw.indexOf('|');
+      if (pipe !== -1) {
+        const cd = cursorRaw.slice(0, pipe);
+        const ci = Number(cursorRaw.slice(pipe + 1));
+        if (!isNaN(ci)) {
+          if (direction === 'next') {
+            filtered = items.filter(item => (String(item.date || '') < cd) || (String(item.date || '') === cd && Number(item[key]) > ci));
+          } else {
+            filtered = items.filter(item => (String(item.date || '') > cd) || (String(item.date || '') === cd && Number(item[key]) < ci));
+          }
+        }
+      }
+    } else if (!isNaN(Number(cursorRaw))) {
+      const c = Number(cursorRaw);
+      if (direction === 'next') {
+        filtered = order === 'desc' ? items.filter(item => Number(item[key]) < c) : items.filter(item => Number(item[key]) > c);
+      } else {
+        filtered = order === 'desc' ? items.filter(item => Number(item[key]) > c) : items.filter(item => Number(item[key]) < c);
+      }
     }
   }
 
@@ -54,8 +73,15 @@ function paginateArray(items, options = {}) {
   let prevCursor = null;
 
   if (pageItems.length > 0) {
-    nextCursor = String(pageItems[pageItems.length - 1][key]);
-    prevCursor = String(pageItems[0][key]);
+    const last = pageItems[pageItems.length - 1];
+    const first = pageItems[0];
+    if (composite) {
+      nextCursor = String(last.date || '') + '|' + String(last[key]);
+      prevCursor = String(first.date || '') + '|' + String(first[key]);
+    } else {
+      nextCursor = String(last[key]);
+      prevCursor = String(first[key]);
+    }
   }
 
   return {
@@ -64,7 +90,7 @@ function paginateArray(items, options = {}) {
       limit,
       has_more: hasMore,
       next_cursor: hasMore ? nextCursor : null,
-      prev_cursor: cursor ? prevCursor : null,
+      prev_cursor: cursorRaw ? prevCursor : null,
       count: pageItems.length,
       total: items.length
     }

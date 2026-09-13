@@ -119,8 +119,8 @@ function hwGradeModal(submissionId){
       + (s.annotated_key ? ' <span class="badge b-blue">تصویر تصحیح‌شده موجود است</span>' : '')
       + '</div>'
       + '<div style="position:relative;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#f6f7f9">'
-      +   '<img id="hw_img" src="' + escAttr(url) + '" style="width:100%;display:block" />'
-      +   '<canvas id="hw_canvas" style="position:absolute;inset:0;width:100%;height:100%;cursor:crosshair"></canvas>'
+      +   '<img id="hw_img" src="' + escAttr(url) + '" alt="تصویر تکلیف ' + esc(stu.full_name || '') + ' برای تصحیح" style="width:100%;display:block" />'
+      +   '<canvas id="hw_canvas" role="img" aria-label="بوم تصحیح: محل رسم خطوط تصحیح روی تصویر تکلیف" style="position:absolute;inset:0;width:100%;height:100%;cursor:crosshair"></canvas>'
       + '</div>'
       + '<div class="row" style="gap:8px;flex-wrap:wrap">'
       +   '<label class="small">رنگ خط</label>'
@@ -361,7 +361,7 @@ function hwStudentView(){
                   : '<span class="badge b-amber">🔒 بسته شد</span>';
                 var dis = stt.open ? '' : ' disabled';
                 return badge
-                  + '<input type="file" id="hwfile_' + a.id + '" accept="image/*,audio/*,video/*,.pdf,.doc,.docx" class="input"' + dis + ' />'
+                  + '<input type="file" id="hwfile_' + a.id + '" accept="image/*,audio/*,video/*,.pdf,.doc,.docx" class="input" aria-label="بارگذاری پاسخ تکلیف"' + dis + ' />'
                   + ' <button class="btn sm" data-act="hw-submit" data-id="' + a.id + '"' + dis + '>⬆️ بارگذاری</button>';
               })()
             + '</div>')
@@ -505,11 +505,11 @@ function hwViewModal(submissionId){
     var url = (typeof URL!=='undefined' && URL.createObjectURL) ? URL.createObjectURL(blob) : '';
     var player;
     if(mime.indexOf('image/')===0){
-      player = '<img src="' + escAttr(url) + '" style="width:100%;display:block;border-radius:10px" />';
+      player = '<img src="' + escAttr(url) + '" alt="پیش‌نمایش فایل بارگذاری‌شدهٔ ' + esc(stu.full_name || '') + '" style="width:100%;display:block;border-radius:10px" />';
     } else if(mime.indexOf('audio/')===0){
-      player = '<audio controls src="' + escAttr(url) + '" style="width:100%"></audio>';
+      player = '<audio controls aria-label="پخش صوت تکلیف ' + esc(stu.full_name || '') + '" src="' + escAttr(url) + '" style="width:100%"></audio>';
     } else if(mime.indexOf('video/')===0){
-      player = '<video controls src="' + escAttr(url) + '" style="width:100%;border-radius:10px"></video>';
+      player = '<video controls aria-label="پخش تصویر تکلیف ' + esc(stu.full_name || '') + '" src="' + escAttr(url) + '" style="width:100%;border-radius:10px"></video>';
     } else {
       player = '<div class="small muted">فایلِ ذخیره‌شده (نمایشِ مستقیم ندارد): '
         + esc(sub.file_name) + ' — ' + idbSizeLabel(sub.size) + '</div>'
