@@ -1,5 +1,15 @@
 # دفترچهٔ تحویل کار — پایش
 
+## Handoff — چت ۹: شبیه‌سازی کامل «یک مدرسهٔ واقعی» — پوشش رفتاری سبز + ۴ شکاف دانه — ✅ (2026-09-13، دور ۲)
+
+**وضعیت:** چت ۹ (مهندس شبیه‌سازی/ممیزی رفتاری، مالک هیچ فیچری) ماتریس «۵ پروفایل مدرسه × ۱۱ نقش × ~۳۰ عملگر × ۴ شرایط» را با ۶۰+ سوئیتِ موجود + پروب‌های jsdom/PG روی `main@523c1f5` اجرا کرد — **صفر تغییر کد، صفر جهش**.
+**نتیجه:** **هیچ نقطه‌ضعف رفتاری P1/P2 یافت نشد.** ستون‌فقرات (simulation 48/48 · sim_full2 58 · sim_full3 25 · integration 12/0 · security2 25/0) + همهٔ عملگرها (att3/att4/dorm-kind/dorm-leave-dates/library2/libserial2/certify/entry-gpa/visitors2/tickets/schedconf2/pathway2/report2/reporttpl2/cmsg2/cmsg3/finance2/subs2/import2/pubrep/public-security/multigrade2/workshop2/iep2/iep3/preapp2/preapp3/gradeavg2/client-features/dojo/assets2/scholarship2/scholarship3/tuition-plan/tuition-exempt/gdpr-tombstones/tombstone/privacy/session-revocation/audit + بستهٔ ۲۱ سوئیت sync/offline) + گزارش‌ها روی PG زنده (wave23-reports-pg 76/76 · p13 9/9) همگی سبز.
+**شکاف (۴ قلم P3 — فقط دانهٔ دمو):** `payesh.json` کاربر `guard` · دبیرِ کتابدار `lib_staff` · تحویلدار `asset_staff` · رئیس اداره `is_head` را ندارد (۰) — قابلیت‌ها با کاربران خودساخته در سوئیت‌ها اثبات شده‌اند ولی سفر واقعی بیرون‌از-جعبه ناقص است (SIM-01..04 → NEXT_ACTIONS + RISK C9-6).
+**پروب‌های مرزی (jsdom، `/tmp`):** dorm-full (اتاق پر رد می‌شود) ✅ · csvCell ضدتزریق `=+-@` ✅ · guard canAction ✅ · edu_office استان/شهرستان ✅.
+**NOT-RUN (صادقانه):** جهش (صفر در این دور) · سوئیت‌های >۵دقیقه · مرورگری واقعی (بدون playwright) · گیت‌های PG غیرگزارشی (🔗 ممیزی) · CI (بیلینگ).
+**گزارش:** `docs/daily-reports/2026-09-13-chat9-school-simulation.md` + بخش «چت ۹ — شبیه‌سازی» در `2026-09-13.md`.
+**گام بعدی:** غنی‌سازی دانه (guard/lib_staff/asset_staff/is_head) با PR red-first از چت مالک؛ سپس تبدیل بک‌لاگ به پرامپت‌های per-chat توسط ناظر.
+
 ## Handoff — چت ۹: ممیزی و راستی‌آزمایی کل مخزن — نقشهٔ وضعیت + یافته‌ها — ✅ (2026-09-13)
 
 **وضعیت:** چت ۹ (مهندس ممیزی، مالکِ هیچ فیچری) اسکنِ کامل + تستِ کارکردِ همهٔ اجزا روی `main@523c1f5` انجام داد — **صفر تغییر کد**. خروجی اول = نقشهٔ وضعیت (طبق توصیهٔ هماهنگ‌کننده)، نه رفع.
