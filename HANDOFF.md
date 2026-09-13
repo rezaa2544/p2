@@ -25,7 +25,7 @@
 - `#150` در ۰۰:۰۵:۴۴Z توسطِ `rezaa2544` **بسته شد** (پیش از هر اقدامِ من) — #147 جایگزینش کرده بود؛ اقدامِ «کامنتِ شاهد» موضوعیتش را از دست داد و فقط ثبت شد.
 
 **۶) دو گیتِ قرمزِ ازپیش‌موجود روی `main@0af1424` — ریشه‌یابی شد، دست نخورد (ضدتداخل):**
-- `tests/docs-refs-check.js` **27/29**: سه ارجاعِ کهنه که در `tools/docs-refs-baseline.json` **نیستند** — `2026-09-13-chat6-final-delivery.md → server/reports-sql.w23norm-mutated.js` (نامِ کپیِ موقتِ هم‌جوارِ mutant-kit؛ ماهیتاً هرگز commit نمی‌شود) و `2026-09-13.md → tests/bounded-delta-resume.js` + `-mutations.js` (هیچ‌کدام روی دیسک وجود ندارند). ⇒ **HO-1، مالکِ چت ۸**؛ ویرایشِ گزارش‌های نقطه‌درزمانی = جعلِ سابقه، پس یا baseline یا اصلاحِ ارجاع توسطِ مالک.
+- `tests/docs-refs-check.js` **27/29**: سه ارجاعِ کهنه که در `tools/docs-refs-baseline.json` **نیستند** — `2026-09-13-chat6-final-delivery.md → reports-sql.w23norm-mutated.js` (نامِ کپیِ موقتِ هم‌جوارِ mutant-kit — بدونِ پیشوندِ repo؛ ماهیتاً هرگز commit نمی‌شود) و `2026-09-13.md → bounded-delta-resume.js` + `-mutations.js` (هیچ‌کدام روی دیسک وجود ندارند). ⇒ **HO-1، مالکِ چت ۸**؛ ویرایشِ گزارش‌های نقطه‌درزمانی = جعلِ سابقه، پس یا baseline یا اصلاحِ ارجاع توسطِ مالک.
 - `tests/documentation-map-coverage.js` **22/23**: تنها شکست «ادعای صفرِ یتیم با کاتالوگ سازگار است» — `tools/docs-metadata.js` هنوز **۸ یتیم** فهرست می‌کند (`chat6-final-delivery` + `pr-audit-batch-1..6` + `pr-audit-final`). ⇒ دقیقاً همان چیزی که **PR بازِ #159** («بستنِ یتیمیِ ۹ گزارش» + rc41) رفع می‌کند؛ اقدامِ موازی نکردم.
 
 **۷) ⚠️ قیدِ ساختاری برایِ هر نشستِ بعدی — «گزارشِ روزانه در `docs/daily-reports/`» فعلاً قانونی نیست:**
