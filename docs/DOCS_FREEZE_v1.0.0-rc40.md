@@ -1,12 +1,14 @@
 # 🔒 قفل مستندات — DOCS_FREEZE_v1.0.0-rc40
 
-> **⚠️ قفلِ تاریخی.** این نسخه در ۲۰۲۶-۰۹-۱۳ با `DOCS_FREEZE_v1.0.0-rc43.md` جایگزین شد و دیگر «جاری» نیست.
-> **مانیفستِ دست‌نخورده:** فهرستِ زیر **عمداً ویرایش نشده** است — وضعیتِ لحظهٔ قفل را قابل اثبات نگه می‌دارد.
-> نسخه‌های پیشین (`rc1`…`rc39`) نیز با همین قاعده تاریخی‌اند.
+> **⚠️ قفلِ تاریخی.** این نسخه در ۲۰۲۶-۰۹-۱۳ با `DOCS_FREEZE_v1.0.0-rc41.md` جایگزین شد و دیگر «جاری» نیست.
+> **تاریخِ دست‌نخورده:** مانیفستِ زیر **عمداً ویرایش نشده** است — وضعیتِ لحظهٔ قبلی قفل را قابل اثبات نگه می‌دارد.
+> (سطرِ پیشین:) جانشینِ rc39
+> کتابخانه را ثبت می‌کند. راستی‌آزمایی: `node tests/docs-freeze-marker.js`.
+> نسخه‌های پیشین (`rc1`…`rc39`) با بنرِ تاریخی و مانیفستِ **دست‌نخورده** باقی می‌مانند.
 
 **نسخهٔ قفل:** ۱.۰.۰-rc40 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** ثبتِ چکیدهٔ P1-2 + بستنِ یتیمیِ گزارش‌ها (Arena)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc39` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۲۶ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc39` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۲۷ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
@@ -54,7 +56,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۳۲۶)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۳۲۷)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -91,7 +93,7 @@
 | `CERT_REPORTS_VERIFICATION.md` | `sha256:3a09923997d49c6163449068f78d13c69eeae4cc8802232fa8b7064b3d3b307f` |
 | `CHAT3_SUMMARY.md` | `sha256:d43eb1bc0d3595f7d3d8258d4c64595678755fd26d191a974375b97c561471d0` |
 | `CLIENT_CAPACITY.md` | `sha256:52ed0463a717c893dc1a74dccc45df6c725e5045bfd2868b4368d0e5ae9b3abf` |
-| `CLIENT_OFFLINE_ARCHITECTURE.md` | `sha256:e93b1c66a61d645912722e77ed18f19eea0b51dc9e6989f53e7555b771e5fee8` |
+| `CLIENT_OFFLINE_ARCHITECTURE.md` | `sha256:794ee5f363987c146c6aeaff9463e281d19e2e2901793ca61393fa3c26611b06` |
 | `COMPLETE_REPORT_FOR_CLOUD.md` | `sha256:40831a86e47d1d516b18853d15e78909003a4ef9cf1a3be3864d282f317976e8` |
 | `CONFIGURATION_REFERENCE.md` | `sha256:38d1d7f120a917495fdec3171facd7f9362f854d243f6bc3bda635d22213b488` |
 | `CONFLICT_MODEL_DESIGN.md` | `sha256:be53b0a4086abd9477b6fc5ef98df04b8b850707ba13726f33f358e96d6f4ff1` |
@@ -154,11 +156,11 @@
 | `DOCS_FREEZE_v1.0.0-rc8.md` | `sha256:361dfe21c653239ddad6873c394c454a5b2bdc1deb067f32de0686f08d96a205` |
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:36bf496d42732300a7872e76e6a3ce64dca6d52ed20eb1d9621fdce63f3d4169` |
-| `DOCS_INDEX.md` | `sha256:38b32166898fa233b2fd939d93036239b8e3872325affcf0443c233085b51871` |
-| `DOCS_METRICS.md` | `sha256:4c345630f474840780ef1ac0d3bcacb3b360de36dedac85bfc1edea78aba4e95` |
+| `DOCS_INDEX.md` | `sha256:e737e5026caedf973a8a78d8c2d828f7b792efed954e4161632d10640b5c2220` |
+| `DOCS_METRICS.md` | `sha256:03c1d7f824d37ec749b6515179ed8d53f0a22ab3c39cdbc8f96f6c3315c55a8a` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:bbca0ce31bc63dabaacf2f2eab15f2ac2de60528a53de9a34985ef1ea41ee091` |
-| `DOCUMENTATION_MAP.md` | `sha256:26c5f435aaf7960f4514e7eafc0c48952dde6f4249191aac2659aa50757a497d` |
+| `DOCUMENTATION_MAP.md` | `sha256:3ce2c82a1229abed0be1c74bb7db7385c92ce330f87f7037f2c869240f311084` |
 | `DR_RUNBOOK.md` | `sha256:8c0d8f7e2bb1e1305c2aaf645850de68d4b429895445ecae74a5a0a732db0e26` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
@@ -338,7 +340,8 @@
 | `SUPERVISOR_BRIEF.md` | `sha256:e9fec3570a93e4caa6e252e1774c705ccd269df9c6fbdcd9103bac37fc1b8871` |
 | `SUPPLY_CHAIN_AUDIT_2026_Q3.md` | `sha256:34ffa9a2145022b210dd8650b7cc15378e8361f44eadb63c86b4c802dbbc6e30` |
 | `SYNC_FLOW.md` | `sha256:0d768e1fa6bcbdf0f69108408ba5733a787cbb881bf60c8b3b57cf5acc54db0a` |
-| `SYNC_PROTOCOL.md` | `sha256:bc993a6f7393d092a6675bcb7560991516e5193bd41e97dca5c33cc1471ba6a8` |
+| `SYNC_PROTOCOL.md` | `sha256:a2658779b478051e87dce461dcee2664a87b9d1dca2b42bc4a833cb0983274c7` |
+| `SYNC_RELIABILITY_EVIDENCE.md` | `sha256:326094b05babf475ca98ef231ed52f407cd06ef06690ee24c788f9660b31f39b` |
 | `TEST_COVERAGE_REPORT.md` | `sha256:f3faf2fc263ce5f97d5e92ea80484e16418306b10e861f378263e53832dcbb61` |
 | `THIRD_PARTY_LICENSES.md` | `sha256:0440f94b6395ee2fab1b2a34d9c8e3d5141887c1c276b4327c5d134317a33a08` |
 | `THREAT_MODEL.md` | `sha256:2d93966da760fec407778e27e9ef85033f95efffe71d1135dd849f6780d966f0` |
