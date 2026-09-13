@@ -6,7 +6,7 @@
 
 **نسخهٔ قفل:** ۱.۰.۰-rc43 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** همگراییِ قفل پس از بازپایه روی main — چت ۶ (Arena)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۳۸ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۴۱ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
@@ -60,7 +60,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۳۳۸)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۳۴۱)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -168,10 +168,10 @@
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:36bf496d42732300a7872e76e6a3ce64dca6d52ed20eb1d9621fdce63f3d4169` |
 | `DOCS_INDEX.md` | `sha256:a45239013ed06fe2188ea60f25197ddcfcd7f424ef5eb6c1b884fca58dab5e71` |
-| `DOCS_METRICS.md` | `sha256:86b8e20f9dae4bf32038ef1d949c368a1a79ef0dfd228ea5a4363d5502ecc217` |
+| `DOCS_METRICS.md` | `sha256:f9299443a96b51da48151c0fd84e3213466fef7e0d3ed27d3ff311fe28f05a2a` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:a1ebefac54f1b8063b613167311751402a45b809bfa81cd8736067377d607269` |
-| `DOCUMENTATION_MAP.md` | `sha256:e91e469a7cfb0a423815d20c87d4204af60e5c63a2a717b7670444f005c75d37` |
+| `DOCUMENTATION_MAP.md` | `sha256:0a577f6568c1a6961c3552e1739da2fe7fce377df1cff52e7df9a49f095aee2c` |
 | `DR_RUNBOOK.md` | `sha256:eba33f0ad562941cf8aea2087dae1318628708cb37b1330aa0bc1cb34c81cc89` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
@@ -271,8 +271,11 @@
 | `READY_STATE_2026-09-06.md` | `sha256:250fe21f2892a8d18fdd02971f6d4570f518e0045d762f465f9b8dddf1a79869` |
 | `RECOVERY_INSTRUCTIONS.md` | `sha256:32a4bf75b0820c6a7646d107ee5f3eb16ce00f109b7f87c66f99a77550492c2d` |
 | `REDIS_CLUSTER_SETUP.md` | `sha256:b554055c75f300dcc96469ffd2542c5bfca61039d188bd703842831aad799203` |
+| `REDIS_HA_FAILOVER.md` | `sha256:fee6d1d3f16bb15d9070da779aa3f40eb03db2fd5251386af97ba200f00d2d9a` |
 | `REDIS_KEY_OPTIMIZATION.md` | `sha256:7e4c484d0e85bdc55366642c079473cbbd25eb3ff48e72b9e84aa7d48b62f330` |
+| `REDIS_MONITORING_ALERTING.md` | `sha256:76b992c1ed0176e7c7e2ea274602ab5f1ff6f1ee9ed8ce23bbcfca8d6df8fec2` |
 | `REDIS_RESTORE_PROCEDURE.md` | `sha256:60f84845549135e8270ac2732d20bc538a481dfd5c321a182a1e6311fa04cf5b` |
+| `REDIS_SUMMARY.md` | `sha256:2516c58cd168ce80a65159584fd71a541839afd1b93a40d60aabc1466dec9147` |
 | `RED_TEAM_EXERCISE_2026_Q3.md` | `sha256:34346602f0f036101774529e610f3fcd4536a4ba0d124a20ff4864237cf7e9ab` |
 | `RELEASE_GATE_CHECKLIST.md` | `sha256:6959441852029e2aecf5bae8ad28de3c8c753a34c1f5cbd37d80924933462676` |
 | `RELEASE_GATE_EVIDENCE.md` | `sha256:c1b52cb02299401a23e8fed0ff31c90ea5f7200bf3f0acb3d89e1c7e61ce6384` |
@@ -357,7 +360,7 @@
 | `SYNC_FLOW.md` | `sha256:0d768e1fa6bcbdf0f69108408ba5733a787cbb881bf60c8b3b57cf5acc54db0a` |
 | `SYNC_PROTOCOL.md` | `sha256:a2658779b478051e87dce461dcee2664a87b9d1dca2b42bc4a833cb0983274c7` |
 | `SYNC_RELIABILITY_EVIDENCE.md` | `sha256:326094b05babf475ca98ef231ed52f407cd06ef06690ee24c788f9660b31f39b` |
-| `TEST_COVERAGE_REPORT.md` | `sha256:95e2a2c4a6bed4d132ccbcbc6a706936cf7d8f694215896ade6a2bba07198c87` |
+| `TEST_COVERAGE_REPORT.md` | `sha256:12baf81dc656fb92cd51adb6a7922669537f8fa9a34be0cf52e499e152602e47` |
 | `THIRD_PARTY_LICENSES.md` | `sha256:0440f94b6395ee2fab1b2a34d9c8e3d5141887c1c276b4327c5d134317a33a08` |
 | `THREAT_MODEL.md` | `sha256:2d93966da760fec407778e27e9ef85033f95efffe71d1135dd849f6780d966f0` |
 | `TRACING_SETUP.md` | `sha256:6d17e75b8cc28763db6d7d7c9310d587fb3419c15a2d1dbf2f9e938881040099` |

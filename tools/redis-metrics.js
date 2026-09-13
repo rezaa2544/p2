@@ -44,7 +44,9 @@ async function collect(redis) {
   /* لایو بودن + حالت */
   const p = await redis.ping();
   push('payesh_redis_up', 'Whether the payesh redis layer is reachable (1) or not (0)', 'gauge', p && p.ok ? 1 : 0);
-  const mode = typeof redis.getMode === 'function' ? redis.getMode() : 'unknown';
+  /* ری‌تارگت (موج مرج ۱۸۹-۲۰۴): API جاری main حالت را در getStatus().mode می‌دهد */
+  const mode = (typeof redis.getStatus === 'function' && redis.getStatus().mode)
+    || (typeof redis.getMode === 'function' ? redis.getMode() : 'unknown');
   push('payesh_redis_mode', 'Driver mode (value is always 1; mode in label)', 'gauge', 1, { mode });
 
   if (!(p && p.ok)) return m; /* بقیهٔ متریک‌ها بدون اتصال معنا ندارند */

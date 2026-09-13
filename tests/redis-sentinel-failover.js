@@ -59,24 +59,30 @@ async function main() {
 
   // ۱) پارسِ پیکربندی (تابع خالص)
   {
-    const c1 = redis.buildSentinelConfig('10.0.0.1:26379, 10.0.0.2:26379,10.0.0.3:26379', 'mymaster');
+    /* ری‌تارگت (موج مرج ۱۸۹-۲۰۴): API جاری main = buildRedisConfig(env) —
+       همان قرارداد، ورودی env-محور. */
+    const c1 = redis.buildRedisConfig({ REDIS_SENTINELS: '10.0.0.1:26379, 10.0.0.2:26379,10.0.0.3:26379', REDIS_SENTINEL_NAME: 'mymaster' });
     chk('سه نگهبان با نام مستر پارس می‌شوند',
-      c1.name === 'mymaster' && c1.sentinels.length === 3 && c1.sentinels[2].port === 26379,
+      c1.mode === 'sentinel' && c1.name === 'mymaster' && c1.sentinels.length === 3 && c1.sentinels[2].port === 26379,
       JSON.stringify(c1));
-    const c2 = redis.buildSentinelConfig('10.0.0.9', '');
-    chk('پورت پیش‌فرض ۲۶۳۷۹ و نام پیش‌فرض', c2.sentinels[0].port === 26379 && c2.name === 'mymaster', JSON.stringify(c2));
-    const c3 = redis.buildSentinelConfig('  ,  ,', 'x');
-    chk('ورودی تهی → فهرست خالی', c3.sentinels.length === 0);
+    /* قراردادِ جاریِ main سخت‌گیرانه‌تر است: host بدونِ پورت پذیرفته نمی‌شود
+       (fail-fast به‌جای حدسِ پورت)؛ پورت/نامِ پیش‌فرض با ورودیِ صریح سنجیده می‌شود. */
+    const c2 = redis.buildRedisConfig({ REDIS_SENTINELS: '10.0.0.9:26379' });
+    chk('پورت صریح ۲۶۳۷۹ و نام پیش‌فرض mymaster', c2.sentinels[0].port === 26379 && c2.name === 'mymaster', JSON.stringify(c2));
+    const c2b = redis.buildRedisConfig({ REDIS_SENTINELS: '10.0.0.9' });
+    chk('host بدون پورت ⇒ سنتینل ساخته نمی‌شود (fail-fast قرارداد main)', c2b.mode !== 'sentinel', JSON.stringify(c2b));
+    const c3 = redis.buildRedisConfig({ REDIS_SENTINELS: '  ,  ,' });
+    chk('ورودی تهی → حالت سنتینل نمی‌سازد (fallback زنجیره)', c3.mode !== 'sentinel');
   }
 
   // ۲) حلِ حالت از روی محیط (فرزندِ ایزوله)
   {
     const out1 = await runChild(
-      "const r=require('./server/redis.js');console.log('MODE:'+r.resolveMode());process.exit(0);",
+      "const r=require('./server/redis.js');console.log('MODE:'+r.buildRedisConfig(process.env).mode);process.exit(0);",
       { REDIS_SENTINELS: '127.0.0.1:26379', REDIS_URL: 'redis://127.0.0.1:6379' });
     chk('با فهرست نگهبان، حالت سنتینل است', out1.indexOf('MODE:sentinel') !== -1, out1.slice(0, 120));
     const out2 = await runChild(
-      "const r=require('./server/redis.js');console.log('MODE:'+r.resolveMode());process.exit(0);",
+      "const r=require('./server/redis.js');console.log('MODE:'+r.buildRedisConfig(process.env).mode);process.exit(0);",
       { REDIS_SENTINELS: '', REDIS_URL: 'redis://127.0.0.1:6379' });
     chk('بدون نگهبان، حالت مستقل است', out2.indexOf('MODE:standalone') !== -1, out2.slice(0, 120));
   }
@@ -104,7 +110,8 @@ async function main() {
     let ok = false, detail = '';
     try {
       const Redis = require(path.join(ROOT, 'node_modules', 'ioredis'));
-      const c = redis.buildSentinelConfig('127.0.0.1:59999', 'mymaster');
+      const cc = redis.buildRedisConfig({ REDIS_SENTINELS: '127.0.0.1:59999', REDIS_SENTINEL_NAME: 'mymaster' });
+      const c = Object.assign({ sentinels: cc.sentinels, name: cc.name }, cc.options || {});
       const probe = new Redis(Object.assign({}, c, { lazyConnect: true, connectTimeout: 500 }));
       ok = !!(probe.options && Array.isArray(probe.options.sentinels) && probe.options.sentinels.length === 1 && probe.options.name === 'mymaster');
       try { probe.disconnect(); } catch (e) {}
@@ -148,7 +155,8 @@ async function main() {
         await sleep(1200);
 
         const Redis = require(path.join(ROOT, 'node_modules', 'ioredis'));
-        const c = redis.buildSentinelConfig('127.0.0.1:26400,127.0.0.1:26401,127.0.0.1:26402', 'mymaster');
+        const cc = redis.buildRedisConfig({ REDIS_SENTINELS: '127.0.0.1:26400,127.0.0.1:26401,127.0.0.1:26402', REDIS_SENTINEL_NAME: 'mymaster' });
+        const c = Object.assign({ sentinels: cc.sentinels, name: cc.name }, cc.options || {});
         const app = new Redis(Object.assign({}, c, { connectTimeout: 2000, maxRetriesPerRequest: 3 }));
         await app.set('ha:probe', 'alive');
         chk('نوشت روی مستر از مسیر نگهبان', (await app.get('ha:probe')) === 'alive');
