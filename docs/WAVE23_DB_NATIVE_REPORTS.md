@@ -418,7 +418,7 @@ endpoint (شاملِ حضورِ چت ۶). ورودیِ خراب ⇒ `400 bad_req
 
 `server/reports-sql.js` در این بخش **دست‌نخورده** است ‏(sha256 `dbd1f86bf98456eb…`
 پیش و پس از کلِ اجرای جهش یکسان). الگوی امنِ جهش رعایت شد: جهش در
-‏`server/reports-sql.w23norm-mutated.js` نوشته می‌شود، فرزند با `mutant-preload`
+‏`reports-sql.w23norm-mutated.js` (کپیِ جهش، نه فایلِ مخزن) نوشته می‌شود، فرزند با `mutant-preload`
 اجرا می‌شود، و پس از اجرا **هیچ کپیِ جهش‌یافته‌ای** در مخزن نمی‌ماند.
 
 ‏`tools/mutate-reports-check.sh` هم به‌روز شد تا چهار ردیفِ `GAP` آن دیگر «نقصِ باز»

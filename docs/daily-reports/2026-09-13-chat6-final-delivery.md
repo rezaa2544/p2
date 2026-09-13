@@ -212,7 +212,7 @@ unguarded 10*20/0        : division by zero → گارد لازم است و هس
 | ‏`N4` حذفِ `COALESCE(score,0)` | ‏`cnt 6`≠۷ |
 
 **۴ کشته · ۰ زنده · ۰ اعمال‌نشده · rc=0.** الگوی امن: جهش در
-‏`server/reports-sql.w23norm-mutated.js`، فرزند با `mutant-preload`، و پس از اجرا
+‏`reports-sql.w23norm-mutated.js` (کپیِ جهش، نه فایلِ مخزن)، فرزند با `mutant-preload`، و پس از اجرا
 **صفر کپیِ باقی‌مانده** در مخزن. ‏`tests/wave23-reports-mutations.js` دست‌نخورده
 ‏(صفِ فاز ۲ چت ۲).
 

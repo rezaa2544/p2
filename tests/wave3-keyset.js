@@ -86,8 +86,19 @@ function fakeDbFor(rows) {
 
   await (async () => {
     const b = buildAttendanceList({ user: mgr, date: null, classId: null, studentId: null, limit: 5, cursor: '2026-09-08|3' });
-    chk('A1 predicateِ مرکب `date < $d OR (date = $d AND id > $i)`',
-      /date < \$\d+.*OR.*\(date = \$\d+ AND id > \$\d+\)/.test(b.page.sql), b.page.sql);
+    /* S7-6 (باگ‌هانت نشست ۷): الگوی این بررسی کهنه بود — SQLِ فعلی (از
+       compositeCursorKey در چت ۲) پرانتزِ بیرونیِ predicate را هم می‌نویسد:
+       `AND ((date < $2) OR (date = $3 AND id > $4))`. مرجعِ درستی، خروجیِ
+       واقعی است (A3/A5/A6/A7 سبزند)؛ الگو به شکلِ واقعی به‌روز شد و
+       *سخت‌گیرانه‌تر* شد: هر سه جایگاه باید دقیقاً به date/date/idِ کرسر بایند شوند. */
+    const m1 = /\(\(date < \$(\d+)\) OR \(date = \$(\d+) AND id > \$(\d+)\)\)/.exec(b.page.sql);
+    chk('A1 predicateِ مرکب `((date < $d) OR (date = $d AND id > $i))`', !!m1, b.page.sql);
+    if (m1) {
+      const pp = b.page.params;
+      chk('A1b هر سه جایگاه با مقادیرِ کرسر بایند شده‌اند (date, date, id)',
+        pp[Number(m1[1]) - 1] === '2026-09-08' && pp[Number(m1[2]) - 1] === '2026-09-08' && pp[Number(m1[3]) - 1] === 3,
+        JSON.stringify(pp));
+    }
     chk('A2 هم date و هم id بایند شده‌اند',
       b.page.params.includes('2026-09-08') && b.page.params.includes(3), JSON.stringify(b.page.params));
   })();
@@ -106,9 +117,8 @@ function fakeDbFor(rows) {
       async query(sql, params) {
         if (/^SELECT COUNT/i.test(sql)) return { rows: [{ n: rows.length }] };
         const limit = params[params.length - 1];
-        /* date DESC, id ASC: تاریخ‌های جدیدتر اول، هم‌تاریخ id کوچک‌تر اول */
-        let out = rows.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.id - b.id));
-        const m = sql.match(/date < \$(\d+).*OR.*\(date = \$(\d+) AND id > \$(\d+)\)/);
+        let out = rows.slice().sort((a, b) => (b.date < a.date ? -1 : b.date > a.date ? 1 : a.id - b.id));
+        const m = sql.match(/\(\(date < \$(\d+)\) OR \(date = \$(\d+) AND id > \$(\d+)\)\)/);
         if (m) {
           const d = params[Number(m[1]) - 1];
           const i = params[Number(m[3]) - 1];
