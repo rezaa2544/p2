@@ -21,6 +21,8 @@
        node tests/pg-relational-seed.js
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const fs = require('fs');
+const crypto = require('crypto');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
@@ -70,8 +72,63 @@ function runSeeder(fresh) {
   await c.connect();
   const one = async (sql, p) => (await c.query(sql, p)).rows[0].n;
 
-  /* ── 2. counts ── */
-  const expect = { schools: 2, users: 15, subjects: 6, classes: 4, enrollments: 20, attendance: 50, grades: 30 };
+  /* ── 2. counts, asserted FROM the machine-readable manifest ── */
+  const MANIFEST = path.join(ROOT, 'tools', 'relational-seed-manifest.json');
+  chk('2.0a the manifest exists', fs.existsSync(MANIFEST), MANIFEST);
+  let man = null;
+  try { man = JSON.parse(fs.readFileSync(MANIFEST, 'utf8')); }
+  catch (e) { chk('2.0b the manifest parses as JSON', false, String(e.message).slice(0, 160)); }
+  if (man) {
+    chk('2.0b the manifest parses as JSON', true);
+
+    /* the manifest's own checksum must verify with its documented recipe */
+    const clone = JSON.parse(JSON.stringify(man));
+    clone.artifacts.manifest.sha256 = '';
+    const recomputed = crypto.createHash('sha256')
+      .update(JSON.stringify(clone, null, 2) + '\n').digest('hex');
+    chk('2.0c the manifest self-hash verifies (documented recipe)',
+      recomputed === man.artifacts.manifest.sha256,
+      'stored ' + String(man.artifacts.manifest.sha256).slice(0, 12)
+      + '… vs recomputed ' + recomputed.slice(0, 12) + '…');
+
+    const seederAbs = path.join(ROOT, man.artifacts.seeder.path);
+    const seederHash = crypto.createHash('sha256').update(fs.readFileSync(seederAbs)).digest('hex');
+    chk('2.0d the recorded seeder sha256 matches the file on disk',
+      seederHash === man.artifacts.seeder.sha256,
+      'stored ' + String(man.artifacts.seeder.sha256).slice(0, 12)
+      + '… vs actual ' + seederHash.slice(0, 12) + '…');
+
+    chk('2.0e the manifest is labelled demo-scale, NOT a national dataset',
+      /demo-scale/i.test(man.scale_label) && /NOT a national dataset/i.test(man.scale_label),
+      man.scale_label);
+    chk('2.0f the manifest makes no benchmark/capacity claim',
+      /^NONE\./i.test(man.benchmark_claim), String(man.benchmark_claim).slice(0, 80));
+    chk('2.0g the manifest records 0 new migrations',
+      man.migrations.new_migrations_added === 0, JSON.stringify(man.migrations.new_migrations_added));
+    chk('2.0h the manifest records migration 012 as NOT-RUN with a reason',
+      (man.migrations.not_run || []).some((r) => /012_/.test(r.file) && r.status === 'NOT-RUN' && r.reason),
+      JSON.stringify(man.migrations.not_run));
+    chk('2.0i the manifest stores no credentials',
+      !/chat1:chat1|:\/\/[^<]*:[^<]*@/.test(JSON.stringify(man.database)),
+      JSON.stringify(man.database.url_without_credentials));
+
+    /* the relational index must match the LIVE schema, not a snapshot */
+    const liveFk = await one("SELECT count(*)::int AS n FROM pg_constraint WHERE contype='f' AND conrelid::regclass::text IN ('users','subjects','classes','enrollments','attendance','grades')");
+    chk('2.0j the manifest FK list matches the live schema count',
+      (man.foreign_keys || []).length === liveFk,
+      'manifest ' + (man.foreign_keys || []).length + ' vs live ' + liveFk);
+    const liveUq = await one("SELECT count(*)::int AS n FROM pg_constraint WHERE contype='u' AND conrelid::regclass::text IN ('users','subjects','classes','enrollments','attendance','grades')");
+    chk('2.0k the manifest UNIQUE list matches the live schema count',
+      (man.unique_constraints || []).length === liveUq,
+      'manifest ' + (man.unique_constraints || []).length + ' vs live ' + liveUq);
+    chk('2.0l every FK the manifest lists as deferred IS deferred in the DB',
+      (man.foreign_keys || []).filter((f) => f.initially_deferred).length === liveFk,
+      'deferred listed ' + (man.foreign_keys || []).filter((f) => f.initially_deferred).length + ' vs live FKs ' + liveFk);
+  }
+
+  const expect = man ? man.row_counts : {};
+  chk('2.1 the manifest declares all seven seeded tables',
+    Object.keys(expect).length === 7, JSON.stringify(Object.keys(expect)));
   for (const t of Object.keys(expect)) {
     const n = await one('SELECT count(*)::int AS n FROM ' + t);
     chk('2 ' + t + ' = ' + expect[t], n === expect[t], 'actual ' + n);

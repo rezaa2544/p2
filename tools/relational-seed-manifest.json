@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-13T17:03:17.587Z",
+  "generated_by": "tools/seed-relational-small.js (PG_SEED_MANIFEST=1)",
+  "scale_label": "demo-scale — NOT a national dataset",
+  "benchmark_claim": "NONE. No workload was run; no throughput, latency or capacity number is asserted here or anywhere from this file. Capacity Engineering belongs to chat 4.",
+  "database": {
+    "version": "PostgreSQL 18.4 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+    "server_addr": "127.0.0.1",
+    "server_port": 55433,
+    "database": "payesh_chat1",
+    "connection_env": "PG_LIVE_PG (or DATABASE_URL)",
+    "url_without_credentials": "postgres://<user>:<password>@127.0.0.1:55433/payesh_chat1"
+  },
+  "migrations": {
+    "total": 12,
+    "applied": 11,
+    "already_exists": 0,
+    "failed": 0,
+    "new_migrations_added": 0,
+    "not_run": [
+      {
+        "file": "012_partition_grades_attendance.sql",
+        "status": "NOT-RUN",
+        "reason": "psql meta-command \\gset — not executable through the pg driver; requires psql"
+      }
+    ]
+  },
+  "row_counts": {
+    "schools": 2,
+    "users": 15,
+    "subjects": 6,
+    "classes": 4,
+    "enrollments": 20,
+    "attendance": 50,
+    "grades": 30
+  },
+  "tenants": {
+    "count": 2,
+    "ids": [
+      1,
+      2
+    ]
+  },
+  "foreign_keys": [
+    {
+      "table": "attendance",
+      "name": "fk_attendance_school",
+      "definition": "FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "initially_deferred": true
+    },
+    {
+      "table": "classes",
+      "name": "fk_classes_school",
+      "definition": "FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "initially_deferred": true
+    },
+    {
+      "table": "enrollments",
+      "name": "fk_enrollments_school",
+      "definition": "FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "initially_deferred": true
+    },
+    {
+      "table": "grades",
+      "name": "fk_grades_class",
+      "definition": "FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "initially_deferred": true
+    },
+    {
+      "table": "grades",
+      "name": "fk_grades_school",
+      "definition": "FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "initially_deferred": true
+    },
+    {
+      "table": "grades",
+      "name": "fk_grades_student",
+      "definition": "FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "initially_deferred": true
+    },
+    {
+      "table": "grades",
+      "name": "fk_grades_subject",
+      "definition": "FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "initially_deferred": true
+    },
+    {
+      "table": "grades",
+      "name": "fk_grades_teacher",
+      "definition": "FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "initially_deferred": true
+    },
+    {
+      "table": "subjects",
+      "name": "fk_subjects_school",
+      "definition": "FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "initially_deferred": true
+    },
+    {
+      "table": "users",
+      "name": "fk_users_school",
+      "definition": "FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED",
+      "deferrable": true,
+      "initially_deferred": true
+    }
+  ],
+  "unique_constraints": [
+    {
+      "table": "enrollments",
+      "name": "uq_enrollments_student_year",
+      "definition": "UNIQUE (student_id, year)"
+    }
+  ],
+  "deferred_validation": {
+    "method": "SET CONSTRAINTS ALL IMMEDIATE",
+    "why": "Every FK in this schema is DEFERRABLE INITIALLY DEFERRED, so a violation is only raised at COMMIT. A test that inserts an orphan and then ROLLBACKs never sees the error and would pass falsely; the check must be forced.",
+    "constraints_forced": [
+      "fk_attendance_school",
+      "fk_classes_school",
+      "fk_enrollments_school",
+      "fk_grades_class",
+      "fk_grades_school",
+      "fk_grades_student",
+      "fk_grades_subject",
+      "fk_grades_teacher",
+      "fk_subjects_school",
+      "fk_users_school"
+    ]
+  },
+  "tenant_isolation": {
+    "assertions": [
+      "a student of tenant A has 0 rows in grades / attendance / enrollments under tenant B",
+      "enrollments.student_id -> users.school_id matches enrollments.school_id",
+      "enrollments.class_id -> classes.school_id matches enrollments.school_id",
+      "attendance.student_id -> users.school_id matches attendance.school_id",
+      "grades.student_id -> users.school_id matches grades.school_id",
+      "grades.subject_id -> subjects.school_id matches grades.school_id",
+      "grades.teacher_id -> users.school_id matches grades.school_id"
+    ],
+    "expected_cross_tenant_rows": 0
+  },
+  "known_schema_gaps": [
+    "enrollments and attendance carry a foreign key ONLY on school_id; class_id/student_id are unconstrained, so an orphan or cross-tenant value there is NOT rejected by the database. Fixing this needs a new migration — out of scope (no migration bump).",
+    "enrollments is UNIQUE (student_id, year), which makes 20 enrollments over 4 classes require 10 students; that is why row_counts.users is 15 and not the 10 originally requested."
+  ],
+  "artifacts": {
+    "seeder": {
+      "path": "tools/seed-relational-small.js",
+      "sha256": "ba5174e7818eef160c577c7e9b15bd77dd998caf9691d0d3ecb5d962f6926f3f"
+    },
+    "manifest": {
+      "path": "tools/relational-seed-manifest.json",
+      "sha256": "c6ad7d60dc433a20d3816a9df11627181ae730ea235b3c00a6ec8ee88eb0fbdb"
+    }
+  },
+  "verification": {
+    "self_hash_recipe": "sha256 of JSON.stringify(manifest, null, 2) + \"\\n\" with artifacts.manifest.sha256 set to \"\"",
+    "reproduce": "PG_SEED_FRESH=1 PG_SEED_MANIFEST=1 PG_LIVE_PG=<url> node tools/seed-relational-small.js",
+    "test": "PG_LIVE_PG=<url> node tests/pg-relational-seed.js"
+  }
+}
