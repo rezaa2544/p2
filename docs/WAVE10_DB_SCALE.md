@@ -145,3 +145,17 @@ CREATE TABLE attendance_y2025 PARTITION OF attendance
   PG (PATH یا `PG_LIVE_BIN`) یا ماژولِ `pg` **self-skip** می‌شوند تا CI بدونِ PG
   قرمز نشود. آنچه هنوز pending است: PgBouncer (§۴، لایهٔ استقرار) و اعمالِ
   تولیدیِ پارتیشن‌بندی رویِ دادهٔ واقعی (موجِ استقرار).
+- **گیتِ زندهٔ جداسازیِ tenant (۲۰۲۶-۰۹-۱۲، ادامهٔ موج ۱۰):**
+  `tests/wave10-tenant-live.js` → **۱۰/۱۰** رویِ PG واقعی. گیت‌هایِ پیشین
+  (wave5-authz T25..T31) فقط «متنِ SQL»ِ builderها را می‌سنجیدند؛ این سوئیت
+  دادهٔ دو مدرسه را رویِ PostgreSQL زنده seed می‌کند و همان مسیرِ تولید
+  (`server/dbquery.js` builders → `executePagedList` → pg) را با نقش‌هایِ
+  واقعی اجرا و نشت را با id-set دقیق می‌سنجد: L1..L4 مهارِ مدرسه در
+  attendance/grades/classes/users (حساب‌هایِ ملیِ NULL هم نشت نمی‌کنند) ·
+  L5 خود-فیلترِ دانش‌آموز · L6 گاردِ parent_links ولی · L7/L8 گاردهایِ دبیر
+  (کلاس‌هایِ خودش؛ اجتماعِ policy در grades) · L9 tenant-scoped بودنِ total ·
+  L10 دیدِ سراسریِ superadmin (گواهِ حضورِ دادهٔ هر دو tenant). جهش‌سنجی:
+  `tests/wave10-tenant-live-mutations.js` → **۷/۷ کشته** (حذفِ مهارِ مدرسه در
+  attendance/grades · NULL-escape در users · حذفِ خود-فیلترِ دانش‌آموز · حذفِ
+  parent_links · حذفِ گاردِ کلاسِ دبیر · 1=1 در اجتماعِ policy دبیر). هر دو
+  سوئیت بدونِ PG یا ماژولِ pg **self-skip** (0/0، exit 0).
