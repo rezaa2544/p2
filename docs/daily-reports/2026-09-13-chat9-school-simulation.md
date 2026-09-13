@@ -161,3 +161,83 @@ superadmin · edu_office (استان/شهرستان/ناحیه — ۴ کاربر
 |---|---|
 | `8765f63` | پایه (گزارش ممیزی دور ۱) — `ls-remote == HEAD` تأیید شد. |
 | این دور | مستندات شبیه‌سازی (این گزارش + بخش روزانه + RISK/NEXT_ACTIONS + HANDOFF + stats/freeze). صفر تغییر کد. |
+
+---
+
+## ۸) ماتریس پذیرش رفتاریِ غنی‌سازی دانه (SIM-01..04) — الحاق دور ۴
+
+> این بخش **معیار پذیرش چت ۳** و **معیار بازراستی‌آزمایی چت ۹** پس از پیاده‌سازی است. هر سفر «بیرون‌از-جعبه» با گام‌های قابل‌کلیک و assert‌های اندازه‌پذیر نوشته شده است. **نکتهٔ دقت:** در بازرسیِ دور ۴ مشخص شد SIM-04 از جنسِ SIM-01..03 نیست — `is_head` اصلاً در کد/مدل پیاده نشده (پیش‌نویسِ چت ۱ است)، نه «فقط غایب از دانه». این تفاوت در جدول زیر ثبت و اصلاح شد.
+
+### ۸-۱) SIM-01 — کاربر `guard` (نگهبان/پذیرش، مراجعین E.9) ✅ قابل seed
+
+**وضعیت:** نقش `guard` در `authz/model.json` و `src/` (NAV `05-router.js` · داشبورد `08-dashboard.js` · `18-modals.js`) پیاده شده؛ `tests/visitors2.js` با کاربرِ ساختگی 13/13 سبز. فقط غایب از دانه است.
+
+**سفر بیرون‌از-جعبه (پذیرش مراجع):**
+1. ورود نگهبان: `login('guard_demo')` ⇒ `S.user.role === 'guard'`.
+2. ناوبری: `S.route='visitors'; render()` ⇒ داشبورد «پذیرش / مهمان‌ها».
+3. ثبت ورود: کلیک `data-act="vis-new"` → پرکردن `vis_name/vis_purpose/vis_person/vis_phone/vis_nid` → کلیک `vis-save`.
+4. خروج: کلیک `data-act="vis-out"[data-id=<id>]`.
+
+**assert‌های پذیرش:**
+| assert | مقدار انتظار |
+|---|---|
+| `canAction('vis-new','guard') && canAction('vis-out','guard')` | `true` |
+| رکوردِ ساخته‌شده: `byId('visitors',<id>).school_id === guard.school_id && .registered_by === guard.id` | `true` |
+| پس از خروج: `byId('visitors',<id>).exited_at` | غیرتهی |
+
+### ۸-۲) SIM-02 — دبیرِ کتابدار (`lib_staff`) ✅ قابل seed
+
+**وضعیت:** پرچم `lib_staff` در `src/` پیاده (گیت `inScope`/`canAction` در `library2.js`/`libserial2.js`؛ 7/7 و 7/7 سبز با کاربر ساختگی). فقط غایب از دانه.
+
+**سفر بیرون‌از-جعبه (امانت کتاب):**
+1. کاربر: دبیر با `lib_staff=1` در مدرسهٔ دارای کتابخانه (`S.user`).
+2. ناوبری `S.route='library'; render()` ⇒ دکمه‌های `lib-new`/`lib-lend`/`lib-return`/`lib-del` حاضرند.
+3. امانت: کلیک `lib-lend` برای یک دانش‌آموز ⇒ رکورد `lib_loans` ساخته می‌شود.
+4. بازگشت: کلیک `lib-return` ⇒ `returned_at` ثبت می‌شود.
+
+**assert‌های پذیرش:**
+| assert | مقدار انتظار |
+|---|---|
+| `renderRoute()` کتابدار شامل `data-act="lib-lend"` و `lib-return` | `true` |
+| `inScope(libUser,'lib_loans',<id>,{returned_at:'x'})` | `true` |
+| نما/دسترسیِ دبیرِ بدون‌پرچم به امانت | `false` (رد می‌شود) |
+| نمای دانش‌آموز از `lib-lend` | غایب (فقط خواندنی) |
+
+### ۸-۳) SIM-03 — تحویلدار اموال (`asset_staff`) ✅ قابل seed
+
+**وضعیت:** پرچم `asset_staff` در `src/` پیاده (`assets2.js` 5/5 سبز با کاربر ساختگی؛ E.5). فقط غایب از دانه.
+
+**سفر بیرون‌از-جعبه (تحویل/جابه‌جایی اموال):**
+1. کاربر: دبیر با `asset_staff=1` (تحویلدار).
+2. ناوبری `S.route='assets'; render()` ⇒ دکمهٔ `as-status` (تغییر وضعیت) حاضر؛ `as-new`/`as-del` غایب (حوزهٔ مدیر).
+3. تغییر وضعیت: کلیک `as-status` ⇒ `usable_count/status` به‌روز می‌شود.
+
+**assert‌های پذیرش:**
+| assert | مقدار انتظار |
+|---|---|
+| `inScope(custodian,'assets',<id>,{status:'repair'})` | `true` |
+| `inScope(plainTeacher,'assets',<id>,{status:'repair'})` | `false` |
+| `inScope(custodian,'assets',<id>,{school_id:otherSchool})` | `false` (غیرهم‌مدرسه) |
+| نمای تحویلدار: `as-status` حاضر · `as-new`/`as-del` غایب | `true` |
+
+### ۸-۴) SIM-04 — رئیس اداره (`is_head`) ⚠️ نیازمند پیاده‌سازی، نه seed
+
+**اصلاحِ یافتهٔ دور ۲:** برخلاف SIM-01..03، پرچمِ `is_head` **در هیچ‌جای کد یا مدل نیست**:
+- `authz/model.json` → کاربر و offices **بدون** فیلد `is_head`؛
+- `src/js/*.js` → **صفر** ارجاع به `is_head`؛
+- تنها منبع: `tools/seed-office-data.js` (پیش‌نویسِ چت ۱، «NOT wired anywhere») و `docs/D_OFFICE_LEVEL_ANALYSIS.md` §P2 (تصمیم باز برای چت ۲: نقش جدا `office_head` یا پرچم `is_head`).
+
+آنچه واقعاً پیاده شده، **سلسله‌مراتبِ سطحِ اداره** است (`province → county → district`، `OFFICE_LEVEL` در `24-edu-office.js`) — که به `is_head` ربطی ندارد و ۴ کاربرِ `edu_office` موجود (در ۴ office با ۴ سطح) آن را می‌پوشانند.
+
+**بنابراین سفر پذیرشِ SIM-04 دو مرحله دارد:**
+1. **(پیش‌نیاز — چت ۲):** تصمیمِ طراحی و پیاده‌سازیِ تمایز رئیس/کارشناس (نقش تازه یا پرچم + NAV/مسیرها/`ROLE_LEVEL`/`inScope`/مجوزها + مدل + دانه). بدون این، «seed کردن is_head» بی‌اثر است چون هیچ کدی آن را نمی‌خواند.
+2. **(سپس — چت ۳):** غنی‌سازی دانه با کاربرِ رئیس طبق طرحِ مصوب.
+
+**assertِ پذیرشِ مرحلهٔ ۱ (مشروط به تصمیم طراحی):**
+| assert | مقدار انتظار |
+|---|---|
+| `authz/model.json` دارای فیلد `is_head` (یا نقشِ `office_head`) | `true` |
+| `src/` دارای منطقِ تمایز رئیس/کارشناس (گیتِ مجوز) | `true` |
+| تستِ red-first: دانه بدون رئیس ⇒ قرمز؛ با رئیس ⇒ سبز | `true` |
+
+> **ارجاع:** SIM-01..03 → NEXT_ACTIONS (غنی‌سازی دانه، مالک چت ۳) · SIM-04 → RISK (C9-6، «پیش‌نیاز: تصمیم طراحی چت ۲»). این اصلاح در بخش «چت ۹ — دور ۴» گزارش روزانه هم ثبت شد.
