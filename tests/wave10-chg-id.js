@@ -43,7 +43,7 @@ const TABLES14 = [
   console.log('\n▸ Wave 10 · گام ۴ — دلتای مبتنی بر change-ID');
 
   /* ── C1: قراردادِ ایندکس‌ها ── */
-  const up = fs.readFileSync(path.join(ROOT, 'migrations', '008_delta_chg_id.sql'), 'utf8');
+  const up = fs.readFileSync(path.join(ROOT, 'migrations', '011_delta_chg_id.sql'), 'utf8');
   const idxMatches = [...up.matchAll(/CREATE INDEX IF NOT EXISTS (idx_(\w+)_chg_id)\s+ON (\w+)\s+\(chg_id\);/g)];
   const idxTables = idxMatches.map((m) => m[3]).sort();
   chk('C1a دقیقاً ۱۴ ایندکس chg_id', idxMatches.length === 14, 'got ' + idxMatches.length);
@@ -64,7 +64,7 @@ const TABLES14 = [
   chk('C2g هیچ CREATE INDEX CONCURRENTLY (سیاستِ ۰۰۴/۰۰۵/۰۰۷)', !/CREATE INDEX CONCURRENTLY/.test(up));
 
   /* ── C3: وارون‌سازی ── */
-  const down = fs.readFileSync(path.join(ROOT, 'migrations', '008_delta_chg_id.down.sql'), 'utf8');
+  const down = fs.readFileSync(path.join(ROOT, 'migrations', '011_delta_chg_id.down.sql'), 'utf8');
   chk('C3a هر ۱۴ تریگر وارون', TABLES14.every((t) => down.includes('DROP TRIGGER IF EXISTS trg_' + t + '_chg')));
   chk('C3b هر ۱۴ ایندکس وارون', TABLES14.every((t) => down.includes('DROP INDEX IF EXISTS idx_' + t + '_chg_id;')));
   chk('C3c هر ۱۴ ستون وارون', TABLES14.every((t) => new RegExp('ALTER TABLE ' + t + '\\s+DROP COLUMN IF EXISTS chg_id;').test(down)));

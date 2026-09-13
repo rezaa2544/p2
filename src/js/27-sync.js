@@ -83,9 +83,17 @@ const SYNC = {
 };
 
 /* ---------- ذخیره‌سازی صف ---------- */
+/* P0-3 (آفلاین E2E): تا وقتی صف از دیسک خوانده نشده، هیچ saveQueue ای
+   حق بازنویسیِ sms_syncq_v1 را ندارد — وگرنه هر enqueueOp ی که پیش از
+   initSync اجرا شود (مولدِ دنیایِ دمو در بوت) صفِ نشستِ قبل را با
+   صفِ تقریباً خالیِ حافظه بازنویسی می‌کند و تغییراتِ آفلاینِ کاربر
+   پس از restart بی‌صدا گم می‌شوند. enqueueOp هم پیش از اولین نوشتن،
+   خودش خواندن را تضمین می‌کند (lazy-load). */
+var _QUEUE_LOADED = false;
 function loadQueue(){
   try{ SYNC.queue = Store.getJSON(SYNC_QUEUE_KEY, []) || []; }
   catch(e){ SYNC.queue = []; }
+  _QUEUE_LOADED = true;
   /* W7-1 (موج ۷): احیایِ sendingِ بی‌پاسخ. اگر مرورگر وسطِ ارسال کرش کرده
      (یا تب بسته شده)، قلم‌ها با وضعیتِ sending ذخیره مانده‌اند و syncNow
      فقط pending/failed را برمی‌دارد — بدونِ این احیا، برایِ همیشه می‌ماندند
@@ -109,6 +117,18 @@ function saveQueue(){
      وگرنه هر عملیات کل صف را دوباره JSON.stringify می‌کند و هزینه
      درجه‌دوم می‌شود. پرچم در 03-persistence.js مدیریت می‌شود. */
   if(typeof _BATCH_DEPTH !== 'undefined' && _BATCH_DEPTH > 0){ _BATCH_QUEUE_DIRTY = true; return true; }
+  /* P0-3: اولین نوشتن پیش از loadQueue (مولدِ دمو در بوت، قبل از
+     initSync) حق ندارد قلم‌هایِ ماندگارِ نشستِ قبل را له کند — قلم‌هایِ
+     دیسکی که در حافظه نیستند با uid ادغام می‌شوند و بعد نوشته می‌شود. */
+  if(!_QUEUE_LOADED){
+    try{
+      var _disk = Store.getJSON(SYNC_QUEUE_KEY, []) || [];
+      var _have = {};
+      for(var _i = 0; _i < SYNC.queue.length; _i++){ if(SYNC.queue[_i]) _have[SYNC.queue[_i].uid] = 1; }
+      for(var _j = 0; _j < _disk.length; _j++){ if(_disk[_j] && !_have[_disk[_j].uid]) SYNC.queue.push(_disk[_j]); }
+    }catch(e){}
+    _QUEUE_LOADED = true;
+  }
   return Store.setJSON(SYNC_QUEUE_KEY, SYNC.queue);   /* P1-10: خروجی false یعنی حافظهٔ مرورگر پر است */
 }
 function saveSyncMeta(){
@@ -119,8 +139,37 @@ function saveSyncMeta(){
 function saveDlq(){
   Store.setJSON(SYNC_DLQ_KEY, SYNC.dlq);
 }
+/* Wave 24 (فاز کلاینت): queueBytes در هر رندر (از مسیرِ syncBadge →
+   queueRatio) کلِ صف را stringify می‌کرد — با صفِ چندصدتایی داغ‌ترین
+   تابعِ کلاینت بود (~۴۴۰ms در پروفایلِ ۲۵ رندر). کش با کلیدِ
+   (مرجعِ آرایه + طول + TTL کوتاه):
+   - هر حذف/تخلیه، آرایه را با filter نو می‌سازد → مرجع عوض می‌شود →
+     بازمحاسبه؛ پس حلقهٔ enforceQueueCaps همیشه مقدارِ تازه می‌بیند.
+   - push طول را عوض می‌کند → بازمحاسبه.
+   - تغییرِ وضعیتِ درجا (failed→pending) فقط چند بایت جابه‌جا می‌کند؛
+     TTL ۲۵۰ms همان را هم به‌سرعت تازه می‌کند (مصرفش فقط نشانگر است). */
+var _QB_CACHE = { ref: null, len: -1, at: 0, val: 0 };
 function queueBytes(){
-  try{ return JSON.stringify(SYNC.queue).length; }catch(e){ return 0; }
+  try{
+    var q = SYNC.queue, now = Date.now();
+    if(_QB_CACHE.ref === q && (now - _QB_CACHE.at) < 250){
+      if(_QB_CACHE.len === q.length) return _QB_CACHE.val;
+      if(q.length > _QB_CACHE.len){
+        /* push فقط انتها اضافه می‌کند (هیچ‌جا درجِ میانی نداریم) —
+           فقط قلم‌های تازه شمرده می‌شوند، نه کل صف. ‏(+۱ تقریبِ کامای
+           جداکننده؛ برای گیت/هشدارِ سقف بیش‌برآوردِ امن است.) */
+        var v2 = _QB_CACHE.val;
+        for(var i=_QB_CACHE.len;i<q.length;i++) v2 += JSON.stringify(q[i]).length + 1;
+        _QB_CACHE.len = q.length; _QB_CACHE.val = v2;
+        return v2;
+      }
+      /* کوچک‌شدن = filter/حذف — مرجع معمولاً عوض می‌شود؛ محاسبهٔ کامل */
+    }
+    var v = JSON.stringify(q).length;
+    _QB_CACHE.ref = q; _QB_CACHE.len = q.length;
+    _QB_CACHE.at = now; _QB_CACHE.val = v;
+    return v;
+  }catch(e){ return 0; }
 }
 /* نسبتِ اشغالِ صف نسبت به سقف (بزرگ‌ترینِ نسبتِ تعدادی و حجمی) */
 function queueRatio(){
@@ -731,7 +780,7 @@ function syncPanelModal(){
     </div>`;
 
   openModal(`<div class="card-head"><h3>وضعیت همگام‌سازی</h3>
-      <button class="icon-btn" data-act="modal-close">✕</button></div>
+      <button class="icon-btn" data-act="modal-close" aria-label="بستن">✕</button></div>
     <div class="card-body">${body}</div>
     <div class="card-head" style="border-bottom:none;border-top:1px solid var(--border)">
       ${SYNC.demoMode?`<button class="btn ghost sm" data-act="sync-toggle-net">${SYNC.online?'📴 شبیه‌سازی قطع اینترنت':'🌐 شبیه‌سازی وصل شدن'}</button>`:''}
@@ -827,7 +876,7 @@ function storageQuotaModal(){
       return !isNaN(t) && t < Date.now() - 7 * 24 * 60 * 60 * 1000;
     }).length;
     openModal(`<div class="card-head"><h3>🗄️ حافظهٔ ذخیره‌سازیِ مرورگر</h3>
-        <button class="icon-btn" data-act="modal-close">✕</button></div>
+        <button class="icon-btn" data-act="modal-close" aria-label="بستن">✕</button></div>
       <div class="card-body">
         ${est.known ? `
           <div class="row" style="margin-bottom:6px"><span class="small muted">مصرف: <b>${quotaSizeFa(est.usage)}</b> از ${quotaSizeFa(est.quota)}</span><div class="spacer"></div><b>${fa(pct)}٪</b></div>
@@ -913,7 +962,7 @@ function syncConflictModal(uid){
   var isConflict = item.status === 'conflict';
   var hasServer = !!item.server;
   openModal(`<div class="card-head"><h3>${isConflict ? '⚖️ تعارضِ همگام‌سازی' : '⛔ نسخهٔ شما رد شد'}</h3>
-      <button class="icon-btn" data-act="modal-close">✕</button></div>
+      <button class="icon-btn" data-act="modal-close" aria-label="بستن">✕</button></div>
     <div class="card-body">
       <div class="sync-note" style="margin-bottom:10px">
         ${isConflict
@@ -999,6 +1048,11 @@ const SYNC_ACTIONS = {
       enforceQueueCaps();
     }
     saveQueueChecked(); saveDlq();
+    /* S7-8 (باگ‌هانت نشست ۷): بازگشتِ قلم از DLQ صف را عوض می‌کند ⇒ آینهٔ
+       IndexedDB (Background Sync) باید همان لحظه هم‌گام شود؛ تکیه بر چرخهٔ
+       scheduleSync کافی نیست (چرخه می‌تواند بی‌شبکه شکست بخورد و آینه
+       قلم را pending نشان ندهد). bgMirrorQueue ایدمپوتنت و دِبونس‌شده است. */
+    bgMirrorQueue();
     checkCapWarning(); refreshSyncBadge();
     toast('عملیات به صفِ ارسال برگشت', 'ok');
     scheduleSync(400);
@@ -1012,6 +1066,14 @@ const SYNC_ACTIONS = {
     SYNC.dlq   = SYNC.dlq.filter(x => x.uid !== uid);   /* P1-10: حذف از صفِ مرده هم */
     if(SYNC.queue.length + SYNC.dlq.length === before) return;
     saveQueue(); saveDlq();
+    /* S7-8 (باگ‌هانت نشست ۷): حذفِ دستی تا پیش از این هیچ مسیری به آینهٔ
+       IndexedDB نداشت (و برخلافِ sync-retry هیچ scheduleSync هم نبود)، پس
+       قلمِ حذف‌شده با status=pending/failed در آینه می‌ماند و رویدادِ
+       بعدیِ Background Sync آن را می‌فرستاد — یعنی کاربر چیزی را که
+       صریحاً حذف کرده بود، سرور اعمال می‌کرد. شاخهٔ حذفِ خودِ
+       bgMirrorQueue («قلم‌هایی که دیگر در صفِ زنده نیستند … از آینه پاک
+       شوند») دقیقاً همین را می‌خواست؛ فقط صدا زده نمی‌شد. */
+    bgMirrorQueue();
     refreshSyncBadge();
     toast('عملیاتِ ردشده از صف حذف شد', 'ok');
     syncPanelModal();

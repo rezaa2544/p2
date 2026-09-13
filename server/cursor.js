@@ -170,25 +170,23 @@ function createCursor(o) {
         payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
       } catch (e) { return { ok: false, code: 'cursor_invalid' }; }
       if (!payload) return { ok: false, code: 'cursor_invalid' };
-      /* Delta Phase 4 (gap 5): v2 به منطقهٔ صادرکننده گره خورده؛ v1 تا
-         انقضای TTL خودش قبول می‌شود (گذارِ استقرارِ چندمنطقه‌ای). */
-      if (payload.v === 2 || payload.v === 3) {
-        /* بدشکلِ v2/v3 (بدونِ rg) نامعتبر است؛ نسخهٔ سالم از منطقهٔ دیگر mismatch. */
-        if (typeof payload.rg !== 'string' || !payload.rg) {
-          return { ok: false, code: 'cursor_invalid' };
-        }
-        if (payload.rg !== regionName()) {
-          return { ok: false, code: 'region_mismatch' };
-        }
-        /* v3 (Wave 10): cw اگر هست باید عددِ صحیحِ نامنفی باشد — وگرنه fail-closed. */
-        /* نوعِ JSON باید خودِ number باشد — Number([1]) === 1 و Number(true) === 1
-           با coercion می‌گذرند؛ ستونِ امضا تضمین نمی‌کند که سرور چنین چیزی صادر
-           کرده باشد (fail-closed روی شکل، نه فقط قابل‌تبدیل‌بودن). */
-        if (payload.v === 3 && payload.cw != null
-            && (typeof payload.cw !== 'number' || !Number.isInteger(payload.cw) || payload.cw < 0)) {
-          return { ok: false, code: 'cursor_invalid' };
-        }
-      } else if (payload.v !== 1) {
+      /* Delta Phase 4 (gap 5) + S9-1 (Bug Hunt session 9) + Wave 10 (v3):
+         v2/v3 به منطقهٔ صادرکننده گره خورده؛ v1 تا انقضای TTL خودش قبول
+         می‌شود (گذارِ استقرارِ چندمنطقه‌ای).
+         این‌جا فقط *ساختار* سنجیده می‌شود (نسخهٔ شناخته‌شده، rgِ رشته‌ای
+         برای v2/v3، و cwِ صحیحِ نامنفی برای v3). داوریِ معناییِ منطقه
+         عمداً بعد از امضا می‌آید (S9-1): توکنِ جعلی همیشه invalid است —
+         «signature first — expired-but-forged is invalid». */
+      if (payload.v !== 1 && payload.v !== 2 && payload.v !== 3) {
+        return { ok: false, code: 'cursor_invalid' };
+      }
+      if ((payload.v === 2 || payload.v === 3) && (typeof payload.rg !== 'string' || !payload.rg)) {
+        return { ok: false, code: 'cursor_invalid' };
+      }
+      /* v3 (Wave 10): cw اگر هست باید عددِ صحیحِ نامنفی از نوعِ number باشد —
+         Number([1]) === 1 با coercion می‌گذرد؛ fail-closed روی شکل. */
+      if (payload.v === 3 && payload.cw != null
+          && (typeof payload.cw !== 'number' || !Number.isInteger(payload.cw) || payload.cw < 0)) {
         return { ok: false, code: 'cursor_invalid' };
       }
       /* signature first (constant-time) — expired-but-forged is invalid, not expired */
@@ -199,6 +197,11 @@ function createCursor(o) {
         sigOk = expect.length === got.length && crypto.timingSafeEqual(expect, got);
       } catch (e) { sigOk = false; }
       if (!sigOk) return { ok: false, code: 'cursor_invalid' };
+      /* S9-1: داوریِ منطقه فقط برای توکنِ *اصیل* — توکنِ جعلی همیشه invalid
+         است، هر منطقه‌ای که ادعا کند. v3 (Wave 10) هم منطقه‌بند است. */
+      if ((payload.v === 2 || payload.v === 3) && payload.rg !== regionName()) {
+        return { ok: false, code: 'region_mismatch' };
+      }
       const t = now();
       if (typeof payload.exp !== 'number' || !Number.isFinite(payload.exp)) return { ok: false, code: 'cursor_invalid' };
       if (payload.exp <= t) return { ok: false, code: 'cursor_expired' };

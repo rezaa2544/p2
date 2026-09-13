@@ -59,7 +59,8 @@
 | PITR | ❌ | هیچ نشانه‌ای از WAL archiving / بازیابی نقطه-در-زمان در کد و اسناد نیست |
 | restore drill | ❌ | کد ری‌استور هست (`apiRestore`) ولی هیچ گزارش/لاگ مانور ری‌استور وجود ندارد؛ رویهٔ ماهانه اکنون مستند است (`docs/PRODUCTION_RUNBOOK.md` §۴ + `docs/DR_RUNBOOK.md` §۶) — اجرا باقی است |
 | failover drill | ❌ | هیچ مدرکی از مانور failover نیست؛ رویه مستند: `docs/PRODUCTION_RUNBOOK.md` §۵ + `docs/DR_RUNBOOK.md` §۱/§۲ — اجرا باقی است |
-| RPO/RTO | ⏳ | در `docs/RELIABILITY_DR_PLAN.md` تعریف شده (RTO کمتر از ۱۵ دقیقه، RPO کمتر از ۵ دقیقه + طرح مانور ماهانه) ولی هرگز سنجیده/درل نشده |
+| RPO/RTO | ⏳ | در `docs/RELIABILITY_DR_PLAN.md` تعریف شده (RTO کمتر از ۱۵ دقیقه، RPO کمتر از ۵ دقیقه). **نخستین سنجشِ واقعی انجام شد:** مانورِ WAL-disk-full روی PG17 — RTO=۳۰٫۲ث، RPO=۰ (`docs/WAVE19_WAL_DRILL_REPORT.md`، `tests/wal-disk-full.js` ‏20/21). هنوز تک‌سناریو و تک‌میزبان است؛ سناریوهای primary-failure/PITR/منطقه‌ای سنجیده نشده‌اند |
+| WAL disk-full drill | ✅ | **اجرای واقعی** ۲۰۲۶-۰۹-۱۱: PG17 با `pg_wal` روی tmpfsِ ۱۰۰MB؛ PANICِ واقعی ثبت شد؛ restart با دیسکِ پُر شکست خورد و پس از آزادسازیِ فضا RTO=۳۰٫۲ث؛ replica با RPO=۰. **قلمِ بازِ P1:** آلارمِ بیرونیِ دیسکِ WAL — PG در ۸۰٪ ساکت است |
 
 ## Observability (رصدپذیری)
 

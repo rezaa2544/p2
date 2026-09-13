@@ -67,7 +67,7 @@ const run = (cmd, args) => new Promise((res) => {
                       SELECT 1, 100, 10, 20, 200, (g % 20)::numeric,
                              make_timestamp(2025 + (g % 2), 3, 1 + (g % 28), 9, 0, 0), make_timestamp(2025 + (g % 2), 3, 1 + (g % 28), 9, 0, 0), 1
                       FROM generate_series(1, 2000) g`);
-    const r9 = await psql(path.join(ROOT, 'migrations', '009_partition_grades_attendance.sql'));
+    const r9 = await psql(path.join(ROOT, 'migrations', '012_partition_grades_attendance.sql'));
     chk('R1a چین 001→009 + فیکسچر 2000 سطری سبز', r9.code === 0, r9.se.slice(0, 120));
     /* پارتیشنِ قدیمیِ مصنوعی: y2021 (سالِ حذف‌شونده با keep-years=5 در 2026) */
     await live.query("CREATE TABLE grades_y2021 PARTITION OF grades FOR VALUES FROM ('2021-01-01') TO ('2022-01-01')");

@@ -15,6 +15,43 @@ function createConflicts(ctx){
   const sendJson  = ctx.sendJson;
   const markDirty = ctx.markDirty;
 
+  /* سقفِ نگه‌داریِ تعارض‌هایِ داوری‌شده — بستنِ بی‌سقفیِ #124 بدونِ شکستنِ
+     قراردادِ Gap-3 (#59): ردیفِ resolved باید بماند تا (الف) دلتا آن را از
+     راهِ updated_at به کلاینت برساند و UI تعارضِ محلی را ببندد، و (ب)
+     resolveِ دوباره 409 already_resolved بدهد نه 404. پس حذفِ فوری ممنوع؛
+     به‌جایش صفِ resolvedها جدا هرس می‌شود: کهنه‌ترین resolved_at اول.
+     پیش‌فرض ۵۰۰؛ PAYESH_RESOLVED_CONFLICTS_MAX=0 یعنی بدونِ هرس. */
+  function resolvedKeepMax(){
+    const n = Number(process.env.PAYESH_RESOLVED_CONFLICTS_MAX);
+    return Number.isFinite(n) && n >= 0 ? n : 500;
+  }
+  function pruneResolved(){
+    const cap = resolvedKeepMax();
+    if(cap <= 0 || !Array.isArray(store.sync_conflicts)) return;
+    const resolved = store.sync_conflicts.filter(x => x && x.status === 'resolved');
+    if(resolved.length <= cap) return;
+    resolved.sort((a, b) => String(a.resolved_at || a.updated_at || '')
+      .localeCompare(String(b.resolved_at || b.updated_at || '')));
+    const drop = new Set(resolved.slice(0, resolved.length - cap));
+    /* بازخورد بازبین #143 (باگ ۲): هرسِ شمارشی بدون tombstone حذف را از
+       کلاینتِ آفلاین پنهان می‌کرد — دلتا فقط ردیف‌های موجود را می‌فرستد و
+       کلاینتی که ردیفِ resolved را پیش از هرس نگرفته بود، تعارضِ محلی را
+       برای همیشه باز می‌دید. مثل هر حذفِ دیگر (sync.js del)، سنگ‌قبر به
+       __deleted_records می‌رود تا مسیرِ دلتا (pull.js: deleted[]) بسته‌شدن را
+       اعلام کند. برشِ سقفِ __deleted_records همان مکانیزمِ موجودِ sync.js است. */
+    if(!Array.isArray(store.__deleted_records)) store.__deleted_records = [];
+    const nowIso = new Date().toISOString();
+    for(const d of drop)
+      store.__deleted_records.push({ c: 'sync_conflicts', id: d.id,
+        school_id: d.school_id != null ? d.school_id : null, at: nowIso });
+    /* بازخورد بازبین #153 (باگ ۱): این مسیر بیرونِ جاروی post-commitِ sync.js
+       اجرا می‌شود — بدونِ برشِ همین‌جا، داوری‌های پیوسته __deleted_records را
+       بی‌سقف می‌راندند. همان سقفِ ۵۰۰۰ قراردادِ موجود (sync.js/delete-service). */
+    if(store.__deleted_records.length > 5000)
+      store.__deleted_records = store.__deleted_records.slice(-5000);
+    store.sync_conflicts = store.sync_conflicts.filter(x => !drop.has(x));
+  }
+
   /* فهرستِ تعارض‌ها (بازها اول، تازه‌ترها اول — حداکثر ۵۰) */
   async function apiList(req, res){
     const s = await sessionFrom(req);
@@ -28,7 +65,13 @@ function createConflicts(ctx){
     scoped.sort((a, b) =>
       ((a.status === 'open') === (b.status === 'open') ? 0 : (a.status === 'open' ? -1 : 1))
       || String(b.created_at || '').localeCompare(String(a.created_at || '')));
-    return sendJson(res, 200, { ok: true, conflicts: scoped.slice(-50).reverse() });
+    /* بازخورد بازبین #143 (باگ ۱): پیش از resolve⇒keep، حل‌شده‌ها فوراً حذف
+       می‌شدند و slice(-50).reverse() عملاً همان ۵۰ تای اولِ مرتب‌شده را
+       می‌داد؛ حالا که resolvedها می‌مانند، slice(-50) دقیقاً «ابتدای» آرایه
+       (بازها) را می‌بُرید — با ۵۰+ resolved مدیر هیچ تعارضِ بازی نمی‌دید.
+       قرارداد: comparator خودش ترتیبِ نمایشی است (بازها اول، تازه‌ترها اول)؛
+       سقف از همان ابتدا برداشته می‌شود تا بازها هرگز قربانیِ سقف نشوند. */
+    return sendJson(res, 200, { ok: true, conflicts: scoped.slice(0, 50) });
   }
 
   /* { conflict_id, winner: 'incoming' | 'server', reason? } → اعمالِ اتمیک */
@@ -125,6 +168,15 @@ function createConflicts(ctx){
        ردیفِ حل‌شدهٔ قدیمی را هرگز نمی‌بیند (created_at کهنه است). */
     c.updated_at = c.resolved_at;
     if(body.reason) c.reason = String(body.reason).slice(0, 200);
+    /* ممیزی دور ۲ (رگرسیونِ SG11/C15c/C16/C17c): resolve ⇒ delِ فوری (باگ ۲
+       بازبین #124) قراردادِ Gap-3 (#59) را می‌شکست — دلتا ردیفِ resolved را
+       از راهِ updated_at به کلاینت می‌رساند تا UI تعارضِ محلی را ببندد؛ حذفِ
+       فوری آن را کور می‌کرد و resolveِ دوباره به‌جای 409 already_resolved
+       404 می‌داد. جایگزین: ردیفِ resolved می‌ماند و صفِ resolvedها جدا
+       سقف‌دار هرس می‌شود (کهنه‌ترین resolved_at اول). بی‌سقفیِ #124 همچنان
+       بسته است: openها را ringِ mirrorAppend (sync.js) سقف می‌زند،
+       resolvedها را این هرس. */
+    pruneResolved();
     markDirty();
     audit('conflict_resolved', { user_id: s.id, conflict_id: c.id, collection: c.collection, record_id: c.record_id, winner });
     return sendJson(res, 200, { ok: true, conflict: c });

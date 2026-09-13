@@ -70,6 +70,40 @@ if [ ! -f server/data/payesh.json ]; then
   node server/seed.js >>$OUT 2>&1 || { echo "!! reseed FAILED" | tee -a $OUT; exit 2; }
 fi
 
+# ── live-PostgreSQL probe ─────────────────────────────────────────────────
+# tests/wave23-reports-pg.js is the parity/authorization gate for the DB-native
+# report path. It self-skips with a loud NOT-RUN when no PostgreSQL is reachable,
+# so a PG-less machine does not go red for a reason it cannot act on. When one IS
+# reachable we REQUIRE it: the gate must not be silently skipped where it can run.
+if [ -n "$DATABASE_URL" ] || (command -v pg_isready >/dev/null 2>&1 && pg_isready -h 127.0.0.1 -p 5432 -q 2>/dev/null); then
+  export WAVE23_REQUIRE_PG=1
+  echo "-- live PostgreSQL detected — wave23-reports-pg is REQUIRED" | tee -a $OUT
+fi
+
+# ── docs-stats pre-flight ──────────────────────────────────────────────────
+# Count blocks in DOCS_METRICS / DOCUMENTATION_MAP / TEST_COVERAGE_REPORT and the
+# freeze manifest are generated, not hand-typed. Check BEFORE the dirty-tree guard
+# (the fixer writes files, which would trip that guard). Check-only here: we never
+# write during a regression run.
+if [ -f tools/docs-stats-sync.js ]; then
+  if ! node tools/docs-stats-sync.js --freeze --check >> $OUT 2>&1; then
+    echo "!! DOCS STATS STALE — run: node tools/docs-stats-sync.js --freeze && git commit" | tee -a $OUT
+    exit 5
+  fi
+fi
+
+# ── docs-refs pre-flight ───────────────────────────────────────────────────
+# Docs must not point at files that do not exist. Historical debt is
+# grandfathered in tools/docs-refs-baseline.json; only a NEW stale ref fails.
+if [ -f tools/docs-refs-check.js ]; then
+  if ! node tools/docs-refs-check.js --check >> $OUT 2>&1; then
+    echo "!! STALE DOC REFERENCE — a doc points at a file that does not exist" | tee -a $OUT
+    echo "   fix the reference, or if the doc is historical:" | tee -a $OUT
+    echo "   node tools/docs-refs-check.js --baseline && git commit" | tee -a $OUT
+    exit 6
+  fi
+fi
+
 # ── dirty-tree guard ───────────────────────────────────────────────────────
 # A mutation suite killed mid-run (timeout/kill/reset) leaves src files
 # MUTATED on disk -> every suite that domain touches fails in a confusing

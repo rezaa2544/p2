@@ -52,6 +52,7 @@ const { createClassRoutes } = require('./routes/classes');
 const { createAttendanceRoutes } = require('./routes/attendance');
 const { createGradeRoutes } = require('./routes/grades');
 const { createUserRoutes } = require('./routes/users');
+const { createReportsRoutes } = require('./routes/reports'); /* Wave 23 — گزارش‌دهی پیشرفته */
 const { createBootstrapRoute } = require('./routes/bootstrap');
 const { createIds } = require('./ids'); /* P0-16 */
 const { createOutbox } = require('./outbox'); /* P0-17 */
@@ -109,7 +110,10 @@ function loadStore(){
     console.error('run:  node server/seed.js   (builds it from the demo world)');
     process.exit(1);
   }
-  const s = JSON.parse(fs.readFileSync(STORE_FILE, 'utf8'));
+  /* Wave 24 (KPI-3): پارس مستقیم از Buffer — بدونِ ساختِ رشتهٔ میانیِ
+     ~۵.۸MB در فضای JS (decode جدا ≈ ۲۲ms). V8 خودش UTF-8 را در مسیرِ
+     سریع‌ترِ داخلی decode می‌کند: ~۵۸ms → ~۴۸ms روی استورِ مرجع. */
+  const s = JSON.parse(fs.readFileSync(STORE_FILE));
   s.__processed_uids = s.__processed_uids || {};
   s.__revoked_jti    = s.__revoked_jti || {};
   s.__auth = s.__auth || { codes: {}, login_fail: {}, code_rate: {} };
@@ -120,6 +124,12 @@ function loadStore(){
 }
 const store = loadStore();
 syncAttach(store);
+/* بازخوردِ بازبینِ PR #94: وقتی هیدراتاسیون از PG عمداً سقف‌دار/بریده
+   است (PAYESH_PG_HYDRATE_LIMIT/SKIP)، هیچ مسیری نباید این آینهٔ ناقص
+   را روی store.json بنویسد (خاموشی، فال‌بکِ ورکر، خروجِ FATAL) — چون
+   فایلِ کاملِ قبلی را می‌کُشد و بوتِ بدونِ PG فقط دادهٔ بریده می‌بیند.
+   در PG-live مرجع PG است؛ فایلِ قدیمی دست‌نخورده می‌ماند. */
+let mirrorIncomplete = false;
 
 /* ── Wave 9 — رشتهٔ کارِ عملیاتِ سنگین ─────────────────────────────
    JSON.stringify(store) و نوشتنِ سنکرونِ فایل از رشتهٔ اصلی به ورکر
@@ -137,8 +147,17 @@ db.init(store).then(async info => {
        PG truth at boot (per-table failures warn and keep going). */
     try {
       const h = await db.hydrateStoreFromPg(store);
+      mirrorIncomplete = db.shouldPersistMirrorFile(db.isPostgres(), h) === false;
+      if (mirrorIncomplete) {
+        console.warn('[store] mirror incomplete (capped/env-skipped hydration) — JSON file persist DISABLED: a trimmed snapshot must never overwrite the full store file (PG is authoritative)');
+      }
+      if (db.hydrationUsersCapped && db.hydrationUsersCapped(h)) {
+        console.warn('[store] WARNING: users hydration is capped — users beyond the cap CANNOT authenticate; PAYESH_PG_HYDRATE_LIMIT is for load-test/staging sandboxes only (see docs/WAVE18_LOAD_TEST_REPORT.md §5-4)');
+      }
       console.log('[DB] Hydrated ' + h.hydrated + ' collections from PostgreSQL' +
-        (h.skipped.length ? ' (skipped: ' + h.skipped.join(',') + ')' : ''));
+        (h.skipped.length ? ' (skipped: ' + h.skipped.join(',') + ')' : '') +
+        (h.capped && h.capped.length ? ' (capped: ' + h.capped.join(',') + ')' : '') +
+        (h.env_skipped && h.env_skipped.length ? ' (env-skipped: ' + h.env_skipped.join(',') + ')' : ''));
     } catch (e) { console.warn('[DB] Hydration warning:', e.message); }
   }
 }).catch(err => {
@@ -263,6 +282,12 @@ function gcStore(){
 let persistBusy = false;    /* نوشتنِ ورکر در جریان است */
 let persistQueued = false;  /* حینِ پرواز دوباره کثیف شد */
 function persistStore(){
+  /* PR #94 review-guard: با آینهٔ سقف‌دار، فایل هرگز با اسنپ‌شاتِ بریده
+     بازنویسی نمی‌شود (این مسیرِ FATAL/فال‌بک هم هست). شرط عمداً فقط
+     mirrorIncomplete است، نه isPostgres(): در خاموشی، db.close() پیش از
+     رویدادِ exit اجرا می‌شود و isPostgres() دیگر false است — تصمیم باید
+     با snapshotِ بوت قفل بماند (یافتهٔ آزمونِ لایو). */
+  if(mirrorIncomplete) return;
   if(!dirty) return;
   if(persistBusy){ persistQueued = true; return; }
   dirty = false; /* نقطهٔ اسنپ‌شات — جهشِ بعدی دوباره کثیف می‌کند */
@@ -280,13 +305,19 @@ function persistStore(){
 /* مسیرِ سنکرون — فقط خاموشی (exit/SIGTERM/SIGINT) و فال‌بکِ خطای ورکر؛
    هرگز در مسیرِ درخواست یا تیکرِ دوره‌ای صدا نمی‌شود. */
 function persistStoreSync(){
+  /* همان گارد — مسیرِ خاموشی (exit/SIGTERM/SIGINT) و فال‌بکِ ورکر.
+     مستقل از isPostgres(): در exit بعد از db.close() اتصال مرده است ولی
+     آینه هنوز بریده است — نباید نوشت. */
+  if(mirrorIncomplete) return;
   if(!dirty && !persistBusy && !persistQueued) return;
   dirty = false; persistQueued = false;
   const gc = gcStore();
   if(gc) try { audit('store_gc', { removed: gc }); } catch(e){}
   try{
     const tmp = STORE_FILE + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify(store), { encoding: 'utf8', mode: 0o600 }); /* S-73-3: PII — owner-only */
+    /* Wave 24 (KPI-3): همان قالبِ ASCII-escapedِ ورکر — پارسِ بوتِ بعدی سریع‌تر.
+       این مسیر فقط در خاموشی/فال‌بک اجرا می‌شود؛ ~۴۰ms اضافه بی‌اثر است. */
+    fs.writeFileSync(tmp, require('./json-fast').stringifyAscii(store), { encoding: 'utf8', mode: 0o600 }); /* S-73-3: PII — owner-only */
     fs.renameSync(tmp, STORE_FILE);
     try{ fs.chmodSync(STORE_FILE, 0o600); }catch(e){}
   }catch(e){ /* store file may be gone (tests) — never crash on exit */ }
@@ -455,7 +486,7 @@ const ids = createIds({ db, cache });
 const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, ids, rateLimit: rateLimit.checkRateLimit });
 const idor = createIdor({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
-const pubrep = createPublicReport({ store, sendJson: sendJsonCounting, workers });
+const pubrep = createPublicReport({ store, db, sendJson: sendJsonCounting, workers }); /* P1-3: مسیر PG */
 /* هر سه ماژول با db می‌چرخند: admin/conflicts (Wave 1 main) + sms (W1p2 تراکنسی) */
 const admin = createAdmin({ store, db, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, dataDir: path.dirname(STORE_FILE), workers });
 const healthIdx = createHealthIndex({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting }); /* G.1 */
@@ -487,6 +518,7 @@ const classRoutes = createClassRoutes({ store, db, audit, markDirty, ids, delete
 const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, ids, deleter });
 const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty, ids, deleter });
 const userRoutes = createUserRoutes({ store, db, audit, markDirty, ids, deleter });
+const reportsRoutes = createReportsRoutes({ store, db, audit, markDirty, ids, deleter }); /* Wave 23 */
 const bootstrapRoute = createBootstrapRoute({ store, db });
 /* Delta Hardening Phase 2 (gap 2): signed TTL cursor — the resolved JWT key
    (env or key-file) feeds a domain-separated cursor key inside server/cursor.js;
@@ -532,7 +564,14 @@ async function serveStatic(res, urlPath, nonce){
 
 /* ── router ────────────────────────────────────────────────────────── */
 const onRequest = async (req, res) => {
-  const url = new URL(req.url, 'http://localhost');
+  /* S7-1 (Bug Hunt session 7): a malformed request-target (e.g. `//[`, `///`,
+     `//@`) made `new URL(req.url, …)` throw at the very top of this async
+     handler — outside every try/catch and with no rejection handler on the
+     caller — so one raw request line killed the process (unauthenticated DoS).
+     Parse defensively: bad target = plain 400, never a throw. */
+  let url;
+  try{ url = new URL(req.url, 'http://localhost'); }
+  catch(e){ return sendJson(res, 400, { ok: false, code: 'bad_request' }); }
   const p = url.pathname;
   const https = isHttps(req);
   const nonce = crypto.randomBytes(16).toString('base64');
@@ -808,6 +847,24 @@ const onRequest = async (req, res) => {
         return await pullRoute.apiPull(req, res);
       }
 
+      // /api/v1/reports/* (Wave 23 — گزارش‌های استاندارد وزارتی، فقط‌خواندنی)
+      if(p === '/api/v1/reports/attendance' && req.method === 'GET'){
+        const r = await reportsRoutes.attendanceReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/reports/academic' && req.method === 'GET'){
+        const r = await reportsRoutes.academicReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/reports/finance' && req.method === 'GET'){
+        const r = await reportsRoutes.financeReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/reports/teachers' && req.method === 'GET'){
+        const r = await reportsRoutes.teachersReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);
@@ -953,7 +1010,15 @@ const SHUTDOWN_TIMEOUT_MS = Math.max(500, Number(process.env.PAYESH_SHUTDOWN_TIM
 const wrappedRequest = async (req, res) => {
   inFlight++;
   res.on('close', () => { inFlight = Math.max(0, inFlight - 1); });
-  await onRequest(req, res);
+  /* S7-1: fail-safe — a rejection from any request handler must never reach the
+     process-level unhandledRejection path (Node ≥15 exits the process there).
+     One bad request may fail; it may not take the service down with it. */
+  try{
+    await onRequest(req, res);
+  }catch(e){
+    try{ console.error('[request] unhandled handler error:', (e && e.message) || e); }catch(_){}
+    try{ if(!res.writableEnded) sendJson(res, 500, { ok: false, code: 'internal_error' }); }catch(_){}
+  }
 };
 
 /* ── TLS (stage 2): real https when PAYESH_TLS_CERT / PAYESH_TLS_KEY

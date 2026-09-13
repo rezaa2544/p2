@@ -34,6 +34,7 @@ function createAuth(ctx){
   const audit = ctx.audit;
   const isHttps = ctx.isHttps;
   const otp = ctx.otp; /* R101: otp.json (distributed) */
+  const db = ctx.db;   /* P1-1: PG-live → جستجوی auth با ایندکس (010) */
 
   /* ── JWT (hand-rolled HS256; alg is hard-coded, contract §2.2) ────
      R96 P0-3: aud/iss/iat validated; key >= 256 bit enforced at boot;
@@ -109,7 +110,15 @@ function createAuth(ctx){
     if(await revocation.isRevoked(p.jti)) return null;
     const sv = await revocation.getSessionVersion(p.sub);
     if(sv > 0 && (p.sv || 0) < sv) return null;
-    const user = (store.users || []).find(u => u.id === p.sub);
+    /* P1-1 (بازبین): کاربرِ خارج از سقفِ hydration هم نشستِ معتبر دارد — ورودش را
+       از PG آوردیم؛ هویتِ هر درخواست را هم از PG حل می‌کنیم (PK lookup ایندکسی).
+       نبود در PG = نبود (نشست می‌میرد — fail-closed). خطای اتصال همین حکم را دارد
+       (با لاگ): به PG فقط وقتی می‌رسیم که آینه کاربر را ندارد. */
+    let user = (store.users || []).find(u => u.id === p.sub);
+    if(!user && db && typeof db.isPostgres === 'function' && db.isPostgres()){
+      try{ user = await db.readOne('users', p.sub); }
+      catch(e){ console.error('[AUTH] sessionFrom: PG lookup failed —', e.message); user = null; }
+    }
     if(!user || !user.active) return null;
     return Object.assign({ jti: p.jti, token: tok }, user);
   }
@@ -161,6 +170,31 @@ function createAuth(ctx){
     return a.length === b.length && crypto.timingSafeEqual(a, b);
   }
 
+  /* ── P1-1 (Wave 18 §۵-۴): جستجوی کاربرِ auth بر اساسِ تلفن ──────
+     در حالتِ PG-live از ایندکسِ عبارتیِ 010_users_phone_auth می‌آید
+     (Index Scan، O(log n)) — آینهٔ هیدراته‌شدهٔ سقف‌دار، مرجعِ همهٔ
+     کاربران نیست و find خطی روی آن در ۱۰M کاربر گران است. tie-break
+     عمداً همان آینه است: ORDER BY id LIMIT 1 (hydration نیز ORDER BY
+     id است). قرارداد «نبود در PG = نبود» — فقط خطایِ اتصال به آینه
+     برمی‌گردد (degrade، نه کرشِ مسیر ورود). */
+  async function userByPhone(phone){
+    const tail = phone.slice(-10);
+    if(db && typeof db.isPostgres === 'function' && db.isPostgres()){
+      try{
+        const r = await db.query(
+          'SELECT id, role, school_id, national_id, active, full_name, phone ' +
+          'FROM users WHERE right(regexp_replace(phone, $2, \'\', \'g\'), 10) = $1 ' +
+          'ORDER BY id LIMIT 1',
+          [tail, '[\\s\\-()]']);
+        if(r && r.rows && r.rows.length) return r.rows[0];
+        return null;
+      }catch(e){
+        console.error('[AUTH] userByPhone: PG lookup failed, falling back to mirror —', e.message);
+      }
+    }
+    return (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === tail);
+  }
+
   /* ── endpoints ─────────────────────────────────────────────────── */
   async function apiSendCode(req, res, body){
     /* لایهٔ مقدار (validate.js): فقط {phone} — کلیدِ ناشناخته = ردِّ 400.
@@ -190,7 +224,7 @@ function createAuth(ctx){
     cd[phone] = now;
     await otp.save(); /* cooldown (+codes پایین‌تر) — در حالت ردیس فلاش می‌شود */
 
-    const user = (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === phone.slice(-10));
+    const user = await userByPhone(phone);
     /* S-73-2: ONE response shape whether or not the phone is known —
        a 404 here would let an attacker enumerate registered phones.
        Equal-time probe (no timing oracle either way). */
@@ -237,7 +271,7 @@ function createAuth(ctx){
     const rLp = await rateLimit.checkRateLimit({ prefix: 'otp:login:phone', identifier: phone, limit: PHONE_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });
     if(!rLp.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
 
-    const user = (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === phone.slice(-10));
+    const user = await userByPhone(phone);
 
     /* progressive delay after consecutive failures — an attacker can
        NOT weaponize the lock (contract §5.5.2) */
