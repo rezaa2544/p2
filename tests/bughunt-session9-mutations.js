@@ -23,12 +23,17 @@ const { spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const SUITE = path.join(ROOT, 'tests', 'bughunt-session9.js');
+
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ هم‌جوارِ جدا (mutant-kit)؛
+   سورس اصلی هرگز بازنویسی نمی‌شود — restore/بازگردانیِ درجا حذف شد. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('bhs9-');
 let pass = 0, fail = 0;
 const notes = [];
 function chk(c, m) { if (c) { pass++; console.log('  ✅ ' + m); } else { fail++; console.log('  ❌ ' + m); } }
 
 const sha = (f) => crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex');
-const runSuite = () => spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8', timeout: 120000 });
+const runSuite = (e) => spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8', timeout: 120000, env: e });
 
 function mutate(file, from, to, killRe, tag) {
   const f = path.join(ROOT, file);
@@ -36,15 +41,16 @@ function mutate(file, from, to, killRe, tag) {
   const orig = fs.readFileSync(f, 'utf8');
   const bad = orig.replace(from, to);
   if (bad === orig) { chk(false, tag + ': جهش اعمال نشد (لنگر پیدا نشد — به‌روز کن)'); return; }
-  fs.writeFileSync(f, bad, 'utf8');
+  const mcopy = kit.mutant(f, bad); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+  try { fs.chmodSync(mcopy, fs.statSync(f).mode); } catch (_) {}
   try {
-    const r = runSuite();
+    const r = runSuite(kit.env());
     const out = (r.stdout || '') + (r.stderr || '');
     if (!/bughunt-session9: /.test(out)) { chk(false, tag + ' — خطای محیطی: چکِ موردِ انتظار چاپ نشد'); return; }
     chk(r.status !== 0 && killRe.test(out), tag);
   } finally {
-    fs.writeFileSync(f, orig, 'utf8');
-    if (sha(f) !== before) chk(false, tag + ' — فایل پس از بازگردانی یکسان نیست!');
+    kit.clear(f);
+    if (sha(f) !== before) chk(false, tag + ' — سورس اصلی تغییر کرد!');
   }
 }
 
@@ -124,18 +130,20 @@ console.log('\n▸ حذفِ تصادفیِ خط (بذرِ ثابت ۰xS9 = 20260
     let fileKilled = 0, fileValid = 0, fileSkipped = 0;
     for (const k of tried) {
       const mutated = lines.slice(0, k).concat(lines.slice(k + 1)).join('\n');
-      fs.writeFileSync(f, mutated, 'utf8');
+      const mcopy = kit.mutant(f, mutated); /* کپیِ جدا؛ همان مسیرِ کپی بازنویسی می‌شود */
+      try { fs.chmodSync(mcopy, fs.statSync(f).mode); } catch (_) {}
       /* جهشِ غیرقابل‌تجزیه (SyntaxError) جهشِ معنادار نیست: برنامه‌ای وجود
          ندارد که رفتاری داشته باشد. کنارش می‌گذاریم و در مخرج نمی‌شماریم. */
-      const parse = spawnSync('node', ['--check', f], { encoding: 'utf8' });
-      if (parse.status !== 0) { fileSkipped++; fs.writeFileSync(f, orig, 'utf8'); continue; }
-      const r = runSuite();
+      /* چکِ نحو مستقیماً روی خودِ کپی (مسیرِ واقعی، بدون نیاز به بازمپ) */
+      const parse = spawnSync('node', ['--check', mcopy], { encoding: 'utf8' });
+      if (parse.status !== 0) { fileSkipped++; kit.clear(f); continue; }
+      const r = runSuite(kit.env());
       const out = (r.stdout || '') + (r.stderr || '');
       const isRed = r.status !== 0 && /bughunt-session9: /.test(out);
-      if (!/bughunt-session9: /.test(out)) { env++; fs.writeFileSync(f, orig, 'utf8'); continue; }
+      if (!/bughunt-session9: /.test(out)) { env++; kit.clear(f); continue; }
       fileValid++; total++;
       if (isRed) { killed++; fileKilled++; }
-      fs.writeFileSync(f, orig, 'utf8');
+      kit.clear(f);
     }
     if (sha(f) !== before) chk(false, file + ' پس از جاروبِ حذفِ خط بازگردانی نشد!');
     notes.push(`${file}: ${fileKilled}/${fileValid}`);

@@ -43,6 +43,7 @@
 | چت ۶ | `push-recovery.bundle` | `/home/user/push-recovery.bundle` | `arena/01a08b24-p2` | مأموریت ۴۱ (۱۱ کامیت پس از ریست) | `5f675d4` | `a30fb20` | ≈۸.۶ مگابایت | ❌ فایل با ریست دوم رفت؛ ✅ تأییدشده در مأموریت ۴۱ |
 | چت ۶ | `docs-index.bundle` | نامشخص در گزارش | `arena/01a08b24-p2` | نامشخص | نامشخص | نامشخص | نامشخص | 📝 فقط در ابلاغ مأموریت ۴۲ ذکر شده — نیازمند تأیید وجود |
 | چت ۶ | `chat6-master-recovery.bundle` | `/home/user/chat6-master-recovery.bundle` | `arena/01a08b24-p2` | کل مأموریت‌های ۳۶–۴۳ | در گزارش مأموریت ۴۳ | `a30fb20` | ≈۸.۶ مگابایت | ✅ تأییدشده — باندل جامع نجات (مأموریت ۴۳) |
+| چت ۶ | `chat6-work.bundle` | `/home/user/chat6-deliverable/chat6-work.bundle` | `chat6/baseline` · `fix/wave23-db-native-reports` · `docs/daily-reports-2026-09-12` | ۹ کامیت | `4ef813d` (کد) · `1de6620` (مستندات) | `2a4395e` — **ریشهٔ orphan**، بدونِ جدِ مشترک با `main` | ۹٬۳۷۳٬۲۵۲ بایت (هَش در `chat6-deliverable/SHAS.txt`) | 🗄️ **سندِ تاریخی** — محتوایش پیش‌تر از مسیرِ `feat/wave23-db-native-complete` و PR #93 (مرج‌شده ۲۰۲۶-۰۹-۱۲T16:57:01Z) وارد `main` شد؛ پوش یا بازنویسی‌اش کارِ مرج‌شده را خراب می‌کرد. **نه حذف، نه پوش.** قلم‌های واقعاً غایب در PR #140 تحویل و توسطِ مالک مرج شد (کامیتِ مرج `a9f37a08`) |
 | چت ۵ (پ۵) | `chat5-p5.bundle` | `/home/user/bandle/chat5-p5.bundle` | `fix/bughunt-s7-split` + `docs/p5-bughunt-queue` | پ۵ — ۲ کامیت روی ۲ شاخه | `11febdb` | `c91c788` | ≈۵۵.۴ مگابایت | ✅ آمادهٔ نجات — PR [#106](https://github.com/rezaa2544/p2/pull/106) (شکافتِ #74) · PR [#107](https://github.com/rezaa2544/p2/pull/107) (مستنداتِ پ۵ + قفل `rc34`)؛ `sha256=c45c3728…1933` · رأس = کامیتِ **پیش از** کامیتِ همین ردیف (رجیستری خودارجاع نمی‌شود) |
 | چت ۵ (نشست ۹) | `chat5-session9.bundle` | `/home/user/bandle/chat5-session9.bundle` | `bug-hunt-session9` + `fix/a11y-modal-focus-s9` + `fix/wave19-wal-drill-s9` | نشستِ ۹ — ۹ کامیت روی ۳ شاخه | `884161c` | `44f645c` | ≈۵۴.۶ مگابایت | ✅ آمادهٔ نجات — PR [#84](https://github.com/rezaa2544/p2/pull/84) (نشست ۹) · PR [#80](https://github.com/rezaa2544/p2/pull/80) (a11y S9-4) · PR [#81](https://github.com/rezaa2544/p2/pull/81) (WAL S9-6/S9-7)؛ `sha256=42a62d41…96fb` · رأس = کامیتِ **پیش از** همین ردیف (رجیستری خودارجاع نمی‌تواند باشد) |
 
@@ -137,3 +138,19 @@ git push origin push-<sandbox-name>
 
 _چت ۶ (مستندات و انتشار) — مأموریت ۴۲. این رجیستری پس از دو ریست پیاپی سندباکس در یک روز ساخته شد؛
 وجودش خود دلیل ضرورتش است._
+
+## ۸) حذف‌های ثبت‌شده — پ۰ دورِ ۲ (پاک‌سازی پیگیر، ۲۰۲۶-۰۹-۱۲ عصر)
+
+> دورِ دوم بهداشت ورک‌اسپیس (۱۴۷MB/۱٬۳۲۳ فایل → ۸۸MB/۳۷ فایل؛ گزارش:
+> `daily-reports/2026-09-12-p0-workspace-hygiene.md`). هر قلم پیش از `rm` با شاهدِ remote
+> اثبات شد (`/tmp/deletion-evidence-p0r2.log`)؛ هیچ محتوای یگانه‌ای حذف نشد.
+
+| قلم | حجم | شاهدِ پوشش | بازیابی |
+|---|---:|---|---|
+| `bandle/chat2-work.bundle` | 17M | HEAD `abe9c608` == `origin/feat/delta-schema-gaps` (PR #59؛ ls-remote) · `bundle verify` = complete history · `sha256 aee67a774b40…` ≡ `chat2-sha256.txt` | `git fetch origin feat/delta-schema-gaps` |
+| `bandle/chat2-work.patch` | 57K | ۴ پچ == کامیت‌های همان شاخه (`2dad76a9`…) · sha256 ≡ مانیفست | همان |
+| `bandle/chat2-worktree-backup.tar.gz` | 11M | ۱۱۲۳ فایل: ۱۱۴/۱۱۷ متفاوتِ SHA-مچ کامل با history remote؛ ۳ فایلِ میانی (HANDOFF/USER_GUIDE/index.html) با تمامِ محتوا در `f4f9797`/`bed30f0`/`08d4492`/`32da05e` (جستجوی `-S`) · sha256 ≡ مانیفست | checkout کامیت‌های نامبرده از origin |
+| `p2` (به‌جز `docs/daily-reports/`) | ۳۲M | کپیِ بی‌گیتِ کهنه: ۴۱/۴۴ متفاوت SHA-مچ با history remote؛ `NEXT_ACTIONS`/`ROADMAP` پیش‌نویسِ مقدم‌شده (ردیف‌هایشان در main به‌روزتر)؛ `server/data` = اجرایی (audit.log + jwt.key) | `git clone` از origin |
+| `w18-delivery/` + `w18-delivery-bundle.tar.gz` | ۲۶۸K | ۶/۹ فایل == کامیت `81a523e` (PR #94 مرج‌شده)؛ ۳ فایلِ باقی نسخهٔ پیش-اصلاحِ بازبین‌اند — diff دقیقاً guardهای `db43769`/`fffde46` است که نهایی روی remoteاند | `git show 81a523e:<path>` |
+| `git-auth.sh` · `replay-push.sh` · `w18-push-rebuild.sh` | ~۲۴K | **توکن GitHub در متنِ فایل‌ها** (نقض قاعدهٔ توکن) — حذفِ امنیتی (P2-5) | — (عمداً بازیابی نمی‌شود؛ توکن‌ها rotate شوند) |
+| `replay-manifests/` · دو `*-commit-message.txt` · `build-w18-bundle.sh` | ~۳۲K | مانیفست/پیامِ کامیت‌های موجود در remote (`81a523e`؛ init شاخهٔ `docs/daily-reports-init` در history مرجِ PR #98) | از history remote |

@@ -9,6 +9,13 @@
    ───────────────────────────────────────────────────────────── */
 const { execSync } = require('child_process');
 const fs = require('fs');
+const path = require('path');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و
+   index.html هرگز بازنویسی نمی‌شوند — بازگردانیِ دستی و rebuildِ
+   پایانی حذف شدند. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('s12-mut-');
+const ROOT = path.join(__dirname, '..');
 
 /* R96 P0-1: لایهٔ قدیمیِ filterFields فقط نرمال‌سازی/چکِ ارزشِ مدیر را نگه
    داشته — دروازهٔ status = fieldGate (تک‌منبع). جهش‌ها به همان خط نشانه
@@ -30,15 +37,18 @@ const MUTS = [
   }
 ];
 
-let killed = 0;
+let killed = 0, prevFile = null;
 for (const m of MUTS) {
-  const src0 = fs.readFileSync(m.file, 'utf8');
+  const abs = path.join(ROOT, m.file);
+  if (prevFile && prevFile !== abs) kit.clear(prevFile); /* فقط جهشِ جاری فعال */
+  prevFile = abs;
+  const src0 = fs.readFileSync(abs, 'utf8');
   const n = src0.indexOf(m.bad);
   if (n < 0) { console.log('  ❌ ' + m.name + ': الگوی اصلی پیدا نشد در ' + m.file); continue; }
-  fs.writeFileSync(m.file, src0.replace(m.bad, m.mut, 1));
+  kit.mutant(abs, src0.replace(m.bad, m.mut, 1)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
   let out = '', crashed = false;
   const __r89cmd = 'node --max-old-space-size=1500 ' + m.suite;
-  try { execSync(__r89cmd, { stdio: 'pipe' }); out = 'PASSED (no failure)'; }
+  try { execSync(__r89cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
   catch (e) {
     out = String(e.stdout || '') + String(e.stderr || '');
     /* R89/R96: empty output = process killed (env/memory/port) — retry with
@@ -48,7 +58,7 @@ for (const m of MUTS) {
       att++;
       const w0 = Date.now() + 2500 * att;
       while (Date.now() < w0) {}
-      try { execSync(__r89cmd, { stdio: 'pipe' }); out = 'PASSED (no failure)'; }
+      try { execSync(__r89cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
       catch (e2) { out = String(e2.stdout || '') + String(e2.stderr || ''); }
     }
     if (/JavaScript heap out of memory|FATAL|aborting/.test(out) || out.trim() === '') crashed = true;
@@ -57,7 +67,6 @@ for (const m of MUTS) {
   const failed = /❌/.test(out);
   const firstFail = (out.split('\n').find(l => l.includes('❌')) || '').trim();
   const killedThis = crashed ? (m.crashOK === true) : (failed && firstFail.includes(m.expectFail));
-  fs.writeFileSync(m.file, src0);
   console.log('  ' + (killedThis ? '✅' : '❌') + ' ' + m.name + ' — ' + (killedThis ? 'کشته شد' : 'زنده ماند! (خروجی: ' + firstFail + ')'));
   if (killedThis) killed++;
 }

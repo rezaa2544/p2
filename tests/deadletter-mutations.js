@@ -9,6 +9,14 @@
    ───────────────────────────────────────────────────────────── */
 const { execSync } = require('child_process');
 const fs = require('fs');
+const path = require('path');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و
+   index.html هرگز بازنویسی نمی‌شوند — بازگردانیِ دستی و rebuildِ
+   پایانی حذف شدند. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('dl-mut-');
+const ROOT = path.join(__dirname, '..');
+kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
 
 const MUTS = [
   {
@@ -27,20 +35,23 @@ const MUTS = [
   }
 ];
 
-let killed = 0;
+let killed = 0, prevFile = null;
 for (const m of MUTS) {
-  const src0 = fs.readFileSync(m.file, 'utf8');
+  const abs = path.join(ROOT, m.file);
+  if (prevFile && prevFile !== abs) kit.clear(prevFile); /* فقط جهشِ جاری فعال */
+  prevFile = abs;
+  const src0 = fs.readFileSync(abs, 'utf8');
   const n = src0.indexOf(m.bad);
   if (n < 0) { console.log('  ❌ ' + m.name + ': الگوی اصلی پیدا نشد در ' + m.file); continue; }
-  fs.writeFileSync(m.file, src0.replace(m.bad, m.mut, 1));
-  execSync('node build.js', { stdio: 'pipe' });
+  kit.mutant(abs, src0.replace(m.bad, m.mut, 1)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
+  execSync('node build.js', { stdio: 'pipe', env: kit.env(), cwd: ROOT });
   let out = '', crashed = false;
   const __r89cmd = 'node --max-old-space-size=1500 ' + m.suite;
-  try { execSync(__r89cmd, { stdio: 'pipe' }); out = 'PASSED (no failure)'; }
+  try { execSync(__r89cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
   catch (e) {
     out = String(e.stdout || '') + String(e.stderr || '');
     if (out.trim() === '') { /* R89: empty output = process killed (env/memory) — retry once */
-      try { execSync(__r89cmd, { stdio: 'pipe' }); out = 'PASSED (no failure)'; }
+      try { execSync(__r89cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
       catch (e2) { out = String(e2.stdout || '') + String(e2.stderr || ''); }
     }
     if (/JavaScript heap out of memory|FATAL|aborting/.test(out) || out.trim() === '') crashed = true;
@@ -49,11 +60,9 @@ for (const m of MUTS) {
   const failed = /❌/.test(out);
   const firstFail = (out.split('\n').find(l => l.includes('❌')) || '').trim();
   const killedThis = crashed ? (m.crashOK === true) : (failed && firstFail.includes(m.expectFail));
-  fs.writeFileSync(m.file, src0);
   console.log('  ' + (killedThis ? '✅' : '❌') + ' ' + m.name + ' — ' + (killedThis ? 'کشته شد' : 'زنده ماند! (خروجی: ' + firstFail + ')'));
   if (killedThis) killed++;
 }
-execSync('node build.js', { stdio: 'pipe' });
 console.log('\nبازبینیِ خطِ پایه (بدون جهش):');
 const o = execSync('node --max-old-space-size=1500 tests/deadletter.js', { stdio: 'pipe' }).toString();
 console.log('  deadletter: ' + (o.split('\n').find(l => l.includes('/18')) || o.slice(-120)).trim());
