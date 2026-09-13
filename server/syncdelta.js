@@ -31,6 +31,16 @@ const ALLOWED = new Set([
   'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
 ]);
 
+/* Wave 10 (cursor v3): جدول‌هایی که مهاجرتِ ۰۰۸ به آن‌ها chg_id داده —
+   دلتایشان با نشانگرِ آب (cw) خوانده می‌شود. بقیه (schools،
+   bell_schedules، hw_assignments، vclass_sessions، sync_conflicts) همان
+   مسیرِ زمانیِ since را می‌روند. با مهاجرتِ ۰۰۸ هم‌گام نگه داشته شود. */
+const CHG_TABLES = new Set([
+  'users', 'classes', 'subjects', 'schedule', 'enrollments',
+  'attendance', 'grades', 'discipline', 'leaves', 'notifications',
+  'announcements', 'hw_submissions', 'counselor_refs', 'counselor_msgs'
+]);
+
 function tableName(t) {
   if (!ALLOWED.has(t)) throw new Error(`syncdelta: table not allowlisted: ${String(t)}`);
   return t;
@@ -50,6 +60,34 @@ function tableName(t) {
  * @param {Object} o { sinceISO, lastUpdatedAt?, lastId? }
  * @returns {{sql:string, params:Array<*>}}
  */
+/**
+ * Build the change-ID delta SELECT (Wave 10): rows whose chg_id is strictly
+ * after the watermark, ordered by (chg_id, id) — the skew-proof delta feed
+ * for the future cursor-v3 pull mode. Same allowlist discipline as
+ * deltaRowsSql; scope is still applied by the caller (scope only removes).
+ *
+ * NOT wired into pull.js yet — pull still speaks timestamp `since`. This
+ * builder + migration 008's 14 (chg_id) indexes are the ready-to-flip
+ * substrate; the wire-up (cursor v3 carrying the watermark) is the scoped
+ * follow-up recorded in docs/WAVE10_DB_SCALE.md.
+ *
+ * @param {string} table
+ * @param {Object} o { afterChgId:number }
+ * @returns {{sql:string, params:Array<number>}}
+ */
+function deltaRowsByChgSql(table, o) {
+  o = o || {};
+  const t = tableName(table);
+  const after = Number(o.afterChgId);
+  if (!Number.isFinite(after) || after < 0) {
+    throw new Error('syncdelta.deltaRowsByChgSql: afterChgId (non-negative number) required');
+  }
+  return {
+    sql: `SELECT * FROM "${t}" WHERE chg_id > $1 ORDER BY chg_id ASC, id ASC`,
+    params: [Math.trunc(after)]
+  };
+}
+
 function deltaRowsSql(table, o) {
   o = o || {};
   const t = tableName(table);
@@ -133,4 +171,4 @@ function tombstonesSql(o) {
   };
 }
 
-module.exports = { deltaRowsSql, deltaKeysetSql, tombstonesSql, tableName };
+module.exports = { deltaRowsSql, deltaRowsByChgSql, deltaKeysetSql, tombstonesSql, tableName, CHG_TABLES };
