@@ -11,9 +11,13 @@ const cp = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const GEN = path.join(ROOT, 'tools', 'generate-national-dataset.js');
+
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ هم‌جوارِ جدا (mutant-kit)؛
+   سورس اصلی هرگز بازنویسی نمی‌شود — restore/بازگردانیِ درجا حذف شد. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('nat-');
 const orig = fs.readFileSync(GEN, 'utf8');
-function restore() { fs.writeFileSync(GEN, orig, 'utf8'); }
-process.on('exit', restore);
+/* بازگردانی درجا حذف شد: جهش در کپیِ kit می‌نشیند و خودکار پاک می‌شود */
 
 const mutations = [
   {
@@ -59,10 +63,12 @@ for (const m of mutations) {
     console.log('  ❌ جهش اعمال نشد: ' + m.name);
     continue;
   }
-  fs.writeFileSync(GEN, mutated, 'utf8');
+  const mcopy = kit.mutant(GEN, mutated); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+  try { fs.chmodSync(mcopy, fs.statSync(GEN).mode); } catch (_) {}
   const r = cp.spawnSync(process.execPath, [path.join(__dirname, 'national-dataset-integrity.js')],
-    { stdio: 'pipe', timeout: 300000 });
-  restore();
+    /* env: کیت — نوهٔ «node <GEN>» هم از طریقِ بازمپِ ماژولِ اصلی، کپیِ جهش‌یافته را اجرا می‌کند */
+    { stdio: 'pipe', timeout: 300000, env: kit.env() });
+  kit.clear(GEN);
   if (r.status !== 0) { killed++; console.log('  ✅ کشته شد: ' + m.name); }
   else { survived++; survivors.push(m.name); console.log('  ❌ زنده ماند: ' + m.name); }
 }
