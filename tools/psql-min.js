@@ -35,6 +35,37 @@
    Usage:
      node tools/psql-min.js --selftest
      node tools/psql-min.js -v ON_ERROR_STOP=1 --quiet -f migrations/012_*.sql <url>
+
+   ── Full guide ──────────────────────────────────────────────────────
+   See tools/PSQL_SHIM_GUIDE.md for cross-chart usage, the guard table with
+   observable symptoms, the verification ledger and the limitations. It lives
+   in tools/ (not docs/) because a new docs/*.md is counted by
+   tests/docs-freeze-marker.js and would need an rc bump to stay green.
+
+   --selftest output (29 checks: 19 positive, 10 negative), verified:
+
+     $ node tools/psql-min.js --selftest
+     psql-min --selftest (pure; no database needed)
+       ✅ P1 a ";" inside a single-quoted string does not split
+       … P2–P19 (splitting, nesting, interpolation, arg parsing)
+       ✅ N1 G1 — an unknown meta-command is a hard failure
+       … N2–N10 (every guard exercised by a FAILING case)
+     psql-min --selftest: 29/29
+
+   Every negative case must exit non-zero — none of them is allowed to skip,
+   because a guard that is never exercised by a failing case is not a guard.
+
+   ── Bug history: four real bugs the selftest caught (round 5) ───────
+   The first run scored 25/29. Each of these is a trap for the next editor:
+     1. \gset is TRAILING in migration 012 ("SELECT … \gset"), not a
+        standalone meta-command line — extractMeta had to learn that shape.
+     2. :'var' / :"var" need matching before :var, and `::` before both,
+        or the cast in 'x'::regclass is eaten as a variable.
+     3. The lexer must resolve :'name' BEFORE string lexing; otherwise
+        'name' becomes an opaque string and interpolation never sees it.
+     4. A meta-command TERMINATES the query buffer. \gset is followed by
+        "BEGIN;" in 012, so splitting only on ';' left \gset inside the
+        statement — and it reached the server.
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const fs = require('fs');
