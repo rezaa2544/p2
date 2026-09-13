@@ -33,10 +33,14 @@ if (!findPgBin() || !hasPgModule()) {
 const ROOT = path.join(__dirname, '..');
 const FWD = path.join(ROOT, 'migrations', '009_report_logs_constraints.sql');
 const DOWN = path.join(ROOT, 'migrations', '009_report_logs_constraints.down.sql');
+
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ هم‌جوارِ جدا (mutant-kit)؛
+   سورس اصلی هرگز بازنویسی نمی‌شود — restore/بازگردانیِ درجا حذف شد. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('m09-');
 const originals = new Map();
 for (const f of [FWD, DOWN]) originals.set(f, fs.readFileSync(f, 'utf8'));
-function restore() { for (const [f, s] of originals) fs.writeFileSync(f, s, 'utf8'); }
-process.on('exit', restore);
+/* originals فقط خوانده می‌شود (بذرِ جهش‌ها)؛ نوشتن در کپیِ kit انجام می‌شود */
 
 const mutations = [
   {
@@ -79,10 +83,11 @@ for (const m of mutations) {
     console.log('  ❌ جهش اعمال نشد: ' + m.name);
     continue;
   }
-  fs.writeFileSync(m.file, mutated, 'utf8');
+  const mcopy = kit.mutant(m.file, mutated); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+  try { fs.chmodSync(mcopy, fs.statSync(m.file).mode); } catch (_) {}
   const r = cp.spawnSync(process.execPath, [path.join(__dirname, 'migration-009-live.js')],
-    { stdio: 'pipe', timeout: 300000, env: process.env });
-  restore();
+    { stdio: 'pipe', timeout: 300000, env: kit.env() });
+  kit.clear(m.file);
   if (r.status !== 0) { killed++; console.log('  ✅ کشته شد: ' + m.name); }
   else { survived++; survivors.push(m.name); console.log('  ❌ زنده ماند: ' + m.name); }
 }
