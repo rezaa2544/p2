@@ -193,12 +193,13 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
   /* چین را روی همین دیتابیسِ کار می‌کنیم؛ مستقل از وضعیتِ قبلی (رانِ شکست‌خورده،
      مهاجرتِ ناتمام و…) همهٔ جدول‌های مرتبط را پاک کن */
   try {
-    await q('DROP TABLE IF EXISTS grades, attendance, grades_old, attendance_old, grades_p, attendance_p, grades_recovered, attendance_recovered, schools, users, classes, subjects CASCADE');
+    await q('DROP TABLE IF EXISTS grades, attendance, grades_old, attendance_old, grades_p, attendance_p, grades_recovered, attendance_recovered, schools, users, classes, subjects, report_logs CASCADE');
   } catch (e) { /* اولِ کار خالی است */ }
 
   try {
     /* شبیهٔ تولید: اول 001→008 (هیپ)، فیکسچر روی هیپ، بعد 009 با دادهٔ واقعی */
-    const files = fs.readdirSync(path.join(ROOT, 'migrations')).filter((f) => /^\d{3}_.*\.sql$/.test(f) && !/\.down\.sql$/.test(f) && !f.startsWith('009')).sort();
+    /* renumber ‏PR #82: مهاجرتِ پارتیشن حالا 012 است (نه 009) — چینِ هیپ = همه به‌جز خودِ پارتیشن */
+    const files = fs.readdirSync(path.join(ROOT, 'migrations')).filter((f) => /^\d{3}_.*\.sql$/.test(f) && !/\.down\.sql$/.test(f) && !f.startsWith('012_partition')).sort();
     for (const f of files) psql(path.join(ROOT, 'migrations', f));
     chk('L1 چینِ 001→008 سبز شد (' + files.length + ' مهاجرت؛ هیپ)', true);
   } catch (e) {
@@ -489,9 +490,12 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
      بلافاصله بعد از اولین NOTICEِ «copy grades» (یعنی اولین چانک کامیت
      شده) SIGKILL؛ سپس ۰۰9 کامل دوباره — باید از مرزِ MAX(id) ادامه بدهد. */
   try {
-    /* مستقل از وضعیتِ قبلی: هر چیزی از چین‌های قبلی هست پاک کن */
-    await q('DROP TABLE IF EXISTS grades, attendance, grades_old, attendance_old, grades_p, attendance_p, grades_recovered, attendance_recovered, schools, users, classes, subjects CASCADE');
-    const files = fs.readdirSync(path.join(ROOT, 'migrations')).filter((f) => /^00[1-8].*\.sql$/.test(f) && !/\.down\.sql$/.test(f)).sort();
+    /* مستقل از وضعیتِ قبلی: هر چیزی از چین‌های قبلی هست پاک کن.
+       renumber ‏PR #82: ‏report_logs هم باید پاک شود — مهاجرتِ 009ِ ‏main
+       ‏(ADD CONSTRAINT بدونِ گاردِ وجود) رویِ جدولِ بازمانده idempotent نیست. */
+    await q('DROP TABLE IF EXISTS grades, attendance, grades_old, attendance_old, grades_p, attendance_p, grades_recovered, attendance_recovered, schools, users, classes, subjects, report_logs CASCADE');
+    /* renumber ‏PR #82: چینِ هیپ = 001..011 (همه به‌جز 012_partition) */
+    const files = fs.readdirSync(path.join(ROOT, 'migrations')).filter((f) => /^\d{3}_.*\.sql$/.test(f) && !/\.down\.sql$/.test(f) && !f.startsWith('012_partition')).sort();
     for (const f of files) { const r = await psqlF(path.join(ROOT, 'migrations', f)); if (r.code !== 0) throw new Error(f + ': ' + r.se.slice(0, 100)); }
     await q("INSERT INTO schools (id, name, created_at, updated_at, version) VALUES (1, 'مدرسه L11', now(), now(), 1) ON CONFLICT (id) DO NOTHING");
     await q("INSERT INTO users (id, username, role, school_id, created_at, updated_at, version) VALUES (100,'s100','student',1,now(),now(),1),(200,'t200','teacher',1,now(),now(),1) ON CONFLICT (id) DO NOTHING");

@@ -191,8 +191,10 @@ function buildClient(e) {
   /* S9-1 (باگ‌هانت نشست ۹): چکِ منطقه پس از امضا آمد و شرطش v2-محور شد؛
      لنگر به‌روز شد، معنا همان: خنثی‌کردنِ داوریِ منطقه. */
   orig = mutate('server/cursor.js',
-    "      if (payload.v === 2 && payload.rg !== regionName()) {",
-    "      if (false && payload.v === 2 && payload.rg !== regionName()) { /*MUT*/");
+    /* ری‌تارگت (PR #82): با ورودِ کرسرِ v3 (Wave 10) داوریِ منطقه هر دو
+       نسخهٔ منطقه‌بند را می‌سنجد — همان جهش، لنگرِ جاری. */
+    "      if ((payload.v === 2 || payload.v === 3) && payload.rg !== regionName()) {",
+    "      if (false && (payload.v === 2 || payload.v === 3) && payload.rg !== regionName()) { /*MUT*/");
   chk('M16 جهشِ «چکِ rg حذف» کشته شد', runSuite(kit.env()) !== 0);
   kit.clear(path.join(ROOT, 'server/cursor.js'));
 
@@ -208,9 +210,10 @@ function buildClient(e) {
   chk('M18 جهشِ «شمارندهٔ mismatch حذف» کشته شد', runSuite(kit.env()) !== 0);
   kit.clear(path.join(ROOT, 'server/pull.js'));
 
+  /* ری‌تارگت (PR #82): پذیرشِ نسخه حالا v3 را هم می‌شناسد. */
   orig = mutate('server/cursor.js',
-    "      if (payload.v !== 1 && payload.v !== 2) {",
-    "      if (payload.v !== 2) { /*MUT: v1 grace removed */");
+    "      if (payload.v !== 1 && payload.v !== 2 && payload.v !== 3) {",
+    "      if (payload.v !== 2 && payload.v !== 3) { /*MUT: v1 grace removed */");
   chk('M19 جهشِ «گذارِ v1 حذف» کشته شد', runSuite(kit.env()) !== 0);
   kit.clear(path.join(ROOT, 'server/cursor.js'));
 
