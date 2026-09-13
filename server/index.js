@@ -140,7 +140,21 @@ const workers = createHeavyWorker({ getStore: () => store });
 const staticCache = createStaticCache();
 
 /* ── database and caching layers initialization ── */
-db.init(store).then(async info => {
+/* P0-1: dbReady is awaited by the boot gate at the bottom of this file, so a
+   production process never calls listen() before the backing store is known
+   good. Resolves to the db.init result, or null if init itself threw. */
+const dbReady = db.init(store).then(async info => {
+  /* P0-1: mirror of the cache/Redis readiness gate below. db.init now reports
+     ok:false in production when PostgreSQL is absent/unreachable — the server
+     must not serve traffic from the JSON store. */
+  if (info && info.ok === false) {
+    console.error('[FATAL] Database readiness failed:', info.error || info.warning || 'unknown');
+    if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+      try { db.close(); } catch (e) {}
+      process.exit(1);
+    }
+    return info;
+  }
   if (info.driver === 'postgres') {
     console.log('[DB] Connected to PostgreSQL relational engine');
     /* Wave 1: PG is authoritative — replace store domain collections with
@@ -160,8 +174,10 @@ db.init(store).then(async info => {
         (h.env_skipped && h.env_skipped.length ? ' (env-skipped: ' + h.env_skipped.join(',') + ')' : ''));
     } catch (e) { console.warn('[DB] Hydration warning:', e.message); }
   }
+  return info;
 }).catch(err => {
   console.warn('[DB] PostgreSQL init warning:', err.message);
+  return null;
 });
 
 cache.init().then((r) => {
@@ -322,7 +338,20 @@ function persistStoreSync(){
     try{ fs.chmodSync(STORE_FILE, 0o600); }catch(e){}
   }catch(e){ /* store file may be gone (tests) — never crash on exit */ }
 }
-setInterval(() => { if(!db.isPostgres()) persistStore(); }, 2000).unref(); /* Wave 1: no periodic JSON persist in PG mode */
+/* P0-1: the periodic JSON mirror must never run in production. If PostgreSQL
+   drops mid-session, isPostgres() goes false — writing payesh.json at that
+   point would silently fork state per instance, which is exactly what the boot
+   gate refuses. Production therefore logs FATAL once and leaves readiness red
+   (db.healthCheck() → ok:false) instead of persisting JSON. */
+let pgLostWarned = false;
+setInterval(() => {
+  if (db.isPostgres()) return;
+  if (db.memoryFallbackAllowed()) { persistStore(); return; }
+  if (!pgLostWarned) {
+    pgLostWarned = true;
+    console.error('[FATAL] PostgreSQL is not active in production — JSON/in-memory persistence stays DISABLED (writes must fail loudly, not fork per instance)');
+  }
+}, 2000).unref(); /* Wave 1: no periodic JSON persist in PG mode */
 process.on('exit', () => {
   try { worker.stop(); } catch (e) {}
   persistStoreSync();
@@ -513,6 +542,17 @@ const worker = createWorker({
   maxRetries: Number(process.env.PAYESH_WORKER_MAX_RETRIES || 5)
 });
 worker.start();
+/* F3 (chaos-drill #185): در PG-live، store.outbox پس از restart خالی بوت
+   می‌شود و pendingهای جدولِ server_outbox بدون مصرف‌کننده می‌ماندند —
+   بازپخشِ یک‌باره در بوت تا worker همان چرخهٔ همیشگی را برود.
+   best-effort (خطا فقط لاگ می‌شود؛ بوت را نمی‌شکند). */
+dbReady.then(async () => {
+  try {
+    const rp = await outbox.replayPendingFromPg();
+    if (rp && rp.replayed > 0) console.log('[outbox] replayed ' + rp.replayed + ' pending event(s) from server_outbox after restart');
+    else if (rp && rp.ok === false) console.warn('[outbox] pending replay failed (will stay best-effort):', rp.error);
+  } catch (e) { console.warn('[outbox] pending replay error:', String((e && e.message) || e).slice(0, 140)); }
+});
 const studentRoutes = createStudentRoutes({ store, db, audit, markDirty, ids, deleter });
 const classRoutes = createClassRoutes({ store, db, audit, markDirty, ids, deleter });
 const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, ids, deleter });
@@ -1151,7 +1191,18 @@ if(require.main === module){
      unref هستند: هرگز فرآیند را زنده نگه نمی‌دارند. */
   metrics.startRuntimeCollector();
   metrics.set('payesh_build_info', { version: '1.0', phase: '1' }, 1);
-  server.listen(PORT, HOST, () => {
+  /* P0-1 — synchronous boot gate. Evaluated here (not in the async db.init
+     handler) so the failure reason is unambiguous and always precedes the
+     Redis readiness gate: in production, an absent DATABASE_URL must never
+     reach listen(). Unreachable-but-configured PostgreSQL is caught by the
+     ok:false branch of db.init above. */
+  if (db.isProductionEnv() && !process.env.DATABASE_URL && !db.memoryFallbackAllowed()) {
+    console.error('[FATAL] ' + db.backingStorePolicy().reason);
+    console.error('Error: production requires PostgreSQL — set DATABASE_URL (the JSON/in-memory store is dev-only and forks per instance)');
+    try { persistStoreSync(); } catch (e) {}
+    process.exit(1);
+  }
+  const startListening = () => server.listen(PORT, HOST, () => {
     const proto = (TLS_CERT && TLS_KEY) ? 'https' : 'http';
     console.log('payesh-server (phase 1' + (TLS_CERT ? ' + TLS' : '') + ') on ' + proto + '://' + HOST + ':' + PORT);
     console.log('  static : ' + path.join(ROOT, 'index.html'));
@@ -1162,6 +1213,19 @@ if(require.main === module){
       console.log('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');
     }
   });
+  /* P0-1 — in production, listen() waits for database readiness. Without this
+     the asynchronous gate loses the race with listen(): the process accepted
+     connections for a few hundred ms and only then exited non-zero, which is
+     not fail-closed. Dev/test keep the previous immediate listen, so
+     zero-disruption local boot is unchanged. */
+  if (db.isProductionEnv() && !db.memoryFallbackAllowed()) {
+    Promise.resolve(dbReady).then((info) => {
+      if (info && info.ok === false) return; /* handler above already exits */
+      startListening();
+    }).catch(() => {});
+  } else {
+    startListening();
+  }
 }
 /* rebase: union — main added persistStoreSync/workers/staticCache + Wave 6/15 test hooks, Wave 14 adds metrics. */
 module.exports = {

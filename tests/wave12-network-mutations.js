@@ -8,6 +8,15 @@
 const { execSync } = require('child_process');
 const fs = require('fs');
 
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی
+   هرگز بازنویسی نمی‌شود — restore/بازگردانیِ درجا حذف شد. همیشه فقط یک جهشِ
+   فعال است (نگاشتِ فایلِ قبلی پیش از جهشِ تازه پاک می‌شود). بیتِ اجراییِ
+   کپی از اصلی حفظ می‌شود تا چک‌های bash -n/X_OK معنای خود را نگه دارند. */
+const path = require('path');
+const { session } = require('./helpers/mutant-kit');
+const kit = session('w12n-mut-');
+const ROOT = path.join(__dirname, '..');
+
 const FILES = {
   'nginx/nginx.conf': fs.readFileSync('nginx/nginx.conf', 'utf8'),
   'server/index.js': fs.readFileSync('server/index.js', 'utf8'),
@@ -53,14 +62,11 @@ const MUTS = [
   }
 ];
 
-function restore() {
-  Object.keys(FILES).forEach((f) => fs.writeFileSync(f, FILES[f]));
-}
+let prevAbs = null;
 
 let killed = 0, total = MUTS.length;
 console.log('\n▸ جهش‌های ویو ۱۲ — شبکه/لبه (M1–M4)');
-try {
-  MUTS.forEach((m) => {
+MUTS.forEach((m) => {
     const src = fs.readFileSync(m.file, 'utf8');
     let next = null;
     if (m.dropBlock) {
@@ -72,9 +78,13 @@ try {
       if (src.indexOf(m.bad) < 0) { console.log('  ⚠️ ' + m.name + ': لنگر یافت نشد — جهش اعمال نشد'); return; }
       next = m.replaceAll ? src.split(m.bad).join(m.mut) : src.replace(m.bad, m.mut);
     }
-    fs.writeFileSync(m.file, next);
+        const abs = path.join(ROOT, m.file);
+    if (prevAbs && prevAbs !== abs) kit.clear(prevAbs);
+    const mcopy = kit.mutant(abs, next); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+    try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {} /* حفظِ مود (بیتِ اجرایی) */
+    prevAbs = abs;
     let out = '', code = 0;
-    try { out = execSync(SUITE, { stdio: 'pipe', timeout: 120000 }).toString(); }
+    try { out = execSync(SUITE, { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }).toString(); }
     catch (e) { code = (e.status === null ? 1 : e.status); out = ((e.stdout || '') + (e.stderr || '')).toString(); }
     const sawFail = out.indexOf('❌ ' + m.expectFail) >= 0;
     const ok = code !== 0 && sawFail;
@@ -84,11 +94,8 @@ try {
       const tail = out.split('\n').filter((l) => l.indexOf('❌') >= 0).slice(0, 4);
       if (tail.length) console.log('     ' + tail.join(' | ').slice(0, 300));
     }
-    restore();
   });
-} finally {
-  restore();
-}
+if (prevAbs) kit.clear(prevAbs); /* نقشهٔ خالی برای شفافیت؛ پاک‌سازیِ واقعی در exit */
 
 /* خطِّ پایه باید پس از بازگردانی دوباره سبز باشد */
 let baseOk = false;

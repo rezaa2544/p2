@@ -567,11 +567,15 @@ const v1Token = (secret, sinceIso, ttlS, iatOffsetS) => {
   return 'pc1.' + body + '.' + sig;
 };
 
-await test('MR1 امضا: payload v2 با برچسبِ rg از PAYESH_REGION', async () => {
+await test('MR1 امضا: payload v3 (rg از PAYESH_REGION + cw اختیاری Wave 10)', async () => {
   const tok = withRegion('eu-1', () => createCursor({ secret: SECRET5 }).sign(iso(Date.now() - 1000)));
   const pl = decodeTok(tok);
-  assert(pl.v === 2 && pl.rg === 'eu-1', 'v2 payload with rg=eu-1, got ' + JSON.stringify(pl));
+  assert(pl.v === 3 && pl.rg === 'eu-1', 'v3 payload with rg=eu-1, got ' + JSON.stringify(pl));
   assert(pl.since && pl.iat && pl.exp && pl.jti, 'v1 fields all preserved');
+  assert(!('cw' in pl), 'sign بدونِ cw ⇒ کلید نیست (مسیرِ زمانی), got ' + JSON.stringify(pl));
+  const tokCw = withRegion('eu-1', () => createCursor({ secret: SECRET5 }).sign(iso(Date.now() - 1000), null, 4711));
+  const plCw = decodeTok(tokCw);
+  assert(plCw.v === 3 && plCw.cw === 4711, 'sign با cw ⇒ v3+cw, got ' + JSON.stringify(plCw));
   const tokDef = withRegion(null, () => createCursor({ secret: SECRET5 }).sign(iso(Date.now() - 1000)));
   assert(decodeTok(tokDef).rg === 'default', 'default region when env unset, got ' + decodeTok(tokDef).rg);
 });

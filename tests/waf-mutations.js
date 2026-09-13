@@ -7,6 +7,15 @@
 const { execSync } = require('child_process');
 const fs = require('fs');
 
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی
+   هرگز بازنویسی نمی‌شود — restore/بازگردانیِ درجا حذف شد. همیشه فقط یک جهشِ
+   فعال است (نگاشتِ فایلِ قبلی پیش از جهشِ تازه پاک می‌شود). بیتِ اجراییِ
+   کپی از اصلی حفظ می‌شود تا چک‌های bash -n/X_OK معنای خود را نگه دارند. */
+const path = require('path');
+const { session } = require('./helpers/mutant-kit');
+const kit = session('waf-mut-');
+const ROOT = path.join(__dirname, '..');
+
 const FILES = {
   'server/waf.js': fs.readFileSync('server/waf.js', 'utf8'),
 };
@@ -45,9 +54,7 @@ const MUTS = [
   },
 ];
 
-function restore() {
-  Object.keys(FILES).forEach((f) => fs.writeFileSync(f, FILES[f]));
-}
+let prevAbs = null;
 
 let killed = 0;
 console.log('\n▸ جهش‌های WAF (M1–M4)');
@@ -57,16 +64,19 @@ MUTS.forEach((m) => {
     console.log(`  ⚠️ ${m.name}: لنگر یافت نشد — جهش اعمال نشد`);
     return;
   }
-  fs.writeFileSync(m.file, src.replace(m.bad, m.mut));
+    const abs = path.join(ROOT, m.file);
+  if (prevAbs && prevAbs !== abs) kit.clear(prevAbs);
+  const mcopy = kit.mutant(abs, src.replace(m.bad, m.mut)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+  try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {} /* حفظِ مود (بیتِ اجرایی) */
+  prevAbs = abs;
   let out = '';
   let crashed = false;
   try {
-    out = execSync(m.cmd, { stdio: 'pipe', timeout: 240000 }).toString();
+    out = execSync(m.cmd, { stdio: 'pipe', timeout: 240000, cwd: ROOT, env: kit.env() }).toString();
   } catch (e) {
     crashed = true;
     out = String((e.stdout || '') + (e.stderr || ''));
   }
-  restore();
   const dead = out.indexOf(m.expectFail) >= 0 && /❌|ناموفق/.test(out);
   if (dead) { killed++; console.log(`  ✅ ${m.name}: کشته شد (${m.expectFail})`); }
   else {
@@ -75,7 +85,7 @@ MUTS.forEach((m) => {
   }
 });
 
-restore();
+if (prevAbs) kit.clear(prevAbs); /* نقشهٔ خالی برای شفافیت؛ پاک‌سازیِ واقعی در exit */
 let backGreen = false, finalOut = '';
 try {
   finalOut = execSync(FULL, { stdio: 'pipe', timeout: 420000 }).toString();

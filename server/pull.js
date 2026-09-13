@@ -10,7 +10,7 @@
 
 const url = require('url');
 const { projectUserByRole } = require('./middleware/projection');
-const { deltaRowsSql } = require('./syncdelta'); /* Wave 4 (chat2) */
+const { deltaRowsSql, deltaRowsByChgSql, CHG_TABLES } = require('./syncdelta'); /* Wave 4 + Wave 10 (cursor v3) */
 const { createCursor } = require('./cursor'); /* Delta Hardening Phase 2 (gap 2) */
 const { sendJsonCompressed } = require('./compress'); /* Delta Phase 4 (gap 2) */
 const metrics = require('./metrics'); /* Delta Phase 4 (gaps 2+4) */
@@ -84,11 +84,58 @@ function createPull(ctx) {
     try {
       const built = deltaRowsSql(c, { sinceISO });
       const res = await db.query(built.sql, built.params);
-      return Array.isArray(res && res.rows) ? res.rows : [];
+      /* Wave 10 (chg_id): ستونِ داخلیِ لایهٔ DB هرگز به کلاینت نمی‌رسد —
+         شکلِ سطرِ دلتا با حالتِ حافظه یکی می‌ماند (dbهای جعلی/قدیمیِ تست
+         بدونِ این helper هم مثلِ قبل کار می‌کنند). */
+      const rows = Array.isArray(res && res.rows) ? res.rows : [];
+      return (typeof db.stripInternalColumns === 'function') ? db.stripInternalColumns(rows) : rows;
     } catch (e) {
       // timestamp columns absent or DB hiccup → fall back to full-table read
       return null;
     }
+  }
+
+  /**
+   * Wave 10 (cursor v3): دلتای مبتنی بر change-ID — `chg_id > watermark`
+   * به‌جای مقایسهٔ زمانی. همان انضباطِ fetchDeltaRows (فقط PG زنده؛ خطا ⇒
+   * null ⇒ fallback به خوانشِ کامل). خروجی {rows, byChg} است چون فیلترِ
+   * زمانیِ JS برای سطرهای chg نباید اجرا شود (آب مبنای حقیقت است، نه ساعت).
+   */
+  async function fetchDeltaRowsByChg(c, watermark) {
+    if (!(db && typeof db.isPostgres === 'function' && db.isPostgres()
+          && typeof db.query === 'function')) return null;
+    const wm = Number(watermark);
+    if (!Number.isFinite(wm) || wm < 0) return null;
+    try {
+      const built = deltaRowsByChgSql(c, { afterChgId: wm });
+      const res = await db.query(built.sql, built.params);
+      const rows = Array.isArray(res && res.rows) ? res.rows : [];
+      const out = (typeof db.stripInternalColumns === 'function') ? db.stripInternalColumns(rows) : rows;
+      return { rows: out, byChg: true };
+    } catch (e) {
+      // ستونِ chg_id هنوز نیست (۰۰۸ اجرا نشده) یا DB سرفه کرد → مسیرِ کامل
+      return null;
+    }
+  }
+
+  /**
+   * Wave 10 (cursor v3): نشانگرِ آبِ جدید — MAX(chg_id) هر جدولِ chg دار،
+   * **قبل از خواندنِ داده‌ها** گرفته می‌شود (همان انضباطِ pre-readِ
+   * startedAtIso: ردیفی که وسطِ pull کامی می‌شود حداکثر دوباره خوانده
+   * می‌شود — هرگز گم نمی‌شود). MAX روی ایندکسِ (chg_id) ارزان است.
+   */
+  async function captureChgWatermark() {
+    if (!(db && typeof db.isPostgres === 'function' && db.isPostgres()
+          && typeof db.query === 'function')) return null;
+    let max = null;
+    for (const t of CHG_TABLES) {
+      try {
+        const res = await db.query('SELECT COALESCE(MAX(chg_id), 0) AS m FROM "' + t + '"');
+        const m = Number(res && res.rows && res.rows[0] && res.rows[0].m);
+        if (Number.isFinite(m) && (max == null || m > max)) max = m;
+      } catch (e) { /* جدول بدونِ chg_id → کلِ ویژگی خاموش می‌ماند */ return null; }
+    }
+    return max;
   }
 
   /**
@@ -233,6 +280,12 @@ function createPull(ctx) {
         });
       }
       query.since = v.payload.since;
+      /* Wave 10 (cursor v3): نشانگرِ آب از توکنِ امضاشده — مبنای دلتای
+         جدول‌هایِ chg دار. کلاینت‌های قدیمی (توکن v1/v2 یا ?since=) cw
+         ندارند ⇒ مسیرِ زمانیِ قبل. */
+      if (v.payload && v.payload.v === 3 && Number.isFinite(Number(v.payload.cw)) && Number(v.payload.cw) >= 0) {
+        query.__chgWatermark = Math.trunc(Number(v.payload.cw));
+      }
     }
 
     const since = query.since ? String(query.since) : null;
@@ -246,6 +299,37 @@ function createPull(ctx) {
 
     const requestedCols = query.collections ? String(query.collections).split(',').map(s => s.trim()).filter(Boolean) : null;
 
+    /* ── P0-2 (پ۳ 2026-09-12): کشِ کرانداِر گزارش‌ها — لایهٔ سرور ──────
+       ممیزی: superadmin در pull کامل ~۲۷k ردیف/4.3MB جدول‌هایِ گزارشی
+       (attendance/grades/…) می‌گرفت؛ در دیتاست ملی (۵۰M حضور) یعنی
+       انتقالِ جدول ملی به مرورگر. مجموعه‌هایِ سنگینِ گزارشی از این پس
+       کران‌دار برمی‌گردند: حداکثر ردیف per-collection (تازه‌ترین‌ها اول)
+       + بودجهٔ بایتِ مجموعِ سنگین‌ها. مجموعه‌های بریده‌شده در
+       partial_collections اعلام می‌شوند تا کلاینت نشانگرِ «دادهٔ جزئی»
+       بگذارد. env ها فقط برای بالا/پایین‌بردنِ سقف‌اند — صفر/منفی =
+       پیش‌فرض (خاموش‌کردنی نیست؛ defense-in-depth با کرانِ کلاینت). */
+    const HEAVY_REPORT_COLS = ['attendance', 'grades', 'discipline', 'hw_submissions'];
+    const pullRowCap = (() => {
+      const n = Number(process.env.PAYESH_PULL_MAX_ROWS);
+      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 5000;
+    })();
+    const pullByteCap = (() => {
+      const n = Number(process.env.PAYESH_PULL_MAX_BYTES);
+      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 3 * 1024 * 1024;
+    })();
+    const rowRecency = (r) => {
+      const t = r && (r.updated_at || r.created_at);
+      const ms = t ? new Date(t).getTime() : NaN;
+      if (!isNaN(ms)) return ms;
+      const id = r && Number(r.id);
+      return Number.isFinite(id) ? id : 0; /* fallback قطعی: id بزرگ‌تر = جدیدتر */
+    };
+    const partialCollections = [];
+    /* پ۳ — قراردادِ resume: دلتاهایی که به‌خاطرِ کران بریده شدند؛ کلاینت
+       باید برای این‌ها snapshot کاملِ کران‌دار بگیرد وگرنه تغییراتِ بریده
+       برای همیشه گم می‌شوند (کرسر جلو رفته است). */
+    const truncatedDeltaCols = [];
+
     // مجموعه‌های استاندارد سامانه
     const ALL_COLLECTIONS = [
       'schools', 'users', 'classes', 'subjects', 'schedule', 'enrollments',
@@ -256,23 +340,40 @@ function createPull(ctx) {
 
     const targetCols = requestedCols ? requestedCols.filter(c => store[c] != null || ALL_COLLECTIONS.includes(c)) : ALL_COLLECTIONS;
 
+    /* Wave 10 (cursor v3): نشانگرِ آبِ **نخست** (pre-read) — فقط وقتی
+       کرسر فعال است (امضا لازم است) و دلتای chg معنا دارد. */
+    let newChgWatermark = null;
+    if (cursor.enabled) newChgWatermark = await captureChgWatermark();
+    const chgBasis = (isDelta && !forceFull && query.__chgWatermark != null) ? query.__chgWatermark : null;
+
     const resultCollections = {};
     for (const c of targetCols) {
       /* Wave 4: in PG-live delta mode, ask the DB for only rows changed after
          `since` (no full-table scan). Returns null → fall back to full read.
-         Gap 1: a forced-full pull skips the delta predicate entirely. */
+         Gap 1: a forced-full pull skips the delta predicate entirely.
+         Wave 10: جدولِ chg دار با کرسرِ v3 از فیدِ chg_id می‌آید (بدونِ
+         clock-skew) — و فیلترِ زمانیِ JS برایش اجرا نمی‌شود. */
       let rawList;
+      let byChg = false;
       if (isDelta && !forceFull) {
-        rawList = await fetchDeltaRows(c, since); // null ⇒ fall back below
+        if (chgBasis != null && CHG_TABLES.has(c)) {
+          const r = await fetchDeltaRowsByChg(c, chgBasis); // null ⇒ زیرِ می‌آید
+          if (r) { rawList = r.rows; byChg = true; }
+        }
+        if (rawList == null && !byChg) {
+          rawList = await fetchDeltaRows(c, since); // null ⇒ fall back below
+        }
       }
       if (!isDelta || forceFull || rawList == null) {
         rawList = await readCol(c);
       }
       const scopedList = filterCollectionForSession(c, rawList, session);
 
-      if (isDelta && !forceFull) {
+      if (isDelta && !forceFull && !byChg) {
         // JS time filter is kept as a harmless second guard (DB already bounded
-        // the set, and the memory fallback still needs it).
+        // the set, and the memory fallback still needs it). برای سطرهایِ chg
+        // اجرا نمی‌شود: نشانگرِ آب مرجع است، نه ساعت (نوشتهٔ عقب‌بازگرد زمانی
+        // نباید سطر را گم کند).
         resultCollections[c] = scopedList.filter(r => {
           const upAt = r.updated_at ? new Date(r.updated_at).getTime() : 0;
           const crAt = r.created_at ? new Date(r.created_at).getTime() : 0;
@@ -280,6 +381,39 @@ function createPull(ctx) {
         });
       } else {
         resultCollections[c] = scopedList;
+      }
+
+      /* P0-2: کرانِ ردیف روی مجموعه‌های سنگینِ گزارشی — بعد از scope
+         (کران هرگز scope را جایگزین نمی‌کند، فقط از آن می‌کاهد).
+         پ۳ (بازخورد بازبین #129، کامنت ۱): بریدگیِ «دلتا» بدونِ جبران یعنی
+         گم‌شدنِ همیشگیِ تغییرات (کرسر جلو می‌رود). این‌جا فقط ثبت می‌کنیم؛
+         پایین‌تر برای دلتاهای بریده full_snapshot_required_collections
+         اعلام می‌شود تا کلاینت با snapshot کاملِ کران‌دار همگرا شود. */
+      if (HEAVY_REPORT_COLS.includes(c) && resultCollections[c].length > pullRowCap) {
+        const sorted = resultCollections[c].slice().sort((a, b) => rowRecency(b) - rowRecency(a));
+        resultCollections[c] = sorted.slice(0, pullRowCap);
+        partialCollections.push(c);
+        if (isDelta && !forceFull) truncatedDeltaCols.push(c);
+      }
+    }
+
+    /* P0-2: بودجهٔ بایتِ مجموعِ سنگین‌ها — اگر حتی بعد از کرانِ ردیف از
+       بودجه گذشت، از سنگین‌ترین مجموعه شروع به نصف‌کردن می‌کند.
+       پ۳ (کامنت ۴ بازبین #129): اندازه بر حسبِ بایتِ UTF-8 واقعی سنجیده
+       می‌شود (Buffer.byteLength) — length برای متنِ فارسی تا ~۲x کم می‌شمرد
+       و پاسخِ خام از سقف عبور می‌کرد. */
+    {
+      const sizeOf = (c) => Buffer.byteLength(JSON.stringify(resultCollections[c] || []), 'utf8');
+      let guard = 24; /* قطعیت خاتمه */
+      while (guard-- > 0) {
+        const heavies = HEAVY_REPORT_COLS.filter(c => Array.isArray(resultCollections[c]) && resultCollections[c].length > 1);
+        const total = heavies.reduce((n, c) => n + sizeOf(c), 0);
+        if (total <= pullByteCap || !heavies.length) break;
+        const biggest = heavies.sort((a, b) => sizeOf(b) - sizeOf(a))[0];
+        const list = resultCollections[biggest].slice().sort((a, b) => rowRecency(b) - rowRecency(a));
+        resultCollections[biggest] = list.slice(0, Math.max(1, Math.floor(list.length / 2)));
+        if (!partialCollections.includes(biggest)) partialCollections.push(biggest);
+        if (isDelta && !forceFull && !truncatedDeltaCols.includes(biggest)) truncatedDeltaCols.push(biggest);
       }
     }
 
@@ -303,7 +437,10 @@ function createPull(ctx) {
     /* Gap 2: mint the next cursor over this response's snapshot moment. Only
        when cursor signing is enabled (a key exists); legacy clients simply
        keep using `server_time` as their next `since`. */
-    const nextCursor = cursor.enabled ? cursor.sign(startedAtIso) : null;
+    /* Wave 10: توکنِ بعدی v3 است — since برایِ جدول‌های زمانی + cw برایِ
+       جدول‌های chg (نشانگرِ pre-read؛ اگر chg در دسترس نیست cw حذف می‌شود
+       و توکن به مسیرِ زمانی برمی‌گردد). */
+    const nextCursor = cursor.enabled ? cursor.sign(startedAtIso, null, newChgWatermark) : null;
 
     const body = {
       ok: true,
@@ -313,14 +450,39 @@ function createPull(ctx) {
       full_snapshot_required: forceFull ? true : undefined,
       full_snapshot_reason: forceFull ? 'since_too_old' : undefined,
       next_cursor: nextCursor != null ? nextCursor : undefined,
+      chg_watermark: (cursor.enabled && newChgWatermark != null) ? newChgWatermark : undefined,
       cursor_ttl_s: cursor.enabled ? cursor.ttlS : undefined,
       server_version: store.__server_version || 1,
       collections: resultCollections,
+      /* P0-2: مجموعه‌هایی که سرور به‌خاطر کران بریده است — کلاینت snapshot
+         این‌ها را «جزئی» علامت می‌زند (نشانگرِ دادهٔ جزئی در گزارش‌ها). */
+      partial_collections: partialCollections.length ? partialCollections : undefined,
+      /* پ۳ — resume (کامنت ۱ بازبین #129): دلتایِ بریده = کلاینت باید برای
+         این مجموعه‌ها یک snapshot کاملِ کران‌دار بگیرد تا همگرا شود؛ وگرنه
+         تغییراتِ حذف‌شده پشتِ کرسرِ جلورفته گم می‌شوند. */
+      full_snapshot_required_collections: truncatedDeltaCols.length ? truncatedDeltaCols : undefined,
       deleted: deletedRecords
     };
 
     /* Delta Phase 4 — gap 4: شمارندهٔ پول‌ها (delta/full) پیش از فرستتن. */
     metrics.inc('payesh_sync_pulls_total', { mode: (isDelta && !forceFull) ? 'delta' : 'full' });
+
+    /* ── پ۳ تله‌متری بریدگی/resume (دوزیهٔ کش §۵ — روشِ سنجشِ معیارِ
+       بازفعال‌سازی #۱). کاردینالیته کران‌دار: برچسب فقط از مجموعهٔ ثابتِ
+       سنگین؛ هر نامِ دیگر ⇒ 'other' (سری‌ها هرگز با دادهٔ کاربر رشد
+       نمی‌کنند). resume با query param ‏resume=1 از کلاینت اعلام می‌شود. */
+    const boundedLabel = (c) => (HEAVY_REPORT_COLS.includes(c) ? c : 'other');
+    for (const c of partialCollections) {
+      metrics.inc('payesh_pull_partial_collections_total', { collection: boundedLabel(c) });
+    }
+    for (const c of truncatedDeltaCols) {
+      metrics.inc('payesh_pull_full_snapshot_required_total', { collection: boundedLabel(c) });
+    }
+    if (String(query.resume || '') === '1' && (!isDelta || forceFull)) {
+      for (const c of (requestedCols || ['other'])) {
+        metrics.inc('payesh_pull_resume_snapshot_total', { collection: boundedLabel(c) });
+      }
+    }
 
     /* Delta Phase 4 — gap 2: فشرده‌سازیِ مذاکره‌شده (gzip ارجح، br جایگزین)
        + سنجه‌های حجم (خام و سیم). res بدونِ writeHead (هارنس قدیمی) =
