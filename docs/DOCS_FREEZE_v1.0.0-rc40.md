@@ -6,7 +6,7 @@
 
 **نسخهٔ قفل:** ۱.۰.۰-rc40 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** ثبتِ چکیدهٔ P1-2 + بستنِ یتیمیِ گزارش‌ها (Arena)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc39` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۲۳ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc39` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۲۵ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
@@ -54,7 +54,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۳۲۳)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۳۲۵)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -85,8 +85,10 @@
 | `BUNDLE_REGISTRY.md` | `sha256:1a3c7eaedfee1a733cb29f3a4012eea29b733f221ea5451e3b8f8733a1677130` |
 | `CACHE_STRATEGY_DESIGN.md` | `sha256:9186d05e39cb8095593cfbe9cbcbd699bab519e41994255ebe3708102a3cca20` |
 | `CAPACITY.md` | `sha256:f99be9d2fd2b4cbcb4e0d6c043071625b6473c26ddaed777d7248e8d30989738` |
+| `CAPACITY_ENVELOPE_TEMPLATE.md` | `sha256:04cb49c6ae6e1ae2014d9b2835447c16402f782d6ed0d92ba18d39d071e659eb` |
 | `CAPACITY_MODEL.md` | `sha256:6f939aced476d7b0e8e9f0155ec5c86ce348d7f4bc99a3cd49f5c87a3234ed74` |
 | `CAPACITY_SIM.md` | `sha256:f98ec7cfde8b25a306c765c03cdc78afc092c21cf777de11d93605762ab961db` |
+| `CAPACITY_WORKLOAD_MODEL.md` | `sha256:bebad7f3690322e2ee801860bc9ca78343bb8c8595a7014fb0608a8692aba05c` |
 | `CDN_INTEGRATION_SETUP.md` | `sha256:b2290486612d534b5c8c2fa709be6a32721890852069228eb24c5e9908e8a9ff` |
 | `CERT_REPORTS_VERIFICATION.md` | `sha256:3a09923997d49c6163449068f78d13c69eeae4cc8802232fa8b7064b3d3b307f` |
 | `CHAT3_SUMMARY.md` | `sha256:d43eb1bc0d3595f7d3d8258d4c64595678755fd26d191a974375b97c561471d0` |
@@ -155,10 +157,10 @@
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:36bf496d42732300a7872e76e6a3ce64dca6d52ed20eb1d9621fdce63f3d4169` |
 | `DOCS_INDEX.md` | `sha256:47598c5736c918be90139a5841746d6c7e30477558c1de5cfea272e71bf87a30` |
-| `DOCS_METRICS.md` | `sha256:2f565e39101397fdfbb982fc9313aa290351d8bb7707a44c12a0814bbab5ddd2` |
+| `DOCS_METRICS.md` | `sha256:5ece702dd614c49fa78884c59f950c65d2b476cf53ccc731fe38884c4b2c9575` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:bbca0ce31bc63dabaacf2f2eab15f2ac2de60528a53de9a34985ef1ea41ee091` |
-| `DOCUMENTATION_MAP.md` | `sha256:678a4ca757cd2899219f6af5f731fb3466364575286b80c33df491d132aa4060` |
+| `DOCUMENTATION_MAP.md` | `sha256:29c5fe584ae4a5a471fbc1709f5793b780af01d1405c7a8cdb4ebb59aa5045ef` |
 | `DR_RUNBOOK.md` | `sha256:eba33f0ad562941cf8aea2087dae1318628708cb37b1330aa0bc1cb34c81cc89` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
