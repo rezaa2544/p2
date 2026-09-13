@@ -462,6 +462,15 @@ function declareAll(r) {
     [256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304]);
   r.counter('payesh_sync_delta_compressions_total', 'Pull responses compressed, by encoding (gzip | br).', ['encoding']);
   r.counter('payesh_cursor_expired_total', 'Pull cursors rejected as expired (TTL).', []);
+  /* ── پ۳ تله‌متری بریدگی/resume — سنجشِ معیارِ بازفعال‌سازی #۱ دوزیهٔ کش
+     (REPORT_CACHE_ISOLATION_DOSSIER §۵). کاردینالیته کران‌دار: برچسبِ
+     collection فقط از مجموعهٔ ثابتِ سنگین + 'other' (pull.js تحمیل می‌کند). */
+  r.counter('payesh_pull_partial_collections_total',
+    'Collections delivered truncated (row-cap or byte-budget) in a pull response.', ['collection']);
+  r.counter('payesh_pull_full_snapshot_required_total',
+    'Truncated-delta collections flagged full_snapshot_required (client must resume).', ['collection']);
+  r.counter('payesh_pull_resume_snapshot_total',
+    'Bounded full-snapshot pulls served for a client resume (resume=1).', ['collection']);
   r.counter('payesh_cursor_region_mismatch_total', 'Pull cursors rejected because they were issued by another region (cursor v2 rg binding).', []);
   /* ── Database ── */
   r.histogram('payesh_db_query_duration_seconds', 'SQL round-trip latency.', ['op', 'target']);

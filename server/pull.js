@@ -299,6 +299,37 @@ function createPull(ctx) {
 
     const requestedCols = query.collections ? String(query.collections).split(',').map(s => s.trim()).filter(Boolean) : null;
 
+    /* ── P0-2 (پ۳ 2026-09-12): کشِ کرانداِر گزارش‌ها — لایهٔ سرور ──────
+       ممیزی: superadmin در pull کامل ~۲۷k ردیف/4.3MB جدول‌هایِ گزارشی
+       (attendance/grades/…) می‌گرفت؛ در دیتاست ملی (۵۰M حضور) یعنی
+       انتقالِ جدول ملی به مرورگر. مجموعه‌هایِ سنگینِ گزارشی از این پس
+       کران‌دار برمی‌گردند: حداکثر ردیف per-collection (تازه‌ترین‌ها اول)
+       + بودجهٔ بایتِ مجموعِ سنگین‌ها. مجموعه‌های بریده‌شده در
+       partial_collections اعلام می‌شوند تا کلاینت نشانگرِ «دادهٔ جزئی»
+       بگذارد. env ها فقط برای بالا/پایین‌بردنِ سقف‌اند — صفر/منفی =
+       پیش‌فرض (خاموش‌کردنی نیست؛ defense-in-depth با کرانِ کلاینت). */
+    const HEAVY_REPORT_COLS = ['attendance', 'grades', 'discipline', 'hw_submissions'];
+    const pullRowCap = (() => {
+      const n = Number(process.env.PAYESH_PULL_MAX_ROWS);
+      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 5000;
+    })();
+    const pullByteCap = (() => {
+      const n = Number(process.env.PAYESH_PULL_MAX_BYTES);
+      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 3 * 1024 * 1024;
+    })();
+    const rowRecency = (r) => {
+      const t = r && (r.updated_at || r.created_at);
+      const ms = t ? new Date(t).getTime() : NaN;
+      if (!isNaN(ms)) return ms;
+      const id = r && Number(r.id);
+      return Number.isFinite(id) ? id : 0; /* fallback قطعی: id بزرگ‌تر = جدیدتر */
+    };
+    const partialCollections = [];
+    /* پ۳ — قراردادِ resume: دلتاهایی که به‌خاطرِ کران بریده شدند؛ کلاینت
+       باید برای این‌ها snapshot کاملِ کران‌دار بگیرد وگرنه تغییراتِ بریده
+       برای همیشه گم می‌شوند (کرسر جلو رفته است). */
+    const truncatedDeltaCols = [];
+
     // مجموعه‌های استاندارد سامانه
     const ALL_COLLECTIONS = [
       'schools', 'users', 'classes', 'subjects', 'schedule', 'enrollments',
@@ -351,6 +382,39 @@ function createPull(ctx) {
       } else {
         resultCollections[c] = scopedList;
       }
+
+      /* P0-2: کرانِ ردیف روی مجموعه‌های سنگینِ گزارشی — بعد از scope
+         (کران هرگز scope را جایگزین نمی‌کند، فقط از آن می‌کاهد).
+         پ۳ (بازخورد بازبین #129، کامنت ۱): بریدگیِ «دلتا» بدونِ جبران یعنی
+         گم‌شدنِ همیشگیِ تغییرات (کرسر جلو می‌رود). این‌جا فقط ثبت می‌کنیم؛
+         پایین‌تر برای دلتاهای بریده full_snapshot_required_collections
+         اعلام می‌شود تا کلاینت با snapshot کاملِ کران‌دار همگرا شود. */
+      if (HEAVY_REPORT_COLS.includes(c) && resultCollections[c].length > pullRowCap) {
+        const sorted = resultCollections[c].slice().sort((a, b) => rowRecency(b) - rowRecency(a));
+        resultCollections[c] = sorted.slice(0, pullRowCap);
+        partialCollections.push(c);
+        if (isDelta && !forceFull) truncatedDeltaCols.push(c);
+      }
+    }
+
+    /* P0-2: بودجهٔ بایتِ مجموعِ سنگین‌ها — اگر حتی بعد از کرانِ ردیف از
+       بودجه گذشت، از سنگین‌ترین مجموعه شروع به نصف‌کردن می‌کند.
+       پ۳ (کامنت ۴ بازبین #129): اندازه بر حسبِ بایتِ UTF-8 واقعی سنجیده
+       می‌شود (Buffer.byteLength) — length برای متنِ فارسی تا ~۲x کم می‌شمرد
+       و پاسخِ خام از سقف عبور می‌کرد. */
+    {
+      const sizeOf = (c) => Buffer.byteLength(JSON.stringify(resultCollections[c] || []), 'utf8');
+      let guard = 24; /* قطعیت خاتمه */
+      while (guard-- > 0) {
+        const heavies = HEAVY_REPORT_COLS.filter(c => Array.isArray(resultCollections[c]) && resultCollections[c].length > 1);
+        const total = heavies.reduce((n, c) => n + sizeOf(c), 0);
+        if (total <= pullByteCap || !heavies.length) break;
+        const biggest = heavies.sort((a, b) => sizeOf(b) - sizeOf(a))[0];
+        const list = resultCollections[biggest].slice().sort((a, b) => rowRecency(b) - rowRecency(a));
+        resultCollections[biggest] = list.slice(0, Math.max(1, Math.floor(list.length / 2)));
+        if (!partialCollections.includes(biggest)) partialCollections.push(biggest);
+        if (isDelta && !forceFull && !truncatedDeltaCols.includes(biggest)) truncatedDeltaCols.push(biggest);
+      }
     }
 
     // استخراج رکوردهای حذف‌شده (Tombstones) در حالت Delta
@@ -390,11 +454,35 @@ function createPull(ctx) {
       cursor_ttl_s: cursor.enabled ? cursor.ttlS : undefined,
       server_version: store.__server_version || 1,
       collections: resultCollections,
+      /* P0-2: مجموعه‌هایی که سرور به‌خاطر کران بریده است — کلاینت snapshot
+         این‌ها را «جزئی» علامت می‌زند (نشانگرِ دادهٔ جزئی در گزارش‌ها). */
+      partial_collections: partialCollections.length ? partialCollections : undefined,
+      /* پ۳ — resume (کامنت ۱ بازبین #129): دلتایِ بریده = کلاینت باید برای
+         این مجموعه‌ها یک snapshot کاملِ کران‌دار بگیرد تا همگرا شود؛ وگرنه
+         تغییراتِ حذف‌شده پشتِ کرسرِ جلورفته گم می‌شوند. */
+      full_snapshot_required_collections: truncatedDeltaCols.length ? truncatedDeltaCols : undefined,
       deleted: deletedRecords
     };
 
     /* Delta Phase 4 — gap 4: شمارندهٔ پول‌ها (delta/full) پیش از فرستتن. */
     metrics.inc('payesh_sync_pulls_total', { mode: (isDelta && !forceFull) ? 'delta' : 'full' });
+
+    /* ── پ۳ تله‌متری بریدگی/resume (دوزیهٔ کش §۵ — روشِ سنجشِ معیارِ
+       بازفعال‌سازی #۱). کاردینالیته کران‌دار: برچسب فقط از مجموعهٔ ثابتِ
+       سنگین؛ هر نامِ دیگر ⇒ 'other' (سری‌ها هرگز با دادهٔ کاربر رشد
+       نمی‌کنند). resume با query param ‏resume=1 از کلاینت اعلام می‌شود. */
+    const boundedLabel = (c) => (HEAVY_REPORT_COLS.includes(c) ? c : 'other');
+    for (const c of partialCollections) {
+      metrics.inc('payesh_pull_partial_collections_total', { collection: boundedLabel(c) });
+    }
+    for (const c of truncatedDeltaCols) {
+      metrics.inc('payesh_pull_full_snapshot_required_total', { collection: boundedLabel(c) });
+    }
+    if (String(query.resume || '') === '1' && (!isDelta || forceFull)) {
+      for (const c of (requestedCols || ['other'])) {
+        metrics.inc('payesh_pull_resume_snapshot_total', { collection: boundedLabel(c) });
+      }
+    }
 
     /* Delta Phase 4 — gap 2: فشرده‌سازیِ مذاکره‌شده (gzip ارجح، br جایگزین)
        + سنجه‌های حجم (خام و سیم). res بدونِ writeHead (هارنس قدیمی) =
