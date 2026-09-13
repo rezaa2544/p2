@@ -18,8 +18,15 @@
 #   - port-holding suites (fixed 89xx/90xx ports, direct or via
 #     the suite a mutation runs)                              -> one serial lane
 #   Copy = tar (0.03 s) + symlinked node_modules.
-#   125 canonical suites = 90 base + 35 mutations
-#   (tests/server11-child.js is a worker script, not a suite — excluded by design)
+#   موج ۲۰ (آرنا ۵): پوشش کامل —
+#   - همهٔ پرونده‌های مستقیمِ tests/*.js (پایه + جهش‌ها)
+#   - سابت‌های REST در tests/api از طریق tests/api/runner.js (درون‌فرآیندی،
+#     استور را به شاخهٔ موقت کپی می‌کنند؛ در مسیرِ اصلی و موازی اجرا می‌شوند)
+#   - کنارگذاشته‌های طراحی: tests/server11-child.js و tests/wave15-child.js
+#     (اسکریپت‌های کارگر — با <root> <mode> اجرا می‌شوند، نه مستقل؛ S7-2)،
+#     tests/helpers/ (کمکی)، tests/performance/ (بار/پایداریِ k6 — دستی و
+#     بر‌اساسِ برنامهٔ رسمی؛ ورودیِ دروازهٔ انتشار، نه رگرسیونِ هر کامیت)
+#   شمارِ زندهٔ سوئیت‌ها با `ls tests/*.js` سنجه می‌شود؛ اعدادِ این‌جا تقریبی‌اند.
 #
 # Usage:  bash scripts/run-all-tests.sh     (log: /tmp/all-tests.log, per-suite: /tmp/at-<name>.log)
 # Self-heal (sandbox resets have wiped node_modules and .git/config three times):
@@ -64,6 +71,40 @@ if [ ! -f server/data/payesh.json ]; then
   node server/seed.js >>$OUT 2>&1 || { echo "!! reseed FAILED" | tee -a $OUT; exit 2; }
 fi
 
+# ── live-PostgreSQL probe ─────────────────────────────────────────────────
+# tests/wave23-reports-pg.js is the parity/authorization gate for the DB-native
+# report path. It self-skips with a loud NOT-RUN when no PostgreSQL is reachable,
+# so a PG-less machine does not go red for a reason it cannot act on. When one IS
+# reachable we REQUIRE it: the gate must not be silently skipped where it can run.
+if [ -n "$DATABASE_URL" ] || (command -v pg_isready >/dev/null 2>&1 && pg_isready -h 127.0.0.1 -p 5432 -q 2>/dev/null); then
+  export WAVE23_REQUIRE_PG=1
+  echo "-- live PostgreSQL detected — wave23-reports-pg is REQUIRED" | tee -a $OUT
+fi
+
+# ── docs-stats pre-flight ──────────────────────────────────────────────────
+# Count blocks in DOCS_METRICS / DOCUMENTATION_MAP / TEST_COVERAGE_REPORT and the
+# freeze manifest are generated, not hand-typed. Check BEFORE the dirty-tree guard
+# (the fixer writes files, which would trip that guard). Check-only here: we never
+# write during a regression run.
+if [ -f tools/docs-stats-sync.js ]; then
+  if ! node tools/docs-stats-sync.js --freeze --check >> $OUT 2>&1; then
+    echo "!! DOCS STATS STALE — run: node tools/docs-stats-sync.js --freeze && git commit" | tee -a $OUT
+    exit 5
+  fi
+fi
+
+# ── docs-refs pre-flight ───────────────────────────────────────────────────
+# Docs must not point at files that do not exist. Historical debt is
+# grandfathered in tools/docs-refs-baseline.json; only a NEW stale ref fails.
+if [ -f tools/docs-refs-check.js ]; then
+  if ! node tools/docs-refs-check.js --check >> $OUT 2>&1; then
+    echo "!! STALE DOC REFERENCE — a doc points at a file that does not exist" | tee -a $OUT
+    echo "   fix the reference, or if the doc is historical:" | tee -a $OUT
+    echo "   node tools/docs-refs-check.js --baseline && git commit" | tee -a $OUT
+    exit 6
+  fi
+fi
+
 # ── dirty-tree guard ───────────────────────────────────────────────────────
 # A mutation suite killed mid-run (timeout/kill/reset) leaves src files
 # MUTATED on disk -> every suite that domain touches fails in a confusing
@@ -88,8 +129,17 @@ if [ "$AVAIL_KB" -lt 250000 ]; then
 fi
 
 # ── suite lists ────────────────────────────────────────────────────────────
-ALL=$(ls tests/*.js | grep -v -- '-mutations.js$' | grep -v 'server11-child.js')
-REBUILDING=$(grep -l "build.js" tests/*.js 2>/dev/null | grep -v -- '-mutations.js$' | grep -v 'server11-child.js')
+# S7-2 (Bug Hunt session 7): worker scripts are spawned *by* their parent suite
+# with arguments (`node tests/<x>-child.js <root> <mode>`); running them
+# standalone crashes on argv[2]=undefined and showed up as a false RED.
+# Exclude the whole *-child.js family instead of naming one file.
+ALL=$(ls tests/*.js | grep -v -- '-mutations.js$' | grep -v -- '-child.js$')
+# موج ۲۰: سابت‌های REST فاز ۳ (زیرپوشهٔ tests/api) هم جزو رگرسیون‌اند —
+# دونده‌شان متوالی اجرا می‌کند و استور را ایزوله می‌کند؛ یک واحدِ موازی‌پذیر.
+if [ -f tests/api/runner.js ]; then
+  ALL="$ALL"$'\n'"tests/api/runner.js"
+fi
+REBUILDING=$(grep -l "build.js" tests/*.js 2>/dev/null | grep -v -- '-mutations.js$' | grep -v -- '-child.js$')
 SERVERS=$(echo "$ALL" | grep '^tests/server')
 MUTS=$(ls tests/*-mutations.js)
 PHASE2_SET=$( { echo "$REBUILDING"; echo "$SERVERS"; echo "$MUTS"; } | sed '/^$/d' | sort -u )
@@ -103,6 +153,11 @@ uses_port() {
   grep -qE "89[0-9]{2}|90[0-9]{2}" "$f" && return 0
   local refs r
   refs=$(grep -ohE "['\"]tests/[^'\"]+\.js['\"]" "$f" | tr -d "'\"" | sort -u)
+  # دروازهٔ انتشار: ارجاع‌های ‍path.join(..., 'tests', 'X.js') مسیرِ تحتانیِ
+  # «‍tests/» ندارند و از تورِ بالا می‌افتادند (نمونه: جهش‌های ‍wave5 که سوئیتِ
+  # پایه‌شان پورت ۹۰۳۴ دارد و موازی اجرا می‌شد). این‌جا آن‌ها را هم کشف می‌کنیم.
+  refs="$refs
+$(grep -ohE "path\.join\([^)]*'tests'[^)]*'[A-Za-z0-9_.-]+\.js'\)" "$f" | grep -oE "'[A-Za-z0-9_.-]+\.js'\)" | tr -d "'\")" | sed 's|^|tests/|' | sort -u)"
   for r in $refs; do
     [ -f "$r" ] && grep -qE "89[0-9]{2}|90[0-9]{2}" "$r" && return 0
   done

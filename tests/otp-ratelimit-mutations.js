@@ -4,7 +4,7 @@
    ─────────────────────────────────────────────────────────────
    M1 کد برگردد به ۴ رقم ← R1
    M2 cooldown خاموش ← R8 (cooldownِ مشترک دیده نمی‌شود)
-   M3 سقفِ روزانه خاموش ← R3
+   M3 سقفِ روزانه خاموش ← R3 (R dist: خطِ اجرایِ rate-limit.js در auth.js)
    M4 سقفِ phone خاموش ← R2
    M5 سقفِ IP در ارسال خاموش ← R4
    M6 سقفِ IP در login خاموش ← R5
@@ -14,6 +14,9 @@
 const { execSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+/* BH-mut (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی هرگز بازنویسی نمی‌شود. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('otp-rl-mut-');
 
 const ROOT = path.join(__dirname, '..');
 const SUITE = 'tests/otp-ratelimit.js';
@@ -25,18 +28,29 @@ const MUTS = [
   { bad: "if(now - (cd[phone] || 0) < CODE_COOLDOWN_MS) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
     mut: "if(false) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
     name: 'M2 cooldown خاموش شد', expectFail: 'R8' },
-  { bad: 'if(daily[phone] && daily[phone].day === day && daily[phone].n >= CODE_DAILY_MAX)',
-    mut: 'if(false)',
+  { bad: "const rDaily = await rateLimit.checkRateLimit({ prefix: 'otp:send:phone:day', identifier: phone, limit: CODE_DAILY_MAX, windowSeconds: 86400 });",
+    mut: 'const rDaily = { allowed: true };',
     name: 'M3 سقفِ روزانه خاموش شد', expectFail: 'R3' },
-  { bad: "if(rl.length >= PHONE_SEND_MAX) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
+  { bad: "const rPh = await rateLimit.checkRateLimit({ prefix: 'otp:send:phone', identifier: phone, limit: PHONE_SEND_MAX, windowSeconds: rlw });",
+    mut: 'const rPh = { allowed: true };',
+    name: 'M4 سقفِ phone خاموش شد', expectFail: 'R2' },
+  { bad: "const rIp = await rateLimit.checkRateLimit({ prefix: 'otp:send:ip', identifier: ip, limit: IP_SEND_MAX, windowSeconds: rlw });",
+    mut: 'const rIp = { allowed: true };',
+    name: 'M5 سقفِ IP در ارسال خاموش شد', expectFail: 'R4' },
+  { bad: "const rLi = await rateLimit.checkRateLimit({ prefix: 'otp:login:ip', identifier: ip, limit: IP_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });",
+    mut: 'const rLi = { allowed: true };',
+    name: 'M6 سقفِ IP در login خاموش شد', expectFail: 'R5' },
+  { bad: "if(!rDaily.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
+    mut: "if(false) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
+    name: 'M3 سقفِ روزانه خاموش شد', expectFail: 'R3' },
+  { bad: "if(!rPh.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
     mut: "if(false) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
     name: 'M4 سقفِ phone خاموش شد', expectFail: 'R2' },
-  { bad: "if(rli[ip].length >= IP_SEND_MAX) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
+  { bad: "if(!rIp.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
     mut: "if(false) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
     name: 'M5 سقفِ IP در ارسال خاموش شد', expectFail: 'R4' },
-  { bad: "if(lri[ip].length >= IP_LOGIN_MAX) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
-    mut: "if(false) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
-    name: 'M6 سقفِ IP در login خاموش شد', expectFail: 'R5' },
+  { bad: "if(!rLi.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
+    mut: "if(false) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",    name: 'M6 سقفِ IP در login خاموش شد', expectFail: 'R5' },
   { bad: 'const a = Buffer.from(hashCode(code, phone));',
     mut: "const a = Buffer.from(rec.h || '0000000000000000000000000000000000000000000000000000000000000000');",
     name: 'M7 مقایسهٔ hash همیشه-درست شد', expectFail: 'R6' },
@@ -47,10 +61,10 @@ for (const m of MUTS) {
   const fp = path.join(ROOT, F);
   const src0 = fs.readFileSync(fp, 'utf8');
   if (src0.indexOf(m.bad) < 0) { console.log(`  ❌ ${m.name}: الگو پیدا نشد`); continue; }
-  fs.writeFileSync(fp, src0.replace(m.bad, m.mut));
+  kit.mutant(fp, src0.replace(m.bad, m.mut)); /* کپی جدا؛ بدونِ بازگردانیِ دستی */
   let out = '', crashed = false;
-  const runOnce = () => spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8' });
-  try {
+  const runOnce = () => spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8', env: kit.env() });
+  {
     let r = runOnce();
     out = String((r.stdout || '') + (r.stderr || ''));
     if (r.status !== 0 && !/❌/.test(out)) { /* مرگِ زودهنگام؟ یک retry */
@@ -60,8 +74,6 @@ for (const m of MUTS) {
     }
     if (/FATAL|JavaScript heap out of memory|aborting/.test(out) || out.trim() === '') crashed = true;
     else if (r.status === 0) out = 'PASSED (no failure)';
-  } finally {
-    fs.writeFileSync(fp, src0);
   }
   try { execSync('pkill -f "[s]erver/index.js"'); } catch (e) {}
   if (crashed) {
@@ -74,8 +86,9 @@ for (const m of MUTS) {
   if (killedThis) killed++;
 }
 let backGreen = false, finalOut = '';
-const b = spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8' });
+const b = spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8' }); /* بدونِ env → سورس اصلی */
 finalOut = String((b.stdout || '') + (b.stderr || ''));
+kit.cleanup();
 backGreen = b.status === 0 && /otp-ratelimit: \d+ ✅ \/ 0 ❌/.test(finalOut);
 try { execSync('pkill -f "[s]erver/index.js"'); } catch (e) {}
 console.log(`\nجهش: ${killed}/${MUTS.length} کشته · خطِ پایه: ${backGreen ? 'سبز ✅' : 'قرمز ❌'} · خطایِ محیطی: ${envFails}`);

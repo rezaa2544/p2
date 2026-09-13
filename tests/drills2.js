@@ -51,7 +51,7 @@ async function main() {
   test('D1 بوت بدون خطا + سید مانور (فرد=سبز، زوج=قرمز)', () => {
     assert(consoleErrors.length === 0, consoleErrors.slice(0, 2).join(' | '));
     assert(Number(W(`db.safety_drills.length`)) === 6, 'سید باید دقیقاً ۶ رکورد باشد: ' + W(`db.safety_drills.length`));
-    assert(Number(W(`db.users.length`)) === 1035, 'کاربر تازه ساخته شد!');
+    assert(Number(W(`db.users.length`)) === 1036, 'کاربر تازه ساخته شد!' /* SIM-01: +guard1 (seed-completeness) */);
     assert(W(`!!db.users.find(function(u){return u.username==='manager1';})`), 'حساب نمونه جابه‌جا شد');
     assert(W(`drillAnnualStatus(1).done`) === true, 'مدرسهٔ ۱ باید سبز باشد');
     assert(W(`drillAnnualStatus(2).done`) === false, 'مدرسهٔ ۲ باید قرمز باشد');

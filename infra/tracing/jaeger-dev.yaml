@@ -1,0 +1,24 @@
+# پیکربندیِ حداقلیِ Jaeger v2 برای توسعه (همانِ تستِ یکپارچگی، بخش B).
+# حافظه (تا ۱۰۰هزار رد)، بدون تله‌متری (پورت ۸۸۸۸ اشغال نمی‌شود).
+service:
+  extensions: [jaeger_storage, jaeger_query]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [jaeger_storage_exporter]
+  telemetry:
+    logs: {level: warn}
+    metrics: {level: none} # برای متریکِ Prometheus این بلوک را با readers/port عوض کنید
+extensions:
+  jaeger_query: {storage: {traces: dev_store}}
+  jaeger_storage:
+    backends: {dev_store: {memory: {max_traces: 100000}}}
+receivers:
+  otlp:
+    protocols:
+      grpc: {endpoint: 0.0.0.0:4317}
+      http: {endpoint: 0.0.0.0:4318}
+processors: {batch: {}}
+exporters:
+  jaeger_storage_exporter: {trace_storage: dev_store}

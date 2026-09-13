@@ -1,0 +1,41 @@
+# کالکتورِ OpenTelemetry (contrib — نسخهٔ پیشنهادی 0.128.0) با tail sampling.
+# مسیر:  اپ (TRACING_SAMPLE_ALL=1) → این کالکتور (:4318) → Jaeger (:4317).
+# اجرا (نمونه):
+#   docker run --rm -v ./otelcol-tail.yaml:/etc/otelcol/config.yaml \
+#     -p 4318:4318 otel/opentelemetry-collector-contrib:0.128.0
+receivers:
+  otlp:
+    protocols:
+      grpc: {endpoint: 0.0.0.0:4317}
+      http: {endpoint: 0.0.0.0:4318}
+processors:
+  batch: {}
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 100000
+    expected_new_traces_per_sec: 100
+    policies:
+      - name: errors-always
+        type: status_code
+        status_code: {status: ERROR}
+      - name: slow-kept
+        type: latency
+        latency: {threshold_ms: 1000}
+      - name: rest-probabilistic-10
+        type: probabilistic
+        probabilistic: {sampling_percentage: 10}
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls: {insecure: true}
+extensions:
+  health_check: {endpoint: 0.0.0.0:13133}
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [tail_sampling, batch]
+      exporters: [otlp/jaeger]
+  telemetry:
+    logs: {level: warn}

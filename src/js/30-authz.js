@@ -65,6 +65,22 @@ function canRoute(route, role){
   if(!role) return false;
   /* اصل (تصمیمِ کاربر ۲۰۲۶/۰۹/۰۵): سوپرادمین هیچ محدودیتی ندارد */
   if(role === 'superadmin') return true;
+  /* کتابدار: دبیرِ دارای پرچمِ تفویضیِ مدیر، روتِ کتابخانه را می‌بیند
+     (دبیرِ بی‌مجوز همچنان رد می‌شود — تستِ library/L2). */
+  if(route === 'library' && role === 'teacher'){
+    try{
+      var me = (typeof S !== 'undefined') ? S.user : null;
+      if(me && me.lib_staff === 1) return true;
+    }catch(e){}
+  }
+  /* تحویلدار: دبیرِ دارای پرچمِ asset_staff، روتِ اموال را می‌بیند
+     (دبیرِ بی‌مجوز همچنان رد می‌شود — تستِ assets/A2). */
+  if(route === 'assets' && role === 'teacher'){
+    try{
+      var me = (typeof S !== 'undefined') ? S.user : null;
+      if(me && me.asset_staff === 1) return true;
+    }catch(e){}
+  }
   return !!allowedRoutes(role)[route];
 }
 
@@ -152,17 +168,23 @@ var ACTION_ROLES = {
   'dojo-row-del':   ['manager'],
   'dojo-pick':      ['teacher','manager'],
   /* حضور و غیاب: فقط دبیر و مدیر */
-  /* مهمان‌ها (بند ۷): فقط مدیر؛ مالکیت مدرسه در visitorRegister/visitorCheckout روی داده */
-  'vis-new':        ['manager'],
-  'vis-save':       ['manager'],
-  'vis-out':        ['manager'],
+  /* مهمان‌ها (E.9): مدیر + نگهبان (نقشِ تفویضی — سوپرادمین کاربرِ
+     role=guard می‌سازد). معاون (مدیرِ سطحی با عنوانِ معاون) فقط‌خوان است:
+     گاردِ عنوان در visitorWriteOk روی داده. مالکیت مدرسه در
+     visitorRegister/visitorCheckout روی داده تکرار می‌شود. */
+  'vis-new':        ['manager','guard'],
+  'vis-save':       ['manager','guard'],
+  'vis-out':        ['manager','guard'],
   /* کتابخانه (بند ۸): فقط مدیر؛ مالکیت مدرسه در توابع دامنه روی داده */
   'lib-new':        ['manager'],
   'lib-save':       ['manager'],
+  'lib-serial':     ['manager'],
+  'lib-serial-save': ['manager'],
   'lib-del':        ['manager'],
-  'lib-lend':       ['manager'],
-  'lib-lend-save':  ['manager'],
-  'lib-return':     ['manager'],
+  'lib-lend':       ['manager','teacher'],
+  'lib-lend-save':  ['manager','teacher'],
+  'lib-return':     ['manager','teacher'],
+  'lib-staff-toggle': ['manager'],
   /* خوابگاه/اسکان (دور ۷۸ بند ۷): فقط مدیر؛ مالکیت مدرسه در توابع دامنه روی داده */
   'dorm-room-new':  ['manager'],
   'dorm-room-edit': ['manager'],
@@ -198,8 +220,9 @@ var ACTION_ROLES = {
   'conflict-resolve':['manager','superadmin'],
   'as-new':         ['manager'],
   'as-save':        ['manager'],
-  'as-status':      ['manager'],
-  'as-status-save': ['manager'],
+  'as-status':      ['manager','teacher'],
+  'as-status-save': ['manager','teacher'],
+  'as-cust-toggle': ['manager'],
   'as-del':         ['manager'],
   'sd-new':         ['manager'],
   'sd-save':        ['manager'],
@@ -231,6 +254,12 @@ var ACTION_ROLES = {
   'tnote-save':    ['teacher'],
   'tnote-del':     ['teacher'],
   'att-all':       ['teacher','manager'],
+  /* موج ۲۱ — کلاس چندپایه (مدارس روستایی): تیک و ثبتِ گروهی همان
+     پیش‌نویسِ حضور را می‌نویسند؛ نمرهٔ گروهی همان grades را. */
+  'mg-tab':        ['teacher','manager','superadmin'],
+  'mg-att-set':    ['teacher','manager'],
+  'mg-att-col':    ['teacher','manager'],
+  'mg-grades-save':['teacher','manager'],
   /* خروج از پیش‌گزینش زنگ (گام ۳ دور ۶۳): فقط فیلتر را عوض می‌کند */
   'att-reset-class': ['teacher','manager'],
   'grade-reset-auto': ['teacher','manager'],
@@ -245,6 +274,7 @@ var ACTION_ROLES = {
   'internship-save':    ['teacher','manager'],
   'internship-approve': ['teacher','manager'],
   'internship-del':     ['manager'],
+  'internship-cert':    ['manager','superadmin'],
   /* بند ۲.۲ — IEP: فیلدِ آزاد است ولی تغییرش اختیارِ کادر است (دبیر/مدیر) */
   'iep-save': ['teacher','manager'],
   /* بند ۴.۴ — قیف پیش‌ثبت‌نام: پیگیریِ داوطلب کارِ مدیر است */
@@ -277,6 +307,8 @@ var ACTION_ROLES = {
   'summer-del': ['manager'],
   /* بند ۶.۵ (سبک) — جابه‌جاییِ زنگِ متداخل: فقط مدیر */
   'sched-conf-move': ['manager','superadmin'],
+  'schedgen-open':   ['manager','superadmin'],
+  'schedgen-apply':  ['manager','superadmin'],
   /* بند ۲.۱ — کلاسِ چندپایه: عضویتِ دروس فقط مدیر (و سوپرادمین) */
   'class-membership-save': ['manager','superadmin'],
   /* بند ۵.۲ — مسیرِ دوازدهم↔مشاور: دانش‌آموز/ولی می‌نویسند، مشاور پاسخ می‌دهد
@@ -287,6 +319,7 @@ var ACTION_ROLES = {
   'disc-save':     ['teacher','manager'],
   'disc-del':      ['manager'],
   'disc-modal':    ['teacher','manager'],
+  'disc-quick':    ['teacher','manager'],
   /* کاربران و مدارس */
   'user-save':     ['manager','superadmin'],
   'user-del':      ['manager','superadmin'],
@@ -314,6 +347,13 @@ var ACTION_ROLES = {
   /* اطلاعیه */
   'ann-save':      ['manager','superadmin','edu_office'],
   'ann-del':       ['manager','superadmin','edu_office'],
+  /* ب.۳ — ارزشیابی ناشناس معلم: فقط دانش‌آموز و ولی پاسخ می‌دهند */
+  'eval-save':     ['student','parent'],
+  /* د.۴ — کمبود نیروی انسانی: تعیین/حذف هنجار فقط سوپرادمین و کارشناس اداره
+     (دروازهٔ سمت سرور هم در server/sync.js بر محدودهٔ اداره) */
+  'staffgap-norm':   ['superadmin','edu_office'],
+  'staffpost-save':  ['superadmin','edu_office'],
+  'staffpost-del':   ['superadmin','edu_office'],
   /* مالی */
   'tuition-plan-save': ['manager','superadmin'],
   'plan-del':      ['manager','superadmin'],

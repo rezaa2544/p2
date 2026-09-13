@@ -33,8 +33,8 @@ function createAdmin(ctx){
       return fs.readdirSync(dir).filter(f => NAME_RE.test(f)).sort();
     }catch(e){ return []; }
   }
-  function checkAdmin(req, res){
-    const s = sessionFrom(req);
+  async function checkAdmin(req, res){
+    const s = await sessionFrom(req);
     if(!s) {
       audit('authz_failure', { summary: 'عدم احراز نشست در بخش مدیریت', reason: 'no_session' });
       return { done: sendJson(res, 401, { ok: false, code: 'no_session' }) };
@@ -46,8 +46,37 @@ function createAdmin(ctx){
     return { user: s };
   }
 
-  /* هستهٔ پشتیبان‌گیری — مشترک بین endpoint و زمان‌بندیِ خودکار */
-  function backupNow(source, userId, ip){
+  /* هستهٔ پشتیبان‌گیری — مشترک بین endpoint و زمان‌بندیِ خودکار.
+     Wave 9: مسیرِ عادی از رشتهٔ اصلی خارج شد — JSON.stringify(کلِ store)
+     و نوشتنِ فایل در رشتهٔ کارِ پس‌زمینه انجام می‌شود (ورکرِ عملیاتِ
+     سنگین). پاسخِ HTTP فقط بعد از نشستنِ فایل روی disk می‌آید تا
+     قراردادِ «فایلِ پاسخ موجود است» دست‌نخورده بماند. شکستِ ورکر →
+     همان مسیرِ درون‌پروسه‌ایِ قدیمی (فال‌بک). */
+  /* Wave 1: PG is the authority — a JSON snapshot of this instance's cache would
+     be a partial backup presented as full (other instances' writes are invisible
+     here), and a JSON restore would rewind the cache behind PG. Both endpoints
+     fail closed in PG mode; operators use pg_dump/pg_restore (see HANDOFF). */
+  function pgLive(){
+    const db = ctx.db || null;
+    return !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+  }
+  async function backupNow(source, userId, ip){
+    if(pgLive()){
+      if(source !== 'auto') console.warn('[admin] backup refused: PG authoritative — use pg_dump');
+      return null;
+    }
+    if(ctx.workers && typeof ctx.workers.runBackup === 'function'){
+      try{
+        const r = await ctx.workers.runBackup(dir, RETENTION);
+        audit('backup_created', { user_id: (userId == null ? null : userId), role: 'superadmin', file: r.name, size: r.size, source: source || 'manual', ip: ip || null, summary: 'تهیه نسخه پشتیبان (export): ' + r.name + ' (' + r.size + ' بایت)' });
+        return { name: r.name, size: r.size, count: r.count };
+      }catch(e){ /* فال‌بک به مسیرِ درون‌پروسه‌ای */ }
+    }
+    return backupNowInline(source, userId, ip);
+  }
+
+  /* مسیرِ درون‌پروسه‌ای — فال‌بکِ ورکر (و ابزارِ مستقیمِ تست‌ها) */
+  function backupNowInline(source, userId, ip){
     ensureDir();
     const now = new Date();
     const p = n => String(n).padStart(2, '0');
@@ -76,17 +105,21 @@ function createAdmin(ctx){
     return { name: name, size: size, count: listBackups().length };
   }
 
-  function apiBackup(req, res){
-    const g = checkAdmin(req, res);
+  async function apiBackup(req, res){
+    const g = await checkAdmin(req, res);
     if(g.done) return g.done;
-    const r = backupNow('manual', g.user.id);
+    if(pgLive()) return sendJson(res, 501, { ok: false, code: 'pg_authoritative',
+      message: 'در حالتِ پستگرس، پشتیبان‌گیری با pg_dump انجام می‌شود ( JSON ناقص است)' });
+    const r = await backupNow('manual', g.user.id);
     if(!r) return sendJson(res, 500, { ok: false, code: 'backup_failed' });
     return sendJson(res, 200, { ok: true, file: r.name, size: r.size, count: r.count });
   }
 
-  function apiRestore(req, res, body){
-    const g = checkAdmin(req, res);
+  async function apiRestore(req, res, body){
+    const g = await checkAdmin(req, res);
     if(g.done) return g.done;
+    if(pgLive()) return sendJson(res, 501, { ok: false, code: 'pg_authoritative',
+      message: 'در حالتِ پستگرس، بازیابی با pg_restore + راه‌اندازیِ دوباره انجام می‌شود' });
     /* لایهٔ مقدار (validate.js): فقط {file?} — کلیدِ ناشناخته = ردِّ 400.
        نامِ نامعتبر/ناموجود مثلِ گذشته به آخرین نسخهٔ معتبر برمی‌گردد
        (قراردادِ قفل‌شده در security2:F1 — امنیت با الگو + فهرست است نه
@@ -134,14 +167,15 @@ function createAdmin(ctx){
   function startAutoBackup(ms){
     if(!ms || ms <= 0) return null;
     const t = setInterval(() => {
-      const r = backupNow('auto', null);
-      if(r) console.log('auto-backup: ' + r.name + ' (count ' + r.count + ')');
+      Promise.resolve(backupNow('auto', null)).then((r) => {
+        if(r) console.log('auto-backup: ' + r.name + ' (count ' + r.count + ')');
+      }).catch(() => {});
     }, ms);
     if(t.unref) t.unref();
     return t;
   }
 
-  return { apiBackup, apiRestore, listBackups, backupNow, startAutoBackup };
+  return { apiBackup, apiRestore, listBackups, backupNow, backupNowInline, startAutoBackup };
 
 }
 module.exports = { createAdmin, RETENTION };

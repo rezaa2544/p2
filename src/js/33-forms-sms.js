@@ -102,12 +102,28 @@ function transcriptCert(sid, term){
     + '</tbody></table>'
     + '<div class="meta" style="margin-top:10px"><span>معدل وزنی: <b style="font-size:13px">'
     + fa(gpa) + '</b> از ۲۰</span></div>';
+  /* ── فاز ۰.۳: بخشِ جداگانهٔ امتحانات نهایی کشوری (فقط اگر باشد) ──
+     جدول و معدلِ وزنیِ بالای این گواهی عمداً روی همهٔ نمرات می‌ماند تا
+     گواهی‌های صادرشدهٔ پیشین و آزمونِ smoke (بند ۱.۶) عوض نشوند؛
+     تفکیکِ معدل، تصمیمِ کارفرماست (docs/EXAM_TYPES_GUIDE.md). */
+  const nat = list.filter(g=>gradeSource(g)==='national');
+  const natBlock = nat.length
+    ? '<div class="meta" style="margin-top:12px"><span><b>🏛️ امتحانات نهایی کشوری</b> — جدا از نمرات داخلی:</span></div>'
+      + '<table><thead><tr><th>درس</th><th class="c" style="width:110px">نوبت</th>'
+      + '<th class="c" style="width:100px">نمره</th></tr></thead><tbody>'
+      + nat.map(g=>'<tr><td>' + esc((byId('subjects',g.subject_id)||{}).name||'—') + '</td>'
+        + '<td class="c">' + esc(g.term||'—') + '</td>'
+        + '<td class="c"><b>' + fa(g.score) + '</b></td></tr>').join('')
+      + '</tbody></table>'
+      + '<div class="meta" style="margin-top:6px"><span>معدل نهایی کشوری: <b>'
+      + fa(nationalGpa(sid)) + '</b> از ۲۰</span></div>'
+    : '';
   return {ok:true,
     title:'گواهی نمرات',
     school: esc(school.name || '') + (school.code ? ' — کد ' + esc(school.code) : ''),
     subtitle: 'دانش‌آموز: ' + esc(st.full_name) + ' · ' + (term || 'همهٔ نوبت‌ها') + ' · سال تحصیلی ' + yearTitle(),
-    body: body,
-    note:'نمرهٔ هر درس میانگین برگه‌های ثبت‌شدهٔ همان نوبت است و معدل با وزنی بر پایهٔ ساعت هفتگی محاسبه می‌شود. این گواهی از سامانهٔ پایش چاپ شده است.'};
+    body: body + natBlock,
+    note:'نمرهٔ هر درس میانگین برگه‌های ثبت‌شدهٔ همان نوبت است و معدل با وزنی بر پایهٔ ساعت هفتگی محاسبه می‌شود. نمرات «امتحان نهایی کشوری» از بیرون وارد می‌شوند و در بخش جداگانهٔ پایین گواهی می‌آیند. این گواهی از سامانهٔ پایش چاپ شده است.'};
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -132,6 +148,8 @@ function reportCardCert(sid, term, tpl){
   var school = byId('schools', st.school_id) || {};
   var list = db.grades.filter(function(g){ return g.student_id===sid && (!term || g.term===term); });
   if(!list.length) return {ok:false, msg:'برای این نوبت نمره‌ای ثبت نشده است.'};
+  /* E.1 — هنرستان: ستون‌های تئوری/عملی فقط برای دانش‌آموزِ کارگاهی */
+  var isVoc=(typeof workshopStudent==='function')?workshopStudent(sid):false;
   var bySub = Object.create(null);
   list.forEach(function(g){ (bySub[g.subject_id] = bySub[g.subject_id] || []).push(g); });
   /* میانگینِ کلاس برای هر درس — یک پیمایش (الگوی ایندکسِ این فایل) */
@@ -154,7 +172,16 @@ function reportCardCert(sid, term, tpl){
     var w = Number(sub.weekly_hours) || 1;
     tw += w; ts += av*w;
     var ca = clsAvg[id] ? Math.round(clsAvg[id].reduce(function(a,b){ return a+b; },0)/clsAvg[id].length*100)/100 : null;
-    return {name: sub.name || '—', w: w, av: av, ca: ca};
+    /* E.1 — میانگینِ قسمت‌های تئوری/عملی (رکوردهای کهنهٔ kind=practical
+       نمرهٔ عملی را در score دارند — همان تفسیرِ vocationalParts). */
+    var tS=0,tN=0,pS=0,pN=0;
+    arr.forEach(function(g){
+      if(g.theoretical_score!=null){tS+=Number(g.theoretical_score);tN++;}
+      var pv=g.practical_score!=null?Number(g.practical_score):(g.kind==='practical'?g.score:null);
+      if(pv!=null){pS+=pv;pN++;}
+    });
+    return {name: sub.name || '—', w: w, av: av, ca: ca,
+      avT: tN?Math.round(tS/tN*100)/100:null, avP: pN?Math.round(pS/pN*100)/100:null};
   }).sort(function(a,b){ return a.name < b.name ? -1 : 1; });
   var gpa = tw ? Math.round(ts/tw*100)/100 : 0;
   /* رتبهٔ کلاس: معدلِ وزنیِ هم‌کلاسی‌ها برای همان نوبت — یک پیمایش */
@@ -200,11 +227,13 @@ function reportCardCert(sid, term, tpl){
     + '<table><thead><tr><th class="c" style="width:34px">#</th><th>درس</th>'
     + '<th class="c" style="width:86px">ساعت هفتگی</th>'
     + '<th class="c" style="width:104px">نمرهٔ دانش‌آموز (از ۲۰)</th>'
+    + (isVoc ? '<th class="c" style="width:84px">نمرهٔ تئوری</th><th class="c" style="width:84px">نمرهٔ عملی</th>' : '')
     + '<th class="c" style="width:96px">میانگین کلاس (از ۲۰)</th></tr></thead><tbody>'
     + rows.map(function(r,i){
         return '<tr><td class="c">' + fa(i+1) + '</td><td>' + esc(r.name) + '</td>'
           + '<td class="c">' + fa(r.w) + '</td>'
           + '<td class="c"><b>' + fa(r.av) + '</b></td>'
+          + (isVoc ? '<td class="c">' + (r.avT == null ? '—' : fa(r.avT)) + '</td><td class="c">' + (r.avP == null ? '—' : fa(r.avP)) + '</td>' : '')
           + '<td class="c">' + (r.ca == null ? '—' : fa(r.ca)) + '</td></tr>';
       }).join('')
     + '</tbody></table>'
@@ -226,6 +255,7 @@ function reportCardCert(sid, term, tpl){
         return '<div style="border:1px solid #b9c4da;border-radius:8px;padding:5px 9px;display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:12px">'
           + '<b>' + esc(r.name) + '</b>'
           + '<span>نمره: <b>' + fa(r.av) + '</b></span>'
+          + (isVoc ? (r.avT != null ? '<span>تئوری: ' + fa(r.avT) + '</span>' : '') + (r.avP != null ? '<span>عملی: ' + fa(r.avP) + '</span>' : '') : '')
           + '<span>میانگین کلاس: ' + (r.ca == null ? '—' : fa(r.ca)) + '</span>'
           + '<span>ساعت: ' + fa(r.w) + '</span></div>';
       }).join('')

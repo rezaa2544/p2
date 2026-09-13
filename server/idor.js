@@ -9,6 +9,8 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
+const policy = require('./policy'); /* ویو ۵ — مدلِ یکتا */
+
 /* ctx: { store, audit, sessionFrom, sendJson }
    (R97: ENUM_* و نگهبانِ درونِ این ماژول به روتر منتقل شد.) */
 function createIdor(ctx){
@@ -17,7 +19,7 @@ function createIdor(ctx){
   const sendJson = ctx.sendJson;
 
   async function apiStudent(req, res, id){
-    const s = sessionFrom(req);
+    const s = await sessionFrom(req);
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
 
     /* R97: نگهبانِ شمردنِ شناسه به سطحِ روتر منتقل شد (یک منبعِ حقیقت؛
@@ -28,19 +30,11 @@ function createIdor(ctx){
     const st = (store.users || []).find(u => u.id === sid && u.role === 'student');
     if(!st) return sendJson(res, 404, { ok: false, code: 'not_found' });
 
-    let ok = false;
-    if(s.role === 'superadmin') ok = true;
-    else if(s.role === 'manager') ok = st.school_id === s.school_id;
-    else if(s.role === 'student') ok = sid === s.id;
-    else if(s.role === 'parent') ok = (store.parent_links || []).some(l => l.parent_id === s.id && l.student_id === sid);
-    else if(s.role === 'teacher'){
-      const enr = (store.enrollments || []).find(x => x.student_id === sid);
-      if(enr){
-        const cls = (store.classes || []).find(c => c.id === enr.class_id);
-        ok = !!cls && (cls.homeroom_teacher_id === s.id || (store.schedule || []).some(q => q.class_id === cls.id && q.teacher_id === s.id));
-      }
-    }
-    if(!ok) return sendJson(res, 404, { ok: false, code: 'not_found' });
+    /* ویو ۵ — منبعِ یکتا: قراردادِ §۱.۲ در policy.studentRecordOk نشسته است
+       (همان قواعد: مدیرِ سخت‌مدرسه، دبیرِ کلاسِ تدرسیِ واقعی، ولی از
+       parent_links، دانش‌آموزِ خودش؛ بقیهٔ نقش‌ها از جمله اداره ⇒ رد).
+       رد ⇒ ۴۰۴ (هرگز ۴۰۳ — ضدِ شمارشِ شناسه). */
+    if(!policy.studentRecordOk(store, s, st)) return sendJson(res, 404, { ok: false, code: 'not_found' });
 
     /* sanitized projection — no phone / national_id (§4.1) */
     sendJson(res, 200, { ok: true, student: { id: st.id, full_name: st.full_name, school_id: st.school_id, active: st.active, username: st.username } });

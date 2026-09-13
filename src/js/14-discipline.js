@@ -11,7 +11,7 @@ function viewDiscipline(){
     rows=db.discipline.filter(d=>ids.has(d.student_id));}
   if(kind)rows=rows.filter(d=>d.kind===kind);
   rows=rows.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,150);
-  const _isMgr=(u.role==='manager');
+  const _isMgr=(u.role==='manager'||u.role==='superadmin');
   const _dojoBadge=(u.role==='student'&&typeof dojoBadge==='function')?dojoBadge(u.id):'';
   return `<div class="card"><div class="card-head"><div class="row" style="flex-wrap:wrap;gap:6px">
     <span class="badge b-gray">${fa(rows.length)} مورد</span>${_dojoBadge}</div>
@@ -23,6 +23,6 @@ function viewDiscipline(){
      <td><span class="badge ${d.kind==='positive'?'b-green':'b-red'}">${d.kind==='positive'?'👍 مثبت':'👎 منفی'}</span></td><td>${esc(d.title)}</td>
      <td class="muted small" style="white-space:normal;max-width:240px">${esc(d.description||'—')}</td>
      <td><b style="color:${d.points>=0?'var(--green)':'var(--red)'}">${fa(d.points)}</b></td><td class="muted small">${jalali(d.date)}</td>
-     ${canEdit?`<td><button class="icon-btn" data-act="disc-edit" data-id="${escAttr(d.id)}">✏️</button> <button class="icon-btn danger" data-act="disc-del" data-id="${escAttr(d.id)}">🗑️</button></td>`:''}</tr>`;}).join('')}
+     ${canEdit?`<td><button class="icon-btn" data-act="disc-edit" data-id="${escAttr(d.id)}">✏️</button>${_isMgr?` <button class="icon-btn danger" data-act="disc-del" data-id="${escAttr(d.id)}">🗑️</button>`:''}</td>`:''}</tr>`;}).join('')}
    </tbody></table></div>`:empty('⚖️','پرونده انضباطی خالی است',u.role==='student'?'خوشبختانه موردی برای شما ثبت نشده است.':'موردی مطابق فیلتر یافت نشد.')}</div>`;
 }

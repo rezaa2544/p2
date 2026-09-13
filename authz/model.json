@@ -10,8 +10,10 @@
     "created_by",
     "date",
     "id",
+    "office_id",
     "pinned",
     "school_id",
+    "severity",
     "title",
     "updated_at"
    ],
@@ -50,7 +52,9 @@
     "note",
     "school_id",
     "status",
-    "updated_at"
+    "total_count",
+    "updated_at",
+    "usable_count"
    ],
    "ins": [
     "manager",
@@ -58,6 +62,7 @@
    ],
    "upd": [
     "manager",
+    "teacher",
     "superadmin"
    ],
    "del": [
@@ -564,7 +569,6 @@
    ],
    "del": [
     "manager",
-    "teacher",
     "superadmin"
    ]
   },
@@ -811,8 +815,10 @@
     "date",
     "exam_type",
     "id",
+    "is_vocational",
     "kind",
     "max_score",
+    "practical_score",
     "school_id",
     "score",
     "source",
@@ -820,6 +826,7 @@
     "subject_id",
     "teacher_id",
     "term",
+    "theoretical_score",
     "updated_at"
    ],
    "ins": [
@@ -967,7 +974,6 @@
    ],
    "del": [
     "manager",
-    "teacher",
     "superadmin"
    ]
   },
@@ -1007,9 +1013,12 @@
     "code",
     "created_at",
     "id",
+    "isbn",
+    "location",
     "school_id",
     "serial",
     "title",
+    "total_copies",
     "updated_at"
    ],
    "ins": [
@@ -1040,10 +1049,12 @@
    ],
    "ins": [
     "manager",
+    "teacher",
     "superadmin"
    ],
    "upd": [
     "manager",
+    "teacher",
     "superadmin"
    ],
    "del": [
@@ -1299,15 +1310,12 @@
     "user_id"
    ],
    "ins": [
-    "edu_office",
     "superadmin"
    ],
    "upd": [
-    "edu_office",
     "superadmin"
    ],
    "del": [
-    "edu_office",
     "superadmin"
    ],
    "note": "R96: granted — client UI flow (offices)"
@@ -1483,6 +1491,33 @@
     "superadmin"
    ]
   },
+  "report_logs": {
+   "fields": [
+    "created_at",
+    "format",
+    "generated_by",
+    "id",
+    "kind",
+    "meta",
+    "school_id",
+    "status",
+    "updated_at"
+   ],
+   "ins": [
+    "manager",
+    "counselor",
+    "edu_office",
+    "superadmin"
+   ],
+   "upd": [
+    "manager",
+    "superadmin"
+   ],
+   "del": [
+    "manager",
+    "superadmin"
+   ]
+  },
   "safety_drills": {
    "fields": [
     "created_at",
@@ -1558,8 +1593,16 @@
   },
   "school_years": {
    "fields": [
+    "closed",
+    "closed_at",
     "created_at",
-    "updated_at"
+    "placement",
+    "placement_year",
+    "promoted",
+    "reminded_at",
+    "school_id",
+    "updated_at",
+    "year_code"
    ],
    "ins": [
     "manager",
@@ -1577,6 +1620,7 @@
   "schools": {
    "fields": [
     "active",
+    "active_year_code",
     "address",
     "area_kind",
     "boom_goals",
@@ -1600,6 +1644,7 @@
     "place_rules",
     "province_id",
     "public_goals",
+    "school_type",
     "shift",
     "type",
     "updated_at",
@@ -1897,6 +1942,22 @@
    "del": [],
    "note": "G.2 farnaz: manager files, superadmin triages"
   },
+  "teacher_evaluations": {
+   "fields": [
+    "created_at",
+    "criteria",
+    "feedback",
+    "id",
+    "school_id",
+    "teacher_id"
+   ],
+   "ins": [
+    "student",
+    "parent"
+   ],
+   "upd": [],
+   "del": []
+  },
   "teacher_notes": {
    "fields": [
     "body",
@@ -2125,7 +2186,9 @@
     "iep_notes",
     "iep_staff",
     "iep_updated",
+    "asset_staff",
     "job",
+    "lib_staff",
     "mother_nid",
     "national_id",
     "office_id",
@@ -2280,23 +2343,51 @@
     "id",
     "in_at",
     "name",
+    "national_id",
     "out_at",
+    "phone",
     "purpose",
     "registered_by",
     "school_id",
-    "updated_at"
+    "status",
+    "updated_at",
+    "visiting_person"
    ],
    "ins": [
+    "guard",
     "manager",
     "superadmin"
    ],
    "upd": [
+    "guard",
     "manager",
     "superadmin"
    ],
    "del": [
     "manager",
     "superadmin"
+   ]
+  },
+  "staff_posts": {
+   "fields": [
+    "created_at",
+    "id",
+    "required",
+    "school_id",
+    "subject_id",
+    "updated_at"
+   ],
+   "ins": [
+    "superadmin",
+    "edu_office"
+   ],
+   "upd": [
+    "superadmin",
+    "edu_office"
+   ],
+   "del": [
+    "superadmin",
+    "edu_office"
    ]
   }
  }

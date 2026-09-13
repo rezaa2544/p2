@@ -181,6 +181,10 @@ function coreActions(e, el, id, a, rawId){
    'do-reset'(){resetAll();},
    'ask-ok'(){ const fn=window._askFn; window._askFn=null; closeModal(); if(typeof fn==='function')fn(); },
    go(){go(el.dataset.r);},
+   'skip-to-main'(){ /* skip-link (WCAG 2.4.1 Bypass Blocks): پرش به محتوا */
+     const m=document.querySelector('.main');
+     if(m){ if(!m.hasAttribute('tabindex'))m.setAttribute('tabindex','-1'); try{m.focus();}catch(e){} }
+   },
    back(){ goBack(); },
    home(){ go(S.user.role==='edu_office'?'officedash':'dashboard'); },
    opennav(){S.sidebar=true;render();},
@@ -358,17 +362,22 @@ function coreActions(e, el, id, a, rawId){
    },
    /* ─────────────── مهمان‌ها (بند ۷) ─────────────── */
    'vis-new'(){
-     openModal(modalTpl('ثبت مهمان',
+     openModal(modalTpl('ثبت مراجع',
        f('نام *', inp('vis_name',''))
-       + f('هدف مراجعه', inp('vis_purpose','')),
+       + f('هدف مراجعه', inp('vis_purpose',''))
+       + f('فردِ ملاقات‌شونده (اختیاری)', inp('vis_person',''))
+       + f('شمارهٔ تماس (اختیاری)', inp('vis_phone',''))
+       + f('کد ملی (اختیاری)', inp('vis_nid','')),
        'vis-save'));
    },
    'vis-save'(){
-     const r = visitorRegister(V('vis_name'), V('vis_purpose'));
+     const r = visitorRegister(V('vis_name'), V('vis_purpose'),
+       {visiting_person:V('vis_person'), phone:V('vis_phone'), national_id:V('vis_nid')});
      if(!r.ok){ toast(r.msg,'err'); return; }
      closeModal(); toast('مهمان ثبت شد — ساعت ورود: ' + faD(new Date().toTimeString().slice(0,5)),'ok');
      render();
    },
+   'vis-clear'(){ S.filters.visQ=''; S.filters.visDate=''; S.page=1; render(); },
    'vis-out'(){
      const r = visitorCheckout(Number(id));
      if(!r.ok){ toast(r.msg,'err'); return; }
@@ -381,11 +390,15 @@ function coreActions(e, el, id, a, rawId){
        f('عنوان *', inp('lib_title',''))
        + f('نویسنده', inp('lib_author',''))
        + f('کد/رگال (اختیاری)', inp('lib_code',''))
+       + f('شابک (اختیاری)', inp('lib_isbn',''))
+       + f('محل قفسه (اختیاری)', inp('lib_location',''))
+       + f('تعداد نسخه‌ها (خالی = نامحدود)', inp('lib_copies','','number'))
        + f('شمارهٔ سریال (اختیاری — در هر مدرسه یکتا)', inp('lib_serial','')),
        'lib-save'));
    },
    'lib-save'(){
-     const r = libAddBook(V('lib_title'), V('lib_author'), V('lib_code'), V('lib_serial'));
+     const r = libAddBook(V('lib_title'), V('lib_author'), V('lib_code'), V('lib_serial'),
+       {isbn: V('lib_isbn'), location: V('lib_location'), total_copies: Number(V('lib_copies')) || 0});
      if(!r.ok){ toast(r.msg,'err'); return; }
      closeModal(); toast('کتاب ثبت شد','ok');
      render();
@@ -395,13 +408,21 @@ function coreActions(e, el, id, a, rawId){
      const b = byId('lib_books', Number(id));
      if(!b) return;
      window._libSerialBook = b.id;
-     openModal(modalTpl('شمارهٔ سریال — ' + b.title,
-       f('شمارهٔ سریال (خالی = حذف سریال)', inp('lib_ser2', b.serial || ''))
-       + '<div class="small muted">سریالِ هر کتابِ فیزیکی در همین مدرسه یکتا است؛ برای چندین کپیِ یک کتاب، چند ردیفِ جدا با سریال‌های متفاوت ثبت کنید.</div>',
+     openModal(modalTpl('ویرایش کتاب — ' + b.title,
+       f('عنوان *', inp('lib_ed_title', b.title || ''))
+       + f('نویسنده', inp('lib_ed_author', b.author || ''))
+       + f('کد/رگال', inp('lib_ed_code', b.code || ''))
+       + f('شابک', inp('lib_ed_isbn', b.isbn || ''))
+       + f('محل قفسه', inp('lib_ed_location', b.location || ''))
+       + f('تعداد نسخه‌ها (۰ = نامحدود)', inp('lib_ed_copies', String((b.total_copies === undefined || b.total_copies === null) ? '' : b.total_copies), 'number'))
+       + f('شمارهٔ سریال (خالی = حذف سریال)', inp('lib_ser2', b.serial || ''))
+       + '<div class="small muted">سریالِ هر کتابِ فیزیکی در همین مدرسه یکتا است.</div>',
        'lib-serial-save'));
    },
    'lib-serial-save'(){
-     const r = libSetSerial(window._libSerialBook, V('lib_ser2'));
+     const r = libEditBook(window._libSerialBook, {title: V('lib_ed_title'), author: V('lib_ed_author'),
+       code: V('lib_ed_code'), isbn: V('lib_ed_isbn'), location: V('lib_ed_location'),
+       total_copies: (V('lib_ed_copies') === '' ? 0 : Number(V('lib_ed_copies'))), serial: V('lib_ser2')});
      if(!r.ok){ toast(r.msg,'err'); return; }
      closeModal(); toast('سریال ذخیره شد','ok');
      render();
@@ -445,16 +466,33 @@ function coreActions(e, el, id, a, rawId){
      toast('بازگشت ثبت شد','ok');
      render();
    },
+   'lib-search'(){
+     try{ window._libQ = V('lib_q') || ''; }catch(e){ window._libQ = ''; }
+     render();
+   },
+   'lib-staff-toggle'(){
+     const t = byId('users', Number(id));
+     if(!t) return;
+     const was = (t.lib_staff === 1);
+     const r = libSetStaff(t.id, !was);
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     toast(was ? 'مجوزِ کتابداری لغو شد' : 'مجوزِ کتابداری اعطا شد','ok');
+     render();
+   },
    'as-new'(){
      openModal(modalTpl('تجهیز جدید',
        f('نام *', inp('as_name',''))
        + f('دسته', inp('as_category',''))
        + f('مکان', inp('as_location',''))
-       + f('وضعیت', sel('as_status',[['available','در دسترس'],['in_use','در حال استفاده'],['repair','در تعمیرات']],'available')),
+       + f('وضعیت', sel('as_status',[['available','در دسترس'],['in_use','در حال استفاده'],['repair','در تعمیرات']],'available'))
+       + f('یادداشت', inp('as_note',''))
+       + f('تعداد کل', inp('as_total','1','number'))
+       + f('قابل‌استفاده (خالی = خودکار)', inp('as_usable','','number')),
        'as-save'));
    },
    'as-save'(){
-     const r = assetAdd(V('as_name'), V('as_category'), V('as_location'), V('as_status'));
+     const r = assetAdd(V('as_name'), V('as_category'), V('as_location'), V('as_status'), V('as_note'),
+       {total_count: Number(V('as_total')) || 1, usable_count: (V('as_usable') === '' ? undefined : Number(V('as_usable')))});
      if(!r.ok){ toast(r.msg,'err'); return; }
      closeModal(); toast('تجهیز ثبت شد','ok');
      render();
@@ -465,11 +503,14 @@ function coreActions(e, el, id, a, rawId){
      window._asEditId = a.id;
      openModal(modalTpl('وضعیت — ' + a.name,
        f('وضعیت', sel('as_status',[['available','در دسترس'],['in_use','در حال استفاده'],['repair','در تعمیرات']], a.status))
-       + f('مکان', inp('as_location', a.location||'')),
+       + f('مکان', inp('as_location', a.location||''))
+       + f('تعداد کل', inp('as_total', String(assetTotal(a)), 'number'))
+       + f('قابل‌استفاده', inp('as_usable', String(assetUsable(a)), 'number')),
        'as-status-save'));
    },
    'as-status-save'(){
-     const r = assetSetStatus(window._asEditId, V('as_status'), V('as_location'));
+     const r = assetSetStatus(window._asEditId, V('as_status'), V('as_location'),
+       {total_count: Number(V('as_total')), usable_count: Number(V('as_usable'))});
      if(!r.ok){ toast(r.msg,'err'); return; }
      closeModal(); toast('وضعیت به‌روز شد','ok');
      render();
@@ -480,6 +521,19 @@ function coreActions(e, el, id, a, rawId){
        if(!r.ok){ toast(r.msg,'err'); return; }
        toast('تجهیز حذف شد','ok'); render();
      }, {title:'حذف تجهیز', ok:'حذف', danger:true});
+   },
+   'as-search'(){
+     try{ window._asQ = V('as_q') || ''; }catch(e){ window._asQ = ''; }
+     render();
+   },
+   'as-cust-toggle'(){
+     const t = byId('users', Number(id));
+     if(!t) return;
+     const was = (t.asset_staff === 1);
+     const r = assetSetCustodian(t.id, !was);
+     if(!r.ok){ toast(r.msg,'err'); return; }
+     toast(was ? 'مجوزِ تحویلداری لغو شد' : 'مجوزِ تحویلداری اعطا شد','ok');
+     render();
    },
    'sd-new'(){
      const u = S.user;
@@ -1521,6 +1575,7 @@ function coreActions(e, el, id, a, rawId){
    'internship-edit'(){internshipModal(byId('internships',id),Number(id));},
    'internship-del'(){confirmModal('حذف این ردیفِ کارآموزی؟','internship-del-ok',id);},
    'internship-del-ok'(){remove('internships',window._delId);closeModal();toast('حذف شد','ok');render();},
+   'internship-cert'(){const r=internshipIssueCert(id);toast(r.msg,r.ok?'ok':'err');if(r.ok)render();},
    'internship-save'(){const i=window._inEdit;if(!i)return;
      const hours=Number(V('in_hours'));
      if(!hours||hours<1||hours>40){toast('ساعت باید عددی بین ۱ تا ۰ باشد','err');return;}
@@ -1610,22 +1665,59 @@ function coreActions(e, el, id, a, rawId){
      closeModal();toast('دانش‌آموزان به‌روز شد','ok');render();},
    'summer-del'(){confirmModal('حذف این کلاسِ تابستانی؟','summer-del-ok',id);},
    'summer-del-ok'(){remove('summer_classes',Number(window._delId));closeModal();toast('حذف شد','ok');render();},
-   'grade-save'(){const g=window._edit;const score=Number(V('g_score'));
-     if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
+   'grade-save'(){const g=window._edit;
      /* امتحان نهایی فقط پایه‌های پایانی — همان قاعدهٔ finalGradeOk
         (26-curriculum) که در exam-save اعمال می‌شود */
-     if(V('g_type')==='امتحان نهایی'){
+     const gType=V('g_type');
+     if(gType===NATIONAL_EXAM_TYPE){
        const gcls=byId('classes',window._gclass);
        if(!(typeof finalGradeOk==='function'&&finalGradeOk(gcls&&gcls.grade))){
          toast('نمرهٔ امتحان نهایی فقط برای پایه‌های پایانی (نهم و دوازدهم) ثبت می‌شود','err');return;
        }
      }
-    let gid=g.id;
-    /* بند ۴.۲: نوعِ نمره — در مدرسهٔ غیرکارگاهی فیلد نیست و همیشه تئوری */
+     /* ── فاز ۰.۳: نمرهٔ امتحان نهایی کشوری فقط از بیرون وارد می‌شود ──
+        نتیجهٔ نهایی کشوری را اداره اعلام می‌کند، نه دبیر؛ پس دبیر نه
+        می‌سازد و نه ویرایش می‌کند. مدیر/سوپرادمین نتیجهٔ اعلامی را ثبت
+        می‌کنند. منشأ روی خودِ نمره مُهر می‌خورد (grades.source) تا
+        کارنامه بتواند داخلی و کشوری را جدا نشان دهد.
+        🔴 گارد روی داده است، نه فقط روی نما — نما در 18-modals.js فقط
+        گزینه را از دبیر پنهان می‌کند. */
+     const gRole=(typeof activePersona==='function')?activePersona():(S.user&&S.user.role);
+     const gNational=(gType===NATIONAL_EXAM_TYPE)||(gradeSource(g)==='national');
+     if(gNational&&gRole==='teacher'){
+       toast('نمرهٔ امتحان نهایی کشوری فقط از بیرون و توسط مدیر مدرسه وارد می‌شود','err');return;
+     }
+     const gSource=gNational?'national':'internal';
+    /* E.1 + بند ۴.۲ — هنرستان: سه حالت
+       الف) نوع «عملی/کارگاهی» → رکوردِ واحد (score = practical_score)
+       ب) نوع «تئوری» در مدرسهٔ کارگاهی → قسمت‌های تئوری/عملی؛
+          نمرهٔ نهایی (score) = میانگینِ قسمت‌هایِ پرشده
+       ج) مدرسهٔ غیرکارگاهی → نمرهٔ واحد (رفتارِ پیشین، بدون فیلدهای تازه)
+       ریبیس دور ۱۱۲: source:gSource از فاز ۰.۳ main روی هر سه شخ‌ص افزوده شد. */
+    const _gcls=byId('classes',window._gclass);
+    const _gws=(typeof workshopSchool==='function'&&_gcls)?workshopSchool(_gcls.school_id):false;
     const gkind=V('g_kind')==='practical'?'practical':'theory';
-    if(g.id)update('grades',g.id,{score,term:V('g_term'),exam_type:V('g_type'),kind:gkind});
+    let data;
+    if(_gws&&gkind==='practical'){
+      const score=Number(V('g_score'));
+      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۰ باشد','err');return;}
+      data={score:score,term:V('g_term'),exam_type:V('g_type'),kind:'practical',theoretical_score:null,practical_score:score,is_vocational:true,source:gSource};
+    }else if(_gws){
+      const rt=V('g_theory'),rp=V('g_practical');
+      const t=rt===''?null:Number(rt),p=rp===''?null:Number(rp);
+      if(t==null&&p==null){toast('حداقل یکی از نمرهٔ تئوری یا عملی لازم است','err');return;}
+      if((t!=null&&(isNaN(t)||t<0||t>20))||(p!=null&&(isNaN(p)||p<0||p>20))){toast('نمرات باید بین ۰ تا ۲۰ باشند','err');return;}
+      const score=Math.round(((t!=null&&p!=null)?(t+p)/2:(t!=null?t:p))*100)/100;
+      data={score:score,term:V('g_term'),exam_type:V('g_type'),kind:'theory',theoretical_score:t,practical_score:p,is_vocational:true,source:gSource};
+    }else{
+      const score=Number(V('g_score'));
+      if(isNaN(score)||score<0||score>20){toast('نمره باید بین ۰ تا ۲۰ باشد','err');return;}
+      data={score:score,term:V('g_term'),exam_type:V('g_type'),kind:'theory',source:gSource};
+    }
+    let gid=g.id;
+    if(g.id)update('grades',g.id,data);
     else{const sid=Number(V('g_st')),cid=window._gclass;
-      const r=insert('grades',{school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,term:V('g_term'),exam_type:V('g_type'),kind:gkind,score,max_score:20,created_at:todayISO()});
+      const r=insert('grades',Object.assign({school_id:byId('classes',cid).school_id,student_id:sid,class_id:cid,subject_id:Number(V('g_sub')),teacher_id:S.user.role==='teacher'?S.user.id:null,max_score:20,created_at:todayISO()},data));
       gid=r.id;}
      /* گام ۷: نمرهٔ زیر آستانه برای اولیا پیامک می‌سازد (بعد از نوشتن
         تا source_ref شناسهٔ واقعی باشد) */
@@ -1637,6 +1729,7 @@ function coreActions(e, el, id, a, rawId){
    'disc-edit'(){discModal(byId('discipline',id));},
    'disc-del'(){confirmModal('حذف این مورد انضباطی؟','disc-del-ok',id);},
    'disc-del-ok'(){remove('discipline',window._delId);closeModal();toast('حذف شد','ok');render();},
+   'disc-quick'(){const r=dojoQuickAward(id);toast(r.msg,r.ok?'ok':'err');if(r.ok)render();},
    'disc-save'(){const d=window._edit;
      const data={kind:V('d_kind'),title:V('d_title'),description:V('d_desc'),points:Number(V('d_points'))||0,date:V('d_date')};
      if(d.id)update('discipline',d.id,data);
@@ -1686,8 +1779,20 @@ function coreActions(e, el, id, a, rawId){
    'ann-del'(){const a=byId('announcements',id);askDelete(`اطلاعیه «${a.title}» حذف شود؟`,()=>{remove('announcements',id);toast('اطلاعیه حذف شد','ok');render();});},
    'ann-save'(){ if(needAll([['a_title','عنوان و متن الزامی است'],['a_body','عنوان و متن الزامی است']]))return;
      const data={title:V('a_title'),body:V('a_body'),audience:V('a_aud')};
+     /* د.۳ — سطح اهمیت: فقط مقدارهای معتبر؛ نبودِ فیلد (ناشرانِ بدون انتخابگر) = عادی */
+     const sevEl=$('#a_sev');
+     const sev=sevEl?sevEl.value:'normal';
+     if(['normal','urgent','critical'].indexOf(sev)<0){toast('سطح اهمیت معتبر نیست','err');return;}
+     data.severity=sev;
      if(window._annEdit)update('announcements',window._annEdit,data);
-     else insert('announcements',Object.assign({school_id:S.user.school_id||null,created_by:S.user.id,created_at:todayISO()},data));
+     else{
+       /* اطلاعیهٔ اداره: در محدودهٔ ادارهٔ خود (school_id خالی + office_id خود)؛
+          بقیهٔ نقش‌ها مثل پیش (مدرسه‌ای یا سراسری) — د.۳ */
+       const base=S.user.role==='edu_office'
+         ?{school_id:null,office_id:S.user.office_id||null,created_by:S.user.id,created_at:todayISO()}
+         :{school_id:S.user.school_id||null,office_id:null,created_by:S.user.id,created_at:todayISO()};
+       insert('announcements',Object.assign(base,data));
+     }
      closeModal();toast(window._annEdit?'اطلاعیه ویرایش شد':'اطلاعیه منتشر شد','ok');window._annEdit=0;render();},
    /* ── مشاور مدرسه و پیگیری الگوها (دور ۶۳) ── */
    'fu-days'(){S.filters.fu_days=Number(el.dataset.d);render();},
@@ -1778,6 +1883,11 @@ document.addEventListener('click',e=>{
   else if(typeof JD_ACTIONS!=='undefined'&&JD_ACTIONS[a]){e.preventDefault();JD_ACTIONS[a](el,id);}
   else if(typeof FILTER_ACTIONS!=='undefined'&&FILTER_ACTIONS[a]){e.preventDefault();FILTER_ACTIONS[a](el,id);}
   else if(typeof SYNC_ACTIONS!=='undefined'&&SYNC_ACTIONS[a]){e.preventDefault();SYNC_ACTIONS[a](el,id);}
+  else if(typeof TEVAL_ACTIONS!=='undefined'&&TEVAL_ACTIONS[a]){e.preventDefault();TEVAL_ACTIONS[a](el,id);} /* 73-teacher-eval */
+  else if(typeof REGION_ACTIONS!=='undefined'&&REGION_ACTIONS[a]){e.preventDefault();REGION_ACTIONS[a](el,id);} /* 74-region-tools */
+  else if(typeof STAFFGAP_ACTIONS!=='undefined'&&STAFFGAP_ACTIONS[a]){e.preventDefault();STAFFGAP_ACTIONS[a](el,id);} /* 75-staff-gap */
+  else if(typeof MG_ACTIONS!=='undefined'&&MG_ACTIONS[a]){e.preventDefault();MG_ACTIONS[a](el,id);} /* 76-multigrade */
+  else if(typeof RPT_ACTIONS!=='undefined'&&RPT_ACTIONS[a]){e.preventDefault();RPT_ACTIONS[a](el,id);} /* 77-reports */
 });
 // live filters
 document.addEventListener('input',e=>{
@@ -1838,6 +1948,17 @@ document.addEventListener('change',e=>{
     return;
   }
 
+  /* E.1 — فرمِ نمره (هنرستان): تغییرِ نوع ⇒ پنهان/نمایشِ فیلدِ «نمره»
+     یا قسمت‌هایِ تئوری/عملی (gradeKindToggle در 18-modals). */
+  if(id==='g_kind'){
+    if(typeof gradeKindToggle==='function')gradeKindToggle(e.target.value);
+    return;
+  }
+  /* E.9 — فیلترِ تاریخِ ورود در صفحهٔ مراجعین (input date) */
+  if(id==='vis_date'){
+    S.filters.visDate=e.target.value; S.page=1; render();
+    return;
+  }
   /* فرم مدرسه: تیک شاخه ⇒ باز یا بستهٔ شدن فهرست رشته‌های همان شاخه.
      این‌ها شناسه ندارند و با کلاس تشخیص داده می‌شوند، پس پیش از
      بررسی‌های مبتنی بر شناسه می‌آیند. */
@@ -1987,6 +2108,14 @@ document.addEventListener('change',e=>{
     return;
   }
 
+  /* فرم مدرسه: تغییر نوع مدرسه ⇒ تنظیم خودکار چک‌باکس‌های پروفایل
+     قابلیت از سطر پیامد (فاز ۰.۱)؛ کاربر همچنان می‌تواند دستی اصلاح کند */
+  if(id==='m_school_type'){
+    const row=(typeof schoolTypeCaps==='function')?schoolTypeCaps(e.target.value):null;
+    if(row)$$('.m-cap').forEach(c=>{ if(row[c.value]!=null)c.checked=!!row[c.value]; });
+    return;
+  }
+
   /* فرم افزودن کتاب استاندارد */
   if(id==='im_level'){
     const lv=e.target.value;
@@ -2041,6 +2170,19 @@ document.addEventListener('change',e=>{
   if(el.dataset.f==='sc'){S.filters.sc=el.value;S.filters.sd='';S.page=1;render();return;}
   if(el.dataset.f==='term'){S.filters.term=Number(el.value);render();return;}
   if(el.tagName==='SELECT'||el.type==='date'){S.filters[el.dataset.f]=el.value;S.page=1;render();}
+});
+/* ── فعال‌سازیِ کیبوردیِ عناصرِ غیربومیِ data-act (WCAG 2.1.1 Keyboard) ──
+   div/spanهایِ کلیک‌پذیر (مثلِ .nav-item با tabindex=0) با Enter/Space هم
+   باید فعال شوند — رویدادِ click ساختگی به همان مسیرِ event delegation می‌رود. */
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'&&e.key!==' ')return;
+  const t=e.target;
+  if(!t||!t.closest)return;
+  if(/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(t.tagName||''))return; /* بومی‌ها خودشان درست‌اند */
+  const el=t.closest('[data-act]');
+  if(!el||el!==t)return; /* فقط وقتی خودِ عنصرِ فوکوس‌شده data-act دارد */
+  e.preventDefault();
+  el.click();
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){ if($('#modal').innerHTML)closeModal(); else if(S.user)goBack(); }

@@ -628,7 +628,7 @@ const P8_ACTIONS = {
     const colors=['var(--primary-soft)','var(--green-soft)','var(--amber-soft)','var(--purple-soft)'];
     const cmap={}; schools.forEach((n,i)=>cmap[n]=colors[i%colors.length]);
     const periods=[...new Set(slots.map(s=>s.period))].sort((a,b)=>a-b);
-    openModal(`<div class="card-head"><h3>برنامه کامل — ${esc(t.full_name)}</h3><button class="icon-btn" data-act="modal-close">✕</button></div>
+    openModal(`<div class="card-head"><h3>برنامه کامل — ${esc(t.full_name)}</h3><button class="icon-btn" data-act="modal-close" aria-label="بستن">✕</button></div>
       <div class="card-body">
         <div class="row" style="gap:8px;margin-bottom:12px"><span class="badge b-blue">مجموع ${fa(slots.length)} زنگ</span>
         ${schools.map(n=>`<span class="badge" style="background:${cmap[n]};color:var(--text)">${esc(n)}: ${fa(slots.filter(s=>(byId('schools',s.school_id)||{}).name===n).length)} زنگ</span>`).join('')}</div>
@@ -961,6 +961,9 @@ function render(){
     if(main && mainTop) main.scrollTop = mainTop;
     if(winTop) { try { window.scrollTo(0, winTop); } catch(e) {} }
   }
+  /* پاسِ دسترس‌پذیری: ناحیه‌هایِ اسکرول‌شونده فوکوس‌پذیر شوند
+     (axe: scrollable-region-focusable — رفعِ serious دورِ a11y-تعاملی) */
+  if(typeof a11yScrollablePass==='function') a11yScrollablePass(document);
 }
 setTimeout(()=>{
   /* دفترچه را پیش از مولدِ دنیای دمو بخوان: مولد (generateExtras) op
@@ -981,6 +984,9 @@ setTimeout(()=>{
   if(typeof generateAssetsDemo==='function') generateAssetsDemo();
   if(typeof generateSidaDemo==='function') generateSidaDemo();
   if(typeof generateSchoolModeDemo==='function') generateSchoolModeDemo();
+  if(typeof generateTeacherEvalDemo==='function') generateTeacherEvalDemo(); /* ب.۳ */
+  if(typeof generateUrgentAnnDemo==='function') generateUrgentAnnDemo();     /* د.۳ */
+  if(typeof generateStaffPostDemo==='function') generateStaffPostDemo();     /* د.۴ */
   /* loadLog در ابتدای این بلاک اجرا شده — اینجا فقط بازپخش و همگام‌سازی */
   applyLog(); initSync();
 

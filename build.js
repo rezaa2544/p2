@@ -12,6 +12,12 @@
  */
 const fs = require('fs');
 const path = require('path');
+/* Wave 24 (KPI-1): کوچک‌سازیِ محافظه‌کار — حذفِ کامنت/تورفتگی خارج از
+   رشته/تمپلیت/regex؛ هیچ توکن و newlineِ کدی عوض نمی‌شود (ASI امن،
+   assertهای ساختاریِ آزمون‌ها برقرار). جزئیات: tools/minify-source.js
+   (require تنبل — فقط وقتی کش ناقص است بارگذاری می‌شود) */
+let _minify = null;
+const minify = () => (_minify || (_minify = require('./tools/minify-source.js')));
 
 const ROOT = __dirname;
 const SRC = path.join(ROOT, 'src');
@@ -25,17 +31,75 @@ const CSS_ORDER = ['fonts.css', 'base.css', 'mobile.css'];
 // ترتیب فایل‌های JS از روی _order.json خوانده می‌شود
 const JS_ORDER = JSON.parse(read(path.join(SRC, 'js', '_order.json')));
 
+/* ── Wave 24 (KPI-2): کشِ افزایشیِ strip ─────────────────────────────
+   strip کلِ ~1.7MB سورس ≈ ۸۵ms است؛ با کش روی دیسک فقط فایل‌های
+   تغییرکرده دوباره strip می‌شوند. قالبِ کش دوفایلی است تا JSON.parse/
+   stringifyِ یک بلابِ بزرگ (۱۶ms+) حذف شود:
+     .build-cache.meta.json  فهرست {rel,m,s,off,len} + version
+     .build-cache.blob       الحاقِ خروجی‌های strip (برش با off/len)
+   هر دو تولیدی و gitignore؛ خراب/غایب/ناسازگار = بازساختِ کامل
+   (همیشه صحیح، فقط کندتر). env PAYESH_BUILD_NO_CACHE=1 → بدونِ کش. */
+const CACHE_META = path.join(ROOT, '.build-cache.meta.json');
+const CACHE_BLOB = path.join(ROOT, '.build-cache.blob');
+const CACHE_VERSION = 3; /* عوض شود اگر منطقِ strip عوض شد */
+const useCache = !process.env.PAYESH_BUILD_NO_CACHE;
+
+function loadCache(){
+  if (!useCache) return null;
+  try {
+    const meta = JSON.parse(fs.readFileSync(CACHE_META, 'utf8'));
+    if (!meta || meta.version !== CACHE_VERSION || !meta.entries) return null;
+    const blob = fs.readFileSync(CACHE_BLOB, 'utf8');
+    if (blob.length !== meta.blobLen) return null;
+    return { entries: meta.entries, blob };
+  } catch (e) { return null; }
+}
+
 function build() {
+  const cache = loadCache();
+  let cacheDirty = false;
+  const newEntries = {};
+  const newParts = []; /* خروجی‌های strip به‌ترتیب — blob جدید */
+  let newOff = 0;
+  const keep = (rel, m, s, out) => {
+    newEntries[rel] = { m, s, off: newOff, len: out.length };
+    newParts.push(out);
+    newOff += out.length;
+    return out;
+  };
+  /* strip با کش: کلید = مسیر نسبی، اعتبار = mtimeMs+size */
+  const stripped = (rel, abs, which) => {
+    let st = null;
+    try { st = fs.statSync(abs); } catch (e) { /* read پایین‌تر خطا می‌دهد */ }
+    const hit = cache && cache.entries[rel];
+    if (st && hit && hit.m === st.mtimeMs && hit.s === st.size){
+      return keep(rel, hit.m, hit.s, cache.blob.substr(hit.off, hit.len));
+    }
+    const fn = which === 'css' ? minify().stripCss : minify().stripJs;
+    const out = fn(read(abs));
+    cacheDirty = true;
+    return st ? keep(rel, st.mtimeMs, st.size, out) : out;
+  };
+
   const head = read(path.join(SRC, 'head.html'));
   const body = read(path.join(SRC, 'body.html'));
 
   const css = CSS_ORDER
-    .map((f) => read(path.join(SRC, 'styles', f)))
+    .map((f) => stripped('styles/' + f, path.join(SRC, 'styles', f), 'css'))
     .join('');
 
   const js = JS_ORDER
-    .map((f) => read(path.join(SRC, 'js', f)))
+    .map((f) => stripped('js/' + f, path.join(SRC, 'js', f), 'js'))
     .join('\n');
+
+  build._flushCache = () => {
+    if (useCache && cacheDirty){
+      try {
+        fs.writeFileSync(CACHE_BLOB, newParts.join(''));
+        fs.writeFileSync(CACHE_META, JSON.stringify({ version: CACHE_VERSION, blobLen: newOff, entries: newEntries }));
+      } catch (e) { /* کش اختیاری است */ }
+    }
+  };
 
   /* CSP nonce (قرارداد امنیت سرور، بند ۵٫۶٫۲): بیلد جای‌نکهدار می‌کزارد
      و سرورِ واقعی آن را با مقدار تصادفیِ هر درخواست پر می‌گند — بدون
@@ -55,6 +119,7 @@ function build() {
 
 function main() {
   const html = build();
+  if (build._flushCache) build._flushCache(); /* Wave 24: کشِ strip ذخیره */
   const check = process.argv.includes('--check');
 
   if (check) {
@@ -92,11 +157,21 @@ function main() {
   }
 
   fs.mkdirSync(DIST, { recursive: true });
-  const out = path.join(DIST, 'payesh.html');
-  fs.writeFileSync(out, html, 'utf8');
-
+  /* Wave 24 (KPI-2): نوشتنِ بی‌تغییر حذف — اگر محتوا همان است، ننویس
+     (دو نوشتنِ ~۱.۶MB در هر build صرفه‌جویی می‌شود). مقایسه بافری است:
+     خواندنِ باینری + Buffer.equals — بدونِ هزینهٔ decode UTF-8. */
+  const htmlBuf = Buffer.from(html, 'utf8');
+  const writeIfChanged = (fp) => {
+    try {
+      if (fs.statSync(fp).size === htmlBuf.length &&
+          fs.readFileSync(fp).equals(htmlBuf)) return false;
+    } catch (e) { /* غایب → بنویس */ }
+    fs.writeFileSync(fp, htmlBuf);
+    return true;
+  };
+  writeIfChanged(path.join(DIST, 'payesh.html'));
   // خروجی را به‌عنوان index.html ریشه هم به‌روز می‌کنیم (نسخه قابل توزیع)
-  fs.writeFileSync(path.join(ROOT, 'index.html'), html, 'utf8');
+  writeIfChanged(path.join(ROOT, 'index.html'));
 
   const kb = (Buffer.byteLength(html, 'utf8') / 1024).toFixed(1);
   console.log(`✅ ساخته شد: dist/payesh.html  (${kb} KB)`);
@@ -117,8 +192,25 @@ const GUIDE_STAMP_RE = /<meta name="payesh-build" content="([0-9a-f]{12})"\s*\/?
 
 function syncGuide(html, check){
   if(!fs.existsSync(GUIDE)) return;
+  /* Wave 24 (KPI-2): مُهر در <head> است — اول فقط ۸KB اول خوانده می‌شود؛
+     خواندنِ کاملِ فایلِ ~2.4MB فقط وقتی لازم است که مُهر باید عوض شود. */
+  let m = null;
+  try {
+    const fd = fs.openSync(GUIDE, 'r');
+    const buf = Buffer.alloc(8192);
+    const nread = fs.readSync(fd, buf, 0, 8192, 0);
+    fs.closeSync(fd);
+    m = buf.toString('utf8', 0, nread).match(GUIDE_STAMP_RE);
+  } catch (e) { /* fallback به خواندنِ کامل در ادامه */ }
+  if(m){
+    const hash0 = buildHash(html);
+    if(m[1] === hash0){
+      if(check) console.log('✅ راهنما همگام با index.html است.');
+      return; /* مُهر درست است — نه خواندنِ کامل لازم شد نه نوشتن */
+    }
+  }
   const g = read(GUIDE);
-  const m = g.match(GUIDE_STAMP_RE);
+  if(!m) m = g.match(GUIDE_STAMP_RE);
   if(!m){
     if(check){
       console.error('❌ USER_GUIDE.html مُهرِ بیلد ندارد — این meta را به head اضافه کنید:');

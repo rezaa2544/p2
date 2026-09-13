@@ -16,7 +16,11 @@ function viewDashboard(){
   if(u.role==='superadmin'||u.role==='manager')
     return adminDash()
       + (typeof notifyDailyCard==='function'?notifyDailyCard():'')
+      + (typeof visitorDashCard==='function'?visitorDashCard():'') /* E.9 */
       + annCard();
+  /* نگهبان (E.9): داشبوردش میزِ پذیرش است */
+  if(u.role==='guard')
+    return (typeof visitorDashCard==='function'?visitorDashCard():'') + annCard();
   if(u.role==='teacher')return teacherDash()+annCard();
   /* مشاور: نه داشبورد مدیر (دادهٔ سراسری مدرسه) نه داشبورد ولی —
      داشبورد خودش، مبتنی بر صف ارجاع */
@@ -154,7 +158,7 @@ function todayCard(sid,iso){
   var attFA={present:'حاضر',absent:'غایب',late:'با تأخیر',excused:'موجه'};
   var attColor={present:'var(--green)',absent:'var(--red)',late:'var(--amber)',excused:'var(--primary)'};
   return `<div class="card today-card"><div class="card-head"><h3>🌅 امروز</h3>
-    <span class="badge b-blue">${jalali(iso)} — ${DAYS[dow]}</span></div>
+    <span class="badge b-blue">${jalali(iso)} — ${DAYS_FULL[dow]}</span></div>
    <div class="card-body" style="display:grid;gap:12px">
     ${rec
      ?`<div class="row"><span>وضعیت حضور امروز</span><div class="spacer"></div><b style="color:${attColor[rec.status]||'var(--text)'}">${attFA[rec.status]||'—'}</b></div>`
@@ -200,7 +204,7 @@ function tomorrowCard(sid,iso){
         const gear=tomorrowGearFor(sub), sb=subs[s.id];
         const on=checks['p'+s.period]?'checked':'';
         return `<div class="row" style="padding:7px 10px;background:var(--surface-2);border-radius:8px;gap:8px">`
-          + `<input type="checkbox" data-act="tomorrow-check" data-sid="${escAttr(sid)}" data-iso="${escAttr(tmr)}" data-idx="p${s.period}" ${on} />`
+          + `<input type="checkbox" data-act="tomorrow-check" data-sid="${escAttr(sid)}" data-iso="${escAttr(tmr)}" data-idx="p${s.period}" ${on} aria-label="آماده‌سازی زنگ ${escAttr(fa(s.period))} — ${escAttr(sub)}" />`
           + `<span class="badge b-green" style="flex:none">زنگ ${fa(s.period)}</span>`
           + `<b>${esc(sub)}</b>`
           + (sb?`<span class="badge b-amber">🔁 جابه‌جای: ${esc((byId('users',sb.sub_teacher_id)||{}).full_name||'—')}</span>`:'')
@@ -271,7 +275,8 @@ function summaryBlock(sid){
    ${statCard('📊',fa(d.avg.toFixed(2)),'معدل کل','green')}
    ${statCard('🏅',fa(d.rank)+' از '+fa(d.size),'رتبه در کلاس','amber')}
    ${statCard('⚖️',fa(d.points),'امتیاز انضباطی ('+fa(d.disc.length)+' مورد)',d.points>=0?'purple':'red')}</div>
-   <div class="grid g2">
+   ${(typeof internshipProgressHtml==='function')?internshipProgressHtml(sid):''}
+   ${(typeof dojoRecentHtml==='function')?dojoRecentHtml(sid):''}
     <div class="card"><div class="card-head"><h3>وضعیت حضور</h3><span class="badge b-green">${fa(tot?Math.round(cnt('present')/tot*100):0)}٪ حضور</span></div>
      <div class="card-body" style="display:grid;gap:12px">${['present','absent','late','excused','early_exit'].map(k=>`<div><div class="row"><span>${ATT_FA[k]}</span><div class="spacer"></div><b>${fa(cnt(k))} روز</b></div>${bar(cnt(k),tot,ATT_COLOR[k])}</div>`).join('')}</div></div>
     <div class="card"><div class="card-head"><h3>میانگین به تفکیک درس</h3><button class="btn ghost sm" data-act="go" data-r="${escAttr(S.user.role==='student'?'record':'children')}">پرونده کامل</button></div>

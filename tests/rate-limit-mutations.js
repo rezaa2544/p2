@@ -5,18 +5,22 @@
 const fs = require('fs');
 const path = require('path');
 const cp = require('child_process');
+/* BH-mut (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی هرگز بازنویسی نمی‌شود. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('rl-mut-');
 
 const ROOT = path.join(__dirname, '..');
 const RL = path.join(ROOT, 'server', 'rate-limit.js');
+const RDS = path.join(ROOT, 'server', 'redis.js');
 const AUTH = path.join(ROOT, 'server', 'auth.js');
 const SUITE = path.join(__dirname, 'rate-limit-distributed.js');
 
 const UNIT = [process.execPath, SUITE, '--unit-only'];
 const FULL = [process.execPath, SUITE];
 
-function run(argv, timeoutMs) {
+function run(argv, timeoutMs, env) {
   const r = cp.spawnSync(argv[0], argv.slice(1), { cwd: ROOT, timeout: timeoutMs || 240000,
-    encoding: 'utf8', env: Object.assign({}, process.env) });
+    encoding: 'utf8', env: env || Object.assign({}, process.env) });
   return { code: r.status, out: (r.stdout || '') + (r.stderr || '') };
 }
 
@@ -24,8 +28,9 @@ const MUTS = [
   { id: 'M1', file: RL, desc: 'همیشه-مجاز (allowed:true)',
     good: '      allowed: current <= limit,', bad: '      allowed: true,',
     cmd: UNIT, expect: 'RL-b' },
-  { id: 'M2', file: RL, desc: 'بدونِ TTL (پنجره منقضی نمی‌شود)',
-    good: '    if (current === 1) {', bad: '    if (false) {',
+  { id: 'M2', file: RDS, desc: 'بدونِ TTL (پنجره منقضی نمی‌شود)',
+    good: '  if (t === -1 && ttlSeconds > 0) await module.exports.expire(key, ttlSeconds);',
+    bad: '  if (false) await module.exports.expire(key, ttlSeconds);',
     cmd: UNIT, expect: 'RL-f' },
   { id: 'M3', file: AUTH, desc: 'دورزدنِ سقفِ phone در auth',
     good: "    if(!rPh.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
@@ -44,13 +49,8 @@ for (const m of MUTS) {
     survived++;
     continue;
   }
-  fs.writeFileSync(m.file, orig.replace(m.good, m.bad));
-  let res;
-  try {
-    res = run(m.cmd);
-  } finally {
-    fs.writeFileSync(m.file, orig); /* بازگردانیِ حتمی */
-  }
+  kit.mutant(m.file, orig.replace(m.good, m.bad)); /* کپی جدا؛ بدونِ بازگردانیِ دستی */
+  const res = run(m.cmd, undefined, kit.env());
   const red = res.code !== 0 && res.out.indexOf('❌ ' + m.expect) >= 0;
   if (red) { killed++; console.log('  ✅ ' + m.id + ' ' + m.desc + ' کشته شد (' + m.expect + ' قرمز)'); }
   else {
@@ -60,8 +60,9 @@ for (const m of MUTS) {
   }
 }
 
-/* سبزِ نهایی: جهش‌ها واقعاً برگشته‌اند */
+/* سبزِ نهایی: بدونِ env → سورس‌های اصلی */
 const fin = run(UNIT);
+kit.cleanup();
 const green = fin.code === 0;
 console.log('\nrate-limit-mutations: ' + killed + '/4 کشته، ' + survived + ' زنده؛ سبزِ نهایی: ' + (green ? '✅' : '❌'));
 process.exit(survived || !green ? 1 : 0);

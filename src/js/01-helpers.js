@@ -19,8 +19,34 @@ const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>
 
    قاعده: هیچ مقدار پویایی بدون esc یا escAttr وارد innerHTML نشود. */
 const escAttr = v => String(v??'').replace(/[&<>"'`=]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;','=':'&#61;'}[c]));
-const fa = n => (n===null||n===undefined||n==='')?'—':Number(n).toLocaleString('fa-IR',{maximumFractionDigits:2});
-const jalali = iso => { if(!iso) return '—'; try{ return new Intl.DateTimeFormat('fa-IR-u-ca-persian',{year:'numeric',month:'long',day:'numeric'}).format(new Date(iso)); }catch(e){ return iso; } };
+/* Wave 24 (فاز کلاینت): fa/jalali داغ‌ترین توابعِ رندرند (صدها بار در هر
+   صفحهٔ جدولی؛ toLocaleString/Intl هر بار ~۰٫۰۳ms). memoize با Map کران‌دار:
+   ورودی → خروجی قطعی است، پس کش همیشه صحیح است؛ سقف جلوی رشدِ حافظه را
+   می‌گیرد (پاک‌سازیِ کامل در سررسید — ساده و کافی). */
+var _FA_CACHE = new Map(), _FA_CACHE_MAX = 4096;
+const fa = n => {
+  if(n===null||n===undefined||n==='') return '—';
+  var hit = _FA_CACHE.get(n);
+  if(hit !== undefined) return hit;
+  var out = Number(n).toLocaleString('fa-IR',{maximumFractionDigits:2});
+  if(_FA_CACHE.size >= _FA_CACHE_MAX) _FA_CACHE.clear();
+  _FA_CACHE.set(n, out);
+  return out;
+};
+var _JAL_CACHE = new Map(), _JAL_CACHE_MAX = 2048, _JAL_FMT = null;
+const jalali = iso => {
+  if(!iso) return '—';
+  var hit = _JAL_CACHE.get(iso);
+  if(hit !== undefined) return hit;
+  var out;
+  try{
+    if(!_JAL_FMT) _JAL_FMT = new Intl.DateTimeFormat('fa-IR-u-ca-persian',{year:'numeric',month:'long',day:'numeric'});
+    out = _JAL_FMT.format(new Date(iso));
+  }catch(e){ out = iso; }
+  if(_JAL_CACHE.size >= _JAL_CACHE_MAX) _JAL_CACHE.clear();
+  _JAL_CACHE.set(iso, out);
+  return out;
+};
 const todayISO = ()=> new Date().toISOString().slice(0,10);
 const daysAgoISO = d => { const t=new Date(); t.setDate(t.getDate()-d); return t.toISOString().slice(0,10); };
 const DAYS=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه'];
@@ -37,6 +63,25 @@ const TERMS=['نوبت اول','نوبت دوم'];
    اعمال می‌شود — خودِ فهرست قاعده ندارد تا گزینه برای همه
    در دسترس باشد و اعتبارسنجی در محل ثبت باشد. */
 const EXAM_TYPES=['کلاسی','میان‌ترم','پایان‌ترم','عملی','امتحان نهایی'];
-function toast(msg,type=''){const w=$('#toasts');const d=document.createElement('div');d.className='toast '+type;d.textContent=msg;w.appendChild(d);setTimeout(()=>d.remove(),3000);}
+function toast(msg,type=''){const w=$('#toasts');if(!w)return;const d=document.createElement('div');d.className='toast '+type;d.setAttribute('role','status');d.textContent=msg;w.appendChild(d);setTimeout(()=>d.remove(),3000);}
 function empty(emoji,title,desc,btn){return `<div class="empty"><span class="emoji">${emoji}</span><h4>${esc(title)}</h4><div class="small">${esc(desc||'')}</div>${btn?`<div style="margin-top:14px">${btn}</div>`:''}</div>`;}
 function bar(v,max,color){return `<div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,(v/(max||1))*100)}%;background:${color}"></div></div>`;}
+/* ── پاسِ دسترس‌پذریِ ناحیه‌هایِ اسکرول‌شونده (axe: scrollable-region-focusable, serious) ──
+   ناحیه‌ای که overflow دارد ولی فوکوس‌پذیر نیست، برایِ کاربرِ صفحه‌کلید
+   غیرقابل پیمایش است. این پاس بعدِ هر render/openModal رویِ ریشهٔ داده‌شده
+   اجرا می‌شود و به .table-wrap/.vscroll که «واقعاً» سرریز دارند tabindex=0
+   و نقش/برچسبِ ناحیه می‌دهد. idempotent است و DOM را بازنویسی نمی‌کند. */
+function a11yScrollablePass(root){
+  try{
+    (root||document).querySelectorAll('.table-wrap,.vscroll').forEach(function(el){
+      var scrollable = el.scrollHeight>el.clientHeight+1 || el.scrollWidth>el.clientWidth+1;
+      if(scrollable){
+        if(!el.hasAttribute('tabindex')) el.setAttribute('tabindex','0');
+        if(!el.hasAttribute('role')) el.setAttribute('role','region');
+        if(!el.hasAttribute('aria-label')) el.setAttribute('aria-label','ناحیهٔ جدول (با کلیدهای جهت‌نما پیمایش کنید)');
+      }else if(el.getAttribute('tabindex')==='0' && el.hasAttribute('data-a11y-auto')){
+        el.removeAttribute('tabindex');
+      }
+    });
+  }catch(e){}
+}

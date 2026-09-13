@@ -19,10 +19,20 @@ const PHONE_RE = /^09\d{9}$/;
 
 function createSms(ctx){
   const store = ctx.store;
+  const db = ctx.db; /* Wave1-W: آینهٔ پستگرس (تراکنش به ازای هر آیتم) */
   const audit = ctx.audit;
   const sessionFrom = ctx.sessionFrom;
   const sendJson = ctx.sendJson;
   const markDirty = ctx.markDirty;
+
+  /* Wave1-W: آینهٔ اتمیکِ آیتم — شکست، مثلِ sync، برای کلاینت نامرئی است
+     (audit + JSON اعمال‌شده می‌ماند)؛ همهٔ نوشت‌هایِ آیتم در یک تراکنش. */
+  async function mirrorItem(itemOps, where){
+    if(!db || typeof db.persistOpsBatch !== 'function' || !itemOps.length) return;
+    try { await db.persistOpsBatch(itemOps); }
+    catch(e){ audit('sms_mirror_failed', Object.assign({ ops: itemOps.length }, where,
+      { error: String((e && e.message) || e) })); }
+  }
 
   const PROVIDER = process.env.PAYESH_SMS_PROVIDER || '';
   const DRY_RUN = (process.env.PAYESH_SMS_DRY_RUN || '0') === '1';
@@ -67,7 +77,7 @@ function createSms(ctx){
   }
 
   async function apiSend(req, res, body){
-    const s = sessionFrom(req);
+    const s = await sessionFrom(req);
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
     if(s.role !== 'superadmin') return sendJson(res, 403, { ok: false, code: 'forbidden' });
     /* R96 P0-5 — validatorِ صریح (حالا رویِ validate.js سوار است): بدنه =
@@ -133,9 +143,13 @@ function createSms(ctx){
       }
       if(failCode){
         if(!Array.isArray(store.sms_log)) store.sms_log = [];
-        store.sms_log.push({ id: nextId('sms_log'), school_id: q.school_id,
+        const frec = { id: nextId('sms_log'), school_id: q.school_id,
           user_id: null, phone: null, body: q.body, parts: it.cost, status: 'failed',
-          error: failCode, queue_id: qid, created_at: today() });
+          error: failCode, queue_id: qid, created_at: today() };
+        store.sms_log.push(frec);
+        /* Wave1-W: رکوردِ شکست هم به پستگرس می‌رسد (تراکنشِ تک‌عناصری) */
+        await mirrorItem([{ c: 'sms_log', t: 'ins', data: frec }],
+          { school: q.school_id, queue_id: qid, kind: 'fail' });
         audit('sms_fail', { school: q.school_id, n: parents.length, code: failCode });
         out.failed++;
         continue;
@@ -143,19 +157,25 @@ function createSms(ctx){
       /* تصمیمِ ۳: واحدِ هزینه = قطعهٔ اعلام‌شدهٔ درگاه (اختلاف → ترازِ هفتگی) */
       const cost = results.reduce((a, r) => a + (r.parts || parts), 0);
       if(!Array.isArray(store.sms_log)) store.sms_log = [];
+      const itemOps = []; /* Wave1-W: نوشت‌هایِ آیتم — یک تراکنش برایِ همه */
       for(const r of results){
         const dup = store.sms_log.some(l => l.status === 'sent' && l.queue_id === qid && l.user_id === r.parent.id);
         if(dup) continue;                       /* ایدمپوتانس */
-        store.sms_log.push({ id: nextId('sms_log'), school_id: q.school_id,
+        const lrec = { id: nextId('sms_log'), school_id: q.school_id,
           user_id: r.parent.id, phone: r.phone, body: q.body, parts: r.parts,
-          status: 'sent', provider_msg: r.msg, queue_id: qid, created_at: today() });
+          status: 'sent', provider_msg: r.msg, queue_id: qid, created_at: today() };
+        store.sms_log.push(lrec);
+        itemOps.push({ c: 'sms_log', t: 'ins', data: lrec });
       }
       w.balance = Number(w.balance || 0) - cost;
+      itemOps.push({ c: 'sms_wallet', t: 'upd', data: w });
       out.credits_used += cost;
       out.sent++;
       q.status = 'sent';
       q.decided_at = new Date().toISOString();
       q.decided_by = s.id;
+      itemOps.push({ c: 'notify_queue', t: 'upd', data: q });
+      await mirrorItem(itemOps, { school: q.school_id, queue_id: qid, kind: 'send' });
       markDirty();
       audit('sms_send', { school: q.school_id, n: parents.length, parts: cost, credits: cost, dry: DRY_RUN });
     }

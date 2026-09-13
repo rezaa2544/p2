@@ -1,6 +1,9 @@
 # پرامپت جامع و راهنمای واحد پروژه «پایش»
 ### سند انتقال کامل بافتار (Context Handover) + راهنمای برنامه‌نویس + مستندات — در یک فایل
 
+> **یادداشت جایگزینی (ممیزی هماهنگی ۲۰۲۶-۰۹-۱۰):** اعداد برنامه‌ریزی این سند (۵ میلیون کاربر همزمان / ۱۰ میلیون دانش‌آموز) مقدم بر مدل ظرفیت‌اند و در ممیزی با `docs/CAPACITY_MODEL.md` جایگزین شده‌اند: ۱۰ میلیون «کاربر ثبت‌شده» و پیک همزمان ۲٫۵ میلیون. تحلیل‌های درون سند دربارهٔ رفتار نسبی طرح معتبرند؛ برای هر ادعای عددی به مدل ظرفیت رجوع شود.
+
+
 > **دور ۷۳ (۲۰۲۶-۰۹-۰۶): یکپارچه‌سازی.** از این به بعد این فایل **تنها سند مرجع** است:
 > پرامپتِ کلی + راهنمای برنامه‌نویس (که پیش‌تر `CONTRIBUTING.md` بود — حالا بخش ۹)
 > + مستنداتِ معماری و قواعد. اگر چتِ تازه‌ای باز کنید، همین یک فایل کافی است تا
@@ -957,6 +960,308 @@ b.setAttribute('data-act','ics-export'); b.setAttribute('data-id','16'); b.click
   می‌گذرد ولی باز بامپ می‌شود. تست: `tests/occ.js` (شامل دو نوشتِ همزمان →
   دقیقاً یکی ۲۰۰ و یکی ۴۰۹).
 - دروازه‌های هر بند: دودی ۵۴۷/۵۴۷ + `tools/check-authz.js` + سوئیت‌های مرتبط.
+
+### ۰.۵.۲۸ فاز ۰.۳ — تفکیک امتحان نهایی کشوری از داخلی (چت ۱ جانشین) — ۲۰۲۶-۰۹-۰۹
+
+**هدف:** امتحان نهایی کشوری دوازدهم/نهم از امتحان داخلی مدرسه جدا شود —
+هم در قاعدهٔ ورود نمره، هم در کارنامه و گواهی.
+
+- **تک‌منبع حقیقت دست‌نخورده ماند:** `exams.source`
+  (`internal`/`national_final`/`makeup`، از دور ۶۳) و `examTypeOf(e)` نمای
+  دوحالتی (`internal|national`) را از همان مشتق می‌کند.
+  🔴 **انحراف مستند از پرامپت:** ستون `exams.exam_type` ساخته نشد —
+  (۱) ستون دوم یعنی دو منبع حقیقت، (۲) نام `exam_type` روی **grades** از
+  پیش معنای دیگری دارد (`EXAM_TYPES` = کلاسی/میان‌ترم/پایان‌ترم/عملی/
+  امتحان نهایی). استدلال کامل: `docs/EXAM_TYPES_GUIDE.md` §۳.
+- **منشأ نمره:** `grades.source ∈ {internal, national}`. رکورد قدیمی بدون
+  `source` **داخلی** خوانده می‌شود (نه نهایی) و مقدار ناشناخته هم
+  `internal` (fail-closed). کمک‌توابع در `26-curriculum.js`:
+  `gradeSource` · `gradeSourceLabel` · `gradeSourceBadge` ·
+  `nationalGradesOf` · `nationalGpa`.
+- **قاعدهٔ ورود (روی داده، نه فقط نما):** نمرهٔ «امتحان نهایی» را فقط
+  مدیر/سوپرادمین می‌نویسد؛ دبیر نه می‌سازد نه ویرایش می‌کند — گارد در
+  `19-actions-core.js` → `grade-save`. پنهان‌کردن گزینه در `gradeModal`
+  (`_gTypes`) و قفلِ `#g_score` فقط کشف‌پذیری‌اند؛ سئوت T4 مسیر مهاجم
+  (افزودن دستی option و کلیک) را می‌سنجد.
+- **نما:** کارت `nationalGradesCard` در کارنامه (جدول + معدل خودش، فقط
+  وقتی نمرهٔ کشوری باشد) · برچسب روی چیپ نمره · نشان قرمز در
+  `viewGrades` · بخش جداگانهٔ `natBlock` در `transcriptCert`.
+- **تصمیم باز کارفرما:** معدل وزنی گواهی روی همهٔ نمرات ماند (گواهی‌های
+  صادرشده + قفل smoke بند ۱.۶)؛ «معدل نهایی کشوری» کنارش می‌آید نه
+  به‌جایش. سه نقطهٔ تغییرِ آینده در `EXAM_TYPES_GUIDE.md` §۶.
+- **مدل/سرور:** `authz/model.json` بدون تغییر (`source` از پیش در فیلدهای
+  `exams` و `grades` بود) ⇒ `write-perms.json` و `check-authz` دست‌نخورده.
+  ⏳ بدهی باز: enum سمت سرور برای `grades.source` هنوز قفل نشده (فقط سقف
+  طول در `MID_FIELDS`).
+- **آزمون:** `tests/exam-types.js` ۲۷/۲۷ + `tests/exam-types-mutations.js`
+  ۵/۵ کشته (M1 گارد دبیر · M2 منشأ · M3 بخش گواهی · M4 نمای دوحالتی ·
+  M5 فیلتر فرم). دروازه‌ها: smoke ۵۴۷/۵۴۷ · run.js ۳۵/۳۵ · authz ۰ ·
+  `build --check` بیت‌به‌بیت.
+
+### ۰.۵.۳۷ دور ۰۳ (نومَر از ۰.۵.۲۸ پس ازِ ریبیس — ۰.۵.۲۸ با فاز ۰.۳ِ main اشغال است) — E.1: نمره‌های تئوری/عملی هنرستان (grades) — ۲۰-۰۹-۹
+
+شاخه `arena/01a08545-p2`. روی مدلِ `kind`ِ موجود (دور ۶۹) سوار شده و
+هیچ رکورد/رفتارِ پیشینی را نمی‌شکند.
+
+- **فیلدهای تازه در `grades`**: `theoretical_score` / `practical_score`
+  (کسری ۰–۲۰، nullable) + `is_vocational` (بول). `score` همچنان «نمرهٔ
+  نهایی» = **میانگینِ قسمت‌هایِ پرشده** است — پس هر مصرف‌کنندهٔ `score`
+  (معدل، رتبه، هشدار، آمار) خودکار رکوردِ تازه را درست می‌بیند. سه فیلد
+  در `authz/model.json` + قواعدِ تازه در `server/validate.js` (قسمت‌ها مثل
+  `score`؛ `is_vocational` بول) + `write-perms.json` بازنشانی.
+- **فرم (`gradeModal`)**: در کلاس‌هایِ مدرسهٔ توانِ `workshop` فیلدِ
+  «نوعِ نمره» می‌آید: «تئوری» (پیش‌فرض) ⇒ دو قسمتِ تئوری/عملی و فیلدِ
+  «نمره» پنهان؛ «عملی/کارگاهی» ⇒ رفتارِ دور ۶۹ (رکوردِ واحد با همان
+  نمره + هم‌پیکریِ فیلدهای تازه: `practical_score=score`). جابه‌جاییِ
+  فیلدها با تغییرِ نوع: `gradeKindToggle` + شنوندهٔ `change` روی `g_kind`
+  (`19-actions-core`). در مدرسهٔ غیرکارگاهی فرم دست‌نخورده است.
+- **نمایش**: در فهرستِ نمرات دو ستونِ جداگانهٔ «تئوری» و «عملی» فقط برای
+  کلاسِ کارگاهی (`viewGrades`؛ دیدِ دانش‌آموز با `workshopStudent`).
+  `vocationalParts(g)` در `13-grades.js` تنها نقطهٔ تفسیرِ قسمت‌هاست:
+  رکوردِ تازه از خودِ قسمت‌ها؛ رکوردِ کهنهٔ `kind=practical` از
+  `score` (سازگاریِ عقب). چِپِ پروندهٔ دانش‌آموز (`17-student-record`)
+  و کارنامهٔ A4 (`reportCardCert`، هر دو قالب) هم قسمت‌ها + میانگین را
+  نمایش می‌دهند.
+- **دادهٔ نمونه**: در پایهٔ آخرِ هنرستان، یک نمرهٔ تئوریِ ترکیبیِ
+  تئوری ۱۵/عملی ۱۷ (score=۱۶) — قطعی و تکرارپذیر.
+- **تست‌ها**: `tests/vocational-grades.js` (V0–V13، ۱۴ بررسی) +
+  `tests/vocational-grades-mutations.js` (۵/۵ جهش کشته). workshop2 ۱۲/۱۲
+  دست‌نخورده؛ جهش‌هایش ۴/۴ (پیامِ انتظارِ M4 با معنایِ تازه به‌روز شد).
+  دروازه‌ها: دودی ۵۴۷/۵۴۷ + `tools/check-authz.js` + secret-scan +
+  `build.js --check` + `tests/authz-model.js`.
+
+### ۰.۵.۲۹ دور ۱۰۴ — E.9: مدیریت مراجعین (visitors) — ۲۰-۰۹-۹
+
+شاخه `arena/01a08545-p2`. «نسخهٔ سبک»ِ بند ۷ (فقط مدیر، دو فیلد) به
+مشخصاتِ کاملِ E.9 ارتقا خورد — فامیلِ `visitors` از قبل در db/
+schema/sync بود؛ این نسخه لایه‌های تازه را زد.
+
+- **فیلدهای تازه:** `national_id`/`phone`/`visiting_person` (اختیاری)
+  + `status:'in'|'out'` (در رکوردِ تازه صریح؛ `visitorStatus(v)` برای
+  رکوردهای کهنه از `out_at` مشتق می‌کند — سازگاریِ عقب بدونِ مهاجرت).
+  `STATUS_ENUMS.visitors` در `server/validate.js` + whitelist در
+  `model.json` + بازتولیدِ `write-perms.json` و `schema.sql`.
+- **دسترسیِ سه‌سطح:** مدیر + **نگهبان** (`role=guard` — نقشِ تازه
+  سراسری: `USER_ROLES` سرور، `NAV.guard`، گزینهٔ «نگهبان/پذیرش» در
+  فرمِ کاربرِ سوپرادمین = «مجوزِ تفویضی») ⇒ ثبت/خروج + مشاهده؛
+  **معاون** (کاربرِ `role=manager` با عنوانِ «معاون» — در این برنامه
+  معاون نقشِ جدا ندارد) ⇒ فقط‌خوان (گاردِ عنوان در `visitorWriteOk`
+  روی داده)؛ سایرِ نقش‌ها ⇒ هیچ (گاردِ `canRoute` + `viewVisitors` —
+  **اصلاحِ نشتِ پیشین**: مسیرِ مستقیمِ hash برایِ دبیر/دانش‌آموز
+  قبلاً باز بود).
+- **UI:** فرمِ ورود با پنج فیلد (نام اجباری)، دکمهٔ «خروج» در کنارِ
+  ردیفِ حاضر، جستجویِ زندهٔ نام (`data-f`) + فیلترِ تاریخ
+  (`change` روی `vis_date`)، `visitorDashCard` روی داشبوردِ
+  مدیر/نگهبان (مراجعین امروز + درِ حالِ حضور).
+- **دادهٔ نمونه:** ۳ رکوردِ قطعی (بدونِ rng/زمانِ اجرا — نسخهٔ پیشین
+  `new Date()` داشت) با `visiting_person`.
+- **تست‌ها:** `tests/visitors2.js` (V0–V12، ۱۳ بررسی) +
+  `tests/visitors-mutations.js` (۵/۵ کشته). دروازه‌ها: دودی ۵۴/۵۴۷ +
+  check-authz + secret-scan + `build.js --check` + authz-model ۲۴/۲۴.
+- **نکته:** بازتولیدِ `schema.sql` در هر seed، created_at‌هایِ کاملِ
+  دادهٔ نمونه را با ساعتِ seed بازنویسی می‌کند (driftِ ذاتی) — تفاوتِ
+  بزرگِ diff عادی است؛ تغییرِ واقعی فقط DDLِ visitors + ۳ رکورد.
+### ۰.۵.۳۰ دور ۱۰۵ — Wave 1 (بخش دوم): انتقال Writes و Transactions به PG — ۲۰-۰۹-۹
+
+شاخه `arena/01a08545-p2` (session-pin — پیشنهادِ `feat/wave1-writes-chat3`
+قابلِ اجرا نبود؛ انحراف در گزارشِ سشن ثبت شد). طرح:
+`docs/POSTGRESQL_MIGRATION_PLAN.md` — بخش دوم «منبعِ حقیقتِ نوشت‌ها».
+
+- **اسنکواری کامل:** `docs/WAVE1_WRITES_INVENTORY.md` — هر نوشتِ سمتِ سرور
+  با وضعیتش: PG اتمیک / PG best-effort / فقط-JSONِ سازِ‌عملکرد.
+- **sms (`server/sms.js`):** نوشت‌هایِ هر آیتم (sms_log + sms_wallet +
+  notify_queue در موفقیت؛ رکوردِ `failed` در شکست) حالا با
+  `persistOpsBatch` در **یک تراکنش** (`mirrorItem`). شکستِ آینه برای
+  کلاینت نامرئی (audit `sms_mirror_failed`) — الگویِ P1-14.
+- **sync (`server/sync.js`):** نوتیفیکیشن‌هایِ مشتقِ چهار hook
+  (conflict/leaves/chat/corrections) به آرایهٔ `derived` می‌روند و
+  `mirror.concat(derived)` در **همان تراکنشِ mirror** می‌نشیند.
+- **delete-service + outbox:** حذفِ نرم در PG حالا `db.transaction` است —
+  `DELETE` + رویدادِ `server_outbox` در یک تراکنش (all-or-nothing).
+  `outbox.append(event, client)` با client اختیاری: داخل تراکنشِ فراخوان
+  (خطا می‌پردازد تا ROLLBACK)، بدون client اتصالِ جدا (رفتارِ پیشین).
+- **تصمیمِ شناختی:** idهایِ sms همچنان max+1 محلی است — `NAMESPACES` در
+  `ids.js` فقط `{attendance,classes,grades,users}` دارد؛ `ON CONFLICT (id)`
+  در PG از برخورد جلوگیری می‌کند. عملیات‌هایِ چندمرحله‌ای از batchِ sync
+  می‌روند (اتمی‌ک در سطحِ batch)؛ REST routes تک‌رکوردی‌اند (best-effort).
+- **تست‌ها:** `tests/wave1-writes.js` (W1…W7، ۱۴ بررسی — تراکنش/فراخوانیِ
+  آینه با pool/clientِ جعلی) + `tests/wave1-writes-mutations.js`
+  (MW1…MW5 — همه کشته). دروازه‌ها: دودی ۵۴/۵۴۷ + check-authz +
+  secret-scan + `build.js --check` + رگرسیونِ کاملِ سوئیت‌هایِ سرور.
+
+### ۰/۵/۳۱ دور ۱۰۶ — Wave 6: Redis و Distributed State (Audit و تکمیل) — ۲۰-۰۹-۹
+
+شاخه `arena/01a08545-p2`. Auditِ همهٔ stateهایِ حیاتی + تکمیلِ دو شکاف:
+
+- **اسنکواری کامل:** `docs/WAVE6_REDIS_AUDIT.md` — ماتریسِ state/کلید/TTL/
+  اتمی‌بودن. همهٔ stateهایِ توزیع‌شده (OTP، rate-limit، revocation،
+  idempotency، cache، lock) روی Redis با TTL؛ **در تولید هیچ فال‌بکِ
+  حافظه‌ای نیست** (P0-13: بدونِ ردیسِ زنده سرور استارت نمی‌کند و
+  `/api/health` ⇒ 503). `otp.json` فقط در حالتِ توسعهٔ بدونِ ردیس مسیرِ
+  حیاتی است.
+- **شکاف ۱ (رفع شد):** rate-limitِ WAF (`cache.checkRateLimit`) با
+  GET+SET غیراتوم بود ⇒ زیر burst سقف رد می‌شد. حالا `incrWithTtl`
+  (INCR+EXPIRE اتمیک) — همان کلید/TTL/قرارداد.
+- **شکاف ۲ (رفع شد):** نگهبانِ شمارشِ شناسه (R97) درون‌فروشگاهی بود
+  (چرخشِ حمله بین نمونه‌ها شمارش را صفر می‌کرد) + `__auth.enum` بدونِ
+  GC در payesh.json رشدِ بی‌پایان داشت. حالا شمارنده روی
+  `payesh:enum:<jti>` با TTL=پنجرهٔ ۱۰دقیقه؛ مرحلهٔ REVOKE علاوه بر
+  ابطالِ محلی، denylistِ Redis (`revocation.revokeSession`) را هم می‌زند.
+  `sendJsonCounting` (callbackِ syncِ ۷ ماژول) بدونِ تغییرِ قرارداد؛
+  شمارش async و بدونِ مسدودکردنِ پاسخ.
+- **تست‌ها:** `tests/wave6-redis.js` (R1…R8، ۲۲ بررسی — fake clientِ
+  سازگار با قرارداد: mini-redis با TTL + اسکرپت‌هایِ معروف + ثبتِ
+  دستورات؛ R7 readiness با کودفرزند و `REDIS_URL`ِ نالایق) +
+  `redis.__setClientForTests` (الگویِ `db.__setPoolForTests`).
+- **رفعِ پیشینه:** الگوهایِ M3–M6 در `otp-ratelimit-mutations.js` با
+  کدِ پیشینِ «R dist» الگوبرداری نمی‌شدند (پیدا نشد) — به خطِ اجرایِ
+  فعلیِ auth.js (`if(!rX.allowed) …`) منتقل شدند: 7/7.
+- **pending (ثبت‌شده):** ردیسِ زنده در ساندباکس نیست — اثبات با
+  clientِ جعلیِ قراردادسازگار؛ اتصالِ واقعیِ CI pending.
+
+### ۰/۵/۳۲ دور ۱۰۷ — Wave 11: Cache (TTL، invalidation، stampede protection) — ۲۰-۰۹-۹
+
+شاخه `arena/01a08545-p2`. اسنکواری + تکمیلِ استراتژی کشینگ (مقیاسِ ملی):
+
+- **اسنکواری:** `docs/WAVE11_CACHE_STRATEGY.md` — L1 (فرایند) + L2 (Redis)
+  + ایندکسِ انقضا + single-flight. هیچ کلیدِ کشِ دائمی نیست.
+- **شکاف ۱ (رفع شد):** L1 بی‌سقف بود (نشتِ حافظه) ⇒ **LRU با سقف**
+  (`PAYESH_CACHE_L1_MAX`، پیش‌فرض ۱۰٬۰۰۰) + TTL 60s برایِ هر ورودی.
+- **شکاف ۲ (رفع شد):** انقضایِ ناقصِ L2 — `invalidateSchool` فقط
+  L1-resident‌ها را از L2 پاک می‌کرد (بقیه تا TTL کهنه می‌ماندند) و
+  رویدادِ `user` اصلاً L2 را نمی‌زد ⇒ ایندکسِ مشترکِ
+  `payesh:cache:school:<sid>` (SADD هنگامِ کش‌کردن) + `purgeSchoolL2` در
+  انقضایِ school و شنوندهٔ pub/sub + انقضایِ L2 در رویدادِ user.
+- **شکاف ۳ (رفع شد):** REST routes (۵ فایل، ۱۶ نقطه نوشت: ins/upd/del)
+  کش را نمی‌زدند (فقط sync می‌زد) ⇒ همه با `invalidateCollection` مجهز.
+- **شکاف ۴ (رفع شد):** stampede — miss هم‌زمانِ N بار ⇒ N build ⇒
+  `cache.withSingleFlight` (هر کلید در هر فرایند یک build) + مسیرِ
+  bootstrap پوشانده شد.
+- **تست‌ها:** `tests/wave11-cache.js` (C1…C6، ۲۰ بررسی — fake clientِ
+  قراردادسازگار با Set/TTL؛ C6 = stampede روی route واقعی: ۲ هم‌زمانِ
+  سرد ⇒ یک set + `cached:true` در سوم).
+- **توسعهٔ redis.js:** `sAdd`/`sMembers`/`sRem` با فال‌بکِ حافظه.
+- **pending:** ردیسِ زنده در ساندباکس نیست (fake قراردادسازگار؛ CI pending).
+
+### ۰/۵/۳۳ دور ۱۰۸ — Wave 15: Health / Deployment (Liveness/Readiness/Health + Graceful Shutdown) — ۲۰-۰۹-۹
+
+شاخه `arena/01a08545-p2`. راهنمایِ کامل در `docs/DEPLOYMENT_GUIDE.md` (مکملِ DEPLOY.md).
+
+- **سه endpoint، سه رفتارِ عمدی:** `/api/liveness` (همیشه 200 — فرایند زنده؛
+  عمداً وابستگی نمی‌بیند تا طوفانِ ری‌استارت نشود) · `/api/readiness`
+  (200 فقط وقتی store+DB+Redis آماده‌اند؛ **`PAYESH_ENV=production` یا
+  `NODE_ENV=production` + Redis قطع ⇒ 503**؛ در حینِ drain فوراً 503 تا
+  LB ترافیکِ تازه نفرستد) · `/api/health` (کدِ وضعیت روی درگاهِ
+  **P0-13 قدیمی می‌ماند** — قراردادِ server13/T2b دست نمی‌خورد — و بدنه
+  گزارشِ کامل می‌گیرد: `db{driver,alive,pool{total,idle,pending}}`،
+  `redis`، `queue{outbox,notify_pending,in_flight}`، `cache_l1`،
+  `uptime_s`، `memory`).
+- **Graceful Shutdown (SIGTERM/SIGINT):** draining ⇒ closeIdleConnections +
+  server.close (اتصالِ تازه = ECONNREFUSED) ⇒ در انتظارِ in-flight (poll
+  50ms؛ مهلت `PAYESH_SHUTDOWN_TIMEOUT_MS` پیش‌فرض 10s) ⇒ persistStore +
+  db.close + redis.close ⇒ **exit 0**. نگهبانِ زور: drain فراتر از مهلت
+  +2s ⇒ exit **1**. در‌حالت‌پرواز **کامل می‌شود، نه abort**. شمارشِ
+  in-flight با `res 'close'` (پس از flush کامل، حتی keep-alive).
+- **حساسیتِ جهش (M18):** خط `if(BACKUP_EVERY_MS > 0)
+  admin.startAutoBackup(BACKUP_EVERY_MS);` باید **verbatim** بماند — جهشِ
+  M18 روی همین الگو است (تایمر unref است؛ خروج را نگه نمی‌دارد).
+- **تست:** `tests/wave15-health.js` (10 بررسی: H1–H7 درون‌فرایند + S1–S3
+  فرایندِ فرزند با سیگنالِ واقعی — الگویِ server11-child) + hookِ
+  فقط-تست `/api/__slow` (env-gated: `PAYESH_TEST_SLOW_MS` — در production
+  هرگز تنظیم نشود).
+- **سازگاری:** `server-mutations` روی بازهٔ پیشین (17/20 — M1/M14/M15
+  پیشین). smoke 547/547، check-authz 0، secret-scan 11/11، server13 9/9
+  (قراردادِ health در production).
+
+### ۰/۵/۳۴ دور ۱۰۹ — Wave 18: تست بار ملی (دادهٔ 10M + چهار سناریو) — ۲۰-۰۹-۹
+
+شاخه `arena/01a08545-p2`. طرحِ کامل در `docs/WAVE18_LOAD_TEST_PLAN.md`
+(مکملِ LOAD_TESTING_PLAN.mdِ فاز ۵؛ اسکریپت‌هایِ k6 از قبل موجود بودند).
+
+- **`tools/generate-national-dataset.js`:** تولیدِ دادهٔ ملی —
+  10,000,000 کاربر (8M دانش‌آموز = 80/مدرسه، 1M دبیر = 1/کلاس، 900k ولی
+  ≈11٪ فعال‌سازی، 99.9k مدیر، 99 اداره، 1 سوپرادمین) + 100,000 مدرسه +
+  1,000,000 کلاس + 50,000,000 حضور (6.25 روز/دانش‌آموز) + 20,000,000 نمره
+  (2.5 آزمون) + 900k parent_link. خروجی CSV (PG COPY + k6) + stats.json
+  (با sha256) + README. **قطعی** (seed ⇒ بایت-به-بایت) و **پخش‌شده**
+  (chunked، پیک ~50MB؛ مقیاسِ کامل ≈10GB در ~3 دقیقه؛ فقط stdlib).
+- **اصولِ داده:** نیدها با رقمِ کنترلِ معتبر ولی **دو-یک-یک** از id
+  ((K + id·M) mod 10^n با M نسبت-اولِ 10^n) — تکرارناپذیر در مقیاسِ کامل
+  (پیش‌تر slice از 11 رقم بود که با birthday paradox در 10M کولایز می‌زد).
+  تلفن‌ها '09'+10 رقمِ دو-یک-یک. همهٔ داده‌ها مصنوعی (هیچ PII واقعی).
+- **CLI:** `--plan` (پیش‌فرضِ ملی = جدولِ 10M، بدونِ نوشتن)، `--scale n`
+  (پیش‌فرضِ تولید = 0.001 ≈ 10k کاربر برای CI)، `--seed`، `--out`،
+  `--fast`، `--quiet`.
+- **چهار سناریویِ الزامی** (مطابقت با k6ِ موجود): بار عادی (scenarios
+  01/02/03، 15k RPS) · بار اوج (`suites/spike-mehr-test.js` — جهش 10x) ·
+  فشار (`saturation-test.js` تا نقطهٔ شکست + SLOهای guardrail) · چند روزه
+  (`soak-24h-test.js` — نشت حافظه: شیبِ heap ≈ صفر).
+- **تست:** `tests/wave18-load-test.js` **38/38** (planِ دقیقِ ملی، سازگاری
+  stats/CSV، اعتبارِ نید/تلفن، تکرارناپذیری، FKها، determinism، کشفِ
+  زیرساختِ k6، مستندات).
+- **pending (صادقانه):** اجرایِ واقعی نیازمندِ PG/Redis/k6 زنده — در این
+  ساندباکس فقط طراحی + تولیدِ داده + اعتبارسنجی (وضعیتِ «در انتظارِ
+  زیرساخت» در طرح ثبت شده). `data/national/` در .gitignore است.
+
+### ۰/۵/۳۵ دور ۱۱۰ — Wave 19: تست آشوب و شکست (5 سناریو + ابزار) — ۲۰-۰۹-۹
+
+شاخه `arena/01a08545-p2`. طرحِ کامل در `docs/WAVE19_CHAOS_PLAN.md`.
+
+- **۵ سناریو** (هرکدام با فرضیهٔ از-معماری، نه حدس): `kill-api` (SIGKILL —
+  crash consistency) · `redis-down` · `pg-down` · `net-latency` (tc netem) ·
+  `disk-full` (fallocate با سقفِ ایمنی).
+- **نقشهٔ رفتارِ شکست (از کد):** store = اصلی (atomik tmp+rename ⇒ هرگز
+  خراب نمی‌شود؛ persist هر 2s) · PG = آینه (sync: mirror شکست ⇒ audit
+  `sync_mirror_failed` + کلاینت بی‌خبر 200؛ فقط DELETE-REST ⇒ 500 + audit،
+  tombstone می‌ماند، retry ایدمپوتان) · Redis = کش/state گذرا (rate-limit
+  **fail-open**؛ خوانش‌ها فال‌بکِ حافظه؛ OTP state در حافظه؛ **صفر data
+  loss**) · Wave 15: readiness حینِ fault/drain ⇒ 503، liveness ⇒ 200.
+- **یافتهٔ صادقانه (مستند):** بعد از قطعِ طولانیِ Redis، retryStrategyِ
+  ioredis تمام شده ⇒ **restart فرایند برایِ بازپس‌گیری لازم** (پیشنهادِ
+  بهبود: retryStrategy پایدار).
+- **`tools/chaos-test.sh`:** DRY_RUN پیش‌فرض (ایمن) / `--live` با envهایِ
+  الزامی؛ هر سناریو: snapshot before/after (3 پروب) + timeline.csv (هر 5s)
+  + summary.txt با **PASS/FAIL خودکار** روی فرضیه‌ها؛ خروجی
+  `tests/chaos-output/` (gitignore). ترافیکِ هم‌زمان: k6
+  `suites/chaos-redis-test.js` (فاز ۵: بدون 500 + p95<400).
+- **تست:** `tests/wave19-chaos.js` **28/28** (syntax/help/DRY_RUN همهٔ 5
+  سناریو + 20 فایل، سند، سازگاریِ فرضیه‌ها با قوانینِ پروژه، gitignore،
+  اتصالِ k6).
+- **pending (صادقانه):** اجرایِ LIVE نیازمندِ محیطِ چند-نمونهٔ زنده
+  (API+Redis+PG+root برای tc/fallocate) — در ساندباکس طراحی + ابزار +
+  DRY_RUN کامل است.
+
+### ۰/۵/۳۶ دور ۱۱۱ — Wave 20: نهایی‌سازی Arena 5 (QA/Reliability) + دو نقصِ date-bound — ۱۰-۰۹-۱۰
+
+شاخه `arena/01a08545-p2`. سندِ مرجع: `docs/ARENA5_QA_RELIABILITY.md`.
+
+- **Arena 5 (ADDENDUM):** استراتژی تست + ۹ مسئولیت (Test Strategy/Regression/
+  Load/Stress/Spike/Soak/Chaos/Recovery/Release Gate) در یک سندِ واحد با
+  معیارِ پذیرش و **Release Gate** (گیت‌هایِ خودکار + G1–G8 پیشِ Go-Live).
+- **Recovery Validation تکمیل شد:** `tests/arena5-recovery.js` **32/32** —
+  R1 crash consistency (SIGKILL واقعی: store سالم + داده ماندگار + restart
+  + نوشتنِ زنده + session از crash عبور) · R2 restore drill (backup→فساد→
+  restore + audit) · R3 **Redis failover/failback با ioredis واقعی** (503
+  حینِ مرگ؛ **failback بدونِ restart در پنجرهٔ retry**؛ قطعِ طولانی ⇒ 503
+  ماندگار ⇒ restart) · R4 قراردادِ PG-failback (استاتیک).
+- **یافتهٔ R3 (مهم برایِ fake/سبک‌وزنِ RESP):** ioredis 6 handshake =
+  `HELLO 3` + `CLIENT SETINFO` + ready-check با `INFO` (loading:0)؛ خطای
+  `unknown command 'HELLO'` ⇒ down خودکار به RESP2.
+- **دو نقصِ date-bound که در چهارشنبه ۱۴۰۵/۰۶/۲۰ خودبه‌خود ظاهر شدند**
+  (dow پنجشنبه=5 خارج ازِ دامنهٔ جدولِ ۵روزهٔ دمو):
+  1. `02-demo-data.js`: `slot.teacher_id` روی undefined ⇒ crash بوتِ دمو
+     (smoke 405/547). رفع: فِلبکِ period + نگهبانِ قطعی
+     `tests/arena5-demo-guard.js` (4/4، وابسته بهِ روزِ هفته نیست).
+  2. تستِ smoke ۱.۷ (today-card): زنگ را به `db.classes[0]` می‌زد در حالی
+     که آزمون‌های پیشین ثبت‌نامِ دانش‌آموز را به کلاس ۲ برده بودند ⇒ روی
+     روزِ غیرمدرسه (بدونِ ردیفِ دمو) شکستِ دروغین. رفع: `classOf(sid)`.
+     (بُرنگِ واقعیِ دوگانه: `DAYS[dow]` در پنجشنبه/جمعه undefined بود ⇒
+     badge با `DAYS_FULL`.)
+- **نکتهٔ فرآیندی:** نقص‌هایِ date-bound با گذرِ یک روز خودشان را نشان
+  می‌دهند؛ گیتِ smoke باید در **هر روزِ هفته** قابلِ اجرا بماند (نگهبانِ
+  demo-guard همین کار را به‌صورتِ قطعی می‌کند).
+- گیت‌ها: smoke **547/547** (در چهارشنبه!)، check-authz 0، secret-scan
+  11/11، build --check، arena5-recovery 32/32، arena5-demo-guard 4/4.
 
 ### ۰.۵.۱۹ دور ۷۹ — رفعِ دو باگِ واقعی + تکمیلِ ششِ باقی‌مانده (2026-09-06)
 
@@ -5361,3 +5666,33 @@ exit(1) با «Error: Production requires valid CA certificate».
   `~/.payesh_gh_token`)، identity = `Payesh Dev <dev@payesh.local>`.
   رفرانس‌هایِ tracking ممکن است کهنه بمانند — `git ls-remote` را
   پیش از هر resetِ وابسته به remote بزنید.
+
+#### 6) بندهای ب.۳ و د.۲ تا د.۴ — ماژول‌ها و درس‌های آزمون (چت ۴)
+- **ماژول‌ها:** `73-teacher-eval.js` (ارزشیابی ناشناس معلم — ب.۳)،
+  `74-region-tools.js` (کارت امتیازی منطقه — د.۲)، `75-staff-gap.js`
+  (کمبود نیروی انسانی — د.۴). تغییرات د.۳ در
+  `16-announcements.js`/`18-modals.js`/`04-queries.js`/`19-actions-core.js`
+  و دروازهٔ سرور در `server/sync.js` است.
+- **د.۳:** `announcements.severity` ∈ normal/urgent/critical (نبودِ فیلد =
+  عادی ⇒ سازگاری با گذشته) + `office_id`. مدرسه فقط اطلاعیهٔ ادارهٔ
+  محدوده‌اش را می‌بیند (`officeForSchool` در `04-queries.js` — خاص‌ترین
+  اداره می‌برد: منطقه > شهرستان > استان). دروازهٔ سرور: کارشناس فقط
+  اطلاعیهٔ دارای `office_id` ادارهٔ خودش را درج/ویرایش/حذف می‌کند؛
+  رکوردهای بدون `office_id` هرگز رد نمی‌شوند (پروب‌های قدیمی سازگارند).
+- **د.۴:** مجموعهٔ تازهٔ `staff_posts` چک‌لیست کامل می‌خواهد: ثبت در
+  `02-demo-data.js` (db اولیه)، `authz/model.json`، تولید `write-perms`،
+  مهاجرت + `seed.js`، `ACTION_ROLES`، اسلات `_order.json`، دروازهٔ دامنهٔ
+  سرور در `inScope` از `store_get()` استفاده کند (متغیر `store` در آن
+  اسکوپ وجود ندارد)، و به‌روزرسانی `NAV_EXPECT` در `tests/smoke.js` برای
+  هر نقشِ دارای منوی تازه.
+- **درس‌های هارنس آزمون (مهم برای سئوت‌های جهانِ مصنوعی):** بدنهٔ
+  `test()`ها از صف آسنکرون اجرا می‌شود؛ هر ساخت/بازگردانیِ دنیا
+  (مثل `synthWorld`) یا هر پاک‌سازیِ موقتِ اسپان‌شده باید خودش یک گامِ
+  صف باشد — فراخوانی هم‌زمان پیش از اجرای صف، جهان را پیش از آزمون
+  برمی‌گرداند. بکاپِ مجموعه‌ها با `.slice()` (ارجاع مشترک، تغییرها را هم
+  برمی‌گرداند). عملیات `ins` در `/api/sync` بدون `op.id` رد می‌شود
+  (کلاینت همیشه id می‌سازد). آزمون‌های سروری: `await __seq` پیش از
+  `finally` تا پاک‌سازی بعد از اجرا بیاید؛ و پیش از اسپان، پورت را از
+  سرورهای مانده آزاد کنید.
+- **سئوت‌ها:** `tests/teacher-eval*.js` (۱۲+۱۳+۵)، `tests/region-scorecard*.js`
+  (۱۴+۶)، `tests/urgent-ann*.js` (۱۳+۶)، `tests/staff-gap*.js` (۱۶+۷).

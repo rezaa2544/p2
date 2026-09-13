@@ -1,0 +1,102 @@
+/* ═══════════════════════════════════════════════════════════════════
+   server/worker.js — ویو ۸: کارگرِ پردازشِ صندوق رویدادها (Outbox)
+   ───────────────────────────────────────────────────────────────────
+   - رویدادهای `pending` را از `store.outbox` می‌خواند و به هندلرِ
+     ثبت‌شده برای `type` آن‌ها می‌سپارد.
+   - موفقیت ⇒ `status='processed'` + `processed_at`.
+   - شکست ⇒ `retry_count++` و `last_error`؛ پس از `maxRetries` تلاش
+     ⇒ `status='failed'`. رویداد در شکست **هرگز حذف نمی‌شود** — برای
+     بازرسی و تلاشِ دستی باقی می‌ماند (داده نمی‌میرد).
+   - رویدادهای بدون هندلر دست نمی‌خورند (کارِ مصرف‌کننده‌های دیگرند).
+   - در برابر ورودِ دوباره محافظت شده (یک رویداد هم‌زمان دو بار پردازش
+     نمی‌شود) و برای تستِ قطعی `tick()` به‌صورت دستی هم قابل صداست.
+   - زمان‌بندی: `intervalMs` (پیش‌فرض ۱۰۰۰) — تلاشِ بعدی در تیکِ بعد
+     (بک‌آف ساده؛ برای بارهای سنگین صفِ اختصاصی جدا شود).
+   ═══════════════════════════════════════════════════════════════════ */
+'use strict';
+
+/* ویو ۱۴ (Observability) — نتیجهٔ پردازشِ هر رویداد به‌صورت metric.
+   metrics.js هرگز خطا نمی‌دهد (R1)، پس رفتارِ کارگر تغییر نمی‌کند. */
+const metrics = require('./metrics');
+
+/**
+ * @param {object} opts
+ * @param {object} opts.store      — فروشگاه (آرایهٔ `store.outbox` منبع صف است)
+ * @param {object} opts.outbox     — نمونهٔ ساخته‌شده از server/outbox (برای mark)
+ * @param {object} opts.handlers   — نگاشتِ `type → async (evt) => {}`؛ کلیدِ
+ *                                   ویژهٔ '*.deleted' برای همهٔ رویدادهای حذف می‌خورد.
+ * @param {number} [opts.intervalMs=1000]
+ * @param {number} [opts.maxRetries=5]
+ */
+function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
+  handlers = handlers || {};
+  intervalMs = Number(intervalMs) > 0 ? Number(intervalMs) : 1000;
+  maxRetries = Number.isFinite(Number(maxRetries)) ? Number(maxRetries) : 5;
+
+  let timer = null;
+  let running = false;
+  const inFlight = new Set();
+
+  function handlerFor(evt) {
+    if (!evt || !evt.type) return null;
+    if (handlers[evt.type]) return handlers[evt.type];
+    if (String(evt.type).slice(-8) === '.deleted' && handlers['*.deleted']) return handlers['*.deleted'];
+    return null;
+  }
+
+  /* یک دور پردازش — برای تست به‌صورت دستی هم صدا زده می‌شود */
+  async function tick() {
+    if (running) return { processed: 0, failedDelta: 0, skippedBusy: true };
+    running = true;
+    let processed = 0, failedDelta = 0;
+    try {
+      const events = Array.isArray(store.outbox) ? store.outbox : [];
+      for (const evt of events) {
+        const status = evt.status || 'pending'; /* سازگاری با گذشته */
+        if (status !== 'pending' || inFlight.has(evt.id)) continue;
+        const h = handlerFor(evt);
+        if (!h) continue; /* این رویداد کارِ این کارگر نیست */
+        inFlight.add(evt.id);
+        try {
+          await h(evt);
+          await outbox.mark(evt.id, {
+            status: 'processed',
+            processed_at: new Date().toISOString(),
+            last_error: null
+          });
+          processed++;
+          metrics.inc('payesh_worker_events_total', { outcome: 'processed' });
+        } catch (err) {
+          const rc = (Number(evt.retry_count) || 0) + 1;
+          const patch = {
+            retry_count: rc,
+            last_error: (err && (err.message || err.code)) || 'error'
+          };
+          if (rc > maxRetries) { patch.status = 'failed'; failedDelta++; }
+          await outbox.mark(evt.id, patch);
+          /* برچسب از مجموعهٔ بسته (retry/failed)؛ متن خطا هرگز label نیست. */
+          metrics.inc('payesh_worker_events_total', { outcome: patch.status === 'failed' ? 'failed' : 'retry' });
+        } finally {
+          inFlight.delete(evt.id);
+        }
+      }
+      return { processed, failedDelta };
+    } finally {
+      running = false;
+    }
+  }
+
+  function start() {
+    if (timer) return;
+    timer = setInterval(() => { tick().catch(() => {}); }, intervalMs);
+    if (timer.unref) timer.unref();
+  }
+
+  function stop() {
+    if (timer) { clearInterval(timer); timer = null; }
+  }
+
+  return { start, stop, tick };
+}
+
+module.exports = { createWorker };

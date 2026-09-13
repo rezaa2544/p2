@@ -47,9 +47,9 @@
  "19-actions-schedule.js",
  "19-actions-admin.js",
  "19-actions-staff.js",
-  "19-actions-training.js",
-  "19-actions-drills.js",
-  "19-actions-donations.js",
+ "19-actions-training.js",
+ "19-actions-drills.js",
+ "19-actions-donations.js",
  "20-communication-finance.js",
  "21-exams-teachers-family.js",
  "22-jalali-calendar.js",
@@ -86,6 +86,12 @@
  "69-staff-attendance.js",
   "70-training.js",
   "71-safety-drills.js",
-  "72-donations.js",
- "99-theme-loader.js"
+    "72-donations.js",
+    "73-teacher-eval.js",
+    "74-region-tools.js",
+ "74-schedgen.js",
+    "75-staff-gap.js",
+ "76-multigrade.js",
+    "77-reports.js",
+    "99-theme-loader.js"
 ]

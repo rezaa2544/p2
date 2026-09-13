@@ -95,9 +95,11 @@ function dormActions(e, el, id, a, rawId){
      const studentId=Number(el.dataset.sid);
      const st=studentId?byId('users',studentId):null;
      if(!st){render();return;}
-     const jsDay=new Date().getDay(); /* ۰=یکشنبه … ۵=پنجشنبه */
-     const dUntilFri=((5-jsDay)+7)%7; /* اگر امروز پنجشنبه باشد: ۰ */
-     const from=addDaysISO(todayISO(),dUntilFri), to=addDaysISO(from,1);
+     const jsDay=new Date().getDay(); /* getDay: یکشنبه=۰ … پنجشنبه=۴، جمعه=۵، شنبه=۶ */
+     /* BUG-1 (باگ‌هانت چت ۵): هدف پنجشنبهٔ پیشِ روست (۴)، نه جمعه (۵) —
+        نسخهٔ قبلی ((۵-jsDay)+۷)٪۷ همیشه جمعه→شنبه می‌ساخت. */
+     const dUntilThu=((4-jsDay)+7)%7; /* اگر امروز پنجشنبه باشد: ۰ */
+     const from=addDaysISO(todayISO(),dUntilThu), to=addDaysISO(from,1);
      const l=insert('leaves',{school_id:st.school_id,student_id:st.id,from_date:from,to_date:to,
        reason:'مرخصیِ رفت‌وبرگشتِ آخر هفته (خوابگاه)',kind:'dorm_weekend',status:'approved',created_at:todayISO()});
      [st.id,...db.parent_links.filter(x=>x.student_id===st.id).map(x=>x.parent_id)].forEach(uid=>

@@ -82,13 +82,18 @@ const STATUS_ENUMS = {
   transfer_requests    : ['pending', 'approved', 'rejected'],
   tuitions             : ['open', 'partial', 'settled'],
   users                : ['active', 'dropped_out', 'graduated', 'awaiting_transfer'],
+  visitors             : ['in', 'out'],
 };
 
 /* enumهایِ تک‌فیلدیِ دیگر (شواهد در src/js + seed) */
 const STAGE_ENUM      = ['contact', 'visit', 'exam', 'enrolled'];           /* preapps.stage */
 const USER_ROLES      = ['student', 'parent', 'driver', 'counselor',
-                         'teacher', 'edu_office', 'manager', 'superadmin']; /* users.role */
+                         'teacher', 'edu_office', 'manager', 'superadmin', 'guard']; /* users.role */
 const SCHOOL_GENDERS  = ['پسرانه', 'دخترانه', 'مختلط'];                     /* schools.gender */
+const SCHOOL_TYPE_IDS = ['governmental', 'exemplary', 'non_profit', 'sampad',
+                         'shahed', 'exceptional', 'rural', 'boarding',
+                         'vocational'];                                    /* schools.school_type (فاز ۰.۱) */
+const YEAR_CODE_PATTERN = /^\d{4}-\d{4}$/;    /* year_code/active_year_code: «۱۴۰۴-۱۴۰۵» (فاز ۰.۲) */
 /* نکته: exam_duties.role و counselor_msgs.author_role عمداً enum ندارند —
    واژگان‌شان باز است (مثلاً 'proctor' در تستِ F5 سرور۱۷) و گاردِ «چه کسی»
    (protPolicy/canOp/manager-only) سرِ جایِ خودش است؛ این‌جا فقط سقفِ طول. */
@@ -327,6 +332,13 @@ function ruleFor(coll, key){
     if(coll === 'schools') return { type: 'enum', values: SCHOOL_GENDERS };
     return { type: 'string', max: 40 };
   }
+  if(key === 'school_type'){                                                    /* فاز ۰.۱ */
+    if(coll === 'schools') return { type: 'enum', values: SCHOOL_TYPE_IDS };
+    return { type: 'string', max: LIMITS.STR_MID };
+  }
+  if(key === 'year_code' || key === 'active_year_code'){                     /* فاز ۰.۲ */
+    return { type: 'string', pattern: YEAR_CODE_PATTERN, min: 9, max: 9 };
+  }
   /* ۳. هویت و تماس */
   if(key === 'phone') return { type: 'phone' };
   if(key === 'landline') return { type: 'landline' };
@@ -341,6 +353,8 @@ function ruleFor(coll, key){
   if(FLAG_FIELDS.indexOf(key) > -1) return { type: 'flag' };
   /* ۵. نمره‌ها */
   if(key === 'score' || key === 'original_score' || key === 'new_score') return { type: 'score' };
+  if(key === 'theoretical_score' || key === 'practical_score') return { type: 'score' }; /* E.1 — قسمت‌های نمرهٔ هنرستان، ۰ تا ۲۰ */
+  if(key === 'is_vocational') return { type: 'boolean' }; /* E.1 — نمرهٔ ترکیبی تئوری/عملی */
   if(key === 'entry_gpa') return { type: 'score' }; /* S4 فرناز: معدل ورودی ۰ تا ۲۰ (خالی=null از isEmpty رد می‌شود) */
   if(key === 'max_score') return { type: 'number', min: 0, max: 100 };
   /* ۶. تاریخ و ساعت */

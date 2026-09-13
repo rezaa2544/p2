@@ -105,7 +105,7 @@ function viewAtRisk(){
     + statCard('🎓', fa(schoolStudents(S.user.school_id).length), 'کل دانش‌آموزان', 'blue')
     + statCard('📅', fa(days), 'بازه بررسی (روز)', 'green') + '</div>'
     + '<div class="card"><div class="card-head"><h3>🔍 دانش‌آموزان در معرض افت تحصیلی</h3>'
-    + '<select class="select" style="width:150px" data-f="riskDays">'
+    + '<select class="select" style="width:150px" data-f="riskDays" aria-label="بازهٔ روزهای بررسی افت">'
     + [30,60,90,180].map(function(d){
         return '<option value="' + d + '" ' + (d === days ? 'selected' : '') + '>' + fa(d) + ' روز اخیر</option>';
       }).join('') + '</select></div>'
