@@ -587,11 +587,24 @@ function hydrationUsersCapped(h){
   }));
 }
 
+/* F1 (chaos-drill #185 — بحرانی): «PG انتظار می‌رود؟»
+   در production با DATABASE_URL ست، اگر isPgActive وسطِ اجرا false شود
+   (قطعِ PG + reconnectِ ناموفق)، هیچ مسیری حق ندارد memory را «سالم»
+   جا بزند — وگرنه readiness سبزِ دروغ می‌شود و ackهای 200 پس از بازگشتِ
+   PG در آن نیستند (گم‌شدنِ دائمیِ دادهٔ ackشده؛ شاهد: chaos-drill-pg-outage). */
+function pgExpected() {
+  return !memoryFallbackAllowed() && !!(process.env.DATABASE_URL);
+}
+
 /**
  * Quick ping for health probes & readiness checks
  */
 async function ping() {
   if (!isPostgres()) {
+    if (pgExpected()) {
+      return { ok: false, driver: 'none', alive: false,
+        error: 'PostgreSQL expected in production (DATABASE_URL set) but not connected — refusing memory driver' };
+    }
     return { ok: true, driver: 'memory', alive: true };
   }
   try {
@@ -788,6 +801,12 @@ async function persistOpsBatchWithClient(client, ops) {
 async function persistOpsBatch(ops) {
   const list = ops || [];
   if (!isPostgres()) {
+    /* F1 (chaos-drill #185): در production با DATABASE_URL، skipِ بی‌صدایِ
+       آینه = ackِ 200ی که هرگز به PG نمی‌رسد ⇒ THROW تا sync.js همان مسیرِ
+       رسمیِ sync_mirror_failed/503 + rollback را برود (کلاینت retry می‌کند). */
+    if (pgExpected()) {
+      throw new Error('PostgreSQL expected in production but not connected — refusing silent memory ack (F1)');
+    }
     return { ok: true, driver: 'memory', count: list.length };
   }
   return await transaction(async (client) => {
@@ -942,6 +961,7 @@ module.exports = {
   isPostgres,
   /* P0-1 (Package 1) — production backing-store policy */
   isProductionEnv,
+  pgExpected,
   memoryFallbackAllowed,
   memoryFallbackRequested,
   backingStorePolicy,
