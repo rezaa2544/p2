@@ -74,7 +74,9 @@ console.log('\n▸ PR #60 — نشانهٔ کرسرِ امضاشده (server/cur
   const tok = c.sign(since);
   chk('C2a قالبِ سه‌بخشیِ pc1', /^pc1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(String(tok)), String(tok).slice(0, 24) + '…');
   const payload = JSON.parse(Buffer.from(String(tok).split('.')[1], 'base64url').toString('utf8'));
-  chk('C2b فیلدهای payload (v=2, since, iat, exp, jti, rg)', payload.v === 2 && payload.since === since
+  /* ری‌تارگت (مرج #82 در دور ۳): کرسر از Wave 10 نسخهٔ v3 صادر می‌کند
+     (سازگاریِ verify با v1/v2 حفظ است — C7/C8 همان را می‌سنجند). */
+  chk('C2b فیلدهای payload (v=3, since, iat, exp, jti, rg)', payload.v === 3 && payload.since === since
     && Number.isFinite(payload.iat) && payload.exp === payload.iat + c.ttlS
     && /^[0-9a-f]{16}$/.test(payload.jti) && typeof payload.rg === 'string' && payload.rg.length > 0);
   const v = c.verify(tok);
