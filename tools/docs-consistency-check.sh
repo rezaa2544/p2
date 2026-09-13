@@ -74,39 +74,23 @@ has $DOCS/RELIABILITY_DR_PLAN.md "کمتر از ۵ دقیقه"; chk "برنام�
 has $DOCS/PRODUCTION_READINESS_CHECKLIST.md "RTO کمتر از ۱۵ دقیقه، RPO کمتر از ۵ دقیقه"; chk "چک‌لیست آمادگی با برنامهٔ پایایی هم‌خوان است" $? "در برابر مرجع"
 
 echo "▸ مهاجرت‌ها و موج‌ها"
-MIG=$(ls migrations/*.sql 2>/dev/null | grep -v '\.down\.sql$' | wc -l)
 # ۲۰۲۶-۰۰۹-۱۱: تصادمِ شمارهٔ ۰۰۴ رفع شد — 004_wave3_query_indexes به ۰۰۷
 # شماره‌گذاریِ مجدد شد (۰۰۶ پیش‌تر توسط 006_delta_schema_gaps گرفته شده بود).
 # دلیل و تحلیل: docs/MIGRATION_DECISION.md · ممیزی: docs/MIGRATION_AUDIT.md
-# حالا به‌جای پین‌کردنِ یک استثنا، خودِ قاعده سنجیده می‌شود.
-#
-# ۲۰۲۶-۰۹-۱۲: شمار و بازه هم از دیسک مشتق می‌شوند، نه پین. موج ۲۳ مهاجرتِ ۰۰۸ را
-# افزود و همین سه پینِ دستی (`7`، رشتهٔ `001 … 007`، و `۰۰۱–۰۰۷`) کهنه شدند —
-# همان الگویی که tools/docs-stats-sync.js برای آمارِ مستندات برداشت.
-# تبدیل به رقمِ فارسی. `sed y` و `tr` بایت‌محورند و رقمِ فارسی چندبایتی است،
-# پس با آن‌ها کار نمی‌کند («strings for `y' command are different lengths»).
-fa() {
-  local _s="$1" _o="" _i _c
-  for ((_i=0; _i<${#_s}; _i++)); do
-    _c="${_s:_i:1}"
-    case "$_c" in
-      0) _o+="۰";; 1) _o+="۱";; 2) _o+="۲";; 3) _o+="۳";; 4) _o+="۴";;
-      5) _o+="۵";; 6) _o+="۶";; 7) _o+="۷";; 8) _o+="۸";; 9) _o+="۹";;
-      *) _o+="$_c";;
-    esac
-  done
-  printf '%s' "$_o"
-}
-LASTNUM=$(ls migrations/*.sql 2>/dev/null | grep -v '\.down\.sql$' | grep -oE '[0-9]{3}' | sort | tail -1)
-RANGE_FA="$(fa 001)–$(fa "$LASTNUM")"
-EXPECT=$(seq -f "%03g" 1 "$((10#$LASTNUM))" | tr '\n' ' ')
-[ "$MIG" -eq "$((10#$LASTNUM))" ]; chk "شمار مهاجرت‌های روی دیسک: $((10#$LASTNUM)) فایل (شماره‌های $RANGE_FA)" $? "یافت‌شده: $MIG"
+# ۲۰۲۶-۰۹-۱۱ (موج ۱۰): به‌جای پین‌کردنِ شمار، خودِ قاعده سنجیده می‌شود —
+# شمارِ فایل‌ها باید با بیشینهٔ شماره یکی باشد و شماره‌ها از ۰۰۱ پیوسته؛
+# اسناد هم باید بازهٔ «۰۰۱–<آخرین>» را بگویند (بدونِ پینِ عدد).
+MIG=$(ls migrations/*.sql 2>/dev/null | grep -v '\.down\.sql$' | wc -l)
 DUPNUMS=$(ls migrations/*.sql 2>/dev/null | grep -v '\.down\.sql$' | grep -oE '[0-9]{3}' | sort | uniq -d | tr '\n' ' ')
 [ -z "$DUPNUMS" ]; chk "هیچ شمارهٔ مهاجرت تکراری نیست (سیاستِ شماره‌گذاریِ پیوسته)" $? "تکراری: ${DUPNUMS:-هیچ}"
 SEQ=$(ls migrations/*.sql 2>/dev/null | grep -v '\.down\.sql$' | grep -oE '[0-9]{3}' | sort | tr '\n' ' ')
-[ "$SEQ" = "$EXPECT" ]; chk "شماره‌ها از ۰۰۱ تا $(fa "$LASTNUM") پیوسته‌اند" $? "یافت‌شده: $SEQ"
-has $DOCS/DOCS_INDEX.md "$RANGE_FA"; chk "نمایه: فهرست مهاجرت $RANGE_FA" $? "در برابر دیسک"
-has $DOCS/RELEASE_NOTES.md "مهاجرت‌های نسخه‌دار $RANGE_FA"; chk "یادداشت انتشار: مهاجرت‌های $RANGE_FA" $? "در برابر دیسک"
+EXP=$(i=1; while [ "$i" -le "$MIG" ]; do printf '%03d ' "$i"; i=$((i+1)); done)
+[ "$SEQ" = "$EXP" ]; chk "شماره‌ها از ۰۰۱ تا آخرین ($MIG فایل) پیوسته‌اند" $? "یافت‌شده: $SEQ"
+LAST=$(printf '%s' "$SEQ" | awk '{print $NF}')
+[ "$((10#$LAST))" -eq "$MIG" ]; chk "شمارِ مهاجرت‌های روی دیسک = بیشینهٔ شماره" $? "شمار: $MIG · بیشینه: $LAST"
+LAST_FA=$(printf '%s' "$LAST" | sed 'y/0123456789/۰۱۲۳۴۵۶۷۸۹/')
+has $DOCS/DOCS_INDEX.md "۰۰۱–$LAST_FA"; chk "نمایه: فهرست مهاجرت ۰۰۱–$LAST_FA" $? "در برابر دیسک"
+has $DOCS/RELEASE_NOTES.md "مهاجرت‌های نسخه‌دار ۰۰۱–$LAST_FA"; chk "یادداشت انتشار: مهاجرت‌های ۰۰۱–$LAST_FA" $? "در برابر دیسک"
 has $DOCS/RELEASE_NOTES.md "| ۲۰ |"; chk "جدول موج‌ها تا موج ۲۰ کامل است" $? "یادداشت انتشار §۲"
 
 echo "▸ ردیاب P0 و پایلوت"

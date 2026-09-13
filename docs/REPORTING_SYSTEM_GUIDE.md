@@ -40,8 +40,18 @@ GET /api/v1/reports/teachers   ?jy=&jm=&school_id=
 
 - `jy/jm` شمسی؛ پیش‌فرض = ماه جاری سرور. `jm` خارج از ۱..۱۲ یا `jy` خارج از
   ۱۳۰۰..۱۵۰۰ ⇒ `400 bad_request`.
+- **اعتبارسنجی استاندارد (P2، تکمیل Wave 23):** `school_id`/`class_id` باید
+  عددِ صحیحِ مثبت باشند و `term` رشتهٔ چاپیِ ≤۶۰ کاراکتر؛ ورودیِ خراب در **هر ۴**
+  endpoint و در **هر دو مسیر** (حافظه/PG) ⇒ `400 bad_request` — نه NaN خاموش،
+  نه خطای ۵۰۰ از دیتابیس. parserها: `server/reports-sql.js`
+  (`parsePositiveInt`/`parseOptionalPositiveInt`/`validateTerm`/`validateSchoolId`).
 - پاسخ: `{ ok, kind, …, schools: [ { school_id, school_name, … } ] }` —
   ساختار دقیق هر گزارش در `tests/reports-basic.js` سندِ اجرایی دارد.
+- **حالتِ دوگانه (Wave 23):** با PostgreSQL زنده (`db.isPostgres()`)، **هر
+  چهار** گزارش DB-native می‌شوند (تجمیع/صفحه‌بندی در SQL، خواندن از
+  `queryRead`)؛ پاسخ `source: 'postgresql'` و `pagination` (keyset،
+  ‏`limit`/`cursor`/`next_cursor`/`has_more`) می‌گیرد. بدونِ PG، مسیرِ حافظه
+  بایت‌به‌بایت همان است. جزئیات: `docs/WAVE23_DB_NATIVE_REPORTS.md` §۹.
 - هر فراخوانی موفق یک رویداد `report_generated` در audit ثبت می‌کند.
 
 ### مهار اجاره‌ای (fail-closed)

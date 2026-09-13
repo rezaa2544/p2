@@ -20,14 +20,28 @@
 'use strict';
 const url = require('url');
 const { computePublicReport } = require('./public-report-core');
+const { publicReportFromPg } = require('./public-report-sql');
 
 function createPublicReport(ctx){
   const store = ctx.store;
   const sendJson = ctx.sendJson;
+  const db = ctx.db || null;
 
   async function apiPublicReport(req, res){
     const query = (url.parse(req.url, true).query) || {};
     let sid = Number(query.school_id) || null;
+    /* P1-3 (Wave 18 §۵-۸): PG زنده ⇒ تجمیع در دیتابیس (COUNT/GROUP BY با
+       ایندکس)، نه اسکنِ آینهٔ مقیّد — «تقریبِ نمونهٔ محدود» جای اعدادِ ملی
+       را نمی‌گیرد. worker برای بارِ CPU مسیرِ حافظه است؛ این‌جا تجمیع در DB
+       است و خروجی bounded. خطای DB ⇒ 503 صادقانه (fail-closed)، نه
+       fallbackِ بی‌صدا به عددِ تقریبی. */
+    if(db && typeof db.isPostgres === 'function' && db.isPostgres()){
+      try{
+        return sendJson(res, 200, await publicReportFromPg(db, sid));
+      }catch(e){
+        return sendJson(res, 503, { ok: false, code: 'public_report_pg_failed' });
+      }
+    }
     let out;
     if(ctx.workers && typeof ctx.workers.runReport === 'function'){
       try{ out = await ctx.workers.runReport(sid); }

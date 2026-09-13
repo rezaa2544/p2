@@ -130,8 +130,10 @@ async function apiSyncOf(inst, ops) {
     type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, title: 'سلام' } })]);
   chk('T1a ایجاد در A: ۲۰۰', cap1.code === 200 && cap1.body.results[0].ok === true,
     JSON.stringify(cap1.body && cap1.body.results));
-  const idX = A.store.announcements[0] && A.store.announcements[0].id;
+  /* P1-2: مجموعهٔ announcements پس از commit از آینه بریده می‌شود —
+     شناسه را از مرجع می‌خوانیم، نه از آینهٔ A */
   const pgAnn1 = await pgRows('announcements');
+  const idX = pgAnn1.length ? pgAnn1[0].id : null;
   chk('T1b ردیف در PG نشست', pgAnn1.length === 1 && pgAnn1[0].id === idX, 'n=' + pgAnn1.length);
   const cap1u = await apiSyncOf(B, [opX({ uid: 't1-upd', by: 5, collection: 'announcements',
     type: 'upd', id: idX, user_id: 5, school_id: 1, data: { title: 'سلام!' } })]);
@@ -141,7 +143,9 @@ async function apiSyncOf(inst, ops) {
   chk('T1d مقدارِ PG عوض شد', pgAnn1u.length === 1 && pgAnn1u[0].title === 'سلام!',
     JSON.stringify(pgAnn1u));
   const bCopy = B.store.announcements.find(r => r.id === idX);
-  chk('T1e کشِ B هایدریت شد', !!(bCopy && bCopy.title === 'سلام!'));
+  chk('T1e B روی آینهٔ سرد موفق شد (هیدراتاسیون از مرجع) و آینه پس از commit بریده شد — P1-2',
+    cap1u.code === 200 && pgAnn1u.length === 1 && pgAnn1u[0].title === 'سلام!' && !bCopy,
+    'pg=' + JSON.stringify(pgAnn1u[0] && pgAnn1u[0].title) + ' mirror-has=' + !!bCopy);
 
   /* ── T2: شناسه‌ها برخورد نمی‌کنند ── */
   await apiSyncOf(A, [opX({ uid: 't2-a', by: 5, collection: 'announcements',
@@ -180,8 +184,8 @@ async function apiSyncOf(inst, ops) {
   const cap4i = await apiSyncOf(A, [opX({ uid: 't4-ins', by: 5, collection: 'grades',
     type: 'ins', user_id: 5, school_id: 1,
     data: { school_id: 1, student_id: 9, subject_id: 3, score: 15 } })]);
-  const idG = A.store.grades[0] && A.store.grades[0].id;
-  chk('T4a ایجادِ نمره در A', cap4i.code === 200 && idG != null);
+  const idG = (await pgRows('grades')).length ? (await pgRows('grades'))[0].id : null;   /* P1-2: از مرجع */
+  chk('T4a ایجادِ نمره در A (در PG — آینه بریده می‌شود، P1-2)', cap4i.code === 200 && idG != null);
   await apiSyncOf(A, [opX({ uid: 't4-upd-a', by: 5, collection: 'grades',
     type: 'upd', id: idG, user_id: 5, school_id: 1, data: { score: 16 } })]);
   const pgG1 = (await pgRows('grades')).find(r => r.id === idG);
@@ -234,7 +238,8 @@ async function apiSyncOf(inst, ops) {
   await apiSyncOf(A, [opX({ uid: 't8-ins', by: 5, collection: 'grades',
     type: 'ins', user_id: 5, school_id: 1,
     data: { school_id: 1, student_id: 9, subject_id: 3, score: 12 } })]);
-  const idN = A.store.grades[A.store.grades.length - 1].id;
+  const pgG8 = await pgRows('grades');
+  const idN = pgG8.length ? pgG8[pgG8.length - 1].id : null;   /* P1-2: از مرجع — آینه پس از commit بریده می‌شود */
   chk('T8a پیش‌شرط: B رکورد را ندارد',
     !(B.store.grades || []).some(r => r.id === idN));
   const del8 = await B.deleter.softDelete('grades', { id: idN }, { actor: MGR, audit: () => {} });

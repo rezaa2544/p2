@@ -15,9 +15,15 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی
+   هرگز بازنویسی نمی‌شود — بازگردانی حذف شد (clear نگاشت). */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('sgap-mut-');
+kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
 const SUITE = path.join(ROOT, 'tests', 'staff-gap.js');
 const F = path.join(ROOT, 'src', 'js', '75-staff-gap.js');
 const SF = path.join(ROOT, 'server', 'sync.js');
+const PF = path.join(ROOT, 'server', 'policy.js'); /* ترمیم لنگر: دروازهٔ د.۴ اینجاست */
 
 let pass = 0, fail = 0;
 function chk(name, cond, extra) {
@@ -35,13 +41,14 @@ function mutate(file, find, replace, killRe, tag, rebuild) {
   const orig = fs.readFileSync(file, 'utf8');
   try {
     if (!orig.includes(find)) { chk(tag + ' (جهش پیدا نشد)', false); return; }
-    fs.writeFileSync(file, orig.replace(find, replace), 'utf8');
-    if (rebuild) execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' });
-    const r = spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8', timeout: 240000 });
+    const mcopy = kit.mutant(file, orig.replace(find, replace)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+    try { fs.chmodSync(mcopy, fs.statSync(file).mode); } catch (_) {}
+    if (rebuild) execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore', env: kit.env() }); /* build در سایه */
+    const r = spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8', timeout: 240000, env: kit.env() });
     const out = (r.stdout || '') + (r.stderr || '');
     chk(tag + ' کشته شد', r.status !== 0 && killRe.test(out), out.slice(-240).replace(/\n/g, ' '));
   } finally {
-    fs.writeFileSync(file, orig, 'utf8');
+    kit.clear(file); /* نقشهٔ خالی؛ پاک‌سازیِ واقعی در exit */
   }
 }
 
@@ -56,20 +63,12 @@ mutate(F,
   'const gap = req == null ? 0 : Math.max(0, req - haveC);',
   /❌ G2/, 'M2 بی‌هنجار⇒صفر', true);
 
-mutate(SF,
-  `if(coll === 'staff_posts' && u.role === 'edu_office'){
-    const sid = (data && data.school_id != null) ? data.school_id
-              : (rec && rec.school_id != null) ? rec.school_id : null;
-    if(sid != null){
-      const school = store_get('schools').find(s => s.id === Number(sid));
-      const office = store_get('offices').find(o => o.id === Number(u.office_id));
-      if(!school || !office) return false; /* fail-closed */
-      if(office.province_id && school.province_id !== office.province_id) return false;
-      if(office.county_id && school.county_id !== office.county_id) return false;
-      if(office.district_id && school.district_id !== office.district_id) return false;
-    }
-  }`,
-  `/* دروازهٔ د.۴ حذف شد */`,
+mutate(PF,
+  /* ترمیم لنگر (BH-mut فاز ۲): دروازهٔ د.۴ از sync.js به policy.js منتقل شد
+     (ویو ۵ — استخراج policy)؛ schoolInOfficeScope همان اجراکنندهٔ دروازه است —
+     حذفِ صدایش = حذفِ دروازه. */
+  `return schoolInOfficeScope(store, u, sid);`,
+  `return true; /* دروازهٔ د.۴ حذف شد */`,
   /❌ W6/, 'M3 حذف دروازهٔ سرور', false);
 
 mutate(F,
