@@ -21,7 +21,9 @@
 | 4 | rot سوئیت جهش server15-mutations ‏(M1/M6 «الگو پیدا نشد» = جهش اعمال‌نشده) | بازآرایی کد در #124 و delta-hardening | PR #150 باز شد؛ ناظر هم‌زمان با **#147** (‏`a150d4d`، مهاجرت کامل به الگوی امن کیت + همان ری‌تارگت) جامع‌تر رفعش کرد | ✅ بسته — #150 منسوخ با #147؛ روی main جاری ۶/۶ کشته |
 | 5 | server-mutations M2 «الگو پیدا نشد» | جابجایی scope به policy.js (خیلی قدیمی) | قبلاً در bh-mut فاز ۲ (‏#139 ناظر) ری‌تارگت شده — روی main جاری ۲۰/۲۰ کشته | ✅ بسته (بدون اقدام) |
 | 6 | آلودگی درخت کاری سندباکس (گارد نقش خنثی با `if(false&&...)`) | بقایای جهش‌آزمایی چت قبلی — نه در مخزن | `git checkout -- .` + حذف فایل جهش untracked؛ یافته‌های قبل از پاک‌سازی باطل اعلام شد | ✅ بسته (محیطی) |
-| 7 | **دنبالهٔ #143 — دو یافتهٔ بازبین devin، هر دو معتبر:** (الف) `apiList` با ۵۰+ resolved تعارض‌های باز را از پاسخ می‌انداخت (`slice(-50)` ابتدای آرایهٔ «بازها اول» را می‌بُرید)؛ (ب) هرس resolvedها بدون tombstone بود — کلاینت آفلاین بسته‌شدن تعارض را هرگز نمی‌شنید | resolve⇒keep ‏#143 هر دو مسیر نهفته را فعال کرد | **PR #153**: ‏`slice(0,50)` (بازها هرگز قربانی سقف نشوند) + tombstone به `__deleted_records` در هرس (قرارداد del موجود)؛ سوئیت جدید `conflicts-list-cap.js` ‏10/10 red-first؛ جهش ۲/۲ کشته | باز — منتظر مرج |
+| 7 | **دنبالهٔ #143 — دو یافتهٔ بازبین devin، هر دو معتبر:** (الف) `apiList` با ۵۰+ resolved تعارض‌های باز را از پاسخ می‌انداخت (`slice(-50)` ابتدای آرایهٔ «بازها اول» را می‌بُرید)؛ (ب) هرس resolvedها بدون tombstone بود — کلاینت آفلاین بسته‌شدن تعارض را هرگز نمی‌شنید | resolve⇒keep ‏#143 هر دو مسیر نهفته را فعال کرد | **PR #153**: ‏`slice(0,50)` (بازها هرگز قربانی سقف نشوند) + tombstone به `__deleted_records` در هرس (قرارداد del موجود)؛ سوئیت جدید `conflicts-list-cap.js` red-first؛ جهش کشته | باز — منتظر مرج |
+| 8 | **دور ۲ بازبین #153 — دو یافتهٔ دیگر devin، هر دو معتبر:** (الف) سنگ‌قبرهای هرس بیرون جاروی post-commit سقف ۵۰۰۰ نداشتند؛ (ب) UI «داوری‌های اخیر» با قرارداد جدید ترتیب، کهنه‌ترین‌ها را نشان می‌داد (`slice(-5).reverse()`) | دنبالهٔ همان تغییر قرارداد | رفع در همان **#153** ‏(`8e433e1`): برش ۵۰۰۰ بلافاصله در pruneResolved + ‏`slice(0,5)` در UI؛ تست L5/L6 ‏red-first؛ جهش ۲/۲ کشته؛ ‏conflicts-list-cap ‏14/14 | باز — درون #153 |
+| 9 | بدهی پیش‌موجود: rot لنگر در `dropout-mutations` ‏(M2/M6) و `wave17-testing-mutations` ‏(Z4) — جهش هرگز اعمال نمی‌شد | تورفتگی build · جابجایی scope به policy.js ‏(‏`3e86993`) · بازآرایی versionedMismatch | **PR #154**: ری‌تارگت + پارامتری‌شدن فایل هدف جهش (mutFile)؛ ‏6/6 و 10/10 | باز — منتظر مرج |
 
 ## راستی‌آزمایی مرج
 - ‏۱۱۶/۱۱۷ sha مرج ancestor ‏main ✅.
@@ -33,12 +35,17 @@
 - flaky زیر فشار CPU (تکی سبز): otp-ratelimit، server17. TIMEOUTهای batch با مهلت بلند بازاجرا شدند: otp-ratelimit-mutations ✅ · server-mutations ‏20/20 ✅ (روی main جاری) · server15-mutations با #143+#150 ‏۶/۶ ✅.
 - NOT-RUN محیطی: a11y-interactive/keyboard/runtime ‏(playwright نصب‌نشدنی در سندباکس — دانلود مرورگر مسدود) · wave18-load-test ‏(RAM ~1GB) · CI ‏(بیلینگ، RISK-O-007).
 
-## بدهی پیش‌موجود (RED@b53a7a7 — خارج از دامنهٔ این ممیزی، ثبت برای صف ناظر)
-`dropout-mutations` · `libserial2-mutations` · `server14-gc-mutations` · `staff-gap-mutations` · `sync-atomic-batch-mutations` · `urgent-ann-mutations` · `vocational-grades-mutations` · `wave14-observability(+mutations)` ‏(T7a روت‌های untemplated) · `wave15-child` · `wave17-testing-mutations` · `wal-disk-full(+mutations)` · `wave5-authz-mutations`
+## بدهی پیش‌موجود (RED@b53a7a7) — دسته‌بندی و تعیین تکلیف (به‌روزرسانی پس از ممیزی)
+| دسته | سوئیت‌ها | وضعیت |
+|---|---|---|
+| رفع در **PR #154** ‏(rot لنگر) | `dropout-mutations` ‏(M2 تورفتگی build + M6 scope→policy.js با mutFile پارامتری) · `wave17-testing-mutations` ‏(Z4 → ‏versionedMismatch) | ✅ ‏6/6 و 10/10 — منتظر مرج |
+| قبلاً در شاخهٔ `bh-mut/phase2` ناظر رفع شده (راستی‌آزمایی شد) | `staff-gap-mutations` ‏7/7 · `urgent-ann-mutations` ‏6/6 · `wave5-authz-mutations` ‏5/5 · `server14-gc-mutations` ‏4/4 · `sync-atomic-batch-mutations` ‏5/5 | ⏳ منتظر تصمیم قلم ۵ ناظر (PR یا واگذاری شاخهٔ bh-mut/phase2) |
+| flaky زیر فشار CPU — تکی سبز | `libserial2-mutations` ‏4/4 · `vocational-grades-mutations` ‏5/5 | ✅ بدون اقدام |
+| شکست واقعی پیش‌موجود — باز | `wave14-observability(+mutations)` ‏(T7a روت‌های untemplated) · `wave15-child` · `wal-disk-full(+mutations)` · `wave18-load-test` ‏(RAM) | 📋 صف ناظر — wave جدا |
 
 ## توصیه‌ها
-1. ~~مرج زنجیرهٔ #143 → #150 (استک) و #144~~ ✅ انجام شد (‏#143/#144 مرج؛ #150 منسوخ با #147 ناظر). باقی‌مانده: مرج **#153** (دنبالهٔ بازبین #143) و **#151** (همین گزارش‌ها).
-2. تعیین تکلیف بدهی پیش‌موجود بالا در یک wave جدا (اکثراً rot الگوی جهش مشابه یافتهٔ ۴).
+1. ~~مرج زنجیرهٔ #143 → #150 (استک) و #144~~ ✅ انجام شد (‏#143/#144 مرج؛ #150 منسوخ با #147 ناظر). باقی‌مانده: مرج **#153** (دنبالهٔ بازبین #143 + دور ۲ بازخوردها) · **#154** (بدهی rot) · **#151** (همین گزارش‌ها).
+2. ~~تعیین تکلیف بدهی پیش‌موجود~~ ✅ دسته‌بندی شد (جدول بالا): ‏۲ سوئیت در #154 رفع؛ ۵ سوئیت در bh-mut/phase2 ناظر آماده (قلم ۵)؛ ۲ flaky بی‌اقدام؛ ۴ شکست واقعی در صف wave جدا.
 3. برای سوئیت‌های جهش متن‌محور: لنگرها را با کامنت‌مارکر پایدار کنید تا refactor آن‌ها را نشکند.
 4. ‏a11y-*: اجرای دوره‌ای در محیطی با اینترنت باز برای playwright.
 5. قلم‌های باز ناظر: ACCEPT ‏#129 · flag-1 · tenancy · counselor · دوزیه §۶ · مشخصه §۵ + دو آستانه (p95 ‏500ms، نرخ ۱٪).
