@@ -102,9 +102,11 @@ mutateMulti(SYNC, [
    `      const isProcessed = false; /* جهش: ایدمپوتانس پیش-اعمال غیرفعال شد */`]
 ], /❌ (IN5|CC4)/, 'Z3 غیرفعال‌کردنِ هر دو لایهٔ ایدمپوتانس (sync.js)');
 /* Z4 — without the version gate a concurrent write silently clobbers */
+/* ری‌تارگت (ممیزی دور ۲): شرط به versionedMismatch/structuralMismatch
+   بازآرایی شده (delta hardening phase 2) — همان جهش، لنگرِ جاری. */
 mutate(SYNC,
-  `        if(VERSIONED[op.c] && Number(op.base_version) !== cur){`,
-  `        if(false){ /* جهش: دروازهٔ base_version برداشته شد */`,
+  `        const versionedMismatch = !!VERSIONED[op.c] && Number(op.base_version) !== cur;`,
+  `        const versionedMismatch = false; /* جهش: دروازهٔ base_version برداشته شد */`,
   /❌ (IN7|CC5)/, 'Z4 برداشتنِ دروازهٔ base_version (sync.js)');
 
 /* Z5 — if the counter is not recorded, every accounting assertion is blind */
