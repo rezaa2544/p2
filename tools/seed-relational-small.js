@@ -241,6 +241,116 @@ async function counts(client) {
   return out;
 }
 
+const crypto = require('crypto');
+
+/* ── Round 4: machine-readable manifest ───────────────────────────────
+   The manifest is GENERATED from live database introspection, never typed
+   by hand, so it cannot drift from what the schema actually enforces.
+   It is the "reproducible dataset" building block for Package 1 and is
+   deliberately checksummed.
+
+   Self-hash recipe (verified by tests/pg-relational-seed.js):
+     1. parse the file
+     2. set artifacts.manifest.sha256 = ""
+     3. JSON.stringify(obj, null, 2) + "\n"
+     4. sha256 of those exact bytes
+*/
+function sha256File(p) {
+  return crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+}
+
+function manifestBytes(obj) {
+  return JSON.stringify(obj, null, 2) + '\n';
+}
+
+async function buildManifest(client, rowCounts, fixture, migResults, pgUrl) {
+  const SEED_TABLES = ['users', 'subjects', 'classes', 'enrollments', 'attendance', 'grades'];
+  const list = '(' + SEED_TABLES.map((t) => "'" + t + "'").join(',') + ')';
+
+  const fks = (await client.query(
+    'SELECT conrelid::regclass::text AS tbl, conname, pg_get_constraintdef(oid) AS def,'
+    + ' condeferrable, condeferred FROM pg_constraint'
+    + " WHERE contype='f' AND conrelid::regclass::text IN " + list + ' ORDER BY 1,2')).rows;
+  const uqs = (await client.query(
+    'SELECT conrelid::regclass::text AS tbl, conname, pg_get_constraintdef(oid) AS def'
+    + ' FROM pg_constraint'
+    + " WHERE contype='u' AND conrelid::regclass::text IN " + list + ' ORDER BY 1,2')).rows;
+
+  const ver = (await client.query('SELECT version() AS v')).rows[0].v;
+  /* host() strips the netmask — inet_server_addr()::text yields 127.0.0.1/32,
+     which is not a valid host component in a URL. */
+  const addr = (await client.query('SELECT host(inet_server_addr()) AS a, inet_server_port() AS p')).rows[0];
+  const dbName = (await client.query('SELECT current_database() AS d')).rows[0].d;
+
+  const notRun = migResults.filter((r) => r.status === 'not_run_psql')
+    .map((r) => ({ file: r.file, status: 'NOT-RUN', reason: 'psql meta-command ' + r.detail + ' — not executable through the pg driver; requires psql' }));
+
+  const manifest = {
+    schema_version: 1,
+    generated_at: new Date().toISOString(),
+    generated_by: 'tools/seed-relational-small.js (PG_SEED_MANIFEST=1)',
+    scale_label: 'demo-scale — NOT a national dataset',
+    benchmark_claim: 'NONE. No workload was run; no throughput, latency or capacity number is asserted here or anywhere from this file. Capacity Engineering belongs to chat 4.',
+    database: {
+      version: ver,
+      server_addr: addr.a,
+      server_port: addr.p,
+      database: dbName,
+      connection_env: 'PG_LIVE_PG (or DATABASE_URL)',
+      url_without_credentials: 'postgres://<user>:<password>@' + addr.a + ':' + addr.p + '/' + dbName
+    },
+    migrations: {
+      total: migResults.length,
+      applied: migResults.filter((r) => r.status === 'applied').length,
+      already_exists: migResults.filter((r) => r.status === 'already_exists').length,
+      failed: migResults.filter((r) => r.status === 'failed').length,
+      new_migrations_added: 0,
+      not_run: notRun
+    },
+    row_counts: rowCounts,
+    tenants: { count: fixture.schoolIds.length, ids: fixture.schoolIds },
+    foreign_keys: fks.map((r) => ({
+      table: r.tbl, name: r.conname, definition: r.def,
+      deferrable: r.condeferrable, initially_deferred: r.condeferred
+    })),
+    unique_constraints: uqs.map((r) => ({ table: r.tbl, name: r.conname, definition: r.def })),
+    deferred_validation: {
+      method: 'SET CONSTRAINTS ALL IMMEDIATE',
+      why: 'Every FK in this schema is DEFERRABLE INITIALLY DEFERRED, so a violation is only raised at COMMIT. A test that inserts an orphan and then ROLLBACKs never sees the error and would pass falsely; the check must be forced.',
+      constraints_forced: fks.filter((r) => r.condeferred).map((r) => r.conname)
+    },
+    tenant_isolation: {
+      assertions: [
+        'a student of tenant A has 0 rows in grades / attendance / enrollments under tenant B',
+        'enrollments.student_id -> users.school_id matches enrollments.school_id',
+        'enrollments.class_id -> classes.school_id matches enrollments.school_id',
+        'attendance.student_id -> users.school_id matches attendance.school_id',
+        'grades.student_id -> users.school_id matches grades.school_id',
+        'grades.subject_id -> subjects.school_id matches grades.school_id',
+        'grades.teacher_id -> users.school_id matches grades.school_id'
+      ],
+      expected_cross_tenant_rows: 0
+    },
+    known_schema_gaps: [
+      'enrollments and attendance carry a foreign key ONLY on school_id; class_id/student_id are unconstrained, so an orphan or cross-tenant value there is NOT rejected by the database. Fixing this needs a new migration — out of scope (no migration bump).',
+      'enrollments is UNIQUE (student_id, year), which makes 20 enrollments over 4 classes require 10 students; that is why row_counts.users is 15 and not the 10 originally requested.'
+    ],
+    artifacts: {
+      seeder: { path: 'tools/seed-relational-small.js', sha256: sha256File(path.join(ROOT, 'tools', 'seed-relational-small.js')) },
+      manifest: { path: 'tools/relational-seed-manifest.json', sha256: '' }
+    },
+    verification: {
+      self_hash_recipe: 'sha256 of JSON.stringify(manifest, null, 2) + "\\n" with artifacts.manifest.sha256 set to ""',
+      reproduce: 'PG_SEED_FRESH=1 PG_SEED_MANIFEST=1 PG_LIVE_PG=<url> node tools/seed-relational-small.js',
+      test: 'PG_LIVE_PG=<url> node tests/pg-relational-seed.js'
+    }
+  };
+
+  const digest = crypto.createHash('sha256').update(manifestBytes(manifest)).digest('hex');
+  manifest.artifacts.manifest.sha256 = digest;
+  return manifest;
+}
+
 async function main() {
   const url = process.env.PG_LIVE_PG || process.env.DATABASE_URL || '';
   if (!url) {
@@ -278,6 +388,13 @@ async function main() {
     const c = await counts(client);
     console.log('rows: ' + TABLES.map((t) => t + '=' + c[t]).join(' · '));
     console.log('tenants: ' + f.schoolIds.join(','));
+    if (process.env.PG_SEED_MANIFEST === '1') {
+      const man = await buildManifest(client, c, f, results, url);
+      const out = path.join(ROOT, 'tools', 'relational-seed-manifest.json');
+      fs.writeFileSync(out, manifestBytes(man));
+      console.log('manifest: ' + path.relative(ROOT, out)
+        + '  sha256=' + man.artifacts.manifest.sha256.slice(0, 16) + '…');
+    }
     console.log('OK');
   } finally {
     try { await client.end(); } catch (e) {}
