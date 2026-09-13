@@ -542,6 +542,17 @@ const worker = createWorker({
   maxRetries: Number(process.env.PAYESH_WORKER_MAX_RETRIES || 5)
 });
 worker.start();
+/* F3 (chaos-drill #185): در PG-live، store.outbox پس از restart خالی بوت
+   می‌شود و pendingهای جدولِ server_outbox بدون مصرف‌کننده می‌ماندند —
+   بازپخشِ یک‌باره در بوت تا worker همان چرخهٔ همیشگی را برود.
+   best-effort (خطا فقط لاگ می‌شود؛ بوت را نمی‌شکند). */
+dbReady.then(async () => {
+  try {
+    const rp = await outbox.replayPendingFromPg();
+    if (rp && rp.replayed > 0) console.log('[outbox] replayed ' + rp.replayed + ' pending event(s) from server_outbox after restart');
+    else if (rp && rp.ok === false) console.warn('[outbox] pending replay failed (will stay best-effort):', rp.error);
+  } catch (e) { console.warn('[outbox] pending replay error:', String((e && e.message) || e).slice(0, 140)); }
+});
 const studentRoutes = createStudentRoutes({ store, db, audit, markDirty, ids, deleter });
 const classRoutes = createClassRoutes({ store, db, audit, markDirty, ids, deleter });
 const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, ids, deleter });
