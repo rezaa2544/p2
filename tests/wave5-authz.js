@@ -104,7 +104,10 @@ async function main() {
 
     /* ── فیکسچرها از دلِ فروشگاه ── */
     const U = (id) => seed.users.find(u => u.id === id);
-    const SA = U(1), M1 = U(2), T1 = U(4), ST = U(16), P = U(17), EO = U(1026);
+    const SA = U(1), M1 = U(2), T1 = U(4), ST = U(16), P = U(17);
+    /* رفع پین شکسته (دور مرج ۱۸۹-۲۰۴): id=1026 پس از SIM-01 (+guard1@1025،
+       ‏PR #175) یک واحد شیفت خورد — فیکسچر باید نقش-محور باشد نه id-محور. */
+    const EO = seed.users.find(u => u.role === 'edu_office' && u.office_id != null);
     const OFFICE = seed.offices.find(o => o.id === EO.office_id);
     const inSchool = seed.schools.find(s =>
       (!OFFICE.province_id || s.province_id === OFFICE.province_id) &&

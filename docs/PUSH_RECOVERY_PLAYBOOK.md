@@ -324,3 +324,72 @@ C:\Users\R.M\Documents\Default Project\
 
 _چت ۶ (مستندات و انتشار) — مأموریت ۴۱. هر باندل تازه ⇒ سطر تازه در §۲ + به‌روزرسانی §۶؛
 ویرایش این سند تابع قاعدهٔ بامپ قفل مستندات است._
+
+---
+
+## ۷) چک‌لیستِ ریستِ مکررِ فضای کار (درسِ دورهای ۷/۱۰ — چت ۶)
+
+در این محیط، **بینِ نشست‌ها** ممکن است بخش‌هایی از فضای کار ریست شود. نشانه‌ها:
+`git status` ناگهان صدها فایلِ تغییریافته نشان می‌دهد (از جمله فایل‌هایی که تو هرگز لمس نکرده‌ای)،
+یا `git log` به یک کامیتِ پایهٔ قدیمی ختم می‌شود. **این ریستِ مخزن نیست — ریستِ وضعیتِ محلی است.**
+
+**قاعدهٔ طلایی:** قبل از هر «تعمیر»، بفهم چه چیزی از دست رفته — و **هرگز** `git reset --hard`
+یا `git checkout <sha> -- .` روی درختِ کثیف اجرا نکن (یک بار در دور پ۶ کارِ ثبت‌نشده را پاک کرد).
+
+```bash
+# ۱) تشخیص — کدام‌یک ریست شده؟
+git rev-parse HEAD ; git status --short | head -5 ; git worktree list
+ls node_modules | wc -l                      # ⇒ ۰ یعنی node_modules پاک شده (مستثنی از snapshot)
+node --version                               # هویت/نسخه را دوباره تأیید کن
+git config --get user.name ; git config --get user.email   # ⇒ خالی یعنی هویت ریست شده
+git remote -v                                # ⇒ خالی یعنی origin ریست شده
+
+# ۲) بازیابیِ امنِ شاخه (بدون force-push، بدون دست زدن به درختِ کاری)
+git fetch origin <branch>
+git reset --mixed <sha-remote>    # «--mixed» نه «--hard»: درختِ کاری دست‌نخورده می‌ماند
+git status --short                # باید فقط کارِ واقعیِ خودت را نشان دهد
+
+# ۳) بازسازیِ وابستگی‌ها (اگر گیت‌ها شروع به skip کردند، skip ≠ سبز)
+npm install --no-audit --no-fund  # smoke بدون jsdom خودش را رد می‌کند: «⏭️ jsdom نصب نیست»
+```
+
+**هشدار:** هر `fetch` در کلونِ کم‌عمق چند مگابایت به `.git` می‌افزاید (در دور ۱۲ بودجه از ۱۰۰MB گذشت).
+پس از هر دورِ ممیزی: `rm -f docs/_metadata.json docs/_search-index.json && git gc --prune=now`.
+
+---
+
+## ۸) سنجهٔ تعارض در کلونِ کم‌عمق (درسِ دور ۱۱ — چت ۶)
+
+در این مخزن `git merge` **ممکن نیست**: کلون کم‌عمق است و `merge-base` حتی پس از
+`git fetch` کردنِ `base.sha` هم ناموجود می‌ماند. برای شمارشِ تعارض از
+**three-way merge با پایهٔ صریح** استفاده کن — بدون worktree و بدون کامیت:
+
+```bash
+# پایه را از API بگیر، حدس نزن
+gh api repos/rezaa2544/p2/pulls/<N> --jq '.base.sha'
+git fetch origin <base.sha>
+
+export GIT_INDEX_FILE=/tmp/idx && rm -f /tmp/idx
+git read-tree -m <base>^{tree} <ours>^{tree} <theirs>^{tree}
+git ls-files -u | awk '{print $4}' | sort -u                      # فهرستِ تعارض‌ها
+git ls-files -u | awk '{print $4}' | sort -u | grep -vc '^docs/'  # code
+git ls-files -u | awk '{print $4}' | sort -u | grep -c  '^docs/'  # doc
+unset GIT_INDEX_FILE
+```
+
+### ⚠️ تلهٔ پایهٔ نادرست (هزینهٔ واقعی: ۳۸ تعارضِ کاذب)
+پایهٔ PR (`base.sha`) لزوماً **جدِ شاخهٔ مقصدِ تو نیست**. پیش از استفاده، ancestor بودن را
+با `compare` تأیید کن؛ در غیر این صورت تغییراتِ main به نامِ آن PR نوشته می‌شود:
+
+```bash
+gh api "repos/rezaa2544/p2/compare/<base>...<head-of-mine>" --jq '"\(.status) \(.ahead_by) \(.behind_by)"'
+# «ahead» با behind_by=0 ⇒ پایه تأیید شد · «diverged» ⇒ پایه را عوض کن
+```
+
+نمونهٔ مستند (دور ۱۱): برای سنجهٔ «#159 ↔ شاخهٔ چت ۶»، پایهٔ `1a73c52` نادرست بود
+(`diverged`, ahead=۹, behind=۸۲) و پایهٔ درست `23bf513` (`status=ahead, behind_by=0`).
+کیتِ کاملِ همگرایی: `tools/audit-patches/PR159_CONVERGENCE_RUNBOOK.md` (**اجرای‌مالک**).
+
+---
+
+_درس‌های §۷ و §۸ — چت ۶، دور ۱۲ (۲۰۲۶-۰۹-۱۳). ویرایش این سند تابع قاعدهٔ بامپ قفل مستندات است._
