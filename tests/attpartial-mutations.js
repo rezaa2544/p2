@@ -5,6 +5,14 @@
    ═══════════════════════════════════════════════════════════════════ */
 const { execSync } = require('child_process');
 const fs = require('fs');
+const path = require('path');
+/* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و
+   index.html هرگز بازنویسی نمی‌شوند — بازگردانیِ دستی و rebuildِ
+   پایانی حذف شدند. */
+const { session } = require('./helpers/mutant-kit');
+const kit = session('ap-mut-');
+const ROOT = path.join(__dirname, '..');
+kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
 
 const FILES = {
   'src/js/19-actions-core.js': fs.readFileSync('src/js/19-actions-core.js', 'utf8'),
@@ -42,29 +50,30 @@ const MUTS = [
   },
 ];
 
-let killed = 0;
+let killed = 0, prevFile = null;
 for (const m of MUTS) {
+  const abs = path.join(ROOT, m.file);
+  if (prevFile && prevFile !== abs) kit.clear(prevFile); /* فقط جهشِ جاری فعال */
+  prevFile = abs;
   const src = FILES[m.file];
   if (src.indexOf(m.bad) < 0) { console.log(`  ❌ ${m.name}: الگو پیدا نشد`); continue; }
-  fs.writeFileSync(m.file, src.replace(m.bad, m.mut));
-  execSync('node build.js', { stdio: 'pipe' });
+  kit.mutant(abs, src.replace(m.bad, m.mut)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
+  execSync('node build.js', { stdio: 'pipe', env: kit.env(), cwd: ROOT });
   let out = '', crashed = false;
   const __cmd = 'node tests/attpartial.js';
-  try { execSync(__cmd, { stdio: 'pipe' }); out = 'PASSED (no failure)'; }
+  try { execSync(__cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
   catch (e) {
     out = String(e.stdout || '') + String(e.stderr || '');
     if (out.trim() === '') { /* خروجی خالی = فرایند کشته شد (محیط) — یک‌بار تلاشِ دوباره */
-      try { execSync(__cmd, { stdio: 'pipe' }); out = 'PASSED (no failure)'; }
+      try { execSync(__cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
       catch (e2) { out = String(e2.stdout || '') + String(e2.stderr || ''); }
     }
     if (/JavaScript heap out of memory|FATAL|aborting/.test(out) || out.trim() === '') crashed = true;
   }
   const killedThis = crashed ? (m.crashOK === true) : (/❌/.test(out) && out.includes(m.expectFail));
-  for (const f of Object.keys(FILES)) fs.writeFileSync(f, FILES[f]);
   console.log(`  ${killedThis ? '✅' : '❌'} ${m.name} — ${killedThis ? 'کشته شد' : 'زنده ماند! (خطا: ' + (out.split('\n').find(l => l.includes('❌')) || out.slice(0, 120)) + ')'}`);
   if (killedThis) killed++;
 }
-execSync('node build.js', { stdio: 'pipe' });
 let finalOut = '', backGreen = false;
 try { finalOut = execSync('node tests/attpartial.js', { stdio: 'pipe' }).toString(); backGreen = finalOut.includes('بدون خطا'); }
 catch (e) { finalOut = String(e.stdout || ''); }
