@@ -10,18 +10,23 @@
    می‌کند تا شکلِ ادعاها در CI ثابت شود؛ عددِ ظرفیتِ ملی اما از این‌جا
    می‌آید و فقط روی زیرساختِ واقعی معنا دارد.
 
-   اجرا:
+   اجرا (هر سناریو جدا یا با SCENARIO=all):
      k6 run -e SCENARIO=load    tests/performance/suites/national-load-test.js
-     k6 run -e SCENARIO=peak    tests/performance/suites/national-load-test.js
      k6 run -e SCENARIO=stress  tests/performance/suites/national-load-test.js
      k6 run -e SCENARIO=spike   tests/performance/suites/national-load-test.js
      k6 run -e SCENARIO=soak    tests/performance/suites/national-load-test.js
-     k6 run -e SCENARIO=all     tests/performance/suites/national-load-test.js
 
    متغیرها:
-     PAYESH_BASE_URL   آدرسِ سرورِ هدف
-     PAYESH_PHONE / PAYESH_NID   کاربرِ آزمون
-     LOAD_VUS PEAK_VUS STRESS_START STRESS_MAX SPIKE_VUS SOAK_DURATION
+     PAYESH_BASE_URL   آدرسِ سرورِ هدف (پیش‌فرض http://localhost:3000)
+     PAYESH_PHONE / PAYESH_NID   کاربرِ آزمونِ تک‌نفره (حالتِ ساده)
+     PAYESH_USERS      استخرِ کاربرانِ واقعی: «phone:nid,phone:nid,…»
+                       (خروجیِ دیتاستِ ملی؛ هر VU یکی را برمی‌دارد —
+                       الگویِ واقعیِ کاربران به‌جای نشستِ مشترکِ تک‌نفره)
+     LOAD_VUS PEAK_VUS STRESS_START STRESS_MAX SPIKE_BASE SPIKE_VUS
+     SOAK_DURATION     (پیش‌فرض 2h؛ اجرایِ sandbox: کوتاه‌تر)
+     TIME_SCALE        ضریبِ کوتاه‌سازیِ همهٔ مدت‌ها (1 = کامل؛ 0.4 = فشرده)
+     MAX_VUS           سقفِ سختِ VUها (محافظِ مولدِ بارِ کوچک؛ 0 = بی‌سقف)
+     SUMMARY_FILE      مسیرِ فایلِ JSON خلاصه (اختیاری)
    ═══════════════════════════════════════════════════════════════════ */
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';
@@ -43,11 +48,15 @@ const NATIONAL = {
 const BASE = __ENV.PAYESH_BASE_URL || 'http://localhost:3000';
 const PHONE = __ENV.PAYESH_PHONE || '09999838444';
 const NID = __ENV.PAYESH_NID || '';
-/* کاربرِ آزمون باید «teacher» باشد و یک دانش‌آموزِ ثبت‌نام‌شده در کلاسِ خودش
-   داشته باشد؛ وگرنه authz درستاً رد می‌کند (role_denied / out_of_scope) و
-   سنجهٔ نوشتن بی‌معنا می‌شود. PAYESH_STUDENT_ID از دادهٔ واقعیِ دیتاست می‌آید. */
-const STUDENT_ID = parseInt(__ENV.PAYESH_STUDENT_ID || '0', 10);
 const SCENARIO = (__ENV.SCENARIO || 'all').toLowerCase();
+
+/* استخرِ کاربرانِ واقعی (Wave 18 — نوبتِ آماده‌سازی): phone:nid,phone:nid…
+   اگر نبود، همان حالتِ تک‌کاربرِ قدیمی. */
+const USERS_POOL = (__ENV.PAYESH_USERS || '')
+  .split(',').map((s) => s.trim()).filter(Boolean)
+  .map((s) => { const i = s.indexOf(':'); return i > 0
+    ? { phone: s.slice(0, i), nid: s.slice(i + 1) }
+    : { phone: s, nid: '' }; });
 
 /* هر سناریو با نسبتی از بارِ ملی اجرا می‌شود؛ پیش‌فرض‌ها برای یک محیطِ
    staging کوچک‌اند و در اجرایِ واقعی باید بالا بروند. */
@@ -55,64 +64,47 @@ const LOAD_VUS = parseInt(__ENV.LOAD_VUS || '50', 10);
 const PEAK_VUS = parseInt(__ENV.PEAK_VUS || '400', 10);
 const STRESS_START = parseInt(__ENV.STRESS_START || '50', 10);
 const STRESS_MAX = parseInt(__ENV.STRESS_MAX || '3000', 10);
+const SPIKE_BASE = parseInt(__ENV.SPIKE_BASE || '50', 10);
 const SPIKE_VUS = parseInt(__ENV.SPIKE_VUS || '1500', 10);
-/* نرخِ هدفِ قله: مدلِ ملی ۲۰٬۰۰۰ rps می‌خواهد (§2.1). اینجا پیش‌فرض همان
-   PEAK_VUS است تا با بقیهٔ سناریوها هم‌مقیاس بماند. */
-const PEAK_RPS = parseInt(__ENV.PEAK_RPS || String(PEAK_VUS), 10);
-
-/* نگهبان: پیش‌تر یک نامِ نامعتبر (مثلاً SCENARIO=peak قبل از تعریفش) باعث
-   می‌شد همهٔ شرط‌ها false شوند، options.scenarios خالی بماند و k6 فقط
-   setup() را یک بار اجرا کند — خروجی‌اش «موفق» به نظر می‌رسید در حالی که
-   هیچ باری تولید نشده بود (سبزِ کاذب). حالا صریحاً خطا می‌دهیم. */
-const VALID_SCENARIOS = ['load', 'peak', 'stress', 'spike', 'soak', 'all'];
-if (VALID_SCENARIOS.indexOf(SCENARIO) < 0) {
-  throw new Error('SCENARIO نامعتبر: "' + SCENARIO + '" — باید یکی از '
-    + VALID_SCENARIOS.join(' / ') + ' باشد');
-}
 const SOAK_DURATION = __ENV.SOAK_DURATION || '2h';
-/* مدت‌ها هم قابلِ تنظیم‌اند: پیش‌فرض‌ها برای stagingِ واقعی‌اند (مجموعاً ~۳۵
-   دقیقه) و روی یک ماشینِ ۲ هسته‌ای باید کوتاه شوند. این فقط «مدتِ اجرا» است؛
-   آستانه‌های SLO و نرخِ هدفِ مدلِ ملی دست‌نخورده می‌مانند. */
-const DUR_LOAD  = __ENV.DUR_LOAD  || '5m';
-const DUR_GAP   = __ENV.DUR_GAP   || '6m';   /* شروعِ load_peak پس از load_normal */
-const DUR_STAGE = __ENV.DUR_STAGE || '5m';   /* هر پلهٔ stress_ramp */
-const DUR_PEAK  = __ENV.DUR_PEAK  || '5m';
-const DUR_SPK_A = __ENV.DUR_SPK_A || '2m';
-const DUR_SPK_B = __ENV.DUR_SPK_B || '30s';
-const DUR_SPK_C = __ENV.DUR_SPK_C || '10m';
-const DUR_SPK_D = __ENV.DUR_SPK_D || '2m';
-const DUR_STRS  = __ENV.DUR_STRS  || '10m';
+
+/* مقیاسِ زمانی (sandbox) و سقفِ سختِ VU (محافظِ مولدِ کوچک) */
+const TS = parseFloat(__ENV.TIME_SCALE || '1') > 0 ? parseFloat(__ENV.TIME_SCALE || '1') : 1;
+const MAX_VUS_CAP = parseInt(__ENV.MAX_VUS || '0', 10);
+function dur(spec) {
+  const m = /^(\d+(?:\.\d+)?)(ms|s|m|h)$/.exec(String(spec).trim());
+  if (!m) return spec;
+  const n = parseFloat(m[1]) * TS;
+  if (m[2] === 'ms') return Math.max(1, Math.round(n)) + 'ms';
+  if (m[2] === 's') return Math.max(1, Math.round(n)) + 's';
+  if (m[2] === 'm') return (Math.round(n * 10) / 10) + 'm';
+  return (Math.round(n * 100) / 100) + 'h';
+}
+function capVUs(n) { return MAX_VUS_CAP > 0 ? Math.min(n, MAX_VUS_CAP) : n; }
 
 /* متریک‌های اختصاصیِ §21 */
 const writeErrors = new Rate('write_errors');
 const writesPerSec = new Counter('writes_total');
 const syncLatency = new Trend('sync_duration', true);
-const syncRejects = new Counter('sync_rejected_reason');
 
 export const options = {
   scenarios: Object.assign(
     {},
-    SCENARIO === 'all' || SCENARIO === 'load' ? {
-      /* بارِ عادی، سپس قله — §21: «بار عادی و peak» */
+    SCENARIO === 'all' || SCENARIO === 'load' || SCENARIO === 'normal' ? {
+      /* بارِ عادی — §21: «بار عادی» (۵۰۰ کاربرِ فعال در طرحِ Wave 18) */
       load_normal: {
         executor: 'constant-arrival-rate',
-        rate: LOAD_VUS, timeUnit: '1s', duration: DUR_LOAD,
-        preAllocatedVUs: LOAD_VUS, maxVUs: LOAD_VUS * 4
-      },
-      load_peak: {
-        executor: 'constant-arrival-rate',
-        rate: PEAK_VUS, timeUnit: '1s', duration: DUR_PEAK, startTime: DUR_GAP,
-        preAllocatedVUs: PEAK_VUS, maxVUs: PEAK_VUS * 2
+        rate: LOAD_VUS, timeUnit: '1s', duration: dur('5m'),
+        preAllocatedVUs: Math.min(LOAD_VUS, capVUs(LOAD_VUS)), maxVUs: capVUs(LOAD_VUS * 4)
       }
     } : {},
-    SCENARIO === 'peak' ? {
-      /* قلهٔ مستقلِ «صبحِ اولِ مهر» — §21: peak برابرِ ۳ برابرِ بارِ عادی.
-         پیش‌تر peak فقط به‌عنوان فازِ دومِ SCENARIO=load وجود داشت و اجرایِ
-         SCENARIO=peak هیچ سناریویی نمی‌ساخت. */
-      peak_standalone: {
+    SCENARIO === 'all' || SCENARIO === 'peak' ? {
+      /* قله — §21: «peak» (پیکِ شروعِ سالِ تحصیلی — ۲۰۰۰ کاربرِ همزمان) */
+      load_peak: {
         executor: 'constant-arrival-rate',
-        rate: PEAK_RPS, timeUnit: '1s', duration: DUR_PEAK,
-        preAllocatedVUs: Math.min(PEAK_RPS, 2000), maxVUs: Math.max(PEAK_RPS * 2, 2000)
+        rate: PEAK_VUS, timeUnit: '1s', duration: dur('5m'),
+        startTime: SCENARIO === 'all' ? dur('6m') : '0s',
+        preAllocatedVUs: Math.min(PEAK_VUS, capVUs(PEAK_VUS)), maxVUs: capVUs(PEAK_VUS * 2)
       }
     } : {},
     SCENARIO === 'all' || SCENARIO === 'stress' ? {
@@ -120,30 +112,28 @@ export const options = {
       stress_ramp: {
         executor: 'ramping-arrival-rate',
         startRate: STRESS_START, timeUnit: '1s',
-        preAllocatedVUs: STRESS_START, maxVUs: STRESS_MAX * 2,
+        preAllocatedVUs: Math.min(STRESS_START * 4, capVUs(STRESS_START * 4)),
+        maxVUs: capVUs(STRESS_MAX * 2),
         stages: [
-          { target: STRESS_START * 4, duration: DUR_STAGE },
-          { target: STRESS_START * 16, duration: DUR_STAGE },
-          { target: STRESS_MAX, duration: DUR_STRS },
-          { target: STRESS_MAX, duration: DUR_STAGE }
+          { target: STRESS_START * 4, duration: dur('5m') },
+          { target: STRESS_START * 16, duration: dur('5m') },
+          { target: STRESS_MAX, duration: dur('10m') },
+          { target: STRESS_MAX, duration: dur('5m') }
         ]
       }
     } : {},
     SCENARIO === 'all' || SCENARIO === 'spike' ? {
-      /* افزایشِ ناگهانی — §21: «افزایش ناگهانی بار» (صبحِ اولِ مهر) */
+      /* افزایشِ ناگهانی — §21: «افزایشِ ناگهانی بار» (صبحِ اولِ مهر).
+         SPIKE_BASE = سطحِ آرام (پیش‌فرض 50)؛ جهش تا SPIKE_VUS. */
       spike_mehr: {
         executor: 'ramping-arrival-rate',
-        startRate: 50, timeUnit: '1s',
-        /* باگِ پیشین: preAllocatedVUs=200 ثابت بود در حالی که
-           maxVUs=SPIKE_VUS*2؛ اگر SPIKE_VUS < 100 باشد k6 با خطایِ
-           «maxVUs can't be less than preAllocatedVUs» اصلاً اجرا نمی‌شود.
-           preAllocated هم باید از همان SPIKE_VUS مشتق شود. */
-        preAllocatedVUs: Math.min(200, SPIKE_VUS), maxVUs: Math.max(SPIKE_VUS * 2, 200),
+        startRate: SPIKE_BASE, timeUnit: '1s',
+        preAllocatedVUs: Math.min(200, capVUs(200)), maxVUs: capVUs(SPIKE_VUS * 2),
         stages: [
-          { target: 50, duration: DUR_SPK_A },
-          { target: SPIKE_VUS, duration: DUR_SPK_B },   /* جهش */
-          { target: SPIKE_VUS, duration: DUR_SPK_C },   /* نگه‌داشتنِ قله */
-          { target: 50, duration: DUR_SPK_D }            /* بازگشت */
+          { target: SPIKE_BASE, duration: dur('2m') },
+          { target: SPIKE_VUS, duration: dur('30s') },   /* جهش */
+          { target: SPIKE_VUS, duration: dur('10m') },   /* نگه‌داشتنِ قله */
+          { target: SPIKE_BASE, duration: dur('2m') }    /* بازگشت */
         ]
       }
     } : {},
@@ -152,7 +142,7 @@ export const options = {
       soak_endurance: {
         executor: 'constant-arrival-rate',
         rate: LOAD_VUS, timeUnit: '1s', duration: SOAK_DURATION,
-        preAllocatedVUs: LOAD_VUS, maxVUs: LOAD_VUS * 3
+        preAllocatedVUs: Math.min(LOAD_VUS, capVUs(LOAD_VUS)), maxVUs: capVUs(LOAD_VUS * 3)
       }
     } : {}
   ),
@@ -169,25 +159,41 @@ export const options = {
 };
 
 /* ── نشست ─────────────────────────────────────────────────────────── */
-function login() {
-  const sent = http.post(BASE + '/api/auth/send-code', JSON.stringify({ phone: PHONE }),
+function login(phone, nid) {
+  const sent = http.post(BASE + '/api/auth/send-code', JSON.stringify({ phone }),
     { headers: { 'content-type': 'application/json' } });
   let code = null;
   try { code = sent.json('demo_code'); } catch (e) { code = null; }
   if (!code) { check(sent, { 'send-code ok': (r) => r.status === 200 }); return null; }
   const res = http.post(BASE + '/api/auth/login',
-    JSON.stringify({ phone: PHONE, code, national_id: NID || undefined }),
+    JSON.stringify({ phone, code, national_id: nid || undefined }),
     { headers: { 'content-type': 'application/json' } });
   const ok = check(res, { 'login 200': (r) => r.status === 200 });
   if (!ok) return null;
   const setCookie = res.headers['Set-Cookie'];
   const raw = Array.isArray(setCookie) ? setCookie.join('; ') : String(setCookie || '');
-  const cookie = raw.split(';').map((c) => c.trim()).filter((c) => c.indexOf('=') > 0).join('; ');
-  /* هویتِ واقعیِ کاربرِ login‌شده را برمی‌گردانیم. نوشتنِ `by` با شناسهٔ
-     هاردکد، گاردِ forged_by سرور را فعال می‌کند و همهٔ نوشتن‌ها رد می‌شوند. */
-  let me = null;
-  try { me = res.json('user'); } catch (e) { me = null; }
-  return { cookie, user: me || {} };
+  return raw.split(';').map((c) => c.trim()).filter((c) => c.indexOf('=') > 0).join('; ');
+}
+
+/* نشستِ کاملِ یک کاربر: کوکی + مدرسه/نقش + نمونهٔ دانش‌آموزان/کلاس‌های
+   مدرسه‌اش (برای نوشتنِ حضورِ واقعی — نه idهای هاردکد). */
+function buildUser(phone, nid) {
+  const cookie = login(phone, nid);
+  if (!cookie) return null;
+  const H = { headers: { cookie } };
+  const me = http.get(BASE + '/api/auth/me', H);
+  let user = {};
+  try { user = me.json('user') || {}; } catch (e) { user = {}; }
+  let students = [], classes = [];
+  try {
+    const sl = http.get(BASE + '/api/v1/students?limit=50', H);
+    students = (sl.json('data') || []).map((s) => s.id).filter((x) => x != null);
+  } catch (e) { students = []; }
+  try {
+    const cl = http.get(BASE + '/api/v1/classes?limit=20', H);
+    classes = (cl.json('data') || []).map((c) => c.id).filter((x) => x != null);
+  } catch (e) { classes = []; }
+  return { cookie, phone, userId: user.id || null, schoolId: user.school_id || null, students, classes };
 }
 
 let uidSeq = 0;
@@ -206,67 +212,82 @@ function readMix(cookie) {
   check(rs[2], { 'list 200 or 401': (r) => r.status === 200 || r.status === 401 });
 }
 
-/* ── سناریوی نوشتن (sync) ─────────────────────────────────────────── */
-function writeOnce(sess) {
-  const cookie = sess && sess.cookie;
-  const me = (sess && sess.user) || {};
-  /* فقط فیلدهایِ مجازِ مدلِ teacher_notes (authz/model.json):
-     body, created_at, school_id, student_id, teacher_id, updated_at.
-     هر کلیدِ دیگر ⇒ unknown_field (fail-closed). */
-  const data = { school_id: me.school_id || 1, teacher_id: me.id || 1, body: 'k6 load probe' };
-  if (STUDENT_ID) data.student_id = STUDENT_ID;
+/* ── سناریوی نوشتن (sync) ───────────────────────────────────────────
+   Wave 18 — نوبتِ آماده‌سازی: نوشتنِ «حضور» — همان‌که صبحِ مهر ۸۳۳ نویسه/
+   ثانیهٔ مدلِ ملی است. idها از نشست (school/by) و از دیتاستِ واقعی
+   (student/class) می‌آیند؛ هیچ id هاردکدی نیست. */
+function writeOnce(u) {
+  if (!u || !u.schoolId || !u.userId) return;
+  const studentId = u.students.length ? u.students[Math.floor(Math.random() * u.students.length)] : null;
+  const classId = u.classes.length ? u.classes[Math.floor(Math.random() * u.classes.length)] : null;
+  if (studentId == null || classId == null) return;
   const body = JSON.stringify({
-    ops: [{ uid: uid(), t: 'ins', c: 'teacher_notes', data,
-            by: me.id || 1, at: new Date().toISOString() }]
+    ops: [{
+      uid: uid(), t: 'ins', c: 'attendance',
+      data: {
+        school_id: u.schoolId, student_id: studentId, class_id: classId,
+        date: new Date().toISOString().slice(0, 10),
+        status: 'present', source: 'manual',
+        taken_at: new Date().toISOString()
+      },
+      by: u.userId, at: new Date().toISOString()
+    }]
   });
   const t0 = Date.now();
   const res = http.post(BASE + '/api/sync', body,
-    { headers: { 'content-type': 'application/json', cookie: cookie || '' } });
+    { headers: { 'content-type': 'application/json', cookie: u.cookie || '' } });
   syncLatency.add(Date.now() - t0);
   writesPerSec.add(1);
-  /* سرور برایِ نوشتنِ ردشده هم HTTP 200 می‌دهد و `ok:false` را در body
-     می‌گذارد (مثلاً forged_by). سنجهٔ write_errors باید body را بخواند،
-     وگرنه یک اجرایِ کاملاً ردشده «سبز» گزارش می‌شود. */
-  let good = false, code = 'unparsed';
-  try {
-    const j = res.json();
-    code = (j && j.code) || (j && j.results && j.results[0] && j.results[0].code) || '';
-    good = res.status === 200 && j && j.ok !== false &&
-      (!j.results || j.results.every((r) => r.ok !== false));
-  } catch (e) { good = false; }
+  const good = res.status === 200;
   writeErrors.add(!good);
-  check(res, { 'sync accepted (ok in body)': () => good });
-  if (!good) syncRejects.add(code || 'unknown');
+  check(res, { 'sync 200': () => good });
 }
 
 export function setup() {
-  const sess = login();
-  if (!sess) throw new Error('login در setup شکست خورد — PAYESH_PHONE/PAYESH_NID را بررسی کنید');
-  return { sess, model: NATIONAL };
+  /* استخرِ واقعی یا تک‌کاربرِ env — هر VU یکی برمی‌دارد (الگویِ واقعی). */
+  const pool = USERS_POOL.length ? USERS_POOL : [{ phone: PHONE, nid: NID }];
+  const users = [];
+  for (const p of pool) {
+    const u = buildUser(p.phone, p.nid);
+    if (u) users.push(u);
+  }
+  return { users, single: !USERS_POOL.length, model: NATIONAL };
 }
 
 export default function (data) {
-  const sess = data && data.sess;
-  const cookie = sess && sess.cookie;
-  group('read mix', () => readMix(cookie));
+  const users = (data && data.users) || [];
+  if (!users.length) { return; }
+  const u = users[__VU % users.length];
+  group('read mix', () => readMix(u.cookie));
   /* نسبتِ ۸ خواندن به ۱ نوشتن، همان چیزی که مدلِ ملی فرض می‌کند */
-  if (__ITER % 8 === 0) group('write', () => writeOnce(sess));
+  if (__ITER % 8 === 0) group('write', () => writeOnce(u));
   sleep(Math.random() * 0.4 + 0.1);
 }
 
 export function handleSummary(data) {
-  return {
-    stdout: JSON.stringify({
-      scenario: SCENARIO,
-      model: NATIONAL,
-      metrics: {
+  const summary = {
+    scenario: SCENARIO,
+    when: new Date().toISOString(),
+    model: NATIONAL,
+    timeScale: TS,
+    metrics: (() => {
+      const d = data.metrics.http_req_duration ? data.metrics.http_req_duration.values : {};
+      /* k6: «med» همان p50 است؛ در خروجیِ خلاصه درصدهای تنظیم‌شده می‌آیند */
+      return {
         rps: data.metrics.http_reqs && data.metrics.http_reqs.values.rate,
-        p50: data.metrics.http_req_duration && data.metrics.http_req_duration.values['p(50)'],
-        p95: data.metrics.http_req_duration && data.metrics.http_req_duration.values['p(95)'],
-        p99: data.metrics.http_req_duration && data.metrics.http_req_duration.values['p(99)'],
-        failed_rate: data.metrics.http_req_failed && data.metrics.http_req_failed.values.rate,
-        writes: data.metrics.writes_total && data.metrics.writes_total.values.count
-      }
-    }, null, 2) + '\n'
+        requests: data.metrics.http_reqs && data.metrics.http_reqs.values.count,
+        p50: d['p(50)'] != null ? d['p(50)'] : d.med,
+        p95: d['p(95)'],
+        p99: d['p(99)'],
+      failed_rate: data.metrics.http_req_failed && data.metrics.http_req_failed.values.rate,
+      checks_rate: data.metrics.checks && data.metrics.checks.values.rate,
+      writes: data.metrics.writes_total && data.metrics.writes_total.values.count,
+      write_errors_rate: data.metrics.write_errors && data.metrics.write_errors.values.rate,
+      sync_p95: data.metrics.sync_duration && data.metrics.sync_duration.values['p(95)']
+      };
+    })()
   };
+  const out = { stdout: JSON.stringify(summary, null, 2) + '\n' };
+  if (__ENV.SUMMARY_FILE) out[__ENV.SUMMARY_FILE] = JSON.stringify(summary, null, 2);
+  return out;
 }

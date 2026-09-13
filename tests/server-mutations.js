@@ -21,10 +21,20 @@
      M16/M17 پشتیبان/بازیابی: گاردِ نقش / اعتبارسنجیِ فایل (تست: tests/server8.js)
      M18 بکاپِ خودکار: زمان‌بندیِ درون‌پروسه (تست: tests/server9.js)
      M19 صفحهٔ وبِ سیاستِ حریم خصوصی: روتِ /privacy (تست: tests/server10.js)
-   هر جهش: جایگزینی، build، اجرای تستِ مربوطه، بررسیِ شکست، بازگشت.
-   ───────────────────────────────────────────────────────────── */
+   هر جهش: جایگزینی، build، اجرای تستِ مربوطه، بررسیِ شکست.
+   ─────────────────────────────────────────────────────────────
+   BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛
+   سورس اصلی و index.html هرگز بازنویسی نمی‌شوند — بازگردانیِ دستی و
+   rebuildِ پایانی حذف شدند. برای حفظِ معنای اصلی («همه‌گاه فقط یک جهشِ
+   فعال»)، نگاشتِ فایلِ تکرارِ قبلی پیش از هر جهشِ تازه پاک می‌شود. */
+'use strict';
 const { execSync } = require('child_process');
 const fs = require('fs');
+const path = require('path');
+const { session } = require('./helpers/mutant-kit');
+const kit = session('srv-mut-');
+const ROOT = path.join(__dirname, '..');
+kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
 
 const MUTS = [
   {
@@ -35,9 +45,12 @@ const MUTS = [
     expectFail: 'S11'
   },
   {
-    file: 'server/sync.js', suite: 'tests/server1.js', heap: 1500,
-    bad: "  return s === u.school_id;",
-    mut: "  return true;",
+    /* BH-mut فاز ۲ — ترمیمِ لنگر: کدِ scope در «ویو ۵» از sync.js به policy.js
+       منتقل شد (inScope منبعِ یکتا)؛ لنگرِ قدیمیِ «return s === u.school_id»
+       دیگر وجود نداشت و پوشش از دست رفته بود. همان جهش، همان خانهٔ جدید. */
+    file: 'server/policy.js', suite: 'tests/server1.js', heap: 1500,
+    bad: "  if (s !== u.school_id) return false;",
+    mut: "  if (false && s !== u.school_id) return false;",
     name: 'M2 دور زدنِ دامنهٔ مدرسه (scope)',
     expectFail: 'S17'
   },
@@ -173,38 +186,42 @@ const MUTS = [
 
 let killed = 0;
 let envFails = 0;
+let prevAbs = null;
 for (const m of MUTS) {
-  const src0 = fs.readFileSync(m.file, 'utf8');
+  const abs = path.join(ROOT, m.file);
+  /* فقط جهشِ جاری فعال بماند (معنای اصلیِ «هر بار یک جهش»):
+     نگاشتِ فایلِ جهشِ قبلی را بردار — فایلِ تکراری همان مسیرِ کپی را تازه می‌نویسد. */
+  if (prevAbs && prevAbs !== abs) kit.clear(prevAbs);
+  const src0 = fs.readFileSync(abs, 'utf8');
   const n = src0.indexOf(m.bad);
   if (n < 0) { console.log(`  ❌ ${m.name}: الگوی اصلی پیدا نشد در ${m.file}`); continue; }
-  fs.writeFileSync(m.file, src0.replace(m.bad, m.mut, 1));
-  execSync('node build.js', { stdio: 'pipe' });
+  kit.mutant(abs, src0.replace(m.bad, m.mut, 1)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
+  prevAbs = abs;
+  execSync('node build.js', { stdio: 'pipe', cwd: ROOT, env: kit.env() }); /* build در سایه */
   let out = '', crashed = false;
   const __r89cmd = `node --max-old-space-size=${m.heap} ${m.suite}`;
-  try { execSync(__r89cmd, { stdio: 'pipe' }); out = 'PASSED (no failure)'; }
-  catch (e) {
-    out = String(e.stdout || '') + String(e.stderr || '');
-    if (out.trim() === '') { /* R89: empty output = process killed (env/memory) — retry once */
-      try { execSync(__r89cmd, { stdio: 'pipe' }); out = 'PASSED (no failure)'; }
-      catch (e2) { out = String(e2.stdout || '') + String(e2.stderr || ''); }
-    }
-    if (/JavaScript heap out of memory|FATAL|aborting/.test(out) || out.trim() === '') crashed = true;
-    if (out.trim() === '') out = '\u274c \u062e\u0637\u0627: \u0641\u0631\u0622\u06cc\u0646\u062f \u0628\u062f\u0648\u0646 \u062e\u0631\u0648\u062c\u06cc \u06a9\u0634\u062a\u0647 \u0634\u062f (\u0645\u062d\u06cc\u0637) \u2014 \u00ab\u0632\u0646\u062f\u0647 \u0645\u0627\u0646\u062f\u0646\u00bb \u062c\u0647\u0634 \u0646\u06cc\u0633\u062a';
+  const __run = () => {
+    try { execSync(__r89cmd, { stdio: 'pipe', cwd: ROOT, env: kit.env() }); return 'PASSED (no failure)'; }
+    catch (e) { return String(e.stdout || '') + String(e.stderr || ''); }
+  };
+  out = __run();
+  if (out.trim() === '') { /* R89: empty output = process killed (env/memory) — retry once */
+    out = __run();
   }
+  if (/JavaScript heap out of memory|FATAL|aborting/.test(out) || out.trim() === '') crashed = true;
+  if (out.trim() === '') out = '\u274c \u062e\u0637\u0627: \u0641\u0631\u0622\u06cc\u0646\u062f \u0628\u062f\u0648\u0646 \u062e\u0631\u0648\u062c\u06cc \u06a9\u0634\u062a\u0647 \u0634\u062f (\u0645\u062d\u06cc\u0637) \u2014 \u00ab\u0632\u0646\u062f\u0647 \u0645\u0627\u0646\u062f\u0646\u00bb \u062c\u0647\u0634 \u0646\u06cc\u0633\u062a';
   /* R92: env early-death — تست قبل از چاپِ چکِ موردِ انتظار مرد (EADDRINUSE/OOM در استارت) → retry یک‌بار؛ هرگز «زنده ماند»ِ کاذب */
   if (m.crashOK !== true && out !== 'PASSED (no failure)' && /❌/.test(out) && !out.includes(m.expectFail)) {
-    let out2 = '', crashed2 = false;
-    try { execSync(__r89cmd, { stdio: 'pipe' }); out2 = 'PASSED (no failure)'; }
-    catch (e3) {
-      out2 = String(e3.stdout || '') + String(e3.stderr || '');
-      if (/JavaScript heap out of memory|FATAL|aborting/.test(out2) || out2.trim() === '') crashed2 = true;
+    const out2 = __run();
+    if (!(out2 !== 'PASSED (no failure)' && /❌/.test(out2) && !out2.includes(m.expectFail))) {
+      out = out2;
+      crashed = /JavaScript heap out of memory|FATAL|aborting/.test(out2) || out2.trim() === '';
     }
-    if (!(out2 !== 'PASSED (no failure)' && /❌/.test(out2) && !out2.includes(m.expectFail))) { out = out2; crashed = crashed2; }
   }
   const failed = /❌/.test(out);
   const envFailed = m.crashOK !== true && out !== 'PASSED (no failure)' && failed && !out.includes(m.expectFail);
   const killedThis = envFailed ? false : (crashed ? (m.crashOK === true) : (failed && out.includes(m.expectFail)));
-  fs.writeFileSync(m.file, src0);
+  /* بدونِ بازگردانی — سورس اصلی هرگز جهش نگرفت */
   const line = (out.split('\n').find(l => l.includes('❌')) || out.slice(0, 150)).trim();
   if (envFailed) {
     envFails++;
@@ -214,12 +231,12 @@ for (const m of MUTS) {
     if (killedThis) killed++;
   }
 }
-execSync('node build.js', { stdio: 'pipe' });
-console.log('\nبازبینیِ خطِ پایه (بدون جهش):');
+if (prevAbs) kit.clear(prevAbs); /* نقشهٔ خالی برای شفافیت؛ پاک‌سازیِ واقعی در exit */
+console.log('\nبازبینیِ خطِ پایه (بدون جهش و بدون env — سورس‌های اصلی):');
 /* R97 — اجرایِ پایانه (بدونِ جهش) تحتِ بارِ ۴ لِین گاه می‌مرد و استیسه‌ی
    execSync کلِ سویت را می‌انداخت (کلاسِ R89): try + یک‌بار retry. */
 const runBase = (cmd) => {
-  try { return execSync(cmd, { stdio: 'pipe' }).toString(); }
+  try { return execSync(cmd, { stdio: 'pipe', cwd: ROOT }).toString(); }
   catch (e) { return String(e.stdout || '') + String(e.stderr || ''); }
 };
 let o1 = runBase('node --max-old-space-size=1500 tests/server1.js');
