@@ -6,7 +6,7 @@
 
 **نسخهٔ قفل:** ۱.۰.۰-rc43 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** همگراییِ قفل پس از بازپایه روی main — چت ۶ (Arena)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۳۱ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۳۶ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
@@ -60,7 +60,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۳۳۱)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۳۳۶)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -89,6 +89,7 @@
 | `BOTTLENECK_MAP.md` | `sha256:5c6be2301e932bc963ef9e18750343babf19d65af4e2acdf111cf0e76ad34c1d` |
 | `BUG_HUNT_REPORT.md` | `sha256:ca95ab098f2f512badd4758182e26cacfb54266801e1d74b217c03f25be318c1` |
 | `BUNDLE_REGISTRY.md` | `sha256:40e3edd00c62ba2de60467a4fbfd1a59a8a88289178811fd85267450d08f561f` |
+| `BUS_FACTOR_REGISTRY.md` | `sha256:af6b12ea4cb5b3046e211e04f227e4873cc2b674d9f7d3d969457fd83cfa779d` |
 | `CACHE_STRATEGY_DESIGN.md` | `sha256:9186d05e39cb8095593cfbe9cbcbd699bab519e41994255ebe3708102a3cca20` |
 | `CAPACITY.md` | `sha256:f99be9d2fd2b4cbcb4e0d6c043071625b6473c26ddaed777d7248e8d30989738` |
 | `CAPACITY_MODEL.md` | `sha256:6f939aced476d7b0e8e9f0155ec5c86ce348d7f4bc99a3cd49f5c87a3234ed74` |
@@ -101,6 +102,7 @@
 | `COMPLETE_REPORT_FOR_CLOUD.md` | `sha256:40831a86e47d1d516b18853d15e78909003a4ef9cf1a3be3864d282f317976e8` |
 | `CONFIGURATION_REFERENCE.md` | `sha256:38d1d7f120a917495fdec3171facd7f9362f854d243f6bc3bda635d22213b488` |
 | `CONFLICT_MODEL_DESIGN.md` | `sha256:be53b0a4086abd9477b6fc5ef98df04b8b850707ba13726f33f358e96d6f4ff1` |
+| `COST_ENVELOPE.md` | `sha256:78453b381cd0e011e45472169f4b9ff7d0178823847c406c8973204f61649733` |
 | `D2_DRAFT.md` | `sha256:f62d2eff0772ce15393ed679e56ccfc3af174f702990109f479a0a81f3eb5349` |
 | `D3_DRAFT.md` | `sha256:a4bdb239a1dd6610c8319c842c3274929acd203e854585b7bbf6806ee0a6fa92` |
 | `D4_DRAFT.md` | `sha256:9537ea48b0740c56ede54faa37a557bddeb584bbae008d72d1bec1375b081ac2` |
@@ -164,10 +166,10 @@
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:36bf496d42732300a7872e76e6a3ce64dca6d52ed20eb1d9621fdce63f3d4169` |
 | `DOCS_INDEX.md` | `sha256:a45239013ed06fe2188ea60f25197ddcfcd7f424ef5eb6c1b884fca58dab5e71` |
-| `DOCS_METRICS.md` | `sha256:d3fc318652e3b9831702ef85a76636ce131c98215d92d5cb6a16157538f0c075` |
+| `DOCS_METRICS.md` | `sha256:463ac1192a1409284fc4c504723f0b61b006e1f515cb28b361e038204f9a48b6` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:a1ebefac54f1b8063b613167311751402a45b809bfa81cd8736067377d607269` |
-| `DOCUMENTATION_MAP.md` | `sha256:82072d56bdf093f8293b9d3fc0712ac5e0a95737a363372b1e48b47fbbaf8d56` |
+| `DOCUMENTATION_MAP.md` | `sha256:dd7c09a38452dcb48ee27fd3f26c4c580c83a15005c183ac786e8acd18a0234d` |
 | `DR_RUNBOOK.md` | `sha256:8c0d8f7e2bb1e1305c2aaf645850de68d4b429895445ecae74a5a0a732db0e26` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
@@ -189,6 +191,7 @@
 | `HA_POSTGRES.md` | `sha256:8a73c7c0d783b0c8139e518bfdfbd709109adb585170e313102f1a4c3bbca677` |
 | `HA_REDIS.md` | `sha256:aaabbaf59318616ef520a002de1e096e37b500e4c27592f67ac0627ca7854a34` |
 | `HEALTH_INDEX_MODULE.md` | `sha256:060947c6021b4db1332c15360a6bd2068ab77b134f2263cf19d2c014130f186d` |
+| `INCIDENT_PLAYBOOK.md` | `sha256:9826fbd386994ce5ba03c107de02b5c069dfa93b685c07a3898bb307540ef810` |
 | `INCIDENT_RESPONSE.md` | `sha256:fec600cb0e9dd38303246baad20ac701920b1d36aeb84562f6f24965447a46b7` |
 | `INSCOPE_OPTIMIZATION_PLAN.md` | `sha256:85e3f0260e008e7c71ae9a4ed3a943f94546ff33405750d176dd4b6fcadd9f06` |
 | `INTERNSHIP_MODULE.md` | `sha256:bfaef4d22a634fd68bde60ad2517e42ca2cf0f7e6ed259baffbd5b8f7af5be99` |
@@ -219,11 +222,13 @@
 | `OFFLINE_FIRST.md` | `sha256:41cb377cff63a1c364cf2494cdc095f4c1c01e53760d3b7518f027eef234e3c6` |
 | `ONBOARDING_CHECKLIST.md` | `sha256:138a99b9bb129b9a0ea31db4d7565e24e5399d022b164b4b4ca85119f77f6f0c` |
 | `ONBOARDING_NEW_DEVELOPER.md` | `sha256:4dbad99994690b6bfcd0ab61e3f906497d4c982efb903dbe6b9d05866dac44cb` |
+| `ONCALL_SCHEDULE.md` | `sha256:6e17ff0f73a537d40913e4e146676530a687e5c27bab163386d019222a089a85` |
 | `OPENCODE_BUNDLE_GUIDE.md` | `sha256:2e1029d292d659bb092aaa7c7a155b52bfc0c2910c385569a3e3f14e49c385dc` |
 | `OPENCODE_USER_GUIDE.md` | `sha256:78580d537cb5d17be3bc248f18b681dc3396f0d71dd23276427103efc714b8f2` |
 | `OPEN_ITEMS.md` | `sha256:af2bf5b99d4aecf6b0193d457a8add545ecefe38d9098ad78403bfd11477dec3` |
 | `OPEN_WORK.md` | `sha256:d4ea868a8162d00a962a06e812d1d6dc5488317fbf9d977e682240294b6bd924` |
 | `OPERATIONAL_HANDOVER.md` | `sha256:0ce914c38f0b82124fb9bb62a8c8a16d0def68488d10c0facf4df32efa4b6368` |
+| `OPERATIONAL_READINESS.md` | `sha256:3ee26d00cc1d8a35cae537d8194879cf58eef69f8c5fb5324cafccbc6f5d3fcd` |
 | `OPINION_2026-09-05_ROADMAP_REVIEW.md` | `sha256:ae4998223e48d65fe3094895bfdc44a70013c8150b7c0389d7bffb6c14ba89bc` |
 | `P0_BLOCKER_TRACKER.md` | `sha256:5b87bca57d38fa1d691c52c418ad3bc1e3f55545d26d71c9eef709375a86afea` |
 | `PEN_TEST_CHECKLIST.md` | `sha256:775c62ef672aa56cb1ae3a6461215e3e183cbe7f208648d3fe0dad9134a85c58` |
