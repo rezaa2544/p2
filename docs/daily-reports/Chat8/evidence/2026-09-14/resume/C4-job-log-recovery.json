@@ -1,0 +1,10 @@
+[
+  {
+    "command": "python - <<'PY2'\nimport subprocess\nr=subprocess.run(['gh','api','repos/rezaa2544/p2/actions/jobs/104100628578/logs'],capture_output=True,text=True)\nif r.returncode:\n print('Job log retrieval failed; no console-count claim.');print('exit',r.returncode);raise SystemExit(r.returncode)\nlines=[l for l in r.stdout.splitlines() if 'runtime/' in l or 'نتیجه: ۶۴' in l or 'Run node tests/documentation-maintenance-coverage.js' in l]\nassert sum('✅ runtime/' in l for l in lines)==15\nassert any('نتیجه: ۶۴ موفق / ۰ ناموفق' in l for l in lines)\nprint('\\n'.join(lines));print('VERIFIED: job-log endpoint shows 15 runtime cases and 64/64 total.')\n\nPY2",
+    "startedAt": "2026-09-14T18:34:39.941138+00:00",
+    "finishedAt": "2026-09-14T18:34:40.302258+00:00",
+    "exitCode": 1,
+    "stdout": "Job log retrieval failed; no console-count claim.\nexit 1\n",
+    "stderr": ""
+  }
+]

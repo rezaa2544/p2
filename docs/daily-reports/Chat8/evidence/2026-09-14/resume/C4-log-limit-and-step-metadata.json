@@ -1,0 +1,18 @@
+[
+  {
+    "command": "python - <<'PY2'\nimport subprocess,re,json\np=subprocess.run(['gh','api','repos/rezaa2544/p2/actions/jobs/104100628578/logs'],capture_output=True,text=True)\nerr=re.sub(r'(https://[^\\s\\\"?]+)\\?[^\\s\\\"]+',r'\\1?<signed-query-redacted>',p.stderr)\nprint(json.dumps({'exitCode':p.returncode,'stderr':err},ensure_ascii=False))\nraise SystemExit(p.returncode)\n\nPY2",
+    "startedAt": "2026-09-14T18:35:19.233458+00:00",
+    "finishedAt": "2026-09-14T18:35:19.583068+00:00",
+    "exitCode": 1,
+    "stdout": "{\"exitCode\": 1, \"stderr\": \"Get \\\"https://productionresultssa12.blob.core.windows.net/actions-results/f92c0b2b-b027-4524-8b86-f76420052d41/workflow-job-run-fb24d74f-02c6-50b8-a1a3-1dce4aa3c891/logs/job/job-logs.txt?<signed-query-redacted>\\\": EOF\\n\"}\n",
+    "stderr": ""
+  },
+  {
+    "command": "python - <<'PY2'\nimport json,pathlib\nr=json.loads(pathlib.Path('docs/daily-reports/Chat8/evidence/2026-09-14/resume/C4-ci-step-proof.json').read_text())\nnode=json.loads(r[0]['stdout']);security=json.loads(r[1]['stdout'])\nassert node['headSha']==security['headSha']=='e2580849c27d745d570c74f9d9c3588a48340a80'\nassert node['conclusion']==security['conclusion']=='success'\nsteps=[s for j in node['jobs'] for s in j['steps'] if s['name']=='Verify governance maintenance and Arena runtime routing']\nassert len(steps)==1 and steps[0]['conclusion']=='success'\nprint(json.dumps({'head':node['headSha'],'runtimeStep':steps[0],'consoleLogs':'NOT-VERIFIED: download unavailable; local suite separately proved 64/64'},ensure_ascii=False))\n\nPY2",
+    "startedAt": "2026-09-14T18:35:19.583103+00:00",
+    "finishedAt": "2026-09-14T18:35:19.617071+00:00",
+    "exitCode": 0,
+    "stdout": "{\"head\": \"e2580849c27d745d570c74f9d9c3588a48340a80\", \"runtimeStep\": {\"conclusion\": \"success\", \"name\": \"Verify governance maintenance and Arena runtime routing\", \"number\": 7, \"status\": \"completed\"}, \"consoleLogs\": \"NOT-VERIFIED: download unavailable; local suite separately proved 64/64\"}\n",
+    "stderr": ""
+  }
+]
