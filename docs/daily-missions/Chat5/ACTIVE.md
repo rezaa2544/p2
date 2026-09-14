@@ -26,6 +26,6 @@
 - Give exact next verification actions for ChatGPT.
 
 ### Common rules
-No merge, no P0 closure, no Roadmap rewrite, no invented staging/production evidence. If one stage is blocked, continue independent stages. NOT-RUN must include the exact reason.
+No P0 closure, no Roadmap rewrite, no invented staging/production evidence. The Queue is a minimum path, not a stop condition. After M4, continue unresolved QA, regression, test-battery, acceptance and evidence work within this Mission until no independent scoped work remains. For Mission-scoped test/documentation/code changes that do not close/reclassify P0/P1, Chat5 owns commit → push → PR → checks → merge → main verification and must not wait for another prompt. Do not merge a change whose merge itself closes/reclassifies a P0/P1 or requires governance adjudication. If one stage is blocked, continue independent stages. NOT-RUN must include the exact reason.
 
 **Report:** `docs/daily-reports/Chat5/2026-09-14.md`
