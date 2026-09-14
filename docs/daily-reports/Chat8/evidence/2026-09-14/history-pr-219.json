@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:08:39.801308+00:00",
+  "finishedAt": "2026-09-14T17:08:40.203770+00:00",
+  "command": "gh pr view 219 --repo rezaa2544/p2 --json number,title,state,headRefOid,mergeCommit,mergedAt,url",
+  "exitCode": 0,
+  "stdout": "{\"headRefOid\":\"a733f6b4eed665b60ef1b6caa0e832c6595372fc\",\"mergeCommit\":{\"oid\":\"9aafdb83f8611503451b0ae9436ffcb5d026ebd8\"},\"mergedAt\":\"2026-09-14T15:21:38Z\",\"number\":219,\"state\":\"MERGED\",\"title\":\"docs(chat5): دور ۶ — تحلیل شکاف‌ها + دو عقب‌رفتِ علمی (صف/دیسک) + یافتهٔ ۲۴ قاعدهٔ بارنشده\",\"url\":\"https://github.com/rezaa2544/p2/pull/219\"}\n",
+  "stderr": ""
+}

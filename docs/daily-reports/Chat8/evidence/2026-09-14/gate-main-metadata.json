@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:09:23.393294+00:00",
+  "finishedAt": "2026-09-14T17:09:23.729794+00:00",
+  "command": "cd .cache/chat8/main && node tools/docs-metadata.js",
+  "exitCode": 0,
+  "stdout": "docs-metadata: 412 سند فهرست شد · 2954 توکن در نمایهٔ جستجو\nوضعیت‌ها: active=343 · archived=20 · active-live=3 · frozen=46\nیتیم (بدون ارجاع ورودی): docs/ARENA_MISSION_TEMPLATE.md, docs/daily-audits/2026-09-14.md\nقطب‌ها: CAPACITY_MODEL.md(82) · INCIDENT_RESPONSE.md(70) · DR_RUNBOOK.md(69) · AI_PROMPT.md(67) · HANDOFF.md(65)\nخروجی: docs/_metadata.json + docs/_search-index.json\n",
+  "stderr": ""
+}

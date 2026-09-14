@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:09:47.675649+00:00",
+  "finishedAt": "2026-09-14T17:09:47.729431+00:00",
+  "command": "python - <<'PY2'\nimport json,pathlib,subprocess\nbase='8bf2c00d9149cfce92f8af863ced422ec8755e1e'\nfor f in sorted(pathlib.Path('docs/daily-reports/Chat8/evidence/2026-09-14').glob('history-pr-*.json')):\n r=json.loads(json.loads(f.read_text())['stdout']); s=r['mergeCommit']['oid'] if r['mergeCommit'] else None\n print(r['number'],r['state'],s,'ancestor_exit=',subprocess.run(['git','merge-base','--is-ancestor',s,base]).returncode if s else 'N/A')\nPY2",
+  "exitCode": 0,
+  "stdout": "184 MERGED 992a3c805306925700e0d13ee5044a7cf42cefbf ancestor_exit= 128\n185 MERGED 686822566ca5d2a75becadd63299670e24c76f0b ancestor_exit= 128\n215 MERGED 0360b379599a4d71a8c58be8215cf87fab118897 ancestor_exit= 0\n217 MERGED 49f3a4871bc3cad122fd2051dde0f3a2b93401b6 ancestor_exit= 0\n219 MERGED 9aafdb83f8611503451b0ae9436ffcb5d026ebd8 ancestor_exit= 0\n22 MERGED 455b2e94a685c9c1008384c2ec8e57637c9e8912 ancestor_exit= 128\n29 MERGED c7eee5296edc2185c11eafb0ca2f0a0cff5b123f ancestor_exit= 128\n48 MERGED ac590be523833e3fd884ee5d63aaf126c3d6aae9 ancestor_exit= 128\n94 MERGED c91c7888ee434fdb5b08dd0297b31983c2265af2 ancestor_exit= 128\n",
+  "stderr": "fatal: Not a valid commit name 992a3c805306925700e0d13ee5044a7cf42cefbf\nfatal: Not a valid commit name 686822566ca5d2a75becadd63299670e24c76f0b\nfatal: Not a valid commit name 455b2e94a685c9c1008384c2ec8e57637c9e8912\nfatal: Not a valid commit name c7eee5296edc2185c11eafb0ca2f0a0cff5b123f\nfatal: Not a valid commit name ac590be523833e3fd884ee5d63aaf126c3d6aae9\nfatal: Not a valid commit name c91c7888ee434fdb5b08dd0297b31983c2265af2\n"
+}

@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:16:51.535146+00:00",
+  "finishedAt": "2026-09-14T17:16:52.629545+00:00",
+  "command": "date -u '+%Y-%m-%dT%H:%M:%SZ'; git fetch origin main; git ls-remote origin refs/heads/main; git rev-parse origin/main; gh pr list --repo rezaa2544/p2 --state open --limit 100 --json number,headRefOid,mergeable,mergeStateStatus,updatedAt,url",
+  "exitCode": 0,
+  "stdout": "2026-09-14T17:16:51Z\n8bf2c00d9149cfce92f8af863ced422ec8755e1e\trefs/heads/main\n8bf2c00d9149cfce92f8af863ced422ec8755e1e\n[{\"headRefOid\":\"4acd107372a73aff1175c91dd2f5ee856557d359\",\"mergeStateStatus\":\"CLEAN\",\"mergeable\":\"MERGEABLE\",\"number\":220,\"updatedAt\":\"2026-09-14T16:32:48Z\",\"url\":\"https://github.com/rezaa2544/p2/pull/220\"},{\"headRefOid\":\"2d21acca7dcee22bef87878e37b3db136b1e79b0\",\"mergeStateStatus\":\"DIRTY\",\"mergeable\":\"CONFLICTING\",\"number\":218,\"updatedAt\":\"2026-09-14T09:46:06Z\",\"url\":\"https://github.com/rezaa2544/p2/pull/218\"},{\"headRefOid\":\"2ae1b8c71421504fd6f0ecf6a263e7bcfcaaf9f5\",\"mergeStateStatus\":\"DIRTY\",\"mergeable\":\"CONFLICTING\",\"number\":216,\"updatedAt\":\"2026-09-14T09:50:07Z\",\"url\":\"https://github.com/rezaa2544/p2/pull/216\"},{\"headRefOid\":\"049ee713aec784e53688d1b5d3088666a688d063\",\"mergeStateStatus\":\"DIRTY\",\"mergeable\":\"CONFLICTING\",\"number\":211,\"updatedAt\":\"2026-09-14T10:04:29Z\",\"url\":\"https://github.com/rezaa2544/p2/pull/211\"}]\n",
+  "stderr": "From https://github.com/rezaa2544/p2\n * branch            main       -> FETCH_HEAD\n"
+}

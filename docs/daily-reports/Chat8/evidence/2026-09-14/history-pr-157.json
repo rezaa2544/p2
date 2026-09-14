@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:10:48.506825+00:00",
+  "finishedAt": "2026-09-14T17:10:48.849970+00:00",
+  "command": "gh pr view 157 --repo rezaa2544/p2 --json number,title,state,headRefOid,mergeCommit,mergedAt,url",
+  "exitCode": 0,
+  "stdout": "{\"headRefOid\":\"df85703007ed931adb18202e38f2753ad721f647\",\"mergeCommit\":{\"oid\":\"952b0ba9445f1c840eb1cc18e5197cf487938f8b\"},\"mergedAt\":\"2026-09-13T11:42:22Z\",\"number\":157,\"state\":\"MERGED\",\"title\":\"docs(chat8): دور ۵ — گزارش رسمی + بسته‌شدنِ دستهٔ ۴ BH-mut + sync آمار\",\"url\":\"https://github.com/rezaa2544/p2/pull/157\"}\n",
+  "stderr": ""
+}

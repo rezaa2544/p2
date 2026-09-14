@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:10:48.850230+00:00",
+  "finishedAt": "2026-09-14T17:10:49.201716+00:00",
+  "command": "gh pr view 181 --repo rezaa2544/p2 --json number,title,state,headRefOid,mergeCommit,mergedAt,url",
+  "exitCode": 0,
+  "stdout": "{\"headRefOid\":\"926c141a9ea5107fc5d70e9bfa2ecca4f863f5c4\",\"mergeCommit\":{\"oid\":\"275caf8f010f87bb291d5e66f6c37dc0e2857052\"},\"mergedAt\":\"2026-09-13T19:57:25Z\",\"number\":181,\"state\":\"MERGED\",\"title\":\"بستهٔ ۰ — PostgreSQL production enforcement (P0-1) + seed رابطه‌مند demo-scale\",\"url\":\"https://github.com/rezaa2544/p2/pull/181\"}\n",
+  "stderr": ""
+}

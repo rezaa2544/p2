@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:08:37.666585+00:00",
+  "finishedAt": "2026-09-14T17:08:38.006504+00:00",
+  "command": "gh pr view 48 --repo rezaa2544/p2 --json number,title,state,headRefOid,mergeCommit,mergedAt,url",
+  "exitCode": 0,
+  "stdout": "{\"headRefOid\":\"d4e90097cb3b43f847a0f833221a94ad65c818f5\",\"mergeCommit\":{\"oid\":\"ac590be523833e3fd884ee5d63aaf126c3d6aae9\"},\"mergedAt\":\"2026-09-10T10:16:37Z\",\"number\":48,\"state\":\"MERGED\",\"title\":\"Wave 1 P0: PostgreSQL transaction-first writes\",\"url\":\"https://github.com/rezaa2544/p2/pull/48\"}\n",
+  "stderr": ""
+}

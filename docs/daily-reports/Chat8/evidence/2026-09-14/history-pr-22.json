@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:08:36.841015+00:00",
+  "finishedAt": "2026-09-14T17:08:37.240082+00:00",
+  "command": "gh pr view 22 --repo rezaa2544/p2 --json number,title,state,headRefOid,mergeCommit,mergedAt,url",
+  "exitCode": 0,
+  "stdout": "{\"headRefOid\":\"18af4a947643ae2377edb23a43754da239d94351\",\"mergeCommit\":{\"oid\":\"455b2e94a685c9c1008384c2ec8e57637c9e8912\"},\"mergedAt\":\"2026-09-09T05:54:53Z\",\"number\":22,\"state\":\"MERGED\",\"title\":\"feat(observability): implement distributed tracing with Jaeger\",\"url\":\"https://github.com/rezaa2544/p2/pull/22\"}\n",
+  "stderr": ""
+}

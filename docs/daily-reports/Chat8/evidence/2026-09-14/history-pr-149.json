@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:10:48.104387+00:00",
+  "finishedAt": "2026-09-14T17:10:48.506565+00:00",
+  "command": "gh pr view 149 --repo rezaa2544/p2 --json number,title,state,headRefOid,mergeCommit,mergedAt,url",
+  "exitCode": 0,
+  "stdout": "{\"headRefOid\":\"b3df5c3ca38fa9b81320ea9bda41823a3f07c22b\",\"mergeCommit\":{\"oid\":\"8ea31c9c2970a3397dbd611ad06e13ae99d77e9e\"},\"mergedAt\":\"2026-09-13T01:23:49Z\",\"number\":149,\"state\":\"MERGED\",\"title\":\"test(BH-mut): دستهٔ ۴ — 3 هارنسِ باقیماندهٔ جهش که در main نبودند (national-dataset · preapp2 · user-guide) — الگوی امنِ mutant-kit\",\"url\":\"https://github.com/rezaa2544/p2/pull/149\"}\n",
+  "stderr": ""
+}

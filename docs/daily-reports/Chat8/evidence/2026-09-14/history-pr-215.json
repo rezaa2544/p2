@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:08:39.118672+00:00",
+  "finishedAt": "2026-09-14T17:08:39.488742+00:00",
+  "command": "gh pr view 215 --repo rezaa2544/p2 --json number,title,state,headRefOid,mergeCommit,mergedAt,url",
+  "exitCode": 0,
+  "stdout": "{\"headRefOid\":\"98bb09df0003ee8a8e567c4555d3575a7751c4e9\",\"mergeCommit\":{\"oid\":\"0360b379599a4d71a8c58be8215cf87fab118897\"},\"mergedAt\":\"2026-09-14T09:09:52Z\",\"number\":215,\"state\":\"MERGED\",\"title\":\"docs(chat5): دور ۴ — پایش trigger چت ۱۰ + آماده‌سازی بستهٔ ۵ و ورودیِ بستهٔ ۴ (۲۴ آلارم · ۲ کوریِ پایش · ۶ شکاف)\",\"url\":\"https://github.com/rezaa2544/p2/pull/215\"}\n",
+  "stderr": ""
+}

@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:10:49.201990+00:00",
+  "finishedAt": "2026-09-14T17:10:49.590231+00:00",
+  "command": "gh pr view 214 --repo rezaa2544/p2 --json number,title,state,headRefOid,mergeCommit,mergedAt,url",
+  "exitCode": 0,
+  "stdout": "{\"headRefOid\":\"414f2e0a5418134cf7843ce4c527e101709c3466\",\"mergeCommit\":{\"oid\":\"895f8d48cafcf1f98f1b443fdbfd7cb706cc2cb9\"},\"mergedAt\":\"2026-09-14T08:33:17Z\",\"number\":214,\"state\":\"MERGED\",\"title\":\"docs(daily-reports/14): چت ۸ — دور ۱۶: پایش الگوی A (اعلام نشده) + آم…\",\"url\":\"https://github.com/rezaa2544/p2/pull/214\"}\n",
+  "stderr": ""
+}

@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:08:38.448397+00:00",
+  "finishedAt": "2026-09-14T17:08:38.795201+00:00",
+  "command": "gh pr view 184 --repo rezaa2544/p2 --json number,title,state,headRefOid,mergeCommit,mergedAt,url",
+  "exitCode": 0,
+  "stdout": "{\"headRefOid\":\"fadc85c63e3d9558df7ce1bfbb6f1b031f7fbb3f\",\"mergeCommit\":{\"oid\":\"992a3c805306925700e0d13ee5044a7cf42cefbf\"},\"mergedAt\":\"2026-09-13T19:59:09Z\",\"number\":184,\"state\":\"MERGED\",\"title\":\"feat(chat10): Operational Readiness package — بسته ۵ نقشه راه\",\"url\":\"https://github.com/rezaa2544/p2/pull/184\"}\n",
+  "stderr": ""
+}

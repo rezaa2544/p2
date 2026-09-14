@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:08:38.795435+00:00",
+  "finishedAt": "2026-09-14T17:08:39.118445+00:00",
+  "command": "gh pr view 185 --repo rezaa2544/p2 --json number,title,state,headRefOid,mergeCommit,mergedAt,url",
+  "exitCode": 0,
+  "stdout": "{\"headRefOid\":\"703f93a4be489570bb41eb2eb8b7f3b9ac632104\",\"mergeCommit\":{\"oid\":\"686822566ca5d2a75becadd63299670e24c76f0b\"},\"mergedAt\":\"2026-09-13T20:21:33Z\",\"number\":185,\"state\":\"MERGED\",\"title\":\"test(chaos): Chaos + Recovery Drill واقعی — ۶ سناریو با تزریقِ واقعی (P0-5)\",\"url\":\"https://github.com/rezaa2544/p2/pull/185\"}\n",
+  "stderr": ""
+}

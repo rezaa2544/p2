@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:10:49.590619+00:00",
+  "finishedAt": "2026-09-14T17:10:50.402966+00:00",
+  "command": "gh run view 34872066586 --repo rezaa2544/p2 --json databaseId,headSha,event,status,conclusion,jobs,url",
+  "exitCode": 0,
+  "stdout": "{\"conclusion\":\"success\",\"databaseId\":34872066586,\"event\":\"push\",\"headSha\":\"8bf2c00d9149cfce92f8af863ced422ec8755e1e\",\"jobs\":[{\"completedAt\":\"2026-09-14T17:01:09Z\",\"conclusion\":\"success\",\"databaseId\":104070144160,\"name\":\"build (22.x)\",\"startedAt\":\"2026-09-14T17:00:24Z\",\"status\":\"completed\",\"steps\":[{\"conclusion\":\"success\",\"name\":\"Set up job\",\"number\":1,\"status\":\"completed\"},{\"conclusion\":\"success\",\"name\":\"Run actions/checkout@v4\",\"number\":2,\"status\":\"completed\"},{\"conclusion\":\"success\",\"name\":\"Use Node.js 22.x\",\"number\":3,\"status\":\"completed\"},{\"conclusion\":\"success\",\"name\":\"Run npm ci\",\"number\":4,\"status\":\"completed\"},{\"conclusion\":\"success\",\"name\":\"Run npm run build --if-present\",\"number\":5,\"status\":\"completed\"},{\"conclusion\":\"success\",\"name\":\"Run npm test\",\"number\":6,\"status\":\"completed\"},{\"conclusion\":\"success\",\"name\":\"Post Use Node.js 22.x\",\"number\":11,\"status\":\"completed\"},{\"conclusion\":\"success\",\"name\":\"Post Run actions/checkout@v4\",\"number\":12,\"status\":\"completed\"},{\"conclusion\":\"success\",\"name\":\"Complete job\",\"number\":13,\"status\":\"completed\"}],\"url\":\"https://github.com/rezaa2544/p2/actions/runs/34872066586/job/104070144160\"}],\"status\":\"completed\",\"url\":\"https://github.com/rezaa2544/p2/actions/runs/34872066586\"}\n",
+  "stderr": ""
+}

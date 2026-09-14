@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:08:36.638851+00:00",
+  "finishedAt": "2026-09-14T17:08:36.685676+00:00",
+  "command": "gh pr view 211 --repo rezaa2544/p2 --json number,title,state,body,baseRefOid,headRefOid,headRefName,mergeable,mergeStateStatus,reviewDecision,reviews,files,commits,statusCheckRollup,url",
+  "exitCode": 1,
+  "stdout": "",
+  "stderr": "Unknown JSON field: \"baseRefOid\"\nAvailable fields:\n  additions\n  assignees\n  author\n  baseRefName\n  body\n  changedFiles\n  closed\n  closedAt\n  comments\n  commits\n  createdAt\n  deletions\n  files\n  headRefName\n  headRefOid\n  headRepository\n  headRepositoryOwner\n  id\n  isCrossRepository\n  isDraft\n  labels\n  latestReviews\n  maintainerCanModify\n  mergeCommit\n  mergeStateStatus\n  mergeable\n  mergedAt\n  mergedBy\n  milestone\n  number\n  potentialMergeCommit\n  projectCards\n  reactionGroups\n  reviewDecision\n  reviewRequests\n  reviews\n  state\n  statusCheckRollup\n  title\n  updatedAt\n  url\n"
+}

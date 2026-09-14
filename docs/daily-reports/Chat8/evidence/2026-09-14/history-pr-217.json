@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:08:39.489036+00:00",
+  "finishedAt": "2026-09-14T17:08:39.801090+00:00",
+  "command": "gh pr view 217 --repo rezaa2544/p2 --json number,title,state,headRefOid,mergeCommit,mergedAt,url",
+  "exitCode": 0,
+  "stdout": "{\"headRefOid\":\"a683f20008c92d840fd4a26ec6267fa72d6b3af0\",\"mergeCommit\":{\"oid\":\"49f3a4871bc3cad122fd2051dde0f3a2b93401b6\"},\"mergedAt\":\"2026-09-14T09:45:23Z\",\"number\":217,\"state\":\"MERGED\",\"title\":\"docs(chat5): دور ۵ — پایش trigger چت ۱۰ (NOT-RECEIVED) + پاکتِ پذیرشِ بستهٔ ۵ با تطبیقِ شاهددارِ سیگنال‌ها با کد\",\"url\":\"https://github.com/rezaa2544/p2/pull/217\"}\n",
+  "stderr": ""
+}

@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:08:38.006752+00:00",
+  "finishedAt": "2026-09-14T17:08:38.448023+00:00",
+  "command": "gh pr view 94 --repo rezaa2544/p2 --json number,title,state,headRefOid,mergeCommit,mergedAt,url",
+  "exitCode": 0,
+  "stdout": "{\"headRefOid\":\"fffde4626d49b999ca06819cef213216c3b9db39\",\"mergeCommit\":{\"oid\":\"c91c7888ee434fdb5b08dd0297b31983c2265af2\"},\"mergedAt\":\"2026-09-12T14:29:49Z\",\"number\":94,\"state\":\"MERGED\",\"title\":\"feat(wave18): national load test — staging run, bounded hydration, stress/spike suites\",\"url\":\"https://github.com/rezaa2544/p2/pull/94\"}\n",
+  "stderr": ""
+}

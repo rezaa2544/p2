@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:09:23.359696+00:00",
+  "finishedAt": "2026-09-14T17:09:23.393083+00:00",
+  "command": "cd .cache/chat8/main && node tools/docs-stats-sync.js --json --check",
+  "exitCode": 0,
+  "stdout": "{\n  \"rc\": \"43\",\n  \"docsRoot\": 353,\n  \"docsRootMinusFreeze\": 352,\n  \"docsSub\": 59,\n  \"subs\": {\n    \"RUNBOOK_CARDS\": 12,\n    \"daily-audits\": 1,\n    \"daily-reports\": 38,\n    \"pilot\": 3,\n    \"user-guides\": 5\n  },\n  \"docsTree\": 412,\n  \"testsRoot\": 495,\n  \"testsApi\": 8,\n  \"testsTotal\": 503,\n  \"testsNested\": 23,\n  \"nested\": {\n    \"helpers\": 4,\n    \"performance\": 5,\n    \"performance/helpers\": 3,\n    \"performance/scenarios\": 6,\n    \"performance/suites\": 5\n  },\n  \"frozenDocs\": 43,\n  \"liveDocs\": 3\n}\n",
+  "stderr": ""
+}
