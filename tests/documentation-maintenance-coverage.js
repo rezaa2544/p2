@@ -58,6 +58,20 @@ grp('امنیت و جایگاه در کتابخانه');
 chk('هیچ رازی در سند نیست', !/(ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN)/.test(doc));
 chk('ردیف نمایه برای سند نگهداری وجود دارد', rd('docs/DOCS_INDEX.md').includes('DOCUMENTATION_MAINTENANCE.md'));
 
+/* قالب PR سند زندهٔ اجرای همین قرارداد است، نه snapshot بیلینگ/شمار تست‌ها.
+   این گاردها ادعای CI را به head و run واقعی وصل می‌کنند؛ هیچ گیت قدیمی حذف نمی‌شود. */
+grp('صداقت شواهد در قالب PR');
+const templatePath = path.join(ROOT, '.github', 'pull_request_template.md');
+const template = fs.existsSync(templatePath) ? fs.readFileSync(templatePath, 'utf8') : '';
+chk('قالب PR موجود است', template.length > 0);
+chk('قالب، انسداد همیشگی بیلینگ را فرض نمی‌کند', !template.includes('بیلینگِ Actions مسدود است'));
+chk('شاهد CI شامل head SHA و run URL است', template.includes('head SHA') && template.includes('run URL'));
+chk('FAILED از NOT-RUN و CI از staging تفکیک می‌شود', ['FAILED', 'NOT-RUN', 'staging'].every((s) => template.includes(s)));
+chk('گیت‌های مستندات و محصول در قالب حفظ شده‌اند', [
+  'node tools/docs-stats-sync.js --check', 'node tests/docs-freeze-marker.js', '۱۴/۱۴',
+  'node tests/run.js', 'node tests/smoke.js', 'node tests/secret-scan.js', 'node build.js --check'
+].every((s) => template.includes(s)));
+
 console.log('');
 console.log('نتیجه: ' + fa(pass) + ' موفق / ' + fa(fail) + ' ناموفق (از ' + fa(pass + fail) + ')');
 process.exit(fail ? 1 : 0);

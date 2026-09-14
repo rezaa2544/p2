@@ -25,11 +25,12 @@
 
 ## ۴) گیت‌ها
 
-- [ ] `node tests/run.js` (۳۵/۳۵) · [ ] `node tests/smoke.js` (۵۴۷/۵۴۷) · [ ] `node tests/secret-scan.js` (۱۱/۱۱)
+- [ ] `node tests/run.js` · [ ] `node tests/smoke.js` · [ ] `node tests/secret-scan.js` — نتیجهٔ واقعی هر اجرا در گزارش ثبت شده
 - [ ] `node build.js --check` · [ ] `node tools/reza-mirror-check.js`
 - [ ] گیت‌های وابسته به PG با `DATABASE_URL` اجرا شده **یا** صریحاً `NOT-RUN` با دلیل ثبت شده
 
 ## ۵) صداقت (Rule ۱)
 
 - [ ] هیچ تستِ اجرانشده‌ای سبز اعلام نشده؛ هر موردِ اجرانشده با برچسب `NOT-RUN` + دلیل آمده است
-- [ ] ادعای «CI سبز» نشده است (بیلینگِ Actions مسدود است)
+- [ ] نتیجهٔ CI از `run URL` روی `head SHA` همین PR تأیید و در گزارش ثبت شده؛ اجرای قدیمی شاهد head جدید نیست
+- [ ] `FAILED` از `NOT-RUN` با دلیل دقیق تفکیک شده؛ شواهد local/CI به staging/production تعمیم داده نشده
