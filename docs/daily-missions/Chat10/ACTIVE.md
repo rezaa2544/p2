@@ -2,8 +2,18 @@
 
 **Date:** 2026-09-14  
 **Owner:** Chat10 — Operations / reliability  
-**Status:** ACTIVE  
-**Rule:** Execute M1→M2→M3→M4 sequentially; do not wait for a new prompt unless genuinely BLOCKED.
+**Status:** ACTIVE — NON-TERMINAL  
+**Rule:** Execute M1→M2→M3→M4 sequentially; then continue indefinitely within scope until work window ends or a valid second-pass no-work proof exists.
+
+## HARD GATE
+
+A re-validation round is **not** a stop event.
+
+- If M1–M4 are already complete, **do not re-run them and do not report/stop**. Start `CONTINUATION PASS #1` immediately.
+- `re-validation`, `round N`, `unchanged`, `complete`, `awaiting coordinator`, `awaiting audit`, `awaiting merge path`, `session policy`, `push NOT ATTEMPTED`, and `nothing else` are not valid stop reasons.
+- Before any stop/report-only response, perform at least one concrete scoped inspection, test, hardening action, evidence recovery action, or delivery action.
+- A report without a concrete `next scoped action` is invalid.
+- Remote/network limitations affect only the unavailable operation. Continue independent local Mission work.
 
 ## M1 — Operational evidence baseline
 - Verify current DR, recovery, SLO, RTO/RPO and operational-readiness artifacts on main.
@@ -24,19 +34,41 @@
 - Re-verify all evidence and produce a concrete readiness matrix with blockers and required real-environment proofs.
 - Do not declare P0 closure or National GO.
 
-## Mandatory continuation semantics
+## CONTINUATION PASS #1 — mandatory after M4 or re-validation
 
-The M1→M4 queue is a **minimum path**. It is never a terminal state.
+Start here if M1–M4 are already recorded as complete.
 
-If a later prompt says `re-validation`, `round N`, `unchanged`, or reports that M1–M4 were already completed, **do not restart the Mission and do not stop**. Preserve the active Mission state and immediately begin the next `CONTINUATION PASS`.
+1. Inspect all current DR/recovery/runbook/SLO evidence for one unresolved documentation or evidence gap.
+2. Inspect available local tests/scripts/fixtures for one safe reliability/recovery verification that is missing or weak.
+3. Inspect current report/PR/main state and recover any missing evidence.
+4. If a scoped safe improvement exists, implement it; test it; commit it; then attempt normal delivery.
+5. If no implementation change is justified, perform the second independent pass over acceptance criteria, code/tests/docs, PR/CI, NOT-RUN limitations and unresolved findings, and record why no independent action remains.
+6. **Never stop merely because this pass found no obvious code change.** Continue through the second-pass requirement and then re-inspect the Mission.
 
-The first continuation pass must inspect, in order: unfinished recovery/runbook work; Mission-scoped failures; missing focused tests/fixtures; hardening opportunities; regression/integration verification; PR/delivery state; main verification; and missing evidence/report checkpoints.
+## CONTINUATION LOOP
 
-A statement such as `M1–M4 not re-executed`, `complete`, `awaiting coordinator`, `awaiting audit`, `session policy`, or `nothing else` is **not** a valid stop condition. If no obvious code change exists, perform the required second independent no-work pass before stopping and record exactly what was checked.
+After Pass #1, repeat the same evidence-driven cycle until the work window ends:
 
-If GitHub/network is unavailable, mark only the affected push/PR/check/merge operation `NOT-RUN` and continue all independent local Mission work. Do not treat an unavailable remote operation as a reason to close the session.
+`inspect → act → test/verify → deliver if possible → verify main → checkpoint → inspect again`
 
-For Mission-scoped documentation, runbook, test or safe tooling changes, Chat10 owns `commit → push → PR → checks → merge → verify main → report` and must execute that chain without waiting for another prompt. Self-merge is permitted under the canonical policy when the change is fully in scope, required checks/tests are satisfied or explicitly NOT-RUN, there is no unresolved conflict, and the merge does not close/reclassify P0/P1 or decide National GO.
+Highest-value order:
+1. unfinished recovery/runbook work;
+2. Mission-scoped failures;
+3. missing focused tests/fixtures;
+4. hardening;
+5. regression/integration verification;
+6. PR/delivery maintenance;
+7. main verification;
+8. evidence/report recovery.
+
+## Delivery
+
+For Mission-scoped documentation, runbook, test or safe tooling changes, Chat10 owns:
+`commit → push → PR → checks → merge → verify main → report`.
+
+Self-merge is permitted when the change is fully in scope, required checks/tests are satisfied or explicitly NOT-RUN, no unresolved conflict remains, and merge does not close/reclassify P0/P1 or decide National GO.
+
+`awaiting merge path` is invalid when self-merge is permitted.
 
 ## Governance boundaries
 
