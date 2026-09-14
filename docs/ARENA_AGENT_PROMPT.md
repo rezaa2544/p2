@@ -15,6 +15,7 @@ CHAT_NAME = ChatX
 - اگر فایل محلی مفقود/قدیمی است، **فوراً آن را از current main بازیابی/همگام کن**؛ مفقود بودن Mission در checkout محلی به‌تنهایی دلیل `BLOCKED` نیست.
 - اگر branch از main عقب است، وضعیت را با Git بررسی کن و بدون حذف کار uncommitted خود را به وضعیت معتبر برسان.
 - اگر network/API موقتاً unavailable است، کارهای مستقل و قبلاً مجاز همان Mission را ادامه بده و فقط همان check را `NOT-RUN` ثبت کن.
+- اگر Mission محلی مفقود است، قبل از توقف Git object/history/refهای محلی را نیز برای آخرین نسخه معتبر Mission بررسی کن؛ Mission جدید اختراع نکن.
 - فقط اگر خود Mission در current main واقعاً مفقود، منقضی یا متناقض باشد، `BLOCKED` شو.
 - در صورت ارتباط، این منابع را بررسی کن: ROADMAP، NATIONAL_ROADMAP_PROGRESS، P0_BLOCKER_TRACKER، ARCHITECTURE_REVIEW، EXECUTION_CONTROL_PROTOCOL، ARENA_EXECUTION_MODEL، ARENA_REGISTRY.
 
@@ -28,7 +29,7 @@ Queue یک **حداقل مسیر کار** است، نه نقطه توقف. پس 
 
 اگر یک مرحله به دلیل شبکه، دسترسی یا وابستگی متوقف شد، کارهای مستقل همان Queue/Scope را ادامه بده. به‌خاطر یک blocker جزئی کل روز idle نشو.
 
-## 3) Evidence
+## 3) Evidence و Checkpoint
 
 برای هر ادعا تا حد امکان ثبت کن: path/line، SHA، branch، diff، command، result، PR/CI و محدودیت محیط.
 
@@ -37,6 +38,8 @@ Queue یک **حداقل مسیر کار** است، نه نقطه توقف. پس 
 
 اجرا نشده = `NOT-RUN — دلیل دقیق`.
 Local green ≠ CI/staging/production proof.
+
+بعد از **هر M-stage** یک checkpoint کوتاه در گزارش روز ثبت/commit کن، اما **برای گزارش‌نویسی متوقف نشو**؛ بلافاصله مرحله بعد یا Continuation Loop را ادامه بده.
 
 ## 4) Git / Commit / PR / Merge
 
@@ -56,6 +59,8 @@ Local green ≠ CI/staging/production proof.
 `docs/daily-reports/{{CHAT_NAME}}/YYYY-MM-DD.md`
 
 ثبت کن و برای هر Mission/مرحله وضعیت، تغییرات، تست دقیق، SHA/PR، merge، Evidence، NOT-RUN/Blocker و Out-of-scope findings را بنویس.
+
+گزارش checkpointها را در همان فایل به‌روزرسانی کن؛ یک گزارش مفقود نباید باعث توقف کار شود.
 
 گزارش = ادعا؛ پذیرش نهایی فقط بعد از Audit است.
 
