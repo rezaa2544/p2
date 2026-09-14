@@ -1,0 +1,50 @@
+[
+  {
+    "command": "git rev-parse HEAD origin/main; git branch --show-current; git status --short; git log -1 --format=\"%H %s\"",
+    "startedAt": "2026-09-14T18:14:30.808462+00:00",
+    "finishedAt": "2026-09-14T18:14:30.821289+00:00",
+    "exitCode": 0,
+    "stdout": "be5645738d921b7a995446123e1ccfbb2d6c36a7\n87891a9894ca4b302297ce91c2b0ac4a27e1c586\narena/01a0a0e2-p2\nbe5645738d921b7a995446123e1ccfbb2d6c36a7 Merge remote-tracking branch 'origin/main' into arena/01a0a0e2-p2 Co-authored-by: arena-agent <297053741+arena-agent@users.noreply.github.com>\n",
+    "stderr": ""
+  },
+  {
+    "command": "node tools/arena-runtime-gate.js Chat8",
+    "startedAt": "2026-09-14T18:14:30.821305+00:00",
+    "finishedAt": "2026-09-14T18:14:30.855708+00:00",
+    "exitCode": 0,
+    "stdout": "ARENA_RUNTIME_STATE=MISSION_MODE\nCHAT=Chat8\nLOCAL_MISSION=PRESENT\nORIGIN_MAIN_MISSION=PRESENT\nNEXT_ACTION=read ACTIVE.md; if M1-M4 complete start CONTINUATION PASS #1\nSTOP_ALLOWED=NO\n",
+    "stderr": ""
+  },
+  {
+    "command": "git diff --exit-code 745b3db..HEAD -- docs/daily-reports/Chat7 docs/daily-reports/Chat8; git diff --exit-code HEAD origin/main -- docs/daily-missions/Chat8/ACTIVE.md",
+    "startedAt": "2026-09-14T18:14:30.855726+00:00",
+    "finishedAt": "2026-09-14T18:14:30.860924+00:00",
+    "exitCode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "command": "python - <<'PY2'\nimport pathlib,hashlib,json,subprocess\npaths=['ROADMAP','NATIONAL_ROADMAP_PROGRESS','P0_BLOCKER_TRACKER','ARCHITECTURE_REVIEW','EXECUTION_CONTROL_PROTOCOL','ARENA_AGENT_PROMPT','ARENA_RUNTIME_CONTRACT','ARENA_CONTINUATION_POLICY','ARENA_CONTINUITY_AUTHORIZATION','ARENA_REGISTRY']\nfor name in paths:\n p=pathlib.Path('docs/'+name+'.md');data=p.read_bytes(); print(json.dumps(dict(path=str(p),lines=len(data.splitlines()),sha256=hashlib.sha256(data).hexdigest(),lastChange=subprocess.check_output(['git','log','-1','--format=%H','--',str(p)],text=True).strip()),ensure_ascii=False))\nfor rel in ['docs/daily-missions/Chat8/ACTIVE.md','docs/daily-reports/Chat8/2026-09-14.md']:\n p=pathlib.Path(rel);print(rel,'bytes',p.stat().st_size,'sha256',hashlib.sha256(p.read_bytes()).hexdigest())\nPY2",
+    "startedAt": "2026-09-14T18:14:30.860937+00:00",
+    "finishedAt": "2026-09-14T18:14:30.965366+00:00",
+    "exitCode": 0,
+    "stdout": "{\"path\": \"docs/ROADMAP.md\", \"lines\": 794, \"sha256\": \"cb8f5dd6a42f72ea553ac3d283ae624f189e32a9d329307861343d32917ede63\", \"lastChange\": \"b343874eaad9e3b1f6419c3b2a8e194f8f477545\"}\n{\"path\": \"docs/NATIONAL_ROADMAP_PROGRESS.md\", \"lines\": 78, \"sha256\": \"1140b517363f1965074bda713c2e075793c08e40f3854728d2c0ef2de2c7a545\", \"lastChange\": \"038b307714553e66d7350a385701e3db69d548e2\"}\n{\"path\": \"docs/P0_BLOCKER_TRACKER.md\", \"lines\": 236, \"sha256\": \"5b87bca57d38fa1d691c52c418ad3bc1e3f55545d26d71c9eef709375a86afea\", \"lastChange\": \"3e5fae22d06ad33cb688ea9fb8e7bf7e8c9e807e\"}\n{\"path\": \"docs/ARCHITECTURE_REVIEW.md\", \"lines\": 581, \"sha256\": \"e40c46cd9dccb9e1108b7f8f89e569302d316462191a10ca0513aa001c5328da\", \"lastChange\": \"0e3d80da41ccd82752d1120511c9a348c772c7ca\"}\n{\"path\": \"docs/EXECUTION_CONTROL_PROTOCOL.md\", \"lines\": 151, \"sha256\": \"2cadab002430bf93de46fc864f2b145927fcc784abe47e1f60962d330f92eabc\", \"lastChange\": \"7fdeb943ab365f91948367fbba1335967bbc42c6\"}\n{\"path\": \"docs/ARENA_AGENT_PROMPT.md\", \"lines\": 134, \"sha256\": \"79e601b816a97ff9752e9e9043befac85bd6f1c0333a1b45ff504bc9dad7b5ff\", \"lastChange\": \"93b6e73f24ff8a0abd9449b480fa5b7ea9ee395b\"}\n{\"path\": \"docs/ARENA_RUNTIME_CONTRACT.md\", \"lines\": 58, \"sha256\": \"cf19ef6a15325b1a97afff17c1aaac552b8ea36c202ec9c0439cc9e0f53b3f03\", \"lastChange\": \"87891a9894ca4b302297ce91c2b0ac4a27e1c586\"}\n{\"path\": \"docs/ARENA_CONTINUATION_POLICY.md\", \"lines\": 93, \"sha256\": \"3e92554203e4543f0a14df03f0d40c8c9b4a83c73f74bd8e7dc82a103876491d\", \"lastChange\": \"d537fdf5ec4e2b5c8ca8d1d6732e21b759926074\"}\n{\"path\": \"docs/ARENA_CONTINUITY_AUTHORIZATION.md\", \"lines\": 107, \"sha256\": \"a2605d085f2c46906357f30965ad8a24a92ab79a87ac65cd5c10f87d3fc998fa\", \"lastChange\": \"f1e850d041a126e4e1f0ec8b0c0da46649f07043\"}\n{\"path\": \"docs/ARENA_REGISTRY.md\", \"lines\": 27, \"sha256\": \"303c4e4f5f7ff13f4ea06900142d60052f29115fa3f774b141d981b29bc3fc76\", \"lastChange\": \"a05daef3d54b2c9383061f938a96965d3ae8d271\"}\ndocs/daily-missions/Chat8/ACTIVE.md bytes 1871 sha256 bcebac8d372936554373f3ba164ed34ea4990ef9671ce699e705d022215b0edc\ndocs/daily-reports/Chat8/2026-09-14.md bytes 40997 sha256 4dc14765456c440ad69b88848d41e68a600650fab4701742c9c5ed328a4fce6a\n",
+    "stderr": ""
+  },
+  {
+    "command": "gh pr view 221 --repo rezaa2544/p2 --json headRefOid,baseRefName,isDraft,state,title,statusCheckRollup,url",
+    "startedAt": "2026-09-14T18:14:30.965392+00:00",
+    "finishedAt": "2026-09-14T18:14:31.435516+00:00",
+    "exitCode": 0,
+    "stdout": "{\"baseRefName\":\"main\",\"headRefOid\":\"745b3db2b78d76de9f13a0516594c591d2ef0266\",\"isDraft\":true,\"state\":\"OPEN\",\"statusCheckRollup\":[{\"__typename\":\"CheckRun\",\"completedAt\":\"2026-09-14T18:09:16Z\",\"conclusion\":\"SUCCESS\",\"detailsUrl\":\"https://github.com/rezaa2544/p2/actions/runs/34878979578/job/104093181350\",\"name\":\"build (22.x)\",\"startedAt\":\"2026-09-14T18:08:25Z\",\"status\":\"COMPLETED\",\"workflowName\":\"Node.js CI\"},{\"__typename\":\"CheckRun\",\"completedAt\":\"2026-09-14T18:08:36Z\",\"conclusion\":\"SUCCESS\",\"detailsUrl\":\"https://github.com/rezaa2544/p2/actions/runs/34878979646/job/104093181339\",\"name\":\"SAST (repo-native static)\",\"startedAt\":\"2026-09-14T18:08:26Z\",\"status\":\"COMPLETED\",\"workflowName\":\"Security Program (SAST · SCA · SBOM · DAST · Secret)\"},{\"__typename\":\"CheckRun\",\"completedAt\":\"2026-09-14T18:08:43Z\",\"conclusion\":\"SUCCESS\",\"detailsUrl\":\"https://github.com/rezaa2544/p2/actions/runs/34878979646/job/104093181626\",\"name\":\"Secret scan\",\"startedAt\":\"2026-09-14T18:08:25Z\",\"status\":\"COMPLETED\",\"workflowName\":\"Security Program (SAST · SCA · SBOM · DAST · Secret)\"},{\"__typename\":\"CheckRun\",\"completedAt\":\"2026-09-14T18:08:46Z\",\"conclusion\":\"SUCCESS\",\"detailsUrl\":\"https://github.com/rezaa2544/p2/actions/runs/34878979646/job/104093181789\",\"name\":\"SCA (npm audit, best-effort)\",\"startedAt\":\"2026-09-14T18:08:31Z\",\"status\":\"COMPLETED\",\"workflowName\":\"Security Program (SAST · SCA · SBOM · DAST · Secret)\"},{\"__typename\":\"CheckRun\",\"completedAt\":\"2026-09-14T18:08:38Z\",\"conclusion\":\"SUCCESS\",\"detailsUrl\":\"https://github.com/rezaa2544/p2/actions/runs/34878979646/job/104093181629\",\"name\":\"SBOM (npm sbom / SPDX, best-effort)\",\"startedAt\":\"2026-09-14T18:08:26Z\",\"status\":\"COMPLETED\",\"workflowName\":\"Security Program (SAST · SCA · SBOM · DAST · Secret)\"},{\"__typename\":\"CheckRun\",\"completedAt\":\"2026-09-14T18:10:05Z\",\"conclusion\":\"SUCCESS\",\"detailsUrl\":\"https://github.com/rezaa2544/p2/actions/runs/34878979646/job/104093181575\",\"name\":\"DAST (OWASP ZAP baseline, best-effort)\",\"startedAt\":\"2026-09-14T18:08:26Z\",\"status\":\"COMPLETED\",\"workflowName\":\"Security Program (SAST · SCA · SBOM · DAST · Secret)\"},{\"__typename\":\"CheckRun\",\"completedAt\":\"2026-09-14T18:08:50Z\",\"conclusion\":\"SUCCESS\",\"detailsUrl\":\"https://github.com/rezaa2544/p2/actions/runs/34878979646/job/104093181632\",\"name\":\"WAF & nginx config\",\"startedAt\":\"2026-09-14T18:08:25Z\",\"status\":\"COMPLETED\",\"workflowName\":\"Security Program (SAST · SCA · SBOM · DAST · Secret)\"},{\"__typename\":\"StatusContext\",\"context\":\"CodeRabbit\",\"startedAt\":\"2026-09-14T18:08:26Z\",\"state\":\"SUCCESS\",\"targetUrl\":\"\"}],\"title\":\"docs(chat7/chat8): integration audits and recursive documentation census\",\"url\":\"https://github.com/rezaa2544/p2/pull/221\"}\n",
+    "stderr": ""
+  },
+  {
+    "command": "git ls-remote origin refs/heads/main refs/heads/arena/01a0a0e2-p2",
+    "startedAt": "2026-09-14T18:14:31.435549+00:00",
+    "finishedAt": "2026-09-14T18:14:31.793251+00:00",
+    "exitCode": 0,
+    "stdout": "745b3db2b78d76de9f13a0516594c591d2ef0266\trefs/heads/arena/01a0a0e2-p2\n87891a9894ca4b302297ce91c2b0ac4a27e1c586\trefs/heads/main\n",
+    "stderr": ""
+  }
+]
