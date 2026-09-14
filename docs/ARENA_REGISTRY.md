@@ -13,6 +13,7 @@ This registry defines operational ownership for the Git-driven execution loop. I
 | Chat 4 | Performance / infrastructure | Redis, workers, observability, load infrastructure, deployment | Live/national claims require corresponding environment evidence |
 | Chat 5 | QA / chaos / quality gate | Test strategy, failure testing, acceptance evidence | Independent verification; report failures honestly |
 | Chat 6 | Release / database / merge control | PostgreSQL enforcement, release gates, migration/merge evidence | Never mark a gate closed without source + evidence |
+| Chat 7 | Merge queue / documentation gate monitoring | Merge hygiene, freeze/statistics-sync monitoring, documentation integration | Does not merge or alter historical freeze artifacts without explicit Mission |
 | Chat 8 | Integration / governance | Merge hygiene, docs/evidence reconciliation, integration control | Protect main from conflicting or stale evidence |
 | Chat 10 | Operations / reliability | SLO, incident response, DR/RTO/RPO, operational readiness | Unsourced RTO/RPO values remain UNSOURCED |
 
