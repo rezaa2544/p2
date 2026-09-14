@@ -22,6 +22,6 @@
 - Record what requires a real staging/live environment.
 
 ### Common rules
-No destructive live tests, no invented capacity/SLO proof, no P0 closure. If live infrastructure is unavailable, continue local harness/readiness work.
+No destructive live tests, no invented capacity/SLO proof, no P0 closure. The Queue is a minimum path, not a stop condition. After M4, continue safe local performance, infrastructure, observability, harness and evidence work within this Mission until no independent scoped work remains. When a Mission-scoped change is ready, Chat4 owns commit → push → PR → checks → merge → main verification; do not wait for another prompt. Do not merge changes that close/reclassify P0 or require governance adjudication. If live infrastructure is unavailable, continue local harness/readiness work.
 
 **Report:** `docs/daily-reports/Chat4/2026-09-14.md`
