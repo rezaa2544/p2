@@ -1,0 +1,137 @@
+# ═══════════════════════════════════════════════════════════════════
+# monitoring/alert-rules.yaml — قوانین هشداردهی ردیس (پایش ملی)
+# -------------------------------------------------------------------
+# مرجع: docs/REDIS_MONITORING_ALERTING.md
+# منبع متریک‌ها: ردیفِ اول `redis_exporter` رسمی؛ ردیفِ دوم جمع‌آورِ
+# خود پروژه (`tools/redis-metrics.js --serve 9122`) با پیشوندِ `payesh_*`.
+# هر دو منبع در جدولِ متریک‌ها ذکر شده‌اند.
+# ═══════════════════════════════════════════════════════════════════
+groups:
+  - name: redis
+    rules:
+      # ── حیاتی: خود ردیس ──────────────────────────────────────────
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is down"
+          description: "ردیس بیش از یک دقیقه پاسخ نمی‌دهد — اپ در تولید بدون ردیس سرویس نمی‌دهد (پی۰-۱۳)."
+          runbook: "docs/REDIS_HA_FAILOVER.md §ران‌بوک"
+
+      - alert: RedisMemoryHigh
+        # نسبت به سقف تنظیم‌شده (maxmemory). اگر maxmemory ندارید، از
+        # هشدارِ مطلقِ پایین (RedisMemoryAbsoluteHigh) استفاده کنید.
+        expr: (redis_memory_used_bytes / redis_memory_max_bytes) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis memory usage is high"
+          description: "حافظهٔ ردیس از ۸۰٪ سقف عبور کرده — سیاست اخراج و نشت کلید بررسی شود."
+
+      - alert: RedisMemoryCritical
+        expr: (redis_memory_used_bytes / redis_memory_max_bytes) * 100 > 90
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis memory is critical"
+          description: "حافظه بالای ۹۰٪ — خطر اخراج کلیدهای حالت (قفل/نرخ/ورود). فوراً رسیدگی شود."
+
+      - alert: RedisReplicationLag
+        expr: redis_master_last_io_seconds_ago > 5 and redis_instance_role == "replica"
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis replication lag is high"
+          description: "کپی بیش از ۵ ثانیه از مستر عقب است — در فیل‌اُوور، دادهٔ این بازه گم می‌شود."
+
+      # ── توان و اتصال ─────────────────────────────────────────────
+      - alert: RedisTooManyClients
+        expr: redis_connected_clients > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis has too many connected clients"
+          description: "بیش از ۱۰۰۰ کلاینت متصل — احتمال نشت اتصال در نمونه‌های اپ (هر نمونه باید یک پول کوچک داشته باشد)."
+
+      - alert: RedisBlockedClients
+        expr: redis_blocked_clients > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis blocked clients elevated"
+
+      - alert: RedisOpsAnomaly
+        # تغییر ناگهانی نسبت به میانگین یک‌ساعته (بیش از ۵۰٪ انحراف)
+        expr: |
+          abs(
+            redis_instantaneous_ops_per_sec
+            - avg_over_time(redis_instantaneous_ops_per_sec[1h])
+          )
+          > 0.5 * avg_over_time(redis_instantaneous_ops_per_sec[1h])
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis ops/sec deviates >50% from hourly baseline"
+
+      # ── کیفیت کش ────────────────────────────────────────────────
+      - alert: RedisHitRateLow
+        # از متریک‌های تجمیعیِ اکسپورتر؛ اگر نرخ زیر ۸۰٪ بماند، کش
+        # یا بی‌اثر است یا زیر بارِ کلیدهای یک‌بارمصرف.
+        expr: |
+          (
+            rate(redis_keyspace_hits_total[5m])
+            /
+            (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m]))
+          ) * 100 < 80
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis cache hit rate below 80%"
+
+      # ── پایداری و نگهبان‌ها (HA) ─────────────────────────────────
+      - alert: RedisRestartedRecently
+        expr: redis_uptime_in_seconds < 3600
+        labels:
+          severity: info
+        annotations:
+          summary: "Redis restarted within the last hour"
+          description: "آپ‌تایم زیر یک ساعت — اگر برنامه‌ریزی‌شده نبوده، علت کرش بررسی شود."
+
+      - alert: RedisSentinelQuorumLost
+        # از متریک‌های خود اکسپورتر روی پورت نگهبان‌ها
+        expr: redis_sentinel_masters < 1 or redis_sentinel_ok_sentinels < 2
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Sentinel quorum at risk"
+          description: "نگهبان‌های سالم کمتر از اکثریت‌اند — فیل‌اُوور خودکار ممکن است انجام نشود."
+
+      # ── متریک‌های اپ (جمع‌آور پروژه) ────────────────────────────
+      - alert: PayeshRedisLayerDown
+        expr: payesh_redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Payesh redis layer unreachable"
+          description: "لایهٔ کشِ اپ قطع است — در تولید نمونه‌ها بالا نمی‌آیند (پی۰-۱۳)."
+
+      - alert: PayeshRedisOrphanKeys
+        # بیش از یک کلیدِ دائمی، آن هم غیر از حالت ورود، بی‌انقضا مانده
+        expr: payesh_redis_keys_no_ttl > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Keys without TTL detected"
+          description: "کلیدهای بی‌انقضای بیشتر از حد مجاز — خروجی `node tools/redis-audit.js` را ببینید."

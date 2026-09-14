@@ -10,6 +10,8 @@
          503ِ readiness، صفر data loss، crash-free disk-full)
      C6  tests/chaos-output/ در .gitignore
      C7  سوئیتِ k6ِ فاز ۵ (chaos-redis-test.js) سالم + اتصالِ سند
+     C8  خروجیِ ماشین‌خوان سالم (JSON معتبر) + گاردِ مسیرِ live
+         (break فقط DRY_RUN · probe همزمان با خرابی · دُمِ بازیابی · 000ERR)
    اجرا: node tests/wave19-chaos.js
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
@@ -70,6 +72,36 @@ const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-w19-'));
   /* اجرایِ تک‌سناریویی هم سالم */
   const one = sh(['kill-api', '--out-dir', path.join(TMP, 'single')]);
   chk('C3e DRY_RUN تک‌سناریو exit 0', one.status === 0);
+}
+
+/* ── C8: سلامتِ خروجی و گاردِ مسیرِ live (درس‌های مانورِ 2026-09-13) ── */
+{
+  const src = fs.existsSync(SH) ? read(SH) : '';
+  /* C8a — هر ۱۰ فایلِ JSONِ تولیدشده باید واقعاً JSON معتبر باشد.
+     شاهدِ قرمزِ مانورِ 2026-09-13: snapshotها کامای انتهایی داشتند و
+     JSON.parse می‌شکست — خروجیِ «ماشین‌خوان» ابزار قابلِ مصرف نبود. */
+  const bad = [];
+  for(const sc of SCEN){
+    for(const ph of ['before', 'after']){
+      const p = path.join(TMP, sc + '-' + ph + '.json');
+      if(!fs.existsSync(p)) continue;
+      try { JSON.parse(read(p)); } catch(e){ bad.push(sc + '-' + ph + ': ' + e.message.slice(0, 60)); }
+    }
+  }
+  chk('C8a snapshotها JSONِ معتبرند (بدون کامای انتهایی)', bad.length === 0, bad.slice(0, 2).join(' | '));
+  /* C8b–C8f — گاردِ semanticsِ مسیرِ live روی خودِ اسکریپت:
+     باگِ اصلیِ آن روز: break غیرشرطی در probe_loop ⇒ timeline فقط پیش از
+     تزریق خرابی می‌چرخید و پنجرهٔ خرابی هرگز ثبت نمی‌شد. */
+  chk('C8b break فقط در شاخهٔ DRY_RUN (نه LIVE)',
+    /else\s*\n\s*break # DRY_RUN/.test(src));
+  chk('C8c در LIVE حلقهٔ probe همزمان با تزریقِ خرابی می‌چرخد (پس‌زمینه)',
+    /probe_loop "\$name" & probe_bg=\$!/.test(src));
+  chk('C8d پیش از snapshotِ after، دُمِ probeها منتظر می‌ماند',
+    /\[ -n "\$probe_bg" \] && wait "\$probe_bg"/.test(src));
+  chk('C8e پنجرهٔ probe دُمِ بازیابی دارد (DURATION + ۲ بازه)',
+    /DURATION \+ PROBE_INTERVAL \* 2/.test(src));
+  chk('C8f چکِ kill-api فرمتِ واقعیِ خطا (000ERR) را می‌گیرد',
+    src.includes("grep -qE ',(503|[0-9]*ERR)'"));
 }
 
 /* ── C4: سندِ طرح ────────────────────────────────────────────────── */

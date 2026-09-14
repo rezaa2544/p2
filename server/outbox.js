@@ -142,7 +142,46 @@ function createOutbox({ store, db }) {
     return d;
   }
 
-  return { append, mark, depth, cap: OUTBOX_CAP };
+  /**
+   * F3 (chaos-drill #185) — بازپخشِ صف پس از کرش در PG-live:
+   * store.outbox آینهٔ درون‌حافظه‌ای است و با restart خالی بوت می‌شود؛
+   * pendingهای جدولِ server_outbox (که append آن‌ها را نوشته بود) هیچ
+   * مصرف‌کننده‌ای نداشتند و برای همیشه pending می‌ماندند (کارِ باطل‌سازیِ
+   * کش اجرا نمی‌شد). این متد آن‌ها را به store.outbox برمی‌گرداند تا
+   * worker.tick همان مسیرِ همیشگی را برود (at-least-once پس از سقوط).
+   * best-effort و idempotent: رویدادِ موجود در store دوباره اضافه نمی‌شود.
+   */
+  async function replayPendingFromPg() {
+    if (!isPg()) return { ok: true, replayed: 0, driver: 'memory' };
+    let rows = [];
+    try {
+      const r = await db.query(
+        `SELECT id, type, collection, record_id, actor_id, version, payload, created_at, retry_count, last_error
+           FROM server_outbox WHERE status = 'pending' ORDER BY id ASC LIMIT $1;`, [OUTBOX_CAP]);
+      rows = (r && r.rows) || [];
+    } catch (e) {
+      return { ok: false, replayed: 0, error: String((e && e.message) || e).slice(0, 140) };
+    }
+    if (!Array.isArray(store.outbox)) store.outbox = [];
+    const have = new Set(store.outbox.map((e) => Number(e.id)));
+    let replayed = 0;
+    for (const row of rows) {
+      const id = Number(row.id);
+      if (have.has(id)) continue;
+      let payload = row.payload;
+      if (typeof payload === 'string') { try { payload = JSON.parse(payload); } catch (e) { /* عیناً */ } }
+      store.outbox.push({
+        id, type: row.type, collection: row.collection,
+        record_id: row.record_id, actor_id: row.actor_id, version: row.version,
+        payload, created_at: row.created_at, status: 'pending',
+        retry_count: Number(row.retry_count) || 0, last_error: row.last_error || null
+      });
+      replayed++;
+    }
+    return { ok: true, replayed, driver: 'postgres' };
+  }
+
+  return { append, mark, depth, replayPendingFromPg, cap: OUTBOX_CAP };
 }
 
 module.exports = { createOutbox };
