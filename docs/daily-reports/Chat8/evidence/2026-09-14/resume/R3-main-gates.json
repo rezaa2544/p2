@@ -1,0 +1,50 @@
+[
+  {
+    "command": "cd tmp/chat8-resume/main && node tests/docs-freeze-marker.js",
+    "startedAt": "2026-09-14T18:16:54.613553+00:00",
+    "finishedAt": "2026-09-14T18:16:54.665703+00:00",
+    "exitCode": 1,
+    "stdout": "\n▸ DF-SEC — ساختار\n  ✅ بخشِ «قاعدهٔ قفل»\n  ✅ بخشِ «امضا»\n  ✅ بخشِ «فهرست اسناد ریشه با هش»\n  ✅ نسخهٔ وی۱.۰.۰-آرسی۴۳\n  ✅ تاریخ قفل (الگوی ردیف تاریخ)\n  ✅ قاعدهٔ بامپ نسخه\n  ✅ استثنای اسناد زنده\n  ✅ صداقت نبود جی‌پی‌جی + جایگزین\n\n▸ DF-ALL — کامل بودن فهرست\n  ❌ شمار ردیف‌ها = شمار اسناد (خارج از سند قفل)  —  ردیف 347 در برابر 356\n  ❌ هیچ سندی جا نمانده  —  ARENA_AGENT_PROMPT.md,ARENA_CONTINUATION_POLICY.md,ARENA_CONTINUITY_AUTHORIZATION.md,ARENA_CONTROL_PLANE_RECOVERY.md,ARENA_EXECUTION_MODEL.md\n  ✅ سند اضافه‌ای فهرست نشده\n  ✅ خود سند قفل در فهرست نیست\n\n▸ DF-HASH — صحت اثرها\n  ❌ اثر همهٔ اسناد یخ‌زده با فهرست یکی است  —  PR_MERGE_PLAN.md\n  ✅ سنجه‌ها و راهنما در فهرست‌اند\n\n──────────────────────────────────────────\nنتیجه: 11 موفق / 3 ناموفق (از 14)\nموارد ناموفق:\n- شمار ردیف‌ها = شمار اسناد (خارج از سند قفل) — ردیف 347 در برابر 356\n- هیچ سندی جا نمانده — ARENA_AGENT_PROMPT.md,ARENA_CONTINUATION_POLICY.md,ARENA_CONTINUITY_AUTHORIZATION.md,ARENA_CONTROL_PLANE_RECOVERY.md,ARENA_EXECUTION_MODEL.md\n- اثر همهٔ اسناد یخ‌زده با فهرست یکی است — PR_MERGE_PLAN.md\n",
+    "stderr": ""
+  },
+  {
+    "command": "cd tmp/chat8-resume/main && node tools/docs-stats-sync.js --check",
+    "startedAt": "2026-09-14T18:16:54.665735+00:00",
+    "finishedAt": "2026-09-14T18:16:54.703075+00:00",
+    "exitCode": 1,
+    "stdout": "",
+    "stderr": "❌ آمارِ مستندات کهنه است:\n  • docs/DOCS_METRICS.md [docs-total-row]\n      بود: | تعداد کل اسناد `docs/*.md` | **۳۴۷** سند ریشه (پیش از خود سند قفل `rc43`؛ با آن ۳۴۸) + ۵۸ سند در زیرپوشه‌ها (`RUNBOOK_CARDS/` + `user-guides/` + `pilot/` + `daily-reports/`) = جمع درخت ۴۰۶؛ تفکیک: سه زیرپوشهٔ پایه ۲۰ + `daily-reports/` ۳۸ ⇒ درخت بدونِ گزارش‌های روزانه ۳۶۸ | شمارش فایل |\n      شد : | تعداد کل اسناد `docs/*.md` | **۳۵۶** سند ریشه (پیش از خود سند قفل `rc43`؛ با آن ۳۵۷) + ۵۹ سند در زیرپوشه‌ها (`RUNBOOK_CARDS/` + `user-guides/` + `pilot/` + `daily-audits/` + `daily-reports/`) = جمع درخت ۴۱۶؛ تفکیک: سه زیرپوشهٔ پایه ۲۰ + `daily-reports/` ۳۸ ⇒ درخت بدونِ گزارش‌های روزانه ۳۷۸ | شمارش فایل |\n  • docs/DOCUMENTATION_MAP.md [map-total]\n      بود: | کل اسناد (لحظهٔ قفل `rc43`) | **۴۰۶** |\n      شد : | کل اسناد (لحظهٔ قفل `rc43`) | **۴۱۶** |\n  • docs/DOCUMENTATION_MAP.md [map-root]\n      بود: | اسناد ریشهٔ `docs/*.md` (با خود نقشه و قفل) | ۳۴۸ |\n      شد : | اسناد ریشهٔ `docs/*.md` (با خود نقشه و قفل) | ۳۵۷ |\n  • docs/DOCUMENTATION_MAP.md [map-sub]\n      بود: | اسناد زیرپوشه‌ها (`RUNBOOK_CARDS/` + `user-guides/` + `pilot/` + `daily-reports/`) | ۵۸ |\n      شد : | اسناد زیرپوشه‌ها (`RUNBOOK_CARDS/` + `user-guides/` + `pilot/` + `daily-audits/` + `daily-reports/`) | ۵۹ |\n  • docs/DOCUMENTATION_MAP.md [map-status-active]\n      بود: | فعال (در حال استفاده) | ۳۴۰ |\n      شد : | فعال (در حال استفاده) | ۳۵۰ |\n  • docs/DOCUMENTATION_MAP.md [map-sum]\n      بود: | **جمع** | **۴۰۶** |\n      شد : | **جمع** | **۴۱۶** |\n\nرفع: node tools/docs-stats-sync.js\n"
+  },
+  {
+    "command": "cd tmp/chat8-resume/main && node tools/docs-metadata.js",
+    "startedAt": "2026-09-14T18:16:54.703104+00:00",
+    "finishedAt": "2026-09-14T18:16:55.050050+00:00",
+    "exitCode": 0,
+    "stdout": "docs-metadata: 416 سند فهرست شد · 2990 توکن در نمایهٔ جستجو\nوضعیت‌ها: active=347 · archived=20 · active-live=3 · frozen=46\nیتیم (بدون ارجاع ورودی): docs/ARENA_MISSION_TEMPLATE.md, docs/daily-audits/2026-09-14.md\nقطب‌ها: CAPACITY_MODEL.md(82) · INCIDENT_RESPONSE.md(70) · DR_RUNBOOK.md(69) · AI_PROMPT.md(67) · HANDOFF.md(65)\nخروجی: docs/_metadata.json + docs/_search-index.json\n",
+    "stderr": ""
+  },
+  {
+    "command": "cd tmp/chat8-resume/main && node tools/docs-refs-check.js --check",
+    "startedAt": "2026-09-14T18:16:55.050079+00:00",
+    "finishedAt": "2026-09-14T18:16:55.218238+00:00",
+    "exitCode": 1,
+    "stdout": "ارجاعِ کهنه به فایلِ ناموجود: 124 مورد در 76 سند\n  خطِ پایه (بدهیِ تاریخی): 75\n  تازه (باید رفع شود)   : 52\n  تولیدی (ردشده با قاعدهٔ .gitignore، نه بدهی): 5\n  از زمانِ خطِ پایه رفع شده: 3 ← خطِ پایه را با --baseline تازه کنید\n\nارجاع‌های کهنهٔ تازه:\n  • CHAT4_PGBOUNCER_FINAL_REPORT.md → tests/pgbouncer-pooling.js\n  • CHAT4_SUMMER_CLASSES_REPORT.md → tests/pgbouncer-pooling.js\n  • CHAT4_SUMMER_CLASSES_REPORT.md → tests/summer-mutations.js\n  • CHAT4_SUMMER_CLASSES_REPORT.md → tests/version-vector-sync.js\n  • CHAT4_SUMMER_CLASSES_REPORT.md → tests/version-vector.js\n  • CHAT4_SUMMER_CLASSES_REPORT.md → tests/weighted-partitioning.js\n  • CHAT4_VERSION_VECTORS_REPORT.md → server/version-vector.js\n  • CHAT4_VERSION_VECTORS_REPORT.md → tests/pgbouncer-pooling.js\n  • CHAT4_VERSION_VECTORS_REPORT.md → tests/version-vector-sync.js\n  • CHAT4_VERSION_VECTORS_REPORT.md → tests/version-vector.js\n  • CHAT4_VERSION_VECTORS_REPORT.md → tests/weighted-partitioning.js\n  • CHAT4_WEIGHTED_PARTITIONING_REPORT.md → server/partitioning.js\n  • CHAT4_WEIGHTED_PARTITIONING_REPORT.md → tests/pgbouncer-pooling.js\n  • CHAT4_WEIGHTED_PARTITIONING_REPORT.md → tests/weighted-partitioning.js\n  • CHAT6_HANDOFF_PROMPT_NEXT_SESSION.md → docs/daily-reports/2026-09-13-chat3-concurrency.md\n  • CHAT6_HANDOFF_PROMPT_NEXT_SESSION.md → docs/REPORT_CONCURRENCY_SPEC_2026-09-13.md\n  • docs/ARENA_EXECUTION_MODEL.md → docs/daily-audits/YYYY-MM-DD.md\n  • docs/CAPACITY_WORKLOAD_MODEL.md → tools/generate-national-pattern.js\n  • docs/daily-missions/Chat1/ACTIVE.md → docs/daily-reports/Chat1/2026-09-14.md\n  • docs/daily-missions/Chat10/ACTIVE.md → docs/daily-reports/Chat10/2026-09-14.md\n  • docs/daily-missions/Chat2/ACTIVE.md → docs/daily-reports/Chat2/2026-09-14.md\n  • docs/daily-missions/Chat3/ACTIVE.md → docs/daily-reports/Chat3/2026-09-14.md\n  • docs/daily-missions/Chat4/ACTIVE.md → docs/daily-reports/Chat4/2026-09-14.md\n  • docs/daily-missions/Chat6/ACTIVE.md → docs/daily-reports/Chat6/2026-09-14.md\n  • docs/daily-missions/Chat7/ACTIVE.md → docs/daily-reports/Chat7/2026-09-14.md\n  • docs/daily-missions/Chat8/ACTIVE.md → docs/daily-reports/Chat8/2026-09-14.md\n  • docs/daily-missions/Chat9/ACTIVE.md → docs/daily-reports/Chat9/2026-09-14.md\n  • docs/daily-reports/2026-09-13-chat6-governance.md → docs/daily-reports/2026-09-13-chat3-concurrency.md\n  • docs/daily-reports/2026-09-13-chat6-governance.md → docs/REPORT_CONCURRENCY_SPEC_2026-09-13.md\n  • docs/daily-reports/2026-09-13-chat8.md → tests/bounded-cache.js\n  • docs/daily-reports/2026-09-13-chat8.md → tests/load-test.js\n  • docs/daily-reports/2026-09-13.md → docs/__PROBE_TMP.md\n  • docs/daily-reports/2026-09-13.md → docs/NEXT_ACTIONS.md\n  • docs/daily-reports/2026-09-13.md → docs/PR181_REBASE_PLAYBOOK.md\n  • docs/daily-reports/2026-09-13.md → docs/PSQL_SHIM_GUIDE.md\n  • docs/daily-reports/Chat5/2026-09-14.md → server/writes.js\n  • docs/PGBOUNCER_SETUP.md → tests/pgbouncer-pooling.js\n  • docs/ROADMAP.md → tests/pgbouncer-pooling.js\n  • docs/ROADMAP.md → tests/weighted-partitioning.js\n  • docs/SESSION_REVOCATION.md → tests/session-revocation-delete.js\n  • docs/SUMMER_CLASSES_MODULE.md → tests/summer-mutations.js\n  • docs/SUPERVISOR_DECISIONS_2026-09-13.md → docs/daily-reports/2026-09-13-pr-audit-list.md\n  • docs/VERSION_VECTORS.md → server/version-vector.js\n  • docs/VERSION_VECTORS.md → tests/version-vector-sync.js\n  • docs/VERSION_VECTORS.md → tests/version-vector.js\n  • docs/WEIGHTED_PARTITIONING.md → server/partitioning.js\n  • docs/WEIGHTED_PARTITIONING.md → tests/weighted-partitioning.js\n  • HANDOFF.md → server/partitioning.js\n  • HANDOFF.md → server/version-vector.js\n  • HANDOFF.md → tests/pgbouncer-pooling.js\n  • HANDOFF.md → tests/summer-mutations.js\n  • HANDOFF.md → tests/weighted-partitioning.js\n",
+    "stderr": "\n❌ 52 ارجاعِ تازه به فایلِ ناموجود.\n   یا فایل را برگردانید/تغییرِ نامِ ارجاع را بدهید، یا اگر سند تاریخی است\n   خطِ پایه را با دلیل بازتولید کنید: node tools/docs-refs-check.js --baseline\n"
+  },
+  {
+    "command": "cd tmp/chat8-resume/main && node tests/docs-consistency.js",
+    "startedAt": "2026-09-14T18:16:55.218269+00:00",
+    "finishedAt": "2026-09-14T18:16:55.953403+00:00",
+    "exitCode": 0,
+    "stdout": "\n▸ DC-TOOL — ابزار بررسی\n  ✅ اجرای ابزار با کد ۰ (بدون تعارض)\n  ✅ دست‌کم ۳۰ بررسی ماشینی انجام شد\n  ✅ خلاصهٔ صفر تعارض\n\n▸ DC-DOC — گزارش ممیزی\n  ✅ گزارگ وجود دارد\n  ✅ بخش/نشانگر «خلاصهٔ اجرایی»\n  ✅ بخش/نشانگر «تعارض‌های یافته‌شده»\n  ✅ بخش/نشانگر «دسته‌های بازرسی‌شدهٔ هماهنگ»\n  ✅ بخش/نشانگر «اقلام باز»\n  ✅ بخش/نشانگر «روش اجرا»\n  ✅ بخش/نشانگر «MACHINE:START»\n  ✅ بخش/نشانگر «MACHINE:END»\n  ✅ جدول چهار تعارض اصلی پر شده\n  ✅ اقلام باز دارای مالک‌اند\n  ✅ بلوک ماشینی پس از اجرا به‌روز است\n\n▸ DC-NUM — اعداد مرجع دست‌نخورده\n  ✅ مرجع «کاربر ثبت‌شده»\n  ✅ مرجع «فعال روزانه»\n  ✅ مرجع «پیک همزمان»\n  ✅ مرجع «آر‌پی‌اس پیک»\n  ✅ مرجع «نوشتن پیک»\n\n▸ DC-NEG — الگوهای متناقض ممنوع\n  ✅ هر پیک ۵ میلیونی با یادداشت جایگزینی پرچم دارد\n  ✅ آستانهٔ خطای شل (۱٪) در اسناد نقل نشده\n  ✅ آستانهٔ سراسری واقعی همچنان ۰٫۱٪ است\n\n──────────────────────────────────────────\nنتیجه: 22 موفق / 0 ناموفق (از 22)\n✅ اسناد هماهنگ‌اند.\n",
+    "stderr": ""
+  },
+  {
+    "command": "cd tmp/chat8-resume/main && node - <<'JS'\nconst fs=require('fs');console.log(JSON.stringify({physical:fs.readdirSync('docs',{recursive:true,withFileTypes:true}).filter(e=>e.isFile()&&e.name.endsWith('.md')).length,metadata:require('./tools/docs-metadata').listDocs().length,stats:require('./tools/docs-stats-sync').truth().docsTree}));\nJS",
+    "startedAt": "2026-09-14T18:16:55.953429+00:00",
+    "finishedAt": "2026-09-14T18:16:55.998941+00:00",
+    "exitCode": 0,
+    "stdout": "{\"physical\":427,\"metadata\":416,\"stats\":416}\n",
+    "stderr": ""
+  }
+]
