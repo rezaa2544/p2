@@ -22,6 +22,6 @@
 - Report concrete defects or evidence gaps with exact paths and reproduction steps; do not fix outside an explicit implementation Mission.
 
 ### Common rules
-No feature ownership, no P0/P1 renumbering or closure, no invented production evidence. If one stage blocks, continue independent simulations.
+No feature ownership, no P0/P1 renumbering or closure, no invented production evidence. The Queue is a minimum path, not a stop condition. After M4, continue behavioral simulation, regression scenarios, evidence recovery and audit reproduction within this Mission until no independent scoped work remains. For Mission-scoped reports, fixtures, tests or other authorized artifacts that are safe to merge, Chat9 owns commit → push → checks → merge → main verification. Do not merge feature remediation or anything that changes P0/P1 status without an explicit implementation/governance decision. If one stage blocks, continue independent simulations.
 
 **Report:** `docs/daily-reports/Chat9/2026-09-14.md`
