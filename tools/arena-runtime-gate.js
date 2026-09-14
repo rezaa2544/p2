@@ -1,0 +1,35 @@
+#!/usr/bin/env node
+'use strict';
+
+const { execFileSync } = require('node:child_process');
+const fs = require('node:fs');
+
+const chat = process.argv[2];
+if (!/^Chat(?:[1-9]|10)$/.test(chat || '')) {
+  console.error('Usage: node tools/arena-runtime-gate.js Chat1..Chat10');
+  process.exit(2);
+}
+
+function git(args) {
+  try {
+    return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  } catch (_) {
+    return '';
+  }
+}
+
+const mission = `docs/daily-missions/${chat}/ACTIVE.md`;
+const localMission = fs.existsSync(mission);
+let mainMission = false;
+const mainRef = git(['show', `origin/main:${mission}`]);
+if (mainRef) mainMission = true;
+
+const status = localMission || mainMission ? 'MISSION_MODE' : 'CONTINUITY_FALLBACK';
+console.log(`ARENA_RUNTIME_STATE=${status}`);
+console.log(`CHAT=${chat}`);
+console.log(`LOCAL_MISSION=${localMission ? 'PRESENT' : 'MISSING'}`);
+console.log(`ORIGIN_MAIN_MISSION=${mainMission ? 'PRESENT' : 'NOT_AVAILABLE'}`);
+console.log('NEXT_ACTION=' + (status === 'MISSION_MODE'
+  ? 'read ACTIVE.md; if M1-M4 complete start CONTINUATION PASS #1'
+  : 'read docs/ARENA_CONTROL_PLANE_RECOVERY.md and docs/ARENA_CONTINUITY_AUTHORIZATION.md; execute first bounded fallback action'));
+console.log('STOP_ALLOWED=NO');
