@@ -19,6 +19,16 @@ This contract closes the recurring failure mode where an Arena completes M1–M4
 10. Every checkpoint must include a concrete `next scoped action` unless the second-pass no-work proof has genuinely established that none exists.
 11. `CONTINUITY-FALLBACK` is a standing bounded authorization, not a new Mission and not permission to invent scope.
 
+## Deterministic bootstrap gate
+
+Before the first report, the Arena SHOULD run:
+
+`node tools/arena-runtime-gate.js <Chat1..Chat10>`
+
+The command is a deterministic aid for selecting `MISSION_MODE` versus `CONTINUITY_FALLBACK`. Its output `STOP_ALLOWED=NO` is authoritative for the runtime decision unless the work window has actually ended or the required second-pass no-work proof has been completed.
+
+The command does not replace repository evidence, Mission contents, or governance review. It only prevents a missing/stale local Mission from being misinterpreted as a stop condition.
+
 ## State machine
 
 `BOOTSTRAP → CONTROL-PLANE RECOVERY? → CONTINUITY-FALLBACK? → M1 → M2 → M3 → M4 → CONTINUATION → CONTINUATION → ...`
