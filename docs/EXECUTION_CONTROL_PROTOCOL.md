@@ -15,7 +15,8 @@
 5. `docs/ARENA_EXECUTION_MODEL.md` — Git-driven execution/control model.
 6. `docs/ARENA_CONTINUATION_POLICY.md` — mandatory all-day continuation behavior.
 7. `docs/ARENA_RUNTIME_CONTRACT.md` — non-terminal runtime state machine and hard stop gate.
-8. `docs/ARENA_REGISTRY.md` — operational Arena roles.
+8. `docs/ARENA_CONTROL_PLANE_RECOVERY.md` — non-blocking Mission/bootstrap recovery.
+9. `docs/ARENA_REGISTRY.md` — operational Arena roles.
 
 If sources conflict, **do not guess**. Chat 1 records the conflict and escalates it to ChatGPT.
 
@@ -26,7 +27,7 @@ ChatGPT audits the previous cycle and publishes/authorizes the active Mission fi
 
 `docs/daily-missions/<CHAT_NAME>/ACTIVE.md`
 
-Each Arena has at most one active Mission. An active Mission is the only authorized work scope for that Arena.
+Each Arena has at most one active Mission. An active Mission is the only authorized product-work scope for that Arena.
 
 ### During the day
 Chat 1 supervises online:
@@ -35,7 +36,7 @@ Chat 1 supervises online:
 - Verify branch, commit, diff, tests, CI, PR and merge state against GitHub/Repo.
 - Mark each result explicitly: `CLAIMED`, `IMPLEMENTED`, `TESTED LOCALLY`, `PUSHED`, `PR OPEN`, `MERGED`, `VERIFIED ON MAIN`, `VERIFIED IN STAGING`, `PRODUCTION PROVEN`.
 - Never promote a lower evidence state into a higher one.
-- Do not start work outside the active Mission.
+- Do not start product work outside the active Mission.
 
 ### End of cycle
 Each Arena records stage/pass checkpoints in:
@@ -49,11 +50,11 @@ An M1→M4 Queue is a minimum work sequence, never a stop signal. After M4, the 
 
 If M1–M4 were already completed in an earlier round of the same active Mission, the Arena MUST resume at Continuation Pass. A `re-validation`, `round N`, `unchanged`, or similar prompt does not reset or close the Mission.
 
-**Hard gate:** an Arena must not produce a report-only re-validation response as its first action. It must execute at least one concrete scoped action. `awaiting coordinator`, `awaiting audit`, `awaiting merge path`, `session policy`, `push not attempted`, and `re-validation stands` are invalid stop reasons by themselves.
+**Hard gate:** an Arena must not produce a report-only re-validation response as its first action. It must execute at least one concrete scoped action. If the Mission is missing locally, the first action is **CONTROL-PLANE RECOVERY**, not BLOCKED.
 
-A single network failure, stale checkout, missing local report, or NOT-RUN check does not stop the Arena. Only a genuinely impossible Mission with no independent scoped work may be BLOCKED.
+A single network failure, stale checkout, missing local report, Mission-fetch failure, or NOT-RUN check does not stop the Arena. Mission-fetch failure triggers the recovery protocol in `docs/ARENA_CONTROL_PLANE_RECOVERY.md`; it does not prove that no authorized work exists.
 
-No local/session-specific policy may override the canonical continuation rules.
+No local/session-specific policy may override the canonical continuation or recovery rules.
 
 ## 3. Mission Packet minimum fields
 
@@ -95,11 +96,15 @@ National status remains **NO-GO** until all applicable P0 gates are closed with 
 
 Chat 1 may coordinate and recommend. Chat 1 may **not** self-declare National GO.
 
-## 6. Anti-drift rule
+## 6. Anti-drift and recovery rule
 
 At the start of every Mission Chat 1 MUST re-read the canonical sources and verify every active Mission against current Repo evidence.
 
-Arena chats must read their own `ACTIVE.md` before execution. If local state is stale/missing, recover the exact Mission from current `main`; local drift is not itself a blocker. Mission absence on current `main` is a blocker only when no independent authorized work remains.
+Arena chats must read their own `ACTIVE.md` before execution. If local state is stale/missing, recover the exact Mission from current `main` where possible; local drift is not itself a blocker. If remote recovery is unavailable, enter **CONTROL-PLANE RECOVERY** and perform only recovery/evidence/environment actions until the exact Mission is recovered. Do not invent a Mission and do not manufacture product work.
+
+`MISSION FILE NOT FOUND LOCALLY` is not evidence that the Mission is absent from current `main`. `FETCH FAILED` is not evidence that no authorized work exists.
+
+Only a genuinely missing/expired/contradictory Mission on current `main`, after all permitted recovery actions are exhausted and an external decision is actually required, can produce a Mission-level `BLOCKED` state.
 
 ## 7. Mission sequencing
 
@@ -117,7 +122,7 @@ If a Mission is rejected, blocked, or materially incomplete, the next Mission is
 
 ## 8. User operating model
 
-The user does not need to distribute bespoke daily task instructions. The common prompt in `docs/ARENA_AGENT_PROMPT.md` is sent to each Arena with only `CHAT_NAME` changed. The common prompt, runtime contract and continuation policy are normative and override any weaker stop interpretation in a Mission file.
+The user does not need to distribute bespoke daily task instructions. The common prompt in `docs/ARENA_AGENT_PROMPT.md` is sent to each Arena with only `CHAT_NAME` changed. The common prompt, runtime contract, recovery protocol and continuation policy are normative and override any weaker stop interpretation in a Mission file.
 
 The Arena reads its Mission from Git, executes it, performs the delivery chain for authorized changes, and writes checkpoints/evidence back to Git. Project continuity therefore lives in version-controlled evidence rather than chat memory.
 
