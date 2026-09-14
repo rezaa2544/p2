@@ -50,7 +50,17 @@ const fa = (n) => String(n).replace(/\d/g, (d) => FA_DIGITS[+d]);
 
 function listMd(dir) {
   if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir).filter((f) => f.endsWith('.md'));
+  return fs.readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.endsWith('.md')).map((e) => e.name);
+}
+
+function countMdTree(dir) {
+  let total = 0;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) total += countMdTree(path.join(dir, entry.name));
+    else if (entry.isFile() && entry.name.endsWith('.md')) total++;
+  }
+  return total; // Symlinks are not followed; underscore counting is unchanged.
 }
 
 /* قفلِ جاری همان است که تستِ نگهبان به آن اشاره می‌کند — از خودِ تست
@@ -73,17 +83,17 @@ function subNames(t) {
 const subLabel = (t) => subNames(t).map((s) => `\`${s}/\``).join(' + ');
 
 /* ── واقعیتِ دیسک ────────────────────────────────────────────────── */
-function truth() {
-  const rootMd = listMd(DOCS);
+function truth(docsDir = DOCS) {
+  const rootMd = listMd(docsDir);
   const freezeRel = currentFreeze();                 // docs/DOCS_FREEZE_v1.0.0-rcNN.md
   const freezeName = path.basename(freezeRel);
   const rc = (freezeName.match(/rc(\d+)/) || [])[1];
 
   let subTotal = 0;
   const subs = {};
-  for (const e of fs.readdirSync(DOCS, { withFileTypes: true })) {
+  for (const e of fs.readdirSync(docsDir, { withFileTypes: true })) {
     if (!e.isDirectory()) continue;
-    const n = listMd(path.join(DOCS, e.name)).length;
+    const n = countMdTree(path.join(docsDir, e.name));
     if (n) { subs[e.name] = n; subTotal += n; }
   }
 
@@ -109,7 +119,7 @@ function truth() {
   const testsNested = Object.values(nested).reduce((a, b) => a + b, 0);
 
   /* دسته‌بندیِ وضعیت برای نقشهٔ مستندات */
-  const frozenDocs = fs.readdirSync(DOCS).filter((f) => /^DOCS_FREEZE_v1\.0\.0-rc\d+\.md$/.test(f)).length;
+  const frozenDocs = rootMd.filter((f) => /^DOCS_FREEZE_v1\.0\.0-rc\d+\.md$/.test(f)).length;
 
   return {
     rc: rc || '?',

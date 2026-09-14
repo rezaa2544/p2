@@ -60,6 +60,27 @@ chk('هیچ رازی در سند نیست', !/(ghp_[A-Za-z0-9]{20,}|github_pat_[
 chk('ردیف نمایه برای نقشه وجود دارد', rd('docs/DOCS_INDEX.md').includes('DOCUMENTATION_MAP.md'));
 chk('ابزار متادیتا در راهنمای نگهداری ثبت شده', rd('docs/DOCUMENTATION_MAINTENANCE.md').includes('docs-metadata.js'));
 
+grp('شمار بازگشتی stats بدون بازتولید اسناد');
+const stats = require(path.join(ROOT, 'tools/docs-stats-sync.js'));
+const fixture = fs.mkdtempSync(path.join(require('os').tmpdir(), 'docs-stats-'));
+const seeded = ['README.md', path.basename(stats.currentFreeze()), 'nested/direct.md',
+  'nested/_preserved.md', 'nested/deep/report.md', 'daily-reports/Chat7/report.md',
+  'folder.md/child.md', 'nested/data.json'];
+try {
+  for (const rel of seeded) {
+    const file = path.join(fixture, rel);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, '# Fixture\n');
+  }
+  fs.symlinkSync(fixture, path.join(fixture, 'loop'), process.platform === 'win32' ? 'junction' : 'dir');
+  const counted = stats.truth(fixture);
+  chk('ریشه و کل درخت فقط فایل‌های واقعی را می‌شمارند', counted.docsRoot === 2 && counted.docsSub === 5 && counted.docsTree === 7);
+  chk('همهٔ عمق‌ها زیر نام پوشهٔ اصلی جمع می‌شوند', counted.subs.nested === 3 && counted.subs['daily-reports'] === 1 && counted.subs['folder.md'] === 1 && Object.keys(counted.subs).length === 3);
+  chk('truth قطعی و read-only است', JSON.stringify(counted) === JSON.stringify(stats.truth(fixture)) && seeded.every((rel) => fs.readFileSync(path.join(fixture, rel), 'utf8') === '# Fixture\n'));
+} finally {
+  fs.rmSync(fixture, { recursive: true, force: true });
+}
+
 console.log('');
 console.log('نتیجه: ' + fa(pass) + ' موفق / ' + fa(fail) + ' ناموفق (از ' + fa(pass + fail) + ')');
 process.exit(fail ? 1 : 0);
