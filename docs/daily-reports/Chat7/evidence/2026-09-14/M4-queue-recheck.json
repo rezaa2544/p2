@@ -1,0 +1,42 @@
+[
+  {
+    "command": "date -u '+%Y-%m-%dT%H:%M:%SZ'; git fetch origin main; git ls-remote origin refs/heads/main refs/heads/arena/01a0a0e2-p2; git rev-parse origin/main; git diff --name-status 2f3b230..origin/main",
+    "startedAt": "2026-09-14T17:45:31.042792+00:00",
+    "finishedAt": "2026-09-14T17:45:31.999065+00:00",
+    "exitCode": 0,
+    "stdout": "2026-09-14T17:45:31Z\n7fbc6932e751c3518f1e9abc2a6d71aa8985a466\trefs/heads/arena/01a0a0e2-p2\n2f3b230139fd220d8adda2a407c99bf36bb06bad\trefs/heads/main\n2f3b230139fd220d8adda2a407c99bf36bb06bad\n",
+    "stderr": "From https://github.com/rezaa2544/p2\n * branch            main       -> FETCH_HEAD\n"
+  },
+  {
+    "command": "gh pr list --repo rezaa2544/p2 --state open --limit 100 --json number,title,headRefName,headRefOid,baseRefName,isDraft,mergeable,mergeStateStatus,url",
+    "startedAt": "2026-09-14T17:45:31.999092+00:00",
+    "finishedAt": "2026-09-14T17:45:32.550806+00:00",
+    "exitCode": 0,
+    "stdout": "[{\"baseRefName\":\"main\",\"headRefName\":\"arena/01a0a0e2-p2\",\"headRefOid\":\"7fbc6932e751c3518f1e9abc2a6d71aa8985a466\",\"isDraft\":true,\"mergeStateStatus\":\"CLEAN\",\"mergeable\":\"MERGEABLE\",\"number\":221,\"title\":\"docs(chat8): Sep 14 M1-M4 integration evidence and risk register\",\"url\":\"https://github.com/rezaa2544/p2/pull/221\"},{\"baseRefName\":\"main\",\"headRefName\":\"docs/daily-reports-2026-09-14\",\"headRefOid\":\"2d21acca7dcee22bef87878e37b3db136b1e79b0\",\"isDraft\":false,\"mergeStateStatus\":\"DIRTY\",\"mergeable\":\"CONFLICTING\",\"number\":218,\"title\":\"docs(daily-reports/14): چت ۸ — دور ۱۸: پایش تصمیم الگوی A (هنوز اعلام…\",\"url\":\"https://github.com/rezaa2544/p2/pull/218\"},{\"baseRefName\":\"main\",\"headRefName\":\"feat/chat7-merge-queue-stabilization\",\"headRefOid\":\"2ae1b8c71421504fd6f0ecf6a263e7bcfcaaf9f5\",\"isDraft\":false,\"mergeStateStatus\":\"DIRTY\",\"mergeable\":\"CONFLICTING\",\"number\":216,\"title\":\"docs(chat7): دور ۹..۱۴ — پایشِ قرمزی freeze، دروازهٔ تصمیم (FALSE)، SLO تطبیق ۷/۷ + رفعِ تعارضِ انتهای‌فایل با union (0 حذف)\",\"url\":\"https://github.com/rezaa2544/p2/pull/216\"},{\"baseRefName\":\"main\",\"headRefName\":\"arena/01a09a73-p2\",\"headRefOid\":\"049ee713aec784e53688d1b5d3088666a688d063\",\"isDraft\":false,\"mergeStateStatus\":\"DIRTY\",\"mergeable\":\"CONFLICTING\",\"number\":211,\"title\":\"Arena/01a09a73 p2\",\"url\":\"https://github.com/rezaa2544/p2/pull/211\"}]\n",
+    "stderr": ""
+  },
+  {
+    "command": "gh api repos/rezaa2544/p2/branches/main/protection",
+    "startedAt": "2026-09-14T17:45:32.550831+00:00",
+    "finishedAt": "2026-09-14T17:45:32.809342+00:00",
+    "exitCode": 1,
+    "stdout": "{\"message\":\"Resource not accessible by integration\",\"documentation_url\":\"https://docs.github.com/rest/branches/branch-protection#get-branch-protection\",\"status\":\"403\"}",
+    "stderr": "gh: Resource not accessible by integration (HTTP 403)\n"
+  },
+  {
+    "command": "gh api 'repos/rezaa2544/p2/actions/runs?head_sha=2f3b230139fd220d8adda2a407c99bf36bb06bad&per_page=20' --jq '.workflow_runs[] | {id,head_sha,status,conclusion,name,html_url}'",
+    "startedAt": "2026-09-14T17:45:32.809367+00:00",
+    "finishedAt": "2026-09-14T17:45:33.312755+00:00",
+    "exitCode": 0,
+    "stdout": "{\"conclusion\":\"success\",\"head_sha\":\"2f3b230139fd220d8adda2a407c99bf36bb06bad\",\"html_url\":\"https://github.com/rezaa2544/p2/actions/runs/34875873277\",\"id\":34875873277,\"name\":\"Node.js CI\",\"status\":\"completed\"}\n{\"conclusion\":\"success\",\"head_sha\":\"2f3b230139fd220d8adda2a407c99bf36bb06bad\",\"html_url\":\"https://github.com/rezaa2544/p2/actions/runs/34875873236\",\"id\":34875873236,\"name\":\"Security Program (SAST · SCA · SBOM · DAST · Secret)\",\"status\":\"completed\"}\n",
+    "stderr": ""
+  },
+  {
+    "command": "git diff --name-status 7fbc693..HEAD -- .github server src tests tools authz migrations docs/daily-reports/Chat8; git log --format=\"%H %s\" 7fbc693..HEAD -- docs/daily-reports/Chat7",
+    "startedAt": "2026-09-14T17:45:33.312780+00:00",
+    "finishedAt": "2026-09-14T17:45:33.319744+00:00",
+    "exitCode": 0,
+    "stdout": "96518329f5005bf9c2770012615aa16acff02a29 docs(chat7): M3 checkpoint preserve unique report deltas\n1faf2021de467b4e02de23e3c2f08c3818d4fef2 docs(chat7): M2 checkpoint reproduce documentation gate failures\n438e8373b9a4f6f3d37bc84f804ffeea4d6171fc docs(chat7): M1 checkpoint audit current PR queue\n",
+    "stderr": ""
+  }
+]
