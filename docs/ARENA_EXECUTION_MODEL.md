@@ -22,6 +22,8 @@ The active Queue is a minimum work sequence, not an automatic stop condition. Af
 
 **M4 completion is never, by itself, a stop reason.**
 
+If M1–M4 were already completed in an earlier round of the same active Mission, execution resumes at `CONTINUATION PASS`. A `re-validation`, `round N`, or `unchanged` message does not reset, close, or suspend the Mission.
+
 ## 3. Canonical paths
 
 ### Active mission
@@ -113,17 +115,23 @@ Self-merge is allowed when the change is fully within Mission scope, required te
 
 Merge must stop and escalate for P0 closure, P0/P1 status changes, cross-Arena ownership conflicts, or material governance adjudication.
 
+If remote delivery is unavailable, only the affected operation is `NOT-RUN`; independent scoped work continues.
+
 ## 9. Continuation / no-work proof
 
 After M4, the Arena enters `CONTINUATION LOOP`.
 
 For each loop it must inspect the active Mission and select the highest-value unresolved scoped action: implementation, failure repair, focused tests/fixtures, hardening, regression/integration verification, PR maintenance, delivery, main verification, or evidence recovery.
 
+If the queue was completed before the current prompt, this inspection happens immediately; the Arena must not emit a revalidation-only stop report.
+
 It may claim that no scoped work remains **only after a second independent pass** over acceptance criteria, relevant code/tests/docs, PR/CI state, NOT-RUN/environment limitations and unresolved findings. The report must state what was checked and why no independent action remains.
 
-`complete`, `finished`, `awaiting coordinator`, `awaiting audit`, `awaiting prompt`, or `nothing else` are not valid stop reasons by themselves.
+`complete`, `finished`, `awaiting coordinator`, `awaiting audit`, `awaiting prompt`, `nothing else`, `session policy`, and `re-validation stands` are not valid stop reasons by themselves.
 
 A network failure, stale local checkout, missing local report, or unavailable optional check blocks only that operation. Recover from current `main` where possible and continue independent work.
+
+No local/session-specific policy may override the canonical continuation rules.
 
 ## 10. Auditor rules
 
@@ -158,3 +166,5 @@ Arena chats must read their active mission at the beginning of every working ses
 The user should not have to distribute bespoke daily task prompts. The common Arena prompt points each chat to its own `ACTIVE.md` mission and report path. Only the chat name changes.
 
 The Arena must keep executing until the work window ends or the second-pass no-work proof establishes that no independent authorized action remains.
+
+A repeated prompt does not create a new stop/revalidation cycle. If the Mission remains ACTIVE, the Arena resumes from its current stage/pass and continues autonomously.
