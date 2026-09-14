@@ -27,6 +27,28 @@ chk('خروجی نمایهٔ جستجو ساخته شد', fs.existsSync(path.joi
 chk('خروجی‌ها در گیت‌ایگنور هستند', /_metadata\.json/.test(fs.readFileSync(path.join(ROOT, '.gitignore'), 'utf8')));
 
 const tool = require(path.join(ROOT, 'tools/docs-metadata.js'));
+
+grp('پوشش بازگشتی بدون دنبال‌کردن symlink');
+const fixture = fs.mkdtempSync(path.join(require('os').tmpdir(), 'docs-metadata-'));
+try {
+  for (const rel of ['ROOT.md', 'nested/direct.md', 'nested/deep/report.md',
+    'daily-missions/Chat7/ACTIVE.md', 'folder.md/child.md', '_ignored.md',
+    '_generated/hidden.md', 'nested/_generated/hidden.md', 'nested/data.json']) {
+    const file = path.join(fixture, rel);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, '# Fixture\n');
+  }
+  fs.symlinkSync(fixture, path.join(fixture, 'loop'), process.platform === 'win32' ? 'junction' : 'dir');
+  const listed = tool.listDocs(fixture);
+  const expected = ['ROOT.md', 'daily-missions/Chat7/ACTIVE.md', 'folder.md/child.md',
+    'nested/deep/report.md', 'nested/direct.md'];
+  chk('همهٔ عمق‌ها، مسیرهای مستقل و فایل‌ها دقیقاً فهرست شده‌اند', JSON.stringify(listed) === JSON.stringify(expected));
+  chk('پیشوند تولیدی و symlink وارد کاتالوگ نشده‌اند', !listed.some((p) => /(^|\/)(_.*|loop)(\/|$)/.test(p)));
+  chk('ترتیب قطعی و مسیرهای یکتا حفظ شده‌اند', new Set(listed).size === listed.length && JSON.stringify(listed) === JSON.stringify([...listed].sort()));
+} finally {
+  fs.rmSync(fixture, { recursive: true, force: true });
+}
+
 const entries = tool.buildCatalog();
 const index = tool.buildSearchIndex(entries);
 const s = tool.summarize(entries);

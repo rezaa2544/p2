@@ -15,18 +15,18 @@ const META_OUT = path.join(DOCS, '_metadata.json');
 const INDEX_OUT = path.join(DOCS, '_search-index.json');
 
 /** همهٔ اسناد کاتالوگ: ریشه + زیرپوشه‌ها (بدون فایل‌های تولیدی با پیشوند زیرخط) */
-function listDocs() {
+function listDocs(docsDir = DOCS) {
   const out = [];
-  for (const f of fs.readdirSync(DOCS)) {
-    if (f.endsWith('.md') && !f.startsWith('_')) out.push(f);
-  }
-  for (const sub of fs.readdirSync(DOCS)) {
-    const p = path.join(DOCS, sub);
-    if (!fs.statSync(p).isDirectory() || sub.startsWith('_')) continue;
-    for (const f of fs.readdirSync(p)) {
-      if (f.endsWith('.md') && !f.startsWith('_')) out.push(path.join(sub, f));
+  function walk(dir, rel) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name.startsWith('_')) continue;
+      const name = rel ? rel + '/' + entry.name : entry.name;
+      // Dirent does not follow symlinks: no loops or traversal outside docsDir.
+      if (entry.isDirectory()) walk(path.join(dir, entry.name), name);
+      else if (entry.isFile() && entry.name.endsWith('.md')) out.push(name);
     }
   }
+  walk(docsDir, '');
   return out.sort();
 }
 
