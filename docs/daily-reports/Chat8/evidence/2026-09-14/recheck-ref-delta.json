@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:28:32.759445+00:00",
+  "finishedAt": "2026-09-14T17:28:32.784940+00:00",
+  "command": "python - <<'P'\nimport pathlib,json\np=pathlib.Path('docs/daily-reports/Chat8/evidence/2026-09-14')\na=json.loads((p/'06-main-refs-check.json').read_text())['stdout'];b=json.loads((p/'recheck-gate-refs.json').read_text())['stdout']\nf=lambda s:{l.strip() for l in s.splitlines() if l.startswith('  • ')}\nprint('Removed:',sorted(f(a)-f(b)));print('Added:',sorted(f(b)-f(a)))\nP",
+  "exitCode": 0,
+  "stdout": "Removed: ['• docs/daily-missions/Chat5/ACTIVE.md → docs/daily-reports/Chat5/2026-09-14.md']\nAdded: ['• docs/daily-reports/Chat5/2026-09-14.md → server/writes.js']\n",
+  "stderr": ""
+}

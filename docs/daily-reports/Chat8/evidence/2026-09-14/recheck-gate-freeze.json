@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-09-14T17:27:07.309181+00:00",
+  "finishedAt": "2026-09-14T17:27:07.390476+00:00",
+  "command": "cd tmp/chat8-recheck/main && node tests/docs-freeze-marker.js",
+  "exitCode": 1,
+  "stdout": "\n▸ DF-SEC — ساختار\n  ✅ بخشِ «قاعدهٔ قفل»\n  ✅ بخشِ «امضا»\n  ✅ بخشِ «فهرست اسناد ریشه با هش»\n  ✅ نسخهٔ وی۱.۰.۰-آرسی۴۳\n  ✅ تاریخ قفل (الگوی ردیف تاریخ)\n  ✅ قاعدهٔ بامپ نسخه\n  ✅ استثنای اسناد زنده\n  ✅ صداقت نبود جی‌پی‌جی + جایگزین\n\n▸ DF-ALL — کامل بودن فهرست\n  ❌ شمار ردیف‌ها = شمار اسناد (خارج از سند قفل)  —  ردیف 347 در برابر 352\n  ❌ هیچ سندی جا نمانده  —  ARENA_AGENT_PROMPT.md,ARENA_EXECUTION_MODEL.md,ARENA_MISSION_TEMPLATE.md,ARENA_REGISTRY.md,EXECUTION_CONTROL_PROTOCOL.md\n  ✅ سند اضافه‌ای فهرست نشده\n  ✅ خود سند قفل در فهرست نیست\n\n▸ DF-HASH — صحت اثرها\n  ❌ اثر همهٔ اسناد یخ‌زده با فهرست یکی است  —  PR_MERGE_PLAN.md\n  ✅ سنجه‌ها و راهنما در فهرست‌اند\n\n──────────────────────────────────────────\nنتیجه: 11 موفق / 3 ناموفق (از 14)\nموارد ناموفق:\n- شمار ردیف‌ها = شمار اسناد (خارج از سند قفل) — ردیف 347 در برابر 352\n- هیچ سندی جا نمانده — ARENA_AGENT_PROMPT.md,ARENA_EXECUTION_MODEL.md,ARENA_MISSION_TEMPLATE.md,ARENA_REGISTRY.md,EXECUTION_CONTROL_PROTOCOL.md\n- اثر همهٔ اسناد یخ‌زده با فهرست یکی است — PR_MERGE_PLAN.md\n",
+  "stderr": ""
+}
