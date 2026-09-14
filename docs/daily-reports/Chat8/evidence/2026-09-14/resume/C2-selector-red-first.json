@@ -1,0 +1,10 @@
+[
+  {
+    "command": "node tests/arena-runtime-gate.js",
+    "startedAt": "2026-09-14T18:23:11.126707+00:00",
+    "finishedAt": "2026-09-14T18:23:11.689073+00:00",
+    "exitCode": 1,
+    "stdout": "PASS repo-root\nPASS nested-cwd\nPASS outside-repo\nPASS foreign-repo\nPASS read-only-local-and-refs\nPASS remote-only-root\nPASS remote-only-outside\nPASS missing-root\nPASS missing-outside\nPASS foreign-mission-cannot-authorize-target\nPASS missing-chat\nPASS invalid-chat\nPASS path-like-chat\narena-runtime-gate: 13/15 PASS, 2 FAILED\n",
+    "stderr": "FAIL inherited-selectors-cannot-hide-target-mission: ARENA_RUNTIME_STATE=CONTINUITY_FALLBACK\nCHAT=Chat8\nLOCAL_MISSION=MISSING\nORIGIN_MAIN_MISSION=NOT_AVAILABLE\nNEXT_ACTION=read docs/ARENA_CONTROL_PLANE_RECOVERY.md and docs/ARENA_CONTINUITY_AUTHORIZATION.md; execute first bounded fallback action\nSTOP_ALLOWED=NO\n\nFAIL inherited-selectors-cannot-authorize-target: ARENA_RUNTIME_STATE=MISSION_MODE\nCHAT=Chat8\nLOCAL_MISSION=MISSING\nORIGIN_MAIN_MISSION=PRESENT\nNEXT_ACTION=read ACTIVE.md; if M1-M4 complete start CONTINUATION PASS #1\nSTOP_ALLOWED=NO\n\n"
+  }
+]

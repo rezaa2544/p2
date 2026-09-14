@@ -15,8 +15,11 @@ if (!/^Chat(?:[1-9]|10)$/.test(chat || '')) {
 }
 
 function git(args) {
+  // Git hooks/callers may select a foreign repository even with cwd fixed.
+  const env = { ...process.env };
+  for (const key of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE']) delete env[key];
   try {
-    return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    return execFileSync('git', args, { cwd: ROOT, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
   } catch (_) {
     return '';
   }

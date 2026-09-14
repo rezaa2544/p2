@@ -30,9 +30,9 @@ function seed(dir) {
   git(dir, ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
     '-c', 'core.hooksPath=/dev/null', 'commit', '--no-gpg-sign', '-qm', 'fixture']);
 }
-function run(cwd, chat = ['Chat8']) {
+function run(cwd, chat = ['Chat8'], overrides = {}) {
   const result = spawnSync(process.execPath, [path.join(target, 'tools/arena-runtime-gate.js'), ...chat],
-    { cwd, env, encoding: 'utf8', timeout: 10000 });
+    { cwd, env: { ...env, ...overrides }, encoding: 'utf8', timeout: 10000 });
   assert.ifError(result.error);
   return result;
 }
@@ -62,10 +62,15 @@ try {
   fs.unlinkSync(path.join(target, mission));
   test('remote-only-root', () => state(run(target), 'MISSION_MODE', 'MISSING', 'PRESENT'));
   test('remote-only-outside', () => state(run(scratch), 'MISSION_MODE', 'MISSING', 'PRESENT'));
+  const foreignSelectors = { GIT_DIR: path.join(foreign, '.git'), GIT_WORK_TREE: foreign,
+    GIT_COMMON_DIR: path.join(foreign, '.git'), GIT_INDEX_FILE: path.join(foreign, '.git/index') };
+  test('inherited-selectors-cannot-hide-target-mission', () => state(run(scratch, ['Chat8'], foreignSelectors), 'MISSION_MODE', 'MISSING', 'PRESENT'));
   git(target, ['update-ref', '-d', 'refs/remotes/origin/main']);
   test('missing-root', () => state(run(target), 'CONTINUITY_FALLBACK', 'MISSING', 'NOT_AVAILABLE'));
   test('missing-outside', () => state(run(scratch), 'CONTINUITY_FALLBACK', 'MISSING', 'NOT_AVAILABLE'));
   test('foreign-mission-cannot-authorize-target', () => state(run(foreign), 'CONTINUITY_FALLBACK', 'MISSING', 'NOT_AVAILABLE'));
+  git(foreign, ['update-ref', 'refs/remotes/origin/main', 'HEAD']);
+  test('inherited-selectors-cannot-authorize-target', () => state(run(scratch, ['Chat8'], foreignSelectors), 'CONTINUITY_FALLBACK', 'MISSING', 'NOT_AVAILABLE'));
   for (const [name, args] of [['missing-chat', []], ['invalid-chat', ['Chat11']], ['path-like-chat', ['../Chat8']]]) {
     test(name, () => { const r = run(scratch, args); assert.equal(r.status, 2); assert.match(r.stderr, /Usage:/); });
   }
