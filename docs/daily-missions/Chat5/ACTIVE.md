@@ -1,32 +1,31 @@
-# Daily Mission — Chat5
+# Daily Mission Queue — Chat5
 
-**Mission ID:** M-2026-09-14-C5-001  
 **Date:** 2026-09-14  
-**Owner / Arena:** Chat5 — QA / quality gate  
+**Owner:** Chat5 — QA / chaos / quality gate  
 **Status:** ACTIVE  
-**Base SHA:** `b272e09136f13488845d957ac6ce588dbcb8c416`  
-**P0_REF:** `docs/P0_BLOCKER_TRACKER.md#پ0-۱: ادغام نهایی موج ۱ — پستگرس تنها منبع حقیقت`
+**Rule:** Execute M1→M2→M3→M4 sequentially; do not wait for a new prompt unless genuinely BLOCKED.
 
-## Scope
+## M1 — P0-1 independent verification
+- Verify current-main PostgreSQL enforcement and Wave-1 gate tests.
+- Distinguish implementation, local test evidence, CI and staging proof.
+- Produce exact acceptance gaps.
 
-Independently verify the current-main evidence relevant to P0-1 acceptance. Inspect the actual production-mode PostgreSQL enforcement and the existing Wave-1 gate tests. Determine what is proven, what is not, and whether the current evidence satisfies the tracker wording.
+## M2 — Test battery and failure analysis
+- Run all safe, relevant existing QA/gate suites available in the repo.
+- Prioritize authz, smoke, server, write-path and regression suites relevant to current main.
+- Record exact commands/results; diagnose real failures without masking them.
 
-## Forbidden scope
+## M3 — P0/P1 acceptance matrix
+- Map canonical P0 gates and current technical P1 inventory to existing tests/evidence.
+- Identify untested acceptance criteria and the smallest safe tests that would close each gap.
+- Do not close or renumber blockers.
 
-No code changes, no P0 closure, no merge, no Roadmap rewrite, no acceptance of another Arena's claim without evidence.
+## M4 — QA delivery package
+- Re-check changed evidence and reports from today's Arena work.
+- Produce a concise independent QA verdict: proven / unproven / failed / NOT-RUN.
+- Give exact next verification actions for ChatGPT.
 
-## Acceptance criteria
+### Common rules
+No merge, no P0 closure, no Roadmap rewrite, no invented staging/production evidence. If one stage is blocked, continue independent stages. NOT-RUN must include the exact reason.
 
-- [ ] Current main SHA is recorded.
-- [ ] Production PostgreSQL enforcement is inspected on main.
-- [ ] `tools/wave1-gate.js` and relevant multi-instance/production tests are verified or marked NOT-RUN.
-- [ ] Evidence gap between "production refuses fallback" and tracker closure wording is explicitly assessed.
-- [ ] Report committed to `docs/daily-reports/Chat5/2026-09-14.md`.
-
-## Required tests / evidence
-
-Run only tests that are safe and available. Exact command + result required. If environment prevents execution, record `NOT-RUN` and reason.
-
-## Definition of Done
-
-Independent P0-1 quality assessment is committed. Chat5 must not declare P0-1 closed or National GO.
+**Report:** `docs/daily-reports/Chat5/2026-09-14.md`
