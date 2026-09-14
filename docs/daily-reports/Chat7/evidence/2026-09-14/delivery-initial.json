@@ -1,0 +1,26 @@
+[
+  {
+    "command": "git push origin arena/01a0a0e2-p2",
+    "startedAt": "2026-09-14T17:48:01.102017+00:00",
+    "finishedAt": "2026-09-14T17:48:02.563295+00:00",
+    "exitCode": 0,
+    "stdout": "",
+    "stderr": "To https://github.com/rezaa2544/p2.git\n   7fbc693..884fa04  arena/01a0a0e2-p2 -> arena/01a0a0e2-p2\n"
+  },
+  {
+    "command": "git rev-parse HEAD; git ls-remote origin refs/heads/arena/01a0a0e2-p2 refs/heads/main",
+    "startedAt": "2026-09-14T17:48:02.563327+00:00",
+    "finishedAt": "2026-09-14T17:48:03.073196+00:00",
+    "exitCode": 0,
+    "stdout": "884fa042b845b7828e277967fbff891f6b7e8a4e\n884fa042b845b7828e277967fbff891f6b7e8a4e\trefs/heads/arena/01a0a0e2-p2\n63f97379e477c73bd3084f99c76e3d1499dc0ac7\trefs/heads/main\n",
+    "stderr": ""
+  },
+  {
+    "command": "gh api --method PATCH repos/rezaa2544/p2/pulls/221 --input tmp/chat7-audit/pr.json --jq '{number,title,body,draft,head_sha:.head.sha,url:.html_url}'",
+    "startedAt": "2026-09-14T17:48:03.073226+00:00",
+    "finishedAt": "2026-09-14T17:48:04.122127+00:00",
+    "exitCode": 0,
+    "stdout": "{\"body\":\"## Chat7 + preserved Chat8 delivery — 2026-09-14\\n\\n**DRAFT / AUDIT_PENDING. Merge blocked by actual documentation-gate failures, not by missing permission to self-merge.**\\n\\nThis session was explicitly reassigned from Chat8 to Chat7 by the user. It remains on the fixed branch `arena/01a0a0e2-p2`. Previous Chat8 report/evidence is preserved byte-for-byte. Current-main control changes were incorporated by ordinary conflict-free merge; no missions were authored or changed by this agent.\\n\\n### Current Chat7 mission\\n`docs/daily-missions/Chat7/ACTIVE.md` at main `2f3b230139fd220d8adda2a407c99bf36bb06bad`.\\n\\n- M1: open-PR/base/head/files/CI/merge-tree audit; #211/#216/#218 still conflict.\\n- M2: freshly reproduce freeze 11/14 FAIL, stats FAIL, refs 124/52-new FAIL, metadata omissions. Recursive docs count 423 vs catalog 412 (10 missions + Chat5 report omitted).\\n- M3: exact preservation chunks with head line ranges and SHA-256; no historical deletion or ownership-conflict resolution.\\n- M4: conditional merge-order/risk package; checkpoint after each stage.\\n- Continuation: fix the active PR template's false permanent-billing assertion. Require head SHA/run URL and distinguish FAILED/NOT-RUN/staging. All existing gate commands, freeze=14/14 and stats requirements remain.\\n\\n### Changes and tests\\nOnly the PR template, existing documentation-maintenance test, and Chat7 report/evidence are newly changed. No product code, P0/P1 state, canonical roadmap, or historical freeze artifact was edited.\\n\\n- Red-first existing suite with added assertions: **46/49 FAILED** on old template.\\n- Fixed template: **49/49 PASS**; four controlled mutations rejected, baseline/restored green.\\n- Structure regression **35/35 PASS**; build --check **PASS**.\\n- Actual inherited docs gates remain FAILED and are NOT labelled NOT-RUN. No baseline regeneration or gate weakening.\\n- Full regression/live-PG/staging NOT-RUN for the documentation-only correction; no production claim.\\n\\nReports: `docs/daily-reports/Chat7/2026-09-14.md` (current checkpoints), `docs/daily-reports/Chat8/2026-09-14.md` (prior preserved audit). Raw commands/outputs are versioned under their evidence folders.\\n\\nPlease adjudicate freeze ownership/policy and cross-Arena conflicts. This PR will not self-merge while actual required docs gates fail. GitHub green/CLEAN alone is insufficient.\\n\",\"draft\":true,\"head_sha\":\"7fbc6932e751c3518f1e9abc2a6d71aa8985a466\",\"number\":221,\"title\":\"docs(chat7/chat8): integration audits and head-specific CI evidence guard\",\"url\":\"https://github.com/rezaa2544/p2/pull/221\"}\n",
+    "stderr": ""
+  }
+]
