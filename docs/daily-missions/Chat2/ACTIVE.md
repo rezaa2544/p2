@@ -1,37 +1,28 @@
-# Daily Mission — Chat2
+# Daily Mission Queue — Chat2
 
-**Mission ID:** M-2026-09-14-C2-001  
 **Date:** 2026-09-14  
-**Owner / Arena:** Chat2 — Feature / application execution  
+**Owner:** Chat2 — Feature / application execution  
 **Status:** ACTIVE  
-**Base SHA:** `b272e09136f13488845d957ac6ce588dbcb8c416`
+**Rule:** Execute M1→M2→M3→M4 sequentially; do not wait for a new prompt unless genuinely BLOCKED.
 
-## Scope
+## M1 — Feature backlog reconciliation
+- Re-read current roadmap/application scope and verify implemented vs claimed feature work.
+- Identify the highest-priority feature work that is explicitly unblocked and within Chat2 ownership.
 
-Perform a read-only audit of the feature/application backlog relevant to the current Roadmap and identify which feature items are genuinely unblocked versus dependent on national P0/P1 work.
+## M2 — Implement the selected unblocked feature slice
+- Implement only the explicitly evidenced, unblocked feature slice found in M1.
+- Add/adjust focused tests and preserve existing contracts.
 
-For each relevant item record:
-- current Roadmap reference;
-- existing implementation/evidence if present;
-- dependency on P0/P1/Wave work;
-- whether it should remain paused while national blockers are open.
+## M3 — Regression and integration hardening
+- Run relevant feature, API, schema and regression tests.
+- Fix failures caused by the Mission scope; do not expand scope.
+- Verify diff and repository cleanliness.
 
-## Forbidden scope
+## M4 — Delivery verification
+- Reconcile implementation with Roadmap and main/PR state.
+- Commit/PR according to project rules and record exact evidence.
 
-No feature coding, no refactor, no merge, no P0/P1 changes, no Roadmap rewrite.
+### Common rules
+No P0/P1 changes, no roadmap rewrite, no unrelated refactor. If the selected feature is blocked, document why and execute independent verification work from the same domain rather than idling.
 
-## Acceptance criteria
-
-- [ ] Current main SHA recorded.
-- [ ] Relevant feature backlog/dependency map produced.
-- [ ] Any stale "in progress" claims found are evidenced, not silently corrected.
-- [ ] Recommended execution order is separated from facts.
-- [ ] Report committed to `docs/daily-reports/Chat2/2026-09-14.md`.
-
-## Required evidence
-
-Exact Roadmap and repository references. Mark inaccessible checks `NOT-RUN`.
-
-## Definition of Done
-
-Read-only feature dependency audit committed.
+**Report:** `docs/daily-reports/Chat2/2026-09-14.md`
