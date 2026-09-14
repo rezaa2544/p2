@@ -51,7 +51,7 @@ async function main() {
   test('T1 بوت بدون خطا + سید دوره‌ها', () => {
     assert(consoleErrors.length === 0, consoleErrors.slice(0, 2).join(' | '));
     assert(Number(W('db.training_courses.length')) === 12, 'سید باید ۱۲ باشد');
-    assert(Number(W(`db.users.length`)) === 1035, 'کاربر تازه ساخته شد!');
+    assert(Number(W(`db.users.length`)) === 1036, 'کاربر تازه ساخته شد!' /* SIM-01: +guard1 (seed-completeness) */);
     assert(W(`!!db.users.find(function(u){return u.username==='manager1';})`), 'حساب نمونه جابه‌جا شد');
     assert(W(`!!db.users.find(function(u){return u.role==='counselor';})`), 'جریان rng جابه‌جا شد (مشاور نیست)');
     const comp = Number(W(`db.training_courses.filter(function(c){return c.status==='completed';}).length`));

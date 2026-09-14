@@ -52,7 +52,7 @@ async function main() {
     const n = Number(W('db.staff_attendance.length'));
     /* ۶ مدرسه × ۱۲ دبیر × ۵ روز کاری؛ اگر امروز کاری باشد یک روز کم می‌شود (امروز خالی) */
     assert(n === 288 || n === 360, 'تعداد سید نامعتبر: ' + n);
-    assert(Number(W(`db.users.length`)) === 1035, 'کاربر تازه ساخته شد!');
+    assert(Number(W(`db.users.length`)) === 1036, 'کاربر تازه ساخته شد!' /* SIM-01: +guard1 (seed-completeness) */);
     assert(W(`!!db.users.find(function(u){return u.username==='manager1';})`), 'حساب نمونه جابه‌جا شد');
   });
 
