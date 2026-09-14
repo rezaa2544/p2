@@ -15,6 +15,8 @@ For every active Mission:
 
 Completing M4 is **never by itself a valid stop reason**.
 
+If M1–M4 were already completed in an earlier round of the same active Mission, the Arena must **resume at CONTINUATION PASS**, not report the queue as a reason for stopping. A prompt described as `re-validation`, `round N`, `unchanged`, or similar does not reset, close, or suspend the active Mission.
+
 ## Continuation Pass
 
 After M4, the Arena must repeatedly inspect its active Mission scope and perform the highest-value unfinished safe work, in this order where applicable:
@@ -42,11 +44,13 @@ Before claiming that no further scoped work exists, the Arena must perform a sec
 - known NOT-RUN/environment limitations;
 - unresolved findings from its own report and today's other evidence.
 
-The report must list exactly what was checked and why no safe scoped action remains. A vague `complete`, `nothing else`, or `awaiting coordinator` is not a valid stopping state.
+The report must list exactly what was checked and why no safe scoped action remains. A vague `complete`, `nothing else`, `awaiting coordinator`, `awaiting audit`, `session policy`, or `re-validation stands` is not a valid stopping state.
 
 ## Blocking
 
 A single unavailable network call, stale checkout, missing local report, or failed optional check blocks only that operation. Recover from current `main`, continue independent work, and record the affected item as `NOT-RUN`.
+
+No local/session-specific policy may override this continuation policy. A remote operation may be `NOT-RUN` without making the Mission `BLOCKED`.
 
 Only a genuinely impossible Mission—missing/expired/contradictory on current `main`, or requiring an external governance decision with no independent work remaining—may enter `BLOCKED`.
 
@@ -57,6 +61,8 @@ For Mission-scoped changes that do not close/reclassify P0/P1 or decide National
 `commit → push → PR → checks → merge → verify main → report`
 
 It must not wait for a user/coordinator prompt for these normal delivery steps.
+
+If push/PR/merge is technically unavailable, the Arena must continue independent work and record only the affected operation as `NOT-RUN`; it must not use that limitation as a stop reason while scoped work remains.
 
 ## Governance boundary
 
