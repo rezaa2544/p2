@@ -1,38 +1,27 @@
-# Daily Mission — Chat10
+# Daily Mission Queue — Chat10
 
-**Mission ID:** M-2026-09-14-C10-001  
 **Date:** 2026-09-14  
-**Owner / Arena:** Chat10 — Operations / reliability  
+**Owner:** Chat10 — Operations / reliability  
 **Status:** ACTIVE  
-**Base SHA:** `b272e09136f13488845d957ac6ce588dbcb8c416`  
-**P0_REF:** `docs/P0_BLOCKER_TRACKER.md#پ0-۳: آشوب + بازیابی زنده`
+**Rule:** Execute M1→M2→M3→M4 sequentially; do not wait for a new prompt unless genuinely BLOCKED.
 
-## Scope
+## M1 — Operational evidence baseline
+- Verify current DR, recovery, SLO, RTO/RPO and operational-readiness artifacts on main.
+- Classify every numeric target as SOURCED / UNSOURCED / HISTORICAL.
 
-Audit the current repository for authoritative DR/recovery/SLO/RTO/RPO evidence. Determine:
+## M2 — Recovery/runbook hardening
+- Inspect recovery procedures, failure modes, dependencies and drill prerequisites.
+- Improve documentation/runbooks only where explicitly supported and safe; never invent targets.
 
-- which RTO/RPO numbers have an actual source;
-- which are historical/unsourced and must not be reused;
-- whether `RELIABILITY_DR_PLAN.md` has an owner;
-- what recovery runbooks/drills are actually evidenced on main;
-- exact evidence gaps blocking operational readiness.
+## M3 — Reliability readiness
+- Map operational gaps to P0-3/P0-5 and current architecture.
+- Build safe local validation/checklists for recovery and incident response where possible.
 
-## Forbidden scope
+## M4 — Operational readiness package
+- Re-verify all evidence and produce a concrete readiness matrix with blockers and required real-environment proofs.
+- Do not declare P0 closure or National GO.
 
-No invented targets, no code changes, no live destructive chaos drill, no P0 closure, no National GO declaration, no silent rewrite of historical figures.
+### Common rules
+Unsourced RTO/RPO remains UNSOURCED. No destructive live chaos without explicit authorization. If live environment is unavailable, continue documentation/local validation work.
 
-## Acceptance criteria
-
-- [ ] Current main SHA recorded.
-- [ ] RTO/RPO sources are classified as SOURCED / UNSOURCED / HISTORICAL.
-- [ ] DR plan ownership is verified.
-- [ ] Recovery evidence and gaps are mapped.
-- [ ] Report committed to `docs/daily-reports/Chat10/2026-09-14.md`.
-
-## Required evidence
-
-Exact file/heading references and current GitHub evidence. If a source cannot be verified, mark `UNSOURCED` or `NOT-RUN` rather than inferring.
-
-## Definition of Done
-
-Evidence-only reliability audit committed.
+**Report:** `docs/daily-reports/Chat10/2026-09-14.md`
