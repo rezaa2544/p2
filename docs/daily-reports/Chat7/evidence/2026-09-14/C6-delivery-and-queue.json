@@ -1,0 +1,42 @@
+[
+  {
+    "command": "git fetch origin main; git rev-parse HEAD origin/main; git diff --stat 761e046..origin/main; git ls-remote origin refs/heads/main refs/heads/arena/01a0a0e2-p2",
+    "startedAt": "2026-09-14T18:00:02.422375+00:00",
+    "finishedAt": "2026-09-14T18:00:04.413592+00:00",
+    "exitCode": 0,
+    "stdout": "7200b755fb33247d4934f789679d79207a863978\n4320361f1c7c6dcda6bd6fe63a5b0b8e0365904b\n docs/ARENA_EXECUTION_MODEL.md      | 12 +++++++++++-\n docs/EXECUTION_CONTROL_PROTOCOL.md |  9 ++++++++-\n 2 files changed, 19 insertions(+), 2 deletions(-)\n7200b755fb33247d4934f789679d79207a863978\trefs/heads/arena/01a0a0e2-p2\n4320361f1c7c6dcda6bd6fe63a5b0b8e0365904b\trefs/heads/main\n",
+    "stderr": "From https://github.com/rezaa2544/p2\n * branch            main       -> FETCH_HEAD\n   761e046..4320361  main       -> origin/main\n"
+  },
+  {
+    "command": "gh api --method PATCH repos/rezaa2544/p2/pulls/221 --input tmp/chat7-audit/pr.json --jq '{number,title,body,draft,head_sha:.head.sha,url:.html_url}'",
+    "startedAt": "2026-09-14T18:00:04.413620+00:00",
+    "finishedAt": "2026-09-14T18:00:05.458915+00:00",
+    "exitCode": 0,
+    "stdout": "{\"body\":\"## Chat7 continuation + preserved Chat8 audit\\n\\n**DRAFT / MERGE BLOCKED: actual docs gates remain FAILED. CI success is not freeze/stats acceptance.**\\n\\nActive role: Chat7, explicitly reassigned by user; fixed branch unchanged. Chat8's prior 88 report/evidence files are preserved byte-for-byte. No product, roadmap, P0/P1 status or historical freeze artifact changes. Main was synced via ordinary merges; Mission/control changes in history came from upstream, not this agent.\\n\\n### Mission and delivered work\\n`docs/daily-missions/Chat7/ACTIVE.md`, main `761e0465f56c3c901f894d7de06187b9b2b46757` (unchanged mission; latest continuation policy read).\\n- M1–M4: SHA-bound queue audit, freeze/stats/metadata/refs failures, exact conflict-preservation chunks, conditional merge order. #211/#216/#218 conflict on shared reports.\\n- C1: PR template now requires actual head SHA + run URL, removes stale absolute billing/test-count claims, retains all gate commands and freeze=14/14.\\n- C2: all 52 fresh refs triaged with source lines, no baseline reset or fabricated targets.\\n- C3: metadata recursively discovers missions/reports; deterministic paths, excludes generated underscore entries and symlinks. No generated outputs tracked.\\n- C4: 16-command base/candidate regression comparison; no previously passing suite newly failed. Existing classification fields preserved for all 413 prior entries.\\n- C5: stats recursively counts nested docs under existing top-level groups. Existing underscore/test-count semantics retained; directories/symlinks no longer mistaken for Markdown files. No stats write/--freeze executed.\\n\\n### Real tests, not a green blanket\\n- Template suite **49/49 PASS**, four controlled mutations rejected.\\n- Metadata added fixtures **3/3 PASS**, two mutations rejected; whole suite **19/20 FAILED** (orphan predicate, also failed on base).\\n- Stats added fixtures **3/3 PASS**, two mutations rejected; whole map suite **23/26 FAILED** (three pre-existing canonical-document predicates).\\n- Snapshot: physical recursive count = metadata = stats **426**; root/test/freeze counts preserved; SHA-256 of Markdown contents unchanged before/after stats --check.\\n- Structure **35/35**, secret **12/12**, build --check, docs consistency/export/health/index/handover/observability PASS.\\n- Freeze **11/14 FAILED**, stats **FAILED**, refs **122 missing / 50 fresh FAILED**, other canonical metrics/map/orphan failures remain explicit. No required check relabelled NOT-RUN.\\n- No staging/production proof. Full product/live-PG regression is outside this documentation-only patch; no production path changed.\\n\\nReports: `docs/daily-reports/Chat7/2026-09-14.md` (current M/C checkpoints with raw evidence) and `docs/daily-reports/Chat8/2026-09-14.md` (preserved earlier audit). Current-head CI must be read from the checks/run URLs, not inferred from earlier green heads.\\n\\nMerge requires the genuine docs gates to be satisfied and freeze/ownership adjudication completed; no self-merge while they fail. No National GO/NO-GO decision is made by this PR.\\n\",\"draft\":true,\"head_sha\":\"7200b755fb33247d4934f789679d79207a863978\",\"number\":221,\"title\":\"docs(chat7/chat8): integration audits and recursive documentation census\",\"url\":\"https://github.com/rezaa2544/p2/pull/221\"}\n",
+    "stderr": ""
+  },
+  {
+    "command": "gh pr list --repo rezaa2544/p2 --state open --limit 100 --json number,headRefOid,mergeable,mergeStateStatus,url",
+    "startedAt": "2026-09-14T18:00:05.458942+00:00",
+    "finishedAt": "2026-09-14T18:00:05.956594+00:00",
+    "exitCode": 0,
+    "stdout": "[{\"headRefOid\":\"7200b755fb33247d4934f789679d79207a863978\",\"mergeStateStatus\":\"UNSTABLE\",\"mergeable\":\"MERGEABLE\",\"number\":221,\"url\":\"https://github.com/rezaa2544/p2/pull/221\"},{\"headRefOid\":\"2d21acca7dcee22bef87878e37b3db136b1e79b0\",\"mergeStateStatus\":\"DIRTY\",\"mergeable\":\"CONFLICTING\",\"number\":218,\"url\":\"https://github.com/rezaa2544/p2/pull/218\"},{\"headRefOid\":\"2ae1b8c71421504fd6f0ecf6a263e7bcfcaaf9f5\",\"mergeStateStatus\":\"DIRTY\",\"mergeable\":\"CONFLICTING\",\"number\":216,\"url\":\"https://github.com/rezaa2544/p2/pull/216\"},{\"headRefOid\":\"049ee713aec784e53688d1b5d3088666a688d063\",\"mergeStateStatus\":\"DIRTY\",\"mergeable\":\"CONFLICTING\",\"number\":211,\"url\":\"https://github.com/rezaa2544/p2/pull/211\"}]\n",
+    "stderr": ""
+  },
+  {
+    "command": "gh api repos/rezaa2544/p2/branches/main/protection",
+    "startedAt": "2026-09-14T18:00:05.956619+00:00",
+    "finishedAt": "2026-09-14T18:00:06.207109+00:00",
+    "exitCode": 1,
+    "stdout": "{\"message\":\"Resource not accessible by integration\",\"documentation_url\":\"https://docs.github.com/rest/branches/branch-protection#get-branch-protection\",\"status\":\"403\"}",
+    "stderr": "gh: Resource not accessible by integration (HTTP 403)\n"
+  },
+  {
+    "command": "git diff --exit-code 7fbc693..HEAD -- docs/daily-reports/Chat8 server src authz migrations; git diff --exit-code 761e046..HEAD -- docs/daily-missions docs/ROADMAP.md docs/NATIONAL_ROADMAP_PROGRESS.md docs/P0_BLOCKER_TRACKER.md docs/ARCHITECTURE_REVIEW.md; git diff --name-status 761e046...HEAD -- tools tests .github docs/daily-reports/Chat7; git diff --check",
+    "startedAt": "2026-09-14T18:00:06.207135+00:00",
+    "finishedAt": "2026-09-14T18:00:06.218840+00:00",
+    "exitCode": 0,
+    "stdout": "M\t.github/pull_request_template.md\nA\tdocs/daily-reports/Chat7/2026-09-14.md\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/C1-green-and-mutations.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/C1-red-first.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/C2-reference-triage.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/C3-bootstrap-and-red-first.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/C3-verification.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/C4-metadata-review.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/C4-regression-base.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/C4-regression-candidate.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/C5-red-first.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/C5-verification.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/M1-git-checks.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/M1-queue.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/M2-causes.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/M2-gates.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/M3-preservation-plan.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/M4-queue-recheck.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/delivery-initial.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/final-local-review.json\nA\tdocs/daily-reports/Chat7/evidence/2026-09-14/final-remote-review.json\nM\ttests/docs-metadata.js\nM\ttests/documentation-maintenance-coverage.js\nM\ttests/documentation-map-coverage.js\nM\ttools/docs-metadata.js\nM\ttools/docs-stats-sync.js\n",
+    "stderr": ""
+  }
+]
