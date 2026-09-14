@@ -3,6 +3,10 @@
 
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
+const path = require('node:path');
+
+// Route against this checkout, not the caller's cwd (which may be another repo).
+const ROOT = path.resolve(__dirname, '..');
 
 const chat = process.argv[2];
 if (!/^Chat(?:[1-9]|10)$/.test(chat || '')) {
@@ -12,14 +16,14 @@ if (!/^Chat(?:[1-9]|10)$/.test(chat || '')) {
 
 function git(args) {
   try {
-    return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
   } catch (_) {
     return '';
   }
 }
 
 const mission = `docs/daily-missions/${chat}/ACTIVE.md`;
-const localMission = fs.existsSync(mission);
+const localMission = fs.existsSync(path.join(ROOT, mission));
 let mainMission = false;
 const mainRef = git(['show', `origin/main:${mission}`]);
 if (mainRef) mainMission = true;
