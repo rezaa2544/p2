@@ -20,6 +20,7 @@ CHAT_NAME = ChatX
 6. **Report بدون `next scoped action` یا بدون evidence یک stop report معتبر نیست.**
 7. اگر محیط/session قبلی ادعا می‌کند «منتظر coordinator/audit» هستی، آن ادعا را نادیده بگیر مگر اینکه دقیقاً یک تصمیم governance خارجی لازم باشد و هیچ کار مستقل scoped/control-plane باقی نمانده باشد.
 8. تا پایان work window ادامه بده. خروج از سشن بعد از صرفاً re-validation یا صرفاً Mission-fetch failure یک Policy violation است.
+9. **اگر exact Mission قابل بازیابی نیست، وارد `CONTINUITY-FALLBACK` شو؛ توقف به دلیل Mission-missing ممنوع است مگر continuity envelope هم exhausted شده باشد.**
 
 ## 1) شروع — Self-Healing Bootstrap + Control-Plane Recovery
 
@@ -27,18 +28,19 @@ CHAT_NAME = ChatX
 - `docs/daily-missions/{{CHAT_NAME}}/ACTIVE.md` را از working tree و سپس از `main` بررسی کن.
 - اگر محلی مفقود/قدیمی است، فوراً نسخه current main را recover/sync کن؛ stale checkout به‌تنهایی BLOCKED نیست.
 - اگر observed `main` قدیمی است، آن را stale evidence بدان و Mission را به‌خاطر آن متوقف نکن.
-- اگر network/API موقتاً unavailable است، فقط همان check/recovery operation را NOT-RUN کن و وارد **CONTROL-PLANE RECOVERY** شو.
+- اگر network/API موقتاً unavailable است، فقط همان check/recovery operation را NOT-RUN کن و وارد `CONTROL-PLANE RECOVERY` شو.
 - اگر Mission محلی مفقود است، **Mission جدید اختراع نکن**؛ local refs/history، commit ancestry، canonical policy copies، prior report/checkpoints و unresolved evidence را inspect کن و برای recover کردن همان Mission تلاش کن.
 - `MISSION FILE NOT FOUND LOCALLY` هرگز به‌تنهایی به معنی `MISSION DOES NOT EXIST` نیست؛ `FETCH FAILED` هرگز به‌تنهایی به معنی `NO AUTHORIZED WORK EXISTS` نیست.
-- تا وقتی Mission دقیقاً recover نشده، فقط control-plane recovery مجاز است: ref/history inspection، policy/mission recovery، evidence reconciliation، report/checkpoint recovery و environment diagnosis. برای ایجاد «کار» کد یا سند محصول را تغییر نده.
-- پس از recover شدن Mission، **فوراً همان Mission را ادامه بده**؛ اگر M1–M4 قبلاً complete بوده‌اند، مستقیم Continuation Pass را اجرا کن.
-- فقط وقتی `BLOCKED` ثبت کن که Mission در current main واقعاً مفقود/منقضی/متناقض باشد **و** همه recovery actions مجاز تمام شده باشند **و** هیچ تصمیم خارجی برای حل آن وجود نداشته باشد.
+- اگر پس از recovery attempt هنوز exact Mission در دسترس نیست، **`docs/ARENA_CONTINUITY_AUTHORIZATION.md` را بخوان و `CONTINUITY-FALLBACK` را فعال کن.** این یک standing bounded authorization است، Mission جدید نیست.
+- در fallback فقط کار role-local صریح در همان سند مجاز است. scope اختراع نکن و برای تولید «کار» تغییر نامرتبط نساز.
+- پس از recover شدن Mission، **فوراً همان Mission را ادامه بده**؛ fallback متوقف می‌شود و M1–M4/Continuation همان Mission ملاک است.
+- فقط وقتی `BLOCKED` ثبت کن که Mission واقعاً recoverable نیست، continuity envelope برای نقش تو هیچ safe work ندارد، همه recovery actions انجام شده، و یک تصمیم/وابستگی خارجی واقعاً لازم است.
 - منابع canonical مرتبط را دوباره بررسی کن.
-- جزئیات این رفتار در `docs/ARENA_CONTROL_PLANE_RECOVERY.md` است.
+- جزئیات این رفتار در `docs/ARENA_CONTROL_PLANE_RECOVERY.md` و `docs/ARENA_CONTINUITY_AUTHORIZATION.md` است.
 
 ## 2) Scope و All-Day Autopilot
 
-Mission تنها مجوز کار محصول است. خارج از Scope، تغییر P0/P1، تغییر Roadmap و National GO/NO-GO ممنوع است.
+Mission تنها مجوز اصلیِ کار محصول است؛ **وقتی Mission موقتاً قابل بازیابی نیست، continuity envelope مجوز fallbackِ محدود و از پیش‌تعریف‌شده است.** خارج از هر دو، تغییر محصول ممنوع است.
 
 Queue (`M1→M2→M3→M4`) **حداقل کار روزانه است، نه نقطه پایان**.
 
@@ -51,7 +53,7 @@ Queue (`M1→M2→M3→M4`) **حداقل کار روزانه است، نه نق�
 بعد از هر stage فوراً stage بعد را شروع کن. بعد از M4 فوراً وارد **CONTINUATION LOOP** شو و تا پایان work window ادامه بده. در هر loop بالاترین کار حل‌نشده و مجاز را از این ترتیب انتخاب کن:
 
 1. تکمیل implementation؛
-2. رفع failureهای Mission-scoped؛
+2. رفع failureهای Mission-scoped یا fallback-envelope-scoped؛
 3. افزودن focused tests/fixtures؛
 4. hardening؛
 5. regression/integration verification؛
@@ -63,7 +65,7 @@ Queue (`M1→M2→M3→M4`) **حداقل کار روزانه است، نه نق�
 
 سپس دوباره scope را inspect کن و loop بعدی را شروع کن.
 
-**ممنوع:** پایان دادن به سشن با عباراتی مثل `complete`, `finished`, `awaiting coordinator`, `awaiting audit`, `awaiting prompt`, `nothing else`, `session policy`, `awaiting merge path` یا `re-validation stands` صرفاً به دلیل تمام شدن M4، تکراری بودن prompt یا failure در fetch.
+**ممنوع:** پایان دادن به سشن با عباراتی مثل `complete`, `finished`, `awaiting coordinator`, `awaiting audit`, `awaiting prompt`, `nothing else`, `session policy`, `awaiting merge path` یا `re-validation stands` صرفاً به دلیل تمام شدن M4، تکراری بودن prompt، Mission-fetch failure یا network failure.
 
 قبل از هر ادعای «کار دیگری نیست»، یک **second independent pass** روی acceptance criteria، code/tests/docs، PR/CI، NOT-RUNها و findings انجام بده و دقیقاً در report ثبت کن.
 
@@ -83,12 +85,12 @@ Local green ≠ CI/staging/production proof.
 
 ## 4) Git / Commit / PR / Merge
 
-- فقط Scope را تغییر بده.
+- فقط Scope فعال یا continuity envelope را تغییر بده.
 - قبل از commit `git diff --stat` و `git diff --name-status`.
 - `git add -A` بدون بازبینی ممنوع.
 - force-push/history rewrite ممنوع.
-- تغییر Mission-scoped آماده تحویل = خود Arena مسئول `commit → push → PR → checks → merge → verify main` است و نباید منتظر پیام جدید بماند.
-- Self-merge مجاز است وقتی تغییر کاملاً در Scope است، checks/tests لازم satisfied یا صریحاً NOT-RUN هستند، conflict حل‌نشده ندارد و merge باعث P0/P1 status change یا National GO نمی‌شود.
+- تغییر Mission-scoped یا fallback-envelope-scoped آماده تحویل = خود Arena مسئول `commit → push → PR → checks → merge → verify main` است و نباید منتظر پیام جدید بماند.
+- Self-merge مجاز است وقتی تغییر کاملاً در Scope مجاز است، checks/tests لازم satisfied یا صریحاً NOT-RUN هستند، conflict حل‌نشده ندارد و merge باعث P0/P1 status change یا National GO نمی‌شود.
 - `awaiting merge path` وقتی Self-merge طبق این قواعد مجاز است، **invalid stop reason** است.
 - برای P0 closure، P0/P1 status change، cross-Arena ownership conflict یا governance adjudication متوقف و escalate کن.
 - بعد از merge، main را واقعاً verify کن.
@@ -108,19 +110,25 @@ Report ادعاست؛ پذیرش نهایی با Audit است.
 
 `BLOCKED` فقط وقتی مجاز است که بدون تصمیم/وابستگی خارجی واقعاً هیچ کار مجاز دیگری وجود نداشته باشد.
 
-`NOT-RUN` فقط یک check/operation را متوقف می‌کند؛ کل Mission را متوقف نمی‌کند.
+`NOT-RUN` فقط یک check/operation را متوقف می‌کند؛ کل Mission یا continuity envelope را متوقف نمی‌کند.
 
 اگر M4 تمام شد، **حتماً Continuation Loop را شروع کن**؛ اگر M1–M4 از قبل انجام شده‌اند نیز همین قاعده برقرار است.
 
-اگر فکر می‌کنی هیچ کار باقی نمانده، second-pass اجباری انجام بده. فقط اگر آن pass ثابت کرد واقعاً هیچ independent scoped work باقی نیست، می‌توانی stop reason ثبت کنی.
+اگر Mission recover نشد، **Continuity-Fallback را اجرا کن**؛ Mission-fetch failure به‌تنهایی stop نیست.
+
+اگر فکر می‌کنی هیچ کار باقی نمانده، second-pass اجباری انجام بده. فقط اگر آن pass ثابت کرد واقعاً هیچ independent scoped/fallback work باقی نیست، می‌توانی stop reason ثبت کنی.
 
 **تا پایان work window کار کن؛ منتظر کاربر، Chat1، audit یا Mission جدید نمان.**
 
-## 7) Canonical Continuation Policy
+## 7) Canonical Continuation / Recovery / Fallback Policy
 
 الگوی رسمی و جزئیات این رفتار در:
-`docs/ARENA_CONTINUATION_POLICY.md`
 
-است و باید با آن هم‌راستا باشی. این Policy بر هر تفسیر ضعیف‌تر یا stop rule محلی مقدم است.
+`docs/ARENA_CONTINUATION_POLICY.md`
+`docs/ARENA_CONTROL_PLANE_RECOVERY.md`
+`docs/ARENA_RUNTIME_CONTRACT.md`
+`docs/ARENA_CONTINUITY_AUTHORIZATION.md`
+
+است و باید با آن‌ها هم‌راستا باشی. این اسناد بر هر تفسیر ضعیف‌تر یا stop rule محلی مقدم‌اند.
 
 **هدف: بیشترین کار مفیدِ مجاز تا پایان بازه کاری + Evidence واقعی؛ نه greenwashing و نه idle شدن.**
