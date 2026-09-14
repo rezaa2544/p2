@@ -18,13 +18,12 @@
 ## M3 — Merge/documentation readiness
 - Inspect open PRs and documentation/freeze/statistics-sync gates relevant to safe integration.
 - Identify conflicts, stale docs, duplicate reports and concrete merge blockers.
-- Prepare evidence-only recommendations; no self-merge.
 
 ## M4 — Governance delivery package
 - Verify today's Arena reports/commits against GitHub.
 - Produce a concise integration-risk register and next actions for ChatGPT.
 
 ### Common rules
-Protect main. No unrelated code, no P0/P1 renumbering/closure, no historical deletion, no invented evidence. If network blocks one stage, continue independent stages and record NOT-RUN.
+Protect main. No unrelated code, no P0/P1 renumbering/closure, no historical deletion, no invented evidence. The Queue is a minimum path, not a stop condition. After M4, continue integration, evidence reconciliation, documentation and safe PR work within this Mission until no independent scoped work remains. When a Mission-scoped PR is safe, Chat8 should complete commit → push → checks → merge → main verification itself without waiting for another prompt. Do not merge if it would close/reclassify P0/P1, delete historical evidence, or require governance adjudication. If network blocks one stage, continue independent stages and record NOT-RUN.
 
 **Report:** `docs/daily-reports/Chat8/2026-09-14.md`

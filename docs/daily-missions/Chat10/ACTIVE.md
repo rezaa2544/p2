@@ -22,6 +22,6 @@
 - Do not declare P0 closure or National GO.
 
 ### Common rules
-Unsourced RTO/RPO remains UNSOURCED. No destructive live chaos without explicit authorization. If live environment is unavailable, continue documentation/local validation work.
+Unsourced RTO/RPO remains UNSOURCED. No destructive live chaos without explicit authorization. The Queue is a minimum path, not a stop condition. After M4, continue DR/recovery/runbook/SLO/evidence work within this Mission until no independent scoped work remains. For Mission-scoped documentation, runbook, test or safe tooling changes, Chat10 owns commit → push → PR → checks → merge → main verification and must not wait for another prompt. Do not merge anything that closes/reclassifies P0/P1 or invents operational targets. If live environment is unavailable, continue documentation/local validation work.
 
 **Report:** `docs/daily-reports/Chat10/2026-09-14.md`

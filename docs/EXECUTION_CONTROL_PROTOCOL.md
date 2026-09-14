@@ -42,8 +42,8 @@ Each Arena submits one concise mission report to:
 
 Chat 1 reconciles the report with repository evidence. ChatGPT then independently audits the reconciled state.
 
-### Next cycle
-Only ChatGPT-authorized Missions become the next active scope. A rejected/blocked Mission produces remediation or reverification work before unrelated work resumes.
+### Continuation
+An M1→M4 Queue is a minimum work sequence, not a stop signal. After M4, an Arena continues the highest-priority unresolved and safe work within the same active Mission scope until the work window ends, no independent scoped work remains, or a genuine external decision blocks progress.
 
 ## 3. Mission Packet minimum fields
 
@@ -74,6 +74,9 @@ Every Mission file MUST contain:
 - Historical documents remain historical unless explicitly adjudicated.
 - No P0/P1 item may be created, renamed, closed, or re-numbered without source + owner + evidence.
 - No force-push.
+- For Mission-scoped changes, the owning Arena is responsible for the full delivery chain: `commit → push → PR → checks/review → merge → verify main → report`.
+- Self-merge is authorized when the change is fully within Mission scope, required checks/tests are satisfied or explicitly documented `NOT-RUN`, no unresolved conflict remains, and merge does not itself close/reclassify a P0/P1 or decide National GO.
+- Merge must stop for P0 closure, P0/P1 status changes, cross-Arena ownership conflicts, or material governance adjudication.
 
 ## 5. National GO gate
 
@@ -93,13 +96,15 @@ At the start of every Mission Chat 1 MUST re-read:
 
 Then verify every active Mission against current Repo evidence.
 
-Arena chats must read their own `ACTIVE.md` before execution. Missing/stale/contradictory Mission means `BLOCKED`.
+Arena chats must read their own `ACTIVE.md` before execution. If the local file is missing or stale, first refresh/recover it from current `main`. A stale local checkout is not itself a Mission blocker. Only a Mission genuinely missing/expired/contradictory on current `main` is a blocker.
 
 ## 7. Mission sequencing
 
 Default sequence:
 
 `AUDIT → MISSION → ARENA EXECUTION → REPORT → RECONCILIATION → CHATGPT AUDIT → NEXT MISSION`
+
+Within an active Queue, execution is continuous: `M1 → M2 → M3 → M4 → CONTINUATION LOOP`.
 
 If a Mission is rejected, blocked, or materially incomplete, the next Mission is a remediation/reverification Mission—not an unrelated feature Mission.
 

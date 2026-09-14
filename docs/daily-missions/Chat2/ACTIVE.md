@@ -23,6 +23,6 @@
 - Commit/PR according to project rules and record exact evidence.
 
 ### Common rules
-No P0/P1 changes, no roadmap rewrite, no unrelated refactor. If the selected feature is blocked, document why and execute independent verification work from the same domain rather than idling.
+No P0/P1 changes, no roadmap rewrite, no unrelated refactor. The Queue is a minimum path, not a stop condition. After M4, continue the highest-priority unresolved feature/test/hardening work within Chat2's active scope until no independent scoped work remains. When a Mission-scoped PR is ready, Chat2 owns the full delivery chain and should commit, push, open/maintain the PR, verify checks/conflicts, merge it, and verify main without waiting for another prompt. Do not merge anything that changes P0/P1 status or requires governance adjudication. If the selected feature is blocked, document why and execute independent verification work from the same domain rather than idling.
 
 **Report:** `docs/daily-reports/Chat2/2026-09-14.md`

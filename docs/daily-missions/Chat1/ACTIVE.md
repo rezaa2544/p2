@@ -26,6 +26,6 @@
 - Record a concise end-of-day control report with unresolved risks and exact next actions.
 
 ### Common rules
-No National GO, no self-defined P0/P1, no unrelated implementation, no merge unless explicitly authorized. If one stage is blocked, continue independent stages. Every claim needs evidence; inaccessible checks are NOT-RUN.
+No National GO, no self-defined P0/P1, no unrelated implementation. The Queue is a minimum path, not a stop condition. After M4, continue with the highest-priority unresolved coordination/evidence work within this Mission until no independent scoped work remains. If a Mission-scoped PR is ready, Chat1 completes commit → push → PR → checks → merge → main verification itself, unless merge would close/change P0/P1 or require governance adjudication. If one stage is blocked, continue independent stages. Every claim needs evidence; inaccessible checks are NOT-RUN.
 
 **Report:** `docs/daily-reports/Chat1/2026-09-14.md`

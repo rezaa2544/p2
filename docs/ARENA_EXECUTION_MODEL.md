@@ -18,6 +18,8 @@ Each Arena receives its authorized work from a mission file in Git, executes onl
 
 A report is a claim. Repository evidence is proof. Only an accepted audit closes the mission.
 
+The active Queue is a minimum work sequence, not an automatic stop condition. After its final stage, the Arena continues safe unresolved work within the same authorized scope until the work window ends or no independent scoped work remains.
+
 ## 3. Canonical paths
 
 ### Active mission
@@ -81,7 +83,7 @@ Evidence levels are monotonic and explicit:
 
 `CLAIMED` → `IMPLEMENTED` → `TESTED LOCALLY` → `PUSHED` → `PR OPEN` → `MERGED` → `VERIFIED ON MAIN` → `VERIFIED IN STAGING` → `PRODUCTION PROVEN`
 
-A lower level must never be reported as a higher level.
+A lower level must never be reported as a higher one.
 
 Examples:
 
@@ -109,19 +111,29 @@ If GitHub/network access fails, mark the affected evidence `NOT-RUN`; never infe
 
 Chat 1 may recommend disposition but cannot independently declare National GO.
 
-## 8. Auditor rules
+## 8. Arena delivery authority
+
+Within an active Mission, the owning Arena is responsible for completing the normal Git delivery chain without waiting for another prompt:
+
+`IMPLEMENT → TEST → COMMIT → PUSH → PR → CHECKS/REVIEW → MERGE → VERIFY MAIN → REPORT`
+
+Self-merge is allowed when the change is fully within Mission scope, required tests/checks are satisfied, there is no unresolved conflict, and the merge does not itself close/reclassify a P0/P1 or decide National GO.
+
+Merge must stop and escalate for P0 closure, P0/P1 status changes, cross-Arena ownership conflicts, or any material governance adjudication.
+
+## 9. Auditor rules
 
 ChatGPT audits the repository and the reconciled reports at the end of each cycle. ChatGPT decides whether a mission is accepted and what mission follows.
 
 If a mission is materially incomplete, the next mission is remediation/reverification rather than unrelated feature work.
 
-## 9. National gate
+## 10. National gate
 
 National status remains **NO-GO** until the canonical P0 gates are closed with sufficient evidence and ChatGPT approves the release decision.
 
 Feature completeness is not national readiness.
 
-## 10. Source hierarchy
+## 11. Source hierarchy
 
 The following remain canonical unless explicitly adjudicated:
 
@@ -134,12 +146,14 @@ The following remain canonical unless explicitly adjudicated:
 
 When historical documents conflict, do not silently rewrite history. Record the conflict and escalate it.
 
-## 11. Anti-drift
+## 12. Anti-drift / self-healing
 
 At mission start, Chat 1 re-reads the canonical sources and verifies the active mission against current `main`.
 
-Arena chats must read their active mission at the beginning of every working session. If the file is missing, stale, contradictory, or not authorized, they stop and report `BLOCKED`.
+Arena chats must read their active mission at the beginning of every working session. If the local file is missing or stale, they must first refresh/recover the exact file from current `main`; local checkout drift is not by itself a Mission blocker. Only a genuinely missing/expired/contradictory Mission on current `main` is a blocker.
 
-## 12. Daily operating rule
+## 13. Daily operating rule
 
 The user should not have to distribute bespoke daily task prompts. The common Arena prompt points each chat to its own `ACTIVE.md` mission and report path. Only the chat name changes.
+
+The Arena must not stop merely because M4 or the initial Queue is complete. It continues with the highest-priority unresolved, safe, Mission-scoped work and keeps the Git delivery chain moving until no independent scoped work remains or a real external decision blocks progress.
