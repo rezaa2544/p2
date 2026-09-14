@@ -10,7 +10,7 @@
 
 GitHub is the operational source of truth for daily execution. Chat memory is not a project-state store.
 
-Each Arena receives its authorized work from a mission file in Git, executes only that scope, and records its final report in Git. ChatGPT audits the evidence and authorizes the next mission.
+Each Arena receives its authorized work from a mission file in Git, executes only that scope, and records its report in Git. ChatGPT audits the evidence and authorizes the next mission.
 
 ## 2. Control loop
 
@@ -19,6 +19,8 @@ Each Arena receives its authorized work from a mission file in Git, executes onl
 A report is a claim. Repository evidence is proof. Only an accepted audit closes the mission.
 
 The active Queue is a minimum work sequence, not an automatic stop condition. After its final stage, the Arena continues safe unresolved work within the same authorized scope until the work window ends or no independent scoped work remains.
+
+**M4 completion is never, by itself, a stop reason.**
 
 ## 3. Canonical paths
 
@@ -38,7 +40,7 @@ An accepted/rejected mission is archived by the Coordinator after audit. The act
 
 `docs/daily-reports/<CHAT_NAME>/YYYY-MM-DD.md`
 
-One final report per Arena per mission/day unless the mission explicitly requires a separate evidence artifact.
+Reports contain stage/pass checkpoints and final status. A missing report must not itself stop authorized work.
 
 ### Daily audit
 
@@ -95,17 +97,7 @@ Examples:
 
 ## 7. Coordinator rules
 
-Chat 1 is the online supervisor. For every Arena report it must reconcile:
-
-- branch/ref
-- commit SHA
-- diff
-- tests and exact results
-- CI status when available
-- PR status
-- merge state
-- current `main`
-- scope compliance
+Chat 1 is the online supervisor. For every Arena report it must reconcile branch/ref, commit SHA, diff, tests, CI, PR, merge state, current `main`, and scope compliance.
 
 If GitHub/network access fails, mark the affected evidence `NOT-RUN`; never infer success.
 
@@ -117,43 +109,52 @@ Within an active Mission, the owning Arena is responsible for completing the nor
 
 `IMPLEMENT → TEST → COMMIT → PUSH → PR → CHECKS/REVIEW → MERGE → VERIFY MAIN → REPORT`
 
-Self-merge is allowed when the change is fully within Mission scope, required tests/checks are satisfied, there is no unresolved conflict, and the merge does not itself close/reclassify a P0/P1 or decide National GO.
+Self-merge is allowed when the change is fully within Mission scope, required tests/checks are satisfied or explicitly `NOT-RUN`, there is no unresolved conflict, and the merge does not itself close/reclassify a P0/P1 or decide National GO.
 
-Merge must stop and escalate for P0 closure, P0/P1 status changes, cross-Arena ownership conflicts, or any material governance adjudication.
+Merge must stop and escalate for P0 closure, P0/P1 status changes, cross-Arena ownership conflicts, or material governance adjudication.
 
-## 9. Auditor rules
+## 9. Continuation / no-work proof
 
-ChatGPT audits the repository and the reconciled reports at the end of each cycle. ChatGPT decides whether a mission is accepted and what mission follows.
+After M4, the Arena enters `CONTINUATION LOOP`.
 
-If a mission is materially incomplete, the next mission is remediation/reverification rather than unrelated feature work.
+For each loop it must inspect the active Mission and select the highest-value unresolved scoped action: implementation, failure repair, focused tests/fixtures, hardening, regression/integration verification, PR maintenance, delivery, main verification, or evidence recovery.
 
-## 10. National gate
+It may claim that no scoped work remains **only after a second independent pass** over acceptance criteria, relevant code/tests/docs, PR/CI state, NOT-RUN/environment limitations and unresolved findings. The report must state what was checked and why no independent action remains.
+
+`complete`, `finished`, `awaiting coordinator`, `awaiting audit`, `awaiting prompt`, or `nothing else` are not valid stop reasons by themselves.
+
+A network failure, stale local checkout, missing local report, or unavailable optional check blocks only that operation. Recover from current `main` where possible and continue independent work.
+
+## 10. Auditor rules
+
+ChatGPT audits the repository and reconciled reports at the end of each cycle. ChatGPT decides whether a mission is accepted and what mission follows.
+
+## 11. National gate
 
 National status remains **NO-GO** until the canonical P0 gates are closed with sufficient evidence and ChatGPT approves the release decision.
 
 Feature completeness is not national readiness.
 
-## 11. Source hierarchy
-
-The following remain canonical unless explicitly adjudicated:
+## 12. Source hierarchy
 
 1. `docs/ROADMAP.md`
 2. `docs/NATIONAL_ROADMAP_PROGRESS.md`
 3. `docs/P0_BLOCKER_TRACKER.md`
 4. `docs/ARCHITECTURE_REVIEW.md`
 5. `docs/EXECUTION_CONTROL_PROTOCOL.md`
-6. This document and the current daily Mission files
+6. `docs/ARENA_CONTINUATION_POLICY.md`
+7. This document and current daily Mission files
 
 When historical documents conflict, do not silently rewrite history. Record the conflict and escalate it.
 
-## 12. Anti-drift / self-healing
+## 13. Anti-drift / self-healing
 
 At mission start, Chat 1 re-reads the canonical sources and verifies the active mission against current `main`.
 
 Arena chats must read their active mission at the beginning of every working session. If the local file is missing or stale, they must first refresh/recover the exact file from current `main`; local checkout drift is not by itself a Mission blocker. Only a genuinely missing/expired/contradictory Mission on current `main` is a blocker.
 
-## 13. Daily operating rule
+## 14. User operating model
 
 The user should not have to distribute bespoke daily task prompts. The common Arena prompt points each chat to its own `ACTIVE.md` mission and report path. Only the chat name changes.
 
-The Arena must not stop merely because M4 or the initial Queue is complete. It continues with the highest-priority unresolved, safe, Mission-scoped work and keeps the Git delivery chain moving until no independent scoped work remains or a real external decision blocks progress.
+The Arena must keep executing until the work window ends or the second-pass no-work proof establishes that no independent authorized action remains.

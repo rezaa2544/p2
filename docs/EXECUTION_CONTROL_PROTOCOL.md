@@ -13,7 +13,8 @@
 3. `docs/P0_BLOCKER_TRACKER.md` — canonical P0 no-go tracker.
 4. `docs/ARCHITECTURE_REVIEW.md` — current technical P1 inventory; P1 numbering must not be re-used or invented.
 5. `docs/ARENA_EXECUTION_MODEL.md` — Git-driven execution/control model.
-6. `docs/ARENA_REGISTRY.md` — operational Arena roles.
+6. `docs/ARENA_CONTINUATION_POLICY.md` — mandatory all-day continuation behavior.
+7. `docs/ARENA_REGISTRY.md` — operational Arena roles.
 
 If sources conflict, **do not guess**. Chat 1 records the conflict and escalates it to ChatGPT.
 
@@ -36,14 +37,16 @@ Chat 1 supervises online:
 - Do not start work outside the active Mission.
 
 ### End of cycle
-Each Arena submits one concise mission report to:
+Each Arena records stage/pass checkpoints in:
 
 `docs/daily-reports/<CHAT_NAME>/YYYY-MM-DD.md`
 
-Chat 1 reconciles the report with repository evidence. ChatGPT then independently audits the reconciled state.
+A report is not a stop signal. Chat 1 reconciles claims with repository evidence; ChatGPT independently audits the reconciled state.
 
 ### Continuation
-An M1→M4 Queue is a minimum work sequence, not a stop signal. After M4, an Arena continues the highest-priority unresolved and safe work within the same active Mission scope until the work window ends, no independent scoped work remains, or a genuine external decision blocks progress.
+An M1→M4 Queue is a minimum work sequence, never a stop signal. After M4, the Arena MUST enter the Continuation Loop and keep executing the highest-value unresolved safe work within the same Mission until the work window ends or a second independent pass proves no scoped work remains.
+
+A single network failure, stale checkout, missing local report, or NOT-RUN check does not stop the Arena. Only a genuinely impossible Mission with no independent scoped work may be BLOCKED.
 
 ## 3. Mission Packet minimum fields
 
@@ -75,7 +78,7 @@ Every Mission file MUST contain:
 - No P0/P1 item may be created, renamed, closed, or re-numbered without source + owner + evidence.
 - No force-push.
 - For Mission-scoped changes, the owning Arena is responsible for the full delivery chain: `commit → push → PR → checks/review → merge → verify main → report`.
-- Self-merge is authorized when the change is fully within Mission scope, required checks/tests are satisfied or explicitly documented `NOT-RUN`, no unresolved conflict remains, and merge does not itself close/reclassify a P0/P1 or decide National GO.
+- Self-merge is authorized when the change is fully within Mission scope, required tests/checks are satisfied or explicitly documented `NOT-RUN`, no unresolved conflict remains, and merge does not itself close/reclassify a P0/P1 or decide National GO.
 - Merge must stop for P0 closure, P0/P1 status changes, cross-Arena ownership conflicts, or material governance adjudication.
 
 ## 5. National GO gate
@@ -86,17 +89,9 @@ Chat 1 may coordinate and recommend. Chat 1 may **not** self-declare National GO
 
 ## 6. Anti-drift rule
 
-At the start of every Mission Chat 1 MUST re-read:
+At the start of every Mission Chat 1 MUST re-read the canonical sources and verify every active Mission against current Repo evidence.
 
-`docs/ROADMAP.md`  
-`docs/NATIONAL_ROADMAP_PROGRESS.md`  
-`docs/P0_BLOCKER_TRACKER.md`  
-`docs/EXECUTION_CONTROL_PROTOCOL.md`  
-`docs/ARENA_EXECUTION_MODEL.md`
-
-Then verify every active Mission against current Repo evidence.
-
-Arena chats must read their own `ACTIVE.md` before execution. If the local file is missing or stale, first refresh/recover it from current `main`. A stale local checkout is not itself a Mission blocker. Only a Mission genuinely missing/expired/contradictory on current `main` is a blocker.
+Arena chats must read their own `ACTIVE.md` before execution. If local state is stale/missing, recover the exact Mission from current `main`; local drift is not itself a blocker. Mission absence on current `main` is a blocker only when no independent authorized work remains.
 
 ## 7. Mission sequencing
 
@@ -104,15 +99,19 @@ Default sequence:
 
 `AUDIT → MISSION → ARENA EXECUTION → REPORT → RECONCILIATION → CHATGPT AUDIT → NEXT MISSION`
 
-Within an active Queue, execution is continuous: `M1 → M2 → M3 → M4 → CONTINUATION LOOP`.
+Within an active Queue:
 
-If a Mission is rejected, blocked, or materially incomplete, the next Mission is a remediation/reverification Mission—not an unrelated feature Mission.
+`M1 → M2 → M3 → M4 → CONTINUATION LOOP → CONTINUATION LOOP → ...`
+
+Before claiming that no scoped work remains, the Arena MUST perform a second independent pass over acceptance criteria, relevant code/tests/docs, PR/CI state, NOT-RUN/environment limitations and unresolved findings, and record the result. `complete`, `finished`, `awaiting coordinator`, `awaiting audit`, `awaiting prompt`, or `nothing else` are not valid stop reasons by themselves.
+
+If a Mission is rejected, blocked, or materially incomplete, the next Mission is remediation/reverification—not unrelated feature work.
 
 ## 8. User operating model
 
-The user does not need to distribute bespoke daily task instructions. The common prompt in `docs/ARENA_AGENT_PROMPT.md` is sent to each Arena with only `CHAT_NAME` changed.
+The user does not need to distribute bespoke daily task instructions. The common prompt in `docs/ARENA_AGENT_PROMPT.md` is sent to each Arena with only `CHAT_NAME` changed. The common prompt and continuation policy are normative and override any weaker stop interpretation in a Mission file.
 
-The Arena reads its Mission from Git, executes it, and writes its report back to Git. Project continuity therefore lives in version-controlled evidence rather than chat memory.
+The Arena reads its Mission from Git, executes it, performs the delivery chain for authorized changes, and writes checkpoints/evidence back to Git. Project continuity therefore lives in version-controlled evidence rather than chat memory.
 
 ## 9. Current control state
 
