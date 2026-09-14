@@ -19,9 +19,8 @@
 
 ## M4 — Merge-readiness package
 - Re-check current queue and produce an evidence-first merge order/risk list for ChatGPT.
-- No self-merge.
 
 ### Common rules
-No force-push, no historical deletion, no P0 closure. If network blocks a check, mark NOT-RUN and continue local/documentation work.
+No force-push, no historical deletion, no P0 closure. The Queue is a minimum path, not a stop condition. After M4, continue open-PR, documentation-gate, integration-hygiene and evidence work within this Mission until no independent scoped work remains. When a safe Mission-scoped PR is ready, Chat7 may and should complete the delivery chain itself: commit → push → checks → merge → main verification. Do not merge if the change closes/reclassifies P0/P1, alters historical freeze artifacts without authorization, or requires governance adjudication. If network blocks a check, mark NOT-RUN and continue local/documentation work.
 
 **Report:** `docs/daily-reports/Chat7/2026-09-14.md`
