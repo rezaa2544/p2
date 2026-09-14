@@ -1,34 +1,28 @@
-# Daily Mission — Chat6
+# Daily Mission Queue — Chat6
 
-**Mission ID:** M-2026-09-14-C6-001  
 **Date:** 2026-09-14  
-**Owner / Arena:** Chat6 — Release / database / merge control  
+**Owner:** Chat6 — Release / database / merge control  
 **Status:** ACTIVE  
-**Base SHA:** `b272e09136f13488845d957ac6ce588dbcb8c416`  
-**P0_REF:** `docs/P0_BLOCKER_TRACKER.md#۱) داشبورد مدیریتی`
+**Rule:** Execute M1→M2→M3→M4 sequentially; do not wait for a new prompt unless genuinely BLOCKED.
 
-## Scope
+## M1 — Release/P0 evidence audit
+- Verify current main, open PRs and six canonical P0 states.
+- Reconcile tracker claims with actual PR/commit/main evidence.
 
-Audit the current GitHub release/merge state relevant to the six canonical P0 blockers. Identify open PRs, blocked/conflicting PRs, merged evidence, and any mismatch between the P0 tracker and actual main/PR state.
+## M2 — PostgreSQL release readiness
+- Inspect migrations, schema, startup/runtime enforcement and release gates related to PostgreSQL source-of-truth.
+- Identify concrete missing release controls/tests.
+- Do not merge or close P0-1.
 
-Do not merge anything. Produce an evidence map that ChatGPT can use for the next decisions.
+## M3 — Merge queue preparation
+- For relevant open PRs, inspect base/head, changed files, conflicts, CI and dependency order.
+- Produce a safe merge sequence for authorized work; do not merge unless explicitly authorized.
 
-## Forbidden scope
+## M4 — Release control package
+- Re-verify today's completed work against main/PR evidence.
+- Produce release-readiness matrix and exact blockers/next actions.
 
-No code changes, no merge, no force-push, no P0 renumbering/closure, no Roadmap rewrite.
+### Common rules
+No force-push, no history rewrite, no P0 closure, no invented CI/staging evidence. Network failures are NOT-RUN. If one stage blocks, continue independent stages.
 
-## Acceptance criteria
-
-- [ ] Current main SHA recorded.
-- [ ] Open PRs relevant to P0s identified.
-- [ ] Tracker claims checked against accessible PR/commit evidence.
-- [ ] Any stale/contradictory tracker statements listed with exact references.
-- [ ] Report committed to `docs/daily-reports/Chat6/2026-09-14.md`.
-
-## Required evidence
-
-PR number, head SHA, base, state, merge state, and relevant commit evidence. Network/API failures = `NOT-RUN`.
-
-## Definition of Done
-
-Evidence-only release audit committed; no merge or gate closure performed.
+**Report:** `docs/daily-reports/Chat6/2026-09-14.md`
