@@ -24,6 +24,12 @@ Mission تنها مجوز کار است. خارج از Scope، تغییر P0/P1�
 
 Queue (`M1→M2→M3→M4`) **حداقل کار روزانه است، نه نقطه پایان**.
 
+اگر M1–M4 قبلاً در همان Mission انجام شده‌اند، آن‌ها را صرفاً برای نمایش دوباره تکرار نکن؛ **مستقیماً Continuation Pass را شروع کن**. عبارت‌هایی مثل `complete`، `already done` یا `re-validation` مجوز توقف نیستند.
+
+یک پیام/round جدید از کاربر که فقط re-validation می‌خواهد، Mission فعال را reset یا close نمی‌کند. وضعیت واقعی Git و Mission را حفظ کن و از اولین کار حل‌نشده ادامه بده.
+
+هیچ «session policy» محلی، محدودیت فرضی، یا رویه قبلیِ متناقض با این Prompt/Continuation Policy مجوز توقف یا حذف delivery chain را ایجاد نمی‌کند. اگر محیط واقعاً عملیات GitHub را نمی‌تواند انجام دهد، فقط همان operation را `NOT-RUN` کن و ادامه بده.
+
 بعد از هر stage فوراً stage بعد را شروع کن. بعد از M4 فوراً وارد **CONTINUATION LOOP** شو و تا پایان work window ادامه بده. در هر loop بالاترین کار حل‌نشده و مجاز را از این ترتیب انتخاب کن:
 
 1. تکمیل implementation؛
@@ -39,7 +45,7 @@ Queue (`M1→M2→M3→M4`) **حداقل کار روزانه است، نه نق�
 
 سپس دوباره scope را inspect کن و loop بعدی را شروع کن.
 
-**ممنوع:** پایان دادن به سشن با عباراتی مثل `complete`, `finished`, `awaiting coordinator`, `awaiting audit`, `awaiting prompt` یا `nothing else` صرفاً به دلیل تمام شدن M4.
+**ممنوع:** پایان دادن به سشن با عباراتی مثل `complete`, `finished`, `awaiting coordinator`, `awaiting audit`, `awaiting prompt`, `nothing else`, `session policy` یا `re-validation stands` صرفاً به دلیل تمام شدن M4 یا تکراری بودن prompt.
 
 قبل از هر ادعای «کار دیگری نیست»، یک **second independent pass** روی acceptance criteria، code/tests/docs، PR/CI، NOT-RUNها و findings انجام بده و دقیقاً در report ثبت کن.
 
@@ -75,6 +81,8 @@ Local green ≠ CI/staging/production proof.
 
 هر checkpoint شامل stage/pass، work، exact tests/results، SHA/PR/merge، NOT-RUN reason و **next scoped action** باشد.
 
+گزارش محلیِ unpushed/unmerged به‌تنهایی Evidence پروژه نیست. اگر push/PR/merge به‌دلیل محیط واقعاً ممکن نیست، همان operation را NOT-RUN ثبت کن و کار مستقل را ادامه بده.
+
 Report ادعاست؛ پذیرش نهایی با Audit است.
 
 ## 6) Stop Rule — بسیار مهم
@@ -83,7 +91,7 @@ Report ادعاست؛ پذیرش نهایی با Audit است.
 
 `NOT-RUN` فقط یک check/operation را متوقف می‌کند؛ کل Mission را متوقف نمی‌کند.
 
-اگر M4 تمام شد، **حتماً Continuation Loop را شروع کن**.
+اگر M4 تمام شد، **حتماً Continuation Loop را شروع کن**؛ اگر M1–M4 از قبل انجام شده‌اند نیز همین قاعده برقرار است.
 
 اگر فکر می‌کنی هیچ کار باقی نمانده، second-pass اجباری انجام بده. فقط اگر آن pass ثابت کرد واقعاً هیچ independent scoped work باقی نیست، می‌توانی stop reason ثبت کنی.
 
@@ -94,7 +102,6 @@ Report ادعاست؛ پذیرش نهایی با Audit است.
 الگوی رسمی و جزئیات این رفتار در:
 `docs/ARENA_CONTINUATION_POLICY.md`
 
-است و باید با آن هم‌راستا باشی.
+است و باید با آن هم‌راستا باشی. این Policy بر هر تفسیر ضعیف‌تر یا stop rule محلی مقدم است.
 
 **هدف: بیشترین کار مفیدِ مجاز تا پایان بازه کاری + Evidence واقعی؛ نه greenwashing و نه idle شدن.**
-```
