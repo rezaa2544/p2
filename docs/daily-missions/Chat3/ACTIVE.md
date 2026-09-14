@@ -22,6 +22,6 @@
 - Produce evidence for ChatGPT; do not close P0-1 or merge competing implementations without authorization.
 
 ### Common rules
-No speculative redesign. No P0 closure. If P0-1 implementation choice is ambiguous, stop that implementation and continue independent tests/evidence work.
+No speculative redesign. No P0 closure. The Queue is a minimum path, not a stop condition. After M4, continue unresolved write-path, sync, test and evidence work within this Mission until no independent scoped work remains. For non-conflicting Mission-scoped changes, Chat3 owns the full delivery chain and should commit, push, open/maintain, check and merge its PR, then verify main. **Do not merge competing P0-1 implementations, close P0-1, or resolve an ownership conflict without adjudication.** If P0-1 implementation choice is ambiguous, stop that implementation and continue independent tests/evidence work.
 
 **Report:** `docs/daily-reports/Chat3/2026-09-14.md`
