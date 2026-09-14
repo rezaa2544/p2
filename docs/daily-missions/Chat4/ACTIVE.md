@@ -1,41 +1,27 @@
-# Daily Mission — Chat4
+# Daily Mission Queue — Chat4
 
-**Mission ID:** M-2026-09-14-C4-001  
 **Date:** 2026-09-14  
-**Owner / Arena:** Chat4 — Performance / infrastructure  
+**Owner:** Chat4 — Performance / infrastructure  
 **Status:** ACTIVE  
-**Base SHA:** `b272e09136f13488845d957ac6ce588dbcb8c416`  
-**P0_REF:** `docs/P0_BLOCKER_TRACKER.md#پ0-۲: اجرای زنده لود / استرس / اسپایک / سوک`
+**Rule:** Execute M1→M2→M3→M4 sequentially; do not wait for a new prompt unless genuinely BLOCKED.
 
-## Scope
+## M1 — Capacity/infrastructure baseline
+- Inventory Redis, workers, observability, load tooling and deployment prerequisites on main.
+- Separate tooling from real staging/national proof.
 
-Perform a read-only infrastructure readiness audit for national load/staging and live observability requirements.
+## M2 — Performance test readiness
+- Validate and harden safe local load/stress/spike/soak harnesses and data-generation tooling.
+- Do not claim live capacity from sandbox execution.
 
-Verify what is actually available in the repository for:
-- multi-node staging;
-- Redis managed/live deployment prerequisites;
-- load/stress/spike/soak execution infrastructure;
-- observability stack prerequisites;
-- national dataset generation and evidence.
+## M3 — Observability readiness
+- Inspect metrics/logging/tracing/SLO instrumentation relevant to P0-5.
+- Add only clearly authorized, Mission-scoped improvements and tests.
 
-Separate implemented tooling from actual live environment proof.
+## M4 — P0-2/P0-5 evidence package
+- Run available safe tests, verify results and produce concrete infrastructure gaps and next actions.
+- Record what requires a real staging/live environment.
 
-## Forbidden scope
+### Common rules
+No destructive live tests, no invented capacity/SLO proof, no P0 closure. If live infrastructure is unavailable, continue local harness/readiness work.
 
-No code changes, no live infrastructure provisioning, no destructive tests, no P0 closure, no National GO declaration.
-
-## Acceptance criteria
-
-- [ ] Current main SHA recorded.
-- [ ] P0-2 infrastructure blockers are evidenced.
-- [ ] P0-5 observability infrastructure gaps are evidenced.
-- [ ] Local/sandbox tooling is clearly separated from staging/national proof.
-- [ ] Report committed to `docs/daily-reports/Chat4/2026-09-14.md`.
-
-## Required evidence
-
-Exact paths, test/tool names, deployment assumptions, and environment limitations. Mark inaccessible operations `NOT-RUN`.
-
-## Definition of Done
-
-Read-only infrastructure evidence report committed.
+**Report:** `docs/daily-reports/Chat4/2026-09-14.md`
