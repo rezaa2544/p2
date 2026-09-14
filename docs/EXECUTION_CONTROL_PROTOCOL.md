@@ -14,7 +14,8 @@
 4. `docs/ARCHITECTURE_REVIEW.md` — current technical P1 inventory; P1 numbering must not be re-used or invented.
 5. `docs/ARENA_EXECUTION_MODEL.md` — Git-driven execution/control model.
 6. `docs/ARENA_CONTINUATION_POLICY.md` — mandatory all-day continuation behavior.
-7. `docs/ARENA_REGISTRY.md` — operational Arena roles.
+7. `docs/ARENA_RUNTIME_CONTRACT.md` — non-terminal runtime state machine and hard stop gate.
+8. `docs/ARENA_REGISTRY.md` — operational Arena roles.
 
 If sources conflict, **do not guess**. Chat 1 records the conflict and escalates it to ChatGPT.
 
@@ -47,6 +48,8 @@ A report is not a stop signal. Chat 1 reconciles claims with repository evidence
 An M1→M4 Queue is a minimum work sequence, never a stop signal. After M4, the Arena MUST enter the Continuation Loop and keep executing the highest-value unresolved safe work within the same Mission until the work window ends or a second independent pass proves no scoped work remains.
 
 If M1–M4 were already completed in an earlier round of the same active Mission, the Arena MUST resume at Continuation Pass. A `re-validation`, `round N`, `unchanged`, or similar prompt does not reset or close the Mission.
+
+**Hard gate:** an Arena must not produce a report-only re-validation response as its first action. It must execute at least one concrete scoped action. `awaiting coordinator`, `awaiting audit`, `awaiting merge path`, `session policy`, `push not attempted`, and `re-validation stands` are invalid stop reasons by themselves.
 
 A single network failure, stale checkout, missing local report, or NOT-RUN check does not stop the Arena. Only a genuinely impossible Mission with no independent scoped work may be BLOCKED.
 
@@ -108,13 +111,13 @@ Within an active Queue:
 
 `M1 → M2 → M3 → M4 → CONTINUATION LOOP → CONTINUATION LOOP → ...`
 
-Before claiming that no scoped work remains, the Arena MUST perform a second independent pass over acceptance criteria, relevant code/tests/docs, PR/CI state, NOT-RUN/environment limitations and unresolved findings, and record the result. `complete`, `finished`, `awaiting coordinator`, `awaiting audit`, `awaiting prompt`, `nothing else`, `session policy`, and `re-validation stands` are not valid stop reasons by themselves.
+Before claiming that no scoped work remains, the Arena MUST perform a second independent pass over acceptance criteria, relevant code/tests/docs, PR/CI state, NOT-RUN/environment limitations and unresolved findings, and record the result. `complete`, `finished`, `awaiting coordinator`, `awaiting audit`, `awaiting prompt`, `nothing else`, `session policy`, `awaiting merge path`, and `re-validation stands` are not valid stop reasons by themselves.
 
 If a Mission is rejected, blocked, or materially incomplete, the next Mission is remediation/reverification—not unrelated feature work.
 
 ## 8. User operating model
 
-The user does not need to distribute bespoke daily task instructions. The common prompt in `docs/ARENA_AGENT_PROMPT.md` is sent to each Arena with only `CHAT_NAME` changed. The common prompt and continuation policy are normative and override any weaker stop interpretation in a Mission file.
+The user does not need to distribute bespoke daily task instructions. The common prompt in `docs/ARENA_AGENT_PROMPT.md` is sent to each Arena with only `CHAT_NAME` changed. The common prompt, runtime contract and continuation policy are normative and override any weaker stop interpretation in a Mission file.
 
 The Arena reads its Mission from Git, executes it, performs the delivery chain for authorized changes, and writes checkpoints/evidence back to Git. Project continuity therefore lives in version-controlled evidence rather than chat memory.
 
