@@ -1,0 +1,58 @@
+[
+  {
+    "command": "node tests/documentation-maintenance-coverage.js",
+    "startedAt": "2026-09-14T18:28:32.459645+00:00",
+    "finishedAt": "2026-09-14T18:28:32.998224+00:00",
+    "exitCode": 0,
+    "stdout": "  ✅ سند نگهداری مستندات وجود دارد\n▸ ده بخش اصلی\n  ✅ بخش ۱: اصول نگهداری\n  ✅ بخش ۲: چرخه‌های نگهداری\n  ✅ بخش ۳: فرآیند افزودن سند جدید\n  ✅ بخش ۴: فرآیند حذف/آرشیو سند\n  ✅ بخش ۵: فرآیند بامپ قفل\n  ✅ بخش ۶: تست‌های پوشش مستندات\n  ✅ بخش ۷: نقش‌ها و مسئولیت‌ها\n  ✅ بخش ۸: ابزارها\n  ✅ بخش ۹: کلیدهای تاریخی\n  ✅ بخش ۱۰: بدهی مستنداتی\n▸ محتوای اصول و چرخه‌ها\n  ✅ اصل: هر تغییر کد = تغییر سند مرتبط\n  ✅ اصل: Definition of Done\n  ✅ اصل: یتیمی وجود ندارد\n  ✅ اصل: یک منبع حقیقت\n  ✅ چرخهٔ روزانه\n  ✅ چرخهٔ هفتگی\n  ✅ چرخهٔ ماهانه\n  ✅ چرخهٔ فصلی\n▸ فرآیندها\n  ✅ شش گام افزودن سند\n  ✅ قاعدهٔ آرشیو نه حذف\n  ✅ ارجاع به پوشهٔ آرشیو\n  ✅ فریز ۱۴/۱۴ در فرآیند بامپ\n  ✅ چک‌لیست دام آف‌بای‌وان آمده\n▸ تست‌ها و ابزارها\n  ✅ ارجاع به tests/docs-freeze-marker.js\n  ✅ ارجاع به tests/docs-metrics.js\n  ✅ ارجاع به tests/docs-health.js\n  ✅ ارجاع به tests/docs-consistency.js\n  ✅ ارجاع به tests/docs-index-coverage.js\n  ✅ ارجاع به tools/docs-health.sh\n  ✅ ارجاع به tools/docs-consistency-check.sh\n  ✅ ارجاع به tools/generate-data-dictionary.js\n  ✅ ارجاع به tools/docs-export.sh\n  ✅ الگوی تست تازه معرفی شده\n▸ نقش‌ها\n  ✅ نقش: مستندساز (چت ۶)\n  ✅ نقش: مسئول امنیت (چت ۱)\n  ✅ نقش: اس‌آر‌ای (چت ۴)\n  ✅ نقش: ناظر\n▸ کلیدهای تاریخی و بدهی\n  ✅ قفل‌های تاریخی مصون‌اند\n  ✅ هندآف و آرشیوش آمده\n  ✅ بدهی‌های رویداد-وابسته اولویت‌بندی شده‌اند\n  ✅ بدهی بار واقعی در فهرست است\n▸ امنیت و جایگاه در کتابخانه\n  ✅ هیچ رازی در سند نیست\n  ✅ ردیف نمایه برای سند نگهداری وجود دارد\n▸ صداقت شواهد در قالب PR\n  ✅ قالب PR موجود است\n  ✅ قالب، انسداد همیشگی بیلینگ را فرض نمی‌کند\n  ✅ شاهد CI شامل head SHA و run URL است\n  ✅ FAILED از NOT-RUN و CI از staging تفکیک می‌شود\n  ✅ گیت‌های مستندات و محصول در قالب حفظ شده‌اند\n▸ Repository-bound Arena runtime\n  ✅ runtime/repo-root\n  ✅ runtime/nested-cwd\n  ✅ runtime/outside-repo\n  ✅ runtime/foreign-repo\n  ✅ runtime/read-only-local-and-refs\n  ✅ runtime/remote-only-root\n  ✅ runtime/remote-only-outside\n  ✅ runtime/inherited-selectors-cannot-hide-target-mission\n  ✅ runtime/missing-root\n  ✅ runtime/missing-outside\n  ✅ runtime/foreign-mission-cannot-authorize-target\n  ✅ runtime/inherited-selectors-cannot-authorize-target\n  ✅ runtime/missing-chat\n  ✅ runtime/invalid-chat\n  ✅ runtime/path-like-chat\n\nنتیجه: ۶۴ موفق / ۰ ناموفق (از ۶۴)\n",
+    "stderr": ""
+  },
+  {
+    "command": "node tests/test-coverage-report-coverage.js",
+    "startedAt": "2026-09-14T18:28:32.998259+00:00",
+    "finishedAt": "2026-09-14T18:28:33.029351+00:00",
+    "exitCode": 0,
+    "stdout": "  ✅ گزارش پوشش تست وجود دارد\n▸ بخش‌های اصلی\n  ✅ بخش ۱: خلاصهٔ اجرایی\n  ✅ بخش ۲: فهرست کامل بر اساس دسته\n  ✅ بخش ۳: پوشش به تفکیک حوزه\n  ✅ بخش ۴: گیت‌های اجباری انتشار\n  ✅ بخش ۵: روش‌شناسی\n  ✅ بخش ۶: شکاف‌ها و کارهای باقی‌مانده\n  ✅ بخش ۷: راهنمای اجرا\n▸ راستی‌آزمایی زندهٔ شمارش‌ها\n  ✅ ادعای سند با دیسک یکی است (۵۰۳ فایل)\n  ✅ شمار ریشه در سند آمده (۴۹۵)\n  ✅ شمار ای‌پی‌آی در سند آمده\n  ✅ دود ۵۴۷ موردی ذکر شده\n  ✅ اسکن راز ۱۱/۱۱ ذکر شده\n  ✅ رانر کامل ذکر شده\n  ✅ دروازهٔ انتشار ذکر شده\n▸ دسته‌های یازده‌گانه\n  ✅ دسته: دامنهٔ کاربردی\n  ✅ دسته: جهش\n  ✅ دسته: پوشش مستندات\n  ✅ دسته: موجی/آرنا\n  ✅ دسته: همگام‌سازی/آفلاین\n  ✅ دسته: امنیت/احراز\n  ✅ دسته: کش/ردیس\n  ✅ دسته: واحد/یکپارچگی\n  ✅ دسته: حکمرانی مستندات\n  ✅ دسته: دود\n  ✅ دسته: کارایی\n▸ محتوای کیفی\n  ✅ جدول گیت‌ها کامل است (۸ گیت)\n  ✅ روش تست-اول-قرمز آمده\n  ✅ ارجاع به ثبت یافته‌های امنیتی\n  ✅ ارجاع به گزارش باگ‌هانت\n  ✅ شکاف‌ها صادقانه‌اند (پنتست/بار/ای۲ئی)\n▸ امنیت و جایگاه در کتابخانه\n  ✅ هیچ رازی در گزارش نیست\n  ✅ ردیف نمایه برای گزارش پوشش تست وجود دارد\n\nنتیجه: ۳۳ موفق / ۰ ناموفق (از ۳۳)\n",
+    "stderr": ""
+  },
+  {
+    "command": "node tests/secret-scan.js",
+    "startedAt": "2026-09-14T18:28:33.029379+00:00",
+    "finishedAt": "2026-09-14T18:28:33.608966+00:00",
+    "exitCode": 0,
+    "stdout": "\n— اسکنِ 1529 فایل —\n  ✅ هیچ اعتبارسنجی شناخته‌شده‌ای در فایل‌های پروژه نیست\n  ✅ کنترلِ منفیِ استثناهایِ hex: فقط مقادیرِ مجاز پذیرفته می‌شوند\n\n— پوششِ .gitignore —\n  ✅ .gitignore موجود است\n  ✅ .gitignore شامل «.env»\n  ✅ .gitignore شامل «.env*»\n  ✅ .gitignore شامل «*.pem»\n  ✅ .gitignore شامل «*.key»\n  ✅ .gitignore شامل «*.crt»\n  ✅ .gitignore شامل «jwt.key»\n  ✅ .gitignore شامل «secrets»\n  ✅ JWT key (server/data/jwt.key) git-ignored\n  ✅ فایلِ data/jwt.key در repository track نشده\n\n────────────────────────────────────────────────────\nsecret-scan: 12/12 سبز ✅\n",
+    "stderr": ""
+  },
+  {
+    "command": "node tests/run.js",
+    "startedAt": "2026-09-14T18:28:33.608990+00:00",
+    "finishedAt": "2026-09-14T18:28:34.184951+00:00",
+    "exitCode": 0,
+    "stdout": "\n▸ ساختار پروژه\n  ✅ فایل index.html وجود دارد\n  ✅ فایل build.js وجود دارد\n  ✅ فایل package.json وجود دارد\n  ✅ فایل README.md وجود دارد\n  ✅ پوشه src وجود دارد\n  ✅ پوشه src/js وجود دارد\n  ✅ پوشه src/styles وجود دارد\n  ✅ پوشه scripts وجود دارد\n  ✅ پوشه tests وجود دارد\n  ✅ پوشه docs وجود دارد\n\n▸ ماژول‌های منبع\n  ✅ _order.json معتبر و غیرخالی است\n  ✅ همه‌ی ماژول‌های _order.json روی دیسک هستند\n  ✅ هیچ فایل JS خارج از _order.json جا نمانده\n  ✅ استایل fonts.css وجود دارد\n  ✅ استایل base.css وجود دارد\n  ✅ استایل mobile.css وجود دارد\n\n▸ صحت فرآیند build\n  ✅ build.js بدون خطا اجرا می‌شود\n  ✅ خروجی build با index.html بیت‌به‌بیت یکسان است\n  ✅ dist/payesh.html تولید شده است\n\n▸ تضمین آفلاین بودن\n  ✅ هیچ ارجاع به http:// یا https:// خارجی در تگ‌ها نیست\n  ✅ اسکریپت Cloudflare (cdn-cgi) وجود ندارد\n  ✅ فونت Vazirmatn به‌صورت base64 جاسازی شده\n  ✅ هیچ درخواست fetch/XHR به دامنه خارجی نیست\n\n▸ یکپارچگی برنامه\n  ✅ زبان فارسی و جهت RTL تنظیم شده\n  ✅ هر ۷ نقش کاربری در NAV تعریف شده‌اند\n  ✅ همه‌ی routeها تابع view متناظر دارند\n  ✅ توابع کلیدی تقویم شمسی موجودند\n  ✅ نقاط ورود اصلی (render/boot) موجودند\n  ✅ تگ‌های HTML متوازن‌اند\n  ✅ سیستم paywall اولیا سالم است\n  ✅ نام درس همه‌جا با گارد خوانده می‌شود\n  ✅ نام کلاس و کاربر در جدول‌های نمره گارد دارند\n\n▸ نگهبان add/insert\n  ✅ فراخوانی سراسری add( فقط در مولدهای دادهٔ پایه مجاز است\n\n▸ نگهبان یکتایی تابع\n  ✅ نامِ تابعِ سطحِ‌بالا در همهٔ ماژول‌ها یکتاست\n\n▸ صحت نحوی\n  ✅ کد جاوااسکریپت خطای نحوی ندارد\n\n────────────────────────────────────────────────────\nنتیجه: 35/35 تست موفق  —  بدون خطا ✅\n────────────────────────────────────────────────────\n\n",
+    "stderr": ""
+  },
+  {
+    "command": "node build.js --check",
+    "startedAt": "2026-09-14T18:28:34.184983+00:00",
+    "finishedAt": "2026-09-14T18:28:34.482440+00:00",
+    "exitCode": 0,
+    "stdout": "✅ خروجی build با index.html بیت‌به‌بیت یکسان است.\n✅ راهنما همگام با index.html است.\n✅ generate-write-perms: authz/write-perms.json با منبعِ یکسان است (ACTION_ROLES + analysis + model).\ncheck-authz: اکشن 394 (از آن‌ها 199 روی داده می‌نویسند)\nاکشن‌هایِ نویسندهٔ بی‌برچسب (محدودیتِ canAction ندارند؛ fail-closedِ سرور نگهبان است): 60\n\n✅ تطبیق کامل: هر اکشنِ نویسنده، نقش‌هایش را در WRITE_PERMS سرور دارد.\n",
+    "stderr": ""
+  },
+  {
+    "command": "git diff --check",
+    "startedAt": "2026-09-14T18:28:34.482470+00:00",
+    "finishedAt": "2026-09-14T18:28:34.488104+00:00",
+    "exitCode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "command": "node - <<'JS'\nconst assert=require('assert'),fs=require('fs');const t=require('./tools/docs-stats-sync').truth();assert.equal(t.testsTotal,503);const workflow=fs.readFileSync('.github/workflows/node.js.yml','utf8');assert(workflow.includes('run: node tests/documentation-maintenance-coverage.js'));assert(!workflow.includes('run: node tests/arena-runtime-gate.js'));console.log(JSON.stringify({testsTotal:t.testsTotal,docsTree:t.docsTree,CI:'mandatory existing maintenance suite, all 15 runtime cases retained'}));\nJS",
+    "startedAt": "2026-09-14T18:28:34.488122+00:00",
+    "finishedAt": "2026-09-14T18:28:34.523750+00:00",
+    "exitCode": 0,
+    "stdout": "{\"testsTotal\":503,\"docsTree\":429,\"CI\":\"mandatory existing maintenance suite, all 15 runtime cases retained\"}\n",
+    "stderr": ""
+  }
+]

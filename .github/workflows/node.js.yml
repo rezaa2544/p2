@@ -31,5 +31,5 @@ jobs:
     - run: npm ci
     - run: npm run build --if-present
     - run: npm test
-    - name: Verify repository-bound Arena runtime routing
-      run: node tests/arena-runtime-gate.js
+    - name: Verify governance maintenance and Arena runtime routing
+      run: node tests/documentation-maintenance-coverage.js
