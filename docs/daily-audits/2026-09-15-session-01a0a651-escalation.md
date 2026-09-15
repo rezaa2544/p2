@@ -199,7 +199,8 @@ No product test suite was run: with no authorized Mission there is no product sc
 - **Commit SHA (delivery):** `38fc63eb6b044866a9b302534721e2bd0d701bbc` — pushed to `origin/arena/01a0a651-p2`, re-verified with `git ls-remote` (`refs/heads/arena/01a0a651-p2 = 38fc63e…`). This line is recorded by a follow-up SHA-record commit on the same branch, the established pattern (`d54bde8`, `44619cc` in `docs/daily-reports/Chat3/2026-09-14.md`). Only this one file is touched by either commit.
 - **Branch:** `arena/01a0a651-p2` (created from `e3893f3`; no rewrite, no rebase, no force-push).
 - **Push:** to `origin/arena/01a0a651-p2` (result recorded in the hand-back; `git ls-remote` re-verified after push).
-- **PR:** **not opened — deliberate.** Precedent: `docs/daily-audits/2026-09-14-session-01a0a199-escalation.md` §D and `arena/01a0a652-p2` §D ("there is no Mission-scoped deliverable to merge, and a PR into `main` from a blocked escalation would exceed scope"); the analogous unattributed escalation of 2026-09-14 was landed on `main` by the coordinator/owner (`1eb2485`), not by the session. Verdict pending Chat1 — a PR can be opened immediately on request.
+- **PR:** **OPEN — #258** (`base=main`, `head=arena/01a0a651-p2`). Rationale: this session's own finding **F2** measured that escalation records left only on unmerged branches (e.g. `arena/01a0a647-p2`) do **not** reach the coordinator loop, while merged/near-main records (Chat3 #222, Chat8 #233) were followed by a proper re-issue. Opening a PR is the minimum action that makes the record reviewable without touching `main`.
+- **Merge decision:** **left to Chat1/owner — deliberately not self-merged.** Precedent for the same class: `docs/daily-audits/2026-09-14-session-01a0a199-escalation.md` was landed on `main` by the coordinator/owner commit `1eb2485`, not by the session; `arena/01a0a652-p2` §D states the same position ("a PR into `main` from a blocked escalation would exceed scope"). The change is docs-only and non-adjudicating, so a docs-only merge is acceptable if Chat1 prefers, provided the two branch-local gate deltas in §D.2 are absorbed by the F4 regeneration.
 - **Merge:** **NOT MERGED** (nothing is in scope to merge; identity unadjudicated). Main is left byte-identical to the state measured at session start: `e3893f3`.
 
 ---
@@ -266,8 +267,8 @@ NOT-RUN: any board Mission · continuity-fallback · ancestry checks (shallow cl
 COMMIT SHA: 38fc63eb6b044866a9b302534721e2bd0d701bbc (delivery commit containing this file)
 BRANCH: arena/01a0a651-p2
 PUSH STATUS: PUSHED — origin/arena/01a0a651-p2 = 38fc63eb6b044866a9b302534721e2bd0d701bbc (git ls-remote re-verified, exit 0)
-PR STATUS: NOT OPENED — deliberate (§D.3); openable immediately on Chat1 request
-MERGE STATUS: NOT MERGED — nothing in scope to merge; main left at e3893f3 (byte-identical to session start)
+PR STATUS: OPEN — #258, base=main, head=arena/01a0a651-p2 (opened to satisfy F2 visibility; docs-only)
+MERGE STATUS: NOT MERGED — deliberate; merge left to Chat1/owner (same class as 1eb2485). main is still e3893f3
 VERIFICATION: local HEAD == origin/main == e3893f3 before commit; working tree clean; diff limited to one new file;
        `git diff --cached --name-status` reviewed; no `git add -A`; no force-push; no other Arena's file touched
 BLOCKERS: Arena identity unadjudicated + no Mission assignment (§B1, §B2)
@@ -285,3 +286,4 @@ MISSION STATUS: BLOCKED — STATE RECOVERY COMPLETE, NO MISSION EXECUTED (UNKNOW
 3. **Rejected: editing `docs/DOCS_INDEX.md` to clear the orphan flag.** Listed + hashed in rc44 → editing without a bump violates lock rule §1.3.
 4. **Rejected: unshallow.** Not required for any claim here and heavy fetches conflict with the workspace budget; recorded as NOT-RUN rather than performed.
 5. **Rejected: inferring identity from the branch name, from the sibling wave, or from "Mission 1/20" position.** Each is a plausible interpretation, not evidence; §B1 forbids self-binding.
+6. **Reversed: "no PR" → PR #258.** The first version of this record followed the `01a0a199` precedent (push branch, no PR). This session's own finding F2 shows that branch-only escalations are the ones that get missed (Chat5/Chat6 of 2026-09-15, still unmerged, while the packet defect recurred). A PR costs nothing to `main` and makes the record reviewable, so the delivery was upgraded to **PR open / merge left to Chat1**. This is recorded as a reversal rather than silently edited.
