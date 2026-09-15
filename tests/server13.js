@@ -65,7 +65,14 @@ function makeCaSignedLeaf(ca, leafCn) {
 function httpGet(port, p, useTls) {
   const mod = useTls ? https : http;
   return new Promise((resolve) => {
-    const req = mod.request({ hostname: '127.0.0.1', port, path: p, method: 'GET', rejectUnauthorized: false }, (res) => {
+    const opts = { hostname: '127.0.0.1', port, path: p, method: 'GET' };
+    if (useTls) {
+      opts.rejectUnauthorized = true;
+      if (process.env.TLS_CA) {
+        try { opts.ca = fs.readFileSync(process.env.TLS_CA); } catch (e) {}
+      }
+    }
+    const req = mod.request(opts, (res) => {
       let b = '';
       res.on('data', (d) => (b += d));
       res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {} resolve({ status: res.statusCode, json: j }); });
