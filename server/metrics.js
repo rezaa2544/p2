@@ -518,6 +518,15 @@ function declareAll(r) {
   r.gauge('payesh_process_rss_bytes', 'Process RSS (compat alias).', []);
   r.gauge('payesh_process_uptime_seconds', 'Process uptime (compat alias).', []);
   r.gauge('payesh_process_gc_total', 'GC cycles since collector start (best-effort).', []);
+  /* ── دیسک (F5) — فضای فایل‌سیستمِ مسیرِ داده. statfs نیتیوِ Node، بدون وابستگیِ تازه.
+       این سه سری با قاعدهٔ DiskSpaceLow در infra/observability/alert-rules.yml (تنها
+       فایلی که prometheus.yml rule_files بارگذاری می‌کند) و با ردیفِ متناظر در آرایهٔ
+       RULES در tests/observability-config.js قفلِ متقابل دارند. این سه فایل باید با هم
+       land شوند: آن تست ruleBlocks.length === RULES.length را می‌سنجد، پس افزودنِ
+       قاعده بدونِ افزودنِ ردیف، گیت را قرمز می‌کند. ── */
+  r.gauge('payesh_disk_total_bytes', 'Total bytes of the filesystem holding the data directory (statfs blocks*bsize).', []);
+  r.gauge('payesh_disk_avail_bytes', 'Non-privileged available bytes on the data filesystem (statfs bavail*bsize).', []);
+  r.gauge('payesh_disk_used_ratio', 'Used ratio 0..1 of the data filesystem (node_exporter convention: root-reserved blocks excluded).', []);
 }
 
 declareAll(registry);
@@ -594,6 +603,41 @@ async function publishRuntimeProbes() {
     const lagS = Number(registry.value('payesh_node_eventloop_lag_seconds', []) || 0);
     registry.set('payesh_eventloop_lag_ms', [], lagS * 1000);
     if (typeof gcCounter === 'number') registry.set('payesh_process_gc_total', [], gcCounter);
+  } catch (e) {}
+  /* Disk (F5) — statfs on the filesystem holding the data directory.
+     Native fs.promises.statfs (Node >=19.6; fs.statfs since >=18.15) — no new dependency.
+     Fail-soft by design: any error leaves the series unset instead of breaking the scrape,
+     matching the try/catch discipline of every other probe in this function. */
+  try {
+    const fsMod = await _safe(() => require('fs'), null);
+    const pathMod = await _safe(() => require('path'), null);
+    if (fsMod && pathMod && fsMod.promises && typeof fsMod.promises.statfs === 'function') {
+      const dataDir = process.env.PAYESH_DATA_DIR || pathMod.join(__dirname, 'data');
+      /* server/data may not exist before the first seed — walk up to the nearest existing
+         ancestor so the probe reports the filesystem that would hold the data rather than
+         throwing ENOENT and silently publishing nothing. */
+      let probe = pathMod.resolve(dataDir);
+      while (!fsMod.existsSync(probe)) {
+        const up = pathMod.dirname(probe);
+        if (up === probe) break; /* filesystem root */
+        probe = up;
+      }
+      const st = await _safe(() => fsMod.promises.statfs(probe), null);
+      const bsize = st ? Number(st.bsize) : 0;
+      const blocks = st ? Number(st.blocks) : 0;
+      if (bsize > 0 && blocks > 0) {
+        const total = blocks * bsize;
+        const free = Number(st.bfree) * bsize;
+        const avail = Number(st.bavail) * bsize;
+        const used = Math.max(0, total - free);
+        /* node_exporter convention: the denominator excludes root-reserved blocks
+           (bfree - bavail), so the ratio matches what operators compare against. */
+        const denom = used + avail;
+        registry.set('payesh_disk_total_bytes', [], total);
+        registry.set('payesh_disk_avail_bytes', [], avail);
+        registry.set('payesh_disk_used_ratio', [], denom > 0 ? used / denom : 0);
+      }
+    }
   } catch (e) {}
 }
 
