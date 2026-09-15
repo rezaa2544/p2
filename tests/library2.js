@@ -16,6 +16,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 let JSDOM, VirtualConsole;
 try { ({ JSDOM, VirtualConsole } = require('jsdom')); }
@@ -271,7 +272,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     }
     async function runOp(sync, op, by) {
       const res = {};
-      await sync.apiSync({}, res, { ops: [Object.assign({ uid: 'e4-' + Math.random(), at: new Date().toISOString(), by }, op)] });
+      await sync.apiSync({}, res, { ops: [Object.assign({ uid: `e4-${crypto.randomBytes(16).toString('hex')}`, at: new Date().toISOString(), by }, op)] });
       return res._cap.body;
     }
     const libSync = makeCtx({ id: 2, role: 'teacher', school_id: 7 });
