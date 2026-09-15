@@ -18,6 +18,7 @@ function walk(dir, out) {
 }
 const codeFiles = [...walk(path.join(ROOT, 'server'), []), ...walk(path.join(ROOT, 'tools'), [])];
 const codeVars = new Set();
+const shLocalsFile = new Set();
 const RE_ENV = /\bprocess\.env\.([A-Z_][A-Z0-9_]*)/g;
 // الگوی `env.` برای فایل‌هایی که `const env = process.env` دارند
 const ENV_ALIAS_FILES = ['server/tracing.js', 'server/redis.js'].map((f) => path.join(ROOT, f));
@@ -32,6 +33,15 @@ for (const f of codeFiles) {
   if (f.endsWith('.sh')) {
     const RE_SH = /\$\{([A-Z_][A-Z0-9_]*):-/g;  // فقط الگوی «پیش‌فرض‌دار» = واقعاً از محیط خوانده می‌شود
     while ((m = RE_SH.exec(t)) !== null) codeVars.add(m[1]);
+    // ── فیلترِ مثبت‌های کاذب (M2/M3/M-RC44 چت ۶) ──
+    const RE_SH_ASSIGN = /^[ \t]*(?:export[ \t]+)?([A-Z_][A-Z0-9_]*)[ \t]*=/gm;
+    let a;
+    while ((a = RE_SH_ASSIGN.exec(t)) !== null) {
+      const ls = t.lastIndexOf('\n', a.index) + 1;
+      const le = t.indexOf('\n', a.index);
+      const line = t.slice(ls, le === -1 ? t.length : le);
+      if (!/^\s*export\s/.test(line)) shLocalsFile.add(a[1]);
+    }
   }
 }
 // متغیرهای محلی اسکریپت‌های تست (با الگوی پیش‌فرض‌دار دیده می‌شوند ولی ورودی محیطی نیستند)
@@ -51,7 +61,7 @@ for (const line of s2.split('\n')) {
 }
 
 // ── مقایسه ──
-const inCodeNotDoc = [...codeVars].filter((v) => !docVars.has(v)).sort();
+const inCodeNotDoc = [...codeVars].filter((v) => !docVars.has(v) && !shLocalsFile.has(v)).sort();
 const inDocNotCode = [...docVars].filter((v) => !codeVars.has(v)).sort();
 
 console.log('■ ممیزی پیکربندی — کد در برابر مرجع');
