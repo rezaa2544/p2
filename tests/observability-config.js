@@ -50,6 +50,10 @@ const prom = rd(DIR + '/prometheus.yml') || '';
 chk('job payesh-api با metrics_path: /metrics', /job_name: payesh-api/.test(prom) && /metrics_path: \/metrics\s*$/m.test(prom));
 chk('target از طریق host.docker.internal (اسکرپِ میزبان)', /host\.docker\.internal:3000/.test(prom));
 chk('rule_files به alert-rules.yml', /alert-rules\.yml/.test(prom));
+chk('rule_files شامل هر دو alert-rules.yml و alerts.yml',
+  /rule_files:\s*\n\s*-\s*\/etc\/prometheus\/alert-rules\.yml\s*\n\s*-\s*\/etc\/prometheus\/alerts\.yml/.test(prom));
+chk('compose mount هم‌خوانی دارد: alerts.yml به /etc/prometheus/alerts.yml:ro',
+  /\.\/alerts\.yml:\/etc\/prometheus\/alerts\.yml:ro/.test(compose));
 chk('مسیرِ alertmanager در prometheus.yml', /alertmanager:9093/.test(prom));
 
 grp('OBS-RULES — قوانینِ بحرانی');
@@ -81,6 +85,18 @@ grp('OBS-METRICS — نام‌ها زنده‌اند');
 const metricsJs = rd('server/metrics.js') || '';
 const usedMetrics = [...new Set((rules.match(/payesh_[a-z0-9_]+/g) || []))];
 chk('همهٔ متریک‌هایِ قوانین در metrics.js تعریف‌شده‌اند', usedMetrics.length >= 7 && usedMetrics.every((m) => metricsJs.includes(m)), usedMetrics.filter((m) => !metricsJs.includes(m)).join(','));
+
+const alertsYml = rd(DIR + '/alerts.yml') || '';
+const alertsMetrics = [...new Set((alertsYml.match(/payesh_[a-z0-9_]+/g) || []))];
+const missingAlertsMetrics = alertsMetrics.filter((m) => {
+  if (metricsJs.includes(m)) return false;
+  // هیستوگرامِ خودکار: payesh_db_query_duration_seconds_count مشتق از payesh_db_query_duration_seconds است
+  if (m.endsWith('_count') && metricsJs.includes(m.slice(0, -6))) return false;
+  return true;
+});
+chk('همهٔ ۲۳ متریکِ ۲۴ قاعدهٔ alerts.yml در metrics.js تعریف شده‌اند',
+  alertsMetrics.length >= 20 && missingAlertsMetrics.length === 0,
+  missingAlertsMetrics.join(','));
 const promUsed = [...new Set(((prom.match(/job_name: payesh-api[\s\S]*/) || [''])[0].match(/payesh_[a-z0-9_]+/g) || []))];
 chk('metrics.js رندرِ payesh_http_requests_total و histogramِ duration را دارد',
   metricsJs.includes('payesh_http_requests_total') && metricsJs.includes('payesh_http_request_duration_seconds_bucket'));
