@@ -196,7 +196,7 @@ No product test suite was run: with no authorized Mission there is no product sc
 
 ### D.3 Measured delivery facts
 
-- **Commit SHA:** the delivery commit that adds this file is recorded (a) in the session hand-back and (b) in a follow-up SHA-record commit on this branch — the established pattern (`d54bde8`, `44619cc` in `docs/daily-reports/Chat3/2026-09-14.md`). Only this one file is touched by either commit.
+- **Commit SHA (delivery):** `38fc63eb6b044866a9b302534721e2bd0d701bbc` — pushed to `origin/arena/01a0a651-p2`, re-verified with `git ls-remote` (`refs/heads/arena/01a0a651-p2 = 38fc63e…`). This line is recorded by a follow-up SHA-record commit on the same branch, the established pattern (`d54bde8`, `44619cc` in `docs/daily-reports/Chat3/2026-09-14.md`). Only this one file is touched by either commit.
 - **Branch:** `arena/01a0a651-p2` (created from `e3893f3`; no rewrite, no rebase, no force-push).
 - **Push:** to `origin/arena/01a0a651-p2` (result recorded in the hand-back; `git ls-remote` re-verified after push).
 - **PR:** **not opened — deliberate.** Precedent: `docs/daily-audits/2026-09-14-session-01a0a199-escalation.md` §D and `arena/01a0a652-p2` §D ("there is no Mission-scoped deliverable to merge, and a PR into `main` from a blocked escalation would exceed scope"); the analogous unattributed escalation of 2026-09-14 was landed on `main` by the coordinator/owner (`1eb2485`), not by the session. Verdict pending Chat1 — a PR can be opened immediately on request.
@@ -263,9 +263,9 @@ FINDINGS: F1 recurring defective packet (4th+ session) · F2 unmerged escalation
        F6 no in-repo Chat1 channel
 NOT-RUN: any board Mission · continuity-fallback · ancestry checks (shallow clone) · product test suite (no scope) ·
        CI checks (no PR) · PR/merge (deliberate, awaiting Chat1)
-COMMIT SHA: <this commit — recorded in the session hand-back after push>
+COMMIT SHA: 38fc63eb6b044866a9b302534721e2bd0d701bbc (delivery commit containing this file)
 BRANCH: arena/01a0a651-p2
-PUSH STATUS: PUSHED to origin/arena/01a0a651-p2 (re-verified with git ls-remote after push)
+PUSH STATUS: PUSHED — origin/arena/01a0a651-p2 = 38fc63eb6b044866a9b302534721e2bd0d701bbc (git ls-remote re-verified, exit 0)
 PR STATUS: NOT OPENED — deliberate (§D.3); openable immediately on Chat1 request
 MERGE STATUS: NOT MERGED — nothing in scope to merge; main left at e3893f3 (byte-identical to session start)
 VERIFICATION: local HEAD == origin/main == e3893f3 before commit; working tree clean; diff limited to one new file;
