@@ -62,6 +62,13 @@ groups:
         annotations:
           summary: "heap بیش از ۸۰٪ِ سقفِ V8"
           description: "ریسکِ OOM؛ ری‌استارتِ نرمِ instance طبقِ runbook + بررسیِ نشتی با snapshotِ next drill"
+      - alert: DiskSpaceLow
+        expr: payesh_disk_used_ratio > 0.85
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "مصرفِ دیسکِ فایل‌سیستمِ مسیرِ داده بیش از ۸۵٪"
+          description: "ارزشِ لحظه‌ای {{ $value | humanizePercentage }} — فایل‌سیستمِ server/data (همان مسیرِ store/audit/backup). پیش از پرشدن، retention و پاکسازی را اجرا کنید؛ دیسکِ پُر = نوشتِ ناموفق و بوتِ ناموفق. سری‌ها از statfs در زمانِ scrape می‌آیند (server/metrics.js)"
       - alert: AnomalyDetected
         expr: sum(increase(payesh_runtime_anomalies_total[5m])) > 0
         for: 1m

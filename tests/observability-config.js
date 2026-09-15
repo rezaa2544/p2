@@ -62,6 +62,7 @@ const RULES = [
   ['SyncQueueDepth', /alert: SyncQueueDepth[\s\S]*?payesh_sync_queue_depth > 1000/],
   ['EventLoopLagHigh', /alert: EventLoopLagHigh[\s\S]*?payesh_eventloop_lag_ms\{q="p99"\} > 100/],
   ['MemoryHigh', /alert: MemoryHigh[\s\S]*?0\.80/],
+  ['DiskSpaceLow', /alert: DiskSpaceLow[\s\S]*?payesh_disk_used_ratio > 0\.85/],
   ['AnomalyDetected', /alert: AnomalyDetected[\s\S]*?payesh_runtime_anomalies_total/],
   ['AttackPatternSignature', /alert: AttackPatternSignature[\s\S]*?payesh_attack_patterns_detected_total/],
   ['SuspiciousSession', /alert: SuspiciousSession[\s\S]*?payesh_suspicious_sessions > 0/]
