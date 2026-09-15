@@ -458,5 +458,8 @@ function generate(){
     var t1=db.users.filter(function(u){return u.role==='teacher'&&u.school_id===1&&u.active===1;});
     if(t1.length>=2) t1[t1.length-1].lib_staff=1;   /* SIM-02: کتابدار */
     if(t1.length>=3) t1[t1.length-2].asset_staff=1; /* SIM-03: تحویلدارِ اموال */
+    /* SIM-04 (C2-07): رئیس اداره — پرچمِ is_head روی کاربرِ اداره (نمونه) */
+    var officeUsers=db.users.filter(function(u){return u.role==='edu_office'&&u.active===1;});
+    if(officeUsers.length>0) officeUsers[0].is_head=1;
   })();
 }
