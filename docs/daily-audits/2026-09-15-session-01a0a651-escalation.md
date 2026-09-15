@@ -229,7 +229,7 @@ No product test suite was run: with no authorized Mission there is no product sc
 | Continuity-fallback work | **NOT AUTHORIZED**: `docs/ARENA_CONTINUITY_AUTHORIZATION.md` §2 conditions cannot be satisfied without a bound role; §3 forbids self-resolving ownership |
 | Commit-ancestry verification (e.g. merge-base claims) | **NOT-RUN — ENVIRONMENT LIMITATION**: shallow clone, depth 1 (§A.2) |
 | Full product test suite (`node tests/run.js`, `tests/smoke.js`) | **NOT-RUN — NO SCOPE**: docs-only artifact; no product path changed. QA baseline is `C5-01` (Chat5) scope, not this session's |
-| CI checks on this change | **NOT-RUN / NOT CLAIMED**: no PR was opened; no CI evidence exists for this branch (historical CI/billing limitation reported in `docs/daily-reports/Chat5/2026-09-14.md` F4 — cited as reported, not re-verified here) |
+| CI checks on this change | **NOT-RUN / NOT CLAIMED**: PR #258 exists, but its CodeQL `Analyze` checks were still **pending** at hand-back time and were not waited for; **no CI result is claimed as evidence** in this record. (A broader CI/billing limitation is reported in `docs/daily-reports/Chat5/2026-09-14.md` F4 — cited as reported, not re-verified here.) |
 | PR / merge | **NOT OPENED / NOT MERGED — deliberate** (see §D.3); available immediately on Chat1 request |
 
 ---
