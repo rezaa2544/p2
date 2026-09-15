@@ -196,6 +196,62 @@
 
 ---
 
+
+### ۲.۷ متغیرهای استخراج‌شده از کد — ممیزیِ خودکار (چت ۶)
+
+> ردیف‌های افزوده‌شده با ممیزیِ خودکار؛ محلِ مصرف از جست‌وجوی واقعی در مخزن استخراج شده است.
+
+| نام | دسته | محلِ مصرف (شاهد) | توضیح |
+|---|---|---|---|
+| `PAYESH_AUDIT_MAX_QUEUE` | Application | `server/audit.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_BACKUP_KEY` | Application | `server/dr.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_BACKUP_OFFSITE_DIR` | Application | `server/dr.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_BASE_URL` | Application | `tools/capacity-saturation-probe.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_CURSOR_SECRET` | Application | `server/cursor.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_CURSOR_TTL_S` | Application | `server/cursor.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_DATA_DIR` | Application | `server/metrics.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_DB_SLOW_MS` | Application | `server/db.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_DELTA_COMPRESS_MIN_BYTES` | Application | `server/compress.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_DELTA_MAX_AGE_DAYS` | Application | `server/pull.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_DR_RPO_S` | Application | `server/dr.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_DR_RTO_MS` | Application | `server/dr.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_DR_RTO_S` | Application | `server/dr.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_METRICS_INTERVAL_MS` | Application | `server/metrics.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_METRICS_KEYS` | Application | `tools/redis-metrics.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_METRICS_MAX_SERIES` | Application | `server/metrics.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_METRICS_TOKEN` | Application | `server/index.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_PARTITIONED_TABLES` | Application | `server/db.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_PG_DSN` | Application | `tools/capacity-saturation-probe.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_PG_HYDRATE_LIMIT` | Application | `server/db.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_PG_HYDRATE_SKIP` | Application | `server/db.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_PG_MIRROR_GROWTH_CAP` | Application | `server/sync.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_PG_MIRROR_PRUNE_SAFE` | Application | `server/sync.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_PROBE_TOKEN` | Application | `tools/capacity-saturation-probe.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_PULL_MAX_BYTES` | Application | `server/pull.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_PULL_MAX_ROWS` | Application | `server/pull.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_REDIS_URL` | Application | `tools/capacity-saturation-probe.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_REGION` | Application | `server/cursor.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_RESOLVED_CONFLICTS_MAX` | Application | `server/conflicts.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_RUNTIME_ALERT_WEBHOOK` | Application | `server/abuse-guard.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_SYNC_OPS_PER_MIN` | Application | `server/sync.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_UID_DEDUP_MAX` | Application | `server/sync.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PAYESH_UID_DEDUP_TTL_MS` | Application | `server/sync.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PGDRILL_DB` | Postgres/HA/Drill | `tools/wal-drill/setup-pg.sh` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PGDRILL_PORT` | Postgres/HA/Drill | `tools/wal-drill/setup-pg.sh` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PGDRILL_REPO` | Postgres/HA/Drill | `tools/wal-drill/setup-pg.sh` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PGDRILL_ROOT` | Postgres/HA/Drill | `tools/wal-drill/setup-pg.sh` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PGDRILL_USER` | Postgres/HA/Drill | `tools/wal-drill/setup-pg.sh` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PGDRILL_WAL_MB` | Postgres/HA/Drill | `tools/wal-drill/setup-pg.sh` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PG_LIVE_PG` | Postgres/HA/Drill | `tools/seed-relational-small.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PG_SEED_FRESH` | Postgres/HA/Drill | `tools/seed-relational-small.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `PG_SEED_MANIFEST` | Postgres/HA/Drill | `tools/seed-relational-small.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `WAVE23_ACADEMIC_DB` | تست/بار | `tools/bench-reports-academic.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `WAVE23_BENCH_DB` | تست/بار | `tools/bench-reports-attendance.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `WAVE23_CONC` | تست/بار | `tools/bench-reports-concurrency.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `WAVE23_GRADES` | تست/بار | `tools/bench-reports-concurrency.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `WAVE23_ROWS` | تست/بار | `tools/bench-reports-academic.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+| `ALLOW_MEMORY_FALLBACK` | سایر | `server/db.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+
 ## ۳) فایل‌های پیکربندی
 
 | فایل | نقش | مرجع |
