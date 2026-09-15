@@ -1,14 +1,14 @@
-# 🔒 قفل مستندات — DOCS_FREEZE_v1.0.0-rc43
+# 🔒 قفل مستندات — DOCS_FREEZE_v1.0.0-rc44
 
-> 🏛️ **سند تاریخی.** این قفل با `DOCS_FREEZE_v1.0.0-rc44.md` جانشین شد؛ مانیفستِ زیر دست‌نخورده باقی می‌ماند.
+> 📌 بامپ rc43 → rc44: ۱۰ سند کنترل‌پلن ثبت و ۳ اثر کهنه بازپایه‌گذاری شد.
 
 > **✅ قفلِ جاری.** این نسخه جانشینِ `DOCS_FREEZE_v1.0.0-rc42.md` است؛ فهرستِ زیر، اثرِ لحظهٔ فعلیِ
 > کتابخانه را ثبت می‌کند. راستی‌آزمایی: `node tests/docs-freeze-marker.js`.
 > نسخه‌های پیشین (`rc1`…`rc42`) با بنرِ تاریخی و مانیفستِ **دست‌نخورده** باقی می‌مانند.
 
-**نسخهٔ قفل:** ۱.۰.۰-rc43 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** همگراییِ قفل پس از بازپایه روی main — چت ۶ (Arena)
+**نسخهٔ قفل:** ۱.۰.۰-rc44 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** همگراییِ قفل پس از بازپایه روی main — چت ۶ (Arena)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۴۷ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۵۸ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
@@ -21,7 +21,7 @@
 | شاخه از `main@23bf513` به `main@0fc4403` منتقل شد (diff خالصِ چت ۶ = ۲۳ فایل، ۲۸۱۶+/۱۸−) | `git diff 23bf513 a5686f9` |
 | مانیفست با ترکیبِ تازهٔ main + اسنادِ چت ۶ بازتولید شد | `node tools/docs-stats-sync.js --freeze` |
 | `rc42` بنرِ تاریخی گرفت (مانیفست دست‌نخورده) | همین کامیت |
-| `tests/docs-freeze-marker.js` به rc43 منتقل شد | همین کامیت |
+| `tests/docs-freeze-marker.js` به rc44 منتقل شد | همین کامیت |
 
 **یادداشتِ همگرایی:** با مرجِ این شاخه، شاخهٔ #159 تنها باید `rc41` واگرای خود را حذف کند و مانیفست را
 بازتولید کند (کیت: `tools/audit-patches/PR159_CONVERGENCE_RUNBOOK.md`).
@@ -62,7 +62,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۳۴۷)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۳۵۸)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -81,6 +81,14 @@
 | `ARCHITECTURE_REVIEW.md` | `sha256:e40c46cd9dccb9e1108b7f8f89e569302d316462191a10ca0513aa001c5328da` |
 | `ARENA4_PERFORMANCE_INFRA.md` | `sha256:1d9165d0eab6d6d02de494c56afc0766b83086e6bfcdaf9a0005d4b520292881` |
 | `ARENA5_QA_RELIABILITY.md` | `sha256:0545b420c46f649cfeb2966be2c5bbc60982bb4f976bcf059aa6a18aef0435ee` |
+| `ARENA_AGENT_PROMPT.md` | `sha256:79e601b816a97ff9752e9e9043befac85bd6f1c0333a1b45ff504bc9dad7b5ff` |
+| `ARENA_CONTINUATION_POLICY.md` | `sha256:3e92554203e4543f0a14df03f0d40c8c9b4a83c73f74bd8e7dc82a103876491d` |
+| `ARENA_CONTINUITY_AUTHORIZATION.md` | `sha256:a2605d085f2c46906357f30965ad8a24a92ab79a87ac65cd5c10f87d3fc998fa` |
+| `ARENA_CONTROL_PLANE_RECOVERY.md` | `sha256:11417d54369f053127d806f7afafd63e9d4c1e52a4700a1dec3765c183f3f291` |
+| `ARENA_EXECUTION_MODEL.md` | `sha256:b2dfe30ab5c3d44330e9af782e60548c14d06cd05f729c1798e80351a6f7cad1` |
+| `ARENA_MISSION_TEMPLATE.md` | `sha256:fe2b1bc306fa4f02b45e7d831606029fc6e8ce8bd48f99009e76a1ebc1cc69a3` |
+| `ARENA_REGISTRY.md` | `sha256:303c4e4f5f7ff13f4ea06900142d60052f29115fa3f774b141d981b29bc3fc76` |
+| `ARENA_RUNTIME_CONTRACT.md` | `sha256:cf19ef6a15325b1a97afff17c1aaac552b8ea36c202ec9c0439cc9e0f53b3f03` |
 | `ASSETS_MODULE.md` | `sha256:f22d475b123fbddb77306821f398420cc948488cc0512e593df5d4f0b3916b64` |
 | `ASYNC_ARCHITECTURE.md` | `sha256:39ae87912dedfebd04ee5afe34516378bf391b8a3c8a5edcdb4d381a5250f27d` |
 | `ATTACK_PATTERNS.md` | `sha256:f3586691ab0fdd3be55c490f6e0622ea95d6101d66e025e11b4e9b3b942651d2` |
@@ -111,6 +119,7 @@
 | `D2_DRAFT.md` | `sha256:f62d2eff0772ce15393ed679e56ccfc3af174f702990109f479a0a81f3eb5349` |
 | `D3_DRAFT.md` | `sha256:a4bdb239a1dd6610c8319c842c3274929acd203e854585b7bbf6806ee0a6fa92` |
 | `D4_DRAFT.md` | `sha256:9537ea48b0740c56ede54faa37a557bddeb584bbae008d72d1bec1375b081ac2` |
+| `DAILY_20_MISSION_PROTOCOL.md` | `sha256:80f67dcdbde9b00c362de1961f9d5ffa95dfed4a2c4429396646ac95ad713ae0` |
 | `DATABASE_ARCHITECTURE.md` | `sha256:f2dbd45af7bae8136004b4a1335fcf700a74a864f178c336f0f5dce29b17caaa` |
 | `DATABASE_PERFORMANCE_OPTIMIZATION.md` | `sha256:2ac6df7ad07d0911a96c23e4e68043932d3183fae0851f1686c93971c9ae1a12` |
 | `DATA_DICTIONARY.md` | `sha256:e82a85f0595a64fbd0df44186d7baf8b78fe22777ac772b95c8b75ffdf33482d` |
@@ -164,6 +173,7 @@
 | `DOCS_FREEZE_v1.0.0-rc40.md` | `sha256:a50c27c3d7466a6fc42d222ff9c4d3392d86623d89740c992021bd06b470953d` |
 | `DOCS_FREEZE_v1.0.0-rc41.md` | `sha256:cea1405b01b33c7a23963e88db141d755b721e398ee85b1f9e3bfd0653cd1e62` |
 | `DOCS_FREEZE_v1.0.0-rc42.md` | `sha256:79b249fd92f28780624c932fd433fd7608d827f051160753f241addf0b50d2f3` |
+| `DOCS_FREEZE_v1.0.0-rc43.md` | `sha256:a5e90e5a3288d5463f10eb857f82403d7b21637d678c835165038c654d9e00e8` |
 | `DOCS_FREEZE_v1.0.0-rc5.md` | `sha256:df97a36b50b8e4398fd8ac3090b1a2bd7ed1a113780ec8841c8b44e490dce79e` |
 | `DOCS_FREEZE_v1.0.0-rc6.md` | `sha256:ded449054c3464e7c34fc913cf3f71dc5745ffe24e34888cc1aceb94ee93782e` |
 | `DOCS_FREEZE_v1.0.0-rc7.md` | `sha256:f0bbd20a82f5d700283703a265d3fadbadc49198d442ebf10950441bf27c55c4` |
@@ -171,14 +181,15 @@
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:36bf496d42732300a7872e76e6a3ce64dca6d52ed20eb1d9621fdce63f3d4169` |
 | `DOCS_INDEX.md` | `sha256:ccf1b48ebff1f666b5e48fa3b8dac05420fd7a8f3633eac928743f25f516e201` |
-| `DOCS_METRICS.md` | `sha256:41624a3bb0e85ebd61681ce5544cf09cf5f155074fb4ac5b616ee05407e32a76` |
+| `DOCS_METRICS.md` | `sha256:0b9f99b88a69dd3ae15f9564ccb2113e47d42fbb980d1e92ab730a7032877971` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:a1ebefac54f1b8063b613167311751402a45b809bfa81cd8736067377d607269` |
-| `DOCUMENTATION_MAP.md` | `sha256:e4444ae9f84db46025bcbb035008482612588570ece859322c4a3b70c63a2885` |
+| `DOCUMENTATION_MAP.md` | `sha256:d8aaff590e7ef4f6a92bd436ac4cbf07b0e09aa325b7a261398d502bfa0addd5` |
 | `DR_RUNBOOK.md` | `sha256:eba33f0ad562941cf8aea2087dae1318628708cb37b1330aa0bc1cb34c81cc89` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
 | `EXAM_TYPES_GUIDE.md` | `sha256:bfc9a35481de6bd64c48f31bca4396951fc41ea1aedbc6070260fef9ea026354` |
+| `EXECUTION_CONTROL_PROTOCOL.md` | `sha256:1f6d3476d822e406e0820bac30fa1b254c2d55574f4e16b2d1c76d5c068be2e6` |
 | `EXECUTIVE_BRIEFING.md` | `sha256:e4b10ec9c8ed37c4de335a2780b89b93d5d5119f9f6be9dba2c4b97edabbdda6` |
 | `EXECUTIVE_SLIDES_OUTLINE.md` | `sha256:48432a8aba0966d0604cb3e1a82d4b29b2089ca9e1024825ed0ce3d5fb8a1ab6` |
 | `FAQ.md` | `sha256:b8609cf3ec063a343fa9bf50a708df5a8c298c675df8024302bbd20f49c1547b` |
@@ -196,7 +207,7 @@
 | `HA_POSTGRES.md` | `sha256:8a73c7c0d783b0c8139e518bfdfbd709109adb585170e313102f1a4c3bbca677` |
 | `HA_REDIS.md` | `sha256:aaabbaf59318616ef520a002de1e096e37b500e4c27592f67ac0627ca7854a34` |
 | `HEALTH_INDEX_MODULE.md` | `sha256:060947c6021b4db1332c15360a6bd2068ab77b134f2263cf19d2c014130f186d` |
-| `INCIDENT_PLAYBOOK.md` | `sha256:9826fbd386994ce5ba03c107de02b5c069dfa93b685c07a3898bb307540ef810` |
+| `INCIDENT_PLAYBOOK.md` | `sha256:0272902e31bb6e0dfd99612ed6a190f1a1c412cd5fba7cf230ddcbb681c5c419` |
 | `INCIDENT_RESPONSE.md` | `sha256:fec600cb0e9dd38303246baad20ac701920b1d36aeb84562f6f24965447a46b7` |
 | `INSCOPE_OPTIMIZATION_PLAN.md` | `sha256:85e3f0260e008e7c71ae9a4ed3a943f94546ff33405750d176dd4b6fcadd9f06` |
 | `INTERNSHIP_MODULE.md` | `sha256:bfaef4d22a634fd68bde60ad2517e42ca2cf0f7e6ed259baffbd5b8f7af5be99` |
@@ -233,7 +244,7 @@
 | `OPEN_ITEMS.md` | `sha256:af2bf5b99d4aecf6b0193d457a8add545ecefe38d9098ad78403bfd11477dec3` |
 | `OPEN_WORK.md` | `sha256:d4ea868a8162d00a962a06e812d1d6dc5488317fbf9d977e682240294b6bd924` |
 | `OPERATIONAL_HANDOVER.md` | `sha256:0ce914c38f0b82124fb9bb62a8c8a16d0def68488d10c0facf4df32efa4b6368` |
-| `OPERATIONAL_READINESS.md` | `sha256:3ee26d00cc1d8a35cae537d8194879cf58eef69f8c5fb5324cafccbc6f5d3fcd` |
+| `OPERATIONAL_READINESS.md` | `sha256:b94809db70fc5d0202a563fd94b7032c10a7d2ca1b8358b01872a0fb7144dee2` |
 | `OPINION_2026-09-05_ROADMAP_REVIEW.md` | `sha256:ae4998223e48d65fe3094895bfdc44a70013c8150b7c0389d7bffb6c14ba89bc` |
 | `P0_BLOCKER_TRACKER.md` | `sha256:5b87bca57d38fa1d691c52c418ad3bc1e3f55545d26d71c9eef709375a86afea` |
 | `PEN_TEST_CHECKLIST.md` | `sha256:775c62ef672aa56cb1ae3a6461215e3e183cbe7f208648d3fe0dad9134a85c58` |
@@ -267,7 +278,7 @@
 | `PRIVACY_POLICY.md` | `sha256:94651d72ec3ef03777f007cca01ca34aad138350472bbf495beb288b5fb08757` |
 | `PRODUCTION_READINESS_CHECKLIST.md` | `sha256:6bdf7eea9e9532d374391717259554a60eb19dbb1a99b580b89de1985506a460` |
 | `PRODUCTION_RUNBOOK.md` | `sha256:c0ace61e14145b2bc00fb2fb5817199066eaa5f3b9023fc18741d10fb8de326e` |
-| `PR_MERGE_PLAN.md` | `sha256:b3b44a4f70218120d0377b2e5abbf700d208f3978b9e3fe08940bbf6b21d58df` |
+| `PR_MERGE_PLAN.md` | `sha256:9ef9c211258ecdc43737e4c7fc7bc8d9414384b99ef96741401a716f4b26d8ed` |
 | `PULL_BOOTSTRAP_DESIGN.md` | `sha256:b2266cdf6bb3433d7ad322f43809f7d300c6875f5591ecb1d59aa63b26b2927f` |
 | `PUSH_RECOVERY_PLAYBOOK.md` | `sha256:77f84933a28fda52d1d9797406d6f9011cf0a0b62d78136c01b4128ad8c6ddcf` |
 | `RATE_LIMITING_DESIGN.md` | `sha256:e8ea50174a94f8af8fe7a002b8c59e20cc0d825fc05115776a87735756a55866` |
@@ -366,7 +377,7 @@
 | `SYNC_FLOW.md` | `sha256:0d768e1fa6bcbdf0f69108408ba5733a787cbb881bf60c8b3b57cf5acc54db0a` |
 | `SYNC_PROTOCOL.md` | `sha256:a2658779b478051e87dce461dcee2664a87b9d1dca2b42bc4a833cb0983274c7` |
 | `SYNC_RELIABILITY_EVIDENCE.md` | `sha256:326094b05babf475ca98ef231ed52f407cd06ef06690ee24c788f9660b31f39b` |
-| `TEST_COVERAGE_REPORT.md` | `sha256:12baf81dc656fb92cd51adb6a7922669537f8fa9a34be0cf52e499e152602e47` |
+| `TEST_COVERAGE_REPORT.md` | `sha256:38e8321a48edf5876e0af24712c8a43b74b4823e3db8107cb0cc8f543d1108c1` |
 | `THIRD_PARTY_LICENSES.md` | `sha256:0440f94b6395ee2fab1b2a34d9c8e3d5141887c1c276b4327c5d134317a33a08` |
 | `THREAT_MODEL.md` | `sha256:2d93966da760fec407778e27e9ef85033f95efffe71d1135dd849f6780d966f0` |
 | `TRACING_SETUP.md` | `sha256:6d17e75b8cc28763db6d7d7c9310d587fb3419c15a2d1dbf2f9e938881040099` |
@@ -415,4 +426,4 @@
 | `راهنمای_کاربر.md` | `sha256:e7061c3b64353b6b04c0a17551eb990df1805f27a861dbb17996c9d6e62b26be` |
 
 ---
-_قفل `rc43` در ۲۰۲۶-۰۹-۱۳ بسته شد: همگرایی پس از بازپایه روی main@0fc4403 (PR #176). راستی‌آزمایی: `node tests/docs-freeze-marker.js` و `node tools/docs-stats-sync.js --check`._
+_قفل `rc44` در ۲۰۲۶-۰۹-۱۳ بسته شد: همگرایی پس از بازپایه روی main@0fc4403 (PR #176). راستی‌آزمایی: `node tests/docs-freeze-marker.js` و `node tools/docs-stats-sync.js --check`._
