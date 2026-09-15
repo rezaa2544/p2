@@ -58,8 +58,7 @@ function req(method, port, p, body, cookie, mod) {
       headers: Object.assign(
         data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {},
         cookie ? { Cookie: cookie } : {}
-      ),
-      rejectUnauthorized: false
+      )
     }, (res) => {
       let b = '';
       res.on('data', (d) => (b += d));
