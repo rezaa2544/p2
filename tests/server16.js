@@ -85,9 +85,13 @@ async function main() {
   /* ── کاربران (از seed) ─────────────────────────────────────────── */
   const seed = JSON.parse(fs.readFileSync(storeFile, 'utf8'));
   const U = (id) => seed.users.find(u => u.id === id);
+  /* پین شکسته پس از SIM-01 (+guard1@1025، PR #175) — فیکسچر نقش‌محور، نه id-محور. */
   const CAST = {
     sa: U(1), m1: U(2), m2: U(244), t1: U(4), st: U(16),
-    p: U(17), co: U(1030), dr: U(1035), eo: U(1026)
+    p: U(17),
+    co: seed.users.find(u => u.role === 'counselor'),
+    dr: seed.users.find(u => u.role === 'driver'),
+    eo: seed.users.find(u => u.role === 'edu_office' && u.office_id != null)
   };
 
   async function login(u) {
