@@ -16,6 +16,7 @@ delete process.env.REDIS_URL;
 
 const ROOT = path.join(__dirname, '..');
 const redis = require(path.join(ROOT, 'server', 'redis.js'));
+const cache = require(path.join(ROOT, 'server', 'cache.js'));
 const rateLimit = require(path.join(ROOT, 'server', 'rate-limit.js'));
 const { classifyKey, audit } = require(path.join(ROOT, 'tools', 'redis-audit.js'));
 
@@ -94,6 +95,77 @@ async function main() {
       if (res.allowed) allowedCount++;
     }
     chk('سقف نرخ همچنان اعمال می‌شود', allowedCount === 3, `allowed=${allowedCount}`);
+  }
+
+  // ۶) مسیرهای ابطال کش (C4-03 — الف: ایندکس مدرسه، ب: epoch/pubsub، پ: انضباط تک‌کلیدی)
+  {
+    await cache.init();
+    const sid = 42;
+    const uidA = 4201, uidB = 4202;
+
+    await cache.setBootstrapCache(uidA, { school: { id: sid }, name: 'StudentA' }, 300);
+    await cache.setBootstrapCache(uidB, { school: { id: sid }, name: 'StudentB' }, 300);
+
+    const schoolSetKey = `payesh:cache:school:${sid}`;
+    const initialMembers = await redis.sMembers(schoolSetKey);
+    const initialA = await redis.get(`payesh:cache:bootstrap:${uidA}`);
+    const initialB = await redis.get(`payesh:cache:bootstrap:${uidB}`);
+
+    chk('ورودی‌های اولیه در L2 و ستِ ایندکس مدرسه حاضرند',
+      initialMembers.length === 2 && initialMembers.includes(String(uidA)) && initialMembers.includes(String(uidB)) && !!initialA && !!initialB,
+      `members=${JSON.stringify(initialMembers)}`);
+
+    // جاسوسی بر انضباط تک‌کلیدی (Single-key discipline) و کانال ابطال
+    const recordedDelKeyCounts = [];
+    let sRemTouchedKey = null;
+    let pubsubPayload = null;
+
+    const origDel = redis.del.bind(redis);
+    const origSRem = redis.sRem.bind(redis);
+    const origPublish = redis.publish.bind(redis);
+
+    redis.del = async function(...args) {
+      recordedDelKeyCounts.push(args.length);
+      return origDel(...args);
+    };
+    redis.sRem = async function(key, ...members) {
+      sRemTouchedKey = key;
+      return origSRem(key, ...members);
+    };
+    redis.publish = async function(channel, msg) {
+      pubsubPayload = { channel, msg };
+      return origPublish(channel, msg);
+    };
+
+    // اجرای ابطال مدرسه
+    await cache.invalidateSchool(sid);
+
+    // بازگردانی توابع
+    redis.del = origDel;
+    redis.sRem = origSRem;
+    redis.publish = origPublish;
+
+    const afterMembers = await redis.sMembers(schoolSetKey);
+    const afterA = await redis.get(`payesh:cache:bootstrap:${uidA}`);
+    const afterB = await redis.get(`payesh:cache:bootstrap:${uidB}`);
+    const schoolEpoch = await redis.get(`payesh:cache:epoch:school:${sid}`);
+
+    // الف) ابطال ایندکس مدرسه: پاک شدن کلیدهای L2 و تخلیه عضویت ست
+    chk('ابطال ایندکس مدرسه: کلیدهای bootstrap کاربران از L2 پاک شدند', afterA === null && afterB === null, `afterA=${afterA} afterB=${afterB}`);
+    chk('ابطال ایندکس مدرسه: اعضای ست مدرسه کاملاً تخلیه شدند (توقف رشد بی‌کران)', afterMembers.length === 0, `remaining=${JSON.stringify(afterMembers)}`);
+
+    // ب) ابطال epoch و انتشار پیام Pub/Sub
+    chk('ابطال epoch مدرسه: کلید epoch تازه مقداردهی شد', typeof schoolEpoch === 'string' && schoolEpoch.length > 0, `epoch=${schoolEpoch}`);
+    chk('انتشار رویداد ابطال روی کانال Pub/Sub payesh:pubsub:inval',
+      pubsubPayload && pubsubPayload.channel === 'payesh:pubsub:inval' && pubsubPayload.msg && pubsubPayload.msg.type === 'school' && pubsubPayload.msg.school_id === sid,
+      `pubsub=${JSON.stringify(pubsubPayload)}`);
+
+    // پ) انضباط تک‌کلیدی برای ایمنی کلاستر: عدم استفاده از del چندکلیدی و اجرای sRem تک‌کلیدی
+    const allDelsSingleKey = recordedDelKeyCounts.length === 2 && recordedDelKeyCounts.every(cnt => cnt === 1);
+    chk('انضباط ایمنی کلاستر: همه فراخوانی‌های DEL تک‌کلیدی بودند (بدون cross-slot DEL)',
+      allDelsSingleKey, `delCounts=${JSON.stringify(recordedDelKeyCounts)}`);
+    chk('انضباط ایمنی کلاستر: عملیات sRem بر روی تک‌کلید ایندکس مدرسه بود',
+      sRemTouchedKey === schoolSetKey, `sRemKey=${sRemTouchedKey}`);
   }
 
   await redis.close();
