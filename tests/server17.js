@@ -482,7 +482,7 @@ async function main() {
       await login(9010, String(T1.phone).replace(/[\s\-()]/g, ''), T1.national_id, mt);
       await login(9010, String(M1.phone).replace(/[\s\-()]/g, ''), M1.national_id, mm);
       let fSeq = 0;
-      const opX = (over) => Object.assign({ uid: 'f' + (++fSeq) + Math.random().toString(36).slice(2, 6), at: new Date().toISOString() }, over);
+      const opX = (over) => Object.assign({ uid: 'f' + (++fSeq) + crypto.randomBytes(2).toString('hex'), at: new Date().toISOString() }, over);
       const sync = (ck, ops) => req('POST', 9010, '/api/sync', { ops }, ck);
 
       /* F1 — مدیر نوتیفیکاسیون برایِ دبیر می‌سازد (user_id مالِ مدیریت) */
