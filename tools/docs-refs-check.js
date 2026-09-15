@@ -204,8 +204,10 @@ function run({ check, baseline, json }) {
       generatedSkipped: [...gen.keys()].sort(),
       fresh: fresh.map((p) => ({ doc: p.doc, ref: p.ref })),
       resolvedSinceBaseline: gone,
+      verdict: fresh.length ? 'RED' : 'GREEN',
     }, null, 2));
-    return 0;
+    /* حکم (M-REFS-SILENCE-FIX): --json هم در برابر ارجاعِ تازه ساکت نماند */
+    return fresh.length ? 1 : 0;
   }
 
   console.log(`ارجاعِ کهنه به فایلِ ناموجود: ${pairs.length} مورد در ${byDoc.size} سند`);
@@ -219,22 +221,29 @@ function run({ check, baseline, json }) {
     for (const p of fresh) console.log(`  • ${p.doc} → ${p.ref}`);
   }
 
-  if (check) {
-    if (fresh.length) {
-      console.error(`\n❌ ${fresh.length} ارجاعِ تازه به فایلِ ناموجود.`);
-      console.error('   یا فایل را برگردانید/تغییرِ نامِ ارجاع را بدهید، یا اگر سند تاریخی است');
-      console.error('   خطِ پایه را با دلیل بازتولید کنید: node tools/docs-refs-check.js --baseline');
-      return 1;
-    }
-    console.log('\n✅ هیچ ارجاعِ کهنهٔ تازه‌ای نیست.');
-    return 0;
-  }
-
   if (byRef.size) {
     console.log('\nپرتکرارترین ارجاع‌های ناموجود:');
     [...byRef.entries()].sort((a, b) => b[1].size - a[1].size).slice(0, 8)
       .forEach(([ref, docs]) => console.log(`  ${String(docs.size).padStart(2)} سند → ${ref}`));
   }
+
+  /* ────────────────────────────────────────────────────────────────
+     حکم (M-REFS-SILENCE-FIX — چت ۶): ابزار هرگز در برابر ارجاعِ کهنهٔ
+     تازه **ساکت** نماند. پیش از این، اجرایِ بدونِ پرچم با ده‌ها ارجاعِ
+     تازه exit=0 می‌داد (کلاسِ «ابزارِ ساکت، سبز») و فقط --check قرمز
+     می‌کرد ⇒ هر سی‌آی/گزارشِ بدونِ پرچم، سبزِ جعلی می‌دید.
+     اکنون: خطِ «نتیجه» همیشه چاپ می‌شود و exit در همهٔ حالت‌ها
+     (پیش‌فرض · --check · --json) با آن هم‌خوان است: قرمز ⇒ exit=1.
+     --baseline همچنان exit=0 (عملیاتِ بازتولید، نه داوری).
+     ──────────────────────────────────────────────────────────────── */
+  if (fresh.length) {
+    console.log(`\nنتیجه: ${fresh.length} ارجاعِ کهنهٔ تازه ❌`);
+    console.error(`\n❌ ${fresh.length} ارجاعِ تازه به فایلِ ناموجود.`);
+    console.error('   یا فایل را برگردانید/تغییرِ نامِ ارجاع را بدهید، یا اگر سند تاریخی است');
+    console.error('   خطِ پایه را با دلیل بازتولید کنید: node tools/docs-refs-check.js --baseline');
+    return 1;
+  }
+  console.log('\nنتیجه: ۰ ارجاعِ کهنهٔ تازه ✅');
   return 0;
 }
 
