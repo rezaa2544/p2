@@ -47,6 +47,8 @@ const dump = (args, file) => new Promise((res) => {
     { env: process.env }, (err) => res(!err));
 });
 
+const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 (async () => {
   const args = parseArgs(process.argv);
   const year = new Date().getFullYear();
@@ -70,7 +72,7 @@ const dump = (args, file) => new Promise((res) => {
        WHERE i.inhparent = $1::regclass ORDER BY 1`, [t]);
     for (const { relname } of parts.rows) {
       /* گارد ۲: فقط الگویِ <table>_y<YYYY> */
-      const m = relname.match(new RegExp('^' + t + '_y(\\d{4})$'));
+      const m = relname.match(new RegExp('^' + escapeRegExp(t) + '_y(\\d{4})$'));
       if (!m) { log('⏭️  ' + relname + ': خارجِ الگویِ سالانه (default/غیره) — دست‌نخورده'); kept++; continue; }
       const py = Number(m[1]);
       /* گارد ۳: هرگزِ سالِ جاری/آینده */
