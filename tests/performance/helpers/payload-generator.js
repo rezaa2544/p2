@@ -3,13 +3,15 @@
    تولید داده‌های واقع‌گرایانه و بومی برای آزمون‌های بار k6
    ═══════════════════════════════════════════════════════════════════ */
 
+import { randomInt } from 'crypto';
+
 export const SCHOOL_IDS = [1, 2, 3, 4, 5, 6];
 export const ATTENDANCE_STATUSES = ['present', 'absent', 'late', 'excused'];
 export const TERMS = ['نوبت اول', 'نوبت دوم', 'مستمر اول', 'مستمر دوم'];
 export const EXAM_TYPES = ['کلاسی', 'مستمر', 'پایانی', 'ماهانه'];
 
 export function getRandomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+  return randomInt(min, max + 1);
 }
 
 export function getRandomElement(arr) {
