@@ -145,11 +145,11 @@ test('نقاط ورود اصلی (render/boot) موجودند', () => {
 
 test('تگ‌های HTML متوازن‌اند', () => {
   // در رشته‌های قالبیِ چاپ، تگ بسته به شکل <\\/script> نوشته می‌شود؛ هر دو شکل شمرده می‌شوند
-  const open = (html.match(/<script[\s>]/g) || []).length;
-  const close = (html.match(/<\\?\/script>/g) || []).length;
+  const open = (html.match(/<script[\s>]/gi) || []).length;
+  const close = (html.match(/<\\?\/script>/gi) || []).length;
   assert(open === close, `تگ script نامتوازن: ${open} باز / ${close} بسته`);
-  const so = (html.match(/<style[\s>]/g) || []).length;
-  const sc = (html.match(/<\\?\/style>/g) || []).length;
+  const so = (html.match(/<style[\s>]/gi) || []).length;
+  const sc = (html.match(/<\\?\/style>/gi) || []).length;
   assert(so === sc, `تگ style نامتوازن: ${so} باز / ${sc} بسته`);
 });
 
