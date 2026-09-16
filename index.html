@@ -1143,9 +1143,23 @@ reject(err);
 });
 });
 };
+function generateQueueUid() {
+var g = (typeof globalThis !== 'undefined') ? globalThis : (typeof window !== 'undefined' ? window : null);
+var c = g && g.crypto;
+if (c && typeof c.getRandomValues === 'function') {
+var bytes = new Uint8Array(8);
+c.getRandomValues(bytes);
+var hex = '';
+for (var i = 0; i < bytes.length; i++) {
+hex += ('0' + bytes[i].toString(16)).slice(-2);
+}
+return 'q_' + Date.now() + '_' + hex;
+}
+return 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+}
 OfflineStorage.prototype.addToQueue = function(op) {
 var self = this;
-var uid = op.uid || ('q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6));
+var uid = op.uid || generateQueueUid();
 var actualOp = (op.op && typeof op.op === 'object') ? op.op : op;
 var item = {
 uid: uid,
@@ -1962,6 +1976,8 @@ national_id:'9990000311',phone:'09990000031',active:1,title:'نگهبان/پذی
 var t1=db.users.filter(function(u){return u.role==='teacher'&&u.school_id===1&&u.active===1;});
 if(t1.length>=2) t1[t1.length-1].lib_staff=1;
 if(t1.length>=3) t1[t1.length-2].asset_staff=1;
+var officeUsers=db.users.filter(function(u){return u.role==='edu_office'&&u.active===1;});
+if(officeUsers.length>0) officeUsers[0].is_head=1;
 })();
 }
 
@@ -2901,6 +2917,16 @@ return true;
 toast('حافظهٔ مرورگر پر است — تغییراتِ جدید ذخیره نشد؛ صف را خلوت کنید', 'err', { sticky: true });
 return false;
 }
+function secureRandomBase36(len){
+const n = Math.max(1, len|0);
+const bytes = new Uint8Array(n);
+crypto.getRandomValues(bytes);
+let out = '';
+for(let i = 0; i < n; i++){
+out += (bytes[i] % 36).toString(36);
+}
+return out;
+}
 function enqueueOp(op){
 if(op && op.data && (op.data.id !== undefined || op.data.by !== undefined)){
 const clean = {};
@@ -2911,7 +2937,7 @@ clean[k] = op.data[k];
 op = Object.assign({}, op, { data: clean });
 }
 const item = {
-uid       : 'op_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8),
+uid       : 'op_' + Date.now().toString(36) + '_' + secureRandomBase36(6),
 op        : op,
 status    : 'pending',
 tries     : 0,
@@ -4188,6 +4214,12 @@ if(route === 'library' && role === 'teacher'){
 try{
 var me = (typeof S !== 'undefined') ? S.user : null;
 if(me && me.lib_staff === 1) return true;
+}catch(e){}
+}
+if(role === 'edu_office' && (route === 'office-msg' || route === 'office-print' || route === 'office-dash')){
+try{
+var me = (typeof S !== 'undefined') ? S.user : null;
+if(me && me.is_head === 1) return true;
 }catch(e){}
 }
 if(route === 'assets' && role === 'teacher'){
@@ -6498,7 +6530,7 @@ const jd=/\sdata-jd="([^"]+)"/.exec(s);
 const labelId=jd?'jdate-label-'+jd[1]:'';
 const labelAttrs=(m&&!jd?` for="${escAttr(m[1])}"`:'')+(labelId?` id="${escAttr(labelId)}"`:'');
 if(m||labelId) return `<div class="field"><label${labelAttrs}>${label}</label>${s}</div>`;
-const plain=String(label).replace(/<[^>]*>/g,'').replace(/"/g,'&quot;').trim();
+const plain=String(label).replace(/[<>]/g,'').replace(/"/g,'&quot;').trim();
 const patched=plain?s.replace(/<(input|select|textarea)\b(?![^>]*aria-label)/i,`<$1 aria-label="${plain}"`):s;
 return `<div class="field"><label>${label}</label>${patched}</div>`;
 };
@@ -8218,7 +8250,7 @@ return String(x).replace(/&amp;/g,'&').replace(/&lt;/g,'<')
 var sharedXml = await inflate(files['xl/sharedStrings.xml']);
 var shared = (sharedXml.match(/<si>[\s\S]*?<\/si>/g) || []).map(function(si){
 var parts = si.match(/<t[^>]*>([\s\S]*?)<\/t>/g) || [];
-return unent(parts.map(function(t){ return t.replace(/<[^>]*>/g, ''); }).join(''));
+return unent(parts.map(function(t){ return t.replace(/[<>]/g, ''); }).join(''));
 });
 var wbXml = await inflate(files['xl/workbook.xml']);
 var sheetNames = (wbXml.match(/<sheet[^>]*name="([^"]*)"/g) || []).map(function(m){
@@ -12956,11 +12988,11 @@ vclassIdbGet(VCLASS_STORE, s.file_key).then(function(blob){
 if(!blob){ toast('فایل دیگر در ذخیره‌گاه نیست','err'); return; }
 const url = (typeof URL!=='undefined' && URL.createObjectURL) ? URL.createObjectURL(blob) : '';
 openModal(modalTpl('🎬 ' + (s.title||''),
-'<video controls style="width:100%;max-height:62vh;background:#000;border-radius:10px" data-vurl="'+escAttr(url)+'"></video>'
+'<video controls style="width:100%;max-height:62vh;background:#000;border-radius:10px"></video>'
 + (s.description ? '<div class="small muted" style="margin-top:10px">'+esc(s.description)+'</div>' : ''), ''));
 setTimeout(function(){
 const v = document.querySelector('#modal video');
-if(v && v.getAttribute('data-vurl')) v.src = v.getAttribute('data-vurl');
+if(v && url) v.src = url;
 }, 60);
 });
 },
@@ -15222,9 +15254,13 @@ s.city=(byId('counties',d.county_id)||{}).name||s.city;
 });
 const mk=(name,level,scope,username)=>{
 const o=add('offices',Object.assign({name,level,active:1},scope));
-const u=add('users',{school_id:null,office_id:o.id,role:'edu_office',full_name:'کارشناس '+name,
-username,password:'123456',national_id:makeNid(),phone:demoPhone(),active:1,created_at:daysAgoISO(320)});
-o.user_id=u.id;
+const headUser=add('users',{school_id:null,office_id:o.id,role:'edu_office',is_head:1,
+full_name:'رئیس '+name,username:username+'_head',password:'123456',
+national_id:makeNid(),phone:demoPhone(),active:1,created_at:daysAgoISO(320)});
+const expertUser=add('users',{school_id:null,office_id:o.id,role:'edu_office',is_head:0,
+full_name:'کارشناس '+name,username,password:'123456',
+national_id:makeNid(),phone:demoPhone(),active:1,created_at:daysAgoISO(320)});
+o.user_id=headUser.id;
 return o;
 };
 const kurd=db.provinces[0], baneh=db.counties.find(c=>c.name==='بانه'), sanandaj=db.counties.find(c=>c.name==='سنندج');
