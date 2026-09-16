@@ -30,7 +30,7 @@ let pass = 0, fail = 0;
 const errors = [];
 function chk(name, cond, extra) {
   if (cond) { pass++; console.log('  ✅ ' + name); }
-  else { fail++; errors.push(name + (extra !== undefined ? ' — ' + String(extra).slice(0, 160) : '')); console.log('  ❌ ' + name + (extra !== undefined ? ' — ' + String(extra).slice(0, 160) : '')); }
+  else { fail++; errors.push(name + (extra !== undefined ? ' — [redacted]' : '')); console.log('  ❌ ' + name + (extra !== undefined ? ' — [redacted]' : '')); }
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
