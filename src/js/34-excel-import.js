@@ -235,7 +235,7 @@ async function parseXLSX(file){
   var sharedXml = await inflate(files['xl/sharedStrings.xml']);
   var shared = (sharedXml.match(/<si>[\s\S]*?<\/si>/g) || []).map(function(si){
     var parts = si.match(/<t[^>]*>([\s\S]*?)<\/t>/g) || [];
-    return unent(parts.map(function(t){ return t.replace(/<[^>]*>/g, ''); }).join(''));
+    return unent(parts.map(function(t){ return t.replace(/[<>]/g, ''); }).join(''));
   });
   var wbXml = await inflate(files['xl/workbook.xml']);
   var sheetNames = (wbXml.match(/<sheet[^>]*name="([^"]*)"/g) || []).map(function(m){
