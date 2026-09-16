@@ -63,10 +63,19 @@ for (const t of typos) {
 }
 
 /* ۴. بخش فنی توسعه‌دهنده حذف شده باشد (مرجعش docs/AI_PROMPT.md است) */
+function stripHtmlCommentsFully(input) {
+  let prev, cur = input;
+  do {
+    prev = cur;
+    cur = cur.replace(/<!--[\s\S]*?-->/g, '');
+  } while (cur !== prev);
+  return cur;
+}
+
 check('سرفصل «قاعدهٔ همگامی» (فنی) داخل راهنمای کاربر نیست',
   !guide.includes('<h2>🔁 قاعدهٔ همگامی'));
 check('فرمان‌های توسعه‌دهنده (node build.js / _shots.js) در متن راهنما نیست',
-  !/node build\.js|_shots\.js/.test(guide.replace(/<!--[\s\S]*?-->/g, '')));
+  !/node build\.js|_shots\.js/.test(stripHtmlCommentsFully(guide)));
 
 /* ۵. فصل «تازه‌های سامانه» و ماژول‌های تازه */
 check('فصل «تازه‌های سامانه» (id=whatsnew) هست', guide.includes('id="whatsnew"'));
