@@ -45,6 +45,7 @@
 |---|---|---|---|
 | `ROADMAP.md` | نقشهٔ راه ملی: فازها، موج‌های ۰–۲۰، §۲۷–§۳۳ | ✅ | ۲۰۲۶-۰۹-۱۰ |
 | `NATIONAL_ROADMAP_PROGRESS.md` | تابلوی پیشرفت موج‌ها و مالکیت آرناها | 🟡 با هر مرج به‌روز می‌شود | ۲۰۲۶-۰۹-۱۰ |
+| `roadmaps/ROADMAP_V3_EDUCATIONAL_INTELLIGENCE.md` | نقشهٔ راه V3 — توسعهٔ آموزشی و اطمینان خانواده (مکمل، Proposed)؛ ارجاعِ ورودی برای رفعِ یتیمی | 🟡 پیشنویس | ۲۰۲۶-۰۹-۱۷ |
 | `NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md` | الحاقیه: چندمستأجری ۵سطحی + مونولیت ماژولار + فهرست ممنوعه | ✅ | ۲۰۲۶-۰۹-۱۰ |
 | `CAPACITY_MODEL.md` | مدل ظرفیت رسمی: پروفایل بار، محاسبات، نقاط اشباع | ✅ (اعداد در انتظار اثبات) | ۲۰۲۶-۰۹-۱۰ |
 | `LOAD_TEST_PLAN.md` | طرح رسمی آزمون بار موج ۱۸ (جایگزین طرح‌های قدیمی) | ✅ | ۲۰۲۶-۰۹-۱۰ |
@@ -329,6 +330,11 @@
 | `daily-reports/2026-09-12-chat2-hydrate-p04-verification.md` | راستی‌آزمایی وضعیت PAYESH_PG_HYDRATE (جواب «گزینهٔ ۲» چت ۲) + حکم P0-4 (#102): ACCEPT با شرط — وضعیت واقعیِ شاخهٔ #94 و main با شاهد (PR #128) | ✅ | ۲۰۲۶-۰۹-۱۲ |
 | `daily-reports/2026-09-12-p1-3-public-report-pg.md` | P1-3 — تجمیع گزارش عمومی سمت PostgreSQL (Wave 18 §۵-۸): PR #127 + rebaseٔ P1-2 روی main جدید (#124) (PR #128) | ✅ | ۲۰۲۶-۰۹-۱۲ |
 | `daily-audits/2026-09-14.md` | ممیزیِ روزانهٔ ۰۹-۱۴ (سندِ موجود در مخزن) — ارجاعِ ورودی برای رفعِ یتیمی | ✅ | ۲۰۲۶-۰۹-۱۴ |
+| `daily-audits/2026-09-15-session-01a0a651-escalation.md` | Escalation به Chat1 — هویتِ Arena بی‌داوری + نبودِ Mission (NOT EXECUTED)؛ ارجاعِ ورودی برای رفعِ یتیمی | ✅ | ۲۰۲۶-۰۹-۱۵ |
+| `daily-audits/2026-09-15-session-01a0a656-state-recovery.md` | Chat9 — بازیابیِ وضعیت + Hand-back (شاخهٔ arena/01a0a656-p2)؛ ارجاعِ ورودی برای رفعِ یتیمی | ✅ | ۲۰۲۶-۰۹-۱۵ |
+| `daily-audits/2026-09-15-session-01a0a658-state-recovery.md` | بازیابیِ وضعیت + Hand-back — تناقضِ هویت (CHAT 6 در برابر CHAT 7)، NOT EXECUTED؛ ارجاعِ ورودی برای رفعِ یتیمی | ✅ | ۲۰۲۶-۰۹-۱۵ |
+| `daily-audits/2026-09-15-session-01a0a65b-state-recovery.md` | بازیابیِ وضعیت + Escalation — هویتِ UNADJUDICATED، NOT EXECUTED؛ ارجاعِ ورودی برای رفعِ یتیمی | ✅ | ۲۰۲۶-۰۹-۱۵ |
+| `daily-audits/2026-09-17-parallel-failover-governance-change.md` | سندِ تغییرِ حاکمیت ۰۹-۱۷ — مدلِ اجرای موازی/فِیلاوِر و حذفِ گلوگاهِ سریالی؛ ارجاعِ ورودی برای رفعِ یتیمی | ✅ | ۲۰۲۶-۰۹-۱۷ |
 
 ## ۳) نمودار وابستگی اسناد
 
