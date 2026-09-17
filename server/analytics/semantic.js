@@ -2,19 +2,20 @@
  * ═══════════════════════════════════════════════════════════════════
  * server/analytics/semantic.js — Educational Semantic Layer (P0-EI-01)
  * ───────────────────────────────────────────────────────────────────
- * منبع واحد حقیقت (Single Source of Truth) برای شاخص‌ها و KPIهای آموزشی.
+ * منبع واحد حقیقت (Single Source of Truth) برای شاخص‌ها و مفاهیم آموزشی.
  * 
  * اصول حاکمیتی:
- *  ۱) جلوگیری از Semantic Metric Drift: مخرج و صورت همهٔ شاخص‌ها در این
- *     لایه تعریفِ استاندارد و تغییرناپذیر دارند.
- *  ۲) Explainable & Deterministic Analytics: محاسبات به روش‌های قطعی و
- *     کاملاً شفاف انجام می‌شوند؛ بدون برازش جعبه‌سیاه یا مدل‌های غیرشفاف.
+ *  ۱) ریشه‌کنی Semantic Metric Drift: تمام تعاریف صورت و مخرج به صورت
+ *     تغییرناپذیر و متمرکز پیاده‌سازی شده‌اند.
+ *  ۲) Explainable & Deterministic Analytics: محاسبات به روش‌های قطعی،
+ *     ریاضی محض و کاملاً شفاف انجام می‌شوند؛ بدون برازش جعبه‌سیاه یا ML.
  *  ۳) Strict Tenant Isolation: تمام توابع ایزولاسیون مدرسه‌ای (school_id)
  *     را بررسی و اعتبارسنجی می‌کنند؛ اختلاط داده‌های چند مستأجر ممنوع است.
  *  ۴) Partition Pruning Friendly: توابع تولید کوئری همیشه شروط الزامی
  *     بازهٔ زمانی (created_at) و school_id را برای جداول پارتیشن‌شده اعمال می‌کنند.
  *  ۵) Null & Zero-Division Safety: در نبود داده کافی، شاخص هرگز صفر یا صد
  *     جعلی پس نمی‌دهد؛ مقدار null با ثبت صریح علت در data_quality برمی‌گردد.
+ *  ۶) Mutation Safety: هیچ تابعی آرایه‌ها یا اشیای ورودی را دستکاری نمی‌کند.
  * ═══════════════════════════════════════════════════════════════════
  */
 
@@ -80,6 +81,57 @@ const METRIC_REGISTRY = Object.freeze({
     numerator_def: 'ترکیب وزنی ۴ بعد: حضور (۳۰٪)، عملکرد تحصیلی (۳۵٪)، پایداری روند (۲۰٪)، کیفیت داده (۱۵٪)',
     denominator_def: 'مجموع اوزان استاندارد (۱.۰۰)',
     owner: 'Arena 2 / Educational Intelligence'
+  },
+  LEARNER_PROGRESS: {
+    id: 'learner_progress',
+    title: 'پروفایل پیشرفت یادگیرنده',
+    title_en: 'Learner Progress Profile',
+    version: '1.0.0',
+    unit: 'profile',
+    numerator_def: 'نمرات نرمال‌شده به تفکیک تکوینی/تراکمی و روند سرعت رشد',
+    denominator_def: 'تعداد ارزیابی‌های معتبر دانش‌آموز',
+    owner: 'Arena 2 / Educational Intelligence'
+  },
+  COURSE_ENGAGEMENT: {
+    id: 'course_engagement',
+    title: 'مشارکت در درس',
+    title_en: 'Course Engagement',
+    version: '1.0.0',
+    unit: 'score_100',
+    range: [0, 100],
+    numerator_def: 'ترکیب وزنی حضور در کلاس درس و فعالیت‌های آموزشی ثبت‌شده',
+    denominator_def: 'کل جلسات و فعالیت‌های برنامه‌ریزی‌شده درس',
+    owner: 'Arena 2 / Educational Intelligence'
+  },
+  ASSESSMENT_QUALITY: {
+    id: 'assessment_quality',
+    title: 'کیفیت و دشواری سنجش',
+    title_en: 'Assessment Quality Semantics',
+    version: '1.0.0',
+    unit: 'indices',
+    numerator_def: 'شاخص ضریب دشواری (p-value) و شاخص تمایز (D-index)',
+    denominator_def: 'تعداد کل شرکت‌کنندگان در آزمون',
+    owner: 'Arena 2 / Educational Intelligence'
+  },
+  COMPLETION_STATUS: {
+    id: 'completion_status',
+    title: 'وضعیت تکمیل و ارتقای تحصیلی',
+    title_en: 'Completion & Promotion Status',
+    version: '1.0.0',
+    unit: 'status',
+    numerator_def: 'تعداد دروس گذرانده‌شده و معدل کل',
+    denominator_def: 'کل واحدهای درسی ثبت‌نامی دوره',
+    owner: 'Arena 2 / Educational Intelligence'
+  },
+  EDUCATIONAL_ACTIVITY_SUMMARY: {
+    id: 'educational_activity_summary',
+    title: 'خلاصه فعالیت‌های آموزشی',
+    title_en: 'Educational Activity Summary',
+    version: '1.0.0',
+    unit: 'summary',
+    numerator_def: 'مجموع کنش‌های ثبت حضور، ارزشیابی و رویدادهای آموزشی',
+    denominator_def: 'بازه زمانی مورد سنجش',
+    owner: 'Arena 2 / Educational Intelligence'
   }
 });
 
@@ -112,10 +164,10 @@ function parseValidScore(rawScore, rawMax = 20) {
  * بررسی ایزولاسیون مستأجران (Tenant Isolation Guard)
  */
 function enforceTenantIsolation(records, expectedSchoolId) {
-  if (!expectedSchoolId) return;
+  if (!expectedSchoolId || !Array.isArray(records)) return;
   for (let i = 0; i < records.length; i++) {
     const r = records[i];
-    if (r.school_id !== undefined && r.school_id !== null && Number(r.school_id) !== Number(expectedSchoolId)) {
+    if (r && r.school_id !== undefined && r.school_id !== null && Number(r.school_id) !== Number(expectedSchoolId)) {
       const err = new Error(`Tenant isolation violation: Record school_id (${r.school_id}) does not match expected (${expectedSchoolId})`);
       err.code = 'TENANT_ISOLATION_VIOLATION';
       err.expectedSchoolId = expectedSchoolId;
@@ -127,19 +179,11 @@ function enforceTenantIsolation(records, expectedSchoolId) {
 
 /**
  * ۱) محاسبه نرخ حضور (Attendance Rate)
- * ─────────────────────────────────────────────────────────────────
- * فرمول تقویمی (Calendar):
- *   صورت: حاضرین + (وزن_تاخیر * تعداد_تاخیر)
- *   مخرج: کل جلسات ثبت‌شده (حاضر + غایب + تاخیر + موجه)
- * 
- * فرمول خالص (Net):
- *   صورت: حاضرین + (وزن_تاخیر * تعداد_تاخیر)
- *   مخرج: جلسات خالص (حاضر + غایب + تاخیر) — غیبت موجه از مخرج کسر می‌شود.
  */
 function calculateAttendanceRate(records, options = {}) {
   const {
-    formula = 'calendar', // 'calendar' | 'net'
-    lateWeight = 1.0,     // وزن در حضور (پیش‌فرض ۱.۰)
+    formula = 'calendar',
+    lateWeight = 1.0,
     expectedSchoolId = null
   } = options;
 
@@ -167,7 +211,7 @@ function calculateAttendanceRate(records, options = {}) {
 
   for (let i = 0; i < records.length; i++) {
     const r = records[i];
-    const st = String(r.status || '').toLowerCase().trim();
+    const st = String((r && r.status) || '').toLowerCase().trim();
     if (st === 'present' || st === 'حاضر') {
       presentCount++;
     } else if (st === 'late' || st === 'تاخیر' || st === 'تأخیر') {
@@ -187,7 +231,6 @@ function calculateAttendanceRate(records, options = {}) {
   if (formula === 'net') {
     denominator = presentCount + lateCount + absentCount + unclassifiedCount;
   } else {
-    // تقویمی (Calendar)
     denominator = presentCount + lateCount + absentCount + excusedCount + unclassifiedCount;
   }
 
@@ -234,18 +277,11 @@ function calculateAttendanceRate(records, options = {}) {
 
 /**
  * ۲) محاسبه نرخ غیبت مزمن (Chronic Absence Rate)
- * ─────────────────────────────────────────────────────────────────
- * استاندارد ملی:
- *   دانش‌آموزی که ۱۰٪ یا بیشتر از جلسات آموزشی را به دلیل غیبت (موجه یا غیرموجه)
- *   از دست داده باشد، دچار غیبت مزمن است.
- * 
- * مخرج: دانش‌آموزان واجد شرایط (دارای حداقل minRequiredSessions جلسه)
- * صورت: دانش‌آموزانی که نسبت غیبت آن‌ها >= chronicThreshold است.
  */
 function calculateChronicAbsence(records, options = {}) {
   const {
-    chronicThreshold = 0.10, // ۱۰ درصد غیبت
-    minRequiredSessions = 5, // حداقل جلسات برای واجد شرایط بودن در ارزیابی
+    chronicThreshold = 0.10,
+    minRequiredSessions = 5,
     expectedSchoolId = null
   } = options;
 
@@ -266,11 +302,11 @@ function calculateChronicAbsence(records, options = {}) {
 
   enforceTenantIsolation(records, expectedSchoolId);
 
-  // تجمیع بر اساس دانش‌آموز
   const studentMap = {};
 
   for (let i = 0; i < records.length; i++) {
     const r = records[i];
+    if (!r) continue;
     const sid = r.student_id;
     if (!sid) continue;
 
@@ -374,9 +410,6 @@ function calculateChronicAbsence(records, options = {}) {
 
 /**
  * ۳) توزیع آماری نمرات (Grade Distribution)
- * ─────────────────────────────────────────────────────────────────
- * محاسبه دقیق میانگین، میانه، انحراف معیار، چارک‌ها و هیستوگرام استاندارد
- * بر مقیاس ۲۰ نمره.
  */
 function calculateGradeDistribution(records, options = {}) {
   const {
@@ -410,7 +443,7 @@ function calculateGradeDistribution(records, options = {}) {
 
   for (let i = 0; i < records.length; i++) {
     const r = records[i];
-    const parsed = parseValidScore(r.score, r.max_score || 20);
+    const parsed = parseValidScore(r ? r.score : null, (r && r.max_score) || 20);
     if (parsed !== null) {
       validScores.push(parsed);
     } else {
@@ -438,7 +471,6 @@ function calculateGradeDistribution(records, options = {}) {
     };
   }
 
-  // مرتب‌سازی عددی برای صدک‌ها و میانه
   validScores.sort((a, b) => a - b);
 
   let sum = 0;
@@ -449,13 +481,11 @@ function calculateGradeDistribution(records, options = {}) {
     const s = validScores[i];
     sum += s;
 
-    // هیستوگرام فاصله‌ای
     if (s < 10) histogram.failed++;
     else if (s < 15) histogram.acceptable++;
     else if (s < 18) histogram.good++;
     else histogram.excellent++;
 
-    // دسته‌بندی توصیفی آموزش و پرورش
     if (s < 10) qualitative.needs_effort++;
     else if (s < 15) qualitative.acceptable++;
     else if (s < 18) qualitative.good++;
@@ -464,7 +494,6 @@ function calculateGradeDistribution(records, options = {}) {
 
   const mean = roundTo(sum / n, 2);
 
-  // محاسبه واریانس و انحراف معیار
   let sqDiffSum = 0;
   for (let i = 0; i < n; i++) {
     const diff = validScores[i] - mean;
@@ -473,7 +502,6 @@ function calculateGradeDistribution(records, options = {}) {
   const variance = roundTo(sqDiffSum / n, 3);
   const stdDev = roundTo(Math.sqrt(sqDiffSum / n), 2);
 
-  // محاسبه صدک‌ها (Percentile با اینترپولاسیون خطی ساده)
   function getPercentile(arr, p) {
     if (arr.length === 1) return arr[0];
     const index = p * (arr.length - 1);
@@ -484,7 +512,7 @@ function calculateGradeDistribution(records, options = {}) {
   }
 
   const q1 = getPercentile(validScores, 0.25);
-  const q2 = getPercentile(validScores, 0.50); // میانه
+  const q2 = getPercentile(validScores, 0.50);
   const q3 = getPercentile(validScores, 0.75);
   const iqr = roundTo(q3 - q1, 2);
 
@@ -512,10 +540,6 @@ function calculateGradeDistribution(records, options = {}) {
 
 /**
  * ۴) روند پیشرفت یادگیری (Learning Progress Trend)
- * ─────────────────────────────────────────────────────────────────
- * محاسبه جهت و شیب تغییرات نمرات در طول زمان با رگرسیون خطی ساده (OLS).
- * 
- * شرط صحت: حداقل ۳ نمره در تاریخ‌های معتبر نیاز است.
  */
 function calculateLearningProgressTrend(records, options = {}) {
   const {
@@ -540,21 +564,20 @@ function calculateLearningProgressTrend(records, options = {}) {
 
   enforceTenantIsolation(records, expectedSchoolId);
 
-  // پاکسازی و استخراج نقاط معتبر با تاریخ
   const validPoints = [];
   for (let i = 0; i < records.length; i++) {
     const r = records[i];
+    if (!r) continue;
     const score = parseValidScore(r.score, r.max_score || 20);
     if (score === null) continue;
 
-    // تاریخ یا timestamp
     let ts = 0;
     if (r.date) {
       ts = new Date(r.date).getTime();
     } else if (r.created_at) {
       ts = new Date(r.created_at).getTime();
     } else {
-      ts = i; // fallback ترتیبی
+      ts = i;
     }
 
     if (isNaN(ts) || ts <= 0) ts = i;
@@ -577,10 +600,8 @@ function calculateLearningProgressTrend(records, options = {}) {
     };
   }
 
-  // مرتب‌سازی بر اساس زمان
   validPoints.sort((a, b) => a.x - b.x);
 
-  // بهینه‌سازی مقیاس زمان برای جلوگیری از overflow رگرسیون (استفاده از اندیس جلسه)
   const n = validPoints.length;
   let sumX = 0;
   let sumY = 0;
@@ -588,7 +609,7 @@ function calculateLearningProgressTrend(records, options = {}) {
   let sumXX = 0;
 
   for (let i = 0; i < n; i++) {
-    const x = i + 1; // شماره جلسه امتحانی ۱ تا n
+    const x = i + 1;
     const y = validPoints[i].y;
     sumX += x;
     sumY += y;
@@ -612,7 +633,6 @@ function calculateLearningProgressTrend(records, options = {}) {
   const slope = ((n * sumXY) - (sumX * sumY)) / denominator;
   const intercept = (sumY - (slope * sumX)) / n;
 
-  // محاسبه R^2 (ضریب تعیین)
   const meanY = sumY / n;
   let ssTot = 0;
   let ssRes = 0;
@@ -627,7 +647,6 @@ function calculateLearningProgressTrend(records, options = {}) {
 
   const rSquared = ssTot === 0 ? 1 : Math.max(0, 1 - (ssRes / ssTot));
 
-  // تعیین جهت روند (Trend Direction)
   let direction = 'STABLE';
   if (slope > 0.25) {
     direction = 'IMPROVING';
@@ -664,14 +683,6 @@ function calculateLearningProgressTrend(records, options = {}) {
 
 /**
  * ۵) شاخص سلامت آموزشی مدرسه (School Educational Health Index)
- * ─────────────────────────────────────────────────────────────────
- * شاخص ترکیبی چهاربعدی با اوزان استاندارد:
- *  - حضور و درگیری (۳۰٪)
- *  - عملکرد تحصیلی (۳۵٪)
- *  - روند و پایداری رشد (۲۰٪)
- *  - پوشش و کیفیت داده (۱۵٪)
- * 
- * اصل No-Masking: اگر حتی یکی از ابعاد بحرانی باشد، پرچم بحرانی برافراشته می‌شود.
  */
 function calculateSchoolEducationalHealth(components = {}, options = {}) {
   const {
@@ -685,13 +696,11 @@ function calculateSchoolEducationalHealth(components = {}, options = {}) {
 
   const criticalFlags = [];
 
-  // ۱. بعد حضور (Attendance Dimension)
   const attRate = components.attendance_rate !== undefined ? components.attendance_rate : null;
   const chronicRate = components.chronic_absence_rate !== undefined ? components.chronic_absence_rate : 0;
   
   let attendanceScore = 50;
   if (attRate !== null) {
-    // جریمه غیبت مزمن
     const chronicPenalty = (chronicRate || 0) * 1.5;
     attendanceScore = Math.max(0, Math.min(100, attRate - chronicPenalty));
     if (chronicRate > 20) {
@@ -702,9 +711,8 @@ function calculateSchoolEducationalHealth(components = {}, options = {}) {
     }
   }
 
-  // ۲. بعد علمی (Academic Dimension)
   const avgGrade = components.mean_grade !== undefined ? components.mean_grade : null;
-  const failRate = components.failure_rate !== undefined ? components.failure_rate : 0; // درصد نمرات زیر ۱۰
+  const failRate = components.failure_rate !== undefined ? components.failure_rate : 0;
 
   let academicScore = 50;
   if (avgGrade !== null) {
@@ -719,9 +727,8 @@ function calculateSchoolEducationalHealth(components = {}, options = {}) {
     }
   }
 
-  // ۳. بعد روند پیشرفت (Progress Dimension)
-  const improvingRatio = components.improving_students_ratio || 0; // بین ۰ تا ۱
-  const decliningRatio = components.declining_students_ratio || 0; // بین ۰ تا ۱
+  const improvingRatio = components.improving_students_ratio || 0;
+  const decliningRatio = components.declining_students_ratio || 0;
   
   let progressScore = 50 + ((improvingRatio - decliningRatio) * 50);
   progressScore = Math.max(0, Math.min(100, progressScore));
@@ -729,7 +736,6 @@ function calculateSchoolEducationalHealth(components = {}, options = {}) {
     criticalFlags.push('ALARMING_LEARNING_DECLINE');
   }
 
-  // ۴. بعد کیفیت و پوشش داده (Data Quality Dimension)
   const classCoverage = components.class_coverage_ratio !== undefined ? components.class_coverage_ratio : 1.0;
   const dataFreshness = components.data_freshness_ratio !== undefined ? components.data_freshness_ratio : 1.0;
   
@@ -738,7 +744,6 @@ function calculateSchoolEducationalHealth(components = {}, options = {}) {
     criticalFlags.push('LOW_DATA_COVERAGE');
   }
 
-  // محاسبه شاخص نهایی
   const totalWeight = weights.attendance + weights.academic + weights.progress + weights.data_quality;
   const composite = (
     (attendanceScore * weights.attendance) +
@@ -749,7 +754,6 @@ function calculateSchoolEducationalHealth(components = {}, options = {}) {
 
   const finalScore = roundTo(composite, 2);
 
-  // رده‌بندی کیفی
   let rating = 'GOOD';
   if (finalScore >= 85) {
     rating = 'EXCELLENT';
@@ -761,7 +765,6 @@ function calculateSchoolEducationalHealth(components = {}, options = {}) {
     rating = 'CRITICAL';
   }
 
-  // اگر پرچم‌های بحرانی وجود داشته باشد، رتبه نمی‌تواند EXCELLENT باشد
   if (criticalFlags.length > 0 && rating === 'EXCELLENT') {
     rating = 'GOOD';
   }
@@ -784,8 +787,540 @@ function calculateSchoolEducationalHealth(components = {}, options = {}) {
 }
 
 /**
- * ۶) سازنده کوئری‌های پایگاه‌داده حافظِ Partition Pruning و Tenant Isolation
+ * ۶) پروفایل پیشرفت یادگیرنده (Learner Progress Semantics)
  * ─────────────────────────────────────────────────────────────────
+ * تحلیل چندبعدی عملکرد یک دانش‌آموز بر پایه ارزشیابی تکوینی و تراکمی،
+ * سطح تسلط و شاخص ثبات عملکرد در دروس.
+ */
+function evaluateLearnerProgress(studentData = {}, options = {}) {
+  const {
+    studentId = (studentData && studentData.studentId) || null,
+    grades = (studentData && studentData.grades) || [],
+    expectedSchoolId = null
+  } = options;
+
+  if (!studentId) {
+    const err = new Error('studentId is required for evaluateLearnerProgress');
+    err.code = 'INVALID_INPUT';
+    throw err;
+  }
+
+  if (!Array.isArray(grades) || grades.length === 0) {
+    return {
+      metric_id: METRIC_REGISTRY.LEARNER_PROGRESS.id,
+      version: METRIC_REGISTRY.LEARNER_PROGRESS.version,
+      student_id: studentId,
+      mastery_level: 'NO_DATA',
+      overall_mean: null,
+      formative_mean: null,
+      summative_mean: null,
+      formative_summative_gap: null,
+      progress_velocity: null,
+      stability_score: null,
+      subjects_breakdown: {},
+      observations_count: 0,
+      data_quality: { status: 'NO_DATA', completeness: 0 }
+    };
+  }
+
+  enforceTenantIsolation(grades, expectedSchoolId);
+
+  const formativeScores = [];
+  const summativeScores = [];
+  const allScores = [];
+  const subjectsMap = {};
+
+  for (let i = 0; i < grades.length; i++) {
+    const g = grades[i];
+    if (!g) continue;
+    const score = parseValidScore(g.score, g.max_score || 20);
+    if (score === null) continue;
+
+    allScores.push(score);
+
+    const isSummative = (g.kind === 'final' || g.exam_type === 'final' || g.kind === 'نهایی');
+    if (isSummative) {
+      summativeScores.push(score);
+    } else {
+      formativeScores.push(score);
+    }
+
+    const subId = g.subject_id || 'unknown';
+    if (!subjectsMap[subId]) {
+      subjectsMap[subId] = [];
+    }
+    subjectsMap[subId].push(score);
+  }
+
+  const n = allScores.length;
+  if (n === 0) {
+    return {
+      metric_id: METRIC_REGISTRY.LEARNER_PROGRESS.id,
+      version: METRIC_REGISTRY.LEARNER_PROGRESS.version,
+      student_id: studentId,
+      mastery_level: 'NO_DATA',
+      overall_mean: null,
+      formative_mean: null,
+      summative_mean: null,
+      formative_summative_gap: null,
+      progress_velocity: null,
+      stability_score: null,
+      subjects_breakdown: {},
+      observations_count: 0,
+      data_quality: { status: 'ALL_INVALID', completeness: 0 }
+    };
+  }
+
+  const avg = arr => arr.length ? roundTo(arr.reduce((a, b) => a + b, 0) / arr.length, 2) : null;
+  const overallMean = avg(allScores);
+  const formativeMean = avg(formativeScores);
+  const summativeMean = avg(summativeScores);
+
+  const formativeSummativeGap = (formativeMean !== null && summativeMean !== null)
+    ? roundTo(formativeMean - summativeMean, 2)
+    : null;
+
+  // سطح تسلط (Mastery Level)
+  let masteryLevel = 'BASIC';
+  if (overallMean >= 18.0) {
+    masteryLevel = 'ADVANCED';
+  } else if (overallMean >= 15.0) {
+    masteryLevel = 'PROFICIENT';
+  } else if (overallMean >= 10.0) {
+    masteryLevel = 'BASIC';
+  } else {
+    masteryLevel = 'BELOW_BASIC';
+  }
+
+  // سرعت رشد (Progress Velocity)
+  const trend = calculateLearningProgressTrend(grades, { expectedSchoolId });
+  const progressVelocity = trend.slope;
+
+  // محاسبه ثبات نمرات (Stability Score بر اساس واریانس بین دروس)
+  const subjectAverages = Object.keys(subjectsMap).map(k => avg(subjectsMap[k]));
+  let stabilityScore = 100;
+  if (subjectAverages.length > 1) {
+    const subMean = avg(subjectAverages);
+    const subVar = subjectAverages.reduce((sum, v) => sum + Math.pow(v - subMean, 2), 0) / subjectAverages.length;
+    const subStd = Math.sqrt(subVar);
+    stabilityScore = Math.max(0, Math.min(100, roundTo(100 - (subStd * 10), 1)));
+  }
+
+  const subjectsBreakdown = {};
+  for (const subId of Object.keys(subjectsMap)) {
+    const scores = subjectsMap[subId];
+    subjectsBreakdown[subId] = {
+      count: scores.length,
+      mean: avg(scores),
+      min: Math.min(...scores),
+      max: Math.max(...scores)
+    };
+  }
+
+  return {
+    metric_id: METRIC_REGISTRY.LEARNER_PROGRESS.id,
+    version: METRIC_REGISTRY.LEARNER_PROGRESS.version,
+    student_id: studentId,
+    mastery_level: masteryLevel,
+    overall_mean: overallMean,
+    formative_mean: formativeMean,
+    summative_mean: summativeMean,
+    formative_summative_gap: formativeSummativeGap,
+    progress_velocity: progressVelocity,
+    trend_direction: trend.direction,
+    stability_score: stabilityScore,
+    subjects_breakdown: subjectsBreakdown,
+    observations_count: n,
+    data_quality: {
+      status: n >= 5 ? 'COMPLETE' : 'PARTIAL_DATA',
+      completeness: Math.min(1.0, roundTo(n / 10, 2))
+    }
+  };
+}
+
+/**
+ * ۷) مشارکت در درس (Course Engagement Semantics)
+ * ─────────────────────────────────────────────────────────────────
+ * ارزیابی پیوستگی حضور و فعالیت در یک درس خاص.
+ */
+function evaluateCourseEngagement(engagementData = {}, options = {}) {
+  const {
+    courseId = engagementData.courseId || engagementData.subjectId || null,
+    attendance = engagementData.attendance || [],
+    activities = engagementData.activities || [],
+    expectedSchoolId = null,
+    lateWeight = 0.8
+  } = options;
+
+  if (!courseId) {
+    const err = new Error('courseId is required for evaluateCourseEngagement');
+    err.code = 'INVALID_INPUT';
+    throw err;
+  }
+
+  enforceTenantIsolation(attendance, expectedSchoolId);
+  enforceTenantIsolation(activities, expectedSchoolId);
+
+  const attRes = calculateAttendanceRate(attendance, { formula: 'calendar', lateWeight, expectedSchoolId });
+
+  let completedActivities = 0;
+  for (let i = 0; i < activities.length; i++) {
+    const a = activities[i];
+    if (a && (a.completed || a.submitted || a.attended)) {
+      completedActivities++;
+    }
+  }
+
+  const activityRate = activities.length > 0
+    ? roundTo((completedActivities / activities.length) * 100, 2)
+    : (attRes.value !== null ? attRes.value : 100);
+
+  let engagementScore = null;
+  if (attRes.value !== null) {
+    engagementScore = roundTo((attRes.value * 0.70) + (activityRate * 0.30), 2);
+  } else if (activities.length > 0) {
+    engagementScore = activityRate;
+  }
+
+  let tier = 'MODERATE';
+  if (engagementScore !== null) {
+    if (engagementScore >= 85) tier = 'HIGH';
+    else if (engagementScore >= 65) tier = 'MODERATE';
+    else if (engagementScore >= 45) tier = 'LOW';
+    else tier = 'DISENGAGED';
+  } else {
+    tier = 'NO_DATA';
+  }
+
+  const disengagementRisk = (engagementScore !== null && engagementScore < 60) || (attRes.counts.absent >= 3);
+
+  return {
+    metric_id: METRIC_REGISTRY.COURSE_ENGAGEMENT.id,
+    version: METRIC_REGISTRY.COURSE_ENGAGEMENT.version,
+    course_id: courseId,
+    engagement_score: engagementScore,
+    engagement_tier: tier,
+    disengagement_risk: disengagementRisk,
+    attendance_rate: attRes.value,
+    total_sessions: attRes.denominator,
+    attended_sessions: attRes.numerator,
+    activities_total: activities.length,
+    activities_completed: completedActivities,
+    data_quality: attRes.data_quality
+  };
+}
+
+/**
+ * ۸) کیفیت و دشواری سنجش (Assessment Quality Semantics)
+ * ─────────────────────────────────────────────────────────────────
+ * محاسبه ضریب دشواری (p-value) و شاخص تمایز (D-index) بر روی نتایج یک آزمون.
+ */
+function evaluateAssessmentSemantics(assessmentData = {}, options = {}) {
+  const {
+    assessmentId = assessmentData.assessmentId || assessmentData.examId || null,
+    grades = assessmentData.grades || [],
+    maxScore = 20,
+    passThreshold = 10,
+    expectedSchoolId = null
+  } = options;
+
+  if (!Array.isArray(grades) || grades.length === 0) {
+    return {
+      metric_id: METRIC_REGISTRY.ASSESSMENT_QUALITY.id,
+      version: METRIC_REGISTRY.ASSESSMENT_QUALITY.version,
+      assessment_id: assessmentId,
+      total_examinees: 0,
+      difficulty_index: null,
+      difficulty_classification: 'NO_DATA',
+      discrimination_index: null,
+      discrimination_quality: 'NO_DATA',
+      pass_rate: null,
+      mean_score: null,
+      data_quality: { status: 'NO_DATA', completeness: 0 }
+    };
+  }
+
+  enforceTenantIsolation(grades, expectedSchoolId);
+
+  const scores = [];
+  for (let i = 0; i < grades.length; i++) {
+    const g = grades[i];
+    const s = parseValidScore(g ? g.score : null, (g && g.max_score) || maxScore);
+    if (s !== null) scores.push(s);
+  }
+
+  const n = scores.length;
+  if (n === 0) {
+    return {
+      metric_id: METRIC_REGISTRY.ASSESSMENT_QUALITY.id,
+      version: METRIC_REGISTRY.ASSESSMENT_QUALITY.version,
+      assessment_id: assessmentId,
+      total_examinees: 0,
+      difficulty_index: null,
+      difficulty_classification: 'NO_DATA',
+      discrimination_index: null,
+      discrimination_quality: 'NO_DATA',
+      pass_rate: null,
+      mean_score: null,
+      data_quality: { status: 'ALL_INVALID', completeness: 0 }
+    };
+  }
+
+  scores.sort((a, b) => a - b);
+
+  const sum = scores.reduce((a, b) => a + b, 0);
+  const mean = sum / n;
+  const difficultyIndex = roundTo(mean / 20, 3); // نسبت به سقف 20
+
+  let diffClass = 'BALANCED';
+  if (difficultyIndex < 0.45) {
+    diffClass = 'HARD';
+  } else if (difficultyIndex > 0.75) {
+    diffClass = 'EASY';
+  } else {
+    diffClass = 'BALANCED';
+  }
+
+  // شاخص تمایز (D-index) با گروه بالایی (Top 27%) و پایینی (Bottom 27%)
+  let discriminationIndex = null;
+  let discQuality = 'ACCEPTABLE';
+
+  const groupSize = Math.max(1, Math.floor(n * 0.27));
+  if (n >= 4) {
+    const bottomGroup = scores.slice(0, groupSize);
+    const topGroup = scores.slice(n - groupSize);
+
+    const bottomMean = bottomGroup.reduce((a, b) => a + b, 0) / groupSize;
+    const topMean = topGroup.reduce((a, b) => a + b, 0) / groupSize;
+
+    discriminationIndex = roundTo((topMean - bottomMean) / 20, 3);
+
+    if (discriminationIndex >= 0.40) discQuality = 'EXCELLENT';
+    else if (discriminationIndex >= 0.30) discQuality = 'GOOD';
+    else if (discriminationIndex >= 0.20) discQuality = 'ACCEPTABLE';
+    else discQuality = 'POOR';
+  }
+
+  const passedCount = scores.filter(s => s >= passThreshold).length;
+  const passRate = roundTo((passedCount / n) * 100, 2);
+
+  return {
+    metric_id: METRIC_REGISTRY.ASSESSMENT_QUALITY.id,
+    version: METRIC_REGISTRY.ASSESSMENT_QUALITY.version,
+    assessment_id: assessmentId,
+    total_examinees: n,
+    difficulty_index: difficultyIndex,
+    difficulty_classification: diffClass,
+    discrimination_index: discriminationIndex,
+    discrimination_quality: discQuality,
+    pass_rate: passRate,
+    mean_score: roundTo(mean, 2),
+    min_score: scores[0],
+    max_score: scores[n - 1],
+    data_quality: { status: 'COMPLETE', completeness: 1.0 }
+  };
+}
+
+/**
+ * ۹) وضعیت تکمیل و ارتقای تحصیلی (Completion & Promotion Semantics)
+ * ─────────────────────────────────────────────────────────────────
+ * ارزیابی شروط ارتقای پایه دانش‌آموز طبق مصوبات آموزش و پرورش.
+ */
+function evaluateCompletionSemantics(completionData = {}, options = {}) {
+  const {
+    studentId = completionData.studentId || null,
+    subjectGrades = completionData.subjectGrades || [],
+    passThreshold = 10.0,
+    maxFailedAllowed = 2,
+    expectedSchoolId = null
+  } = options;
+
+  if (!studentId) {
+    const err = new Error('studentId is required for evaluateCompletionSemantics');
+    err.code = 'INVALID_INPUT';
+    throw err;
+  }
+
+  if (!Array.isArray(subjectGrades) || subjectGrades.length === 0) {
+    return {
+      metric_id: METRIC_REGISTRY.COMPLETION_STATUS.id,
+      version: METRIC_REGISTRY.COMPLETION_STATUS.version,
+      student_id: studentId,
+      total_subjects: 0,
+      passed_subjects: 0,
+      failed_subjects: 0,
+      failed_subject_ids: [],
+      gpa: null,
+      completion_status: 'INCOMPLETE',
+      promotion_eligible: false,
+      makeup_exam_required: false,
+      data_quality: { status: 'NO_DATA', completeness: 0 }
+    };
+  }
+
+  enforceTenantIsolation(subjectGrades, expectedSchoolId);
+
+  let totalCoeff = 0;
+  let weightedSum = 0;
+  let passedCount = 0;
+  let failedCount = 0;
+  const failedSubjectIds = [];
+
+  for (let i = 0; i < subjectGrades.length; i++) {
+    const sub = subjectGrades[i];
+    if (!sub) continue;
+    const score = parseValidScore(sub.score, sub.max_score || 20);
+    if (score === null) continue;
+
+    const coeff = typeof sub.coeff === 'number' && sub.coeff > 0 ? sub.coeff : 1;
+    totalCoeff += coeff;
+    weightedSum += score * coeff;
+
+    if (score >= passThreshold) {
+      passedCount++;
+    } else {
+      failedCount++;
+      failedSubjectIds.push(sub.subject_id || sub.id || `sub_${i}`);
+    }
+  }
+
+  const validSubjectsCount = passedCount + failedCount;
+  if (validSubjectsCount === 0) {
+    return {
+      metric_id: METRIC_REGISTRY.COMPLETION_STATUS.id,
+      version: METRIC_REGISTRY.COMPLETION_STATUS.version,
+      student_id: studentId,
+      total_subjects: 0,
+      passed_subjects: 0,
+      failed_subjects: 0,
+      failed_subject_ids: [],
+      gpa: null,
+      completion_status: 'INCOMPLETE',
+      promotion_eligible: false,
+      makeup_exam_required: false,
+      data_quality: { status: 'ALL_INVALID', completeness: 0 }
+    };
+  }
+
+  const gpa = totalCoeff > 0 ? roundTo(weightedSum / totalCoeff, 2) : 0;
+
+  let completionStatus = 'PASSED';
+  let promotionEligible = false;
+
+  if (failedCount === 0) {
+    completionStatus = 'PASSED';
+    promotionEligible = true;
+  } else if (failedCount <= maxFailedAllowed && gpa >= passThreshold) {
+    completionStatus = 'CONDITIONAL';
+    promotionEligible = true; // قبولی با درس تجدیدی / تبصره
+  } else {
+    completionStatus = 'FAILED';
+    promotionEligible = false;
+  }
+
+  return {
+    metric_id: METRIC_REGISTRY.COMPLETION_STATUS.id,
+    version: METRIC_REGISTRY.COMPLETION_STATUS.version,
+    student_id: studentId,
+    total_subjects: validSubjectsCount,
+    passed_subjects: passedCount,
+    failed_subjects: failedCount,
+    failed_subject_ids: failedSubjectIds,
+    gpa,
+    completion_status: completionStatus,
+    promotion_eligible: promotionEligible,
+    makeup_exam_required: failedCount > 0,
+    data_quality: {
+      status: 'COMPLETE',
+      completeness: roundTo(validSubjectsCount / subjectGrades.length, 3)
+    }
+  };
+}
+
+/**
+ * ۱۰) خلاصه فعالیت‌های آموزشی (Educational Activity Summary)
+ * ─────────────────────────────────────────────────────────────────
+ * تجمیع آماری فعالیت‌های آموزشی برای سطوح دانش‌آموز، معلم و مدرسه.
+ */
+function generateEducationalActivitySummary(activityData = {}, options = {}) {
+  const {
+    scope = activityData.scope || 'school',
+    attendance = activityData.attendance || [],
+    grades = activityData.grades || [],
+    startDate = activityData.startDate || null,
+    endDate = activityData.endDate || null,
+    expectedSchoolId = null
+  } = options;
+
+  enforceTenantIsolation(attendance, expectedSchoolId);
+  enforceTenantIsolation(grades, expectedSchoolId);
+
+  const startTs = startDate ? new Date(startDate).getTime() : 0;
+  const endTs = endDate ? new Date(endDate).getTime() : Infinity;
+
+  const inPeriod = item => {
+    if (!item) return false;
+    const t = item.date ? new Date(item.date).getTime() : (item.created_at ? new Date(item.created_at).getTime() : null);
+    if (t === null || isNaN(t)) return true;
+    return t >= startTs && t <= endTs;
+  };
+
+  const filteredAttendance = attendance.filter(inPeriod);
+  const filteredGrades = grades.filter(inPeriod);
+
+  const activeDates = new Set();
+  const activeStudents = new Set();
+  const activeTeachers = new Set();
+
+  for (let i = 0; i < filteredAttendance.length; i++) {
+    const a = filteredAttendance[i];
+    if (a.date) activeDates.add(a.date);
+    if (a.student_id) activeStudents.add(a.student_id);
+  }
+
+  for (let i = 0; i < filteredGrades.length; i++) {
+    const g = filteredGrades[i];
+    if (g.date) activeDates.add(g.date);
+    if (g.student_id) activeStudents.add(g.student_id);
+    if (g.teacher_id) activeTeachers.add(g.teacher_id);
+  }
+
+  const attRes = calculateAttendanceRate(filteredAttendance, { formula: 'calendar', expectedSchoolId });
+  const gradeRes = calculateGradeDistribution(filteredGrades, { expectedSchoolId });
+
+  const totalActions = filteredAttendance.length + filteredGrades.length;
+  let status = 'ACTIVE';
+  if (totalActions === 0) status = 'INACTIVE';
+  else if (totalActions < 5) status = 'LOW_ACTIVITY';
+
+  return {
+    metric_id: METRIC_REGISTRY.EDUCATIONAL_ACTIVITY_SUMMARY.id,
+    version: METRIC_REGISTRY.EDUCATIONAL_ACTIVITY_SUMMARY.version,
+    scope,
+    period: { start_date: startDate, end_date: endDate },
+    summary_counts: {
+      total_actions: totalActions,
+      attendance_records: filteredAttendance.length,
+      grades_logged: filteredGrades.length,
+      active_days: activeDates.size,
+      active_students: activeStudents.size,
+      active_teachers: activeTeachers.size
+    },
+    metrics_summary: {
+      attendance_rate: attRes.value,
+      mean_grade: gradeRes.mean,
+      median_grade: gradeRes.median
+    },
+    activity_status: status,
+    data_quality: {
+      status: totalActions > 0 ? 'COMPLETE' : 'NO_DATA',
+      completeness: totalActions > 0 ? 1.0 : 0
+    }
+  };
+}
+
+/**
+ * ۱۱) سازنده کوئری‌های پایگاه‌داده حافظِ Partition Pruning و Tenant Isolation
  */
 function buildAttendanceKpiQuery(params = {}) {
   const {
@@ -806,7 +1341,6 @@ function buildAttendanceKpiQuery(params = {}) {
   const values = [Number(schoolId)];
   let idx = 2;
 
-  // شروط بازه زمانی برای فعال‌سازی Partition Pruning روی attendance
   if (startDate) {
     conditions.push(`created_at >= $${idx++}`);
     values.push(startDate);
@@ -855,7 +1389,6 @@ function buildGradesKpiQuery(params = {}) {
   const values = [Number(schoolId)];
   let idx = 2;
 
-  // شروط بازه زمانی برای Partition Pruning روی grades
   if (startDate) {
     conditions.push(`created_at >= $${idx++}`);
     values.push(startDate);
@@ -895,6 +1428,11 @@ module.exports = {
   calculateGradeDistribution,
   calculateLearningProgressTrend,
   calculateSchoolEducationalHealth,
+  evaluateLearnerProgress,
+  evaluateCourseEngagement,
+  evaluateAssessmentSemantics,
+  evaluateCompletionSemantics,
+  generateEducationalActivitySummary,
   buildAttendanceKpiQuery,
   buildGradesKpiQuery,
   parseValidScore,

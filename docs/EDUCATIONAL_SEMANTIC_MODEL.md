@@ -1,11 +1,12 @@
 # مدل معنایی شاخص‌های آموزشی (Educational Semantic Model)
 
 **شناسه سند:** `DOC-P0-EI-01-SEMANTIC-MODEL`  
-**وضعیت:** مصوب (Approved)  
-**نسخه:** `1.0.0`  
+**وضعیت:** مصوب و مستقر در کد (`server/analytics/semantic.js`)  
+**نسخه:** `1.1.0`  
 **تاریخ تصویب:** ۲۷ شهریور ۱۴۰۵ (2026-09-17)  
 **مالکیت فنی:** Arena 2 / Educational Intelligence  
 **ماژول اجرایی پیاده‌سازی:** `server/analytics/semantic.js`  
+**سوئیت آزمون‌های جامع:** `tests/semantic-layer/runner.js` (۱۳ سوئیت، ۱۰۰٪ سبز)  
 **اسناد بالادستی:** `docs/roadmaps/ROADMAP_V3_EDUCATIONAL_INTELLIGENCE.md` · `docs/ROADMAP.md`
 
 ---
@@ -13,13 +14,13 @@
 ## ۱. هدف و فلسفه طراحی (Core Purpose & Philosophy)
 
 سامانه پایش در فاز ۳ از یک ابزار صرفاً ثبتی به یک **سامانه تصمیم‌یار آموزشی و مدیریت کیفیت مدرسه** ارتقا می‌یابد.  
-مشکل بنیادین در سامانه‌های سنتی، **انحراف معنایی شاخص‌ها (Semantic Metric Drift)** است؛ به این معنا که یک شاخص مانند «نرخ حضور» یا «میانگین نمرات» در داشبورد مدیر مدرسه، داشبورد معلم، کارنامه والد و گزارش اداره با فرمول‌ها، مخرج‌ها و فیلترهای گوناگون محاسبه می‌شود و نتایج متناقض تولید می‌کند.
+مشکل بنیادین در سامانه‌های سنتی، **انحراف معنایی شاخص‌ها (Semantic Metric Drift)** است؛ به این معنا که یک شاخص مانند «نرخ حضور»، «معدل» یا «مشارکت» در داشبورد مدیر مدرسه، داشبورد معلم، کارنامه والد و گزارش اداره با فرمول‌ها، مخرج‌ها و فیلترهای گوناگون محاسبه می‌شود و نتایج متناقض تولید می‌کند.
 
-این سند قرارداد یکتای ریاضی، داده‌ای و حاکمیتی ۵ شاخص بنیادین آموزشی سامانه پایش را مشخص می‌سازد.
+این سند قرارداد یکتای داده‌ای، ریاضی و حاکمیتی تمامی شاخص‌های بنیادین لایه معنایی سامانه پایش را مشخص می‌سازد.
 
 ---
 
-## ۲. شاخص‌های پنج‌گانه بنیادین (Core Educational KPIs)
+## ۲. کاتالوگ شاخص‌ها و موجودیت‌های معنایی (Metric Registry)
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────────┐
@@ -32,167 +33,90 @@
 │ **۳**   │ توزیع آماری نمرات            │ `grade_distribution`       │ مقیاس ۲۰     │ ۰ تا ۲۰      │
 │ **۴**   │ روند پیشرفت یادگیری          │ `learning_progress_trend`   │ نمره/جلسه   │ ۲۰- تا ۲۰+   │
 │ **۵**   │ شاخص سلامت آموزشی مدرسه       │ `school_health_index`      │ شاخص ۱۰۰     │ ۰ تا ۱۰۰     │
+│ **۶**   │ پروفایل پیشرفت یادگیرنده      │ `learner_progress`         │ پروفایل     │ کیفی/کمی     │
+│ **۷**   │ مشارکت در درس                │ `course_engagement`        │ شاخص ۱۰۰     │ ۰ تا ۱۰۰     │
+│ **۸**   │ کیفیت و دشواری سنجش          │ `assessment_quality`       │ شاخص‌های p/D │ ۰ تا ۱.۰     │
+│ **۹**   │ تکمیل دوره و ارتقای تحصیلی    │ `completion_status`        │ وضعیت رسمی  │ PASSED/...   │
+│ **۱۰**  │ خلاصه فعالیت‌های آموزشی       │ `activity_summary`         │ خلاصه تجمیعی│ رویدادها     │
 └─────────┴───────────────────────────────┴────────────┴─────────────┴──────────────┘
 ```
 
 ---
 
-### ۲.۱. شاخص ۱: نرخ حضور (Attendance Rate)
+## ۳. قراردادهای معنایی دهگانه (Semantic Contracts)
 
-#### تعریف ریاضی
-در سامانه پایش دو حالت فرمولی رسمی تعریف شده است:
-1. **فرمول تقویمی (Calendar - حالت پیش‌فرض):**
-   $$AttendanceRate_{calendar} = \frac{N_{present} + (w_{late} \times N_{late})}{N_{present} + N_{late} + N_{absent} + N_{excused} + N_{unclassified}} \times 100$$
-2. **فرمول خالص (Net):**
-   $$AttendanceRate_{net} = \frac{N_{present} + (w_{late} \times N_{late})}{N_{present} + N_{late} + N_{absent} + N_{unclassified}} \times 100$$
+### ۳.۱. نرخ حضور (`calculateAttendanceRate`)
+- **ورودی الزامی:** `records` (آرایه‌ای از رکوردهای `attendance` شامل فیلد `status`).
+- **ورودی اختیاری:** `formula` (`calendar` پیش‌فرض یا `net`)، `lateWeight` (پیش‌فرض ۱.۰)، `expectedSchoolId`.
+- **اعتبارسنجی:** وضعیت‌ها باید ⊆ `{present, late, absent, excused}` یا معادل‌های فارسی باشند.
+- **خروجی:** شیء شامل `value`, `numerator`, `denominator`, `counts`, `data_quality`.
+- **منبع داده‌ای:** جدول `attendance` در PostgreSQL.
 
-- $w_{late}$: وزن تأخیر در محاسبه حضور (مقدار پیش‌فرض: `1.0`؛ در صورت سخت‌گیری انضباطی: `0.8`).
-- $N_{excused}$: تعداد غیبت‌های موجه (در فرمول خالص از مخرج کسر می‌شوند).
+### ۳.۲. نرخ غیبت مزمن (`calculateChronicAbsence`)
+- **ورودی الزامی:** `records` شامل `student_id` و `status`.
+- **ورودی اختیاری:** `chronicThreshold` (پیش‌فرض ۰.۱۰ معادل ۱۰٪)، `minRequiredSessions` (پیش‌فرض ۵ جلسه)، `expectedSchoolId`.
+- **خروجی:** `value`, `chronic_students_count`, `eligible_students_count`, `students_detail`.
+- **منبع داده‌ای:** جدول `attendance`.
 
-#### ورودی‌ها (Inputs)
-- آرایه‌ای از رکوردهای جدول `attendance`:
-  - `status`: رشته شامل مقادیر معتبر `present`, `late`, `absent`, `excused` (یا معادل‌های فارسی).
-  - `school_id`: شناسه مدرسه.
-  - `student_id`: شناسه دانش‌آموز.
-  - `created_at` / `date`: زمان برگزاری جلسه.
-- پارامتر `options`:
-  - `formula`: `'calendar'` یا `'net'`.
-  - `lateWeight`: ضریب تأخیر.
-  - `expectedSchoolId`: شناسه مدرسه مورد انتظار برای اعمال گارد ایزولاسیون.
+### ۳.۳. توزیع آماری نمرات (`calculateGradeDistribution`)
+- **ورودی الزامی:** `records` شامل فیلد `score` و اختیاری `max_score`.
+- **ورودی اختیاری:** `targetScale` (پیش‌فرض ۲۰)، `expectedSchoolId`.
+- **خروجی:** میانگین (`mean`)، میانه (`median`)، انحراف معیار (`std_dev`)، چارک‌ها (`q1`, `q2`, `q3`, `iqr`)، هیستوگرام ۴ باکت، و رده‌بندی ۴ گانه وزارتخانه.
+- **منبع داده‌ای:** جدول `grades`.
 
-#### خروجی استاندارد (Outputs)
-```json
-{
-  "metric_id": "attendance_rate",
-  "version": "1.0.0",
-  "formula": "calendar",
-  "value": 94.50,
-  "numerator": 189.0,
-  "denominator": 200,
-  "sample_size": 200,
-  "counts": {
-    "present": 180,
-    "late": 9,
-    "absent": 8,
-    "excused": 3,
-    "unclassified": 0
-  },
-  "data_quality": {
-    "status": "COMPLETE",
-    "completeness": 1.0,
-    "unclassified_ratio": 0.0
-  }
-}
-```
+### ۳.۴. روند پیشرفت یادگیری (`calculateLearningProgressTrend`)
+- **ورودی الزامی:** `records` شامل `score` و `date`/`created_at`.
+- **ورودی اختیاری:** `minObservations` (پیش‌فرض ۳ جلسه)، `expectedSchoolId`.
+- **خروجی:** `direction` (`IMPROVING`, `DECLINING`, `STABLE`, `VOLATILE`)، شیب رگرسیون خطی (`slope`)، ضریب تعیین (`r_squared`)، تغییر خالص (`net_change`).
+- **منبع داده‌ای:** جدول `grades`.
 
-#### مدیریت حالت‌های مرزی و داده‌های تهی (Null Handling & Edge Cases)
-- **مخرج صفر ($Denominator = 0$):** اگر هیچ رکوردی وجود نداشته باشد یا در فرمول خالص تمام جلسات موجه باشند، خروجی `value: null` بوده و وضعیت `data_quality.status = 'NO_DATA'` یا `'ZERO_DENOMINATOR'` بازگردانده می‌شود. به هیچ عنوان عدد فرضی ۰٪ یا ۱۰۰٪ تولید نمی‌شود.
-- **رکوردهای با وضعیت نامعتبر/تایپو:** در شمارنده `unclassified` ذخیره شده و از مخرج کسر نمی‌شوند؛ در نتیجه نسبت کیفیت داده کاهش می‌یابد (`PARTIAL_DATA`).
+### ۳.۵. شاخص سلامت آموزشی مدرسه (`calculateSchoolEducationalHealth`)
+- **ورودی الزامی:** `components` شامل `attendance_rate`, `mean_grade`, `chronic_absence_rate`, `failure_rate`, `improving_students_ratio`, `declining_students_ratio`, `class_coverage_ratio`.
+- **خروجی:** `composite_index` (۰ تا ۱۰۰)، رتبه کیفی (`EXCELLENT`, `GOOD`, `NEEDS_ATTENTION`, `CRITICAL`)، تفکیک ۴ بعد، و لیست پرچم‌های بحرانی (`critical_flags`) طبق اصل No-Masking.
 
----
+### ۳.۶. پروفایل پیشرفت یادگیرنده (`evaluateLearnerProgress`)
+- **ورودی الزامی:** `studentData.studentId` و `studentData.grades`.
+- **ورودی اختیاری:** `expectedSchoolId`.
+- **منطق:** تفکیک نمرات تکوینی (مستمر) از تراکمی (نهایی)، محاسبه فاصله تکوینی-تراکمی (`formative_summative_gap`)، سرعت رشد، و شاخص ثبات یادگیری در دروس (`stability_score`).
+- **خروجی:** سطح تسلط (`ADVANCED`, `PROFICIENT`, `BASIC`, `BELOW_BASIC`)، میانگین کل و تفکیک دروس.
 
-### ۲.۲. شاخص ۲: نرخ غیبت مزمن (Chronic Absence Rate)
+### ۳.۷. مشارکت در درس (`evaluateCourseEngagement`)
+- **ورودی الزامی:** `courseId` و `attendance`.
+- **ورودی اختیاری:** `activities` (تکالیف/کلاس مجازی)، `expectedSchoolId`.
+- **منطق:** ترکیب وزنی ۷۰٪ حضور و ۳۰٪ فعالیت‌های کلاسی.
+- **خروجی:** `engagement_score` (۰ تا ۱۰۰)، رده مشارکت (`HIGH`, `MODERATE`, `LOW`, `DISENGAGED`)، و پرچم هشدار قطع ارتباط (`disengagement_risk`).
 
-#### تعریف ریاضی
-مطابق با استانداردهای نوین بین‌المللی و ملی آموزش، دانش‌آموزی که **۱۰٪ یا بیشتر** از زمان مصوب آموزشی را به دلیل غیبت (اعم از موجه یا غیرموجه) از دست بدهد، دچار غیبت مزمن است زیرا آسیب از دست رفتن زمان یادگیری مستقل از علت غیبت است.
+### ۳.۸. کیفیت و دشواری سنجش (`evaluateAssessmentSemantics`)
+- **ورودی الزامی:** `grades` برای یک آزمون معین.
+- **ورودی اختیاری:** `assessmentId`, `maxScore`, `passThreshold`, `expectedSchoolId`.
+- **منطق:** محاسبه ضریب دشواری کلاسیک ($p$-value = میانگین / سقف) و شاخص تمایز ($D = p_{top27\%} - p_{bottom27\%}$).
+- **خروجی:** طبقه‌بندی دشواری (`HARD`, `BALANCED`, `EASY`)، کیفیت تمایز (`EXCELLENT`, `GOOD`, `ACCEPTABLE`, `POOR`)، نرخ قبولی و واریانس.
 
-برای هر دانش‌آموز $i$:
-$$TotalSessions_i = N_{present,i} + N_{late,i} + N_{absent,i} + N_{excused,i}$$
-$$MissedSessions_i = N_{absent,i} + N_{excused,i}$$
-$$AbsenceRatio_i = \frac{MissedSessions_i}{TotalSessions_i}$$
-دانش‌آموز $i$ واجد شرایط (Eligible) است اگر:
-$$TotalSessions_i \ge MinRequiredSessions \quad (\text{پیش‌فرض: ۵ جلسه})$$
-دانش‌آموز $i$ دارای غیبت مزمن است اگر:
-$$AbsenceRatio_i \ge 0.10 \quad (\text{Chronic Threshold})$$
+### ۳.۹. وضعیت تکمیل و ارتقای تحصیلی (`evaluateCompletionSemantics`)
+- **ورودی الزامی:** `studentId` و `subjectGrades` (شامل `score`, `coeff`).
+- **ورودی اختیاری:** `passThreshold` (پیش‌فرض ۱۰)، `maxFailedAllowed` (پیش‌فرض ۲ درس)، `expectedSchoolId`.
+- **منطق:** ارزیابی شرط ارتقای پایه: معدل $\ge ۱۰$ و دروس افتاده $\le ۲$.
+- **خروجی:** وضعیت رسمی (`PASSED`, `CONDITIONAL`, `FAILED`, `INCOMPLETE`)، معدل وزنی کل، پرچم‌های `promotion_eligible` و `makeup_exam_required`، و شناسه‌های دروس تجدیدی.
 
-نرخ غیبت مزمن مدرسه/کلاس:
-$$ChronicAbsenceRate = \frac{Count(\text{Chronic Eligible Students})}{Count(\text{All Eligible Students})} \times 100$$
-
-#### ورودی‌ها و خروجی‌ها
-- **ورودی:** رکوردهای `attendance` همراه با `student_id`.
-- **خروجی:**
-  - `value`: درصد دانش‌آموزان با غیبت مزمن.
-  - `chronic_students_count`: تعداد دانش‌آموزان غایب مزمن (صورت کسر).
-  - `eligible_students_count`: تعداد دانش‌آموزان واجد شرایط بررسی (مخرج کسر).
-  - `students_detail`: نقشه تشخیصی تفکیکی به ازای هر دانش‌آموز.
-
-#### مدیریت حالت‌های مرزی (Edge Cases)
-- اگر هیچ دانش‌آموزی به سقف حداقل جلسات ($MinRequiredSessions$) نرسیده باشد، شاخص `null` با وضعیت `INSUFFICIENT_DATA` برمی‌گرداند.
+### ۳.۱۰. خلاصه فعالیت‌های آموزشی (`generateEducationalActivitySummary`)
+- **ورودی الزامی:** `attendance` و `grades`.
+- **ورودی اختیاری:** `scope` (`student`, `teacher`, `school`)، `startDate`, `endDate`, `expectedSchoolId`.
+- **خروجی:** تعداد کل کنش‌ها، رکوردهای حضور، نمرات، روزهای فعال، معلمان و دانش‌آموزان فعال، و وضعیت کلی (`ACTIVE`, `LOW_ACTIVITY`, `INACTIVE`).
 
 ---
 
-### ۲.۳. شاخص ۳: توزیع آماری نمرات (Grade Distribution)
+## ۴. اصول تغییرناپذیر و امنیت (Invariants & Guarantees)
 
-#### تعریف ریاضی
-تحلیل آماری جامعه نمرات جهت شناسایی چولگی (Skewness)، میانگین و افت کیفی:
-- **نرمال‌سازی:** تمام نمرات با هر مقیاس اولیه ($max\_score$) به مقیاس ۲۰ نرمال می‌شوند:
-  $$Score_{norm} = \frac{Score_{raw}}{MaxScore} \times 20$$
-- **آماره‌های توصیفی:**
-  - میانگین ($\mu = \frac{\sum Score_{norm}}{N}$)
-  - میانه (صدک ۵۰ام داده‌های مرتب‌شده)
-  - انحراف معیار ($\sigma = \sqrt{\frac{\sum (Score_{norm} - \mu)^2}{N}}$)
-  - چارک اول ($Q_1$)، چارک سوم ($Q_3$)، دامنه میان‌چارکی ($IQR = Q_3 - Q_1$)
-- **هیستوگرام و رده‌بندی وزارت آموزش و پرورش:**
-  - نیاز به تلاش (مردود): نمره کمتر از ۱۰
-  - قابل قبول: ۱۰ تا ۱۴.۹۹
-  - خوب: ۱۵ تا ۱۷.۹۹
-  - خیلی خوب (عالی): ۱۸ تا ۲۰
-
-#### مدیریت خطا و نمرات نامعتبر
-- نمرات منفی یا بزرگ‌تر از $max\_score$ (با تولرانس خطای ممیز) به عنوان داده نامعتبر فیلتر شده و در `invalid_count` ثبت می‌شوند.
-- ارقام فارسی («۱۲٫۵») به طور خودکار به ممیز اعشاری استاندارد تبدیل می‌شوند.
+1. **خروجی‌های قطعی (Deterministic Transformations):** بدون وابستگی به زمان حال یا متغیرهای تصادفی؛ ورودی یکسان همواره خروجی بیت‌به‌بیت یکسان می‌دهد.
+2. **عدم تغییر اشیای ورودی (Mutation Safety):** توابع هرگز خصوصیات اشیای ورودی را تغییر نمی‌دهند و با داده‌های منجمد (`Object.freeze`) به طور کامل سازگارند.
+3. **ایزولاسیون مستأجران (Fail-Closed Tenant Isolation):** هرگونه نشت رکورد با `school_id` مغایر با خطای صریح `TENANT_ISOLATION_VIOLATION` ابورت می‌شود.
+4. **انطباق با هرس پارتیشن‌ها (Partition Pruning):** کوئری‌سازها همیشه فیلترهای زمانی و مدرسه‌ای را به صورت پارامتریک در WHERE اعمال می‌کنند.
+5. **عدم استفاده از مدل‌های جعبه‌سیاه یا ML:** کلیه محاسبات شفاف، جبری و قابل حساب‌رسی دقیق انسانی هستند.
 
 ---
 
-### ۲.۴. شاخص ۴: روند پیشرفت یادگیری (Learning Progress Trend)
+## ۵. محدودیت‌ها و نقاط توسعه آینده (Limitations & Extension Points)
 
-#### تعریف ریاضی
-برازش خط رگرسیون خطی معمولی (Ordinary Least Squares - OLS) بر نمرات مرتب‌شده زمانی:
-نقاط امتحانی $(x_i, y_i)$ که در آن $x_i$ شماره توالی جلسه امتحانی ($1, 2, \dots, n$) و $y_i$ نمره نرمال‌شده است:
-$$Slope (m) = \frac{n \sum (x_i y_i) - (\sum x_i)(\sum y_i)}{n \sum x_i^2 - (\sum x_i)^2}$$
-$$R^2 = 1 - \frac{\sum (y_i - \hat{y}_i)^2}{\sum (y_i - \bar{y})^2}$$
-
-#### دسته‌بندی جهت روند (Trend Direction)
-- `IMPROVING` (رو به رشد): شیب مثبت معنادار ($m > 0.25$).
-- `DECLINING` (رو به افت / هشدار مداخله): شیب منفی معنادار ($m < -0.25$).
-- `STABLE` (پایدار): تغییرات جزئی ($-0.25 \le m \le 0.25$).
-- `VOLATILE` (نوسانی شدید): ضریب تعیین پایین ($R^2 < 0.15$) با نوسانات دامنه‌دار بالای ۳ نمره.
-- `INSUFFICIENT_DATA`: مشاهدات معتبر کمتر از ۳ جلسه.
-
----
-
-### ۲.۵. شاخص ۵: شاخص سلامت آموزشی مدرسه (School Educational Health Index)
-
-#### اصل عدم کدر کردن ابعاد (No-Masking Principle)
-برخلاف شاخص‌های سنتی که با یک معدل ساده مشکلات حاد را مخفی می‌کنند، این شاخص ترکیبی چهاربعدی بوده و همزمان پرچم‌های بحرانی ابعاد را افشا می‌کند:
-
-| بعد (Dimension) | وزن استاندارد | مؤلفه‌ها و فرمول | آستانه پرچم بحرانی |
-|---|:---:|---|---|
-| **۱. حضور و مشارکت** | ۳۰٪ | $Score_{att} - (1.5 \times ChronicAbsenceRate)$ | غیبت مزمن > ۲۰٪ یا حضور < ۷۵٪ |
-| **۲. عملکرد علمی** | ۳۵٪ | $(AvgScore \times 5) - (0.5 \times FailureRate)$ | نسبت مردودی > ۲۵٪ یا میانگین < ۱۰ |
-| **۳. پایداری و رشد** | ۲۰٪ | $50 + (Ratio_{improving} - Ratio_{declining}) \times 50$ | دانش‌آموزان در حال افت > ۳۵٪ |
-| **۴. کیفیت و پوشش داده** | ۱۵٪ | $(Coverage_{classes} \times 0.5 + Freshness \times 0.5) \times 100$ | پوشش ثبت کلاس‌ها < ۶۰٪ |
-
-#### رده‌بندی کیفی
-- `EXCELLENT`: امتیاز $\ge 85$ (مشروط بر صفر پرچم بحرانی)
-- `GOOD`: امتیاز ۷۰ تا ۸۴.۹
-- `NEEDS_ATTENTION`: امتیاز ۵۰ تا ۶۹.۹
-- `CRITICAL`: امتیاز $< 50$ یا وجود $\ge 2$ پرچم بحرانی
-
----
-
-## ۳. قوانین ایزولاسیون مستأجران (Tenant Isolation Rules)
-
-1. **الزام مدرسه واحد:** هر تابع محاسباتی در لایه معنایی می‌تواند پارامتر `expectedSchoolId` دریافت کند. در صورت وجود هرگونه رکوردی با `school_id` مغایر، خطای قاطع `TENANT_ISOLATION_VIOLATION` صادر می‌شود.
-2. **پیشگیری از نشت بین‌مدرسه‌ای در کوئری:** توابع `buildAttendanceKpiQuery` و `buildGradesKpiQuery` تولید کوئری بدون `schoolId` را بلافاصله با خطای `MISSING_TENANT_ID` مسدود می‌کنند.
-
----
-
-## ۴. انطباق با هرس پارتیشن‌ها (Partition Pruning Compliance)
-
-جداول `attendance` و `grades` در مایگریشن‌های پیشین به صورت سالانه بر مبنای ستون `created_at` پارتیشن‌بندی شده‌اند.  
-کوئری‌سازهای لایه معنایی همواره شروط زمانی:
-```sql
-WHERE school_id = $1 AND created_at >= $2 AND created_at < $3
-```
-را تولید می‌کنند تا موتور PostgreSQL صرفاً پارتیشن‌های سال تحصیلی مورد نظر را اسکن نماید و از Full Table Scan جداول میلیونی جلوگیری شود.
+- **محدودیت:** لایه معنایی داده‌ها را از دیتابیس واکشی نمی‌کند؛ این لایه وظیفه پردازش خالص (Transformation) را دارد و وظیفه کوئری زدن بر عهده سرویس‌های دیتابیس است.
+- **نقطه توسعه گام دوم (P0-EI-02):** اتصال توابع این لایه به اندپوینت‌های RESTful سرور تحت مسیر `/api/v1/analytics/*`.
+- **نقطه توسعه گام سوم (P0-EI-03):** ذخیره‌سازی نتایج تجمیعی در جداول تحلیلی جهت تسریع گزارش‌های سطح منطقه و استان.
