@@ -88,7 +88,7 @@ EXP=$(i=1; while [ "$i" -le "$MIG" ]; do printf '%03d ' "$i"; i=$((i+1)); done)
 [ "$SEQ" = "$EXP" ]; chk "شماره‌ها از ۰۰۱ تا آخرین ($MIG فایل) پیوسته‌اند" $? "یافت‌شده: $SEQ"
 LAST=$(printf '%s' "$SEQ" | awk '{print $NF}')
 [ "$((10#$LAST))" -eq "$MIG" ]; chk "شمارِ مهاجرت‌های روی دیسک = بیشینهٔ شماره" $? "شمار: $MIG · بیشینه: $LAST"
-LAST_FA=$(printf '%s' "$LAST" | sed 'y/0123456789/۰۱۲۳۴۵۶۷۸۹/')
+LAST_FA=$(printf '%s' "$LAST" | sed -e 's/0/۰/g' -e 's/1/۱/g' -e 's/2/۲/g' -e 's/3/۳/g' -e 's/4/۴/g' -e 's/5/۵/g' -e 's/6/۶/g' -e 's/7/۷/g' -e 's/8/۸/g' -e 's/9/۹/g')
 has $DOCS/DOCS_INDEX.md "۰۰۱–$LAST_FA"; chk "نمایه: فهرست مهاجرت ۰۰۱–$LAST_FA" $? "در برابر دیسک"
 has $DOCS/RELEASE_NOTES.md "مهاجرت‌های نسخه‌دار ۰۰۱–$LAST_FA"; chk "یادداشت انتشار: مهاجرت‌های ۰۰۱–$LAST_FA" $? "در برابر دیسک"
 has $DOCS/RELEASE_NOTES.md "| ۲۰ |"; chk "جدول موج‌ها تا موج ۲۰ کامل است" $? "یادداشت انتشار §۲"
@@ -96,7 +96,7 @@ has $DOCS/RELEASE_NOTES.md "| ۲۰ |"; chk "جدول موج‌ها تا موج �
 echo "▸ ردیاب P0 و پایلوت"
 has $DOCS/P0_BLOCKER_TRACKER.md "پ0-۶"; chk "ردیاب: هر شش کارت پ0 ثبت‌اند" $? "پ0-۱ تا پ0-۶"
 has $DOCS/P0_BLOCKER_TRACKER.md "**۴** (پ0-۲، پ0-۳، پ0-۵"; chk "ردیاب: ۴ در حال رفع" $? "جمع شش‌تایی"
-has $DOCS/P0_BLOCKER_TRACKER.md "**۲** (پ0-۱، پ0-۴"; chk "ردیاب: ۲ بلاک‌شده" $? "جمع شش‌تایی"
+has $DOCS/P0_BLOCKER_TRACKER.md "**۱** (پ0-۴"; chk "ردیاب: ۱ بلاک‌شده" $? "جمع شش‌تایی"
 has $DOCS/GO_LIVE_PACKAGE.md "۱۷.۵هزار کاربر"; chk "بستهٔ گو-لایو: پایلوت ۱۷٫۵ هزار کاربر" $? "در برابر طرح پایلوت"
 has $DOCS/GO_LIVE_PACKAGE.md "≈ ۴۰ مدرسه"; chk "بستهٔ گو-لایو: ≈ ۴۰ مدرسه" $? "در برابر طرح پایلوت"
 has $DOCS/PILOT_ROLLOUT_PLAN.md "۳۰ تا ۵۰ مدرسه"; chk "پایلوت: ۳۰ تا ۵۰ مدرسه" $? "مرجع پایلوت"
