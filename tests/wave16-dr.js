@@ -373,9 +373,17 @@ function withEnv(patch, fn) {
       fs.existsSync(path.join(ROOT, 'scripts/dr-restore-drill.js'))
       && spawnSync(process.execPath, ['--check', path.join(ROOT, 'scripts/dr-restore-drill.js')]).status === 0);
     chk('Td the drill script runs and reports PASS on the seeded store', (() => {
+      /* Hermetic: seed a synthetic store in TMP and point the CLI at it with
+         --store, so the drill never depends on server/data/payesh.json (that
+         file is gitignored and only exists after `node server/seed.js`, which
+         made this check fail on a clean checkout). This keeps the suite's
+         "nothing touches server/data" contract for the CLI phase too. */
       const dir = path.join(TMP, 'drill-cli');
       fs.mkdirSync(dir, { recursive: true });
-      const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts/dr-restore-drill.js'), '--data-dir', dir],
+      const storePath = path.join(TMP, 'drill-cli-store.json');
+      fs.writeFileSync(storePath, JSON.stringify(syntheticStore(50)), 'utf8');
+      const r = spawnSync(process.execPath,
+        [path.join(ROOT, 'scripts/dr-restore-drill.js'), '--store', storePath, '--data-dir', dir],
         { cwd: ROOT, encoding: 'utf8', timeout: 300000 });
       return r.status === 0 && /dr-restore-drill: PASS/.test(r.stdout || '');
     })());

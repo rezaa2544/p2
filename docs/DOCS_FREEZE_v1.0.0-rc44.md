@@ -8,7 +8,7 @@
 
 **نسخهٔ قفل:** ۱.۰.۰-rc44 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** همگراییِ قفل پس از بازپایه روی main — چت ۶ (Arena)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۵۸ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۶۰ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
@@ -62,7 +62,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۳۵۸)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۳۶۰)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -81,11 +81,11 @@
 | `ARCHITECTURE_REVIEW.md` | `sha256:e40c46cd9dccb9e1108b7f8f89e569302d316462191a10ca0513aa001c5328da` |
 | `ARENA4_PERFORMANCE_INFRA.md` | `sha256:1d9165d0eab6d6d02de494c56afc0766b83086e6bfcdaf9a0005d4b520292881` |
 | `ARENA5_QA_RELIABILITY.md` | `sha256:0545b420c46f649cfeb2966be2c5bbc60982bb4f976bcf059aa6a18aef0435ee` |
-| `ARENA_AGENT_PROMPT.md` | `sha256:79e601b816a97ff9752e9e9043befac85bd6f1c0333a1b45ff504bc9dad7b5ff` |
+| `ARENA_AGENT_PROMPT.md` | `sha256:454e18f381187bd34d7db54a344d4b3b40898d538671909915f544c72739dd9f` |
 | `ARENA_CONTINUATION_POLICY.md` | `sha256:3e92554203e4543f0a14df03f0d40c8c9b4a83c73f74bd8e7dc82a103876491d` |
 | `ARENA_CONTINUITY_AUTHORIZATION.md` | `sha256:a2605d085f2c46906357f30965ad8a24a92ab79a87ac65cd5c10f87d3fc998fa` |
 | `ARENA_CONTROL_PLANE_RECOVERY.md` | `sha256:11417d54369f053127d806f7afafd63e9d4c1e52a4700a1dec3765c183f3f291` |
-| `ARENA_EXECUTION_MODEL.md` | `sha256:b2dfe30ab5c3d44330e9af782e60548c14d06cd05f729c1798e80351a6f7cad1` |
+| `ARENA_EXECUTION_MODEL.md` | `sha256:531ff7a580754e4fb315dfb37e96a8a8cb13cb23985e921ebaa4cb0fe42561be` |
 | `ARENA_MISSION_TEMPLATE.md` | `sha256:fe2b1bc306fa4f02b45e7d831606029fc6e8ce8bd48f99009e76a1ebc1cc69a3` |
 | `ARENA_REGISTRY.md` | `sha256:303c4e4f5f7ff13f4ea06900142d60052f29115fa3f774b141d981b29bc3fc76` |
 | `ARENA_RUNTIME_CONTRACT.md` | `sha256:cf19ef6a15325b1a97afff17c1aaac552b8ea36c202ec9c0439cc9e0f53b3f03` |
@@ -119,7 +119,7 @@
 | `D2_DRAFT.md` | `sha256:f62d2eff0772ce15393ed679e56ccfc3af174f702990109f479a0a81f3eb5349` |
 | `D3_DRAFT.md` | `sha256:a4bdb239a1dd6610c8319c842c3274929acd203e854585b7bbf6806ee0a6fa92` |
 | `D4_DRAFT.md` | `sha256:9537ea48b0740c56ede54faa37a557bddeb584bbae008d72d1bec1375b081ac2` |
-| `DAILY_20_MISSION_PROTOCOL.md` | `sha256:80f67dcdbde9b00c362de1961f9d5ffa95dfed4a2c4429396646ac95ad713ae0` |
+| `DAILY_20_MISSION_PROTOCOL.md` | `sha256:6c68da24f56ad9a05c6256fe3f9b5608334adced43a1389180077a1355bcb143` |
 | `DATABASE_ARCHITECTURE.md` | `sha256:f2dbd45af7bae8136004b4a1335fcf700a74a864f178c336f0f5dce29b17caaa` |
 | `DATABASE_PERFORMANCE_OPTIMIZATION.md` | `sha256:2ac6df7ad07d0911a96c23e4e68043932d3183fae0851f1686c93971c9ae1a12` |
 | `DATA_DICTIONARY.md` | `sha256:e82a85f0595a64fbd0df44186d7baf8b78fe22777ac772b95c8b75ffdf33482d` |
@@ -180,16 +180,16 @@
 | `DOCS_FREEZE_v1.0.0-rc8.md` | `sha256:361dfe21c653239ddad6873c394c454a5b2bdc1deb067f32de0686f08d96a205` |
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:36bf496d42732300a7872e76e6a3ce64dca6d52ed20eb1d9621fdce63f3d4169` |
-| `DOCS_INDEX.md` | `sha256:db736d3de0936503050d2fdc1fe3e009107fd0ef5120526be878747ad21a6296` |
-| `DOCS_METRICS.md` | `sha256:0b9f99b88a69dd3ae15f9564ccb2113e47d42fbb980d1e92ab730a7032877971` |
+| `DOCS_INDEX.md` | `sha256:1a90dfcaa8ff9263d587793c3194ff52a6529a6e5adf0b2d00d41fe7bd3ed128` |
+| `DOCS_METRICS.md` | `sha256:7daa5ecfe8afa4382fadda2b3b871712d392de35716e35f96fc1f795c23ac890` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:a1ebefac54f1b8063b613167311751402a45b809bfa81cd8736067377d607269` |
-| `DOCUMENTATION_MAP.md` | `sha256:d8aaff590e7ef4f6a92bd436ac4cbf07b0e09aa325b7a261398d502bfa0addd5` |
+| `DOCUMENTATION_MAP.md` | `sha256:f2f2ff86d4fd689ec44313e0f838c23c31830d70166b07b42012bcf42ba98ed8` |
 | `DR_RUNBOOK.md` | `sha256:eba33f0ad562941cf8aea2087dae1318628708cb37b1330aa0bc1cb34c81cc89` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
 | `EXAM_TYPES_GUIDE.md` | `sha256:bfc9a35481de6bd64c48f31bca4396951fc41ea1aedbc6070260fef9ea026354` |
-| `EXECUTION_CONTROL_PROTOCOL.md` | `sha256:1f6d3476d822e406e0820bac30fa1b254c2d55574f4e16b2d1c76d5c068be2e6` |
+| `EXECUTION_CONTROL_PROTOCOL.md` | `sha256:426f3cbc21737847685800b42c62eb96ba49cc7e9cf004d3fe6a5d0173632318` |
 | `EXECUTIVE_BRIEFING.md` | `sha256:e4b10ec9c8ed37c4de335a2780b89b93d5d5119f9f6be9dba2c4b97edabbdda6` |
 | `EXECUTIVE_SLIDES_OUTLINE.md` | `sha256:48432a8aba0966d0604cb3e1a82d4b29b2089ca9e1024825ed0ce3d5fb8a1ab6` |
 | `FAQ.md` | `sha256:b8609cf3ec063a343fa9bf50a708df5a8c298c675df8024302bbd20f49c1547b` |
@@ -218,6 +218,7 @@
 | `LOAD_TEST_PLAN.md` | `sha256:07ff36bfd025f7acf1eed95823ff0385ea95f28a36cb30f43145715e247339f1` |
 | `LOAD_TEST_RESULTS.md` | `sha256:7a4ea6f04fda9095bf4e3cee7c9fef6d06dfaf1620113e598f63ada5f7d06604` |
 | `MASTER_ONBOARDING_PATH.md` | `sha256:f973f920496b1348387ac347bf5121cb0271c8fb8996b12322ea3e1f8d2437cc` |
+| `MASTER_PROJECT_HANDOVER_PROMPT.md` | `sha256:1e833bbccaea9ef4df4b60037284076196daa6d591aa168bb3f11becd8e12c86` |
 | `MIGRATION_AUDIT.md` | `sha256:d1361ed0ccf6bb3b12676aa07756d02933c72ccc795b6ebe6d5b86c1838a75bf` |
 | `MIGRATION_DECISION.md` | `sha256:1d475fdc918f6c1029d4f280bb80891d78b013934a60135d2960e978168b7d9d` |
 | `MIGRATION_GUIDE.md` | `sha256:eb98cf9a3ad888472f11e39215dc1cd745bfbed956e5d24af246312304df8364` |
@@ -247,6 +248,7 @@
 | `OPERATIONAL_READINESS.md` | `sha256:b94809db70fc5d0202a563fd94b7032c10a7d2ca1b8358b01872a0fb7144dee2` |
 | `OPINION_2026-09-05_ROADMAP_REVIEW.md` | `sha256:ae4998223e48d65fe3094895bfdc44a70013c8150b7c0389d7bffb6c14ba89bc` |
 | `P0_BLOCKER_TRACKER.md` | `sha256:5b87bca57d38fa1d691c52c418ad3bc1e3f55545d26d71c9eef709375a86afea` |
+| `PARALLEL_FAILOVER_EXECUTION_PROTOCOL.md` | `sha256:4ef52d5ba91a1f4bc2a5ba0d2c20d5cf360f85a47a05a6ee29ee51610240587b` |
 | `PEN_TEST_CHECKLIST.md` | `sha256:775c62ef672aa56cb1ae3a6461215e3e183cbe7f208648d3fe0dad9134a85c58` |
 | `PERFORMANCE_BENCHMARKS.md` | `sha256:0b38bacf5e44f941b5f668fa8efc8a804a8b5dd06505587ad2d7888bd2f7e15e` |
 | `PERFORMANCE_OPTIMIZATION_GUIDE.md` | `sha256:263eb7bcf0fdc32ec8ea1e64d7a671a56c09b8befc30e74f1ef40cbdf0172fda` |
@@ -377,7 +379,7 @@
 | `SYNC_FLOW.md` | `sha256:0d768e1fa6bcbdf0f69108408ba5733a787cbb881bf60c8b3b57cf5acc54db0a` |
 | `SYNC_PROTOCOL.md` | `sha256:a2658779b478051e87dce461dcee2664a87b9d1dca2b42bc4a833cb0983274c7` |
 | `SYNC_RELIABILITY_EVIDENCE.md` | `sha256:326094b05babf475ca98ef231ed52f407cd06ef06690ee24c788f9660b31f39b` |
-| `TEST_COVERAGE_REPORT.md` | `sha256:38e8321a48edf5876e0af24712c8a43b74b4823e3db8107cb0cc8f543d1108c1` |
+| `TEST_COVERAGE_REPORT.md` | `sha256:5c8bccc7d2b179ee1c1b2f9adc456cfc94206ed18306edc38044bbd955a34358` |
 | `THIRD_PARTY_LICENSES.md` | `sha256:0440f94b6395ee2fab1b2a34d9c8e3d5141887c1c276b4327c5d134317a33a08` |
 | `THREAT_MODEL.md` | `sha256:2d93966da760fec407778e27e9ef85033f95efffe71d1135dd849f6780d966f0` |
 | `TRACING_SETUP.md` | `sha256:6d17e75b8cc28763db6d7d7c9310d587fb3419c15a2d1dbf2f9e938881040099` |
@@ -427,3 +429,53 @@
 
 ---
 _قفل `rc44` در ۲۰۲۶-۰۹-۱۳ بسته شد: همگرایی پس از بازپایه روی main@0fc4403 (PR #176). راستی‌آزمایی: `node tests/docs-freeze-marker.js` و `node tools/docs-stats-sync.js --check`._
+
+---
+
+## ۴) سابقهٔ بازپایهٔ مانیفست — provenance (افزودهٔ ۲۰۲۶-۰۹-۱۷، مأموریت `C7-11`)
+
+این بخش **فقط افزودنی** است و به مانیفستِ §۳ دست نمی‌زند. خودِ rc44 در فهرستِ خودش نیست
+(سنجه: `grep -c` روی ردیفِ نامِ خودش = ۰) ⇒ افزودنِ این بخش هیچ اثری را تغییر نمی‌دهد و
+`tests/docs-freeze-marker.js` را قرمز نمی‌کند.
+
+**دلیلِ وجودش:** سربرگِ بالا «**تاریخ قفل:** ۲۰۲۶-۰۹-۱۳» را اعلام می‌کند و §۳ می‌گوید فهرست
+«**در لحظهٔ قفل**» ثبت شده است — ولی مانیفستِ جاری پس از آن تاریخ **پنج بار** بازتولید شده،
+بی‌آنکه تا امروز **هیچ رکوردی در خودِ سندِ قفل** از آن وجود داشته باشد. یعنی بازپایه «کور»
+(blind baseline rebase) بود. این بخش آن را قابلِ حسابرسی می‌کند؛ هیچ چیز را بازنویسی نمی‌کند.
+
+| واقعیتِ اندازه‌گیری‌شده | شاهدِ خام |
+|---|---|
+| مانیفستِ اصلیِ rc44 = **۳۵۸ ردیف**، بدونِ `PARALLEL_FAILOVER_EXECUTION_PROTOCOL.md` | blob `1bd3a14fea` در `02cd243` و در `d262b4e` |
+| نخستین بازپایه: **۳۵۸ → ۳۵۹ ردیف** | `79346cf` — پیامِ همان کامیت: «rc44 manifest 358→359 rows + 5 stale hashes» |
+| شمارِ بازتولیدهای مانیفست پس از ۰۹-۱۳ | **۵** — زنجیرهٔ blob: `1bd3a14fea` → `75acf6a198` (`79346cf`) → `9fc0561c6d` (`6204fe3`) → `75acf6a198` (`4c3cac3`) → `644ce045de` (`3f8a2d2`) → `6bfae14dca` (`78b9652`) → `e668dfc1c8` (`1eeacbb`) |
+| اثرهایی که بازپایه شدند (اثرِ لحظهٔ ۰۹-۱۳ نیستند) | **۸ از ۳۵۸**: `ARENA_AGENT_PROMPT.md` · `ARENA_EXECUTION_MODEL.md` · `DAILY_20_MISSION_PROTOCOL.md` · `DOCS_INDEX.md` · `DOCS_METRICS.md` · `DOCUMENTATION_MAP.md` · `EXECUTION_CONTROL_PROTOCOL.md` · `TEST_COVERAGE_REPORT.md` |
+| ردیفِ افزوده‌شده | **۱** — `PARALLEL_FAILOVER_EXECUTION_PROTOCOL.md`، ساختهٔ `bdb981e`؛ سندی که در ۰۹-۱۳ وجود نداشت |
+| ردیفِ حذف‌شده | **۰** |
+| «تاریخ قفل» در سربرگ | **تغییر نکرد** — در هر شش blob همان ۲۰۲۶-۰۹-۱۳ |
+
+**بازیابیِ لحظهٔ اصلیِ قفل (از بین نرفته):**
+`git show 02cd243:docs/DOCS_FREEZE_v1.0.0-rc44.md` ⇒ مانیفستِ ۳۵۸-ردیفیِ پیش از بازپایه، بایت‌به‌بایت.
+
+**تناقضِ قاعده‌ای — escalated، نه خود-حل:** §۱ بند ۱ همین سند می‌گوید «هر تغییر در هر سندِ
+فهرست‌شده نیازمند **بامپ نسخه** است … نسخهٔ بعد با همین ساختار و فهرست هش تازه ساخته می‌شود و
+این سند را «قبلی» اعلام می‌کند». آنچه در عمل انجام شد بازتولیدِ مانیفستِ **همان قفلِ جاری** با
+`--freeze` بود؛ §۱ بند ۵ هم می‌گوید «ابزار `--freeze` فقط مانیفستِ قفلِ جاری را بازتولید می‌کند؛
+ساختِ فایلِ rc بعدی و انتقالِ بنر گامِ دستی است». پس دو بندِ همین سند دو خوانش می‌دهند و ناوگان
+یکی را انتخاب کرده و مرج کرده است (`79346cf`، `4c3cac3`/PR #302). **این مأموریت آن تصمیم را
+یک‌جانبه بازنویسی نکرد** و قفلِ رقیبِ rc45 نساخت؛ تصمیم میان «بامپ به rc45» و «معتبر دانستنِ
+resyncِ درجا **به‌شرطِ ثبتِ سابقه**» با Chat1/ChatGPT است. این بخش گزینهٔ دوم را مستند می‌کند.
+
+**قیدِ صداقت دربارهٔ ساعتِ کامیت‌ها:** ترتیبِ زمانی در این ناوگان از timestamp قابل استنتاج نیست.
+`bdb981e` (سازندهٔ سندِ تازه) تاریخِ کامیتِ `09-17 18:43` دارد، ولی `79346cf` (که همان سند را در
+مانیفست ثبت کرد) `09-17 15:55` ⇒ timestampِ ثبت‌کننده **پیش از** timestampِ سازنده است، با اینکه
+ترتیبِ توپولوژیک برعکس است. هر دو با `git log --format=%cd` خوانده شدند (نه `%ad`). نتیجهٔ
+عملیاتی: برای provenance باید از **ترتیبِ توپولوژیکِ تاریخچه + blob SHA** استفاده شود، نه ساعت.
+
+**چرا هیچ گیتی این را نگرفت (و هنوز هم نمی‌گیرد):** `tests/docs-freeze-marker.js` فقط
+«مانیفست ↔ دیسکِ **لحظهٔ جاری**» را می‌سنجد؛ resyncِ درجا دقیقاً همان را سبز می‌کند. هیچ سنجه‌ای
+«تاریخِ اعلام‌شدهٔ قفل ↔ زمانِ واقعیِ محتوای مانیفست» را نمی‌سنجد. به همین دلیل این وضعیت با
+**همهٔ گیت‌های سبز** رخ داد و قابل مشاهده بود: freeze ۱۴/۱۴ · stats exit ۰ · metrics ۱۱/۱۱ ·
+metadata ۱۷/۱۷ · map-coverage ۲۳/۲۳ · index ۷۵/۷۵ · consistency ۲۲/۲۲ · run ۳۵/۳۵ · secret ۱۲/۱۲.
+**پیشنهادِ ماشین‌پذیر برای `C7-19` و `C6-04`:** سنجه‌ای که اگر مانیفستِ قفلِ جاری در کامیتی تغییر
+کرد که در همان کامیت **هیچ سندِ rc تازه‌ای افزوده نشده** و **هیچ سابقهٔ بازپایه‌ای** (همین §۴)
+به‌روز نشده، قرمز شود — یعنی «بازپایه بدونِ ثبت» غیرممکن شود، بدونِ اینکه `--freeze`ِ مشروع ممنوع گردد.
