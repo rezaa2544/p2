@@ -210,7 +210,7 @@ function mkAsset(name, status, extra) {
     }
     async function runOp(sync, op, by) {
       const res = {};
-      await sync.apiSync({}, res, { ops: [Object.assign({ uid: 'e5-' + Math.random(), at: new Date().toISOString(), by }, op)] });
+      await sync.apiSync({}, res, { ops: [Object.assign({ uid: 'e5-' + require('crypto').randomUUID(), at: new Date().toISOString(), by }, op)] });
       return res._cap.body;
     }
     const cusSync = makeCtx({ id: 2, role: 'teacher', school_id: 7 });

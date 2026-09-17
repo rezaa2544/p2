@@ -277,6 +277,17 @@ function saveQueueChecked(){
 
 /* ---------- افزودن عملیات به صف ---------- */
 /* هر تغییر داده‌ای که باید به سرور برود از اینجا رد می‌شود */
+function secureRandomBase36(len){
+  const n = Math.max(1, len|0);
+  const bytes = new Uint8Array(n);
+  crypto.getRandomValues(bytes);
+  let out = '';
+  for(let i = 0; i < n; i++){
+    out += (bytes[i] % 36).toString(36);
+  }
+  return out;
+}
+
 function enqueueOp(op){
   /* R96 P0-5: کلیدهایِ محلی (idِ ریکوردِ کلاینت + by که در سطحِ op هست)
      جزوِ schema نیستند — دروازهٔ فیلدِ سرور آن‌ها را unknown_field می‌داند.
@@ -290,7 +301,7 @@ function enqueueOp(op){
     op = Object.assign({}, op, { data: clean });
   }
   const item = {
-    uid       : 'op_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8),
+    uid       : 'op_' + Date.now().toString(36) + '_' + secureRandomBase36(6),
     op        : op,
     status    : 'pending',
     tries     : 0,

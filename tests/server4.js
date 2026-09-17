@@ -26,7 +26,17 @@ const crypto = require('crypto');
 
 const ROOT = path.join(__dirname, '..');
 const PORTS = [8941, 8942, 8943];
-const TLS_OPTS = { rejectUnauthorized: false };
+const TLS_OPTS = { rejectUnauthorized: true };
+
+function getTlsOpts() {
+  const certPath = process.env.PAYESH_TLS_CERT;
+  if (!certPath) return TLS_OPTS;
+  try {
+    return Object.assign({}, TLS_OPTS, { ca: fs.readFileSync(certPath) });
+  } catch (_) {
+    return TLS_OPTS;
+  }
+}
 
 let okc = 0, failc = 0;
 const fails = [];
@@ -41,7 +51,7 @@ function waitHealth(base, timeoutMs, useTls) {
   return new Promise((resolve) => {
     (function tick() {
       const req = (useTls ? https.get : http.get)(
-        Object.assign({ hostname: '127.0.0.1', path: '/api/health', port: Number(base.split(':')[2]) }, useTls ? TLS_OPTS : {}),
+        Object.assign({ hostname: '127.0.0.1', path: '/api/health', port: Number(base.split(':')[2]) }, useTls ? getTlsOpts() : {}),
         (res) => { res.resume(); res.on('end', () => resolve(true)); }
       );
       req.on('error', () => {

@@ -89,11 +89,11 @@ function vclassActions(e, el, id, a, rawId){
        if(!blob){ toast('فایل دیگر در ذخیره‌گاه نیست','err'); return; }
        const url = (typeof URL!=='undefined' && URL.createObjectURL) ? URL.createObjectURL(blob) : '';
        openModal(modalTpl('🎬 ' + (s.title||''),
-         '<video controls style="width:100%;max-height:62vh;background:#000;border-radius:10px" data-vurl="'+escAttr(url)+'"></video>'
+         '<video controls style="width:100%;max-height:62vh;background:#000;border-radius:10px"></video>'
          + (s.description ? '<div class="small muted" style="margin-top:10px">'+esc(s.description)+'</div>' : ''), ''));
        setTimeout(function(){
          const v = document.querySelector('#modal video');
-         if(v && v.getAttribute('data-vurl')) v.src = v.getAttribute('data-vurl');
+         if(v && url) v.src = url;
        }, 60);
      });
    },

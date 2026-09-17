@@ -41,6 +41,22 @@ const dom = new JSDOM(html, {
 const win = dom.window;
 const W = (expr) => win.eval(expr);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const JS_UNSAFE_CHAR_MAP = {
+  '<': '\\u003C',
+  '>': '\\u003E',
+  '/': '\\u002F',
+  '\\': '\\\\',
+  '\b': '\\b',
+  '\f': '\\f',
+  '\n': '\\n',
+  '\r': '\\r',
+  '\t': '\\t',
+  '\0': '\\0',
+  '\u2028': '\\u2028',
+  '\u2029': '\\u2029',
+};
+const escapeUnsafeChars = (str) => str.replace(/[<>\/\\\b\f\n\r\t\0\u2028\u2029]/g, (ch) => JS_UNSAFE_CHAR_MAP[ch] || ch);
+const safeJsLiteral = (value) => escapeUnsafeChars(JSON.stringify(value));
 const mgrLogin = (u) => W(`S.user=db.users.find(function(x){return x.username==='${u || 'manager1'}';});S.persona=null;S.boss=null;S.filters={};`);
 const go = (route) => W(`S.route='${route}';render();`);
 
@@ -58,10 +74,10 @@ async function main() {
 
   function saveViaUI(donor, amount, date, desc) {
     W(`document.querySelector('[data-act="don-new"]').click()`);
-    W(`(function(){document.getElementById('don_f_donor').value=${JSON.stringify(donor)};
-      document.getElementById('don_f_amount').value=${JSON.stringify(amount)};
-      document.getElementById('don_f_date').value=${JSON.stringify(date)};
-      document.getElementById('don_f_desc').value=${JSON.stringify(desc)};
+    W(`(function(){document.getElementById('don_f_donor').value=${safeJsLiteral(donor)};
+      document.getElementById('don_f_amount').value=${safeJsLiteral(amount)};
+      document.getElementById('don_f_date').value=${safeJsLiteral(date)};
+      document.getElementById('don_f_desc').value=${safeJsLiteral(desc)};
       document.querySelector('[data-act="don-save"]').click();})()`);
   }
 

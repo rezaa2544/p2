@@ -314,6 +314,12 @@ function inScope(session, store, coll, recId, data) {
       const t0 = rec || data || {};
       if (t0.office_id != null && Number(t0.office_id) !== Number(u.office_id)) return false;
     }
+    /* رئیس اداره — fail-closed: فقط کاربر با is_head=1 برای اکشن‌های مدیریتی اداره مجاز است */
+    const headOnlyActions = ['office-msg', 'office-print', 'office-dash', 'office-broadcast'];
+    if (headOnlyActions.indexOf(coll) > -1 || (coll === 'notifications' && (data && data.type === 'office'))) {
+      const meStore = ((store && store.users) || []).find((x) => Number(x.id) === Number(u.id));
+      if (!meStore || meStore.is_head !== 1) return false;
+    }
     if (EO_SCOPE_GATED.indexOf(coll) > -1) {
       const t = rec || data || {};
       /* د.۴ — staff_posts: مدرسهٔ «هدف» بر رکوردِ موجود مقدم است؛

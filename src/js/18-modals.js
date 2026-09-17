@@ -87,7 +87,7 @@ const f=(label,inner)=>{
   const labelId=jd?'jdate-label-'+jd[1]:'';
   const labelAttrs=(m&&!jd?` for="${escAttr(m[1])}"`:'')+(labelId?` id="${escAttr(labelId)}"`:'');
   if(m||labelId) return `<div class="field"><label${labelAttrs}>${label}</label>${s}</div>`;
-  const plain=String(label).replace(/<[^>]*>/g,'').replace(/"/g,'&quot;').trim();
+  const plain=String(label).replace(/[<>]/g,'').replace(/"/g,'&quot;').trim();
   const patched=plain?s.replace(/<(input|select|textarea)\b(?![^>]*aria-label)/i,`<$1 aria-label="${plain}"`):s;
   return `<div class="field"><label>${label}</label>${patched}</div>`;
 };
