@@ -169,3 +169,19 @@ no restart needed; this Mission is the next unstarted board row, selected for ze
 1. Owner: reconcile + delete stale branches from the §4 census (start with merged non-PR-head branches).
 2. **C6-07** (true-merge attribution gate) — directly motivated by F1/squash-attribution evidence.
 3. Merge review of **PR #301** (lifts the four main-line doc-gate reds measured in §1).
+
+---
+
+## 10) Delivery log (appended post-facto, branch-level receipts)
+
+| Step | Evidence |
+|---|---|
+| COMMIT | `ddb2ea8` — C6-06 tool + focused pin + this report (explicit paths, no `git add -A`) |
+| INTEGRATION | shared-branch reconciliation: Chat10 `b029b96` (delivered by its own session via **#304 MERGED `4212895`**) + receipts `a15d9e2` preserved; 1-line refs fix `5150a27` (120→119 Δ0); main re-merged after #303/#304/#305 (conflict in the Chat10 report resolved as HEAD-side = original + fix) |
+| PUSH | `arena/01a0b013-p2` → `8a034cc` (three rejected attempts absorbed by fetch→merge→push; never force) |
+| PR | **#310** — MERGEABLE; checks at merge: build/SAST/secret-scan/SCA/SBOM/WAF/CodeRabbit/circleci SUCCESS, CodeQL NEUTRAL; remaining pending = Codacy ×2 + CodeQL js-ts + DAST (known-slow externals; same state class as #300/#303/#304/#305 merges) |
+| MERGE | `gh pr merge 310 --merge` → merge commit **`e13e37e`** on `main` (true merge, not squash) |
+| MAIN VERIFICATION | `git merge-base --is-ancestor ddb2ea8 origin/main` ⇒ **REACHABLE** (true-merge attribution — the C6-07 property, exercised by this very delivery); Chat10 `b029b96` also became reachable via this merge. Gates re-measured at `main@e13e37e`: run.js 0 · runbook-coverage 0 (77/77) · secret-scan 0 · freeze-marker 0 · stats-sync 0 · docs-metrics 0 · selftest 17/17 · refs-check 1 (119 = pre-existing C7-07 backlog, Δ0) |
+| VERDICT | **DELIVERED — TESTED + COMMITTED + PUSHED + MERGED + VERIFIED ON MAIN** |
+
+**STATUS:** DELIVERED. Next unstarted board rows for the work pool: C6-02/C6-03 (docs-count & docs-refs policy), C6-04/C6-05 (RC45 prerequisites/bump — now unblocked by #303's resync), C6-07 (true-merge attribution gate — directly motivated by F1 and by this delivery's squash-vs-merge evidence: #304 squashed, #310 true-merged).
