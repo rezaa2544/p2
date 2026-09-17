@@ -21,6 +21,11 @@
      node tools/docs-stats-sync.js --freeze     # + بازتولید مانیفستِ قفلِ جاری
      node tools/docs-stats-sync.js --json       # چاپ واقعیتِ دیسک
 
+   تعریف (C6-02، board 2026-09-17):
+     «درخت» = درخت پایدار: اسناد ریشه + زیرپوشه‌های پایدار. زیرپوشه‌های
+     متغیر `daily-*` از شمار خارج‌اند (افزودن سند روزانه آمار را خراب
+     نمی‌کند)؛ شمار آن‌ها در dailySubs/--json گزارش می‌شود.
+
    قرارداد
    ───────
    هر خطی که این ابزار مالک آن است باید **دقیقاً یک بار** در سند بیاید؛
@@ -41,6 +46,20 @@ const FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
 
 /* اسناد «زنده» — همان سه سندی که §۱ بند ۲ قفل از تضمینِ اثر مستثنا کرده */
 const LIVE_DOCS = ['DOCS_HEALTH_REPORT.md', 'DOCS_CONSISTENCY_REPORT.md', 'SECURITY_INCIDENT_LOG.md'];
+
+/* ── سیاست C6-02 (board docs/daily-mission-boards/2026-09-17/Chat6.md) ──
+   زیرپوشه‌های `daily-*` (`daily-reports/`، `daily-audits/`، ...) اسنادِ
+   عملیاتیِ متغیرند: افزودن سند روزانه نباید آمارِ عادی/یخ‌زده را خراب
+   کند («daily reports no longer corrupt normal stats»). شمارِ «درخت» از
+   اینجای‌جا **درخت پایدار** است: اسناد ریشه + زیرپوشه‌های پایدار. شمارِ
+   روزانه جدا گزارش می‌شود (--json / کنسول) و گیت نمی‌کند.
+   جمع فیزیکی کامل = پایدار + روزانه.
+   یادداشت تعریف: اعدادِ تاریخیِ لحظهٔ قفل (rc44: ۴۲۰) و همگامی‌های پیشین
+   (مثلاً #300: ۴۲۵) با تعریفِ همه‌شمول بودند؛ از C6-02 به بعد تعریف پایدار
+   جاری است. سندِ قفل (مانیفست) دست‌نخورده می‌ماند — بازتولید آن قلمِ
+   C6-05 (rc45) است. */
+const DAILY_PREFIX = 'daily-';
+const isDailySub = (name) => name.startsWith(DAILY_PREFIX);
 
 /* خواندنِ عددِ فارسی از یک ردیفِ جدول */
 const unfa = (str) => Number(String(str).replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
@@ -79,12 +98,19 @@ function truth() {
   const freezeName = path.basename(freezeRel);
   const rc = (freezeName.match(/rc(\d+)/) || [])[1];
 
+  /* C6-02: زیرپوشه‌های `daily-*` از شمارِ پایدار جدا می‌شوند (پایدار =
+     subs؛ روزانه = dailySubs). فیلدهای docsSub/docsTree به تعریف پایدار
+     منتقل شدند — جمع فیزیکی کامل در docsTreePhysical است. */
   let subTotal = 0;
   const subs = {};
+  const dailySubs = {};
+  let dailyTotal = 0;
   for (const e of fs.readdirSync(DOCS, { withFileTypes: true })) {
     if (!e.isDirectory()) continue;
     const n = listMd(path.join(DOCS, e.name)).length;
-    if (n) { subs[e.name] = n; subTotal += n; }
+    if (!n) continue;
+    if (isDailySub(e.name)) { dailySubs[e.name] = n; dailyTotal += n; }
+    else { subs[e.name] = n; subTotal += n; }
   }
 
   const testsRoot = fs.readdirSync(path.join(ROOT, 'tests')).filter((f) => f.endsWith('.js')).length;
@@ -115,9 +141,12 @@ function truth() {
     rc: rc || '?',
     docsRoot: rootMd.length,                 // همهٔ docs/*.md، با خودِ قفل
     docsRootMinusFreeze: rootMd.length - 1,  // مانیفست: بیرون از خودِ قفل
-    docsSub: subTotal,
+    docsSub: subTotal,                       // C6-02: فقط زیرپوشه‌های پایدار
     subs,
-    docsTree: rootMd.length + subTotal,
+    dailySubs,                               // C6-02: زیرپوشه‌های daily-* (خارج از شمار)
+    dailyTotal,
+    docsTree: rootMd.length + subTotal,      // C6-02: درخت پایدار
+    docsTreePhysical: rootMd.length + subTotal + dailyTotal, // کل فیزیکی (تفصیلی)
     testsRoot,
     testsApi,
     testsTotal: testsRoot + testsApi,
@@ -148,18 +177,17 @@ const OWNED = [
     file: 'docs/DOCS_METRICS.md',
     key: 'docs-total-row',
     match: /^\| تعداد کل اسناد `docs\/\*\.md` \|.*\| شمارش فایل \|$/m,
-    /* ردیف دو عددِ متعارف را هم می‌آورَد: «درختِ سه‌زیرپوشه‌ای» (ریشه + RUNBOOK_CARDS +
-       user-guides + pilot) که tests/docs-metrics.js می‌سنجد، و «درختِ کامل» با
-       daily-reports/. بدون این، دو گیت ناسازگار می‌شدند (docs-metrics عدد ۳۳۶ را می‌خواست
-       و ابزار ۳۴۶ می‌نوشت).
-       رگرسیونِ واقعی (۲۰۲۶-۰۹-۱۷): قالب، «درختِ سه‌زیرپوشه‌ای» را هرگز به‌صورت جمع
-       نمی‌نوشت — فقط شمارِ همان سه زیرپوشه (core) را می‌گفت — پس tests/docs-metrics.js
-       (DM-KEY: doc.includes(faNum(rootMd + core))) از زمانی که زیرپوشه‌های تازه
-       (daily-audits/، roadmaps/) به درخت اضافه شدند قرمز ماند. حالا صریح نوشته می‌شود. */
+    /* C6-02: این ردیف فقط عددهای **پایدار** را می‌نویسد — شمارِ روزانه درون
+       ردیف نمی‌آید (با هر گزارشِ تازه می‌زدود و ردیف را کهنه می‌کرد؛ همان
+       «خرابیِ آمارِ عادی» که C6-02 حذف کرد). ردیف همچنان دو عددِ متعارف را
+       می‌آورَد که tests/docs-metrics.js می‌سنجد: «ریشه» و «درختِ سه‌زیرپوشه‌ای».
+       (رگرسیونِ ۲۰۲۶-۰۹-۱۷، 6204fe3: قالب پیشین «درخت سه‌زیرپوشه‌ای» را هرگز به‌صورت
+       جمع نمی‌نوشت؛ از این نسخه صریح نوشته می‌شود و DM-KEY سبز می‌ماند.)
+       شمارِ روزانه لحظه‌ای: tools/docs-stats-sync.js --json (فیلد dailySubs). */
     render: (t) => {
       const core = ['RUNBOOK_CARDS', 'user-guides', 'pilot'].reduce((a, k) => a + (t.subs[k] || 0), 0);
-      const daily = t.subs['daily-reports'] || 0;
-      return `| تعداد کل اسناد \`docs/*.md\` | **${fa(t.docsRootMinusFreeze)}** سند ریشه (پیش از خود سند قفل \`rc${t.rc}\`؛ با آن ${fa(t.docsRoot)}) + ${fa(t.docsSub)} سند در زیرپوشه‌ها (${subLabel(t)}) = جمع درخت ${fa(t.docsTree)}؛ تفکیک: سه زیرپوشهٔ پایه ${fa(core)} (درخت سه‌زیرپوشه‌ای ${fa(t.docsRoot + core)}) + \`daily-reports/\` ${fa(daily)} ⇒ درخت بدونِ گزارش‌های روزانه ${fa(t.docsTree - daily)} | شمارش فایل |`;
+      const dailyLabel = Object.keys(t.dailySubs).sort().map((s) => `\`${s}/\``).join(' + ');
+      return `| تعداد کل اسناد \`docs/*.md\` | **${fa(t.docsRootMinusFreeze)}** سند ریشه (پیش از خود سند قفل \`rc${t.rc}\`؛ با آن ${fa(t.docsRoot)}) + ${fa(t.docsSub)} سند پایدار در زیرپوشه‌ها (${subLabel(t)}) = جمع درخت پایدار ${fa(t.docsTree)}؛ تفکیک: سه زیرپوشهٔ پایه ${fa(core)} + بقیهٔ پایدار ${fa(t.docsSub - core)} ⇒ درخت سه‌زیرپوشه‌ای ${fa(t.docsRoot + core)}؛ سوابقِ روزانهٔ عملیاتی (${dailyLabel || '—'}) خارج از شمارش — سیاست C6-02 | شمارش فایل |`;
     },
   },
   {
@@ -341,7 +369,8 @@ function run({ check, freeze, json }) {
     for (const s2 of stale) console.log('  \u2022 ' + s2.split('\n')[0]);
   }
 
-  console.log(`   اسناد: ${t.docsRoot} ریشه (مانیفست ${t.docsRootMinusFreeze}) + ${t.docsSub} زیرپوشه = ${t.docsTree} درخت · قفل rc${t.rc}`);
+  console.log(`   اسناد پایدار: ${t.docsRoot} ریشه (مانیفست ${t.docsRootMinusFreeze}) + ${t.docsSub} پایدار = ${t.docsTree} درخت پایدار · قفل rc${t.rc}`);
+  console.log(`   روزانه (خارج از شمارش — C6-02): ${t.dailyTotal} (${Object.entries(t.dailySubs).map(([k, v]) => `${k}: ${v}`).join('، ') || '—'}) ⇒ جمع فیزیکی ${t.docsTreePhysical}`);
   console.log(`   وضعیت: فعال ${ctx.active} + زنده ${t.liveDocs} + منجمد ${t.frozenDocs} + آرشیو ${ctx.archive} = ${t.docsTree}`);
   console.log(`   تست‌ها: ${t.testsTotal} = ${t.testsRoot} ریشه + ${t.testsApi} ای‌پی‌آی`);
   if (t.testsNested) {

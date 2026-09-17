@@ -57,6 +57,51 @@ chk('سند قفل و بستهٔ تحویل واقعاً موجودند',
   fs.existsSync(path.join(ROOT, 'docs/DOCS_FREEZE_v1.0.0-rc1.md')) &&
   fs.existsSync(path.join(ROOT, 'docs/DOCUMENTATION_HANDOVER.md')));
 
+grp('C6-02 — سیاست شمارِ روزانه (board 2026-09-17)');
+/* پذیرش: گزارش‌های روزانه دیگر آمارِ عادی را خراب نمی‌کنند. سه لایهٔ
+   پین: (۱) ساختار truth()، (۲) متن ردیفِ مالک‌شده، (۳) پینِ repo-level:
+   ساختِ یک گزارش روزانهٔ واقعی، شمار پایدار و گیتِ --check را نمی‌زند. */
+const stats = require(path.join(ROOT, 'tools/docs-stats-sync.js'));
+const t0 = stats.truth();
+chk('truth: زیرپوشه‌های daily-* از شمار پایدار جداست',
+  t0.dailyTotal === Object.values(t0.dailySubs).reduce((a, b) => a + b, 0) && t0.dailyTotal > 0,
+  'daily=' + t0.dailyTotal);
+chk('truth: درخت پایدار = ریشه + پایدار؛ فیزیکی = پایدار + روزانه',
+  t0.docsTree === t0.docsRoot + t0.docsSub && t0.docsTreePhysical === t0.docsTree + t0.dailyTotal,
+  t0.docsTree + '/' + t0.docsTreePhysical);
+chk('truth: daily-reports و daily-audits هر دو در شمارِ روزانه‌اند',
+  ['daily-reports', 'daily-audits'].every((d) => typeof t0.dailySubs[d] === 'number'),
+  Object.keys(t0.dailySubs).join(','));
+const _row = (doc.match(/^\| تعداد کل اسناد `docs\/\*\.md` \|.*$/m) || [''])[0];
+chk('ردیف: نشانِ سیاست C6-02 و عبارتِ «خارج از شمارش»',
+  _row.includes('سیاست C6-02') && /خارج از شمارش/.test(_row));
+chk('ردیف: پسوندِ متغیرِ تعریفِ قدیمی («درخت بدونِ گزارش‌های روزانه») رفته',
+  !_row.includes('درخت بدونِ گزارش‌های روزانه'));
+chk('ردیف: جمعِ درخت پایدار در متن ردیف است', _row.includes(faNum(t0.docsTree)));
+const { execFileSync } = require('child_process');
+const probe = path.join(ROOT, 'docs', 'daily-reports', `__c602_probe_${process.pid}.md`);
+fs.writeFileSync(probe, '# C6-02 probe — test-only, auto-removed\n');
+try {
+  const t1 = stats.truth();
+  chk('repo: گزارش روزانهٔ تازه در شمارِ روزانه ظاهر می‌شود',
+    t1.dailyTotal === t0.dailyTotal + 1, t0.dailyTotal + '→' + t1.dailyTotal);
+  chk('repo: گزارش روزانهٔ تازه شمارِ پایدار را نمی‌زند',
+    t1.docsTree === t0.docsTree, String(t0.docsTree));
+  let exit1 = 0;
+  try { execFileSync('node', ['tools/docs-stats-sync.js', '--check'], { cwd: ROOT, stdio: 'pipe' }); }
+  catch (e) { exit1 = e.status; }
+  chk('repo: --check سبز می‌ماند درحالی‌که گزارش روزانهٔ تازه هست', exit1 === 0, 'exit ' + exit1);
+} finally {
+  fs.unlinkSync(probe);
+}
+chk('repo: فایلِ probe حذف شد', !fs.existsSync(probe));
+const t2 = stats.truth();
+chk('repo: شمارِ روزانه پس از پاک‌سازی برمی‌گردد', t2.dailyTotal === t0.dailyTotal, t0.dailyTotal + '→' + t2.dailyTotal);
+let exit2 = 0;
+try { execFileSync('node', ['tools/docs-stats-sync.js', '--check'], { cwd: ROOT, stdio: 'pipe' }); }
+catch (e) { exit2 = e.status; }
+chk('repo: --check سبز می‌ماند پس از پاک‌سازی', exit2 === 0, 'exit ' + exit2);
+
 console.log('\n──────────────────────────────────────────');
 console.log('نتیجه: ' + pass + ' موفق / ' + fail + ' ناموفق (از ' + (pass + fail) + ')');
 if (fail > 0) { console.log('موارد ناموفق:\n- ' + errors.join('\n- ')); process.exit(1); }

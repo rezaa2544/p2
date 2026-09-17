@@ -11,6 +11,11 @@ const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const DOCS = path.join(ROOT, 'docs');
 const LIVE = new Set(['DOCS_HEALTH_REPORT.md', 'DOCS_CONSISTENCY_REPORT.md', 'SECURITY_INCIDENT_LOG.md']);
+/* C6-02 (board 2026-09-17): اسناد `daily-*` سوابقِ عملیاتیِ متغیرند —
+   مانند شمارِ پایدارِ tools/docs-stats-sync.js از پایشِ یتیم خارج‌اند
+   (الزامِ ارجاعِ ورودی ندارند) تا سوابقِ روزانه دروازه‌های مستند را
+   خراب نکنند. */
+const isDailyDoc = (p) => String(p).replace(/^docs\//, '').split('/')[0].startsWith('daily-');
 const META_OUT = path.join(DOCS, '_metadata.json');
 const INDEX_OUT = path.join(DOCS, '_search-index.json');
 
@@ -240,7 +245,7 @@ function summarize(entries) {
     byOwner[e.owner] = (byOwner[e.owner] || 0) + 1;
     byStatus[e.status] = (byStatus[e.status] || 0) + 1;
   }
-  const orphans = entries.filter((e) => e.incoming.length === 0 && !LIVE.has(path.basename(e.path)));
+  const orphans = entries.filter((e) => e.incoming.length === 0 && !LIVE.has(path.basename(e.path)) && !isDailyDoc(e.path));
   const hubs = [...entries].sort((a, b) => b.incoming.length - a.incoming.length).slice(0, 10);
   return { total: entries.length, byCat, byOwner, byStatus, orphans, hubs };
 }
@@ -258,4 +263,4 @@ if (require.main === module) {
   console.log('خروجی: ' + path.relative(ROOT, META_OUT) + ' + ' + path.relative(ROOT, INDEX_OUT));
 }
 
-module.exports = { buildCatalog, buildSearchIndex, summarize, listDocs, LIVE };
+module.exports = { buildCatalog, buildSearchIndex, summarize, listDocs, LIVE, isDailyDoc };
