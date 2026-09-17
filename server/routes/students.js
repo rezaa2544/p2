@@ -119,6 +119,63 @@ function createStudentRoutes(ctx) {
     return { status: 200, body: { ok: true, data: projectUserByRole(student, user.role, user.id === student.id) } };
   }
 
+  /* P0-EI-02: خط زمانی طولی چندساله دانش‌آموز (Longitudinal Student Timeline) */
+  async function getStudentTimeline(req, id) {
+    const user = req.user;
+    const _cand = await findLive('users', id);
+    const student = (_cand && _cand.role === 'student') ? _cand : null;
+    const _gateOpts = pgLive() ? { parentLinks: await listLive('parent_links') } : null;
+    const gate = policy.restReadGate(store, user, 'students', student, _gateOpts);
+    if (!student || !gate.ok) {
+      return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
+    }
+
+    const studentId = Number(id);
+    const schoolId = student.school_id;
+
+    let grades = [];
+    let attendance = [];
+    let archive = [];
+    let classes = [];
+    let enrollments = [];
+
+    if (pgLive()) {
+      if (typeof db.query === 'function') {
+        try {
+          const gRes = await db.query('SELECT * FROM grades WHERE school_id = $1 AND student_id = $2', [schoolId, studentId]);
+          grades = gRes && gRes.rows ? gRes.rows : [];
+          const aRes = await db.query('SELECT * FROM attendance WHERE school_id = $1 AND student_id = $2', [schoolId, studentId]);
+          attendance = aRes && aRes.rows ? aRes.rows : [];
+          const arRes = await db.query('SELECT * FROM student_archive WHERE student_id = $1', [studentId]);
+          archive = arRes && arRes.rows ? arRes.rows : [];
+        } catch (e) {
+          // fallback to memory if query fails in dev/test
+          grades = (store.grades || []).filter(g => g && Number(g.student_id) === studentId);
+          attendance = (store.attendance || []).filter(a => a && Number(a.student_id) === studentId);
+          archive = (store.student_archive || []).filter(ar => ar && Number(ar.student_id) === studentId);
+        }
+      }
+    } else {
+      grades = (store.grades || []).filter(g => g && Number(g.student_id) === studentId);
+      attendance = (store.attendance || []).filter(a => a && Number(a.student_id) === studentId);
+      archive = (store.student_archive || []).filter(ar => ar && Number(ar.student_id) === studentId);
+      classes = store.classes || [];
+      enrollments = store.enrollments || [];
+    }
+
+    const { buildStudentLongitudinalTimeline } = require('../analytics/timeline');
+    const timeline = buildStudentLongitudinalTimeline({
+      student,
+      grades,
+      attendance,
+      archive,
+      classes,
+      enrollments
+    }, { expectedSchoolId: schoolId });
+
+    return { status: 200, body: { ok: true, data: timeline } };
+  }
+
   async function createStudent(req, body) {
     const user = req.user;
     if (user.role !== 'manager' && user.role !== 'superadmin') {
@@ -282,6 +339,7 @@ function createStudentRoutes(ctx) {
   return {
     getStudentsList,
     getStudentById,
+    getStudentTimeline,
     createStudent,
     updateStudent,
     deleteStudent

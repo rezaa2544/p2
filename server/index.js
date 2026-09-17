@@ -914,6 +914,11 @@ const onRequest = async (req, res) => {
         const r = await studentRoutes.createStudent(req, await readBody(req, 64 * 1024));
         return sendJson(res, r.status, r.body);
       }
+      if(/^\/api\/v1\/students\/\d+\/timeline$/.test(p) && req.method === 'GET'){
+        const id = p.split('/')[4];
+        const r = await studentRoutes.getStudentTimeline(req, id);
+        return sendJson(res, r.status, r.body);
+      }
       if(/^\/api\/v1\/students\/\d+$/.test(p)){
         const id = p.split('/')[4];
         if(req.method === 'GET'){
