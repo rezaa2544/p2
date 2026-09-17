@@ -1,5 +1,6 @@
 /* =======================================================================
    tests/office-head-contract.js — C2-07: UI/API contract check / SIM-04
+   C1-05 (2026-09-16): سنجهٔ A2 (توازنِ جدولِ اجرایی با مدل) + A3 (کنترلِ منفی) افزوده شد.
    =======================================================================
    هدف: سه سنجهٔ RED پروب SIM-04 (هارنسِ چت۹) به PASS؛ قابلیتِ رئیس اداره
    واقعاً وجود داشته و تست شود.
@@ -32,6 +33,74 @@ function testAuthzModel() {
 /* -------------------------------------------------------------------- */
 /* B) seed هر اداره: حداقل یک رئیس (is_head=1)                        */
 /* -------------------------------------------------------------------- */
+/* -------------------------------------------------------------------- */
+/* A2) جدولِ اجراییِ سرور: authz/write-perms.json                        */
+/*     سرور همین فایل را می‌خواند: server/sync.js:41 (require) و         */
+/*     server/sync.js:135 (fieldGate) — هر فیلدی که در آن فهرست نباشد    */
+/*     fail-closed با unknown_field رد می‌شود. پس مدل کافی نیست؛ سنجه    */
+/*     باید روی «جدولِ تولیدشده» هم بایستد.                              */
+/*     شکافِ واقعیِ C1-05 (2026-09-16): authz/model.json فیلدِ is_head    */
+/*     داشت ولی authz/write-perms.json (کهنه) نداشت ⇒ ۱) نوشتنِ is_head   */
+/*     از مسیرِ sync رد می‌شد و ۲) تستِ A که فقط مدل را می‌سنجید سبز بود. */
+/* -------------------------------------------------------------------- */
+function fieldParity(model, artifact) {
+  const missing = [], extra = [];
+  const cols = Object.keys(model.collections || {});
+  for (const c of cols) {
+    const want = (model.collections[c] || {}).fields || [];
+    const got = (artifact.fields || {})[c] || [];
+    for (const f of want) if (got.indexOf(f) === -1) missing.push(c + '.' + f);
+    for (const f of got) if (want.indexOf(f) === -1) extra.push(c + '.' + f);
+  }
+  return { missing, extra, collections: cols.length };
+}
+
+function opsParity(model, artifact) {
+  const drift = [];
+  for (const c of Object.keys(model.collections || {})) {
+    const def = model.collections[c] || {};
+    const got = (artifact.ops || {})[c] || {};
+    for (const op of ['ins', 'upd', 'del']) {
+      if (JSON.stringify(def[op] || []) !== JSON.stringify(got[op] || [])) drift.push(c + '.' + op);
+    }
+  }
+  return drift;
+}
+
+function testRuntimeArtifactParity() {
+  const model = require('../authz/model.json');
+  const artifact = require('../authz/write-perms.json');
+  const p = fieldParity(model, artifact);
+  assert.strictEqual(p.missing.length, 0,
+    'authz/write-perms.json فیلدهایِ مدل را ندارد — server/sync.js:135 این فهرست را allowlist می‌گیرد ' +
+    '⇒ نوشتنِ آن فیلدها fail-closed رد می‌شود. گمشده: ' + p.missing.join('، ') +
+    ' — رفع: node tools/generate-write-perms.js');
+  assert.strictEqual(p.extra.length, 0,
+    'authz/write-perms.json فیلدِ بیرون از مدل دارد: ' + p.extra.join('، '));
+  const ops = opsParity(model, artifact);
+  assert.strictEqual(ops.length, 0,
+    'authz/write-perms.json ناهمخوانیِ عملیات (ins/upd/del) با مدل دارد: ' + ops.join('، '));
+  assert.ok(artifact.fields.users.indexOf('is_head') > -1,
+    'users.is_head در جدولِ اجرایی نیست — مسیرِ «رئیسِ اداره» بی‌اثر می‌شود (server/policy.js:321)');
+  console.log('[PASS] A2 - authz/write-perms.json: field+ops parity with model (' +
+    p.collections + ' collections, users.is_head present)');
+}
+
+/* کنترلِ منفی: سنجه باید بتواند شکست بخورد (سنجهٔ ساکت = سبزِ جعلی) */
+function testNegativeFieldParityControl() {
+  const model = require('../authz/model.json');
+  const artifact = require('../authz/write-perms.json');
+  const mutated = {
+    fields: JSON.parse(JSON.stringify(artifact.fields)),
+    ops: artifact.ops,
+  };
+  mutated.fields.users = mutated.fields.users.filter((f) => f !== 'is_head');
+  const p = fieldParity(model, mutated);
+  assert.deepStrictEqual(p.missing, ['users.is_head'],
+    'کنترلِ منفی: حذفِ is_head از جدول باید «users.is_head» را گمشده گزارش کند');
+  console.log('[PASS] A3 - negative control: dropping is_head from the runtime table is detected');
+}
+
 function testSeedHeadUsers() {
   // از آنجا که generateP9 در زمان اجرا (setTimeout) اجرا می‌شود،
   // ما مستقیماً data نمونهٔ تولیدشده توسط generateP9 را بررسی می‌کنیم.
@@ -79,6 +148,20 @@ function run() {
   }
 
   try {
+    testRuntimeArtifactParity();
+  } catch (e) {
+    console.error('[FAIL] A2 - ' + e.message);
+    process.exitCode = 1;
+  }
+
+  try {
+    testNegativeFieldParityControl();
+  } catch (e) {
+    console.error('[FAIL] A3 - ' + e.message);
+    process.exitCode = 1;
+  }
+
+  try {
     testSeedHeadUsers();
   } catch (e) {
     console.error('[FAIL] B - ' + e.message);
@@ -94,11 +177,18 @@ function run() {
 
   testNegativeWithoutIsHead();
 
-  console.log('=== ALL CONTRACT CHECKS PASSED (C2-07 / SIM-04) ===');
+  /* C1-05: بنرِ پایانی باید صداقت داشته باشد — پیش‌تر حتی با شکستِ یک سنجه
+     «ALL CONTRACT CHECKS PASSED» چاپ می‌شد (exit 1 ولی پیامِ سبز). */
+  if (process.exitCode) {
+    console.log('=== CONTRACT CHECKS FAILED (C2-07 / SIM-04) ===');
+  } else {
+    console.log('=== ALL CONTRACT CHECKS PASSED (C2-07 / SIM-04) ===');
+  }
 }
 
 if (require.main === module) {
   run();
 }
 
-module.exports = { run, testAuthzModel, testSeedHeadUsers, testHeadOnlyActions, testNegativeWithoutIsHead };
+module.exports = { run, testAuthzModel, testSeedHeadUsers, testHeadOnlyActions, testNegativeWithoutIsHead,
+  fieldParity, opsParity, testRuntimeArtifactParity, testNegativeFieldParityControl };
