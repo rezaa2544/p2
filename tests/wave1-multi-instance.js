@@ -26,6 +26,9 @@ const { createIds } = require('../server/ids.js');
 const { createOutbox } = require('../server/outbox.js');
 const { createDeleteService } = require('../server/delete-service.js');
 const { createGradeRoutes } = require('../server/routes/grades.js');
+const { createAuth } = require('../server/auth.js');
+const { createIdor } = require('../server/idor.js');
+const { createOtpStore } = require('../server/otp-store.js');
 const { opX } = require('./helpers/opx');
 
 let okc = 0, failc = 0;
@@ -83,6 +86,14 @@ async function apiSyncOf(inst, ops) {
       name: 'pg_get_serial_sequence', args: ['text', 'text'], returns: 'text',
       implementation: () => null
     });
+    pg.public.registerFunction({
+      name: 'regexp_replace', args: ['text', 'text', 'text', 'text'], returns: 'text',
+      implementation: (str, pat, repl, flags) => (str || '').replace(new RegExp(pat, flags), repl)
+    });
+    pg.public.registerFunction({
+      name: 'right', args: ['text', 'integer'], returns: 'text',
+      implementation: (str, n) => (str || '').slice(-n)
+    });
   } catch (e) { /* نبودش هم فقط noise است — رفتار عوض نمی‌شود */ }
   const { Pool } = pg.adapters.createPg();
   const pool = new Pool();
@@ -102,7 +113,19 @@ async function apiSyncOf(inst, ops) {
      actor_id INTEGER, version INTEGER, payload TEXT, created_at TIMESTAMPTZ)`);
   /* stub tables: hydrate iterates every store key — these exist only to keep the
      stand-in quiet (empty SELECTs); assertions never depend on them. */
-  await pool.query('CREATE TABLE users (id INTEGER PRIMARY KEY)');
+  await pool.query(`CREATE TABLE users
+    (id INTEGER PRIMARY KEY, role TEXT, school_id INTEGER, national_id TEXT,
+     active BOOLEAN, full_name TEXT, phone TEXT, username TEXT, parent_id INTEGER, version INTEGER)`);
+  await pool.query(`CREATE TABLE schools
+    (id INTEGER PRIMARY KEY, name TEXT, active BOOLEAN, version INTEGER, updated_at TEXT, created_at TEXT)`);
+  await pool.query(`CREATE TABLE classes
+    (id INTEGER PRIMARY KEY, school_id INTEGER, homeroom_teacher_id INTEGER, name TEXT, grade INTEGER)`);
+  await pool.query(`CREATE TABLE schedule
+    (id INTEGER PRIMARY KEY, school_id INTEGER, class_id INTEGER, teacher_id INTEGER, day TEXT, period TEXT)`);
+  await pool.query(`CREATE TABLE enrollments
+    (id INTEGER PRIMARY KEY, school_id INTEGER, class_id INTEGER, student_id INTEGER)`);
+  await pool.query(`CREATE TABLE parent_links
+    (id INTEGER PRIMARY KEY, parent_id INTEGER, student_id INTEGER)`);
   await pool.query('CREATE TABLE sync_conflicts (id INTEGER PRIMARY KEY)');
   for (const s of ['users', 'grades', 'attendance', 'classes'])
     await pool.query('CREATE SEQUENCE payesh_' + s + '_id_seq');
@@ -245,6 +268,134 @@ async function apiSyncOf(inst, ops) {
   const del8 = await B.deleter.softDelete('grades', { id: idN }, { actor: MGR, audit: () => {} });
   chk('T8b حذف در B با hydrate: ok', del8.ok === true, JSON.stringify(del8));
   chk('T8c ردیف از PG رفت', !(await pgRows('grades')).some(r => r.id === idN));
+
+  /* ── T9: احراز هویت و وضعیت مدرسه در چند نمونه (PG Authority) ── */
+  await pool.query("INSERT INTO schools (id, name, active) VALUES (1, 'مدرسه ۱', true), (2, 'مدرسه ۲', false)");
+  await pool.query("INSERT INTO users (id, role, school_id, national_id, active, full_name, phone) VALUES " +
+    "(101, 'teacher', 1, '1111111111', true, 'دبیر ۱', '09121111111'), " +
+    "(102, 'teacher', 2, '2222222222', true, 'دبیر ۲', '09122222222'), " +
+    "(103, 'student', 1, '3333333333', true, 'دانش‌آموز ۱', '09123333333')");
+
+  // حافظهٔ B کاربر ۱۰۱ را فعال دارد
+  A.store.__revoked_jti = {};
+  B.store.__revoked_jti = {};
+  B.store.users = [{ id: 101, active: true, role: 'teacher', school_id: 1, full_name: 'دبیر ۱', phone: '09121111111', national_id: '1111111111' }];
+  B.store.schools = [{ id: 1, active: true, name: 'مدرسه ۱' }, { id: 2, active: false, name: 'مدرسه ۲' }];
+
+  const otpA = createOtpStore({ file: '/tmp/wave1-otp-a.json', ttlMs: 60000, store: A.store });
+  const otpB = createOtpStore({ file: '/tmp/wave1-otp-b.json', ttlMs: 60000, store: B.store });
+  const JWT_SECRET = 'wave1-multi-instance-test-secret-at-least-32-chars';
+
+  const authA = createAuth({ store: A.store, db, JWT_SECRET, SESSION_NAME: 'sid', SESSION_TTL_S: 3600, CODE_TTL_MS: 60000, DEMO_CODE_ECHO: true, audit: () => {}, isHttps: () => false, otp: otpA });
+  const authB = createAuth({ store: B.store, db, JWT_SECRET, SESSION_NAME: 'sid', SESSION_TTL_S: 3600, CODE_TTL_MS: 60000, DEMO_CODE_ECHO: true, audit: () => {}, isHttps: () => false, otp: otpB });
+
+  // T9a: نشست اولیه در A
+  const reqDummy = { headers: {} };
+  const resDummy = { setHeader: (k, v) => { resDummy.cookie = v; } };
+  await authA.setSessionCookie(reqDummy, resDummy, { id: 101, role: 'teacher', school_id: 1 });
+  const tok101 = (resDummy.cookie || '').split(';')[0].split('=')[1];
+  const reqWithTok101 = { headers: { cookie: 'sid=' + tok101 } };
+
+  // T9b: B در ابتدا نشست ۱۰۱ را تأیید می‌کند
+  const sess101Init = await authB.sessionFrom(reqWithTok101);
+  chk('T9a ورود و نشست کاربر فعال در PG معتبر است', sess101Init && sess101Init.id === 101);
+
+  // T9c: نمونهٔ A کاربر ۱۰۱ را در PG غیرفعال می‌کند
+  await pool.query('UPDATE users SET active = false WHERE id = 101');
+  const sess101Deact = await authB.sessionFrom(reqWithTok101);
+  chk('T9b کاربرِ غیرفعال‌شده در PG بلافاصله در نمونهٔ B رد می‌شود (sessionFrom -> null)', sess101Deact === null);
+
+  // T9d: ورود مجدد ۱۰۱ در B با کد و رمز
+  otpB.data.codes['09121111111'] = { h: require('crypto').createHash('sha256').update('123456|09121111111').digest('hex'), at: Date.now(), user_id: 101, tries: 0 };
+  const loginRes = {
+    writeHead: (c) => { loginRes._code = c; },
+    setHeader: () => {},
+    end: (b) => { try { loginRes._body = JSON.parse(b); } catch (e) { loginRes._body = b; } }
+  };
+  await authB.apiLogin({ headers: {} }, loginRes, { phone: '09121111111', code: '123456', national_id: '1111111111' });
+  chk('T9c تلاش ورود کاربر غیرفعال‌شده در PG رد می‌شود (401 inactive)', loginRes._code === 401 && loginRes._body && loginRes._body.code === 'inactive');
+
+  // T9e: کاربر در PG حذف می‌شود -> نشست در B رد می‌شود
+  await pool.query('DELETE FROM users WHERE id = 101');
+  const sess101Del = await authB.sessionFrom(reqWithTok101);
+  chk('T9d کاربرِ حذف‌شده در PG بلافاصله در نمونهٔ B رد می‌شود', sess101Del === null);
+
+  // T9f: مدرسه ۲ غیرفعال است -> نشست کاربر ۱۰۲ در B رد می‌شود
+  await authA.setSessionCookie(reqDummy, resDummy, { id: 102, role: 'teacher', school_id: 2 });
+  const tok102 = (resDummy.cookie || '').split(';')[0].split('=')[1];
+  const reqWithTok102 = { headers: { cookie: 'sid=' + tok102 } };
+  const sess102SchoolInact = await authB.sessionFrom(reqWithTok102);
+  chk('T9e عضوِ مدرسهٔ غیرفعال در PG رد می‌شود (sessionFrom -> null)', sess102SchoolInact === null);
+
+  // T9g: نقش کاربر در PG عوض می‌شود -> نمونهٔ B بلافاصله نقش جدید را می‌بیند
+  await pool.query("INSERT INTO users (id, role, school_id, national_id, active, full_name, phone) VALUES (108, 'teacher', 1, '8888888888', true, 'دبیر ۸', '09128888888')");
+  await authA.setSessionCookie(reqDummy, resDummy, { id: 108, role: 'teacher', school_id: 1 });
+  const tok108 = (resDummy.cookie || '').split(';')[0].split('=')[1];
+  const reqWithTok108 = { headers: { cookie: 'sid=' + tok108 } };
+  const sess108T = await authB.sessionFrom(reqWithTok108);
+  chk('T9f نقش اولیه دبیر تأیید شد', sess108T && sess108T.role === 'teacher');
+  await pool.query("UPDATE users SET role = 'manager' WHERE id = 108");
+  const sess108M = await authB.sessionFrom(reqWithTok108);
+  chk('T9g تغییر نقش در PG بلافاصله توسط نمونهٔ B دیده شد (role=manager)', sess108M && sess108M.role === 'manager');
+
+  /* ── T10: آزمون‌های IDOR و تفکیک مستأجر بر پایهٔ PG Authority ── */
+  await pool.query("INSERT INTO users (id, role, school_id, national_id, active, full_name, phone, username) VALUES " +
+    "(210, 'manager', 1, '2100', true, 'مدیر ۱', '09120000210', 'm1')," +
+    "(220, 'manager', 2, '2200', true, 'مدیر ۲', '09120000220', 'm2')," +
+    "(230, 'teacher', 1, '2300', true, 'معلم کلاس ۱', '09120000230', 't1')," +
+    "(231, 'teacher', 1, '2310', true, 'معلم کلاس ۲', '09120000231', 't2')," +
+    "(240, 'student', 1, '2400', true, 'شاگرد ۱', '09120000240', 's1')," +
+    "(241, 'student', 2, '2410', true, 'شاگرد ۲', '09120000241', 's2')," +
+    "(250, 'parent', 1, '2500', true, 'ولی شاگرد ۱', '09120000250', 'p1')," +
+    "(251, 'parent', 1, '2510', true, 'ولی غریبه', '09120000251', 'p2')"
+  );
+  await pool.query("INSERT INTO classes (id, school_id, homeroom_teacher_id) VALUES (1, 1, 230), (2, 1, 231)");
+  await pool.query("INSERT INTO enrollments (id, school_id, class_id, student_id) VALUES (1, 1, 1, 240)");
+  await pool.query("INSERT INTO parent_links (id, parent_id, student_id) VALUES (1, 250, 240)");
+
+  let currentIdorSession = null;
+  const idorCap = (res, code, body) => { res._cap = { code, body }; };
+  const idorInst = createIdor({ store: { users: [] }, db, audit: () => {}, sessionFrom: async () => currentIdorSession, sendJson: idorCap });
+
+  async function callIdor(sess, sid) {
+    currentIdorSession = sess;
+    const r = {};
+    await idorInst.apiStudent({}, r, sid);
+    return r._cap || {};
+  }
+
+  // T10a: مدیر مستأجر A به دانش‌آموز خودش دسترسی دارد
+  const r10a = await callIdor({ id: 210, role: 'manager', school_id: 1 }, 240);
+  chk('T10a tenant A manager -> own student (200)', r10a.code === 200 && r10a.body.ok === true && r10a.body.student.id === 240);
+
+  // T10b: مدیر مستأجر A به دانش‌آموز مستأجر B دسترسی ندارد (404 fail-closed)
+  const r10b = await callIdor({ id: 210, role: 'manager', school_id: 1 }, 241);
+  chk('T10b tenant A manager -> tenant B student (404 fail-closed)', r10b.code === 404);
+
+  // T10c: دبیر منسوب به کلاس دانش‌آموز از طریق PG دسترسی دارد
+  const r10c = await callIdor({ id: 230, role: 'teacher', school_id: 1 }, 240);
+  chk('T10c teacher -> assigned student from PG (200)', r10c.code === 200 && r10c.body.ok === true);
+
+  // T10d: دبیر غیرمنسوب به دانش‌آموز دسترسی ندارد (404)
+  const r10d = await callIdor({ id: 231, role: 'teacher', school_id: 1 }, 240);
+  chk('T10d teacher -> unrelated student (404)', r10d.code === 404);
+
+  // T10e: والد مرتبط در PG دسترسی دارد
+  const r10e = await callIdor({ id: 250, role: 'parent', school_id: 1 }, 240);
+  chk('T10e parent -> linked student from PG parent_links (200)', r10e.code === 200 && r10e.body.ok === true);
+
+  // T10f: والد غیرمرتبط دسترسی ندارد (404)
+  const r10f = await callIdor({ id: 251, role: 'parent', school_id: 1 }, 240);
+  chk('T10f parent -> unlinked student (404)', r10f.code === 404);
+
+  // T10g: دسترسی دبیر به دانش‌آموز مدرسهٔ دیگر مسدود است (cross-tenant 404)
+  const r10g = await callIdor({ id: 230, role: 'teacher', school_id: 1 }, 241);
+  chk('T10g teacher -> cross-tenant student (404 fail-closed)', r10g.code === 404);
+
+  // T10h: بررسی مستقیم policy.studentRecordOk برای تفکیک مستأجر
+  const policyMod = require('../server/policy.js');
+  chk('T10h policy.studentRecordOk rejects cross-tenant manager',
+    !policyMod.studentRecordOk({}, { id: 210, role: 'manager', school_id: 1 }, { id: 241, school_id: 2 }));
 
   db.__setPoolForTests(null);
   await pool.end();

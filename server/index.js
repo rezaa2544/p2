@@ -513,7 +513,7 @@ const auth = createAuth({ store, db, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, 
 /* P0-16: شناسه‌های بدون‌برخورد — دنبالهٔ پستگرس یا مکس+۱ قفل‌دار (پیش از sync: حلقهٔ اعمال از آن استفاده می‌کند) */
 const ids = createIds({ db, cache });
 const sync = createSync({ store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, markDirty, ids, rateLimit: rateLimit.checkRateLimit });
-const idor = createIdor({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
+const idor = createIdor({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting, db });
 const bell = createBell({ store, audit, sessionFrom: auth.sessionFrom, sendJson: sendJsonCounting });
 const pubrep = createPublicReport({ store, db, sendJson: sendJsonCounting, workers }); /* P1-3: مسیر PG */
 /* هر سه ماژول با db می‌چرخند: admin/conflicts (Wave 1 main) + sms (W1p2 تراکنسی) */

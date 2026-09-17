@@ -374,17 +374,87 @@ function studentRecordOk(store, session, rec, opts) {
   if (role === 'superadmin') return true;
   if (role === 'manager') return rec.school_id != null && Number(rec.school_id) === num(session.school_id);
   if (role === 'student') return Number(rec.id) === Number(session.id);
-  if (role === 'parent') return childrenOfParent(store, session.id, opts && opts.parentLinks).has(Number(rec.id));
+  if (role === 'parent') {
+    const kids = (opts && opts.parentChildIds)
+      ? opts.parentChildIds
+      : childrenOfParent(store, session.id, opts && opts.parentLinks);
+    return kids.has(Number(rec.id));
+  }
   if (role === 'teacher') {
     if (Number(rec.id) === Number(session.id)) return true;
     if (rec.school_id == null || Number(rec.school_id) !== num(session.school_id)) return false;
-    const taught = teacherClassIds(store, session.id);
+    const taught = (opts && opts.teacherClassIds) || teacherClassIds(store, session.id);
     /* کلاسِ واقعی‌بودن — آینهٔ §۱.۲: کلاسِ شبح (schedule بدونِ سطرِ classes)
        هرگز دسترسی باز نمی‌کند (تلهٔ fail-openِ ثبت‌شده). */
-    const real = new Set(((store && store.classes) || []).map((c) => Number(c.id)));
-    return Array.from(studentClassIds(store, rec.id)).some((cid) => taught.has(Number(cid)) && real.has(Number(cid)));
+    const real = (opts && opts.realClassIds) || new Set(((store && store.classes) || []).map((c) => Number(c.id)));
+    const sClasses = (opts && opts.studentClassIds) || studentClassIds(store, rec.id);
+    return Array.from(sClasses).some((cid) => taught.has(Number(cid)) && real.has(Number(cid)));
   }
   return false;
+}
+
+/**
+ * Wave 1 (P0-1): حل محدودهٔ دسترسی دانش‌آموز بر پایهٔ Source of Truth در PostgreSQL
+ * هنگامی که پایگاه داده فعال است، انتسابات کلاس دبیر و پیوندهای اولیا را مستقیماً
+ * از PostgreSQL می‌خواند تا تغییرات سایر نمونه‌ها بلادرنگ نافذ باشد.
+ */
+async function resolveStudentScopeOpts(db, store, session, rec) {
+  if (!db || typeof db.isPostgres !== 'function' || !db.isPostgres() || !session || !rec) {
+    return null;
+  }
+  const opts = {};
+  const role = session.role;
+  if (role === 'parent') {
+    const pid = num(session.id);
+    const kids = new Set();
+    if (pid != null) {
+      try {
+        const r1 = await db.query('SELECT student_id FROM parent_links WHERE parent_id = $1', [pid]);
+        if (r1 && r1.rows) r1.rows.forEach(r => kids.add(Number(r.student_id)));
+        const r2 = await db.query('SELECT id FROM users WHERE role = $1 AND parent_id = $2', ['student', pid]);
+        if (r2 && r2.rows) r2.rows.forEach(r => kids.add(Number(r.id)));
+      } catch (err) {
+        console.error('[POLICY] PG parent_links query failed:', err.message);
+        if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+          throw err;
+        }
+      }
+    }
+    opts.parentChildIds = kids;
+  } else if (role === 'teacher') {
+    const tid = num(session.id);
+    const sid = num(rec.id);
+    const schId = num(session.school_id);
+    const taught = new Set();
+    const real = new Set();
+    const stClasses = new Set();
+    if (tid != null && schId != null) {
+      try {
+        const rHomeroom = await db.query('SELECT id FROM classes WHERE homeroom_teacher_id = $1 AND school_id = $2', [tid, schId]);
+        if (rHomeroom && rHomeroom.rows) rHomeroom.rows.forEach(r => taught.add(Number(r.id)));
+
+        const rSched = await db.query('SELECT class_id FROM schedule WHERE teacher_id = $1 AND school_id = $2', [tid, schId]);
+        if (rSched && rSched.rows) rSched.rows.forEach(r => taught.add(Number(r.class_id)));
+
+        const rReal = await db.query('SELECT id FROM classes WHERE school_id = $1', [schId]);
+        if (rReal && rReal.rows) rReal.rows.forEach(r => real.add(Number(r.id)));
+
+        if (sid != null) {
+          const rEnroll = await db.query('SELECT class_id FROM enrollments WHERE student_id = $1 AND school_id = $2', [sid, schId]);
+          if (rEnroll && rEnroll.rows) rEnroll.rows.forEach(r => stClasses.add(Number(r.class_id)));
+        }
+      } catch (err) {
+        console.error('[POLICY] PG teacher scope query failed:', err.message);
+        if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+          throw err;
+        }
+      }
+    }
+    opts.teacherClassIds = taught;
+    opts.realClassIds = real;
+    opts.studentClassIds = stClasses;
+  }
+  return opts;
 }
 
 
@@ -560,7 +630,7 @@ module.exports = {
   writeRoleOk, isTeacherIepUpdate, restWriteRoleOk,
   officeCoversSchool, userOffice, schoolInOfficeScope,
   teacherClassIds, teacherSubjectIds, studentClassIds, childrenOfParent, writeChildrenOfParent, recordSchoolId,
-  studentRecordOk,
+  studentRecordOk, resolveStudentScopeOpts,
   inScope, readOk, filterReadable, DELETE_ROLES_REST,
   restReadGate, restWriteGate, restCreateScopeOk,
   selfEditDeniedKeys
