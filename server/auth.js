@@ -84,7 +84,7 @@ function createAuth(ctx){
        (defense in depth alongside exp + jti revocation) */
     if(typeof payload.iat !== 'number' || payload.iat * 1000 > Date.now() + 5 * 60 * 1000
        || Date.now() - payload.iat * 1000 > SESSION_TTL_S * 1000) return { err: 'bad_iat' };
-    if(typeof payload.jti !== 'string' || store.__revoked_jti[payload.jti]) return { err: 'revoked' };
+    if(typeof payload.jti !== 'string' || (store.__revoked_jti && store.__revoked_jti[payload.jti])) return { err: 'revoked' };
     return { payload };
   }
 
@@ -110,16 +110,37 @@ function createAuth(ctx){
     if(await revocation.isRevoked(p.jti)) return null;
     const sv = await revocation.getSessionVersion(p.sub);
     if(sv > 0 && (p.sv || 0) < sv) return null;
-    /* P1-1 (بازبین): کاربرِ خارج از سقفِ hydration هم نشستِ معتبر دارد — ورودش را
-       از PG آوردیم؛ هویتِ هر درخواست را هم از PG حل می‌کنیم (PK lookup ایندکسی).
-       نبود در PG = نبود (نشست می‌میرد — fail-closed). خطای اتصال همین حکم را دارد
-       (با لاگ): به PG فقط وقتی می‌رسیم که آینه کاربر را ندارد. */
-    let user = (store.users || []).find(u => u.id === p.sub);
-    if(!user && db && typeof db.isPostgres === 'function' && db.isPostgres()){
-      try{ user = await db.readOne('users', p.sub); }
-      catch(e){ console.error('[AUTH] sessionFrom: PG lookup failed —', e.message); user = null; }
+    /* Wave 1 (P0-1): PG is authoritative for user identity & active status.
+       In PostgreSQL mode, query PG directly so changes (deactivation, role change,
+       deletion) on other instances are immediately authoritative. */
+    let user = null;
+    if(db && typeof db.isPostgres === 'function' && db.isPostgres()){
+      try{
+        user = await db.readOne('users', p.sub);
+      }catch(e){
+        console.error('[AUTH] sessionFrom: PG lookup failed —', e.message);
+        return null;
+      }
+    } else {
+      user = (store.users || []).find(u => u.id === p.sub);
     }
     if(!user || !user.active) return null;
+
+    /* PG authority for school active status (B — School status) */
+    if(user.school_id != null){
+      let school = null;
+      if(db && typeof db.isPostgres === 'function' && db.isPostgres()){
+        try{
+          school = await db.readOne('schools', user.school_id);
+        }catch(e){
+          console.error('[AUTH] sessionFrom: PG school lookup failed —', e.message);
+          return null;
+        }
+      } else {
+        school = (store.schools || []).find(s => s.id === user.school_id);
+      }
+      if(school && !school.active) return null;
+    }
     return Object.assign({ jti: p.jti, token: tok }, user);
   }
   async function setSessionCookie(req, res, user){
@@ -189,7 +210,11 @@ function createAuth(ctx){
         if(r && r.rows && r.rows.length) return r.rows[0];
         return null;
       }catch(e){
-        console.error('[AUTH] userByPhone: PG lookup failed, falling back to mirror —', e.message);
+        console.error('[AUTH] userByPhone: PG lookup failed —', e.message);
+        if(process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production'){
+          throw e;
+        }
+        return null;
       }
     }
     return (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === tail);
@@ -308,8 +333,20 @@ function createAuth(ctx){
        S-73-5: constant-time compare (no length/prefix timing oracle). */
     if(!checkCodeSafe(user.national_id, nid)) return fail('nid_mismatch');
     if(!user.active) return fail('inactive');
-    const school = (store.schools || []).find(s => s.id === user.school_id);
-    if(school && !school.active) return fail('school_inactive');
+    let school = null;
+    if(user.school_id != null){
+      if(db && typeof db.isPostgres === 'function' && db.isPostgres()){
+        try{
+          school = await db.readOne('schools', user.school_id);
+        }catch(e){
+          console.error('[AUTH] apiLogin: PG school lookup failed —', e.message);
+          return fail('school_inactive');
+        }
+      } else {
+        school = (store.schools || []).find(s => s.id === user.school_id);
+      }
+      if(school && !school.active) return fail('school_inactive');
+    }
 
     otp.deleteCode(phone); /* P0-15: tombstone — مرگِ کد باید به همهٔ نمونه‌ها برسد */
     fl.n = 0; fl.until = 0;
@@ -367,10 +404,11 @@ function createAuth(ctx){
       collectDel('parent_verifications', (r) => Number(r.parent_id) === uid);
       collectDel('parent_subscriptions', (r) => Number(r.user_id) === uid);
       collectDel('messages', (r) => Number(r.from_id) === uid);
-      let urow = (store.users || []).find(u => u && Number(u.id) === uid);
-      if(urow && typeof db.readOne === 'function'){
+      let urow = null;
+      if(typeof db.readOne === 'function'){
         try{ const live = await db.readOne('users', uid); if(live) urow = live; }catch(e){}
       }
+      if(!urow) urow = (store.users || []).find(u => u && Number(u.id) === uid);
       if(urow){
         ops.push({ c: 'users', t: 'upd', data: Object.assign({}, urow, {
           full_name: 'حذف‌شده', phone: null, national_id: null, birth_date: null,

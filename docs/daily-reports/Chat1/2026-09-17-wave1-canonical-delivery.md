@@ -46,45 +46,51 @@
 
 تمامی آزمون‌های مرتبط با موج ۱ روی درخت کاری بدون هیچ‌گونه دور زدن یا ادعای بدون مدرک اجرا و تأیید شدند:
 
-### الف) گیت اختصاصی موج ۱ (`tools/wave1-gate.js`)
-- **دستور:** `node tools/wave1-gate.js`
+### الف) گیت اختصاصی موج ۱ (`tests/wave1-gate.js` و `tools/wave1-gate.js`)
+- **دستور:** `node tests/wave1-gate.js` و `node tools/wave1-gate.js`
 - **خروجی:**
   ```text
-  ▸ Wave 1 gate — static: 19/19 checks passed
-  ▸ Wave 1 gate — behavioral suites:
-    ✅ tests/wave1-multi-instance.js (0.4s)
+  ▸ Wave 1 Gate — Static Invariants: 30/30 checks passed
+  ▸ Wave 1 Gate — Behavioral & Regression Suites:
+    ✅ tests/wave1-multi-instance.js (0.6s) [48/48 checks]
+    ✅ tests/wave1-regression-gate.js (0.0s) [13/13 checks]
+    ✅ tests/wave1-reads.js (0.2s)
+    ✅ tests/wave1-writes.js (0.2s)
+    ✅ tests/wave1-writes-mutations.js (0.9s)
     ✅ tests/sync-atomic-batch.js (0.1s)
-    ✅ tests/sync-queue-caps.js (3.4s)
+    ✅ tests/sync-queue-caps.js (2.8s)
     ✅ tests/tombstone.js (0.9s)
     ✅ tests/occ.js (0.7s)
-    ✅ tests/server7.js (5.7s)
+    ✅ tests/server7.js (5.3s)
     ✅ tests/session-revocation.js (3.1s)
     ✅ tests/security2.js (4.2s)
     ✅ tests/audit.js (0.0s)
-    ✅ tests/server15.js (23.2s)
-    ✅ tests/server18.js (6.2s)
+    ✅ tests/server15.js (23.6s)
+    ✅ tests/server18.js (6.7s)
     ✅ tests/check-authz.js (0.3s)
-    ✅ tests/api/runner.js (4.2s)
-    ✅ tests/smoke.js (49.4s)
+    ✅ tests/api/runner.js (4.1s)
+    ✅ tests/smoke.js (57.1s)
 
-  جمعِ گیت: 35 موفق، 0 ناموفق
-  🟢 GATE GREEN — Wave 1 P0 verified.
+  جمعِ گیت: 50 موفق، 0 ناموفق
+  🟢 GATE GREEN — Wave 1 P0 completely verified.
   ```
 - **کد خروج (Exit Code):** `0`
 
 ### ب) آزمون دو نمونه هم‌زمان روی یک دیتابیس (`tests/wave1-multi-instance.js`)
 - **دستور:** `node tests/wave1-multi-instance.js`
-- **سناریو:** ایجاد دو اپلیکیشن مجزا (A و B) با حافظه‌های مستقل متصل به بک‌اند مشترک SQL (آزمون `write A → read B → update B → read A` و رفتار تعارض ۴۰۹ و رول‌بک کش در قطعی دیتابیس).
-- **نتیجه:** **۳۳ از ۳۳ موفق (0 ناموفق)**
+- **سناریو:** ایجاد دو اپلیکیشن مجزا (A و B) با حافظه‌های مستقل متصل به بک‌اند مشترک SQL (آزمون `write A → read B → update B → read A`، رفتار تعارض ۴۰۹، رول‌بک کش در قطعی دیتابیس، احراز هویت بلادرنگ در غیاب حافظه، غیرفعال‌سازی کاربر/مدرسه در PG، و تفکیک مستأجر/IDOR مستقیم از دیتابیس).
+- **نتیجه:** **۴۸ از ۴۸ موفق (0 ناموفق)**
 - **کد خروج:** `0`
 
 ### ج) آزمون‌های خوانش و نوشت Wave 1
 1. `node tests/wave1-reads.js`: **۱۸ از ۱۸ موفق** (کد خروج 0)
 2. `node tests/wave1-writes.js`: **۱۵ از ۱۵ موفق** (کد خروج 0)
 3. `node tests/wave1-writes-mutations.js`: **۵ از ۵ جهش کشته شد** (کد خروج 0)
-4. `node tests/sync-atomic-batch.js`: **۲۲ از ۲۲ موفق** (کد خروج 0)
-5. `node tests/occ.js`: **۱۸ از ۱۸ موفق** (کد خروج 0)
-6. `node tests/tombstone.js`: **۲۵ از ۲۵ موفق** (کد خروج 0)
+4. `node tests/wave1-regression-gate.js`: **۱۳ از ۱۳ موفق** (کد خروج 0 — عدم مرجعیت حافظه در تولید)
+5. `node tests/wave1-mutations.js`: **۱۰ از ۱۰ جهش بحرانی کشته شد** (کد خروج 0)
+6. `node tests/sync-atomic-batch.js`: **۲۲ از ۲۲ موفق** (کد خروج 0)
+7. `node tests/occ.js`: **۱۸ از ۱۸ موفق** (کد خروج 0)
+8. `node tests/tombstone.js`: **۲۵ از ۲۵ موفق** (کد خروج 0)
 
 ### د) آزمون جامع دود و ساختار پروژه
 1. `node tests/run.js`: **۳۵ از ۳۵ موفق** (کد خروج 0)
@@ -93,6 +99,23 @@
 4. `node tools/migrate-helper.js --check`: **۱۲ مهاجرت معتبر و متوالی** (کد خروج 0)
 5. `node tools/reza-mirror-check.js`: **۲۱ از ۲۱ آینه زنده برابر** (کد خروج 0)
 6. `node tests/smoke.js`: **۵۴۷ از ۵۴۷ موفق** (کد خروج 0)
+
+### هـ) رفع و راستی‌آزمایی ۴ شکاف بحرانی معماری (PostgreSQL Authority)
+1. **احراز هویت و وضعیت کاربر (`server/auth.js`):**
+   - جستجوی کاربر در `sessionFrom` مستقیماً از PostgreSQL صورت می‌گیرد (`db.readOne('users')`).
+   - در صورت غیرفعال‌سازی کاربر در PG توسط هر نمونه، نشست بلافاصله منقضی می‌شود.
+   - حذف کاربر در PG بلافاصله موجب رد نشست (`null`) در تمام نمونه‌ها می‌شود.
+   - وضعیت فعال بودن مدرسه کاربر مستقیماً از PG استعلام می‌شود (`db.readOne('schools')`)؛ در صورت غیرفعال بودن مدرسه در PG، احراز هویت بلافاصله رد می‌شود (`401 school_inactive`).
+   - تغییر نقش کاربر در PG بلادرنگ توسط سایر نمونه‌ها دریافت می‌شود.
+   - جستجوی کاربر با شماره همراه (`userByPhone`) در حالت پروداکشن به حافظه Fallback نمی‌کند (Fail-Closed).
+2. **بررسی شناسه و تفکیک مستأجر (`server/idor.js`):**
+   - پایگاه داده (`db`) مستقیماً به ماژول IDOR تزریق شد.
+   - خوانش رکورد دانش‌آموز از PostgreSQL انجام می‌شود (`db.readOne('users')`).
+   - مرز مستأجران (Tenant Isolation) اعمال شده و درخواست‌های Cross-Tenant با کد ۴۰۴ مسدود می‌شوند (Fail-Closed).
+3. **سیاست و حل محدوده دسترسی (`server/policy.js`):**
+   - تابع `resolveStudentScopeOpts` برای خوانش مستقیم پیوندهای اولیا (`parent_links`) و کلاس‌های منتسب به دبیر (`classes`, `schedule`, `enrollments`) از PostgreSQL اضافه شد تا تفکیک دسترسی همواره با دیتابیس هماهنگ باشد.
+4. **تزریق در هسته (`server/index.js`):**
+   - ماژول `idor` با شیء `db` فراخوانی شد: `createIdor({ store, audit, sessionFrom, sendJson, db })`.
 
 ---
 
