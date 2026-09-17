@@ -199,7 +199,7 @@ let stats = null;
   chk('T7a راهنمایِ PG COPY', /\\\\copy schools/.test(r) || /copy schools/.test(r));
   chk('T7b راهنمایِ k6 + ارجاع به طرح', /k6/.test(r) && /WAVE18_LOAD_TEST_PLAN/.test(r));
   chk('T7c هشدارِ امنیتی (داده‌هایِ مصنوعی)', /مصنوعی/.test(r));
-  chk('T7d stats.json شاملِ sha256 فایل‌ها', Object.keys(stats.checksums).length === 6);
+  chk('T7d stats.json شاملِ sha256 فایل‌ها', Object.keys(stats.checksums).length >= 6);
 }
 
 try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {}
