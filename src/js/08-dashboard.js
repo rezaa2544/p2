@@ -28,6 +28,155 @@ function viewDashboard(){
   return familyDash()+annCard();
 }
 
+function managerExceptionPanel(sid, attToday, users, perStudent){
+  const items = [];
+  const unexcused = (attToday || []).filter(a => a.status === 'absent');
+  if(unexcused.length > 0){
+    items.push({
+      icon: '⚠️',
+      title: 'غیبت‌های غیرموجه امروز',
+      desc: `${fa(unexcused.length)} دانش‌آموز غایب بدون اطلاع ثبت شده‌اند (نیاز به تماس با اولیا)`,
+      badge: '<span class="badge b-red">پیگیری فوری</span>',
+      act: 'attendance',
+      btn: '📞 بررسی حضور و غیاب'
+    });
+  }
+  const lowGpaList = Object.entries(perStudent || {}).filter(([_, l]) => avgOf(l) < 10);
+  if(lowGpaList.length > 0){
+    items.push({
+      icon: '📉',
+      title: 'دانش‌آموزان با نمرات بحرانی',
+      desc: `${fa(lowGpaList.length)} دانش‌آموز دارای معدل زیر ۱۰ هستند (نیازمند مداخله و آموزش جبرانی)`,
+      badge: '<span class="badge b-amber">مداخله آموزشی</span>',
+      act: 'grades',
+      btn: '📊 بررسی نمرات'
+    });
+  }
+  const pendingPreapps = (db.preapps || []).filter(p => p.school_id === sid && p.stage !== 'registered' && p.stage !== 'rejected');
+  if(pendingPreapps.length > 0){
+    items.push({
+      icon: '📝',
+      title: 'پیش‌ثبت‌نام‌های معلق',
+      desc: `${fa(pendingPreapps.length)} متقاضی جدید در صف انتظار تعیین‌تکلیف نهایی`,
+      badge: '<span class="badge b-blue">پذیرش</span>',
+      act: 'preapps',
+      btn: '📋 مدیریت پذیرش'
+    });
+  }
+  const enrolledIds = new Set((db.enrollments || []).filter(e => e.school_id === sid).map(e => e.student_id));
+  const unassigned = (users || []).filter(x => x.role === 'student' && !enrolledIds.has(x.id));
+  if(unassigned.length > 0){
+    items.push({
+      icon: '🏛️',
+      title: 'دانش‌آموزان بدون کلاس',
+      desc: `${fa(unassigned.length)} دانش‌آموز فعال کلاسی برایشان ثبت نشده است`,
+      badge: '<span class="badge b-purple">سازماندهی</span>',
+      act: 'classes',
+      btn: '🏛️ تخصیص کلاس'
+    });
+  }
+  if(typeof drillAnnualStatus === 'function'){
+    const dst = drillAnnualStatus(sid);
+    if(!dst.done){
+      items.push({
+        icon: '⛑️',
+        title: 'الزام قانونی مانور سالانه ایمنی و زلزله',
+        desc: 'مانور سراسری ایمنی در سال تحصیلی جاری برای مدرسه ثبت نشده است',
+        badge: '<span class="badge b-red">الزام آموزش و پرورش</span>',
+        act: 'drills',
+        btn: '⛑️ ثبت مانور'
+      });
+    }
+  }
+
+  if(items.length === 0){
+    return `<div class="card" style="border:1px solid var(--green,#22c55e);background:var(--green-soft,#f2fbf4)" role="region" aria-label="میز فرماندهی مدیر">
+      <div class="card-body" style="padding:12px 16px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:24px" aria-hidden="true">🛡️</span>
+        <div><b>مرکز فرماندهی مدیر: وضعیت مدرسه کاملاً عادی است</b>
+        <div class="small muted">هیچ هشدار اضطراری یا غیبت پیگیری‌نشده‌ای در این لحظه ثبت نشده است.</div></div>
+      </div>
+    </div>`;
+  }
+
+  return `<div class="card" style="border:1px solid var(--amber,#f59e0b);background:var(--surface-1)" role="region" aria-label="میز فرماندهی و هشدارهای نیازمند اقدام مدیر">
+    <div class="card-head" style="background:var(--amber-soft,#fff9e6)">
+      <h3>🚨 میز فرماندهی و هشدارهای نیازمند اقدام مدیر</h3>
+      <span class="badge b-amber">${fa(items.length)} مورد نیازمند پیگیری</span>
+    </div>
+    <div class="card-body" style="display:grid;gap:10px;padding:12px 14px">
+      ${items.map(it => `
+        <div class="row" style="background:var(--surface-2);padding:10px 14px;border-radius:10px;align-items:center;flex-wrap:wrap;gap:8px">
+          <span style="font-size:20px" aria-hidden="true">${it.icon}</span>
+          <div style="flex:1;min-width:200px">
+            <div style="display:flex;gap:8px;align-items:center">
+              <b>${esc(it.title)}</b>
+              ${it.badge}
+            </div>
+            <div class="small muted" style="margin-top:2px">${esc(it.desc)}</div>
+          </div>
+          <button class="btn ghost sm" data-act="go" data-r="${escAttr(it.act)}">${esc(it.btn)}</button>
+        </div>
+      `).join('')}
+    </div>
+  </div>`;
+}
+
+function gradeDistributionCard(perStudent){
+  const avgs = Object.values(perStudent || {}).map(l => avgOf(l)).filter(n => !isNaN(n));
+  const tot = avgs.length;
+  if(!tot) return '';
+  let exc = 0, good = 0, fair = 0, weak = 0;
+  for(let i = 0; i < avgs.length; i++){
+    const v = avgs[i];
+    if(v >= 17) exc++;
+    else if(v >= 14) good++;
+    else if(v >= 10) fair++;
+    else weak++;
+  }
+  const pct = n => tot ? Math.round((n / tot) * 100) : 0;
+  return `<div class="card" role="region" aria-label="توزیع سطح پیشرفت تحصیلی دانش‌آموزان">
+    <div class="card-head">
+      <h3>📊 توزیع سطح پیشرفت تحصیلی</h3>
+      <span class="badge b-purple">${fa(tot)} دانش‌آموز ارزیابی‌شده</span>
+    </div>
+    <div class="card-body" style="display:grid;gap:12px">
+      <div>
+        <div class="row" style="margin-bottom:4px">
+          <span>🟢 سطح خیلی خوب / عالی (۱۷ تا ۲۰)</span>
+          <div class="spacer"></div>
+          <b>${fa(exc)}</b> <span class="muted small">(${fa(pct(exc))}٪)</span>
+        </div>
+        ${bar(exc, tot, 'var(--green,#22c55e)')}
+      </div>
+      <div>
+        <div class="row" style="margin-bottom:4px">
+          <span>🔵 سطح خوب (۱۴ تا ۱۶.۹۹)</span>
+          <div class="spacer"></div>
+          <b>${fa(good)}</b> <span class="muted small">(${fa(pct(good))}٪)</span>
+        </div>
+        ${bar(good, tot, 'var(--blue,#3b82f6)')}
+      </div>
+      <div>
+        <div class="row" style="margin-bottom:4px">
+          <span>🟡 سطح قابل قبول (۱۰ تا ۱۳.۹۹)</span>
+          <div class="spacer"></div>
+          <b>${fa(fair)}</b> <span class="muted small">(${fa(pct(fair))}٪)</span>
+        </div>
+        ${bar(fair, tot, 'var(--amber,#f59e0b)')}
+      </div>
+      <div>
+        <div class="row" style="margin-bottom:4px">
+          <span>🔴 نیازمند تلاش و آموزش جبرانی (کمتر از ۱۰)</span>
+          <div class="spacer"></div>
+          <b>${fa(weak)}</b> <span class="muted small">(${fa(pct(weak))}٪)</span>
+        </div>
+        ${bar(weak, tot, 'var(--red,#ef4444)')}
+      </div>
+    </div>
+  </div>`;
+}
+
 function adminDash(){
   const u=S.user, sid=u.role==='manager'?u.school_id:null;
   const F=a=>sid?a.filter(x=>x.school_id===sid):a;
@@ -60,6 +209,7 @@ function adminDash(){
     ${statCard('🏛️',fa(counts.classes),'کلاس فعال','amber')}
     ${u.role==='manager'?statCard('👨‍👩‍👦',fa(counts.parents),'ولی ثبت‌شده','purple'):''}
    </div>
+   ${u.role==='manager'?managerExceptionPanel(sid,attToday,users,perStudent):''}
    ${u.role==='manager'?`<div class="row" style="background:var(--surface-2);padding:10px 14px;border-radius:12px;align-items:center">
     <b>📰 گزارش عمومی</b><span class="small muted">خلاصهٔ قابل انتشار برای بیرون (بدون دادهٔ حساس)</span>
     <div class="spacer"></div>
@@ -92,7 +242,8 @@ function adminDash(){
      <div class="table-wrap"><table><thead><tr><th>#</th><th>نام</th><th>کلاس</th><th>معدل</th></tr></thead><tbody>
       ${top.map((t,i)=>`<tr><td>${fa(i+1)}</td><td>${esc(t.u.full_name)}</td><td class="muted">${esc((classOf(t.u.id)||{}).name||'—')}</td><td><span class="badge b-green">${fa(t.avg.toFixed(2))}</span></td></tr>`).join('')}
      </tbody></table></div></div>
-   </div>`;
+   </div>
+   ${gradeDistributionCard(perStudent)}`;
 }
 
 function teacherDash(){
