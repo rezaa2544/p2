@@ -1,0 +1,38 @@
+engines:
+  pmd:
+    enabled: false
+  pmd-legacy:
+    enabled: false
+
+exclude_paths:
+  - "node_modules/**"
+  - "dist/**"
+  - "build/**"
+  - "coverage/**"
+  - "reference/**"
+  - "docs/_export/**"
+  - "docs/_metadata.json"
+  - "docs/_search-index.json"
+  - "data/**"
+  - "tests/.cache-jaeger/**"
+  - "tests/chaos-output/**"
+  - "out/**"
+  - "**/*.db"
+  - "**/*.sqlite"
+  - "**/*.pem"
+  - "**/*.key"
+  - "**/*.crt"
+  - "**/*.zip"
+  - "**/*.rar"
+  - "**/*.7z"
+  - "**/*.png"
+  - "**/*.jpg"
+  - "**/*.jpeg"
+  - "**/*.gif"
+  - "**/*.webp"
+  - "**/*.ico"
+  - "**/*.pdf"
+  - "**/*.html"
+  - "**/*.bundle"
+  - "**/*.tar.gz"
+  - "**/*.patch"
