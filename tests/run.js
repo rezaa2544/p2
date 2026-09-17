@@ -74,12 +74,21 @@ test('هیچ فایل JS خارج از _order.json جا نمانده', () => {
 // ───────────────────────────── صحت build
 group('صحت فرآیند build');
 
-test('build.js بدون خطا اجرا می‌شود', () => {
-  execFileSync(process.execPath, [path.join(ROOT, 'build.js')], { stdio: 'pipe' });
-});
-
+/* ترتیبِ این دو سنجه مهم است (C1-05، ۲۰۲۶-۰۹-۱۶ — رفعِ «سبزِ جعلی»):
+   پیش‌تر نخست `build.js` در حالتِ **نوشتن** اجرا می‌شد و index.html (و مُهرِ
+   USER_GUIDE.html) را بازمی‌ساخت و *بعد* یکسانیِ خروجی با index.html سنجیده
+   می‌شد ⇒ سنجه همیشه سبز بود، حتی وقتی آرتیفکتِ کامیت‌شده کهنه باشد.
+   شاهدِ واقعی: index.html روی `main` (b44eff9) ۱۱۹۰ کاراکتر از src/ عقب بود و
+   اصلاحِ امنیتیِ CodeQL alert #25 (پاک‌سازیِ `<`/`>`) و دو ارتقایِ RNG به crypto
+   را نداشت؛ هیچ تستی آن را نگرفت. ضمناً آن بازساختِ خودکار درختِ کاری را آلوده
+   می‌کرد و گاردِ «dirty tree → exit 3» در scripts/run-all-tests.sh را می‌شکست.
+   اکنون: **اول بررسی (read-only)، بعد ساخت**. */
 test('خروجی build با index.html بیت‌به‌بیت یکسان است', () => {
   execFileSync(process.execPath, [path.join(ROOT, 'build.js'), '--check'], { stdio: 'pipe' });
+});
+
+test('build.js بدون خطا اجرا می‌شود', () => {
+  execFileSync(process.execPath, [path.join(ROOT, 'build.js')], { stdio: 'pipe' });
 });
 
 test('dist/payesh.html تولید شده است', () => {
@@ -145,11 +154,11 @@ test('نقاط ورود اصلی (render/boot) موجودند', () => {
 
 test('تگ‌های HTML متوازن‌اند', () => {
   // در رشته‌های قالبیِ چاپ، تگ بسته به شکل <\\/script> نوشته می‌شود؛ هر دو شکل شمرده می‌شوند
-  const open = (html.match(/<script[\s>]/g) || []).length;
-  const close = (html.match(/<\\?\/script>/g) || []).length;
+  const open = (html.match(/<script[\s>]/gi) || []).length;
+  const close = (html.match(/<\\?\/script>/gi) || []).length;
   assert(open === close, `تگ script نامتوازن: ${open} باز / ${close} بسته`);
-  const so = (html.match(/<style[\s>]/g) || []).length;
-  const sc = (html.match(/<\\?\/style>/g) || []).length;
+  const so = (html.match(/<style[\s>]/gi) || []).length;
+  const sc = (html.match(/<\\?\/style>/gi) || []).length;
   assert(so === sc, `تگ style نامتوازن: ${so} باز / ${sc} بسته`);
 });
 

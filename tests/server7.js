@@ -30,7 +30,7 @@ let pass = 0, fail = 0;
 const errors = [];
 function chk(name, cond, extra) {
   if (cond) { pass++; console.log('  ✅ ' + name); }
-  else { fail++; errors.push(name + (extra !== undefined ? ' — ' + String(extra).slice(0, 160) : '')); console.log('  ❌ ' + name + (extra !== undefined ? ' — ' + String(extra).slice(0, 160) : '')); }
+  else { fail++; errors.push(name + (extra !== undefined ? ' — [redacted]' : '')); console.log('  ❌ ' + name + (extra !== undefined ? ' — [redacted]' : '')); }
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -168,7 +168,7 @@ process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }
     page.status === 200 && page.raw.indexOf('حذف حساب') !== -1 && page.raw.indexOf('کد ملی') !== -1 && page.raw.indexOf('delete-account') !== -1,
     page.raw.slice(0, 120));
   chk('D7b صفحه خودکفاست (بدون وابستگیِ خارجی)',
-    page.raw.indexOf('https://') === -1 && page.raw.indexOf('http://') === -1 && /<script>/.test(page.raw),
+    page.raw.indexOf('https://') === -1 && page.raw.indexOf('http://') === -1 && /<script\b/i.test(page.raw),
     page.raw.slice(0, 120));
 
   srv.kill('SIGKILL');

@@ -126,7 +126,13 @@ test('I6 — نیلوفر: بدونِ شمارهٔ خود ← شمارهٔ پد�
 });
 
 test('I7 — دبیران: ۳/۳ ثبت + درس تخصصی', () => {
-  const rep = JSON.parse(W(`(function(){var p=prepSheet(parseCSV(${T_CSV()}),'teachers');var st=validateImport(p.rows,p.mapping,'teachers');if(st.counts.failed>0)return JSON.stringify({err:JSON.stringify(st.rows)});return JSON.stringify(commitImport({entity:'teachers',preview:st}))})()`));
+  dom.window.__IMPORT2_TEACH_CSV__ = TEACH_CSV;
+  let rep;
+  try {
+    rep = JSON.parse(W(`(function(){var p=prepSheet(parseCSV(window.__IMPORT2_TEACH_CSV__),'teachers');var st=validateImport(p.rows,p.mapping,'teachers');if(st.counts.failed>0)return JSON.stringify({err:JSON.stringify(st.rows)});return JSON.stringify(commitImport({entity:'teachers',preview:st}))})()`));
+  } finally {
+    delete dom.window.__IMPORT2_TEACH_CSV__;
+  }
   assert(!rep.err, 'خطایِ اعتبارسنجی: ' + rep.err);
   assert(rep.created === 3, 'دبیران: ' + JSON.stringify(rep));
   const r = W(`(function(){

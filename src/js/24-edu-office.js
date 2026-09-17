@@ -45,9 +45,13 @@ function generateP9(){
   // ادارات + حساب کارشناس
   const mk=(name,level,scope,username)=>{
     const o=add('offices',Object.assign({name,level,active:1},scope));
-    const u=add('users',{school_id:null,office_id:o.id,role:'edu_office',full_name:'کارشناس '+name,
-      username,password:'123456',national_id:makeNid(),phone:demoPhone(),active:1,created_at:daysAgoISO(320)});
-    o.user_id=u.id;
+    const headUser=add('users',{school_id:null,office_id:o.id,role:'edu_office',is_head:1,
+      full_name:'رئیس '+name,username:username+'_head',password:'123456',
+      national_id:makeNid(),phone:demoPhone(),active:1,created_at:daysAgoISO(320)});
+    const expertUser=add('users',{school_id:null,office_id:o.id,role:'edu_office',is_head:0,
+      full_name:'کارشناس '+name,username,password:'123456',
+      national_id:makeNid(),phone:demoPhone(),active:1,created_at:daysAgoISO(320)});
+    o.user_id=headUser.id;
     return o;
   };
   const kurd=db.provinces[0], baneh=db.counties.find(c=>c.name==='بانه'), sanandaj=db.counties.find(c=>c.name==='سنندج');

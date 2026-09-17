@@ -58,7 +58,7 @@ function craft(payload) {
   return 'pc1.' + body + '.' + sig.toString('base64url');
 }
 const NOW = Math.floor(Date.now() / 1000);
-const basePayload = (over) => Object.assign({ since: new Date(NOW * 1000 - 3600 * 1000).toISOString(), iat: NOW, exp: NOW + 3600, jti: 't' + Math.random().toString(16).slice(2), rg: regionName() }, over);
+const basePayload = (over) => Object.assign({ since: new Date(NOW * 1000 - 3600 * 1000).toISOString(), iat: NOW, exp: NOW + 3600, jti: 't' + crypto.randomBytes(16).toString('hex'), rg: regionName() }, over);
 
 /* ── دیتابیسِ جعلیِ PG: فقط شکلِ کوئری‌ها را می‌شناسد ── */
 function fakeDb(cfg) {

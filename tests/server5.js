@@ -30,8 +30,9 @@ const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 const errors = [];
 function chk(name, cond, extra) {
+  const extraNote = (extra !== undefined ? ' — [redacted]' : '');
   if (cond) { pass++; console.log('  ✅ ' + name); }
-  else { fail++; errors.push(name + (extra !== undefined ? ' — ' + String(extra).slice(0, 160) : '')); console.log('  ❌ ' + name + (extra !== undefined ? ' — ' + String(extra).slice(0, 160) : '')); }
+  else { fail++; errors.push(name + extraNote); console.log('  ❌ ' + name + extraNote); }
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

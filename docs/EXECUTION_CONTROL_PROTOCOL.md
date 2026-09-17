@@ -2,152 +2,170 @@
 
 **Status:** ACTIVE  
 **Authority:** ChatGPT — Independent Senior Auditor / National GO-NO-GO  
-**Coordinator:** Chat 1 — Acting Coordinator / Online Supervisor  
-**Execution:** Arena chats  
-**Effective:** 2026-09-14
+**Coordinator:** Chat 1 — Coordinator / Online Supervisor when available  
+**Execution:** Chat2–Chat10, with failover/takeover allowed  
+**Effective:** 2026-09-17
 
-## 0. EXECUTION MODE — DETERMINISTIC DAILY 20-MISSION HANDSHAKE
+## 0. EXECUTION MODE — PARALLEL, FAILOVER-SAFE
 
-Effective immediately, `docs/DAILY_20_MISSION_PROTOCOL.md` is the **primary daytime execution model**. The previous autonomous M1→M4→Continuation loop is retained only as background safety guidance and must not be used to bypass the one-Mission-at-a-time coordinator handshake.
+The project no longer uses a single-Arena or single-Coordinator execution gate.
 
-Each Arena has a daily board of **20 pre-scoped Missions**. Chat 1 selects exactly one Mission, writes the execution prompt, and waits for that Mission's report/delivery evidence before assigning the next one.
+The daily 20-Mission boards are a **priority/work pool**, not a global serial lock. Chat1 coordinates when available, but an Arena does not have to wait for Chat1, another Arena, a push, a PR, or a merge when an independent scoped action can safely proceed.
+
+An Arena role is a default owner, not an exclusive lock. If an Arena or session fails, another available Arena may take over its unfinished Mission after evidence-first state recovery.
 
 The operational loop is:
 
-`20-MISSION BOARD → Chat1 ASSIGNS ONE → Arena EXECUTES → REPORT + COMMIT + PUSH → Chat1 RECONCILES → NEXT MISSION`
-
-This is intentional. It removes the recurring ambiguity in which an Arena interprets `continuation`, `re-validation`, or a missing Mission as permission to stop or to invent work.
-
-**Mandatory for every Arena:** after every Mission, write the report and push the Mission-scoped commit to GitHub. A chat response alone is never completion evidence.
-
-**Mandatory for Chat1:** do not issue Mission N+1 until Mission N has a report and its Git evidence has been reconciled as far as the environment permits. If push is impossible, record `NOT-PUSHED` and explicitly decide the recovery/remediation step; do not silently advance as if delivery succeeded.
-
-**Important:** ChatGPT remains the only National GO/NO-GO authority. Chat1 remains the distributor/supervisor, not the national release authority.
+`PLAN → EXECUTE IN PARALLEL → TEST → COMMIT → PUSH WHEN POSSIBLE → TAKEOVER IF NEEDED → RECONCILE AT INTEGRATION → AUDIT`
 
 ## 1. Canonical project sources
 
 1. `docs/ROADMAP.md` — master engineering roadmap.
 2. `docs/NATIONAL_ROADMAP_PROGRESS.md` — Wave owner/status/dependency/evidence matrix.
 3. `docs/P0_BLOCKER_TRACKER.md` — canonical P0 no-go tracker.
-4. `docs/ARCHITECTURE_REVIEW.md` — current technical P1 inventory; P1 numbering must not be re-used or invented.
-5. `docs/DAILY_20_MISSION_PROTOCOL.md` — primary daily execution and delivery handshake.
-6. `docs/ARENA_EXECUTION_MODEL.md` — supporting execution/control model.
-7. `docs/ARENA_CONTINUATION_POLICY.md` — safety/continuation guidance; not a bypass of the daily handshake.
-8. `docs/ARENA_RUNTIME_CONTRACT.md` — runtime safety state machine.
-9. `docs/ARENA_CONTROL_PLANE_RECOVERY.md` — Mission/bootstrap recovery.
-10. `docs/ARENA_CONTINUITY_AUTHORIZATION.md` — bounded fallback safety authorization; not a replacement for the daily board.
-11. `docs/ARENA_REGISTRY.md` — operational Arena roles.
+4. `docs/ARCHITECTURE_REVIEW.md` — current technical P1 inventory.
+5. `docs/DAILY_20_MISSION_PROTOCOL.md` — daily work-pool and execution model.
+6. `docs/PARALLEL_FAILOVER_EXECUTION_PROTOCOL.md` — parallel/takeover rules; this is the controlling execution overlay.
+7. `docs/ARENA_EXECUTION_MODEL.md` — supporting execution/evidence model.
+8. `docs/ARENA_CONTINUATION_POLICY.md` — supporting safety guidance.
+9. `docs/ARENA_RUNTIME_CONTRACT.md` — runtime safety model.
+10. `docs/ARENA_CONTROL_PLANE_RECOVERY.md` — recovery guidance.
+11. `docs/ARENA_REGISTRY.md` — default Arena roles.
 
-If sources conflict, the deterministic daily 20-Mission handshake governs daytime sequencing; Chat1 records material conflicts and escalates them to ChatGPT.
+If documents disagree about whether work must wait, the parallel/failover rule governs: **independent safe work must not be blocked by an unavailable Arena or Coordinator.** Safety, scope, evidence, and National governance remain mandatory.
 
-## 2. Daily operating loop
+## 2. Daily operating model
 
-### Start of day
-ChatGPT audits the previous cycle and publishes/authorizes one daily 20-Mission board per Arena under:
+Chat1 normally:
+- reads the boards;
+- prioritizes work;
+- coordinates overlapping changes;
+- reconciles evidence;
+- prepares integration order.
 
-`docs/daily-mission-boards/YYYY-MM-DD/<CHAT_NAME>.md`
+Chat1 is **not a single point of failure**.
 
-The board contains exactly 20 pre-scoped Missions. Each Mission has an ID, scope, forbidden scope, acceptance criteria, evidence requirements, and report path.
+If Chat1 is unavailable, Arenas may continue clearly scoped board work or take over another unavailable Arena's Mission. They must record the takeover and preserve evidence.
 
-### During the day
-Chat 1 supervises online:
+If one Arena is blocked, unrelated Arenas continue.
 
-- Arena report = **CLAIM**, not proof.
-- Verify branch, commit, diff, tests, CI, PR and merge state against GitHub/Repo.
-- Select the next Mission only after reconciling the previous Mission.
-- Write the exact Arena prompt for the selected Mission.
-- Prevent overlap, unsafe `git add -A`, and scope invention.
-- Mark each result explicitly: `CLAIMED`, `IMPLEMENTED`, `TESTED LOCALLY`, `COMMITTED`, `PUSHED`, `PR OPEN`, `MERGED`, `VERIFIED ON MAIN`, `VERIFIED IN STAGING`, `PRODUCTION PROVEN`.
-- Never promote a lower evidence state into a higher one.
+## 3. Mission state
 
-### Per-Mission delivery
-For every Mission, the Arena must:
+The previous strictly serial state machine is replaced by per-Mission state tracking:
 
-`EXECUTE → TEST → REPORT → COMMIT → PUSH → HAND BACK TO CHAT1`
+`PLANNED → ACTIVE → EXECUTED → TESTED → REPORTED → COMMITTED → PUSHED/DELIVERY-BLOCKED → INTEGRATION → VERIFIED`
 
-The report must include exact files, tests/results, commit SHA, branch, push result, PR/merge result where applicable, NOT-RUN reasons, findings, and next suggested Mission.
+Multiple independent Missions may be ACTIVE simultaneously.
 
-### End of day
-Each Arena's 20-Mission board and all Mission reports are audited by ChatGPT. Uncompleted Missions are explicitly carried forward or re-planned; they are not silently considered complete.
+A Mission being `DELIVERY-BLOCKED` does not block another independent Mission.
 
-## 3. Mission Packet minimum fields
+A Mission may be taken over by another Arena after evidence-first recovery.
 
-Every board Mission MUST contain:
+## 4. Mandatory Mission delivery
 
-- Mission ID
-- Owner / Arena
-- Board date
-- Base SHA or `BASE-TO-BE-VERIFIED`
-- Source references
-- `P0_REF` when P0-related
-- Scope
-- Forbidden scope
-- Dependencies
-- Acceptance Criteria
-- Required tests
-- Required evidence
-- Git / PR rules
-- Definition of Done
-- Report path
+For every Mission, the executing Arena should:
 
-A board Mission is the authorization. Chat1 may narrow execution details but may not expand its scope.
+1. perform only the scoped work;
+2. run required tests/checks;
+3. write evidence/report;
+4. commit Mission-scoped changes;
+5. push when the live environment permits;
+6. report exact SHA and delivery state.
 
-## 4. Evidence and Git rules
+A failed push is `NOT-PUSHED` for that attempt. It is not a fleet-wide blocker.
 
-- Prefer a clean, current `main` SHA.
-- Shallow-clone limitations must be reported as `NOT-RUN`; never infer ahead/behind.
-- Network/API failures are `NOT-RUN`, not success.
-- Local green tests do not prove CI, staging, or production readiness.
-- Uncommitted work is not project-complete evidence.
-- Historical documents remain historical unless explicitly adjudicated.
-- No P0/P1 item may be created, renamed, closed, or re-numbered without source + owner + evidence.
-- No force-push.
-- **Every Mission-scoped change must be committed and pushed.**
-- `git add -A` is forbidden when unrelated workspace changes exist; add Mission files deliberately after reviewing `git diff --stat` and `git diff --name-status`.
-- A failed push is `NOT-PUSHED`, never `PUSHED` and never silently ignored.
-- PR/merge may proceed only under normal governance rules and must leave traceable Git evidence.
+If push is unavailable, preserve the work in a durable repository artifact when possible and continue independent work. A later live session may deliver it.
 
-## 5. National GO gate
+## 5. Takeover / failover
 
-National status remains **NO-GO** until all applicable P0 gates are closed with sufficient evidence and the independent auditor approves the release decision.
+If an Arena/session becomes unavailable:
 
-Chat 1 may coordinate and recommend. Chat 1 may **not** self-declare National GO.
+1. another Arena may take over;
+2. inspect `main`, branches, reports and commits;
+3. establish the last trustworthy state;
+4. preserve valid prior work;
+5. do not reset/revert merely to re-anchor;
+6. continue the same Mission or clearly queued board Mission;
+7. record `TAKEOVER-FROM` and the reason;
+8. commit/push from the available session when possible.
 
-## 6. Recovery rule
+No permission from the unavailable Arena is required.
 
-A missing local Mission file, stale checkout, or network failure does not authorize Mission invention. Chat1 first checks the current daily board and current `main`.
+## 6. Scope and collision safety
 
-If an Arena cannot access the board, it may perform only control-plane recovery until Chat1 restores the exact board Mission. The bounded continuity authorization remains a safety fallback, but it does **not** create a new daytime work stream independent of Chat1's assignment.
+Removing execution locks does **not** remove engineering safety.
 
-`MISSION FILE NOT FOUND LOCALLY` is not proof that the daily board is absent. `FETCH FAILED` is not proof of project state.
+- no `git add -A` over unrelated work;
+- no force-push/history rewrite;
+- no silent deletion of another Arena's valid work;
+- inspect shared-file overlap before modifying high-collision files;
+- keep changes minimal and traceable;
+- reconcile conflicts before integration.
 
-## 7. Mission sequencing
+File ownership is advisory coordination metadata, not a reason to freeze the fleet. If two Arenas touch the same file, integrate/reconcile; do not stop unrelated work.
 
-The canonical daytime sequence is:
+## 7. Evidence rules
 
-`AUDIT → 20-MISSION BOARD → Chat1 ASSIGN → ARENA EXECUTE → REPORT+COMMIT+PUSH → Chat1 RECONCILE → NEXT ASSIGNMENT → ... → CHATGPT END-OF-DAY AUDIT`
+Every claim remains evidence-backed:
 
-There is **no autonomous M4→Continuation path for daily task sequencing**. The old continuation rules may prevent an unsafe stop inside an already-running Mission, but they may not be used to self-assign the next Mission.
+`CLAIMED` / `IMPLEMENTED` / `TESTED LOCALLY` / `COMMITTED` / `PUSHED` / `PR OPEN` / `MERGED` / `VERIFIED ON MAIN` / `VERIFIED IN STAGING` / `PRODUCTION PROVEN`
 
-A Mission failure becomes a remediation/reverification decision for Chat1. An Arena must not silently skip a failed Mission or invent an unrelated task.
+`NOT-RUN` must state the exact operation and reason.
 
-## 8. User operating model
+`PUSHED` and `MERGED` require Git evidence. Local green tests do not prove CI, staging, or production.
 
-The user sends the common Arena prompt once to each Chat at the beginning of the work session. Chat1 handles the per-Mission prompts after that.
+## 8. Chat1 coordination
 
-The user does not need to manually invent task content. ChatGPT prepares the 20-Mission boards; Chat1 reads them, assigns one task at a time, verifies the report/Git evidence, and writes the next prompt.
+Chat1 should coordinate, not gate.
 
-Every completed task must leave a report and Git push. Project continuity lives in Git rather than chat memory.
+It may sequence conflicting work and integration, but it must not create a global rule equivalent to:
 
-## 9. Current control state
+`Mission N must push/merge before Mission N+1 can start.`
 
-As of 2026-09-14:
+That rule is removed.
 
-- National GO/NO-GO: **NO-GO**.
-- P0-1 PostgreSQL source-of-truth: **OPEN / UNDER ADJUDICATION**.
-- RTO/RPO figures S1-S6: **UNSOURCED — DO NOT REUSE** until source evidence is present.
-- `RELIABILITY_DR_PLAN.md`: **OWNER UNASSIGNED** until explicitly assigned.
-- Live national staging/capacity evidence is not assumed from local tests.
-- GitHub/network limitations must remain explicit when encountered.
+Independent Missions can run concurrently. Integration can happen later using explicit evidence and conflict handling.
 
-This document is an operational control layer. It does not silently rewrite historical roadmap claims.
+## 9. Stop rule
+
+An Arena may stop when:
+- its current scoped work is complete and handed back;
+- its session ends;
+- the current operation is externally unavailable;
+- no safe scoped work remains in its available work pool.
+
+It must not stop unrelated fleet execution merely because another Arena is blocked.
+
+A network failure stops the affected network operation, not the Mission fleet.
+
+## 10. Security / governance invariants
+
+These are intentionally **not removed**:
+
+- no secrets/tokens in prompts or repository;
+- no fabricated evidence;
+- no unauthorized P0/P1 status changes;
+- no National GO/NO-GO by an Arena or Chat1;
+- no unsafe history rewrite;
+- no silent cross-Arena data loss.
+
+ChatGPT remains the sole National GO/NO-GO authority.
+
+## 11. End-of-day audit
+
+ChatGPT independently audits:
+- all active/completed Missions;
+- takeover events;
+- commits/pushes/PRs/merges;
+- failures and NOT-RUN items;
+- integration conflicts;
+- P0/P1 impact;
+- remaining work.
+
+Unmerged work is not falsely promoted to merged, but it also does not block independent progress.
+
+## 12. Principle
+
+**One failed chat must never make the rest of the project idle.**
+
+Parallelize safe work. Take over unavailable work. Preserve evidence. Integrate deliberately. Keep National governance independent.
