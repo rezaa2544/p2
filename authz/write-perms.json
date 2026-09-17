@@ -2452,6 +2452,7 @@
       "iep_staff",
       "iep_updated",
       "asset_staff",
+      "is_head",
       "job",
       "lib_staff",
       "mother_nid",

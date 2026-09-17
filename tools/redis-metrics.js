@@ -111,7 +111,7 @@ function renderText(metrics) {
     }
     let labelStr = '';
     if (m.labels) {
-      labelStr = '{' + Object.keys(m.labels).map(k => k + '="' + String(m.labels[k]).replace(/"/g, '\\"') + '"').join(',') + '}';
+      labelStr = '{' + Object.keys(m.labels).map(k => k + '="' + String(m.labels[k]).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + '}';
     }
     lines.push(m.name + labelStr + ' ' + m.value);
   }

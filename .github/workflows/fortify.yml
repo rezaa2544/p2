@@ -41,6 +41,10 @@ jobs:
       - name: Check Out Source Code
         uses: actions/checkout@v4
 
+      - name: Skip Fortify Scan without credentials or on forked PRs
+        if: ${{ (secrets.FOD_CLIENT_ID == '' && secrets.FOD_USER == '') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
+        run: echo "Skipping Fortify scan because required credentials are not available or the PR comes from a fork. Configure repository secrets for Fortify and rerun the workflow."
+
       # Perform SAST and/or SCA scan via Fortify on Demand/Fortify Hosted/ScanCentral SAST/Debricked. Based on
       # configuration, the Fortify GitHub Action can optionally set up the application version/release, generate
       # job summaries and Pull Request comments, and/or export SAST results to the GitHub code scanning dashboard.
@@ -50,6 +54,7 @@ jobs:
       # documentation at https://github.com/fortify/github-action#readme for more information on the various
       # configuration options and available sub-actions.
       - name: Run Fortify Scan
+        if: ${{ (secrets.FOD_CLIENT_ID != '' || secrets.FOD_USER != '') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         # Specify Fortify GitHub Action version to run. As per GitHub starter workflow requirements, this example
         # uses the commit id corresponding to version 1.6.2. It is recommended to check whether any later releases
         # are available at https://github.com/fortify/github-action/releases. Depending on the amount of stability
@@ -75,8 +80,8 @@ jobs:
           # FOD_LOGIN_EXTRA_OPTS: --socket-timeout=60s     # Extra 'fcli fod session login' options
           # FOD_RELEASE: MyApp:MyRelease                   # FoD release name, default: <org>/<repo>:<branch>
           # DO_SETUP: true                                 # Setup FoD application, release & static scan configuration
-          # SETUP_ACTION: <URL or file>                    # Customize setup action
-                                                           # Pass extra options to setup action:
+          # SETUP_ACTION: <URL or file>                   # Customize setup action
+                                                          # Pass extra options to setup action:
           # SETUP_EXTRA_OPTS: --copy-from "${{ github.repository }}:${{ github.event.repository.default_branch }}"
           # PACKAGE_EXTRA_OPTS: -oss -bt mvn               # Extra 'scancentral package' options
           # FOD_SAST_SCAN_EXTRA_OPTS:                      # Extra 'fcli fod sast-scan start' options
@@ -127,3 +132,4 @@ jobs:
           # EXPORT_ACTION: <URL or file>                   # Customize export action
           # EXPORT_EXTRA_OPTS: --on-unsigned=ignore        # Pass extra options to export action
           # TOOL_DEFINITIONS: <URL>                        # URL from where to retrieve Fortify tool definitions
+

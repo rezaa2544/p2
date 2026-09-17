@@ -19,6 +19,7 @@ alerting:
 
 rule_files:
   - /etc/prometheus/alert-rules.yml
+  - /etc/prometheus/alerts.yml
 
 scrape_configs:
   - job_name: payesh-api
