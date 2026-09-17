@@ -1,34 +1,39 @@
-# 🔒 قفل مستندات — DOCS_FREEZE_v1.0.0-rc44
+# 🔒 قفل مستندات — DOCS_FREEZE_v1.0.0-rc45
 
-> 🏛️ **سند تاریخی.** این قفل با `DOCS_FREEZE_v1.0.0-rc45.md` جانشین شد؛ مانیفستِ زیر دست‌نخورده باقی می‌ماند.
+> 📌 بامپ rc44 → rc45: هفت سندِ فهرست‌شده اثرشان کهنه شده بود و یک سندِ تازه در مانیفست ثبت نشده بود؛ مانیفست با اثرِ لحظهٔ جاری بازتولید شد.
 
-> 📌 بامپ rc43 → rc44: ۱۰ سند کنترل‌پلن ثبت و ۳ اثر کهنه بازپایه‌گذاری شد.
-
-> **✅ قفلِ جاری.** این نسخه جانشینِ `DOCS_FREEZE_v1.0.0-rc42.md` است؛ فهرستِ زیر، اثرِ لحظهٔ فعلیِ
+> **✅ قفلِ جاری.** این نسخه جانشینِ `DOCS_FREEZE_v1.0.0-rc44.md` است؛ فهرستِ زیر، اثرِ لحظهٔ فعلیِ
 > کتابخانه را ثبت می‌کند. راستی‌آزمایی: `node tests/docs-freeze-marker.js`.
-> نسخه‌های پیشین (`rc1`…`rc42`) با بنرِ تاریخی و مانیفستِ **دست‌نخورده** باقی می‌مانند.
+> نسخه‌های پیشین (`rc1`…`rc44`) با بنرِ تاریخی و مانیفستِ **دست‌نخورده** باقی می‌مانند.
 
-**نسخهٔ قفل:** ۱.۰.۰-rc44 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** همگراییِ قفل پس از بازپایه روی main — چت ۶ (Arena)
+**نسخهٔ قفل:** ۱.۰.۰-rc45 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۷ | **مالک:** شیفت ۲ — مأموریت `C6-05` (چت ۶، با فیلوور از نشستِ پایان‌یافته)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۵۸ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc44` (تاریخی) می‌شود. فهرست زیر **همهٔ ۳۶۰ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
-**دلیل بامپ:** همگراییِ قفل پس از **بازپایه کردنِ شاخهٔ چت ۶ روی `main@0fc4403`** (دور ۱۳، PR #176).
-این بامپ «تک‌مدعی بودنِ قفلِ جاری» را تثبیت می‌کند: پیش از این، main روی `rc40` بود و شاخهٔ چت ۶ روی
-`rc42` و شاخهٔ #159 یک `rc41` واگرا داشت ⇒ **سه مدعی**. اکنون:
+**دلیل بامپ:** بستهٔ حاکمیتیِ «اجرای موازی/فیلوور» (`bdb981e`…`d262b4e`) و همگام‌سازیِ آمارِ
+PR #300 (`8ef851e`) روی `main` **بدونِ بامپِ قفل** مرج شدند ⇒ قفلِ rc44 روی main قرمز بود
+(`tests/docs-freeze-marker.js` = ۱۱ موفق / ۳ ناموفق، exit ۱) و هیچ گیتِ CI هم آن را نمی‌گرفت.
+طبق §۱ بند ۱ و بند ۳ همین قاعده، ویرایشِ اسنادِ فهرست‌شده بدون بامپ ممنوع است؛ این بامپ آن
+وضعیت را صادقانه ثبت و اصلاح می‌کند — بی‌آنکه هیچ سندِ تاریخی یا مانیفستِ پیشین دست بخورد.
 
 | تغییر | شاهد |
 |---|---|
-| شاخه از `main@23bf513` به `main@0fc4403` منتقل شد (diff خالصِ چت ۶ = ۲۳ فایل، ۲۸۱۶+/۱۸−) | `git diff 23bf513 a5686f9` |
-| مانیفست با ترکیبِ تازهٔ main + اسنادِ چت ۶ بازتولید شد | `node tools/docs-stats-sync.js --freeze` |
-| `rc42` بنرِ تاریخی گرفت (مانیفست دست‌نخورده) | همین کامیت |
-| `tests/docs-freeze-marker.js` به rc44 منتقل شد | همین کامیت |
+| ۴ سندِ حاکمیتیِ فهرست‌شده ویرایش شد (اثر کهنه) | `61b3db9` ARENA_AGENT_PROMPT · `cc61fbd` ARENA_EXECUTION_MODEL · `5129915` DAILY_20_MISSION_PROTOCOL · `905c667` EXECUTION_CONTROL_PROTOCOL |
+| ۳ سندِ آماریِ فهرست‌شده با `docs-stats-sync` ویرایش شد (اثر کهنه) | `8ef851e` (PR #300): DOCS_METRICS · DOCUMENTATION_MAP · TEST_COVERAGE_REPORT |
+| ۱ سندِ تازه افزوده شد و در مانیفست ثبت نشده بود | `bdb981e`: PARALLEL_FAILOVER_EXECUTION_PROTOCOL.md |
+| مانیفست با اثرِ لحظهٔ جاری بازتولید شد | `node tools/docs-stats-sync.js --freeze` |
+| `rc44` بنرِ تاریخی گرفت (مانیفستش دست‌نخورده) | همین کامیت |
+| `tests/docs-freeze-marker.js` به rc45 منتقل شد | همین کامیت |
 
-**یادداشتِ همگرایی:** با مرجِ این شاخه، شاخهٔ #159 تنها باید `rc41` واگرای خود را حذف کند و مانیفست را
-بازتولید کند (کیت: `tools/audit-patches/PR159_CONVERGENCE_RUNBOOK.md`).
+جمعاً **۷ اثرِ کهنه + ۱ سندِ ثبت‌نشده + ۱ اختلافِ شمارِ ردیف** (۳۵۸ ردیف در برابر ۳۵۹ سند روی دیسک).
+هیچ تستی ضعیف، حذف یا مستثنا نشد؛ اسناد «زنده» همان سه استثنای §۱ بند ۲‌اند.
 
-`rc42` بنرِ تاریخی گرفت و **مانیفستش دست‌نخورده** ماند. هیچ تستی ضعیف، حذف یا مستثنا نشد.
+**قید صادقانهٔ دامنه (بیرونِ این بامپ):** `tools/docs-refs-check.js` همچنان exit ۱ است
+(۱۱۹ ارجاعِ کهنهٔ تازه) و `tests/docs-metadata.js` همچنان exit ۱ (۶ سندِ یتیم). هر دو **پیش‌موجود**اند
+(مالک: `C7-01`…`C7-04` و `C7-07`) و برای سبزکردنِ آن‌ها هیچ ارجاع/سندی پاک یا پنهان نشد.
+پذیرشِ `C6-05` = freeze/stats/secret سبز؛ refs عمداً دست‌نخورده و قرمز ماند.
 
 **زیرپوشه‌های بیرون مانیفست ریشه** (۲۰ سند؛ پوشش ساختاری‌شان را تست‌های پوشش
 می‌پایند و فهرست قطعی‌شان در نمایه ثبت شده است):
@@ -38,6 +43,8 @@
 | `RUNBOOK_CARDS/` | 12 | کارت‌های A4 ران‌بورد + فهرست/درجتصمیم |
 | `user-guides/` | 5 | راهنمای نقش‌محور: مدیر، دبیر، ولی، دانش‌آموز، کارکنان |
 | `pilot/` | 3 | اسناد عملیاتی پایلوت: معرفی مدرسه، فرم رضایت والد، راهنما |
+
+---
 
 ---
 
@@ -64,7 +71,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۳۵۸)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۳۶۰)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -83,11 +90,11 @@
 | `ARCHITECTURE_REVIEW.md` | `sha256:e40c46cd9dccb9e1108b7f8f89e569302d316462191a10ca0513aa001c5328da` |
 | `ARENA4_PERFORMANCE_INFRA.md` | `sha256:1d9165d0eab6d6d02de494c56afc0766b83086e6bfcdaf9a0005d4b520292881` |
 | `ARENA5_QA_RELIABILITY.md` | `sha256:0545b420c46f649cfeb2966be2c5bbc60982bb4f976bcf059aa6a18aef0435ee` |
-| `ARENA_AGENT_PROMPT.md` | `sha256:79e601b816a97ff9752e9e9043befac85bd6f1c0333a1b45ff504bc9dad7b5ff` |
+| `ARENA_AGENT_PROMPT.md` | `sha256:454e18f381187bd34d7db54a344d4b3b40898d538671909915f544c72739dd9f` |
 | `ARENA_CONTINUATION_POLICY.md` | `sha256:3e92554203e4543f0a14df03f0d40c8c9b4a83c73f74bd8e7dc82a103876491d` |
 | `ARENA_CONTINUITY_AUTHORIZATION.md` | `sha256:a2605d085f2c46906357f30965ad8a24a92ab79a87ac65cd5c10f87d3fc998fa` |
 | `ARENA_CONTROL_PLANE_RECOVERY.md` | `sha256:11417d54369f053127d806f7afafd63e9d4c1e52a4700a1dec3765c183f3f291` |
-| `ARENA_EXECUTION_MODEL.md` | `sha256:b2dfe30ab5c3d44330e9af782e60548c14d06cd05f729c1798e80351a6f7cad1` |
+| `ARENA_EXECUTION_MODEL.md` | `sha256:531ff7a580754e4fb315dfb37e96a8a8cb13cb23985e921ebaa4cb0fe42561be` |
 | `ARENA_MISSION_TEMPLATE.md` | `sha256:fe2b1bc306fa4f02b45e7d831606029fc6e8ce8bd48f99009e76a1ebc1cc69a3` |
 | `ARENA_REGISTRY.md` | `sha256:303c4e4f5f7ff13f4ea06900142d60052f29115fa3f774b141d981b29bc3fc76` |
 | `ARENA_RUNTIME_CONTRACT.md` | `sha256:cf19ef6a15325b1a97afff17c1aaac552b8ea36c202ec9c0439cc9e0f53b3f03` |
@@ -121,7 +128,7 @@
 | `D2_DRAFT.md` | `sha256:f62d2eff0772ce15393ed679e56ccfc3af174f702990109f479a0a81f3eb5349` |
 | `D3_DRAFT.md` | `sha256:a4bdb239a1dd6610c8319c842c3274929acd203e854585b7bbf6806ee0a6fa92` |
 | `D4_DRAFT.md` | `sha256:9537ea48b0740c56ede54faa37a557bddeb584bbae008d72d1bec1375b081ac2` |
-| `DAILY_20_MISSION_PROTOCOL.md` | `sha256:80f67dcdbde9b00c362de1961f9d5ffa95dfed4a2c4429396646ac95ad713ae0` |
+| `DAILY_20_MISSION_PROTOCOL.md` | `sha256:6c68da24f56ad9a05c6256fe3f9b5608334adced43a1389180077a1355bcb143` |
 | `DATABASE_ARCHITECTURE.md` | `sha256:f2dbd45af7bae8136004b4a1335fcf700a74a864f178c336f0f5dce29b17caaa` |
 | `DATABASE_PERFORMANCE_OPTIMIZATION.md` | `sha256:2ac6df7ad07d0911a96c23e4e68043932d3183fae0851f1686c93971c9ae1a12` |
 | `DATA_DICTIONARY.md` | `sha256:e82a85f0595a64fbd0df44186d7baf8b78fe22777ac772b95c8b75ffdf33482d` |
@@ -176,6 +183,7 @@
 | `DOCS_FREEZE_v1.0.0-rc41.md` | `sha256:cea1405b01b33c7a23963e88db141d755b721e398ee85b1f9e3bfd0653cd1e62` |
 | `DOCS_FREEZE_v1.0.0-rc42.md` | `sha256:79b249fd92f28780624c932fd433fd7608d827f051160753f241addf0b50d2f3` |
 | `DOCS_FREEZE_v1.0.0-rc43.md` | `sha256:a5e90e5a3288d5463f10eb857f82403d7b21637d678c835165038c654d9e00e8` |
+| `DOCS_FREEZE_v1.0.0-rc44.md` | `sha256:a86a1429b747502974b8d198bdba2e9452028dc17406e8ece158b8b2602d558c` |
 | `DOCS_FREEZE_v1.0.0-rc5.md` | `sha256:df97a36b50b8e4398fd8ac3090b1a2bd7ed1a113780ec8841c8b44e490dce79e` |
 | `DOCS_FREEZE_v1.0.0-rc6.md` | `sha256:ded449054c3464e7c34fc913cf3f71dc5745ffe24e34888cc1aceb94ee93782e` |
 | `DOCS_FREEZE_v1.0.0-rc7.md` | `sha256:f0bbd20a82f5d700283703a265d3fadbadc49198d442ebf10950441bf27c55c4` |
@@ -183,15 +191,15 @@
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:36bf496d42732300a7872e76e6a3ce64dca6d52ed20eb1d9621fdce63f3d4169` |
 | `DOCS_INDEX.md` | `sha256:db736d3de0936503050d2fdc1fe3e009107fd0ef5120526be878747ad21a6296` |
-| `DOCS_METRICS.md` | `sha256:0b9f99b88a69dd3ae15f9564ccb2113e47d42fbb980d1e92ab730a7032877971` |
+| `DOCS_METRICS.md` | `sha256:b20e9f7b06f971528a766298552b129060b0c273e2fdd9b4162e811e8cbc6ea3` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:a1ebefac54f1b8063b613167311751402a45b809bfa81cd8736067377d607269` |
-| `DOCUMENTATION_MAP.md` | `sha256:d8aaff590e7ef4f6a92bd436ac4cbf07b0e09aa325b7a261398d502bfa0addd5` |
+| `DOCUMENTATION_MAP.md` | `sha256:210d3d904f4550f9ba1a616e09be4599fe21724dc3b30237b9c02d785274789a` |
 | `DR_RUNBOOK.md` | `sha256:eba33f0ad562941cf8aea2087dae1318628708cb37b1330aa0bc1cb34c81cc89` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
 | `EXAM_TYPES_GUIDE.md` | `sha256:bfc9a35481de6bd64c48f31bca4396951fc41ea1aedbc6070260fef9ea026354` |
-| `EXECUTION_CONTROL_PROTOCOL.md` | `sha256:1f6d3476d822e406e0820bac30fa1b254c2d55574f4e16b2d1c76d5c068be2e6` |
+| `EXECUTION_CONTROL_PROTOCOL.md` | `sha256:426f3cbc21737847685800b42c62eb96ba49cc7e9cf004d3fe6a5d0173632318` |
 | `EXECUTIVE_BRIEFING.md` | `sha256:e4b10ec9c8ed37c4de335a2780b89b93d5d5119f9f6be9dba2c4b97edabbdda6` |
 | `EXECUTIVE_SLIDES_OUTLINE.md` | `sha256:48432a8aba0966d0604cb3e1a82d4b29b2089ca9e1024825ed0ce3d5fb8a1ab6` |
 | `FAQ.md` | `sha256:b8609cf3ec063a343fa9bf50a708df5a8c298c675df8024302bbd20f49c1547b` |
@@ -249,6 +257,7 @@
 | `OPERATIONAL_READINESS.md` | `sha256:b94809db70fc5d0202a563fd94b7032c10a7d2ca1b8358b01872a0fb7144dee2` |
 | `OPINION_2026-09-05_ROADMAP_REVIEW.md` | `sha256:ae4998223e48d65fe3094895bfdc44a70013c8150b7c0389d7bffb6c14ba89bc` |
 | `P0_BLOCKER_TRACKER.md` | `sha256:5b87bca57d38fa1d691c52c418ad3bc1e3f55545d26d71c9eef709375a86afea` |
+| `PARALLEL_FAILOVER_EXECUTION_PROTOCOL.md` | `sha256:4ef52d5ba91a1f4bc2a5ba0d2c20d5cf360f85a47a05a6ee29ee51610240587b` |
 | `PEN_TEST_CHECKLIST.md` | `sha256:775c62ef672aa56cb1ae3a6461215e3e183cbe7f208648d3fe0dad9134a85c58` |
 | `PERFORMANCE_BENCHMARKS.md` | `sha256:0b38bacf5e44f941b5f668fa8efc8a804a8b5dd06505587ad2d7888bd2f7e15e` |
 | `PERFORMANCE_OPTIMIZATION_GUIDE.md` | `sha256:263eb7bcf0fdc32ec8ea1e64d7a671a56c09b8befc30e74f1ef40cbdf0172fda` |
@@ -379,7 +388,7 @@
 | `SYNC_FLOW.md` | `sha256:0d768e1fa6bcbdf0f69108408ba5733a787cbb881bf60c8b3b57cf5acc54db0a` |
 | `SYNC_PROTOCOL.md` | `sha256:a2658779b478051e87dce461dcee2664a87b9d1dca2b42bc4a833cb0983274c7` |
 | `SYNC_RELIABILITY_EVIDENCE.md` | `sha256:326094b05babf475ca98ef231ed52f407cd06ef06690ee24c788f9660b31f39b` |
-| `TEST_COVERAGE_REPORT.md` | `sha256:38e8321a48edf5876e0af24712c8a43b74b4823e3db8107cb0cc8f543d1108c1` |
+| `TEST_COVERAGE_REPORT.md` | `sha256:a4125fc8c87b274f89f09983c76de7756445a0e962289daabfe146312841e702` |
 | `THIRD_PARTY_LICENSES.md` | `sha256:0440f94b6395ee2fab1b2a34d9c8e3d5141887c1c276b4327c5d134317a33a08` |
 | `THREAT_MODEL.md` | `sha256:2d93966da760fec407778e27e9ef85033f95efffe71d1135dd849f6780d966f0` |
 | `TRACING_SETUP.md` | `sha256:6d17e75b8cc28763db6d7d7c9310d587fb3419c15a2d1dbf2f9e938881040099` |
@@ -428,4 +437,4 @@
 | `راهنمای_کاربر.md` | `sha256:e7061c3b64353b6b04c0a17551eb990df1805f27a861dbb17996c9d6e62b26be` |
 
 ---
-_قفل `rc44` در ۲۰۲۶-۰۹-۱۳ بسته شد: همگرایی پس از بازپایه روی main@0fc4403 (PR #176). راستی‌آزمایی: `node tests/docs-freeze-marker.js` و `node tools/docs-stats-sync.js --check`._
+_قفل `rc45` در ۲۰۲۶-۰۹-۱۷ بسته شد: بازپایهٔ مانیفست پس از مرجِ بستهٔ حاکمیتیِ اجرای موازی/فیلوور (`bdb981e`…`d262b4e`) و همگام‌سازیِ آمارِ PR #300 (`8ef851e`) که بیرونِ مانیفستِ rc44 بودند. راستی‌آزمایی: `node tests/docs-freeze-marker.js` و `node tools/docs-stats-sync.js --check --freeze`._

@@ -148,13 +148,19 @@ const OWNED = [
     file: 'docs/DOCS_METRICS.md',
     key: 'docs-total-row',
     match: /^\| تعداد کل اسناد `docs\/\*\.md` \|.*\| شمارش فایل \|$/m,
-    /* ردیف دو عددِ متعارف را هم می‌آورَد: «درختِ سه‌زیرپوشه‌ای» (۳۳۶ در وضعیت امروز) که
-       tests/docs-metrics.js می‌سنجد، و «درختِ کامل» با daily-reports/. بدون این، دو گیت
-       ناسازگار می‌شدند (docs-metrics عدد ۳۳۶ را می‌خواست و ابزار ۳۴۶ می‌نوشت). */
+    /* ردیف باید **هر سه** عددِ متعارف را بیاورد، وگرنه دو گیت ناسازگار می‌شوند:
+       ۱) «درختِ کامل» (docsTree = همهٔ زیرپوشه‌ها، با daily-reports/ و daily-audits/ و roadmaps/)
+       ۲) «درختِ سه‌زیرپوشه‌ای» (docsRoot + RUNBOOK_CARDS + user-guides + pilot) — این همان عددی
+          است که tests/docs-metrics.js در DM-KEY می‌سنجد (`_tree = rootMd.length + _subMd`).
+       ۳) «درخت بدونِ گزارش‌های روزانه» (docsTree − daily-reports)
+       پیش‌تر عددِ (۲) از ردیف حذف شده بود؛ چون زیرپوشه‌های daily-* افزوده شدند، docsTree دیگر
+       با «ریشه + سه زیرپوشهٔ پایه» برابر نبود ⇒ DM-KEY با هیچ اجرایِ این ابزار سبز نمی‌شد
+       (شاهد: `node tests/docs-metrics.js` = ۹/۱۱ روی main@d262b4e، exit ۱). عدد از دیسک
+       مشتق می‌شود، نه سخت‌کد — پس با هر بامپِ قفل خودش درست می‌ماند. */
     render: (t) => {
       const core = ['RUNBOOK_CARDS', 'user-guides', 'pilot'].reduce((a, k) => a + (t.subs[k] || 0), 0);
       const daily = t.subs['daily-reports'] || 0;
-      return `| تعداد کل اسناد \`docs/*.md\` | **${fa(t.docsRootMinusFreeze)}** سند ریشه (پیش از خود سند قفل \`rc${t.rc}\`؛ با آن ${fa(t.docsRoot)}) + ${fa(t.docsSub)} سند در زیرپوشه‌ها (${subLabel(t)}) = جمع درخت ${fa(t.docsTree)}؛ تفکیک: سه زیرپوشهٔ پایه ${fa(core)} + \`daily-reports/\` ${fa(daily)} ⇒ درخت بدونِ گزارش‌های روزانه ${fa(t.docsTree - daily)} | شمارش فایل |`;
+      return `| تعداد کل اسناد \`docs/*.md\` | **${fa(t.docsRootMinusFreeze)}** سند ریشه (پیش از خود سند قفل \`rc${t.rc}\`؛ با آن ${fa(t.docsRoot)}) + ${fa(t.docsSub)} سند در زیرپوشه‌ها (${subLabel(t)}) = جمع درخت ${fa(t.docsTree)}؛ تفکیک: سه زیرپوشهٔ پایه ${fa(core)} ⇒ درختِ سه‌زیرپوشه‌ای ${fa(t.docsRoot + core)} + \`daily-reports/\` ${fa(daily)} ⇒ درخت بدونِ گزارش‌های روزانه ${fa(t.docsTree - daily)} | شمارش فایل |`;
     },
   },
   {
