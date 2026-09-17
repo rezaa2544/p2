@@ -4849,6 +4849,151 @@ if(u.role==='teacher')return teacherDash()+annCard();
 if(u.role==='counselor')return counselorDash()+annCard();
 return familyDash()+annCard();
 }
+function managerExceptionPanel(sid, attToday, users, perStudent){
+const items = [];
+const unexcused = (attToday || []).filter(a => a.status === 'absent');
+if(unexcused.length > 0){
+items.push({
+icon: '⚠️',
+title: 'غیبت‌های غیرموجه امروز',
+desc: `${fa(unexcused.length)} دانش‌آموز غایب بدون اطلاع ثبت شده‌اند (نیاز به تماس با اولیا)`,
+badge: '<span class="badge b-red">پیگیری فوری</span>',
+act: 'attendance',
+btn: '📞 بررسی حضور و غیاب'
+});
+}
+const lowGpaList = Object.entries(perStudent || {}).filter(([_, l]) => avgOf(l) < 10);
+if(lowGpaList.length > 0){
+items.push({
+icon: '📉',
+title: 'دانش‌آموزان با نمرات بحرانی',
+desc: `${fa(lowGpaList.length)} دانش‌آموز دارای معدل زیر ۱۰ هستند (نیازمند مداخله و آموزش جبرانی)`,
+badge: '<span class="badge b-amber">مداخله آموزشی</span>',
+act: 'grades',
+btn: '📊 بررسی نمرات'
+});
+}
+const pendingPreapps = (db.preapps || []).filter(p => p.school_id === sid && p.stage !== 'registered' && p.stage !== 'rejected');
+if(pendingPreapps.length > 0){
+items.push({
+icon: '📝',
+title: 'پیش‌ثبت‌نام‌های معلق',
+desc: `${fa(pendingPreapps.length)} متقاضی جدید در صف انتظار تعیین‌تکلیف نهایی`,
+badge: '<span class="badge b-blue">پذیرش</span>',
+act: 'preapps',
+btn: '📋 مدیریت پذیرش'
+});
+}
+const enrolledIds = new Set((db.enrollments || []).filter(e => e.school_id === sid).map(e => e.student_id));
+const unassigned = (users || []).filter(x => x.role === 'student' && !enrolledIds.has(x.id));
+if(unassigned.length > 0){
+items.push({
+icon: '🏛️',
+title: 'دانش‌آموزان بدون کلاس',
+desc: `${fa(unassigned.length)} دانش‌آموز فعال کلاسی برایشان ثبت نشده است`,
+badge: '<span class="badge b-purple">سازماندهی</span>',
+act: 'classes',
+btn: '🏛️ تخصیص کلاس'
+});
+}
+if(typeof drillAnnualStatus === 'function'){
+const dst = drillAnnualStatus(sid);
+if(!dst.done){
+items.push({
+icon: '⛑️',
+title: 'الزام قانونی مانور سالانه ایمنی و زلزله',
+desc: 'مانور سراسری ایمنی در سال تحصیلی جاری برای مدرسه ثبت نشده است',
+badge: '<span class="badge b-red">الزام آموزش و پرورش</span>',
+act: 'drills',
+btn: '⛑️ ثبت مانور'
+});
+}
+}
+if(items.length === 0){
+return `<div class="card" style="border:1px solid var(--green,#22c55e);background:var(--green-soft,#f2fbf4)" role="region" aria-label="میز فرماندهی مدیر">
+      <div class="card-body" style="padding:12px 16px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:24px" aria-hidden="true">🛡️</span>
+        <div><b>مرکز فرماندهی مدیر: وضعیت مدرسه کاملاً عادی است</b>
+        <div class="small muted">هیچ هشدار اضطراری یا غیبت پیگیری‌نشده‌ای در این لحظه ثبت نشده است.</div></div>
+      </div>
+    </div>`;
+}
+return `<div class="card" style="border:1px solid var(--amber,#f59e0b);background:var(--surface-1)" role="region" aria-label="میز فرماندهی و هشدارهای نیازمند اقدام مدیر">
+    <div class="card-head" style="background:var(--amber-soft,#fff9e6)">
+      <h3>🚨 میز فرماندهی و هشدارهای نیازمند اقدام مدیر</h3>
+      <span class="badge b-amber">${fa(items.length)} مورد نیازمند پیگیری</span>
+    </div>
+    <div class="card-body" style="display:grid;gap:10px;padding:12px 14px">
+      ${items.map(it => `
+        <div class="row" style="background:var(--surface-2);padding:10px 14px;border-radius:10px;align-items:center;flex-wrap:wrap;gap:8px">
+          <span style="font-size:20px" aria-hidden="true">${it.icon}</span>
+          <div style="flex:1;min-width:200px">
+            <div style="display:flex;gap:8px;align-items:center">
+              <b>${esc(it.title)}</b>
+              ${it.badge}
+            </div>
+            <div class="small muted" style="margin-top:2px">${esc(it.desc)}</div>
+          </div>
+          <button class="btn ghost sm" data-act="go" data-r="${escAttr(it.act)}">${esc(it.btn)}</button>
+        </div>
+      `).join('')}
+    </div>
+  </div>`;
+}
+function gradeDistributionCard(perStudent){
+const avgs = Object.values(perStudent || {}).map(l => avgOf(l)).filter(n => !isNaN(n));
+const tot = avgs.length;
+if(!tot) return '';
+let exc = 0, good = 0, fair = 0, weak = 0;
+for(let i = 0; i < avgs.length; i++){
+const v = avgs[i];
+if(v >= 17) exc++;
+else if(v >= 14) good++;
+else if(v >= 10) fair++;
+else weak++;
+}
+const pct = n => tot ? Math.round((n / tot) * 100) : 0;
+return `<div class="card" role="region" aria-label="توزیع سطح پیشرفت تحصیلی دانش‌آموزان">
+    <div class="card-head">
+      <h3>📊 توزیع سطح پیشرفت تحصیلی</h3>
+      <span class="badge b-purple">${fa(tot)} دانش‌آموز ارزیابی‌شده</span>
+    </div>
+    <div class="card-body" style="display:grid;gap:12px">
+      <div>
+        <div class="row" style="margin-bottom:4px">
+          <span>🟢 سطح خیلی خوب / عالی (۱۷ تا ۲۰)</span>
+          <div class="spacer"></div>
+          <b>${fa(exc)}</b> <span class="muted small">(${fa(pct(exc))}٪)</span>
+        </div>
+        ${bar(exc, tot, 'var(--green,#22c55e)')}
+      </div>
+      <div>
+        <div class="row" style="margin-bottom:4px">
+          <span>🔵 سطح خوب (۱۴ تا ۱۶.۹۹)</span>
+          <div class="spacer"></div>
+          <b>${fa(good)}</b> <span class="muted small">(${fa(pct(good))}٪)</span>
+        </div>
+        ${bar(good, tot, 'var(--blue,#3b82f6)')}
+      </div>
+      <div>
+        <div class="row" style="margin-bottom:4px">
+          <span>🟡 سطح قابل قبول (۱۰ تا ۱۳.۹۹)</span>
+          <div class="spacer"></div>
+          <b>${fa(fair)}</b> <span class="muted small">(${fa(pct(fair))}٪)</span>
+        </div>
+        ${bar(fair, tot, 'var(--amber,#f59e0b)')}
+      </div>
+      <div>
+        <div class="row" style="margin-bottom:4px">
+          <span>🔴 نیازمند تلاش و آموزش جبرانی (کمتر از ۱۰)</span>
+          <div class="spacer"></div>
+          <b>${fa(weak)}</b> <span class="muted small">(${fa(pct(weak))}٪)</span>
+        </div>
+        ${bar(weak, tot, 'var(--red,#ef4444)')}
+      </div>
+    </div>
+  </div>`;
+}
 function adminDash(){
 const u=S.user, sid=u.role==='manager'?u.school_id:null;
 const F=a=>sid?a.filter(x=>x.school_id===sid):a;
@@ -4880,6 +5025,7 @@ return `<div class="grid g4">
     ${statCard('🏛️',fa(counts.classes),'کلاس فعال','amber')}
     ${u.role==='manager'?statCard('👨‍👩‍👦',fa(counts.parents),'ولی ثبت‌شده','purple'):''}
    </div>
+   ${u.role==='manager'?managerExceptionPanel(sid,attToday,users,perStudent):''}
    ${u.role==='manager'?`<div class="row" style="background:var(--surface-2);padding:10px 14px;border-radius:12px;align-items:center">
     <b>📰 گزارش عمومی</b><span class="small muted">خلاصهٔ قابل انتشار برای بیرون (بدون دادهٔ حساس)</span>
     <div class="spacer"></div>
@@ -4912,25 +5058,28 @@ ${tot?`<div class="card-body" style="display:grid;gap:13px">${['present','absent
 <div class="table-wrap"><table><thead><tr><th>#</th><th>نام</th><th>کلاس</th><th>معدل</th></tr></thead><tbody>
 ${top.map((t,i)=>`<tr><td>${fa(i+1)}</td><td>${esc(t.u.full_name)}</td><td class="muted">${esc((classOf(t.u.id)||{}).name||'—')}</td><td><span class="badge b-green">${fa(t.avg.toFixed(2))}</span></td></tr>`).join('')}
 </tbody></table></div></div>
-</div>`;
+</div>
+${gradeDistributionCard(perStudent)}`;
 }
+
 function teacherDash(){
-const u=S.user, cls=teacherClasses(u.id);
-const students=new Set();cls.forEach(c=>db.enrollments.filter(e=>e.class_id===c.id).forEach(e=>students.add(e.student_id)));
-const mine=db.grades.filter(g=>g.teacher_id===u.id);
-const sched=db.schedule.filter(s=>s.teacher_id===u.id).sort((a,b)=>a.day-b.day||a.period-b.period).slice(0,6);
-const bellBar=(typeof bellNowBar==='function')?bellNowBar():'';
-return `<div class="bell-live-root" data-bell-live="teacher">${bellBar}</div><div class="grid g4">
-   ${statCard('🏛️',fa(cls.length),'کلاس تحت تدریس','blue')}
-   ${statCard('🎒',fa(students.size),'دانش‌آموز','green')}
-   ${statCard('📝',fa(mine.length),'نمره ثبت‌شده','amber')}
-   ${statCard('📊',fa(avgOf(mine).toFixed(2)),'میانگین نمرات من','purple')}</div>
-   <div class="grid g2">
-    <div class="card"><div class="card-head"><h3>کلاس‌های من</h3><button class="btn sm" data-act="go" data-r="attendance">ثبت حضور و غیاب</button></div>
-     ${cls.length?`<div class="card-body" style="display:grid;gap:8px">${cls.map(c=>`<div class="row" style="background:var(--surface-2);padding:10px 14px;border-radius:10px"><b>${esc(c.name)}</b><span class="muted small">${fa(db.enrollments.filter(e=>e.class_id===c.id).length)} دانش‌آموز</span><div class="spacer"></div><button class="btn ghost sm" data-act="go" data-r="grades">ثبت نمره</button></div>`).join('')}</div>`:empty('🏛️','کلاسی تخصیص نیافته','')}</div>
-    <div class="card"><div class="card-head"><h3>🗓️ زنگ‌های پیش‌رو</h3><button class="btn ghost sm" data-act="go" data-r="schedule">برنامه کامل</button></div>
-     <div class="table-wrap"><table><thead><tr><th>روز</th><th>زنگ</th><th>درس</th><th>کلاس</th></tr></thead><tbody>
-     ${sched.map(s=>`<tr><td>${DAYS[s.day]}</td><td><span class="badge b-blue">زنگ ${fa(s.period)}</span></td><td>${esc((byId('subjects',s.subject_id)||{}).name||'—')}</td><td class="muted">${esc(byId('classes',s.class_id).name)}</td></tr>`).join('')}
+  const u=S.user, cls=teacherClasses(u.id);
+  const students=new Set();cls.forEach(c=>db.enrollments.filter(e=>e.class_id===c.id).forEach(e=>students.add(e.student_id)));
+  const mine=db.grades.filter(g=>g.teacher_id===u.id);
+  const sched=db.schedule.filter(s=>s.teacher_id===u.id).sort((a,b)=>a.day-b.day||a.period-b.period).slice(0,6);
+  /* نوار وضعیت زنگ (گام ۲ دور ۵۰) — فقط نمایش، بدون تغییر رفتار */
+  const bellBar=(typeof bellNowBar==='function')?bellNowBar():'';
+  return `<div class="bell-live-root" data-bell-live="teacher">${bellBar}</div><div class="grid g4">
+${statCard('🏛️',fa(cls.length),'کلاس تحت تدریس','blue')}
+${statCard('🎒',fa(students.size),'دانش‌آموز','green')}
+${statCard('📝',fa(mine.length),'نمره ثبت‌شده','amber')}
+${statCard('📊',fa(avgOf(mine).toFixed(2)),'میانگین نمرات من','purple')}</div>
+<div class="grid g2">
+<div class="card"><div class="card-head"><h3>کلاس‌های من</h3><button class="btn sm" data-act="go" data-r="attendance">ثبت حضور و غیاب</button></div>
+${cls.length?`<div class="card-body" style="display:grid;gap:8px">${cls.map(c=>`<div class="row" style="background:var(--surface-2);padding:10px 14px;border-radius:10px"><b>${esc(c.name)}</b><span class="muted small">${fa(db.enrollments.filter(e=>e.class_id===c.id).length)} دانش‌آموز</span><div class="spacer"></div><button class="btn ghost sm" data-act="go" data-r="grades">ثبت نمره</button></div>`).join('')}</div>`:empty('🏛️','کلاسی تخصیص نیافته','')}</div>
+<div class="card"><div class="card-head"><h3>🗓️ زنگ‌های پیش‌رو</h3><button class="btn ghost sm" data-act="go" data-r="schedule">برنامه کامل</button></div>
+<div class="table-wrap"><table><thead><tr><th>روز</th><th>زنگ</th><th>درس</th><th>کلاس</th></tr></thead><tbody>
+${sched.map(s=>`<tr><td>${DAYS[s.day]}</td><td><span class="badge b-blue">زنگ ${fa(s.period)}</span></td><td>${esc((byId('subjects',s.subject_id)||{}).name||'—')}</td><td class="muted">${esc(byId('classes',s.class_id).name)}</td></tr>`).join('')}
 </tbody></table></div></div></div>`;
 }
 function studentSummary(sid){
@@ -10388,14 +10537,21 @@ return '<tr><td><b>' + esc(p.name || '—') + '</b></td>'
 return '<div class="row" style="margin-bottom:14px;flex-wrap:wrap;gap:8px">' + tabs + '</div>' + body;
 }
 
+function _toLatinDigits(str){
+if(typeof toLatinDigits === 'function') return toLatinDigits(str);
+return String(str || '').replace(/[۰-۹]/g, function(d){ return '۰۱۲۳۴۵۶۷۸۹'.indexOf(d); })
+.replace(/[٠-٩]/g, function(d){ return '٠١٢٣٤٥٦٧٨٩'.indexOf(d); });
+}
 function clearFieldErrors(scope){
-var root = scope || document;
+var root = scope || (typeof document !== 'undefined' ? document : null);
+if(!root || !root.querySelectorAll) return;
 var marked = root.querySelectorAll('.has-error');
 for(var i = 0; i < marked.length; i++) marked[i].classList.remove('has-error');
 var msgs = root.querySelectorAll('.field-error-msg');
 for(var j = 0; j < msgs.length; j++) msgs[j].remove();
 }
 function markFieldError(id, msg){
+if(typeof document === 'undefined') return false;
 var el = document.getElementById(id);
 if(!el) return false;
 el.classList.add('has-error');
@@ -10409,6 +10565,7 @@ wrap.appendChild(p);
 return true;
 }
 function focusField(id){
+if(typeof document === 'undefined') return;
 var el = document.getElementById(id);
 if(!el) return;
 try{
@@ -10417,6 +10574,7 @@ setTimeout(function(){ try{ el.focus(); }catch(e){} }, 120);
 }catch(e){}
 }
 function need(id, msg){
+if(typeof document === 'undefined') return false;
 var el = document.getElementById(id);
 var val = el ? String(el.value == null ? '' : el.value).trim() : '';
 if(val) return false;
@@ -10426,6 +10584,7 @@ if(typeof toast === 'function') toast(msg || 'این قسمت الزامی اس�
 return true;
 }
 function needAll(pairs){
+if(typeof document === 'undefined') return false;
 clearFieldErrors(document.getElementById('modal') || document);
 var first = null, names = [];
 pairs.forEach(function(p){
@@ -10452,26 +10611,102 @@ focusField(id);
 if(typeof toast === 'function') toast(msg, 'err');
 return true;
 }
-document.addEventListener('input', function(e){
-if(e.target && e.target.classList && e.target.classList.contains('has-error')){
-e.target.classList.remove('has-error');
-var wrap = e.target.closest ? e.target.closest('.field') : null;
+function validatePhone(phone){
+if(!phone) return true;
+var clean = _toLatinDigits(String(phone).trim());
+return /^09\d{9}$/.test(clean);
+}
+function validateNid(nid){
+if(!nid) return true;
+var clean = _toLatinDigits(String(nid).trim());
+if(typeof validNid === 'function') return validNid(clean);
+if(!/^\d{10}$/.test(clean)) return false;
+var c = parseInt(clean[9], 10);
+var sum = 0;
+for(var i = 0; i < 9; i++) sum += parseInt(clean[i], 10) * (10 - i);
+var r = sum % 11;
+return (r < 2 && c === r) || (r >= 2 && c === (11 - r));
+}
+function validateScore(score, min, max){
+if(score == null || String(score).trim() === '') return true;
+var minVal = (min != null) ? min : 0;
+var maxVal = (max != null) ? max : 20;
+var clean = _toLatinDigits(String(score).trim());
+var n = Number(clean);
+return !isNaN(n) && n >= minVal && n <= maxVal;
+}
+function validateInput(el){
+if(!el) return true;
+var id = el.id;
+var val = String(el.value == null ? '' : el.value).trim();
+var isReq = el.hasAttribute('required') || (el.dataset && el.dataset.required === 'true');
+if(isReq && !val){
+if(id) markFieldError(id, 'این فیلد الزامی است');
+return false;
+}
+var kind = el.dataset ? el.dataset.validate : null;
+if(!kind || !val) return true;
+if(kind === 'phone' && !validatePhone(val)){
+if(id) markFieldError(id, 'شماره همراه باید ۱۱ رقم با پیش‌شماره ۰۹ باشد');
+return false;
+}
+if(kind === 'nid' && !validateNid(val)){
+if(id) markFieldError(id, 'کد ملی ۱۰ رقمی معتبر نیست');
+return false;
+}
+if(kind === 'score' && !validateScore(val)){
+if(id) markFieldError(id, 'نمره باید عددی بین ۰ تا ۲۰ باشد');
+return false;
+}
+return true;
+}
+function recoverInput(el){
+if(!el || !el.classList || !el.classList.contains('has-error')) return;
+var val = String(el.value == null ? '' : el.value).trim();
+var isReq = el.hasAttribute('required') || (el.dataset && el.dataset.required === 'true');
+var kind = el.dataset ? el.dataset.validate : null;
+var stillInvalid = false;
+if(isReq && !val) stillInvalid = true;
+else if(kind === 'phone' && val && !validatePhone(val)) stillInvalid = true;
+else if(kind === 'nid' && val && !validateNid(val)) stillInvalid = true;
+else if(kind === 'score' && val && !validateScore(val)) stillInvalid = true;
+if(!stillInvalid){
+el.classList.remove('has-error');
+var wrap = el.closest ? el.closest('.field') : null;
 if(wrap){
 var m = wrap.querySelector('.field-error-msg');
 if(m) m.remove();
 }
 }
+}
+if(typeof document !== 'undefined'){
+document.addEventListener('focusout', function(e){
+if(e.target && e.target.matches && e.target.matches('input, select, textarea')){
+validateInput(e.target);
+}
+});
+document.addEventListener('input', function(e){
+if(e.target) recoverInput(e.target);
 });
 document.addEventListener('change', function(e){
-if(e.target && e.target.classList && e.target.classList.contains('has-error')){
-e.target.classList.remove('has-error');
-var wrap = e.target.closest ? e.target.closest('.field') : null;
-if(wrap){
-var m = wrap.querySelector('.field-error-msg');
-if(m) m.remove();
-}
-}
+if(e.target) recoverInput(e.target);
 });
+}
+if(typeof module !== 'undefined' && module.exports){
+module.exports = {
+clearFieldErrors: clearFieldErrors,
+markFieldError: markFieldError,
+focusField: focusField,
+need: need,
+needAll: needAll,
+invalid: invalid,
+validatePhone: validatePhone,
+validateNid: validateNid,
+validateScore: validateScore,
+validateInput: validateInput,
+recoverInput: recoverInput
+};
+}
 
 var SLOT_ID=null;
 var attTimePending=null;
