@@ -17,6 +17,9 @@
 # ═══════════════════════════════════════════════════════════════════════
 name: Security Program (SAST · SCA · SBOM · DAST · Secret)
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: ["main"]

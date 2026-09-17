@@ -125,10 +125,11 @@ test('AY3 مودال: سلکت سال + ذخیرهٔ واقعی', () => {
   const prev = W(`prevYearCode()`);
   const code = 'AYC-' + Date.now().toString(36);
   const mgr = 'aymgr_' + Date.now().toString(36);
+  global.__AY_CODE = code;
   W(`(function(){
     document.getElementById('m_active_year').value=${JSON.stringify(prev)};
     document.getElementById('m_name').value='مدرسهٔ آزمایشی سال';
-    document.getElementById('m_code').value=${JSON.stringify(code)};
+    document.getElementById('m_code').value=window.__AY_CODE;
     var ps=document.getElementById('m_prov');
     ps.value=String(db.provinces[0].id); ps.dispatchEvent(new Event('change',{bubbles:true}));
     var co=[...document.getElementById('m_county').options].map(function(o){return o.value;}).filter(function(v){return v!=='';})[0];
@@ -137,10 +138,11 @@ test('AY3 مودال: سلکت سال + ذخیرهٔ واقعی', () => {
     document.getElementById('mg_user').value=${JSON.stringify(mgr)};
     document.querySelector('[data-act="school-save"]').click();
   })()`);
-  const saved = W(`(function(){var s=db.schools.filter(function(x){return x.code===${JSON.stringify(code)};})[0];return s?s.active_year_code:'NO-SCHOOL';})()`);
+  const saved = W(`(function(){var s=db.schools.filter(function(x){return x.code===window.__AY_CODE;})[0];return s?s.active_year_code:'NO-SCHOOL';})()`);
   assert(saved === prev, 'ذخیرهٔ واقعی سال عملیاتی درست انجام نشد: ' + saved);
-  W(`(function(){var s=db.schools.filter(function(x){return x.code===${JSON.stringify(code)};})[0];if(s){db.users.filter(function(x){return x.school_id===s.id;}).forEach(function(x){remove('users',x.id);});remove('schools',s.id);}})()`);
-  assert(W(`db.schools.filter(function(x){return x.code===${JSON.stringify(code)};}).length`) === 0, 'پاک‌سازی مدرسهٔ آزمایشی شکست خورد');
+  W(`(function(){var s=db.schools.filter(function(x){return x.code===window.__AY_CODE;})[0];if(s){db.users.filter(function(x){return x.school_id===s.id;}).forEach(function(x){remove('users',x.id);});remove('schools',s.id);}})()`);
+  assert(W(`db.schools.filter(function(x){return x.code===window.__AY_CODE;}).length`) === 0, 'پاک‌سازی مدرسهٔ آزمایشی شکست خورد');
+  delete global.__AY_CODE;
 });
 
 test('AY4 بج هدر + بج جدول مدارس + قفل بستن', () => {

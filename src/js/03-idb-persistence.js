@@ -274,13 +274,33 @@ OfflineStorage.prototype.removeEntity = function(collection, id) {
 };
 
 /**
+ * تولید شناسه یکتا برای صف همگام‌سازی با استفاده از CSPRNG مرورگر
+ * @returns {string}
+ */
+function generateQueueUid() {
+  var g = (typeof globalThis !== 'undefined') ? globalThis : (typeof window !== 'undefined' ? window : null);
+  var c = g && g.crypto;
+  if (c && typeof c.getRandomValues === 'function') {
+    var bytes = new Uint8Array(8);
+    c.getRandomValues(bytes);
+    var hex = '';
+    for (var i = 0; i < bytes.length; i++) {
+      hex += ('0' + bytes[i].toString(16)).slice(-2);
+    }
+    return 'q_' + Date.now() + '_' + hex;
+  }
+  // fallback برای محیط‌های فاقد crypto (غیرامن، صرفاً برای سازگاری)
+  return 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+}
+
+/**
  * افزودن عملیات تغییر به صف همگام‌سازی آفلاین
  * @param {object} op شیء عملیات
  * @returns {Promise<string>} شناسه یکتای عملیات (uid)
  */
 OfflineStorage.prototype.addToQueue = function(op) {
   var self = this;
-  var uid = op.uid || ('q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6));
+  var uid = op.uid || generateQueueUid();
   var actualOp = (op.op && typeof op.op === 'object') ? op.op : op;
   var item = {
     uid: uid,
