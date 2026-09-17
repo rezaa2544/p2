@@ -905,6 +905,60 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
+      // /api/v1/analytics/school-health (P0-EI-05: داشبورد سلامت آموزشی مدرسه و مرکز اقدام)
+      if(p === '/api/v1/analytics/school-health' && req.method === 'GET'){
+        const user = req.user;
+        if (user.role === 'student' || user.role === 'parent') {
+          return sendJson(res, 403, { ok: false, code: 'forbidden', message: 'عدم دسترسی به داشبورد سلامت مدرسه' });
+        }
+        let schoolId = user.school_id != null ? Number(user.school_id) : (url.searchParams.get('school_id') ? Number(url.searchParams.get('school_id')) : null);
+        if (user.role === 'edu_office' && schoolId) {
+          if (!policy.schoolInOfficeScope(store, user, schoolId)) {
+            return sendJson(res, 403, { ok: false, code: 'out_of_scope', message: 'مدرسه خارج از حوزه اداره است' });
+          }
+        }
+        if (!schoolId && user.role !== 'superadmin') {
+          return sendJson(res, 400, { ok: false, code: 'missing_school', message: 'شناسه مدرسه مشخص نیست' });
+        }
+        if (!schoolId && user.role === 'superadmin') {
+          const firstSchool = (store.schools || [])[0];
+          schoolId = firstSchool ? Number(firstSchool.id) : 1;
+        }
+
+        const school = (store.schools || []).find(s => s && Number(s.id) === schoolId) || { id: schoolId };
+        let grades = (store.grades || []).filter(g => Number(g.school_id) === schoolId);
+        let attendance = (store.attendance || []).filter(a => Number(a.school_id) === schoolId);
+        let enrollments = (store.enrollments || []).filter(e => Number(e.school_id) === schoolId);
+        let classes = (store.classes || []).filter(c => Number(c.school_id) === schoolId);
+
+        if (db && typeof db.isPostgres === 'function' && db.isPostgres() && typeof db.query === 'function') {
+          try {
+            const gRes = await db.query('SELECT * FROM grades WHERE school_id = $1', [schoolId]);
+            if (gRes && gRes.rows) grades = gRes.rows;
+            const aRes = await db.query('SELECT * FROM attendance WHERE school_id = $1', [schoolId]);
+            if (aRes && aRes.rows) attendance = aRes.rows;
+            const eRes = await db.query('SELECT * FROM enrollments WHERE school_id = $1', [schoolId]);
+            if (eRes && eRes.rows) enrollments = eRes.rows;
+            const cRes = await db.query('SELECT * FROM classes WHERE school_id = $1', [schoolId]);
+            if (cRes && cRes.rows) classes = cRes.rows;
+          } catch (e) {
+            // fallback to memory
+          }
+        }
+
+        const { buildSchoolEducationalHealthDashboard } = require('./analytics/school-health-dashboard');
+        const dashboard = buildSchoolEducationalHealthDashboard({
+          school,
+          grades,
+          attendance,
+          enrollments,
+          classes,
+          expectedSchoolId: schoolId
+        });
+
+        return sendJson(res, 200, { ok: true, data: dashboard });
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);
