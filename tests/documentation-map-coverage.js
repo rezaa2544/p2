@@ -27,9 +27,13 @@ grp('هشت بخش اصلی');
 grp('سازگاری زنده با کاتالوگ');
 const tool = require(path.join(ROOT, 'tools/docs-metadata.js'));
 const entries = tool.buildCatalog();
-const total = entries.length;
+/* C6-02 (board 2026-09-17): جمعِ یخ‌زدهٔ نقشه = درخت پایدار — اسناد daily-*
+   (سوابقِ عملیاتیِ متغیر) خارج از شمار‌اند، هم‌ساز با
+   tools/docs-stats-sync.js. سفتیِ سنجش حفظ می‌شود: عدد هنوز از کاتالوگِ
+   زندهٔ دیسک مشتق می‌شود، نه سخت‌کد. */
+const total = entries.filter((e) => !tool.isDailyDoc(e.path)).length;
 const rootCount = entries.filter((e) => !e.path.replace('docs/', '').includes('/')).length;
-chk('ادعای کل اسناد با دیسک یکی است (' + fa(total) + ')', doc.includes('**' + fa(total) + '**'), String(total));
+chk('ادعای کل اسناد پایدار با دیسک یکی است (' + fa(total) + ')', doc.includes('**' + fa(total) + '**'), String(total));
 chk('ادعای شمار ریشه درست است (' + fa(rootCount) + ')', doc.includes(fa(rootCount)), String(rootCount));
 const sum = tool.summarize(entries);
 chk('ادعای صفر یتیم با کاتالوگ سازگار است', sum.orphans.length === 0 && doc.includes('صفر سند یتیم'));
