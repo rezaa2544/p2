@@ -961,6 +961,10 @@ const onRequest = async (req, res) => {
       }
 
       // /api/v1/attendance & /api/v1/attendance/:id
+      if(p === '/api/v1/attendance/analytics' && req.method === 'GET'){
+        const r = await attendanceRoutes.getAttendanceAnalytics(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
       if(p === '/api/v1/attendance' && req.method === 'GET'){
         const r = await attendanceRoutes.getAttendanceList(req, url.searchParams);
         return sendJson(res, 200, r);

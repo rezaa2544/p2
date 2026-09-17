@@ -229,8 +229,82 @@ const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.scho
     return { status: 200, body: { ok: true, message: 'رکورد حضور با موفقیت حذف شد' } };
   }
 
+  /* P0-EI-04: تحلیل‌های پایه حضور و غیاب (Attendance Analytics Foundation) */
+  async function getAttendanceAnalytics(req, urlParams) {
+    const user = req.user;
+    if (user.role === 'student' || user.role === 'parent') {
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'عدم دسترسی به تحلیل‌های آماری حضور' } };
+    }
+
+    const schoolId = user.school_id != null ? Number(user.school_id) : (urlParams.get('school_id') ? Number(urlParams.get('school_id')) : null);
+    if (!schoolId && user.role !== 'superadmin') {
+      return { status: 400, body: { ok: false, code: 'missing_school', message: 'شناسه مدرسه مشخص نیست' } };
+    }
+
+    const classId = urlParams.get('class_id') ? Number(urlParams.get('class_id')) : null;
+    const studentId = urlParams.get('student_id') ? Number(urlParams.get('student_id')) : null;
+    const startDate = urlParams.get('start_date') || null;
+    const endDate = urlParams.get('end_date') || null;
+    const streakThreshold = urlParams.get('streak_threshold') ? Number(urlParams.get('streak_threshold')) : 3;
+
+    let attendance = [];
+    let enrollments = [];
+
+    if (pgLive()) {
+      if (typeof db.query === 'function') {
+        try {
+          const { buildAttendanceAnalyticsQuery } = require('../analytics/attendance');
+          const q = buildAttendanceAnalyticsQuery({
+            schoolId,
+            classId,
+            studentId,
+            startDate,
+            endDate
+          });
+          const res = await db.query(q.sql, q.values);
+          attendance = res && res.rows ? res.rows : [];
+
+          const enrRes = await db.query('SELECT * FROM enrollments WHERE school_id = $1', [schoolId]);
+          enrollments = enrRes && enrRes.rows ? enrRes.rows : [];
+        } catch (e) {
+          attendance = (store.attendance || []);
+          enrollments = (store.enrollments || []);
+        }
+      }
+    } else {
+      attendance = (store.attendance || []);
+      enrollments = (store.enrollments || []);
+    }
+
+    // اعمال فیلترهای دسترسی امنیتی Wave 5
+    attendance = policy.filterReadable(store, user, 'attendance', attendance);
+    if (schoolId) {
+      attendance = attendance.filter(a => Number(a.school_id) === schoolId);
+      enrollments = enrollments.filter(e => Number(e.school_id) === schoolId);
+    }
+    if (classId) {
+      attendance = attendance.filter(a => Number(a.class_id) === classId);
+      enrollments = enrollments.filter(e => Number(e.class_id) === classId);
+    }
+    if (studentId) {
+      attendance = attendance.filter(a => Number(a.student_id) === studentId);
+    }
+
+    const { buildAttendanceAnalyticsReport } = require('../analytics/attendance');
+    const report = buildAttendanceAnalyticsReport({
+      attendance,
+      enrollments,
+      classId,
+      streakThreshold,
+      expectedSchoolId: schoolId
+    });
+
+    return { status: 200, body: { ok: true, data: report } };
+  }
+
   return {
     getAttendanceList,
+    getAttendanceAnalytics,
     createAttendance,
     updateAttendance,
     deleteAttendance
