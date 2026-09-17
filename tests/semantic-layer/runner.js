@@ -19,6 +19,7 @@ const SUITES = [
   'assessment-semantics.test.js',
   'completion-semantics.test.js',
   'activity-summary.test.js',
+  'student-timeline/index.test.js',
   'query-builders.test.js',
   'mutations.test.js',
   'deterministic-and-mutation.test.js'
