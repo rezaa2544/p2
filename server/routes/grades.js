@@ -263,8 +263,87 @@ async function deleteGrade(req, id) {
     return { status: 200, body: { ok: true, message: 'نمره با موفقیت حذف شد' } };
   }
 
+  /* P0-EI-03: تحلیل‌های پایه سنجش و ارزشیابی (Assessment Analytics Foundation) */
+  async function getAssessmentAnalytics(req, urlParams) {
+    const user = req.user;
+    if (user.role === 'student' || user.role === 'parent') {
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'عدم دسترسی به تحلیل‌های آماری ارزیابی' } };
+    }
+
+    const schoolId = user.school_id != null ? Number(user.school_id) : (urlParams.get('school_id') ? Number(urlParams.get('school_id')) : null);
+    if (!schoolId && user.role !== 'superadmin') {
+      return { status: 400, body: { ok: false, code: 'missing_school', message: 'شناسه مدرسه مشخص نیست' } };
+    }
+
+    const classId = urlParams.get('class_id') ? Number(urlParams.get('class_id')) : null;
+    const subjectId = urlParams.get('subject_id') ? Number(urlParams.get('subject_id')) : null;
+    const term = urlParams.get('term') || null;
+    const maxScore = urlParams.get('max_score') ? Number(urlParams.get('max_score')) : 20;
+    const passThreshold = urlParams.get('pass_threshold') ? Number(urlParams.get('pass_threshold')) : 10;
+
+    let grades = [];
+    let enrollments = [];
+
+    if (pgLive()) {
+      if (typeof db.query === 'function') {
+        try {
+          const { buildAssessmentAnalyticsQuery } = require('../analytics/assessment');
+          const q = buildAssessmentAnalyticsQuery({
+            schoolId,
+            classId,
+            subjectId,
+            term
+          });
+          const res = await db.query(q.sql, q.values);
+          grades = res && res.rows ? res.rows : [];
+
+          const enrRes = await db.query('SELECT * FROM enrollments WHERE school_id = $1', [schoolId]);
+          enrollments = enrRes && enrRes.rows ? enrRes.rows : [];
+        } catch (e) {
+          // fallback to memory
+          grades = (store.grades || []);
+          enrollments = (store.enrollments || []);
+        }
+      }
+    } else {
+      grades = (store.grades || []);
+      enrollments = (store.enrollments || []);
+    }
+
+    // اعمال فیلترهای دسترسی امنیتی Wave 5
+    grades = policy.filterReadable(store, user, 'grades', grades);
+    if (schoolId) {
+      grades = grades.filter(g => Number(g.school_id) === schoolId);
+      enrollments = enrollments.filter(e => Number(e.school_id) === schoolId);
+    }
+    if (classId) {
+      grades = grades.filter(g => Number(g.class_id) === classId);
+      enrollments = enrollments.filter(e => Number(e.class_id) === classId);
+    }
+    if (subjectId) {
+      grades = grades.filter(g => Number(g.subject_id) === subjectId);
+    }
+    if (term) {
+      grades = grades.filter(g => String(g.term) === String(term));
+    }
+
+    const { buildAssessmentAnalyticsReport } = require('../analytics/assessment');
+    const report = buildAssessmentAnalyticsReport({
+      grades,
+      enrollments,
+      classId,
+      subjectId,
+      maxScore,
+      passThreshold,
+      expectedSchoolId: schoolId
+    });
+
+    return { status: 200, body: { ok: true, data: report } };
+  }
+
   return {
     getGradesList,
+    getAssessmentAnalytics,
     createGrade,
     updateGrade,
     deleteGrade

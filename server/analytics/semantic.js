@@ -1016,13 +1016,17 @@ function evaluateCourseEngagement(engagementData = {}, options = {}) {
  * محاسبه ضریب دشواری (p-value) و شاخص تمایز (D-index) بر روی نتایج یک آزمون.
  */
 function evaluateAssessmentSemantics(assessmentData = {}, options = {}) {
+  const isArray = Array.isArray(assessmentData);
+  const dataObj = isArray ? {} : assessmentData;
+  const opts = isArray ? (options || {}) : options;
+
   const {
-    assessmentId = assessmentData.assessmentId || assessmentData.examId || null,
-    grades = assessmentData.grades || [],
-    maxScore = 20,
-    passThreshold = 10,
-    expectedSchoolId = null
-  } = options;
+    assessmentId = dataObj.assessmentId || dataObj.examId || opts.assessmentId || null,
+    grades = isArray ? assessmentData : (dataObj.grades || opts.grades || []),
+    maxScore = opts.maxScore || dataObj.maxScore || 20,
+    passThreshold = opts.passThreshold || dataObj.passThreshold || 10,
+    expectedSchoolId = opts.expectedSchoolId || dataObj.expectedSchoolId || null
+  } = opts;
 
   if (!Array.isArray(grades) || grades.length === 0) {
     return {

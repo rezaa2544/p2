@@ -20,6 +20,7 @@ const SUITES = [
   'completion-semantics.test.js',
   'activity-summary.test.js',
   'longitudinal-timeline.test.js',
+  'assessment-analytics.test.js',
   'query-builders.test.js',
   'mutations.test.js',
   'deterministic-and-mutation.test.js'

@@ -982,6 +982,10 @@ const onRequest = async (req, res) => {
       }
 
       // /api/v1/grades & /api/v1/grades/:id
+      if(p === '/api/v1/grades/analytics' && req.method === 'GET'){
+        const r = await gradeRoutes.getAssessmentAnalytics(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
       if(p === '/api/v1/grades' && req.method === 'GET'){
         const r = await gradeRoutes.getGradesList(req, url.searchParams);
         return sendJson(res, 200, r);
