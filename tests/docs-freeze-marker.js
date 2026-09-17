@@ -17,8 +17,8 @@ function chk(name, cond, extra) {
   else { fail++; errors.push(name + (extra ? ' — ' + String(extra).slice(0, 220) : '')); console.log('  ❌ ' + name + (extra ? '  —  ' + String(extra).slice(0, 220) : '')); }
 }
 function grp(t) { console.log('\n▸ ' + t); }
-const RC = '45';
-const FREEZE = 'docs/DOCS_FREEZE_v1.0.0-rc45.md';
+const RC = '44';
+const FREEZE = 'docs/DOCS_FREEZE_v1.0.0-rc44.md';
 const doc = (() => { try { return fs.readFileSync(path.join(ROOT, FREEZE), 'utf8'); } catch (e) { return null; } })();
 if (!doc) { console.log('❌ سند قفل نیست'); process.exit(1); }
 

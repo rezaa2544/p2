@@ -157,6 +157,42 @@ const dead = refs.filter((r) => !fs.existsSync(path.join(ROOT, r)));
 chk('همهٔ ارجاع‌ها به فایلِ موجود می‌رسند', dead.length === 0, dead.join(','));
 chk('سندِ مکمل (پاسخِ حادثه) واقعاً موجود است', fs.existsSync(path.join(ROOT, 'docs/INCIDENT_RESPONSE.md')));
 
+/* ── RB-BR — پیش‌پروازِ انضباطِ شاخه‌های انتشار (C6-06، شیفت ۲) ──
+   پینِ ابزارِ فقط‌خواندنیِ tools/branch-preflight.js: سرشماریِ شاخه‌های
+   تحویل‌شده/کهنه و نوکِ مشترک + پیش‌پروازِ شاخهٔ نامزدِ انتشار.
+   خودآزماییِ ابزار هرمتیک است (مخزنِ اسباب‌بازی در tmpdir؛ شبکه نمی‌خواهد)؛
+   این بخش فقط اجرای آن را روی همین ریپو پین می‌کند — بدونِ هیچ نوشتار. */
+grp('RB-BR — پیش‌پروازِ شاخه‌های انتشار (ابزار + گاز)');
+const { spawnSync } = require('child_process');
+const TOOL_BP = path.join(ROOT, 'tools', 'branch-preflight.js');
+const runBP = (args) => spawnSync(process.execPath, [TOOL_BP].concat(args), { cwd: ROOT, encoding: 'utf8', timeout: 120000 });
+chk('ابزارِ پیش‌پرواز موجود است', fs.existsSync(TOOL_BP));
+{
+  const st = runBP(['--selftest']);
+  chk('خودآزماییِ هرمتیکِ ابزار سبز است (خروجی ۰)', st.status === 0, String(st.stdout + st.stderr).slice(-200));
+}
+{
+  const fl = runBP(['--fleet', '--json']);
+  let fj = null; try { fj = JSON.parse(fl.stdout); } catch (e) {}
+  chk('سرشماریِ ناوگان خروجی ۰ و جی‌سانِ معتبر دارد',
+    fl.status === 0 && !!fj && fj.mode === 'fleet' && !!fj.counts
+    && ['total', 'mergedStale', 'live', 'aged', 'sharedTipClusters'].every((k) => typeof fj.counts[k] === 'number'),
+    String(fl.stdout + fl.stderr).slice(-200));
+}
+{
+  /* گازِ سطحِ ریپو: «main» هیچ‌گاه نمی‌تواند نسبت به خودش چیزی تحویل بدهد
+     ⇒ پیش‌پرواز باید سخت رد کند (خروجی ۱ + حکمِ مردود). */
+  const bite = runBP(['--branch', 'main', '--json']);
+  let bj = null; try { bj = JSON.parse(bite.stdout); } catch (e) {}
+  chk('گاز: پیش‌پروازِ شاخهٔ بدون‌محتوا (main) سخت مردود است',
+    bite.status === 1 && !!bj && bj.verdict === 'FAIL',
+    'exit=' + bite.status + ' ' + String(bite.stdout + bite.stderr).slice(-160));
+}
+{
+  const usage = runBP([]);
+  chk('فراخوانیِ بی‌کاربرگ با خروجی ۲ رد می‌شود (قراردادِ رابط)', usage.status === 2);
+}
+
 console.log('\n' + '─'.repeat(52));
 console.log(`نتیجهٔ پوششِ ران‌بوک: ${pass}/${pass + fail} موفق` + (fail ? `  —  ${fail} ناموفق ❌` : '  —  بدون خطا ✅'));
 if (errors.length) console.log('ناموفق‌ها: ' + errors.join(' | '));

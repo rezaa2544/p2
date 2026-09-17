@@ -1,6 +1,6 @@
 # شیفت کاری ۲ — Chat9
 
-Base reference: `main@16182f8cb9a9146fbc25c05ac4a9768f4f2d9702`
+Base reference: `main@d262b4e624a021f478fd965dc29edd972dec9302`
 
 Rules: one active mission at a time; scope isolation; no `git add -A`; no force-push; raw test exits; NOT-RUN is not PASS; push/merge evidence required; never touch another Arena's owned files; merge only after reconciliation.
 
