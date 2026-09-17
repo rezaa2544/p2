@@ -73,6 +73,13 @@ function canRoute(route, role){
       if(me && me.lib_staff === 1) return true;
     }catch(e){}
   }
+  /* رئیس اداره: کاربرِ edu_office با پرچمِ is_head=1 روت‌های مدیریتی اداره را می‌بیند */
+  if(role === 'edu_office' && (route === 'office-msg' || route === 'office-print' || route === 'office-dash')){
+    try{
+      var me = (typeof S !== 'undefined') ? S.user : null;
+      if(me && me.is_head === 1) return true;
+    }catch(e){}
+  }
   /* تحویلدار: دبیرِ دارای پرچمِ asset_staff، روتِ اموال را می‌بیند
      (دبیرِ بی‌مجوز همچنان رد می‌شود — تستِ assets/A2). */
   if(route === 'assets' && role === 'teacher'){

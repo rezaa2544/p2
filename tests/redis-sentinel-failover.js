@@ -19,9 +19,42 @@ const ROOT = path.join(__dirname, '..');
 const redis = require(path.join(ROOT, 'server', 'redis.js'));
 
 let pass = 0, fail = 0, skipped = 0;
+
+const SENSITIVE_KEY_RE = /(pass(word)?|secret|token|api[-_]?key|authorization|cookie)/i;
+
+function redactSensitive(value) {
+  if (Array.isArray(value)) return value.map(redactSensitive);
+  if (!value || typeof value !== 'object') return value;
+  const out = {};
+  for (const [k, v] of Object.entries(value)) {
+    if (SENSITIVE_KEY_RE.test(k)) out[k] = '[REDACTED]';
+    else out[k] = redactSensitive(v);
+  }
+  return out;
+}
+
+function sanitizeDetail(detail) {
+  if (detail == null || detail === '') return '';
+  if (typeof detail === 'string') {
+    try {
+      return JSON.stringify(redactSensitive(JSON.parse(detail)));
+    } catch (e) {
+      return detail;
+    }
+  }
+  if (typeof detail === 'object') {
+    return JSON.stringify(redactSensitive(detail));
+  }
+  return String(detail);
+}
+
 function chk(name, ok, detail) {
   if (ok) { pass++; console.log(`  ✅ ${name}`); }
-  else { fail++; console.log(`  ❌ ${name}${detail ? ' — ' + detail : ''}`); }
+  else {
+    fail++;
+    const safeDetail = sanitizeDetail(detail);
+    console.log(`  ❌ ${name}${safeDetail ? ' — ' + safeDetail : ''}`);
+  }
 }
 function skip(name, why) {
   skipped++;
