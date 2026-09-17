@@ -148,13 +148,18 @@ const OWNED = [
     file: 'docs/DOCS_METRICS.md',
     key: 'docs-total-row',
     match: /^\| تعداد کل اسناد `docs\/\*\.md` \|.*\| شمارش فایل \|$/m,
-    /* ردیف دو عددِ متعارف را هم می‌آورَد: «درختِ سه‌زیرپوشه‌ای» (۳۳۶ در وضعیت امروز) که
-       tests/docs-metrics.js می‌سنجد، و «درختِ کامل» با daily-reports/. بدون این، دو گیت
-       ناسازگار می‌شدند (docs-metrics عدد ۳۳۶ را می‌خواست و ابزار ۳۴۶ می‌نوشت). */
+    /* ردیف دو عددِ متعارف را هم می‌آورَد: «درختِ سه‌زیرپوشه‌ای» (ریشه + RUNBOOK_CARDS +
+       user-guides + pilot) که tests/docs-metrics.js می‌سنجد، و «درختِ کامل» با
+       daily-reports/. بدون این، دو گیت ناسازگار می‌شدند (docs-metrics عدد ۳۳۶ را می‌خواست
+       و ابزار ۳۴۶ می‌نوشت).
+       رگرسیونِ واقعی (۲۰۲۶-۰۹-۱۷): قالب، «درختِ سه‌زیرپوشه‌ای» را هرگز به‌صورت جمع
+       نمی‌نوشت — فقط شمارِ همان سه زیرپوشه (core) را می‌گفت — پس tests/docs-metrics.js
+       (DM-KEY: doc.includes(faNum(rootMd + core))) از زمانی که زیرپوشه‌های تازه
+       (daily-audits/، roadmaps/) به درخت اضافه شدند قرمز ماند. حالا صریح نوشته می‌شود. */
     render: (t) => {
       const core = ['RUNBOOK_CARDS', 'user-guides', 'pilot'].reduce((a, k) => a + (t.subs[k] || 0), 0);
       const daily = t.subs['daily-reports'] || 0;
-      return `| تعداد کل اسناد \`docs/*.md\` | **${fa(t.docsRootMinusFreeze)}** سند ریشه (پیش از خود سند قفل \`rc${t.rc}\`؛ با آن ${fa(t.docsRoot)}) + ${fa(t.docsSub)} سند در زیرپوشه‌ها (${subLabel(t)}) = جمع درخت ${fa(t.docsTree)}؛ تفکیک: سه زیرپوشهٔ پایه ${fa(core)} + \`daily-reports/\` ${fa(daily)} ⇒ درخت بدونِ گزارش‌های روزانه ${fa(t.docsTree - daily)} | شمارش فایل |`;
+      return `| تعداد کل اسناد \`docs/*.md\` | **${fa(t.docsRootMinusFreeze)}** سند ریشه (پیش از خود سند قفل \`rc${t.rc}\`؛ با آن ${fa(t.docsRoot)}) + ${fa(t.docsSub)} سند در زیرپوشه‌ها (${subLabel(t)}) = جمع درخت ${fa(t.docsTree)}؛ تفکیک: سه زیرپوشهٔ پایه ${fa(core)} (درخت سه‌زیرپوشه‌ای ${fa(t.docsRoot + core)}) + \`daily-reports/\` ${fa(daily)} ⇒ درخت بدونِ گزارش‌های روزانه ${fa(t.docsTree - daily)} | شمارش فایل |`;
     },
   },
   {
