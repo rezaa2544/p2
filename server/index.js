@@ -1017,6 +1017,12 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
+      // /api/v1/system/security-health (Phase 4 — P1-SC-06: لایه امنیت Zero Trust و انطباق زمان اجرا)
+      if(p === '/api/v1/system/security-health' && req.method === 'GET'){
+        const r = await systemRoutes.securityHealthReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);
