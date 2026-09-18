@@ -2,30 +2,45 @@
 -- migrations/013_universal_occ_and_sequences.sql
 -- Wave 26 / Phase 5 Step 08 (P2-NI-06)
 -- Universal Optimistic Concurrency Control (OCC) & Persistent Conflicts
+-- Fully compatible with Migrations 001-012 (Zero-Collision Forward & Rollback)
 -- ═══════════════════════════════════════════════════════════════════
 
--- 1. Create persistent sync_conflicts table (Single Source of Truth in PostgreSQL)
+-- 1. Ensure sync_conflicts table has all required columns and indexes for persistent conflict storage
+-- (Table was initially created in Migration 001; here we extend and harden it)
 CREATE TABLE IF NOT EXISTS sync_conflicts (
   id BIGSERIAL PRIMARY KEY,
-  client_uid VARCHAR(128),
-  collection VARCHAR(64) NOT NULL,
+  collection VARCHAR(128) NOT NULL,
   record_id BIGINT,
-  user_id BIGINT,
   school_id BIGINT,
-  base_version INT,
-  server_version INT,
+  base_version INTEGER,
+  incoming_version INTEGER,
+  current_version INTEGER,
   client_data JSONB,
   server_data JSONB,
-  resolved_data JSONB,
-  resolution_strategy VARCHAR(32) NOT NULL DEFAULT 'server_wins',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  status VARCHAR(32) NOT NULL DEFAULT 'open',
+  winner VARCHAR(32),
+  reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Ensure all extended columns exist (safe for databases migrated from 001)
+ALTER TABLE sync_conflicts ADD COLUMN IF NOT EXISTS user_id INTEGER;
+ALTER TABLE sync_conflicts ADD COLUMN IF NOT EXISTS client_uid VARCHAR(128);
+ALTER TABLE sync_conflicts ADD COLUMN IF NOT EXISTS server_version INTEGER;
+ALTER TABLE sync_conflicts ADD COLUMN IF NOT EXISTS server_state JSONB;
+ALTER TABLE sync_conflicts ADD COLUMN IF NOT EXISTS incoming JSONB;
+ALTER TABLE sync_conflicts ADD COLUMN IF NOT EXISTS resolved_data JSONB;
+ALTER TABLE sync_conflicts ADD COLUMN IF NOT EXISTS resolution_strategy VARCHAR(32) DEFAULT 'server_wins';
+
+-- Create performance indexes for persistent conflicts
 CREATE INDEX IF NOT EXISTS idx_sync_conflicts_school ON sync_conflicts (school_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_sync_conflicts_user ON sync_conflicts (user_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_sync_conflicts_coll_rec ON sync_conflicts (collection, record_id);
+CREATE INDEX IF NOT EXISTS idx_sync_conflicts_status_created ON sync_conflicts (status, created_at DESC);
 
 -- 2. Add 'version' column to all application tables if not already present
+-- and ensure atomic sequence-backed IDs
 DO $$
 DECLARE
   tbl text;

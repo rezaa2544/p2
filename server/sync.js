@@ -485,6 +485,7 @@ function stripProtected(d){
 /* ctx: { store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom, sendJson } */
 function createSync(ctx){
   const store = ctx.store;
+  if (store) attach(store);
   const db = ctx.db;
   const MAX_BATCH = ctx.MAX_BATCH;
   const AT_DRIFT_MS = ctx.AT_DRIFT_MS;
@@ -919,22 +920,34 @@ function createSync(ctx){
         if(versionedMismatch){
           const nowIso = new Date().toISOString();
           if(!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
+          const cfSchoolId = (vrec && vrec.school_id != null ? vrec.school_id
+                             : (op.data && op.data.school_id != null ? op.data.school_id : s.school_id));
           const cf = {
             id: await serverId('sync_conflicts'),
-            collection: op.c, record_id: vid,
-            school_id: (vrec && vrec.school_id != null ? vrec.school_id
-                       : (op.data && op.data.school_id != null ? op.data.school_id : s.school_id)),
+            collection: op.c,
+            record_id: vid,
+            school_id: cfSchoolId,
+            user_id: s.id,
+            client_uid: op.uid || null,
             base_version: Number(op.base_version),
+            incoming_version: Number((op.data && op.data.version) || op.base_version || 1),
+            current_version: vrec ? (vrec.version || 1) : null,
             server_version: vrec ? (vrec.version || 1) : null,
+            client_data: op.data ? Object.assign({}, op.data) : null,
+            server_data: vrec ? Object.assign({}, vrec) : null,
             server_state: vrec ? Object.assign({}, vrec) : null,
             incoming: { data: Object.assign({}, op.data), by: s.id, at: nowIso, op_uid: op.uid },
-            status: 'open', created_at: nowIso, updated_at: nowIso
+            status: 'open',
+            created_at: nowIso,
+            updated_at: nowIso
           };
           /* باگ ۲ (بازبین دور ۱ #124): درج از mirrorAppend می‌گذرد تا هرسِ ringِ
              سقف‌دار (sync_conflicts لیست‌سفید است) رویش کار کند — push خام
              growthLog را خالی می‌گذاشت و صف بی‌سقف می‌راند. uPush همان‌جا:
              بازگشتِ دقیق همین ردیف در rollback (P0-6). */
           uPush('sync_conflicts', mirrorAppend('sync_conflicts', cf));
+          /* B1: Persistent Conflict Storage in PostgreSQL via derived transaction batch */
+          derived.push({ c: 'sync_conflicts', t: 'ins', data: cf });
           /* ویو ۱۴: برچسبِ collection نامِ جدول است (مجموعهٔ بستهٔ VERSIONED)،
              نه شناسهٔ رکورد — بدون PII و با cardinality کران‌دار. */
           metrics.inc('payesh_sync_conflicts_total', { collection: String(op.c || 'unknown').slice(0, 32) });

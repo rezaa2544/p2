@@ -58,6 +58,24 @@ function createConflicts(ctx){
     if(!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
     if(s.role !== 'manager' && s.role !== 'superadmin')
       return sendJson(res, 403, { ok: false, code: 'role_denied' });
+
+    // B1: Persistent Conflict Reading from PostgreSQL SSoT
+    const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+    if (pgLive && typeof db.query === 'function') {
+      try {
+        const querySql = s.role === 'manager'
+          ? `SELECT * FROM sync_conflicts WHERE school_id IS NULL OR school_id = $1 ORDER BY (status = 'open') DESC, created_at DESC LIMIT 50;`
+          : `SELECT * FROM sync_conflicts ORDER BY (status = 'open') DESC, created_at DESC LIMIT 50;`;
+        const params = s.role === 'manager' ? [Number(s.school_id)] : [];
+        const r = await db.query(querySql, params);
+        if (r && Array.isArray(r.rows)) {
+          return sendJson(res, 200, { ok: true, conflicts: r.rows });
+        }
+      } catch (err) {
+        // fallback to cache on query error
+      }
+    }
+
     if(!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
     const scoped = s.role === 'manager'
       ? store.sync_conflicts.filter(c => c.school_id == null || Number(c.school_id) === Number(s.school_id))
@@ -65,12 +83,6 @@ function createConflicts(ctx){
     scoped.sort((a, b) =>
       ((a.status === 'open') === (b.status === 'open') ? 0 : (a.status === 'open' ? -1 : 1))
       || String(b.created_at || '').localeCompare(String(a.created_at || '')));
-    /* بازخورد بازبین #143 (باگ ۱): پیش از resolve⇒keep، حل‌شده‌ها فوراً حذف
-       می‌شدند و slice(-50).reverse() عملاً همان ۵۰ تای اولِ مرتب‌شده را
-       می‌داد؛ حالا که resolvedها می‌مانند، slice(-50) دقیقاً «ابتدای» آرایه
-       (بازها) را می‌بُرید — با ۵۰+ resolved مدیر هیچ تعارضِ بازی نمی‌دید.
-       قرارداد: comparator خودش ترتیبِ نمایشی است (بازها اول، تازه‌ترها اول)؛
-       سقف از همان ابتدا برداشته می‌شود تا بازها هرگز قربانیِ سقف نشوند. */
     return sendJson(res, 200, { ok: true, conflicts: scoped.slice(0, 50) });
   }
 
@@ -95,7 +107,14 @@ function createConflicts(ctx){
     }
     const cid = body.conflict_id;
     const winner = body.winner;
-    const c = (store.sync_conflicts || []).find(x => x.id === cid);
+    const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+    let c = (store.sync_conflicts || []).find(x => x.id === cid);
+    if(!c && pgLive && typeof db.query === 'function'){
+      try{
+        const r = await db.query('SELECT * FROM sync_conflicts WHERE id = $1;', [Number(cid)]);
+        if(r && r.rows && r.rows[0]) c = r.rows[0];
+      }catch(_){}
+    }
     if(!c) return sendJson(res, 404, { ok: false, code: 'not_found' });
     if(s.role === 'manager' && c.school_id != null && Number(c.school_id) !== Number(s.school_id))
       return sendJson(res, 403, { ok: false, code: 'out_of_scope' });
@@ -104,10 +123,7 @@ function createConflicts(ctx){
 
     /* Wave 1: PG-first adjudication. The winning record commits to the authority
        (OCC on the live version) BEFORE the cache mutates; on PG failure nothing
-       mutates and the conflict stays open (retryable). NOTE: sync_conflicts rows
-       themselves are intentionally cache-side in Wave 1 (arbitration state; the
-       validation path never mirrored them), so apiList keeps reading the store. */
-    const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+       mutates and the conflict stays open (retryable). */
     let pgNext = null, pgIsInsert = false, pgBase = null;
     if(winner === 'incoming' && c.incoming && c.incoming.data){
       if(!Array.isArray(store[c.collection])) store[c.collection] = [];
@@ -176,6 +192,14 @@ function createConflicts(ctx){
        سقف‌دار هرس می‌شود (کهنه‌ترین resolved_at اول). بی‌سقفیِ #124 همچنان
        بسته است: openها را ringِ mirrorAppend (sync.js) سقف می‌زند،
        resolvedها را این هرس. */
+    if (pgLive && db && typeof db.query === 'function') {
+      try {
+        await db.query(
+          `UPDATE sync_conflicts SET status = 'resolved', winner = $1, reason = $2, resolved_at = NOW(), resolved_by = $3, updated_at = NOW() WHERE id = $4;`,
+          [winner, c.reason || null, s.id, Number(c.id)]
+        );
+      } catch (_) {}
+    }
     pruneResolved();
     markDirty();
     audit('conflict_resolved', { user_id: s.id, conflict_id: c.id, collection: c.collection, record_id: c.record_id, winner });

@@ -746,6 +746,12 @@ async function persistOpWithClient(client, op) {
         throw e;
       }
     } else {
+      if (process.env.PAYESH_STRICT_OCC === '1') {
+        const e = new Error('optimistic concurrency conflict: missing required base_version');
+        e.code = 'missing_base_version';
+        e.status = 409;
+        throw e;
+      }
       await client.query(`UPDATE ${table} SET ${setSql} WHERE id = $${fields.length + 1};`, values.concat([id]));
     }
   } else if (t === 'del') {

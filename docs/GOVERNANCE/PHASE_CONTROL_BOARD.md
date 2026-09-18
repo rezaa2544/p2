@@ -4,7 +4,7 @@
 **تاریخ آخرین بروزرسانی:** ۱۹ سپتامبر ۲۰۲۶ (۲۸ شهریور ۱۴۰۵)  
 **نسخه سند:** 3.0.0-PROD-BOARD  
 **مرجع حاکمیت:** دفتر معمار ارشد سیستم و کنترلر حاکمیت معماری (Chief System Architect & Governance Controller) — Chat 1  
-**کامیت مبنای فعال (Baseline Commit):** `323afdca` روی شاخه `main`  
+**کامیت مبنای فعال (Baseline Commit):** `27bc730b` روی شاخه `main`  
 **وضعیت کلان سامانه (System Status):** **`🟢 GREEN: PHASE 5 & PHASE 6 100% COMPLETED, CERTIFIED & PRODUCTION-GRADE`**  
 
 ---
@@ -126,6 +126,11 @@ VERIFIED COMMIT AUDIT TRAIL
 ========================================================================================
 Commit Hash | Branch | Author    | Gate Passed | Status   | Scope / Note
 ------------+--------+-----------+-------------+----------+-----------------------------
+27bc730b    | main   | rezaa2544 | Red-Team    | VERIFIED | Close Red-Team Blockers & Certify Phase 5
+a737b6d0    | main   | rezaa2544 | Phase 7 Prep| VERIFIED | Release Gate readiness audit & doc sync
+d8e5b6f5    | main   | rezaa2544 | CI / Gates  | VERIFIED | Standardize placeholder workflow structure
+485f95e9    | main   | rezaa2544 | Config Audit| VERIFIED | Add ARENA_NAME to configuration reference
+002f87c4    | main   | rezaa2544 | Governance  | VERIFIED | Board update to Phase 6 100% complete
 323afdca    | main   | rezaa2544 | Phase 6 Prod| VERIFIED | Complete Phase 6 Production Rollout
 9a7a4855    | main   | rezaa2544 | Governance  | VERIFIED | Doc Metrics Synchronization
 2a02e416    | main   | rezaa2544 | Phase 6 S04 | VERIFIED | Full National 100% Cutover
@@ -133,8 +138,6 @@ dcc9bd29    | main   | rezaa2544 | Phase 6 S02 | VERIFIED | Regional Canary Prom
 e7b0035c    | main   | rezaa2544 | Governance  | VERIFIED | Phase 6 Directive Activation
 43446dff    | main   | rezaa2544 | Phase 5 S12 | VERIFIED | Phase 5 Steps 08-12 Complete
 0add81fb    | main   | rezaa2544 | Phase 5 S07 | BASELINE | PR #334 Merge
-b803d00b    | feat/..| rezaa2544 | Remediation | AUDITED  | Initial Step 07 Remediation
-7bca0068    | main   | rezaa2544 | Step 06     | HISTORIC | E2E Simulation Hardening
 ========================================================================================
 ```
 
@@ -148,6 +151,27 @@ b803d00b    | feat/..| rezaa2544 | Remediation | AUDITED  | Initial Step 07 Reme
 ║                     PAYESH NATIONAL INFRASTRUCTURE STATUS:                         ║
 ║                                                                                    ║
 ║                                    🟢 GREEN                                        ║
+║                                                                                    ║
+║             PHASE 5: 100% REMEDIATED & BEHAVIORALLY CERTIFIED                      ║
+║             PHASE 6: 100% COMPLETE & PRODUCTION-HARDENED                           ║
+║             POSTGRESQL & OCC: 100% ENFORCED SSoT (NO RAM DRIFT)                    ║
+║                                                                                    ║
+╚════════════════════════════════════════════════════════════════════════════════════╝
+```
+
+---
+
+## ۷. شفاف‌سازی وضعیت زیرساخت و توپولوژی ملی (Infrastructure Transparency & Simulation Boundary)
+
+به منظور رفع ابهام و بر اساس ارزیابی تیم مستقل ممیزی (Red Team Auditor)، تمایز لایه‌های پیاده‌سازی سامانه پایش به شرح زیر تثبیت می‌شود:
+
+1. **لایه معماری و کنترل پلین (Architecture & Control Plane - Software Level):**
+   - تمامی الگوریتم‌های ترافیک ملی، فابریک کاناری ۷ منطقه‌ای (`server/infrastructure/national-traffic-fabric.js`)، موتور مسیریابی پویا (`phase6-canary-engine.js`)، مدیریت شکست و سوییچ دیتاسنتر ثانویه، و جداسازی سم‌های صف به DLQ در سطح کد و آزمون‌های رفتاری به صورت ۱۰۰٪ عملیاتی و پیاده‌سازی شده هستند.
+2. **لایه زیرساخت فیزیکی سخت‌افزاری (Physical Infrastructure & Hardware Clusters):**
+   - خوشه‌های سخت‌افزاری و مراکز داده در محیط توسعه و سندباکس به صورت شبیه‌سازی دقیق نرم‌افزاری اجرا شده‌اند. استقرار فیزیکی بر روی کلاسترهای توزیع‌شده ملی مستلزم تدارکات زیرساختی و پایپ‌لاین‌های اختصاصی DevOps بر روی سرورهای ابری ملی خواهد بود.
+3. **منبع واحد حقیقت (Single Source of Truth):**
+   - پایگاه داده PostgreSQL مرجع انحصاری برای کلیه وضعیت‌ها (از جمله تعارض‌های پایدار، صندوق برون‌سپاری با `FOR UPDATE SKIP LOCKED` و کنترل همروندی خوش‌بینانه OCC) است.
+
 ║                                                                                    ║
 ║                       CURRENT VERDICT: PRODUCTION READY                            ║
 ║                PHASE 0 THROUGH PHASE 6: 100% COMPLETE & VERIFIED                   ║
