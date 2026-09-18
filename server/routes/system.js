@@ -149,6 +149,7 @@ const {
   CAPACITY_ENFORCEMENT_ERRORS,
   NATIONAL_LIMITS
 } = require('../infrastructure/national-capacity-enforcement');
+const { getNationalWriteSmoothingEngine, NATIONAL_WRITE_LIMITS } = require('../infrastructure/national-write-smoothing');
 
 function createSystemRoutes(ctx) {
   const store = ctx.store || {};
@@ -1779,6 +1780,33 @@ function createSystemRoutes(ctx) {
     }
   }
 
+  /**
+   * GET /api/v1/system/national/write-smoothing
+   * Phase 5 Step 07 (P2-NI-05): رصد و اعتبارسنجی تلطیف بارهای انفجاری نوشت (Outbox Smoothing)
+   */
+  async function nationalWriteSmoothing(req, searchParams) {
+    const user = await authenticateSysadmin(req);
+    if (!user) return { status: 401, body: { ok: false, code: 'UNAUTHORIZED' } };
+
+    const engine = getNationalWriteSmoothingEngine();
+    const metrics = engine.getMetrics();
+    const burstSim = engine.simulateBurst({
+      burst_tps: Number(searchParams.get('burst_tps')) || NATIONAL_WRITE_LIMITS.FINAL_EXAMS_PEAK_TPS,
+      duration_seconds: Number(searchParams.get('duration')) || 10,
+      entity_name: searchParams.get('entity') || 'final_exams'
+    });
+
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        smoothing_limits: NATIONAL_WRITE_LIMITS,
+        engine_metrics: metrics,
+        burst_simulation: burstSim
+      }
+    };
+  }
+
   return {
     scalabilityHealthReport,
     eventProcessingHealthReport,
@@ -1805,7 +1833,8 @@ function createSystemRoutes(ctx) {
     nationalReadiness,
     nationalLoadTest,
     nationalIncidents,
-    nationalChangeRequest
+    nationalChangeRequest,
+    nationalWriteSmoothing
   };
 }
 

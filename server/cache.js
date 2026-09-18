@@ -38,6 +38,29 @@ const L1_TTL_MS = 60 * 1000;
 const SCHOOL_INDEX_GRACE_SECONDS = 60; /* index must not outlive its L2 entries by much */
 const localUserBootstrapCache = new Map(); // L1 — insertion order = LRU order
 const inflight = new Map(); // single-flight: key -> Promise
+const localFallbackRateLimits = new Map(); // Phase 5 P2-NI-05: in-process fallback rate limiter
+
+function checkLocalFallbackRateLimit(key, limit, windowSeconds) {
+  const now = Date.now();
+  let entry = localFallbackRateLimits.get(key);
+  if (!entry || now >= entry.resetAt) {
+    entry = { count: 0, resetAt: now + (windowSeconds * 1000) };
+    localFallbackRateLimits.set(key, entry);
+  }
+  entry.count += 1;
+  const allowed = entry.count <= limit;
+  const remaining = Math.max(0, limit - entry.count);
+  const resetSeconds = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
+
+  // Periodic pruning of expired entries to keep memory bounded
+  if (localFallbackRateLimits.size > 5000) {
+    for (const [k, v] of localFallbackRateLimits.entries()) {
+      if (now >= v.resetAt) localFallbackRateLimits.delete(k);
+    }
+  }
+
+  return { allowed, remaining, resetSeconds, fallback: true };
+}
 
 function l1Get(userId) {
   const it = localUserBootstrapCache.get(Number(userId));
@@ -311,7 +334,15 @@ async function checkRateLimit(identifier, action, limit = 10, windowSeconds = 60
       resetSeconds: await redis.ttl(key)
     };
   } catch (e) {
-    return { allowed: true, remaining: limit, resetSeconds: windowSeconds };
+    /* Phase 5 (P2-NI-05): Redis outage must NEVER fail open (ALLOW ALL is strictly forbidden).
+       Switches immediately to in-process local rate limiter to enforce quotas fail-safe. */
+    metrics.inc('payesh_rate_limit_redis_failures_total', { action: String(action || 'unknown').slice(0, 32) });
+    const fallback = checkLocalFallbackRateLimit(key, limit, windowSeconds);
+    metrics.inc('payesh_rate_limit_decisions_total', {
+      action: String(action || 'unknown').slice(0, 32),
+      decision: fallback.allowed ? 'allowed' : 'denied'
+    });
+    return fallback;
   }
 }
 
