@@ -172,6 +172,7 @@
 | `DAST_ENV` · `DAST_PORT` · `DAST_REDIS_URL` | `development`/پیش‌فرض | `tools/dast-live.sh` | هدف تست نفوذ زنده (پی۰ #۶) |
 | `OUT_DIR` | `out/dast-live` | `tools/dast-live.sh` | خروجی اسکن دی‌ای‌اس‌تی (گیت‌ایگنورد) |
 | `ZAP_BIN` · `ZAP_IMAGE` | (خالی = جست‌وجوی خودکار) | `tools/dast-live.sh` | مکان یاب زپ |
+| `ARENA_NAME` | (خالی = پیش‌فرض) | `tools/collision-detector.js` | شناسه محیط آرنا در ردیابی تداخلات موازی |
 
 > `TARGET`/`NEW`/`BAD` در اسکریپت‌ها محلی‌اند و ورودی محیطی نیستند (در ابزار ممیزی مستثنا شده‌اند).
 
