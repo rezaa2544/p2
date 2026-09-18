@@ -37,6 +37,12 @@ const {
   ZERO_TRUST_ERRORS
 } = require('../security/zero-trust-runtime');
 
+const {
+  enforcePhase4CertificationAccessGuard,
+  buildPhase4CertificationSnapshot,
+  PHASE4_ERRORS
+} = require('../infrastructure/phase4-release-certification');
+
 function createSystemRoutes(ctx) {
   const store = ctx.store || {};
   const db = ctx.db;
@@ -597,13 +603,82 @@ function createSystemRoutes(ctx) {
     };
   }
 
+  /**
+   * GET /api/v1/system/phase4-certification
+   * GET /api/v1/system/scalability-certification
+   * گیت انتشار جامع و صدور گواهی مقیاس‌پذیری و آمادگی تولید فاز ۴ (P1-SC-07)
+   */
+  async function phase4CertificationReport(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const schoolIdParam = searchParams.get('school_id');
+    const regionIdParam = searchParams.get('region_id');
+
+    if (!schoolIdParam && !regionIdParam && user.role !== 'superadmin' && user.role !== 'admin') {
+      return {
+        status: 400,
+        body: { ok: false, code: 'bad_request', message: 'ارائه school_id یا region_id الزامی است' }
+      };
+    }
+
+    let schoolId = schoolIdParam ? Number(schoolIdParam) : (user.school_id ? Number(user.school_id) : 1);
+    let regionId = regionIdParam ? Number(regionIdParam) : (user.region_id ? Number(user.region_id) : 1);
+
+    try {
+      enforcePhase4CertificationAccessGuard(user, {
+        school_id: schoolIdParam ? Number(schoolIdParam) : null,
+        region_id: regionIdParam ? Number(regionIdParam) : null
+      });
+    } catch (err) {
+      return {
+        status: 403,
+        body: {
+          ok: false,
+          code: 'forbidden',
+          error_code: err.code || PHASE4_ERRORS.ROLE_ACCESS_DENIED,
+          message: err.message
+        }
+      };
+    }
+
+    const snapshot = buildPhase4CertificationSnapshot(schoolId, regionId);
+
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        phase: 'PHASE_4',
+        certification_status: snapshot.official_certificate.status,
+        release_ready: snapshot.official_certificate.release_ready,
+        readiness_index: snapshot.official_certificate.readiness_index,
+        national_go_decision: snapshot.national_go_decision.decision,
+        certificate: snapshot.official_certificate,
+        layers: snapshot.phase4_layers,
+        readiness_gates: snapshot.readiness_gates,
+        governance: {
+          human_decision_sovereignty: snapshot.human_sovereignty.requires_human_approval,
+          zero_ranking_guarantee: snapshot.zero_ranking_guarantee.enforced,
+          tenant_isolation: true
+        },
+        snapshot
+      }
+    };
+  }
+
   return {
     scalabilityHealthReport,
     eventProcessingHealthReport,
     observabilityHealthReport,
     disasterRecoveryHealthReport,
     pilotDeploymentHealthReport,
-    securityHealthReport
+    securityHealthReport,
+    phase4CertificationReport
   };
 }
 

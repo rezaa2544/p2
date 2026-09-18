@@ -32,11 +32,12 @@ const API_TESTS = [
   'observability-health.test.js',
   'disaster-recovery-health.test.js',
   'pilot-deployment-health.test.js',
-  'security-health.test.js'
+  'security-health.test.js',
+  'phase4-certification.test.js'
 ];
 
 console.log('═══════════════════════════════════════════════════════════════════');
-console.log('🚀 اجرای آزمون‌های کامل RESTful API Backend (فاز ۳)');
+console.log('🚀 اجرای آزمون‌های کامل RESTful API Backend (فاز ۳ و ۴)');
 console.log('═══════════════════════════════════════════════════════════════════\n');
 
 let totalSuites = API_TESTS.length;
