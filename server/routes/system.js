@@ -139,6 +139,17 @@ const {
   CHANGE_ERRORS
 } = require('../infrastructure/change-management');
 
+const {
+  assertNationalCapacityEnforcement,
+  checkRegionCapacityHeadroom,
+  createCapacityReservation,
+  releaseCapacityReservation,
+  getCapacityReservations,
+  getCapacityReservationById,
+  CAPACITY_ENFORCEMENT_ERRORS,
+  NATIONAL_LIMITS
+} = require('../infrastructure/national-capacity-enforcement');
+
 function createSystemRoutes(ctx) {
   const store = ctx.store || {};
   const db = ctx.db;
@@ -1262,16 +1273,126 @@ function createSystemRoutes(ctx) {
     }
 
     const model = getNationalCapacityModel();
+    const activeRes = getCapacityReservations({ status: 'ACTIVE' });
+
     return {
       status: 200,
       body: {
         ok: true,
         phase: 'PHASE_5',
-        step: 'P2-NI-01',
+        step: 'P2-NI-03',
         capacity: model,
+        enforcement_limits: { ...NATIONAL_LIMITS },
+        active_reservations_count: activeRes.length,
         timestamp: new Date().toISOString()
       }
     };
+  }
+
+  /**
+   * GET /api/v1/system/national/capacity/reservations
+   * فهرست رزروهای سهمیه ظرفیت ملی (P2-NI-03)
+   */
+  async function nationalCapacityReservations(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin', 'edu_office', 'manager'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: 'PHASE5_NATIONAL_REGION_ACCESS_DENIED', message: 'نقش کاربر مجاز نیست' }
+      };
+    }
+
+    try {
+      const filter = searchParams ? Object.fromEntries(searchParams.entries()) : {};
+      assertNoZeroRanking(filter);
+      const list = getCapacityReservations(filter);
+
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          phase: 'PHASE_5',
+          step: 'P2-NI-03',
+          reservations: list,
+          count: list.length,
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (err) {
+      const isRanking = err.code === 'ZERO_RANKING_VIOLATION';
+      return {
+        status: isRanking ? 400 : 500,
+        body: { ok: false, code: err.code || 'reservations_fetch_failed', message: err.message }
+      };
+    }
+  }
+
+  /**
+   * POST /api/v1/system/national/capacity/reservation
+   * ثبت رزرو سهمیه ظرفیت با تایید صریح انسانی (P2-NI-03)
+   */
+  async function nationalCapacityReserve(req, body) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: 'PHASE5_NATIONAL_REGION_ACCESS_DENIED', message: 'تنها مدیران ارشد مجاز به رزرو سهمیه ظرفیت هستند' }
+      };
+    }
+
+    try {
+      assertNoZeroRanking(body);
+
+      if (body.approved !== true || body.automated_decision === true || body.automated_execution === true) {
+        const err = new Error('PHASE5_RESERVATION_APPROVAL_REQUIRED: رزرو ظرفیت مستلزم تایید صریح اپراتور انسانی است');
+        err.code = CAPACITY_ENFORCEMENT_ERRORS.RESERVATION_APPROVAL_REQUIRED;
+        throw err;
+      }
+
+      const reservation = createCapacityReservation(body, {
+        approved: true,
+        operator_id: String(user.id),
+        approval_id: body.approval_id || `appv-res-${Date.now()}`,
+        reason: body.reason || 'Capacity reservation registered via API'
+      });
+
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          message: 'سهمیه ظرفیت با موفقیت رزرو گردید',
+          reservation,
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (err) {
+      const isRanking = err.code === 'ZERO_RANKING_VIOLATION';
+      return {
+        status: isRanking ? 400 : 422,
+        body: {
+          ok: false,
+          code: 'reservation_failed',
+          error_code: err.code || CAPACITY_ENFORCEMENT_ERRORS.RESERVATION_APPROVAL_REQUIRED,
+          message: err.message
+        }
+      };
+    }
   }
 
   /**
@@ -1676,6 +1797,8 @@ function createSystemRoutes(ctx) {
     phase5ProvincialTrafficRollout,
     nationalRegions,
     nationalCapacity,
+    nationalCapacityReservations,
+    nationalCapacityReserve,
     nationalHealth,
     nationalTraffic,
     nationalOperations,

@@ -1086,9 +1086,22 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
-      // /api/v1/system/national/capacity (Phase 5 — P2-NI-01: مدل ظرفیت ملی پایش)
+      // /api/v1/system/national/capacity (Phase 5 — P2-NI-01 / P2-NI-03: مدل ظرفیت ملی پایش و سقف‌های اجبار)
       if(p === '/api/v1/system/national/capacity' && req.method === 'GET'){
         const r = await systemRoutes.nationalCapacity(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/national/capacity/reservations (Phase 5 — P2-NI-03: فهرست رزروهای سهمیه)
+      if(p === '/api/v1/system/national/capacity/reservations' && req.method === 'GET'){
+        const r = await systemRoutes.nationalCapacityReservations(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/national/capacity/reservation (Phase 5 — P2-NI-03: ثبت رزرو سهمیه با تایید انسانی)
+      if(p === '/api/v1/system/national/capacity/reservation' && req.method === 'POST'){
+        const body = await readBody(req, 64 * 1024);
+        const r = await systemRoutes.nationalCapacityReserve(req, body);
         return sendJson(res, r.status, r.body);
       }
 

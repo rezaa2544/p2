@@ -20,14 +20,23 @@ const {
 
 const {
   CANONICAL_NATIONAL_REGIONS,
-  getNationalRegionRegistry
+  getNationalRegionRegistry,
+  getNationalRegionById
 } = require('./national-region-control-plane');
+
+const {
+  checkRegionCapacityHeadroom,
+  assertNationalCapacityEnforcement
+} = require('./national-capacity-enforcement');
+
+const { CROSS_REGION_RECOVERY_MAP } = require('./disaster-recovery');
 
 const TRAFFIC_FABRIC_ERRORS = Object.freeze({
   APPROVAL_REQUIRED: 'PHASE5_NATIONAL_TRAFFIC_APPROVAL_REQUIRED',
   INVALID_WEIGHT: 'PHASE5_INVALID_TRAFFIC_WEIGHT',
   REGION_NOT_FOUND: 'PHASE5_NATIONAL_REGION_NOT_FOUND',
   ROUTING_BREACH: 'PHASE5_ROUTING_POLICY_BREACH',
+  HARDENED_GATE_BREACH: 'PHASE5_TRAFFIC_HARDENED_GATE_BREACH',
   ZERO_RANKING_VIOLATION: 'ZERO_RANKING_VIOLATION'
 });
 
@@ -151,6 +160,40 @@ function updateNationalTrafficWeight(regionId, targetWeight, approvalContext = {
   if (!operator.id || !['superadmin', 'admin'].includes(operator.role)) {
     const err = new Error('تنها مدیران ارشد مجاز به تنظیم اوزان ترافیک ملی هستند');
     err.code = TRAFFIC_FABRIC_ERRORS.APPROVAL_REQUIRED;
+    throw err;
+  }
+
+  // Hardened Gate Pre-conditions (P2-NI-03)
+  // 1. Cluster Health & Maintenance State
+  const regionRecord = getNationalRegionById(regionId);
+  if (weight > 0 && regionRecord) {
+    const currentHealth = regionRecord.health_status || regionRecord.initial_state;
+    if (currentHealth === 'MAINTENANCE' || currentHealth === 'DEGRADED') {
+      const err = new Error(
+        `PHASE5_TRAFFIC_HARDENED_GATE_BREACH: Cannot route traffic to region "${regionId}" in state ${currentHealth}`
+      );
+      err.code = TRAFFIC_FABRIC_ERRORS.HARDENED_GATE_BREACH;
+      throw err;
+    }
+  }
+
+  // 2. Capacity Headroom & DB capacity validation
+  if (weight > 0 && regionRecord && regionRecord.capacity_profile) {
+    const projectedRps = Math.round((regionRecord.capacity_profile.max_rps * weight) / 100);
+    const projectedDb = Math.round((regionRecord.capacity_profile.database_connections_limit * weight) / 100);
+    assertNationalCapacityEnforcement({
+      rps: projectedRps,
+      db_connections: projectedDb,
+      region_id: regionId
+    });
+  }
+
+  // 3. DR Pair Binding Check
+  if (!CROSS_REGION_RECOVERY_MAP[regionId]) {
+    const err = new Error(
+      `PHASE5_TRAFFIC_HARDENED_GATE_BREACH: Region "${regionId}" is missing validated cross-region DR pairing`
+    );
+    err.code = TRAFFIC_FABRIC_ERRORS.HARDENED_GATE_BREACH;
     throw err;
   }
 
