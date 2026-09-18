@@ -53,6 +53,7 @@ const { createAttendanceRoutes } = require('./routes/attendance');
 const { createGradeRoutes } = require('./routes/grades');
 const { createUserRoutes } = require('./routes/users');
 const { createReportsRoutes } = require('./routes/reports'); /* Wave 23 — گزارش‌دهی پیشرفته */
+const { createAnalyticsRoutes } = require('./routes/analytics'); /* P0-EI-09 — مرکز فرماندهی و هوشمندی مدرسه */
 const { createBootstrapRoute } = require('./routes/bootstrap');
 const { createIds } = require('./ids'); /* P0-16 */
 const { createOutbox } = require('./outbox'); /* P0-17 */
@@ -559,6 +560,7 @@ const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, i
 const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty, ids, deleter });
 const userRoutes = createUserRoutes({ store, db, audit, markDirty, ids, deleter });
 const reportsRoutes = createReportsRoutes({ store, db, audit, markDirty, ids, deleter }); /* Wave 23 */
+const analyticsRoutes = createAnalyticsRoutes({ store, db, audit, markDirty, ids, deleter }); /* P0-EI-09 */
 const bootstrapRoute = createBootstrapRoute({ store, db });
 /* Delta Hardening Phase 2 (gap 2): signed TTL cursor — the resolved JWT key
    (env or key-file) feeds a domain-separated cursor key inside server/cursor.js;
@@ -902,6 +904,12 @@ const onRequest = async (req, res) => {
       }
       if(p === '/api/v1/reports/teachers' && req.method === 'GET'){
         const r = await reportsRoutes.teachersReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/analytics/school-intelligence (P0-EI-09: مرکز هوشمندی و فرماندهی مدرسه)
+      if(p === '/api/v1/analytics/school-intelligence' && req.method === 'GET'){
+        const r = await analyticsRoutes.schoolIntelligenceReport(req, url.searchParams);
         return sendJson(res, r.status, r.body);
       }
 
