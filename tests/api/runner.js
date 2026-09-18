@@ -22,7 +22,8 @@ const API_TESTS = [
   'feedback-learning-memory.test.js',
   'intelligence-governance.test.js',
   'policy-simulation.test.js',
-  'decision-intelligence-command.test.js'
+  'decision-intelligence-command.test.js',
+  'operational-intelligence-execution.test.js'
 ];
 
 console.log('═══════════════════════════════════════════════════════════════════');

@@ -961,6 +961,12 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
+      // /api/v1/analytics/operational-execution (P0-EI-18: لایه اجرای عملیاتی هوشمندی آموزشی)
+      if(p === '/api/v1/analytics/operational-execution' && req.method === 'GET'){
+        const r = await analyticsRoutes.operationalExecutionReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);

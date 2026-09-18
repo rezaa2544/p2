@@ -35,6 +35,7 @@ const SUITES = [
   'intelligence-governance/index.test.js',
   'policy-simulation/index.test.js',
   'decision-intelligence-command/index.test.js',
+  'operational-intelligence-execution/index.test.js',
   'query-builders.test.js',
   'mutations.test.js',
   'deterministic-and-mutation.test.js'
