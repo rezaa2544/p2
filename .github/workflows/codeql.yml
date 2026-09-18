@@ -1,3 +1,10 @@
-# This file is intentionally left as a placeholder or removed.
-# Default CodeQL setup is enabled in repository settings instead.
-# See: https://docs.github.com/en/code-security/code-scanning/enabling-code-scanning-for-your-repository
+name: "CodeQL"
+on:
+  workflow_dispatch:
+
+jobs:
+  codeql-notice:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Informative Notice
+        run: echo "Default CodeQL setup is enabled in repository settings."
