@@ -74,6 +74,11 @@ const {
   buildUnifiedIntelligenceSnapshot
 } = require('../analytics/intelligence-platform-integration');
 
+const {
+  enforceCertificationAccessGuard,
+  runPhase3Certification
+} = require('../analytics/intelligence-release-certification');
+
 function createAnalyticsRoutes(ctx) {
   const store = ctx.store || {};
   const db = ctx.db;
@@ -1118,6 +1123,100 @@ function createAnalyticsRoutes(ctx) {
     };
   }
 
+  /**
+   * GET /api/v1/analytics/intelligence-certification
+   * گیت رسمی انتشار و صدور گواهی نهایی فاز ۳ پلتفرم هوشمندی آموزشی (P0-EI-21)
+   */
+  async function intelligenceCertificationReport(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const schoolIdParam = searchParams.get('school_id');
+    const regionIdParam = searchParams.get('region_id');
+    const academicYear = searchParams.get('academic_year') || '1404-1405';
+
+    if (!schoolIdParam && !regionIdParam) {
+      return {
+        status: 400,
+        body: { ok: false, code: 'bad_request', message: 'ارائه school_id یا region_id الزامی است' }
+      };
+    }
+
+    if (schoolIdParam) {
+      const schoolId = Number(schoolIdParam);
+      try {
+        enforceCertificationAccessGuard(user, { school_id: schoolId });
+      } catch (err) {
+        return {
+          status: 403,
+          body: { ok: false, code: 'forbidden', message: err.message }
+        };
+      }
+
+      const certification = runPhase3Certification({
+        schoolId,
+        regionId: user.region_id || 1,
+        academicYear,
+        user
+      });
+
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          api_version: '1.0.0',
+          school_id: schoolId,
+          intelligence_certification: certification,
+          release_certificate: certification.release_certificate
+        }
+      };
+    }
+
+    const regionId = Number(regionIdParam);
+    try {
+      enforceCertificationAccessGuard(user, { region_id: regionId });
+    } catch (err) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', message: err.message }
+      };
+    }
+
+    const schools = (store.schools || []).filter(s => Number(s.region_id || s.district_id) === regionId);
+
+    const regionalCert = runPhase3Certification({
+      schoolId: 101,
+      regionId,
+      academicYear,
+      user
+    });
+
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        api_version: '1.0.0',
+        region_id: regionId,
+        regional_intelligence_certification: {
+          region_id: regionId,
+          total_schools: schools.length,
+          certification_status: regionalCert.certification_status,
+          release_ready: regionalCert.release_ready,
+          release_certificate: regionalCert.release_certificate,
+          zero_ranking: true,
+          automated_decision: false,
+          automated_execution: false,
+          requires_human_approval: true
+        }
+      }
+    };
+  }
+
   return {
     schoolIntelligenceReport,
     regionalIntelligenceReport,
@@ -1130,7 +1229,8 @@ function createAnalyticsRoutes(ctx) {
     decisionCommandReport,
     operationalExecutionReport,
     outcomeEvaluationReport,
-    intelligencePlatformReport
+    intelligencePlatformReport,
+    intelligenceCertificationReport
   };
 }
 

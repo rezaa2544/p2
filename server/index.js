@@ -979,6 +979,12 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
+      // /api/v1/analytics/intelligence-certification (P0-EI-21: گیت انتشار و صدور گواهی نهایی فاز ۳)
+      if(p === '/api/v1/analytics/intelligence-certification' && req.method === 'GET'){
+        const r = await analyticsRoutes.intelligenceCertificationReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);

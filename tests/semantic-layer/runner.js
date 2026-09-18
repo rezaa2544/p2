@@ -38,6 +38,7 @@ const SUITES = [
   'operational-intelligence-execution/index.test.js',
   'outcome-evaluation-optimization/index.test.js',
   'intelligence-platform/index.test.js',
+  'intelligence-certification/index.test.js',
   'query-builders.test.js',
   'mutations.test.js',
   'deterministic-and-mutation.test.js'
