@@ -13,20 +13,20 @@
 
 | سنجه | مقدار |
 |---|---:|
-| کل اسناد (لحظهٔ قفل `rc44`) | **۴۷۸** |
+| کل اسناد (لحظهٔ قفل `rc44`) | **۴۷۹** |
 | اسناد ریشهٔ `docs/*.md` (با خود نقشه و قفل) | ۴۳۹ |
-| اسناد زیرپوشه‌ها (`RUNBOOK_CARDS/` + `user-guides/` + `pilot/` + `ARCHITECTURE/` + `GOVERNANCE/` + `roadmaps/`) | ۳۹ |
+| اسناد زیرپوشه‌ها (`RUNBOOK_CARDS/` + `user-guides/` + `pilot/` + `ARCHITECTURE/` + `GOVERNANCE/` + `roadmaps/`) | ۴۰ |
 | توکن در نمایهٔ جستجو | ۲۳۲۳ |
 
 **به تفکیک وضعیت:**
 
 | وضعیت | شمار |
 |---|---:|
-| فعال (در حال استفاده) | ۴۱۱ |
+| فعال (در حال استفاده) | ۴۱۲ |
 | زنده (ماشینی/رخدادی، مستثنی از بامپ) | ۳ |
 | منجمد (قفل‌های تاریخی) | ۴۴ |
 | آرشیو (بایگانی نمایه) | ۲۰ |
-| **جمع** | **۴۷۸** |
+| **جمع** | **۴۷۹** |
 
 > **تعریف C6-02 (۲۰۲۶-۰۹-۱۷):** جمع‌های این جدول‌ها = **درخت پایدار** — زیرپوشه‌های
 > `daily-*` (`daily-audits/` + `daily-reports/`) سوابقِ عملیاتیِ متغیرند و خارج از
@@ -219,6 +219,7 @@
 | راهنمای بازیابی باندل جامع (همین مأموریت) | «`RECOVERY_INSTRUCTIONS.md`» |
 | راهبری فاز ۵ و برنامه‌های اجرایی معماری | «`ARCHITECTURE/PHASE_5_CONTINUATION_AFTER_VALIDATION_V1.md`» · «`ARCHITECTURE/PHASE_5_EXECUTION_PLAN_V3.md`» · «`ARCHITECTURE/PHASE_5_MASTER_COMPLETION_ROADMAP.md`» · «`ARCHITECTURE/PHASE_5_NEXT_DEVELOPMENT_DIRECTIVE_V1.md`» · «`ARCHITECTURE/PHASE_5_ROADMAP_CONTINUATION_V2.md`» · «`PHASE_5_DEVELOPMENT_CONTINUATION_PLAN.md`» · «`ARCHITECTURE/STEP_10_EXECUTION_PLAN_V1.md`» · «`ARCHITECTURE/STEP_11_EXECUTION_PLAN_V1.md`» · «`ARCHITECTURE/STEP_12_EXECUTION_PLAN_V1.md`» |
 | راهبری فاز ۶ و استقرار ملی پروداکشن | «`ARCHITECTURE/PHASE_6_EXECUTION_DIRECTIVE_V1.md`» · «`ARCHITECTURE/PHASE_6_STAGE_1_EVALUATION_AND_STAGE_2_PROMOTION.md`» · «`ARCHITECTURE/PHASE_6_GO_LIVE_TRANSITION_PLAN.md`» · «`ARCHITECTURE/PHASE_6_FINAL_GO_LIVE_REPORT.md`» · «`ARCHITECTURE/PHASE_6_MASTER_PRODUCTION_GRADE_REPORT.md`» |
+| ممیزی فاز ۷ و ارزیابی دروازه انتشار | «`ARCHITECTURE/PHASE_7_RELEASE_GATE_AND_READINESS_AUDIT.md`» · «`RELEASE_GATE_CHECKLIST.md`» · «`RELEASE_GATE_EVIDENCE.md`» |
 | حاکمیت معماری و ماتریس وظایف چت‌ها | «`GOVERNANCE/PHASE_CONTROL_BOARD.md`» · «`GOVERNANCE/CHAT_ROLES_AND_MISSIONS.md`» |
 
 > جزئیات هر مأموریت در ورودی‌های `HANDOFF.md` و گزارش‌های `/home/user/MISSION_*.md` ثبت است.
