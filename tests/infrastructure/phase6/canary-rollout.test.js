@@ -70,6 +70,69 @@ async function testStage2PromotionWithGovernance() {
   console.log('  ✅ Stage 2 Promotion Successful: Isfahan, Khorasan, and Fars promoted to 25% weight');
 }
 
+async function testStage3PromotionWithGovernance() {
+  console.log('▸ Phase 6: Stage 3 Wide National Cutover (50% Weight)');
+
+  const validApprovalStage3 = {
+    approved: true,
+    automated_decision: false,
+    automated_execution: false,
+    requires_human_approval: true,
+    operator: {
+      id: 'chief-system-architect-chat1',
+      role: 'superadmin'
+    },
+    reason: 'Phase 6 Stage 2 SLO passed. Promoting Tabriz, Border-West, and Rural clusters to 50% weight.'
+  };
+
+  const updatedTabriz = trafficFabric.updateNationalTrafficWeight('ir-tabriz-1', 50, validApprovalStage3);
+  assert(updatedTabriz.allocated_weight === 50, 'Tabriz weight must be 50%');
+
+  const updatedBorder = trafficFabric.updateNationalTrafficWeight('ir-border-west-1', 50, validApprovalStage3);
+  assert(updatedBorder.allocated_weight === 50, 'Border-West weight must be 50%');
+
+  const updatedRural = trafficFabric.updateNationalTrafficWeight('ir-rural-central-1', 50, validApprovalStage3);
+  assert(updatedRural.allocated_weight === 50, 'Rural Central weight must be 50%');
+
+  console.log('  ✅ Stage 3 Promotion Successful: Tabriz, Border-West, and Rural clusters at 50% weight');
+}
+
+async function testStage4FullNationalCutover() {
+  console.log('▸ Phase 6: Stage 4 Full 100% Nationwide Production Cutover');
+
+  const validApprovalStage4 = {
+    approved: true,
+    automated_decision: false,
+    automated_execution: false,
+    requires_human_approval: true,
+    operator: {
+      id: 'chief-system-architect-chat1',
+      role: 'superadmin'
+    },
+    reason: 'Phase 6 Stages 1-3 fully verified. Promoting all 7 national clusters to 100% full live.'
+  };
+
+  const allClusters = [
+    'ir-tehran-1',
+    'ir-isfahan-1',
+    'ir-khorasan-1',
+    'ir-fars-1',
+    'ir-tabriz-1',
+    'ir-border-west-1',
+    'ir-rural-central-1'
+  ];
+
+  for (const clusterId of allClusters) {
+    const updated = trafficFabric.updateNationalTrafficWeight(clusterId, 100, validApprovalStage4);
+    assert(updated.allocated_weight === 100, `${clusterId} weight must be 100%`);
+    assert(updated.routing_state === 'ROUTING_ACTIVE', `${clusterId} must be ACTIVE`);
+  }
+
+  const finalTopo = trafficFabric.getNationalTrafficFabricTopology();
+  assert(finalTopo.active_routed_regions === 7, 'All 7 national regions must be active');
+  console.log('  ✅ Stage 4 Full National Cutover Successful: 100% live traffic across all 31 provinces');
+}
+
 async function testNocOperationalSLO() {
   console.log('▸ Phase 6: NOC Operational SLO & Incident Monitoring');
 
@@ -88,6 +151,8 @@ async function main() {
 
   await testStage1CanaryBaseline();
   await testStage2PromotionWithGovernance();
+  await testStage3PromotionWithGovernance();
+  await testStage4FullNationalCutover();
   await testNocOperationalSLO();
 
   console.log('───────────────────────────────────────────────────────────────────');
