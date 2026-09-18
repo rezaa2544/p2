@@ -26,11 +26,11 @@ function runCapacityTrafficTraceTests() {
   // Check if assertNationalCapacityEnforcement is called on general API requests (e.g. before /api/v1/students or /api/v1/grades)
   const isEnforcementInGlobalMiddleware = /assertNationalCapacityEnforcement\s*\(/.test(serverIndexSrc);
   
-  // Traced outcome: It is defined and exposed at /api/v1/system/national/capacity, but NOT wired as a global request interceptor on business routes
+  // Phase 5 Step 07 Remediation: assertNationalCapacityEnforcement is now wired as an ingress request interceptor
   assert.strictEqual(
     isEnforcementInGlobalMiddleware,
-    false,
-    'Trace confirms: assertNationalCapacityEnforcement is NOT wired as a global HTTP middleware on /api/v1/* routes'
+    true,
+    'Remediation confirms: assertNationalCapacityEnforcement IS wired as an HTTP middleware on /api/v1/* and /api/sync routes'
   );
   passed++;
 

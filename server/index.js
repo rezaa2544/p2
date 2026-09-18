@@ -56,6 +56,7 @@ const { createReportsRoutes } = require('./routes/reports'); /* Wave 23 — گز
 const { createAnalyticsRoutes } = require('./routes/analytics'); /* P0-EI-09 — مرکز فرماندهی و هوشمندی مدرسه */
 const { createBootstrapRoute } = require('./routes/bootstrap');
 const { createSystemRoutes } = require('./routes/system'); /* Phase 4 — P1-SC-01: سلامت زیرساخت و مقیاس‌پذیری */
+const { assertNationalCapacityEnforcement } = require('./infrastructure/national-capacity-enforcement'); /* Phase 5 — P2-NI-05: اینگرس مهار ظرفیت ملی */
 const { createIds } = require('./ids'); /* P0-16 */
 const { createOutbox } = require('./outbox'); /* P0-17 */
 const { createWorker } = require('./worker'); /* ویو ۸ — کارگرِ صندوق رویدادها */
@@ -606,6 +607,51 @@ async function serveStatic(res, urlPath, nonce){
   res.end(html);
 }
 
+/* ── Phase 5 (P2-NI-05): اینگرس کنترل ظرفیت ملی (Fail-Closed) ──────── */
+let rollingWindowSec = Math.floor(Date.now() / 1000);
+let rollingWindowRps = 0;
+let rollingWindowWrites = 0;
+
+function nationalCapacityGateMiddleware(req, res) {
+  const currentSec = Math.floor(Date.now() / 1000);
+  if (currentSec !== rollingWindowSec) {
+    rollingWindowSec = currentSec;
+    rollingWindowRps = 0;
+    rollingWindowWrites = 0;
+  }
+  rollingWindowRps++;
+  const isWrite = req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH' || req.method === 'DELETE';
+  if (isWrite) rollingWindowWrites++;
+
+  const simRps = Number(req.headers['x-simulated-rps'] || 0);
+  const simConcurrent = Number(req.headers['x-simulated-concurrent-users'] || 0);
+  const simWrites = Number(req.headers['x-simulated-writes'] || 0);
+  const simDbConns = Number(req.headers['x-simulated-db-connections'] || 0);
+
+  const observedMetrics = {
+    rps: simRps > 0 ? simRps : rollingWindowRps,
+    concurrent_users: simConcurrent > 0 ? simConcurrent : (typeof inFlight === 'number' ? inFlight : 0),
+    write_tps: simWrites > 0 ? simWrites : (isWrite ? rollingWindowWrites : 0),
+    db_connections: simDbConns > 0 ? simDbConns : 0
+  };
+
+  try {
+    assertNationalCapacityEnforcement(observedMetrics);
+    return true;
+  } catch (err) {
+    res.setHeader('Retry-After', '1');
+    sendJson(res, 429, {
+      ok: false,
+      code: err.code || 'PHASE5_NATIONAL_CAPACITY_LIMIT_BREACH',
+      error: 'National capacity limit breached (Fail-Closed)',
+      metric: err.metric,
+      limit: err.limit,
+      observed: err.observed
+    });
+    return false;
+  }
+}
+
 /* ── router ────────────────────────────────────────────────────────── */
 const onRequest = async (req, res) => {
   /* S7-1 (Bug Hunt session 7): a malformed request-target (e.g. `//[`, `///`,
@@ -847,6 +893,7 @@ const onRequest = async (req, res) => {
     if(p === '/api/auth/logout'    && req.method === 'POST') return await auth.apiLogout(req, res);
     if(p === '/api/auth/delete-account' && req.method === 'POST') return await auth.apiDeleteAccount(req, res);
     if(p === '/api/sync'           && req.method === 'POST'){
+      if(!nationalCapacityGateMiddleware(req, res)) return;
       const b = await readBody(req, 1024 * 1024);
       /* Q3: sync op count / claimed tenant are monitoring inputs only. The
          sync authorization gate still independently validates every stamp. */
@@ -1146,6 +1193,17 @@ const onRequest = async (req, res) => {
         const body = await readBody(req, 64 * 1024);
         const r = await systemRoutes.nationalChangeRequest(req, body);
         return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/national/write-smoothing (Phase 5 — P2-NI-05: تلطیف بارهای انفجاری نوشت)
+      if(p === '/api/v1/system/national/write-smoothing' && req.method === 'GET'){
+        const r = await systemRoutes.nationalWriteSmoothing(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // Phase 5 (P2-NI-05): National Capacity Gate for core entity writes & reads
+      if(p.startsWith('/api/v1/students') || p.startsWith('/api/v1/classes') || p.startsWith('/api/v1/attendance') || p.startsWith('/api/v1/grades')){
+        if(!nationalCapacityGateMiddleware(req, res)) return;
       }
 
       // /api/v1/students & /api/v1/students/:id

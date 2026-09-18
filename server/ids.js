@@ -101,8 +101,21 @@ function createIds({ db, cache }){
     chains.set(col, prev.then(() => gate));
     await prev;
     try{
+      const isProd = process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production';
       if(db && typeof db.isPostgres === 'function' && db.isPostgres()){
-        try{ return await pgNext(col, list); }catch(e){ /* افتاد به محافظ محلی */ }
+        try{
+          return await pgNext(col, list);
+        }catch(e){
+          if(isProd){
+            const err = new Error(`FATAL_ID_GENERATION_FAILURE: PostgreSQL identity sequence failure in production: ${e.message}`);
+            err.code = 'PG_SEQUENCE_FATAL';
+            throw err;
+          }
+        }
+      } else if (isProd && (!db || typeof db.memoryFallbackAllowed !== 'function' || !db.memoryFallbackAllowed())) {
+        const err = new Error('FATAL_ID_GENERATION_FAILURE: Production environment forbids in-memory localMax fallback; PostgreSQL is required');
+        err.code = 'PG_SEQUENCE_REQUIRED';
+        throw err;
       }
       return await guardedMaxPlusOne(col, list);
     }finally{

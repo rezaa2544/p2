@@ -897,7 +897,13 @@ function createSync(ctx){
       if(op.t === 'upd' && op.base_version != null){
         const occT0 = process.hrtime.bigint();
         const vid = Number(op.id != null ? op.id : (op.data && op.data.id));
-        const vrec = (store[op.c] || []).find(x => x.id === vid);
+        let vrec = null;
+        if(db && typeof db.isPostgres === 'function' && db.isPostgres() && typeof db.readOne === 'function'){
+          try { vrec = await db.readOne(op.c, vid); } catch(_) {}
+        }
+        if(!vrec){
+          vrec = (store[op.c] || []).find(x => x.id === vid);
+        }
         const cur = vrec ? (vrec.version || 1) : 0;
         const versionedMismatch = !!VERSIONED[op.c] && Number(op.base_version) !== cur;
         const structuralMismatch = !versionedMismatch && !!STRUCTURAL[op.c] && Number(op.base_version) !== cur;
