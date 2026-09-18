@@ -31,6 +31,12 @@ const {
   buildPilotDeploymentHealthSnapshot
 } = require('../deployment/pilot-traffic-management');
 
+const {
+  enforceAccessBoundary,
+  buildSecurityHealthSnapshot,
+  ZERO_TRUST_ERRORS
+} = require('../security/zero-trust-runtime');
+
 function createSystemRoutes(ctx) {
   const store = ctx.store || {};
   const db = ctx.db;
@@ -481,12 +487,123 @@ function createSystemRoutes(ctx) {
     };
   }
 
+  /**
+   * GET /api/v1/system/security-health
+   * رصد وضعیت امنیت Zero Trust و انطباق‌پذیری امنیتی زمان اجرا (P1-SC-06)
+   */
+  async function securityHealthReport(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است.' }
+      };
+    }
+
+    const schoolIdParam = searchParams && typeof searchParams.get === 'function'
+      ? searchParams.get('school_id')
+      : (searchParams ? searchParams.school_id : null);
+    const regionIdParam = searchParams && typeof searchParams.get === 'function'
+      ? searchParams.get('region_id')
+      : (searchParams ? searchParams.region_id : null);
+
+    if (!schoolIdParam && !regionIdParam) {
+      return {
+        status: 400,
+        body: {
+          ok: false,
+          code: 'bad_request',
+          message: 'ارائه حداقل یکی از پارامترهای school_id یا region_id الزامی است.'
+        }
+      };
+    }
+
+    if (schoolIdParam) {
+      const schoolId = Number(schoolIdParam);
+      try {
+        enforceAccessBoundary({
+          user,
+          targetSchoolId: schoolId,
+          requiredRole: ['superadmin', 'manager', 'edu_office']
+        });
+      } catch (err) {
+        return {
+          status: 403,
+          body: { ok: false, code: 'forbidden', error_code: err.code || ZERO_TRUST_ERRORS.ROLE_ACCESS_DENIED, message: err.message }
+        };
+      }
+
+      const snapshot = buildSecurityHealthSnapshot({ schoolId, user });
+
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          security_status: snapshot.security_status,
+          zero_trust: {
+            enabled: snapshot.zero_trust.enabled,
+            policy_engine: snapshot.zero_trust.policy_engine,
+            runtime_protection: snapshot.zero_trust.runtime_protection
+          },
+          governance: {
+            human_decision_sovereignty: snapshot.governance.human_decision_sovereignty,
+            zero_ranking_guarantee: snapshot.governance.zero_ranking_guarantee,
+            tenant_isolation: snapshot.governance.tenant_isolation
+          },
+          requires_human_approval: snapshot.requires_human_approval,
+          school_id: schoolId,
+          security_health: snapshot
+        }
+      };
+    }
+
+    const regionId = Number(regionIdParam);
+    try {
+      enforceAccessBoundary({
+        user,
+        requiredRole: ['superadmin', 'edu_office', 'manager']
+      });
+    } catch (err) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: err.code || ZERO_TRUST_ERRORS.ROLE_ACCESS_DENIED, message: err.message }
+      };
+    }
+
+    const snapshot = buildSecurityHealthSnapshot({ regionId, user });
+
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        security_status: snapshot.security_status,
+        zero_trust: {
+          enabled: snapshot.zero_trust.enabled,
+          policy_engine: snapshot.zero_trust.policy_engine,
+          runtime_protection: snapshot.zero_trust.runtime_protection
+        },
+        governance: {
+          human_decision_sovereignty: snapshot.governance.human_decision_sovereignty,
+          zero_ranking_guarantee: snapshot.governance.zero_ranking_guarantee,
+          tenant_isolation: snapshot.governance.tenant_isolation
+        },
+        requires_human_approval: snapshot.requires_human_approval,
+        region_id: regionId,
+        regional_security_health: {
+          ...snapshot,
+          zero_ranking: true
+        }
+      }
+    };
+  }
+
   return {
     scalabilityHealthReport,
     eventProcessingHealthReport,
     observabilityHealthReport,
     disasterRecoveryHealthReport,
-    pilotDeploymentHealthReport
+    pilotDeploymentHealthReport,
+    securityHealthReport
   };
 }
 
