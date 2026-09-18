@@ -49,6 +49,11 @@ const {
   buildDistrictGovernanceOverview
 } = require('../analytics/intelligence-governance-dashboard');
 
+const {
+  enforcePolicySimulationAccessGuard,
+  buildPolicySimulationSnapshot
+} = require('../analytics/policy-simulation-engine');
+
 function createAnalyticsRoutes(ctx) {
   const store = ctx.store || {};
   const db = ctx.db;
@@ -731,6 +736,77 @@ function createAnalyticsRoutes(ctx) {
     };
   }
 
+  async function policySimulationReport(req, searchParams) {
+    const user = req.user || req.session;
+    const schoolIdParam = searchParams.get('school_id');
+    const regionIdParam = searchParams.get('region_id');
+    const academicYear = searchParams.get('academic_year') || '1405-1406';
+
+    if (!schoolIdParam && !regionIdParam) {
+      return {
+        status: 400,
+        body: { ok: false, code: 'invalid_params', message: 'school_id یا region_id الزامی است' }
+      };
+    }
+
+    if (schoolIdParam) {
+      const schoolId = Number(schoolIdParam);
+      try {
+        enforcePolicySimulationAccessGuard(user, { school_id: schoolId });
+      } catch (err) {
+        return {
+          status: 403,
+          body: { ok: false, code: 'forbidden', message: err.message }
+        };
+      }
+
+      const snapshot = buildPolicySimulationSnapshot({
+        schoolId,
+        regionId: user.region_id || 1,
+        academicYear,
+        options: { requester: user }
+      });
+
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          api_version: '1.0.0',
+          school_id: schoolId,
+          simulation_snapshot: snapshot
+        }
+      };
+    }
+
+    const regionId = Number(regionIdParam);
+    try {
+      enforcePolicySimulationAccessGuard(user, { region_id: regionId });
+    } catch (err) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', message: err.message }
+      };
+    }
+
+    const schools = (store.schools || []).filter(s => Number(s.region_id || s.district_id) === regionId);
+
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        api_version: '1.0.0',
+        region_id: regionId,
+        regional_policy_simulation: {
+          region_id: regionId,
+          total_schools: schools.length,
+          zero_ranking: true,
+          automated_policy_execution: false,
+          requires_human_approval: true
+        }
+      }
+    };
+  }
+
   return {
     schoolIntelligenceReport,
     regionalIntelligenceReport,
@@ -738,7 +814,8 @@ function createAnalyticsRoutes(ctx) {
     longitudinalIntelligenceReport,
     actionRecommendationsReport,
     feedbackLearningMemoryReport,
-    intelligenceGovernanceReport
+    intelligenceGovernanceReport,
+    policySimulationReport
   };
 }
 

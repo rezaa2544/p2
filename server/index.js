@@ -949,6 +949,12 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
+      // /api/v1/analytics/policy-simulation (P0-EI-16: لایه فرماندهی و شبیه‌سازی خط‌مشی‌های آموزشی)
+      if(p === '/api/v1/analytics/policy-simulation' && req.method === 'GET'){
+        const r = await analyticsRoutes.policySimulationReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);

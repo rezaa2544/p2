@@ -20,7 +20,8 @@ const API_TESTS = [
   'longitudinal-intelligence.test.js',
   'recommendation-action-planning.test.js',
   'feedback-learning-memory.test.js',
-  'intelligence-governance.test.js'
+  'intelligence-governance.test.js',
+  'policy-simulation.test.js'
 ];
 
 console.log('═══════════════════════════════════════════════════════════════════');
