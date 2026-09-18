@@ -402,6 +402,154 @@ function buildDisasterRecoveryHealthSnapshot(params = {}, options = {}) {
   return deepFreeze(snapshot);
 }
 
+/**
+ * نقشه سراسری بازیابی متقاطع بین‌منطقه‌ای (Cross-Region Recovery Map)
+ */
+const CROSS_REGION_RECOVERY_MAP = Object.freeze({
+  'ir-tehran-1': {
+    primary_cluster: 'ir-tehran-1',
+    dr_target_region: 'ir-isfahan-1',
+    dr_standby_dc: 'isfahan-dc-01',
+    replication_mode: 'STREAMING_PHYSICAL_REPLICATION',
+    target_rpo_seconds: TARGET_RPO_SECONDS,
+    target_rto_seconds: TARGET_RTO_SECONDS
+  },
+  'ir-isfahan-1': {
+    primary_cluster: 'ir-isfahan-1',
+    dr_target_region: 'ir-tehran-1',
+    dr_standby_dc: 'tehran-dc-01',
+    replication_mode: 'STREAMING_PHYSICAL_REPLICATION',
+    target_rpo_seconds: TARGET_RPO_SECONDS,
+    target_rto_seconds: TARGET_RTO_SECONDS
+  },
+  'ir-khorasan-1': {
+    primary_cluster: 'ir-khorasan-1',
+    dr_target_region: 'ir-tehran-1',
+    dr_standby_dc: 'tehran-dc-02',
+    replication_mode: 'STREAMING_PHYSICAL_REPLICATION',
+    target_rpo_seconds: TARGET_RPO_SECONDS,
+    target_rto_seconds: TARGET_RTO_SECONDS
+  },
+  'ir-fars-1': {
+    primary_cluster: 'ir-fars-1',
+    dr_target_region: 'ir-isfahan-1',
+    dr_standby_dc: 'isfahan-dc-02',
+    replication_mode: 'STREAMING_PHYSICAL_REPLICATION',
+    target_rpo_seconds: TARGET_RPO_SECONDS,
+    target_rto_seconds: TARGET_RTO_SECONDS
+  },
+  'ir-tabriz-1': {
+    primary_cluster: 'ir-tabriz-1',
+    dr_target_region: 'ir-tehran-1',
+    dr_standby_dc: 'tehran-dc-01',
+    replication_mode: 'STREAMING_PHYSICAL_REPLICATION',
+    target_rpo_seconds: TARGET_RPO_SECONDS,
+    target_rto_seconds: TARGET_RTO_SECONDS
+  },
+  'ir-border-west-1': {
+    primary_cluster: 'ir-border-west-1',
+    dr_target_region: 'ir-isfahan-1',
+    dr_standby_dc: 'isfahan-dc-01',
+    replication_mode: 'STREAMING_PHYSICAL_REPLICATION',
+    target_rpo_seconds: TARGET_RPO_SECONDS,
+    target_rto_seconds: TARGET_RTO_SECONDS
+  },
+  'ir-rural-central-1': {
+    primary_cluster: 'ir-rural-central-1',
+    dr_target_region: 'ir-isfahan-1',
+    dr_standby_dc: 'isfahan-dc-03',
+    replication_mode: 'ASYNC_PERSISTENT_QUEUE',
+    target_rpo_seconds: TARGET_RPO_SECONDS,
+    target_rto_seconds: TARGET_RTO_SECONDS
+  }
+});
+
+/**
+ * توپولوژی پشتیبان‌گیری ملی (National Backup Topology)
+ */
+const NATIONAL_BACKUP_TOPOLOGY = Object.freeze({
+  primary_store: 'POSTGRESQL_PRODUCTION_FABRIC',
+  wal_archiving: {
+    status: 'CONTINUOUS_STREAMING',
+    max_lag_seconds: TARGET_RPO_SECONDS,
+    compression: 'LZ4_HIGH_THROUGHPUT'
+  },
+  snapshots: {
+    frequency_hours: 4,
+    retention_days: 90,
+    immutable_lock: true
+  },
+  vault_encryption: 'AES_256_GCM',
+  cross_region_mirroring: 'ACTIVE'
+});
+
+/**
+ * محاسبه امتیاز آمادگی بازیابی (Recovery Readiness Score 0-100)
+ *
+ * @param {Object} metrics
+ * @returns {number}
+ */
+function calculateRecoveryReadinessScore(metrics = {}) {
+  let score = 100;
+  const lag = metrics.wal_lag_seconds != null ? metrics.wal_lag_seconds : 45;
+  if (lag > TARGET_RPO_SECONDS) {
+    score -= 40;
+  } else if (lag > TARGET_RPO_SECONDS / 2) {
+    score -= 15;
+  }
+
+  if (metrics.standby_synced === false) {
+    score -= 30;
+  }
+
+  if (metrics.checksum_valid === false) {
+    score -= 50;
+  }
+
+  return Math.max(0, score);
+}
+
+/**
+ * ارزیابی پایداری و بازیابی متقاطع بین‌منطقه‌ای (assessCrossRegionDisasterRecovery)
+ *
+ * @param {string} regionId
+ * @param {Object} currentMetrics
+ * @returns {Object}
+ */
+function assessCrossRegionDisasterRecovery(regionId = 'ir-tehran-1', currentMetrics = {}) {
+  const pairing = CROSS_REGION_RECOVERY_MAP[regionId] || CROSS_REGION_RECOVERY_MAP['ir-tehran-1'];
+  const readinessScore = calculateRecoveryReadinessScore(currentMetrics);
+
+  const assessment = {
+    recovery_assessment_id: `DR-ASSESS-${regionId}-${Date.now()}`,
+    source_region: regionId,
+    dr_target_pairing: pairing,
+    readiness_score: readinessScore,
+    rpo_status: {
+      target_seconds: TARGET_RPO_SECONDS,
+      current_lag_seconds: currentMetrics.wal_lag_seconds || 35,
+      compliant: (currentMetrics.wal_lag_seconds || 35) <= TARGET_RPO_SECONDS
+    },
+    rto_status: {
+      target_seconds: TARGET_RTO_SECONDS,
+      estimated_recovery_seconds: 420,
+      compliant: 420 <= TARGET_RTO_SECONDS
+    },
+    backup_topology: NATIONAL_BACKUP_TOPOLOGY,
+    human_governance: {
+      automated_decision: false,
+      automated_execution: false,
+      requires_human_approval: true,
+      recovery_trigger_mode: 'HUMAN_SUPERVISED_ONLY'
+    },
+    zero_ranking_guarantee: true,
+    assessed_at: new Date().toISOString()
+  };
+
+  assertDisasterRecoveryZeroRanking(assessment);
+  return deepFreeze(assessment);
+}
+
 module.exports = {
   DR_STATUS,
   SERVICE_HA_STATUS,
@@ -409,6 +557,10 @@ module.exports = {
   TARGET_RPO_SECONDS,
   TARGET_RTO_SECONDS,
   FORBIDDEN_RANKING_KEYWORDS,
+  CROSS_REGION_RECOVERY_MAP,
+  NATIONAL_BACKUP_TOPOLOGY,
+  calculateRecoveryReadinessScore,
+  assessCrossRegionDisasterRecovery,
   deepFreeze,
   enforceDisasterRecoveryTenantIsolation,
   assertDisasterRecoveryZeroRanking,

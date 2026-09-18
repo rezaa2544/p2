@@ -1080,6 +1080,37 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
+      // /api/v1/system/national/regions (Phase 5 — P2-NI-01: کنترل‌پلین کلاسترهای ملی)
+      if(p === '/api/v1/system/national/regions' && req.method === 'GET'){
+        const r = await systemRoutes.nationalRegions(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/national/capacity (Phase 5 — P2-NI-01: مدل ظرفیت ملی پایش)
+      if(p === '/api/v1/system/national/capacity' && req.method === 'GET'){
+        const r = await systemRoutes.nationalCapacity(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/national/health (Phase 5 — P2-NI-01: تابلوی رصدپذیری ملی)
+      if(p === '/api/v1/system/national/health' && req.method === 'GET'){
+        const r = await systemRoutes.nationalHealth(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/national/traffic (Phase 5 — P2-NI-01: فابریک ترافیک ملی)
+      if(p === '/api/v1/system/national/traffic' && req.method === 'GET'){
+        const r = await systemRoutes.nationalTraffic(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/national/change-request (Phase 5 — P2-NI-01: ثبت تغییرات زیرساخت با تایید انسانی)
+      if(p === '/api/v1/system/national/change-request' && req.method === 'POST'){
+        const body = await readBody(req, 64 * 1024);
+        const r = await systemRoutes.nationalChangeRequest(req, body);
+        return sendJson(res, r.status, r.body);
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);
