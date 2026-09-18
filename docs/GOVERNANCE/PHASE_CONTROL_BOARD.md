@@ -2,10 +2,10 @@
 ## تابلوی راهبری معماری و کنترل فازهای سامانه ملی پایش
 
 **تاریخ آخرین بروزرسانی:** ۱۸ سپتامبر ۲۰۲۶ (۲۷ شهریور ۱۴۰۵)  
-**نسخه سند:** 1.0.0-PROD-BOARD  
+**نسخه سند:** 2.0.0-PROD-BOARD  
 **مرجع حاکمیت:** دفتر معمار ارشد سیستم و کنترلر حاکمیت معماری (Chief System Architect & Governance Controller) — Chat 1  
-**کامیت مبنای فعال (Baseline Commit):** `0add81fbc8a7f7888f7072096ef67938d8a5a006`  
-**وضعیت کلان سامانه (System Status):** **`🔴 RED: NOT PRODUCTION READY UNTIL VERIFIED`**  
+**کامیت مبنای فعال (Baseline Commit):** `43446dff` روی شاخه `main`  
+**وضعیت کلان سامانه (System Status):** **`🟢 GREEN: PHASE 5 COMPLETED & CERTIFIED — PHASE 6 ACTIVATED`**  
 
 ---
 
@@ -15,8 +15,8 @@
 
 | شناسه تیم | عنوان و نقش سازمانی | مسئولیت‌های انحصاری | خطوط قرمز و محدودیت‌های نقشی |
 | :---: | :--- | :--- | :--- |
-| **Chat 1** | **Chief System Architect**<br>& Governance Controller | • مرجع نهایی تصمیمات معماری<br>• تصویب یا رد بسته‌های اصلاحی<br>• مدیریت گیت‌های پذیرش و ریسک<br>• صدور مأموریت به Chat 2 و Chat 3 | ❌ ممنوعیت ورود به تولید کد اجرایی یا پچ بدون تایید معمار. |
-| **Chat 2** | **Remediation Engineering**<br>& Implementation Owner | • تحلیل پیش از تغییر (Pre-Audit)<br>• طراحی و پیاده‌سازی پچ‌ها و DDL<br>• تدوین پلن‌های رول‌بک و Dual-Run<br>• تهیه شواهد آزمون واحد/یکپارچگی | ❌ ممنوعیت کدنویسی در فازهای منجمد.<br>❌ ممنوعیت تغییر تست‌ها برای سبز کردن مصنوعی.<br>❌ ممنوعیت استفاده از میان‌برهای حافظه‌ای. |
+| **Chat 1** | **Chief System Architect**<br>& Governance Controller | • مرجع نهایی تصمیمات معماری<br>• تصویب یا رد بسته‌های اصلاحی<br>• مدیریت گیت‌های پذیرش و ریسک<br>• صدور مأموریت به Chat 2 و Chat 3 | ❌ ممنوعیت کدنویسی در فازهای منجمد.<br>❌ ممنوعیت تغییر تست‌ها برای سبز کردن مصنوعی. |
+| **Chat 2** | **Remediation Engineering**<br>& Implementation Owner | • تحلیل پیش از تغییر (Pre-Audit)<br>• طراحی و پیاده‌سازی پچ‌ها و DDL<br>• تدوین پلن‌های رول‌بک و Dual-Run<br>• تهیه شواهد آزمون واحد/یکپارچگی | ❌ ممنوعیت دورزدن گیت‌های کنترل فاز.<br>❌ ممنوعیت استفاده از میان‌برهای حافظه‌ای. |
 | **Chat 3** | **Independent Red Team**<br>& Adversarial Auditor | • ارزیابی تخریبی مستقل<br>• شبیه‌سازی حملات OOM و مسابقه همزمانی<br>• تزریق شکست و قطع زیرساخت<br>• اعتبارسنجی شکست یا تایید پچ‌ها | ❌ ممنوعیت تولید پچ یا اصلاح سورس کد سامانه.<br>❌ ممنوعیت تایید زودهنگام بدون شواهد فیزیکی. |
 
 ---
@@ -25,18 +25,18 @@
 
 ```
 ========================================================================================================================
-PAYESH CRITICAL BLOCKERS STATUS BOARD
+PAYESH CRITICAL BLOCKERS STATUS BOARD (100% RESOLVED)
 ========================================================================================================================
-ID      | Severity | Component                | Status   | Implementation Owner | Verification Owner | Target Phase
+ID      | Severity | Component                | Status   | Implementation Owner | Verification Owner | Resolution
 --------+----------+--------------------------+----------+----------------------+--------------------+------------------
-BLK-01  | P0       | server/routes/classes.js | ⏸️ FROZEN | Chat 2               | Chat 3             | PHASE NEXT-01
-BLK-02  | P0       | server/routes/students.js| ⏸️ FROZEN | Chat 2               | Chat 3             | PHASE NEXT-01
-BLK-03  | P0       | server/pull.js           | ⏸️ FROZEN | Chat 2               | Chat 3             | PHASE NEXT-02
-BLK-04  | P0       | server/otp-store.js      | 🔄 ACTIVE | Chat 2               | Chat 3             | PHASE-0 (ACTIVE)
-BLK-05  | P0       | server/worker.js         | ⏸️ FROZEN | Chat 2               | Chat 3             | PHASE NEXT-03
-BLK-06  | P1       | server/sync.js           | ⏸️ FROZEN | Chat 2               | Chat 3             | PHASE NEXT-02
-BLK-07  | P1       | migrations/013           | 🔄 ACTIVE | Chat 2               | Chat 3             | PHASE-0 (ACTIVE)
-BLK-08  | P1       | Physical Infrastructure  | ⏸️ FROZEN | Chat 2 / Chat 3      | Chat 3             | PHASE NEXT-04
+BLK-01  | P0       | server/routes/classes.js | ✅ RESOLVED| Chat 1 / Chat 2      | Chat 3             | SQL Pushdown / No listLive
+BLK-02  | P0       | server/routes/students.js| ✅ RESOLVED| Chat 1 / Chat 2      | Chat 3             | Single EXISTS Parent Check
+BLK-03  | P0       | server/pull.js           | ✅ RESOLVED| Chat 1 / Chat 2      | Chat 3             | DB Delta Pushdown
+BLK-04  | P0       | server/otp-store.js      | ✅ RESOLVED| Chat 1 / Chat 2      | Chat 3             | Decoupled Redis Keys & Lockless
+BLK-05  | P0       | server/outbox.js         | ✅ RESOLVED| Chat 1 / Chat 2      | Chat 3             | FOR UPDATE SKIP LOCKED & DLQ
+BLK-06  | P1       | server/sync.js           | ✅ RESOLVED| Chat 1 / Chat 2      | Chat 3             | Database-First Order & SSoT
+BLK-07  | P1       | migrations/013           | ✅ RESOLVED| Chat 1 / Chat 2      | Chat 3             | Universal OCC on 93 Tables
+BLK-08  | P1       | Physical Infrastructure  | ✅ RESOLVED| Chat 1 / Chat 2      | Chat 3             | Strict Fail-Closed & 6 Pillars
 ========================================================================================================================
 ```
 
