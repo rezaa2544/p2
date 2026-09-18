@@ -937,6 +937,12 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
+      // /api/v1/analytics/feedback-learning-memory (P0-EI-14: موتور حلقه بازخورد و حافظه یادگیری سازمانی)
+      if(p === '/api/v1/analytics/feedback-learning-memory' && req.method === 'GET'){
+        const r = await analyticsRoutes.feedbackLearningMemoryReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);
