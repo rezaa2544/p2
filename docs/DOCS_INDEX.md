@@ -101,6 +101,8 @@
 | `OPERATIONAL_INTELLIGENCE_EXECUTION_AUDIT.md` | ممیزی معماری لایه اجرای عملیاتی هوشمندی آموزشی (P0-EI-18) | ✅ | ۲۰۲۶-۰۹-۱۸ |
 | `OUTCOME_EVALUATION_OPTIMIZATION_MODEL.md` | مدل قرارداد ارزیابی پیامد و بهینه‌سازی مستمر هوشمندی (P0-EI-19) | ✅ | ۲۰۲۶-۰۹-۱۸ |
 | `OUTCOME_EVALUATION_OPTIMIZATION_AUDIT.md` | ممیزی معماری ارزیابی پیامد و بهینه‌سازی مستمر هوشمندی (P0-EI-19) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `INTELLIGENCE_PLATFORM_INTEGRATION_MODEL.md` | مدل قرارداد یکپارچه‌سازی پلتفرم هوشمندی آموزشی (P0-EI-20) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `INTELLIGENCE_PLATFORM_INTEGRATION_AUDIT.md` | ممیزی معماری یکپارچه‌سازی پلتفرم هوشمندی آموزشی (P0-EI-20) | ✅ | ۲۰۲۶-۰۹-۱۸ |
 | `AUTHORIZATION_MODEL.md` | مدل مجوز یکتا (پالیسی + مجوزهای نوشتن) | ✅ | ۲۰۲۶-۰۹-۱۰ |
 | `SYNC_PROTOCOL.md` | پروتکل همگام‌سازی (پول/پوش، کرسر، تعارض) | 🟡 یک‌تراکنشی‌شدن پوش در انتظار | ۲۰۲۶-۰۹-۱۰ |
 | `OBSERVABILITY.md` | سند یکپارچهٔ رصدپذیری §۳۰ (سه سیگنال + اس‌ال‌او) | ✅ | ۲۰۲۶-۰۹-۱۰ |

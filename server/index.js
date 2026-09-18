@@ -973,6 +973,12 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
+      // /api/v1/analytics/intelligence-platform (P0-EI-20: لایه یکپارچه‌سازی پلتفرم هوشمندی آموزشی)
+      if(p === '/api/v1/analytics/intelligence-platform' && req.method === 'GET'){
+        const r = await analyticsRoutes.intelligencePlatformReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);
