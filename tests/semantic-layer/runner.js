@@ -21,6 +21,7 @@ const SUITES = [
   'activity-summary.test.js',
   'student-timeline/index.test.js',
   'assessment-intelligence/index.test.js',
+  'attendance-intelligence/index.test.js',
   'query-builders.test.js',
   'mutations.test.js',
   'deterministic-and-mutation.test.js'
