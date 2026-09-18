@@ -111,7 +111,19 @@ function createStudentRoutes(ctx) {
        — یک دروازه برای هر دو endpoint؛ بیرون ⇒ ۴۰۴ ضدشمارش. در حالتِ PG،
        پیوندهایِ والد زنده از DB خوانده و به‌عنوان opts به همانِ دروازهٔ policy
        پاس می‌شود (ویو ۱: داده تازه، مدلِ یکتا). */
-    const _gateOpts = pgLive() ? { parentLinks: await listLive('parent_links') } : null;
+    // Step 09 / TASK-REM-03: Eliminate unbounded parent_links load; use targeted query
+    let _gateOpts = null;
+    if (user.role === 'parent') {
+      if (pgLive()) {
+        try {
+          const pRes = await db.query('SELECT student_id FROM parent_links WHERE parent_id = $1', [user.id]);
+          const childIds = new Set((pRes && pRes.rows || []).map(r => Number(r.student_id)));
+          _gateOpts = { parentChildIds: childIds };
+        } catch (_) {
+          _gateOpts = { parentLinks: [] };
+        }
+      }
+    }
     const gate = policy.restReadGate(store, user, 'students', student, _gateOpts);
     if (!student || !gate.ok) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };

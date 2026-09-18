@@ -88,7 +88,7 @@ function isProductionEnv() {
 }
 
 function memoryFallbackAllowed() {
-  if (isProductionEnv()) return false;
+  if (isProductionEnv()) return memoryFallbackRequested();
   return true; /* dev/test: fallback stays available (see init() warning) */
 }
 
@@ -723,11 +723,12 @@ async function persistOpWithClient(client, op) {
     if (!Number.isFinite(id) || id <= 0) throw new Error('missing id for update op');
 
     const values = fields.map(f => valOf(data[f]));
-    const setSql = fields.map((f, i) => `${ident(f)} = $${i + 1}`).join(', ');
+    // ADR-013: Universal Runtime OCC & Zero Naked Update Invariant
+    const hasExplicitVersion = fields.includes('version');
+    const versionClause = hasExplicitVersion ? '' : ', version = COALESCE(version, 1) + 1';
+    const setSql = fields.map((f, i) => `${ident(f)} = $${i + 1}`).join(', ') + versionClause;
 
     if (op.base_version != null) {
-      /* Wave 2 — OCC در سطح SQL: معادل
-         UPDATE ... WHERE id=$id AND version=$base_version؛ صفر row ⇒ 409. */
       const base = Number(op.base_version);
       if (!Number.isInteger(base) || base < 1) {
         const e = new Error('bad base_version');

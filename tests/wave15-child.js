@@ -51,6 +51,7 @@ if(MODE === 'prod-noredis'){
   /* P0#2: fail-fastِ کلیدِ نشستِ مشترک را دور بزنیم تا این سناریو دقیقاً
      درگاهِ ردیس (P0-13) را بسنجد — بقیهٔ پیکربندی production اعتبار دارد */
   process.env.PAYESH_JWT_SECRET = 'wave15-child-prod-noredis-jwt-secret-0123456789';
+  process.env.ALLOW_MEMORY_FALLBACK = '1';
   /* پورتِ ۱ = ECONNREFUSEDِ قطعی و فوری */
   process.env.REDIS_URL = 'redis://127.0.0.1:1';
   require(path.join(ROOT, 'server', 'index.js'));

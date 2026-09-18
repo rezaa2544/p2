@@ -102,13 +102,40 @@ function createClassRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
     }
 
-    const users = await listLive('users');
-    const teacher = users.find(u => u.id === cls.homeroom_teacher_id);
-    const enrollments = (await listLive('enrollments')).filter(e => e.class_id === cls.id);
-    const studentIds = new Set(enrollments.map(e => e.student_id));
-    const students = users
-      .filter(u => studentIds.has(u.id))
-      .map(u => ({ id: u.id, full_name: u.full_name, national_id_masked: u.national_id ? u.national_id.slice(0, 3) + '***' : null }));
+    // Step 09 / TASK-REM-03: Zero Unbounded RAM Load & Hardened SQL Pushdown
+    let teacher = null;
+    let students = [];
+    if (pgLive()) {
+      if (cls.homeroom_teacher_id) {
+        try {
+          const tRes = await db.query('SELECT id, full_name FROM users WHERE id = $1', [cls.homeroom_teacher_id]);
+          if (tRes && tRes.rows && tRes.rows.length) teacher = tRes.rows[0];
+        } catch (_) {}
+      }
+      try {
+        const sRes = await db.query(
+          `SELECT u.id, u.full_name, u.national_id 
+           FROM enrollments e 
+           JOIN users u ON e.student_id = u.id 
+           WHERE e.class_id = $1 AND u.school_id = $2`,
+          [cls.id, cls.school_id]
+        );
+        if (sRes && sRes.rows) {
+          students = sRes.rows.map(u => ({
+            id: u.id,
+            full_name: u.full_name,
+            national_id_masked: u.national_id ? u.national_id.slice(0, 3) + '***' : null
+          }));
+        }
+      } catch (_) {}
+    } else {
+      const enrollments = (store.enrollments || []).filter(e => e.class_id === cls.id);
+      const studentIds = new Set(enrollments.map(e => e.student_id));
+      teacher = cls.homeroom_teacher_id ? (store.users || []).find(u => u.id === cls.homeroom_teacher_id) : null;
+      students = (store.users || [])
+        .filter(u => studentIds.has(u.id))
+        .map(u => ({ id: u.id, full_name: u.full_name, national_id_masked: u.national_id ? u.national_id.slice(0, 3) + '***' : null }));
+    }
 
     return {
       status: 200,

@@ -827,10 +827,12 @@ const onRequest = async (req, res) => {
          db/redis/queue + آمارِ pool و حافظه. */
       const rdy = redis.ready();
       let dbp = { ok: false, driver: 'unknown', alive: false };
-      try { dbp = await db.ping(); } catch (e) {}
+      try { dbp = await db.ping(); } catch (e) { dbp = { ok: false, driver: 'unknown', alive: false, error: String(e.message || e).slice(0, 120) }; }
       let rdp = { ok: false, driver: 'unknown', alive: false };
       try { rdp = await redis.ping(); } catch (e) {}
       const pool = db.getPool();
+      const dbAlive = !!(dbp && dbp.ok);
+      const isHealthy = rdy && dbAlive;
       /* Q3: health exposes bounded integer counters only; no session, tenant,
          actor, URL, or payload data leaves the runtime monitor. */
       const runtimeSecurity = runtimeMonitor.snapshot();
@@ -861,7 +863,7 @@ const onRequest = async (req, res) => {
       /* Wave 10 — pool observability (primary + optional read replica) when PG live */
       try { if (db.isPostgres && db.isPostgres() && typeof db.poolStats === 'function') body.db_pools = db.poolStats(); }
       catch (e) {}
-      return sendJson(res, rdy ? 200 : 503, body);
+      return sendJson(res, isHealthy ? 200 : 503, body);
     }
     /* Wave 15: hookِ فقط-تست (env-gated، پیش‌فرض خاموش) — مسیرِ آهسته برای
        اثباتِ قطعیِ drain در Graceful Shutdown (tests/wave15-health.js). */
