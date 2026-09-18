@@ -955,6 +955,12 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
+      // /api/v1/analytics/decision-command (P0-EI-17: لایه هوش تصمیم و ارکستراسیون فرمان آموزشی)
+      if(p === '/api/v1/analytics/decision-command' && req.method === 'GET'){
+        const r = await analyticsRoutes.decisionCommandReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);
