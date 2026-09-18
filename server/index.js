@@ -55,6 +55,7 @@ const { createUserRoutes } = require('./routes/users');
 const { createReportsRoutes } = require('./routes/reports'); /* Wave 23 — گزارش‌دهی پیشرفته */
 const { createAnalyticsRoutes } = require('./routes/analytics'); /* P0-EI-09 — مرکز فرماندهی و هوشمندی مدرسه */
 const { createBootstrapRoute } = require('./routes/bootstrap');
+const { createSystemRoutes } = require('./routes/system'); /* Phase 4 — P1-SC-01: سلامت زیرساخت و مقیاس‌پذیری */
 const { createIds } = require('./ids'); /* P0-16 */
 const { createOutbox } = require('./outbox'); /* P0-17 */
 const { createWorker } = require('./worker'); /* ویو ۸ — کارگرِ صندوق رویدادها */
@@ -562,6 +563,7 @@ const userRoutes = createUserRoutes({ store, db, audit, markDirty, ids, deleter 
 const reportsRoutes = createReportsRoutes({ store, db, audit, markDirty, ids, deleter }); /* Wave 23 */
 const analyticsRoutes = createAnalyticsRoutes({ store, db, audit, markDirty, ids, deleter }); /* P0-EI-09 */
 const bootstrapRoute = createBootstrapRoute({ store, db });
+const systemRoutes = createSystemRoutes({ store, db }); /* Phase 4 — P1-SC-01 */
 /* Delta Hardening Phase 2 (gap 2): signed TTL cursor — the resolved JWT key
    (env or key-file) feeds a domain-separated cursor key inside server/cursor.js;
    PAYESH_CURSOR_SECRET overrides it. */
@@ -982,6 +984,12 @@ const onRequest = async (req, res) => {
       // /api/v1/analytics/intelligence-certification (P0-EI-21: گیت انتشار و صدور گواهی نهایی فاز ۳)
       if(p === '/api/v1/analytics/intelligence-certification' && req.method === 'GET'){
         const r = await analyticsRoutes.intelligenceCertificationReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/scalability-health (Phase 4 — P1-SC-01: رصد سلامت زیرساخت مقیاس‌پذیری و کش توزیع‌شده)
+      if(p === '/api/v1/system/scalability-health' && req.method === 'GET'){
+        const r = await systemRoutes.scalabilityHealthReport(req, url.searchParams);
         return sendJson(res, r.status, r.body);
       }
 
