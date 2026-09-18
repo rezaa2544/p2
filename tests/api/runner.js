@@ -34,7 +34,8 @@ const API_TESTS = [
   'pilot-deployment-health.test.js',
   'security-health.test.js',
   'phase4-certification.test.js',
-  'phase5-pilot.test.js'
+  'phase5-pilot.test.js',
+  'phase5-provincial-pilot.test.js'
 ];
 
 console.log('═══════════════════════════════════════════════════════════════════');

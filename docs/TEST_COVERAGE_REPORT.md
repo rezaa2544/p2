@@ -14,7 +14,7 @@
 
 | شاخص | مقدار |
 |---|---|
-| **کل فایل‌های تست** | **۵۲۹** (۵۰۲ در `tests/` + ۲۷ در `tests/api/`) |
+| **کل فایل‌های تست** | **۵۳۰** (۵۰۲ در `tests/` + ۲۸ در `tests/api/`) |
 | تست دودی سرتاسری | **۵۴۷/۵۴۷** چک در `tests/smoke.js` |
 | اسکن راز | **۱۱/۱۱** (`tests/secret-scan.js`) |
 | مجوزها | خروجی ۰ (`node tools/check-authz.js`) |
@@ -118,7 +118,7 @@
 
 ## منابع
 
-- `tests/` (۵۰۲ فایل) · `tests/api/` (۲۷ فایل) · `scripts/run-all-tests.sh` · `tools/release-gate.js` · `tools/check-authz.js`
+- `tests/` (۵۰۲ فایل) · `tests/api/` (۲۸ فایل) · `scripts/run-all-tests.sh` · `tools/release-gate.js` · `tools/check-authz.js`
 - `docs/BUG_HUNT_REPORT.md` (شاهد قرمز-اول همهٔ رفع‌ها) · `docs/SECURITY_FINDINGS_REGISTER.md` (رگرسیون یافته‌ها) · `docs/ARENA5_QA_RELIABILITY.md` (منشور کیفیت) · `docs/GO_LIVE_PACKAGE.md` (ماتریس تصمیم)
 
 > آمار این سند با شمارش زندهٔ دیسک تولید شده؛ تغییر تعداد تست‌ها = بامپ قفل و به‌روزرسانی این سند (تست پوشش، اعداد کلیدی را می‌پاید).
