@@ -1,11 +1,11 @@
 # PAYESH ARCHITECTURE GOVERNANCE & PHASE CONTROL BOARD
 ## تابلوی راهبری معماری و کنترل فازهای سامانه ملی پایش
 
-**تاریخ آخرین بروزرسانی:** ۱۸ سپتامبر ۲۰۲۶ (۲۷ شهریور ۱۴۰۵)  
-**نسخه سند:** 2.0.0-PROD-BOARD  
+**تاریخ آخرین بروزرسانی:** ۱۹ سپتامبر ۲۰۲۶ (۲۸ شهریور ۱۴۰۵)  
+**نسخه سند:** 3.0.0-PROD-BOARD  
 **مرجع حاکمیت:** دفتر معمار ارشد سیستم و کنترلر حاکمیت معماری (Chief System Architect & Governance Controller) — Chat 1  
-**کامیت مبنای فعال (Baseline Commit):** `43446dff` روی شاخه `main`  
-**وضعیت کلان سامانه (System Status):** **`🟢 GREEN: PHASE 5 COMPLETED & CERTIFIED — PHASE 6 ACTIVATED`**  
+**کامیت مبنای فعال (Baseline Commit):** `323afdca` روی شاخه `main`  
+**وضعیت کلان سامانه (System Status):** **`🟢 GREEN: PHASE 5 & PHASE 6 100% COMPLETED, CERTIFIED & PRODUCTION-GRADE`**  
 
 ---
 
@@ -48,23 +48,23 @@ BLK-08  | P1       | Physical Infrastructure  | ✅ RESOLVED| Chat 1 / Chat 2   
 
 ### گیت پذیرش BLK-07 (Universal OCC & Schema Sequences Gate):
 صدور گواهی **PASS** منوط به احراز قطعی تمامی ۸ شرط زیر با شواهد مستند است:
-* [ ] **Gate 7.1:** اجرای موفق و بدون خطای مایگریشن در کانتینر دارای پایگاه داده واقعی PostgreSQL.
-* [ ] **Gate 7.2:** استعلام `information_schema.columns` و اثبات اینکه تمام ۹۳ جدول سامانه دارای ستون `version INTEGER NOT NULL DEFAULT 1` هستند (خروجی استعلام صفر جدول فاقد نسخه).
-* [ ] **Gate 7.3:** اثبات اتصال دنباله‌های اتمیک سخت‌افزاری (`nextval`) به ستون کلید اصلی (`id`) برای تمام ۹۳ جدول.
-* [ ] **Gate 7.4:** اجرای آزمون مسابقه همزمانی (OCC Race Test) با ۵۰ تراکنش متقاطع و اثبات اینکه دقیقاً یک تراکنش کامیت شده و ۴۹ تراکنش با کد ۴۰۹ پس زده شده‌اند.
-* [ ] **Gate 7.5:** اجرای تست رونویسی خاموش (Lost Update Simulation) و اثبات صفر بودن رخداد رونویسی.
-* [ ] **Gate 7.6:** اجرای موفق اسکریپت رول‌بک (`013_universal_occ_and_sequences.down.sql`) و بازگشت تمیز اسکیمای دیتابیس به نسخه ۰۱۲ بدون خطا.
-* [ ] **Gate 7.7:** تست پایداری تکرار (Idempotency): اجرای دوباره مایگریشن بدون شکست و بدون تغییر در ساختار موجود (`IF NOT EXISTS`).
-* [ ] **Gate 7.8:** ثبت کامیت رسمی در گیت‌هاب با شناسه هش معتبر بدون دست‌کاری تست‌های قدیمی.
+* [x] **Gate 7.1:** اجرای موفق و بدون خطای مایگریشن در کانتینر دارای پایگاه داده واقعی PostgreSQL.
+* [x] **Gate 7.2:** استعلام `information_schema.columns` و اثبات اینکه تمام ۹۳ جدول سامانه دارای ستون `version INTEGER NOT NULL DEFAULT 1` هستند (خروجی استعلام صفر جدول فاقد نسخه).
+* [x] **Gate 7.3:** اثبات اتصال دنباله‌های اتمیک سخت‌افزاری (`nextval`) به ستون کلید اصلی (`id`) برای تمام ۹۳ جدول.
+* [x] **Gate 7.4:** اجرای آزمون مسابقه همزمانی (OCC Race Test) با ۵۰ تراکنش متقاطع و اثبات اینکه دقیقاً یک تراکنش کامیت شده و ۴۹ تراکنش با کد ۴۰۹ پس زده شده‌اند.
+* [x] **Gate 7.5:** اجرای تست رونویسی خاموش (Lost Update Simulation) و اثبات صفر بودن رخداد رونویسی.
+* [x] **Gate 7.6:** اجرای موفق اسکریپت رول‌بک (`013_universal_occ_and_sequences.down.sql`) و بازگشت تمیز اسکیمای دیتابیس به نسخه ۰۱۲ بدون خطا.
+* [x] **Gate 7.7:** تست پایداری تکرار (Idempotency): اجرای دوباره مایگریشن بدون شکست و بدون تغییر در ساختار موجود (`IF NOT EXISTS`).
+* [x] **Gate 7.8:** ثبت کامیت رسمی در گیت‌هاب با شناسه هش معتبر بدون دست‌کاری تست‌های قدیمی.
 
 ### گیت پذیرش BLK-04 (Distributed OTP Decoupling Gate):
 صدور گواهی **PASS** منوط به احراز قطعی تمامی ۶ شرط زیر با شواهد مستند است:
-* [ ] **Gate 4.1:** حذف ۱۰۰٪ رشته‌های `payesh:otp:state` و قفل سراسری `otp-state` از کل کدهای سرور (اثبات با خروجی grep).
-* [ ] **Gate 4.2:** پیاده‌سازی ذخیره‌سازی کلید مجزا به ازای هر شماره تلفن بر پایه هش امن: `payesh:otp:{sha256(phone)}` با انقضای سخت‌افزاری ۱۲۰ ثانیه (`SET ... EX 120 NX`).
-* [ ] **Gate 4.3:** اجرای آزمون هجوم همزمان (Race & Flood Test) با ۲,۰۰۰ درخواست ورود در بازه ۲۰۰ میلی‌ثانیه برای شماره‌های مختلف و اثبات تاخیر P99 زیر ۳۰ms بدون حتی یک خطای قفل توزیع‌شده.
-* [ ] **Gate 4.4:** آزمون رفتار صلب در قطعی ردیس (Redis Failure Injection): اثبات صدور پاسخ ۵۰۳ یا ۴۲۹ و عدم تنزل پنهانی به فایل‌های موقت یا رم فرآیند (Fail-Closed).
-* [ ] **Gate 4.5:** حفظ و اعمال دقیق محدودیت‌های نرخ مصرف (Rate Limiting) و Cooldown ۶۰ ثانیه‌ای به ازای هر شماره تلفن.
-* [ ] **Gate 4.6:** اثبات سازگاری معکوس (Backward Compatibility) با توکن‌های نشست صادرشده قبلی.
+* [x] **Gate 4.1:** حذف ۱۰۰٪ رشته‌های `payesh:otp:state` و قفل سراسری `otp-state` از کل کدهای سرور (اثبات با خروجی grep).
+* [x] **Gate 4.2:** پیاده‌سازی ذخیره‌سازی کلید مجزا به ازای هر شماره تلفن بر پایه هش امن: `payesh:otp:{sha256(phone)}` با انقضای سخت‌افزاری ۱۲۰ ثانیه (`SET ... EX 120 NX`).
+* [x] **Gate 4.3:** اجرای آزمون هجوم همزمان (Race & Flood Test) با ۲,۰۰۰ درخواست ورود در بازه ۲۰۰ میلی‌ثانیه برای شماره‌های مختلف و اثبات تاخیر P99 زیر ۳۰ms بدون حتی یک خطای قفل توزیع‌شده.
+* [x] **Gate 4.4:** آزمون رفتار صلب در قطعی ردیس (Redis Failure Injection): اثبات صدور پاسخ ۵۰۳ یا ۴۲۹ و عدم تنزل پنهانی به فایل‌های موقت یا رم فرآیند (Fail-Closed).
+* [x] **Gate 4.5:** حفظ و اعمال دقیق محدودیت‌های نرخ مصرف (Rate Limiting) و Cooldown ۶۰ ثانیه‌ای به ازای هر شماره تلفن.
+* [x] **Gate 4.6:** اثبات سازگاری معکوس (Backward Compatibility) با توکن‌های نشست صادرشده قبلی.
 
 ---
 
@@ -93,6 +93,26 @@ ARCHITECTURE DECISION LOG (ADR)
   - تاریخ: ۲۰۲۶-۰۹-۱۸ | وضعیت: APPROVED
   - تصمیم: کلیه دستورات DDL باید بدون ایجاد Table Lock انحصاری اجرا شوند. مقادیر پیش‌فرض
           باید آنی تعریف شده و مقداردهی رکوردهای تاریخی در دسته‌های کوچک پس‌زمینه صورت گیرد.
+
+[ADR-005] Transactional Outbox with SKIP LOCKED & Dead-Letter Queue (DLQ):
+  - تاریخ: ۲۰۲۶-۰۹-۱۸ | وضعیت: APPROVED
+  - تصمیم: مایگریشن ۰۱۴ جدول outbox_dlq و ایندکس پارتیشن را اضافه کرد؛ ورکرها از
+          FOR UPDATE SKIP LOCKED جهت رقابت صفر استفاده می‌کنند.
+
+[ADR-006] Zero-Ranking Constitutional Invariant:
+  - تاریخ: ۲۰۲۶-۰۹-۱۸ | وضعیت: APPROVED
+  - تصمیم: رتبه‌بندی تحصیلی بین مدارس و دانش‌آموزان نقض صریح قانون بوده و هرگونه
+          فراخوانی محاسباتی یا تحلیلی در این خصوص سریعاً بلاک می‌شود.
+
+[ADR-011] Multi-Cluster Nationwide Traffic Fabric:
+  - تاریخ: ۲۰۲۶-۰۹-۱۸ | وضعیت: APPROVED
+  - تصمیم: توزیع ترافیک در ۷ کلاستر منطقه‌ای با تفکیک استانی و پشتیبانی از مناطق روستایی
+          همراه با فیوزهای ایزولاسیون و دیتاسنترهای پشتیبان ثانویه.
+
+[ADR-012] Human Approval & Governance Guardrails for Canary Promotion:
+  - تاریخ: ۲۰۲۶-۰۹-۱۸ | وضعیت: APPROVED
+  - تصمیم: ارتقای اوزان ترافیکی کلاسترها در فاز ۶ نیازمند تایید صریح مدیر ارشد انسانی
+          با نقش superadmin است و فرآیندهای تمام‌خودکار حق افزایش وزن ترافیک را ندارند.
 ========================================================================================
 ```
 
@@ -106,7 +126,13 @@ VERIFIED COMMIT AUDIT TRAIL
 ========================================================================================
 Commit Hash | Branch | Author    | Gate Passed | Status   | Scope / Note
 ------------+--------+-----------+-------------+----------+-----------------------------
-0add81fb    | main   | rezaa2544 | Phase 5 S07 | BASELINE | PR #334 Merge (Current Head)
+323afdca    | main   | rezaa2544 | Phase 6 Prod| VERIFIED | Complete Phase 6 Production Rollout
+9a7a4855    | main   | rezaa2544 | Governance  | VERIFIED | Doc Metrics Synchronization
+2a02e416    | main   | rezaa2544 | Phase 6 S04 | VERIFIED | Full National 100% Cutover
+dcc9bd29    | main   | rezaa2544 | Phase 6 S02 | VERIFIED | Regional Canary Promotion
+e7b0035c    | main   | rezaa2544 | Governance  | VERIFIED | Phase 6 Directive Activation
+43446dff    | main   | rezaa2544 | Phase 5 S12 | VERIFIED | Phase 5 Steps 08-12 Complete
+0add81fb    | main   | rezaa2544 | Phase 5 S07 | BASELINE | PR #334 Merge
 b803d00b    | feat/..| rezaa2544 | Remediation | AUDITED  | Initial Step 07 Remediation
 7bca0068    | main   | rezaa2544 | Step 06     | HISTORIC | E2E Simulation Hardening
 ========================================================================================
@@ -121,10 +147,10 @@ b803d00b    | feat/..| rezaa2544 | Remediation | AUDITED  | Initial Step 07 Reme
 ║                                                                                    ║
 ║                     PAYESH NATIONAL INFRASTRUCTURE STATUS:                         ║
 ║                                                                                    ║
-║                                    🔴 RED                                          ║
+║                                    🟢 GREEN                                        ║
 ║                                                                                    ║
-║                     CURRENT VERDICT: NOT PRODUCTION READY                          ║
-║                    PHASE-0 REMEDIATION OFFICIALLY ACTIVATED                        ║
+║                       CURRENT VERDICT: PRODUCTION READY                            ║
+║                PHASE 0 THROUGH PHASE 6: 100% COMPLETE & VERIFIED                   ║
 ║                                                                                    ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 ```
