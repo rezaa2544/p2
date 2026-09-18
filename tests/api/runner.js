@@ -26,7 +26,8 @@ const API_TESTS = [
   'operational-intelligence-execution.test.js',
   'outcome-evaluation-optimization.test.js',
   'intelligence-platform.test.js',
-  'intelligence-certification.test.js'
+  'intelligence-certification.test.js',
+  'scalability-health.test.js'
 ];
 
 console.log('═══════════════════════════════════════════════════════════════════');
