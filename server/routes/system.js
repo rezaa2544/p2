@@ -21,6 +21,11 @@ const {
   buildObservabilityHealthSnapshot
 } = require('../monitoring/production-observability');
 
+const {
+  enforceDisasterRecoveryTenantIsolation,
+  buildDisasterRecoveryHealthSnapshot
+} = require('../infrastructure/disaster-recovery');
+
 function createSystemRoutes(ctx) {
   const store = ctx.store || {};
   const db = ctx.db;
@@ -284,10 +289,97 @@ function createSystemRoutes(ctx) {
     };
   }
 
+  /**
+   * GET /api/v1/system/disaster-recovery-health
+   * رصد وضعیت سلامت پشتیبان‌ها، مانور بازیابی، RPO/RTO و دسترسی‌پذیری بالا (P1-SC-04)
+   */
+  async function disasterRecoveryHealthReport(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const schoolIdParam = searchParams.get('school_id');
+    const regionIdParam = searchParams.get('region_id');
+
+    if (!schoolIdParam && !regionIdParam) {
+      return {
+        status: 400,
+        body: { ok: false, code: 'bad_request', message: 'ارائه school_id یا region_id الزامی است' }
+      };
+    }
+
+    if (schoolIdParam) {
+      const schoolId = Number(schoolIdParam);
+      try {
+        enforceDisasterRecoveryTenantIsolation(user, { school_id: schoolId });
+      } catch (err) {
+        return {
+          status: 403,
+          body: { ok: false, code: 'forbidden', message: err.message }
+        };
+      }
+
+      const snapshot = buildDisasterRecoveryHealthSnapshot({
+        schoolId,
+        regionId: user.region_id || 1,
+        user
+      });
+
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          api_version: '1.0.0',
+          school_id: schoolId,
+          disaster_recovery_health: snapshot
+        }
+      };
+    }
+
+    const regionId = Number(regionIdParam);
+    try {
+      enforceDisasterRecoveryTenantIsolation(user, { region_id: regionId });
+    } catch (err) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', message: err.message }
+      };
+    }
+
+    const snapshot = buildDisasterRecoveryHealthSnapshot({
+      schoolId: 101,
+      regionId,
+      user
+    });
+
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        api_version: '1.0.0',
+        region_id: regionId,
+        regional_disaster_recovery_health: {
+          region_id: regionId,
+          status: snapshot.status,
+          disaster_recovery_health: snapshot,
+          zero_ranking: true,
+          automated_decision: false,
+          automated_execution: false,
+          requires_human_approval: true
+        }
+      }
+    };
+  }
+
   return {
     scalabilityHealthReport,
     eventProcessingHealthReport,
-    observabilityHealthReport
+    observabilityHealthReport,
+    disasterRecoveryHealthReport
   };
 }
 

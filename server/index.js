@@ -1005,6 +1005,12 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
+      // /api/v1/system/disaster-recovery-health (Phase 4 — P1-SC-04: پایداری، پشتیبان‌گیری و بازیابی بحران)
+      if(p === '/api/v1/system/disaster-recovery-health' && req.method === 'GET'){
+        const r = await systemRoutes.disasterRecoveryHealthReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);
