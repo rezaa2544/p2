@@ -151,6 +151,14 @@ const {
 } = require('../infrastructure/national-capacity-enforcement');
 const { getNationalWriteSmoothingEngine, NATIONAL_WRITE_LIMITS } = require('../infrastructure/national-write-smoothing');
 
+const {
+  Phase6CanaryEngine,
+  globalCanaryEngine,
+  CANARY_STATES,
+  CANARY_ERRORS,
+  ALLOWED_WEIGHTS
+} = require('../infrastructure/phase6-canary-engine');
+
 function createSystemRoutes(ctx) {
   const store = ctx.store || {};
   const db = ctx.db;
@@ -1807,6 +1815,105 @@ function createSystemRoutes(ctx) {
     };
   }
 
+  /**
+   * GET /api/v1/system/phase6/canary/status
+   * Phase 6: تابلوی وضعیت زنده فابریک ترافیک قناری، اوزان و شاخص‌های بلادرنگ SLO
+   */
+  async function phase6CanaryStatus(req, searchParams) {
+    const user = req.user;
+    if (!user) return { status: 401, body: { ok: false, code: 'unauthorized' } };
+
+    const snapshot = globalCanaryEngine.getSnapshot();
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        canary_fabric: snapshot,
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+
+  /**
+   * POST /api/v1/system/phase6/canary/promote
+   * Phase 6: ارتقای وزن ترافیک قناری با اعتبارسنجی حاکمیت و امضای رمزنگاری اپراتور (B3)
+   */
+  async function phase6CanaryPromote(req, body) {
+    const user = req.user;
+    if (!user) return { status: 401, body: { ok: false, code: 'unauthorized' } };
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط اپراتور ارشد مجاز به ارتقای وزن ترافیک است' } };
+    }
+
+    if (!body || !body.cluster_id || body.target_weight == null) {
+      return { status: 400, body: { ok: false, code: 'bad_request', message: 'cluster_id و target_weight الزامی هستند' } };
+    }
+
+    try {
+      const governanceContext = {
+        approved: body.approved === true,
+        requires_human_approval: true,
+        signature: body.signature || (req.headers && req.headers['x-operator-signature']) || null,
+        reason: body.reason || 'Phase 6 Production Canary Promotion',
+        operator: {
+          id: user.id,
+          role: user.role,
+          name: user.name || user.username || 'اپراتور سامانه'
+        }
+      };
+
+      const updated = await globalCanaryEngine.setTrafficWeight(body.cluster_id, body.target_weight, governanceContext);
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          cluster: updated,
+          message: `وزن ترافیک کلاستر ${body.cluster_id} با موفقیت به ${body.target_weight}% ارتقا یافت`
+        }
+      };
+    } catch (err) {
+      return {
+        status: err.code === 'PHASE6_APPROVAL_REQUIRED' || err.code === 'INVALID_OPERATOR_SIGNATURE' ? 403 : 400,
+        body: { ok: false, code: err.code || 'PROMOTION_FAILED', message: err.message }
+      };
+    }
+  }
+
+  /**
+   * POST /api/v1/system/phase6/canary/rollback
+   * Phase 6: رول‌بک اضطراری و تخلیه کامل ترافیک قناری به ۰٪ (B4)
+   */
+  async function phase6CanaryRollback(req, body) {
+    const user = req.user;
+    if (!user) return { status: 401, body: { ok: false, code: 'unauthorized' } };
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط اپراتور ارشد مجاز به رول‌بک است' } };
+    }
+
+    if (!body || !body.cluster_id) {
+      return { status: 400, body: { ok: false, code: 'bad_request', message: 'cluster_id الزامی است' } };
+    }
+
+    try {
+      await globalCanaryEngine.triggerAutoRollback(body.cluster_id, body.reason || 'Manual Emergency Rollback');
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          cluster_id: body.cluster_id,
+          drained: true,
+          target_weight: 0,
+          message: `رول‌بک اضطراری انجام شد؛ ترافیک کلاستر ${body.cluster_id} به طور کامل به صفر تخلیه شد (Drained)`
+        }
+      };
+    } catch (err) {
+      return {
+        status: 500,
+        body: { ok: false, code: 'ROLLBACK_FAILED', message: err.message }
+      };
+    }
+  }
+
   return {
     scalabilityHealthReport,
     eventProcessingHealthReport,
@@ -1834,7 +1941,10 @@ function createSystemRoutes(ctx) {
     nationalLoadTest,
     nationalIncidents,
     nationalChangeRequest,
-    nationalWriteSmoothing
+    nationalWriteSmoothing,
+    phase6CanaryStatus,
+    phase6CanaryPromote,
+    phase6CanaryRollback
   };
 }
 

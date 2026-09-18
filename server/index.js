@@ -57,6 +57,7 @@ const { createAnalyticsRoutes } = require('./routes/analytics'); /* P0-EI-09 —
 const { createBootstrapRoute } = require('./routes/bootstrap');
 const { createSystemRoutes } = require('./routes/system'); /* Phase 4 — P1-SC-01: سلامت زیرساخت و مقیاس‌پذیری */
 const { assertNationalCapacityEnforcement } = require('./infrastructure/national-capacity-enforcement'); /* Phase 5 — P2-NI-05: اینگرس مهار ظرفیت ملی */
+const { globalCanaryEngine } = require('./infrastructure/phase6-canary-engine'); /* Phase 6: موتور استقرار قناری و هدایت ترافیک */
 const { createIds } = require('./ids'); /* P0-16 */
 const { createOutbox } = require('./outbox'); /* P0-17 */
 const { createWorker } = require('./worker'); /* ویو ۸ — کارگرِ صندوق رویدادها */
@@ -565,6 +566,9 @@ const reportsRoutes = createReportsRoutes({ store, db, audit, markDirty, ids, de
 const analyticsRoutes = createAnalyticsRoutes({ store, db, audit, markDirty, ids, deleter }); /* P0-EI-09 */
 const bootstrapRoute = createBootstrapRoute({ store, db });
 const systemRoutes = createSystemRoutes({ store, db }); /* Phase 4 — P1-SC-01 */
+if (db) {
+  globalCanaryEngine.initDb(db).catch(() => {});
+}
 /* Delta Hardening Phase 2 (gap 2): signed TTL cursor — the resolved JWT key
    (env or key-file) feeds a domain-separated cursor key inside server/cursor.js;
    PAYESH_CURSOR_SECRET overrides it. */
@@ -666,6 +670,28 @@ const onRequest = async (req, res) => {
   const https = isHttps(req);
   const nonce = crypto.randomBytes(16).toString('base64');
   securityHeaders(res, nonce, https);
+
+  // Phase 6 (B1 & B5): هدایت پویای ترافیک قناری، تزریق سرآیندهای کلاستر و مهار Fail-Closed
+  const reqProvince = req.headers['x-province-code'] || '07';
+  let canaryRoute = null;
+  try {
+    canaryRoute = globalCanaryEngine.routeRequest(reqProvince, {
+      roll: req.headers['x-canary-roll'] != null ? Number(req.headers['x-canary-roll']) : undefined
+    });
+    res.setHeader('X-Payesh-Canary-Cluster', canaryRoute.clusterId);
+    res.setHeader('X-Payesh-Target-DC', canaryRoute.targetDc);
+    res.setHeader('X-Payesh-Canary-Weight', String(canaryRoute.weight));
+    res.setHeader('X-Payesh-Failover', canaryRoute.failoverMode ? 'true' : 'false');
+  } catch (err) {
+    if (err.code === 'PHASE6_CIRCUIT_OPEN' || err.code === 'PHASE6_FAIL_CLOSED_NO_HEALTHY_ROUTE') {
+      return sendJson(res, 503, {
+        ok: false,
+        code: err.code,
+        message: 'کلاستر منطقه‌ای در دسترس نیست و به صورت امن قطع شد (Fail-Closed)'
+      });
+    }
+  }
+
   /* ویو ۱۴ (Observability) — شمارشِ هر درخواست: شمار/تأخیر/بایت با برچسبِ
      «قالبِ مسیر» (نه خودِ URL) تا هم cardinality کران‌دار بماند و هم هیچ
      شناسه/PII وارد label نشود (metrics.js R3). هیچ‌گاه در مسیرِ پاسخ خطا
@@ -702,6 +728,15 @@ const onRequest = async (req, res) => {
       });
       if (req.context && req.context.waf && req.context.waf.blocked) {
         attackDetector.observeWafBlock({ sessionId: rt.sessionId, source: clientIp(req), blocked: true });
+      }
+      // Phase 6: ضبط تله‌متری تاخیر و خطای بلادرنگ کلاستر
+      if (canaryRoute && canaryRoute.clusterId) {
+        const elapsedNs = process.hrtime.bigint() - __mStart;
+        const elapsedMs = Number(elapsedNs) / 1e6;
+        globalCanaryEngine.recordTelemetry(canaryRoute.clusterId, {
+          latencyMs: elapsedMs,
+          errorOccurred: res.statusCode >= 500
+        });
       }
     } catch (_) {}
   });
@@ -1200,6 +1235,26 @@ const onRequest = async (req, res) => {
       // /api/v1/system/national/write-smoothing (Phase 5 — P2-NI-05: تلطیف بارهای انفجاری نوشت)
       if(p === '/api/v1/system/national/write-smoothing' && req.method === 'GET'){
         const r = await systemRoutes.nationalWriteSmoothing(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // Phase 6: Canary Status (B1 & B6: رصد بلادرنگ وضعیت کلاسترها، اوزان و SLO)
+      if(p === '/api/v1/system/phase6/canary/status' && req.method === 'GET'){
+        const r = await systemRoutes.phase6CanaryStatus(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // Phase 6: Canary Promote (B3: ارتقای ترافیک با اعتبارسنجی حاکمیت و امضای اپراتور)
+      if(p === '/api/v1/system/phase6/canary/promote' && req.method === 'POST'){
+        const body = await readBody(req, 64 * 1024);
+        const r = await systemRoutes.phase6CanaryPromote(req, body);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // Phase 6: Canary Rollback (B4: رول‌بک اضطراری و تخلیه آنی ترافیک به ۰٪)
+      if(p === '/api/v1/system/phase6/canary/rollback' && req.method === 'POST'){
+        const body = await readBody(req, 64 * 1024);
+        const r = await systemRoutes.phase6CanaryRollback(req, body);
         return sendJson(res, r.status, r.body);
       }
 

@@ -4,7 +4,7 @@
 **تاریخ آخرین بروزرسانی:** ۱۹ سپتامبر ۲۰۲۶ (۲۸ شهریور ۱۴۰۵)  
 **نسخه سند:** 3.0.0-PROD-BOARD  
 **مرجع حاکمیت:** دفتر معمار ارشد سیستم و کنترلر حاکمیت معماری (Chief System Architect & Governance Controller) — Chat 1  
-**کامیت مبنای فعال (Baseline Commit):** `27bc730b` روی شاخه `main`  
+**کامیت مبنای فعال (Baseline Commit):** `4b14df45` روی شاخه `main`  
 **وضعیت کلان سامانه (System Status):** **`🟢 GREEN: PHASE 5 & PHASE 6 100% COMPLETED, CERTIFIED & PRODUCTION-GRADE`**  
 
 ---
@@ -109,6 +109,12 @@ ARCHITECTURE DECISION LOG (ADR)
   - تصمیم: توزیع ترافیک در ۷ کلاستر منطقه‌ای با تفکیک استانی و پشتیبانی از مناطق روستایی
           همراه با فیوزهای ایزولاسیون و دیتاسنترهای پشتیبان ثانویه.
 
+[ADR-014] Phase 6 Production Canary & Persistent Traffic SSoT:
+  - تاریخ: ۲۰۲۶-۰۹-۱۹ | وضعیت: APPROVED
+  - تصمیم: اوزان ترافیک قناری در مایگریشن ۰۱۵ و جدول phase6_canary_configs ماندگار گردید؛
+          توزیع ترافیک در ران‌تایم بر اساس درصد آماری واقعی است و رول‌بک ترافیک را به ۰٪ تخلیه کامل می‌کند.
+          اپراتور ملزم به احراز هویت با امضای رمزنگاری و ثبت در phase6_audit_events است.
+
 [ADR-012] Human Approval & Governance Guardrails for Canary Promotion:
   - تاریخ: ۲۰۲۶-۰۹-۱۸ | وضعیت: APPROVED
   - تصمیم: ارتقای اوزان ترافیکی کلاسترها در فاز ۶ نیازمند تایید صریح مدیر ارشد انسانی
@@ -126,8 +132,9 @@ VERIFIED COMMIT AUDIT TRAIL
 ========================================================================================
 Commit Hash | Branch | Author    | Gate Passed | Status   | Scope / Note
 ------------+--------+-----------+-------------+----------+-----------------------------
-27bc730b    | main   | rezaa2544 | Red-Team    | VERIFIED | Close Red-Team Blockers & Certify Phase 5
-a737b6d0    | main   | rezaa2544 | Phase 7 Prep| VERIFIED | Release Gate readiness audit & doc sync
+4b14df45    | main   | rezaa2544 | Phase 6 Red | VERIFIED | Resolve Phase 6 Red-Team Blockers B1-B10
+93221772    | main   | rezaa2544 | Release Gate| VERIFIED | Resolve W2 Action whitelist gap & Phase 7
+9b056231    | main   | rezaa2544 | Phase 5 Red | VERIFIED | Close Red-Team Blockers & Certify Phase 5
 d8e5b6f5    | main   | rezaa2544 | CI / Gates  | VERIFIED | Standardize placeholder workflow structure
 485f95e9    | main   | rezaa2544 | Config Audit| VERIFIED | Add ARENA_NAME to configuration reference
 002f87c4    | main   | rezaa2544 | Governance  | VERIFIED | Board update to Phase 6 100% complete
