@@ -28,7 +28,8 @@ const API_TESTS = [
   'intelligence-platform.test.js',
   'intelligence-certification.test.js',
   'scalability-health.test.js',
-  'event-processing-health.test.js'
+  'event-processing-health.test.js',
+  'observability-health.test.js'
 ];
 
 console.log('═══════════════════════════════════════════════════════════════════');
