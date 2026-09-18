@@ -81,6 +81,8 @@
 | `INTERVENTION_CASE_MANAGEMENT_AUDIT.md` | ممیزی چرخه پرونده‌های مداخله زودهنگام (P0-EI-08) | ✅ | ۲۰۲۶-۰۹-۱۸ |
 | `SCHOOL_INTELLIGENCE_CENTER_MODEL.md` | مدل مرکز فرماندهی و هوشمندی مدرسه (P0-EI-09) | ✅ | ۲۰۲۶-۰۹-۱۸ |
 | `SCHOOL_INTELLIGENCE_CENTER_AUDIT.md` | ممیزی مرکز فرماندهی و هوشمندی مدرسه (P0-EI-09) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `REGIONAL_INTELLIGENCE_NETWORK_MODEL.md` | مدل شبکه بینش و اقدام منطقه‌ای هوشمندی آموزشی (P0-EI-10) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `REGIONAL_INTELLIGENCE_NETWORK_AUDIT.md` | ممیزی معماری شبکه بینش و اقدام منطقه‌ای (P0-EI-10) | ✅ | ۲۰۲۶-۰۹-۱۸ |
 | `AUTHORIZATION_MODEL.md` | مدل مجوز یکتا (پالیسی + مجوزهای نوشتن) | ✅ | ۲۰۲۶-۰۹-۱۰ |
 | `SYNC_PROTOCOL.md` | پروتکل همگام‌سازی (پول/پوش، کرسر، تعارض) | 🟡 یک‌تراکنشی‌شدن پوش در انتظار | ۲۰۲۶-۰۹-۱۰ |
 | `OBSERVABILITY.md` | سند یکپارچهٔ رصدپذیری §۳۰ (سه سیگنال + اس‌ال‌او) | ✅ | ۲۰۲۶-۰۹-۱۰ |
