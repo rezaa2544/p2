@@ -993,6 +993,12 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
+      // /api/v1/system/event-processing-health (Phase 4 — P1-SC-02: رصد سلامت صف رویدادها و مدیریت بار)
+      if(p === '/api/v1/system/event-processing-health' && req.method === 'GET'){
+        const r = await systemRoutes.eventProcessingHealthReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);
