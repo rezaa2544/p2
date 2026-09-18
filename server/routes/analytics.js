@@ -1,10 +1,12 @@
 /* ═══════════════════════════════════════════════════════════════════
-   server/routes/analytics.js — Phase 3: School & Regional Intelligence API
+   server/routes/analytics.js — Phase 3: School, Regional & Governance Intelligence API
    -------------------------------------------------------------------
    - GET /api/v1/analytics/school-intelligence ?school_id=&academic_year=
        نمای جامع مرکز فرماندهی و هوشمندی مدرسه و اقدامات روزانه مدیر (P0-EI-09)
    - GET /api/v1/analytics/regional-intelligence ?region_id=&academic_year=
        شبکه بینش و اقدام منطقه‌ای هوشمندی آموزشی (P0-EI-10)
+   - GET /api/v1/analytics/quality-governance ?school_id=&region_id=&academic_year=
+       راهبری کیفیت آموزشی و چرخه بهبود مستمر (P0-EI-11)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
@@ -17,6 +19,12 @@ const {
   enforceRegionalTenantIsolation,
   buildRegionalSnapshot
 } = require('../analytics/regional-intelligence-network');
+
+const {
+  enforceQualityGovernanceAccessGuard,
+  evaluateQualityPillars,
+  summarizeDistrictQualityGovernance
+} = require('../analytics/quality-governance');
 
 function createAnalyticsRoutes(ctx) {
   const store = ctx.store || {};
@@ -155,7 +163,6 @@ function createAnalyticsRoutes(ctx) {
       schools = (store.schools || []).filter(s => Number(s.region_id || s.district_id) === regionId);
     }
 
-    // ساخت شناسنامه‌های مدرسه‌ای برای مدارس منطقه
     const schoolSnapshots = schools.map(sch => {
       const sid = Number(sch.id);
       const grades = (store.grades || []).filter(g => Number(g.school_id) === sid);
@@ -193,7 +200,90 @@ function createAnalyticsRoutes(ctx) {
     };
   }
 
-  return { schoolIntelligenceReport, regionalIntelligenceReport };
+  async function qualityGovernanceReport(req, searchParams) {
+    const user = req.user || req.session;
+    const schoolIdParam = searchParams.get('school_id');
+    const regionIdParam = searchParams.get('region_id');
+
+    if (!schoolIdParam && !regionIdParam) {
+      return {
+        status: 400,
+        body: { ok: false, code: 'invalid_params', message: 'school_id یا region_id الزامی است' }
+      };
+    }
+
+    if (schoolIdParam) {
+      const schoolId = Number(schoolIdParam);
+      try {
+        enforceQualityGovernanceAccessGuard(user, { school_id: schoolId });
+      } catch (err) {
+        return {
+          status: 403,
+          body: { ok: false, code: 'forbidden', message: err.message }
+        };
+      }
+
+      const grades = (store.grades || []).filter(g => Number(g.school_id) === schoolId);
+      const attendance = (store.attendance || []).filter(a => Number(a.school_id) === schoolId);
+      const cases = (store.counselor_refs || []).filter(c => Number(c.school_id) === schoolId);
+
+      const snapshot = buildSchoolIntelligenceSnapshot({
+        schoolId,
+        grades,
+        attendanceSessions: attendance,
+        cases
+      });
+
+      const pillars = evaluateQualityPillars(snapshot);
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          api_version: '1.0.0',
+          scope: 'school',
+          pillars
+        }
+      };
+    }
+
+    const regionId = Number(regionIdParam);
+    try {
+      enforceQualityGovernanceAccessGuard(user, { region_id: regionId });
+    } catch (err) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', message: err.message }
+      };
+    }
+
+    const schools = (store.schools || []).filter(s => Number(s.region_id || s.district_id) === regionId);
+    const schoolPillars = schools.map(sch => {
+      const sid = Number(sch.id);
+      const sSnapshot = buildSchoolIntelligenceSnapshot({
+        schoolId: sid,
+        grades: (store.grades || []).filter(g => Number(g.school_id) === sid),
+        attendanceSessions: (store.attendance || []).filter(a => Number(a.school_id) === sid)
+      });
+      return evaluateQualityPillars(sSnapshot);
+    });
+
+    const summary = summarizeDistrictQualityGovernance({
+      districtId: regionId,
+      schools: schoolPillars
+    });
+
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        api_version: '1.0.0',
+        scope: 'district',
+        summary
+      }
+    };
+  }
+
+  return { schoolIntelligenceReport, regionalIntelligenceReport, qualityGovernanceReport };
 }
 
 module.exports = { createAnalyticsRoutes };

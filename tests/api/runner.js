@@ -15,7 +15,8 @@ const API_TESTS = [
   'attendance.test.js',
   'grades.test.js',
   'users.test.js',
-  'cache.test.js'
+  'cache.test.js',
+  'quality-governance.test.js'
 ];
 
 console.log('═══════════════════════════════════════════════════════════════════');

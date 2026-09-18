@@ -919,6 +919,12 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
+      // /api/v1/analytics/quality-governance (P0-EI-11: راهبری کیفیت آموزشی و چرخه بهبود مستمر)
+      if(p === '/api/v1/analytics/quality-governance' && req.method === 'GET'){
+        const r = await analyticsRoutes.qualityGovernanceReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);

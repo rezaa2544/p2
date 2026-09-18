@@ -28,6 +28,7 @@ const SUITES = [
   'intervention-management/index.test.js',
   'school-intelligence-center/index.test.js',
   'regional-intelligence-network/index.test.js',
+  'quality-governance/index.test.js',
   'query-builders.test.js',
   'mutations.test.js',
   'deterministic-and-mutation.test.js'
