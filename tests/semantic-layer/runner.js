@@ -25,6 +25,7 @@ const SUITES = [
   'school-health-dashboard/index.test.js',
   'parent-360/index.test.js',
   'teacher-evidence/index.test.js',
+  'intervention-management/index.test.js',
   'query-builders.test.js',
   'mutations.test.js',
   'deterministic-and-mutation.test.js'
