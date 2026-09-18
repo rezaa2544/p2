@@ -17,7 +17,8 @@ const API_TESTS = [
   'users.test.js',
   'cache.test.js',
   'quality-governance.test.js',
-  'longitudinal-intelligence.test.js'
+  'longitudinal-intelligence.test.js',
+  'recommendation-action-planning.test.js'
 ];
 
 console.log('═══════════════════════════════════════════════════════════════════');
