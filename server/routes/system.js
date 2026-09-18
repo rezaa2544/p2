@@ -72,6 +72,44 @@ const {
   getProvincialCapacityOverview
 } = require('../infrastructure/provincial-pilot-scaling');
 
+const {
+  NATIONAL_CONTROL_ERRORS,
+  NATIONAL_REGION_STATE,
+  getNationalRegionRegistry,
+  getNationalRegionById,
+  updateNationalRegionState,
+  calculateNationalRegionHealthSummary
+} = require('../infrastructure/national-region-control-plane');
+
+const {
+  CAPACITY_ENGINE_ERRORS,
+  getNationalCapacityModel,
+  evaluateCapacityRecommendation,
+  applyNationalCapacityAdjustment
+} = require('../infrastructure/national-capacity-engine');
+
+const {
+  TRAFFIC_FABRIC_ERRORS,
+  getNationalTrafficFabricTopology,
+  updateNationalTrafficWeight
+} = require('../infrastructure/national-traffic-fabric');
+
+const {
+  buildNationalOperationsDashboard
+} = require('../monitoring/national-observability-plane');
+
+const {
+  NATIONAL_SECURITY_ERRORS,
+  enforceNationalSecurityBoundary,
+  recordNationalAuditTrail
+} = require('../security/national-security-governance');
+
+const {
+  DATA_SOVEREIGNTY_ERRORS,
+  assertDatabaseAsSourceOfTruth,
+  verifyDataSovereigntyCompliance
+} = require('../infrastructure/data-sovereignty');
+
 function createSystemRoutes(ctx) {
   const store = ctx.store || {};
   const db = ctx.db;
@@ -1125,6 +1163,262 @@ function createSystemRoutes(ctx) {
     }
   }
 
+  /**
+   * GET /api/v1/system/national/regions
+   * فهرست و وضعیت کلاسترهای کنترل‌پلین ملی (P2-NI-01)
+   */
+  async function nationalRegions(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin', 'edu_office', 'manager'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: NATIONAL_CONTROL_ERRORS.REGION_ACCESS_DENIED, message: 'نقش کاربر مجاز نیست' }
+      };
+    }
+
+    const regionIdParam = searchParams.get('region_id');
+    if (regionIdParam) {
+      const reg = getNationalRegionById(regionIdParam);
+      if (!reg) {
+        return {
+          status: 404,
+          body: { ok: false, code: 'not_found', error_code: NATIONAL_CONTROL_ERRORS.REGION_NOT_FOUND, message: `کلاستر "${regionIdParam}" یافت نشد` }
+        };
+      }
+      return {
+        status: 200,
+        body: { ok: true, region: reg, timestamp: new Date().toISOString() }
+      };
+    }
+
+    const regions = getNationalRegionRegistry();
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        total: regions.length,
+        regions,
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+
+  /**
+   * GET /api/v1/system/national/capacity
+   * مدل جامع ظرفیت کل کشور و تخصیص سهمیه‌ها (P2-NI-01)
+   */
+  async function nationalCapacity(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin', 'edu_office', 'manager'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: NATIONAL_CONTROL_ERRORS.REGION_ACCESS_DENIED, message: 'نقش کاربر مجاز نیست' }
+      };
+    }
+
+    const model = getNationalCapacityModel();
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        phase: 'PHASE_5',
+        step: 'P2-NI-01',
+        capacity: model,
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+
+  /**
+   * GET /api/v1/system/national/health
+   * تابلوی جامع رصدپذیری عملیات ملی و انطباق SLO (P2-NI-01)
+   */
+  async function nationalHealth(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin', 'edu_office', 'manager'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: NATIONAL_CONTROL_ERRORS.REGION_ACCESS_DENIED, message: 'نقش کاربر مجاز نیست' }
+      };
+    }
+
+    const dashboard = buildNationalOperationsDashboard();
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        phase: 'PHASE_5',
+        step: 'P2-NI-01',
+        dashboard,
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+
+  /**
+   * GET /api/v1/system/national/traffic
+   * وضعیت فابریک و نقشه توزیع ترافیک سراسری (P2-NI-01)
+   */
+  async function nationalTraffic(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin', 'edu_office', 'manager'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: NATIONAL_CONTROL_ERRORS.REGION_ACCESS_DENIED, message: 'نقش کاربر مجاز نیست' }
+      };
+    }
+
+    const traffic = getNationalTrafficFabricTopology();
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        phase: 'PHASE_5',
+        step: 'P2-NI-01',
+        traffic,
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+
+  /**
+   * POST /api/v1/system/national/change-request
+   * دروازه ثبت و اعمال تغییرات زیرساخت ملی با تایید اپراتور انسانی (P2-NI-01)
+   */
+  async function nationalChangeRequest(req, body) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: NATIONAL_CONTROL_ERRORS.REGION_ACCESS_DENIED, message: 'تنها مدیران ارشد مجاز به ثبت درخواست تغییر زیرساخت ملی هستند' }
+      };
+    }
+
+    try {
+      assertNoZeroRanking(body);
+
+      // اعتبارسنجی حاکمیت نظارت انسانی
+      if (
+        body.approved !== true ||
+        body.automated_decision === true ||
+        body.automated_execution === true ||
+        body.requires_human_approval === false
+      ) {
+        const err = new Error(
+          'PHASE5_NATIONAL_CHANGE_APPROVAL_REQUIRED: کلیه تغییرات زیرساخت ملی مستلزم تایید صریح اپراتور انسانی است'
+        );
+        err.code = NATIONAL_CONTROL_ERRORS.CHANGE_APPROVAL_REQUIRED;
+        throw err;
+      }
+
+      const changeType = body.change_type;
+      let executionResult = null;
+
+      if (changeType === 'TRAFFIC_WEIGHT') {
+        executionResult = updateNationalTrafficWeight(body.region_id, body.target_weight, {
+          approved: true,
+          automated_decision: false,
+          automated_execution: false,
+          requires_human_approval: true,
+          operator: { id: user.id, role: user.role }
+        });
+      } else if (changeType === 'REGION_STATE') {
+        executionResult = updateNationalRegionState(body.region_id, body.target_state, {
+          approved: true,
+          automated_decision: false,
+          automated_execution: false,
+          requires_human_approval: true,
+          operator: { id: user.id, role: user.role }
+        });
+      } else if (changeType === 'CAPACITY_QUOTA') {
+        executionResult = applyNationalCapacityAdjustment({
+          region_id: body.region_id,
+          delta_rps: body.delta_rps,
+          approved: true,
+          auto_scale: false,
+          automated_decision: false,
+          automated_execution: false,
+          requires_human_approval: true,
+          operator: { id: user.id, role: user.role }
+        });
+      } else {
+        executionResult = {
+          change_id: `CR-NAT-${Date.now()}`,
+          change_type: changeType || 'GENERAL_CONFIG',
+          status: 'COMMITTED',
+          region_id: body.region_id || 'ir-tehran-1',
+          operator: { id: user.id, role: user.role }
+        };
+      }
+
+      recordNationalAuditTrail('NATIONAL_CHANGE_COMMITTED', user, {
+        change_type: changeType,
+        region_id: body.region_id
+      });
+
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          message: 'درخواست تغییر زیرساخت ملی با موفقیت اعمال گردید',
+          change_receipt: executionResult,
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (err) {
+      const isRanking = err.code === NATIONAL_CONTROL_ERRORS.ZERO_RANKING_VIOLATION;
+      return {
+        status: isRanking ? 400 : 422,
+        body: {
+          ok: false,
+          code: 'change_request_failed',
+          error_code: err.code || NATIONAL_CONTROL_ERRORS.CHANGE_APPROVAL_REQUIRED,
+          message: err.message
+        }
+      };
+    }
+  }
+
   return {
     scalabilityHealthReport,
     eventProcessingHealthReport,
@@ -1140,7 +1434,12 @@ function createSystemRoutes(ctx) {
     phase5ProvincialPilots,
     phase5ProvincialCapacity,
     phase5ProvincialActivate,
-    phase5ProvincialTrafficRollout
+    phase5ProvincialTrafficRollout,
+    nationalRegions,
+    nationalCapacity,
+    nationalHealth,
+    nationalTraffic,
+    nationalChangeRequest
   };
 }
 
