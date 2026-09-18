@@ -1054,6 +1054,32 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
+      // /api/v1/system/phase5/provincial-pilots (Phase 5 — P2-PL-02: فهرست و وضعیت پایلوت استانی)
+      if(p === '/api/v1/system/phase5/provincial-pilots' && req.method === 'GET'){
+        const r = await systemRoutes.phase5ProvincialPilots(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/phase5/provincial-pilots/capacity (Phase 5 — P2-PL-02: تابلوی ظرفیت و مقیاس‌پذیری پایلوت استانی)
+      if(p === '/api/v1/system/phase5/provincial-pilots/capacity' && req.method === 'GET'){
+        const r = await systemRoutes.phase5ProvincialCapacity(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/phase5/provincial-pilots/activate (Phase 5 — P2-PL-02: فعال‌سازی و آماده‌سازی کلاستر استانی)
+      if(p === '/api/v1/system/phase5/provincial-pilots/activate' && req.method === 'POST'){
+        const body = await readBody(req, 64 * 1024);
+        const r = await systemRoutes.phase5ProvincialActivate(req, body);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/phase5/provincial-pilots/traffic-rollout (Phase 5 — P2-PL-02: تنظیم ترافیک قناری پایلوت استانی)
+      if(p === '/api/v1/system/phase5/provincial-pilots/traffic-rollout' && req.method === 'POST'){
+        const body = await readBody(req, 64 * 1024);
+        const r = await systemRoutes.phase5ProvincialTrafficRollout(req, body);
+        return sendJson(res, r.status, r.body);
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);

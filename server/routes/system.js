@@ -61,6 +61,17 @@ const {
   executePilotApprovalAction
 } = require('../infrastructure/resource-governance');
 
+const {
+  PILOT_SCALING_ERRORS,
+  PROVINCIAL_PILOT_STATUS,
+  ALLOWED_ROLLOUT_PERCENTAGES,
+  getProvincialPilots,
+  getProvincialPilotById,
+  activateProvincialPilot,
+  updateProvincialTrafficRollout,
+  getProvincialCapacityOverview
+} = require('../infrastructure/provincial-pilot-scaling');
+
 function createSystemRoutes(ctx) {
   const store = ctx.store || {};
   const db = ctx.db;
@@ -892,6 +903,228 @@ function createSystemRoutes(ctx) {
     }
   }
 
+  /**
+   * GET /api/v1/system/phase5/provincial-pilots
+   * فهرست استان‌های پایلوت و وضعیت فعال‌سازی کلاسترها (P2-PL-02)
+   */
+  async function phase5ProvincialPilots(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin', 'edu_office', 'manager'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: PILOT_SCALING_ERRORS.PILOT_SCOPE_VIOLATION, message: 'نقش کاربر مجاز نیست' }
+      };
+    }
+
+    const provinceIdParam = searchParams.get('province_id');
+    if (provinceIdParam) {
+      const prov = getProvincialPilotById(provinceIdParam);
+      if (!prov) {
+        return {
+          status: 404,
+          body: { ok: false, code: 'not_found', error_code: PILOT_SCALING_ERRORS.PILOT_SCOPE_VIOLATION, message: `استان "${provinceIdParam}" یافت نشد` }
+        };
+      }
+      if (user.role === 'edu_office' && user.region_id && user.region_id !== prov.region_id) {
+        return {
+          status: 403,
+          body: { ok: false, code: 'forbidden', error_code: PILOT_SCALING_ERRORS.PILOT_SCOPE_VIOLATION, message: 'دسترسی به استان خارج از منطقه اداری مسدود است' }
+        };
+      }
+      return {
+        status: 200,
+        body: { ok: true, province: prov, timestamp: new Date().toISOString() }
+      };
+    }
+
+    let regionFilter = searchParams.get('region_id') || undefined;
+    if (user.role === 'edu_office' && user.region_id) {
+      regionFilter = String(user.region_id);
+    }
+
+    const provinces = getProvincialPilots(regionFilter);
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        total: provinces.length,
+        provinces,
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+
+  /**
+   * GET /api/v1/system/phase5/provincial-pilots/capacity
+   * تابلوی مقیاس‌پذیری ظرفیت و مصرف بار استانی و منطقه‌ای (P2-PL-02)
+   */
+  async function phase5ProvincialCapacity(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin', 'edu_office', 'manager'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: PILOT_SCALING_ERRORS.PILOT_SCOPE_VIOLATION, message: 'نقش کاربر مجاز نیست' }
+      };
+    }
+
+    let regionFilter = searchParams.get('region_id') || undefined;
+    if (user.role === 'edu_office' && user.region_id) {
+      regionFilter = String(user.region_id);
+    }
+
+    const capacity = getProvincialCapacityOverview(regionFilter);
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        phase: 'PHASE_5',
+        step: 'P2-PL-02',
+        capacity,
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+
+  /**
+   * POST /api/v1/system/phase5/provincial-pilots/activate
+   * فعال‌سازی و آماده‌سازی اولیه کلاستر استانی با تایید انسانی (P2-PL-02)
+   */
+  async function phase5ProvincialActivate(req, body) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin', 'edu_office'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: PILOT_SCALING_ERRORS.PILOT_SCOPE_VIOLATION, message: 'نقش کاربر مجاز به فعال‌سازی پایلوت استانی نیست' }
+      };
+    }
+
+    try {
+      assertNoZeroRanking(body);
+
+      const payload = {
+        approved: body.approved === true,
+        automated_decision: body.automated_decision === true,
+        automated_execution: body.automated_execution === true,
+        requires_human_approval: body.requires_human_approval !== false,
+        operator: {
+          id: user.id,
+          role: user.role,
+          name: user.name || user.username || 'اپراتور سامانه',
+          region_id: user.region_id || null
+        }
+      };
+
+      const result = activateProvincialPilot(body.province_id, payload);
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          message: `پایلوت استان "${result.province_name}" با موفقیت آماده‌سازی شد`,
+          province: result,
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (err) {
+      const isRanking = err.code === PILOT_SCALING_ERRORS.ZERO_RANKING_VIOLATION;
+      const isScope = err.code === PILOT_SCALING_ERRORS.PILOT_SCOPE_VIOLATION;
+      return {
+        status: isRanking ? 400 : (isScope ? 403 : 422),
+        body: {
+          ok: false,
+          code: 'activation_failed',
+          error_code: err.code || PILOT_SCALING_ERRORS.ROLLOUT_APPROVAL_REQUIRED,
+          message: err.message
+        }
+      };
+    }
+  }
+
+  /**
+   * POST /api/v1/system/phase5/provincial-pilots/traffic-rollout
+   * تنظیم درصد هدایت ترافیک قناری پایلوت استانی با تایید انسانی (P2-PL-02)
+   */
+  async function phase5ProvincialTrafficRollout(req, body) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin', 'edu_office'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: PILOT_SCALING_ERRORS.PILOT_SCOPE_VIOLATION, message: 'نقش کاربر مجاز به تنظیم ترافیک پایلوت نیست' }
+      };
+    }
+
+    try {
+      assertNoZeroRanking(body);
+
+      const payload = {
+        approved: body.approved === true,
+        automated_decision: body.automated_decision === true,
+        automated_execution: body.automated_execution === true,
+        requires_human_approval: body.requires_human_approval !== false,
+        operator: {
+          id: user.id,
+          role: user.role,
+          name: user.name || user.username || 'اپراتور سامانه',
+          region_id: user.region_id || null
+        }
+      };
+
+      const result = updateProvincialTrafficRollout(body.province_id, body.rollout_pct, payload);
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          message: `ترافیک پایلوت استان "${result.province_name}" به میزان ${result.traffic_rollout_pct}٪ تنظیم شد`,
+          province: result,
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (err) {
+      const isRanking = err.code === PILOT_SCALING_ERRORS.ZERO_RANKING_VIOLATION;
+      const isScope = err.code === PILOT_SCALING_ERRORS.PILOT_SCOPE_VIOLATION;
+      return {
+        status: isRanking ? 400 : (isScope ? 403 : 422),
+        body: {
+          ok: false,
+          code: 'rollout_failed',
+          error_code: err.code || PILOT_SCALING_ERRORS.ROLLOUT_APPROVAL_REQUIRED,
+          message: err.message
+        }
+      };
+    }
+  }
+
   return {
     scalabilityHealthReport,
     eventProcessingHealthReport,
@@ -903,7 +1136,11 @@ function createSystemRoutes(ctx) {
     phase5Regions,
     phase5FederationHealth,
     phase5ResourceGovernance,
-    phase5PilotApproval
+    phase5PilotApproval,
+    phase5ProvincialPilots,
+    phase5ProvincialCapacity,
+    phase5ProvincialActivate,
+    phase5ProvincialTrafficRollout
   };
 }
 
