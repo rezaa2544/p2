@@ -967,6 +967,12 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
+      // /api/v1/analytics/outcome-evaluation (P0-EI-19: لایه ارزیابی پیامد و بهینه‌سازی مستمر)
+      if(p === '/api/v1/analytics/outcome-evaluation' && req.method === 'GET'){
+        const r = await analyticsRoutes.outcomeEvaluationReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);
