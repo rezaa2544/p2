@@ -1029,6 +1029,31 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
+      // /api/v1/system/phase5/regions (Phase 5 — P2-PL-01: فهرست کلاسترهای چندمنطقه‌ای)
+      if(p === '/api/v1/system/phase5/regions' && req.method === 'GET'){
+        const r = await systemRoutes.phase5Regions(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/phase5/federation-health (Phase 5 — P2-PL-01: رصد سلامت فدراسیون کلاسترها)
+      if(p === '/api/v1/system/phase5/federation-health' && req.method === 'GET'){
+        const r = await systemRoutes.phase5FederationHealth(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/phase5/resource-governance (Phase 5 — P2-PL-01: حاکمیت منابع و ظرفیت پایلوت)
+      if(p === '/api/v1/system/phase5/resource-governance' && req.method === 'GET'){
+        const r = await systemRoutes.phase5ResourceGovernance(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/phase5/pilot-approval (Phase 5 — P2-PL-01: تاییدیه اپراتور انسانی)
+      if(p === '/api/v1/system/phase5/pilot-approval' && req.method === 'POST'){
+        const body = await readBody(req, 64 * 1024);
+        const r = await systemRoutes.phase5PilotApproval(req, body);
+        return sendJson(res, r.status, r.body);
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);

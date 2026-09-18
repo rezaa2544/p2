@@ -43,6 +43,24 @@ const {
   PHASE4_ERRORS
 } = require('../infrastructure/phase4-release-certification');
 
+const {
+  getRegionRegistry,
+  getRegionById,
+  calculateFederationHealth,
+  assertNoZeroRanking,
+  FEDERATION_ERRORS
+} = require('../infrastructure/phase5-region-federation');
+
+const {
+  validateRegionAccess,
+  enforceGeographicBoundary
+} = require('../infrastructure/geographic-isolation');
+
+const {
+  buildResourceGovernanceSnapshot,
+  executePilotApprovalAction
+} = require('../infrastructure/resource-governance');
+
 function createSystemRoutes(ctx) {
   const store = ctx.store || {};
   const db = ctx.db;
@@ -671,6 +689,209 @@ function createSystemRoutes(ctx) {
     };
   }
 
+  /**
+   * GET /api/v1/system/phase5/regions
+   * فهرست کلاسترهای منطقه‌ای و وضعیت سلامت (P2-PL-01)
+   */
+  async function phase5Regions(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const regionIdParam = searchParams.get('region_id');
+    if (regionIdParam) {
+      try {
+        validateRegionAccess(user, regionIdParam);
+      } catch (err) {
+        return {
+          status: 403,
+          body: { ok: false, code: 'forbidden', error_code: err.code || FEDERATION_ERRORS.REGION_ISOLATION_VIOLATION, message: err.message }
+        };
+      }
+      const region = getRegionById(regionIdParam);
+      return {
+        status: 200,
+        body: { ok: true, region, timestamp: new Date().toISOString() }
+      };
+    }
+
+    if (user.role === 'edu_office') {
+      const userReg = user.region_id || user.district_id || 1;
+      const filtered = getRegionRegistry().filter(r => r.numeric_id === Number(userReg) || r.region_id === String(userReg));
+      return {
+        status: 200,
+        body: { ok: true, total: filtered.length, regions: filtered, timestamp: new Date().toISOString() }
+      };
+    }
+
+    const regions = getRegionRegistry();
+    return {
+      status: 200,
+      body: { ok: true, total: regions.length, regions, timestamp: new Date().toISOString() }
+    };
+  }
+
+  /**
+   * GET /api/v1/system/phase5/federation-health
+   * رصدپذیری سلامت فدراسیون کلاسترها و تاخیر بین‌منطقه‌ای (P2-PL-01)
+   */
+  async function phase5FederationHealth(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin', 'edu_office', 'manager'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: FEDERATION_ERRORS.REGION_ISOLATION_VIOLATION, message: 'نقش کاربر مجاز نیست' }
+      };
+    }
+
+    const regionIdParam = searchParams.get('region_id');
+    if (regionIdParam) {
+      try {
+        validateRegionAccess(user, regionIdParam);
+      } catch (err) {
+        return {
+          status: 403,
+          body: { ok: false, code: 'forbidden', error_code: err.code || FEDERATION_ERRORS.REGION_ISOLATION_VIOLATION, message: err.message }
+        };
+      }
+    }
+
+    const health = calculateFederationHealth();
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        phase: 'PHASE_5',
+        federation_health: health,
+        governance: {
+          human_decision_sovereignty: true,
+          zero_ranking_guarantee: true,
+          geographic_isolation: true
+        }
+      }
+    };
+  }
+
+  /**
+   * GET /api/v1/system/phase5/resource-governance
+   * تابلوی حاکمیت منابع و برنامه‌ریزی ظرفیت استان‌ها و مدارس روستایی/مرزی (P2-PL-01)
+   */
+  async function phase5ResourceGovernance(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin', 'edu_office', 'manager'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: FEDERATION_ERRORS.TENANT_BOUNDARY_BREACH, message: 'دسترسی به حاکمیت منابع مجاز نیست' }
+      };
+    }
+
+    const regionIdParam = searchParams.get('region_id');
+    if (regionIdParam) {
+      try {
+        validateRegionAccess(user, regionIdParam);
+      } catch (err) {
+        return {
+          status: 403,
+          body: { ok: false, code: 'forbidden', error_code: err.code || FEDERATION_ERRORS.REGION_ISOLATION_VIOLATION, message: err.message }
+        };
+      }
+    }
+
+    const snapshot = buildResourceGovernanceSnapshot();
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        phase: 'PHASE_5',
+        resource_governance: snapshot,
+        governance: {
+          human_decision_sovereignty: true,
+          zero_ranking_guarantee: true
+        }
+      }
+    };
+  }
+
+  /**
+   * POST /api/v1/system/phase5/pilot-approval
+   * گیت تایید رسمی و ثبت مداخله اپراتور انسانی در پایلوت ملی (P2-PL-01)
+   */
+  async function phase5PilotApproval(req, body) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin', 'edu_office'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: FEDERATION_ERRORS.REGION_ISOLATION_VIOLATION, message: 'نقش کاربر مجاز به ثبت تاییدیه پایلوت نیست' }
+      };
+    }
+
+    try {
+      assertNoZeroRanking(body);
+
+      const payload = {
+        action_type: body.action_type,
+        target_region: body.target_region,
+        target_school: body.target_school,
+        approved: body.approved === true,
+        automated_decision: body.automated_decision === true,
+        automated_execution: body.automated_execution === true,
+        requires_human_approval: body.requires_human_approval !== false,
+        operator: {
+          id: user.id,
+          role: user.role,
+          name: user.name || user.username || 'اپراتور سامانه'
+        }
+      };
+
+      const receipt = executePilotApprovalAction(payload);
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          approval_receipt: receipt
+        }
+      };
+    } catch (err) {
+      return {
+        status: err.code === FEDERATION_ERRORS.ZERO_RANKING_VIOLATION ? 400 : 422,
+        body: {
+          ok: false,
+          code: 'unprocessable_approval',
+          error_code: err.code || FEDERATION_ERRORS.HUMAN_APPROVAL_REQUIRED,
+          message: err.message
+        }
+      };
+    }
+  }
+
   return {
     scalabilityHealthReport,
     eventProcessingHealthReport,
@@ -678,7 +899,11 @@ function createSystemRoutes(ctx) {
     disasterRecoveryHealthReport,
     pilotDeploymentHealthReport,
     securityHealthReport,
-    phase4CertificationReport
+    phase4CertificationReport,
+    phase5Regions,
+    phase5FederationHealth,
+    phase5ResourceGovernance,
+    phase5PilotApproval
   };
 }
 
