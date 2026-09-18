@@ -3,19 +3,21 @@
 -- Rollback for Wave 26 Universal OCC & Persistent Conflicts
 -- ═══════════════════════════════════════════════════════════════════
 
+BEGIN;
+
 DROP TABLE IF EXISTS sync_conflicts;
 
 DO $$
 DECLARE
   tbl text;
   tables text[] := ARRAY[
-    'announcements', 'app_settings', 'assets', 'assoc_minutes',
+    'announcements', 'app_settings', 'assets', 'assoc_minutes', 'attendance',
     'attendance_modes', 'bell_schedules', 'bus_events', 'bus_followups', 'bus_locations',
     'bus_needs', 'bus_routes', 'bus_students', 'calendar', 'certificates',
     'class_subject_members', 'classes', 'corrections', 'counselor_msgs', 'counselor_refs',
     'counties', 'discipline', 'districts', 'dojo_types', 'donations',
     'dorm_assignments', 'dorm_meals', 'dorm_rooms', 'enrollments', 'exam_duties',
-    'exam_terms', 'exams', 'hw_assignments', 'hw_submissions',
+    'exam_terms', 'exams', 'grades', 'hw_assignments', 'hw_submissions',
     'installments', 'internships', 'leaves', 'lib_books', 'lib_loans',
     'makeup_classes', 'meeting_slots', 'messages', 'nid_conflicts', 'notifications',
     'notify_queue', 'nudges', 'offices', 'parent_links', 'parent_subscriptions',
@@ -37,3 +39,5 @@ BEGIN
     END IF;
   END LOOP;
 END $$;
+
+COMMIT;

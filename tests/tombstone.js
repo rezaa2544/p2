@@ -97,7 +97,12 @@ async function main() {
     const PORT = 8964;
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-tomb-'));
     const tmpStore = path.join(tmpDir, 's.json');
-    fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), tmpStore);
+    const srcStore = path.join(ROOT, 'server', 'data', 'payesh.json');
+    if (!fs.existsSync(srcStore)) {
+      const { execSync } = require('child_process');
+      execSync('node server/seed.js', { cwd: ROOT, stdio: 'ignore' });
+    }
+    fs.copyFileSync(srcStore, tmpStore);
     const env = Object.assign({}, process.env, {
       PORT: String(PORT), HOST: '127.0.0.1',
       PAYESH_STORE: tmpStore,

@@ -44,8 +44,14 @@ chk('C-grades-subject در DDL هست', !!grades && grades.indexOf('CONSTRAINT f
 chk('C-grades-teacher در DDL هست', !!grades && grades.indexOf('CONSTRAINT fk_grades_teacher FOREIGN KEY (teacher_id) REFERENCES users(id)') >= 0);
 chk('C-deferrable هر ۴ FK نمره معوق‌اند', !!grades && (grades.match(/fk_grades_(student|class|subject|teacher)[\s\S]*?DEFERRABLE INITIALLY DEFERRED/g) || []).length === 4);
 
-/* ── بخش ۲: داده (gitignored؛ اگر نبود رد می‌شود) ── */
+/* ── بخش ۲: داده ── */
 const STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
+if (!fs.existsSync(STORE)) {
+  const { execSync } = require('child_process');
+  try {
+    execSync('node server/seed.js', { cwd: ROOT, stdio: 'ignore' });
+  } catch (e) {}
+}
 if (!fs.existsSync(STORE)) {
   ['D-capacity', 'D-enrollment', 'D-schedule', 'D-status', 'D-grades-orphans'].forEach(n => chk(n, null));
 } else {

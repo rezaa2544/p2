@@ -4,6 +4,8 @@
 -- Universal Optimistic Concurrency Control (OCC) & Persistent Conflicts
 -- ═══════════════════════════════════════════════════════════════════
 
+BEGIN;
+
 -- 1. Create persistent sync_conflicts table (Single Source of Truth in PostgreSQL)
 CREATE TABLE IF NOT EXISTS sync_conflicts (
   id BIGSERIAL PRIMARY KEY,
@@ -58,3 +60,5 @@ BEGIN
     END IF;
   END LOOP;
 END $$;
+
+COMMIT;

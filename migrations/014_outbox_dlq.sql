@@ -4,6 +4,8 @@
 -- Dedicated Dead-Letter Queue (DLQ) & High-Performance Outbox Indexes
 -- ═══════════════════════════════════════════════════════════════════
 
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS server_outbox_dlq (
   id BIGSERIAL PRIMARY KEY,
   outbox_id BIGINT NOT NULL,
@@ -24,3 +26,5 @@ CREATE INDEX IF NOT EXISTS idx_server_outbox_dlq_type ON server_outbox_dlq (type
 -- High-performance index for FOR UPDATE SKIP LOCKED poller
 CREATE INDEX IF NOT EXISTS idx_server_outbox_status_id ON server_outbox (status, id ASC)
   WHERE status = 'pending';
+
+COMMIT;
