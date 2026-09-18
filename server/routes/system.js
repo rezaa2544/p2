@@ -110,6 +110,35 @@ const {
   verifyDataSovereigntyCompliance
 } = require('../infrastructure/data-sovereignty');
 
+const {
+  getNationalOperationsCenterSnapshot,
+  getNocIncidents,
+  transitionNocState,
+  recordNocIncident,
+  resolveNocIncident,
+  NOC_ERRORS
+} = require('../operations/national-operations-center');
+
+const {
+  evaluateNationalProductionReadiness,
+  READINESS_VERDICT,
+  READINESS_ERRORS
+} = require('../infrastructure/national-production-readiness');
+
+const {
+  runNationalLoadSimulation,
+  getNationalLoadTestingSuite,
+  LOAD_SIMULATION_ERRORS
+} = require('../infrastructure/national-load-testing');
+
+const {
+  registerChangeRequest,
+  approveChangeRequest,
+  executeChangeRequest,
+  getChangeRequests,
+  CHANGE_ERRORS
+} = require('../infrastructure/change-management');
+
 function createSystemRoutes(ctx) {
   const store = ctx.store || {};
   const db = ctx.db;
@@ -1314,8 +1343,189 @@ function createSystemRoutes(ctx) {
   }
 
   /**
+   * GET /api/v1/system/national/operations
+   * تابلوی عملیات ملی و رصد بی‌درنگ (P2-NI-02: National Operations Center)
+   */
+  async function nationalOperations(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin', 'edu_office', 'manager'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: 'PHASE5_NATIONAL_REGION_ACCESS_DENIED', message: 'نقش کاربر مجاز نیست' }
+      };
+    }
+
+    try {
+      const options = searchParams ? Object.fromEntries(searchParams.entries()) : {};
+      assertNoZeroRanking(options);
+      const snapshot = getNationalOperationsCenterSnapshot(options);
+
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          phase: 'PHASE_5',
+          step: 'P2-NI-02',
+          operations: snapshot,
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (err) {
+      const isRanking = err.code === 'ZERO_RANKING_VIOLATION';
+      return {
+        status: isRanking ? 400 : 500,
+        body: { ok: false, code: err.code || 'operations_fetch_failed', message: err.message }
+      };
+    }
+  }
+
+  /**
+   * GET /api/v1/system/national/readiness
+   * موتور ارزیابی آمادگی بهره‌برداری ملی (P2-NI-02: Production Readiness Gate)
+   */
+  async function nationalReadiness(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin', 'edu_office', 'manager'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: 'PHASE5_NATIONAL_REGION_ACCESS_DENIED', message: 'نقش کاربر مجاز نیست' }
+      };
+    }
+
+    try {
+      const options = searchParams ? Object.fromEntries(searchParams.entries()) : {};
+      assertNoZeroRanking(options);
+      const readiness = evaluateNationalProductionReadiness(options);
+
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          phase: 'PHASE_5',
+          step: 'P2-NI-02',
+          readiness,
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (err) {
+      const isRanking = err.code === 'ZERO_RANKING_VIOLATION';
+      return {
+        status: isRanking ? 400 : 500,
+        body: { ok: false, code: err.code || 'readiness_eval_failed', message: err.message }
+      };
+    }
+  }
+
+  /**
+   * GET /api/v1/system/national/load-test
+   * شبیه‌سازی بار و استرس ملی (P2-NI-02: National Load Simulation)
+   */
+  async function nationalLoadTest(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin', 'edu_office', 'manager'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: 'PHASE5_NATIONAL_REGION_ACCESS_DENIED', message: 'نقش کاربر مجاز نیست' }
+      };
+    }
+
+    try {
+      const options = searchParams ? Object.fromEntries(searchParams.entries()) : {};
+      assertNoZeroRanking(options);
+      const suite = getNationalLoadTestingSuite(options);
+
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          phase: 'PHASE_5',
+          step: 'P2-NI-02',
+          load_test_suite: suite,
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (err) {
+      const isRanking = err.code === 'ZERO_RANKING_VIOLATION';
+      return {
+        status: isRanking ? 400 : 500,
+        body: { ok: false, code: err.code || 'load_test_failed', message: err.message }
+      };
+    }
+  }
+
+  /**
+   * GET /api/v1/system/national/incidents
+   * فهرست رخدادها و وقایع مرکز عملیات ملی (P2-NI-02: NOC Incidents)
+   */
+  async function nationalIncidents(req, searchParams) {
+    const user = req.user;
+    if (!user) {
+      return {
+        status: 401,
+        body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' }
+      };
+    }
+
+    const allowedRoles = ['superadmin', 'admin', 'edu_office', 'manager'];
+    if (!allowedRoles.includes(user.role)) {
+      return {
+        status: 403,
+        body: { ok: false, code: 'forbidden', error_code: 'PHASE5_NATIONAL_REGION_ACCESS_DENIED', message: 'نقش کاربر مجاز نیست' }
+      };
+    }
+
+    try {
+      const filter = searchParams ? Object.fromEntries(searchParams.entries()) : {};
+      assertNoZeroRanking(filter);
+      const incidents = getNocIncidents(filter);
+
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          phase: 'PHASE_5',
+          step: 'P2-NI-02',
+          incidents,
+          count: incidents.length,
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (err) {
+      const isRanking = err.code === 'ZERO_RANKING_VIOLATION';
+      return {
+        status: isRanking ? 400 : 500,
+        body: { ok: false, code: err.code || 'incidents_fetch_failed', message: err.message }
+      };
+    }
+  }
+
+  /**
    * POST /api/v1/system/national/change-request
-   * دروازه ثبت و اعمال تغییرات زیرساخت ملی با تایید اپراتور انسانی (P2-NI-01)
+   * دروازه ثبت و اعمال تغییرات زیرساخت ملی با تایید اپراتور انسانی (P2-NI-01 / P2-NI-02)
    */
   async function nationalChangeRequest(req, body) {
     const user = req.user;
@@ -1381,14 +1591,43 @@ function createSystemRoutes(ctx) {
           requires_human_approval: true,
           operator: { id: user.id, role: user.role }
         });
+      } else if (changeType === 'NOC_STATE') {
+        executionResult = transitionNocState(body.target_state, {
+          operator_id: String(user.id),
+          approval_id: body.approval_id || `appv-noc-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          reason: body.reason || 'NOC state transition via national API',
+          approved: true,
+          automated_decision: false,
+          automated_execution: false,
+          requires_human_approval: true
+        });
+      } else if (changeType === 'INCIDENT') {
+        executionResult = recordNocIncident(body.incident_data || body, {
+          operator_id: String(user.id),
+          approval_id: body.approval_id || `appv-inc-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          reason: body.reason || 'NOC incident recorded via API',
+          approved: true,
+          automated_decision: false,
+          automated_execution: false,
+          requires_human_approval: true
+        });
       } else {
-        executionResult = {
-          change_id: `CR-NAT-${Date.now()}`,
-          change_type: changeType || 'GENERAL_CONFIG',
-          status: 'COMMITTED',
-          region_id: body.region_id || 'ir-tehran-1',
-          operator: { id: user.id, role: user.role }
-        };
+        executionResult = registerChangeRequest({
+          change_id: body.change_id || `cr-${Date.now()}`,
+          title: body.title || 'National Infrastructure Change',
+          requester: String(user.id),
+          target_region: body.region_id || 'all',
+          change_type: changeType || 'INFRASTRUCTURE_UPDATE',
+          risk_level: body.risk_level || 'MEDIUM',
+          rollback_plan: body.rollback_plan || 'Revert to previous git tag / configuration',
+          approval: {
+            approval_id: body.approval_id || `appv-${Date.now()}`,
+            operator: String(user.id),
+            timestamp: new Date().toISOString()
+          }
+        });
       }
 
       recordNationalAuditTrail('NATIONAL_CHANGE_COMMITTED', user, {
@@ -1406,7 +1645,7 @@ function createSystemRoutes(ctx) {
         }
       };
     } catch (err) {
-      const isRanking = err.code === NATIONAL_CONTROL_ERRORS.ZERO_RANKING_VIOLATION;
+      const isRanking = err.code === NATIONAL_CONTROL_ERRORS.ZERO_RANKING_VIOLATION || err.code === 'ZERO_RANKING_VIOLATION';
       return {
         status: isRanking ? 400 : 422,
         body: {
@@ -1439,6 +1678,10 @@ function createSystemRoutes(ctx) {
     nationalCapacity,
     nationalHealth,
     nationalTraffic,
+    nationalOperations,
+    nationalReadiness,
+    nationalLoadTest,
+    nationalIncidents,
     nationalChangeRequest
   };
 }

@@ -1104,7 +1104,31 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
-      // /api/v1/system/national/change-request (Phase 5 — P2-NI-01: ثبت تغییرات زیرساخت با تایید انسانی)
+      // /api/v1/system/national/operations (Phase 5 — P2-NI-02: مرکز عملیات ملی)
+      if(p === '/api/v1/system/national/operations' && req.method === 'GET'){
+        const r = await systemRoutes.nationalOperations(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/national/readiness (Phase 5 — P2-NI-02: گیت آمادگی انتشار ملی)
+      if(p === '/api/v1/system/national/readiness' && req.method === 'GET'){
+        const r = await systemRoutes.nationalReadiness(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/national/load-test (Phase 5 — P2-NI-02: شبیه‌سازی بار ملی)
+      if(p === '/api/v1/system/national/load-test' && req.method === 'GET'){
+        const r = await systemRoutes.nationalLoadTest(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/national/incidents (Phase 5 — P2-NI-02: رخدادهای مرکز عملیات ملی)
+      if(p === '/api/v1/system/national/incidents' && req.method === 'GET'){
+        const r = await systemRoutes.nationalIncidents(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/system/national/change-request (Phase 5 — P2-NI-01 / P2-NI-02: ثبت تغییرات زیرساخت با تایید انسانی)
       if(p === '/api/v1/system/national/change-request' && req.method === 'POST'){
         const body = await readBody(req, 64 * 1024);
         const r = await systemRoutes.nationalChangeRequest(req, body);

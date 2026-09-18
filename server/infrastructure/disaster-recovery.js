@@ -67,7 +67,9 @@ const FORBIDDEN_RANKING_KEYWORDS = Object.freeze([
   'ranking_score',
   'league_table',
   'best_school',
-  'worst_school'
+  'worst_school',
+  'top_school',
+  'compare_school'
 ]);
 
 /**
@@ -162,7 +164,9 @@ function assertDisasterRecoveryZeroRanking(payload) {
       if (!allowedComplianceKeys.has(lowerKey)) {
         for (const kw of FORBIDDEN_RANKING_KEYWORDS) {
           if (lowerKey === kw || lowerKey.startsWith(kw + '_') || lowerKey.endsWith('_' + kw)) {
-            throw new Error(`ZERO_RANKING_VIOLATION: Forbidden competitive ranking key "${key}" detected at ${path}`);
+            const err = new Error(`ZERO_RANKING_VIOLATION: Forbidden competitive ranking key "${key}" detected at ${path}`);
+            err.code = 'ZERO_RANKING_VIOLATION';
+            throw err;
           }
         }
       }
