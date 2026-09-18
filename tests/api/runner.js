@@ -33,7 +33,8 @@ const API_TESTS = [
   'disaster-recovery-health.test.js',
   'pilot-deployment-health.test.js',
   'security-health.test.js',
-  'phase4-certification.test.js'
+  'phase4-certification.test.js',
+  'phase5-pilot.test.js'
 ];
 
 console.log('═══════════════════════════════════════════════════════════════════');
