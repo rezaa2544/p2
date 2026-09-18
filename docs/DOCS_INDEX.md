@@ -65,6 +65,46 @@
 |---|---|---|---|
 | `NATIONAL_ARCHITECTURE.md` | سند چتر §۳۰: معماری هدف + ۱۰ ای‌دی‌آر + جدول ۱۴ سند | ✅ | ۲۰۲۶-۰۹-۱۰ |
 | `DATABASE_ARCHITECTURE.md` | پستگرس: اسکیمای تولیدشده، ایندکس‌ها، تراکنش‌ها | ✅ | ۲۰۲۶-۰۹-۱۰ |
+| `EDUCATIONAL_SEMANTIC_MODEL.md` | مدل معنایی شاخص‌های آموزشی (P0-EI-01) | ✅ | ۲۰۲۶-۰۹-۱۷ |
+| `STUDENT_LONGITUDINAL_TIMELINE_MODEL.md` | مدل خط زمانی طولی دانش‌آموز (P0-EI-02) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `ASSESSMENT_INTELLIGENCE_MODEL.md` | مدل هوشمندی سنجش و روان‌سنجی آزمون‌ها (P0-EI-03) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `ASSESSMENT_INTELLIGENCE_AUDIT.md` | ممیزی جامع قابلیت‌های ارزیابی و سنجش تحصیلی (P0-EI-03) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `ATTENDANCE_INTELLIGENCE_MODEL.md` | مدل هوشمندی حضور و غیاب و تحلیل ریسک آموزشی (P0-EI-04) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `ATTENDANCE_INTELLIGENCE_AUDIT.md` | ممیزی جامع قابلیت‌های هوشمندی حضور و غیاب (P0-EI-04) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `SCHOOL_HEALTH_DASHBOARD_MODEL.md` | مدل داشبورد سلامت آموزشی و مرکز تصمیم‌گیری مدرسه (P0-EI-05) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `SCHOOL_HEALTH_DASHBOARD_AUDIT.md` | ممیزی جامع داشبورد سلامت و مرکز اقدام مدیران (P0-EI-05) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `PARENT_360_MODEL.md` | مدل نمای جامع والدین و مرکز اقدامات خانواده (P0-EI-06) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `PARENT_360_AUDIT.md` | ممیزی جامع پورتال والدین و مرکز اقدامات (P0-EI-06) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `TEACHER_EVIDENCE_MODEL.md` | مدل شواهد تدریس و چارچوب کیفیت‌بخشی معلمان (P0-EI-07) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `TEACHER_EVIDENCE_AUDIT.md` | ممیزی چارچوب شواهد تدریس و کیفیت‌بخشی معلمان (P0-EI-07) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `INTERVENTION_CASE_MANAGEMENT_MODEL.md` | مدل مدیریت پرونده‌های مداخله زودهنگام (P0-EI-08) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `INTERVENTION_CASE_MANAGEMENT_AUDIT.md` | ممیزی چرخه پرونده‌های مداخله زودهنگام (P0-EI-08) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `SCHOOL_INTELLIGENCE_CENTER_MODEL.md` | مدل مرکز فرماندهی و هوشمندی مدرسه (P0-EI-09) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `SCHOOL_INTELLIGENCE_CENTER_AUDIT.md` | ممیزی مرکز فرماندهی و هوشمندی مدرسه (P0-EI-09) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `REGIONAL_INTELLIGENCE_NETWORK_MODEL.md` | مدل شبکه بینش و اقدام منطقه‌ای هوشمندی آموزشی (P0-EI-10) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `REGIONAL_INTELLIGENCE_NETWORK_AUDIT.md` | ممیزی معماری شبکه بینش و اقدام منطقه‌ای (P0-EI-10) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `EDUCATIONAL_QUALITY_GOVERNANCE_MODEL.md` | مدل راهبری کیفیت آموزشی و چرخه بهبود مستمر (P0-EI-11) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `EDUCATIONAL_QUALITY_GOVERNANCE_AUDIT.md` | ممیزی معماری موتور راهبری کیفیت و چرخه بهبود مستمر (P0-EI-11) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `LONGITUDINAL_INTELLIGENCE_MONITORING_MODEL.md` | مدل پایش طولی هوشمندی آموزشی و کشف روندها (P0-EI-12) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `LONGITUDINAL_INTELLIGENCE_MONITORING_AUDIT.md` | ممیزی معماری پایش طولی هوشمندی آموزشی و کشف روندها (P0-EI-12) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `RECOMMENDATION_ACTION_PLANNING_MODEL.md` | مدل قرارداد موتور پیشنهاددهنده و برنامه‌ریزی اقدام آموزشی (P0-EI-13) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `RECOMMENDATION_ACTION_PLANNING_AUDIT.md` | ممیزی معماری موتور پیشنهاددهنده و برنامه‌ریزی اقدام آموزشی (P0-EI-13) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `FEEDBACK_LEARNING_MEMORY_MODEL.md` | مدل قرارداد حلقه بازخورد و حافظه راهبری یادگیری (P0-EI-14) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `FEEDBACK_LEARNING_MEMORY_AUDIT.md` | ممیزی معماری حلقه بازخورد و حافظه راهبری یادگیری (P0-EI-14) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `INTELLIGENCE_GOVERNANCE_DASHBOARD_MODEL.md` | مدل قرارداد داشبورد حاکمیت و شفافیت هوشمندی آموزشی (P0-EI-15) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `INTELLIGENCE_GOVERNANCE_DASHBOARD_AUDIT.md` | ممیزی معماری داشبورد حاکمیت و شفافیت هوشمندی آموزشی (P0-EI-15) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `POLICY_SIMULATION_ENGINE_MODEL.md` | مدل قرارداد موتور شبیه‌سازی خط‌مشی‌های آموزشی (P0-EI-16) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `POLICY_SIMULATION_ENGINE_AUDIT.md` | ممیزی معماری موتور شبیه‌سازی خط‌مشی‌های آموزشی (P0-EI-16) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `DECISION_INTELLIGENCE_COMMAND_MODEL.md` | مدل قرارداد ارکستراسیون فرماندهی و هوش تصمیم آموزشی (P0-EI-17) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `DECISION_INTELLIGENCE_COMMAND_AUDIT.md` | ممیزی معماری ارکستراسیون فرماندهی و هوش تصمیم آموزشی (P0-EI-17) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `OPERATIONAL_INTELLIGENCE_EXECUTION_MODEL.md` | مدل قرارداد لایه اجرای عملیاتی هوشمندی آموزشی (P0-EI-18) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `OPERATIONAL_INTELLIGENCE_EXECUTION_AUDIT.md` | ممیزی معماری لایه اجرای عملیاتی هوشمندی آموزشی (P0-EI-18) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `OUTCOME_EVALUATION_OPTIMIZATION_MODEL.md` | مدل قرارداد ارزیابی پیامد و بهینه‌سازی مستمر هوشمندی (P0-EI-19) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `OUTCOME_EVALUATION_OPTIMIZATION_AUDIT.md` | ممیزی معماری ارزیابی پیامد و بهینه‌سازی مستمر هوشمندی (P0-EI-19) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `INTELLIGENCE_PLATFORM_INTEGRATION_MODEL.md` | مدل قرارداد یکپارچه‌سازی پلتفرم هوشمندی آموزشی (P0-EI-20) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `INTELLIGENCE_PLATFORM_INTEGRATION_AUDIT.md` | ممیزی معماری یکپارچه‌سازی پلتفرم هوشمندی آموزشی (P0-EI-20) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `INTELLIGENCE_PHASE3_CERTIFICATION_AUDIT.md` | ممیزی معماری گیت انتشار و گواهی نهایی فاز ۳ (P0-EI-21) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `INTELLIGENCE_PHASE3_RELEASE_CERTIFICATE.md` | گواهینامه رسمی انتشار فاز ۳ هوشمندی آموزشی (P0-EI-21) | ✅ | ۲۰۲۶-۰۹-۱۸ |
 | `AUTHORIZATION_MODEL.md` | مدل مجوز یکتا (پالیسی + مجوزهای نوشتن) | ✅ | ۲۰۲۶-۰۹-۱۰ |
 | `SYNC_PROTOCOL.md` | پروتکل همگام‌سازی (پول/پوش، کرسر، تعارض) | 🟡 یک‌تراکنشی‌شدن پوش در انتظار | ۲۰۲۶-۰۹-۱۰ |
 | `OBSERVABILITY.md` | سند یکپارچهٔ رصدپذیری §۳۰ (سه سیگنال + اس‌ال‌او) | ✅ | ۲۰۲۶-۰۹-۱۰ |

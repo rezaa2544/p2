@@ -15,7 +15,18 @@ const API_TESTS = [
   'attendance.test.js',
   'grades.test.js',
   'users.test.js',
-  'cache.test.js'
+  'cache.test.js',
+  'quality-governance.test.js',
+  'longitudinal-intelligence.test.js',
+  'recommendation-action-planning.test.js',
+  'feedback-learning-memory.test.js',
+  'intelligence-governance.test.js',
+  'policy-simulation.test.js',
+  'decision-intelligence-command.test.js',
+  'operational-intelligence-execution.test.js',
+  'outcome-evaluation-optimization.test.js',
+  'intelligence-platform.test.js',
+  'intelligence-certification.test.js'
 ];
 
 console.log('═══════════════════════════════════════════════════════════════════');

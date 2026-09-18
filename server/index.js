@@ -53,6 +53,7 @@ const { createAttendanceRoutes } = require('./routes/attendance');
 const { createGradeRoutes } = require('./routes/grades');
 const { createUserRoutes } = require('./routes/users');
 const { createReportsRoutes } = require('./routes/reports'); /* Wave 23 — گزارش‌دهی پیشرفته */
+const { createAnalyticsRoutes } = require('./routes/analytics'); /* P0-EI-09 — مرکز فرماندهی و هوشمندی مدرسه */
 const { createBootstrapRoute } = require('./routes/bootstrap');
 const { createIds } = require('./ids'); /* P0-16 */
 const { createOutbox } = require('./outbox'); /* P0-17 */
@@ -559,6 +560,7 @@ const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, i
 const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty, ids, deleter });
 const userRoutes = createUserRoutes({ store, db, audit, markDirty, ids, deleter });
 const reportsRoutes = createReportsRoutes({ store, db, audit, markDirty, ids, deleter }); /* Wave 23 */
+const analyticsRoutes = createAnalyticsRoutes({ store, db, audit, markDirty, ids, deleter }); /* P0-EI-09 */
 const bootstrapRoute = createBootstrapRoute({ store, db });
 /* Delta Hardening Phase 2 (gap 2): signed TTL cursor — the resolved JWT key
    (env or key-file) feeds a domain-separated cursor key inside server/cursor.js;
@@ -902,6 +904,84 @@ const onRequest = async (req, res) => {
       }
       if(p === '/api/v1/reports/teachers' && req.method === 'GET'){
         const r = await reportsRoutes.teachersReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/analytics/school-intelligence (P0-EI-09: مرکز هوشمندی و فرماندهی مدرسه)
+      if(p === '/api/v1/analytics/school-intelligence' && req.method === 'GET'){
+        const r = await analyticsRoutes.schoolIntelligenceReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/analytics/regional-intelligence (P0-EI-10: شبکه بینش و اقدام منطقه‌ای)
+      if(p === '/api/v1/analytics/regional-intelligence' && req.method === 'GET'){
+        const r = await analyticsRoutes.regionalIntelligenceReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/analytics/quality-governance (P0-EI-11: راهبری کیفیت آموزشی و چرخه بهبود مستمر)
+      if(p === '/api/v1/analytics/quality-governance' && req.method === 'GET'){
+        const r = await analyticsRoutes.qualityGovernanceReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/analytics/longitudinal-intelligence (P0-EI-12: پایش طولی هوشمندی آموزشی و کشف روندها)
+      if(p === '/api/v1/analytics/longitudinal-intelligence' && req.method === 'GET'){
+        const r = await analyticsRoutes.longitudinalIntelligenceReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/analytics/action-recommendations (P0-EI-13: موتور پیشنهاددهنده و برنامه‌ریزی اقدام آموزشی)
+      if(p === '/api/v1/analytics/action-recommendations' && req.method === 'GET'){
+        const r = await analyticsRoutes.actionRecommendationsReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/analytics/feedback-learning-memory (P0-EI-14: موتور حلقه بازخورد و حافظه یادگیری سازمانی)
+      if(p === '/api/v1/analytics/feedback-learning-memory' && req.method === 'GET'){
+        const r = await analyticsRoutes.feedbackLearningMemoryReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/analytics/intelligence-governance (P0-EI-15: مرکز حاکمیت و شفافیت هوشمندی آموزشی)
+      if(p === '/api/v1/analytics/intelligence-governance' && req.method === 'GET'){
+        const r = await analyticsRoutes.intelligenceGovernanceReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/analytics/policy-simulation (P0-EI-16: لایه فرماندهی و شبیه‌سازی خط‌مشی‌های آموزشی)
+      if(p === '/api/v1/analytics/policy-simulation' && req.method === 'GET'){
+        const r = await analyticsRoutes.policySimulationReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/analytics/decision-command (P0-EI-17: لایه هوش تصمیم و ارکستراسیون فرمان آموزشی)
+      if(p === '/api/v1/analytics/decision-command' && req.method === 'GET'){
+        const r = await analyticsRoutes.decisionCommandReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/analytics/operational-execution (P0-EI-18: لایه اجرای عملیاتی هوشمندی آموزشی)
+      if(p === '/api/v1/analytics/operational-execution' && req.method === 'GET'){
+        const r = await analyticsRoutes.operationalExecutionReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/analytics/outcome-evaluation (P0-EI-19: لایه ارزیابی پیامد و بهینه‌سازی مستمر)
+      if(p === '/api/v1/analytics/outcome-evaluation' && req.method === 'GET'){
+        const r = await analyticsRoutes.outcomeEvaluationReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/analytics/intelligence-platform (P0-EI-20: لایه یکپارچه‌سازی پلتفرم هوشمندی آموزشی)
+      if(p === '/api/v1/analytics/intelligence-platform' && req.method === 'GET'){
+        const r = await analyticsRoutes.intelligencePlatformReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // /api/v1/analytics/intelligence-certification (P0-EI-21: گیت انتشار و صدور گواهی نهایی فاز ۳)
+      if(p === '/api/v1/analytics/intelligence-certification' && req.method === 'GET'){
+        const r = await analyticsRoutes.intelligenceCertificationReport(req, url.searchParams);
         return sendJson(res, r.status, r.body);
       }
 
