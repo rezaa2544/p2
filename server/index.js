@@ -925,6 +925,12 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
+      // /api/v1/analytics/longitudinal-intelligence (P0-EI-12: پایش طولی هوشمندی آموزشی و کشف روندها)
+      if(p === '/api/v1/analytics/longitudinal-intelligence' && req.method === 'GET'){
+        const r = await analyticsRoutes.longitudinalIntelligenceReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
       // /api/v1/students & /api/v1/students/:id
       if(p === '/api/v1/students' && req.method === 'GET'){
         const r = await studentRoutes.getStudentsList(req, url.searchParams);

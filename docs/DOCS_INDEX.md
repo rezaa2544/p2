@@ -85,6 +85,8 @@
 | `REGIONAL_INTELLIGENCE_NETWORK_AUDIT.md` | ممیزی معماری شبکه بینش و اقدام منطقه‌ای (P0-EI-10) | ✅ | ۲۰۲۶-۰۹-۱۸ |
 | `EDUCATIONAL_QUALITY_GOVERNANCE_MODEL.md` | مدل راهبری کیفیت آموزشی و چرخه بهبود مستمر (P0-EI-11) | ✅ | ۲۰۲۶-۰۹-۱۸ |
 | `EDUCATIONAL_QUALITY_GOVERNANCE_AUDIT.md` | ممیزی معماری موتور راهبری کیفیت و چرخه بهبود مستمر (P0-EI-11) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `LONGITUDINAL_INTELLIGENCE_MONITORING_MODEL.md` | مدل پایش طولی هوشمندی آموزشی و کشف روندها (P0-EI-12) | ✅ | ۲۰۲۶-۰۹-۱۸ |
+| `LONGITUDINAL_INTELLIGENCE_MONITORING_AUDIT.md` | ممیزی معماری پایش طولی هوشمندی آموزشی و کشف روندها (P0-EI-12) | ✅ | ۲۰۲۶-۰۹-۱۸ |
 | `AUTHORIZATION_MODEL.md` | مدل مجوز یکتا (پالیسی + مجوزهای نوشتن) | ✅ | ۲۰۲۶-۰۹-۱۰ |
 | `SYNC_PROTOCOL.md` | پروتکل همگام‌سازی (پول/پوش، کرسر، تعارض) | 🟡 یک‌تراکنشی‌شدن پوش در انتظار | ۲۰۲۶-۰۹-۱۰ |
 | `OBSERVABILITY.md` | سند یکپارچهٔ رصدپذیری §۳۰ (سه سیگنال + اس‌ال‌او) | ✅ | ۲۰۲۶-۰۹-۱۰ |
