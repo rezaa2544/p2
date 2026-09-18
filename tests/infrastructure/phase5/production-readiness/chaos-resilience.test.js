@@ -10,7 +10,7 @@ const { runAllChaosScenarios } = require('../chaos/index');
 
 function runChaosResilienceTests() {
   const results = runAllChaosScenarios();
-  assert.strictEqual(results.length, 5, 'Must run all 5 chaos scenarios');
+  assert.strictEqual(results.length, 8, 'Must run all 8 chaos scenarios');
 
   results.forEach((res) => {
     assert.strictEqual(res.status, 'PASSED', `Chaos scenario ${res.scenario} must pass without automated failover`);
@@ -21,7 +21,7 @@ function runChaosResilienceTests() {
 
 if (require.main === module) {
   const res = runChaosResilienceTests();
-  console.log(`✅ chaos-resilience.test.js: ${res.passed}/5 passed`);
+  console.log(`✅ chaos-resilience.test.js: ${res.passed}/8 passed`);
 }
 
 module.exports = { runChaosResilienceTests };

@@ -39,6 +39,96 @@ const NATIONAL_SLO_TARGETS = Object.freeze({
   database_replication_max_ms: 300 // سقف تاخیر رپلیکیشن دیتابیس ۳۰۰ میلی‌ثانیه
 });
 
+const SLO_ENFORCEMENT_STATUS = Object.freeze({
+  VERIFIED: 'VERIFIED',
+  NOT_VERIFIED: 'NOT_VERIFIED',
+  BREACHED: 'BREACHED'
+});
+
+const SLO_ERRORS = Object.freeze({
+  SLO_BREACH: 'PHASE5_OPERATIONAL_SLO_BREACH',
+  DATA_UNAVAILABLE: 'PHASE5_SLO_DATA_UNAVAILABLE',
+  ZERO_RANKING_VIOLATION: 'ZERO_RANKING_VIOLATION'
+});
+
+/**
+ * گیت صلب انطباق و مهار شاخص‌های سطح خدمت (enforceOperationalSloGate)
+ * اگر داده اندازه‌گیری‌شده در دسترس نباشد، وضعیت NOT_VERIFIED ثبت می‌شود (و نه PASS).
+ *
+ * @param {Object} telemetry
+ * @param {Object} [options]
+ * @returns {Object}
+ */
+function enforceOperationalSloGate(telemetry = {}, options = {}) {
+  assertNoZeroRanking(telemetry);
+  assertNoZeroRanking(options);
+
+  const hasData = telemetry.is_live === true || (
+    telemetry.p95_latency_ms != null &&
+    telemetry.p99_latency_ms != null &&
+    telemetry.error_rate_pct != null
+  );
+
+  if (!hasData) {
+    return {
+      status: SLO_ENFORCEMENT_STATUS.NOT_VERIFIED,
+      compliant: false,
+      reason: 'No real telemetry available to verify operational SLO. Not marked as pass.',
+      targets: { ...NATIONAL_SLO_TARGETS },
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  const p95 = Number(telemetry.p95_latency_ms);
+  const p99 = Number(telemetry.p99_latency_ms);
+  const errRate = Number(telemetry.error_rate_pct);
+  const eventLag = telemetry.event_queue_lag_ms != null ? Number(telemetry.event_queue_lag_ms) : 0;
+  const dbLag = telemetry.db_replication_lag_ms != null ? Number(telemetry.db_replication_lag_ms) : 0;
+
+  const breaches = [];
+  if (p95 > NATIONAL_SLO_TARGETS.api_latency_p95_ms) {
+    breaches.push(`p95 latency ${p95}ms exceeds target ${NATIONAL_SLO_TARGETS.api_latency_p95_ms}ms`);
+  }
+  if (p99 > NATIONAL_SLO_TARGETS.api_latency_p99_ms) {
+    breaches.push(`p99 latency ${p99}ms exceeds target ${NATIONAL_SLO_TARGETS.api_latency_p99_ms}ms`);
+  }
+  if (errRate >= NATIONAL_SLO_TARGETS.api_error_rate_pct) {
+    breaches.push(`Error rate ${errRate}% reaches or exceeds limit ${NATIONAL_SLO_TARGETS.api_error_rate_pct}%`);
+  }
+  if (eventLag > NATIONAL_SLO_TARGETS.event_pipeline_max_lag_ms) {
+    breaches.push(`Event queue lag ${eventLag}ms exceeds target ${NATIONAL_SLO_TARGETS.event_pipeline_max_lag_ms}ms`);
+  }
+  if (dbLag > NATIONAL_SLO_TARGETS.database_replication_max_ms) {
+    breaches.push(`Database replication lag ${dbLag}ms exceeds target ${NATIONAL_SLO_TARGETS.database_replication_max_ms}ms`);
+  }
+
+  if (breaches.length > 0) {
+    if (options.failClosed === true) {
+      const err = new Error(`PHASE5_OPERATIONAL_SLO_BREACH: ${breaches.join('; ')}`);
+      err.code = SLO_ERRORS.SLO_BREACH;
+      err.breaches = breaches;
+      throw err;
+    }
+    return {
+      status: SLO_ENFORCEMENT_STATUS.BREACHED,
+      compliant: false,
+      breaches,
+      observed: { p95, p99, errRate, eventLag, dbLag },
+      targets: { ...NATIONAL_SLO_TARGETS },
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  return {
+    status: SLO_ENFORCEMENT_STATUS.VERIFIED,
+    compliant: true,
+    breaches: [],
+    observed: { p95, p99, errRate, eventLag, dbLag },
+    targets: { ...NATIONAL_SLO_TARGETS },
+    timestamp: new Date().toISOString()
+  };
+}
+
 /**
  * ساخت تابلوی جامع عملیات و رصدپذیری ملی (buildNationalOperationsDashboard)
  *
@@ -115,5 +205,8 @@ function buildNationalOperationsDashboard(overrideMetrics = {}) {
 
 module.exports = {
   NATIONAL_SLO_TARGETS,
+  SLO_ENFORCEMENT_STATUS,
+  SLO_ERRORS,
+  enforceOperationalSloGate,
   buildNationalOperationsDashboard
 };
