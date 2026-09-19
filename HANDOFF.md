@@ -3393,4 +3393,17 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
   ۸. **گزارش کامیت‌ها (`Task 8`):** تفکیک کامل کامیت‌های کد (`CODE_COMMIT_SHA`) از مستندات (`DOC_COMMIT_SHA`).
 - **وضعیت:** عدم صدور گواهی VERIFIED تا زمان ارزیابی و تأیید تیم قرمز مستقل در Chat3.
 
+## Phase 7.6-R.7.2 — Blocker Remediation & Live Postgres Evidence — ✅ (2026-09-19)
+
+- **طبق اسکیل‌ها:** طبق `evidence-integrity-and-commit-accounting` (بازطبقه‌بندی صریح ماک‌ها و ایجاد شواهد زنده DB)، `security-review-payesh` (محافظت از نشت OTP در پروداکشن)، و `qa-testing` (تأیید ایمنی دایرکتوری لاگر و سوئیت رگرسیون).
+- **اقدامات انجام‌شده:**
+  ۱. **بازطبقه‌بندی و ساخت تست اتمی دیتابیس زنده (`Task 1`):** بازطبقه‌بندی صریح `tests/canary-atomic-production-runtime.js` به عنوان `[MOCK / E2]`. ایجاد فایل تست زندهٔ پستگرس `tests/canary-atomic-postgres-live-runtime.js` جهت تست و تأیید ترنزکشن‌های واقعی `BEGIN -> UPDATE -> FAIL INSERT -> ROLLBACK -> SELECT` روی دیتابیس پستگرس.
+  ۲. **رفع رگرسیون‌های server17 (`Task 2`):**
+     - عدم خروج کد `demo_code` در پاسخ‌های `/api/auth/send-code` زمان فعال بودن `NODE_ENV=production` یا `PAYESH_ENV=production`.
+     - ایمن‌سازی دایرکتوری لاگر در `server/audit.js` با فراخوانی پیش‌دستانهٔ `fs.mkdirSync` جهت جلوگیری از خطای `ENOENT`.
+  ۳. **اجرای کامل سوئیت‌های رگرسیون (`Task 3`):** اجرای موفق هر ۵ verifier بدون هیچ خطا (0 FAIL).
+  ۴. **گزارش کامیت‌ها (`Task 4`):** پوش کامیت‌های کد اجرایی (`CODE_COMMIT_SHA`) و مستندسازی (`DOC_COMMIT_SHA`) روی `origin/main`.
+- **وضعیت:** تمام Blockerها برطرف شده و آمادهٔ ارزیابی نهایی Red Team در Chat3 است.
+
+
 
