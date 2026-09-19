@@ -25,6 +25,11 @@ the wrong reason).
 - `testing-strategy/SKILL.md` — mutation-testing discipline (the exact
   practice that caught the silent `skipTest` bug and the shared-fixture
   bug already found in Payesh's history).
+- `evidence-integrity-and-commit-accounting/SKILL.md` — strict evidence
+  standards (Type A/B/C), E0-E4 strength levels, mandatory mock/real
+  separation, separate commit accounting (CODE_SHA vs DOC_SHA), git diff
+  verification, and anti-hallucination guards.
+
 
 ## Other real, independently-evaluated skills worth adding directly from source
 

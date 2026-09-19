@@ -3362,11 +3362,19 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
   ۳. **آزمون اتمیسیتی دیتابیس واقعی (`Task 3`):** ساخت فایل `tests/canary-atomic-production-runtime.js` جهت اثبات اتمیسیتی `UPDATE + AUDIT = ONE TRANSACTION` تحت لایهٔ ترنزکشن دیتابیس (تأیید رول‌بک کامل به وزن اولیه ۱۰ و ۰ سطر آدیت در صورت بروز خطای آدیت).
   ۴. **صحت شواهد Migration (`Task 4`):** اجرای کامل و موفق `tests/migration-sequence.js` (19/19) و `tests/migrate-pg-constraints.js` (14/14) روی مهاجرت‌های 001 تا 020.
   ۵. **تأیید Dead Code (`Task 5`):** عدم وجود هرگونه caller فعال برای `server/middleware/scope.js` و تأیید حذف آن.
-  ۶. **تککیک کامیت‌ها (`Task 6`):** تفکیک کامل کامیت‌های کد اجرایی (`CODE_COMMIT_SHA`) از کامیت‌های مستندسازی (`DOC_COMMIT_SHA`).
+  ۶. **تفکیک کامیت‌ها (`Task 6`):** تفکیک کامل کامیت‌های کد اجرایی (`CODE_COMMIT_SHA`) از کامیت‌های مستندسازی (`DOC_COMMIT_SHA`).
 - **وضعیت:** تفکیک کامیت کد و مستندسازی انجام و روی `origin/main` پوش گردید.
 
-
-
-
-
+## تثبیت اسکیل بنیادین «اصالت شواهد و تفکیک کامیت‌ها» (evidence-integrity-and-commit-accounting) — ✅ (2026-09-19)
+- **اقدام:** یکپارچه‌سازی و ثبت رسمی اسکیل `evidence-integrity-and-commit-accounting` در هر دو مسیر `.claude/skills/` و `skills/` به همراه به‌روزرسانی راهنماها.
+- **اصول هشت‌گانه تثبیت‌شده:**
+  ۱. **Rule Set 1 (Evidence Integrity):** الزام شواهد سه‌گانه (Type A: لاگ/دستور/خروج زمان اجرا، Type B: مسیر فایل و خط دقیق سورس کد، Type C: فراداده دقیق گیت شامل SHA/شاخ/والد).
+  ۲. **Rule Set 2 (Mock Evidence Separation):** برچسب‌گذاری صریح تست‌ها با `[REAL-PRODUCTION]`, `[REAL-DATABASE]`, `[MOCK]`, `[UNIT]`, `[INTEGRATION]` و ممنوعیت نامیدن ماک به عنوان پروداکشن.
+  ۳. **Rule Set 3 (Evidence Strength Level):** تفکیک ترازهای E0 (ادعا) تا E4 (تیم قرمز مستقل با بازتولید شکست) و ممنوعیت بیان E1 با ادبیات E3.
+  ۴. **Rule Set 4 (Commit Accounting):** تفکیک اجباری کامیت کد (`CODE_COMMIT_SHA`) از مستندات (`DOC_COMMIT_SHA`) و تست‌ها (`TEST_COMMIT_SHA`).
+  ۵. **Rule Set 5 (Git Diff Verification):** خروجی اجباری `git status --short`، `git diff --stat HEAD^` و `git rev-parse HEAD`.
+  ۶. **Rule Set 6 (Claim Validation):** شرط بازتولیدپذیری توسط مهندس دیگر پیش از صدور واژه VERIFIED.
+  ۷. **Rule Set 7 (Final Report Template):** قالب یکپارچه گزارش با تفکیک شواهد E1 تا E4.
+  ۸. **Rule Set 8 (Red Flag Detection):** ۸ پرچم قرمز که منجر به رد و FAIL فوری هر گزارش می‌شود.
+- **دستور برای Chat 2 و تمام عامل‌ها:** فعال‌سازی خودکار و الزامی پیش از ورود به هر فاز؛ هیچ گواهی VERIFIED بدون شواهد E3/E4 صادر نخواهد شد.
 
