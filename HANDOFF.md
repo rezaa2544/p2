@@ -3308,4 +3308,24 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
   ۳. **ارائه شواهد در گزارش:** استناد مشخص به متدولوژی اسکیل (مانند: «طبق security-review، شدت این یافته 🟠 High است»).
 - **وضعیت:** ثبت و تثبیت در `docs/AI_PROMPT.md` و `HANDOFF.md` انجام شد، کامیت و پوش روی شاخه `main` تایید شد.
 
+## ممیزی تیم قرمز مستقل — فاز 7.6-R.5 (Zero-Trust Re-Audit) — ⛔ NOT VERIFIED (2026-09-19)
+- **نقش:** ممیز ارشد تیم قرمز مستقل (Red Team Auditor) بر روی کامیت `0fd5bfa7` با تبعیت اجباری از اسکیل‌های پنج‌گانه مهندسی (`.claude/skills/*`).
+- **ارجاع به اسکیل‌های پنج‌گانه مهندسی:**
+  - `security-review`: بررسی حریم مستأجر، شکست حمله Replay پس از وایپ RAM، و ممیزی عدم وجود بای‌پاس در Redis fail-closed.
+  - `architect`: راستی‌آزمایی اتمیسیتی `db.transaction()` و تحلیل معماری چرخه UP/DOWN/UP مایگریشن ۰۲۰ روی PostgreSQL 17.
+  - `code-review`: شناسایی باگ بحرانی عدم اتصال `updateCanaryWeightWithAudit` (Zero Callers) و کد مرده `server/middleware/scope.js`.
+  - `testing-strategy`: رد قاطع تست‌های Mock در `tests/unified-production-verifier.js` و اجرای Trace واقعی سرور HTTP با سرویس‌های زنده.
+  - `performance-audit`: ارزیابی زمان استعلام زنده و بازتاب آنی تغییرات دیتابیس در لایه HTTP بدون ری‌استارت.
+- **یافته‌های ۶ گیت ممیزی:**
+  ۱. **اتمیسیتی ترنزکشن دیتابیس (PASS):** تست زنده روی PostgreSQL 17 نشان داد پرتاب خطا در `db.transaction` تغییرات را کاملاً `ROLLBACK` می‌کند.
+  ۲. **بررسی Callerهای `updateCanaryWeightWithAudit` (FAIL - BLOCKER):** این تابع در هیچ بخشی از کد اجرایی `server/` صدا زده نشده است! در `phase6-canary-engine.js:322`، آپدیت وزن قناری و ثبت لاگ خارج از یک ترنزکشن مشترک انجام می‌شود. در صورت خرابی لجر اودیت، وزن دیتابیس تغییر یافته باقی مانده و رول‌بک نمی‌شود.
+  ۳. **ردیابی واقعی HTTP (PASS):** اجرای سرور زنده روی پورت ۳۹۹۹ با دیتابیس و ردیس واقعی؛ پاسخ‌دهی ۲۰۰ به مسیرهای معتبر، بازتاب بلادرنگ تغییر دیتابیس روی HTTP، و صدور خطای ۴۰۳ `PHASE6_TENANT_ISOLATION_BREACH` برای نفوذ بین‌مستأجری.
+  ۴. **شکست‌ناپذیری SSoT در برابر دستکاری RAM (PASS):** دستکاری مقادیر Map در RAM توسط SSoT دیتابیس اصلاح شد؛ پاکسازی کامل `seenSignatures` از RAM مانع از شناسایی حمله Replay توسط جدول `phase6_replay_ledger` نشد.
+  ۵. **چرخه Migration 020 (PASS):** اجرای ۰۰۱ تا ۰۱۹ و چرخه کامل UP/DOWN/UP روی PostgreSQL 17 با موفقیت و کد خروج ۰ انجام شد (ارجاع اشتباه به `governance_ledger_store` حذف شده است).
+  ۶. **مسیرهای امنیتی و کنترل‌پلان (PARTIAL):** کنترل‌پلان‌ها به Authority متصلند و در نبود دیتابیس ۵۰۳ می‌دهند. اما فایل `server/middleware/scope.js` بدون فراخوان رها شده است.
+- **حکم نهایی:** ⛔ **NOT VERIFIED FOR PHASE 8**.
+- **اقدام الزامی پیش از ورود به فاز ۸:** تیم پیاده‌سازی باید در `phase6-canary-engine.js` متد `setTrafficWeight` را به `authority.updateCanaryWeightWithAudit` متصل کند و فایل مرده `server/middleware/scope.js` را پاکسازی کند.
+- **گزارش رسمی:** `docs/PHASE_7_6_R5_REDTEAM_RECERTIFICATION_REPORT.md`
+
+
 
