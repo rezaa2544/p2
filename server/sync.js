@@ -861,6 +861,13 @@ function createSync(ctx){
         results.push({ uid: op.uid, ok: false, code: 'validation_failed', field: 'base_version', message: 'مقدارِ «base_version» معتبر نیست' });
         continue;
       }
+      /* P1-05: mandatory base_version on VERSIONED resource updates when in strict mode or production */
+      const strictBaseVersion = process.env.PAYESH_STRICT_BASE_VERSION === '1' || process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production';
+      if(op.t === 'upd' && VERSIONED[op.c] && op.base_version == null && strictBaseVersion){
+        audit('sync_validation_failed', { user_id: s.id, uid: op.uid, collection: op.c, field: 'base_version', reason: 'missing_base_version' });
+        results.push({ uid: op.uid, ok: false, code: 'missing_base_version', field: 'base_version', message: 'مقدارِ «base_version» برای مجموعه‌های نسخه‌دار الزامی است' });
+        continue;
+      }
       /* §13.1 — non-in-person day: physical ops rejected per-op (rest continues) */
       const vd = virtualDayViolation(op, store);
       if(vd){
@@ -944,8 +951,10 @@ function createSync(ctx){
           /* باگ ۲ (بازبین دور ۱ #124): درج از mirrorAppend می‌گذرد تا هرسِ ringِ
              سقف‌دار (sync_conflicts لیست‌سفید است) رویش کار کند — push خام
              growthLog را خالی می‌گذاشت و صف بی‌سقف می‌راند. uPush همان‌جا:
-             بازگشتِ دقیق همین ردیف در rollback (P0-6). */
+             بازگشتِ دقیق همین ردیف در rollback (P0-6).
+             P1-06: افزودن به derived جهت ماندگاری اتمیک در PostgreSQL */
           uPush('sync_conflicts', mirrorAppend('sync_conflicts', cf));
+<<<<<<< HEAD
           /* P0 (Chat 2 audit 4.2 / P0-BUG-02 follow-up; same fix as the parallel
              phase-2 B1): the conflict row must reach PostgreSQL in the SAME
              phase-2 transaction (SSoT) — it used to live only in the RAM mirror
@@ -953,6 +962,8 @@ function createSync(ctx){
              restart; recovered from PG after full RAM loss). 013 now guarantees
              every cf column (incl. updated_at) exists in the real table.
              Memory mode: persistOpsBatch is a no-op — behavior unchanged. */
+=======
+>>>>>>> f87c7b2 (fix(phase1): resolve all 10 security and database contract gaps)
           derived.push({ c: 'sync_conflicts', t: 'ins', data: cf });
           /* ویو ۱۴: برچسبِ collection نامِ جدول است (مجموعهٔ بستهٔ VERSIONED)،
              نه شناسهٔ رکورد — بدون PII و با cardinality کران‌دار. */

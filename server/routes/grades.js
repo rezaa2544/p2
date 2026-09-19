@@ -192,7 +192,7 @@ async function updateGrade(req, id, body) {
     }
 
     /* P0-18: OCC از هِلپر مشترک — پایه از base_version یا version */
-    const conflict = checkOcc(grade, body, 'نمره');
+    const conflict = checkOcc(grade, body, 'نمره', true);
     if (conflict) return conflict;
 
     /* Wave 1: patch روی کپی محاسبه می‌شود؛ store فقط پس از کامیت PG لمس می‌شود. */

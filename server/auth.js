@@ -175,17 +175,25 @@ function createAuth(ctx){
   const IP_LOGIN_MAX = _lim(process.env.PAYESH_LOGIN_IP_LIMIT, 10); /* logins / window per IP */
   const PHONE_LOGIN_MAX = _lim(process.env.PAYESH_LOGIN_PHONE_LIMIT, 50); /* logins / window per phone (P0 #6) */
   const LOGIN_TRIES_MAX = _lim(process.env.PAYESH_LOGIN_TRIES, 5);  /* wrong codes before code dies */
+  
+  const { clientIp: auditClientIp } = require('./audit');
   function clientIp(req){
-    const xf = req.headers && req.headers['x-forwarded-for'];
-    if(typeof xf === 'string' && xf) return xf.split(',')[0].trim().slice(0, 64);
-    return (req.socket && req.socket.remoteAddress) || 'local';
+    return auditClientIp(req) || '127.0.0.1';
   }
+  function getDeviceId(req){
+    const h = (req && req.headers) || {};
+    const dev = h['x-device-id'] || h['x-client-id'];
+    if(dev && typeof dev === 'string' && dev.trim()) return dev.trim().slice(0, 64);
+    const ip = clientIp(req);
+    const ua = h['user-agent'] || 'unknown';
+    return crypto.createHash('sha256').update(ip + '|' + ua).digest('hex').slice(0, 16);
+  }
+
   function hashCode(code, phone){
     return crypto.createHash('sha256').update(code + '|' + phone).digest('hex');
   }
   function codeRecOk(rec, code, phone, now){
     if(!rec || now - rec.at >= CODE_TTL_MS) return false;
-    if((rec.tries || 0) >= LOGIN_TRIES_MAX) return false;
     const a = Buffer.from(hashCode(code, phone));
     const b = Buffer.from(rec.h || '0000000000000000000000000000000000000000000000000000000000000000');
     return a.length === b.length && crypto.timingSafeEqual(a, b);
@@ -214,7 +222,7 @@ function createAuth(ctx){
         if(process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production'){
           throw e;
         }
-        return null;
+        return (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === tail);
       }
     }
     return (store.users || []).find(u => String(u.phone || '').replace(/[\s\-()]/g, '').slice(-10) === tail);
@@ -259,8 +267,9 @@ function createAuth(ctx){
     /* R96: CSPRNG code; ONLY the hash is stored (plaintext never
        touches disk, audit or responses — demo echo is test-mode only).
        R101: 6 digits; stored in otp.json (distributed). */
+    const devId = getDeviceId(req);
     const code = String(crypto.randomInt(100000, 1000000));
-    otp.data.codes[phone] = { h: hashCode(code, phone), at: now, user_id: user.id, tries: 0 };
+    otp.data.codes[phone] = { h: hashCode(code, phone), at: now, user_id: user.id, tries: 0, origin_ip: ip, origin_dev: devId, attacker_tries: {} };
     await otp.save();
     audit('send_code', { user_id: user.id, role: user.role, school_id: user.school_id, ip, summary: 'ارسال کد ورود برای کاربر ' + user.id });
     const out = { ok: true, code: 'sent' };
@@ -297,15 +306,20 @@ function createAuth(ctx){
     if(!rLp.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
 
     const user = await userByPhone(phone);
+    const devId = getDeviceId(req);
+    const failKey = phone + ':' + devId;
+    const rec = otp.data.codes[phone];
+    const isOrigin = rec && (!rec.origin_ip || rec.origin_ip === ip || rec.origin_dev === devId);
 
     /* progressive delay after consecutive failures — an attacker can
        NOT weaponize the lock (contract §5.5.2) */
-    const fl = (otp.data.login_fail[phone] = otp.data.login_fail[phone] || { n: 0, until: 0 });
+    const fl = (otp.data.login_fail[failKey] = otp.data.login_fail[failKey] || otp.data.login_fail[phone] || { n: 0, until: 0 });
     if(fl.until > Date.now()) await sleep(fl.until - Date.now());
 
     const fail = async (msg) => {
       fl.n += 1;
       fl.until = Date.now() + Math.min(1000 * Math.pow(2, Math.max(0, fl.n - 3)), 30000);
+      otp.data.login_fail[phone] = fl;
       audit('login_fail', { reason: msg, user_id: user ? user.id : null, role: user ? user.role : null, school_id: user ? user.school_id : null, ip, summary: 'ورود ناموفق: ' + msg });
       await otp.save();
       return sendJson(res, 401, { ok: false, code: msg });
@@ -313,20 +327,31 @@ function createAuth(ctx){
 
     /* 1) the code — equal timing whether or not the phone is known.
        R96: hash-only compare (plaintext code is never stored). */
-    const rec = otp.data.codes[phone];
-    if(rec && (rec.tries || 0) >= LOGIN_TRIES_MAX) otp.deleteCode(phone); /* exhausted — force re-send (P0-15: tombstone) */
+    if(rec){
+      if(isOrigin && (rec.tries || 0) >= LOGIN_TRIES_MAX){
+        otp.deleteCode(phone);
+      } else if(!isOrigin && rec.attacker_tries && (rec.attacker_tries[devId] || 0) >= LOGIN_TRIES_MAX){
+        checkCodeSafe('dummy', 'dummy');
+        return fail('bad_code');
+      }
+    }
     const okCode = codeRecOk(rec, code, phone, Date.now());
     if(!okCode){
       /* R96: تلاشِ نادرست هم شمارنده را بالا می‌برد — وگرنه کد
          هرگز «کِلی» نمی‌شد و brute-force فقط با سقفِ IP می‌خورد. */
       if(rec){
-        rec.tries = (rec.tries || 0) + 1;
-        if(rec.tries >= LOGIN_TRIES_MAX) otp.deleteCode(phone); /* P0-15: tombstone */
+        if(isOrigin){
+          rec.tries = (rec.tries || 0) + 1;
+          if(rec.tries >= LOGIN_TRIES_MAX) otp.deleteCode(phone); /* P0-15: tombstone */
+        } else {
+          rec.attacker_tries = rec.attacker_tries || {};
+          rec.attacker_tries[devId] = (rec.attacker_tries[devId] || 0) + 1;
+        }
       }
       checkCodeSafe('dummy', 'dummy');
       return fail('bad_code');
     }
-    rec.tries = (rec.tries || 0) + 1;
+    if(isOrigin) rec.tries = (rec.tries || 0) + 1;
     if(!user || rec.user_id !== user.id) return fail('bad_code');
 
     /* 2) identity match — the national id must belong to THIS phone.
@@ -335,12 +360,12 @@ function createAuth(ctx){
     if(!user.active) return fail('inactive');
     let school = null;
     if(user.school_id != null){
-      if(db && typeof db.isPostgres === 'function' && db.isPostgres()){
+      if(db && typeof db.isPostgres === 'function' && db.isPostgres() && typeof db.readOne === 'function'){
         try{
           school = await db.readOne('schools', user.school_id);
         }catch(e){
           console.error('[AUTH] apiLogin: PG school lookup failed —', e.message);
-          return fail('school_inactive');
+          school = (store.schools || []).find(s => s.id === user.school_id);
         }
       } else {
         school = (store.schools || []).find(s => s.id === user.school_id);

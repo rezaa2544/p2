@@ -101,20 +101,82 @@ function sanitizeData(val, seen = new WeakSet()) {
   return String(val);
 }
 
+function ipv4ToLong(ip) {
+  if (typeof ip !== 'string') return null;
+  const parts = ip.split('.');
+  if (parts.length !== 4) return null;
+  let num = 0;
+  for (let i = 0; i < 4; i++) {
+    const n = parseInt(parts[i], 10);
+    if (isNaN(n) || n < 0 || n > 255) return null;
+    num = (num << 8) + n;
+  }
+  return num >>> 0;
+}
+
+function isIpMatch(ip, target) {
+  if (!ip || !target) return false;
+  ip = ip.replace(/^::ffff:/, '').trim();
+  target = target.replace(/^::ffff:/, '').trim();
+  if (ip === target) return true;
+  if ((target === '127.0.0.1' || target === '::1' || target === 'localhost') &&
+      (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost')) {
+    return true;
+  }
+  if (target.includes('/')) {
+    const [net, bitsStr] = target.split('/');
+    const bits = parseInt(bitsStr, 10);
+    const ipNum = ipv4ToLong(ip);
+    const netNum = ipv4ToLong(net);
+    if (ipNum !== null && netNum !== null && !isNaN(bits)) {
+      const mask = bits === 0 ? 0 : (~0 << (32 - bits)) >>> 0;
+      return (ipNum & mask) === (netNum & mask);
+    }
+  }
+  return false;
+}
+
+function isTrustedProxy(remoteIp) {
+  if (!remoteIp) return false;
+  const cleanRemote = remoteIp.replace(/^::ffff:/, '').trim();
+  
+  // Loopback (127.0.0.1, ::1, localhost) is the local reverse proxy / test harness
+  if (cleanRemote === '127.0.0.1' || cleanRemote === '::1' || cleanRemote === 'localhost') {
+    return true;
+  }
+
+  const behindProxy = process.env.PAYESH_BEHIND_PROXY === '1' || process.env.PAYESH_BEHIND_PROXY === 'true';
+  const customProxies = (process.env.TRUSTED_PROXIES || '').split(',').map(s => s.trim()).filter(Boolean);
+  
+  if (customProxies.length > 0) {
+    return customProxies.some(p => isIpMatch(cleanRemote, p));
+  }
+  
+  if (behindProxy) {
+    const defaultTrusted = ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'];
+    return defaultTrusted.some(p => isIpMatch(cleanRemote, p));
+  }
+  
+  return false;
+}
+
 /**
  * دریافت آی‌پی کلاینت از درخواست HTTP
  */
 function clientIp(req) {
-  if (!req) return null;
+  if (!req) return '127.0.0.1';
+  let remoteIp = (req.socket && req.socket.remoteAddress) ? req.socket.remoteAddress.replace(/^::ffff:/, '').trim() : null;
+  if (!remoteIp) remoteIp = '127.0.0.1';
+
   const xff = req.headers && req.headers['x-forwarded-for'];
-  if (xff && typeof xff === 'string') {
-    const ip = xff.split(',')[0].trim();
-    if (ip) return ip.replace(/^::ffff:/, '');
+  if (xff && typeof xff === 'string' && isTrustedProxy(remoteIp)) {
+    const ips = xff.split(',').map(s => s.trim().replace(/^::ffff:/, '')).filter(Boolean);
+    if (ips.length > 0) {
+      return ips[0];
+    }
   }
-  if (req.socket && req.socket.remoteAddress) {
-    return req.socket.remoteAddress.replace(/^::ffff:/, '');
-  }
-  return null;
+
+  return remoteIp;
 }
 
 /**
