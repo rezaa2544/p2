@@ -14,7 +14,7 @@ const path = require('path');
 
 let JSDOM;
 try { ({ JSDOM } = require('jsdom')); }
-catch { console.log('⏭️  jsdom نصب نیست — تست رد شد.  (npm i --no-save jsdom)'); process.exit(0); }
+catch { console.log('⏭️  jsdom نصب نیست — تست رد شد.  (npm i --no-save jsdom)'); process.exit(1); }
 
 const ROOT = path.join(__dirname, '..');
 // hardening: rebuild base index.html (a previously crashed mutation suite may have left a mutated build)

@@ -658,9 +658,23 @@ const reportsRoutes = createReportsRoutes({ store, db, audit, markDirty, ids, de
 const analyticsRoutes = createAnalyticsRoutes({ store, db, audit, markDirty, ids, deleter }); /* P0-EI-09 */
 const bootstrapRoute = createBootstrapRoute({ store, db });
 const systemRoutes = createSystemRoutes({ store, db }); /* Phase 4 — P1-SC-01 */
-if (db) {
-  globalCanaryEngine.initDb(db).catch(() => {});
-}
+/* Root-cause elimination (RAM-as-authority audit): canary weights MUST be
+   hydrated from PostgreSQL BEFORE the socket serves traffic — the old
+   fire-and-forget `initDb(db).catch(()=>{})` silently served DEFAULT weights
+   after a restart until hydration happened to finish (stale routing window).
+   The promise is awaited by startListening below; failure is LOUD, not mute. */
+const canaryHydrated = db
+  ? Promise.resolve(dbReady)
+      .then(() => globalCanaryEngine.initDb(db))
+      .then(() => {
+        /* observable proof the SSoT load ran (silence here hid regressions) */
+        console.log('[CANARY] weights hydrated from PostgreSQL (cluster_weights SSoT, ' + globalCanaryEngine.clusters.size + ' clusters)');
+      })
+      .catch((e) => {
+        console.error('[CANARY] PostgreSQL hydration FAILED — serving traffic with persisted-weight UNKNOWN; rerouting decisions may diverge from cluster_weights:', e.message);
+        throw e;
+      })
+  : null;
 /* Delta Hardening Phase 2 (gap 2): signed TTL cursor — the resolved JWT key
    (env or key-file) feeds a domain-separated cursor key inside server/cursor.js;
    PAYESH_CURSOR_SECRET overrides it. */
@@ -1716,7 +1730,13 @@ if(require.main === module){
     try { persistStoreSync(); } catch (e) {}
     process.exit(1);
   }
-  const startListening = () => server.listen(PORT, HOST, () => {
+  const startListening = async () => {
+    if (canaryHydrated) {
+      /* Root-cause fix: no socket until canary weights are loaded (or loudly failed). */
+      try { await canaryHydrated; }
+      catch (e) { console.warn('[CANARY] boot continues WITHOUT persisted weights (loud degradation — see error above)'); }
+    }
+    server.listen(PORT, HOST, () => {
     const proto = (TLS_CERT && TLS_KEY) ? 'https' : 'http';
     console.log('payesh-server (phase 1' + (TLS_CERT ? ' + TLS' : '') + ') on ' + proto + '://' + HOST + ':' + PORT);
     console.log('  static : ' + path.join(ROOT, 'index.html'));
@@ -1726,7 +1746,8 @@ if(require.main === module){
     if(BACKUP_EVERY_MS > 0){
       console.log('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');
     }
-  });
+    });
+  };
   /* P0-1 — in production, listen() waits for database readiness. Without this
      the asynchronous gate loses the race with listen(): the process accepted
      connections for a few hundred ms and only then exited non-zero, which is

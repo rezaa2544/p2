@@ -29,7 +29,7 @@ try { pg = require('pg'); } catch(e) { pg = null; }
 
 if(!PGURL || !pg){
   console.log('⏭ p11-phone-auth-live: self-skip — P11_LIVE_PG یا ماژول pg نیست');
-  process.exit(0);
+  process.exit(1);
 }
 
 let pass = 0, fail = 0, fails = [];

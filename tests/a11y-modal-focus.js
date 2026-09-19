@@ -30,7 +30,7 @@ const path = require('path');
 
 let JSDOM;
 try { ({ JSDOM } = require('jsdom')); }
-catch { console.log('⏭️  jsdom نصب نیست — تست رد شد.'); process.exit(0); }
+catch { console.log('⏭️  jsdom نصب نیست — تست رد شد.'); process.exit(1); }
 
 const ROOT = path.join(__dirname, '..');
 try { require('child_process').execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}

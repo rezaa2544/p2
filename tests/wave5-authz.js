@@ -75,7 +75,7 @@ function httpReq(method, p, body, cookie) {
 main().catch((e) => { console.error(e); process.exit(1); });
 
 async function main() {
-  if (!fs.existsSync(REAL_STORE)) { console.log('⏭️  فروشگاه نیست — node server/seed.js'); process.exit(0); }
+  if (!fs.existsSync(REAL_STORE)) { console.log('⏭️  فروشگاه نیست — node server/seed.js'); process.exit(1); }
   console.log('\n▸ ویو ۵ — ایزولاسیون مستأجر و IDOR');
   const seed = JSON.parse(fs.readFileSync(REAL_STORE, 'utf8'));
 

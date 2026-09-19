@@ -180,7 +180,7 @@ class Phase6CanaryEngine {
    * ثبت کلاستر جدید در فابریک ترافیک ملی
    */
   async registerCluster(config, governanceContext = {}) {
-    this.assertGovernanceApproval(governanceContext, 'ثبت کلاستر جدید');
+    await this.assertGovernanceApproval(governanceContext, 'ثبت کلاستر جدید');
     if (!config || !config.id || !config.name || !Array.isArray(config.provinces)) {
       throw new Error('پیکربندی کلاستر ناقص است');
     }
@@ -226,7 +226,7 @@ class Phase6CanaryEngine {
    * حذف یا خارج‌سازی کلاستر
    */
   async unregisterCluster(clusterId, governanceContext = {}) {
-    this.assertGovernanceApproval(governanceContext, 'خارج‌سازی کلاستر');
+    await this.assertGovernanceApproval(governanceContext, 'خارج‌سازی کلاستر');
     if (!this.clusters.has(clusterId)) {
       const err = new Error(`کلاستر "${clusterId}" یافت نشد`);
       err.code = CANARY_ERRORS.CLUSTER_NOT_FOUND;
@@ -252,7 +252,7 @@ class Phase6CanaryEngine {
    * B1 & B2: تغییر وزن ترافیک کلاستر منطبق بر ADR-012 و ثبت در دیتابیس با OCC
    */
   async setTrafficWeight(clusterId, targetWeight, governanceContext = {}) {
-    this.assertGovernanceApproval(governanceContext, `تغییر وزن کلاستر به ${targetWeight}%`);
+    await this.assertGovernanceApproval(governanceContext, `تغییر وزن کلاستر به ${targetWeight}%`);
     const cluster = this.clusters.get(clusterId);
     if (!cluster) {
       const err = new Error(`کلاستر "${clusterId}" یافت نشد`);
@@ -277,16 +277,34 @@ class Phase6CanaryEngine {
       cluster.status = CANARY_STATES.HEALTHY;
     }
 
-    // B2: ثبت تراکنشی در PostgreSQL SSoT
+    // B2: ثبت تراکنشی در PostgreSQL SSoT — Root-cause fix (RAM-as-authority
+    // audit): the old `catch (_) {}` let the RAM weight CHANGE while PostgreSQL
+    // kept the OLD value (silent divergence; after a restart the persisted
+    // weight silently won back). Persistence failure now REVERTS the RAM
+    // change and propagates — the operator sees the real outcome.
     if (this.db && typeof this.db.query === 'function') {
       try {
-        await this.db.query(
-          `UPDATE phase6_canary_configs
-           SET traffic_weight = $1, version = version + 1, updated_by = $2, updated_at = NOW()
-           WHERE id = $3;`,
-          [weight, (governanceContext.operator && governanceContext.operator.id) || null, clusterId]
+        const res = await this.db.query(
+          `INSERT INTO phase6_canary_configs (id, name, provinces, primary_dc, secondary_dc, capacity_tps, traffic_weight, status, version)
+           VALUES ($3, $4, $5::jsonb, 'default-dc-01', 'default-dc-02', 2000, $1, 'HEALTHY', 2)
+           ON CONFLICT (id) DO UPDATE SET traffic_weight = $1, version = phase6_canary_configs.version + 1, updated_by = $2, updated_at = NOW();`,
+          [weight, (governanceContext.operator && governanceContext.operator.id) || null, clusterId, (this.clusters.get(clusterId) || {}).name || clusterId,
+           JSON.stringify((this.clusters.get(clusterId) || {}).provinces || [])]
         );
-      } catch (_) {}
+        if (!res || !(res.rowCount > 0)) {
+          const err = new Error('UPDATE/UPSERT وزن، هیچ ردیفی را تحت تأثیر نگذاشت (cluster missing in cluster_weights SSoT)');
+          err.code = 'CANARY_PERSIST_FAILED';
+          err.status = 503;
+          throw err;
+        }
+      } catch (e) {
+        cluster.weight = oldWeight;
+        cluster.version = (cluster.version || 2) - 1;
+        const err = new Error('ثبتِ پایدارِ وزن در PostgreSQL شکست خورد — تغییر اعمال نشد: ' + e.message);
+        err.code = 'CANARY_PERSIST_FAILED';
+        err.status = 503;
+        throw err;
+      }
     }
 
     await this.logAudit('WEIGHT_UPDATED', {
@@ -515,7 +533,7 @@ class Phase6CanaryEngine {
   /**
    * B3: بررسی الزامات حاکمیت اپراتور و امضای رمزنگاری طبق ADR-012
    */
-  assertGovernanceApproval(context, operationTitle) {
+  async assertGovernanceApproval(context, operationTitle) {
     if (
       !context ||
       context.approved !== true ||
@@ -541,7 +559,28 @@ class Phase6CanaryEngine {
         err.code = 'INVALID_OPERATOR_SIGNATURE';
         throw err;
       }
-      if (this.seenSignatures.has(context.signature)) {
+      // Root-cause fix (RAM-as-authority audit): the replay ledger used to be a
+      // RAM Set — a restart (or a second instance) FORGOT every consumed
+      // signature, so governance actions could be replayed across boots. The
+      // durable ledger is phase6_audit_events (every consumed signature is
+      // written there by logAudit). Fail-closed if the ledger is unreachable.
+      if (this.db && typeof this.db.query === 'function') {
+        let reusable = false;
+        try {
+          const r = await this.db.query('SELECT 1 FROM phase6_audit_events WHERE signature = $1 LIMIT 1;', [context.signature]);
+          reusable = !!(r && r.rows && r.rows.length);
+        } catch (e) {
+          const err = new Error('دفترِ حاکمیت (phase6_audit_events) در دسترس نیست — امضا fail-closed رد شد: ' + e.message);
+          err.code = 'GOVERNANCE_LEDGER_UNAVAILABLE';
+          err.status = 503;
+          throw err;
+        }
+        if (reusable || this.seenSignatures.has(context.signature)) {
+          const err = new Error('امضای امنیتی قبلاً مصرف شده است (Replay Signature Rejected)');
+          err.code = 'REPLAY_ATTACK_DETECTED';
+          throw err;
+        }
+      } else if (this.seenSignatures.has(context.signature)) {
         const err = new Error('امضای امنیتی قبلاً مصرف شده است (Replay Signature Rejected)');
         err.code = 'REPLAY_ATTACK_DETECTED';
         throw err;

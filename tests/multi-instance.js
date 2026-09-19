@@ -34,12 +34,12 @@ const ROOT = path.join(__dirname, '..');
 const REAL_STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
 if(!fs.existsSync(REAL_STORE)){
   console.log('⏭️  store موجود نیست — اول: node server/seed.js');
-  process.exit(0);
+  process.exit(1);
 }
 const SEED = JSON.parse(fs.readFileSync(REAL_STORE, 'utf8'));
 const SEED_SU = (SEED.users || []).find((u) => u.role === 'superadmin');
 const SEED_MGR = (SEED.users || []).find((u) => u.role === 'manager' && String(u.phone || '').length >= 10);
-if(!SEED_SU || !SEED_MGR){ console.log('⏭️  superadmin/manager در seed نیست — seed بازنشانی شود'); process.exit(0); }
+if(!SEED_SU || !SEED_MGR){ console.log('⏭️  superadmin/manager در seed نیست — seed بازنشانی شود'); process.exit(1); }
 const SU_PHONE = String(SEED_SU.phone).replace(/[\s\-()]/g, '');
 const MGR_PHONE = String(SEED_MGR.phone).replace(/[\s\-()]/g, '');
 /* ۷ تلفنِ جدا برایِ سقفِ IP (هرکدام یک‌بار) */
@@ -47,7 +47,7 @@ const POOL = (SEED.users || [])
   .map((u) => String(u.phone || '').replace(/[\s\-()]/g, ''))
   .filter((p) => p.length >= 10 && p !== SU_PHONE && p !== MGR_PHONE)
   .slice(0, 7);
-if(POOL.length < 7){ console.log('⏭️  تلفنِ کافی در seed نیست'); process.exit(0); }
+if(POOL.length < 7){ console.log('⏭️  تلفنِ کافی در seed نیست'); process.exit(1); }
 
 let pass = 0, fail = 0; const fails = [];
 function chk(name, cond, extra){

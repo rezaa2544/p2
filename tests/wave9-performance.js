@@ -42,7 +42,7 @@ const ROOT = path.join(__dirname, '..');
 const REAL_STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
 if (!fs.existsSync(REAL_STORE)) {
   console.log('⏭️  store موجود نیست — اول: node server/seed.js');
-  process.exit(0);
+  process.exit(1);
 }
 
 /* ── فایل‌های ایزولهٔ این اجرا (پیش از requireِ سرور) ─────────────── */

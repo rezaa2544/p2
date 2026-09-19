@@ -16,7 +16,7 @@ const fs = require('fs');
 const path = require('path');
 const PGURL = process.env.P11_LIVE_PG || '';
 let pg = null; try { pg = require('pg'); } catch(e) {}
-if(!PGURL || !pg){ console.log('⏭ self-skip'); process.exit(0); }
+if(!PGURL || !pg){ console.log('⏭ self-skip'); process.exit(1); }
 
 const N = Number(process.env.P11_BENCH_N || 1000000);
 const pct = (arr, p) => arr[Math.min(arr.length - 1, Math.floor(arr.length * p))];
