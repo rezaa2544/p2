@@ -54,4 +54,43 @@ function bump(rec) {
   return rec.version;
 }
 
-module.exports = { checkOcc, bump };
+/* Phase-2 remediation (BLOCKER 4): a rejected concurrent write is a REAL
+   conflict and must be RECORDED in sync_conflicts (SSoT), no matter WHICH layer
+   rejected it — the PG layer records rowCount=0 rejections inside the routes'
+   catch blocks; this helper records the read-layer (checkOcc) rejections so
+   EVERY 409 on a versioned PATCH lands in sync_conflicts. Best-effort: a
+   recording failure never changes the 409 contract. */
+async function recordRejectedConflict(ctx, { collection, rec, user, base, body }) {
+  try {
+    const store = ctx && ctx.store;
+    const db = ctx && ctx.db;
+    const ids = ctx && ctx.ids;
+    const nowIso = new Date().toISOString();
+    const cf = {
+      id: ids ? await ids.nextId('sync_conflicts', (store && store.sync_conflicts) || []) : Date.now(),
+      collection,
+      record_id: rec && rec.id != null ? rec.id : null,
+      school_id: rec && rec.school_id != null ? rec.school_id : null,
+      user_id: user && user.id != null ? user.id : null,
+      client_uid: null,
+      base_version: base != null && base !== '' ? Number(base) : null,
+      server_version: rec && rec.version != null ? Number(rec.version) : null,
+      client_data: Object.assign({}, body || {}),
+      server_state: Object.assign({}, rec || {}),
+      incoming: { data: Object.assign({}, body || {}), by: user && user.id, at: nowIso },
+      status: 'open',
+      created_at: nowIso,
+      updated_at: nowIso
+    };
+    if (store) {
+      if (!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
+      store.sync_conflicts.push(cf);
+    }
+    if (db && typeof db.persistOpsBatch === 'function') {
+      await db.persistOpsBatch([{ c: 'sync_conflicts', t: 'ins', data: cf }]).catch(() => {});
+    }
+    return cf;
+  } catch (e) { return null; }
+}
+
+module.exports = { checkOcc, bump, recordRejectedConflict };

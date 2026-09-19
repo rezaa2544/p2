@@ -125,6 +125,13 @@ function createConflicts(ctx) {
       if (typeof incData === 'string') {
         try { incData = JSON.parse(incData); } catch (e) { incData = {}; }
       }
+      /* P0 fix (Phase-2 remediation, found live via R95 server15 C15): incoming
+         is stored as the ENVELOPE { data, by, at, op_uid } — the adjudicator's
+         payload lives under .data. Applying the envelope verbatim wrote junk
+         fields (data/by/at) onto the record and never landed the client's
+         values, so 'incoming wins' silently did nothing (score stayed 12.5).
+         Unwrap the envelope first. */
+      if (incData && typeof incData === 'object' && incData.data && typeof incData.data === 'object') incData = incData.data;
       if (!incData || typeof incData !== 'object') incData = {};
 
       const nextVer = (Number(c.server_version) || 1) + 1;

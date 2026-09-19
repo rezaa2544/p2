@@ -88,13 +88,27 @@ function createOutbox({ store, db }) {
     if (store.outbox.length > OUTBOX_CAP) {
       store.outbox.splice(0, store.outbox.length - OUTBOX_CAP);
     }
+    /* Phase-2 remediation (live finding): the insert is ON CONFLICT (id) DO
+       NOTHING, so a desynced sequence (manual insert / restore / crash artifact)
+       silently DROPPED the event — a deleted record then never reached the
+       outbox at all (reproduced live: nextval restarted at 1 while ids 1,2
+       existed). On a unique violation, take a fresh id and retry once. */
+    const insertOnce = async (q) => {
+      try { await q.query(outboxInsertSql, outboxParams(evt)); }
+      catch (e) {
+        if (e && e.code === '23505' && pgSeq) {
+          evt.id = await nextPgId();
+          await q.query(outboxInsertSql, outboxParams(evt));
+        } else { throw e; }
+      }
+    };
     if (client) {
-      await client.query(outboxInsertSql, outboxParams(evt)); /* Wave1-W: داخل تراکنش */
+      await insertOnce(client); /* Wave1-W: داخل تراکنش */
       return evt;
     }
     if (isPg()) {
       try {
-        await db.query(outboxInsertSql, outboxParams(evt));
+        await insertOnce(db);
       } catch (e) { /* جدول در دسترس نیست — منبع حقیقت اسنپ‌شات است */ }
     }
     return evt;
@@ -224,7 +238,28 @@ function createOutbox({ store, db }) {
   /**
    * Step 10: Route poisoned event to server_outbox_dlq
    */
-  async function moveToDlq(evt, errorMessage) {
+  async function moveToDlq(evtOrId, errorMessage) {
+    /* B3 (Phase-2 remediation directive): moveToDlq accepts a full event object
+       OR a bare event id. With an id, the row is resolved first (SELECT ...
+       WHERE id=$1 in PG / the RAM queue otherwise) and then transferred to the
+       DLQ with the source row marked dead_letter. */
+    let evt = evtOrId;
+    if (evt == null || typeof evt !== 'object') {
+      const wantId = Number(evtOrId);
+      if (!Number.isFinite(wantId)) return null;
+      if (isPg()) {
+        try {
+          const r = await db.query(
+            `SELECT id, type, collection, record_id, actor_id, version, payload, retry_count, last_error
+             FROM server_outbox WHERE id = $1;`, [wantId]);
+          if (!r || !r.rows || !r.rows.length) return null;
+          evt = r.rows[0];
+        } catch (e) { return null; }
+      } else {
+        evt = (store.outbox || []).find((e) => Number(e.id) === wantId);
+        if (!evt) return null;
+      }
+    }
     if (isPg()) {
       try {
         await db.query(
@@ -233,13 +268,16 @@ function createOutbox({ store, db }) {
           [evt.id, evt.type, evt.collection, evt.record_id, evt.actor_id, evt.version, JSON.stringify(evt.payload), String(errorMessage), evt.retry_count || 5]
         );
         await mark(evt.id, { status: 'dead_letter', last_error: errorMessage });
+        return { ok: true, id: evt.id, status: 'dead_letter', error_message: String(errorMessage) };
       } catch (e) {
         console.warn('[Outbox DLQ] Failed to write to DLQ:', e.message);
+        return { ok: false, id: evt.id, error: e.message };
       }
     } else {
       if (!Array.isArray(store.outbox_dlq)) store.outbox_dlq = [];
       store.outbox_dlq.push(Object.assign({}, evt, { error_message: errorMessage, failed_at: new Date().toISOString() }));
       await mark(evt.id, { status: 'dead_letter', last_error: errorMessage });
+      return { ok: true, id: evt.id, status: 'dead_letter', error_message: String(errorMessage) };
     }
   }
 

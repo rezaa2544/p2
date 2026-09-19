@@ -43,9 +43,21 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
+      # Phase-2 remediation (BLOCKER 8): Redis is a first-class dependency too —
+      # otp-redis and the fail-closed probe run against this real service.
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
 
     env:
       PGURL: postgres://payesh:payesh@127.0.0.1:5432/payesh_ci
+      REDIS_URL: redis://127.0.0.1:6379
 
     steps:
     - uses: actions/checkout@v4
@@ -72,7 +84,10 @@ jobs:
           echo "== rolling back $f"
           psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$f" || { echo "FAILED at $f"; exit 1; }
         done
-        echo "rollback chain clean"
+        # BLOCKER 1 acceptance: DOWN ALL must leave NOTHING behind
+        LEFT=$(psql "$PGURL" -t -A -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';")
+        echo "tables left after DOWN ALL: $LEFT"
+        [ "$LEFT" = "0" ] || { echo "DOWN ALL not clean — $LEFT table(s) left"; exit 1; }
 
     - name: Re-apply clean chain for the live-PG suites
       run: |
@@ -88,6 +103,23 @@ jobs:
         node tests/wave3-query.js
         node tests/wave3-query3.js
         node tests/wave3-parity.js
+
+    # Phase-2 remediation (BLOCKER 5 + 8): Redis is live in CI now
+    - name: Live-Redis suite (otp-redis — fails without Redis)
+      run: node tests/otp-redis.js
+
+    - name: Redis outage ⇒ auth fails CLOSED (BLOCKER 5)
+      run: node tests/phase2-redis-fail-closed.js
+
+    - name: OCC across two real instances — 10 concurrent writers (BLOCKER 4)
+      run: |
+        export DATABASE_URL="$PGURL"
+        node tests/phase2-occ-multi.js
+
+    - name: Outbox crash/restart replay + real DLQ row (BLOCKER 3)
+      run: |
+        export DATABASE_URL="$PGURL"
+        node tests/phase2-outbox-failover.js
 
     - run: npm run build --if-present
     - run: npm test

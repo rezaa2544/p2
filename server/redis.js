@@ -81,8 +81,10 @@ function buildRedisConfig(env) {
     lazyConnect: true,
     enableOfflineQueue: false,
     retryStrategy: (times) => {
-      if (times > 3) return null; // Fallback after 3 attempts
-      return Math.min(times * 200, 1000);
+      /* Phase-2 remediation: never abandon the connection permanently — a short
+         outage used to kill the client forever (status 'end'), so recovery after
+         fail-closed was impossible. Always reconnect, capped backoff. */
+      return Math.min(times * 200, 2000);
     }
   };
 
@@ -295,6 +297,13 @@ function prodNoRedis(op){
   if(IS_PRODUCTION && !isRedis()) throw new Error('Redis unavailable in production (fail-closed): ' + op);
 }
 function prodRethrow(err){
+  /* B5 (Phase-2 remediation directive): when a Redis is explicitly CONFIGURED
+     (REDIS_URL set) an outage must NEVER degrade into the in-process RAM
+     fallback — `allowed:true` under outage is the exact forbidden behavior.
+     Configured+down now ALWAYS rethrows (the callers map it to REDIS_REQUIRED /
+     503); only the not-configured memory mode (activeMode === 'memory') keeps
+     the dev-only RAM path below. */
+  if (activeMode !== 'memory') throw err;
   if(IS_PRODUCTION) throw err;
 }
 
@@ -797,6 +806,9 @@ async function close() {
 module.exports = {
   init,
   isRedis,
+  /* B5: configured-vs-alive introspection for fail-closed callers */
+  isConfigured: () => activeMode !== 'memory',
+  isAlive: () => isRedisActive,
   getStatus,
   buildRedisConfig,
   ready,

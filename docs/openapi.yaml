@@ -1676,6 +1676,245 @@ paths:
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /api/v1/system/phase6/canary/status:
+    get:
+      tags: [observability]
+      summary: فاز ۶ — تابلوی وضعیت زندهٔ فابریک ترافیک قناری (اوزان و شاخص‌های SLO)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: اسنپ‌شات کامل موتور قناری
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+                  canary_fabric: { type: object, description: snapshot کامل globalCanaryEngine }
+                  timestamp: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/v1/system/phase6/canary/promote:
+    post:
+      tags: [observability]
+      summary: فاز ۶ — ارتقای وزن ترافیک قناری با حاکمیت و امضای اپراتور (B3)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cluster_id, target_weight]
+              properties:
+                cluster_id: { type: string }
+                target_weight: { type: number, minimum: 0, maximum: 100 }
+                approved: { type: boolean, default: false }
+                signature: { type: string, description: امضای اپراتور (یا سرآیند x-operator-signature) }
+                reason: { type: string }
+      responses:
+        '200':
+          description: وزن ترافیک ارتقا یافت
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+                  cluster: { type: object }
+                  message: { type: string }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: forbidden | PHASE6_APPROVAL_REQUIRED | INVALID_OPERATOR_SIGNATURE
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+
+  /api/v1/system/phase6/canary/circuit-breaker:
+    post:
+      tags: [observability]
+      summary: فاز ۶ — مدیریت مدارشکن کلاستر قناری (باز/بستن دستی، DC ثانویه، وضعیت)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cluster_id]
+              properties:
+                cluster_id: { type: string }
+                circuit_breaker_open: { type: boolean }
+                secondary_dc: { type: string }
+                status: { type: string }
+      responses:
+        '200':
+          description: وضعیت کلاستر به‌روزرسانی شد
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+                  cluster: { type: object }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: cluster_not_found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+
+  /api/v1/system/phase6/canary/rollback:
+    post:
+      tags: [observability]
+      summary: فاز ۶ — رول‌بک اضطراری و تخلیهٔ کامل ترافیک قناری به ۰٪ (B4)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cluster_id]
+              properties:
+                cluster_id: { type: string }
+                reason: { type: string }
+      responses:
+        '200':
+          description: تخلیهٔ کامل انجام شد
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+                  cluster_id: { type: string }
+                  drained: { type: boolean }
+                  target_weight: { type: number }
+                  message: { type: string }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500':
+          description: ROLLBACK_FAILED
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+
+  /api/system/canary/status:
+    get:
+      tags: [observability]
+      summary: مستعارِ فاز ۶ — همان GET /api/v1/system/phase6/canary/status (مسیر مستقیم index.js)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: اسنپ‌شات موتور قناری
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/system/canary/promote:
+    post:
+      tags: [observability]
+      summary: مستعارِ فاز ۶ — همان POST /api/v1/system/phase6/canary/promote
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cluster_id, target_weight]
+              properties:
+                cluster_id: { type: string }
+                target_weight: { type: number, minimum: 0, maximum: 100 }
+                approved: { type: boolean }
+                signature: { type: string }
+                reason: { type: string }
+      responses:
+        '200':
+          description: وزن ترافیک ارتقا یافت
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/system/canary/rollback:
+    post:
+      tags: [observability]
+      summary: مستعارِ فاز ۶ — همان POST /api/v1/system/phase6/canary/rollback
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cluster_id]
+              properties:
+                cluster_id: { type: string }
+                reason: { type: string }
+      responses:
+        '200':
+          description: تخلیهٔ کامل انجام شد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/system/canary/circuit-breaker:
+    post:
+      tags: [observability]
+      summary: مستعارِ فاز ۶ — همان POST /api/v1/system/phase6/canary/circuit-breaker
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cluster_id]
+              properties:
+                cluster_id: { type: string }
+                circuit_breaker_open: { type: boolean }
+                secondary_dc: { type: string }
+                status: { type: string }
+      responses:
+        '200':
+          description: وضعیت کلاستر به‌روزرسانی شد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: cluster_not_found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+
 components:
   schemas:
     OkResponse:

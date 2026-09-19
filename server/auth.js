@@ -248,11 +248,19 @@ function createAuth(ctx){
     /* R dist: شمارنده‌ها در Redis (fixed-window اتمیک)؛ cooldown/codes در otp.json می‌مانند.
        ترتیب و codeها عینِ قراردادِ قفل‌شده؛ روزانه = غلتانِ ۲۴ساعته (نه مرزِ UTC). */
     const rlw = Math.max(1, Math.round(WINDOW_MS / 1000));
-    const rDaily = await rateLimit.checkRateLimit({ prefix: 'otp:send:phone:day', identifier: phone, limit: CODE_DAILY_MAX, windowSeconds: 86400 });
+    /* B5 (Phase-2 remediation): REDIS_URL configured + Redis down ⇒ 503 fail-closed
+       (never a 200/429 that implies the limiter saw the request). */
+    let rDaily, rIp, rPh;
+    try {
+      rDaily = await rateLimit.checkRateLimit({ prefix: 'otp:send:phone:day', identifier: phone, limit: CODE_DAILY_MAX, windowSeconds: 86400 });
+      rIp = await rateLimit.checkRateLimit({ prefix: 'otp:send:ip', identifier: ip, limit: IP_SEND_MAX, windowSeconds: rlw });
+      rPh = await rateLimit.checkRateLimit({ prefix: 'otp:send:phone', identifier: phone, limit: PHONE_SEND_MAX, windowSeconds: rlw });
+    } catch (rlErr) {
+      if (rlErr && rlErr.code === 'REDIS_REQUIRED') return sendJson(res, 503, { ok: false, code: 'redis_required' });
+      throw rlErr;
+    }
     if(!rDaily.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
-    const rIp = await rateLimit.checkRateLimit({ prefix: 'otp:send:ip', identifier: ip, limit: IP_SEND_MAX, windowSeconds: rlw });
     if(!rIp.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
-    const rPh = await rateLimit.checkRateLimit({ prefix: 'otp:send:phone', identifier: phone, limit: PHONE_SEND_MAX, windowSeconds: rlw });
     if(!rPh.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
     cd[phone] = now;
     await otp.save(); /* cooldown (+codes پایین‌تر) — در حالت ردیس فلاش می‌شود */
@@ -297,12 +305,16 @@ function createAuth(ctx){
     const ip = clientIp(req);
     await otp.reloadIfChanged();
     /* R dist: شمارندهٔ login در Redis (اتمیک)؛ login_fail (تأخیرِ تصاعدی) در حالتِ فروشگاه می‌ماند. */
-    const rLi = await rateLimit.checkRateLimit({ prefix: 'otp:login:ip', identifier: ip, limit: IP_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });
+let rLi, rLp;
+    try {
+      rLi = await rateLimit.checkRateLimit({ prefix: 'otp:login:ip', identifier: ip, limit: IP_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });
+      rLp = await rateLimit.checkRateLimit({ prefix: 'otp:login:phone', identifier: phone, limit: PHONE_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });
+    } catch (rlErr) {
+      /* B5: fail-closed on Redis outage (REDIS_URL configured) */
+      if (rlErr && rlErr.code === 'REDIS_REQUIRED') return sendJson(res, 503, { ok: false, code: 'redis_required' });
+      throw rlErr;
+    }
     if(!rLi.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
-    /* P0 #6 — سقفِ سختِ per-phone: brute-force چند-IP علیه یک شماره به
-       این سقف می‌خورد (در کنارِ IP-cap + تلاش‌هایِ کد + تأخیرِ تصاعدی).
-       پیش‌فرضِ 50 مصلحتِ آزمون‌هایِ موجود است؛ تولید: با env تنگ‌تر. */
-    const rLp = await rateLimit.checkRateLimit({ prefix: 'otp:login:phone', identifier: phone, limit: PHONE_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });
     if(!rLp.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
 
     const user = await userByPhone(phone);

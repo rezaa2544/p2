@@ -241,7 +241,8 @@ async function seedPgFromBootstrap(store, db) {
     try {
       const er = await db.query('SELECT (SELECT COUNT(*) FROM users) AS u, (SELECT COUNT(*) FROM schools) AS s');
       const pgEmpty = Number(er.rows[0].u) === 0 && Number(er.rows[0].s) === 0;
-      keepBootstrap = pgEmpty && Array.isArray(store.users) && store.users.length > 0;
+      keepBootstrap = pgEmpty && Array.isArray(store.users) && store.users.length > 0
+        && process.env.PAYESH_FORCE_HYDRATION !== '1';   /* B7: explicit force overrides the guard */
     } catch (e) { /* tables missing ⇒ not a clean-empty PG — hydrate as before */ }
     if (keepBootstrap) {
       console.log('[store] PG is empty and a bootstrap JSON store is present — hydration SKIPPED (P0-BUG-04 guard); seeding PG from the bootstrap store now (one-time)...');
