@@ -17,6 +17,7 @@
 'use strict';
 
 const policy = require('../policy');
+const authority = require('../infrastructure/authority');
 
 /**
  * Middleware factory to require specific roles
@@ -44,6 +45,40 @@ function requireRoles(...allowedRoles) {
 
     if (next) next();
     return true;
+  };
+}
+
+/**
+ * Zero Trust Tenant Boundary Middleware.
+ * Enforces PostgreSQL tenant_policy lookup on incoming requests.
+ */
+function assertTenantBoundary() {
+  return async function tenantMiddleware(req, res, next) {
+    const user = req.user || req.session;
+    if (!user) {
+      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, code: 'unauthorized', message: 'نیاز به احراز هویت است' }));
+      return false;
+    }
+
+    if (user.role === 'superadmin') {
+      if (next) next();
+      return true;
+    }
+
+    const province = req.headers['x-province-code'] || user.province_id || 'ALL';
+    const schoolId = user.school_id || req.headers['x-school-id'] || null;
+
+    try {
+      const tenantPol = await authority.getTenantPolicy(province, schoolId);
+      req.tenantPolicy = tenantPol;
+      if (next) next();
+      return true;
+    } catch (err) {
+      res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, code: 'tenant_boundary_violation', message: 'تخطی از محدوده سازمانی مستأجر' }));
+      return false;
+    }
   };
 }
 
@@ -90,5 +125,6 @@ function filterByScope(user, records, coll, store) {
 module.exports = {
   requireRoles,
   checkSchoolScope,
-  filterByScope
+  filterByScope,
+  assertTenantBoundary
 };

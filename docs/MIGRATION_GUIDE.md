@@ -270,8 +270,9 @@ $ node tools/migrate-helper.js --next
 | ۰۱۴ | `014_outbox_dlq.sql` / `.down` | صفِ نامه‌های مرده (DLQ) + ایندکس‌های کارگرِ صندوق خروجی (server_outbox) | مرج (فاز ۵) |
 | ۰۱۵ | `015_phase6_canary_configs.sql` / `.down` | جداول کلاسترهای کستری و رویدادهای ممیزی اپراتوری (Canary Configurations & Audit SSoT) | مرج (فاز ۶) |
 | ۰۱۶ | `016_phase1_security_and_constraints.sql` / `.down` | ستون‌های حذف نرم (deleted_at) + ایندکس‌های دامنه و قیدهای یکتایی جزئی | مرج (فاز ۱) |
+| ۰۱۷ | `017_phase7_authority_foundation.sql` / `.down` | زیرساخت مرجعیت واحد (canary_state, governance_ledger, tenant_policy, system_audit) | مرج (فاز ۷) |
 
-> مهاجرت بعدی شمارهٔ `017` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را به جدول اضافه کند — مالک: نویسندهٔ مهاجرت.
+> مهاجرت بعدی شمارهٔ `018` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را به جدول اضافه کند — مالک: نویسندهٔ مهاجرت.
 
 ---
 
