@@ -92,8 +92,8 @@ async function bootServer(port, extraEnv) {
   for (let i = 0; i < 50; i++) {
     const h = await req('GET', port, '/api/health', null, null, useTls ? https : http);
     if (h.status === 200 && h.json && h.json.ok) {
-      if (h.json.pid === p.pid) return p;
-      try { process.kill(h.json.pid); } catch (e) {} /* سرورِ ماندهٔ اجرایِ پیشین */
+      if (Number(h.json.pid) === p.pid) return p;
+      try { process.kill(Number(h.json.pid)); } catch (e) {} /* سرورِ ماندهٔ اجرایِ پیشین */
     }
     if (p.exitCode !== null) return null;
     await sleep(300);
