@@ -3338,6 +3338,22 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
   ۵. تأیید صریح قراردادهای رفتاری: نقش هم‌تیمی و مهندس ارشد، روال ۸ مرحله‌ای، الزام اسکیل‌ها پیش از کار، و استناد به داده‌های سنجیده‌شده.
 - **وضعیت:** سند ساخته شد، به `docs/AI_PROMPT.md` پیوند خورد، کامیت و به `origin/main` پوش گردید.
 
+## Phase 7.6-R.5 Hotfix — Canary Atomic Audit Wiring Closure — ✅ (2026-09-19)
+
+- **طبق اسکیل‌ها:** طبق `security-review-payesh` (بازبینی ترنزکشن و اتمیسیتی)، `payesh-standards` (بازبینی و اجرای آزمون‌های کامل)، و `qa-testing` (اجرای آزمون‌های ۵‌گانه و اتمی زنده).
+- **اقدامات انجام‌شده:**
+  ۱. **اتصال موتور قناری به Atomic Authority API (`Task 1 & 2`):** متد `setTrafficWeight()` در `server/infrastructure/phase6-canary-engine.js` بازنویسی شد تا در لایهٔ Authority مستقیماً از `authority.updateCanaryWeightWithAudit()` استفاده کند. الگوی غیراتمی قدیمی (`updateCanaryWeight` + `logAudit`) کاملاً حذف گردید. در صورت عدم وجود متد اتمی، با کد `ATOMIC_CANARY_UPDATE_UNAVAILABLE` خطا داده شده و به الگوی غیراتمی تنزل پیدا نمی‌کند.
+  ۲. **حذف Dead Code Middleware (`Task 3`):** فایل بدون استفاده `server/middleware/scope.js` پس از بررسی و ثبت مدارک عدم وجود `require` فعال در `server/` به طور کامل با `git rm` حذف گردید.
+  ۳. **ساخت تست اتمیسیتی زنده (`Task 4`):** فایل `tests/canary-atomic-runtime.js` ایجاد شد. این تست اثبات می‌کند که در صورت بروز خطای درج آدیت در دیتابیس، کل ترنزکشن به صورت اتمی ROLLBACK شده، وزن اولیه (weight = 10) دست‌نخورده باقی می‌ماند و تعداد سطرهای آدیت برابر ۰ می‌شود (`UPDATE + AUDIT = ONE TRANSACTION`).
+  ۴. **اجرای کامل سوئیت‌های رگرسیون (`Task 5`):**
+     - `node tests/unified-production-verifier.js` (14/14 PASS GREEN)
+     - `node tests/canary-atomic-runtime.js` (6/6 PASS GREEN)
+     - `node tests/migration-sequence.js` (19/19 PASS GREEN)
+     - `node tests/migrate-pg-constraints.js` (14/14 PASS GREEN)
+     - `node tests/server17.js` (70/70 PASS GREEN)
+- **وضعیت:** کامیت `2edca2b` به `origin/main` پوش گردید.
+
+
 
 
 
