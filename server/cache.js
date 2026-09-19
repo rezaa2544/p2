@@ -312,14 +312,19 @@ function __inflightForTests() {
  * Distributed Rate Limiting (fixed-window)
  * Wave 6: اتمیک — شمارش با `incrWithTtl` (INCR+EXPIRE در یک اسکرپت)؛
  * نسخهٔ پیشین GET+SET غیراتوم بود و زیر burstِ هم‌زمان سقف را رد می‌کرد.
- * خطا = fail-open (allowed:true) — مثلِ server/rate-limit.js؛ لبهٔ سخت
- * (nginx/Cloudflare) کنترلِ سختِ نرخ می‌ماند.
+ * خطا در تولید / با REDIS_URL = fail-closed (REDIS_UNAVAILABLE).
+ * fallback RAM فقط وقتی REDIS_URL و NODE_ENV=production هر دو غایب‌اند
+ * (واحدهای تست بدون ردیس). مسیر auth از server/rate-limit.js است.
  * @param {string} identifier - e.g., IP address or Phone
  * @param {string} action - e.g., 'send_code', 'login', 'api'
  * @param {number} limit - max allowed attempts
  * @param {number} windowSeconds - time window in seconds
  * @returns {Promise<{ allowed: boolean, remaining: number, resetSeconds: number }>}
  */
+function mustFailClosedOnRedis() {
+  return !!(process.env.REDIS_URL || process.env.NODE_ENV === 'production');
+}
+
 async function checkRateLimit(identifier, action, limit = 10, windowSeconds = 60) {
   const key = `payesh:rl:${action}:${identifier}`;
   try {
@@ -334,9 +339,14 @@ async function checkRateLimit(identifier, action, limit = 10, windowSeconds = 60
       resetSeconds: await redis.ttl(key)
     };
   } catch (e) {
-    /* Phase 5 (P2-NI-05): Redis outage must NEVER fail open (ALLOW ALL is strictly forbidden).
-       Switches immediately to in-process local rate limiter to enforce quotas fail-safe. */
     metrics.inc('payesh_rate_limit_redis_failures_total', { action: String(action || 'unknown').slice(0, 32) });
+    if (mustFailClosedOnRedis()) {
+      const err = new Error('REDIS_UNAVAILABLE');
+      err.code = 'REDIS_UNAVAILABLE';
+      err.status = 503;
+      err.cause = e;
+      throw err;
+    }
     const fallback = checkLocalFallbackRateLimit(key, limit, windowSeconds);
     metrics.inc('payesh_rate_limit_decisions_total', {
       action: String(action || 'unknown').slice(0, 32),

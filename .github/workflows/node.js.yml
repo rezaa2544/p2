@@ -126,5 +126,10 @@ jobs:
         export DATABASE_URL="$PGURL"
         node tests/phase65-runtime-truth.js
 
+    - name: Production Truth Gate — 5 gates, VERIFIED or NOT VERIFIED
+      run: |
+        export DATABASE_URL="$PGURL"
+        node tools/production-truth-gate.js
+
     - run: npm run build --if-present
     - run: npm test

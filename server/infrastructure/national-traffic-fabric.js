@@ -30,6 +30,7 @@ const {
 } = require('./national-capacity-enforcement');
 
 const { CROSS_REGION_RECOVERY_MAP } = require('./disaster-recovery');
+const opsKv = require('./ops-kv');
 
 const TRAFFIC_FABRIC_ERRORS = Object.freeze({
   APPROVAL_REQUIRED: 'PHASE5_NATIONAL_TRAFFIC_APPROVAL_REQUIRED',
@@ -63,6 +64,37 @@ function initTrafficWeights() {
 }
 
 initTrafficWeights();
+
+const OPS_KEY = 'national_traffic_weights';
+
+function dumpWeights() {
+  const dump = {};
+  for (const [id, row] of _nationalTrafficWeights.entries()) dump[id] = row;
+  return dump;
+}
+
+async function refreshTrafficFromSoT() {
+  if (!opsKv.attached()) return false;
+  const saved = await opsKv.get(OPS_KEY);
+  if (!saved || typeof saved !== 'object') return false;
+  for (const [id, row] of Object.entries(saved)) {
+    if (row && typeof row === 'object') _nationalTrafficWeights.set(id, row);
+  }
+  return true;
+}
+
+async function persistTrafficToSoT() {
+  if (!opsKv.attached()) {
+    if (process.env.DATABASE_URL) {
+      const err = new Error('OPS_KV_UNAVAILABLE: PostgreSQL SoT is not attached');
+      err.code = 'OPS_KV_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return;
+  }
+  await opsKv.set(OPS_KEY, dumpWeights());
+}
 
 /**
  * دریافت توپولوژی و نقشه توزیع ترافیک ملی
@@ -123,7 +155,7 @@ function getNationalTrafficFabricTopology() {
  * @param {Object} approvalContext
  * @returns {Object}
  */
-function updateNationalTrafficWeight(regionId, targetWeight, approvalContext = {}) {
+async function updateNationalTrafficWeight(regionId, targetWeight, approvalContext = {}) {
   const current = _nationalTrafficWeights.get(regionId);
   if (!current) {
     const err = new Error(`کلاستر "${regionId}" در فابریک ترافیک ملی یافت نشد`);
@@ -216,6 +248,7 @@ function updateNationalTrafficWeight(regionId, targetWeight, approvalContext = {
   };
 
   _nationalTrafficWeights.set(regionId, updated);
+  await persistTrafficToSoT();
   assertNoZeroRanking(updated);
   return deepFreeze(updated);
 }
@@ -224,5 +257,6 @@ module.exports = {
   TRAFFIC_FABRIC_ERRORS,
   ALLOWED_TRAFFIC_WEIGHTS,
   getNationalTrafficFabricTopology,
-  updateNationalTrafficWeight
+  updateNationalTrafficWeight,
+  refreshTrafficFromSoT
 };

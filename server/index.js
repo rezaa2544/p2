@@ -270,6 +270,14 @@ async function seedPgFromBootstrap(store, db) {
         (h.capped && h.capped.length ? ' (capped: ' + h.capped.join(',') + ')' : '') +
         (h.env_skipped && h.env_skipped.length ? ' (env-skipped: ' + h.env_skipped.join(',') + ')' : ''));
     } catch (e) { console.warn('[DB] Hydration warning:', e.message); }
+    try {
+      require('./infrastructure/ops-kv').attach(db);
+      await require('./infrastructure/national-traffic-fabric').refreshTrafficFromSoT();
+      console.log('[OPS-KV] attached — Phase-5 traffic fabric hydrates from phase6_ops_kv');
+    } catch (e) {
+      console.error('[OPS-KV] attach/hydrate failed:', e && e.message);
+      if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') throw e;
+    }
   }
   return info;
 }).catch(err => {

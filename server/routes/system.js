@@ -91,7 +91,8 @@ const {
 const {
   TRAFFIC_FABRIC_ERRORS,
   getNationalTrafficFabricTopology,
-  updateNationalTrafficWeight
+  updateNationalTrafficWeight,
+  refreshTrafficFromSoT
 } = require('../infrastructure/national-traffic-fabric');
 
 const {
@@ -1475,6 +1476,7 @@ function createSystemRoutes(ctx) {
       };
     }
 
+    await refreshTrafficFromSoT();
     const traffic = getNationalTrafficFabricTopology();
     return {
       status: 200,
@@ -1711,7 +1713,7 @@ function createSystemRoutes(ctx) {
       let executionResult = null;
 
       if (changeType === 'TRAFFIC_WEIGHT') {
-        executionResult = updateNationalTrafficWeight(body.region_id, body.target_weight, {
+        executionResult = await updateNationalTrafficWeight(body.region_id, body.target_weight, {
           approved: true,
           automated_decision: false,
           automated_execution: false,
@@ -1792,8 +1794,9 @@ function createSystemRoutes(ctx) {
       };
     } catch (err) {
       const isRanking = err.code === NATIONAL_CONTROL_ERRORS.ZERO_RANKING_VIOLATION || err.code === 'ZERO_RANKING_VIOLATION';
+      const isUnavailable = err.status === 503 || err.code === 'OPS_KV_UNAVAILABLE' || err.code === 'OPS_KV_PERSIST_FAILED';
       return {
-        status: isRanking ? 400 : 422,
+        status: isRanking ? 400 : (isUnavailable ? 503 : 422),
         body: {
           ok: false,
           code: 'change_request_failed',
@@ -1953,28 +1956,30 @@ function createSystemRoutes(ctx) {
       return { status: 400, body: { ok: false, code: 'bad_request', message: 'cluster_id الزامی است' } };
     }
 
-    const cluster = globalCanaryEngine.clusters.get(body.cluster_id);
-    if (!cluster) {
-      return { status: 404, body: { ok: false, code: 'cluster_not_found', message: `کلاستر ${body.cluster_id} یافت نشد` } };
-    }
-
-    if (body.circuit_breaker_open !== undefined) cluster.circuitBreakerOpen = Boolean(body.circuit_breaker_open);
-    if (body.secondary_dc !== undefined) cluster.secondaryDc = body.secondary_dc;
-    if (body.status !== undefined) cluster.status = body.status;
-
-    return {
-      status: 200,
-      body: {
-        ok: true,
-        cluster: {
-          id: cluster.id,
-          circuitBreakerOpen: cluster.circuitBreakerOpen,
-          primaryDc: cluster.primaryDc,
-          secondaryDc: cluster.secondaryDc,
-          status: cluster.status
+    try {
+      const cluster = await globalCanaryEngine.persistCircuitBreaker(body.cluster_id, {
+        circuitBreakerOpen: body.circuit_breaker_open,
+        secondaryDc: body.secondary_dc,
+        status: body.status
+      });
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          cluster: {
+            id: cluster.id,
+            circuitBreakerOpen: cluster.circuitBreakerOpen,
+            primaryDc: cluster.primaryDc,
+            secondaryDc: cluster.secondaryDc,
+            status: cluster.status
+          }
         }
-      }
-    };
+      };
+    } catch (err) {
+      const code = err.code || 'CIRCUIT_BREAKER_FAILED';
+      const status = (code === 'CANARY_PERSIST_FAILED') ? 503 : (code === 'PHASE6_CLUSTER_NOT_FOUND' ? 404 : 400);
+      return { status, body: { ok: false, code, message: err.message } };
+    }
   }
 
   return {
