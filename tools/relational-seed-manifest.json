@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-19T00:07:22.495Z",
+  "generated_at": "2026-09-19T00:25:29.306Z",
   "generated_by": "tools/seed-relational-small.js (PG_SEED_MANIFEST=1)",
   "scale_label": "demo-scale — NOT a national dataset",
   "benchmark_claim": "NONE. No workload was run; no throughput, latency or capacity number is asserted here or anywhere from this file. Capacity Engineering belongs to chat 4.",
@@ -13,8 +13,8 @@
     "url_without_credentials": "postgres://<user>:<password>@127.0.0.1:5432/payesh_seed"
   },
   "migrations": {
-    "total": 14,
-    "applied": 14,
+    "total": 15,
+    "applied": 15,
     "already_exists": 0,
     "failed": 0,
     "new_migrations_added": 0,
@@ -154,7 +154,7 @@
     },
     "manifest": {
       "path": "tools/relational-seed-manifest.json",
-      "sha256": "959d7a1e03eb5cffd4a96f00897296971d2d1b447ab493ab12db3a683da2f0d3"
+      "sha256": "eaedc2930bc344e6df0512f45aac4685bcb1f025b759af1bb68ad6d5b01a72a2"
     }
   },
   "verification": {

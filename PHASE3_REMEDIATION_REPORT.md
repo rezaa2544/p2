@@ -44,3 +44,12 @@
 
 ## نتیجه
 Phase 3 در مرزهای تعریف‌شدهٔ این دستور به **VERIFIED COMPLETE** رسید: هر Blocker با رفتار واقعی سیستم روی PostgreSQL/Redis واقعی اثبات شد، نه با سبز شدن تست‌ها. تمام یافته‌های جدید حین ترمیم (implicit-transaction رانر، varchar سرریز، تاریخ‌های غیرISO، auto-config جدول‌های پارتیشن‌شده، seed خودکار bootstrap→PG) نیز در همین commit اصلاح و اثبات شدند.
+
+## ضمیمهٔ ادغام (rebase روی main موازی) + دو باگ جدید که در همین نوبت اصلاح شد
+قبل از push، main با تغییرات موازیِ مخزن (phase2/phase6/red-team B1-B10) rebased شد (`5e69dc3e`). ادغامِ 013/014/sync.js به‌صورت «اجتماعِ هر دو ترمیم» انجام شد (ستون‌های incoming_version/current_version + ترتیب in-flight) و کل شواهد بالا **دوباره روی state ادغام‌شده اجرا شد**. ضمن آن دو باگ واقعی دیگر پیدا و اثبات و اصلاح شد:
+
+1. **`outbox.mark` پس از restart روی PG نمی‌نشست** — mark اول در صفِ RAM جستجو می‌کند؛ در PG-live صفِ RAM بعد از restart عمداً خالی است (F3) ⇒ رویدادِ پردازش‌شده برای همیشه `pending` می‌ماند و هر بوت دوباره «replayed» می‌شد (اثبات زنده: `pending|0` بعد از ۱۲ ثانیه تماشا). پچ: fallback مستقیم روی PG. اثبات پس از پچ: RT4 «outbox در PG و processed» سبز.
+2. **قرارداد B4 در `wave8-outbox`** — worker پس از ادغام در `rc >= maxRetries` رویداد را failed و به DLQ می‌برد (عمدی، commit موازی). رفتار واقعی با پروبِ زنده استخراج شد (t1: pending/1 → t2: failed/2 + کپیِ DLQ → t3: بدون تلاشِ مجدد) و چک‌های O3 با قرارداد جدید بازنویسی شدند ⇒ **15/15**.
+
+## شواهد نهایی پس از ادغام (تکرار کامل روی state نهایی)
+Migration Clean ✅ · Rollback ✅ · seeder 14/14 + manifest جدید (sha256=eaedc293…) self-consistent · pg-relational-seed **40/40** · wave3-query exit 0 · wave3-query3 **25/25** · wave3-parity **20/20** · RT4 runtime **14/14** · npm test Node22 **35/35 + smoke** ✅ (Node20 قرمزِ عمدی) · otp-redis **16/16** · red-team **10/10** · occ **18/18** · server15 **40/40** · wave8-outbox **15/15** · sync-dlq-retry **7/7** · secret-scan **12/12 پاک**.
