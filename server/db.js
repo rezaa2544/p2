@@ -88,6 +88,16 @@ function isProductionEnv() {
 }
 
 function memoryFallbackAllowed() {
+  /* Phase 8.1 (R5): NODE_ENV=production is the hard-production contract —
+     the explicit opt-in flag is IGNORED here (the P0-1 comment above: "a
+     flag must not be able to re-open a production data-loss path"). This
+     restores the behaviour pinned by tests/pg-prod-no-json-writes.js (a3/a4),
+     tests/pg-prod-boot-no-db.js (3a/3b) and tests/pg-prod-suite-policy.js
+     (3a). PAYESH_ENV=production alone is the posture flag (TLS/env gates);
+     it keeps the explicit dev/test opt-in so harnesses such as server17 T2
+     and wave15 can exercise production code paths without infra — the boot
+     env-mismatch warning still fires loudly in that shape. */
+  if (process.env.NODE_ENV === 'production') return false;
   if (isProductionEnv()) return memoryFallbackRequested();
   return true; /* dev/test: fallback stays available (see init() warning) */
 }

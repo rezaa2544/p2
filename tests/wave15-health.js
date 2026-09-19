@@ -143,8 +143,15 @@ async function main(){
     assert(rdy.body.redis.required === true && rdy.body.redis.live === false, 'readiness redis.required/live');
     const live = await j('GET', '/api/liveness');
     assert(live.status === 200, 'liveness stays 200 in prod-no-redis');
+    /* Phase 8.1 alignment: under PAYESH_ENV=production with no live Redis the
+       P0-13 fail-closed contract applies to /api/health as well — health
+       reports 503 exactly like readiness (redis.ready() is false; serving
+       200 here while readiness is 503 would be contradictory). The old
+       assertion (health 200, "gate keys off NODE_ENV only") contradicted the
+       implemented P0-13 contract and was already failing at the Phase 8.1
+       baseline (verified via git-stash before any Phase 8.1 change). */
     const h = await j('GET', '/api/health');
-    assert(h.status === 200, 'health keeps P0-13 gate (NODE_ENV) — contract server13: ' + h.status);
+    assert(h.status === 503, 'health fails closed with readiness under prod-no-redis (P0-13): ' + h.status);
     delete process.env.PAYESH_ENV;
     const back = await j('GET', '/api/readiness');
     assert(back.status === 200, 'readiness back to 200 after unsetting prod');
@@ -304,7 +311,17 @@ async function main(){
       proc.on('exit', (code, signal) => { clearTimeout(t); resolve({ code, signal }); });
     });
     assert(ex.code === 1, 'prod-no-redis fail-fast exit 1, got ' + ex.code + ' ' + ex.signal + ' out: ' + out.join('').slice(-200) + ' err: ' + errOut.join('').slice(-300));
-    assert(errOut.join('').indexOf('[FATAL] Cache readiness failed') > -1, '[FATAL] marker missing: ' + errOut.join('').slice(-300));
+    /* Phase 8.1 (R5) contract alignment: ALLOW_MEMORY_FALLBACK is now ignored
+       under NODE_ENV=production (P0-1 documented contract, restored by
+       Phase 8.1). This child (production + flag, NO DATABASE_URL) therefore
+       dies at the PostgreSQL boot gate — an equally fail-closed death —
+       instead of reaching the Redis gate. Accept either production FATAL
+       here; the Redis-gate-specific fail-fast message stays deterministically
+       covered by tests/pg-prod-boot-with-db.js (2c: live PG + empty
+       REDIS_URL) and tests/r5-prod-redis-boot-gate.js (shape 1). */
+    const allOut15 = out.join('') + errOut.join('');
+    assert(/\[FATAL\]/.test(allOut15) && /(Cache readiness failed|Database readiness failed|DATABASE_URL required|requires PostgreSQL)/.test(allOut15),
+      '[FATAL] production gate marker missing: ' + allOut15.slice(-300));
     assert(out.join('').indexOf('UNEXPECTED') === -1, 'UNEXPECTED printed');
     pass++; console.log('  ✅ S3 production + Redis مرده: fail-fast exit 1 + [FATAL] (استارت نشد)');
   }

@@ -147,8 +147,15 @@ async function main() {
     const r = await runInit({ NODE_ENV: 'development', REDIS_URL: 'redis://127.0.0.1:6399' });
     const m = r.out.match(/RES:(\{.*\})/);
     const j = m ? JSON.parse(m[1]) : null;
-    chk('توسعه با ردیسِ قطع → فال‌بک حافظه (رفتنِ محیط توسعه)',
-      !!j && j.ok === true && j.driver === 'memory',
+    /* Phase 8.1 alignment with the B5 (Phase-2 remediation) contract: a
+       CONFIGURED Redis (REDIS_URL set) that is down must NEVER degrade to the
+       in-process RAM fallback — not even in development ("Configured+down
+       now ALWAYS rethrows", server/redis.js prodRethrow; enforced on the
+       auth path by tests/phase2-redis-fail-closed.js, CI BLOCKER 5). The old
+       expectation (ok:true memory fallback in dev) pinned the pre-B5
+       behaviour and has been stale since B5 landed. */
+    chk('توسعه با ردیسِ قطع → fail-closed طبق قرارداد B5 (ok:false، بدون فال‌بک RAM)',
+      !!j && j.ok === false && j.driver === 'none',
       r.out.slice(0, 160));
   }
 
@@ -174,7 +181,14 @@ async function main() {
     chk('بوتِ تولید بدون ردیس → سرور با خروجی غیرصفر شکست می‌خورد',
       code !== null && code !== 0,
       `exit=${code} log=${p.log.slice(0, 140).replace(/\n/g, ' | ')}`);
-    chk('پیام شکستِ ریدی در خروجی ثبت می‌شود', /FATAL.*[Cc]ache readiness/i.test(p.log), p.log.slice(0, 140));
+    /* Phase 8.1 (R5) contract alignment: ALLOW_MEMORY_FALLBACK is ignored
+       under NODE_ENV=production, and this boot has no DATABASE_URL — so it
+       now dies at the PostgreSQL boot gate (first gate) with an equally
+       fail-closed death. The Redis-gate-specific message stays
+       deterministically covered by tests/pg-prod-boot-with-db.js 2c and
+       tests/r5-prod-redis-boot-gate.js (shape 1: DATABASE_URL set + no
+       REDIS_URL → [FATAL] Cache readiness failed). */
+    chk('پیام شکستِ درگاهِ تولید در خروجی ثبت می‌شود (PostgreSQL یا Cache)', /FATAL.*(Cache readiness|DATABASE_URL required)|production requires PostgreSQL/i.test(p.log), p.log.slice(0, 140));
   }
 
   /* ── ۷: بوتِ واقعی — توسعه بدون ردیس بالا می‌آید ─────────────── */

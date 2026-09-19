@@ -32,4 +32,21 @@ function mismatchWarning(f){
     + ' set BOTH to production in real deployments (see docs/DEPLOY.md §3).';
 }
 
-module.exports = { checkEnvFlags, mismatchWarning };
+/* Phase 8.1 (R15 decision — recorded evidence): the WAF default mode is
+   intentionally `report` (P0 #6 staged rollout; docs/RED_TEAM_EXERCISE_2026_Q3.md;
+   docs/RISK_REGISTER.md RISK-S-007: enable enforce pre-production after
+   observing false-positive telemetry on staging). The code default stays
+   `report` — but a production deployment running detect-only must say so
+   LOUDLY at boot instead of silently. Returns null when no warning applies. */
+function wafModeWarning(env){
+  env = env || {};
+  const nodeProd = env.NODE_ENV === 'production';
+  const payeshProd = env.PAYESH_ENV === 'production';
+  const enforce = env.PAYESH_WAF_MODE === 'enforce';
+  if ((!nodeProd && !payeshProd) || enforce) return null;
+  return '[WAF] production is running with PAYESH_WAF_MODE=report (detect-only at the application layer).'
+    + ' Set PAYESH_WAF_MODE=enforce once staging telemetry shows no false positives'
+    + ' (RISK-S-007 mitigation; see docs/PEN_TEST_CHECKLIST.md).';
+}
+
+module.exports = { checkEnvFlags, mismatchWarning, wafModeWarning };

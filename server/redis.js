@@ -43,9 +43,16 @@ function isProduction() {
   /* If REDIS_URL or DATABASE_URL is explicitly configured, ALLOW_MEMORY_FALLBACK CANNOT override Redis fail-closed.
      Only when no remote DB/Redis URL is set does ALLOW_MEMORY_FALLBACK=1 allow dev/test memory fallback. */
   if (hasUrl) return true;
+  /* Phase 8.1 (R5): NODE_ENV=production is hard production for the cache
+     backing store as well — ALLOW_MEMORY_FALLBACK cannot re-open the
+     per-process memory cache there (same contract as db.js
+     memoryFallbackAllowed(); pinned by tests/redis-fallback.js §6 and
+     tests/pg-prod-boot-no-db.js 3). PAYESH_ENV=production alone keeps the
+     explicit dev/test opt-in (server17 T2 harness contract). */
+  if (process.env.NODE_ENV === 'production') return true;
   const allowFallback = process.env.ALLOW_MEMORY_FALLBACK === '1' || process.env.ALLOW_MEMORY_FALLBACK === 'true';
   if (allowFallback) return false;
-  return process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production';
+  return process.env.PAYESH_ENV === 'production';
 }
 
 /**

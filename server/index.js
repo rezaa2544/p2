@@ -68,7 +68,7 @@ const { createDeleteService } = require('./delete-service'); /* P0-17 */
 const { createPull } = require('./pull');
 const { createHeavyWorker } = require('./worker-service'); /* Wave 9 — رشتهٔ کارِ عملیاتِ سنگین */
 const { createStaticCache } = require('./static-cache');   /* Wave 9 — کشِ استاتیک */
-const { checkEnvFlags, mismatchWarning } = require('./env-flags'); /* SUSPECT-B */
+const { checkEnvFlags, mismatchWarning, wafModeWarning } = require('./env-flags'); /* SUSPECT-B + Phase 8.1 R15 */
 const { createRuntimeMonitor } = require('./runtime-monitor'); /* Q3 runtime security signals */
 const { createAttackDetector } = require('./attack-detector'); /* Q3 attack signatures */
 const { createAbuseGuard } = require('./abuse-guard'); /* Q3 audit/metric/webhook egress */
@@ -79,6 +79,13 @@ const { createAbuseGuard } = require('./abuse-guard'); /* Q3 audit/metric/webhoo
 try {
   const __envf = checkEnvFlags(process.env);
   if(__envf.mismatch) console.warn(mismatchWarning(__envf));
+}catch(e){}
+/* Phase 8.1 (R15): production running the WAF in detect-only mode must say
+   so loudly at boot (default stays `report` by design — staged rollout,
+   RISK-S-007; the warning makes the deployment decision explicit). */
+try {
+  const __wafw = wafModeWarning(process.env);
+  if(__wafw) console.warn(__wafw);
 }catch(e){}
 
 const ROOT = path.join(__dirname, '..');
@@ -301,7 +308,16 @@ cache.init().then((r) => {
     /* P0-13: در تولید بدونِ ردیسِ زنده سرویس نمی‌دهیم — فال‌بک به حافظهٔ
        محلی بین نمونه‌ها واگرا می‌شود. خروجی غیرصفر = شکستِ ریدی. */
     console.error('[FATAL] Cache readiness failed:', r.error || r.warning || 'unknown');
-    if (process.env.NODE_ENV === 'production') {
+    /* Phase 8.1 (R5): the fail-fast predicate now covers every
+       production-equivalent shape, not only NODE_ENV. Previously a boot that
+       declared just PAYESH_ENV=production — or set DATABASE_URL with no
+       production flag (PostgreSQL mode; redis.js isProduction() treats it as
+       production for fail-closed) — logged this FATAL but kept listening
+       forever with health=503: a zombie startup. A configured-but-unreachable
+       Redis at boot keeps the same exit (Wave-15 boot contract); runtime
+       outages after a healthy boot remain loud degradation (readiness 503,
+       reconnect loop), unchanged. */
+    if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) {
       try { persistStore(); } catch (e) {}
       try { db.close(); } catch (e) {}
       process.exit(1);
@@ -313,7 +329,7 @@ cache.init().then((r) => {
   }
 }).catch((err) => {
   console.error('[FATAL] Cache init crashed:', (err && err.message) || err);
-  if (process.env.NODE_ENV === 'production') process.exit(1);
+  if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) process.exit(1);
 });
 
 /* ── R97 (TODO 2.7) — نگهبانِ شمردنِ شناسه، سطحِ روتر ──────────────

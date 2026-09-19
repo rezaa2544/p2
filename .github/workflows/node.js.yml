@@ -144,5 +144,50 @@ jobs:
         export DATABASE_URL="$PGURL"
         bash tools/production-verifier.sh
 
+    # ── Phase 8.1 (R20 closure): the full regression battery is a first-class,
+    # mandatory CI citizen. It previously existed only as manual evidence runs
+    # (Phase 8 entry audit finding R20), which let boot-policy suites regress
+    # unseen. No suite removed, no assertion reduced — suites added.
+    - name: Phase 8.1 battery A — unified verifier + canary atomicity + R5 boot-gate matrix (live PG)
+      run: |
+        export DATABASE_URL="$PGURL"
+        # R16 regression guard: the verifier must be deterministic WITH
+        # DATABASE_URL exported (it previously failed 13/14 in this shape).
+        node tests/unified-production-verifier.js
+        node tests/canary-atomic-postgres-live-runtime.js
+        node tests/canary-atomic-mock-harness.js
+        node tests/canary-atomic-runtime.js
+        # R5 closure evidence: every production-equivalent boot shape without
+        # usable Redis must fail fast (exit 1, never listen).
+        node tests/r5-prod-redis-boot-gate.js
+
+    # server17 is a JSON-store behavioural suite by design (per-server OTP
+    # files — R101 isolation). Its contract is per-process isolation, so the
+    # job-level REDIS_URL is deliberately scrubbed for this step only, and
+    # DATABASE_URL must NOT be exported here. Live-Redis coverage lives in
+    # otp-redis / phase2-redis-fail-closed / phase2-occ-multi above.
+    - name: Phase 8.1 battery B — server17 behavioural suite (isolated JSON-store contract)
+      run: node tests/server17.js
+      env:
+        REDIS_URL: ''
+
+    - name: Phase 8.1 battery C — migration & constraint static gates
+      run: |
+        node tests/migration-sequence.js
+        node tests/migrate-pg-constraints.js
+
+    # Boot-policy suites: previously red outside the manual battery (loose
+    # ALLOW_MEMORY_FALLBACK semantics + stale expectations — Phase 8.1 R5).
+    # They must never silently regress again. No DATABASE_URL/REDIS_URL
+    # exports here: these suites pin their own env shapes.
+    - name: Phase 8.1 battery D — production boot-policy suites
+      run: |
+        node tests/pg-prod-boot-no-db.js
+        node tests/pg-prod-suite-policy.js
+        node tests/pg-prod-no-json-writes.js
+        node tests/redis-fallback.js
+        node tests/env-flags.js
+        node tests/wave15-health.js
+
     - run: npm run build --if-present
     - run: npm test

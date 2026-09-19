@@ -13,7 +13,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
-const { checkEnvFlags, mismatchWarning } = require('../server/env-flags.js');
+const { checkEnvFlags, mismatchWarning, wafModeWarning } = require('../server/env-flags.js');
 
 const ROOT = path.join(__dirname, '..');
 const REAL_STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
@@ -69,15 +69,37 @@ async function bootCapture(extraEnv, waitMs) {
   chk('E5 متنِ هشدار هر دو گیت را نام می‌برد',
     /NODE_ENV/.test(w) && /PAYESH_ENV/.test(w) && /Redis/i.test(w) && /TLS/.test(w), w.slice(0, 120));
 
+  /* ── Phase 8.1 (R15): هشدارِ بلندِ WAF در حالتِ report زیرِ تولید ── */
+  const wafProd = wafModeWarning({ NODE_ENV: 'production' });
+  chk('E12 تولید + WAF=report ⇒ هشدارِ بلند دارد',
+    !!wafProd && /PAYESH_WAF_MODE=enforce/.test(wafProd) && /RISK-S-007/.test(wafProd), String(wafProd).slice(0, 140));
+  chk('E13 تولید + WAF=enforce ⇒ بدونِ هشدار',
+    wafModeWarning({ NODE_ENV: 'production', PAYESH_WAF_MODE: 'enforce' }) === null);
+  chk('E14 توسعه ⇒ بدونِ هشدارِ WAF',
+    wafModeWarning({ NODE_ENV: 'development' }) === null);
+
   /* ── ۲) سیم‌کشیِ بوت (فرزندِ زنده) ── */
   const m1 = await bootCapture({ NODE_ENV: 'production' }, 25000);
   chk('E6 بوتِ فقط-NODE_ENV هشدارِ ناهماهنگی می‌دهد', /production-flag mismatch/.test(m1.out), m1.out.slice(0, 200));
-  chk('E7 همان بوت هنوز برایِ کش می‌میرد (رفتارِ P0-13 حفظ شده)',
-    m1.exited !== null && m1.exited !== 0 && /Cache readiness/i.test(m1.out), 'exit=' + m1.exited);
+  /* Phase 8.1 (R5) contract alignment: this shape (NODE_ENV=production, no
+     DATABASE_URL, no REDIS_URL) now dies at the FIRST production gate — the
+     PostgreSQL backing-store gate — an equally fail-closed death. The
+     cache-gate-specific fail-fast is deterministically covered by
+     tests/r5-prod-redis-boot-gate.js shape 1 (NODE_ENV + live PG + no
+     REDIS_URL ⇒ [FATAL] Cache readiness failed). */
+  chk('E7 همان بوت fail-closed می‌میرد (درگاهِ تولید: PostgreSQL یا Cache)',
+    m1.exited !== null && m1.exited !== 0 && /\[FATAL\]/.test(m1.out) && /(Cache readiness|Database readiness|DATABASE_URL required|requires PostgreSQL)/i.test(m1.out), 'exit=' + m1.exited);
 
   const m2 = await bootCapture({ NODE_ENV: '', PAYESH_ENV: 'production', PAYESH_BEHIND_PROXY: '1' }, 25000);
   chk('E8 بوتِ فقط-PAYESH_ENV هشدارِ ناهماهنگی می‌دهد', /production-flag mismatch/.test(m2.out), m2.out.slice(0, 200));
-  chk('E9 همان بوت بالا می‌آید (رفتارِ T2 حفظ شده)', m2.out.indexOf('payesh-server (phase 1') >= 0);
+  /* Phase 8.1 (R5) contract alignment (was already failing at baseline):
+     PAYESH_ENV=production without DATABASE_URL and WITHOUT the explicit
+     ALLOW_MEMORY_FALLBACK=1 opt-in must NOT boot (P0-1: production never
+     serves from the per-process JSON store implicitly). The boots-anyway
+     shape — PAYESH_ENV + the explicit opt-in flag — is pinned by
+     tests/r5-prod-redis-boot-gate.js shape 4 and server17 T2. */
+  chk('E9 بوتِ فقط-PAYESH_ENV بدونِ opt-in صریح نمی‌آید (P0-1 حفظ شده)',
+    m2.exited !== null && m2.exited !== 0 && !/payesh-server \(phase 1/.test(m2.out), 'exit=' + m2.exited);
 
   const m3 = await bootCapture({ NODE_ENV: '', PAYESH_ENV: '' }, 25000);
   chk('E10 بوتِ توسعه بالا می‌آید', m3.out.indexOf('payesh-server (phase 1') >= 0);

@@ -221,10 +221,29 @@ async function run() {
   // Step 6: Tenant Scope & Bypass Enforcement
   console.log('\n--- Step 6: Tenant Scope & Bypass Enforcement ---');
   let validScopePass = false;
+  /* Phase 8.1 (R16 fix): Step 5's fail-closed probe leaves the authority
+     detached. A detached authority with DATABASE_URL exported correctly fails
+     closed (AUTHORITY_UNAVAILABLE), which made this check env-conditional:
+     14/14 without DATABASE_URL, 13/14 with it (deterministic reproduction in
+     the Phase 8 entry audit, finding R16). Attach an explicit allowing-policy
+     mock — the same harness pattern as the deny/mismatch mocks below — so the
+     ALLOW path of assertTenantPolicy is genuinely exercised, deterministically,
+     in every environment. No assertion is weakened: previously this check
+     never reached a policy row at all when it "passed". */
+  const mockAllowDb = {
+    query: async (sql, params) => {
+      return {
+        rows: [{ province: '07', school: '*', allowed_scope: JSON.stringify({ match: 'actor_province' }), version: 1 }],
+        rowCount: 1
+      };
+    }
+  };
+  postgresAuthority.attach(mockAllowDb);
   try {
     const pol = await postgresAuthority.assertTenantPolicy('07', '*', 'actor_province');
     if (pol === true || (pol && pol.province === '07')) validScopePass = true;
   } catch (e) {}
+  postgresAuthority.attach(null); // detach mock
   chk('Tenant policy allows valid matching scope', validScopePass);
 
   let bypassBlocked = false;
