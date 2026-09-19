@@ -148,7 +148,56 @@ const staticCache = createStaticCache();
    production process never calls listen() before the backing store is known
    good. Resolves to the db.init result, or null if init itself threw. */
 const dbReady = db.init(store).then(async info => {
-  /* P0-1: mirror of the cache/Redis readiness gate below. db.init now reports
+  /* Chat 2 remediation (P0-BUG-04): one-time mirror of the bootstrap JSON store
+   into an empty PostgreSQL, FK-safe order, chunked, column-filtered against
+   information_schema. Rows that cannot map are skipped and counted — the
+   seed must never abort the boot. */
+async function seedPgFromBootstrap(store, db) {
+  const CHUNK = 200;
+  const colsCache = {};
+  const colsOf = async (t) => {
+    if (!colsCache[t]) {
+      const r = await db.query(`SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1`, [t]);
+      colsCache[t] = new Set(r.rows.map(x => x.column_name));
+    }
+    return colsCache[t];
+  };
+  const names = Object.keys(store).filter((k) => /^[a-z][a-z0-9_]*$/.test(k) && Array.isArray(store[k]));
+  const head = ['schools', 'users', 'subjects', 'classes'].filter((c) => names.includes(c));
+  const tail = names.filter((c) => !head.includes(c));
+  const seq = head.concat(tail);
+  let rows = 0, tables = 0, skipped = 0;
+  for (const col of seq) {
+    let cols;
+    try { cols = await colsOf(col); } catch (e) { continue; }
+    if (!cols || !cols.size) continue;
+    const arr = (store[col] || []).filter((r) => r && r.id != null);
+    if (!arr.length) continue;
+    tables++;
+    for (let i = 0; i < arr.length; i += CHUNK) {
+      const ops = [];
+      for (const r of arr.slice(i, i + CHUNK)) {
+        const data = {};
+        for (const k of Object.keys(r)) if (cols.has(k)) data[k] = r[k];
+        if (data.id == null) continue;
+        ops.push({ c: col, t: 'ins', data });
+      }
+      if (!ops.length) continue;
+      try {
+        await db.persistOpsBatch(ops);
+        rows += ops.length;
+      } catch (e) {
+        /* one poison row must not starve the whole table — retry per row */
+        for (const op of ops) {
+          try { await db.persistOpsBatch([op]); rows++; } catch (e2) { skipped++; }
+        }
+      }
+    }
+  }
+  return { rows, tables, skipped };
+}
+
+/* P0-1: mirror of the cache/Redis readiness gate below. db.init now reports
      ok:false in production when PostgreSQL is absent/unreachable — the server
      must not serve traffic from the JSON store. */
   if (info && info.ok === false) {
@@ -161,6 +210,47 @@ const dbReady = db.init(store).then(async info => {
   }
   if (info.driver === 'postgres') {
     console.log('[DB] Connected to PostgreSQL relational engine');
+    /* Migration-012 contract, self-configured (Chat 2 remediation): on a chain-
+       migrated database the grades/attendance tables are partitioned with PK
+       (id, created_at) — writes only stay correct when PAYESH_PARTITIONED_TABLES
+       lists them. Operators kept forgetting the env ⇒ every attendance/grades
+       mirror write failed with `no unique ... for ON CONFLICT`. Detect once at
+       boot and merge into the env (explicit operator value still wins). */
+    try {
+      const pr = await db.query(`SELECT c.relname FROM pg_partitioned_table pt JOIN pg_class c ON c.oid = pt.partrelid WHERE c.relname IN ('grades','attendance')`);
+      const parts = pr.rows.map(x => x.relname);
+      if (parts.length) {
+        const cur = String(process.env.PAYESH_PARTITIONED_TABLES || '').split(',').map(x => x.trim()).filter(Boolean);
+        const merged = [...new Set([...cur, ...parts])].join(',');
+        if (cur.join(',') !== merged) {
+          process.env.PAYESH_PARTITIONED_TABLES = merged;
+          console.log('[DB] partitioned tables detected — PAYESH_PARTITIONED_TABLES=' + merged + ' (auto-configured, migration 012 contract)');
+        }
+      }
+    } catch (e) { /* pre-012 database — nothing to configure */ }
+    /* P0-BUG-04 fix (Chat 2 remediation, 2026-09-19): PG empty + a populated
+       bootstrap JSON store ⇒ hydration would REPLACE the bootstrap data with
+       empty arrays and the persist loop then overwrites the store FILE with an
+       empty shell (auth dies, local data destroyed — reproduced live).
+       Guard: when both users and schools are empty in PG and the bootstrap
+       store has users, keep the bootstrap data this boot AND seed PostgreSQL
+       from it once (mission option A+B combined) — PG becomes the real SSoT
+       and the next boot hydrates normally. */
+    let keepBootstrap = false;
+    try {
+      const er = await db.query('SELECT (SELECT COUNT(*) FROM users) AS u, (SELECT COUNT(*) FROM schools) AS s');
+      const pgEmpty = Number(er.rows[0].u) === 0 && Number(er.rows[0].s) === 0;
+      keepBootstrap = pgEmpty && Array.isArray(store.users) && store.users.length > 0;
+    } catch (e) { /* tables missing ⇒ not a clean-empty PG — hydrate as before */ }
+    if (keepBootstrap) {
+      console.log('[store] PG is empty and a bootstrap JSON store is present — hydration SKIPPED (P0-BUG-04 guard); seeding PG from the bootstrap store now (one-time)...');
+      try {
+        const r = await seedPgFromBootstrap(store, db);
+        console.log('[store] bootstrap→PG seed done: ' + r.rows + ' row(s) / ' + r.tables + ' table(s)' + (r.skipped ? ' — skipped ' + r.skipped + ' non-mappable row(s)' : ''));
+      } catch (e) {
+        console.warn('[store] bootstrap→PG seed failed (bootstrap mode stays; retried next boot):', e.message);
+      }
+    } else
     /* Wave 1: PG is authoritative — replace store domain collections with
        PG truth at boot (per-table failures warn and keep going). */
     try {

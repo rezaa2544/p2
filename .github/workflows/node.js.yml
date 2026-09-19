@@ -23,6 +23,29 @@ jobs:
         # Release-gate honest matrix: package engines is >=22 and jsdom 30
         # requires >=22 — on 18/20 the smoke suite silently skips (exit 0),
         # which produced fake-green CI lanes. Node 18/20 lanes removed.
+        # P1-GAP-02 (Chat 2 remediation): engines >=22 is additionally ENFORCED
+        # in tests/run.js — an old Node now fails loudly instead of skipping.
+
+    services:
+      # P1-GAP-01 (Chat 2 remediation): the live-PG suites are first-class CI
+      # citizens now — without PostgreSQL they FAIL by design (no more
+      # skip/fake-green), so CI must provide a real one.
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: payesh
+          POSTGRES_PASSWORD: payesh
+          POSTGRES_DB: payesh_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U payesh"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      PGURL: postgres://payesh:payesh@127.0.0.1:5432/payesh_ci
 
     steps:
     - uses: actions/checkout@v4
@@ -32,5 +55,39 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm ci
+
+    - name: Migration chain — clean install on an empty database (001 → latest)
+      run: |
+        for f in migrations/[0-9][0-9][0-9]_*.sql; do
+          case "$f" in *.down.sql) continue;; esac
+          echo "== applying $f"
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$f" || { echo "FAILED at $f"; exit 1; }
+        done
+        psql "$PGURL" -c "SELECT COUNT(*) AS tables FROM information_schema.tables WHERE table_schema='public';"
+        psql "$PGURL" -c "SELECT * FROM sync_conflicts LIMIT 1;" >/dev/null && echo "sync_conflicts readable OK"
+
+    - name: Rollback chain — latest → 001
+      run: |
+        for f in $(ls migrations/[0-9][0-9][0-9]_*.down.sql | sort -r); do
+          echo "== rolling back $f"
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$f" || { echo "FAILED at $f"; exit 1; }
+        done
+        echo "rollback chain clean"
+
+    - name: Re-apply clean chain for the live-PG suites
+      run: |
+        for f in migrations/[0-9][0-9][0-9]_*.sql; do
+          case "$f" in *.down.sql) continue;; esac
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$f" || { echo "FAILED at $f"; exit 1; }
+        done
+
+    - name: Live-PG suites (fail without a database — P1-GAP-01)
+      run: |
+        export DATABASE_URL="$PGURL"
+        node tests/pg-relational-seed.js
+        node tests/wave3-query.js
+        node tests/wave3-query3.js
+        node tests/wave3-parity.js
+
     - run: npm run build --if-present
     - run: npm test

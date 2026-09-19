@@ -40,9 +40,9 @@ function finish() {
 
 console.log('\n▸ Wave 3 — JS↔SQL parity gate (فیلد‌به‌فیلد، روی PG زنده)');
 
-if (!process.env.DATABASE_URL) { skip('parity gate', 'DATABASE_URL is not set'); finish(); }
+if (!process.env.DATABASE_URL) { failc++; fails.push('parity gate'); console.log('  ❌ parity gate — FAIL: DATABASE_URL is not set (skip ممنوع — P1-GAP-01)'); finish(); }
 let pg;
-try { pg = require('pg'); } catch (e) { skip('parity gate', 'the pg driver is not installed'); finish(); }
+try { pg = require('pg'); } catch (e) { failc++; fails.push('parity gate'); console.log('  ❌ parity gate — FAIL: the pg driver is not installed (P1-GAP-01)'); finish(); }
 
 /* فیلدهایی که دو مسیر *به‌حق* متفاوت می‌سازند و از مقایسه کنار می‌روند:
    - total: مسیرِ JS طولِ آرایهٔ فیلترشده را می‌دهد؛ SQL یک COUNT جدا (هر دو
@@ -75,7 +75,7 @@ function diffRows(a, b) {
 async function main() {
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
   try { await client.connect(); }
-  catch (e) { skip('parity gate', 'cannot connect: ' + e.message.split('\n')[0]); return finish(); }
+  catch (e) { failc++; fails.push('parity gate'); console.log('  ❌ parity gate — FAIL: cannot connect: ' + String(e.message).split('\n')[0] + ' (P1-GAP-01)'); return finish(); }
 
   /* ── store حافظه‌ای از همان ردیف‌های PG (تا دو مسیر یک جهان را ببینند) ── */
   const store = {};

@@ -149,15 +149,17 @@ console.log('\n  — A. cursor algebra');
 async function partB() {
   console.log('\n  — B. live PostgreSQL');
   if (!process.env.DATABASE_URL) {
-    skip('B1–B7 real-database gate', 'DATABASE_URL is not set');
+    /* P1-GAP-01: skip ممنوع — نبودِ PostgreSQL = FAIL (exit 1) */
+    failc++;
+    console.log('  ❌ B1–B7 real-database gate — FAIL: DATABASE_URL is not set (skip ممنوع — P1-GAP-01)');
     return finish();
   }
   let pg;
-  try { pg = require('pg'); } catch (e) { skip('B1–B7 real-database gate', 'the pg driver is not installed'); return finish(); }
+  try { pg = require('pg'); } catch (e) { failc++; console.log('  ❌ B1–B7 real-database gate — FAIL: the pg driver is not installed (P1-GAP-01)'); return finish(); }
 
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
   try { await client.connect(); }
-  catch (e) { skip('B1–B7 real-database gate', 'cannot connect: ' + e.message.split('\n')[0]); return finish(); }
+  catch (e) { failc++; console.log('  ❌ B1–B7 real-database gate — FAIL: cannot connect: ' + String(e.message).split('\n')[0] + ' (P1-GAP-01)'); return finish(); }
 
   const db = { query: (sql, params) => client.query(sql, params), isPostgres: () => true };
 
@@ -245,9 +247,14 @@ async function partB() {
       ran && still.rows[0].t === 'users' && !/DROP/i.test(b.page.sql), b.page.sql.slice(0, 80));
   }
 
-  /* B7 — the paged queries must not seq-scan their base table */
+  /* B7 — the paged queries must not seq-scan their base table.
+     Chat 2 fix: on a tiny fixture (e.g. 30 grade rows) the planner LEGITIMATELY
+     picks a Seq Scan on cost. The invariant under test is "an index path EXISTS
+     for every paged list", so the proof runs with enable_seqscan=off — with
+     seq scans priced out, any remaining 'Seq Scan' node means no usable index. */
   {
     const scans = [];
+    try { await client.query('SET enable_seqscan = off'); } catch (e) { /* planner GUC unavailable — degrade to default */ }
     for (const [name, b] of cases) {
       try {
         const ex = await client.query('EXPLAIN (FORMAT TEXT) ' + b.page.sql, b.page.params);
@@ -255,7 +262,8 @@ async function partB() {
         if (/Seq Scan on (users|attendance|grades|classes)\b/.test(plan)) scans.push(name);
       } catch (e) { /* already reported by B1 */ }
     }
-    chk('B7 no paged list seq-scans its base table', scans.length === 0, 'seq-scanning: ' + scans.join(', '));
+    try { await client.query('SET enable_seqscan = on'); } catch (e) { /* same session only */ }
+    chk('B7 no paged list seq-scans its base table (index path exists — enable_seqscan=off)', scans.length === 0, 'seq-scanning: ' + scans.join(', '));
   }
 
   await client.end();
