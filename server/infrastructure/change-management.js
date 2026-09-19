@@ -51,6 +51,12 @@ async function persistChange(row) {
     return;
   }
   await authority.putState('change', row.change_id, row, row.requester);
+  await authority.appendSystemAudit({
+    actor: row.requester || 'system',
+    action: 'INFRASTRUCTURE_CHANGE_STATE_UPDATE',
+    reason: row.title || 'Change management state persisted',
+    after: row
+  }).catch(() => {});
 }
 
 async function refreshChangesFromSoT() {

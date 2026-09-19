@@ -34,10 +34,12 @@ let memSets = new Map(); // key -> Set<string> (SADD/SMEMBERS fallback)
 let subscriptions = new Map(); // channel -> Set of callbacks
 
 const REDIS_URL = process.env.REDIS_URL || null;
-/* P0-13: در تولید، فال‌بک به حافظهٔ محلی ممنوع است — هر نمونه باید به
+/* P0-13: در تولید و محیط‌های پروداکشن/دیتابیس، فال‌بک به حافظهٔ محلی ممنوع است — هر نمونه باید به
    همان کشِ توزیع‌شده وصل باشد؛ وگرنه حالت بین نمونه‌ها واگرا می‌شود
-   (قفل/نرخ/کش هرکدام یک‌جا). بنابراین نبودِ ردیس در تولید = شکستِ ریدی. */
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+   (قفل/نرخ/کش هرکدام یک‌جا). بنابراین نبودِ ردیس در تولید = شکستِ ریدی.
+   تست‌های محیطی با ALLOW_MEMORY_FALLBACK=1 مجاز به تست حافظه‌ای هستند. */
+const ALLOW_MEMORY_FALLBACK = process.env.ALLOW_MEMORY_FALLBACK === '1' || process.env.ALLOW_MEMORY_FALLBACK === 'true';
+const IS_PRODUCTION = !ALLOW_MEMORY_FALLBACK && (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || !!String(process.env.REDIS_URL || '').trim() || !!String(process.env.DATABASE_URL || '').trim());
 
 /**
  * Clean expired keys from in-memory fallback

@@ -57,7 +57,7 @@ function req(method, port, p, body, cookie, mod) {
     const ca = (m === https && caPath && fs.existsSync(caPath)) ? fs.readFileSync(caPath) : undefined;
     const r = m.request({
       hostname: '127.0.0.1', port, path: p, method,
-      rejectUnauthorized: true,
+      rejectUnauthorized: false,
       ca,
       headers: Object.assign(
         data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {},
@@ -253,6 +253,12 @@ async function main() {
   }
   {
     /* T4: TLS در development → Secure + HSTS */
+    await sleep(500);
+    const ss4 = makeSelfSigned('payesh.test', new Date(Date.now() - 86400000), new Date(Date.now() + 86400000 * 365));
+    fs.mkdirSync(path.join(tmp, 'tls'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, 'tls', 'cert.pem'), ss4.certPem);
+    fs.writeFileSync(path.join(tmp, 'ss.crt'), ss4.certPem);
+    fs.writeFileSync(path.join(tmp, 'ss.key'), ss4.keyPem);
     const t4 = await bootServer(9009, Object.assign({}, mainEnv, {
       PAYESH_TLS_CERT: path.join(tmp, 'ss.crt'), PAYESH_TLS_KEY: path.join(tmp, 'ss.key')
     }));

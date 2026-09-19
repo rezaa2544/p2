@@ -322,7 +322,7 @@ function __inflightForTests() {
  * @returns {Promise<{ allowed: boolean, remaining: number, resetSeconds: number }>}
  */
 function mustFailClosedOnRedis() {
-  return !!(process.env.REDIS_URL || process.env.NODE_ENV === 'production');
+  return !!(process.env.REDIS_URL || process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production');
 }
 
 async function checkRateLimit(identifier, action, limit = 10, windowSeconds = 60) {

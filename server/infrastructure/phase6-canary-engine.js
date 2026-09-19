@@ -174,7 +174,19 @@ class Phase6CanaryEngine {
   }
 
   async refreshCacheFromPg({ force } = {}) {
-    if (!this.db || typeof this.db.query !== 'function') return;
+    if (authority.attached()) {
+      const db = authority.requireDb();
+      if (db) this.db = db;
+    }
+    if (!this.db || typeof this.db.query !== 'function') {
+      if (process.env.DATABASE_URL) {
+        const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority not connected');
+        err.code = 'AUTHORITY_UNAVAILABLE';
+        err.status = 503;
+        throw err;
+      }
+      return;
+    }
     if (!force && this._sotCacheAt && (Date.now() - this._sotCacheAt) < 50) return;
     const res = await this.db.query('SELECT * FROM phase6_canary_configs;');
     if (res && Array.isArray(res.rows) && res.rows.length > 0) {
@@ -717,7 +729,7 @@ class Phase6CanaryEngine {
     const sigHash = gov.signatureHash(signature);
 
     if (authority.attached()) {
-      await authority.consumeNonce(String(nonce), sigHash, expiry);
+      await authority.verifyAndRecordGovernanceNonce(String(nonce), sigHash, expiry);
     } else if (this.db && typeof this.db.query === 'function') {
       try {
         const ins = await this.db.query(
@@ -744,6 +756,11 @@ class Phase6CanaryEngine {
         err.status = 503;
         throw err;
       }
+    } else if (process.env.DATABASE_URL) {
+      const err = new Error('GOVERNANCE_LEDGER_UNAVAILABLE: PostgreSQL authority not attached');
+      err.code = 'GOVERNANCE_LEDGER_UNAVAILABLE';
+      err.status = 503;
+      throw err;
     } else if (this.seenSignatures.has(sigHash) || this.seenSignatures.has(String(nonce))) {
       const err = new Error('امضای امنیتی قبلاً مصرف شده است (Replay Signature Rejected)');
       err.code = 'REPLAY_ATTACK_DETECTED';
@@ -763,6 +780,15 @@ class Phase6CanaryEngine {
     this.auditLog.push(entry);
     if (this.auditLog.length > 2000) this.auditLog.shift();
 
+    if (authority.attached()) {
+      await authority.appendSystemAudit({
+        actor: details && details.operator ? details.operator.id || 'system' : 'system',
+        reason: details && details.reason ? details.reason : action,
+        action,
+        after: details
+      }).catch(() => {});
+    }
+
     if (this.db && typeof this.db.query === 'function') {
       const op = (details && details.operator) || {};
       const payload = {
@@ -780,7 +806,7 @@ class Phase6CanaryEngine {
         [
           action,
           details.clusterId || null,
-          Number(op.id) || 0,
+          op.id != null ? String(op.id) : '0',
           op.role || 'system',
           op.id != null ? String(op.id) : 'system',
           details.oldWeight != null ? Number(details.oldWeight) : null,
@@ -789,8 +815,24 @@ class Phase6CanaryEngine {
           details.signature || null,
           JSON.stringify(payload)
         ]
-      );
+      ).catch(() => {});
     }
+  }
+
+  async getCanaryState(clusterId) {
+    if (authority.attached()) {
+      const stateRow = await authority.getCanaryState(clusterId);
+      if (stateRow) return rowToCluster(stateRow);
+    }
+    if (this.db && typeof this.db.query === 'function') {
+      await this.refreshCacheFromPg({ force: true });
+    } else if (process.env.DATABASE_URL) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority not attached');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return this.clusters.get(clusterId) || null;
   }
 
   getSnapshot() {

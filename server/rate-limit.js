@@ -20,7 +20,7 @@ async function checkRateLimit({ prefix, identifier, limit, windowSeconds, weight
   /* B5: configured-but-disconnected = fail CLOSED before even trying — the
      driver would otherwise silently use its in-process RAM counters once
      `isRedisActive` flips false (reproduced live: 200 after killing Redis). */
-  const redisConfigured = !!String(process.env.REDIS_URL || '').trim();
+  const redisConfigured = !!String(process.env.REDIS_URL || '').trim() || !!String(process.env.DATABASE_URL || '').trim();
   const prod = process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production';
   const redisGone = () => {
     const err = new Error('REDIS_UNAVAILABLE: distributed rate limiting unavailable — failing closed');
