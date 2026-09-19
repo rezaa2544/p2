@@ -1,54 +1,46 @@
-# Payesh Engineering Skill Pack
+# 🧠 Payesh Unified Engineering Skills Repository
 
-Five skills for `.claude/skills/`, written to give Arena senior-level
-reasoning in security, architecture, code review, performance, and
-testing — matched to the standing contract (senior engineer, honest
-pushback, teammate not code-generator) and to the real lessons already
-learned on Payesh (IDOR, timing attacks, O(n²) bugs, tests that pass for
-the wrong reason).
+مجموعهٔ جامع و یکپارچهٔ تمام مهارت‌های مهندسی پایش (۲۲ مهارت تخصصی) در دو مسیر همگام:
+- `.claude/skills/` (جهت کشف خودکار توسط هوش مصنوعی و کلاود)
+- `skills/` (آینهٔ کامل در ریشهٔ مخزن جهت دسترسی آسان و متمرکز)
 
-## What's inside
+---
 
-- `security-review/SKILL.md` — threat-reasoning approach (inspired by
-  the evaluated strength of `getsentry/skills` security-review: teaches
-  *how to think* about security, not just a checklist) + Payesh-specific
-  lessons (IDOR is a role-check vs ownership-check distinction; client-
-  side "enforcement" isn't enforcement).
-- `architect/SKILL.md` — reversible vs. expensive-to-reverse decision
-  framing, directly modeled on how the multi-tenant/localStorage
-  decision was actually reasoned through in this project.
-- `code-review/SKILL.md` — correctness and maintainability review,
-  blocking vs. suggestion distinction.
-- `performance-audit/SKILL.md` — measure-before-optimizing discipline,
-  the "vary each axis separately" lesson from the O(n²) bugs already
-  found in this codebase.
-- `testing-strategy/SKILL.md` — mutation-testing discipline (the exact
-  practice that caught the silent `skipTest` bug and the shared-fixture
-  bug already found in Payesh's history).
-- `evidence-integrity-and-commit-accounting/SKILL.md` — strict evidence
-  standards (Type A/B/C), E0-E4 strength levels, mandatory mock/real
-  separation, separate commit accounting (CODE_SHA vs DOC_SHA), git diff
-  verification, and anti-hallucination guards.
+## 📑 دسته‌بندی و فهرست کامل مهارت‌ها (۲۲ مهارت)
 
+### ۱. بستهٔ محوری مهندسی ارشد (Core Senior Engineering Pack)
+1. **`architect/`** — تفکیک تصمیمات برگشت‌پذیر از پرهزینه، آزمون فرضیات مقیاس و انتخاب راه‌حل‌های پایدار.
+2. **`code-review/`** — بازبینی کیفیت، اولویت صحت منطقی بر زیبایی، عدم بلعیدن خطا و تفکیک ایرادات مسدودکننده (Blocking).
+3. **`performance-audit/`** — ممیزی کارایی و عملکرد مبتنی بر سنجش واقعی، تحلیل مجزای ابعاد O(n²) و رد تخمین‌های حدسی.
+4. **`security-review/`** — مدل‌سازی تهدید، آزمون مرزهای اعتماد، کنترل دسترسی و پیشگیری از IDOR.
+5. **`testing-strategy/`** — استراتژی آزمون‌های کشف‌کننده باگ، آزمون جهش (Mutation Testing) و ایزولاسیون وضعیت.
+6. **`evidence-integrity-and-commit-accounting/`** — سخت‌گیری شواهد (Type A/B/C)، ترازهای E0-E4، تفکیک Mock از زمان اجرای واقعی، و حسابرسی تفکیک‌شدهٔ کامیت‌ها (CODE_SHA / DOC_SHA).
 
-## Other real, independently-evaluated skills worth adding directly from source
+### ۲. معماری و زیرساخت کلان (Architecture & Infrastructure)
+7. **`software-architect/`** — معماری نرم‌افزار کلان پایش، الگوهای آفلاین‌محور و تفکیک مسئولیت‌ها.
+8. **`database-architect/`** — طراحی پایگاه‌داده، مدل‌سازی رابطه‌ای در PostgreSQL، ایندکس‌گذاری و مهاجرت‌ها.
+9. **`devops-cloud/`** — اتوماسیون استقرار، CI/CD، کانتینرسازی و مدیریت محیط‌های عملیاتی.
+10. **`network-infrastructure/`** — تاب‌آوری شبکه، فدراسیون چندمنطقه‌ای و مسیریابی ترافیک ملی.
+11. **`scalability-performance/`** — مقیاس‌پذیری افقی، بهینه‌سازی بار توزیع‌شده و کشینگ چندسطحی (Redis/L1/L2).
+12. **`payesh-standards/`** — استانداردهای کدنویسی پایش، رعایت قواعد RTL/فارسی، و ممنوعیت کتابخانه‌های بیرونی در کلاینت.
 
-I can't push to GitHub myself, but if Arena has web/GitHub access, these
-are genuinely worth pulling in as-is rather than reinventing:
+### ۳. امنیت، کیفیت و ممیزی (Security, QA & Auditing)
+13. **`security-expert/`** — امنیت سطح سامانه، مدیریت نشست‌ها، رمزنگاری و حفاظت در برابر نفوذ.
+14. **`security-review-payesh/`** — بازبینی تخصصی و تطبیق ساختار پروژه پایش با استانداردهای Zero-Trust.
+15. **`qa-testing/`** — تضمین کیفیت، تست‌های تجمیعی، دود و ممیزی آزمون‌های بدون شکست کاذب.
 
-- `getsentry/skills` (security-review) — the security skill research
-  rated as the actual standout among five compared.
-- `alirezarezvani/claude-skills` (senior-security) — deeper toolkit:
-  STRIDE/DREAD threat modeling, defense-in-depth, incident response,
-  ships with secret-scanning scripts. Best for periodic deep audits,
-  not every commit.
-- `pvnarp/claude-code-skills` — a 49-skill collection including
-  `architect`, `review`, `perf`, `testing`, `bug`, `workflow` — worth
-  browsing for anything this 5-skill pack doesn't cover (e.g. git
-  workflow conventions, build/release checklists).
+### ۴. متدولوژی و هوش مصنوعی ایجنت‌ها (AI Agent Superpowers)
+16. **`agent-watchdog/`** — دیده‌بانی و نظارت بر کنش‌های ایجنت و مهار توهم یا انحراف از مشخصات.
+17. **`interview-me/`** — استخراج شفاف نیازمندی‌ها با پرسش‌های هدفمند پیش از شروع کدنویسی.
+18. **`plan-arbiter/`** — داوری فنی میان طرح‌های پیشنهادی رقیب و ارزیابی مصالحه‌ها (Trade-offs).
+19. **`systematic-debugging/`** — خطایابی سیستماتیک ۴ مرحله‌ای و ریشه‌یابی باگ به جای آزمون‌وخطای کورکورانه.
+20. **`verification-before-completion/`** — الزام مشاهدهٔ شواهد عینی سبز پیش از اعلام تکمیل هر وظیفه.
+21. **`frontend-design/`** — اصول طراحی تمایزیافتهٔ رابط کاربری و فرار از قالب‌های کلیشه‌ای هوش مصنوعی.
+22. **`read-the-damn-docs/`** — رجوع مستقیم به مستندات موثق و قراردادهای رسمی قبل از حدس زدن.
 
-## Install
+---
 
-Copy this whole folder's contents into `.claude/skills/` at the repo
-root and commit. Claude Code / Arena will auto-discover each skill by
-its `description` field — no further configuration needed.
+## 📌 اسناد و راهنماهای بالادستی
+- **`SKILLS_MASTER.md`** — سند راهنمای مرجع و فلسفهٔ جامع مهارت‌های مهندسی پایش.
+- **`docs/SESSION_START.md`** — چک‌لیست اجباری شروع سشن و اعتبارسنجی حضور اسکیل‌ها.
+- **`docs/AI_PROMPT.md`** — بند ۱۴ دستور نقش مبنی بر الزام استفاده خودکار از اسکیل مربوطه پیش از هر کار.
