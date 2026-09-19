@@ -33,19 +33,25 @@ function redactSensitive(value) {
   return out;
 }
 
+function redactSensitiveText(text) {
+  return String(text)
+    .replace(/((?:pass(?:word)?|secret|token|api[-_]?key|authorization|cookie)\s*[:=]\s*)([^,\s;]+)/ig, '$1[REDACTED]')
+    .replace(/("(?:pass(?:word)?|secret|token|api[-_]?key|authorization|cookie)"\s*:\s*")([^"]*)(")/ig, '$1[REDACTED]$3');
+}
+
 function sanitizeDetail(detail) {
   if (detail == null || detail === '') return '';
   if (typeof detail === 'string') {
     try {
       return JSON.stringify(redactSensitive(JSON.parse(detail)));
     } catch (e) {
-      return detail;
+      return redactSensitiveText(detail);
     }
   }
   if (typeof detail === 'object') {
     return JSON.stringify(redactSensitive(detail));
   }
-  return String(detail);
+  return redactSensitiveText(String(detail));
 }
 
 function chk(name, ok, detail) {
