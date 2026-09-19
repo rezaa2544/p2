@@ -256,7 +256,7 @@ function createAuth(ctx){
       rIp = await rateLimit.checkRateLimit({ prefix: 'otp:send:ip', identifier: ip, limit: IP_SEND_MAX, windowSeconds: rlw });
       rPh = await rateLimit.checkRateLimit({ prefix: 'otp:send:phone', identifier: phone, limit: PHONE_SEND_MAX, windowSeconds: rlw });
     } catch (rlErr) {
-      if (rlErr && rlErr.code === 'REDIS_REQUIRED') return sendJson(res, 503, { ok: false, code: 'redis_required' });
+      if (rlErr && (rlErr.code === 'REDIS_REQUIRED' || rlErr.code === 'REDIS_UNAVAILABLE')) return sendJson(res, 503, { ok: false, code: 'redis_required', error_code: 'REDIS_UNAVAILABLE' });
       throw rlErr;
     }
     if(!rDaily.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
@@ -311,7 +311,7 @@ let rLi, rLp;
       rLp = await rateLimit.checkRateLimit({ prefix: 'otp:login:phone', identifier: phone, limit: PHONE_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });
     } catch (rlErr) {
       /* B5: fail-closed on Redis outage (REDIS_URL configured) */
-      if (rlErr && rlErr.code === 'REDIS_REQUIRED') return sendJson(res, 503, { ok: false, code: 'redis_required' });
+      if (rlErr && (rlErr.code === 'REDIS_REQUIRED' || rlErr.code === 'REDIS_UNAVAILABLE')) return sendJson(res, 503, { ok: false, code: 'redis_required', error_code: 'REDIS_UNAVAILABLE' });
       throw rlErr;
     }
     if(!rLi.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });

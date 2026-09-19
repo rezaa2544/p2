@@ -121,5 +121,10 @@ jobs:
         export DATABASE_URL="$PGURL"
         node tests/phase2-outbox-failover.js
 
+    - name: Phase 6.5 Runtime Truth — Red Team RT-01…RT-10
+      run: |
+        export DATABASE_URL="$PGURL"
+        node tests/phase65-runtime-truth.js
+
     - run: npm run build --if-present
     - run: npm test

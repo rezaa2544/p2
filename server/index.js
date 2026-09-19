@@ -58,7 +58,8 @@ const { createBootstrapRoute } = require('./routes/bootstrap');
 const { createSystemRoutes } = require('./routes/system'); /* Phase 4 — P1-SC-01: سلامت زیرساخت و مقیاس‌پذیری */
 const { assertNationalCapacityEnforcement } = require('./infrastructure/national-capacity-enforcement'); /* Phase 5 — P2-NI-05: اینگرس مهار ظرفیت ملی */
 const { globalCanaryEngine } = require('./infrastructure/phase6-canary-engine'); /* Phase 6: موتور استقرار قناری و هدایت ترافیک */
-const { assertTenantBoundary, sanitizePayload } = require('./infrastructure/phase6-production-hardening'); /* Phase 6: گارد زیروترست و پالایش */
+const { applyCanaryRouting } = require('./middleware/canary'); /* Phase 6.5: runtime canary headers from SoT */
+const { assertTenantBoundary, sanitizePayload, resolveActorProvince } = require('./infrastructure/phase6-production-hardening'); /* Phase 6: گارد زیروترست و پالایش */
 const { createIds } = require('./ids'); /* P0-16 */
 const { createOutbox } = require('./outbox'); /* P0-17 */
 const { createWorker } = require('./worker'); /* ویو ۸ — کارگرِ صندوق رویدادها */
@@ -777,18 +778,10 @@ const onRequest = async (req, res) => {
   const nonce = crypto.randomBytes(16).toString('base64');
   securityHeaders(res, nonce, https);
 
-  // Phase 6 (B1 & B5): هدایت پویای ترافیک قناری، تزریق سرآیندهای کلاستر و مهار Fail-Closed
-  const reqProvince = req.headers['x-province-code'] || '07';
+  // Phase 6.5: Canary middleware — HTTP → decision (PG SoT) → X-Canary-* headers
   let canaryRoute = null;
   try {
-    canaryRoute = globalCanaryEngine.routeRequest(reqProvince, {
-      roll: req.headers['x-canary-roll'] != null ? Number(req.headers['x-canary-roll']) : undefined
-    });
-    res.setHeader('X-Payesh-Canary-Cluster', canaryRoute.clusterId);
-    res.setHeader('X-Payesh-Target-DC', canaryRoute.targetDc);
-    res.setHeader('X-Payesh-Canary-Destination', canaryRoute.isCanary ? 'canary' : 'baseline');
-    res.setHeader('X-Payesh-Canary-Weight', String(canaryRoute.weight));
-    res.setHeader('X-Payesh-Failover', canaryRoute.failoverMode ? 'true' : 'false');
+    canaryRoute = await applyCanaryRouting(req, res, globalCanaryEngine);
   } catch (err) {
     if (err.code === 'PHASE6_CIRCUIT_OPEN' || err.code === 'PHASE6_FAIL_CLOSED_NO_HEALTHY_ROUTE') {
       return sendJson(res, 503, {

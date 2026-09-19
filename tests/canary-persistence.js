@@ -19,6 +19,7 @@ const path = require('path');
 const { spawn, execSync } = require('child_process');
 const http = require('http');
 const { Client } = require('pg');
+const gov = require('../server/infrastructure/phase6-governance');
 
 const NODE = process.execPath;
 const ROOT = path.join(__dirname, '..');
@@ -77,10 +78,13 @@ let URL;
   execSync(`${NODE} server/seed.js`, { cwd: ROOT, stdio: 'pipe' });
   const STORE = path.join(os.tmpdir(), 'canary-store.json');
   fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);
+  const { publicKey, privateKey } = gov.generateGovernanceKeypair();
+  const pubB64 = gov.exportPublicKeyB64(publicKey);
   const env = Object.assign({}, process.env, {
     PORT: String(PORT), HOST: '127.0.0.1', DATABASE_URL: URL,
     PAYESH_STORE: STORE, PAYESH_DEMO_CODE: '1', PAYESH_KEY: path.join(os.tmpdir(), 'canary-jwt.key'),
-    PAYESH_OTP_FILE: path.join(os.tmpdir(), 'canary-otp-' + Date.now() + '.json')
+    PAYESH_OTP_FILE: path.join(os.tmpdir(), 'canary-otp-' + Date.now() + '.json'),
+    PAYESH_GOVERNANCE_ED25519_PUBLIC_KEY: pubB64
   });
   delete env.NODE_ENV;
 
@@ -105,13 +109,17 @@ let URL;
   const cid = cluster.id;
   const w0 = Number(cluster.weight != null ? cluster.weight : (cluster.traffic_weight != null ? cluster.traffic_weight : 0));
 
-  /* governance negative: no approval ⇒ 403 */
-  const noApprove = await req('POST', '/api/v1/system/phase6/canary/promote', { cluster_id: cid, target_weight: 10 }, cookie);
-  chk('بدون approved ⇒ 403 PHASE6_APPROVAL_REQUIRED', noApprove.status === 403, noApprove.status + ' ' + noApprove.body.slice(0, 90));
+  /* governance negative: approved===true alone is NEVER enough ⇒ 403 */
+  const noApprove = await req('POST', '/api/v1/system/phase6/canary/promote', { cluster_id: cid, target_weight: 10, approved: true }, cookie);
+  chk('بدون Ed25519/nonce ⇒ 403 PHASE6_APPROVAL_REQUIRED', noApprove.status === 403, noApprove.status + ' ' + noApprove.body.slice(0, 90));
 
-  /* positive: approved promote to 10% with a unique durable signature */
-  const SIG = 'canary-acceptance-sig-' + Date.now() + '-0123456789';
-  const pr = await req('POST', '/api/v1/system/phase6/canary/promote', { cluster_id: cid, target_weight: 10, approved: true, signature: SIG, reason: 'root-cause acceptance' }, cookie);
+  /* positive: Ed25519 + nonce + timestamp + expiry */
+  const signed = gov.signGovernancePayload(privateKey, { action: 'WEIGHT_UPDATE', cluster_id: cid, target_weight: 10 });
+  const pr = await req('POST', '/api/v1/system/phase6/canary/promote', {
+    cluster_id: cid, target_weight: 10, action: 'WEIGHT_UPDATE',
+    nonce: signed.nonce, timestamp: signed.timestamp, expiry: signed.expiry,
+    signature: signed.signature, reason: 'root-cause acceptance'
+  }, cookie);
   chk('promote تأییدشده ⇒ 200', pr.status === 200, pr.status + ' ' + pr.body.slice(0, 110));
 
   /* PostgreSQL SSoT: weight + version bumped */
@@ -120,7 +128,7 @@ let URL;
   chk('version در PG افزایش یافت', row.length === 1 && Number(row[0].version) >= 2, row[0] && row[0].version);
 
   /* rollout history: audit row with old→new + signature (governance event) */
-  const ev = await pgOne("SELECT action, old_weight, new_weight, signature FROM phase6_audit_events WHERE cluster_id = $1 AND signature = $2 ORDER BY id DESC LIMIT 1", [cid, SIG]);
+  const ev = await pgOne("SELECT action, old_weight, new_weight, signature FROM phase6_audit_events WHERE cluster_id = $1 AND signature = $2 ORDER BY id DESC LIMIT 1", [cid, signed.signature]);
   chk('phase6_audit_events: ردیفِ history با old→new و امضا', ev.length === 1 && Number(ev[0].new_weight) === 10, JSON.stringify(ev[0] || null));
 
   /* kill -9 → restart ⇒ boot hydration restores the PERSISTED weight */
@@ -137,7 +145,11 @@ let URL;
   if (w1 !== 10) { console.log('── proc2 log head:\n' + proc2.__log().split('\n').slice(0, 12).join('\n') + '\n── snapshot entry: ' + JSON.stringify(c1).slice(0, 300)); }
 
   /* durable replay: the SAME signature must be rejected from the PG ledger */
-  const replay = await req('POST', '/api/v1/system/phase6/canary/promote', { cluster_id: cid, target_weight: 25, approved: true, signature: SIG, reason: 'replay attempt' }, cookie);
+  const replay = await req('POST', '/api/v1/system/phase6/canary/promote', {
+    cluster_id: cid, target_weight: 10, action: 'WEIGHT_UPDATE',
+    nonce: signed.nonce, timestamp: signed.timestamp, expiry: signed.expiry,
+    signature: signed.signature, reason: 'replay attempt'
+  }, cookie);
   chk('replay امضای مصرف‌شده (حتی بعد از restart) ⇒ 403', replay.status === 403 && /REPLAY/.test(replay.body), replay.status + ' ' + replay.body.slice(0, 90));
 
   /* rollback ⇒ 0 persisted + history row */

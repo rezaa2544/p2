@@ -20,13 +20,18 @@ async function checkRateLimit({ prefix, identifier, limit, windowSeconds, weight
   /* B5: configured-but-disconnected = fail CLOSED before even trying — the
      driver would otherwise silently use its in-process RAM counters once
      `isRedisActive` flips false (reproduced live: 200 after killing Redis). */
-  if (String(process.env.REDIS_URL || '').trim()
+  const redisConfigured = !!String(process.env.REDIS_URL || '').trim();
+  const prod = process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production';
+  const redisGone = () => {
+    const err = new Error('REDIS_UNAVAILABLE: distributed rate limiting unavailable — failing closed');
+    err.code = 'REDIS_UNAVAILABLE';
+    err.status = 503;
+    return err;
+  };
+  if (redisConfigured
       && typeof redis.isConfigured === 'function' && redis.isConfigured()
       && typeof redis.isAlive === 'function' && !redis.isAlive()) {
-    const err = new Error('REDIS_REQUIRED: distributed rate limiting unavailable — failing closed');
-    err.code = 'REDIS_REQUIRED';
-    err.status = 503;
-    throw err;
+    throw redisGone();
   }
   try {
     /* P0-TTL: اینکریمِنتِ اتمیک با تضمینِ انقضا — کلیدِ یتیمِ بی‌TTL
@@ -46,11 +51,8 @@ async function checkRateLimit({ prefix, identifier, limit, windowSeconds, weight
        must NEVER fail open (`allowed:true` under outage = OTP brute-force gate gone).
        Fail CLOSED instead: throw REDIS_REQUIRED; the auth layer maps it to 503.
        Only the not-configured dev mode (no REDIS_URL) keeps legacy behavior. */
-    if (String(process.env.REDIS_URL || '').trim()) {
-      const err = new Error('REDIS_REQUIRED: distributed rate limiting unavailable — failing closed');
-      err.code = 'REDIS_REQUIRED';
-      err.status = 503;
-      throw err;
+    if (redisConfigured || prod) {
+      throw redisGone();
     }
     return { allowed: true, remaining: limit, reset: windowSeconds, limit, fallback: true };
   }

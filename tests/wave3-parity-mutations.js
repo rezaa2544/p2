@@ -4,7 +4,7 @@
    واگرایی را می‌گیرد (سبزِ جعلی ممنوع).
    هر جهش: یک واگراییِ عمدی بین دو مسیر در فایلِ سرور تزریق می‌شود،
    tests/wave3-parity.js اجرا می‌شود و باید قرمز شود؛ بعد فایل برمی‌گردد.
-   بدون DATABASE_URL: self-skip (مثل خودِ گیت).
+   بدون DATABASE_URL: FAIL (exit 1) — سبزِ کاذب ممنوع.
    اجرا:
      DATABASE_URL=... node tests/wave3-parity-mutations.js
    ═══════════════════════════════════════════════════════════════════ */
@@ -14,9 +14,8 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 if (!process.env.DATABASE_URL) {
-  console.log('  ⏭️  parity mutations — DATABASE_URL is not set');
-  console.log('wave3-parity-mutations: 0/0 (skip)؛ سبزِ نهایی: ✅');
-  process.exit(0);
+  console.error('❌ wave3-parity-mutations: DATABASE_URL required — dependency missing = FAIL (exit 1)');
+  process.exit(1);
 }
 
 const ROOT = path.join(__dirname, '..');

@@ -1708,12 +1708,15 @@ paths:
           application/json:
             schema:
               type: object
-              required: [cluster_id, target_weight]
+              required: [cluster_id, target_weight, nonce, timestamp, expiry, signature]
               properties:
                 cluster_id: { type: string }
                 target_weight: { type: number, minimum: 0, maximum: 100 }
-                approved: { type: boolean, default: false }
-                signature: { type: string, description: امضای اپراتور (یا سرآیند x-operator-signature) }
+                action: { type: string, description: WEIGHT_UPDATE }
+                nonce: { type: string, description: یک‌بارمصرف — در phase6_replay_ledger }
+                timestamp: { type: string, format: date-time }
+                expiry: { type: string, format: date-time }
+                signature: { type: string, description: امضای Ed25519 روی payload کانونیکال (ADR-012) }
                 reason: { type: string }
       responses:
         '200':
@@ -1842,8 +1845,10 @@ paths:
               properties:
                 cluster_id: { type: string }
                 target_weight: { type: number, minimum: 0, maximum: 100 }
-                approved: { type: boolean }
-                signature: { type: string }
+                nonce: { type: string }
+                timestamp: { type: string, format: date-time }
+                expiry: { type: string, format: date-time }
+                signature: { type: string, description: Ed25519 }
                 reason: { type: string }
       responses:
         '200':

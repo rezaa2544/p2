@@ -75,8 +75,60 @@ function sanitizePayload(data) {
   return clone;
 }
 
+const IRAN_PROVINCE_BY_NAME = Object.freeze({
+  'تهران': '07',
+  'البرز': '00',
+  'اصفهان': '04',
+  'قم': '25',
+  'مرکزی': '03',
+  'چهارمحال': '20',
+  'خراسان رضوی': '09',
+  'خراسان جنوبی': '10',
+  'خراسان شمالی': '11',
+  'سیستان': '12',
+  'کردستان': '12',
+  'فارس': '14',
+  'کرمان': '15',
+  'بوشهر': '16',
+  'هرمزگان': '17'
+});
+
+function mapProvinceToken(token, store) {
+  if (token == null || token === '') return null;
+  const raw = String(token).trim();
+  if (/^\d{2}$/.test(raw)) return raw;
+  const provinces = (store && store.provinces) || [];
+  const asNum = Number(raw);
+  if (Number.isFinite(asNum) && String(asNum) === raw) {
+    const row = provinces.find((p) => Number(p.id) === asNum);
+    if (row) {
+      if (row.code && /^\d{2}$/.test(String(row.code))) return String(row.code);
+      if (row.name && IRAN_PROVINCE_BY_NAME[row.name]) return IRAN_PROVINCE_BY_NAME[row.name];
+    }
+  }
+  const byName = provinces.find((p) => p && (p.name === raw || p.code === raw));
+  if (byName && IRAN_PROVINCE_BY_NAME[byName.name]) return IRAN_PROVINCE_BY_NAME[byName.name];
+  if (IRAN_PROVINCE_BY_NAME[raw]) return IRAN_PROVINCE_BY_NAME[raw];
+  return raw;
+}
+
+function resolveActorProvince(actor, store) {
+  if (!actor) return null;
+  if (actor.province_code) return mapProvinceToken(actor.province_code, store);
+  if (actor.province_id != null) return mapProvinceToken(actor.province_id, store);
+  if (actor.school_id != null) {
+    const sch = ((store && store.schools) || []).find((x) => Number(x.id) === Number(actor.school_id));
+    if (sch) {
+      if (sch.province_code) return mapProvinceToken(sch.province_code, store);
+      if (sch.province_id != null) return mapProvinceToken(sch.province_id, store);
+    }
+  }
+  return null;
+}
+
 /**
  * ۳. گارد ایزولاسیون تننت و استان (Zero-Trust Tenant Guard)
+ * Runtime: Request → Auth Context → Tenant Guard → Province Guard → Controller
  */
 function assertTenantBoundary(actor, targetSchoolId, targetProvinceCode) {
   if (!actor || !actor.id) {
@@ -89,7 +141,7 @@ function assertTenantBoundary(actor, targetSchoolId, targetProvinceCode) {
   if (actor.role === 'superadmin') return true;
 
   // بررسی تننت مدرسه
-  if (targetSchoolId != null && actor.school_id != null) {
+  if (targetSchoolId != null && String(targetSchoolId) !== '' && actor.school_id != null) {
     if (Number(actor.school_id) !== Number(targetSchoolId)) {
       const err = new Error('تخطی از حریم تننت: کاربر مجاز به دسترسی به مدرسه دیگر نیست');
       err.code = HARDENING_ERRORS.TENANT_BREACH;
@@ -97,9 +149,12 @@ function assertTenantBoundary(actor, targetSchoolId, targetProvinceCode) {
     }
   }
 
-  // بررسی حریم استان
-  if (targetProvinceCode != null && actor.province_code != null) {
-    if (String(actor.province_code) !== String(targetProvinceCode)) {
+  // بررسی حریم استان — اگر درخواست استان دیگری را هدف بگیرد، 403.
+  // Fail-closed: unknown actor province + explicit target province = breach.
+  if (targetProvinceCode != null && String(targetProvinceCode) !== '') {
+    const target = mapProvinceToken(targetProvinceCode, null);
+    const actorProv = actor.province_code != null ? mapProvinceToken(actor.province_code, null) : null;
+    if (!actorProv || String(actorProv) !== String(target)) {
       const err = new Error('تخطی از حریم استانی: دسترسی به اطلاعات استان دیگر مجاز نیست');
       err.code = HARDENING_ERRORS.TENANT_BREACH;
       throw err;

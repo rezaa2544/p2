@@ -1425,7 +1425,22 @@ function createSystemRoutes(ctx) {
       };
     }
 
-    const dashboard = buildNationalOperationsDashboard();
+    let poolTotal = null;
+    try {
+      if (db && typeof db.poolStats === 'function') {
+        const ps = db.poolStats();
+        poolTotal = (ps && (ps.primary && ps.primary.total)) || (ps && ps.total) || null;
+      }
+    } catch (_) {}
+    const live = globalCanaryEngine.getAggregatedMetrics();
+    const dashboard = buildNationalOperationsDashboard({
+      api_latency_p95_ms: live.is_live ? live.latency.p95_ms : undefined,
+      api_latency_p99_ms: live.is_live ? live.latency.p99_ms : undefined,
+      api_error_rate_pct: live.is_live ? Number((live.error_rate * 100).toFixed(4)) : undefined,
+      pool_total: poolTotal,
+      samples: live.samples,
+      is_live: live.is_live
+    });
     return {
       status: 200,
       body: {
@@ -1433,6 +1448,7 @@ function createSystemRoutes(ctx) {
         phase: 'PHASE_5',
         step: 'P2-NI-01',
         dashboard,
+        live_samples: live,
         timestamp: new Date().toISOString()
       }
     };
@@ -1823,7 +1839,7 @@ function createSystemRoutes(ctx) {
     const user = req.user;
     if (!user) return { status: 401, body: { ok: false, code: 'unauthorized' } };
 
-    const snapshot = globalCanaryEngine.getSnapshot();
+    const snapshot = await globalCanaryEngine.getSnapshotFromSoT();
     return {
       status: 200,
       body: {
@@ -1851,8 +1867,12 @@ function createSystemRoutes(ctx) {
 
     try {
       const governanceContext = {
-        approved: body.approved === true,
-        requires_human_approval: true,
+        action: body.action || 'WEIGHT_UPDATE',
+        cluster_id: body.cluster_id,
+        target_weight: body.target_weight,
+        nonce: body.nonce,
+        timestamp: body.timestamp,
+        expiry: body.expiry,
         signature: body.signature || (req.headers && req.headers['x-operator-signature']) || null,
         reason: body.reason || 'Phase 6 Production Canary Promotion',
         operator: {
@@ -1872,9 +1892,13 @@ function createSystemRoutes(ctx) {
         }
       };
     } catch (err) {
+      const code = err.code || 'PROMOTION_FAILED';
+      const status = (code === 'CANARY_PERSIST_FAILED' || code === 'GOVERNANCE_KEY_UNAVAILABLE' || code === 'GOVERNANCE_LEDGER_UNAVAILABLE')
+        ? 503
+        : ((code === 'PHASE6_APPROVAL_REQUIRED' || code === 'INVALID_OPERATOR_SIGNATURE' || code === 'REPLAY_ATTACK_DETECTED') ? 403 : 400);
       return {
-        status: (err.code === 'PHASE6_APPROVAL_REQUIRED' || err.code === 'INVALID_OPERATOR_SIGNATURE' || err.code === 'REPLAY_ATTACK_DETECTED') ? 403 : 400,
-        body: { ok: false, code: err.code || 'PROMOTION_FAILED', message: err.message }
+        status,
+        body: { ok: false, code, message: err.message }
       };
     }
   }

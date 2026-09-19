@@ -311,8 +311,8 @@ function evaluateProductionReadinessGates(input = {}) {
             (input.p99_latency_ms == null || input.p99_latency_ms <= 300),
     details: {
       telemetry_active: true,
-      error_rate_pct: input.error_rate_pct != null ? input.error_rate_pct : 0.04,
-      p99_latency_ms: input.p99_latency_ms != null ? input.p99_latency_ms : 185,
+      error_rate_pct: input.error_rate_pct != null ? input.error_rate_pct : null,
+      p99_latency_ms: input.p99_latency_ms != null ? input.p99_latency_ms : null,
       slo_target_met: true,
       active_anomalies: 0
     }
@@ -327,7 +327,7 @@ function evaluateProductionReadinessGates(input = {}) {
             input.backup_tamper_detected !== true &&
             input.standby_ready !== false,
     details: {
-      rpo_seconds: input.rpo_seconds != null ? input.rpo_seconds : 120,
+      rpo_seconds: input.rpo_seconds != null ? input.rpo_seconds : null,
       rto_seconds: input.rto_seconds != null ? input.rto_seconds : 480,
       backup_verified: true,
       restore_drill_verified: input.restore_drill_verified !== false,

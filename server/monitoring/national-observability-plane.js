@@ -139,18 +139,20 @@ function buildNationalOperationsDashboard(overrideMetrics = {}) {
   const regionsSummary = calculateNationalRegionHealthSummary();
   const trafficTopology = getNationalTrafficFabricTopology();
 
-  // B6: خواندن سنجه‌های بلادرنگ از موتور ترافیک به جای اعداد ثابت ساختگی
-  let liveObserved = { p95: 0, p99: 0, error_rate: 0, event_lag: 0, db_lag: 0 };
+  // Phase 6.5: NOC numbers come from REAL request samples only. No 185/620/120/65 fallback.
+  let liveObserved = { p95: null, p99: null, error_rate: null, event_lag: null, db_lag: null, samples: 0, is_live: false };
   try {
     const { globalCanaryEngine } = require('../infrastructure/phase6-canary-engine');
-    const liveTehran = globalCanaryEngine.getClusterMetrics('ir-tehran-1');
-    if (liveTehran && liveTehran.total_requests > 0) {
+    const agg = globalCanaryEngine.getAggregatedMetrics();
+    if (agg && agg.is_live && agg.samples > 0) {
       liveObserved = {
-        p95: liveTehran.latency.p95_ms || 0,
-        p99: liveTehran.latency.p99_ms || 0,
-        error_rate: Number((liveTehran.error_rate * 100).toFixed(2)),
-        event_lag: 0,
-        db_lag: 0
+        p95: agg.latency.p95_ms,
+        p99: agg.latency.p99_ms,
+        error_rate: Number((agg.error_rate * 100).toFixed(4)),
+        event_lag: null,
+        db_lag: null,
+        samples: agg.samples,
+        is_live: true
       };
     }
   } catch (_) {}
@@ -160,16 +162,19 @@ function buildNationalOperationsDashboard(overrideMetrics = {}) {
   const currentErrorRate = overrideMetrics.api_error_rate_pct != null ? overrideMetrics.api_error_rate_pct : liveObserved.error_rate;
   const currentEventLag = overrideMetrics.event_lag_ms != null ? overrideMetrics.event_lag_ms : liveObserved.event_lag;
   const currentDbLag = overrideMetrics.db_replication_lag_ms != null ? overrideMetrics.db_replication_lag_ms : liveObserved.db_lag;
+  const sampleCount = overrideMetrics.samples != null ? overrideMetrics.samples : liveObserved.samples;
+  const isLive = overrideMetrics.is_live === true || liveObserved.is_live === true;
 
+  const hasLatency = currentP95 != null && currentP99 != null;
   const sloCompliance = {
-    p95_compliant: currentP95 <= NATIONAL_SLO_TARGETS.api_latency_p95_ms,
-    p99_compliant: currentP99 <= NATIONAL_SLO_TARGETS.api_latency_p99_ms,
-    error_rate_compliant: currentErrorRate <= NATIONAL_SLO_TARGETS.api_error_rate_pct,
-    event_lag_compliant: currentEventLag <= NATIONAL_SLO_TARGETS.event_pipeline_max_lag_ms,
-    database_lag_compliant: currentDbLag <= NATIONAL_SLO_TARGETS.database_replication_max_ms
+    p95_compliant: hasLatency && currentP95 <= NATIONAL_SLO_TARGETS.api_latency_p95_ms,
+    p99_compliant: hasLatency && currentP99 <= NATIONAL_SLO_TARGETS.api_latency_p99_ms,
+    error_rate_compliant: currentErrorRate != null && currentErrorRate <= NATIONAL_SLO_TARGETS.api_error_rate_pct,
+    event_lag_compliant: currentEventLag != null && currentEventLag <= NATIONAL_SLO_TARGETS.event_pipeline_max_lag_ms,
+    database_lag_compliant: currentDbLag != null && currentDbLag <= NATIONAL_SLO_TARGETS.database_replication_max_ms
   };
 
-  const allSloGreen = Object.values(sloCompliance).every(Boolean);
+  const allSloGreen = isLive && hasLatency && sloCompliance.p95_compliant && sloCompliance.p99_compliant && sloCompliance.error_rate_compliant;
 
   const dashboard = {
     dashboard_id: 'DASHBOARD-PHASE5-NATIONAL-OPERATIONS',
@@ -199,10 +204,10 @@ function buildNationalOperationsDashboard(overrideMetrics = {}) {
     },
     database_health: {
       primary_rdbms: 'PostgreSQL Single Source of Truth',
-      cluster_state: 'HEALTHY',
-      active_pool_connections: 320,
-      max_pool_connections: 3500,
-      replication_status: 'STREAMING_SYNCHRONOUS'
+      cluster_state: isLive ? 'LIVE_SAMPLES' : 'NO_SAMPLES',
+      active_pool_connections: overrideMetrics.pool_total != null ? overrideMetrics.pool_total : null,
+      max_pool_connections: null,
+      replication_status: null
     },
     human_governance: {
       automated_decision: false,

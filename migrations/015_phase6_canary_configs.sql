@@ -41,6 +41,23 @@ CREATE TABLE IF NOT EXISTS phase6_audit_events (
 CREATE INDEX IF NOT EXISTS idx_phase6_audit_cluster ON phase6_audit_events (cluster_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_phase6_audit_created ON phase6_audit_events (created_at DESC);
 
+ALTER TABLE phase6_canary_configs ADD COLUMN IF NOT EXISTS region_id VARCHAR(64);
+ALTER TABLE phase6_canary_configs ADD COLUMN IF NOT EXISTS weight INTEGER;
+ALTER TABLE phase6_audit_events ADD COLUMN IF NOT EXISTS event_type VARCHAR(64);
+ALTER TABLE phase6_audit_events ADD COLUMN IF NOT EXISTS actor VARCHAR(128);
+ALTER TABLE phase6_audit_events ADD COLUMN IF NOT EXISTS payload JSONB;
+
+-- ADR-012 durable replay ledger (nonce + signature hash). 017 is additive
+-- for databases that already applied an older 015; IF NOT EXISTS keeps both
+-- paths identical on a clean UP 001→latest.
+CREATE TABLE IF NOT EXISTS phase6_replay_ledger (
+  nonce TEXT PRIMARY KEY,
+  signature_hash TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_phase6_replay_expires ON phase6_replay_ledger (expires_at);
+
 -- 3. Seed default national clusters if not already present
 INSERT INTO phase6_canary_configs (id, name, provinces, primary_dc, secondary_dc, capacity_tps, traffic_weight, status, stage, version)
 VALUES
@@ -52,5 +69,8 @@ VALUES
   ('ir-border-west-1', 'کلاستر غرب و نوار مرزی مقاوم', '["18", "19", "21", "22", "23"]'::jsonb, 'ahvaz-dc-01', 'kermanshah-dc-01', 2500, 100, 'HEALTHY', 'STAGE_4_FULL_NATIONAL', 1),
   ('ir-rural-central-1', 'کلاستر مدارس روستایی و عشایری سراسر کشور', '["RURAL_ALL"]'::jsonb, 'tehran-dc-03', 'isfahan-dc-03', 2000, 100, 'HEALTHY', 'STAGE_4_FULL_NATIONAL', 1)
 ON CONFLICT (id) DO NOTHING;
+
+UPDATE phase6_canary_configs SET region_id = id WHERE region_id IS NULL;
+UPDATE phase6_canary_configs SET weight = traffic_weight WHERE weight IS NULL;
 
 COMMIT;

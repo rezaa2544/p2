@@ -174,22 +174,55 @@ function assertObservabilityZeroRanking(payload) {
  * جمع‌آوری و ارزیابی شاخص‌های سطح وب‌سرویس و اپلیکیشن
  */
 function collectApplicationMetrics(rawMetrics = {}) {
-  const requestRate = Number.isFinite(rawMetrics.request_rate) ? rawMetrics.request_rate : 250; // req/sec
-  const errorCount = Number.isFinite(rawMetrics.error_count) ? rawMetrics.error_count : 1;
-  const totalRequests = Number.isFinite(rawMetrics.total_requests) ? rawMetrics.total_requests : 10000;
-  const errorRate = totalRequests > 0 ? Number((errorCount / totalRequests).toFixed(4)) : 0.0001;
+  let src = rawMetrics && typeof rawMetrics === 'object' ? rawMetrics : {};
+  if (src.latency_p95_ms == null && src.total_requests == null) {
+    try {
+      const { globalCanaryEngine } = require('../infrastructure/phase6-canary-engine');
+      const agg = globalCanaryEngine.getAggregatedMetrics();
+      if (agg && agg.is_live) {
+        src = {
+          latency_p50_ms: agg.latency.p50_ms,
+          latency_p95_ms: agg.latency.p95_ms,
+          latency_p99_ms: agg.latency.p99_ms,
+          total_requests: agg.total_requests,
+          error_count: agg.errors,
+          is_live: true
+        };
+      }
+    } catch (_) {}
+  }
+  const hasLive = src.is_live === true || Number.isFinite(src.latency_p95_ms) || Number.isFinite(src.total_requests);
+  if (!hasLive) {
+    return deepFreeze({
+      status: SERVICE_STATUS.UNKNOWN,
+      request_rate_per_sec: null,
+      total_requests: 0,
+      error_count: 0,
+      error_rate: null,
+      latency_ms: { p50: null, p95: null, p99: null },
+      active_sessions: null,
+      api_saturation_ratio: null,
+      samples: 0,
+      is_live: false,
+      slo_compliance: { p99_under_1s: false, error_rate_under_point_one_pct: false, not_verified: true }
+    });
+  }
+  const requestRate = Number.isFinite(src.request_rate) ? src.request_rate : null;
+  const errorCount = Number.isFinite(src.error_count) ? src.error_count : 0;
+  const totalRequests = Number.isFinite(src.total_requests) ? src.total_requests : 0;
+  const errorRate = totalRequests > 0 ? Number((errorCount / totalRequests).toFixed(4)) : 0;
 
-  const latencyP50 = Number.isFinite(rawMetrics.latency_p50_ms) ? rawMetrics.latency_p50_ms : 18;
-  const latencyP95 = Number.isFinite(rawMetrics.latency_p95_ms) ? rawMetrics.latency_p95_ms : 65;
-  const latencyP99 = Number.isFinite(rawMetrics.latency_p99_ms) ? rawMetrics.latency_p99_ms : 140;
+  const latencyP50 = Number.isFinite(src.latency_p50_ms) ? src.latency_p50_ms : null;
+  const latencyP95 = Number.isFinite(src.latency_p95_ms) ? src.latency_p95_ms : null;
+  const latencyP99 = Number.isFinite(src.latency_p99_ms) ? src.latency_p99_ms : null;
 
-  const activeSessions = Number.isFinite(rawMetrics.active_sessions) ? rawMetrics.active_sessions : 1850;
-  const apiSaturation = Number.isFinite(rawMetrics.api_saturation) ? rawMetrics.api_saturation : 0.28;
+  const activeSessions = Number.isFinite(src.active_sessions) ? src.active_sessions : null;
+  const apiSaturation = Number.isFinite(src.api_saturation) ? src.api_saturation : null;
 
   let status = SERVICE_STATUS.HEALTHY;
-  if (latencyP99 > 1000 || errorRate > 0.05 || apiSaturation > 0.85) {
+  if ((latencyP99 != null && latencyP99 > 1000) || errorRate > 0.05 || (apiSaturation != null && apiSaturation > 0.85)) {
     status = SERVICE_STATUS.CRITICAL;
-  } else if (latencyP99 > 300 || errorRate > 0.01 || apiSaturation > 0.65) {
+  } else if ((latencyP99 != null && latencyP99 > 300) || errorRate > 0.01 || (apiSaturation != null && apiSaturation > 0.65)) {
     status = SERVICE_STATUS.DEGRADED;
   }
 
@@ -206,8 +239,10 @@ function collectApplicationMetrics(rawMetrics = {}) {
     },
     active_sessions: activeSessions,
     api_saturation_ratio: apiSaturation,
+    samples: totalRequests,
+    is_live: true,
     slo_compliance: {
-      p99_under_1s: latencyP99 < 1000,
+      p99_under_1s: latencyP99 != null && latencyP99 < 1000,
       error_rate_under_point_one_pct: errorRate < 0.001
     }
   });
