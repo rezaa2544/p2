@@ -954,16 +954,6 @@ function createSync(ctx){
              بازگشتِ دقیق همین ردیف در rollback (P0-6).
              P1-06: افزودن به derived جهت ماندگاری اتمیک در PostgreSQL */
           uPush('sync_conflicts', mirrorAppend('sync_conflicts', cf));
-<<<<<<< HEAD
-          /* P0 (Chat 2 audit 4.2 / P0-BUG-02 follow-up; same fix as the parallel
-             phase-2 B1): the conflict row must reach PostgreSQL in the SAME
-             phase-2 transaction (SSoT) — it used to live only in the RAM mirror
-             and evaporated on restart (reproduced live: pg_count=0, lost after
-             restart; recovered from PG after full RAM loss). 013 now guarantees
-             every cf column (incl. updated_at) exists in the real table.
-             Memory mode: persistOpsBatch is a no-op — behavior unchanged. */
-=======
->>>>>>> f87c7b2 (fix(phase1): resolve all 10 security and database contract gaps)
           derived.push({ c: 'sync_conflicts', t: 'ins', data: cf });
           /* ویو ۱۴: برچسبِ collection نامِ جدول است (مجموعهٔ بستهٔ VERSIONED)،
              نه شناسهٔ رکورد — بدون PII و با cardinality کران‌دار. */
