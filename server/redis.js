@@ -38,8 +38,11 @@ const REDIS_URL = process.env.REDIS_URL || null;
    همان کشِ توزیع‌شده وصل باشد؛ وگرنه حالت بین نمونه‌ها واگرا می‌شود
    (قفل/نرخ/کش هرکدام یک‌جا). بنابراین نبودِ ردیس در تولید = شکستِ ریدی.
    تست‌های محیطی با ALLOW_MEMORY_FALLBACK=1 مجاز به تست حافظه‌ای هستند. */
-const ALLOW_MEMORY_FALLBACK = process.env.ALLOW_MEMORY_FALLBACK === '1' || process.env.ALLOW_MEMORY_FALLBACK === 'true';
-const IS_PRODUCTION = !ALLOW_MEMORY_FALLBACK && (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || !!String(process.env.REDIS_URL || '').trim() || !!String(process.env.DATABASE_URL || '').trim());
+function isProduction() {
+  const allowFallback = process.env.ALLOW_MEMORY_FALLBACK === '1' || process.env.ALLOW_MEMORY_FALLBACK === 'true';
+  if (allowFallback) return false;
+  return process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || !!String(process.env.REDIS_URL || '').trim() || !!String(process.env.DATABASE_URL || '').trim();
+}
 
 /**
  * Clean expired keys from in-memory fallback
@@ -151,7 +154,7 @@ async function init() {
   activeMode = cfg.mode;
   if (cfg.mode === 'memory' || !Redis) {
     isRedisActive = false;
-    if (IS_PRODUCTION) {
+    if (isProduction()) {
       /* P0-13: شکستِ ریدی به‌جای فال‌بک — سرور نباید بدونِ کشِ مشترک بالا بیاید */
       return {
         ok: false, driver: 'none',
@@ -225,7 +228,7 @@ async function init() {
     isRedisActive = true;
     return { ok: true, driver: 'redis', mode: cfg.mode, message: 'Connected to Redis (' + cfg.mode + ')' };
   } catch (err) {
-    console.warn('[Redis] Connection failed.', IS_PRODUCTION ? 'Production refuses fallback (readiness fails):' : 'Using in-memory fallback (dev only):', err.message);
+    console.warn('[Redis] Connection failed.', isProduction() ? 'Production refuses fallback (readiness fails):' : 'Using in-memory fallback (dev only):', err.message);
     isRedisActive = false;
     if (client) {
       try { client.disconnect(); } catch (e) {}
@@ -235,7 +238,7 @@ async function init() {
       try { subClient.disconnect(); } catch (e) {}
       subClient = null;
     }
-    if (IS_PRODUCTION) {
+    if (isProduction()) {
       /* P0-13: در تولید، قطعِ ردیس = شکستِ اتصال؛ فال‌بک به حافظه ممنوع */
       return { ok: false, driver: 'none', error: 'Redis unreachable in production: ' + err.message };
     }
@@ -284,7 +287,7 @@ function __setClientForTests(c) {
  * در توسعه حافظهٔ محلی قابل‌قبول است.
  */
 function ready() {
-  return IS_PRODUCTION ? isRedis() : true;
+  return isProduction() ? isRedis() : true;
 }
 
 /* BUG-2 (باگ‌هانت چت ۵): fail-closedِ زمانِ اجرا در تولید.
@@ -296,7 +299,12 @@ function ready() {
    setNX/compareAndDelete از پیش روی خطا false می‌دادند (fail-closed)
    و دست‌نخورده می‌مانند؛ ping/ready/status/close هم مشاهده‌اند. */
 function prodNoRedis(op){
-  if(IS_PRODUCTION && !isRedis()) throw new Error('Redis unavailable in production (fail-closed): ' + op);
+  if(isProduction() && !isRedis()) {
+    const err = new Error('REDIS_UNAVAILABLE: Redis unavailable in production (fail-closed): ' + op);
+    err.code = 'REDIS_UNAVAILABLE';
+    err.status = 503;
+    throw err;
+  }
 }
 function prodRethrow(err){
   /* B5 (Phase-2 remediation directive): when a Redis is explicitly CONFIGURED
@@ -306,7 +314,7 @@ function prodRethrow(err){
      503); only the not-configured memory mode (activeMode === 'memory') keeps
      the dev-only RAM path below. */
   if (activeMode !== 'memory') throw err;
-  if(IS_PRODUCTION) throw err;
+  if(isProduction()) throw err;
 }
 
 /**

@@ -786,7 +786,7 @@ class Phase6CanaryEngine {
         reason: details && details.reason ? details.reason : action,
         action,
         after: details
-      }).catch(() => {});
+      });
     }
 
     if (this.db && typeof this.db.query === 'function') {

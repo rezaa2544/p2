@@ -168,12 +168,7 @@ async function assertTenantBoundary(actor, targetSchoolId, targetProvinceCode) {
       throw err;
     }
     if (authority.attached()) {
-      const policy = await authority.getTenantPolicy(target, targetSchoolId);
-      if (!policy) {
-        const err = new Error('تخطی از حریم استانی: سیاست tenant_policy برای استان هدف یافت نشد');
-        err.code = HARDENING_ERRORS.TENANT_BREACH;
-        throw err;
-      }
+      await authority.assertTenantPolicy(target, targetSchoolId, 'actor_province');
     }
   }
 

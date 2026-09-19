@@ -56,7 +56,7 @@ async function persistChange(row) {
     action: 'INFRASTRUCTURE_CHANGE_STATE_UPDATE',
     reason: row.title || 'Change management state persisted',
     after: row
-  }).catch(() => {});
+  });
 }
 
 async function refreshChangesFromSoT() {
