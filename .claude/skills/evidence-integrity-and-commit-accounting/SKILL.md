@@ -1,5 +1,6 @@
 ---
 name: evidence-integrity-and-commit-accounting
+<<<<<<< HEAD
 description: Enforce strict evidence integrity, commit accounting, and runtime vs mock separation across all engineering, audit, testing, and handoff reports. Must be activated before executing any Phase.
 allowed-tools: Read, Grep, Glob, Bash
 ---
@@ -84,12 +85,35 @@ clean
 ## Rule Set 2 — Mock Evidence Separation
 هر تست باید برچسب نوع اجرا داشته باشد:
 یکی از:
+=======
+description: Skill for evidence integrity, mock/real environment separation, SHA commit accounting, strength level tagging (E0-E4), git diff verification, and reproducible engineering reports. Use for all audits, verification reports, and handoffs.
+---
+
+# SKILL: Evidence Integrity & Commit Accounting
+
+## Goal
+To guarantee that all engineering, testing, audit, and handover reports possess:
+1. Reproducible Evidence (Type A Runtime, Type B Source, Type C Git)
+2. Precise separation of code, tests, and documentation
+3. Accurate SHA reporting and Git history accounting
+4. Prevention of unprovable claims
+
+## Rule Set 1 — Evidence Integrity
+Every statement in a report must be backed by one of three evidence types:
+- **Type A — Runtime Evidence**: Command, Environment, Output, Exit Code.
+- **Type B — Source Evidence**: File path, line numbers, snippet.
+- **Type C — Git Evidence**: Commit SHA, Branch, Parent SHA, Files changed, Git status.
+
+## Rule Set 2 — Mock Evidence Separation
+Every test evidence must be tagged explicitly:
+>>>>>>> bb9f867 (docs(skills): add evidence-integrity-and-commit-accounting skill definition)
 - `[REAL-PRODUCTION]`
 - `[REAL-DATABASE]`
 - `[MOCK]`
 - `[UNIT]`
 - `[INTEGRATION]`
 
+<<<<<<< HEAD
 **مثال:**
 - **مجاز:**
   ```text
@@ -222,3 +246,30 @@ NOT VERIFIED (Pending Independent Review) / VERIFIED
 2. تمام خروجی‌ها و گزارش‌ها باید بر مبنای این اسکیل تولید شوند.
 3. تمرکز اصلی بر: **کیفیت شواهد**، **تفکیک SHAها**، **جداسازی Mock از Runtime واقعی**، و **بازتولیدپذیری** باشد.
 4. **هیچ گواهی VERIFIED بدون شواهد E3/E4 صادر نشود.**
+=======
+## Rule Set 3 — Evidence Strength Level
+- **E0**: Claim without test (Uncredited)
+- **E1**: Source checked (`grep` / code inspection)
+- **E2**: Automated Test executed (`PASS` in test suite)
+- **E3**: Runtime Proof on real services (Node + PostgreSQL + Redis)
+- **E4**: Independent Red Team / Adversarial verification
+
+## Rule Set 4 — Commit Accounting
+Do not combine code, tests, and docs into an ambiguous single SHA claim without explicit listing:
+- `CODE_COMMIT_SHA`: Code changes in `server/`, `src/`
+- `TEST_COMMIT_SHA`: Test changes in `tests/`
+- `DOC_COMMIT_SHA`: Docs changes in `docs/`, `HANDOFF.md`, reports
+
+## Rule Set 5 — Git Diff Verification
+Before reporting, run and log:
+1. `git status --short`
+2. `git diff --stat HEAD^`
+3. `git show --stat HEAD`
+4. `git rev-parse HEAD`
+
+## Rule Set 6 — Claim Validation
+Ensure another engineer can reproduce the result using only the report.
+
+## Rule Set 7 — Final Report Template
+Use the standardized report template format for all phase outputs.
+>>>>>>> bb9f867 (docs(skills): add evidence-integrity-and-commit-accounting skill definition)
