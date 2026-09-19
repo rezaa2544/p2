@@ -25,6 +25,14 @@ function chk(name, ok, detail) {
 }
 
 /* اجرای ایزولهٔ redis.init() در فرزند با محیطِ دلخواه */
+function buildCleanEnv(extraEnv) {
+  const e = Object.assign({}, process.env, extraEnv);
+  if (!('REDIS_URL' in extraEnv)) delete e.REDIS_URL;
+  if (!('REDIS_CLUSTER_NODES' in extraEnv)) delete e.REDIS_CLUSTER_NODES;
+  if (!('REDIS_SENTINELS' in extraEnv)) delete e.REDIS_SENTINELS;
+  return e;
+}
+
 function runInit(extraEnv) {
   return new Promise((resolve) => {
     const script = "require('./server/redis').init().then(function(r){" +
@@ -32,7 +40,7 @@ function runInit(extraEnv) {
       "process.exit(0);}).catch(function(e){console.log('ERR:'+(e&&e.message));process.exit(2);});";
     const p = spawn(process.execPath, ['-e', script], {
       cwd: ROOT,
-      env: Object.assign({}, process.env, extraEnv),
+      env: buildCleanEnv(extraEnv),
       stdio: ['ignore', 'pipe', 'pipe']
     });
     let out = '';
@@ -49,7 +57,7 @@ function runReady(extraEnv) {
     const script = "var r=require('./server/redis');console.log('READY:'+(r.ready()?'1':'0'));process.exit(0);";
     const p = spawn(process.execPath, ['-e', script], {
       cwd: ROOT,
-      env: Object.assign({}, process.env, extraEnv),
+      env: buildCleanEnv(extraEnv),
       stdio: ['ignore', 'pipe', 'pipe']
     });
     let out = '';
@@ -61,10 +69,10 @@ function runReady(extraEnv) {
 }
 
 /* بوتِ واقعی سرور با محیطِ دلخواه */
-function bootServer(env) {
+function bootServer(extraEnv) {
   const p = spawn(process.execPath, ['server/index.js'], {
     cwd: ROOT,
-    env: Object.assign({}, process.env, env),
+    env: buildCleanEnv(extraEnv),
     stdio: ['ignore', 'pipe', 'pipe']
   });
   p.log = '';
@@ -154,8 +162,13 @@ async function main() {
 
   /* ── ۶: بوتِ واقعی — تولید بدون ردیس باید بمیرد ──────────────── */
   {
-    const env = { NODE_ENV: 'production', PORT: '8962' };
-    delete env.REDIS_URL;
+    const env = {
+      NODE_ENV: 'production',
+      PAYESH_ENV: 'production',
+      ALLOW_MEMORY_FALLBACK: '1',
+      PAYESH_BEHIND_PROXY: '1',
+      PORT: '8962'
+    };
     const p = bootServer(env);
     const code = await waitForExit(p, 12000);
     chk('بوتِ تولید بدون ردیس → سرور با خروجی غیرصفر شکست می‌خورد',
@@ -166,8 +179,7 @@ async function main() {
 
   /* ── ۷: بوتِ واقعی — توسعه بدون ردیس بالا می‌آید ─────────────── */
   {
-    const env = { NODE_ENV: 'development', PORT: '8963' };
-    delete env.REDIS_URL;
+    const env = { NODE_ENV: 'development', PAYESH_ENV: 'development', PORT: '8963' };
     const p = bootServer(env);
     let hc = null;
     for (let i = 0; i < 30 && !hc; i++) { await sleep(300); hc = await healthCheck(8963); }

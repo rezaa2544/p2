@@ -5,6 +5,8 @@
 -- Fully compatible with Migrations 001-012 (Zero-Collision Forward & Rollback)
 -- ═══════════════════════════════════════════════════════════════════
 
+BEGIN;
+
 -- 1. Ensure sync_conflicts table has all required columns and indexes for persistent conflict storage
 -- (Table was initially created in Migration 001; here we extend and harden it)
 CREATE TABLE IF NOT EXISTS sync_conflicts (
@@ -73,3 +75,5 @@ BEGIN
     END IF;
   END LOOP;
 END $$;
+
+COMMIT;

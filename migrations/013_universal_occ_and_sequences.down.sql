@@ -4,6 +4,8 @@
 -- Clean rollback without dropping pre-existing Migration 001 tables
 -- ═══════════════════════════════════════════════════════════════════
 
+BEGIN;
+
 -- 1. Drop indexes and extended columns added in Migration 013
 DROP INDEX IF EXISTS idx_sync_conflicts_school;
 DROP INDEX IF EXISTS idx_sync_conflicts_user;
@@ -51,3 +53,5 @@ BEGIN
     END IF;
   END LOOP;
 END $$;
+
+COMMIT;
