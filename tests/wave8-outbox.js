@@ -66,13 +66,18 @@ async function main() {
     chk('O3a شکست اول: شمارنده ۱، هنوز در صف', e1.retry_count === 1 && e1.status === 'pending' && e1.last_error === 'boom');
     await worker.tick();
     const e2 = store.outbox[0] || {};
-    chk('O3b شکست دوم: شمارنده ۲، هنوز در صف', e2.retry_count === 2 && e2.status === 'pending');
+    /* قراردادِ B4 (ویو ۲۷): رسیدن به سقفِ تلاش (rc >= maxRetries) ⇒ failed +
+       انتقالِ copyِ رویداد به Dead-Letter Queue — رفتارِ واقعی با پروبِ زنده
+       استخراج شد (t1: pending/1، t2: failed/2 + DLQ، t3: بدون پردازشِ مجدد). */
+    chk('O3b شکست دوم: شمارنده ۲ و سقفِ تلاش ⇒ failed', e2.retry_count === 2 && e2.status === 'failed');
+    const dlq0 = (store.outbox_dlq || [])[0] || {};
+    chk('O3b2 کپیِ رویدادِ مسموم در DLQ ثبت شد', store.outbox_dlq && store.outbox_dlq.length === 1 && dlq0.error_message === 'boom');
     await worker.tick();
     const e3 = store.outbox[0] || {};
-    chk('O3c پس از سقف تلاش: وضعیت failed', e3.retry_count === 3 && e3.status === 'failed');
+    chk('O3c پس از سقف تلاش: وضعیت failed می‌ماند و دوباره تلاش نمی‌شود', e3.retry_count === 2 && e3.status === 'failed');
     chk('O3d رویداد با وجود شکست حذف نشد (داده نمی‌میرد)', store.outbox.length === 1 && (store.outbox[0] || {}).id === e3.id);
     await worker.tick();
-    chk('O3e رویداد failed دیگر پردازش نمی‌شود', (store.outbox[0] || {}).retry_count === 3);
+    chk('O3e رویداد failed دیگر پردازش نمی‌شود', (store.outbox[0] || {}).retry_count === 2);
   }
 
   /* O4 — بدون هندلر: دست نمی‌خورد */

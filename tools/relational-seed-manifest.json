@@ -1,30 +1,24 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-13T17:03:17.587Z",
+  "generated_at": "2026-09-19T00:25:29.306Z",
   "generated_by": "tools/seed-relational-small.js (PG_SEED_MANIFEST=1)",
   "scale_label": "demo-scale — NOT a national dataset",
   "benchmark_claim": "NONE. No workload was run; no throughput, latency or capacity number is asserted here or anywhere from this file. Capacity Engineering belongs to chat 4.",
   "database": {
-    "version": "PostgreSQL 18.4 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+    "version": "PostgreSQL 17.11 (Debian 17.11-0+deb13u1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
     "server_addr": "127.0.0.1",
-    "server_port": 55433,
-    "database": "payesh_chat1",
+    "server_port": 5432,
+    "database": "payesh_seed",
     "connection_env": "PG_LIVE_PG (or DATABASE_URL)",
-    "url_without_credentials": "postgres://<user>:<password>@127.0.0.1:55433/payesh_chat1"
+    "url_without_credentials": "postgres://<user>:<password>@127.0.0.1:5432/payesh_seed"
   },
   "migrations": {
-    "total": 12,
-    "applied": 11,
+    "total": 15,
+    "applied": 15,
     "already_exists": 0,
     "failed": 0,
     "new_migrations_added": 0,
-    "not_run": [
-      {
-        "file": "012_partition_grades_attendance.sql",
-        "status": "NOT-RUN",
-        "reason": "psql meta-command \\gset — not executable through the pg driver; requires psql"
-      }
-    ]
+    "not_run": []
   },
   "row_counts": {
     "schools": 2,
@@ -156,11 +150,11 @@
   "artifacts": {
     "seeder": {
       "path": "tools/seed-relational-small.js",
-      "sha256": "ba5174e7818eef160c577c7e9b15bd77dd998caf9691d0d3ecb5d962f6926f3f"
+      "sha256": "5a1297c08a45f93371657fab208af5e56ec2cdefba3619d2789ad6b57e6a2dcb"
     },
     "manifest": {
       "path": "tools/relational-seed-manifest.json",
-      "sha256": "c6ad7d60dc433a20d3816a9df11627181ae730ea235b3c00a6ec8ee88eb0fbdb"
+      "sha256": "eaedc2930bc344e6df0512f45aac4685bcb1f025b759af1bb68ad6d5b01a72a2"
     }
   },
   "verification": {

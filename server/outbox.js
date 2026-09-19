@@ -107,7 +107,27 @@ function createOutbox({ store, db }) {
    */
   async function mark(id, patch) {
     const evt = store.outbox.find(e => e.id === id);
-    if (!evt) return null;
+    if (!evt) {
+      /* P0 fix (Chat 2 remediation, found live in RT4): in PG-live after a
+         restart the RAM queue is empty by design (F3) — but the row lives in
+         server_outbox. mark() used to bail out silently here, so every event
+         processed by the PG-backed worker stayed 'pending' in PostgreSQL and
+         was re-replayed on every boot (live evidence: pending|0 after 12s,
+         'replayed 1 pending event(s)' each boot). Land the mark on PG. */
+      if (!isPg()) return null;
+      patch = patch || {};
+      try {
+        await db.query(
+          `UPDATE server_outbox SET status = $2, retry_count = $3, last_error = $4, processed_at = $5
+           WHERE id = $1;`,
+          [id, String(patch.status || 'pending'), Number(patch.retry_count) || 0,
+           patch.last_error != null ? String(patch.last_error) : null,
+           patch.processed_at || null]
+        );
+        return Object.assign({ id }, patch);
+      } catch (e) { /* best-effort mirror — same contract as below */ }
+      return null;
+    }
     Object.assign(evt, patch || {});
     if (isPg()) {
       try {

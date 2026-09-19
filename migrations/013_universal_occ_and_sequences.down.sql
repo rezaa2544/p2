@@ -5,6 +5,10 @@
 -- ═══════════════════════════════════════════════════════════════════
 
 BEGIN;
+-- P0-BUG-02 fix: sync_conflicts is OWNED by migration 001 (base shape) — this
+-- rollback must NOT drop the table; it only removes the additive columns that
+-- 013 introduced (union of both remediations, IF NOT EXISTS pairs).
+
 
 -- 1. Drop indexes and extended columns added in Migration 013
 DROP INDEX IF EXISTS idx_sync_conflicts_school;
@@ -19,6 +23,11 @@ ALTER TABLE sync_conflicts DROP COLUMN IF EXISTS server_state;
 ALTER TABLE sync_conflicts DROP COLUMN IF EXISTS incoming;
 ALTER TABLE sync_conflicts DROP COLUMN IF EXISTS resolved_data;
 ALTER TABLE sync_conflicts DROP COLUMN IF EXISTS resolution_strategy;
+ALTER TABLE sync_conflicts DROP COLUMN IF EXISTS incoming_version;
+ALTER TABLE sync_conflicts DROP COLUMN IF EXISTS current_version;
+ALTER TABLE sync_conflicts DROP COLUMN IF EXISTS client_data;
+ALTER TABLE sync_conflicts DROP COLUMN IF EXISTS server_data;
+ALTER TABLE sync_conflicts DROP COLUMN IF EXISTS updated_at;
 
 -- 2. Drop version columns added in Migration 013
 DO $$

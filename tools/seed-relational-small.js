@@ -65,6 +65,53 @@ function psqlOnly(sql) {
   return m ? m[0].trim() : null;
 }
 
+/* Chat 2 remediation (2026-09-19): feed statements to the server ONE BY ONE,
+   exactly like psql does. The old single `client.query(wholeFile)` bundled
+   everything into one implicit transaction, which broke any migration that
+   legitimately manages its own transactions (012's chunk-commit DO blocks and
+   its explicit BEGIN...COMMIT swap window => `invalid transaction termination`).
+   The scanner understands line/block comments, single/double-quoted strings
+   (with '' escapes) and $tag$ dollar-quoted bodies, so plpgsql is never split. */
+function splitSqlStatements(sql) {
+  const out = [];
+  let cur = '';
+  let i = 0;
+  let inLine = false, inBlock = false, inS = false, inD = false, dollarTag = null;
+  const n = sql.length;
+  while (i < n) {
+    const ch = sql[i];
+    const two = (i + 1 < n) ? (ch + sql[i + 1]) : ch;
+    if (inLine) { cur += ch; if (ch === '\n') inLine = false; i++; continue; }
+    if (inBlock) { cur += ch; if (two === '*/') { cur += '*/'; i += 2; inBlock = false; continue; } i++; continue; }
+    if (dollarTag) {
+      const end = sql.indexOf(dollarTag, i);
+      if (end === -1) { cur += sql.slice(i); i = n; break; }
+      cur += sql.slice(i, end + dollarTag.length);
+      i = end + dollarTag.length; dollarTag = null; continue;
+    }
+    if (inS) {
+      cur += ch;
+      if (ch === "'" && sql[i + 1] === "'") { cur += "'"; i += 2; continue; }
+      if (ch === "'") inS = false;
+      i++; continue;
+    }
+    if (inD) { cur += ch; if (ch === '"') inD = false; i++; continue; }
+    if (two === '--') { inLine = true; cur += two; i += 2; continue; }
+    if (two === '/*') { inBlock = true; cur += two; i += 2; continue; }
+    if (ch === "'") { inS = true; cur += ch; i++; continue; }
+    if (ch === '"') { inD = true; cur += ch; i++; continue; }
+    if (ch === '$') {
+      const m = /^(\$[A-Za-z_][A-Za-z0-9_]*\$|\$\$)/.exec(sql.slice(i));
+      if (m) { dollarTag = m[1]; cur += m[1]; i += m[1].length; continue; }
+    }
+    if (ch === ';') { const st = cur.trim(); if (st) out.push(st); cur = ''; i++; continue; }
+    cur += ch; i++;
+  }
+  const last = cur.trim();
+  if (last) out.push(last);
+  return out;
+}
+
 /* Apply the repository's migration chain, in order, on one connection.
    Returns a per-file outcome so nothing is silently swallowed:
      applied            — ran clean
@@ -79,11 +126,13 @@ async function applyMigrations(client) {
     const sql = fs.readFileSync(path.join(MIGRATIONS, f), 'utf8');
     const meta = psqlOnly(sql);
     if (meta) { results.push({ file: f, status: 'not_run_psql', detail: meta }); continue; }
-    /* No savepoint here on purpose: every migration in this repo wraps
-       itself in BEGIN; … COMMIT;, and SAVEPOINT outside a transaction block
-       is rejected by the server. */
+    /* Statement-at-a-time execution (psql parity — see splitSqlStatements).
+       A migration that wraps itself in BEGIN;...COMMIT; still commits atomically,
+       because every statement of the file runs on this same connection. */
     try {
-      await client.query(sql);
+      for (const st of splitSqlStatements(sql)) {
+        await client.query(st);
+      }
       results.push({ file: f, status: 'applied' });
     } catch (e) {
       const msg = String(e && e.message || e);
@@ -91,7 +140,8 @@ async function applyMigrations(client) {
          leaves the connection in "current transaction is aborted" and every
          later file would fail with commands-ignored. Clear it. */
       try { await client.query('ROLLBACK'); } catch (e2) {}
-      if (/already exists/i.test(msg)) results.push({ file: f, status: 'already_exists', detail: msg });
+      if (/already exists/i.test(msg) || /ALREADY_APPLIED/.test(msg))
+        results.push({ file: f, status: 'already_exists', detail: msg });  /* ALREADY_APPLIED = sentinel of an idempotent-skip migration (see 012) */
       else results.push({ file: f, status: 'failed', detail: msg });
     }
   }

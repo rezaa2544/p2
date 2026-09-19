@@ -58,6 +58,8 @@ tags:
   - name: admin
     description: عملیات ادمین/سوپرادمین — پشتیبان، ری‌استور، پیامک، شاخص سلامت
   - name: observability
+  - name: analytics
+    description: هوشمندی آموزشی و راهبری (فاز ۳ — P0-EI-09 تا P0-EI-21؛ فقط‌خواندنی، کوکی‌محور)
     description: سلامت و آمادگی — liveness/readiness/health و مسیر فقط-تست
 
 paths:
@@ -677,7 +679,1034 @@ paths:
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /api/v1/analytics/school-intelligence:
+    get:
+      tags: [analytics]
+      summary: مرکز هوشمندی و فرماندهی مدرسه
+      description: نمای جامع اقدامات روزانه مدیر و شاخص‌های مدرسه (P0-EI-09).
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+          description: شناسهٔ مدرسه (محدودهٔ اجازهٔ نقش اعمال می‌شود)
+        - name: academic_year
+          in: query
+          required: false
+          schema: { type: string }
+          description: سال تحصیلی؛ پیش‌فرض 1405-1406
+      responses:
+        '200':
+          description: گزارش هوشمندی (بدنهٔ استاندارد ok/data)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/regional-intelligence:
+    get:
+      tags: [analytics]
+      summary: شبکه بینش و اقدام منطقه‌ای
+      description: تجمیع بینش منطقه‌ای مدارس (P0-EI-10).
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: region_id
+          in: query
+          required: false
+          schema: { type: string }
+          description: شناسهٔ منطقه/دفتر (اختیاری)
+        - name: academic_year
+          in: query
+          required: false
+          schema: { type: string }
+          description: سال تحصیلی؛ پیش‌فرض 1405-1406
+      responses:
+        '200':
+          description: گزارش هوشمندی (بدنهٔ استاندارد ok/data)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/quality-governance:
+    get:
+      tags: [analytics]
+      summary: راهبری کیفیت آموزشی و چرخه بهبود
+      description: ارزیابی ارکان کیفیت در سطح مدرسه/منطقه (P0-EI-11).
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+          description: شناسهٔ مدرسه (محدودهٔ اجازهٔ نقش اعمال می‌شود)
+        - name: region_id
+          in: query
+          required: false
+          schema: { type: string }
+          description: شناسهٔ منطقه/دفتر (اختیاری)
+        - name: academic_year
+          in: query
+          required: false
+          schema: { type: string }
+          description: سال تحصیلی؛ پیش‌فرض 1405-1406
+      responses:
+        '200':
+          description: گزارش هوشمندی (بدنهٔ استاندارد ok/data)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/longitudinal-intelligence:
+    get:
+      tags: [analytics]
+      summary: پایش طولی و کشف روند
+      description: روند شاخص‌ها در بازهٔ دوره برای موجودیت مشخص (P0-EI-12).
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: entity_id
+          in: query
+          required: true
+          schema: { type: integer }
+          description: شناسهٔ موجودیت
+        - name: entity_type
+          in: query
+          required: false
+          schema: { type: string }
+          description: school | region | district (پیش‌فرض school)
+        - name: period_range
+          in: query
+          required: false
+          schema: { type: string }
+          description: بازهٔ دوره؛ پیش‌فرض 1404-1406
+      responses:
+        '200':
+          description: گزارش هوشمندی (بدنهٔ استاندارد ok/data)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/action-recommendations:
+    get:
+      tags: [analytics]
+      summary: موتور پیشنهاددهندهٔ اقدام آموزشی
+      description: پیشنهادهای اقدام مبتنی بر اسنپ‌شات هوشمندی (P0-EI-13).
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+          description: شناسهٔ مدرسه (محدودهٔ اجازهٔ نقش اعمال می‌شود)
+        - name: region_id
+          in: query
+          required: false
+          schema: { type: string }
+          description: شناسهٔ منطقه/دفتر (اختیاری)
+        - name: academic_year
+          in: query
+          required: false
+          schema: { type: string }
+          description: سال تحصیلی؛ پیش‌فرض 1405-1406
+      responses:
+        '200':
+          description: گزارش هوشمندی (بدنهٔ استاندارد ok/data)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/feedback-learning-memory:
+    get:
+      tags: [analytics]
+      summary: حافظهٔ بازخورد و یادگیری
+      description: اثر اقدامات قبلی بر شاخص‌ها (P0-EI-14).
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+          description: شناسهٔ مدرسه (محدودهٔ اجازهٔ نقش اعمال می‌شود)
+        - name: region_id
+          in: query
+          required: false
+          schema: { type: string }
+          description: شناسهٔ منطقه/دفتر (اختیاری)
+        - name: academic_year
+          in: query
+          required: false
+          schema: { type: string }
+          description: سال تحصیلی؛ پیش‌فرض 1405-1406
+      responses:
+        '200':
+          description: گزارش هوشمندی (بدنهٔ استاندارد ok/data)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/intelligence-governance:
+    get:
+      tags: [analytics]
+      summary: حاکمیت هوشمندی آموزشی
+      description: سیاست‌ها و نگهبان‌های هوشمندی (P0-EI-15).
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+          description: شناسهٔ مدرسه (محدودهٔ اجازهٔ نقش اعمال می‌شود)
+        - name: region_id
+          in: query
+          required: false
+          schema: { type: string }
+          description: شناسهٔ منطقه/دفتر (اختیاری)
+        - name: academic_year
+          in: query
+          required: false
+          schema: { type: string }
+          description: سال تحصیلی؛ پیش‌فرض 1405-1406
+      responses:
+        '200':
+          description: گزارش هوشمندی (بدنهٔ استاندارد ok/data)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/policy-simulation:
+    get:
+      tags: [analytics]
+      summary: شبیه‌سازی سیاست‌های آموزشی
+      description: اثر سناریوهای سیاستی روی شاخص‌ها (P0-EI-16).
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+          description: شناسهٔ مدرسه (محدودهٔ اجازهٔ نقش اعمال می‌شود)
+        - name: region_id
+          in: query
+          required: false
+          schema: { type: string }
+          description: شناسهٔ منطقه/دفتر (اختیاری)
+        - name: academic_year
+          in: query
+          required: false
+          schema: { type: string }
+          description: سال تحصیلی؛ پیش‌فرض 1405-1406
+      responses:
+        '200':
+          description: گزارش هوشمندی (بدنهٔ استاندارد ok/data)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/decision-command:
+    get:
+      tags: [analytics]
+      summary: مرکز تصمیم و فرمان
+      description: صف تصمیم‌ها و وضعیت اقدامات (P0-EI-17).
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+          description: شناسهٔ مدرسه (محدودهٔ اجازهٔ نقش اعمال می‌شود)
+        - name: region_id
+          in: query
+          required: false
+          schema: { type: string }
+          description: شناسهٔ منطقه/دفتر (اختیاری)
+        - name: academic_year
+          in: query
+          required: false
+          schema: { type: string }
+          description: سال تحصیلی؛ پیش‌فرض 1405-1406
+      responses:
+        '200':
+          description: گزارش هوشمندی (بدنهٔ استاندارد ok/data)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/operational-execution:
+    get:
+      tags: [analytics]
+      summary: اجرای عملیاتی اقدامات
+      description: پایش اجرای برنامه‌های اقدام (P0-EI-18).
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+          description: شناسهٔ مدرسه (محدودهٔ اجازهٔ نقش اعمال می‌شود)
+        - name: region_id
+          in: query
+          required: false
+          schema: { type: string }
+          description: شناسهٔ منطقه/دفتر (اختیاری)
+        - name: academic_year
+          in: query
+          required: false
+          schema: { type: string }
+          description: سال تحصیلی؛ پیش‌فرض 1405-1406
+      responses:
+        '200':
+          description: گزارش هوشمندی (بدنهٔ استاندارد ok/data)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/outcome-evaluation:
+    get:
+      tags: [analytics]
+      summary: ارزیابی پیامدها
+      description: سنجش نتیجهٔ اقدامات روی پیامدهای آموزشی (P0-EI-19).
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+          description: شناسهٔ مدرسه (محدودهٔ اجازهٔ نقش اعمال می‌شود)
+        - name: region_id
+          in: query
+          required: false
+          schema: { type: string }
+          description: شناسهٔ منطقه/دفتر (اختیاری)
+        - name: academic_year
+          in: query
+          required: false
+          schema: { type: string }
+          description: سال تحصیلی؛ پیش‌فرض 1405-1406
+      responses:
+        '200':
+          description: گزارش هوشمندی (بدنهٔ استاندارد ok/data)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/intelligence-platform:
+    get:
+      tags: [analytics]
+      summary: پلتفرم هوشمندی
+      description: سلامت و آمار سرویس‌های هوشمندی (P0-EI-20).
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+          description: شناسهٔ مدرسه (محدودهٔ اجازهٔ نقش اعمال می‌شود)
+        - name: region_id
+          in: query
+          required: false
+          schema: { type: string }
+          description: شناسهٔ منطقه/دفتر (اختیاری)
+        - name: academic_year
+          in: query
+          required: false
+          schema: { type: string }
+          description: سال تحصیلی؛ پیش‌فرض 1405-1406
+      responses:
+        '200':
+          description: گزارش هوشمندی (بدنهٔ استاندارد ok/data)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/intelligence-certification:
+    get:
+      tags: [analytics]
+      summary: گواهی هوشمندی
+      description: وضعیت گواهی‌های کیفیت لایهٔ هوشمندی (P0-EI-21).
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+          description: شناسهٔ مدرسه (محدودهٔ اجازهٔ نقش اعمال می‌شود)
+        - name: region_id
+          in: query
+          required: false
+          schema: { type: string }
+          description: شناسهٔ منطقه/دفتر (اختیاری)
+        - name: academic_year
+          in: query
+          required: false
+          schema: { type: string }
+          description: سال تحصیلی؛ پیش‌فرض 1405-1406
+      responses:
+        '200':
+          description: گزارش هوشمندی (بدنهٔ استاندارد ok/data)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/reports/academic:
+    get:
+      tags: [observability]
+      summary: گزارش استاندارد وزارتی (Wave 23، فقط‌خواندنی، خروجی SQL-native)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/reports/attendance:
+    get:
+      tags: [observability]
+      summary: گزارش استاندارد وزارتی (Wave 23، فقط‌خواندنی، خروجی SQL-native)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/reports/finance:
+    get:
+      tags: [observability]
+      summary: گزارش استاندارد وزارتی (Wave 23، فقط‌خواندنی، خروجی SQL-native)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/reports/teachers:
+    get:
+      tags: [observability]
+      summary: گزارش استاندارد وزارتی (Wave 23، فقط‌خواندنی، خروجی SQL-native)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/disaster-recovery-health:
+    get:
+      tags: [observability]
+      summary: سلامت/وضعیت سرویس (خروجی استاندارد ok + اجزای وضعیت)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/event-processing-health:
+    get:
+      tags: [observability]
+      summary: سلامت/وضعیت سرویس (خروجی استاندارد ok + اجزای وضعیت)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/national/capacity:
+    get:
+      tags: [observability]
+      summary: کنترل‌پلین ملی فاز ۴-۶ (گزارش وضعیت؛ اجرا فقط با تایید انسانی)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/national/capacity/reservations:
+    get:
+      tags: [observability]
+      summary: کنترل‌پلین ملی فاز ۴-۶ (گزارش وضعیت؛ اجرا فقط با تایید انسانی)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/national/health:
+    get:
+      tags: [observability]
+      summary: سلامت/وضعیت سرویس (خروجی استاندارد ok + اجزای وضعیت)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/national/incidents:
+    get:
+      tags: [observability]
+      summary: کنترل‌پلین ملی فاز ۴-۶ (گزارش وضعیت؛ اجرا فقط با تایید انسانی)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/national/load-test:
+    get:
+      tags: [observability]
+      summary: کنترل‌پلین ملی فاز ۴-۶ (گزارش وضعیت؛ اجرا فقط با تایید انسانی)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/national/operations:
+    get:
+      tags: [observability]
+      summary: کنترل‌پلین ملی فاز ۴-۶ (گزارش وضعیت؛ اجرا فقط با تایید انسانی)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/national/readiness:
+    get:
+      tags: [observability]
+      summary: سلامت/وضعیت سرویس (خروجی استاندارد ok + اجزای وضعیت)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/national/regions:
+    get:
+      tags: [observability]
+      summary: کنترل‌پلین ملی فاز ۴-۶ (گزارش وضعیت؛ اجرا فقط با تایید انسانی)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/national/traffic:
+    get:
+      tags: [observability]
+      summary: کنترل‌پلین ملی فاز ۴-۶ (گزارش وضعیت؛ اجرا فقط با تایید انسانی)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/national/write-smoothing:
+    get:
+      tags: [observability]
+      summary: کنترل‌پلین ملی فاز ۴-۶ (گزارش وضعیت؛ اجرا فقط با تایید انسانی)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/observability-health:
+    get:
+      tags: [observability]
+      summary: سلامت/وضعیت سرویس (خروجی استاندارد ok + اجزای وضعیت)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/phase4-certification:
+    get:
+      tags: [observability]
+      summary: سلامت/وضعیت سرویس (خروجی استاندارد ok + اجزای وضعیت)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/phase5/federation-health:
+    get:
+      tags: [observability]
+      summary: سلامت/وضعیت سرویس (خروجی استاندارد ok + اجزای وضعیت)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/phase5/provincial-pilots:
+    get:
+      tags: [observability]
+      summary: لایهٔ فدراسیون/استقرار (فاز ۴-۵) — گزارش وضعیت
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/phase5/provincial-pilots/capacity:
+    get:
+      tags: [observability]
+      summary: لایهٔ فدراسیون/استقرار (فاز ۴-۵) — گزارش وضعیت
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/phase5/regions:
+    get:
+      tags: [observability]
+      summary: لایهٔ فدراسیون/استقرار (فاز ۴-۵) — گزارش وضعیت
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/phase5/resource-governance:
+    get:
+      tags: [observability]
+      summary: لایهٔ فدراسیون/استقرار (فاز ۴-۵) — گزارش وضعیت
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/pilot-deployment-health:
+    get:
+      tags: [observability]
+      summary: سلامت/وضعیت سرویس (خروجی استاندارد ok + اجزای وضعیت)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/scalability-health:
+    get:
+      tags: [observability]
+      summary: سلامت/وضعیت سرویس (خروجی استاندارد ok + اجزای وضعیت)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/security-health:
+    get:
+      tags: [observability]
+      summary: سلامت/وضعیت سرویس (خروجی استاندارد ok + اجزای وضعیت)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/national/capacity/reservation:
+    post:
+      tags: [observability]
+      summary: کنترل‌پلین ملی فاز ۴-۶ (گزارش وضعیت؛ اجرا فقط با تایید انسانی)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/national/change-request:
+    post:
+      tags: [observability]
+      summary: کنترل‌پلین ملی فاز ۴-۶ (گزارش وضعیت؛ اجرا فقط با تایید انسانی)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/phase5/pilot-approval:
+    post:
+      tags: [observability]
+      summary: لایهٔ فدراسیون/استقرار (فاز ۴-۵) — گزارش وضعیت
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/phase5/provincial-pilots/activate:
+    post:
+      tags: [observability]
+      summary: لایهٔ فدراسیون/استقرار (فاز ۴-۵) — گزارش وضعیت
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/system/phase5/provincial-pilots/traffic-rollout:
+    post:
+      tags: [observability]
+      summary: لایهٔ فدراسیون/استقرار (فاز ۴-۵) — گزارش وضعیت
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200':
+          description: نتیجهٔ استاندارد
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
 components:
+  schemas:
+    OkResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+        data:
+          description: بار اختصاصی اندپوینت (ساختار در server/index.js و ماژول‌های routes مستند است)
+        code:
+          type: string
+        message:
+          type: string
+  schemas:
+    AnalyticsReport:
+      type: object
+      description: پوشِ استاندارد گزارش‌های هوشمندی؛ ساختار data در هر اندپوینت متمایز است و در server/routes/analytics.js مستند می‌شود.
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+        data:
+          type: object
+          description: اسنپ‌شات گزارش (ساختار اختصاصی هر گزارش)
+        code:
+          type: string
+          description: فقط در خطاها
+        message:
+          type: string
+          description: فقط در خطاها
 
   securitySchemes:
     cookieAuth:

@@ -198,8 +198,9 @@ const superadmin = { id: 1, role: 'superadmin' };
     let pg = null;
     try { pg = require('pg'); } catch (e) { pg = null; }
     if (!process.env.DATABASE_URL || !pg) {
-      console.log('     ⏭️  no live PostgreSQL — DB-native SQL NOT executed; see WAVE3_QUERY_PERFORMANCE.md');
-      return;
+      /* P1-GAP-01 (Chat 2 remediation): self-skip ممنوع — بدون PostgreSQL واقعی
+         این سنجه FAIL است، نه SKIP؛ سبزِ کاذب دیگر ممکن نیست. */
+      throw new Error('FAIL — PostgreSQL در دسترس نیست (DATABASE_URL خالی یا درایور pg نیست)؛ skip ممنوع (P1-GAP-01)');
     }
     const db = require('../server/db');
     const info = await db.init(seed());

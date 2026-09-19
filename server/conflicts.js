@@ -184,6 +184,26 @@ function createConflicts(ctx){
        ردیفِ حل‌شدهٔ قدیمی را هرگز نمی‌بیند (created_at کهنه است). */
     c.updated_at = c.resolved_at;
     if(body.reason) c.reason = String(body.reason).slice(0, 200);
+    /* P0 (Chat 2 audit 4.2 follow-up): conflicts now live in PG too (sync.js
+       persists them in the phase-2 transaction) — so the adjudication must be
+       recorded there as well, or a restart re-hydrates the row as `open` and
+       the arbitration silently evaporates. Fail-closed mirrors the Wave-1
+       record-write path above: PG failure ⇒ 503, RAM untouched, retryable.
+       (Rows created before this fix may not exist in PG — UPDATE 0 rows is fine.) */
+    if(pgLive && db && typeof db.query === 'function'){
+      try {
+        await db.query(
+          `UPDATE sync_conflicts
+              SET status = $2, winner = $3, resolved_by = $4,
+                  resolved_at = $5, updated_at = $6, reason = $7
+            WHERE id = $1`,
+          [c.id, 'resolved', winner, s.id, c.resolved_at, c.updated_at, c.reason || null]
+        );
+      } catch (pgErr) {
+        audit('conflict_resolve_pg_failed', { conflict_id: c.id, error: String((pgErr && pgErr.message) || pgErr).slice(0, 140) });
+        return sendJson(res, 503, { ok: false, code: 'pg_unavailable' });
+      }
+    }
     /* ممیزی دور ۲ (رگرسیونِ SG11/C15c/C16/C17c): resolve ⇒ delِ فوری (باگ ۲
        بازبین #124) قراردادِ Gap-3 (#59) را می‌شکست — دلتا ردیفِ resolved را
        از راهِ updated_at به کلاینت می‌رساند تا UI تعارضِ محلی را ببندد؛ حذفِ
