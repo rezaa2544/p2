@@ -3379,3 +3379,18 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
   ۹. **یکپارچه‌سازی با چک‌لیست شروع سشن (`docs/SESSION_START.md`):** گنجاندن این اسکیل در گام ۳ (فهرست اسکیل‌های اصلی) و گام ۵ (تعهد سشن به تفکیک Mock/Runtime و درجه‌بندی شواهد) و بند ۱۴ `docs/AI_PROMPT.md`.
 - **دستور برای Chat 2 و تمام عامل‌ها:** فعال‌سازی خودکار و الزامی پیش از ورود به هر فاز؛ هیچ گواهی VERIFIED بدون شواهد E3/E4 صادر نخواهد شد.
 
+## Phase 7.6-R.7 — Independent Verification Closure & Production Readiness Hardening — ✅ (2026-09-19)
+
+- **طبق اسکیل‌ها:** طبق `evidence-integrity-and-commit-accounting` (تفکیک SHA، درجه‌بندی شواهد E1-E4، و صحت تاریخچه گیت)، `security-review-payesh` (ارزیابی مرزهای تننت و لایه Authority)، و `qa-testing` (اجرای سوئیت‌های کامل رگرسیون زمان اجرا).
+- **اقدامات انجام‌شده:**
+  ۱. **ممیزی صحت شواهد (`Task 1`):** تطابق کامل HEAD گیت (`a6d09066bf960b73c246f9037eec5285743a7cd8`) با گزارش‌های پیاده‌سازی و وضعیت پاک گیت‌هاب (`git status --short` = clean).
+  ۲. **ممیزی مرزهای لایه Authority (`Task 2`):** تأیید انحصار ۱۰۰٪ کوئری‌های SQL به جداول حساس فاز ۶ (`phase6_canary_configs`, `phase6_audit_events`, `phase6_replay_ledger`, `tenant_policy`, `system_audit`) در درون ماژول `server/infrastructure/authority/` و عدم وجود حتی یک کوئری مستقیم بیرون از Authority.
+  ۳. **اثبات نهایی اتمیسیتی قناری (`Task 3`):** تأیید مسیر زنده `HTTP -> phase6-canary-engine -> authority.updateCanaryWeightWithAudit -> db.transaction -> UPDATE + AUDIT INSERT`. تأیید وجود ۱ فراخوان فعال زنده و ۰ فراخوان غیراتمی در مسیر تغییر وزن.
+  ۴. **راستی‌آزمایی Fail-Closed (`Task 4`):** تأیید عدم امکان استفاده از RAM / local Map / memory fallback در صورت قطع Redis یا PostgreSQL زمانی که `DATABASE_URL` / `REDIS_URL` یا `PAYESH_ENV=production` تنظیم شده باشند (پاسخ ۵۰۳ صریح).
+  ۵. **استحکام ایزولاسیون تننت (`Task 5`):** ارزیابی اجباری `assertTenantBoundary` در `server/index.js` برای ۱۰۰٪ درخواست‌های API غیرسوپرادمین، متصل به `tenant_policy` در SSoT پستگرس حتی زمان عدم ارسال پارامترهای اختیاری.
+  ۶. **دسته‌بندی تست‌ها (`Task 6`):** تفکیک و درج صریح برچسب‌های `[MOCK]`, `[RUNTIME]`, `[LIVE DB / INTEGRATION]`, `[PRODUCTION PROOF]` در تمامی مستندات.
+  ۷. **بهداشت ورک‌اسپیس (`Task 7`):** حجم ورک‌اسپیس ۷۵ مگابایت، ۰ فایل Untracked، و پاکسازی کامل.
+  ۸. **گزارش کامیت‌ها (`Task 8`):** تفکیک کامل کامیت‌های کد (`CODE_COMMIT_SHA`) از مستندات (`DOC_COMMIT_SHA`).
+- **وضعیت:** عدم صدور گواهی VERIFIED تا زمان ارزیابی و تأیید تیم قرمز مستقل در Chat3.
+
+
