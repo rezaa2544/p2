@@ -109,7 +109,15 @@ jobs:
       run: node tests/otp-redis.js
 
     - name: Redis outage ⇒ auth fails CLOSED (BLOCKER 5)
-      run: node tests/phase2-redis-fail-closed.js
+      run: |
+        # Hosted images do not ship redis-server. The test must kill a DEDICATED
+        # instance (never SHUTDOWN the job Redis service — later steps need it).
+        if [ ! -x /usr/bin/redis-server ] && [ ! -x /usr/local/bin/redis-server ]; then
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq redis-server
+          sudo service redis-server stop || sudo systemctl stop redis-server || true
+        fi
+        node tests/phase2-redis-fail-closed.js
 
     - name: OCC across two real instances — 10 concurrent writers (BLOCKER 4)
       run: |

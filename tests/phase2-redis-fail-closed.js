@@ -4,7 +4,8 @@
    never `200 / allowed:true` via a RAM fallback.
    Modes:
    • own redis-server binary found  ⇒ full cycle: 200 → kill → 503 → restart → 200
-   • external REDIS_URL (e.g. CI service) ⇒ 200 → SHUTDOWN via ioredis → 503
+   • else docker redis:7 on a dedicated port (CI — GitHub images have no redis-server)
+   • last resort: shared REDIS_URL + SHUTDOWN (must not be the CI path — it kills later steps)
    Without any runnable Redis this test FAILS (exit 1) — never fake-green. */
 'use strict';
 const fs = require('fs');
@@ -33,18 +34,41 @@ function req(method, p, body) {
 }
 
 (async () => {
-  /* find a runnable Redis */
+  /* find a runnable Redis that we are allowed to KILL.
+     Never SHUTDOWN the job-level REDIS_URL service — that is shared with later
+     CI steps (OCC, truth-gate, Phase 7). GitHub-hosted images do not ship
+     redis-server; fall back to a dedicated `docker run redis:7` (the same
+     image the workflow already pulled as a service). */
   let redisProc = null;
-  const ownBin = ['/usr/bin/redis-server', '/usr/local/bin/redis-server'].find((p) => { try { fs.accessSync(p); return true; } catch (e) { return false; } });
-  const external = process.env.REDIS_URL && !ownBin;
+  let dockerName = null;
+  let ownBin = ['/usr/bin/redis-server', '/usr/local/bin/redis-server'].find((p) => { try { fs.accessSync(p); return true; } catch (e) { return false; } });
+  if (!ownBin) {
+    try { const w = String(execSync('command -v redis-server', { encoding: 'utf8' })).trim(); if (w) ownBin = w; } catch (e) {}
+  }
   if (ownBin) {
     const rlog = fs.openSync(path.join(os.tmpdir(), 'p2-redis-test.log'), 'w');
     redisProc = spawn(ownBin, ['--port', String(RPORT), '--save', '', '--appendonly', 'no', '--dir', os.tmpdir()], { stdio: ['ignore', rlog, rlog] });
     await sleep(900);
     if (redisProc.exitCode != null) { console.log('── redis-server exited early code=' + redisProc.exitCode + ' — log: ' + fs.readFileSync(path.join(os.tmpdir(), 'p2-redis-test.log'), 'utf8').slice(0, 400)); }
+  } else {
+    try {
+      execSync('docker info', { stdio: 'ignore', timeout: 8000 });
+      dockerName = 'p2-rdx-' + process.pid;
+      try { execSync('docker rm -f ' + dockerName, { stdio: 'ignore', timeout: 15000 }); } catch (e) {}
+      execSync('docker run -d --name ' + dockerName + ' -p 127.0.0.1:' + RPORT + ':6379 redis:7', { stdio: 'pipe', timeout: 60000 });
+      await sleep(1200);
+      console.log('── dedicated docker redis on :' + RPORT + ' name=' + dockerName);
+    } catch (e) {
+      dockerName = null;
+      console.log('── docker redis unavailable:', (e && e.message || e).toString().slice(0, 160));
+    }
   }
-  const RURL = ownBin ? `redis://127.0.0.1:${RPORT}` : process.env.REDIS_URL;
-  if (!RURL) { console.error('❌ no runnable Redis (no redis-server binary, no REDIS_URL) = FAIL (exit 1)'); process.exit(1); }
+  const dedicated = !!(ownBin || dockerName);
+  const RURL = dedicated ? `redis://127.0.0.1:${RPORT}` : process.env.REDIS_URL;
+  if (!RURL) { console.error('❌ no runnable Redis (no redis-server, no docker, no REDIS_URL) = FAIL (exit 1)'); process.exit(1); }
+  if (!dedicated) {
+    console.log('── WARNING: falling back to shared REDIS_URL — SHUTDOWN would kill later CI steps; fail-closed still asserted, recovery skipped');
+  }
 
   const KEY = path.join(os.tmpdir(), 'rdx-jwt.key');
   const STORE = path.join(os.tmpdir(), 'rdx-store.json');
@@ -86,9 +110,11 @@ function req(method, p, body) {
   let h1 = await req('POST', '/api/auth/send-code', { phone: phones[0] });
   chk('Redis زنده ⇒ send-code موفق (200)', h1.status === 200, h1.status + ' ' + h1.body.slice(0, 80));
 
-  /* kill Redis */
+  /* kill Redis (the dedicated instance only) */
   if (redisProc) {
     redisProc.kill('SIGKILL');
+  } else if (dockerName) {
+    try { execSync('docker rm -f ' + dockerName, { stdio: 'ignore', timeout: 15000 }); } catch (e) {}
   } else {
     const Redis = require('ioredis');
     const k = new Redis(RURL, { maxRetriesPerRequest: 1, enableOfflineQueue: false, retryStrategy: () => null, connectTimeout: 1000 });
@@ -96,7 +122,15 @@ function req(method, p, body) {
     try { k.disconnect(); } catch (e) {}
   }
   await sleep(1500);
-  try { const rc = new RC(RURL, { maxRetriesPerRequest: 1, enableOfflineQueue: false, retryStrategy: () => null, connectTimeout: 800 }); const pr = await rc.ping(); console.log('── DEBUG ping after kill:', pr, '| killed=', redisProc.killed, 'exitCode=', redisProc.exitCode); rc.disconnect(); } catch (e) { console.log('── DEBUG ping after kill: DEAD (', e.message, ') | killed=', redisProc.killed, 'exitCode=', redisProc.exitCode); }
+  try {
+    const RedisPing = require('ioredis');
+    const rc = new RedisPing(RURL, { maxRetriesPerRequest: 1, enableOfflineQueue: false, retryStrategy: () => null, connectTimeout: 800 });
+    const pr = await rc.ping();
+    console.log('── ping after kill:', pr, '| redisProc.exit=', redisProc && redisProc.exitCode, '| docker=', dockerName);
+    try { rc.disconnect(); } catch (e) {}
+  } catch (e) {
+    console.log('── ping after kill: DEAD (', e && e.message, ') | redisProc.exit=', redisProc && redisProc.exitCode, '| docker=', dockerName);
+  }
 
   /* FAIL CLOSED: the OTP limiter must 503, never fall back to RAM */
   let h2 = { status: 0, body: '' };
@@ -114,9 +148,14 @@ function req(method, p, body) {
   const h3 = await req('POST', '/api/auth/login', { phone: su.phone, code: '123456', national_id: su.national_id });
   chk('Redis قطع ⇒ login هم 503 (نه 200)', h3.status === 503, h3.status);
 
-  /* restart redis ⇒ full recovery */
-  if (redisProc) {
-    redisProc = spawn(ownBin, ['--port', String(RPORT), '--save', '', '--appendonly', 'no'], { stdio: 'ignore' });
+  /* restart redis ⇒ full recovery (dedicated instance only) */
+  if (dedicated) {
+    if (ownBin) {
+      redisProc = spawn(ownBin, ['--port', String(RPORT), '--save', '', '--appendonly', 'no', '--dir', os.tmpdir()], { stdio: 'ignore' });
+    } else if (dockerName) {
+      try { execSync('docker rm -f ' + dockerName, { stdio: 'ignore', timeout: 15000 }); } catch (e) {}
+      execSync('docker run -d --name ' + dockerName + ' -p 127.0.0.1:' + RPORT + ':6379 redis:7', { stdio: 'pipe', timeout: 60000 });
+    }
     await sleep(1200);
     let recovered = false;
     for (let i = 0; i < 6; i++) {
@@ -125,7 +164,8 @@ function req(method, p, body) {
       await sleep(800);
     }
     chk('Redis برگشت ⇒ send-code دوباره 200 (recovery)', recovered);
-    try { redisProc.kill('SIGKILL'); } catch (e) {}
+    try { if (redisProc) redisProc.kill('SIGKILL'); } catch (e) {}
+    if (dockerName) { try { execSync('docker rm -f ' + dockerName, { stdio: 'ignore', timeout: 15000 }); } catch (e) {} }
   }
 
   try { proc.kill('SIGTERM'); } catch (e) {}
