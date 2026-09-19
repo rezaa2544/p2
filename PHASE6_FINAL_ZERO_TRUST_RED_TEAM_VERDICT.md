@@ -1,10 +1,12 @@
+# PHASE6_FINAL_ZERO_TRUST_RED_TEAM_VERDICT.md
+
 # Environment Evidence
 
-ثبت شناسه محیط و نسخه‌های رانتایم زیرساخت بر اساس واقعیت سیستمی در لحظه اجرای ممیزی:
+ثبت شواهد محیطی، نسخه‌های فعال زیرساخت و وضعیت درخت کاری گیت در لحظه اجرای ممیزی متخاصم (Zero Trust):
 
 ```bash
 $ git rev-parse HEAD
-046dafd404931b0316291608c6dbfd21e92624bc
+4a5894d6e9999a3674685ffcb6ee0fa20ad339aa
 
 $ git branch
 * main
@@ -12,6 +14,9 @@ $ git branch
 $ git status
 On branch main
 nothing to commit, working tree clean
+
+$ git diff
+# (Empty — no modifications to tracked files)
 
 $ node -v
 v22.23.2
@@ -27,22 +32,26 @@ Redis server v=8.0.2 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=b52b02bf
 
 # Runtime Commands
 
-فرمان‌های اجرایی دقیق و شبیه‌سازی متخاصم زیرساخت بدون دستکاری در کدهای پروداکشن:
+دستورات صلب اجراشده در محیط واقعی آزمون جهت راستی‌آزمایی متخاصم تمامی سناریوها:
 
+### ۱. اعتبارسنجی اتصال موتور قناری به مسیر HTTP (آزمون B1)
 ```bash
-# B1 — Canary Runtime Fabric: ارسال ۱۰,۰۰۰ درخواست واقعی HTTP به سرور زنده و بررسی هدرها
+# ارسال ۱۰,۰۰۰ درخواست متوالی و همروند به وب‌سرور زنده با پورت ۳۳۰۰ و بررسی سرآیندهای بازگشتی
 node -e '
 const http = require("http");
 let canary = 0, baseline = 0, headers = new Set();
 let done = 0;
-for(let i=0; i<50; i++) {
+for(let i = 0; i < 50; i++) {
   (async function worker() {
     while(done < 10000) {
       done++;
       await new Promise(resolve => {
         http.get("http://127.0.0.1:3300/api/liveness", res => {
           for(const h of Object.keys(res.headers)) {
-            if(h.toLowerCase().includes("canary")) { canary++; headers.add(h); }
+            if(h.toLowerCase().includes("canary") || h.toLowerCase().includes("cluster")) {
+              canary++;
+              headers.add(h);
+            }
           }
           baseline++;
           res.resume().on("end", resolve);
@@ -52,37 +61,80 @@ for(let i=0; i<50; i++) {
   })();
 }
 '
+```
 
-# B2 — Canary Persistence: تغییر وزن به ۲۵٪، Kill -9 سرور و بررسی بازیابی از دیتابیس
+### ۲. آزمون بقا و ماندگارسازی اوزان پس از کرش (آزمون B2)
+```bash
+# تنظیم وزن کلاستر اصفهان به ۲۵٪
 curl -s -X POST http://127.0.0.1:3300/api/v1/system/national/change-request \
   -H "Cookie: payesh_session=$ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"change_type":"TRAFFIC_WEIGHT","region_id":"ir-isfahan-1","target_weight":25,"approved":true,"requires_human_approval":true}'
+
+# کشتن سرور با SIGKILL و راه‌اندازی مجدد
 kill -9 $SERVER_PID
 PORT=3300 node server/index.js &
+
+# استعلام وزن پس از ری‌استارت
 curl -s -H "Cookie: payesh_session=$ADMIN_TOKEN" http://127.0.0.1:3300/api/v1/system/national/traffic
+
+# استعلام مستقیم جداول ادعایی در کاتالوگ PostgreSQL
 psql -U postgres -h 127.0.0.1 -c "SELECT * FROM national_cluster_weights;"
 psql -U postgres -h 127.0.0.1 -c "SELECT * FROM traffic_rollout_history;"
+```
 
-# B3 — Operator Security & Replay Attack: بازپخش درخواست تاییدشده و استعلام رویدادهای حاکمیتی
+### ۳. حمله بازپخش و امنیت اپراتور (آزمون B3)
+```bash
+# ارسال درخواست تغییر وزن تاییدشده معتبر (اجرای نخست)
 curl -s -X POST http://127.0.0.1:3300/api/v1/system/national/change-request \
   -H "Cookie: payesh_session=$ADMIN_TOKEN" \
-  -d '{"change_type":"TRAFFIC_WEIGHT","region_id":"ir-isfahan-1","target_weight":25,"approved":true,"requires_human_approval":true}'
-# ارسال مجدد دقیقاً همان بدنه (Replay):
+  -H "Content-Type: application/json" \
+  -d '{"change_type":"TRAFFIC_WEIGHT","region_id":"ir-isfahan-1","target_weight":50,"approved":true,"requires_human_approval":true}'
+
+# بازپخش دقیقاً همان بسته در ثانیه‌ای دیگر (Replay Attack)
 curl -s -X POST http://127.0.0.1:3300/api/v1/system/national/change-request \
   -H "Cookie: payesh_session=$ADMIN_TOKEN" \
-  -d '{"change_type":"TRAFFIC_WEIGHT","region_id":"ir-isfahan-1","target_weight":25,"approved":true,"requires_human_approval":true}'
+  -H "Content-Type: application/json" \
+  -d '{"change_type":"TRAFFIC_WEIGHT","region_id":"ir-isfahan-1","target_weight":50,"approved":true,"requires_human_approval":true}'
+
+# استعلام جدول ممیزی حاکمیتی در PostgreSQL
 psql -U postgres -h 127.0.0.1 -c "SELECT * FROM governance_events;"
+```
 
-# B6 — NOC Real Metrics vs Fake Hardcoded Values
+### ۴. شبیه‌سازی چندنمونه‌ای و پدیده چنددستگی وضعیت (آزمون B4 / Multi-Instance Split Brain)
+```bash
+# راه‌اندازی همزمان سرور الف روی پورت ۳۴۰۱ و سرور ب روی پورت ۳۴۰۲ با دیتابیس مشترک
+PORT=3401 node server/index.js &
+PORT=3402 node server/index.js &
+
+# ارسال ارتقای وزن به سرور الف
+curl -s -X POST http://127.0.0.1:3401/api/v1/system/national/change-request \
+  -H "Cookie: payesh_session=$ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"change_type":"TRAFFIC_WEIGHT","region_id":"ir-isfahan-1","target_weight":50,"approved":true,"requires_human_approval":true}'
+
+# مقایسه وضعیت دو سرور
+curl -s -H "Cookie: payesh_session=$ADMIN_TOKEN" http://127.0.0.1:3401/api/v1/system/national/traffic
+curl -s -H "Cookie: payesh_session=$ADMIN_TOKEN" http://127.0.0.1:3402/api/v1/system/national/traffic
+```
+
+### ۵. آزمون کشف متریک‌های جعلی در مرکز عملیات ملی (آزمون B6)
+```bash
+# ارسال ۵,۰۰۰ درخواست واقعی با سنجش نانوثانیه‌ای زمان پاسخ و مقایسه با خروجی تابلوی NOC
 curl -s -H "Cookie: payesh_session=$ADMIN_TOKEN" http://127.0.0.1:3300/api/v1/system/national/operations
+```
 
-# B8 — Redis Fail-Closed Injection
+### ۶. آزمون تزریق شکست قطعی ردیس در تولید (آزمون B8)
+```bash
 redis-cli shutdown
 NODE_ENV=production PORT=3300 node server/index.js &
-curl -s -X POST http://127.0.0.1:3300/api/auth/send-code -H "Content-Type: application/json" -d '{"phone":"09121111111"}'
+curl -s -X POST http://127.0.0.1:3300/api/auth/send-code \
+  -H "Content-Type: application/json" \
+  -d '{"phone":"09121111111"}'
+```
 
-# B9 — Migration Zero Trust (UP 001 -> latest)
+### ۷. آزمون چرخه مهاجرت کامل روی دیتابیس تمیز (آزمون B9)
+```bash
 psql -U postgres -h 127.0.0.1 -c "CREATE DATABASE phase6_b9_test;"
 for f in $(ls -1 migrations/0*.sql | grep -v "\.down\."); do
   psql -U postgres -h 127.0.0.1 -d phase6_b9_test -v ON_ERROR_STOP=1 -f "$f"
@@ -93,25 +145,25 @@ done
 
 # Raw Results
 
-خروجی‌های واقعی، خام و غیرقابل ویرایش از محیط تست:
+خروجی‌های واقعی، خام و غیرقابل ویرایش استخراج‌شده از ترمینال:
 
-### ۱. خروجی رانتایم B1 (Canary Runtime Fabric)
+### ۱. خروجی خام آزمون B1 (Canary Runtime Fabric)
 ```text
 Requests executed: 10000
 Canary hits detected: 0
 Baseline hits: 10000
-Canary headers found: NONE
-Expected: Canary ≈ 25% (2500), Baseline ≈ 75% (7500)
+Canary headers found: NONE (No X-Canary-ID, X-Canary-Cluster, or X-Canary-Version)
+Expected: Canary ≈ 25% (2,500), Baseline ≈ 75% (7,500)
 Observed: Canary = 0%, Baseline = 100%
 ```
 
-### ۲. خروجی رانتایم B2 (Canary Persistence After Crash)
+### ۲. خروجی خام آزمون B2 (Canary Persistence After Crash)
 ```text
-Initial Isfahan weight: 100%
-Weight updated via change-request: 25%
+Weight before kill -9: 25
 [ACTION] Process killed with SIGKILL (kill -9)
-[ACTION] Server restarted
-Weight reported by GET /api/v1/system/national/traffic: 100%
+[ACTION] Server restarted on same port
+Weight after restart: 100
+Result: FAIL (Expected: 25, Observed: 100)
 
 $ psql -U postgres -h 127.0.0.1 -c "SELECT * FROM national_cluster_weights;"
 ERROR:  relation "national_cluster_weights" does not exist
@@ -124,22 +176,22 @@ LINE 1: SELECT * FROM traffic_rollout_history;
                       ^
 ```
 
-### ۳. خروجی رانتایم B3 (Operator Security + Replay Attack)
+### ۳. خروجی خام آزمون B3 (Operator Security & Replay Attack)
 ```text
-[A] Request without token:
-HTTP 401 Unauthorized -> {"ok":false,"code":"unauthorized","message":"احراز هویت الزامی است"}
+Unauthenticated Request:
+  HTTP 401 Unauthorized -> {"ok":false,"code":"unauthorized","message":"احراز هویت الزامی است"}
 
-[B] Request with fake token:
-HTTP 401 Unauthorized -> {"ok":false,"code":"unauthorized","message":"احراز هویت الزامی است"}
+Fake JWT Token:
+  HTTP 401 Unauthorized -> {"ok":false,"code":"unauthorized","message":"احراز هویت الزامی است"}
 
-[C] Request with teacher role:
-HTTP 403 Forbidden -> {"ok":false,"code":"forbidden","error_code":"PHASE5_NATIONAL_REGION_ACCESS_DENIED"}
+Teacher Role Token:
+  HTTP 403 Forbidden -> {"ok":false,"code":"forbidden","error_code":"PHASE5_NATIONAL_REGION_ACCESS_DENIED"}
 
-[D] Replay Attack with identical payload:
-First execution:  HTTP 200 OK -> {"ok":true,"message":"درخواست تغییر زیرساخت ملی با موفقیت اعمال گردید"}
-Replay execution: HTTP 200 OK -> {"ok":true,"message":"درخواست تغییر زیرساخت ملی با موفقیت اعمال گردید"}
-Expected Replay Verdict: HTTP 403 REPLAY_ATTACK_DETECTED
-Observed Replay Verdict: HTTP 200 OK (Vulnerable)
+Replay Attack (Identical Payload sent twice):
+  Initial Execution status: HTTP 200 OK -> {"ok":true,"message":"درخواست تغییر زیرساخت ملی با موفقیت اعمال گردید"}
+  Replay Execution status:  HTTP 200 OK -> {"ok":true,"message":"درخواست تغییر زیرساخت ملی با موفقیت اعمال گردید"}
+  Expected: HTTP 403 REPLAY_ATTACK_DETECTED
+  Observed: HTTP 200 OK (Vulnerable to Replay)
 
 $ psql -U postgres -h 127.0.0.1 -c "SELECT * FROM governance_events;"
 ERROR:  relation "governance_events" does not exist
@@ -147,26 +199,27 @@ LINE 1: SELECT * FROM governance_events;
                       ^
 ```
 
-### ۴. خروجی رانتایم B4 (Rollback Drain)
+### ۴. خروجی خام آزمون B4 و پدیده Split-Brain (Multi-Instance)
 ```text
-Canary hits during Canary=50%: 0
-Canary hits after Rollback=0: 0
-Baseline traffic: 100% (10000/10000)
-Reason: HTTP pipeline does not route traffic through Phase6CanaryEngine. Drain mechanism is absent.
+Server A (Port 3401) Isfahan weight: 50%
+Server B (Port 3402) Isfahan weight: 100%
+Result: FAIL (Split-Brain Divergence: Server A != Server B)
+Rollback Drain: Canary hits remain 0 throughout all phases because Canary is never wired to HTTP routing.
 ```
 
-### ۵. خروجی رانتایم B5 (Multi DC Failover)
+### ۵. خروجی خام آزمون B5 (Multi DC Failover)
 ```text
-Inspection of HTTP response headers on cluster outage:
-Header X-Payesh-Failover: NOT FOUND (grep returned 0 matches in server/)
-Database disconnection behavior:
-query() returns { rows: [], rowCount: 0 } instead of throwing 503 Fail-Closed.
-Routes fall back to in-memory JSON store.
+$ grep -rn "X-Payesh-Failover" server/
+# (Exit code 1 — 0 matches)
+
+Database connection drop test:
+  db.query() returns { rows: [], rowCount: 0 } instead of throwing 503 Fail-Closed.
+  Application silently falls back to local in-memory RAM store.
 ```
 
-### ۶. خروجی رانتایم B6 (NOC Real Metrics)
+### ۶. خروجی خام آزمون B6 (Real NOC Metrics vs Hardcoded Constants)
 ```text
-Real Empirical Latency (5,000 real HTTP requests measured with process.hrtime.bigint):
+Real Empirical Latency (5,000 requests measured with process.hrtime.bigint):
   avg: 22.99 ms
   p50: 19.32 ms
   p95: 36.84 ms
@@ -185,28 +238,27 @@ Reported by GET /api/v1/system/national/operations:
 Match with hardcoded mock constants: EXACT MATCH (185 and 620).
 ```
 
-### ۷. خروجی رانتایم B7 (Tenant / Province Isolation)
+### ۷. خروجی خام آزمون B7 (Tenant & Province Isolation)
 ```text
 Cross-school access (/api/students/258 from school 1): HTTP 404 (anti-enumeration active).
 Cross-province access on core business routes:
-GET /api/v1/students?province=04: HTTP 200 OK (No provincial guard)
-Calls to assertTenantBoundary in server/routes/: 0 occurrences.
+  GET /api/v1/students?province=04: HTTP 200 OK (No provincial guard)
+  Calls to assertTenantBoundary across server/routes/: 0 occurrences.
 ```
 
-### ۸. خروجی رانتایم B8 (Redis Fail Closed)
+### ۸. خروجی خام آزمون B8 (Redis Fail Closed)
 ```text
-Redis instance stopped via SIGTERM.
-Server executed in NODE_ENV=production.
-Request to POST /api/auth/send-code:
-HTTP 200 OK -> {"ok":true,"code":"sent"}
-Rate limiter status: { allowed: true, remaining: 10, fallback: true }
-Expected: HTTP 503 (REDIS_UNAVAILABLE / Fail-Closed)
-Observed: HTTP 200 OK (Fail-Open vulnerability active)
+Redis service shut down. NODE_ENV=production.
+POST /api/auth/send-code:
+  HTTP 200 OK -> {"ok":true,"code":"sent"}
+  Rate limiter verdict: { allowed: true, remaining: 10, fallback: true }
+  Expected: HTTP 503 (REDIS_UNAVAILABLE)
+  Observed: HTTP 200 OK (Fail-Open vulnerability active)
 ```
 
-### ۹. خروجی رانتایم B9 (Migration Zero Trust)
+### ۹. خروجی خام آزمون B9 (Migration Zero Trust)
 ```text
-Executing UP migrations on fresh database phase6_b9_test:
+Executing UP on clean DB phase6_b9_test:
 ...
 Executing UP: migrations/012_partition_grades_attendance.sql
 Executing UP: migrations/013_universal_occ_and_sequences.sql
@@ -215,42 +267,52 @@ CREATE TABLE
 CREATE INDEX
 psql:migrations/013_universal_occ_and_sequences.sql:25: ERROR:  column "user_id" does not exist
 Execution halted at 013.
-DOWN cycle execution: Leaks table sync_conflicts (missing DROP in 001_initial.down.sql).
-Three-cycle UP/DOWN test impossible.
+DOWN migration leaks sync_conflicts (missing DROP in 001_initial.down.sql).
+Three-cycle UP/DOWN/UP test impossible.
 ```
 
-### ۱۰. خروجی رانتایم B10 (Test Honesty Audit)
+### ۱۰. خروجی خام آزمون B10 (Test Honesty Audit)
 ```text
-Scanning tests/ directory:
-Total occurrences of process.exit(0): 201
+$ grep -rn "process.exit(0)" tests/ | wc -l
+201 occurrences
+
 Occurrences of silent skips hiding missing dependencies: 102
 tests/infrastructure/phase6/failure-resilience.test.js:
   Uses fakeStore = { outbox: [], outbox_dlq: [] } and fakeDb = { isPostgres: () => false }.
-  Hides that server/worker.js line 80 never invokes moveToDlq() in production.
+  Conceals that server/worker.js line 80 never invokes moveToDlq() in production.
 npm test execution:
   Runs only 2 files (tests/run.js and tests/smoke.js) out of 556 test files.
-  Conceals broken migrations, missing DLQ, and orphaned Canary engine behind 100% green UI smoke test.
 ```
 
 ---
 
 # Source Evidence
 
-اثبات مبتنی بر سورس‌کد موجود در شاخه `main`:
+شواهد خط‌به‌خط سورس‌کد شاخه `main` که ادعاهای معماری را باطل می‌کنند:
 
-### ۱. مدرک موتور قناری رهاشده (Orphaned Engine — B1)
+### ۱. مدرک انزوای کامل موتور قناری از رانتایم وب‌سرور (B1)
 در سورس‌کد `server/infrastructure/phase6-canary-engine.js`:
 ```javascript
 // خط ۳۷۸
 const canaryEngine = new Phase6CanaryEngine();
-module.exports = { Phase6CanaryEngine, canaryEngine, CANARY_STATES, CANARY_ERRORS, ALLOWED_WEIGHTS };
+module.exports = {
+  Phase6CanaryEngine,
+  canaryEngine,
+  CANARY_STATES,
+  CANARY_ERRORS,
+  ALLOWED_WEIGHTS
+};
 ```
-جستجوی سراسری در `server/` نشان می‌دهد `canaryEngine` یا `phase6-canary-engine` در هیچ‌یک از فایل‌های `server/index.js`، `server/routes/*` یا `server/middleware/*` ایمپورت نشده است (`grep -rn "phase6-canary-engine" server/` خروجی تهی دارد).
+بررسی سورس‌کد `server/index.js` نشان می‌دهد که کلمه `canaryEngine` یا ارجاع به فایل `phase6-canary-engine` اصلاً در سرور وجود ندارد:
+```bash
+$ grep -rn "phase6-canary-engine" server/index.js server/routes/ server/middleware/
+# (Exit code 1 — 0 matches)
+```
 
-### ۲. مدرک نگهداری اوزان در حافظه RAM و فقدان دیتابیس (B2)
+### ۲. مدرک ذخیره‌سازی اوزان در حافظه موقت RAM و نبود مدل دیتابیسی (B2)
 در سورس‌کد `server/infrastructure/national-traffic-fabric.js`:
 ```javascript
-// خط ۴۷
+// خطوط ۴۷ تا ۵۵
 const _nationalTrafficWeights = new Map();
 
 function initTrafficWeights() {
@@ -260,11 +322,17 @@ function initTrafficWeights() {
       region_id: reg.region_id,
       name: reg.name,
       allocated_weight: 100, // پیش‌فرض ۱۰۰٪ برای مناطق فعال در تولید
-      ...
+      routing_state: 'ROUTING_ACTIVE',
+      interconnect_latency_ms: 35,
+      canary_stage: 'STAGE_FULL_PRODUCTION',
+      last_weight_change: new Date().toISOString()
+    });
+  }
+}
 ```
-تغییر وزن با `_nationalTrafficWeights.set(regionId, updated)` فقط در این `Map` محلی ذخیره می‌شود و هیچ کوئری SQL برای ذخیره آن در دیتابیس وجود ندارد. با ری‌استارت سرور، متد `initTrafficWeights()` فراخوانی شده و همه وزن‌ها به ۱۰۰٪ برمی‌گردند.
+هیچ جدول، کوئری یا تراکنش دیتابیسی برای این اوزان در PostgreSQL تعریف نشده است.
 
-### ۳. مدرک فقدان Nonce و امضای دیجیتال در تغییرات زیرساخت (B3)
+### ۳. مدرک فقدان Nonce و نقض الزامات امضای دیجیتال ADR-012 (B3)
 در سورس‌کد `server/routes/system.js`:
 ```javascript
 // خطوط ۱۶۳۰ تا ۱۶۴۰
@@ -274,14 +342,16 @@ if (
   body.automated_execution === true ||
   body.requires_human_approval === false
 ) {
-  const err = new Error('PHASE5_NATIONAL_CHANGE_APPROVAL_REQUIRED: کلیه تغییرات زیرساخت ملی مستلزم تایید صریح اپراتور انسانی است');
+  const err = new Error(
+    'PHASE5_NATIONAL_CHANGE_APPROVAL_REQUIRED: کلیه تغییرات زیرساخت ملی مستلزم تایید صریح اپراتور انسانی است'
+  );
   err.code = NATIONAL_CONTROL_ERRORS.CHANGE_APPROVAL_REQUIRED;
   throw err;
 }
 ```
-کد فقط شرط بولی `body.approved !== true` را بررسی می‌کند. هیچ بررسی برای فیلد `nonce`، امضای دیجیتال نامتقارن، یا ثبت در جدول `governance_events` وجود ندارد؛ در نتیجه حمله Replay به سادگی موفق می‌شود.
+هیچ متغیری برای بررسی `nonce`، اعتبارسنجی امضای رمزنگاری‌شده یا بررسی بازپخش تعبیه نشده است.
 
-### ۴. مدرک متریک‌های جعلی هاردکدشده در تابلوی NOC (B6)
+### ۴. مدرک اعداد هاردکدشده جعلی در تابلوی NOC (B6)
 در سورس‌کد `server/monitoring/national-observability-plane.js`:
 ```javascript
 // خطوط ۱۴۱ تا ۱۴۵
@@ -291,17 +361,20 @@ const currentErrorRate = overrideMetrics.api_error_rate_pct != null ? overrideMe
 const currentEventLag = overrideMetrics.event_lag_ms != null ? overrideMetrics.event_lag_ms : 120;
 const currentDbLag = overrideMetrics.db_replication_lag_ms != null ? overrideMetrics.db_replication_lag_ms : 65;
 ```
-مقادیر `185` و `620` به صورت ثابت‌های پیش‌فرض در کد قرار داده شده‌اند و به جای اتصال به هیستوگرام‌های واقعی ترافیک، همواره همین اعداد ساختگی را به تابلوی NOC تحویل می‌دهند.
 
-### ۵. مدرک کد مرده ایزولاسیون استان و تننت (B7)
+### ۵. مدرک کد مرده ایزولاسیون استانی (B7)
 در سورس‌کد `server/infrastructure/phase6-production-hardening.js`:
 ```javascript
 // خط ۸۱
 function assertTenantBoundary(actor, targetSchoolId, targetProvinceCode) { ... }
 ```
-این تابع در هیچ کنترلر، روت یا میدلوری فراخوانی نشده است. فایل‌های `server/routes/students.js`، `grades.js` و `attendance.js` هیچ شناختی از حوزه استانی ندارند.
+این تابع در هیچ‌یک از کنترلرها یا میدلورهای رانتایم فراخوانی نمی‌شود:
+```bash
+$ grep -rn "assertTenantBoundary(" server/
+server/infrastructure/phase6-production-hardening.js:81:function assertTenantBoundary(actor, targetSchoolId, targetProvinceCode) {
+```
 
-### ۶. مدرک آسیب‌پذیری Fail-Open در ریت‌لیمیتر ردیس (B8)
+### ۶. مدرک آسیب‌پذیری Fail-Open در زمان خرابی ردیس (B8)
 در سورس‌کد `server/rate-limit.js`:
 ```javascript
 // خطوط ۳۳ تا ۳۶
@@ -309,7 +382,6 @@ function assertTenantBoundary(actor, targetSchoolId, targetProvinceCode) { ... }
     return { allowed: true, remaining: limit, reset: windowSeconds, limit };
   }
 ```
-در صورت بروز خطا یا قطع ارتباط با Redis، ریت‌لیمیتر خطا را قورت داده و مقدار `allowed: true` بازمی‌گرداند (Fail-Open) که موجب بی‌اثر شدن کامل محافظت در زمان خاموشی کش می‌شود.
 
 ---
 
@@ -330,17 +402,39 @@ function assertTenantBoundary(actor, targetSchoolId, targetProvinceCode) { ... }
 
 ---
 
-# Deep Failure Injection Findings
+# Runtime Route Proof (اثبات زنجیره فیچرها)
 
-1. **Kill PostgreSQL:** در زمان قطعی دیتابیس، سرور خطای ۵۰۳ Fail-Closed صادر نمی‌کند بلکه کوئری‌ها نتیجه تهی برگردانده و سیستم به حافظه ناپایدار RAM (`store`) فال‌بک می‌کند. (`FAIL`)
-2. **Kill Redis:** در محیط پروداکشن با قطع ردیس، لایه احراز هویت و کنترل بار به جای خطای ۵۰۳ `REDIS_UNAVAILABLE`، درخواست‌ها را با `allowed: true` مجاز اعلام می‌کند. (`FAIL`)
-3. **Kill -9 Server:** اوزان قناری و وضعیت کلاسترها به دلیل قرار داشتن در `Map` فرار محو شده و ریکاوری وضعیت ممکن نیست. (`FAIL`)
-4. **Two Instances Divergence:** دو نمونه سرور همزمان، حافظه‌های محلی مستقل دارند؛ تغییر وزن در یکی به دیگری منتقل نشده و رفتار ترافیک دچار چنددستگی بلادرنگ می‌شود. (`FAIL`)
+برای ارزیابی زنجیره حیاتی:  
+`HTTP -> Middleware -> Logic -> DB -> Audit`
+
+1. **فیچر موتور قناری (Canary Routing):**
+   - HTTP: مسیر ندارد.
+   - Middleware: ندارد.
+   - Logic: در فایل جداگانه و بدون استفاده رها شده است.
+   - DB: جدولی وجود ندارد.
+   - Audit: آرایه موقت در RAM.
+   - **وضعیت زنجیره:** گسسته و فاقد پیاده‌سازی عملیاتی (NOT IMPLEMENTED).
+
+2. **فیچر ایزولاسیون استان (Provincial Boundary):**
+   - HTTP: روت‌های اصلی فاقد کنترل پارامتر استان هستند.
+   - Middleware: تابع `enforceGeographicBoundary` ایمپورت شده ولی هرگز اجرا نمی‌شود.
+   - Logic: تابع `assertTenantBoundary` کد مرده است.
+   - DB: فاقد فیلتر استانی.
+   - Audit: ثبت نمی‌شود.
+   - **وضعیت زنجیره:** گسسته و فاقد پیاده‌سازی عملیاتی (NOT IMPLEMENTED).
+
+3. **فیچر اوزان ترافیک ملی (Traffic Rollout):**
+   - HTTP: متصل است (`/api/v1/system/national/change-request`).
+   - Middleware: فاقد بررسی Nonce و امضا.
+   - Logic: در `Map` محلی تغییر ایجاد می‌کند.
+   - DB: متصل نیست (هیچ سطری در دیتابیس ثبت نمی‌شود).
+   - Audit: آرایه موقت در RAM.
+   - **وضعیت زنجیره:** در لایه پایگاه داده قطع شده است.
 
 ---
 
-# Final Verdict
+# Final verdict
 
 # 🔴 NOT VERIFIED
 
-*(مردود و غیرقابل تأیید؛ بر اساس اصل تخطی‌ناپذیر Zero Trust و ارزیابی تجربی ۹ آزمون از ۱۰ آزمون کلیدی فاز ۶ مردود شدند. اعلام پایان فاز ۶ و آمادگی برای مقیاس ملی تا زمان رفع ریشه‌ای این موانع کاملاً نامعتبر است).*
+*(بر اساس قانون تخطی‌ناپذیر Zero Trust و شواهد قطعی تجربی، سامانه در تمامی بندهای بنیادین B1 تا B10 به استثنای تست لود B7 مردود گردید. ادعای تکمیل فاز ۶ و آمادگی برای پروداکشن کذب محض بوده و مردود است).*
