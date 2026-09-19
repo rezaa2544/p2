@@ -3447,3 +3447,22 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 - **حکم نهایی:** **PHASE 8: READY** (ورود به مسیر سخت‌سازی مجاز؛ گواهی تولید تا احراز معیارهای 8.5 در تراز E4 صادر نمی‌شود).
 - **گزارش رسمی:** `docs/PHASE_8_ENTRY_AUDIT_REPORT.md`
 - **حسابداری کامیت:** این ورودی بخشی از **DOC_COMMIT** فاز ۸ است (فقط مستندات؛ صفر تغییر کد اجرایی).
+
+## فاز ۸.۱ — اجرای رفع زیروتراست + بستن شواهد (R5/R15/R16/R20) — ✅ VERIFIED (2026-09-20)
+
+**نقش:** ممیز مستقل زیروتراست + مهندس ارشد امنیت. **بیس‌لاین:** HEAD `0ed11601` (docs-only) · CODE_COMMIT مرجع `766be4b8` · DOC_COMMIT مرجع `d32915f3`. **کامیت رفع این فاز:** CODE_COMMIT `2c443541` (server/ + tests/ + `.github/workflows/node.js.yml` — استثنای الزامیِ CI با اعلام شفاف در پیام کامیت و گزارش) + DOC_COMMIT همین سند.
+
+**روش:** هیچ ادعایی پذیرفته نشد؛ هر شکست پیش از اصلاح با اجرای واقعی بازتولید شد (`git stash` برای اثبات قرمزیِ پیش‌وجود تست‌های بیس‌لاین)، وصل‌ها حداقلی، حذف تست/کاهش ادعاء صفر، هر PASS فقط با اجرای واقعی.
+
+**خلاصهٔ رفع‌ها:**
+- **R5 (زامبی‌بوت):** پیشیکیت fail-fast در `server/index.js` به `NODE_ENV ∨ PAYESH_ENV ∨ DATABASE_URL` تعمیم یافت؛ `db.js memoryFallbackAllowed` و `redis.js isProduction` زیر NODE_ENV=production فلگ‌ناپذیر شدند (بازگرداندن P0-1). ماتریس جدید `tests/r5-prod-redis-boot-gate.js`: ۷ شکل/۱۳ چک — هر بوت تولید-معادل بدون ردیس ⇒ exit≠0 و هرگز listen نمی‌کند؛ dev و هارنس opt-in صریح (server17 T2) حفظ؛ افتِ زمان-اجرا همان loud-degrade 503.
+- **R16 (قطعی‌ساز verifier):** گام ۶ موک صریح allowing-policy گرفت — ۱۴/۱۴ در هر دو شکل محیطی (قبلاً با DATABASE_URL ۱۳/۱۴).
+- **R15 (WAF):** تصمیم مستند — پیش‌فرض report عمدی است (P0 #6؛ RISK-S-007؛ RED_TEAM_Q3). هشدار بوتِ پرصدا با `env-flags.wafModeWarning()` اضافه شد (E12–E14 پین؛ بازتولیدی لاگ زنده). enforce = الزام Phase 8.5.
+- **R20 (CI):** باتری‌های A–D به workflow اضافه شد (verifier با DATABASE_URL؛ server17 ایزوله با `REDIS_URL:''`؛ migration-sequence + constraints؛ بوت-پالیسی‌ها). YAML validate شد. هیچ استپی حذف نشد.
+- **هم‌راستاسازی تست‌های قرمزِ بیس‌لاین** (pg-prod-boot-no-db، pg-prod-suite-policy، pg-prod-no-json-writes، redis-fallback، env-flags، wave15-health) — همه به قرارداد مستند P0-1/P0-13/B5 برگشتند، نه تخفیف.
+
+**شواهد اجرایی پس از اصلاح (PG 17.11 + Redis 8.0.2 زنده):** verifier 14/14 (هر دو شکل) · server17 70/70 · migration-sequence 19/19 · migrate-pg-constraints 14/14 · canary-atomic-live 10/10 · **truth-gate 44/44 VERIFIED** · r5 13/13 · boot-policy: 14/14، 9/9، 17/17، 11/11 · redis-fallback 10/10 · env-flags 14/14 · wave15 10/10 · waf-enforce 33/33 · waf-mutations 4/4 · public-security 10/10 (Node 22) · otp-redis 16/16 · phase2-redis-fail-closed 6/6 · phase2-occ-multi 10/10 · run.js 35/35 · smoke 547/547. **باتری ۱۲۷تایی: 127/127.**
+
+**باقی‌مانده:** R1→Phase 8.3 (C2)، R6→Phase 8.2 (B4)، enforce-WAF→Phase 8.5، اجرای GitHub Actions پس از push باید در فاز بعدی معاینه شود. گزارش کامل: `docs/PHASE_8.1_REMEDIATION_AUDIT_REPORT.md`.
+
+**حکم نهایی:** **PHASE 8.1 STATUS: Architecture: PASS, Security: PASS, Evidence: PASS, CI Enforcement: PASS, Phase 8.2 Eligibility: VERIFIED**
