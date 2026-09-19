@@ -24,6 +24,7 @@ async function hydrateControlPlane() {
 module.exports = {
   attach: postgres.attach,
   attached: postgres.attached,
+  requireDb: postgres.requireDb,
   putState: postgres.putState,
   getState: postgres.getState,
   listState: postgres.listState,
@@ -34,6 +35,7 @@ module.exports = {
   upsertCanaryConfig: postgres.upsertCanaryConfig,
   deleteCanaryConfig: postgres.deleteCanaryConfig,
   updateCanaryWeight: postgres.updateCanaryWeight,
+  updateCanaryWeightWithAudit: postgres.updateCanaryWeightWithAudit,
   updateCanaryCircuitBreaker: postgres.updateCanaryCircuitBreaker,
   recordCanaryAuditEvent: postgres.recordCanaryAuditEvent,
   verifyAndRecordGovernanceNonce: postgres.verifyAndRecordGovernanceNonce,

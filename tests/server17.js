@@ -362,8 +362,12 @@ async function main() {
     const env = Object.assign({}, process.env, {
       PORT: '9007', HOST: '127.0.0.1',
       PAYESH_STORE: path.join(tmp, 'o8.json'), PAYESH_OTP_FILE: path.join(tmp, 'otp-o8.json'), PAYESH_AUDIT: path.join(tmp, 'o8.log'),
-      PAYESH_KEY: path.join(tmp, 'o8.key')
+      PAYESH_KEY: path.join(tmp, 'o8.key'),
+      PAYESH_DEMO_CODE: '', DEMO_CODE: '',
+      PAYESH_SMS_DAILY_CAP: '1000', PAYESH_SMS_COOLDOWN_S: '0'
     });
+    delete env.PAYESH_DEMO_CODE;
+    delete env.DEMO_CODE;
     fs.copyFileSync(REAL_STORE, env.PAYESH_STORE);
     const o8 = spawnServer(env, 9007);
     let up = false;
@@ -387,7 +391,8 @@ async function main() {
     const env = Object.assign({}, process.env, {
       PORT: '9007', HOST: '127.0.0.1',
       PAYESH_STORE: path.join(tmp, 's.json'), PAYESH_OTP_FILE: path.join(tmp, 'otp-s.json'), PAYESH_AUDIT: path.join(tmp, 's.log'),
-      PAYESH_KEY: path.join(tmp, 's.key'), PAYESH_DEMO_CODE: '1'
+      PAYESH_KEY: path.join(tmp, 's.key'), PAYESH_DEMO_CODE: '1',
+      PAYESH_SMS_DAILY_CAP: '1000', PAYESH_SMS_COOLDOWN_S: '0'
     });
     fs.copyFileSync(REAL_STORE, env.PAYESH_STORE);
     const s7 = spawnServer(env, 9007);

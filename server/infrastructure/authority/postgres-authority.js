@@ -263,6 +263,56 @@ async function assertTenantPolicy(province, school, requiredScope) {
   return policy;
 }
 
+async function updateCanaryWeightWithAudit(clusterId, weight, auditDetails) {
+  const db = requireDb();
+  if (!db) throw unavailable();
+  const dbModule = require('../../db');
+  return dbModule.transaction(async (client) => {
+    const res = await client.query(
+      `UPDATE phase6_canary_configs
+          SET traffic_weight = $2,
+              weight = $2,
+              version = phase6_canary_configs.version + 1,
+              circuit_breaker_open = CASE WHEN $2 > 0 THEN false ELSE phase6_canary_configs.circuit_breaker_open END,
+              status = CASE WHEN $2 > 0 THEN 'HEALTHY' ELSE phase6_canary_configs.status END,
+              updated_at = NOW()
+        WHERE id = $1
+        RETURNING version, traffic_weight, weight, status, circuit_breaker_open;`,
+      [String(clusterId), Number(weight)]
+    );
+    if (!res || !res.rowCount) throw unavailable('CANARY_UPDATE_FAILED');
+    if (auditDetails) {
+      const op = auditDetails.operator || {};
+      const payload = {
+        action: auditDetails.action || 'WEIGHT_UPDATED',
+        cluster_id: clusterId,
+        old_weight: auditDetails.oldWeight != null ? Number(auditDetails.oldWeight) : null,
+        new_weight: Number(weight),
+        reason: auditDetails.reason || null,
+        nonce: auditDetails.nonce || null
+      };
+      await client.query(
+        `INSERT INTO phase6_audit_events
+           (action, event_type, cluster_id, operator_id, operator_role, actor, old_weight, new_weight, reason, signature, payload)
+         VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb);`,
+        [
+          auditDetails.action || 'WEIGHT_UPDATED',
+          clusterId,
+          op.id != null ? String(op.id) : '0',
+          op.role || 'system',
+          op.id != null ? String(op.id) : 'system',
+          auditDetails.oldWeight != null ? Number(auditDetails.oldWeight) : null,
+          Number(weight),
+          auditDetails.reason || null,
+          auditDetails.signature || null,
+          JSON.stringify(payload)
+        ]
+      );
+    }
+    return res;
+  });
+}
+
 module.exports = {
   attach,
   attached,
@@ -278,6 +328,7 @@ module.exports = {
   upsertCanaryConfig,
   deleteCanaryConfig,
   updateCanaryWeight,
+  updateCanaryWeightWithAudit,
   updateCanaryCircuitBreaker,
   recordCanaryAuditEvent,
   verifyAndRecordGovernanceNonce,
