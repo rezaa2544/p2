@@ -53,9 +53,12 @@ function req(method, port, p, body, cookie, mod) {
   const m = mod || http;
   return new Promise((resolve) => {
     const data = body !== undefined ? (typeof body === 'string' ? body : JSON.stringify(body)) : null;
+    const caPath = tmp ? path.join(tmp, 'tls', 'cert.pem') : null;
+    const ca = (m === https && caPath && fs.existsSync(caPath)) ? fs.readFileSync(caPath) : undefined;
     const r = m.request({
       hostname: '127.0.0.1', port, path: p, method,
-      rejectUnauthorized: false,
+      rejectUnauthorized: true,
+      ca,
       headers: Object.assign(
         data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {},
         cookie ? { Cookie: cookie } : {}
