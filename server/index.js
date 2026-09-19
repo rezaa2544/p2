@@ -102,7 +102,9 @@ const AT_DRIFT_MS = 24 * 3600 * 1000;  /* §3.3: do not reject, log */
    comes from the real SMS gateway, so the echo must require an explicit
    opt-in: PAYESH_DEMO_CODE=1. (DEPLOY.md §env already documented this
    default — the code now matches the docs.) */
-const DEMO_CODE_ECHO = process.env.PAYESH_DEMO_CODE === '1';
+const DEMO_CODE_ECHO = (process.env.PAYESH_DEMO_CODE === '1') &&
+  process.env.NODE_ENV !== 'production' &&
+  process.env.PAYESH_ENV !== 'production';
 
 /* ── store ────────────────────────────────────────────────────────── */
 function loadStore(){

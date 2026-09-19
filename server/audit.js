@@ -425,6 +425,7 @@ function createAudit(opts = {}) {
           flushQueue = [];
           try { await checkRotationAsync(); } catch (e) {}
           const chunk = batch.join('');
+          try { fs.mkdirSync(path.dirname(auditFile), { recursive: true, mode: 0o700 }); } catch (e) {}
           const ok = await new Promise((resolve) => {
             fs.appendFile(auditFile, chunk, { encoding: 'utf8', mode: 0o600 }, (err) => resolve(!err));
           });
@@ -556,6 +557,7 @@ function createAudit(opts = {}) {
         eventCounter++;
         enqueueLine(line);
       } else {
+        try { fs.mkdirSync(path.dirname(auditFile), { recursive: true, mode: 0o700 }); } catch (e) {}
         fs.appendFileSync(auditFile, line, { encoding: 'utf8', mode: 0o600 });
         eventCounter++;
       }
