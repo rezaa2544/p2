@@ -3353,6 +3353,19 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
      - `node tests/server17.js` (70/70 PASS GREEN)
 - **وضعیت:** کامیت `2edca2b` به `origin/main` پوش گردید.
 
+## Phase 7.6-R.6 — Independent Verification Hardening & Evidence Integrity Closure — ✅ (2026-09-19)
+
+- **طبق اسکیل‌ها:** طبق `security-review-payesh` (بازبینی امنیتی و صحت اتمیسیتی)، `payesh-standards` (حفظ استانداردها، تفکیک کامیت کد از مستندات)، و `qa-testing` (اجرای تست‌های زنده و تولید شواهد واقعی).
+- **اقدامات انجام‌شده:**
+  ۱. **تثبیت Atomic Canary Runtime Path (`Task 1`):** تأیید حذف کامل مسیر غیراتمی `updateCanaryWeight + logAudit` در متد `setTrafficWeight`.
+  ۲. **اثبات Caller واقعی (`Task 2`):** فراخوانی `authority.updateCanaryWeightWithAudit` به عنوان تنها فراخوان فعال در `server/infrastructure/phase6-canary-engine.js:328` تأیید شد.
+  ۳. **آزمون اتمیسیتی دیتابیس واقعی (`Task 3`):** ساخت فایل `tests/canary-atomic-production-runtime.js` جهت اثبات اتمیسیتی `UPDATE + AUDIT = ONE TRANSACTION` تحت لایهٔ ترنزکشن دیتابیس (تأیید رول‌بک کامل به وزن اولیه ۱۰ و ۰ سطر آدیت در صورت بروز خطای آدیت).
+  ۴. **صحت شواهد Migration (`Task 4`):** اجرای کامل و موفق `tests/migration-sequence.js` (19/19) و `tests/migrate-pg-constraints.js` (14/14) روی مهاجرت‌های 001 تا 020.
+  ۵. **تأیید Dead Code (`Task 5`):** عدم وجود هرگونه caller فعال برای `server/middleware/scope.js` و تأیید حذف آن.
+  ۶. **تککیک کامیت‌ها (`Task 6`):** تفکیک کامل کامیت‌های کد اجرایی (`CODE_COMMIT_SHA`) از کامیت‌های مستندسازی (`DOC_COMMIT_SHA`).
+- **وضعیت:** تفکیک کامیت کد و مستندسازی انجام و روی `origin/main` پوش گردید.
+
+
 
 
 
