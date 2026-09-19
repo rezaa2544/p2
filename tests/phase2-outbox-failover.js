@@ -7,7 +7,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn, execSync } = require('child_process');
+const { spawn, execSync, spawnSync } = require('child_process');
 const http = require('http');
 const { Client } = require('pg');
 
@@ -59,6 +59,8 @@ let OBX_URL;
     PAYESH_OTP_FILE: path.join(os.tmpdir(), 'obx-otp-' + Date.now() + '.json')
   });
   delete env.NODE_ENV;
+  /* isolate OTP/rate-limit keys from other CI steps (shared Redis service) */
+  if (env.REDIS_URL) env.REDIS_URL = String(env.REDIS_URL).replace(/\/\d+\s*$/, '') + '/15';
 
   const adm = new Client({ connectionString: BASE_URL });
   await adm.connect();
@@ -72,6 +74,15 @@ let OBX_URL;
   fs.mkdirSync(path.dirname(STORE), { recursive: true });
   fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);   /* seed.js writes the default path only */
   execSync(`${NODE} tools/migrate-to-pg.js --execute`, { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: OBX_URL, PAYESH_STORE: STORE }), stdio: 'pipe' });
+  /* migrate-to-pg predates 015–019; Phase 7 refuses listen() without them. */
+  const migDir = path.join(ROOT, 'migrations');
+  const extraMigs = fs.readdirSync(migDir)
+    .filter((f) => /^\d{3}_.+\.sql$/.test(f) && !f.endsWith('.down.sql') && Number(f.slice(0, 3)) >= 15)
+    .sort();
+  for (const f of extraMigs) {
+    const r = spawnSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', path.join(migDir, f), OBX_URL], { encoding: 'utf8' });
+    if (r.status !== 0) throw new Error('migration ' + f + ' failed: ' + String(r.stderr || r.stdout || r.status).slice(0, 400));
+  }
 
   /* ── crash artifact: a pending event that the (dead) worker never saw ── */
   const ins = await pgOne(

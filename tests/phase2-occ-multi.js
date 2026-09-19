@@ -9,7 +9,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn, execSync } = require('child_process');
+const { spawn, execSync, spawnSync } = require('child_process');
 const http = require('http');
 const { Client } = require('pg');
 
@@ -67,15 +67,30 @@ async function pgOne(url, sql, params) { const c = new Client({ connectionString
   fs.mkdirSync(path.dirname(STORE), { recursive: true });
   fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);   /* seed.js writes the default path only */
   execSync(`${NODE} tools/migrate-to-pg.js --execute`, { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: OCC_URL, PAYESH_STORE: STORE }), stdio: 'pipe' });
+  /* migrate-to-pg predates 015–019 (canary / ops_kv / authority_state).
+     Phase 7 refuses listen() without those tables — apply additive SQL. */
+  const migDir = path.join(ROOT, 'migrations');
+  const extraMigs = fs.readdirSync(migDir)
+    .filter((f) => /^\d{3}_.+\.sql$/.test(f) && !f.endsWith('.down.sql') && Number(f.slice(0, 3)) >= 15)
+    .sort();
+  for (const f of extraMigs) {
+    const r = spawnSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', path.join(migDir, f), OCC_URL], { encoding: 'utf8' });
+    if (r.status !== 0) throw new Error('migration ' + f + ' failed: ' + String(r.stderr || r.stdout || r.status).slice(0, 400));
+  }
   const nTables = await pgOne(OCC_URL, "SELECT COUNT(*)::int n FROM information_schema.tables WHERE table_schema='public'");
-  chk('seed واقعی bootstrap→PG (migrate-to-pg)', nTables[0].n > 50, 'tables=' + nTables[0].n);
+  chk('seed واقعی bootstrap→PG (migrate-to-pg + 015–019)', nTables[0].n > 50, 'tables=' + nTables[0].n);
 
   const OTPF = path.join(os.tmpdir(), 'occ-otp-' + Date.now() + '.json');   /* isolation: cooldown state of previous runs */
-  const envOf = (port) => Object.assign({}, process.env, {
-    PORT: String(port), HOST: '127.0.0.1', DATABASE_URL: OCC_URL,
-    PAYESH_STORE: STORE, PAYESH_DEMO_CODE: '1', PAYESH_KEY: KEY, PAYESH_OTP_FILE: OTPF
-  });
-  delete envOf(3101).NODE_ENV; delete envOf(3102).NODE_ENV;
+  const envOf = (port) => {
+    const e = Object.assign({}, process.env, {
+      PORT: String(port), HOST: '127.0.0.1', DATABASE_URL: OCC_URL,
+      PAYESH_STORE: STORE, PAYESH_DEMO_CODE: '1', PAYESH_KEY: KEY, PAYESH_OTP_FILE: OTPF
+    });
+    delete e.NODE_ENV;
+    /* isolate OTP/rate-limit keys from other CI steps (shared Redis service) */
+    if (e.REDIS_URL) e.REDIS_URL = String(e.REDIS_URL).replace(/\/\d+\s*$/, '') + '/14';
+    return e;
+  };
 
   const A = await boot(3101, envOf(3101));
   const B = await boot(3102, envOf(3102));
