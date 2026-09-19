@@ -6,11 +6,14 @@
 
 ```
 VERDICT: VERIFIED
-Evidence: Runtime + PostgreSQL + HTTP
-production-verifier.sh → 36 pass / 0 fail
+Evidence: Runtime + PostgreSQL + HTTP + GitHub Actions
+local production-verifier.sh → 36 pass / 0 fail (on 136151e6)
+Node.js CI build (22.x) → success (on a672c6e1) including Phase 7 T1–T7
 ```
 
-CI GitHub Actions در این sandbox اجرا نشد. همان اسکریپت در `.github/workflows/node.js.yml` بعد از truth-gate سیم شد؛ سبز شدن Actions روی SHA پوش‌شده شاهد جداست، نه جایگزین Evidence زندهٔ همین اجرا.
+- معماری فاز ۷ روی `136151e6d638bf554e5a35b3883b632c7b5f9216` نشست.
+- حکم سازمانی روی Actions: run [35439364762](https://github.com/rezaa2544/p2/actions/runs/35439364762) / SHA `a672c6e1e90d46baf5c7a366f36e124f13037530` — **success**. Step «Phase 7 production verifier T1–T7» = success.
+- کلون مستقل `origin/main` = همان SHA.
 
 ---
 
