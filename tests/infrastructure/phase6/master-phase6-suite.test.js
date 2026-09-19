@@ -14,7 +14,8 @@ const SUITES = [
   'security.test.js',
   'failover.test.js',
   'load.test.js',
-  'canary-rollout.test.js'
+  'canary-rollout.test.js',
+  'runtime/master-runtime-phase6.test.js'
 ];
 
 console.log('═══════════════════════════════════════════════════════════════════');

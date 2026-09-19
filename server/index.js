@@ -58,6 +58,7 @@ const { createBootstrapRoute } = require('./routes/bootstrap');
 const { createSystemRoutes } = require('./routes/system'); /* Phase 4 — P1-SC-01: سلامت زیرساخت و مقیاس‌پذیری */
 const { assertNationalCapacityEnforcement } = require('./infrastructure/national-capacity-enforcement'); /* Phase 5 — P2-NI-05: اینگرس مهار ظرفیت ملی */
 const { globalCanaryEngine } = require('./infrastructure/phase6-canary-engine'); /* Phase 6: موتور استقرار قناری و هدایت ترافیک */
+const { assertTenantBoundary, sanitizePayload } = require('./infrastructure/phase6-production-hardening'); /* Phase 6: گارد زیروترست و پالایش */
 const { createIds } = require('./ids'); /* P0-16 */
 const { createOutbox } = require('./outbox'); /* P0-17 */
 const { createWorker } = require('./worker'); /* ویو ۸ — کارگرِ صندوق رویدادها */
@@ -680,6 +681,7 @@ const onRequest = async (req, res) => {
     });
     res.setHeader('X-Payesh-Canary-Cluster', canaryRoute.clusterId);
     res.setHeader('X-Payesh-Target-DC', canaryRoute.targetDc);
+    res.setHeader('X-Payesh-Canary-Destination', canaryRoute.isCanary ? 'canary' : 'baseline');
     res.setHeader('X-Payesh-Canary-Weight', String(canaryRoute.weight));
     res.setHeader('X-Payesh-Failover', canaryRoute.failoverMode ? 'true' : 'false');
   } catch (err) {
@@ -957,12 +959,68 @@ const onRequest = async (req, res) => {
     if(p === '/api/sms/send' && req.method === 'POST') return await sms.apiSend(req, res, await readBody(req, 32 * 1024));
     if(p === '/api/health-index' && req.method === 'GET') return await healthIdx.apiHealthIndex(req, res, url.searchParams); /* G.1 */
 
+    // Phase 6: Direct API Aliases (/api/system/canary/*)
+    if(p === '/api/system/canary/status' && req.method === 'GET') {
+      const s = await auth.sessionFrom(req);
+      if(!s) return sendJson(res, 401, { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' });
+      req.user = s;
+      const r = await systemRoutes.phase6CanaryStatus(req, url.searchParams);
+      return sendJson(res, r.status, r.body);
+    }
+    if((p === '/api/system/canary/promote' || p === '/api/system/canary/weight') && req.method === 'POST') {
+      const s = await auth.sessionFrom(req);
+      if(!s) return sendJson(res, 401, { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' });
+      req.user = s;
+      const body = await readBody(req, 64 * 1024);
+      const r = await systemRoutes.phase6CanaryPromote(req, body);
+      return sendJson(res, r.status, r.body);
+    }
+    if(p === '/api/system/canary/rollback' && req.method === 'POST') {
+      const s = await auth.sessionFrom(req);
+      if(!s) return sendJson(res, 401, { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' });
+      req.user = s;
+      const body = await readBody(req, 64 * 1024);
+      const r = await systemRoutes.phase6CanaryRollback(req, body);
+      return sendJson(res, r.status, r.body);
+    }
+    if(p === '/api/system/canary/circuit-breaker' && req.method === 'POST') {
+      const s = await auth.sessionFrom(req);
+      if(!s) return sendJson(res, 401, { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' });
+      req.user = s;
+      const body = await readBody(req, 64 * 1024);
+      const r = await systemRoutes.phase6CanaryCircuitBreaker(req, body);
+      return sendJson(res, r.status, r.body);
+    }
+
     /* ── Phase 3: RESTful Resource Endpoints (/api/v1/*) ────────── */
     if(p.indexOf('/api/v1/') === 0){
       const s = await auth.sessionFrom(req);
       if(!s) return sendJson(res, 401, { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' });
       req.user = s;
       req.session = s;
+
+      // Phase 6 (B8): Zero-Trust Tenant & Provincial Isolation Guardrail
+      const targetSchool = url.searchParams.get('school_id') || req.headers['x-school-id'];
+      const targetProv = req.headers['x-province-code'];
+      if (targetSchool || targetProv) {
+        try {
+          let actorWithProv = s;
+          if (!s.province_code && s.school_id) {
+            const sch = (store.schools || []).find(x => x.id === s.school_id);
+            if (sch) {
+              const pCode = sch.province_code || (sch.province_id === 2 ? '07' : sch.province_id === 1 ? '07' : String(sch.province_id).padStart(2, '0'));
+              actorWithProv = Object.assign({}, s, { province_code: pCode });
+            }
+          }
+          assertTenantBoundary(actorWithProv, targetSchool, targetProv);
+        } catch (err) {
+          return sendJson(res, 403, {
+            ok: false,
+            code: err.code || 'PHASE6_TENANT_ISOLATION_BREACH',
+            message: err.message
+          });
+        }
+      }
 
       // /api/v1/bootstrap
       if(p === '/api/v1/bootstrap' && req.method === 'GET'){
@@ -1244,8 +1302,8 @@ const onRequest = async (req, res) => {
         return sendJson(res, r.status, r.body);
       }
 
-      // Phase 6: Canary Promote (B3: ارتقای ترافیک با اعتبارسنجی حاکمیت و امضای اپراتور)
-      if(p === '/api/v1/system/phase6/canary/promote' && req.method === 'POST'){
+      // Phase 6: Canary Promote / Weight (B3: ارتقای ترافیک با اعتبارسنجی حاکمیت و امضای اپراتور)
+      if((p === '/api/v1/system/phase6/canary/promote' || p === '/api/v1/system/phase6/canary/weight') && req.method === 'POST'){
         const body = await readBody(req, 64 * 1024);
         const r = await systemRoutes.phase6CanaryPromote(req, body);
         return sendJson(res, r.status, r.body);
@@ -1255,6 +1313,13 @@ const onRequest = async (req, res) => {
       if(p === '/api/v1/system/phase6/canary/rollback' && req.method === 'POST'){
         const body = await readBody(req, 64 * 1024);
         const r = await systemRoutes.phase6CanaryRollback(req, body);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // Phase 6: Canary Circuit Breaker & Failover Control (B5)
+      if(p === '/api/v1/system/phase6/canary/circuit-breaker' && req.method === 'POST'){
+        const body = await readBody(req, 64 * 1024);
+        const r = await systemRoutes.phase6CanaryCircuitBreaker(req, body);
         return sendJson(res, r.status, r.body);
       }
 

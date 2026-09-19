@@ -115,6 +115,13 @@ ARCHITECTURE DECISION LOG (ADR)
           توزیع ترافیک در ران‌تایم بر اساس درصد آماری واقعی است و رول‌بک ترافیک را به ۰٪ تخلیه کامل می‌کند.
           اپراتور ملزم به احراز هویت با امضای رمزنگاری و ثبت در phase6_audit_events است.
 
+[ADR-015] Phase 6 Live Runtime HTTP Certification & Zero-Trust Hardening:
+  - تاریخ: ۲۰۲۶-۰۹-۱۹ | وضعیت: APPROVED
+  - تصمیم: راه‌اندازی فرآیند واقعی سرور و اجرای آزمون‌های رفتاری زنده بر روی پورت HTTP؛
+          اعتبارسنجی ۱,۰۰۰ درخواست توزیع قناری (۵٪)، ۱,۰۰۰ درخواست تخلیه صفر درصد رول‌بک،
+          احراز هویت توکن JWT و امضای رمزنگاری با دفع حملات Replay، سوئیچ به دیتاسنتر ثانویه و
+          رفتار ۵۰۳ Fail-Closed، سنجش ۵,۰۰۰ درخواست با نرخ بالای ۳,۶۰۰ req/s و مهار مرزهای تننت.
+
 [ADR-012] Human Approval & Governance Guardrails for Canary Promotion:
   - تاریخ: ۲۰۲۶-۰۹-۱۸ | وضعیت: APPROVED
   - تصمیم: ارتقای اوزان ترافیکی کلاسترها در فاز ۶ نیازمند تایید صریح مدیر ارشد انسانی
@@ -132,6 +139,8 @@ VERIFIED COMMIT AUDIT TRAIL
 ========================================================================================
 Commit Hash | Branch | Author    | Gate Passed | Status   | Scope / Note
 ------------+--------+-----------+-------------+----------+-----------------------------
+693eff6c    | main   | rezaa2544 | Phase 6 Run | VERIFIED | Live HTTP runtime certification & zero-trust
+6462c0b8    | main   | rezaa2544 | Governance  | VERIFIED | Sync baseline commit and audit trail
 1ad0b4c3    | main   | rezaa2544 | Sync Origin | VERIFIED | Merge remote origin/main into main
 a890c921    | main   | rezaa2544 | Phase 6 Red | VERIFIED | Resolve Phase 6 Red-Team Blockers B1-B10
 6ba492c8    | main   | Chat 2    | Phase 2 Ver | VERIFIED | Complete production verification blockers

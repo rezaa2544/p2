@@ -114,6 +114,8 @@ class Phase6CanaryEngine {
     this.auditLog = [];
     this.metrics = new Map(); // clusterId -> { totalRequests, errors, latencies: [] }
     this.rollbackSnapshots = new Map(); // clusterId -> lastStableWeight
+    this.seenSignatures = new Set(); // Replay attack protection
+    this.destinationCounters = { canary: 0, baseline: 0 };
     this.db = options.db || null;
     this.initDefaultClusters();
   }
@@ -356,6 +358,7 @@ class Phase6CanaryEngine {
     // B4: اگر وزن کلاستر ۰٪ باشد (رول‌بک شده)، به کلاستر مبنا هدایت می‌شود (Traffic Drain)
     if (targetCluster.weight === 0) {
       const baselineCluster = this.clusters.get('ir-tehran-1') || targetCluster;
+      this.destinationCounters.baseline++;
       return {
         clusterId: baselineCluster.id,
         targetDc: baselineCluster.primaryDc,
@@ -374,6 +377,7 @@ class Phase6CanaryEngine {
 
       // اگر درون درصد وزن باشد -> به کلاستر قناری هدایت می‌شود
       if (roll < targetCluster.weight) {
+        this.destinationCounters.canary++;
         return {
           clusterId: targetCluster.id,
           targetDc: targetCluster.primaryDc,
@@ -385,6 +389,7 @@ class Phase6CanaryEngine {
       } else {
         // خارج از وزن -> به کلاستر استاندارد مبنا (تهران) هدایت می‌شود
         const baselineCluster = this.clusters.get('ir-tehran-1') || targetCluster;
+        this.destinationCounters.baseline++;
         return {
           clusterId: baselineCluster.id,
           targetDc: baselineCluster.primaryDc,
@@ -397,6 +402,7 @@ class Phase6CanaryEngine {
     }
 
     // وزن ۱۰۰٪
+    this.destinationCounters.canary++;
     return {
       clusterId: targetCluster.id,
       targetDc: targetCluster.primaryDc,
@@ -528,13 +534,19 @@ class Phase6CanaryEngine {
       throw err;
     }
 
-    // اعتبارسنجی امضای اپراتور در صورت ارائه
+    // اعتبارسنجی امضای اپراتور در صورت ارائه و محافظت در برابر Replay Attack
     if (context.signature) {
       if (typeof context.signature !== 'string' || context.signature.length < 16) {
         const err = new Error('امضای امنیتی اپراتور نامعتبر یا جعلی است');
         err.code = 'INVALID_OPERATOR_SIGNATURE';
         throw err;
       }
+      if (this.seenSignatures.has(context.signature)) {
+        const err = new Error('امضای امنیتی قبلاً مصرف شده است (Replay Signature Rejected)');
+        err.code = 'REPLAY_ATTACK_DETECTED';
+        throw err;
+      }
+      this.seenSignatures.add(context.signature);
     }
   }
 
@@ -580,6 +592,7 @@ class Phase6CanaryEngine {
       timestamp: new Date().toISOString(),
       total_clusters: this.clusters.size,
       active_clusters: clusterList.filter(c => c.weight > 0 && !c.circuitBreakerOpen).length,
+      destination_counters: Object.assign({}, this.destinationCounters),
       clusters: clusterList,
       governance: {
         single_source_of_truth: 'PostgreSQL',

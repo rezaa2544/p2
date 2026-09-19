@@ -1873,7 +1873,7 @@ function createSystemRoutes(ctx) {
       };
     } catch (err) {
       return {
-        status: err.code === 'PHASE6_APPROVAL_REQUIRED' || err.code === 'INVALID_OPERATOR_SIGNATURE' ? 403 : 400,
+        status: (err.code === 'PHASE6_APPROVAL_REQUIRED' || err.code === 'INVALID_OPERATOR_SIGNATURE' || err.code === 'REPLAY_ATTACK_DETECTED') ? 403 : 400,
         body: { ok: false, code: err.code || 'PROMOTION_FAILED', message: err.message }
       };
     }
@@ -1914,6 +1914,45 @@ function createSystemRoutes(ctx) {
     }
   }
 
+  /**
+   * POST /api/v1/system/phase6/canary/circuit-breaker
+   * Phase 6: مدیریت وضعیت مدارشکن و هدایت دیتاسنتر ثانویه (B5)
+   */
+  async function phase6CanaryCircuitBreaker(req, body) {
+    const user = req.user;
+    if (!user) return { status: 401, body: { ok: false, code: 'unauthorized' } };
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط اپراتور ارشد مجاز به مدیریت مدارشکن است' } };
+    }
+
+    if (!body || !body.cluster_id) {
+      return { status: 400, body: { ok: false, code: 'bad_request', message: 'cluster_id الزامی است' } };
+    }
+
+    const cluster = globalCanaryEngine.clusters.get(body.cluster_id);
+    if (!cluster) {
+      return { status: 404, body: { ok: false, code: 'cluster_not_found', message: `کلاستر ${body.cluster_id} یافت نشد` } };
+    }
+
+    if (body.circuit_breaker_open !== undefined) cluster.circuitBreakerOpen = Boolean(body.circuit_breaker_open);
+    if (body.secondary_dc !== undefined) cluster.secondaryDc = body.secondary_dc;
+    if (body.status !== undefined) cluster.status = body.status;
+
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        cluster: {
+          id: cluster.id,
+          circuitBreakerOpen: cluster.circuitBreakerOpen,
+          primaryDc: cluster.primaryDc,
+          secondaryDc: cluster.secondaryDc,
+          status: cluster.status
+        }
+      }
+    };
+  }
+
   return {
     scalabilityHealthReport,
     eventProcessingHealthReport,
@@ -1944,7 +1983,8 @@ function createSystemRoutes(ctx) {
     nationalWriteSmoothing,
     phase6CanaryStatus,
     phase6CanaryPromote,
-    phase6CanaryRollback
+    phase6CanaryRollback,
+    phase6CanaryCircuitBreaker
   };
 }
 

@@ -139,11 +139,27 @@ function buildNationalOperationsDashboard(overrideMetrics = {}) {
   const regionsSummary = calculateNationalRegionHealthSummary();
   const trafficTopology = getNationalTrafficFabricTopology();
 
-  const currentP95 = overrideMetrics.api_latency_p95_ms != null ? overrideMetrics.api_latency_p95_ms : 185;
-  const currentP99 = overrideMetrics.api_latency_p99_ms != null ? overrideMetrics.api_latency_p99_ms : 620;
-  const currentErrorRate = overrideMetrics.api_error_rate_pct != null ? overrideMetrics.api_error_rate_pct : 0.02;
-  const currentEventLag = overrideMetrics.event_lag_ms != null ? overrideMetrics.event_lag_ms : 120;
-  const currentDbLag = overrideMetrics.db_replication_lag_ms != null ? overrideMetrics.db_replication_lag_ms : 65;
+  // B6: خواندن سنجه‌های بلادرنگ از موتور ترافیک به جای اعداد ثابت ساختگی
+  let liveObserved = { p95: 0, p99: 0, error_rate: 0, event_lag: 0, db_lag: 0 };
+  try {
+    const { globalCanaryEngine } = require('../infrastructure/phase6-canary-engine');
+    const liveTehran = globalCanaryEngine.getClusterMetrics('ir-tehran-1');
+    if (liveTehran && liveTehran.total_requests > 0) {
+      liveObserved = {
+        p95: liveTehran.latency.p95_ms || 0,
+        p99: liveTehran.latency.p99_ms || 0,
+        error_rate: Number((liveTehran.error_rate * 100).toFixed(2)),
+        event_lag: 0,
+        db_lag: 0
+      };
+    }
+  } catch (_) {}
+
+  const currentP95 = overrideMetrics.api_latency_p95_ms != null ? overrideMetrics.api_latency_p95_ms : liveObserved.p95;
+  const currentP99 = overrideMetrics.api_latency_p99_ms != null ? overrideMetrics.api_latency_p99_ms : liveObserved.p99;
+  const currentErrorRate = overrideMetrics.api_error_rate_pct != null ? overrideMetrics.api_error_rate_pct : liveObserved.error_rate;
+  const currentEventLag = overrideMetrics.event_lag_ms != null ? overrideMetrics.event_lag_ms : liveObserved.event_lag;
+  const currentDbLag = overrideMetrics.db_replication_lag_ms != null ? overrideMetrics.db_replication_lag_ms : liveObserved.db_lag;
 
   const sloCompliance = {
     p95_compliant: currentP95 <= NATIONAL_SLO_TARGETS.api_latency_p95_ms,
