@@ -44,9 +44,17 @@ function spawnServer(env, out) {
   procs.push(p);
   return p;
 }
-process.on('exit', () => {
+function cleanup() {
   for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} }
   try { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+}
+process.on('exit', cleanup);
+process.on('SIGINT', () => { cleanup(); process.exit(130); });
+process.on('SIGTERM', () => { cleanup(); process.exit(143); });
+process.on('uncaughtException', (err) => {
+  console.error('FATAL Error in server17:', err);
+  cleanup();
+  process.exit(1);
 });
 
 function req(method, port, p, body, cookie, mod) {
@@ -77,6 +85,19 @@ function req(method, port, p, body, cookie, mod) {
   });
 }
 
+async function waitForServer(p, port, useTls) {
+  for (let i = 0; i < 50; i++) {
+    const h = await req('GET', port, '/api/health', null, null, useTls ? https : http);
+    if (h.status === 200 && h.json && h.json.ok) {
+      if (Number(h.json.pid) === p.pid) return true;
+      try { process.kill(Number(h.json.pid)); } catch (e) {} /* سرورِ ماندهٔ اجرایِ پیشین */
+    }
+    if (p.exitCode !== null) return false;
+    await sleep(300);
+  }
+  return false;
+}
+
 async function bootServer(port, extraEnv) {
   const env = Object.assign({}, process.env, {
     PORT: String(port), HOST: '127.0.0.1',
@@ -89,16 +110,8 @@ async function bootServer(port, extraEnv) {
   fs.copyFileSync(REAL_STORE, env.PAYESH_STORE);
   const p = spawnServer(env, port);
   const useTls = !!(env.PAYESH_TLS_CERT && env.PAYESH_TLS_KEY);
-  for (let i = 0; i < 50; i++) {
-    const h = await req('GET', port, '/api/health', null, null, useTls ? https : http);
-    if (h.status === 200 && h.json && h.json.ok) {
-      if (Number(h.json.pid) === p.pid) return p;
-      try { process.kill(Number(h.json.pid)); } catch (e) {} /* سرورِ ماندهٔ اجرایِ پیشین */
-    }
-    if (p.exitCode !== null) return null;
-    await sleep(300);
-  }
-  return null;
+  const ok = await waitForServer(p, port, useTls);
+  return ok ? p : null;
 }
 
 /* ساختِ JWT دستی (همان الگوریتم) — برایِ تست‌هایِ منفی */
@@ -370,12 +383,7 @@ async function main() {
     delete env.DEMO_CODE;
     fs.copyFileSync(REAL_STORE, env.PAYESH_STORE);
     const o8 = spawnServer(env, 9007);
-    let up = false;
-    for (let i = 0; i < 40; i++) {
-      const h = await req('GET', 9007, '/api/health');
-      if (h.status === 200) { up = true; break; }
-      await sleep(300);
-    }
+    const up = await waitForServer(o8, 9007);
     chk('O8a سرورِ بدونِ DEMO_CODE بالا آمد', up);
     if (up) {
       const rKnown = await req('POST', 9007, '/api/auth/send-code', { phone: phone1 });
@@ -396,12 +404,7 @@ async function main() {
     });
     fs.copyFileSync(REAL_STORE, env.PAYESH_STORE);
     const s7 = spawnServer(env, 9007);
-    let up = false;
-    for (let i = 0; i < 40; i++) {
-      const h = await req('GET', 9007, '/api/health');
-      if (h.status === 200) { up = true; break; }
-      await sleep(300);
-    }
+    const up = await waitForServer(s7, 9007);
     chk('S0 سرورِ 9007 (SMS) بالا آمد', up);
     if (up) {
       const ss = {};
@@ -439,22 +442,17 @@ async function main() {
     });
     fs.copyFileSync(REAL_STORE, env.PAYESH_STORE);
     const e7 = spawnServer(env, 9007);
-    let up = false;
-    for (let i = 0; i < 40; i++) {
-      const h = await req('GET', 9007, '/api/health');
-      if (h.status === 200) { up = true; break; }
-      await sleep(300);
-    }
+    const up = await waitForServer(e7, 9007);
     chk('E0 سرورِ 9007 (enum) بالا آمد', up);
     if (up) {
       const em = {};
       const lgE = await login(9007, phone2, M2.national_id, em);
       const tick = async (p) => { const a = Date.now(); await req('GET', 9007, p, null, em.ck); return Date.now() - a; };
       for (let i = 0; i < 3; i++) await tick('/api/students/9990' + i);
-      const aud0 = fs.readFileSync(env.PAYESH_AUDIT, 'utf8');
+      const aud0 = fs.existsSync(env.PAYESH_AUDIT) ? fs.readFileSync(env.PAYESH_AUDIT, 'utf8') : '';
       chk('E1 رد‌هایِ کم (3) → هنوز هشدارِ enum ندارد', aud0.indexOf('enum_warn') === -1, aud0.split('\n').filter(l => l.indexOf('enum') > -1).length);
       for (let i = 0; i < 2; i++) await tick('/api/students/9981' + i); /* n=5 = WARN */
-      const aud1 = fs.readFileSync(env.PAYESH_AUDIT, 'utf8');
+      const aud1 = fs.existsSync(env.PAYESH_AUDIT) ? fs.readFileSync(env.PAYESH_AUDIT, 'utf8') : '';
       chk('E2 n=5 → آدیتِ enum_warn', aud1.indexOf('enum_warn') > -1);
       for (let i = 0; i < 3; i++) await tick('/api/students/9972' + i); /* n=8 = SLOW1 */
       const d1 = await tick('/api/bell/now');
@@ -465,7 +463,7 @@ async function main() {
       for (let i = 0; i < 3; i++) await tick('/api/students/9954' + i); /* n=15 = REVOKE */
       const me = await req('GET', 9007, '/api/auth/me', null, em.ck);
       chk('E5 n=15 (REVOKE) → نشست ابطال شد (/me = 401)', me.status === 401, me.status + ' ' + JSON.stringify(me.json));
-      const audF = fs.readFileSync(env.PAYESH_AUDIT, 'utf8');
+      const audF = fs.existsSync(env.PAYESH_AUDIT) ? fs.readFileSync(env.PAYESH_AUDIT, 'utf8') : '';
       chk('E6 آدیت: enum_slow + enum_slow2 + enum_revoke ثبت شد',
         audF.indexOf('enum_slow') > -1 && audF.indexOf('enum_slow2') > -1 && audF.indexOf('enum_revoke') > -1);
       e7.kill('SIGKILL');
@@ -482,12 +480,7 @@ async function main() {
     });
     fs.copyFileSync(REAL_STORE, env.PAYESH_STORE);
     const f10 = spawnServer(env, 9010);
-    let up = false;
-    for (let i = 0; i < 40; i++) {
-      const h = await req('GET', 9010, '/api/health');
-      if (h.status === 200) { up = true; break; }
-      await sleep(300);
-    }
+    const up = await waitForServer(f10, 9010);
     chk('F0 سرورِ 9010 (fields) بالا آمد', up);
     if (up) {
       const T1 = seed.users.find(u => u.id === 4);  /* teacher، مدرسهٔ 1 */

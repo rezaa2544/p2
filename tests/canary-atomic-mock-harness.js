@@ -1,10 +1,10 @@
 /**
- * Phase 7.6-R.6 Canary Atomic Production Runtime Test Suite
+ * [MOCK] Phase 7.6-R.6 Canary Atomic Mock Harness (Level E2)
  *
- * Verifies that Phase6CanaryEngine.setTrafficWeight executes UPDATE + AUDIT
- * in a real PostgreSQL transaction via db.transaction & postgres-authority.
- * When an error is injected into the Audit INSERT step, the transaction
- * executes ROLLBACK, weight in PostgreSQL SSoT remains 10, and 0 audit rows exist.
+ * Simulates Phase6CanaryEngine.setTrafficWeight execution of UPDATE + AUDIT
+ * using an in-memory JS mock transaction harness.
+ * Classified strictly as [MOCK] / Level E2 per Evidence Integrity Rule Set 2.
+ * (For live PostgreSQL 17 runtime proof, see tests/canary-atomic-postgres-live-runtime.js)
  */
 
 'use strict';
@@ -51,7 +51,7 @@ function createGovContext(keypair, action, clusterId, targetWeight) {
 
 async function run() {
   console.log('============================================================');
-  console.log('Phase 7.6-R.6 Canary Atomic Production Runtime Test Suite');
+  console.log('[MOCK] Phase 7.6-R.6 Canary Atomic Mock Harness (Level E2)');
   console.log('============================================================\n');
 
   const keypair = generateGovernanceKeypair();

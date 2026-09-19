@@ -214,6 +214,17 @@ function createAudit(opts = {}) {
   let droppedEvents = 0;
   let overflowWarned = false;
 
+  /* ایمنی دایرکتوری لاگر: اطمینان از وجود مسیر والد و فایل لاگ */
+  try {
+    const pdir = path.dirname(auditFile);
+    if (!fs.existsSync(pdir)) fs.mkdirSync(pdir, { recursive: true, mode: 0o700 });
+    if (!fs.existsSync(auditDir)) fs.mkdirSync(auditDir, { recursive: true, mode: 0o700 });
+    if (!asyncMode && !fs.existsSync(auditFile)) {
+      const fd = fs.openSync(auditFile, 'a', 0o600);
+      fs.closeSync(fd);
+    }
+  } catch (e) {}
+
   function ensureInit() {
     if (initialized) return;
     initialized = true;
@@ -557,8 +568,13 @@ function createAudit(opts = {}) {
         eventCounter++;
         enqueueLine(line);
       } else {
-        try { fs.mkdirSync(path.dirname(auditFile), { recursive: true, mode: 0o700 }); } catch (e) {}
-        fs.appendFileSync(auditFile, line, { encoding: 'utf8', mode: 0o600 });
+        try {
+          const pdir = path.dirname(auditFile);
+          if (!fs.existsSync(pdir)) fs.mkdirSync(pdir, { recursive: true, mode: 0o700 });
+          fs.appendFileSync(auditFile, line, { encoding: 'utf8', mode: 0o600 });
+        } catch (err) {
+          // خطای دایرکتوری در لاگر مسیر را مسدود نمی‌کند
+        }
         eventCounter++;
       }
 

@@ -282,7 +282,7 @@ function createAuth(ctx){
     audit('send_code', { user_id: user.id, role: user.role, school_id: user.school_id, ip, summary: 'ارسال کد ورود برای کاربر ' + user.id });
     const out = { ok: true, code: 'sent' };
     const isProd = process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production';
-    if(DEMO_CODE_ECHO && !isProd) out.demo_code = code; /* dev/preview — a real gateway never echoes */
+    if(!isProd && DEMO_CODE_ECHO) out.demo_code = code; /* dev/preview — a real gateway never echoes in production */
     sendJson(res, 200, out);
   }
 
