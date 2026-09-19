@@ -3327,5 +3327,17 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 - **اقدام الزامی پیش از ورود به فاز ۸:** تیم پیاده‌سازی باید در `phase6-canary-engine.js` متد `setTrafficWeight` را به `authority.updateCanaryWeightWithAudit` متصل کند و فایل مرده `server/middleware/scope.js` را پاکسازی کند.
 - **گزارش رسمی:** `docs/PHASE_7_6_R5_REDTEAM_RECERTIFICATION_REPORT.md`
 
+## ایجاد چک‌لیست اجباری شروع سشن (`docs/SESSION_START.md`) — ✅ (2026-09-19)
+
+- **هدف:** استانداردسازی پروتکل ۵ مرحله‌ای ورود و استارت هر سشن کاری با دستور خلاصهٔ «طبق `docs/SESSION_START.md` شروع کن».
+- **محتوای سند (`docs/SESSION_START.md`):**
+  ۱. تأیید وضعیت مخزن: `git status`، `git log -3` و اعتبارسنجی همگامی با گیت‌هاب از طریق `git ls-remote`.
+  ۲. مطالعه اسناد مرجع بدون پیش‌فرض: `docs/AI_PROMPT.md`، `CONTRIBUTING.md`، `docs/ARCHITECTURE_DECISIONS.md` و ورودی‌های اخیر `HANDOFF.md`.
+  ۳. بررسی استقرار ۵ اسکیل اصلی مهندسی در `.claude/skills/` (`security-review`, `architect`, `code-review`, `performance-audit`, `testing-strategy`).
+  ۴. اجرای آزمون‌های سلامت پایه (`node tests/run.js` و `node tests/smoke.js`) و توقف در صورت شکست.
+  ۵. تأیید صریح قراردادهای رفتاری: نقش هم‌تیمی و مهندس ارشد، روال ۸ مرحله‌ای، الزام اسکیل‌ها پیش از کار، و استناد به داده‌های سنجیده‌شده.
+- **وضعیت:** سند ساخته شد، به `docs/AI_PROMPT.md` پیوند خورد، کامیت و به `origin/main` پوش گردید.
+
+
 
 
