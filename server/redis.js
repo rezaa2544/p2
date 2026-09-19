@@ -39,9 +39,13 @@ const REDIS_URL = process.env.REDIS_URL || null;
    (قفل/نرخ/کش هرکدام یک‌جا). بنابراین نبودِ ردیس در تولید = شکستِ ریدی.
    تست‌های محیطی با ALLOW_MEMORY_FALLBACK=1 مجاز به تست حافظه‌ای هستند. */
 function isProduction() {
+  const hasUrl = !!String(process.env.REDIS_URL || '').trim() || !!String(process.env.DATABASE_URL || '').trim();
+  /* If REDIS_URL or DATABASE_URL is explicitly configured, ALLOW_MEMORY_FALLBACK CANNOT override Redis fail-closed.
+     Only when no remote DB/Redis URL is set does ALLOW_MEMORY_FALLBACK=1 allow dev/test memory fallback. */
+  if (hasUrl) return true;
   const allowFallback = process.env.ALLOW_MEMORY_FALLBACK === '1' || process.env.ALLOW_MEMORY_FALLBACK === 'true';
   if (allowFallback) return false;
-  return process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || !!String(process.env.REDIS_URL || '').trim() || !!String(process.env.DATABASE_URL || '').trim();
+  return process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production';
 }
 
 /**

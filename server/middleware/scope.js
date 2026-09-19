@@ -70,7 +70,7 @@ function assertTenantBoundary() {
     const schoolId = user.school_id || req.headers['x-school-id'] || null;
 
     try {
-      const tenantPol = await authority.getTenantPolicy(province, schoolId);
+      const tenantPol = await authority.assertTenantPolicy(province, schoolId, 'actor_province');
       req.tenantPolicy = tenantPol;
       if (next) next();
       return true;

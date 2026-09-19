@@ -1854,6 +1854,19 @@ function createSystemRoutes(ctx) {
     const user = req.user;
     if (!user) return { status: 401, body: { ok: false, code: 'unauthorized' } };
 
+    const targetCluster = (searchParams && (searchParams.get('cluster_id') || searchParams.get('cluster')));
+    if (targetCluster) {
+      const clusterState = await globalCanaryEngine.getCanaryState(targetCluster);
+      return {
+        status: clusterState ? 200 : 404,
+        body: {
+          ok: !!clusterState,
+          cluster: clusterState,
+          timestamp: new Date().toISOString()
+        }
+      };
+    }
+
     const snapshot = await globalCanaryEngine.getSnapshotFromSoT();
     return {
       status: 200,
