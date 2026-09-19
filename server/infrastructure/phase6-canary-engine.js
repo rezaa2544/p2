@@ -317,11 +317,30 @@ class Phase6CanaryEngine {
     const oldWeight = cluster.weight;
 
     if (authority.attached()) {
+      if (typeof authority.updateCanaryWeightWithAudit !== 'function') {
+        const err = new Error('ATOMIC_CANARY_UPDATE_UNAVAILABLE: Atomic authority audit update API is missing');
+        err.code = 'ATOMIC_CANARY_UPDATE_UNAVAILABLE';
+        err.status = 503;
+        throw err;
+      }
       let res;
       try {
-        res = await authority.updateCanaryWeight(clusterId, weight);
+        res = await authority.updateCanaryWeightWithAudit(
+          clusterId,
+          weight,
+          {
+            action: 'WEIGHT_UPDATED',
+            clusterId,
+            oldWeight,
+            newWeight: weight,
+            reason: governanceContext.reason || 'Manual Promotion',
+            nonce: governanceContext.nonce,
+            signature: governanceContext.signature,
+            operator: governanceContext.operator
+          }
+        );
       } catch (e) {
-        const err = new Error('ثبتِ پایدارِ وزن در PostgreSQL شکست خورد — تغییر اعمال نشد: ' + e.message);
+        const err = new Error('ثبتِ پایدارِ وزن و سیستم آدیت در PostgreSQL شکست خورد — تغییر اعمال نشد: ' + e.message);
         err.code = 'CANARY_PERSIST_FAILED';
         err.status = 503;
         throw err;
@@ -353,17 +372,16 @@ class Phase6CanaryEngine {
         cluster.circuitBreakerOpen = false;
         cluster.status = CANARY_STATES.HEALTHY;
       }
+      await this.logAudit('WEIGHT_UPDATED', {
+        clusterId,
+        oldWeight,
+        newWeight: weight,
+        operator: governanceContext.operator,
+        reason: governanceContext.reason || 'Manual Promotion',
+        signature: governanceContext.signature,
+        nonce: governanceContext.nonce
+      });
     }
-
-    await this.logAudit('WEIGHT_UPDATED', {
-      clusterId,
-      oldWeight,
-      newWeight: weight,
-      operator: governanceContext.operator,
-      reason: governanceContext.reason || 'Manual Promotion',
-      signature: governanceContext.signature,
-      nonce: governanceContext.nonce
-    });
 
     return cluster;
   }
