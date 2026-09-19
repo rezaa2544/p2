@@ -243,6 +243,22 @@ async function assertTenantPolicy(province, school, requiredScope) {
       err.status = 403;
       throw err;
     }
+    if (requiredScope) {
+      if (scope.allowed_scopes && Array.isArray(scope.allowed_scopes)) {
+        if (!scope.allowed_scopes.includes(requiredScope) && !scope.allowed_scopes.includes('*')) {
+          const err = new Error(`TENANT_BOUNDARY_VIOLATION: Required scope '${requiredScope}' is not in policy allowed_scopes [${scope.allowed_scopes.join(', ')}]`);
+          err.code = 'TENANT_BOUNDARY_VIOLATION';
+          err.status = 403;
+          throw err;
+        }
+      }
+      if (scope.match && requiredScope !== scope.match && scope.match !== '*') {
+        const err = new Error(`TENANT_BOUNDARY_VIOLATION: Required scope '${requiredScope}' violates policy match rule '${scope.match}'`);
+        err.code = 'TENANT_BOUNDARY_VIOLATION';
+        err.status = 403;
+        throw err;
+      }
+    }
   }
   return policy;
 }
