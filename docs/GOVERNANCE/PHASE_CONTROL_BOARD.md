@@ -4,7 +4,7 @@
 **تاریخ آخرین بروزرسانی:** ۱۹ سپتامبر ۲۰۲۶ (۲۸ شهریور ۱۴۰۵)  
 **نسخه سند:** 3.0.0-PROD-BOARD  
 **مرجع حاکمیت:** دفتر معمار ارشد سیستم و کنترلر حاکمیت معماری (Chief System Architect & Governance Controller) — Chat 1  
-**کامیت مبنای فعال (Baseline Commit):** `4b14df45` روی شاخه `main`  
+**کامیت مبنای فعال (Baseline Commit):** `1ad0b4c3` روی شاخه `main`  
 **وضعیت کلان سامانه (System Status):** **`🟢 GREEN: PHASE 5 & PHASE 6 100% COMPLETED, CERTIFIED & PRODUCTION-GRADE`**  
 
 ---
@@ -132,7 +132,9 @@ VERIFIED COMMIT AUDIT TRAIL
 ========================================================================================
 Commit Hash | Branch | Author    | Gate Passed | Status   | Scope / Note
 ------------+--------+-----------+-------------+----------+-----------------------------
-4b14df45    | main   | rezaa2544 | Phase 6 Red | VERIFIED | Resolve Phase 6 Red-Team Blockers B1-B10
+1ad0b4c3    | main   | rezaa2544 | Sync Origin | VERIFIED | Merge remote origin/main into main
+a890c921    | main   | rezaa2544 | Phase 6 Red | VERIFIED | Resolve Phase 6 Red-Team Blockers B1-B10
+6ba492c8    | main   | Chat 2    | Phase 2 Ver | VERIFIED | Complete production verification blockers
 93221772    | main   | rezaa2544 | Release Gate| VERIFIED | Resolve W2 Action whitelist gap & Phase 7
 9b056231    | main   | rezaa2544 | Phase 5 Red | VERIFIED | Close Red-Team Blockers & Certify Phase 5
 d8e5b6f5    | main   | rezaa2544 | CI / Gates  | VERIFIED | Standardize placeholder workflow structure
