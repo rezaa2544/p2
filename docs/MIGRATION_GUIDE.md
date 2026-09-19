@@ -268,9 +268,10 @@ $ node tools/migrate-helper.js --next
 | ۰۱۲ | `012_partition_grades_attendance.sql` / `.down` | پارتیشن‌بندیِ grades/attendance: `PARTITION BY RANGE (created_at)` سالانه (تا ۲ سالِ آینده + default) · PK ⇒ `(id, created_at)` + ایندکسِ غیر یکتای `(id)` · **کپیِ chunk-commit با PROCEDURE (هر ۱۵0k سطر COMMIT؛ حافظهٔ مقیّد؛ ازسرگیری از MAX(id) بعد از کرش)** با تریگرِ chg خاموش (chg_id کپی حفظ می‌شود) · **FKها با ALTER رویِ جدولِ خالی قبل از کپی** (NOT VALID رویِ partitioned ممنوعِ PG 17؛ قفلِ والد میلی‌ثانیه‌ای به‌جایِ کلِ مدتِ کپی) · تنها تراکنشِ قفل‌دار = swap + کچ‌آپِ ضدالحاق با **پیشیکیتِ `chg_id > :w0` به‌صورتِ ثابتِ زمانِ پلان (`psql \gset` + نشانگرِ یک‌سطریِ `mig009_w0`)** و شرطِ تازگیِ chg (`p.chg_id >= o.chg_id`) + فاز D دوپاس برای سرگردان‌های لحظهٔ swap · ANALYZE پیش از swap · `*_old` برایِ rollback و `*_recovered` در down (بازیافت با معیارِ جفتیِ (id, created_at) + گاردِ fail-closed برایِ recoveredِ سیکلِ قبل) · تأیید: زنده بر PG 17.11 (`tests/partitioning.js` **۶۲/۶۲**) + استیجینگ ۱.۸M با نویسندهٔ هم‌زمان (صفر خطا، توقفِ خواندن ~۲s) + **مانورِ ۲۵M سطر: ۱۹ دقیقه، صفر خطا/گم‌شدگی، نوشتنِ users حینِ کپی ۵.۲ms، پنجرهٔ swap: ~۳۶s → ۰.۱۱5s/۱.۱۴s با ثابتِ زمانِ پلان** (§۹.۷) · نگهداریِ سالانه: `tools/partition-retention.js` + cron. **پیش‌نیازِ فعال‌سازی:** مسیرِ نوشتنِ persistOp با `PAYESH_PARTITIONED_TABLES` (از قبل روشن) | این دور (PR #82 — renumber ‏009→012) |
 | ۰۱۳ | `013_universal_occ_and_sequences.sql` / `.down` | مدیریتِ همزمانی خوش‌بینانهٔ همگانی (OCC) + ستون‌های نسخه (version) و جدولِ پایدارِ sync_conflicts | مرج (فاز ۵) |
 | ۰۱۴ | `014_outbox_dlq.sql` / `.down` | صفِ نامه‌های مرده (DLQ) + ایندکس‌های کارگرِ صندوق خروجی (server_outbox) | مرج (فاز ۵) |
-| ۰۱۵ | `015_phase1_security_and_constraints.sql` / `.down` | ستون‌های حذف نرم (deleted_at) + ایندکس‌های دامنه و قیدهای یکتایی جزئی | مرج (فاز ۱) |
+| ۰۱۵ | `015_phase6_canary_configs.sql` / `.down` | جداول کلاسترهای کستری و رویدادهای ممیزی اپراتوری (Canary Configurations & Audit SSoT) | مرج (فاز ۶) |
+| ۰۱۶ | `016_phase1_security_and_constraints.sql` / `.down` | ستون‌های حذف نرم (deleted_at) + ایندکس‌های دامنه و قیدهای یکتایی جزئی | مرج (فاز ۱) |
 
-> مهاجرت بعدی شمارهٔ `013` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را> (با وضعیتِ مرج) به جدول اضافه کند — مالک: نویسندهٔ مهاجرت.
+> مهاجرت بعدی شمارهٔ `017` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را به جدول اضافه کند — مالک: نویسندهٔ مهاجرت.
 
 ---
 

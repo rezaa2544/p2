@@ -1,3 +1,5 @@
+BEGIN;
+
 -- ═══════════════════════════════════════════════════════════════════
 -- migrations/015_phase6_canary_configs.sql
 -- Phase 6: Production Canary Configurations & Audit Trail SSoT
@@ -50,3 +52,5 @@ VALUES
   ('ir-border-west-1', 'کلاستر غرب و نوار مرزی مقاوم', '["18", "19", "21", "22", "23"]'::jsonb, 'ahvaz-dc-01', 'kermanshah-dc-01', 2500, 100, 'HEALTHY', 'STAGE_4_FULL_NATIONAL', 1),
   ('ir-rural-central-1', 'کلاستر مدارس روستایی و عشایری سراسر کشور', '["RURAL_ALL"]'::jsonb, 'tehran-dc-03', 'isfahan-dc-03', 2000, 100, 'HEALTHY', 'STAGE_4_FULL_NATIONAL', 1)
 ON CONFLICT (id) DO NOTHING;
+
+COMMIT;

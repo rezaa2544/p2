@@ -55,6 +55,7 @@ function req(method, port, p, body, cookie, mod) {
     const data = body !== undefined ? (typeof body === 'string' ? body : JSON.stringify(body)) : null;
     const r = m.request({
       hostname: '127.0.0.1', port, path: p, method,
+      rejectUnauthorized: false,
       headers: Object.assign(
         data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {},
         cookie ? { Cookie: cookie } : {}
@@ -225,7 +226,7 @@ async function main() {
   }
   {
     /* T2: production + proxy اعلام‌شده */
-    const t2 = await bootServer(9008, Object.assign({}, mainEnv, { PAYESH_ENV: 'production', PAYESH_BEHIND_PROXY: '1' }));
+    const t2 = await bootServer(9008, Object.assign({}, mainEnv, { PAYESH_ENV: 'production', PAYESH_BEHIND_PROXY: '1', ALLOW_MEMORY_FALLBACK: '1' }));
     chk('T2 production + PAYESH_BEHIND_PROXY=1 → بالا می‌آید', !!t2);
     if (t2) t2.kill('SIGKILL');
   }
