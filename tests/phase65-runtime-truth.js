@@ -11,6 +11,7 @@ const path = require('path');
 const http = require('http');
 const { spawn, execSync } = require('child_process');
 const { Client } = require('pg');
+const pgOutage = require('./pg-outage-control');
 const gov = require('../server/infrastructure/phase6-governance');
 
 const NODE = process.execPath;
@@ -54,10 +55,14 @@ function boot(port, env) {
     proc.stderr.on('data', (d) => (log += d));
     proc.__log = () => log;
     (async () => {
-      for (let i = 0; i < 200; i++) {
+      for (let i = 0; i < 400; i++) {
         const h = await req(port, 'GET', '/api/health');
         if (h.status === 200 || h.status === 503) {
           if (h.status === 200) return resolve(proc);
+        }
+        if (proc.exitCode != null) {
+          console.error('  boot exited', proc.exitCode, log.slice(-700));
+          return resolve(null);
         }
         await sleep(300);
       }
@@ -188,6 +193,7 @@ async function flood(port, n, pth, headers) {
     PAYESH_GOVERNANCE_ED25519_PUBLIC_KEY: pubB64
   });
   delete envA.NODE_ENV;
+  if (envA.REDIS_URL) envA.REDIS_URL = String(envA.REDIS_URL).replace(/\/\d+\s*$/, '') + '/13';
 
   const procA = await boot(PORTA, envA);
   chk('بوت نمونه A', !!procA);
@@ -355,17 +361,20 @@ async function flood(port, n, pth, headers) {
   {
     const mk1 = await req(PORTA, 'POST', '/api/v1/classes', { name: 'P65_PRE', grade: 10, school_id: 1 }, cookie);
     chk('RT-06 نوشتِ پیش از قطعی پذیرفته شد (2xx)', mk1.status >= 200 && mk1.status < 300, mk1.status);
-    let stopped = true;
-    try { execSync('sudo pg_ctlcluster 17 main stop --mode fast', { stdio: 'pipe' }); } catch (e) { stopped = false; }
-    chk('RT-06 PostgreSQL واقعاً متوقف شد', stopped);
-    if (stopped) {
+    const stopped = pgOutage.stop(BASE_URL);
+    chk('RT-06 PostgreSQL واقعاً متوقف شد', !!(stopped && stopped.ok), stopped && stopped.method);
+    if (stopped && stopped.ok) {
       await sleep(500);
       const w = await req(PORTA, 'POST', '/api/v1/classes', { name: 'P65_DURING', grade: 10, school_id: 1 }, cookie);
       chk('RT-06 نوشتن در قطعی ⇒ fail-closed (401/503 نه 2xx)',
         w.status === 401 || w.status === 503, w.status + ' ' + w.body.slice(0, 80));
-      try { execSync('sudo pg_ctlcluster 17 main start', { stdio: 'pipe' }); } catch (e) {}
-      await sleep(1500);
-      const rec = await req(PORTA, 'POST', '/api/v1/classes', { name: 'P65_AFTER', grade: 10, school_id: 1 }, cookie);
+      pgOutage.start(stopped);
+      let rec = { status: 0 };
+      for (let i = 0; i < 20; i++) {
+        rec = await req(PORTA, 'POST', '/api/v1/classes', { name: 'P65_AFTER', grade: 10, school_id: 1 }, cookie);
+        if (rec.status >= 200 && rec.status < 300) break;
+        await sleep(400);
+      }
       chk('RT-06 بازگشت PG ⇒ نوشتن دوباره', rec.status >= 200 && rec.status < 300, rec.status);
     }
   }
@@ -417,5 +426,7 @@ async function flood(port, n, pth, headers) {
 })().catch((e) => {
   console.error('FATAL', e && e.stack || e);
   try { execSync('sudo pg_ctlcluster 17 main start', { stdio: 'pipe' }); } catch (e2) {}
+  try { execSync('sudo pg_ctlcluster 16 main start', { stdio: 'pipe' }); } catch (e2) {}
+  try { execSync('docker ps -aq --filter ancestor=postgres:17 | xargs -r docker start', { stdio: 'pipe' }); } catch (e2) {}
   process.exit(1);
 });

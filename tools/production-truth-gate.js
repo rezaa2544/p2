@@ -12,6 +12,7 @@ const path = require('path');
 const http = require('http');
 const { spawn, execSync } = require('child_process');
 const { Client } = require('pg');
+const pgOutage = require('../tests/pg-outage-control');
 const gov = require('../server/infrastructure/phase6-governance');
 
 const NODE = process.execPath;
@@ -267,6 +268,7 @@ function walkJs(dir, visit) {
     PAYESH_GOVERNANCE_ED25519_PUBLIC_KEY: pubB64
   });
   delete envBase.NODE_ENV;
+  if (envBase.REDIS_URL) envBase.REDIS_URL = String(envBase.REDIS_URL).replace(/\/\d+\s*$/, '') + '/12';
 
   const envA = Object.assign({}, envBase, { PORT: String(PORTA), PAYESH_OTP_FILE: path.join(os.tmpdir(), 'ptg-otp-a.json') });
   const envB = Object.assign({}, envBase, { PORT: String(PORTB), PAYESH_OTP_FILE: path.join(os.tmpdir(), 'ptg-otp-b.json') });
@@ -427,16 +429,15 @@ function walkJs(dir, visit) {
   {
     const mk1 = await req(PORTA, 'POST', '/api/v1/classes', { name: 'PTG_PRE', grade: 10, school_id: 1 }, cookie);
     chk('G4', 'نوشتِ پیش از قطعی PG پذیرفته شد', mk1.status >= 200 && mk1.status < 300, mk1.status);
-    let stopped = true;
-    try { execSync('sudo pg_ctlcluster 17 main stop --mode fast', { stdio: 'pipe' }); } catch (e) { stopped = false; }
-    chk('G4', 'PostgreSQL واقعاً متوقف شد', stopped);
-    if (stopped) {
+    const stopped = pgOutage.stop(BASE_URL);
+    chk('G4', 'PostgreSQL واقعاً متوقف شد', !!(stopped && stopped.ok), stopped && stopped.method);
+    if (stopped && stopped.ok) {
       await sleep(500);
       const w = await req(PORTA, 'POST', '/api/v1/classes', { name: 'PTG_DURING', grade: 10, school_id: 1 }, cookie);
       chk('G4', 'نوشتن در قطعی PG ⇒ fail-closed (نه 2xx)',
         w.status === 401 || w.status === 503 || w.status === 500,
         w.status + ' ' + w.body.slice(0, 80));
-      try { execSync('sudo pg_ctlcluster 17 main start', { stdio: 'pipe' }); } catch (e) {}
+      pgOutage.start(stopped);
       await sleep(1800);
     }
   }
@@ -497,5 +498,7 @@ function walkJs(dir, visit) {
 })().catch((e) => {
   console.error('NOT VERIFIED — FATAL', e && e.stack || e);
   try { execSync('sudo pg_ctlcluster 17 main start', { stdio: 'pipe' }); } catch (e2) {}
+  try { execSync('sudo pg_ctlcluster 16 main start', { stdio: 'pipe' }); } catch (e2) {}
+  try { execSync('docker ps -aq --filter ancestor=postgres:17 | xargs -r docker start', { stdio: 'pipe' }); } catch (e2) {}
   process.exit(1);
 });
