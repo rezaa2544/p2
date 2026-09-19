@@ -142,6 +142,15 @@ async function runStep12Tests() {
   console.log('  ✅ 12.2 National Load & Capacity Simulation benchmark verified (2,000+ RPS / 2,500 EPS)');
 }
 
+async function runBehavioralCertification() {
+  console.log('▸ Red-Team Hardened Behavioral Certification');
+  const behavioralSuitePath = path.join(__dirname, 'phase5-behavioral-certification.test.js');
+  assert(fs.existsSync(behavioralSuitePath), 'phase5-behavioral-certification.test.js must exist');
+  const cp = require('child_process');
+  const res = cp.spawnSync(process.execPath, [behavioralSuitePath], { stdio: 'inherit' });
+  assert.strictEqual(res.status, 0, 'Behavioral certification suite must pass with 0 exit code');
+}
+
 async function main() {
   console.log('═══════════════════════════════════════════════════════════════════');
   console.log('🚀 Phase 5 Master Completion & Certification Suite');
@@ -152,6 +161,7 @@ async function main() {
   await runStep10Tests();
   await runStep11Tests();
   await runStep12Tests();
+  await runBehavioralCertification();
 
   console.log('───────────────────────────────────────────────────────────────────');
   console.log('✅ ALL PHASE 5 STEPS (08, 09, 10, 11, 12) VERIFIED 100% COMPLETE');

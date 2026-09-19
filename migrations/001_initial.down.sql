@@ -89,4 +89,8 @@ DROP TABLE IF EXISTS announcements CASCADE;
 DROP TABLE IF EXISTS server_processed_uids CASCADE;
 DROP TABLE IF EXISTS server_revoked_jti CASCADE;
 DROP TABLE IF EXISTS server_auth_codes CASCADE;
+-- B1 (Phase-2 remediation directive): DOWN ALL must leave NOTHING behind.
+-- sync_conflicts is OWNED by migration 001, so its rollback drops it
+-- (013.down only removes the additive columns — see that file).
+DROP TABLE IF EXISTS sync_conflicts CASCADE;
 COMMIT;

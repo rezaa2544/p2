@@ -33,14 +33,14 @@ const ROOT = path.join(__dirname, '..');
 const REAL_STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
 if(!fs.existsSync(REAL_STORE)){
   console.log('⏭️  store موجود نیست — اول: node server/seed.js');
-  process.exit(0);
+  process.exit(1);
 }
 
 /* superadmin از seed (ثابتِ SEED=20260901) — برایِ مقاومت در برابر
    تغییرِ seed، از خودِ فایلِ store خوانده می‌شود. */
 const SEED_SU = (JSON.parse(fs.readFileSync(REAL_STORE, 'utf8')).users || [])
   .find((u) => u.role === 'superadmin');
-if(!SEED_SU) { console.log('⏭️  superadmin در seed نیست — seed بازنشانی شود'); process.exit(0); }
+if(!SEED_SU) { console.log('⏭️  superadmin در seed نیست — seed بازنشانی شود'); process.exit(1); }
 const SUPERADMIN_PHONE = SEED_SU.phone;
 const SUPERADMIN_NID = String(SEED_SU.national_id);
 const SUPERADMIN_ID = SEED_SU.id;

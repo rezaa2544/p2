@@ -23,6 +23,41 @@ jobs:
         # Release-gate honest matrix: package engines is >=22 and jsdom 30
         # requires >=22 — on 18/20 the smoke suite silently skips (exit 0),
         # which produced fake-green CI lanes. Node 18/20 lanes removed.
+        # P1-GAP-02 (Chat 2 remediation): engines >=22 is additionally ENFORCED
+        # in tests/run.js — an old Node now fails loudly instead of skipping.
+
+    services:
+      # P1-GAP-01 (Chat 2 remediation): the live-PG suites are first-class CI
+      # citizens now — without PostgreSQL they FAIL by design (no more
+      # skip/fake-green), so CI must provide a real one.
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: payesh
+          POSTGRES_PASSWORD: payesh
+          POSTGRES_DB: payesh_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U payesh"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      # Phase-2 remediation (BLOCKER 8): Redis is a first-class dependency too —
+      # otp-redis and the fail-closed probe run against this real service.
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      PGURL: postgres://payesh:payesh@127.0.0.1:5432/payesh_ci
+      REDIS_URL: redis://127.0.0.1:6379
 
     steps:
     - uses: actions/checkout@v4
@@ -32,5 +67,82 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm ci
+
+    - name: Migration chain — clean install on an empty database (001 → latest)
+      run: |
+        for f in migrations/[0-9][0-9][0-9]_*.sql; do
+          case "$f" in *.down.sql) continue;; esac
+          echo "== applying $f"
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$f" || { echo "FAILED at $f"; exit 1; }
+        done
+        psql "$PGURL" -c "SELECT COUNT(*) AS tables FROM information_schema.tables WHERE table_schema='public';"
+        psql "$PGURL" -c "SELECT * FROM sync_conflicts LIMIT 1;" >/dev/null && echo "sync_conflicts readable OK"
+
+    - name: Rollback chain — latest → 001
+      run: |
+        for f in $(ls migrations/[0-9][0-9][0-9]_*.down.sql | sort -r); do
+          echo "== rolling back $f"
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$f" || { echo "FAILED at $f"; exit 1; }
+        done
+        # BLOCKER 1 acceptance: DOWN ALL must leave NOTHING behind
+        LEFT=$(psql "$PGURL" -t -A -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';")
+        echo "tables left after DOWN ALL: $LEFT"
+        [ "$LEFT" = "0" ] || { echo "DOWN ALL not clean — $LEFT table(s) left"; exit 1; }
+
+    - name: Re-apply clean chain for the live-PG suites
+      run: |
+        for f in migrations/[0-9][0-9][0-9]_*.sql; do
+          case "$f" in *.down.sql) continue;; esac
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$f" || { echo "FAILED at $f"; exit 1; }
+        done
+
+    - name: Live-PG suites (fail without a database — P1-GAP-01)
+      run: |
+        export DATABASE_URL="$PGURL"
+        node tests/pg-relational-seed.js
+        node tests/wave3-query.js
+        node tests/wave3-query3.js
+        node tests/wave3-parity.js
+
+    # Phase-2 remediation (BLOCKER 5 + 8): Redis is live in CI now
+    - name: Live-Redis suite (otp-redis — fails without Redis)
+      run: node tests/otp-redis.js
+
+    - name: Redis outage ⇒ auth fails CLOSED (BLOCKER 5)
+      run: |
+        # Hosted images do not ship redis-server. The test must kill a DEDICATED
+        # instance (never SHUTDOWN the job Redis service — later steps need it).
+        if [ ! -x /usr/bin/redis-server ] && [ ! -x /usr/local/bin/redis-server ]; then
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq redis-server
+          sudo service redis-server stop || sudo systemctl stop redis-server || true
+        fi
+        node tests/phase2-redis-fail-closed.js
+
+    - name: OCC across two real instances — 10 concurrent writers (BLOCKER 4)
+      run: |
+        export DATABASE_URL="$PGURL"
+        node tests/phase2-occ-multi.js
+
+    - name: Outbox crash/restart replay + real DLQ row (BLOCKER 3)
+      run: |
+        export DATABASE_URL="$PGURL"
+        node tests/phase2-outbox-failover.js
+
+    - name: Phase 6.5 Runtime Truth — Red Team RT-01…RT-10
+      run: |
+        export DATABASE_URL="$PGURL"
+        node tests/phase65-runtime-truth.js
+
+    - name: Production Truth Gate — 5 gates, VERIFIED or NOT VERIFIED
+      run: |
+        export DATABASE_URL="$PGURL"
+        node tools/production-truth-gate.js
+
+    - name: Phase 7 production verifier T1–T7 — VERIFIED or NOT VERIFIED
+      run: |
+        export DATABASE_URL="$PGURL"
+        bash tools/production-verifier.sh
+
     - run: npm run build --if-present
     - run: npm test

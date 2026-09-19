@@ -7,7 +7,7 @@ const ROOT = path.join(__dirname, '..');
 
 let JSDOM, VirtualConsole;
 try { ({ JSDOM, VirtualConsole } = require('jsdom')); }
-catch { console.log('jsdom نصب نیست — سئوت رد شد.'); process.exit(0); }
+catch { console.log('jsdom نصب نیست — سئوت رد شد.'); process.exit(1); }
 
 let okc = 0, failc = 0;
 const fails = [];

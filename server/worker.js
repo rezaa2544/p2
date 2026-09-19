@@ -50,7 +50,17 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
     running = true;
     let processed = 0, failedDelta = 0;
     try {
-      const events = Array.isArray(store.outbox) ? store.outbox : [];
+      let events = [];
+      if (outbox && typeof outbox.fetchPendingBatch === 'function') {
+        try {
+          events = await outbox.fetchPendingBatch(50);
+        } catch (_) {
+          events = Array.isArray(store.outbox) ? store.outbox : [];
+        }
+      } else {
+        events = Array.isArray(store.outbox) ? store.outbox : [];
+      }
+
       for (const evt of events) {
         const status = evt.status || 'pending'; /* سازگاری با گذشته */
         if (status !== 'pending' || inFlight.has(evt.id)) continue;
@@ -68,11 +78,21 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
           metrics.inc('payesh_worker_events_total', { outcome: 'processed' });
         } catch (err) {
           const rc = (Number(evt.retry_count) || 0) + 1;
+          const errMsg = (err && (err.message || err.code)) || 'error';
           const patch = {
             retry_count: rc,
-            last_error: (err && (err.message || err.code)) || 'error'
+            last_error: errMsg
           };
-          if (rc > maxRetries) { patch.status = 'failed'; failedDelta++; }
+          if (rc >= maxRetries) {
+            patch.status = 'failed';
+            failedDelta++;
+            // B4: Transfer poison pill event to Dead-Letter Queue (DLQ)
+            if (outbox && typeof outbox.moveToDlq === 'function') {
+              try {
+                await outbox.moveToDlq(evt, errMsg);
+              } catch (_) {}
+            }
+          }
           await outbox.mark(evt.id, patch);
           /* برچسب از مجموعهٔ بسته (retry/failed)؛ متن خطا هرگز label نیست. */
           metrics.inc('payesh_worker_events_total', { outcome: patch.status === 'failed' ? 'failed' : 'retry' });

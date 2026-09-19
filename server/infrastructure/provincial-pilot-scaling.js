@@ -28,6 +28,7 @@ const {
   assertHumanApproval,
   deepFreeze
 } = require('./phase5-region-federation');
+const authority = require('./authority');
 
 /**
  * خطاهای رسمی و انحصاری گام P2-PL-02
@@ -419,6 +420,31 @@ function initializeProvincialStore() {
 
 initializeProvincialStore();
 
+async function persistProvincial(row) {
+  if (!row || !row.province_id) return;
+  if (!authority.attached()) {
+    if (process.env.DATABASE_URL) {
+      const err = new Error('AUTHORITY_UNAVAILABLE');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return;
+  }
+  await authority.putState('provincial', row.province_id, row, row.approval_state && row.approval_state.approved_by);
+}
+
+async function refreshProvincialFromSoT() {
+  if (!authority.attached()) return false;
+  const rows = await authority.listState('provincial');
+  for (const r of rows) {
+    if (r && r.id && r.payload && typeof r.payload === 'object') {
+      _provincialStateStore.set(r.id, r.payload);
+    }
+  }
+  return true;
+}
+
 /**
  * دریافت فهرست تمامی استان‌های پایلوت
  *
@@ -462,7 +488,7 @@ function getProvincialPilotById(provinceIdentifier) {
  * @param {Object} approvalPayload
  * @returns {Object}
  */
-function activateProvincialPilot(provinceId, approvalPayload = {}) {
+async function activateProvincialPilot(provinceId, approvalPayload = {}) {
   const province = getProvincialPilotById(provinceId);
   if (!province) {
     const err = new Error(`استان با شناسه یا نام "${provinceId}" در رجیستری پایلوت ملی یافت نشد`);
@@ -518,6 +544,7 @@ function activateProvincialPilot(provinceId, approvalPayload = {}) {
   };
 
   _provincialStateStore.set(province.province_id, updatedState);
+  await persistProvincial(updatedState);
   assertNoZeroRanking(updatedState);
   return deepFreeze(updatedState);
 }
@@ -531,7 +558,7 @@ function activateProvincialPilot(provinceId, approvalPayload = {}) {
  * @param {Object} approvalPayload
  * @returns {Object}
  */
-function updateProvincialTrafficRollout(provinceId, rolloutPct, approvalPayload = {}) {
+async function updateProvincialTrafficRollout(provinceId, rolloutPct, approvalPayload = {}) {
   const province = getProvincialPilotById(provinceId);
   if (!province) {
     const err = new Error(`استان "${provinceId}" در رجیستری یافت نشد`);
@@ -608,6 +635,7 @@ function updateProvincialTrafficRollout(provinceId, rolloutPct, approvalPayload 
   };
 
   _provincialStateStore.set(province.province_id, updatedState);
+  await persistProvincial(updatedState);
   assertNoZeroRanking(updatedState);
   return deepFreeze(updatedState);
 }
@@ -712,5 +740,6 @@ module.exports = {
   activateProvincialPilot,
   updateProvincialTrafficRollout,
   getProvincialCapacityOverview,
-  assertCapacityQuota
+  assertCapacityQuota,
+  refreshProvincialFromSoT
 };

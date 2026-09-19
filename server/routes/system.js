@@ -69,7 +69,8 @@ const {
   getProvincialPilotById,
   activateProvincialPilot,
   updateProvincialTrafficRollout,
-  getProvincialCapacityOverview
+  getProvincialCapacityOverview,
+  refreshProvincialFromSoT
 } = require('../infrastructure/provincial-pilot-scaling');
 
 const {
@@ -78,7 +79,8 @@ const {
   getNationalRegionRegistry,
   getNationalRegionById,
   updateNationalRegionState,
-  calculateNationalRegionHealthSummary
+  calculateNationalRegionHealthSummary,
+  refreshRegionsFromSoT
 } = require('../infrastructure/national-region-control-plane');
 
 const {
@@ -91,7 +93,8 @@ const {
 const {
   TRAFFIC_FABRIC_ERRORS,
   getNationalTrafficFabricTopology,
-  updateNationalTrafficWeight
+  updateNationalTrafficWeight,
+  refreshTrafficFromSoT
 } = require('../infrastructure/national-traffic-fabric');
 
 const {
@@ -116,7 +119,8 @@ const {
   transitionNocState,
   recordNocIncident,
   resolveNocIncident,
-  NOC_ERRORS
+  NOC_ERRORS,
+  refreshNocFromSoT
 } = require('../operations/national-operations-center');
 
 const {
@@ -136,7 +140,8 @@ const {
   approveChangeRequest,
   executeChangeRequest,
   getChangeRequests,
-  CHANGE_ERRORS
+  CHANGE_ERRORS,
+  refreshChangesFromSoT
 } = require('../infrastructure/change-management');
 
 const {
@@ -147,9 +152,18 @@ const {
   getCapacityReservations,
   getCapacityReservationById,
   CAPACITY_ENFORCEMENT_ERRORS,
-  NATIONAL_LIMITS
+  NATIONAL_LIMITS,
+  refreshReservationsFromSoT
 } = require('../infrastructure/national-capacity-enforcement');
 const { getNationalWriteSmoothingEngine, NATIONAL_WRITE_LIMITS } = require('../infrastructure/national-write-smoothing');
+
+const {
+  Phase6CanaryEngine,
+  globalCanaryEngine,
+  CANARY_STATES,
+  CANARY_ERRORS,
+  ALLOWED_WEIGHTS
+} = require('../infrastructure/phase6-canary-engine');
 
 function createSystemRoutes(ctx) {
   const store = ctx.store || {};
@@ -1003,6 +1017,7 @@ function createSystemRoutes(ctx) {
       };
     }
 
+    await refreshProvincialFromSoT();
     const provinceIdParam = searchParams.get('province_id');
     if (provinceIdParam) {
       const prov = getProvincialPilotById(provinceIdParam);
@@ -1062,6 +1077,7 @@ function createSystemRoutes(ctx) {
       };
     }
 
+    await refreshProvincialFromSoT();
     let regionFilter = searchParams.get('region_id') || undefined;
     if (user.role === 'edu_office' && user.region_id) {
       regionFilter = String(user.region_id);
@@ -1117,7 +1133,7 @@ function createSystemRoutes(ctx) {
         }
       };
 
-      const result = activateProvincialPilot(body.province_id, payload);
+      const result = await activateProvincialPilot(body.province_id, payload);
       return {
         status: 200,
         body: {
@@ -1179,7 +1195,7 @@ function createSystemRoutes(ctx) {
         }
       };
 
-      const result = updateProvincialTrafficRollout(body.province_id, body.rollout_pct, payload);
+      const result = await updateProvincialTrafficRollout(body.province_id, body.rollout_pct, payload);
       return {
         status: 200,
         body: {
@@ -1225,6 +1241,7 @@ function createSystemRoutes(ctx) {
       };
     }
 
+    await refreshRegionsFromSoT();
     const regionIdParam = searchParams.get('region_id');
     if (regionIdParam) {
       const reg = getNationalRegionById(regionIdParam);
@@ -1273,6 +1290,7 @@ function createSystemRoutes(ctx) {
       };
     }
 
+    await refreshReservationsFromSoT();
     const model = getNationalCapacityModel();
     const activeRes = getCapacityReservations({ status: 'ACTIVE' });
 
@@ -1312,6 +1330,7 @@ function createSystemRoutes(ctx) {
     }
 
     try {
+      await refreshReservationsFromSoT();
       const filter = searchParams ? Object.fromEntries(searchParams.entries()) : {};
       assertNoZeroRanking(filter);
       const list = getCapacityReservations(filter);
@@ -1366,7 +1385,7 @@ function createSystemRoutes(ctx) {
         throw err;
       }
 
-      const reservation = createCapacityReservation(body, {
+      const reservation = await createCapacityReservation(body, {
         approved: true,
         operator_id: String(user.id),
         approval_id: body.approval_id || `appv-res-${Date.now()}`,
@@ -1417,7 +1436,22 @@ function createSystemRoutes(ctx) {
       };
     }
 
-    const dashboard = buildNationalOperationsDashboard();
+    let poolTotal = null;
+    try {
+      if (db && typeof db.poolStats === 'function') {
+        const ps = db.poolStats();
+        poolTotal = (ps && (ps.primary && ps.primary.total)) || (ps && ps.total) || null;
+      }
+    } catch (_) {}
+    const live = globalCanaryEngine.getAggregatedMetrics();
+    const dashboard = buildNationalOperationsDashboard({
+      api_latency_p95_ms: live.is_live ? live.latency.p95_ms : undefined,
+      api_latency_p99_ms: live.is_live ? live.latency.p99_ms : undefined,
+      api_error_rate_pct: live.is_live ? Number((live.error_rate * 100).toFixed(4)) : undefined,
+      pool_total: poolTotal,
+      samples: live.samples,
+      is_live: live.is_live
+    });
     return {
       status: 200,
       body: {
@@ -1425,6 +1459,7 @@ function createSystemRoutes(ctx) {
         phase: 'PHASE_5',
         step: 'P2-NI-01',
         dashboard,
+        live_samples: live,
         timestamp: new Date().toISOString()
       }
     };
@@ -1451,6 +1486,7 @@ function createSystemRoutes(ctx) {
       };
     }
 
+    await refreshTrafficFromSoT();
     const traffic = getNationalTrafficFabricTopology();
     return {
       status: 200,
@@ -1486,6 +1522,7 @@ function createSystemRoutes(ctx) {
     }
 
     try {
+      await refreshNocFromSoT();
       const options = searchParams ? Object.fromEntries(searchParams.entries()) : {};
       assertNoZeroRanking(options);
       const snapshot = getNationalOperationsCenterSnapshot(options);
@@ -1621,6 +1658,7 @@ function createSystemRoutes(ctx) {
     }
 
     try {
+      await refreshNocFromSoT();
       const filter = searchParams ? Object.fromEntries(searchParams.entries()) : {};
       assertNoZeroRanking(filter);
       const incidents = getNocIncidents(filter);
@@ -1687,7 +1725,7 @@ function createSystemRoutes(ctx) {
       let executionResult = null;
 
       if (changeType === 'TRAFFIC_WEIGHT') {
-        executionResult = updateNationalTrafficWeight(body.region_id, body.target_weight, {
+        executionResult = await updateNationalTrafficWeight(body.region_id, body.target_weight, {
           approved: true,
           automated_decision: false,
           automated_execution: false,
@@ -1695,7 +1733,7 @@ function createSystemRoutes(ctx) {
           operator: { id: user.id, role: user.role }
         });
       } else if (changeType === 'REGION_STATE') {
-        executionResult = updateNationalRegionState(body.region_id, body.target_state, {
+        executionResult = await updateNationalRegionState(body.region_id, body.target_state, {
           approved: true,
           automated_decision: false,
           automated_execution: false,
@@ -1714,7 +1752,7 @@ function createSystemRoutes(ctx) {
           operator: { id: user.id, role: user.role }
         });
       } else if (changeType === 'NOC_STATE') {
-        executionResult = transitionNocState(body.target_state, {
+        executionResult = await transitionNocState(body.target_state, {
           operator_id: String(user.id),
           approval_id: body.approval_id || `appv-noc-${Date.now()}`,
           timestamp: new Date().toISOString(),
@@ -1725,7 +1763,7 @@ function createSystemRoutes(ctx) {
           requires_human_approval: true
         });
       } else if (changeType === 'INCIDENT') {
-        executionResult = recordNocIncident(body.incident_data || body, {
+        executionResult = await recordNocIncident(body.incident_data || body, {
           operator_id: String(user.id),
           approval_id: body.approval_id || `appv-inc-${Date.now()}`,
           timestamp: new Date().toISOString(),
@@ -1736,7 +1774,7 @@ function createSystemRoutes(ctx) {
           requires_human_approval: true
         });
       } else {
-        executionResult = registerChangeRequest({
+        executionResult = await registerChangeRequest({
           change_id: body.change_id || `cr-${Date.now()}`,
           title: body.title || 'National Infrastructure Change',
           requester: String(user.id),
@@ -1768,8 +1806,9 @@ function createSystemRoutes(ctx) {
       };
     } catch (err) {
       const isRanking = err.code === NATIONAL_CONTROL_ERRORS.ZERO_RANKING_VIOLATION || err.code === 'ZERO_RANKING_VIOLATION';
+      const isUnavailable = err.status === 503 || err.code === 'OPS_KV_UNAVAILABLE' || err.code === 'OPS_KV_PERSIST_FAILED' || err.code === 'AUTHORITY_UNAVAILABLE';
       return {
-        status: isRanking ? 400 : 422,
+        status: isRanking ? 400 : (isUnavailable ? 503 : 422),
         body: {
           ok: false,
           code: 'change_request_failed',
@@ -1807,6 +1846,154 @@ function createSystemRoutes(ctx) {
     };
   }
 
+  /**
+   * GET /api/v1/system/phase6/canary/status
+   * Phase 6: تابلوی وضعیت زنده فابریک ترافیک قناری، اوزان و شاخص‌های بلادرنگ SLO
+   */
+  async function phase6CanaryStatus(req, searchParams) {
+    const user = req.user;
+    if (!user) return { status: 401, body: { ok: false, code: 'unauthorized' } };
+
+    const snapshot = await globalCanaryEngine.getSnapshotFromSoT();
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        canary_fabric: snapshot,
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+
+  /**
+   * POST /api/v1/system/phase6/canary/promote
+   * Phase 6: ارتقای وزن ترافیک قناری با اعتبارسنجی حاکمیت و امضای رمزنگاری اپراتور (B3)
+   */
+  async function phase6CanaryPromote(req, body) {
+    const user = req.user;
+    if (!user) return { status: 401, body: { ok: false, code: 'unauthorized' } };
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط اپراتور ارشد مجاز به ارتقای وزن ترافیک است' } };
+    }
+
+    if (!body || !body.cluster_id || body.target_weight == null) {
+      return { status: 400, body: { ok: false, code: 'bad_request', message: 'cluster_id و target_weight الزامی هستند' } };
+    }
+
+    try {
+      const governanceContext = {
+        action: body.action || 'WEIGHT_UPDATE',
+        cluster_id: body.cluster_id,
+        target_weight: body.target_weight,
+        nonce: body.nonce,
+        timestamp: body.timestamp,
+        expiry: body.expiry,
+        signature: body.signature || (req.headers && req.headers['x-operator-signature']) || null,
+        reason: body.reason || 'Phase 6 Production Canary Promotion',
+        operator: {
+          id: user.id,
+          role: user.role,
+          name: user.name || user.username || 'اپراتور سامانه'
+        }
+      };
+
+      const updated = await globalCanaryEngine.setTrafficWeight(body.cluster_id, body.target_weight, governanceContext);
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          cluster: updated,
+          message: `وزن ترافیک کلاستر ${body.cluster_id} با موفقیت به ${body.target_weight}% ارتقا یافت`
+        }
+      };
+    } catch (err) {
+      const code = err.code || 'PROMOTION_FAILED';
+      const status = (code === 'CANARY_PERSIST_FAILED' || code === 'GOVERNANCE_KEY_UNAVAILABLE' || code === 'GOVERNANCE_LEDGER_UNAVAILABLE')
+        ? 503
+        : ((code === 'PHASE6_APPROVAL_REQUIRED' || code === 'INVALID_OPERATOR_SIGNATURE' || code === 'REPLAY_ATTACK_DETECTED') ? 403 : 400);
+      return {
+        status,
+        body: { ok: false, code, message: err.message }
+      };
+    }
+  }
+
+  /**
+   * POST /api/v1/system/phase6/canary/rollback
+   * Phase 6: رول‌بک اضطراری و تخلیه کامل ترافیک قناری به ۰٪ (B4)
+   */
+  async function phase6CanaryRollback(req, body) {
+    const user = req.user;
+    if (!user) return { status: 401, body: { ok: false, code: 'unauthorized' } };
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط اپراتور ارشد مجاز به رول‌بک است' } };
+    }
+
+    if (!body || !body.cluster_id) {
+      return { status: 400, body: { ok: false, code: 'bad_request', message: 'cluster_id الزامی است' } };
+    }
+
+    try {
+      await globalCanaryEngine.triggerAutoRollback(body.cluster_id, body.reason || 'Manual Emergency Rollback');
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          cluster_id: body.cluster_id,
+          drained: true,
+          target_weight: 0,
+          message: `رول‌بک اضطراری انجام شد؛ ترافیک کلاستر ${body.cluster_id} به طور کامل به صفر تخلیه شد (Drained)`
+        }
+      };
+    } catch (err) {
+      return {
+        status: 500,
+        body: { ok: false, code: 'ROLLBACK_FAILED', message: err.message }
+      };
+    }
+  }
+
+  /**
+   * POST /api/v1/system/phase6/canary/circuit-breaker
+   * Phase 6: مدیریت وضعیت مدارشکن و هدایت دیتاسنتر ثانویه (B5)
+   */
+  async function phase6CanaryCircuitBreaker(req, body) {
+    const user = req.user;
+    if (!user) return { status: 401, body: { ok: false, code: 'unauthorized' } };
+    if (user.role !== 'superadmin' && user.role !== 'admin') {
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'فقط اپراتور ارشد مجاز به مدیریت مدارشکن است' } };
+    }
+
+    if (!body || !body.cluster_id) {
+      return { status: 400, body: { ok: false, code: 'bad_request', message: 'cluster_id الزامی است' } };
+    }
+
+    try {
+      const cluster = await globalCanaryEngine.persistCircuitBreaker(body.cluster_id, {
+        circuitBreakerOpen: body.circuit_breaker_open,
+        secondaryDc: body.secondary_dc,
+        status: body.status
+      });
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          cluster: {
+            id: cluster.id,
+            circuitBreakerOpen: cluster.circuitBreakerOpen,
+            primaryDc: cluster.primaryDc,
+            secondaryDc: cluster.secondaryDc,
+            status: cluster.status
+          }
+        }
+      };
+    } catch (err) {
+      const code = err.code || 'CIRCUIT_BREAKER_FAILED';
+      const status = (code === 'CANARY_PERSIST_FAILED') ? 503 : (code === 'PHASE6_CLUSTER_NOT_FOUND' ? 404 : 400);
+      return { status, body: { ok: false, code, message: err.message } };
+    }
+  }
+
   return {
     scalabilityHealthReport,
     eventProcessingHealthReport,
@@ -1834,7 +2021,11 @@ function createSystemRoutes(ctx) {
     nationalLoadTest,
     nationalIncidents,
     nationalChangeRequest,
-    nationalWriteSmoothing
+    nationalWriteSmoothing,
+    phase6CanaryStatus,
+    phase6CanaryPromote,
+    phase6CanaryRollback,
+    phase6CanaryCircuitBreaker
   };
 }
 

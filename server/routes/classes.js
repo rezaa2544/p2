@@ -11,7 +11,7 @@
 'use strict';
 
 const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز */
-const { checkOcc, bump } = require('../occ'); /* P0-18 */
+const { checkOcc, bump, recordRejectedConflict } = require('../occ'); /* P0-18 + B4 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { buildClassesList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */const cache = require('../cache'); /* Wave 11 */
 
@@ -209,7 +209,11 @@ function createClassRoutes(ctx) {
 
     /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
     const conflict = checkOcc(cls, body, 'کلاس');
-    if (conflict) return conflict;
+    if (conflict) {
+      /* B4: rejected concurrent write ⇒ recorded in sync_conflicts (SSoT) */
+      await recordRejectedConflict({ store, db, ids }, { collection: 'classes', rec: cls, user, base: body && (body.base_version !== undefined ? body.base_version : body.version), body });
+      return conflict;
+    }
 
     /* Wave 1: patch روی کپی محاسبه می‌شود؛ store فقط پس از کامیت PG لمس می‌شود. */
     const next = Object.assign({}, cls);

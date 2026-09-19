@@ -26,7 +26,7 @@ try {
   ({ JSDOM, VirtualConsole } = require('jsdom'));
 } catch (e) {
   console.log('⏭️  jsdom نصب نیست — سئوت رد شد.');
-  process.exit(0);
+  process.exit(1);
 }
 
 const ROOT = path.join(__dirname, '..');

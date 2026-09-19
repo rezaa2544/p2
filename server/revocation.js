@@ -14,6 +14,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const redis = require('./redis');
+const cache = require('./cache');
 
 const DENY_PREFIX = 'revoked:';
 const VER_PREFIX = 'sessver:';
@@ -44,7 +45,9 @@ async function isRevoked(jti) {
 async function revokeAllUserSessions(userId) {
   if (userId === null || userId === undefined) return 0;
   try {
-    return await redis.incr(VER_PREFIX + userId);
+    const res = await redis.incr(VER_PREFIX + userId);
+    try { await cache.invalidateUser(userId); } catch (_) {}
+    return res;
   } catch (e) {
     return 0;
   }

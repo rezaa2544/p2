@@ -10,7 +10,7 @@
 'use strict';
 
 const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز */
-const { checkOcc, bump } = require('../occ'); /* P0-18 */
+const { checkOcc, bump, recordRejectedConflict } = require('../occ'); /* P0-18 + B4 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { buildGradesList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
 const { inScope: syncInScope } = require('../sync'); /* BUG-4: سیاستِ واحد با sync (نه موازی) */
@@ -192,8 +192,12 @@ async function updateGrade(req, id, body) {
     }
 
     /* P0-18: OCC از هِلپر مشترک — پایه از base_version یا version */
-    const conflict = checkOcc(grade, body, 'نمره');
-    if (conflict) return conflict;
+    const conflict = checkOcc(grade, body, 'نمره', true);
+    if (conflict) {
+      /* B4: rejected concurrent write ⇒ recorded in sync_conflicts (SSoT) */
+      await recordRejectedConflict({ store, db, ids }, { collection: 'grades', rec: grade, user, base: body && (body.base_version !== undefined ? body.base_version : body.version), body });
+      return conflict;
+    }
 
     /* Wave 1: patch روی کپی محاسبه می‌شود؛ store فقط پس از کامیت PG لمس می‌شود. */
     const next = Object.assign({}, grade);
@@ -217,7 +221,38 @@ async function updateGrade(req, id, body) {
         await db.persistOp({ c: 'grades', t: 'upd', data: next });
       }
     } catch (e) {
-      if (e && e.status === 409) return { status: 409, body: { ok: false, code: 'conflict', message: 'نمره هم‌زمان تغییر کرده است' } };
+      if (e && e.status === 409) {
+        /* B4 (Phase-2 remediation directive): a rejected concurrent write is a
+           REAL conflict — it must be RECORDED in sync_conflicts (SSoT), not
+           just answered 409. Mirror row + best-effort PG row; recording must
+           never change the 409 contract. */
+        try {
+          const nowIso = new Date().toISOString();
+          const cf = {
+            id: await ids.nextId('sync_conflicts', store.sync_conflicts || []),
+            collection: 'grades',
+            record_id: grade.id,
+            school_id: grade.school_id != null ? grade.school_id : null,
+            user_id: user.id,
+            client_uid: null,
+            base_version: base != null ? Number(base) : null,
+            server_version: grade.version != null ? Number(grade.version) : null,
+            client_data: { score: next.score, type: next.type, term: next.term },
+            server_state: Object.assign({}, grade),
+            incoming: { data: { score: next.score }, by: user.id, at: nowIso },
+            status: 'open',
+            created_at: nowIso,
+            updated_at: nowIso
+          };
+          if (!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
+          store.sync_conflicts.push(cf);
+          if (db && typeof db.persistOpsBatch === 'function') {
+            await db.persistOpsBatch([{ c: 'sync_conflicts', t: 'ins', data: cf }]).catch(() => {});
+          }
+          audit('grade_update_conflict_recorded', { user_id: user.id, grade_id: grade.id, conflict_id: cf.id, base_version: cf.base_version, server_version: cf.server_version });
+        } catch (_) { /* recording is best-effort — the 409 stands regardless */ }
+        return { status: 409, body: { ok: false, code: 'conflict', message: 'نمره هم‌زمان تغییر کرده است' } };
+      }
       return pgDown();
     }
 

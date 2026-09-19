@@ -516,8 +516,13 @@ async function readOne(name, id) {
  * @param {Object} store - live in-memory store object (mutated in place)
  * @returns {Promise<{ok:boolean, hydrated:number, skipped:Array}>}
  */
-async function hydrateStoreFromPg(store) {
-  const out = { ok: true, hydrated: 0, skipped: [], capped: [], env_skipped: [], mirror_incomplete: false };
+async function hydrateStoreFromPg(store, opts) {
+  const out = { ok: true, hydrated: 0, skipped: [], capped: [], env_skipped: [], kept: [], mirror_incomplete: false };
+  /* B7 (Phase-2 remediation directive): an empty PG table must never wipe a
+     non-empty in-memory collection — unless the caller explicitly forces it
+     (opts.force === true or PAYESH_FORCE_HYDRATION=1). Protection against
+     hydration data loss on a fresh/empty database. */
+  const FORCE = !!((opts && opts.force === true) || process.env.PAYESH_FORCE_HYDRATION === '1');
   if (!store || typeof store !== 'object') return out;
   /* Wave 18 — هیدراتاسیونِ مقیّد (مانورِ بارِ ملی): در مقیاسِ ملی، بارگذاریِ
      کلِ جدول‌ها در RAM ممکن نیست (کاربران ۱۰M ⇒ چند GB شیءِ JS؛ OOM در بوت).
@@ -545,13 +550,22 @@ async function hydrateStoreFromPg(store) {
     if (skipEnv.indexOf(key) > -1) { out.env_skipped.push(key); continue; }
     try {
       const cap = limEnv[key];
+      let rows;
       if (cap !== undefined) {
         const res = await pool.query(`SELECT * FROM "${key}" ORDER BY id LIMIT $1`, [cap]);
-        store[key] = reviveRows(res.rows);
-        out.capped.push(key + ':' + cap);
+        rows = reviveRows(res.rows);
       } else {
-        store[key] = await readCollection(key);
+        rows = await readCollection(key);
       }
+      /* B7 rule: empty PG + non-empty memory ⇒ keep memory (no destructive
+         overwrite). Audited via out.kept so operators can see it. */
+      if (!FORCE && Array.isArray(rows) && rows.length === 0
+          && Array.isArray(store[key]) && store[key].length > 0) {
+        out.kept.push(key);
+        continue;
+      }
+      store[key] = rows;
+      if (cap !== undefined) out.capped.push(key + ':' + cap);
       out.hydrated++;
     } catch (e) {
       out.skipped.push(key);
@@ -746,6 +760,12 @@ async function persistOpWithClient(client, op) {
         throw e;
       }
     } else {
+      if (process.env.PAYESH_STRICT_OCC === '1') {
+        const e = new Error('optimistic concurrency conflict: missing required base_version');
+        e.code = 'missing_base_version';
+        e.status = 409;
+        throw e;
+      }
       await client.query(`UPDATE ${table} SET ${setSql} WHERE id = $${fields.length + 1};`, values.concat([id]));
     }
   } else if (t === 'del') {

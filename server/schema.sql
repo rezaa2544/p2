@@ -1693,6 +1693,17 @@ CREATE TABLE IF NOT EXISTS sync_conflicts (
   "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   "resolved_at" TIMESTAMPTZ,
   "resolved_by" INTEGER,
+  -- Phase-5 universal-OCC additive columns (migration 013; ALTER-shape — see
+  -- migrations/013 for the collision fix rationale):
+  "client_uid" VARCHAR(128),
+  "user_id" BIGINT,
+  "client_data" JSONB,
+  "server_data" JSONB,
+  "incoming_version" INTEGER,
+  "current_version" INTEGER,
+  "resolved_data" JSONB,
+  "resolution_strategy" VARCHAR(32) NOT NULL DEFAULT 'server_wins',
+  "updated_at" TIMESTAMPTZ,
   CONSTRAINT fk_sync_conflicts_school FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
   CONSTRAINT chk_sync_conflicts_status CHECK (status IN ('open', 'resolved')),
   CONSTRAINT chk_sync_conflicts_winner CHECK (winner IS NULL OR winner IN ('incoming', 'server'))

@@ -11,7 +11,7 @@
 'use strict';
 
 const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز */
-const { checkOcc, bump } = require('../occ'); /* P0-18 */
+const { checkOcc, bump, recordRejectedConflict } = require('../occ'); /* P0-18 + B4 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { projectUserByRole } = require('../middleware/projection');
 const { buildStudentsList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */const cache = require('../cache'); /* Wave 11 */
@@ -202,7 +202,11 @@ function createStudentRoutes(ctx) {
 
     /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
     const conflict = checkOcc(student, body, 'دانش‌آموز');
-    if (conflict) return conflict;
+    if (conflict) {
+      /* B4: rejected concurrent write ⇒ recorded in sync_conflicts (SSoT) */
+      await recordRejectedConflict({ store, db, ids }, { collection: 'students', rec: student, user, base: body && (body.base_version !== undefined ? body.base_version : body.version), body });
+      return conflict;
+    }
 
     // Teacher is allowed to update IEP fields only
     if (user.role === 'teacher') {

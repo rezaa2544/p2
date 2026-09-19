@@ -57,6 +57,10 @@ const { createAnalyticsRoutes } = require('./routes/analytics'); /* P0-EI-09 —
 const { createBootstrapRoute } = require('./routes/bootstrap');
 const { createSystemRoutes } = require('./routes/system'); /* Phase 4 — P1-SC-01: سلامت زیرساخت و مقیاس‌پذیری */
 const { assertNationalCapacityEnforcement } = require('./infrastructure/national-capacity-enforcement'); /* Phase 5 — P2-NI-05: اینگرس مهار ظرفیت ملی */
+const { globalCanaryEngine } = require('./infrastructure/phase6-canary-engine'); /* Phase 6: موتور استقرار قناری و هدایت ترافیک */
+const { applyCanaryRouting } = require('./middleware/canary'); /* Phase 6.5: runtime canary headers from SoT */
+const { assertTenantBoundary, sanitizePayload, resolveActorProvince } = require('./infrastructure/phase6-production-hardening'); /* Phase 6: گارد زیروترست و پالایش */
+const authority = require('./infrastructure/authority'); /* Phase 7: PostgreSQL authority */
 const { createIds } = require('./ids'); /* P0-16 */
 const { createOutbox } = require('./outbox'); /* P0-17 */
 const { createWorker } = require('./worker'); /* ویو ۸ — کارگرِ صندوق رویدادها */
@@ -147,7 +151,56 @@ const staticCache = createStaticCache();
    production process never calls listen() before the backing store is known
    good. Resolves to the db.init result, or null if init itself threw. */
 const dbReady = db.init(store).then(async info => {
-  /* P0-1: mirror of the cache/Redis readiness gate below. db.init now reports
+  /* Chat 2 remediation (P0-BUG-04): one-time mirror of the bootstrap JSON store
+   into an empty PostgreSQL, FK-safe order, chunked, column-filtered against
+   information_schema. Rows that cannot map are skipped and counted — the
+   seed must never abort the boot. */
+async function seedPgFromBootstrap(store, db) {
+  const CHUNK = 200;
+  const colsCache = {};
+  const colsOf = async (t) => {
+    if (!colsCache[t]) {
+      const r = await db.query(`SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1`, [t]);
+      colsCache[t] = new Set(r.rows.map(x => x.column_name));
+    }
+    return colsCache[t];
+  };
+  const names = Object.keys(store).filter((k) => /^[a-z][a-z0-9_]*$/.test(k) && Array.isArray(store[k]));
+  const head = ['schools', 'users', 'subjects', 'classes'].filter((c) => names.includes(c));
+  const tail = names.filter((c) => !head.includes(c));
+  const seq = head.concat(tail);
+  let rows = 0, tables = 0, skipped = 0;
+  for (const col of seq) {
+    let cols;
+    try { cols = await colsOf(col); } catch (e) { continue; }
+    if (!cols || !cols.size) continue;
+    const arr = (store[col] || []).filter((r) => r && r.id != null);
+    if (!arr.length) continue;
+    tables++;
+    for (let i = 0; i < arr.length; i += CHUNK) {
+      const ops = [];
+      for (const r of arr.slice(i, i + CHUNK)) {
+        const data = {};
+        for (const k of Object.keys(r)) if (cols.has(k)) data[k] = r[k];
+        if (data.id == null) continue;
+        ops.push({ c: col, t: 'ins', data });
+      }
+      if (!ops.length) continue;
+      try {
+        await db.persistOpsBatch(ops);
+        rows += ops.length;
+      } catch (e) {
+        /* one poison row must not starve the whole table — retry per row */
+        for (const op of ops) {
+          try { await db.persistOpsBatch([op]); rows++; } catch (e2) { skipped++; }
+        }
+      }
+    }
+  }
+  return { rows, tables, skipped };
+}
+
+/* P0-1: mirror of the cache/Redis readiness gate below. db.init now reports
      ok:false in production when PostgreSQL is absent/unreachable — the server
      must not serve traffic from the JSON store. */
   if (info && info.ok === false) {
@@ -160,6 +213,48 @@ const dbReady = db.init(store).then(async info => {
   }
   if (info.driver === 'postgres') {
     console.log('[DB] Connected to PostgreSQL relational engine');
+    /* Migration-012 contract, self-configured (Chat 2 remediation): on a chain-
+       migrated database the grades/attendance tables are partitioned with PK
+       (id, created_at) — writes only stay correct when PAYESH_PARTITIONED_TABLES
+       lists them. Operators kept forgetting the env ⇒ every attendance/grades
+       mirror write failed with `no unique ... for ON CONFLICT`. Detect once at
+       boot and merge into the env (explicit operator value still wins). */
+    try {
+      const pr = await db.query(`SELECT c.relname FROM pg_partitioned_table pt JOIN pg_class c ON c.oid = pt.partrelid WHERE c.relname IN ('grades','attendance')`);
+      const parts = pr.rows.map(x => x.relname);
+      if (parts.length) {
+        const cur = String(process.env.PAYESH_PARTITIONED_TABLES || '').split(',').map(x => x.trim()).filter(Boolean);
+        const merged = [...new Set([...cur, ...parts])].join(',');
+        if (cur.join(',') !== merged) {
+          process.env.PAYESH_PARTITIONED_TABLES = merged;
+          console.log('[DB] partitioned tables detected — PAYESH_PARTITIONED_TABLES=' + merged + ' (auto-configured, migration 012 contract)');
+        }
+      }
+    } catch (e) { /* pre-012 database — nothing to configure */ }
+    /* P0-BUG-04 fix (Chat 2 remediation, 2026-09-19): PG empty + a populated
+       bootstrap JSON store ⇒ hydration would REPLACE the bootstrap data with
+       empty arrays and the persist loop then overwrites the store FILE with an
+       empty shell (auth dies, local data destroyed — reproduced live).
+       Guard: when both users and schools are empty in PG and the bootstrap
+       store has users, keep the bootstrap data this boot AND seed PostgreSQL
+       from it once (mission option A+B combined) — PG becomes the real SSoT
+       and the next boot hydrates normally. */
+    let keepBootstrap = false;
+    try {
+      const er = await db.query('SELECT (SELECT COUNT(*) FROM users) AS u, (SELECT COUNT(*) FROM schools) AS s');
+      const pgEmpty = Number(er.rows[0].u) === 0 && Number(er.rows[0].s) === 0;
+      keepBootstrap = pgEmpty && Array.isArray(store.users) && store.users.length > 0
+        && process.env.PAYESH_FORCE_HYDRATION !== '1';   /* B7: explicit force overrides the guard */
+    } catch (e) { /* tables missing ⇒ not a clean-empty PG — hydrate as before */ }
+    if (keepBootstrap) {
+      console.log('[store] PG is empty and a bootstrap JSON store is present — hydration SKIPPED (P0-BUG-04 guard); seeding PG from the bootstrap store now (one-time)...');
+      try {
+        const r = await seedPgFromBootstrap(store, db);
+        console.log('[store] bootstrap→PG seed done: ' + r.rows + ' row(s) / ' + r.tables + ' table(s)' + (r.skipped ? ' — skipped ' + r.skipped + ' non-mappable row(s)' : ''));
+      } catch (e) {
+        console.warn('[store] bootstrap→PG seed failed (bootstrap mode stays; retried next boot):', e.message);
+      }
+    } else
     /* Wave 1: PG is authoritative — replace store domain collections with
        PG truth at boot (per-table failures warn and keep going). */
     try {
@@ -176,6 +271,22 @@ const dbReady = db.init(store).then(async info => {
         (h.capped && h.capped.length ? ' (capped: ' + h.capped.join(',') + ')' : '') +
         (h.env_skipped && h.env_skipped.length ? ' (env-skipped: ' + h.env_skipped.join(',') + ')' : ''));
     } catch (e) { console.warn('[DB] Hydration warning:', e.message); }
+    try {
+      require('./infrastructure/ops-kv').attach(db);
+      await require('./infrastructure/national-traffic-fabric').refreshTrafficFromSoT();
+      console.log('[OPS-KV] attached — Phase-5 traffic fabric hydrates from phase6_ops_kv');
+    } catch (e) {
+      console.error('[OPS-KV] attach/hydrate failed:', e && e.message);
+      if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') throw e;
+    }
+    try {
+      authority.attach(db);
+      await authority.hydrateControlPlane();
+      console.log('[AUTHORITY] attached + control-plane hydrated from PostgreSQL');
+    } catch (e) {
+      console.error('[AUTHORITY] attach/hydrate failed:', e && e.message);
+      if (process.env.DATABASE_URL) throw e;
+    }
   }
   return info;
 }).catch(err => {
@@ -565,6 +676,23 @@ const reportsRoutes = createReportsRoutes({ store, db, audit, markDirty, ids, de
 const analyticsRoutes = createAnalyticsRoutes({ store, db, audit, markDirty, ids, deleter }); /* P0-EI-09 */
 const bootstrapRoute = createBootstrapRoute({ store, db });
 const systemRoutes = createSystemRoutes({ store, db }); /* Phase 4 — P1-SC-01 */
+/* Root-cause elimination (RAM-as-authority audit): canary weights MUST be
+   hydrated from PostgreSQL BEFORE the socket serves traffic — the old
+   fire-and-forget `initDb(db).catch(()=>{})` silently served DEFAULT weights
+   after a restart until hydration happened to finish (stale routing window).
+   The promise is awaited by startListening below; failure is LOUD, not mute. */
+const canaryHydrated = db
+  ? Promise.resolve(dbReady)
+      .then(() => globalCanaryEngine.initDb(db))
+      .then(() => {
+        /* observable proof the SSoT load ran (silence here hid regressions) */
+        console.log('[CANARY] weights hydrated from PostgreSQL (cluster_weights SSoT, ' + globalCanaryEngine.clusters.size + ' clusters)');
+      })
+      .catch((e) => {
+        console.error('[CANARY] PostgreSQL hydration FAILED — serving traffic with persisted-weight UNKNOWN; rerouting decisions may diverge from cluster_weights:', e.message);
+        throw e;
+      })
+  : null;
 /* Delta Hardening Phase 2 (gap 2): signed TTL cursor — the resolved JWT key
    (env or key-file) feeds a domain-separated cursor key inside server/cursor.js;
    PAYESH_CURSOR_SECRET overrides it. */
@@ -666,6 +794,21 @@ const onRequest = async (req, res) => {
   const https = isHttps(req);
   const nonce = crypto.randomBytes(16).toString('base64');
   securityHeaders(res, nonce, https);
+
+  // Phase 6.5: Canary middleware — HTTP → decision (PG SoT) → X-Canary-* headers
+  let canaryRoute = null;
+  try {
+    canaryRoute = await applyCanaryRouting(req, res, globalCanaryEngine);
+  } catch (err) {
+    if (err.code === 'PHASE6_CIRCUIT_OPEN' || err.code === 'PHASE6_FAIL_CLOSED_NO_HEALTHY_ROUTE') {
+      return sendJson(res, 503, {
+        ok: false,
+        code: err.code,
+        message: 'کلاستر منطقه‌ای در دسترس نیست و به صورت امن قطع شد (Fail-Closed)'
+      });
+    }
+  }
+
   /* ویو ۱۴ (Observability) — شمارشِ هر درخواست: شمار/تأخیر/بایت با برچسبِ
      «قالبِ مسیر» (نه خودِ URL) تا هم cardinality کران‌دار بماند و هم هیچ
      شناسه/PII وارد label نشود (metrics.js R3). هیچ‌گاه در مسیرِ پاسخ خطا
@@ -702,6 +845,15 @@ const onRequest = async (req, res) => {
       });
       if (req.context && req.context.waf && req.context.waf.blocked) {
         attackDetector.observeWafBlock({ sessionId: rt.sessionId, source: clientIp(req), blocked: true });
+      }
+      // Phase 6: ضبط تله‌متری تاخیر و خطای بلادرنگ کلاستر
+      if (canaryRoute && canaryRoute.clusterId) {
+        const elapsedNs = process.hrtime.bigint() - __mStart;
+        const elapsedMs = Number(elapsedNs) / 1e6;
+        globalCanaryEngine.recordTelemetry(canaryRoute.clusterId, {
+          latencyMs: elapsedMs,
+          errorOccurred: res.statusCode >= 500
+        });
       }
     } catch (_) {}
   });
@@ -922,12 +1074,68 @@ const onRequest = async (req, res) => {
     if(p === '/api/sms/send' && req.method === 'POST') return await sms.apiSend(req, res, await readBody(req, 32 * 1024));
     if(p === '/api/health-index' && req.method === 'GET') return await healthIdx.apiHealthIndex(req, res, url.searchParams); /* G.1 */
 
+    // Phase 6: Direct API Aliases (/api/system/canary/*)
+    if(p === '/api/system/canary/status' && req.method === 'GET') {
+      const s = await auth.sessionFrom(req);
+      if(!s) return sendJson(res, 401, { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' });
+      req.user = s;
+      const r = await systemRoutes.phase6CanaryStatus(req, url.searchParams);
+      return sendJson(res, r.status, r.body);
+    }
+    if((p === '/api/system/canary/promote' || p === '/api/system/canary/weight') && req.method === 'POST') {
+      const s = await auth.sessionFrom(req);
+      if(!s) return sendJson(res, 401, { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' });
+      req.user = s;
+      const body = await readBody(req, 64 * 1024);
+      const r = await systemRoutes.phase6CanaryPromote(req, body);
+      return sendJson(res, r.status, r.body);
+    }
+    if(p === '/api/system/canary/rollback' && req.method === 'POST') {
+      const s = await auth.sessionFrom(req);
+      if(!s) return sendJson(res, 401, { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' });
+      req.user = s;
+      const body = await readBody(req, 64 * 1024);
+      const r = await systemRoutes.phase6CanaryRollback(req, body);
+      return sendJson(res, r.status, r.body);
+    }
+    if(p === '/api/system/canary/circuit-breaker' && req.method === 'POST') {
+      const s = await auth.sessionFrom(req);
+      if(!s) return sendJson(res, 401, { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' });
+      req.user = s;
+      const body = await readBody(req, 64 * 1024);
+      const r = await systemRoutes.phase6CanaryCircuitBreaker(req, body);
+      return sendJson(res, r.status, r.body);
+    }
+
     /* ── Phase 3: RESTful Resource Endpoints (/api/v1/*) ────────── */
     if(p.indexOf('/api/v1/') === 0){
       const s = await auth.sessionFrom(req);
       if(!s) return sendJson(res, 401, { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' });
       req.user = s;
       req.session = s;
+
+      // Phase 6 (B8): Zero-Trust Tenant & Provincial Isolation Guardrail
+      const targetSchool = url.searchParams.get('school_id') || req.headers['x-school-id'];
+      const targetProv = req.headers['x-province-code'];
+      if (targetSchool || targetProv) {
+        try {
+          let actorWithProv = s;
+          if (!s.province_code && s.school_id) {
+            const sch = (store.schools || []).find(x => x.id === s.school_id);
+            if (sch) {
+              const pCode = sch.province_code || (sch.province_id === 2 ? '07' : sch.province_id === 1 ? '07' : String(sch.province_id).padStart(2, '0'));
+              actorWithProv = Object.assign({}, s, { province_code: pCode });
+            }
+          }
+          await assertTenantBoundary(actorWithProv, targetSchool, targetProv);
+        } catch (err) {
+          return sendJson(res, err.status === 503 ? 503 : 403, {
+            ok: false,
+            code: err.code || 'PHASE6_TENANT_ISOLATION_BREACH',
+            message: err.message
+          });
+        }
+      }
 
       // /api/v1/bootstrap
       if(p === '/api/v1/bootstrap' && req.method === 'GET'){
@@ -1200,6 +1408,33 @@ const onRequest = async (req, res) => {
       // /api/v1/system/national/write-smoothing (Phase 5 — P2-NI-05: تلطیف بارهای انفجاری نوشت)
       if(p === '/api/v1/system/national/write-smoothing' && req.method === 'GET'){
         const r = await systemRoutes.nationalWriteSmoothing(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // Phase 6: Canary Status (B1 & B6: رصد بلادرنگ وضعیت کلاسترها، اوزان و SLO)
+      if(p === '/api/v1/system/phase6/canary/status' && req.method === 'GET'){
+        const r = await systemRoutes.phase6CanaryStatus(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // Phase 6: Canary Promote / Weight (B3: ارتقای ترافیک با اعتبارسنجی حاکمیت و امضای اپراتور)
+      if((p === '/api/v1/system/phase6/canary/promote' || p === '/api/v1/system/phase6/canary/weight') && req.method === 'POST'){
+        const body = await readBody(req, 64 * 1024);
+        const r = await systemRoutes.phase6CanaryPromote(req, body);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // Phase 6: Canary Rollback (B4: رول‌بک اضطراری و تخلیه آنی ترافیک به ۰٪)
+      if(p === '/api/v1/system/phase6/canary/rollback' && req.method === 'POST'){
+        const body = await readBody(req, 64 * 1024);
+        const r = await systemRoutes.phase6CanaryRollback(req, body);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // Phase 6: Canary Circuit Breaker & Failover Control (B5)
+      if(p === '/api/v1/system/phase6/canary/circuit-breaker' && req.method === 'POST'){
+        const body = await readBody(req, 64 * 1024);
+        const r = await systemRoutes.phase6CanaryCircuitBreaker(req, body);
         return sendJson(res, r.status, r.body);
       }
 
@@ -1505,7 +1740,30 @@ if(require.main === module){
     try { persistStoreSync(); } catch (e) {}
     process.exit(1);
   }
-  const startListening = () => server.listen(PORT, HOST, () => {
+  const startListening = async () => {
+    if (process.env.DATABASE_URL) {
+      const info = await Promise.resolve(dbReady);
+      if (!info || info.ok === false || info.driver !== 'postgres') {
+        console.error('[FATAL] DATABASE_URL set but PostgreSQL is not ready — refusing listen()');
+        process.exit(1);
+      }
+      if (!authority.attached()) {
+        console.error('[FATAL] DATABASE_URL set but authority is not attached/hydrated — refusing listen()');
+        process.exit(1);
+      }
+    }
+    if (canaryHydrated) {
+      /* Root-cause fix: no socket until canary weights are loaded (or loudly failed). */
+      try { await canaryHydrated; }
+      catch (e) {
+        if (process.env.DATABASE_URL) {
+          console.error('[FATAL] canary hydrate failed — refusing listen():', e && e.message);
+          process.exit(1);
+        }
+        console.warn('[CANARY] boot continues WITHOUT persisted weights (loud degradation — see error above)');
+      }
+    }
+    server.listen(PORT, HOST, () => {
     const proto = (TLS_CERT && TLS_KEY) ? 'https' : 'http';
     console.log('payesh-server (phase 1' + (TLS_CERT ? ' + TLS' : '') + ') on ' + proto + '://' + HOST + ':' + PORT);
     console.log('  static : ' + path.join(ROOT, 'index.html'));
@@ -1515,17 +1773,25 @@ if(require.main === module){
     if(BACKUP_EVERY_MS > 0){
       console.log('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');
     }
-  });
+    });
+  };
   /* P0-1 — in production, listen() waits for database readiness. Without this
      the asynchronous gate loses the race with listen(): the process accepted
      connections for a few hundred ms and only then exited non-zero, which is
      not fail-closed. Dev/test keep the previous immediate listen, so
      zero-disruption local boot is unchanged. */
-  if (db.isProductionEnv() && !db.memoryFallbackAllowed()) {
+  if (process.env.DATABASE_URL || (db.isProductionEnv() && !db.memoryFallbackAllowed())) {
     Promise.resolve(dbReady).then((info) => {
+      if (process.env.DATABASE_URL && (!info || info.ok === false || info.driver !== 'postgres')) {
+        console.error('[FATAL] DATABASE_URL hydrate failed — refusing listen()');
+        process.exit(1);
+      }
       if (info && info.ok === false) return; /* handler above already exits */
       startListening();
-    }).catch(() => {});
+    }).catch((e) => {
+      console.error('[FATAL] boot gate failed:', e && e.message);
+      if (process.env.DATABASE_URL) process.exit(1);
+    });
   } else {
     startListening();
   }

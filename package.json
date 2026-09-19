@@ -12,7 +12,8 @@
     "test": "node tests/run.js && node --expose-gc --max-old-space-size=2048 tests/smoke.js",
     "clean": "rm -rf dist",
     "build:android": "node tools/build-android.js",
-    "test:smoke": "node tests/smoke.js"
+    "test:smoke": "node tests/smoke.js",
+    "truth-gate": "node tools/production-truth-gate.js"
   },
   "keywords": [
     "school-management",
@@ -25,7 +26,7 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": ">=22"
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",

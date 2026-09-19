@@ -125,6 +125,12 @@ function createDeleteService({ store, db, markDirty, outbox }) {
       try { meta.audit(rec); } catch (e) {}
     }
 
+    const cache = require('./cache');
+    try {
+      if (rec && rec.school_id) cache.invalidateCollection(collection, rec.school_id).catch(() => {});
+      if (collection === 'users' && Number.isFinite(delId)) cache.invalidateUser(delId).catch(() => {});
+    } catch (_) {}
+
     return { ok: true, status: 200, record: rec };
   }
 

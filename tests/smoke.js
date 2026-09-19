@@ -12,7 +12,13 @@ const path = require('path');
 
 let JSDOM;
 try { ({ JSDOM } = require('jsdom')); }
-catch { console.log('⏭️  jsdom نصب نیست — تست دودی رد شد.  (npm i --no-save jsdom)'); process.exit(0); }
+catch (e) {
+  /* P1-GAP-01/02 (Chat 2 remediation): silent skip (exit 0) ممنوع — jsdom
+     موجود نیست یا Node از engines کهنه‌تر است ⇒ قرمزِ صریح، نه سبزِ کاذب. */
+  console.error('❌ jsdom بارگیری نشد — ' + ((e && e.message) || e));
+  console.error('   Node ' + process.versions.node + ' — jsdom 30 نیازمند Node >= 22.22 است؛ npm i --no-save jsdom');
+  process.exit(1);
+}
 
 const ROOT = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');

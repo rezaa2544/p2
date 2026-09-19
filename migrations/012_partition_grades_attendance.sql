@@ -58,6 +58,19 @@
 --     ازسرگیری می‌کند؛ عبارت‌هایِ فازِ B هرکدام تراکنشِ خودشان را دارند.
 
 -- ═══════════════ Phase B — attendance ═══════════════
+-- Idempotent re-run protocol (Chat 2 remediation): when the partition swap is
+-- already in place, this migration declares ALREADY_APPLIED instead of failing
+-- half-way. The Node runner (tools/seed-relational-small.js) understands this
+-- sentinel and tolerates it like `already exists`. A psql RE-run intentionally
+-- errors with the same clear message (first-time runs are unaffected).
+DO $guard$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_class WHERE relname IN ('attendance','grades') AND relkind = 'p') THEN
+    RAISE EXCEPTION 'ALREADY_APPLIED: migration 012 partition swap is already in place';
+  END IF;
+END
+$guard$;
+
 CREATE TABLE IF NOT EXISTS attendance_p (
   "class_id" INTEGER,
   "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -341,11 +354,13 @@ ANALYZE grades_p;
    میلیون‌ها سطر (واقعیت: ~هزار) ⇒ planner به‌جای Nested-Loopِ ایندکسی،
    Hash Right Anti-Join می‌گیرد و کلِ جدولِ نو (۲۵M سطر، همهٔ پارتیشن‌ها)
    را زیرِ قفل Seq-Scan + Hash می‌کند — پنجرهٔ ۳۸.۸s با وجودِ ایندکسِ
-   کاملاً سالم. اینجا psql مرز را با \gset در متغیر می‌خواند و :w0
-   به‌صورتِ لیترال جایگذاری می‌شود ⇒ تخمینِ دقیق ⇒ Bitmap Index Scan +
+   کاملاً سالم. اینجا مرز داخل DO-block از mig009_w0 خوانده و به‌صورتِ لیترالِ زمانِ پلان
+   (format→%s) جایگذاری می‌شود — بدونِ هیچ متاکامندِ psql ⇒ تخمینِ دقیق ⇒ Bitmap Index Scan +
    Nested-Loop (EXPLAIN: هزینهٔ ~۳۴× کمتر). مقدار از نشانگرِ یک‌سطریِ
    بالای فایل می‌آید و بینِ این خواندن و تراکنشِ زیر تغییر نمی‌کند. */
-SELECT w0 FROM mig009_w0 WHERE id = 1 \gset
+-- P2 (Chat 2 remediation): psql-gset meta-command removed — the marker value is
+-- planted as a plan-time literal through DO/dynamic-SQL blocks below (format→%s),
+-- so this migration runs with ANY standard SQL client (psql AND the pg driver).
 BEGIN;
 LOCK TABLE attendance IN ACCESS EXCLUSIVE MODE;
 LOCK TABLE grades IN ACCESS EXCLUSIVE MODE;
@@ -376,48 +391,76 @@ LOCK TABLE grades IN ACCESS EXCLUSIVE MODE;
    «OR IS NULL»: همان OR اسکنِ ایندکسی را به Seq Scanِ کامل تبدیل
    می‌کرد (تأییدِ EXPLAIN — یافتهٔ رانِ سومِ مانورِ ۲۵M). رانِ چهارم:
    حتی پیشیکیتِ ایندکسیِ سالم، با زیرپلانِ مجهول‌مقدار Hash Anti-Joinِ
-   کلِ جدولِ نو را می‌ساخت — مرز باید ثابتِ زمانِ پلان باشد (\gset بالا). */
-INSERT INTO attendance_p ("class_id", "created_at", "date", "exit_at", "exit_minutes",
-                          "id", "late_at", "late_minutes", "note", "school_id",
-                          "source", "status", "student_id", "taken_at",
-                          "updated_at", "version", "chg_id")
-SELECT o."class_id", COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00'), o."date",
-       o."exit_at", o."exit_minutes", o."id", o."late_at", o."late_minutes", o."note", o."school_id",
-       o."source", o."status", o."student_id", o."taken_at", o."updated_at", o."version", o."chg_id"
-FROM attendance o
-WHERE o.chg_id > :w0
-  AND NOT EXISTS (SELECT 1 FROM attendance_p p
-                  WHERE p.id = o.id
-                    AND p.created_at = COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00')
-                    AND p.chg_id >= o.chg_id)
-ON CONFLICT (id, created_at) DO UPDATE SET
-  "class_id" = EXCLUDED."class_id", "date" = EXCLUDED."date", "exit_at" = EXCLUDED."exit_at",
-  "exit_minutes" = EXCLUDED."exit_minutes", "late_at" = EXCLUDED."late_at",
-  "late_minutes" = EXCLUDED."late_minutes", "note" = EXCLUDED."note",
-  "school_id" = EXCLUDED."school_id", "source" = EXCLUDED."source", "status" = EXCLUDED."status",
-  "student_id" = EXCLUDED."student_id", "taken_at" = EXCLUDED."taken_at",
-  "updated_at" = EXCLUDED."updated_at", "version" = EXCLUDED."version", "chg_id" = EXCLUDED."chg_id";
+   کلِ جدولِ نو را می‌ساخت — مرز باید ثابتِ زمانِ پلان باشد (DO-block بالا). */
+DO $swap$
+DECLARE
+  w0 BIGINT;
+BEGIN
+  SELECT v.w0 INTO w0 FROM mig009_w0 v WHERE v.id = 1;
+  IF w0 IS NULL THEN
+    RAISE EXCEPTION 'partition swap: marker row mig009_w0(id=1) is missing';
+  END IF;
+  /* معنای psql-gsetِ قدیم: مرز به‌صورتِ لیترالِ زمانِ پلان جایگذاری می‌شود؛
+     DO تراکنشِ تازه نمی‌سازد — داخلِ همان تراکنشِ قفل‌دار اجرا می‌شود. */
+  EXECUTE format($ins$
+    INSERT INTO attendance_p ("class_id", "created_at", "date", "exit_at", "exit_minutes",
+                              "id", "late_at", "late_minutes", "note", "school_id",
+                              "source", "status", "student_id", "taken_at",
+                              "updated_at", "version", "chg_id")
+    SELECT o."class_id", COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00'), o."date",
+           o."exit_at", o."exit_minutes", o."id", o."late_at", o."late_minutes", o."note", o."school_id",
+           o."source", o."status", o."student_id", o."taken_at", o."updated_at", o."version", o."chg_id"
+    FROM attendance o
+    WHERE o.chg_id > %s
+      AND NOT EXISTS (SELECT 1 FROM attendance_p p
+                      WHERE p.id = o.id
+                        AND p.created_at = COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00')
+                        AND p.chg_id >= o.chg_id)
+    ON CONFLICT (id, created_at) DO UPDATE SET
+      "class_id" = EXCLUDED."class_id", "date" = EXCLUDED."date", "exit_at" = EXCLUDED."exit_at",
+      "exit_minutes" = EXCLUDED."exit_minutes", "late_at" = EXCLUDED."late_at",
+      "late_minutes" = EXCLUDED."late_minutes", "note" = EXCLUDED."note",
+      "school_id" = EXCLUDED."school_id", "source" = EXCLUDED."source", "status" = EXCLUDED."status",
+      "student_id" = EXCLUDED."student_id", "taken_at" = EXCLUDED."taken_at",
+      "updated_at" = EXCLUDED."updated_at", "version" = EXCLUDED."version", "chg_id" = EXCLUDED."chg_id"
+  $ins$, w0);
+END
+$swap$;;
 
-INSERT INTO grades_p ("class_id", "created_at", "date", "exam_type", "id",
-                      "kind", "max_score", "school_id", "score", "source",
-                      "student_id", "subject_id", "teacher_id", "term",
-                      "updated_at", "version", "chg_id")
-SELECT o."class_id", COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00'), o."date",
-       o."exam_type", o."id", o."kind", o."max_score", o."school_id",
-       o."score", o."source", o."student_id", o."subject_id", o."teacher_id", o."term",
-       o."updated_at", o."version", o."chg_id"
-FROM grades o
-WHERE o.chg_id > :w0
-  AND NOT EXISTS (SELECT 1 FROM grades_p p
-                  WHERE p.id = o.id
-                    AND p.created_at = COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00')
-                    AND p.chg_id >= o.chg_id)
-ON CONFLICT (id, created_at) DO UPDATE SET
-  "class_id" = EXCLUDED."class_id", "date" = EXCLUDED."date", "exam_type" = EXCLUDED."exam_type",
-  "kind" = EXCLUDED."kind", "max_score" = EXCLUDED."max_score", "school_id" = EXCLUDED."school_id",
-  "score" = EXCLUDED."score", "source" = EXCLUDED."source", "student_id" = EXCLUDED."student_id",
-  "subject_id" = EXCLUDED."subject_id", "teacher_id" = EXCLUDED."teacher_id", "term" = EXCLUDED."term",
-  "updated_at" = EXCLUDED."updated_at", "version" = EXCLUDED."version", "chg_id" = EXCLUDED."chg_id";
+DO $swap$
+DECLARE
+  w0 BIGINT;
+BEGIN
+  SELECT v.w0 INTO w0 FROM mig009_w0 v WHERE v.id = 1;
+  IF w0 IS NULL THEN
+    RAISE EXCEPTION 'partition swap: marker row mig009_w0(id=1) is missing';
+  END IF;
+  /* معنای psql-gsetِ قدیم: مرز به‌صورتِ لیترالِ زمانِ پلان جایگذاری می‌شود؛
+     DO تراکنشِ تازه نمی‌سازد — داخلِ همان تراکنشِ قفل‌دار اجرا می‌شود. */
+  EXECUTE format($ins$
+    INSERT INTO grades_p ("class_id", "created_at", "date", "exam_type", "id",
+                          "kind", "max_score", "school_id", "score", "source",
+                          "student_id", "subject_id", "teacher_id", "term",
+                          "updated_at", "version", "chg_id")
+    SELECT o."class_id", COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00'), o."date",
+           o."exam_type", o."id", o."kind", o."max_score", o."school_id",
+           o."score", o."source", o."student_id", o."subject_id", o."teacher_id", o."term",
+           o."updated_at", o."version", o."chg_id"
+    FROM grades o
+    WHERE o.chg_id > %s
+      AND NOT EXISTS (SELECT 1 FROM grades_p p
+                      WHERE p.id = o.id
+                        AND p.created_at = COALESCE(o."created_at", o."updated_at", TIMESTAMPTZ '1970-01-01 00:00:00+00')
+                        AND p.chg_id >= o.chg_id)
+    ON CONFLICT (id, created_at) DO UPDATE SET
+      "class_id" = EXCLUDED."class_id", "date" = EXCLUDED."date", "exam_type" = EXCLUDED."exam_type",
+      "kind" = EXCLUDED."kind", "max_score" = EXCLUDED."max_score", "school_id" = EXCLUDED."school_id",
+      "score" = EXCLUDED."score", "source" = EXCLUDED."source", "student_id" = EXCLUDED."student_id",
+      "subject_id" = EXCLUDED."subject_id", "teacher_id" = EXCLUDED."teacher_id", "term" = EXCLUDED."term",
+      "updated_at" = EXCLUDED."updated_at", "version" = EXCLUDED."version", "chg_id" = EXCLUDED."chg_id"
+  $ins$, w0);
+END
+$swap$;;
 
 DO $$
 BEGIN

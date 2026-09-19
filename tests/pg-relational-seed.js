@@ -39,7 +39,7 @@ function chk(name, cond, extra) {
 
 let pg = null;
 try { pg = require('pg'); } catch (e) { pg = null; }
-if (!pg) { console.log(NAME + ': NOT-RUN — pg driver not resolvable (set NODE_PATH)'); process.exit(2); }
+if (!pg) { console.log(NAME + ': ❌ FAIL — pg driver not resolvable (set NODE_PATH) — skip/NOT-RUN ممنوع (P1-GAP-01)'); process.exit(1); }
 
 const PGURL = process.env.PG_LIVE_PG || process.env.DATABASE_URL || '';
 
@@ -57,15 +57,15 @@ function runSeeder(fresh) {
 
   const probe = new pg.Pool({ connectionString: PGURL, max: 2, connectionTimeoutMillis: 5000 });
   try { await probe.query('SELECT 1'); }
-  catch (e) { console.log(NAME + ': NOT-RUN — PostgreSQL not reachable: ' + e.message); process.exit(2); }
+  catch (e) { console.log(NAME + ': ❌ FAIL — PostgreSQL not reachable: ' + e.message + ' — skip/NOT-RUN ممنوع (P1-GAP-01)'); process.exit(1); }
   finally { try { await probe.end(); } catch (e) {} }
 
   /* ── 1. the seeder itself ── */
   const run1 = runSeeder(true);
   chk('1a the seeder exits 0 on a fresh schema', run1.status === 0, run1.out.slice(-400));
   chk('1b the seeder prints its row counts', /rows: .*schools=2/.test(run1.out), run1.out.slice(-300));
-  chk('1c migration 012 is reported NOT-RUN (requires psql), not silently skipped',
-    /NOT-RUN\s+012_partition_grades_attendance\.sql.*psql/.test(run1.out), run1.out.slice(-400));
+  chk('1c migration 012 applies through the standard-SQL runner (psql-only meta-commands removed)',
+    run1.status === 0 && !/NOT-RUN\s+012_partition_grades_attendance\.sql/.test(run1.out), run1.out.slice(-400));
   chk('1d no migration is reported FAILED', !/^\s*FAILED\s/m.test(run1.out), run1.out.slice(-400));
 
   const c = new pg.Client({ connectionString: PGURL, connectionTimeoutMillis: 15000 });
@@ -105,9 +105,10 @@ function runSeeder(fresh) {
       /^NONE\./i.test(man.benchmark_claim), String(man.benchmark_claim).slice(0, 80));
     chk('2.0g the manifest records 0 new migrations',
       man.migrations.new_migrations_added === 0, JSON.stringify(man.migrations.new_migrations_added));
-    chk('2.0h the manifest records migration 012 as NOT-RUN with a reason',
-      (man.migrations.not_run || []).some((r) => /012_/.test(r.file) && r.status === 'NOT-RUN' && r.reason),
-      JSON.stringify(man.migrations.not_run));
+    chk('2.0h migration 012 is recorded as APPLIED standard SQL (no psql-only steps left)',
+      man.migrations.applied === man.migrations.total
+        && Array.isArray(man.migrations.not_run) && man.migrations.not_run.length === 0,
+      JSON.stringify(man.migrations));
     chk('2.0i the manifest stores no credentials',
       !/chat1:chat1|:\/\/[^<]*:[^<]*@/.test(JSON.stringify(man.database)),
       JSON.stringify(man.database.url_without_credentials));

@@ -11,7 +11,7 @@
 'use strict';
 
 const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز */
-const { checkOcc, bump } = require('../occ'); /* P0-18 */
+const { checkOcc, bump, recordRejectedConflict } = require('../occ'); /* P0-18 + B4 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { projectUserByRole } = require('../middleware/projection');
 const { buildUsersList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */const cache = require('../cache'); /* Wave 11 */
@@ -177,7 +177,11 @@ function createUserRoutes(ctx) {
 
     /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
     const conflict = checkOcc(target, body, 'کاربر');
-    if (conflict) return conflict;
+    if (conflict) {
+      /* B4: rejected concurrent write ⇒ recorded in sync_conflicts (SSoT) */
+      await recordRejectedConflict({ store, db, ids }, { collection: 'users', rec: target, user, base: body && (body.base_version !== undefined ? body.base_version : body.version), body });
+      return conflict;
+    }
 
     const isSelf = user.id === target.id;
     const isManager = user.role === 'manager' || user.role === 'superadmin';

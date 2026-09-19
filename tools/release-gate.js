@@ -235,6 +235,9 @@ function meta(){
     const KNOWN = [
       /^actions\/checkout@/, /^actions\/setup-node@/, /^actions\/upload-artifact@/,
       /^zaproxy\/action-baseline@/,
+      /^github\/codeql-action\//,
+      /^codacy\/codacy-analysis-cli-action@/,
+      /^fortify\/github-action@/
     ];
     const dir = path.join(ROOT, '.github/workflows');
     const unknown = [];

@@ -13,6 +13,7 @@
 'use strict';
 
 const { assertDisasterRecoveryZeroRanking } = require('./disaster-recovery');
+const authority = require('./authority');
 
 const CHANGE_RISK_LEVEL = Object.freeze({
   LOW: 'LOW',
@@ -37,6 +38,29 @@ const CHANGE_ERRORS = Object.freeze({
 });
 
 const changeRegistry = new Map();
+
+async function persistChange(row) {
+  if (!row || !row.change_id) return;
+  if (!authority.attached()) {
+    if (process.env.DATABASE_URL) {
+      const err = new Error('AUTHORITY_UNAVAILABLE');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return;
+  }
+  await authority.putState('change', row.change_id, row, row.requester);
+}
+
+async function refreshChangesFromSoT() {
+  if (!authority.attached()) return false;
+  const rows = await authority.listState('change');
+  for (const r of rows) {
+    if (r && r.id && r.payload) changeRegistry.set(r.id, r.payload);
+  }
+  return true;
+}
 
 /**
  * Validates approval payload for infrastructure changes.
@@ -79,7 +103,7 @@ function assertChangeApproval(approval) {
 /**
  * Registers an infrastructure change request.
  */
-function registerChangeRequest(requestData) {
+async function registerChangeRequest(requestData) {
   assertDisasterRecoveryZeroRanking(requestData);
 
   if (!requestData || typeof requestData !== 'object') {
@@ -141,13 +165,14 @@ function registerChangeRequest(requestData) {
   };
 
   changeRegistry.set(changeId, change);
+  await persistChange(change);
   return Object.freeze({ ...change });
 }
 
 /**
  * Approves a pending change request with explicit human operator signature.
  */
-function approveChangeRequest(changeId, approvalPayload) {
+async function approveChangeRequest(changeId, approvalPayload) {
   assertDisasterRecoveryZeroRanking(approvalPayload);
   assertChangeApproval(approvalPayload);
 
@@ -169,13 +194,14 @@ function approveChangeRequest(changeId, approvalPayload) {
   change.updated_at = new Date().toISOString();
 
   changeRegistry.set(changeId, change);
+  await persistChange(change);
   return Object.freeze({ ...change });
 }
 
 /**
  * Executes an approved change request.
  */
-function executeChangeRequest(changeId, executionPayload) {
+async function executeChangeRequest(changeId, executionPayload) {
   assertDisasterRecoveryZeroRanking(executionPayload);
 
   if (!changeRegistry.has(changeId)) {
@@ -209,13 +235,14 @@ function executeChangeRequest(changeId, executionPayload) {
   change.execution_details = executionPayload.details || 'Successfully executed';
 
   changeRegistry.set(changeId, change);
+  await persistChange(change);
   return Object.freeze({ ...change });
 }
 
 /**
  * Rolls back an executed or approved change request.
  */
-function rollbackChangeRequest(changeId, rollbackPayload) {
+async function rollbackChangeRequest(changeId, rollbackPayload) {
   assertDisasterRecoveryZeroRanking(rollbackPayload);
 
   if (!changeRegistry.has(changeId)) {
@@ -243,6 +270,7 @@ function rollbackChangeRequest(changeId, rollbackPayload) {
   change.rollback_reason = rollbackPayload.reason || 'Operational intervention rollback';
 
   changeRegistry.set(changeId, change);
+  await persistChange(change);
   return Object.freeze({ ...change });
 }
 
@@ -288,5 +316,6 @@ module.exports = {
   rollbackChangeRequest,
   getChangeRequests,
   getChangeRequestById,
-  resetChangeRegistryForTests
+  resetChangeRegistryForTests,
+  refreshChangesFromSoT
 };

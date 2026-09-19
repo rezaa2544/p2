@@ -21,6 +21,7 @@
 const { CANONICAL_NATIONAL_REGIONS } = require('./national-region-control-plane');
 const { NATIONAL_TARGET_CAPACITY } = require('./national-capacity-engine');
 const { assertDisasterRecoveryZeroRanking } = require('./disaster-recovery');
+const authority = require('./authority');
 
 const CAPACITY_ENFORCEMENT_ERRORS = Object.freeze({
   CAPACITY_LIMIT_BREACH: 'PHASE5_NATIONAL_CAPACITY_LIMIT_BREACH',
@@ -43,6 +44,29 @@ const NATIONAL_LIMITS = Object.freeze({
 
 // Capacity reservation tracking store (backed by PostgreSQL in production)
 const activeReservations = new Map();
+
+async function persistReservation(row) {
+  if (!row || !row.reservation_id) return;
+  if (!authority.attached()) {
+    if (process.env.DATABASE_URL) {
+      const err = new Error('AUTHORITY_UNAVAILABLE');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return;
+  }
+  await authority.putState('reservation', row.reservation_id, row, row.operator_id);
+}
+
+async function refreshReservationsFromSoT() {
+  if (!authority.attached()) return false;
+  const rows = await authority.listState('reservation');
+  for (const r of rows) {
+    if (r && r.id && r.payload) activeReservations.set(r.id, r.payload);
+  }
+  return true;
+}
 
 /**
  * Asserts that real/observed metrics do not breach national capacity contracts.
@@ -185,7 +209,7 @@ function checkRegionCapacityHeadroom(regionId, currentDemand = {}) {
  * Creates and registers a Capacity Reservation.
  * Strictly requires human approval.
  */
-function createCapacityReservation(reservationPayload, approvalPayload) {
+async function createCapacityReservation(reservationPayload, approvalPayload) {
   assertDisasterRecoveryZeroRanking(reservationPayload);
   assertDisasterRecoveryZeroRanking(approvalPayload);
 
@@ -247,13 +271,14 @@ function createCapacityReservation(reservationPayload, approvalPayload) {
   };
 
   activeReservations.set(reservationId, reservation);
+  await persistReservation(reservation);
   return Object.freeze({ ...reservation });
 }
 
 /**
  * Releases or terminates an active capacity reservation.
  */
-function releaseCapacityReservation(reservationId, operatorPayload) {
+async function releaseCapacityReservation(reservationId, operatorPayload) {
   assertDisasterRecoveryZeroRanking(operatorPayload);
 
   if (!activeReservations.has(reservationId)) {
@@ -274,6 +299,7 @@ function releaseCapacityReservation(reservationId, operatorPayload) {
   res.released_by = String(operatorPayload.operator_id).trim();
 
   activeReservations.set(reservationId, res);
+  await persistReservation(res);
   return Object.freeze({ ...res });
 }
 
@@ -324,5 +350,6 @@ module.exports = {
   releaseCapacityReservation,
   getCapacityReservations,
   getCapacityReservationById,
-  resetCapacityEnforcementForTests
+  resetCapacityEnforcementForTests,
+  refreshReservationsFromSoT
 };

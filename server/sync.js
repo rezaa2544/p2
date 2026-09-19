@@ -485,6 +485,7 @@ function stripProtected(d){
 /* ctx: { store, db, MAX_BATCH, AT_DRIFT_MS, audit, sessionFrom, sendJson } */
 function createSync(ctx){
   const store = ctx.store;
+  if (store) attach(store);
   const db = ctx.db;
   const MAX_BATCH = ctx.MAX_BATCH;
   const AT_DRIFT_MS = ctx.AT_DRIFT_MS;
@@ -670,7 +671,15 @@ function createSync(ctx){
           windowSeconds: 60,
           weight: ops.length
         });
-      } catch (_) { r = null; /* fail-open — همان قراردادِ rate-limit.js */ }
+      } catch (rlE) {
+        /* B5: with REDIS_URL configured the limiter now throws REDIS_REQUIRED.
+           Backpressure is an advisory throttle (auth is the hard gate) — degrade
+           audibly instead of failing the write path, but NEVER pretend it ran. */
+        r = null;
+        if (rlE && rlE.code === 'REDIS_REQUIRED') {
+          try { audit('sync_backpressure_degraded_redis_down', { user_id: s.id }); } catch (_) {}
+        }
+      }
       if (r && r.allowed === false) {
         metrics.inc('payesh_sync_backpressure_rejections_total', []);
         const retryAfterS = Math.max(1, Math.min(60, Math.round(Number(r.reset) || 60)));
@@ -860,6 +869,13 @@ function createSync(ctx){
         results.push({ uid: op.uid, ok: false, code: 'validation_failed', field: 'base_version', message: 'مقدارِ «base_version» معتبر نیست' });
         continue;
       }
+      /* P1-05: mandatory base_version on VERSIONED resource updates when in strict mode or production */
+      const strictBaseVersion = process.env.PAYESH_STRICT_BASE_VERSION === '1' || process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production';
+      if(op.t === 'upd' && VERSIONED[op.c] && op.base_version == null && strictBaseVersion){
+        audit('sync_validation_failed', { user_id: s.id, uid: op.uid, collection: op.c, field: 'base_version', reason: 'missing_base_version' });
+        results.push({ uid: op.uid, ok: false, code: 'missing_base_version', field: 'base_version', message: 'مقدارِ «base_version» برای مجموعه‌های نسخه‌دار الزامی است' });
+        continue;
+      }
       /* §13.1 — non-in-person day: physical ops rejected per-op (rest continues) */
       const vd = virtualDayViolation(op, store);
       if(vd){
@@ -919,22 +935,41 @@ function createSync(ctx){
         if(versionedMismatch){
           const nowIso = new Date().toISOString();
           if(!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
+          const cfSchoolId = (vrec && vrec.school_id != null ? vrec.school_id
+                             : (op.data && op.data.school_id != null ? op.data.school_id : s.school_id));
           const cf = {
             id: await serverId('sync_conflicts'),
-            collection: op.c, record_id: vid,
-            school_id: (vrec && vrec.school_id != null ? vrec.school_id
-                       : (op.data && op.data.school_id != null ? op.data.school_id : s.school_id)),
+            collection: op.c,
+            record_id: vid,
+            school_id: cfSchoolId,
+            user_id: s.id,
+            client_uid: op.uid || null,
             base_version: Number(op.base_version),
+            incoming_version: Number((op.data && op.data.version) || op.base_version || 1),
+            current_version: vrec ? (vrec.version || 1) : null,
             server_version: vrec ? (vrec.version || 1) : null,
+            client_data: op.data ? Object.assign({}, op.data) : null,
+            server_data: vrec ? Object.assign({}, vrec) : null,
             server_state: vrec ? Object.assign({}, vrec) : null,
             incoming: { data: Object.assign({}, op.data), by: s.id, at: nowIso, op_uid: op.uid },
-            status: 'open', created_at: nowIso, updated_at: nowIso
+            status: 'open',
+            created_at: nowIso,
+            updated_at: nowIso
           };
           /* باگ ۲ (بازبین دور ۱ #124): درج از mirrorAppend می‌گذرد تا هرسِ ringِ
              سقف‌دار (sync_conflicts لیست‌سفید است) رویش کار کند — push خام
              growthLog را خالی می‌گذاشت و صف بی‌سقف می‌راند. uPush همان‌جا:
-             بازگشتِ دقیق همین ردیف در rollback (P0-6). */
+             بازگشتِ دقیق همین ردیف در rollback (P0-6).
+             P1-06: افزودن به derived جهت ماندگاری اتمیک در PostgreSQL */
           uPush('sync_conflicts', mirrorAppend('sync_conflicts', cf));
+          /* P0 (Chat 2 audit 4.2 / P0-BUG-02 follow-up; same fix as the parallel
+             phase-1 B1 / P1-06): the conflict row must reach PostgreSQL in the
+             SAME phase-2 transaction (SSoT) — it used to live only in the RAM
+             mirror and evaporated on restart (reproduced live: pg_count=0, lost
+             after restart; recovered from PG after full RAM loss). 013 now
+             guarantees every cf column (incl. updated_at) exists in the real
+             table. Memory mode: persistOpsBatch is a no-op — unchanged. */
+          derived.push({ c: 'sync_conflicts', t: 'ins', data: cf });
           /* ویو ۱۴: برچسبِ collection نامِ جدول است (مجموعهٔ بستهٔ VERSIONED)،
              نه شناسهٔ رکورد — بدون PII و با cardinality کران‌دار. */
           metrics.inc('payesh_sync_conflicts_total', { collection: String(op.c || 'unknown').slice(0, 32) });
@@ -989,7 +1024,8 @@ function createSync(ctx){
        notifications ساخته‌شده در فازِ اعتبارسنجی هم — مثلِ قبل — پوشش دارند:
        undo پیش از حلقهٔ اعتبارسنجی ساخته می‌شود و همان حلقه‌ها در آن ثبت
        می‌کنند. */
-    const mirror = [];   /* P1-14: opsِ آینه با شناسه‌هایِ اعمال‌شدهٔ سرور */
+    const mirror = [];    const invQueue = [];   /* B6: Redis invalidations deferred until after the PG commit */
+   /* P1-14: opsِ آینه با شناسه‌هایِ اعمال‌شدهٔ سرور */
     for(const op of apply){
       /* S2-1 (موج ۴): ادعایِ اتمیکِ uid — حتماً پیش از اعمال. بررسی در
          اعتبارسنجی بود ولی ثبت بعدتر — تکراریِ درون‌دسته دو بار اعمال
@@ -1079,9 +1115,15 @@ function createSync(ctx){
          بلعیده می‌شد؛ در تولید (گاردهای BUG-2) واقعی است و بی‌صدایی واگراییِ
          نامرئی می‌سازد. حالا audit می‌شود؛ پاسخ بی‌تغییر می‌ماند و خودِ audit
          هم هرگز پاسخ را نمی‌شکند. (markProcessedUid پس از کامیت پایین‌تر audit می‌شود.) */
-      cache.invalidateCollection(op.c, op.data && op.data.school_id).catch((invErr) => {
-        try { audit('sync_invalidate_failed', { user_id: s.id, collection: op.c, error: String((invErr && invErr.message) || invErr) }); } catch (_) {}
-      });
+      /* B6 (Phase-2 remediation directive): invalidation must run AFTER the
+         PostgreSQL commit — an invalidate that precedes the commit lets a
+         concurrent reader re-populate Redis from the OLD PG truth inside the
+         invalidate→commit window (stale cache), and a failed commit would
+         have disturbed the cache for a write that never happened. Targets
+         are queued here, fired right after persistOpsBatch commits. */
+      if (!invQueue.some((iv) => iv[0] === op.c && iv[1] === (op.data && op.data.school_id))) {
+        invQueue.push([op.c, op.data && op.data.school_id]);
+      }
       /* P1-14: آینه این‌جا نیست — پس از حلقه، یک‌جا و اتمیک (persistOpsBatch) */
     }
     /* Round 88 + Round 89 — server side: the client cannot create notifications
@@ -1196,6 +1238,15 @@ function createSync(ctx){
           return sendJson(res, 503, { ok: false, code: 'sync_mirror_failed', results });
         }
       }
+    }
+    /* B6: the PG commit succeeded (or memory mode) — NOW invalidate Redis. On the
+       failure path above we returned 503 BEFORE reaching this, so a failed commit
+       never touches the cache. Same failure semantics as before: audited, never
+       breaks the response. */
+    for (const invq of invQueue) {
+      cache.invalidateCollection(invq[0], invq[1]).catch((invErr) => {
+        try { audit('sync_invalidate_failed', { user_id: s.id, collection: invq[0], error: String((invErr && invErr.message) || invErr) }); } catch (_) {}
+      });
     }
     /* Wave 1: uids are marked only after the authority committed (store AND cache),
        so a failed batch always replays. End state in memory mode is unchanged. */

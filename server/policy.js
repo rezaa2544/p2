@@ -209,9 +209,10 @@ function inScope(session, store, coll, recId, data) {
   if (!u || !u.role) return false;
   if (u.role === 'superadmin') return true;
   const list = ((store && store[coll]) || []);
-  const rec = (data && Number(data.id) === Number(recId))
-    ? data
-    : (recId != null ? (list.find((x) => x.id === Number(recId)) || (data && typeof data === 'object' ? data : null)) : null);
+  const existing = recId != null ? list.find((x) => x && x.id === Number(recId)) : null;
+  const rec = existing
+    ? Object.assign({}, existing, data)
+    : ((data && Number(data.id) === Number(recId)) ? data : (data && typeof data === 'object' ? data : null));
 
   /* Round 89 — مالکیتی که روی student_id سوار نیست:
      messages: نویسنده (from_id) مالک است؛ manager/edu_office مسیرِ مدرسه.
