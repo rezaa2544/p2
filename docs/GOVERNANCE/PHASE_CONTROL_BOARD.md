@@ -139,7 +139,10 @@ VERIFIED COMMIT AUDIT TRAIL
 ========================================================================================
 Commit Hash | Branch | Author    | Gate Passed | Status   | Scope / Note
 ------------+--------+-----------+-------------+----------+-----------------------------
-693eff6c    | main   | rezaa2544 | Phase 6 Run | VERIFIED | Live HTTP runtime certification & zero-trust
+5d300b62    | main   | rezaa2544 | Sync Origin | VERIFIED | Merge remote origin/main into main
+16bb2b2c    | main   | rezaa2544 | Phase 3 Ver | VERIFIED | Outbox mark on PG & wave8 O3 B4 contract
+5e69dc3e    | main   | rezaa2544 | Phase 3 Red | VERIFIED | Real-PG migrations & conflict SSoT
+ac117f0f    | main   | rezaa2544 | Phase 6 Run | VERIFIED | Live HTTP runtime certification & zero-trust
 6462c0b8    | main   | rezaa2544 | Governance  | VERIFIED | Sync baseline commit and audit trail
 1ad0b4c3    | main   | rezaa2544 | Sync Origin | VERIFIED | Merge remote origin/main into main
 a890c921    | main   | rezaa2544 | Phase 6 Red | VERIFIED | Resolve Phase 6 Red-Team Blockers B1-B10
