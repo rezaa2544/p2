@@ -11,6 +11,8 @@
 
 'use strict';
 
+const authority = require('./authority');
+
 const HARDENING_ERRORS = Object.freeze({
   CONFIG_INVALID: 'PHASE6_PRODUCTION_CONFIG_INVALID',
   SECRET_WEAK: 'PHASE6_SECRET_STRENGTH_FAILED',
@@ -130,7 +132,7 @@ function resolveActorProvince(actor, store) {
  * ۳. گارد ایزولاسیون تننت و استان (Zero-Trust Tenant Guard)
  * Runtime: Request → Auth Context → Tenant Guard → Province Guard → Controller
  */
-function assertTenantBoundary(actor, targetSchoolId, targetProvinceCode) {
+async function assertTenantBoundary(actor, targetSchoolId, targetProvinceCode) {
   if (!actor || !actor.id) {
     const err = new Error('UNAUTHORIZED: شناسه عامل نامعتبر است');
     err.code = 'UNAUTHORIZED';
@@ -158,6 +160,20 @@ function assertTenantBoundary(actor, targetSchoolId, targetProvinceCode) {
       const err = new Error('تخطی از حریم استانی: دسترسی به اطلاعات استان دیگر مجاز نیست');
       err.code = HARDENING_ERRORS.TENANT_BREACH;
       throw err;
+    }
+    if (process.env.DATABASE_URL && !authority.attached()) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: tenant_policy cannot be evaluated');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    if (authority.attached()) {
+      const policy = await authority.getTenantPolicy(target, targetSchoolId);
+      if (!policy) {
+        const err = new Error('تخطی از حریم استانی: سیاست tenant_policy برای استان هدف یافت نشد');
+        err.code = HARDENING_ERRORS.TENANT_BREACH;
+        throw err;
+      }
     }
   }
 

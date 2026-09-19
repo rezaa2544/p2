@@ -60,6 +60,7 @@ const { assertNationalCapacityEnforcement } = require('./infrastructure/national
 const { globalCanaryEngine } = require('./infrastructure/phase6-canary-engine'); /* Phase 6: موتور استقرار قناری و هدایت ترافیک */
 const { applyCanaryRouting } = require('./middleware/canary'); /* Phase 6.5: runtime canary headers from SoT */
 const { assertTenantBoundary, sanitizePayload, resolveActorProvince } = require('./infrastructure/phase6-production-hardening'); /* Phase 6: گارد زیروترست و پالایش */
+const authority = require('./infrastructure/authority'); /* Phase 7: PostgreSQL authority */
 const { createIds } = require('./ids'); /* P0-16 */
 const { createOutbox } = require('./outbox'); /* P0-17 */
 const { createWorker } = require('./worker'); /* ویو ۸ — کارگرِ صندوق رویدادها */
@@ -277,6 +278,14 @@ async function seedPgFromBootstrap(store, db) {
     } catch (e) {
       console.error('[OPS-KV] attach/hydrate failed:', e && e.message);
       if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') throw e;
+    }
+    try {
+      authority.attach(db);
+      await authority.hydrateControlPlane();
+      console.log('[AUTHORITY] attached + control-plane hydrated from PostgreSQL');
+    } catch (e) {
+      console.error('[AUTHORITY] attach/hydrate failed:', e && e.message);
+      if (process.env.DATABASE_URL) throw e;
     }
   }
   return info;
@@ -1118,9 +1127,9 @@ const onRequest = async (req, res) => {
               actorWithProv = Object.assign({}, s, { province_code: pCode });
             }
           }
-          assertTenantBoundary(actorWithProv, targetSchool, targetProv);
+          await assertTenantBoundary(actorWithProv, targetSchool, targetProv);
         } catch (err) {
-          return sendJson(res, 403, {
+          return sendJson(res, err.status === 503 ? 503 : 403, {
             ok: false,
             code: err.code || 'PHASE6_TENANT_ISOLATION_BREACH',
             message: err.message
@@ -1732,10 +1741,27 @@ if(require.main === module){
     process.exit(1);
   }
   const startListening = async () => {
+    if (process.env.DATABASE_URL) {
+      const info = await Promise.resolve(dbReady);
+      if (!info || info.ok === false || info.driver !== 'postgres') {
+        console.error('[FATAL] DATABASE_URL set but PostgreSQL is not ready — refusing listen()');
+        process.exit(1);
+      }
+      if (!authority.attached()) {
+        console.error('[FATAL] DATABASE_URL set but authority is not attached/hydrated — refusing listen()');
+        process.exit(1);
+      }
+    }
     if (canaryHydrated) {
       /* Root-cause fix: no socket until canary weights are loaded (or loudly failed). */
       try { await canaryHydrated; }
-      catch (e) { console.warn('[CANARY] boot continues WITHOUT persisted weights (loud degradation — see error above)'); }
+      catch (e) {
+        if (process.env.DATABASE_URL) {
+          console.error('[FATAL] canary hydrate failed — refusing listen():', e && e.message);
+          process.exit(1);
+        }
+        console.warn('[CANARY] boot continues WITHOUT persisted weights (loud degradation — see error above)');
+      }
     }
     server.listen(PORT, HOST, () => {
     const proto = (TLS_CERT && TLS_KEY) ? 'https' : 'http';
@@ -1754,11 +1780,18 @@ if(require.main === module){
      connections for a few hundred ms and only then exited non-zero, which is
      not fail-closed. Dev/test keep the previous immediate listen, so
      zero-disruption local boot is unchanged. */
-  if (db.isProductionEnv() && !db.memoryFallbackAllowed()) {
+  if (process.env.DATABASE_URL || (db.isProductionEnv() && !db.memoryFallbackAllowed())) {
     Promise.resolve(dbReady).then((info) => {
+      if (process.env.DATABASE_URL && (!info || info.ok === false || info.driver !== 'postgres')) {
+        console.error('[FATAL] DATABASE_URL hydrate failed — refusing listen()');
+        process.exit(1);
+      }
       if (info && info.ok === false) return; /* handler above already exits */
       startListening();
-    }).catch(() => {});
+    }).catch((e) => {
+      console.error('[FATAL] boot gate failed:', e && e.message);
+      if (process.env.DATABASE_URL) process.exit(1);
+    });
   } else {
     startListening();
   }

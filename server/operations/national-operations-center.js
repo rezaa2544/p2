@@ -17,6 +17,7 @@
 const { CANONICAL_NATIONAL_REGIONS, calculateNationalRegionHealthSummary } = require('../infrastructure/national-region-control-plane');
 const { NATIONAL_SLO_TARGETS, buildNationalOperationsDashboard } = require('../monitoring/national-observability-plane');
 const { assertDisasterRecoveryZeroRanking } = require('../infrastructure/disaster-recovery');
+const authority = require('../infrastructure/authority');
 
 const NOC_STATES = Object.freeze({
   NORMAL: 'NORMAL',
@@ -52,6 +53,51 @@ const NOC_ERRORS = Object.freeze({
 let currentNocState = NOC_STATES.NORMAL;
 const nocStateTransitionHistory = [];
 const activeIncidents = new Map();
+
+async function persistIncident(row) {
+  if (!row || !row.incident_id) return;
+  if (!authority.attached()) {
+    if (process.env.DATABASE_URL) {
+      const err = new Error('AUTHORITY_UNAVAILABLE');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return;
+  }
+  await authority.putState('noc_incident', row.incident_id, row, row.operator_id);
+}
+
+async function persistNocState() {
+  if (!authority.attached()) {
+    if (process.env.DATABASE_URL) {
+      const err = new Error('AUTHORITY_UNAVAILABLE');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return;
+  }
+  await authority.putState('noc_state', 'current', {
+    state: currentNocState,
+    history: nocStateTransitionHistory.slice(-50)
+  });
+}
+
+async function refreshNocFromSoT() {
+  if (!authority.attached()) return false;
+  const st = await authority.getState('noc_state', 'current');
+  if (st && st.state) currentNocState = st.state;
+  if (st && Array.isArray(st.history)) {
+    nocStateTransitionHistory.length = 0;
+    nocStateTransitionHistory.push(...st.history);
+  }
+  const rows = await authority.listState('noc_incident');
+  for (const r of rows) {
+    if (r && r.id && r.payload) activeIncidents.set(r.id, r.payload);
+  }
+  return true;
+}
 
 /**
  * Validates human approval attributes for any operational transition.
@@ -101,7 +147,7 @@ function assertNocHumanApproval(payload) {
  * Transitions the National Operations Center state.
  * Requires human approval.
  */
-function transitionNocState(targetState, approvalPayload) {
+async function transitionNocState(targetState, approvalPayload) {
   assertDisasterRecoveryZeroRanking(approvalPayload);
   assertNocHumanApproval(approvalPayload);
 
@@ -127,13 +173,14 @@ function transitionNocState(targetState, approvalPayload) {
   });
 
   nocStateTransitionHistory.push(record);
+  await persistNocState();
   return record;
 }
 
 /**
  * Records or updates an incident in the National Operations Center.
  */
-function recordNocIncident(incidentData, approvalPayload) {
+async function recordNocIncident(incidentData, approvalPayload) {
   assertDisasterRecoveryZeroRanking(incidentData);
   assertDisasterRecoveryZeroRanking(approvalPayload);
   assertNocHumanApproval(approvalPayload);
@@ -173,6 +220,7 @@ function recordNocIncident(incidentData, approvalPayload) {
   };
 
   activeIncidents.set(incident.incident_id, incident);
+  await persistIncident(incident);
   return Object.freeze({ ...incident });
 }
 
@@ -195,7 +243,7 @@ function getNocIncidents(filter = {}) {
 /**
  * Resolves an active incident.
  */
-function resolveNocIncident(incidentId, resolutionDetails, approvalPayload) {
+async function resolveNocIncident(incidentId, resolutionDetails, approvalPayload) {
   assertDisasterRecoveryZeroRanking(resolutionDetails);
   assertDisasterRecoveryZeroRanking(approvalPayload);
   assertNocHumanApproval(approvalPayload);
@@ -213,6 +261,7 @@ function resolveNocIncident(incidentId, resolutionDetails, approvalPayload) {
   incident.resolved_by = approvalPayload.operator_id.trim();
 
   activeIncidents.set(incidentId, incident);
+  await persistIncident(incident);
   return Object.freeze({ ...incident });
 }
 
@@ -305,5 +354,6 @@ module.exports = {
   getNocIncidents,
   resolveNocIncident,
   getNationalOperationsCenterSnapshot,
-  resetNocStateForTests
+  resetNocStateForTests,
+  refreshNocFromSoT
 };

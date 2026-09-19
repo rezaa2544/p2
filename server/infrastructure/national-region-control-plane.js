@@ -20,6 +20,7 @@ const {
   assertHumanApproval,
   deepFreeze
 } = require('./phase5-region-federation');
+const authority = require('./authority');
 
 /**
  * کدهای خطای رسمی کنترل‌پلین ملی
@@ -193,6 +194,29 @@ function initNationalRegionStore() {
 
 initNationalRegionStore();
 
+async function persistRegion(row) {
+  if (!row || !row.region_id) return;
+  if (!authority.attached()) {
+    if (process.env.DATABASE_URL) {
+      const err = new Error('AUTHORITY_UNAVAILABLE');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return;
+  }
+  await authority.putState('region', row.region_id, row, row.last_operator && row.last_operator.id);
+}
+
+async function refreshRegionsFromSoT() {
+  if (!authority.attached()) return false;
+  const rows = await authority.listState('region');
+  for (const r of rows) {
+    if (r && r.id && r.payload) _nationalRegionStore.set(r.id, r.payload);
+  }
+  return true;
+}
+
 /**
  * دریافت فهرست تمامی کلاسترهای منطقه ملی
  *
@@ -227,7 +251,7 @@ function getNationalRegionById(regionId) {
  * @param {Object} changeApproval
  * @returns {Object}
  */
-function updateNationalRegionState(regionId, newState, changeApproval = {}) {
+async function updateNationalRegionState(regionId, newState, changeApproval = {}) {
   const region = _nationalRegionStore.get(regionId);
   if (!region) {
     const err = new Error(`کلاستر منطقه "${regionId}" یافت نشد`);
@@ -277,6 +301,7 @@ function updateNationalRegionState(regionId, newState, changeApproval = {}) {
   };
 
   _nationalRegionStore.set(regionId, updated);
+  await persistRegion(updated);
   assertNoZeroRanking(updated);
   return deepFreeze(updated);
 }
@@ -333,5 +358,6 @@ module.exports = {
   getNationalRegionRegistry,
   getNationalRegionById,
   updateNationalRegionState,
-  calculateNationalRegionHealthSummary
+  calculateNationalRegionHealthSummary,
+  refreshRegionsFromSoT
 };

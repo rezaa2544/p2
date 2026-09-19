@@ -131,5 +131,10 @@ jobs:
         export DATABASE_URL="$PGURL"
         node tools/production-truth-gate.js
 
+    - name: Phase 7 production verifier T1–T7 — VERIFIED or NOT VERIFIED
+      run: |
+        export DATABASE_URL="$PGURL"
+        bash tools/production-verifier.sh
+
     - run: npm run build --if-present
     - run: npm test

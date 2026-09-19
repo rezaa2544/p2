@@ -22,6 +22,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const authority = require('./authority');
 
 /**
  * وضعیت‌های چرخه حیات هر رویداد در صف توزیع‌شده
@@ -60,6 +61,42 @@ const DEFAULT_RETRY_POLICY = Object.freeze({
 const eventHandlersRegistry = new Map();
 const processedIdempotencyKeys = new Set();
 const deadLetterQueue = [];
+
+async function seenIdempotency(key) {
+  if (!key) return false;
+  if (processedIdempotencyKeys.has(key)) return true;
+  if (!authority.attached()) return false;
+  const row = await authority.getState('event_idempotency', key);
+  if (row) {
+    processedIdempotencyKeys.add(key);
+    return true;
+  }
+  return false;
+}
+
+async function rememberIdempotency(key) {
+  if (!key) return;
+  processedIdempotencyKeys.add(key);
+  if (!authority.attached()) {
+    if (process.env.DATABASE_URL) {
+      const err = new Error('AUTHORITY_UNAVAILABLE');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return;
+  }
+  await authority.putState('event_idempotency', key, { processed: true, at: new Date().toISOString() });
+}
+
+async function refreshEventIdempotencyFromSoT() {
+  if (!authority.attached()) return false;
+  const rows = await authority.listState('event_idempotency');
+  for (const r of rows) {
+    if (r && r.id) processedIdempotencyKeys.add(r.id);
+  }
+  return true;
+}
 
 /**
  * انجماد عمیق ساختارهای داده جهت تضمین تغییرناپذیری در حافظه
@@ -269,7 +306,7 @@ async function consumeEvent(event = {}, options = {}) {
   validateEventTenantBoundary(event, targetTenant);
 
   // ۲. بررسی بی‌اثر بودن مصرف تکراری (Idempotency Guard)
-  if (event.idempotency_key && processedIdempotencyKeys.has(event.idempotency_key)) {
+  if (event.idempotency_key && await seenIdempotency(event.idempotency_key)) {
     return deepFreeze({
       event_id: event.event_id,
       status: EVENT_STATUS.PROCESSED,
@@ -296,7 +333,7 @@ async function consumeEvent(event = {}, options = {}) {
 
     // ثبت در جدول کلیدهای پردازش‌شده جهت ممانعت از تکرار
     if (event.idempotency_key) {
-      processedIdempotencyKeys.add(event.idempotency_key);
+      await rememberIdempotency(event.idempotency_key);
     }
 
     return deepFreeze({
@@ -509,6 +546,7 @@ module.exports = {
   registerEventHandler,
   publishDomainEvent,
   consumeEvent,
+  refreshEventIdempotencyFromSoT,
   retryFailedEvent,
   detectQueueBottlenecks,
   buildEventProcessingHealthSnapshot

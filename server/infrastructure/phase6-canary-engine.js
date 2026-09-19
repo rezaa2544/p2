@@ -12,6 +12,7 @@
 
 const crypto = require('crypto');
 const gov = require('./phase6-governance');
+const authority = require('./authority');
 
 const CANARY_STATES = Object.freeze({
   HEALTHY: 'HEALTHY',
@@ -715,7 +716,9 @@ class Phase6CanaryEngine {
 
     const sigHash = gov.signatureHash(signature);
 
-    if (this.db && typeof this.db.query === 'function') {
+    if (authority.attached()) {
+      await authority.consumeNonce(String(nonce), sigHash, expiry);
+    } else if (this.db && typeof this.db.query === 'function') {
       try {
         const ins = await this.db.query(
           `INSERT INTO phase6_replay_ledger (nonce, signature_hash, expires_at)

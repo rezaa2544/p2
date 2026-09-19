@@ -69,7 +69,8 @@ const {
   getProvincialPilotById,
   activateProvincialPilot,
   updateProvincialTrafficRollout,
-  getProvincialCapacityOverview
+  getProvincialCapacityOverview,
+  refreshProvincialFromSoT
 } = require('../infrastructure/provincial-pilot-scaling');
 
 const {
@@ -78,7 +79,8 @@ const {
   getNationalRegionRegistry,
   getNationalRegionById,
   updateNationalRegionState,
-  calculateNationalRegionHealthSummary
+  calculateNationalRegionHealthSummary,
+  refreshRegionsFromSoT
 } = require('../infrastructure/national-region-control-plane');
 
 const {
@@ -117,7 +119,8 @@ const {
   transitionNocState,
   recordNocIncident,
   resolveNocIncident,
-  NOC_ERRORS
+  NOC_ERRORS,
+  refreshNocFromSoT
 } = require('../operations/national-operations-center');
 
 const {
@@ -137,7 +140,8 @@ const {
   approveChangeRequest,
   executeChangeRequest,
   getChangeRequests,
-  CHANGE_ERRORS
+  CHANGE_ERRORS,
+  refreshChangesFromSoT
 } = require('../infrastructure/change-management');
 
 const {
@@ -148,7 +152,8 @@ const {
   getCapacityReservations,
   getCapacityReservationById,
   CAPACITY_ENFORCEMENT_ERRORS,
-  NATIONAL_LIMITS
+  NATIONAL_LIMITS,
+  refreshReservationsFromSoT
 } = require('../infrastructure/national-capacity-enforcement');
 const { getNationalWriteSmoothingEngine, NATIONAL_WRITE_LIMITS } = require('../infrastructure/national-write-smoothing');
 
@@ -1012,6 +1017,7 @@ function createSystemRoutes(ctx) {
       };
     }
 
+    await refreshProvincialFromSoT();
     const provinceIdParam = searchParams.get('province_id');
     if (provinceIdParam) {
       const prov = getProvincialPilotById(provinceIdParam);
@@ -1071,6 +1077,7 @@ function createSystemRoutes(ctx) {
       };
     }
 
+    await refreshProvincialFromSoT();
     let regionFilter = searchParams.get('region_id') || undefined;
     if (user.role === 'edu_office' && user.region_id) {
       regionFilter = String(user.region_id);
@@ -1126,7 +1133,7 @@ function createSystemRoutes(ctx) {
         }
       };
 
-      const result = activateProvincialPilot(body.province_id, payload);
+      const result = await activateProvincialPilot(body.province_id, payload);
       return {
         status: 200,
         body: {
@@ -1188,7 +1195,7 @@ function createSystemRoutes(ctx) {
         }
       };
 
-      const result = updateProvincialTrafficRollout(body.province_id, body.rollout_pct, payload);
+      const result = await updateProvincialTrafficRollout(body.province_id, body.rollout_pct, payload);
       return {
         status: 200,
         body: {
@@ -1234,6 +1241,7 @@ function createSystemRoutes(ctx) {
       };
     }
 
+    await refreshRegionsFromSoT();
     const regionIdParam = searchParams.get('region_id');
     if (regionIdParam) {
       const reg = getNationalRegionById(regionIdParam);
@@ -1282,6 +1290,7 @@ function createSystemRoutes(ctx) {
       };
     }
 
+    await refreshReservationsFromSoT();
     const model = getNationalCapacityModel();
     const activeRes = getCapacityReservations({ status: 'ACTIVE' });
 
@@ -1321,6 +1330,7 @@ function createSystemRoutes(ctx) {
     }
 
     try {
+      await refreshReservationsFromSoT();
       const filter = searchParams ? Object.fromEntries(searchParams.entries()) : {};
       assertNoZeroRanking(filter);
       const list = getCapacityReservations(filter);
@@ -1375,7 +1385,7 @@ function createSystemRoutes(ctx) {
         throw err;
       }
 
-      const reservation = createCapacityReservation(body, {
+      const reservation = await createCapacityReservation(body, {
         approved: true,
         operator_id: String(user.id),
         approval_id: body.approval_id || `appv-res-${Date.now()}`,
@@ -1512,6 +1522,7 @@ function createSystemRoutes(ctx) {
     }
 
     try {
+      await refreshNocFromSoT();
       const options = searchParams ? Object.fromEntries(searchParams.entries()) : {};
       assertNoZeroRanking(options);
       const snapshot = getNationalOperationsCenterSnapshot(options);
@@ -1647,6 +1658,7 @@ function createSystemRoutes(ctx) {
     }
 
     try {
+      await refreshNocFromSoT();
       const filter = searchParams ? Object.fromEntries(searchParams.entries()) : {};
       assertNoZeroRanking(filter);
       const incidents = getNocIncidents(filter);
@@ -1721,7 +1733,7 @@ function createSystemRoutes(ctx) {
           operator: { id: user.id, role: user.role }
         });
       } else if (changeType === 'REGION_STATE') {
-        executionResult = updateNationalRegionState(body.region_id, body.target_state, {
+        executionResult = await updateNationalRegionState(body.region_id, body.target_state, {
           approved: true,
           automated_decision: false,
           automated_execution: false,
@@ -1740,7 +1752,7 @@ function createSystemRoutes(ctx) {
           operator: { id: user.id, role: user.role }
         });
       } else if (changeType === 'NOC_STATE') {
-        executionResult = transitionNocState(body.target_state, {
+        executionResult = await transitionNocState(body.target_state, {
           operator_id: String(user.id),
           approval_id: body.approval_id || `appv-noc-${Date.now()}`,
           timestamp: new Date().toISOString(),
@@ -1751,7 +1763,7 @@ function createSystemRoutes(ctx) {
           requires_human_approval: true
         });
       } else if (changeType === 'INCIDENT') {
-        executionResult = recordNocIncident(body.incident_data || body, {
+        executionResult = await recordNocIncident(body.incident_data || body, {
           operator_id: String(user.id),
           approval_id: body.approval_id || `appv-inc-${Date.now()}`,
           timestamp: new Date().toISOString(),
@@ -1762,7 +1774,7 @@ function createSystemRoutes(ctx) {
           requires_human_approval: true
         });
       } else {
-        executionResult = registerChangeRequest({
+        executionResult = await registerChangeRequest({
           change_id: body.change_id || `cr-${Date.now()}`,
           title: body.title || 'National Infrastructure Change',
           requester: String(user.id),
@@ -1794,7 +1806,7 @@ function createSystemRoutes(ctx) {
       };
     } catch (err) {
       const isRanking = err.code === NATIONAL_CONTROL_ERRORS.ZERO_RANKING_VIOLATION || err.code === 'ZERO_RANKING_VIOLATION';
-      const isUnavailable = err.status === 503 || err.code === 'OPS_KV_UNAVAILABLE' || err.code === 'OPS_KV_PERSIST_FAILED';
+      const isUnavailable = err.status === 503 || err.code === 'OPS_KV_UNAVAILABLE' || err.code === 'OPS_KV_PERSIST_FAILED' || err.code === 'AUTHORITY_UNAVAILABLE';
       return {
         status: isRanking ? 400 : (isUnavailable ? 503 : 422),
         body: {
