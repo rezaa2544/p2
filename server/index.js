@@ -1117,7 +1117,7 @@ const onRequest = async (req, res) => {
       // Phase 6 (B8): Zero-Trust Tenant & Provincial Isolation Guardrail
       const targetSchool = url.searchParams.get('school_id') || req.headers['x-school-id'];
       const targetProv = req.headers['x-province-code'];
-      if (targetSchool || targetProv) {
+      if (s.role !== 'superadmin' || targetSchool || targetProv) {
         try {
           let actorWithProv = s;
           if (!s.province_code && s.school_id) {
@@ -1127,7 +1127,9 @@ const onRequest = async (req, res) => {
               actorWithProv = Object.assign({}, s, { province_code: pCode });
             }
           }
-          await assertTenantBoundary(actorWithProv, targetSchool, targetProv);
+          const effSchool = targetSchool || s.school_id;
+          const effProv = targetProv || actorWithProv.province_code || '07';
+          await assertTenantBoundary(actorWithProv, effSchool, effProv);
         } catch (err) {
           return sendJson(res, err.status === 503 ? 503 : 403, {
             ok: false,
