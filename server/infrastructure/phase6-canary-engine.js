@@ -177,31 +177,28 @@ class Phase6CanaryEngine {
     if (authority.attached()) {
       const db = authority.requireDb();
       if (db) this.db = db;
-    }
-    if (!this.db || typeof this.db.query !== 'function') {
-      if (process.env.DATABASE_URL) {
-        const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority not connected');
-        err.code = 'AUTHORITY_UNAVAILABLE';
-        err.status = 503;
-        throw err;
-      }
-      return;
-    }
-    if (!force && this._sotCacheAt && (Date.now() - this._sotCacheAt) < 50) return;
-    const res = await this.db.query('SELECT * FROM phase6_canary_configs;');
-    if (res && Array.isArray(res.rows) && res.rows.length > 0) {
-      for (const row of res.rows) {
-        const cluster = rowToCluster(row);
-        const prev = this.clusters.get(cluster.id);
-        if (prev) cluster.errorStreak = prev.errorStreak || 0;
-        this.clusters.set(cluster.id, cluster);
-        this.rollbackSnapshots.set(cluster.id, cluster.weight);
-        if (!this.metrics.has(cluster.id)) {
-          this.metrics.set(cluster.id, { totalRequests: 0, errors: 0, latencies: [] });
+      const rows = await authority.listCanaryConfigs();
+      if (rows && Array.isArray(rows) && rows.length > 0) {
+        for (const row of rows) {
+          const cluster = rowToCluster(row);
+          const prev = this.clusters.get(cluster.id);
+          if (prev) cluster.errorStreak = prev.errorStreak || 0;
+          this.clusters.set(cluster.id, cluster);
+          this.rollbackSnapshots.set(cluster.id, cluster.weight);
+          if (!this.metrics.has(cluster.id)) {
+            this.metrics.set(cluster.id, { totalRequests: 0, errors: 0, latencies: [] });
+          }
         }
       }
+      this._sotCacheAt = Date.now();
+      return;
     }
-    this._sotCacheAt = Date.now();
+    if (process.env.DATABASE_URL) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority not connected');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
   }
 
   async registerCluster(config, governanceContext = {}) {
@@ -229,15 +226,15 @@ class Phase6CanaryEngine {
       lastWeightChange: new Date().toISOString()
     };
 
-    if (this.db && typeof this.db.query === 'function') {
-      await this.db.query(
-        `INSERT INTO phase6_canary_configs (id, name, provinces, primary_dc, secondary_dc, capacity_tps, traffic_weight, weight, region_id, status, version)
-         VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $7, $1, $8, 1)
-         ON CONFLICT (id) DO UPDATE SET traffic_weight = $7, weight = $7, updated_at = NOW();`,
-        [cluster.id, cluster.name, JSON.stringify(cluster.provinces), cluster.primaryDc, cluster.secondaryDc, cluster.capacityTps, cluster.weight, cluster.status]
-      );
+    if (authority.attached()) {
+      await authority.upsertCanaryConfig(cluster);
       this.invalidateSotCache();
       await this.refreshCacheFromPg({ force: true });
+    } else if (process.env.DATABASE_URL) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority not attached');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
     } else {
       this.clusters.set(cluster.id, cluster);
     }
@@ -258,8 +255,8 @@ class Phase6CanaryEngine {
       cluster_id: clusterId,
       target_weight: 0
     });
-    if (this.db && typeof this.db.query === 'function') {
-      const r = await this.db.query('DELETE FROM phase6_canary_configs WHERE id = $1 RETURNING id;', [clusterId]);
+    if (authority.attached()) {
+      const r = await authority.deleteCanaryConfig(clusterId);
       if (!r || !r.rowCount) {
         const err = new Error(`کلاستر "${clusterId}" یافت نشد`);
         err.code = CANARY_ERRORS.CLUSTER_NOT_FOUND;
@@ -267,6 +264,11 @@ class Phase6CanaryEngine {
       }
       this.clusters.delete(clusterId);
       this.invalidateSotCache();
+    } else if (process.env.DATABASE_URL) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority not attached');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
     } else {
       if (!this.clusters.has(clusterId)) {
         const err = new Error(`کلاستر "${clusterId}" یافت نشد`);
@@ -314,33 +316,10 @@ class Phase6CanaryEngine {
 
     const oldWeight = cluster.weight;
 
-    if (this.db && typeof this.db.query === 'function') {
+    if (authority.attached()) {
       let res;
       try {
-        res = await this.db.query(
-          `INSERT INTO phase6_canary_configs
-             (id, name, provinces, primary_dc, secondary_dc, capacity_tps, traffic_weight, weight, region_id, status, version, updated_by, updated_at)
-           VALUES ($3, $4, $5::jsonb, $6, $7, $8, $1, $1, $3, 'HEALTHY', 1, $2, NOW())
-           ON CONFLICT (id) DO UPDATE SET
-             traffic_weight = $1,
-             weight = $1,
-             version = phase6_canary_configs.version + 1,
-             circuit_breaker_open = CASE WHEN $1 > 0 THEN false ELSE phase6_canary_configs.circuit_breaker_open END,
-             status = CASE WHEN $1 > 0 THEN 'HEALTHY' ELSE phase6_canary_configs.status END,
-             updated_by = $2,
-             updated_at = NOW()
-           RETURNING version, traffic_weight, weight, circuit_breaker_open, status;`,
-          [
-            weight,
-            (governanceContext.operator && governanceContext.operator.id) || null,
-            clusterId,
-            cluster.name || clusterId,
-            JSON.stringify(cluster.provinces || []),
-            cluster.primaryDc || 'default-dc-01',
-            cluster.secondaryDc || 'default-dc-02',
-            cluster.capacityTps || 2000
-          ]
-        );
+        res = await authority.updateCanaryWeight(clusterId, weight);
       } catch (e) {
         const err = new Error('ثبتِ پایدارِ وزن در PostgreSQL شکست خورد — تغییر اعمال نشد: ' + e.message);
         err.code = 'CANARY_PERSIST_FAILED';
@@ -360,6 +339,11 @@ class Phase6CanaryEngine {
       cluster.status = row.status || cluster.status;
       cluster.lastWeightChange = new Date().toISOString();
       this.invalidateSotCache();
+    } else if (process.env.DATABASE_URL) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority not attached');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
     } else {
       this.rollbackSnapshots.set(clusterId, oldWeight);
       cluster.weight = weight;
@@ -599,15 +583,9 @@ class Phase6CanaryEngine {
 
     const oldWeight = cluster.weight;
 
-    if (this.db && typeof this.db.query === 'function') {
+    if (authority.attached()) {
       try {
-        const res = await this.db.query(
-          `UPDATE phase6_canary_configs
-           SET traffic_weight = 0, weight = 0, status = 'DEGRADED', circuit_breaker_open = true, version = version + 1, updated_at = NOW()
-           WHERE id = $1
-           RETURNING version, traffic_weight, weight;`,
-          [clusterId]
-        );
+        const res = await authority.updateCanaryWeight(clusterId, 0);
         if (res && res.rowCount > 0) {
           cluster.weight = 0;
           cluster.status = CANARY_STATES.DEGRADED;
@@ -634,7 +612,7 @@ class Phase6CanaryEngine {
       revertedToWeight: 0,
       reason,
       timestamp: new Date().toISOString()
-    }).catch(() => {});
+    });
   }
 
   async persistCircuitBreaker(clusterId, patch) {
@@ -647,18 +625,8 @@ class Phase6CanaryEngine {
     if (patch.circuitBreakerOpen !== undefined) cluster.circuitBreakerOpen = Boolean(patch.circuitBreakerOpen);
     if (patch.secondaryDc !== undefined) cluster.secondaryDc = patch.secondaryDc;
     if (patch.status !== undefined) cluster.status = patch.status;
-    if (this.db && typeof this.db.query === 'function') {
-      const res = await this.db.query(
-        `UPDATE phase6_canary_configs
-            SET circuit_breaker_open = $2,
-                secondary_dc = COALESCE($3, secondary_dc),
-                status = COALESCE($4, status),
-                version = version + 1,
-                updated_at = NOW()
-          WHERE id = $1
-          RETURNING version, circuit_breaker_open, status, secondary_dc;`,
-        [clusterId, cluster.circuitBreakerOpen, patch.secondaryDc || null, patch.status || null]
-      );
+    if (authority.attached()) {
+      const res = await authority.updateCanaryCircuitBreaker(clusterId, cluster.circuitBreakerOpen, patch.secondaryDc, patch.status);
       if (!res || !res.rowCount) {
         const err = new Error('persist circuit-breaker failed');
         err.code = 'CANARY_PERSIST_FAILED';
@@ -667,6 +635,11 @@ class Phase6CanaryEngine {
       }
       cluster.version = Number(res.rows[0].version) || cluster.version;
       this.invalidateSotCache();
+    } else if (process.env.DATABASE_URL) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority not attached');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
     }
     return cluster;
   }
@@ -730,32 +703,6 @@ class Phase6CanaryEngine {
 
     if (authority.attached()) {
       await authority.verifyAndRecordGovernanceNonce(String(nonce), sigHash, expiry);
-    } else if (this.db && typeof this.db.query === 'function') {
-      try {
-        const ins = await this.db.query(
-          `INSERT INTO phase6_replay_ledger (nonce, signature_hash, expires_at)
-           VALUES ($1, $2, $3::timestamptz)
-           ON CONFLICT (nonce) DO NOTHING
-           RETURNING nonce;`,
-          [String(nonce), sigHash, expiry]
-        );
-        if (!ins || !ins.rowCount) {
-          const err = new Error('امضای امنیتی قبلاً مصرف شده است (Replay Signature Rejected)');
-          err.code = 'REPLAY_ATTACK_DETECTED';
-          throw err;
-        }
-      } catch (e) {
-        if (e && e.code === 'REPLAY_ATTACK_DETECTED') throw e;
-        if (e && (e.code === '23505' || /duplicate|unique/i.test(String(e.message)))) {
-          const err = new Error('امضای امنیتی قبلاً مصرف شده است (Replay Signature Rejected)');
-          err.code = 'REPLAY_ATTACK_DETECTED';
-          throw err;
-        }
-        const err = new Error('دفترِ replay (phase6_replay_ledger) در دسترس نیست — امضا fail-closed رد شد: ' + e.message);
-        err.code = 'GOVERNANCE_LEDGER_UNAVAILABLE';
-        err.status = 503;
-        throw err;
-      }
     } else if (process.env.DATABASE_URL) {
       const err = new Error('GOVERNANCE_LEDGER_UNAVAILABLE: PostgreSQL authority not attached');
       err.code = 'GOVERNANCE_LEDGER_UNAVAILABLE';
@@ -787,35 +734,12 @@ class Phase6CanaryEngine {
         action,
         after: details
       });
-    }
-
-    if (this.db && typeof this.db.query === 'function') {
-      const op = (details && details.operator) || {};
-      const payload = {
-        action,
-        cluster_id: details.clusterId || null,
-        old_weight: details.oldWeight != null ? Number(details.oldWeight) : null,
-        new_weight: details.newWeight != null ? Number(details.newWeight) : null,
-        reason: details.reason || null,
-        nonce: details.nonce || null
-      };
-      await this.db.query(
-        `INSERT INTO phase6_audit_events
-           (action, event_type, cluster_id, operator_id, operator_role, actor, old_weight, new_weight, reason, signature, payload)
-         VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb);`,
-        [
-          action,
-          details.clusterId || null,
-          op.id != null ? String(op.id) : '0',
-          op.role || 'system',
-          op.id != null ? String(op.id) : 'system',
-          details.oldWeight != null ? Number(details.oldWeight) : null,
-          details.newWeight != null ? Number(details.newWeight) : null,
-          details.reason || null,
-          details.signature || null,
-          JSON.stringify(payload)
-        ]
-      ).catch(() => {});
+      await authority.recordCanaryAuditEvent(action, details);
+    } else if (process.env.DATABASE_URL) {
+      const err = new Error('AUDIT_LEDGER_UNAVAILABLE: PostgreSQL authority not attached');
+      err.code = 'AUDIT_LEDGER_UNAVAILABLE';
+      err.status = 503;
+      throw err;
     }
   }
 

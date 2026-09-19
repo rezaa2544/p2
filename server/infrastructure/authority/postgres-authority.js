@@ -112,6 +112,141 @@ async function consumeNonce(nonce, signatureHash, expiresAt) {
   return true;
 }
 
+async function getCanaryState(clusterId) {
+  const db = requireDb();
+  if (!db) return null;
+  const res = await db.query(
+    'SELECT * FROM phase6_canary_configs WHERE id = $1;',
+    [String(clusterId)]
+  );
+  if (!res || !res.rows || !res.rows.length) return null;
+  return res.rows[0];
+}
+
+async function listCanaryConfigs() {
+  const db = requireDb();
+  if (!db) return [];
+  const res = await db.query('SELECT * FROM phase6_canary_configs;');
+  return (res && res.rows) || [];
+}
+
+async function upsertCanaryConfig(cluster) {
+  const db = requireDb();
+  if (!db) return null;
+  return db.query(
+    `INSERT INTO phase6_canary_configs (id, name, provinces, primary_dc, secondary_dc, capacity_tps, traffic_weight, weight, region_id, status, version)
+     VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $7, $1, $8, 1)
+     ON CONFLICT (id) DO UPDATE SET traffic_weight = $7, weight = $7, updated_at = NOW();`,
+    [cluster.id, cluster.name, JSON.stringify(cluster.provinces), cluster.primaryDc, cluster.secondaryDc, cluster.capacityTps, cluster.weight, cluster.status]
+  );
+}
+
+async function deleteCanaryConfig(clusterId) {
+  const db = requireDb();
+  if (!db) return null;
+  return db.query('DELETE FROM phase6_canary_configs WHERE id = $1 RETURNING id;', [String(clusterId)]);
+}
+
+async function updateCanaryWeight(clusterId, weight) {
+  const db = requireDb();
+  if (!db) return null;
+  return db.query(
+    `UPDATE phase6_canary_configs
+        SET traffic_weight = $2,
+            weight = $2,
+            version = phase6_canary_configs.version + 1,
+            circuit_breaker_open = CASE WHEN $2 > 0 THEN false ELSE phase6_canary_configs.circuit_breaker_open END,
+            status = CASE WHEN $2 > 0 THEN 'HEALTHY' ELSE phase6_canary_configs.status END,
+            updated_at = NOW()
+      WHERE id = $1
+      RETURNING version, traffic_weight, weight, status, circuit_breaker_open;`,
+    [String(clusterId), Number(weight)]
+  );
+}
+
+async function updateCanaryCircuitBreaker(clusterId, open, secondaryDc, status) {
+  const db = requireDb();
+  if (!db) return null;
+  return db.query(
+    `UPDATE phase6_canary_configs
+        SET circuit_breaker_open = $2,
+            secondary_dc = COALESCE($3, secondary_dc),
+            status = COALESCE($4, status),
+            version = version + 1,
+            updated_at = NOW()
+      WHERE id = $1
+      RETURNING version, circuit_breaker_open, status, secondary_dc;`,
+    [String(clusterId), Boolean(open), secondaryDc || null, status || null]
+  );
+}
+
+async function recordCanaryAuditEvent(action, details) {
+  const db = requireDb();
+  if (!db) return null;
+  const op = (details && details.operator) || {};
+  const payload = {
+    action,
+    cluster_id: details.clusterId || null,
+    old_weight: details.oldWeight != null ? Number(details.oldWeight) : null,
+    new_weight: details.newWeight != null ? Number(details.newWeight) : null,
+    reason: details.reason || null,
+    nonce: details.nonce || null
+  };
+  return db.query(
+    `INSERT INTO phase6_audit_events
+       (action, event_type, cluster_id, operator_id, operator_role, actor, old_weight, new_weight, reason, signature, payload)
+     VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb);`,
+    [
+      action,
+      details.clusterId || null,
+      op.id != null ? String(op.id) : '0',
+      op.role || 'system',
+      op.id != null ? String(op.id) : 'system',
+      details.oldWeight != null ? Number(details.oldWeight) : null,
+      details.newWeight != null ? Number(details.newWeight) : null,
+      details.reason || null,
+      details.signature || null,
+      JSON.stringify(payload)
+    ]
+  );
+}
+
+async function verifyAndRecordGovernanceNonce(nonce, signatureHash, expiresAt) {
+  return consumeNonce(nonce, signatureHash, expiresAt);
+}
+
+async function appendSystemAudit(entry = {}) {
+  const audit = require('./audit-ledger');
+  return audit.record(entry);
+}
+
+async function assertTenantPolicy(province, school, requiredScope) {
+  const db = requireDb();
+  if (process.env.DATABASE_URL && !db) {
+    throw unavailable('AUTHORITY_UNAVAILABLE: Tenant policy authority disconnected');
+  }
+  const policy = await getTenantPolicy(province, school);
+  if (!policy) {
+    if (process.env.DATABASE_URL) {
+      const err = new Error('TENANT_BOUNDARY_VIOLATION: No matching tenant policy row in authority SSoT');
+      err.code = 'TENANT_BOUNDARY_VIOLATION';
+      err.status = 403;
+      throw err;
+    }
+    return true;
+  }
+  if (policy && policy.allowed_scope) {
+    const scope = typeof policy.allowed_scope === 'string' ? JSON.parse(policy.allowed_scope) : policy.allowed_scope;
+    if (scope.deny === true) {
+      const err = new Error('TENANT_BOUNDARY_VIOLATION: Tenant policy explicitly denies access');
+      err.code = 'TENANT_BOUNDARY_VIOLATION';
+      err.status = 403;
+      throw err;
+    }
+  }
+  return policy;
+}
+
 module.exports = {
   attach,
   attached,
@@ -122,5 +257,15 @@ module.exports = {
   listState,
   getTenantPolicy,
   consumeNonce,
+  getCanaryState,
+  listCanaryConfigs,
+  upsertCanaryConfig,
+  deleteCanaryConfig,
+  updateCanaryWeight,
+  updateCanaryCircuitBreaker,
+  recordCanaryAuditEvent,
+  verifyAndRecordGovernanceNonce,
+  appendSystemAudit,
+  assertTenantPolicy,
   unavailable
 };
