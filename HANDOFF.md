@@ -3436,6 +3436,16 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
   ۵. **به‌روزرسانی و رفع انحرافات مستندات P3 (`B-5 / B-6`):** درج هدر SHA جاری و ایجاد اسناد مکمل `docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md` و `docs/NATIONAL_SCALE_FUTURE_UPGRADES_ADDENDUM.md`.
 - **وضعیت:** آماده برای ارزیابی مجدد (Re-Audit) توسط Chat5.
 
+## Phase 7.6-R.7.3 — Canary Live Test Repair & Node 22 Policy Enforcement — ✅ (2026-09-20)
+
+- **طبق اسکیل‌ها:** طبق `evidence-integrity-and-commit-accounting` (حذف تمام الگوهای fake-green و ثبت خروجی‌های تست منفی) و `qa-testing` (قرارداد صریح تست‌های زنده زمان اجرا).
+- **اقدامات انجام‌شده:**
+  ۱. **اصلاح و سخت‌گیری تست زمان اجرای زندهٔ قناری (`tests/canary-atomic-postgres-live-runtime.js`):** حذف کامل الگوی fake-green (`process.exit(0)` یا خروجی کاذب `PASS` زمان قطع بودن دیتابیس یا فقدان درایور). تست صریحاً الزام به درایور `pg` و اتصال زنده به دیتابیس پستگرس دارد؛ در صورت عدم دسترسی به دیتابیس یا شکست ترنزکشن با کد `1` خارج می‌شود.
+  ۲. **ارزیابی تست منفی (Negative Test Execution):** اجرای تست با آدرس نامعتبر دیتابیس منجر به خروجی صریح `❌ FAIL: PostgreSQL database is unreachable` و خروج غیرصفر (`EXIT CODE: 1`) گردید.
+  ۳. **اعمال سخت‌گیرانهٔ سیاست Node 22 در `tests/run.js`:** به‌روزرسانی تابع `assertNode22()` جهت خروج غیرصفر در صورت اجرا روی Node کمتر از ۲۲.
+- **وضعیت:** تمام اصلاحات روی `origin/main` پوش گردید و گزارش جهت ممیزی مستقل ارسال شد.
+
+
 
 
 ## فاز ۸ — ممیزی ورودی زیروتراست مستقل (Phase 8 Entry Audit) — ✅ READY (2026-09-20)
