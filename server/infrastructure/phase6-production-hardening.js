@@ -168,6 +168,15 @@ async function assertTenantBoundary(actor, targetSchoolId, targetProvinceCode) {
       throw err;
     }
     if (authority.attached()) {
+      if (typeof authority.getTenantPolicy === 'function') {
+        const policy = await authority.getTenantPolicy(target);
+        if (policy && policy.deny) {
+          const err = new Error('TENANT_BOUNDARY_VIOLATION: target province access is denied by policy');
+          err.code = 'TENANT_BOUNDARY_VIOLATION';
+          err.status = 403;
+          throw err;
+        }
+      }
       await authority.assertTenantPolicy(target, targetSchoolId, 'actor_province');
     }
   }

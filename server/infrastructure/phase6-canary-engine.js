@@ -720,7 +720,11 @@ class Phase6CanaryEngine {
     const sigHash = gov.signatureHash(signature);
 
     if (authority.attached()) {
-      await authority.verifyAndRecordGovernanceNonce(String(nonce), sigHash, expiry);
+      if (typeof authority.consumeNonce === 'function') {
+        await authority.consumeNonce(String(nonce), sigHash, expiry);
+      } else {
+        await authority.verifyAndRecordGovernanceNonce(String(nonce), sigHash, expiry);
+      }
     } else if (process.env.DATABASE_URL) {
       const err = new Error('GOVERNANCE_LEDGER_UNAVAILABLE: PostgreSQL authority not attached');
       err.code = 'GOVERNANCE_LEDGER_UNAVAILABLE';
