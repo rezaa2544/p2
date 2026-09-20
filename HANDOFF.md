@@ -3466,3 +3466,20 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 **باقی‌مانده:** R1→Phase 8.3 (C2)، R6→Phase 8.2 (B4)، enforce-WAF→Phase 8.5، اجرای GitHub Actions پس از push باید در فاز بعدی معاینه شود. گزارش کامل: `docs/PHASE_8.1_REMEDIATION_AUDIT_REPORT.md`.
 
 **حکم نهایی:** **PHASE 8.1 STATUS: Architecture: PASS, Security: PASS, Evidence: PASS, CI Enforcement: PASS, Phase 8.2 Eligibility: VERIFIED**
+
+## بازطراحی کامل نقشه راه — Master Execution Schedule (فاز ۱ تا فاز ۱۵) — ✅ (2026-09-20)
+
+**سند جدید:** `docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md` (۸۴۸ سطر) — **مرجع ترتیب و زمان‌بندی کل پروژه**. `docs/ROADMAP.md` مرجع «چیستی/الزامات مهندسی» باقی ماند (بخش‌های ۳۴/۳۵/۳۶/۳۷ آن دست‌نخورده).
+
+**روش (زیروتراست):** هیچ ادعای گزارشی پذیرفته نشد. Timeline از `git log --reverse` بازسازی و هر ردیف با SHA واقعی لنگر شد (۲۰/۲۰ با `git cat-file` تأیید).
+
+**تصحیح‌های حقیقت:**
+- **فاز ۶ («cutover ملی ۱۰۰٪» `2a02e416`/`002f87c4`) و فاز ۵ گام‌های ۰۸–۱۲ (`43446dff`) = FAILED/REJECTED** طبق حکم Red Team `046dafd4` (قناری به HTTP وصل نبود، وزن ترافیک در RAM، متریک NOC هاردکد، ADR-012 یک بولی). زنجیرهٔ ترمیم (`a890c921`→`ac117f0f`→`269161f6`→`6e1b5adb`) جداگانه ثبت شد.
+- **یافتهٔ جدید F-EI-01:** هشت موتور `server/analytics/*` (semantic، student-timeline، assessment، attendance، intervention، school-health، parent-360، teacher-evidence) **صفر ارجاع سروری** دارند — همان الگوی dead-code که فاز ۶ به‌خاطرش رد شد ⇒ **Phase 9.0 Wiring Gate** اجباری و SERIAL پیش از کل فاز ۹.
+- **یافتهٔ جدید F-CI-01:** باتری‌های CI فاز ۸.۱ هرگز واقعاً اجرا نشده‌اند (RISK-O-007) ⇒ CI Enforcement = «پیکربندی‌شده، نه اجراشده» تا معاینهٔ اولین ران (Sprint 1).
+
+**ساختار سند:** Historical Timeline (۱.۱–۱.۷) · Current State · Findings Register (R1–R25 + F-EI-01/F-CI-01، هرکدام FIXED/PARTIALLY_FIXED/OPEN/DEFERRED + فاز مقصد) · Dependency Graph · NPF-T (۲۶ ردیف زیرساختی cross-link) · برنامهٔ فاز ۸.۲→۱۵ · نگاشت W21 و W22 و R-01..R-07 · Research-only (RS-1..RS-7) · Gate Model G0–G10 + ماتریس گیت×فاز · DoD هفت‌ستونی · Sprint Plan (Seq 01–67، **۱۴۰ Sprint**، آینده همه با برچسب `PLANNING ESTIMATE`) · Parallelization Matrix · Risk Register (۱۲ ریسک، ۱ BLOCKER).
+
+**اصلاح ترتیب بر پایهٔ شواهد:** W21-05/07 → فاز ۸.۲؛ W21-06 → فاز ۸.۴؛ Phase 9.0 پیش از 9.1؛ Wallet اول در فاز ۱۲؛ Federation اول در فاز ۱۳؛ OLTP/OLAP اول در فاز ۱۵.
+
+**کامیت:** DOC_COMMIT `8de13dba` (۴ فایل سند، +۹۰۹/−۲، صفر فایل اجرایی) روی `81a34ef8`. پوش‌شده و از کلون تازهٔ ریموت verify شد.
