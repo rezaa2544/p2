@@ -64,19 +64,16 @@ PY
 export URL
 apply_up() {
   local url="$1"
-  local f
-  for f in $(ls "$ROOT/migrations"/[0-9][0-9][0-9]_*.sql | grep -v '\.down\.sql$' | sort); do
-    psql "$url" -v ON_ERROR_STOP=1 -q -f "$f" >/dev/null
-  done
+  DATABASE_URL="$url" $NODE "$ROOT/tools/migrate-ledger.js" up >/dev/null
 }
 apply_down() {
   local url="$1"
-  local f
-  for f in $(ls "$ROOT/migrations"/[0-9][0-9][0-9]_*.down.sql | sort -r); do
-    psql "$url" -v ON_ERROR_STOP=1 -q -f "$f" >/dev/null
-  done
+  DATABASE_URL="$url" $NODE "$ROOT/tools/migrate-ledger.js" down-all >/dev/null
 }
-if apply_up "$URL"; then chk T1 "UP 001→019" 1; else chk T1 "UP 001→019" 0 "psql failed"; fi
+if apply_up "$URL"; then chk T1 "UP 001→020" 1; else chk T1 "UP 001→020" 0 "migrate-ledger up failed"; fi
+
+SM="$(psql "$URL" -tA -c "SELECT COUNT(*) FROM schema_migrations;")"
+chk T1 "schema_migrations ledger active (>=20 rows)" "$([ "${SM:-0}" -ge 20 ] && echo 1 || echo 0)" "rows=$SM"
 
 REL="$(psql "$URL" -tA -c "SELECT relkind FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname='canary_state';")"
 chk T1 "canary_state is VIEW (relkind=v)" "$([ "$REL" = "v" ] && echo 1 || echo 0)" "relkind=$REL"

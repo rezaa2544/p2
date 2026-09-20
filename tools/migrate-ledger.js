@@ -8,6 +8,7 @@
  * - Idempotency: Already-applied migrations are skipped; checksum verified
  * - Out-of-order / skipped migration detection
  * - Failed migration rolls back cleanly and is NOT recorded in ledger
+ * - Replaces raw shell psql loops as the authoritative migration runner
  */
 'use strict';
 
@@ -20,6 +21,15 @@ const MIGRATIONS_DIR = path.join(ROOT_DIR, 'migrations');
 
 function computeChecksum(content) {
   return crypto.createHash('sha256').update(content, 'utf8').digest('hex');
+}
+
+function prepareMigrationSql(sql) {
+  // Strip outer BEGIN; and COMMIT; statements so the migration script and
+  // the schema_migrations ledger row are executed within the runner's single atomic transaction.
+  let cleaned = sql;
+  cleaned = cleaned.replace(/^(\s*(--[^\n]*\n|\/\*[\s\S]*?\*\/|\s)*)BEGIN\s*;/i, '$1');
+  cleaned = cleaned.replace(/COMMIT\s*;(\s*(--[^\n]*\n|\/\*[\s\S]*?\*\/|\s)*)$/i, '$1');
+  return cleaned;
 }
 
 async function ensureLedgerTable(client) {
@@ -121,7 +131,7 @@ async function migrateUp(client, options = {}) {
     // Execute migration atomically with ledger entry
     try {
       await client.query('BEGIN');
-      await client.query(file.content);
+      await client.query(prepareMigrationSql(file.content));
       await client.query(`
         INSERT INTO schema_migrations (version, name, applied_at, checksum)
         VALUES ($1, $2, NOW(), $3);
@@ -173,7 +183,7 @@ async function migrateDown(client, targetVersion = null) {
 
   try {
     await client.query('BEGIN');
-    await client.query(downContent);
+    await client.query(prepareMigrationSql(downContent));
     await client.query('DELETE FROM schema_migrations WHERE version = $1;', [latest.version]);
     await client.query('COMMIT');
 
@@ -185,6 +195,20 @@ async function migrateDown(client, targetVersion = null) {
     failErr.cause = err;
     throw failErr;
   }
+}
+
+/**
+ * Rolls back all applied migrations in reverse order until the ledger is empty.
+ */
+async function migrateAllDown(client) {
+  await ensureLedgerTable(client);
+  const results = [];
+  while (true) {
+    const rolled = await migrateDown(client);
+    if (!rolled) break;
+    results.push(rolled);
+  }
+  return results;
 }
 
 async function getStatus(client) {
@@ -202,12 +226,52 @@ async function getStatus(client) {
   }));
 }
 
+if (require.main === module) {
+  const { Client } = require('pg');
+  const pgUrl = process.env.DATABASE_URL || process.env.PGURL;
+  if (!pgUrl) {
+    console.error('FATAL: DATABASE_URL or PGURL environment variable is required');
+    process.exit(1);
+  }
+  const client = new Client({ connectionString: pgUrl });
+  const command = process.argv[2] || 'up';
+
+  (async () => {
+    await client.connect();
+    try {
+      if (command === 'up') {
+        const res = await migrateUp(client);
+        console.log(`[LEDGER] Applied ${res.length} migration(s).`);
+      } else if (command === 'down') {
+        const res = await migrateDown(client, process.argv[3] || null);
+        console.log(`[LEDGER] Rolled back migration:`, res);
+      } else if (command === 'down-all') {
+        const res = await migrateAllDown(client);
+        console.log(`[LEDGER] Rolled back total ${res.length} migration(s).`);
+      } else if (command === 'status') {
+        const st = await getStatus(client);
+        console.table(st);
+      } else {
+        console.error(`Unknown command: ${command}`);
+        process.exit(1);
+      }
+    } finally {
+      await client.end();
+    }
+  })().catch(err => {
+    console.error(`[LEDGER FATAL] Migration failed:`, err);
+    process.exit(1);
+  });
+}
+
 module.exports = {
   computeChecksum,
+  prepareMigrationSql,
   ensureLedgerTable,
   getAppliedMigrations,
   discoverMigrationFiles,
   migrateUp,
   migrateDown,
+  migrateAllDown,
   getStatus
 };

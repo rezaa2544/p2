@@ -6,6 +6,10 @@
  * 2. DB unreachable / connection failure -> throws AUTHORITY_QUERY_FAILED
  * 3. Query failure / DB execution error -> throws AUTHORITY_QUERY_FAILED
  * 4. Missing tenant policy -> throws TENANT_BOUNDARY_VIOLATION
+ * 5. Consumer bypass prevention:
+ *    - All consumers fail closed when DATABASE_URL is unset
+ *    - In production (NODE_ENV=production or PAYESH_ENV=production), memory mode cannot be enabled
+ *    - Explicit opt-in dev memory mode works ONLY in non-production without DATABASE_URL
  *
  * No silent fallback to RAM. No empty results masquerading as DB availability.
  */
@@ -13,6 +17,11 @@
 
 const assert = require('assert');
 const postgresAuthority = require('../server/infrastructure/authority/postgres-authority');
+const opsKv = require('../server/infrastructure/ops-kv');
+const regionControl = require('../server/infrastructure/national-region-control-plane');
+const trafficFabric = require('../server/infrastructure/national-traffic-fabric');
+const capacityEnforcement = require('../server/infrastructure/national-capacity-enforcement');
+const productionHardening = require('../server/infrastructure/phase6-production-hardening');
 
 let pass = 0;
 let fail = 0;
@@ -178,6 +187,68 @@ async function testTenantBoundaryFailure() {
   postgresAuthority.attach(null);
 }
 
+async function testConsumerBypassPrevention() {
+  console.log('\n--- Test 5: Consumer Guard Bypass Prevention (No DATABASE_URL bypass) ---');
+  postgresAuthority.attach(null);
+  opsKv.attach(null);
+  delete process.env.DATABASE_URL;
+  delete process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY;
+  delete process.env.NODE_ENV;
+  delete process.env.PAYESH_ENV;
+
+  // 1. opsKv.get must fail closed when unattached and DATABASE_URL is unset
+  await assert.rejects(async () => {
+    await opsKv.get('any_key');
+  }, (err) => err.code === 'OPS_KV_UNAVAILABLE');
+  chk('opsKv.get() throws OPS_KV_UNAVAILABLE when unattached and DATABASE_URL unset', true);
+
+  // 2. regionControl must fail closed when DATABASE_URL is unset
+  assert.throws(() => {
+    regionControl.getNationalRegionRegistry();
+  }, (err) => err.code === 'AUTHORITY_UNAVAILABLE');
+  chk('regionControl.getNationalRegionRegistry() throws AUTHORITY_UNAVAILABLE when DATABASE_URL unset', true);
+
+  // 3. trafficFabric must fail closed when DATABASE_URL is unset
+  assert.throws(() => {
+    trafficFabric.getNationalTrafficFabricTopology();
+  }, (err) => err.code === 'OPS_KV_UNAVAILABLE');
+  chk('trafficFabric.getNationalTrafficFabricTopology() throws OPS_KV_UNAVAILABLE when DATABASE_URL unset', true);
+
+  // 4. capacityEnforcement must fail closed when DATABASE_URL is unset
+  assert.throws(() => {
+    capacityEnforcement.getCapacityReservations();
+  }, (err) => err.code === 'AUTHORITY_UNAVAILABLE');
+  chk('capacityEnforcement.getCapacityReservations() throws AUTHORITY_UNAVAILABLE when DATABASE_URL unset', true);
+
+  // 5. phase6-production-hardening tenant boundary must fail closed when unattached
+  const testActor = { id: 10, role: 'school_admin', province_code: '07', school_id: 101 };
+  await assert.rejects(async () => {
+    await productionHardening.assertTenantBoundary(testActor, 101, '07');
+  }, (err) => err.code === 'AUTHORITY_UNAVAILABLE');
+  chk('assertTenantBoundary() throws AUTHORITY_UNAVAILABLE when DATABASE_URL unset and unattached', true);
+
+  // 6. Production Mode Rejection of Dev Memory Flag
+  console.log('\n--- Test 6: Production Mode Disallows Dev Memory Bypass ---');
+  process.env.NODE_ENV = 'production';
+  process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY = '1'; // Attempt bypass in production
+
+  chk('isExplicitDevOptIn() returns false in production despite opt-in flag', postgresAuthority.isExplicitDevOptIn() === false);
+
+  assert.throws(() => {
+    postgresAuthority.assertAuthorityAttached();
+  }, (err) => err.code === 'AUTHORITY_UNAVAILABLE');
+  chk('assertAuthorityAttached() rejects in production despite dev memory flag', true);
+
+  assert.throws(() => {
+    regionControl.getNationalRegionRegistry();
+  }, (err) => err.code === 'AUTHORITY_UNAVAILABLE');
+  chk('regionControl rejects in production despite dev memory flag', true);
+
+  // Clean up
+  delete process.env.NODE_ENV;
+  delete process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY;
+}
+
 async function main() {
   console.log('════════════════════════════════════════════════════════════');
   console.log('  R2 postgres-authority.js Hard Fail-Closed Negative Suite  ');
@@ -187,6 +258,7 @@ async function main() {
   await testConnectionFailure();
   await testQueryFailure();
   await testTenantBoundaryFailure();
+  await testConsumerBypassPrevention();
 
   console.log('\n────────────────────────────────────────────────────────────');
   console.log(`R2 Negative Suite Result: ${pass} PASS / ${fail} FAIL`);

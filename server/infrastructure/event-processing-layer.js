@@ -74,12 +74,19 @@ async function seenIdempotency(key) {
   return false;
 }
 
+function isExplicitDevMemoryMode() {
+  if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) {
+    return false;
+  }
+  return process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY === '1';
+}
+
 async function rememberIdempotency(key) {
   if (!key) return;
   processedIdempotencyKeys.add(key);
   if (!authority.attached()) {
-    if (process.env.DATABASE_URL) {
-      const err = new Error('AUTHORITY_UNAVAILABLE');
+    if (!isExplicitDevMemoryMode()) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
       err.code = 'AUTHORITY_UNAVAILABLE';
       err.status = 503;
       throw err;

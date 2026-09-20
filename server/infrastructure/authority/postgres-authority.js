@@ -28,6 +28,28 @@ function requireDb() {
   throw unavailable();
 }
 
+/**
+ * Determines whether explicit in-memory development mode is active.
+ * Strict rules:
+ * - NEVER allowed in production (NODE_ENV=production or PAYESH_ENV=production)
+ * - NEVER allowed when DATABASE_URL is set
+ * - Requires explicit opt-in: PAYESH_ALLOW_DEV_MEMORY_AUTHORITY=1
+ * In all other cases (including default unset environment), system MUST fail closed.
+ */
+function isExplicitDevOptIn() {
+  const isProd = process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production';
+  if (isProd) return false;
+  if (process.env.DATABASE_URL) return false;
+  return process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY === '1';
+}
+
+function assertAuthorityAttached(msg) {
+  if (isExplicitDevOptIn()) return;
+  if (!attached()) {
+    throw unavailable(msg || 'AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
+  }
+}
+
 async function query(sql, params) {
   const db = requireDb();
   try {
@@ -307,5 +329,7 @@ module.exports = {
   verifyAndRecordGovernanceNonce,
   appendSystemAudit,
   assertTenantPolicy,
-  unavailable
+  unavailable,
+  isExplicitDevOptIn,
+  assertAuthorityAttached
 };

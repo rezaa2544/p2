@@ -233,6 +233,58 @@ async function run() {
 
   delete process.env.DATABASE_URL;
 
+  // Step 6: Strict Fail-Closed Even When DATABASE_URL is completely UNSET (No bypass!)
+  console.log('\n--- Step 6: Strict Fail-Closed With DATABASE_URL Unset ---');
+  delete process.env.DATABASE_URL;
+  delete process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY;
+
+  assert.throws(() => {
+    regionControl.getNationalRegionRegistry();
+  }, (err) => err.code === 'AUTHORITY_UNAVAILABLE');
+  chk('getNationalRegionRegistry() throws AUTHORITY_UNAVAILABLE when DATABASE_URL is unset', true);
+
+  assert.throws(() => {
+    trafficFabric.getNationalTrafficFabricTopology();
+  }, (err) => err.code === 'OPS_KV_UNAVAILABLE');
+  chk('getNationalTrafficFabricTopology() throws OPS_KV_UNAVAILABLE when DATABASE_URL is unset', true);
+
+  assert.throws(() => {
+    capacityEnforcement.getCapacityReservations();
+  }, (err) => err.code === 'AUTHORITY_UNAVAILABLE');
+  chk('getCapacityReservations() throws AUTHORITY_UNAVAILABLE when DATABASE_URL is unset', true);
+
+  // Step 7: Authoritative Write-First (DB failure leaves RAM cache un-mutated)
+  console.log('\n--- Step 7: Write-Path Atomicity (No RAM Mutation On DB Failure) ---');
+  const failingDriver = {
+    query: async () => {
+      const err = new Error('Simulated DB disk failure');
+      err.code = 'DISK_FULL';
+      throw err;
+    }
+  };
+  postgresAuthority.attach(failingDriver);
+  opsKv.attach(failingDriver);
+
+  // Attempt region update with failing DB
+  await assert.rejects(async () => {
+    await regionControl.updateNationalRegionState('ir-tehran-1', 'MAINTENANCE', {
+      approved: true, automated_decision: false, automated_execution: false, requires_human_approval: true, operator: { id: 1, role: 'superadmin' }
+    });
+  }, (err) => err.code === 'AUTHORITY_QUERY_FAILED' || err.code === 'AUTHORITY_UNAVAILABLE');
+  chk('updateNationalRegionState() rejects when PostgreSQL write fails', true);
+
+  // Attempt traffic weight update with failing DB
+  await assert.rejects(async () => {
+    await trafficFabric.updateNationalTrafficWeight('ir-tehran-1', 50, {
+      approved: true, automated_decision: false, automated_execution: false, requires_human_approval: true, operator: { id: 1, role: 'superadmin' }
+    });
+  }, (err) => err.code === 'OPS_KV_UNAVAILABLE' || err.code === 'OPS_KV_PERSIST_FAILED' || err.code === 'OPS_KV_QUERY_FAILED');
+  chk('updateNationalTrafficWeight() rejects when PostgreSQL write fails', true);
+
+  // Restore null attach
+  postgresAuthority.attach(null);
+  opsKv.attach(null);
+
   console.log('\n────────────────────────────────────────────────────────────');
   console.log(`R1 Suite Result: ${pass} PASS / ${fail} FAIL`);
   console.log('────────────────────────────────────────────────────────────\n');

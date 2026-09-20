@@ -43,10 +43,24 @@ const NATIONAL_LIMITS = Object.freeze({
 });
 
 // Capacity reservation tracking store (backed by PostgreSQL in production)
+/**
+ * Non-authoritative local cache for capacity reservations.
+ * CONTRACT: PostgreSQL table 'authority_state' (kind: 'reservation') is the sole SSoT.
+ * This Map is strictly a read-through cache. In production and by default,
+ * all reads and writes fail closed (AUTHORITY_UNAVAILABLE) if PostgreSQL authority is unattached.
+ */
 const activeReservations = new Map();
 
+function isExplicitDevMemoryMode() {
+  if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) {
+    return false;
+  }
+  return process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY === '1';
+}
+
 function assertAuthorityAttachedIfRequired() {
-  if (process.env.DATABASE_URL && !authority.attached()) {
+  if (isExplicitDevMemoryMode()) return;
+  if (!authority.attached()) {
     const err = new Error('AUTHORITY_UNAVAILABLE: National capacity enforcement requires live PostgreSQL authority');
     err.code = 'AUTHORITY_UNAVAILABLE';
     err.status = 503;
@@ -57,7 +71,7 @@ function assertAuthorityAttachedIfRequired() {
 async function persistReservation(row) {
   if (!row || !row.reservation_id) return;
   if (!authority.attached()) {
-    if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+    if (!isExplicitDevMemoryMode()) {
       const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
       err.code = 'AUTHORITY_UNAVAILABLE';
       err.status = 503;
@@ -71,7 +85,7 @@ async function persistReservation(row) {
 
 async function refreshReservationsFromSoT() {
   if (!authority.attached()) {
-    if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+    if (!isExplicitDevMemoryMode()) {
       const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
       err.code = 'AUTHORITY_UNAVAILABLE';
       err.status = 503;
@@ -289,17 +303,19 @@ function createCapacityReservation(reservationPayload, approvalPayload) {
     status: 'ACTIVE'
   };
 
-  activeReservations.set(reservationId, reservation);
-
   let persistPromise;
   if (authority.attached()) {
-    persistPromise = persistReservation(reservation).then(() => Object.freeze({ ...reservation }));
-  } else if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+    persistPromise = persistReservation(reservation).then(() => {
+      activeReservations.set(reservationId, reservation);
+      return Object.freeze({ ...reservation });
+    });
+  } else if (!isExplicitDevMemoryMode()) {
     const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
     err.code = 'AUTHORITY_UNAVAILABLE';
     err.status = 503;
     throw err;
   } else {
+    activeReservations.set(reservationId, reservation);
     persistPromise = Promise.resolve(Object.freeze({ ...reservation }));
   }
 
@@ -328,26 +344,31 @@ function releaseCapacityReservation(reservationId, operatorPayload) {
   }
 
   const res = activeReservations.get(reservationId);
-  res.status = 'RELEASED';
-  res.released_at = new Date().toISOString();
-  res.released_by = String(operatorPayload.operator_id).trim();
-
-  activeReservations.set(reservationId, res);
+  const candidate = {
+    ...res,
+    status: 'RELEASED',
+    released_at: new Date().toISOString(),
+    released_by: String(operatorPayload.operator_id).trim()
+  };
 
   let persistPromise;
   if (authority.attached()) {
-    persistPromise = persistReservation(res).then(() => Object.freeze({ ...res }));
-  } else if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+    persistPromise = persistReservation(candidate).then(() => {
+      activeReservations.set(reservationId, candidate);
+      return Object.freeze({ ...candidate });
+    });
+  } else if (!isExplicitDevMemoryMode()) {
     const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
     err.code = 'AUTHORITY_UNAVAILABLE';
     err.status = 503;
     throw err;
   } else {
-    persistPromise = Promise.resolve(Object.freeze({ ...res }));
+    activeReservations.set(reservationId, candidate);
+    persistPromise = Promise.resolve(Object.freeze({ ...candidate }));
   }
 
-  const p = persistPromise.then(() => Object.freeze({ ...res }));
-  Object.assign(p, Object.freeze({ ...res }));
+  const p = persistPromise.then(() => Object.freeze({ ...candidate }));
+  Object.assign(p, Object.freeze({ ...candidate }));
   return p;
 }
 
