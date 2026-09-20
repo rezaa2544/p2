@@ -3561,3 +3561,22 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 - **تفکیک R7 (ثبت رسمی):** مسیر OTP/login = ناوردای امنیتی fail-CLOSED (`server/auth.js:259,315` → 503)؛ backpressure مسیر sync = سیاست availability و advisory (`server/sync.js:674-682`). این دو نباید با ضمانت‌های authority در R1/R2 مخلوط شوند.
 - **قیود تحویل S2:** بند ۸ سند (CS-1..CS-11) فهرست regressionهای ممنوع را تعیین می‌کند؛ بند ۱۲ اقلام غیرقابل‌تغییر و بند ۱۳ اثبات‌های الزامی چت ۱ را مشخص می‌کند.
 - **محدودهٔ کاری (عدم تداخل):** بدون تکرار تست‌های چت ۱، بدون ممیزی عملکرد (چت ۲)، بدون Red-Team مربوط به S3/S4 (چت ۳). طبقه‌بندی `MEASURED` برای اعداد ظرفیتی انحصاراً به گزارش چت ۲ واگذار شد.
+
+---
+
+## ۲۰۲۶-۰۹-۲۱ — چت ۴: ممیزی تطبیق با حقیقت مخزن پس از تحویل S2
+
+- **نوع کامیت:** DOC_COMMIT خالص — صفر تغییر کد، صفر پیاده‌سازی، صفر اجرای restore، صفر تست بار.
+- **HEAD مبنا:** `6762d84b3c25f317ead7f2c3b95c5aa0b94e2951` · شاخه `main` · ۲۲۳۶ کامیت · درخت کاری تمیز · ahead 0 / behind 0.
+- **artifact:** `docs/PHASE_8.2_S2_GROUND_TRUTH_RECONCILIATION_AUDIT.md` (بخش‌های A–H).
+- **حکم:** `PARTIAL — S2 DELIVERED, EVIDENCE INCOMPLETE`. گیت خروج فاز ۸.۲ باز نشد.
+- **تحویل S2 چت ۱ (`6762d84b`) تأیید واقعی شد:** `docs/R6_R7_DECISIONS.md` و `docs/SLO.md` هر دو موجودند؛ دو متریک غایب (`payesh_audit_write_failures_total` در `server/metrics.js:482` + `server/audit.js:578,589` و `payesh_authority_unavailable_total` در `server/metrics.js:483` + `postgres-authority.js:22,65`) واقعاً در مسیر شکست منتشر می‌شوند؛ دو آلارم متناظر در `infra/observability/alerts.yml` افزوده شد. یافته‌های G-10/G-11 پیش‌ممیزی **بسته شدند**.
+- **اجرای زنده در این نشست (Type A evidence):** `observability-s2-metrics` ۴/۰ · `r1-eliminate-ram-authorities` ۴۹ PASS · `r2-postgres-authority-fail-closed` ۳۲ PASS · `schema-migrations-ledger` ۸ PASS · همه exit 0. هیچ رگرسیونی رخ نداده و هیچ‌یک از قیود CS-1..CS-11 نقض نشده است.
+- **مغایرت اصلی (D-1.1، P1):** سند R6 برچسب `MEASURED` را روی رفتار قطعی Redis گذاشته (R6-A1/A3/A5) در حالی که اجرای واقعی `tests/session-revocation.js` نتیجهٔ **۱۶ PASS / ۰ FAIL** می‌دهد و دو تست توزیع‌شدهٔ `D-a`/`D-b` — تنها تست‌های پوشانندهٔ آن سناریو — **SKIP** می‌شوند (redis-server در محیط نیست). عدد «۱۱/۱۱» مندرج در سند با واقعیت اجرا هم‌خوان نیست. همچنین `tests/phase2-redis-fail-closed.js` که سند آن را «BLOCKER 5 PASS» خوانده، در اجرا **exit 1** می‌دهد (رفتار درست fail-closed، اما PASS نیست).
+- **G-08/G-09 حل نشد اما صادقانه ثبت شد:** چت ۱ راهکار PG-backed security version را در `docs/R6_R7_DECISIONS.md:78` با برچسب `TARGET/POLICY — NOT IMPLEMENTED` به فاز ۸.۴ موکول کرد. تعارض فعال: S4 (مانور restore) در فاز ۸.۲ است ⇒ ریسک R-3 ثبت شد.
+- **R7 فقط DOCUMENTED ONLY است:** `git show 6762d84b -- server/sync.js server/auth.js` خالی است؛ کد تغییر نکرد و تفکیک fail-closed/advisory صرفاً توصیف شد.
+- **یافتهٔ جدید D-6 (P1):** اکنون چهار فایل قواعد آلارم موازی وجود دارد (`infra/observability/alert-rules.yml` ۱۱ آلارم، `infra/observability/alerts.yml` ۲۶ آلارم، `monitoring/alert-rules.yml` ۱۱ آلارم، `monitoring/alert-rules.yaml`) و **هیچ‌کدام برچسب `owner`/`team` ندارند**. مشخص نیست کدام در تولید بارگذاری می‌شود ⇒ ریسک آلارم خاموش.
+- **یافتهٔ محیطی B-1:** درخت کاری در آغاز نشست dirty بود، اما تنها تغییر حذف بیت اجرایی از `tools/migrate-ledger.js` و `tools/production-verifier.sh` بود (artifact بازیابی snapshot، صفر تغییر محتوا). با `git checkout --` بازگردانده شد؛ اگر پوش می‌شد یک رگرسیون واقعی CI بود.
+- **وضعیت P0ها:** هر ۷ یافتهٔ P0 پیش‌ممیزی همچنان باز است (G-01..G-07). S2 به آن‌ها دست نزد چون متعلق به S3/S4 هستند. S3 و S4 هنوز شروع نشده‌اند.
+- **تخمین پیشرفت:** کل پروژه ≈۶۲٪ (اطمینان ۶۰٪)؛ پیشرفت قابل‌اثبات با E3/E4 ≈۴۵٪ (اطمینان ۷۰٪). فاز ۸.۲-S2 ≈۷۰٪، S3 صفر، S4 صفر.
+- **skill به‌کاررفته:** `.claude/skills/evidence-integrity-and-commit-accounting` (انضباط E0–E4 و تفکیک mock/runtime).
