@@ -10,13 +10,13 @@ const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const SRC = path.join(ROOT, 'src');
 
-/* P1-GAP-02 (Chat 2 remediation): engines >=22 in package.json is now canonical.
-   Node >= 20 is required for runner execution; Node >= 22.0.0 is enforced in CI. */
-(function assertNodeEngine() {
+/* P1-GAP-02 (Chat 2 remediation): engines >=22 in package.json is canonical.
+   Node >= 22.0.0 is enforced across all test runners and CI jobs. */
+(function assertNode22() {
   const major = Number(String(process.versions.node).split('.')[0]);
-  if (!(major >= 20)) {
-    console.error('✋ Node >= 22.0.0 canonical engine required (minimum >=20 for runner). Current: ' + process.versions.node);
-    console.error('   اجرای تست روی Node کهنه = skip پنهان = سبزِ کاذب — عمداً قرمز می‌شویم.');
+  if (!(major >= 22)) {
+    console.error('✋ Node >= 22.0.0 canonical engine required. Current: ' + process.versions.node);
+    console.error('   اجرای تست روی Node < 22 = skip پنهان = سبزِ کاذب — عمداً قرمز می‌شویم.');
     process.exit(1);
   }
 })();
