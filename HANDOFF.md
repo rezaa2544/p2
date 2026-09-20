@@ -3425,6 +3425,18 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
      - `DOC_COMMIT_SHA`: کامیت مستندات جاری در `HANDOFF.md`
 - **حکم نهایی:** 🛡️ **PHASE 7.6-R.7.2 RED TEAM READY — VERIFIED**.
 
+## Chat5 P2 Blocker Remediation — ✅ (2026-09-20)
+
+- **طبق اسکیل‌ها:** طبق `evidence-integrity-and-commit-accounting` (بازسازی تایم‌لاین گیت، حسابداری صریح کامیت‌ها و اثبات تغییرات کد) و `security-review-payesh` (تثبیت مرزهای لایه Authority و ایزولاسیون تننت‌ها).
+- **اقدامات انجام‌شده:**
+  ۱. **ارتقا و انطباق سرویس Redis به نسخه ۸ (`BLOCKER B-1`):** تغییر تصویر داکر سرویس Redis در `.github/workflows/node.js.yml` به `redis:8` جهت تطابق کامل با معماری پایه.
+  ۲. **تثبیت Engine زمان اجرای Node به نسخه ۲۲ (`BLOCKER B-2`):** به‌روزرسانی `package.json` به `"engines": { "node": ">=22.0.0" }` و هماهنگ‌سازی `tests/run.js` و تمام مستندات CI.
+  ۳. **محاسبهٔ دقیق مسیر بحرانی و جدول ۱۴۰ اسپرینت (`BLOCKER B-3`):** حذف ادعای تاییدنشدهٔ ۹۵–۱۰۵ اسپرینت. ثبت مسیر بحرانی بر پایهٔ ۱۴۰ اسپرینتِ متوالی (`140 sprints serial execution baseline`) و نگهداری اجرای موازی صرفاً به عنوان یک قابلیّت برنامه‌ریزی‌شده در `docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md`.
+  ۴. **اصلاح وابستگی‌های گیتِ سیم‌کشی Phase 9.0 (`BLOCKER B-4`):** ثبت صریح پیش‌نیازهای گیت Phase 9.0 به خروجی‌های واقعی فاز ۸.۵ (`28, G3, G4, G9`) در جدول و نمودار وابستگی‌ها، جهت تضمین عدم شروع Phase 9.0 قبل از اتمام کامل Phase 8.5.
+  ۵. **به‌روزرسانی و رفع انحرافات مستندات P3 (`B-5 / B-6`):** درج هدر SHA جاری و ایجاد اسناد مکمل `docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md` و `docs/NATIONAL_SCALE_FUTURE_UPGRADES_ADDENDUM.md`.
+- **وضعیت:** آماده برای ارزیابی مجدد (Re-Audit) توسط Chat5.
+
+
 
 ## فاز ۸ — ممیزی ورودی زیروتراست مستقل (Phase 8 Entry Audit) — ✅ READY (2026-09-20)
 
