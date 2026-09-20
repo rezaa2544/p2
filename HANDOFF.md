@@ -3544,3 +3544,4 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
      - افزودن گیت‌های رگرسیون R1، R2، R21 و C-7 به `.github/workflows/node.js.yml`.
      - رفع دو خطای گیت T7 در `production-verifier.sh`: اتصال مصرف نانس قناری به `authority.consumeNonce` در `server/infrastructure/phase6-canary-engine.js` و خواندن سیاست تننت با `authority.getTenantPolicy` در `server/infrastructure/phase6-production-hardening.js`.
      - اجرای موفقیت‌آمیز کلیه آزمون‌های محلی: `unified-production-verifier.js` (۱۴/۱۴)، `migration-sequence.js` (۱۹/۱۹)، `migrate-pg-constraints.js` (۱۴/۱۴)، `canary-atomic-mock-harness.js` (۴/۴)، `server17.js` (۷۰/۷۰)، `build:check`، `check-authz.js` (۳۹۴/۳۹۴)، `secret-scan.js` (۱۲/۱۲) و `tools/verify-agent-skills.js` (۷/۷).
+

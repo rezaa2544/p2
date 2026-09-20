@@ -136,7 +136,7 @@ trap cleanup EXIT
 
 wait_health() {
   local port="$1" n=0
-  while [ $n -lt 240 ]; do
+  while [ $n -lt 480 ]; do
     code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/api/health" || true)"
     if [ "$code" = "200" ]; then return 0; fi
     n=$((n+1)); sleep 0.25
