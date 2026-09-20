@@ -76,13 +76,20 @@ function makeSelfSigned(cn, notBefore, notAfter){
   serial[0] &= 0x7f; // keep the integer positive
   const nm = name(cn);
   /* v3: version [0] EXPLICIT INTEGER 2, plus basicConstraints CA:TRUE
-     (OID 2.5.29.19 = 55 1d 13) so the cert works as its own trust anchor. */
+     (OID 2.5.29.19 = 55 1d 13) so the cert works as its own trust anchor,
+     and Subject Alternative Name (OID 2.5.29.17 = 55 1d 11) for RFC 2818 / 6125. */
   const version = tlv(0xa0, derInt(Buffer.from([2])));
   const bcExt = seq(Buffer.concat([
     tlv(0x06, Buffer.from([0x55, 0x1d, 0x13])),
     tlv(0x04, seq(Buffer.from([0x01, 0x01, 0xff])))
   ]));
-  const extensions = tlv(0xa3, seq(bcExt));
+  const dnsName = (n) => Buffer.concat([Buffer.from([0x82, n.length]), Buffer.from(n, 'ascii')]);
+  const ipAddr = (ip) => Buffer.concat([Buffer.from([0x87, 4]), Buffer.from(ip.split('.').map(Number))]);
+  const sanExt = seq(Buffer.concat([
+    tlv(0x06, Buffer.from([0x55, 0x1d, 0x11])),
+    tlv(0x04, seq(Buffer.concat([dnsName(cn), dnsName('localhost'), ipAddr('127.0.0.1')])))
+  ]));
+  const extensions = tlv(0xa3, seq(Buffer.concat([bcExt, sanExt])));
   const tbs = seq(Buffer.concat([
     version,
     derInt(serial),
