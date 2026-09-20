@@ -26,8 +26,8 @@ function computeChecksum(content) {
 
 function prepareMigrationSql(sql) {
   let cleaned = sql;
-  cleaned = cleaned.replace(/^(\s*(--[^\n]*\n|\/\*[\s\S]*?\*\/|\s)*)BEGIN\s*;/i, '$1');
-  cleaned = cleaned.replace(/COMMIT\s*;(\s*(--[^\n]*\n|\/\*[\s\S]*?\*\/|\s)*)$/i, '$1');
+  cleaned = cleaned.replace(/^(\s*(--[^\n]*\n|\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/|\s)*)BEGIN\s*;/i, '$1');
+  cleaned = cleaned.replace(/COMMIT\s*;(\s*(--[^\n]*\n|\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/|\s)*)$/i, '$1');
   return cleaned;
 }
 
