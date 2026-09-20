@@ -70,11 +70,19 @@ async function run() {
 
     // 2. Query applied migrations
     console.log('\n--- Step 2: Query Applied Migrations Ledger ---');
-    const ledgerRes = await client.query(`
+    let ledgerRes = await client.query(`
       SELECT version, name, checksum, applied_at
         FROM schema_migrations
        ORDER BY version;
     `);
+    if (ledgerRes.rows.length === 0) {
+      await migrateUp(client, { pgUrl });
+      ledgerRes = await client.query(`
+        SELECT version, name, checksum, applied_at
+          FROM schema_migrations
+         ORDER BY version;
+      `);
+    }
     const rows = ledgerRes.rows;
     chk('Applied migrations count >= 20', rows.length >= 20, `count=${rows.length}`);
 
@@ -104,7 +112,7 @@ async function run() {
       await client.query('UPDATE schema_migrations SET checksum = $1 WHERE version = $2;', [fakeChecksum, firstRow.version]);
       let threw = false;
       try {
-        await migrateUp(client);
+        await migrateUp(client, { pgUrl });
       } catch (err) {
         threw = true;
         chk('migrateUp() throws MIGRATION_CHECKSUM_MISMATCH on tampered checksum',
@@ -151,7 +159,7 @@ async function run() {
         );
         let outOfOrderCaught = false;
         try {
-          await migrateUp(client);
+          await migrateUp(client, { pgUrl });
         } catch (err) {
           outOfOrderCaught = err.code === 'MIGRATION_OUT_OF_ORDER' || err.code === 'MIGRATION_CHECKSUM_MISMATCH';
           chk('Out-of-order gap detection throws MIGRATION_OUT_OF_ORDER', outOfOrderCaught, err.message);
@@ -193,7 +201,7 @@ async function run() {
     chk('Failed migration produces NO ledger row in schema_migrations', failedRowCount === 0);
 
     // Final clean check
-    await migrateUp(client);
+    await migrateUp(client, { pgUrl });
     console.log('\n────────────────────────────────────────────────────────────');
     console.log(`R21 Live PG Suite Result: ${pass} PASS / ${fail} FAIL`);
     console.log('────────────────────────────────────────────────────────────\n');

@@ -95,6 +95,7 @@ jobs:
         node tests/wave3-query.js
         node tests/wave3-query3.js
         node tests/wave3-parity.js
+        node tools/migrate-ledger.js up
         node tests/schema-migrations-live-pg.test.js
 
     # Phase-2 remediation (BLOCKER 5 + 8): Redis is live in CI now
