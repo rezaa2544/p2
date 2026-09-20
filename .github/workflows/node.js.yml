@@ -46,7 +46,7 @@ jobs:
       # Phase-2 remediation (BLOCKER 8): Redis is a first-class dependency too —
       # otp-redis and the fail-closed probe run against this real service.
       redis:
-        image: redis:7
+        image: redis:8
         ports:
           - 6379:6379
         options: >-

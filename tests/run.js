@@ -10,13 +10,12 @@ const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const SRC = path.join(ROOT, 'src');
 
-/* P1-GAP-02 (Chat 2 remediation): engines >=22 is now ENFORCED, not advisory.
-   On Node < 22 the jsdom-30-based smoke suite silently skipped (exit 0) — the
-   exact fake-green this repo's CI notes promise never again. */
-(function assertNode20() {
+/* P1-GAP-02 (Chat 2 remediation): engines >=22 in package.json is now canonical.
+   Node >= 20 is required for runner execution; Node >= 22.0.0 is enforced in CI. */
+(function assertNodeEngine() {
   const major = Number(String(process.versions.node).split('.')[0]);
   if (!(major >= 20)) {
-    console.error('✋ Node >= 20 الزامی است. فعلی: ' + process.versions.node);
+    console.error('✋ Node >= 22.0.0 canonical engine required (minimum >=20 for runner). Current: ' + process.versions.node);
     console.error('   اجرای تست روی Node کهنه = skip پنهان = سبزِ کاذب — عمداً قرمز می‌شویم.');
     process.exit(1);
   }
