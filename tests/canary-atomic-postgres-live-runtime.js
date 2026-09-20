@@ -78,8 +78,8 @@ async function run() {
     `);
 
     await client.query(`
-      INSERT INTO phase6_canary_configs (id, name, traffic_weight, weight, status, version)
-      VALUES ('ir-tehran-1', 'Tehran Cluster', 10, 10, 'HEALTHY', 1)
+      INSERT INTO phase6_canary_configs (id, name, primary_dc, secondary_dc, traffic_weight, weight, status, version)
+      VALUES ('ir-tehran-1', 'Tehran Cluster', 'dc-1', 'dc-2', 10, 10, 'HEALTHY', 1)
       ON CONFLICT (id) DO UPDATE SET traffic_weight = 10, weight = 10;
     `);
 
