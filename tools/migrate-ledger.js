@@ -102,10 +102,21 @@ async function migrateUp(client, options = {}) {
   const pgUrl = options.pgUrl || process.env.DATABASE_URL || process.env.PGURL;
   const usePsql = !!(pgUrl && canRunPsql());
 
+  let firstUnappliedIndex = -1;
   let lastAppliedIndex = -1;
   for (let i = 0; i < allFiles.length; i++) {
     const file = allFiles[i];
     if (appliedMap.has(file.version)) {
+      if (firstUnappliedIndex !== -1) {
+        const skippedFile = allFiles[firstUnappliedIndex];
+        const err = new Error(
+          `MIGRATION_OUT_OF_ORDER: Migration ${file.name} is recorded as applied, but preceding migration ${skippedFile.name} was not applied`
+        );
+        err.code = 'MIGRATION_OUT_OF_ORDER';
+        err.expectedVersion = skippedFile.version;
+        err.actualVersion = file.version;
+        throw err;
+      }
       const recorded = appliedMap.get(file.version);
       if (recorded.checksum !== file.checksum) {
         const err = new Error(
@@ -116,27 +127,16 @@ async function migrateUp(client, options = {}) {
         throw err;
       }
       lastAppliedIndex = i;
+    } else {
+      if (firstUnappliedIndex === -1) {
+        firstUnappliedIndex = i;
+      }
     }
   }
 
-  for (let i = 0; i < allFiles.length; i++) {
+  const startIndex = firstUnappliedIndex === -1 ? allFiles.length : firstUnappliedIndex;
+  for (let i = startIndex; i < allFiles.length; i++) {
     const file = allFiles[i];
-
-    if (appliedMap.has(file.version)) {
-      continue; // Already applied cleanly
-    }
-
-    // Check for skipped / out-of-order migration
-    if (i > lastAppliedIndex + 1) {
-      const skippedFile = allFiles[lastAppliedIndex + 1];
-      const err = new Error(
-        `MIGRATION_OUT_OF_ORDER: Cannot apply migration ${file.name} because preceding migration ${skippedFile.name} has not been applied`
-      );
-      err.code = 'MIGRATION_OUT_OF_ORDER';
-      err.expectedVersion = skippedFile.version;
-      err.actualVersion = file.version;
-      throw err;
-    }
 
     // Execute migration with atomic ledger entry
     try {
