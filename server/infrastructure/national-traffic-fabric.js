@@ -56,7 +56,7 @@ function initTrafficWeights() {
       name: reg.name,
       allocated_weight: 100, // پیش‌فرض ۱۰۰٪ برای مناطق فعال در تولید
       routing_state: 'ROUTING_ACTIVE',
-      interconnect_latency_ms: 35,
+      interconnect_latency_ms: null, // مقدار رصدشده زنده (بدون جعل و مقدار هاردکد)
       canary_stage: 'STAGE_FULL_PRODUCTION',
       last_weight_change: new Date().toISOString()
     });
@@ -67,6 +67,15 @@ initTrafficWeights();
 
 const OPS_KEY = 'national_traffic_weights';
 
+function assertOpsKvAttachedIfRequired() {
+  if (process.env.DATABASE_URL && !opsKv.attached()) {
+    const err = new Error('OPS_KV_UNAVAILABLE: National traffic fabric requires attached PostgreSQL ops-kv');
+    err.code = 'OPS_KV_UNAVAILABLE';
+    err.status = 503;
+    throw err;
+  }
+}
+
 function dumpWeights() {
   const dump = {};
   for (const [id, row] of _nationalTrafficWeights.entries()) dump[id] = row;
@@ -74,7 +83,15 @@ function dumpWeights() {
 }
 
 async function refreshTrafficFromSoT() {
-  if (!opsKv.attached()) return false;
+  if (!opsKv.attached()) {
+    if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+      const err = new Error('OPS_KV_UNAVAILABLE: PostgreSQL SoT is not attached');
+      err.code = 'OPS_KV_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return false;
+  }
   const saved = await opsKv.get(OPS_KEY);
   if (!saved || typeof saved !== 'object') return false;
   for (const [id, row] of Object.entries(saved)) {
@@ -85,7 +102,7 @@ async function refreshTrafficFromSoT() {
 
 async function persistTrafficToSoT() {
   if (!opsKv.attached()) {
-    if (process.env.DATABASE_URL) {
+    if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
       const err = new Error('OPS_KV_UNAVAILABLE: PostgreSQL SoT is not attached');
       err.code = 'OPS_KV_UNAVAILABLE';
       err.status = 503;
@@ -102,6 +119,7 @@ async function persistTrafficToSoT() {
  * @returns {Object}
  */
 function getNationalTrafficFabricTopology() {
+  assertOpsKvAttachedIfRequired();
   const regions = getNationalRegionRegistry();
   const topology = {};
 
@@ -155,7 +173,8 @@ function getNationalTrafficFabricTopology() {
  * @param {Object} approvalContext
  * @returns {Object}
  */
-async function updateNationalTrafficWeight(regionId, targetWeight, approvalContext = {}) {
+function updateNationalTrafficWeight(regionId, targetWeight, approvalContext = {}) {
+  assertOpsKvAttachedIfRequired();
   const current = _nationalTrafficWeights.get(regionId);
   if (!current) {
     const err = new Error(`کلاستر "${regionId}" در فابریک ترافیک ملی یافت نشد`);
@@ -248,9 +267,23 @@ async function updateNationalTrafficWeight(regionId, targetWeight, approvalConte
   };
 
   _nationalTrafficWeights.set(regionId, updated);
-  await persistTrafficToSoT();
   assertNoZeroRanking(updated);
-  return deepFreeze(updated);
+
+  let persistPromise;
+  if (opsKv.attached()) {
+    persistPromise = persistTrafficToSoT().then(() => deepFreeze(updated));
+  } else if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+    const err = new Error('OPS_KV_UNAVAILABLE: PostgreSQL SoT is not attached');
+    err.code = 'OPS_KV_UNAVAILABLE';
+    err.status = 503;
+    throw err;
+  } else {
+    persistPromise = Promise.resolve(deepFreeze(updated));
+  }
+
+  const p = persistPromise.then(() => deepFreeze(updated));
+  Object.assign(p, deepFreeze(updated));
+  return p;
 }
 
 module.exports = {

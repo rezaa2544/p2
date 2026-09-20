@@ -573,14 +573,14 @@ function createAudit(opts = {}) {
           if (!fs.existsSync(pdir)) fs.mkdirSync(pdir, { recursive: true, mode: 0o700 });
           fs.appendFileSync(auditFile, line, { encoding: 'utf8', mode: 0o600 });
         } catch (err) {
-          // خطای دایرکتوری در لاگر مسیر را مسدود نمی‌کند
+          console.error('[AUDIT_FS_ERROR] Failed to write audit log:', err && err.message ? err.message : String(err));
         }
         eventCounter++;
       }
 
       return entry;
     } catch (e) {
-      // ثبت ممیزی هرگز نباید مسیر اصلی برنامه را متوقف کند
+      console.error('[AUDIT_RECORD_ERROR] Failed to record audit event:', e && e.message ? e.message : String(e));
       return null;
     }
   }

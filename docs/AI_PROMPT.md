@@ -166,13 +166,16 @@
     ❌ نادرست: «تابع smsWalletOf در ماژول forms-sms هست که wallet را create می‌کند.»
 
 ۱۴. ⭐ **قانون استفاده از اسکیل‌ها (Mandatory Skill Usage Rule):**
-    قبل از شروع هر کاری که مربوط به یکی از این حوزه‌هاست، اول فایل `SKILL.md` مربوطه در `.claude/skills/` را بخوان و **طبق روش استدلال همان اسکیل** پیش برو — نه فقط یک چک‌لیست عمومی بزن:
-    - **کار امنیتی** (بازبینی auth، دسترسی، ورودی کاربر، رمزنگاری) → `.claude/skills/security-review/SKILL.md`
-    - **تصمیم معماری** (مدل داده، مقیاس‌پذیری، ساختار سرویس) → `.claude/skills/architect/SKILL.md`
-    - **بازبینی کد** (قبل از هر commit مهم) → `.claude/skills/code-review/SKILL.md`
-    - **بررسی یا ادعای بهبود سرعت/کارایی** → `.claude/skills/performance-audit/SKILL.md`
-    - **نوشتن یا بررسی تست** → `.claude/skills/testing-strategy/SKILL.md`
-    - **صحت شواهد و ممیزی کامیت‌ها** (گزارش‌های تست، ممیزی، تفکیک mock/runtime، گزارش SHA) → `.claude/skills/evidence-integrity-and-commit-accounting/SKILL.md`
+    قبل از شروع هر کاری که مربوط به یکی از این حوزه‌هاست، اول فایل `SKILL.md` مربوطه در پوشهٔ متمرکز `skills/` را بخوان و **طبق روش استدلال همان اسکیل** پیش برو — نه فقط یک چک‌لیست عمومی بزن (همهٔ اسکیل‌ها در یک پوشه متمرکز `skills/` قرار دارند):
+    - **کار امنیتی** (بازبینی auth، دسترسی، ورودی کاربر، رمزنگاری) → `skills/security-review/SKILL.md` (همراه با `skills/security-expert/SKILL.md` و `skills/security-review-payesh/SKILL.md`)
+    - **تصمیم معماری** (مدل داده، مقیاس‌پذیری، ساختار سرویس) → `skills/architect/SKILL.md` (همراه با `skills/software-architect/SKILL.md` و `skills/database-architect/SKILL.md`)
+    - **بازبینی کد** (قبل از هر commit مهم) → `skills/code-review/SKILL.md` (همراه با `skills/payesh-standards/SKILL.md`)
+    - **بررسی یا ادعای بهبود سرعت/کارایی** → `skills/performance-audit/SKILL.md` (همراه با `skills/scalability-performance/SKILL.md`)
+    - **نوشتن یا بررسی تست** → `skills/testing-strategy/SKILL.md` (همراه با `skills/qa-testing/SKILL.md`)
+    - **صحت شواهد و ممیزی کامیت‌ها** (گزارش‌های تست، ممیزی، تفکیک mock/runtime، گزارش SHA) → `skills/evidence-integrity-and-commit-accounting/SKILL.md`
+    - **زیرساخت، استقرار و شبکه** → `skills/devops-cloud/SKILL.md` و `skills/network-infrastructure/SKILL.md`
+    - **روش‌شناسی ایجنت‌ها** → `skills/agent-watchdog/SKILL.md`، `skills/systematic-debugging/SKILL.md`، `skills/verification-before-completion/SKILL.md`، `skills/interview-me/SKILL.md`، `skills/plan-arbiter/SKILL.md`، `skills/frontend-design/SKILL.md` و `skills/read-the-damn-docs/SKILL.md`
+    - **منشور مرجع مهارت‌ها** → `skills/SKILLS_MASTER.md` و `skills/README.md`
 
     **قوانین اجرایی:**
     ۱) **اجرای خودکار:** این کار باید **خودکار** انجام شود، بدون اینکه در هر پرامپت صریحاً گفته شود — دقیقاً مثل بقیهٔ قوانین ثابتی که تا الان در `docs/AI_PROMPT.md` رعایت می‌کنی.
@@ -5203,16 +5206,19 @@ bellNowBar(new Date('2026-09-05T08:00:00'));   // ✅ قطعی
 
 ### اسکیل‌های مرجع: کدام برای کدام کار
 
-`.claude/skills/` هفت راهنمای تخصصی دارد. جدول انطباق:
+پوشهٔ متمرکز و واحد `skills/` در ریشهٔ مخزن دارای ۲۲ راهنمای تخصصی است. همهٔ مهارت‌ها در این پوشه تجمیع شده‌اند:
 
-| نوع کاری که می‌کنید | اسکیل مفید |
-|---|---|
-| افزودن کنش، صفحه، یا دسترسی تازه | `security-expert` |
-| نوشتن آزمون یا تست جهش | `qa-testing` |
-| تصمیم دربارهٔ ساختار ماژول‌ها | `software-architect` |
-| بنچمارک و بهینه‌سازی | `scalability-performance` |
-| (روز اتصال سرور) اسکیمای پایگاه‌داده | `database-architect` |
-| (روز اتصال سرور) استقرار و CI | `devops-cloud` |
+| نوع کاری که می‌کنید | اسکیل اصلی و الزامی | اسکیل‌های پشتیبان در پوشه `skills/` |
+|---|---|---|
+| بازبینی امنیت، auth، دسترسی و مرزها | `skills/security-review/` | `security-expert`, `security-review-payesh` |
+| تصمیم‌گیری معماری، مدل داده و مقیاس | `skills/architect/` | `software-architect`, `database-architect` |
+| بازبینی کیفیت و صحت کد قبل از کامیت | `skills/code-review/` | `payesh-standards` |
+| ممیزی کارایی، سنجش واقعی و رفع گلوگاه | `skills/performance-audit/` | `scalability-performance` |
+| تدوین استراتژی تست و آزمون جهش | `skills/testing-strategy/` | `qa-testing` |
+| صحت شواهد، تفکیک Mock/Runtime و SHA | `skills/evidence-integrity-and-commit-accounting/` | `verification-before-completion` |
+| استقرار، زیرساخت و کانتینرسازی | `skills/devops-cloud/` | `network-infrastructure` |
+| خطایابی سیستماتیک و مهار توهم ایجنت | `skills/systematic-debugging/` | `agent-watchdog`, `plan-arbiter`, `read-the-damn-docs` |
+| استخراج نیازمندی‌ها و طراحی فرانت‌اند | `skills/interview-me/` | `frontend-design` |
 
 ⚠️ **این‌ها جای اصول شش‌گانهٔ پروژه را نمی‌گیرند.** اسکیل‌ها
 عمومی‌اند؛ اصول ما شواهد **این** پروژه را دارند (مرزهای اعتماد،

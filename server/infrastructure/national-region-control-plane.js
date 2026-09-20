@@ -183,9 +183,9 @@ function initNationalRegionStore() {
       current_metrics: {
         active_rps: 0,
         active_sessions: 0,
-        database_connections_active: 45,
+        database_connections_active: null,
         event_throughput_current: 0,
-        replication_lag_ms: 45
+        replication_lag_ms: null
       },
       last_state_change: new Date().toISOString()
     });
@@ -194,25 +194,71 @@ function initNationalRegionStore() {
 
 initNationalRegionStore();
 
+function assertAuthorityAttachedIfRequired() {
+  if (process.env.DATABASE_URL && !authority.attached()) {
+    const err = new Error('AUTHORITY_UNAVAILABLE: National region control plane requires live PostgreSQL authority');
+    err.code = 'AUTHORITY_UNAVAILABLE';
+    err.status = 503;
+    throw err;
+  }
+}
+
 async function persistRegion(row) {
   if (!row || !row.region_id) return;
   if (!authority.attached()) {
-    if (process.env.DATABASE_URL) {
-      const err = new Error('AUTHORITY_UNAVAILABLE');
+    if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
       err.code = 'AUTHORITY_UNAVAILABLE';
       err.status = 503;
       throw err;
     }
     return;
   }
-  await authority.putState('region', row.region_id, row, row.last_operator && row.last_operator.id);
+  const version = await authority.putState('region', row.region_id, row, row.last_operator && row.last_operator.id);
+  return version;
 }
 
 async function refreshRegionsFromSoT() {
-  if (!authority.attached()) return false;
+  if (!authority.attached()) {
+    if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return false;
+  }
   const rows = await authority.listState('region');
-  for (const r of rows) {
-    if (r && r.id && r.payload) _nationalRegionStore.set(r.id, r.payload);
+  if (rows && rows.length > 0) {
+    for (const r of rows) {
+      if (r && r.id && r.payload) {
+        _nationalRegionStore.set(r.id, Object.assign({}, r.payload, { version: r.version, source: 'PG_AUTHORITY' }));
+      }
+    }
+  } else {
+    // Seed PostgreSQL authority with canonical initial state
+    for (const reg of CANONICAL_NATIONAL_REGIONS) {
+      const initialPayload = {
+        region_id: reg.region_id,
+        cluster_id: reg.cluster_id,
+        name: reg.name,
+        province_scope: [...reg.province_scope],
+        primary_dc: reg.primary_dc,
+        secondary_dc: reg.secondary_dc,
+        health_status: reg.initial_state,
+        capacity_profile: { ...reg.capacity_profile },
+        current_metrics: {
+          active_rps: 0,
+          active_sessions: 0,
+          database_connections_active: null,
+          event_throughput_current: 0,
+          replication_lag_ms: null
+        },
+        last_state_change: new Date().toISOString()
+      };
+      const v = await authority.putState('region', reg.region_id, initialPayload, 'system-init');
+      _nationalRegionStore.set(reg.region_id, Object.assign({}, initialPayload, { version: v, source: 'PG_AUTHORITY' }));
+    }
   }
   return true;
 }
@@ -223,6 +269,7 @@ async function refreshRegionsFromSoT() {
  * @returns {Array<Object>}
  */
 function getNationalRegionRegistry() {
+  assertAuthorityAttachedIfRequired();
   const result = Array.from(_nationalRegionStore.values());
   assertNoZeroRanking(result);
   return deepFreeze(result);
@@ -235,6 +282,7 @@ function getNationalRegionRegistry() {
  * @returns {Object|null}
  */
 function getNationalRegionById(regionId) {
+  assertAuthorityAttachedIfRequired();
   if (!regionId) return null;
   const clean = String(regionId).trim().toLowerCase();
   const found = _nationalRegionStore.get(clean);
@@ -251,7 +299,8 @@ function getNationalRegionById(regionId) {
  * @param {Object} changeApproval
  * @returns {Object}
  */
-async function updateNationalRegionState(regionId, newState, changeApproval = {}) {
+function updateNationalRegionState(regionId, newState, changeApproval = {}) {
+  assertAuthorityAttachedIfRequired();
   const region = _nationalRegionStore.get(regionId);
   if (!region) {
     const err = new Error(`کلاستر منطقه "${regionId}" یافت نشد`);
@@ -301,10 +350,25 @@ async function updateNationalRegionState(regionId, newState, changeApproval = {}
   };
 
   _nationalRegionStore.set(regionId, updated);
-  await persistRegion(updated);
   assertNoZeroRanking(updated);
-  return deepFreeze(updated);
+
+  let persistPromise;
+  if (authority.attached()) {
+    persistPromise = persistRegion(updated).then(() => deepFreeze(updated));
+  } else if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+    const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
+    err.code = 'AUTHORITY_UNAVAILABLE';
+    err.status = 503;
+    throw err;
+  } else {
+    persistPromise = Promise.resolve(deepFreeze(updated));
+  }
+
+  const p = persistPromise.then(() => deepFreeze(updated));
+  Object.assign(p, deepFreeze(updated));
+  return p;
 }
+
 
 /**
  * خلاصه سلامت کنترل‌پلین کلاسترهای ملی

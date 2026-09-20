@@ -45,25 +45,43 @@ const NATIONAL_LIMITS = Object.freeze({
 // Capacity reservation tracking store (backed by PostgreSQL in production)
 const activeReservations = new Map();
 
+function assertAuthorityAttachedIfRequired() {
+  if (process.env.DATABASE_URL && !authority.attached()) {
+    const err = new Error('AUTHORITY_UNAVAILABLE: National capacity enforcement requires live PostgreSQL authority');
+    err.code = 'AUTHORITY_UNAVAILABLE';
+    err.status = 503;
+    throw err;
+  }
+}
+
 async function persistReservation(row) {
   if (!row || !row.reservation_id) return;
   if (!authority.attached()) {
-    if (process.env.DATABASE_URL) {
-      const err = new Error('AUTHORITY_UNAVAILABLE');
+    if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
       err.code = 'AUTHORITY_UNAVAILABLE';
       err.status = 503;
       throw err;
     }
     return;
   }
-  await authority.putState('reservation', row.reservation_id, row, row.operator_id);
+  const version = await authority.putState('reservation', row.reservation_id, row, row.operator_id);
+  return version;
 }
 
 async function refreshReservationsFromSoT() {
-  if (!authority.attached()) return false;
+  if (!authority.attached()) {
+    if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return false;
+  }
   const rows = await authority.listState('reservation');
   for (const r of rows) {
-    if (r && r.id && r.payload) activeReservations.set(r.id, r.payload);
+    if (r && r.id && r.payload) activeReservations.set(r.id, Object.assign({}, r.payload, { version: r.version, source: 'PG_AUTHORITY' }));
   }
   return true;
 }
@@ -209,7 +227,8 @@ function checkRegionCapacityHeadroom(regionId, currentDemand = {}) {
  * Creates and registers a Capacity Reservation.
  * Strictly requires human approval.
  */
-async function createCapacityReservation(reservationPayload, approvalPayload) {
+function createCapacityReservation(reservationPayload, approvalPayload) {
+  assertAuthorityAttachedIfRequired();
   assertDisasterRecoveryZeroRanking(reservationPayload);
   assertDisasterRecoveryZeroRanking(approvalPayload);
 
@@ -271,14 +290,29 @@ async function createCapacityReservation(reservationPayload, approvalPayload) {
   };
 
   activeReservations.set(reservationId, reservation);
-  await persistReservation(reservation);
-  return Object.freeze({ ...reservation });
+
+  let persistPromise;
+  if (authority.attached()) {
+    persistPromise = persistReservation(reservation).then(() => Object.freeze({ ...reservation }));
+  } else if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+    const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
+    err.code = 'AUTHORITY_UNAVAILABLE';
+    err.status = 503;
+    throw err;
+  } else {
+    persistPromise = Promise.resolve(Object.freeze({ ...reservation }));
+  }
+
+  const p = persistPromise.then(() => Object.freeze({ ...reservation }));
+  Object.assign(p, Object.freeze({ ...reservation }));
+  return p;
 }
 
 /**
  * Releases or terminates an active capacity reservation.
  */
-async function releaseCapacityReservation(reservationId, operatorPayload) {
+function releaseCapacityReservation(reservationId, operatorPayload) {
+  assertAuthorityAttachedIfRequired();
   assertDisasterRecoveryZeroRanking(operatorPayload);
 
   if (!activeReservations.has(reservationId)) {
@@ -299,14 +333,29 @@ async function releaseCapacityReservation(reservationId, operatorPayload) {
   res.released_by = String(operatorPayload.operator_id).trim();
 
   activeReservations.set(reservationId, res);
-  await persistReservation(res);
-  return Object.freeze({ ...res });
+
+  let persistPromise;
+  if (authority.attached()) {
+    persistPromise = persistReservation(res).then(() => Object.freeze({ ...res }));
+  } else if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+    const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
+    err.code = 'AUTHORITY_UNAVAILABLE';
+    err.status = 503;
+    throw err;
+  } else {
+    persistPromise = Promise.resolve(Object.freeze({ ...res }));
+  }
+
+  const p = persistPromise.then(() => Object.freeze({ ...res }));
+  Object.assign(p, Object.freeze({ ...res }));
+  return p;
 }
 
 /**
  * Retrieves capacity reservations with optional filtering.
  */
 function getCapacityReservations(filter = {}) {
+  assertAuthorityAttachedIfRequired();
   assertDisasterRecoveryZeroRanking(filter);
   const now = new Date();
   const list = Array.from(activeReservations.values());
@@ -329,6 +378,7 @@ function getCapacityReservations(filter = {}) {
  * Retrieves a single reservation by ID.
  */
 function getCapacityReservationById(reservationId) {
+  assertAuthorityAttachedIfRequired();
   const res = activeReservations.get(reservationId);
   if (!res) return null;
   return Object.freeze({ ...res });

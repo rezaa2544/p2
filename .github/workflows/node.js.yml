@@ -175,6 +175,13 @@ jobs:
       run: |
         node tests/migration-sequence.js
         node tests/migrate-pg-constraints.js
+        node tests/schema-migrations-ledger.test.js
+        node tests/migration-009-negative.test.js
+
+    - name: Zero-Trust Remediation — R1 & R2 authoritative fail-closed suites
+      run: |
+        node tests/r1-eliminate-ram-authorities.test.js
+        node tests/r2-postgres-authority-fail-closed.js
 
     # Boot-policy suites: previously red outside the manual battery (loose
     # ALLOW_MEMORY_FALLBACK semantics + stale expectations — Phase 8.1 R5).

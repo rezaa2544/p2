@@ -25,9 +25,9 @@ function findPgBin() {
 }
 function hasPgModule() { try { require.resolve('pg'); return true; } catch (e) { return false; } }
 if (!findPgBin() || !hasPgModule()) {
-  console.log('  ⏭️  migration-009 mutations — باینری‌هایِ PG یا ماژولِ pg در دسترس نیستند');
-  console.log('migration-009-live-mutations: 0/0 (skip)؛ سبزِ نهایی: ✅');
-  process.exit(0);
+  console.error('  ❌ FAIL: migration-009 mutations — باینری‌هایِ PG یا ماژولِ pg در دسترس نیستند');
+  console.error('migration-009-live-mutations: وابستگی مفقود = FAIL قطعی (عدم خروج با کد صفر)');
+  process.exit(1);
 }
 
 const ROOT = path.join(__dirname, '..');

@@ -30,8 +30,14 @@ function httpsWebhook(url) {
     const req = https.request(target, { method: 'POST', headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) }, timeout: 3000 }, (res) => {
       res.resume(); resolve(res.statusCode >= 200 && res.statusCode < 300);
     });
-    req.on('timeout', () => req.destroy());
-    req.on('error', () => resolve(false));
+    req.on('timeout', () => {
+      console.warn('[ABUSE_GUARD] Webhook request timed out after 3000ms');
+      req.destroy();
+    });
+    req.on('error', (err) => {
+      console.warn('[ABUSE_GUARD] Webhook dispatch error:', err && err.message ? err.message : String(err));
+      resolve(false);
+    });
     req.end(body);
   });
 }

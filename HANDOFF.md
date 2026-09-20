@@ -3505,3 +3505,42 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 **اصلاح ترتیب بر پایهٔ شواهد:** W21-05/07 → فاز ۸.۲؛ W21-06 → فاز ۸.۴؛ Phase 9.0 پیش از 9.1؛ Wallet اول در فاز ۱۲؛ Federation اول در فاز ۱۳؛ OLTP/OLAP اول در فاز ۱۵.
 
 **کامیت:** DOC_COMMIT `8de13dba` (۴ فایل سند، +۹۰۹/−۲، صفر فایل اجرایی) روی `81a34ef8`. پوش‌شده و از کلون تازهٔ ریموت verify شد.
+
+## یکپارچه‌سازی کامل مسیر اسکیل‌ها در `skills/` و پاکسازی ورک‌اسپیس — ✅ (2026-09-20)
+
+- **هدف:** تمرکز کامل تمامی ۲۲ مهارت مهندسی در پوشهٔ واحد `skills/` در ریشهٔ مخزن و حذف وابستگی به مسیر `.claude/skills/` در اسناد حاکمیتی و جریان‌های کاری، همراه با پاکسازی ورک‌اسپیس محلی بدون لمس مخزن ریموت.
+- **تغییرات اسناد:**
+  ۱. **`docs/AI_PROMPT.md`:** به‌روزرسانی بند ۱۴ (دستور نقش) و جدول تفصیلی مهارت‌ها در بخش پایانی برای ارجاع مستقیم به `skills/` (تمام ۲۲ مهارت).
+  ۲. **`docs/SESSION_START.md`:** به‌روزرسانی گام ۳ جهت چک کردن پوشهٔ متمرکز `skills/` به جای مسیر کلاود.
+- **پاکسازی بهداشتی ورک‌اسپیس محلی (Local Workspace Hygiene):**
+  - حذف فایل‌های موقت باینری، کش‌های بیلد (`.build-cache.*`)، بسته‌های پچ موقت (`*.patch`) و باندل‌های آزمایشی (`*.bundle`) در ورک‌اسپیس محلی.
+  - آزادسازی بیش از ۱۳۵ مگابایت در دایرکتوری موقت (`/tmp/arena-workspace`).
+  - عدم حذف یا دستکاری هیچ‌یک از فایل‌های ردیابی‌شده در مخزن گیت‌هاب (رعایت قاطع اصل عدم دستکاری مخزن گیت‌هاب).
+- **راستی‌آزمایی کیفیت:** اجرای موفق `npm run build:check` (بیت‌به‌بیت یکسان)، `tools/check-authz.js` (۳۹۴/۳۹۴)، `tests/secret-scan.js` (۱۲/۱۲) و `tools/verify-agent-skills.js` (۷/۷).
+
+## اجرای زیروتراست اصلاحات C-1..C-8 / R1 / R2 / R21 و بازیابی کامل نقشه راه — ✅ (2026-09-20)
+
+- **هدف:** اجرای کامل remediation بسته زیروتراست شامل حذف RAM authorities، رفتار fail-closed در authority، ثبت لجر مهاجرت‌ها، حذف fake-greenها، ارتقای مانیتورینگ تلمتری، و بازیابی سند کامل نقشه راه اجرایی بر مبنای حقیقت مهندسی.
+- **اقدامات اجرایی:**
+  ۱. **R1 — حذف مراجع حافظه‌ای (RAM Authorities):**
+     - اصلاح `server/infrastructure/national-region-control-plane.js`: حذف `_nationalRegionStore` به عنوان منبع مرجع؛ هیدراته مستقیم از دیتابیس PostgreSQL (`authority_state`) با کش محلی؛ پرتاب استثنای `AUTHORITY_UNAVAILABLE` در صورت قطع اتصال.
+     - اصلاح `server/infrastructure/national-traffic-fabric.js`: حذف `_nationalTrafficWeights` به عنوان مرجع تصمیم؛ همگام‌سازی مستقیم با `ops-kv`؛ حذف تلمتری ساختگی تأخیر NOC و اعلام صریح وضعیت واقعی.
+     - اصلاح `server/infrastructure/national-capacity-enforcement.js`: حذف `activeReservations` به عنوان مرجع تصمیم؛ اعتبارسنجی و خواندن مستقیم از `authority_state` با قفل تراکنشی.
+     - آزمون جامع رگرسیون `tests/r1-eliminate-ram-authorities.test.js`: ۲۲ آزمون پاس قطعی (شامل همگرایی چند-نمونه‌ای، بقای داده پس از ری‌استارت، و fail-closed قطعی بدون دیتابیس).
+  ۲. **R2 — رفتار شکست بسته سخت (Hard Fail-Closed) در `postgres-authority.js`:**
+     - اصلاح کلیه متدهای `requireDb`, `query`, `getState`, `listState`, `putState`, `assertTenantPolicy` و ... جهت پرتاب خطای `AUTHORITY_UNAVAILABLE` (کد 503) و `AUTHORITY_QUERY_FAILED`؛ حذف هرگونه بازگرداندن آرایه خالی یا `null` فریبنده.
+     - آزمون منفی `tests/r2-postgres-authority-fail-closed.js`: ۱۸ آزمون پاس قطعی (عدم اتصال، قطعی کانکشن، خطای SQL، نقض مرز تننت).
+  ۳. **C-4 / C-5 / C-9 — بازیابی سند کامل ۸۵۹ سطری `docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md`:**
+     - بازیابی از کامیت تاریخی `8de13dba` با تصحیح کامل پایه‌های B1 (Redis 8)، B2 (Node >= 22)، B3 (۱۴۰ اسپرینت ترتیبی) و B4 (وابستگی فاز ۹.۰ به ۲۸، G3، G4، G9) و درج SHAهای واقعی کامیت‌های ریموت.
+  ۴. **C-6 / R21 — لجر واقعی مهاجرت‌ها (`schema_migrations`):**
+     - پیاده‌سازی رانر تراکنشی `tools/migrate-ledger.js` شامل جدول `schema_migrations` با ستون‌های `version PRIMARY KEY`، `name`، `applied_at` و `checksum` (SHA-256).
+     - اعتبارسنجی جلوگیری از اعمال مجدد، تشخیص تغییر چکسام، کشف مهاجرت‌های خارج از ترتیب (out-of-order/skipped)، و رول‌بک اتمیک در صورت شکست در `tests/schema-migrations-ledger.test.js` (۸/۸ پاس).
+  ۵. **C-7 — حذف Fake-Green در آزمون مهاجرت ۰۰۹:**
+     - اصلاح `tests/migration-009-live-mutations.js`: در صورت فقدان باینری‌های Postgres یا ماژول pg، فرآیند بلافاصله با خطای صریح و کد خروج ۱ (FAIL) متوقف می‌شود و هرگز خروج ۰ یا «سبز نهایی» فریبنده صادر نمی‌کند.
+     - آزمون منفی `tests/migration-009-negative.test.js`: تأیید رفتار شکست با خروج غیرصفر در غیاب پیش‌نیازها.
+  ۶. **C-8 — دیدپذیری خطاهای تلمتری بدون تخریب منبع مرجع:**
+     - اصلاح `server/abuse-guard.js` و `server/audit.js`: جایگزینی بلوک‌های خالی `catch` با لاگ‌های خطای ساختاریافته در stderr (`[ABUSE_GUARD]`, `[AUDIT_FS_ERROR]`, `[AUDIT_RECORD_ERROR]`) جهت سیگنال‌دهی عملیاتی مشخص.
+  ۷. **C-1 & CI Battery:**
+     - افزودن گیت‌های رگرسیون R1، R2، R21 و C-7 به `.github/workflows/node.js.yml`.
+     - اجرای موفقیت‌آمیز کلیه آزمون‌های محلی: `unified-production-verifier.js` (۱۴/۱۴)، `migration-sequence.js` (۱۹/۱۹)، `migrate-pg-constraints.js` (۱۴/۱۴)، `canary-atomic-mock-harness.js` (۴/۴)، `server17.js` (۷۰/۷۰)، `build:check`، `check-authz.js` (۳۹۴/۳۹۴)، `secret-scan.js` (۱۲/۱۲) و `verify-agent-skills.js` (۷/۷).
+

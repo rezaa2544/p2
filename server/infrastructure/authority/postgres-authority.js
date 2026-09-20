@@ -1,6 +1,8 @@
 /**
- * Phase 7 — PostgreSQL is the only authority.
- * RAM Maps in control-plane modules are CACHE. Decisions go through here.
+ * Phase 7/8 — PostgreSQL is the sole authority.
+ * RAM Maps in control-plane modules are strictly NON-AUTHORITATIVE caches.
+ * All authoritative decisions go through here.
+ * Fail-Closed: If authority is unavailable or unattached, all authority paths throw AUTHORITY_UNAVAILABLE.
  */
 'use strict';
 
@@ -11,7 +13,7 @@ function attach(db) {
 }
 
 function attached() {
-  return !!_db;
+  return !!(_db && typeof _db.query === 'function');
 }
 
 function unavailable(msg) {
@@ -22,21 +24,26 @@ function unavailable(msg) {
 }
 
 function requireDb() {
-  if (_db) return _db;
-  if (process.env.DATABASE_URL) throw unavailable();
-  return null;
+  if (_db && typeof _db.query === 'function') return _db;
+  throw unavailable();
 }
 
 async function query(sql, params) {
   const db = requireDb();
-  if (!db) return { rows: [], rowCount: 0 };
-  return db.query(sql, params);
+  try {
+    return await db.query(sql, params);
+  } catch (err) {
+    if (err && (err.code === 'AUTHORITY_UNAVAILABLE' || err.code === 'REPLAY_ATTACK_DETECTED')) throw err;
+    const error = new Error('AUTHORITY_QUERY_FAILED: ' + (err && err.message ? err.message : String(err)));
+    error.code = 'AUTHORITY_QUERY_FAILED';
+    error.status = 503;
+    error.cause = err;
+    throw error;
+  }
 }
 
 async function putState(kind, id, payload, updatedBy) {
-  const db = requireDb();
-  if (!db) return null;
-  const res = await db.query(
+  const res = await query(
     `INSERT INTO authority_state (kind, id, payload, version, updated_at, updated_by)
      VALUES ($1, $2, $3::jsonb, 1, NOW(), $4)
      ON CONFLICT (kind, id) DO UPDATE
@@ -52,9 +59,7 @@ async function putState(kind, id, payload, updatedBy) {
 }
 
 async function getState(kind, id) {
-  const db = requireDb();
-  if (!db) return null;
-  const res = await db.query(
+  const res = await query(
     'SELECT payload, version FROM authority_state WHERE kind = $1 AND id = $2;',
     [String(kind), String(id)]
   );
@@ -63,9 +68,7 @@ async function getState(kind, id) {
 }
 
 async function listState(kind) {
-  const db = requireDb();
-  if (!db) return [];
-  const res = await db.query(
+  const res = await query(
     'SELECT id, payload, version FROM authority_state WHERE kind = $1;',
     [String(kind)]
   );
@@ -73,11 +76,9 @@ async function listState(kind) {
 }
 
 async function getTenantPolicy(province, school) {
-  const db = requireDb();
-  if (!db) return null;
   const p = String(province);
   const s = school != null && String(school) !== '' ? String(school) : '*';
-  const res = await db.query(
+  const res = await query(
     `SELECT province, school, allowed_scope, version
        FROM tenant_policy
       WHERE province = $1 AND (school = $2 OR school = '*')
@@ -90,14 +91,7 @@ async function getTenantPolicy(province, school) {
 }
 
 async function consumeNonce(nonce, signatureHash, expiresAt) {
-  const db = requireDb();
-  if (!db) {
-    const err = new Error('GOVERNANCE_LEDGER_UNAVAILABLE');
-    err.code = 'GOVERNANCE_LEDGER_UNAVAILABLE';
-    err.status = 503;
-    throw err;
-  }
-  const ins = await db.query(
+  const ins = await query(
     `INSERT INTO phase6_replay_ledger (nonce, signature_hash, expires_at)
      VALUES ($1, $2, $3::timestamptz)
      ON CONFLICT (nonce) DO NOTHING
@@ -107,15 +101,14 @@ async function consumeNonce(nonce, signatureHash, expiresAt) {
   if (!ins || !ins.rowCount) {
     const err = new Error('امضای امنیتی قبلاً مصرف شده است (Replay Signature Rejected)');
     err.code = 'REPLAY_ATTACK_DETECTED';
+    err.status = 403;
     throw err;
   }
   return true;
 }
 
 async function getCanaryState(clusterId) {
-  const db = requireDb();
-  if (!db) return null;
-  const res = await db.query(
+  const res = await query(
     'SELECT * FROM phase6_canary_configs WHERE id = $1;',
     [String(clusterId)]
   );
@@ -124,16 +117,12 @@ async function getCanaryState(clusterId) {
 }
 
 async function listCanaryConfigs() {
-  const db = requireDb();
-  if (!db) return [];
-  const res = await db.query('SELECT * FROM phase6_canary_configs;');
+  const res = await query('SELECT * FROM phase6_canary_configs;');
   return (res && res.rows) || [];
 }
 
 async function upsertCanaryConfig(cluster) {
-  const db = requireDb();
-  if (!db) return null;
-  return db.query(
+  return query(
     `INSERT INTO phase6_canary_configs (id, name, provinces, primary_dc, secondary_dc, capacity_tps, traffic_weight, weight, region_id, status, version)
      VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $7, $1, $8, 1)
      ON CONFLICT (id) DO UPDATE SET traffic_weight = $7, weight = $7, updated_at = NOW();`,
@@ -142,15 +131,11 @@ async function upsertCanaryConfig(cluster) {
 }
 
 async function deleteCanaryConfig(clusterId) {
-  const db = requireDb();
-  if (!db) return null;
-  return db.query('DELETE FROM phase6_canary_configs WHERE id = $1 RETURNING id;', [String(clusterId)]);
+  return query('DELETE FROM phase6_canary_configs WHERE id = $1 RETURNING id;', [String(clusterId)]);
 }
 
 async function updateCanaryWeight(clusterId, weight) {
-  const db = requireDb();
-  if (!db) return null;
-  return db.query(
+  return query(
     `UPDATE phase6_canary_configs
         SET traffic_weight = $2,
             weight = $2,
@@ -165,9 +150,7 @@ async function updateCanaryWeight(clusterId, weight) {
 }
 
 async function updateCanaryCircuitBreaker(clusterId, open, secondaryDc, status) {
-  const db = requireDb();
-  if (!db) return null;
-  return db.query(
+  return query(
     `UPDATE phase6_canary_configs
         SET circuit_breaker_open = $2,
             secondary_dc = COALESCE($3, secondary_dc),
@@ -181,8 +164,6 @@ async function updateCanaryCircuitBreaker(clusterId, open, secondaryDc, status) 
 }
 
 async function recordCanaryAuditEvent(action, details) {
-  const db = requireDb();
-  if (!db) return null;
   const op = (details && details.operator) || {};
   const payload = {
     action,
@@ -192,7 +173,7 @@ async function recordCanaryAuditEvent(action, details) {
     reason: details.reason || null,
     nonce: details.nonce || null
   };
-  return db.query(
+  return query(
     `INSERT INTO phase6_audit_events
        (action, event_type, cluster_id, operator_id, operator_role, actor, old_weight, new_weight, reason, signature, payload)
      VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb);`,
@@ -221,19 +202,12 @@ async function appendSystemAudit(entry = {}) {
 }
 
 async function assertTenantPolicy(province, school, requiredScope) {
-  const db = requireDb();
-  if (process.env.DATABASE_URL && !db) {
-    throw unavailable('AUTHORITY_UNAVAILABLE: Tenant policy authority disconnected');
-  }
   const policy = await getTenantPolicy(province, school);
   if (!policy) {
-    if (process.env.DATABASE_URL) {
-      const err = new Error('TENANT_BOUNDARY_VIOLATION: No matching tenant policy row in authority SSoT');
-      err.code = 'TENANT_BOUNDARY_VIOLATION';
-      err.status = 403;
-      throw err;
-    }
-    return true;
+    const err = new Error('TENANT_BOUNDARY_VIOLATION: No matching tenant policy row in authority SSoT');
+    err.code = 'TENANT_BOUNDARY_VIOLATION';
+    err.status = 403;
+    throw err;
   }
   if (policy && policy.allowed_scope) {
     const scope = typeof policy.allowed_scope === 'string' ? JSON.parse(policy.allowed_scope) : policy.allowed_scope;
@@ -264,8 +238,7 @@ async function assertTenantPolicy(province, school, requiredScope) {
 }
 
 async function updateCanaryWeightWithAudit(clusterId, weight, auditDetails) {
-  const db = requireDb();
-  if (!db) throw unavailable();
+  requireDb();
   const dbModule = require('../../db');
   return dbModule.transaction(async (client) => {
     const res = await client.query(

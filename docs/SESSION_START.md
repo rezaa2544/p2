@@ -6,7 +6,7 @@
 
 2. این اسناد رو بخون (نه از حافظه فرض کن): `docs/AI_PROMPT.md`، `CONTRIBUTING.md`، `docs/ARCHITECTURE_DECISIONS.md`، و ورودی‌های اخیر `HANDOFF.md`.
 
-3. فهرست `.claude/skills/` رو چک کن — شش اسکیل اصلی (security-review، architect، code-review، performance-audit، testing-strategy، evidence-integrity-and-commit-accounting) باید سرجاشون باشن.
+3. فهرست `skills/` رو چک کن — همهٔ اسکیل‌ها در پوشه متمرکز `skills/` (از جمله شش اسکیل اصلی: security-review، architect، code-review، performance-audit، testing-strategy، evidence-integrity-and-commit-accounting و سایر اسکیل‌های تخصصی) باید سرجاشون باشن.
 
 4. تست‌های موجود رو اجرا کن (`node tests/run.js` و `node tests/smoke.js`). اگه چیزی fail شد، قبل از هر کار جدید همینو گزارش بده و منتظر بمون.
 
