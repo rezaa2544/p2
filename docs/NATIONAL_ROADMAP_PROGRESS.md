@@ -1,8 +1,15 @@
 # پیگیری پیشرفت نقشه راه ملی پایش
 
-**مرجع اصلی:** `docs/ROADMAP.md` — National Scale Master Roadmap
+**مرجع برنامه و زمان‌بندی (۲۰۲۶-۰۹-۲۰ به بعد):** `docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md` — Historical Timeline + Sprint Plan + Gate Model + Dependency Graph. وضعیت Waves در همین فایل باقی می‌ماند، اما **ترتیب اجرا و مدت‌ها از سند مرجع خوانده می‌شود**.
+
+**مرجع الزامات مهندسی:** `docs/ROADMAP.md` — National Scale Master Roadmap
 
 **مکمل الزام‌آور:** `docs/NATIONAL_ROADMAP_ARCHITECTURE_ADDENDUM.md` — اجرای Waves بدون رعایت آن مجاز نیست.
+
+> **هم‌راستاسازی زیروتراست ۲۰۲۶-۰۹-۲۰:** ردیف‌های ✅ این جدول که اجرای زندهٔ
+> E3/E4 پشتشان ثبت نشده (به‌ویژه Wave 16 بازیابی، Wave 18 بار ملی، Wave 14
+> رصد) در سند مرجع به `PARTIAL` / `NOT VERIFIED` تنزل یافته‌اند. در تعارض،
+> **سند مرجع معتبر است**.
 
 **قاعده Addendum:** فقط Status کافی نیست؛ هر ردیف باید Owner، Risk، Dependency و Evidence داشته باشد.
 

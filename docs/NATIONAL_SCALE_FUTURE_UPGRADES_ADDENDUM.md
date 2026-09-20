@@ -123,3 +123,20 @@ Sharding استانی PostgreSQL به عنوان گزینه آینده بررس�
 ## نتیجه
 
 این سند به عنوان ورودی رسمی Phase 8/9 نقشه راه ثبت شد. موارد فوق قابلیت‌های آینده هستند و وضعیت فعلی Production را تغییر نمی‌دهند.
+
+---
+
+## جذب در برنامهٔ اجرایی مرجع (۲۰۲۶-۰۹-۲۰)
+
+آیتم‌های این سند در `docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md` زمان‌بندی شدند و دیگر «آینده‌ی بدون تاریخ» نیستند:
+
+| آیتم این سند | مقصد در برنامهٔ مرجع | Sprint |
+|---|---|---|
+| Phase 8.6 — Edge & Resilience Hardening | NPF-17 (WAF enforce) + Phase 14.2 (CDN) + Phase 8.4 (rate-limit/OTP) | S9–S13, S100–S101 |
+| Phase 8.7 — CQRS و تفکیک OLTP/Analytics | **Phase 15.2** (OLTP/OLAP Separation) | S114–S117 |
+| Phase 8.8 — Event Driven Processing | **NPF-05/NPF-06** (Outbox + Event Bus) | S5–S6 |
+| Phase 9 — National Deployment Architecture | NPF-22 (Multi-Region) + Phase 8.3 | S7–S8, S23–S26 |
+| Phase 9.2 — National Load & Soak Validation | **NPF-23** + RS-7 (شبیه‌ساز ۱۰M–۵۰M) | S5–S6 |
+| Sharding استانی PostgreSQL | **RESEARCH** — فقط پس از اثبات گلوگاه واقعی با بنچمارک | Decision Gate در 8.3 |
+
+قید معماری این سند («PostgreSQL همچنان Source of Truth باقی می‌ماند») در برنامهٔ مرجع به‌عنوان ناوردای NPF-01 حفظ شده است.
