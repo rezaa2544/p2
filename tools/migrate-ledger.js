@@ -129,20 +129,32 @@ async function migrateUp(client, options = {}) {
     }
 
     // Execute migration atomically with ledger entry
+    const hasInternalCommits = /CREATE\s+OR\s+REPLACE\s+PROCEDURE/i.test(file.content);
     try {
-      await client.query('BEGIN');
-      await client.query(prepareMigrationSql(file.content));
-      await client.query(`
-        INSERT INTO schema_migrations (version, name, applied_at, checksum)
-        VALUES ($1, $2, NOW(), $3);
-      `, [file.version, file.name, file.checksum]);
-      await client.query('COMMIT');
+      if (hasInternalCommits) {
+        // Migrations with stored procedures executing internal COMMITs cannot run within an outer transaction block
+        await client.query(file.content);
+        await client.query(`
+          INSERT INTO schema_migrations (version, name, applied_at, checksum)
+          VALUES ($1, $2, NOW(), $3);
+        `, [file.version, file.name, file.checksum]);
+      } else {
+        await client.query('BEGIN');
+        await client.query(prepareMigrationSql(file.content));
+        await client.query(`
+          INSERT INTO schema_migrations (version, name, applied_at, checksum)
+          VALUES ($1, $2, NOW(), $3);
+        `, [file.version, file.name, file.checksum]);
+        await client.query('COMMIT');
+      }
 
       lastAppliedIndex = i;
       appliedMap.set(file.version, { version: file.version, name: file.name, checksum: file.checksum });
       results.push({ version: file.version, name: file.name, status: 'APPLIED', checksum: file.checksum });
     } catch (err) {
-      try { await client.query('ROLLBACK'); } catch (_) {}
+      if (!hasInternalCommits) {
+        try { await client.query('ROLLBACK'); } catch (_) {}
+      }
       const failErr = new Error(`MIGRATION_EXECUTION_FAILED: Error in migration ${file.name}: ${err.message}`);
       failErr.code = 'MIGRATION_EXECUTION_FAILED';
       failErr.cause = err;
@@ -180,16 +192,24 @@ async function migrateDown(client, targetVersion = null) {
   }
 
   const downContent = fs.readFileSync(downPath, 'utf8');
+  const hasInternalCommits = /CREATE\s+OR\s+REPLACE\s+PROCEDURE/i.test(downContent);
 
   try {
-    await client.query('BEGIN');
-    await client.query(prepareMigrationSql(downContent));
-    await client.query('DELETE FROM schema_migrations WHERE version = $1;', [latest.version]);
-    await client.query('COMMIT');
+    if (hasInternalCommits) {
+      await client.query(downContent);
+      await client.query('DELETE FROM schema_migrations WHERE version = $1;', [latest.version]);
+    } else {
+      await client.query('BEGIN');
+      await client.query(prepareMigrationSql(downContent));
+      await client.query('DELETE FROM schema_migrations WHERE version = $1;', [latest.version]);
+      await client.query('COMMIT');
+    }
 
     return { version: latest.version, name: downFileName, status: 'ROLLED_BACK' };
   } catch (err) {
-    try { await client.query('ROLLBACK'); } catch (_) {}
+    if (!hasInternalCommits) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+    }
     const failErr = new Error(`MIGRATION_ROLLBACK_FAILED: Error rolling back ${downFileName}: ${err.message}`);
     failErr.code = 'MIGRATION_ROLLBACK_FAILED';
     failErr.cause = err;
