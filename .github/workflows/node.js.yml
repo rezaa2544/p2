@@ -88,6 +88,11 @@ jobs:
       run: |
         DATABASE_URL="$PGURL" node tools/migrate-ledger.js up
 
+    - name: PostgreSQL Migration Ledger verification (E3 live PG)
+      run: |
+        export DATABASE_URL="$PGURL"
+        node tests/schema-migrations-live-pg.test.js
+
     - name: Live-PG suites (fail without a database — P1-GAP-01)
       run: |
         export DATABASE_URL="$PGURL"
@@ -95,8 +100,6 @@ jobs:
         node tests/wave3-query.js
         node tests/wave3-query3.js
         node tests/wave3-parity.js
-        node tools/migrate-ledger.js up
-        node tests/schema-migrations-live-pg.test.js
 
     # Phase-2 remediation (BLOCKER 5 + 8): Redis is live in CI now
     - name: Live-Redis suite (otp-redis — fails without Redis)
@@ -176,8 +179,7 @@ jobs:
       run: |
         node tests/r1-eliminate-ram-authorities.test.js
         node tests/r2-postgres-authority-fail-closed.js
-        export DATABASE_URL="$PGURL"
-        node tests/schema-migrations-live-pg.test.js
+        node tests/schema-migrations-ledger.test.js
 
     # Boot-policy suites: previously red outside the manual battery (loose
     # ALLOW_MEMORY_FALLBACK semantics + stale expectations — Phase 8.1 R5).
