@@ -3545,3 +3545,19 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
      - رفع دو خطای گیت T7 در `production-verifier.sh`: اتصال مصرف نانس قناری به `authority.consumeNonce` در `server/infrastructure/phase6-canary-engine.js` و خواندن سیاست تننت با `authority.getTenantPolicy` در `server/infrastructure/phase6-production-hardening.js`.
      - اجرای موفقیت‌آمیز کلیه آزمون‌های محلی: `unified-production-verifier.js` (۱۴/۱۴)، `migration-sequence.js` (۱۹/۱۹)، `migrate-pg-constraints.js` (۱۴/۱۴)، `canary-atomic-mock-harness.js` (۴/۴)، `server17.js` (۷۰/۷۰)، `build:check`، `check-authz.js` (۳۹۴/۳۹۴)، `secret-scan.js` (۱۲/۱۲) و `tools/verify-agent-skills.js` (۷/۷).
 
+
+---
+
+## ۲۰۲۶-۰۹-۲۰ — چت ۴ (معمار ارشد مستقل): پیش‌ممیزی حاکمیت معماری فاز ۸.۲
+
+- **نوع کامیت:** DOC_COMMIT خالص — صفر تغییر کد، صفر تغییر پیکربندی، صفر اجرای restore، صفر تست بار.
+- **HEAD مبنا:** `bc68b2b539bf5b59aa0108c0959af767ea57ce35` (تأییدشده با `git fetch`؛ بدون drift نسبت به مبنای اعلامی).
+- **artifact:** `docs/PHASE_8.2_ARCHITECTURE_GOVERNANCE_PRE_AUDIT.md` — قرارداد پذیرش معماری **از پیش تعیین‌شده** برای زمانی که چت ۱ تحویل S2 را ارائه می‌دهد (تا معیار پذیرش در لحظهٔ تحویل ساخته نشود).
+- **حکم نهایی:** `PARTIAL — ARCHITECTURAL REMEDIATION REQUIRED`.
+- **مهم‌ترین کشف این دور (G-08/G-09):** حالت ابطال نشست (`sessver:<userId>`) **تنها در Redis و بدون TTL** نگهداری می‌شود و هیچ پشتوانهٔ PostgreSQL ندارد (صفر جدول در `migrations/`). این فراتر از یک fail-open تاکتیکی است و با ناوردای «Redis = cache-only» ناسازگار است؛ هم‌زمان S2 (R6) و S4 (بازیابی Redis) را تحت تأثیر قرار می‌دهد. پیامد عملی: پس از restart یا restore شدن Redis، `getSessionVersion` مقدار ۰ برمی‌گرداند و توکن‌های ابطال‌شده دوباره معتبر می‌شوند.
+- **پاسخ به پرسش کلیدی S4:** در حال حاضر **هیچ مکانیسم اثبات هویتی** وجود ندارد که نشان دهد verifier روی دیتابیس بازیابی‌شده اجرا شده است نه روی مبدأ — `tools/production-verifier.sh:34` صرفاً `DATABASE_URL` را می‌خواند. قرارداد چهارگانهٔ I1–I4 (system_identifier، پورت/data_directory، نشانگر canary ایزوله، هویت اسکیما) در سند تعریف شد. همچنین `pg_basebackup` در هیچ ابزاری استفاده نشده (تنها `pgbackrest` در `tools/pitr-restore.sh`).
+- **زنجیرهٔ حاکمیت آلارم:** ۵ حلقهٔ P0 همچنان MISSING — صفر برچسب `owner`/`team` روی ۱۱ آلارم، receiver برابر `__WEBHOOK_URL__`، انتساب on-call با وضعیت خوداظهار NOT-RUN، نبود مکانیسم فنی acknowledgement، و نبود ذخیره/محاسبهٔ MTTA/MTTR.
+- **یکپارچگی Master Schedule:** تأیید شد — S2/S3/S4 مجزا (Seq 23/24/25)، قفل «۸.۳ پس از خروج ۸.۲»، نگاشت W21 و گیت‌های G0–G10 دست‌نخورده، مسیر بحرانی ۱۴۰ اسپرینت حفظ (و توسط چت ۱ سخت‌تر شده). تنها ناسازگاری: سرصفحهٔ سند HEAD را `4de6f57d` اعلام می‌کند در حالی که HEAD واقعی `bc68b2b5` است (P2، دفترداری — طبق دستور اصلاح نشد و فقط گزارش شد).
+- **تفکیک R7 (ثبت رسمی):** مسیر OTP/login = ناوردای امنیتی fail-CLOSED (`server/auth.js:259,315` → 503)؛ backpressure مسیر sync = سیاست availability و advisory (`server/sync.js:674-682`). این دو نباید با ضمانت‌های authority در R1/R2 مخلوط شوند.
+- **قیود تحویل S2:** بند ۸ سند (CS-1..CS-11) فهرست regressionهای ممنوع را تعیین می‌کند؛ بند ۱۲ اقلام غیرقابل‌تغییر و بند ۱۳ اثبات‌های الزامی چت ۱ را مشخص می‌کند.
+- **محدودهٔ کاری (عدم تداخل):** بدون تکرار تست‌های چت ۱، بدون ممیزی عملکرد (چت ۲)، بدون Red-Team مربوط به S3/S4 (چت ۳). طبقه‌بندی `MEASURED` برای اعداد ظرفیتی انحصاراً به گزارش چت ۲ واگذار شد.
