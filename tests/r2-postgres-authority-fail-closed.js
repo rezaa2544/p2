@@ -21,6 +21,10 @@ const opsKv = require('../server/infrastructure/ops-kv');
 const regionControl = require('../server/infrastructure/national-region-control-plane');
 const trafficFabric = require('../server/infrastructure/national-traffic-fabric');
 const capacityEnforcement = require('../server/infrastructure/national-capacity-enforcement');
+const provincialScaling = require('../server/infrastructure/provincial-pilot-scaling');
+const changeManagement = require('../server/infrastructure/change-management');
+const noc = require('../server/operations/national-operations-center');
+const eventProcessing = require('../server/infrastructure/event-processing-layer');
 const productionHardening = require('../server/infrastructure/phase6-production-hardening');
 
 let pass = 0;
@@ -220,14 +224,38 @@ async function testConsumerBypassPrevention() {
   }, (err) => err.code === 'AUTHORITY_UNAVAILABLE');
   chk('capacityEnforcement.getCapacityReservations() throws AUTHORITY_UNAVAILABLE when DATABASE_URL unset', true);
 
-  // 5. phase6-production-hardening tenant boundary must fail closed when unattached
+  // 5. provincialScaling must fail closed when DATABASE_URL is unset
+  assert.throws(() => {
+    provincialScaling.getProvincialPilots();
+  }, (err) => err.code === 'AUTHORITY_UNAVAILABLE');
+  chk('provincialScaling.getProvincialPilots() throws AUTHORITY_UNAVAILABLE when DATABASE_URL unset', true);
+
+  // 6. changeManagement must fail closed when DATABASE_URL is unset
+  assert.throws(() => {
+    changeManagement.getChangeRequests();
+  }, (err) => err.code === 'AUTHORITY_UNAVAILABLE');
+  chk('changeManagement.getChangeRequests() throws AUTHORITY_UNAVAILABLE when DATABASE_URL unset', true);
+
+  // 7. noc must fail closed when DATABASE_URL is unset
+  assert.throws(() => {
+    noc.getNocIncidents();
+  }, (err) => err.code === 'AUTHORITY_UNAVAILABLE');
+  chk('noc.getNocIncidents() throws AUTHORITY_UNAVAILABLE when DATABASE_URL unset', true);
+
+  // 8. eventProcessing must fail closed when DATABASE_URL is unset
+  await assert.rejects(async () => {
+    await eventProcessing.seenIdempotency('test-key-fail-closed');
+  }, (err) => err.code === 'AUTHORITY_UNAVAILABLE');
+  chk('eventProcessing.seenIdempotency() throws AUTHORITY_UNAVAILABLE when DATABASE_URL unset', true);
+
+  // 9. phase6-production-hardening tenant boundary must fail closed when unattached
   const testActor = { id: 10, role: 'school_admin', province_code: '07', school_id: 101 };
   await assert.rejects(async () => {
     await productionHardening.assertTenantBoundary(testActor, 101, '07');
   }, (err) => err.code === 'AUTHORITY_UNAVAILABLE');
   chk('assertTenantBoundary() throws AUTHORITY_UNAVAILABLE when DATABASE_URL unset and unattached', true);
 
-  // 6. Production Mode Rejection of Dev Memory Flag
+  // 10. Production Mode Rejection of Dev Memory Flag
   console.log('\n--- Test 6: Production Mode Disallows Dev Memory Bypass ---');
   process.env.NODE_ENV = 'production';
   process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY = '1'; // Attempt bypass in production
@@ -243,6 +271,16 @@ async function testConsumerBypassPrevention() {
     regionControl.getNationalRegionRegistry();
   }, (err) => err.code === 'AUTHORITY_UNAVAILABLE');
   chk('regionControl rejects in production despite dev memory flag', true);
+
+  assert.throws(() => {
+    provincialScaling.getProvincialPilots();
+  }, (err) => err.code === 'AUTHORITY_UNAVAILABLE');
+  chk('provincialScaling rejects in production despite dev memory flag', true);
+
+  assert.throws(() => {
+    changeManagement.getChangeRequests();
+  }, (err) => err.code === 'AUTHORITY_UNAVAILABLE');
+  chk('changeManagement rejects in production despite dev memory flag', true);
 
   // Clean up
   delete process.env.NODE_ENV;

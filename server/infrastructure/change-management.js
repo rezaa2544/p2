@@ -46,6 +46,16 @@ function isExplicitDevMemoryMode() {
   return process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY === '1';
 }
 
+function assertAuthorityAttachedIfRequired() {
+  if (isExplicitDevMemoryMode()) return;
+  if (!authority.attached()) {
+    const err = new Error('AUTHORITY_UNAVAILABLE: Change management requires live PostgreSQL authority');
+    err.code = 'AUTHORITY_UNAVAILABLE';
+    err.status = 503;
+    throw err;
+  }
+}
+
 async function persistChange(row) {
   if (!row || !row.change_id) return;
   if (!authority.attached()) {
@@ -67,7 +77,15 @@ async function persistChange(row) {
 }
 
 async function refreshChangesFromSoT() {
-  if (!authority.attached()) return false;
+  if (!authority.attached()) {
+    if (!isExplicitDevMemoryMode()) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return false;
+  }
   const rows = await authority.listState('change');
   for (const r of rows) {
     if (r && r.id && r.payload) changeRegistry.set(r.id, r.payload);
@@ -177,8 +195,8 @@ async function registerChangeRequest(requestData) {
     updated_at: new Date().toISOString()
   };
 
-  changeRegistry.set(changeId, change);
   await persistChange(change);
+  changeRegistry.set(changeId, change);
   return Object.freeze({ ...change });
 }
 
@@ -189,26 +207,33 @@ async function approveChangeRequest(changeId, approvalPayload) {
   assertDisasterRecoveryZeroRanking(approvalPayload);
   assertChangeApproval(approvalPayload);
 
-  if (!changeRegistry.has(changeId)) {
+  let change = changeRegistry.get(changeId);
+  if (!change && authority.attached()) {
+    change = await authority.getState('change', changeId);
+    if (change) changeRegistry.set(changeId, change);
+  }
+
+  if (!change) {
     const err = new Error(`Change request ${changeId} not found`);
     err.code = CHANGE_ERRORS.INVALID_CHANGE;
     throw err;
   }
 
-  const change = changeRegistry.get(changeId);
-  change.status = CHANGE_STATUS.APPROVED;
-  change.approval = {
-    approval_id: String(approvalPayload.approval_id).trim(),
-    operator: String(approvalPayload.operator).trim(),
-    timestamp: new Date(approvalPayload.timestamp).toISOString(),
-    requires_human_approval: true,
-    automated_decision: false
-  };
-  change.updated_at = new Date().toISOString();
+  const updatedChange = Object.assign({}, change, {
+    status: CHANGE_STATUS.APPROVED,
+    approval: {
+      approval_id: String(approvalPayload.approval_id).trim(),
+      operator: String(approvalPayload.operator).trim(),
+      timestamp: new Date(approvalPayload.timestamp).toISOString(),
+      requires_human_approval: true,
+      automated_decision: false
+    },
+    updated_at: new Date().toISOString()
+  });
 
-  changeRegistry.set(changeId, change);
-  await persistChange(change);
-  return Object.freeze({ ...change });
+  await persistChange(updatedChange);
+  changeRegistry.set(changeId, updatedChange);
+  return Object.freeze({ ...updatedChange });
 }
 
 /**
@@ -217,13 +242,18 @@ async function approveChangeRequest(changeId, approvalPayload) {
 async function executeChangeRequest(changeId, executionPayload) {
   assertDisasterRecoveryZeroRanking(executionPayload);
 
-  if (!changeRegistry.has(changeId)) {
+  let change = changeRegistry.get(changeId);
+  if (!change && authority.attached()) {
+    change = await authority.getState('change', changeId);
+    if (change) changeRegistry.set(changeId, change);
+  }
+
+  if (!change) {
     const err = new Error(`Change request ${changeId} not found`);
     err.code = CHANGE_ERRORS.INVALID_CHANGE;
     throw err;
   }
 
-  const change = changeRegistry.get(changeId);
   if (change.status !== CHANGE_STATUS.APPROVED) {
     const err = new Error(`Change ${changeId} cannot be executed in state ${change.status}; approval is required.`);
     err.code = CHANGE_ERRORS.APPROVAL_REQUIRED;
@@ -242,14 +272,16 @@ async function executeChangeRequest(changeId, executionPayload) {
     throw err;
   }
 
-  change.status = CHANGE_STATUS.EXECUTED;
-  change.executed_by = executionPayload.operator_id.trim();
-  change.executed_at = new Date().toISOString();
-  change.execution_details = executionPayload.details || 'Successfully executed';
+  const updatedChange = Object.assign({}, change, {
+    status: CHANGE_STATUS.EXECUTED,
+    executed_by: executionPayload.operator_id.trim(),
+    executed_at: new Date().toISOString(),
+    execution_details: executionPayload.details || 'Successfully executed'
+  });
 
-  changeRegistry.set(changeId, change);
-  await persistChange(change);
-  return Object.freeze({ ...change });
+  await persistChange(updatedChange);
+  changeRegistry.set(changeId, updatedChange);
+  return Object.freeze({ ...updatedChange });
 }
 
 /**
@@ -258,13 +290,18 @@ async function executeChangeRequest(changeId, executionPayload) {
 async function rollbackChangeRequest(changeId, rollbackPayload) {
   assertDisasterRecoveryZeroRanking(rollbackPayload);
 
-  if (!changeRegistry.has(changeId)) {
+  let change = changeRegistry.get(changeId);
+  if (!change && authority.attached()) {
+    change = await authority.getState('change', changeId);
+    if (change) changeRegistry.set(changeId, change);
+  }
+
+  if (!change) {
     const err = new Error(`Change request ${changeId} not found`);
     err.code = CHANGE_ERRORS.INVALID_CHANGE;
     throw err;
   }
 
-  const change = changeRegistry.get(changeId);
   if (!rollbackPayload || rollbackPayload.automated_rollback === true) {
     const err = new Error('Automated rollback without operator oversight is forbidden');
     err.code = CHANGE_ERRORS.AUTOMATED_FORBIDDEN;
@@ -277,20 +314,23 @@ async function rollbackChangeRequest(changeId, rollbackPayload) {
     throw err;
   }
 
-  change.status = CHANGE_STATUS.ROLLED_BACK;
-  change.rolled_back_by = rollbackPayload.operator_id.trim();
-  change.rolled_back_at = new Date().toISOString();
-  change.rollback_reason = rollbackPayload.reason || 'Operational intervention rollback';
+  const updatedChange = Object.assign({}, change, {
+    status: CHANGE_STATUS.ROLLED_BACK,
+    rolled_back_by: rollbackPayload.operator_id.trim(),
+    rolled_back_at: new Date().toISOString(),
+    rollback_reason: rollbackPayload.reason || 'Operational intervention rollback'
+  });
 
-  changeRegistry.set(changeId, change);
-  await persistChange(change);
-  return Object.freeze({ ...change });
+  await persistChange(updatedChange);
+  changeRegistry.set(changeId, updatedChange);
+  return Object.freeze({ ...updatedChange });
 }
 
 /**
  * Returns recorded change requests.
  */
 function getChangeRequests(filter = {}) {
+  assertAuthorityAttachedIfRequired();
   assertDisasterRecoveryZeroRanking(filter);
   const list = Array.from(changeRegistry.values());
   if (filter.status) {
@@ -306,6 +346,7 @@ function getChangeRequests(filter = {}) {
  * Returns change request by ID.
  */
 function getChangeRequestById(changeId) {
+  assertAuthorityAttachedIfRequired();
   const change = changeRegistry.get(changeId);
   if (!change) return null;
   return Object.freeze({ ...change });
