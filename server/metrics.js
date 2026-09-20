@@ -478,6 +478,9 @@ function declareAll(r) {
   r.counter('payesh_db_slow_queries_total', 'SQL round trips slower than PAYESH_DB_SLOW_MS.', ['op', 'target']);
   r.gauge('payesh_db_pool_connections', 'Pool connections by state.', ['pool', 'state']);
   r.gauge('payesh_db_pool_waiting', 'Clients waiting for a pool connection.', ['pool']);
+  /* ── Audit & Authority Observability (S2 Remediation) ── */
+  r.counter('payesh_audit_write_failures_total', 'Failures writing structured audit log entries.', ['sink', 'reason']);
+  r.counter('payesh_authority_unavailable_total', 'Authority queries or assertions failing due to database detachment or connection drop.', ['subsystem', 'reason']);
   /* ── Cache / Redis ── */
   r.counter('payesh_cache_lookups_total', 'Bootstrap cache lookups by layer and outcome.', ['layer', 'outcome']);
   r.counter('payesh_cache_invalidations_total', 'Cache invalidations by scope.', ['scope']);

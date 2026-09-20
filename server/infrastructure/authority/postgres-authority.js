@@ -17,6 +17,10 @@ function attached() {
 }
 
 function unavailable(msg) {
+  try {
+    const m = require('../../metrics');
+    m.inc('payesh_authority_unavailable_total', { subsystem: 'authority', reason: 'unattached' });
+  } catch (_) {}
   const err = new Error(msg || 'AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
   err.code = 'AUTHORITY_UNAVAILABLE';
   err.status = 503;
@@ -56,6 +60,10 @@ async function query(sql, params) {
     return await db.query(sql, params);
   } catch (err) {
     if (err && (err.code === 'AUTHORITY_UNAVAILABLE' || err.code === 'REPLAY_ATTACK_DETECTED')) throw err;
+    try {
+      const m = require('../../metrics');
+      m.inc('payesh_authority_unavailable_total', { subsystem: 'authority', reason: 'query_failed' });
+    } catch (_) {}
     const error = new Error('AUTHORITY_QUERY_FAILED: ' + (err && err.message ? err.message : String(err)));
     error.code = 'AUTHORITY_QUERY_FAILED';
     error.status = 503;
