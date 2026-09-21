@@ -3866,3 +3866,116 @@ job: 30 steps | 21 success | 1 failure | 8 skipped
 مالک/Chat2** است: تا رفع نشود، هیچ اجرای سبز Node.js CI روی main وجود نخواهد داشت و
 بنابراین **هیچ SHAیی شرط T2 برای ساخت تگ تازه را برآورده نمی‌کند** (به
 `docs/audit/F-QA-01_TAG_INTEGRITY_DOSSIER.md` §۶.۵ مراجعه کنید).
+
+---
+
+## RECONCILE — وضعیت موارد باز روی HEAD جاری `8e90e5f6`
+
+فقط **آشتی‌دادن موارد باز**. هیچ مورد CLOSED بازگشایی نشد، هیچ scope چت۲/چت۳ تصاحب نشد،
+هیچ تگ تاریخی تغییر نکرد، هیچ تگ تازه‌ای ساخته نشد، و هیچ
+`continue-on-error` / `|| true` / skip تازه‌ای اضافه نشد.
+
+**وضعیت لحظهٔ ثبت:** `HEAD == origin/main == 8e90e5f6`، working tree پاک، بدون
+mode-change یا حذف، Node v22.23.2.
+
+### یافتهٔ تازه و مهم: مرحلهٔ ۱۸ (`Production Truth Gate`) ناپایدار (flaky) است
+
+در **تلاش اول** اجرای #1171 روی همین HEAD، job در **مرحلهٔ ۱۸** با `❌ [G3] بوت نمونه A`
+شکست — مرحله‌ای که در پنج اجرای پیشین (#1163…#1170) همیشه `success` بود، در حالی که تنها
+تفاوت `8e90e5f6` با والدش **فقط `HANDOFF.md`** است. طبق اسکیل `strict-verification`
+(«در صورت وجود nondeterminism تعداد اجرا را بالا ببر») همان اجرا روی **همان commit**
+دوباره اجرا شد:
+
+| اجرا | commit | مرحلهٔ ۱۸ Truth Gate | مرحلهٔ ۱۹ Phase 7 |
+|---|---|---|---|
+| #1171 attempt 1 | `8e90e5f6` | ❌ `[G3] بوت نمونه A` | skipped |
+| #1171 attempt 2 | `8e90e5f6` (یکسان) | ✅ success | ❌ T7 |
+
+⇒ **مرحلهٔ ۱۸ گاه‌به‌گاه روی بوت شکست می‌خورد (P2, FLAKY, صاحب: مالک/چت۲).** این یک
+رگرسیون کد نیست و چون خارج از دامنهٔ من است دست نخورد؛ فقط ثبت شد. هشدار روش‌شناختی:
+هیچ‌کس نباید از یک اجرای قرمزِ مرحلهٔ ۱۸ نتیجهٔ قطعی بگیرد بدون تکرار اجرا.
+
+### EXTERNAL / CROSS-CHAT BLOCKER — بدون تغییر، فقط بازاجرا و ثبت
+
+روی HEAD جاری بازبررسی شد؛ **هنوز اصلاح نشده**:
+
+```
+tools/production-verifier.sh:442  →  grep -n 'getTenantPolicy' server/infrastructure/phase6-production-hardening.js
+occurrences of getTenantPolicy in that file @ 8e90e5f6  =  0
+last commit touching that file                          =  62254cff (Chat2)
+```
+
+خروجی واقعی مرحلهٔ ۱۹ روی HEAD جاری (attempt 2):
+
+```
+✅ [T7] canary nonce goes through authority.consumeNonce
+✅ [T7] boot attaches+hydrates authority
+✅ [T7] listen refused without DATABASE_URL hydrate
+✅ [T7] no it.skip/describe.skip in tests/tools (sample)
+❌ [T7] HTTP tenant guard reads tenant_policy
+════ PRODUCTION VERIFIER: 36 pass / 1 fail / HEAD 8e90e5f6… ════
+VERDICT: NOT VERIFIED
+```
+
+**وضعیت: EXTERNAL/CROSS-CHAT BLOCKER — OWNER/CHAT2.** عمداً با تغییر verifier یا تضعیف
+assertion سبز نشد؛ آن کار همان fake-green ای است که این ممیزی علیه آن است. دو رفع مشروع
+(بازگرداندن فراخوانی، یا بازنویسی T7 روی رفتار واقعی به‌جای grep شکننده) پیش‌تر ثبت شده است.
+
+### گیت‌های حاکمیتی — روی HEAD جاری در CI اجرا و سبز (E3)
+
+هر دو در **هر دو تلاش** #1171 اجرا شدند (دیگر skip نمی‌شوند):
+
+```
+attempt1  GATE 6 parity = SUCCESS   GATE 7 release = SUCCESS
+attempt2  GATE 6 parity = SUCCESS   GATE 7 release = SUCCESS
+attempt2 logs: «10 موفق / 0 ناموفق (از 10)» و «8 موفق / 0 ناموفق (از 8)»
+```
+
+محلی هم دو اجرای مستقل با خروجی بایت‌به‌بایت یکسان، به‌علاوهٔ آزمون‌های منفی:
+`package.json` خراب ⇒ exit 1 · نسخهٔ 9.9.9 ⇒ exit 1 با ۲ چک قرمز · بازگردانی ⇒ exit 0.
+
+### F-QA-04 — Codacy · `OWNER DECISION REQUIRED` (بدون تغییر)
+
+روی Codacy #332 (HEAD جاری) بازتأیید شد — علت ریشه‌ای **تغییر نکرده**:
+
+- `MalformedInputException: Input length = 1` با فریم‌های `Sarif.scala:145/146` ⇒ **E3**.
+- خطا **بعد از** `Completed metrics ... with 41 results` رخ می‌دهد ⇒ تحلیل انجام شده و
+  سقوط در **تولید SARIF** است، نه در تحلیل.
+- **SARIF تولید/آپلود نشد:** `Uploading results` = **۰** بار.
+- **`CODACY_PROJECT_TOKEN` علت crash نیست:** تنها ارجاع‌های token در لاگ، echo خودِ
+  دستور اکشن با مقدار **خالی** (`$(if [ ]; then echo "--project-token "; fi)`) است؛
+  هیچ خطای auth/unauthorized واقعی وجود ندارد. مخزن ۰ secret و ۰ variable دارد.
+- `max-allowed-issues: 2147483647` و ارجاع به secret ناموجود = **ضعف حاکمیتی، نه علت crash**.
+- هیچ upgrade/retire/integration اعمال **نشد** — تصمیم مالک.
+
+### F-QA-04 — Fortify · `OWNER DECISION REQUIRED / TOOLING STATE` (بدون تغییر)
+
+Fortify #364 روی HEAD جاری: job `success` ولی **هیچ اسکنی انجام نشده** و این صریح اعلام می‌شود:
+
+```
+FOD_CREDENTIALS_PRESENT: false   IS_FORK_PR: false
+## Fortify AST Scan — NOT EXECUTED
+**Scan status:** `NOT SCANNED`
+**SAST result:** none produced — this run is NOT evidence of a clean codebase.
+A green check mark here means the workflow completed, **not** that the code was analysed.
+step 4 «Record that a real Fortify scan was executed» = skipped
+step 5 «Run Fortify Scan»                              = skipped
+```
+
+چون credential واقعی در اختیار نیست (۰ secret)، **هیچ ادعای SAST verification ثبت نشد**؛
+اجرای اسکن واقعی منوط به تأمین credential توسط مالک است.
+
+### F-QA-01 و F-QA-07 — منجمد تا تصمیم مالک
+
+تگ‌های تاریخی دست نخوردند و تگ تازه‌ای ساخته نشد. شرط **T2** (اجرای موفق Node.js CI روی
+همان SHA) روی هیچ SHAیی برقرار نیست، چون Node.js CI از #1160 تاکنون به‌دلیل بلاکر بالا
+قرمز است ⇒ **ساخت هر تگ تازه‌ای هنوز غیرمجاز است.** `v1.0.1` به‌عنوان نقض تاریخیِ
+قابل‌مشاهده باقی می‌ماند و جابه‌جا نمی‌شود (R3).
+
+### وضعیت نهایی — بدون تغییر (شواهد تازه آن را عوض نکرد)
+
+```
+Phase 8.2 Exit = NOT VERIFIED
+Phase 8.3      = BLOCKED
+Production GO  = NOT DECLARED
+```
