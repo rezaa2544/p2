@@ -3,23 +3,44 @@
 # line; without it the file is not recognised as a Codacy configuration file at all.
 # See https://docs.codacy.com/repositories-configure/codacy-configuration-file/
 #
-# MEASURED RESULT after adding the `---` (run #319, id=35584035526 on 7afad24e):
-# the workflow STILL FAILS with byte-identical markers to the runs before the change
-# (No rules found x12, ConfigurationNotFoundError x3, failed eslint/pmd/pmd-legacy x3
-# each, MalformedInputException x1). Conclusion, stated plainly: this file is NOT
-# consulted by codacy-analysis-cli-action at all. The action resolves configuration
-# from Codacy Cloud via `project-token`, and secrets.CODACY_PROJECT_TOKEN is empty
-# (absent from the resolved `with:` block in the run log). Fixing the format was
-# necessary for correctness but is NOT sufficient — do not read it as a fix.
-# Remaining blocker is an OWNER ACTION: configure CODACY_PROJECT_TOKEN, or retire
-# this workflow. Codacy has now failed 31/31 recent runs and has never uploaded SARIF.
+# CORRECTION (supersedes the earlier note in this file, commit 755715bd): this file IS
+# read by the CLI. Proof in both run logs, before and after the `---` was added:
+#   "AnalyseExecutor:195 - Found local extra configuration for pmd"        x3
+#   "AnalyseExecutor:195 - Found local extra configuration for pmd-legacy" x3
+# The earlier statement that the file "is NOT consulted at all" was WRONG and is
+# retracted here rather than quietly deleted.
 #
-# NOTE — deliberate, documented limitation: `engines.<tool>.enabled` is NOT honoured by
-# the Codacy configuration file. Per Codacy's own documentation, "the Codacy
-# configuration file lets you configure tools, but you can't enable or disable them" —
-# that is only possible on the Code patterns page of the Codacy web UI. The pmd /
-# pmd-legacy blocks below are therefore INERT and are kept only to record intent.
-# Disabling those tools is an OWNER ACTION in the Codacy UI, not a repo change.
+# What is true is narrower: the file is parsed, but `engines.<tool>.enabled` has no
+# effect. Per Codacy's own documentation — "the Codacy configuration file lets you
+# configure tools, but you can't enable or disable them" — enabling/disabling is only
+# possible on the Code patterns page of the Codacy web UI. That is why pmd and
+# pmd-legacy still execute (and still fail) despite being set to false below. Those
+# two blocks are INERT and kept only to record intent; acting on them is an OWNER
+# ACTION in the Codacy UI, not a repo change.
+#
+# WHY THE WORKFLOW FAILS — root cause, reproduced locally (E3), not inferred:
+# the job dies on `java.nio.charset.MalformedInputException: Input length = 1` thrown
+# from Sarif.createResults -> better.files File.lines -> Files.readAllLines, i.e. while
+# the SARIF formatter re-reads source files that already produced metrics/duplication
+# results (1189 + 528 of them). Java's strict CharsetDecoder REPORTs malformed input
+# instead of replacing it, so a single undecodable byte aborts the whole run.
+# Locally reproduced with the identical exception and message on this very repo:
+#   strict UTF-8 decoder on tools/redis-backup.sh  -> OK, 128 lines
+#   strict US-ASCII decoder on the same file       -> MalformedInputException: length = 1
+#   strict UTF-8 decoder on store/icon-512.png     -> MalformedInputException: length = 1
+# Both triggers are present here: 2136 of 2230 tracked files (95%) are non-ASCII
+# (Persian), and store/feature-1024x500.png + store/icon-512.png are binary, i.e. not
+# valid UTF-8 at all. The `**/*.png` rule below does not save the run, because the
+# exclusion is not applied to the metrics/duplication phase whose results SARIF then
+# walks. This is a TOOL DEFECT in codacy-analysis-cli 4.0.0, not a code defect and not
+# a vulnerability: across every log examined the scan reported ZERO security findings
+# and the SARIF upload step is always `skipped`, so Codacy currently yields no security
+# signal in either direction.
+#
+# Deliberately NOT done: no `continue-on-error`, no `|| true`, no step removal. Making
+# this red job artificially green would manufacture exactly the fake-green this audit
+# exists to prevent. It stays red and honest until an owner decides.
+# See docs/audit/F-QA-04_SCANNER_GOVERNANCE_DOSSIER.md for the full evidence and options.
 engines:
   pmd:
     enabled: false

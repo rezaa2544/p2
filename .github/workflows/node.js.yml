@@ -60,7 +60,15 @@ jobs:
       REDIS_URL: redis://127.0.0.1:6379
 
     steps:
+    # F-QA-07 (Chat 4 remediation): the release-version contract inspects git tags
+    # (`git tag -l 'v*'` and `git show <tag>:package.json`). actions/checkout defaults to
+    # a shallow, tag-less fetch, where that gate would be meaningless. Verified locally:
+    # in a `--depth 1 --no-tags` clone the contract exits 1 with "no vX.Y.Z tag found" —
+    # it fails loudly rather than passing vacuously, but CI still needs real history.
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
@@ -200,6 +208,13 @@ jobs:
     # قرمز می‌شود. هیچ تستی را skip یا حذف نمی‌کند.
     - name: TEST/CI parity contract — npm test ≠ whole repository
       run: node tests/ci-test-parity-contract.js
+
+    # F-QA-07 (Chat 4 remediation): قرارداد نسخه و انتشار.
+    # ناهمخوانی‌های قطعی (package.json در برابر lock، و تگ تازه‌ای که با نسخه نمی‌خواند)
+    # را قرمز می‌کند؛ مواردی که تصمیم سیاست انتشار می‌خواهند فقط هشدار می‌دهند و
+    # عمداً قرمز نمی‌کنند. نیازمند تاریخچهٔ تگ‌هاست (fetch-depth: 0 + tags بالا).
+    - name: Release version contract — package.json / lock / tags coherence
+      run: node tests/release-version-contract.js
 
     - run: npm run build --if-present
     - run: npm test
