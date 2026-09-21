@@ -303,3 +303,22 @@ Chat 5 روی HEAD 138cd1d9 شواهد مستقل runtime/CI ارائه کرده
 M0 و M5 non-blocking هستند. Phase 8.3 تا بسته‌شدن Gate 8.2 **BLOCKED** می‌ماند.
 
 مرجع: docs/audit/CHAT5_PHASE8_2_DELTA_2026-09-21.md.
+
+
+## 14. Red-Team Delta — Chat 2 Reconciliation Update (2026-09-21)
+
+گزارش Chat 2 بر مبنای SHA تاریخی `bc68b2b539bf5b59aa0108c0959af767ea57ce35` بود. با شواهد بعدی Chat 4/5 و بررسی current-main، یافته‌ها تفکیک شدند تا یک finding تاریخی دوباره به blocker مستقل تبدیل نشود.
+
+| ID | وضعیت فعلی | تصمیم |
+|---|---|---|
+| RT2-01 Codacy/security workflow | CONFIG CONFIRMED / IMPACT QUALIFIED | پیگیری governance؛ ادعای «همیشه سبز» به‌عنوان واقعیت فعلی ثبت نمی‌شود |
+| RT2-02 Tenant double-query | CODE PATH CONFIRMED / MEASUREMENT REQUIRED | instrumentation و query/request measurement؛ بدون local-memory cache پیش‌فرض |
+| RT2-03 DR restore | E3 evidence exists; E4 exit evidence still required | به M2 متصل؛ restore/promote معادل تولید + RPO/RTO اندازه‌گیری‌شده |
+| RT2-04 orphan alert risk | ORIGINAL RISK WITHDRAWN | Prometheus هر دو alert-rules.yml و alerts.yml را load می‌کند؛ orphan yaml صرفاً drift/cleanup است |
+| RT2-05 Outbox at-least-once | ARCHITECTURAL FOLLOW-UP | inventory و idempotency proof برای consumerهای side-effect |
+| RT2-06 8.3 E4 staging/10M | STILL BLOCKING FOR EMPIRICAL 8.3 | provisioning و instrumentation پیش از load/soak |
+| RT2-07 historical SHA | EVIDENCE LIMITATION | current-main evidence مرجع تصمیم است |
+
+**نتیجه:** Chat 2 blockerهای جدید مستقلی به Gate 8.2 اضافه نمی‌کند؛ blockerهای پایدار آن با M1/M2/M3 فعلی هم‌پوشان‌اند. Phase 8.2 Exit همچنان **NOT VERIFIED** و Phase 8.3 همچنان **BLOCKED** است.
+
+مرجع تفصیلی: `docs/audit/CHAT2_PHASE8_2_RECONCILIATION_2026-09-21.md`.
