@@ -148,14 +148,19 @@ async function main() {
   {
     let ok = false, detail = '';
     try {
-      const Redis = require(path.join(ROOT, 'node_modules', 'ioredis'));
-      const cc = redis.buildRedisConfig({ REDIS_SENTINELS: '127.0.0.1:59999', REDIS_SENTINEL_NAME: 'mymaster' });
-      const c = Object.assign({ sentinels: cc.sentinels, name: cc.name }, cc.options || {});
-      const probe = new Redis(Object.assign({}, c, { lazyConnect: true, connectTimeout: 500 }));
-      ok = !!(probe.options && Array.isArray(probe.options.sentinels) && probe.options.sentinels.length === 1 && probe.options.name === 'mymaster');
-      try { probe.disconnect(); } catch (e) {}
-    } catch (e) { detail = e.message; }
-    chk('آیورِدیس کانفیگ سنتینل ما را می‌پذیرد', ok, detail);
+      let Redis = null;
+      try { Redis = require('ioredis'); } catch (e) {}
+      if (!Redis) {
+        skip('آیورِدیس کانفیگ سنتینل ما را می‌پذیرد', 'ماژول ioredis نصب نشده است');
+      } else {
+        const cc = redis.buildRedisConfig({ REDIS_SENTINELS: '127.0.0.1:59999', REDIS_SENTINEL_NAME: 'mymaster' });
+        const c = Object.assign({ sentinels: cc.sentinels, name: cc.name }, cc.options || {});
+        const probe = new Redis(Object.assign({}, c, { lazyConnect: true, connectTimeout: 500 }));
+        ok = !!(probe.options && Array.isArray(probe.options.sentinels) && probe.options.sentinels.length === 1 && probe.options.name === 'mymaster');
+        try { probe.disconnect(); } catch (e) {}
+        chk('آیورِدیس کانفیگ سنتینل ما را می‌پذیرد', ok, detail);
+      }
+    } catch (e) { detail = e.message; chk('آیورِدیس کانفیگ سنتینل ما را می‌پذیرد', false, detail); }
   }
 
   // ۵) شبیه‌سازی واقعی فیل‌اُوور (مشروط به باینری‌ها)
