@@ -3,6 +3,17 @@
 # line; without it the file is not recognised as a Codacy configuration file at all.
 # See https://docs.codacy.com/repositories-configure/codacy-configuration-file/
 #
+# MEASURED RESULT after adding the `---` (run #319, id=35584035526 on 7afad24e):
+# the workflow STILL FAILS with byte-identical markers to the runs before the change
+# (No rules found x12, ConfigurationNotFoundError x3, failed eslint/pmd/pmd-legacy x3
+# each, MalformedInputException x1). Conclusion, stated plainly: this file is NOT
+# consulted by codacy-analysis-cli-action at all. The action resolves configuration
+# from Codacy Cloud via `project-token`, and secrets.CODACY_PROJECT_TOKEN is empty
+# (absent from the resolved `with:` block in the run log). Fixing the format was
+# necessary for correctness but is NOT sufficient — do not read it as a fix.
+# Remaining blocker is an OWNER ACTION: configure CODACY_PROJECT_TOKEN, or retire
+# this workflow. Codacy has now failed 31/31 recent runs and has never uploaded SARIF.
+#
 # NOTE — deliberate, documented limitation: `engines.<tool>.enabled` is NOT honoured by
 # the Codacy configuration file. Per Codacy's own documentation, "the Codacy
 # configuration file lets you configure tools, but you can't enable or disable them" —
