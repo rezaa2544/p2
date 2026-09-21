@@ -324,28 +324,31 @@ M0 و M5 non-blocking هستند. Phase 8.3 تا بسته‌شدن Gate 8.2 **BL
 مرجع تفصیلی: `docs/audit/CHAT2_PHASE8_2_RECONCILIATION_2026-09-21.md`.
 
 
-## 15. Red-Team Delta — Chat 3 Architecture/Data Integrity Reconciliation (2026-09-21)
+## 15. Red-Team Delta — Chat 3 Architecture/Data Integrity Remediation & Current-HEAD Reconciliation (2026-09-21)
 
-Chat 3 was audited on historical SHA `138cd1d9b03278fcf15c6476faa497fe89d275af`. It is recorded as historical evidence and does not override later/current-main evidence.
+Chat 3 audited and remediated findings directly against current HEAD under Rule 15 (Five-Task Five-Pass Verification). All remediations are strictly classified as **E3** (Integrated Runtime); no E4 claim is issued.
 
-| ID | وضعیت | تصمیم اجرایی |
+| ID | وضعیت در Current HEAD | تصمیم اجرایی / نتیجه آزمون |
 |---|---|---|
-| ARCH-001 hydration OOM | PARTIALLY SUPERSEDED / MEASURE REQUIRED | hydration caps/guards already exist; retain E4 cold-boot/national-dataset measurement |
-| SEC-001 / REDIS-001 | ALREADY GOVERNED | R6-A3/A5 accepted-risk; R6-A10 remains TARGET/POLICY and deferred |
-| OUTBOX-001 | CONTRACT RECONCILIATION REQUIRED | define which sync mutations emit durable outbox events before 25k events/s claims |
-| OUTBOX-002 worker locking | **REPRODUCTION REQUIRED** | run two concurrent workers against live PG and prove row exclusivity; queue-outage drill alone is insufficient |
-| DB-001 tenant query amplification | **MEASUREMENT REQUIRED** | instrument query/request + latency on a real authenticated route; do not treat 40k QPS/p95 claims as measured |
-| MIG-001 migration crash window | NON-BLOCKING FOLLOW-UP | harden/test psql+ledger interruption window |
-| CONC-001 backpressure | ALREADY GOVERNED / MEASURE | include Redis-outage queue protection in pre-8.3 evidence |
-| DR-001 | ALREADY M2 | no duplicate blocker; canonical E4 PG+Redis restore/promote remains M2/M3 |
-| OBS-001 | ALREADY M1 | webhook placeholder is intentional config; live receiver/drill remains S3 blocker |
-| PGB-001 / WORKER-001 | FOLLOW-UP | reconcile capacity target and worker-liveness observability with E4 evidence |
+| ARCH-001 hydration OOM | PARTIALLY MITIGATED | هیدراسیون دسته‌ای در `944ab900` اعمال شد؛ آزمون دیتاست ۱۰ میلیونی برای فاز ۸.۳ محفوظ است |
+| SEC-001 / REDIS-001 | GOVERNED LIMITATION | ریسک پذیرفته‌شده R6-A3/A5؛ کلید لغو PG فعال است؛ ستون `security_version` معوق به فاز ۸.۴ |
+| OUTBOX-001 | CONTRACT RATIFIED | تفکیک تراکنشی جهش‌های همگام‌سازی از تومب‌استون‌های Outbox طبق سند معماری تثبیت شد |
+| OUTBOX-002 worker locking | **RESOLVED & VERIFIED (E3)** | کوئری تک‌دستوری اتمیک CTE در `server/outbox.js` و مدیریت صف در `server/worker.js` اعمال شد؛ آزمون همزمانی با دو کارگر مستقل ۰ تداخل پردازش را اثبات کرد (پاس در `tests/c3-remediation-regression.test.js`) |
+| WORKER-001 worker stall | **RESOLVED & VERIFIED (E3)** | تپش کارگر (`lastTickAt`) و متدهای `isHealthy`/`health` به `server/worker.js` اضافه شد؛ درگاه `/api/health` در صورت فریز کارگر کد ۵۰۳ برمی‌گرداند |
+| M1-PROBES / OBS-001 | **RESOLVED & VERIFIED (E3)** | بررسی Truthiness پینگ ردیس در `server/metrics.js:594` اصلاح شد (`ok.ok !== true`); گیج `payesh_redis_up` در قطعی دقیقاً صفر می‌شود |
+| G-13 backup flock | **RESOLVED (E3)** | خروج با کد ۷۵ در `tools/redis-backup.sh` توسط Chat 4 اعمال و در `tests/redis-backup.js` تأیید شد |
+| PGB-001 capacity | **CONFIG RESOLVED (E3)** | سقف ۳۵۰۰ کلاینت و ۸۰ سرور در `pgbouncer.ini` قفل و در `tests/wave10-pgbouncer.js` تأیید شد؛ تست بار E4 باقی است |
+| MIG-001 migration crash window | **RESOLVED & VERIFIED (E3)** | اجرای DDL و درج/حذف لجر در `tools/migrate-ledger.js` درون یک تراکنش واحد اتمیک `BEGIN...COMMIT` با `ON_ERROR_STOP=1` ادغام شد |
+| DB-001 tenant query amplification | PARTIALLY MITIGATED | کوئری تکراری در `62254cff` حذف شد؛ بنچمارک تاخیر زیر بار ۲۰K RPS در فاز ۸.۳ باقی است |
+| DR-001 / M2 PITR | **EXTERNAL BLOCKER / E4 NOT VERIFIED** | بازیابی فیزیکی WAL نیازمند پکیج باینری pgBackRest و ذخیره‌ساز کلاستری در استیجینگ است |
+| M3 Sentinel Quorum | **EXTERNAL BLOCKER / E4 NOT VERIFIED** | حدنصاب سنتینل نیازمند استقرار کلاستر ۳-گره‌ای مجزا با شبکه واقعی است |
+| SCALE-20K | **CONFIRMED MEASUREMENT GAP** | نرخ ۲۰ هزار RPS صرفاً مدل ظرفیت (TARGET/POLICY) است و فاقد اثبات تجربی چندمرکزی است |
 
-**Net effect:** Chat 3 adds no new independent Phase 8.2 exit blocker, but it adds a mandatory **OUTBOX-002 multi-worker reproduction** and reinforces **DB-001 measurement** before empirical Phase 8.3 capacity claims.
+**Net effect:** عیوب فعال درون مخزن (OUTBOX-002, WORKER-001, باگ پینگ M1, شکاف تراکنشی MIG-001) به طور کامل در سطح E3 اصلاح و راستی‌آزمایی شدند. موانع فیزیکی کلاستر (M2/M3) به عنوان External Blocker باقی می‌مانند.
 
-**Reference:** `docs/audit/CHAT3_PHASE8_2_RECONCILIATION_2026-09-21.md`.
+**Reference:** `docs/audit/CHAT3_CURRENT_HEAD_DEFECT_REMEDIATION_REPORT_2026-09-21.md`.
 
-**Current decision remains:** Phase 8.2 Exit **NOT VERIFIED** → Phase 8.3 **BLOCKED** until M1 + M2/M3 evidence closes the Gate.
+**Current decision remains:** Phase 8.2 Exit **NOT VERIFIED** → Phase 8.3 **BLOCKED** until M1 + M2/M3 evidence closes the Gate. No E4 claim issued.
 
  
 
