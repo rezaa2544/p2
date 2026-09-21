@@ -3828,3 +3828,41 @@ else
 مالک/Chat2: یا فراخوانی حذف‌شده برگردد، یا `tools/production-verifier.sh` طوری اصلاح
 شود که رفتار واقعی (`authority.assertTenantPolicy`) را بسنجد نه وجود یک رشتهٔ خاص را
 — که خودش یک گیت شکنندهٔ grep-محور است.
+
+### تکمیل: گیت‌های حاکمیتی حالا واقعاً در CI اجرا می‌شوند (اصلاح ترتیب)
+
+**مشکلی که خودم پیدا کردم و اعتراف می‌کنم:** دو گیتی که در بستهٔ قبل اضافه کردم
+(`parity contract` و `release version contract`) **هرگز در CI اجرا نشده بودند**. در
+اجراهای **#1161** و **#1163** آن‌ها مرحلهٔ ۲۳ و ۲۴ بودند و چون job در **مرحلهٔ ۱۷**
+(`Phase 7 production verifier`) می‌شکست، هر دو **skipped** می‌شدند. گیتی که فقط وقتی
+اجرا می‌شود که همه‌چیزِ قبلش سبز باشد، اصلاً گیت نیست.
+
+**اصلاح (`6abd2076`):** هر دو قرارداد بررسی‌های **ایستا** و چندثانیه‌ای‌اند و به
+PostgreSQL/Redis نیاز ندارند، پس بلافاصله بعد از `npm ci` به **مرحلهٔ ۶ و ۷** منتقل
+شدند — پیش از کل زنجیرهٔ migration/live-PG/live-Redis. هیچ assertionی ضعیف نشد، هیچ
+`continue-on-error` اضافه نشد؛ فقط ترتیب عوض شد.
+
+**شاهد قطعی (اجرای `35589488380` روی `6abd2076`):**
+
+```
+GATE  6. TEST/CI parity contract — npm test ≠ whole repository      = SUCCESS
+GATE  7. Release version contract — package.json / lock / tags      = SUCCESS
+FAIL  19. Phase 7 production verifier T1–T7                          = failure  (رگرسیون چت۲)
+job: 30 steps | 21 success | 1 failure | 8 skipped
+```
+
+یعنی برای **نخستین‌بار** هر دو قرارداد حاکمیتی در CI واقعی اجرا و سبز شدند.
+
+**طبق اسکیل تازهٔ `strict-verification` (که مخزن این نشست اضافه کرد):** دو اجرای مستقل
+محلی (هر دو ۱۰/۱۰ و ۸/۸) به‌علاوهٔ آزمون‌های مرزی/منفی انجام شد — `package.json` خراب
+(exit 1)، نسخهٔ غیر‌semver (V1 قرمز)، و بازگردانی (exit 0). به‌علاوهٔ اجرای واقعی CI
+که بالا آمد.
+
+**مرحلهٔ ۱۹ همچنان قرمز است و مال من نیست** — همان رگرسیون `62254cff` که بالاتر ثبت شد.
+روی جدیدترین `origin/main` هم بررسی کردم: فراخوانی `getTenantPolicy` هنوز در
+`server/infrastructure/phase6-production-hardening.js` وجود ندارد در حالی که
+`tools/production-verifier.sh:442` هنوز دقیقاً همان رشته را grep می‌کند ⇒ هیچ‌کس هنوز
+رفعش نکرده و **همهٔ اجراهای Node.js CI از #1160 به بعد قرمزند**. این یک **P1 فعال برای
+مالک/Chat2** است: تا رفع نشود، هیچ اجرای سبز Node.js CI روی main وجود نخواهد داشت و
+بنابراین **هیچ SHAیی شرط T2 برای ساخت تگ تازه را برآورده نمی‌کند** (به
+`docs/audit/F-QA-01_TAG_INTEGRITY_DOSSIER.md` §۶.۵ مراجعه کنید).
