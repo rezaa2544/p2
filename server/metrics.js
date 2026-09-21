@@ -590,7 +590,7 @@ async function publishRuntimeProbes() {
         const t0 = process.hrtime.bigint();
         const ok = await _safe(() => redisMod.ping(), false);
         pingMs = Number(process.hrtime.bigint() - t0) / 1e6;
-        if (!ok) up = 0;
+        if (!ok || ok.ok !== true || ok.ping === false) up = 0;
       }
     }
     registry.set('payesh_redis_up', [], up);

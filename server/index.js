@@ -1032,7 +1032,8 @@ const onRequest = async (req, res) => {
       try { rdp = await redis.ping(); } catch (e) {}
       const pool = db.getPool();
       const dbAlive = !!(dbp && dbp.ok);
-      const isHealthy = rdy && dbAlive;
+      const workerHealthy = typeof worker.isHealthy === 'function' ? worker.isHealthy() : true;
+      const isHealthy = rdy && dbAlive && workerHealthy;
       /* Q3: health exposes bounded integer counters only; no session, tenant,
          actor, URL, or payload data leaves the runtime monitor. */
       const runtimeSecurity = runtimeMonitor.snapshot();
@@ -1041,10 +1042,11 @@ const onRequest = async (req, res) => {
         metrics.set('payesh_attack_patterns_blocked', [], runtimeSecurity.attack_patterns_blocked);
       } catch (_) {}
       const body = {
-        ok: rdy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid,
+        ok: isHealthy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid,
         anomalies_detected_24h: runtimeSecurity.anomalies_detected_24h,
         suspicious_sessions: runtimeSecurity.suspicious_sessions,
         attack_patterns_blocked: runtimeSecurity.attack_patterns_blocked,
+        worker: typeof worker.health === 'function' ? worker.health() : { healthy: true },
         cache: redis.isRedis() ? 'redis' : (rdy ? 'memory-dev' : 'unavailable'),
         db: { driver: dbp.driver, alive: !!(dbp && dbp.ok), pool: pool ? { total: pool.totalCount, idle: pool.idleCount, pending: pool.pendingCount } : null },
         redis: { driver: rdp.driver, alive: !!(rdp && rdp.ok) },

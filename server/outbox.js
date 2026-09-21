@@ -217,22 +217,49 @@ function createOutbox({ store, db }) {
 
   /**
    * Step 10 (P2-NI-08): Poller with FOR UPDATE SKIP LOCKED
+   * OUTBOX-002 remediation: Atomic claim CTE ensures that concurrent workers
+   * cannot claim or double-process the same pending rows even when client=null.
    */
   async function fetchPendingBatch(batchSize = 50, client = null) {
+    const limit = Math.min(500, Math.max(1, batchSize));
     if (isPg()) {
-      const q = client || db;
+      if (client) {
+        const res = await client.query(
+          `SELECT id, type, collection, record_id, actor_id, version, payload, retry_count, last_error
+           FROM server_outbox
+           WHERE status = 'pending'
+           ORDER BY id ASC
+           LIMIT $1
+           FOR UPDATE SKIP LOCKED;`,
+          [limit]
+        );
+        return (res && res.rows) || [];
+      }
+      // Single-statement atomic claim using CTE + UPDATE ... RETURNING
+      const q = db;
       const res = await q.query(
-        `SELECT id, type, collection, record_id, actor_id, version, payload, retry_count, last_error
-         FROM server_outbox
-         WHERE status = 'pending'
-         ORDER BY id ASC
-         LIMIT $1
-         FOR UPDATE SKIP LOCKED;`,
-        [Math.min(500, Math.max(1, batchSize))]
+        `WITH claimed AS (
+           SELECT id FROM server_outbox
+           WHERE status = 'pending'
+           ORDER BY id ASC
+           LIMIT $1
+           FOR UPDATE SKIP LOCKED
+         )
+         UPDATE server_outbox o
+         SET status = 'processing'
+         FROM claimed c
+         WHERE o.id = c.id
+         RETURNING o.id, o.type, o.collection, o.record_id, o.actor_id, o.version, o.payload, o.retry_count, o.last_error;`,
+        [limit]
       );
       return (res && res.rows) || [];
     }
-    return (store.outbox || []).filter(e => e.status === 'pending').slice(0, batchSize);
+    // Memory mode: atomically transition pending items to processing
+    const pending = (store.outbox || []).filter(e => e.status === 'pending').slice(0, limit);
+    for (const e of pending) {
+      e.status = 'processing';
+    }
+    return pending;
   }
 
   /**

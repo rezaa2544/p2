@@ -35,6 +35,7 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
 
   let timer = null;
   let running = false;
+  let lastTickAt = 0;
   const inFlight = new Set();
 
   function handlerFor(evt) {
@@ -48,6 +49,7 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
   async function tick() {
     if (running) return { processed: 0, failedDelta: 0, skippedBusy: true };
     running = true;
+    lastTickAt = Date.now();
     let processed = 0, failedDelta = 0;
     try {
       let events = [];
@@ -63,7 +65,7 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
 
       for (const evt of events) {
         const status = evt.status || 'pending'; /* سازگاری با گذشته */
-        if (status !== 'pending' || inFlight.has(evt.id)) continue;
+        if ((status !== 'pending' && status !== 'processing') || inFlight.has(evt.id)) continue;
         const h = handlerFor(evt);
         if (!h) continue; /* این رویداد کارِ این کارگر نیست */
         inFlight.add(evt.id);
@@ -80,11 +82,11 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
           const rc = (Number(evt.retry_count) || 0) + 1;
           const errMsg = (err && (err.message || err.code)) || 'error';
           const patch = {
+            status: rc >= maxRetries ? 'failed' : 'pending',
             retry_count: rc,
             last_error: errMsg
           };
           if (rc >= maxRetries) {
-            patch.status = 'failed';
             failedDelta++;
             // B4: Transfer poison pill event to Dead-Letter Queue (DLQ)
             if (outbox && typeof outbox.moveToDlq === 'function') {
@@ -108,6 +110,7 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
 
   function start() {
     if (timer) return;
+    lastTickAt = Date.now();
     timer = setInterval(() => { tick().catch(() => {}); }, intervalMs);
     if (timer.unref) timer.unref();
   }
@@ -116,7 +119,24 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
     if (timer) { clearInterval(timer); timer = null; }
   }
 
-  return { start, stop, tick };
+  function isHealthy(staleThresholdMs = 30000) {
+    if (!timer) return true; // idle or manual mode
+    if (!lastTickAt) return true;
+    const age = Date.now() - lastTickAt;
+    return age <= staleThresholdMs;
+  }
+
+  function health() {
+    return {
+      running,
+      active: timer !== null,
+      lastTickAt: lastTickAt ? new Date(lastTickAt).toISOString() : null,
+      lastTickAgeMs: lastTickAt ? Date.now() - lastTickAt : 0,
+      healthy: isHealthy()
+    };
+  }
+
+  return { start, stop, tick, isHealthy, health };
 }
 
 module.exports = { createWorker };

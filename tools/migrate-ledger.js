@@ -141,11 +141,10 @@ async function migrateUp(client, options = {}) {
     // Execute migration with atomic ledger entry
     try {
       if (usePsql) {
-        execFileSync('psql', [pgUrl, '-v', 'ON_ERROR_STOP=1', '-q', '-f', file.path], { stdio: 'inherit' });
-        await client.query(`
-          INSERT INTO schema_migrations (version, name, applied_at, checksum)
-          VALUES ($1, $2, NOW(), $3);
-        `, [file.version, file.name, file.checksum]);
+        const cleanedContent = prepareMigrationSql(file.content);
+        const ledgerSql = `\nINSERT INTO schema_migrations (version, name, applied_at, checksum) VALUES ('${file.version.replace(/'/g, "''")}', '${file.name.replace(/'/g, "''")}', NOW(), '${file.checksum.replace(/'/g, "''")}');\n`;
+        const wrappedSql = `BEGIN;\n${cleanedContent}\n${ledgerSql}COMMIT;\n`;
+        execFileSync('psql', [pgUrl, '-v', 'ON_ERROR_STOP=1', '-q'], { input: wrappedSql, stdio: ['pipe', 'inherit', 'inherit'] });
       } else {
         await client.query('BEGIN');
         await client.query(prepareMigrationSql(file.content));
@@ -205,8 +204,10 @@ async function migrateDown(client, targetVersion = null, options = {}) {
 
   try {
     if (usePsql) {
-      execFileSync('psql', [pgUrl, '-v', 'ON_ERROR_STOP=1', '-q', '-f', downPath], { stdio: 'inherit' });
-      await client.query('DELETE FROM schema_migrations WHERE version = $1;', [latest.version]);
+      const cleanedDown = prepareMigrationSql(downContent);
+      const ledgerSql = `\nDELETE FROM schema_migrations WHERE version = '${latest.version.replace(/'/g, "''")}';\n`;
+      const wrappedSql = `BEGIN;\n${cleanedDown}\n${ledgerSql}COMMIT;\n`;
+      execFileSync('psql', [pgUrl, '-v', 'ON_ERROR_STOP=1', '-q'], { input: wrappedSql, stdio: ['pipe', 'inherit', 'inherit'] });
     } else {
       await client.query('BEGIN');
       await client.query(prepareMigrationSql(downContent));
