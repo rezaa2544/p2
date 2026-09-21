@@ -280,3 +280,26 @@ cross-instance consistency، TTL، failure behavior و measurement توجیه ش
 Phase 8.2 همچنان **PARTIAL / Exit NOT VERIFIED** باقی می‌ماند.
 Phase 8.3 همچنان **PLANNED / BLOCKED BY 8.2 EXIT** است.
 
+
+
+## 13. Red-Team Delta — Chat 5 Autonomous Zero-Trust Verification (2026-09-21)
+
+Chat 5 روی HEAD 138cd1d9 شواهد مستقل runtime/CI ارائه کرده است. نتیجه حاکمیتی: **Phase 8.2 S2 = VERIFIED به‌عنوان DELIVERED و TRUTHFULLY LABELED**؛ اما **Phase 8.2 Exit = NOT VERIFIED**.
+
+| ID | موضوع | وضعیت | اقدام |
+|---|---|---|---|
+| C5-01 | S2 R6/R7 + SLO delivered و با code-truth هم‌خوان | VERIFIED | حفظ در Gate Matrix |
+| C5-02 | S3 alert→on-call→ack→runbook→recovery فاقد Evidence زنده E4 | BLOCKING | drill واقعی + timestamp + MTTA/MTTR |
+| C5-03 | S4 PG/Redis فقط E3 isolated evidence؛ topology معادل تولید و failover کامل انجام نشده | BLOCKING | PG restore/promote + Redis failover/restore E4 + verifier + RPO/RTO |
+| C5-04 | session-revocation UNIT/MOD بدون redis.init شش failure کاذب می‌دهد | P3 / NON-BLOCKING | fix harness، هدف 14/14 |
+| C5-05 | FINAL_VERIFICATION_REPORT stub هنوز VERIFIED است | P3 / DOC DRIFT | بعد از M1-M3 با SHA/run-id واقعی اصلاح شود |
+| C5-06 | Codacy/Fortify failure از نوع third-party scanner/workflow | NON-BLOCKING | جداگانه پیگیری شود |
+| C5-07 | R6-A9/A10 و R7 dynamic shedding/fair-share هنوز TARGET/POLICY | DEFERRED | backlog 8.3/8.4 |
+
+### دو blocker واقعی خروج 8.2
+1. **M1 / B-1:** live alert→on-call→runbook→recovery E4 با evidence زمان‌دار و MTTA/MTTR.
+2. **M2+M3 / B-2:** live PG + Redis restore/failover E4 با evidence زمان‌دار، RPO/RTO و verifier روی target بازیابی‌شده.
+
+M0 و M5 non-blocking هستند. Phase 8.3 تا بسته‌شدن Gate 8.2 **BLOCKED** می‌ماند.
+
+مرجع: docs/audit/CHAT5_PHASE8_2_DELTA_2026-09-21.md.
