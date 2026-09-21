@@ -401,3 +401,56 @@ Phase 8.3 empirical staging/load
 ```
 
 **Decision:** Phase 8.2 Exit remains **NOT VERIFIED**; Phase 8.3 remains **BLOCKED**; no Production GO.
+
+## 17. Consolidated Five-Chat Remediation Workplan — 2026-09-21
+
+پس از تطبیق کامل گزارش‌های Chat 1 تا Chat 5، وضعیت Gate 8.2 بازتنظیم شد تا هیچ finding تاریخی بدون reproduction دوباره blocker نشود و هیچ Exit Evidence ناقصی نیز بسته تلقی نشود.
+
+### مواردی که باید از وضعیت «بسته/قابل اتکا برای Exit» خارج شوند
+
+| ID | موضوع | وضعیت جدید | معیار بسته‌شدن |
+|---|---|---|---|
+| F-QA-02 | Final Verification Report | 🔴 OPEN / P0 | گزارش جدید با current SHA + CI run ID + counts + raw evidence |
+| F-QA-03 | CI determinism / boot timeout | 🔴 OPEN / P1 | رفع timeout + حداقل 20 run قابل مشاهده با pass-rate ثبت‌شده |
+| F-QA-01 | phase8.2-verified tag integrity | 🔴 OPEN / P1 | tag روی SHA دارای CI evidence معتبر یا تغییر نام/نقش tag |
+| F-QA-08 | Redis backup fake-green | 🔴 OPEN / P1 | contention هرگز exit 0 کاذب ندهد + backup artifact قابل verify |
+| M1 | S3 alert→on-call→ack→runbook→recovery | 🔴 BLOCKING | E4 drill + timestamp + MTTA/MTTR + recovery evidence |
+| M2/M3 | S4 PG + Redis restore/failover | 🔴 BLOCKING | E4 production-equivalent restore/promote/failover + verifier + RPO/RTO |
+| OUTBOX-002 | دو worker / SKIP LOCKED | 🟠 REQUIRED PROOF | live-PG concurrency test با اثبات row exclusivity |
+| DB-001 / RT2-02 | tenant-policy query amplification | 🟠 MEASUREMENT REQUIRED | query/request + latency measurement روی route واقعی |
+| OUTBOX-001 | event coverage contract | 🟠 CONTRACT REQUIRED | inventory mutation→durable-event + consumer/idempotency evidence |
+| RT1-01…04 | Chat1 historical regression candidates | 🟠 REPRODUCTION REQUIRED | reproduction روی current HEAD؛ فقط موارد reproduced وارد fix |
+| RT1-05 | static/fake-green + secret hygiene | 🟠 RECHECK | current-HEAD scan + ثبت خروجی |
+| M0 session-revocation | standalone UNIT/MOD harness | 🟡 P3 | redis init + standalone 14/14 |
+| F-QA-05 | local/CI test parity | 🟡 P2 | Node≥22 + documented CI-parity path |
+| F-QA-04/06/07 | scanner/config/naming/release metadata | 🟡 GOVERNANCE | cleanup/explicit gate policy |
+| MIG-001 | migration crash window | 🟡 FOLLOW-UP | hardening/test؛ blocker مستقل 8.2 نیست |
+| PGB/WORKER | capacity/worker-liveness | 🟡 FOLLOW-UP | reconcile with E4 measurement |
+
+### مواردی که همچنان بسته می‌مانند مگر reproduction خلاف آن را نشان دهد
+
+- R1 / R2 / R21 authoritative fail-closed suites.
+- Phase 8.2 S2 delivery: R6/R7 decisions + SLO + observability metrics، با distinction روشن بین MEASURED و TARGET/POLICY.
+- Chat2 alert silent-risk finding: withdrawn after later wiring evidence.
+- R6-A9/A10 و R7 dynamic shedding/fair-share: deferred TARGET/POLICY، نه regression.
+- DR-001/OBS-001 به‌عنوان blocker مستقل: به M2/M3 و M1 متصل‌اند و duplicate blocker ساخته نمی‌شوند.
+
+### اجرای اجباری از همین نقطه
+
+1. Reproduce Chat1 RT1-01..04 + RT1-05 current-HEAD hygiene.
+2. F-QA-02 repair/rebuild evidence report.
+3. F-QA-03 stabilize Gate-3 + ≥20 CI runs.
+4. F-QA-01 correct verification tag.
+5. F-QA-08 fix Redis backup fake-green.
+6. M1 live E4 alert/on-call/recovery drill.
+7. M2 PostgreSQL E4 restore/promote + measured RPO/RTO.
+8. M3 Redis E4 restore/failover + revocation/rate-limit verification.
+9. OUTBOX-002 two-worker live-PG proof.
+10. DB-001 / RT2-02 query-count + latency measurement.
+11. OUTBOX-001 event coverage/idempotency contract.
+12. Fix only reproduced regressions; rerun affected gates.
+13. Rebuild Phase 8.2 Exit evidence.
+14. Gate 8.2 VERIFIED.
+15. Only then Phase 8.3 E4 empirical scale/load.
+
+**Current decision:** Phase 8.2 Exit = NOT VERIFIED. Phase 8.3 = BLOCKED. Production GO = NOT DECLARED.
