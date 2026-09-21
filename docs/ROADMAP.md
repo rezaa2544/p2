@@ -21,6 +21,8 @@
 > **مرجع وضعیت جاری:** `docs/ROADMAP_CURRENT_GROUND_TRUTH_2026-09-21.md`  
 > **مرجع برنامه اصلی:** `docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md`
 >
+> **Delta ممیزی Chat 1 — 2026-09-21:** گزارش مستقل Zero-Trust روی SHA تاریخی `6762d84b` چهار مورد قابل بازبینی را ثبت کرده است: async audit I/O، API test runner authority mode، invariant قدیمی Wave 1 و migration runner موج 23. چون HEAD فعلی `fbe178be` است، این موارد فعلاً **REPRODUCTION REQUIRED** هستند و تا بازتولید روی HEAD فعلی status را تغییر نمی‌دهند. برنامهٔ اجرای آن‌ها در `docs/ROADMAP_CURRENT_GROUND_TRUTH_2026-09-21.md` و `docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md` ثبت شده است. مرجع delta: `docs/audit/CHAT1_ZERO_TRUST_REGRESSION_DELTA_2026-09-21.md`.
+
 > **تقسیم کار بین دو سند:** بخش‌های ۳۴ (W21)، ۳۵ (R-01..R-07)، ۳۶ (W22) و ۳۷
 > همین سند مرجع **«چیستی و دامنهٔ»** هر قابلیت‌اند و دست‌نخورده باقی می‌مانند؛
 > سند مرجع اجرایی تعیین می‌کند هر کدام **در کدام فاز، کدام Sprint، با کدام
