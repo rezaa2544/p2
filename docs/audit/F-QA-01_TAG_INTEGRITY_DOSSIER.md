@@ -1,0 +1,151 @@
+# F-QA-01 — TAG INTEGRITY DOSSIER — `phase8.2-verified`
+
+**Priority:** P1
+**Measured at:** `6b627a8f56f958de81579a336341689db9d7a551`
+**Date:** 2026-09-21
+**Status:** evidence complete · **BLOCKED — OWNER DECISION REQUIRED** (tag deliberately NOT moved)
+
+---
+
+## ۱. تگ دقیقاً کجاست
+
+```
+refs/tags/phase8.2-verified -> 401d02b2ab9a6011e09e2dec1517a99fe2de21cd
+object type   : commit      (lightweight tag — نه annotated)
+tagger        : ندارد
+tag message   : ندارد
+signature     : ندارد
+commit subject: docs(phase8.2): publish final verification report
+commit author : opencode <opencode@users.noreply.github.com>
+commit date   : 2026-09-21 02:26:25 +0330
+commit diff   : 1 file changed, 22 insertions(+)
+                docs/audit/PHASE_8_2_FINAL_VERIFICATION_REPORT.md
+reachable from main : YES
+distance from HEAD  : ۷۷ کامیت عقب
+```
+
+**نکتهٔ اول:** این یک **lightweight tag** است. یعنی حتی متادیتای «چه کسی، کِی، چرا این را
+verified اعلام کرد» هم وجود ندارد. یک برچسبِ بی‌امضا روی یک کامیت.
+
+**نکتهٔ دوم:** آن کامیت **هیچ کدی را تغییر نداده** — فقط یک سند ۲۲ خطی اضافه کرده است.
+یعنی تگ، وضعیتِ یک *ادعا* را علامت‌گذاری می‌کند، نه وضعیتِ یک *نرم‌افزار تأییدشده*.
+
+## ۲. آیا آن SHA شواهد معتبر CI دارد؟ — خیر
+
+پرس‌وجوی مستقیم از Actions API برای `head_sha=401d02b2...`:
+
+| workflow | run | نتیجه |
+|---|---|---|
+| `.github/workflows/fortify.yml` | #284 `id=35543671024` | **failure** |
+| `.github/workflows/fortify.yml` | #283 `id=35543159931` | **failure** |
+| **Node.js CI** | — | **هیچ اجرایی وجود ندارد** |
+| **Security Program** | — | **هیچ اجرایی وجود ندارد** |
+| **Codacy** | — | **هیچ اجرایی وجود ندارد** |
+
+```
+total runs on 401d02b2 : 2
+successful runs        : 0
+test runs              : 0
+```
+
+**حکم:** تگی به نام `verified` روی کامیتی نشسته که **صفر تست روی آن اجرا شده** و
+**تنها شواهد موجودش دو شکست است**. این برچسب، شاهد نیست.
+
+## ۳. ارتباط تگ با گزارش‌های verification فعلی
+
+کامیت `401d02b2` همان کامیتی است که سند
+`docs/audit/PHASE_8_2_FINAL_VERIFICATION_REPORT.md` را با این محتوا ایجاد کرد:
+
+```
+Commit: b0b55a13539dc917779d39053bfb8d2277428cc0
+Status: VERIFIED
+```
+
+زنجیرهٔ ادعا سه حلقه دارد و **هر سه حلقه شکسته‌اند**:
+
+1. تگ `phase8.2-verified` → کامیت `401d02b2` که **هیچ CI ندارد**.
+2. سند داخل آن کامیت → به `b0b55a13` استناد می‌کرد که **Node.js CI #1074 آن failure بود**.
+3. سند هیچ run_id، شمارش تست، یا کد خروجی نداشت.
+
+**وضعیت امروز:** همان سند در HEAD **بازنویسی و ادعایش رسماً پس گرفته شده** (کامیت
+`0d245b9c`) و اکنون ۱۲۳ خط با run id و شمارش واقعی است. یعنی:
+
+> تگ `phase8.2-verified` اکنون به نسخه‌ای از سندی اشاره می‌کند که **محتوایش در HEAD
+> باطل اعلام شده است**. تگ، یک ادعای بازپس‌گرفته‌شده را در تاریخ منجمد کرده است.
+
+## ۴. آیا چیزی به این تگ وابسته است؟
+
+```
+grep -rn "phase8.2-verified" tools/ tests/ .github/ scripts/   →  صفر نتیجه
+grep -rnE "git tag|describe --tags" tools/*.js .github/**.yml  →  صفر نتیجه
+```
+
+**هیچ ابزار، تست یا workflowای این تگ را نمی‌خواند.** فقط ۷ سند به آن ارجاع می‌دهند و
+همگی آن را به‌عنوان *یافتهٔ باز* توصیف می‌کنند، نه به‌عنوان شاهد.
+
+**پیامد عملی:** حذف یا تغییر نام این تگ **هیچ چیزی را نمی‌شکند**. این یک تصمیم
+حاکمیتی است، نه فنی.
+
+## ۵. چرا تگ در این بسته جابه‌جا نشد
+
+سه دلیل مستقل:
+
+1. **دستور مأموریت:** «`do not move tags` (audit, not cosmetics)» و در roadmap مخزن:
+   «اصلاح `phase8.2-verified` فقط پس از داشتن SHA + CI evidence معتبر».
+2. **جابه‌جاکردن تگ، مسئله را حل نمی‌کند — پنهانش می‌کند.** اگر همین حالا تگ را روی
+   `6b627a8f` (که Node.js CI #1156 سبز دارد) ببریم، برچسب «verified» درست به نظر
+   می‌رسد در حالی که **Phase 8.2 همچنان NOT VERIFIED است**. این دقیقاً همان
+   fake-greenی است که این ممیزی علیه آن است.
+3. **یک CI سبز ≠ یک فاز تأییدشده.** Node.js CI #1156 فقط می‌گوید ۲۸ مرحله سبز شدند.
+   گیت ۸.۲ به شواهد E4 (M1/M2/M3) نیاز دارد که هنوز وجود ندارند.
+
+## ۶. تصمیم موردنیاز مالک
+
+**BLOCKED — OWNER DECISION REQUIRED**
+
+| گزینه | کار | ارزیابی |
+|---|---|---|
+| **A — تغییر نام (توصیه‌شده)** | تگ تازهٔ annotated مثل `phase8.2-report-published` روی همان `401d02b2` + حذف `phase8.2-verified` | تاریخ حفظ می‌شود، ادعای کاذب حذف می‌شود. برچسب همان چیزی را می‌گوید که واقعاً هست: «گزارش منتشر شد»، نه «تأیید شد» |
+| **B — حذف ساده** | `git push origin :refs/tags/phase8.2-verified` | سریع و بی‌خطر (هیچ اتوماسیونی وابسته نیست)؛ ولی نشانهٔ تاریخی از بین می‌رود |
+| **C — جابه‌جایی به SHA دارای CI سبز** | تگ روی `6b627a8f` (#1156 ✅ ۲۸/۲۸) | ❌ **توصیه نمی‌شود** — کلمهٔ «verified» را بدون شواهد E4 مشروع جلوه می‌دهد |
+| **D — بدون تغییر** | فقط مستندسازی | وضعیت فعلی؛ ریسک: هر خوانندهٔ تازه دوباره تگ را شاهد فرض می‌کند |
+
+**توصیهٔ ممیز: گزینهٔ A.** دلیل: تنها گزینه‌ای است که هم‌زمان (۱) ادعای بی‌پشتوانه را
+برمی‌دارد، (۲) تاریخ را پاک نمی‌کند، و (۳) هیچ برچسب verifiedی بدون شاهد باقی نمی‌گذارد.
+
+دستورهای دقیق در صورت تصویب مالک (اجرا **نشده‌اند**):
+
+```bash
+git tag -a phase8.2-report-published 401d02b2 \
+  -m "Phase 8.2 verification report published (claim later retracted at 0d245b9c). Not a verification gate."
+git push origin phase8.2-report-published
+git push origin :refs/tags/phase8.2-verified
+git tag -d phase8.2-verified
+```
+
+## ۷. یافتهٔ جانبی — سایر تگ‌ها
+
+| تگ | SHA | نوع | شواهد CI |
+|---|---|---|---|
+| `phase8.2-verified` | `401d02b2` | lightweight | **۰ اجرای تست؛ ۲ شکست Fortify** |
+| `phase8.2-final-main` | `fbe178be` | lightweight | متناقض: #1093 ✅ (PR) و #1095 ❌ (push) روی همان SHA |
+| `v1.0.1` | `522afe8f` | lightweight | **صفر اجرا — هیچ CIای وجود ندارد** |
+| `v1.0.0` | `b2428ad2` | lightweight | — |
+| `national-baseline-start` | `e551 53d4` → `88509732` | **annotated** | — |
+
+**نکته:** تنها تگ annotated مخزن `national-baseline-start` است. تگ انتشار `v1.0.1`
+هم هیچ شاهد CI ندارد — همان الگوی `phase8.2-verified`، این بار روی یک تگ انتشار.
+این در `docs/RELEASE_VERSION_CONTRACT.md` به‌عنوان قاعدهٔ ۲ پوشش داده شد.
+
+### علت شکست #1095 (برای کامل‌بودن پرونده)
+
+روی `fbe178be` همان SHA در دو event نتیجهٔ متفاوت داد. علت دقیق:
+
+```
+مرحلهٔ ۱۶: "Production Truth Gate — 5 gates, VERIFIED or NOT VERIFIED"  = failure
+سپس ۹ مرحله skipped (شامل خودِ npm test و npm run build)
+```
+
+یعنی در اجرای push، گیت truth شکست و **`npm test` اصلاً اجرا نشد**؛ در اجرای PR هر
+۲۸ مرحله سبز بود. این «CI ناپایدار» نیست — تفاوت واقعیِ رفتار بین دو event است و
+دلیل دیگری است بر اینکه یک اجرای سبز روی یک SHA، تأییدِ آن SHA نیست.
