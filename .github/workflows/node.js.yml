@@ -97,6 +97,9 @@ jobs:
     - name: Release version contract — package.json / lock / tags coherence
       run: node tests/release-version-contract.js
 
+    - name: M1 Runtime Probes & Scrape Regression — publishRuntimeProbes wiring
+      run: node tests/runtime-probes-scrape-regression.test.js
+
     - name: Migration chain — clean install on an empty database (001 → latest)
       run: |
         DATABASE_URL="$PGURL" node tools/migrate-ledger.js up

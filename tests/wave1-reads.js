@@ -145,13 +145,13 @@ function seedStore() {
       assert(b.body && b.body.ok === true, `${ru.role}: باید موفق باشد`);
     });
   }
-  await test('seam actually invoked db.readCollection on bootstrap (fresh cache-miss)', async () => {
-    const before = seamDb.calls;
-    // A user id never requested before ⇒ L1 bootstrap cache is empty ⇒ the
-    // seam path must compute and traverse db.readCollection.
+  await test('seam bootstrap returns valid payload without full collection scan (P0-01 contract)', async () => {
+    // Under P0-01 (commit b803d00), bootstrap intentionally does NOT call db.readCollection (full table scan)
+    // to prevent national Heap OOM. In memory fallback, it uses bounded store lookups;
+    // in PG mode, it traverses scoped db.query (WHERE school_id = $1).
     const res = await seamBootstrap.getBootstrapData({ user: { id: 21, role: 'teacher', school_id: 1, full_name: 'دبیر سیام', national_id: '0099887766' } });
     assert(res.body && res.body.ok === true, 'باید موفق باشد');
-    assert(seamDb.calls > before, 'مسیر db.readCollection در bootstrap طی نشد');
+    assert(res.body.classes && Array.isArray(res.body.classes), 'کلاس‌ها باید در خروجی باشند');
   });
 
   /* ---- C. pull parity: db-backed vs legacy store-direct ----

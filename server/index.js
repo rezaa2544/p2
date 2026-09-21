@@ -952,6 +952,9 @@ const onRequest = async (req, res) => {
         metrics.set('payesh_suspicious_sessions', [], runtimeSecurity.suspicious_sessions);
         metrics.set('payesh_attack_patterns_blocked', [], runtimeSecurity.attack_patterns_blocked);
       } catch (_) {}
+      try {
+        await metrics.publishRuntimeProbes();
+      } catch (_) {}
       const body = metrics.render();
       res.writeHead(200, {
         'Content-Type': 'text/plain; version=0.0.4; charset=utf-8',

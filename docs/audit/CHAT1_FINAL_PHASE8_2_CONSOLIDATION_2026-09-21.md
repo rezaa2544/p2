@@ -1,191 +1,167 @@
-# CHAT 1 FINAL PHASE 8.2 CONSOLIDATION & DELIVERABLE AUDIT REPORT
+# CHAT 1 FINAL PHASE 8.2 CONSOLIDATION & STRICT DELIVERABLE AUDIT REPORT
 **Document Reference:** `docs/audit/CHAT1_FINAL_PHASE8_2_CONSOLIDATION_2026-09-21.md`  
 **Repository:** `rezaa2544/p2` (`main`)  
-**Base HEAD:** `89cec08c44b4cebd96ffa49a12ce3a707df56a0b`  
+**Base HEAD Commit:** `7894e745f448c344dd392c0ae981d3ee594dc69a`  
+**Consolidated HEAD Commit:** `f37022e15dc6e9a157ac59aafb4529fbcf7ad6af`  
 **Audit & Remediation Lead:** Chat 1 Consolidation Agent (Zero-Trust Senior Architect)  
 **Date:** 2026-09-21 (۳۱ شهریور ۱۴۰۵)  
-**Standard:** Zero-Trust Hierarchy of Truth (`Runtime E3/E4 > Automated Test E2 > CI Evidence > Source Code E1 > Historical Claims E0`)
+**Standard:** Engineering Execution & Verification Policy (`docs/ENGINEERING_EXECUTION_AND_VERIFICATION_POLICY.md`), AI Skills Framework (`docs/AI_SKILLS.md`)  
+**Verification Level Standard:** `E0 (Historical Claims) < E1 (Static Code) < E2 (Automated Test / Contract) < E3 (Logical Restore / Simulated Env) < E4 (Production / Real Distributed Runtime)`
 
 ---
 
-## 1. Executive Summary & Purpose
-
-This audit consolidates all findings, evidence, and remediations from Chat 1 through Chat 5 across the repository `rezaa2544/p2`.
-In strict compliance with Zero-Trust principles:
-- **No historical claim of "VERIFIED", "COMPLETE", or "PRODUCTION READY" was taken at face value.**
-- Every finding was independently verified against the actual repository HEAD, git history, live test suites, and GitHub Actions logs.
-- Repository-owned defects were reproduced, remediated, verified across multiple independent runs, and staged for commit and push.
-- External dependencies and governance decisions requiring owner authorization were segregated honestly without fake-green bypasses or simulated claims.
-
----
-
-## 2. Baseline Status
-
-| Property | Measured Value | Verification Command |
-|---|---|---|
-| **Local HEAD SHA** | `89cec08c44b4cebd96ffa49a12ce3a707df56a0b` | `git rev-parse HEAD` |
-| **origin/main SHA** | `89cec08c44b4cebd96ffa49a12ce3a707df56a0b` | `git rev-parse origin/main` |
-| **Node.js Engine** | `v22.14.0` | `node --version` |
-| **NPM Version** | `10.9.2` | `npm --version` |
-| **Tracked Git Tags** | `national-baseline-start`, `phase8.2-final-main`, `phase8.2-verified`, `v1.0.0`, `v1.0.1` | `git show-ref --tags` |
-| **Workspace Size** | `63 MB` (strictly below 100 MB target) | `du -sh /home/user` |
-
----
-
-## 3. Comprehensive Finding Dossiers & Remediation Accounting
-
-### F-QA-01 — Tag / Verification Integrity (`phase8.2-verified`)
-- **Current HEAD Status:** Tag points to commit `401d02b2ab9a6011e09e2dec1517a99fe2de21cd` (a 22-line markdown claim).
-- **Audit Findings:** Tag is lightweight (unannotated, unsigned). CI on `401d02b2` has 0 test runs and 2 Fortify workflow failures. The document claim in `401d02b2` was formally retracted in commit `0d245b9c`. No automation or test reads this tag.
-- **Remediation Rule:** Moving the tag without an authoritative verified gate would constitute cosmetic fake-green.
-- **Disposition:** `BLOCKED — OWNER DECISION REQUIRED` (Documented in `docs/audit/F-QA-01_TAG_INTEGRITY_DOSSIER.md`).
-
----
-
-### F-QA-04 — Codacy / Fortify CI Workflows
-- **Fortify Workflow:** Chat 4 repaired the invalid `secrets` syntax in step `if:` by resolving credentials in `jobs.Fortify-AST-Scan.env`. When secrets are absent, the workflow executes the skip step honestly without failing.
-- **Codacy Workflow:** `.codacy.yml` format was corrected with leading `---`. However, `codacy-analysis-cli-action` requires `CODACY_PROJECT_TOKEN` to fetch organization configuration from Codacy Cloud. Without this secret, the CLI exits with error.
-- **Disposition:** `EXTERNAL BLOCKER / OWNER DECISION REQUIRED` (Organization secret `CODACY_PROJECT_TOKEN` configuration required).
-
----
-
-### F-QA-05 — Test / CI Parity Contract
-- **Contract Enforcement:** Verified via `tests/ci-test-parity-contract.js`. Locks `npm test` entrypoints (`tests/run.js`, `tests/smoke.js`) and ensures top-level non-CI test count does not exceed the budget of 485.
-- **Three-State Verification Execution:**
-  1. *State A (Normal Repository):* 10/10 PASS.
-  2. *State B (Injected Orphan Test):* Detected 486 unrun tests; failed with exit code 1 as expected.
-  3. *State C (Removed Artifact):* 10/10 PASS.
-- **Disposition:** `VERIFIED`.
-
----
-
-### F-QA-07 — Release Hygiene & Version References
-- **Measured State:** `package.json` specifies `1.0.0`; `package-lock.json` specifies `1.0.0`; latest git semver tag is `v1.0.1` (1,920 commits behind HEAD); `docs/RELEASE_NOTES.md` references release candidate `v1.0.0-rc17`.
-- **Governance Contract:** Established in `docs/RELEASE_VERSION_CONTRACT.md`. `package.json` is declared SSoT. Arbitrary version bumps prohibited without owner release policy.
-- **Disposition:** `BLOCKED — OWNER DECISION REQUIRED`.
-
----
-
-### PGB-001 — PgBouncer 3,500-Connection Scale
-- **Configuration:** `infra/postgres/pgbouncer/pgbouncer.ini` specifies `max_client_conn = 3500`, `default_pool_size = 80`, `pool_mode = transaction`.
-- **Remediation:** Fixed `tests/ha-config.js` line 155 regex which had previously hardcoded `max_client_conn = 2000`, causing a regression after Chat 2 scaled max connections to 3500.
-- **Test Runs:**
-  - `node tests/wave10-pgbouncer.js`: 22/22 PASS (Run 1 & 2).
-  - `node tests/ha-config.js`: 94/94 PASS (Run 1 & 2).
-- **Disposition:** `FIXED & VERIFIED`.
-
----
-
-### OUTBOX-002 — Transactional Outbox CTE & Concurrency
-- **Implementation:** `server/outbox.js` implements `SELECT ... FOR UPDATE SKIP LOCKED` inside transactions, atomic claims, and DLQ poison routing.
-- **Verification:** `tests/wave8-outbox.js` executed twice: 15/15 PASS. Static concurrency invariant checks S1–S7 pass in `tests/queue-outage-drill.js`. Live multi-worker crash drill requires attached live PostgreSQL cluster.
-- **Disposition:** `STATIC & UNIT VERIFIED / E4 DEFERRED (EXTERNAL INFRASTRUCTURE)`.
-
----
-
-### WORKER-001 — Outbox Worker Health, Retry & DLQ
-- **Implementation:** `server/worker.js` handles event polling, retry counting up to `maxRetries`, DLQ routing via `outbox.moveToDlq`, in-flight guard, and `payesh_worker_events_total` metric emission.
-- **Verification:** Executed via `tests/wave8-outbox.js` (15/15 PASS) and `tests/wave14-observability.js` worker metrics tests.
-- **Disposition:** `VERIFIED`.
-
----
-
-### ARCH-001 — Datastore Hydration Cap & Mirror Protection
-- **Implementation:** `server/db.js` exports `shouldPersistMirrorFile()` and sets `mirror_incomplete = true` whenever hydration is capped or collections skipped, guarding `index.js` `persistStore()` from truncating local storage on disk.
-- **Remediation:** `tests/wave18-hydration-guards.js` regex updated to accommodate the `kept: []` collection tracking array in `hydrateStoreFromPg()`.
-- **Test Runs:** `node tests/wave18-hydration-guards.js`: 18/18 PASS (Run 1 & 2).
-- **Disposition:** `FIXED & VERIFIED`.
-
----
-
-### MIG-001 — Migration Ledger Atomicity & Contiguity
-- **Verification:** `tests/migration-sequence.js` audits all 20 forward/down migration pairs for naming, contiguity (001–020), transaction boundaries (`BEGIN`/`COMMIT`), and idempotent DDL.
-- **Test Runs:**
-  - `node tests/migration-sequence.js`: 19/19 PASS.
-  - `node tests/migration-guide-coverage.js`: 39/39 PASS.
-- **Disposition:** `VERIFIED`.
-
----
-
-### M0 — Session Revocation (Unit, Mod, HTTP, Dist)
-- **Verification:** `tests/session-revocation.js` audits JWT token revocation, single-session revocation, and user-level session version increments (`sessver:<userId>`).
-- **Test Runs:**
-  - Run 1: UNIT (6/6), MOD (5/5), HTTP (5/5) PASS. Distributed mode skipped honestly due to absent redis-server daemon.
-  - Run 2: Identical pass (16/16 PASS).
-- **Disposition:** `VERIFIED (LOCAL) / E4 DEFERRED`.
-
----
-
-### M1 — S3 Observability Alerting & On-Call Chain
-- **Audit Findings:** Prometheus alert rules verified in `infra/observability/alerts.yml` and `alert-rules.yml`. `payesh_redis_up` gauge is registered in `server/metrics.js` and emits 0 on connection failure.
-- **Verification:** `node tests/observability-config.js` passes 63/63. `node tests/redis-metrics.js` passes 15/15.
-- **External Blocker:** The on-call paging receiver (PagerDuty, Slack, Opsgenie) requires external webhook infrastructure and cannot be simulated as real human acknowledgment.
-- **Disposition:** `CONFIG VERIFIED / EXTERNAL BLOCKER (PAGING RECEIVER)`.
-
----
-
-### M2 — PostgreSQL Disaster Recovery (PITR / WAL)
-- **Audit Findings:** Physical disaster recovery scripts and configs (`infra/postgres/pgbackrest.conf.template`, `recovery.conf.template`, `tools/pitr-restore.sh`, `tools/pitr-verify.sh`) are statically verified (94/94 in `tests/ha-config.js`).
-- **Standard Enforcement:** E3 logical restore cannot be promoted to E4 production DR without an actual multi-node PostgreSQL cluster running WAL archiving and point-in-time recovery.
-- **Disposition:** `E4 NOT VERIFIED / EXTERNAL BLOCKER`.
-
----
-
-### M3 — Redis High Availability (Sentinel)
-- **Audit Findings:** Redis Sentinel 3-node configuration (`infra/redis/docker-compose.sentinel.yml`, `sentinel.conf.template`, `server/redis.js`) verified. `tests/redis-sentinel-failover.js` passes 9/9 unit/contract checks.
-- **Standard Enforcement:** Multi-node master failover and split-brain recovery require live container/VM infrastructure.
-- **Disposition:** `E4 NOT VERIFIED / EXTERNAL BLOCKER`.
-
----
-
-### F-QA-09 — File Modes & Executable Script Bits
-- **Audit Findings:** Shell scripts in `infra/` and `tools/` had git file mode `100644` instead of executable `100755`, failing CFG-SH assertions.
-- **Remediation:** Executed `chmod +x` and `git update-index --chmod=+x` across all 10 operational scripts (`infra/postgres/entrypoints/*.sh`, `infra/postgres/init/*.sh`, `infra/postgres/post-checks.sh`, `infra/redis/redis-checks.sh`, `tools/pitr-*.sh`, `tools/failover-*.sh`).
-- **Disposition:** `FIXED & VERIFIED` (All 10 script executable checks pass in `tests/ha-config.js`).
-
----
-
-### RT1-01 & RT1-02 — Async Logger Blocking I/O & API Test Harness
-- **Remediation:** Replaced synchronous `fs.mkdirSync` in `server/audit.js` async `flushQueue` worker with `await fs.promises.mkdir`. Added `PAYESH_ALLOW_DEV_MEMORY_AUTHORITY = '1'` in `tests/api/runner.js` to ensure standalone REST test runner execution without requiring PostgreSQL credentials in dev mode.
-- **Test Runs:**
-  - `node tests/session8-audit-async-io.js`: 5/5 PASS.
-  - `node tests/api/runner.js`: 30/30 suites PASS.
-- **Disposition:** `FIXED & VERIFIED`.
-
----
-
-## 4. Master Finding Disposition Matrix
-
-| Finding | Current Status | Evidence | Fix Applied | Tests Verified | CI Implication | External / Owner Blocker |
-|---|---|---|---|---|---|---|
-| **F-QA-01** | `BLOCKED` | Dossier at `F-QA-01_TAG_INTEGRITY_DOSSIER.md` | Deliberately NOT moved (anti-fake-green) | Git inspection | Tagged SHA has 0 test runs | Owner decision required to retag |
-| **F-QA-04** | `PARTIAL` | `fortify.yml` env fix; `.codacy.yml` `---` header | Repaired step syntax in workflow | YAML lint | Skip step runs without secrets | `CODACY_PROJECT_TOKEN` secret required |
-| **F-QA-05** | `VERIFIED` | 10/10 PASS on contract suite | Locked budget at 485 orphans | `ci-test-parity-contract.js` | Enforced in CI | None |
-| **F-QA-07** | `BLOCKED` | Contract at `RELEASE_VERSION_CONTRACT.md` | None (governance boundary respected) | Inspection | None | Owner release policy & version choice |
-| **PGB-001** | `VERIFIED` | 22/22 pgbouncer, 94/94 ha-config | Regex updated in `tests/ha-config.js` | `wave10-pgbouncer.js`, `ha-config.js` | Passing | None |
-| **OUTBOX-002**| `VERIFIED (STATIC)`| S1–S7 pass; 15/15 wave8-outbox | Verified `SKIP LOCKED` query structure | `wave8-outbox.js` | Passing | Live PG cluster for E4 concurrency |
-| **WORKER-001**| `VERIFIED` | 15/15 wave8-outbox; DLQ routing verified | Existing worker logic confirmed | `wave8-outbox.js` | Passing | None |
-| **ARCH-001** | `VERIFIED` | 18/18 hydration-guards pass | Regex updated for `kept: []` in `wave18-hydration-guards.js` | `wave18-hydration-guards.js` | Passing | None |
-| **MIG-001** | `VERIFIED` | 19/19 sequence, 39/39 guide pass | None needed; ledger is strictly contiguous | `migration-sequence.js` | Passing | Staging cluster for psql execution |
-| **M0** | `VERIFIED (LOCAL)`| 16/16 pass in session-revocation | Module & HTTP integration verified | `session-revocation.js` | Passing | External Redis for distributed test |
-| **M1** | `PARTIAL` | 63/63 observability-config pass | `payesh_redis_up` probe metric verified | `observability-config.js` | Passing | Real human paging receiver |
-| **M2** | `CONFIG VERIFIED` | 94/94 ha-config pass | Template & restore scripts verified | `ha-config.js` | Passing | Physical PG cluster for E4 PITR |
-| **M3** | `CONFIG VERIFIED` | 9/9 sentinel failover pass | Sentinel topology templates verified | `redis-sentinel-failover.js` | Passing | Physical multi-node Redis cluster |
-| **F-QA-09** | `FIXED` | 10/10 executable script bits pass | `chmod +x` & `update-index --chmod=+x` | `ha-config.js` | Passing | None |
-| **RT1-01** | `FIXED` | 5/5 async I/O checks pass | `await fs.promises.mkdir` in `server/audit.js` | `session8-audit-async-io.js` | Passing | None |
-| **RT1-02** | `FIXED` | 30/30 REST API test suites pass | `PAYESH_ALLOW_DEV_MEMORY_AUTHORITY` flag | `tests/api/runner.js` | Passing | None |
-
----
-
-## 5. Final Technical Assessment & Gate Status
+## ۱. خلاصه‌ وضعیت پایه و محیط اجرا (Baseline Ground Truth)
 
 ```text
-Repository-owned remediation: COMPLETE
-External blockers: CODACY_PROJECT_TOKEN secret, Paging/On-Call receiver, Physical PG/Redis E4 Clusters
-Owner decisions: phase8.2-verified tag retagging, SemVer release version choice
-Current HEAD: 89cec08c44b4cebd96ffa49a12ce3a707df56a0b
-origin/main: 89cec08c44b4cebd96ffa49a12ce3a707df56a0b
-Working tree: CLEAN
-Phase 8.2 Exit: NOT VERIFIED (gated by E4 Disaster Recovery and real paging evidence)
-Phase 8.3: BLOCKED (strictly gated behind Phase 8.2 Exit Gate)
+================================================================================
+Current HEAD:         Rebased on 7894e745f448c344dd392c0ae981d3ee594dc69a
+origin/main:          7894e745f448c344dd392c0ae981d3ee594dc69a
+Node.js Runtime:      v22.14.0 (satisfies package.json engines >=22.0.0)
+NPM Runtime:          10.9.2
+Git Working Tree:     Clean, isolated staging, no git add -A
+Workspace Disk Size:  70 MB (strictly below 100 MB limit)
+
+Overall Gate Status:
+Phase 8.2 Exit Gate = NOT VERIFIED (gated behind E4 live disaster recovery & human paging receiver)
+Phase 8.3 Status    = BLOCKED (strictly gated behind Gate 8.2 criteria)
+Production GO       = NOT DECLARED (cannot be declared without live multi-node infrastructure)
+================================================================================
+```
+
+---
+
+## ۲. گزارش جزئیات مأموریت و بازرسی شواهد کاندید
+
+### ۲.۱ Git / Push (Section 1)
+- **وضعیت ریموت و شاخه:** کامیت پیشین Chat 1 بر روی پایهٔ `89cec08` ثبت شده بود. در این فاصله، کامیت‌های حاکمیتی چت‌های ۲ تا ۵ روی `origin/main` اضافه شده و تا `7894e74` پیش رفتند.
+- **اقدام مهندسی:** شاخهٔ محلی با حفظ دقیق تاریخچه روی `origin/main` ری‌بیس شد. تداخل جزئی در رجکس `tests/ha-config.js` به صورت بی‌نقص و با هماهنگی کامل حل شد.
+
+---
+
+### ۲.۲ RT1 Current-HEAD Evidence (Section 2)
+1. **RT1-03 (`tests/wave1-reads.js` Stale `readCollection` Assertion):**
+   - *بازتولید:* آزمون `node tests/wave1-reads.js` با خطای ۱ از ۱۸ شکست خورد (`❌ seam actually invoked db.readCollection on bootstrap (fresh cache-miss)`).
+   - *ریشه‌یابی رگرسیون:* در کامیت `b803d00` (اصلاح باگ بحرانی ملی P0-01)، مسیر `readCol` (فراخوانی `readCollection` که پویش کامل جدول بود) عمداً از `server/routes/bootstrap.js` حذف و با کوئری‌های مقید به مرز تانت (`WHERE school_id = $1`) جایگزین شده بود تا از سرریز حافظه (Heap OOM) روی داده‌های کشوری جلوگیری شود. در نتیجه، انتظار تست مبنی بر اینکه بوت‌استرپ باید `readCollection` را صدا بزند منسوخ شده بود.
+   - *اصلاح:* ادعای منسوخ در `tests/wave1-reads.js` به‌روزرسانی شد تا بازگشت پی‌لود معتبر بوت‌استرپ بدون پویش کامل کلکسیون را بررسی کند.
+   - *شواهد تکرار:* دو اجرای مستقل با **۱۸/۱۸ PASS ✅** به ثبت رسید.
+
+2. **RT1-04 (`tests/wave23-reports-pg.js` Migration Runner & PG17 012):**
+   - *بازتولید و بازرسی:* تست بدون حضور کلاستر PostgreSQL با پیام صریح و صادقانهٔ `NOT-RUN (connect ECONNREFUSED 127.0.0.1:5432)` خارج می‌شود و هیچ سبز جعلی ایجاد نمی‌کند. بررسی کد نشان می‌دهد مایگریشن‌های حاوی `\gset` از طریق فراخوانی مستقیم `psql` اعمال می‌شوند.
+   - *وضعیت:* `VERIFIED (HARNESS IS HONEST / E4 DEFERRED TO LIVE STAGING PG)`.
+
+3. **RT1-05 (Fake-Green, Empty Catches, and Secret Hygiene):**
+   - *بازرسی:* اسکن کلیه فایل‌های تست هیچ ساختار `it.skip` یا بلوک خالی بلعندهٔ خطای تست پیدا نکرد. بلوک‌های catch موجود مربوط به پاکسازی دایرکتوری موقت یا تجزیه آزمایشی JSON پاسخ سرور است که با `assert` محافظت شده‌اند.
+   - *شواهد:* اجرای `node tests/secret-scan.js` به صورت ۱۲/۱۲ کاملاً سبز عبور کرد.
+
+---
+
+### ۲.۳ RT2-02: ممیزی کوئری تانت‌پالیسی (Section 3)
+- **مسیر اجرای کد:** تابع `assertTenantBoundary` در `server/infrastructure/phase6-production-hardening.js` توسط کامیت `62254cf` اصلاح شده و فراخوانی تکراری و زائد `authority.getTenantPolicy` حذف گردید تا تنها یک بار از طریق `authority.assertTenantPolicy` خوانده شود.
+- **انطباق با زیروتراست:** با توجه به عدم حضور دیمن زندهٔ PostgreSQL در این سندباکس، اندازه‌گیری میلی‌ثانیه‌ای و تعداد کوئری در رانتایم بدون دیتابیس زنده امکان‌پذیر نیست. طبق دستور صریح کاربر:
+- **وضعیت:** `FIXED / RUNTIME MEASUREMENT NOT VERIFIED (E4 INFRASTRUCTURE REQUIRED)`. هیچ عدد تخمینی یا جعلی درج نشد.
+
+---
+
+### ۲.۴ OUTBOX-002: هماهنگی و تراکنش‌های Outbox (Section 4)
+- **وضعیت ایستا و تست واحد:** کدهای `server/outbox.js` و `server/worker.js` شامل `SELECT ... FOR UPDATE SKIP LOCKED` و محافظت DLQ در `tests/wave8-outbox.js` (15/15 PASS) و `tests/queue-outage-drill.js --skip-live` (7/7 PASS) اثبات شده‌اند.
+- **وضعیت رانتایم چند ورکر:** مانور همزمانی چند ورکر زنده (Q1 تا Q4) نیازمند کلاستر واقعی PostgreSQL است.
+- **وضعیت:** `STATIC & UNIT VERIFIED / LIVE MULTI-WORKER E4 NOT VERIFIED (EXTERNAL INFRASTRUCTURE REQUIRED)`.
+
+---
+
+### ۲.۵ M1: دیده‌پذیری، آلرتینگ و پروب‌های زمان اجرا (Section 5)
+- **کشف و رفع نقص واقعی مخزن (Dead Path Remediation):**
+  - تابع `publishRuntimeProbes()` در `server/metrics.js` تعریف و صادر شده بود تا پروب‌های زمان اسکرپ (`payesh_redis_up`, `payesh_db_up`, `payesh_disk_total_bytes`) را ثبت کند، اما در مسیر `GET /metrics` در `server/index.js` هرگز فراخوانی نمی‌شد (مسیر مرده بود!).
+  - فراخوانی `await metrics.publishRuntimeProbes()` دقیقاً قبل از `metrics.render()` در `server/index.js` سیم‌کشی شد.
+  - سوئیت رگرسیون جدید `tests/runtime-probes-scrape-regression.test.js` تدوین و در گردش کار CI `.github/workflows/node.js.yml` ثبت شد.
+  - این سوئیت اثبات می‌کند با قطع بودن ردیس، پروب `payesh_redis_up` دقیقاً مقدار ۰، با بودن فال‌بک حافظه `payesh_db_up` مقدار ۱ و متریک‌های دیسک با موفقیت رندر می‌شوند.
+  - دو اجرای مستقل موفق با ۱۰۰٪ پاس ثبت شد.
+- **زنجیره پیجینگ خارجی:** تحویل پیجینگ به PagerDuty / Slack / Opsgenie و دریافت تأییدیه انسانی یک سرویس خارجی است و شبیه‌سازی نشد.
+- **وضعیت:** `REPO-OWNED DEFECT FIXED & VERIFIED / PAGING RECEIVER: EXTERNAL BLOCKER`.
+
+---
+
+### ۲.۶ M2 و M3: بازیابی بحران PostgreSQL و Redis HA (Section 6)
+- **عدم ارتقای E3 به E4:** بازیابی منطقی دیتابیس (E3) و تست‌های پیکربندی سنتینل (`tests/redis-sentinel-failover.js` با ۹/۹ پاس) حفظ شدند، اما به عنوان بازیابی واقعی تولید (E4) ثبت نمی‌شوند.
+- **سنجش زنده:** انجام عملیات فیزیکی WAL archiving، PITR با pgBackRest، ترفیع رپلیکا و تست فیل‌اوور سه نود سنتینل نیازمند زیرساخت چندگرهی فیزیکی در محیط Staging است.
+- **وضعیت:** `E4 NOT VERIFIED — INFRASTRUCTURE/EXTERNAL BLOCKER`.
+
+---
+
+### ۲.۷ F-QA-01, F-QA-04, F-QA-07: حاکمیت تگ، اسکنرها و نسخه‌بندی (Sections 7, 8, 9)
+- **F-QA-01 (تگ `phase8.2-verified`):** تگ دست‌نخورده باقی ماند و به کامیت‌های دیگر جابه‌جا نشد. گزارش عدم انطباق در `docs/audit/F-QA-01_TAG_INTEGRITY_DOSSIER.md` مستند است. وضعیت: `OWNER DECISION REQUIRED`.
+- **F-QA-04 (اسکنرهای Fortify و Codacy):** گردش کار Fortify در صورت نبود سکرت گام اسکن را بدون شکست دور می‌زند؛ اسکنر Codacy نیازمند سکرت سازمانی `CODACY_PROJECT_TOKEN` است. هیچ قانون امنیتی دستکاری یا ساکت نشد. وضعیت: `EXTERNAL BLOCKER / OWNER DECISION REQUIRED`.
+- **F-QA-07 (قرارداد نسخه و تگ):** فایل `tests/release-version-contract.js` با ۸/۸ پاس و ۳ هشدار حاکمیتی وضعیت همگامی نسخه را بررسی می‌کند. نسخه ۱.۰.۰ در `package.json` حفظ شد. وضعیت: `OWNER DECISION REQUIRED`.
+
+---
+
+## ۳. ماتریس جامع تفصیلی ارزیابی یافته‌ها (The Master Evaluation Matrix)
+
+| Item | Current HEAD Evidence | Reproduction | Independent Runs | Boundary/Negative | Result | Evidence Level | Ownership | Remaining Blocker |
+|---|---|---|---|---|---|---|---|---|
+| **PGB-001** | `infra/postgres/pgbouncer/pgbouncer.ini` (max_client_conn=3500) | Reproduced failure with old regex; fixed | 2 runs: 94/94 ha-config, 22/22 pgbouncer | Tested scale bounds (2000 & 3500) | `VERIFIED` | E2 (Automated Test) | Repo-Owned | None |
+| **ARCH-001** | `server/db.js` `shouldPersistMirrorFile`, `server/index.js` | Reproduced failure on kept array regex; fixed | 2 runs: 18/18 hydration-guards | Tested capped, skipped, & empty cases | `VERIFIED` | E2 (Automated Test) | Repo-Owned | None |
+| **F-QA-09** | 10 shell scripts in `infra/` and `tools/` with mode `100755` | Verified with `git ls-files -s` | 2 runs: ha-config CFG-SH checks passed | Checked shebang, pipefail, & syntax | `FIXED & VERIFIED`| E2 (Automated Test) | Repo-Owned | None |
+| **RT1-01** | `server/audit.js` async `flushQueue` with `fs.promises.mkdir` | Verified async I/O without main-thread block | 2 runs: 5/5 session8-audit-async-io | Tested empty queue & unref timer | `FIXED & VERIFIED`| E2 (Automated Test) | Repo-Owned | None |
+| **RT1-02** | `tests/api/runner.js` with `PAYESH_ALLOW_DEV_MEMORY_AUTHORITY=1` | Verified runner executes standalone without PG | 2 runs: 30/30 API test suites pass | Tested all 30 REST endpoint suites | `FIXED & VERIFIED`| E2 (Automated Test) | Repo-Owned | None |
+| **RT1-03** | `server/routes/bootstrap.js` (P0-01 scoped queries); `tests/wave1-reads.js` | Reproduced 1/18 failure; updated stale assertion | 2 runs: 18/18 wave1-reads pass | Tested teacher, student, parent, mgr | `FIXED & VERIFIED`| E2 (Automated Test) | Repo-Owned | None |
+| **RT1-04** | `tests/wave23-reports-pg.js` | Confirmed honest NOT-RUN without PG; psql for `\gset` | 2 runs: exit 0 NOT-RUN reported | Negative test without PG verified | `VERIFIED (HARNESS)`| E2 (Contract Test) | Repo-Owned | Live Staging PG |
+| **RT1-05** | Broad fake-green scanner; `tests/secret-scan.js` | Scanned all 523 tests; no skipped suites | 2 runs: 12/12 secret-scan pass | Tested hex patterns & gitignore coverage | `VERIFIED` | E2 (Automated Test) | Repo-Owned | None |
+| **RT2-02** | `server/infrastructure/phase6-production-hardening.js` | Redundant outer query eliminated in code | Code review verified; PG measurement blocked | Tested unauthorized & authorized scopes | `FIXED / RUNTIME UNVERIFIED` | E1 (Code Evidence) | Repo-Owned | Live PG for query count |
+| **OUTBOX-002**| `server/outbox.js`, `server/worker.js`, `tests/wave8-outbox.js` | Unit verified (15/15); concurrency drill needs PG | 2 runs: 15/15 wave8-outbox, 7/7 static | Tested DLQ poison & maxRetries | `STATIC VERIFIED / E4 UNVERIFIED`| E2 (Unit) / E4 Blocked | Repo-Owned | Live PG for multi-worker |
+| **WORKER-001**| `server/worker.js` retry counting, DLQ routing, metrics | Verified via wave8-outbox & wave14-observability | 2 runs: 15/15 wave8, 95/95 wave14 | Tested handler failure & inFlight lock | `VERIFIED` | E2 (Automated Test) | Repo-Owned | None |
+| **MIG-001** | `migrations/001..020` contiguous; `tests/migration-sequence.js` | Audited all 20 pairs for BEGIN/COMMIT and naming | 2 runs: 19/19 sequence, 39/39 guide | Tested down rollback & idempotency | `VERIFIED (STRUCTURE)`| E2 (Automated Test) | Repo-Owned | Live PG for execution |
+| **M0** | `server/auth.js`, `tests/session-revocation.js` | Audited JWT jti denylist & session versions | 2 runs: 16/16 pass (UNIT, MOD, HTTP) | Tested unknown token & invalid inputs | `VERIFIED (LOCAL)`| E2 (Automated Test) | Repo-Owned | External Redis for DIST |
+| **M1** | `server/index.js` `publishRuntimeProbes`; `tests/runtime-probes-scrape-regression.test.js` | Discovered & fixed dead path in `/metrics` handler | 2 runs: runtime-probes regression PASS | Tested HEAD /metrics & redis_up=0 | `FIXED & VERIFIED`| E2 (Automated Test) | Repo-Owned | External Human Paging |
+| **M2** | `infra/postgres/pgbackrest.conf.template`, `tools/pitr-restore.sh`| Logical restore verified; physical PITR requires cluster | 2 runs: 94/94 ha-config PASS | Validated bash syntax & config templates | `E4 NOT VERIFIED` | E2 (Config) / E4 Blocked | External / Infra | Physical PG Cluster |
+| **M3** | `infra/redis/sentinel.conf.template`, `tests/redis-sentinel-failover.js` | Sentinel contract verified (9/9); failover requires cluster | 2 runs: 9/9 sentinel-failover PASS | Tested parse errors & bad sentinel host | `E4 NOT VERIFIED` | E2 (Config) / E4 Blocked | External / Infra | Physical Redis Cluster |
+| **F-QA-01** | Git tag `phase8.2-verified` on unverified commit `401d02b2` | Audited lightweight tag; zero CI runs on tagged commit | Dossier compiled; tag not moved | Preserved historical commit reference | `OWNER DECISION REQUIRED` | E0 (Historical) | Owner Governance | Owner Decision on Tag |
+| **F-QA-04** | `.github/workflows/fortify.yml`, `.codacy.yml` | Validated env step fix; Codacy requires secret token | 2 runs: yaml linter & parity check PASS | Tested missing token behavior | `EXTERNAL / OWNER BLOCKER`| E2 (CI Config) | Owner Governance | `CODACY_PROJECT_TOKEN` |
+| **F-QA-05** | `tests/ci-test-parity-contract.js` | 3-state validation passed; newly added test tracked | 2 runs: 10/10 parity contract PASS | Tested orphan test injection & rejection | `VERIFIED` | E2 (Automated Test) | Repo-Owned | None |
+| **F-QA-07** | `package.json` (1.0.0), `v1.0.1` tag, `RELEASE_NOTES.md` | Reconciled via `tests/release-version-contract.js` | 2 runs: 8/8 contract (3 warnings logged) | Tested semver syntax & lock consistency | `OWNER DECISION REQUIRED` | E2 (Contract) | Owner Governance | Owner Versioning Policy |
+
+---
+
+## ۴. تفکیک نهایی وضعیت اقلام (Final Classification)
+
+### ۱. مواردی که واقعاً VERIFIED شدند (Fully Verified on Current HEAD)
+- **PGB-001:** اعتبارسنجی مقیاس ۳۵۰۰ کانکشن PgBouncer در `tests/ha-config.js` و `tests/wave10-pgbouncer.js`.
+- **ARCH-001:** گارد هیدراسیون دیتابیس و محافظت از آینه محلی در `tests/wave18-hydration-guards.js`.
+- **F-QA-09:** مود اجرایی `100755` ده فایل اسکریپت شل در `infra/` و `tools/`.
+- **RT1-01:** حذف I/O همگام از ورکر لاگر ممیزی در `server/audit.js`.
+- **RT1-02:** پایدارسازی هارنس آزمون‌های ۳۰ سوئیت REST API در `tests/api/runner.js`.
+- **RT1-03:** اصلاح رگرسیون تضعیف‌شدهٔ `tests/wave1-reads.js` و هماهنگی با قرارداد P0-01.
+- **RT1-05:** اعتبارسنجی فراگیر ساختارهای تست و اسکن ۱۲/۱۲ بهداشت سکرت‌ها.
+- **F-QA-05:** قرارداد هم‌ترازی تست و گردش کار CI با ۱۰/۱۰ پاس.
+- **WORKER-001:** مکانیزم تلاش مجدد، صف DLQ و هندلرهای ورکر در `server/worker.js`.
+- **MIG-001:** توالی پیوستهٔ 001 تا 020 و لجر مهاجرت‌ها در `tests/migration-sequence.js`.
+- **M0 (محلی):** اعتبارسنجی ابطال نشست و denylist توکن در لایه محلی و HTTP.
+- **M1 (حیطهٔ مخزن):** رفع باگ مسیر مردهٔ `publishRuntimeProbes()` در `server/index.js` و ثبت سوئیت رگرسیون.
+
+### ۲. مواردی که FIXED هستند ولی فاقد سنجش رانتایم می‌باشند (Fixed / Runtime Unverified)
+- **RT2-02:** حذف کوئری تکراری در `assertTenantBoundary` کلاً در کد پیاده شده است؛ اما سنجش دقیق زمان اجرای تک‌کوئری بر روی دیتابیس زنده به دلیل نبود Postgres در سندباکس به محیط استیجینگ واگذار می‌شود.
+
+### ۳. مواردی که وابستگی خارجی یا مسدودکننده بیرونی هستند (External Blockers)
+- **F-QA-04 (بخش Codacy):** فقدان سکرت سازمانی `CODACY_PROJECT_TOKEN` در تنظیمات مخزن گیت‌هاب.
+- **M1 (بخش پیجینگ):** اتصال و ارسال هشدار زنده به ارائه‌دهندگان انسانی (PagerDuty / Slack / Opsgenie).
+
+### ۴. مواردی که نیازمند تصمیم مستقیم مالک مخزن هستند (Owner Decision Required)
+- **F-QA-01:** تصمیم‌گیری درباره جابه‌جایی یا ابطال تگ `phase8.2-verified` که به کامیت نامعتبر اشاره دارد.
+- **F-QA-07:** تعیین سیاست رسمی انتشار جهت یکپارچه‌سازی شماره نسخه `package.json` (1.0.0) با تگ `v1.0.1`.
+
+### ۵. مواردی که در سطح E4 هنوز NOT VERIFIED هستند (E4 Not Verified / Staging Required)
+- **OUTBOX-002 (E4):** اجرای همزمان دو ورکر مجزا با رقابت قفل روی دیتابیس واقعی PostgreSQL.
+- **M2 (PostgreSQL DR E4):** اجرای عملیات فیزیکی WAL archiving، PITR با pgBackRest و ارتقای رپلیکا روی کلاستر فیزیکی.
+- **M3 (Redis HA E4):** اجرای مانور شکست فیزیکی Master و ترفیع اتوماتیک سنتینل روی کلاستر ۳ نودی واقعی.
+
+---
+
+## ۵. نتیجه‌گیری حاکمیتی و وضعیت گیت فاز ۸.۲
+
+```text
+قاعده صلب: فاز ۸.۲ تنها در صورتی VERIFIED است که تمام معیارهای خروج Gate 8.2 با شواهد E4 اثبات شده باشند.
+باتوجه به نیازمندی معیارهای DR فیزیکی و پیجینگ انسانی به زیرساخت چندگرهی خارجی:
+  - وضعیت رسمی فاز ۸.۲: NOT VERIFIED (حفظ صداقت مهندسی و منع Fake-Green)
+  - وضعیت فاز ۸.۳: BLOCKED (مهار هرگونه پیش‌روی زودهنگام)
+  - تاییدیه تولید (Production GO): صادر نمی‌گردد (NOT DECLARED)
 ```
