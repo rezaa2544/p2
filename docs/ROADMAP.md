@@ -1394,3 +1394,21 @@ Production GO: NOT DECLARED
 F-QA-02 → F-QA-03 → F-QA-01 → F-QA-08 → M1 → M2 → M3 → OUTBOX-002 → DB-001/RT2-02 → OUTBOX-001 → RT1 reproduction closure → rebuild Exit Evidence → Gate 8.2 VERIFIED → Phase 8.3
 
 این بخش مرجع کوتاه برنامه کاری است؛ جزئیات و dependencyها در docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md نگهداری می‌شود.
+
+---
+
+## 🔄 قرارداد دائمی هم‌راستاسازی گزارش Chat ↔ نقشه راه — 2026-09-21
+
+این قرارداد از این تاریخ **جزء قوانین دائمی برنامه‌ریزی پروژه** است و در هر چرخهٔ کاری اجباری است:
+
+1. هر گزارش جدید Chat که هر Work Item را با وضعیت `INCOMPLETE`, `PARTIAL`, `BLOCKED`, `NOT VERIFIED`, `DEFECT`, `REPRODUCTION REQUIRED` یا وضعیت معادل اعلام کند، باید در همان چرخه با **Current HEAD** تطبیق داده شود.
+2. وضعیت آن Work Item باید در **Master Execution Schedule / Current Ground Truth** به‌روزرسانی شود؛ گزارش تاریخی به‌تنهایی وضعیت جاری محسوب نمی‌شود.
+3. برای هر تغییر وضعیت، **SHA، Evidence/command/test، Owner، Dependency/Blocker و Next Action** باید ثبت شود.
+4. اگر Evidence کافی برای تغییر status وجود ندارد، status نباید ارتقا یابد و باید `NOT VERIFIED`/وضعیت متناظر حفظ شود.
+5. این reconciliation باید **قبل از شروع مأموریت Chat بعدی** انجام شود تا Context Drift بین Chatها، گزارش‌ها، Roadmap و Current HEAD ایجاد نشود.
+6. تغییرات برنامه‌ای حاصل از reconciliation باید به GitHub commit/push شوند و Current HEAD بعد از push دوباره بررسی شود.
+7. **Rule 15 همچنان الزام حاکم است:** هر Task معنادار باید ۵ Pass مستقل داشته باشد: Functional/Happy Path، Boundary/Edge، Negative/Failure Injection، Concurrency/Replay/Resilience، و Independent Regression/Environment Re-run. پنج تکرار یکسان جایگزین پنج Pass مستقل نیست.
+8. گزارش Chat بدون Evidence لازم، مجوز تغییر status یا عبور Gate نیست.
+
+**حکم:** گزارش Chat → Reconcile با Current HEAD → Update Roadmap/Ground Truth → Commit/Push → Re-verify → سپس Chat بعدی.
+
