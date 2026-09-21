@@ -215,15 +215,17 @@ function createAudit(opts = {}) {
   let overflowWarned = false;
 
   /* ایمنی دایرکتوری لاگر: اطمینان از وجود مسیر والد و فایل لاگ */
-  try {
-    const pdir = path.dirname(auditFile);
-    if (!fs.existsSync(pdir)) fs.mkdirSync(pdir, { recursive: true, mode: 0o700 });
-    if (!fs.existsSync(auditDir)) fs.mkdirSync(auditDir, { recursive: true, mode: 0o700 });
-    if (!asyncMode && !fs.existsSync(auditFile)) {
-      const fd = fs.openSync(auditFile, 'a', 0o600);
-      fs.closeSync(fd);
-    }
-  } catch (e) {}
+  if (!asyncMode) {
+    try {
+      const pdir = path.dirname(auditFile);
+      if (!fs.existsSync(pdir)) fs.mkdirSync(pdir, { recursive: true, mode: 0o700 });
+      if (!fs.existsSync(auditDir)) fs.mkdirSync(auditDir, { recursive: true, mode: 0o700 });
+      if (!fs.existsSync(auditFile)) {
+        const fd = fs.openSync(auditFile, 'a', 0o600);
+        fs.closeSync(fd);
+      }
+    } catch (e) {}
+  }
 
   function ensureInit() {
     if (initialized) return;
@@ -436,7 +438,7 @@ function createAudit(opts = {}) {
           flushQueue = [];
           try { await checkRotationAsync(); } catch (e) {}
           const chunk = batch.join('');
-          try { fs.mkdirSync(path.dirname(auditFile), { recursive: true, mode: 0o700 }); } catch (e) {}
+          try { await fs.promises.mkdir(path.dirname(auditFile), { recursive: true, mode: 0o700 }); } catch (e) {}
           const ok = await new Promise((resolve) => {
             fs.appendFile(auditFile, chunk, { encoding: 'utf8', mode: 0o600 }, (err) => resolve(!err));
           });

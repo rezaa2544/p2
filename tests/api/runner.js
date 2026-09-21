@@ -4,6 +4,10 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
+/* Test harness execution flag: allows in-memory JSON store REST tests to run
+   without attached PostgreSQL authority in dev/test only. */
+process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY = '1';
+
 const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
