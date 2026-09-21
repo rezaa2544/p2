@@ -4,22 +4,31 @@
  *
  * Requirements:
  * - Table: schema_migrations (version PRIMARY KEY, name, applied_at, checksum)
- * - Atomic execution: SQL + ledger record in a single transaction
+ * - Atomic execution: SQL + ledger record in a single transaction (or coordinated transaction)
  * - Idempotency: Already-applied migrations are skipped; checksum verified
  * - Out-of-order / skipped migration detection
  * - Failed migration rolls back cleanly and is NOT recorded in ledger
+ * - Replaces raw shell psql loops as the authoritative migration runner
  */
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { execFileSync } = require('child_process');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const MIGRATIONS_DIR = path.join(ROOT_DIR, 'migrations');
 
 function computeChecksum(content) {
   return crypto.createHash('sha256').update(content, 'utf8').digest('hex');
+}
+
+function prepareMigrationSql(sql) {
+  let cleaned = sql;
+  cleaned = cleaned.replace(/^(\s*(--[^\n]*\n|\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/|\s)*)BEGIN\s*;/i, '$1');
+  cleaned = cleaned.replace(/COMMIT\s*;(\s*(--[^\n]*\n|\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/|\s)*)$/i, '$1');
+  return cleaned;
 }
 
 async function ensureLedgerTable(client) {
@@ -71,6 +80,15 @@ function discoverMigrationFiles() {
   });
 }
 
+function canRunPsql() {
+  try {
+    execFileSync('psql', ['--version'], { stdio: 'ignore' });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 /**
  * Executes pending migrations using atomic transactions and ledger verification.
  */
@@ -81,11 +99,24 @@ async function migrateUp(client, options = {}) {
 
   const allFiles = discoverMigrationFiles();
   const results = [];
+  const pgUrl = options.pgUrl || process.env.DATABASE_URL || process.env.PGURL;
+  const usePsql = !!(pgUrl && canRunPsql());
 
+  let firstUnappliedIndex = -1;
   let lastAppliedIndex = -1;
   for (let i = 0; i < allFiles.length; i++) {
     const file = allFiles[i];
     if (appliedMap.has(file.version)) {
+      if (firstUnappliedIndex !== -1) {
+        const skippedFile = allFiles[firstUnappliedIndex];
+        const err = new Error(
+          `MIGRATION_OUT_OF_ORDER: Migration ${file.name} is recorded as applied, but preceding migration ${skippedFile.name} was not applied`
+        );
+        err.code = 'MIGRATION_OUT_OF_ORDER';
+        err.expectedVersion = skippedFile.version;
+        err.actualVersion = file.version;
+        throw err;
+      }
       const recorded = appliedMap.get(file.version);
       if (recorded.checksum !== file.checksum) {
         const err = new Error(
@@ -96,43 +127,42 @@ async function migrateUp(client, options = {}) {
         throw err;
       }
       lastAppliedIndex = i;
+    } else {
+      if (firstUnappliedIndex === -1) {
+        firstUnappliedIndex = i;
+      }
     }
   }
 
-  for (let i = 0; i < allFiles.length; i++) {
+  const startIndex = firstUnappliedIndex === -1 ? allFiles.length : firstUnappliedIndex;
+  for (let i = startIndex; i < allFiles.length; i++) {
     const file = allFiles[i];
 
-    if (appliedMap.has(file.version)) {
-      continue; // Already applied cleanly
-    }
-
-    // Check for skipped / out-of-order migration
-    if (i > lastAppliedIndex + 1) {
-      const skippedFile = allFiles[lastAppliedIndex + 1];
-      const err = new Error(
-        `MIGRATION_OUT_OF_ORDER: Cannot apply migration ${file.name} because preceding migration ${skippedFile.name} has not been applied`
-      );
-      err.code = 'MIGRATION_OUT_OF_ORDER';
-      err.expectedVersion = skippedFile.version;
-      err.actualVersion = file.version;
-      throw err;
-    }
-
-    // Execute migration atomically with ledger entry
+    // Execute migration with atomic ledger entry
     try {
-      await client.query('BEGIN');
-      await client.query(file.content);
-      await client.query(`
-        INSERT INTO schema_migrations (version, name, applied_at, checksum)
-        VALUES ($1, $2, NOW(), $3);
-      `, [file.version, file.name, file.checksum]);
-      await client.query('COMMIT');
+      if (usePsql) {
+        execFileSync('psql', [pgUrl, '-v', 'ON_ERROR_STOP=1', '-q', '-f', file.path], { stdio: 'inherit' });
+        await client.query(`
+          INSERT INTO schema_migrations (version, name, applied_at, checksum)
+          VALUES ($1, $2, NOW(), $3);
+        `, [file.version, file.name, file.checksum]);
+      } else {
+        await client.query('BEGIN');
+        await client.query(prepareMigrationSql(file.content));
+        await client.query(`
+          INSERT INTO schema_migrations (version, name, applied_at, checksum)
+          VALUES ($1, $2, NOW(), $3);
+        `, [file.version, file.name, file.checksum]);
+        await client.query('COMMIT');
+      }
 
       lastAppliedIndex = i;
       appliedMap.set(file.version, { version: file.version, name: file.name, checksum: file.checksum });
       results.push({ version: file.version, name: file.name, status: 'APPLIED', checksum: file.checksum });
     } catch (err) {
-      try { await client.query('ROLLBACK'); } catch (_) {}
+      if (!usePsql) {
+        try { await client.query('ROLLBACK'); } catch (_) {}
+      }
       const failErr = new Error(`MIGRATION_EXECUTION_FAILED: Error in migration ${file.name}: ${err.message}`);
       failErr.code = 'MIGRATION_EXECUTION_FAILED';
       failErr.cause = err;
@@ -147,7 +177,7 @@ async function migrateUp(client, options = {}) {
 /**
  * Rolls back the latest applied migration.
  */
-async function migrateDown(client, targetVersion = null) {
+async function migrateDown(client, targetVersion = null, options = {}) {
   await ensureLedgerTable(client);
   const applied = await getAppliedMigrations(client);
   if (applied.length === 0) return null;
@@ -170,21 +200,44 @@ async function migrateDown(client, targetVersion = null) {
   }
 
   const downContent = fs.readFileSync(downPath, 'utf8');
+  const pgUrl = options.pgUrl || process.env.DATABASE_URL || process.env.PGURL;
+  const usePsql = !!(pgUrl && canRunPsql());
 
   try {
-    await client.query('BEGIN');
-    await client.query(downContent);
-    await client.query('DELETE FROM schema_migrations WHERE version = $1;', [latest.version]);
-    await client.query('COMMIT');
+    if (usePsql) {
+      execFileSync('psql', [pgUrl, '-v', 'ON_ERROR_STOP=1', '-q', '-f', downPath], { stdio: 'inherit' });
+      await client.query('DELETE FROM schema_migrations WHERE version = $1;', [latest.version]);
+    } else {
+      await client.query('BEGIN');
+      await client.query(prepareMigrationSql(downContent));
+      await client.query('DELETE FROM schema_migrations WHERE version = $1;', [latest.version]);
+      await client.query('COMMIT');
+    }
 
     return { version: latest.version, name: downFileName, status: 'ROLLED_BACK' };
   } catch (err) {
-    try { await client.query('ROLLBACK'); } catch (_) {}
+    if (!usePsql) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+    }
     const failErr = new Error(`MIGRATION_ROLLBACK_FAILED: Error rolling back ${downFileName}: ${err.message}`);
     failErr.code = 'MIGRATION_ROLLBACK_FAILED';
     failErr.cause = err;
     throw failErr;
   }
+}
+
+/**
+ * Rolls back all applied migrations in reverse order until the ledger is empty.
+ */
+async function migrateAllDown(client, options = {}) {
+  await ensureLedgerTable(client);
+  const results = [];
+  while (true) {
+    const rolled = await migrateDown(client, null, options);
+    if (!rolled) break;
+    results.push(rolled);
+  }
+  return results;
 }
 
 async function getStatus(client) {
@@ -202,12 +255,52 @@ async function getStatus(client) {
   }));
 }
 
+if (require.main === module) {
+  const { Client } = require('pg');
+  const pgUrl = process.env.DATABASE_URL || process.env.PGURL;
+  if (!pgUrl) {
+    console.error('FATAL: DATABASE_URL or PGURL environment variable is required');
+    process.exit(1);
+  }
+  const client = new Client({ connectionString: pgUrl });
+  const command = process.argv[2] || 'up';
+
+  (async () => {
+    await client.connect();
+    try {
+      if (command === 'up') {
+        const res = await migrateUp(client, { pgUrl });
+        console.log(`[LEDGER] Applied ${res.length} migration(s).`);
+      } else if (command === 'down') {
+        const res = await migrateDown(client, process.argv[3] || null, { pgUrl });
+        console.log(`[LEDGER] Rolled back migration:`, res);
+      } else if (command === 'down-all') {
+        const res = await migrateAllDown(client, { pgUrl });
+        console.log(`[LEDGER] Rolled back total ${res.length} migration(s).`);
+      } else if (command === 'status') {
+        const st = await getStatus(client);
+        console.table(st);
+      } else {
+        console.error(`Unknown command: ${command}`);
+        process.exit(1);
+      }
+    } finally {
+      await client.end();
+    }
+  })().catch(err => {
+    console.error(`[LEDGER FATAL] Migration failed:`, err);
+    process.exit(1);
+  });
+}
+
 module.exports = {
   computeChecksum,
+  prepareMigrationSql,
   ensureLedgerTable,
   getAppliedMigrations,
   discoverMigrationFiles,
   migrateUp,
   migrateDown,
+  migrateAllDown,
   getStatus
 };

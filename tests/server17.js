@@ -36,6 +36,33 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PORT = 9005, OTP_PORT = 9006;
 let tmp = null;
 const procs = [];
+function cleanBaseEnv(extraEnv) {
+  const env = Object.assign({}, process.env);
+  delete env.DATABASE_URL;
+  delete env.REDIS_URL;
+  delete env.NODE_ENV;
+  return Object.assign(env, extraEnv || {});
+}
+
+async function waitForFileCondition(filePath, conditionFn, timeoutMs = 8000, intervalMs = 50) {
+  const start = Date.now();
+  let lastErr = null;
+  while (Date.now() - start < timeoutMs) {
+    if (fs.existsSync(filePath)) {
+      try {
+        const content = fs.readFileSync(filePath, 'utf8');
+        if (conditionFn(content)) return content;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    await sleep(intervalMs);
+  }
+  let currentContent = '';
+  try { if (fs.existsSync(filePath)) currentContent = fs.readFileSync(filePath, 'utf8'); } catch (e) {}
+  throw new Error(`waitForFileCondition timeout after ${timeoutMs}ms for ${filePath}. Content: ${currentContent.slice(0, 300)} (lastErr: ${lastErr})`);
+}
+
 function spawnServer(env, out) {
   const p = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
   p.log = '';
@@ -65,7 +92,7 @@ function req(method, port, p, body, cookie, mod) {
     const ca = (m === https && caPath && fs.existsSync(caPath)) ? fs.readFileSync(caPath) : undefined;
     const r = m.request({
       hostname: '127.0.0.1', port, path: p, method,
-      rejectUnauthorized: false,
+      rejectUnauthorized: true,
       ca,
       headers: Object.assign(
         data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {},
@@ -99,14 +126,14 @@ async function waitForServer(p, port, useTls) {
 }
 
 async function bootServer(port, extraEnv) {
-  const env = Object.assign({}, process.env, {
+  const env = cleanBaseEnv(Object.assign({
     PORT: String(port), HOST: '127.0.0.1',
     PAYESH_STORE: path.join(tmp, 's' + port + '.json'),
     PAYESH_OTP_FILE: path.join(tmp, 'otp-' + port + '.json'), /* R101: هر سرور فایلِ OTP خودش (ایزولاسیون) */
     PAYESH_AUDIT: path.join(tmp, 'a' + port + '.log'),
     PAYESH_KEY: path.join(tmp, 'k' + port + '.key'),
     PAYESH_DEMO_CODE: '1'
-  }, extraEnv || {});
+  }, extraEnv || {}));
   fs.copyFileSync(REAL_STORE, env.PAYESH_STORE);
   const p = spawnServer(env, port);
   const useTls = !!(env.PAYESH_TLS_CERT && env.PAYESH_TLS_KEY);
@@ -227,8 +254,9 @@ async function main() {
   console.log('\n— T: استارت/TLS —');
   {
     /* T1: production بدونِ TLS */
-    const t1 = spawnServer(Object.assign({}, process.env, {
+    const t1 = spawnServer(cleanBaseEnv({
       PORT: '9007', HOST: '127.0.0.1', PAYESH_ENV: 'production',
+      ALLOW_MEMORY_FALLBACK: '1',
       PAYESH_STORE: path.join(tmp, 't1.json'), PAYESH_OTP_FILE: path.join(tmp, 'otp-t1.json'), PAYESH_AUDIT: path.join(tmp, 't1.log'),
       PAYESH_KEY: path.join(tmp, 't1.key')
     }), 9007);
@@ -251,8 +279,9 @@ async function main() {
     const ss = makeSelfSigned('payesh.test', new Date(Date.now() - 86400000), new Date(Date.now() + 86400000 * 365));
     fs.writeFileSync(path.join(tmp, 'ss.crt'), ss.certPem);
     fs.writeFileSync(path.join(tmp, 'ss.key'), ss.keyPem);
-    const t3 = spawnServer(Object.assign({}, process.env, {
+    const t3 = spawnServer(cleanBaseEnv({
       PORT: '9009', HOST: '127.0.0.1', PAYESH_ENV: 'production',
+      ALLOW_MEMORY_FALLBACK: '1',
       PAYESH_TLS_CERT: path.join(tmp, 'ss.crt'), PAYESH_TLS_KEY: path.join(tmp, 'ss.key'),
       PAYESH_STORE: path.join(tmp, 't3.json'), PAYESH_OTP_FILE: path.join(tmp, 'otp-t3.json'), PAYESH_AUDIT: path.join(tmp, 't3.log'),
       PAYESH_KEY: path.join(tmp, 't3.key')
@@ -305,9 +334,9 @@ async function main() {
   const s1 = await req('POST', OTP_PORT, '/api/auth/send-code', { phone: phone1 });
   chk('O1a send → 200 sent', s1.status === 200 && s1.json.code === 'sent', JSON.stringify(s1.json));
   const code1 = s1.json.demo_code;
-  await sleep(2600); /* persist */
-  const storeTxt = fs.readFileSync(otpStore, 'utf8');
-  const otpTxt = fs.readFileSync(path.join(tmp, 'otp-' + OTP_PORT + '.json'), 'utf8'); /* R101 */
+  const otpFile = path.join(tmp, 'otp-' + OTP_PORT + '.json');
+  const otpTxt = await waitForFileCondition(otpFile, (txt) => /\{[^{}]*"h":"[0-9a-f]{64}"/.test(txt));
+  const storeTxt = await waitForFileCondition(otpStore, (txt) => txt.length > 0);
   chk('O1b کدِ plaintext در store/otp نیست (فقط hash در otp.json)',
     storeTxt.indexOf('"' + code1 + '"') < 0 && otpTxt.indexOf('"' + code1 + '"') < 0
     && /\{[^{}]*"h":"[0-9a-f]{64}"/.test(otpTxt));
@@ -372,7 +401,7 @@ async function main() {
   otp.kill('SIGKILL');
   await sleep(400);
   {
-    const env = Object.assign({}, process.env, {
+    const env = cleanBaseEnv({
       PORT: '9007', HOST: '127.0.0.1',
       PAYESH_STORE: path.join(tmp, 'o8.json'), PAYESH_OTP_FILE: path.join(tmp, 'otp-o8.json'), PAYESH_AUDIT: path.join(tmp, 'o8.log'),
       PAYESH_KEY: path.join(tmp, 'o8.key'),
@@ -396,7 +425,7 @@ async function main() {
   /* ── S: R96 P0-5 — validatorِ صریحِ /api/sms/send ──────────────── */
   console.log('\n— S: SMS validator —');
   {
-    const env = Object.assign({}, process.env, {
+    const env = cleanBaseEnv({
       PORT: '9007', HOST: '127.0.0.1',
       PAYESH_STORE: path.join(tmp, 's.json'), PAYESH_OTP_FILE: path.join(tmp, 'otp-s.json'), PAYESH_AUDIT: path.join(tmp, 's.log'),
       PAYESH_KEY: path.join(tmp, 's.key'), PAYESH_DEMO_CODE: '1',
@@ -432,7 +461,7 @@ async function main() {
   /* ── E: R97 (TODO 2.7) — نگهبانِ شمردنِ شناسه (سطحِ روتر) ───────── */
   console.log('\n— E: enumeration guard —');
   {
-    const env = Object.assign({}, process.env, {
+    const env = cleanBaseEnv({
       PORT: '9007', HOST: '127.0.0.1',
       PAYESH_STORE: path.join(tmp, 'e.json'), PAYESH_OTP_FILE: path.join(tmp, 'otp-e.json'), PAYESH_AUDIT: path.join(tmp, 'e.log'),
       PAYESH_KEY: path.join(tmp, 'e.key'), PAYESH_DEMO_CODE: '1',
@@ -472,7 +501,7 @@ async function main() {
   }
   console.log('\n— F: field-level authorization (R98) —');
   {
-    const env = Object.assign({}, process.env, {
+    const env = cleanBaseEnv({
       PORT: '9010', HOST: '127.0.0.1',
       PAYESH_STORE: path.join(tmp, 'f.json'), PAYESH_OTP_FILE: path.join(tmp, 'otp-f.json'), PAYESH_AUDIT: path.join(tmp, 'f.log'),
       PAYESH_KEY: path.join(tmp, 'f.key'), PAYESH_DEMO_CODE: '1',
@@ -496,8 +525,13 @@ async function main() {
       const r1 = await sync(mm.ck, [opX({ by: 2, c: 'notifications', t: 'ins', data: { user_id: 4, school_id: 1, type: 'announcement', title: 'F-notice', body: 'b' } })]);
       const res1 = r1.json && r1.json.results && r1.json.results[0];
       chk('F1 manager ins notifications (user_id) → ok', r1.status === 200 && res1 && res1.ok === true, JSON.stringify(r1.json));
-      await sleep(2600); /* persist تا store رویِ فایِل بنشیند */
-      const fs1 = JSON.parse(fs.readFileSync(env.PAYESH_STORE, 'utf8'));
+      const fs1Raw = await waitForFileCondition(env.PAYESH_STORE, (txt) => {
+        try {
+          const parsed = JSON.parse(txt);
+          return Array.isArray(parsed.notifications) && parsed.notifications.some(x => x.title === 'F-notice');
+        } catch (e) { return false; }
+      });
+      const fs1 = JSON.parse(fs1Raw);
       const nt = (fs1.notifications || []).find(x => x.title === 'F-notice');
 
       /* F2 — دبیر همان رکورد را با user_id می‌فرستد → field_denied (per-op) */

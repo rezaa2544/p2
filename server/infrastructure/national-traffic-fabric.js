@@ -44,9 +44,19 @@ const TRAFFIC_FABRIC_ERRORS = Object.freeze({
 const ALLOWED_TRAFFIC_WEIGHTS = Object.freeze([0, 5, 10, 25, 50, 100]);
 
 /**
- * حافظه محلی برای نگهداری اوزان و توپولوژی ترافیک ملی
+ * Non-authoritative local cache for traffic weights.
+ * CONTRACT: PostgreSQL table 'phase6_ops_kv' is the sole authoritative SSoT.
+ * This Map is strictly a read-through cache. In production and by default,
+ * all reads and writes fail closed (OPS_KV_UNAVAILABLE) if PostgreSQL ops-kv is unattached.
  */
 const _nationalTrafficWeights = new Map();
+
+function isExplicitDevMemoryMode() {
+  if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) {
+    return false;
+  }
+  return process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY === '1';
+}
 
 function initTrafficWeights() {
   if (_nationalTrafficWeights.size > 0) return;
@@ -68,7 +78,8 @@ initTrafficWeights();
 const OPS_KEY = 'national_traffic_weights';
 
 function assertOpsKvAttachedIfRequired() {
-  if (process.env.DATABASE_URL && !opsKv.attached()) {
+  if (isExplicitDevMemoryMode()) return;
+  if (!opsKv.attached()) {
     const err = new Error('OPS_KV_UNAVAILABLE: National traffic fabric requires attached PostgreSQL ops-kv');
     err.code = 'OPS_KV_UNAVAILABLE';
     err.status = 503;
@@ -84,7 +95,7 @@ function dumpWeights() {
 
 async function refreshTrafficFromSoT() {
   if (!opsKv.attached()) {
-    if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+    if (!isExplicitDevMemoryMode()) {
       const err = new Error('OPS_KV_UNAVAILABLE: PostgreSQL SoT is not attached');
       err.code = 'OPS_KV_UNAVAILABLE';
       err.status = 503;
@@ -100,9 +111,9 @@ async function refreshTrafficFromSoT() {
   return true;
 }
 
-async function persistTrafficToSoT() {
+async function persistTrafficToSoT(candidateDump) {
   if (!opsKv.attached()) {
-    if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+    if (!isExplicitDevMemoryMode()) {
       const err = new Error('OPS_KV_UNAVAILABLE: PostgreSQL SoT is not attached');
       err.code = 'OPS_KV_UNAVAILABLE';
       err.status = 503;
@@ -110,7 +121,7 @@ async function persistTrafficToSoT() {
     }
     return;
   }
-  await opsKv.set(OPS_KEY, dumpWeights());
+  await opsKv.set(OPS_KEY, candidateDump || dumpWeights());
 }
 
 /**
@@ -266,18 +277,22 @@ function updateNationalTrafficWeight(regionId, targetWeight, approvalContext = {
     }
   };
 
-  _nationalTrafficWeights.set(regionId, updated);
-  assertNoZeroRanking(updated);
+  const candidateDump = dumpWeights();
+  candidateDump[regionId] = updated;
 
   let persistPromise;
   if (opsKv.attached()) {
-    persistPromise = persistTrafficToSoT().then(() => deepFreeze(updated));
-  } else if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
+    persistPromise = persistTrafficToSoT(candidateDump).then(() => {
+      _nationalTrafficWeights.set(regionId, updated);
+      return deepFreeze(updated);
+    });
+  } else if (!isExplicitDevMemoryMode()) {
     const err = new Error('OPS_KV_UNAVAILABLE: PostgreSQL SoT is not attached');
     err.code = 'OPS_KV_UNAVAILABLE';
     err.status = 503;
     throw err;
   } else {
+    _nationalTrafficWeights.set(regionId, updated);
     persistPromise = Promise.resolve(deepFreeze(updated));
   }
 

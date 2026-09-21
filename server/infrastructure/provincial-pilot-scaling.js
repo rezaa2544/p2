@@ -420,11 +420,28 @@ function initializeProvincialStore() {
 
 initializeProvincialStore();
 
+function isExplicitDevMemoryMode() {
+  if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) {
+    return false;
+  }
+  return process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY === '1';
+}
+
+function assertAuthorityAttachedIfRequired() {
+  if (isExplicitDevMemoryMode()) return;
+  if (!authority.attached()) {
+    const err = new Error('AUTHORITY_UNAVAILABLE: Provincial pilot scaling requires live PostgreSQL authority');
+    err.code = 'AUTHORITY_UNAVAILABLE';
+    err.status = 503;
+    throw err;
+  }
+}
+
 async function persistProvincial(row) {
   if (!row || !row.province_id) return;
   if (!authority.attached()) {
-    if (process.env.DATABASE_URL) {
-      const err = new Error('AUTHORITY_UNAVAILABLE');
+    if (!isExplicitDevMemoryMode()) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
       err.code = 'AUTHORITY_UNAVAILABLE';
       err.status = 503;
       throw err;
@@ -435,7 +452,15 @@ async function persistProvincial(row) {
 }
 
 async function refreshProvincialFromSoT() {
-  if (!authority.attached()) return false;
+  if (!authority.attached()) {
+    if (!isExplicitDevMemoryMode()) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return false;
+  }
   const rows = await authority.listState('provincial');
   for (const r of rows) {
     if (r && r.id && r.payload && typeof r.payload === 'object') {
@@ -452,6 +477,7 @@ async function refreshProvincialFromSoT() {
  * @returns {Array<Object>}
  */
 function getProvincialPilots(regionFilter) {
+  assertAuthorityAttachedIfRequired();
   const result = [];
   for (const item of _provincialStateStore.values()) {
     if (!regionFilter || item.region_id === regionFilter) {
@@ -469,6 +495,7 @@ function getProvincialPilots(regionFilter) {
  * @returns {Object|null}
  */
 function getProvincialPilotById(provinceIdentifier) {
+  assertAuthorityAttachedIfRequired();
   if (!provinceIdentifier) return null;
   const clean = String(provinceIdentifier).trim().toLowerCase();
 
@@ -543,8 +570,8 @@ async function activateProvincialPilot(provinceId, approvalPayload = {}) {
     }
   };
 
-  _provincialStateStore.set(province.province_id, updatedState);
   await persistProvincial(updatedState);
+  _provincialStateStore.set(province.province_id, updatedState);
   assertNoZeroRanking(updatedState);
   return deepFreeze(updatedState);
 }
@@ -634,8 +661,8 @@ async function updateProvincialTrafficRollout(provinceId, rolloutPct, approvalPa
     }
   };
 
-  _provincialStateStore.set(province.province_id, updatedState);
   await persistProvincial(updatedState);
+  _provincialStateStore.set(province.province_id, updatedState);
   assertNoZeroRanking(updatedState);
   return deepFreeze(updatedState);
 }

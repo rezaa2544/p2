@@ -161,8 +161,13 @@ async function assertTenantBoundary(actor, targetSchoolId, targetProvinceCode) {
       err.code = HARDENING_ERRORS.TENANT_BREACH;
       throw err;
     }
-    if (process.env.DATABASE_URL && !authority.attached()) {
-      const err = new Error('AUTHORITY_UNAVAILABLE: tenant_policy cannot be evaluated');
+    const isExplicitDev = (process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY === '1') &&
+      process.env.NODE_ENV !== 'production' &&
+      process.env.PAYESH_ENV !== 'production' &&
+      !process.env.DATABASE_URL;
+
+    if (!isExplicitDev && !authority.attached()) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: tenant_policy cannot be evaluated without attached PostgreSQL authority');
       err.code = 'AUTHORITY_UNAVAILABLE';
       err.status = 503;
       throw err;

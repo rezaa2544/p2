@@ -41,6 +41,8 @@ module.exports = {
   verifyAndRecordGovernanceNonce: postgres.verifyAndRecordGovernanceNonce,
   appendSystemAudit: postgres.appendSystemAudit,
   assertTenantPolicy: postgres.assertTenantPolicy,
+  isExplicitDevOptIn: postgres.isExplicitDevOptIn,
+  assertAuthorityAttached: postgres.assertAuthorityAttached,
   query: postgres.query,
   cache,
   withTransaction: tx.withTransaction,

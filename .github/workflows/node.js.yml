@@ -70,31 +70,28 @@ jobs:
 
     - name: Migration chain — clean install on an empty database (001 → latest)
       run: |
-        for f in migrations/[0-9][0-9][0-9]_*.sql; do
-          case "$f" in *.down.sql) continue;; esac
-          echo "== applying $f"
-          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$f" || { echo "FAILED at $f"; exit 1; }
-        done
+        DATABASE_URL="$PGURL" node tools/migrate-ledger.js up
         psql "$PGURL" -c "SELECT COUNT(*) AS tables FROM information_schema.tables WHERE table_schema='public';"
+        psql "$PGURL" -c "SELECT COUNT(*) AS applied_migrations FROM schema_migrations;"
         psql "$PGURL" -c "SELECT * FROM sync_conflicts LIMIT 1;" >/dev/null && echo "sync_conflicts readable OK"
 
     - name: Rollback chain — latest → 001
       run: |
-        for f in $(ls migrations/[0-9][0-9][0-9]_*.down.sql | sort -r); do
-          echo "== rolling back $f"
-          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$f" || { echo "FAILED at $f"; exit 1; }
-        done
+        DATABASE_URL="$PGURL" node tools/migrate-ledger.js down-all
         # BLOCKER 1 acceptance: DOWN ALL must leave NOTHING behind
-        LEFT=$(psql "$PGURL" -t -A -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';")
+        LEFT=$(psql "$PGURL" -t -A -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_name <> 'schema_migrations';")
         echo "tables left after DOWN ALL: $LEFT"
         [ "$LEFT" = "0" ] || { echo "DOWN ALL not clean — $LEFT table(s) left"; exit 1; }
+        psql "$PGURL" -c "DROP TABLE IF EXISTS schema_migrations;"
 
     - name: Re-apply clean chain for the live-PG suites
       run: |
-        for f in migrations/[0-9][0-9][0-9]_*.sql; do
-          case "$f" in *.down.sql) continue;; esac
-          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$f" || { echo "FAILED at $f"; exit 1; }
-        done
+        DATABASE_URL="$PGURL" node tools/migrate-ledger.js up
+
+    - name: PostgreSQL Migration Ledger verification (E3 live PG)
+      run: |
+        export DATABASE_URL="$PGURL"
+        node tests/schema-migrations-live-pg.test.js
 
     - name: Live-PG suites (fail without a database — P1-GAP-01)
       run: |
@@ -178,10 +175,11 @@ jobs:
         node tests/schema-migrations-ledger.test.js
         node tests/migration-009-negative.test.js
 
-    - name: Zero-Trust Remediation — R1 & R2 authoritative fail-closed suites
+    - name: Zero-Trust Remediation — R1, R2 & R21 authoritative fail-closed suites
       run: |
         node tests/r1-eliminate-ram-authorities.test.js
         node tests/r2-postgres-authority-fail-closed.js
+        node tests/schema-migrations-ledger.test.js
 
     # Boot-policy suites: previously red outside the manual battery (loose
     # ALLOW_MEMORY_FALLBACK semantics + stale expectations — Phase 8.1 R5).

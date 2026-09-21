@@ -131,6 +131,22 @@ groups:
           summary: "Read replica errors — reads have fallen back to primary"
           description: "server/db.js stops routing to a dead replica, so primary load just went up."
 
+      - alert: PayeshAuditWriteFailure
+        expr: sum(rate(payesh_audit_write_failures_total[5m])) > 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "Audit log write failure detected"
+          description: "Audit records failed to persist to disk or authority ledger. State mutations may be rejected."
+
+      - alert: PayeshAuthorityUnavailable
+        expr: sum(rate(payesh_authority_unavailable_total[5m])) > 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "PostgreSQL authority is unavailable"
+          description: "PostgreSQL authority is unattached or queries are failing; control-plane requests are failing closed."
+
   - name: payesh-cache
     interval: 30s
     rules:

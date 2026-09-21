@@ -62,10 +62,25 @@ const eventHandlersRegistry = new Map();
 const processedIdempotencyKeys = new Set();
 const deadLetterQueue = [];
 
+function isExplicitDevMemoryMode() {
+  if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) {
+    return false;
+  }
+  return process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY === '1';
+}
+
 async function seenIdempotency(key) {
   if (!key) return false;
+  if (!authority.attached()) {
+    if (!isExplicitDevMemoryMode()) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return processedIdempotencyKeys.has(key);
+  }
   if (processedIdempotencyKeys.has(key)) return true;
-  if (!authority.attached()) return false;
   const row = await authority.getState('event_idempotency', key);
   if (row) {
     processedIdempotencyKeys.add(key);
@@ -76,21 +91,30 @@ async function seenIdempotency(key) {
 
 async function rememberIdempotency(key) {
   if (!key) return;
-  processedIdempotencyKeys.add(key);
   if (!authority.attached()) {
-    if (process.env.DATABASE_URL) {
-      const err = new Error('AUTHORITY_UNAVAILABLE');
+    if (!isExplicitDevMemoryMode()) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
       err.code = 'AUTHORITY_UNAVAILABLE';
       err.status = 503;
       throw err;
     }
+    processedIdempotencyKeys.add(key);
     return;
   }
   await authority.putState('event_idempotency', key, { processed: true, at: new Date().toISOString() });
+  processedIdempotencyKeys.add(key);
 }
 
 async function refreshEventIdempotencyFromSoT() {
-  if (!authority.attached()) return false;
+  if (!authority.attached()) {
+    if (!isExplicitDevMemoryMode()) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return false;
+  }
   const rows = await authority.listState('event_idempotency');
   for (const r of rows) {
     if (r && r.id) processedIdempotencyKeys.add(r.id);
@@ -546,6 +570,8 @@ module.exports = {
   registerEventHandler,
   publishDomainEvent,
   consumeEvent,
+  seenIdempotency,
+  rememberIdempotency,
   refreshEventIdempotencyFromSoT,
   retryFailedEvent,
   detectQueueBottlenecks,

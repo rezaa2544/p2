@@ -54,11 +54,28 @@ let currentNocState = NOC_STATES.NORMAL;
 const nocStateTransitionHistory = [];
 const activeIncidents = new Map();
 
+function isExplicitDevMemoryMode() {
+  if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) {
+    return false;
+  }
+  return process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY === '1';
+}
+
+function assertAuthorityAttachedIfRequired() {
+  if (isExplicitDevMemoryMode()) return;
+  if (!authority.attached()) {
+    const err = new Error('AUTHORITY_UNAVAILABLE: National Operations Center requires live PostgreSQL authority');
+    err.code = 'AUTHORITY_UNAVAILABLE';
+    err.status = 503;
+    throw err;
+  }
+}
+
 async function persistIncident(row) {
   if (!row || !row.incident_id) return;
   if (!authority.attached()) {
-    if (process.env.DATABASE_URL) {
-      const err = new Error('AUTHORITY_UNAVAILABLE');
+    if (!isExplicitDevMemoryMode()) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
       err.code = 'AUTHORITY_UNAVAILABLE';
       err.status = 503;
       throw err;
@@ -68,10 +85,10 @@ async function persistIncident(row) {
   await authority.putState('noc_incident', row.incident_id, row, row.operator_id);
 }
 
-async function persistNocState() {
+async function persistNocState(targetState, record) {
   if (!authority.attached()) {
-    if (process.env.DATABASE_URL) {
-      const err = new Error('AUTHORITY_UNAVAILABLE');
+    if (!isExplicitDevMemoryMode()) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
       err.code = 'AUTHORITY_UNAVAILABLE';
       err.status = 503;
       throw err;
@@ -79,13 +96,21 @@ async function persistNocState() {
     return;
   }
   await authority.putState('noc_state', 'current', {
-    state: currentNocState,
-    history: nocStateTransitionHistory.slice(-50)
+    state: targetState || currentNocState,
+    history: record ? [...nocStateTransitionHistory, record].slice(-50) : nocStateTransitionHistory.slice(-50)
   });
 }
 
 async function refreshNocFromSoT() {
-  if (!authority.attached()) return false;
+  if (!authority.attached()) {
+    if (!isExplicitDevMemoryMode()) {
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority is not attached');
+      err.code = 'AUTHORITY_UNAVAILABLE';
+      err.status = 503;
+      throw err;
+    }
+    return false;
+  }
   const st = await authority.getState('noc_state', 'current');
   if (st && st.state) currentNocState = st.state;
   if (st && Array.isArray(st.history)) {
@@ -172,8 +197,9 @@ async function transitionNocState(targetState, approvalPayload) {
     automated_decision: false
   });
 
+  await persistNocState(targetState, record);
+  currentNocState = targetState;
   nocStateTransitionHistory.push(record);
-  await persistNocState();
   return record;
 }
 
@@ -219,8 +245,8 @@ async function recordNocIncident(incidentData, approvalPayload) {
     mitigation_plan: incidentData.mitigation_plan || 'Standard runbook execution'
   };
 
-  activeIncidents.set(incident.incident_id, incident);
   await persistIncident(incident);
+  activeIncidents.set(incident.incident_id, incident);
   return Object.freeze({ ...incident });
 }
 
@@ -228,6 +254,7 @@ async function recordNocIncident(incidentData, approvalPayload) {
  * Retrieves the list of recorded NOC incidents.
  */
 function getNocIncidents(filter = {}) {
+  assertAuthorityAttachedIfRequired();
   assertDisasterRecoveryZeroRanking(filter);
   const incidents = Array.from(activeIncidents.values());
 
@@ -248,27 +275,35 @@ async function resolveNocIncident(incidentId, resolutionDetails, approvalPayload
   assertDisasterRecoveryZeroRanking(approvalPayload);
   assertNocHumanApproval(approvalPayload);
 
-  if (!activeIncidents.has(incidentId)) {
+  let incident = activeIncidents.get(incidentId);
+  if (!incident && authority.attached()) {
+    incident = await authority.getState('noc_incident', incidentId);
+    if (incident) activeIncidents.set(incidentId, incident);
+  }
+
+  if (!incident) {
     const err = new Error(`Incident ${incidentId} not found`);
     err.code = NOC_ERRORS.INVALID_INCIDENT;
     throw err;
   }
 
-  const incident = activeIncidents.get(incidentId);
-  incident.status = INCIDENT_STATUS.RESOLVED;
-  incident.resolved_at = new Date().toISOString();
-  incident.resolution_summary = resolutionDetails.summary || 'Resolved by NOC operator';
-  incident.resolved_by = approvalPayload.operator_id.trim();
+  const updatedIncident = Object.assign({}, incident, {
+    status: INCIDENT_STATUS.RESOLVED,
+    resolved_at: new Date().toISOString(),
+    resolution_summary: resolutionDetails.summary || 'Resolved by NOC operator',
+    resolved_by: approvalPayload.operator_id.trim()
+  });
 
-  activeIncidents.set(incidentId, incident);
-  await persistIncident(incident);
-  return Object.freeze({ ...incident });
+  await persistIncident(updatedIncident);
+  activeIncidents.set(incidentId, updatedIncident);
+  return Object.freeze({ ...updatedIncident });
 }
 
 /**
  * Aggregates the full National Operations Center real-time view.
  */
 function getNationalOperationsCenterSnapshot(options = {}) {
+  assertAuthorityAttachedIfRequired();
   assertDisasterRecoveryZeroRanking(options);
 
   // 1. Region & Cluster status aggregation

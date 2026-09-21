@@ -37,6 +37,10 @@ async function isRevoked(jti) {
   try {
     return (await redis.get(DENY_PREFIX + jti)) != null;
   } catch (e) {
+    try {
+      const { audit } = require('./audit');
+      audit('revocation_redis_error', { op: 'isRevoked', jti, error: e && e.message ? e.message : String(e) });
+    } catch (_) {}
     return false;
   }
 }
@@ -61,6 +65,10 @@ async function getSessionVersion(userId) {
     const n = parseInt(v, 10);
     return (Number.isFinite(n) && n > 0) ? n : 0;
   } catch (e) {
+    try {
+      const { audit } = require('./audit');
+      audit('revocation_redis_error', { op: 'getSessionVersion', userId, error: e && e.message ? e.message : String(e) });
+    } catch (_) {}
     return 0;
   }
 }
