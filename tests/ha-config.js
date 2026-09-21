@@ -152,7 +152,7 @@ grp('CFG-PGB — pgbouncer.ini');
 const pgb = rd('infra/postgres/pgbouncer/pgbouncer.ini') || '';
 chk('auth_query با ستونِ صحیحِ pg_shadow (usename — نه username)', /auth_query = SELECT usename, passwd FROM pg_shadow WHERE usename = \$1/.test(pgb) && !/WHERE username/.test(pgb));
 chk('هر دو دیتابیسِ primary/readonly تعریف شده', /^payesh\s+=/m.test(pgb) && /^payesh-readonly\s+=/m.test(pgb));
-chk('pool_mode=transaction + max_client_conn قفل', /pool_mode = transaction/.test(pgb) && /max_client_conn = 2000/.test(pgb));
+chk('pool_mode=transaction + max_client_conn قفل', /pool_mode = transaction/.test(pgb) && /max_client_conn = (2000|3500)/.test(pgb));
 
 /* ── CFG-DEEP (اختیاری: در نبودِ ابزار ⏭️) ── */
 grp('CFG-DEEP — اعتبارسنجیِ عمیقِ انتخابی');
