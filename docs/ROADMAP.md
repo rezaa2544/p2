@@ -15,6 +15,11 @@
 > Master Execution Dependency Graph، Parallelization Matrix، Gate Model
 > (G0–G10)، Research-only Track، National Platform Foundation Track و
 > Risk/Blocker Register است.
+
+> **وضعیت جاری (2026-09-21):** Phase 8.2 در وضعیت **PARTIAL — Evidence Reconciliation** نگه داشته شده است.  
+> گزارش نهایی Phase 8.2 برچسب VERIFIED دارد، اما Exit Evidence تفصیلی S3/S4 هنوز در یک Gate Matrix قابل بازتولید جمع‌بندی نشده؛ بنابراین Phase 8.3 هنوز شروع‌شده محسوب نمی‌شود.  
+> **مرجع وضعیت جاری:** `docs/ROADMAP_CURRENT_GROUND_TRUTH_2026-09-21.md`  
+> **مرجع برنامه اصلی:** `docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md`
 >
 > **تقسیم کار بین دو سند:** بخش‌های ۳۴ (W21)، ۳۵ (R-01..R-07)، ۳۶ (W22) و ۳۷
 > همین سند مرجع **«چیستی و دامنهٔ»** هر قابلیت‌اند و دست‌نخورده باقی می‌مانند؛
