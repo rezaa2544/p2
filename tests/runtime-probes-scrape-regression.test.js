@@ -13,6 +13,16 @@
  */
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+
+const root = path.join(__dirname, '..');
+const storePath = path.join(root, 'server', 'data', 'payesh.json');
+if (!fs.existsSync(storePath)) {
+  execSync('node server/seed.js', { cwd: root, stdio: 'ignore' });
+}
+
 const assert = require('assert');
 const http = require('http');
 const metrics = require('../server/metrics');
