@@ -425,7 +425,7 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
     const w = createWorker({
       store, outbox: ob,
       handlers: { 'x.run': async () => { if (boom) throw new Error('nope'); } },
-      maxRetries: 1
+      maxRetries: 2
     });
     await ob.append({ type: 'x.run', collection: 'students', record_id: 1 });
     await w.tick();

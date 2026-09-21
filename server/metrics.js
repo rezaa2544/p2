@@ -358,6 +358,38 @@ const ROUTE_EXACT = new Set([
      فراخوانی برچسبِ fail-closedِ api_unmatched می‌گرفت (کوریِ سنجه). */
   '/api/v1/reports/attendance', '/api/v1/reports/academic',
   '/api/v1/reports/finance', '/api/v1/reports/teachers',
+  /* Canary & System endpoints */
+  '/api/system/canary/status', '/api/system/canary/promote',
+  '/api/system/canary/weight', '/api/system/canary/rollback', '/api/system/canary/circuit-breaker',
+  /* Analytics endpoints */
+  '/api/v1/analytics/school-intelligence', '/api/v1/analytics/regional-intelligence',
+  '/api/v1/analytics/quality-governance', '/api/v1/analytics/longitudinal-intelligence',
+  '/api/v1/analytics/action-recommendations', '/api/v1/analytics/feedback-learning-memory',
+  '/api/v1/analytics/intelligence-governance', '/api/v1/analytics/policy-simulation',
+  '/api/v1/analytics/decision-command', '/api/v1/analytics/operational-execution',
+  '/api/v1/analytics/outcome-evaluation', '/api/v1/analytics/intelligence-platform',
+  '/api/v1/analytics/intelligence-certification',
+  /* System Health & Certification endpoints */
+  '/api/v1/system/scalability-health', '/api/v1/system/event-processing-health',
+  '/api/v1/system/observability-health', '/api/v1/system/disaster-recovery-health',
+  '/api/v1/system/pilot-deployment-health', '/api/v1/system/security-health',
+  '/api/v1/system/phase4-certification', '/api/v1/system/scalability-certification',
+  /* Phase 5 Federation & Provincial Pilot endpoints */
+  '/api/v1/system/phase5/regions', '/api/v1/system/phase5/federation-health',
+  '/api/v1/system/phase5/resource-governance', '/api/v1/system/phase5/pilot-approval',
+  '/api/v1/system/phase5/provincial-pilots', '/api/v1/system/phase5/provincial-pilots/capacity',
+  '/api/v1/system/phase5/provincial-pilots/activate', '/api/v1/system/phase5/provincial-pilots/traffic-rollout',
+  /* National Control Plane endpoints */
+  '/api/v1/system/national/regions', '/api/v1/system/national/capacity',
+  '/api/v1/system/national/capacity/reservations', '/api/v1/system/national/capacity/reservation',
+  '/api/v1/system/national/health', '/api/v1/system/national/traffic',
+  '/api/v1/system/national/operations', '/api/v1/system/national/readiness',
+  '/api/v1/system/national/load-test', '/api/v1/system/national/incidents',
+  '/api/v1/system/national/change-request', '/api/v1/system/national/write-smoothing',
+  /* Phase 6 Canary endpoints */
+  '/api/v1/system/phase6/canary/status', '/api/v1/system/phase6/canary/promote',
+  '/api/v1/system/phase6/canary/weight', '/api/v1/system/phase6/canary/rollback',
+  '/api/v1/system/phase6/canary/circuit-breaker',
   '/metrics'
 ]);
 const ROUTE_PATTERNS = [
