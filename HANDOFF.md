@@ -3711,3 +3711,85 @@ Gate» شکست و **۹ مرحله از جمله خودِ `npm test` skip شد**
 
 **وضعیت گیت‌ها بدون تغییر:** `Phase 8.2 Exit = NOT VERIFIED` · `Phase 8.3 = BLOCKED` ·
 `Production GO = NOT DECLARED`.
+
+---
+
+## ۲۰۲۶-۰۹-۲۱ — چت ۴ (بستهٔ سوم): Governance / Security pipeline — F-QA-04 / F-QA-01 / F-QA-07
+
+**مبنا:** `755715bd` · **کامیت‌ها:** `82baf2df` (CODE) + کامیت DOC همین بسته.
+اسکیل‌های مخزن خوانده و اعمال شد: `evidence-integrity-and-commit-accounting` (سطوح
+E0–E4، تفکیک CODE/DOC، Rule Set 5)، `verification-before-completion` (هیچ ادعا بدون
+اجرای تازه)، `security-review-payesh` (بدون exploit، یافته نداریم).
+
+### F-QA-04 — Codacy: علت ریشه‌ای در سطح E3 بازتولید شد
+
+**تصحیح یک ادعای نادرست از بستهٔ قبل:** در `755715bd` نوشته بودم «`.codacy.yml` اصلاً
+خوانده نمی‌شود». **غلط بود و رسماً پس گرفته شد.** لاگ هر دو اجرا (قبل و بعد از `---`)
+شامل `AnalyseExecutor:195 - Found local extra configuration for pmd` ×۳ و همان برای
+`pmd-legacy` است ⇒ **فایل خوانده می‌شود**. حقیقتِ دقیق‌تر: فقط `engines.<tool>.enabled`
+بی‌اثر است (طبق مستندات Codacy، فعال/غیرفعال‌سازی صرفاً از UI ممکن است).
+
+**علت واقعی شکست — نقص ابزار، نه نقص کد:** CLI روی
+`java.nio.charset.MalformedInputException` در
+`Sarif.createResults → better.files File.lines → Files.readAllLines` می‌میرد؛ یعنی
+هنگام **بازخوانی فایل‌های سورس** برای ساخت SARIF (پس از ۱۱۸۹ نتیجهٔ metrics و ۵۲۸
+نتیجهٔ duplication). decoder سخت‌گیر جاوا بایت خراب را گزارش می‌کند به‌جای جایگزینی.
+**بازتولید محلی با همان استثنا و همان پیام:** UTF-8 سخت‌گیر روی `tools/redis-backup.sh`
+⇒ `OK 128 lines` · US-ASCII سخت‌گیر روی همان ⇒ `MalformedInputException: Input length = 1`
+· UTF-8 سخت‌گیر روی `store/icon-512.png` ⇒ همان استثنا. هر دو ماشه در مخزن حاضرند:
+**۲۱۳۶ از ۲۲۳۰ فایل (۹۵٪) غیر‌ASCII** و دو PNG ردیابی‌شده اصلاً UTF-8 معتبر نیستند.
+`**/*.png` نجات نمی‌دهد چون exclusion به فاز metrics/duplication اعمال نمی‌شود.
+
+**پاسخ سه پرسش مأموریت:** (۱) **`CODACY_PROJECT_TOKEN` لازم نیست** — سناریوی فعلی
+code-scanning است و نمونهٔ رسمی README هیچ tokenی ندارد؛ token فقط برای سناریوی upload
+لازم است. ضمناً REST API نشان داد مخزن **صفر secret و صفر variable** دارد
+(`total_count: 0`) — نه Codacy، نه `FOD_*`، نه `SSC_*`. (۲) **workflow دو ضعف دارد**:
+`project-token` به secret ناموجود، و `max-allowed-issues: 2147483647` که اگر ابزار روزی
+موفق شود گیت شمارش را بی‌اثر می‌کند (ولی امروز اصلاً به آن نمی‌رسیم چون CLI زودتر
+crash می‌کند) ⇒ **ضعف حاکمیتی، نه آسیب‌پذیری**. (۳) **بله، تصمیم policy لازم است.**
+**۳۱/۳۱ شکست، SARIF هرگز آپلود نشده، صفر یافتهٔ امنیتی.**
+**هیچ `continue-on-error` یا `|| true` اضافه نشد** — عمداً قرمز و صادق می‌ماند.
+**BLOCKED — OWNER DECISION REQUIRED:** A ارتقای action · B بازنشستگی · C یکپارچگی کامل
+Codacy Cloud · D بدون تغییر. توصیه: A، و اگر جواب نداد B.
+
+### F-QA-04 — Fortify: شفافیت کامل (بدون پنهان‌کردن هیچ شکستی)
+
+اجرای #351 **success** بود در حالی که **هیچ اسکنی انجام نشده** — یعنی تیک سبز قابل
+برداشت اشتباه بود (همان الگوی misleading-success در F-QA-08). هر دو مسیر اکنون نتیجه را
+صریح در `$GITHUB_STEP_SUMMARY` می‌نویسند: مسیر skip ⇒ `NOT EXECUTED` /
+`Scan status: NOT SCANNED` + دلیل + جملهٔ «تیک سبز یعنی workflow تمام شد، نه اینکه کد
+تحلیل شد»؛ مسیر واقعی ⇒ `EXECUTED` / `SCANNED`. تأیید ماشینی شد که **هیچ step و هیچ job
+دارای `continue-on-error` نیست** ⇒ شکست واقعی اسکن همچنان قرمز می‌کند. نبودِ `FOD_*`
+به‌عنوان **tooling state** ثبت ماند.
+
+### F-QA-01 — تگ: فقط dossier و evidence (تگ دست نخورد)
+
+تگ در همین لحظه دوباره راستی‌آزمایی شد: `phase8.2-verified` → `401d02b2`، نوع
+**commit (lightweight)**، اکنون **۸۲ کامیت** عقب، و روی آن SHA **صفر اجرای Node.js CI**
+(فقط دو Fortify شکست‌خورده). `git ls-remote` تأیید کرد تگ **جابه‌جا نشده**.
+**معیارهای صریح ایجاد تگ جدید** به dossier اضافه شد: T1 annotated · T2 اجرای موفق
+Node.js CI روی همان SHA · T3 صفر skip · T4 قابل‌دسترس از origin/main · T5 نام صادق؛
+برای تگ انتشار R1–R3؛ و برای هر تگ حاوی «verified» شرط‌های V-1..V-3 (سند با run id و
+شمارش، استناد به همان SHA، و شواهد E4). **ارزیابی وضعیت فعلی: ۵ شرط از ۶ نقض شده.**
+نکته: `6b627a8f`/`755715bd` شرایط T2–T4 را دارند (CI #1156 و #1158 سبز، صفر skip) پس
+برای تگ **snapshot/report** کاندیدا هستند، ولی **هیچ تگ verifiedی مجاز نیست**.
+
+### F-QA-07 — قرارداد نسخه واقعاً enforce شد + یک نقض تاریخی کشف شد
+
+`tests/release-version-contract.js` (۸ بررسی) ساخته و در `node.js.yml` گیت شد.
+V1–V8 موارد قطعی را **قرمز** می‌کنند؛ A0/A1/A2 (نقض تاریخی، فاصله از تگ، نبود CHANGELOG)
+عمداً فقط **هشدار**اند چون تصمیم سیاست انتشارند.
+**چرخهٔ قرمز-سبز اثبات شد:** پایه exit 0 → دستکاری `package.json` به `9.9.9` ⇒ exit 1 با
+قرمزی V2/V3 → بازگردانی ⇒ exit 0.
+**یافتهٔ تازه (تلاقی با F-QA-01):** تگ `v1.0.1` روی `522afe8f` است که `package.json` آن
+**`1.0.0`** است، و `git log -S'"version": "1.0.1"'` **خالی** برمی‌گردد ⇒ نسخهٔ `1.0.1`
+**هرگز در تاریخچهٔ package.json وجود نداشته**. طبق قاعدهٔ R3 تگ منتشرشده جابه‌جا نشد؛
+به‌عنوان استثنای **ثبت‌شده و قابل مشاهده** در خود تست فهرست شد تا گیت برای همیشه قرمز
+نماند ولی هر تگ **تازه‌ای** با همین خطا قرمز شود.
+**اصلاح مهم CI:** `actions/checkout` پیش‌فرض بدون تگ است؛ در clone سطحی
+(`--depth 1 --no-tags`) گیت با exit 1 و «هیچ تگ vX.Y.Z پیدا نشد» **بلند** شکست می‌خورد
+(نه سبزِ توخالی). بنابراین checkout به `fetch-depth: 0` و `fetch-tags: true` تغییر کرد.
+پنج مرجع نسخه بررسی شد؛ `manifest.json` اصلاً فیلد version ندارد (مسئله نیست).
+
+**وضعیت گیت‌ها بدون تغییر:** `Phase 8.2 Exit = NOT VERIFIED` · `Phase 8.3 = BLOCKED` ·
+`Production GO = NOT DECLARED`. هیچ ادعای VERIFIED و هیچ ادعای امنیتی ثبت نشد.
