@@ -165,7 +165,7 @@ const dbReady = db.init(store).then(async info => {
    information_schema. Rows that cannot map are skipped and counted — the
    seed must never abort the boot. */
 async function seedPgFromBootstrap(store, db) {
-  const CHUNK = 200;
+  const CHUNK = 100;
   const colsCache = {};
   const colsOf = async (t) => {
     if (!colsCache[t]) {
@@ -174,6 +174,8 @@ async function seedPgFromBootstrap(store, db) {
     }
     return colsCache[t];
   };
+  const ident = (n) => '"' + String(n).replace(/"/g, '""') + '"';
+  const valOf = (v) => (v !== null && typeof v === 'object') ? JSON.stringify(v) : v;
   const names = Object.keys(store).filter((k) => /^[a-z][a-z0-9_]*$/.test(k) && Array.isArray(store[k]));
   const head = ['schools', 'users', 'subjects', 'classes'].filter((c) => names.includes(c));
   const tail = names.filter((c) => !head.includes(c));
@@ -187,21 +189,46 @@ async function seedPgFromBootstrap(store, db) {
     if (!arr.length) continue;
     tables++;
     for (let i = 0; i < arr.length; i += CHUNK) {
-      const ops = [];
+      const cleanRows = [];
+      const fieldSet = new Set();
       for (const r of arr.slice(i, i + CHUNK)) {
         const data = {};
-        for (const k of Object.keys(r)) if (cols.has(k)) data[k] = r[k];
-        if (data.id == null) continue;
-        ops.push({ c: col, t: 'ins', data });
+        for (const k of Object.keys(r)) {
+          if (cols.has(k)) {
+            let val = r[k];
+            if (col === 'attendance' && (k === 'late_at' || k === 'exit_at') && typeof val === 'string' && /^\d{2}:\d{2}$/.test(val)) {
+              val = (r.date || '2026-09-01') + 'T' + val + ':00Z';
+            }
+            data[k] = val;
+            fieldSet.add(k);
+          }
+        }
+        if (data.id != null) cleanRows.push(data);
       }
-      if (!ops.length) continue;
+      if (!cleanRows.length) continue;
+
+      const rowFields = Array.from(fieldSet);
       try {
-        await db.persistOpsBatch(ops);
-        rows += ops.length;
+        await db.transaction(async (client) => {
+          const params = [];
+          const rowClauses = [];
+          for (const row of cleanRows) {
+            const placeholders = [];
+            for (const f of rowFields) {
+              const v = row[f] !== undefined ? row[f] : null;
+              params.push(valOf(v));
+              placeholders.push('$' + params.length);
+            }
+            rowClauses.push('(' + placeholders.join(', ') + ')');
+          }
+          const sql = 'INSERT INTO ' + ident(col) + ' (' + rowFields.map(ident).join(', ') + ') VALUES ' + rowClauses.join(', ') + ' ON CONFLICT DO NOTHING;';
+          await client.query(sql, params);
+        });
+        rows += cleanRows.length;
       } catch (e) {
-        /* one poison row must not starve the whole table — retry per row */
-        for (const op of ops) {
-          try { await db.persistOpsBatch([op]); rows++; } catch (e2) { skipped++; }
+        /* fallback per row if bulk insert fails */
+        for (const row of cleanRows) {
+          try { await db.persistOpsBatch([{ c: col, t: 'ins', data: row }]); rows++; } catch (e2) { skipped++; }
         }
       }
     }
