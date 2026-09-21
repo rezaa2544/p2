@@ -1030,3 +1030,41 @@ Phase 8.3 E4 provisioning → empirical load/soak
 M1 live alert/on-call/recovery → M2 PG restore/promote + Redis E4 → M3 R6/R7/cold-cache → OUTBOX-002 reproduction + DB-001 measurement → Gate 8.2 VERIFIED → Phase 8.3 empirical scale.
 
 مرجع تفصیلی: `docs/audit/CHAT3_PHASE8_2_RECONCILIATION_2026-09-21.md`.
+
+
+## ۰.۷ الحاق Red-Team Chat 4 — QA / Release / Reproducibility Reconciliation (2026-09-21)
+
+Chat 4 مستقل از گزارش‌های قبلی، لایه QA/Release/CI/CD را روی baseline `fe633395` ممیزی کرده است. مرجع تفصیلی: `docs/audit/CHAT4_QA_RELEASE_RECONCILIATION_2026-09-21.md`.
+
+### قرارداد اجرایی جدید
+
+1. **F-QA-02 / Evidence Integrity — P0:** گزارش `PHASE_8_2_FINAL_VERIFICATION_REPORT.md` که VERIFIED اعلام می‌کند، تا وقتی SHA/run_id/count/raw-output معتبر نداشته باشد Evidence Exit محسوب نمی‌شود و باید بازنویسی/ابطال شود.
+2. **F-QA-03 / CI Determinism — P1:** boot timeout در GATE 3 باید رفع یا adaptive/pre-seeded شود و سپس حداقل ۲۰ اجرای قابل مشاهده برای pass-rate/تکرارپذیری ثبت شود.
+3. **F-QA-01 / Tag Integrity — P1:** پس از پایدار شدن CI، tag `phase8.2-verified` باید به SHA دارای Node.js CI سبز متصل شود یا نام آن به non-gate/report tag تغییر کند.
+4. **F-QA-08 / Backup Fake-Green — P1:** `tools/redis-backup.sh` نباید در flock contention با exit 0 موفقیت کاذب بدهد؛ این مورد پیش‌نیاز S4 است.
+5. **F-QA-05 / Reproducibility — P2:** Node ≥22 و مسیر CI-parity برای حدود ۵۱۸ تست خارج از `npm test` مستند شود.
+6. **F-QA-04/F-QA-06/F-QA-07:** scanner config/credentials، Redis step naming و version/tag/changelog به backlog Release Governance منتقل شوند؛ این موارد به‌خودی‌خود Gate 8.2 را باز نمی‌کنند.
+7. **F-QA-10:** finding قبلی درباره چهار فایل alert و silent-alert risk رسماً withdrawn است؛ `monitoring/alert-rules.yml` symlink است و Prometheus هر دو rule file مورد نظر را load می‌کند.
+
+### ترتیب اجرایی اصلاح‌شده
+
+```
+F-QA-02
+  → F-QA-03
+  → F-QA-01
+  → F-QA-08
+  → M1
+  → M2/M3
+  → OUTBOX-002 + DB-001 + OUTBOX-001
+  → Gate 8.2 VERIFIED
+  → Phase 8.3 E4 staging / empirical load
+```
+
+### وضعیت گیت‌ها
+
+- Phase 8.2 Exit: **NOT VERIFIED**
+- G8.3-IN / G8.3-OUT: **NOT VERIFIED**
+- Phase 8.3 empirical capacity: **NONE**
+- Production GO: **NOT DECLARED**
+
+Chat 4 همچنین تأیید می‌کند که build/test substrate روی Node 22 قابل بازتولید است، اما local green معادل repository-wide green نیست؛ `npm test` فقط دو suite را سیم‌کشی می‌کند و اجرای جامع عمدتاً در CI است. این موضوع به‌عنوان Reproducibility follow-up ثبت می‌شود، نه به‌عنوان fake-green.
