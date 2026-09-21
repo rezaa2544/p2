@@ -3580,3 +3580,24 @@ multigrade۲ (۹) + ۳ جهش · cmsg۲ (۹) + cmsg۳ (۱۱) + ۴ جهش ·
 - **وضعیت P0ها:** هر ۷ یافتهٔ P0 پیش‌ممیزی همچنان باز است (G-01..G-07). S2 به آن‌ها دست نزد چون متعلق به S3/S4 هستند. S3 و S4 هنوز شروع نشده‌اند.
 - **تخمین پیشرفت:** کل پروژه ≈۶۲٪ (اطمینان ۶۰٪)؛ پیشرفت قابل‌اثبات با E3/E4 ≈۴۵٪ (اطمینان ۷۰٪). فاز ۸.۲-S2 ≈۷۰٪، S3 صفر، S4 صفر.
 - **skill به‌کاررفته:** `.claude/skills/evidence-integrity-and-commit-accounting` (انضباط E0–E4 و تفکیک mock/runtime).
+
+---
+
+## ۲۰۲۶-۰۹-۲۱ — چت ۴: ممیزی QA / Release / CI-CD / بازتولیدپذیری / یکپارچگی شواهد
+
+- **نوع کامیت:** DOC_COMMIT خالص — صفر تغییر کد، صفر پیاده‌سازی، صفر تست بار.
+- **artifact:** `docs/PHASE_8.2_QA_RELEASE_REPRODUCIBILITY_AUDIT.md` (۱۴ بخش).
+- **مبنا:** ممیزی از `38c63c1e` تا `138cd1d9` تا `fe633395` پیش رفت. Node v22.23.2 در `/tmp/node22` نصب شد (خارج از مخزن) تا سوئیت واقعاً اجرا شود.
+- **بازتولید موفق از محیط تمیز:** `npm ci` (۱۱۸ بسته، ۲ ثانیه، lockfile v3، بدون اسکریپت install) · `npm run build` (dist/payesh.html، ۱۶۳۶٫۸ KB) · `npm run build:check` · **`npm test` = exit 0 با ۳۵/۳۵ + ۵۴۷/۵۴۷ در ۵۱ ثانیه و صفر skip**.
+- **کنترل ضدِ سبزِ کاذب تأیید شد:** روی Node 20 سوئیت عمداً exit 1 می‌دهد با پیام «اجرای تست روی Node < 22 = skip پنهان = سبزِ کاذب». اما `npm ci` فقط EBADENGINE warning می‌دهد و مسدود نمی‌کند.
+- **اجرای مستقل ادعاها (Type-A):** R1 ۴۹ PASS · R2 ۳۲ PASS · R21 ledger ۸ PASS · S2 metrics ۴/۰ · server17 (Battery B) **۷۰ سبز / ۰ قرمز** · session-revocation ۱۶/۰ با `D-a`/`D-b` همچنان SKIP. تست‌های live-PG بدون دیتابیس درست fail-closed می‌شوند (exit 1).
+- **F-QA-02 (P0):** `docs/audit/PHASE_8_2_FINAL_VERIFICATION_REPORT.md` حکم «VERIFIED» می‌دهد ولی به کامیت `b0b55a13` استناد می‌کند که **Node.js CI #1074 آن FAILURE بوده** و ۲۲ کامیت عقب‌تر است؛ سند ۲۲ خط است و صفر run_id/شمارش/خروجی خام دارد. تا اصلاح، نباید به‌عنوان شواهد خروج ۸.۲ استناد شود.
+- **F-QA-01 (P1):** تگ `phase8.2-verified` روی `401d02b2` است که **هیچ اجرای Node.js CI ندارد** (فقط دو Fortify شکست‌خورده). تگ `phase8.2-final-main` روی `fbe178be` است که شواهد متناقض دارد.
+- **F-QA-03 (P1) — مهم‌ترین یافتهٔ CI:** روی **همان SHA `fbe178be`**، اجرای PR (#1093) موفق و اجرای push (#1095) شکست خورد. علت از لاگ خام: **boot timeout در GATE 3** (Production Truth Gate) درست پس از seeding یکبارهٔ PG. در پی آن **۹ مرحلهٔ بعدی skip شدند** (شامل R1/R2/R21 و npm test) — که خودش اثبات می‌کند pipeline واقعاً fail-closed است. نرخ موفقیت ۲۰ اجرای اخیر: **۶۵٪** (۱۳ موفق / ۷ ناموفق). آخرین اجرای کامل سبز: **#1098 روی `138cd1d9` با ۲۸/۲۸ مرحله و صفر skip**.
+- **F-QA-04 (P2) — پروندهٔ Codacy بسته شد:** شکست از نوع configuration است نه نقص امنیتی — `IllegalArgumentException: No rules found` (بدون project-token هیچ قاعده‌ای بار نمی‌شود) و `ConfigurationNotFoundError: No ESLint configuration found`. **صفر یافتهٔ امنیتی** گزارش شده. محلی تأیید شد که هیچ `.eslintrc*`/`eslint.config.*` در مخزن نیست. Fortify هم به دلیل نبود `FOD_*` همیشه قرمز است (**۸ از ۸ اجرای اخیر**).
+- **F-QA-05 (P2):** ۵۲۰ فایل تست در مخزن هست اما `npm test` فقط ۲ سوئیت را سیم‌کشی می‌کند؛ بقیه فقط داخل `node.js.yml` با postgres:17 و redis:8 واقعی اجرا می‌شوند. هیچ مسیر محلی مستندی برای برابری با CI و هیچ ذکری از الزام Node ≥ 22 در README نیست.
+- **تصحیح گزارش قبلی خودم (F-QA-10):** ادعای «چهار فایل آلارم موازی» **نادرست** بود — `monitoring/alert-rules.yml` یک **symlink** به `infra/observability/alert-rules.yml` است (سه فایل مجزا، نه چهار). همچنین ادعای «معلوم نیست کدام فایل بارگذاری می‌شود» **پس گرفته شد**: `infra/observability/prometheus.yml:20-22` صراحتاً **هر دو** `alert-rules.yml` و `alerts.yml` را بار می‌کند. ریسک «آلارم خاموش» به آن شکل وجود ندارد؛ فقط `monitoring/alert-rules.yaml` (۱۲ آلارم) بدون ارجاع مانده (P3).
+- **F-QA-09 (INFO) — هشدار محیطی برای همهٔ چت‌ها:** بازیابی snapshot **symlink و بیت اجرایی را از بین می‌برد**. این نشست با `monitoring/alert-rules.yml` حذف‌شده و `tools/migrate-ledger.js` + `tools/production-verifier.sh` با مود `100644` آغاز شد (صفر تغییر محتوا). با `git checkout --` بازگردانده شد. **هرگز `git add -A` در این workspace نزنید** و پیش از کامیت `git diff` را برای تغییر mode-only بررسی کنید.
+- **آمادگی ۸.۳ (فقط زیرساخت، بدون هیچ ادعای تجربی):** ۵ سوئیت k6 (`national-load-test`, `saturation-test`, `soak-24h-test`, `spike-mehr-test`, `chaos-redis-test`)، PgBouncer، Prometheus/Grafana/Loki/OTel و PostgreSQL HA همگی موجودند؛ باینری k6 در هیچ runner نصب نیست. طبقه‌بندی: **INFRASTRUCTURE READINESS — PARTIAL، EMPIRICAL VALIDATION — NONE**.
+- **حکم release:** امروز مخزن **قابل انتشار به‌عنوان «VERIFIED» نیست** — نه به دلیل خرابی کد (که اثبات شد سالم است)، بلکه به دلیل ناسازگاری متادیتای انتشار (تگ، نسخه، گزارش نهایی) با سابقهٔ CI. `package.json` نسخهٔ ۱٫۰٫۰ دارد در حالی که جدیدترین تگ v1.0.1 است و HEAD ۱۸۶۴ کامیت جلوتر است؛ CHANGELOG وجود ندارد.
+- **تغییر roadmap:** هیچ ارتقایی توجیه نمی‌شود. فقط دو تنزل پیشنهاد شد (ارجاع‌ها به گزارش نهایی و تگ `phase8.2-verified`). خروج ۸.۲ و G8.3-IN/OUT همچنان NOT VERIFIED.
