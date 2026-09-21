@@ -1325,3 +1325,6 @@ Chat 5 روی HEAD 138cd1d9: **S2=VERIFIED (تحویل‌شده و truthful)**؛
 
 ترتیب بعدی: M0 → M1 → M2 → M3 → M5 → Gate 8.2 → Phase 8.3.
 مرجع: docs/audit/CHAT5_PHASE8_2_DELTA_2026-09-21.md.
+
+
+> **تطبیق Chat 2 — 2026-09-21:** گزارش Chat 2 بر SHA تاریخی `bc68b2b5` بود. RT2-02 (double tenant-policy query) هنوز نیازمند اندازه‌گیری روی current-main است؛ RT2-03 به M2/restore E4 متصل است؛ RT2-05 یک follow-up معماری برای idempotency مصرف‌کنندگان Outbox است؛ و RT2-04 با شواهد بعدی دربارهٔ wiring Prometheus اصلاح و ریسک «silent alert» آن پس گرفته شده است. RT2-01 به‌عنوان governance/config follow-up باقی می‌ماند، نه blocker مستقل. بنابراین Gate 8.2 همچنان **NOT VERIFIED** و Phase 8.3 همچنان **BLOCKED** است.
