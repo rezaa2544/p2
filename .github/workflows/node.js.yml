@@ -76,6 +76,27 @@ jobs:
         cache: 'npm'
     - run: npm ci
 
+    # ── Governance contracts (Chat 4) ────────────────────────────────────────
+    # عمداً بلافاصله بعد از `npm ci` و پیش از مراحل سنگینِ وابسته به سرویس زنده
+    # اجرا می‌شوند. این‌ها بررسی‌های ایستا و چندثانیه‌ای‌اند و به PostgreSQL/Redis
+    # نیازی ندارند. اگر بعد از مراحل live قرار بگیرند، هر شکست نامرتبط در آن مراحل
+    # باعث skip شدنشان می‌شود و گیت عملاً هرگز اجرا نمی‌شود — که دقیقاً در اجراهای
+    # #1161 و #1163 رخ داد (شکست در مرحلهٔ ۱۷ ⇒ هر دو گیت skip شدند).
+
+    # F-QA-05: قرارداد هم‌ترازی تست و CI.
+    # `npm test` فقط دو ورودی را اجرا می‌کند؛ این گیت آن محدودیت را صریح و ماشین‌خوان
+    # نگه می‌دارد و اگر فایل تستِ تازه‌ای اضافه شود که هیچ اتوماسیونی اجرایش نمی‌کند،
+    # قرمز می‌شود. هیچ تستی را skip یا حذف نمی‌کند.
+    - name: TEST/CI parity contract — npm test ≠ whole repository
+      run: node tests/ci-test-parity-contract.js
+
+    # F-QA-07: قرارداد نسخه و انتشار.
+    # ناهمخوانی‌های قطعی (package.json در برابر lock، و تگ تازه‌ای که با نسخه نمی‌خواند)
+    # را قرمز می‌کند؛ مواردی که تصمیم سیاست انتشار می‌خواهند فقط هشدار می‌دهند و
+    # عمداً قرمز نمی‌کنند. نیازمند تاریخچهٔ تگ‌هاست (fetch-depth: 0 + fetch-tags بالا).
+    - name: Release version contract — package.json / lock / tags coherence
+      run: node tests/release-version-contract.js
+
     - name: Migration chain — clean install on an empty database (001 → latest)
       run: |
         DATABASE_URL="$PGURL" node tools/migrate-ledger.js up
@@ -201,20 +222,6 @@ jobs:
         node tests/redis-fallback.js
         node tests/env-flags.js
         node tests/wave15-health.js
-
-    # F-QA-05 (Chat 4 remediation): قرارداد هم‌ترازی تست و CI.
-    # `npm test` فقط دو ورودی را اجرا می‌کند؛ این گیت آن محدودیت را صریح و ماشین‌خوان
-    # نگه می‌دارد و اگر فایل تستِ تازه‌ای اضافه شود که هیچ اتوماسیونی اجرایش نمی‌کند،
-    # قرمز می‌شود. هیچ تستی را skip یا حذف نمی‌کند.
-    - name: TEST/CI parity contract — npm test ≠ whole repository
-      run: node tests/ci-test-parity-contract.js
-
-    # F-QA-07 (Chat 4 remediation): قرارداد نسخه و انتشار.
-    # ناهمخوانی‌های قطعی (package.json در برابر lock، و تگ تازه‌ای که با نسخه نمی‌خواند)
-    # را قرمز می‌کند؛ مواردی که تصمیم سیاست انتشار می‌خواهند فقط هشدار می‌دهند و
-    # عمداً قرمز نمی‌کنند. نیازمند تاریخچهٔ تگ‌هاست (fetch-depth: 0 + tags بالا).
-    - name: Release version contract — package.json / lock / tags coherence
-      run: node tests/release-version-contract.js
 
     - run: npm run build --if-present
     - run: npm test
