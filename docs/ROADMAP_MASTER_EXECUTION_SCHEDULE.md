@@ -1113,3 +1113,42 @@ Gate 8.2 فقط زمانی VERIFIED می‌شود که Evidence chain، M1/M2/M3
 F-QA-02 → F-QA-03 → F-QA-01 → F-QA-08 → M1 → M2 → M3 → OUTBOX-002 → DB-001/RT2-02 → OUTBOX-001 → RT1 reproduction closure → Phase 8.2 Exit Evidence rebuild → Gate 8.2 VERIFIED → Phase 8.3 E4 empirical scale
 
 **Hard rule:** تا Gate 8.2 VERIFIED، هیچ national load/soak claim به‌عنوان evidence ظرفیت نهایی ثبت نمی‌شود.
+
+---
+
+## 🔄 قرارداد دائمی هم‌راستاسازی گزارش Chat ↔ نقشه راه — 2026-09-21
+
+این قرارداد از این تاریخ **جزء قوانین دائمی برنامه‌ریزی پروژه** است و در هر چرخهٔ کاری اجباری است:
+
+1. هر گزارش جدید Chat که هر Work Item را با وضعیت `INCOMPLETE`, `PARTIAL`, `BLOCKED`, `NOT VERIFIED`, `DEFECT`, `REPRODUCTION REQUIRED` یا وضعیت معادل اعلام کند، باید در همان چرخه با **Current HEAD** تطبیق داده شود.
+2. وضعیت آن Work Item باید در **Master Execution Schedule / Current Ground Truth** به‌روزرسانی شود؛ گزارش تاریخی به‌تنهایی وضعیت جاری محسوب نمی‌شود.
+3. برای هر تغییر وضعیت، **SHA، Evidence/command/test، Owner، Dependency/Blocker و Next Action** باید ثبت شود.
+4. اگر Evidence کافی برای تغییر status وجود ندارد، status نباید ارتقا یابد و باید `NOT VERIFIED`/وضعیت متناظر حفظ شود.
+5. این reconciliation باید **قبل از شروع مأموریت Chat بعدی** انجام شود تا Context Drift بین Chatها، گزارش‌ها، Roadmap و Current HEAD ایجاد نشود.
+6. تغییرات برنامه‌ای حاصل از reconciliation باید به GitHub commit/push شوند و Current HEAD بعد از push دوباره بررسی شود.
+7. **Rule 15 همچنان الزام حاکم است:** هر Task معنادار باید ۵ Pass مستقل داشته باشد: Functional/Happy Path، Boundary/Edge، Negative/Failure Injection، Concurrency/Replay/Resilience، و Independent Regression/Environment Re-run. پنج تکرار یکسان جایگزین پنج Pass مستقل نیست.
+8. گزارش Chat بدون Evidence لازم، مجوز تغییر status یا عبور Gate نیست.
+
+**حکم:** گزارش Chat → Reconcile با Current HEAD → Update Roadmap/Ground Truth → Commit/Push → Re-verify → سپس Chat بعدی.
+
+
+## 📌 آخرین وضعیت اجرایی پس از Reconciliation — 2026-09-21
+
+بر اساس Current HEAD و شواهد آخرین ممیزی DR/HA:
+
+| Work Item | وضعیت جاری | اقدام بعدی |
+|---|---|---|
+| Phase 8.2 Exit | **NOT VERIFIED** | تکمیل M1/M2/M3 و Evidence Gate Matrix |
+| M1 / S3 Alert→On-call→Recovery | **NOT VERIFIED / BLOCKING** | live E4 drill + timestamp + MTTA/MTTR |
+| M2 / PG DR | **E3 VERIFIED / E4 NOT VERIFIED** | production-equivalent E4 restore/promote + RPO/RTO |
+| M3 / Redis DR | **E3 VERIFIED / E4 NOT VERIFIED** | E4 failover/restore + revocation/rate-limit evidence |
+| DR-01 | **CONFIRMED / OPEN — Owner Decision** | تصمیم مالک درباره semantics خروجی verify؛ هر CI آینده باید متن خروجی را validate کند |
+| OUTBOX-002 | **REPRODUCTION REQUIRED** | دو worker همزمان روی PostgreSQL زنده و اثبات exclusivity/transaction boundary |
+| DB-001 / RT2-02 | **MEASUREMENT REQUIRED** | instrumentation query/request و latency روی route واقعی |
+| OUTBOX-001 | **CONTRACT RECONCILIATION REQUIRED** | mutation→durable-event inventory + consumer idempotency evidence |
+| RT1-01…RT1-05 | **REPRODUCTION / RECHECK REQUIRED** | اجرای current-head reproduction پیش از remediation |
+| Phase 8.3 | **BLOCKED BY 8.2 EXIT** | پس از Gate 8.2، E4 staging و empirical load/soak |
+| Production GO | **NOT DECLARED** | فقط پس از بسته‌شدن Gateهای رسمی |
+
+این جدول **جایگزین گزارش‌های تاریخی نیست**؛ لایهٔ current-state است و باید در هر Chat جدید دوباره با Current HEAD reconcile شود.
+
