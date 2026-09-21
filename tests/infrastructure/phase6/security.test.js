@@ -86,18 +86,16 @@ async function testZeroTrustTenantIsolation() {
   const teacher = { id: 101, role: 'teacher', school_id: 1, province_code: '07' };
 
   // 1. Access within same school and province -> ALLOWED
-  assert.doesNotThrow(() => {
-    assertTenantBoundary(teacher, 1, '07');
-  });
+  assert.strictEqual(await assertTenantBoundary(teacher, 1, '07'), true);
 
   // 2. Cross-school IDOR attempt -> BLOCKED
-  assert.throws(() => {
-    assertTenantBoundary(teacher, 999, '07');
+  await assert.rejects(async () => {
+    await assertTenantBoundary(teacher, 999, '07');
   }, (err) => err.code === HARDENING_ERRORS.TENANT_BREACH);
 
   // 3. Cross-province breach attempt -> BLOCKED
-  assert.throws(() => {
-    assertTenantBoundary(teacher, 1, '04');
+  await assert.rejects(async () => {
+    await assertTenantBoundary(teacher, 1, '04');
   }, (err) => err.code === HARDENING_ERRORS.TENANT_BREACH);
 
   console.log('  ✅ 2.1 Multi-tenant and provincial boundaries strictly enforced');

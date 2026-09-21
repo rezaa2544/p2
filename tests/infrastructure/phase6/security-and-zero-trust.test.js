@@ -22,28 +22,28 @@ async function testTenantAndProvincialIsolation() {
   const managerSchoolA = { id: 10, role: 'manager', school_id: 101, province_code: '07' };
 
   // ۱. دسترسی به مدرسه خود -> مجاز
-  assert.strictEqual(assertTenantBoundary(managerSchoolA, 101, '07'), true);
+  assert.strictEqual(await assertTenantBoundary(managerSchoolA, 101, '07'), true);
   console.log('  ✅ 6.1 Same-school access permitted');
 
   // ۲. تلاش برای دسترسی به مدرسه دیگر در همان استان -> رد قطعی
-  assert.throws(() => {
-    assertTenantBoundary(managerSchoolA, 102, '07');
+  await assert.rejects(async () => {
+    await assertTenantBoundary(managerSchoolA, 102, '07');
   }, (err) => {
     return err.code === HARDENING_ERRORS.TENANT_BREACH;
   }, 'Cross-school access within province must be blocked');
   console.log('  ✅ 6.2 Cross-school IDOR attempt blocked (Tenant Breach)');
 
   // ۳. تلاش برای دسترسی به استان دیگر -> رد قطعی
-  assert.throws(() => {
-    assertTenantBoundary(managerSchoolA, 101, '04');
+  await assert.rejects(async () => {
+    await assertTenantBoundary(managerSchoolA, 101, '04');
   }, (err) => {
     return err.code === HARDENING_ERRORS.TENANT_BREACH;
   }, 'Cross-province access must be blocked');
   console.log('  ✅ 6.3 Cross-province breach attempt blocked');
 
   // ۴. کاربر بدون شناسه -> خطای ۴۰۱
-  assert.throws(() => {
-    assertTenantBoundary(null, 101, '07');
+  await assert.rejects(async () => {
+    await assertTenantBoundary(null, 101, '07');
   }, /UNAUTHORIZED/);
   console.log('  ✅ 6.4 Anonymous access rejected');
 }

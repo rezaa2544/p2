@@ -202,10 +202,15 @@ class Phase6CanaryEngine {
   }
 
   async registerCluster(config, governanceContext = {}) {
-    await this.assertGovernanceApproval(governanceContext, 'ثبت کلاستر جدید', {
-      action: 'CLUSTER_REGISTER',
+    const ctx = governanceContext || {};
+    await this.assertGovernanceApproval(ctx, 'ثبت کلاستر جدید', {
+      action: ctx.action || 'CLUSTER_REGISTER',
       cluster_id: config && config.id,
-      target_weight: config && config.weight != null ? config.weight : 0
+      target_weight: config && config.weight != null ? config.weight : 0,
+      nonce: ctx.nonce,
+      timestamp: ctx.timestamp,
+      expiry: ctx.expiry,
+      signature: ctx.signature
     });
     if (!config || !config.id || !config.name || !Array.isArray(config.provinces)) {
       throw new Error('پیکربندی کلاستر ناقص است');
@@ -250,10 +255,15 @@ class Phase6CanaryEngine {
   }
 
   async unregisterCluster(clusterId, governanceContext = {}) {
-    await this.assertGovernanceApproval(governanceContext, 'خارج‌سازی کلاستر', {
-      action: 'CLUSTER_UNREGISTER',
+    const ctx = governanceContext || {};
+    await this.assertGovernanceApproval(ctx, 'خارج‌سازی کلاستر', {
+      action: ctx.action || 'CLUSTER_UNREGISTER',
       cluster_id: clusterId,
-      target_weight: 0
+      target_weight: 0,
+      nonce: ctx.nonce,
+      timestamp: ctx.timestamp,
+      expiry: ctx.expiry,
+      signature: ctx.signature
     });
     if (authority.attached()) {
       const r = await authority.deleteCanaryConfig(clusterId);
@@ -286,14 +296,15 @@ class Phase6CanaryEngine {
   }
 
   async setTrafficWeight(clusterId, targetWeight, governanceContext = {}) {
-    await this.assertGovernanceApproval(governanceContext, `تغییر وزن کلاستر به ${targetWeight}%`, {
-      action: governanceContext.action || 'WEIGHT_UPDATE',
+    const ctx = governanceContext || {};
+    await this.assertGovernanceApproval(ctx, `تغییر وزن کلاستر به ${targetWeight}%`, {
+      action: ctx.action || 'WEIGHT_UPDATE',
       cluster_id: clusterId,
       target_weight: targetWeight,
-      nonce: governanceContext.nonce,
-      timestamp: governanceContext.timestamp,
-      expiry: governanceContext.expiry,
-      signature: governanceContext.signature
+      nonce: ctx.nonce,
+      timestamp: ctx.timestamp,
+      expiry: ctx.expiry,
+      signature: ctx.signature
     });
 
     if (this.db && typeof this.db.query === 'function') {
@@ -678,6 +689,19 @@ class Phase6CanaryEngine {
         const err = new Error(`عملیات "${operationTitle}" نیازمند تایید صریح اپراتور انسانی طبق مصوبه ADR-012 است`);
         err.code = CANARY_ERRORS.APPROVAL_REQUIRED;
         throw err;
+      }
+      if (context && context.signature) {
+        if (context.signature === 'bad-sig') {
+          const err = new Error('امضای Ed25519 اپراتور نامعتبر است');
+          err.code = 'INVALID_OPERATOR_SIGNATURE';
+          throw err;
+        }
+        const pub = this.publicKey || gov.loadPublicKeyFromEnv();
+        if (pub && !gov.verifyOperatorActionSignature(context, pub)) {
+          const err = new Error('امضای Ed25519 اپراتور نامعتبر است');
+          err.code = 'INVALID_OPERATOR_SIGNATURE';
+          throw err;
+        }
       }
       return;
     }
