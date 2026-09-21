@@ -322,3 +322,27 @@ M0 و M5 non-blocking هستند. Phase 8.3 تا بسته‌شدن Gate 8.2 **BL
 **نتیجه:** Chat 2 blockerهای جدید مستقلی به Gate 8.2 اضافه نمی‌کند؛ blockerهای پایدار آن با M1/M2/M3 فعلی هم‌پوشان‌اند. Phase 8.2 Exit همچنان **NOT VERIFIED** و Phase 8.3 همچنان **BLOCKED** است.
 
 مرجع تفصیلی: `docs/audit/CHAT2_PHASE8_2_RECONCILIATION_2026-09-21.md`.
+
+
+## 15. Red-Team Delta — Chat 3 Architecture/Data Integrity Reconciliation (2026-09-21)
+
+Chat 3 was audited on historical SHA `138cd1d9b03278fcf15c6476faa497fe89d275af`. It is recorded as historical evidence and does not override later/current-main evidence.
+
+| ID | وضعیت | تصمیم اجرایی |
+|---|---|---|
+| ARCH-001 hydration OOM | PARTIALLY SUPERSEDED / MEASURE REQUIRED | hydration caps/guards already exist; retain E4 cold-boot/national-dataset measurement |
+| SEC-001 / REDIS-001 | ALREADY GOVERNED | R6-A3/A5 accepted-risk; R6-A10 remains TARGET/POLICY and deferred |
+| OUTBOX-001 | CONTRACT RECONCILIATION REQUIRED | define which sync mutations emit durable outbox events before 25k events/s claims |
+| OUTBOX-002 worker locking | **REPRODUCTION REQUIRED** | run two concurrent workers against live PG and prove row exclusivity; queue-outage drill alone is insufficient |
+| DB-001 tenant query amplification | **MEASUREMENT REQUIRED** | instrument query/request + latency on a real authenticated route; do not treat 40k QPS/p95 claims as measured |
+| MIG-001 migration crash window | NON-BLOCKING FOLLOW-UP | harden/test psql+ledger interruption window |
+| CONC-001 backpressure | ALREADY GOVERNED / MEASURE | include Redis-outage queue protection in pre-8.3 evidence |
+| DR-001 | ALREADY M2 | no duplicate blocker; canonical E4 PG+Redis restore/promote remains M2/M3 |
+| OBS-001 | ALREADY M1 | webhook placeholder is intentional config; live receiver/drill remains S3 blocker |
+| PGB-001 / WORKER-001 | FOLLOW-UP | reconcile capacity target and worker-liveness observability with E4 evidence |
+
+**Net effect:** Chat 3 adds no new independent Phase 8.2 exit blocker, but it adds a mandatory **OUTBOX-002 multi-worker reproduction** and reinforces **DB-001 measurement** before empirical Phase 8.3 capacity claims.
+
+**Reference:** `docs/audit/CHAT3_PHASE8_2_RECONCILIATION_2026-09-21.md`.
+
+**Current decision remains:** Phase 8.2 Exit **NOT VERIFIED** → Phase 8.3 **BLOCKED** until M1 + M2/M3 evidence closes the Gate.
