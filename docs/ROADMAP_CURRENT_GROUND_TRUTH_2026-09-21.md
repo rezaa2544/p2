@@ -202,6 +202,31 @@ Dependency مهم: R3.
 
 ---
 
+## 12. Red-Team Delta — Chat 1 Zero-Trust Historical Regression Audit (2026-09-21)
+
+گزارش مستقل Chat 1 روی SHA تاریخی `6762d84b3c25f317ead7f2c3b95c5aa0b94e2951` دریافت شد. چون HEAD فعلی `fbe178be7c99ddb6c068eee4f7b389a6b9e7aeab` است، یافته‌های اجرایی آن بدون بازتولید روی HEAD فعلی status را تغییر نمی‌دهند.
+
+| ID | یافته | وضعیت فعلی برنامه | اقدام |
+|---|---|---|---|
+| RT1-01 | رگرسیون احتمالی async audit به‌علت sync mkdir | REPRODUCTION REQUIRED | اجرای `tests/session8-audit-async-io.js` روی HEAD فعلی و بررسی `server/audit.js` |
+| RT1-02 | drift احتمالی runner API پس از حذف RAM authority | REPRODUCTION REQUIRED | اجرای runner standalone و با dev flag؛ سپس تصمیم دربارهٔ test harness |
+| RT1-03 | invariant قدیمی در Wave 1 reads | REPRODUCTION REQUIRED | اجرای suite فعلی و بررسی اینکه assertion `readCollection` هنوز وجود دارد یا نه |
+| RT1-04 | migration runner قدیمی در Wave 23 | REPRODUCTION REQUIRED | اجرای روی PostgreSQL 17 فعلی و مقایسه با canonical migration ledger |
+| RT1-05 | شمارش static fake-green / secret-scan گزارش‌شده توسط Chat 1 | HISTORICAL — RECHECK | بازاجرای static audit روی HEAD فعلی |
+| RT1-06 | ادعای S3/S4 pending | RECONCILED | با وضعیت فعلی PARTIAL / Exit NOT VERIFIED سازگار است |
+
+مرجع جزئیات: `docs/audit/CHAT1_ZERO_TRUST_REGRESSION_DELTA_2026-09-21.md`.
+
+### برنامهٔ اجرایی M0-R
+
+1. بازتولید RT1-01 تا RT1-04 روی `fbe178be`.
+2. بازاجرای static/fake-green و secret hygiene برای current HEAD.
+3. تطبیق نتایج با Node.js CI #1093 و artifacts موجود.
+4. فقط findings بازتولیدشده وارد remediation شوند.
+5. سپس S3/S4 و Gate 8.2 ادامه یابد.
+
+**قانون:** گزارش Chat 1 به‌تنهایی نه Phase 8.1 را باز می‌کند و نه Phase 8.3 را آزاد می‌کند.
+
 ## 11. وضعیت تصمیم‌گیری امروز
 
 **Current Phase:** Phase 8.2 — Evidence Reconciliation / Exit Gate  
