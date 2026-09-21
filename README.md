@@ -1,118 +1,105 @@
-<div align="center">
+# پایش (Payesh)
 
-# پایش
-### سامانه هوشمند مدیریت مدرسه
+سامانه مدیریت مدرسه با رابط فارسی/RTL، تقویم جلالی، نقش‌ها و مجوزهای تفکیک‌شده، قابلیت‌های آموزشی و مدیریتی، و معماری دوگانه برای توزیع وب آفلاین و پلتفرم سروری یکپارچه.
 
-سامانه‌ی جامع مدیریت مدرسه — فارسی، راست‌به‌چپ، با تقویم شمسی و **کاملاً آفلاین**
+> شروع سریع: ابتدا این README، سپس [مستندات پروژه](docs/README.md) و [نقشه مخزن](docs/REPOSITORY_MAP.md) را بخوانید. وضعیت جاری فقط از Current HEAD و Ground Truth تعیین می‌شود.
 
-</div>
+## پروژه چیست؟
 
----
+- مدیریت مدارس، کاربران، نقش‌ها و مجوزها
+- دانش‌آموزان، کلاس‌ها، دروس، حضور و غیاب و نمرات
+- برنامه هفتگی و تقویم جلالی
+- اطلاعیه‌ها، زنگ و گزارش‌های عمومی
+- احراز هویت، نشست و حذف حساب
+- همگام‌سازی و حل تعارض
+- API، health/readiness، metrics و tracing
+- PostgreSQL برای persistence و Redis برای cache/coordination
+- worker/outbox، backup/restore و مسیرهای DR
+- امنیت، audit و کنترل دامنه داده
+- قابلیت‌های اشتراک/Paywall و مدیریتی
 
-## ✨ ویژگی‌ها
+این فهرست نقشه سطح‌بالاست؛ وضعیت واقعی هر قابلیت را با کد و roadmap جاری و evidence تطبیق دهید.
 
-- 🏫 **چندمدرسه‌ای** — مدیریت همزمان چندین مدرسه زیر یک سامانه
-- 👥 **۶ نقش کاربری** — مدیرکل، اداره آموزش‌وپرورش، مدیر مدرسه، دبیر، دانش‌آموز، اولیا
-- 📅 **تقویم شمسی کامل** — تبدیل جلالی↔میلادی، تشخیص سال کبیسه، انتخابگر تاریخ اختصاصی
-- 📱 **کاملاً ریسپانسیو** — بهینه‌شده برای موبایل، پشتیبانی از دکمه Back گوشی
-- 🔌 **بدون اینترنت** — فونت، لوگو و همه‌ی دارایی‌ها داخل فایل جاسازی شده‌اند
-- 💾 **ذخیره‌سازی محلی** — با الگوی event-log روی `localStorage`
-- 🖨️ **چاپ رسید و گزارش** — تولید سند آماده‌ی چاپ در قطع A5
-- 💳 **سیستم اشتراک** — پنل اولیا با paywall و مدیریت پرداخت
+## معماری
 
-## 📦 ساختار پروژه
-
-```
-payesh/
-├── index.html              ← خروجی نهایی: تک‌فایلی، آفلاین، قابل توزیع
-├── build.js                ← ادغام ماژول‌ها به یک فایل
-├── package.json
-│
-├── src/                    ← کد منبع (ماژولار)
-│   ├── head.html           ← بخش <head>
-│   ├── body.html           ← اسکلت <body>
-│   ├── styles/
-│   │   ├── fonts.css       ← فونت Vazirmatn (base64)
-│   │   ├── base.css        ← استایل اصلی و متغیرهای رنگ
-│   │   └── mobile.css      ← تطبیق موبایل
-│   └── js/
-│       ├── _order.json     ← ترتیب بارگذاری ماژول‌ها
-│       ├── 01-helpers.js               ← توابع کمکی
-│       ├── 02-demo-data.js             ← تولید داده‌ی نمونه
-│       ├── 03-persistence.js           ← ذخیره‌سازی (mutation log)
-│       ├── 04-queries.js               ← پرس‌وجوهای مبتنی بر نقش
-│       ├── 05-router.js                ← وضعیت و مسیریابی
-│       ├── 06-login.js                 ← صفحه ورود
-│       ├── 07-shell.js                 ← پوسته، منو و عناوین
-│       ├── 08-dashboard.js             ← داشبوردها
-│       ├── 09-schools.js               ← مدیریت مدارس
-│       ├── 10-users.js                 ← مدیریت کاربران
-│       ├── 11-classes-subjects.js      ← کلاس‌ها و دروس
-│       ├── 12-attendance.js            ← حضور و غیاب
-│       ├── 13-grades.js                ← نمرات
-│       ├── 14-discipline.js            ← پرونده انضباطی
-│       ├── 15-schedule.js              ← برنامه هفتگی
-│       ├── 16-announcements.js         ← اطلاعیه‌ها
-│       ├── 17-student-record.js        ← کارنامه دانش‌آموز
-│       ├── 18-modals.js                ← پنجره‌های محاوره‌ای
-│       ├── 19-actions.js               ← کنترلگر رویدادها
-│       ├── 20-phase-3-7.js             ← مالی، مرخصی، تقویم، گفتگو
-│       ├── 21-phase-8-exams-parents.js ← امتحانات و تأیید اولیا
-│       ├── 22-jalali-calendar.js       ← موتور تقویم شمسی
-│       ├── 23-phase-10-subscription.js ← چندنقشی و اشتراک
-│       └── 24-phase-9-edu-office.js    ← اداره آموزش‌وپرورش
-│
-├── scripts/dev-server.js   ← سرور توسعه با بازسازی خودکار
-├── tests/                  ← تست‌های یکپارچگی و ساختار
-├── docs/                   ← مستندات
-├── public/                 ← دارایی‌های ایستا
-└── data/                   ← داده‌ی محلی (در git نادیده گرفته می‌شود)
+```text
+PAYESH
+├── Web / Offline: src + templates + public -> build.js -> index.html
+└── Server Platform: server + routes -> PostgreSQL / Redis / workers / observability / DR
 ```
 
-## 🚀 شروع سریع
+Client منبعش در `src/` و build آن در `build.js` است؛ `index.html` artifact توزیعی است و ترتیب ماژول‌ها در `src/js/_order.json` قرار دارد.
 
-**اجرای مستقیم** — کافی است `index.html` را در مرورگر باز کنید. نیازی به سرور، نصب یا اینترنت نیست.
+Server در `server/` است؛ routeها در `server/routes/`، migrationها در `migrations/` و authorization در `authz/` قرار دارند.
 
-**توسعه:**
+> توجه: توصیف قدیمی پروژه که کل مخزن را «بدون backend» معرفی می‌کرد با وضعیت فعلی مخزن همخوان نیست؛ معماری فعلی در بالا تفکیک شده است.
+
+## ساختار مهم
+
+```text
+.
+├── src/                 # source client
+├── server/              # backend + API + workers
+├── migrations/          # database migrations
+├── authz/               # authorization contracts
+├── tests/               # tests and verification
+├── tools/               # validation/audit tools
+├── scripts/             # development scripts
+├── infra/               # infrastructure
+├── monitoring/          # observability
+├── nginx/               # edge configuration
+├── ops/                 # operational assets
+├── android/             # Android path
+├── docs/                # canonical docs + evidence
+├── .github/             # GitHub automation
+├── .agent/              # agent integration
+├── .claude/             # Claude integration
+├── build.js             # client build
+├── index.html           # distribution artifact
+└── package.json         # project manifest
+```
+
+برای اینکه بدانید هر تغییر را کجا انجام دهید: [REPOSITORY_MAP.md](docs/REPOSITORY_MAP.md).
+
+## توسعه
+
+پیش‌نیاز: Node.js `>=22`.
 
 ```bash
-npm run dev          # سرور توسعه روی پورت ۳۰۰۰ + بازسازی خودکار
-npm run build        # ساخت فایل نهایی در dist/payesh.html
-npm run build:check  # بررسی یکسان بودن خروجی با index.html
-npm test             # اجرای تست‌ها
+npm ci
+npm test
+npm run build
+npm run build:check
+npm start
 ```
 
-## 👤 حساب‌های نمونه
+جزئیات: [DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md).
 
-رمز عبور همه: `123456`
+## مستندات اصلی
 
-| نام کاربری | نقش |
+| نیاز | سند |
 |---|---|
-| `superadmin` | مدیرکل سامانه |
-| `edu_kurdistan` | کارشناس اداره آموزش‌وپرورش |
-| `manager1` | مدیر مدرسه |
-| `teacher1_1` | دبیر |
-| `student` | دانش‌آموز |
-| `parent_multi` | ولی (چند فرزند در چند مدرسه) |
+| شروع و شناخت | [PROJECT_OVERVIEW](docs/PROJECT_OVERVIEW.md) |
+| نقشه فایل‌ها | [REPOSITORY_MAP](docs/REPOSITORY_MAP.md) |
+| معماری | [ARCHITECTURE](docs/ARCHITECTURE.md) |
+| توسعه | [DEVELOPMENT_GUIDE](docs/DEVELOPMENT_GUIDE.md) |
+| سبک کدنویسی | [CODE_STYLE](docs/CODE_STYLE.md) |
+| تست | [TESTING_GUIDE](docs/TESTING_GUIDE.md) |
+| API | [API_REFERENCE](docs/API_REFERENCE.md) + [OpenAPI](docs/openapi.yaml) |
+| قوانین | [Engineering Policy](docs/ENGINEERING_EXECUTION_AND_VERIFICATION_POLICY.md) |
+| نقشه راه | [ROADMAP](docs/ROADMAP.md) |
+| برنامه اجرایی | [Master Schedule](docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md) |
+| حقیقت جاری | [Current Ground Truth](docs/ROADMAP_CURRENT_GROUND_TRUTH_2026-09-21.md) |
+| حاکمیت مستندات | [DOCUMENTATION_GOVERNANCE](docs/DOCUMENTATION_GOVERNANCE.md) |
 
-## 🛠️ نحوه‌ی کار Build
+## کیفیت
 
-پروژه به‌صورت ماژولار توسعه داده می‌شود ولی خروجی همیشه **یک فایل مستقل** است:
+Rule 15 برای هر task معنادار پنج Pass مستقل می‌خواهد: Functional، Boundary، Negative/Failure Injection، Concurrency/Replay/Resilience و Independent Regression/Environment Re-run. پنج تکرار یک command، پنج Pass نیست.
 
-```
-src/styles/*.css  ─┐
-src/js/*.js       ─┼─→  build.js  ─→  index.html (تک‌فایلی، آفلاین)
-src/*.html        ─┘
-```
+هیچ گزارش تاریخی جای Current HEAD را نمی‌گیرد. گزارش ناقص/blocked/not-verified باید با Roadmap و Ground Truth reconcile شود.
 
-`build.js --check` تضمین می‌کند که ادغام مجدد **بیت‌به‌بیت** با نسخه‌ی توزیعی یکسان است.
+## مشارکت
 
-> ⚠️ ترتیب فایل‌های JS مهم است و در `src/js/_order.json` تعریف شده. ماژول جدید را حتماً در همان‌جا ثبت کنید.
+قبل از تغییر [CONTRIBUTING.md](CONTRIBUTING.md) و [AGENTS.md](AGENTS.md) را بخوانید.
 
-## 🧰 پشته‌ی فنی
-
-بدون فریم‌ورک، بدون وابستگی. جاوااسکریپت خالص (Vanilla JS)، رندر مبتنی بر رشته، و CSS دست‌نویس.
-
-## 📄 مجوز
-
-اختصاصی — تمامی حقوق محفوظ است.
+گزارش‌های تاریخی و audit evidence باید از راهنمای canonical جدا بمانند؛ قرارداد آن در [DOCUMENTATION_GOVERNANCE.md](docs/DOCUMENTATION_GOVERNANCE.md) است.
