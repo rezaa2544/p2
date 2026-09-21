@@ -1317,3 +1317,11 @@ Authorization)** الزامی است — حتی مدیر مدرسه نباید �
 - الحاقات مقیاس ملی (فازهای ۸.۶ تا ۹.۲ — مکمل بخش‌های ۳۴ و ۳۵): `docs/NATIONAL_SCALE_FUTURE_UPGRADES_ADDENDUM.md`
 - پیش‌نویس‌های طراحی د.۲/د.۳/د.۴: `docs/D2_DRAFT.md`، `docs/D3_DRAFT.md`، `docs/D4_DRAFT.md`
 - دفترچهٔ تحویل: `HANDOFF.md`
+
+
+## وضعیت ممیزی Chat 5 — 2026-09-21
+
+Chat 5 روی HEAD 138cd1d9: **S2=VERIFIED (تحویل‌شده و truthful)**؛ **Phase 8.2 Exit=NOT VERIFIED**. دو blocker واقعی باقی است: **M1/S3 alert→on-call→runbook→recovery E4** و **M2+M3/S4 PG+Redis restore/failover E4**. M0 مربوط به test harness و M5 مربوط به stub مستنداتی non-blocking هستند.
+
+ترتیب بعدی: M0 → M1 → M2 → M3 → M5 → Gate 8.2 → Phase 8.3.
+مرجع: docs/audit/CHAT5_PHASE8_2_DELTA_2026-09-21.md.
