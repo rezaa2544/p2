@@ -30,7 +30,7 @@
 ---
 
 ### ۸) strict-verification — راستی‌آزمایی چندباره و evidence-first
-- مسیر: `.agent/skills/strict-verification/`
+- مسیر: `skills/strict-verification/`
 - مأموریت: مطالعه اجباری قوانین/scaleها، بازتولید، تست چندباره مستقل، adversarial/boundary/negative testing، regression و منع VERIFIED بدون evidence current-head.
 
 ## ۳. نگاشت مهارت‌ها با زنجیره رسمی تحویل پروژه (`Delivery Chain`)
@@ -69,4 +69,4 @@
 node tools/verify-agent-skills.js
 ```
 
-خروجی موفقیت‌آمیز شامل تایید ۱۰۰٪ وجود فایل‌های `SKILL.md`، عدم وجود شکست در ارجاعات داخلی و ثبت ۷ مهارت فعال می‌باشد.
+اسکریپت موجود مهارت‌های `.agent/skills/` را اعتبارسنجی می‌کند؛ مهارت strict-verification نیز در `skills/strict-verification/` ثبت و در policy اجباری پروژه ارجاع شده است.
