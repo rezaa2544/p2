@@ -70,6 +70,54 @@
 
 ---
 
+
+### ۰.۲ الحاق Red-Team Chat 2 — 2026-09-21
+
+گزارش مستقل Adversarial/Red-Team دریافت‌شده از Chat 2 روی SHA تاریخی
+`bc68b2b539bf5b59aa0108c0959af767ea57ce35` تهیه شده است. این گزارش به‌عنوان
+evidence تاریخی/هدایت‌کننده ثبت می‌شود؛ برای تغییر status روی HEAD فعلی باید
+findings اجرایی دوباره reproduce شوند.
+
+**یافته‌های برنامه‌ای:**
+
+- **RT2-01 — Codacy:** فایل workflow فعلی نیز `max-allowed-issues: 2147483647`
+  دارد. این موضوع اکنون یک finding تأییدشده در source configuration است و باید
+  با تصمیم صریح دربارهٔ security-gate semantics اصلاح/آزمون شود.
+- **RT2-02 — Tenant Policy amplification:** ادعای ۲ query/request و اثر 20k RPS
+  هنوز باید با instrumentation روی HEAD فعلی اثبات شود. تا measurement، عدد
+  40k QPS یک extrapolation است، نه measured capacity.
+- **RT2-03 — DR:** نبود E4 restore evidence برای PG/Redis همچنان blocker عملیاتی
+  Phase 8.2 است تا restore identity + checksum + measured RPO/RTO ثبت شود.
+- **RT2-04 — Observability:** نبود evidence کافی برای alert قطع telemetry باید با
+  canonical Prometheus/Alertmanager config و outage drill بسته شود.
+- **RT2-05 — Outbox:** at-least-once بودن به‌خودی‌خود defect نیست؛ باید consumer
+  idempotency به‌صورت endpoint/consumer-specific inventory و test اثبات شود.
+- **RT2-06 — Phase 8.3:** E4 staging topology و dataset واقعی 10M هنوز evidence
+  اجرای load contract نیست؛ provisioning آن prerequisite اجرای E4 است.
+- **RT2-07 — SHA boundary:** یافته‌های runtime گزارش Chat 2 باید روی current HEAD
+  reproduce شوند؛ گزارش قدیمی نباید status جدید را به‌تنهایی تغییر دهد.
+
+**اثر بر ترتیب اجرا:**
+
+```text
+Phase 8.2 Evidence Reconciliation
+  ├─ M0-R: reproduce RT2-01..04 on current HEAD
+  ├─ M1: canonical alert/on-call + telemetry outage drill
+  ├─ M2: E4 PG/Redis restore + measured RPO/RTO
+  ├─ M3: R6/R7 + cold-cache/revocation evidence
+  └─ M4: Phase 8.2 Exit Gate
+          ↓
+Phase 8.3 provisioning
+  ├─ E4 staging topology
+  ├─ realistic 10M dataset
+  ├─ instrumentation
+  └─ only then empirical load/soak/chaos execution
+```
+
+**قید:** هیچ cache حافظه‌ای برای رفع Tenant Policy amplification بدون architecture
+review، invalidation proof، cross-instance consistency و measurement وارد production
+نمی‌شود.
+
 ## ۱. HISTORICAL EXECUTION TIMELINE — بازسازی تاریخ واقعی پروژه از Git
 
 روش استخراج: `git log --reverse --format="%h %ad %s" --date=short`، `git show <sha> --stat`، و تطبیق هر ادعای سند با کامیت واقعی. هیچ تاریخی حدس زده نشده؛ هر ردیف با SHA واقعی موجود در تاریخچه لنگر دارد. **مدت تاریخی فقط جایی نوشته شده که از Git قابل استخراج بود.**
