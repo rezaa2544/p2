@@ -129,7 +129,7 @@
 - [MERGE_MAIN_INTO_CHAT6_REPORT.md](./operations/MERGE_MAIN_INTO_CHAT6_REPORT.md)
 - [PILOT_READY_SUMMARY.md](./operations/PILOT_READY_SUMMARY.md)
 - [PROJECT_NOTES.md](./operations/PROJECT_NOTES.md)
-- [PUSH.md](./operations/PUSH.md)
+- `PUSH.md` حذف شد؛ سند قدیمی شامل دستور push با الگوی token و اطلاعات تاریخی نامعتبر بود.
 - [PUSH_COMPLETION_REPORT.md](./operations/PUSH_COMPLETION_REPORT.md)
 - [REBASE2_ONTO_351BD10_REPORT.md](./operations/REBASE2_ONTO_351BD10_REPORT.md)
 - [REMAINING_WORK_SUMMARY.md](./operations/REMAINING_WORK_SUMMARY.md)
