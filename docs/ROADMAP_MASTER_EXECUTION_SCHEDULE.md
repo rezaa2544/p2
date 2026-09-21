@@ -1068,3 +1068,48 @@ F-QA-02
 - Production GO: **NOT DECLARED**
 
 Chat 4 همچنین تأیید می‌کند که build/test substrate روی Node 22 قابل بازتولید است، اما local green معادل repository-wide green نیست؛ `npm test` فقط دو suite را سیم‌کشی می‌کند و اجرای جامع عمدتاً در CI است. این موضوع به‌عنوان Reproducibility follow-up ثبت می‌شود، نه به‌عنوان fake-green.
+
+## ۰.۸ قرارداد اجرایی تجمیعی پس از Chat 1 تا Chat 5 — 2026-09-21
+
+این بخش، ترتیب اجرایی حاکم از این لحظه است و ترتیب‌های پراکندهٔ appendهای قبلی را تجمیع می‌کند.
+
+### A — Evidence / Release integrity
+1. F-QA-02: بازسازی PHASE_8_2_FINAL_VERIFICATION_REPORT.md بر اساس current evidence؛ گزارش قدیمی VERIFIED تا زمان بازسازی Exit Evidence معتبر تلقی نمی‌شود.
+2. F-QA-03: رفع/سازگارکردن GATE-3 boot timeout و اجرای حداقل ۲۰ run برای اندازه‌گیری determinism.
+3. F-QA-01: اصلاح phase8.2-verified فقط پس از داشتن SHA + CI evidence معتبر.
+4. F-QA-08: اصلاح tools/redis-backup.sh تا flock contention نتواند exit 0 کاذب تولید کند؛ سپس backup artifact را مستقل verify کن.
+
+### B — Phase 8.2 operational closure
+5. M1/S3: E4 alert→on-call→ack→runbook→recovery drill با timestamp، MTTA/MTTR و recovery evidence.
+6. M2/S4-PG: restore/promote روی topology معادل E4 + verifier + identity/checksum + RPO/RTO.
+7. M3/S4-Redis: restore/failover E4 + verification revocation/rate-limit + RPO/RTO.
+
+### C — Architecture/data-integrity proof before empirical 8.3
+8. OUTBOX-002: دو worker همزمان روی PostgreSQL زنده؛ اثبات اینکه یک row توسط دو worker claim نمی‌شود و transaction boundary واقعی است.
+9. DB-001 / RT2-02: instrumentation روی authenticated route؛ ثبت query/request و latency و تفکیک measurement از extrapolation.
+10. OUTBOX-001: تعریف contract برای mutationهایی که باید durable event تولید کنند + inventory مصرف‌کنندگان + idempotency evidence.
+11. RT1-01…04: reproduction روی current HEAD؛ فقط regressionهای بازتولیدشده وارد remediation شوند.
+12. RT1-05: re-run static/fake-green/secret hygiene روی current HEAD.
+
+### D — P2/P3 cleanup (non-blocking مگر evidence خلاف آن نشان دهد)
+13. M0 session-revocation standalone harness.
+14. F-QA-05 Node≥22 + CI parity.
+15. F-QA-04/F-QA-06/F-QA-07 scanner/config/naming/release governance.
+16. MIG-001 migration crash-window hardening.
+17. PGB-001/WORKER-001 capacity/liveness reconciliation.
+
+### Gate rule
+هیچ‌کدام از موارد زیر به‌تنهایی برای Gate کافی نیستند:
+- وجود script/runbook،
+- یک CI run سبز،
+- یک tag با نام verified،
+- E3 isolated restore،
+- TARGET/POLICY metric،
+- وجود SQL با SKIP LOCKED.
+
+Gate 8.2 فقط زمانی VERIFIED می‌شود که Evidence chain، M1/M2/M3 و proofهای اجباری بالا current-head و reproducible باشند.
+
+### Execution lock
+F-QA-02 → F-QA-03 → F-QA-01 → F-QA-08 → M1 → M2 → M3 → OUTBOX-002 → DB-001/RT2-02 → OUTBOX-001 → RT1 reproduction closure → Phase 8.2 Exit Evidence rebuild → Gate 8.2 VERIFIED → Phase 8.3 E4 empirical scale
+
+**Hard rule:** تا Gate 8.2 VERIFIED، هیچ national load/soak claim به‌عنوان evidence ظرفیت نهایی ثبت نمی‌شود.
