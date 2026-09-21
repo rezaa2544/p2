@@ -79,7 +79,7 @@ function chk(name, cond, detail){
   chk('B1 db.js: mirror_incomplete از capped/env_skipped مشتق می‌شود',
     /mirror_incomplete = out\.capped\.length > 0 \|\| out\.env_skipped\.length > 0/.test(dbs));
   chk('B2 db.js: خروجیِ hydration پرچم را صادق می‌کند (فیلدِ پیش‌فرض false)',
-    /skipped: \[\], capped: \[\], env_skipped: \[\], mirror_incomplete: false/.test(dbs));
+    /skipped: \[\], capped: \[\], env_skipped: \[\], (?:kept: \[\], )?mirror_incomplete: false/.test(dbs));
   chk('B3 index.js: گارد در persistStore (مسیرِ تیکر/FATAL/فال‌بک) — مستقل از isPostgres',
     /function persistStore\(\)\{[\s\S]{0,420}if\(mirrorIncomplete\) return;/.test(idx)
     && !/if\(mirrorIncomplete && db\.isPostgres\(\)\) return;/.test(idx),
