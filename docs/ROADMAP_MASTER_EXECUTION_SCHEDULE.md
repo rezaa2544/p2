@@ -118,6 +118,43 @@ Phase 8.3 provisioning
 review، invalidation proof، cross-instance consistency و measurement وارد production
 نمی‌شود.
 
+## ۰.۳ الحاق Red-Team Chat 1 — 2026-09-21
+
+گزارش Zero-Trust Regression Audit چت ۱ روی SHA تاریخی `6762d84b3c25f317ead7f2c3b95c5aa0b94e2951` دریافت شد. HEAD فعلی `fbe178be7c99ddb6c068eee4f7b389a6b9e7aeab` است؛ بنابراین این delta فقط به‌عنوان ورودی Evidence-Reconciliation ثبت می‌شود.
+
+| ID | یافته | وضعیت برنامه‌ای | Sprint/Work Package |
+|---|---|---|---|
+| RT1-01 | async audit sync-FS regression candidate | **REPRODUCTION REQUIRED** | 8.2-M0-R |
+| RT1-02 | API test runner authority-mode drift candidate | **REPRODUCTION REQUIRED** | 8.2-M0-R |
+| RT1-03 | Wave 1 stale readCollection invariant candidate | **REPRODUCTION REQUIRED** | 8.2-M0-R |
+| RT1-04 | Wave 23 handwritten migration runner candidate | **REPRODUCTION REQUIRED** | 8.2-M0-R |
+| RT1-05 | static fake-green / secret-scan counts | **RECHECK CURRENT HEAD** | 8.2-M0-R |
+| RT1-06 | S3/S4 pending claim | **RECONCILED WITH CURRENT ROADMAP** | 8.2 Exit |
+
+### 8.2-M0-R execution contract
+
+```
+Current HEAD fbe178be
+  ↓
+Reproduce RT1-01..04
+  ↓
+Re-run static hygiene
+  ↓
+Reconcile with CI #1093 + existing artifacts
+  ↓
+Remediate only reproduced findings
+  ↓
+S3 alert/on-call evidence
+  ↓
+S4 PG/Redis restore + measured RPO/RTO
+  ↓
+Gate G6 / Phase 8.2 Exit
+  ↓
+Phase 8.3 provisioning + E4 scale evidence
+```
+
+**Evidence rule:** Chat 1's historical SHA cannot change current status by itself. Any finding that reproduces on `fbe178be` gets a concrete remediation task, test, SHA, and gate entry.
+
 ## ۱. HISTORICAL EXECUTION TIMELINE — بازسازی تاریخ واقعی پروژه از Git
 
 روش استخراج: `git log --reverse --format="%h %ad %s" --date=short`، `git show <sha> --stat`، و تطبیق هر ادعای سند با کامیت واقعی. هیچ تاریخی حدس زده نشده؛ هر ردیف با SHA واقعی موجود در تاریخچه لنگر دارد. **مدت تاریخی فقط جایی نوشته شده که از Git قابل استخراج بود.**
