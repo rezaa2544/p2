@@ -81,7 +81,10 @@ async function run() {
   assert.strictEqual(headRes.body, '', 'HEAD /metrics returns empty body');
   console.log('  ✅ 3. HEAD /metrics boundary handled without error');
 
-  server.close();
+  const redisMod = require('../server/redis');
+  try { await redisMod.close(); } catch (_) {}
+  try { metrics.stopRuntimeCollector(); } catch (_) {}
+  await new Promise((resolve) => server.close(resolve));
   console.log('\nResult: M1 runtime probes scrape regression: ALL PASS ✅\n');
 }
 
