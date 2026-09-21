@@ -439,10 +439,15 @@ if [ -z "$SKIPHITS" ]; then
 else
   chk T7 "no it.skip/describe.skip in tests/tools (sample)" 0 "$SKIPHITS"
 fi
-if grep -n 'getTenantPolicy' server/infrastructure/phase6-production-hardening.js >/dev/null; then
-  chk T7 "HTTP tenant guard reads tenant_policy" 1
+# Tenant policy authority is intentionally split: the HTTP guard calls
+# authority.assertTenantPolicy(), whose PostgreSQL implementation owns the
+# getTenantPolicy() query. Checking the old helper name in the HTTP hardening
+# module was stale and made this verifier fail on the already-remediated code.
+if grep -n 'authority\.assertTenantPolicy' server/infrastructure/phase6-production-hardening.js >/dev/null &&
+   grep -n 'async function getTenantPolicy' server/infrastructure/authority/postgres-authority.js >/dev/null; then
+  chk T7 "HTTP tenant guard uses PostgreSQL tenant_policy authority" 1
 else
-  chk T7 "HTTP tenant guard reads tenant_policy" 0
+  chk T7 "HTTP tenant guard uses PostgreSQL tenant_policy authority" 0
 fi
 
 # cleanup extra dbs
