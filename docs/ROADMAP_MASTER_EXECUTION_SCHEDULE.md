@@ -989,3 +989,26 @@ Chat 5 روی HEAD 138cd1d9 گزارش مستقل runtime/CI ارائه کرده
 **Evidence rule:** E3 isolated restore، وجود config/runbook، یا TARGET/POLICY metrics به‌تنهایی برای عبور E4 کافی نیستند. National load testing در sandbox ممنوع و به Phase 8.3 staging production-equivalent موکول است.
 
 مرجع: docs/audit/CHAT5_PHASE8_2_DELTA_2026-09-21.md.
+
+
+### ۰.۵ تصحیح و تطبیق Chat 2 با شواهد بعدی — 2026-09-21
+
+گزارش Chat 2 یک ورودی تاریخی ارزشمند است، اما چهار finding آن اکنون وضعیت متفاوتی دارند:
+
+- RT2-01: وجود `max-allowed-issues: 2147483647` در Codacy تأیید پیکربندی است؛ اثر «همیشه سبز» به‌عنوان واقعیت runtime پذیرفته نمی‌شود. یافته‌های Chat 4، failureهای tool/config را نشان می‌دهد و آن را blocker مستقیم نمی‌داند. پیگیری به‌عنوان security-gate governance باقی می‌ماند.
+- RT2-02: مسیر کد دو فراخوانی tenant-policy را دارد؛ عدد 40k QPS در 20k RPS هنوز extrapolation است. instrumentation/query-count measurement قبل از remediation الزامی است.
+- RT2-03: شواهد بعدی E3 برای restore واقعی وجود دارد، اما E4 production-equivalent restore/promote و RPO/RTO اندازه‌گیری‌شده هنوز برای Gate 8.2 لازم است؛ بنابراین به M2 متصل می‌ماند.
+- RT2-04: ادعای blind spot ناشی از `monitoring/alert-rules.yaml` اصلاح/پس گرفته شد؛ `monitoring/alert-rules.yml` symlink است و Prometheus هر دو `alert-rules.yml` و `alerts.yml` را load می‌کند. orphan yaml فقط drift/cleanup است.
+
+**ترتیب اجرایی اصلاح‌شده:**
+```
+M1 live alert/on-call/recovery E4
+M2 PG restore/promote + Redis E4 + measured RPO/RTO
+M3 R6/R7 + revocation/cold-cache evidence
+RT2-02 query measurement / remediation before empirical 8.3 capacity claims
+Gate 8.2 VERIFIED
+↓
+Phase 8.3 E4 provisioning → empirical load/soak
+```
+
+مرجع: `docs/audit/CHAT2_PHASE8_2_RECONCILIATION_2026-09-21.md`.
