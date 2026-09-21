@@ -111,8 +111,38 @@ function main() {
   chk('B6 رمز در هیچ خروجی‌ای نشت نکرد',
     out.indexOf('p@ss-SECRET-xyz') === -1 && ((r2.stdout || '') + (r2.stderr || '')).indexOf('p@ss-SECRET-xyz') === -1);
 
+  /* ── B7 (F-QA-08): تداخلِ قفل نباید «موفقیت» گزارش شود ──
+     قفل را در یک پروسهٔ دیگر نگه می‌داریم و اسکریپت را صدا می‌زنیم.
+     پیش از اصلاح، اسکریپت با exit 0 خارج می‌شد و cron یک اجرایِ
+     بدونِ هیچ پشتیبانی را سبز می‌دید. */
+  const tmp3 = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-rb3-'));
+  const redisDir3 = path.join(tmp3, 'redis'); fs.mkdirSync(redisDir3);
+  const backupDir3 = path.join(tmp3, 'backup'); fs.mkdirSync(backupDir3);
+  const stub3 = makeStub(path.join(tmp3, 'bin'), redisDir3, {});
+  const lock3 = path.join(tmp3, 'lock');
+  /* نگهدارندهٔ قفل: تا ۳۰ ثانیه قفل را در اختیار می‌گیرد */
+  const holder = spawnSync('bash', ['-c',
+    `exec 9>"${lock3}"; flock -n 9 || exit 9; (exec 9>"${lock3}"; flock 9; sleep 30) & echo $!`
+  ], { encoding: 'utf8', timeout: 15000 });
+  const holderPid = parseInt(String(holder.stdout || '').trim(), 10);
+  /* به نگهدارنده فرصت بده قفل را واقعاً بگیرد */
+  spawnSync('bash', ['-c', 'sleep 1'], { timeout: 5000 });
+  const r3 = runBackup({
+    REDIS_CLI: stub3, REDIS_DIR: redisDir3, BACKUP_DIR: backupDir3, BACKUP_LOCK: lock3
+  });
+  const out3 = (r3.stdout || '') + (r3.stderr || '');
+  const produced3 = fs.readdirSync(backupDir3).filter(f => /\.(rdb|aof)$/.test(f));
+  chk('B7 تداخلِ قفل = خروجیِ غیرصفر (نه سبزِ کاذب)',
+    r3.status !== 0, 'status=' + r3.status + ' out=' + out3.slice(-160));
+  chk('B7b تداخلِ قفل = هیچ فایلِ پشتیبانی تولید نشد',
+    produced3.length === 0, 'files=' + produced3.join(','));
+  chk('B7c کدِ تداخل از کدِ خطایِ واقعی (۱) جداست',
+    r3.status === 75, 'status=' + r3.status);
+  if (Number.isFinite(holderPid) && holderPid > 0) { try { process.kill(holderPid, 'SIGKILL'); } catch (e) {} }
+
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
   try { fs.rmSync(tmp2, { recursive: true, force: true }); } catch (e) {}
+  try { fs.rmSync(tmp3, { recursive: true, force: true }); } catch (e) {}
 
   const total = pass + fail;
   console.log('────────────────────────────────────────────────────');

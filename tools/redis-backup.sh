@@ -45,10 +45,15 @@ log() { echo "[redis-backup ${TS}] $*"; }
 die() { log "FATAL: $*" >&2; exit 1; }
 
 # ── قفل: اجرای هم‌زمان ممنوع ──
+# F-QA-08: تداخلِ قفل «موفقیت» نیست — هیچ پشتیبانی گرفته نشده است.
+# خروجِ صفر باعث می‌شد cron/CI یک اجرایِ بی‌پشتیبان را سبز ببیند (سبزِ کاذب).
+# کدِ ۷۵ (EX_TEMPFAIL) عمداً از ۱ (خطایِ واقعی) جدا است تا فراخوان بتواند
+# «بعداً دوباره تلاش کن» را از «پشتیبان‌گیری شکست خورد» تشخیص دهد.
+BACKUP_LOCK_BUSY_EXIT="${BACKUP_LOCK_BUSY_EXIT:-75}"
 exec 9>"${BACKUP_LOCK}"
 if ! flock -n 9; then
-  log "اجرای دیگری در جریان است — رد شد."
-  exit 0
+  log "اجرای دیگری در جریان است — هیچ پشتیبانی گرفته نشد (کد ${BACKUP_LOCK_BUSY_EXIT})." >&2
+  exit "${BACKUP_LOCK_BUSY_EXIT}"
 fi
 
 if [ -n "${REDIS_PASSWORD:-}" ]; then
