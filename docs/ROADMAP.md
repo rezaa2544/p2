@@ -1338,3 +1338,19 @@ ARCH-001، R6/REDIS-001، DR-001 و OBS-001 عمدتاً با کارهای مو�
 
 ترتیب کار: **M1 → M2 → M3 → OUTBOX-002 reproduction + DB-001 measurement → Gate 8.2 → Phase 8.3**.
 مرجع: `docs/audit/CHAT3_PHASE8_2_RECONCILIATION_2026-09-21.md`.
+
+
+## وضعیت ممیزی Chat 4 — QA / Release / CI-CD / Reproducibility — 2026-09-21
+
+گزارش مستقل Chat 4 روی baseline `fe633395` نشان می‌دهد substrate کد روی Node 22 واقعاً build/test می‌شود، اما **Evidence/Release Layer هنوز برای خروج Phase 8.2 کافی نیست**.
+
+- **P0:** `PHASE_8_2_FINAL_VERIFICATION_REPORT.md` ادعای VERIFIED دارد اما به SHA قدیمی با CI شکست‌خورده است و run_id/count/raw evidence ندارد؛ تا اصلاح، Evidence Exit محسوب نمی‌شود.
+- **P1:** `phase8.2-verified` روی SHA بدون Node.js CI قرار دارد؛ gate artifact معتبر محسوب نمی‌شود.
+- **P1:** GATE 3 boot timeout باعث شده همان SHA در دو event نتیجه متفاوت داشته باشد؛ قبل از green claim باید timeout اصلاح و ≥20 run اندازه‌گیری شود.
+- **P1:** `tools/redis-backup.sh` در flock contention می‌تواند exit 0 بدهد بدون backup؛ این مورد پیش‌نیاز Evidence معتبر S4 است.
+- **P2:** مستندسازی Node ≥22، مسیر CI-parity، نام‌گذاری Live-Redis، version/tag/changelog و scanner credentials/config باید تکمیل شود.
+- **تصحیح:** ادعای قبلی چهار فایل alert و silent-alert risk withdrawn است؛ symlink و Prometheus wiring این ادعا را رد می‌کنند.
+
+**ترتیب بعدی:** F-QA-02 → F-QA-03 → F-QA-01 → F-QA-08 → M1 → M2/M3 → OUTBOX-002/DB-001/OUTBOX-001 → Gate 8.2 → Phase 8.3.
+
+مرجع تفصیلی: `docs/audit/CHAT4_QA_RELEASE_RECONCILIATION_2026-09-21.md`.
