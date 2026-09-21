@@ -1354,3 +1354,43 @@ ARCH-001، R6/REDIS-001، DR-001 و OBS-001 عمدتاً با کارهای مو�
 **ترتیب بعدی:** F-QA-02 → F-QA-03 → F-QA-01 → F-QA-08 → M1 → M2/M3 → OUTBOX-002/DB-001/OUTBOX-001 → Gate 8.2 → Phase 8.3.
 
 مرجع تفصیلی: `docs/audit/CHAT4_QA_RELEASE_RECONCILIATION_2026-09-21.md`.
+
+## برنامه کاری فعلی — جمع‌بندی نهایی گزارش‌های Chat 1 تا Chat 5 — 2026-09-21
+
+بعد از تطبیق پنج گزارش، چند موردی که قبلاً برای Exit قابل اتکا تلقی می‌شدند باید باز شوند؛ در مقابل R1/R2/R21 و S2 دوباره‌کاری نمی‌شوند مگر reproduction خلاف آن را نشان دهد.
+
+### 🔴 باز و الزامی برای Exit
+- F-QA-02: بازسازی گزارش نهایی Verification با SHA/run-id/count/raw evidence.
+- F-QA-03: رفع boot timeout و اثبات CI determinism با ≥20 run.
+- F-QA-01: اصلاح integrity تگ phase8.2-verified.
+- F-QA-08: رفع fake-green در tools/redis-backup.sh.
+- M1: live E4 alert→on-call→ack→runbook→recovery + MTTA/MTTR.
+- M2: E4 PostgreSQL restore/promote + verifier + RPO/RTO.
+- M3: E4 Redis restore/failover + verifier + RPO/RTO.
+
+### 🟠 اثبات/اندازه‌گیری اجباری قبل از 8.3
+- OUTBOX-002: آزمون واقعی دو worker روی PG و اثبات exclusivity.
+- DB-001 / RT2-02: query/request و latency measurement برای tenant-policy path.
+- OUTBOX-001: event coverage contract و idempotency inventory.
+- RT1-01…04: بازتولید findings تاریخی Chat1 روی current HEAD.
+- RT1-05: re-run static/fake-green/secret hygiene.
+
+### 🟡 پیگیری غیرمسدودکننده
+- session-revocation standalone harness.
+- Node≥22 و CI-parity documentation.
+- Codacy/Fortify/config و release metadata.
+- MIG-001 migration crash-window.
+- PGB/worker-liveness reconciliation.
+
+### 🟢 بسته می‌ماند
+R1/R2/R21، S2 observability/governance delivery، و finding قبلی silent-alert که در Chat4 پس گرفته شد، مگر اجرای جدید خلاف آن را ثابت کند.
+
+### وضعیت گیت
+Phase 8.2 Exit: 🔴 NOT VERIFIED
+Phase 8.3: 🔴 BLOCKED
+Production GO: NOT DECLARED
+
+### ترتیب اجرای عملیاتی
+F-QA-02 → F-QA-03 → F-QA-01 → F-QA-08 → M1 → M2 → M3 → OUTBOX-002 → DB-001/RT2-02 → OUTBOX-001 → RT1 reproduction closure → rebuild Exit Evidence → Gate 8.2 VERIFIED → Phase 8.3
+
+این بخش مرجع کوتاه برنامه کاری است؛ جزئیات و dependencyها در docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md نگهداری می‌شود.
