@@ -3793,3 +3793,38 @@ V1–V8 موارد قطعی را **قرمز** می‌کنند؛ A0/A1/A2 (نقض
 
 **وضعیت گیت‌ها بدون تغییر:** `Phase 8.2 Exit = NOT VERIFIED` · `Phase 8.3 = BLOCKED` ·
 `Production GO = NOT DECLARED`. هیچ ادعای VERIFIED و هیچ ادعای امنیتی ثبت نشد.
+
+### ⚠️ هشدار متقاطع (خارج از دامنهٔ چت ۴ — فقط ثبت، دست نزدم)
+
+پس از rebase روی دو کامیت واردشده، **Node.js CI #1161 روی `be066640` قرمز شد**. بررسی
+کردم که آیا تقصیر تغییرات من است — **نیست**:
+
+- `#1159` روی `755715bd` (HEAD قبلی من) = **success**.
+- `#1160` روی `89cec08c` = **failure** — یعنی شکست **پیش از push من** رخ داده بود.
+- مرحلهٔ شکست‌خورده **۱۷** است (`Phase 7 production verifier T1–T7`)، در حالی که دو گیت
+  تازهٔ من مرحلهٔ ۲۳ و ۲۴‌اند و اصلاً **skip** شدند؛ یعنی هرگز اجرا نشدند.
+- کامیت‌های من (`1e50ff3f`, `be066640`) فقط این ۸ فایل را لمس کرده‌اند: `.codacy.yml`،
+  `fortify.yml`، `node.js.yml`، `tests/release-version-contract.js` + ۴ سند. **هیچ‌کدام
+  `server/` یا `tools/production-verifier.sh` نیستند.**
+
+**علت ریشه‌ای:** کامیت `62254cff` (Chat2 Auditor — «eliminate redundant duplicate
+getTenantPolicy query call») ۹ خط را از
+`server/infrastructure/phase6-production-hardening.js` حذف کرده، ولی
+`tools/production-verifier.sh:442` دقیقاً همان رشته را grep می‌کند:
+
+```
+if grep -n 'getTenantPolicy' server/infrastructure/phase6-production-hardening.js; then
+  chk T7 "HTTP tenant guard reads tenant_policy" 1
+else
+  chk T7 "HTTP tenant guard reads tenant_policy" 0     ← اکنون این مسیر
+```
+
+نتیجه: `PRODUCTION VERIFIER: 36 pass / 1 fail · VERDICT: NOT VERIFIED`.
+جالب اینکه کامیت `30187d09` قبلاً همان فراخوانی را **عمداً برای انطباق با T7** اضافه
+کرده بود؛ حالا `62254cff` آن را به‌عنوان «تکراری» برداشته و گیت را شکسته.
+
+**دست نزدم** چون طبق §۱۱ مأموریت، کار Chat2 خارج از دامنهٔ من است و اصلاح یک‌طرفهٔ آن
+یا «سبزکردن» verifier دقیقاً همان کاری است که این ممیزی علیه آن است. دو راه درست برای
+مالک/Chat2: یا فراخوانی حذف‌شده برگردد، یا `tools/production-verifier.sh` طوری اصلاح
+شود که رفتار واقعی (`authority.assertTenantPolicy`) را بسنجد نه وجود یک رشتهٔ خاص را
+— که خودش یک گیت شکنندهٔ grep-محور است.
