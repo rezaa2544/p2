@@ -346,3 +346,58 @@ Chat 3 was audited on historical SHA `138cd1d9b03278fcf15c6476faa497fe89d275af`.
 **Reference:** `docs/audit/CHAT3_PHASE8_2_RECONCILIATION_2026-09-21.md`.
 
 **Current decision remains:** Phase 8.2 Exit **NOT VERIFIED** → Phase 8.3 **BLOCKED** until M1 + M2/M3 evidence closes the Gate.
+
+ 
+
+## 16. Red-Team Delta — Chat 4 QA / Release / Reproducibility (2026-09-21)
+
+Chat 4 performed an independent audit on baseline `fe633395` and recorded its audit package in `docs/audit/CHAT4_QA_RELEASE_RECONCILIATION_2026-09-21.md`. The report is runtime/API-backed for the claims it executed, but it does not authorize a Phase 8.2 exit.
+
+### Findings that must enter the execution plan
+
+| ID | وضعیت فعلی | تصمیم اجرایی |
+|---|---|---|
+| F-QA-01 verification tag | CONFIRMED / RELEASE-LABEL GAP | `phase8.2-verified` has no Node.js CI evidence on its SHA; do not use it as a gate artifact until a CI-backed SHA is selected |
+| F-QA-02 final verification report | **P0 / BLOCKING** | rewrite/retract the unsupported VERIFIED report with SHA, run_id, per-suite counts and raw evidence |
+| F-QA-03 CI determinism | **P1 / BLOCKING** | fix/adapt GATE 3 boot timeout or pre-seed; then measure pass rate over ≥20 runs before declaring CI deterministic |
+| F-QA-04 Codacy/Fortify | NON-BLOCKING / TOOLING | repair credentials/config or explicitly remove them from the security gate; red scanner runs are not vulnerability evidence |
+| F-QA-05 reproducibility | P2 / FOLLOW-UP | document Node ≥22 and add a `test:ci`/CI-parity path for the suites not wired into `npm test` |
+| F-QA-06 Redis test naming | P2 / FOLLOW-UP | make Redis dependency explicit in the CI step or enforce `REDIS_URL` |
+| F-QA-07 release metadata | P2 / RELEASE GOVERNANCE | reconcile package version, tags and CHANGELOG before release certification |
+| F-QA-08 redis-backup fake-green | **P1 / S4 PREREQUISITE** | make flock contention non-zero or retry; do not use current backup script as restore evidence |
+| F-QA-09 snapshot integrity | INFO / WORKSPACE CONTROL | inspect symlink and executable-mode changes before commit; never use blind `git add -A` |
+| F-QA-10 alert-file correction | CORRECTED | previous four-file/silent-alert finding is withdrawn; symlink + Prometheus loading both rule files are established |
+
+### Evidence that Chat 4 independently confirms
+
+- Node 22.23.2 clean reproduction: `npm ci`, build, build:check, `npm test` = 35/35 + 547/547, zero skips.
+- R1 = 49 PASS; R2 = 32 PASS; R21 ledger = 8 PASS; S2 metrics = 4 PASS; server17 = 70/0.
+- Last fully green CI cited: #1098 on `138cd1d9`, 28/28, zero skipped.
+- Live-PG suites correctly fail closed without PostgreSQL.
+- Phase 8.3 infrastructure is present, but empirical load validation remains NONE.
+
+### Gate impact
+
+Chat 4 **does not add a new S3/S4 gate category**, but it makes the evidence/release layer an explicit prerequisite. The durable execution chain is now:
+
+```
+F-QA-02 evidence report repair
+        ↓
+F-QA-03 CI GATE-3 stabilization + ≥20-run measurement
+        ↓
+F-QA-01 verification-tag correction
+        ↓
+F-QA-08 backup fake-green fix
+        ↓
+M1 live alert/on-call/recovery E4
+        ↓
+M2 + M3 PG/Redis restore/failover E4 + measured RPO/RTO
+        ↓
+OUTBOX-002 two-worker proof + DB-001 measurement + OUTBOX-001 contract
+        ↓
+Gate 8.2 VERIFIED
+        ↓
+Phase 8.3 empirical staging/load
+```
+
+**Decision:** Phase 8.2 Exit remains **NOT VERIFIED**; Phase 8.3 remains **BLOCKED**; no Production GO.
