@@ -1,7 +1,8 @@
 # PAYESH — MASTER EXECUTION SCHEDULE
 
 **نسخه:** 1.0.0-MASTER-SCHEDULE
-**تاریخ تدوین:** 2026-09-20
+**تاریخ تدوین:** 2026-09-20  
+**آخرین بازآرایی وضعیت:** 2026-09-21
 **کامیت معرفی سند:** `8de13dbab596f09f3d9a3d1b92bae845f6b2f8aa`
 **HEAD مبنای کد تأییدشده:** `4de6f57d4ec1a883cece5ba7ae7480be3bc768a8` (Code) / `5017e9a1a9e70ea5df869ecda763327cb7008da6` (Doc)
 **مخزن:** `rezaa2544/p2` · شاخه `main`
@@ -39,6 +40,33 @@
 | **E4** | اثبات معادل تولید (E3 + تزریق آشوب/چندنمونه/مانور HA، بازتولیدپذیر مستقل) | حکم گیت فاز، صدور گواهی |
 
 **قاعدهٔ طلایی این سند:** هیچ ردیفی بالاتر از سطح شواهدش برچسب نمی‌گیرد. چند فاز که در اسناد قبلی «۱۰۰٪ کامل» اعلام شده بودند، اینجا به دلیل ردِ صریح Red Team به `PARTIAL` یا `FAILED/REJECTED → REMEDIATED` تنزل یافته‌اند (بخش ۱).
+
+---
+
+## ۰.۱ وضعیت اجرایی به‌روزشده — 2026-09-21
+
+> **Current HEAD:** `fbe178be7c99ddb6c068eee4f7b389a6b9e7aeab`  
+> **Current roadmap ground truth:** `docs/ROADMAP_CURRENT_GROUND_TRUTH_2026-09-21.md`
+
+| موضوع | وضعیت جاری | مبنای تصمیم |
+|---|---|---|
+| Phase 8.1 | VERIFIED | گزارش 8.1 + CI فعلی |
+| Node.js CI روی HEAD | VERIFIED | Run #1093؛ تمام jobهای اصلی موفق |
+| R1/R2/R21 | VERIFIED در CI | suiteهای اختصاصی در Node.js CI #1093 |
+| Phase 8.2 | **PARTIAL — Evidence Reconciliation Required** | گزارش نهایی کوتاه VERIFIED است، اما Exit Evidence تفصیلی S3/S4 در اسناد موجود کامل ردیابی نشده |
+| Phase 8.2 Exit | **NOT VERIFIED** | alert→on-call→runbook E4 و restore identity/RPO/RTO باید با run/artifact قابل بازتولید بسته شوند |
+| Phase 8.3 | PLANNED / BLOCKED BY 8.2 EXIT | شروع اجرایی پس از عبور Gate 8.2 |
+| Phase 8.4 | PLANNED | tenant hardening / R3 |
+| Phase 8.5 | PLANNED | WAF enforce + independent certification |
+| Phase 9.0 | PLANNED | Educational Wiring Gate |
+
+**قاعدهٔ این به‌روزرسانی:** گزارش `PHASE_8_2_FINAL_VERIFICATION_REPORT.md` با برچسب VERIFIED حفظ می‌شود؛ اما تا وقتی Exit Criteria آن با Evidence اجرایی تفصیلی تطبیق داده نشده، Master Schedule اجازه نمی‌دهد 8.3 را شروع‌شده تلقی کنیم. این یک **Evidence Gate** است، نه بازگشت به کارهای قبلی.
+
+### مأموریت بعدی
+1. Reconcile همهٔ Evidenceهای S2/S3/S4.
+2. در صورت فقدان Evidence، فقط همان drill/test را اجرا کن.
+3. Gate Matrix نهایی 8.2 را با SHA + run ID ثبت کن.
+4. سپس 8.3 را آزاد کن.
 
 ---
 
@@ -185,12 +213,12 @@
 
 ---
 
-## ۲. CURRENT STATE — وضعیت واقعی امروز (2026-09-20)
+## ۲. CURRENT STATE — وضعیت واقعی امروز (2026-09-21)
 
 ```text
-HEAD                    : 477f44b3d492710d37c112e13d1808275dede4bf
-آخرین CODE_COMMIT معتبر : 2c44354137deade67af8004ddd38c3c06fb9e1c7  (فاز 8.1)
-آخرین DOC_COMMIT معتبر  : 477f44b3d492710d37c112e13d1808275dede4bf  (فاز 8.1)
+HEAD                    : fbe178be7c99ddb6c068eee4f7b389a6b9e7aeab
+آخرین CODE_COMMIT معتبر : fbe178be7c99ddb6c068eee4f7b389a6b9e7aeab  (main فعلی)
+آخرین DOC_COMMIT معتبر  : 62f6097b4710c2bc5ca02bb663d44a1db18d99f8  (current roadmap reconciliation)
 معماری داده             : PostgreSQL = SSoT (VERIFIED, E3) · Redis = cache/ephemeral (VERIFIED, E3)
 گیت حقیقت تولید         : 44/44 VERIFIED روی PG 17.11 + Redis 8.0.2
 باتری رگرسیون          : 127/127 (E3) — اکنون در CI اجباری شده (batteries A–D)
@@ -381,8 +409,8 @@ Track مستقل زیرساختی — **پنهان‌شده لای قابلیت�
 | Phase | عنوان | مدت (PLANNING ESTIMATE) | Entry Criteria | Exit Criteria | Risk |
 |---|---|---|---|---|---|
 | 8.1 | رفع R5/R15/R16/R20 | **انجام‌شده** (Actual: 2026-09-19) | — | صفر 🔴؛ باتری ۱۲۷/۱۲۷ | — |
-| 8.2 | Observability & DR Drill | **3 Sprint** | 8.1 VERIFIED + اولین اجرای CI معاینه‌شده | مانور alert→on-call→runbook در E4 با مهر زمانی؛ SLO منتشر؛ R6/R7 تصمیم امضاشده؛ **مانور restore واقعی PG+Redis** | بیلینگ CI (RISK-O-007)؛ نبود محیط استیجینگ |
-| 8.3 | Scale & Performance Hardening | **4 Sprint** | 8.2 exit | p95/p99 تحت بار مشخص (E3/E4)؛ soak چندنمونه با واگرایی کمّی‌شدهٔ کنترل‌پلن؛ بوت سرد <۳۰s؛ R21 دفتر مهاجرت؛ R17 engines | R1 ممکن است بازنویسی معماری بخواهد |
+| 8.2 | Observability & DR Drill | **PARTIAL — Evidence Reconciliation** | 8.1 VERIFIED + اولین اجرای CI **اکنون VERIFIED** | SLO/metrics/remediation تحویل شده؛ **Exit evidence تفصیلی alert→on-call→runbook و restore PG+Redis هنوز باید به run/artifact قابل بازتولید نگاشت شود** | Evidence gap |
+| 8.3 | Scale & Performance Hardening | **4 Sprint** | **8.2 EXIT VERIFIED** | p95/p99 تحت بار مشخص (E3/E4)؛ soak چندنمونه با واگرایی کمّی‌شدهٔ کنترل‌پلن؛ بوت سرد <۳۰s؛ R21 دفتر مهاجرت؛ R17 engines | **BLOCKED تا Gate 8.2** |
 | 8.4 | Advanced Security Review | **3 Sprint** | 8.1 (نه 8.3) | اجبار مرکزی تننت با تست شکست روی روت بدون annotation؛ بازبینی خصمانه؛ کیت سخت‌سازی tenant_policy | R3 روی مسیرهای legacy پرتعداد |
 | 8.5 | Production Certification Gate | **2 Sprint** | 8.1–8.4 همه exit | ۷ شرط §۶ گزارش ورودی فاز ۸ + **WAF enforce** + بازگواهی Red Team مستقل | هر 🟠 باز = BLOCKED |
 
@@ -668,9 +696,9 @@ EVIDENCE   ☐ exact commit (SHA)
 
 | Seq | Sprint | Phase | Deliverable | Dependency | Duration | Status |
 |---|---|---|---|---|---|---|
-| 22 | S1 | 8.1-post | معاینهٔ اولین اجرای CI (باتری A–D) + بستن F-CI-01 | 21 | 1 week · PLANNING ESTIMATE | PLANNED |
-| 23 | S2 | 8.2 | تصمیم امضاشدهٔ R6/R7 + انتشار SLO | 22 | 1 week · PLANNING ESTIMATE | PLANNED |
-| 24 | S3–S4 | 8.2 / **W21-05** + **W21-07** | مانور alert→on-call + **مانور restore واقعی PG/Redis** (NPF-19/20/21) | 23 | 2 weeks · PLANNING ESTIMATE | PLANNED |
+| 22 | S1 | 8.1-post | معاینهٔ اولین اجرای CI (باتری A–D) + بستن F-CI-01 | 21 | Actual / verified on Node.js CI #1093 | **VERIFIED** |
+| 23 | S2 | 8.2 | تصمیم R6/R7 + انتشار SLO | 22 | Delivered | **PARTIAL / evidence reconciliation** |
+| 24 | S3–S4 | 8.2 / **W21-05** + **W21-07** | مانور alert→on-call + **مانور restore واقعی PG/Redis** (NPF-19/20/21) | 23 | Evidence reconciliation / execution as required | **NOT VERIFIED** |
 | 25 | S5–S6 | 8.3 / NPF-23/24 | بار واقعی + chaos + Outbox/Event Bus کامل | 24 | 2 weeks · PLANNING ESTIMATE | PLANNED |
 | 26 | S7–S8 | 8.3 / **W21-09** | soak چندنمونه + R1 واگرایی + R21 دفتر مهاجرت + R13/R14/R17 | 25 | 2 weeks · PLANNING ESTIMATE | PLANNED |
 | 27 | S9–S11 | 8.4 / **W21-06** + **W21-10** | اجبار مرکزی تننت + کیت tenant_policy + بازبینی خصمانه | 22 | 3 weeks · PLANNING ESTIMATE | PLANNED |
@@ -770,7 +798,7 @@ EVIDENCE   ☐ exact commit (SHA)
 
 | ID | ریسک | شدت | وضعیت | اثر بر برنامه | کاهش‌دهنده |
 |---|---|---|---|---|---|
-| **RISK-O-007** | انسداد بیلینگ GitHub Actions — CI تاریخاً اجرا نشده | 🔴 | **BLOCKER فعال** | باتری A–D فاز ۸.۱ هرگز در CI واقعی اجرا نشده؛ Seq 22 کاملاً به آن وابسته | معاینهٔ اولین اجرا در Sprint 1؛ تا آن زمان CI Enforcement = «پیکربندی‌شده، نه اجراشده» |
+| **RISK-O-007** | انسداد بیلینگ GitHub Actions — CI تاریخاً اجرا نشده | 🔴 | **RESOLVED** | Node.js CI #1093 روی HEAD فعلی با موفقیت اجرا شد | ادامهٔ پایش CI؛ blocker قدیمی دیگر مانع Seq 22 نیست |
 | RISK-I-001 | نبود محیط استیجینگ دائمی | 🟠 | OPEN | مانورهای E4 (G5/G6/G7/G8) بدون آن ممکن نیست | Seq 24 نیازمند تأمین زیرساخت |
 | RISK-A-001 | **F-EI-01** — ۸ موتور آموزشی بدون اتصال | 🟠 | OPEN | کل Phase 9 روی آن بنا می‌شود | Phase 9.0 Wiring Gate (SERIAL، اجباری) |
 | RISK-A-002 | R1 — پنج کنترل‌پلن RAM | 🟠 | OPEN | مانع G5 (Multi-Instance) | 8.3 / C2 |
@@ -788,9 +816,9 @@ EVIDENCE   ☐ exact commit (SHA)
 ## ۱۴. ترتیب اجرایی از امروز تا پایان برنامه (خلاصهٔ تصمیم‌گیری)
 
 ```text
-امروز (2026-09-20، HEAD 477f44b3)
+امروز (2026-09-21، HEAD fbe178be)
    ↓
-S1        معاینهٔ اولین CI  ───────────────────── BLOCKER RISK-O-007
+S1        معاینهٔ اولین CI  ───────────────────── VERIFIED (#1093)
    ↓
 S2–S13    PHASE 8 باقی‌مانده (8.2 → 8.3 → 8.4 → 8.5)
           ‖ NPF-T موازی: DR/Restore، Observability، Load، Outbox
