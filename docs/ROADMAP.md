@@ -1328,3 +1328,13 @@ Chat 5 روی HEAD 138cd1d9: **S2=VERIFIED (تحویل‌شده و truthful)**؛
 
 
 > **تطبیق Chat 2 — 2026-09-21:** گزارش Chat 2 بر SHA تاریخی `bc68b2b5` بود. RT2-02 (double tenant-policy query) هنوز نیازمند اندازه‌گیری روی current-main است؛ RT2-03 به M2/restore E4 متصل است؛ RT2-05 یک follow-up معماری برای idempotency مصرف‌کنندگان Outbox است؛ و RT2-04 با شواهد بعدی دربارهٔ wiring Prometheus اصلاح و ریسک «silent alert» آن پس گرفته شده است. RT2-01 به‌عنوان governance/config follow-up باقی می‌ماند، نه blocker مستقل. بنابراین Gate 8.2 همچنان **NOT VERIFIED** و Phase 8.3 همچنان **BLOCKED** است.
+
+
+## وضعیت ممیزی Chat 3 — 2026-09-21
+
+Chat 3 روی SHA تاریخی `138cd1d9` بررسی و با شواهد بعدی تطبیق شد. مورد جدیدِ قابل بازبینی، **OUTBOX-002** است: باید همزمانی دو ورکر و اثر واقعی `FOR UPDATE SKIP LOCKED` در تراکنش زنده PostgreSQL اثبات شود. همچنین **DB-001** نیازمند اندازه‌گیری query/request و latency است؛ اعداد گزارش‌شده بدون measurement به‌عنوان واقعیت ظرفیت پذیرفته نمی‌شوند.
+
+ARCH-001، R6/REDIS-001، DR-001 و OBS-001 عمدتاً با کارهای موجود M1/M2/M3 و policyهای قبلی هم‌پوشان‌اند و blocker مستقل جدیدی ایجاد نمی‌کنند. OUTBOX-001 نیز به‌عنوان contract/coverage reconciliation قبل از ادعای 25k events/s ثبت شد.
+
+ترتیب کار: **M1 → M2 → M3 → OUTBOX-002 reproduction + DB-001 measurement → Gate 8.2 → Phase 8.3**.
+مرجع: `docs/audit/CHAT3_PHASE8_2_RECONCILIATION_2026-09-21.md`.
