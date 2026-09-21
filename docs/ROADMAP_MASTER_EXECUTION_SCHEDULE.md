@@ -1012,3 +1012,21 @@ Phase 8.3 E4 provisioning → empirical load/soak
 ```
 
 مرجع: `docs/audit/CHAT2_PHASE8_2_RECONCILIATION_2026-09-21.md`.
+
+
+### ۰.۶ الحاق Red-Team Chat 3 — Architecture/Data Integrity Reconciliation (2026-09-21)
+
+گزارش Chat 3 روی SHA تاریخی `138cd1d9b03278fcf15c6476faa497fe89d275af` بررسی شد. یافته‌های آن به‌جای پذیرش کور، با شواهد بعدی و کد/اسناد موجود تفکیک شدند.
+
+**کارهای اجباری جدید/تقویت‌شده:**
+1. **OUTBOX-002:** اجرای آزمون دو ورکر همزمان روی PostgreSQL زنده برای اثبات انحصار claim/lock در `fetchPendingBatch`. وجود `SKIP LOCKED` در متن SQL به‌تنهایی کافی نیست.
+2. **DB-001:** instrumentation برای تعداد query/request و latency واقعی مسیر authenticated؛ عددهای 40k QPS و p95 گزارش Chat 3 صرفاً extrapolation هستند تا اندازه‌گیری شوند.
+3. **OUTBOX-001:** پیش از هر ادعای 25k events/s، قرارداد event coverage برای mutationهای Sync و delete/tombstone باید صریح و آزمون‌پذیر شود.
+4. **MIG-001:** crash-window بین اجرای `psql` و ثبت `schema_migrations` به backlog hardening اضافه می‌شود؛ blocker مستقل Gate 8.2 نیست.
+
+**مواردی که blocker جدید نیستند:** ARCH-001 با hydration guards/caps قبلی تا حدی superseded است و فقط E4 cold-boot measurement می‌خواهد؛ R6/Redis fail-open و DR/Alerting قبلاً در M1/M2/M3 مدیریت شده‌اند.
+
+**ترتیب اجرایی:**
+M1 live alert/on-call/recovery → M2 PG restore/promote + Redis E4 → M3 R6/R7/cold-cache → OUTBOX-002 reproduction + DB-001 measurement → Gate 8.2 VERIFIED → Phase 8.3 empirical scale.
+
+مرجع تفصیلی: `docs/audit/CHAT3_PHASE8_2_RECONCILIATION_2026-09-21.md`.
