@@ -208,3 +208,50 @@ Dependency مهم: R3.
 **Next concrete mission:** M0 — استخراج و تطبیق Evidence S3/S4 و تعیین دقیق PASS/NOT VERIFIED  
 **After Gate:** Phase 8.3 Scale & Performance Hardening  
 **No Production GO is declared by this document.**
+
+
+---
+
+## 12. Red-Team Delta — Adversarial Audit Received 2026-09-21
+
+یک گزارش مستقل Red-Team از **Chat 2** دریافت شد که baseline آن روی SHA تاریخی
+`bc68b2b539bf5b59aa0108c0959af767ea57ce35` بوده است. بنابراین این گزارش برای
+**ground truth فعلی HEAD** به‌صورت مستقیم جایگزین CI/current-main evidence نیست؛
+یافته‌های آن باید روی HEAD فعلی دوباره verify شوند.
+
+### یافته‌های قابل ثبت در برنامه کاری
+
+| ID | موضوع | وضعیت برنامه‌ای | اقدام |
+|---|---|---|---|
+| RT2-01 | Codacy workflow با `max-allowed-issues: 2147483647` | **OPEN / CONFIRMED IN CURRENT FILE** | بررسی policy خروجی security scan؛ تعیین اینکه failure باید gate شود یا صرفاً SARIF upload باشد؛ سپس اصلاح workflow و اجرای مجدد |
+| RT2-02 | Tenant-policy query amplification در بار ملی | **OPEN / REPRODUCTION REQUIRED** | tracing/query-count روی HEAD فعلی؛ اندازه‌گیری query/request و extrapolation فقط پس از measurement؛ بدون افزودن cache حافظه‌ای پیش‌فرض |
+| RT2-03 | نبود E4 evidence برای DR restore / RPO / RTO | **OPEN / NOT VERIFIED** | اجرای restore واقعی PG + Redis در E4 staging و ثبت identity/checksum/RPO/RTO |
+| RT2-04 | telemetry disconnect → `NOT_VERIFIED` بدون evidence کافی از alerting | **OPEN / EVIDENCE REQUIRED** | canonical Prometheus/Alertmanager config، wiring proof، سپس outage drill |
+| RT2-05 | Outbox at-least-once / consumer idempotency obligation | **ARCHITECTURAL FOLLOW-UP** | inventory مصرف‌کننده‌ها و اثبات idempotency؛ این مورد به‌تنهایی defect قطعی محسوب نمی‌شود |
+| RT2-06 | E4 staging topology / 10M dataset برای 8.3 | **BLOCKER TO EMPIRICAL 8.3** | provisioning + seed + instrumentation؛ تا آن زمان فقط readiness، نه load validation |
+| RT2-07 | Red-team baseline SHA قدیمی است | **EVIDENCE LIMITATION** | تمام findings اجرایی قبل از تغییر status باید روی HEAD فعلی reproduce شوند |
+
+### ترتیب کار جدید
+
+**M0-R — Red-Team Reproduction Gate**
+
+1. reproduce RT2-01 تا RT2-04 روی HEAD فعلی؛
+2. query amplification را با instrumentation واقعی اندازه‌گیری کن؛
+3. DR restore را به M2 وصل کن؛
+4. observability outage را به M1 وصل کن؛
+5. outbox idempotency را به audit معماری/consumer inventory وصل کن؛
+6. E4 staging/10M dataset را به blocker رسمی Phase 8.3 اضافه کن؛
+7. فقط پس از evidence جدید status را تغییر بده.
+
+### قید معماری مهم
+
+پیشنهاد Red Team برای `micro-memory cache` به‌عنوان راه‌حل Tenant Policy **به‌صورت خودکار پذیرفته نمی‌شود**؛
+با توجه به Zero-Trust/R1، هر cache جدید باید ابتدا از نظر authority، invalidation،
+cross-instance consistency، TTL، failure behavior و measurement توجیه شود. راه‌حل
+اولیه باید query-count و query-plan واقعی را اندازه‌گیری و سپس تصمیم معماری بگیرد.
+
+### نتیجه فعلی
+
+Phase 8.2 همچنان **PARTIAL / Exit NOT VERIFIED** باقی می‌ماند.
+Phase 8.3 همچنان **PLANNED / BLOCKED BY 8.2 EXIT** است.
+
