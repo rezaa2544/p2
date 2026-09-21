@@ -1,6 +1,6 @@
 # سیاست دائمی مهندسی و اعتبارسنجی زیروتراست مخزن (Engineering Execution & Verification Policy)
 
-**نسخه:** ۱.۱.۰ | **تاریخ:** ۲۰۲۶-۰۹-۲۱ | **مالک:** حاکمیت مهندسی مخزن `rezaa2544/p2`  
+**نسخه:** ۱.۲.۰ | **تاریخ:** ۲۰۲۶-۰۹-۲۱ | **مالک:** حاکمیت مهندسی مخزن `rezaa2544/p2`  
 **وضعیت:** سند مرجع دائمی و الزام‌آور برای تمام Agentها، Chatها و توسعه‌دهندگان  
 
 ---
@@ -103,6 +103,46 @@ $$\text{Truth} = \text{current HEAD} + \text{current runtime} + \text{current te
 
 این Rule سطح اطمینان و عمق verification را افزایش می‌دهد، اما **هیچ Agent یا Chat مجاز نیست از عبارت «تأیید ۱۰۰٪ قطعی»، «بدون امکان خطا» یا هر ادعای یقین مطلق استفاده کند**. وضعیت نهایی باید فقط بر اساس evidence واقعی و قابل بازتولید تعیین شود.
 
+ 
+### Rule 16 — Task Contract Before Execution (قرارداد اجباری تسک)
+پیش از شروع هر Chat، برای هر یک از ۵ تسک باید Objective، Scope، Out of Scope، Owner، Dependencies، Acceptance Criteria، Required Evidence، Verification Plan و Expected Output مشخص شود. تسک مبهم نباید بدون تعیین این موارد اجرا شود.
+
+### Rule 17 — Plan Before Change (برنامه قبل از تغییر)
+پیش از هر تغییر کد/پیکربندی حساس، Agent باید Understand → Plan → Change → Verify → Document را اجرا کند و Root-Cause Hypothesis، Impact Analysis، Change Plan و Verification Plan را ثبت نماید.
+
+### Rule 18 — No Context Loss (تداوم وضعیت)
+هر Chat باید وضعیت قابل انتقال شامل Current Phase، Completed Tasks، Open Tasks، Decisions، Evidence، Blockers و Next Action تولید کند تا با قطع نشست یا انتقال کار، context از بین نرود.
+
+### Rule 19 — Independent Reviewer Mindset (بازبینی خصمانه)
+پس از هر Task، Agent باید Self-Adversarial Review انجام دهد و مشخص کند اگر تغییر غلط باشد چگونه شکست می‌خورد، چه چیزی هنوز اثبات نشده و چه فرض‌هایی بدون evidence باقی مانده‌اند.
+
+### Rule 20 — Change Minimality (حداقل‌گرایی تغییر)
+هر تغییر باید کوچک‌ترین تغییر لازم برای رفع مسئله باشد. Refactor غیرضروری، cleanup نامرتبط، تغییر معماری یا dependency upgrade بدون نیاز و دلیل مستند ممنوع است.
+
+### Rule 21 — Evidence Ledger (دفتر شواهد)
+هر Chat باید Evidence Ledger شامل Item، Claim، Evidence، SHA، Command و Status داشته باشد. نتیجه‌ای که فقط در متن Chat وجود دارد evidence معتبر محسوب نمی‌شود.
+
+### Rule 22 — Dependency Awareness (آگاهی وابستگی)
+قبل از تغییر، dependencyهای سرویس، API، database، migration و infrastructure و اثر تغییر بر آن‌ها باید بررسی و ثبت شوند.
+
+### Rule 23 — Rollback First (بازگشت‌پذیری)
+قبل از تغییرات حساس باید نقطه بازگشت و روش rollback مشخص باشد، به‌خصوص برای Database، Security، Infrastructure، Deployment و Migration.
+
+### Rule 24 — Artifact Integrity (تمامیت آرتیفکت)
+هر artifact مهم باید دارای version، owner، timestamp، SHA و source/provenance قابل ردیابی باشد.
+
+### Rule 25 — No Silent Assumption (عدم فرض پنهان)
+هر فرض باید صریحاً یکی از این وضعیت‌ها را داشته باشد: VERIFIED FACT، DOCUMENTED ASSUMPTION، OPEN QUESTION یا BLOCKER. فرض پنهان ممنوع است.
+
+### Rule 26 — Cross-Chat Synchronization (همگام‌سازی بین Chatها)
+در کار موازی، هر Chat باید پیش از شروع وضعیت کار سایر Chatها، تغییرات فایل‌ها و dependencyهای جدید را بررسی کند. Conflict باید پیش از merge یا overwrite شناسایی و حل شود.
+
+### Rule 27 — Completion Requires Three Proofs (سه اثبات برای تکمیل)
+هیچ Task کامل نیست مگر سه نوع proof متناسب با Scope داشته باشد: Implementation Proof، Behavior Proof و Failure Proof. در مواردی که یکی قابل اعمال نیست، دلیل فنی باید ثبت شود.
+
+### Rule 28 — Agent Efficiency Optimization (بهینه‌سازی بازده Agent)
+هدف، بیشترین evidence قابل اتکا با کمترین عملیات ضروری است؛ تعداد commandها یا تغییرات به‌خودی‌خود معیار موفقیت نیست. کار تکراری بدون افزایش پوشش ریسک ممنوع است.
+
 ---
 
 ## ۳. مهارت‌های دائمی اعتبارسنجی مهندسی (Engineering Verification Skills)
@@ -142,3 +182,43 @@ $$\text{Truth} = \text{current HEAD} + \text{current runtime} + \text{current te
 
 ### SKILL-12 — Ownership & Governance
 تغییر کد فقط در محدوده اختیارات مخزن و واگذاری صریح تصمیمات مالکیتی به مالک مخزن.
+
+### SKILL-13 — Task Decomposition
+شکستن مأموریت‌های بزرگ به واحدهای مشخص، مستقل، قابل اندازه‌گیری و قابل Verification.
+
+### SKILL-14 — Root Cause Analysis
+استفاده از 5 Why، Fault Tree و Dependency Analysis برای تشخیص علت ریشه‌ای پیش از Fix.
+
+### SKILL-15 — Evidence Engineering
+ساخت evidence package قابل ردیابی شامل logs، metrics، traces، test output، artifacts و SHA متناسب با نیاز.
+
+### SKILL-16 — Change Risk Assessment
+طبقه‌بندی ریسک تغییر به LOW، MEDIUM، HIGH یا CRITICAL و تعیین عمق Verification متناسب با ریسک.
+
+### SKILL-17 — State Continuity Management
+حفظ context و handoff قابل استفاده بین Chatها، Phaseها و Sessionها.
+
+### SKILL-18 — Rollback Engineering
+طراحی و آزمون مسیر rollback برای تغییرات مهم و حساس.
+
+### SKILL-19 — Dependency Mapping
+شناسایی service graph، API dependency، database dependency و infrastructure dependency پیش از تغییر.
+
+### SKILL-20 — Artifact Provenance
+قابل‌ردیابی نگه‌داشتن منشأ، نسخه، SHA، تولیدکننده و محیط هر artifact مهم.
+
+### SKILL-21 — Agent Self Audit
+ممیزی مستقل خروجی خود Agent پیش از اعلام completion و بررسی فرض‌ها، شواهد ناقص و خطاهای احتمالی.
+
+### SKILL-22 — Parallel Work Coordination
+هماهنگی کار موازی برای جلوگیری از duplicate work، conflicting changes و merge failure.
+
+### SKILL-23 — Performance Impact Verification
+بررسی اثر تغییرات مرتبط بر latency، throughput، memory، CPU و database load.
+
+### SKILL-24 — Security Boundary Review
+بررسی authentication، authorization، secrets، data exposure و privilege boundaries برای تغییرات مرتبط.
+
+### SKILL-25 — Operational Readiness
+پیش از completion مرتبط با عملیات، بررسی monitoring، alerting، logging، recovery و runbook.
+
