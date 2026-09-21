@@ -1,3 +1,14 @@
+---
+# F-QA-04 (Chat 4 remediation): Codacy requires this file to BEGIN with a triple-dash
+# line; without it the file is not recognised as a Codacy configuration file at all.
+# See https://docs.codacy.com/repositories-configure/codacy-configuration-file/
+#
+# NOTE — deliberate, documented limitation: `engines.<tool>.enabled` is NOT honoured by
+# the Codacy configuration file. Per Codacy's own documentation, "the Codacy
+# configuration file lets you configure tools, but you can't enable or disable them" —
+# that is only possible on the Code patterns page of the Codacy web UI. The pmd /
+# pmd-legacy blocks below are therefore INERT and are kept only to record intent.
+# Disabling those tools is an OWNER ACTION in the Codacy UI, not a repo change.
 engines:
   pmd:
     enabled: false

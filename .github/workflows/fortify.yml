@@ -36,13 +36,25 @@ jobs:
       security-events: write
       # pull-requests: write     # Required if DO_PR_COMMENT is set to true
 
+    # F-QA-04 (Chat 4 remediation): the `secrets` context is NOT available inside a
+    # step-level `if:` (GitHub context-availability rules). The previous conditions
+    # referenced `secrets.*` directly in `if:`, which made this workflow file INVALID —
+    # every run failed instantly with zero jobs, so the "skip without credentials"
+    # branch could never execute and Fortify produced no signal in either direction.
+    # Secrets ARE allowed in `jobs.<id>.env`, so credential presence is resolved once
+    # here into a plain string and the steps below branch on `env.*` instead.
+    # This changes no security semantics: no scan is skipped that previously ran.
+    env:
+      FOD_CREDENTIALS_PRESENT: ${{ (secrets.FOD_CLIENT_ID != '' || secrets.FOD_USER != '') && 'true' || 'false' }}
+      IS_FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+
     steps:
       # Check out source code
       - name: Check Out Source Code
         uses: actions/checkout@v4
 
       - name: Skip Fortify Scan without credentials or on forked PRs
-        if: ${{ (secrets.FOD_CLIENT_ID == '' && secrets.FOD_USER == '') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
+        if: ${{ env.FOD_CREDENTIALS_PRESENT == 'false' || env.IS_FORK_PR == 'true' }}
         run: echo "Skipping Fortify scan because required credentials are not available or the PR comes from a fork. Configure repository secrets for Fortify and rerun the workflow."
 
       # Perform SAST and/or SCA scan via Fortify on Demand/Fortify Hosted/ScanCentral SAST/Debricked. Based on
@@ -54,7 +66,7 @@ jobs:
       # documentation at https://github.com/fortify/github-action#readme for more information on the various
       # configuration options and available sub-actions.
       - name: Run Fortify Scan
-        if: ${{ (secrets.FOD_CLIENT_ID != '' || secrets.FOD_USER != '') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        if: ${{ env.FOD_CREDENTIALS_PRESENT == 'true' && env.IS_FORK_PR != 'true' }}
         # Specify Fortify GitHub Action version to run. As per GitHub starter workflow requirements, this example
         # uses the commit id corresponding to version 1.6.2. It is recommended to check whether any later releases
         # are available at https://github.com/fortify/github-action/releases. Depending on the amount of stability

@@ -194,5 +194,12 @@ jobs:
         node tests/env-flags.js
         node tests/wave15-health.js
 
+    # F-QA-05 (Chat 4 remediation): قرارداد هم‌ترازی تست و CI.
+    # `npm test` فقط دو ورودی را اجرا می‌کند؛ این گیت آن محدودیت را صریح و ماشین‌خوان
+    # نگه می‌دارد و اگر فایل تستِ تازه‌ای اضافه شود که هیچ اتوماسیونی اجرایش نمی‌کند،
+    # قرمز می‌شود. هیچ تستی را skip یا حذف نمی‌کند.
+    - name: TEST/CI parity contract — npm test ≠ whole repository
+      run: node tests/ci-test-parity-contract.js
+
     - run: npm run build --if-present
     - run: npm test
