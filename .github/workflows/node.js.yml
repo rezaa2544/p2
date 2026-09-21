@@ -212,6 +212,7 @@ jobs:
         node tests/r1-eliminate-ram-authorities.test.js
         node tests/r2-postgres-authority-fail-closed.js
         node tests/schema-migrations-ledger.test.js
+        node tests/c3-remediation-regression.test.js
 
     # Boot-policy suites: previously red outside the manual battery (loose
     # ALLOW_MEMORY_FALLBACK semantics + stale expectations — Phase 8.1 R5).
