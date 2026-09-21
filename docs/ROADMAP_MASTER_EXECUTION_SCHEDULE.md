@@ -970,3 +970,22 @@ S140      G10 — NATIONAL GO GATE (بازگواهی مستقل زیروتراس
 ║                                                                          ║
 ╚══════════════════════════════════════════════════════════════════════════╝
 ```
+
+
+## 0.4 الحاق Red-Team Chat 5 — 2026-09-21
+
+Chat 5 روی HEAD 138cd1d9 گزارش مستقل runtime/CI ارائه کرده است. **S2=VERIFIED (delivered/truthfully labeled)** ولی **Phase 8.2 Exit=NOT VERIFIED**.
+
+| Work item | Evidence required | Status | Gate |
+|---|---|---|---|
+| M1 / S3 | receiver واقعی، fault injection، alert→ack→runbook→recovery، timestamp، MTTA/MTTR | NOT VERIFIED | BLOCKING |
+| M2 / S4 PG | restore/promote معادل تولید، T1-T7، identity/checksum، RPO/RTO | NOT VERIFIED (E3 partial) | BLOCKING |
+| M3 / S4 Redis | restore/failover و verification رفتار revocation/rate-limit | NOT VERIFIED (E3 restart only) | BLOCKING |
+| M0 | redis.init bootstrap در session-revocation | P3 | Non-blocking |
+| M5 | اصلاح stub verification report | P3 | بعد از M1-M3 |
+
+**Execution order:** M0 → M1 → M2 → M3 → M5 → Gate 8.2 VERIFIED → Phase 8.3.
+
+**Evidence rule:** E3 isolated restore، وجود config/runbook، یا TARGET/POLICY metrics به‌تنهایی برای عبور E4 کافی نیستند. National load testing در sandbox ممنوع و به Phase 8.3 staging production-equivalent موکول است.
+
+مرجع: docs/audit/CHAT5_PHASE8_2_DELTA_2026-09-21.md.
