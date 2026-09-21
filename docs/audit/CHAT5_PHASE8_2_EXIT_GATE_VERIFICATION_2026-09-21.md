@@ -217,8 +217,12 @@ Phase 8.3 pre-requisites (to be executed only after Phase 8.2 is signed VERIFIED
 
 ## Push verification
 
-This report was committed and pushed to `rezaa2544/p2:main` as part of the Chat 5 integration mission. Push confirmation:
+This report was committed and pushed to `rezaa2544/p2:main` as part of the Chat 5 integration mission.
 
 ```
-<push verification block — see git output below>
+commit  969a8092c05f00a05775cf930e64a38a6e53652a
+branch  main
+push    b3027db9..969a8092  main -> main  (fast-forward)
+verify  git ls-remote origin refs/heads/main
+        → 969a8092c05f00a05775cf930e64a38a6e53652a  refs/heads/main
 ```
