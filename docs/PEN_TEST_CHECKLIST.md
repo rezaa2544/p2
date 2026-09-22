@@ -111,7 +111,7 @@
 
 ## ۲) ابزارهای مورد نیاز
 
-- **OWASP ZAP** — DAST baseline در CI (`zaproxy/actions-baseline@v0.12.0`،
+- **OWASP ZAP** — DAST baseline در CI (`zaproxy/action-baseline@v0.12.0`،
   hard-gated؛ به `SECURITY_TARGET_URL` نیاز دارد) و اسکنِ تعاملیِ محلی.
   **P0 #6:** `tools/dast-live.sh --live [--scan full]` — استیجینگِ سبک +
   ZAP (docker `ghcr.io/zaproxy/zaproxy:stable` یا `ZAP_BIN` محلی) + artifact.
