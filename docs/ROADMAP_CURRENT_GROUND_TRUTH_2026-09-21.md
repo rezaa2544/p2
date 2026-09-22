@@ -3,8 +3,8 @@
 
 **Repository:** `rezaa2544/p2`  
 **Branch:** `main`  
-**Current HEAD at latest reconciliation: `7fb6a3a6495a613ae41a44a50d78d80908ef1493`
-**GitHub status on current HEAD:** `ci/circleci: say-hello` = **success**.  
+**Current HEAD at latest reconciliation: `59c7b433762c637729e143d79ba8390ca80cb619`
+**GitHub Actions status on current HEAD: **NOT VERIFIED** — no workflow run was returned for this exact SHA by the available connector; older successful runs are historical evidence.
 **GitHub Actions workflow runs:** none were returned for this commit by the connector; historical Node.js CI #1093 is **not** current-HEAD evidence.  
 **Note:** current `main` is 5 commits ahead of the previous reconciliation commit `f22af312...`; those commits touch migrations/DB/outbox/OCC paths, not the DR/HA implementation files used by DR-01.  
 **Purpose:** این سند لایهٔ وضعیت جاری است تا بین Master Schedule، گزارش‌های ممیزی و وضعیت واقعی GitHub اختلاف ایجاد نشود.
@@ -30,8 +30,8 @@
 |---|---|---|
 | Phase 8 Entry | VERIFIED | ورودی Zero-Trust معتبر است |
 | Phase 8.1 | VERIFIED | R5/R15/R16/R20 و باتری اصلی تثبیت شده |
-| CI روی HEAD فعلی | VERIFIED | Node.js CI #1093 موفق؛ PG/Redis، ledger، 8.1 batteries و R1/R2/R21 اجرا شدند |
-| R1/R2/R21 remediation | VERIFIED در CI فعلی | suiteهای اختصاصی موفق |
+| CI روی HEAD فعلی | **NOT VERIFIED** | برای این SHA run قابل استناد برنگشت؛ #1093 متعلق به SHA قدیمی است و فقط evidence تاریخی است |
+| R1/R2/R21 remediation | **VERIFIED on historical CI evidence** | suiteهای اختصاصی در CI #1093 موفق بودند؛ current-head revalidation ثبت نشده |
 | Phase 8.2 S2 | PARTIAL | SLO/تصمیمات/metrics تحویل شده، ولی شواهد تفصیلی S3/S4 ناقص است |
 | Phase 8.2 exit gate | NOT VERIFIED | هنوز نباید 8.3 را به‌عنوان شروع‌شده اعلام کنیم |
 | Phase 8.3 | PLANNED | پس از بسته‌شدن Gate 8.2 |
@@ -618,3 +618,17 @@ The unchanged DR code path means the historical finding remains applicable to cu
 The commits after the previous DR reconciliation are OCC/migration/outbox/runtime-test changes; comparison against the audited DR/HA baseline shows no change to `tools/pitr-restore.sh`, `tools/pitr-verify.sh`, or the DR-01 implementation path. CircleCI `ci/circleci: say-hello` is the current status evidence; historical Node.js CI #1093 is not reused.
 
 **Gate decision:** DR-01 = PARTIAL / historical E3 confirmed, current runtime refresh missing; E3 = PARTIAL for documented historical drills; E4 = NOT VERIFIED; S3/S4/E4 infrastructure = EXTERNAL BLOCKERS; RPO/RTO acceptance = OWNER DECISION REQUIRED; Phase 8.2 Exit = BLOCKED / NOT VERIFIED; Phase 8.3 = BLOCKED; Production GO = NOT DECLARED.
+
+
+## Current Status Reconciliation — 2026-09-22
+
+- **Current main HEAD:** `59c7b433762c637729e143d79ba8390ca80cb619`.
+- **Current-head CI:** **NOT VERIFIED**. No GitHub Actions workflow run was returned for this exact SHA by the available connector. Do not inherit CI status from #1093/#1155 or older SHAs.
+- **Phase 8.1:** **VERIFIED historically** on its cited evidence; this does not imply current-head CI revalidation.
+- **R1/R2/R21:** **VERIFIED on historical CI evidence; current-head revalidation REQUIRED**.
+- **Phase 8.2 S2:** **VERIFIED AS DELIVERED** where its cited evidence applies.
+- **Phase 8.2 Exit:** **NOT VERIFIED**.
+- **Phase 8.3:** **BLOCKED BY 8.2 EXIT**.
+- **Production GO:** **NOT DECLARED**.
+- **Outbox/worker/Redis remediations:** retain **E3** classification where explicitly evidenced; do not promote them to E4.
+- **National capacity claims (10M / 20k RPS / 2.5k write TPS):** **NOT VERIFIED** as E4 measurements.
