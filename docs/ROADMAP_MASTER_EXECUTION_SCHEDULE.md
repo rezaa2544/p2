@@ -1199,7 +1199,7 @@ F-QA-02 → F-QA-03 → F-QA-01 → F-QA-08 → M1 → M2 → M3 → OUTBOX-002 
 
 This appendix supersedes all earlier embedded HEAD/checkpoint values in this historical schedule.
 
-**Reviewed code baseline:** `55cd021b3f17d23cf540b5afeb013dce6e6486b9`
+**Reviewed code baseline:** `3427d7ab84cdcbbacbcbc8978383859ab549fc69`
 
 ## Current status
 
@@ -1249,7 +1249,7 @@ Historical E3 DR/HA measurements remain E3. E4 requires production-equivalent to
 |---|---|---|---|---|
 | Migration parser hardening | **VERIFIED (repo change)** | bounded parser + adversarial regression | `9d565d7b...` | current runtime CI |
 | Security scanner gates | **VERIFIED (repo change)** | hard-fail SCA/SBOM/DAST + contract test | `9d565d7b...` | current runtime CI |
-| Observability gates | **VERIFIED (repo change)** | permissions + placeholder + Loki/Promtail gates | `9d565d7b...` | current runtime CI |
+| Observability gates | **VERIFIED (repo change)** | permissions + placeholder + Loki/Promtail gates + Alertmanager entrypoint + semantic guard hardening | `9d565d7b...` | current runtime CI |
 | OCC | **RUNTIME NOT VERIFIED** | live suite remains hard-gated | `9d565d7b...` | completed current-head CI |
 | Worker/Outbox/DLQ | **RUNTIME NOT VERIFIED** | hard-gated regression/live suites | `9d565d7b...` | current-head CI + E4 multi-worker |
 | PostgreSQL DR | **E3 VERIFIED / E4 NOT VERIFIED** | historical E3 evidence | `9d565d7b...` | E4 restore/promote |
