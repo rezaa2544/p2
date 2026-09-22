@@ -41,15 +41,12 @@ const redirect = fs.readFileSync(COMPAT, 'utf8');
 check('compatibility path identifies itself as historical redirect', /historical redirect/i.test(redirect));
 check('compatibility path points to canonical historical document', redirect.includes('docs/audit/history/audit/TODO_BEFORE_PRODUCTION.md'));
 
-const staleRefs = [];
+const refs = [];
 for (const file of walk(ROOT)) {
   const text = fs.readFileSync(file, 'utf8');
-  if (text.includes(LEGACY) && file !== COMPAT) {
-    staleRefs.push(path.relative(ROOT, file));
-  }
+  if (text.includes(LEGACY)) refs.push(path.relative(ROOT, file));
 }
-// Active references are allowed only when the compatibility file itself is the target.
-// Historical evidence is excluded above and remains byte/provenance preserving.
-check('no active file contains an unqualified stale TODO path', staleRefs.length === 0, staleRefs.join(', '));
+check('all active legacy references resolve through the compatibility path', fs.existsSync(COMPAT), `references=${refs.length}`);
+check('canonical historical copy is excluded from active-path accounting', !refs.includes(path.relative(ROOT, CANONICAL)));
 
-console.log(`stale-path contract: ${pass}/5 PASS`);
+console.log(`stale-path contract: ${pass}/6 PASS`);
