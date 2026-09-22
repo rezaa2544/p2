@@ -45,17 +45,17 @@
 
 ## ۰.۱ وضعیت اجرایی به‌روزشده — 2026-09-21
 
-> **Current HEAD:** `59c7b433762c637729e143d79ba8390ca80cb619`  
+> **Current HEAD: `37e56459eaa4b2a9c5cf4747a2775d57b22c5055`  
 > **Current roadmap ground truth:** `docs/ROADMAP_CURRENT_GROUND_TRUTH_2026-09-21.md`
 
 | موضوع | وضعیت جاری | مبنای تصمیم |
 |---|---|---|
 | Phase 8.1 | VERIFIED | گزارش 8.1 + CI فعلی |
-| Node.js CI روی HEAD | **NOT VERIFIED** | برای SHA فعلی `59c7b433762c637729e143d79ba8390ca80cb619` run قابل استناد از connector برنگشت؛ #1093 historical است |
-| R1/R2/R21 | **VERIFIED historically** | suiteهای اختصاصی در CI #1093 موفق بودند؛ current-head revalidation ثبت نشده |
+| Node.js CI روی HEAD | **NOT VERIFIED** | No GitHub Actions run returned for exact current SHA; historical runs are not current evidence |
+| R1/R2/R21 | **VERIFIED historically** | Current-head rerun/evidence required; historical CI does not promote status |
 | Phase 8.2 | **PARTIAL — Evidence Reconciliation Required** | گزارش نهایی کوتاه VERIFIED است، اما Exit Evidence تفصیلی S3/S4 در اسناد موجود کامل ردیابی نشده |
-| Phase 8.2 Exit | **NOT VERIFIED** | alert→on-call→runbook E4 و restore identity/RPO/RTO باید با run/artifact قابل بازتولید بسته شوند |
-| Phase 8.3 | PLANNED / BLOCKED BY 8.2 EXIT | شروع اجرایی پس از عبور Gate 8.2 |
+| Phase 8.2 Exit | **NOT VERIFIED** | S3/S4 E4 evidence remains required |
+| Phase 8.3 | **BLOCKED** | Dependency: Phase 8.2 Exit |
 | Phase 8.4 | PLANNED | tenant hardening / R3 |
 | Phase 8.5 | PLANNED | WAF enforce + independent certification |
 | Phase 9.0 | PLANNED | Educational Wiring Gate |
@@ -1170,3 +1170,14 @@ F-QA-02 → F-QA-03 → F-QA-01 → F-QA-08 → M1 → M2 → M3 → OUTBOX-002 
 | Outbox/worker/Redis remediation | **E3 only** where explicitly evidenced | E3 ≠ E4; no production-readiness inference. |
 
 **Status precedence:** exact current-SHA evidence > current code/tests > SHA-bound audit > historical reports. A historical `VERIFIED` label does not upgrade the current SHA.
+
+
+## Current-HEAD reconciliation — 2026-09-22
+
+**Current HEAD:** `37e56459eaa4b2a9c5cf4747a2775d57b22c5055`
+
+- CircleCI `ci/circleci: say-hello`: success (run 501 on parent HEAD; this documentation commit itself has no new runtime evidence).
+- GitHub Actions Node.js CI on this exact HEAD: **NOT VERIFIED**.
+- Phase 8.2 Exit: **NOT VERIFIED**.
+- Phase 8.3: **BLOCKED**.
+- Production GO: **NOT DECLARED**.
