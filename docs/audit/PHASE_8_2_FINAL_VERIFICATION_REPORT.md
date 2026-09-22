@@ -9,7 +9,7 @@
 |---|---|
 | Repository | `rezaa2544/p2` |
 | Branch | `main` |
-| Reviewed code baseline | `55cd021b3f17d23cf540b5afeb013dce6e6486b9` |
+| Reviewed code baseline | `3427d7ab84cdcbbacbcbc8978383859ab549fc69` |
 | Current-head CircleCI | `ci/circleci: say-hello` — **PENDING** at run 608 when this reconciliation was recorded |
 | GitHub Actions for the reviewed code baseline | **NO RUN RETURNED** for this exact SHA |
 | Current-head combined status | CircleCI pending only |
@@ -45,7 +45,7 @@ Fix merged in PR #345:
 
 Fix merged in PR #345:
 - explicit `permissions: contents: read` in observability workflow;
-- checked-in Alertmanager placeholder rejection test;
+- checked-in Alertmanager placeholder rejection test;\n- explicit Alertmanager entrypoint override so the fail-closed shell is actually executed;\n- synthetic CI-only Grafana password for compose interpolation;\n- semantic guard handles absent secondary catalogue and single-line PromQL expressions;
 - isolated Loki/Promtail runtime ingestion gate for both server-log and audit-log streams;
 - current semantic/config guards retained.
 
