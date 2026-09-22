@@ -25,7 +25,7 @@ chk('Prometheus points at Alertmanager', /alertmanager:9093/.test(prom));
 chk('all active alerts have for + severity', [...rules.matchAll(/- alert:[\s\S]*?(?=\n\s*- alert:|\n*$)/g)].every((m) => /for: \d+m/.test(m[0]) && /severity: (critical|warning)/.test(m[0])));
 chk('canonical P0 alert count is 11', (rules.match(/- alert:/g) || []).length === 11);
 chk('HTTP error alert uses emitted code label', /payesh_http_requests_total\{code=~"5\.\."\}/.test(rules));
-chk('event-loop alert has no dead q selector', /payesh_eventloop_lag_ms\s*>\s*100/.test(rules) && !/payesh_eventloop_lag_ms\{q=/.test(rules));
+chk('event-loop alert uses canonical seconds gauge', /payesh_node_eventloop_lag_seconds\s*>\s*0\.1/.test(rules) && !/payesh_eventloop_lag_ms\{/.test(rules));
 chk('memory alert uses canonical Node heap gauges', /payesh_node_heap_used_bytes/.test(rules) && /payesh_node_heap_total_bytes/.test(rules));
 chk('critical alerts are wired', /alert: HighErrorRate[\s\S]*?severity: critical/.test(rules) && /alert: RedisDown[\s\S]*?severity: critical/.test(rules));
 chk('all alert metric names occur in metrics.js', [...new Set((rules.match(/payesh_[a-z0-9_]+/g) || []))].every((m) => metrics.includes("'" + m + "'") || metrics.includes(m.replace(/_(bucket|sum|count)$/, ''))));
