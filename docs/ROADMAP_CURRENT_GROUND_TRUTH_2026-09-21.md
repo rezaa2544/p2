@@ -3,9 +3,10 @@
 
 **Repository:** `rezaa2544/p2`  
 **Branch:** `main`  
-**Current HEAD:** `f5e7595563e34557a30042af248d01a39756ee4f`  
-**Last verified GitHub status:** `ci/circleci: say-hello` = success (current HEAD)  
-**Node.js Actions status:** no workflow run was returned for current HEAD by the GitHub connector; do not carry forward #1093 as current-HEAD evidence.  
+**Current HEAD at reconciliation baseline:** `77e589a0ec61129ca19f044f1b088e2ae73d3a7b`  
+**GitHub status at that baseline:** `ci/circleci: say-hello` = pending.  
+**Node.js Actions:** no workflow run was returned for that baseline by the GitHub connector; do not carry forward historical Node.js CI #1093 as current-HEAD evidence.  
+**Note:** this document update itself creates a new commit; the final pushed SHA is reported in the task report.  
 **Purpose:** این سند لایهٔ وضعیت جاری است تا بین Master Schedule، گزارش‌های ممیزی و وضعیت واقعی GitHub اختلاف ایجاد نشود.
 
 ---
