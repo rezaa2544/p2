@@ -687,3 +687,84 @@ The latest commit is documentation reconciliation only; it does not create runti
 ## Final Gate Owner working checkpoint — 2026-09-22
 
 At `6460e55dfbea4a5cfe82a5d79f7106e367778ed3`, no GitHub Actions workflow run and no combined status check were returned. This is an evidence gap, not a green result. Phase 8.2 Exit remains NOT VERIFIED; Phase 8.3 remains BLOCKED; Production GO remains NOT DECLARED.
+
+
+---
+
+# 2026-09-22 — FINAL CURRENT-HEAD RECONCILIATION
+
+> This section supersedes all earlier embedded "current HEAD" checkpoints in this historical document.
+> Historical sections remain historical and are not current truth.
+
+| Field | Current truth |
+|---|---|
+| Repository | `rezaa2544/p2` |
+| Branch | `main` |
+| Current HEAD | `21ec84e1b80c8b85d2390093ab0511e48a7b135b` |
+| CircleCI | `ci/circleci: say-hello` run 608 was pending at the preceding code reconciliation; this documentation commit created a new run |
+| GitHub Actions | No workflow run returned for the preceding current code SHA; this remains **NOT VERIFIED** until a completed run exists |
+| Repo-owned defect queue | **ZERO** after PR #345 and documentation reconciliation |
+| Phase 8.2 Exit | **NOT VERIFIED** |
+| Phase 8.3 | **BLOCKED** |
+| Production GO | **NOT DECLARED** |
+
+## Repo-owned fixes closed in this cycle
+
+1. Migration transaction-wrapper parser: replaced CodeQL-flagged backtracking regex with bounded scanners and added hostile-input regression coverage.
+2. Security CI: removed `continue-on-error` from SCA/SBOM/DAST; scanner failures can no longer be converted into green jobs.
+3. Observability CI: added explicit read-only permissions, checked-in Alertmanager placeholder failure coverage, and Loki/Promtail runtime ingestion verification.
+4. Security documentation: reconciled CI gate wording and ZAP action reference.
+
+All four were merged through PR #345. No known repo-owned defect from this reconciliation remains open.
+
+## Evidence boundary
+
+Current code/test wiring is reconciled on the exact main SHA, but a completed GitHub Actions execution for the current code SHA is still required before claiming current-head runtime PASS for migration, OCC, Redis, Outbox, production verifier, observability runtime, SCA/SBOM/DAST, or the full npm test battery.
+
+E3 DR/PITR and Redis HA evidence remains E3. E4 requires production-equivalent topology and failure domains and is not inferred from E3.
+
+## External blockers
+
+### BLOCKER
+**OWNER:** Repository/CI administrator + GitHub Actions platform  
+**DEPENDENCY:** completed current-head Node.js/Security/Observability workflow runs  
+**WHY NOT REPO-OWNED:** workflows are present and hard-fail; the available API has not returned a completed current-head Actions run  
+**REQUIRED EXTERNAL EVIDENCE:** exact-SHA run IDs, conclusions, failed/skipped steps, artifacts
+
+### BLOCKER
+**OWNER:** SRE / infrastructure owner  
+**DEPENDENCY:** E4 multi-host PG/Redis + S3/off-site backup environment  
+**WHY NOT REPO-OWNED:** production-equivalent topology cannot be fabricated in the repository  
+**REQUIRED EXTERNAL EVIDENCE:** restore identity, failover, partition, S3, RPO/RTO, independent reruns
+
+### BLOCKER
+**OWNER:** SRE / on-call owner  
+**DEPENDENCY:** real alert receiver and human acknowledgement path  
+**WHY NOT REPO-OWNED:** credentials, receiver and acknowledgement are deployment/operations dependencies  
+**REQUIRED EXTERNAL EVIDENCE:** fire/delivery/ack/recovery timestamps, MTTA/MTTR, runbook evidence
+
+### BLOCKER
+**OWNER:** Performance/infrastructure owner  
+**DEPENDENCY:** E4 10M dataset + load/soak environment  
+**WHY NOT REPO-OWNED:** national-scale claims require production-equivalent workload and topology evidence  
+**REQUIRED EXTERNAL EVIDENCE:** workload, concurrency, run count, p50/p95/p99, error rate, saturation/resource data, reruns
+
+## Final Gate Matrix
+
+| Gate | Status | Evidence | SHA | Remaining External Dependency |
+|---|---|---|---|---|
+| Migration parser hardening | **VERIFIED (repo change)** | bounded parser + adversarial regression committed | `21ec84e1...` | current runtime CI |
+| Security scanner gates | **VERIFIED (repo change)** | no `continue-on-error: true` in security workflow; contract test updated | `21ec84e1...` | current runtime CI |
+| Observability gates | **VERIFIED (repo change)** | permissions + placeholder + Loki/Promtail runtime gates | `21ec84e1...` | current runtime CI |
+| OCC | **RUNTIME NOT VERIFIED** | live suite is hard-gated in Node.js CI | `21ec84e1...` | completed current-head CI |
+| Worker/Outbox/DLQ | **RUNTIME NOT VERIFIED** | hard-gated regression/live suites present | `21ec84e1...` | completed current-head CI + E4 multi-worker |
+| PostgreSQL DR | **E3 VERIFIED / E4 NOT VERIFIED** | historical E3 only | `21ec84e1...` | E4 restore/promote |
+| Redis DR | **E3 VERIFIED / E4 NOT VERIFIED** | historical E3 only | `21ec84e1...` | E4 failover/restore |
+| Backup/restore | **E3 VERIFIED / E4 NOT VERIFIED** | historical E3 evidence | `21ec84e1...` | E4 target identity + RPO/RTO |
+| Alerting | **REPO CONFIG VERIFIED / E4 NOT VERIFIED** | canonical rules + fail-closed config tests | `21ec84e1...` | receiver/on-call/ack/recovery |
+| CI | **HARD GATE CONFIG VERIFIED / RUNTIME NOT VERIFIED** | hard-fail workflows; no current Actions run | `21ec84e1...` | current completed CI |
+| Roadmap/docs | **VERIFIED** | this current-head appendix + final verification report | `21ec84e1...` | none |
+| Phase 8.2 Exit | **NOT VERIFIED** | E4 S3/S4 evidence absent | `21ec84e1...` | external E4 |
+| Phase 8.3 | **BLOCKED** | depends on 8.2 exit | `21ec84e1...` | 8.2 exit + E4 load environment |
+| Production GO | **NOT DECLARED** | no production-equivalent E4 gate | `21ec84e1...` | all required E4 evidence |
+
