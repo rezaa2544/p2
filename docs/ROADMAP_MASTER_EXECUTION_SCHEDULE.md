@@ -45,14 +45,14 @@
 
 ## ۰.۱ وضعیت اجرایی به‌روزشده — 2026-09-21
 
-> **Current HEAD:** `fbe178be7c99ddb6c068eee4f7b389a6b9e7aeab`  
+> **Current HEAD:** `59c7b433762c637729e143d79ba8390ca80cb619`  
 > **Current roadmap ground truth:** `docs/ROADMAP_CURRENT_GROUND_TRUTH_2026-09-21.md`
 
 | موضوع | وضعیت جاری | مبنای تصمیم |
 |---|---|---|
 | Phase 8.1 | VERIFIED | گزارش 8.1 + CI فعلی |
-| Node.js CI روی HEAD | VERIFIED | Run #1093؛ تمام jobهای اصلی موفق |
-| R1/R2/R21 | VERIFIED در CI | suiteهای اختصاصی در Node.js CI #1093 |
+| Node.js CI روی HEAD | **NOT VERIFIED** | برای SHA فعلی `59c7b433762c637729e143d79ba8390ca80cb619` run قابل استناد از connector برنگشت؛ #1093 historical است |
+| R1/R2/R21 | **VERIFIED historically** | suiteهای اختصاصی در CI #1093 موفق بودند؛ current-head revalidation ثبت نشده |
 | Phase 8.2 | **PARTIAL — Evidence Reconciliation Required** | گزارش نهایی کوتاه VERIFIED است، اما Exit Evidence تفصیلی S3/S4 در اسناد موجود کامل ردیابی نشده |
 | Phase 8.2 Exit | **NOT VERIFIED** | alert→on-call→runbook E4 و restore identity/RPO/RTO باید با run/artifact قابل بازتولید بسته شوند |
 | Phase 8.3 | PLANNED / BLOCKED BY 8.2 EXIT | شروع اجرایی پس از عبور Gate 8.2 |
@@ -1152,3 +1152,21 @@ F-QA-02 → F-QA-03 → F-QA-01 → F-QA-08 → M1 → M2 → M3 → OUTBOX-002 
 
 این جدول **جایگزین گزارش‌های تاریخی نیست**؛ لایهٔ current-state است و باید در هر Chat جدید دوباره با Current HEAD reconcile شود.
 
+
+
+## ۰.۱-A — Current-HEAD Status Reconciliation (2026-09-22)
+
+**Current HEAD:** `59c7b433762c637729e143d79ba8390ca80cb619`
+
+| Gate / Area | Canonical status | Evidence boundary |
+|---|---|---|
+| Current-head CI | **NOT VERIFIED** | No Actions run returned for this exact SHA by the available connector. Older successful runs are historical. |
+| Phase 8.1 | **VERIFIED (historical evidence)** | Do not reinterpret as current-head CI proof. |
+| R1/R2/R21 | **VERIFIED (historical CI evidence)** | Current-head rerun/evidence required before using as current gate proof. |
+| Phase 8.2 S2 | **VERIFIED AS DELIVERED** | Delivery evidence is distinct from exit-gate evidence. |
+| Phase 8.2 Exit | **NOT VERIFIED** | S3/S4 E4 evidence remains required. |
+| Phase 8.3 | **BLOCKED** | Dependency: Phase 8.2 Exit. |
+| Production GO | **NOT DECLARED** | No production-equivalent E4 gate has been issued. |
+| Outbox/worker/Redis remediation | **E3 only** where explicitly evidenced | E3 ≠ E4; no production-readiness inference. |
+
+**Status precedence:** exact current-SHA evidence > current code/tests > SHA-bound audit > historical reports. A historical `VERIFIED` label does not upgrade the current SHA.
