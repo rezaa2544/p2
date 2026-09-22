@@ -29,11 +29,13 @@ evidence, E0–E4 discipline).
 
 | Field | Value |
 |---|---|
-| Report revision date | 2026-09-21 |
-| Commit under review | `ce990836b98052d1f7c5bb9bfa5293bf16725193` (`main`, HEAD at time of writing) |
-| Previously cited commit | `b0b55a13539dc917779d39053bfb8d2277428cc0` — **superseded, CI failed** |
-| Working tree | clean |
-| Canonical engine | Node `>= 22.0.0` (`package.json` engines) |
+| Report revision date | 2026-09-22 |
+| Current main SHA at reconciliation | `6460e55dfbea4a5cfe82a5d79f7106e367778ed3` |
+| Current-head GitHub Actions | **no workflow run returned** |
+| Current-head combined status | **no status checks returned** |
+| Canonical engine | Node >= 22.0.0 |
+
+This report must not reuse historical CI runs as current-head evidence.
 
 ## 3. CI evidence on the reviewed commit
 
@@ -110,14 +112,10 @@ on its SHA (F-QA-01).
 
 ## 8. What this document does and does not assert
 
-- **Asserts:** on `ce990836`, Node.js CI #1155 passed 28/28 with zero skips, and the four
-  local commands in §4 reproduce with exit 0.
-- **Does not assert:** that Phase 8.2 is complete, that the system is production ready, or
-  that any national-scale capacity figure has been measured. All capacity numbers remain
-  `TARGET/POLICY`.
+- **Asserts:** historical CI/runtime evidence cited above belongs to its stated SHA only.
+- **Current-head fact:** `6460e55dfbea4a5cfe82a5d79f7106e367778ed3` has no GitHub Actions run returned by the current review and no combined status checks returned.
+- **Does not assert:** Phase 8.2 completion, E4 DR, production readiness, or measured national-scale capacity.
 
 ---
 
-**Revision author:** Chat 4 — Independent QA / Release Governance
-**Supersedes:** the `VERIFIED` declaration published in `401d02b2`
-**Method:** every figure above is reproducible via the commands and run IDs cited
+**Final Gate Owner status:** Phase 8.2 Exit = NOT VERIFIED; Phase 8.3 = BLOCKED; Production GO = NOT DECLARED.

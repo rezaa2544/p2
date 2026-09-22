@@ -80,4 +80,9 @@ No Production GO is inferred from E3 evidence.
 
 ## Final observed snapshot
 
-The final observed operational baseline for this reconciliation is `7fb6a3a6495a613ae41a44a50d78d80908ef1493`. The later commits in the repository are documentation-only reconciliation commits; they do not change the DR-01 implementation path. Fresh current-runtime pgBackRest evidence remains missing.
+The final observed operational baseline for this reconciliation is `6460e55dfbea4a5cfe82a5d79f7106e367778ed3`. The later commits in the repository are documentation-only reconciliation commits; they do not change the DR-01 implementation path. Fresh current-runtime pgBackRest evidence remains missing.
+
+
+## Final Gate Owner current-head update — 2026-09-22
+
+The live branch was re-read before this update. The repository contains no executable pgBackRest lab in this review environment, so DR-01 remains E3 historical/current-code-equivalent evidence, not a fresh runtime execution. E4 remains NOT VERIFIED.
