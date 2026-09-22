@@ -72,3 +72,35 @@ jobs:
         run: node tests/wave14-observability-mutations.js
       - name: Independent dashboard regression
         run: node tests/observability-dashboards.js
+
+  promtail-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start Loki and Promtail against isolated test log files
+        run: |
+          set -e
+          mkdir -p /tmp/payesh-logs
+          : > /tmp/payesh-logs/server.log
+          : > /tmp/payesh-logs/audit.log
+          PAYESH_LOG_DIR=/tmp/payesh-logs docker compose -f infra/observability/docker-compose.observability.yml up -d loki promtail
+      - name: Inject real server and audit log lines
+        run: |
+          set -e
+          printf '%s\n' 'runtime-promtail-server-line' >> /tmp/payesh-logs/server.log
+          printf '%s\n' '{"event":"runtime-promtail-audit","trace_id":"runtime-trace-001"}' >> /tmp/payesh-logs/audit.log
+      - name: Verify Loki received both streams
+        run: |
+          set -e
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:3100/ready >/dev/null 2>&1 || true
+            server_json="$(curl -gsS --get 'http://127.0.0.1:3100/loki/api/v1/query_range'               --data-urlencode 'query={service="payesh",log_source="server-log"}'               --data-urlencode 'limit=20' || true)"
+            audit_json="$(curl -gsS --get 'http://127.0.0.1:3100/loki/api/v1/query_range'               --data-urlencode 'query={service="payesh",log_source="audit-log"}'               --data-urlencode 'limit=20' || true)"
+            printf '%s' "$server_json" | grep -F 'runtime-promtail-server-line' >/dev/null 2>&1 &&             printf '%s' "$audit_json" | grep -F 'runtime-promtail-audit' >/dev/null 2>&1 &&             printf '%s' "$audit_json" | grep -F 'runtime-trace-001' >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          echo 'Loki did not receive both Promtail streams in time' >&2
+          exit 1
+      - name: Stop isolated observability services
+        if: always()
+        run: PAYESH_LOG_DIR=/tmp/payesh-logs docker compose -f infra/observability/docker-compose.observability.yml down -v
