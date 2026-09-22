@@ -72,6 +72,26 @@ CI مرجعِ واقعیِ پوشش است، نه `npm test`:
 4. **هیچ گزارشی حق ندارد بنویسد «همهٔ تست‌ها سبزند»** مگر با استناد به run id مشخص و
    شمارش واقعی.
 
+## ۳.۳ طبقه‌بندیِ شکاف در Current HEAD
+
+گراف قبل از این تغییر بر پایهٔ فایل‌های `.js` سطح‌اول `tests/` و اجتماعِ ارجاع‌های
+`npm test` + workflowها بازسازی شد:
+
+| وضعیت | قبل | بعد | نمونه/روش طبقه‌بندی |
+|---|---:|---:|---|
+| WIRED | 39 | 46 | ارجاع مستقیم از `npm test`/workflow |
+| AGGREGATED | داخل WIRED | داخل WIRED | باتری‌های چندسوئیتی مثل Battery A؛ زیرسوئیت‌ها از طریق workflow اجرا می‌شوند |
+| MANUAL | زیرمجموعهٔ 485 | زیرمجموعهٔ 479 | `tests/security.js` و evidence-runهایی که عمداً قراردادِ manual دارند |
+| OBSOLETE | زیرمجموعهٔ 485 | زیرمجموعهٔ 479 | `tests/wave1-reads.js` و `tests/wave23-reports-pg.js` که در audit به‌عنوان `STALE / SUPERSEDED` ثبت شده‌اند |
+| CRITICAL-ORPHAN | زیرمجموعهٔ 485 | 0 برای 6 مورد منتخب | `seed-integrity`, `security2`, `sync-atomic-batch`, `sync-dup-claim`, `sync-dlq-retry`, `db-replica-recovery` |
+
+**Before:** `524` فایل سطح‌اول، `39` wired، `485` orphan.  
+**After (محاسبهٔ مورد انتظار از تغییرات CI):** `525` فایل سطح‌اول، `46` wired، `479` orphan.
+
+این تغییر عمداً فقط ۶ orphan بحرانی را سیم‌کشی می‌کند؛ هیچ حذف، skip یا افزایش
+`ORPHAN_BUDGET` انجام نشده است. عدد budget از `485` به `479` کاهش یافته تا drift
+واقعیِ باقی‌مانده اندازه‌گیری شود، نه اینکه با افزایش سقف پنهان شود.
+
 ## ۴. اجرای قرارداد
 
 ```bash
