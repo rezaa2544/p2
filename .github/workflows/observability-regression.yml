@@ -1,0 +1,55 @@
+name: observability-regression
+
+on:
+  push:
+    paths:
+      - 'server/metrics.js'
+      - 'server/index.js'
+      - 'infra/observability/**'
+      - 'tests/observability-*.js'
+      - 'tests/wave14-observability*.js'
+      - '.github/workflows/observability-regression.yml'
+  pull_request:
+    paths:
+      - 'server/metrics.js'
+      - 'server/index.js'
+      - 'infra/observability/**'
+      - 'tests/observability-*.js'
+      - 'tests/wave14-observability*.js'
+      - '.github/workflows/observability-regression.yml'
+
+jobs:
+  static-and-promtool:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Semantic metric/label drift guard
+        run: node tests/observability-semantic-guard.js
+      - name: Configuration regression
+        run: node tests/observability-config.js
+      - name: promtool rule validation
+        run: docker run --rm -v "$PWD/infra/observability:/etc/prometheus:ro" prom/prometheus:v2.54.1 promtool check rules /etc/prometheus/alert-rules.yml
+      - name: promtool Prometheus config validation
+        run: docker run --rm -v "$PWD/infra/observability:/etc/prometheus:ro" prom/prometheus:v2.54.1 promtool check config /etc/prometheus/prometheus.yml
+      - name: promtool Alertmanager config validation with non-live CI URL
+        run: |
+          sed 's|__WEBHOOK_URL__|https://example.invalid/alertmanager-ci|g' infra/observability/alertmanager.yml > /tmp/alertmanager.yml
+          docker run --rm -v /tmp/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro prom/alertmanager:v0.27.0 amtool check-config /etc/alertmanager/alertmanager.yml
+
+  runtime:
+    runs-on: ubuntu-latest
+    needs: static-and-promtool
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Healthy metric runtime
+        run: node tests/wave14-observability.js
+      - name: Failure and mutation runtime
+        run: node tests/wave14-observability-mutations.js
+      - name: Independent dashboard regression
+        run: node tests/observability-dashboards.js
