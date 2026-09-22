@@ -9,11 +9,10 @@
 #    tests/waf-ddos.js full — need a seeded server/data/payesh.json and/or a
 #    booted instance; they run in the local/nightly flow, not the merge gate.)
 #  - Secret scan is the repo's own tools-backed tests/secret-scan.js.
-#  - SCA (npm audit) / SBOM (npm sbom) / DAST (OWASP ZAP baseline) are
-#    BEST-EFFORT (continue-on-error): SCA/SBOM need a live npm registry;
-#    DAST uses SECURITY_TARGET_URL when set, else boots the API locally
-#    (127.0.0.1:3000) and scans it via docker host-networking. None of them
-#    may break the merge gate when infra is not provisioned.
+#  - SCA (npm audit) / SBOM (npm sbom) / DAST (OWASP ZAP baseline) are hard
+#    security gates. A dependency/network/target failure is a real CI failure,
+#    not a green result. DAST uses SECURITY_TARGET_URL when set, else boots the
+#    API locally (127.0.0.1:3000) and scans it via docker host-networking.
 # ═══════════════════════════════════════════════════════════════════════
 name: Security Program (SAST · SCA · SBOM · DAST · Secret)
 
@@ -62,11 +61,10 @@ jobs:
       - name: Secret scan (repo rules)
         run: node tests/secret-scan.js
 
-  # ── SCA: dependency audit (best-effort; needs live npm registry) ────
+  # ── SCA: dependency audit (hard gate) ───────────────────────────────
   sca:
     name: SCA (npm audit, best-effort)
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Use Node.js 22.x
@@ -78,11 +76,10 @@ jobs:
       - name: npm audit (fail at high or above)
         run: npm audit --audit-level=high
 
-  # ── SBOM: dependency inventory (SPDX) — best-effort ─────────────────
+  # ── SBOM: dependency inventory (SPDX) — hard gate ───────────────────
   sbom:
     name: SBOM (npm sbom / SPDX, best-effort)
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Use Node.js 22.x
@@ -99,11 +96,10 @@ jobs:
           name: sbom-spdx
           path: sbom.spdx.json
 
-  # ── DAST: OWASP ZAP baseline (best-effort; staging URL or local boot) ─
+  # ── DAST: OWASP ZAP baseline (hard gate; staging URL or local boot) ─
   dast:
     name: DAST (OWASP ZAP baseline, best-effort)
     runs-on: ubuntu-latest
-    continue-on-error: true
     env:
       SECURITY_TARGET_URL: ${{ secrets.SECURITY_TARGET_URL }}
     steps:
@@ -160,8 +156,7 @@ jobs:
         uses: zaproxy/action-baseline@v0.12.0
         with:
           target: ${{ secrets.SECURITY_TARGET_URL }}
-          # advisory (continue-on-error) until findings are triaged; enforcement
-          # (fail on High) is a Wave 13 follow-up, not part of the merge gate.
+          # Findings and scan errors are hard failures for the security gate.
       - name: OWASP ZAP baseline scan (local target)
         if: steps.dast-target.outputs.mode == 'local'
         # The action runs ZAP inside docker, where 127.0.0.1 is the container
