@@ -21,6 +21,26 @@
 - Current main HEAD در زمان این ثبت: `07e5ae2de7a6ad6365f4ff6af5e5e85283147354`.
 - آخرین تغییرات reconciliation مشاهده‌شده شامل hardening در observability و ثبت gate نهایی است.
 
+## 2.1 Mandatory Context Loading for 100% Project Understanding
+
+**Important:** Reading this file alone is not sufficient for complete project understanding. Every new Chat/Agent must read and reconcile the mandatory sources below before making project-status claims or starting a task.
+
+### Mandatory sources
+1. **Governance / permanent engineering policy:** `docs/ENGINEERING_EXECUTION_AND_VERIFICATION_POLICY.md`
+2. **Master roadmap / execution schedule:** `docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md`
+3. **Current ground truth / latest reconciliation:** `docs/ROADMAP_CURRENT_GROUND_TRUTH_2026-09-21.md` (or the newest current-ground-truth document available)
+4. **Phase 8.2 final evidence:** `docs/audit/PHASE_8_2_FINAL_VERIFICATION_REPORT.md`
+5. **Relevant audit/evidence reports:** applicable documents under `docs/audit/` for the assigned task/scope
+6. **Current repository state:** current `main` HEAD, relevant branches, open/in-progress PRs, and merge state
+7. **Current CI/runtime evidence:** completed evidence for the exact SHA being used for any PASS/VERIFIED claim
+8. **Security governance/checklist:** `docs/SECURITY_AUDIT_CHECKLIST.md` for security-impacting work
+9. **Scope-specific project documents:** capacity, scale, operational SLO, architecture, deployment, and test-contract documents when relevant to the assigned task
+
+### Mandatory loading order
+`Project Intelligence → Mandatory Sources → Current HEAD Reconcile → Scope/Ownership → Plan → Execute`
+
+**Definition:** Project Intelligence is the central operational map; the Mandatory Sources are the evidence/governance set required to reach a complete, current, and defensible understanding. Historical reports must never override current repository state or exact-SHA evidence.
+
 ## 3. Project State
 
 ### Engineering / Repository
