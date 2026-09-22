@@ -760,14 +760,14 @@ async function persistOpWithClient(client, op) {
     const setSql = writeFields.map((f, i) => `${ident(f)} = ${i + 1}`).join(', ') + versionClause;
 
     if (op.base_version != null) {
-      const base = Number(op.base_version);
-      if (!Number.isInteger(base) || base < 1) {
+      const base = op.base_version;
+      if (typeof base !== 'number' || !Number.isInteger(base) || base < 1) {
         const e = new Error('bad base_version');
         e.code = 'bad_base_version';
         throw e;
       }
       const res = await client.query(
-        `UPDATE ${table} SET ${setSql} WHERE id = $${fields.length + 1} AND version = $${fields.length + 2};`,
+        `UPDATE ${table} SET ${setSql} WHERE id = ${writeFields.length + 1} AND version = ${writeFields.length + 2};`,
         values.concat([id, base])
       );
       if (res && res.rowCount === 0) {
@@ -783,12 +783,38 @@ async function persistOpWithClient(client, op) {
         e.status = 409;
         throw e;
       }
-      await client.query(`UPDATE ${table} SET ${setSql} WHERE id = $${fields.length + 1};`, values.concat([id]));
+      await client.query(`UPDATE ${table} SET ${setSql} WHERE id = ${writeFields.length + 1};`, values.concat([id]));
     }
   } else if (t === 'del') {
     const delId = Number(op.id != null ? op.id : (data && data.id));
     if (delId) {
-      await client.query(`DELETE FROM ${table} WHERE id = $1;`, [delId]);
+      if (op.base_version != null) {
+        const base = op.base_version;
+        if (typeof base !== 'number' || !Number.isInteger(base) || base < 1) {
+          const e = new Error('bad base_version');
+          e.code = 'bad_base_version';
+          throw e;
+        }
+        const res = await client.query(
+          `DELETE FROM ${table} WHERE id = $1 AND version = $2;`,
+          [delId, base]
+        );
+        if (res && res.rowCount === 0) {
+          const e = new Error('optimistic concurrency conflict');
+          e.code = 'occ_conflict';
+          e.status = 409;
+          e.op = op;
+          throw e;
+        }
+      } else {
+        if (process.env.PAYESH_STRICT_OCC === '1') {
+          const e = new Error('optimistic concurrency conflict: missing required base_version');
+          e.code = 'missing_base_version';
+          e.status = 409;
+          throw e;
+        }
+        await client.query(`DELETE FROM ${table} WHERE id = $1;`, [delId]);
+      }
     }
   }
 
