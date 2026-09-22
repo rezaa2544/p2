@@ -5723,3 +5723,7 @@ exit(1) با «Error: Production requires valid CA certificate».
 - finding مسیر DLQ در PostgreSQL با انتقال اتمیکِ درج صف مرده و تغییر وضعیت رکورد مبدأ اصلاح شد.
 - failure در تغییر وضعیت اکنون باید کل انتقال را rollback کند و دیگر نباید پاسخ موفق کاذب بسازد.
 - تست شکست‌اول/مرز و تکرار انتقال برای این قرارداد به شاخهٔ جداگانهٔ Runtime Reliability افزوده شده است.
+
+## CI verification ordering — Runtime Reliability — 2026-09-22
+
+- آزمون اتمیک بودن انتقال DLQ در مسیر اجرای مستقل Runtime Reliability و پیش از دروازه‌های دیرتر CI قرار گرفت تا شکست این حوزه به‌دلیل یک gate نامرتبط پنهان نشود.
