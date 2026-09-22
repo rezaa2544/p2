@@ -8,6 +8,8 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const metrics = read('server/metrics.js');
 const rules = read('infra/observability/alert-rules.yml');
 const retired = read('infra/observability/alerts.yml');
+const duplicateCatalogue = read('monitoring/alert-rules.yml');
+const promtail = read('infra/observability/promtail.yml');
 let fail = 0;
 const errors = [];
 function check(ok, msg) {
