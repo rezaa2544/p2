@@ -20,6 +20,7 @@ async function task1Persistence() {
   assert(/SET "score" = \$1/.test(q1[0].sql));
   assert(/version = COALESCE\(version, 1\) \+ 1/.test(q1[0].sql));
   assert(/WHERE id = \$2 AND version = \$3/.test(q1[0].sql));
+  assert(!/WHERE id = (?:2|3) AND version = (?:3|4)/.test(q1[0].sql));
   pass(1, 'update uses one atomic WHERE id+version statement');
 
   const q2 = [];
