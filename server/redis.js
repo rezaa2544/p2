@@ -804,6 +804,9 @@ async function ping() {
       return { ok: false, driver: 'redis', mode: activeMode, error: err.message };
     }
   }
+  if (isProduction()) {
+    return { ok: false, driver: 'none', mode: activeMode, alive: false, error: 'REDIS_UNAVAILABLE' };
+  }
   return { ok: true, driver: 'memory', alive: true };
 }
 
