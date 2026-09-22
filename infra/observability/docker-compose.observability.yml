@@ -35,7 +35,8 @@ services:
       - |
         test -n "$$ALERTMANAGER_WEBHOOK_URL" || { echo 'ALERTMANAGER_WEBHOOK_URL is required; refusing placeholder alerting config' >&2; exit 78; }
         test "$$ALERTMANAGER_WEBHOOK_URL" != "__WEBHOOK_URL__" || { echo 'ALERTMANAGER_WEBHOOK_URL is still the repository placeholder' >&2; exit 78; }
-        sed "s|__WEBHOOK_URL__|$$ALERTMANAGER_WEBHOOK_URL|g" /etc/alertmanager/alertmanager.yml > /tmp/alertmanager.yml
+        url=$$(printf '%s' "$$ALERTMANAGER_WEBHOOK_URL" | sed 's/[\\&|]/\\&/g')
+        sed "s|__WEBHOOK_URL__|$$url|g" /etc/alertmanager/alertmanager.yml > /tmp/alertmanager.yml
         exec /bin/alertmanager --config.file=/tmp/alertmanager.yml
     ports:
       - "127.0.0.1:9093:9093"
