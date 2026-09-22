@@ -397,9 +397,10 @@ async function sAdd(key, ...members) {
     try {
       return await client.sadd(key, ...members.map(String));
     } catch (err) {
-      // Fallback to memory
+      prodRethrow(err);
     }
   }
+  prodNoRedis('sAdd');
   cleanExpiredMem();
   if (!memSets.has(key)) memSets.set(key, new Set());
   const s = memSets.get(key);
@@ -418,9 +419,10 @@ async function sMembers(key) {
     try {
       return await client.smembers(key);
     } catch (err) {
-      // Fallback to memory
+      prodRethrow(err);
     }
   }
+  prodNoRedis('sMembers');
   cleanExpiredMem();
   const s = memSets.get(key);
   return s ? Array.from(s) : [];
@@ -434,9 +436,10 @@ async function sRem(key, ...members) {
     try {
       return await client.srem(key, ...members.map(String));
     } catch (err) {
-      // Fallback to memory
+      prodRethrow(err);
     }
   }
+  prodNoRedis('sRem');
   cleanExpiredMem();
   const s = memSets.get(key);
   if (!s) return 0;
