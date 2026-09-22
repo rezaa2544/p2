@@ -91,15 +91,17 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
           };
           if (rc >= maxRetries) {
             failedDelta++;
+            /* F-A5 (Arena 1): the attempt counter MUST reach the source row
+               before the DLQ transfer — previously patch (retry_count) was
+               dropped whenever moveToDlq succeeded, so terminal rows kept
+               rc=0/1 and the PG DLQ mirror stored the phantom `0 || 5`. */
+            await outbox.mark(evt.id, patch);
             // B4: Transfer poison pill event to Dead-Letter Queue (DLQ)
-            let movedToDlq = false;
             if (outbox && typeof outbox.moveToDlq === 'function') {
               try {
-                const dlq = await outbox.moveToDlq(evt, errMsg);
-                movedToDlq = !!(dlq && dlq.ok === true);
-              } catch (_) {}
+                await outbox.moveToDlq(evt, errMsg);
+              } catch (_) { /* patch already persisted: source stays failed/replayable */ }
             }
-            if (!movedToDlq) await outbox.mark(evt.id, patch);
           } else {
             await outbox.mark(evt.id, patch);
           }
