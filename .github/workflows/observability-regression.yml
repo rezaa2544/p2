@@ -34,10 +34,29 @@ jobs:
         run: docker run --rm -v "$PWD/infra/observability:/etc/prometheus:ro" prom/prometheus:v2.54.1 promtool check rules /etc/prometheus/alert-rules.yml
       - name: promtool Prometheus config validation
         run: docker run --rm -v "$PWD/infra/observability:/etc/prometheus:ro" prom/prometheus:v2.54.1 promtool check config /etc/prometheus/prometheus.yml
-      - name: promtool Alertmanager config validation with non-live CI URL
+      - name: amtool Alertmanager config validation with non-live CI URL
         run: |
           sed 's|__WEBHOOK_URL__|https://example.invalid/alertmanager-ci|g' infra/observability/alertmanager.yml > /tmp/alertmanager.yml
           docker run --rm -v /tmp/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro prom/alertmanager:v0.27.0 amtool check-config /etc/alertmanager/alertmanager.yml
+
+  alertmanager-fail-closed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Alertmanager refuses missing owner endpoint at runtime
+        run: |
+          set +e
+          docker compose -f infra/observability/docker-compose.observability.yml run --rm -T -e ALERTMANAGER_WEBHOOK_URL= alertmanager
+          code=$?
+          set -e
+          test "$code" -eq 78
+      - name: Alertmanager refuses checked-in placeholder at runtime
+        run: |
+          set +e
+          docker compose -f infra/observability/docker-compose.observability.yml run --rm -T -e ALERTMANAGER_WEBHOOK_URL=__WEBHOOK_URL__ alertmanager
+          code=$?
+          set -e
+          test "$code" -eq 78
 
   runtime:
     runs-on: ubuntu-latest
