@@ -767,7 +767,7 @@ async function persistOpWithClient(client, op) {
         throw e;
       }
       const res = await client.query(
-        `UPDATE ${table} SET ${setSql} WHERE id = ${writeFields.length + 1} AND version = ${writeFields.length + 2};`,
+        `UPDATE ${table} SET ${setSql} WHERE id = ${String.fromCharCode(36)}${writeFields.length + 1} AND version = ${String.fromCharCode(36)}${writeFields.length + 2};`,
         values.concat([id, base])
       );
       if (res && res.rowCount === 0) {
@@ -784,7 +784,7 @@ async function persistOpWithClient(client, op) {
         e.status = 409;
         throw e;
       }
-      await client.query(`UPDATE ${table} SET ${setSql} WHERE id = ${writeFields.length + 1};`, values.concat([id]));
+      await client.query(`UPDATE ${table} SET ${setSql} WHERE id = ${String.fromCharCode(36)}${writeFields.length + 1};`, values.concat([id]));
     }
   } else if (t === 'del') {
     const delId = Number(op.id != null ? op.id : (data && data.id));
