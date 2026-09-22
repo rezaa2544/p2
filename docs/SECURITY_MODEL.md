@@ -86,7 +86,7 @@
 ESLint). سئوت‌هایِ jsdomِ وابسته به بوتِ سرور (xss-guard/security/waf-full) به
 استورِ سیدشده نیاز دارند و در جریانِ محلی/شبانه اجرا می‌شوند، نه گیتِ merge.
 اجرایِ واقعیِ SCA/SBOM/DAST نیازمندِ registry زنده و آدرسِ استیجینگ است →
-**hard gate/pending** (در CI با `continue-on-error` تا آماده‌شدنِ زیرساخت).
+**hard gate/pending**؛ هر failure یا کمبود dependency در CI قرمز می‌شود و PASS جعلی تولید نمی‌کند.
 
 ---
 
