@@ -1,3 +1,4 @@
+# Runtime evidence gate: this workflow intentionally executes real promtool/amtool, Alertmanager fail-closed, metric mutations, and Loki/Promtail ingestion. Queued is never green.
 name: observability-regression
 
 permissions:
