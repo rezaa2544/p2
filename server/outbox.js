@@ -258,12 +258,14 @@ function createOutbox({ store, db }) {
          FROM claimed c
          WHERE o.id = c.id
          RETURNING o.id, o.type, o.collection, o.record_id, o.actor_id, o.version, o.payload, o.retry_count, o.last_error;`,
-        [limit]
+        [limit, Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) > 0 ? Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) : 60]
       );
       return (res && res.rows) || [];
     }
-    // Memory mode: atomically transition pending items to processing
-    const pending = (store.outbox || []).filter(e => e.status === 'pending').slice(0, limit);
+    // Memory mode: reclaim only stale processing claims; fresh claims remain owned.
+    const leaseMs = (Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) > 0 ? Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) : 60) * 1000;
+    const now = Date.now();
+    const pending = (store.outbox || []).filter(e => e.status === 'pending' || (e.status === 'processing' && (!e.processing_at || now - Number(e.processing_at) >= leaseMs))).slice(0, limit);
     for (const e of pending) {
       e.status = 'processing';
       e.processing_at = Date.now();
