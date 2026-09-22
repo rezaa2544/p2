@@ -178,6 +178,24 @@ function task5Migration() {
   assert(/\bCOMMIT\s*;/i.test(prepared));
   assert(computeChecksum(src).length===64);
   pass(5,'012 internal transaction control and checksum are retained');
+
+  const down=fs.readFileSync(path.join(__dirname,'..','migrations','012_partition_grades_attendance.down.sql'),'utf8');
+  const guardPos=down.indexOf("grades_recovered");
+  const attendanceCreatePos=down.indexOf("CREATE TABLE attendance_recovered");
+  const watermarkPos=down.indexOf("to_regclass('mig009_w0')");
+  assert(guardPos >= 0 && guardPos < attendanceCreatePos);
+  assert(watermarkPos >= 0 && watermarkPos < attendanceCreatePos);
+  pass(5,'012 rollback rejects stale recovery tables before creating new recovery artifacts');
+
+  assert(!/COUNT\(\*\) FROM attendance\).*COUNT\(\*\) FROM attendance_old/s.test(down));
+  assert(/n\.chg_id\s+IS NULL[\s\S]*n\.chg_id\s*>\s*\(SELECT w0 FROM mig009_w0/.test(down));
+  pass(5,'rollback recovery uses the migration watermark rather than row-count deltas');
+
+  const cleanupPos=down.indexOf('DROP TABLE IF EXISTS mig009_w0;');
+  const finalCommitPos=down.lastIndexOf('COMMIT;');
+  assert(cleanupPos >= 0 && cleanupPos < finalCommitPos);
+  assert(down.indexOf('DROP TABLE IF EXISTS mig009_w0;', cleanupPos + 1) === -1);
+  pass(5,'rollback watermark cleanup occurs before the final commit with no post-commit cleanup');
 }
 
 (async()=>{await task1Persistence();await task2Boundaries();await task3Concurrency();task4SyncContract();task5Migration();console.log(`\nDATA-INTEGRITY FIVE-TASK SUITE: ${passes}/25 passes`);})().catch(e=>{console.error('FAIL:',e.stack||e);process.exit(1);});
