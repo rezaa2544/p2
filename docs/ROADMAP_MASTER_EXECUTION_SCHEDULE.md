@@ -45,7 +45,7 @@
 
 ## ۰.۱ وضعیت اجرایی به‌روزشده — 2026-09-21
 
-> **Current HEAD: `37e56459eaa4b2a9c5cf4747a2775d57b22c5055`  
+> **Current HEAD at final gate review: `d6472c4f29257197bb63a4c2fd26cfead32c92d0`
 > **Current roadmap ground truth:** `docs/ROADMAP_CURRENT_GROUND_TRUTH_2026-09-21.md`
 
 | موضوع | وضعیت جاری | مبنای تصمیم |
@@ -1156,7 +1156,7 @@ F-QA-02 → F-QA-03 → F-QA-01 → F-QA-08 → M1 → M2 → M3 → OUTBOX-002 
 
 ## ۰.۱-A — Current-HEAD Status Reconciliation (2026-09-22)
 
-**Current HEAD:** `59c7b433762c637729e143d79ba8390ca80cb619`
+**Current HEAD at final gate review: `d6472c4f29257197bb63a4c2fd26cfead32c92d0`
 
 | Gate / Area | Canonical status | Evidence boundary |
 |---|---|---|
@@ -1174,10 +1174,20 @@ F-QA-02 → F-QA-03 → F-QA-01 → F-QA-08 → M1 → M2 → M3 → OUTBOX-002 
 
 ## Current-HEAD reconciliation — 2026-09-22
 
-**Current HEAD:** `37e56459eaa4b2a9c5cf4747a2775d57b22c5055`
+**Current HEAD at final gate review: `d6472c4f29257197bb63a4c2fd26cfead32c92d0`
 
 - CircleCI `ci/circleci: say-hello`: success (run 501 on parent HEAD; this documentation commit itself has no new runtime evidence).
 - GitHub Actions Node.js CI on this exact HEAD: **NOT VERIFIED**.
 - Phase 8.2 Exit: **NOT VERIFIED**.
 - Phase 8.3: **BLOCKED**.
 - Production GO: **NOT DECLARED**.
+
+
+## Final Gate Review — 2026-09-22
+
+**Review checkpoint:** `d6472c4f29257197bb63a4c2fd26cfead32c92d0`
+
+- Current-head GitHub Actions: **NOT VERIFIED** (no workflow run for this exact SHA).
+- CircleCI `ci/circleci: say-hello`: **success**, run 516.
+- Phase 8.2 Exit: **NOT VERIFIED**; Phase 8.3: **BLOCKED**; Production GO: **NOT DECLARED**.
+- No evidence permits promotion of E3 DR/PITR or Redis HA evidence to E4.
