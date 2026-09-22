@@ -746,11 +746,18 @@ async function persistOpWithClient(client, op) {
     const id = Number(op.id != null ? op.id : data.id);
     if (!Number.isFinite(id) || id <= 0) throw new Error('missing id for update op');
 
-    const values = fields.map(f => valOf(data[f]));
-    // ADR-013: Universal Runtime OCC & Zero Naked Update Invariant
-    const hasExplicitVersion = fields.includes('version');
-    const versionClause = hasExplicitVersion ? '' : ', version = COALESCE(version, 1) + 1';
-    const setSql = fields.map((f, i) => `${ident(f)} = $${i + 1}`).join(', ') + versionClause;
+    /* ADR-013 hardening: version is server-owned whenever OCC is present.
+       A client-supplied data.version must never pin/rewrite the version counter,
+       otherwise repeated writes with the same base_version can all succeed.
+       The base_version predicate and the version increment must be part of the
+       same UPDATE so PostgreSQL serializes the compare-and-write atomically. */
+    const hasBaseVersion = op.base_version != null;
+    const writeFields = hasBaseVersion ? fields.filter(f => f !== 'version') : fields;
+    const values = writeFields.map(f => valOf(data[f]));
+    const versionClause = hasBaseVersion
+      ? ', version = COALESCE(version, 1) + 1'
+      : (writeFields.includes('version') ? '' : ', version = COALESCE(version, 1) + 1');
+    const setSql = writeFields.map((f, i) => `${ident(f)} = ${i + 1}`).join(', ') + versionClause;
 
     if (op.base_version != null) {
       const base = Number(op.base_version);
