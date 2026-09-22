@@ -9,9 +9,9 @@
 |---|---|
 | Repository | `rezaa2544/p2` |
 | Branch | `main` |
-| Current HEAD | `55cd021b3f17d23cf540b5afeb013dce6e6486b9` |
+| Reviewed code baseline | `55cd021b3f17d23cf540b5afeb013dce6e6486b9` |
 | Current-head CircleCI | `ci/circleci: say-hello` — **PENDING** at run 608 when this reconciliation was recorded |
-| Current-head GitHub Actions | **NO RUN RETURNED** for this exact SHA |
+| GitHub Actions for the reviewed code baseline | **NO RUN RETURNED** for this exact SHA |
 | Current-head combined status | CircleCI pending only |
 | Production GO | **NOT DECLARED** |
 
@@ -72,7 +72,7 @@ The current security workflow is now documented as hard-gated rather than best-e
 ## 4. Runtime evidence boundary
 
 A completed current-head Node.js CI run is **not present** in the GitHub Actions API result for SHA `55cd021b...`.
-Therefore the following are **not claimed as current-head runtime PASS**:
+Therefore the following are **not claimed as runtime PASS for the reviewed code baseline**:
 
 - full migration/rollback runtime suite;
 - live PostgreSQL/OCC;
@@ -101,7 +101,7 @@ Historical E3 evidence remains valid only for its recorded environment/SHA. It d
 
 ### BLOCKER
 **OWNER:** Repository/CI administrator + GitHub Actions platform  
-**DEPENDENCY:** A completed current-head Node.js/Security/Observability workflow execution for `55cd021b...`  
+**DEPENDENCY:** A completed Node.js/Security/Observability workflow for the reviewed code baseline execution for `55cd021b...`  
 **WHY NOT REPO-OWNED:** The repository workflows are present and hard-fail; the available GitHub Actions API returned no run for the exact current SHA.  
 **REQUIRED EXTERNAL EVIDENCE:** completed workflow run IDs, conclusions, step results, and artifacts for the exact current SHA.
 
