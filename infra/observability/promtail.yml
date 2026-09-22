@@ -1,6 +1,6 @@
 # promtail.yml — جمع‌کنندهٔ لاگ‌هایِ پایش به Loki
 # ── دو جریان (ساختارِ واقعیِ سرور):
-#   ۱) server.log — logfmt با traceId=   (ساختارِ requestContext/tracing)
+#   ۱) server.log — stdout/stderr خام؛ این جریان قراردادِ trace_id ندارد.
 #   ۲) audit.log  — JSON lines با trace_id (audit.js) ⇒ structured_metadata
 # dployِ فایل‌ها روی میزبان: mountِ /var/log/payesh (compose). مسیرِ پیش‌فرضِ
 # توسعه (sandbox): ./server/data/*.log — هر دو حالت پوشش داده می‌شود.
