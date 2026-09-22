@@ -1,6 +1,6 @@
 # سیاست دائمی مهندسی و اعتبارسنجی زیروتراست مخزن (Engineering Execution & Verification Policy)
 
-**نسخه:** ۱.۲.۰ | **تاریخ:** ۲۰۲۶-۰۹-۲۱ | **مالک:** حاکمیت مهندسی مخزن `rezaa2544/p2`  
+**نسخه:** ۱.۳.۰ | **تاریخ:** ۲۰۲۶-۰۹-۲۲ | **مالک:** حاکمیت مهندسی مخزن `rezaa2544/p2`  
 **وضعیت:** سند مرجع دائمی و الزام‌آور برای تمام Agentها، Chatها و توسعه‌دهندگان  
 
 ---
@@ -139,6 +139,28 @@ $$\text{Truth} = \text{current HEAD} + \text{current runtime} + \text{current te
 
 ### Rule 27 — Completion Requires Three Proofs (سه اثبات برای تکمیل)
 هیچ Task کامل نیست مگر سه نوع proof متناسب با Scope داشته باشد: Implementation Proof، Behavior Proof و Failure Proof. در مواردی که یکی قابل اعمال نیست، دلیل فنی باید ثبت شود.
+
+
+### Rule 30 — Defect Closure Until Empty (بستن کامل عیوب Repo-owned)
+یافتن عیب Repo-owned به‌هیچ‌وجه مجوز خاتمه مأموریت با وضعیت `PARTIAL`، `OPEN` یا صرفاً گزارش‌نویسی نیست. Agent/Chat موظف است برای هر عیب Repo-owned چرخه کامل زیر را تا بسته‌شدن اجرا کند:
+```
+Find → Reproduce → Root Cause → Fix → Regression → Independent Verification → Commit → Push → Reconcile current HEAD
+```
+تا زمانی که فهرست عیوب Repo-owned خالی نشده است، مأموریت فقط در یکی از این شرایط مجاز به توقف است:
+1. عیب واقعاً External/Owner-owned باشد و مالک، dependency، blocker و evidence آن صریحاً ثبت شده باشد؛ یا
+2. یک تصمیم فنی مستند و قابل بازبینی ثابت کند که مورد Finding واقعی نیست یا Fix برای آن لازم نیست.
+عبارت‌هایی مانند «CI queued»، «زمان کافی نبود»، «در گزارش بعدی بررسی می‌شود» یا «PARTIAL» به‌تنهایی دلیل معتبر برای توقف یک عیب Repo-owned نیستند. اگر یک مسیر verification در دسترس نیست، Agent باید سایر مسیرهای مستقل قابل اجرا را برای رفع و اثبات عیب انجام دهد و تنها بخش واقعاً blocked را جداگانه ثبت کند.
+
+### Rule 31 — Merge Ownership & Clean Merge (مالکیت و ادغام بدون عیب)
+Agentی که تغییر را تولید می‌کند مسئولیت کامل آماده‌سازی و ادغام آن را تا پایان بر عهده دارد، مشروط به اینکه مجوز GitHub اجازه دهد. Agent نباید یک PR/Branch قابل ادغام را صرفاً برای انتقال مسئولیت به Chat یا Agent بعدی رها کند.
+قبل از Merge باید الزاماً:
+- current `main` و HEAD مجدداً reconcile شوند؛
+- PR/Branch با آخرین `main` بررسی و در صورت نیاز update/rebase شود؛
+- تمام merge conflicts و تغییرات هم‌پوشان شناسایی و بدون حذف/تضعیف رفتار موجود حل شوند؛
+- تست‌ها، required checks، regressionها و Evidence مربوط به تغییر بررسی شوند؛
+- هیچ Failure، unresolved review finding یا known Repo-owned defect مرتبط با تغییر باقی نماند؛
+- نتیجه Merge و SHA نهایی ثبت و پس از Merge، `main` دوباره verify شود.
+Merge فقط با شواهد کافی مجاز است؛ «Merge برای اینکه بعداً اصلاح کنیم» ممنوع است. اگر merge به دلیل محدودیت واقعی GitHub/Permission/External infrastructure ممکن نباشد، blocker دقیق باید ثبت شود و نباید merge موفق فرض شود.
 
 ### Rule 29 — Reusable Security Audit Module (استفادهٔ مجدد از چک‌لیست امنیتی)
 هر Security Audit / Red-Team مرتبط با مخزن باید علاوه بر قواعد عمومی این سند، از چک‌لیست مرجع امنیتی docs/SECURITY_AUDIT_CHECKLIST.md به‌عنوان یک baseline قابل استفادهٔ مجدد بهره ببرد.
