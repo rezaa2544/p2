@@ -863,7 +863,7 @@ function createSync(ctx){
       }
       /* base_versionِ بدشکل (غیرِ عددِ صحیحِ مثبت) = ردِّ عملیات — وگرنه در
          مجموعهٔ نسخه‌دار، سطرِ تعارضِ بیهوده می‌ساخت. */
-      if(op.t === 'upd' && op.base_version != null &&
+      if((op.t === 'upd' || op.t === 'del') && op.base_version != null &&
          (typeof op.base_version !== 'number' || !Number.isInteger(op.base_version) || op.base_version < 1)){
         audit('sync_validation_failed', { user_id: s.id, uid: op.uid, collection: op.c, field: 'base_version', reason: 'bad_base_version' });
         results.push({ uid: op.uid, ok: false, code: 'validation_failed', field: 'base_version', message: 'مقدارِ «base_version» معتبر نیست' });
@@ -871,7 +871,7 @@ function createSync(ctx){
       }
       /* P1-05: mandatory base_version on VERSIONED resource updates when in strict mode or production */
       const strictBaseVersion = process.env.PAYESH_STRICT_BASE_VERSION === '1' || process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production';
-      if(op.t === 'upd' && VERSIONED[op.c] && op.base_version == null && strictBaseVersion){
+      if((op.t === 'upd' || op.t === 'del') && VERSIONED[op.c] && op.base_version == null && strictBaseVersion){
         audit('sync_validation_failed', { user_id: s.id, uid: op.uid, collection: op.c, field: 'base_version', reason: 'missing_base_version' });
         results.push({ uid: op.uid, ok: false, code: 'missing_base_version', field: 'base_version', message: 'مقدارِ «base_version» برای مجموعه‌های نسخه‌دار الزامی است' });
         continue;
@@ -910,7 +910,7 @@ function createSync(ctx){
         continue;
       }
       /* R95 بند ۲.۵ — base_version: تعارضِ حفظ‌شده / سرورِ مرجع */
-      if(op.t === 'upd' && op.base_version != null){
+      if((op.t === 'upd' || op.t === 'del') && op.base_version != null){
         const occT0 = process.hrtime.bigint();
         const vid = Number(op.id != null ? op.id : (op.data && op.data.id));
         let vrec = null;
@@ -1211,6 +1211,72 @@ function createSync(ctx){
         await db.persistOpsBatch(batchAll);
       }catch(mirrorErr){
         const why = String((mirrorErr && mirrorErr.message) || mirrorErr);
+
+        /* Final OCC gate: the earlier read/compare is advisory only. PostgreSQL's
+           conditional UPDATE/DELETE is the authoritative compare-and-write. A
+           concurrent writer can invalidate base_version after the sync pre-check,
+           so surface that race as the same OCC 409 contract and persist a durable
+           sync_conflicts row instead of misclassifying it as a generic 503. */
+        if(mirrorErr && mirrorErr.code === 'occ_conflict' && mirrorErr.op){
+          await rollbackUndo();
+          for(const r of results){ if(r) r.ok = false; }
+
+          const conflictOp = mirrorErr.op;
+          let current = null;
+          try {
+            if(db && typeof db.readOne === 'function'){
+              current = await db.readOne(conflictOp.c, conflictOp.id != null
+                ? conflictOp.id : (conflictOp.data && conflictOp.data.id));
+            }
+          }catch(_){ current = null; }
+
+          const nowIso = new Date().toISOString();
+          const vid = Number(conflictOp.id != null ? conflictOp.id : (conflictOp.data && conflictOp.data.id));
+          const cf = {
+            id: await serverId('sync_conflicts'),
+            collection: conflictOp.c,
+            record_id: vid,
+            school_id: current && current.school_id != null
+              ? current.school_id
+              : (conflictOp.data && conflictOp.data.school_id != null ? conflictOp.data.school_id : s.school_id),
+            user_id: s.id,
+            client_uid: conflictOp.uid || null,
+            base_version: Number(conflictOp.base_version),
+            incoming_version: Number((conflictOp.data && conflictOp.data.version) || conflictOp.base_version || 1),
+            current_version: current ? (current.version || 1) : null,
+            server_version: current ? (current.version || 1) : null,
+            client_data: conflictOp.data ? Object.assign({}, conflictOp.data) : null,
+            server_data: current ? Object.assign({}, current) : null,
+            server_state: current ? Object.assign({}, current) : null,
+            incoming: { data: Object.assign({}, conflictOp.data), by: s.id, at: nowIso, op_uid: conflictOp.uid },
+            status: 'open',
+            created_at: nowIso,
+            updated_at: nowIso
+          };
+
+          try {
+            await db.persistOpsBatch([{ c: 'sync_conflicts', t: 'ins', data: cf }]);
+          }catch(conflictPersistErr){
+            audit('sync_conflict_persist_failed', {
+              user_id: s.id, uid: conflictOp.uid,
+              error: String((conflictPersistErr && conflictPersistErr.message) || conflictPersistErr)
+            });
+            return sendJson(res, 503, { ok: false, code: 'sync_mirror_failed', results });
+          }
+
+          if(!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
+          mirrorAppend('sync_conflicts', cf);
+          metrics.inc('payesh_sync_conflicts_total', { collection: String(conflictOp.c || 'unknown').slice(0, 32) });
+          audit('sync_conflict_preserved', {
+            user_id: s.id, conflict_id: cf.id,
+            collection: conflictOp.c, record_id: vid, school_id: cf.school_id
+          });
+
+          const conflictResult = { uid: conflictOp.uid, ok: false, code: 'occ_conflict',
+            conflict_id: cf.id, message: 'تعارض نسخه در هنگام ثبت نهایی تشخیص داده شد' };
+          return sendJson(res, 409, { ok: false, code: 'occ_conflict', results: [conflictResult] });
+        }
+
         mirrorFailed = true;
         audit('sync_mirror_failed', { user_id: s.id, ops: batchAll.length, error: why });
         /* F1 (chaos-drill #185): pgLive در *ابتدای* درخواست ارزیابی شده؛ اگر
