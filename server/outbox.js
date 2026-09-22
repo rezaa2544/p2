@@ -132,11 +132,11 @@ function createOutbox({ store, db }) {
       patch = patch || {};
       try {
         await db.query(
-          `UPDATE server_outbox SET status = $2, retry_count = $3, last_error = $4, processed_at = $5
+          `UPDATE server_outbox SET status = $2, retry_count = $3, last_error = $4, processed_at = $5, processing_at = $6
            WHERE id = $1;`,
           [id, String(patch.status || 'pending'), Number(patch.retry_count) || 0,
            patch.last_error != null ? String(patch.last_error) : null,
-           patch.processed_at || null]
+           patch.processed_at || null, patch.processing_at || null]
         );
         return Object.assign({ id }, patch);
       } catch (e) { /* best-effort mirror — same contract as below */ }
@@ -150,7 +150,7 @@ function createOutbox({ store, db }) {
            WHERE id = $1;`,
           [evt.id, String(evt.status || 'pending'), Number(evt.retry_count) || 0,
            evt.last_error != null ? String(evt.last_error) : null,
-           evt.processed_at || null]
+           evt.processed_at || null, evt.processing_at || null]
         );
       } catch (e) { /* آینهٔ پستگرس بهترین‌تلاش است — منبع حقیقت اسنپ‌شات است */ }
     }
@@ -191,7 +191,10 @@ function createOutbox({ store, db }) {
     try {
       const r = await db.query(
         `SELECT id, type, collection, record_id, actor_id, version, payload, created_at, retry_count, last_error
-           FROM server_outbox WHERE status = 'pending' ORDER BY id ASC LIMIT $1;`, [OUTBOX_CAP]);
+           FROM server_outbox
+           WHERE status = 'pending'
+              OR (status = 'processing' AND (processing_at IS NULL OR processing_at < NOW() - ($2 * INTERVAL '1 second')))
+           ORDER BY id ASC LIMIT $1;`, [OUTBOX_CAP]);
       rows = (r && r.rows) || [];
     } catch (e) {
       return { ok: false, replayed: 0, error: String((e && e.message) || e).slice(0, 140) };
@@ -208,6 +211,7 @@ function createOutbox({ store, db }) {
         id, type: row.type, collection: row.collection,
         record_id: row.record_id, actor_id: row.actor_id, version: row.version,
         payload, created_at: row.created_at, status: 'pending',
+        processing_at: null,
         retry_count: Number(row.retry_count) || 0, last_error: row.last_error || null
       });
       replayed++;
@@ -246,7 +250,7 @@ function createOutbox({ store, db }) {
            FOR UPDATE SKIP LOCKED
          )
          UPDATE server_outbox o
-         SET status = 'processing'
+         SET status = 'processing', processing_at = NOW()
          FROM claimed c
          WHERE o.id = c.id
          RETURNING o.id, o.type, o.collection, o.record_id, o.actor_id, o.version, o.payload, o.retry_count, o.last_error;`,
@@ -258,6 +262,7 @@ function createOutbox({ store, db }) {
     const pending = (store.outbox || []).filter(e => e.status === 'pending').slice(0, limit);
     for (const e of pending) {
       e.status = 'processing';
+      e.processing_at = Date.now();
     }
     return pending;
   }
