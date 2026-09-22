@@ -18,6 +18,9 @@ on:
       - 'tests/wave14-observability*.js'
       - '.github/workflows/observability-regression.yml'
 
+permissions:
+  contents: read
+
 jobs:
   static-and-promtool:
     runs-on: ubuntu-latest
