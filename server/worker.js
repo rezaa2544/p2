@@ -91,6 +91,14 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
           };
           if (rc >= maxRetries) {
             failedDelta++;
+            /* RR-01 (Arena-2 runtime audit): the terminal bookkeeping must
+               survive whichever terminal path lands. Before this fix, a
+               successful moveToDlq skipped mark() entirely, so retry_count
+               was silently dropped (stayed 0) and the processing lease
+               timestamp was never cleared — upstream's own
+               runtime-reliability-five-task T3-P3 failed at 172da62b. */
+            evt.retry_count = rc;
+            evt.last_error = errMsg;
             // B4: Transfer poison pill event to Dead-Letter Queue (DLQ)
             let movedToDlq = false;
             if (outbox && typeof outbox.moveToDlq === 'function') {
@@ -100,6 +108,12 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
               } catch (_) {}
             }
             if (!movedToDlq) await outbox.mark(evt.id, patch);
+            else await outbox.mark(evt.id, {
+              status: 'dead_letter',
+              retry_count: rc,
+              last_error: errMsg,
+              processing_at: null   /* lease cleanup on terminal transition */
+            });
           } else {
             await outbox.mark(evt.id, patch);
           }
