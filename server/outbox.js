@@ -63,10 +63,11 @@ function createOutbox({ store, db }) {
 
   const isPg = () => db && typeof db.isPostgres === 'function' && db.isPostgres();
   /** INSERT پستگرسِ رویداد — جدا تا در تراکنشِ فراخوان هم قابل‌استفاده باشد */
+  /* بدون سمیکالنِ پایانی — تا `... RETURNING id` در insertOnce قابلِ الحاق باشد */
   const outboxInsertSql =
     `INSERT INTO server_outbox (id, type, collection, record_id, actor_id, version, payload, created_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-     ON CONFLICT (id) DO NOTHING;`;
+     ON CONFLICT (id) DO NOTHING`;
   const outboxParams = (evt) => [
     evt.id, String(evt.type || ''), String(evt.collection || ''),
     evt.record_id != null ? Number(evt.record_id) : null,
@@ -100,13 +101,26 @@ function createOutbox({ store, db }) {
        NOTHING, so a desynced sequence (manual insert / restore / crash artifact)
        silently DROPPED the event — a deleted record then never reached the
        outbox at all (reproduced live: nextval restarted at 1 while ids 1,2
-       existed). On a unique violation, take a fresh id and retry once. */
+       existed). On a unique violation, take a fresh id and retry once.
+       RR-05 (Arena-2 runtime audit): ON CONFLICT DO NOTHING suppresses the
+       unique violation, so the catch-based retry was DEAD CODE — the event
+       still vanished into the RAM queue only (reproduced at 172da62b:
+       assigned=500, PG kept the old row, new event silently absent).
+       Detect the no-op through RETURNING + rowCount and retry with a fresh id. */
+    const insertReturningSql = outboxInsertSql + ' RETURNING id;';
     const insertOnce = async (q) => {
-      try { await q.query(outboxInsertSql, outboxParams(evt)); }
+      try {
+        const r = await q.query(insertReturningSql, outboxParams(evt));
+        if (pgSeq && r && r.rowCount === 0) {
+          evt.id = await nextPgId();
+          const r2 = await q.query(insertReturningSql, outboxParams(evt));
+          if (r2 && r2.rowCount === 0) throw new Error('OUTBOX_ID_COLLISION: two consecutive sequence collisions');
+        }
+      }
       catch (e) {
         if (e && e.code === '23505' && pgSeq) {
           evt.id = await nextPgId();
-          await q.query(outboxInsertSql, outboxParams(evt));
+          await q.query(insertReturningSql, outboxParams(evt));
         } else { throw e; }
       }
     };
@@ -122,12 +136,31 @@ function createOutbox({ store, db }) {
     return evt;
   }
 
+  /* RR-02 (Arena-2 runtime audit): terminal states are TERMINAL. Before this
+     guard, a late/duplicate mark() (e.g. a slow worker finishing after a DLQ
+     move, or a replayed stale patch) could resurrect dead_letter/processed
+     rows back to arbitrary statuses — reproduced at 172da62b via the PG
+     fallback path (dead_letter → processed). mark() now refuses to move a
+     terminal row to a non-terminal state, and the PG fallback no longer
+     defaults a missing patch.status to 'pending' (it preserves the row). */
+  const TERMINAL_STATES = ['processed', 'dead_letter'];
+  /* Terminal is IMMUTABLE: once processed/dead_letter, only an idempotent
+     re-mark of the SAME terminal state may land (dead_letter→processed was
+     still a resurrection — K3-P4b round 2). */
+  const isTerminalPatch = (cur, patch) =>
+    TERMINAL_STATES.indexOf(cur) > -1 && (!patch || !patch.status || patch.status !== cur);
+
   /**
    * ویو ۸ — به‌روزرسانی وضعیت یک رویداد (توسط کارگر).
    * @param {number} id
    * @param {object} patch — { status?, retry_count?, last_error?, processed_at? }
    */
-  async function mark(id, patch) {
+  async function mark(id, patch, claimToken) {
+    /* RR-03: claimToken — when provided, the mark only lands if the row still
+       carries that exact token. A worker whose lease expired and whose event was
+       re-claimed (new token) becomes a no-op writer instead of overwriting the
+       new owner's state. Tokens are optional for legacy callers. */
+    const withToken = claimToken != null;
     const evt = store.outbox.find(e => e.id === id);
     if (!evt) {
       /* P0 fix (Chat 2 remediation, found live in RT4): in PG-live after a
@@ -139,30 +172,59 @@ function createOutbox({ store, db }) {
       if (!isPg()) return null;
       patch = patch || {};
       try {
-        await db.query(
-          `UPDATE server_outbox SET status = $2, retry_count = $3, last_error = $4, processed_at = $5, processing_at = $6
-           WHERE id = $1;`,
-          [id, String(patch.status || 'pending'), Number(patch.retry_count) || 0,
-           patch.last_error != null ? String(patch.last_error) : null,
-           patch.processed_at || null, patch.processing_at || null]
-        );
+        const selSql = 'SELECT status, claim_token FROM server_outbox WHERE id = $1' +
+          (withToken ? ' AND claim_token IS NOT DISTINCT FROM $2' : '');
+        const cur = await db.query(selSql, withToken ? [id, claimToken] : [id]);
+        if (!cur.rows.length) return null;   /* RR-03: token mismatch ⇒ stale owner, no-op */
+        if (isTerminalPatch(cur.rows[0].status, patch)) return null;   /* RR-02 guard */
+        const params = [id, String(patch.status || cur.rows[0].status), Number(patch.retry_count) || 0,
+          patch.last_error != null ? String(patch.last_error) : null,
+          patch.processed_at || null, patch.processing_at || null, cur.rows[0].status];
+        let where = 'id = $1 AND status = $7';
+        if (withToken) { where += ' AND claim_token IS NOT DISTINCT FROM $8'; params.push(claimToken); }
+        await db.query(`UPDATE server_outbox SET status = $2, retry_count = $3, last_error = $4, processed_at = $5, processing_at = $6 WHERE ${where};`, params);
         return Object.assign({ id }, patch);
       } catch (e) { /* best-effort mirror — same contract as below */ }
       return null;
     }
+    /* RR-03: RAM path token guard (stale owner no-ops). */
+    if (withToken && evt.claim_token != null && evt.claim_token !== claimToken) return null;
+    if (isTerminalPatch(evt.status, patch)) return evt;   /* RR-02 guard (RAM path) */
     Object.assign(evt, patch || {});
     if (isPg()) {
       try {
-        await db.query(
-          `UPDATE server_outbox SET status = $2, retry_count = $3, last_error = $4, processed_at = $5, processing_at = $6
-           WHERE id = $1;`,
-          [evt.id, String(evt.status || 'pending'), Number(evt.retry_count) || 0,
-           evt.last_error != null ? String(evt.last_error) : null,
-           evt.processed_at || null, evt.processing_at || null]
-        );
+        const params = [evt.id, String(evt.status || 'pending'), Number(evt.retry_count) || 0,
+          evt.last_error != null ? String(evt.last_error) : null,
+          evt.processed_at || null, evt.processing_at || null];
+        let where = 'id = $1';
+        if (withToken) { where += ' AND claim_token IS NOT DISTINCT FROM $7'; params.push(claimToken); }
+        await db.query(`UPDATE server_outbox SET status = $2, retry_count = $3, last_error = $4, processed_at = $5, processing_at = $6 WHERE ${where};`, params);
       } catch (e) { /* آینهٔ پستگرس بهترین‌تلاش است — منبع حقیقت اسنپ‌شات است */ }
     }
     return evt;
+  }
+
+  /**
+   * RR-03 (Arena-2 runtime audit) — lease extension (heartbeat). A live worker
+   * running a long handler refreshes processing_at while its claim_token still
+   * owns the row, so the lease only expires after REAL silence (crash/hang) and
+   * healthy slow handlers are not stolen mid-flight. Returns false once the
+   * token no longer owns the row (stolen/stale) so the worker can stop trying.
+   */
+  async function extendLease(id, claimToken) {
+    if (claimToken == null) return false;
+    if (isPg()) {
+      try {
+        const r = await db.query(
+          `UPDATE server_outbox SET processing_at = NOW()
+           WHERE id = $1 AND claim_token = $2 AND status = 'processing';`, [id, claimToken]);
+        return !!(r && r.rowCount > 0);
+      } catch (e) { return false; }
+    }
+    const e = (store.outbox || []).find(x => x.id === id);
+    if (!e || e.status !== 'processing' || e.claim_token !== claimToken) return false;
+    e.processing_at = Date.now();
+    return true;
   }
 
   /**
@@ -251,6 +313,12 @@ function createOutbox({ store, db }) {
         return (res && res.rows) || [];
       }
       // Single-statement atomic claim using CTE + UPDATE ... RETURNING
+      /* RR-03 (Arena-2 runtime audit): every claim mints a claim_token. A stale
+         reclaim hands out a NEW token, so the original (slow/crashed) owner's
+         later mark()/extendLease() no-ops on the token predicate instead of
+         overwriting the new owner's state. Reproducer before the fix: a handler
+         running longer than PAYESH_OUTBOX_LEASE_SECONDS was executed twice
+         (K1-P4b at 172da62b: deliveries=2, workers=[STEAL,SLOW]). */
       const q = db;
       const res = await q.query(
         `WITH claimed AS (
@@ -262,21 +330,28 @@ function createOutbox({ store, db }) {
            FOR UPDATE SKIP LOCKED
          )
          UPDATE server_outbox o
-         SET status = 'processing', processing_at = NOW()
+         SET status = 'processing', processing_at = NOW(),
+             claim_token = replace(gen_random_uuid()::text, '-', '')
          FROM claimed c
          WHERE o.id = c.id
-         RETURNING o.id, o.type, o.collection, o.record_id, o.actor_id, o.version, o.payload, o.retry_count, o.last_error;`,
+         RETURNING o.id, o.type, o.collection, o.record_id, o.actor_id, o.version, o.payload, o.retry_count, o.last_error, o.claim_token;`,
         [limit, Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) > 0 ? Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) : 60]
       );
       return (res && res.rows) || [];
     }
     // Memory mode: reclaim only stale processing claims; fresh claims remain owned.
+    // RR-04 (Arena-2 runtime audit): legacy events carry NO status field (pre-view-8
+    // snapshots) and the worker treats them as pending by contract — the claim
+    // filter must agree, otherwise they are stranded forever (reproduced at
+    // 172da62b: statusless RAM event never claimed).
     const leaseMs = (Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) > 0 ? Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) : 60) * 1000;
     const now = Date.now();
-    const pending = (store.outbox || []).filter(e => e.status === 'pending' || (e.status === 'processing' && (!e.processing_at || now - Number(e.processing_at) >= leaseMs))).slice(0, limit);
+    const pending = (store.outbox || []).filter(e => (e.status || 'pending') === 'pending' || (e.status === 'processing' && (!e.processing_at || now - Number(e.processing_at) >= leaseMs))).slice(0, limit);
     for (const e of pending) {
       e.status = 'processing';
       e.processing_at = Date.now();
+      /* RR-03: mint a fresh claim token on every (re)claim, PG and RAM alike. */
+      e.claim_token = require('crypto').randomBytes(12).toString('hex');
     }
     return pending;
   }
@@ -306,6 +381,13 @@ function createOutbox({ store, db }) {
         if (!evt) return null;
       }
     }
+    /* RR-06 (Arena-2 runtime audit): DLQ is a TERMINAL transition and must not
+       overwrite an event that already reached a terminal state. Before this
+       guard a late/duplicate moveToDlq could dead-letter an already-PROCESSED
+       event (reproduced at 172da62b: processed → dead_letter + DLQ row).
+       Only pending/processing/failed sources are transferable. The UPDATE keeps
+       the status predicate so the guard also holds against concurrent racers. */
+    const TRANSFERABLE = ['pending', 'processing', 'failed'];
     if (isPg()) {
       /* Runtime reliability: DLQ insert and source terminal transition are
          one atomic unit. A successful DLQ INSERT followed by a failed source
@@ -323,12 +405,14 @@ function createOutbox({ store, db }) {
              ON CONFLICT (outbox_id) DO NOTHING;`,
             [evt.id, evt.type, evt.collection, evt.record_id, evt.actor_id, evt.version, JSON.stringify(evt.payload), String(errorMessage), evt.retry_count || 5]
           );
-          await client.query(
+          const upd = await client.query(
             `UPDATE server_outbox
              SET status = 'dead_letter', last_error = $2, processing_at = NULL
-             WHERE id = $1;`,
-            [evt.id, String(errorMessage)]
+             WHERE id = $1 AND status = ANY($3::varchar[]);`,
+            [evt.id, String(errorMessage), TRANSFERABLE]
           );
+          /* Lost the race to a terminal transition ⇒ undo the DLQ insert. */
+          if (!upd || upd.rowCount === 0) throw new Error('DLQ_TERMINAL_CONFLICT');
           return { ok: true, id: evt.id, status: 'dead_letter', error_message: String(errorMessage) };
         });
         return result;
@@ -337,6 +421,10 @@ function createOutbox({ store, db }) {
         return { ok: false, id: evt.id, error: e.message };
       }
     } else {
+      const cur = (store.outbox || []).find((e) => Number(e.id) === Number(evt.id)) || evt;
+      if (cur.status && TRANSFERABLE.indexOf(cur.status) === -1) {
+        return { ok: false, id: evt.id, error: 'DLQ_TERMINAL_CONFLICT' };
+      }
       if (!Array.isArray(store.outbox_dlq)) store.outbox_dlq = [];
       if (!store.outbox_dlq.some((row) => Number(row.outbox_id != null ? row.outbox_id : row.id) === Number(evt.id))) {
         store.outbox_dlq.push(Object.assign({}, evt, { outbox_id: evt.id, error_message: errorMessage, failed_at: new Date().toISOString() }));
@@ -346,7 +434,7 @@ function createOutbox({ store, db }) {
     }
   }
 
-  return { append, mark, depth, replayPendingFromPg, fetchPendingBatch, moveToDlq, cap: OUTBOX_CAP };
+  return { append, mark, depth, replayPendingFromPg, fetchPendingBatch, moveToDlq, extendLease, cap: OUTBOX_CAP };
 }
 
 module.exports = { createOutbox };

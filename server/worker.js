@@ -63,22 +63,42 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
         events = Array.isArray(store.outbox) ? store.outbox : [];
       }
 
+      /* RR-03 (Arena-2 runtime audit): lease heartbeat. While a handler runs,
+         the worker refreshes the claim every lease/3 seconds using its claim
+         token; the refresh stops the moment the token no longer owns the row
+         (lease stolen after a true crash/hang). Before this, any handler slower
+         than PAYESH_OUTBOX_LEASE_SECONDS was double-delivered (K1-P4b at
+         172da62b). Handlers must still stay idempotent (at-least-once). */
+      const leaseS = Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) > 0 ? Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) : 60;
+      const startHeartbeat = (evt) => {
+        const token = evt.claim_token;
+        if (!token || typeof outbox.extendLease !== 'function') return null;
+        let alive = true;
+        const iv = setInterval(async () => {
+          if (!alive) return;
+          try { const ok = await outbox.extendLease(evt.id, token); if (!ok) alive = false; } catch (_) { alive = false; }
+        }, Math.max(1000, Math.floor((leaseS * 1000) / 3)));
+        if (iv.unref) iv.unref();
+        return { stop: () => { alive = false; clearInterval(iv); } };
+      };
+
       for (const evt of events) {
         const status = evt.status || 'pending'; /* سازگاری با گذشته */
         if ((status !== 'pending' && status !== 'processing') || inFlight.has(evt.id)) continue;
         const h = handlerFor(evt);
         if (!h) {
-          await outbox.mark(evt.id, { status: 'pending', processing_at: null });
+          await outbox.mark(evt.id, { status: 'pending', processing_at: null }, evt.claim_token);
           continue;
         }
         inFlight.add(evt.id);
+        const hb = startHeartbeat(evt);
         try {
           await h(evt);
           await outbox.mark(evt.id, {
             status: 'processed',
             processed_at: new Date().toISOString(),
             last_error: null
-          });
+          }, evt.claim_token);
           processed++;
           metrics.inc('payesh_worker_events_total', { outcome: 'processed' });
         } catch (err) {
@@ -107,19 +127,20 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
                 movedToDlq = !!(dlq && dlq.ok === true);
               } catch (_) {}
             }
-            if (!movedToDlq) await outbox.mark(evt.id, patch);
+            if (!movedToDlq) await outbox.mark(evt.id, patch, evt.claim_token);
             else await outbox.mark(evt.id, {
               status: 'dead_letter',
               retry_count: rc,
               last_error: errMsg,
               processing_at: null   /* lease cleanup on terminal transition */
-            });
+            }, evt.claim_token);
           } else {
-            await outbox.mark(evt.id, patch);
+            await outbox.mark(evt.id, patch, evt.claim_token);
           }
           /* برچسب از مجموعهٔ بسته (retry/failed)؛ متن خطا هرگز label نیست. */
           metrics.inc('payesh_worker_events_total', { outcome: patch.status === 'failed' ? 'failed' : 'retry' });
         } finally {
+          if (hb) hb.stop();
           inFlight.delete(evt.id);
         }
       }
