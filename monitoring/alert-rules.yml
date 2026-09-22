@@ -1,1 +1,5 @@
-../infra/observability/alert-rules.yml
+# DEPRECATED — canonical Prometheus alert catalogue lives at
+# infra/observability/alert-rules.yml
+#
+# Prometheus loads only the canonical file above. This compatibility marker
+# intentionally contains no active rules, preventing a second catalogue from drifting independently.
