@@ -624,7 +624,7 @@ The commits after the previous DR reconciliation are OCC/migration/outbox/runtim
 
 ## Current Status Reconciliation — 2026-09-22
 
-- **Current main HEAD:** `59c7b433762c637729e143d79ba8390ca80cb619`.
+- **Current main ref (re-read at gate time):** `59c7b433762c637729e143d79ba8390ca80cb619`.
 - **Current-head CI:** **NOT VERIFIED**. No GitHub Actions workflow run was returned for this exact SHA by the available connector. Do not inherit CI status from #1093/#1155 or older SHAs.
 - **Phase 8.1:** **VERIFIED historically** on its cited evidence; this does not imply current-head CI revalidation.
 - **R1/R2/R21:** **VERIFIED on historical CI evidence; current-head revalidation REQUIRED**.
@@ -700,7 +700,7 @@ At `6460e55dfbea4a5cfe82a5d79f7106e367778ed3`, no GitHub Actions workflow run an
 |---|---|
 | Repository | `rezaa2544/p2` |
 | Branch | `main` |
-| Current HEAD | `21ec84e1b80c8b85d2390093ab0511e48a7b135b` |
+| Reviewed code baseline | `55cd021b3f17d23cf540b5afeb013dce6e6486b9` |
 | CircleCI | `ci/circleci: say-hello` run 608 was pending at the preceding code reconciliation; this documentation commit created a new run |
 | GitHub Actions | No workflow run returned for the preceding current code SHA; this remains **NOT VERIFIED** until a completed run exists |
 | Repo-owned defect queue | **ZERO** after PR #345 and documentation reconciliation |
