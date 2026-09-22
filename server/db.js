@@ -774,6 +774,7 @@ async function persistOpWithClient(client, op) {
         const e = new Error('optimistic concurrency conflict');
         e.code = 'occ_conflict';
         e.status = 409;
+        e.op = op;
         throw e;
       }
     } else {
