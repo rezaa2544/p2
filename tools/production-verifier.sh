@@ -124,6 +124,15 @@ JS
 PUBB64="$(python3 -c 'import json;print(json.load(open("/tmp/p7v-gov.json"))["pub"])')"
 [ -n "$PUBB64" ] && [ -s /tmp/p7v-gov-priv.pem ] || { echo "NOT VERIFIED — governance keygen failed"; exit 1; }
 
+# T2/T6: clean PG is intentionally empty; seed isolated identities into the PG authority.
+psql "$URL" -v ON_ERROR_STOP=1 -q <<'SQL'
+INSERT INTO schools (id, name, type, version, active) VALUES (3, 'P7V School', 'governmental', 1, true) ON CONFLICT (id) DO UPDATE SET active=true;
+INSERT INTO users (id, role, full_name, username, national_id, phone, active, school_id, status, created_at, updated_at, version) VALUES
+  (9000001, 'superadmin', 'P7V Superadmin', 'p7v-superadmin', '9993235245', '09999838444', true, NULL, 'active', NOW(), NOW(), 1),
+  (9000002, 'teacher', 'P7V Teacher', 'p7v-teacher', '1000000001', '09120000001', true, 3, 'active', NOW(), NOW(), 1)
+ON CONFLICT (id) DO UPDATE SET role=EXCLUDED.role, full_name=EXCLUDED.full_name, username=EXCLUDED.username, national_id=EXCLUDED.national_id, phone=EXCLUDED.phone, active=true, school_id=EXCLUDED.school_id, status='active';
+SQL
+
 PIDA=$(boot_one "$PORTA" "$OTP_A" /tmp/p7v-a.log)
 PIDB=$(boot_one "$PORTB" "$OTP_B" /tmp/p7v-b.log)
 cleanup() {
@@ -149,8 +158,8 @@ fi
 
 LOGIN="$($NODE - <<JS
 const fs=require('fs'); const http=require('http');
-const st=JSON.parse(fs.readFileSync('$STORE','utf8'));
-const su=(st.users||[]).find(u=>u.role==='superadmin');
+const su={phone:'09999838444',national_id:'9993235245'};
+const teacher={phone:'09120000001',national_id:'1000000001'};
 const teacher=(st.users||[]).find(u=>u.role==='teacher' && Number(u.school_id)===3);
 function req(port,method,p,body,cookie,headers){
   return new Promise(res=>{
@@ -288,7 +297,10 @@ print(re.sub(r'/[^/?]+(\?.*)?$', lambda m: '/payesh_p7v_bad'+(m.group(1) or ''),
 PY
 )"
 # apply only through 018 so authority_state is missing
-for f in $(ls "$ROOT/migrations"/[0-9][0-9][0-9]_*.sql | grep -v '\.down\.sql$' | sort | grep -v '019_'); do
+for f in $(ls "$ROOT/migrations"/[0-9][0-9][0-9]_*.sql | grep -v '\.down\.sql$' | sort); do
+  case "$f" in
+    *"/019_"*|*"/020_"*) continue ;;
+  esac
   psql "$URLBAD" -v ON_ERROR_STOP=1 -q -f "$f" >/dev/null
 done
 PORTC=3513
