@@ -1,5 +1,8 @@
 name: observability-regression
 
+permissions:
+  contents: read
+
 on:
   push:
     paths:
