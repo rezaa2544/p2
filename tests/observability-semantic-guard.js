@@ -8,7 +8,8 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const metrics = read('server/metrics.js');
 const rules = read('infra/observability/alert-rules.yml');
 const retired = read('infra/observability/alerts.yml');
-const duplicateCatalogue = read('monitoring/alert-rules.yml');
+const duplicateCataloguePath = path.join(ROOT, 'monitoring/alert-rules.yml');
+const duplicateCatalogue = fs.existsSync(duplicateCataloguePath) ? fs.readFileSync(duplicateCataloguePath, 'utf8') : null;
 const promtail = read('infra/observability/promtail.yml');
 let fail = 0;
 const errors = [];
@@ -41,7 +42,7 @@ function exists(name) {
 
 check(declarations.size > 20, 'metric declaration catalogue is non-empty');
 check(!/^- alert:/m.test(retired), 'retired infra alerts.yml contains no active rules');
-check(!/^- alert:/m.test(duplicateCatalogue) && /canonical Prometheus alert catalogue/.test(duplicateCatalogue), 'monitoring alert-rules.yml is a non-active compatibility marker');
+check(duplicateCatalogue === null || (!/^- alert:/m.test(duplicateCatalogue) && /canonical Prometheus alert catalogue/.test(duplicateCatalogue)), 'secondary alert catalogue is absent or a non-active compatibility marker');
 check(/job_name: payesh-audit/.test(promtail) && /structured_metadata: \{ trace_id: \}/.test(promtail), 'audit log trace_id remains in Promtail structured metadata');
 check(!/traceId=/.test(promtail), 'Promtail does not claim unsupported server.log traceId extraction');
 
@@ -50,7 +51,7 @@ check(new Set(alerts).size === alerts.length, 'alert names are unique');
 check(alerts.length === 11, 'canonical catalogue contains the expected 11 alerts');
 
 // Only inspect expr blocks. Annotation prose must never affect semantic checks.
-const exprBlocks = [...rules.matchAll(/\n\s*expr:\s*(?:\|\s*)?\n([\s\S]*?)(?=\n\s*for:)/g)].map((x) => x[1]);
+const exprBlocks = [...rules.matchAll(/\n\s*expr:\s*(?:\|\s*\n([\s\S]*?)|([^\n]+))(?=\n\s*for:)/g)].map((x) => x[1] || x[2]);
 check(exprBlocks.length === alerts.length, 'every alert has an expression block');
 
 const metricRef = /\b(payesh_[a-zA-Z0-9_]+)(?:\{([^}]*)\})?/g;

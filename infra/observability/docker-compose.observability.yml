@@ -29,9 +29,8 @@ services:
       ALERTMANAGER_WEBHOOK_URL: ${ALERTMANAGER_WEBHOOK_URL:-}
     volumes:
       - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    entrypoint: ["/bin/sh", "-ec"]
     command:
-      - /bin/sh
-      - -ec
       - |
         test -n "$$ALERTMANAGER_WEBHOOK_URL" || { echo 'ALERTMANAGER_WEBHOOK_URL is required; refusing placeholder alerting config' >&2; exit 78; }
         test "$$ALERTMANAGER_WEBHOOK_URL" != "__WEBHOOK_URL__" || { echo 'ALERTMANAGER_WEBHOOK_URL is still the repository placeholder' >&2; exit 78; }
