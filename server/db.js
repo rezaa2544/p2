@@ -757,7 +757,7 @@ async function persistOpWithClient(client, op) {
     const versionClause = hasBaseVersion
       ? ', version = COALESCE(version, 1) + 1'
       : (writeFields.includes('version') ? '' : ', version = COALESCE(version, 1) + 1');
-    const setSql = writeFields.map((f, i) => `${ident(f)} = ${i + 1}`).join(', ') + versionClause;
+    const setSql = writeFields.map((f, i) => `${ident(f)} = ${String.fromCharCode(36)}${i + 1}`).join(', ') + versionClause;
 
     if (op.base_version != null) {
       const base = op.base_version;
