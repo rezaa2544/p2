@@ -24,14 +24,23 @@ BEGIN
   IF to_regclass('mig009_w0') IS NULL THEN
     RAISE EXCEPTION 'rollback of 009 requires mig009_w0 recovery watermark';
   END IF;
-  EXECUTE 'CREATE TABLE attendance_recovered AS
-           SELECT n.* FROM attendance n
-           WHERE n.chg_id IS NULL
-              OR n.chg_id > (SELECT w0 FROM mig009_w0 WHERE id = 1)';
-  EXECUTE 'CREATE TABLE grades_recovered AS
-           SELECT n.* FROM grades n
-           WHERE n.chg_id IS NULL
-              OR n.chg_id > (SELECT w0 FROM mig009_w0 WHERE id = 1)';
+  IF EXISTS (SELECT 1 FROM attendance n
+             WHERE n.chg_id IS NULL
+                OR n.chg_id > (SELECT w0 FROM mig009_w0 WHERE id = 1)) THEN
+    EXECUTE 'CREATE TABLE attendance_recovered AS
+             SELECT n.* FROM attendance n
+             WHERE n.chg_id IS NULL
+                OR n.chg_id > (SELECT w0 FROM mig009_w0 WHERE id = 1)';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM grades n
+             WHERE n.chg_id IS NULL
+                OR n.chg_id > (SELECT w0 FROM mig009_w0 WHERE id = 1)) THEN
+    EXECUTE 'CREATE TABLE grades_recovered AS
+             SELECT n.* FROM grades n
+             WHERE n.chg_id IS NULL
+                OR n.chg_id > (SELECT w0 FROM mig009_w0 WHERE id = 1)';
+  END IF;
 END $$;
 
 -- برگرداندنِ نام‌های نهایی به _old (برعکسِ swap)
