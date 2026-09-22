@@ -61,12 +61,22 @@ function discoverMigrationFiles() {
     .filter(f => f.endsWith('.sql') && !f.endsWith('.down.sql'))
     .sort();
 
+  const seenVersions = new Map();
+
   return files.map(file => {
     const match = file.match(/^([0-9]{3})_(.+)\.sql$/);
     if (!match) {
       throw new Error(`Invalid migration file format: ${file}. Expected NNN_name.sql`);
     }
+
     const version = match[1];
+    if (seenVersions.has(version)) {
+      throw new Error(
+        `DUPLICATE_MIGRATION_VERSION: version ${version} is used by ${seenVersions.get(version)} and ${file}`
+      );
+    }
+    seenVersions.set(version, file);
+
     const fullPath = path.join(MIGRATIONS_DIR, file);
     const content = fs.readFileSync(fullPath, 'utf8');
     const checksum = computeChecksum(content);
