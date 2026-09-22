@@ -67,7 +67,10 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
         const status = evt.status || 'pending'; /* سازگاری با گذشته */
         if ((status !== 'pending' && status !== 'processing') || inFlight.has(evt.id)) continue;
         const h = handlerFor(evt);
-        if (!h) continue; /* این رویداد کارِ این کارگر نیست */
+        if (!h) {
+          await outbox.mark(evt.id, { status: 'pending', processing_at: null });
+          continue;
+        }
         inFlight.add(evt.id);
         try {
           await h(evt);
@@ -89,13 +92,17 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
           if (rc >= maxRetries) {
             failedDelta++;
             // B4: Transfer poison pill event to Dead-Letter Queue (DLQ)
+            let movedToDlq = false;
             if (outbox && typeof outbox.moveToDlq === 'function') {
               try {
-                await outbox.moveToDlq(evt, errMsg);
+                const dlq = await outbox.moveToDlq(evt, errMsg);
+                movedToDlq = !!(dlq && dlq.ok === true);
               } catch (_) {}
             }
+            if (!movedToDlq) await outbox.mark(evt.id, patch);
+          } else {
+            await outbox.mark(evt.id, patch);
           }
-          await outbox.mark(evt.id, patch);
           /* برچسب از مجموعهٔ بسته (retry/failed)؛ متن خطا هرگز label نیست. */
           metrics.inc('payesh_worker_events_total', { outcome: patch.status === 'failed' ? 'failed' : 'retry' });
         } finally {
