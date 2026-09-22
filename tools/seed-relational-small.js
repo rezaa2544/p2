@@ -149,6 +149,35 @@ async function applyMigrations(client) {
 }
 
 /* Delete in FK-safe order (children first) so re-running is deterministic. */
+/* F-A1 (Arena 1 Migration/OCC audit, 2026-09-23): PG_SEED_FRESH drops the whole
+   schema — INCLUDING schema_migrations — while this tool's own applier never
+   (re)creates the ledger. A later `tools/migrate-ledger.js up` then re-walks the
+   chain against a schema that is already complete, gets past the idempotent 001-008,
+   and wedges forever at non-idempotent 009 (ledger stuck at 8/21).
+   Rebuild the authoritative ledger from the SAME source migrate-ledger uses
+   (discoverMigrationFiles ⇒ identical version/name/checksum), for exactly the
+   files this run actually put in the schema. not_run_psql / failed files stay
+   unrecorded on purpose: the ledger runner must still own them. */
+async function rebuildLedger(client, results) {
+  const done = new Set(results
+    .filter((r) => r.status === 'applied' || r.status === 'already_exists')
+    .map((r) => r.file));
+  if (!done.size) return;
+  const { ensureLedgerTable, discoverMigrationFiles } = require('./migrate-ledger');
+  await ensureLedgerTable(client);
+  let recorded = 0;
+  for (const f of discoverMigrationFiles()) {
+    if (!done.has(f.name)) continue; /* f.name is the NNN_name.sql filename — same key as results[].file */
+    const r = await client.query(
+      `INSERT INTO schema_migrations (version, name, applied_at, checksum)
+       VALUES ($1, $2, NOW(), $3) ON CONFLICT (version) DO NOTHING`,
+      [f.version, f.name, f.checksum]
+    );
+    if (r.rowCount) recorded++;
+  }
+  if (recorded) console.log('schema_migrations: recorded ' + recorded + ' applied migration(s) — ledger consistent with schema');
+}
+
 async function clearFixture(client) {
   for (const t of ['grades', 'attendance', 'enrollments', 'classes', 'subjects', 'users', 'schools']) {
     await client.query('DELETE FROM ' + t);
@@ -432,6 +461,9 @@ async function main() {
     for (const r of psqlOnlyFiles) console.log('  NOT-RUN  ' + r.file + '  (psql meta-command ' + r.detail + ')');
     for (const r of failed) console.log('  FAILED   ' + r.file + '  ' + r.detail);
     if (failed.length) { console.error('seed-relational-small: FAILED — ' + failed.length + ' migration(s) failed'); process.exit(1); }
+
+    /* F-A1: keep schema_migrations consistent with what this run actually applied */
+    await rebuildLedger(client, results);
 
     await clearFixture(client);
     const f = await loadFixture(client);
