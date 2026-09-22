@@ -10,5 +10,5 @@ ok('legacy compatibility path exists',fs.existsSync(COMPAT),COMPAT);
 const redirect=fs.readFileSync(COMPAT,'utf8');
 ok('compatibility file declares historical redirect',/historical redirect/i.test(redirect));
 ok('compatibility file points to canonical historical document',redirect.includes('docs/audit/history/audit/TODO_BEFORE_PRODUCTION.md'));
-ok('compatibility file explicitly denies Current HEAD authority',/not current production-readiness truth/i.test(redirect));
+ok('compatibility file explicitly denies Current HEAD authority',/not\*\*\s+current production-readiness truth/i.test(redirect) || /not\s+current production-readiness truth/i.test(redirect));
 console.log('stale-path contract: 5/5 PASS');
