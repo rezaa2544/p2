@@ -38,7 +38,7 @@ function exists(name) {
 }
 
 check(declarations.size > 20, 'metric declaration catalogue is non-empty');
-check(/__WEBHOOK_URL__/.test(retired) && !/^- alert:/m.test(retired), 'retired duplicate alert catalogue is not active');
+check(/__WEBHOOK_URL__/.test(retired) && !/^- alert:/m.test(retired), 'retired duplicate alert catalogue is not active');\nconst secondary = read('monitoring/alert-rules.yml');\ncheck(!/^- alert:/m.test(secondary), 'secondary monitoring alert catalogue is not active');
 
 const alerts = [...rules.matchAll(/- alert:\s*([A-Za-z0-9_]+)/g)].map((x) => x[1]);
 check(new Set(alerts).size === alerts.length, 'alert names are unique');
