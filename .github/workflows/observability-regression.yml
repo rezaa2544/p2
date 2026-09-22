@@ -1,5 +1,8 @@
 name: observability-regression
 
+permissions:
+  contents: read
+
 on:
   push:
     paths:
@@ -34,17 +37,20 @@ jobs:
         run: docker run --rm -v "$PWD/infra/observability:/etc/prometheus:ro" prom/prometheus:v2.54.1 promtool check rules /etc/prometheus/alert-rules.yml
       - name: promtool Prometheus config validation
         run: docker run --rm -v "$PWD/infra/observability:/etc/prometheus:ro" prom/prometheus:v2.54.1 promtool check config /etc/prometheus/prometheus.yml
-      - name: promtool Alertmanager config validation with non-live CI URL
+      - name: amtool Alertmanager config validation with non-live CI URL
         run: |
           sed 's|__WEBHOOK_URL__|https://example.invalid/alertmanager-ci|g' infra/observability/alertmanager.yml > /tmp/alertmanager.yml
           docker run --rm -v /tmp/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro prom/alertmanager:v0.27.0 amtool check-config /etc/alertmanager/alertmanager.yml
-      - name: Alertmanager placeholder must fail closed
+      - name: Mutation check — metric guard must turn red on legacy selector
         run: |
+          cp infra/observability/alert-rules.yml /tmp/alert-rules.yml
+          sed -i 's/payesh_node_eventloop_lag_seconds > 0.1/payesh_eventloop_lag_ms{q="dead"} > 100/' infra/observability/alert-rules.yml
           set +e
-          docker compose -f infra/observability/docker-compose.observability.yml run --rm -T -e ALERTMANAGER_WEBHOOK_URL= alertmanager
+          node tests/observability-semantic-guard.js
           code=$?
           set -e
-          test "$code" -eq 78
+          cp /tmp/alert-rules.yml infra/observability/alert-rules.yml
+          test "$code" -ne 0
 
   runtime:
     runs-on: ubuntu-latest
@@ -60,3 +66,57 @@ jobs:
         run: node tests/wave14-observability-mutations.js
       - name: Independent dashboard regression
         run: node tests/observability-dashboards.js
+
+  alertmanager-fail-closed:
+    runs-on: ubuntu-latest
+    env:
+      GRAFANA_PASSWORD: ci-observability-test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Empty webhook must exit 78
+        run: |
+          set +e
+          docker compose -f infra/observability/docker-compose.observability.yml run --rm -T -e ALERTMANAGER_WEBHOOK_URL= alertmanager
+          code=$?
+          set -e
+          test "$code" -eq 78
+      - name: Placeholder webhook must exit 78
+        run: |
+          set +e
+          docker compose -f infra/observability/docker-compose.observability.yml run --rm -T -e ALERTMANAGER_WEBHOOK_URL=__WEBHOOK_URL__ alertmanager
+          code=$?
+          set -e
+          test "$code" -eq 78
+
+  promtail-loki-runtime:
+    runs-on: ubuntu-latest
+    env:
+      GRAFANA_PASSWORD: ci-observability-test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare isolated log directory
+        run: |
+          set -e
+          mkdir -p /tmp/payesh-logs
+          : > /tmp/payesh-logs/server.log
+          : > /tmp/payesh-logs/audit.log
+      - name: Start Loki and Promtail
+        run: |
+          PAYESH_LOG_DIR=/tmp/payesh-logs docker compose -f infra/observability/docker-compose.observability.yml up -d loki promtail
+      - name: Inject fresh log lines
+        run: |
+          printf '%s\n' 'runtime-promtail-server-line' >> /tmp/payesh-logs/server.log
+          printf '%s\n' '{"event":"runtime-promtail-audit","trace_id":"runtime-trace-001"}' >> /tmp/payesh-logs/audit.log
+      - name: Verify Loki received server and audit streams
+        run: |
+          set -e
+          for i in $(seq 1 30); do
+            server_json="$(curl -fsS --get 'http://127.0.0.1:3100/loki/api/v1/query_range' --data-urlencode 'query={service="payesh",log_source="server-log"}' --data-urlencode 'limit=20' || true)"
+            audit_json="$(curl -fsS --get 'http://127.0.0.1:3100/loki/api/v1/query_range' --data-urlencode 'query={service="payesh",log_source="audit-log"}' --data-urlencode 'limit=20' || true)"
+            if printf '%s' "$server_json" | grep -F 'runtime-promtail-server-line' >/dev/null 2>&1 && printf '%s' "$audit_json" | grep -F 'runtime-promtail-audit' >/dev/null 2>&1 && printf '%s' "$audit_json" | grep -F 'runtime-trace-001' >/dev/null 2>&1; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Stop Loki and Promtail
+        if: always()
+        run: PAYESH_LOG_DIR=/tmp/payesh-logs docker compose -f infra/observability/docker-compose.observability.yml down -v
