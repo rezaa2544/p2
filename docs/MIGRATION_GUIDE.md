@@ -274,6 +274,7 @@ $ node tools/migrate-helper.js --next
 | ۰۱۸ | `018_phase6_ops_kv.sql` / `.down` | کلید-مقدار عملیاتی و لاگ‌های حاکمیتی | مرج (فاز ۶) |
 | ۰۱۹ | `019_phase7_authority_foundation.sql` / `.down` | زیرساخت مرجعیت واحد (canary_state, governance_ledger, tenant_policy, system_audit) | مرج (فاز ۷) |
 | ۰۲۰ | `020_operator_identity_fix.sql` / `.down` | توسعه هویت اپراتور به رشته (UUID/نام‌کاربری/حساب سرویس) | مرج (فاز ۷.۵) |
+| ۰۲۱ | `021_outbox_processing_lease.sql` / `.down` | lease برای پردازش outbox و recovery پس از crash | مرج (فاز ۸) |
 
 > مهاجرت بعدی شمارهٔ `021` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را به جدول اضافه کند — مالک: نویسندهٔ مهاجرت.
 
