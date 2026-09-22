@@ -64,7 +64,8 @@ for (const expr of exprBlocks) {
 }
 
 check(/payesh_http_requests_total\{code=~"5\.\."\}/.test(rules), 'HighErrorRate uses emitted code label');
-check(/payesh_eventloop_lag_ms\s*>\s*100/.test(rules), 'EventLoopLagHigh has no dead q label selector');
+check(/payesh_node_eventloop_lag_seconds\s*>\s*0\.1/.test(rules), 'EventLoopLagHigh uses canonical seconds gauge');
+check(!/payesh_eventloop_lag_ms\{/.test(rules), 'EventLoopLagHigh does not reference legacy ms labels');
 check(/payesh_node_heap_used_bytes\s*\/\s*clamp_min\(payesh_node_heap_total_bytes/.test(rules), 'MemoryHigh uses canonical heap gauges');
 check(!/payesh_process_heap_bytes\{kind=/.test(rules), 'MemoryHigh does not use undeclared kind labels');
 check(!/payesh_eventloop_lag_ms\{q=/.test(rules), 'no event-loop q selector can create an empty vector');
