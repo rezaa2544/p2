@@ -15,10 +15,6 @@ scrape_configs:
     static_configs:
       - targets: [localhost]
         labels: { service: payesh, log_source: server-log, __path__: /var/log/payesh/server.log }
-    pipeline_stages:
-      - regex: { expression: "traceId=(?P<trace_id>[0-9a-f]+)" }
-      - structured_metadata: { trace_id: }
-      - labels: []
   - job_name: payesh-audit
     static_configs:
       - targets: [localhost]
