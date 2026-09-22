@@ -55,6 +55,7 @@ pass('otp-fixture-boundary', () => {
 pass('independent-regression-verifier-contract', () => {
   for (const t of ['T1','T2','T3','T4','T5','T6','T7']) {
     assert.ok(s.includes('════ ' + t + ' '), 'missing ' + t);
+    assert.strictEqual((s.match(new RegExp('════ ' + t + ' ', 'g')) || []).length, 1, 'duplicate ' + t);
   }
   assert.ok(s.includes('VERDICT: VERIFIED'));
   assert.ok(s.includes('VERDICT: NOT VERIFIED'));
