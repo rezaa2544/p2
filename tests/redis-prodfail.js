@@ -66,9 +66,14 @@ async function roleA() {
   await mustThrow('A10 compareAndDelete می‌پراند', () => redis.compareAndDelete('l', 't'));
   await mustThrow('A11 publish می‌پراند', () => redis.publish('ch', 'm'));
   await mustThrow('A12 subscribe می‌پراند', () => redis.subscribe('ch', () => {}));
-  /* مشاهده/بستن باید جواب بدهند (نه پرتاب). */
+  /* مشاهده/بستن باید جواب بدهند (نه پرتاب).
+     RR-07 (Arena-2 runtime audit): در تولید ping هرگز نباید «سبزِ حافظه‌ای»
+     گزارش کند — شکلِ درستِ قطعی `{ok:false, driver:'none', error:'REDIS_UNAVAILABLE'}`
+     است (a3c213e0). انتظارِ قدیمیِ `driver==='memory'` باگِ خودِ تست بود و
+     پس از آن فیکس، نقشِ a را قرمز می‌کرد (15/16 در 172da62b). */
   const p = await redis.ping();
-  chk('A13 ping جواب می‌دهد', p && p.driver === 'memory');
+  chk('A13 ping جواب می‌دهد و هرگز حافظهٔ سالمِ جعلی گزارش نمی‌کند',
+      !!p && p.ok === false && p.driver !== 'memory');
   chk('A14 ready نادرست است', redis.ready() === false);
   await redis.close();
   chk('A15 close بی‌خطا', true);
