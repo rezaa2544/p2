@@ -40,3 +40,8 @@
 ## تثبیت ترتیب gate آزمون DLQ — 2026-09-22
 
 آزمون DLQ بلافاصله پس از نصب وابستگی‌ها اجرا می‌شود تا failure این حوزه مستقل از gateهای طولانی مشاهده شود.
+
+
+## بستن یافته‌های Observability — ۲۰۲۶-۰۹-۲۲
+
+در current main، guardهای catalogue و parsing expression همگام شدند و entrypoint آلارتمَنجر برای اجرای واقعی fail-closed صریح شد. gateهای Docker در CI یک مقدار ساختگی و غیرمحرمانه برای interpolation گرافانا دارند؛ هیچ endpoint یا secret production در کد نیست. وضعیت runtime فقط با اجرای کامل Actions قابل اعلام است.
