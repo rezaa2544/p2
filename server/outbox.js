@@ -34,7 +34,15 @@ function createOutbox({ store, db }) {
         const n = Number(await redis.incr(OUTBOX_SEQ_KEY));
         if (Number.isFinite(n) && n > 0) return n;
       }
-    } catch (e) { /* Redis رفت: شمارندهٔ محلی (سازگاریِ توسعه) */ }
+    } catch (e) {
+      if (typeof redis.isConfigured === 'function' && redis.isConfigured()) throw e;
+      if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) throw e;
+    }
+    if (typeof redis.isConfigured === 'function' && redis.isConfigured() === false &&
+        (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL)) {
+      const err = new Error('REDIS_UNAVAILABLE: Redis unavailable in production outbox sequence');
+      err.code = 'REDIS_UNAVAILABLE'; err.status = 503; throw err;
+    }
     store.__outbox_seq = (Number(store.__outbox_seq) || 0) + 1;
     return store.__outbox_seq;
   }
@@ -314,7 +322,9 @@ function createOutbox({ store, db }) {
       }
     } else {
       if (!Array.isArray(store.outbox_dlq)) store.outbox_dlq = [];
-      store.outbox_dlq.push(Object.assign({}, evt, { error_message: errorMessage, failed_at: new Date().toISOString() }));
+      if (!store.outbox_dlq.some((row) => Number(row.outbox_id != null ? row.outbox_id : row.id) === Number(evt.id))) {
+        store.outbox_dlq.push(Object.assign({}, evt, { outbox_id: evt.id, error_message: errorMessage, failed_at: new Date().toISOString() }));
+      }
       await mark(evt.id, { status: 'dead_letter', last_error: errorMessage });
       return { ok: true, id: evt.id, status: 'dead_letter', error_message: String(errorMessage) };
     }
