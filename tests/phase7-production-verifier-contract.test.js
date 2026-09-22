@@ -21,8 +21,8 @@ pass('functional-shell-syntax', () => {
 // 2 Boundary: T5 must build the intentionally pre-authority database through 018,
 // and must never attempt 019/020 against that database.
 pass('boundary-t5-excludes-authority-migrations', () => {
-  assert.match(s, /case "\$f" in[\\s\\S]*?019_/);
-  assert.match(s, /case "\$f" in[\\s\\S]*?020_/);
+  assert.ok(s.includes('case "$f" in'));
+  assert.ok(s.includes('*"/019_"*|*"/020_"*) continue ;;'));
   assert.doesNotMatch(s, /grep -v '019_'/);
 });
 
