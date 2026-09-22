@@ -48,7 +48,7 @@ jobs:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           verbose: true
           tool: eslint
-          directory: src
+          directory: ${{ github.workspace }}/src
           output: results.sarif
           format: sarif
           gh-code-scanning-compat: true
