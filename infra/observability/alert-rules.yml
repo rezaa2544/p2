@@ -1,15 +1,13 @@
 # ═══════════════════════════════════════════════════════════════════════
 # alert-rules.yml — قوانینِ بحرانیِ P0 (ویو ۱۴)
-# ───────────────────────────────────────────────────────────────────────
-# آستانه‌ها از چک‌لیستِ Production Readiness؛ slabsِ «for» کوتاه‌مدتِ نویزگیر
-# هستند. نامِ متریک‌ها با server/metrics.js قفلِ متقابل دارد
-# (tests/observability-config.js) — تغییرِ یک‌طرفه قرمز می‌شود.
+# Semantic contract: every metric and selector below must match the
+# declarations and emitted labels in server/metrics.js on the same HEAD.
 groups:
   - name: payesh-critical
     rules:
       - alert: HighErrorRate
         expr: |
-          (sum(rate(payesh_http_requests_total{status="5xx"}[5m]))
+          (sum(rate(payesh_http_requests_total{code=~"5.."}[5m]))
            / clamp_min(sum(rate(payesh_http_requests_total[5m])), 0.01)) > 0.001
         for: 2m
         labels: { severity: critical }
@@ -45,48 +43,46 @@ groups:
         labels: { severity: warning }
         annotations:
           summary: "صفِ outbox/sync بیش از ۱۰۰۰ رویدادِ pending"
-          description: "worker را ببینید (server/worker.js)؛ مصرف‌کننده‌ی مرده = داده‌ی stale در همهٔ کلاینت‌ها"
+          description: "worker را ببینید (server/worker.js)؛ مصرف‌کننده‌ی مرده = دادهٔ stale در همهٔ کلاینت‌ها"
       - alert: EventLoopLagHigh
-        expr: payesh_eventloop_lag_ms{q="p99"} > 100
+        expr: payesh_node_eventloop_lag_seconds > 0.1
         for: 3m
         labels: { severity: warning }
         annotations:
-          summary: "lagِ event-loop (p99) بیش از ۱۰۰ms"
-          description: "معمولاً هم‌مسیرِ GC یا کارِ CPU-سنگین در پروسس — پروفایل بگیرید"
+          summary: "lagِ event-loop بیش از ۱۰۰ms"
+          description: "Canonical runtime gauge; بدون label selector تا empty-vector drift ایجاد نشود."
       - alert: MemoryHigh
-        expr: |
-          payesh_process_heap_bytes{kind="used"}
-          / clamp_min(payesh_process_heap_bytes{kind="limit"}, 1) > 0.80
+        expr: payesh_node_heap_used_bytes / clamp_min(payesh_node_heap_total_bytes, 1) > 0.80
         for: 3m
         labels: { severity: warning }
         annotations:
-          summary: "heap بیش از ۸۰٪ِ سقفِ V8"
-          description: "ریسکِ OOM؛ ری‌استارتِ نرمِ instance طبقِ runbook + بررسیِ نشتی با snapshotِ next drill"
+          summary: "heap بیش از ۸۰٪ِ heapTotal"
+          description: "Canonical Node heap gauges؛ بررسی OOM/leak طبق runbook."
       - alert: DiskSpaceLow
         expr: payesh_disk_used_ratio > 0.85
         for: 5m
         labels: { severity: warning }
         annotations:
           summary: "مصرفِ دیسکِ فایل‌سیستمِ مسیرِ داده بیش از ۸۵٪"
-          description: "ارزشِ لحظه‌ای {{ $value | humanizePercentage }} — فایل‌سیستمِ server/data (همان مسیرِ store/audit/backup). پیش از پرشدن، retention و پاکسازی را اجرا کنید؛ دیسکِ پُر = نوشتِ ناموفق و بوتِ ناموفق. سری‌ها از statfs در زمانِ scrape می‌آیند (server/metrics.js)"
+          description: "سری‌ها از statfs در زمانِ scrape می‌آیند (server/metrics.js)"
       - alert: AnomalyDetected
         expr: sum(increase(payesh_runtime_anomalies_total[5m])) > 0
         for: 1m
         labels: { severity: warning }
         annotations:
           summary: "Runtime anomaly detected"
-          description: "A request, auth-error, response-volume, tenant-switch, or sync-rate signal exceeded its rolling 3σ baseline. Follow RC-016; inspect only redacted audit event metadata."
+          description: "A bounded runtime anomaly signal exceeded its rolling baseline."
       - alert: AttackPatternSignature
         expr: sum by (pattern, severity) (increase(payesh_attack_patterns_detected_total[5m])) > 0
         for: 1m
         labels: { severity: critical }
         annotations:
           summary: "Runtime attack pattern signature detected"
-          description: "A bounded {{ $labels.pattern }} signature fired (detector severity {{ $labels.severity }}). Contain per RC-016; do not add raw actor identifiers to the incident channel."
+          description: "A bounded attack signature fired; contain per RC-016."
       - alert: SuspiciousSession
         expr: payesh_suspicious_sessions > 0
         for: 2m
         labels: { severity: warning }
         annotations:
           summary: "Suspicious runtime session retained"
-          description: "One or more one-way-hashed sessions are tied to an anomaly or denied attack signature in the preceding 24 hours. Triage using RC-016."
+          description: "One or more suspicious sessions are retained for triage."
