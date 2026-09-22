@@ -38,7 +38,9 @@ function exists(name) {
 }
 
 check(declarations.size > 20, 'metric declaration catalogue is non-empty');
-check(/__WEBHOOK_URL__/.test(retired) && !/^- alert:/m.test(retired), 'retired duplicate alert catalogue is not active');\nconst secondary = read('monitoring/alert-rules.yml');\ncheck(!/^- alert:/m.test(secondary), 'secondary monitoring alert catalogue is not active');
+check(/__WEBHOOK_URL__/.test(retired) && !/^- alert:/m.test(retired), 'retired duplicate alert catalogue is not active');
+const secondary = read('monitoring/alert-rules.yml');
+check(!/^- alert:/m.test(secondary), 'secondary monitoring alert catalogue is not active');
 
 const alerts = [...rules.matchAll(/- alert:\s*([A-Za-z0-9_]+)/g)].map((x) => x[1]);
 check(new Set(alerts).size === alerts.length, 'alert names are unique');
@@ -67,7 +69,7 @@ check(/payesh_http_requests_total\{code=~"5\.\."\}/.test(rules), 'HighErrorRate 
 check(/payesh_eventloop_lag_ms\s*>\s*100/.test(rules), 'EventLoopLagHigh has no dead q label selector');
 check(/payesh_node_heap_used_bytes\s*\/\s*clamp_min\(payesh_node_heap_total_bytes/.test(rules), 'MemoryHigh uses canonical heap gauges');
 check(!/payesh_process_heap_bytes\{kind=/.test(rules), 'MemoryHigh does not use undeclared kind labels');
-check(!/payesh_eventloop_lag_ms\{q=/.test(rules), 'no event-loop q selector can create an empty vector');
+check(!/payesh_eventloop_lag_ms\{/.test(rules), 'legacy event-loop metric selectors are absent');
 
 if (fail) {
   console.error(`\nObservability semantic guard: ${fail} failure(s)`);
