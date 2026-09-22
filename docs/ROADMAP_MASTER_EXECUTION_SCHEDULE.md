@@ -1191,3 +1191,74 @@ F-QA-02 → F-QA-03 → F-QA-01 → F-QA-08 → M1 → M2 → M3 → OUTBOX-002 
 - CircleCI `ci/circleci: say-hello`: **success**, run 516.
 - Phase 8.2 Exit: **NOT VERIFIED**; Phase 8.3: **BLOCKED**; Production GO: **NOT DECLARED**.
 - No evidence permits promotion of E3 DR/PITR or Redis HA evidence to E4.
+
+
+---
+
+# FINAL CURRENT-HEAD RECONCILIATION — 2026-09-22
+
+This appendix supersedes all earlier embedded HEAD/checkpoint values in this historical schedule.
+
+**Current main HEAD:** `9d565d7b3f8d716dcd1f3f3a85413aa2d985f063`
+
+## Current status
+
+- Repo-owned defect queue: **ZERO**
+- Migration parser regex backtracking: **FIXED**
+- Security SCA/SBOM/DAST `continue-on-error`: **FIXED**
+- Observability CI/runtime gate gaps: **FIXED**
+- Phase 8.2 Exit: **NOT VERIFIED**
+- Phase 8.3: **BLOCKED**
+- Production GO: **NOT DECLARED**
+
+## Evidence boundary
+
+The repository changes above are merged on current main. They do not manufacture runtime evidence. The available GitHub Actions API has not returned a completed workflow run for the current code SHA; therefore current-head runtime PASS is not claimed for the live PostgreSQL/Redis, migration, OCC, Outbox, production verifier, observability Docker, or security scanner suites.
+
+Historical E3 DR/HA measurements remain E3. E4 requires production-equivalent topology, independent failure domains, real network path and off-site backup evidence.
+
+## External blockers
+
+### BLOCKER
+**OWNER:** Repository/CI administrator + GitHub Actions platform  
+**DEPENDENCY:** completed current-head Node.js/Security/Observability workflow runs  
+**WHY NOT REPO-OWNED:** repository workflows are present and hard-fail; the available API has not returned a completed current-head Actions run  
+**REQUIRED EXTERNAL EVIDENCE:** exact-SHA run IDs, conclusions, failed/skipped steps and artifacts
+
+### BLOCKER
+**OWNER:** SRE / infrastructure owner  
+**DEPENDENCY:** E4 multi-host PostgreSQL/Redis + S3/off-site environment  
+**WHY NOT REPO-OWNED:** production topology cannot be fabricated in repository code  
+**REQUIRED EXTERNAL EVIDENCE:** restore identity, failover, network partition, S3, RPO/RTO, independent reruns
+
+### BLOCKER
+**OWNER:** SRE / on-call owner  
+**DEPENDENCY:** real alert receiver and human acknowledgement path  
+**WHY NOT REPO-OWNED:** receiver credentials, on-call assignment and human acknowledgement are operational dependencies  
+**REQUIRED EXTERNAL EVIDENCE:** fire/delivery/ack/recovery timestamps, MTTA/MTTR and runbook execution
+
+### BLOCKER
+**OWNER:** Performance/infrastructure owner  
+**DEPENDENCY:** E4 10M dataset and load/soak environment  
+**WHY NOT REPO-OWNED:** national-scale claims require production-equivalent workload/topology evidence  
+**REQUIRED EXTERNAL EVIDENCE:** workload, concurrency, run count, p50/p95/p99, errors, saturation/resource data and reruns
+
+## Final Gate Matrix
+
+| Gate | Status | Evidence | SHA | Remaining External Dependency |
+|---|---|---|---|---|
+| Migration parser hardening | **VERIFIED (repo change)** | bounded parser + adversarial regression | `9d565d7b...` | current runtime CI |
+| Security scanner gates | **VERIFIED (repo change)** | hard-fail SCA/SBOM/DAST + contract test | `9d565d7b...` | current runtime CI |
+| Observability gates | **VERIFIED (repo change)** | permissions + placeholder + Loki/Promtail gates | `9d565d7b...` | current runtime CI |
+| OCC | **RUNTIME NOT VERIFIED** | live suite remains hard-gated | `9d565d7b...` | completed current-head CI |
+| Worker/Outbox/DLQ | **RUNTIME NOT VERIFIED** | hard-gated regression/live suites | `9d565d7b...` | current-head CI + E4 multi-worker |
+| PostgreSQL DR | **E3 VERIFIED / E4 NOT VERIFIED** | historical E3 evidence | `9d565d7b...` | E4 restore/promote |
+| Redis DR | **E3 VERIFIED / E4 NOT VERIFIED** | historical E3 evidence | `9d565d7b...` | E4 failover/restore |
+| Backup/restore | **E3 VERIFIED / E4 NOT VERIFIED** | historical E3 evidence | `9d565d7b...` | E4 identity + RPO/RTO |
+| Alerting | **REPO CONFIG VERIFIED / E4 NOT VERIFIED** | canonical rules + fail-closed checks | `9d565d7b...` | real receiver/on-call/ack/recovery |
+| CI | **HARD GATE CONFIG VERIFIED / RUNTIME NOT VERIFIED** | hard-fail workflows; no current Actions result | `9d565d7b...` | completed current CI |
+| Roadmap/documentation | **VERIFIED** | exact current-head appendices and final report | `9d565d7b...` | none |
+| Phase 8.2 Exit | **NOT VERIFIED** | E4 S3/S4 evidence absent | `9d565d7b...` | external E4 |
+| Phase 8.3 | **BLOCKED** | 8.2 exit dependency | `9d565d7b...` | 8.2 exit + E4 load |
+| Production GO | **NOT DECLARED** | no E4 production gate | `9d565d7b...` | all required E4 evidence |
+
