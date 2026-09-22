@@ -38,6 +38,13 @@ jobs:
         run: |
           sed 's|__WEBHOOK_URL__|https://example.invalid/alertmanager-ci|g' infra/observability/alertmanager.yml > /tmp/alertmanager.yml
           docker run --rm -v /tmp/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro prom/alertmanager:v0.27.0 amtool check-config /etc/alertmanager/alertmanager.yml
+      - name: Alertmanager placeholder must fail closed
+        run: |
+          set +e
+          docker compose -f infra/observability/docker-compose.observability.yml run --rm -T -e ALERTMANAGER_WEBHOOK_URL= alertmanager
+          code=$?
+          set -e
+          test "$code" -eq 78
 
   runtime:
     runs-on: ubuntu-latest
