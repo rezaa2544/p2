@@ -147,7 +147,7 @@ async function migrateUp(client, options = {}) {
         const scriptSql = hasInternalTx
           ? `${cleanedContent}\n${ledgerSql}`
           : `BEGIN;\n${cleanedContent}\n${ledgerSql}COMMIT;\n`;
-        execFileSync('psql', [pgUrl, '-v', 'ON_ERROR_STOP=1', '-q'], { input: scriptSql, stdio: ['pipe', 'inherit', 'inherit'] });
+        execFileSync('psql', [pgUrl, '-v', 'ON_ERROR_STOP=1', '-q'], { input: scriptSql, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' });
       } else {
         await client.query('BEGIN');
         await client.query(prepareMigrationSql(file.content));
@@ -162,10 +162,40 @@ async function migrateUp(client, options = {}) {
       appliedMap.set(file.version, { version: file.version, name: file.name, checksum: file.checksum });
       results.push({ version: file.version, name: file.name, status: 'APPLIED', checksum: file.checksum });
     } catch (err) {
+      /* Recovery for the known 012 crash window: its DDL/swap can commit
+         before the ledger INSERT is attempted. A rerun then emits
+         ALREADY_APPLIED; record the already-completed migration instead of
+         re-executing destructive swap logic. */
+      const stderr = String(err && err.stderr ? err.stderr : '');
+      const errText = String(err && err.message ? err.message : err);
+      const alreadyApplied = usePsql && /ALREADY_APPLIED:/.test(stderr + '\\n' + errText);
+      if (alreadyApplied) {
+        try {
+          const recoverySql = `BEGIN;
+INSERT INTO schema_migrations (version, name, applied_at, checksum)
+VALUES ('${file.version.replace(/'/g, "''")}', '${file.name.replace(/'/g, "''")}', NOW(), '${file.checksum.replace(/'/g, "''")}')
+ON CONFLICT (version) DO NOTHING;
+COMMIT;
+`;
+          execFileSync('psql', [pgUrl, '-v', 'ON_ERROR_STOP=1', '-q'], {
+            input: recoverySql, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8'
+          });
+          lastAppliedIndex = i;
+          appliedMap.set(file.version, { version: file.version, name: file.name, checksum: file.checksum });
+          results.push({ version: file.version, name: file.name, status: 'ALREADY_APPLIED_RECOVERED', checksum: file.checksum });
+          continue;
+        } catch (recoveryErr) {
+          const failErr = new Error(`MIGRATION_RECOVERY_FAILED: Could not record already-applied migration ${file.name}: ${recoveryErr.message}`);
+          failErr.code = 'MIGRATION_RECOVERY_FAILED';
+          failErr.cause = recoveryErr;
+          failErr.migration = file.name;
+          throw failErr;
+        }
+      }
       if (!usePsql) {
         try { await client.query('ROLLBACK'); } catch (_) {}
       }
-      const failErr = new Error(`MIGRATION_EXECUTION_FAILED: Error in migration ${file.name}: ${err.message}`);
+      const failErr = new Error(`MIGRATION_EXECUTION_FAILED: Error in migration ${file.name}: ${errText}`);
       failErr.code = 'MIGRATION_EXECUTION_FAILED';
       failErr.cause = err;
       failErr.migration = file.name;
