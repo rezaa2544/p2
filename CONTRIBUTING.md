@@ -24,3 +24,7 @@
 ## تکمیل اصلاح Runtime Reliability — 2026-09-22
 
 مسیر انتقال DLQ در PostgreSQL در شاخهٔ جداگانه اتمیک شد؛ failure باید rollback شود و `main` تا تأیید ناظر ارشد ادغام نمی‌شود.
+
+## CI verification ordering — Runtime Reliability — 2026-09-22
+
+آزمون اتمیک DLQ پیش از gateهای دیرتر CI اجرا می‌شود تا failure این حوزه مستقل و قابل مشاهده باشد.
