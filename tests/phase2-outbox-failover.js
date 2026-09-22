@@ -61,6 +61,19 @@ let OBX_URL;
   delete env.NODE_ENV;
   /* isolate OTP/rate-limit keys from other CI steps (shared Redis service) */
   if (env.REDIS_URL) env.REDIS_URL = String(env.REDIS_URL).replace(/\/\d+\s*$/, '') + '/15';
+  /* F-A6 (Arena 1): db15 is THIS test's private keyspace, but rate-limit
+     counters (otp:send:ip/day, otp:login:*) persist ACROSS back-to-back runs —
+     run2 then send-code 429s, demo_code goes undefined, login 400s (observed
+     6/10). Flush the private db at start: full isolation, same family as the
+     F-A2 OTP-cooldown fix in phase2-occ-multi.js. */
+  try {
+    const IORedis = require('ioredis');
+    const base = String(env.REDIS_URL || process.env.REDIS_URL || '').replace(/\/\d+\s*$/, '');
+    if (base) {
+      const flush = new IORedis(base + '/15', { lazyConnect: true, maxRetriesPerRequest: 1, connectTimeout: 2000 });
+      await flush.connect(); await flush.flushdb(); await flush.quit();
+    }
+  } catch (_) { /* child server's own limiter is fail-closed if Redis is required */ }
 
   const adm = new Client({ connectionString: BASE_URL });
   await adm.connect();
@@ -111,7 +124,9 @@ let OBX_URL;
   const sc = await req('POST', '/api/auth/send-code', { phone: su.phone });
   const lg = await req('POST', '/api/auth/login', { phone: su.phone, code: sc.json && sc.json.demo_code, national_id: su.national_id });
   const cookie = (lg.headers['set-cookie'] || []).map((c) => c.split(';')[0]).join('; ');
-  chk('ورود superadmin', lg.status === 200);
+  /* F-A6 diagnosis (Arena 1): surface the real send/login payloads on failure */
+  chk('ورود superadmin', lg.status === 200,
+    `send=${sc.status} demo=${sc.json && sc.json.demo_code} lg=${lg.status} body=${JSON.stringify(lg.json)}`);
   const mk = await req('POST', '/api/v1/classes', { name: 'OBX', grade: 10, school_id: 1 }, cookie);
   const clsId = mk.json && mk.json.data && mk.json.data.id;
   chk('ایجاد class واقعی', mk.status === 201 && clsId != null, mk.status);
