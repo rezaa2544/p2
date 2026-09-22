@@ -109,6 +109,10 @@ function validate() {
   const wsum = PROFILES[opt.profile] ? PROFILES[opt.profile].reduce((a, e) => a + e.w, 0) : 0;
   if (PROFILES[opt.profile] && Math.abs(wsum - 100) > 0.01) errs.push('وزن پروفایل ≠ ۱۰۰: ' + wsum);
   if (opt.sloP95ms < 1) errs.push('SLO نامعتبر');
+  if (!Number.isFinite(opt.stepSeconds) || opt.stepSeconds <= 0) errs.push('مدت پله نامعتبر: ' + opt.stepSeconds);
+  if (!Number.isFinite(opt.warmupSeconds) || opt.warmupSeconds < 0) errs.push('مدت گرم‌کردن نامعتبر: ' + opt.warmupSeconds);
+  if (!Number.isFinite(opt.abortErrorRate) || opt.abortErrorRate < 0) errs.push('آستانه توقف خطا نامعتبر: ' + opt.abortErrorRate);
+  if (!Number.isFinite(opt.reqTimeoutMs) || opt.reqTimeoutMs <= 0) errs.push('timeout نامعتبر: ' + opt.reqTimeoutMs);
   console.log('── طرحِ اجرا (آفلاین؛ هیچ شبکه‌ای در کار نیست) ──');
   console.log('پروفایل: ' + opt.profile + ' (Σوزن=' + wsum + ')');
   console.log('نردبان: ' + (steps.length ? steps.join(' → ') : '—') + ' · هر پله ' + opt.stepSeconds + 's (+گرم‌کردن ' + opt.warmupSeconds + 's)');
@@ -262,14 +266,16 @@ function detectKnee(steps, sloMs) {
   const sustained = first ? (steps[first.stepIndex - 1] || steps[first.stepIndex]) : steps[steps.length - 1];
   return {
     knee: first || { method: 'none', stepIndex: -1, concurrency: null, detail: 'در بازهٔ نردبان اشباع دیده نشد — نردبان را گسترش بده' },
-    maxSustainableRps: sustained ? sustained.throughput : null,
+    maxSustainableRps: sustained ? sustained.goodputRps : null,
     candidates: cands,
   };
 }
 
 /* ── اجرای یک پله ── */
 async function runStep(concurrency, seconds, payloads, headers) {
-  const lat = []; const perEp = {}; let done = 0, err5 = 0, err0 = 0;
+  const lat = []; const perEp = {};
+  let done = 0, goodput = 0, err5 = 0, err0 = 0, authDenied = 0, clientErrors = 0;
+
   const deadline = performance.now() + seconds * 1000;
   async function worker() {
     while (performance.now() < deadline) {
@@ -281,8 +287,10 @@ async function runStep(concurrency, seconds, payloads, headers) {
       perEp[k] = perEp[k] || { n: 0, p95sorted: [], errors: 0 };
       perEp[k].n++;
       perEp[k].p95sorted.push(r.ms);
-      if (r.status >= 500) { err5++; perEp[k].errors++; }
-      if (r.status === 0) { err0++; perEp[k].errors++; }
+      if (r.status >= 200 && r.status < 300) goodput++;
+      else if (r.status === 401 || r.status === 403) authDenied++;
+      else if (r.status >= 500 || r.status === 0) { if (r.status >= 500) err5++; if (r.status === 0) err0++; perEp[k].errors++; }
+      else if (r.status >= 400) { clientErrors++; perEp[k].errors++; }
     }
   }
   await Promise.all(Array.from({ length: concurrency }, worker));
@@ -293,13 +301,21 @@ async function runStep(concurrency, seconds, payloads, headers) {
     const s = v.p95sorted.sort((a, b) => a - b);
     byEp[k] = { count: v.n, p50: pct(s, 50), p95: pct(s, 95), p99: pct(s, 99), errors: v.errors };
   }
+  const failureCount = err5 + err0 + clientErrors;
   return {
     concurrency, seconds,
     requests: done,
+    goodputRequests: goodput,
     throughput: +(done / secs).toFixed(1),
+    goodputRps: +(goodput / secs).toFixed(1),
     p50: pct(sorted, 50), p95: pct(sorted, 95), p99: pct(sorted, 99),
-    errorRatePct: +(100 * (err5 / Math.max(1, done))).toFixed(3),
+    errorRatePct: done ? +(100 * ((err5 + err0) / done)).toFixed(3) : null,
+    failureRatePct: done ? +(100 * (failureCount / done)).toFixed(3) : null,
+    serverErrorRatePct: done ? +(100 * (err5 / done)).toFixed(3) : null,
     transportErrors: err0,
+    authDeniedRequests: authDenied,
+    clientErrorRequests: clientErrors,
+    status: done > 0 ? 'OK' : 'NO-SAMPLES',
     perEndpoint: byEp,
   };
 }
@@ -320,6 +336,7 @@ async function runStep(concurrency, seconds, payloads, headers) {
 
   console.log('کاوشگر اشباع — ' + opt.target + ' · پروفایل ' + opt.profile);
   const stepResults = [];
+  let runFailed = false;
   for (const c of steps) {
     console.log('── پلهٔ ' + c + ' هم‌زمان (گرم‌کردان ' + opt.warmupSeconds + 's…)');
     await runStep(Math.min(c, 10), opt.warmupSeconds, payloads, headers); /* گرم‌کردن سبک */
@@ -329,9 +346,10 @@ async function runStep(concurrency, seconds, payloads, headers) {
     r.metrics = extractMetrics(mBefore, mAfter);
     r.pg = await pgStats();
     r.redis = await redisInfo();
-    console.log('   throughput=' + r.throughput + '/s · p50/p95/p99=' + r.p50 + '/' + r.p95 + '/' + r.p99 + 'ms · 5xx=' + r.errorRatePct + '٪');
+    console.log('   throughput=' + r.throughput + '/s · goodput=' + r.goodputRps + '/s · p50/p95/p99=' + r.p50 + '/' + r.p95 + '/' + r.p99 + 'ms · 5xx/transport=' + r.serverErrorRatePct + '/' + r.transportErrors + ' · 401/403=' + r.authDeniedRequests);
     stepResults.push(r);
-    if (r.errorRatePct > opt.abortErrorRate) { console.log('   ⚠ نرخ خطا > ' + opt.abortErrorRate + '٪ — توقفِ اضطراری (ایمنی)'); break; }
+    if (r.status === 'NO-SAMPLES') { console.error('   ✗ هیچ sample واقعی ثبت نشد — PASS ممنوع است'); runFailed = true; break; }
+    if (r.errorRatePct > opt.abortErrorRate) { console.log('   ⚠ نرخ خطای 5xx/transport > ' + opt.abortErrorRate + '٪ — توقفِ اضطراری (ایمنی)'); runFailed = true; break; }
   }
 
   const knee = detectKnee(stepResults, opt.sloP95ms);
@@ -342,11 +360,12 @@ async function runStep(concurrency, seconds, payloads, headers) {
     staircase: steps,
     steps: stepResults,
     knee,
-    slo: { p95ms: opt.sloP95ms, verdictP95: stepResults.every((s) => s.p95 == null || s.p95 <= opt.sloP95ms) ? 'PASS' : 'BREACHED' },
+    slo: { p95ms: opt.sloP95ms, verdictP95: stepResults.length > 0 && stepResults.every((s) => s.status === 'OK' && s.p95 != null && s.p95 <= opt.sloP95ms) ? 'PASS' : 'BREACHED' },
+    verdictStatus: runFailed || stepResults.length !== steps.length ? 'FAILURE' : 'MEASURED',
     verdict: 'این پاکت تا بازبینیِ انسانی «پیش‌نویس» است — قواعد حکم در docs/CAPACITY_ENVELOPE_TEMPLATE.md',
   };
   require('fs').writeFileSync(opt.out, JSON.stringify(envelope, null, 2));
   console.log('── زانو: ' + knee.knee.method + (knee.knee.concurrency != null ? ' @ concurrency=' + knee.knee.concurrency : '') + ' · پایدارِ بیشینه ≈ ' + knee.maxSustainableRps + ' rps');
   console.log('پاکت: ' + opt.out);
-  process.exit(0);
+  process.exit(runFailed || stepResults.length !== steps.length ? 1 : 0);
 })().catch((e) => { console.error('خطای کاوشگر: ' + (e.stack || e)); process.exit(1); });
