@@ -4,7 +4,7 @@
 **Repository:** `rezaa2544/p2`  
 **Branch:** `main`  
 **Current HEAD at latest reconciliation: `497151b321fa51fd1c26da11bd5b174a09f95a56`
-**CI status on current HEAD: PARTIAL** — CircleCI `ci/circleci: say-hello` is `success` (run 501); no GitHub Actions Node.js run was returned for this exact SHA by the available connector. Older Node.js runs are historical evidence.
+**CI status on current HEAD: PARTIAL** — CircleCI `ci/circleci: say-hello` is `success` (run 516); GitHub Actions has **no workflow run for this exact SHA** and the combined commit status contains only the CircleCI success check. Older Node.js runs are historical evidence.
 **GitHub Actions workflow runs:** none were returned for this commit by the connector; historical Node.js CI #1093 is **not** current-HEAD evidence.  
 **Note:** current `main` is 5 commits ahead of the previous reconciliation commit `f22af312...`; those commits touch migrations/DB/outbox/OCC paths, not the DR/HA implementation files used by DR-01.  
 **Purpose:** این سند لایهٔ وضعیت جاری است تا بین Master Schedule، گزارش‌های ممیزی و وضعیت واقعی GitHub اختلاف ایجاد نشود.
@@ -648,3 +648,16 @@ The commits after the previous DR reconciliation are OCC/migration/outbox/runtim
 - Production GO: **NOT DECLARED**.
 
 The latest commit is documentation reconciliation only; it does not create runtime evidence for DR, S3/S4, E4, or Production GO.
+
+
+## Current-HEAD reconciliation — 2026-09-22 (Final Gate Review)
+
+**Current HEAD:** `3b3acfaf876454dd9cd914a93993d4967fea593f`
+
+- GitHub branch `main` resolves to this SHA.
+- GitHub Actions workflow runs for this exact SHA: **none returned**.
+- Combined commit status: **CircleCI `ci/circleci: say-hello` = success (run 516)**.
+- The only code change after the previous reviewed `8137fa57...` baseline is `tests/stale-path-contract.js`; this is a test-contract formatting adjustment and does not provide runtime/DR/HA evidence.
+- Phase 8.2 Exit: **NOT VERIFIED**.
+- Phase 8.3: **BLOCKED**.
+- Production GO: **NOT DECLARED**.
