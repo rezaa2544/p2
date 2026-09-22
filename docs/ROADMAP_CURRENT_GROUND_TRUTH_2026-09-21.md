@@ -700,7 +700,7 @@ At `6460e55dfbea4a5cfe82a5d79f7106e367778ed3`, no GitHub Actions workflow run an
 |---|---|
 | Repository | `rezaa2544/p2` |
 | Branch | `main` |
-| Reviewed code baseline | `55cd021b3f17d23cf540b5afeb013dce6e6486b9` |
+| Reviewed code baseline | `3427d7ab84cdcbbacbcbc8978383859ab549fc69` |
 | CircleCI | `ci/circleci: say-hello` run 608 was pending at the preceding code reconciliation; this documentation commit created a new run |
 | GitHub Actions | No workflow run returned for the preceding current code SHA; this remains **NOT VERIFIED** until a completed run exists |
 | Repo-owned defect queue | **ZERO** after PR #345 and documentation reconciliation |
@@ -712,7 +712,7 @@ At `6460e55dfbea4a5cfe82a5d79f7106e367778ed3`, no GitHub Actions workflow run an
 
 1. Migration transaction-wrapper parser: replaced CodeQL-flagged backtracking regex with bounded scanners and added hostile-input regression coverage.
 2. Security CI: removed `continue-on-error` from SCA/SBOM/DAST; scanner failures can no longer be converted into green jobs.
-3. Observability CI: added explicit read-only permissions, checked-in Alertmanager placeholder failure coverage, and Loki/Promtail runtime ingestion verification.
+3. Observability CI: added explicit read-only permissions, checked-in Alertmanager placeholder failure coverage, Loki/Promtail runtime ingestion verification, explicit Alertmanager entrypoint override, synthetic CI-only Grafana interpolation password, and resilient semantic guard parsing.
 4. Security documentation: reconciled CI gate wording and ZAP action reference.
 
 All four were merged through PR #345. No known repo-owned defect from this reconciliation remains open.
