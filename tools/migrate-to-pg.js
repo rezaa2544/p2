@@ -207,7 +207,8 @@ CREATE TABLE IF NOT EXISTS server_outbox (
   retry_count INTEGER NOT NULL DEFAULT 0,
   last_error TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  processed_at TIMESTAMPTZ
+  processed_at TIMESTAMPTZ,
+  processing_at TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS idx_server_outbox_status ON server_outbox (status);
 
