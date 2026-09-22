@@ -1199,7 +1199,7 @@ F-QA-02 → F-QA-03 → F-QA-01 → F-QA-08 → M1 → M2 → M3 → OUTBOX-002 
 
 This appendix supersedes all earlier embedded HEAD/checkpoint values in this historical schedule.
 
-**Current main HEAD:** `9d565d7b3f8d716dcd1f3f3a85413aa2d985f063`
+**Reviewed code baseline:** `55cd021b3f17d23cf540b5afeb013dce6e6486b9`
 
 ## Current status
 
