@@ -21,7 +21,8 @@ pass('functional-shell-syntax', () => {
 // 2 Boundary: T5 must build the intentionally pre-authority database through 018,
 // and must never attempt 019/020 against that database.
 pass('boundary-t5-excludes-authority-migrations', () => {
-  assert.match(s, /case "\$f" in\s+\*"/*\/019_"\*\|\*"/*\/020_"\*\) continue/s);
+  assert.ok(s.includes('case "$f" in'));
+  assert.ok(s.includes('*"/019_"*|*"/020_"*) continue ;;'));
   assert.doesNotMatch(s, /grep -v '019_'/);
 });
 
@@ -41,7 +42,15 @@ pass('concurrency-replay-resilience', () => {
   assert.match(s, /phase6_replay_ledger/);
 });
 
-// 5 Independent regression: the verifier still has all T1..T7 anchors and
+// 5 Production-fixture boundary: OTP echo is test-only and the verifier must
+// not accidentally force NODE_ENV=production while it needs the test fixture.
+pass('otp-fixture-boundary', () => {
+  assert.match(s, /PAYESH_DEMO_CODE=1/);
+  assert.match(s, /NODE_ENV=development/);
+  assert.doesNotMatch(s, /NODE_ENV=production.*PAYESH_DEMO_CODE=1/s);
+});
+
+// 6 Independent regression: the verifier still has all T1..T7 anchors and
 // fail-closed verdict semantics.
 pass('independent-regression-verifier-contract', () => {
   for (const t of ['T1','T2','T3','T4','T5','T6','T7']) {
@@ -51,4 +60,4 @@ pass('independent-regression-verifier-contract', () => {
   assert.match(s, /VERDICT: NOT VERIFIED/);
 });
 
-console.log('Phase 7 verifier contract: 5/5 PASS');
+console.log('Phase 7 verifier contract: 6/6 PASS');
