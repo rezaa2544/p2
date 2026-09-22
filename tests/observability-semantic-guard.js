@@ -51,7 +51,7 @@ check(new Set(alerts).size === alerts.length, 'alert names are unique');
 check(alerts.length === 11, 'canonical catalogue contains the expected 11 alerts');
 
 // Only inspect expr blocks. Annotation prose must never affect semantic checks.
-const exprBlocks = [...rules.matchAll(/\n\s*expr:\s*(?:\|\s*)?\n([\s\S]*?)(?=\n\s*for:)/g)].map((x) => x[1]);
+const exprBlocks = [...rules.matchAll(/\n\s*expr:\s*(?:\|\s*\n([\s\S]*?)|([^\n]+))(?=\n\s*for:)/g)].map((x) => x[1] || x[2]);
 check(exprBlocks.length === alerts.length, 'every alert has an expression block');
 
 const metricRef = /\b(payesh_[a-zA-Z0-9_]+)(?:\{([^}]*)\})?/g;
