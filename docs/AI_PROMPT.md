@@ -5739,3 +5739,6 @@ exit(1) با «Error: Production requires valid CA certificate».
 ## تثبیت ترتیب gate آزمون DLQ — 2026-09-22
 
 - gate آزمون DLQ باید بلافاصله پس از نصب وابستگی‌ها اجرا شود؛ در صورت failure gateهای طولانی بعدی نباید مانع مشاهدهٔ failure این حوزه شوند.
+
+
+> **ثبت ممیزی رصدپذیری ۲۰۲۶-۰۹-۲۲:** در current main، guardهای catalogue با حذف واقعی `monitoring/alert-rules.yml` همگام نبودند و gateهای compose به‌دلیل اجباری‌بودن `GRAFANA_PASSWORD` پیش از رسیدن به سرویس هدف fail می‌شدند. guardها اکنون حالتِ «فایل غایب یا marker غیرفعال» را می‌پذیرند و CI برای runtime فقط یک مقدار ساختگیِ غیرمحرمانهٔ مخصوص آزمون به Grafana می‌دهد؛ هیچ راز production وارد مخزن یا CI نشده است. اجرای واقعی `promtool`، `amtool`، fail-closed و Loki/Promtail همچنان تنها با خروجی کامل Actions معتبر است.
