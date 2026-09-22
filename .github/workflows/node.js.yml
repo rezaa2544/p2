@@ -110,6 +110,11 @@ jobs:
         psql "$PGURL" -c "SELECT COUNT(*) AS applied_migrations FROM schema_migrations;"
         psql "$PGURL" -c "SELECT * FROM sync_conflicts LIMIT 1;" >/dev/null && echo "sync_conflicts readable OK"
 
+    - name: Migration 012 — real crash window / ledger recovery
+      run: |
+        export DATABASE_URL="$PGURL"
+        node tests/migration-012-crash-recovery-live.js
+
     - name: Rollback chain — latest → 001
       run: |
         DATABASE_URL="$PGURL" node tools/migrate-ledger.js down-all
