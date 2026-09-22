@@ -17,18 +17,21 @@ END $$;
 -- نگهداریِ نوشته‌های پس از swap (اگر هست) پیش از حذفِ جدولِ پارتیشن‌شده
 DO $$
 BEGIN
-  IF (SELECT COUNT(*) FROM attendance) > (SELECT COUNT(*) FROM attendance_old) THEN
-    EXECUTE 'CREATE TABLE attendance_recovered AS SELECT * FROM attendance n WHERE NOT EXISTS (SELECT 1 FROM attendance_old o WHERE o.id = n.id AND o.created_at = n.created_at)';
-  END IF;
-  /* چرخهٔ کاملِ up→down→up→down: جدولِ بازیافتِ سیکلِ قبل مانده است —
-     fail-closed: اپراتور باید اول محتوایش را ادغام/بایگانی کند. */
   IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'grades_recovered') OR
      EXISTS (SELECT 1 FROM pg_class WHERE relname = 'attendance_recovered') THEN
     RAISE EXCEPTION 'grades_recovered/attendance_recovered از وارون‌سازیِ قبلی مانده‌اند — اول محتوایشان را ادغام/بایگانی و جدول‌ها را دستی حذف کنید';
   END IF;
-  IF (SELECT COUNT(*) FROM grades) > (SELECT COUNT(*) FROM grades_old) THEN
-    EXECUTE 'CREATE TABLE grades_recovered AS SELECT * FROM grades n WHERE NOT EXISTS (SELECT 1 FROM grades_old o WHERE o.id = n.id AND o.created_at = n.created_at)';
+  IF to_regclass('mig009_w0') IS NULL THEN
+    RAISE EXCEPTION 'rollback of 009 requires mig009_w0 recovery watermark';
   END IF;
+  EXECUTE 'CREATE TABLE attendance_recovered AS
+           SELECT n.* FROM attendance n
+           WHERE n.chg_id IS NULL
+              OR n.chg_id > (SELECT w0 FROM mig009_w0 WHERE id = 1)';
+  EXECUTE 'CREATE TABLE grades_recovered AS
+           SELECT n.* FROM grades n
+           WHERE n.chg_id IS NULL
+              OR n.chg_id > (SELECT w0 FROM mig009_w0 WHERE id = 1)';
 END $$;
 
 -- برگرداندنِ نام‌های نهایی به _old (برعکسِ swap)
@@ -88,6 +91,9 @@ ALTER TABLE grades_old RENAME TO grades;
 DROP TABLE IF EXISTS attendance_p;
 DROP TABLE IF EXISTS grades_p;
 
+-- پاک‌سازیِ نشانگرِ مهاجرت باید پیش از COMMIT انجام شود تا migrate-ledger.js بتواند SQL rollback + ledger DELETE را در یک transaction نگه دارد.
+DROP TABLE IF EXISTS mig009_w0;
+
 -- جایگاهِ identity قدیمی را پیش ببر (نوشته‌های دورانِ پارتیشن)
 SELECT setval(pg_get_serial_sequence('attendance', 'id'),
               COALESCE((SELECT MAX(id) FROM attendance), 0) + 1, false);
@@ -96,5 +102,3 @@ SELECT setval(pg_get_serial_sequence('grades', 'id'),
 
 COMMIT;
 
--- پاک‌سازیِ نشانگرِ مهاجرت (اگر رانِ ناتمامی مانده باشد)
-DROP TABLE IF EXISTS mig009_w0;
