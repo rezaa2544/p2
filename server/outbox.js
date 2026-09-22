@@ -307,17 +307,33 @@ function createOutbox({ store, db }) {
       }
     }
     if (isPg()) {
+      /* Runtime reliability: DLQ insert and source terminal transition are
+         one atomic unit. A successful DLQ INSERT followed by a failed source
+         UPDATE must roll back; otherwise the worker can report success while
+         server_outbox remains processing/failed, or leave a replayable source
+         row next to an already-terminal DLQ row. */
+      if (!db || typeof db.transaction !== 'function') {
+        return { ok: false, id: evt.id, error: 'DLQ_TRANSACTION_UNAVAILABLE' };
+      }
       try {
-        await db.query(
-          `INSERT INTO server_outbox_dlq (outbox_id, type, collection, record_id, actor_id, version, payload, error_message, retry_count, failed_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-           ON CONFLICT (outbox_id) DO NOTHING;`,
-          [evt.id, evt.type, evt.collection, evt.record_id, evt.actor_id, evt.version, JSON.stringify(evt.payload), String(errorMessage), evt.retry_count || 5]
-        );
-        await mark(evt.id, { status: 'dead_letter', last_error: errorMessage });
-        return { ok: true, id: evt.id, status: 'dead_letter', error_message: String(errorMessage) };
+        const result = await db.transaction(async (client) => {
+          await client.query(
+            `INSERT INTO server_outbox_dlq (outbox_id, type, collection, record_id, actor_id, version, payload, error_message, retry_count, failed_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+             ON CONFLICT (outbox_id) DO NOTHING;`,
+            [evt.id, evt.type, evt.collection, evt.record_id, evt.actor_id, evt.version, JSON.stringify(evt.payload), String(errorMessage), evt.retry_count || 5]
+          );
+          await client.query(
+            `UPDATE server_outbox
+             SET status = 'dead_letter', last_error = $2, processing_at = NULL
+             WHERE id = $1;`,
+            [evt.id, String(errorMessage)]
+          );
+          return { ok: true, id: evt.id, status: 'dead_letter', error_message: String(errorMessage) };
+        });
+        return result;
       } catch (e) {
-        console.warn('[Outbox DLQ] Failed to write to DLQ:', e.message);
+        console.warn('[Outbox DLQ] Atomic transfer rolled back:', e.message);
         return { ok: false, id: evt.id, error: e.message };
       }
     } else {
