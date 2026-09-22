@@ -1,9 +1,9 @@
 # DR-01 / Phase 8.2 Evidence Matrix — 2026-09-22
 
 Repository: rezaa2544/p2
-Latest verified main SHA at reconciliation: f5e7595563e34557a30042af248d01a39756ee4f
+Latest verified main SHA at reconciliation: 8e9162a7035443b0e318d457ccf910709c2ea7b0
 User-supplied SHA: 62c18cc3fd4791666ecec3bc1616f07faadde9fe
-Main divergence: main is 21 commits ahead of the supplied SHA; no DR/HA implementation files are changed in that comparison.
+Main divergence: current main is 26 commits ahead of the supplied SHA; no DR/HA implementation files used by DR-01 are changed in the current comparison.
 
 ## Evidence contract
 
@@ -31,7 +31,7 @@ The requested SHA 62c18cc... is not the current main. GitHub comparison shows:
 - None of the files changed between those commits are the DR/HA implementation files used by DR-01; therefore the DR-01 code path is unchanged across that delta.
 - A separate comparison from the audited DR/HA SHA 2211ba45... to current main also shows no DR/HA implementation file changes.
 
-Runtime limitation: this reconciliation environment has GitHub repository access but no executable pgBackRest lab/host. Therefore the 3/3 corruption run is not falsely reported as a fresh runtime execution at f5e75955. It is current-code-equivalent E3 evidence carried from 2211ba45..., with the unchanged-code chain explicitly recorded above. A fresh pgBackRest run on f5e75955 remains an evidence-refresh item.
+Runtime limitation: this reconciliation environment has GitHub repository access but no executable pgBackRest lab/host. Therefore the 3/3 corruption run is not falsely reported as a fresh runtime execution at f5e75955. It is current-code-equivalent E3 evidence carried from 2211ba45..., with the unchanged-code chain explicitly recorded above. A fresh pgBackRest run on 8e9162a remains an evidence-refresh item.
 
 ## DR-01 decision boundary
 
