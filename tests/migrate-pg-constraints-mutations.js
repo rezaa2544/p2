@@ -22,12 +22,14 @@ const TOOL = 'tools/migrate-to-pg.js';
 const SCHEMA = 'server/schema.sql';
 kit.passthrough(path.join(ROOT, SCHEMA)); /* نوشتن/خواندنِ schema.sql فرزند → سایه */
 const SUITE = 'tests/migrate-pg-constraints.js';
-const GRADES_BLOCK = `    if (col === 'grades') {
-      if (allFields.includes('student_id')) colDefs.push('  CONSTRAINT fk_grades_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED');
-      if (allFields.includes('class_id')) colDefs.push('  CONSTRAINT fk_grades_class FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED');
-      if (allFields.includes('subject_id')) colDefs.push('  CONSTRAINT fk_grades_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED');
-      if (allFields.includes('teacher_id')) colDefs.push('  CONSTRAINT fk_grades_teacher FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED');
-    }`;
+/* F-A4 (Arena 1): migrate-to-pg.js moved the grade FKs from inline colDefs to
+   ALTER TABLE fkStatements (and the suite never regenerated schema.sql without
+   --write-schema), so all five mutants "SURVIVED" a detector that could not see
+   them. Pattern below mirrors tools/migrate-to-pg.js current lines verbatim. */
+const GRADES_BLOCK = `      if (allFields.includes('student_id')) fkStatements.push(\`ALTER TABLE grades ADD CONSTRAINT fk_grades_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED\`);
+      if (allFields.includes('class_id')) fkStatements.push(\`ALTER TABLE grades ADD CONSTRAINT fk_grades_class FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED\`);
+      if (allFields.includes('subject_id')) fkStatements.push(\`ALTER TABLE grades ADD CONSTRAINT fk_grades_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED\`);
+      if (allFields.includes('teacher_id')) fkStatements.push(\`ALTER TABLE grades ADD CONSTRAINT fk_grades_teacher FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED\`);`;
 const MUTS = [
   { bad: `colDefs.push('  CONSTRAINT chk_classes_capacity CHECK (capacity > 0)');`,
     name: 'M1 چکِ ظرفیت حذف شد', expectFail: 'C-capacity' },
@@ -50,7 +52,10 @@ for (const m of MUTS) {
   try { fs.chmodSync(mcopy, fs.statSync(TOOL_ABS).mode); } catch (_) {}
   let out = '', crashed = false;
   try {
-    execSync('node ' + TOOL, { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }); /* بازتولید در سایه */
+    /* F-A4: without --write-schema the tool never rewrites server/schema.sql
+       (explicit since the crashed-run hardening), so every mutant silently
+       "survived" against the untouched baseline file. */
+    execSync('node ' + TOOL + ' --write-schema', { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }); /* بازتولید در سایه */
     execSync('node ' + SUITE, { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }); /* خواندن از سایه */
     out = 'PASSED (no failure)';
   } catch (e) {
