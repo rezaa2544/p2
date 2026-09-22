@@ -138,6 +138,7 @@ async function task3Concurrency() {
   assert(pgFailed&&pgFailed.message==='PG_DOWN');
   pass(3, 'PG failure propagates and cannot become a false success');
 
+  version=3;
   const replay=await Promise.allSettled([1,2,3,4,5].map(i=>persistOpWithClient(c,{c:'grades',t:'upd',id:7,base_version:3,data:{score:i}})));
   assert.strictEqual(replay.filter(x=>x.status==='fulfilled').length,1);
   pass(3, 'replayed stale writes remain conflicts rather than reapplying');
