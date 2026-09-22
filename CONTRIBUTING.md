@@ -28,3 +28,7 @@
 ## CI verification ordering — Runtime Reliability — 2026-09-22
 
 آزمون اتمیک DLQ پیش از gateهای دیرتر CI اجرا می‌شود تا failure این حوزه مستقل و قابل مشاهده باشد.
+
+## اصلاح آزمون Runtime Reliability — 2026-09-22
+
+اولین اجرای CI assertion صوریِ SQL را شکست داد؛ assertion به قرارداد معنایی اصلاح شد و failure محصول با failure آزمون اشتباه گرفته نشد.
