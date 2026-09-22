@@ -5727,3 +5727,7 @@ exit(1) با «Error: Production requires valid CA certificate».
 ## CI verification ordering — Runtime Reliability — 2026-09-22
 
 - آزمون اتمیک بودن انتقال DLQ در مسیر اجرای مستقل Runtime Reliability و پیش از دروازه‌های دیرتر CI قرار گرفت تا شکست این حوزه به‌دلیل یک gate نامرتبط پنهان نشود.
+
+## اصلاح آزمون Runtime Reliability — 2026-09-22
+
+- نخستین اجرای CI روی اصلاح DLQ به دلیل سخت‌گیری نادرست assertion متن SQL شکست خورد؛ خود محصول rollback را درست انجام داد. assertion به قرارداد معناییِ موردنظر اصلاح شد.
