@@ -10,12 +10,12 @@
    S1  workflow file exists + is valid YAML-ish (contains required jobs/stages)
    S2  SAST present  → repo-native static: tests/run.js + tools/check-authz.js
    S3  Secret scan present → node tests/secret-scan.js
-   S4  SCA present   → npm audit --audit-level=high (best-effort)
+   S4  SCA present   → npm audit --audit-level=high (hard gate)
    S5  SBOM present  → npm sbom (+ SPDX artifact)
    S6  DAST present AND executable → OWASP ZAP baseline in both modes:
        staging secret target (zaproxy/action-baseline) + local-boot
        fallback (docker --network=host zap-baseline.py); no skip-only
-       gate; best-effort kept; no secrets.* in `if:` (zero-job guard);
+       gate; hard fail-closed jobs; no secrets.* in `if:` (zero-job guard);
        report artifact upload.
    S7  WAF preserved → waf-ddos --unit-only + nginx -t
    S8  docs exist    → docs/PEN_TEST_CHECKLIST.md, docs/SECURITY_MODEL.md
@@ -78,8 +78,8 @@ const dast = (_di >= 0 && _wi > _di) ? wf.slice(_di, _wi) : '';
     dast.indexOf('zap-baseline.py') >= 0 && dast.indexOf('--network=host') >= 0);
   chk('S6e no skip-only gate (ZAP always runs in one mode)',
     dast.length > 0 && dast.indexOf('DAST skipped') < 0);
-  chk('S6f dast stays best-effort (continue-on-error)',
-    dast.indexOf('continue-on-error: true') >= 0);
+  chk('S6f SCA/SBOM/DAST are hard fail-closed jobs',
+    !/continue-on-error:\s*true/.test(wf) && !/continue-on-error:\s*true/.test(dast));
   chk('S6g no secrets.* in any if: (zero-job guard)', !/if:.*secrets\./.test(wf));
   chk('S6h ZAP report artifact upload',
     dast.indexOf('actions/upload-artifact') >= 0 && dast.indexOf('zap-') >= 0);

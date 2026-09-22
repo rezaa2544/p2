@@ -25,7 +25,7 @@
 | centralized authorization | ✅ | مجوزهای تولیدشدهٔ R99 (`WRITE_PERMS` در `server/sync.js`) + مرج Wave 5 (PR #41)؛ `node tools/check-authz.js` → **exit 0** (تطبیق کامل) |
 | tenant isolation | ✅ | `server/middleware/scope.js` در هر ۶ روت (`attendance/bootstrap/classes/grades/students/users`) + گیت check-authz سبز |
 | secret management | ✅ | `PAYESH_JWT_SECRET` از env (اول)، فایل 0600، عدم track شدن (`secret-scan` صریحاً چک می‌کند)، fail-closed روی کلید ضعیف (R96 P0-3: استارت می‌میرد)؛ `tests/secret-scan.js` ‏**11/11** |
-| SAST/DAST/SCA | ⏳ | `‎.github/workflows/security.yml`: ‏SAST اجباری و سبز؛ SCA/SBOM/DAST best-effort — DAST هرگز زنده اجرا نشده (سکرت staging تنظیم نیست؛ مسیر fallback محلی روی این شاخه اضافه شد ولی هنوز در CI ندویده)؛ `tests/wave13-security.js` ‏**23/23** استاتیک |
+| SAST/DAST/SCA | ⏳ | `‎.github/workflows/security.yml`: ‏SAST اجباری و سبز؛ SCA/SBOM/DAST hard gates — DAST هرگز زنده اجرا نشده (سکرت staging تنظیم نیست؛ مسیر fallback محلی روی این شاخه اضافه شد ولی هنوز در CI ندویده)؛ `tests/wave13-security.js` ‏**23/23** استاتیک |
 | penetration testing | ⏳ | `docs/PEN_TEST_CHECKLIST.md` (سناریوها) آماده است؛ خودِ تست اجرا نشده و سند نتیجه وجود ندارد |
 | abuse protection | ⏳ | ریت‌لیمیت توزیعی Redis (PR #20) + OTP سخت‌شده R101 (PR #6) در کد زنده‌اند؛ WAF فقط-تشخیص است (PR #21؛ حالت enforce تعمداً در v1 نیست) و دریل DDoS زنده انجام نشده |
 

@@ -78,15 +78,15 @@
 | `sast` | SAST | `node tests/run.js` + `tools/check-authz.js` + syntax | سخت (گیت) |
 | `secret` | Secret | `node tests/secret-scan.js` | سخت (گیت) |
 | `waf` | WAF | `waf-ddos.js --unit-only` + `waf-enforce.js` (P0 #6) + `nginx -t` | سخت (گیت) |
-| `sca` | SCA | `npm audit --audit-level=high` | best-effort |
-| `sbom` | SBOM | `npm sbom` (SPDX) + آپلود | best-effort |
-| `dast` | DAST | OWASP ZAP baseline (staging با `SECURITY_TARGET_URL`؛ local-boot fallback) + `tools/dast-live.sh` (P0 #6) | best-effort؛ artifact: `zap-baseline-reports` |
+| `sca` | SCA | `npm audit --audit-level=high` | hard gate |
+| `sbom` | SBOM | `npm sbom` (SPDX) + آپلود | hard gate |
+| `dast` | DAST | OWASP ZAP baseline (staging با `SECURITY_TARGET_URL`؛ local-boot fallback) + `tools/dast-live.sh` (P0 #6) | hard gate؛ artifact: `zap-baseline-reports` |
 
 **نکتهٔ صداقت:** برای SAST از گیت‌هایِ ایستایِ خودِ ریپو استفاده شد (بدون اختراعِ
 ESLint). سئوت‌هایِ jsdomِ وابسته به بوتِ سرور (xss-guard/security/waf-full) به
 استورِ سیدشده نیاز دارند و در جریانِ محلی/شبانه اجرا می‌شوند، نه گیتِ merge.
 اجرایِ واقعیِ SCA/SBOM/DAST نیازمندِ registry زنده و آدرسِ استیجینگ است →
-**best-effort/pending** (در CI با `continue-on-error` تا آماده‌شدنِ زیرساخت).
+**hard gate/pending** (در CI با `continue-on-error` تا آماده‌شدنِ زیرساخت).
 
 ---
 
@@ -112,7 +112,7 @@ ESLint). سئوت‌هایِ jsdomِ وابسته به بوتِ سرور (xss-gu
   artifact (HTML/JSON/summary). پیش‌فرض `--dry-run` (فقط طرح + پیش‌نیاز؛ در
   سندباکس سبز است). خروجی: 0 بدون FAIL · 2 فقط-WARN · 1 FAIL · 3 خطای اسکن.
 - CI: lane `dast` با secret `SECURITY_TARGET_URL` مستقیماً staging را اسکن
-  می‌کند و artifact آپلود می‌کند؛ بدون secret ⇒ local-boot (best-effort).
+  می‌کند و artifact آپلود می‌کند؛ بدون secret ⇒ local-boot (hard gate).
 
 ### ۵.۲ آمادگیِ پنتست (8 سناریو)
 - `docs/PEN_TEST_CHECKLIST.md`: Auth Bypass · IDOR/BOLA · XSS · SQLi · CSRF ·

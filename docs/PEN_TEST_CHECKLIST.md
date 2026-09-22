@@ -112,7 +112,7 @@
 ## ۲) ابزارهای مورد نیاز
 
 - **OWASP ZAP** — DAST baseline در CI (`zaproxy/actions-baseline@v0.12.0`،
-  best-effort؛ به `SECURITY_TARGET_URL` نیاز دارد) و اسکنِ تعاملیِ محلی.
+  hard-gated؛ به `SECURITY_TARGET_URL` نیاز دارد) و اسکنِ تعاملیِ محلی.
   **P0 #6:** `tools/dast-live.sh --live [--scan full]` — استیجینگِ سبک +
   ZAP (docker `ghcr.io/zaproxy/zaproxy:stable` یا `ZAP_BIN` محلی) + artifact.
 - **Burp Suite** — پروکسی + Repeater برایِ تستِ دستیِ IDOR/XSS/auth.
@@ -262,7 +262,7 @@ tools/dast-live.sh --live --scan full --timeout 1800
 ## ۵) قیدِ صداقت (به‌روزشده در P0 #6)
 
 - **آماده و در CI:** دروازه‌هایِ آفلاین (smoke/check-authz/secret-scan/WAF
-  enforce + abuse 33 چک/جهش‌مندی‌ها)، DAST ZAP (best-effort با
+  enforce + abuse 33 چک/جهش‌مندی‌ها)، DAST ZAP (hard-gated با
   `SECURITY_TARGET_URL` یا local-boot)، SAST/SCA/SBOM.
 - **آماده برای محیطِ واقعی (P0 #6):** `tools/dast-live.sh` (استیجینگِ سبک +
   ZAP — DRY_RUN در سندباکس سبز است؛ بخشِ اسکن ZAP در سندباکس به‌درستی
