@@ -27,9 +27,6 @@ jobs:
         # in tests/run.js — an old Node now fails loudly instead of skipping.
 
     services:
-      # P1-GAP-01 (Chat 2 remediation): the live-PG suites are first-class CI
-      # citizens now — without PostgreSQL they FAIL by design (no more
-      # skip/fake-green), so CI must provide a real one.
       postgres:
         image: postgres:17
         env:
@@ -43,8 +40,6 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
-      # Phase-2 remediation (BLOCKER 8): Redis is a first-class dependency too —
-      # otp-redis and the fail-closed probe run against this real service.
       redis:
         image: redis:8
         ports:
@@ -60,11 +55,6 @@ jobs:
       REDIS_URL: redis://127.0.0.1:6379
 
     steps:
-    # F-QA-07 (Chat 4 remediation): the release-version contract inspects git tags
-    # (`git tag -l 'v*'` and `git show <tag>:package.json`). actions/checkout defaults to
-    # a shallow, tag-less fetch, where that gate would be meaningless. Verified locally:
-    # in a `--depth 1 --no-tags` clone the contract exits 1 with "no vX.Y.Z tag found" —
-    # it fails loudly rather than passing vacuously, but CI still needs real history.
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
@@ -76,51 +66,32 @@ jobs:
         cache: 'npm'
     - run: npm ci
 
+    # Stale-path closure must run before dependency-heavy/live steps.
+    - name: Stale path contract — historical TODO redirect
+      run: node tests/stale-path-contract.js
+
     # Critical orphan closure: deterministic security/recovery/data-integrity suites.
-    # Only the critical subset is wired; the broader orphan population remains
-    # classified rather than bulk-added to CI.
     - name: Critical orphan — seed integrity
       run: node tests/seed-integrity.js
-
     - name: Critical orphan — server security regression
       run: node tests/security2.js
-
     - name: Critical orphan — atomic sync batch
       run: node tests/sync-atomic-batch.js
-
     - name: Critical orphan — duplicate claim/idempotency
       run: node tests/sync-dup-claim.js
-
     - name: Critical orphan — DLQ retry/recovery
       run: node tests/sync-dlq-retry.js
-
     - name: Critical orphan — read-replica recovery
       run: node tests/db-replica-recovery.js
-
     - name: Performance harness — false-green regression
       run: node tests/capacity-saturation-probe.js
 
-    # ── Governance contracts (Chat 4) ────────────────────────────────────────
-    # عمداً بلافاصله بعد از `npm ci` و پیش از مراحل سنگینِ وابسته به سرویس زنده
-    # اجرا می‌شوند. این‌ها بررسی‌های ایستا و چندثانیه‌ای‌اند و به PostgreSQL/Redis
-    # نیازی ندارند. اگر بعد از مراحل live قرار بگیرند، هر شکست نامرتبط در آن مراحل
-    # باعث skip شدنشان می‌شود و گیت عملاً هرگز اجرا نمی‌شود — که دقیقاً در اجراهای
-    # #1161 و #1163 رخ داد (شکست در مرحلهٔ ۱۷ ⇒ هر دو گیت skip شدند).
-
-    # F-QA-05: قرارداد هم‌ترازی تست و CI.
-    # `npm test` فقط دو ورودی را اجرا می‌کند؛ این گیت آن محدودیت را صریح و ماشین‌خوان
-    # نگه می‌دارد و اگر فایل تستِ تازه‌ای اضافه شود که هیچ اتوماسیونی اجرایش نمی‌کند،
-    # قرمز می‌شود. هیچ تستی را skip یا حذف نمی‌کند.
+    # Governance contracts run before live dependency work so unrelated failures
+    # cannot make them silently skip.
     - name: TEST/CI parity contract — npm test ≠ whole repository
       run: node tests/ci-test-parity-contract.js
-
-    # F-QA-07: قرارداد نسخه و انتشار.
-    # ناهمخوانی‌های قطعی (package.json در برابر lock، و تگ تازه‌ای که با نسخه نمی‌خواند)
-    # را قرمز می‌کند؛ مواردی که تصمیم سیاست انتشار می‌خواهند فقط هشدار می‌دهند و
-    # عمداً قرمز نمی‌کنند. نیازمند تاریخچهٔ تگ‌هاست (fetch-depth: 0 + fetch-tags بالا).
     - name: Release version contract — package.json / lock / tags coherence
       run: node tests/release-version-contract.js
-
     - name: M1 Runtime Probes & Scrape Regression — publishRuntimeProbes wiring
       run: node tests/runtime-probes-scrape-regression.test.js
 
@@ -134,21 +105,15 @@ jobs:
     - name: Rollback chain — latest → 001
       run: |
         DATABASE_URL="$PGURL" node tools/migrate-ledger.js down-all
-        # BLOCKER 1 acceptance: DOWN ALL must leave NOTHING behind
         LEFT=$(psql "$PGURL" -t -A -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_name <> 'schema_migrations';")
         echo "tables left after DOWN ALL: $LEFT"
         [ "$LEFT" = "0" ] || { echo "DOWN ALL not clean — $LEFT table(s) left"; exit 1; }
         psql "$PGURL" -c "DROP TABLE IF EXISTS schema_migrations;"
 
     - name: Re-apply clean chain for the live-PG suites
-      run: |
-        DATABASE_URL="$PGURL" node tools/migrate-ledger.js up
-
+      run: DATABASE_URL="$PGURL" node tools/migrate-ledger.js up
     - name: PostgreSQL Migration Ledger verification (E3 live PG)
-      run: |
-        export DATABASE_URL="$PGURL"
-        node tests/schema-migrations-live-pg.test.js
-
+      run: DATABASE_URL="$PGURL" node tests/schema-migrations-live-pg.test.js
     - name: Live-PG suites (fail without a database — P1-GAP-01)
       run: |
         export DATABASE_URL="$PGURL"
@@ -156,92 +121,50 @@ jobs:
         node tests/wave3-query.js
         node tests/wave3-query3.js
         node tests/wave3-parity.js
-
-    # Phase-2 remediation (BLOCKER 5 + 8): Redis is live in CI now
     - name: Live-Redis suite (otp-redis — fails without Redis)
       run: node tests/otp-redis.js
-
     - name: Redis outage ⇒ auth fails CLOSED (BLOCKER 5)
       run: |
-        # Hosted images do not ship redis-server. The test must kill a DEDICATED
-        # instance (never SHUTDOWN the job Redis service — later steps need it).
         if [ ! -x /usr/bin/redis-server ] && [ ! -x /usr/local/bin/redis-server ]; then
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq redis-server
           sudo service redis-server stop || sudo systemctl stop redis-server || true
         fi
         node tests/phase2-redis-fail-closed.js
-
     - name: OCC across two real instances — 10 concurrent writers (BLOCKER 4)
-      run: |
-        export DATABASE_URL="$PGURL"
-        node tests/phase2-occ-multi.js
-
+      run: DATABASE_URL="$PGURL" node tests/phase2-occ-multi.js
     - name: Outbox crash/restart replay + real DLQ row (BLOCKER 3)
-      run: |
-        export DATABASE_URL="$PGURL"
-        node tests/phase2-outbox-failover.js
-
+      run: DATABASE_URL="$PGURL" node tests/phase2-outbox-failover.js
     - name: Phase 6.5 Runtime Truth — Red Team RT-01…RT-10
-      run: |
-        export DATABASE_URL="$PGURL"
-        node tests/phase65-runtime-truth.js
-
+      run: DATABASE_URL="$PGURL" node tests/phase65-runtime-truth.js
     - name: Production Truth Gate — 5 gates, VERIFIED or NOT VERIFIED
-      run: |
-        export DATABASE_URL="$PGURL"
-        node tools/production-truth-gate.js
-
+      run: DATABASE_URL="$PGURL" node tools/production-truth-gate.js
     - name: Phase 7 production verifier T1–T7 — VERIFIED or NOT VERIFIED
-      run: |
-        export DATABASE_URL="$PGURL"
-        bash tools/production-verifier.sh
-
-    # ── Phase 8.1 (R20 closure): the full regression battery is a first-class,
-    # mandatory CI citizen. It previously existed only as manual evidence runs
-    # (Phase 8 entry audit finding R20), which let boot-policy suites regress
-    # unseen. No suite removed, no assertion reduced — suites added.
+      run: DATABASE_URL="$PGURL" bash tools/production-verifier.sh
     - name: Phase 8.1 battery A — unified verifier + canary atomicity + R5 boot-gate matrix (live PG)
       run: |
         export DATABASE_URL="$PGURL"
-        # R16 regression guard: the verifier must be deterministic WITH
-        # DATABASE_URL exported (it previously failed 13/14 in this shape).
         node tests/unified-production-verifier.js
         node tests/canary-atomic-postgres-live-runtime.js
         node tests/canary-atomic-mock-harness.js
         node tests/canary-atomic-runtime.js
-        # R5 closure evidence: every production-equivalent boot shape without
-        # usable Redis must fail fast (exit 1, never listen).
         node tests/r5-prod-redis-boot-gate.js
-
-    # server17 is a JSON-store behavioural suite by design (per-server OTP
-    # files — R101 isolation). Its contract is per-process isolation, so the
-    # job-level REDIS_URL is deliberately scrubbed for this step only, and
-    # DATABASE_URL must NOT be exported here. Live-Redis coverage lives in
-    # otp-redis / phase2-redis-fail-closed / phase2-occ-multi above.
     - name: Phase 8.1 battery B — server17 behavioural suite (isolated JSON-store contract)
       run: node tests/server17.js
       env:
         REDIS_URL: ''
-
     - name: Phase 8.1 battery C — migration & constraint static gates
       run: |
         node tests/migration-sequence.js
         node tests/migrate-pg-constraints.js
         node tests/schema-migrations-ledger.test.js
         node tests/migration-009-negative.test.js
-
     - name: Zero-Trust Remediation — R1, R2 & R21 authoritative fail-closed suites
       run: |
         node tests/r1-eliminate-ram-authorities.test.js
         node tests/r2-postgres-authority-fail-closed.js
         node tests/schema-migrations-ledger.test.js
         node tests/c3-remediation-regression.test.js
-
-    # Boot-policy suites: previously red outside the manual battery (loose
-    # ALLOW_MEMORY_FALLBACK semantics + stale expectations — Phase 8.1 R5).
-    # They must never silently regress again. No DATABASE_URL/REDIS_URL
-    # exports here: these suites pin their own env shapes.
     - name: Phase 8.1 battery D — production boot-policy suites
       run: |
         node tests/pg-prod-boot-no-db.js
@@ -250,6 +173,5 @@ jobs:
         node tests/redis-fallback.js
         node tests/env-flags.js
         node tests/wave15-health.js
-
     - run: npm run build --if-present
     - run: npm test
