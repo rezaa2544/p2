@@ -302,7 +302,8 @@ function createOutbox({ store, db }) {
       try {
         await db.query(
           `INSERT INTO server_outbox_dlq (outbox_id, type, collection, record_id, actor_id, version, payload, error_message, retry_count, failed_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW());`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+           ON CONFLICT (outbox_id) DO NOTHING;`,
           [evt.id, evt.type, evt.collection, evt.record_id, evt.actor_id, evt.version, JSON.stringify(evt.payload), String(errorMessage), evt.retry_count || 5]
         );
         await mark(evt.id, { status: 'dead_letter', last_error: errorMessage });
