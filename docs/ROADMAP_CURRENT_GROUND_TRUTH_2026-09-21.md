@@ -3,8 +3,9 @@
 
 **Repository:** `rezaa2544/p2`  
 **Branch:** `main`  
-**Current HEAD:** `fbe178be7c99ddb6c068eee4f7b389a6b9e7aeab`  
-**Last verified CI run:** Node.js CI #1093 — successful  
+**Current HEAD:** `f5e7595563e34557a30042af248d01a39756ee4f`  
+**Last verified GitHub status:** `ci/circleci: say-hello` = success (current HEAD)  
+**Node.js Actions status:** no workflow run was returned for current HEAD by the GitHub connector; do not carry forward #1093 as current-HEAD evidence.  
 **Purpose:** این سند لایهٔ وضعیت جاری است تا بین Master Schedule، گزارش‌های ممیزی و وضعیت واقعی GitHub اختلاف ایجاد نشود.
 
 ---
@@ -495,3 +496,57 @@ Phase 8.3 empirical staging/load
 **وضعیت Gateها:** Phase 8.2 Exit = **NOT ISSUED** · Phase 8.3 = **BLOCKED** · Production GO = **NOT DECLARED**.
 
 **قاعدهٔ حاکم:** E3 ≠ E4 — موفقیت drill روی تک‌میزبان، اثبات Production HA نیست و هیچ status به E4 ارتقا نمی‌یابد.
+
+
+---
+
+## 18. Reconciliation — Task DR-01 / Phase 8.2 / Governance — 2026-09-22
+
+**Verified main:** `f5e7595563e34557a30042af248d01a39756ee4f`  
+**Supplied baseline SHA:** `62c18cc3fd4791666ecec3bc1616f07faadde9fe`  
+**Comparison:** current `main` is 21 commits ahead, 0 behind the supplied SHA. No DR/HA implementation file changed in that 21-commit comparison. A separate comparison from the audited DR/HA SHA `2211ba45903cb4f967adcad71271178d201361c5` to current `main` likewise contains no DR/HA implementation-file change.
+
+### Evidence contract
+
+For this reconciliation, every material claim is recorded as **SHA + command/scenario + run + environment + result**. Historical runtime evidence is explicitly labeled historical; it is not silently promoted to a fresh current-HEAD run.
+
+| Work Item | Current truth | Evidence |
+|---|---|---|
+| DR-01 | **CONFIRMED / OPEN** as an upstream tooling-contract limitation | On SHA `2211ba45...`: `pgbackrest --stanza=payesh verify` after 16B corruption: **3/3** reported `status: invalid` / `invalid checksum` but returned **exit 0**; corrupted restore returned **exit 29** in 2/2 runs. |
+| DR-01 current-code applicability | **Applicable by unchanged-code reconciliation; fresh runtime refresh still required** | DR/HA implementation files are unchanged from `2211ba45...` through current `f5e75955...`; current environment has no executable pgBackRest lab, so no fresh run is claimed. |
+| Repo-owned verify gate | **Not found** | Search/inspection shows `tools/pitr-restore.sh` performs restore and invokes repo-owned `tools/pitr-verify.sh`; it does not use raw pgBackRest `verify` exit code as its acceptance gate. |
+| Phase 8.2 S2 | **PARTIAL** | Existing delivery evidence remains; no status promotion. |
+| S3 alert/on-call/recovery | **NOT VERIFIED / BLOCKING** | No current E4 evidence for live receiver, on-call assignment, machine-readable acknowledgement, MTTA/MTTR, and recovery drill. |
+| S4 PG/Redis restore/failover | **E4 NOT VERIFIED / BLOCKING** | Existing DR evidence is E3 single-host only; E4 topology criteria remain unmet. |
+| RPO/RTO | **E3 measured; owner decision required** | Historical E3: PG PITR 502/510ms, RPO 0; Redis failover 3250/2601ms, RPO 0. No formal repository acceptance SLO was found in the DR/HA evidence. |
+| E3 | **VERIFIED for documented single-host drills** | Real pgBackRest/WAL/Redis Sentinel drills, single host. |
+| E4 | **NOT VERIFIED** | 0/6 E4 criteria in the reconciled Chat 4 report. |
+| Phase 8.2 Exit | **NOT VERIFIED / NOT ISSUED** | S3/S4 exit evidence remains incomplete. |
+| Phase 8.3 | **BLOCKED** | E4 staging, independent failure domains, and 10M-scale evidence remain external blockers. |
+| Production GO | **NOT DECLARED** | No Exit Evidence package authorizes it. |
+
+### DR-01 decision boundary
+
+DR-01 is treated as an **upstream pgBackRest behavior**, not as a repo-owned defect, because the current repository does not use raw `pgbackrest verify` exit status as its gate. Therefore no wrapper/non-zero-exit code change is made.
+
+**Permanent gate rule:** any future repo automation that invokes `pgbackrest verify` must parse semantic output/status (for example `status: invalid` / `invalid checksum` / machine-readable status) and must not accept exit code 0 alone as integrity proof.
+
+### Production decision boundary
+
+**Repo-owned blockers**
+- Current-ground-truth documents had stale current-SHA/CI assertions; the evidence matrix was added and this roadmap was reconciled.
+- A fresh current-SHA pgBackRest runtime run is still needed before claiming a new run ID against `f5e75955...`.
+- Any future repo-owned `pgbackrest verify` gate must implement semantic-result validation.
+
+**External blockers**
+- S3/object storage + real credentials / independent backup failure domain.
+- Genuine multi-host E4 topology and independent failure domains.
+- Production-scale dataset/hardware for credible RPO/RTO and Phase 8.3.
+- Real inter-host network partition/failover environment.
+
+**Owner Decision Required**
+- Adopt the DR-01 semantic parsing rule for future automation.
+- Ratify formal RPO/RTO acceptance thresholds.
+- Provision E4 infrastructure and off-site storage/credentials.
+
+**Decision:** E3 remains evidence; E4 remains unverified; Phase 8.2 remains not issued; Phase 8.3 remains blocked; Production GO remains not declared.
