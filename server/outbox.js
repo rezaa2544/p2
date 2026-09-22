@@ -146,7 +146,7 @@ function createOutbox({ store, db }) {
     if (isPg()) {
       try {
         await db.query(
-          `UPDATE server_outbox SET status = $2, retry_count = $3, last_error = $4, processed_at = $5
+          `UPDATE server_outbox SET status = $2, retry_count = $3, last_error = $4, processed_at = $5, processing_at = $6
            WHERE id = $1;`,
           [evt.id, String(evt.status || 'pending'), Number(evt.retry_count) || 0,
            evt.last_error != null ? String(evt.last_error) : null,
@@ -189,12 +189,13 @@ function createOutbox({ store, db }) {
     if (!isPg()) return { ok: true, replayed: 0, driver: 'memory' };
     let rows = [];
     try {
+      const leaseSeconds = Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) > 0 ? Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) : 60;
       const r = await db.query(
         `SELECT id, type, collection, record_id, actor_id, version, payload, created_at, retry_count, last_error
            FROM server_outbox
            WHERE status = 'pending'
               OR (status = 'processing' AND (processing_at IS NULL OR processing_at < NOW() - ($2 * INTERVAL '1 second')))
-           ORDER BY id ASC LIMIT $1;`, [OUTBOX_CAP]);
+           ORDER BY id ASC LIMIT $1;`, [OUTBOX_CAP, leaseSeconds]);
       rows = (r && r.rows) || [];
     } catch (e) {
       return { ok: false, replayed: 0, error: String((e && e.message) || e).slice(0, 140) };
