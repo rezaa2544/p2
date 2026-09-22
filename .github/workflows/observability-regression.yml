@@ -24,6 +24,8 @@ on:
 jobs:
   static-and-promtool:
     runs-on: ubuntu-latest
+    env:
+      GRAFANA_PASSWORD: ci-observability-test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -74,6 +76,8 @@ jobs:
 
   promtail-runtime:
     runs-on: ubuntu-latest
+    env:
+      GRAFANA_PASSWORD: ci-observability-test
     steps:
       - uses: actions/checkout@v4
       - name: Start Loki and Promtail against isolated test log files
