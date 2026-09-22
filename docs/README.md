@@ -15,6 +15,8 @@
 9. [ROADMAP_MASTER_EXECUTION_SCHEDULE.md](ROADMAP_MASTER_EXECUTION_SCHEDULE.md) — برنامه اجرایی تفصیلی.
 10. [ROADMAP_CURRENT_GROUND_TRUTH_2026-09-21.md](ROADMAP_CURRENT_GROUND_TRUTH_2026-09-21.md) — حقیقت جاری در آخرین reconciliation.
 
+- **ممیزی امنیتی:** [SECURITY_AUDIT_CHECKLIST.md](SECURITY_AUDIT_CHECKLIST.md) — baseline قابل استفادهٔ مجدد برای Security Audit و Red Team.
+
 ## دسته‌بندی مستندات
 
 - **شروع و معماری:** PROJECT_OVERVIEW، REPOSITORY_MAP، ARCHITECTURE، ARCHITECTURE_DECISIONS
