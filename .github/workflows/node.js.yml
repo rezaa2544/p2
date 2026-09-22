@@ -97,6 +97,9 @@ jobs:
     - name: Critical orphan — read-replica recovery
       run: node tests/db-replica-recovery.js
 
+    - name: Performance harness — false-green regression
+      run: node tests/capacity-saturation-probe.js
+
     # ── Governance contracts (Chat 4) ────────────────────────────────────────
     # عمداً بلافاصله بعد از `npm ci` و پیش از مراحل سنگینِ وابسته به سرویس زنده
     # اجرا می‌شوند. این‌ها بررسی‌های ایستا و چندثانیه‌ای‌اند و به PostgreSQL/Redis
