@@ -32,6 +32,7 @@ chk('all alert metric names occur in metrics.js', [...new Set((rules.match(/paye
 chk('Promtail tails canonical server.log and audit.log', /__path__: \/var\/log\/payesh\/server\.log/.test(promtail) && /__path__: \/var\/log\/payesh\/audit\.log/.test(promtail));
 chk('logging contract is documented', fs.existsSync(path.join(ROOT, 'docs/OBSERVABILITY_LOGGING_CONTRACT.md')));
 chk('Alertmanager retains repository placeholder', /__WEBHOOK_URL__/.test(am));
+chk('Alertmanager overrides image entrypoint for fail-closed shell', /entrypoint:\s*\["\/bin\/sh","-ec"\]/.test(compose));
 chk('Alertmanager compose refuses missing/placeholder endpoint', /ALERTMANAGER_WEBHOOK_URL/.test(compose) && /refusing placeholder alerting config/.test(compose));
 chk('owner endpoint is not committed', /^ALERTMANAGER_WEBHOOK_URL=\s*$/m.test(env));
 chk('metrics endpoint is fail-closed', /METRICS_TOKEN/.test(rd('server/index.js')) && /unauthorized/.test(rd('server/index.js')));
