@@ -229,14 +229,16 @@ function createOutbox({ store, db }) {
     const limit = Math.min(500, Math.max(1, batchSize));
     if (isPg()) {
       if (client) {
+        const leaseSeconds = Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) > 0 ? Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) : 60;
         const res = await client.query(
           `SELECT id, type, collection, record_id, actor_id, version, payload, retry_count, last_error
            FROM server_outbox
            WHERE status = 'pending'
+              OR (status = 'processing' AND (processing_at IS NULL OR processing_at < NOW() - ($2 * INTERVAL '1 second')))
            ORDER BY id ASC
            LIMIT $1
            FOR UPDATE SKIP LOCKED;`,
-          [limit]
+          [limit, leaseSeconds]
         );
         return (res && res.rows) || [];
       }
@@ -246,6 +248,7 @@ function createOutbox({ store, db }) {
         `WITH claimed AS (
            SELECT id FROM server_outbox
            WHERE status = 'pending'
+              OR (status = 'processing' AND (processing_at IS NULL OR processing_at < NOW() - ($2 * INTERVAL '1 second')))
            ORDER BY id ASC
            LIMIT $1
            FOR UPDATE SKIP LOCKED
