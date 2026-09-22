@@ -40,7 +40,10 @@ function exists(name) {
 }
 
 check(declarations.size > 20, 'metric declaration catalogue is non-empty');
-check(/__WEBHOOK_URL__/.test(retired) && !/^- alert:/m.test(retired), 'retired duplicate alert catalogue is not active');
+check(!/^- alert:/m.test(retired), 'retired infra alerts.yml contains no active rules');
+check(!/^- alert:/m.test(duplicateCatalogue) && /canonical Prometheus alert catalogue/.test(duplicateCatalogue), 'monitoring alert-rules.yml is a non-active compatibility marker');
+check(/job_name: payesh-audit/.test(promtail) && /structured_metadata: \{ trace_id: \}/.test(promtail), 'audit log trace_id remains in Promtail structured metadata');
+check(!/traceId=/.test(promtail), 'Promtail does not claim unsupported server.log traceId extraction');
 
 const alerts = [...rules.matchAll(/- alert:\s*([A-Za-z0-9_]+)/g)].map((x) => x[1]);
 check(new Set(alerts).size === alerts.length, 'alert names are unique');
