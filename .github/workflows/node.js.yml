@@ -73,6 +73,7 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm ci
+    # Runtime Reliability gate is intentionally early: its failure must not be hidden by later release gates.
 
     # QA false-green gates run before dependency-heavy live stages.
     - name: Stale path contract — historical TODO redirect
