@@ -125,6 +125,40 @@ JS
 PUBB64="$(python3 -c 'import json;print(json.load(open("/tmp/p7v-gov.json"))["pub"])')"
 [ -n "$PUBB64" ] && [ -s /tmp/p7v-gov-priv.pem ] || { echo "NOT VERIFIED — governance keygen failed"; exit 1; }
 
+# T2/T6 authentication fixture: PG is the production identity authority. A clean
+# verifier database is intentionally empty, while PAYESH_STORE is only the test
+# fixture source. Seed the exact identities used by the verifier into PG before
+# boot so auth cannot accidentally depend on a pre-existing database snapshot.
+$NODE - <<'JS'
+const fs = require('fs');
+const st = JSON.parse(fs.readFileSync(process.env.P7V_STORE_PATH, 'utf8'));
+const users = (st.users || []).filter(u => u.role === 'superadmin' || (u.role === 'teacher' && Number(u.school_id) === 3));
+if (users.length < 2) throw new Error('P7V_AUTH_FIXTURE_MISSING_USERS');
+for (const u of users) {
+  if (!/^\\d{10}$/.test(String(u.national_id || ''))) throw new Error('P7V_AUTH_FIXTURE_BAD_NID');
+  if (!/^\\d{10,11}$/.test(String(u.phone || '').replace(/[\\s\\-()]/g, ''))) throw new Error('P7V_AUTH_FIXTURE_BAD_PHONE');
+}
+fs.writeFileSync('/tmp/p7v-auth-fixture.json', JSON.stringify(users));
+JS
+P7V_STORE_PATH="$STORE" $NODE -e "const fs=require('fs'); const a=JSON.parse(fs.readFileSync('/tmp/p7v-auth-fixture.json')); console.log(a.length)" >/dev/null
+AUTH_JSON="$(P7V_STORE_PATH="$STORE" $NODE - <<'JS'
+const fs = require('fs');
+const users = JSON.parse(fs.readFileSync('/tmp/p7v-auth-fixture.json'));
+const sql = [];
+sql.push("INSERT INTO schools (id, name, type, version, active) VALUES (3, 'P7V School', 'governmental', 1, true) ON CONFLICT (id) DO UPDATE SET active=true;");
+for (const u of users) {
+  const q = v => "'" + String(v).replace(/'/g, "''") + "'";
+  sql.push("INSERT INTO users (id, role, full_name, username, national_id, phone, active, school_id, status, created_at, updated_at, version) VALUES (" +
+    Number(u.id) + "," + q(u.role) + "," + q(u.full_name || '') + "," + q(u.username || ('p7v-' + u.id)) + "," +
+    q(u.national_id) + "," + q(String(u.phone).replace(/[\\s\\-()]/g,'')) + ",true," +
+    (u.school_id == null ? "NULL" : Number(u.school_id)) + "," + q('active') + ",NOW(),NOW(),1) ON CONFLICT (id) DO UPDATE SET active=true, national_id=EXCLUDED.national_id, phone=EXCLUDED.phone, school_id=EXCLUDED.school_id;");
+}
+process.stdout.write(sql.join("\\n"));
+JS
+)"
+printf '%s\\n' "$AUTH_JSON" | psql "$URL" -v ON_ERROR_STOP=1 -q
+
+
 PIDA=$(boot_one "$PORTA" "$OTP_A" /tmp/p7v-a.log)
 PIDB=$(boot_one "$PORTB" "$OTP_B" /tmp/p7v-b.log)
 cleanup() {
