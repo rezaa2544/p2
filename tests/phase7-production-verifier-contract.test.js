@@ -12,10 +12,12 @@ pass('boundary-t5-excludes-authority-migrations',()=>{
   assert.doesNotMatch(s,/grep -v '019_'/);
 });
 pass('negative-empty-pg-auth-fixture',()=>{
-  assert.match(s,/P7V_AUTH_FIXTURE_MISSING_USERS/);
+  assert.match(s,/9000001/);
+  assert.match(s,/9000002/);
   assert.match(s,/INSERT INTO users/);
   assert.match(s,/INSERT INTO schools/);
   assert.match(s,/psql "\$URL" -v ON_ERROR_STOP=1 -q/);
+  assert.match(s,/const su=\{phone:'09999838444',national_id:'9993235245'\}/);
 });
 pass('concurrency-replay-resilience',()=>{
   assert.match(s,/kill -9 "\$PIDA"/);
