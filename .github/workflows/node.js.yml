@@ -209,6 +209,8 @@ jobs:
 
     - name: Runtime Reliability — Outbox/Worker/Redis regression
       run: node tests/outbox-runtime-reliability.test.js
+    - name: Runtime Reliability — Five-Task/Five-Pass independent battery
+      run: node tests/runtime-reliability-five-task.test.js
 
     - name: Data Integrity — OCC atomic write + migration 012 recovery
       run: node tests/data-integrity-occ-migration.js
