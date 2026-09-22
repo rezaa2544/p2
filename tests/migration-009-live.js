@@ -45,11 +45,35 @@ function finish() {
 }
 
 function findPgBin() {
+  /* F-A3 follow-up: an EXPLICIT PG_LIVE_BIN is authoritative — the C-7 negative
+     gate (migration-009-negative.test.js) strips PATH and pins PG_LIVE_BIN to a
+     bogus dir and must keep observing exit 1; system discovery must not override
+     the operator's pin (and must not resurrect the self-skip it simulates). */
+  if (process.env.PG_LIVE_BIN) {
+    const d = process.env.PG_LIVE_BIN;
+    return ['initdb', 'postgres', 'pg_ctl'].every((b) => fs.existsSync(path.join(d, b))) ? d : null;
+  }
   const cand = [];
-  if (process.env.PG_LIVE_BIN) cand.push(process.env.PG_LIVE_BIN);
   try {
     const w = cp.execSync('which initdb', { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w) cand.push(path.dirname(w));
+  } catch (e) {}
+  /* F-A3 (Arena 1): Debian/Ubuntu keep cluster binaries in
+     /usr/lib/postgresql/<major>/bin — never on PATH, so `which initdb` alone
+     made this gate SELF-SKIP GREEN on machines where PG is fully installed.
+     pg_config --bindir + the FHS glob are the supported discovery paths. */
+  try {
+    const b = cp.execSync('pg_config --bindir', { stdio: 'pipe' }).toString().trim();
+    if (b) cand.push(b);
+  } catch (e) {}
+  try {
+    const base = '/usr/lib/postgresql';
+    if (fs.existsSync(base)) {
+      const majors = fs.readdirSync(base)
+        .map((v) => ({ v, n: parseInt(v, 10) || 0 }))
+        .sort((a, b) => b.n - a.n);
+      for (const m of majors) cand.push(path.join(base, m.v, 'bin'));
+    }
   } catch (e) {}
   for (const d of cand) {
     if (['initdb', 'postgres', 'pg_ctl'].every((b) => fs.existsSync(path.join(d, b)))) return d;
@@ -95,21 +119,21 @@ async function main() {
   const c = new Client({ host: '127.0.0.1', port: PORT, user: 'payesh', database: 'payesh' });
   await c.connect();
 
-  /* M1 — کل زنجیره روی DB خالی */
+  /* M1 — کل زنجیره روی DB خالی: از runnerِ خودِ مخزن (migrate-ledger/migrateUp
+     با مسیر psql) استفاده می‌کند تا فایل‌های دارای تراکنشِ داخلی (مثل 012)
+     دقیقاً همان‌طور اعمال شوند که production اعمال می‌کند — query-سراسریِ
+     قدیمیِ این تست روی 012 با «invalid transaction termination» می‌شکست
+     (F-A3 follow-up؛ خودِ مخزن هرگز از این مسیر استفاده نمی‌کند). */
   let m1ok = true, m1err = '';
   const files = fs.readdirSync(path.join(ROOT, 'migrations'))
     .filter((f) => /^\d+_.*\.sql$/.test(f) && !f.includes('.down.')).sort();
-  const { execFileSync } = require('child_process');
   const dbUrl = `postgres://payesh@127.0.0.1:${PORT}/payesh`;
-  for (const f of files) {
-    const sql = fs.readFileSync(path.join(ROOT, 'migrations', f), 'utf8');
-    const meta = /^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql);
-    try {
-      if (meta) execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', f), dbUrl], { stdio: 'pipe' });
-      else await c.query(sql);
-    }
-    catch (e) { m1ok = false; m1err = f + ': ' + e.message; break; }
-  }
+  try {
+    const { migrateUp } = require('../tools/migrate-ledger');
+    const applied = await migrateUp(c, { pgUrl: dbUrl });
+    m1ok = Array.isArray(applied) && applied.length > 0;
+    if (!m1ok) m1err = 'migrateUp returned no applied migrations';
+  } catch (e) { m1ok = false; m1err = String((e && e.message) || e); }
   /* ری‌تارگتِ #82: زنجیره حالا تا 012 ادامه دارد؛ SUBJECT این تست 009 است، نه آخرین فایل */
   chk('M1 زنجیرهٔ کاملِ مهاجرات (۰۰۱…آخر) رویِ دیتابیسِ خالی',
       m1ok && files.some((f) => f.startsWith('009_')), m1err);

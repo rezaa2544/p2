@@ -12,11 +12,32 @@ const path = require('path');
 const cp = require('child_process');
 
 function findPgBin() {
+  /* F-A3 follow-up: explicit PG_LIVE_BIN is authoritative (C-7 negative gate
+     depends on a bogus pin meaning "missing"; see migration-009-live.js). */
+  if (process.env.PG_LIVE_BIN) {
+    const d = process.env.PG_LIVE_BIN;
+    return ['initdb', 'postgres', 'pg_ctl'].every((b) => fs.existsSync(path.join(d, b))) ? d : null;
+  }
   const cand = [];
-  if (process.env.PG_LIVE_BIN) cand.push(process.env.PG_LIVE_BIN);
   try {
     const w = cp.execSync('which initdb', { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w) cand.push(path.dirname(w));
+  } catch (e) {}
+  /* F-A3 (Arena 1): same discovery gap as migration-009-live.js —
+     pg_config --bindir + FHS glob so a fully installed PG is never
+     reported as "missing binaries" just because it is off-PATH. */
+  try {
+    const b = cp.execSync('pg_config --bindir', { stdio: 'pipe' }).toString().trim();
+    if (b) cand.push(b);
+  } catch (e) {}
+  try {
+    const base = '/usr/lib/postgresql';
+    if (fs.existsSync(base)) {
+      const majors = fs.readdirSync(base)
+        .map((v) => ({ v, n: parseInt(v, 10) || 0 }))
+        .sort((a, b) => b.n - a.n);
+      for (const m of majors) cand.push(path.join(base, m.v, 'bin'));
+    }
   } catch (e) {}
   for (const d of cand) {
     if (['initdb', 'postgres', 'pg_ctl'].every((b) => fs.existsSync(path.join(d, b)))) return d;
