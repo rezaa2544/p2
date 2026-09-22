@@ -138,6 +138,9 @@ jobs:
           sudo service redis-server stop || sudo systemctl stop redis-server || true
         fi
         node tests/phase2-redis-fail-closed.js
+    - name: Runtime Reliability — DLQ atomic terminal transition
+      run: node tests/outbox-dlq-atomicity.test.js
+
     - name: OCC across two real instances — 10 concurrent writers (BLOCKER 4)
       run: |
         export DATABASE_URL="$PGURL"
