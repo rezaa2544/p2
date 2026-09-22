@@ -4,7 +4,7 @@
 **تاریخ تدوین:** 2026-09-20  
 **آخرین بازآرایی وضعیت:** 2026-09-21
 **کامیت معرفی سند:** `8de13dbab596f09f3d9a3d1b92bae845f6b2f8aa`
-**HEAD مبنای کد تأییدشده:** `4de6f57d4ec1a883cece5ba7ae7480be3bc768a8` (Code) / `5017e9a1a9e70ea5df869ecda763327cb7008da6` (Doc)
+**HEAD مبنای آخرین reconciliation checkpoint:** `eb8cacda880835de7d8e4f4be4db9ddb6729266d` (live branch ref remains authoritative) 
 **مخزن:** `rezaa2544/p2` · شاخه `main`
 **موتور رانتایم مجاز (B2):** `Node.js >= 22.0.0` (Canonical Runtime)
 **پایگاه‌داده منبع حقیقت:** `PostgreSQL 17` (Authoritative SSoT)
