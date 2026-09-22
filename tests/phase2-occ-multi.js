@@ -42,7 +42,42 @@ function boot(port, env) {
     })();
   });
 }
-function stop(proc) { return new Promise((r) => { if (!proc) return r(); proc.on('exit', r); proc.kill('SIGTERM'); setTimeout(r, 5000); }); }
+/* F-A2 (Arena 1): the old stop() resolved after a 5s timer even if the child
+   ignored SIGTERM — and the FATAL / boot-failure paths exited WITHOUT stopping
+   anything — so back-to-back runs collided on 3101/3102 (orphaned instances,
+   JWT-key mismatch, ok=0). Escalate to SIGKILL, and always wait for real exit. */
+function stop(proc) {
+  return new Promise((r) => {
+    if (!proc) return r();
+    let done = false;
+    const fin = () => { if (done) return; done = true; r(); };
+    proc.on('exit', fin);
+    try { proc.kill('SIGTERM'); } catch (_) { return fin(); }
+    setTimeout(() => {
+      try { proc.kill('SIGKILL'); } catch (_) { /* already gone */ }
+      setTimeout(fin, 500);
+    }, 4000);
+  });
+}
+/* Instances under test must own the ports: wait out a leftover listener
+   (previous crashed run) instead of silently booting against it. */
+function waitPortFree(port, timeoutMs) {
+  const net = require('net');
+  return new Promise((resolve) => {
+    const deadline = Date.now() + timeoutMs;
+    const attempt = () => {
+      const sock = net.connect({ port, host: '127.0.0.1' });
+      sock.once('connect', () => {
+        sock.destroy();
+        if (Date.now() >= deadline) return resolve(false);
+        setTimeout(attempt, 250);
+      });
+      sock.once('error', () => resolve(true)); /* connection refused ⇒ free */
+    };
+    attempt();
+  });
+}
+let A = null, B = null; /* module scope so the FATAL path can still tear down */
 async function pgOne(url, sql, params) { const c = new Client({ connectionString: url }); await c.connect(); const r = await c.query(sql, params || []); await c.end(); return r.rows; }
 
 (async () => {
@@ -80,6 +115,17 @@ async function pgOne(url, sql, params) { const c = new Client({ connectionString
   const nTables = await pgOne(OCC_URL, "SELECT COUNT(*)::int n FROM information_schema.tables WHERE table_schema='public'");
   chk('seed واقعی bootstrap→PG (migrate-to-pg + 015–019)', nTables[0].n > 50, 'tables=' + nTables[0].n);
 
+  /* F-A2 residual: OTP/rate-limit keys live in the dedicated Redis db14 and
+     outlive this process — a back-to-back run then login-400s on cooldown. */
+  try {
+    const IORedis = require('ioredis');
+    const base = String(process.env.REDIS_URL || '').replace(/\/\d+\s*$/, '');
+    if (base) {
+      const flush = new IORedis(base + '/14', { lazyConnect: true, maxRetriesPerRequest: 1, connectTimeout: 2000 });
+      await flush.connect(); await flush.flushdb(); await flush.quit();
+    }
+  } catch (_) { /* boot/readiness already fails loudly if Redis is required */ }
+
   const OTPF = path.join(os.tmpdir(), 'occ-otp-' + Date.now() + '.json');   /* isolation: cooldown state of previous runs */
   const envOf = (port) => {
     const e = Object.assign({}, process.env, {
@@ -92,10 +138,16 @@ async function pgOne(url, sql, params) { const c = new Client({ connectionString
     return e;
   };
 
-  const A = await boot(3101, envOf(3101));
-  const B = await boot(3102, envOf(3102));
+  /* F-A2: never boot onto a port a leftover instance still holds */
+  const portA = await waitPortFree(3101, 15000);
+  const portB = await waitPortFree(3102, 15000);
+  chk('پورت‌های 3101/3102 قبل از boot آزادند', portA && portB, `${portA}/${portB}`);
+  if (!portA || !portB) process.exit(1);
+
+  A = await boot(3101, envOf(3101));
+  B = await boot(3102, envOf(3102));
   chk('دو instance واقعی بالا آمدند (3101/3102)', !!(A && B), `${!!A}/${!!B}`);
-  if (!A || !B) process.exit(1);
+  if (!A || !B) { await stop(A); await stop(B); process.exit(1); }
 
   /* one login — same JWT secret ⇒ cookie valid on BOTH instances */
   const st = JSON.parse(fs.readFileSync(STORE, 'utf8'));
@@ -127,17 +179,23 @@ async function pgOne(url, sql, params) { const c = new Client({ connectionString
 
   /* 0 lost updates: PG truth has the winner's score and version v0+1 */
   const after = await pgOne(OCC_URL, 'SELECT version, score FROM grades WHERE id = $1', [g.id]);
-  const winner = okArr[0];
+  /* F-A5 guard: a total login failure must produce a completed summary (with
+     the failed checks), not a TypeError that masks which assertions were lost. */
+  const winner = okArr[0] || { i: -1 };
   chk('نسخهٔ نهایی PG = v0+1 (بدون lost update)', Number(after[0].version) === v0 + 1, 'version=' + after[0].version);
-  chk('score نهایی = scoreِ برنده (دقیقاً یکی اعمال شد)', Number(after[0].score) === 10 + winner.i, 'score=' + after[0].score + ' winner=' + (10 + winner.i));
+  chk('score نهایی = scoreِ برنده (دقیقاً یکی اعمال شد)', winner.i >= 0 && Number(after[0].score) === 10 + winner.i, 'score=' + after[0].score + ' winner=' + (10 + winner.i));
 
   /* every rejected write is RECORDED in sync_conflicts (SSoT) */
   const cfRows = await pgOne(OCC_URL, "SELECT COUNT(*)::int n FROM sync_conflicts WHERE collection='grades' AND record_id=$1 AND status='open'", [g.id]);
   chk('۹ تعارضِ ردشده در sync_conflicts ثبت شد', cfRows[0].n >= 9, 'rows=' + cfRows[0].n);
 
-  await stop(A); await stop(B);
+  await stop(A); await stop(B); A = null; B = null;
   try { fs.unlinkSync(KEY); } catch (e) {}
   const pass = results.filter(Boolean).length;
   console.log('\n════ PHASE2 OCC MULTI-INSTANCE: ' + pass + '/' + results.length + ' ════');
   process.exit(pass === results.length ? 0 : 1);
-})().catch((e) => { console.error('FATAL', e && e.message); process.exit(1); });
+})().catch(async (e) => {
+  console.error('FATAL', e && e.message);
+  try { await stop(A); await stop(B); } catch (_) { /* teardown must not mask the error */ }
+  process.exit(1);
+});
