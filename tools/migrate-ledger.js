@@ -24,11 +24,53 @@ function computeChecksum(content) {
   return crypto.createHash('sha256').update(content, 'utf8').digest('hex');
 }
 
+function stripLeadingBegin(sql) {
+  let i = 0;
+  while (i < sql.length) {
+    const start = i;
+    while (i < sql.length && /[\\t\\n\\r\\f\\v ]/.test(sql[i])) i++;
+    if (sql.startsWith('--', i)) {
+      const end = sql.indexOf('\\n', i + 2);
+      i = end === -1 ? sql.length : end + 1;
+      continue;
+    }
+    if (sql.startsWith('/*', i)) {
+      const end = sql.indexOf('*/', i + 2);
+      if (end === -1) return sql;
+      i = end + 2;
+      continue;
+    }
+    if (i === start) break;
+  }
+  const match = /^BEGIN[\\t\\n\\r\\f\\v ]*;/i.exec(sql.slice(i));
+  return match ? sql.slice(0, i) + sql.slice(i + match[0].length) : sql;
+}
+
+function stripTrailingCommit(sql) {
+  let end = sql.length;
+  while (true) {
+    const before = end;
+    while (end > 0 && /[\\t\\n\\r\\f\\v ]/.test(sql[end - 1])) end--;
+    if (end >= 2 && sql.slice(end - 2, end) === '*/') {
+      const start = sql.lastIndexOf('/*', end - 2);
+      if (start < 0) return sql;
+      end = start;
+      continue;
+    }
+    const lineStart = sql.lastIndexOf('\\n', end - 1) + 1;
+    if (sql.slice(lineStart, end).startsWith('--')) {
+      end = lineStart;
+      continue;
+    }
+    if (end === before) break;
+  }
+  const prefix = sql.slice(0, end);
+  const match = /COMMIT[\\t\\n\\r\\f\\v ]*;$/i.exec(prefix);
+  return match ? prefix.slice(0, match.index) + sql.slice(end) : sql;
+}
+
 function prepareMigrationSql(sql) {
-  let cleaned = sql;
-  cleaned = cleaned.replace(/^(\s*(--[^\n]*\n|\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/|\s)*)BEGIN\s*;/i, '$1');
-  cleaned = cleaned.replace(/COMMIT\s*;(\s*(--[^\n]*\n|\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/|\s)*)$/i, '$1');
-  return cleaned;
+  return stripTrailingCommit(stripLeadingBegin(sql));
 }
 
 async function ensureLedgerTable(client) {
