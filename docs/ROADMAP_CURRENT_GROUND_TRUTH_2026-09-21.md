@@ -3,8 +3,8 @@
 
 **Repository:** `rezaa2544/p2`  
 **Branch:** `main`  
-**Current HEAD at latest reconciliation: `59c7b433762c637729e143d79ba8390ca80cb619`
-**GitHub Actions status on current HEAD: **NOT VERIFIED** — no workflow run was returned for this exact SHA by the available connector; older successful runs are historical evidence.
+**Current HEAD at latest reconciliation: `497151b321fa51fd1c26da11bd5b174a09f95a56`
+**CI status on current HEAD: PARTIAL** — CircleCI `ci/circleci: say-hello` is `success` (run 501); no GitHub Actions Node.js run was returned for this exact SHA by the available connector. Older Node.js runs are historical evidence.
 **GitHub Actions workflow runs:** none were returned for this commit by the connector; historical Node.js CI #1093 is **not** current-HEAD evidence.  
 **Note:** current `main` is 5 commits ahead of the previous reconciliation commit `f22af312...`; those commits touch migrations/DB/outbox/OCC paths, not the DR/HA implementation files used by DR-01.  
 **Purpose:** این سند لایهٔ وضعیت جاری است تا بین Master Schedule، گزارش‌های ممیزی و وضعیت واقعی GitHub اختلاف ایجاد نشود.
@@ -43,6 +43,8 @@
 
 ## 3. کارهایی که واقعاً بسته شده‌اند
 
+> **Current-HEAD correction:** the Node.js CI list below describes historical run #1093, not a current-HEAD execution. Do not treat it as current CI evidence.
+
 ### Phase 8.1
 - باتری ۱۲۷/۱۲۷ روی PG 17.11 + Redis 8.0.2 در گزارش Phase 8.1.
 - truth-gate: 44/44.
@@ -50,8 +52,8 @@
 - CI enforcement.
 - گزارش: `docs/PHASE_8.1_REMEDIATION_AUDIT_REPORT.md`.
 
-### Current main / CI
-Run مربوط به HEAD فعلی:
+### Historical Node.js CI #1093 (not current-head evidence)
+The following list is the scope of historical Node.js CI #1093:
 - Node.js 22
 - migration chain و rollback
 - live-PG suites
@@ -66,7 +68,7 @@ Run مربوط به HEAD فعلی:
 - R1/R2/R21 authoritative fail-closed suites
 - `npm test`
 
-همهٔ jobها در Node.js CI #1093 با conclusion=success ثبت شده‌اند.
+همهٔ jobها در Node.js CI #1093 با conclusion=success ثبت شده‌اند؛ این run برای current HEAD قابل استفاده نیست.
 
 ### Remediation commit
 `b0b55a13539dc917779d39053bfb8d2277428cc0`:
@@ -632,3 +634,17 @@ The commits after the previous DR reconciliation are OCC/migration/outbox/runtim
 - **Production GO:** **NOT DECLARED**.
 - **Outbox/worker/Redis remediations:** retain **E3** classification where explicitly evidenced; do not promote them to E4.
 - **National capacity claims (10M / 20k RPS / 2.5k write TPS):** **NOT VERIFIED** as E4 measurements.
+
+
+## Current-HEAD reconciliation — 2026-09-22 (latest observed)
+
+**Current HEAD:** `497151b321fa51fd1c26da11bd5b174a09f95a56`
+
+- Branch: `main`.
+- CircleCI `ci/circleci: say-hello`: **success**, run `501`.
+- GitHub Actions Node.js CI for this exact SHA: **NOT VERIFIED** by the available connector; historical #1093 is not current evidence.
+- Phase 8.2 Exit: **NOT VERIFIED**; S3/S4 E4 evidence is still absent.
+- Phase 8.3: **BLOCKED** by 8.2 Exit.
+- Production GO: **NOT DECLARED**.
+
+The latest commit is documentation reconciliation only; it does not create runtime evidence for DR, S3/S4, E4, or Production GO.
