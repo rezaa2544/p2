@@ -3,7 +3,7 @@
 
 **Repository:** `rezaa2544/p2`  
 **Branch:** `main`  
-**Current HEAD at latest reconciliation: `497151b321fa51fd1c26da11bd5b174a09f95a56`
+**Current HEAD at latest reconciliation checkpoint: `fcf6d6d81ac678f4cdc2d29b0d2d3d70144d21a0`
 **CI status on current HEAD: PARTIAL** — CircleCI `ci/circleci: say-hello` is `success` (run 516); GitHub Actions has **no workflow run for this exact SHA** and the combined commit status contains only the CircleCI success check. Older Node.js runs are historical evidence.
 **GitHub Actions workflow runs:** none were returned for this commit by the connector; historical Node.js CI #1093 is **not** current-HEAD evidence.  
 **Note:** current `main` is 5 commits ahead of the previous reconciliation commit `f22af312...`; those commits touch migrations/DB/outbox/OCC paths, not the DR/HA implementation files used by DR-01.  
@@ -673,3 +673,12 @@ The latest commit is documentation reconciliation only; it does not create runti
 - Phase 8.3: **BLOCKED**.
 - Production GO: **NOT DECLARED**.
 - E3 DR evidence remains separate from E4; no current-head E4 evidence was found.
+
+
+## Final live-branch verification checkpoint — 2026-09-22
+
+**Branch:** `main`  
+**Last verified branch SHA before this documentation-only commit:** `fcf6d6d81ac678f4cdc2d29b0d2d3d70144d21a0`  
+**GitHub Actions on that SHA:** none returned.  
+**CircleCI:** `ci/circleci: say-hello` success (run 516).  
+**Gate:** Phase 8.2 Exit NOT VERIFIED; Phase 8.3 BLOCKED; Production GO NOT DECLARED.
