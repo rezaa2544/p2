@@ -140,6 +140,25 @@ $$\text{Truth} = \text{current HEAD} + \text{current runtime} + \text{current te
 ### Rule 27 — Completion Requires Three Proofs (سه اثبات برای تکمیل)
 هیچ Task کامل نیست مگر سه نوع proof متناسب با Scope داشته باشد: Implementation Proof، Behavior Proof و Failure Proof. در مواردی که یکی قابل اعمال نیست، دلیل فنی باید ثبت شود.
 
+### Rule 29 — Reusable Security Audit Module (استفادهٔ مجدد از چک‌لیست امنیتی)
+هر Security Audit / Red-Team مرتبط با مخزن باید علاوه بر قواعد عمومی این سند، از چک‌لیست مرجع امنیتی docs/SECURITY_AUDIT_CHECKLIST.md به‌عنوان یک baseline قابل استفادهٔ مجدد بهره ببرد.
+
+این چک‌لیست باید حداقل این سطوح را پوشش دهد، هرجا با معماری و Scope مرتبط است:
+- Secrets و Secret Hygiene
+- Authentication و Session/Token Security
+- Authorization، RBAC و Tenant Isolation / IDOR
+- Input Validation و Injection (SQL/NoSQL/XSS/Command/Path Traversal/Unsafe Deserialization)
+- SSRF و دسترسی‌های خروجی شبکه
+- Rate Limiting و Abuse Controls
+- File Upload و File Handling
+- Dependency / Supply-chain Risk
+- Error Disclosure و Information Leakage
+- Infrastructure / Storage / IAM / Database Exposure
+
+برای هر Finding، Agent باید تا حد امکان Reproduce → Evidence → Root Cause → Impact → Remediation را اجرا کند و دست‌کم این provenance را ثبت نماید: Current HEAD SHA، مسیر فایل/بخش کد، دستور/سناریوی بازتولید، Expected، Actual، تعداد اجرا، و سطح Evidence (E3/E4 در صورت ارتباط).
+
+این Rule چک‌لیست را جایگزین تست نفوذ تخصصی نمی‌کند؛ بلکه یک baseline دائمی برای جلوگیری از فراموش‌شدن دسته‌های مهم حمله و افزایش قابلیت مقایسه بین Auditهای آینده است. هر Agent می‌تواند موارد جدیدی را به چک‌لیست پیشنهاد کند، اما افزودن یا تغییر baseline باید به‌صورت مستند و قابل ردیابی انجام شود.
+
 ### Rule 28 — Agent Efficiency Optimization (بهینه‌سازی بازده Agent)
 هدف، بیشترین evidence قابل اتکا با کمترین عملیات ضروری است؛ تعداد commandها یا تغییرات به‌خودی‌خود معیار موفقیت نیست. کار تکراری بدون افزایش پوشش ریسک ممنوع است.
 
