@@ -76,6 +76,27 @@ jobs:
         cache: 'npm'
     - run: npm ci
 
+    # Critical orphan closure: deterministic security/recovery/data-integrity suites.
+    # Only the critical subset is wired; the broader orphan population remains
+    # classified rather than bulk-added to CI.
+    - name: Critical orphan — seed integrity
+      run: node tests/seed-integrity.js
+
+    - name: Critical orphan — server security regression
+      run: node tests/security2.js
+
+    - name: Critical orphan — atomic sync batch
+      run: node tests/sync-atomic-batch.js
+
+    - name: Critical orphan — duplicate claim/idempotency
+      run: node tests/sync-dup-claim.js
+
+    - name: Critical orphan — DLQ retry/recovery
+      run: node tests/sync-dlq-retry.js
+
+    - name: Critical orphan — read-replica recovery
+      run: node tests/db-replica-recovery.js
+
     # ── Governance contracts (Chat 4) ────────────────────────────────────────
     # عمداً بلافاصله بعد از `npm ci` و پیش از مراحل سنگینِ وابسته به سرویس زنده
     # اجرا می‌شوند. این‌ها بررسی‌های ایستا و چندثانیه‌ای‌اند و به PostgreSQL/Redis
