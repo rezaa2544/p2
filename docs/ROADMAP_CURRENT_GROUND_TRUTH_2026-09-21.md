@@ -3,10 +3,10 @@
 
 **Repository:** `rezaa2544/p2`  
 **Branch:** `main`  
-**Current HEAD at reconciliation baseline:** `77e589a0ec61129ca19f044f1b088e2ae73d3a7b`  
-**GitHub status at that baseline:** `ci/circleci: say-hello` = pending.  
-**Node.js Actions:** no workflow run was returned for that baseline by the GitHub connector; do not carry forward historical Node.js CI #1093 as current-HEAD evidence.  
-**Note:** this document update itself creates a new commit; the final pushed SHA is reported in the task report.  
+**Current HEAD at latest reconciliation:** `8e9162a7035443b0e318d457ccf910709c2ea7b0`  
+**GitHub status on current HEAD:** `ci/circleci: say-hello` = **success**.  
+**GitHub Actions workflow runs:** none were returned for this commit by the connector; historical Node.js CI #1093 is **not** current-HEAD evidence.  
+**Note:** current `main` is 5 commits ahead of the previous reconciliation commit `f22af312...`; those commits touch migrations/DB/outbox/OCC paths, not the DR/HA implementation files used by DR-01.  
 **Purpose:** این سند لایهٔ وضعیت جاری است تا بین Master Schedule، گزارش‌های ممیزی و وضعیت واقعی GitHub اختلاف ایجاد نشود.
 
 ---
@@ -551,3 +551,60 @@ DR-01 is treated as an **upstream pgBackRest behavior**, not as a repo-owned def
 - Provision E4 infrastructure and off-site storage/credentials.
 
 **Decision:** E3 remains evidence; E4 remains unverified; Phase 8.2 remains not issued; Phase 8.3 remains blocked; Production GO remains not declared.
+
+---
+
+## 19. Release-Gate Reconciliation — Current HEAD 8e9162a — 2026-09-22
+
+### Current HEAD truth
+
+- **Current main:** `8e9162a7035443b0e318d457ccf910709c2ea7b0`
+- **Compared with prior reconciliation:** `f22af312e14ccee7d5eb26712acb8e1c7622cf2b` → current main is **5 commits ahead / 0 behind**.
+- The five commits are migration/OCC/outbox changes. The comparison contains **no change to `tools/pitr-restore.sh`, `tools/pitr-verify.sh`, or the DR/HA implementation files used by DR-01**.
+- Current commit status: **CircleCI `ci/circleci: say-hello` = success**.
+- No GitHub Actions workflow run is available from the connector for this SHA; therefore historical Node.js CI #1093 is not re-used as current-HEAD CI evidence.
+
+### DR-01
+
+**Status: PARTIAL / CONFIRMED HISTORICAL E3 — NOT CURRENT-RUNTIME VERIFIED.**
+
+Historical E3 reproduction remains:
+- pgBackRest 2.55.1 / PostgreSQL 17.11 / single-host lab.
+- corruption of 16 bytes in the backup bundle.
+- `pgbackrest --stanza=payesh verify`: **3/3** reported `status: invalid` / `invalid checksum` while returning **exit 0**.
+- corrupted restore: **2/2 exit 29**, fail-closed.
+- repository scan: no repo-owned caller currently treats raw `pgbackrest verify` exit status as the integrity gate.
+
+The unchanged DR code path means the historical finding remains applicable to current code, but Rule 5/6/11 do **not** permit relabeling that historical runtime as a fresh run on `8e9162a`. A fresh pgBackRest runtime execution on the current SHA is still **Evidence Missing / Not Tested in this environment**.
+
+### Phase 8.2 exit blockers — current truth
+
+| Gate item | Status | Classification | Required evidence |
+|---|---|---|---|
+| S3 alert → receiver → on-call → acknowledgement → runbook → recovery | **NOT VERIFIED** | **EXTERNAL BLOCKER** | live production-equivalent E4 drill, timestamps, machine-readable ack, MTTA/MTTR, recovery proof |
+| S4 PostgreSQL restore/promote | **NOT VERIFIED** | **EXTERNAL BLOCKER** | multi-host E4 restore, identity/checksum, RPO/RTO |
+| S4 Redis restore/failover | **NOT VERIFIED** | **EXTERNAL BLOCKER** | multi-host E4 failover/restore, revocation/rate-limit behavior, RPO/RTO |
+| E4 topology / independent failure domains | **NOT VERIFIED** | **EXTERNAL BLOCKER** | genuine multi-host/network/object-storage environment |
+| Formal RPO/RTO acceptance thresholds | **NOT VERIFIED** | **OWNER DECISION REQUIRED** | ratified SLO thresholds plus measured production-equivalent runs |
+| Current-SHA DR-01 runtime refresh | **NOT VERIFIED** | **EVIDENCE MISSING** | fresh reproducible pgBackRest corruption/verify run on `8e9162a` |
+| Phase 8.2 Exit | **BLOCKED** | Gate consequence | all blocking Exit Evidence above closed |
+| Phase 8.3 | **BLOCKED** | Gate dependency | Phase 8.2 Exit first |
+| Production GO | **NOT VERIFIED** | Governance boundary | complete Exit Evidence; E4; owner authorization |
+
+### Prior findings reconciliation
+
+| Finding / claim | Current-HEAD disposition |
+|---|---|
+| DR-01 pgBackRest false-green | **PARTIAL / CONFIRMED HISTORICAL E3; current runtime refresh missing** |
+| E3 PG backup/restore/PITR | **PARTIAL** — documented historical E3 evidence remains; not E4 |
+| E3 Redis Sentinel failover | **PARTIAL** — documented historical E3 evidence remains; not E4 |
+| S3/offsite backup | **NOT VERIFIED / EXTERNAL BLOCKER** |
+| S3 alert/on-call/MTTA/MTTR | **NOT VERIFIED / EXTERNAL BLOCKER** |
+| S4 PG restore/promote E4 | **NOT VERIFIED / EXTERNAL BLOCKER** |
+| S4 Redis restore/failover E4 | **NOT VERIFIED / EXTERNAL BLOCKER** |
+| Production-scale RPO/RTO | **NOT VERIFIED / EXTERNAL BLOCKER + OWNER DECISION** |
+| Production GO / Phase 8.2 Exit | **BLOCKED / NOT ISSUED** |
+
+### Release-gate decision
+
+**No status is promoted by this reconciliation.** Existing E3 evidence is retained as E3; no E4 claim is made; no historical CI run is promoted to current-head evidence; and no Production GO is declared.
