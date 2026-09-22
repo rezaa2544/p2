@@ -5739,3 +5739,6 @@ exit(1) با «Error: Production requires valid CA certificate».
 ## تثبیت ترتیب gate آزمون DLQ — 2026-09-22
 
 - gate آزمون DLQ باید بلافاصله پس از نصب وابستگی‌ها اجرا شود؛ در صورت failure gateهای طولانی بعدی نباید مانع مشاهدهٔ failure این حوزه شوند.
+
+
+> **ممیزی رصدپذیری ۲۰۲۶-۰۹-۲۲ — بستن یافته‌های current main:** guardهای رصدپذیری اکنون حذف واقعی catalogue ثانویه را می‌پذیرند و expressionهای Prometheus را هم در شکل چندخطی و هم تک‌خطی بررسی می‌کنند. اجرای fail-closed آلارتمَنجر در compose اکنون صریحاً با shell اجرا می‌شود تا entrypoint تصویر مانع اجرای guard نشود. gateهای CIِ compose برای Grafana فقط از مقدار ساختگیِ مخصوص آزمون استفاده می‌کنند و هیچ راز production در مخزن یا workflow قرار نگرفته است. شواهد runtime همچنان فقط از اجرای کامل Actions پذیرفته می‌شود.
