@@ -1,10 +1,10 @@
 # Project Intelligence — P2
 
-**Version:** 1.0.0  
+**Version:** 1.0.1  
 **Updated:** 2026-09-22  
 **Repository:** `rezaa2544/p2`  
 **Branch:** `main`  
-**Current HEAD:** `07e5ae2de7a6ad6365f4ff6af5e5e85283147354`
+**Current HEAD:** Must always be read from the live `main` ref before any status claim; it is intentionally not hard-coded here to prevent stale state.
 
 ## 1. Purpose
 
@@ -18,7 +18,7 @@
 - Roadmap زمانی/اجرایی: `docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md`.
 - Current-state reconciliation: `docs/ROADMAP_CURRENT_GROUND_TRUTH_2026-09-21.md`.
 - Final Phase 8.2 evidence: `docs/audit/PHASE_8_2_FINAL_VERIFICATION_REPORT.md`.
-- Current main HEAD در زمان این ثبت: `07e5ae2de7a6ad6365f4ff6af5e5e85283147354`.
+- **Last reconciled main HEAD before this Project Intelligence update:** `28d9d0e7d15aa245392957f749a08a8c63cf8ac3`. The live `main` ref remains the authoritative source and must be re-read before every status claim.
 - آخرین تغییرات reconciliation مشاهده‌شده شامل hardening در observability و ثبت gate نهایی است.
 
 ## 2.1 Mandatory Context Loading for 100% Project Understanding
