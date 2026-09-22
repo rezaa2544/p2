@@ -369,9 +369,15 @@ async function runTask4MigrationLedger() {
   assert.ok(wrappedSql.includes('INSERT INTO schema_migrations'), 'Ledger is inside the same transaction block');
   pass('Pass 4 (Concurrency / Resilience): Wrapped SQL ensures single-transaction execution in psql path');
 
-  // Pass 5: Independent Re-run
+  // Pass 5: Independent Re-run + adversarial parser input
   assert.ok(wrappedSql.includes(file.version));
-  pass('Pass 5 (Independent Re-run): Migration ledger atomic contract verified');
+  const hostile = 'COMMIT;/*' + '*//*'.repeat(4000) + 'x';
+  const started = Date.now();
+  const hostileResult = prepareMigrationSql(hostile);
+  const elapsedMs = Date.now() - started;
+  assert.strictEqual(hostileResult, hostile, 'unterminated hostile comment input must be preserved, not rewritten');
+  assert.ok(elapsedMs < 500, 'transaction wrapper parser must stay bounded on hostile comment input');
+  pass('Pass 5 (Independent Re-run): Migration ledger parser remains deterministic under adversarial comment input');
 }
 
 async function main() {
