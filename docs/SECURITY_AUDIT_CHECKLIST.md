@@ -101,7 +101,19 @@
 - Fake-green، حذف/ضعیف‌کردن assertion یا swallow کردن failure ممنوع است.
 - این baseline نباید بدون evidence به Production Readiness یا Penetration Test certification تعبیر شود.
 
-## 14. استفاده در Auditهای آینده
-Security Agent باید این سند را قبل از شروع Audit بررسی کند، موارد applicable را انتخاب کند و در گزارش نهایی مشخص کند کدام دسته‌ها Tested، Not Applicable (با دلیل)، Not Tested / Evidence Missing یا Finding بودند.
+## 14. قرارداد ثبت وضعیت برای Auditهای آینده
+
+برای هر control/finding مرتبط، Agent باید یکی از این وضعیت‌ها را ثبت کند:
+
+- **Tested** — آزمون اجرا شده و Evidence قابل ردیابی وجود دارد.
+- **N/A** — از نظر فنی قابل اعمال نیست؛ دلیل فنی باید ثبت شود.
+- **Not Tested** — بررسی هنوز اجرا نشده است.
+- **Evidence Missing** — بررسی/ادعا وجود دارد، اما Evidence کافی برای نتیجه‌گیری فعلی در دسترس نیست.
+- **Finding** — defect/risk با reproduction یا شواهد کافی ثبت شده است.
+
+هر رکورد باید تا حد امکان شامل این provenance باشد: **Current HEAD SHA + command/scenario + run ID یا run count + environment + expected + actual + evidence level (E3/E4)**. اگر run ID وجود ندارد، صریحاً `N/A` یا `Evidence Missing` ثبت شود؛ هرگز شناسه ساخته نشود.
+
+## 15. استفاده در Auditهای آینده
+Security Agent باید این سند را قبل از شروع Audit بررسی کند، موارد applicable را انتخاب کند و در گزارش نهایی برای هر مورد یکی از وضعیت‌های **Tested / N/A / Not Tested / Evidence Missing / Finding** را با Evidence Contract ثبت کند.
 
 هر Finding جدیدی که ارزش reusable شدن دارد باید به این baseline یا یک سند تخصصی مرتبط پیشنهاد شود؛ تغییر baseline باید مستقل، مستند و قابل بازبینی باشد.
