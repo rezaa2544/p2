@@ -61,7 +61,13 @@ async function main() {
       PAYESH_KEY: path.join(tmpDir, 'k.key'),
       PAYESH_DEMO_CODE: '1'
     });
-    delete env.NODE_ENV; delete env.REDIS_URL;
+    /* F-A7 (Arena 1): the test targets the CI/dev FILE-store server. The server
+       treats DATABASE_URL as production-equivalent (index.js readiness gate),
+       so a shell-exported DATABASE_URL + deleted REDIS_URL (B5 fail-closed)
+       FATAL'd the child before health came up — then the already-exited child
+       made the exit-wait below hang, the event loop drained, and Node
+       NATURALLY exited 0 with a ❌ printed (fake-green, exit-0-despite-❌). */
+    delete env.NODE_ENV; delete env.REDIS_URL; delete env.DATABASE_URL;
     const child = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
     let log = '';
     child.stdout.on('data', d => (log += d)); child.stderr.on('data', d => (log += d));
@@ -143,8 +149,13 @@ async function main() {
       }
     }
 
-    child.kill('SIGTERM');
-    await new Promise(r => child.on('exit', r));
+    /* F-A7: if the child already died (boot FATAL), waiting on 'exit' would
+       never resolve → silent natural exit 0. Only await a live child, so the
+       summary + honest exit code below ALWAYS run. */
+    if (child.exitCode === null) {
+      child.kill('SIGTERM');
+      await new Promise(r => child.once('exit', r));
+    }
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {}
   }
 
