@@ -5717,3 +5717,9 @@ exit(1) با «Error: Production requires valid CA certificate».
   سرورهای مانده آزاد کنید.
 - **سئوت‌ها:** `tests/teacher-eval*.js` (۱۲+۱۳+۵)، `tests/region-scorecard*.js`
   (۱۴+۶)، `tests/urgent-ann*.js` (۱۳+۶)، `tests/staff-gap*.js` (۱۶+۷).
+
+## تکمیل اصلاح Runtime Reliability — 2026-09-22
+
+- finding مسیر DLQ در PostgreSQL با انتقال اتمیکِ درج صف مرده و تغییر وضعیت رکورد مبدأ اصلاح شد.
+- failure در تغییر وضعیت اکنون باید کل انتقال را rollback کند و دیگر نباید پاسخ موفق کاذب بسازد.
+- تست شکست‌اول/مرز و تکرار انتقال برای این قرارداد به شاخهٔ جداگانهٔ Runtime Reliability افزوده شده است.
