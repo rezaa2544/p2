@@ -3,7 +3,7 @@
 
 **Repository:** `rezaa2544/p2`  
 **Branch:** `main`  
-**Current HEAD at latest reconciliation:** `8e9162a7035443b0e318d457ccf910709c2ea7b0`  
+**Current HEAD at latest reconciliation: `7fb6a3a6495a613ae41a44a50d78d80908ef1493`
 **GitHub status on current HEAD:** `ci/circleci: say-hello` = **success**.  
 **GitHub Actions workflow runs:** none were returned for this commit by the connector; historical Node.js CI #1093 is **not** current-HEAD evidence.  
 **Note:** current `main` is 5 commits ahead of the previous reconciliation commit `f22af312...`; those commits touch migrations/DB/outbox/OCC paths, not the DR/HA implementation files used by DR-01.  
@@ -608,3 +608,13 @@ The unchanged DR code path means the historical finding remains applicable to cu
 ### Release-gate decision
 
 **No status is promoted by this reconciliation.** Existing E3 evidence is retained as E3; no E4 claim is made; no historical CI run is promoted to current-head evidence; and no Production GO is declared.
+
+---
+
+## 21. Final observed release-gate snapshot — 2026-09-22
+
+**Observed current `main`:** `7fb6a3a6495a613ae41a44a50d78d80908ef1493`.
+
+The commits after the previous DR reconciliation are OCC/migration/outbox/runtime-test changes; comparison against the audited DR/HA baseline shows no change to `tools/pitr-restore.sh`, `tools/pitr-verify.sh`, or the DR-01 implementation path. CircleCI `ci/circleci: say-hello` is the current status evidence; historical Node.js CI #1093 is not reused.
+
+**Gate decision:** DR-01 = PARTIAL / historical E3 confirmed, current runtime refresh missing; E3 = PARTIAL for documented historical drills; E4 = NOT VERIFIED; S3/S4/E4 infrastructure = EXTERNAL BLOCKERS; RPO/RTO acceptance = OWNER DECISION REQUIRED; Phase 8.2 Exit = BLOCKED / NOT VERIFIED; Phase 8.3 = BLOCKED; Production GO = NOT DECLARED.
