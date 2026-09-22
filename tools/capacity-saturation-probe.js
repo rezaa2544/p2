@@ -81,16 +81,17 @@ const SCRAPE = {
 /* ── CLI ── */
 const argv = process.argv.slice(2);
 const has = (f) => argv.includes(f);
-const arg = (f, d) => { const i = argv.indexOf(f); return i >= 0 && argv[i + 1] ? argv[i + 1] : d; };
+const arg = (f, d) => { const i = argv.indexOf(f); return i >= 0 && argv[i + 1] !== undefined ? argv[i + 1] : d; };
+const numberArg = (f, d) => { const v = arg(f, undefined); return v === undefined ? d : Number(v); };
 const opt = {
   target: arg('--target', process.env.PAYESH_BASE_URL || ''),
   profile: arg('--profile', 'mixed-national'),
   staircase: String(arg('--staircase', '50,100,200,400,800,1600')),
-  stepSeconds: Number(arg('--step-seconds', 120)) || 120,
-  warmupSeconds: Number(arg('--warmup-seconds', 15)) || 15,
-  sloP95ms: Number(arg('--slo-p95-ms', 300)) || 300,
-  abortErrorRate: Number(arg('--abort-error-rate', 5)) || 5,
-  reqTimeoutMs: Number(arg('--req-timeout-ms', 10000)) || 10000,
+  stepSeconds: numberArg('--step-seconds', 120),
+  warmupSeconds: numberArg('--warmup-seconds', 15),
+  sloP95ms: numberArg('--slo-p95-ms', 300),
+  abortErrorRate: numberArg('--abort-error-rate', 5),
+  reqTimeoutMs: numberArg('--req-timeout-ms', 10000),
   metricsPath: arg('--metrics-path', '/metrics'),
   metricsToken: arg('--metrics-token', process.env.PAYESH_METRICS_TOKEN || ''),
   token: arg('--token', process.env.PAYESH_PROBE_TOKEN || ''),
