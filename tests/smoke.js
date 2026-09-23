@@ -2859,8 +2859,12 @@ test('یادآور: محصول رمز کاربری ندارد — ستون آر�
     const stored = W('byId("users",' + id + ').password');
     assert(stored === 'رمزآزمون۱۲', 'وضعیتِ ذخیرهٔ ستونِ آرشیوی عوض شده');
   } finally { if(id !== null) W('remove("users",' + id + ')'); }
-  const todo = fs.readFileSync(path.join(__dirname, '..', 'TODO_BEFORE_PRODUCTION.md'), 'utf8');
-  assert(todo.indexOf('bcrypt') > -1, 'یادآورِ bcrypt از سندِ کارهای باقی‌مانده حذف شده (بدهیِ مشروط باید بماند)');
+  const todoPath = path.join(__dirname, '..', 'TODO_BEFORE_PRODUCTION.md');
+  const todo = fs.readFileSync(todoPath, 'utf8');
+  assert(todo.indexOf('historical redirect') > -1, 'مسیر تاریخی TODO باید redirect صریح باشد');
+  const canonicalTodoPath = path.join(__dirname, '..', 'docs', 'audit', 'history', 'audit', 'TODO_BEFORE_PRODUCTION.md');
+  const canonicalTodo = fs.readFileSync(canonicalTodoPath, 'utf8');
+  assert(canonicalTodo.indexOf('bcrypt') > -1, 'یادآورِ bcrypt از سندِ تاریخیِ کارهای باقی‌مانده حذف شده (بدهیِ مشروط باید بماند)');
 });
 
 test('دیسپاتچِ A: هیچ اکشنی پارامترِ اعلام‌شده ندارد (el/id از محیّط) — دور ۷۹', () => {
