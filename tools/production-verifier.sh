@@ -35,6 +35,15 @@ if [ -z "${DATABASE_URL:-}" ]; then
   log "NOT VERIFIED — DATABASE_URL required (dependency missing = FAIL)"
   exit 1
 fi
+# Phase 7 is an isolated verifier fixture. Reusing the CI Redis DB lets prior suites
+# exhaust OTP/rate-limit counters and makes T2/T6 fail for an unrelated reason.
+# Keep production semantics (real Redis) while isolating verifier state to DB 15.
+P7V_REDIS_URL="$(python3 -c 'from urllib.parse import urlsplit,urlunsplit; import os; u=urlsplit(os.environ["REDIS_URL"]); print(urlunsplit((u.scheme,u.netloc,"/15",u.query,u.fragment)))')" || { log "NOT VERIFIED — could not derive isolated REDIS_URL"; exit 1; }
+if [ -z "$P7V_REDIS_URL" ]; then
+  log "NOT VERIFIED — isolated REDIS_URL empty"
+  exit 1
+fi
+export REDIS_URL="$P7V_REDIS_URL"
 if [ -z "$NODE" ] || [ ! -x "$NODE" ]; then
   log "NOT VERIFIED — node binary missing"
   exit 1
