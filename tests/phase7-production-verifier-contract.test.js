@@ -33,7 +33,7 @@ pass('boundary-t5-excludes-authority-migrations', () => {
   assert.ok(s.includes('case "$f" in'));
   assert.ok(s.includes('*"/019_"*|*"/020_"*) continue ;;'));
   assert.doesNotMatch(s, /sort \| grep -v '019_'/);
-  assert.ok(s.includes("grep -v '\\.down\\.sql
+  assert.ok(s.includes("grep -v") && s.includes(".down.sql") && s.includes("| sort); do"), 'T5 migration loop must exclude down migrations and terminate');
 });
 
 // 3 Negative/failure: T2/T6 must not depend on a pre-seeded PG identity DB.
