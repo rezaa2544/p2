@@ -73,6 +73,15 @@ const dom = new JSDOM(html, {
 
 const win = dom.window;
 
+// jsdom intentionally does not implement the browser scrolling primitive used by
+// the application during route/render transitions. Treat it as a deterministic
+// no-op in the DOM harness so an unsupported jsdom API is not misclassified as an
+// application console failure. Real browser scroll behavior is covered separately.
+if (typeof win.scrollTo !== 'function') {
+  win.scrollTo = () => {};
+}
+if (typeof win.scrollTo !== 'function') throw new Error('SMOKE_SCROLLTO_HARNESS_UNAVAILABLE');
+
 /* متغیرهای سطح‌بالا با const/let روی window نمی‌نشینند؛
    با eval در همان scope به آن‌ها دسترسی می‌گیریم. */
 const W = (expr) => win.eval(expr);
