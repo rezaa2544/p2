@@ -77,11 +77,11 @@ async function runTask1OutboxConcurrency() {
   assert.strictEqual(attempts, 2);
   assert.strictEqual(store3.outbox[0].status, 'pending');
 
-  // Tick 3: Fails attempt 3 (maxRetries reached) -> marked failed and moved to DLQ
+  // Tick 3: Fails attempt 3 (maxRetries reached) -> terminal dead_letter
   await worker3.tick();
   assert.strictEqual(attempts, 3);
-  assert.strictEqual(store3.outbox[0].status, 'failed', 'Max retries must mark status failed');
-  pass('Pass 3 (Negative / Failure Injection): Retryable error re-queues; poison pill routes to DLQ/failed');
+  assert.strictEqual(store3.outbox[0].status, 'dead_letter', 'Max retries must reach the terminal dead_letter state');
+  pass('Pass 3 (Negative / Failure Injection): Retryable error re-queues; poison pill reaches terminal DLQ');
 
   // Pass 4: Concurrency / Resilience — Two concurrent workers with 0 duplicate processing
   const store4 = { outbox: [] };
