@@ -34,6 +34,7 @@ jobs:
           node tests/infrastructure/disaster-recovery/truth-contract.test.js
           node tests/infrastructure/phase5/national/disaster-recovery.test.js
           node tests/redis-backup.js
+          node server/seed.js
           PAYESH_ALLOW_DEV_MEMORY_AUTHORITY=1 node tests/api/disaster-recovery-health.test.js
       - name: Five fresh PostgreSQL and Redis restore rounds
         run: runuser -u user -- python3 tests/infrastructure/disaster-recovery/live-dr-closure.py --runs 5 --out dr-evidence/restore

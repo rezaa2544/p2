@@ -19,7 +19,7 @@ def wait(fn,seconds=40):
         time.sleep(.1)
     return False
 for n in range(1,6):
-    b=pathlib.Path(tempfile.mkdtemp(prefix='a8c-sentinel-'));processes={};port=56700+n*10
+    b=pathlib.Path(tempfile.mkdtemp(prefix='a8c-sentinel-'));processes={};port=26700+n*10
     def boot(name,num,extra='',sentinel=False,restart=False):
         d=b/name;d.mkdir(exist_ok=True);cfg=d/'redis.conf'
         if not restart:cfg.write_text(f'bind 127.0.0.1\nport {num}\ndir {d}\nlogfile {d}/server.log\n'+extra)

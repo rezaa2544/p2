@@ -30,7 +30,7 @@ def run(tag,argv,env=None,expected=0,timeout=150):
     return row
 
 def pg_test(n):
-    b=pathlib.Path(tempfile.mkdtemp(prefix='a8c-pg-'));started=[];port=55300+n*10
+    b=pathlib.Path(tempfile.mkdtemp(prefix='a8c-pg-'));started=[];port=25300+n*10
     source=b/'source';sock=b/'socket';sock.mkdir();repo=b/'repo';repo.mkdir();conf=b/'pbr.conf'
     conf.write_text(f'[global]\nrepo1-path={repo}\nrepo1-retention-full=2\nstart-fast=y\nlog-path={b}\nlock-path={b}/lock\nspool-path={b}/spool\n[payesh]\npg1-path={source}\npg1-port={port}\npg1-socket-path={sock}\npg1-user=user\n')
     env={'PGBACKREST_CONFIG':str(conf),'PGHOST':str(sock),'PGPORT':str(port),'PGDATABASE':'payesh','PGUSER':'user'}
@@ -89,6 +89,7 @@ def pg_test(n):
             p=sp.run(['psql','-X','-qAtc','SELECT count(*) FROM grades WHERE id>=100'],env=ENV|se,capture_output=True,text=True)
             if p.returncode==0 and p.stdout.strip()=='10':break
             time.sleep(.05)
+        check(f'p{n}-replica-caught-up',p.returncode==0 and p.stdout.strip()=='10')
         before=sql('standby-before',"SELECT md5(string_agg(grades::text,'|' ORDER BY id)) FROM grades",se)
         run(f'p{n}-no-fence',['bash','tools/failover-postgres.sh','--dry-run'],se,expected='nonzero')
         # Fence verifier checks the exact local source process is STOPPED, not merely unreachable.
@@ -102,7 +103,7 @@ def pg_test(n):
         sql('recovery-write',"INSERT INTO users VALUES(999,'recovered')",se)
         check(f'p{n}-recovery-read',sql('recovery-read',"SELECT value FROM users WHERE id=999",se)=='recovered')
         end=time.monotonic_ns();last_recovered=max((ack[k] for k in surviving if k in ack),default=None)
-        measurements.append(dict(run=n,scope='E3 PostgreSQL DB service; not application/E4',failure_utc=failure_utc,failure_monotonic_ns=failure,recovered_monotonic_ns=end,rto_seconds=(end-failure)/1e9,lost_acknowledged_ids=sorted(set(ack)-surviving),rpo_ack_loss_window_seconds=None if last_recovered is None else (max(ack.values())-last_recovered)/1e9,recovered_point_age_at_failure_seconds=None if last_recovered is None else (failure-last_recovered)/1e9,acknowledgements=ack,definition='RTO fault injection -> role change + expected dataset + successful new committed write/read. RPO loss window last acknowledged write minus newest recovered acknowledged write; also report point age.' ))
+        measurements.append(dict(run=n,valid=not any(x.startswith(f'p{n}-') for x in failures),scope='E3 PostgreSQL DB service; not application/E4',failure_utc=failure_utc,failure_monotonic_ns=failure,recovered_monotonic_ns=end,rto_seconds=(end-failure)/1e9,lost_acknowledged_ids=sorted(set(ack)-surviving),rpo_ack_loss_window_seconds=None if last_recovered is None else (max(ack.values())-last_recovered)/1e9,recovered_point_age_at_failure_seconds=None if last_recovered is None else (failure-last_recovered)/1e9,acknowledgements=ack,definition='RTO fault injection -> role change + expected dataset + successful new committed write/read. RPO loss window last acknowledged write minus newest recovered acknowledged write; also report point age.' ))
         # Real upstream semantic verification contract + corrupted restore refusal.
         files=[p for p in (repo/'backup').rglob('*.gz') if '/base/' in str(p)]
         corrupt=max(files,key=lambda p:p.stat().st_size);corrupt.write_bytes(b'CORRUPTED-BACKUP')
@@ -116,7 +117,7 @@ def pg_test(n):
         shutil.rmtree(b)
 
 def redis_test(n):
-    b=pathlib.Path(tempfile.mkdtemp(prefix='a8c-redis-'));processes=[];port=56200+n*10
+    b=pathlib.Path(tempfile.mkdtemp(prefix='a8c-redis-'));processes=[];port=26200+n*10
     def boot(name,p,aof=True):
         d=b/name;d.mkdir(exist_ok=True);log=open(d/'server.log','w')
         proc=sp.Popen(['redis-server','--bind','127.0.0.1','--port',str(p),'--dir',str(d),'--save','','--appendonly','yes' if aof else 'no','--aof-use-rdb-preamble','yes' if n%2 else 'no'],env=ENV,stdout=log,stderr=sp.STDOUT);processes.append((proc,log))
