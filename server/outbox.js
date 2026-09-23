@@ -102,13 +102,26 @@ function createOutbox({ store, db }) {
        NOTHING, so a desynced sequence (manual insert / restore / crash artifact)
        silently DROPPED the event — a deleted record then never reached the
        outbox at all (reproduced live: nextval restarted at 1 while ids 1,2
-       existed). On a unique violation, take a fresh id and retry once. */
+       existed). On a unique violation, take a fresh id and retry once.
+       RR2-01 (Arena-2 round 2, re-reproduced at 5d4a48f7): ON CONFLICT DO
+       NOTHING SUPPRESSES the 23505 error, so the catch-retry above was dead
+       code and the event still vanished into the RAM queue only (probe L1:
+       assigned=500, PG kept the old row). Detect the no-op through
+       RETURNING id + rowCount and retry with a fresh sequence id. */
+    const insertReturningSql = outboxInsertSql.replace(/;\s*$/, '') + ' RETURNING id';
     const insertOnce = async (q) => {
-      try { await q.query(outboxInsertSql, outboxParams(evt)); }
+      try {
+        const r = await q.query(insertReturningSql, outboxParams(evt));
+        if (pgSeq && r && Number(r.rowCount) === 0) {
+          evt.id = await nextPgId();
+          const r2 = await q.query(insertReturningSql, outboxParams(evt));
+          if (r2 && Number(r2.rowCount) === 0) throw new Error('OUTBOX_ID_COLLISION: consecutive sequence collisions');
+        }
+      }
       catch (e) {
         if (e && e.code === '23505' && pgSeq) {
           evt.id = await nextPgId();
-          await q.query(outboxInsertSql, outboxParams(evt));
+          await q.query(insertReturningSql, outboxParams(evt));
         } else { throw e; }
       }
     };
@@ -129,6 +142,17 @@ function createOutbox({ store, db }) {
    * @param {number} id
    * @param {object} patch — { status?, retry_count?, last_error?, processed_at? }
    */
+  /* RR2-02 (Arena-2 round 2): terminal states are TERMINAL for EVERY caller.
+     Fencing (processing_token) protects lease OWNERSHIP; immutability protects
+     the STATE itself and must not depend on the caller passing a token.
+     At 5d4a48f7 the unguarded PG-fallback branch also carried a silent SQL bug
+     (08P01: 6 bound params for 5 placeholders), which masked the resurrection
+     by accident while breaking ALL legitimate admin marks on rows outside RAM.
+     Fix: explicit terminal guard + correct per-branch parameter lists. */
+  const TERMINAL_STATES = ['processed', 'dead_letter'];
+  const terminalConflict = (cur, patch) =>
+    TERMINAL_STATES.indexOf(cur) > -1 && (!patch || !patch.status || patch.status !== cur);
+
   async function mark(id, patch, leaseToken) {
     patch = patch || {};
     const evt = store.outbox.find(e => e.id === id);
@@ -140,26 +164,37 @@ function createOutbox({ store, db }) {
     if (!evt) {
       /* PG may be authoritative after a restart. A worker completion/retry
          must carry the claim token so a stale worker cannot mutate a newer
-         lease. Administrative callers without a token retain the legacy
-         unguarded path. */
+         lease. Administrative callers without a token may still update
+         NON-terminal rows (guarded rows remain fenced by token+status). */
       if (!isPg()) return null;
       try {
-        const where = guarded
-          ? 'WHERE id = $1 AND status = \'processing\' AND processing_token = $6;'
-          : 'WHERE id = $1;';
-        const params = [
-          id, String(patch.status || 'pending'),
-          patch.retry_count != null ? Number(patch.retry_count) : null,
-          patch.last_error != null ? String(patch.last_error) : null,
-          patch.processed_at || null, guarded ? String(leaseToken) : null
-        ];
-        const r = await db.query(
-          `UPDATE server_outbox
+        const selParams = guarded ? [id, String(leaseToken)] : [id];
+        const selSql = 'SELECT status FROM server_outbox WHERE id = $1' +
+          (guarded ? ' AND status = \'processing\' AND processing_token = $2' : '');
+        const cur = await db.query(selSql, selParams);
+        if (!cur.rows.length) return null;   /* gone, or guarded+stolen lease */
+        if (terminalConflict(cur.rows[0].status, patch)) return null;   /* RR2-02 */
+        let sql, params;
+        if (guarded) {
+          sql = `UPDATE server_outbox
              SET status = $2, retry_count = COALESCE($3, retry_count), last_error = $4, processed_at = $5,
                  processing_at = NULL, processing_token = NULL
-           ${where}`,
-          params
-        );
+           WHERE id = $1 AND status = 'processing' AND processing_token = $6;`;
+          params = [id, String(patch.status || 'pending'),
+            patch.retry_count != null ? Number(patch.retry_count) : null,
+            patch.last_error != null ? String(patch.last_error) : null,
+            patch.processed_at || null, String(leaseToken)];
+        } else {
+          sql = `UPDATE server_outbox
+             SET status = $2, retry_count = COALESCE($3, retry_count), last_error = $4, processed_at = $5,
+                 processing_at = NULL, processing_token = NULL
+           WHERE id = $1;`;
+          params = [id, String(patch.status || cur.rows[0].status),
+            patch.retry_count != null ? Number(patch.retry_count) : null,
+            patch.last_error != null ? String(patch.last_error) : null,
+            patch.processed_at || null];
+        }
+        const r = await db.query(sql, params);
         if (guarded && (!r || Number(r.rowCount) !== 1)) return null;
         return Object.assign({ id }, patch);
       } catch (e) {
@@ -170,28 +205,36 @@ function createOutbox({ store, db }) {
     if (guarded && (evt.status || 'pending') === 'processing' && evt.processing_token !== String(leaseToken)) {
       return null;
     }
+    if (terminalConflict(evt.status, patch)) return evt;   /* RR2-02 (RAM path) */
 
     if (isPg()) {
       try {
-        const where = guarded
-          ? 'WHERE id = $1 AND status = \'processing\' AND processing_token = $6;'
-          : 'WHERE id = $1;';
-        const params = [
-          evt.id, String(patch.status || evt.status || 'pending'),
-          Number(patch.retry_count != null ? patch.retry_count : evt.retry_count) || 0,
-          patch.last_error !== undefined
-            ? (patch.last_error != null ? String(patch.last_error) : null)
-            : (evt.last_error != null ? String(evt.last_error) : null),
-          patch.processed_at !== undefined ? (patch.processed_at || null) : (evt.processed_at || null),
-          guarded ? String(leaseToken) : null
-        ];
-        const r = await db.query(
-          `UPDATE server_outbox
+        let sql, params;
+        if (guarded) {
+          sql = `UPDATE server_outbox
              SET status = $2, retry_count = $3, last_error = $4, processed_at = $5,
                  processing_at = NULL, processing_token = NULL
-           ${where}`,
-          params
-        );
+           WHERE id = $1 AND status = 'processing' AND processing_token = $6;`;
+          params = [evt.id, String(patch.status || evt.status || 'pending'),
+            Number(patch.retry_count != null ? patch.retry_count : evt.retry_count) || 0,
+            patch.last_error !== undefined
+              ? (patch.last_error != null ? String(patch.last_error) : null)
+              : (evt.last_error != null ? String(evt.last_error) : null),
+            patch.processed_at !== undefined ? (patch.processed_at || null) : (evt.processed_at || null),
+            String(leaseToken)];
+        } else {
+          sql = `UPDATE server_outbox
+             SET status = $2, retry_count = $3, last_error = $4, processed_at = $5,
+                 processing_at = NULL, processing_token = NULL
+           WHERE id = $1;`;
+          params = [evt.id, String(patch.status || evt.status || 'pending'),
+            Number(patch.retry_count != null ? patch.retry_count : evt.retry_count) || 0,
+            patch.last_error !== undefined
+              ? (patch.last_error != null ? String(patch.last_error) : null)
+              : (evt.last_error != null ? String(evt.last_error) : null),
+            patch.processed_at !== undefined ? (patch.processed_at || null) : (evt.processed_at || null)];
+        }
+        const r = await db.query(sql, params);
         if (guarded && (!r || Number(r.rowCount) !== 1)) return null;
       } catch (e) {
         return null;
@@ -314,9 +357,13 @@ function createOutbox({ store, db }) {
       return (res && res.rows) || [];
     }
     // Memory mode: reclaim only stale processing claims; fresh claims remain owned.
+    /* RR2-04 (Arena-2 round 2): legacy events carry NO status field (pre-view-8
+       snapshots) and the worker contract treats them as pending — the claim
+       filter must agree, otherwise they are stranded forever (probe L4 at
+       5d4a48f7: statusless RAM event never claimed). */
     const leaseMs = (Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) > 0 ? Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) : 60) * 1000;
     const now = Date.now();
-    const pending = (store.outbox || []).filter(e => e.status === 'pending' || (e.status === 'processing' && (!e.processing_at || now - Number(e.processing_at) >= leaseMs))).slice(0, limit);
+    const pending = (store.outbox || []).filter(e => (e.status || 'pending') === 'pending' || (e.status === 'processing' && (!e.processing_at || now - Number(e.processing_at) >= leaseMs))).slice(0, limit);
     for (const e of pending) {
       e.status = 'processing';
       e.processing_at = Date.now();
@@ -340,7 +387,7 @@ function createOutbox({ store, db }) {
       if (isPg()) {
         try {
           const r = await db.query(
-            `SELECT id, type, collection, record_id, actor_id, version, payload, retry_count, last_error
+            `SELECT id, type, collection, record_id, actor_id, version, payload, retry_count, last_error, status
              FROM server_outbox WHERE id = $1;`, [wantId]);
           if (!r || !r.rows || !r.rows.length) return null;
           evt = r.rows[0];
@@ -349,6 +396,33 @@ function createOutbox({ store, db }) {
         evt = (store.outbox || []).find((e) => Number(e.id) === wantId);
         if (!evt) return null;
       }
+    }
+    /* RR2-03 (Arena-2 round 2): the DLQ is a TERMINAL transition — it must not
+       overwrite a row that reached a terminal state by a DIFFERENT path. At
+       5d4a48f7 the unguarded (no leaseToken) branch carried no status
+       precondition at all, so a late/duplicate/administrative moveToDlq
+       dead-lettered PROCESSED events (probe L3). Two distinct cases:
+       • dead_letter WITH its DLQ row ⇒ legitimate REPLAY ⇒ idempotent ok:true
+         (upstream live contract: lease-race-live P5);
+       • processed (or dead_letter WITHOUT a DLQ row) ⇒ conflict ⇒ refuse.
+       The guarded worker branch stays fenced by status='processing' + token
+       below; this closes the tokenless path. */
+    const TRANSFERABLE = ['pending', 'processing', 'failed'];
+    if (evt.status === 'dead_letter') {
+      let hasDlqRow = false;
+      if (isPg()) {
+        try {
+          const d = await db.query('SELECT 1 FROM server_outbox_dlq WHERE outbox_id = $1 LIMIT 1', [evt.id]);
+          hasDlqRow = !!(d && d.rows && d.rows.length);
+        } catch (e) { return { ok: false, id: evt.id, error: e.message }; }
+      } else {
+        hasDlqRow = (store.outbox_dlq || []).some((row) => Number(row.outbox_id != null ? row.outbox_id : row.id) === Number(evt.id));
+      }
+      if (hasDlqRow) return { ok: true, id: evt.id, status: 'dead_letter', replayed: true };
+      return { ok: false, id: evt.id, error: 'DLQ_TERMINAL_CONFLICT' };
+    }
+    if (evt.status && TRANSFERABLE.indexOf(evt.status) === -1) {
+      return { ok: false, id: evt.id, error: 'DLQ_TERMINAL_CONFLICT' };
     }
     if (isPg()) {
       /* Runtime reliability: DLQ insert and source terminal transition are
@@ -385,12 +459,14 @@ function createOutbox({ store, db }) {
              ON CONFLICT (outbox_id) DO NOTHING;`,
             [evt.id, evt.type, evt.collection, evt.record_id, evt.actor_id, evt.version, JSON.stringify(evt.payload), String(errorMessage), evt.retry_count || 5]
           );
-          await client.query(
+          const updUnguarded = await client.query(
             `UPDATE server_outbox
              SET status = 'dead_letter', last_error = $2, processing_at = NULL, processing_token = NULL
-             WHERE id = $1;`,
-            [evt.id, String(errorMessage)]
+             WHERE id = $1 AND status = ANY($3::varchar[]);`,
+            [evt.id, String(errorMessage), TRANSFERABLE]
           );
+          /* Lost a race to a terminal transition ⇒ undo the DLQ insert. */
+          if (!updUnguarded || Number(updUnguarded.rowCount) === 0) throw new Error('DLQ_TERMINAL_CONFLICT');
           return { ok: true, id: evt.id, status: 'dead_letter', error_message: String(errorMessage) };
         });
         return result;
