@@ -166,7 +166,7 @@ async function cleanup(ids) {
       await w.tick();
       await w.tick();
       const row = (await db.query('SELECT status, retry_count FROM server_outbox WHERE id=$1', [x.id])).rows[0];
-      check('P5 existing retry/recovery behavior remains intact', runs === 2 && row.status === 'processed' && Number(row.retry_count) === 1);
+      check('P5 existing retry/recovery behavior remains intact', runs === 2 && row.status === 'processed' && Number(row.retry_count) === 1, 'runs=' + runs + ' row=' + JSON.stringify(row));
     }
     {
       const x = await addEvent('rr.live.dlq-replay'); ids.push(x.id);
