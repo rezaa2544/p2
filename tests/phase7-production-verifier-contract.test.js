@@ -35,13 +35,16 @@ pass('boundary-t5-excludes-authority-migrations', () => {
   assert.doesNotMatch(s, /grep -v '019_'/);
 });
 
-// 3 Negative/failure: T2/T6 must not depend on a pre-seeded PG identity DB.
-// The verifier must create its exact auth fixture in PostgreSQL.
+// 3 Negative/failure: T2/T6 must not depend on PAYESH_STORE identities.
+// The verifier must create deterministic, valid credentials in PostgreSQL.
 pass('negative-empty-pg-auth-fixture', () => {
-  assert.match(s, /P7V_AUTH_FIXTURE_MISSING_USERS/);
+  assert.match(s, /AUTH_USERS_JSON=/);
+  assert.match(s, /P7V_AUTH_FIXTURE_BAD_COUNT/);
+  assert.match(s, /P7V_AUTH_FIXTURE_INVALID_CREDENTIALS/);
   assert.match(s, /INSERT INTO users/);
   assert.match(s, /INSERT INTO schools/);
   assert.match(s, /psql "\$URL" -v ON_ERROR_STOP=1 -q/);
+  assert.doesNotMatch(s, /const st=JSON\.parse\(fs\.readFileSync\('\$STORE'/);
 });
 
 // 4 Resilience/replay: T6 must retain kill/restart and replay assertions.
