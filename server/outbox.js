@@ -148,13 +148,14 @@ function createOutbox({ store, db }) {
           ? 'WHERE id = $1 AND status = \'processing\' AND processing_token = $6;'
           : 'WHERE id = $1;';
         const params = [
-          id, String(patch.status || 'pending'), Number(patch.retry_count) || 0,
+          id, String(patch.status || 'pending'),
+          patch.retry_count != null ? Number(patch.retry_count) : null,
           patch.last_error != null ? String(patch.last_error) : null,
           patch.processed_at || null, guarded ? String(leaseToken) : null
         ];
         const r = await db.query(
           `UPDATE server_outbox
-             SET status = $2, retry_count = $3, last_error = $4, processed_at = $5,
+             SET status = $2, retry_count = COALESCE($3, retry_count), last_error = $4, processed_at = $5,
                  processing_at = NULL, processing_token = NULL
            ${where}`,
           params
