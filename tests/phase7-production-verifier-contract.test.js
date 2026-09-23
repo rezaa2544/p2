@@ -60,6 +60,7 @@ pass('concurrency-replay-resilience', () => {
 pass('otp-fixture-boundary', () => {
   assert.match(s, /PAYESH_DEMO_CODE=1/);
   assert.match(s, /NODE_ENV=development/);
+  assert.match(s, /PAYESH_ENV=development/);
   assert.doesNotMatch(s, /NODE_ENV=production.*PAYESH_DEMO_CODE=1/s);
 });
 
