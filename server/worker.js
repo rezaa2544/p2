@@ -66,21 +66,27 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
       for (const evt of events) {
         const status = evt.status || 'pending'; /* سازگاری با گذشته */
         if ((status !== 'pending' && status !== 'processing') || inFlight.has(evt.id)) continue;
+        const leaseToken = evt.processing_token != null ? String(evt.processing_token) : null;
         const h = handlerFor(evt);
         if (!h) {
-          await outbox.mark(evt.id, { status: 'pending', processing_at: null });
+          await outbox.mark(evt.id, { status: 'pending', processing_at: null }, leaseToken);
           continue;
         }
         inFlight.add(evt.id);
+        /* The claim token is the ownership fence. A handler may outlive the
+           lease; after reclaim, only the newest token may complete/retry/DLQ
+           the row. Never let a stale worker overwrite the newer owner's state. */
         try {
           await h(evt);
-          await outbox.mark(evt.id, {
+          const marked = await outbox.mark(evt.id, {
             status: 'processed',
             processed_at: new Date().toISOString(),
             last_error: null
-          });
-          processed++;
-          metrics.inc('payesh_worker_events_total', { outcome: 'processed' });
+          }, leaseToken);
+          if (marked) {
+            processed++;
+            metrics.inc('payesh_worker_events_total', { outcome: 'processed' });
+          }
         } catch (err) {
           const rc = (Number(evt.retry_count) || 0) + 1;
           const errMsg = (err && (err.message || err.code)) || 'error';
@@ -89,22 +95,26 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
             retry_count: rc,
             last_error: errMsg
           };
+          let transitioned = false;
           if (rc >= maxRetries) {
-            failedDelta++;
-            // B4: Transfer poison pill event to Dead-Letter Queue (DLQ)
-            let movedToDlq = false;
+            // B4: Transfer poison pill event to Dead-Letter Queue (DLQ).
             if (outbox && typeof outbox.moveToDlq === 'function') {
               try {
-                const dlq = await outbox.moveToDlq(evt, errMsg);
-                movedToDlq = !!(dlq && dlq.ok === true);
+                const dlq = await outbox.moveToDlq(evt, errMsg, leaseToken);
+                transitioned = !!(dlq && dlq.ok === true);
               } catch (_) {}
             }
-            if (!movedToDlq) await outbox.mark(evt.id, patch);
-          } else {
-            await outbox.mark(evt.id, patch);
           }
-          /* برچسب از مجموعهٔ بسته (retry/failed)؛ متن خطا هرگز label نیست. */
-          metrics.inc('payesh_worker_events_total', { outcome: patch.status === 'failed' ? 'failed' : 'retry' });
+          if (!transitioned) {
+            const marked = await outbox.mark(evt.id, patch, leaseToken);
+            transitioned = !!marked;
+          }
+          if (transitioned && rc >= maxRetries) failedDelta++;
+          /* A stale worker must not emit a terminal/retry metric for a state
+             transition it no longer owns. */
+          if (transitioned) {
+            metrics.inc('payesh_worker_events_total', { outcome: patch.status === 'failed' ? 'failed' : 'retry' });
+          }
         } finally {
           inFlight.delete(evt.id);
         }
