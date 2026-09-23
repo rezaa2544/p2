@@ -30,7 +30,7 @@ function stripLeadingBegin(sql) {
     const start = i;
     while (i < sql.length && /[\t\n\r\f\v ]/.test(sql[i])) i++;
     if (sql.startsWith('--', i)) {
-      const end = sql.indexOf('\\n', i + 2);
+      const end = sql.indexOf('\n', i + 2);
       i = end === -1 ? sql.length : end + 1;
       continue;
     }
@@ -42,7 +42,7 @@ function stripLeadingBegin(sql) {
     }
     if (i === start) break;
   }
-  const match = /^BEGIN[\\t\\n\\r\\f\\v ]*;/i.exec(sql.slice(i));
+  const match = /^BEGIN[\t\n\r\f\v ]*;/i.exec(sql.slice(i));
   return match ? sql.slice(0, i) + sql.slice(i + match[0].length) : sql;
 }
 
