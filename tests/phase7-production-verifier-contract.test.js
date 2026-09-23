@@ -75,6 +75,12 @@ pass('redis-fixture-isolation', () => {
 
 // 7 Independent regression: the verifier still has all T1..T7 anchors and
 // fail-closed verdict semantics.
+pass('dlq-terminal-contract', () => {
+  const regression = fs.readFileSync('tests/c3-remediation-regression.test.js', 'utf8');
+  assert.match(regression, /status, 'dead_letter'/);
+  assert.doesNotMatch(regression, /Max retries must mark status failed/);
+});
+
 pass('independent-regression-verifier-contract', () => {
   for (const t of ['T1','T2','T3','T4','T5','T6','T7']) {
     assert.ok(s.includes('════ ' + t + ' '), 'missing ' + t);
@@ -83,4 +89,4 @@ pass('independent-regression-verifier-contract', () => {
   assert.match(s, /VERDICT: NOT VERIFIED/);
 });
 
-console.log('Phase 7 verifier contract: 7/7 PASS');
+console.log('Phase 7 verifier contract: 8/8 PASS');
