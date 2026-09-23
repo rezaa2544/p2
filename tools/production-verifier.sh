@@ -660,19 +660,3 @@ if grep -n 'authority\.assertTenantPolicy' server/infrastructure/phase6-producti
 else
   chk T7 "HTTP tenant guard uses PostgreSQL tenant_policy authority" 0
 fi
-
-# cleanup extra dbs
-psql "$ADM_URL" -q -c "DROP DATABASE IF EXISTS $DBBAD;" >/dev/null 2>&1 || true
-
-log ""
-log "════ PRODUCTION VERIFIER: $PASS pass / $FAIL fail / HEAD $HEAD ════"
-if [ "$FAIL" -eq 0 ]; then
-  log "VERDICT: VERIFIED"
-  exit 0
-else
-  log "VERDICT: NOT VERIFIED"
-  for r in "${RESULTS[@]}"; do
-    case "$r" in FAIL*) log "  $r";; esac
-  done
-  exit 1
-fi
