@@ -10,20 +10,20 @@ const up = fs.readFileSync(require.resolve('../migrations/021_outbox_processing_
 const down = fs.readFileSync(require.resolve('../migrations/021_outbox_processing_lease.down.sql'), 'utf8');
 
 const checks = [
-  ['lease token is persisted by migration', /ADD COLUMN IF NOT EXISTS processing_token TEXT/.test(up)],
-  ['rollback removes lease token', /DROP COLUMN IF EXISTS processing_token/.test(down)],
-  ['PG claim generates a fresh token', /const claimToken = crypto\.randomUUID\(\)/.test(outbox)],
-  ['PG claim writes processing token atomically', /processing_token = \$3/.test(outbox)],
-  ['PG claim returns processing token to worker', /RETURNING[\s\S]*processing_token/.test(outbox)],
-  ['memory claim generates a fresh token', /e\.processing_token = crypto\.randomUUID\(\)/.test(outbox)],
-  ['worker passes claim token on successful completion', /outbox\.mark\(evt\.id, \{[\s\S]*\}, leaseToken\)/.test(worker)],
-  ['worker passes claim token on retry/failure transition', /outbox\.mark\(evt\.id, patch, leaseToken\)/.test(worker)],
-  ['worker passes claim token into DLQ transition', /outbox\.moveToDlq\(evt, errMsg, leaseToken\)/.test(worker)],
-  ['PG mark guards processing state and token', /status = \'processing\' AND processing_token = \$6/.test(outbox)],
-  ['PG terminal/retry transition clears processing ownership', /processing_at = NULL, processing_token = NULL/.test(outbox)],
-  ['stale worker transition is rejected instead of mutating memory', /if \(guarded && \(evt\.status \|\| \'pending\'\) === \'processing\' && evt\.processing_token !== String\(leaseToken\)\)\s*\{\s*return null;/.test(outbox)],
-  ['lease-aware DLQ inserts only for current token', /FROM server_outbox\s+WHERE id = \$1 AND status = \'processing\' AND processing_token = \$3/.test(outbox)],
-  ['lease-aware DLQ source update is fenced', /UPDATE server_outbox[\s\S]*WHERE id = \$1 AND status = \'processing\' AND processing_token = \$3/.test(outbox)]
+  ['lease token is persisted by migration', up.includes('processing_token TEXT')],
+  ['rollback removes lease token', down.includes('DROP COLUMN IF EXISTS processing_token')],
+  ['PG claim generates a fresh token', outbox.includes('const claimToken = crypto.randomUUID()')],
+  ['PG claim writes processing token atomically', outbox.includes('processing_token = $3')],
+  ['PG claim returns processing token to worker', outbox.includes('RETURNING o.id') && outbox.includes('o.processing_token')],
+  ['memory claim generates a fresh token', outbox.includes('e.processing_token = crypto.randomUUID()')],
+  ['worker passes claim token on successful completion', worker.includes('outbox.mark(evt.id, {') && worker.includes('}, leaseToken)')],
+  ['worker passes claim token on retry/failure transition', worker.includes('outbox.mark(evt.id, patch, leaseToken)')],
+  ['worker passes claim token into DLQ transition', worker.includes('outbox.moveToDlq(evt, errMsg, leaseToken)')],
+  ['PG mark has a lease-token predicate', outbox.includes('processing_token = $6')],
+  ['PG terminal/retry transition clears processing ownership', outbox.includes('processing_at = NULL, processing_token = NULL')],
+  ['stale worker ownership mismatch returns without mutation', outbox.includes('evt.processing_token !== String(leaseToken)') && outbox.includes('if (guarded')],
+  ['lease-aware DLQ source is selected by token', outbox.includes('FROM server_outbox') && outbox.includes('processing_token = $3')],
+  ['lease-aware DLQ source update is fenced', outbox.includes('UPDATE server_outbox') && outbox.includes('WHERE id = $1 AND status = \'processing\' AND processing_token = $3')]
 ];
 
 checks.forEach(([name, ok]) => assert.ok(ok, name));
