@@ -18,7 +18,7 @@ const checks = [
   ['memory claim generates a fresh token', outbox.includes('e.processing_token = crypto.randomUUID()')],
   ['worker passes claim token on successful completion', worker.includes('outbox.mark(evt.id, {') && worker.includes('}, leaseToken)')],
   ['worker passes claim token on retry/failure transition', worker.includes('outbox.mark(evt.id, patch, leaseToken)')],
-  ['worker passes claim token into DLQ transition', worker.includes('outbox.moveToDlq(evt, errMsg, leaseToken)')],
+  ['worker passes claim token into DLQ transition', worker.includes('outbox.moveToDlq(evt, errMsg, leaseToken, rc)')],
   ['PG mark has a lease-token predicate', outbox.includes('processing_token = $6')],
   ['PG terminal/retry transition clears processing ownership', outbox.includes('processing_at = NULL, processing_token = NULL')],
   ['PG completion preserves prior retry count when patch omits it', outbox.includes('retry_count = COALESCE($3, retry_count)')],
