@@ -66,16 +66,16 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
       for (const evt of events) {
         const status = evt.status || 'pending'; /* سازگاری با گذشته */
         if ((status !== 'pending' && status !== 'processing') || inFlight.has(evt.id)) continue;
+        const leaseToken = evt.processing_token != null ? String(evt.processing_token) : null;
         const h = handlerFor(evt);
         if (!h) {
-          await outbox.mark(evt.id, { status: 'pending', processing_at: null });
+          await outbox.mark(evt.id, { status: 'pending', processing_at: null }, leaseToken);
           continue;
         }
         inFlight.add(evt.id);
         /* The claim token is the ownership fence. A handler may outlive the
            lease; after reclaim, only the newest token may complete/retry/DLQ
            the row. Never let a stale worker overwrite the newer owner's state. */
-        const leaseToken = evt.processing_token != null ? String(evt.processing_token) : null;
         try {
           await h(evt);
           const marked = await outbox.mark(evt.id, {
