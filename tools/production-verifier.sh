@@ -149,8 +149,7 @@ for (const u of users) {
 }
 process.stdout.write(sql.join("\n"));
 JS
-AUTH_JSON="$(cat "$AUTH_JSON_FILE")"
- | psql "$URL" -v ON_ERROR_STOP=1 -q
+cat "$AUTH_JSON_FILE" | psql "$URL" -v ON_ERROR_STOP=1 -q
 
 PIDA=$(boot_one "$PORTA" "$OTP_A" /tmp/p7v-a.log)
 PIDB=$(boot_one "$PORTB" "$OTP_B" /tmp/p7v-b.log)
