@@ -66,15 +66,17 @@ async function main() {
     chk('O3a شکست اول: شمارنده ۱، هنوز در صف', e1.retry_count === 1 && e1.status === 'pending' && e1.last_error === 'boom');
     await worker.tick();
     const e2 = store.outbox[0] || {};
-    /* قراردادِ B4 (ویو ۲۷): رسیدن به سقفِ تلاش (rc >= maxRetries) ⇒ failed +
-       انتقالِ copyِ رویداد به Dead-Letter Queue — رفتارِ واقعی با پروبِ زنده
-       استخراج شد (t1: pending/1، t2: failed/2 + DLQ، t3: بدون پردازشِ مجدد). */
-    chk('O3b شکست دوم: شمارنده ۲ و سقفِ تلاش ⇒ failed', e2.retry_count === 2 && e2.status === 'failed');
+    /* قرارداد B3/B4 به‌روزشده (Arena 1 + فیکس F-A5): پس از سقف تلاش ⇒
+       انتقال copy به DLQ و وضعیت مبدأ `dead_letter` (همان‌چه moveToDlq و
+       پروب زندهٔ failover می‌سازند) و retry_count نهایی = شمار واقعی تلاش‌ها
+       (که پیش‌تر در مسیر DLQ گم می‌شد): t1: pending/1، t2: dead_letter/2 + DLQ،
+       t3: بدون پردازشِ مجدد. */
+    chk('O3b شکست دوم: شمارنده ۲ و سقفِ تلاش ⇒ dead_letter', e2.retry_count === 2 && e2.status === 'dead_letter');
     const dlq0 = (store.outbox_dlq || [])[0] || {};
     chk('O3b2 کپیِ رویدادِ مسموم در DLQ ثبت شد', store.outbox_dlq && store.outbox_dlq.length === 1 && dlq0.error_message === 'boom');
     await worker.tick();
     const e3 = store.outbox[0] || {};
-    chk('O3c پس از سقف تلاش: وضعیت failed می‌ماند و دوباره تلاش نمی‌شود', e3.retry_count === 2 && e3.status === 'failed');
+    chk('O3c پس از سقف تلاش: وضعیت dead_letter می‌ماند و دوباره تلاش نمی‌شود', e3.retry_count === 2 && e3.status === 'dead_letter');
     chk('O3d رویداد با وجود شکست حذف نشد (داده نمی‌میرد)', store.outbox.length === 1 && (store.outbox[0] || {}).id === e3.id);
     await worker.tick();
     chk('O3e رویداد failed دیگر پردازش نمی‌شود', (store.outbox[0] || {}).retry_count === 2);
