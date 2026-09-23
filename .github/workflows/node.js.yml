@@ -77,6 +77,17 @@ jobs:
       run: node tests/outbox-lease-fencing.test.js
     - name: Runtime Reliability — DLQ atomic terminal transition
       run: node tests/outbox-dlq-atomicity.test.js
+    - name: Runtime Reliability — isolated fresh-DB lease race proof
+      run: |
+        set -euo pipefail
+        RRDB="payesh_runtime_reliability"
+        RRURL="postgres://payesh:payesh@127.0.0.1:5432/$RRDB"
+        cleanup() { psql "$PGURL" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $RRDB;" >/dev/null 2>&1 || true; }
+        trap cleanup EXIT
+        psql "$PGURL" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $RRDB;"
+        psql "$PGURL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE $RRDB;"
+        DATABASE_URL="$RRURL" node tools/migrate-ledger.js up
+        DATABASE_URL="$RRURL" node tests/outbox-lease-race-live.js
     # Runtime Reliability gate is intentionally early: its failure must not be hidden by later release gates.
 
     # QA false-green gates run before dependency-heavy live stages.
