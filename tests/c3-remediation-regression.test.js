@@ -312,6 +312,11 @@ async function runTask4MigrationLedger() {
   assert.ok(!cleaned.trim().startsWith('BEGIN;'), 'prepareMigrationSql strips outer BEGIN');
   assert.ok(!cleaned.trim().endsWith('COMMIT;'), 'prepareMigrationSql strips outer COMMIT');
   assert.ok(cleaned.includes('CREATE TABLE test_m1'), 'Inner DDL preserved');
+  const whitespaceWrapped = '\t-- comment\n\r\nBEGIN;\nSELECT 42;\n\tCOMMIT;\n';
+  const whitespaceCleaned = prepareMigrationSql(whitespaceWrapped);
+  assert.ok(!/^\s*BEGIN\s*;/i.test(whitespaceCleaned), 'Leading whitespace/comment BEGIN is removed');
+  assert.ok(!/COMMIT\s*;\s*$/i.test(whitespaceCleaned), 'Trailing whitespace COMMIT is removed');
+  assert.ok(whitespaceCleaned.includes('SELECT 42;'), 'Whitespace-wrapped SQL body preserved');
   pass('Pass 1 (Functional): prepareMigrationSql cleans outer transaction boundaries');
 
   // Pass 2: Boundary — Checksum computation
