@@ -24,7 +24,9 @@ const checks = [
   ['PG completion preserves prior retry count when patch omits it', outbox.includes('retry_count = COALESCE($3, retry_count)')],
   ['stale worker ownership mismatch returns without mutation', outbox.includes('evt.processing_token !== String(leaseToken)') && outbox.includes('if (guarded')],
   ['lease-aware DLQ source is selected by token', outbox.includes('FROM server_outbox') && outbox.includes('processing_token = $3')],
-  ['lease-aware DLQ source update is fenced', outbox.includes('UPDATE server_outbox') && outbox.includes('WHERE id = $1 AND status = \'processing\' AND processing_token = $3')]
+  ['lease-aware DLQ source update is fenced', outbox.includes('UPDATE server_outbox') && outbox.includes('WHERE id = $1 AND status = \'processing\' AND processing_token = $3')],
+  ['lease-aware DLQ preserves terminal retry count', outbox.includes('retry_count = COALESCE($4, retry_count)')],
+  ['memory DLQ fences before writing DLQ mirror', outbox.indexOf('const marked = await mark(evt.id') < outbox.indexOf('store.outbox_dlq.push(Object.assign({}, evt')]
 ];
 
 checks.forEach(([name, ok]) => assert.ok(ok, name));
