@@ -316,7 +316,12 @@ print(re.sub(r'/[^/?]+(\?.*)?$', lambda m: '/payesh_p7v_bad'+(m.group(1) or ''),
 PY
 )"
 # apply only through 018 so authority_state is missing
-for f in $(ls "$ROOT/migrations"/[0-9][0-9][0-9]_*.sql | grep -v '\.down\.sql
+for f in $(ls "$ROOT/migrations"/[0-9][0-9][0-9]_*.sql | grep -v '\.down\.sql$' | sort); do
+  case "$f" in
+    *"/019_"*|*"/020_"*) continue ;;
+  esac
+  psql "$URLBAD" -v ON_ERROR_STOP=1 -q -f "$f" >/dev/null
+done
 PORTC=3513
 printf '%s\n' '{"users":[],"schools":[],"__processed_uids":{},"__revoked_jti":{},"__auth":{"codes":{},"login_fail":{},"code_rate":{}}}' > /tmp/p7v-empty-store.json
 PAYESH_STORE=/tmp/p7v-empty-store.json PAYESH_KEY="$JWT" PAYESH_DEMO_CODE=1 \
