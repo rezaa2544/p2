@@ -124,38 +124,37 @@ JS
 PUBB64="$(python3 -c 'import json;print(json.load(open("/tmp/p7v-gov.json"))["pub"])')"
 [ -n "$PUBB64" ] && [ -s /tmp/p7v-gov-priv.pem ] || { echo "NOT VERIFIED — governance keygen failed"; exit 1; }
 
-# T2/T6 authentication fixture: PG is the production identity authority. A clean
-# verifier database is intentionally empty, while PAYESH_STORE is only the test
-# fixture source. Seed the exact identities used by the verifier into PG before
-# boot so auth cannot accidentally depend on a pre-existing database snapshot.
-$NODE - <<'JS'
+# T2/T6 authentication fixture: PG is the identity authority for this clean
+# verifier database. Never derive credentials from PAYESH_STORE: that store is
+# only a UI/demo fixture and is not the production identity source.
+AUTH_USERS_JSON='[
+  {"id":900001,"role":"superadmin","full_name":"P7V Superadmin","username":"p7v-superadmin","national_id":"9000000001","phone":"09120000001","school_id":null},
+  {"id":900002,"role":"teacher","full_name":"P7V Teacher","username":"p7v-teacher","national_id":"9000000002","phone":"09120000002","school_id":3}
+]'
+printf '%s\n' "$AUTH_USERS_JSON" > /tmp/p7v-auth-fixture.json
+AUTH_JSON="$($NODE - <<'JS'
 const fs = require('fs');
-const st = JSON.parse(fs.readFileSync(process.env.P7V_STORE_PATH, 'utf8'));
-const users = (st.users || []).filter(u => u.role === 'superadmin' || (u.role === 'teacher' && Number(u.school_id) === 3));
-if (users.length < 2) throw new Error('P7V_AUTH_FIXTURE_MISSING_USERS');
+const users = JSON.parse(fs.readFileSync('/tmp/p7v-auth-fixture.json', 'utf8'));
+if (users.length !== 2) throw new Error('P7V_AUTH_FIXTURE_BAD_COUNT');
 for (const u of users) {
-  if (!/^\\d{10}$/.test(String(u.national_id || ''))) throw new Error('P7V_AUTH_FIXTURE_BAD_NID');
-  if (!/^\\d{10,11}$/.test(String(u.phone || '').replace(/[\\s\\-()]/g, ''))) throw new Error('P7V_AUTH_FIXTURE_BAD_PHONE');
+  if (!/^\d{10}$/.test(u.national_id) || !/^09\d{9}$/.test(u.phone)) {
+    throw new Error('P7V_AUTH_FIXTURE_INVALID_CREDENTIALS');
+  }
 }
-fs.writeFileSync('/tmp/p7v-auth-fixture.json', JSON.stringify(users));
-JS
-P7V_STORE_PATH="$STORE" $NODE -e "const fs=require('fs'); const a=JSON.parse(fs.readFileSync('/tmp/p7v-auth-fixture.json')); console.log(a.length)" >/dev/null
-AUTH_JSON="$(P7V_STORE_PATH="$STORE" $NODE - <<'JS'
-const fs = require('fs');
-const users = JSON.parse(fs.readFileSync('/tmp/p7v-auth-fixture.json'));
+const q = v => "'" + String(v).replace(/'/g, "''") + "'";
 const sql = [];
 sql.push("INSERT INTO schools (id, name, type, version, active) VALUES (3, 'P7V School', 'governmental', 1, true) ON CONFLICT (id) DO UPDATE SET active=true;");
 for (const u of users) {
-  const q = v => "'" + String(v).replace(/'/g, "''") + "'";
   sql.push("INSERT INTO users (id, role, full_name, username, national_id, phone, active, school_id, status, created_at, updated_at, version) VALUES (" +
-    Number(u.id) + "," + q(u.role) + "," + q(u.full_name || '') + "," + q(u.username || ('p7v-' + u.id)) + "," +
-    q(u.national_id) + "," + q(String(u.phone).replace(/[\\s\\-()]/g,'')) + ",true," +
-    (u.school_id == null ? "NULL" : Number(u.school_id)) + "," + q('active') + ",NOW(),NOW(),1) ON CONFLICT (id) DO UPDATE SET active=true, national_id=EXCLUDED.national_id, phone=EXCLUDED.phone, school_id=EXCLUDED.school_id;");
+    Number(u.id) + "," + q(u.role) + "," + q(u.full_name) + "," + q(u.username) + "," +
+    q(u.national_id) + "," + q(u.phone) + ",true," +
+    (u.school_id == null ? "NULL" : Number(u.school_id)) + "," + q('active') + ",NOW(),NOW(),1) " +
+    "ON CONFLICT (id) DO UPDATE SET active=true, national_id=EXCLUDED.national_id, phone=EXCLUDED.phone, school_id=EXCLUDED.school_id;");
 }
-process.stdout.write(sql.join("\\n"));
+process.stdout.write(sql.join("\n"));
 JS
 )"
-printf '%s\\n' "$AUTH_JSON" | psql "$URL" -v ON_ERROR_STOP=1 -q
+printf '%s\n' "$AUTH_JSON" | psql "$URL" -v ON_ERROR_STOP=1 -q
 
 PIDA=$(boot_one "$PORTA" "$OTP_A" /tmp/p7v-a.log)
 PIDB=$(boot_one "$PORTB" "$OTP_B" /tmp/p7v-b.log)
@@ -182,9 +181,9 @@ fi
 
 LOGIN="$($NODE - <<JS
 const fs=require('fs'); const http=require('http');
-const st=JSON.parse(fs.readFileSync('$STORE','utf8'));
-const su=(st.users||[]).find(u=>u.role==='superadmin');
-const teacher=(st.users||[]).find(u=>u.role==='teacher' && Number(u.school_id)===3);
+const users=JSON.parse(fs.readFileSync('/tmp/p7v-auth-fixture.json','utf8'));
+const su=users.find(u=>u.role==='superadmin');
+const teacher=users.find(u=>u.role==='teacher' && Number(u.school_id)===3);
 function req(port,method,p,body,cookie,headers){
   return new Promise(res=>{
     const data=body?JSON.stringify(body):null;
