@@ -1,0 +1,70 @@
+name: Runtime Reliability
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  outbox-lease:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: payesh
+          POSTGRES_PASSWORD: payesh
+          POSTGRES_DB: payesh_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U payesh"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGURL: postgres://payesh:payesh@127.0.0.1:5432/payesh_ci
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci
+
+      - name: Static lease fencing contract
+        run: node tests/outbox-lease-fencing.test.js
+
+      - name: Live lease fencing — independent fresh database run A
+        run: |
+          set -euo pipefail
+          DB="payesh_rr_a"
+          URL="postgres://payesh:payesh@127.0.0.1:5432/$DB"
+          trap 'psql "$PGURL" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $DB;" >/dev/null 2>&1 || true' EXIT
+          psql "$PGURL" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $DB;"
+          psql "$PGURL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE $DB;"
+          DATABASE_URL="$URL" node tools/migrate-ledger.js up
+          DATABASE_URL="$URL" node tests/outbox-lease-race-live.js
+
+      - name: Existing Outbox/Worker/DLQ regression battery
+        run: |
+          node tests/outbox-dlq-atomicity.test.js
+          node tests/outbox-runtime-reliability.test.js
+          node tests/runtime-reliability-five-task.test.js
+
+      - name: Live lease fencing — independent fresh database run B
+        run: |
+          set -euo pipefail
+          DB="payesh_rr_b"
+          URL="postgres://payesh:payesh@127.0.0.1:5432/$DB"
+          trap 'psql "$PGURL" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $DB;" >/dev/null 2>&1 || true' EXIT
+          psql "$PGURL" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $DB;"
+          psql "$PGURL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE $DB;"
+          DATABASE_URL="$URL" node tools/migrate-ledger.js up
+          DATABASE_URL="$URL" node tests/outbox-lease-race-live.js
