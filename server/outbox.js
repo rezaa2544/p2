@@ -399,12 +399,12 @@ function createOutbox({ store, db }) {
         return { ok: false, id: evt.id, error: e.message };
       }
     } else {
+      const marked = await mark(evt.id, { status: 'dead_letter', retry_count: retryCount != null ? Number(retryCount) : Number(evt.retry_count) || 0, last_error: errorMessage }, leaseToken);
+      if (!marked && leaseToken != null) return { ok: false, id: evt.id, stale: true };
       if (!Array.isArray(store.outbox_dlq)) store.outbox_dlq = [];
       if (!store.outbox_dlq.some((row) => Number(row.outbox_id != null ? row.outbox_id : row.id) === Number(evt.id))) {
         store.outbox_dlq.push(Object.assign({}, evt, { outbox_id: evt.id, error_message: errorMessage, failed_at: new Date().toISOString() }));
       }
-      const marked = await mark(evt.id, { status: 'dead_letter', retry_count: retryCount != null ? Number(retryCount) : Number(evt.retry_count) || 0, last_error: errorMessage }, leaseToken);
-      if (!marked && leaseToken != null) return { ok: false, id: evt.id, stale: true };
       return { ok: true, id: evt.id, status: 'dead_letter', error_message: String(errorMessage) };
     }
   }
