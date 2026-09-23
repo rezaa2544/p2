@@ -97,13 +97,13 @@ async function run() {
     assert.strictEqual(mgrOwnRes.json.school_id, 1);
     assert.ok(mgrOwnRes.json.disaster_recovery_health);
     assert.strictEqual(mgrOwnRes.json.disaster_recovery_health.phase, 'PHASE_4');
-    assert.strictEqual(mgrOwnRes.json.disaster_recovery_health.status, 'healthy');
-    assert.strictEqual(mgrOwnRes.json.disaster_recovery_health.backup.verified, true);
-    assert.ok(mgrOwnRes.json.disaster_recovery_health.recovery.rpo);
-    assert.ok(mgrOwnRes.json.disaster_recovery_health.recovery.rto);
-    assert.strictEqual(mgrOwnRes.json.disaster_recovery_health.high_availability.database, 'healthy');
-    assert.strictEqual(mgrOwnRes.json.disaster_recovery_health.high_availability.cache, 'healthy');
-    assert.strictEqual(mgrOwnRes.json.disaster_recovery_health.high_availability.queue, 'healthy');
+    assert.strictEqual(mgrOwnRes.json.disaster_recovery_health.status, 'not_verified');
+    assert.strictEqual(mgrOwnRes.json.disaster_recovery_health.backup.verified, false);
+    assert.strictEqual(mgrOwnRes.json.disaster_recovery_health.recovery.rpo, null);
+    assert.strictEqual(mgrOwnRes.json.disaster_recovery_health.recovery.rto, null);
+    assert.strictEqual(mgrOwnRes.json.disaster_recovery_health.high_availability.database, 'not_verified');
+    assert.strictEqual(mgrOwnRes.json.disaster_recovery_health.high_availability.cache, 'not_verified');
+    assert.strictEqual(mgrOwnRes.json.disaster_recovery_health.high_availability.queue, 'not_verified');
     assert.strictEqual(mgrOwnRes.json.disaster_recovery_health.governance_and_invariants.human_decision_sovereignty.enforced, true);
     assert.strictEqual(mgrOwnRes.json.disaster_recovery_health.governance_and_invariants.zero_ranking_guarantee.enforced, true);
     console.log('  ✅ DR3: Manager gets 200 with Phase 4 disaster recovery health snapshot');
@@ -132,7 +132,7 @@ async function run() {
     assert.strictEqual(regRes.status, 200, 'Admin accessing regional DR health must return 200');
     assert.strictEqual(regRes.json.ok, true);
     assert.strictEqual(regRes.json.regional_disaster_recovery_health.zero_ranking, true);
-    assert.strictEqual(regRes.json.regional_disaster_recovery_health.status, 'healthy');
+    assert.strictEqual(regRes.json.regional_disaster_recovery_health.status, 'not_verified');
     console.log('  ✅ DR6: Regional disaster recovery overview strictly enforces zero-ranking policy');
     pass++;
 

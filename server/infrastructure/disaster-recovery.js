@@ -181,137 +181,91 @@ function assertDisasterRecoveryZeroRanking(payload) {
 /**
  * اعتبارسنجی تمامیت مؤلفه‌های نسخه پشتیبان
  */
+// These functions validate caller-supplied evidence, not storage artifacts.
+// The operational route supplies no evidence until a real collector is wired.
+const knownNumber = (v) => Number.isFinite(v) && v >= 0;
+const digest = (v) => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v);
+const evidenceRef = (v) => v && typeof v.run_id === 'string' && v.run_id.length > 0 &&
+  typeof v.timestamp === 'string' && Number.isFinite(Date.parse(v.timestamp));
+
 function verifyBackupIntegrity(rawBackup = {}) {
-  const now = new Date();
-  const lastSuccess = rawBackup.last_success || new Date(now.getTime() - 120 * 1000).toISOString();
-
-  const pgVerified = rawBackup.postgres_verified !== undefined ? Boolean(rawBackup.postgres_verified) : true;
-  const redisVerified = rawBackup.redis_verified !== undefined ? Boolean(rawBackup.redis_verified) : true;
-  const configVerified = rawBackup.config_verified !== undefined ? Boolean(rawBackup.config_verified) : true;
-
-  const pgChecksum = rawBackup.postgres_checksum || crypto.createHash('sha256').update('pg-backup-valid').digest('hex');
-  const redisChecksum = rawBackup.redis_checksum || crypto.createHash('sha256').update('redis-backup-valid').digest('hex');
-  const manifestChecksum = rawBackup.manifest_checksum || crypto.createHash('sha256').update(pgChecksum + redisChecksum).digest('hex');
-
+  const hasEvidence = evidenceRef(rawBackup) && digest(rawBackup.postgres_checksum) &&
+    digest(rawBackup.redis_checksum) && digest(rawBackup.manifest_checksum);
+  const pgVerified = hasEvidence && rawBackup.postgres_verified === true;
+  const redisVerified = hasEvidence && rawBackup.redis_verified === true;
+  const configVerified = hasEvidence && rawBackup.config_verified === true;
   const allVerified = pgVerified && redisVerified && configVerified;
-
   return deepFreeze({
-    last_success: lastSuccess,
+    status: hasEvidence ? (allVerified ? 'VERIFIED' : 'FAILED') : 'NOT_VERIFIED',
+    evidence_source: 'CALLER_SUPPLIED', run_id: rawBackup.run_id || null,
+    last_success: allVerified ? rawBackup.timestamp : null,
     verified: allVerified,
-    retention_days: Number.isFinite(rawBackup.retention_days) ? rawBackup.retention_days : 30,
+    retention_days: knownNumber(rawBackup.retention_days) ? rawBackup.retention_days : null,
     components: {
-      postgres: {
-        verified: pgVerified,
-        wal_archiving: rawBackup.wal_archiving !== undefined ? Boolean(rawBackup.wal_archiving) : true,
-        checksum: pgChecksum
-      },
-      redis: {
-        verified: redisVerified,
-        rdb_snapshot: true,
-        aof_persistence: true,
-        checksum: redisChecksum
-      },
-      configuration: {
-        verified: configVerified,
-        schema_version: '012',
-        tls_cert_backed_up: true
-      }
+      postgres: { verified: pgVerified, wal_archiving: hasEvidence && rawBackup.wal_archiving === true,
+        checksum: digest(rawBackup.postgres_checksum) ? rawBackup.postgres_checksum : null },
+      redis: { verified: redisVerified, rdb_snapshot: hasEvidence && rawBackup.rdb_snapshot === true,
+        aof_persistence: hasEvidence && rawBackup.aof_persistence === true,
+        checksum: digest(rawBackup.redis_checksum) ? rawBackup.redis_checksum : null },
+      configuration: { verified: configVerified, schema_version: rawBackup.schema_version || null,
+        tls_cert_backed_up: hasEvidence && rawBackup.tls_cert_backed_up === true }
     },
-    manifest: {
-      verified: allVerified,
-      checksum: manifestChecksum
-    }
+    manifest: { verified: allVerified, checksum: digest(rawBackup.manifest_checksum) ? rawBackup.manifest_checksum : null }
   });
 }
 
-/**
- * راستی‌آزمایی مانور بازیابی و مهار دستکاری (Restore Drill Rehearsal)
- */
 function validateRestoreRehearsal(rehearsalData = {}) {
-  if (rehearsalData.tampered === true) {
-    throw new Error('RESTORE_TAMPER_DETECTED: Backup archive integrity check failed (SHA-256 mismatch)');
-  }
-
-  const durationSeconds = Number.isFinite(rehearsalData.duration_seconds) ? rehearsalData.duration_seconds : 145;
-  const tablesRestored = Number.isFinite(rehearsalData.tables_restored) ? rehearsalData.tables_restored : 38;
-  const recordsRestored = Number.isFinite(rehearsalData.records_restored) ? rehearsalData.records_restored : 125000;
-
-  const rehearsalPassed = durationSeconds <= TARGET_RTO_SECONDS && tablesRestored >= 38;
-
+  if (rehearsalData.tampered === true) throw new Error('RESTORE_TAMPER_DETECTED: Backup archive integrity check failed (SHA-256 mismatch)');
+  const complete = evidenceRef(rehearsalData) && knownNumber(rehearsalData.duration_seconds) &&
+    Number.isInteger(rehearsalData.tables_restored) && rehearsalData.tables_restored >= 0 &&
+    Number.isInteger(rehearsalData.records_restored) && rehearsalData.records_restored >= 0 &&
+    typeof rehearsalData.target_identity === 'string' && rehearsalData.target_identity.length > 0 &&
+    typeof rehearsalData.isolated_target === 'boolean' && typeof rehearsalData.checksum_verified === 'boolean';
+  const passed = complete && rehearsalData.duration_seconds <= TARGET_RTO_SECONDS &&
+    rehearsalData.tables_restored >= 38 && rehearsalData.isolated_target && rehearsalData.checksum_verified;
   return deepFreeze({
-    drill_status: rehearsalPassed ? 'PASSED' : 'FAILED',
-    rehearsal_timestamp: rehearsalData.timestamp || new Date().toISOString(),
-    duration_seconds: durationSeconds,
-    tables_restored: tablesRestored,
-    records_restored: recordsRestored,
-    isolated_target: true,
-    data_corruption_detected: false,
-    verified: rehearsalPassed
+    drill_status: complete ? (passed ? 'PASSED' : 'FAILED') : 'NOT_VERIFIED',
+    evidence_source: 'CALLER_SUPPLIED', run_id: rehearsalData.run_id || null,
+    rehearsal_timestamp: complete ? rehearsalData.timestamp : null,
+    duration_seconds: knownNumber(rehearsalData.duration_seconds) ? rehearsalData.duration_seconds : null,
+    tables_restored: complete ? rehearsalData.tables_restored : null,
+    records_restored: complete ? rehearsalData.records_restored : null,
+    isolated_target: complete && rehearsalData.isolated_target,
+    data_corruption_detected: complete ? !rehearsalData.checksum_verified : null,
+    verified: passed
   });
 }
 
-/**
- * محاسبه و اعتبارسنجی شاخص‌های RPO و RTO
- */
 function calculateRpoRtoMetrics(options = {}) {
-  const achievedRpoSeconds = Number.isFinite(options.achieved_rpo_seconds) ? options.achieved_rpo_seconds : 120;
-  const estimatedRtoSeconds = Number.isFinite(options.estimated_rto_seconds) ? options.estimated_rto_seconds : 240;
-
-  const rpoCompliant = achievedRpoSeconds <= TARGET_RPO_SECONDS;
-  const rtoCompliant = estimatedRtoSeconds <= TARGET_RTO_SECONDS;
-
+  const rpo = evidenceRef(options) && knownNumber(options.achieved_rpo_seconds) ? options.achieved_rpo_seconds : null;
+  const rto = evidenceRef(options) && knownNumber(options.measured_rto_seconds) ? options.measured_rto_seconds : null;
+  const rpoOk = rpo === null ? null : rpo <= TARGET_RPO_SECONDS;
+  const rtoOk = rto === null ? null : rto <= TARGET_RTO_SECONDS;
   return deepFreeze({
-    rpo: `${achievedRpoSeconds}s`,
-    rto: `${estimatedRtoSeconds}s`,
-    rpo_policy: `<= ${TARGET_RPO_SECONDS}s (5 min)`,
-    rto_policy: `<= ${TARGET_RTO_SECONDS}s (15 min)`,
-    achieved_rpo_seconds: achievedRpoSeconds,
-    estimated_rto_seconds: estimatedRtoSeconds,
-    rpo_compliant: rpoCompliant,
-    rto_compliant: rtoCompliant,
-    overall_compliance: rpoCompliant && rtoCompliant
+    status: rpo === null || rto === null ? 'NOT_VERIFIED' : 'MEASURED',
+    run_id: options.run_id || null, evidence_source: 'CALLER_SUPPLIED',
+    rpo: rpo === null ? null : `${rpo}s`, rto: rto === null ? null : `${rto}s`,
+    rpo_policy: `<= ${TARGET_RPO_SECONDS}s (5 min)`, rto_policy: `<= ${TARGET_RTO_SECONDS}s (15 min)`,
+    achieved_rpo_seconds: rpo, measured_rto_seconds: rto,
+    estimated_rto_seconds: knownNumber(options.estimated_rto_seconds) ? options.estimated_rto_seconds : null,
+    rpo_compliant: rpoOk, rto_compliant: rtoOk,
+    overall_compliance: rpoOk === null || rtoOk === null ? null : rpoOk && rtoOk
   });
 }
 
-/**
- * ارزیابی آمادگی سرور جانشین و دسترسی‌پذیری بالا (High Availability)
- */
 function evaluateHighAvailability(haOptions = {}) {
-  const dbLagMs = Number.isFinite(haOptions.database_replication_lag_ms) ? haOptions.database_replication_lag_ms : 8;
-  const redisLagMs = Number.isFinite(haOptions.redis_replication_lag_ms) ? haOptions.redis_replication_lag_ms : 2;
-  const standbyHealthy = haOptions.standby_nodes_healthy !== undefined ? Boolean(haOptions.standby_nodes_healthy) : true;
-
-  let dbStatus = SERVICE_HA_STATUS.HEALTHY;
-  let cacheStatus = SERVICE_HA_STATUS.HEALTHY;
-  let queueStatus = SERVICE_HA_STATUS.HEALTHY;
-
-  if (dbLagMs > 5000 || !standbyHealthy) {
-    dbStatus = SERVICE_HA_STATUS.CRITICAL;
-  } else if (dbLagMs > 500) {
-    dbStatus = SERVICE_HA_STATUS.DEGRADED;
-  }
-
-  if (redisLagMs > 2000) {
-    cacheStatus = SERVICE_HA_STATUS.CRITICAL;
-  } else if (redisLagMs > 200) {
-    cacheStatus = SERVICE_HA_STATUS.DEGRADED;
-  }
-
-  const failoverReadiness = (dbStatus === SERVICE_HA_STATUS.HEALTHY && standbyHealthy)
-    ? FAILOVER_STATE.STANDBY_READY
-    : (dbStatus === SERVICE_HA_STATUS.DEGRADED ? FAILOVER_STATE.REPLICATING : FAILOVER_STATE.DESYNCHRONIZED);
-
-  return deepFreeze({
-    database: dbStatus,
-    cache: cacheStatus,
-    queue: queueStatus,
-    metrics: {
-      db_replication_lag_ms: dbLagMs,
-      redis_replication_lag_ms: redisLagMs,
-      standby_nodes_active: haOptions.standby_nodes_count || 2,
-      failover_readiness: failoverReadiness
-    }
-  });
+  const dbLagMs = knownNumber(haOptions.database_replication_lag_ms) ? haOptions.database_replication_lag_ms : null;
+  const redisLagMs = knownNumber(haOptions.redis_replication_lag_ms) ? haOptions.redis_replication_lag_ms : null;
+  const healthy = haOptions.standby_nodes_healthy;
+  const dbStatus = dbLagMs === null || typeof healthy !== 'boolean' ? 'not_verified' :
+    (!healthy || dbLagMs > 5000 ? 'critical' : dbLagMs > 500 ? 'degraded' : 'healthy');
+  const cacheStatus = redisLagMs === null ? 'not_verified' : redisLagMs > 2000 ? 'critical' : redisLagMs > 200 ? 'degraded' : 'healthy';
+  return deepFreeze({ database: dbStatus, cache: cacheStatus, queue: typeof haOptions.queue_healthy === 'boolean' ? (haOptions.queue_healthy ? 'healthy' : 'critical') : 'not_verified', metrics: {
+    db_replication_lag_ms: dbLagMs, redis_replication_lag_ms: redisLagMs,
+    standby_nodes_active: Number.isInteger(haOptions.standby_nodes_count) && haOptions.standby_nodes_count >= 0 ? haOptions.standby_nodes_count : null,
+    failover_readiness: dbStatus === 'not_verified' ? 'NOT_VERIFIED' : dbStatus === 'healthy' ? FAILOVER_STATE.STANDBY_READY :
+      dbStatus === 'degraded' ? FAILOVER_STATE.REPLICATING : FAILOVER_STATE.DESYNCHRONIZED
+  } });
 }
 
 /**
@@ -341,6 +295,11 @@ function buildDisasterRecoveryHealthSnapshot(params = {}, options = {}) {
     overallStatus = DR_STATUS.DEGRADED;
   }
 
+  if (backupSummary.status === 'NOT_VERIFIED' || recoveryMetrics.status === 'NOT_VERIFIED' ||
+      restoreDrill.drill_status === 'NOT_VERIFIED' || haStatus.database === 'not_verified' || haStatus.cache === 'not_verified' || haStatus.queue === 'not_verified') {
+    overallStatus = 'not_verified';
+  } else if (!restoreDrill.verified || [haStatus.database, haStatus.cache, haStatus.queue].includes('critical')) { overallStatus = DR_STATUS.CRITICAL; }
+
   // ۴. ساخت پاکت شناسنامه سلامت
   const snapshot = {
     snapshot_id: `DR-HLTH-${schoolId}-${crypto.randomBytes(4).toString('hex')}`,
@@ -362,7 +321,7 @@ function buildDisasterRecoveryHealthSnapshot(params = {}, options = {}) {
       rpo_policy: recoveryMetrics.rpo_policy,
       rto_policy: recoveryMetrics.rto_policy,
       rpo_seconds: recoveryMetrics.achieved_rpo_seconds,
-      rto_seconds: recoveryMetrics.estimated_rto_seconds,
+      rto_seconds: recoveryMetrics.measured_rto_seconds,
       rpo_compliant: recoveryMetrics.rpo_compliant,
       rto_compliant: recoveryMetrics.rto_compliant
     },
@@ -494,8 +453,9 @@ const NATIONAL_BACKUP_TOPOLOGY = Object.freeze({
  * @returns {number}
  */
 function calculateRecoveryReadinessScore(metrics = {}) {
+  if (!knownNumber(metrics.wal_lag_seconds) || typeof metrics.standby_synced !== 'boolean' || typeof metrics.checksum_valid !== 'boolean') return null;
   let score = 100;
-  const lag = metrics.wal_lag_seconds != null ? metrics.wal_lag_seconds : 45;
+  const lag = metrics.wal_lag_seconds;
   if (lag > TARGET_RPO_SECONDS) {
     score -= 40;
   } else if (lag > TARGET_RPO_SECONDS / 2) {
@@ -531,15 +491,16 @@ function assessCrossRegionDisasterRecovery(regionId = 'ir-tehran-1', currentMetr
     readiness_score: readinessScore,
     rpo_status: {
       target_seconds: TARGET_RPO_SECONDS,
-      current_lag_seconds: currentMetrics.wal_lag_seconds || 35,
-      compliant: (currentMetrics.wal_lag_seconds || 35) <= TARGET_RPO_SECONDS
+      current_lag_seconds: knownNumber(currentMetrics.wal_lag_seconds) ? currentMetrics.wal_lag_seconds : null,
+      compliant: knownNumber(currentMetrics.wal_lag_seconds) ? currentMetrics.wal_lag_seconds <= TARGET_RPO_SECONDS : null
     },
     rto_status: {
       target_seconds: TARGET_RTO_SECONDS,
-      estimated_recovery_seconds: 420,
-      compliant: 420 <= TARGET_RTO_SECONDS
+      measured_recovery_seconds: evidenceRef(currentMetrics) && knownNumber(currentMetrics.measured_rto_seconds) ? currentMetrics.measured_rto_seconds : null,
+      compliant: evidenceRef(currentMetrics) && knownNumber(currentMetrics.measured_rto_seconds) ? currentMetrics.measured_rto_seconds <= TARGET_RTO_SECONDS : null
     },
     backup_topology: NATIONAL_BACKUP_TOPOLOGY,
+    topology_evidence: 'DESIGN_ONLY_NOT_VERIFIED',
     human_governance: {
       automated_decision: false,
       automated_execution: false,

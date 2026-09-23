@@ -37,7 +37,7 @@ API #1 … API #N  ← Node بدون وضعیت (هر نمونه یک پروسه
 |---|---|---|---|
 | **ورود (login)** | `POST /api/auth/send-code` → `POST /api/auth/login` → `GET /api/auth/me` | Redis (هش OTP، ریت‌لیمیت) + کاربران در PG | ردیابی‌پذیر با `trace_id`؛ ریت‌لیمیت توزیع‌شده جلوی طوفان را می‌گیرد |
 | **همگام‌سازی (sync)** | `POST /api/sync` + پولِ صفحه‌بندی‌شدهٔ دلتا | تراکنش PG + کلید توان‌دهی (Redis) + OCC | شکست = 503/409 تمیز؛ کلاینت با صف آفلاین + صف مرده محافظت می‌شود |
-| **حضور (attendance)** | روت‌های `attendance` (بوتهای کلاس‌محور) | نوشتن تراکنشی + `server/middleware/scope.js` + `server/policy.js` | هرگز دادهٔ مدرسهٔ دیگر نشت نمی‌کند (تطبیق `tools/check-authz.js`) |
+| **حضور (attendance)** | روت‌های `attendance` (بوتهای کلاس‌محور) | نوشتن تراکنشی + `server/routes/attendance.js` (گاردهای scope زنده؛ middleware قدیمی حذف شده) + `server/policy.js` | هرگز دادهٔ مدرسهٔ دیگر نشت نمی‌کند (تطبیق `tools/check-authz.js`) |
 | **نمره (grades)** | روت‌های `grades` | PG + `base_version` (تعارض → 409) | بازنویسی هم‌زمان غیرممکن است؛ تعارض‌ها در `sync_conflicts` ثبت می‌شوند |
 
 ### منابع مشترک بین نمونه‌ها (و آنچه مشترک نیست)

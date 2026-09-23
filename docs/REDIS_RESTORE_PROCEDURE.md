@@ -1,3 +1,5 @@
+> **قرارداد به‌روز:** [DR_EVIDENCE_CONTRACT](DR_EVIDENCE_CONTRACT.md). فقط manifest/checksums همان run تکمیل‌شده معتبر است. AOF چندفایلی نیازمند تمام فایل‌های referenced و manifest است. RDB و AOF دو snapshot مستقل‌اند.
+
 # رویهٔ بازیابی ردیس — پایش (فاز ۲.۱)
 
 > هدف: بازگرداندن ردیس از نسخه‌های پشتیبان (RDB یا AOF) با کمترین
@@ -15,7 +17,7 @@
 2. اگر زیانِ بیش از ۶ ساعت پذیرفتنی نیست، از مقصد ثانویه/فضای شیئی
    (`BACKUP_S3`) فهرست بگیرید و تازه‌ترین فایل سالم را انتخاب کنید.
 3. **تصمیم کلیدی:**
-   - **AOF** = تازه‌ترین حالت (زیان ≤ ۱ ثانیه با `appendfsync everysec`).
+   - **AOF** = وضعیت snapshot انتخاب‌شده؛ everysec تضمین RPO بکاپ شش‌ساعته نیست. سن آخرین backup قابل بازیابی باید جدا اندازه‌گیری شود.
    - **RDB** = عکس فوری؛ ساده‌تر و سریع‌تر برای بارگذاری، اما قدیمی‌تر.
    - هر دو موجودند؟ **AOF را ترجیح بدهید**؛ ردیس هم همین اولویت را دارد.
 
@@ -43,15 +45,15 @@ systemctl start redis
 journalctl -u redis -f | grep -i 'aof\|DB loaded'
 ```
 
-نشانهٔ موفقیت: در لاگ، `DB loaded from append only file` و سپس
+لاگ کافی نیست: readback کلیدهای موردانتظار و checksum مستقل الزامی است. نشانهٔ بوت در لاگ، `DB loaded from append only file` و سپس
 `INFO persistence` ⇒ `aof_last_bgrewrite_status:ok`.
 
 اگر فایل در لحظهٔ کرش بریده باشد، ردیس با `aof-load-truncated yes`
 (پیکربندی پیش‌فرض پایش) همان بخش سالم را بارگذاری می‌کند؛ برای تعمیر
-دستی می‌توان پیش از کپی اجرا کرد:
+بکاپ، auto-truncation و تعمیر معیار موفقیت نیستند. پیش از کپی فقط اعتبارسنجی بدون تعمیر اجرا شود:
 
 ```bash
-redis-check-aof --fix appendonly.aof
+redis-check-aof appendonly.aof # بدون --fix؛ خرابی باید مانور را مردود کند
 ```
 
 ---

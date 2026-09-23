@@ -4,6 +4,7 @@
 'use strict';
 
 const assert = require('assert');
+const fixture = require('./evidence-fixture');
 const {
   validateRestoreRehearsal
 } = require('../../../server/infrastructure/disaster-recovery');
@@ -13,6 +14,7 @@ function runRestoreValidationTests() {
 
   // ۱. مانور بازیابی موفقیت‌آمیز در محیط مجزا
   const nominal = validateRestoreRehearsal({
+    ...fixture.rehearsal,
     duration_seconds: 180,
     tables_restored: 38,
     records_restored: 150000
@@ -30,7 +32,7 @@ function runRestoreValidationTests() {
   }, /RESTORE_TAMPER_DETECTED/);
 
   // ۳. عدم تایید مانور در صورت فراتر رفتن زمان از سقف RTO (۹۰۰ ثانیه)
-  const slowRestore = validateRestoreRehearsal({ duration_seconds: 950 });
+  const slowRestore = validateRestoreRehearsal({ ...fixture.rehearsal, duration_seconds: 950 });
   assert.strictEqual(slowRestore.drill_status, 'FAILED');
   assert.strictEqual(slowRestore.verified, false);
 

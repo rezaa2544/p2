@@ -1,0 +1,48 @@
+name: DR E3 semantic recovery
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    timeout-minutes: 25
+    steps:
+      - name: Native E3 dependencies (no skip fallback)
+        run: |
+          apt-get update
+          apt-get install -y git ca-certificates python3 postgresql-17 postgresql-client-17 pgbackrest redis-server redis-tools nodejs npm
+          useradd --create-home user
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --no-audit --no-fund
+      - name: Record SHA and versions
+        run: |
+          mkdir -p dr-evidence
+          git rev-parse HEAD > dr-evidence/SHA
+          git status --porcelain > dr-evidence/tree.txt
+          (node --version; pgbackrest version; /usr/lib/postgresql/17/bin/psql --version; redis-server --version) > dr-evidence/versions.txt
+          chown -R user:user .
+      - name: Unit and API contracts (not runtime DR)
+        run: |
+          node tests/infrastructure/disaster-recovery/index.test.js
+          node tests/infrastructure/disaster-recovery/truth-contract.test.js
+          node tests/infrastructure/phase5/national/disaster-recovery.test.js
+          node tests/redis-backup.js
+          PAYESH_ALLOW_DEV_MEMORY_AUTHORITY=1 node tests/api/disaster-recovery-health.test.js
+      - name: Five fresh PostgreSQL and Redis restore rounds
+        run: runuser -u user -- python3 tests/infrastructure/disaster-recovery/live-dr-closure.py --runs 5 --out dr-evidence/restore
+      - name: Five fresh real Sentinel rounds
+        run: runuser -u user -- python3 tests/infrastructure/disaster-recovery/live-redis-failover.py --out dr-evidence/sentinel
+      - name: Five S3 mock contracts (external S3 NOT VERIFIED)
+        run: python3 tests/infrastructure/disaster-recovery/s3-tool-contract.py > dr-evidence/s3-mock.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dr-e3-${{ github.sha }}
+          path: dr-evidence

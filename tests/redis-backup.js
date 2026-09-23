@@ -38,12 +38,16 @@ function makeStub(binDir, redisDir, opts) {
 for a in "$@"; do
   case "$a" in
     PING) echo PONG; exit 0 ;;
-    SAVE)
-      ${opts.failSave ? 'exit 1' : `echo OK; echo "RDB-DATA-\${RANDOM}" > "${redisDir}/dump.rdb"`}
+    CONFIG)
+      key="\${!#}"; echo "$key"
+      case "$key" in dir) echo "${redisDir}";; dbfilename) echo dump.rdb;; appendonly) echo yes;; *) exit 1;; esac
       exit 0 ;;
-    BGREWRITEAOF) echo "Background append only file rewriting started"; echo "AOF-DATA" > "${redisDir}/appendonly.aof"; exit 0 ;;
+    SAVE)
+      ${opts.failSave ? 'exit 1' : `echo OK; cp "${path.join(ROOT, 'tests/fixtures/redis-empty.rdb')}" "${redisDir}/dump.rdb"`}
+      exit 0 ;;
+    BGREWRITEAOF) echo "Background append only file rewriting started"; printf '*1\\r\\n$4\\r\\nPING\\r\\n' > "${redisDir}/appendonly.aof"; exit 0 ;;
     INFO)
-      printf '# persistence\\r\\naof_rewrite_in_progress:0\\r\\nrdb_last_bgsave_status:ok\\r\\n'
+      printf '# persistence\\r\\naof_rewrite_in_progress:0\\r\\naof_rewrite_scheduled:0\\r\\naof_last_bgrewrite_status:ok\\r\\nrdb_last_bgsave_status:ok\\r\\nrun_id:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\r\\n'
       exit 0 ;;
   esac
 done
@@ -91,7 +95,7 @@ function main() {
   const rdb = files.find(f => /^dump-\d{8}T\d{6}Z\.rdb$/.test(f));
   const aof = files.find(f => /^appendonly-\d{8}T\d{6}Z\.aof$/.test(f));
 
-  chk('B1 پشتیبان RDB با مهر زمانی ساخته شد', !!rdb && fs.readFileSync(path.join(backupDir, rdb), 'utf8').indexOf('RDB-DATA') === 0, files.join(','));
+  chk('B1 پشتیبان RDB با مهر زمانی ساخته شد', !!rdb && fs.readFileSync(path.join(backupDir, rdb), 'utf8').indexOf('REDIS') === 0, files.join(','));
   chk('B2 پشتیبان AOF ساخته شد', !!aof, files.join(','));
   chk('B3 مانیفست نوشته شد', (() => {
     const m = fs.readFileSync(path.join(backupDir, 'last-backup.txt'), 'utf8');

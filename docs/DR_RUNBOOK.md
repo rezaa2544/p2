@@ -1,3 +1,5 @@
+> **قرارداد به‌روز:** [DR_EVIDENCE_CONTRACT](DR_EVIDENCE_CONTRACT.md). برای PG failover، `PG_FENCE_CHECK` اجرایی و گواهی fencing مستقل حتی با force الزامی است. برای PITR، manifest تأییدشدهٔ نقطهٔ committed لازم است؛ نبود آن موفقیت نیست.
+
 # 🧯 DR Runbook — سناریوهایِ عملیاتیِ بازیابی و failover
 
 > بازویِ اجراییِ `docs/RELIABILITY_DR_PLAN.md` (اهدافِ مصوب: SLA ۹۹٫۹۵٪ ·
@@ -104,10 +106,10 @@ fence شدنِ رسمی، primaryِ منطقهٔ اول **برگردانده ن�
 **اقدام:**
 ```bash
 # ۱) فوریتِ کشفِ نقطهٔ قبلِ فساد:
-tools/pitr-restore.sh --time "2026-09-10 08:55:00+03:30"   # محیطِ جدایِ سنجش
+tools/pitr-restore.sh --manifest /approved/expected.json --time "2026-09-10 08:55:00+03:30"   # محیطِ جدایِ سنجش
 # ۲) تأییدِ خودکار:
 PGHOST=<run>/run PGPORT=54329 PGDATABASE=payesh tools/pitr-verify.sh \
-  --host-dir <run>/run --port 54329 --expect-before '2026-09-10 08:55:00'
+  --manifest /approved/expected.json --expect-data-dir <run>/data
 # ۳) تصمیمِ بازگشت: یا promoteِ محیطِ سبز و سوییچِ DATABASE_URL (برشِ کامل،
 #    از‌دست‌رفتنِ نوشتن‌هایِ پس از هدف) یا استخراجِ delta و replayِ انتخابیِ
 #    رکوردها (sync/merge با OCC — base_version خطِ دفاعِ دوم، P0-18).

@@ -4,6 +4,7 @@
 'use strict';
 
 const assert = require('assert');
+const fixture = require('./evidence-fixture');
 const {
   calculateRpoRtoMetrics,
   TARGET_RPO_SECONDS,
@@ -18,20 +19,22 @@ function runRpoRtoTests() {
 
   // ۱. حالت منطبق با سیاست (RPO=120s, RTO=240s)
   const nominal = calculateRpoRtoMetrics({
+    ...fixture.ref,
     achieved_rpo_seconds: 120,
-    estimated_rto_seconds: 240
+    measured_rto_seconds: 240
   });
 
   assert.strictEqual(nominal.achieved_rpo_seconds, 120);
-  assert.strictEqual(nominal.estimated_rto_seconds, 240);
+  assert.strictEqual(nominal.measured_rto_seconds, 240);
   assert.strictEqual(nominal.rpo_compliant, true);
   assert.strictEqual(nominal.rto_compliant, true);
   assert.strictEqual(nominal.overall_compliance, true);
 
   // ۲. نقض RPO (بیش از ۳۰۰ ثانیه)
   const violatedRpo = calculateRpoRtoMetrics({
+    ...fixture.ref,
     achieved_rpo_seconds: 350,
-    estimated_rto_seconds: 240
+    measured_rto_seconds: 240
   });
   assert.strictEqual(violatedRpo.rpo_compliant, false);
   assert.strictEqual(violatedRpo.rto_compliant, true);
@@ -39,8 +42,9 @@ function runRpoRtoTests() {
 
   // ۳. نقض RTO (بیش از ۹۰۰ ثانیه)
   const violatedRto = calculateRpoRtoMetrics({
+    ...fixture.ref,
     achieved_rpo_seconds: 100,
-    estimated_rto_seconds: 950
+    measured_rto_seconds: 950
   });
   assert.strictEqual(violatedRto.rpo_compliant, true);
   assert.strictEqual(violatedRto.rto_compliant, false);

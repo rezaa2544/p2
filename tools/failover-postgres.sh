@@ -17,11 +17,13 @@
 set -euo pipefail
 export PGHOST="${PGHOST:-127.0.0.1}" PGPORT="${PGPORT:-5433}" PGDATABASE="${PGDATABASE:-payesh}"
 OLD_PGHOST="${OLD_PGHOST:-127.0.0.1}"; OLD_PGPORT="${OLD_PGPORT:-5432}"
-MAX_LAG_BYTES="${MAX_LAG_BYTES:-67108864}" # 64MB ≈ پنجرهٔ RPO≤۵دقیقه در بارِ عادی
+MAX_LAG_BYTES="${MAX_LAG_BYTES:-67108864}" # byte threshold, NOT a measured time/RPO
+export PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-5}"
+[[ "$MAX_LAG_BYTES" =~ ^[0-9]+$ ]] || { echo "FAIL: invalid lag limit" >&2; exit 1; }
 DRY=0; FORCE=0
 for a in "$@"; do case "$a" in --dry-run) DRY=1;; --force) FORCE=1;; *) echo "ناشناخته: $a" >&2; exit 2;; esac; done
 command -v psql >/dev/null 2>&1 || { echo "FAIL: psql نیست" >&2; exit 2; }
-sq(){ PGPASSWORD="${PGPASSWORD:-}" psql -h "$1" -p "$2" -U "${PGUSER:-postgres}" -d "$3" -tAXc "$4" 2>/dev/null || true; }
+sq(){ PGPASSWORD="${PGPASSWORD:-}" psql -h "$1" -p "$2" -U "${PGUSER:-postgres}" -d "$3" -tAXc "$4" -v ON_ERROR_STOP=1; }
 
 echo "== failover-postgres: standby=$PGHOST:$PGPORT primary=($OLD_PGHOST:$OLD_PGPORT) dry=$DRY force=$FORCE"
 
@@ -31,12 +33,18 @@ if [ "$inrec" != "t" ]; then
   echo "FAIL: مقصدِ انتخابی در recovery نیست (یا از قبل primary است یا دسترس‌پذیر نیست) — برایِ امنیتِ داده ادامه نمی‌دهم" >&2; exit 1
 fi
 
+# A connection failure is not proof of fencing. Require an operator-controlled
+# fence verifier; force never bypasses the fence. Its stdout is an exact contract.
+[ -n "${PG_FENCE_CHECK:-}" ] && [ -x "$PG_FENCE_CHECK" ] || { echo 'FAIL: PG_FENCE_CHECK executable required' >&2; exit 1; }
+fence_proof="$("$PG_FENCE_CHECK" "$OLD_PGHOST" "$OLD_PGPORT")" || { echo 'FAIL: fence check failed' >&2; exit 1; }
+[ "$fence_proof" = "FENCED $OLD_PGHOST:$OLD_PGPORT" ] || { echo 'FAIL: fence identity mismatch' >&2; exit 1; }
+
 # ۲) تاییدِ مرگِ primary (۳ تلاش) — مگر --force
 if [ "$FORCE" != 1 ]; then
   DEAD=1
   for i in 1 2 3; do
     if pg_isready -h "$OLD_PGHOST" -p "$OLD_PGPORT" -t 2 >/dev/null 2>&1; then DEAD=0; fi
-    [ "$DEAD" = 1 ] && break; sleep 5
+    [ "$i" = 3 ] || sleep 5
   done
   if [ "$DEAD" = 0 ]; then
     echo "FAIL: primary همچنان پاسخ می‌دهد — failover بدونِ مرگِ primary یعنی ریسکِ split-brain؛ یا قطعیِ شبکه را رفع کن یا --force (با مسئولیتِ اپراتور، پس از fence کردنِ primaryِ کهنه)" >&2; exit 1
@@ -46,8 +54,9 @@ fi
 # ۳) lagِ replay روی standby (تقریبی، بدونِ primary بی‌معناست؛ چکِ محلی)
 lag_note="(غیرقابل‌سنجش بدونِ primary)"
 if [ "$FORCE" != 1 ]; then
-  pending="$(sq "$PGHOST" "$PGPORT" "$PGDATABASE" "SELECT coalesce(pg_wal_lsn_diff(pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn()),0)::bigint")"
-  if [ -n "$pending" ] && [ "$pending" -gt "$MAX_LAG_BYTES" ] 2>/dev/null; then
+  pending="$(sq "$PGHOST" "$PGPORT" "$PGDATABASE" "SELECT pg_wal_lsn_diff(pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn())::bigint")"
+  [[ "$pending" =~ ^[0-9]+$ ]] || { echo "FAIL: unknown/invalid replay lag" >&2; exit 1; }
+  if [ "$pending" -gt "$MAX_LAG_BYTES" ]; then
     echo "FAIL: ${pending}B در صفِ replay است (آستانه ${MAX_LAG_BYTES}B) — صبر کن تا replay کامل شود یا --force" >&2; exit 1
   fi
   [ -n "$pending" ] && lag_note="(unreplayed=${pending}B)"
@@ -56,7 +65,7 @@ fi
 if [ "$DRY" = 1 ]; then echo "DRY-RUN: آمادهٔ promote — گاردها پاس شدند $lag_note"; exit 0; fi
 
 echo "در حالِ promote ..."
-sq "$PGHOST" "$PGPORT" "$PGDATABASE" "SELECT pg_promote(wait := true, wait_seconds := 60)" >/dev/null
+[ "$(sq "$PGHOST" "$PGPORT" "$PGDATABASE" "SELECT pg_promote(wait := true, wait_seconds := 60)")" = t ] || { echo "FAIL: pg_promote returned false" >&2; exit 1; }
 inrec2="$(sq "$PGHOST" "$PGPORT" "$PGDATABASE" "SELECT pg_is_in_recovery()")"
 if [ "$inrec2" != "f" ]; then echo "FAIL: promote انجام نشد (هنوز در recovery)" >&2; exit 1; fi
 

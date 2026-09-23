@@ -34,13 +34,13 @@ assert.strictEqual(perfectScore, 100);
 
 const degradedScore = calculateRecoveryReadinessScore({
   wal_lag_seconds: 450, // فراتر از RPO ۳۰۰ ثانیه
-  standby_synced: false
+  standby_synced: false, checksum_valid: true
 });
 assert.ok(degradedScore < 50);
 
 // ۳. ارزیابی جامع بازیابی متقاطع با گیت نظارت انسانی
 const assessment = assessCrossRegionDisasterRecovery('ir-tehran-1', {
-  wal_lag_seconds: 60
+  wal_lag_seconds: 60, run_id: 'unit-fixture', timestamp: '2026-09-23T00:00:00Z', measured_rto_seconds: 240
 });
 assert.strictEqual(assessment.source_region, 'ir-tehran-1');
 assert.strictEqual(assessment.rpo_status.compliant, true);

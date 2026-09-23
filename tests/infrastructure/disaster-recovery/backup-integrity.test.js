@@ -4,6 +4,7 @@
 'use strict';
 
 const assert = require('assert');
+const fixture = require('./evidence-fixture');
 const {
   verifyBackupIntegrity
 } = require('../../../server/infrastructure/disaster-recovery');
@@ -12,7 +13,7 @@ function runBackupIntegrityTests() {
   console.log('▸ تست ۱: اعتبارسنجی تمامیت مؤلفه‌های پشتیبان (backup-integrity)');
 
   // ۱. پشتیبان کامل و معتبر
-  const nominal = verifyBackupIntegrity();
+  const nominal = verifyBackupIntegrity(fixture.backup);
   assert.strictEqual(nominal.verified, true);
   assert.strictEqual(nominal.retention_days, 30);
   assert.strictEqual(nominal.components.postgres.verified, true);
@@ -24,12 +25,12 @@ function runBackupIntegrityTests() {
   assert.strictEqual(nominal.manifest.verified, true);
 
   // ۲. عدم تایید در صورت خرابی یکی از مؤلفه‌ها
-  const corruptPg = verifyBackupIntegrity({ postgres_verified: false });
+  const corruptPg = verifyBackupIntegrity({ ...fixture.backup, postgres_verified: false });
   assert.strictEqual(corruptPg.verified, false);
   assert.strictEqual(corruptPg.components.postgres.verified, false);
   assert.strictEqual(corruptPg.manifest.verified, false);
 
-  const corruptRedis = verifyBackupIntegrity({ redis_verified: false });
+  const corruptRedis = verifyBackupIntegrity({ ...fixture.backup, redis_verified: false });
   assert.strictEqual(corruptRedis.verified, false);
   assert.strictEqual(corruptRedis.components.redis.verified, false);
 

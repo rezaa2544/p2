@@ -16,6 +16,7 @@ function runFailoverReadinessTests() {
   const nominal = evaluateHighAvailability({
     database_replication_lag_ms: 10,
     redis_replication_lag_ms: 5,
+    queue_healthy: true,
     standby_nodes_healthy: true
   });
 

@@ -4,6 +4,7 @@
 'use strict';
 
 const assert = require('assert');
+const fixture = require('./evidence-fixture');
 const {
   buildDisasterRecoveryHealthSnapshot,
   verifyBackupIntegrity,
@@ -16,12 +17,7 @@ function runDeterministicTests() {
   console.log('▸ تست ۸: قطعیت جبری ۱۰۰٪ و ایمنی در برابر جهش داده‌ها در DR (deterministic)');
 
   const user = { id: 10, role: 'manager', school_id: 101, region_id: 1 };
-  const mockOptions = {
-    backup: { postgres_verified: true, redis_verified: true, retention_days: 30 },
-    recovery: { achieved_rpo_seconds: 120, estimated_rto_seconds: 240 },
-    highAvailability: { database_replication_lag_ms: 10, standby_nodes_healthy: true },
-    rehearsal: { duration_seconds: 150, tables_restored: 38 }
-  };
+  const mockOptions = fixture;
 
   // ۱. انجماد عمیق و ممانعت از تغییر شیء
   const snapshot = buildDisasterRecoveryHealthSnapshot({ schoolId: 101, regionId: 1, user }, mockOptions);
