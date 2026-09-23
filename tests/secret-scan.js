@@ -53,6 +53,8 @@ function walk(dir, out) {
 }
 
 const files = [];
+const CANONICAL_ALERT_RULES = path.join(ROOT, 'infra/observability/alert-rules.yml');
+chk('canonical observability alert rules are readable', fs.existsSync(CANONICAL_ALERT_RULES) && fs.statSync(CANONICAL_ALERT_RULES).isFile());
 walk(ROOT, files);
 console.log('');
 console.log('— اسکنِ ' + files.length + ' فایل —');
