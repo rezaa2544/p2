@@ -125,6 +125,12 @@ async function freshOutbox() {
     ok('T3-P4 repeated DLQ transfer is idempotent in memory', store.outbox_dlq.length === 1 && store.outbox[0].status === 'dead_letter');
   }
   {
+    const store = { outbox: [{ id: 8306, type: 't3.stale-dlq', status: 'processing', processing_at: Date.now(), processing_token: 'owner-a', retry_count: 1 }] };
+    const o = createOutbox({ store, db: null });
+    const stale = await o.moveToDlq(store.outbox[0], 'stale', 'owner-b');
+    ok('T3-P6 stale memory DLQ owner cannot create orphan DLQ', stale && stale.stale === true && store.outbox_dlq === undefined && store.outbox[0].status === 'processing');
+  }
+  {
     const store = { outbox: [{ id: 8305, type: 't3.error', status: 'pending', retry_count: 0 }] };
     const o = createOutbox({ store, db: null });
     await o.moveToDlq(8305, 'terminal');
