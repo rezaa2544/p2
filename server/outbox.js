@@ -399,12 +399,16 @@ function createOutbox({ store, db }) {
         return { ok: false, id: evt.id, error: e.message };
       }
     } else {
+      /* Memory path must preserve the same ownership rule as PostgreSQL:
+         first transition the source under the claim token, then publish the
+         terminal DLQ record. A stale worker must never leave an orphan DLQ
+         row while failing to transition the source. */
+      const marked = await mark(evt.id, { status: 'dead_letter', last_error: errorMessage }, leaseToken);
+      if (!marked && leaseToken != null) return { ok: false, id: evt.id, stale: true };
       if (!Array.isArray(store.outbox_dlq)) store.outbox_dlq = [];
       if (!store.outbox_dlq.some((row) => Number(row.outbox_id != null ? row.outbox_id : row.id) === Number(evt.id))) {
         store.outbox_dlq.push(Object.assign({}, evt, { outbox_id: evt.id, error_message: errorMessage, failed_at: new Date().toISOString() }));
       }
-      const marked = await mark(evt.id, { status: 'dead_letter', last_error: errorMessage }, leaseToken);
-      if (!marked && leaseToken != null) return { ok: false, id: evt.id, stale: true };
       return { ok: true, id: evt.id, status: 'dead_letter', error_message: String(errorMessage) };
     }
   }
