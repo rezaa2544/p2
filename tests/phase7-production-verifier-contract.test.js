@@ -64,7 +64,16 @@ pass('otp-fixture-boundary', () => {
   assert.doesNotMatch(s, /NODE_ENV=production.*PAYESH_DEMO_CODE=1/s);
 });
 
-// 6 Independent regression: the verifier still has all T1..T7 anchors and
+// 6 Resilience boundary: verifier Redis state must not inherit rate-limit counters
+// from earlier CI suites; this prevents false T2/T6 failures while keeping real Redis.
+pass('redis-fixture-isolation', () => {
+  assert.match(s, /P7V_REDIS_URL=/);
+  assert.match(s, /urlsplit/);
+  assert.match(s, /"\/15"/);
+  assert.match(s, /export REDIS_URL="\$P7V_REDIS_URL"/);
+});
+
+// 7 Independent regression: the verifier still has all T1..T7 anchors and
 // fail-closed verdict semantics.
 pass('independent-regression-verifier-contract', () => {
   for (const t of ['T1','T2','T3','T4','T5','T6','T7']) {
@@ -74,4 +83,4 @@ pass('independent-regression-verifier-contract', () => {
   assert.match(s, /VERDICT: NOT VERIFIED/);
 });
 
-console.log('Phase 7 verifier contract: 6/6 PASS');
+console.log('Phase 7 verifier contract: 7/7 PASS');
