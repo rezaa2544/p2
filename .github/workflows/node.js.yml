@@ -73,6 +73,8 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm ci
+    - name: Runtime Reliability — Lease fencing static contract
+      run: node tests/outbox-lease-fencing.test.js
     - name: Runtime Reliability — DLQ atomic terminal transition
       run: node tests/outbox-dlq-atomicity.test.js
     # Runtime Reliability gate is intentionally early: its failure must not be hidden by later release gates.
@@ -156,6 +158,10 @@ jobs:
       run: |
         export DATABASE_URL="$PGURL"
         node tests/phase2-outbox-failover.js
+    - name: Runtime Reliability — Live lease race / stale completion fencing
+      run: |
+        export DATABASE_URL="$PGURL"
+        node tests/outbox-lease-race-live.js
     - name: Phase 6.5 Runtime Truth — Red Team RT-01…RT-10
       run: |
         export DATABASE_URL="$PGURL"
