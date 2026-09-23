@@ -224,4 +224,6 @@ jobs:
         node tests/env-flags.js
         node tests/wave15-health.js
     - run: npm run build --if-present
+    - name: Smoke harness — jsdom scrollTo five-pass regression
+      run: node tests/smoke-jsdom-runtime.test.js
     - run: npm test
