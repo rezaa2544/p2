@@ -2,6 +2,7 @@
 -- Outbox processing lease / crash recovery
 BEGIN;
 ALTER TABLE server_outbox ADD COLUMN IF NOT EXISTS processing_at TIMESTAMPTZ;
+ALTER TABLE server_outbox ADD COLUMN IF NOT EXISTS processing_token TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_server_outbox_dlq_outbox_id
   ON server_outbox_dlq (outbox_id);
 
