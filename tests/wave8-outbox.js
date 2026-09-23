@@ -139,7 +139,15 @@ async function main() {
     const ob2 = createOutbox({ store: store2, db: badDb });
     const e2 = await ob2.append({ type: 'demo.job' });
     await ob2.mark(e2.id, { status: 'processed' });
-    chk('O6c خرابی آینه ⇒ رفتار عادی (منبع حقیقت اسنپ‌شات)', store2.outbox[0].status === 'processed');
+    /* F-A8 (Arena 1 — تصمیم فنی مستند طبق Rule 30 بند ۲): قرارداد pre-lease
+       «اسنپ‌شات منبع حقیقت» هنگام lease-fencing بازنویسی شد (abb4d03, 2985f61,
+       cab4b18): خطای آینهٔ PG اکنون در mark() صریحاً fail-closed است
+       (catch → return null، بدون applyMemory) — رویداد pending می‌ماند و
+       بازپخش‌پذیر است (at-least-once)، وضعیتِ ساختگی ثبت نمی‌شود. تست قدیمی
+       انتظارِ snapshot-processedِ دورانِ best-effort-mirror را داشت که دیگر
+       رسم نیست؛ ادعای سالم این است: بدون کرش + بدون divergeیِ جعلی. */
+    chk('O6c خرابی آینه ⇒ fail-closed بدون کرش (اسنپ‌شات pending/بازپخش‌پذیر)',
+        store2.outbox[0].status === 'pending');
   }
 
   /* O7 — سقف صف */
