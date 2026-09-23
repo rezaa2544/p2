@@ -85,7 +85,7 @@ async function cleanup(ids) {
       await sleep(LEASE_SECONDS * 1000 + 150);
       await b.tick();
       await aRun;
-      const row = (await db.query('SELECT status, processing_token FROM server_outbox WHERE id=$1', [x.id])).rows[0];
+      const row = (await db.query('SELECT status, retry_count, processing_token FROM server_outbox WHERE id=$1', [x.id])).rows[0];
       check('P2 lease expiration permits reclaim', row.status === 'processed' && row.processing_token === null);
     }
     {
