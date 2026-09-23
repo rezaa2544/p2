@@ -28,9 +28,9 @@ function stripLeadingBegin(sql) {
   let i = 0;
   while (i < sql.length) {
     const start = i;
-    while (i < sql.length && /[\\t\\n\\r\\f\\v ]/.test(sql[i])) i++;
+    while (i < sql.length && /[\t\n\r\f\v ]/.test(sql[i])) i++;
     if (sql.startsWith('--', i)) {
-      const end = sql.indexOf('\\n', i + 2);
+      const end = sql.indexOf('\n', i + 2);
       i = end === -1 ? sql.length : end + 1;
       continue;
     }
@@ -42,7 +42,7 @@ function stripLeadingBegin(sql) {
     }
     if (i === start) break;
   }
-  const match = /^BEGIN[\\t\\n\\r\\f\\v ]*;/i.exec(sql.slice(i));
+  const match = /^BEGIN[\t\n\r\f\v ]*;/i.exec(sql.slice(i));
   return match ? sql.slice(0, i) + sql.slice(i + match[0].length) : sql;
 }
 
@@ -50,7 +50,7 @@ function stripTrailingCommit(sql) {
   let end = sql.length;
   while (true) {
     const before = end;
-    while (end > 0 && /[\\t\\n\\r\\f\\v ]/.test(sql[end - 1])) end--;
+    while (end > 0 && /[\t\n\r\f\v ]/.test(sql[end - 1])) end--;
     if (end >= 2 && sql.slice(end - 2, end) === '*/') {
       const start = sql.lastIndexOf('/*', end - 2);
       if (start < 0) return sql;
