@@ -328,7 +328,7 @@ function createOutbox({ store, db }) {
   /**
    * Step 10: Route poisoned event to server_outbox_dlq
    */
-  async function moveToDlq(evtOrId, errorMessage, leaseToken) {
+  async function moveToDlq(evtOrId, errorMessage, leaseToken, retryCount) {
     /* B3 (Phase-2 remediation directive): moveToDlq accepts a full event object
        OR a bare event id. With an id, the row is resolved first (SELECT ...
        WHERE id=$1 in PG / the RAM queue otherwise) and then transferred to the
@@ -364,17 +364,17 @@ function createOutbox({ store, db }) {
           if (leaseToken != null) {
             const ins = await client.query(
               `INSERT INTO server_outbox_dlq (outbox_id, type, collection, record_id, actor_id, version, payload, error_message, retry_count, failed_at)
-               SELECT id, type, collection, record_id, actor_id, version, payload, $2, retry_count, NOW()
+               SELECT id, type, collection, record_id, actor_id, version, payload, $2, COALESCE($4, retry_count), NOW()
                FROM server_outbox
                WHERE id = $1 AND status = 'processing' AND processing_token = $3
                ON CONFLICT (outbox_id) DO NOTHING;`,
-              [evt.id, String(errorMessage), String(leaseToken)]
+              [evt.id, String(errorMessage), String(leaseToken), retryCount != null ? Number(retryCount) : null]
             );
             const upd = await client.query(
               `UPDATE server_outbox
-               SET status = 'dead_letter', last_error = $2, processing_at = NULL, processing_token = NULL
+               SET status = 'dead_letter', retry_count = COALESCE($4, retry_count), last_error = $2, processing_at = NULL, processing_token = NULL
                WHERE id = $1 AND status = 'processing' AND processing_token = $3;`,
-              [evt.id, String(errorMessage), String(leaseToken)]
+              [evt.id, String(errorMessage), String(leaseToken), retryCount != null ? Number(retryCount) : null]
             );
             if (!upd || Number(upd.rowCount) !== 1) return { ok: false, id: evt.id, stale: true };
             return { ok: true, id: evt.id, status: 'dead_letter', error_message: String(errorMessage), inserted: !!(ins && Number(ins.rowCount) > 0) };
@@ -403,7 +403,7 @@ function createOutbox({ store, db }) {
       if (!store.outbox_dlq.some((row) => Number(row.outbox_id != null ? row.outbox_id : row.id) === Number(evt.id))) {
         store.outbox_dlq.push(Object.assign({}, evt, { outbox_id: evt.id, error_message: errorMessage, failed_at: new Date().toISOString() }));
       }
-      const marked = await mark(evt.id, { status: 'dead_letter', last_error: errorMessage }, leaseToken);
+      const marked = await mark(evt.id, { status: 'dead_letter', retry_count: retryCount != null ? Number(retryCount) : Number(evt.retry_count) || 0, last_error: errorMessage }, leaseToken);
       if (!marked && leaseToken != null) return { ok: false, id: evt.id, stale: true };
       return { ok: true, id: evt.id, status: 'dead_letter', error_message: String(errorMessage) };
     }
