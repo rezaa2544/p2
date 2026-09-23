@@ -30,6 +30,15 @@ function buildCleanEnv(extraEnv) {
   if (!('REDIS_URL' in extraEnv)) delete e.REDIS_URL;
   if (!('REDIS_CLUSTER_NODES' in extraEnv)) delete e.REDIS_CLUSTER_NODES;
   if (!('REDIS_SENTINELS' in extraEnv)) delete e.REDIS_SENTINELS;
+  /* Arena 9 (hermeticity, Rule 11): redis.isProduction() intentionally
+     treats an ambient DATABASE_URL as production and refuses the dev
+     memory fallback. An operator running this suite with DATABASE_URL
+     exported (the normal live-PG posture) therefore got 5 false reds.
+     The scenarios below define their own posture explicitly — strip the
+     inherited DB URLs unless a scenario opts in. */
+  if (!('DATABASE_URL' in extraEnv)) delete e.DATABASE_URL;
+  if (!('READ_DATABASE_URL' in extraEnv)) delete e.READ_DATABASE_URL;
+  if (!('PAYESH_ENV' in extraEnv)) delete e.PAYESH_ENV;
   return e;
 }
 

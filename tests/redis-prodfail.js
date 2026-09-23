@@ -18,10 +18,20 @@ if (ROLE === '') {
   let pass = 0, fail = 0;
   for (const r of ['a', 'b', 'c']) {
     try {
+      /* Arena 9 (hermeticity, Rule 11): redis.isProduction() treats an
+         ambient DATABASE_URL/REDIS_URL as production. Running this suite
+         from a live-PG shell (DATABASE_URL exported) flipped role b
+         (development) into fail-closed production and turned every dev
+         assertion red. Each role defines its own posture — strip the
+         inherited URLs. */
+      const env = Object.assign({}, process.env,
+        r === 'b' ? { PRODFAIL_ROLE: 'b', NODE_ENV: 'development' }
+                  : { PRODFAIL_ROLE: r, NODE_ENV: 'production' });
+      delete env.REDIS_URL; delete env.DATABASE_URL;
+      delete env.READ_DATABASE_URL; delete env.REDIS_CLUSTER_NODES;
+      delete env.REDIS_SENTINELS; delete env.PAYESH_ENV;
       const out = execFileSync(process.execPath, [__filename], {
-        env: Object.assign({}, process.env,
-          r === 'b' ? { PRODFAIL_ROLE: 'b', NODE_ENV: 'development' }
-                    : { PRODFAIL_ROLE: r, NODE_ENV: 'production' }),
+        env,
         timeout: 60000, stdio: 'pipe',
       }).toString();
       const m = out.match(/PRODFAIL (\d+)\/(\d+)/);
@@ -66,9 +76,17 @@ async function roleA() {
   await mustThrow('A10 compareAndDelete می‌پراند', () => redis.compareAndDelete('l', 't'));
   await mustThrow('A11 publish می‌پراند', () => redis.publish('ch', 'm'));
   await mustThrow('A12 subscribe می‌پراند', () => redis.subscribe('ch', () => {}));
-  /* مشاهده/بستن باید جواب بدهند (نه پرتاب). */
+  /* مشاهده/بستن باید جواب بدهند (نه پرتاب).
+     Arena 9 regression re-pin: commit a3c213e (`fix(redis): report
+     production outage in ping`) صحیحاً ping را در تولیدِ بدونِ اتصال
+     fail-closed کرد ({ok:false, driver:'none', error:'REDIS_UNAVAILABLE'})
+     تا readiness دیگر سبزِ کاذبِ «memory» گزارش ندهد. این assertion
+     رفتارِ قبل از آن fix را پین کرده بود. قراردادِ درست: پاسخ می‌دهد
+     (بدونِ پرتاب) و صریحاً UNAVAILABLE می‌گوید. */
   const p = await redis.ping();
-  chk('A13 ping جواب می‌دهد', p && p.driver === 'memory');
+  chk('A13 ping جواب می‌دهد و صریحاً قطع را گزارش می‌کند (fail-closed)',
+    p && p.ok === false && p.driver === 'none' && p.error === 'REDIS_UNAVAILABLE',
+    JSON.stringify(p));
   chk('A14 ready نادرست است', redis.ready() === false);
   await redis.close();
   chk('A15 close بی‌خطا', true);

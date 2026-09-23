@@ -109,6 +109,13 @@ async function modGroup() {
   const legacy = auth.jwtSign({ sub: user.id, role: user.role, iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + 28800, jti: 'jt_legacy' + Date.now() });
   const user2 = seed.users.find((u) => u.id !== user.id && u.active !== 0);
+  /* Arena 9 (stale-state isolation): sessver:<id> keys have no TTL by design,
+     so on a real shared Redis a previous run's revoke-all for this seed user
+     survives and correctly invalidates the fresh no-sv legacy token — a
+     false red for the COMPATIBILITY contract being tested here. Reset the
+     version key for the test subject only (never a production code path —
+     this is per-user test hygiene, equivalent to a fresh user id). */
+  try { await redis.del('sessver:' + user2.id); } catch (e) {}
   const legacy2 = auth.jwtSign({ sub: user2.id, role: user2.role, iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + 28800, jti: 'jt_legacy' + Date.now() + 'x' });
   const sleg = await auth.sessionFrom(cookieReq(NAME, legacy2));
@@ -152,14 +159,23 @@ async function pickPort(base) {
 async function bootApp(port, tmp, extraEnv) {
   const storeP = path.join(tmp, 's-' + port + '.json');
   fs.copyFileSync(SEED_STORE, storeP);
+  /* Arena 9 (hermeticity): this group contract is a per-boot ISOLATED
+     JSON store (the seed is copied to tmp). An inherited DATABASE_URL
+     silently rewired the boot to a shared long-lived PG database, so a
+     previous run's delete-account persisted and users[1] could no longer
+     log in (H-d false red: del=null). Strip inherited DB URLs; a scenario
+     that wants PG must pass it via extraEnv explicitly. */
+  const env = Object.assign({}, process.env, {
+    PORT: String(port), HOST: '127.0.0.1', PAYESH_STORE: storeP,
+    PAYESH_AUDIT: path.join(tmp, 'a-' + port + '.log'),
+    PAYESH_KEY: path.join(tmp, 'k-' + port + '.key'),
+    PAYESH_DEMO_CODE: '1', PAYESH_SMS_COOLDOWN_S: '0'
+  }, extraEnv || {});
+  if (!(extraEnv && 'DATABASE_URL' in extraEnv)) delete env.DATABASE_URL;
+  if (!(extraEnv && 'READ_DATABASE_URL' in extraEnv)) delete env.READ_DATABASE_URL;
   const child = cp.spawn(process.execPath, [SERVER], {
     cwd: ROOT,
-    env: Object.assign({}, process.env, {
-      PORT: String(port), HOST: '127.0.0.1', PAYESH_STORE: storeP,
-      PAYESH_AUDIT: path.join(tmp, 'a-' + port + '.log'),
-      PAYESH_KEY: path.join(tmp, 'k-' + port + '.key'),
-      PAYESH_DEMO_CODE: '1', PAYESH_SMS_COOLDOWN_S: '0'
-    }, extraEnv || {}),
+    env,
     stdio: ['ignore', 'ignore', 'ignore']
   });
   const t0 = Date.now();
@@ -190,7 +206,23 @@ async function httpGroup() {
   if (users.length < 2) { chk('H-0 دو کاربر هست', false); return; }
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-rev-'));
   const port = await pickPort(18961);
-  const child = await bootApp(port, tmp);
+  /* Arena 9 (stale-state isolation): the OTP rate-limit keys
+     (rate:otp:send:phone:*) are cross-instance state on Redis BY DESIGN,
+     so consecutive runs against a shared Redis DB 0 rate-limited the very
+     first send-code (H-a false red: 429). Same isolation pattern as
+     tests/phase65-runtime-truth.js (dedicated logical DB): boot the HTTP
+     group on DB 12 and clear only that DB first. */
+  let httpEnv = {};
+  if (process.env.REDIS_URL) {
+    const isoUrl = String(process.env.REDIS_URL).replace(/\/\d+\s*$/, '') + '/12';
+    try {
+      const RedisLib = require('ioredis');
+      const rc = new RedisLib(isoUrl, { lazyConnect: true, maxRetriesPerRequest: 1 });
+      await rc.connect(); await rc.flushdb(); rc.disconnect();
+    } catch (e) { /* Redis unreachable → boot falls back per its own contract */ }
+    httpEnv = { REDIS_URL: isoUrl };
+  }
+  const child = await bootApp(port, tmp, httpEnv);
   chk('H-0 بوت', !!child);
   if (!child) return;
   try {
@@ -284,6 +316,21 @@ async function distGroup() {
 /* ── main ─────────────────────────────────────────────── */
 (async function main() {
   try {
+    /* Arena 9 fix (C5-04 in ROADMAP_CURRENT_GROUND_TRUTH): when REDIS_URL
+       (or DATABASE_URL) is exported, redis.isProduction() is true and every
+       state op fail-closes until redis.init() runs. The harness never
+       initialised Redis in-process, so UNIT/MOD produced 5-6 false reds
+       under the live-Redis posture that CI itself uses. Initialise the
+       real client when a URL is configured; without a URL the historical
+       dev/memory path is untouched. Fail-closed behaviour itself is pinned
+       by tests/redis-prodfail.js and tests/redis-fallback.js. */
+    if (process.env.REDIS_URL || process.env.DATABASE_URL) {
+      const ri = await redis.init();
+      if (!ri || !ri.ok) {
+        console.log('session-revocation: NOT-RUN — configured Redis unreachable: ' + JSON.stringify(ri));
+        process.exit(2);
+      }
+    }
     await unitGroup();
     await modGroup();
     if (QUICK) {

@@ -103,8 +103,16 @@ const rows = [];
   L.check(rows, 'graceful: پروسه زیرِ فشارِ دیسک زنده می‌ماند و امتناعِ صریح می‌دهد (نه سقوط)',
     lv.status === 200 && [200, 503].includes(rd.status),
     'liveness=' + lv.status + ' readiness=' + rd.status + ' health=' + health.status + ' | پروسه_مرده=' + !T.apiAliveUnderPressure);
+  /* Arena 9 fix: قراردادِ قفل‌شدهٔ /api/health (P0-13 / server13-S1) صریحاً
+     می‌گوید در حالتِ unhealthy کدِ وضعیت 503 با بدنهٔ تشخیصیِ کامل برمی‌گردد.
+     زیرِ فشارِ دیسک PG با PANIC مرده است ⇒ 503 «درست» است؛ الزامِ 200 در
+     این لحظه یعنی مطالبهٔ سبزِ کاذب از سرور. «در دسترس بودنِ ابزارِ پایش»
+     یعنی: پاسخِ HTTP سالم (200/503) + بدنهٔ JSONِ تشخیصی با فیلدِ db —
+     نه timeout، نه سقوط، نه بدنهٔ خالی. */
+  const healthDiagnosable = [200, 503].includes(health.status) &&
+    !!(health.json && health.json.db && typeof health.json.ok === 'boolean');
   L.check(rows, 'graceful: /api/health زیرِ فشار در دسترسِ اپراتور می‌ماند (ابزارِ پایش از کار نمی‌افتد)',
-    health.status === 200, 'status=' + health.status);
+    healthDiagnosable, 'status=' + health.status + ' db=' + JSON.stringify(health.json && health.json.db).slice(0, 80));
 
   const storeParse = (() => { try { const j = JSON.parse(fs.readFileSync(infra.storeFile, 'utf8')); return !!j.users; } catch (e) { return false; } })();
   L.check(rows, 'no corruption: فایلِ استور زیرِ فشارِ دیسک هم JSONِ سالم است', storeParse, 'store_parseable=' + storeParse + ' bytes=' + (fs.existsSync(infra.storeFile) ? fs.statSync(infra.storeFile).size : 0));

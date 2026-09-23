@@ -1,6 +1,19 @@
 #!/usr/bin/env node
 'use strict';
 
+/* Arena 9 (hermeticity): this is an in-process unit contract on the JSON
+   store (db:null, no redis.init()). outbox.nextId() intentionally
+   fail-closes when DATABASE_URL/production is ambient but Redis is not
+   initialised — correct for the server, a false red for this unit
+   harness when run from a live-PG shell. Pin the dev posture explicitly
+   BEFORE the modules load. The fail-closed behaviour itself is covered by
+   the live suites (phase2-redis-fail-closed, chaos-drill-redis-outage). */
+delete process.env.DATABASE_URL;
+delete process.env.READ_DATABASE_URL;
+delete process.env.REDIS_URL;
+process.env.NODE_ENV = process.env.NODE_ENV === 'production' ? 'test' : (process.env.NODE_ENV || 'test');
+if (process.env.PAYESH_ENV === 'production') process.env.PAYESH_ENV = 'test';
+
 const assert = require('assert');
 const { createOutbox } = require('../server/outbox');
 const { createWorker } = require('../server/worker');

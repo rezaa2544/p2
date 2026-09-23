@@ -17,7 +17,16 @@ const env = rd(DIR + '/env.observability.example');
 const metrics = rd('server/metrics.js');
 
 chk('compose contains pinned observability services', ['prometheus:v2.54.1','alertmanager:v0.27.0','grafana:11.2.0','loki:3.1.1','promtail:3.1.1'].every((x) => compose.includes(x)));
-chk('Prometheus loads only canonical alert-rules.yml', /rule_files:\s*\n\s*- \/etc\/prometheus\/alert-rules\.yml(?:\s*)$/.test(prom));
+/* Arena 9 root-cause fix: the previous regex anchored `$` WITHOUT the /m
+   flag, so it only matched when rule_files was the literal end of the file —
+   any valid prometheus.yml with sections after rule_files failed forever
+   (commit dff14e0 intended to tolerate formatting but kept the broken
+   anchor). Enforce the actual semantic contract instead: the rule_files
+   block exists and contains EXACTLY one entry, the canonical file. */
+const ruleBlock = (prom.match(/^rule_files:\s*\n((?:\s+-[^\n]*\n?)+)/m) || [])[1] || '';
+const ruleEntries = ruleBlock.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('-'));
+chk('Prometheus loads only canonical alert-rules.yml',
+  ruleEntries.length === 1 && ruleEntries[0] === '- /etc/prometheus/alert-rules.yml');
 chk('retired alerts.yml is not mounted', !/\.\/alerts\.yml:/.test(compose));
 chk('retired alerts.yml has no active alert', !/^- alert:/m.test(rd(DIR + '/alerts.yml')));
 chk('Prometheus target is payesh-api /metrics', /job_name: payesh-api/.test(prom) && /metrics_path: \/metrics/.test(prom) && /host\.docker\.internal:3000/.test(prom));

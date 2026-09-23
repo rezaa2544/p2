@@ -462,12 +462,44 @@ async function startApi(opts) {
 }
 
 /* ── لاگین با کوکی (send-code → demo_code → login) ──────────────── */
+/* Regression fix (Arena 9): commit 0b53ec0 correctly stopped echoing
+   demo_code when NODE_ENV=production. These drills intentionally boot the
+   API with the production posture, so demo_code is (rightly) absent and
+   the old send-code→login path returns 400 — which broke every drill's
+   `setup: login` since 2026-09-19. The production guard must NOT be
+   weakened; instead the harness mints a session JWT with the same
+   runtime-generated CHAOS_JWT_SECRET the API instance booted with.
+   Server-side authority is still fully enforced on every request
+   (HS256 verify, revocation denylist, session-version, PG user/school
+   active lookups) — the mint only replaces the SMS-code ceremony that a
+   real operator performs out-of-band. */
+function mintSessionJwt(user) {
+  const b64u = (x) => Buffer.from(x).toString('base64url');
+  const now = Math.floor(Date.now() / 1000);
+  const h = b64u(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const b = b64u(JSON.stringify({
+    iss: 'payesh', aud: 'payesh-web',
+    sub: user.id, role: user.role, school_id: user.school_id || null,
+    iat: now, exp: now + 28800,
+    jti: 'jt_' + crypto.randomBytes(12).toString('hex'), sv: 0
+  }));
+  const sig = b64u(crypto.createHmac('sha256', CHAOS_JWT_SECRET).update(h + '.' + b).digest());
+  return h + '.' + b + '.' + sig;
+}
 async function loginAs(port, user) {
   const jar = makeJar();
   const s = await httpReq(port, 'POST', '/api/auth/send-code', { phone: user.phone }, { jar, timeoutMs: 10000 });
   const code = (s.json && (s.json.demo_code || (s.json.data && s.json.data.demo_code))) || null;
-  const l = await httpReq(port, 'POST', '/api/auth/login', { phone: user.phone, code: String(code || ''), national_id: user.national_id }, { jar, timeoutMs: 10000 });
-  return { jar, send: s, login: l, ok: l.status === 200 };
+  if (code) {
+    /* dev/preview posture — the historical demo_code path still works */
+    const l = await httpReq(port, 'POST', '/api/auth/login', { phone: user.phone, code: String(code), national_id: user.national_id }, { jar, timeoutMs: 10000 });
+    return { jar, send: s, login: l, ok: l.status === 200, minted: false };
+  }
+  /* production posture — mint a session with the runtime drill secret and
+     let the server itself validate it end-to-end via /api/auth/me. */
+  jar.absorb({ 'set-cookie': ['payesh_session=' + mintSessionJwt(user)] });
+  const me = await httpReq(port, 'GET', '/api/auth/me', null, { jar, timeoutMs: 10000 });
+  return { jar, send: s, login: me, ok: me.status === 200, minted: true };
 }
 
 /* ── خوانش‌های عملیاتی ─────────────────────────────────────────── */
@@ -539,7 +571,7 @@ function check(rows, name, cond, detail) {
 
 module.exports = {
   ROOT, PG_BIN, pgBin, sleep, sha256, sha256File, nowIso, freePort, waitPort, until,
-  httpReq, makeJar, psql, redisCli, Infra, startApi, loginAs, startProxy,
+  httpReq, makeJar, psql, redisCli, Infra, startApi, loginAs, mintSessionJwt, startProxy,
   readiness, liveness, health, metricsText, metricValue,
   syncWrite, syncBatch, mkOp, auditCount, report, check, infraAvailable, canMountTmpfs, notRun, serializeForPg,
   CHAOS_JWT_SECRET, CHAOS_METRICS_TOKEN

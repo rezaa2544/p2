@@ -179,10 +179,29 @@ async function main() {
         procs.push(p); return p;
       };
       try {
-        spawnR(['--port', '6400', '--daemonize', 'no', '--save', '', '--dir', dir]);
-        spawnR(['--port', '6401', '--daemonize', 'no', '--save', '', '--dir', dir, '--replicaof', '127.0.0.1', '6400']);
+        /* Arena 9 — دو نقصِ harness (نه کد تولید) که فیل‌اُوور را همیشه
+           قرمز می‌کردند:
+           ۱) --dir مشترک بین مستر و کپی ⇒ تصادمِ فایل‌های RDB/temp؛ هر
+              نمونه دایرکتوری جدا می‌گیرد.
+           ۲) پیش‌فرضِ repl-diskless-sync-delay=5s در Redis 8 سینکِ کامل
+              را عقب می‌اندازد؛ مستر پیش از اتمامِ سینک کشته می‌شد ⇒
+              کپیِ خالی promote می‌شد و get پس از فیل‌اُوور برای همیشه
+              null می‌ماند. delay=0 + انتظارِ واقعی برای
+              master_link_status:up (نه صرفِ sleep). */
+        const dirM = path.join(dir, 'm'); const dirR = path.join(dir, 'r');
+        fs.mkdirSync(dirM); fs.mkdirSync(dirR);
+        spawnR(['--port', '6400', '--daemonize', 'no', '--save', '', '--dir', dirM, '--repl-diskless-sync-delay', '0']);
+        spawnR(['--port', '6401', '--daemonize', 'no', '--save', '', '--dir', dirR, '--replicaof', '127.0.0.1', '6400']);
         const sleep = (ms) => new Promise(r => setTimeout(r, ms));
         await sleep(800);
+        const cliBin = bins.server.replace('redis-server', 'redis-cli');
+        for (let i = 0; i < 20; i++) {
+          try {
+            const rep = cp.execSync(cliBin + ' -p 6401 info replication', { stdio: 'pipe', timeout: 3000 }).toString();
+            if (/master_link_status:up/.test(rep)) break;
+          } catch (e) { /* replica هنوز آماده نیست */ }
+          await sleep(500);
+        }
         const sentinelConf = (port) => {
           const f = path.join(dir, 'sentinel-' + port + '.conf');
           fs.writeFileSync(f, [
@@ -202,6 +221,14 @@ async function main() {
         const cc = redis.buildRedisConfig({ REDIS_SENTINELS: '127.0.0.1:26400,127.0.0.1:26401,127.0.0.1:26402', REDIS_SENTINEL_NAME: 'mymaster' });
         const c = Object.assign({ sentinels: cc.sentinels, name: cc.name }, cc.options || {});
         const app = new Redis(Object.assign({}, c, { connectTimeout: 2000, maxRetriesPerRequest: 3 }));
+        /* Arena 9: قراردادِ تولیدِ buildRedisConfig صحیحاً
+           lazyConnect=true و enableOfflineQueue=false است (fail-closed؛
+           نوشت قبل از اتصال باید بپراند نه در صف بماند). در مسیرِ
+           تولید، redis.init() خودش await client.connect() می‌کند
+           (server/redis.js:213). این harness آن مرحله را جا انداخته بود
+           و شکستِ fail-closed کلاینتِ وصل‌نشده را شکستِ فیل‌اُوور
+           گزارش می‌کرد. مثل مسیرِ تولید صریحاً connect می‌کنیم. */
+        await app.connect();
         await app.set('ha:probe', 'alive');
         chk('نوشت روی مستر از مسیر نگهبان', (await app.get('ha:probe')) === 'alive');
 
