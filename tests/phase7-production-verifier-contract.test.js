@@ -18,6 +18,15 @@ pass('functional-shell-syntax', () => {
   cp.execFileSync('bash', ['-n', p], { stdio: 'pipe' });
 });
 
+// Regression: a merge must not append a second top-level verifier body. Such a
+// duplicate tail previously made the script syntactically invalid and blocked T1–T7.
+pass('regression-single-verifier-body', () => {
+  const starts = (s.match(/^# ── T1 schema:/gm) || []).length;
+  const verdicts = (s.match(/^if \[ "\$FAIL" -eq 0 \]; then$/gm) || []).length;
+  assert.strictEqual(starts, 1, 'verifier must contain exactly one T1 body');
+  assert.strictEqual(verdicts, 1, 'verifier must contain exactly one final verdict block');
+});
+
 // 2 Boundary: T5 must build the intentionally pre-authority database through 018,
 // and must never attempt 019/020 against that database.
 pass('boundary-t5-excludes-authority-migrations', () => {
