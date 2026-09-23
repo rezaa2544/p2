@@ -59,7 +59,7 @@ async function cleanup(ids) {
       const x = await addEvent('rr.live.normal'); ids.push(x.id);
       const w = createWorker({ store: x.store, outbox: x.outbox, handlers: { 'rr.live.normal': async () => {} } });
       await w.tick();
-      const row = (await db.query('SELECT status, processing_token FROM server_outbox WHERE id=$1', [x.id])).rows[0];
+      const row = (await db.query('SELECT status, retry_count, processing_token FROM server_outbox WHERE id=$1', [x.id])).rows[0];
       check('P1 normal claim/complete', row.status === 'processed' && row.processing_token === null);
     }
     {
@@ -125,8 +125,8 @@ async function cleanup(ids) {
       }});
       await w.tick();
       const row = (await db.query('SELECT status, processing_token FROM server_outbox WHERE id=$1', [x.id])).rows[0];
-      const dlq = (await db.query('SELECT outbox_id, error_message FROM server_outbox_dlq WHERE outbox_id=$1', [x.id])).rows;
-      check('P3 failure during final transition is atomic DLQ + terminal state', row.status === 'dead_letter' && row.processing_token === null && dlq.length === 1 && /forced terminal failure/.test(dlq[0].error_message));
+      const dlq = (await db.query('SELECT outbox_id, error_message, retry_count FROM server_outbox_dlq WHERE outbox_id=$1', [x.id])).rows;
+      check('P3 failure during final transition is atomic DLQ + terminal state', row.status === 'dead_letter' && Number(row.retry_count) === 1 && row.processing_token === null && dlq.length === 1 && Number(dlq[0].retry_count) === 1 && /forced terminal failure/.test(dlq[0].error_message));
     }
 
     // PASS 4 — Concurrency / Replay / Resilience
