@@ -44,6 +44,13 @@ if [ -z "$P7V_REDIS_URL" ]; then
   exit 1
 fi
 export REDIS_URL="$P7V_REDIS_URL"
+# Isolate reruns as well as other suites: stale OTP/rate-limit keys must never
+# affect a production verification. Failure to initialize the verifier-owned
+# Redis DB is a real dependency failure, not a reason to continue.
+if ! redis-cli -u "$P7V_REDIS_URL" FLUSHDB >/dev/null 2>&1; then
+  log "NOT VERIFIED — could not initialize isolated Redis verifier DB"
+  exit 1
+fi
 if [ -z "$NODE" ] || [ ! -x "$NODE" ]; then
   log "NOT VERIFIED — node binary missing"
   exit 1
