@@ -124,11 +124,9 @@ JS
 PUBB64="$(python3 -c 'import json;print(json.load(open("/tmp/p7v-gov.json"))["pub"])')"
 [ -n "$PUBB64" ] && [ -s /tmp/p7v-gov-priv.pem ] || { echo "NOT VERIFIED — governance keygen failed"; exit 1; }
 
-# T2/T6 authentication fixture: this verifier runs against a clean PG database.
-# Do not derive authentication credentials from PAYESH_STORE: in PG-live mode the
-# users table is the identity authority, and the demo store is not a contract for
-# production credentials. Use deterministic, valid Iranian credentials that are
-# inserted into this verifier-only database and then exercise the real OTP flow.
+# T2/T6 authentication fixture: PG is the identity authority for this clean
+# verifier database. Never derive credentials from PAYESH_STORE: that store is
+# only a UI/demo fixture and is not the production identity source.
 AUTH_USERS_JSON='[
   {"id":900001,"role":"superadmin","full_name":"P7V Superadmin","username":"p7v-superadmin","national_id":"9000000001","phone":"09120000001","school_id":null},
   {"id":900002,"role":"teacher","full_name":"P7V Teacher","username":"p7v-teacher","national_id":"9000000002","phone":"09120000002","school_id":3}
@@ -139,19 +137,14 @@ const fs = require('fs');
 const users = JSON.parse(fs.readFileSync('/tmp/p7v-auth-fixture.json', 'utf8'));
 if (users.length !== 2) throw new Error('P7V_AUTH_FIXTURE_BAD_COUNT');
 for (const u of users) {
-  if (!/^\d{10}$/.test(u.national_id) || !/^09\d{9}$/.test(u.phone)) {
-    throw new Error('P7V_AUTH_FIXTURE_INVALID_CREDENTIALS');
-  }
+  if (!/^\d{10}$/.test(u.national_id) || !/^09\d{9}$/.test(u.phone)) throw new Error('P7V_AUTH_FIXTURE_INVALID_CREDENTIALS');
 }
 const q = v => "'" + String(v).replace(/'/g, "''") + "'";
-const sql = [];
-sql.push("INSERT INTO schools (id, name, type, version, active) VALUES (3, 'P7V School', 'governmental', 1, true) ON CONFLICT (id) DO UPDATE SET active=true;");
+const sql = ["INSERT INTO schools (id, name, type, version, active) VALUES (3, 'P7V School', 'governmental', 1, true) ON CONFLICT (id) DO UPDATE SET active=true;"];
 for (const u of users) {
   sql.push("INSERT INTO users (id, role, full_name, username, national_id, phone, active, school_id, status, created_at, updated_at, version) VALUES (" +
-    Number(u.id) + "," + q(u.role) + "," + q(u.full_name) + "," + q(u.username) + "," +
-    q(u.national_id) + "," + q(u.phone) + ",true," +
-    (u.school_id == null ? "NULL" : Number(u.school_id)) + "," + q('active') + ",NOW(),NOW(),1) " +
-    "ON CONFLICT (id) DO UPDATE SET active=true, national_id=EXCLUDED.national_id, phone=EXCLUDED.phone, school_id=EXCLUDED.school_id;");
+    Number(u.id) + "," + q(u.role) + "," + q(u.full_name) + "," + q(u.username) + "," + q(u.national_id) + "," + q(u.phone) + ",true," +
+    (u.school_id == null ? "NULL" : Number(u.school_id)) + "," + q('active') + ",NOW(),NOW(),1) ON CONFLICT (id) DO UPDATE SET active=true, national_id=EXCLUDED.national_id, phone=EXCLUDED.phone, school_id=EXCLUDED.school_id;");
 }
 process.stdout.write(sql.join("\n"));
 JS
