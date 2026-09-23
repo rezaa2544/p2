@@ -124,9 +124,9 @@ async function cleanup(ids) {
         'rr.live.dlq': async () => { throw new Error('forced terminal failure'); }
       }});
       await w.tick();
-      const row = (await db.query('SELECT status, processing_token FROM server_outbox WHERE id=$1', [x.id])).rows[0];
+      const row = (await db.query('SELECT status, retry_count, processing_token FROM server_outbox WHERE id=$1', [x.id])).rows[0];
       const dlq = (await db.query('SELECT outbox_id, error_message, retry_count FROM server_outbox_dlq WHERE outbox_id=$1', [x.id])).rows;
-      check('P3 failure during final transition is atomic DLQ + terminal state', row.status === 'dead_letter' && Number(row.retry_count) === 1 && row.processing_token === null && dlq.length === 1 && Number(dlq[0].retry_count) === 1 && /forced terminal failure/.test(dlq[0].error_message));
+      check('P3 failure during final transition is atomic DLQ + terminal state', row.status === 'dead_letter' && Number(row.retry_count) === 1 && row.processing_token === null && dlq.length === 1 && Number(dlq[0].retry_count) === 1 && /forced terminal failure/.test(dlq[0].error_message), 'row=' + JSON.stringify(row) + ' dlq=' + JSON.stringify(dlq));
     }
 
     // PASS 4 — Concurrency / Replay / Resilience
