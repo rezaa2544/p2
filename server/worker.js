@@ -100,7 +100,7 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
             // B4: Transfer poison pill event to Dead-Letter Queue (DLQ).
             if (outbox && typeof outbox.moveToDlq === 'function') {
               try {
-                const dlq = await outbox.moveToDlq(evt, errMsg, leaseToken);
+                const dlq = await outbox.moveToDlq(evt, errMsg, leaseToken, rc);
                 transitioned = !!(dlq && dlq.ok === true);
               } catch (_) {}
             }
