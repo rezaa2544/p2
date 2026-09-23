@@ -99,7 +99,7 @@ process.on('SIGINT', () => stop(0));
   console.log('VERSION ' + v.rows[0].v);
   await c.end();
 
-  console.log('BOOTED url=postgres://' + USER + ':' + PASSWORD + '@127.0.0.1:' + PORT + '/' + DB);
+  console.log('BOOTED url=postgres://' + USER + ':***@127.0.0.1:' + PORT + '/' + DB);
 
   /* Keep this process alive; the cluster itself is a separate OS process. */
   setInterval(() => {}, 1 << 30);
