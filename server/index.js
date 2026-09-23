@@ -1663,7 +1663,7 @@ if(TLS_CERT || TLS_KEY){
     process.exit(1);
   }
   if(!fs.existsSync(TLS_CERT) || !fs.existsSync(TLS_KEY)){
-    console.error('TLS file missing: ' + (TLS_CERT + ' / ' + TLS_KEY));
+    console.error('TLS file missing: check PAYESH_TLS_CERT and PAYESH_TLS_KEY paths');
     console.error('generate one:  node server/tls-cert.js');
     process.exit(1);
   }
