@@ -15,6 +15,8 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
+const crypto = require('crypto');
+
 const OUTBOX_CAP = 1000;
 
 function createOutbox({ store, db }) {
@@ -127,44 +129,75 @@ function createOutbox({ store, db }) {
    * @param {number} id
    * @param {object} patch — { status?, retry_count?, last_error?, processed_at? }
    */
-  async function mark(id, patch) {
+  async function mark(id, patch, leaseToken) {
+    patch = patch || {};
     const evt = store.outbox.find(e => e.id === id);
+    const guarded = leaseToken != null;
+    const applyMemory = () => {
+      if (evt) Object.assign(evt, patch);
+      return evt || Object.assign({ id }, patch);
+    };
     if (!evt) {
-      /* P0 fix (Chat 2 remediation, found live in RT4): in PG-live after a
-         restart the RAM queue is empty by design (F3) — but the row lives in
-         server_outbox. mark() used to bail out silently here, so every event
-         processed by the PG-backed worker stayed 'pending' in PostgreSQL and
-         was re-replayed on every boot (live evidence: pending|0 after 12s,
-         'replayed 1 pending event(s)' each boot). Land the mark on PG. */
+      /* PG may be authoritative after a restart. A worker completion/retry
+         must carry the claim token so a stale worker cannot mutate a newer
+         lease. Administrative callers without a token retain the legacy
+         unguarded path. */
       if (!isPg()) return null;
-      patch = patch || {};
       try {
-        await db.query(
-          `UPDATE server_outbox SET status = $2, retry_count = $3, last_error = $4, processed_at = $5, processing_at = $6
-           WHERE id = $1;`,
-          [id, String(patch.status || 'pending'), Number(patch.retry_count) || 0,
-           patch.last_error != null ? String(patch.last_error) : null,
-           patch.processed_at || null, patch.processing_at || null]
+        const where = guarded
+          ? 'WHERE id = $1 AND status = \'processing\' AND processing_token = $6;'
+          : 'WHERE id = $1;';
+        const params = [
+          id, String(patch.status || 'pending'), Number(patch.retry_count) || 0,
+          patch.last_error != null ? String(patch.last_error) : null,
+          patch.processed_at || null, guarded ? String(leaseToken) : null
+        ];
+        const r = await db.query(
+          `UPDATE server_outbox
+             SET status = $2, retry_count = $3, last_error = $4, processed_at = $5,
+                 processing_at = NULL, processing_token = NULL
+           ${where}`,
+          params
         );
+        if (guarded && (!r || Number(r.rowCount) !== 1)) return null;
         return Object.assign({ id }, patch);
-      } catch (e) { /* best-effort mirror — same contract as below */ }
+      } catch (e) {
+        return null;
+      }
+    }
+
+    if (guarded && (evt.status || 'pending') === 'processing' && evt.processing_token !== String(leaseToken)) {
       return null;
     }
-    Object.assign(evt, patch || {});
+
     if (isPg()) {
       try {
-        await db.query(
-          `UPDATE server_outbox SET status = $2, retry_count = $3, last_error = $4, processed_at = $5, processing_at = $6
-           WHERE id = $1;`,
-          [evt.id, String(evt.status || 'pending'), Number(evt.retry_count) || 0,
-           evt.last_error != null ? String(evt.last_error) : null,
-           evt.processed_at || null, evt.processing_at || null]
+        const where = guarded
+          ? 'WHERE id = $1 AND status = \'processing\' AND processing_token = $6;'
+          : 'WHERE id = $1;';
+        const params = [
+          evt.id, String(patch.status || evt.status || 'pending'),
+          Number(patch.retry_count != null ? patch.retry_count : evt.retry_count) || 0,
+          patch.last_error !== undefined
+            ? (patch.last_error != null ? String(patch.last_error) : null)
+            : (evt.last_error != null ? String(evt.last_error) : null),
+          patch.processed_at !== undefined ? (patch.processed_at || null) : (evt.processed_at || null),
+          guarded ? String(leaseToken) : null
+        ];
+        const r = await db.query(
+          `UPDATE server_outbox
+             SET status = $2, retry_count = $3, last_error = $4, processed_at = $5,
+                 processing_at = NULL, processing_token = NULL
+           ${where}`,
+          params
         );
-      } catch (e) { /* آینهٔ پستگرس بهترین‌تلاش است — منبع حقیقت اسنپ‌شات است */ }
+        if (guarded && (!r || Number(r.rowCount) !== 1)) return null;
+      } catch (e) {
+        return null;
+      }
     }
-    return evt;
+    return applyMemory();
   }
-
   /**
    * ویو ۱۴ — عمقِ صفِ ناهم‌زمان (queue depth) برای Observability.
    * برچسب‌ها از یک مجموعهٔ بسته می‌آیند (pending/processed/failed/legacy)
@@ -199,7 +232,7 @@ function createOutbox({ store, db }) {
     try {
       const leaseSeconds = Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) > 0 ? Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) : 60;
       const r = await db.query(
-        `SELECT id, type, collection, record_id, actor_id, version, payload, created_at, retry_count, last_error
+        `SELECT id, type, collection, record_id, actor_id, version, payload, created_at, retry_count, last_error, processing_token
            FROM server_outbox
            WHERE status = 'pending'
               OR (status = 'processing' AND (processing_at IS NULL OR processing_at < NOW() - ($2 * INTERVAL '1 second')))
@@ -221,6 +254,7 @@ function createOutbox({ store, db }) {
         record_id: row.record_id, actor_id: row.actor_id, version: row.version,
         payload, created_at: row.created_at, status: 'pending',
         processing_at: null,
+        processing_token: null,
         retry_count: Number(row.retry_count) || 0, last_error: row.last_error || null
       });
       replayed++;
@@ -238,20 +272,28 @@ function createOutbox({ store, db }) {
     if (isPg()) {
       if (client) {
         const leaseSeconds = Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) > 0 ? Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) : 60;
+        const claimToken = crypto.randomUUID();
         const res = await client.query(
-          `SELECT id, type, collection, record_id, actor_id, version, payload, retry_count, last_error
-           FROM server_outbox
-           WHERE status = 'pending'
-              OR (status = 'processing' AND (processing_at IS NULL OR processing_at < NOW() - ($2 * INTERVAL '1 second')))
-           ORDER BY id ASC
-           LIMIT $1
-           FOR UPDATE SKIP LOCKED;`,
-          [limit, leaseSeconds]
+          `WITH claimed AS (
+             SELECT id FROM server_outbox
+             WHERE status = 'pending'
+                OR (status = 'processing' AND (processing_at IS NULL OR processing_at < NOW() - ($2 * INTERVAL '1 second')))
+             ORDER BY id ASC
+             LIMIT $1
+             FOR UPDATE SKIP LOCKED
+           )
+           UPDATE server_outbox o
+           SET status = 'processing', processing_at = NOW(), processing_token = $3
+           FROM claimed c
+           WHERE o.id = c.id
+           RETURNING o.id, o.type, o.collection, o.record_id, o.actor_id, o.version, o.payload, o.retry_count, o.last_error, o.processing_token;`,
+          [limit, leaseSeconds, claimToken]
         );
         return (res && res.rows) || [];
       }
       // Single-statement atomic claim using CTE + UPDATE ... RETURNING
       const q = db;
+      const claimToken = crypto.randomUUID();
       const res = await q.query(
         `WITH claimed AS (
            SELECT id FROM server_outbox
@@ -262,11 +304,11 @@ function createOutbox({ store, db }) {
            FOR UPDATE SKIP LOCKED
          )
          UPDATE server_outbox o
-         SET status = 'processing', processing_at = NOW()
+         SET status = 'processing', processing_at = NOW(), processing_token = $3
          FROM claimed c
          WHERE o.id = c.id
-         RETURNING o.id, o.type, o.collection, o.record_id, o.actor_id, o.version, o.payload, o.retry_count, o.last_error;`,
-        [limit, Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) > 0 ? Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) : 60]
+         RETURNING o.id, o.type, o.collection, o.record_id, o.actor_id, o.version, o.payload, o.retry_count, o.last_error, o.processing_token;`,
+        [limit, Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) > 0 ? Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) : 60, claimToken]
       );
       return (res && res.rows) || [];
     }
@@ -277,6 +319,7 @@ function createOutbox({ store, db }) {
     for (const e of pending) {
       e.status = 'processing';
       e.processing_at = Date.now();
+      e.processing_token = crypto.randomUUID();
     }
     return pending;
   }
@@ -284,7 +327,7 @@ function createOutbox({ store, db }) {
   /**
    * Step 10: Route poisoned event to server_outbox_dlq
    */
-  async function moveToDlq(evtOrId, errorMessage) {
+  async function moveToDlq(evtOrId, errorMessage, leaseToken) {
     /* B3 (Phase-2 remediation directive): moveToDlq accepts a full event object
        OR a bare event id. With an id, the row is resolved first (SELECT ...
        WHERE id=$1 in PG / the RAM queue otherwise) and then transferred to the
@@ -317,6 +360,24 @@ function createOutbox({ store, db }) {
       }
       try {
         const result = await db.transaction(async (client) => {
+          if (leaseToken != null) {
+            const ins = await client.query(
+              `INSERT INTO server_outbox_dlq (outbox_id, type, collection, record_id, actor_id, version, payload, error_message, retry_count, failed_at)
+               SELECT id, type, collection, record_id, actor_id, version, payload, $2, retry_count, NOW()
+               FROM server_outbox
+               WHERE id = $1 AND status = 'processing' AND processing_token = $3
+               ON CONFLICT (outbox_id) DO NOTHING;`,
+              [evt.id, String(errorMessage), String(leaseToken)]
+            );
+            const upd = await client.query(
+              `UPDATE server_outbox
+               SET status = 'dead_letter', last_error = $2, processing_at = NULL, processing_token = NULL
+               WHERE id = $1 AND status = 'processing' AND processing_token = $3;`,
+              [evt.id, String(errorMessage), String(leaseToken)]
+            );
+            if (!upd || Number(upd.rowCount) !== 1) return { ok: false, id: evt.id, stale: true };
+            return { ok: true, id: evt.id, status: 'dead_letter', error_message: String(errorMessage), inserted: !!(ins && Number(ins.rowCount) > 0) };
+          }
           await client.query(
             `INSERT INTO server_outbox_dlq (outbox_id, type, collection, record_id, actor_id, version, payload, error_message, retry_count, failed_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
@@ -325,7 +386,7 @@ function createOutbox({ store, db }) {
           );
           await client.query(
             `UPDATE server_outbox
-             SET status = 'dead_letter', last_error = $2, processing_at = NULL
+             SET status = 'dead_letter', last_error = $2, processing_at = NULL, processing_token = NULL
              WHERE id = $1;`,
             [evt.id, String(errorMessage)]
           );
@@ -341,7 +402,8 @@ function createOutbox({ store, db }) {
       if (!store.outbox_dlq.some((row) => Number(row.outbox_id != null ? row.outbox_id : row.id) === Number(evt.id))) {
         store.outbox_dlq.push(Object.assign({}, evt, { outbox_id: evt.id, error_message: errorMessage, failed_at: new Date().toISOString() }));
       }
-      await mark(evt.id, { status: 'dead_letter', last_error: errorMessage });
+      const marked = await mark(evt.id, { status: 'dead_letter', last_error: errorMessage }, leaseToken);
+      if (!marked && leaseToken != null) return { ok: false, id: evt.id, stale: true };
       return { ok: true, id: evt.id, status: 'dead_letter', error_message: String(errorMessage) };
     }
   }
