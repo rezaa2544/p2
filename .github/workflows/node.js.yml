@@ -127,6 +127,8 @@ jobs:
       run: node tests/semantic-layer/runner.js
     - name: Intelligence Layer — analytics wiring guard (no orphan engines)
       run: node tests/analytics-wiring-guard.test.js
+    - name: Intelligence Layer — no-data-masking gate (D1)
+      run: node tests/no-data-masking.test.js
 
     - name: Migration chain — clean install on an empty database (001 → latest)
       run: |

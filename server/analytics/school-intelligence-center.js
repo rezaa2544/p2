@@ -75,43 +75,107 @@ function calculateSchoolHealthIndex(snapshot = {}, options = {}) {
   const engagement = snapshot.engagement_summary || snapshot.parent_summary || {};
   const intervention = snapshot.intervention_summary || {};
 
+  // ── D1 remediation: پیش‌فرض‌های خوش‌بینانه حذف می‌شوند ──────────────
+  // پیش‌تر این تابع برای ابعادِ بدونِ داده، اعدادِ خوب می‌ساخت
+  // (avgGpa=15، attendance=90، pei=75، resolution=50). نتیجه: مدرسه‌ای با
+  // هیچ داده‌ای، شاخص ۸۳.۲ و وضعیت HEALTHY می‌گرفت — یعنی نبودِ داده به‌جای
+  // «نامشخص»، «همه‌چیز خوب» گزارش می‌شد. اکنون هر بعد یا مقدارِ واقعیِ خودش
+  // را دارد یا null است و میانگین فقط روی ابعادِ موجود محاسبه می‌شود.
+  const WEIGHTS = Object.freeze({ academic: 0.35, attendance: 0.30, engagement: 0.20, intervention: 0.15 });
+
+  const hasAcademic = academic.average_gpa != null;
+  const hasAttendance = attendance.calendar_rate != null;
+  const hasEngagement = engagement.average_pei != null;
+  const hasIntervention = intervention.resolution_rate != null;
+
+  const components = {};
+
   // مؤلفه آموزشی (0-100)
-  const avgGpa = Number(academic.average_gpa ?? 15.0);
-  const failingRatio = Number(academic.failing_students_ratio ?? 0);
-  let compAcademic = Math.max(0, Math.min(100, (avgGpa / 20) * 100 - (failingRatio * 100 * 0.5)));
+  if (hasAcademic) {
+    const avgGpa = Number(academic.average_gpa);
+    const failingRatio = Number(academic.failing_students_ratio ?? 0);
+    components.academic = Math.max(0, Math.min(100, (avgGpa / 20) * 100 - (failingRatio * 100 * 0.5)));
+  } else {
+    components.academic = null;
+  }
 
   // مؤلفه حضور (0-100)
-  const attRate = Number(attendance.calendar_rate ?? 90.0);
-  const chronicRate = Number(attendance.chronic_absence_rate ?? 5.0);
-  let compAttendance = Math.max(0, Math.min(100, attRate - (chronicRate * 1.5)));
+  if (hasAttendance) {
+    const attRate = Number(attendance.calendar_rate);
+    const chronicRate = Number(attendance.chronic_absence_rate ?? 0);
+    components.attendance = Math.max(0, Math.min(100, attRate - (chronicRate * 1.5)));
+  } else {
+    components.attendance = null;
+  }
 
   // مؤلفه مشارکت و تعامل (0-100)
-  const pei = Number(engagement.average_pei ?? 75.0);
-  let compEngagement = Math.max(0, Math.min(100, pei));
+  if (hasEngagement) {
+    components.engagement = Math.max(0, Math.min(100, Number(engagement.average_pei)));
+  } else {
+    components.engagement = null;
+  }
 
   // مؤلفه مداخله (0-100)
-  const resRate = Number(intervention.resolution_rate ?? 50.0);
-  const unassignedCritical = Number(intervention.unassigned_high_priority_count ?? 0);
-  let compIntervention = Math.max(0, Math.min(100, resRate - (unassignedCritical * 15)));
+  if (hasIntervention) {
+    const resRate = Number(intervention.resolution_rate);
+    const unassignedCritical = Number(intervention.unassigned_high_priority_count ?? 0);
+    components.intervention = Math.max(0, Math.min(100, resRate - (unassignedCritical * 15)));
+  } else {
+    components.intervention = null;
+  }
 
-  // میانگین وزنی
-  const score = Math.round(
-    (0.35 * compAcademic + 0.30 * compAttendance + 0.20 * compEngagement + 0.15 * compIntervention) * 10
-  ) / 10;
+  // میانگین وزنی فقط روی ابعادِ موجود (اگر هیچ بُعدی نبود، score = null)
+  let totalWeight = 0;
+  let weightedSum = 0;
+  for (const key of Object.keys(WEIGHTS)) {
+    if (components[key] !== null) {
+      weightedSum += WEIGHTS[key] * components[key];
+      totalWeight += WEIGHTS[key];
+    }
+  }
+  const hasAnyData = totalWeight > 0;
+
+  const score = hasAnyData
+    ? Math.round((weightedSum / totalWeight) * 10) / 10
+    : null;
 
   // احصای مخاطرات بحرانی (Critical Risks)
   let criticalRiskCount = 0;
-  if (chronicRate >= 15.0) criticalRiskCount++;
-  if (avgGpa < 10.0) criticalRiskCount++;
+  const chronicRate = hasAttendance ? Number(attendance.chronic_absence_rate ?? 0) : null;
+  const avgGpa = hasAcademic ? Number(academic.average_gpa) : null;
+  const unassignedCritical = hasIntervention ? Number(intervention.unassigned_high_priority_count ?? 0) : 0;
+
+  if (chronicRate !== null && chronicRate >= 15.0) criticalRiskCount++;
+  if (avgGpa !== null && avgGpa < 10.0) criticalRiskCount++;
   if (unassignedCritical > 0) criticalRiskCount++;
+
+  // کیفیت داده: کدام ابعاد موجودند
+  const presentDims = Object.keys(WEIGHTS).filter((k) => components[k] !== null);
+  const missingDims = Object.keys(WEIGHTS).filter((k) => components[k] === null);
+  const dataQuality = {
+    status: presentDims.length === 0
+      ? 'NO_DATA'
+      : (missingDims.length === 0 ? 'COMPLETE' : 'PARTIAL'),
+    completeness: Math.round((presentDims.length / Object.keys(WEIGHTS).length) * 100) / 100,
+    present_dimensions: presentDims,
+    missing_dimensions: missingDims
+  };
 
   // اعمال اصل عدم پنهان‌سازی (No-Masking)
   let status = 'HEALTHY';
   let noMaskingApplied = false;
 
-  if (criticalRiskCount > 0) {
+  if (!hasAnyData) {
+    // هیچ داده‌ای موجود نیست: هرگز HEALTHY گزارش نمی‌دهیم.
+    status = 'NEEDS_IMMEDIATE_ACTION';
+    noMaskingApplied = false;
+  } else if (criticalRiskCount > 0) {
     status = 'NEEDS_IMMEDIATE_ACTION';
     noMaskingApplied = score >= 60; // اگر نمره عددی متوسط/بالا بوده اما به دلیل ریسک حاد تنزل یافته
+  } else if (dataQuality.status === 'PARTIAL') {
+    // دادهٔ ناقص: سقف وضعیت NEEDS_MONITORING است تا دادهٔ غایب پنهان نشود.
+    status = score >= 60 ? 'NEEDS_MONITORING' : 'NEEDS_IMMEDIATE_ACTION';
+    noMaskingApplied = score >= 80;
   } else if (score >= 80) {
     status = 'HEALTHY';
   } else if (score >= 60) {
@@ -124,13 +188,14 @@ function calculateSchoolHealthIndex(snapshot = {}, options = {}) {
     score: score,
     status: status,
     components: {
-      academic: Math.round(compAcademic * 10) / 10,
-      attendance: Math.round(compAttendance * 10) / 10,
-      engagement: Math.round(compEngagement * 10) / 10,
-      intervention: Math.round(compIntervention * 10) / 10
+      academic: components.academic !== null ? Math.round(components.academic * 10) / 10 : null,
+      attendance: components.attendance !== null ? Math.round(components.attendance * 10) / 10 : null,
+      engagement: components.engagement !== null ? Math.round(components.engagement * 10) / 10 : null,
+      intervention: components.intervention !== null ? Math.round(components.intervention * 10) / 10 : null
     },
     critical_risk_count: criticalRiskCount,
-    no_masking_applied: noMaskingApplied
+    no_masking_applied: noMaskingApplied,
+    data_quality: dataQuality
   };
 }
 
@@ -281,8 +346,10 @@ function buildSchoolIntelligenceSnapshot(data = {}, options = {}) {
   }
 
   const gradeCount = rawGrades.length;
-  const avgGpa = gradeCount > 0 ? Math.round((totalScore / gradeCount) * 100) / 100 : 15.0;
-  const failingRatio = gradeCount > 0 ? Math.round((failingCount / gradeCount) * 1000) / 1000 : 0;
+  // D1: وقتی نمره‌ای ثبت نشده، معدل نامشخص است — نه ۱۵. گزارش «خوب» برای
+  // مدرسه‌ای بدون نمره، غیبت داده را پنهان می‌کرد.
+  const avgGpa = gradeCount > 0 ? Math.round((totalScore / gradeCount) * 100) / 100 : null;
+  const failingRatio = gradeCount > 0 ? Math.round((failingCount / gradeCount) * 1000) / 1000 : null;
 
   let atRiskSubjectsCount = 0;
   for (const [, scores] of subjectScores.entries()) {
@@ -294,7 +361,8 @@ function buildSchoolIntelligenceSnapshot(data = {}, options = {}) {
   const academicSummary = {
     average_gpa: avgGpa,
     failing_students_ratio: failingRatio,
-    at_risk_subjects_count: atRiskSubjectsCount
+    at_risk_subjects_count: atRiskSubjectsCount,
+    grades_analyzed: gradeCount
   };
 
   // ۲. خلاصه حضور و غیاب (Attendance Summary)
@@ -318,10 +386,11 @@ function buildSchoolIntelligenceSnapshot(data = {}, options = {}) {
   }
 
   const totalSessions = presentCount + absentCount;
-  const calendarRate = totalSessions > 0 ? Math.round(((presentCount / totalSessions) * 100) * 100) / 100 : 95.0;
-  const chronicAbsenceRate = totalSessions > 0 ? Math.round(((absentCount / totalSessions) * 100) * 100) / 100 : 5.0;
+  // D1: بدون هیچ جلسه‌ای، نرخ حضور نامشخص است — نه ۹۵٪ «خوب».
+  const calendarRate = totalSessions > 0 ? Math.round(((presentCount / totalSessions) * 100) * 100) / 100 : null;
+  const chronicAbsenceRate = totalSessions > 0 ? Math.round(((absentCount / totalSessions) * 100) * 100) / 100 : null;
 
-  let peakDay = 'wednesday';
+  let peakDay = null;
   let maxAbs = -1;
   for (const [d, count] of Object.entries(dayAbsenceMap)) {
     if (count > maxAbs) {
@@ -329,11 +398,13 @@ function buildSchoolIntelligenceSnapshot(data = {}, options = {}) {
       peakDay = d;
     }
   }
+  if (absentCount === 0) peakDay = null;
 
   const attendanceSummary = {
     calendar_rate: calendarRate,
     chronic_absence_rate: chronicAbsenceRate,
-    peak_absence_day: peakDay
+    peak_absence_day: peakDay,
+    sessions_analyzed: totalSessions
   };
 
   // ۳. خلاصه سنجش‌ها (Assessment Summary)
@@ -372,8 +443,10 @@ function buildSchoolIntelligenceSnapshot(data = {}, options = {}) {
   };
 
   // ۵. خلاصه اولیا (Parent Summary)
+  // D1: شاخص مشارکت اولیا (PEI) تا زمانی که منبع دادهٔ واقعی (parent-360)
+  // به این مسیر وصل شود، نامشخص است. عدد ثابت ۷۸.۵ یک ادعای ساختگی بود.
   const parentSummary = {
-    average_pei: 78.5,
+    average_pei: null,
     unjustified_absences_pending: absentCount > 0 ? Math.min(absentCount, 3) : 0
   };
 
@@ -395,12 +468,14 @@ function buildSchoolIntelligenceSnapshot(data = {}, options = {}) {
   }
 
   const totalCases = rawCases.length;
-  const resolutionRate = totalCases > 0 ? Math.round(((resolvedCount / totalCases) * 100) * 100) / 100 : 100.0;
+  // D1: بدون هیچ پرونده‌ای، «۱۰۰٪ حل‌شده» ادعای غلطی است؛ نامشخص گزارش می‌شود.
+  const resolutionRate = totalCases > 0 ? Math.round(((resolvedCount / totalCases) * 100) * 100) / 100 : null;
 
   const interventionSummary = {
     active_cases_count: activeCasesCount,
     unassigned_high_priority_count: unassignedHigh,
-    resolution_rate: resolutionRate
+    resolution_rate: resolutionRate,
+    cases_analyzed: totalCases
   };
 
   // محاسبه سلامت و اقدامات

@@ -31,6 +31,9 @@ jobs:
       - run:
           name: "Analytics wiring guard (rejects orphan engines)"
           command: node tests/analytics-wiring-guard.test.js
+      - run:
+          name: "No-data-masking gate (D1)"
+          command: node tests/no-data-masking.test.js
 
 workflows:
   payesh-gate:
