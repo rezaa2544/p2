@@ -256,7 +256,6 @@ function createSemanticAnalyticsRoutes(ctx) {
       attendance: 'attendance', grades: 'grades', discipline: 'discipline',
       enrollments: 'enrollments', exams: 'exams'
     }, schoolId);
-    const studentRec = (store.users || []).find((u) => Number(u.id) === studentId) || {};
     const timeline = buildStudentTimeline({
       student: studentRec,
       attendance: rec.attendance.filter((a) => Number(a.student_id) === studentId),
