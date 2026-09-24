@@ -834,3 +834,8 @@ Canonical architecture backlog: docs/ARCHITECTURE_EVOLUTION_ROADMAP.md
 The repository now records twelve architecture patterns as a controlled evolution track. P0: Modular Monolith/Vertical Slices; Event-Driven; Transactional Outbox; OpenTelemetry; Policy-as-Code. P1: Selective CQRS; Workflow/Saga. Conditional: Event Sourcing; Microservices; Kubernetes; Service Mesh. Cross-cutting: Zero-Trust Service Boundaries.
 
 This is roadmap state, not implementation certification. Current architecture remains the baseline until an evidence-backed Architecture Review changes it. The active execution order remains Atria Critical/High → Phase A Carry-over Closure → Atria Medium → Atria Low → Multi-AI Validation → Capability/Role/E2E → Failure/Recovery → Performance → Final Certification.
+
+
+## Mandatory Strict Verification Gate — 2026-09-24
+
+The repository now has a fail-closed certification policy in `docs/STRICT_VERIFICATION_GATE.md`. No item may be marked PASS/VERIFIED without the evidence contract and independent ChatGPT + Arena + Atria review bound to the same HEAD. The machine gate is `tools/strict-verification-gate.js`, with CI enforcement in `.github/workflows/strict-verification.yml`. An incomplete registry is intentionally NOT VERIFIED.
