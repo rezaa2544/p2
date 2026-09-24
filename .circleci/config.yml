@@ -43,6 +43,9 @@ jobs:
       - run:
           name: "Non-circular release certification (D5)"
           command: node tests/certification-non-circular.test.js
+      - run:
+          name: "Client consumer render gate (D6)"
+          command: node tests/intelligence-client-render.test.js
 
 workflows:
   payesh-gate:

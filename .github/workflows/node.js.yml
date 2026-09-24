@@ -135,6 +135,8 @@ jobs:
       run: node tests/semantic-analytics-e2e.test.js
     - name: Intelligence Layer — non-circular release certification (D5)
       run: node tests/certification-non-circular.test.js
+    - name: Intelligence Layer — client consumer render gate (D6)
+      run: node tests/intelligence-client-render.test.js
 
     - name: Migration chain — clean install on an empty database (001 → latest)
       run: |
