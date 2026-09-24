@@ -1272,6 +1272,43 @@ Historical E3 DR/HA measurements remain E3. E4 requires production-equivalent to
 
 
 
+
+
+## ۳۶. Sharding Readiness & True-Sharding Decision Track — PLANNED / CONDITIONAL
+
+> این آیتم به‌عنوان **مسیر مقیاس‌پذیری آینده** ثبت می‌شود و به معنی الزام اجرای فوری Sharding نیست.  
+> معماری فعلی Payesh از weighted partitioning، read-replica routing و مسیرهای آماده‌سازی shard پشتیبانی می‌کند؛ عبور به چند PostgreSQL shard مستقل فقط در صورت وجود bottleneck اندازه‌گیری‌شده و عبور از Decision Gate مجاز است.
+
+### هدف
+تعیین و در صورت نیاز اجرای **true database sharding** به‌صورت مستقل و قابل‌بازگشت، بدون شکستن PostgreSQL SSoT، tenant isolation، OCC، consistency قراردادهای write/read و fail-closed behavior.
+
+### پیش‌نیاز Decision Gate
+- [ ] measured DB/tenant/partition bottleneck روی Current HEAD
+- [ ] capacity evidence واقعی؛ extrapolation به‌تنهایی کافی نیست
+- [ ] تعیین shard key و invariantهای tenant placement
+- [ ] تعیین shard topology، placement و ownership
+- [ ] بررسی اینکه partitioning + read replicas دیگر bottleneck را رفع نمی‌کنند
+- [ ] Architecture Review و تصمیم صریح ADOPT / DEFER / REJECT
+
+### اگر ADOPT شد — Work Items
+1. Shard Router/Placement contract
+2. مستقل‌سازی connection/pool برای هر shard
+3. routing امن بر اساس tenant/shard key
+4. write-to-primary و read consistency contract
+5. shard-local migration/versioning
+6. shard provisioning و failover
+7. rebalancing / tenant migration بدون از دست رفتن داده
+8. cross-shard query policy و ممنوعیت accidental fan-out
+9. observability: per-shard latency, errors, saturation, lag
+10. backup/restore و DR مستقل برای هر shard
+11. tenant-isolation regression و authorization parity
+12. E3 runtime evidence و E4 multi-shard evidence
+
+### Definition of Done
+Design → Decision Gate → Bounded Implementation → 5-Pass Regression → E3 Runtime Evidence → E4 Multi-Shard Evidence → Independent Review
+
+**قید:** وجود PAYESH_SHARDS یا weighted routing به‌تنهایی معادل production sharding نیست؛ تا زمانی که داده واقعاً بین shardهای مستقل توزیع، lifecycle آن‌ها مدیریت و behavior آن‌ها با evidence مستقل اثبات نشده باشد، status این Track بالاتر از PLANNED / NOT VERIFIED ارتقا نمی‌یابد.
+
 ## Architecture Evolution Track — 2026-09-24
 
 Canonical architecture backlog: docs/ARCHITECTURE_EVOLUTION_ROADMAP.md
