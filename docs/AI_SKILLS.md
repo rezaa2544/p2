@@ -79,3 +79,6 @@ node tools/verify-agent-skills.js
 ```
 
 اسکریپت موجود مهارت‌های `.agent/skills/` را اعتبارسنجی می‌کند؛ مهارت strict-verification نیز در `skills/strict-verification/` ثبت و در policy اجباری پروژه ارجاع شده است.
+
+
+<!-- Architecture evolution track registered 2026-09-24; see docs/ARCHITECTURE_EVOLUTION_ROADMAP.md -->
