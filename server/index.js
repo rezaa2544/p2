@@ -1880,6 +1880,12 @@ if(require.main === module){
     console.log('  store  : ' + STORE_FILE + '  (' + (store.users || []).length + ' users)');
     if(BACKUP_EVERY_MS > 0){
       console.log('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');
+    } else if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) {
+      /* A-05: بکاپِ خودکار پیش‌فرض خاموش است و تا پیش از این در زمانِ بوتِ
+         تولید هیچ خطی چاپ نمی‌شد — یک استقرار می‌توانست بدونِ هیچ بکاپی
+         بالا بیاید. اکنون هشدارِ بلند (نه مسدودکننده) داده می‌شود. */
+      console.warn('  ⚠ backup: DISABLED — set PAYESH_BACKUP_EVERY_HOURS (e.g. 24) or PAYESH_BACKUP_EVERY_MS. ' +
+        'No automatic backup will run in this process.');
     }
     });
   };
