@@ -6,7 +6,7 @@ const REG=path.join(ROOT,'docs','verification','VERIFICATION_REGISTRY.json');
 const ALLOW=path.join(ROOT,'docs','verification','FALSE_GREEN_ALLOWLIST.json');
 let pass=0,fail=0,failures=[];
 function chk(n,ok,d){if(ok){pass++;console.log('  OK '+n+(d?' — '+d:''));}else{fail++;failures.push({n:n,d:d});console.log('  FAIL '+n+(d?' — '+d:''));}}
-function read(p){return fs.readFileSync(p,'utf8');}
+function read(p){try{return fs.readFileSync(p,'utf8');}catch(e){return null;}}
 let head='';try{head=cp.execSync('git rev-parse HEAD',{cwd:ROOT}).toString().trim();}catch(e){}
 console.log('==== PAYESH STRICT VERIFICATION GATE ====');
 chk('G1 current HEAD known',/^[0-9a-f]{40}$/.test(head),head);
@@ -21,7 +21,7 @@ function walk(dir,out){out=out||[];for(const e of fs.readdirSync(dir,{withFileTy
 const amap=new Map();
 if(allowed&&Array.isArray(allowed.items))for(const x of allowed.items)amap.set(String(x.pattern),x);
 const pats=[['assert(true',/assert\s*\(\s*true\b/gi],['process.exit(0)',/process\.exit\(\s*0\s*\)/g],['|| true',/\|\|\s*true\b/g],['0/0 checks',/0\s*\/\s*0\s*(?:checks?|tests?)/gi]];
-for(const pair of pats){const label=pair[0],re=pair[1];let hits=[];for(const f of walk(ROOT)){const s=read(f);re.lastIndex=0;let m;while((m=re.exec(s)))hits.push(path.relative(ROOT,f)+':'+(s.slice(0,m.index).split('\n').length));}const bad=hits.filter(function(h){for(const a of amap.values()){if(a.pattern===label&&(a.expires==='never'||new Date(a.expires)>new Date()))return false;}return true;});chk('G7 '+label+' has no unapproved hits',bad.length===0,bad.slice(0,15).join(', '));}
+for(const pair of pats){const label=pair[0],re=pair[1];let hits=[];for(const f of walk(ROOT)){const s=read(f);if(s===null){hits.push(path.relative(ROOT,f)+':UNREADABLE');continue;}re.lastIndex=0;let m;while((m=re.exec(s)))hits.push(path.relative(ROOT,f)+':'+(s.slice(0,m.index).split('\n').length));}const bad=hits.filter(function(h){for(const a of amap.values()){if(a.pattern===label&&(a.expires==='never'||new Date(a.expires)>new Date()))return false;}return true;});chk('G7 '+label+' has no unapproved hits',bad.length===0,bad.slice(0,15).join(', '));}
 if(reg&&Array.isArray(reg.items)){
  const ids=new Set();
  for(const item of reg.items){
